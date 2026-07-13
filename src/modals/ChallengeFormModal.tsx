@@ -1,11 +1,12 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState, type ChangeEvent } from "react";
 import { createPortal } from "react-dom";
-import { X } from "lucide-react";
+import { ImagePlus, X } from "lucide-react";
 import Select from "../components/common/Select";
 import { Spinner } from "../components/common/Feedback";
 import { useAppStore } from "../store/appStore";
 import { api } from "../api/client";
 import { useLockBodyScroll } from "../utils/bodyScrollLock";
+import { resizeChallengePhoto } from "../utils/image";
 import type { Challenge } from "../types";
 
 interface ChallengeFormModalProps {
@@ -40,8 +41,29 @@ export default function ChallengeFormModal({ onClose, onCreated }: ChallengeForm
   const [dateStr, setDateStr] = useState("");
   const [timeStr, setTimeStr] = useState("");
   const [message, setMessage] = useState("");
+  // 첨부 사진(선택) — 고른 즉시 화면 표시 크기는 그대로 두되 용량만 줄이도록 리사이즈
+  // 해둔다(요청: "사진첨부 버튼 추가(크기는 그대로 유지하되 품질저하 없이 용량 줄이는
+  // 리사이즈 거치기)") — 전송 시점이 아니라 고르는 즉시 처리해, 미리보기에 실제로
+  // 보낼 이미지를 그대로 보여준다.
+  const [photo, setPhoto] = useState<string | null>(null);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+
+  const handlePhotoChosen = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setPhotoBusy(true);
+    try {
+      setPhoto(await resizeChallengePhoto(file));
+    } catch (e2) {
+      setErr(e2 instanceof Error ? e2.message : "사진을 불러오지 못했어요.");
+    } finally {
+      setPhotoBusy(false);
+    }
+  };
 
   const memberById = useMemo(() => new Map(members.map((m) => [m.id, m])), [members]);
   const activeMembers = useMemo(
@@ -78,6 +100,7 @@ export default function ChallengeFormModal({ onClose, onCreated }: ChallengeForm
         targetMemberIds: selectedIds,
         scheduledAt,
         message,
+        photo,
       });
       onCreated(challenge);
       onClose();
@@ -183,12 +206,39 @@ export default function ChallengeFormModal({ onClose, onCreated }: ChallengeForm
             />
           </label>
 
+          <div className="scr-field">
+            <span className="scr-label">사진 (선택)</span>
+            {photo ? (
+              <div className="scr-challenge-photo-preview">
+                <img src={photo} alt="첨부 사진" />
+                <button
+                  type="button" className="scr-icon-btn scr-challenge-photo-remove"
+                  onClick={() => setPhoto(null)} aria-label="사진 제거"
+                >
+                  <X size={13} />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button" className="scr-btn scr-btn-ghost scr-btn-sm scr-challenge-photo-add"
+                onClick={() => photoInputRef.current?.click()}
+                disabled={photoBusy}
+              >
+                {photoBusy ? <Spinner /> : <ImagePlus size={14} />}
+                사진 첨부
+              </button>
+            )}
+            <input
+              ref={photoInputRef} type="file" accept="image/*" hidden onChange={handlePhotoChosen}
+            />
+          </div>
+
           {err && <div className="scr-err">{err}</div>}
 
           <div className="scr-form-actions">
             <button className="scr-btn scr-btn-ghost" onClick={onClose}>취소</button>
             <button className="scr-btn scr-btn-primary" onClick={submit} disabled={!canSubmit || busy}>
-              {busy ? <><Spinner /> 보내는 중...</> : "✉️ 도전장 보내기"}
+              {busy ? <><Spinner /> 보내는 중...</> : "🕊️ 보내기"}
             </button>
           </div>
         </div>

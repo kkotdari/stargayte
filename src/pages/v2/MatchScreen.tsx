@@ -160,7 +160,7 @@ export default function MatchScreenV2() {
   }, [reload]);
 
   return (
-    <div className="scr-screen">
+    <div className="scr-screen scr-match-screen-v2">
       <div className="scr-v2-toolbar">
         <h1 className="scr-title scr-v2-toolbar-title">경기</h1>
         <div className="scr-v2-toolbar-actions">

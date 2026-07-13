@@ -260,6 +260,8 @@ export interface Challenge {
   matchType: ChallengeMatchType;
   scheduledAt: string | null;
   message: string;
+  // 도전장 보내기 폼에서 함께 첨부한 사진(선택) — 정적 파일 서빙 URL.
+  photoUrl: string | null;
   status: ChallengeStatus;
   createdBy: { id: string; nickname: string };
   targets: ChallengeTarget[];
@@ -271,6 +273,9 @@ export interface Challenge {
 export interface ChallengeCreatePayload {
   scheduledAt?: string | null;
   message?: string;
+  // data URL(base64) — utils/image.ts의 resizeChallengePhoto로 미리 리사이즈/재인코딩한
+  // 뒤 넘긴다.
+  photo?: string | null;
   targetMemberIds: string[];
   // 본인 제외 나머지 내 팀원(최대 3명, 본인 포함 최대 4명) — 안 넘기면 나 혼자.
   ownTeamMemberIds?: string[];

@@ -15,6 +15,15 @@ interface TeamMatchesModalProps {
   // 일대일 랭킹에서 재사용할 때만 넘긴다 — 그 회원의 "일대일" 경기만 보여줘야 하므로
   // (팀전에서의 개인 전적은 섞지 않는다). 팀 랭킹에서 쓸 때는 안 넘겨 전부 보여준다.
   matchType?: MatchType;
+  // 챌린지의 "결과 보기"에서 재사용할 때만 넘긴다 — 그 도전장에 잡힌 날짜에 등록된
+  // 경기만 보여줘야 하므로(같은 팀 구성으로 다른 날 뛴 경기까지 섞이면 헷갈린다).
+  dateFrom?: string;
+  dateTo?: string;
+  // 팀 랭킹에서 재사용할 때는 로스터 반전색 강조가 "누가 이 팀이었는지" 알려주는
+  // 용도라 필요하지만, 챌린지의 "결과 보기"는 이미 그 도전장 카드 자체가 팀 구성을
+  // 보여주고 있어 중복이라 꺼둔다(요청: "결과 보기에서 강조 표시 없애기"). 기본값은
+  // 랭킹 쪽 기존 동작을 그대로 유지하도록 true.
+  highlightMembers?: boolean;
   onClose: () => void;
 }
 
@@ -26,7 +35,9 @@ interface TeamMatchesModalProps {
 // 한 번에 받아 보여주고, 그보다 많으면 최근 것부터 100건까지만 보여준다.
 const PAGE_LIMIT = 100;
 
-export default function TeamMatchesModal({ members, matchType, onClose }: TeamMatchesModalProps) {
+export default function TeamMatchesModal({
+  members, matchType, dateFrom, dateTo, highlightMembers = true, onClose,
+}: TeamMatchesModalProps) {
   useLockBodyScroll();
   const memberOf = useAppStore((s) => s.memberOf);
 
@@ -44,7 +55,7 @@ export default function TeamMatchesModal({ members, matchType, onClose }: TeamMa
     let cancelled = false;
     setLoading(true);
     setErr("");
-    api.getMatchesPage({ teamMemberIds: memberIdsKey.split(","), matchType, limit: PAGE_LIMIT })
+    api.getMatchesPage({ teamMemberIds: memberIdsKey.split(","), matchType, dateFrom, dateTo, limit: PAGE_LIMIT })
       .then((page) => {
         if (cancelled) return;
         setMatches(page.items);
@@ -57,7 +68,7 @@ export default function TeamMatchesModal({ members, matchType, onClose }: TeamMa
         if (!cancelled) setLoading(false);
       });
     return () => { cancelled = true; };
-  }, [memberIdsKey, matchType]);
+  }, [memberIdsKey, matchType, dateFrom, dateTo]);
 
   useEffect(() => reload(), [reload]);
 
@@ -87,7 +98,7 @@ export default function TeamMatchesModal({ members, matchType, onClose }: TeamMa
             onMemo={setMemoMatch}
             onDeleted={reload}
             loading={loading}
-            highlightMemberIds={new Set(memberIds)}
+            highlightMemberIds={highlightMembers ? new Set(memberIds) : undefined}
           />
         </div>
       </div>

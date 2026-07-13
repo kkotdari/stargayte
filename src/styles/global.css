@@ -1717,27 +1717,35 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
     url("/images/bg/space.jpg");
   background-size: cover; background-position: center; background-repeat: no-repeat;
 }
-/* 라이트 테마는 다른 사진(space_light.png — 밝은 톤 우주 사진)을 깐다. mask-image로 화면
-   위/아래 끝을 완전히 투명하게 지워서 페이지 배경과 자연스럽게 이어지게 한다(사진이
-   뷰포트 가운데 구간에만 떠 있는 느낌 — 요청: "탑과 바텀쪽으로 갈수록 그라데이션으로
-   투명해지도록"). 한 번은 스크림을 거의 없앴었는데(요청: "흰 스크림을 약화, 거의
-   없다시피해도 됨"), 이후 글래스 패널(--panel) 자체를 훨씬 더 투명/저블러로 바꾸면서
-   패널 너머로 사진(특히 어두운 별자리 부분)이 과하게 비쳐 보여 라이트 테마인데도 진해
-   보인다는 피드백으로 다시 살짝 올렸다. 다크 테마와 달리 스크림이 어둡지 않고 흰색인
-   이유: 이 테마는 검은 글자를 쓰므로 사진을 어둡게 덮으면 그 위 검은 글자가 다시 안
-   보인다. */
-.scr-light-theme .scr-rank-screen-v2::before {
-  content: "";
+/* 라이트 테마는 배경 사진을 아예 안 쓴다(요청: "라이트테마는 화면에서 배경이미지
+   모두 제거") — 예전엔 다른(밝은 톤) 사진으로 바꿔 달았지만, 이제 이 화면(과 같은
+   원칙을 쓰는 .scr-challenge-screen-v2/.scr-match-screen-v2)의 라이트 테마 오버라이드는
+   전부 아래 공용 규칙 하나로 모아 표시 자체를 끈다. */
+
+/* 챌린지("너 나와!")/경기 화면도 같은 방식으로 사진을 깐다(요청: "챌린지 코너 배경
+   battle2.jpg로 적용" / "경기 코너 배경 battle1.jpeg로 적용" 이후 "경기페이지 배경
+   space3으로 변경") — 다크 테마에서만 보이고(위 랭킹과 같은 이유), 라이트 테마는
+   아래 공용 규칙으로 셋 다 함께 꺼진다. */
+.scr-challenge-screen-v2 { position: relative; }
+.scr-challenge-screen-v2::before {
+  content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
   background-image:
-    linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0.25) 25%,
-      rgba(255, 255, 255, 0.25) 75%, rgba(255, 255, 255, 0.45) 100%
-    ),
-    url("/images/bg/space_light.png");
-  background-size: cover; background-position: center top; background-repeat: no-repeat;
-  -webkit-mask-image: linear-gradient(180deg, transparent 0%, black 14%, black 86%, transparent 100%);
-  mask-image: linear-gradient(180deg, transparent 0%, black 14%, black 86%, transparent 100%);
+    linear-gradient(180deg, rgba(3,3,6,0.72) 0%, rgba(3,3,6,0.55) 40%, rgba(3,3,6,0.78) 100%),
+    url("/images/bg/battle2.jpg");
+  background-size: cover; background-position: center; background-repeat: no-repeat;
+}
+.scr-match-screen-v2 { position: relative; }
+.scr-match-screen-v2::before {
+  content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background-image:
+    linear-gradient(180deg, rgba(3,3,6,0.72) 0%, rgba(3,3,6,0.55) 40%, rgba(3,3,6,0.78) 100%),
+    url("/images/bg/space3.jpg");
+  background-size: cover; background-position: center; background-repeat: no-repeat;
+}
+.scr-light-theme .scr-rank-screen-v2::before,
+.scr-light-theme .scr-challenge-screen-v2::before,
+.scr-light-theme .scr-match-screen-v2::before {
+  display: none;
 }
 
 /* 집계 규칙을 조용히 알려주는 한 줄(예: "3전 이상 함께 뛴 팀만") — 도발 문구보다 더 작고
@@ -4154,6 +4162,9 @@ body *::-webkit-scrollbar-corner { background: transparent; }
      고정한다. */
   --point-contrast: #fdfbf5;
   box-shadow: 0 10px 34px rgba(0,0,0,0.4), inset 0 0 0 1px rgba(0,0,0,0.06);
+  /* 상대 지목/일시/한마디/사진 등 폼 요소가 늘면서 기본 .scr-modal-sm(360px)이 좁게
+     느껴졌다(요청: "폼 요소들 전체적으로 폭 넓히기") — 이 모달만 더 넓게. */
+  max-width: 460px;
 }
 /* ".scr-light-theme .scr-modal"(클래스 두 개, 위 베이스 글라스 규칙)이 이 편지지
    규칙(클래스 하나)보다 특이도가 높아서, 라이트 테마에서는 편지지 배경이 아니라
@@ -4200,6 +4211,21 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-challenge-datetime { display: flex; gap: 8px; }
 .scr-challenge-datetime .scr-input { flex: 1; min-width: 0; }
 
+/* 도전장 보내기 폼의 사진 첨부(요청: "도전장 보내기 한줄메시지 밑에 사진첨부 버튼
+   추가") — 고르기 전엔 다른 보조 버튼과 같은 톤의 작은 ghost 버튼 하나, 고른 뒤엔
+   미리보기 썸네일 + 우상단에 겹친 제거 버튼으로 바뀐다. */
+.scr-challenge-photo-add { align-self: flex-start; }
+.scr-challenge-photo-preview {
+  position: relative; align-self: flex-start; width: 96px; height: 96px;
+  border-radius: var(--radius-sm); overflow: hidden;
+}
+.scr-challenge-photo-preview img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.scr-challenge-photo-remove {
+  position: absolute; top: 4px; right: 4px; width: 22px; height: 22px;
+  background: rgba(0,0,0,0.55); color: #fff; border: none;
+}
+.scr-challenge-photo-remove:hover { background: rgba(0,0,0,0.75); }
+
 /* 목록 카드 */
 .scr-challenge-list { display: flex; flex-direction: column; gap: 12px; margin-top: 16px; }
 /* 다가오는/종료된 구획(요청: "다가오는/종료된 목록 분리 및 정렬") — 섹션 제목 하나 +
@@ -4237,21 +4263,6 @@ body *::-webkit-scrollbar-corner { background: transparent; }
     0 1px 6px rgba(0, 0, 0, 0.08),
     0 0 10px rgba(59, 130, 246, 0.16);
 }
-/* 시간은 줄 가운데 고정(요청: "시간은 가운데 두고")— 상태 알약과 리플레이 버튼은
-   이 중앙 정렬과 무관하게 각각 좌/우 구석에 절대배치로 따로 띄운다(요청: "상태
-   알약은 좌측끝에 배치(카드의 좌상단)" + "리플레이 등록은 오른쪽 구석으로").
-   position:relative는 그 두 절대배치 요소의 기준점 역할만 한다. */
-.scr-challenge-card-head { position: relative; display: flex; align-items: center; justify-content: center; gap: 11px; }
-.scr-challenge-card-head-status {
-  position: absolute; left: 0; top: 50%; transform: translateY(-50%);
-}
-/* 예전엔 카드 맨 아래 독립된 줄이었는데, 시간/상태 줄로 옮기고 크기도 그 줄의 다른
-   요소들에 맞춰 작게 줄인다(요청: "리플레이 등록 버튼은 시간 상태 라인의 오른쪽
-   구석에 위치시키기(크기도 일치시키기)" + "리플레이 등록 버튼 크기 줄이고"). */
-.scr-challenge-card-head-replay {
-  position: absolute; right: 0; top: 50%; transform: translateY(-50%);
-  padding: 3px 9px; font-size: 11.5px; min-height: 0; gap: 4px;
-}
 /* line-height를 명시하지 않으면 브라우저 기본값(폰트마다 다른 1.4~1.5배)이 글자
    위아래에 여분의 줄높이를 더해, 3px 패딩이 위아래 대칭이어도 실제로는 알약 안에서
    글자가 살짝 위나 아래로 치우쳐 보였다(실제로 지적받은 문제 — "상태 알약 위아래
@@ -4274,11 +4285,6 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 /* 거절/재신청 미니 폼(이름은 "time-change"지만 지금은 거절 사유 입력·재신청 시간
    수정 두 곳에서 재사용한다 — 세로로 쌓인 인풋+버튼 묶음이라는 모양 자체는 같다). */
 .scr-challenge-time-change-form { display: flex; flex-direction: column; gap: 8px; }
-/* 도전장 제목 옆 "너 나와!" 부제 — 타이틀(22px, 굵게)보다 확실히 작고 옅게, 살짝
-   아래 기준선에 맞춰 나란히 놓인다. */
-.scr-challenge-title-subtitle {
-  font-size: 13px; font-weight: 600; color: var(--dim); margin-left: 6px; vertical-align: middle;
-}
 /* 경기종류보다 앞, 굵게(요청: "경기유형 앞에 일시를 먼저 표시 진하게"). 고정폭
    숫자 폰트(.scr-mono)라 옆의 배지/일반 텍스트와 광학적 중심이 미묘하게 달라
    위로 떠 보였다 — 살짝 아래로 내린다(요청: "데이터 폰트라 살짝 아래로 배치"). */
@@ -4289,88 +4295,49 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   display: inline-block; font-size: 11px; font-weight: 800; color: var(--point-contrast);
   background: var(--point); border-radius: 4px; padding: 1px 5px; margin-right: 5px; vertical-align: middle;
 }
-/* 화면이 복잡하다는 피드백으로 로그(타임라인)를 통째로 없애고(요청: "로그 전체 삭제
-   그냥 상태만 봐도 충분히 알수있음") 훨씬 단순한 3단 구성으로 바꿨다 — 위 상태/시간,
-   가운데 큰 매치업 헤드라인, 아래 한마디. */
-
 /* 경기결과 화면처럼 날짜별로 묶는다(요청: "경기 화면처럼 날짜별로 그룹핑") — 날짜는
    여기 헤더에서만 보여주고, 카드 안에는 시간만 남긴다(요청: "각 카드엔 시간만 표시"). */
 .scr-challenge-date-group { display: flex; flex-direction: column; gap: 12px; }
 .scr-challenge-date-group + .scr-challenge-date-group { margin-top: 18px; }
 .scr-challenge-date-head { font-size: 13px; font-weight: 700; color: var(--dim); letter-spacing: 0.02em; }
 
-/* 요청자 vs 상대 구도를 카드에서 가장 눈에 띄는 요소로 크게 보여준다(요청: "요청자 vs
-   상대 구도로 크게 헤드라인 노출"). 양쪽을 세로로 쌓아(아바타 → 이름 → 팀원 → 한마디
-   순서로) VS를 그 사이에 두면, flex의 align-items:center만으로 옆쪽 세로 블록 전체
-   높이의 가운데에 자연스럽게 오게 된다(요청: "VS 가운데 세로 정렬"). 팀전이면 요청자
-   쪽엔 같은 편(ownMembers)이, 반대쪽엔 지목된 상대 전원이 모인다 — 각 편의 대표 한
-   명(요청자/상대 첫 번째)만 크게, 나머지 팀원은 이름만 작게 곁들인다. 메시지(한마디/
-   거절 사유)는 각자의 이름 아래에 배치한다(요청: "메시지는 플레이어 아래에 배치"). */
-.scr-challenge-matchup {
-  display: flex; align-items: center; justify-content: center; gap: 20px;
-  padding: 4px 0;
+/* 목록 아이템을 4줄 텍스트(시간 / 도전자프사닉임・한마디 / 도전자구성👉🏻상대구성 /
+   상태・응답메시지) + 오른쪽 사진 컬럼으로 재구성한다(요청: "목록 아이템 디자인
+   변경... 이 내용의 오른쪽에 첨부사진 표시(컬럼 추가 필요)"). */
+.scr-challenge-card-main { display: flex; align-items: flex-start; gap: 14px; }
+.scr-challenge-card-body { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.scr-challenge-card-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.scr-challenge-card-msg {
+  font-style: italic; font-size: 13.5px; color: var(--muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;
 }
-.scr-challenge-matchup-side {
-  display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1 1 0; min-width: 0;
+/* 프사+닉네임을 항상 가로로 심플하게(요청: "프사와 닉네임은 가로로 심플하게
+   구성(세로구성x)") — 개인 한 명(도전자 줄)이든 팀 구성(매치업 줄)이든 동일한 모양. */
+.scr-challenge-person { display: inline-flex; align-items: center; gap: 5px; min-width: 0; }
+.scr-challenge-person .scr-avatar { border-radius: 50% !important; }
+.scr-challenge-person-name {
+  font-size: 13.5px; font-weight: 700; color: var(--text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 140px;
 }
-/* 프사는 챌린지 화면에서도 항상 원형으로(요청: "프사 동그라미 유지"). */
-.scr-challenge-matchup-side .scr-avatar { border-radius: 50% !important; }
-/* 도전자 쪽에만 "도전자"라고 표시한다(요청: "도전자에 도전자라고 표시" 다음
-   "상대 라벨은 제거 도전자만 있어도 됨") — 반대쪽엔 라벨 텍스트만 숨기고
-   (scr-challenge-matchup-role-hidden) 자리는 남겨서 양쪽 아바타 줄이 나란히 맞는다. */
-.scr-challenge-matchup-role {
-  font-size: 11px; font-weight: 700; color: var(--dim); letter-spacing: 0.04em; margin-bottom: 2px;
+.scr-challenge-person-sep { color: var(--dim); margin-right: 2px; }
+.scr-challenge-people { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
+.scr-challenge-card-versus { flex-wrap: nowrap; }
+.scr-challenge-card-versus .scr-challenge-people { flex: 1 1 0; min-width: 0; }
+.scr-challenge-card-arrow { flex-shrink: 0; font-size: 13px; }
+/* 팀 구성 줄(아래)도 도전자 프사+닉네임으로 시작해 헷갈리기 쉬워서, 이 줄이 "발신자
+   소개줄"임을 태그로 분명히 한다(요청: "첫줄은 누가 도전장 보냄이라고 해야 밑에거랑
+   안헷갈릴듯"). */
+.scr-challenge-card-sender-tag { font-size: 12px; font-weight: 600; color: var(--dim); }
+/* 상태(응답대기중/승락/거절)는 상대쪽 응답이라 상대 프사와 왼쪽을 맞춘다(요청: "승락
+   응답대기중 이런거는 상대쪽에 배치" → "상대 프로필에 좌측 맞추면 될듯") — 위 매치업
+   줄의 도전자 칸(flex:1 1 0)과 정확히 같은 폭의 빈 스페이서로 왼쪽 자리를 예약한다. */
+.scr-challenge-card-status-spacer { flex: 1 1 0; min-width: 0; }
+/* 첨부 사진 컬럼 — 텍스트 4줄 높이와 어울리는 정사각 축소판. */
+.scr-challenge-card-photo {
+  flex-shrink: 0; width: 72px; height: 72px; border-radius: 10px; overflow: hidden;
+  background: rgba(var(--overlay-rgb), 0.08);
 }
-.scr-challenge-matchup-role-hidden { visibility: hidden; }
-.scr-challenge-matchup-name {
-  font-size: 19px; font-weight: 800; color: var(--text); text-align: center;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%;
-}
-.scr-challenge-matchup-vs {
-  font-size: 13px; font-weight: 800; color: var(--dim); letter-spacing: 0.05em;
-  flex-shrink: 0;
-}
-/* 팀전(2명 이상)은 한 명만 대표로 크게 보여주는 대신 전원을 나열한다(요청: "4대 4인
-   경우는 한팀의 플레이어를 가로로 배치" + "그걸 생각해서 모든 요소의 크기 조절
-   필요"). 사람마다 한 줄씩 세로로 쌓고(요청: "여러명이면 세로로 배치"), 그 한 줄
-   안에서는 프사-닉네임을 가로로 나란히 놓는다(요청: "프사 닉네임 순서로 배치...
-   가로로"). 1명일 때(scr-challenge-matchup-name, 위)보다 눈에 띄게 작게 둬서 4명이
-   쌓여도 카드가 과하게 안 늘어나게(요청: "레이아웃 깨지지 않게") 한다. */
-.scr-challenge-matchup-team { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 100%; }
-.scr-challenge-matchup-teammate {
-  display: flex; flex-direction: row; align-items: center; gap: 6px; min-width: 0; max-width: 100%;
-}
-.scr-challenge-matchup-teammate-name {
-  font-size: 13px; font-weight: 600; color: var(--text);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-
-.scr-challenge-timeline-detail { font-size: 13.75px; color: var(--muted); }
-/* 한마디(도전 메시지)는 인용구처럼 보이게 이탤릭 + 살짝 큰 폰트로(요청: "한마디랑
-   거절 사유 등 메시지 이탤릭처리 폰트 크기 살짝 확대"). */
-.scr-challenge-timeline-quote { font-style: italic; font-size: 14.5px; }
-/* line-height를 명시하고 그 값으로 min-height를 잡아, 내용이 없을 때도(트림되는
-   빈 문단은 줄바꿈 높이 자체가 0으로 무너질 수 있다) 한 줄 높이를 확실히 예약한다 —
-   실제로 지적받은 문제("상대쪽 한마디 칸이 비어있는데 공간을 안 잡아놔서 전체적으로
-   아래로 내려갔어"): 빈 문단(공백 하나)만으로는 브라우저가 그 공백을 줄 끝 공백으로
-   보고 지워버려 문단 높이가 0이 될 수 있었다. */
-/* 한마디(도전자)/거절 사유(상대)를 매치업 바깥, 카드 폭 전체를 절반씩 나눈 그리드로
-   보여준다(요청: "한마디 폭 공간 더 확보" — 좁은 아바타 칸 안에 있을 때보다 훨씬
-   넓게 한 줄에 들어간다). 첫 칸은 항상 도전자 쪽, 둘째 칸은 항상 상대 쪽이라(요청:
-   "도전자의 한마디는 도전자쪽에 나오게") 매치업의 왼쪽/오른쪽과 그대로 짝이 맞는다. */
-/* .scr-challenge-matchup과 정확히 같은 flex 구조(양쪽 flex:1 1 0 + 가운데 20px gap
-   x2)를 그대로 반복해야 두 문단이 위 아바타/이름 칸과 같은 중심에 온다 — 단순히
-   1fr/1fr로 반씩 나누면 위쪽은 가운데에 VS(+양옆 gap)가 껴 있어 폭 배분이 달라지고
-   중심이 어긋났다(실제로 지적받은 문제 — "한마디가 중심이 안맞네 프사 닉네임이랑").
-   JSX가 그 VS 자리에 똑같은 폭의 숨김 스팬을 넣어준다. */
-.scr-challenge-matchup-messages { display: flex; align-items: flex-start; justify-content: center; gap: 20px; margin-top: 2px; }
-.scr-challenge-matchup-messages .scr-challenge-message { flex: 1 1 0; min-width: 0; }
-.scr-challenge-message { text-align: center; margin: 0; line-height: 1.4; min-height: calc(14.5px * 1.4); }
-/* 메시지가 없을 때도 자리(한 줄 높이)는 그대로 차지하되 눈에는 안 보이게 한다
-   (display:none이면 그 카드만 짧아져서 카드마다/양쪽마다 높이가 들쭉날쭉해지고
-   VS 위치도 흔들린다 — 요청: "한줄 메시지 있고 없고에 따라 레이아웃 달라지지 않게",
-   "VS가 모든 카드간 세로 열이 맞아야한다"). */
-.scr-challenge-message-empty { visibility: hidden; }
+.scr-challenge-card-photo img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .scr-challenge-card-actions { display: flex; justify-content: center; gap: 8px; }
 .scr-challenge-inbox-body .scr-form-actions { justify-content: center; }
 /* 승락(핑크)/거절(검정) 버튼 — 로그인 버튼과 같은 필(pill) 래디우스. */
@@ -4380,33 +4347,86 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-challenge-reject-btn { background: #17171a; }
 .scr-challenge-reject-btn:hover { background: #262629; }
 
-/* 다음 접속 시 뜨는 초대장 팝업 */
-.scr-challenge-inbox-modal { position: relative; align-items: center; text-align: center; }
-/* 구석에 살짝 걸쳐 보이는 이스터에그 — 사각형 티가 안 나게 radial-gradient 마스크로
-   가장자리를 투명하게 흐린다(마스크의 알파만 쓰고 이미지 색은 그대로 유지). */
-.scr-challenge-easter-egg {
-  position: absolute; bottom: 8px; right: 8px; width: 84px; height: auto;
-  opacity: 0.85; pointer-events: none; border-radius: 10px;
-  -webkit-mask-image: radial-gradient(ellipse at center, #000 45%, transparent 75%);
-  mask-image: radial-gradient(ellipse at center, #000 45%, transparent 75%);
+/* 다음 접속 시 뜨는 초대장 팝업 — 도전장 작성 모달(.scr-challenge-form-modal)과 같은
+   원칙으로 앱 테마와 무관하게 항상 아이보리 편지지 톤(요청: "모달창 편지지 테마
+   적용(다크,라이트 모두)"). */
+.scr-challenge-inbox-modal {
+  position: relative; align-items: center; text-align: center;
+  background: #fdfbf5;
+  /* 도전장 보내기 모달과 같은 폭으로 넓힌다(요청: "폼요소들 폭 넓혀도 도전장 보내기
+     처럼"). */
+  max-width: 460px;
+  --text: #2a2420;
+  --muted: rgba(42, 36, 32, 0.75);
+  --dim: rgba(42, 36, 32, 0.55);
+  --input-bg: #ffffff;
+  --panel-raised: #f3efe6;
+  --line: rgba(42, 36, 32, 0.16);
+  --line-soft: rgba(42, 36, 32, 0.2);
+  --overlay-rgb: 0, 0, 0;
+  --point-contrast: #fdfbf5;
+  box-shadow: 0 10px 34px rgba(0,0,0,0.4), inset 0 0 0 1px rgba(0,0,0,0.06);
+}
+/* .scr-challenge-form-modal과 같은 이유로 특이도를 클래스 두 개로 다시 못박는다 —
+   ".scr-light-theme .scr-modal"(마찬가지로 클래스 두 개, 베이스 글라스 규칙)이 소스
+   순서상 더 뒤에 있어 그냥 두면 라이트 테마에서 그 반투명 흰 유리 배경이 이겨버린다. */
+.scr-light-theme .scr-challenge-inbox-modal { background: #fdfbf5; }
+/* 봉투만 보이는 단계는 이 카드 배경/그림자/여백 자체를 지워서(요청: "모달창 배경은
+   안보이고 편지봉투 이미지만 보이게") 정말 사진 + 제목만 떠 있게 한다 — 위 편지지
+   배경(box-shadow 포함)도 여기서 함께 꺼야 한다. */
+.scr-challenge-inbox-modal-envelope {
+  background: transparent; box-shadow: none; padding: 4px 4px 0;
+}
+.scr-light-theme .scr-challenge-inbox-modal-envelope { background: transparent; }
+/* 배경이 투명해지면 이 텍스트는 모달 오버레이의 어두운 스크림 위에 그대로 뜬다 —
+   위 편지지 톤(--text: 짙은 갈색)은 거기선 안 보이므로 흰 글자+그림자로 뒤집는다. */
+.scr-challenge-inbox-modal-envelope .scr-challenge-inbox-title {
+  color: #fff; text-shadow: 0 1px 8px rgba(0,0,0,0.65);
 }
 .scr-challenge-envelope { margin: -18px -18px 0; overflow: hidden; border-radius: var(--radius) var(--radius) 0 0; }
 .scr-challenge-envelope-img { display: block; width: 100%; height: auto; }
 /* 처음엔 봉투만 보여주고 눌러야 편지지(제목/내용/응답 폼)로 넘어간다(요청: "인박스
    편지봉투만 처음에 나오고 편지지로 이동") — <button>이라 기본 버튼 테두리/배경을
    지우고, 봉투 이미지 자체는 위 .scr-challenge-envelope와 같은 모양을 유지한다. */
+/* 열어보기 안내가 이제 사진 위에 겹치지 않고 사진 아래 별도 줄로 온다(요청: "도전장
+   열어보기 버튼은 이미지상이 아닌 이미지 하단에 따로 배치") — 세로로 쌓는 flex로. */
 .scr-challenge-envelope-button {
-  position: relative; width: 100%; padding: 0; border: none; background: transparent; cursor: pointer;
-  display: block;
+  width: 100%; padding: 0; border: none; background: transparent; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
 }
+/* 봉투만 떠 있는 단계에서는 위(카드 상단 모서리에 맞춤)뿐 아니라 아래쪽도 각지게
+   잘릴 이유가 없다 — 네 귀퉁이 전부 둥글게(요청: "모서리 네 귀퉁이 똑같이 래디우스
+   걸어주고"). */
+.scr-challenge-envelope-full { margin: 0; border-radius: var(--radius); }
+/* 안내가 사진 위 오버레이가 아니라 사진 아래 일반 텍스트로 바뀌었으니, 사진 위에서
+   쓰던 반투명 검정 알약 배경은 필요 없다 — 대신 카드 배경(어두운 스크림)에 맞춰
+   흰 글자 + 그림자만 유지한다. */
 .scr-challenge-envelope-hint {
-  position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%);
-  font-size: 12.5px; font-weight: 700; color: #fff;
-  background: rgba(0, 0, 0, 0.5); padding: 5px 14px; border-radius: 999px;
+  font-size: 12.5px; font-weight: 700; color: #fff; text-shadow: 0 1px 6px rgba(0,0,0,0.55);
   white-space: nowrap;
 }
-.scr-challenge-inbox-title { font-weight: 800; font-size: 19px; margin: 10px 0 4px; }
+/* 안내 줄이 사진 바로 아래로 내려오면서 카드 하단이 허전해지지 않게 여백을
+   보강한다(요청: "인박스 편지봉투 장면에서 하단 패딩 추가해서 균형있게 보이게"). */
+.scr-challenge-inbox-modal-envelope { padding-bottom: 16px; }
+/* 제목이 이제 봉투/편지지 두 단계 모두에서 카드 맨 위에 먼저 온다 — 봉투 단계는 위
+   그림이 최대한 위쪽에 오도록(요청: "그림이 좀더 위로 가게 배치") 아래 여백만 살짝.
+   라이트/다크와 무관하게 이 모달은 항상 아이보리 편지지 톤(--text: 짙은 갈색)이라 —
+   그 색을 명시하지 않으면 상위(body)의 테마 글자색(다크 테마에선 흰색)을 그대로
+   상속해 편지지 배경 위에서 안 보이는 문제가 있었다(실제로 지적받은 문제 — "인박스
+   편지지 타이틀 글자 안보임"). 봉투 단계는 아래 전용 규칙이 흰색으로 다시 뒤집는다. */
+.scr-challenge-inbox-title { font-weight: 800; font-size: 19px; margin: 6px 0 10px; color: var(--text); }
 .scr-challenge-inbox-body { text-align: left; }
 .scr-challenge-inbox-message { margin: 0 0 6px; font-size: 14px; font-style: italic; color: var(--text); }
 .scr-challenge-inbox-row { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--line-soft); }
 .scr-challenge-inbox-row:last-of-type { border-bottom: none; }
+/* 편지지를 연 뒤 상단에 크게 넣는 nawa 이미지 — 사각형 대신 가로로 긴 타원으로 크롭하고
+   (요청: "nawa 사진 가로로 긴 타원형으로 크롭") 가장자리를 그라데이션으로 흐린다(요청:
+   "nawa 이미지는 상단에 크게 배치" + "동그랗게 크롭 & 가장자리 그라데이션 처리").
+   width>height인 상태로 border-radius:50%를 걸면 원이 아니라 그 비율의 타원이 된다.
+   object-fit:cover로 원본 비율과 무관하게 프레임을 꽉 채운다. */
+.scr-challenge-inbox-hero {
+  display: block; width: 220px; height: 124px; margin: 0 auto 10px; object-fit: cover;
+  border-radius: 50%;
+  -webkit-mask-image: radial-gradient(ellipse at center, #000 55%, transparent 78%);
+  mask-image: radial-gradient(ellipse at center, #000 55%, transparent 78%);
+}

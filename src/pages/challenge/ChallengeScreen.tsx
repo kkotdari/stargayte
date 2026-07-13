@@ -1,32 +1,28 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
-import { createPortal } from "react-dom";
-import { Mail, Upload } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Avatar from "../../components/common/Avatar";
 import { Spinner } from "../../components/common/Feedback";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 import SearchFilterBar from "../../components/common/SearchFilterBar";
 import ChallengeFormModal from "../../modals/ChallengeFormModal";
-import ReplayReviewModal from "../../modals/ReplayReviewModal";
+import TeamMatchesModal from "../../modals/TeamMatchesModal";
 import { useAppStore } from "../../store/appStore";
 import { api } from "../../api/client";
 import { cx } from "../../utils/format";
-import { buildReplayDrafts, type ReplayDraft } from "../../utils/replayDraft";
-import { hasAppUpdatePreloadErrorOccurred } from "../../utils/appUpdate";
-import { challengeDateGroupLabel, challengeTimeLabel, isToday } from "../../utils/date";
+import { challengeDateGroupLabel, challengeTimeLabel, fmt, isToday } from "../../utils/date";
 import { activeMemberSearchTerms, memberMatchesTerm, splitSearchTerms } from "../../utils/memberSearch";
-import type { Challenge } from "../../types";
+import type { Challenge, Member } from "../../types";
 
-const MAX_REPLAY_FILES = 20;
-
-// 카드 맨 위 상태 배지 하나로 충분하니 참가자별 개별 응답 배지는 없앤다(요청: "상태는
+// 카드 상태 줄 하나로 충분하니 참가자별 개별 응답 배지는 없앤다(요청: "상태는
 // 상단에만 나오게 하고 요청받은 사람 상태는 굳이 안보여줘도 될듯"). 그 김에 "확정"도
 // 결과가 등록됐는지에 따라 "승락"(아직 안 뛴 확정)과 "완료"(결과까지 등록된 확정)로
-// 더 갈랐다 — status 자체는 그대로 confirmed 하나지만 화면 표시는 둘로 나뉜다.
+// 더 갈랐다 — status 자체는 그대로 confirmed 하나지만 화면 표시는 둘로 나뉜다. 아직
+// 응답 대기중이면 몇 명 중 몇 명이 응답했는지를 괄호로 덧붙인다(요청: "응답대기중(n/n)").
 function challengeStatusLabel(c: Challenge): string {
   if (c.status === "confirmed") return c.resultMatchId ? "완료" : "승락";
   if (c.status === "rejected") return "거절";
   if (c.status === "canceled") return "취소";
-  return "응답대기중";
+  const responded = c.targets.filter((t) => t.response !== "pending").length;
+  return `응답대기중(${responded}/${c.targets.length})`;
 }
 function challengeStatusClass(c: Challenge): string {
   if (c.status === "confirmed" && c.resultMatchId) return "scr-challenge-status-done";
@@ -53,30 +49,20 @@ function groupChallengesByDate(list: Challenge[]): ChallengeDateGroup[] {
   return groups;
 }
 
-// 매치업 헤드라인의 한쪽(요청자편/상대편) — 1명이면 그 사람만 크게, 2명 이상(팀전,
-// 4:4까지도)이면 전원을 아바타-이름씩 가로로 나란히 늘어놓는다(요청: "4대 4인 경우는
-// 한팀의 플레이어를 가로로 배치"). 인원수에 따라 아바타/글자 크기를 다르게 둔다(요청:
-// "그걸 생각해서 모든 요소의 크기 조절 필요") — 1명일 때만 크게, 여럿이면 한 줄에
-// 다 들어오도록 작게.
-function MatchupSideMembers({ people }: { people: { id: string; nickname: string; avatar: string | null }[] }) {
-  if (people.length === 1) {
-    const p = people[0];
-    return (
-      <>
-        <Avatar member={p} size={40} />
-        <span className="scr-challenge-matchup-name">{p.nickname}</span>
-      </>
-    );
-  }
+// 팀 구성 한 편(도전자편/상대편) — 인원수와 무관하게 프사+닉네임을 항상 가로로 심플하게
+// 나열한다(요청: "프사와 닉네임은 가로로 심플하게 구성(세로구성x)") — 예전처럼 1명일 때만
+// 크게 보여주는 특별 취급 없이 전부 같은 모양.
+function PeopleRow({ people }: { people: { id: string; nickname: string; avatar: string | null }[] }) {
   return (
-    <div className="scr-challenge-matchup-team">
-      {people.map((p) => (
-        <span key={p.id} className="scr-challenge-matchup-teammate">
-          <Avatar member={p} size={28} />
-          <span className="scr-challenge-matchup-teammate-name">{p.nickname}</span>
+    <span className="scr-challenge-people">
+      {people.map((p, i) => (
+        <span key={p.id} className="scr-challenge-person">
+          <Avatar member={p} size={20} />
+          <span className="scr-challenge-person-name">{p.nickname}</span>
+          {i < people.length - 1 && <span className="scr-challenge-person-sep">,</span>}
         </span>
       ))}
-    </div>
+    </span>
   );
 }
 
@@ -84,10 +70,10 @@ interface ChallengeCardProps {
   challenge: Challenge;
   myId: string | undefined;
   onResponded: (updated: Challenge) => void;
-  onRegisterReplay: (challenge: Challenge) => void;
+  onViewResults: (challenge: Challenge) => void;
 }
 
-function ChallengeCard({ challenge, myId, onResponded, onRegisterReplay }: ChallengeCardProps) {
+function ChallengeCard({ challenge, myId, onResponded, onViewResults }: ChallengeCardProps) {
   const memberOf = useAppStore((s) => s.memberOf);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -102,35 +88,25 @@ function ChallengeCard({ challenge, myId, onResponded, onRegisterReplay }: Chall
   const canReapply = isCreator && challenge.status === "rejected";
   const timeLabel = challengeTimeLabel(challenge.scheduledAt);
 
-  const [rejecting, setRejecting] = useState(false);
-  const [rejectReason, setRejectReason] = useState("");
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
   const [reapplying, setReapplying] = useState(false);
   const [dateStr, setDateStr] = useState("");
   const [timeStr, setTimeStr] = useState("");
   const [message, setMessage] = useState("");
 
-  const accept = async () => {
+  // 카드에서 바로 승락/거절 — OS 기본 prompt로 한마디를 필수로 받는다(요청: "카드에
+  // 승락 거절 버튼이 뜨는데 누르면 사유입력하는 창 뜨게(필수). os기본 입력컨펌 사용").
+  // 취소를 누르거나(null) 빈 값만 입력하면(필수 위반) 아무 요청도 보내지 않는다.
+  const respond = async (response: "accepted" | "rejected", promptLabel: string) => {
+    const input = window.prompt(promptLabel);
+    if (input === null) return;
+    const trimmed = input.trim();
+    if (!trimmed) return;
     setErr("");
     setBusy(true);
     try {
-      const updated = await api.respondToChallenge(challenge.id, "accepted");
+      const updated = await api.respondToChallenge(challenge.id, response, trimmed);
       onResponded(updated);
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "응답하지 못했어요.");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const reject = async () => {
-    setErr("");
-    setBusy(true);
-    try {
-      const updated = await api.respondToChallenge(challenge.id, "rejected", rejectReason.trim() || undefined);
-      onResponded(updated);
-      setRejecting(false);
-      setRejectReason("");
     } catch (e) {
       setErr(e instanceof Error ? e.message : "응답하지 못했어요.");
     } finally {
@@ -191,116 +167,79 @@ function ChallengeCard({ challenge, myId, onResponded, onRegisterReplay }: Chall
 
   return (
     <div className="scr-challenge-card">
-      {/* 화면이 너무 복잡하다는 피드백으로 전면 단순화(요청: "챌린지 너무 화면이
-          복잡") — 날짜는 이제 카드 바깥의 날짜 그룹 헤더가 보여주므로 카드 안엔
-          시간만(요청: "각 카드엔 시간만 표시"), 경기유형(1:1/팀전) 라벨은 없앤다(요청:
-          "일대일 팀전 라벨 제거"). 상태만 봐도 충분하다는 피드백으로 응답/취소/완료
-          로그(타임라인)도 통째로 없앴다(요청: "로그 전체 삭제 그냥 상태만 봐도 충분히
-          알수있음"). 시간을 상태보다 앞(왼쪽)에, 그리고 그 아래 매치업 바로 위 줄에
-          가운데 정렬로 둔다(요청: "시간이 앞에" + "시간은 가운데 정렬(vs 대진
-          윗줄에)"). */}
-      <div className="scr-challenge-card-head">
-        {/* 상태 알약은 카드 좌상단 끝으로, 시간은 그대로 줄 가운데 유지(요청: "시간은
-            가운데 두고 상태 알약은 좌측끝에 배치(카드의 좌상단)") — 리플레이 버튼과
-            같은 방식(절대배치)으로 시간의 중앙 정렬에 영향을 안 주게 뺀다. */}
-        <span className={cx("scr-challenge-status", challengeStatusClass(challenge), "scr-challenge-card-head-status")}>
-          {challengeStatusLabel(challenge)}
-        </span>
-        {timeLabel && <span className="scr-mono scr-challenge-card-when">{timeLabel}</span>}
-        {/* 예전엔 카드 맨 아래 독립된 줄이었는데, 시간/상태 줄 오른쪽 구석으로 옮기고
-            그 줄의 다른 요소들과 크기를 맞춘다(요청: "리플레이 등록 버튼은 시간 상태
-            라인의 오른쪽 구석에 위치시키기(크기도 일치시키기)") — 참가자가 아니어도
-            아무나 등록할 수 있는 건 그대로다(요청: "결과등록 버튼을 참가자 전용에서
-            아무나 등록 가능하도록 권한 확장"). */}
-        {challenge.status === "confirmed" && !challenge.resultMatchId && (
-          <button
-            type="button" className="scr-btn scr-btn-ghost scr-challenge-card-head-replay"
-            onClick={() => onRegisterReplay(challenge)}
-          >
-            <Upload size={11} /> 리플레이 등록
-          </button>
+      {/* 화면이 너무 복잡하다는 피드백으로 전면 단순화한 뒤(요청: "챌린지 너무 화면이
+          복잡"), 목록 아이템을 4줄 텍스트 + 오른쪽 사진 컬럼으로 재구성한다(요청:
+          "목록 아이템 디자인 변경 — 시간 / 도전자프사닉임・도전한줄메시지 /
+          도전자구성👉🏻상대구성 / 응답대기중(n/n)・메시지 / 오른쪽에 첨부사진"). */}
+      <div className="scr-challenge-card-main">
+        <div className="scr-challenge-card-body">
+          <div className="scr-challenge-card-row scr-mono scr-challenge-card-when">
+            {timeLabel ?? "시간 미정"}
+          </div>
+
+          {/* 아래 팀 구성 줄도 도전자 프사+닉네임으로 시작해 헷갈리기 쉬워서(요청: "첫줄은
+              누가 도전장 보냄이라고 해야 밑에거랑 안헷갈릴듯") "~님이 도전장을 보냈어요"를
+              덧붙여 이 줄이 발신자 소개줄임을 분명히 한다. */}
+          <div className="scr-challenge-card-row">
+            <span className="scr-challenge-person">
+              <Avatar member={creatorSideMembers[0]} size={20} />
+              <span className="scr-challenge-person-name">{challenge.createdBy.nickname}</span>
+            </span>
+            <span className="scr-challenge-card-sender-tag">도전장 보냄</span>
+            {challenge.message && <span className="scr-challenge-card-msg">・ "{challenge.message}"</span>}
+          </div>
+
+          <div className="scr-challenge-card-row scr-challenge-card-versus">
+            <PeopleRow people={creatorSideMembers} />
+            <span className="scr-challenge-card-arrow" aria-hidden="true">👉🏻</span>
+            <PeopleRow people={targetSideMembers} />
+          </div>
+
+          {/* 상태(응답대기중/승락/거절)는 상대쪽 응답이니 상대 프사 줄과 왼쪽을 맞춘다
+              (요청: "승락 응답대기중 이런거는 상대쪽에 배치" → "상대 프로필에 좌측
+              맞추면 될듯") — 위 매치업 줄과 똑같이 왼쪽에 도전자 칸만큼의 빈 자리 +
+              화살표 자리(안 보이게)를 예약해, 상태 알약이 상대 프사와 정확히 같은
+              x축에서 시작하게 한다. */}
+          <div className="scr-challenge-card-row">
+            <span className="scr-challenge-card-status-spacer" aria-hidden="true" />
+            <span className="scr-challenge-card-arrow" aria-hidden="true" style={{ visibility: "hidden" }}>👉🏻</span>
+            <span className={cx("scr-challenge-status", challengeStatusClass(challenge))}>
+              {challengeStatusLabel(challenge)}
+            </span>
+            {targetMessage && <span className="scr-challenge-card-msg">・ "{targetMessage}"</span>}
+          </div>
+        </div>
+
+        {challenge.photoUrl && (
+          <div className="scr-challenge-card-photo">
+            <img src={challenge.photoUrl} alt="첨부 사진" />
+          </div>
         )}
-      </div>
-
-      {/* 누가 누구와 붙는지를 "요청자 vs 상대" 구도로 크게 보여준다(요청: "요청자 vs
-          상대 구도로 크게 헤드라인 노출" + "VS 가운데 세로 정렬하고 양쪽에 도전자와
-          상대 배치") — 양쪽을 세로(아바타 위, 이름 아래)로 쌓아 VS가 그 사이에서
-          자연스럽게 세로 가운데에 오게 한다. 팀전이면 같은 편(ownMembers)은 요청자
-          쪽에, 지목된 상대는 전부 반대쪽에 묶인다. 누가 도전자인지 한눈에 알 수
-          있도록 역할 라벨도 붙인다(요청: "도전자에 도전자라고 표시"). */}
-      <div className="scr-challenge-matchup">
-        <div className="scr-challenge-matchup-side">
-          <span className="scr-challenge-matchup-role">도전자</span>
-          <MatchupSideMembers people={creatorSideMembers} />
-        </div>
-        <span className="scr-challenge-matchup-vs">VS</span>
-        <div className="scr-challenge-matchup-side">
-          {/* "상대" 라벨 자체는 없앴지만(요청: "상대 라벨은 제거 도전자만 있어도 됨")
-              그 자리를 완전히 비우면 도전자 쪽만 라벨만큼 위로 더 밀려서 양쪽 아바타
-              높이가 어긋난다 — 안 보이게만(visibility:hidden) 자리를 예약해 아바타
-              줄이 서로 나란하게 맞춘다. */}
-          <span className="scr-challenge-matchup-role scr-challenge-matchup-role-hidden" aria-hidden="true">상대</span>
-          <MatchupSideMembers people={targetSideMembers} />
-        </div>
-      </div>
-
-      {/* 한마디/거절 사유는 아바타-이름이 있는 좁은 칸(양쪽·VS와 폭을 나눠 쓴다) 안에
-          있으면 폭이 너무 좁아 줄바꿈이 잦았다(요청: "한마디 폭 공간 더 확보" + "한줄
-          메시지 줄넘김 최대한 안생기게 공간 확보") — 매치업 바깥, 카드 전체 폭을
-          절반씩 나눠 쓰는 별도 줄로 뺀다("메시지는 플레이어 아래에 배치"는 그대로
-          유지 — 도전자 쪽은 왼쪽 절반, 상대 쪽은 오른쪽 절반). 메시지가 없어도 자리를
-          그대로 예약해둔다(visibility:hidden — display:none이면 공간 자체가
-          사라진다) — 그래야 메시지 유무와 무관하게 카드 높이가 항상 같게 유지된다
-          (요청: "한줄 메시지 있고 없고에 따라 레이아웃 달라지지 않게" + "VS가 모든
-          카드간 세로 열이 맞아야한다"). "상대" 역할 라벨은 없앤다(요청: "상대 라벨은
-          제거 도전자만 있어도 됨"). */}
-      <div className="scr-challenge-matchup-messages">
-        <p className={cx(
-          "scr-challenge-timeline-detail scr-challenge-timeline-quote scr-challenge-message",
-          !challenge.message && "scr-challenge-message-empty",
-        )}>
-          {challenge.message ? `"${challenge.message}"` : " "}
-        </p>
-        {/* 매치업 줄과 똑같은 "VS"를 안 보이게(visibility:hidden) 가운데 끼워 넣어, 그
-            폭만큼 이 줄의 두 칸도 위 아바타/이름 칸과 정확히 같은 너비로 나뉘게 한다 —
-            그냥 절반씩 나누면 위쪽은 가운데에 VS(+양옆 gap)가 껴 있어 중심이 서로
-            어긋났다(실제로 지적받은 문제 — "한마디가 중심이 안맞네 프사 닉네임이랑"). */}
-        <span className="scr-challenge-matchup-vs" aria-hidden="true" style={{ visibility: "hidden" }}>VS</span>
-        <p className={cx(
-          "scr-challenge-timeline-detail scr-challenge-timeline-quote scr-challenge-message",
-          !targetMessage && "scr-challenge-message-empty",
-        )}>
-          {targetMessage ? `"${targetMessage}"` : " "}
-        </p>
       </div>
 
       {err && <div className="scr-err">{err}</div>}
 
-      {rejecting && (
-        <div className="scr-challenge-time-change-form">
-          <label className="scr-field">
-            <span className="scr-label">거절 사유 (선택)</span>
-            <input
-              type="text" className="scr-input" value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-              placeholder="예: 그날은 시간이 안 돼요"
-              maxLength={60}
-            />
-          </label>
-          <div className="scr-form-actions scr-challenge-card-actions">
-            <button className="scr-btn scr-btn-ghost scr-btn-sm" onClick={() => setRejecting(false)} disabled={busy}>취소</button>
-            <button className="scr-btn scr-challenge-reject-btn scr-btn-sm" onClick={reject} disabled={busy}>
-              {busy ? <Spinner /> : "거절하기"}
-            </button>
-          </div>
+      {canRespond && (
+        <div className="scr-challenge-card-actions">
+          <button
+            className="scr-btn scr-challenge-reject-btn scr-btn-sm" disabled={busy}
+            onClick={() => respond("rejected", "거절 사유를 입력해 주세요 (필수)")}
+          >
+            거절
+          </button>
+          <button
+            className="scr-btn scr-challenge-accept-btn scr-btn-sm" disabled={busy}
+            onClick={() => respond("accepted", "한마디를 입력해 주세요 (필수)")}
+          >
+            {busy ? <Spinner /> : "승락"}
+          </button>
         </div>
       )}
 
-      {!rejecting && canRespond && (
-        <div className="scr-form-actions scr-challenge-card-actions">
-          <button className="scr-btn scr-challenge-reject-btn scr-btn-sm" onClick={() => setRejecting(true)} disabled={busy}>거절</button>
-          <button className="scr-btn scr-challenge-accept-btn scr-btn-sm" onClick={accept} disabled={busy}>
-            {busy ? <Spinner /> : "승락"}
+      {challenge.status === "confirmed" && (
+        <div className="scr-challenge-card-actions">
+          <button className="scr-btn scr-btn-ghost scr-btn-sm" onClick={() => onViewResults(challenge)}>
+            결과 보기
           </button>
         </div>
       )}
@@ -324,7 +263,7 @@ function ChallengeCard({ challenge, myId, onResponded, onRegisterReplay }: Chall
             placeholder="한마디 (선택)"
             maxLength={60}
           />
-          <div className="scr-form-actions scr-challenge-card-actions">
+          <div className="scr-challenge-card-actions">
             <button className="scr-btn scr-btn-ghost scr-btn-sm" onClick={() => setReapplying(false)} disabled={busy}>취소</button>
             <button className="scr-btn scr-challenge-accept-btn scr-btn-sm" onClick={reapply} disabled={busy}>
               {busy ? <Spinner /> : "재신청"}
@@ -334,7 +273,7 @@ function ChallengeCard({ challenge, myId, onResponded, onRegisterReplay }: Chall
       )}
 
       {!reapplying && (canCancel || canReapply) && (
-        <div className="scr-form-actions scr-challenge-card-actions">
+        <div className="scr-challenge-card-actions">
           {canCancel && (
             <button className="scr-btn scr-btn-ghost scr-btn-sm" onClick={() => setCancelConfirmOpen(true)} disabled={busy}>
               도전장 취소
@@ -444,50 +383,30 @@ export default function ChallengeScreen() {
     return a.createdAt > b.createdAt ? -1 : a.createdAt < b.createdAt ? 1 : 0;
   }), [searchedChallenges]);
 
-  // 확정된 도전장에서 "리플레이 등록"을 누르면, 경기결과 화면과 완전히 같은 방식으로
-  // 리플레이를 분석/등록한다(등록된 경기는 그대로 경기결과/전적통계에도 포함된다).
-  const [replayTarget, setReplayTarget] = useState<Challenge | null>(null);
-  const replayInputRef = useRef<HTMLInputElement>(null);
-  const [parsingReplays, setParsingReplays] = useState(false);
-  const [replayDrafts, setReplayDrafts] = useState<ReplayDraft[] | null>(null);
-  const [replayTruncated, setReplayTruncated] = useState(false);
-
-  const handleRegisterReplay = (challenge: Challenge) => {
-    setReplayTarget(challenge);
-    replayInputRef.current?.click();
-  };
-
-  const handleReplayFilesChosen = async (e: ChangeEvent<HTMLInputElement>) => {
-    const chosen = Array.from(e.target.files ?? []);
-    e.target.value = "";
-    if (chosen.length === 0) return;
-    const truncated = chosen.length > MAX_REPLAY_FILES;
-    const batch = chosen.slice(0, MAX_REPLAY_FILES);
-    setReplayTruncated(truncated);
-    setParsingReplays(true);
-    try {
-      const [drafts] = await Promise.all([
-        buildReplayDrafts(batch, members),
-        new Promise((resolve) => setTimeout(resolve, 500)),
-      ]);
-      if (hasAppUpdatePreloadErrorOccurred()) return;
-      setReplayDrafts(drafts);
-      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-    } finally {
-      setParsingReplays(false);
-    }
-  };
+  // "결과 보기" — 리플레이를 직접 여기서 등록하는 대신(리플레이 등록 버튼 제거, 요청:
+  // "리플레이 등록 버튼 제거하고 대신 결과 보기 버튼 추가"), 랭킹 화면의 팀 경기 목록
+  // 모달을 그대로 재사용해 그 도전장의 팀 구성이 그 날짜에 등록한 경기를 보여준다(요청:
+  // "랭킹의 결과 모달 재사용하고 해당일에 등록된 해당 팀구성의 경기 목록 보여주기").
+  const [resultsTarget, setResultsTarget] = useState<Challenge | null>(null);
+  const resultsMembers: Member[] = useMemo(() => {
+    if (!resultsTarget) return [];
+    const ids = [resultsTarget.createdBy.id, ...resultsTarget.ownMembers.map((m) => m.memberId)];
+    return ids.map((id) => memberOf(id)).filter((m): m is Member => !!m);
+  }, [resultsTarget, memberOf]);
+  const resultsDateStr = resultsTarget?.scheduledAt ? fmt(new Date(resultsTarget.scheduledAt)) : undefined;
 
   return (
-    <div className="scr-screen">
+    <div className="scr-screen scr-challenge-screen-v2">
       <div className="scr-v2-toolbar">
-        <h1 className="scr-title scr-v2-toolbar-title">
-          챌린지 <span className="scr-challenge-title-subtitle">너 나와!</span>
-        </h1>
+        {/* 코너명을 "챌린지"에서 "너 나와!"로 완전히 바꾼다(요청: "챌린지 코너명 너
+            나와! 로 완전 변경") — 부제가 아니라 타이틀 그 자체. */}
+        <h1 className="scr-title scr-v2-toolbar-title">너 나와!</h1>
         <div className="scr-v2-toolbar-actions">
+          {/* 아이콘 대신 새가 편지를 물어다 주는 이모지로(요청: "아이콘 삭제하고
+              이모티콘 중 새가 편지지 물고 있는거로 교체") — 메신저 비둘기를 상징하는
+              🕊️를 쓴다. */}
           <button type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm" onClick={() => setFormOpen(true)}>
-            <Mail size={17} className="scr-challenge-send-icon" />
-            도전장 보내기
+            🕊️ 도전장 보내기
           </button>
         </div>
       </div>
@@ -502,11 +421,6 @@ export default function ChallengeScreen() {
       />
 
       {error && <div className="scr-err">{error}</div>}
-
-      {parsingReplays && createPortal(
-        <div className="scr-match-list-overlay"><Spinner size={22} /></div>,
-        document.body,
-      )}
 
       {loading ? (
         <div className="scr-empty"><Spinner size={18} /></div>
@@ -532,7 +446,7 @@ export default function ChallengeScreen() {
                         challenge={c}
                         myId={user?.id}
                         onResponded={upsert}
-                        onRegisterReplay={handleRegisterReplay}
+                        onViewResults={setResultsTarget}
                       />
                     ))}
                   </div>
@@ -560,7 +474,7 @@ export default function ChallengeScreen() {
                         challenge={c}
                         myId={user?.id}
                         onResponded={upsert}
-                        onRegisterReplay={handleRegisterReplay}
+                        onViewResults={setResultsTarget}
                       />
                     ))}
                   </div>
@@ -571,15 +485,6 @@ export default function ChallengeScreen() {
         </>
       )}
 
-      <input
-        ref={replayInputRef}
-        type="file"
-        accept=".rep,application/octet-stream"
-        multiple
-        hidden
-        onChange={handleReplayFilesChosen}
-      />
-
       {formOpen && (
         <ChallengeFormModal
           onClose={() => setFormOpen(false)}
@@ -587,15 +492,14 @@ export default function ChallengeScreen() {
         />
       )}
 
-      {replayDrafts && (
-        <ReplayReviewModal
-          drafts={replayDrafts}
-          truncated={replayTruncated}
-          attachToChallengeId={replayTarget?.id}
-          onClose={() => { setReplayDrafts(null); setReplayTarget(null); }}
-          onSaved={async () => {
-            if (replayTarget) load();
-          }}
+      {resultsTarget && (
+        <TeamMatchesModal
+          members={resultsMembers}
+          matchType={resultsTarget.matchType}
+          dateFrom={resultsDateStr}
+          dateTo={resultsDateStr}
+          highlightMembers={false}
+          onClose={() => setResultsTarget(null)}
         />
       )}
     </div>

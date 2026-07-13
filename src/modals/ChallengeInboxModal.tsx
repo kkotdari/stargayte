@@ -6,6 +6,7 @@ import { useAppStore } from "../store/appStore";
 import { useLockBodyScroll } from "../utils/bodyScrollLock";
 import { formatChallengeSchedule } from "../utils/date";
 import { MATCH_TYPE_INFO } from "../constants/matchTypes";
+import { cx } from "../utils/format";
 import type { Challenge } from "../types";
 
 interface ChallengeInboxModalProps {
@@ -63,26 +64,35 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
   // "함께" 줄은 팀전(2명 이상 지목)에서 나 말고 같이 지목된 상대가 있을 때만 보여준다 —
   // 1:1이면 이미 상대가 나 하나뿐이라 중복이고, 나 자신의 이름만 나오면 어색하다.
   const others = current.targets.filter((t) => t.memberId !== myId).map((t) => t.nickname);
+  const title = `${current.createdBy.nickname}님에게서 도전장이 도착했어요`;
 
   return createPortal(
     <div className="scr-modal-overlay">
-      <div className="scr-modal scr-modal-sm scr-challenge-inbox-modal">
+      {/* 봉투만 보이는 단계에서는 모달의 기본 유리판 배경/그림자를 지워서(요청: "모달창
+          배경은 안보이고 편지봉투 이미지만 보이게") 정말 봉투 사진 + 제목만 떠 있는
+          것처럼 보이게 한다 — 편지지를 열면(letter 단계) 원래의 카드 배경으로 되돌아온다. */}
+      <div className={cx("scr-modal scr-modal-sm scr-challenge-inbox-modal", stage === "envelope" && "scr-challenge-inbox-modal-envelope")}>
+        <div className="scr-challenge-inbox-title">{title}</div>
+
         {stage === "envelope" ? (
           <button
             type="button"
-            className="scr-challenge-envelope scr-challenge-envelope-button"
+            className="scr-challenge-envelope scr-challenge-envelope-button scr-challenge-envelope-full"
             onClick={() => setStage("letter")}
           >
+            {/* 열어보기 안내는 사진 위에 겹치지 않고 사진 아래 별도 줄로 배치한다(요청:
+                "도전장 열어보기 버튼은 이미지상이 아닌 이미지 하단에 따로 배치"). */}
             <img src="/images/bg/letter.jpg" alt="" className="scr-challenge-envelope-img" />
             <span className="scr-challenge-envelope-hint">눌러서 열어보기</span>
           </button>
         ) : (
           <>
-            <div className="scr-challenge-envelope">
-              <img src="/images/bg/letter.jpg" alt="" className="scr-challenge-envelope-img" />
-            </div>
-            <div className="scr-challenge-inbox-title">{current.createdBy.nickname}님으로부터 도전장이 도착했어요</div>
-
+            {/* 편지지를 연 뒤에는 봉투 이미지를 다시 안 보여준다(요청: "편지 열면
+                편지봉투 이미지는 없어도 됨") — 대신 재미 요소였던 nawa 이미지를 구석
+                장식이 아니라 상단에 크게, 동그랗게 크롭하고 가장자리를 그라데이션으로
+                흐려서 배치한다(요청: "nawa 이미지는 상단에 크게 배치" + "nawa 이미지
+                동그랗게 크롭 & 가장자리 그라데이션 처리"). */}
+            <img src="/images/items/nawa.jpg" alt="" className="scr-challenge-inbox-hero" />
             <div className="scr-modal-body scr-challenge-inbox-body">
               {current.message && (
                 <p className="scr-challenge-inbox-message">"{current.message}"</p>
@@ -107,7 +117,7 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
                 <input
                   type="text" className="scr-input" value={message}
                   onChange={(e) => setMessage(e.target.value)}
-                  placeholder="예: 좋아요, 그날 봐요 / 죄송해요, 그날은 시간이 안 돼요"
+                  placeholder="예: 네가 감히! / 좋아요, 그날 봐요"
                   maxLength={60}
                 />
               </label>
@@ -129,11 +139,6 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
                 </button>
               </div>
             </div>
-
-            {/* 재미 요소 — 구석에 살짝 걸쳐 보이는 이스터에그, 가장자리를 부드럽게 흐려
-                카드에 자연스레 녹아들게 한다. 봉투만 보이는 단계에선 안 어울려서
-                편지지를 연 뒤에만 보여준다. */}
-            <img src="/images/items/nawa.jpg" alt="" className="scr-challenge-easter-egg" />
           </>
         )}
       </div>

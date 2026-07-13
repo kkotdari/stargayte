@@ -23,7 +23,7 @@ export interface NavMenuItem {
 // 편집하면 된다.
 export const NAV_MENU_ITEMS: NavMenuItem[] = [
   { key: "ranking", label: "랭킹" },
-  { key: "challenge", label: "챌린지", minVersion: CHALLENGE_MIN_VERSION },
+  { key: "challenge", label: "너 나와!", minVersion: CHALLENGE_MIN_VERSION },
   { key: "match", label: "경기" },
   { key: "stats", label: "통계" },
   // 조회는 회원 누구나 가능(수정/삭제만 운영자 전용, 화면 내부에서 처리) — 그래서 운영자
