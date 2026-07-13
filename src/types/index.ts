@@ -241,8 +241,9 @@ export interface ChallengeTarget {
   battletag: string;
   avatar: string | null;
   response: ChallengeTargetResponse;
-  // 거절 사유(선택) — 요청자가 조회할 때만 값이 오고, 그 외 조회자에게는 항상 null이다.
-  rejectReason: string | null;
+  // 응답(수락/거절) 한마디 — 요청자가 조회할 때만 값이 오고, 그 외 조회자에게는 항상
+  // null이다.
+  responseMessage: string | null;
 }
 
 // 도전자와 같은 편(내 팀) — 본인은 자동 포함이라 이 목록엔 안 담기고, "본인 제외

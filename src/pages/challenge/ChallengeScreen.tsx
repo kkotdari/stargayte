@@ -174,11 +174,13 @@ function ChallengeCard({ challenge, myId, onResponded, onRegisterReplay }: Chall
     }
   };
 
-  // 상대가 여럿(팀전)이어도 거절 사유는 첫 번째 상대 기준으로만 보여준다(요청:
-  // "상대쪽에는 상대가 쓴 메시지 있으면 노출") — 사유는 그 사람 개인의 응답이라 팀
-  // 전체를 대표하긴 애매하지만, 화면 단순화 취지상 대표 한 명만 본다.
+  // 상대가 여럿(팀전)이어도 응답 한마디는 첫 번째 상대 기준으로만 보여준다(요청:
+  // "상대쪽에는 상대가 쓴 메시지 있으면 노출") — 그 한마디는 그 사람 개인의 응답이라 팀
+  // 전체를 대표하긴 애매하지만, 화면 단순화 취지상 대표 한 명만 본다. 이제 거절뿐 아니라
+  // 수락에도 한마디가 붙을 수 있어(요청: "편지지에 수락/거절 한줄 메시지 필수화")
+  // response 종류와 무관하게 있으면 그대로 보여준다.
   const primaryTarget = challenge.targets[0];
-  const targetMessage = primaryTarget?.response === "rejected" ? primaryTarget.rejectReason : null;
+  const targetMessage = primaryTarget?.responseMessage ?? null;
 
   // 요청자쪽 인원(본인+같은 편) — Member.avatar는 memberOf로 찾은 것, 없으면 null.
   const creatorSideMembers: { id: string; nickname: string; avatar: string | null }[] = [
@@ -477,7 +479,7 @@ export default function ChallengeScreen() {
   };
 
   return (
-    <div className="scr-screen">
+    <div className="scr-screen scr-challenge-screen-v2">
       <div className="scr-v2-toolbar">
         <h1 className="scr-title scr-v2-toolbar-title">
           챌린지 <span className="scr-challenge-title-subtitle">너 나와!</span>
@@ -511,7 +513,7 @@ export default function ChallengeScreen() {
       ) : (
         <>
           <section className="scr-challenge-section">
-            <h2 className="scr-challenge-section-title">다가오는</h2>
+            <h2 className="scr-challenge-section-title">다가오는 대결</h2>
             {upcomingChallenges.length === 0 ? (
               <div className="scr-empty">
                 {searchTerms.length > 0 ? "검색 결과가 없어요" : "다가오는 도전장이 없어요"}
@@ -540,7 +542,7 @@ export default function ChallengeScreen() {
           </section>
 
           <section className="scr-challenge-section">
-            <h2 className="scr-challenge-section-title">종료된</h2>
+            <h2 className="scr-challenge-section-title">종료된 대결</h2>
             {endedChallenges.length === 0 ? (
               <div className="scr-empty">
                 {searchTerms.length > 0 ? "검색 결과가 없어요" : "종료된 도전장이 없어요"}
