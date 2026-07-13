@@ -2,7 +2,6 @@ import { useState, useRef, type FormEvent, type ChangeEvent } from "react";
 import { Camera, CheckCircle2, Trash2 } from "lucide-react";
 import { api } from "../../api/client";
 import Avatar from "../../components/common/Avatar";
-import ReplayAliasesField, { cleanReplayAliases } from "../../components/common/ReplayAliasesField";
 import { Spinner } from "../../components/common/Feedback";
 import AvatarCropModal from "../../components/common/AvatarCropModal";
 import { cx } from "../../utils/format";
@@ -16,7 +15,6 @@ export default function SignupForm({ onDone }: SignupFormProps) {
   const [pw, setPw] = useState("");
   const [pw2, setPw2] = useState("");
   const [tag, setTag] = useState("");
-  const [replayAliases, setReplayAliases] = useState<string[]>([""]);
   const [insta, setInsta] = useState("");
   const [avatar, setAvatar] = useState<string | null>(null);
   const [err, setErr] = useState("");
@@ -36,15 +34,14 @@ export default function SignupForm({ onDone }: SignupFormProps) {
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
-    const cleanedAliases = cleanReplayAliases(replayAliases);
-    if (!id || !pw || !pw2 || !tag || cleanedAliases.length === 0) {
+    if (!id || !pw || !pw2 || !tag) {
       setErr("필수 항목(*)을 모두 입력해 주세요.");
       return;
     }
     if (pw !== pw2) { setErr("비밀번호와 비밀번호 확인이 일치하지 않아요."); return; }
     setErr(""); setBusy(true);
     try {
-      const { user } = await api.signup({ id, password: pw, battletag: tag, replayAliases: cleanedAliases, insta, avatar });
+      const { user } = await api.signup({ id, password: pw, battletag: tag, replayAliases: [], insta, avatar });
       setApproved(user.status === "active");
       setDone(true);
     } catch (e2) {
@@ -100,7 +97,6 @@ export default function SignupForm({ onDone }: SignupFormProps) {
       <input className="scr-input" type="password" value={pw} onChange={(e) => setPw(e.target.value)} placeholder="비밀번호 *" />
       <input className="scr-input" type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} placeholder="비밀번호 확인 *" />
       <input className="scr-input" value={tag} onChange={(e) => setTag(e.target.value)} placeholder="배틀태그 (Nickname#0000) *" />
-      <ReplayAliasesField rows={replayAliases} onChange={setReplayAliases} required />
       <input className="scr-input" value={insta} onChange={(e) => setInsta(e.target.value)} placeholder="인스타 닉네임 (선택, @nickname)" />
 
       {err && <div className="scr-err">{err}</div>}

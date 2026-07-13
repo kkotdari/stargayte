@@ -2,7 +2,6 @@ import { useRef, useState, type ChangeEvent } from "react";
 import { createPortal } from "react-dom";
 import { X, Camera, Trash2 } from "lucide-react";
 import Avatar from "../components/common/Avatar";
-import ReplayAliasesField, { cleanReplayAliases } from "../components/common/ReplayAliasesField";
 import { Spinner } from "../components/common/Feedback";
 import ConfirmDialog from "../components/common/ConfirmDialog";
 import AvatarCropModal from "../components/common/AvatarCropModal";
@@ -19,7 +18,6 @@ export default function ProfileModal({ onClose }: ProfileModalProps) {
   useLockBodyScroll();
   const user = useAppStore((s) => s.user);
   const updateProfile = useAppStore((s) => s.updateProfile);
-  const replaceMemberReplayAliases = useAppStore((s) => s.replaceMemberReplayAliases);
   const withdraw = useAppStore((s) => s.withdraw);
 
   const [id, setId] = useState(user?.id ?? "");
@@ -27,10 +25,6 @@ export default function ProfileModal({ onClose }: ProfileModalProps) {
   const [battletag, setBattletag] = useState(user?.battletag ?? "");
   const [insta, setInsta] = useState(user?.insta ?? "");
   const [avatar, setAvatar] = useState<string | null>(user?.avatar ?? null);
-  // 게임아이디도 별도 저장 버튼 없이 아래 저장 버튼 하나로 다른 필드들과 같이 저장한다.
-  const [pendingAliases, setPendingAliases] = useState<string[]>(
-    user && user.replayAliases.length > 0 ? user.replayAliases : [""],
-  );
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [confirmWithdraw, setConfirmWithdraw] = useState(false);
@@ -47,10 +41,8 @@ export default function ProfileModal({ onClose }: ProfileModalProps) {
     battletag: user?.battletag ?? "",
     insta: user?.insta ?? "",
     avatar: user?.avatar ?? null,
-    aliases: user?.replayAliases ?? [],
   })).current;
-  const cleanedAliases = cleanReplayAliases(pendingAliases);
-  const isDirty = JSON.stringify({ id, nickname, battletag, insta, avatar, aliases: cleanedAliases }) !== initialSnapshot;
+  const isDirty = JSON.stringify({ id, nickname, battletag, insta, avatar }) !== initialSnapshot;
 
   const requestClose = () => {
     if (isDirty) setConfirmCloseOpen(true);
@@ -67,8 +59,6 @@ export default function ProfileModal({ onClose }: ProfileModalProps) {
     setCropFile(f);
   };
 
-  const aliasesChanged = user ? JSON.stringify(cleanedAliases) !== JSON.stringify(user.replayAliases) : false;
-
   const save = async () => {
     if (!id || !nickname || !battletag) {
       setErr("아이디, 닉네임, 배틀태그는 비워둘 수 없어요.");
@@ -78,7 +68,6 @@ export default function ProfileModal({ onClose }: ProfileModalProps) {
     setBusy(true);
     try {
       await updateProfile({ id, nickname, battletag, insta, avatar });
-      if (aliasesChanged && user) await replaceMemberReplayAliases(user.id, cleanedAliases);
       onClose();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "저장에 실패했어요.");
@@ -147,8 +136,6 @@ export default function ProfileModal({ onClose }: ProfileModalProps) {
             <span className="scr-label">배틀태그</span>
             <input className="scr-input" value={battletag} onChange={(e) => setBattletag(e.target.value)} placeholder="Nickname#0000" />
           </label>
-
-          <ReplayAliasesField rows={pendingAliases} onChange={setPendingAliases} />
 
           <label className="scr-field">
             <span className="scr-label">인스타 닉네임 (선택)</span>

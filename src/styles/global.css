@@ -2054,7 +2054,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-light-theme .scr-pill-tabs { background: rgba(0,0,0,0.08); }
 .scr-pill-tabs-indicator {
   position: absolute; left: 1px; top: 1px; height: calc(100% - 2px);
-  border-radius: 999px; transition: transform .22s ease;
+  border-radius: 999px; transition: transform .12s ease-out;
   background: #ffffff;
 }
 .scr-light-theme .scr-pill-tabs-indicator { background: #10151a; }
@@ -2129,9 +2129,12 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
      탭바가 항상 떠 있는 지금은 그 간격을 이전(14px)보다 좁혀 8px로). */
   .scr-filter-float-stack {
     flex-direction: column;
-    position: fixed; left: 16px; right: 16px; z-index: 45; margin: 0 auto;
+    /* 컨텐츠(.scr-main, 좌우 16px)와 정확히 같은 폭으로 맞췄더니 컨텐츠 가장자리와 딱
+       붙어 떠 있는 필터/검색 알약이 화면 폭을 꽉 채운 것처럼 뻑뻑해 보였다(실제로
+       지적받은 문제) — 좌우 여백을 컨텐츠보다 더 줘서 컨텐츠 폭보다 살짝 좁게 뜬다. */
+    position: fixed; left: 28px; right: 28px; z-index: 45; margin: 0 auto;
     bottom: calc(var(--mobile-footer-h) + 8px + env(safe-area-inset-bottom, 0px));
-    max-width: calc(var(--content-max) - 32px);
+    max-width: calc(var(--content-max) - 56px);
     /* bottom도 transition에 넣어서, 키보드 인셋(JS가 인라인 style로 얹는 bottom)이
        바뀔 때 순간 이동이 아니라 부드럽게 따라가게 한다(안 그러면 값이 바뀌는 순간
        뚝 끊겨 옮겨간다 — 실제로 지적받은 문제 "키보드보다 검색창이 먼저 내려와서
@@ -2338,6 +2341,13 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
      기본 사각형 하이라이트가 알약 모양과 안 맞게 번쩍였다(실제로 지적받은 문제 —
      "네모모양으로 영역이 제한돼있어서 자연스럽지 않다"). */
   -webkit-tap-highlight-color: transparent;
+  /* 칩이 많아 오른쪽 끝(입력 중인 자리)으로 자동 스크롤되면, 왼쪽 padding은 스크롤
+     시작점에서만 보이는 값이라 스크롤된 뒤에는 적용되지 않아 맨 왼쪽 칩이 박스 경계에
+     딱 붙어 뚝 잘려 보였다(실제로 지적받은 문제) — 왼쪽 가장자리를 투명하게
+     페이드시켜 그 잘림을 자연스러운 그러데이션으로 완충한다. 지금 타이핑 중인 오른쪽
+     끝은 항상 또렷하게 보여야 하므로 오른쪽은 페이드하지 않는다. */
+  -webkit-mask-image: linear-gradient(to right, transparent 0, black 12px, black 100%);
+  mask-image: linear-gradient(to right, transparent 0, black 12px, black 100%);
 }
 .scr-search-chip-box::-webkit-scrollbar { display: none; }
 .scr-search-chip-box:focus-within { border-color: var(--pipe-bright); }
@@ -2922,6 +2932,11 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   .scr-team-slot { min-height: 40px; }
   .scr-header-inner { padding: 12px 16px; gap: 12px; }
   .scr-main { padding: 30px 16px 48px; }
+  /* 모바일은 타이틀 줄과 그 아래 컨텐츠(필터/목록) 사이 간격이 PC보다 더 헐렁하게
+     느껴진다는 피드백 — 툴바 자체 여백(padding-bottom)과 .scr-screen의 형제간 gap을
+     모바일에서만 줄인다. */
+  .scr-v2-toolbar { padding-bottom: 8px; }
+  .scr-screen { gap: 6px; }
   .scr-brand-text { display: none; }
   /* 모바일 헤더에서 내 정보(프로필 칩)를 키운다. Avatar는 크기를 JS(size prop)의
      인라인 style로 그리므로, 여기서 CSS로 덮어쓰려면 !important가 필요하다(다른 화면의
@@ -3582,9 +3597,15 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 }
 /* 플로팅 검색창만은 아직 position:fixed로 탭바 위에 뜬다(키보드 인셋에 따라 위치가 JS로도
    움직여야 해서 흐름 안에 넣기엔 상호작용이 더 얽혀 있다 — 별도로 검토) — 그 높이 몫(62px)만큼
-   콘텐츠 마지막 줄과 안 겹치게 확보한다. */
+   콘텐츠 마지막 줄과 안 겹치게 확보한다. .scr-main은 모든 화면이 공유하는 단일 래퍼라(화면별로
+   따로 못 준다), 필터창(.scr-filter-panel)까지 있는 화면은 검색창 위에 필터창(모바일 66px)이
+   한 줄 더 쌓여 스택 전체 높이가 더 큰데도 이 예약분은 검색창 단독 기준(62px)이라, 필터가 있는
+   화면(경기/전적통계/랭킹/회원/게임아이디 등 대부분)에서는 목록 마지막 줄이 그 차이만큼 필터창
+   뒤에 가려졌다(실제로 지적받은 문제) — 필터창 높이+스택 내부 간격(66px+8px)을 더해 필터가
+   있는 화면 기준으로 넉넉하게 예약한다(필터가 없는 화면은 그만큼 여백만 조금 더 남을 뿐 문제
+   없다). */
 @media (max-width: 640px) {
-  .scr-main { padding-bottom: calc(20px + 62px + env(safe-area-inset-bottom, 0px)); }
+  .scr-main { padding-bottom: calc(20px + 62px + 74px + env(safe-area-inset-bottom, 0px)); }
 }
 
 

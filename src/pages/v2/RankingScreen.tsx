@@ -85,6 +85,14 @@ export default function RankingScreenV2() {
     if (searchTerms.length === 0) return teamRows;
     return teamRows.filter((r) => searchTerms.some((t) => r.members.some((m) => memberMatchesTerm(m, t))));
   }, [teamRows, searchTerms]);
+  // 일대일(개인) 랭킹도 팀 랭킹과 같은 원칙 — 순위 재계산 없이(종족 필터로 이미 서버가
+  // 다시 매긴 순위는 그대로 두고) 화면에 보여줄 행만 검색어로 거른다. rows 자체를 그대로
+  // 렌더링해 이 필터가 적용된 적이 없었다(실제로 지적받은 문제 — "유저 검색이 개인 차트에서
+  // 안 먹힘").
+  const visibleRows = useMemo(() => {
+    if (searchTerms.length === 0) return rows;
+    return rows.filter((r) => searchTerms.some((t) => memberMatchesTerm(r.member, t)));
+  }, [rows, searchTerms]);
 
   // 검색어에 걸린 사람들 — 남은 팀 안에서 누구 때문에 걸렸는지 반전색으로 짚어준다.
   const highlightMemberIds = useMemo(() => {
@@ -95,7 +103,7 @@ export default function RankingScreenV2() {
   }, [members, searchTerms]);
 
   const isTeam = mode === "team";
-  const listRows = isTeam ? visibleTeamRows : rows;
+  const listRows = isTeam ? visibleTeamRows : visibleRows;
 
   return (
     <div className="scr-screen scr-rank-screen-v2">
@@ -165,11 +173,14 @@ export default function RankingScreenV2() {
               />
             ))
           ) : (
-            rows.map((row, i) => (
+            visibleRows.map((row, i) => (
               <RankRow
                 key={row.member.id}
                 row={row}
-                tiedWithPrev={i > 0 && row.rank === rows[i - 1].rank}
+                // 팀 랭킹과 같은 이유(위 visibleTeamRows 주석 참고) — 검색으로 걸러지면
+                // 공동순위 그룹의 첫 행이 사라져 남은 행만 빈칸으로 보일 수 있어, 검색
+                // 중에는 묶지 않는다.
+                tiedWithPrev={searchTerms.length === 0 && i > 0 && row.rank === visibleRows[i - 1].rank}
                 onOpenLatestMatch={() => setSoloMatchMember(row.member)}
               />
             ))
