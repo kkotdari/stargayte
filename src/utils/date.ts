@@ -119,6 +119,24 @@ export function formatChallengeSchedule(scheduledAt: string | null): string {
   if (d.getHours() === 0 && d.getMinutes() === 0) return dateStr;
   return `${dateStr} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
+
+// 도전장 화면을 경기결과 화면처럼 날짜별로 묶어 보여주면서(요청: "경기 화면처럼 날짜별로
+// 그룹핑"), 카드 하나하나엔 그 날짜 그룹 라벨과 중복되는 날짜를 다시 안 적고 시간만
+// 보여준다(요청: "각 카드엔 시간만 표시") — 그래서 날짜/시간 표시를 둘로 쪼갠다. 일정이
+// 아예 없는 도전장은 별도 그룹으로 모은다.
+export function challengeDateGroupLabel(scheduledAt: string | null): string {
+  if (!scheduledAt) return "일정 미정";
+  const d = new Date(scheduledAt);
+  return `${d.getMonth() + 1}월 ${d.getDate()}일(${DOW[d.getDay()]})`;
+}
+// 시간까지 정해졌을 때만 값을 주고, 자정(시간을 안 정한 경우) 혹은 일정 자체가 없으면
+// null — 카드에서 아예 시간을 안 보여준다.
+export function challengeTimeLabel(scheduledAt: string | null): string | null {
+  if (!scheduledAt) return null;
+  const d = new Date(scheduledAt);
+  if (d.getHours() === 0 && d.getMinutes() === 0) return null;
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
 export const MONTHS_KR = [
   "1월", "2월", "3월", "4월", "5월", "6월",
   "7월", "8월", "9월", "10월", "11월", "12월",

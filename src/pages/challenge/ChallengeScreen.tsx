@@ -12,9 +12,8 @@ import { api } from "../../api/client";
 import { cx } from "../../utils/format";
 import { buildReplayDrafts, type ReplayDraft } from "../../utils/replayDraft";
 import { hasAppUpdatePreloadErrorOccurred } from "../../utils/appUpdate";
-import { formatChallengeSchedule, isToday } from "../../utils/date";
+import { challengeDateGroupLabel, challengeTimeLabel, isToday } from "../../utils/date";
 import { activeMemberSearchTerms, memberMatchesTerm, splitSearchTerms } from "../../utils/memberSearch";
-import { MATCH_TYPE_INFO } from "../../constants/matchTypes";
 import type { Challenge } from "../../types";
 
 const MAX_REPLAY_FILES = 20;
@@ -27,11 +26,58 @@ function challengeStatusLabel(c: Challenge): string {
   if (c.status === "confirmed") return c.resultMatchId ? "완료" : "승락";
   if (c.status === "rejected") return "거절";
   if (c.status === "canceled") return "취소";
-  return "대기중";
+  return "응답대기중";
 }
 function challengeStatusClass(c: Challenge): string {
   if (c.status === "confirmed" && c.resultMatchId) return "scr-challenge-status-done";
   return `scr-challenge-status-${c.status}`;
+}
+
+interface ChallengeDateGroup {
+  label: string;
+  isToday: boolean;
+  items: Challenge[];
+}
+
+// 경기결과 화면처럼 날짜별로 묶어 보여준다(요청: "경기 화면처럼 날짜별로 그룹핑") —
+// 넘어오는 목록은 이미 정렬돼 있어서(다가오는=임박순, 종료된=최근순) 같은 날짜 라벨이
+// 연속으로 나올 때만 묶으면 된다. 일정 미정 도전장은 "일정 미정" 하나로 모인다.
+function groupChallengesByDate(list: Challenge[]): ChallengeDateGroup[] {
+  const groups: ChallengeDateGroup[] = [];
+  list.forEach((c) => {
+    const label = challengeDateGroupLabel(c.scheduledAt);
+    const last = groups[groups.length - 1];
+    if (last && last.label === label) last.items.push(c);
+    else groups.push({ label, isToday: isToday(c.scheduledAt), items: [c] });
+  });
+  return groups;
+}
+
+// 매치업 헤드라인의 한쪽(요청자편/상대편) — 1명이면 그 사람만 크게, 2명 이상(팀전,
+// 4:4까지도)이면 전원을 아바타-이름씩 가로로 나란히 늘어놓는다(요청: "4대 4인 경우는
+// 한팀의 플레이어를 가로로 배치"). 인원수에 따라 아바타/글자 크기를 다르게 둔다(요청:
+// "그걸 생각해서 모든 요소의 크기 조절 필요") — 1명일 때만 크게, 여럿이면 한 줄에
+// 다 들어오도록 작게.
+function MatchupSideMembers({ people }: { people: { id: string; nickname: string; avatar: string | null }[] }) {
+  if (people.length === 1) {
+    const p = people[0];
+    return (
+      <>
+        <Avatar member={p} size={40} />
+        <span className="scr-challenge-matchup-name">{p.nickname}</span>
+      </>
+    );
+  }
+  return (
+    <div className="scr-challenge-matchup-team">
+      {people.map((p) => (
+        <span key={p.id} className="scr-challenge-matchup-teammate">
+          <Avatar member={p} size={28} />
+          <span className="scr-challenge-matchup-teammate-name">{p.nickname}</span>
+        </span>
+      ))}
+    </div>
+  );
 }
 
 interface ChallengeCardProps {
@@ -54,15 +100,7 @@ function ChallengeCard({ challenge, myId, onResponded, onRegisterReplay }: Chall
   const canRespond = !!myTarget && myTarget.response === "pending" && challenge.status !== "canceled";
   const canCancel = isCreator && challenge.status === "pending";
   const canReapply = isCreator && challenge.status === "rejected";
-
-  // 대기중인 상대는 타임라인에 따로 줄을 안 쌓으니(요청: "대기중은 굳이 로그에 쌓지
-  // 마"), "도전장 보냄" 한 줄만 있고 그 뒤로 이어지는 줄이 하나도 없을 수도 있다 —
-  // 그럴 땐 세로선으로 이을 대상 자체가 없으므로 선을 안 그린다(요청: "두번째 로그
-  // 없으면 굳이 타임라인 잇지 않기").
-  const hasTimelineFollowUp = challenge.ownMembers.length > 0
-    || challenge.targets.some((t) => t.response !== "pending")
-    || challenge.status === "canceled"
-    || (challenge.status === "confirmed" && !!challenge.resultMatchId);
+  const timeLabel = challengeTimeLabel(challenge.scheduledAt);
 
   const [rejecting, setRejecting] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
@@ -136,107 +174,102 @@ function ChallengeCard({ challenge, myId, onResponded, onRegisterReplay }: Chall
     }
   };
 
+  // 상대가 여럿(팀전)이어도 거절 사유는 첫 번째 상대 기준으로만 보여준다(요청:
+  // "상대쪽에는 상대가 쓴 메시지 있으면 노출") — 사유는 그 사람 개인의 응답이라 팀
+  // 전체를 대표하긴 애매하지만, 화면 단순화 취지상 대표 한 명만 본다.
+  const primaryTarget = challenge.targets[0];
+  const targetMessage = primaryTarget?.response === "rejected" ? primaryTarget.rejectReason : null;
+
+  // 요청자쪽 인원(본인+같은 편) — Member.avatar는 memberOf로 찾은 것, 없으면 null.
+  const creatorSideMembers: { id: string; nickname: string; avatar: string | null }[] = [
+    { id: challenge.createdBy.id, nickname: challenge.createdBy.nickname, avatar: creatorMember?.avatar ?? null },
+    ...challenge.ownMembers.map((m) => ({ id: m.memberId, nickname: m.nickname, avatar: m.avatar })),
+  ];
+  const targetSideMembers = challenge.targets.map((t) => ({ id: t.memberId, nickname: t.nickname, avatar: t.avatar }));
+
   return (
     <div className="scr-challenge-card">
-      {/* 최상단엔 한눈에 훑을 최종 상태·일시·경기종류만 — 나머지 경과(누가 언제 뭘
-          했는지)는 아래 타임라인이 순서대로 보여준다. 일시는 경기종류보다 앞(요청:
-          "경기유형 앞에 일시를 먼저 표시")에 굵게(요청: "진하게") 둔다. */}
+      {/* 화면이 너무 복잡하다는 피드백으로 전면 단순화(요청: "챌린지 너무 화면이
+          복잡") — 날짜는 이제 카드 바깥의 날짜 그룹 헤더가 보여주므로 카드 안엔
+          시간만(요청: "각 카드엔 시간만 표시"), 경기유형(1:1/팀전) 라벨은 없앤다(요청:
+          "일대일 팀전 라벨 제거"). 상태만 봐도 충분하다는 피드백으로 응답/취소/완료
+          로그(타임라인)도 통째로 없앴다(요청: "로그 전체 삭제 그냥 상태만 봐도 충분히
+          알수있음"). 시간을 상태보다 앞(왼쪽)에, 그리고 그 아래 매치업 바로 위 줄에
+          가운데 정렬로 둔다(요청: "시간이 앞에" + "시간은 가운데 정렬(vs 대진
+          윗줄에)"). */}
       <div className="scr-challenge-card-head">
-        <span className={cx("scr-challenge-status", challengeStatusClass(challenge))}>
+        {/* 상태 알약은 카드 좌상단 끝으로, 시간은 그대로 줄 가운데 유지(요청: "시간은
+            가운데 두고 상태 알약은 좌측끝에 배치(카드의 좌상단)") — 리플레이 버튼과
+            같은 방식(절대배치)으로 시간의 중앙 정렬에 영향을 안 주게 뺀다. */}
+        <span className={cx("scr-challenge-status", challengeStatusClass(challenge), "scr-challenge-card-head-status")}>
           {challengeStatusLabel(challenge)}
         </span>
-        <span className="scr-mono scr-challenge-card-when">
-          {challenge.status === "confirmed" && isToday(challenge.scheduledAt) && (
-            <span className="scr-challenge-card-today-tag">오늘</span>
-          )}
-          {formatChallengeSchedule(challenge.scheduledAt)}
-        </span>
-        <span className="scr-challenge-card-type">{MATCH_TYPE_INFO[challenge.matchType]}</span>
+        {timeLabel && <span className="scr-mono scr-challenge-card-when">{timeLabel}</span>}
+        {/* 예전엔 카드 맨 아래 독립된 줄이었는데, 시간/상태 줄 오른쪽 구석으로 옮기고
+            그 줄의 다른 요소들과 크기를 맞춘다(요청: "리플레이 등록 버튼은 시간 상태
+            라인의 오른쪽 구석에 위치시키기(크기도 일치시키기)") — 참가자가 아니어도
+            아무나 등록할 수 있는 건 그대로다(요청: "결과등록 버튼을 참가자 전용에서
+            아무나 등록 가능하도록 권한 확장"). */}
+        {challenge.status === "confirmed" && !challenge.resultMatchId && (
+          <button
+            type="button" className="scr-btn scr-btn-ghost scr-challenge-card-head-replay"
+            onClick={() => onRegisterReplay(challenge)}
+          >
+            <Upload size={11} /> 리플레이 등록
+          </button>
+        )}
       </div>
 
-      {/* 요청(도전장 보냄) → 응답이 실제로 온 상대만 → (있으면) 취소/완료까지, 실제
-          있었던 순서 그대로 아래로 쌓는다(요청: "요청 메시지 왼쪽에 도전장 보냄... 그
-          위에 대기중/승락... 스택이 쌓여가는 형태" + "도전자 상대 로우 아래에 순서대로
-          쌓기"). 아직 응답 안 한 대기중 상대는 따로 로그를 안 쌓고(요청: "대기중은
-          굳이 로그에 쌓지 마") 대신 요청 한 줄 안에 "누구한테 보냈는지"로 모아
-          보여준다(요청: "도전장 보냄 정보에 누구한테 보냈는지 프사와 닉네임 나열"). */}
-      <div className={cx("scr-challenge-timeline", hasTimelineFollowUp && "scr-challenge-timeline-connected")}>
-        <div className="scr-challenge-timeline-row">
-          <Avatar member={creatorMember} size={29} />
-          <div className="scr-challenge-timeline-body">
-            {/* 예전엔 "도전장 보냄"만 있고 누구한테인지는 아래 "상대" 칩을 봐야 알 수
-                있었는데, 요청대로 헤드라인 자체에 상대의 프사+닉네임을 바로 넣어("미친
-                마법사 · [프사]태섭에게 도전장 보냄") 한눈에 읽히게 한다 — 상대가 여럿이면
-                쉼표로 나열. 프사(22px)와 나머지 텍스트(14.85px)는 높이가 달라서, 이걸
-                한 줄의 텍스트 흐름(inline+vertical-align)으로 섞으면 폰트 기준선 계산이
-                미묘하게 어긋나 세로 정렬이 안 맞아 보였다(실제로 지적받은 문제) — 아예
-                한 줄짜리 flex row로 묶어 flexbox의 align-items:center로 확실하게
-                가운데를 맞춘다. */}
-            <span className="scr-challenge-timeline-label scr-challenge-timeline-label-row">
-              <span>{challenge.createdBy.nickname}</span>
-              <span className="scr-dim">·</span>
-              {challenge.targets.map((t, i) => (
-                <span key={t.memberId} className="scr-challenge-timeline-sent-to">
-                  <Avatar member={{ id: t.memberId, nickname: t.nickname, avatar: t.avatar }} size={22} />
-                  <span className="scr-challenge-timeline-sent-to-name">
-                    {t.nickname}{i < challenge.targets.length - 1 && ","}
-                  </span>
-                </span>
-              ))}
-              <span className="scr-dim">에게 도전장 보냄</span>
-            </span>
-            {/* 상대 프사/닉네임은 이제 위 헤드라인("~에게 도전장 보냄")에 이미 나오니
-                여기선 중복해서 칩으로 안 보여준다(요청: "한마디에는 상대 프사랑 닉네임을
-                없애고 그걸 ~에게 도전장 보냄에 넣는거야") — 한마디(메시지)만 남긴다. */}
-            {challenge.message && (
-              <span className="scr-challenge-timeline-detail scr-challenge-timeline-quote">"{challenge.message}"</span>
-            )}
-          </div>
+      {/* 누가 누구와 붙는지를 "요청자 vs 상대" 구도로 크게 보여준다(요청: "요청자 vs
+          상대 구도로 크게 헤드라인 노출" + "VS 가운데 세로 정렬하고 양쪽에 도전자와
+          상대 배치") — 양쪽을 세로(아바타 위, 이름 아래)로 쌓아 VS가 그 사이에서
+          자연스럽게 세로 가운데에 오게 한다. 팀전이면 같은 편(ownMembers)은 요청자
+          쪽에, 지목된 상대는 전부 반대쪽에 묶인다. 누가 도전자인지 한눈에 알 수
+          있도록 역할 라벨도 붙인다(요청: "도전자에 도전자라고 표시"). */}
+      <div className="scr-challenge-matchup">
+        <div className="scr-challenge-matchup-side">
+          <span className="scr-challenge-matchup-role">도전자</span>
+          <MatchupSideMembers people={creatorSideMembers} />
         </div>
+        <span className="scr-challenge-matchup-vs">VS</span>
+        <div className="scr-challenge-matchup-side">
+          {/* "상대" 라벨 자체는 없앴지만(요청: "상대 라벨은 제거 도전자만 있어도 됨")
+              그 자리를 완전히 비우면 도전자 쪽만 라벨만큼 위로 더 밀려서 양쪽 아바타
+              높이가 어긋난다 — 안 보이게만(visibility:hidden) 자리를 예약해 아바타
+              줄이 서로 나란하게 맞춘다. */}
+          <span className="scr-challenge-matchup-role scr-challenge-matchup-role-hidden" aria-hidden="true">상대</span>
+          <MatchupSideMembers people={targetSideMembers} />
+        </div>
+      </div>
 
-        {challenge.ownMembers.length > 0 && (
-          <div className="scr-challenge-timeline-row scr-challenge-timeline-row-sub">
-            <span className="scr-challenge-timeline-spacer" />
-            <span className="scr-challenge-timeline-detail scr-dim">
-              같은 팀: {challenge.ownMembers.map((m) => m.nickname).join(", ")}
-            </span>
-          </div>
-        )}
-
-        {challenge.targets.filter((t) => t.response !== "pending").map((t) => (
-          <div key={t.memberId} className="scr-challenge-timeline-row">
-            <Avatar member={{ id: t.memberId, nickname: t.nickname, avatar: t.avatar }} size={29} />
-            <div className="scr-challenge-timeline-body">
-              <span className={cx("scr-challenge-timeline-label", `scr-challenge-timeline-label-${t.response}`)}>
-                {t.nickname} <span className="scr-dim">· {t.response === "accepted" ? "승락함" : "거절함"}</span>
-              </span>
-              {/* 거절 사유는 요청자에게만 온다(서버가 그 외 조회자에겐 null로 내려준다). */}
-              {t.response === "rejected" && t.rejectReason && (
-                <span className="scr-challenge-timeline-detail scr-challenge-timeline-quote">"{t.rejectReason}"</span>
-              )}
-            </div>
-          </div>
-        ))}
-
-        {challenge.status === "canceled" && (
-          <div className="scr-challenge-timeline-row scr-challenge-timeline-row-system">
-            <Avatar member={creatorMember} size={29} />
-            <div className="scr-challenge-timeline-body">
-              <span className="scr-challenge-timeline-label">
-                {challenge.createdBy.nickname} <span className="scr-dim">· 도전장 취소함</span>
-              </span>
-            </div>
-          </div>
-        )}
-        {challenge.status === "confirmed" && challenge.resultMatchId && (
-          <div className="scr-challenge-timeline-row scr-challenge-timeline-row-system">
-            <span className="scr-challenge-timeline-spacer" />
-            <div className="scr-challenge-timeline-body">
-              <span className="scr-challenge-timeline-label">대결 종료</span>
-              <span className="scr-challenge-timeline-detail">경기결과가 등록됐어요</span>
-            </div>
-          </div>
-        )}
+      {/* 한마디/거절 사유는 아바타-이름이 있는 좁은 칸(양쪽·VS와 폭을 나눠 쓴다) 안에
+          있으면 폭이 너무 좁아 줄바꿈이 잦았다(요청: "한마디 폭 공간 더 확보" + "한줄
+          메시지 줄넘김 최대한 안생기게 공간 확보") — 매치업 바깥, 카드 전체 폭을
+          절반씩 나눠 쓰는 별도 줄로 뺀다("메시지는 플레이어 아래에 배치"는 그대로
+          유지 — 도전자 쪽은 왼쪽 절반, 상대 쪽은 오른쪽 절반). 메시지가 없어도 자리를
+          그대로 예약해둔다(visibility:hidden — display:none이면 공간 자체가
+          사라진다) — 그래야 메시지 유무와 무관하게 카드 높이가 항상 같게 유지된다
+          (요청: "한줄 메시지 있고 없고에 따라 레이아웃 달라지지 않게" + "VS가 모든
+          카드간 세로 열이 맞아야한다"). "상대" 역할 라벨은 없앤다(요청: "상대 라벨은
+          제거 도전자만 있어도 됨"). */}
+      <div className="scr-challenge-matchup-messages">
+        <p className={cx(
+          "scr-challenge-timeline-detail scr-challenge-timeline-quote scr-challenge-message",
+          !challenge.message && "scr-challenge-message-empty",
+        )}>
+          {challenge.message ? `"${challenge.message}"` : " "}
+        </p>
+        {/* 매치업 줄과 똑같은 "VS"를 안 보이게(visibility:hidden) 가운데 끼워 넣어, 그
+            폭만큼 이 줄의 두 칸도 위 아바타/이름 칸과 정확히 같은 너비로 나뉘게 한다 —
+            그냥 절반씩 나누면 위쪽은 가운데에 VS(+양옆 gap)가 껴 있어 중심이 서로
+            어긋났다(실제로 지적받은 문제 — "한마디가 중심이 안맞네 프사 닉네임이랑"). */}
+        <span className="scr-challenge-matchup-vs" aria-hidden="true" style={{ visibility: "hidden" }}>VS</span>
+        <p className={cx(
+          "scr-challenge-timeline-detail scr-challenge-timeline-quote scr-challenge-message",
+          !targetMessage && "scr-challenge-message-empty",
+        )}>
+          {targetMessage ? `"${targetMessage}"` : " "}
+        </p>
       </div>
 
       {err && <div className="scr-err">{err}</div>}
@@ -310,22 +343,6 @@ function ChallengeCard({ challenge, myId, onResponded, onRegisterReplay }: Chall
               재신청
             </button>
           )}
-        </div>
-      )}
-
-      {/* 예전엔 참가자(보낸 사람/지목된 상대/같은 팀)만 리플레이를 등록할 수 있었는데,
-          정작 게임아이디 매핑(리플레이 속 이름 → 회원)은 등록하는 사람이 그 자리에서
-          훑어보며 채워야 하는 일이라 — 참가자 중 아무도 방법을 모르거나 자리에 없으면
-          아무도 못 채웠다. 지목/참가 여부와 무관하게 아무나 등록할 수 있게 넓힌다(요청:
-          "결과등록 버튼을 참가자 전용에서 아무나 등록 가능하도록 권한 확장"). */}
-      {challenge.status === "confirmed" && !challenge.resultMatchId && (
-        <div className="scr-challenge-card-actions">
-          <button
-            type="button" className="scr-btn scr-btn-ghost scr-btn-sm"
-            onClick={() => onRegisterReplay(challenge)}
-          >
-            <Upload size={12} /> 리플레이 등록
-          </button>
         </div>
       )}
 
@@ -501,14 +518,22 @@ export default function ChallengeScreen() {
               </div>
             ) : (
               <div className="scr-challenge-list">
-                {upcomingChallenges.map((c) => (
-                  <ChallengeCard
-                    key={c.id}
-                    challenge={c}
-                    myId={user?.id}
-                    onResponded={upsert}
-                    onRegisterReplay={handleRegisterReplay}
-                  />
+                {groupChallengesByDate(upcomingChallenges).map((g) => (
+                  <div key={g.label} className="scr-challenge-date-group">
+                    <div className="scr-challenge-date-head scr-mono">
+                      {g.isToday && <span className="scr-challenge-card-today-tag">오늘</span>}
+                      {g.label}
+                    </div>
+                    {g.items.map((c) => (
+                      <ChallengeCard
+                        key={c.id}
+                        challenge={c}
+                        myId={user?.id}
+                        onResponded={upsert}
+                        onRegisterReplay={handleRegisterReplay}
+                      />
+                    ))}
+                  </div>
                 ))}
               </div>
             )}
@@ -522,14 +547,21 @@ export default function ChallengeScreen() {
               </div>
             ) : (
               <div className="scr-challenge-list">
-                {endedChallenges.map((c) => (
-                  <ChallengeCard
-                    key={c.id}
-                    challenge={c}
-                    myId={user?.id}
-                    onResponded={upsert}
-                    onRegisterReplay={handleRegisterReplay}
-                  />
+                {groupChallengesByDate(endedChallenges).map((g) => (
+                  <div key={g.label} className="scr-challenge-date-group">
+                    {/* 종료된 목록은 이미 끝난 일이라 "오늘" 태그가 굳이 필요 없다(요청:
+                        "종료된 목록에 오늘 배지 제거") — 다가오는 목록에서만 남긴다. */}
+                    <div className="scr-challenge-date-head scr-mono">{g.label}</div>
+                    {g.items.map((c) => (
+                      <ChallengeCard
+                        key={c.id}
+                        challenge={c}
+                        myId={user?.id}
+                        onResponded={upsert}
+                        onRegisterReplay={handleRegisterReplay}
+                      />
+                    ))}
+                  </div>
                 ))}
               </div>
             )}
