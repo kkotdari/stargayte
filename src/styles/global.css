@@ -4200,33 +4200,6 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-challenge-datetime { display: flex; gap: 8px; }
 .scr-challenge-datetime .scr-input { flex: 1; min-width: 0; }
 
-/* ===== 챌린지 화면 배경 =====
-   랭킹(.scr-rank-screen-v2)과 같은 원칙 — 사진을 position:fixed로 깔아 화면에
-   붙박고 목록/툴바만 그 위를 스크롤한다. 요청: "챌린지 화면 배경 battle1.jpeg로
-   설정(다크/라이트 모두)" 이후 "챌린지 배경 nawa2로 변경" — 랭킹과 달리 테마별로
-   다른 사진을 안 쓰고 같은 사진 위에 스크림 톤(다크는 검게, 라이트는 희게)만
-   바꾼다. */
-.scr-challenge-screen-v2 { position: relative; }
-.scr-challenge-screen-v2::before {
-  content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
-  background-image:
-    linear-gradient(180deg, rgba(3,3,6,0.72) 0%, rgba(3,3,6,0.55) 40%, rgba(3,3,6,0.78) 100%),
-    url("/images/items/nawa2.jpg");
-  background-size: cover; background-position: center; background-repeat: no-repeat;
-}
-.scr-light-theme .scr-challenge-screen-v2::before {
-  background-image:
-    linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0.35) 25%,
-      rgba(255, 255, 255, 0.35) 75%, rgba(255, 255, 255, 0.55) 100%
-    ),
-    url("/images/items/nawa2.jpg");
-  background-size: cover; background-position: center; background-repeat: no-repeat;
-  -webkit-mask-image: linear-gradient(180deg, transparent 0%, black 14%, black 86%, transparent 100%);
-  mask-image: linear-gradient(180deg, transparent 0%, black 14%, black 86%, transparent 100%);
-}
-
 /* 목록 카드 */
 .scr-challenge-list { display: flex; flex-direction: column; gap: 12px; margin-top: 16px; }
 /* 다가오는/종료된 구획(요청: "다가오는/종료된 목록 분리 및 정렬") — 섹션 제목 하나 +

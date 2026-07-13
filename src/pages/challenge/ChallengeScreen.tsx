@@ -479,7 +479,7 @@ export default function ChallengeScreen() {
   };
 
   return (
-    <div className="scr-screen scr-challenge-screen-v2">
+    <div className="scr-screen">
       <div className="scr-v2-toolbar">
         <h1 className="scr-title scr-v2-toolbar-title">
           챌린지 <span className="scr-challenge-title-subtitle">너 나와!</span>
