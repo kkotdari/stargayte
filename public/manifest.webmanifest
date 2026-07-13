@@ -1,0 +1,12 @@
+{
+  "name": "스타게이트 - 스타크래프트: 리마스터 동호회",
+  "short_name": "스타게이트",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#060607",
+  "theme_color": "#060607",
+  "icons": [
+    { "src": "/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "/favicon.png", "sizes": "128x128", "type": "image/png" }
+  ]
+}

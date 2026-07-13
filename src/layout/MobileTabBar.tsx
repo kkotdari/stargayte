@@ -1,0 +1,165 @@
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import AdminMenu from "./AdminMenu";
+import { cx } from "../utils/format";
+import { visibleNavMenuItems } from "../constants/menuVersions";
+import { scrollRootTo } from "../utils/scrollRoot";
+import type { ScreenKey } from "../types";
+
+interface MobileTabBarProps {
+  screen: ScreenKey;
+  menuOpen: boolean;
+  isAdmin: boolean;
+  // 지금 실제로 보여줄 버전(미리보기 중이면 미리보기 버전) — 이 숫자로 메뉴 배열
+  // (constants/menuVersions.ts)을 걸러 노출 여부/순서를 정한다.
+  effectiveVersionNumber: number;
+  hidden: boolean;
+  onNavigate: (screen: ScreenKey) => void;
+  onOpenMenu: () => void;
+}
+
+// 모바일 전용 하단 탭바 — 자주 쓰는 화면들(랭킹/일정/경기결과/전적통계)을 바로 노출하고,
+// 내 정보/로그아웃처럼 자주 안 쓰는 항목은 "메뉴"(햄버거)로 묶어 기존 우측 슬라이드
+// 드로어를 연다. 운영자 전용 화면(회원 화면/이미지 설정/유저연결)은 운영자에게만
+// 보이는 별도 "운영" 탭 드롭다운으로 노출.
+// .scr-header가 backdrop-filter로 새 컨테이닝 블록을 만들어서 그 안의 position:fixed가
+// 화면 전체가 아니라 헤더 영역 기준으로 잡히므로, 헤더 바깥(App.tsx의 #scr-tabbar-slot)
+// 으로 포털링한다 — #scr-app에 직접 포털링하면 React가 포털을 항상 "마지막 자식"으로
+// 붙여준다고 가정하기 쉬운데, 실제로는 파이버 트리 형태에 따라 삽입 위치가 달라질 수
+// 있다(실제로 겪은 버그 — App.tsx 참고). #scroll-root 바로 다음이라는 확실한 자리를
+// App.tsx가 미리 마련해둔 빈 슬롯에 붙인다.
+// 아이콘 없이 텍스트만 있는 탭바가 밋밋해 보인다는 피드백 — 인스타그램 탭처럼 활성 탭
+// 아래(여기선 탭바 위쪽 가장자리)로 슬라이드하며 이동하는 밑줄 인디케이터를 추가한다.
+// 탭마다 폭이 달라도(글자 수가 다름) 항상 맞도록, 하드코딩된 순서/폭 대신 실제 DOM에서
+// ".scr-mobile-tab-active"(운영 드롭다운 트리거도 활성일 때 이 클래스를 그대로 받는다)를
+// 찾아 그 위치/폭을 그대로 옮겨 붙인다 — 탭 구성이 조건부(운영자 전용/일정 기능 플래그)로
+// 바뀌어도 따로 손볼 필요가 없다.
+// 알약 세로 인셋(버튼 높이에서 위아래로 이만큼씩 줄인다) — 짧은 글자(예: "기록")에서
+// 너무 납작한 타원보다 더 원에 가깝게 보이도록 인셋을 줄여 세로로 키운다.
+const INDICATOR_VERTICAL_INSET = 1;
+// 알약을 버튼 자신의 폭보다 좌우로 이만큼씩 더 넓게 그린다 — 텍스트에 좌우 패딩이
+// 거의 없어서(탭이 많아진 뒤로 줄바꿈 방지 차 없앴다), 버튼 폭에 딱 맞추면 "게임아이디"
+// 같은 긴 라벨이 알약 가장자리에 바짝 붙어 보였다. 전체적인 크기감을 키워달라는 요청으로
+// 살짝 더 늘렸다.
+const INDICATOR_HORIZONTAL_PAD = 10;
+
+function useActiveTabIndicator(navRef: { current: HTMLElement | null }, deps: unknown[]) {
+  const [indicator, setIndicator] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
+
+  // top/height도 CSS의 top:50%(부모 nav 전체 높이 기준 중앙)에 맡기지 않고 버튼 자신의
+  // offsetTop/offsetHeight로 직접 계산한다 — nav 자신은 하단 안전영역(홈 인디케이터)
+  // 만큼의 padding-bottom을 갖고 있어서, "부모 기준 50%"로 중앙을 잡으면 그 패딩까지
+  // 포함한 전체 높이의 중앙이 되어 버튼 행보다 한참 아래로 처져 보였다(실제로 iOS
+  // 홈 화면 웹앱에서 안전영역이 실제로 반영되면서 발견된 문제).
+  const measure = () => {
+    // "운영"/"메뉴" 드롭다운을 열어도 지금 화면(screen) 자체는 안 바뀌니, 그 화면에
+    // 해당하는 일반 탭도 여전히 .scr-mobile-tab-active를 그대로 달고 있다 — 즉 열려
+    // 있는 동안은 활성 클래스가 두 곳(원래 탭 + 운영/메뉴 트리거)에 동시에 붙는다.
+    // querySelector(첫 번째 일치)는 DOM에서 더 먼저 나오는 일반 탭을 찾아버려서 알약이
+    // "운영"으로 안 움직였다(실제로 지적받은 문제) — 일반 탭보다 뒤에 렌더되는
+    // 운영/메뉴 트리거가 우선하도록 "마지막 일치"를 쓴다.
+    const matches = navRef.current?.querySelectorAll<HTMLElement>(".scr-mobile-tab-active");
+    const active = matches && matches.length > 0 ? matches[matches.length - 1] : null;
+    if (!active) { setIndicator(null); return; }
+    // 탭은 전부 flex:1로 폭이 균등하니(글자 수와 무관), 버튼 자신의 offsetWidth를 그대로
+    // 쓰면 "기록"처럼 짧은 라벨도 "게임아이디"와 똑같이 넓은 알약을 두르게 된다 —
+    // 실제 글자(span) 폭을 재서 그 글자 수만큼만 알약이 좁아지고 넓어지게 한다. 버튼이
+    // 세로 flex로 글자를 가운데 정렬하니, 글자의 진짜 왼쪽 위치는 "버튼 왼쪽 +
+    // (버튼 폭 - 글자 폭)/2"로 계산한다.
+    const label = active.querySelector<HTMLElement>("span");
+    const labelWidth = label?.offsetWidth ?? active.offsetWidth;
+    const labelLeft = active.offsetLeft + (active.offsetWidth - labelWidth) / 2;
+    setIndicator({
+      left: labelLeft - INDICATOR_HORIZONTAL_PAD,
+      width: labelWidth + INDICATOR_HORIZONTAL_PAD * 2,
+      top: active.offsetTop + INDICATOR_VERTICAL_INSET,
+      height: active.offsetHeight - INDICATOR_VERTICAL_INSET * 2,
+    });
+  };
+
+  useLayoutEffect(() => {
+    measure();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
+
+  useEffect(() => {
+    window.addEventListener("resize", measure);
+    // 한글 커스텀 폰트가 이 시점에 아직 로딩 중이면(특히 첫 렌더), 버튼 글자가
+    // 폴백 폰트 기준 폭으로 측정된다 — 폰트가 실제로 적용되면 글자 폭이 달라지면서
+    // 텍스트는 새 폭에 맞게 다시 그려지지만, 알약은 리사이즈/딥스 변화가 없으면
+    // 다시 측정되지 않아 옛 폭 기준 위치에 그대로 남아 글자와 어긋나 보인다.
+    document.fonts?.ready.then(measure);
+    return () => window.removeEventListener("resize", measure);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navRef]);
+
+  useEffect(() => {
+    const root = navRef.current;
+    if (!root) return;
+    // "운영" 드롭다운은 자기 열림/닫힘 상태를 AdminMenu 내부에서만 들고 있어서
+    // (props로 안 넘어옴), 그게 바뀌어 .scr-mobile-tab-active 클래스가 옮겨 붙어도
+    // 위 deps([screen, menuOpen, ...])만으로는 이 인디케이터가 다시 계산되지 않았다
+    // (실제로 지적받은 문제 — 하위 메뉴가 열려 있는 동안 알약이 안 따라옴). deps에
+    // 굳이 그 내부 상태를 끌어올려 전달하는 대신, 클래스 변화 자체를 직접 감시한다.
+    const observer = new MutationObserver(measure);
+    observer.observe(root, { attributes: true, attributeFilter: ["class"], subtree: true });
+    return () => observer.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navRef]);
+
+  return indicator;
+}
+
+export default function MobileTabBar({ screen, menuOpen, isAdmin, effectiveVersionNumber, hidden, onNavigate, onOpenMenu }: MobileTabBarProps) {
+  const navRef = useRef<HTMLElement>(null);
+  const visibleItems = visibleNavMenuItems(effectiveVersionNumber);
+  // "운영" 드롭다운의 열림 상태는 AdminMenu 내부에만 있어(제어권까지 끌어올리진 않는다)
+  // props로 직접 안 보인다 — 그 값이 바뀔 때마다 AdminMenu가 이걸 통해 알려준다. 아래
+  // MutationObserver(클래스 변화 직접 감시)와 이중으로 걸어, 어느 한쪽이 놓쳐도 알약이
+  // 확실히 "운영"을 따라가게 한다.
+  const [adminMenuOpen, setAdminMenuOpen] = useState(false);
+  const indicator = useActiveTabIndicator(navRef, [screen, menuOpen, isAdmin, effectiveVersionNumber, adminMenuOpen]);
+
+  return createPortal(
+    <nav
+      ref={navRef}
+      className={cx("scr-mobile-tabbar", hidden && "scr-mobile-tabbar-hidden")}
+      aria-label="하단 메뉴"
+    >
+      {indicator && (
+        <span
+          className="scr-mobile-tab-indicator"
+          style={{
+            transform: `translateX(${indicator.left}px)`,
+            width: indicator.width, top: indicator.top, height: indicator.height,
+          }}
+        />
+      )}
+      {visibleItems.map((item) => (
+        <button
+          key={item.key}
+          type="button"
+          className={cx("scr-mobile-tab", screen === item.key && "scr-mobile-tab-active")}
+          onClick={() => {
+            // 이미 보고 있는 탭을 다시 누르면(같은 화면이라 navigate()가 아무 효과가
+            // 없으므로) 맨 위로 이동 버튼 대신 이걸로 스크롤을 맨 위로 올린다.
+            if (screen === item.key) scrollRootTo({ top: 0, behavior: "smooth" });
+            else onNavigate(item.key);
+          }}
+        >
+          <span>{item.label}</span>
+        </button>
+      ))}
+      {isAdmin && <AdminMenu screen={screen} onNavigate={onNavigate} variant="mobile" onOpenChange={setAdminMenuOpen} />}
+      <button
+        type="button"
+        className={cx("scr-mobile-tab", menuOpen && "scr-mobile-tab-active")}
+        onClick={onOpenMenu}
+        aria-label="메뉴 열기"
+      >
+        <span>메뉴</span>
+      </button>
+    </nav>,
+    document.getElementById("scr-tabbar-slot") ?? document.body,
+  );
+}
