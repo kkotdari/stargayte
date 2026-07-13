@@ -9,6 +9,7 @@ import { cx } from "../utils/format";
 import { attachPopover } from "../utils/popover";
 import { useIsNarrow } from "../utils/useIsNarrow";
 import { useHideOnScrollDown } from "../hooks/useHideOnScrollDown";
+import { useKeyboardInset } from "../hooks/useKeyboardInset";
 import { useLockBodyScroll } from "../utils/bodyScrollLock";
 import { useAppStore } from "../store/appStore";
 import { isAdminRole } from "../constants/roles";
@@ -41,7 +42,11 @@ export default function Header({
   const previewVersion = useAppStore((s) => s.previewVersion);
   const effectiveVersionNumber = previewVersion ?? versionNumber(appVersion);
   const isAdmin = isAdminRole(user.roles);
-  const tabBarHidden = useHideOnScrollDown(screen);
+  const scrollHidden = useHideOnScrollDown(screen);
+  // 키보드가 뜨면 탭바를 자동으로 숨긴다(요청: "키보드 활성화시 자동으로 탭바 숨기기") —
+  // 스크롤 방향과 무관한 별도 신호라 OR로 합친다(둘 중 하나라도 숨김 조건이면 숨김).
+  const keyboardInset = useKeyboardInset();
+  const tabBarHidden = scrollHidden || keyboardInset > 0;
 
   // 라이트 테마 — 흰 배경 + 검은 글씨 기조로 바꾸는 토글(발표/인쇄 등에서 색상 없이 보고
   // 싶을 때). 로그인 화면(AuthScreen)에도 같은 토글이 따로 있어 로그인 전에도 켤 수

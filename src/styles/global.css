@@ -780,9 +780,12 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   border: none;
   background: rgba(16,21,26,0.55); backdrop-filter: blur(12px);
   /* 테두리를 없앤 대신 위쪽 반사광(inset)과 그림자로 구분감을 준다(요청: "테두리 제거한
-     대신 반사광과 그림자 활용하여 구분감 주기"). */
+     대신 반사광과 그림자 활용하여 구분감 주기"). 아래쪽에도(위보다 옅게) 반사광을
+     더해(요청: "팝업/모달/드롭다운 모두 다크모드에서 아래쪽에도 반사광") 경계 전체가
+     또렷해지게 한다. */
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,0.10),
+    inset 0 -1px 0 rgba(255,255,255,0.05),
     0 4px 14px rgba(0,0,0,0.28);
   /* 다른 드롭다운(.scr-select-drop/.scr-cselect-drop)과 달리 overflow-y가 없어서 스크롤
      가능한 요소가 아니었다 — 배경(body) 스크롤이 잠겨 있는 동안 이 위에서 드래그하면 갈 곳
@@ -2124,6 +2127,15 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-search-filter-float .scr-list-search-input .scr-search-chip-input,
 .scr-search-filter-float .scr-list-search-input .scr-search-chip-input::placeholder { color: #10151a; }
 .scr-search-filter-float .scr-list-search-input .scr-search-chip-input::placeholder { color: rgba(16,21,26,0.45); }
+/* 위 그림자만으로 뜬 느낌을 주는 방식은 다크 테마(밝은 검색창 vs 어두운 배경)에서만
+   또렷하고, 라이트 테마는 배경 자체가 밝아 옅은 검은 그림자가 거의 안 보여 흰 검색창이
+   배경과 거의 구분이 안 됐다(실제로 지적받은 문제) — 라이트 테마에서만 테두리를 더하고,
+   그림자도 가까운 거리의 진한 층을 하나 더 얹어 배경 밝기와 무관하게 경계가 또렷하게
+   보이도록 입체감을 보강한다. */
+.scr-light-theme .scr-search-filter-float .scr-list-search-input {
+  border: 1px solid rgba(16,21,26,0.14);
+  box-shadow: 0 1px 2px rgba(16,21,26,0.08), 0 8px 20px rgba(16,21,26,0.16);
+}
 @media (max-width: 640px) {
   /* 모바일만 진짜로 하단 탭바 위에 고정 배치한다(요청: "탭바에서 살짝 띄워서" — 다만
      탭바가 항상 떠 있는 지금은 그 간격을 이전(14px)보다 좁혀 8px로). */
@@ -2131,15 +2143,42 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
     flex-direction: column;
     /* 컨텐츠(.scr-main, 좌우 16px)와 정확히 같은 폭으로 맞췄더니 컨텐츠 가장자리와 딱
        붙어 떠 있는 필터/검색 알약이 화면 폭을 꽉 채운 것처럼 뻑뻑해 보였다(실제로
-       지적받은 문제) — 좌우 여백을 컨텐츠보다 더 줘서 컨텐츠 폭보다 살짝 좁게 뜬다. */
-    position: fixed; left: 28px; right: 28px; z-index: 45; margin: 0 auto;
-    bottom: calc(var(--mobile-footer-h) + 8px + env(safe-area-inset-bottom, 0px));
+       지적받은 문제) — 좌우 여백을 컨텐츠보다 더 줘서 컨텐츠 폭보다 살짝 좁게 뜬다.
+       거기서 폭을 더 줄여달라는 요청이 두 번 이어져(요청: "모바일 필터창 검색창 폭
+       10프로 축소", 그 다음 "필터창과 검색창 폭 더 줄이기") 좌우 여백을 8vw씩(총
+       16vw)으로 더 늘린다. */
+    position: fixed; left: calc(28px + 8vw); right: calc(28px + 8vw); z-index: 45; margin: 0 auto;
+    /* --mobile-tabbar-visible-h는 useHideOnScrollDown이 탭바가 숨겨질 때마다 0px로,
+       다시 보이면 var(--mobile-footer-h)로 실시간으로 갱신해준다 — 고정값
+       (--mobile-footer-h)만 쓰면 탭바가 스크롤로 접혀도 이 알약은 탭바가 항상 떠
+       있다고 가정한 자리에 그대로 남아, 탭바가 접힌 만큼 아래로 안 내려가 보였다
+       (실제로 지적받은 문제 — "탭바 숨겨질때 필터창과 검색창이 아래로 안내려감").
+       변수가 아직 안 채워졌을 때(초기 렌더)를 대비해 fallback으로 기존 고정값을 둔다.
+       탭바 위쪽 패딩(14px)만큼 체감 간격이 더 넓어 보이는 문제(요청: "검색창과 탭바
+       사이랑 필터창과 검색창 사이 세로 갭 동일하게")를 -6px로 보정해봤는데, 그만큼
+       검색창이 탭바에 살짝 가려지는 부작용이 났다(실제로 지적받은 문제 — "검색창이
+       탭바에 살짝 가려져") — 겹치지 않는 값(+8px, 원래 값)으로 되돌린다. */
+    bottom: calc(var(--mobile-tabbar-visible-h, var(--mobile-footer-h)) + 8px + env(safe-area-inset-bottom, 0px));
     max-width: calc(var(--content-max) - 56px);
     /* bottom도 transition에 넣어서, 키보드 인셋(JS가 인라인 style로 얹는 bottom)이
        바뀔 때 순간 이동이 아니라 부드럽게 따라가게 한다(안 그러면 값이 바뀌는 순간
        뚝 끊겨 옮겨간다 — 실제로 지적받은 문제 "키보드보다 검색창이 먼저 내려와서
-       정신없는 문제"의 절반은 이 transition 부재 때문이었다). */
-    transition: bottom .18s ease-out;
+       정신없는 문제"의 절반은 이 transition 부재 때문이었다). 아래로 스크롤해 탭바와
+       함께 숨을 때(.scr-scroll-hide)도 같은 트랜지션으로 부드럽게 사라지게 opacity/
+       transform도 같이 건다 — 좀 더 부드럽게 보이도록(요청: "숨기고 나오는 애니메이션은
+       좀더 부드럽고 페이드아웃/인을 줘") 지속시간을 늘리고 ease-in-out으로 바꾼다. */
+    transition: bottom .18s ease-out, opacity .28s ease-in-out, transform .28s ease-in-out;
+  }
+  /* 아래로 스크롤하면 탭바와 함께 이 플로팅 필터/검색창도 숨긴다(요청: "아래로 스크롤시
+     헤더, 필터창 검색창 탭바 전부 숨김") — useHideOnScrollDown이 <html>에 얹어주는
+     클래스 하나로 동기화한다(이 컴포넌트는 화면마다 따로 마운트돼 그 훅을 직접 호출하지
+     않는다). 탭바는 아래로 슬라이드하며 사라지는 것과 달리, 이쪽은 자리를 옮기지 않고
+     제자리에서 작아지며 흐려진다(요청: "필터창 검색창은 제자리에서 축소되며 흐려짐") —
+     위치 이동(translateY) 대신 scale만 쓴다. SearchFilterBar.tsx가 포커스 중일 때
+     인라인 style로 이 규칙을 덮어써 강제로 계속 보이게 한다(요청: "포커싱 가있는
+     상황에서는 아무리 스크롤해도 감추면 안돼"). */
+  html.scr-scroll-hide .scr-filter-float-stack {
+    opacity: 0; transform: scale(0.92); pointer-events: none;
   }
   /* 검색창과 억지로 같은 높이를 맞추는 대신(요청: "모바일은 필터창의 높이를 검색창보다
      크게 만들어서 해결") 이 화면폭에서만 필터창을 검색창(44px)보다 크게 키운다 — 세로로
@@ -2226,8 +2265,11 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   background:
     linear-gradient(var(--panel-raised), var(--panel-raised)) padding-box,
     linear-gradient(135deg, color-mix(in srgb, var(--edge-glow) 25%, transparent) 0%, var(--edge-glow) 45%, color-mix(in srgb, var(--edge-glow) 25%, transparent) 100%) border-box;
+  /* 다크모드 팝업 공통 원칙(요청: "팝업/모달/드롭다운 모두 다크모드에서 아래쪽에도
+     반사광") — 위쪽뿐 아니라 아래쪽에도(더 옅게) 반사광을 더한다. */
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,0.06),
+    inset 0 -1px 0 rgba(255,255,255,0.03),
     0 1px 4px rgba(0,0,0,0.15),
     0 4px 14px rgba(0,0,0,0.18);
 }
@@ -2341,13 +2383,10 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
      기본 사각형 하이라이트가 알약 모양과 안 맞게 번쩍였다(실제로 지적받은 문제 —
      "네모모양으로 영역이 제한돼있어서 자연스럽지 않다"). */
   -webkit-tap-highlight-color: transparent;
-  /* 칩이 많아 오른쪽 끝(입력 중인 자리)으로 자동 스크롤되면, 왼쪽 padding은 스크롤
-     시작점에서만 보이는 값이라 스크롤된 뒤에는 적용되지 않아 맨 왼쪽 칩이 박스 경계에
-     딱 붙어 뚝 잘려 보였다(실제로 지적받은 문제) — 왼쪽 가장자리를 투명하게
-     페이드시켜 그 잘림을 자연스러운 그러데이션으로 완충한다. 지금 타이핑 중인 오른쪽
-     끝은 항상 또렷하게 보여야 하므로 오른쪽은 페이드하지 않는다. */
-  -webkit-mask-image: linear-gradient(to right, transparent 0, black 12px, black 100%);
-  mask-image: linear-gradient(to right, transparent 0, black 12px, black 100%);
+  /* 칩이 많아 스크롤됐을 때 왼쪽 잘림을 마스크 그러데이션으로 완충해본 적이 있는데,
+     그 투명해지는 구간으로 뒤 배경이 비쳐서 박스 왼쪽만 반투명한 것처럼 보여 전체
+     톤이 깨졌다(실제로 지적받은 문제 — "검색창 왼쪽이 반투명함, 전체 톤이 똑같아야
+     함"). 마스크 없이 그냥 잘리는 쪽이 톤 일관성 면에서 더 낫다. */
 }
 .scr-search-chip-box::-webkit-scrollbar { display: none; }
 .scr-search-chip-box:focus-within { border-color: var(--pipe-bright); }
@@ -2705,7 +2744,12 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   background:
     linear-gradient(var(--panel-raised), var(--panel-raised)) padding-box,
     linear-gradient(135deg, color-mix(in srgb, var(--edge-glow) 25%, transparent) 0%, var(--edge-glow) 45%, color-mix(in srgb, var(--edge-glow) 25%, transparent) 100%) border-box;
-  box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+  /* 다크모드 팝업 공통 원칙(요청: "팝업/모달/드롭다운 모두 다크모드에서 아래쪽에도
+     반사광") — 옆 드롭다운들(.scr-pv-drop/.scr-cselect-drop)과 같은 위/아래 반사광. */
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.06),
+    inset 0 -1px 0 rgba(255,255,255,0.03),
+    0 4px 14px rgba(0,0,0,0.18);
 }
 .scr-light-theme .scr-select-drop { border: none; background: #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 10px rgba(0,0,0,0.08); }
 /* 옵션 행은 래디우스 없이(사각) 호버 배경이 항상 꽉 찬 사각형으로 보이게 한다. */
@@ -3452,14 +3496,21 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   box-sizing: border-box;
   flex-shrink: 0;
   overflow: hidden;
-  transition: min-height .2s ease, padding-top .2s ease, padding-bottom .2s ease, opacity .15s ease;
+  /* 필터/검색창(.scr-filter-float-stack)과 같은 지속시간/이징으로 맞춰(요청: "숨기고
+     나오는 애니메이션은 좀더 부드럽고 페이드아웃/인을 줘") 함께 사라지고 나타날 때
+     한 세트처럼 보이게 한다. opacity는 높이가 다 접히기 전에 먼저 옅어지도록 살짝
+     더 빠르게. transform도 같이 걸어 접히면서 아래로 슬라이드하는 느낌을 더한다(요청:
+     "탭바는 슬라이드로 아래로 내려가고"). */
+  transition: min-height .28s ease-in-out, padding-top .28s ease-in-out, padding-bottom .28s ease-in-out, opacity .22s ease-in-out, transform .28s ease-in-out;
 }
 /* 아래로 스크롤하면 숨긴다(요청: "모바일 아래로 스크롤시 탭바 숨김(단 끝까지 내리면
    탭바 보임)") — #scroll-root가 flex:1이라 이 높이가 줄어드는 만큼 스크롤 영역이
    자동으로 넓어진다(app-shell의 flex 레이아웃 덕분에 별도 보정 없이 자연스럽게
-   맞춰짐). */
+   맞춰짐). min-height 축소만으로는 그냥 눌려 사라지는 느낌이라, 고정 px만큼
+   translateY도 더해 아래로 슬라이드하며 빠져나가는 동작을 더한다(퍼센트 기준
+   translateY는 축소 중인 높이를 기준으로 계산돼 값이 계속 바뀌므로 고정값을 쓴다). */
 .scr-mobile-tabbar-hidden {
-  min-height: 0; padding-top: 0; padding-bottom: 0; opacity: 0;
+  min-height: 0; padding-top: 0; padding-bottom: 0; opacity: 0; transform: translateY(24px);
 }
 /* 모바일 키보드가 뜰 때 뷰포트 리사이즈 타이밍이 살짝 어긋나면, 탭바 아래로 한 프레임
    정도 배경(페이지/키보드 경계)이 비쳐 보일 수 있다 — 탭바와 같은 배경색을 화면 아래로
@@ -3644,8 +3695,11 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   background:
     linear-gradient(var(--panel-raised), var(--panel-raised)) padding-box,
     linear-gradient(135deg, color-mix(in srgb, var(--edge-glow) 25%, transparent) 0%, var(--edge-glow) 45%, color-mix(in srgb, var(--edge-glow) 25%, transparent) 100%) border-box;
+  /* 다크모드 팝업 공통 원칙(요청: "팝업/모달/드롭다운 모두 다크모드에서 아래쪽에도
+     반사광") — 위쪽뿐 아니라 아래쪽에도(더 옅게) 반사광을 더한다. */
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,0.06),
+    inset 0 -1px 0 rgba(255,255,255,0.03),
     0 1px 4px rgba(0,0,0,0.15),
     0 4px 14px rgba(0,0,0,0.18);
   scrollbar-color: var(--line) transparent;
@@ -3767,7 +3821,12 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   background:
     linear-gradient(var(--panel-raised), var(--panel-raised)) padding-box,
     linear-gradient(135deg, color-mix(in srgb, var(--edge-glow) 25%, transparent) 0%, var(--edge-glow) 45%, color-mix(in srgb, var(--edge-glow) 25%, transparent) 100%) border-box;
-  box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+  /* 다크모드 팝업 공통 원칙(요청: "팝업/모달/드롭다운 모두 다크모드에서 아래쪽에도
+     반사광") — 옆 팝오버들(.scr-pv-drop/.scr-select-drop 등)과 같은 위/아래 반사광. */
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.06),
+    inset 0 -1px 0 rgba(255,255,255,0.03),
+    0 6px 20px rgba(0,0,0,0.2);
 }
 .scr-light-theme .scr-df-pop { border: none; background: #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 10px rgba(0,0,0,0.08); }
 
@@ -4155,7 +4214,9 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    테마는 원래의 불투명 패널을 그대로 유지(아래 .scr-light-theme 오버라이드). */
 .scr-challenge-card {
   background: rgba(16,21,26,0.55); backdrop-filter: blur(12px); border-radius: var(--radius); padding: 17.5px 20px;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.10), 0 4px 14px rgba(0,0,0,0.28);
+  /* 위쪽 반사광만 있으면 카드 아래쪽 경계가 배경과 잘 안 갈렸다(실제로 지적받은 문제) —
+     아래쪽에도(위보다 옅게) 반사광을 더해 카드 전체 경계가 또렷해지게 한다. */
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.10), inset 0 -1px 0 rgba(255,255,255,0.05), 0 4px 14px rgba(0,0,0,0.28);
   display: flex; flex-direction: column; gap: 11px;
 }
 .scr-light-theme .scr-challenge-card {
@@ -4201,7 +4262,9 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    왼쪽 패딩을 줘서 카드 안에서도 서로 열이 맞는다(요청: "타임라인 왼쪽 패딩 더
    줘서 위의 상태 알약과 열맞춤"). */
 .scr-challenge-timeline {
-  position: relative; display: flex; flex-direction: column; gap: 11px; padding-left: 2px;
+  /* 로그(요청 → 응답 → 취소/완료)가 늘어나면서 줄 사이가 너무 붙어 보였다(요청: "로그간
+     줄간격 늘리기") — 11px에서 늘린다. */
+  position: relative; display: flex; flex-direction: column; gap: 17px; padding-left: 2px;
 }
 /* 대기중 상대는 로그에 안 쌓여서(요청: "대기중은 굳이 로그에 쌓지 마") "도전장
    보냄" 한 줄만 있고 그 뒤로 이어지는 줄이 없을 수도 있다 — 이을 대상이 없으면
@@ -4209,40 +4272,52 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    ChallengeScreen.tsx가 뒤이어 쌓일 줄이 하나라도 있을 때만 이 클래스를 붙인다. */
 .scr-challenge-timeline-connected::before {
   /* 아바타 칸(29px) 정중앙은 14.5px 지점 — 줄 두께의 절반만큼 왼쪽에서 시작해야
-     그 중심이 아바타 정중앙을 지난다(실제로 지적받은 문제 — "타임라인 프사
-     가운데에 딱 안맞는데?"). */
-  content: ""; position: absolute; left: 13.875px; top: 4px; bottom: 4px; width: 1.25px; background: var(--line);
+     그 중심이 아바타 정중앙을 지난다. 여기에 컨테이너 자신의 padding-left(2px)를
+     더해야 한다 — position:absolute의 left는 부모의 패딩 바깥쪽(테두리) 기준으로
+     계산되는데, 실제 그리드 칸(아바타)은 그 padding만큼 더 안쪽에서 시작해서, 이
+     2px를 빼먹으면 선이 항상 아바타 중심보다 2px 왼쪽으로 치우쳐 보였다(실제로
+     지적받은 문제 — "타임라인선 중앙 안맞음"). */
+  content: ""; position: absolute; left: 15.875px; top: 4px; bottom: 4px; width: 1.25px;
+  /* 다크 테마의 --line(#2b2427)은 카드의 어두운 글라스 배경 위에서 거의 안 보였다
+     (실제로 지적받은 문제 — "타임라인 다크에서 너무 안보여") — 다크 테마만 훨씬 밝은
+     반투명 흰색으로 바꾼다. 라이트 테마는 밝은 배경 위라 기존 --line으로 충분히 보여
+     그대로 둔다. */
+  background: rgba(255,255,255,0.22);
 }
+.scr-light-theme .scr-challenge-timeline-connected::before { background: var(--line); }
 .scr-challenge-timeline-row {
   position: relative; display: grid; grid-template-columns: 29px 1fr; column-gap: 9px; align-items: start;
 }
-/* 챌린지 타임라인만 예외적으로 프사에 테두리를 두른다(요청: "챌린지만 예외적으로
-   프사에 테두리 추가") — 다크 테마는 흰색, 라이트 테마는 검정색으로 반전. */
-.scr-challenge-timeline-row .scr-avatar { border-radius: 50% !important; border: 2px solid #ffffff; }
-.scr-light-theme .scr-challenge-timeline-row .scr-avatar { border: 2px solid #10151a; }
+/* 테두리를 뺐다가(요청: "프사 테두리 제거") 다시 얇게 추가한다(요청: "챌린지에서 프사에
+   테두리 추가(얇게)") — 예전(2px)보다 얇게, 원형은 그대로 유지. 다크 테마는 흰색,
+   라이트 테마는 검정색으로 반전. */
+.scr-challenge-timeline-row .scr-avatar { border-radius: 50% !important; border: 1px solid #ffffff; }
+.scr-light-theme .scr-challenge-timeline-row .scr-avatar { border: 1px solid #10151a; }
 /* 아바타 없는 줄(같은 팀 안내/대결 종료)의 첫 칸 — 빈 칸이라도 폭을 차지해야 옆의
    글자가 아바타 있는 줄과 같은 x좌표에서 시작한다. */
 .scr-challenge-timeline-spacer { width: 29px; }
-.scr-challenge-timeline-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+/* 라벨 줄과 그 아래 한줄 메시지(상대 칩/거절 사유 등) 사이 간격도 함께 늘린다(요청:
+   "아랫줄에 한줄 메시지 로그간 줄간격 늘리기") — 2px는 거의 붙어 보였다. */
+.scr-challenge-timeline-body { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
 .scr-challenge-timeline-label { font-size: 14.85px; font-weight: 600; color: var(--text); }
 .scr-challenge-timeline-label-rejected { color: var(--loss); }
 .scr-challenge-timeline-label-accepted { color: var(--win); }
 .scr-challenge-timeline-detail { font-size: 13.75px; color: var(--muted); }
+/* 한마디(도전 메시지)/거절 사유처럼 상대가 직접 남긴 문장만 인용구처럼 보이게 이탤릭 +
+   살짝 큰 폰트로(요청: "한마디랑 거절 사유 등 메시지 이탤릭처리 폰트 크기 살짝 확대") —
+   "같은 팀"/"경기결과가 등록됐어요" 같은 시스템 안내문(같은 .scr-challenge-timeline-detail
+   공용 클래스를 쓰지만 사용자가 남긴 문장이 아니다)은 그대로 둔다. */
+.scr-challenge-timeline-quote { font-style: italic; font-size: 14.5px; }
 .scr-dim { color: var(--dim); font-weight: 400; }
-/* "도전장 보냄" 줄 안에 누구한테 보냈는지 프사+닉네임으로 나열한다(요청: "도전장
-   보냄 정보에 누구한테 보냈는지 프사와 닉네임 나열" — 대기중 상대는 따로 로그
-   줄을 안 쌓는 대신 여기 모아 보여준다). 라벨/닉네임 모두 위 이름줄(13.5px)보다
-   작게(요청: "닉네임은 로그의 닉네임보다 살짝 작아야해"), 아바타와 글자는 세로
-   가운데로(요청: "세로 가운데 정렬이 안돼있음"). */
-.scr-challenge-timeline-targets { display: flex; flex-wrap: wrap; align-items: center; gap: 6.5px; margin-top: 2px; }
-.scr-challenge-timeline-targets-label { font-size: 12px; }
-.scr-challenge-timeline-target-chip {
-  display: inline-flex; align-items: center; gap: 4px;
-  font-size: 13px; font-weight: 600; color: var(--text);
-}
-/* 한마디는 상대 칩 목록과 같은 줄에, 칩들과는 구분되도록 갭을 더 준다(요청: "챌린지
-   카드에서 한마디를 상대 옆에 노출(갭좀 두고)"). */
-.scr-challenge-timeline-message-inline { margin-left: 4px; }
+/* 헤드라인("~에게 도전장 보냄") 안에 상대 프사(22px)를 곁들인다(요청: "윗줄헤드라인의
+   프사 닉네임에게 도전장 보냄"). 프사와 나머지 텍스트(14.85px)는 높이가 서로 달라서,
+   inline 텍스트 흐름 안에서 vertical-align으로 맞추려 하면 폰트 기준선 계산이 미묘하게
+   어긋나 계속 안 맞아 보였다(실제로 지적받은 문제 — "세로 정렬이 안맞음") — 라벨 한
+   줄 전체를 flex row로 바꿔 flexbox의 align-items:center로 확실하게 맞춘다. */
+.scr-challenge-timeline-label-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.scr-challenge-timeline-sent-to { display: inline-flex; align-items: center; gap: 4px; }
+/* 닉네임은 굵게(요청: "닉네임 볼드")로 도전자 이름과 무게감을 맞춘다. */
+.scr-challenge-timeline-sent-to-name { font-weight: 700; color: var(--text); }
 .scr-challenge-card-actions { display: flex; justify-content: center; gap: 8px; }
 .scr-challenge-inbox-body .scr-form-actions { justify-content: center; }
 /* 승락(핑크)/거절(검정) 버튼 — 로그인 버튼과 같은 필(pill) 래디우스. */

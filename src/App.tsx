@@ -163,18 +163,23 @@ export default function App() {
         <span className="scr-rail scr-rail-left" aria-hidden="true" />
         <span className="scr-rail scr-rail-right" aria-hidden="true" />
 
-        <Header
-          user={user}
-          screen={screen}
-          onNavigate={navigate}
-          onOpenProfile={() => setProfileOpen(true)}
-          onLogout={logout}
-        />
-
         {/* 앱 셀의 유일한 스크롤 영역 — html/body/#root는 overflow:hidden으로 고정되고
             (global.css), 실제 스크롤은 이 컨테이너 하나에서만 일어난다. utils/scrollRoot.ts의
-            getScrollRoot()가 이 id를 찾아 window 대신 이 엘리먼트를 스크롤 신호의 기준으로 쓴다. */}
+            getScrollRoot()가 이 id를 찾아 window 대신 이 엘리먼트를 스크롤 신호의 기준으로 쓴다.
+            헤더도 이 안(맨 위)에 둔다 — 고정 바(fixed/sticky)가 아니라 페이지 맨 위 콘텐츠로
+            취급해, 스크롤하면 자연스럽게 같이 밀려 올라가고 맨 위로 돌아가면 다시 보이게
+            한다(요청: "헤더는 고정식이 아니라 그냥 페이지의 TOP부분으로 여겨져서 스크롤시
+            자연스럽게 올라가게"). 화면(랭킹/경기/...)을 여럿 마운트해두고 display:none만
+            바꾸는 구조라도 헤더는 이 화면들과 별개로 스크롤 영역 맨 위에 하나만 있으면
+            충분하다. */}
         <div id="scroll-root">
+          <Header
+            user={user}
+            screen={screen}
+            onNavigate={navigate}
+            onOpenProfile={() => setProfileOpen(true)}
+            onLogout={logout}
+          />
           <main className="scr-main">
             {booting && (
               <div className="scr-boot"><Spinner size={22} /> 데이터 불러오는 중...</div>

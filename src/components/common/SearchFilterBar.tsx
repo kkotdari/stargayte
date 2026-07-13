@@ -4,6 +4,7 @@ import { X } from "lucide-react";
 import { attachPopover } from "../../utils/popover";
 import { cx } from "../../utils/format";
 import { useIsNarrow } from "../../utils/useIsNarrow";
+import { useKeyboardInset } from "../../hooks/useKeyboardInset";
 import { BASE_RACES, RACE_INFO } from "../../constants/races";
 import type { BaseRace } from "../../types";
 
@@ -63,6 +64,10 @@ export default function SearchFilterBar({
 }: SearchFilterBarProps) {
   const [suggestOpen, setSuggestOpen] = useState(false);
   const [highlight, setHighlight] = useState(0);
+  // 필터창/검색창 중 어디든 포커스가 가 있으면, 아래로 스크롤해도 이 스택을 숨기지
+  // 않는다(요청: "필터창이나 검색창에 포커싱 가있는 상황에서는 아무리 아래로 스크롤해도
+  // 감추면 안돼") — 지금 상호작용 중인 입력을 스크롤 한 번으로 가려버리면 안 된다.
+  const [stackFocused, setStackFocused] = useState(false);
   // 칩(완성된 검색어/경기번호/종족)은 부모 state(searchValue 등)를 그대로 진실로 삼아
   // 즉시 반영한다(요청: "엔터 확정 방식을 실시간 반영 방식으로 원복 — 칩 추가/제거시
   // 즉시 적용"). 지금 타이핑 중인, 아직 칩이 안 된 마지막 단어만 로컬 상태(liveText)로
@@ -174,51 +179,9 @@ export default function SearchFilterBar({
   // 정작 자신이 뭘 치고 있는지 안 보였다(실제로 지적받은 문제) — 바텀시트(키보드를
   // 일부러 피하지 않음)와 반대로, 이건 지금 상호작용 중인 입력창이라 키보드 위로
   // 올라와 있어야 자연스럽다. visualViewport가 줄어든 만큼(키보드 높이)을 인라인
-  // style로 얹어 CSS의 기본 위치보다 우선시킨다.
-  const [keyboardInset, setKeyboardInset] = useState(0);
-  useEffect(() => {
-    const vv = window.visualViewport;
-    if (!vv) return;
-    // 120px 문턱을 "키보드가 떴다"고 볼지 말지 판단할 때만 쓰고, 일단 뜬 뒤로는(engaged)
-    // 문턱과 무관하게 실제 inset 값을 그대로 계속 따라간다 — 전엔 닫히는 도중 inset이
-    // 120 밑으로 내려가는 순간 바로 0으로 뚝 떨어져서, 키보드는 아직 다 안 내려갔는데
-    // 검색창만 먼저 원위치로 내려와버렸다(실제로 지적받은 문제 — "키보드보다 검색창이
-    // 먼저 내려와서 정신없는 문제"). 진짜로 0까지 다 닫혔을 때만 engaged를 끈다.
-    // vv.offsetTop은 뺀다 — 키보드가 뜬 채로 목록을 스크롤하면 iOS가 포커스된 입력을
-    // 보여주려고 비주얼 뷰포트를 위아래로 미세하게 패닝하면서 이 값이 스크롤할 때마다
-    // 흔들리는데, 그걸 그대로 inset에 반영하면 스크롤할 때마다 필터/검색창이 덩달아
-    // 위아래로 튀었다(실제로 지적받은 문제). 키보드 높이 자체는 offsetTop과 무관하게
-    // innerHeight-vv.height만으로 구해지고, 'scroll' 이벤트도 같은 이유로 안 듣는다 —
-    // 키보드 높이가 실제로 바뀔 때(resize)만 다시 계산한다.
-    // 그래도 간헐적으로 필터/검색창만 아주 위로 튀는 문제가 남아있었다(실제로 지적받은
-    // 문제 — "탭바는 정상 위치인데 필터랑 검색창만 저 위로 올라감") — 탭바는 이 JS
-    // 계산과 무관한 순수 flex 레이아웃이라 멀쩡했던 반면, 이 인풋은 resize 이벤트가
-    // 연달아 여러 번(키보드 애니메이션 도중 중간값들) 올 때마다 매번 즉시 반영해서, 그
-    // 중간값이 실제보다 크게 튀면 그대로 화면에 반영됐다. 아래 두 가지로 방어한다:
-    // (1) 이벤트가 잠깐 멎을 때까지 기다렸다가(짧은 디바운스) 마지막 값만 반영,
-    // (2) 그래도 비정상적으로 큰 값(화면 높이의 60% 초과)은 키보드 높이일 수 없으니
-    // 그대로 믿지 않고 화면 높이 기준으로 상한을 둔다.
-    let engaged = false;
-    let settleTimer: ReturnType<typeof setTimeout> | null = null;
-    const commit = () => {
-      const raw = Math.max(0, window.innerHeight - vv.height);
-      const inset = Math.min(raw, window.innerHeight * 0.6);
-      if (!engaged && inset > 120) engaged = true;
-      if (!engaged) return;
-      setKeyboardInset(inset);
-      if (inset <= 0) engaged = false;
-    };
-    const onResize = () => {
-      if (settleTimer) clearTimeout(settleTimer);
-      settleTimer = setTimeout(commit, 100);
-    };
-    vv.addEventListener("resize", onResize);
-    commit();
-    return () => {
-      vv.removeEventListener("resize", onResize);
-      if (settleTimer) clearTimeout(settleTimer);
-    };
-  }, []);
+  // style로 얹어 CSS의 기본 위치보다 우선시킨다. Header(탭바 자동 숨김)도 같은 값이
+  // 필요해서 공용 훅으로 뺐다.
+  const keyboardInset = useKeyboardInset();
 
   // 후보를 고르면 즉시 적용한다 — 이름 후보는 검색어 칩으로(addChip), 종족 후보는 이
   // 경로로만 종족 칩이 된다(타이핑+스페이스로는 안 됨, 위 matchedSuggestions 주석 참고).
@@ -388,7 +351,23 @@ export default function SearchFilterBar({
   // 세로로 쌓아 탭바 위에 고정한다(global.css .scr-filter-float-stack). keyboardInset은
   // 이 바깥 스택 전체에 적용해야 필터창까지 같이 키보드 위로 따라 올라온다.
   const stackEl = (
-    <div className="scr-filter-float-stack" style={keyboardInset > 0 ? { bottom: keyboardInset + 10 } : undefined}>
+    <div
+      className="scr-filter-float-stack"
+      style={{
+        ...(keyboardInset > 0 ? { bottom: keyboardInset + 10 } : undefined),
+        // 인라인 style은 클래스 기반 규칙(html.scr-scroll-hide .scr-filter-float-stack)
+        // 보다 항상 우선하므로, 포커스가 가 있는 동안은 스크롤 방향과 무관하게 이 값으로
+        // 강제로 보이게 고정한다.
+        ...(stackFocused ? { opacity: 1, transform: "none", pointerEvents: "auto" } : undefined),
+      }}
+      onFocus={() => setStackFocused(true)}
+      onBlur={(e) => {
+        // 포커스가 이 스택 안의 다른 요소(검색창 -> 필터 라디오 등)로 옮겨가는 중이면
+        // relatedTarget이 여전히 이 안에 있다 — 그럴 땐 아직 벗어난 게 아니니 유지한다.
+        if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+        setStackFocused(false);
+      }}
+    >
       {filterPanel && <div className="scr-filter-panel">{filterPanel}</div>}
       <div className="scr-search-filter-float">{searchItem}</div>
     </div>

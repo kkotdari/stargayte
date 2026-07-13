@@ -164,23 +164,33 @@ function ChallengeCard({ challenge, myId, onResponded, onRegisterReplay }: Chall
         <div className="scr-challenge-timeline-row">
           <Avatar member={creatorMember} size={29} />
           <div className="scr-challenge-timeline-body">
-            <span className="scr-challenge-timeline-label">
-              {challenge.createdBy.nickname} <span className="scr-dim">· 도전장 보냄</span>
-            </span>
-            <div className="scr-challenge-timeline-targets">
-              <span className="scr-challenge-timeline-targets-label scr-dim">상대</span>
-              {challenge.targets.map((t) => (
-                <span key={t.memberId} className="scr-challenge-timeline-target-chip">
-                  <Avatar member={{ id: t.memberId, nickname: t.nickname, avatar: t.avatar }} size={26} />
-                  {t.nickname}
+            {/* 예전엔 "도전장 보냄"만 있고 누구한테인지는 아래 "상대" 칩을 봐야 알 수
+                있었는데, 요청대로 헤드라인 자체에 상대의 프사+닉네임을 바로 넣어("미친
+                마법사 · [프사]태섭에게 도전장 보냄") 한눈에 읽히게 한다 — 상대가 여럿이면
+                쉼표로 나열. 프사(22px)와 나머지 텍스트(14.85px)는 높이가 달라서, 이걸
+                한 줄의 텍스트 흐름(inline+vertical-align)으로 섞으면 폰트 기준선 계산이
+                미묘하게 어긋나 세로 정렬이 안 맞아 보였다(실제로 지적받은 문제) — 아예
+                한 줄짜리 flex row로 묶어 flexbox의 align-items:center로 확실하게
+                가운데를 맞춘다. */}
+            <span className="scr-challenge-timeline-label scr-challenge-timeline-label-row">
+              <span>{challenge.createdBy.nickname}</span>
+              <span className="scr-dim">·</span>
+              {challenge.targets.map((t, i) => (
+                <span key={t.memberId} className="scr-challenge-timeline-sent-to">
+                  <Avatar member={{ id: t.memberId, nickname: t.nickname, avatar: t.avatar }} size={22} />
+                  <span className="scr-challenge-timeline-sent-to-name">
+                    {t.nickname}{i < challenge.targets.length - 1 && ","}
+                  </span>
                 </span>
               ))}
-              {challenge.message && (
-                <span className="scr-challenge-timeline-detail scr-challenge-timeline-message-inline">
-                  "{challenge.message}"
-                </span>
-              )}
-            </div>
+              <span className="scr-dim">에게 도전장 보냄</span>
+            </span>
+            {/* 상대 프사/닉네임은 이제 위 헤드라인("~에게 도전장 보냄")에 이미 나오니
+                여기선 중복해서 칩으로 안 보여준다(요청: "한마디에는 상대 프사랑 닉네임을
+                없애고 그걸 ~에게 도전장 보냄에 넣는거야") — 한마디(메시지)만 남긴다. */}
+            {challenge.message && (
+              <span className="scr-challenge-timeline-detail scr-challenge-timeline-quote">"{challenge.message}"</span>
+            )}
           </div>
         </div>
 
@@ -202,7 +212,7 @@ function ChallengeCard({ challenge, myId, onResponded, onRegisterReplay }: Chall
               </span>
               {/* 거절 사유는 요청자에게만 온다(서버가 그 외 조회자에겐 null로 내려준다). */}
               {t.response === "rejected" && t.rejectReason && (
-                <span className="scr-challenge-timeline-detail">"{t.rejectReason}"</span>
+                <span className="scr-challenge-timeline-detail scr-challenge-timeline-quote">"{t.rejectReason}"</span>
               )}
             </div>
           </div>
@@ -456,8 +466,9 @@ export default function ChallengeScreen() {
           챌린지 <span className="scr-challenge-title-subtitle">너 나와!</span>
         </h1>
         <div className="scr-v2-toolbar-actions">
-          <button type="button" className="scr-btn scr-btn-primary scr-btn-sm" onClick={() => setFormOpen(true)}>
-            <Mail size={13} className="scr-challenge-send-icon" /> 도전장 보내기
+          <button type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm" onClick={() => setFormOpen(true)}>
+            <Mail size={17} className="scr-challenge-send-icon" />
+            도전장 보내기
           </button>
         </div>
       </div>
