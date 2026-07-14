@@ -474,9 +474,14 @@ export default function ChallengeScreen() {
         <div className="scr-empty"><Spinner size={18} /></div>
       ) : filter === "upcoming" ? (
         <>
-          {respondChallenges.length > 0 && (
-            <section className="scr-challenge-section scr-challenge-section-respond">
-              <h2 className="scr-challenge-section-title scr-challenge-section-title-respond">응답하라!</h2>
+          {/* 응답할 게 없어도 섹션 자체(소타이틀 포함)는 항상 보여준다 — 그래야 "응답하라!"
+              라는 영역이 있다는 것 자체가 눈에 띄고, 비어 있을 땐 그 사실을 바로 알 수
+              있다(요청: "응답하라! 영역이 없네 소타이틀도 있어야해"). */}
+          <section className="scr-challenge-section scr-challenge-section-respond">
+            <h2 className="scr-challenge-section-title scr-challenge-section-title-respond">응답하라!</h2>
+            {respondChallenges.length === 0 ? (
+              <div className="scr-empty">응답할 도전장이 없어요</div>
+            ) : (
               <div className="scr-challenge-list">
                 {groupChallengesByDate(respondChallenges).map((g) => (
                   <div key={g.label} className="scr-challenge-date-group">
@@ -496,12 +501,13 @@ export default function ChallengeScreen() {
                   </div>
                 ))}
               </div>
-            </section>
-          )}
+            )}
+          </section>
 
           <section className="scr-challenge-section">
+            <h2 className="scr-challenge-section-title">다가오는 대결</h2>
             {restUpcomingChallenges.length === 0 ? (
-              <div className="scr-empty">{respondChallenges.length === 0 ? emptyLabel : null}</div>
+              <div className="scr-empty">{emptyLabel}</div>
             ) : (
               <div className="scr-challenge-list">
                 {groupChallengesByDate(restUpcomingChallenges).map((g) => (
@@ -527,6 +533,7 @@ export default function ChallengeScreen() {
         </>
       ) : (
         <section className="scr-challenge-section">
+          <h2 className="scr-challenge-section-title">종료된 대결</h2>
           {endedChallenges.length === 0 ? (
             <div className="scr-empty">{emptyLabel}</div>
           ) : (
