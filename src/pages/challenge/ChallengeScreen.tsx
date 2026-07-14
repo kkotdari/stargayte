@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
 import { Spinner } from "../../components/common/Feedback";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
@@ -180,6 +181,17 @@ function ChallengeSide({
   );
 }
 
+// 카드 안에서 좌우로 슬라이드해 보여줄 "한 페이지" — 재신청 체인의 각 기록(과 지금
+// 살아있는 도전장 자신)이 공통으로 갖는 필드만 뽑는다. 도전자/팀 구성은 체인 내내
+// 안 바뀌므로 여기 안 담는다(요청: "재신청하면 원래건은 종료되고 새로운 도전 행이
+// 만들어져 새 아이디로... 화면에서는 좌우로 슬라이드되게 구성하는거야").
+interface ChallengePage {
+  id: number;
+  scheduledAt: string | null;
+  message: string;
+  targets: ChallengeTarget[];
+}
+
 interface ChallengeCardProps {
   challenge: Challenge;
   myId: string | undefined;
@@ -200,8 +212,45 @@ function ChallengeCard({ challenge, myId, onResponded, onViewResults }: Challeng
   const canRespond = !!myTarget && myTarget.response === "pending" && challenge.status !== "canceled";
   const canCancel = isCreator && challenge.status === "pending";
   const canReapply = isCreator && challenge.status === "rejected";
-  const timeLabel = challengeTimeLabel(challenge.scheduledAt);
   const overall = challengeDisplayStatus(challenge);
+
+  // 재신청 이력(오래된 순) 뒤에 지금 살아있는 도전장을 붙여 "페이지" 목록을 만든다 —
+  // 기본으로는 맨 뒤(최신, 지금 살아있는 도전장)를 보여준다. 이력이 없으면(challenge.
+  // history가 비어있으면) 페이지가 하나뿐이라 슬라이드 UI 자체가 안 뜬다. pages.length는
+  // 이 카드가 떠 있는 동안 안 바뀐다(재신청으로 이력이 늘어나는 건 이 도전장 자신이
+  // 재신청될 때인데, 그 순간 새 id의 도전장으로 통째로 교체돼 이 카드는 언마운트되고
+  // 새 카드가 뜬다) — useState 초기값으로만 계산해도 충분하다.
+  const pages: ChallengePage[] = useMemo(
+    () => [
+      ...challenge.history.map((h) => ({ id: h.id, scheduledAt: h.scheduledAt, message: h.message, targets: h.targets })),
+      { id: challenge.id, scheduledAt: challenge.scheduledAt, message: challenge.message, targets: challenge.targets },
+    ],
+    [challenge],
+  );
+  const [pageIndex, setPageIndex] = useState(pages.length - 1);
+  const isLatestPage = pageIndex === pages.length - 1;
+  const page = pages[pageIndex];
+  const pageTimeLabel = challengeTimeLabel(page.scheduledAt);
+  // 이력 페이지는 전부 "거절되고 재신청된" 기록이라 항상 rejected다(재신청 자체가
+  // 거절된 도전장에만 허용되므로) — 최신 페이지만 지금 실제 상태(overall, 완료/무응답
+  // 취소 등 파생 상태까지 반영)를 쓴다.
+  const pageOverall: ChallengeDisplayStatus = isLatestPage ? overall : "rejected";
+  const pageTargetInfos = page.targets.map((t) => ({ target: t, overall: pageOverall }));
+
+  // 스와이프(모바일) — 왼쪽으로 밀면 다음(최신 쪽), 오른쪽으로 밀면 이전(옛 기록 쪽).
+  const touchStartXRef = useRef<number | null>(null);
+  const SWIPE_THRESHOLD_PX = 40;
+  const onMatchupTouchStart = (e: React.TouchEvent) => {
+    touchStartXRef.current = e.touches[0]?.clientX ?? null;
+  };
+  const onMatchupTouchEnd = (e: React.TouchEvent) => {
+    const startX = touchStartXRef.current;
+    touchStartXRef.current = null;
+    if (startX === null) return;
+    const delta = (e.changedTouches[0]?.clientX ?? startX) - startX;
+    if (delta > SWIPE_THRESHOLD_PX) setPageIndex((i) => Math.max(0, i - 1));
+    else if (delta < -SWIPE_THRESHOLD_PX) setPageIndex((i) => Math.min(pages.length - 1, i + 1));
+  };
 
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
   const [reapplying, setReapplying] = useState(false);
@@ -295,18 +344,26 @@ function ChallengeCard({ challenge, myId, onResponded, onViewResults }: Challeng
   };
 
   // 요청자쪽 인원(본인+같은 편) — Member.avatar는 memberOf로 찾은 것, 없으면 null.
+  // 도전자/팀 구성은 재신청 체인 내내 그대로라 페이지와 무관하게 고정이다.
   const creatorSideMembers: SideMember[] = [
     { id: challenge.createdBy.id, nickname: challenge.createdBy.nickname, avatar: creatorMember?.avatar ?? null },
     ...challenge.ownMembers.map((m) => ({ id: m.memberId, nickname: m.nickname, avatar: m.avatar })),
   ];
   const targetSideMembers: SideMember[] = challenge.targets.map((t) => ({ id: t.memberId, nickname: t.nickname, avatar: t.avatar }));
-  const targetInfos = challenge.targets.map((t) => ({ target: t, overall }));
 
   return (
     <div className="scr-challenge-card">
       <div className="scr-challenge-card-body">
         <div className="scr-challenge-card-row scr-mono scr-challenge-card-when">
-          {timeLabel ?? "시간 미정"}
+          {pageTimeLabel ?? "시간 미정"}
+          {/* 재신청 이력이 있을 때만 "몇 번째 기록"인지 보여준다(요청: "재신청하면 원래건은
+              종료되고 새로운 도전 행이 만들어져... 화면에서는 좌우로 슬라이드되게
+              구성하는거야"). */}
+          {pages.length > 1 && (
+            <span className="scr-challenge-page-note">
+              {isLatestPage ? "최신" : `이전 기록 ${pageIndex + 1}/${pages.length}`}
+            </span>
+          )}
         </div>
 
         {/* 매치업 — 도전자편/상대편을 세로로 쌓고, 손가락 이모지는 그 사이 한가운데(요청:
@@ -314,17 +371,53 @@ function ChallengeCard({ challenge, myId, onResponded, onViewResults }: Challeng
             팀당 한 개, 요청: "손가락은 한개만 표시"). "누가 도전장 보냄" 태그는 없앴고
             (요청: "이 부분 삭제"), 도전자의 한마디는 도전자편 아래로, 상대 응답 알약은
             그 사람 프로필 옆에 인라인으로, 응답 메시지는 그 아래로 옮겼다(요청: "상대프로필
-            옆에 인라인으로 응답상태알약... 및 프로필 아래에 응답 메시지 표시"). */}
-        <div className="scr-challenge-matchup">
-          <ChallengeSide people={creatorSideMembers} message={challenge.message} />
-          <span className="scr-challenge-arrow" aria-hidden="true">👉🏻</span>
-          <ChallengeSide people={targetSideMembers} targets={targetInfos} />
+            옆에 인라인으로 응답상태알약... 및 프로필 아래에 응답 메시지 표시"). 재신청
+            이력이 있으면 좌우로 스와이프(모바일)/화살표(PC)로 예전 기록도 볼 수 있다. */}
+        <div
+          className="scr-challenge-matchup-wrap"
+          onTouchStart={pages.length > 1 ? onMatchupTouchStart : undefined}
+          onTouchEnd={pages.length > 1 ? onMatchupTouchEnd : undefined}
+        >
+          {pages.length > 1 && pageIndex > 0 && (
+            <button
+              type="button" className="scr-challenge-page-nav scr-challenge-page-nav-prev"
+              onClick={() => setPageIndex((i) => i - 1)} aria-label="이전 기록 보기"
+            >
+              <ChevronLeft size={16} />
+            </button>
+          )}
+          <div className="scr-challenge-matchup">
+            <ChallengeSide people={creatorSideMembers} message={page.message} />
+            <span className="scr-challenge-arrow" aria-hidden="true">👉🏻</span>
+            <ChallengeSide people={targetSideMembers} targets={pageTargetInfos} />
+          </div>
+          {pages.length > 1 && pageIndex < pages.length - 1 && (
+            <button
+              type="button" className="scr-challenge-page-nav scr-challenge-page-nav-next"
+              onClick={() => setPageIndex((i) => i + 1)} aria-label="다음 기록 보기"
+            >
+              <ChevronRight size={16} />
+            </button>
+          )}
         </div>
+
+        {pages.length > 1 && (
+          <div className="scr-challenge-page-dots">
+            {pages.map((p, i) => (
+              <button
+                key={p.id} type="button"
+                className={cx("scr-challenge-page-dot", i === pageIndex && "scr-challenge-page-dot-active")}
+                onClick={() => setPageIndex(i)}
+                aria-label={`${i + 1}번째 기록 보기`}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       {err && <div className="scr-err">{err}</div>}
 
-      {canRespond && !scheduling && (
+      {isLatestPage && canRespond && !scheduling && (
         <div className="scr-challenge-card-actions">
           <button
             className="scr-btn scr-challenge-reject-btn scr-btn-sm" disabled={busy}
@@ -381,7 +474,7 @@ function ChallengeCard({ challenge, myId, onResponded, onViewResults }: Challeng
         </div>
       )}
 
-      {challenge.status === "confirmed" && (
+      {isLatestPage && challenge.status === "confirmed" && (
         <div className="scr-challenge-card-actions">
           <button className="scr-btn scr-btn-ghost scr-btn-sm" onClick={() => onViewResults(challenge)}>
             결과 보기
@@ -417,7 +510,7 @@ function ChallengeCard({ challenge, myId, onResponded, onViewResults }: Challeng
         </div>
       )}
 
-      {!reapplying && (canCancel || canReapply) && (
+      {isLatestPage && !reapplying && (canCancel || canReapply) && (
         <div className="scr-challenge-card-actions">
           {canCancel && (
             <button className="scr-btn scr-btn-ghost scr-btn-sm" onClick={() => setCancelConfirmOpen(true)} disabled={busy}>
@@ -477,10 +570,20 @@ export default function ChallengeScreen() {
   }, []);
   useEffect(load, [load]);
 
+  // 재신청은 이제 같은 행을 고쳐 쓰지 않고 새 id로 새 도전장을 만든다(요청: "재신청하면
+  // 원래건은 종료되고 새로운 도전 행이 만들어져 새 아이디로") — 그 응답(updated)의
+  // reappliedFromId가 채워져 있으면, 목록에서 그 원래 도전장은 지우고 새 도전장으로
+  // 바꿔 끼운다. 다른 액션(승락/거절/취소 등)은 reappliedFromId가 없으니 이 필터는
+  // 그냥 아무 일도 안 한다.
   const upsert = (updated: Challenge) => {
     setChallenges((prev) => {
-      const exists = prev.some((c) => c.id === updated.id);
-      return exists ? prev.map((c) => (c.id === updated.id ? updated : c)) : [updated, ...prev];
+      const withoutSuperseded = updated.reappliedFromId != null
+        ? prev.filter((c) => c.id !== updated.reappliedFromId)
+        : prev;
+      const exists = withoutSuperseded.some((c) => c.id === updated.id);
+      return exists
+        ? withoutSuperseded.map((c) => (c.id === updated.id ? updated : c))
+        : [updated, ...withoutSuperseded];
     });
   };
 

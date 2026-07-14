@@ -4446,6 +4446,34 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   .scr-challenge-arrow { margin-left: 2px; margin-right: 44px; }
 }
 
+/* 재신청 체인 슬라이드 UI(요청: "재신청하면 원래건은 종료되고 새로운 도전 행이
+   만들어져... 화면에서는 좌우로 슬라이드되게 구성하는거야") — 이력이 없는(재신청
+   한 번도 안 된) 보통의 카드에는 이 요소들 자체가 렌더링 안 되니 기존 카드 모양에
+   영향이 없다. */
+.scr-challenge-page-note {
+  font-size: 11px; font-weight: 700; color: var(--dim); letter-spacing: 0.02em;
+  background: rgba(var(--overlay-rgb), 0.08); border-radius: 999px; padding: 2px 8px;
+  margin-left: 6px;
+}
+.scr-challenge-matchup-wrap { position: relative; }
+/* 화살표 버튼은 카드 좌우 가장자리에 겹쳐 뜬다 — 매치업 내용(가운데 정렬) 폭과
+   무관하게 항상 카드 자체의 가장자리에 붙어야 어느 페이지를 보든 위치가 안 흔들린다. */
+.scr-challenge-page-nav {
+  position: absolute; top: 50%; transform: translateY(-50%); z-index: 1;
+  display: flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; border-radius: 50%;
+  background: rgba(var(--overlay-rgb), 0.1); border: none; color: var(--dim); cursor: pointer;
+}
+.scr-challenge-page-nav:hover { color: var(--text); background: rgba(var(--overlay-rgb), 0.18); }
+.scr-challenge-page-nav-prev { left: -4px; }
+.scr-challenge-page-nav-next { right: -4px; }
+.scr-challenge-page-dots { display: flex; align-items: center; justify-content: center; gap: 6px; }
+.scr-challenge-page-dot {
+  width: 6px; height: 6px; border-radius: 50%; padding: 0; border: none;
+  background: rgba(var(--overlay-rgb), 0.25); cursor: pointer;
+}
+.scr-challenge-page-dot-active { background: var(--point); }
+
 /* 도전자편/상대편 한 칸 — 인원이 하나든(1:1) 여럿이든(팀전) 항상 세로로 쌓는다(요청:
    "각팀을 세로로 배치"). */
 /* 상대편은 프로필 옆에 응답 알약까지 인라인으로 붙어(요청: "응답상태알약...

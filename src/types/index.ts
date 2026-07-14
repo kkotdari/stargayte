@@ -276,6 +276,17 @@ export interface ChallengeOwnMember {
   avatar: string | null;
 }
 
+// 재신청 체인에서 이 도전장보다 앞선(더 예전) 기록 한 건 — 도전자/팀 구성은 체인
+// 내내 그대로라(재신청이 손대는 건 시간/메시지/응답뿐) 따로 안 담는다.
+export interface ChallengeHistoryEntry {
+  id: number;
+  scheduledAt: string | null;
+  message: string;
+  status: ChallengeStatus;
+  targets: ChallengeTarget[];
+  createdAt: string;
+}
+
 export interface Challenge {
   id: number;
   matchType: ChallengeMatchType;
@@ -287,6 +298,11 @@ export interface Challenge {
   ownMembers: ChallengeOwnMember[];
   resultMatchId: number | null;
   createdAt: string;
+  // 재신청으로 만들어졌으면 원래 도전장의 id, 아니면 null.
+  reappliedFromId: number | null;
+  // 이 도전장보다 앞선 체인 기록(오래된 순) — 목록 화면 카드에서 좌우로 슬라이드해
+  // 보여준다. 재신청 이력이 없으면 빈 배열.
+  history: ChallengeHistoryEntry[];
 }
 
 export interface ChallengeCreatePayload {
