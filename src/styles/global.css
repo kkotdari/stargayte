@@ -2155,14 +2155,12 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
     /* 컨텐츠(.scr-main, 좌우 16px)와 정확히 같은 폭으로 맞췄더니 컨텐츠 가장자리와 딱
        붙어 떠 있는 필터/검색 알약이 화면 폭을 꽉 채운 것처럼 뻑뻑해 보였다(실제로
        지적받은 문제) — 좌우 여백을 컨텐츠보다 더 줘서 컨텐츠 폭보다 살짝 좁게 뜬다.
-       거기서 폭을 더 줄여달라는 요청이 두 번 이어져(요청: "모바일 필터창 검색창 폭
-       10프로 축소", 그 다음 "필터창과 검색창 폭 더 줄이기") 좌우 여백을 8vw씩(총
-       16vw)으로 늘렸다가, 라벨을 다시 왼쪽 배치로 되돌리며 폭이 아쉬워져(요청: "필터창
-       검색창 너비 10% 증가") 마진을 30px+4vw로 줄인다 — 대표 뷰포트(400px)에서
-       원래 폭(84vw-56px=280px)의 정확히 1.1배(308px)가 되는 값이다.
-       계산: width = 100vw - 2*margin, 목표 width' = 1.1*(84vw-56px)
-       => margin' = (100vw-width')/2 = 3.8vw+30.8px ≈ 4vw+30px. */
-    position: fixed; left: calc(30px + 4vw); right: calc(30px + 4vw); z-index: 45; margin: 0 auto;
+       그 뒤로 폭을 줄였다 늘렸다 여러 차례 조정(10% 축소 → 더 줄이기 → 10% 증가)을
+       거쳐, 결국 카드(챌린지 카드 등, 컨텐츠와 같은 좌우 16px 여백)보다 아주 살짝만
+       좁게 뜨도록 정리한다(요청: "필터창 검색창 너비 모바일에서 다른 카드들 보다
+       살짝만 작게 변경") — 카드 여백(16px)보다 딱 4px만 더 준 20px, vw 스케일링 없이
+       고정값이라 화면 크기와 무관하게 항상 같은 만큼(좌우 합 8px)만 좁다. */
+    position: fixed; left: 20px; right: 20px; z-index: 45; margin: 0 auto;
     /* --mobile-tabbar-visible-h는 useHideOnScrollDown이 탭바가 숨겨질 때마다 0px로,
        다시 보이면 var(--mobile-footer-h)로 실시간으로 갱신해준다 — 고정값
        (--mobile-footer-h)만 쓰면 탭바가 스크롤로 접혀도 이 알약은 탭바가 항상 떠
@@ -4227,15 +4225,9 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-challenge-section-title-respond { color: var(--point); }
 /* 요청: "다가오는 경기 타이틀 녹색 포인트" → "타이틀 색 통계의 그래프의 초록색" —
    전적통계 승률 막대그래프와 같은 초록(--bar-winrate)으로. 카드 쪽에 주려던 글로우를
-   결국 이 글자로 옮겨서(요청: "글로우 제거하고 다가오는 대결 타이틀에 글로우") 같은
-   초록으로 은은하게 번지는 text-shadow를 더한다. */
-.scr-challenge-section-title-upcoming {
-  color: var(--bar-winrate);
-  text-shadow: 0 0 10px rgba(142, 249, 122, 0.65), 0 0 22px rgba(142, 249, 122, 0.4);
-}
-.scr-light-theme .scr-challenge-section-title-upcoming {
-  text-shadow: 0 0 8px rgba(47, 143, 62, 0.55), 0 0 18px rgba(47, 143, 62, 0.3);
-}
+   이 글자로 옮겨 text-shadow를 줬다가(요청: "글로우 제거하고 다가오는 대결 타이틀에
+   글로우") 결국 그마저도 없앤다(요청: "다가오는 대결 타이틀 글로우 제거") — 색만 남긴다. */
+.scr-challenge-section-title-upcoming { color: var(--bar-winrate); }
 
 /* 다크 테마에서 카드끼리 배경과 구분이 잘 안 돼서(요청: "다크모드에서 챌린지 카드
    구분이 잘 안됨 글라스테마로") 운영 드롭다운과 같은 반투명 글라스 톤으로. 라이트
@@ -4269,9 +4261,10 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    "좀더 경고 느낌 붉은색으로") 그 테두리가 너무 튀어서 정작 "다가오는 대결" 쪽이 상대적으로
    덜 주목받는다는 피드백으로 없앤다(요청: "보더는 취소 다가오는 경기가 주목이 안돼"). */
 /* 카드 자체에 글로우(테두리 → 면 글로우, 다크 흰색→붉은빛→태양빛, 라이트 파란색 순으로
-   여러 번 바뀌었다)를 주는 시도도 결국 카드 대신 소타이틀 글자로 옮겼다(요청: "글로우
-   제거하고 다가오는 대결 타이틀에 글로우") — 아래 .scr-challenge-section-title-upcoming
-   text-shadow 참고. */
+   여러 번 바뀌었다)를 주는 시도도 결국 카드 대신 소타이틀 글자 색(위
+   .scr-challenge-section-title-upcoming)으로 옮겼다가, 그 글자의 text-shadow까지도
+   결국 없앴다(요청: "글로우 제거하고 다가오는 대결 타이틀에 글로우" → "다가오는 대결
+   타이틀 글로우 제거") — 지금은 색만 남아있다. */
 /* line-height를 명시하지 않으면 브라우저 기본값(폰트마다 다른 1.4~1.5배)이 글자
    위아래에 여분의 줄높이를 더해, 3px 패딩이 위아래 대칭이어도 실제로는 알약 안에서
    글자가 살짝 위나 아래로 치우쳐 보였다(실제로 지적받은 문제 — "상태 알약 위아래
@@ -4320,6 +4313,14 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    이모티콘을 좀더 도전자와 상대 가운데 느낌에 배치") — 팀전이라 어느 한쪽이 세로로
    길어져도 항상 그 사이 세로 중앙에 위치한다. */
 .scr-challenge-matchup { display: flex; align-items: flex-start; gap: 12px; }
+/* PC는 카드 자체가 넓은 본문 폭(--content-max)까지 늘어나는데, 매치업 내용(프사+닉네임
+   두 칸)까지 그 폭을 다 채우게 늘리면 사람 사이가 휑하게 벌어져 보인다(요청: "너나와
+   pc 버전에서 컨텐츠가 카드 가운데 몰려서 나오게 배치") — 카드 배경/패딩은 그대로 넓게
+   두고, 매치업 내용만 적당한 폭으로 좁혀 가운데로 모은다. 모바일은 카드 자체가 이미
+   좁아 필요 없다. */
+@media (min-width: 641px) {
+  .scr-challenge-matchup { max-width: 460px; margin: 0 auto; }
+}
 /* 손가락은 팀 전체 블록(메시지까지 포함해 세로로 길어질 수 있는)의 한가운데가 아니라
    맨 윗줄(프사+닉네임 줄)에만 자리를 차지하면 된다(요청: "손가락 이모지는 윗 라인에만
    자리 차지하면 돼 — 구성원 첫 줄에만 이모지 들어가니까") — 그 줄의 프사 높이(24px)에
@@ -4399,7 +4400,13 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   color: #fff; text-shadow: 0 1px 8px rgba(0,0,0,0.65);
 }
 .scr-challenge-envelope { margin: -18px -18px 0; overflow: hidden; border-radius: var(--radius) var(--radius) 0 0; }
-.scr-challenge-envelope-img { display: block; width: 100%; height: auto; }
+/* 봉투 단계(.scr-challenge-envelope-full)에서는 이 사진 아래 "눌러서 열어보기" 안내가
+   같은 둥근 컨테이너 안에 나란히 쌓여 있어서, 사진 자신은 그 컨테이너의 위쪽 경계에만
+   닿고 아래쪽은 컨테이너 한가운데서 뚝 끊긴다 — 그래서 overflow:hidden으로 잘려도
+   위쪽만 둥글어 보이고 아래쪽은 각져 보였다(요청: "초대장 봉투 사진을 네 귀퉁이 모두
+   라운딩 처리" → "지금은 위만 그렇게 돼보임"). 컨테이너의 래디우스에 기대는 대신 사진
+   자신에게 직접 네 귀퉁이 래디우스를 준다. */
+.scr-challenge-envelope-img { display: block; width: 100%; height: auto; border-radius: var(--radius); }
 /* 처음엔 봉투만 보여주고 눌러야 편지지(제목/내용/응답 폼)로 넘어간다(요청: "인박스
    편지봉투만 처음에 나오고 편지지로 이동") — <button>이라 기본 버튼 테두리/배경을
    지우고, 봉투 이미지 자체는 위 .scr-challenge-envelope와 같은 모양을 유지한다. */
