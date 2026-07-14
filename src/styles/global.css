@@ -4053,6 +4053,20 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-usermap-kind-filter.scr-checkbox-group-row {
   gap: 4px 12px; height: 36px; align-items: center; box-sizing: border-box;
 }
+/* 필터창 배경이 다크/라이트 공통으로 밝은색이 되면서(위 .scr-filter-panel 주석 참고),
+   여기 체크박스는 --muted 기본값(다크 테마 기준 거의 흰색)을 그대로 쓰면 밝은 배경
+   위에서 라벨 글자도, 체크박스 네모 테두리도 잘 안 보인다 — 테마 불문 어두운 색으로
+   고정한다(요청: "체크박스의 라벨과 네모를 검정으로"). */
+/* 회색 반투명 대신 알약탭 활성 글자와 같은 순검정으로(요청: "회색 아닌 검정(라디오
+   알약의 액티브 폰트 색)"). */
+.scr-usermap-kind-filter .scr-checkbox-field { color: #10151a; }
+.scr-usermap-kind-filter .scr-checkbox-field input { border-color: #10151a; }
+/* 체크됐을 때 채우는 색(기본 --text, 다크 테마에서 거의 흰색)도 밝은 배경에 맞춰
+   어둡게 — 다크 테마의 체크 표시색(--point-contrast: #10151a, 원래는 흰 채움 위에
+   어두운 V) 그대로 두면 채움색과 같은 색이 돼 V가 안 보이므로, 채움을 어둡게 바꾼
+   만큼 체크 표시는 흰색으로 같이 뒤집는다. */
+.scr-usermap-kind-filter .scr-checkbox-field input:checked { background: #10151a; border-color: #10151a; }
+.scr-usermap-kind-filter .scr-checkbox-field input:checked::after { background-color: #ffffff; }
 .scr-usermap-table-v2 { display: flex; flex-direction: column; font-size: 15px; } /* 12.5px * 1.2 */
 .scr-usermap-row {
   /* 게임아이디(첫 번째) 칸도 minmax가 아니라 고정폭으로 둔다 — 세로 구분선을 자식
