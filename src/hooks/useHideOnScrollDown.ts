@@ -9,16 +9,9 @@ import { addScrollListener, getScrollMetrics } from "../utils/scrollRoot";
 // 시작하므로 별도 "shellReady" 신호가 필요 없다.
 const HIDE_THRESHOLD = 6;
 const EDGE_PX = 10;
-// 검색창+필터창 예약분(136px = 62 + 74, .scr-main 패딩 참고)만큼보다 넉넉히 미리
-// 복원해야, 실제로 맨 아래에 닿는 순간과 예약 공간이 늘어나는 순간이 겹치지 않는다
-// (아래 --mobile-filterstack-reserve-h 주석 참고).
-const NEAR_BOTTOM_PX = 240;
 
 export function useHideOnScrollDown(screen: string): boolean {
   const [hidden, setHidden] = useState(false);
-  // 맨 아래서 아직 240px 이상 남았을 때만 true — 탭바처럼 숨김 여부에 그대로 안 묶고
-  // 별도로 둔다(아래 --mobile-filterstack-reserve-h 주석 참고).
-  const [nearBottom, setNearBottom] = useState(true);
   const lastYRef = useRef(0);
   useEffect(() => {
     lastYRef.current = getScrollMetrics().scrollTop;
@@ -28,7 +21,6 @@ export function useHideOnScrollDown(screen: string): boolean {
       const atBottom = y + clientHeight >= scrollHeight - EDGE_PX;
       if (atBottom || delta < -HIDE_THRESHOLD) setHidden(false);
       else if (delta > HIDE_THRESHOLD) setHidden(true);
-      setNearBottom(scrollHeight - (y + clientHeight) <= NEAR_BOTTOM_PX);
       lastYRef.current = y;
     };
     return addScrollListener(onScroll);
@@ -76,21 +68,6 @@ export function useHideOnScrollDown(screen: string): boolean {
     document.documentElement.classList.toggle("scr-scroll-hide", hidden);
     return () => document.documentElement.classList.remove("scr-scroll-hide");
   }, [hidden]);
-
-  // .scr-main 하단 예약분 중 탭바 몫(--mobile-footer-h)은 일부러 고정값으로 둔다(탭바가
-  // 다시 나타나는 순간 예약 공간이 늘어나면서 "맨 아래인 줄 알았는데 스크롤이 더
-  // 생기는" 점프가 났었다 — 이 세션에서 이미 두 번 겪은 버그). 다만 검색창+필터창 몫
-  // (136px)까지 항상 고정이면 그것들이 숨어 있는 동안도 빈 공간만 그대로 남아 유독
-  // 커 보였다(요청: "탭바만 보일정도의 여백만 있으면 되거든 하단에") — 이 몫만은
-  // nearBottom을 따로 둬서(위 NEAR_BOTTOM_PX 참고) 진짜 맨 아래에 닿기 240px 전에
-  // 미리 복원해둔다. 그러면 실제로 바닥에 닿는 순간과 예약 공간이 늘어나는 순간이
-  // 겹치지 않아(늘어날 때 아직 스크롤할 거리가 충분히 남아 있어) 같은 점프가 재현되지
-  // 않는다 — hidden만으로 그대로 묶었으면 탭바 몫과 똑같이 바닥에서 점프가 났을 것.
-  useEffect(() => {
-    document.documentElement.style.setProperty(
-      "--mobile-filterstack-reserve-h", (hidden && !nearBottom) ? "0px" : "136px",
-    );
-  }, [hidden, nearBottom]);
 
   return hidden;
 }
