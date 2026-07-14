@@ -3727,15 +3727,18 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    있는 화면 기준으로 넉넉하게 예약한다(필터가 없는 화면은 그만큼 여백만 조금 더 남을 뿐 문제
    없다).
    탭바도 이제(위 .scr-mobile-tabbar 주석 참고) #scroll-root 크기를 바꾸지 않는 순수
-   오버레이라, 탭바 몫 공간은 여기서 직접 예약해야 한다 — useHideOnScrollDown이 이미
-   관리하는 --mobile-tabbar-visible-h(탭바가 보이면 67px, 숨으면 0px)를 그대로 쓴다.
-   탭바가 숨든 보이든 #scroll-root 자체의 크기(clientHeight)는 항상 그대로이므로, 이
-   padding이 줄었다 늘었다 해도(scrollHeight만 변함) 지금 보이는 화면이 갑자기
-   가려지거나 하지 않는다 — 그래서 예전처럼 scrollTop을 따로 보정할 필요가 없다. */
+   오버레이다. 처음엔 이 예약분도 --mobile-tabbar-visible-h(탭바가 보이면 67px, 숨으면
+   0px)를 따라 같이 접었다 펴봤는데, 그러면 예약 공간(=scrollHeight)이 탭바 재등장
+   순간 다시 늘어나 여전히 "맨 아래까지 내렸는데 스크롤할 게 더 생기는" 문제가
+   똑같이 재현됐다 — clientHeight든 scrollHeight든 늘어나는 쪽이 어디든 "지금
+   스크롤한 만큼이 더 이상 끝이 아니게 되는" 결과는 수학적으로 같기 때문이다.
+   그래서 이 예약분은 탭바 상태와 무관하게 고정값(--mobile-footer-h)으로 둔다 —
+   탭바가 스크롤로 숨어도 이 여백 자체는 안 접힌다(아래로 스크롤할 때 화면을 더
+   넓게 쓰는 효과는 포기), 대신 탭바가 다시 나타나도 예약 공간이 이미 항상
+   확보돼 있어 스크롤 가능 범위 자체가 절대 안 바뀐다 — 그래서 점프도 없다. */
 @media (max-width: 640px) {
   .scr-main {
-    padding-bottom: calc(20px + 62px + 74px + var(--mobile-tabbar-visible-h, var(--mobile-footer-h)) + env(safe-area-inset-bottom, 0px));
-    transition: padding-bottom .28s ease-in-out;
+    padding-bottom: calc(20px + 62px + 74px + var(--mobile-footer-h) + env(safe-area-inset-bottom, 0px));
   }
 }
 
