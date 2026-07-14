@@ -352,14 +352,6 @@ function ChallengeCard({ challenge, myId, onResponded, onViewResults }: Challeng
       <div className="scr-challenge-card-body">
         <div className="scr-challenge-card-row scr-mono scr-challenge-card-when">
           {pageTimeLabel}
-          {/* 재신청 이력이 있을 때만 "몇 번째 기록"인지 보여준다(요청: "재신청하면 원래건은
-              종료되고 새로운 도전 행이 만들어져... 화면에서는 좌우로 슬라이드되게
-              구성하는거야"). */}
-          {pages.length > 1 && (
-            <span className="scr-challenge-page-note">
-              {isLatestPage ? "최신" : `이전 기록 ${pageIndex + 1}/${pages.length}`}
-            </span>
-          )}
           {/* 결과 보기는 버튼 줄로 따로 한 줄 차지하는 대신 시간 옆에 텍스트 링크로 붙인다
               (요청: "결과보기 버튼은 시간 옆에 텍스트로 배치해서 레이아웃 공간 차지하지
               않게 하자") — 확정 여부와 무관하게 카드 높이가 항상 같아진다. */}

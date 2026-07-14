@@ -4466,12 +4466,8 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 /* 재신청 체인 슬라이드 UI(요청: "재신청하면 원래건은 종료되고 새로운 도전 행이
    만들어져... 화면에서는 좌우로 슬라이드되게 구성하는거야") — 이력이 없는(재신청
    한 번도 안 된) 보통의 카드에는 이 요소들 자체가 렌더링 안 되니 기존 카드 모양에
-   영향이 없다. */
-.scr-challenge-page-note {
-  font-size: 11px; font-weight: 700; color: var(--dim); letter-spacing: 0.02em;
-  background: rgba(var(--overlay-rgb), 0.08); border-radius: 999px; padding: 2px 8px;
-  margin-left: 6px;
-}
+   영향이 없다. "이전 기록 n/n" 알약은 화살표+점으로 이미 위치가 드러나 굳이 텍스트로
+   또 안 밝힌다(요청: "이전 기록 n/n 알약은 없어도 될듯"). */
 /* 결과 보기 — 별도 버튼 줄 대신 시간 옆에 텍스트 링크로(요청: "결과보기 버튼은 시간
    옆에 텍스트로 배치해서 레이아웃 공간 차지하지 않게 하자") — 확정된 카드만 이
    자리를 더 차지하는 일이 없어져 카드 높이가 항상 같아진다. margin-left:auto로 시간
