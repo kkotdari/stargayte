@@ -203,7 +203,7 @@ export default function StatsScreenV2() {
   );
 
   return (
-    <div className="scr-screen">
+    <div className="scr-screen scr-stats-screen-v2">
       <div className="scr-v2-toolbar">
         <h1 className="scr-title scr-v2-toolbar-title">통계</h1>
       </div>

@@ -76,7 +76,7 @@ export default function MembersScreen() {
   const pageRows = rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
-    <div className="scr-screen">
+    <div className="scr-screen scr-members-screen-v2">
       <div className="scr-v2-toolbar scr-members-toolbar">
         <h1 className="scr-title scr-v2-toolbar-title">회원</h1>
         <div className="scr-v2-toolbar-actions">

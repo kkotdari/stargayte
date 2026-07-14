@@ -412,7 +412,7 @@ export default function GameIdScreen() {
   }, [entries, search, kindFilter]);
 
   return (
-    <div className="scr-screen">
+    <div className="scr-screen scr-usermap-screen-v2">
       <div className="scr-v2-toolbar">
         <h1 className="scr-title scr-v2-toolbar-title">게임아이디</h1>
       </div>
