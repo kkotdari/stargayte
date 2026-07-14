@@ -38,21 +38,21 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
     else setIdx((i) => i + 1);
   };
 
-  // 편지지에서는 수락/거절 모두 한마디를 필수로 받는다(요청: "편지지에 수락/거절
-  // 한줄 메시지 필수화") — 버튼 자체를 막아두고, 혹시라도 뚫려 눌리는 경우를 대비해
-  // 핸들러 안에서도 한 번 더 확인한다.
+  // 편지지에서 한마디는 거절할 때만 필수다(요청: "승락시에는 메시지 필수 아니게 변경
+  // 거절일때는 필수") — 거절 버튼만 막아두고, 혹시라도 뚫려 눌리는 경우를 대비해
+  // 핸들러 안에서도 한 번 더 확인한다. 승락은 메시지가 비어 있어도 그대로 보낸다.
   const trimmedMessage = message.trim();
-  const canSubmit = trimmedMessage.length > 0;
+  const canReject = trimmedMessage.length > 0;
 
   const respond = async (response: "accepted" | "rejected") => {
-    if (!canSubmit) {
-      setErr("한마디를 입력해 주세요.");
+    if (response === "rejected" && !canReject) {
+      setErr("거절 사유를 입력해 주세요.");
       return;
     }
     setErr("");
     setBusy(true);
     try {
-      await api.respondToChallenge(current.id, response, trimmedMessage);
+      await api.respondToChallenge(current.id, response, trimmedMessage || undefined);
       advance();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "응답하지 못했어요.");
@@ -113,7 +113,7 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
               </div>
 
               <label className="scr-field">
-                <span className="scr-label">한마디 (필수)</span>
+                <span className="scr-label">한마디 (거절 시 필수)</span>
                 <input
                   type="text" className="scr-input" value={message}
                   onChange={(e) => setMessage(e.target.value)}
@@ -127,13 +127,13 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
               <div className="scr-form-actions">
                 <button
                   className="scr-btn scr-challenge-reject-btn" onClick={() => respond("rejected")}
-                  disabled={busy || !canSubmit}
+                  disabled={busy || !canReject}
                 >
                   {busy ? <Spinner /> : "거절"}
                 </button>
                 <button
                   className="scr-btn scr-challenge-accept-btn" onClick={() => respond("accepted")}
-                  disabled={busy || !canSubmit}
+                  disabled={busy}
                 >
                   {busy ? <><Spinner /> 처리 중...</> : "승락"}
                 </button>

@@ -4211,21 +4211,6 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-challenge-datetime { display: flex; gap: 8px; }
 .scr-challenge-datetime .scr-input { flex: 1; min-width: 0; }
 
-/* 도전장 보내기 폼의 사진 첨부(요청: "도전장 보내기 한줄메시지 밑에 사진첨부 버튼
-   추가") — 고르기 전엔 다른 보조 버튼과 같은 톤의 작은 ghost 버튼 하나, 고른 뒤엔
-   미리보기 썸네일 + 우상단에 겹친 제거 버튼으로 바뀐다. */
-.scr-challenge-photo-add { align-self: flex-start; }
-.scr-challenge-photo-preview {
-  position: relative; align-self: flex-start; width: 96px; height: 96px;
-  border-radius: var(--radius-sm); overflow: hidden;
-}
-.scr-challenge-photo-preview img { display: block; width: 100%; height: 100%; object-fit: cover; }
-.scr-challenge-photo-remove {
-  position: absolute; top: 4px; right: 4px; width: 22px; height: 22px;
-  background: rgba(0,0,0,0.55); color: #fff; border: none;
-}
-.scr-challenge-photo-remove:hover { background: rgba(0,0,0,0.75); }
-
 /* 목록 카드 */
 .scr-challenge-list { display: flex; flex-direction: column; gap: 12px; margin-top: 16px; }
 /* 다가오는/종료된 구획(요청: "다가오는/종료된 목록 분리 및 정렬") — 섹션 제목 하나 +
@@ -4235,6 +4220,11 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-challenge-section-title {
   font-size: 14px; font-weight: 800; color: var(--dim); letter-spacing: 0.02em; margin: 0;
 }
+/* "응답하라!" — 다가오는 목록 중 내가 아직 응답 안 한 것만 맨 위에 따로 모은 섹션(요청:
+   "다가오는 대결에는 응답하라! 섹션을 만들고 맨 위에 배치")이라 나머지 섹션 제목과
+   같은 톤이면 눈에 안 띈다 — 포인트 컬러로 강조한다. */
+.scr-challenge-section-title-respond { color: var(--point); }
+
 /* 다크 테마에서 카드끼리 배경과 구분이 잘 안 돼서(요청: "다크모드에서 챌린지 카드
    구분이 잘 안됨 글라스테마로") 운영 드롭다운과 같은 반투명 글라스 톤으로. 라이트
    테마는 원래의 불투명 패널을 그대로 유지(아래 .scr-light-theme 오버라이드). */
@@ -4268,20 +4258,23 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    글자가 살짝 위나 아래로 치우쳐 보였다(실제로 지적받은 문제 — "상태 알약 위아래
    패딩 맞추기") — line-height:1로 줄높이를 글자 크기에 딱 맞춰 패딩만으로 정확히
    대칭이 되게 한다. */
-.scr-challenge-status {
-  display: inline-flex; align-items: center;
-  /* line-height:1로 줄높이를 글자 크기에 딱 맞춰, 위아래 패딩을 완전히 같은 값으로
-     둬도(비대칭 보정 없이) 실제로 대칭으로 보이게 한다(요청: "알약 위아래 패딩
-     동일하게 처리"). */
-  font-size: 13px; font-weight: 800; line-height: 1; padding: 5px 11px; border-radius: 999px;
+/* 상대 한 명의 응답 알약 — 예전엔 카드 전체에 하나(응답대기중(n/n))만 있었지만, 이제
+   각 상대 프로필 옆에 인라인으로 개별 표시한다(요청: "상대프로필 옆에 인라인으로
+   응답상태알약(n/n 제거)"). */
+.scr-challenge-pill {
+  display: inline-flex; align-items: center; flex-shrink: 0;
+  font-size: 11.5px; font-weight: 800; line-height: 1; padding: 4px 9px; border-radius: 999px;
 }
-.scr-challenge-status-pending { background: rgba(var(--overlay-rgb),0.12); color: var(--dim); }
-.scr-challenge-status-confirmed { background: rgba(163,214,147,0.18); color: var(--win); }
-.scr-challenge-status-rejected { background: rgba(192,122,134,0.18); color: var(--loss); }
-.scr-challenge-status-canceled { background: rgba(var(--overlay-rgb),0.12); color: var(--dim); text-decoration: line-through; }
-/* 확정(승락)됐지만 결과까지 등록돼 완전히 끝난 것은 더 이상 "지금 진행중"인 초록이
-   아니라 대기중/취소됨과 같은 옅은 톤으로 — 더는 할 일이 없다는 느낌을 준다. */
-.scr-challenge-status-done { background: rgba(var(--overlay-rgb),0.12); color: var(--dim); }
+.scr-challenge-pill-pending { background: rgba(var(--overlay-rgb),0.12); color: var(--dim); }
+.scr-challenge-pill-accepted { background: rgba(163,214,147,0.18); color: var(--win); }
+.scr-challenge-pill-rejected { background: rgba(192,122,134,0.18); color: var(--loss); }
+/* 확정(승락)됐지만 예정 시간이 지나 완전히 끝난 것은 더 이상 "지금 진행중"인 초록이
+   아니라 대기중/취소됨과 같은 옅은 톤으로 — 더는 할 일이 없다는 느낌을 준다(요청:
+   "완료 기준은 예정 시간이 지났을때 승락상태면 완료"). */
+.scr-challenge-pill-done { background: rgba(var(--overlay-rgb),0.12); color: var(--dim); }
+/* 취소/무응답취소, 그리고 팀전에서 누군가 거절해 이미 끝났는데 아직 응답을 안 한
+   나머지 상대(더는 의미 없는 "대기") — 전부 같은 옅은 톤 + 취소선. */
+.scr-challenge-pill-muted { background: rgba(var(--overlay-rgb),0.12); color: var(--dim); text-decoration: line-through; }
 /* 거절/재신청 미니 폼(이름은 "time-change"지만 지금은 거절 사유 입력·재신청 시간
    수정 두 곳에서 재사용한다 — 세로로 쌓인 인풋+버튼 묶음이라는 모양 자체는 같다). */
 .scr-challenge-time-change-form { display: flex; flex-direction: column; gap: 8px; }
@@ -4301,43 +4294,31 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-challenge-date-group + .scr-challenge-date-group { margin-top: 18px; }
 .scr-challenge-date-head { font-size: 13px; font-weight: 700; color: var(--dim); letter-spacing: 0.02em; }
 
-/* 목록 아이템을 4줄 텍스트(시간 / 도전자프사닉임・한마디 / 도전자구성👉🏻상대구성 /
-   상태・응답메시지) + 오른쪽 사진 컬럼으로 재구성한다(요청: "목록 아이템 디자인
-   변경... 이 내용의 오른쪽에 첨부사진 표시(컬럼 추가 필요)"). */
-.scr-challenge-card-main { display: flex; align-items: flex-start; gap: 14px; }
-.scr-challenge-card-body { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.scr-challenge-card-body { display: flex; flex-direction: column; gap: 10px; }
 .scr-challenge-card-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
-.scr-challenge-card-msg {
-  font-style: italic; font-size: 13.5px; color: var(--muted);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;
-}
-/* 프사+닉네임을 항상 가로로 심플하게(요청: "프사와 닉네임은 가로로 심플하게
-   구성(세로구성x)") — 개인 한 명(도전자 줄)이든 팀 구성(매치업 줄)이든 동일한 모양. */
-.scr-challenge-person { display: inline-flex; align-items: center; gap: 5px; min-width: 0; }
-.scr-challenge-person .scr-avatar { border-radius: 50% !important; }
+/* 매치업 — 도전자편/상대편을 나란히 두고 그 사이에 손가락을 하나만 둔다. 양쪽 다
+   align-items:center인 이 flex 행 안에서 자연히 위아래 가운데로 온다(요청: "손가락
+   이모티콘을 좀더 도전자와 상대 가운데 느낌에 배치") — 팀전이라 어느 한쪽이 세로로
+   길어져도 항상 그 사이 세로 중앙에 위치한다. */
+.scr-challenge-matchup { display: flex; align-items: center; gap: 12px; }
+.scr-challenge-arrow { flex-shrink: 0; font-size: 17px; }
+/* 도전자편/상대편 한 칸 — 인원이 하나든(1:1) 여럿이든(팀전) 항상 세로로 쌓는다(요청:
+   "각팀을 세로로 배치"). */
+.scr-challenge-side { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.scr-challenge-side-block { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.scr-challenge-side-row { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.scr-challenge-side-row .scr-avatar { border-radius: 50% !important; }
 .scr-challenge-person-name {
-  font-size: 13.5px; font-weight: 700; color: var(--text);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 140px;
+  font-size: 13.5px; font-weight: 700; color: var(--text); min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1 1 auto;
 }
-.scr-challenge-person-sep { color: var(--dim); margin-right: 2px; }
-.scr-challenge-people { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
-.scr-challenge-card-versus { flex-wrap: nowrap; }
-.scr-challenge-card-versus .scr-challenge-people { flex: 1 1 0; min-width: 0; }
-.scr-challenge-card-arrow { flex-shrink: 0; font-size: 13px; }
-/* 팀 구성 줄(아래)도 도전자 프사+닉네임으로 시작해 헷갈리기 쉬워서, 이 줄이 "발신자
-   소개줄"임을 태그로 분명히 한다(요청: "첫줄은 누가 도전장 보냄이라고 해야 밑에거랑
-   안헷갈릴듯"). */
-.scr-challenge-card-sender-tag { font-size: 12px; font-weight: 600; color: var(--dim); }
-/* 상태(응답대기중/승락/거절)는 상대쪽 응답이라 상대 프사와 왼쪽을 맞춘다(요청: "승락
-   응답대기중 이런거는 상대쪽에 배치" → "상대 프로필에 좌측 맞추면 될듯") — 위 매치업
-   줄의 도전자 칸(flex:1 1 0)과 정확히 같은 폭의 빈 스페이서로 왼쪽 자리를 예약한다. */
-.scr-challenge-card-status-spacer { flex: 1 1 0; min-width: 0; }
-/* 첨부 사진 컬럼 — 텍스트 4줄 높이와 어울리는 정사각 축소판. */
-.scr-challenge-card-photo {
-  flex-shrink: 0; width: 72px; height: 72px; border-radius: 10px; overflow: hidden;
-  background: rgba(var(--overlay-rgb), 0.08);
+/* 한마디/응답 메시지 — 있든 없든 항상 이 자리를 차지해야, 상대가 여럿일 때 어떤
+   사람은 메시지가 있고 어떤 사람은 없어도 줄이 들쭉날쭉하지 않는다(요청: "메시지
+   있건 없건 예약 자리 차지하게하기"). 내용이 없으면 공백 하나만 넣어 줄 높이만 유지. */
+.scr-challenge-side-message {
+  font-style: italic; font-size: 12.5px; color: var(--muted); min-height: 1.3em;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-left: 30px;
 }
-.scr-challenge-card-photo img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .scr-challenge-card-actions { display: flex; justify-content: center; gap: 8px; }
 .scr-challenge-inbox-body .scr-form-actions { justify-content: center; }
 /* 승락(핑크)/거절(검정) 버튼 — 로그인 버튼과 같은 필(pill) 래디우스. */

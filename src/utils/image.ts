@@ -55,33 +55,3 @@ export async function resizeIconSlotImage(file: File, maxSide = 128): Promise<st
   const img = await loadImage(dataUrl);
   return resizeLoadedImage(img, dataUrl, maxSide, 1, "image/png");
 }
-
-// 도전장 첨부 사진 — 실제 표시 크기(카드 축소판/원본 보기)는 그대로 두되(요청: "크기는
-// 그대로 유지"), 카메라 원본(수천 px대)은 화면에 필요한 것보다 훨씬 커서 용량만 크다.
-// 화면에서 크게 봐도 충분한 해상도(긴 변 1600px)로만 낮추고 항상 JPEG로 재인코딩해
-// 용량을 줄인다(요청: "품질저하 없이 용량 줄이는 리사이즈") — resizeIconSlotImage/
-// resizeLoadedImage와 달리 이미 maxSide보다 작아도 재인코딩한다. 그래야 이미 작지만
-// 무겁게 저장된 원본(예: 무손실 PNG 스크린샷)의 용량도 함께 줄어든다.
-export const CHALLENGE_PHOTO_MAX_SIDE = 1600;
-export const CHALLENGE_PHOTO_JPEG_QUALITY = 0.85;
-
-export async function resizeChallengePhoto(
-  file: File, maxSide = CHALLENGE_PHOTO_MAX_SIDE, quality = CHALLENGE_PHOTO_JPEG_QUALITY,
-): Promise<string> {
-  const dataUrl = await readAsDataUrl(file);
-  const img = await loadImage(dataUrl);
-  const scale = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
-  const width = Math.round(img.naturalWidth * scale);
-  const height = Math.round(img.naturalHeight * scale);
-
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return dataUrl; // canvas를 못 쓰는 환경이면 원본 그대로 (기능 저하 없이 안전하게 폴백)
-
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = "high";
-  ctx.drawImage(img, 0, 0, width, height);
-  return canvas.toDataURL("image/jpeg", quality);
-}

@@ -3,6 +3,8 @@ import Avatar from "../../components/common/Avatar";
 import { Spinner } from "../../components/common/Feedback";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 import SearchFilterBar from "../../components/common/SearchFilterBar";
+import FilterItem from "../../components/common/FilterItem";
+import PillTabs from "../../components/common/PillTabs";
 import ChallengeFormModal from "../../modals/ChallengeFormModal";
 import TeamMatchesModal from "../../modals/TeamMatchesModal";
 import { useAppStore } from "../../store/appStore";
@@ -10,23 +12,47 @@ import { api } from "../../api/client";
 import { cx } from "../../utils/format";
 import { challengeDateGroupLabel, challengeTimeLabel, fmt, isToday } from "../../utils/date";
 import { activeMemberSearchTerms, memberMatchesTerm, splitSearchTerms } from "../../utils/memberSearch";
-import type { Challenge, Member } from "../../types";
+import type { Challenge, ChallengeTarget, Member } from "../../types";
 
-// 카드 상태 줄 하나로 충분하니 참가자별 개별 응답 배지는 없앤다(요청: "상태는
-// 상단에만 나오게 하고 요청받은 사람 상태는 굳이 안보여줘도 될듯"). 그 김에 "확정"도
-// 결과가 등록됐는지에 따라 "승락"(아직 안 뛴 확정)과 "완료"(결과까지 등록된 확정)로
-// 더 갈랐다 — status 자체는 그대로 confirmed 하나지만 화면 표시는 둘로 나뉜다. 아직
-// 응답 대기중이면 몇 명 중 몇 명이 응답했는지를 괄호로 덧붙인다(요청: "응답대기중(n/n)").
-function challengeStatusLabel(c: Challenge): string {
-  if (c.status === "confirmed") return c.resultMatchId ? "완료" : "승락";
-  if (c.status === "rejected") return "거절";
-  if (c.status === "canceled") return "취소";
-  const responded = c.targets.filter((t) => t.response !== "pending").length;
-  return `응답대기중(${responded}/${c.targets.length})`;
+// 실제 서버 status(pending/confirmed/rejected/canceled) 외에, 화면에서만 판단하는 두 가지
+// 파생 상태 — "완료"(예정 시간이 지난 승락 건, 요청: "완료 기준은 예정 시간이 지났을때
+// 승락상태면 완료")와 "expired"(보낸지 3일 안에 응답이 없어 무응답으로 취소 처리, 요청:
+// "보낸지 3일안에 응답 없는건은 무응답 취소 처리(끝난 경기 목록으로 이동)... 프론트에서만
+// 그렇게 분류") — 둘 다 서버 status는 그대로 두고(배치처리 없음) 조회 시점마다 다시 계산한다.
+type ChallengeDisplayStatus = "pending" | "confirmed" | "done" | "rejected" | "canceled" | "expired";
+
+const EXPIRE_MS = 3 * 24 * 60 * 60 * 1000;
+
+function challengeDisplayStatus(c: Challenge): ChallengeDisplayStatus {
+  if (c.status === "canceled") return "canceled";
+  if (c.status === "rejected") return "rejected";
+  if (c.status === "pending") {
+    return Date.now() - new Date(c.createdAt).getTime() > EXPIRE_MS ? "expired" : "pending";
+  }
+  // confirmed — 예정 시간이 있고 이미 지났으면 "완료", 아니면(미정 포함) 계속 "승락".
+  if (c.scheduledAt && new Date(c.scheduledAt).getTime() < Date.now()) return "done";
+  return "confirmed";
 }
-function challengeStatusClass(c: Challenge): string {
-  if (c.status === "confirmed" && c.resultMatchId) return "scr-challenge-status-done";
-  return `scr-challenge-status-${c.status}`;
+
+// 종료된 것 = 더는 지켜볼 필요가 없는 건(거절/취소/무응답취소/완료). 그 외(응답대기중/
+// 승락돼서 아직 안 뛴 것)는 전부 다가오는 쪽이다.
+function isEndedStatus(s: ChallengeDisplayStatus): boolean {
+  return s === "rejected" || s === "canceled" || s === "expired" || s === "done";
+}
+
+type PillTone = "pending" | "accepted" | "rejected" | "done" | "muted";
+
+// 상대 한 명의 응답 알약 — 개별 response뿐 아니라 카드 전체의 파생 상태까지 함께 봐서
+// 문구를 정한다. 예: 팀전에서 한 명이 거절하면 그 순간 전체가 rejected로 끝나버리는데,
+// 아직 응답을 안 한 나머지 상대는 raw response가 여전히 "pending"이라 그대로 "대기"라고
+// 보여주면 마치 아직 진행 중인 것처럼 헷갈린다 — 그럴 땐 "무응답"으로 구분한다.
+function targetPillInfo(t: ChallengeTarget, overall: ChallengeDisplayStatus): { label: string; tone: PillTone } {
+  if (overall === "canceled") return { label: "취소", tone: "muted" };
+  if (overall === "expired") return { label: "무응답취소", tone: "muted" };
+  if (t.response === "accepted") return overall === "done" ? { label: "완료", tone: "done" } : { label: "수락", tone: "accepted" };
+  if (t.response === "rejected") return { label: "거절", tone: "rejected" };
+  if (overall === "rejected") return { label: "무응답", tone: "muted" };
+  return { label: "대기", tone: "pending" };
 }
 
 interface ChallengeDateGroup {
@@ -49,20 +75,50 @@ function groupChallengesByDate(list: Challenge[]): ChallengeDateGroup[] {
   return groups;
 }
 
-// 팀 구성 한 편(도전자편/상대편) — 인원수와 무관하게 프사+닉네임을 항상 가로로 심플하게
-// 나열한다(요청: "프사와 닉네임은 가로로 심플하게 구성(세로구성x)") — 예전처럼 1명일 때만
-// 크게 보여주는 특별 취급 없이 전부 같은 모양.
-function PeopleRow({ people }: { people: { id: string; nickname: string; avatar: string | null }[] }) {
+type SideMember = { id: string; nickname: string; avatar: string | null };
+
+// 팀 구성 한 편(도전자편/상대편)을 세로로 쌓는다(요청: "각팀을 세로로 배치") — 1:1이든
+// 팀전이든 모양은 같고, 인원이 하나든 여럿이든 그냥 줄 수만 늘어난다.
+function ChallengeSide({
+  people, message, targets,
+}: {
+  people: SideMember[];
+  // 도전자편(1개, 요청자 본인의 한마디) 또는 상대편(각 인원의 응답 알약+메시지) 중 하나만 채워진다.
+  message?: string;
+  targets?: { target: ChallengeTarget; overall: ChallengeDisplayStatus }[];
+}) {
   return (
-    <span className="scr-challenge-people">
-      {people.map((p, i) => (
-        <span key={p.id} className="scr-challenge-person">
-          <Avatar member={p} size={20} />
-          <span className="scr-challenge-person-name">{p.nickname}</span>
-          {i < people.length - 1 && <span className="scr-challenge-person-sep">,</span>}
-        </span>
-      ))}
-    </span>
+    <div className="scr-challenge-side">
+      {people.map((p, i) => {
+        const t = targets?.[i];
+        return (
+          <div key={p.id} className="scr-challenge-side-block">
+            <div className="scr-challenge-side-row">
+              <Avatar member={p} size={24} />
+              <span className="scr-challenge-person-name">{p.nickname}</span>
+              {t && (
+                <span className={cx("scr-challenge-pill", `scr-challenge-pill-${targetPillInfo(t.target, t.overall).tone}`)}>
+                  {targetPillInfo(t.target, t.overall).label}
+                </span>
+              )}
+            </div>
+            {/* 메시지 유무와 무관하게 항상 이 자리를 차지해야, 상대가 여럿일 때 어떤 사람은
+                메시지가 있고 어떤 사람은 없어도 줄이 들쭉날쭉하지 않는다(요청: "메시지
+                있건 없건 예약 자리 차지하게하기"). */}
+            {targets && (
+              <div className="scr-challenge-side-message">
+                {t?.target.responseMessage ? `"${t.target.responseMessage}"` : " "}
+              </div>
+            )}
+          </div>
+        );
+      })}
+      {/* 도전자편의 한마디는 팀원 전체가 아니라 도전자 본인 몫이라 팀 전체 아래에 한 번만
+          붙인다(요청: "한줄 메시지는 아래줄 도전자 프사 아래로 이동"). */}
+      {message !== undefined && (
+        <div className="scr-challenge-side-message">{message ? `"${message}"` : " "}</div>
+      )}
+    </div>
   );
 }
 
@@ -87,6 +143,7 @@ function ChallengeCard({ challenge, myId, onResponded, onViewResults }: Challeng
   const canCancel = isCreator && challenge.status === "pending";
   const canReapply = isCreator && challenge.status === "rejected";
   const timeLabel = challengeTimeLabel(challenge.scheduledAt);
+  const overall = challengeDisplayStatus(challenge);
 
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
   const [reapplying, setReapplying] = useState(false);
@@ -94,18 +151,19 @@ function ChallengeCard({ challenge, myId, onResponded, onViewResults }: Challeng
   const [timeStr, setTimeStr] = useState("");
   const [message, setMessage] = useState("");
 
-  // 카드에서 바로 승락/거절 — OS 기본 prompt로 한마디를 필수로 받는다(요청: "카드에
-  // 승락 거절 버튼이 뜨는데 누르면 사유입력하는 창 뜨게(필수). os기본 입력컨펌 사용").
-  // 취소를 누르거나(null) 빈 값만 입력하면(필수 위반) 아무 요청도 보내지 않는다.
-  const respond = async (response: "accepted" | "rejected", promptLabel: string) => {
+  // 카드에서 바로 승락/거절 — OS 기본 prompt로 한마디를 받는다. 승락은 이제 선택(요청:
+  // "승락시에는 메시지 필수 아니게 변경"), 거절은 여전히 필수다(요청: "거절일때는 필수") —
+  // required가 그 둘을 가른다. 취소를 누르면(null) 아무 요청도 보내지 않고, 승락인데
+  // 빈 값이면 메시지 없이 그대로 보낸다.
+  const respond = async (response: "accepted" | "rejected", promptLabel: string, required: boolean) => {
     const input = window.prompt(promptLabel);
     if (input === null) return;
     const trimmed = input.trim();
-    if (!trimmed) return;
+    if (required && !trimmed) return;
     setErr("");
     setBusy(true);
     try {
-      const updated = await api.respondToChallenge(challenge.id, response, trimmed);
+      const updated = await api.respondToChallenge(challenge.id, response, trimmed || undefined);
       onResponded(updated);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "응답하지 못했어요.");
@@ -150,71 +208,32 @@ function ChallengeCard({ challenge, myId, onResponded, onViewResults }: Challeng
     }
   };
 
-  // 상대가 여럿(팀전)이어도 응답 한마디는 첫 번째 상대 기준으로만 보여준다(요청:
-  // "상대쪽에는 상대가 쓴 메시지 있으면 노출") — 그 한마디는 그 사람 개인의 응답이라 팀
-  // 전체를 대표하긴 애매하지만, 화면 단순화 취지상 대표 한 명만 본다. 이제 거절뿐 아니라
-  // 수락에도 한마디가 붙을 수 있어(요청: "편지지에 수락/거절 한줄 메시지 필수화")
-  // response 종류와 무관하게 있으면 그대로 보여준다.
-  const primaryTarget = challenge.targets[0];
-  const targetMessage = primaryTarget?.responseMessage ?? null;
-
   // 요청자쪽 인원(본인+같은 편) — Member.avatar는 memberOf로 찾은 것, 없으면 null.
-  const creatorSideMembers: { id: string; nickname: string; avatar: string | null }[] = [
+  const creatorSideMembers: SideMember[] = [
     { id: challenge.createdBy.id, nickname: challenge.createdBy.nickname, avatar: creatorMember?.avatar ?? null },
     ...challenge.ownMembers.map((m) => ({ id: m.memberId, nickname: m.nickname, avatar: m.avatar })),
   ];
-  const targetSideMembers = challenge.targets.map((t) => ({ id: t.memberId, nickname: t.nickname, avatar: t.avatar }));
+  const targetSideMembers: SideMember[] = challenge.targets.map((t) => ({ id: t.memberId, nickname: t.nickname, avatar: t.avatar }));
+  const targetInfos = challenge.targets.map((t) => ({ target: t, overall }));
 
   return (
     <div className="scr-challenge-card">
-      {/* 화면이 너무 복잡하다는 피드백으로 전면 단순화한 뒤(요청: "챌린지 너무 화면이
-          복잡"), 목록 아이템을 4줄 텍스트 + 오른쪽 사진 컬럼으로 재구성한다(요청:
-          "목록 아이템 디자인 변경 — 시간 / 도전자프사닉임・도전한줄메시지 /
-          도전자구성👉🏻상대구성 / 응답대기중(n/n)・메시지 / 오른쪽에 첨부사진"). */}
-      <div className="scr-challenge-card-main">
-        <div className="scr-challenge-card-body">
-          <div className="scr-challenge-card-row scr-mono scr-challenge-card-when">
-            {timeLabel ?? "시간 미정"}
-          </div>
-
-          {/* 아래 팀 구성 줄도 도전자 프사+닉네임으로 시작해 헷갈리기 쉬워서(요청: "첫줄은
-              누가 도전장 보냄이라고 해야 밑에거랑 안헷갈릴듯") "~님이 도전장을 보냈어요"를
-              덧붙여 이 줄이 발신자 소개줄임을 분명히 한다. */}
-          <div className="scr-challenge-card-row">
-            <span className="scr-challenge-person">
-              <Avatar member={creatorSideMembers[0]} size={20} />
-              <span className="scr-challenge-person-name">{challenge.createdBy.nickname}</span>
-            </span>
-            <span className="scr-challenge-card-sender-tag">도전장 보냄</span>
-            {challenge.message && <span className="scr-challenge-card-msg">・ "{challenge.message}"</span>}
-          </div>
-
-          <div className="scr-challenge-card-row scr-challenge-card-versus">
-            <PeopleRow people={creatorSideMembers} />
-            <span className="scr-challenge-card-arrow" aria-hidden="true">👉🏻</span>
-            <PeopleRow people={targetSideMembers} />
-          </div>
-
-          {/* 상태(응답대기중/승락/거절)는 상대쪽 응답이니 상대 프사 줄과 왼쪽을 맞춘다
-              (요청: "승락 응답대기중 이런거는 상대쪽에 배치" → "상대 프로필에 좌측
-              맞추면 될듯") — 위 매치업 줄과 똑같이 왼쪽에 도전자 칸만큼의 빈 자리 +
-              화살표 자리(안 보이게)를 예약해, 상태 알약이 상대 프사와 정확히 같은
-              x축에서 시작하게 한다. */}
-          <div className="scr-challenge-card-row">
-            <span className="scr-challenge-card-status-spacer" aria-hidden="true" />
-            <span className="scr-challenge-card-arrow" aria-hidden="true" style={{ visibility: "hidden" }}>👉🏻</span>
-            <span className={cx("scr-challenge-status", challengeStatusClass(challenge))}>
-              {challengeStatusLabel(challenge)}
-            </span>
-            {targetMessage && <span className="scr-challenge-card-msg">・ "{targetMessage}"</span>}
-          </div>
+      <div className="scr-challenge-card-body">
+        <div className="scr-challenge-card-row scr-mono scr-challenge-card-when">
+          {timeLabel ?? "시간 미정"}
         </div>
 
-        {challenge.photoUrl && (
-          <div className="scr-challenge-card-photo">
-            <img src={challenge.photoUrl} alt="첨부 사진" />
-          </div>
-        )}
+        {/* 매치업 — 도전자편/상대편을 세로로 쌓고, 손가락 이모지는 그 사이 한가운데(요청:
+            "손가락 이모티콘을 좀더 도전자와 상대 가운데 느낌에 배치")에 하나만 둔다(팀전도
+            팀당 한 개, 요청: "손가락은 한개만 표시"). "누가 도전장 보냄" 태그는 없앴고
+            (요청: "이 부분 삭제"), 도전자의 한마디는 도전자편 아래로, 상대 응답 알약은
+            그 사람 프로필 옆에 인라인으로, 응답 메시지는 그 아래로 옮겼다(요청: "상대프로필
+            옆에 인라인으로 응답상태알약... 및 프로필 아래에 응답 메시지 표시"). */}
+        <div className="scr-challenge-matchup">
+          <ChallengeSide people={creatorSideMembers} message={challenge.message} />
+          <span className="scr-challenge-arrow" aria-hidden="true">👉🏻</span>
+          <ChallengeSide people={targetSideMembers} targets={targetInfos} />
+        </div>
       </div>
 
       {err && <div className="scr-err">{err}</div>}
@@ -223,13 +242,13 @@ function ChallengeCard({ challenge, myId, onResponded, onViewResults }: Challeng
         <div className="scr-challenge-card-actions">
           <button
             className="scr-btn scr-challenge-reject-btn scr-btn-sm" disabled={busy}
-            onClick={() => respond("rejected", "거절 사유를 입력해 주세요 (필수)")}
+            onClick={() => respond("rejected", "거절 사유를 입력해 주세요 (필수)", true)}
           >
             거절
           </button>
           <button
             className="scr-btn scr-challenge-accept-btn scr-btn-sm" disabled={busy}
-            onClick={() => respond("accepted", "한마디를 입력해 주세요 (필수)")}
+            onClick={() => respond("accepted", "한마디를 입력해 주세요 (선택)", false)}
           >
             {busy ? <Spinner /> : "승락"}
           </button>
@@ -300,6 +319,11 @@ function ChallengeCard({ challenge, myId, onResponded, onViewResults }: Challeng
   );
 }
 
+type ChallengeFilter = "upcoming" | "ended";
+const FILTER_OPTS: { value: ChallengeFilter; label: string }[] = [
+  { value: "upcoming", label: "다가오는" }, { value: "ended", label: "종료된" },
+];
+
 // 도전장("너 나와!") 게시판 — 예전 "일정" 메뉴 자리를 대체한다. 경기결과/예약 시스템과는
 // 독립적인 별도 게시판이라, 화면 자체도 기간 필터 없이 전체 목록을 그대로 보여준다.
 export default function ChallengeScreen() {
@@ -312,6 +336,9 @@ export default function ChallengeScreen() {
   const [error, setError] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [search, setSearch] = useState("");
+  // 다가오는/종료된을 두 섹션에 동시에 늘어놓던 걸 라디오 필터로 바꿔 하나만 보여준다
+  // (요청: "다가오는/종료된 대결 구분을 필터창 라디오버튼으로 변경(목록 완전 구분)").
+  const [filter, setFilter] = useState<ChallengeFilter>("upcoming");
   const suggestions = useMemo(() => activeMemberSearchTerms(members), [members]);
 
   const load = useCallback(() => {
@@ -331,12 +358,7 @@ export default function ChallengeScreen() {
     });
   };
 
-  // 아직 결판이 안 난 것("다가오는")과 끝난 것("종료된")을 나눈다 — 확정됐어도 결과가
-  // 아직 안 올라왔으면(resultMatchId 없음) 여전히 "다가오는" 쪽이다(요청: "다가오는/
-  // 종료된 목록 분리 및 정렬").
-  const isUpcoming = (c: Challenge): boolean => (
-    c.status === "pending" || (c.status === "confirmed" && !c.resultMatchId)
-  );
+  const isUpcoming = (c: Challenge): boolean => !isEndedStatus(challengeDisplayStatus(c));
 
   // 도전장에 관여된 사람(보낸 사람/지목된 상대/같은 팀) 중 검색어와 맞는 사람이 있으면
   // 그 도전장이 남는다 — 경기결과 화면의 참가자 검색과 같은 방식(AND: 검색어 전부가
@@ -383,6 +405,22 @@ export default function ChallengeScreen() {
     return a.createdAt > b.createdAt ? -1 : a.createdAt < b.createdAt ? 1 : 0;
   }), [searchedChallenges]);
 
+  // "응답하라!" — 다가오는 목록 중 아직 내가 응답 안 한 것만 따로 모아 맨 위에 둔다(요청:
+  // "다가오는 대결에는 응답하라! 섹션을 만들고 맨 위에 배치"). 날짜 그룹핑 아래 목록에서는
+  // 중복으로 또 나오지 않게 뺀다.
+  const needsMyResponse = (c: Challenge): boolean => {
+    const myTarget = c.targets.find((t) => t.memberId === user?.id);
+    return !!myTarget && myTarget.response === "pending" && challengeDisplayStatus(c) === "pending";
+  };
+  const respondChallenges = useMemo(
+    () => upcomingChallenges.filter(needsMyResponse),
+    [upcomingChallenges, user?.id],
+  );
+  const restUpcomingChallenges = useMemo(
+    () => upcomingChallenges.filter((c) => !needsMyResponse(c)),
+    [upcomingChallenges, user?.id],
+  );
+
   // "결과 보기" — 리플레이를 직접 여기서 등록하는 대신(리플레이 등록 버튼 제거, 요청:
   // "리플레이 등록 버튼 제거하고 대신 결과 보기 버튼 추가"), 랭킹 화면의 팀 경기 목록
   // 모달을 그대로 재사용해 그 도전장의 팀 구성이 그 날짜에 등록한 경기를 보여준다(요청:
@@ -394,6 +432,11 @@ export default function ChallengeScreen() {
     return ids.map((id) => memberOf(id)).filter((m): m is Member => !!m);
   }, [resultsTarget, memberOf]);
   const resultsDateStr = resultsTarget?.scheduledAt ? fmt(new Date(resultsTarget.scheduledAt)) : undefined;
+
+  const activeList = filter === "upcoming" ? upcomingChallenges : endedChallenges;
+  const emptyLabel = searchTerms.length > 0
+    ? "검색 결과가 없어요"
+    : (filter === "upcoming" ? "다가오는 도전장이 없어요" : "종료된 도전장이 없어요");
 
   return (
     <div className="scr-screen scr-challenge-screen-v2">
@@ -412,29 +455,56 @@ export default function ChallengeScreen() {
       </div>
 
       <SearchFilterBar
-        count={searchedChallenges.length}
+        count={activeList.length}
         countLabel="건"
         searchValue={search}
         onSearchChange={setSearch}
         searchPlaceholder="유저"
         suggestions={suggestions}
+        filterPanel={
+          <FilterItem label="구분">
+            <PillTabs options={FILTER_OPTS} value={filter} onChange={setFilter} aria-label="다가오는/종료된 선택" />
+          </FilterItem>
+        }
       />
 
       {error && <div className="scr-err">{error}</div>}
 
       {loading ? (
         <div className="scr-empty"><Spinner size={18} /></div>
-      ) : (
+      ) : filter === "upcoming" ? (
         <>
-          <section className="scr-challenge-section">
-            <h2 className="scr-challenge-section-title">다가오는 대결</h2>
-            {upcomingChallenges.length === 0 ? (
-              <div className="scr-empty">
-                {searchTerms.length > 0 ? "검색 결과가 없어요" : "다가오는 도전장이 없어요"}
+          {respondChallenges.length > 0 && (
+            <section className="scr-challenge-section scr-challenge-section-respond">
+              <h2 className="scr-challenge-section-title scr-challenge-section-title-respond">응답하라!</h2>
+              <div className="scr-challenge-list">
+                {groupChallengesByDate(respondChallenges).map((g) => (
+                  <div key={g.label} className="scr-challenge-date-group">
+                    <div className="scr-challenge-date-head scr-mono">
+                      {g.isToday && <span className="scr-challenge-card-today-tag">오늘</span>}
+                      {g.label}
+                    </div>
+                    {g.items.map((c) => (
+                      <ChallengeCard
+                        key={c.id}
+                        challenge={c}
+                        myId={user?.id}
+                        onResponded={upsert}
+                        onViewResults={setResultsTarget}
+                      />
+                    ))}
+                  </div>
+                ))}
               </div>
+            </section>
+          )}
+
+          <section className="scr-challenge-section">
+            {restUpcomingChallenges.length === 0 ? (
+              <div className="scr-empty">{respondChallenges.length === 0 ? emptyLabel : null}</div>
             ) : (
               <div className="scr-challenge-list">
-                {groupChallengesByDate(upcomingChallenges).map((g) => (
+                {groupChallengesByDate(restUpcomingChallenges).map((g) => (
                   <div key={g.label} className="scr-challenge-date-group">
                     <div className="scr-challenge-date-head scr-mono">
                       {g.isToday && <span className="scr-challenge-card-today-tag">오늘</span>}
@@ -454,35 +524,30 @@ export default function ChallengeScreen() {
               </div>
             )}
           </section>
-
-          <section className="scr-challenge-section">
-            <h2 className="scr-challenge-section-title">종료된 대결</h2>
-            {endedChallenges.length === 0 ? (
-              <div className="scr-empty">
-                {searchTerms.length > 0 ? "검색 결과가 없어요" : "종료된 도전장이 없어요"}
-              </div>
-            ) : (
-              <div className="scr-challenge-list">
-                {groupChallengesByDate(endedChallenges).map((g) => (
-                  <div key={g.label} className="scr-challenge-date-group">
-                    {/* 종료된 목록은 이미 끝난 일이라 "오늘" 태그가 굳이 필요 없다(요청:
-                        "종료된 목록에 오늘 배지 제거") — 다가오는 목록에서만 남긴다. */}
-                    <div className="scr-challenge-date-head scr-mono">{g.label}</div>
-                    {g.items.map((c) => (
-                      <ChallengeCard
-                        key={c.id}
-                        challenge={c}
-                        myId={user?.id}
-                        onResponded={upsert}
-                        onViewResults={setResultsTarget}
-                      />
-                    ))}
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
         </>
+      ) : (
+        <section className="scr-challenge-section">
+          {endedChallenges.length === 0 ? (
+            <div className="scr-empty">{emptyLabel}</div>
+          ) : (
+            <div className="scr-challenge-list">
+              {groupChallengesByDate(endedChallenges).map((g) => (
+                <div key={g.label} className="scr-challenge-date-group">
+                  <div className="scr-challenge-date-head scr-mono">{g.label}</div>
+                  {g.items.map((c) => (
+                    <ChallengeCard
+                      key={c.id}
+                      challenge={c}
+                      myId={user?.id}
+                      onResponded={upsert}
+                      onViewResults={setResultsTarget}
+                    />
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
       )}
 
       {formOpen && (
