@@ -1,59 +1,53 @@
 import { useEffect, useRef, useState } from "react";
-import { addScrollListener, getScrollMetrics } from "../utils/scrollRoot";
+import { addScrollListener } from "../utils/scrollRoot";
 
-// 아래로 스크롤하면 하단 탭바를 숨겨 화면을 넓게 쓰고, 위로 스크롤하거나 목록 끝(맨
-// 아래)까지 다다르면 다시 보여준다(요청: "모바일 위로 스크롤시 탭바가 재노출되어야
-// 하는데 안 됨" — 원래는 맨 아래 도달 전엔 위로 스크롤해도 계속 숨어있었다). 이 훅은
-// 마운트 시점에 존재하는 스크롤 루트에 한 번만 구독한다 — 로그인 후에만 마운트되는
-// 컴포넌트(Header)에서 호출하면 #scroll-root가 이미 DOM에 있는 상태로 구독을
-// 시작하므로 별도 "shellReady" 신호가 필요 없다.
-const HIDE_THRESHOLD = 6;
-// 맨 아래에 딱 붙어야만(10px) 탭바를 다시 보였더니, 스크롤이 실제로 멈추는 시점과
-// 탭바의 페이드/슬라이드 인 애니메이션(.22s/.28s)이 끝나는 시점이 어긋나 스크롤이 멈춘
-// 뒤에도 탭바가 뒤늦게 올라오는 게 눈에 띄어 여백이 두 단계로 나뉘어 생기는 것처럼
-// 보였다(요청: "2단으로 여백 생기는 문제 발생.. 탭바를 좀 일찍부터 띄워줘야 이런
-// 문제가 없을듯"). 바닥에 닿기 한참 전(140px)에 미리 보여서, 실제로 스크롤이
-// 멈출 즈음엔 애니메이션이 이미 끝나 있게 한다 — 여백 자체(.scr-main padding-bottom)는
-// 이제 상태와 무관하게 항상 고정이라(이전 커밋), 이 값을 늘려도 스크롤 가능 범위가
-// 변하는 점프 문제는 재현되지 않는다.
-const EDGE_PX = 140;
+// 스크롤하는 동안은 하단 탭바(+ 헤더/플로팅 필터·검색창)를 보여주고, 스크롤이 멈추면
+// 잠시 후 숨긴다 — 원래는 "아래로 스크롤하면 숨김, 위로 스크롤하거나 맨 아래 도달하면
+// 보임"이었는데, 그 방향/위치 기반 규칙 때문에 스크롤이 맨 위/맨 아래에 닿는 순간마다
+// 탭바가 갑자기 나타나거나 사라져 부자연스러웠다(요청: "2단으로 여백 생기는 문제
+// 발생.. 탭바를 좀 일찍부터 띄워줘야 이런 문제가 없을듯" → "자동 숨김을 멈춰있으면
+// 숨김 스크롤하면 보임으로 수정하자" → "그럼 상하단에서 갑자기 보이지 않으니 해결").
+// 스크롤 "활동" 자체를 신호로 쓰면 방향이나 위치를 따질 필요가 없어 더 단순하고,
+// 맨 위/맨 아래 특수 취급도 필요 없다 — 그 자리에서도 스크롤 중이면 보이고, 멈추면
+// 다른 곳과 똑같이 잠시 후 숨는다. 이 훅은 마운트 시점에 존재하는 스크롤 루트에 한 번만
+// 구독한다 — 로그인 후에만 마운트되는 컴포넌트(Header)에서 호출하면 #scroll-root가
+// 이미 DOM에 있는 상태로 구독을 시작하므로 별도 "shellReady" 신호가 필요 없다.
+const IDLE_DELAY_MS = 500;
 
 export function useHideOnScrollDown(screen: string): boolean {
   const [hidden, setHidden] = useState(false);
-  const lastYRef = useRef(0);
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
-    lastYRef.current = getScrollMetrics().scrollTop;
     const onScroll = () => {
-      const { scrollTop: y, clientHeight, scrollHeight } = getScrollMetrics();
-      const delta = y - lastYRef.current;
-      const atBottom = y + clientHeight >= scrollHeight - EDGE_PX;
-      if (atBottom || delta < -HIDE_THRESHOLD) setHidden(false);
-      else if (delta > HIDE_THRESHOLD) setHidden(true);
-      lastYRef.current = y;
+      setHidden(false);
+      if (idleTimerRef.current !== null) clearTimeout(idleTimerRef.current);
+      idleTimerRef.current = setTimeout(() => setHidden(true), IDLE_DELAY_MS);
     };
     return addScrollListener(onScroll);
   }, []);
 
-  // App.tsx가 화면 전환 시 이전 스크롤 위치로 코드로 점프시키는데, 그 점프 자체를
-  // "아래로 스크롤"로 착각해 순간 숨어버릴 수 있다 — 점프가 끝난 다음 프레임에 기준
-  // 위치를 다시 맞추고 강제로 다시 보이게 한다.
-  // 이 리셋 자체가 이전 화면의 숨김 상태와 다르면(예: 이전 화면은 스크롤을 내려
-  // 숨겨진 채 전환했는데 새 화면은 맨 위라 보임으로 바뀌는 경우) 탭바/필터창이 슬쩍
-  // 미끄러져 나타나는 트랜지션이 함께 재생돼 화면 전환 자체가 부자연스러워 보였다
-  // (요청: "페이지 이동시... 전환효과가 더 부자연스러운듯. 바로 보이거나 숨겨져야해") —
-  // 화면이 바뀌는 그 순간만 트랜지션을 꺼서 상태가 즉시(애니메이션 없이) 바뀌게 하고,
-  // 실제 스크롤로 인한 숨김/노출에는 그대로 부드러운 트랜지션을 남겨둔다.
+  // 화면(탭)을 전환하면 이전 화면의 숨김 타이머가 아직 남아 있을 수 있다 — 새 화면은
+  // 항상 보이는 상태로 시작해야 하므로 타이머를 지우고 강제로 다시 보이게 한다.
+  // 이 리셋 자체가 이전 화면의 숨김 상태와 다르면(예: 이전 화면은 숨겨진 채 전환했는데
+  // 새 화면은 보임으로 바뀌는 경우) 탭바/필터창이 슬쩍 미끄러져 나타나는 트랜지션이
+  // 화면 전환과 겹쳐 부자연스러워 보였다(요청: "페이지 이동시... 전환효과가 더
+  // 부자연스러운듯. 바로 보이거나 숨겨져야해") — 화면이 바뀌는 그 순간만 트랜지션을
+  // 꺼서 상태가 즉시(애니메이션 없이) 바뀌게 하고, 실제 스크롤로 인한 숨김/노출에는
+  // 그대로 부드러운 트랜지션을 남겨둔다.
   useEffect(() => {
+    if (idleTimerRef.current !== null) clearTimeout(idleTimerRef.current);
     document.documentElement.classList.add("scr-screen-switch-jump");
+    setHidden(false);
     const raf = requestAnimationFrame(() => {
-      lastYRef.current = getScrollMetrics().scrollTop;
-      setHidden(false);
-      requestAnimationFrame(() => {
-        document.documentElement.classList.remove("scr-screen-switch-jump");
-      });
+      document.documentElement.classList.remove("scr-screen-switch-jump");
     });
     return () => cancelAnimationFrame(raf);
   }, [screen]);
+
+  useEffect(() => () => {
+    if (idleTimerRef.current !== null) clearTimeout(idleTimerRef.current);
+  }, []);
 
   // 탭바(min-height 애니메이션으로 접힘)가 실제로 접히는 만큼, 그 위에 fixed로 뜬
   // 플로팅 필터/검색창(.scr-filter-float-stack)도 같이 내려와야 하는데, 그 CSS는
