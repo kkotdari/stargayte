@@ -4424,17 +4424,21 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    빈 여백만 넓게 벌어져 보였다(요청: "너나와 카드 pc에서 컨텐츠가 너무 양쪽으로
    벌어져있어.. 도전자랑 상대랑 정보 가운데로 좀더 가까이 배치해줘") — 카드 폭과는
    별개로 매치업 내용 자체를 좁게 다시 캡(560px)해서 카드 가운데로 모은다. */
-.scr-challenge-matchup { display: flex; align-items: flex-start; gap: 12px; width: 100%; }
+.scr-challenge-matchup { display: flex; align-items: flex-start; width: 100%; }
 @media (min-width: 641px) {
   .scr-challenge-matchup { max-width: 560px; margin: 0 auto; }
 }
 /* 손가락은 팀 전체 블록(메시지까지 포함해 세로로 길어질 수 있는)의 한가운데가 아니라
    맨 윗줄(프사+닉네임 줄)에만 자리를 차지하면 된다(요청: "손가락 이모지는 윗 라인에만
    자리 차지하면 돼 — 구성원 첫 줄에만 이모지 들어가니까") — 그 줄의 프사 높이(24px)에
-   맞춰 그 안에서만 세로 가운데로 둔다. */
+   맞춰 그 안에서만 세로 가운데로 둔다. 양옆 간격은 대칭이 아니다(요청: "도전자-손이모티콘
+   사이는 줄이고 손이모티콘-상대 사이는 늘려줘 많이") — 위 .scr-challenge-matchup의
+   균일한 gap을 없애고 이 여백으로 좌우를 따로 준다. */
 .scr-challenge-arrow {
   flex-shrink: 0; font-size: 17px; height: 24px; display: flex; align-items: center;
+  margin-left: 4px; margin-right: 32px;
 }
+
 /* 도전자편/상대편 한 칸 — 인원이 하나든(1:1) 여럿이든(팀전) 항상 세로로 쌓는다(요청:
    "각팀을 세로로 배치"). */
 /* 상대편은 프로필 옆에 응답 알약까지 인라인으로 붙어(요청: "응답상태알약...
