@@ -4503,7 +4503,9 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    모바일 카드에서 51px 버튼 두 개 + 넓은 간격은 카드 폭을 넘어설 수 있어 아래
    모바일 전용 규칙으로 버튼 자체를 40px로 줄인다. */
 .scr-challenge-page-nav-row { display: flex; align-items: center; justify-content: center; gap: 20px; min-width: 0; }
-.scr-challenge-page-nav-row-active { margin: -14px 0 -18px; }
+/* 요청: "대결 카드 페이징 있는 경우 하단 패딩 살짝만 더" — 아래쪽 음수 마진을
+   -18px→-12px로 완화해 다음 요소와 살짝 더 떨어지게 한다. */
+.scr-challenge-page-nav-row-active { margin: -14px 0 -12px; }
 .scr-challenge-page-nav {
   display: flex; align-items: center; justify-content: center;
   width: 51px; height: 51px; border-radius: 50%; flex-shrink: 0;
