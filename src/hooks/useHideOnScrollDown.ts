@@ -8,7 +8,15 @@ import { addScrollListener, getScrollMetrics } from "../utils/scrollRoot";
 // 컴포넌트(Header)에서 호출하면 #scroll-root가 이미 DOM에 있는 상태로 구독을
 // 시작하므로 별도 "shellReady" 신호가 필요 없다.
 const HIDE_THRESHOLD = 6;
-const EDGE_PX = 10;
+// 맨 아래에 딱 붙어야만(10px) 탭바를 다시 보였더니, 스크롤이 실제로 멈추는 시점과
+// 탭바의 페이드/슬라이드 인 애니메이션(.22s/.28s)이 끝나는 시점이 어긋나 스크롤이 멈춘
+// 뒤에도 탭바가 뒤늦게 올라오는 게 눈에 띄어 여백이 두 단계로 나뉘어 생기는 것처럼
+// 보였다(요청: "2단으로 여백 생기는 문제 발생.. 탭바를 좀 일찍부터 띄워줘야 이런
+// 문제가 없을듯"). 바닥에 닿기 한참 전(140px)에 미리 보여서, 실제로 스크롤이
+// 멈출 즈음엔 애니메이션이 이미 끝나 있게 한다 — 여백 자체(.scr-main padding-bottom)는
+// 이제 상태와 무관하게 항상 고정이라(이전 커밋), 이 값을 늘려도 스크롤 가능 범위가
+// 변하는 점프 문제는 재현되지 않는다.
+const EDGE_PX = 140;
 
 export function useHideOnScrollDown(screen: string): boolean {
   const [hidden, setHidden] = useState(false);
