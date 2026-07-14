@@ -473,7 +473,7 @@ export default function ChallengeScreen() {
         <div className="scr-empty"><Spinner size={18} /></div>
       ) : filter === "upcoming" ? (
         <>
-          <section className="scr-challenge-section scr-challenge-section-upcoming">
+          <section className="scr-challenge-section">
             <h2 className="scr-challenge-section-title scr-challenge-section-title-upcoming">다가오는 대결</h2>
             {restUpcomingChallenges.length === 0 ? (
               <div className="scr-empty">{emptyLabel}</div>

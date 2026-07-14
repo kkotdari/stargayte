@@ -4233,8 +4233,16 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    같은 톤이면 눈에 안 띈다 — 포인트 컬러로 강조한다. */
 .scr-challenge-section-title-respond { color: var(--point); }
 /* 요청: "다가오는 경기 타이틀 녹색 포인트" → "타이틀 색 통계의 그래프의 초록색" —
-   전적통계 승률 막대그래프와 같은 초록(--bar-winrate)으로. */
-.scr-challenge-section-title-upcoming { color: var(--bar-winrate); }
+   전적통계 승률 막대그래프와 같은 초록(--bar-winrate)으로. 카드 쪽에 주려던 글로우를
+   결국 이 글자로 옮겨서(요청: "글로우 제거하고 다가오는 대결 타이틀에 글로우") 같은
+   초록으로 은은하게 번지는 text-shadow를 더한다. */
+.scr-challenge-section-title-upcoming {
+  color: var(--bar-winrate);
+  text-shadow: 0 0 10px rgba(142, 249, 122, 0.65), 0 0 22px rgba(142, 249, 122, 0.4);
+}
+.scr-light-theme .scr-challenge-section-title-upcoming {
+  text-shadow: 0 0 8px rgba(47, 143, 62, 0.55), 0 0 18px rgba(47, 143, 62, 0.3);
+}
 
 /* 다크 테마에서 카드끼리 배경과 구분이 잘 안 돼서(요청: "다크모드에서 챌린지 카드
    구분이 잘 안됨 글라스테마로") 운영 드롭다운과 같은 반투명 글라스 톤으로. 라이트
@@ -4267,30 +4275,10 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 /* "응답하라!" 카드에 경고색 테두리를 줬다가(요청: "카드에 노란 경고 색 테두리 주기" →
    "좀더 경고 느낌 붉은색으로") 그 테두리가 너무 튀어서 정작 "다가오는 대결" 쪽이 상대적으로
    덜 주목받는다는 피드백으로 없앤다(요청: "보더는 취소 다가오는 경기가 주목이 안돼"). */
-/* 대신 "다가오는 대결" 카드 쪽에 테두리 글로우를 준다(요청: "다가오는 대결 카드는
-   테두리에 글로우 효과 주기") — 다크 테마는 흰색 글로우(요청: "다크는 흰색 글로우"),
-   라이트 테마는 소타이틀과 같은 녹색 글로우. 카드 기본 box-shadow(inset 반사광 등)를
-   그대로 유지하면서 글로우 레이어만 하나 더 얹어야 해서, 각 테마의 원본 box-shadow
-   전체를 그대로 옮겨오고 마지막에 글로우만 추가한다(box-shadow는 선택자별로 합쳐지지
-   않고 통째로 덮어써진다). */
-.scr-challenge-section-upcoming .scr-challenge-card {
-  border: 1.5px solid rgba(255, 255, 255, 0.5);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.09),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.045),
-    0 2px 12px rgba(0, 0, 0, 0.16),
-    0 0 14px rgba(255, 255, 255, 0.35);
-}
-.scr-light-theme .scr-challenge-section-upcoming .scr-challenge-card {
-  border: 1.5px solid rgba(47, 143, 62, 0.55);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.85),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.5),
-    0 0 0 1px rgba(59, 130, 246, 0.18),
-    0 1px 6px rgba(0, 0, 0, 0.08),
-    0 0 10px rgba(59, 130, 246, 0.16),
-    0 0 14px rgba(47, 143, 62, 0.35);
-}
+/* 카드 자체에 글로우(테두리 → 면 글로우, 다크 흰색→붉은빛→태양빛, 라이트 파란색 순으로
+   여러 번 바뀌었다)를 주는 시도도 결국 카드 대신 소타이틀 글자로 옮겼다(요청: "글로우
+   제거하고 다가오는 대결 타이틀에 글로우") — 아래 .scr-challenge-section-title-upcoming
+   text-shadow 참고. */
 /* line-height를 명시하지 않으면 브라우저 기본값(폰트마다 다른 1.4~1.5배)이 글자
    위아래에 여분의 줄높이를 더해, 3px 패딩이 위아래 대칭이어도 실제로는 알약 안에서
    글자가 살짝 위나 아래로 치우쳐 보였다(실제로 지적받은 문제 — "상태 알약 위아래
