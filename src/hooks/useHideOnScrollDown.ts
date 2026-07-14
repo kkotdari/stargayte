@@ -9,9 +9,16 @@ import { addScrollListener, getScrollMetrics } from "../utils/scrollRoot";
 // 시작하므로 별도 "shellReady" 신호가 필요 없다.
 const HIDE_THRESHOLD = 6;
 const EDGE_PX = 10;
+// 검색창+필터창 예약분(136px = 62 + 74, .scr-main 패딩 참고)만큼보다 넉넉히 미리
+// 복원해야, 실제로 맨 아래에 닿는 순간과 예약 공간이 늘어나는 순간이 겹치지 않는다
+// (아래 --mobile-filterstack-reserve-h 주석 참고).
+const NEAR_BOTTOM_PX = 240;
 
 export function useHideOnScrollDown(screen: string): boolean {
   const [hidden, setHidden] = useState(false);
+  // 맨 아래서 아직 240px 이상 남았을 때만 true — 탭바처럼 숨김 여부에 그대로 안 묶고
+  // 별도로 둔다(아래 --mobile-filterstack-reserve-h 주석 참고).
+  const [nearBottom, setNearBottom] = useState(true);
   const lastYRef = useRef(0);
   useEffect(() => {
     lastYRef.current = getScrollMetrics().scrollTop;
@@ -21,6 +28,7 @@ export function useHideOnScrollDown(screen: string): boolean {
       const atBottom = y + clientHeight >= scrollHeight - EDGE_PX;
       if (atBottom || delta < -HIDE_THRESHOLD) setHidden(false);
       else if (delta > HIDE_THRESHOLD) setHidden(true);
+      setNearBottom(scrollHeight - (y + clientHeight) <= NEAR_BOTTOM_PX);
       lastYRef.current = y;
     };
     return addScrollListener(onScroll);
@@ -29,10 +37,20 @@ export function useHideOnScrollDown(screen: string): boolean {
   // App.tsx가 화면 전환 시 이전 스크롤 위치로 코드로 점프시키는데, 그 점프 자체를
   // "아래로 스크롤"로 착각해 순간 숨어버릴 수 있다 — 점프가 끝난 다음 프레임에 기준
   // 위치를 다시 맞추고 강제로 다시 보이게 한다.
+  // 이 리셋 자체가 이전 화면의 숨김 상태와 다르면(예: 이전 화면은 스크롤을 내려
+  // 숨겨진 채 전환했는데 새 화면은 맨 위라 보임으로 바뀌는 경우) 탭바/필터창이 슬쩍
+  // 미끄러져 나타나는 트랜지션이 함께 재생돼 화면 전환 자체가 부자연스러워 보였다
+  // (요청: "페이지 이동시... 전환효과가 더 부자연스러운듯. 바로 보이거나 숨겨져야해") —
+  // 화면이 바뀌는 그 순간만 트랜지션을 꺼서 상태가 즉시(애니메이션 없이) 바뀌게 하고,
+  // 실제 스크롤로 인한 숨김/노출에는 그대로 부드러운 트랜지션을 남겨둔다.
   useEffect(() => {
+    document.documentElement.classList.add("scr-screen-switch-jump");
     const raf = requestAnimationFrame(() => {
       lastYRef.current = getScrollMetrics().scrollTop;
       setHidden(false);
+      requestAnimationFrame(() => {
+        document.documentElement.classList.remove("scr-screen-switch-jump");
+      });
     });
     return () => cancelAnimationFrame(raf);
   }, [screen]);
@@ -58,6 +76,21 @@ export function useHideOnScrollDown(screen: string): boolean {
     document.documentElement.classList.toggle("scr-scroll-hide", hidden);
     return () => document.documentElement.classList.remove("scr-scroll-hide");
   }, [hidden]);
+
+  // .scr-main 하단 예약분 중 탭바 몫(--mobile-footer-h)은 일부러 고정값으로 둔다(탭바가
+  // 다시 나타나는 순간 예약 공간이 늘어나면서 "맨 아래인 줄 알았는데 스크롤이 더
+  // 생기는" 점프가 났었다 — 이 세션에서 이미 두 번 겪은 버그). 다만 검색창+필터창 몫
+  // (136px)까지 항상 고정이면 그것들이 숨어 있는 동안도 빈 공간만 그대로 남아 유독
+  // 커 보였다(요청: "탭바만 보일정도의 여백만 있으면 되거든 하단에") — 이 몫만은
+  // nearBottom을 따로 둬서(위 NEAR_BOTTOM_PX 참고) 진짜 맨 아래에 닿기 240px 전에
+  // 미리 복원해둔다. 그러면 실제로 바닥에 닿는 순간과 예약 공간이 늘어나는 순간이
+  // 겹치지 않아(늘어날 때 아직 스크롤할 거리가 충분히 남아 있어) 같은 점프가 재현되지
+  // 않는다 — hidden만으로 그대로 묶었으면 탭바 몫과 똑같이 바닥에서 점프가 났을 것.
+  useEffect(() => {
+    document.documentElement.style.setProperty(
+      "--mobile-filterstack-reserve-h", (hidden && !nearBottom) ? "0px" : "136px",
+    );
+  }, [hidden, nearBottom]);
 
   return hidden;
 }
