@@ -4417,8 +4417,11 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-challenge-date-group + .scr-challenge-date-group { margin-top: 18px; }
 .scr-challenge-date-head { font-size: 13px; font-weight: 700; color: var(--dim); letter-spacing: 0.02em; }
 
-/* 요청: "최대한 높이는 컴팩트하게" — 10px→6px. */
-.scr-challenge-card-body { display: flex; flex-direction: column; gap: 6px; }
+/* 요청: "최대한 높이는 컴팩트하게" → "대결카드 기본 하단 여백 늘리고" — 페이징 버튼이
+   없는(대다수) 카드의 기본 여백은 다시 넉넉하게(6px→10px), 대신 페이징 버튼이 실제로
+   뜨는 카드는 그 줄 자신의 음수 마진(.scr-challenge-page-nav-row-active)으로 따로
+   당긴다. */
+.scr-challenge-card-body { display: flex; flex-direction: column; gap: 10px; }
 .scr-challenge-card-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
 /* 매치업 — 도전자편/상대편을 나란히 두고 그 사이에 손가락을 하나만 둔다. 양쪽 다
    align-items:center인 이 flex 행 안에서 자연히 위아래 가운데로 온다(요청: "손가락
@@ -4494,10 +4497,13 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    상쇄한다 — 페이징이 있을 때 버튼이 차지하는 높이가 곧 "원래 있던 여백 자리"를
    대신 채우는 느낌이 되도록. */
 /* 요청: "좌우 버튼을 좀더 좌우로 벌리기" — 화살표-점-화살표 사이 간격을 10px→32px로. */
-/* 요청: "아래 패딩은 감소" — 버튼이 51px로 커진 만큼(요청: "페이징 버튼들 좌우버튼
-   크기 1.5배로") 아래쪽으로 음수 마진을 더 줘서 다음 요소(승락/거절 줄 등)와 너무
-   떨어져 보이지 않게 당긴다. */
-.scr-challenge-page-nav-row { display: flex; align-items: center; justify-content: center; gap: 32px; margin: -4px 0 -10px; }
+/* 요청: "대결카드 기본 하단 여백 늘리고 페이징 있을때 여백 많이 줄여야해" — 이력이
+   없는(대다수) 카드는 이 줄이 빈 채로 그냥 평범한 여백만 차지하고, 이력이 있어
+   51px 화살표 버튼이 실제로 뜨는 카드만(.scr-challenge-page-nav-row-active) 그
+   버튼 크기만큼 위아래로 훨씬 크게 음수 마진을 줘서 다음 요소와 너무 안 떨어져
+   보이게 당긴다. */
+.scr-challenge-page-nav-row { display: flex; align-items: center; justify-content: center; gap: 32px; }
+.scr-challenge-page-nav-row-active { margin: -14px 0 -18px; }
 /* 요청: "페이징 버튼들 좌우버튼 크기 1.5배로" — 34px→51px. */
 .scr-challenge-page-nav {
   display: flex; align-items: center; justify-content: center;

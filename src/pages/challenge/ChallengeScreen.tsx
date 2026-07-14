@@ -390,7 +390,7 @@ function ChallengeCard({ challenge, myId, onResponded, onViewResults }: Challeng
             그 자리까지 예약해둬야 이력 있는 카드와 없는 카드가 목록에서 높이가 안
             흔들린다(요청: "아래 페이징 점이 있고 없고에 따라 레이아웃이 흔들리지
             않게 해줘"). */}
-        <div className="scr-challenge-page-nav-row">
+        <div className={cx("scr-challenge-page-nav-row", pages.length > 1 && "scr-challenge-page-nav-row-active")}>
           {pages.length > 1 && (
             <>
               <button
