@@ -2093,13 +2093,20 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   position: relative; z-index: 1; background: transparent; border: none; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   font-family: inherit; padding: 0 10px; font-size: 13px; font-weight: 600;
-  color: rgba(16,21,26,0.55); border-radius: 999px; transition: color .12s;
+  border-radius: 999px; transition: color .12s;
   white-space: nowrap;
 }
+/* 트랙 배경(.scr-pill-tabs)이 거의 투명(rgba(0,0,0,0.08))이라 실제로는 그 뒤 페이지
+   배경이 그대로 비친다 — 그래서 인디케이터/활성 글자와 달리 이 비활성 글자는 인디케이터
+   색과 짝지을 필요 없이 원래 다크/라이트 배경에 맞는 색으로 그대로 두면 된다(요청:
+   "다크모드 필터 체크박스 폰트 컬러도 원래 컬러로 유지해야함"). */
+.scr-pill-tab-btn { color: rgba(255,255,255,0.65); }
+.scr-light-theme .scr-pill-tab-btn { color: rgba(16,21,26,0.55); }
 /* :not(-active)를 얹어 특이도를 올린다 — 안 그러면 이미 활성인 탭 위에 마우스를
    올렸을 때 :hover(0,2,0)가 -active(0,1,0)를 이겨서 활성 색이 잠깐 호버색으로
    바뀌어 보였다(실제로 Playwright로 재현/확인한 문제). */
-.scr-pill-tab-btn:hover:not(.scr-pill-tab-btn-active) { color: #10151a; }
+.scr-pill-tab-btn:hover:not(.scr-pill-tab-btn-active) { color: #ffffff; }
+.scr-light-theme .scr-pill-tab-btn:hover:not(.scr-pill-tab-btn-active) { color: #10151a; }
 /* 활성 알약탭 글자색도 인디케이터와 짝을 맞춰 다크/라이트로 다시 나눈다(위 인디케이터
    주석 참고) — 다크: 흰 인디케이터 위 어두운 글자, 라이트: 어두운 인디케이터 위 흰 글자. */
 .scr-pill-tab-btn-active { color: #10151a; }
