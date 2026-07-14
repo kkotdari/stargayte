@@ -50,9 +50,11 @@ export default function TeamRankRow({
       >
         <div className="scr-rank-badge">
           {/* 개인전 행과 달리 순위 숫자 옆에 아무 정보(순위변동/승률)도 없어서 숫자만 덩그러니
-              놓이면 무슨 수인지 읽히지 않는다 — "#"을 붙여 순위임을 분명히 한다. */}
+              놓이면 무슨 수인지 읽히지 않는다 — "#"을 붙여 순위임을 분명히 한다. 순위 변동은
+              팀마다 다를 수 있어 공동순위여도 매 행 각자 보여준다(요청: "랭킹에서 공동순위라도
+              순위변동은 각각 표시돼야함"). */}
           <span className="scr-rank-num">{!tiedWithPrev && <><span className="scr-rank-num-hash">#</span>{rank}</>}</span>
-          {!tiedWithPrev && <RankDeltaBadge delta={rankDelta} />}
+          <RankDeltaBadge delta={rankDelta} />
         </div>
         <div className="scr-team-rank-grid">
           {members.map((m) => (

@@ -61,11 +61,13 @@ export default function RankRowV2({ row, tiedWithPrev = false, onOpenLatestMatch
           <div className="scr-rank-badge">
             {/* 공동순위(같은 순위가 여러 명)일 때는 그 그룹의 첫 행에서만 순위 숫자를 보여주고,
                 나머지는 비워둔다(칸 자체는 남겨 높이가 흔들리지 않게 한다). "#"은 팀 카드와
-                같은 규칙 — 숫자만 덩그러니 놓이면 무슨 수인지 안 읽힌다. */}
+                같은 규칙 — 숫자만 덩그러니 놓이면 무슨 수인지 안 읽힌다. 순위 변동은 그와
+                별개로 사람마다 다를 수 있어 공동순위여도 매 행 각자 보여준다(요청: "랭킹에서
+                공동순위라도 순위변동은 각각 표시돼야함"). */}
             <span className="scr-rank-num">
               {!tiedWithPrev && <><span className="scr-rank-num-hash">#</span>{rank}</>}
             </span>
-            {!tiedWithPrev && <RankDeltaBadge delta={rankDelta} />}
+            <RankDeltaBadge delta={rankDelta} />
           </div>
           <button type="button" className="scr-rank-avatar-btn" onClick={openPhoto} aria-label={`${member.nickname} 사진 보기`}>
             <Avatar member={member} size={52} />
