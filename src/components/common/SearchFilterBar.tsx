@@ -13,11 +13,11 @@ import type { BaseRace } from "../../types";
 // 동시에 없어지게") — useHideOnScrollDown이 <html>에 얹는 scr-scroll-hide 클래스를
 // 그대로 신호로 쓴다(별도로 방향/델타 계산을 다시 하면 미묘하게 어긋날 수 있어, 탭바가
 // 실제로 참조하는 값 자체를 그대로 관찰한다). 다시 나타나는 시점만 더 까다롭게(요청:
-// "다시 노출되는 임계치는 더 상단으로 수정") 화면 맨 위 근처일 때로 좁혔었는데, 이후
-// 요청: "검색창/필터창/탭바는 페이지 최상단 최하단에선 항상 노출이야... 스크롤 안해도"
-// — 맨 아래 근처에서도 마찬가지로 항상 보이게, 아래 NEAR_BOTTOM_PX를 같은 값으로 둔다.
+// "다시 노출되는 임계치는 더 상단으로 수정") 화면 맨 위 근처일 때로 좁힌다 — 탭바는
+// 맨 아래에서도 항상 다시 보이지만(useHideOnScrollDown 참고), 검색창/필터창은 맨
+// 아래에서는 계속 숨어 있는 게 맞다(요청: "최하단에서는 검색창이랑 필터창 숨기는게
+// 맞다" — 한 번 맨 아래에서도 보이게 했다가 되돌렸다).
 const NEAR_TOP_PX = 24;
-const NEAR_BOTTOM_PX = 24;
 
 interface SearchFilterBarProps {
   count: number;
@@ -90,21 +90,11 @@ export default function SearchFilterBar({
     observer.observe(el, { attributes: true, attributeFilter: ["class"] });
     return () => observer.disconnect();
   }, []);
-  // 화면 맨 위/맨 아래 근처인지 — 탭바가 다시 보여도(탭바는 이제 스크롤 활동 자체로
-  // 다시 보인다, useHideOnScrollDown 참고) 이 알약은 맨 위나 맨 아래 근처까지 와야만
-  // 함께 다시 보인다(포커스 중이면 stackFocused가 그래도 계속 보이게 덮어쓴다, 위
-  // 주석 참고).
-  const computeNearEdge = () => {
-    const { scrollTop, clientHeight, scrollHeight } = getScrollMetrics();
-    return { top: scrollTop <= NEAR_TOP_PX, bottom: scrollTop + clientHeight >= scrollHeight - NEAR_BOTTOM_PX };
-  };
-  const [nearTop, setNearTop] = useState(() => computeNearEdge().top);
-  const [nearBottom, setNearBottom] = useState(() => computeNearEdge().bottom);
-  useEffect(() => addScrollListener(() => {
-    const edge = computeNearEdge();
-    setNearTop(edge.top);
-    setNearBottom(edge.bottom);
-  }), []);
+  // 화면 맨 위 근처인지 — 탭바가 다시 보여도(탭바는 이제 스크롤 활동 자체로 다시
+  // 보인다, useHideOnScrollDown 참고) 이 알약은 맨 위 근처까지 와야만 함께 다시
+  // 보인다(포커스 중이면 stackFocused가 그래도 계속 보이게 덮어쓴다, 위 주석 참고).
+  const [nearTop, setNearTop] = useState(() => getScrollMetrics().scrollTop <= NEAR_TOP_PX);
+  useEffect(() => addScrollListener(() => setNearTop(getScrollMetrics().scrollTop <= NEAR_TOP_PX)), []);
   // 칩(완성된 검색어/경기번호/종족)은 부모 state(searchValue 등)를 그대로 진실로 삼아
   // 즉시 반영한다(요청: "엔터 확정 방식을 실시간 반영 방식으로 원복 — 칩 추가/제거시
   // 즉시 적용"). 지금 타이핑 중인, 아직 칩이 안 된 마지막 단어만 로컬 상태(liveText)로
@@ -388,13 +378,14 @@ export default function SearchFilterBar({
   // 세로로 쌓아 탭바 위에 고정한다(global.css .scr-filter-float-stack). keyboardInset은
   // 이 바깥 스택 전체에 적용해야 필터창까지 같이 키보드 위로 따라 올라온다.
   // 보임 여부는 모바일에서만 이 컴포넌트가 직접 정한다 — 숨는 시점은 탭바와 정확히
-  // 같고(tabBarHidden), 다시 보이는 시점은 그보다 까다롭게 맨 위/맨 아래 근처(nearTop/
-  // nearBottom)일 때만이다(요청: "숨겨지는 임계치를 탭바와 똑같이... 동시에 없어지게" +
-  // "다시 노출되는 임계치는 더 상단으로" + "검색창/필터창/탭바는 페이지 최상단
-  // 최하단에선 항상 노출이야"). 포커스 중이면(stackFocused, 위 주석 참고) 이 둘과
-  // 무관하게 항상 보인다. 인라인 style로 매번 명시해서 정하며, PC는 애초에 고정 배치가
-  // 아니라 문서 흐름 안에 있어 이 스타일을 적용하면 안 되므로 isMobileFloat일 때만 넣는다.
-  const mobileVisible = stackFocused || (!tabBarHidden && (nearTop || nearBottom));
+  // 같고(tabBarHidden), 다시 보이는 시점은 그보다 까다롭게 맨 위 근처(nearTop)일 때만
+  // 이다(요청: "숨겨지는 임계치를 탭바와 똑같이... 동시에 없어지게" + "다시 노출되는
+  // 임계치는 더 상단으로"). 맨 아래에서는 탭바와 달리 계속 숨어 있는 게 맞다(요청:
+  // "최하단에서는 검색창이랑 필터창 숨기는게 맞다"). 포커스 중이면(stackFocused, 위
+  // 주석 참고) 이 조건과 무관하게 항상 보인다. 인라인 style로 매번 명시해서 정하며,
+  // PC는 애초에 고정 배치가 아니라 문서 흐름 안에 있어 이 스타일을 적용하면 안 되므로
+  // isMobileFloat일 때만 넣는다.
+  const mobileVisible = stackFocused || (!tabBarHidden && nearTop);
   const stackEl = (
     <div
       className="scr-filter-float-stack"
