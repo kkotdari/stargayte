@@ -13,7 +13,7 @@ import { useAppStore } from "../../store/appStore";
 import { api } from "../../api/client";
 import { cx } from "../../utils/format";
 import { attachPopover } from "../../utils/popover";
-import { challengeDateGroupLabel, challengeTimeLabel, fmt, isToday } from "../../utils/date";
+import { challengeDateGroupLabel, challengeTimeLabel, formatChallengeSchedule, fmt, isToday } from "../../utils/date";
 import { activeMemberSearchTerms, memberMatchesTerm, splitSearchTerms } from "../../utils/memberSearch";
 import type { Challenge, ChallengeTarget, Member } from "../../types";
 
@@ -235,7 +235,13 @@ function ChallengeCard({ challenge, myId, onResponded, onViewResults }: Challeng
   const [pageIndex, setPageIndex] = useState(pages.length - 1);
   const isLatestPage = pageIndex === pages.length - 1;
   const page = pages[pageIndex];
-  const pageTimeLabel = challengeTimeLabel(page.scheduledAt);
+  // 최신 페이지는 목록의 날짜 그룹 헤더가 이미 날짜를 보여주니 시간만 표시하지만, 이전
+  // 기록 페이지는 그 헤더의 날짜와 다를 수 있어(재신청 때 날짜 자체가 바뀌었을 수 있다)
+  // 시간만으론 헷갈린다(요청: "이전 기록 카드에는 날짜도 표시해야할듯") — 날짜까지 함께
+  // 보여준다.
+  const pageTimeLabel = isLatestPage
+    ? (challengeTimeLabel(page.scheduledAt) ?? "시간 미정")
+    : formatChallengeSchedule(page.scheduledAt);
   // 이력 페이지는 전부 "거절되고 재신청된" 기록이라 항상 rejected다(재신청 자체가
   // 거절된 도전장에만 허용되므로) — 최신 페이지만 지금 실제 상태(overall, 완료/무응답
   // 취소 등 파생 상태까지 반영)를 쓴다.
@@ -345,7 +351,7 @@ function ChallengeCard({ challenge, myId, onResponded, onViewResults }: Challeng
     <div className="scr-challenge-card">
       <div className="scr-challenge-card-body">
         <div className="scr-challenge-card-row scr-mono scr-challenge-card-when">
-          {pageTimeLabel ?? "시간 미정"}
+          {pageTimeLabel}
           {/* 재신청 이력이 있을 때만 "몇 번째 기록"인지 보여준다(요청: "재신청하면 원래건은
               종료되고 새로운 도전 행이 만들어져... 화면에서는 좌우로 슬라이드되게
               구성하는거야"). */}
@@ -392,7 +398,7 @@ function ChallengeCard({ challenge, myId, onResponded, onViewResults }: Challeng
                 onClick={() => setPageIndex((i) => i - 1)} disabled={pageIndex === 0}
                 aria-label="이전 기록 보기"
               >
-                <ChevronLeft size={16} />
+                <ChevronLeft size={30} />
               </button>
               <div className="scr-challenge-page-dots">
                 {pages.map((p, i) => (
@@ -409,7 +415,7 @@ function ChallengeCard({ challenge, myId, onResponded, onViewResults }: Challeng
                 onClick={() => setPageIndex((i) => i + 1)} disabled={pageIndex === pages.length - 1}
                 aria-label="다음 기록 보기"
               >
-                <ChevronRight size={16} />
+                <ChevronRight size={30} />
               </button>
             </>
           )}

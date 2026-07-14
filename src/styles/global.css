@@ -4486,10 +4486,22 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    이력 없는(재신청 안 된) 카드는 이 줄 자체가 안 뜨는 빈 자리인데, 그래도 이력 있는
    카드와 높이가 같아야 목록 스크롤이 안 흔들린다(요청: "아래 페이징 점이 있고 없고에
    따라 레이아웃이 흔들리지 않게 해줘(높이 동일해야함 항상)"). */
-.scr-challenge-page-nav-row { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 20px; }
+/* 요청: "버튼 크기는 더 키우고 아래 여백 줄여야 페이징 없을때와 높이가 같을듯?" →
+   "페이징 + 페이징 아래 여백 == 페이징 없을때 아래 전체 여백" — 페이징이 없을 때
+   이 줄은 내용이 비어 0px지만, .scr-challenge-card-body의 gap이 위/아래로 각각
+   또 붙어 결국 "빈 줄 하나 몫"만큼 여백이 이중으로 잡혔다. min-height를 없애
+   빈 상태를 최대한 0에 가깝게 접고, margin-top을 음수로 줘서 위쪽 gap 일부를
+   상쇄한다 — 페이징이 있을 때 버튼이 차지하는 높이가 곧 "원래 있던 여백 자리"를
+   대신 채우는 느낌이 되도록. */
+/* 요청: "좌우 버튼을 좀더 좌우로 벌리기" — 화살표-점-화살표 사이 간격을 10px→32px로. */
+/* 요청: "아래 패딩은 감소" — 버튼이 51px로 커진 만큼(요청: "페이징 버튼들 좌우버튼
+   크기 1.5배로") 아래쪽으로 음수 마진을 더 줘서 다음 요소(승락/거절 줄 등)와 너무
+   떨어져 보이지 않게 당긴다. */
+.scr-challenge-page-nav-row { display: flex; align-items: center; justify-content: center; gap: 32px; margin: -4px 0 -10px; }
+/* 요청: "페이징 버튼들 좌우버튼 크기 1.5배로" — 34px→51px. */
 .scr-challenge-page-nav {
   display: flex; align-items: center; justify-content: center;
-  width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0;
+  width: 51px; height: 51px; border-radius: 50%; flex-shrink: 0;
   background: transparent; border: none; color: var(--dim); cursor: pointer;
 }
 .scr-challenge-page-nav:hover { color: var(--text); background: rgba(var(--overlay-rgb), 0.1); }
