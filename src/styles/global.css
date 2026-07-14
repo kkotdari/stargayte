@@ -1815,8 +1815,12 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
      "딱 붙었다") PC에서는 숫자가 잘 안 보일 정도로 존재감이 옅어졌다 — 결국 일대일
      행(.scr-rank-row-inner)과 같은 단순한 배치(왼쪽 정렬, 좁은 고정폭)가 낫다는
      피드백으로 되돌린다("일대일 정도의 배치가 좋은듯"). */
+  /* TeamRankRow.tsx가 이 클래스를 scr-rank-row-inner와 함께 쓰는데, 그 v1 기본 규칙이
+     max-width:460px; margin:0 auto를 갖고 있어(위 .scr-rank-row-inner 참고) 여기서
+     새로 안 풀어주면 일대일 행과 똑같이 460px에 갇힌다 — 요청: "팀랭킹카드 폭이 좁아
+     PC/모바일 모두". */
   grid-template-columns: 60px minmax(0, 1fr) 144px;
-  column-gap: 14px;
+  column-gap: 14px; max-width: none; margin: 0;
   align-items: center;
   padding: 18px 18px; border-radius: 14px;
   background: rgba(var(--overlay-rgb), 0.07);
