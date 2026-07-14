@@ -4350,6 +4350,17 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    "이제 모바일에서 도전자쪽이 너무 좁아") 격차를 완만하게 줄였다. */
 .scr-challenge-side { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
 .scr-challenge-side-target { flex: 1.4 1 0; }
+/* 모바일은 카드 폭 자체가 좁아서(약 300~350px) 도전자편/상대편을 좌우로 나누면 한
+   쪽이 100px도 안 남는다 — 그 안에 프사+닉네임+메시지를 다 넣으려니 짧은 한마디도
+   줄바꿈이 났다(요청: "이부분이 폭이 작아서 줄바꿈이 생기잖아" → "그대론데?", width:100%
+   로 박스 자체는 고쳤지만 칸이 원래 좁아서 눈에 보이는 결과는 그대로였다). 근본적으로
+   폭이 부족한 문제라, 모바일에서는 좌우 분할을 포기하고 도전자편 → 상대편을 위아래로
+   쌓아 각 편이 카드 전체 폭을 그대로 쓰게 한다. */
+@media (max-width: 640px) {
+  .scr-challenge-matchup { flex-direction: column; align-items: stretch; gap: 4px; }
+  .scr-challenge-side, .scr-challenge-side-target { flex: 0 0 auto; }
+  .scr-challenge-arrow { align-self: center; transform: rotate(90deg); height: auto; }
+}
 .scr-challenge-side-block { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .scr-challenge-side-row { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .scr-challenge-side-row .scr-avatar { border-radius: 50% !important; }
