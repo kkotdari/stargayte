@@ -55,7 +55,7 @@ function targetPillInfo(t: ChallengeTarget, overall: ChallengeDisplayStatus): { 
   if (t.response === "accepted") return overall === "done" ? { label: "완료", tone: "done" } : { label: "수락", tone: "accepted" };
   if (t.response === "rejected") return { label: "거절", tone: "rejected" };
   if (overall === "rejected") return { label: "무응답", tone: "muted" };
-  return { label: "대기", tone: "pending" };
+  return { label: "응답대기중", tone: "pending" };
 }
 
 interface ChallengeDateGroup {

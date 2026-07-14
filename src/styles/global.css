@@ -4496,15 +4496,14 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    빈 상태를 최대한 0에 가깝게 접고, margin-top을 음수로 줘서 위쪽 gap 일부를
    상쇄한다 — 페이징이 있을 때 버튼이 차지하는 높이가 곧 "원래 있던 여백 자리"를
    대신 채우는 느낌이 되도록. */
-/* 요청: "좌우 버튼을 좀더 좌우로 벌리기" — 화살표-점-화살표 사이 간격을 10px→32px로. */
-/* 요청: "대결카드 기본 하단 여백 늘리고 페이징 있을때 여백 많이 줄여야해" — 이력이
-   없는(대다수) 카드는 이 줄이 빈 채로 그냥 평범한 여백만 차지하고, 이력이 있어
-   51px 화살표 버튼이 실제로 뜨는 카드만(.scr-challenge-page-nav-row-active) 그
-   버튼 크기만큼 위아래로 훨씬 크게 음수 마진을 줘서 다음 요소와 너무 안 떨어져
-   보이게 당긴다. */
-.scr-challenge-page-nav-row { display: flex; align-items: center; justify-content: center; gap: 32px; }
+/* 재신청 이력 탐색 화살표 줄 — 대결카드 기본 하단 여백은 늘리고(이 줄이 비어있는
+   대다수 카드), 실제로 51px 버튼이 뜨는 카드만(.scr-challenge-page-nav-row-active)
+   음수 마진으로 바짝 당긴다. 간격(gap)은 "더 벌리기" 요청과 "카드를 벗어나는듯"
+   요청 사이에서 20px로 절충 — PC(560px까지 넓은 매치업)에선 여유 있지만, 좁은
+   모바일 카드에서 51px 버튼 두 개 + 넓은 간격은 카드 폭을 넘어설 수 있어 아래
+   모바일 전용 규칙으로 버튼 자체를 40px로 줄인다. */
+.scr-challenge-page-nav-row { display: flex; align-items: center; justify-content: center; gap: 20px; min-width: 0; }
 .scr-challenge-page-nav-row-active { margin: -14px 0 -18px; }
-/* 요청: "페이징 버튼들 좌우버튼 크기 1.5배로" — 34px→51px. */
 .scr-challenge-page-nav {
   display: flex; align-items: center; justify-content: center;
   width: 51px; height: 51px; border-radius: 50%; flex-shrink: 0;
@@ -4513,6 +4512,11 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-challenge-page-nav:hover { color: var(--text); background: rgba(var(--overlay-rgb), 0.1); }
 .scr-challenge-page-nav:disabled { opacity: 0.25; cursor: default; }
 .scr-challenge-page-nav:disabled:hover { background: transparent; }
+@media (max-width: 480px) {
+  .scr-challenge-page-nav-row { gap: 14px; }
+  .scr-challenge-page-nav { width: 40px; height: 40px; }
+  .scr-challenge-page-nav svg { width: 22px; height: 22px; }
+}
 .scr-challenge-page-dots { display: flex; align-items: center; justify-content: center; gap: 6px; }
 .scr-challenge-page-dot {
   width: 6px; height: 6px; border-radius: 50%; padding: 0; border: none;

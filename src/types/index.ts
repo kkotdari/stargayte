@@ -296,7 +296,6 @@ export interface Challenge {
   createdBy: { id: string; nickname: string };
   targets: ChallengeTarget[];
   ownMembers: ChallengeOwnMember[];
-  resultMatchId: number | null;
   createdAt: string;
   // 재신청으로 만들어졌으면 원래 도전장의 id, 아니면 null.
   reappliedFromId: number | null;

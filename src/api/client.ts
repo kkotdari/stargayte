@@ -527,12 +527,4 @@ export const api = {
       body: JSON.stringify(payload),
     });
   },
-
-  // 확정된(전원 승락) 도전장에, 실제로 등록된 경기결과(matchId)를 연결한다.
-  async attachChallengeResult(id: number, matchId: number): Promise<Challenge> {
-    return request<Challenge>(`/api/challenges/${id}/attach-result`, {
-      method: "POST",
-      body: JSON.stringify({ matchId }),
-    });
-  },
 };

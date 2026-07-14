@@ -24,10 +24,6 @@ interface ReplayReviewModalProps {
   // 목록을 갖고 있는 호출부가 "이건 이제 등록됐다"고 표시를 갱신할 수 있게. 전체 저장이
   // 끝난 뒤의 onSaved만으로는 어떤 파일이 등록되고 어떤 게 제외됐는지 구분할 수 없다.
   onRegistered?: (fileName: string) => void;
-  // 챌린지(도전장) 카드의 "리플레이 등록"에서 열렸을 때만 넘어온다 — 등록에 성공한 첫
-  // 경기를 그 도전장의 결과로 연결한다(challenge.resultMatchId). 배치로 여러 파일을
-  // 골라도 도전장 하나엔 결과 하나만 있으면 되므로 첫 건만 연결한다.
-  attachToChallengeId?: number;
 }
 
 // v2 "등록 내용 확인" 모달 — 예전엔 매칭이 끝났거나 파싱이 성공한 리플레이는 이 모달을
@@ -42,7 +38,7 @@ interface ReplayReviewModalProps {
 // (MemberMultiSelect 참고) — 한 리플레이에서 매핑하면 같은 이름이 나온 다른 리플레이 행도
 // 같이 사라진다.
 export default function ReplayReviewModal({
-  drafts: initialDrafts, truncated = false, onClose, onSaved, onRegistered, attachToChallengeId,
+  drafts: initialDrafts, truncated = false, onClose, onSaved, onRegistered,
 }: ReplayReviewModalProps) {
   useLockBodyScroll();
   const members = useAppStore((s) => s.members);
@@ -223,7 +219,6 @@ export default function ReplayReviewModal({
     setErr("");
     setBusy(true);
     try {
-      let firstCreatedMatchId: number | null = null;
       for (const i of pendingIndices) {
         const d = resolved[i];
         const payload: NewMatch = {
@@ -232,20 +227,9 @@ export default function ReplayReviewModal({
           note: d.note, attachment: d.attachment,
           mapName: d.mapName || null, gameStartedAt: d.gameStartedAt, durationSeconds: d.durationSeconds,
         };
-        const created = await addMatch(payload);
-        if (firstCreatedMatchId === null) firstCreatedMatchId = created.id;
+        await addMatch(payload);
         setSubmittedIndices((prev) => new Set(prev).add(i));
         onRegistered?.(d.fileName);
-      }
-      // 도전장의 "리플레이 등록"에서 열렸을 때만(attachToChallengeId) 방금 만든 첫 경기를
-      // 그 도전장의 결과로 연결한다 — 실패해도(예: 그 사이 다른 사람이 먼저 연결) 경기
-      // 자체는 이미 등록됐으니 전체 저장을 실패로 되돌리지 않고 조용히 넘어간다.
-      if (attachToChallengeId && firstCreatedMatchId !== null) {
-        try {
-          await api.attachChallengeResult(attachToChallengeId, firstCreatedMatchId);
-        } catch {
-          // 경기 등록 자체는 이미 성공했으므로 여기서 막지 않는다.
-        }
       }
       await onSaved();
       onClose();
