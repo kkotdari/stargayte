@@ -405,20 +405,19 @@ export default function ChallengeScreen() {
     return a.createdAt > b.createdAt ? -1 : a.createdAt < b.createdAt ? 1 : 0;
   }), [searchedChallenges]);
 
-  // "응답하라!" — 다가오는 목록 중 아직 내가 응답 안 한 것만 따로 모아 맨 위에 둔다(요청:
-  // "다가오는 대결에는 응답하라! 섹션을 만들고 맨 위에 배치"). 날짜 그룹핑 아래 목록에서는
-  // 중복으로 또 나오지 않게 뺀다.
-  const needsMyResponse = (c: Challenge): boolean => {
-    const myTarget = c.targets.find((t) => t.memberId === user?.id);
-    return !!myTarget && myTarget.response === "pending" && challengeDisplayStatus(c) === "pending";
-  };
+  // "응답하라!" — 다가오는 목록 중 아직 응답이 안 끝난 건 전부 모아 맨 위에 둔다(요청:
+  // "다가오는 대결에는 응답하라! 섹션을 만들고 맨 위에 배치" → "응답하라는 내꺼 뿐만
+  // 아니라 모두다") — 내가 지목된 것만이 아니라, 클럽 전체에서 아직 상대의 응답을
+  // 기다리는 도전장이면 누구 것이든 다 보여준다. 날짜 그룹핑 아래 목록에서는 중복으로
+  // 또 나오지 않게 뺀다.
+  const needsResponse = (c: Challenge): boolean => challengeDisplayStatus(c) === "pending";
   const respondChallenges = useMemo(
-    () => upcomingChallenges.filter(needsMyResponse),
-    [upcomingChallenges, user?.id],
+    () => upcomingChallenges.filter(needsResponse),
+    [upcomingChallenges],
   );
   const restUpcomingChallenges = useMemo(
-    () => upcomingChallenges.filter((c) => !needsMyResponse(c)),
-    [upcomingChallenges, user?.id],
+    () => upcomingChallenges.filter((c) => !needsResponse(c)),
+    [upcomingChallenges],
   );
 
   // "결과 보기" — 리플레이를 직접 여기서 등록하는 대신(리플레이 등록 버튼 제거, 요청:
