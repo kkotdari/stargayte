@@ -4438,9 +4438,10 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   flex-shrink: 0; font-size: 17px; height: 24px; display: flex; align-items: center;
   /* 왼쪽은 원래(균일 gap 12px)보다는 좁지만, 도전자편이 오른쪽으로 붙게 되면서(아래
      PC 전용 규칙 참고) 4px로는 거의 맞닿아 보였다(요청: "지금은 도전자랑 손이 너무
-     붙었어") — 14px로 늘렸다가, 마지막 요청(요청: "도전자-손 살짝 줄이고 줄이는
-     만큼 손-상대 넓히기")으로 그 폭만큼 오른쪽으로 옮겨 10px/36px로 재배분한다. */
-  margin-left: 10px; margin-right: 36px;
+     붙었어") — 14px로 늘렸다가, "도전자-손 살짝 줄이고 줄이는 만큼 손-상대 넓히기"
+     요청으로 4px만큼 옮겼는데 그걸로는 부족해(요청: "12씩") 14px 기준으로 12px씩
+     재배분한다. */
+  margin-left: 2px; margin-right: 44px;
 }
 
 /* 도전자편/상대편 한 칸 — 인원이 하나든(1:1) 여럿이든(팀전) 항상 세로로 쌓는다(요청:
