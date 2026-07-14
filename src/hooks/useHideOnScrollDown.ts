@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { addScrollListener, getScrollMetrics } from "../utils/scrollRoot";
+import { addScrollListener, getScrollMetrics, scrollRootTo } from "../utils/scrollRoot";
 
 // 아래로 스크롤하면 하단 탭바를 숨겨 화면을 넓게 쓰고, 위로 스크롤하거나 목록 끝(맨
 // 아래)까지 다다르면 다시 보여준다(요청: "모바일 위로 스크롤시 탭바가 재노출되어야
@@ -9,9 +9,19 @@ import { addScrollListener, getScrollMetrics } from "../utils/scrollRoot";
 // 시작하므로 별도 "shellReady" 신호가 필요 없다.
 const HIDE_THRESHOLD = 6;
 const EDGE_PX = 10;
+// 탭바가 다시 나타날 때 늘어나는 높이(global.css --mobile-footer-h와 같은 값) — 탭바가
+// 숨어있던 채로 맨 아래까지 스크롤하면 다시 나타나면서 #scroll-root(flex:1이라 탭바
+// 높이만큼 줄어듦)의 clientHeight가 이만큼 줄어, 방금까지 보이던 맨 아래 콘텐츠가
+// 도로 탭바 뒤에 가려 보였다 — 그래서 사용자 입장에선 "맨 아래까지 내렸는데 탭바가
+// 나타나며 스크롤할 게 더 생기는" 것처럼 보였다(요청: "끝까지 스크롤을 내리면 숨겨졌던
+// 탭바가 복구되면서... 추가 스크롤이 가능해지는 문제"). 아래에서 탭바가 막 다시 나타나는
+// 순간에만 이 값만큼 scrollTop도 같이 밀어줘서, 화면에 보이는 콘텐츠 위치가 안 흔들리게
+// 보정한다.
+const TAB_BAR_H = 67;
 
 export function useHideOnScrollDown(screen: string): boolean {
   const [hidden, setHidden] = useState(false);
+  const hiddenRef = useRef(false);
   const lastYRef = useRef(0);
   useEffect(() => {
     lastYRef.current = getScrollMetrics().scrollTop;
@@ -19,8 +29,14 @@ export function useHideOnScrollDown(screen: string): boolean {
       const { scrollTop: y, clientHeight, scrollHeight } = getScrollMetrics();
       const delta = y - lastYRef.current;
       const atBottom = y + clientHeight >= scrollHeight - EDGE_PX;
-      if (atBottom || delta < -HIDE_THRESHOLD) setHidden(false);
-      else if (delta > HIDE_THRESHOLD) setHidden(true);
+      if (atBottom || delta < -HIDE_THRESHOLD) {
+        if (hiddenRef.current) scrollRootTo({ top: y + TAB_BAR_H, behavior: "smooth" });
+        hiddenRef.current = false;
+        setHidden(false);
+      } else if (delta > HIDE_THRESHOLD) {
+        hiddenRef.current = true;
+        setHidden(true);
+      }
       lastYRef.current = y;
     };
     return addScrollListener(onScroll);
@@ -32,6 +48,7 @@ export function useHideOnScrollDown(screen: string): boolean {
   useEffect(() => {
     const raf = requestAnimationFrame(() => {
       lastYRef.current = getScrollMetrics().scrollTop;
+      hiddenRef.current = false;
       setHidden(false);
     });
     return () => cancelAnimationFrame(raf);
