@@ -47,26 +47,35 @@ const MAX_SUGGESTIONS = 8;
 const FADE_MS = 70;
 const WIDTH_MS = 220;
 
-// 접힌 아이콘 ↔ 펼쳐진 창 상태 하나를 위 3단계(페이드아웃 → 폭 전환 → 페이드인)로
-// 애니메이션한다. target은 "펼쳐져야 하는가"를 즉시 반영하는 값(버튼 클릭 시 바로
-// 바뀐다) — 실제로 화면에 그릴 내용/폭은 renderOpen이 그 target을 따라가되 페이드아웃
-// 만큼 늦게 따라간다. hidden은 지금 이 순간 내용을 투명하게 둘지(페이드 중)를 나타낸다.
-function useAnimatedExpand(target: boolean): { renderOpen: boolean; hidden: boolean } {
-  const [renderOpen, setRenderOpen] = useState(target);
+// 모바일 플로팅 알약(단일 행)이 지금 무엇을 보여주는지 — 접힘(아이콘 두 개)/필터창/검색창
+// 셋 중 하나다. 필터와 검색이 각자 줄을 갖고 독립적으로 접혔다 펴지던 구조에서, 한 줄을
+// 두 창이 나눠 쓰는(교체되는) 구조로 바꿨다(요청: "현재 필터창 자리는 이제 사용하지 않고
+// 검색창 자리에 필터/검색창이 교체되는 방식").
+type MobilePanel = "filter" | "search" | "none";
+
+// 알약 상태 전환을 위 3단계(페이드아웃 → 폭 전환 → 페이드인)로 애니메이션한다. target은
+// 목표 상태(버튼 클릭 시 바로 바뀐다) — 실제로 화면에 그릴 내용/폭은 renderPanel이 그
+// target을 따라가되 페이드아웃만큼 늦게 따라간다. hidden은 지금 이 순간 내용을 투명하게
+// 둘지(페이드 중)를 나타낸다. 접힘↔펼침은 폭/반경 트랜지션(WIDTH_MS)을 기다리지만,
+// 필터↔검색 교체는 폭이 그대로라(둘 다 펼쳐진 폭) 기다릴 게 없다 — 내용만 빠르게
+// 갈아끼운다.
+function useAnimatedPanel(target: MobilePanel): { renderPanel: MobilePanel; hidden: boolean } {
+  const [renderPanel, setRenderPanel] = useState(target);
   const [hidden, setHidden] = useState(false);
-  const renderOpenRef = useRef(target);
+  const renderPanelRef = useRef(target);
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   useEffect(() => {
-    if (renderOpenRef.current === target) return;
+    if (renderPanelRef.current === target) return;
     timersRef.current.forEach(clearTimeout);
     timersRef.current = [];
 
+    const widthChanges = renderPanelRef.current === "none" || target === "none";
     setHidden(true);
     const t1 = setTimeout(() => {
-      renderOpenRef.current = target;
-      setRenderOpen(target);
-      const t2 = setTimeout(() => setHidden(false), WIDTH_MS);
+      renderPanelRef.current = target;
+      setRenderPanel(target);
+      const t2 = setTimeout(() => setHidden(false), widthChanges ? WIDTH_MS : 30);
       timersRef.current.push(t2);
     }, FADE_MS);
     timersRef.current.push(t1);
@@ -74,7 +83,7 @@ function useAnimatedExpand(target: boolean): { renderOpen: boolean; hidden: bool
 
   useEffect(() => () => { timersRef.current.forEach(clearTimeout); }, []);
 
-  return { renderOpen, hidden };
+  return { renderPanel, hidden };
 }
 
 // 한글 1자 이상, 또는 영문/숫자 2자 이상 입력됐을 때만 자동완성을 보여준다 — 자음/모음
@@ -123,21 +132,19 @@ export default function SearchFilterBar({
     observer.observe(el, { attributes: true, attributeFilter: ["class"] });
     return () => observer.disconnect();
   }, []);
-  // 모바일 전용 — 화면 첫 진입시엔 펼쳐진 상태로 시작하고(요청: "필터창 검색창 처음
-  // 들어갔을땐 펼처진 상태로"), 누르면 그 아이콘 자리만 왼쪽으로 늘어나며 해당 창(필터
-  // 또는 검색)만 펼쳐진다(요청: "필터나 검색 아이콘 누르면 해당 창만 확대돼야함") —
-  // 필터/검색을 하나로 묶어 같이 펼치던 것에서 각자 독립적으로 펼치고 접히게 나눴다.
-  // 아래로 스크롤해 숨을 때는 둘 다 펼쳐져 있었어도 다시 아이콘 모양으로 접히고 나서
-  // 숨는다(요청: "필터/검색은 아이콘으로 트랜스폼되며 숨겨짐") — 아래 effect가 숨는
-  // 순간(mobileVisible이 false가 될 때)마다 강제로 접는다.
-  const [filterExpanded, setFilterExpanded] = useState(true);
-  const [searchExpanded, setSearchExpanded] = useState(true);
-  // 클릭 즉시 바뀌는 filterExpanded/searchExpanded(목표 상태)와 실제로 화면에 그릴
-  // 내용/폭(filterRenderOpen/searchRenderOpen)을 분리해, 페이드아웃 → 폭 전환 → 페이드인
-  // 3단계로 부드럽게 전환한다(요청: "빠르게 기존요소 감추고 형태변환후 새로운 요소
-  // 빠르게 보이게 하기") — 위 useAnimatedExpand 참고.
-  const { renderOpen: filterRenderOpen, hidden: filterContentHidden } = useAnimatedExpand(filterExpanded);
-  const { renderOpen: searchRenderOpen, hidden: searchContentHidden } = useAnimatedExpand(searchExpanded);
+  // 모바일 전용 — 한 줄을 필터창/검색창이 나눠 쓴다(요청: "현재 필터창 자리는 이제
+  // 사용하지 않고 검색창 자리에 필터/검색창이 교체되는 방식"). 화면 첫 진입시엔 필터가
+  // 열린 채로 시작하고(요청: "페이지 진입시 기본은 필터가 열려있음" — 필터가 없는
+  // 화면이면 검색), 펼쳐진 동안 왼쪽 아이콘 자리에 반대 기능의 아이콘이 떠서 누르면
+  // 그 창으로 바로 교체된다(요청: "클릭하지 않은 다른 기능의 아이콘이 아이콘 자리에
+  // 나타나는 방식"). 아래로 스크롤해 숨을 때는 아이콘 모양으로 접히고 나서 숨는다
+  // (요청: "필터/검색은 아이콘으로 트랜스폼되며 숨겨짐") — 아래 effect가 숨는 순간
+  // (mobileVisible이 false가 될 때)마다 강제로 접는다.
+  const [panel, setPanel] = useState<MobilePanel>(filterPanel ? "filter" : "search");
+  // 클릭 즉시 바뀌는 panel(목표 상태)과 실제로 화면에 그릴 내용/폭(renderPanel)을
+  // 분리해, 페이드아웃 → 폭 전환 → 페이드인 3단계로 부드럽게 전환한다(요청: "빠르게
+  // 기존요소 감추고 형태변환후 새로운 요소 빠르게 보이게 하기") — 위 useAnimatedPanel 참고.
+  const { renderPanel, hidden: contentHidden } = useAnimatedPanel(panel);
   // 칩(완성된 검색어/경기번호/종족)은 부모 state(searchValue 등)를 그대로 진실로 삼아
   // 즉시 반영한다(요청: "엔터 확정 방식을 실시간 반영 방식으로 원복 — 칩 추가/제거시
   // 즉시 적용"). 지금 타이핑 중인, 아직 칩이 안 된 마지막 단어만 로컬 상태(liveText)로
@@ -183,8 +190,7 @@ export default function SearchFilterBar({
   useEffect(() => {
     const onPointerDown = (e: PointerEvent) => {
       if (stackRef.current?.contains(e.target as Node | null)) return;
-      setFilterExpanded(false);
-      setSearchExpanded(false);
+      setPanel("none");
     };
     document.addEventListener("pointerdown", onPointerDown);
     return () => document.removeEventListener("pointerdown", onPointerDown);
@@ -447,7 +453,7 @@ export default function SearchFilterBar({
   // 트랜스폼되며 숨겨짐") — 포커스 중엔 애초에 mobileVisible이 계속 true라 숨지
   // 않으므로, 타이핑 중에 뜬금없이 접히는 일은 없다.
   useEffect(() => {
-    if (!mobileVisible) { setFilterExpanded(false); setSearchExpanded(false); }
+    if (!mobileVisible) setPanel("none");
   }, [mobileVisible]);
 
   const expandedContent = (
@@ -465,8 +471,8 @@ export default function SearchFilterBar({
   // 직후라 tabBarHidden이 어차피 false이므로, 여기서 명시적으로 false로 되돌려도 화면이
   // 사라지지 않는다. 펼쳐진 뒤 실제 입력칸에 포커스가 가면 그 포커스는 언마운트되지
   // 않는 안정된 엘리먼트라 onFocus/onBlur가 정상 동작한다.
-  const openFilter = () => { setStackFocused(false); setFilterExpanded(true); };
-  const openSearch = () => { setStackFocused(false); setSearchExpanded(true); };
+  const openFilter = () => { setStackFocused(false); setPanel("filter"); };
+  const openSearch = () => { setStackFocused(false); setPanel("search"); };
 
   // 접혔을 때 보이지 않는 나머지 공간까지 이 줄(.scr-filter-search-collapsible) 자신의
   // 너비로 잡혀 있으면, 그 빈 자리가 여전히 pointer-events를 먹어 스크롤 제스처가 거기서
@@ -482,60 +488,73 @@ export default function SearchFilterBar({
       }
     : undefined;
 
-  // 필터/검색 각각 자기 자리에서 아이콘 ↔ 펼쳐진 창으로 독립적으로 오간다(요청: "필터가
-  // 위 검색이 아래고(지금 위치 그대로임)" + "필터나 검색 아이콘 누르면 해당 창만
-  // 확대돼야함") — 예전처럼 하나를 누르면 둘 다 펼쳐지지 않는다. 검색 아이콘은 펼쳐질
-  // 검색창과 똑같은 흰 인풋 색을 그대로 유지해(요청: "검색은 흰색 인풋창 색 그대로
-  // 유지") 아이콘→박스 전환 중 색이 바뀌지 않게 한다. 펼쳐지면 오른쪽 끝에 접기
-  // 버튼도 같이 둔다(요청: "필터창 검색창 펼쳐졌을때 오른쪽 끝에 접는 아이콘 버튼").
+  // 한 줄짜리 알약 하나가 접힘(아이콘 두 개)/필터창/검색창 세 상태를 오간다 — 접히면
+  // 필터/검색 아이콘이 수평으로 나란히(살짝 갭) 놓이고, 펼치면 그 창이 오른쪽으로
+  // 늘어나되 왼쪽 아이콘 자리에는 반대 기능의 아이콘이 남아 누르면 창이 바로 교체된다
+  // (요청: "필터/검색 아이콘을 왼쪽에 배치(왼손유저가 많은거 같음)" + "클릭하지 않은
+  // 다른 기능의 아이콘이 아이콘 자리에 나타나는 방식" + "접힐때는 필터 아이콘/검색
+  // 아이콘이 수평으로 나란히 배치 살짝 갭 주고"). 알약 전체가 왼쪽 정렬이다(global.css
+  // .scr-filter-float-stack의 align-items) — 왼손 엄지가 바로 닿는 자리.
   // 패널(배경+모서리 반경) 자신은 이 shell div 하나가 계속 들고 있어서 트랜지션 내내
-  // 화면에서 사라지지 않는다(요청: "숨기더라도 패널자체는 유지하고 안의 요소만
-  // 숨겨야지") — 안의 내용(.scr-filter-search-content)만 페이드된다. 원(접힘, 반경
-  // 25px)에서 둥근모서리 사각형(펼침, 다른 필터/검색 패널과 같은 14px)으로 반경도
-  // 폭과 함께 부드럽게 바뀐다.
-  const filterRow = filterPanel && (
-    <div
-      className="scr-filter-search-collapsible scr-filter-search-collapsible-filter"
-      style={{ width: filterRenderOpen ? "100%" : 50, borderRadius: filterRenderOpen ? 14 : 25, ...rowVisibilityStyle }}
+  // 화면에서 사라지지 않는다 — 안의 내용(.scr-filter-search-content)만 페이드된다.
+  // 캡슐(접힘, 반경 25px)에서 둥근모서리 사각형(펼침, 반경 14px)으로 반경도 폭과 함께
+  // 부드럽게 바뀐다. 배경은 검색창일 때만 인풋과 같은 흰색, 그 외(접힘/필터)엔 반투명
+  // 글라스 톤 — 클래스 교체와 background 트랜지션으로 부드럽게 넘어간다.
+  // 접힘 폭 = 아이콘 50px 둘 + 사이 갭 8px. 필터가 없는 화면이면 검색 아이콘 하나뿐이다.
+  const collapsedWidth = filterPanel ? 108 : 50;
+  const swapIconBtn = renderPanel === "filter" ? (
+    <button
+      type="button" className="scr-filter-search-icon-btn" onClick={openSearch}
+      aria-label="검색으로 전환"
     >
-      <div className="scr-filter-search-content" style={{ opacity: filterContentHidden ? 0 : 1 }}>
-        {filterRenderOpen ? (
-          <div className="scr-filter-search-expand-wrap">
-            <div className="scr-filter-panel">{filterPanel}</div>
-          </div>
-        ) : (
+      <Search size={16} />
+    </button>
+  ) : filterPanel ? (
+    <button
+      type="button" className="scr-filter-search-icon-btn" onClick={openFilter}
+      aria-label="필터로 전환"
+    >
+      <SlidersHorizontal size={16} />
+    </button>
+  ) : null;
+  const mobileRow = (
+    <div
+      className={cx(
+        "scr-filter-search-collapsible",
+        renderPanel === "search" ? "scr-filter-search-collapsible-search" : "scr-filter-search-collapsible-filter",
+      )}
+      style={{
+        width: renderPanel === "none" ? collapsedWidth : "100%",
+        borderRadius: renderPanel === "none" ? 25 : 14,
+        ...rowVisibilityStyle,
+      }}
+    >
+      <div className="scr-filter-search-content" style={{ opacity: contentHidden ? 0 : 1 }}>
+        {renderPanel === "none" ? (
           <div className="scr-filter-search-icons">
+            {filterPanel && (
+              <button
+                type="button" className="scr-filter-search-icon-btn" onClick={openFilter}
+                aria-label="필터 열기"
+              >
+                <SlidersHorizontal size={16} />
+              </button>
+            )}
             <button
-              type="button" className="scr-filter-search-icon-btn" onClick={openFilter}
-              aria-label="필터 열기"
+              type="button" className="scr-filter-search-icon-btn" onClick={openSearch}
+              aria-label="검색 열기"
             >
-              <SlidersHorizontal size={16} />
+              <Search size={16} />
             </button>
           </div>
+        ) : (
+          <div className="scr-filter-search-expand-wrap">
+            {swapIconBtn}
+            {renderPanel === "filter"
+              ? <div className="scr-filter-panel">{filterPanel}</div>
+              : <div className="scr-search-filter-float">{searchItem}</div>}
+          </div>
         )}
-      </div>
-    </div>
-  );
-  const searchRow = (
-    <div
-      className="scr-filter-search-collapsible scr-filter-search-collapsible-search"
-      style={{ width: searchRenderOpen ? "100%" : 50, borderRadius: searchRenderOpen ? 14 : 25, ...rowVisibilityStyle }}
-    >
-      <div className="scr-filter-search-content" style={{ opacity: searchContentHidden ? 0 : 1 }}>
-      {searchRenderOpen ? (
-        <div className="scr-filter-search-expand-wrap">
-          <div className="scr-search-filter-float">{searchItem}</div>
-        </div>
-      ) : (
-        <div className="scr-filter-search-icons">
-          <button
-            type="button" className="scr-filter-search-icon-btn"
-            onClick={openSearch} aria-label="검색 열기"
-          >
-            <Search size={16} />
-          </button>
-        </div>
-      )}
       </div>
     </div>
   );
@@ -553,7 +572,7 @@ export default function SearchFilterBar({
         setStackFocused(false);
       }}
     >
-      {isMobileFloat ? <>{filterRow}{searchRow}</> : expandedContent}
+      {isMobileFloat ? mobileRow : expandedContent}
     </div>
   );
 
