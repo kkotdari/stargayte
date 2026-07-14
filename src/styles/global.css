@@ -1876,6 +1876,9 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   padding: 2px 4px; margin: -2px -4px;
 }
 .scr-team-rank-stats { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; justify-self: end; }
+/* 카드 전체 클릭이 순위변동 모달로 바뀌면서, 경기 목록은 이 자리(승점/전적)만의 별도
+   클릭 대상이 됐다 — 밑줄로 살짝 링크처럼 보이게 구분한다(개인전 최근 경기와 같은 톤). */
+.scr-team-rank-stats-clickable { cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
 .scr-team-rank-record { font-size: 16.5px; color: var(--dim); white-space: nowrap; }
 @media (max-width: 640px) {
   .scr-rank-table-panel-v2 .scr-team-rank-row { padding: 7px 8px; }
@@ -4303,8 +4306,14 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    align-items:center인 이 flex 행 안에서 자연히 위아래 가운데로 온다(요청: "손가락
    이모티콘을 좀더 도전자와 상대 가운데 느낌에 배치") — 팀전이라 어느 한쪽이 세로로
    길어져도 항상 그 사이 세로 중앙에 위치한다. */
-.scr-challenge-matchup { display: flex; align-items: center; gap: 12px; }
-.scr-challenge-arrow { flex-shrink: 0; font-size: 17px; }
+.scr-challenge-matchup { display: flex; align-items: flex-start; gap: 12px; }
+/* 손가락은 팀 전체 블록(메시지까지 포함해 세로로 길어질 수 있는)의 한가운데가 아니라
+   맨 윗줄(프사+닉네임 줄)에만 자리를 차지하면 된다(요청: "손가락 이모지는 윗 라인에만
+   자리 차지하면 돼 — 구성원 첫 줄에만 이모지 들어가니까") — 그 줄의 프사 높이(24px)에
+   맞춰 그 안에서만 세로 가운데로 둔다. */
+.scr-challenge-arrow {
+  flex-shrink: 0; font-size: 17px; height: 24px; display: flex; align-items: center;
+}
 /* 도전자편/상대편 한 칸 — 인원이 하나든(1:1) 여럿이든(팀전) 항상 세로로 쌓는다(요청:
    "각팀을 세로로 배치"). */
 /* 상대편은 프로필 옆에 응답 알약까지 인라인으로 붙어(요청: "응답상태알약...
@@ -4322,10 +4331,13 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 }
 /* 한마디/응답 메시지 — 있든 없든 항상 이 자리를 차지해야, 상대가 여럿일 때 어떤
    사람은 메시지가 있고 어떤 사람은 없어도 줄이 들쭉날쭉하지 않는다(요청: "메시지
-   있건 없건 예약 자리 차지하게하기"). 내용이 없으면 공백 하나만 넣어 줄 높이만 유지. */
+   있건 없건 예약 자리 차지하게하기"). 내용이 없으면 공백 하나만 넣어 줄 높이만 유지.
+   한 줄로 자르면 너무 많이 잘려서(요청: "한마디가 너무 잘려 공간 더 확보") 두 줄까지
+   허용하고, 그만큼 예약 높이도 두 줄로 늘려 자리는 항상 일정하게 유지한다. */
 .scr-challenge-side-message {
-  font-style: italic; font-size: 12.5px; color: var(--muted); min-height: 1.3em;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-left: 30px;
+  font-style: italic; font-size: 12.5px; color: var(--muted); line-height: 1.3; min-height: 2.6em;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden; text-overflow: ellipsis; padding-left: 30px;
 }
 .scr-challenge-card-actions { display: flex; justify-content: center; gap: 8px; }
 .scr-challenge-inbox-body .scr-form-actions { justify-content: center; }
