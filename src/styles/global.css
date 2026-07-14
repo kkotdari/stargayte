@@ -4457,10 +4457,19 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-challenge-section-title {
   font-size: 14px; font-weight: 800; color: var(--dim); letter-spacing: 0.02em; margin: 0;
 }
-/* "내 대결" 빈 상태 — 다른 섹션의 .scr-empty(64px 높이 박스)보다 훨씬 간단한 한 줄만
-   (요청: "없으면 아주 간단하게 대결 없음 한줄 표시(공간 절약)"). */
-.scr-challenge-my-empty { color: var(--dim); font-size: 13px; margin: 8px 0 0; }
-
+/* "내것만" 체크박스 — 필터창 배경은 테마 불문 항상 밝은 톤이라(위 .scr-filter-panel
+   주석 참고), 체크박스 기본값(--muted, 다크 테마 기준 거의 흰색)을 그대로 쓰면 라벨도
+   네모 테두리도 잘 안 보인다(실제로 지적받은 문제 — "다크에서 검정색 해야지 체크박스랑
+   라벨") — 다른 화면의 같은 문제(.scr-usermap-kind-filter)와 같은 방식으로 테마 불문
+   어두운 색으로 고정한다. 라벨도 짧게 줄여서(요청: "내것만") 모바일 필터 줄 가로
+   스크롤에서 폭을 덜 차지하게 한다(요청: "모바일에서 폭 확보해주고"). */
+.scr-challenge-onlymine-field { color: #10151a; white-space: nowrap; flex-shrink: 0; }
+/* 기본 체크박스 규칙(.scr-checkbox-field input:not([type="radio"]))과 특이도를
+   맞춰야(클래스 1개+타입+:not 의사클래스) 실제로 이긴다 — 그냥 "입력" 타입 셀렉터만
+   쓰면 특이도가 모자라 기본값(--muted)에 밀려 안 먹혔다. */
+.scr-challenge-onlymine-field input:not([type="radio"]) { border-color: #10151a; }
+.scr-challenge-onlymine-field input:not([type="radio"]):checked { background: #10151a; border-color: #10151a; }
+.scr-challenge-onlymine-field input:not([type="radio"]):checked::after { background-color: #ffffff; }
 /* 다크 테마에서 카드끼리 배경과 구분이 잘 안 돼서(요청: "다크모드에서 챌린지 카드
    구분이 잘 안됨 글라스테마로") 운영 드롭다운과 같은 반투명 글라스 톤으로. 라이트
    테마는 원래의 불투명 패널을 그대로 유지(아래 .scr-light-theme 오버라이드). */
