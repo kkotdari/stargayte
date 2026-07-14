@@ -263,6 +263,17 @@ function ChallengeCard({ challenge, myId, onResponded, onViewResults }: Challeng
   // 이러면 안되는데" — 승락하는 이 시점에 상대가 직접 정하게 해서 막는다).
   const [scheduling, setScheduling] = useState(false);
 
+  // 카드마다 승락/거절, 결과 보기, 취소/재신청 중 무엇이 뜨는지(혹은 아무것도 안 뜨는지)가
+  // 달라서 목록을 스크롤할 때 카드 높이가 들쭉날쭉했다(요청: "결과 보기 버튼이나 아래
+  // 페이징 점이 있고 없고에 따라 레이아웃이 흔들리지 않게 해줘(높이 동일해야함 항상)") —
+  // 셋 다 서로 배타적이라(한 카드에 동시에 뜰 일이 없다) 이 셋 중 무엇도 안 뜨는 카드에는
+  // 빈 자리라도 같은 높이만큼 예약해둔다(아래 렌더 부분의 대체 placeholder 참고).
+  const hasBottomActionRow = isLatestPage && (
+    (canRespond && !scheduling)
+    || challenge.status === "confirmed"
+    || (!reapplying && (canCancel || canReapply))
+  );
+
   // 카드에서 바로 승락/거절 — OS 기본 prompt로 한마디를 받는다. 승락은 이제 선택(요청:
   // "승락시에는 메시지 필수 아니게 변경"), 거절은 여전히 필수다(요청: "거절일때는 필수") —
   // required가 그 둘을 가른다. 취소를 누르면(null) 아무 요청도 보내지 않고, 승락인데
@@ -401,18 +412,19 @@ function ChallengeCard({ challenge, myId, onResponded, onViewResults }: Challeng
           )}
         </div>
 
-        {pages.length > 1 && (
-          <div className="scr-challenge-page-dots">
-            {pages.map((p, i) => (
-              <button
-                key={p.id} type="button"
-                className={cx("scr-challenge-page-dot", i === pageIndex && "scr-challenge-page-dot-active")}
-                onClick={() => setPageIndex(i)}
-                aria-label={`${i + 1}번째 기록 보기`}
-              />
-            ))}
-          </div>
-        )}
+        {/* 재신청 이력이 없는 카드(대다수)는 점이 아예 안 뜨는데, 그 자리까지 예약해둬야
+            이력 있는 카드와 없는 카드가 목록에서 높이가 안 흔들린다(요청: "아래 페이징
+            점이 있고 없고에 따라 레이아웃이 흔들리지 않게 해줘"). */}
+        <div className="scr-challenge-page-dots">
+          {pages.length > 1 && pages.map((p, i) => (
+            <button
+              key={p.id} type="button"
+              className={cx("scr-challenge-page-dot", i === pageIndex && "scr-challenge-page-dot-active")}
+              onClick={() => setPageIndex(i)}
+              aria-label={`${i + 1}번째 기록 보기`}
+            />
+          ))}
+        </div>
       </div>
 
       {err && <div className="scr-err">{err}</div>}
@@ -523,6 +535,12 @@ function ChallengeCard({ challenge, myId, onResponded, onViewResults }: Challeng
             </button>
           )}
         </div>
+      )}
+
+      {/* 승락/거절, 결과 보기, 취소/재신청 셋 다 안 뜨는 카드도 같은 높이만큼은 자리를
+          차지해야 목록에서 카드끼리 높이가 안 흔들린다 — 빈 자리만 예약(내용 없음). */}
+      {!hasBottomActionRow && !scheduling && !reapplying && (
+        <div className="scr-challenge-card-actions scr-challenge-card-actions-placeholder" aria-hidden="true" />
       )}
 
       {cancelConfirmOpen && (
