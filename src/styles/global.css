@@ -3547,20 +3547,22 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 /* ===== mobile bottom tab bar / drawer ===== */
 /* 위쪽 구분선 — 헤더 아래 선과 같은 "우주 광원" 그라데이션(가운데가 가장 밝고 양쪽
    끝으로 갈수록 은은하게 사라짐). border 대신 배경 그라데이션 한 줄로 그린다. */
-/* 앱 셀 마이그레이션: 예전엔 position:fixed로 뷰포트 바닥에 붙였는데(바닥까지 스크롤한
-   뒤 주소창이 복귀할 때 밀리는 문제의 원인 중 하나였다), 이제 .scr-app의 flex 자식으로
-   흐름 안에 그대로 놓인다 — 화면 크기가 곧 실제 차지하는 공간이라 밀릴 일 자체가 없다.
-   position:relative는 fixed가 주던 위치 기준을 대신해 아래 ::after(absolute)의 앵커
-   역할만 유지한다. */
+/* .scr-app의 flex 형제(#scroll-root와 높이를 나눠 쓰는 flex:0 0 auto 자식)로 두고
+   숨김을 height 애니메이션으로 구현했었는데, 탭바가 다시 나타나는 순간 #scroll-root의
+   flex:1 몫이 그만큼 줄어들어(clientHeight 감소) 방금까지 보이던 맨 아래 콘텐츠가
+   도로 가려지고, 맨 아래에서는 그만큼 스크롤이 더 생기는 문제가 있었다(요청: "끝까지
+   스크롤을 내리면 숨겨졌던 탭바가 복구되면서... 추가 스크롤이 가능해지는 문제") —
+   scrollTop을 그때그때 보정해보려 했지만 사용자의 진행 중인 터치 스크롤과 충돌해 더
+   나쁜 버그(스크롤업이 안 됨)를 냈다. 근본적으로 "탭바 숨김"이 #scroll-root 자체의
+   크기를 바꾸는 구조라 생기는 문제라, 플로팅 검색창(.scr-filter-float-stack)과 같은
+   방식으로 바꾼다 — position:fixed 오버레이로 완전히 문서 흐름/flex 계산에서 빼서
+   #scroll-root의 크기 자체는 탭바 상태와 무관하게 항상 그대로 두고, 숨김은 순수하게
+   opacity/transform만으로 표현한다. 이제 콘텐츠는 절대 "가려지거나 다시 나타나며
+   흔들리지" 않는다 — 탭바가 그 위에 얹혔다 빠졌다 할 뿐이다. .scr-main의 하단 padding
+   (아래 미디어쿼리)이 탭바 몫 공간을 대신 예약한다. */
 .scr-mobile-tabbar {
   display: none;
-  position: relative; z-index: 55;
-  /* min-height였을 때는 "최소값"일 뿐이라, 숨김 상태에서 0으로 낮춰도 안의 탭 버튼들
-     (아이콘+라벨+패딩, 자체 높이 약 46~51px)이 그보다 크면 그 내용 높이만큼은 여전히
-     차지했다 — 그래서 탭바를 숨겨도 전체(67px)가 아니라 절반 정도만 줄어드는 것처럼
-     보였다(요청: "탭바 숨기기할때 컨텐츠영역이 탭바 전체로 확장이 아닌 탭바의
-     반정도까지만 확장되는 문제"). height로 바꿔 상한도 함께 걸고, overflow:hidden이
-     그 상한을 넘는 내용을 확실히 잘라내게 한다. */
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 55;
   height: var(--mobile-footer-h);
   background-color: var(--panel-solid);
   background-image: linear-gradient(90deg, color-mix(in srgb, var(--edge-glow) 22%, transparent) 0%, var(--edge-glow) 50%, color-mix(in srgb, var(--edge-glow) 22%, transparent) 100%);
@@ -3568,23 +3570,18 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   padding: 14px 10px calc(14px + env(safe-area-inset-bottom, 0px));
   box-shadow: 0 -2px 10px rgba(0,0,0,0.15);
   box-sizing: border-box;
-  flex-shrink: 0;
   overflow: hidden;
   /* 필터/검색창(.scr-filter-float-stack)과 같은 지속시간/이징으로 맞춰(요청: "숨기고
      나오는 애니메이션은 좀더 부드럽고 페이드아웃/인을 줘") 함께 사라지고 나타날 때
-     한 세트처럼 보이게 한다. opacity는 높이가 다 접히기 전에 먼저 옅어지도록 살짝
-     더 빠르게. transform도 같이 걸어 접히면서 아래로 슬라이드하는 느낌을 더한다(요청:
-     "탭바는 슬라이드로 아래로 내려가고"). */
-  transition: height .28s ease-in-out, padding-top .28s ease-in-out, padding-bottom .28s ease-in-out, opacity .22s ease-in-out, transform .28s ease-in-out;
+     한 세트처럼 보이게 한다. transform도 같이 걸어 아래로 슬라이드하며 빠져나가는
+     느낌을 더한다(요청: "탭바는 슬라이드로 아래로 내려가고"). */
+  transition: opacity .22s ease-in-out, transform .28s ease-in-out;
 }
 /* 아래로 스크롤하면 숨긴다(요청: "모바일 아래로 스크롤시 탭바 숨김(단 끝까지 내리면
-   탭바 보임)") — #scroll-root가 flex:1이라 이 높이가 줄어드는 만큼 스크롤 영역이
-   자동으로 넓어진다(app-shell의 flex 레이아웃 덕분에 별도 보정 없이 자연스럽게
-   맞춰짐). height 축소만으로는 그냥 눌려 사라지는 느낌이라, 고정 px만큼
-   translateY도 더해 아래로 슬라이드하며 빠져나가는 동작을 더한다(퍼센트 기준
-   translateY는 축소 중인 높이를 기준으로 계산돼 값이 계속 바뀌므로 고정값을 쓴다). */
+   탭바 보임)") — 이제 오버레이라 #scroll-root 크기와 무관하게 순수 시각 효과만
+   바뀐다. */
 .scr-mobile-tabbar-hidden {
-  height: 0; padding-top: 0; padding-bottom: 0; opacity: 0; transform: translateY(24px);
+  opacity: 0; transform: translateY(24px); pointer-events: none;
 }
 /* 모바일 키보드가 뜰 때 뷰포트 리사이즈 타이밍이 살짝 어긋나면, 탭바 아래로 한 프레임
    정도 배경(페이지/키보드 경계)이 비쳐 보일 수 있다 — 탭바와 같은 배경색을 화면 아래로
@@ -3720,7 +3717,7 @@ body *::-webkit-scrollbar-corner { background: transparent; }
      맨 위로 이동 버튼이 필요 없다 — PC(데스크톱 상단 네비)에는 이 패턴이 없어 그대로 둔다. */
   .scr-scrolltop { display: none !important; }
 }
-/* 플로팅 검색창만은 아직 position:fixed로 탭바 위에 뜬다(키보드 인셋에 따라 위치가 JS로도
+/* 플로팅 검색창은 position:fixed로 탭바 위에 뜬다(키보드 인셋에 따라 위치가 JS로도
    움직여야 해서 흐름 안에 넣기엔 상호작용이 더 얽혀 있다 — 별도로 검토) — 그 높이 몫(62px)만큼
    콘텐츠 마지막 줄과 안 겹치게 확보한다. .scr-main은 모든 화면이 공유하는 단일 래퍼라(화면별로
    따로 못 준다), 필터창(.scr-filter-panel)까지 있는 화면은 검색창 위에 필터창(모바일 66px)이
@@ -3728,9 +3725,18 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    화면(경기/전적통계/랭킹/회원/게임아이디 등 대부분)에서는 목록 마지막 줄이 그 차이만큼 필터창
    뒤에 가려졌다(실제로 지적받은 문제) — 필터창 높이+스택 내부 간격(66px+8px)을 더해 필터가
    있는 화면 기준으로 넉넉하게 예약한다(필터가 없는 화면은 그만큼 여백만 조금 더 남을 뿐 문제
-   없다). */
+   없다).
+   탭바도 이제(위 .scr-mobile-tabbar 주석 참고) #scroll-root 크기를 바꾸지 않는 순수
+   오버레이라, 탭바 몫 공간은 여기서 직접 예약해야 한다 — useHideOnScrollDown이 이미
+   관리하는 --mobile-tabbar-visible-h(탭바가 보이면 67px, 숨으면 0px)를 그대로 쓴다.
+   탭바가 숨든 보이든 #scroll-root 자체의 크기(clientHeight)는 항상 그대로이므로, 이
+   padding이 줄었다 늘었다 해도(scrollHeight만 변함) 지금 보이는 화면이 갑자기
+   가려지거나 하지 않는다 — 그래서 예전처럼 scrollTop을 따로 보정할 필요가 없다. */
 @media (max-width: 640px) {
-  .scr-main { padding-bottom: calc(20px + 62px + 74px + env(safe-area-inset-bottom, 0px)); }
+  .scr-main {
+    padding-bottom: calc(20px + 62px + 74px + var(--mobile-tabbar-visible-h, var(--mobile-footer-h)) + env(safe-area-inset-bottom, 0px));
+    transition: padding-bottom .28s ease-in-out;
+  }
 }
 
 
