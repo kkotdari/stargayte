@@ -900,7 +900,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 /* 랭킹 타이틀 옆 몇 월인지(요청: "타이틀 옆에 몇월 표시") — 타이틀보다 옅고 작게. */
 /* 요청: "랭킹 몇월 글짜 1.5배 확대" — 0.55em → 0.825em. 밝기도 더 밝게(요청) —
    --dim보다 밝은 --muted로. */
-.scr-rank-title-month { font-size: 0.825em; font-weight: 700; color: var(--muted); margin-left: 2px; }
+.scr-rank-title-month { font-size: 0.825em; font-weight: 700; color: var(--muted); margin-left: 8px; }
 /* 타이틀(.scr-v2-toolbar-title)이 자기 글자 처짐 보정으로 -6px 떠 있는 만큼, 같은 줄에
    놓이는 액션 버튼도 그대로 두면 타이틀보다 상대적으로 아래로 처져 보인다 — 같은 양만큼
    맞춰 올린다. */
