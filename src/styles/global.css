@@ -382,8 +382,10 @@ body {
      대신 검정 계열(--point-contrast — 원/사각형을 채우는 --text와 항상 대비되도록
      테마에 따라 뒤집히는 색)로 통일 — 체크박스만 포인트색이 남아 있었다(라디오는 이미
      이 색이었음). 획 좌표도 조금 더 아래로, 가지(획)는 더 길게, 끝 각도는 더 좁게(수직에
-     가깝게) 다시 그렸다. */
-  content: ""; position: absolute; inset: 2.5px; background-color: var(--point-contrast);
+     가깝게) 다시 그렸다. inset을 2.5px→1.6px로 줄여 체크 표시를 1.2배 키운다(요청:
+     "체크박스 체크표시 1.5배 크게" → "1.2배") — 라디오는 아래 전용 규칙(1.5px)이 이
+     값을 다시 덮어써 영향받지 않는다. */
+  content: ""; position: absolute; inset: 1.6px; background-color: var(--point-contrast);
   -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M4 8L12 20L20 8' fill='none' stroke='%23000' stroke-width='3' stroke-linecap='square' stroke-linejoin='miter'/%3E%3C/svg%3E");
   mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M4 8L12 20L20 8' fill='none' stroke='%23000' stroke-width='3' stroke-linecap='square' stroke-linejoin='miter'/%3E%3C/svg%3E");
   -webkit-mask-size: contain; mask-size: contain;
@@ -3508,7 +3510,13 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-mobile-tabbar {
   display: none;
   position: relative; z-index: 55;
-  min-height: var(--mobile-footer-h);
+  /* min-height였을 때는 "최소값"일 뿐이라, 숨김 상태에서 0으로 낮춰도 안의 탭 버튼들
+     (아이콘+라벨+패딩, 자체 높이 약 46~51px)이 그보다 크면 그 내용 높이만큼은 여전히
+     차지했다 — 그래서 탭바를 숨겨도 전체(67px)가 아니라 절반 정도만 줄어드는 것처럼
+     보였다(요청: "탭바 숨기기할때 컨텐츠영역이 탭바 전체로 확장이 아닌 탭바의
+     반정도까지만 확장되는 문제"). height로 바꿔 상한도 함께 걸고, overflow:hidden이
+     그 상한을 넘는 내용을 확실히 잘라내게 한다. */
+  height: var(--mobile-footer-h);
   background-color: var(--panel-solid);
   background-image: linear-gradient(90deg, color-mix(in srgb, var(--edge-glow) 22%, transparent) 0%, var(--edge-glow) 50%, color-mix(in srgb, var(--edge-glow) 22%, transparent) 100%);
   background-repeat: no-repeat; background-position: top; background-size: 100% 1px;
@@ -3522,16 +3530,16 @@ body *::-webkit-scrollbar-corner { background: transparent; }
      한 세트처럼 보이게 한다. opacity는 높이가 다 접히기 전에 먼저 옅어지도록 살짝
      더 빠르게. transform도 같이 걸어 접히면서 아래로 슬라이드하는 느낌을 더한다(요청:
      "탭바는 슬라이드로 아래로 내려가고"). */
-  transition: min-height .28s ease-in-out, padding-top .28s ease-in-out, padding-bottom .28s ease-in-out, opacity .22s ease-in-out, transform .28s ease-in-out;
+  transition: height .28s ease-in-out, padding-top .28s ease-in-out, padding-bottom .28s ease-in-out, opacity .22s ease-in-out, transform .28s ease-in-out;
 }
 /* 아래로 스크롤하면 숨긴다(요청: "모바일 아래로 스크롤시 탭바 숨김(단 끝까지 내리면
    탭바 보임)") — #scroll-root가 flex:1이라 이 높이가 줄어드는 만큼 스크롤 영역이
    자동으로 넓어진다(app-shell의 flex 레이아웃 덕분에 별도 보정 없이 자연스럽게
-   맞춰짐). min-height 축소만으로는 그냥 눌려 사라지는 느낌이라, 고정 px만큼
+   맞춰짐). height 축소만으로는 그냥 눌려 사라지는 느낌이라, 고정 px만큼
    translateY도 더해 아래로 슬라이드하며 빠져나가는 동작을 더한다(퍼센트 기준
    translateY는 축소 중인 높이를 기준으로 계산돼 값이 계속 바뀌므로 고정값을 쓴다). */
 .scr-mobile-tabbar-hidden {
-  min-height: 0; padding-top: 0; padding-bottom: 0; opacity: 0; transform: translateY(24px);
+  height: 0; padding-top: 0; padding-bottom: 0; opacity: 0; transform: translateY(24px);
 }
 /* 모바일 키보드가 뜰 때 뷰포트 리사이즈 타이밍이 살짝 어긋나면, 탭바 아래로 한 프레임
    정도 배경(페이지/키보드 경계)이 비쳐 보일 수 있다 — 탭바와 같은 배경색을 화면 아래로
