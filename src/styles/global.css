@@ -4364,6 +4364,12 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    허용하고, 그만큼 예약 높이도 두 줄로 늘려 자리는 항상 일정하게 유지한다. */
 .scr-challenge-side-message {
   font-style: italic; font-size: 12.5px; color: var(--muted); line-height: 1.3; min-height: 2.6em;
+  /* display:-webkit-box는 block과 달리 부모 폭을 자동으로 채우지 않고(내용 크기만큼만
+     차지하는 shrink-to-fit) 짧은 문장이면 박스 자체가 좁아져 버려서, 그 좁은 폭
+     안에서 2줄로 줄바꿈됐다(요청: "이부분이 폭이 작아서 줄바꿈이 생기잖아" — 실제로
+     79px까지 좁아진 걸 개발자도구로 확인) — width:100%로 옆 칸(닉네임 줄)과 같은
+     폭을 명시적으로 채운다. */
+  width: 100%;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
   overflow: hidden; text-overflow: ellipsis;
 }
