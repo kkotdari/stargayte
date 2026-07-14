@@ -2185,17 +2185,12 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
        좀더 부드럽고 페이드아웃/인을 줘") 지속시간을 늘리고 ease-in-out으로 바꾼다. */
     transition: bottom .18s ease-out, opacity .28s ease-in-out, transform .28s ease-in-out;
   }
-  /* 아래로 스크롤하면 탭바와 함께 이 플로팅 필터/검색창도 숨긴다(요청: "아래로 스크롤시
-     헤더, 필터창 검색창 탭바 전부 숨김") — useHideOnScrollDown이 <html>에 얹어주는
-     클래스 하나로 동기화한다(이 컴포넌트는 화면마다 따로 마운트돼 그 훅을 직접 호출하지
-     않는다). 탭바는 아래로 슬라이드하며 사라지는 것과 달리, 이쪽은 자리를 옮기지 않고
-     제자리에서 작아지며 흐려진다(요청: "필터창 검색창은 제자리에서 축소되며 흐려짐") —
-     위치 이동(translateY) 대신 scale만 쓴다. SearchFilterBar.tsx가 포커스 중일 때
-     인라인 style로 이 규칙을 덮어써 강제로 계속 보이게 한다(요청: "포커싱 가있는
-     상황에서는 아무리 스크롤해도 감추면 안돼"). */
-  html.scr-scroll-hide .scr-filter-float-stack {
-    opacity: 0; transform: scale(0.92); pointer-events: none;
-  }
+  /* 예전엔 아래로 스크롤하면 탭바와 함께 이 플로팅 필터/검색창도 숨겼지만(html의
+     scr-scroll-hide 클래스 기반), 이제는 화면 맨 위 근처에서만 뜨는 규칙으로 바뀌면서
+     (요청: "필터창검색창은 화면 위쪽에서만 노출되게") 그 판단을 SearchFilterBar.tsx가
+     스크롤 위치로 직접 계산해 인라인 style(opacity/transform/pointerEvents)로 넣는다 —
+     제자리에서 작아지며 흐려지는 모양(scale, 요청: "필터창 검색창은 제자리에서
+     축소되며 흐려짐")은 그대로 유지한다. */
   /* 검색창과 억지로 같은 높이를 맞추는 대신(요청: "모바일은 필터창의 높이를 검색창보다
      크게 만들어서 해결") 이 화면폭에서만 필터창을 검색창(44px)보다 크게 키운다 — 세로로
      쌓인 스택이라(위 .scr-filter-float-stack) 필터창과 검색창 높이가 달라도 나란히 놓일

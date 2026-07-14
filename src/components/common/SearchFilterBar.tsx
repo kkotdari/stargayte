@@ -5,8 +5,16 @@ import { attachPopover } from "../../utils/popover";
 import { cx } from "../../utils/format";
 import { useIsNarrow } from "../../utils/useIsNarrow";
 import { useKeyboardInset } from "../../hooks/useKeyboardInset";
+import { addScrollListener, getScrollTop } from "../../utils/scrollRoot";
 import { BASE_RACES, RACE_INFO } from "../../constants/races";
 import type { BaseRace } from "../../types";
+
+// 화면 맨 위 근처에서만 뜨게 한다(요청: "필터창검색창은 화면 위쪽에서만 노출되게") —
+// 헤더/탭바의 위아래 스크롤 방향 기반 숨김(useHideOnScrollDown)과는 별개로, 이 알약은
+// 스크롤 위치 자체(맨 위로부터 이 값 이내)로만 판단한다. 값 자체는 감으로 잡은 것 —
+// 툴바 한 칸 높이보다 조금 더 되는 정도라 "화면을 조금이라도 내리면 곧 사라진다"는
+// 느낌을 준다.
+const NEAR_TOP_PX = 64;
 
 interface SearchFilterBarProps {
   count: number;
@@ -68,6 +76,10 @@ export default function SearchFilterBar({
   // 않는다(요청: "필터창이나 검색창에 포커싱 가있는 상황에서는 아무리 아래로 스크롤해도
   // 감추면 안돼") — 지금 상호작용 중인 입력을 스크롤 한 번으로 가려버리면 안 된다.
   const [stackFocused, setStackFocused] = useState(false);
+  // 화면 맨 위 근처인지 — 모바일 플로팅 알약은 이 값으로만 보임 여부를 정한다(포커스
+  // 중이면 stackFocused가 그래도 계속 보이게 덮어쓴다, 위 주석 참고).
+  const [nearTop, setNearTop] = useState(() => getScrollTop() <= NEAR_TOP_PX);
+  useEffect(() => addScrollListener(() => setNearTop(getScrollTop() <= NEAR_TOP_PX)), []);
   // 칩(완성된 검색어/경기번호/종족)은 부모 state(searchValue 등)를 그대로 진실로 삼아
   // 즉시 반영한다(요청: "엔터 확정 방식을 실시간 반영 방식으로 원복 — 칩 추가/제거시
   // 즉시 적용"). 지금 타이핑 중인, 아직 칩이 안 된 마지막 단어만 로컬 상태(liveText)로
@@ -350,15 +362,23 @@ export default function SearchFilterBar({
   // 필터창(있으면)과 검색창을 한 덩어리로 묶어 같이 뜬다 — PC는 가로로 나란히, 모바일은
   // 세로로 쌓아 탭바 위에 고정한다(global.css .scr-filter-float-stack). keyboardInset은
   // 이 바깥 스택 전체에 적용해야 필터창까지 같이 키보드 위로 따라 올라온다.
+  // 보임 여부는 모바일에서만 이 컴포넌트가 직접 정한다(요청: "필터창검색창은 화면
+  // 위쪽에서만 노출되게") — 화면 맨 위 근처(nearTop)이거나 지금 포커스 중(stackFocused,
+  // 위 주석 참고)이면 보이고, 그 외엔 숨긴다. 인라인 style로 매번 명시해서 클래스 기반
+  // 규칙(html.scr-scroll-hide .scr-filter-float-stack, 헤더/탭바가 쓰는 위아래 스크롤
+  // 방향 기반 숨김)에 더는 기대지 않는다 — PC는 애초에 고정 배치가 아니라 문서 흐름
+  // 안에 있어 이 스타일을 적용하면 안 되므로 isMobileFloat일 때만 넣는다.
+  const mobileVisible = stackFocused || nearTop;
   const stackEl = (
     <div
       className="scr-filter-float-stack"
       style={{
         ...(keyboardInset > 0 ? { bottom: keyboardInset + 10 } : undefined),
-        // 인라인 style은 클래스 기반 규칙(html.scr-scroll-hide .scr-filter-float-stack)
-        // 보다 항상 우선하므로, 포커스가 가 있는 동안은 스크롤 방향과 무관하게 이 값으로
-        // 강제로 보이게 고정한다.
-        ...(stackFocused ? { opacity: 1, transform: "none", pointerEvents: "auto" } : undefined),
+        ...(isMobileFloat ? {
+          opacity: mobileVisible ? 1 : 0,
+          transform: mobileVisible ? "none" : "scale(0.92)",
+          pointerEvents: mobileVisible ? "auto" : "none",
+        } : undefined),
       }}
       onFocus={() => setStackFocused(true)}
       onBlur={(e) => {
