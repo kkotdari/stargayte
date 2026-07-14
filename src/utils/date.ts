@@ -127,6 +127,14 @@ export function periodPresetLabel(preset: PeriodPreset, from: string, to: string
 
 export const DOW = ["일", "월", "화", "수", "목", "금", "토"] as const;
 
+// "YYYY-MM-DD" 날짜 문자열에 요일을 덧붙인다(요청: "경기 날짜... 요일 정보 추가 월요일
+// 수요일 등") — new Date(dateStr)로 바로 파싱하면 UTC 자정으로 해석돼 시간대에 따라
+// 요일이 하루 밀릴 수 있어, 연/월/일을 직접 나눠 로컬 자정으로 만든다.
+export function dateWithDow(dateStr: string): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return `${dateStr} (${DOW[new Date(y, m - 1, d).getDay()]})`;
+}
+
 // "너 나와!" 도전장의 일시 표시 — 날짜 없이 미정이면 "미정", 날짜만 있고 시간이 정확히
 // 자정(작성 폼에서 시간을 비우면 자정으로 저장된다)이면 시간은 "시간 미정"으로 보고
 // 날짜만 보여준다. 요일도 같이 보여준다(요청: "요일도 알려줘").

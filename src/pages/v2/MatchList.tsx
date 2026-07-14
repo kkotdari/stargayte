@@ -6,6 +6,7 @@ import ConfirmDialog from "../../components/common/ConfirmDialog";
 import { api } from "../../api/client";
 import { useAppStore } from "../../store/appStore";
 import { isAdminRole } from "../../constants/roles";
+import { dateWithDow } from "../../utils/date";
 import type { Match, Member, MatchSlot, MatchResult } from "../../types";
 
 export interface SearchListRow {
@@ -128,7 +129,7 @@ export default function MatchList({
       <div className="scr-match-cards">
         {groups.map((g) => (
           <div key={g.date} className="scr-match-date-group">
-            <div className="scr-match-date-head">{g.date}</div>
+            <div className="scr-match-date-head">{dateWithDow(g.date)}</div>
             {g.items.map(({ row: r, gameNo }) => (
               <div key={r.id} className="scr-match-card">
                 <div className="scr-match-card-head">

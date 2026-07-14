@@ -2298,10 +2298,6 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
      이 안쪽 레이어와 무관하게 계속 그대로 보인다. SearchFilterBar.tsx의
      useAnimatedExpand가 이 opacity를 인라인 style로 직접 넣는다. */
   .scr-filter-search-content { width: 100%; height: 100%; transition: opacity .08s ease-out; }
-  /* 접기 버튼은 옆에 따로 자리를 차지하는 대신 창 위에 겹쳐 올린다(요청: "x 자를 창
-     위에 배치") — 그만큼 안쪽 인풋/필터 영역은 오른쪽에 그 버튼 폭만큼 여백을 둬서
-     글자나 클릭 가능 영역이 버튼 밑으로 들어가지 않게 한다(요청: "그 부분은 인풋영역
-     제외해줘"). */
   .scr-filter-search-expand-wrap {
     position: relative; width: 100%; height: 100%; min-width: 0;
     display: flex; align-items: center;
@@ -2313,42 +2309,14 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
      테마에서 펼쳤을때도 아까처럼 드랍쉐도우? 보이는듯 배경 음영"). */
   .scr-filter-search-expand-wrap > .scr-filter-panel {
     background: transparent; box-shadow: none; border: none;
-    padding-right: 40px; width: 100%;
+    width: 100%;
   }
   .scr-filter-search-expand-wrap .scr-search-filter-float .scr-list-search-input {
     background: transparent; box-shadow: none; border: none;
-    padding-right: 40px;
   }
-  /* 닫기(X)가 아니라 접는 느낌으로(요청: "x 보다는 접기 느낌으로") — 오른쪽으로
-     움츠러드는 방향을 가리키는 화살표를 쓴다. */
-  .scr-filter-search-collapse-btn {
-    position: absolute; top: 50%; right: 8px; transform: translateY(-50%); z-index: 1;
-    width: 26px; height: 26px; border-radius: 50%; border: none; cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    /* 좀더 연하게(요청: "필터 검색 창 접기 버튼 배경 좀더 연하게"). */
-    background: rgba(0,0,0,0.25); color: #fff;
-    appearance: none; -webkit-appearance: none;
-    /* 브라우저 기본 포커스 아웃라인은 border-radius를 따라 둥글게 그려지지 않고 항상
-       네모라, 눌렀을 때(포커스가 남아있는 동안) 동그란 버튼 뒤로 사각형 테두리/음영이
-       비쳐 보였다(실제로 지적받은 문제 — "아직도 뒤에 그림자가 있는딤?"). */
-    outline: none;
-    /* 터치는 탭한 뒤에도 :hover가 눌어붙어 어색한 음영으로 남는 기기가 있고, 모바일
-       기본 탭 하이라이트(회색 반짝임)도 따로 안 꺼둔 상태였다(실제로 지적받은 문제 —
-       "호버/터치 효과 없애기" → "마우스 호버는 살리되 터치시 효과는 삭제해야할듯") —
-       기본 탭 하이라이트는 없애되, 진짜 마우스 호버는 아래에서 되살린다. */
-    -webkit-tap-highlight-color: transparent;
-  }
-  /* 마우스/트랙패드처럼 진짜 hover가 되는 입력장치에서만 호버 효과를 준다 — 터치
-     기기는 탭 후 :hover가 눌어붙어 보이는 경우가 있어 아예 이 미디어쿼리 밖(터치)
-     에서는 :hover 규칙 자체가 안 걸리게 한다. */
-  @media (hover: hover) and (pointer: fine) {
-    .scr-filter-search-collapse-btn:hover { background: rgba(0,0,0,0.4); }
-  }
-  /* 터치도 눌림 효과 자체는 있어야 한다(요청: "터치효과도 살리되 해당 모양을 좀
-     적용하면 괜찮을듯도") — :hover 대신 :active를 쓴다. :active는 누르는 동안만
-     켜지고 떼면 바로 꺼져서(터치에서 :hover처럼 눌어붙지 않는다) 버튼 자신의 원
-     모양 그대로 배경색만 바뀌어 어색한 사각 음영 없이 깔끔하게 눌리는 느낌을 준다. */
-  .scr-filter-search-collapse-btn:active { background: rgba(0,0,0,0.4); }
+  /* 접기 버튼은 없앴다 — 화면 아무 데나 터치하면 접힌다(요청: "접기버튼 삭제 화면
+     터치로 접기 사용하면됨" — SearchFilterBar.tsx의 stackRef 바깥 pointerdown이
+     이미 이 역할을 한다). */
   /* 접힌 상태의 아이콘 — width:100%을 명시해야 한다: 안 그러면 이 div가(.content의
      flex 아이템으로서) 내용 크기(50px)만큼만 차지해 justify-content:flex-end가
      무의미해져 아이콘이 왼쪽에 붙어버리는 문제가 있었다(실제로 지적받은 문제 —
@@ -2743,7 +2711,9 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-match-id-highlight { background: var(--highlight-bg); color: var(--bar-text); font-weight: 700; border-radius: 2px; padding: 0 1px; }
 /* v2 목록 카드의 날짜/N경기/경기번호/다운로드·메모 아이콘을 전부 지금의 1.5배로 키운다
    (가독성/터치하기 편의 요청). */
-.scr-match-list-panel-v2 .scr-match-date-head { font-size: 19px; }
+/* 요일 정보가 더해지면서(요청: "요일 정보 추가") 글자가 더 길어져, 기존 크기(19px)는
+   너무 커 보였다 — 줄인다(요청: "날짜 폰트 줄이고"). */
+.scr-match-list-panel-v2 .scr-match-date-head { font-size: 15px; }
 /* "N경기"/경기번호는 기존 값(18px/17px)의 75%로 — 날짜(위)보다 두 단계 더 작아 보이게. */
 .scr-match-list-panel-v2 .scr-match-seq { font-size: 13.5px; }
 .scr-match-list-panel-v2 .scr-match-id { font-size: 12.75px; }
@@ -3853,18 +3823,19 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    #scroll-root 크기 자체는 안 바꾼다) 마지막 줄이 그 밑에 가려지지 않게 .scr-main
    자체에 하단 여백을 예약해둔다.
    요청: "모바일 페이지 하단 여백이 너무 큰거같아... 탭바만 보일정도의 여백만 있으면
-   되거든" — 검색창(62px)+필터창(66px+8px)까지 더한 예약분(136px)을 검색창/필터창
-   숨김 여부에 맞춰 접었다 펴는 것도 시도해봤는데("nearBottom"으로 미리 복원해
-   점프를 피하려던 방식), 그 값이 바뀌는 시점에 스크롤 가능 범위 자체가 흔들려
-   오히려 스크롤이 두 단으로 나뉘어 움직이는 문제가 생겼다(요청: "여백은 이상한
-   로직 넣지 말고 그냥 고정으로 탭바만큼만... 로직 넣으면 스크롤이 2단으로 생기는
-   문제 발생해") — 검색창/필터창 몫은 아예 예약하지 않고, 탭바 몫(--mobile-footer-h)
-   하나만 상태와 무관하게 항상 고정으로 둔다. 탭바 위 검색창/필터창이 떠 있는 동안은
-   콘텐츠 마지막 줄 일부가 그 밑에 살짝 가려질 수 있지만(스크롤하면 벗어난다), 그
-   손해보다 스크롤 산수가 항상 한 가지로만 고정되는 쪽이 우선이다. */
+   되거든" — 검색창/필터창 몫까지 상태에 맞춰 접었다 펴는 것도 시도해봤는데
+   ("nearBottom"으로 미리 복원해 점프를 피하려던 방식), 그 값이 바뀌는 시점에 스크롤
+   가능 범위 자체가 흔들려 오히려 스크롤이 두 단으로 나뉘어 움직이는 문제가 생겼다
+   (요청: "여백은 이상한 로직 넣지 말고 그냥 고정으로... 로직 넣으면 스크롤이
+   2단으로 생기는 문제 발생해") — 그래서 한동안 탭바 몫(--mobile-footer-h)만
+   고정으로 두고 검색창/필터창 몫은 아예 안 잡았었다. 이제 필터/검색이 첫 진입시
+   펼쳐진 채로 시작해(항상 화면에 떠 있는 시간이 길어져) 마지막 줄이 자주 가려지므로,
+   상태와 무관한 고정값으로(2단 스크롤 문제를 다시 겪지 않도록 여전히 고정) 필터+
+   검색창 높이(각 50px, 사이 gap 8px)만큼도 같이 예약한다(요청: "모바일 페이지 하단에
+   필터창+검색창 만큼의 여백 추가(공통)"). */
 @media (max-width: 640px) {
   .scr-main {
-    padding-bottom: calc(10px + var(--mobile-footer-h) + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(10px + var(--mobile-footer-h) + 116px + env(safe-area-inset-bottom, 0px));
   }
 }
 
@@ -4587,12 +4558,12 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   flex-shrink: 0; font-size: 17px; height: 24px; display: flex; align-items: center;
   margin-left: 12px; margin-right: 12px;
 }
-/* PC에서만 양옆 간격이 대칭이 아니다(요청: "도전자-손이모티콘 사이는 줄이고
-   손이모티콘-상대 사이는 늘려줘 많이" → "도전자-손 살짝 줄이고 줄이는 만큼 손-상대
-   넓히기" → "12씩") — 도전자편이 오른쪽으로 붙는 PC 전용 배치(아래
-   .scr-challenge-side-block 규칙 참고)와 짝을 맞춰 여기서도 PC 전용으로 좁힌다. */
+/* 상대편(target)이 도전자편보다 넓게 잡혀 있어서(flex 1.15 vs 1, 팀 인원 여러 명이
+   상대에 붙을 수 있어서다) 화살표 좌우 여백이 같으면 화살표가 화면 중앙보다 왼쪽에
+   치우쳐 보인다(요청: "PC에서 손가락이 화면에 가운데쯤 오도록 배치 조정") — 왼쪽
+   여백을 넓히고 오른쪽을 좁혀 그 폭 차이만큼 화살표를 오른쪽(가운데)으로 밀어준다. */
 @media (min-width: 641px) {
-  .scr-challenge-arrow { margin-left: 2px; margin-right: 44px; }
+  .scr-challenge-arrow { margin-left: 44px; margin-right: 2px; }
 }
 
 /* 재신청 체인 슬라이드 UI(요청: "재신청하면 원래건은 종료되고 새로운 도전 행이

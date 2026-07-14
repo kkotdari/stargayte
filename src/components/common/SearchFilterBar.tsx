@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { ChevronRight, Search, SlidersHorizontal, X } from "lucide-react";
+import { Search, SlidersHorizontal, X } from "lucide-react";
 import { attachPopover } from "../../utils/popover";
 import { cx } from "../../utils/format";
 import { useIsNarrow } from "../../utils/useIsNarrow";
@@ -502,12 +502,6 @@ export default function SearchFilterBar({
         {filterRenderOpen ? (
           <div className="scr-filter-search-expand-wrap">
             <div className="scr-filter-panel">{filterPanel}</div>
-            <button
-              type="button" className="scr-filter-search-collapse-btn"
-              onClick={() => setFilterExpanded(false)} aria-label="필터 접기"
-            >
-              <ChevronRight size={14} />
-            </button>
           </div>
         ) : (
           <div className="scr-filter-search-icons">
@@ -531,12 +525,6 @@ export default function SearchFilterBar({
       {searchRenderOpen ? (
         <div className="scr-filter-search-expand-wrap">
           <div className="scr-search-filter-float">{searchItem}</div>
-          <button
-            type="button" className="scr-filter-search-collapse-btn"
-            onClick={() => setSearchExpanded(false)} aria-label="검색 접기"
-          >
-            <ChevronRight size={14} />
-          </button>
         </div>
       ) : (
         <div className="scr-filter-search-icons">
