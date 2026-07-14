@@ -88,7 +88,7 @@ function ChallengeSide({
   targets?: { target: ChallengeTarget; overall: ChallengeDisplayStatus }[];
 }) {
   return (
-    <div className="scr-challenge-side">
+    <div className={cx("scr-challenge-side", targets && "scr-challenge-side-target")}>
       {people.map((p, i) => {
         const t = targets?.[i];
         return (

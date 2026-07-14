@@ -1670,6 +1670,9 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   font-size: 12px; color: var(--muted);
 }
 .scr-rank-latest-match-label { flex: none; color: var(--dim); font-size: 0.85em; }
+/* 행 전체 클릭이 이제 순위변동 모달로 바뀌면서, 최근 경기 클릭(경기 목록 모달)은 이
+   자리만의 별도 클릭 대상이 됐다 — 밑줄로 살짝 링크처럼 보이게 구분한다. */
+.scr-rank-latest-match-clickable { cursor: pointer; text-decoration: underline dotted; text-underline-offset: 2px; }
 .scr-rank-latest-match-vs, .scr-rank-latest-match-outcome { flex: none; }
 .scr-rank-latest-match-outcome { font-weight: 700; }
 .scr-rank-latest-match-opponent {
@@ -4304,7 +4307,12 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-challenge-arrow { flex-shrink: 0; font-size: 17px; }
 /* 도전자편/상대편 한 칸 — 인원이 하나든(1:1) 여럿이든(팀전) 항상 세로로 쌓는다(요청:
    "각팀을 세로로 배치"). */
-.scr-challenge-side { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+/* 상대편은 프로필 옆에 응답 알약까지 인라인으로 붙어(요청: "응답상태알약...
+   프로필 옆에 인라인으로") 도전자편보다 요소가 많다 — 좁은 화면에서 닉네임이 더 잘리지
+   않도록 상대편에 폭을 더 준다(요청: "상대쪽 공간이 더 넓어야됨(요소가 많으니) 닉네임
+   최대한 나오게"). */
+.scr-challenge-side { flex: 4 1 0; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.scr-challenge-side-target { flex: 6 1 0; }
 .scr-challenge-side-block { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .scr-challenge-side-row { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .scr-challenge-side-row .scr-avatar { border-radius: 50% !important; }
