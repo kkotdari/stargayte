@@ -4,6 +4,7 @@ import AdminMenu from "./AdminMenu";
 import { cx } from "../utils/format";
 import { visibleNavMenuItems } from "../constants/menuVersions";
 import { scrollRootTo } from "../utils/scrollRoot";
+import { cancelKeyboardScrollRestore } from "../hooks/useRestoreScrollOnKeyboardClose";
 import type { ScreenKey } from "../types";
 
 interface MobileTabBarProps {
@@ -113,6 +114,35 @@ function useActiveTabIndicator(navRef: { current: HTMLElement | null }, deps: un
 export default function MobileTabBar({ screen, menuOpen, isAdmin, effectiveVersionNumber, hidden, onNavigate, onOpenMenu }: MobileTabBarProps) {
   const navRef = useRef<HTMLElement>(null);
   const visibleItems = visibleNavMenuItems(effectiveVersionNumber);
+
+  // 탭 동작을 click이 아니라 pointerdown 시점에 실행한다 — 검색창에 키보드가 뜬 채로
+  // 탭을 누르면 blur → 키보드 닫힘 → 뷰포트 리사이즈로 탭바 자신이 움직여, 브라우저가
+  // click 이벤트를 아예 발생시키지 않는 경우가 있었다(실제로 지적받은 문제 — "필터창
+  // 검색창 열린상태에서 탭바 버튼 클릭시 닫힘+메뉴이동"이 첫 탭에 안 됨). pointerdown은
+  // 그 어떤 레이아웃 변화보다 먼저 발생하므로 첫 탭에 항상 동작한다. 같은 탭이면 맨
+  // 위로 — smooth 대신 즉시 이동한다(요청: "액티브탭 클릭시 최상단으로 가기가 바로
+  // 안됨" — iOS는 관성 스크롤 중 프로그램적 smooth 스크롤을 무시하기도 해서, 확실하게
+  // 바로 올라가는 instant로 바꾼다). 어느 쪽이든 실행 전에 키보드 닫힘 복원(useRestore-
+  // ScrollOnKeyboardClose)을 취소한다 — 안 그러면 150ms 뒤 복원이 방금 옮긴 스크롤을
+  // 이전 위치로 도로 되돌려버린다.
+  const activate = (key: ScreenKey) => {
+    cancelKeyboardScrollRestore();
+    if (screen === key) scrollRootTo({ top: 0, behavior: "instant" });
+    else onNavigate(key);
+  };
+  // pointerdown으로 이미 처리한 탭이 만들어내는 후속 click은 무시한다 — click 경로는
+  // 키보드(Enter/Space)나 pointer 이벤트가 없는 환경의 접근성용으로만 남긴다.
+  const pointerHandledRef = useRef(false);
+  const onTabPointerDown = (e: React.PointerEvent, run: () => void) => {
+    // 마우스 오른쪽/가운데 버튼은 무시 — 탭 활성화가 아니라 컨텍스트 메뉴 등의 몫이다.
+    if (e.button !== 0) return;
+    pointerHandledRef.current = true;
+    run();
+  };
+  const onTabClick = (run: () => void) => {
+    if (pointerHandledRef.current) { pointerHandledRef.current = false; return; }
+    run();
+  };
   // "운영" 드롭다운의 열림 상태는 AdminMenu 내부에만 있어(제어권까지 끌어올리진 않는다)
   // props로 직접 안 보인다 — 그 값이 바뀔 때마다 AdminMenu가 이걸 통해 알려준다. 아래
   // MutationObserver(클래스 변화 직접 감시)와 이중으로 걸어, 어느 한쪽이 놓쳐도 알약이
@@ -140,12 +170,11 @@ export default function MobileTabBar({ screen, menuOpen, isAdmin, effectiveVersi
           key={item.key}
           type="button"
           className={cx("scr-mobile-tab", screen === item.key && "scr-mobile-tab-active")}
-          onClick={() => {
-            // 이미 보고 있는 탭을 다시 누르면(같은 화면이라 navigate()가 아무 효과가
-            // 없으므로) 맨 위로 이동 버튼 대신 이걸로 스크롤을 맨 위로 올린다.
-            if (screen === item.key) scrollRootTo({ top: 0, behavior: "smooth" });
-            else onNavigate(item.key);
-          }}
+          // 이미 보고 있는 탭을 다시 누르면(같은 화면이라 navigate()가 아무 효과가
+          // 없으므로) 맨 위로 이동 버튼 대신 이걸로 스크롤을 맨 위로 올린다 — 실제
+          // 동작은 activate()가 pointerdown 시점에 처리한다(위 주석 참고).
+          onPointerDown={(e) => onTabPointerDown(e, () => activate(item.key))}
+          onClick={() => onTabClick(() => activate(item.key))}
         >
           <span>{item.label}</span>
         </button>
@@ -154,7 +183,8 @@ export default function MobileTabBar({ screen, menuOpen, isAdmin, effectiveVersi
       <button
         type="button"
         className={cx("scr-mobile-tab", menuOpen && "scr-mobile-tab-active")}
-        onClick={onOpenMenu}
+        onPointerDown={(e) => onTabPointerDown(e, onOpenMenu)}
+        onClick={() => onTabClick(onOpenMenu)}
         aria-label="메뉴 열기"
       >
         <span>메뉴</span>

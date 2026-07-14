@@ -13,6 +13,17 @@ const KEYBOARD_GAP_THRESHOLD = 120;
 // 마저 자라는 도중에 스크롤이 튀어 보인다. 리사이즈가 잠깐 멎은 뒤에 되돌린다.
 const SETTLE_MS = 150;
 
+// "이번 키보드 닫힘은 되돌리지 마라"를 밖에서 알려주는 통로 — 검색창에 키보드가 뜬
+// 채로 하단 탭을 누르면 (1) 탭 동작(화면 이동/맨 위로)이 스크롤을 옮기고 (2) 키보드가
+// 닫히며, 150ms 뒤 이 훅의 복원이 (1)의 결과를 도로 이전 위치로 되돌려버렸다(실제로
+// 지적받은 문제 — "액티브탭 클릭시 최상단으로 가기가 바로 안됨"). 탭바가 자기 동작
+// 직전에 이걸 불러 대기 중이거나 곧 생길 복원을 무효화한다. 훅 인스턴스는 앱에 하나뿐
+// (App.tsx)이라 모듈 스코프 변수로 충분하다.
+let cancelPendingRestore: (() => void) | null = null;
+export function cancelKeyboardScrollRestore(): void {
+  cancelPendingRestore?.();
+}
+
 export function useRestoreScrollOnKeyboardClose(): void {
   useEffect(() => {
     const vv = window.visualViewport;
@@ -37,8 +48,16 @@ export function useRestoreScrollOnKeyboardClose(): void {
         }, SETTLE_MS);
       }
     };
+    // 취소 요청이 오면 대기 중인 복원 타이머를 지우고, 아직 타이머가 안 걸렸더라도(키보드가
+    // 닫히기 전이라도) keyboardOpen을 꺼서 이번 닫힘에 대한 복원 자체를 건너뛰게 한다.
+    cancelPendingRestore = () => {
+      keyboardOpen = false;
+      if (settleTimer) clearTimeout(settleTimer);
+      settleTimer = null;
+    };
     vv.addEventListener("resize", onResize);
     return () => {
+      cancelPendingRestore = null;
       if (settleTimer) clearTimeout(settleTimer);
       vv.removeEventListener("resize", onResize);
     };

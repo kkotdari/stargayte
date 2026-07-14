@@ -494,6 +494,13 @@ export const api = {
     return request<{ items: Challenge[] }>("/api/challenges/pending-for-me");
   },
 
+  // 위의 "결과 입력" 버전 — 내가 참가한 확정 대결 중 예정 일시가 지났는데 아직 결과가
+  // 안 들어온 것을, 아직 팝업으로 안 본 것만 내려준다. 조회하는 즉시 서버가 "봤다"
+  // (result_notified)로 표시하므로 참가자별로 딱 한 번만 온다.
+  async getResultPendingChallengesForMe(): Promise<{ items: Challenge[] }> {
+    return request<{ items: Challenge[] }>("/api/challenges/result-pending-for-me");
+  },
+
   async createChallenge(payload: ChallengeCreatePayload): Promise<Challenge> {
     return request<Challenge>("/api/challenges", {
       method: "POST",

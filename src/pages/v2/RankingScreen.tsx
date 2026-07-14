@@ -17,14 +17,16 @@ import { useAppStore } from "../../store/appStore";
 import TeamMatchesModal from "../../modals/TeamMatchesModal";
 import type { BaseRace, Member } from "../../types";
 
-const MODE_OPTS: { value: RankMode; label: string }[] = [
-  { value: "solo", label: "개인" }, { value: "team", label: "팀" },
+// 차트 필터 하나로 통합 — 예전엔 "개인/팀"을 고른 뒤 팀에서만 인원(2/3/4인) 라디오가
+// 별도로 떴는데, 그 이단 구조를 없애고 처음부터 넷 중 하나를 고른다(요청: "랭킹 차트
+// 필터 개인/2인팀/3인팀/4인팀으로 구분 팀 세부 필터 삭제").
+type ChartOpt = "solo" | "2" | "3" | "4";
+const CHART_OPTS: { value: ChartOpt; label: string }[] = [
+  { value: "solo", label: "개인" },
+  { value: "2", label: "2인팀" },
+  { value: "3", label: "3인팀" },
+  { value: "4", label: "4인팀" },
 ];
-type TeamSizeOpt = "2" | "3" | "4";
-const TEAM_SIZE_OPTS: { value: TeamSizeOpt; label: string }[] = [
-  { value: "2", label: "2인" }, { value: "3", label: "3인" }, { value: "4", label: "4인" },
-];
-const DEFAULT_TEAM_SIZE: TeamSizeOpt = "4";
 
 // v2 랭킹 — 먼저 "일대일 / 팀" 중 하나를 고르고, 그다음에야 일대일은 종족을, 팀은 인원수
 // (2/3/4인)와 유저 검색을 쓸 수 있다(집계 대상 자체가 서로 달라 필터를 공유하지 않는다).
@@ -39,21 +41,21 @@ export default function RankingScreenV2() {
   const members = useAppStore((s) => s.members);
   const suggestions = useMemo(() => activeMemberSearchTerms(members), [members]);
 
-  const [mode, setMode] = useState<RankMode>("solo");
+  const [chart, setChart] = useState<ChartOpt>("solo");
+  const mode: RankMode = chart === "solo" ? "solo" : "team";
+  // "solo"일 땐 어차피 팀 조회 자체가 안 나가므로 아무 값이어도 무방하다.
+  const teamSize = (chart === "solo" ? 4 : Number(chart)) as TeamSize;
   const [race, setRace] = useState<BaseRace | "all">("all");
-  const [teamSizeOpt, setTeamSizeOpt] = useState<TeamSizeOpt>(DEFAULT_TEAM_SIZE);
-  const teamSize = Number(teamSizeOpt) as TeamSize;
   const [search, setSearch] = useState("");
   const month = currentMonthValue();
 
-  // 일대일/팀은 집계 대상 자체가 다른(1:1 경기 / 팀 구성) 별도 목록이라, 한쪽에서 걸어둔
-  // 검색어·종족·인원수 필터를 다른 쪽으로 들고 가면 그 화면에 아무도 안 걸린 채로 남거나
-  // (다른 모드 기준 검색어) 무의미한 필터가 남는다 — 모드를 바꾸면 항상 초기화한다(요청:
-  // "개인/팀 전환시 나머지 필터와 검색 키워드 초기화").
-  const handleModeChange = (m: RankMode) => {
-    setMode(m);
+  // 개인/각 인원수 팀은 집계 대상 자체가 다른 별도 목록이라, 한쪽에서 걸어둔 검색어·종족
+  // 필터를 다른 쪽으로 들고 가면 그 화면에 아무도 안 걸린 채로 남거나 무의미한 필터가
+  // 남는다 — 차트를 바꾸면 항상 초기화한다(요청: "개인/팀 전환시 나머지 필터와 검색
+  // 키워드 초기화").
+  const handleChartChange = (c: ChartOpt) => {
+    setChart(c);
     setRace("all");
-    setTeamSizeOpt(DEFAULT_TEAM_SIZE);
     setSearch("");
   };
 
@@ -152,13 +154,13 @@ export default function RankingScreenV2() {
         </h1>
       </div>
 
-      {/* 일대일/팀 선택은 이제 필터창(왼쪽 알약 탭)이 맡는다. 종족은 라디오 필터가 아니라
+      {/* 차트(개인/2인팀/3인팀/4인팀) 선택은 필터창(왼쪽 알약 탭) 하나가 맡는다 — 팀
+          인원수 세부 라디오는 이 안으로 흡수돼 없어졌다(요청: "랭킹 차트 필터
+          개인/2인팀/3인팀/4인팀으로 구분 팀 세부 필터 삭제"). 종족은 라디오 필터가 아니라
           유저 검색창의 예약어(raceValue/onRaceChange) — "테란"/"프로토스"/"저그"를 완성하면
           종족 칩으로 인식한다. 팀 랭킹엔 종족 개념이 없어(팀 구성원별 종족을 하나로 묶을 수
-          없다) 팀 모드에서는 이 두 prop 자체를 안 넘긴다(요청: "팀 차트에서 종족 제거") —
-          SearchFilterBar가 onRaceChange 없으면 종족 인식을 아예 안 한다. 팀 모드에서만
-          인원수(2/3/4인) 라디오가 추가로 뜬다(요청: "필터창에서 차트에 팀 선택시 인원
-          라디오 노출"). */}
+          없다) 팀 차트에서는 이 두 prop 자체를 안 넘긴다(요청: "팀 차트에서 종족 제거") —
+          SearchFilterBar가 onRaceChange 없으면 종족 인식을 아예 안 한다. */}
       <SearchFilterBar
         count={listRows.length}
         countLabel={isTeam ? "팀" : "명"}
@@ -169,16 +171,9 @@ export default function RankingScreenV2() {
         raceValue={isTeam ? undefined : (race === "all" ? null : race)}
         onRaceChange={isTeam ? undefined : (r) => setRace(r ?? "all")}
         filterPanel={
-          <>
-            <FilterItem label="차트">
-              <PillTabs options={MODE_OPTS} value={mode} onChange={handleModeChange} aria-label="개인/팀 선택" />
-            </FilterItem>
-            {isTeam && (
-              <FilterItem label="인원">
-                <PillTabs options={TEAM_SIZE_OPTS} value={teamSizeOpt} onChange={setTeamSizeOpt} aria-label="팀 인원수 선택" />
-              </FilterItem>
-            )}
-          </>
+          <FilterItem label="차트">
+            <PillTabs options={CHART_OPTS} value={chart} onChange={handleChartChange} aria-label="개인/팀 인원수 선택" />
+          </FilterItem>
         }
       />
 

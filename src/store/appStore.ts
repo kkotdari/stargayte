@@ -40,55 +40,6 @@ function computeUpdateNotice(activeVersion: AppVersion): UpdateNotice | null {
   return null;
 }
 
-// "결과 입력" 팝업 — 초대(pending-for-me) 팝업과 달리 서버에 "결과 안 봄" 플래그가 없어서,
-// 이미 팝업으로 띄운 도전장 id를 localStorage에 기록해두고 안 본 것만 다음 접속 때 띄운다.
-// (서버 재시작/기기 변경 시 다시 뜨는 정도는 감수 — 대결 화면에는 결과가 입력될 때까지
-// "결과 입력" 버튼이 계속 남아 있으므로 팝업을 놓쳐도 입력할 길이 없어지진 않는다.)
-const CHALLENGE_RESULT_SEEN_KEY = "scr_challenge_result_seen_ids";
-
-function loadSeenResultIds(): Set<number> {
-  try {
-    const raw = localStorage.getItem(CHALLENGE_RESULT_SEEN_KEY);
-    if (!raw) return new Set();
-    const arr = JSON.parse(raw);
-    return Array.isArray(arr) ? new Set(arr.filter((v): v is number => typeof v === "number")) : new Set();
-  } catch {
-    return new Set();
-  }
-}
-
-function markResultIdsSeen(ids: number[]): void {
-  if (ids.length === 0) return;
-  try {
-    const merged = loadSeenResultIds();
-    ids.forEach((id) => merged.add(id));
-    localStorage.setItem(CHALLENGE_RESULT_SEEN_KEY, JSON.stringify([...merged]));
-  } catch {
-    // localStorage 실패는 무시 — 다음 접속 때 같은 팝업이 한 번 더 뜨는 정도의 영향뿐이다.
-  }
-}
-
-// 예정 일시가 지났는데 아직 결과가 안 들어온, 내가 참가한 확정 대결 중 아직 팝업으로 안 본
-// 것만 골라 다음 접속 팝업 큐에 담는다. 담은 것은 그 즉시 "봤음"으로 기록해 다시 안 뜨게 한다.
-function computeResultInbox(challenges: Challenge[], myId: string | undefined): Challenge[] {
-  if (!myId) return [];
-  const now = Date.now();
-  const seen = loadSeenResultIds();
-  const candidates = challenges.filter((c) =>
-    c.status === "confirmed"
-    && c.scheduledAt !== null
-    && new Date(c.scheduledAt).getTime() < now
-    && c.resultWinnerSide === null
-    && (
-      c.createdBy.id === myId
-      || c.ownMembers.some((m) => m.memberId === myId)
-      || c.targets.some((t) => t.memberId === myId)
-    )
-    && !seen.has(c.id),
-  );
-  markResultIdsSeen(candidates.map((c) => c.id));
-  return candidates;
-}
 
 interface AppState {
   // ----- 상태 -----
@@ -130,7 +81,9 @@ interface AppState {
   inboxChallenges: Challenge[];
   dismissInboxChallenges: () => void;
   // 예정 일시가 지났는데 아직 결과가 안 들어온 내 확정 대결 — 다음 접속 때(부트스트랩
-  // 시점) 아직 팝업으로 안 본 것만 한 번 띄워 결과를 바로 입력하게 한다.
+  // 시점) 아직 팝업으로 안 본 것만 한 번 띄워 결과를 바로 입력하게 한다. "봤는지"는
+  // 서버(challenge_participants.result_notified)가 기억한다 — 기기/브라우저를 바꿔도
+  // 다시 안 뜬다(요청: "결과 입력 팝업 확인 여부는 디비에 관리").
   resultInboxChallenges: Challenge[];
   dismissResultInboxChallenges: () => void;
   // 운영자가 배포한 버전이 마지막으로 본 값과 다르면(부트스트랩 시점) 한 번만 채워진다 —
@@ -248,17 +201,20 @@ export const useAppStore = create<AppState>()((set, get) => ({
   bootstrap: async () => {
     set({ booting: true });
     try {
-      const [members, imageSettings, { activeVersion }, earliestMatchDate, { items: inboxChallenges }, { items: allChallenges }] = await Promise.all([
+      const [
+        members, imageSettings, { activeVersion }, earliestMatchDate,
+        { items: inboxChallenges }, { items: resultInboxChallenges },
+      ] = await Promise.all([
         api.getMembers(),
         api.getImageSettings(),
         api.getAppVersion(),
         api.getEarliestMatchDate(),
         api.getPendingChallengesForMe(),
-        api.getChallenges(),
+        api.getResultPendingChallengesForMe(),
       ]);
       set({
-        members, imageSettings, appVersion: activeVersion, earliestMatchDate, inboxChallenges,
-        resultInboxChallenges: computeResultInbox(allChallenges, get().user?.id),
+        members, imageSettings, appVersion: activeVersion, earliestMatchDate,
+        inboxChallenges, resultInboxChallenges,
         updateNotice: computeUpdateNotice(activeVersion),
       });
     } finally {
