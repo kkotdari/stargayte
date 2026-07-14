@@ -166,6 +166,7 @@ export default function MemberDetailModal({ member, onClose }: MemberDetailModal
                     value={pendingStatus}
                     options={statusOptions}
                     onChange={(v) => setPendingStatus(v as Member["status"])}
+                    minDropWidth={140}
                   />
                 ) : STATUS_LABEL_FALLBACK[member.status]}
               </dd>
