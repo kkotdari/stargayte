@@ -173,6 +173,22 @@ export default function SearchFilterBar({
   const inputRef = useRef<HTMLInputElement>(null);
   const dropRef = useRef<HTMLDivElement>(null);
   const chipBoxRef = useRef<HTMLDivElement>(null);
+  const stackRef = useRef<HTMLDivElement>(null);
+  // 탭바는 그대로 두고 필터/검색만 접는다(요청: "터치시 탭바는 그대로 필터랑 검색창만
+  // 접기" — 탭바를 스크롤 숨김 신호와 함께 묶었던 첫 시도는 되돌렸다) — 이 스택
+  // 바깥(페이지의 다른 어디든)을 누르면 어느 상황이든 곧바로 아이콘으로 접힌다(요청:
+  // "필터는 초기화면에서 펼쳐있다가 페이지 선택(클릭/터치시) 자동으로 접히게" + "어느
+  // 상황이든 페이지에 포커싱 가면 필터랑 검색창은 아이콘으로"). 스크롤로 숨을 때와
+  // 똑같이(요청: "아래로 스크롤 할때처럼") 그 트랜지션을 그대로 탄다.
+  useEffect(() => {
+    const onPointerDown = (e: PointerEvent) => {
+      if (stackRef.current?.contains(e.target as Node | null)) return;
+      setFilterExpanded(false);
+      setSearchExpanded(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, []);
 
   // 스페이스로 완성됐거나 엔터로 확정된 단어 하나를 즉시 적용한다 — 숫자만으로 된
   // 단어는 경기번호로(경기 화면만 onMatchNoChange를 넘긴다), 그 외엔 평범한 유저 검색어
@@ -539,6 +555,7 @@ export default function SearchFilterBar({
   const stackEl = (
     <div
       className="scr-filter-float-stack"
+      ref={stackRef}
       style={keyboardInset > 0 ? { bottom: keyboardInset + 10 } : undefined}
       onFocus={() => setStackFocused(true)}
       onBlur={(e) => {
