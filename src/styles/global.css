@@ -1637,8 +1637,11 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    목적이라 순위 숫자와 이름을 크게, 나머지는 부가정보로 작게 둔다. 행 전체를 누르면
    순위 상세(최근 순위 변동 그래프) 모달이 뜬다. v1 랭킹 화면(RankRow.tsx)은 그대로 둔다. */
 .scr-rank-table-panel-v2 { position: relative; }
+/* 좌우 패딩을 다른 화면 카드(챌린지 20px 등)와 맞춘다 — 24px로 남아 있던 예전 값이
+   같은 800px 프레임 안에서도 유독 안쪽으로 더 들어와 보였다(요청: "외부 마진? 패딩
+   아직 있어 랭킹 개인/팀 모두"). */
 .scr-rank-table-panel-v2 .scr-rank-row {
-  padding: 16px 24px;
+  padding: 16px 20px;
 }
 /* 일대일 랭킹(v2)만 구분선을 흰색 계열로 — 팀 랭킹은 카드형이라 이 구분선 자체가 없다
    (아래 .scr-team-rank-row + .scr-team-rank-row::before가 content:none으로 끈다).
@@ -1724,7 +1727,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    같은 그룹으로 보이게 한다. */
 .scr-rank-table-panel-v2 .scr-rank-row-tied { padding-top: 6px; }
 @media (max-width: 640px) {
-  .scr-rank-table-panel-v2 .scr-rank-row { padding: 22px 18px; }
+  .scr-rank-table-panel-v2 .scr-rank-row { padding: 22px 20px; }
   .scr-rank-table-panel-v2 .scr-rank-row-tied { padding-top: 5px; }
   /* 좁은 폭에서도 위와 같은 이유로 고정폭을 유지한다(프사 정렬이 흔들리지 않도록) —
      프사만 이 화면폭에서 42px로 줄어들므로(아래 .scr-rank-avatar-btn .scr-avatar) 칸
@@ -1903,8 +1906,10 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   gap: 8px 14px; min-width: 0;
 }
 /* 카드와 카드 사이 간격 — 카드 자신이 안쪽 여백을 갖고 있으니 행 패딩은 순전히 카드 사이를
-   벌리는 용도다. */
-.scr-rank-table-panel-v2 .scr-team-rank-row { padding: 9px 24px; }
+   벌리는 용도다. 좌우는 0이어야 한다 — 24px를 주면 카드 자신의 패딩(18px, 아래
+   .scr-team-rank-row-inner)과 겹으로 쌓여 총 42px가 되고, 다른 화면 카드(20px)의 두 배로
+   유독 안쪽에 떠 보였다(요청: "src-rank-row 문제 아냐?" — 정확히 이 규칙이었다). */
+.scr-rank-table-panel-v2 .scr-team-rank-row { padding: 9px 0; }
 /* 프사는 위 .scr-rank-table-panel-v2 .scr-avatar 규칙이 이미 원형으로 만들어준다. */
 .scr-team-rank-member { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .scr-team-rank-name {
@@ -1923,7 +1928,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-team-rank-stats-clickable { cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
 .scr-team-rank-record { font-size: 16.5px; color: var(--dim); white-space: nowrap; }
 @media (max-width: 640px) {
-  .scr-rank-table-panel-v2 .scr-team-rank-row { padding: 7px 8px; }
+  .scr-rank-table-panel-v2 .scr-team-rank-row { padding: 7px 0; }
   /* PC와 같은 이유로 되돌린다 — 일대일 행의 모바일 순위 칸(44px)과 같은 폭, 왼쪽 정렬. */
   .scr-rank-table-panel-v2 .scr-team-rank-row-inner {
     grid-template-columns: 44px minmax(0, 1fr) 82px; column-gap: 8px; padding: 14px 10px;
