@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { addScrollListener } from "../utils/scrollRoot";
+import { addScrollListener, getScrollMetrics } from "../utils/scrollRoot";
 
 // 스크롤하는 동안은 하단 탭바(+ 헤더/플로팅 필터·검색창)를 보여주고, 스크롤이 멈추면
 // 잠시 후 숨긴다 — 원래는 "아래로 스크롤하면 숨김, 위로 스크롤하거나 맨 아래 도달하면
@@ -13,16 +13,25 @@ import { addScrollListener } from "../utils/scrollRoot";
 // 구독한다 — 로그인 후에만 마운트되는 컴포넌트(Header)에서 호출하면 #scroll-root가
 // 이미 DOM에 있는 상태로 구독을 시작하므로 별도 "shellReady" 신호가 필요 없다.
 const IDLE_DELAY_MS = 500;
+// 요청: "검색창/필터창/탭바는 페이지 최상단 최하단에선 항상 노출이야" + "스크롤 안해도"
+// — 맨 위/맨 아래에서는 스크롤이 멈춰도(심지어 한 번도 스크롤 안 해도) 숨기지 않는다.
+// EDGE_PX는 "정확히 끝"이 아니라 터치가 살짝 덜 붙어도 같은 취급을 받을 여유값이다.
+const EDGE_PX = 24;
 
 export function useHideOnScrollDown(screen: string): boolean {
   const [hidden, setHidden] = useState(false);
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const atEdgeRef = useRef(true);
 
   useEffect(() => {
     const onScroll = () => {
+      const { scrollTop, clientHeight, scrollHeight } = getScrollMetrics();
+      atEdgeRef.current = scrollTop <= EDGE_PX || scrollTop + clientHeight >= scrollHeight - EDGE_PX;
       setHidden(false);
       if (idleTimerRef.current !== null) clearTimeout(idleTimerRef.current);
-      idleTimerRef.current = setTimeout(() => setHidden(true), IDLE_DELAY_MS);
+      idleTimerRef.current = setTimeout(() => {
+        if (!atEdgeRef.current) setHidden(true);
+      }, IDLE_DELAY_MS);
     };
     return addScrollListener(onScroll);
   }, []);
@@ -37,6 +46,7 @@ export function useHideOnScrollDown(screen: string): boolean {
   // 그대로 부드러운 트랜지션을 남겨둔다.
   useEffect(() => {
     if (idleTimerRef.current !== null) clearTimeout(idleTimerRef.current);
+    atEdgeRef.current = true;
     document.documentElement.classList.add("scr-screen-switch-jump");
     setHidden(false);
     const raf = requestAnimationFrame(() => {
