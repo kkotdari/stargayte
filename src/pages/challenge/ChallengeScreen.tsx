@@ -473,16 +473,13 @@ export default function ChallengeScreen() {
         <div className="scr-empty"><Spinner size={18} /></div>
       ) : filter === "upcoming" ? (
         <>
-          {/* 응답할 게 없어도 섹션 자체(소타이틀 포함)는 항상 보여준다 — 그래야 "응답하라!"
-              라는 영역이 있다는 것 자체가 눈에 띄고, 비어 있을 땐 그 사실을 바로 알 수
-              있다(요청: "응답하라! 영역이 없네 소타이틀도 있어야해"). */}
-          <section className="scr-challenge-section scr-challenge-section-respond">
-            <h2 className="scr-challenge-section-title scr-challenge-section-title-respond">응답하라!</h2>
-            {respondChallenges.length === 0 ? (
-              <div className="scr-empty">응답할 도전장이 없어요</div>
+          <section className="scr-challenge-section">
+            <h2 className="scr-challenge-section-title">다가오는 대결</h2>
+            {restUpcomingChallenges.length === 0 ? (
+              <div className="scr-empty">{emptyLabel}</div>
             ) : (
               <div className="scr-challenge-list">
-                {groupChallengesByDate(respondChallenges).map((g) => (
+                {groupChallengesByDate(restUpcomingChallenges).map((g) => (
                   <div key={g.label} className="scr-challenge-date-group">
                     <div className="scr-challenge-date-head scr-mono">
                       {g.isToday && <span className="scr-challenge-card-today-tag">오늘</span>}
@@ -503,13 +500,18 @@ export default function ChallengeScreen() {
             )}
           </section>
 
-          <section className="scr-challenge-section">
-            <h2 className="scr-challenge-section-title">다가오는 대결</h2>
-            {restUpcomingChallenges.length === 0 ? (
-              <div className="scr-empty">{emptyLabel}</div>
+          {/* 응답할 게 없어도 섹션 자체(소타이틀 포함)는 항상 보여준다 — 그래야 "응답하라!"
+              라는 영역이 있다는 것 자체가 눈에 띄고, 비어 있을 땐 그 사실을 바로 알 수
+              있다(요청: "응답하라! 영역이 없네 소타이틀도 있어야해"). 요청: "응답하라
+              목록이 다가오는 아래에 배치" — 처음엔 맨 위였지만 이제 "다가오는 대결"
+              아래로 옮긴다. */}
+          <section className="scr-challenge-section scr-challenge-section-respond">
+            <h2 className="scr-challenge-section-title scr-challenge-section-title-respond">응답하라!</h2>
+            {respondChallenges.length === 0 ? (
+              <div className="scr-empty">응답할 도전장이 없어요</div>
             ) : (
               <div className="scr-challenge-list">
-                {groupChallengesByDate(restUpcomingChallenges).map((g) => (
+                {groupChallengesByDate(respondChallenges).map((g) => (
                   <div key={g.label} className="scr-challenge-date-group">
                     <div className="scr-challenge-date-head scr-mono">
                       {g.isToday && <span className="scr-challenge-card-today-tag">오늘</span>}
