@@ -1698,9 +1698,13 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   .scr-rank-table-panel-v2 .scr-rank-row-tied { padding-top: 5px; }
   /* 좁은 폭에서도 위와 같은 이유로 고정폭을 유지한다(프사 정렬이 흔들리지 않도록) —
      프사만 이 화면폭에서 42px로 줄어들므로(아래 .scr-rank-avatar-btn .scr-avatar) 칸
-     폭도 같이 42px로 맞춘다. */
+     폭도 같이 42px로 맞춘다. 닉네임 칸만은 고정폭이 아니라 minmax(...,1fr)로 남는
+     폭을 먹게 한다 — 고정폭이면 큰 폰(414~640px 폭)에서 카드는 넓은데 이 안쪽 그리드는
+     항상 같은 좁은 폭에 머물러, 다른 화면의 카드(예: 챌린지 카드, 폭 제한 없이 꽉
+     채움)보다 눈에 띄게 좁아 보였다(요청: "모바일에서 랭킹카드 폭 넓히기 다른화면들의
+     카드 폭과 동일하게"). */
   .scr-rank-table-panel-v2 .scr-rank-row-inner {
-    grid-template-columns: 44px 42px 100px 100px; column-gap: 10px;
+    grid-template-columns: 44px 42px minmax(100px, 1fr) 100px; column-gap: 10px;
   }
   .scr-rank-table-panel-v2 .scr-rank-name { font-size: 16px; }
   .scr-rank-record-v2 { font-size: 12px; }
@@ -4319,13 +4323,17 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    align-items:center인 이 flex 행 안에서 자연히 위아래 가운데로 온다(요청: "손가락
    이모티콘을 좀더 도전자와 상대 가운데 느낌에 배치") — 팀전이라 어느 한쪽이 세로로
    길어져도 항상 그 사이 세로 중앙에 위치한다. */
+.scr-challenge-matchup { display: flex; align-items: flex-start; gap: 12px; }
 /* PC에서 매치업 내용을 카드 가운데로 몰아 좁혀보려 했지만(460px → 720px → 960px,
    요청: "카드 가운데 몰려서 나오게 배치" → "컨텐츠 영역이 너무 좁아 훨씬 넓어도 돼" →
-   "한마디가 줄바꿈이 나와 예약 공간을 넓게" → "아직도 영역이 너무 좁아") 매번 실제
-   내용(닉네임/한마디)이 들어갈 자리가 부족하다는 피드백이 이어져, 폭 제한 자체를
-   없애고 카드 패딩 안에서 항상 꽉 채운다 — 폭을 좁혀 가운데로 모으는 것보다 내용이
-   잘리지 않는 쪽을 우선한다. */
-.scr-challenge-matchup { display: flex; align-items: flex-start; gap: 12px; }
+   "한마디가 줄바꿈이 나와 예약 공간을 넓게" → "아직도 영역이 너무 좁아") 매번 좁다는
+   피드백이 이어져 한 번 폭 제한을 통째로 없앴는데, 그건 또 "제한 자체를 없애라는 게
+   아니라 완화해서 가운데 모여있되 글자가 충분히 보여지게" 하라는 뜻이었다 — 아예
+   없애는 대신 넉넉한 값(800px)으로 다시 가운데에 모은다. 모바일은 카드 자체가 이미
+   좁아 필요 없다. */
+@media (min-width: 641px) {
+  .scr-challenge-matchup { max-width: 800px; margin: 0 auto; }
+}
 /* 손가락은 팀 전체 블록(메시지까지 포함해 세로로 길어질 수 있는)의 한가운데가 아니라
    맨 윗줄(프사+닉네임 줄)에만 자리를 차지하면 된다(요청: "손가락 이모지는 윗 라인에만
    자리 차지하면 돼 — 구성원 첫 줄에만 이모지 들어가니까") — 그 줄의 프사 높이(24px)에
