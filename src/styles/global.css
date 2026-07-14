@@ -1668,9 +1668,13 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
      1fr이어도 행마다 다른 값으로 흔들리지 않는다. PC에서 카드는 다른 화면과 같은 폭
      (800px, --list-content-max)까지 늘어나는데 이 안쪽 그리드는 예전 560px에 갇혀 있어
      카드 폭 대비 내용이 유독 좁아 보였다(요청: "PC에서 랭킹화면만 컨텐츠가 더 좁네") —
-     그 캡도 같이 걷어내 카드 폭 그대로 쓰게 한다. */
+     그 캡도 같이 걷어내 카드 폭 그대로 쓰게 한다. 다만 이 선택자는 위 v1
+     .scr-rank-row-inner(max-width:460px; margin:0 auto)의 자식이라 그 두 속성은 여기서
+     명시적으로 안 건드리면 그대로 새어 들어와 결국 460px에 다시 갇힌다 — 모바일에서도
+     다른 카드보다 좁아 보인 진짜 원인(요청: "가만보니 랭킹카드는 모바일에서도 다른카드들
+     보다 폭이 좁네")이 이거였다. 여기서 다시 풀어준다. */
   display: grid; grid-template-columns: 60px 52px minmax(220px, 1fr) 108px;
-  justify-content: center;
+  justify-content: center; max-width: none; margin: 0;
   align-items: center; column-gap: 18px; width: 100%; min-width: 0;
 }
 .scr-rank-table-panel-v2 .scr-rank-name-wrap { min-width: 0; justify-content: flex-start; }
