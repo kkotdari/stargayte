@@ -13,7 +13,7 @@ import SearchFilterBar from "../../components/common/SearchFilterBar";
 import { useAppStore } from "../../store/appStore";
 import { api } from "../../api/client";
 import { activeMemberSearchTerms, memberMatchesTerm, splitSearchTerms } from "../../utils/memberSearch";
-import { monthInputToRange, currentMonthValue } from "../../utils/date";
+import { monthInputToRange, currentMonthValue, todayStr } from "../../utils/date";
 import { buildReplayDrafts, type ReplayDraft } from "../../utils/replayDraft";
 import { hasAppUpdatePreloadErrorOccurred } from "../../utils/appUpdate";
 import { useCursorPagination } from "../../hooks/useCursorPagination";
@@ -22,14 +22,17 @@ import type { Match, Member, MatchSlot } from "../../types";
 
 const MAX_REPLAY_FILES = 20;
 const PAGE_SIZE = 20;
-const PERIOD_UNIT_OPTS: { value: "all" | "month"; label: string }[] = [
+const PERIOD_UNIT_OPTS: { value: "all" | "month" | "day"; label: string }[] = [
   { value: "all", label: "전체" },
   { value: "month", label: "월" },
+  { value: "day", label: "일" },
 ];
 
-// 경기결과/전적통계/랭킹 공용 상단 모듈(SearchFilterBar)을 쓰는 화면. 기간은 전체/월
-// 두 단위뿐이라(요청: iOS Safari가 <input type="week">를 지원 안 해서 주 단위 자체를
-// 없앰) OS 네이티브 월 선택기(<input type="month">) 하나로 충분하다.
+// 경기결과/전적통계/랭킹 공용 상단 모듈(SearchFilterBar)을 쓰는 화면. 기간은 전체/월/일
+// 세 단위다(요청: iOS Safari가 <input type="week">를 지원 안 해서 주 단위 자체를 없앰) —
+// 월은 OS 네이티브 월 선택기(<input type="month">), 일은 날짜 선택기(<input type="date">)
+// 하나로 충분하다. 요청: "경기 화면 기간 필터 기본값은 일" — 화면을 열면 바로 오늘 하루
+// 경기만 보이는 게 기본이다.
 export default function MatchScreenV2() {
   const members = useAppStore((s) => s.members);
   const memberOf = useAppStore((s) => s.memberOf);
@@ -38,8 +41,9 @@ export default function MatchScreenV2() {
   // 이미 "적용된" 값이다 — 예전처럼 디바운스로 한 번 더 늦출 필요가 없다.
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<"latest" | "oldest">("latest");
-  const [periodUnit, setPeriodUnit] = useState<"all" | "month">("all");
+  const [periodUnit, setPeriodUnit] = useState<"all" | "month" | "day">("day");
   const [periodMonth, setPeriodMonth] = useState(currentMonthValue);
+  const [periodDay, setPeriodDay] = useState(todayStr);
   const suggestions = useMemo(() => activeMemberSearchTerms(members), [members]);
   const searchTerms = useMemo(() => splitSearchTerms(search), [search]);
   const hasSearch = searchTerms.length > 0;
@@ -52,10 +56,11 @@ export default function MatchScreenV2() {
     return all;
   }, [members, searchTerms]);
 
-  const effectiveRange = useMemo(
-    () => (periodUnit === "month" ? monthInputToRange(periodMonth) : { from: "", to: "" }),
-    [periodUnit, periodMonth],
-  );
+  const effectiveRange = useMemo(() => {
+    if (periodUnit === "month") return monthInputToRange(periodMonth);
+    if (periodUnit === "day") return { from: periodDay, to: periodDay };
+    return { from: "", to: "" };
+  }, [periodUnit, periodMonth, periodDay]);
 
   // 수기등록(신규) 전용 — 카드 클릭으로는 더 이상 이 모달(수정)이 열리지 않지만, 코드는
   // 나중에 다시 쓸 수 있어 남겨둔다.
@@ -208,6 +213,15 @@ export default function MatchScreenV2() {
                   type="month" className="scr-filter-month-input"
                   value={periodMonth} onChange={(e) => setPeriodMonth(e.target.value)}
                   aria-label="조회할 월"
+                />
+              </FilterItem>
+            )}
+            {periodUnit === "day" && (
+              <FilterItem label="일">
+                <input
+                  type="date" className="scr-filter-month-input"
+                  value={periodDay} onChange={(e) => setPeriodDay(e.target.value)}
+                  aria-label="조회할 날짜"
                 />
               </FilterItem>
             )}
