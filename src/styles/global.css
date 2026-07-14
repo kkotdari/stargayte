@@ -4273,7 +4273,14 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    나가므로, 위 .scr-challenge-form-modal의 변수 재정의가 상속되지 않는다 — 그 결과
    라이트 테마에서는 앱의 실제 --panel-raised(옅은 회색)가 이미 밝은 페이지 위에 놓여
    거의 안 보였다. Select가 트리거/드롭다운 둘 다에 이 className을 그대로 붙여주므로,
-   같은 변수를 여기서도 한 번 더 정의해 드롭다운도 항상 편지지 톤을 따르게 한다. */
+   같은 변수를 여기서도 한 번 더 정의해 드롭다운도 항상 편지지 톤을 따르게 한다.
+   --point-contrast가 빠져 있었다(요청: "도전장 보내기에 상대 드롭다운 글자가
+   안보임") — .scr-cselect-opt-active(드롭다운을 열면 기본으로 활성화되는 첫 옵션,
+   또는 마우스가 올라간 옵션)는 background:var(--text)/color:var(--point-contrast)로
+   반전되는데, 다크 테마의 전역 --point-contrast(#10151a, 거의 검정)가 그대로 새어
+   들어와 어두운 배경(--text 재정의값 #2a2420) 위에 어두운 글자가 겹쳐 안 보였다 —
+   .scr-challenge-form-modal이 같은 이유(요청: "다크테마에서 시간지정 체크가
+   안보임")로 이미 고정해둔 것과 같은 값을 여기도 맞춘다. */
 .scr-challenge-target-select {
   --text: #2a2420;
   --muted: rgba(42, 36, 32, 0.75);
@@ -4283,6 +4290,7 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   --line: rgba(42, 36, 32, 0.16);
   --line-soft: rgba(42, 36, 32, 0.2);
   --overlay-rgb: 0, 0, 0;
+  --point-contrast: #fdfbf5;
 }
 
 /* 작성 폼 — 상대 지목 슬롯 */
@@ -4345,7 +4353,9 @@ body *::-webkit-scrollbar-corner { background: transparent; }
     inset 0 1px 0 rgba(255, 255, 255, 0.09),
     inset 0 0 0 1px rgba(255, 255, 255, 0.045),
     0 2px 12px rgba(0, 0, 0, 0.16);
-  display: flex; flex-direction: column; gap: 11px;
+  /* 요청: "최대한 높이는 컴팩트하게" + "수락 거절 버튼 위쪽에 갭이 너무 큰듯" —
+     11px→8px. */
+  display: flex; flex-direction: column; gap: 8px;
 }
 .scr-light-theme .scr-challenge-card {
   background: rgba(255, 255, 255, 0.62);
@@ -4407,7 +4417,8 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-challenge-date-group + .scr-challenge-date-group { margin-top: 18px; }
 .scr-challenge-date-head { font-size: 13px; font-weight: 700; color: var(--dim); letter-spacing: 0.02em; }
 
-.scr-challenge-card-body { display: flex; flex-direction: column; gap: 10px; }
+/* 요청: "최대한 높이는 컴팩트하게" — 10px→6px. */
+.scr-challenge-card-body { display: flex; flex-direction: column; gap: 6px; }
 .scr-challenge-card-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
 /* 매치업 — 도전자편/상대편을 나란히 두고 그 사이에 손가락을 하나만 둔다. 양쪽 다
    align-items:center인 이 flex 행 안에서 자연히 위아래 가운데로 온다(요청: "손가락
@@ -4468,22 +4479,23 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   text-decoration: underline dotted; text-underline-offset: 3px;
 }
 .scr-challenge-result-link:hover { color: var(--text); }
-.scr-challenge-matchup-wrap { position: relative; }
-/* 화살표 버튼은 카드 좌우 가장자리에 겹쳐 뜬다 — 매치업 내용(가운데 정렬) 폭과
-   무관하게 항상 카드 자체의 가장자리에 붙어야 어느 페이지를 보든 위치가 안 흔들린다. */
+/* 재신청 이력 탐색 — 스와이프(제스처) 없이 화살표/점 버튼으로만 한다(요청: "대결 카드
+   슬라이드로 넘기기는 삭제하고 버튼이나 페이징으로만 이동"). 매치업 위에 겹쳐 뜨던
+   화살표가 한 줄로 줄어든 한마디와 겹쳐서(요청: "좌우 버튼을 좀 더 아래쪽에 배치(지금
+   한줄메시지랑 겹침)") 매치업 아래 한 줄로(화살표-점-화살표) 옮긴다. min-height —
+   이력 없는(재신청 안 된) 카드는 이 줄 자체가 안 뜨는 빈 자리인데, 그래도 이력 있는
+   카드와 높이가 같아야 목록 스크롤이 안 흔들린다(요청: "아래 페이징 점이 있고 없고에
+   따라 레이아웃이 흔들리지 않게 해줘(높이 동일해야함 항상)"). */
+.scr-challenge-page-nav-row { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 20px; }
 .scr-challenge-page-nav {
-  position: absolute; top: 50%; transform: translateY(-50%); z-index: 1;
   display: flex; align-items: center; justify-content: center;
-  width: 26px; height: 26px; border-radius: 50%;
-  background: rgba(var(--overlay-rgb), 0.1); border: none; color: var(--dim); cursor: pointer;
+  width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0;
+  background: transparent; border: none; color: var(--dim); cursor: pointer;
 }
-.scr-challenge-page-nav:hover { color: var(--text); background: rgba(var(--overlay-rgb), 0.18); }
-.scr-challenge-page-nav-prev { left: -4px; }
-.scr-challenge-page-nav-next { right: -4px; }
-/* min-height — 이력 없는(재신청 안 된) 카드는 점이 하나도 안 뜨는 빈 자리인데, 그래도
-   이력 있는 카드와 높이가 같아야 목록 스크롤이 안 흔들린다(요청: "아래 페이징 점이
-   있고 없고에 따라 레이아웃이 흔들리지 않게 해줘(높이 동일해야함 항상)"). */
-.scr-challenge-page-dots { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 6px; }
+.scr-challenge-page-nav:hover { color: var(--text); background: rgba(var(--overlay-rgb), 0.1); }
+.scr-challenge-page-nav:disabled { opacity: 0.25; cursor: default; }
+.scr-challenge-page-nav:disabled:hover { background: transparent; }
+.scr-challenge-page-dots { display: flex; align-items: center; justify-content: center; gap: 6px; }
 .scr-challenge-page-dot {
   width: 6px; height: 6px; border-radius: 50%; padding: 0; border: none;
   background: rgba(var(--overlay-rgb), 0.25); cursor: pointer;
@@ -4514,17 +4526,19 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 /* 한마디/응답 메시지 — 있든 없든 항상 이 자리를 차지해야, 상대가 여럿일 때 어떤
    사람은 메시지가 있고 어떤 사람은 없어도 줄이 들쭉날쭉하지 않는다(요청: "메시지
    있건 없건 예약 자리 차지하게하기"). 내용이 없으면 공백 하나만 넣어 줄 높이만 유지.
-   한 줄로 자르면 너무 많이 잘려서(요청: "한마디가 너무 잘려 공간 더 확보") 두 줄까지
-   허용하고, 그만큼 예약 높이도 두 줄로 늘려 자리는 항상 일정하게 유지한다. */
+   처음엔 두 줄까지 허용했지만(요청: "한마디가 너무 잘려 공간 더 확보"), 카드 높이를
+   최대한 줄이려고(요청: "대결 카드 높이는 훨씬 줄어도 될듯" → "최대한 높이는
+   컴팩트하게.. 한마디도 그냥 한줄로 갈게") 한 줄로 되돌린다 — 넘치는 만큼은 클릭하면
+   뜨는 팝오버(ChallengeMessage)로 전체를 볼 수 있으니 잘려도 괜찮다. */
 .scr-challenge-side-message {
-  font-style: italic; font-size: 12.5px; color: var(--muted); line-height: 1.3; min-height: 2.6em;
+  font-style: italic; font-size: 12.5px; color: var(--muted); line-height: 1.3; min-height: 1.3em;
   /* display:-webkit-box는 block과 달리 부모 폭을 자동으로 채우지 않고(내용 크기만큼만
      차지하는 shrink-to-fit) 짧은 문장이면 박스 자체가 좁아져 버려서, 그 좁은 폭
-     안에서 2줄로 줄바꿈됐다(요청: "이부분이 폭이 작아서 줄바꿈이 생기잖아" — 실제로
+     안에서 줄바꿈됐다(요청: "이부분이 폭이 작아서 줄바꿈이 생기잖아" — 실제로
      79px까지 좁아진 걸 개발자도구로 확인) — width:100%로 옆 칸(닉네임 줄)과 같은
      폭을 명시적으로 채운다. */
   width: 100%;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical;
   overflow: hidden; text-overflow: ellipsis;
 }
 /* PC에서만(요청: "PC 말하는거야") 도전자편 전체(프사+닉네임 줄과 한마디 둘 다)를
@@ -4566,12 +4580,10 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   font-style: italic; font-size: 13px; color: var(--text); line-height: 1.4;
   white-space: pre-wrap; word-break: break-word;
 }
-/* min-height(--field-h-sm, 버튼 자신의 최소 높이와 동일) — 승락/거절, 결과 보기,
-   취소/재신청 중 아무것도 안 뜨는 카드는 이 자리가 빈 placeholder(아래
-   -placeholder 참고)로만 남는데, 그래도 버튼이 있는 카드와 높이가 같아야 목록
-   스크롤이 안 흔들린다(요청: "결과 보기 버튼이... 있고 없고에 따라 레이아웃이
-   흔들리지 않게 해줘(높이 동일해야함 항상)"). */
-.scr-challenge-card-actions { display: flex; justify-content: center; gap: 8px; min-height: var(--field-h-sm); }
+/* 승락/거절 버튼 줄이 카드 높이에 영향을 주는 건 문제 없다(요청: "거절 승락 버튼이
+   높이에 영향주는건 괜찮아") — 아무것도 안 뜨는 카드에까지 빈 자리를 예약해두진
+   않는다. */
+.scr-challenge-card-actions { display: flex; justify-content: center; gap: 8px; }
 .scr-challenge-inbox-body .scr-form-actions { justify-content: center; }
 /* 승락(핑크)/거절(검정) 버튼 — 로그인 버튼과 같은 필(pill) 래디우스. */
 .scr-challenge-accept-btn, .scr-challenge-reject-btn { border-radius: 999px; border-color: transparent; color: #fff; }

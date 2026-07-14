@@ -242,21 +242,6 @@ function ChallengeCard({ challenge, myId, onResponded, onViewResults }: Challeng
   const pageOverall: ChallengeDisplayStatus = isLatestPage ? overall : "rejected";
   const pageTargetInfos = page.targets.map((t) => ({ target: t, overall: pageOverall }));
 
-  // 스와이프(모바일) — 왼쪽으로 밀면 다음(최신 쪽), 오른쪽으로 밀면 이전(옛 기록 쪽).
-  const touchStartXRef = useRef<number | null>(null);
-  const SWIPE_THRESHOLD_PX = 40;
-  const onMatchupTouchStart = (e: React.TouchEvent) => {
-    touchStartXRef.current = e.touches[0]?.clientX ?? null;
-  };
-  const onMatchupTouchEnd = (e: React.TouchEvent) => {
-    const startX = touchStartXRef.current;
-    touchStartXRef.current = null;
-    if (startX === null) return;
-    const delta = (e.changedTouches[0]?.clientX ?? startX) - startX;
-    if (delta > SWIPE_THRESHOLD_PX) setPageIndex((i) => Math.max(0, i - 1));
-    else if (delta < -SWIPE_THRESHOLD_PX) setPageIndex((i) => Math.min(pages.length - 1, i + 1));
-  };
-
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
   const [reapplying, setReapplying] = useState(false);
   const [dateStr, setDateStr] = useState("");
@@ -267,18 +252,6 @@ function ChallengeCard({ challenge, myId, onResponded, onViewResults }: Challeng
   // 전환한다(요청: "도전자/상대 모두 시간을 지정하지 않았는데 수락이 된 경우가 있네
   // 이러면 안되는데" — 승락하는 이 시점에 상대가 직접 정하게 해서 막는다).
   const [scheduling, setScheduling] = useState(false);
-
-  // 카드마다 승락/거절, 취소/재신청 중 무엇이 뜨는지(혹은 아무것도 안 뜨는지)가 달라서
-  // 목록을 스크롤할 때 카드 높이가 들쭉날쭉했다(요청: "결과 보기 버튼이나 아래 페이징
-  // 점이 있고 없고에 따라 레이아웃이 흔들리지 않게 해줘(높이 동일해야함 항상)") — 결과
-  // 보기는 이제 별도 줄이 아니라 시간 옆 텍스트 링크로 옮겨서(요청: "결과보기 버튼은
-  // 시간 옆에 텍스트로 배치해서 레이아웃 공간 차지하지 않게 하자") 여기서 뺀다. 남은
-  // 둘은 서로 배타적이라(한 카드에 동시에 뜰 일이 없다) 둘 다 안 뜨는 카드에는 빈
-  // 자리라도 같은 높이만큼 예약해둔다(아래 렌더 부분의 대체 placeholder 참고).
-  const hasBottomActionRow = isLatestPage && (
-    (canRespond && !scheduling)
-    || (!reapplying && (canCancel || canReapply))
-  );
 
   // 카드에서 바로 승락/거절 — OS 기본 prompt로 한마디를 받는다. 승락은 이제 선택(요청:
   // "승락시에는 메시지 필수 아니게 변경"), 거절은 여전히 필수다(요청: "거절일때는 필수") —
@@ -396,48 +369,50 @@ function ChallengeCard({ challenge, myId, onResponded, onViewResults }: Challeng
             팀당 한 개, 요청: "손가락은 한개만 표시"). "누가 도전장 보냄" 태그는 없앴고
             (요청: "이 부분 삭제"), 도전자의 한마디는 도전자편 아래로, 상대 응답 알약은
             그 사람 프로필 옆에 인라인으로, 응답 메시지는 그 아래로 옮겼다(요청: "상대프로필
-            옆에 인라인으로 응답상태알약... 및 프로필 아래에 응답 메시지 표시"). 재신청
-            이력이 있으면 좌우로 스와이프(모바일)/화살표(PC)로 예전 기록도 볼 수 있다. */}
-        <div
-          className="scr-challenge-matchup-wrap"
-          onTouchStart={pages.length > 1 ? onMatchupTouchStart : undefined}
-          onTouchEnd={pages.length > 1 ? onMatchupTouchEnd : undefined}
-        >
-          {pages.length > 1 && pageIndex > 0 && (
-            <button
-              type="button" className="scr-challenge-page-nav scr-challenge-page-nav-prev"
-              onClick={() => setPageIndex((i) => i - 1)} aria-label="이전 기록 보기"
-            >
-              <ChevronLeft size={16} />
-            </button>
-          )}
-          <div className="scr-challenge-matchup">
-            <ChallengeSide people={creatorSideMembers} message={page.message} />
-            <span className="scr-challenge-arrow" aria-hidden="true">👉🏻</span>
-            <ChallengeSide people={targetSideMembers} targets={pageTargetInfos} />
-          </div>
-          {pages.length > 1 && pageIndex < pages.length - 1 && (
-            <button
-              type="button" className="scr-challenge-page-nav scr-challenge-page-nav-next"
-              onClick={() => setPageIndex((i) => i + 1)} aria-label="다음 기록 보기"
-            >
-              <ChevronRight size={16} />
-            </button>
-          )}
+            옆에 인라인으로 응답상태알약... 및 프로필 아래에 응답 메시지 표시"). */}
+        <div className="scr-challenge-matchup">
+          <ChallengeSide people={creatorSideMembers} message={page.message} />
+          <span className="scr-challenge-arrow" aria-hidden="true">👉🏻</span>
+          <ChallengeSide people={targetSideMembers} targets={pageTargetInfos} />
         </div>
 
-        {/* 재신청 이력이 없는 카드(대다수)는 점이 아예 안 뜨는데, 그 자리까지 예약해둬야
-            이력 있는 카드와 없는 카드가 목록에서 높이가 안 흔들린다(요청: "아래 페이징
-            점이 있고 없고에 따라 레이아웃이 흔들리지 않게 해줘"). */}
-        <div className="scr-challenge-page-dots">
-          {pages.length > 1 && pages.map((p, i) => (
-            <button
-              key={p.id} type="button"
-              className={cx("scr-challenge-page-dot", i === pageIndex && "scr-challenge-page-dot-active")}
-              onClick={() => setPageIndex(i)}
-              aria-label={`${i + 1}번째 기록 보기`}
-            />
-          ))}
+        {/* 재신청 이력 탐색은 스와이프(제스처) 없이 화살표/점 버튼으로만 한다(요청: "대결
+            카드 슬라이드로 넘기기는 삭제하고 버튼이나 페이징으로만 이동") — 매치업 위에
+            겹쳐 뜨던 화살표가 한 줄짜리 한마디와 겹쳤어서(요청: "좌우 버튼을 좀 더
+            아래쪽에 배치(지금 한줄메시지랑 겹침)") 아예 매치업 아래, 점과 한 줄로
+            묶어 배치한다. 재신청 이력이 없는 카드(대다수)는 이 줄 자체가 안 뜨는데,
+            그 자리까지 예약해둬야 이력 있는 카드와 없는 카드가 목록에서 높이가 안
+            흔들린다(요청: "아래 페이징 점이 있고 없고에 따라 레이아웃이 흔들리지
+            않게 해줘"). */}
+        <div className="scr-challenge-page-nav-row">
+          {pages.length > 1 && (
+            <>
+              <button
+                type="button" className="scr-challenge-page-nav scr-challenge-page-nav-prev"
+                onClick={() => setPageIndex((i) => i - 1)} disabled={pageIndex === 0}
+                aria-label="이전 기록 보기"
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <div className="scr-challenge-page-dots">
+                {pages.map((p, i) => (
+                  <button
+                    key={p.id} type="button"
+                    className={cx("scr-challenge-page-dot", i === pageIndex && "scr-challenge-page-dot-active")}
+                    onClick={() => setPageIndex(i)}
+                    aria-label={`${i + 1}번째 기록 보기`}
+                  />
+                ))}
+              </div>
+              <button
+                type="button" className="scr-challenge-page-nav scr-challenge-page-nav-next"
+                onClick={() => setPageIndex((i) => i + 1)} disabled={pageIndex === pages.length - 1}
+                aria-label="다음 기록 보기"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -541,12 +516,6 @@ function ChallengeCard({ challenge, myId, onResponded, onViewResults }: Challeng
             </button>
           )}
         </div>
-      )}
-
-      {/* 승락/거절, 결과 보기, 취소/재신청 셋 다 안 뜨는 카드도 같은 높이만큼은 자리를
-          차지해야 목록에서 카드끼리 높이가 안 흔들린다 — 빈 자리만 예약(내용 없음). */}
-      {!hasBottomActionRow && !scheduling && !reapplying && (
-        <div className="scr-challenge-card-actions scr-challenge-card-actions-placeholder" aria-hidden="true" />
       )}
 
       {cancelConfirmOpen && (
