@@ -3,7 +3,6 @@ import { createPortal } from "react-dom";
 import { X, RefreshCw } from "lucide-react";
 import Avatar from "../components/common/Avatar";
 import Select from "../components/common/Select";
-import ReplayAliasesField, { cleanReplayAliases } from "../components/common/ReplayAliasesField";
 import PhotoViewer from "../components/common/PhotoViewer";
 import { Spinner } from "../components/common/Feedback";
 import { useAppStore } from "../store/appStore";
@@ -31,7 +30,6 @@ export default function MemberDetailModal({ member, onClose }: MemberDetailModal
   const updateMemberStatus = useAppStore((s) => s.updateMemberStatus);
   const updateMemberRoles = useAppStore((s) => s.updateMemberRoles);
   const reprocessMemberAvatar = useAppStore((s) => s.reprocessMemberAvatar);
-  const replaceMemberReplayAliases = useAppStore((s) => s.replaceMemberReplayAliases);
   const [resizing, setResizing] = useState(false);
   const [err, setErr] = useState("");
   const [photoOpen, setPhotoOpen] = useState(false);
@@ -40,11 +38,6 @@ export default function MemberDetailModal({ member, onClose }: MemberDetailModal
   const [pendingRoles, setPendingRoles] = useState<MemberRole[]>(member.roles);
   const rolesChanged = pendingRoles.length !== member.roles.length
     || pendingRoles.some((r) => !member.roles.includes(r));
-  // 게임아이디도 별도 저장 버튼 없이 아래 저장 버튼 하나로 같이 저장한다.
-  const [pendingAliases, setPendingAliases] = useState<string[]>(
-    member.replayAliases.length > 0 ? member.replayAliases : [""],
-  );
-  const aliasesChanged = JSON.stringify(cleanReplayAliases(pendingAliases)) !== JSON.stringify(member.replayAliases);
 
   const isSelf = currentUser?.id === member.id;
   // 운영자 지정/회수는 운영자 아무나 할 수 있다.
@@ -72,15 +65,15 @@ export default function MemberDetailModal({ member, onClose }: MemberDetailModal
       ]
     : [{ value: member.status, label: STATUS_LABEL_FALLBACK[member.status] }];
 
-  // 체크박스/드롭다운/게임아이디는 전부 화면 상태만 바꾸고, 저장 버튼 하나를 눌렀을 때
-  // 바뀐 것만 한 번에 반영한다 — 항목마다 따로 저장 버튼을 두면 뭘 눌러야 할지 헷갈리니
-  // 하나로 합친다.
+  // 체크박스/드롭다운은 전부 화면 상태만 바꾸고, 저장 버튼 하나를 눌렀을 때 바뀐 것만
+  // 한 번에 반영한다 — 항목마다 따로 저장 버튼을 두면 뭘 눌러야 할지 헷갈리니 하나로
+  // 합친다.
   const toggleRole = (role: MemberRole, checked: boolean) => {
     setErr("");
     setPendingRoles((prev) => (checked ? [...prev, role] : prev.filter((r) => r !== role)));
   };
 
-  const anyChanged = rolesChanged || statusChanged || aliasesChanged;
+  const anyChanged = rolesChanged || statusChanged;
   const saveAll = async () => {
     if (!anyChanged) return;
     if (rolesChanged && pendingRoles.length === 0) { setErr("최소 하나 이상의 역할이 필요합니다."); return; }
@@ -89,7 +82,6 @@ export default function MemberDetailModal({ member, onClose }: MemberDetailModal
     try {
       if (rolesChanged) await updateMemberRoles(member.id, pendingRoles);
       if (statusChanged) await updateMemberStatus(member.id, pendingStatus as "active" | "suspended");
-      if (aliasesChanged) await replaceMemberReplayAliases(member.id, cleanReplayAliases(pendingAliases));
       if (statusChanged) onClose();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "처리에 실패했어요.");
@@ -179,8 +171,6 @@ export default function MemberDetailModal({ member, onClose }: MemberDetailModal
               </dd>
             </div>
           </dl>
-
-          <ReplayAliasesField rows={pendingAliases} onChange={setPendingAliases} />
 
           {isSelf && member.status === "active" && (
             <span className="scr-hint scr-hint-left">본인 계정은 여기서 정지할 수 없어요.</span>
