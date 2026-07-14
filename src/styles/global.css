@@ -16,6 +16,11 @@
 /* ===== tokens (STARCRAFT 심플 테마) ===== */
 :root {
   --content-max: 1280px;
+  /* PC에서 화면마다 리스트/카드 콘텐츠 폭이 제각각이던 걸(랭킹 560px 고정 그리드,
+     너나와 800px, 나머지는 무제한으로 --content-max까지 늘어남) 하나로 통일한다
+     (요청: "PC에서 모든 화면의 컨텐츠부분 폭을 동일하게 수정할거야 추천 px
+     제시해줘" → "800px로 적용"). */
+  --list-content-max: 800px;
 
   /* 배경: 반투명 블랙 유리 패널 */
   --void: #060607;                         /* 페이지 최하단 배경 */
@@ -1216,6 +1221,11 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-stats-list-panel-v2 .scr-stat-table-clip {
   border-top-left-radius: var(--radius); border-top-right-radius: var(--radius);
 }
+/* PC 화면 폭 통일(위 --list-content-max 주석 참고) — 표 자체는 원래도 가로 스크롤
+   (.scr-stat-table.scr-scroll)로 넘치는 칸을 감당하므로, 뷰포트만 좁아져도 문제없다. */
+@media (min-width: 641px) {
+  .scr-stats-list-panel-v2 { max-width: var(--list-content-max); margin: 0 auto; width: 100%; }
+}
 .scr-stats-min-plays-note { text-align: left; margin: 0; }
 /* 헤더 행 아래쪽 선은 행 자신의 border/box-shadow가 아니라, 이 행 위에 절대배치로 얹은
    전용 오버레이 한 장으로 딱 한 번만 그린다 — border-bottom(행)과 box-shadow(이름 칸)를
@@ -1618,6 +1628,14 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    목적이라 순위 숫자와 이름을 크게, 나머지는 부가정보로 작게 둔다. 행 전체를 누르면
    순위 상세(최근 순위 변동 그래프) 모달이 뜬다. v1 랭킹 화면(RankRow.tsx)은 그대로 둔다. */
 .scr-rank-table-panel-v2 { position: relative; }
+/* PC 화면 폭 통일(위 --list-content-max 주석 참고) — 랭킹 행(카드) 배경 자체를 가운데로
+   좁혀서 다른 화면의 리스트/카드와 같은 폭으로 맞춘다. 안의 .scr-rank-row-inner가 이미
+   더 좁은 고정폭(560px)으로 한 번 더 가운데 정렬돼 있는데, 그건 그대로 둔다 — 행의
+   호버 배경/구분선처럼 "카드 자체의 폭"과, 그 안 텍스트 그리드가 실제로 쓰는 폭은
+   서로 다른 관심사라 함께 안 묶는다. */
+@media (min-width: 641px) {
+  .scr-rank-table-panel-v2 { max-width: var(--list-content-max); margin: 0 auto; width: 100%; }
+}
 .scr-rank-table-panel-v2 .scr-rank-row {
   padding: 16px 24px;
 }
@@ -2444,6 +2462,11 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   color: var(--text); font-family: inherit; font-size: 16px; padding: 2px 0; line-height: 1;
 }
 .scr-search-chip-input::placeholder { color: var(--dim); font-size: 16px; }
+/* PC 화면 폭 통일(위 --list-content-max 주석 참고) — 경기 카드 목록도 다른 화면의
+   리스트/카드와 같은 폭으로 가운데에 좁힌다. */
+@media (min-width: 641px) {
+  .scr-match-list-panel-v2 { max-width: var(--list-content-max); margin: 0 auto; width: 100%; }
+}
 /* v2는 더 이상 타이틀+필터바가 카드 위에 sticky로 쌓이는 패널 구조가 아니다(디자인
    컨셉 변경 — 타이틀/필터바는 툴바로 빠지고 컨텐츠 프레임 자체가 없어짐) — 날짜 줄은
    스크롤하면 그 위에 쌓일 게 없으니 스크롤 컨테이너(#scroll-root) 맨 위에 바로 붙는다.
@@ -3879,6 +3902,10 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 }
 
 /* ===== 회원관리 (관리자 전용) ===== */
+/* PC 화면 폭 통일(위 --list-content-max 주석 참고). */
+@media (min-width: 641px) {
+  .scr-members-list-v2 { max-width: var(--list-content-max); margin: 0 auto; width: 100%; }
+}
 /* 목록 형태 — 각 행은 테두리 없이 얇은 구분선(border-bottom)만으로 나뉘는 연속된 표처럼
    보이게 한다(다른 v2 목록들과 같은 톤). */
 .scr-member-rows { display: flex; flex-direction: column; }
@@ -4076,6 +4103,10 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-usermap-kind-filter .scr-checkbox-field input:checked { background: #10151a; border-color: #10151a; }
 .scr-usermap-kind-filter .scr-checkbox-field input:checked::after { background-color: #ffffff; }
 .scr-usermap-table-v2 { display: flex; flex-direction: column; font-size: 15px; } /* 12.5px * 1.2 */
+/* PC 화면 폭 통일(위 --list-content-max 주석 참고). */
+@media (min-width: 641px) {
+  .scr-usermap-table-v2 { max-width: var(--list-content-max); margin: 0 auto; width: 100%; }
+}
 .scr-usermap-row {
   /* 게임아이디(첫 번째) 칸도 minmax가 아니라 고정폭으로 둔다 — 세로 구분선을 자식
      요소의 border-right가 아니라(행마다 개별 렌더링되는 별개 그리드라 안티에일리싱
@@ -4248,6 +4279,11 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 
 /* 목록 카드 */
 .scr-challenge-list { display: flex; flex-direction: column; gap: 12px; margin-top: 16px; }
+/* PC 화면 폭 통일(위 --list-content-max 주석 참고) — 카드 배경 자체를 가운데로 좁혀서
+   다른 화면의 리스트/카드와 같은 폭으로 맞춘다. */
+@media (min-width: 641px) {
+  .scr-challenge-list { max-width: var(--list-content-max); margin-left: auto; margin-right: auto; width: 100%; }
+}
 /* 다가오는/종료된 구획(요청: "다가오는/종료된 목록 분리 및 정렬") — 섹션 제목 하나 +
    그 아래 같은 형태의 카드 목록. */
 .scr-challenge-section { margin-top: 22px; }
