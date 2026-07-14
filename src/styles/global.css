@@ -4458,6 +4458,16 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   background: rgba(var(--overlay-rgb), 0.08); border-radius: 999px; padding: 2px 8px;
   margin-left: 6px;
 }
+/* 결과 보기 — 별도 버튼 줄 대신 시간 옆에 텍스트 링크로(요청: "결과보기 버튼은 시간
+   옆에 텍스트로 배치해서 레이아웃 공간 차지하지 않게 하자") — 확정된 카드만 이
+   자리를 더 차지하는 일이 없어져 카드 높이가 항상 같아진다. margin-left:auto로 시간
+   줄의 오른쪽 끝에 붙인다(scr-mono가 아니라 일반 글자라 폰트도 시간과 구분된다). */
+.scr-challenge-result-link {
+  margin-left: auto; background: transparent; border: none; padding: 0; cursor: pointer;
+  font-family: 'Noto Sans KR', sans-serif; font-size: 12.5px; font-weight: 700; color: var(--dim);
+  text-decoration: underline dotted; text-underline-offset: 3px;
+}
+.scr-challenge-result-link:hover { color: var(--text); }
 .scr-challenge-matchup-wrap { position: relative; }
 /* 화살표 버튼은 카드 좌우 가장자리에 겹쳐 뜬다 — 매치업 내용(가운데 정렬) 폭과
    무관하게 항상 카드 자체의 가장자리에 붙어야 어느 페이지를 보든 위치가 안 흔들린다. */
@@ -4528,25 +4538,28 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    같이 맞는다. */
 @media (min-width: 641px) {
   .scr-challenge-side:not(.scr-challenge-side-target) .scr-challenge-side-block,
-  .scr-challenge-side:not(.scr-challenge-side-target) .scr-challenge-side-message {
+  /* 한마디가 있으면 실제 flex 아이템은 span을 감싼 버튼(.scr-challenge-side-message-btn)
+     이고, 없으면(빈 자리) div(.scr-challenge-side-message) 그 자신이 flex 아이템이다 —
+     둘 다 잡아야 한다. */
+  .scr-challenge-side:not(.scr-challenge-side-target) .scr-challenge-side-message-btn,
+  .scr-challenge-side:not(.scr-challenge-side-target) > .scr-challenge-side-message {
     width: 180px; flex: 0 0 auto; margin-left: auto;
   }
 }
 /* 한마디가 2줄로 잘려서 더 못 읽던 문제 — 누르면 리플레이 위치 팝오버(ReplayLocationHint)와
    같은 방식(attachPopover)으로 전체 텍스트를 보여준다(요청: "너나와 카드에서 한줄
    메시지가 잘리거든? 마우스오버/클릭시 리플레이 툴팁같은 단순한 창으로 팝오버로
-   전체메시지를 다 볼수 있게 해줘"). 버튼이지만 겉모습은 원래 .scr-challenge-side-message
-   div와 완전히 같아야 하므로(폭/잘림/폰트 전부 그대로 물려받는다) 버튼 기본 스타일만
-   지우고 새로 얹지 않는다 — 커서와 살짝의 hover 반응만 추가해 "누를 수 있다"는 힌트를 준다.
-   font-family만 inherit로 되돌린다(버튼 UA 기본 폰트가 새는 걸 막는 용도) — font/color를
-   통째로 inherit하면 .scr-challenge-side-message가 이미 정해둔 font-style(이탤릭)/
-   font-size(12.5px)/color(--muted)까지 지워버려 카드 모양이 달라져 보였다(요청: "대결
-   카드 css 뭔가 달라졌어.. 좌우 슬라이드 빼고는 이전 그대로 해줘"). */
+   전체메시지를 다 볼수 있게 해줘"). 이 버튼 자신은 투명한 클릭 영역일 뿐, 실제
+   글자/잘림 스타일은 안의 span(.scr-challenge-side-message)이 그대로 갖고 있다 —
+   -webkit-line-clamp를 <button> 자신에 걸면 사파리가 버튼 내부를 독자적으로
+   렌더링해서 2줄 말줄임이 안 먹혔다(요청: "한줄메시지도 두줄 넘어가면 말줌임표로
+   줄여야됨"). display:block; width:100%로 원래 div가 차지하던 자리(폭 100%,
+   플렉스 아이템)를 그대로 물려받는다. */
 .scr-challenge-side-message-btn {
-  background: transparent; border: none; padding: 0; margin: 0; text-align: inherit;
-  font-family: inherit; cursor: pointer;
+  display: block; width: 100%; background: transparent; border: none; padding: 0;
+  margin: 0; text-align: inherit; font-family: inherit; cursor: pointer;
 }
-.scr-challenge-side-message-btn:hover { color: var(--text); }
+.scr-challenge-side-message-btn:hover .scr-challenge-side-message { color: var(--text); }
 .scr-challenge-msg-pop {
   z-index: 210; background: var(--panel-solid); border: 1px solid var(--line); border-radius: var(--radius-sm);
   padding: 10px 12px; box-shadow: 0 4px 14px rgba(0,0,0,0.18);

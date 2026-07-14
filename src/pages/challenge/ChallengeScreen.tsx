@@ -123,14 +123,19 @@ function ChallengeMessage({ text }: { text: string | null | undefined }) {
 
   return (
     <>
+      {/* 2줄 말줄임(-webkit-line-clamp)은 <button> 자신에 걸면 사파리에서 버튼 내부의
+          독자적인 렌더링 규칙 때문에 안 먹는다(요청: "한줄메시지도 두줄 넘어가면
+          말줌임표로 줄여야됨" — 실제로 이 문제였다) — 잘리는 스타일(.scr-challenge-
+          side-message)은 버튼 안의 평범한 span에 걸고, 버튼 자신은 그 span을 감싸는
+          투명한 클릭 영역 역할만 한다. */}
       <button
         type="button"
-        className="scr-challenge-side-message scr-challenge-side-message-btn"
+        className="scr-challenge-side-message-btn"
         ref={anchorRef}
         onClick={() => setOpen((v) => !v)}
         title="전체 메시지 보기"
       >
-        {quoted}
+        <span className="scr-challenge-side-message">{quoted}</span>
       </button>
       {open && createPortal(
         <div className="scr-challenge-msg-pop" ref={popRef}>{quoted}</div>,
@@ -263,14 +268,15 @@ function ChallengeCard({ challenge, myId, onResponded, onViewResults }: Challeng
   // 이러면 안되는데" — 승락하는 이 시점에 상대가 직접 정하게 해서 막는다).
   const [scheduling, setScheduling] = useState(false);
 
-  // 카드마다 승락/거절, 결과 보기, 취소/재신청 중 무엇이 뜨는지(혹은 아무것도 안 뜨는지)가
-  // 달라서 목록을 스크롤할 때 카드 높이가 들쭉날쭉했다(요청: "결과 보기 버튼이나 아래
-  // 페이징 점이 있고 없고에 따라 레이아웃이 흔들리지 않게 해줘(높이 동일해야함 항상)") —
-  // 셋 다 서로 배타적이라(한 카드에 동시에 뜰 일이 없다) 이 셋 중 무엇도 안 뜨는 카드에는
-  // 빈 자리라도 같은 높이만큼 예약해둔다(아래 렌더 부분의 대체 placeholder 참고).
+  // 카드마다 승락/거절, 취소/재신청 중 무엇이 뜨는지(혹은 아무것도 안 뜨는지)가 달라서
+  // 목록을 스크롤할 때 카드 높이가 들쭉날쭉했다(요청: "결과 보기 버튼이나 아래 페이징
+  // 점이 있고 없고에 따라 레이아웃이 흔들리지 않게 해줘(높이 동일해야함 항상)") — 결과
+  // 보기는 이제 별도 줄이 아니라 시간 옆 텍스트 링크로 옮겨서(요청: "결과보기 버튼은
+  // 시간 옆에 텍스트로 배치해서 레이아웃 공간 차지하지 않게 하자") 여기서 뺀다. 남은
+  // 둘은 서로 배타적이라(한 카드에 동시에 뜰 일이 없다) 둘 다 안 뜨는 카드에는 빈
+  // 자리라도 같은 높이만큼 예약해둔다(아래 렌더 부분의 대체 placeholder 참고).
   const hasBottomActionRow = isLatestPage && (
     (canRespond && !scheduling)
-    || challenge.status === "confirmed"
     || (!reapplying && (canCancel || canReapply))
   );
 
@@ -374,6 +380,14 @@ function ChallengeCard({ challenge, myId, onResponded, onViewResults }: Challeng
             <span className="scr-challenge-page-note">
               {isLatestPage ? "최신" : `이전 기록 ${pageIndex + 1}/${pages.length}`}
             </span>
+          )}
+          {/* 결과 보기는 버튼 줄로 따로 한 줄 차지하는 대신 시간 옆에 텍스트 링크로 붙인다
+              (요청: "결과보기 버튼은 시간 옆에 텍스트로 배치해서 레이아웃 공간 차지하지
+              않게 하자") — 확정 여부와 무관하게 카드 높이가 항상 같아진다. */}
+          {isLatestPage && challenge.status === "confirmed" && (
+            <button type="button" className="scr-challenge-result-link" onClick={() => onViewResults(challenge)}>
+              결과 보기
+            </button>
           )}
         </div>
 
@@ -483,14 +497,6 @@ function ChallengeCard({ challenge, myId, onResponded, onViewResults }: Challeng
               {busy ? <Spinner /> : "승락"}
             </button>
           </div>
-        </div>
-      )}
-
-      {isLatestPage && challenge.status === "confirmed" && (
-        <div className="scr-challenge-card-actions">
-          <button className="scr-btn scr-btn-ghost scr-btn-sm" onClick={() => onViewResults(challenge)}>
-            결과 보기
-          </button>
         </div>
       )}
 
