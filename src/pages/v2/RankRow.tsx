@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import Avatar from "../../components/common/Avatar";
 import PhotoViewer from "../../components/common/PhotoViewer";
 import RecordText from "../../components/common/RecordText";
+import RankDeltaBadge from "./RankDeltaBadge";
 import { cx } from "../../utils/format";
 import type { LatestMatch, RankRow as RankRowData } from "./rank";
 
@@ -13,6 +14,9 @@ interface RankRowProps {
   tiedWithPrev?: boolean;
   // 최근 경기 목록 모달(팀랭킹 모달 재활용)을 연다 — row.latestMatch가 있을 때만 호출된다.
   onOpenLatestMatch?: () => void;
+  // 카드(행) 전체를 누르면 뜨는 최근 5개월 순위변동 모달(요청: "랭킹 카드 클릭시 최근
+  // 5개월 순위변동 모달창 노출").
+  onOpenTrend?: () => void;
 }
 
 const OUTCOME_LABEL: Record<LatestMatch["outcome"], string> = { win: "승", loss: "패", draw: "무", notHeld: "미실시" };
@@ -21,27 +25,26 @@ const OUTCOME_CLASS: Record<LatestMatch["outcome"], string | undefined> = {
   win: "scr-record-win", loss: "scr-record-loss", draw: "scr-record-draw", notHeld: undefined,
 };
 
-// v2 일대일 랭킹의 한 줄 — #순위 | 프사 | 닉네임 | 전적.
+// v2 일대일 랭킹의 한 줄 — #순위(+전월 대비 변동) | 프사 | 닉네임 | 전적(+최근 경기).
 //
 // 승률 대신 전적(승/패/무)을 보여준다. 순위를 가르는 기준이 승자승 → 승점 → 공통상대 → 승수로
 // 바뀌면서 승률은 정렬에 아무 역할을 하지 않게 됐는데, 그걸 큰 숫자로 붙여두면 "1위인데 왜
 // 승률이 낮지?"라고 읽히기만 한다. 전적은 승점(승-패)을 눈으로 셀 수 있어 순서와 어긋나지 않는다.
-// 예전 화면의 경기수 막대는 그대로 없다.
 //
-// 기간을 나누지 않고 전체 경기를 집계하게 되면서 비교할 "직전 기간"이 사라져, 순위 변동
-// 표시와 그 상세(최근 추이 그래프 모달)도 함께 없앴다. 대신 최근 일대일 경기 하나("vs 상대
-// 승/패")를 전적 아래에 붙이고, 그걸 누르면 그 회원의 일대일 경기 목록 모달(팀랭킹 모달
-// 재활용)이 뜬다 — 최근 경기가 없으면(표본 밖) 그 줄 자체가 없고 행도 클릭 대상이 아니다.
-export default function RankRowV2({ row, tiedWithPrev = false, onOpenLatestMatch }: RankRowProps) {
-  const { member, stats, rank, latestMatch } = row;
+// 행 전체를 누르면 최근 5개월 순위변동 모달이 뜬다 — 최근 경기("vs 상대 승/패")는 그 안의
+// 별도 클릭 대상이라 이벤트 버블링을 막아 따로 반응한다.
+export default function RankRowV2({ row, tiedWithPrev = false, onOpenLatestMatch, onOpenTrend }: RankRowProps) {
+  const { member, stats, rank, rankDelta, latestMatch } = row;
   const [photoOpen, setPhotoOpen] = useState(false);
 
   const openPhoto = (e: MouseEvent) => {
     e.stopPropagation();
     setPhotoOpen(true);
   };
-
-  const clickable = !!latestMatch && !!onOpenLatestMatch;
+  const openLatestMatch = (e: MouseEvent) => {
+    e.stopPropagation();
+    onOpenLatestMatch?.();
+  };
 
   return (
     // PhotoViewer는 행 바깥의 형제로 둔다 — createPortal로 body에 그려도 React 합성 이벤트는
@@ -50,10 +53,10 @@ export default function RankRowV2({ row, tiedWithPrev = false, onOpenLatestMatch
     <>
       <div className={cx("scr-rank-row", tiedWithPrev && "scr-rank-row-tied")}>
         <div
-          className={cx("scr-rank-row-inner", clickable && "scr-rank-row-clickable")}
-          onClick={clickable ? onOpenLatestMatch : undefined}
-          role={clickable ? "button" : undefined}
-          tabIndex={clickable ? 0 : undefined}
+          className={cx("scr-rank-row-inner", onOpenTrend && "scr-rank-row-clickable")}
+          onClick={onOpenTrend}
+          role={onOpenTrend ? "button" : undefined}
+          tabIndex={onOpenTrend ? 0 : undefined}
         >
           <div className="scr-rank-badge">
             {/* 공동순위(같은 순위가 여러 명)일 때는 그 그룹의 첫 행에서만 순위 숫자를 보여주고,
@@ -62,6 +65,7 @@ export default function RankRowV2({ row, tiedWithPrev = false, onOpenLatestMatch
             <span className="scr-rank-num">
               {!tiedWithPrev && <><span className="scr-rank-num-hash">#</span>{rank}</>}
             </span>
+            {!tiedWithPrev && <RankDeltaBadge delta={rankDelta} />}
           </div>
           <button type="button" className="scr-rank-avatar-btn" onClick={openPhoto} aria-label={`${member.nickname} 사진 보기`}>
             <Avatar member={member} size={52} />
@@ -78,7 +82,12 @@ export default function RankRowV2({ row, tiedWithPrev = false, onOpenLatestMatch
               // 상대 이름이 길면 그 이름만 줄여서(말줄임) 상대 이름 앞뒤(vs/승패 표시)는
               // 항상 온전히 보이게 한다 — 예전엔 문장 전체를 한 덩이로 말줄임해서, 이름이
               // 길면 정작 승/패 표시가 잘려서 안 보였다(실제로 지적받은 문제).
-              <span className="scr-rank-latest-match">
+              <span
+                className={cx("scr-rank-latest-match", onOpenLatestMatch && "scr-rank-latest-match-clickable")}
+                onClick={onOpenLatestMatch ? openLatestMatch : undefined}
+                role={onOpenLatestMatch ? "button" : undefined}
+                tabIndex={onOpenLatestMatch ? 0 : undefined}
+              >
                 <span className="scr-rank-latest-match-label">최근</span>
                 <span className="scr-rank-latest-match-vs">vs</span>
                 <span className="scr-rank-latest-match-opponent">{latestMatch.opponentLabel}</span>

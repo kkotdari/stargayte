@@ -45,6 +45,20 @@ export function monthInputToRange(value: string): { from: string; to: string } {
 // 오늘이 속한 달의 <input type="month"> 기본값("YYYY-MM").
 export const currentMonthValue = (): string => todayStr().slice(0, 7);
 
+// "YYYY-MM"을 delta개월만큼 앞/뒤로 옮긴다(음수=과거) — 랭킹 화면의 전월 대비 순위변동/
+// 최근 5개월 순위변동 모달이 함께 쓴다.
+export function shiftMonthValue(month: string, delta: number): string {
+  const [y, m] = month.split("-").map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
+}
+
+// 최근 n개월("YYYY-MM")을 과거→최근 순으로 — 최근 5개월 순위변동 차트가 왼쪽부터
+// 시간순으로 그려지도록 이 순서 그대로 쓴다.
+export function recentMonthValues(n: number, from: string = currentMonthValue()): string[] {
+  return Array.from({ length: n }, (_, i) => shiftMonthValue(from, -(n - 1 - i)));
+}
+
 // 월요일 시작 기준 이번 주의 시작(월)/끝(일) 날짜 문자열.
 export const weekStart = (d: Date): string => {
   const day = d.getDay();

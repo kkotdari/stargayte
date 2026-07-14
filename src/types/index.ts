@@ -194,8 +194,19 @@ export interface MatchStatsResponse {
   members: MemberStatsEntry[];
 }
 
+// GET /api/matches/stats/monthly — 개인 랭킹의 월별 순위변동(최근 5개월) 모달과 목록의
+// 전월 대비 화살표가 함께 쓴다. months는 요청한 "YYYY-MM" 순서 그대로 온다.
+export interface MemberStatsMonthEntry {
+  month: string;
+  members: MemberStatsEntry[];
+}
+export interface MonthlyMatchStatsResponse {
+  months: MemberStatsMonthEntry[];
+}
+
 // 팀랭킹(GET /api/matches/team-ranking) — 실제로 같은 편이었던 2인 이상 구성 하나가 한 행이다.
-// 기간 조건 없이 전체 경기가 대상이라 순위 변동/기간 개념이 없다.
+// dateFrom/dateTo를 안 넘기면 전체 경기가 대상, 넘기면(랭킹 화면의 월 기준 기본 집계) 그
+// 기간만 대상이다.
 export interface TeamRankEntry {
   // 개인 승점이 높은 순으로 서버가 이미 정렬해서 보내준다(화면은 이 순서 그대로 격자를 채운다).
   memberIds: string[];
@@ -209,6 +220,16 @@ export interface TeamRankEntry {
 
 export interface TeamRankingResponse {
   teams: TeamRankEntry[];
+}
+
+// GET /api/matches/team-ranking/monthly — 위 개인 버전과 같은 목적(월별 순위변동/전월
+// 대비 화살표), 팀 쪽.
+export interface TeamRankMonthEntry {
+  month: string;
+  teams: TeamRankEntry[];
+}
+export interface MonthlyTeamRankingResponse {
+  months: TeamRankMonthEntry[];
 }
 
 // 화면 라우팅 — 회원/이미지 설정/유저연결(게임아이디)은 운영자만, 나머지는 로그인한

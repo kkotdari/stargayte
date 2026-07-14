@@ -5,6 +5,7 @@ import type {
   Member, Match, NewMatch, SignupPayload, MemberCreatePayload, ImageSettingMap, MemberStatus, MemberRole,
   ScreenKey, AppVersion, AppVersionStatus,
   MatchPage, MatchStatsResponse, MatchType, Race, TeamRankingResponse,
+  MonthlyMatchStatsResponse, MonthlyTeamRankingResponse,
   ReplayNameClassificationEntry, ReplayNameKind, ReplayNameMappingEntry, ReplayNameMappingKind,
   Challenge, ChallengeCreatePayload, ChallengeReapplyPayload,
 } from "../types";
@@ -43,6 +44,18 @@ export interface MatchStatsParams {
   memberIds?: string[];
   dateFrom?: string;
   dateTo?: string;
+  matchType?: MatchType | "all";
+  race?: Race | "all";
+}
+
+export interface TeamRankingParams {
+  dateFrom?: string;
+  dateTo?: string;
+}
+
+export interface MonthlyStatsParams {
+  months: string[];
+  memberIds?: string[];
   matchType?: MatchType | "all";
   race?: Race | "all";
 }
@@ -236,9 +249,29 @@ export const api = {
     return request<MatchStatsResponse>(`/api/matches/stats${qs}`);
   },
 
-  // 팀랭킹 — 기간/종족 조건 없이 전체 경기를 서버가 집계하고 정렬까지 끝내서 내려준다.
-  async getTeamRanking(): Promise<TeamRankingResponse> {
-    return request<TeamRankingResponse>("/api/matches/team-ranking");
+  // 팀랭킹 — dateFrom/dateTo를 안 넘기면 전체 경기, 넘기면(랭킹 화면의 월 기준 기본
+  // 집계) 그 기간만 서버가 집계하고 정렬까지 끝내서 내려준다.
+  async getTeamRanking(params: TeamRankingParams = {}): Promise<TeamRankingResponse> {
+    const qs = buildQuery({ dateFrom: params.dateFrom, dateTo: params.dateTo });
+    return request<TeamRankingResponse>(`/api/matches/team-ranking${qs}`);
+  },
+
+  // 개인 랭킹의 월별 순위변동(최근 5개월)/목록의 전월 대비 화살표 — "YYYY-MM" 여러 개를
+  // 한 번에 보내 왕복 없이 달마다 집계된 결과를 받는다.
+  async getMatchStatsMonthly(params: MonthlyStatsParams): Promise<MonthlyMatchStatsResponse> {
+    const qs = buildQuery({
+      months: params.months.join(","),
+      memberIds: params.memberIds?.length ? params.memberIds.join(",") : undefined,
+      matchType: params.matchType,
+      race: params.race,
+    });
+    return request<MonthlyMatchStatsResponse>(`/api/matches/stats/monthly${qs}`);
+  },
+
+  // 팀 랭킹 버전 — 위와 같은 목적.
+  async getTeamRankingMonthly(months: string[]): Promise<MonthlyTeamRankingResponse> {
+    const qs = buildQuery({ months: months.join(",") });
+    return request<MonthlyTeamRankingResponse>(`/api/matches/team-ranking/monthly${qs}`);
   },
 
   // 경기 등록 모달에서 "랜덤" 주종족 회원의 종족 select 기본값 프리필용 — 대량 통계
