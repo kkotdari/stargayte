@@ -474,7 +474,7 @@ export default function ChallengeScreen() {
       ) : filter === "upcoming" ? (
         <>
           <section className="scr-challenge-section">
-            <h2 className="scr-challenge-section-title">다가오는 대결</h2>
+            <h2 className="scr-challenge-section-title scr-challenge-section-title-upcoming">다가오는 대결</h2>
             {restUpcomingChallenges.length === 0 ? (
               <div className="scr-empty">{emptyLabel}</div>
             ) : (

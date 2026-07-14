@@ -4232,6 +4232,8 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    "다가오는 대결에는 응답하라! 섹션을 만들고 맨 위에 배치")이라 나머지 섹션 제목과
    같은 톤이면 눈에 안 띈다 — 포인트 컬러로 강조한다. */
 .scr-challenge-section-title-respond { color: var(--point); }
+/* 요청: "다가오는 경기 타이틀 녹색 포인트" — 전적(승)과 같은 녹색 계열로 강조. */
+.scr-challenge-section-title-upcoming { color: var(--win); }
 
 /* 다크 테마에서 카드끼리 배경과 구분이 잘 안 돼서(요청: "다크모드에서 챌린지 카드
    구분이 잘 안됨 글라스테마로") 운영 드롭다운과 같은 반투명 글라스 톤으로. 라이트
