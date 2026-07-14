@@ -4323,7 +4323,15 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    align-items:center인 이 flex 행 안에서 자연히 위아래 가운데로 온다(요청: "손가락
    이모티콘을 좀더 도전자와 상대 가운데 느낌에 배치") — 팀전이라 어느 한쪽이 세로로
    길어져도 항상 그 사이 세로 중앙에 위치한다. */
-.scr-challenge-matchup { display: flex; align-items: flex-start; gap: 12px; }
+/* width:100%가 핵심이다 — .scr-challenge-matchup은 flex 컬럼(.scr-challenge-card-body)의
+   자식인데, 아래 PC 규칙처럼 margin:0 auto로 가운데 정렬하면 flex의 기본 stretch가
+   꺼지고 대신 내용 크기만큼만(shrink-to-fit) 잡힌 뒤 남는 공간을 auto 마진이 나눠
+   가진다 — max-width는 상한선일 뿐 실제로 그 폭까지 채워주지 않아서, 안의
+   flex-grow(도전자편/상대편)도 나눌 여유 공간 자체가 없어 무력해졌다(요청: "이
+   요소들의 pc에서 min-width가 없는게 문제 아니야?" — 정확히는 min-width가 아니라
+   이 width 누락 때문이었다). width:100%를 명시해 실제 컨테이너 폭(최대 800px)까지
+   항상 채우게 한다. */
+.scr-challenge-matchup { display: flex; align-items: flex-start; gap: 12px; width: 100%; }
 /* PC에서 매치업 내용을 카드 가운데로 몰아 좁혀보려 했지만(460px → 720px → 960px,
    요청: "카드 가운데 몰려서 나오게 배치" → "컨텐츠 영역이 너무 좁아 훨씬 넓어도 돼" →
    "한마디가 줄바꿈이 나와 예약 공간을 넓게" → "아직도 영역이 너무 좁아") 매번 좁다는
