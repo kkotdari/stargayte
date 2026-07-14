@@ -128,11 +128,11 @@ export default function MatchList({
       <div className="scr-match-cards">
         {groups.map((g) => (
           <div key={g.date} className="scr-match-date-group">
-            <div className="scr-match-date-head scr-mono">{g.date}</div>
+            <div className="scr-match-date-head">{g.date}</div>
             {g.items.map(({ row: r, gameNo }) => (
               <div key={r.id} className="scr-match-card">
                 <div className="scr-match-card-head">
-                  <span className="scr-match-seq scr-mono">
+                  <span className="scr-match-seq">
                     {gameNo}경기 <span className="scr-match-id">#{highlightMatchNo(r.raw.matchNo, matchNoQuery ?? "")}</span>
                   </span>
                   <div className="scr-match-card-actions">

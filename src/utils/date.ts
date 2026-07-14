@@ -6,7 +6,19 @@ export const pad = (n: number): string => String(n).padStart(2, "0");
 export const fmt = (d: Date): string =>
   `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
-export const todayStr = (): string => fmt(new Date());
+// 이 앱의 "오늘"은 자정이 아니라 정오(낮 12시)를 경계로 한다(요청: "경기 기본 일자는
+// 밤 22시 전에는 어제 22시 이후엔 오늘자" → "날짜 기준 정오로 할게" → "등록과 조회
+// 모두 기준을 정오로 바꾸라고") — 밤 늦게 시작해 자정을 넘겨 새벽까지 이어지는 게임
+// 세션은 시작한 그 저녁 날짜로 등록/조회되는 게 자연스럽고, 정오 이전(전날 세션 결과를
+// 다음날 오전에 등록하거나 조회하는 상황)에는 하루 전 날짜가 기준이어야 맞다. 경기
+// 등록 기본값과 오늘/이번주 등 조회 기간 프리셋, 캘린더 "오늘" 표시가 모두 이 기준을
+// 공유하므로 todayStr() 자체가 이 정의를 따른다.
+export function gameNow(): Date {
+  const now = new Date();
+  return now.getHours() < 12 ? new Date(now.getTime() - 24 * 60 * 60 * 1000) : now;
+}
+
+export const todayStr = (): string => fmt(gameNow());
 
 export const dstrFor = (y: number, m: number, d: number): string =>
   `${y}-${pad(m + 1)}-${pad(d)}`;
@@ -81,7 +93,7 @@ export function periodPresetRange(
 ): { from: string; to: string } {
   if (preset === "custom") return { from, to };
   if (preset === "all") return { from: "", to: "" };
-  const now = new Date();
+  const now = gameNow();
   if (preset === "today") {
     const t = fmt(new Date(now.getFullYear(), now.getMonth(), now.getDate() - offset));
     return { from: t, to: t };

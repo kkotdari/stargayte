@@ -204,11 +204,11 @@ export default function MatchScreenV2() {
         suggestions={suggestions}
         filterPanel={
           <>
-            <FilterItem label="기간">
+            <FilterItem>
               <PillTabs options={PERIOD_UNIT_OPTS} value={periodUnit} onChange={setPeriodUnit} aria-label="기간" />
             </FilterItem>
             {periodUnit === "month" && (
-              <FilterItem label="월">
+              <FilterItem>
                 <input
                   type="month" className="scr-filter-month-input"
                   value={periodMonth} onChange={(e) => setPeriodMonth(e.target.value)}
@@ -217,7 +217,7 @@ export default function MatchScreenV2() {
               </FilterItem>
             )}
             {periodUnit === "day" && (
-              <FilterItem label="일">
+              <FilterItem>
                 <input
                   type="date" className="scr-filter-month-input"
                   value={periodDay} onChange={(e) => setPeriodDay(e.target.value)}
@@ -225,7 +225,7 @@ export default function MatchScreenV2() {
                 />
               </FilterItem>
             )}
-            <FilterItem label="정렬">
+            <FilterItem>
               <button
                 type="button" className="scr-filter-sort-btn"
                 onClick={() => setSort(sort === "oldest" ? "latest" : "oldest")}

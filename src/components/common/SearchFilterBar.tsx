@@ -1,23 +1,12 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { X } from "lucide-react";
+import { ChevronRight, Search, SlidersHorizontal, X } from "lucide-react";
 import { attachPopover } from "../../utils/popover";
 import { cx } from "../../utils/format";
 import { useIsNarrow } from "../../utils/useIsNarrow";
 import { useKeyboardInset } from "../../hooks/useKeyboardInset";
-import { addScrollListener, getScrollMetrics } from "../../utils/scrollRoot";
 import { BASE_RACES, RACE_INFO } from "../../constants/races";
 import type { BaseRace } from "../../types";
-
-// 숨는 시점은 헤더/탭바와 완전히 똑같이(요청: "숨겨지는 임계치를 탭바와 똑같이 수정.
-// 동시에 없어지게") — useHideOnScrollDown이 <html>에 얹는 scr-scroll-hide 클래스를
-// 그대로 신호로 쓴다(별도로 방향/델타 계산을 다시 하면 미묘하게 어긋날 수 있어, 탭바가
-// 실제로 참조하는 값 자체를 그대로 관찰한다). 다시 나타나는 시점만 더 까다롭게(요청:
-// "다시 노출되는 임계치는 더 상단으로 수정") 화면 맨 위 근처일 때로 좁힌다 — 탭바는
-// 맨 아래에서도 항상 다시 보이지만(useHideOnScrollDown 참고), 검색창/필터창은 맨
-// 아래에서는 계속 숨어 있는 게 맞다(요청: "최하단에서는 검색창이랑 필터창 숨기는게
-// 맞다" — 한 번 맨 아래에서도 보이게 했다가 되돌렸다).
-const NEAR_TOP_PX = 24;
 
 interface SearchFilterBarProps {
   count: number;
@@ -47,6 +36,46 @@ interface SearchFilterBarProps {
 }
 
 const MAX_SUGGESTIONS = 8;
+// 필터/검색 아이콘 ↔ 펼쳐진 창 전환 타이밍(요청: "안의 내용 숨기고 패널 트랜스폼 안의
+// 내용 보이기 순이야" + "아주 빠르게") — 패널(배경/모양) 자신은 계속 그 자리에 남아
+// 있고(요청: "숨기더라도 패널자체는 유지하고 안의 요소만 숨겨야지"), 그 안의 내용만
+// 세 단계로 바뀐다: (1) 지금 내용을 아주 빠르게 페이드아웃, (2) 다 사라진 뒤에야
+// 패널의 폭/모서리 반경을 바꾸며 내용도 새 것으로 교체(아직 투명), (3) 그 전환이
+// 끝나면 새 내용을 아주 빠르게 페이드인. FADE_MS는 (1)/(3) 각각의 길이, WIDTH_MS는
+// global.css .scr-filter-search-collapsible의 width/border-radius 트랜지션 길이와
+// 맞춘다.
+const FADE_MS = 70;
+const WIDTH_MS = 220;
+
+// 접힌 아이콘 ↔ 펼쳐진 창 상태 하나를 위 3단계(페이드아웃 → 폭 전환 → 페이드인)로
+// 애니메이션한다. target은 "펼쳐져야 하는가"를 즉시 반영하는 값(버튼 클릭 시 바로
+// 바뀐다) — 실제로 화면에 그릴 내용/폭은 renderOpen이 그 target을 따라가되 페이드아웃
+// 만큼 늦게 따라간다. hidden은 지금 이 순간 내용을 투명하게 둘지(페이드 중)를 나타낸다.
+function useAnimatedExpand(target: boolean): { renderOpen: boolean; hidden: boolean } {
+  const [renderOpen, setRenderOpen] = useState(target);
+  const [hidden, setHidden] = useState(false);
+  const renderOpenRef = useRef(target);
+  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  useEffect(() => {
+    if (renderOpenRef.current === target) return;
+    timersRef.current.forEach(clearTimeout);
+    timersRef.current = [];
+
+    setHidden(true);
+    const t1 = setTimeout(() => {
+      renderOpenRef.current = target;
+      setRenderOpen(target);
+      const t2 = setTimeout(() => setHidden(false), WIDTH_MS);
+      timersRef.current.push(t2);
+    }, FADE_MS);
+    timersRef.current.push(t1);
+  }, [target]);
+
+  useEffect(() => () => { timersRef.current.forEach(clearTimeout); }, []);
+
+  return { renderOpen, hidden };
+}
 
 // 한글 1자 이상, 또는 영문/숫자 2자 이상 입력됐을 때만 자동완성을 보여준다 — 자음/모음
 // 하나나 알파벳 한 글자만으로는 후보가 너무 많고 의미도 없다.
@@ -80,7 +109,11 @@ export default function SearchFilterBar({
   // 감추면 안돼") — 지금 상호작용 중인 입력을 스크롤 한 번으로 가려버리면 안 된다.
   const [stackFocused, setStackFocused] = useState(false);
   // 탭바가 지금 숨어있는지 — useHideOnScrollDown이 <html>에 얹는 클래스를 그대로
-  // 관찰해서, 이 알약도 탭바와 정확히 같은 순간에 숨는다(위 NEAR_TOP_PX 주석 참고).
+  // 관찰해서, 이 알약도 탭바와 정확히 같은 순간에 숨고 같은 순간에 다시 보인다(요청:
+  // "아래로 스크롤시: 탭바 숨겨짐... / 위로 스크롤시: 탭바 및 필터/검색 노출 / 페이지
+  // 최하단 도달시: 탭바 및 필터/검색 노출" — 맨 위뿐 아니라 맨 아래에서도 탭바와
+  // 똑같이 노출돼야 하므로, 더 이상 "맨 위 근처"만 따로 계산하지 않고 탭바 노출
+  // 여부를 그대로 따라간다).
   const [tabBarHidden, setTabBarHidden] = useState(
     () => document.documentElement.classList.contains("scr-scroll-hide"),
   );
@@ -90,11 +123,21 @@ export default function SearchFilterBar({
     observer.observe(el, { attributes: true, attributeFilter: ["class"] });
     return () => observer.disconnect();
   }, []);
-  // 화면 맨 위 근처인지 — 탭바가 다시 보여도(탭바는 이제 스크롤 활동 자체로 다시
-  // 보인다, useHideOnScrollDown 참고) 이 알약은 맨 위 근처까지 와야만 함께 다시
-  // 보인다(포커스 중이면 stackFocused가 그래도 계속 보이게 덮어쓴다, 위 주석 참고).
-  const [nearTop, setNearTop] = useState(() => getScrollMetrics().scrollTop <= NEAR_TOP_PX);
-  useEffect(() => addScrollListener(() => setNearTop(getScrollMetrics().scrollTop <= NEAR_TOP_PX)), []);
+  // 모바일 전용 — 화면 첫 진입시엔 펼쳐진 상태로 시작하고(요청: "필터창 검색창 처음
+  // 들어갔을땐 펼처진 상태로"), 누르면 그 아이콘 자리만 왼쪽으로 늘어나며 해당 창(필터
+  // 또는 검색)만 펼쳐진다(요청: "필터나 검색 아이콘 누르면 해당 창만 확대돼야함") —
+  // 필터/검색을 하나로 묶어 같이 펼치던 것에서 각자 독립적으로 펼치고 접히게 나눴다.
+  // 아래로 스크롤해 숨을 때는 둘 다 펼쳐져 있었어도 다시 아이콘 모양으로 접히고 나서
+  // 숨는다(요청: "필터/검색은 아이콘으로 트랜스폼되며 숨겨짐") — 아래 effect가 숨는
+  // 순간(mobileVisible이 false가 될 때)마다 강제로 접는다.
+  const [filterExpanded, setFilterExpanded] = useState(true);
+  const [searchExpanded, setSearchExpanded] = useState(true);
+  // 클릭 즉시 바뀌는 filterExpanded/searchExpanded(목표 상태)와 실제로 화면에 그릴
+  // 내용/폭(filterRenderOpen/searchRenderOpen)을 분리해, 페이드아웃 → 폭 전환 → 페이드인
+  // 3단계로 부드럽게 전환한다(요청: "빠르게 기존요소 감추고 형태변환후 새로운 요소
+  // 빠르게 보이게 하기") — 위 useAnimatedExpand 참고.
+  const { renderOpen: filterRenderOpen, hidden: filterContentHidden } = useAnimatedExpand(filterExpanded);
+  const { renderOpen: searchRenderOpen, hidden: searchContentHidden } = useAnimatedExpand(searchExpanded);
   // 칩(완성된 검색어/경기번호/종족)은 부모 state(searchValue 등)를 그대로 진실로 삼아
   // 즉시 반영한다(요청: "엔터 확정 방식을 실시간 반영 방식으로 원복 — 칩 추가/제거시
   // 즉시 적용"). 지금 타이핑 중인, 아직 칩이 안 된 마지막 단어만 로컬 상태(liveText)로
@@ -377,26 +420,126 @@ export default function SearchFilterBar({
   // 필터창(있으면)과 검색창을 한 덩어리로 묶어 같이 뜬다 — PC는 가로로 나란히, 모바일은
   // 세로로 쌓아 탭바 위에 고정한다(global.css .scr-filter-float-stack). keyboardInset은
   // 이 바깥 스택 전체에 적용해야 필터창까지 같이 키보드 위로 따라 올라온다.
-  // 보임 여부는 모바일에서만 이 컴포넌트가 직접 정한다 — 숨는 시점은 탭바와 정확히
-  // 같고(tabBarHidden), 다시 보이는 시점은 그보다 까다롭게 맨 위 근처(nearTop)일 때만
-  // 이다(요청: "숨겨지는 임계치를 탭바와 똑같이... 동시에 없어지게" + "다시 노출되는
-  // 임계치는 더 상단으로"). 맨 아래에서는 탭바와 달리 계속 숨어 있는 게 맞다(요청:
-  // "최하단에서는 검색창이랑 필터창 숨기는게 맞다"). 포커스 중이면(stackFocused, 위
-  // 주석 참고) 이 조건과 무관하게 항상 보인다. 인라인 style로 매번 명시해서 정하며,
-  // PC는 애초에 고정 배치가 아니라 문서 흐름 안에 있어 이 스타일을 적용하면 안 되므로
-  // isMobileFloat일 때만 넣는다.
-  const mobileVisible = stackFocused || (!tabBarHidden && nearTop);
+  // 보임 여부는 모바일에서만 이 컴포넌트가 직접 정한다 — 탭바와 정확히 같은 순간에
+  // 숨고 같은 순간에 보인다(맨 위/맨 아래 둘 다, 위 tabBarHidden 주석 참고). 포커스
+  // 중이면(stackFocused) 이 조건과 무관하게 항상 보인다. 인라인 style로 매번 명시해서
+  // 정하며, PC는 애초에 고정 배치가 아니라 문서 흐름 안에 있어 이 스타일을 적용하면
+  // 안 되므로 isMobileFloat일 때만 넣는다.
+  const mobileVisible = stackFocused || !tabBarHidden;
+
+  // 숨는 순간엔 펼쳐져 있었어도 아이콘 모양으로 되접는다(요청: "필터/검색은 아이콘으로
+  // 트랜스폼되며 숨겨짐") — 포커스 중엔 애초에 mobileVisible이 계속 true라 숨지
+  // 않으므로, 타이핑 중에 뜬금없이 접히는 일은 없다.
+  useEffect(() => {
+    if (!mobileVisible) { setFilterExpanded(false); setSearchExpanded(false); }
+  }, [mobileVisible]);
+
+  const expandedContent = (
+    <>
+      {filterPanel && <div className="scr-filter-panel">{filterPanel}</div>}
+      <div className="scr-search-filter-float">{searchItem}</div>
+    </>
+  );
+
+  // 이 버튼을 누르면 onFocus(컨테이너)가 먼저 stackFocused를 true로 만드는데, 그 직후
+  // 상태 변경으로 이 버튼 자신이 통째로 언마운트돼 버려서 blur가 정상적으로 발생하지
+  // 못해(제거되는 엘리먼트의 blur 타이밍은 브라우저마다 신뢰할 수 없다) stackFocused가
+  // true로 영영 눌어붙는 버그가 있었다(실제로 재현: 한 번 펼치고 나면 그 뒤로는 탭바가
+  // 스크롤로 숨어도 이 알약만 계속 떠 있었다) — 펼치는 순간엔 항상 최근에 상호작용한
+  // 직후라 tabBarHidden이 어차피 false이므로, 여기서 명시적으로 false로 되돌려도 화면이
+  // 사라지지 않는다. 펼쳐진 뒤 실제 입력칸에 포커스가 가면 그 포커스는 언마운트되지
+  // 않는 안정된 엘리먼트라 onFocus/onBlur가 정상 동작한다.
+  const openFilter = () => { setStackFocused(false); setFilterExpanded(true); };
+  const openSearch = () => { setStackFocused(false); setSearchExpanded(true); };
+
+  // 접혔을 때 보이지 않는 나머지 공간까지 이 줄(.scr-filter-search-collapsible) 자신의
+  // 너비로 잡혀 있으면, 그 빈 자리가 여전히 pointer-events를 먹어 스크롤 제스처가 거기서
+  // 시작되면 씹혔다(실제로 지적받은 문제 — "접혔을때 원래 펼쳐있었던 부분에 터치스크롤이
+  // 안됨") — 바깥 스택(.scr-filter-float-stack) 자체는 항상 pointer-events:none으로
+  // 두고(global.css), 실제 보이는 내용을 담은 이 줄에만 보일 때(mobileVisible)만 다시
+  // auto로 켜서 그 좁은 너비만큼만 클릭/터치를 가로챈다.
+  const rowVisibilityStyle = isMobileFloat
+    ? {
+        opacity: mobileVisible ? 1 : 0,
+        transform: mobileVisible ? "none" : "scale(0.92)",
+        pointerEvents: mobileVisible ? ("auto" as const) : ("none" as const),
+      }
+    : undefined;
+
+  // 필터/검색 각각 자기 자리에서 아이콘 ↔ 펼쳐진 창으로 독립적으로 오간다(요청: "필터가
+  // 위 검색이 아래고(지금 위치 그대로임)" + "필터나 검색 아이콘 누르면 해당 창만
+  // 확대돼야함") — 예전처럼 하나를 누르면 둘 다 펼쳐지지 않는다. 검색 아이콘은 펼쳐질
+  // 검색창과 똑같은 흰 인풋 색을 그대로 유지해(요청: "검색은 흰색 인풋창 색 그대로
+  // 유지") 아이콘→박스 전환 중 색이 바뀌지 않게 한다. 펼쳐지면 오른쪽 끝에 접기
+  // 버튼도 같이 둔다(요청: "필터창 검색창 펼쳐졌을때 오른쪽 끝에 접는 아이콘 버튼").
+  // 패널(배경+모서리 반경) 자신은 이 shell div 하나가 계속 들고 있어서 트랜지션 내내
+  // 화면에서 사라지지 않는다(요청: "숨기더라도 패널자체는 유지하고 안의 요소만
+  // 숨겨야지") — 안의 내용(.scr-filter-search-content)만 페이드된다. 원(접힘, 반경
+  // 25px)에서 둥근모서리 사각형(펼침, 다른 필터/검색 패널과 같은 14px)으로 반경도
+  // 폭과 함께 부드럽게 바뀐다.
+  const filterRow = filterPanel && (
+    <div
+      className="scr-filter-search-collapsible scr-filter-search-collapsible-filter"
+      style={{ width: filterRenderOpen ? "100%" : 50, borderRadius: filterRenderOpen ? 14 : 25, ...rowVisibilityStyle }}
+    >
+      <div className="scr-filter-search-content" style={{ opacity: filterContentHidden ? 0 : 1 }}>
+        {filterRenderOpen ? (
+          <div className="scr-filter-search-expand-wrap">
+            <div className="scr-filter-panel">{filterPanel}</div>
+            <button
+              type="button" className="scr-filter-search-collapse-btn"
+              onClick={() => setFilterExpanded(false)} aria-label="필터 접기"
+            >
+              <ChevronRight size={14} />
+            </button>
+          </div>
+        ) : (
+          <div className="scr-filter-search-icons">
+            <button
+              type="button" className="scr-filter-search-icon-btn" onClick={openFilter}
+              aria-label="필터 열기"
+            >
+              <SlidersHorizontal size={16} />
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+  const searchRow = (
+    <div
+      className="scr-filter-search-collapsible scr-filter-search-collapsible-search"
+      style={{ width: searchRenderOpen ? "100%" : 50, borderRadius: searchRenderOpen ? 14 : 25, ...rowVisibilityStyle }}
+    >
+      <div className="scr-filter-search-content" style={{ opacity: searchContentHidden ? 0 : 1 }}>
+      {searchRenderOpen ? (
+        <div className="scr-filter-search-expand-wrap">
+          <div className="scr-search-filter-float">{searchItem}</div>
+          <button
+            type="button" className="scr-filter-search-collapse-btn"
+            onClick={() => setSearchExpanded(false)} aria-label="검색 접기"
+          >
+            <ChevronRight size={14} />
+          </button>
+        </div>
+      ) : (
+        <div className="scr-filter-search-icons">
+          <button
+            type="button" className="scr-filter-search-icon-btn"
+            onClick={openSearch} aria-label="검색 열기"
+          >
+            <Search size={16} />
+          </button>
+        </div>
+      )}
+      </div>
+    </div>
+  );
+
   const stackEl = (
     <div
       className="scr-filter-float-stack"
-      style={{
-        ...(keyboardInset > 0 ? { bottom: keyboardInset + 10 } : undefined),
-        ...(isMobileFloat ? {
-          opacity: mobileVisible ? 1 : 0,
-          transform: mobileVisible ? "none" : "scale(0.92)",
-          pointerEvents: mobileVisible ? "auto" : "none",
-        } : undefined),
-      }}
+      style={keyboardInset > 0 ? { bottom: keyboardInset + 10 } : undefined}
       onFocus={() => setStackFocused(true)}
       onBlur={(e) => {
         // 포커스가 이 스택 안의 다른 요소(검색창 -> 필터 라디오 등)로 옮겨가는 중이면
@@ -405,8 +548,7 @@ export default function SearchFilterBar({
         setStackFocused(false);
       }}
     >
-      {filterPanel && <div className="scr-filter-panel">{filterPanel}</div>}
-      <div className="scr-search-filter-float">{searchItem}</div>
+      {isMobileFloat ? <>{filterRow}{searchRow}</> : expandedContent}
     </div>
   );
 

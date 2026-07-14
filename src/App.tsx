@@ -7,7 +7,7 @@ import ScrollTopButton from "./components/common/ScrollTopButton";
 import { api } from "./api/client";
 import { versionNumber } from "./utils/appVersion";
 import { useRestoreScrollOnKeyboardClose } from "./hooks/useRestoreScrollOnKeyboardClose";
-import { getScrollTop, scrollRootTo } from "./utils/scrollRoot";
+import { scrollRootTo } from "./utils/scrollRoot";
 import { CHALLENGE_MIN_VERSION, homeScreenFor } from "./constants/menuVersions";
 
 import AuthScreen from "./pages/auth/AuthScreen";
@@ -69,13 +69,9 @@ export default function App() {
   // 로그인 직후 최초 진입 화면에서는 bootstrap()이 이미 방금 다 불러온 상태라, 그 화면으로
   // "이동"한 게 아닌데도 아래 새로고침 effect가 곧바로 또 중복 조회하지 않도록 건너뛴다.
   const skipNextRefresh = useRef(true);
-  // 화면(탭)별 마지막 스크롤 위치 — 메뉴를 오갈 때 이전 화면 위치를 기억해뒀다가 그 화면으로
-  // 돌아오면 복원한다. navigate()에서 "떠나는" 화면 기준으로 저장한다.
-  const scrollPositionsRef = useRef<Partial<Record<ScreenKey, number>>>({});
-  const navigate = (next: ScreenKey) => {
-    scrollPositionsRef.current[screen] = getScrollTop();
-    setScreen(next);
-  };
+  // 화면을 옮기면 항상 처음 상태로 — 이전 화면의 스크롤 위치/필터/검색 등은 기억하지
+  // 않는다(요청: "페이지 상태 유지 기능 삭제 — 페이지 이동시 항상 초기상태로 로딩").
+  const navigate = (next: ScreenKey) => setScreen(next);
   // 키보드가 뜨면(resizes-content라 뷰포트가 줄어들며) 브라우저가 포커스된 입력칸을
   // 보여주려고 스크롤을 올리는데, 키보드가 닫혀도 그 자리로 되돌아오지 않았다(실제로
   // 지적받은 문제 — "키보드 내려가면 다시 안 돌아와").
@@ -110,10 +106,9 @@ export default function App() {
     void refreshAll();
   }, [screen, user?.id, refreshAll]);
 
-  // 화면이 바뀌면 그 화면에서 마지막으로 있던 스크롤 위치로 복원한다(처음 방문이면 맨 위).
+  // 화면이 바뀌면 항상 맨 위에서 시작한다(이전 위치를 기억하지 않음).
   useEffect(() => {
-    const y = scrollPositionsRef.current[screen] ?? 0;
-    scrollRootTo({ top: y, left: 0, behavior: "instant" });
+    scrollRootTo({ top: 0, left: 0, behavior: "instant" });
   }, [screen]);
 
   // 화면이 바뀔 때마다 접속 기록에 "언제 어떤 화면을 봤는지" 남긴다(로그인 전이면 의미가
@@ -184,38 +179,19 @@ export default function App() {
             {booting && (
               <div className="scr-boot"><Spinner size={22} /> 데이터 불러오는 중...</div>
             )}
-            {/* 탭을 옮겨도 필터/입력/스크롤 등 화면별 상태가 남아있도록, 화면을 언마운트하는
-                대신 전부 마운트해두고 안 보이는 화면만 display:none으로 숨긴다. 접근 권한이
-                없는 화면(challenge/members/imageSettings)은 랭킹으로 대체되던 기존 동작과
-                같게, resolvedScreen으로 보여줄 슬롯만 바꾼다. */}
-            <div style={{ display: !booting && resolvedScreen === "ranking" ? undefined : "none" }}>
-              <RankingScreen />
-            </div>
-            <div style={{ display: !booting && resolvedScreen === "match" ? undefined : "none" }}>
-              <MatchScreen />
-            </div>
-            {isChallengeEnabled && (
-              <div style={{ display: !booting && resolvedScreen === "challenge" ? undefined : "none" }}>
-                <ChallengeScreen />
-              </div>
-            )}
-            <div style={{ display: !booting && resolvedScreen === "stats" ? undefined : "none" }}>
-              <StatsScreen />
-            </div>
-            {isAdmin && (
-              <div style={{ display: !booting && resolvedScreen === "members" ? undefined : "none" }}>
-                <MembersScreen />
-              </div>
-            )}
-            {isAdmin && (
-              <div style={{ display: !booting && resolvedScreen === "imageSettings" ? undefined : "none" }}>
-                <ImageSettingsScreen />
-              </div>
-            )}
+            {/* 화면을 옮기면 이전 화면은 언마운트한다 — 필터/검색/스크롤 등 화면별 상태를
+                더 이상 기억하지 않고, 돌아올 때마다 항상 처음 상태로 새로 불러온다(요청:
+                "페이지 상태 유지 기능 삭제 — 페이지 이동시 항상 초기상태로 로딩"). 접근
+                권한이 없는 화면(challenge/members/imageSettings)은 랭킹으로 대체되던
+                기존 동작과 같게, resolvedScreen으로 보여줄 화면만 고른다. */}
+            {!booting && resolvedScreen === "ranking" && <RankingScreen />}
+            {!booting && resolvedScreen === "match" && <MatchScreen />}
+            {isChallengeEnabled && !booting && resolvedScreen === "challenge" && <ChallengeScreen />}
+            {!booting && resolvedScreen === "stats" && <StatsScreen />}
+            {isAdmin && !booting && resolvedScreen === "members" && <MembersScreen />}
+            {isAdmin && !booting && resolvedScreen === "imageSettings" && <ImageSettingsScreen />}
             {/* 조회는 회원 누구나 가능 — 수정/삭제만 화면 내부에서 운영자로 한정한다. */}
-            <div style={{ display: !booting && resolvedScreen === "gameId" ? undefined : "none" }}>
-              <GameIdScreen />
-            </div>
+            {!booting && resolvedScreen === "gameId" && <GameIdScreen />}
           </main>
         </div>
 

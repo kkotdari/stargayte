@@ -88,7 +88,8 @@ export default function MatchModal({ match, prefillFrom, onClose, onSaved }: Mat
   // 이미 결과가 확정된 경기를 고치는 중일 때만 날짜/게임유형/결과를 읽기전용으로 잠근다.
   const isLocked = !!match;
 
-  // prefillFrom은 신규 등록(match 없음)일 때만 유효하다 — 날짜는 항상 오늘로 시작한다.
+  // prefillFrom은 신규 등록(match 없음)일 때만 유효하다 — 날짜는 항상 오늘로 시작한다
+  // (todayStr()이 자정이 아니라 정오를 기준으로 어제/오늘을 가른다, utils/date.ts 참고).
   const initialDate = match?.date ?? todayStr();
   const [date, setDate] = useState(initialDate);
   const [team1, setTeam1] = useState<MatchSlot[]>(match?.team1 ?? prefillFrom?.team1 ?? []);

@@ -219,11 +219,11 @@ export default function StatsScreenV2() {
         onRaceChange={(r) => setRace(r ?? "all")}
         filterPanel={
           <>
-            <FilterItem label="기간">
+            <FilterItem>
               <PillTabs options={PERIOD_UNIT_OPTS} value={periodUnit} onChange={setPeriodUnit} aria-label="기간" />
             </FilterItem>
             {periodUnit === "month" && (
-              <FilterItem label="월">
+              <FilterItem>
                 <input
                   type="month" className="scr-filter-month-input"
                   value={periodMonth} onChange={(e) => setPeriodMonth(e.target.value)}

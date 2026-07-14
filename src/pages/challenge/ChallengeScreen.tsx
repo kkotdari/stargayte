@@ -350,7 +350,7 @@ function ChallengeCard({ challenge, myId, onResponded, onViewResults }: Challeng
   return (
     <div className="scr-challenge-card">
       <div className="scr-challenge-card-body">
-        <div className="scr-challenge-card-row scr-mono scr-challenge-card-when">
+        <div className="scr-challenge-card-row scr-challenge-card-when">
           {pageTimeLabel}
           {/* 결과 보기는 버튼 줄로 따로 한 줄 차지하는 대신 시간 옆에 텍스트 링크로 붙인다
               (요청: "결과보기 버튼은 시간 옆에 텍스트로 배치해서 레이아웃 공간 차지하지
@@ -529,9 +529,15 @@ function ChallengeCard({ challenge, myId, onResponded, onViewResults }: Challeng
   );
 }
 
-type ChallengeFilter = "upcoming" | "ended";
+// 다가오는(승락돼 아직 안 뛴 것)/응답대기중(아직 승락도 거절도 안 된 것)/종료된(거절·
+// 취소·무응답취소·완료)으로 필터를 셋으로 나눈다(요청: "너나와 다가오는/응답대기중/
+// 종료된 으로 필터 나눠줘") — 예전엔 "다가오는" 탭 안에 "응답하라!"라는 별도 섹션으로
+// 같이 들어있던 걸 아예 독립된 필터 탭으로 분리한다.
+type ChallengeFilter = "upcoming" | "pending" | "ended";
 const FILTER_OPTS: { value: ChallengeFilter; label: string }[] = [
-  { value: "upcoming", label: "다가오는" }, { value: "ended", label: "종료된" },
+  { value: "upcoming", label: "다가오는" },
+  { value: "pending", label: "응답대기중" },
+  { value: "ended", label: "종료된" },
 ];
 
 // 도전장("너 나와!") 게시판 — 예전 "일정" 메뉴 자리를 대체한다. 경기결과/예약 시스템과는
@@ -625,34 +631,31 @@ export default function ChallengeScreen() {
     return a.createdAt > b.createdAt ? -1 : a.createdAt < b.createdAt ? 1 : 0;
   }), [searchedChallenges]);
 
-  // "내 대결" — 일정이 지나지 않은(다가오는) 도전장 중 내가 보냈거나(창작자) 지목된
-  // (상대) 것만 모아 맨 위에 둔다(요청: "내 대결 파트 추가 (일정이 지나지 않은 내가
-  // 보낸/받은 초대장 목록을 보여주는 곳 순서는 일정 시간 가까운 순) 다가오는 대결
-  // 목록 위에 배치"). upcomingChallenges가 이미 임박순으로 정렬돼 있어 그대로 필터만
-  // 하면 순서가 맞는다. "응답하라!"/"다가오는 대결"과 달리 여기서 뺀다고 저 아래
-  // 목록에서 또 안 빼지는 않는다 — 이건 "내 것만 빠르게 훑어보는" 요약이라 전체 목록
-  // (다가오는 대결/응답하라!)과 겹쳐도 무방하다.
-  const myUpcomingChallenges = useMemo(
-    () => upcomingChallenges.filter(
-      (c) => c.createdBy.id === user?.id || c.targets.some((t) => t.memberId === user?.id),
-    ),
-    [upcomingChallenges, user?.id],
-  );
-
-  // "응답하라!" — 다가오는 목록 중 아직 응답이 안 끝난 건 전부 모아 맨 위에 둔다(요청:
-  // "다가오는 대결에는 응답하라! 섹션을 만들고 맨 위에 배치" → "응답하라는 내꺼 뿐만
-  // 아니라 모두다") — 내가 지목된 것만이 아니라, 클럽 전체에서 아직 상대의 응답을
-  // 기다리는 도전장이면 누구 것이든 다 보여준다. 날짜 그룹핑 아래 목록에서는 중복으로
-  // 또 나오지 않게 뺀다.
+  // 다가오는(승락돼 아직 안 뛴 것)과 응답대기중(아직 승락/거절 안 된 것)을 별도 필터
+  // 탭으로 완전히 나눈다(요청: "너나와 다가오는/응답대기중/종료된 으로 필터 나눠줘") —
+  // 예전엔 "다가오는" 탭 하나 안에 "응답하라!" 섹션으로 같이 있었다.
   const needsResponse = (c: Challenge): boolean => challengeDisplayStatus(c) === "pending";
+  const confirmedChallenges = useMemo(
+    () => upcomingChallenges.filter((c) => !needsResponse(c)),
+    [upcomingChallenges],
+  );
   const respondChallenges = useMemo(
     () => upcomingChallenges.filter(needsResponse),
     [upcomingChallenges],
   );
-  const restUpcomingChallenges = useMemo(
-    () => upcomingChallenges.filter((c) => !needsResponse(c)),
-    [upcomingChallenges],
+
+  // "내 대결" — 다가오는/응답대기중 탭을 보는 동안엔 그 목록 중 내가 보냈거나(창작자)
+  // 지목된(상대) 것만 위에 따로 모아 보여준다(요청: "다가오는 응답대기중 선택시에는
+  // 위에 보여주라고 내 대결"). 종료된 탭에는 없다. 여기서 뺀다고 아래 전체 목록에서
+  // 또 안 빼지는 않는다 — "내 것만 빠르게 훑어보는" 요약이라 겹쳐도 무방하다.
+  const isMine = (c: Challenge): boolean => (
+    c.createdBy.id === user?.id || c.targets.some((t) => t.memberId === user?.id)
   );
+  const myChallenges = useMemo(() => {
+    const base = filter === "upcoming" ? confirmedChallenges : filter === "pending" ? respondChallenges : [];
+    return base.filter(isMine);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- isMine은 user?.id만 참조하는 순수 함수라 매 렌더 새로 만들어져도 무방
+  }, [filter, confirmedChallenges, respondChallenges, user?.id]);
 
   // "결과 보기" — 리플레이를 직접 여기서 등록하는 대신(리플레이 등록 버튼 제거, 요청:
   // "리플레이 등록 버튼 제거하고 대신 결과 보기 버튼 추가"), 랭킹 화면의 팀 경기 목록
@@ -666,10 +669,12 @@ export default function ChallengeScreen() {
   }, [resultsTarget, memberOf]);
   const resultsDateStr = resultsTarget?.scheduledAt ? fmt(new Date(resultsTarget.scheduledAt)) : undefined;
 
-  const activeList = filter === "upcoming" ? upcomingChallenges : endedChallenges;
+  const activeList = filter === "upcoming" ? confirmedChallenges : filter === "pending" ? respondChallenges : endedChallenges;
   const emptyLabel = searchTerms.length > 0
     ? "검색 결과가 없어요"
-    : (filter === "upcoming" ? "다가오는 도전장이 없어요" : "종료된 도전장이 없어요");
+    : filter === "upcoming" ? "다가오는 도전장이 없어요"
+    : filter === "pending" ? "응답대기중인 도전장이 없어요"
+    : "종료된 도전장이 없어요";
 
   return (
     <div className="scr-screen scr-challenge-screen-v2">
@@ -696,7 +701,7 @@ export default function ChallengeScreen() {
         suggestions={suggestions}
         filterPanel={
           <FilterItem label="구분">
-            <PillTabs options={FILTER_OPTS} value={filter} onChange={setFilter} aria-label="다가오는/종료된 선택" />
+            <PillTabs options={FILTER_OPTS} value={filter} onChange={setFilter} aria-label="다가오는/응답대기중/종료된 선택" />
           </FilterItem>
         }
       />
@@ -705,80 +710,54 @@ export default function ChallengeScreen() {
 
       {loading ? (
         <div className="scr-empty"><Spinner size={18} /></div>
-      ) : filter === "upcoming" ? (
+      ) : (
         <>
-          <section className="scr-challenge-section">
-            <h2 className="scr-challenge-section-title">내 대결</h2>
-            {/* 없으면 공간을 아끼려고 다른 섹션의 .scr-empty(64px 높이 박스)보다 훨씬
-                간단하게 한 줄만 표시한다(요청: "없으면 아주 간단하게 대결 없음 한줄
-                표시(공간 절약)"). */}
-            {myUpcomingChallenges.length === 0 ? (
-              <p className="scr-challenge-my-empty">대결 없음</p>
-            ) : (
-              <div className="scr-challenge-list">
-                {groupChallengesByDate(myUpcomingChallenges).map((g) => (
-                  <div key={g.label} className="scr-challenge-date-group">
-                    <div className="scr-challenge-date-head scr-mono">
-                      {g.isToday && <span className="scr-challenge-card-today-tag">오늘</span>}
-                      {g.label}
+          {/* 다가오는/응답대기중 탭에서만 위에 "내 대결" 요약을 따로 둔다(요청: "다가오는
+              응답대기중 선택시에는 위에 보여주라고 내 대결") — 종료된 탭에는 없다. */}
+          {filter !== "ended" && (
+            <section className="scr-challenge-section">
+              <h2 className="scr-challenge-section-title">내 대결</h2>
+              {/* 없으면 공간을 아끼려고 다른 섹션의 .scr-empty(64px 높이 박스)보다 훨씬
+                  간단하게 한 줄만 표시한다(요청: "없으면 아주 간단하게 대결 없음 한줄
+                  표시(공간 절약)"). */}
+              {myChallenges.length === 0 ? (
+                <p className="scr-challenge-my-empty">대결 없음</p>
+              ) : (
+                <div className="scr-challenge-list">
+                  {groupChallengesByDate(myChallenges).map((g) => (
+                    <div key={g.label} className="scr-challenge-date-group">
+                      <div className="scr-challenge-date-head">
+                        {g.isToday && <span className="scr-challenge-card-today-tag">오늘</span>}
+                        {g.label}
+                      </div>
+                      {g.items.map((c) => (
+                        <ChallengeCard
+                          key={c.id}
+                          challenge={c}
+                          myId={user?.id}
+                          onResponded={upsert}
+                          onViewResults={setResultsTarget}
+                        />
+                      ))}
                     </div>
-                    {g.items.map((c) => (
-                      <ChallengeCard
-                        key={c.id}
-                        challenge={c}
-                        myId={user?.id}
-                        onResponded={upsert}
-                        onViewResults={setResultsTarget}
-                      />
-                    ))}
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
 
           <section className="scr-challenge-section">
-            <h2 className="scr-challenge-section-title scr-challenge-section-title-upcoming">다가오는 대결</h2>
-            {restUpcomingChallenges.length === 0 ? (
+            <h2 className="scr-challenge-section-title">
+              {filter === "upcoming" ? "다가오는 대결" : filter === "pending" ? "응답대기중" : "종료된 대결"}
+            </h2>
+            {activeList.length === 0 ? (
               <div className="scr-empty">{emptyLabel}</div>
             ) : (
               <div className="scr-challenge-list">
-                {groupChallengesByDate(restUpcomingChallenges).map((g) => (
+                {groupChallengesByDate(activeList).map((g) => (
                   <div key={g.label} className="scr-challenge-date-group">
-                    <div className="scr-challenge-date-head scr-mono">
-                      {g.isToday && <span className="scr-challenge-card-today-tag">오늘</span>}
-                      {g.label}
-                    </div>
-                    {g.items.map((c) => (
-                      <ChallengeCard
-                        key={c.id}
-                        challenge={c}
-                        myId={user?.id}
-                        onResponded={upsert}
-                        onViewResults={setResultsTarget}
-                      />
-                    ))}
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
-
-          {/* 응답할 게 없어도 섹션 자체(소타이틀 포함)는 항상 보여준다 — 그래야 "응답하라!"
-              라는 영역이 있다는 것 자체가 눈에 띄고, 비어 있을 땐 그 사실을 바로 알 수
-              있다(요청: "응답하라! 영역이 없네 소타이틀도 있어야해"). 요청: "응답하라
-              목록이 다가오는 아래에 배치" — 처음엔 맨 위였지만 이제 "다가오는 대결"
-              아래로 옮긴다. */}
-          <section className="scr-challenge-section scr-challenge-section-respond">
-            <h2 className="scr-challenge-section-title scr-challenge-section-title-respond">응답하라!</h2>
-            {respondChallenges.length === 0 ? (
-              <div className="scr-empty">응답할 도전장이 없어요</div>
-            ) : (
-              <div className="scr-challenge-list">
-                {groupChallengesByDate(respondChallenges).map((g) => (
-                  <div key={g.label} className="scr-challenge-date-group">
-                    <div className="scr-challenge-date-head scr-mono">
-                      {g.isToday && <span className="scr-challenge-card-today-tag">오늘</span>}
+                    <div className="scr-challenge-date-head">
+                      {filter !== "ended" && g.isToday && <span className="scr-challenge-card-today-tag">오늘</span>}
                       {g.label}
                     </div>
                     {g.items.map((c) => (
@@ -796,30 +775,6 @@ export default function ChallengeScreen() {
             )}
           </section>
         </>
-      ) : (
-        <section className="scr-challenge-section">
-          <h2 className="scr-challenge-section-title">종료된 대결</h2>
-          {endedChallenges.length === 0 ? (
-            <div className="scr-empty">{emptyLabel}</div>
-          ) : (
-            <div className="scr-challenge-list">
-              {groupChallengesByDate(endedChallenges).map((g) => (
-                <div key={g.label} className="scr-challenge-date-group">
-                  <div className="scr-challenge-date-head scr-mono">{g.label}</div>
-                  {g.items.map((c) => (
-                    <ChallengeCard
-                      key={c.id}
-                      challenge={c}
-                      myId={user?.id}
-                      onResponded={upsert}
-                      onViewResults={setResultsTarget}
-                    />
-                  ))}
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
       )}
 
       {formOpen && (
