@@ -39,10 +39,15 @@
          문제 — "잠깐 까만 화면에 스피너"). React가 로드되기도 전에, 최대한 빨리 저장된
          값을 읽어 바로 클래스를 붙여서 그 깜빡임 자체를 없앤다. -->
 
+    <!-- 위 html 클래스와 같은 이유로, 상태바/주소창 색(theme-color)도 React가 뜨기 전에
+         미리 맞춰둔다 — 안 그러면 라이트 테마 사용자도 페이지는 흰 배경으로 바로 뜨는데
+         브라우저 크롬(주소창)만 몇 초간 기본 다크 값(#060607) 그대로 남아 어긋나 보인다
+         (theme.ts의 applyThemeColor와 정확히 같은 다크/라이트 값을 쓴다). -->
     <script>
       try {
         if (localStorage.getItem("scr-light-theme") === "1") {
           document.documentElement.classList.add("scr-light-theme");
+          document.querySelector('meta[name="theme-color"]')?.setAttribute("content", "#ffffff");
         }
       } catch (e) {}
     </script>
