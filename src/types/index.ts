@@ -255,6 +255,11 @@ export type ChallengeTargetResponse = "pending" | "accepted" | "rejected";
 // 지목된 전원이 승락하면 confirmed, 한 명이라도 거절하면 그 즉시 rejected, 요청자가
 // 확정 전에 스스로 취소하면 canceled, 그 외엔 pending.
 export type ChallengeStatus = "pending" | "confirmed" | "rejected" | "canceled";
+// 도전자 쪽/지목된 쪽 — 확정 대결의 결과(누가 이겼는지)와 설욕전 신청 자격 판정에 쓰인다.
+export type ChallengeSide = "creator" | "target";
+// reappliedFromId로 이어진 체인이 어떻게 생겼는지 — 거절/무응답만료 뒤 재신청("reapply")인지,
+// 확정+결과 입력 뒤 패배한 쪽의 설욕전("revenge")인지.
+export type ChallengeChainKind = "reapply" | "revenge";
 
 export interface ChallengeTarget {
   memberId: string;
@@ -285,6 +290,10 @@ export interface ChallengeHistoryEntry {
   status: ChallengeStatus;
   targets: ChallengeTarget[];
   createdAt: string;
+  // 확정 대결의 결과(이긴 쪽) — 아직 아무도 입력하지 않았으면 null.
+  resultWinnerSide: ChallengeSide | null;
+  // 재신청("reapply")으로 만들어진 기록인지 설욕전("revenge")인지 — 체인의 시작(원본)이면 null.
+  chainKind: ChallengeChainKind | null;
 }
 
 export interface Challenge {
@@ -297,10 +306,14 @@ export interface Challenge {
   targets: ChallengeTarget[];
   ownMembers: ChallengeOwnMember[];
   createdAt: string;
-  // 재신청으로 만들어졌으면 원래 도전장의 id, 아니면 null.
+  // 재신청/설욕전으로 만들어졌으면 원래 도전장의 id, 아니면 null.
   reappliedFromId: number | null;
+  // reappliedFromId가 있을 때만 의미 있음 — 재신청("reapply")인지 설욕전("revenge")인지.
+  chainKind: ChallengeChainKind | null;
+  // 확정 대결의 결과(이긴 쪽) — 아직 아무도 입력하지 않았으면 null.
+  resultWinnerSide: ChallengeSide | null;
   // 이 도전장보다 앞선 체인 기록(오래된 순) — 목록 화면 카드에서 좌우로 슬라이드해
-  // 보여준다. 재신청 이력이 없으면 빈 배열.
+  // 보여준다. 재신청/설욕전 이력이 없으면 빈 배열.
   history: ChallengeHistoryEntry[];
 }
 

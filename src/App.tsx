@@ -20,6 +20,7 @@ import ProfileModal from "./modals/ProfileModal";
 import MemberProfileModal from "./modals/MemberProfileModal";
 import AdminPanelModal from "./modals/AdminPanelModal";
 import ChallengeInboxModal from "./modals/ChallengeInboxModal";
+import ChallengeResultInboxModal from "./modals/ChallengeResultInboxModal";
 import AppUpdateNoticeModal from "./modals/AppUpdateNoticeModal";
 import RankingScreen from "./pages/v2/RankingScreen";
 import MatchScreen from "./pages/v2/MatchScreen";
@@ -61,6 +62,8 @@ export default function App() {
   const viewingMember = viewingMemberId ? memberOf(viewingMemberId) : undefined;
   const inboxChallenges = useAppStore((s) => s.inboxChallenges);
   const dismissInboxChallenges = useAppStore((s) => s.dismissInboxChallenges);
+  const resultInboxChallenges = useAppStore((s) => s.resultInboxChallenges);
+  const dismissResultInboxChallenges = useAppStore((s) => s.dismissResultInboxChallenges);
   const updateNotice = useAppStore((s) => s.updateNotice);
   const dismissUpdateNotice = useAppStore((s) => s.dismissUpdateNotice);
 
@@ -209,6 +212,11 @@ export default function App() {
         {updateNotice && <AppUpdateNoticeModal onClose={dismissUpdateNotice} />}
         {inboxChallenges.length > 0 && (
           <ChallengeInboxModal challenges={inboxChallenges} onClose={dismissInboxChallenges} />
+        )}
+        {/* 초대(편지지) 팝업을 다 처리한 뒤에 결과 입력 팝업을 띄운다 — 두 팝업이 동시에
+            겹쳐 뜨지 않게 초대 큐가 빈 뒤로 미룬다. */}
+        {inboxChallenges.length === 0 && resultInboxChallenges.length > 0 && (
+          <ChallengeResultInboxModal challenges={resultInboxChallenges} onClose={dismissResultInboxChallenges} />
         )}
 
         {!booting && <ScrollTopButton />}
