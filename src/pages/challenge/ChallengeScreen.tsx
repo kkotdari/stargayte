@@ -634,6 +634,20 @@ export default function ChallengeScreen() {
     return a.createdAt > b.createdAt ? -1 : a.createdAt < b.createdAt ? 1 : 0;
   }), [searchedChallenges]);
 
+  // "내 대결" — 일정이 지나지 않은(다가오는) 도전장 중 내가 보냈거나(창작자) 지목된
+  // (상대) 것만 모아 맨 위에 둔다(요청: "내 대결 파트 추가 (일정이 지나지 않은 내가
+  // 보낸/받은 초대장 목록을 보여주는 곳 순서는 일정 시간 가까운 순) 다가오는 대결
+  // 목록 위에 배치"). upcomingChallenges가 이미 임박순으로 정렬돼 있어 그대로 필터만
+  // 하면 순서가 맞는다. "응답하라!"/"다가오는 대결"과 달리 여기서 뺀다고 저 아래
+  // 목록에서 또 안 빼지는 않는다 — 이건 "내 것만 빠르게 훑어보는" 요약이라 전체 목록
+  // (다가오는 대결/응답하라!)과 겹쳐도 무방하다.
+  const myUpcomingChallenges = useMemo(
+    () => upcomingChallenges.filter(
+      (c) => c.createdBy.id === user?.id || c.targets.some((t) => t.memberId === user?.id),
+    ),
+    [upcomingChallenges, user?.id],
+  );
+
   // "응답하라!" — 다가오는 목록 중 아직 응답이 안 끝난 건 전부 모아 맨 위에 둔다(요청:
   // "다가오는 대결에는 응답하라! 섹션을 만들고 맨 위에 배치" → "응답하라는 내꺼 뿐만
   // 아니라 모두다") — 내가 지목된 것만이 아니라, 클럽 전체에서 아직 상대의 응답을
@@ -702,6 +716,36 @@ export default function ChallengeScreen() {
         <div className="scr-empty"><Spinner size={18} /></div>
       ) : filter === "upcoming" ? (
         <>
+          <section className="scr-challenge-section">
+            <h2 className="scr-challenge-section-title">내 대결</h2>
+            {/* 없으면 공간을 아끼려고 다른 섹션의 .scr-empty(64px 높이 박스)보다 훨씬
+                간단하게 한 줄만 표시한다(요청: "없으면 아주 간단하게 대결 없음 한줄
+                표시(공간 절약)"). */}
+            {myUpcomingChallenges.length === 0 ? (
+              <p className="scr-challenge-my-empty">대결 없음</p>
+            ) : (
+              <div className="scr-challenge-list">
+                {groupChallengesByDate(myUpcomingChallenges).map((g) => (
+                  <div key={g.label} className="scr-challenge-date-group">
+                    <div className="scr-challenge-date-head scr-mono">
+                      {g.isToday && <span className="scr-challenge-card-today-tag">오늘</span>}
+                      {g.label}
+                    </div>
+                    {g.items.map((c) => (
+                      <ChallengeCard
+                        key={c.id}
+                        challenge={c}
+                        myId={user?.id}
+                        onResponded={upsert}
+                        onViewResults={setResultsTarget}
+                      />
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
           <section className="scr-challenge-section">
             <h2 className="scr-challenge-section-title scr-challenge-section-title-upcoming">다가오는 대결</h2>
             {restUpcomingChallenges.length === 0 ? (

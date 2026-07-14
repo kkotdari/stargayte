@@ -4326,6 +4326,9 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    이 글자로 옮겨 text-shadow를 줬다가(요청: "글로우 제거하고 다가오는 대결 타이틀에
    글로우") 결국 그마저도 없앤다(요청: "다가오는 대결 타이틀 글로우 제거") — 색만 남긴다. */
 .scr-challenge-section-title-upcoming { color: var(--bar-winrate); }
+/* "내 대결" 빈 상태 — 다른 섹션의 .scr-empty(64px 높이 박스)보다 훨씬 간단한 한 줄만
+   (요청: "없으면 아주 간단하게 대결 없음 한줄 표시(공간 절약)"). */
+.scr-challenge-my-empty { color: var(--dim); font-size: 13px; margin: 8px 0 0; }
 
 /* 다크 테마에서 카드끼리 배경과 구분이 잘 안 돼서(요청: "다크모드에서 챌린지 카드
    구분이 잘 안됨 글라스테마로") 운영 드롭다운과 같은 반투명 글라스 톤으로. 라이트
@@ -4531,10 +4534,14 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    메시지가 잘리거든? 마우스오버/클릭시 리플레이 툴팁같은 단순한 창으로 팝오버로
    전체메시지를 다 볼수 있게 해줘"). 버튼이지만 겉모습은 원래 .scr-challenge-side-message
    div와 완전히 같아야 하므로(폭/잘림/폰트 전부 그대로 물려받는다) 버튼 기본 스타일만
-   지우고 새로 얹지 않는다 — 커서와 살짝의 hover 반응만 추가해 "누를 수 있다"는 힌트를 준다. */
+   지우고 새로 얹지 않는다 — 커서와 살짝의 hover 반응만 추가해 "누를 수 있다"는 힌트를 준다.
+   font-family만 inherit로 되돌린다(버튼 UA 기본 폰트가 새는 걸 막는 용도) — font/color를
+   통째로 inherit하면 .scr-challenge-side-message가 이미 정해둔 font-style(이탤릭)/
+   font-size(12.5px)/color(--muted)까지 지워버려 카드 모양이 달라져 보였다(요청: "대결
+   카드 css 뭔가 달라졌어.. 좌우 슬라이드 빼고는 이전 그대로 해줘"). */
 .scr-challenge-side-message-btn {
   background: transparent; border: none; padding: 0; margin: 0; text-align: inherit;
-  font: inherit; color: inherit; cursor: pointer;
+  font-family: inherit; cursor: pointer;
 }
 .scr-challenge-side-message-btn:hover { color: var(--text); }
 .scr-challenge-msg-pop {
