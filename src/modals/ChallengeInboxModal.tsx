@@ -26,13 +26,23 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
   // "인박스 편지봉투만 처음에 나오고 편지지로 이동").
   const [stage, setStage] = useState<"envelope" | "letter">("envelope");
   const [message, setMessage] = useState("");
+  // 요청자가 "시간 지정"을 끄고 보낸(scheduledAt 없음) 도전장은 "상대가 정해도 된다"는
+  // 뜻이다 — 승락하는 이 시점에 상대가 직접 정하게 한다(요청: "도전자/상대 모두 시간을
+  // 지정하지 않았는데 수락이 된 경우가 있네 이러면 안되는데" — 안 그러면 시간이 영원히
+  // 안 채워진 채 박제된다).
+  const [dateStr, setDateStr] = useState("");
+  const [timeStr, setTimeStr] = useState("");
 
   const current = challenges[idx];
   if (!current) { onClose(); return null; }
 
+  const needsSchedule = current.scheduledAt === null;
+
   const advance = () => {
     setStage("envelope");
     setMessage("");
+    setDateStr("");
+    setTimeStr("");
     setErr("");
     if (idx + 1 >= challenges.length) onClose();
     else setIdx((i) => i + 1);
@@ -43,16 +53,24 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
   // 핸들러 안에서도 한 번 더 확인한다. 승락은 메시지가 비어 있어도 그대로 보낸다.
   const trimmedMessage = message.trim();
   const canReject = trimmedMessage.length > 0;
+  const canAccept = !needsSchedule || (dateStr.length > 0 && timeStr.length > 0);
 
   const respond = async (response: "accepted" | "rejected") => {
     if (response === "rejected" && !canReject) {
       setErr("거절 사유를 입력해 주세요.");
       return;
     }
+    if (response === "accepted" && !canAccept) {
+      setErr("날짜와 시간을 정해 주세요.");
+      return;
+    }
     setErr("");
     setBusy(true);
     try {
-      await api.respondToChallenge(current.id, response, trimmedMessage || undefined);
+      const scheduledAt = response === "accepted" && needsSchedule
+        ? new Date(`${dateStr}T${timeStr}`).toISOString()
+        : undefined;
+      await api.respondToChallenge(current.id, response, trimmedMessage || undefined, scheduledAt);
       advance();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "응답하지 못했어요.");
@@ -112,6 +130,27 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
                 <span>{formatChallengeSchedule(current.scheduledAt)}</span>
               </div>
 
+              {/* 요청자가 시간을 안 정했으면(needsSchedule) 상대인 내가 승락하며 직접
+                  정한다 — 안 그러면 시간이 영원히 안 채워진 채 승락 상태로 박제된다
+                  (요청: "도전자/상대 모두 시간을 지정하지 않았는데 수락이 된 경우가
+                  있네 이러면 안되는데"). 거절할 땐 필요 없으니 항상 보여준다. */}
+              {needsSchedule && (
+                <label className="scr-field">
+                  <span className="scr-label">일시 정하기 (승락 시 필수)</span>
+                  <div className="scr-challenge-datetime">
+                    <input
+                      type="date" className="scr-input" value={dateStr}
+                      onChange={(e) => { setDateStr(e.target.value); if (!e.target.value) setTimeStr(""); }}
+                    />
+                    <input
+                      type="time" className="scr-input" value={timeStr}
+                      onChange={(e) => setTimeStr(e.target.value)}
+                      disabled={!dateStr}
+                    />
+                  </div>
+                </label>
+              )}
+
               <label className="scr-field">
                 <span className="scr-label">한마디 (거절 시 필수)</span>
                 <input
@@ -133,7 +172,7 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
                 </button>
                 <button
                   className="scr-btn scr-challenge-accept-btn" onClick={() => respond("accepted")}
-                  disabled={busy}
+                  disabled={busy || !canAccept}
                 >
                   {busy ? <><Spinner /> 처리 중...</> : "승락"}
                 </button>

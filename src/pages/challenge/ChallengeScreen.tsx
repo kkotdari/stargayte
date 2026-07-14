@@ -150,6 +150,11 @@ function ChallengeCard({ challenge, myId, onResponded, onViewResults }: Challeng
   const [dateStr, setDateStr] = useState("");
   const [timeStr, setTimeStr] = useState("");
   const [message, setMessage] = useState("");
+  // 요청자가 "시간 지정"을 끄고 보낸(scheduledAt 없음) 도전장을 카드에서 바로 승락하려는
+  // 경우 — window.prompt 한 줄로는 날짜+시간을 받을 수 없어 재신청과 같은 인라인 폼으로
+  // 전환한다(요청: "도전자/상대 모두 시간을 지정하지 않았는데 수락이 된 경우가 있네
+  // 이러면 안되는데" — 승락하는 이 시점에 상대가 직접 정하게 해서 막는다).
+  const [scheduling, setScheduling] = useState(false);
 
   // 카드에서 바로 승락/거절 — OS 기본 prompt로 한마디를 받는다. 승락은 이제 선택(요청:
   // "승락시에는 메시지 필수 아니게 변경"), 거절은 여전히 필수다(요청: "거절일때는 필수") —
@@ -165,6 +170,29 @@ function ChallengeCard({ challenge, myId, onResponded, onViewResults }: Challeng
     try {
       const updated = await api.respondToChallenge(challenge.id, response, trimmed || undefined);
       onResponded(updated);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "응답하지 못했어요.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const startScheduling = () => {
+    setScheduling(true);
+    setDateStr("");
+    setTimeStr("");
+    setMessage("");
+  };
+
+  const acceptWithSchedule = async () => {
+    if (!dateStr || !timeStr) return;
+    setErr("");
+    setBusy(true);
+    try {
+      const scheduledAt = new Date(`${dateStr}T${timeStr}`).toISOString();
+      const updated = await api.respondToChallenge(challenge.id, "accepted", message.trim() || undefined, scheduledAt);
+      onResponded(updated);
+      setScheduling(false);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "응답하지 못했어요.");
     } finally {
@@ -238,7 +266,7 @@ function ChallengeCard({ challenge, myId, onResponded, onViewResults }: Challeng
 
       {err && <div className="scr-err">{err}</div>}
 
-      {canRespond && (
+      {canRespond && !scheduling && (
         <div className="scr-challenge-card-actions">
           <button
             className="scr-btn scr-challenge-reject-btn scr-btn-sm" disabled={busy}
@@ -248,10 +276,50 @@ function ChallengeCard({ challenge, myId, onResponded, onViewResults }: Challeng
           </button>
           <button
             className="scr-btn scr-challenge-accept-btn scr-btn-sm" disabled={busy}
-            onClick={() => respond("accepted", "한마디를 입력해 주세요 (선택)", false)}
+            onClick={() => {
+              // 시간이 아직 안 정해진 도전장이면(요청자가 "상대가 정해도 된다"로
+              // 보낸 경우) window.prompt 한 줄로는 날짜+시간을 못 받으니 인라인 폼을
+              // 연다 — 이미 시간이 정해진 도전장은 그대로 한마디만 받고 바로 승락한다.
+              if (challenge.scheduledAt === null) startScheduling();
+              else respond("accepted", "한마디를 입력해 주세요 (선택)", false);
+            }}
           >
             {busy ? <Spinner /> : "승락"}
           </button>
+        </div>
+      )}
+
+      {scheduling && (
+        <div className="scr-challenge-time-change-form">
+          <p className="scr-challenge-inbox-message">
+            아직 시간이 정해지지 않은 도전장이에요 — 승락하며 시간을 정해주세요.
+          </p>
+          <div className="scr-challenge-datetime">
+            <input
+              type="date" className="scr-input" value={dateStr}
+              onChange={(e) => { setDateStr(e.target.value); if (!e.target.value) setTimeStr(""); }}
+            />
+            <input
+              type="time" className="scr-input" value={timeStr}
+              onChange={(e) => setTimeStr(e.target.value)}
+              disabled={!dateStr}
+            />
+          </div>
+          <input
+            type="text" className="scr-input" value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            placeholder="한마디 (선택)"
+            maxLength={60}
+          />
+          <div className="scr-challenge-card-actions">
+            <button className="scr-btn scr-btn-ghost scr-btn-sm" onClick={() => setScheduling(false)} disabled={busy}>취소</button>
+            <button
+              className="scr-btn scr-challenge-accept-btn scr-btn-sm" onClick={acceptWithSchedule}
+              disabled={busy || !dateStr || !timeStr}
+            >
+              {busy ? <Spinner /> : "승락"}
+            </button>
+          </div>
         </div>
       )}
 
