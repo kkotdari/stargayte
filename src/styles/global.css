@@ -4476,6 +4476,21 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
   overflow: hidden; text-overflow: ellipsis;
 }
+/* PC에서만(요청: "PC 말하는거야") 도전자편의 내용(프사+닉네임, 한마디)을 자기 칸의
+   오른쪽 끝으로 붙인다 — 손이모티콘과의 거리를 눈에 띄게 좁혀 보이게 한다(요청:
+   "도전자-손이모티콘 사이는 줄이고 도전자 정보를 훨씬 오른쪽으로 이동"). 상대편은
+   그대로 왼쪽 정렬 유지 — 이모티콘과의 간격은 이모티콘 자신의 오른쪽 여백(위
+   .scr-challenge-arrow의 margin-right)으로 이미 크게 벌려뒀다. align-items:flex-end를
+   .scr-challenge-side(도전자편)에 주면 그 안의 각 .scr-challenge-side-block이
+   내용 크기만큼만(shrink-to-fit) 잡히며 오른쪽으로 붙는다. */
+@media (min-width: 641px) {
+  .scr-challenge-side:not(.scr-challenge-side-target) {
+    align-items: flex-end;
+  }
+  .scr-challenge-side:not(.scr-challenge-side-target) .scr-challenge-side-message {
+    text-align: right;
+  }
+}
 .scr-challenge-card-actions { display: flex; justify-content: center; gap: 8px; }
 .scr-challenge-inbox-body .scr-form-actions { justify-content: center; }
 /* 승락(핑크)/거절(검정) 버튼 — 로그인 버튼과 같은 필(pill) 래디우스. */
