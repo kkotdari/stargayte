@@ -2164,10 +2164,10 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
        붙어 떠 있는 필터/검색 알약이 화면 폭을 꽉 채운 것처럼 뻑뻑해 보였다(실제로
        지적받은 문제) — 좌우 여백을 컨텐츠보다 더 줘서 컨텐츠 폭보다 살짝 좁게 뜬다.
        그 뒤로 폭을 줄였다 늘렸다 여러 차례 조정(10% 축소 → 더 줄이기 → 10% 증가 →
-       카드보다 살짝만 작게(20px) → 더 줄이기)을 거쳐 24px로 정리한다 — 카드 여백
-       (16px)보다 8px 더 준 값, vw 스케일링 없이 고정값이라 화면 크기와 무관하게 항상
-       같은 만큼(좌우 합 16px)만 좁다. */
-    position: fixed; left: 24px; right: 24px; z-index: 45; margin: 0 auto;
+       카드보다 살짝만 작게(20px) → 더 줄이기(24px) → 다시 넓히기)을 거쳐 컨텐츠
+       카드와 똑같은 여백(16px)까지 다시 넓힌다(요청: "모바일 검색필터창 너비 더
+       넓게"). */
+    position: fixed; left: 16px; right: 16px; z-index: 45; margin: 0 auto;
     /* --mobile-tabbar-visible-h는 useHideOnScrollDown이 탭바가 숨겨질 때마다 0px로,
        다시 보이면 var(--mobile-footer-h)로 실시간으로 갱신해준다 — 고정값
        (--mobile-footer-h)만 쓰면 탭바가 스크롤로 접혀도 이 알약은 탭바가 항상 떠
