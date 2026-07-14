@@ -3676,16 +3676,22 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   .scr-scrolltop { display: none !important; }
 }
 /* 플로팅 검색창만은 아직 position:fixed로 탭바 위에 뜬다(키보드 인셋에 따라 위치가 JS로도
-   움직여야 해서 흐름 안에 넣기엔 상호작용이 더 얽혀 있다 — 별도로 검토) — 그 높이 몫(62px)만큼
+   움직여야 해서 흐름 안에 넣기엔 상호작용이 더 얽혀 있다 — 별도로 검토) — 그 높이 몫만큼
    콘텐츠 마지막 줄과 안 겹치게 확보한다. .scr-main은 모든 화면이 공유하는 단일 래퍼라(화면별로
-   따로 못 준다), 필터창(.scr-filter-panel)까지 있는 화면은 검색창 위에 필터창(모바일 66px)이
-   한 줄 더 쌓여 스택 전체 높이가 더 큰데도 이 예약분은 검색창 단독 기준(62px)이라, 필터가 있는
-   화면(경기/전적통계/랭킹/회원/게임아이디 등 대부분)에서는 목록 마지막 줄이 그 차이만큼 필터창
-   뒤에 가려졌다(실제로 지적받은 문제) — 필터창 높이+스택 내부 간격(66px+8px)을 더해 필터가
-   있는 화면 기준으로 넉넉하게 예약한다(필터가 없는 화면은 그만큼 여백만 조금 더 남을 뿐 문제
-   없다). */
+   따로 못 준다), 예전엔 이 예약분을 고정값(검색창만 62px, 필터창까지 있으면 156px 기준으로
+   퉁쳐서 항상 156px)으로 뒀는데, 그러면 알약 자체가 스크롤로 숨어도(탭바처럼) 예약 공간은
+   그대로 남아 화면 아래쪽을 다 못 썼다(요청: "탭바가 가려진 경우... 화면 최하단까지 전부
+   활용했으면"). SearchFilterBar.tsx가 지금 화면에 필요한 만큼을 --mobile-filterstack-space로
+   실시간 발행하므로 그 변수를 그대로 쓴다 — 알약이 숨어 있으면 0이 돼 바닥까지 다 쓸 수 있다.
+   fallback(156px)은 JS가 아직 값을 못 채운 첫 렌더에서만 쓰인다(필터 있는 화면 기준의
+   안전한 최댓값이라 콘텐츠가 알약 뒤에 가려지는 최악의 경우는 없다). */
 @media (max-width: 640px) {
-  .scr-main { padding-bottom: calc(20px + 62px + 74px + env(safe-area-inset-bottom, 0px)); }
+  .scr-main {
+    padding-bottom: calc(var(--mobile-filterstack-space, 156px) + env(safe-area-inset-bottom, 0px));
+    /* 알약/탭바와 같은 지속시간으로 맞춰, 여백이 접힐 때 콘텐츠 마지막 줄이 뚝 끊기지
+       않고 같이 부드럽게 내려온다. */
+    transition: padding-bottom .28s ease-in-out;
+  }
 }
 
 

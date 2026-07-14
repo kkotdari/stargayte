@@ -383,6 +383,19 @@ export default function SearchFilterBar({
   // 항상 보인다. 인라인 style로 매번 명시해서 정하며, PC는 애초에 고정 배치가 아니라
   // 문서 흐름 안에 있어 이 스타일을 적용하면 안 되므로 isMobileFloat일 때만 넣는다.
   const mobileVisible = stackFocused || (!tabBarHidden && nearTop);
+  // .scr-main의 하단 padding(이 알약과 안 겹치게 마지막 줄을 미리 띄워두는 예약분)이
+  // 예전엔 "필터창이 있는 화면 기준"으로 고정돼 있어서, 알약 자체가 스크롤로 숨어도
+  // (탭바처럼) 그 예약 공간은 그대로 남아 화면 아래쪽이 실제로는 다 안 쓰이고 놀았다
+  // (요청: "탭바가 가려진 경우 사파리나 PWA에서 화면 최하단까지 전부 활용했으면
+  // 좋겠는데"). 지금 이 화면(활성 인스턴스)이 실제로 필요로 하는 예약량을 그때그때
+  // CSS 변수로 발행해서, .scr-main이 알약과 정확히 같은 순간에 여백을 접었다 펼 수
+  // 있게 한다 — 검색창만 있으면 82px(20+62), 필터창까지 있으면 156px(82+66+8), 알약
+  // 자체가 숨어 있으면 0.
+  useEffect(() => {
+    if (!isMobileFloat || !isVisible) return;
+    const reserved = mobileVisible ? (filterPanel ? 156 : 82) : 0;
+    document.documentElement.style.setProperty("--mobile-filterstack-space", `${reserved}px`);
+  }, [isMobileFloat, isVisible, mobileVisible, !!filterPanel]);
   const stackEl = (
     <div
       className="scr-filter-float-stack"
