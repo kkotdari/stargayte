@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Avatar from "../../components/common/Avatar";
 import { Spinner } from "../../components/common/Feedback";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
@@ -10,6 +11,7 @@ import TeamMatchesModal from "../../modals/TeamMatchesModal";
 import { useAppStore } from "../../store/appStore";
 import { api } from "../../api/client";
 import { cx } from "../../utils/format";
+import { attachPopover } from "../../utils/popover";
 import { challengeDateGroupLabel, challengeTimeLabel, fmt, isToday } from "../../utils/date";
 import { activeMemberSearchTerms, memberMatchesTerm, splitSearchTerms } from "../../utils/memberSearch";
 import type { Challenge, ChallengeTarget, Member } from "../../types";
@@ -75,6 +77,68 @@ function groupChallengesByDate(list: Challenge[]): ChallengeDateGroup[] {
   return groups;
 }
 
+// 한마디/응답 메시지 — 카드에서는 2줄로 잘리는데(global.css .scr-challenge-side-message),
+// 길면 그 이상 읽을 방법이 없었다(요청: "너나와 카드에서 한줄 메시지가 잘리거든? 마우스오버/
+// 클릭시 리플레이 툴팁같은 단순한 창으로 팝오버로 전체메시지를 다 볼수 있게 해줘") —
+// ReplayLocationHint와 같은 패턴(attachPopover + 바깥 클릭/포커스이동 시 닫힘)으로 클릭하면
+// 전체 텍스트를 팝오버로 보여준다. 내용이 없으면(자리만 예약하는 빈 칸) 그대로 정적인 div로
+// 둔다 — 누를 게 없는데 버튼처럼 보이면 안 된다.
+function ChallengeMessage({ text }: { text: string | null | undefined }) {
+  const [open, setOpen] = useState(false);
+  const anchorRef = useRef<HTMLButtonElement>(null);
+  const popRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open || !anchorRef.current || !popRef.current) return;
+    return attachPopover(anchorRef.current, popRef.current, { growFromAnchor: true, maxWidth: 280 });
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (anchorRef.current?.contains(t)) return;
+      if (popRef.current?.contains(t)) return;
+      setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onFocusIn = (e: FocusEvent) => {
+      const t = e.target as Node;
+      if (anchorRef.current?.contains(t)) return;
+      if (popRef.current?.contains(t)) return;
+      setOpen(false);
+    };
+    document.addEventListener("focusin", onFocusIn);
+    return () => document.removeEventListener("focusin", onFocusIn);
+  }, [open]);
+
+  if (!text) return <div className="scr-challenge-side-message"> </div>;
+  const quoted = `"${text}"`;
+
+  return (
+    <>
+      <button
+        type="button"
+        className="scr-challenge-side-message scr-challenge-side-message-btn"
+        ref={anchorRef}
+        onClick={() => setOpen((v) => !v)}
+        title="전체 메시지 보기"
+      >
+        {quoted}
+      </button>
+      {open && createPortal(
+        <div className="scr-challenge-msg-pop" ref={popRef}>{quoted}</div>,
+        document.body,
+      )}
+    </>
+  );
+}
+
 type SideMember = { id: string; nickname: string; avatar: string | null };
 
 // 팀 구성 한 편(도전자편/상대편)을 세로로 쌓는다(요청: "각팀을 세로로 배치") — 1:1이든
@@ -105,19 +169,13 @@ function ChallengeSide({
             {/* 메시지 유무와 무관하게 항상 이 자리를 차지해야, 상대가 여럿일 때 어떤 사람은
                 메시지가 있고 어떤 사람은 없어도 줄이 들쭉날쭉하지 않는다(요청: "메시지
                 있건 없건 예약 자리 차지하게하기"). */}
-            {targets && (
-              <div className="scr-challenge-side-message">
-                {t?.target.responseMessage ? `"${t.target.responseMessage}"` : " "}
-              </div>
-            )}
+            {targets && <ChallengeMessage text={t?.target.responseMessage} />}
           </div>
         );
       })}
       {/* 도전자편의 한마디는 팀원 전체가 아니라 도전자 본인 몫이라 팀 전체 아래에 한 번만
           붙인다(요청: "한줄 메시지는 아래줄 도전자 프사 아래로 이동"). */}
-      {message !== undefined && (
-        <div className="scr-challenge-side-message">{message ? `"${message}"` : " "}</div>
-      )}
+      {message !== undefined && <ChallengeMessage text={message} />}
     </div>
   );
 }

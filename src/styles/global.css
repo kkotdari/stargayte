@@ -4498,6 +4498,23 @@ body *::-webkit-scrollbar-corner { background: transparent; }
     width: 180px; flex: 0 0 auto; margin-left: auto;
   }
 }
+/* 한마디가 2줄로 잘려서 더 못 읽던 문제 — 누르면 리플레이 위치 팝오버(ReplayLocationHint)와
+   같은 방식(attachPopover)으로 전체 텍스트를 보여준다(요청: "너나와 카드에서 한줄
+   메시지가 잘리거든? 마우스오버/클릭시 리플레이 툴팁같은 단순한 창으로 팝오버로
+   전체메시지를 다 볼수 있게 해줘"). 버튼이지만 겉모습은 원래 .scr-challenge-side-message
+   div와 완전히 같아야 하므로(폭/잘림/폰트 전부 그대로 물려받는다) 버튼 기본 스타일만
+   지우고 새로 얹지 않는다 — 커서와 살짝의 hover 반응만 추가해 "누를 수 있다"는 힌트를 준다. */
+.scr-challenge-side-message-btn {
+  background: transparent; border: none; padding: 0; margin: 0; text-align: inherit;
+  font: inherit; color: inherit; cursor: pointer;
+}
+.scr-challenge-side-message-btn:hover { color: var(--text); }
+.scr-challenge-msg-pop {
+  z-index: 210; background: var(--panel-solid); border: 1px solid var(--line); border-radius: var(--radius-sm);
+  padding: 10px 12px; box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+  font-style: italic; font-size: 13px; color: var(--text); line-height: 1.4;
+  white-space: pre-wrap; word-break: break-word;
+}
 .scr-challenge-card-actions { display: flex; justify-content: center; gap: 8px; }
 .scr-challenge-inbox-body .scr-form-actions { justify-content: center; }
 /* 승락(핑크)/거절(검정) 버튼 — 로그인 버튼과 같은 필(pill) 래디우스. */
