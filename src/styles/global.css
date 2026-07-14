@@ -2207,15 +2207,10 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   /* 모바일만 진짜로 하단 탭바 위에 고정 배치한다(요청: "탭바에서 살짝 띄워서" — 다만
      탭바가 항상 떠 있는 지금은 그 간격을 이전(14px)보다 좁혀 8px로). */
   .scr-filter-float-stack {
-    /* 필터 줄은 위, 검색 줄은 아래 — 아이콘 도입 전과 같은 위치 그대로 세로로 쌓는다
-       (요청: "아이콘이 위아래로 배치가 아니라 옆으로 배치됐잖아... 아이콘 도입하기
-       전처럼 위 아래로 놔달라고 그래야 펼쳐졌을때 그 위치 그대로 나올거 아니야") —
-       각 줄(.scr-filter-search-collapsible)은 접혀 있든 펼쳐져 있든 오른쪽 끝에
-       붙는다(align-items로 교차축인 가로쪽을 오른쪽 정렬).
-       (요청: "위치는 현재 필터창/검색위치에서 우측 정렬"). */
     /* 왼손 유저가 많아 알약을 왼쪽으로 정렬한다(요청: "필터/검색 아이콘을 왼쪽에
        배치(왼손유저가 많은거 같음)") — 접힌 아이콘도, 펼쳐진 창의 전환 아이콘도 전부
-       왼쪽 가장자리에 붙는다. */
+       왼쪽 가장자리에 붙는다. 줄은 하나뿐이지만(필터/검색이 한 줄에서 교체된다)
+       기존 구조를 유지해 column으로 둔다. */
     flex-direction: column; align-items: flex-start;
     /* 컨텐츠(.scr-main, 좌우 16px)와 정확히 같은 폭으로 맞췄더니 컨텐츠 가장자리와 딱
        붙어 떠 있는 필터/검색 알약이 화면 폭을 꽉 채운 것처럼 뻑뻑해 보였다(실제로
@@ -2225,11 +2220,11 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
        카드와 똑같은 여백(16px)까지 다시 넓힌다(요청: "모바일 검색필터창 너비 더
        넓게"). */
     position: fixed; left: 16px; right: 16px; z-index: 45; margin: 0 auto;
-    /* 접혔을 때 비어 보이는 왼쪽 공간도 이 컨테이너 자신의 박스(left/right로 꽉 찬 폭)
+    /* 접혔을 때 비어 보이는 나머지 공간도 이 컨테이너 자신의 박스(left/right로 꽉 찬 폭)
        안에 있어서, 그 빈 자리에서 시작한 터치 스크롤까지 이 엘리먼트가 가로채 씹혔다
        (실제로 지적받은 문제 — "접혔을때 원래 펼쳐있었던 부분에 터치스크롤이 안됨") —
        이 바깥 껍데기는 항상 통과시키고, 실제로 보이는 내용을 담은 안쪽 줄
-       (.scr-filter-search-collapsible, 인라인 style로 auto/none을 직접 켠다)만 클릭을
+       (.scr-filter-search-row, 인라인 style로 auto/none을 직접 켠다)만 클릭을
        받게 한다. */
     pointer-events: none;
     /* --mobile-tabbar-visible-h는 useHideOnScrollDown이 탭바가 숨겨질 때마다 0px로,
@@ -2248,8 +2243,8 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
        바뀔 때 순간 이동이 아니라 부드럽게 따라가게 한다(안 그러면 값이 바뀌는 순간
        뚝 끊겨 옮겨간다 — 실제로 지적받은 문제 "키보드보다 검색창이 먼저 내려와서
        정신없는 문제"의 절반은 이 transition 부재 때문이었다). 숨기고 나올 때의 opacity/
-       transform 트랜지션은 이제 이 바깥 껍데기가 아니라 안쪽 줄(.scr-filter-search-
-       collapsible)에 걸려 있다 — 위 pointer-events 주석 참고. */
+       transform 트랜지션은 이제 이 바깥 껍데기가 아니라 안쪽 줄(.scr-filter-search-row)
+       에 걸려 있다 — 위 pointer-events 주석 참고. */
     transition: bottom .18s ease-out;
   }
   /* 보임/숨김은 탭바와 똑같이 html의 scr-scroll-hide 클래스를 그대로 따라간다(요청:
@@ -2258,87 +2253,68 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
      인라인 style(opacity/transform/pointerEvents)로 넣는다. 제자리에서 작아지며
      흐려지는 모양(scale, 요청: "필터창 검색창은 제자리에서 축소되며 흐려짐")은 그대로
      유지한다. */
-  /* 필터/검색 내용 자체(펼침/접힘)는 안쪽 .scr-filter-search-collapsible이 담당 —
-     너비만 트랜지션해 접힌 아이콘 쌍에서 펼쳐진 필터창/검색창으로(또는 그 반대로)
-     오른쪽 끝을 고정한 채 왼쪽으로 늘어나거나 줄어드는 것처럼 보이게 한다(요청:
-     "왼쪽으로 늘어나며... 트랜스폼" / "아이콘으로 트랜스폼되며 숨겨짐"). */
-  .scr-filter-search-collapsible {
-    display: flex;
-    overflow: hidden;
-    /* 패널(배경+모서리 반경) 자신은 이 엘리먼트 하나가 계속 들고 있어서 트랜지션 내내
-       화면에서 사라지지 않는다(요청: "숨기더라도 패널자체는 유지하고 안의 요소만
-       숨겨야지") — 안의 내용은 .scr-filter-search-content가 따로 페이드한다. 폭과
-       모서리 반경(원→둥근모서리 사각형)을 같은 빠르기로 부드럽게(요청: "좀더 부드럽게
-       트랜지션되면 좋겠구") 늘리거나 줄인다.
-       (요청: "왼쪽으로 늘어나며... 트랜스폼" / "아이콘으로 트랜스폼되며 숨겨짐"). */
-    transition:
-      width .22s cubic-bezier(0.4, 0, 0.2, 1),
-      border-radius .22s cubic-bezier(0.4, 0, 0.2, 1),
-      background-color .22s cubic-bezier(0.4, 0, 0.2, 1),
-      opacity .28s ease-in-out, transform .28s ease-in-out;
+  /* 필터/검색 내용 자체(접힘/필터/검색 교체)는 안쪽 .scr-filter-search-row가 담당한다
+     — 아이콘과 창이 별도 개체라 크기 트랜스폼 없이 빠른 크로스페이드로 교체된다. */
+  /* 필터/검색 줄 — 아이콘(원)과 활성화된 창(캡슐)이 별도 개체로 나란히 놓인다(요청:
+     "아이콘과 활성화된 창은 별도 개체야 구분되어야하고"). 줄 자신은 배경 없이 자리만
+     잡고, 스크롤 숨김의 페이드/축소(인라인 style의 opacity/transform)만 담당한다. */
+  .scr-filter-search-row {
+    display: flex; align-items: center;
+    transition: opacity .28s ease-in-out, transform .28s ease-in-out;
   }
-  /* 접힘/필터 상태 배경 — 펼쳐진 필터창(.scr-filter-panel)과 같은 반투명 글라스 톤.
-     이제 알약이 한 줄뿐이라 두 클래스는 줄이 아니라 "지금 보여주는 상태"를 뜻한다 —
-     필터↔검색 교체 시 위 transition의 background-color가 색을 부드럽게 넘긴다. */
+  /* 안쪽 내용은 상태 교체(접힘↔필터↔검색) 때 아주 빠르게 페이드아웃 → 교체 → 페이드인
+     된다(요청: "아주 빠르게") — SearchFilterBar.tsx의 useAnimatedPanel이 이 opacity를
+     인라인 style로 직접 넣는다. gap이 접힌 아이콘 두 개 사이의 "살짝 갭"(요청)이자
+     펼쳐졌을 때 아이콘 원과 창 캡슐 사이의 간격이다. */
+  .scr-filter-search-row-inner {
+    display: flex; align-items: center; gap: 8px; width: 100%;
+    transition: opacity .08s ease-out;
+  }
+  /* 아이콘 원/창 캡슐의 배경 — 아이콘 모양과 색은 원래(각자 줄이던 시절)대로 유지한다
+     (요청: "아이콘 모양과 색은 원래대로 유지"): 필터=반투명 글라스, 검색=흰 인풋색. */
   /* backdrop-filter(블러)는 뒤에 깔린 배경 내용에 따라 샘플링 결과가 달라져서, 좁을
      때(아이콘)와 넓을 때(펼친 필터창)의 실제 보이는 색이 미묘하게 달라 보였다(실제로
      지적받은 문제 — "아이콘과 펼쳤을때 색이 오묘하게 달라 똑같이 통일") — 블러 없이
      불투명도만 살짝 올린 단색 배경으로 바꿔 크기/위치와 무관하게 항상 같은 색으로
      보이게 한다. */
-  .scr-filter-search-collapsible-filter { background: rgba(255,255,255,0.62); }
-  /* 검색창 상태 배경 — 펼쳐진 검색창(.scr-list-search-input)과 같은 흰색을 그대로
-     유지한다(요청: "검색은 흰색 인풋창 색 그대로 유지"). */
-  .scr-filter-search-collapsible-search { background: #ffffff; }
+  .scr-fs-shell-filter { background: rgba(255,255,255,0.62); }
+  .scr-fs-shell-search { background: #ffffff; }
   /* 그림자 없이는 라이트 테마(배경도 밝음)에서 거의 구분이 안 됐다(실제로 지적받은
      문제 — "라이트모드에선 그림자가 없어서 아예 구분이 잘 안돼") — 그림자 대신 얇은
-     테두리로 구분감을 준다(테두리는 border-radius를 정확히 따라가서 그림자처럼
-     사각형으로 비칠 걱정이 없다). 다크 테마는 배경(어두운 화면) 대비만으로 이미
-     충분해 그대로 둔다. */
-  .scr-light-theme .scr-filter-search-collapsible-filter,
-  .scr-light-theme .scr-filter-search-collapsible-search {
+     테두리로 구분감을 준다. 다크 테마는 배경(어두운 화면) 대비만으로 이미 충분해
+     그대로 둔다. */
+  .scr-light-theme .scr-fs-shell-filter,
+  .scr-light-theme .scr-fs-shell-search {
     border: 1px solid rgba(16,21,26,0.14);
   }
-  /* 아이콘 ↔ 펼쳐진 창의 "안쪽 내용"만 아주 빠르게 페이드아웃 → (패널이 폭/반경을
-     바꾸는 동안 투명) → 페이드인 순서로 바뀐다(요청: "안의 내용 숨기고 패널 트랜스폼
-     안의 내용 보이기 순이야" + "아주 빠르게") — 패널 자체(위 -filter/-search 배경)는
-     이 안쪽 레이어와 무관하게 계속 그대로 보인다. SearchFilterBar.tsx의
-     useAnimatedPanel이 이 opacity를 인라인 style로 직접 넣는다. */
-  .scr-filter-search-content { width: 100%; height: 100%; transition: opacity .08s ease-out; }
-  .scr-filter-search-expand-wrap {
-    position: relative; width: 100%; height: 100%; min-width: 0;
-    display: flex; align-items: center;
+  /* 펼쳐진 창 캡슐 — 높이(50px)의 절반을 반경으로 줘 좌우가 정확히 반원이 된다(요청:
+     "필터/검색 패널 좌우를 반원모양으로 변경"). 왼쪽의 전환 아이콘 원이 한 자리(50px)를
+     차지하므로 창 자신은 남은 폭만 쓴다(flex:1). */
+  .scr-filter-search-panel {
+    flex: 1 1 0; min-width: 0; height: 50px; border-radius: 25px;
+    display: flex; align-items: center; overflow: hidden;
   }
-  /* 안쪽 필터창/검색창은 이제 배경/테두리/그림자를 스스로 그리지 않는다 — 그 역할은
-     위 shell(.scr-filter-search-collapsible-filter/-search)이 대신 맡아 트랜지션
-     내내 계속 보이는 패널 노릇을 한다. 안 그러면 안쪽 패널이 자기 배경을 또 그려서
-     shell 배경 위에 겹쳐 보인다(라이트 테마에서 특히 도드라졌던 문제 — "라이트
-     테마에서 펼쳤을때도 아까처럼 드랍쉐도우? 보이는듯 배경 음영"). */
-  /* 펼쳐진 창 왼쪽에 전환 아이콘(반대 기능)이 한 자리(50px)를 차지하므로, 창 자신은
-     남은 폭만 쓰도록 flex로 줄어들 수 있게 한다 — 아래 모바일 공통 규칙(.scr-filter-panel
-     의 flex: 0 0 auto; width: 100%)을 그대로 두면 아이콘 폭만큼 오른쪽으로 넘친다. */
-  .scr-filter-search-expand-wrap > .scr-filter-panel {
+  /* 안쪽 필터창/검색창은 배경/테두리/그림자를 스스로 그리지 않는다 — 그 역할은 캡슐
+     (.scr-filter-search-panel + shell 배경)이 대신 맡는다. 안 그러면 안쪽 패널이 자기
+     배경을 또 그려서 캡슐 배경 위에 겹쳐 보인다(라이트 테마에서 특히 도드라졌던 문제
+     — "라이트 테마에서 펼쳤을때도 아까처럼 드랍쉐도우? 보이는듯 배경 음영"). 아래
+     모바일 공통 규칙(.scr-filter-panel의 flex: 0 0 auto; width: 100%)을 그대로 두면
+     캡슐 밖으로 넘치므로 flex로 줄어들 수 있게 덮어쓴다. */
+  .scr-filter-search-panel > .scr-filter-panel {
     background: transparent; box-shadow: none; border: none;
     flex: 1 1 0; min-width: 0; width: auto;
   }
-  .scr-filter-search-expand-wrap .scr-search-filter-float .scr-list-search-input {
+  .scr-filter-search-panel .scr-search-filter-float .scr-list-search-input {
     background: transparent; box-shadow: none; border: none;
   }
   /* 접기 버튼은 없앴다 — 화면 아무 데나 터치하면 접힌다(요청: "접기버튼 삭제 화면
      터치로 접기 사용하면됨" — SearchFilterBar.tsx의 stackRef 바깥 pointerdown이
      이미 이 역할을 한다). */
-  /* 접힌 상태 — 필터/검색 아이콘 두 개를 수평으로 나란히, 사이에 살짝 갭(요청:
-     "접힐때는 필터 아이콘/검색 아이콘이 수평으로 나란히 배치 살짝 갭 주고"). 알약이
-     이제 왼쪽 정렬이라 아이콘도 왼쪽부터 붙인다. width:100%은 캡슐 폭(인라인 style)을
-     그대로 채우기 위함. */
-  .scr-filter-search-icons {
-    display: flex; justify-content: flex-start; gap: 8px; width: 100%; height: 100%;
-  }
   .scr-filter-search-icon-btn {
-    /* 필터창/검색창 둘 다 지금 50px 고정 높이라(위 .scr-filter-panel/.scr-list-search-input
-       참고) 그 값과 지름을 맞춘다. 배경은 이제 shell(위 -collapsible-filter/-search)이
-       채워주니 이 버튼 자신은 투명하게 아이콘 글리프만 담는다. */
-    flex-shrink: 0; width: 50px; height: 50px;
-    border: none; cursor: pointer; background: transparent;
+    /* 창 캡슐과 같은 50px 높이의 원 — 배경색은 기능별 shell 클래스(위 -filter/-search)가
+       입힌다. */
+    flex-shrink: 0; width: 50px; height: 50px; border-radius: 50%;
+    border: none; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
     color: #10151a;
     appearance: none; -webkit-appearance: none;
