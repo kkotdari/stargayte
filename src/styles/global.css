@@ -912,20 +912,17 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    놓이는 액션 버튼도 그대로 두면 타이틀보다 상대적으로 아래로 처져 보인다 — 같은 양만큼
    맞춰 올린다. */
 .scr-v2-toolbar-actions { grid-area: actions; display: flex; align-items: center; gap: 6px; transform: translateY(-6px); }
-/* PC 화면 폭 통일(위 --list-content-max 주석 참고) — 목록만 800px로 좁혀두면 타이틀/
-   버튼 줄・검색창・힌트 문구는 여전히 그 위 --content-max(1280px) 폭 그대로라 왼쪽
-   가장자리가 목록보다 훨씬 왼쪽에서 시작해 서로 안 맞아 보였다(요청: "컨텐츠폭을
-   제한한 만큼 다른 요소들: 타이틀, 버튼로우, 컨텐츠 힌트 문구 등도 그 줄에 맞게
-   옮겨줘야해") — 목록을 가진 화면마다(화면 루트에 붙은 전용 클래스로 범위를 좁힌다,
-   같은 .scr-v2-toolbar를 쓰는 이미지 설정 화면 등은 영향받지 않는다) 같은 폭으로
-   맞춘다. */
+/* PC 화면 폭 통일(위 --list-content-max 주석 참고) — 처음엔 목록 패널/타이틀줄/검색창/
+   힌트 문구를 화면마다 자식 요소 하나하나 따로 좁혔는데("PC에서 컨텐츠 영역을 800으로
+   맞추는 만큼 그냥 가장 바깥쪽 부분에서 프레임을 주면 될거 같은데 왜 하나하나
+   조정하는거야?" 요청대로) 그렇게 일일이 맞추다 보니 화면마다 미묘하게 어긋나는 지점이
+   계속 나왔다(요청: "PC에서 랭킹 카드 폭이 800에 안맞춰져") — 화면 루트(전용 클래스로
+   범위를 좁힌다, 같은 .scr-screen을 쓰는 이미지 설정 화면 등은 영향받지 않는다) 자체를
+   프레임으로 좁혀서 그 안의 모든 자식(타이틀/버튼줄/검색창/힌트/목록)이 자동으로 같은
+   폭을 물려받게 한다 — 이제 화면마다 안쪽 요소를 따로 맞출 필요가 없다. */
 @media (min-width: 641px) {
-  .scr-rank-screen-v2 .scr-v2-toolbar, .scr-rank-screen-v2 .scr-filter-bar, .scr-rank-screen-v2 .scr-rank-note,
-  .scr-match-screen-v2 .scr-v2-toolbar, .scr-match-screen-v2 .scr-filter-bar,
-  .scr-challenge-screen-v2 .scr-v2-toolbar, .scr-challenge-screen-v2 .scr-filter-bar,
-  .scr-members-screen-v2 .scr-v2-toolbar, .scr-members-screen-v2 .scr-filter-bar,
-  .scr-usermap-screen-v2 .scr-v2-toolbar, .scr-usermap-screen-v2 .scr-filter-bar, .scr-usermap-screen-v2 .scr-hint,
-  .scr-stats-screen-v2 .scr-v2-toolbar, .scr-stats-screen-v2 .scr-filter-bar, .scr-stats-screen-v2 .scr-hint {
+  .scr-rank-screen-v2, .scr-match-screen-v2, .scr-challenge-screen-v2,
+  .scr-members-screen-v2, .scr-usermap-screen-v2, .scr-stats-screen-v2 {
     max-width: var(--list-content-max); margin-left: auto; margin-right: auto; width: 100%;
   }
 }
@@ -1237,11 +1234,6 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    래퍼가 있어 아래쪽만 필요). */
 .scr-stats-list-panel-v2 .scr-stat-table-clip {
   border-top-left-radius: var(--radius); border-top-right-radius: var(--radius);
-}
-/* PC 화면 폭 통일(위 --list-content-max 주석 참고) — 표 자체는 원래도 가로 스크롤
-   (.scr-stat-table.scr-scroll)로 넘치는 칸을 감당하므로, 뷰포트만 좁아져도 문제없다. */
-@media (min-width: 641px) {
-  .scr-stats-list-panel-v2 { max-width: var(--list-content-max); margin: 0 auto; width: 100%; }
 }
 .scr-stats-min-plays-note { text-align: left; margin: 0; }
 /* 헤더 행 아래쪽 선은 행 자신의 border/box-shadow가 아니라, 이 행 위에 절대배치로 얹은
@@ -1645,14 +1637,6 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    목적이라 순위 숫자와 이름을 크게, 나머지는 부가정보로 작게 둔다. 행 전체를 누르면
    순위 상세(최근 순위 변동 그래프) 모달이 뜬다. v1 랭킹 화면(RankRow.tsx)은 그대로 둔다. */
 .scr-rank-table-panel-v2 { position: relative; }
-/* PC 화면 폭 통일(위 --list-content-max 주석 참고) — 랭킹 행(카드) 배경 자체를 가운데로
-   좁혀서 다른 화면의 리스트/카드와 같은 폭으로 맞춘다. 안의 .scr-rank-row-inner가 이미
-   더 좁은 고정폭(560px)으로 한 번 더 가운데 정렬돼 있는데, 그건 그대로 둔다 — 행의
-   호버 배경/구분선처럼 "카드 자체의 폭"과, 그 안 텍스트 그리드가 실제로 쓰는 폭은
-   서로 다른 관심사라 함께 안 묶는다. */
-@media (min-width: 641px) {
-  .scr-rank-table-panel-v2 { max-width: var(--list-content-max); margin: 0 auto; width: 100%; }
-}
 .scr-rank-table-panel-v2 .scr-rank-row {
   padding: 16px 24px;
 }
@@ -2484,11 +2468,6 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   color: var(--text); font-family: inherit; font-size: 16px; padding: 2px 0; line-height: 1;
 }
 .scr-search-chip-input::placeholder { color: var(--dim); font-size: 16px; }
-/* PC 화면 폭 통일(위 --list-content-max 주석 참고) — 경기 카드 목록도 다른 화면의
-   리스트/카드와 같은 폭으로 가운데에 좁힌다. */
-@media (min-width: 641px) {
-  .scr-match-list-panel-v2 { max-width: var(--list-content-max); margin: 0 auto; width: 100%; }
-}
 /* v2는 더 이상 타이틀+필터바가 카드 위에 sticky로 쌓이는 패널 구조가 아니다(디자인
    컨셉 변경 — 타이틀/필터바는 툴바로 빠지고 컨텐츠 프레임 자체가 없어짐) — 날짜 줄은
    스크롤하면 그 위에 쌓일 게 없으니 스크롤 컨테이너(#scroll-root) 맨 위에 바로 붙는다.
@@ -3933,10 +3912,6 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 }
 
 /* ===== 회원관리 (관리자 전용) ===== */
-/* PC 화면 폭 통일(위 --list-content-max 주석 참고). */
-@media (min-width: 641px) {
-  .scr-members-list-v2 { max-width: var(--list-content-max); margin: 0 auto; width: 100%; }
-}
 /* 목록 형태 — 각 행은 테두리 없이 얇은 구분선(border-bottom)만으로 나뉘는 연속된 표처럼
    보이게 한다(다른 v2 목록들과 같은 톤). */
 .scr-member-rows { display: flex; flex-direction: column; }
@@ -4134,10 +4109,6 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-usermap-kind-filter .scr-checkbox-field input:checked { background: #10151a; border-color: #10151a; }
 .scr-usermap-kind-filter .scr-checkbox-field input:checked::after { background-color: #ffffff; }
 .scr-usermap-table-v2 { display: flex; flex-direction: column; font-size: 15px; } /* 12.5px * 1.2 */
-/* PC 화면 폭 통일(위 --list-content-max 주석 참고). */
-@media (min-width: 641px) {
-  .scr-usermap-table-v2 { max-width: var(--list-content-max); margin: 0 auto; width: 100%; }
-}
 .scr-usermap-row {
   /* 게임아이디(첫 번째) 칸도 minmax가 아니라 고정폭으로 둔다 — 세로 구분선을 자식
      요소의 border-right가 아니라(행마다 개별 렌더링되는 별개 그리드라 안티에일리싱
@@ -4310,11 +4281,6 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 
 /* 목록 카드 */
 .scr-challenge-list { display: flex; flex-direction: column; gap: 12px; margin-top: 16px; }
-/* PC 화면 폭 통일(위 --list-content-max 주석 참고) — 카드 배경 자체를 가운데로 좁혀서
-   다른 화면의 리스트/카드와 같은 폭으로 맞춘다. */
-@media (min-width: 641px) {
-  .scr-challenge-list { max-width: var(--list-content-max); margin-left: auto; margin-right: auto; width: 100%; }
-}
 /* 다가오는/종료된 구획(요청: "다가오는/종료된 목록 분리 및 정렬") — 섹션 제목 하나 +
    그 아래 같은 형태의 카드 목록. */
 .scr-challenge-section { margin-top: 22px; }
@@ -4424,16 +4390,6 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    이 width 누락 때문이었다). width:100%를 명시해 실제 컨테이너 폭(최대 800px)까지
    항상 채우게 한다. */
 .scr-challenge-matchup { display: flex; align-items: flex-start; gap: 12px; width: 100%; }
-/* PC에서 매치업 내용을 카드 가운데로 몰아 좁혀보려 했지만(460px → 720px → 960px,
-   요청: "카드 가운데 몰려서 나오게 배치" → "컨텐츠 영역이 너무 좁아 훨씬 넓어도 돼" →
-   "한마디가 줄바꿈이 나와 예약 공간을 넓게" → "아직도 영역이 너무 좁아") 매번 좁다는
-   피드백이 이어져 한 번 폭 제한을 통째로 없앴는데, 그건 또 "제한 자체를 없애라는 게
-   아니라 완화해서 가운데 모여있되 글자가 충분히 보여지게" 하라는 뜻이었다 — 아예
-   없애는 대신 넉넉한 값(800px)으로 다시 가운데에 모은다. 모바일은 카드 자체가 이미
-   좁아 필요 없다. */
-@media (min-width: 641px) {
-  .scr-challenge-matchup { max-width: 800px; margin: 0 auto; }
-}
 /* 손가락은 팀 전체 블록(메시지까지 포함해 세로로 길어질 수 있는)의 한가운데가 아니라
    맨 윗줄(프사+닉네임 줄)에만 자리를 차지하면 된다(요청: "손가락 이모지는 윗 라인에만
    자리 차지하면 돼 — 구성원 첫 줄에만 이모지 들어가니까") — 그 줄의 프사 높이(24px)에
