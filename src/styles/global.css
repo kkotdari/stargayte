@@ -4595,13 +4595,11 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   border-radius: 4px; padding: 2px 7px; margin-bottom: 4px;
 }
 
-/* 응답대기중 카드의 마감 카운트다운(요청일+1일까지 남은 시간) — 한 줄, 옅은 톤. */
-.scr-challenge-countdown {
-  text-align: center; font-size: 12px; font-weight: 700; color: var(--dim); margin-top: 2px;
-}
-/* 이전 기록 페이지엔 해당 안 되는 내용이라 자리만 투명하게 남긴다 — 승리 배지와 같은
-   이유(위 .scr-challenge-side-win-hidden 참고). */
-.scr-challenge-countdown-hidden { visibility: hidden; }
+/* 응답대기중 카드의 마감 카운트다운(요청일+1일까지 남은 시간) — 별도 줄이 아니라 날짜
+   줄(.scr-challenge-card-when)에 다른 알약들과 나란히 낀다(요청: "마감 카운트다운은
+   날짜있는 맨 윗줄에 표시") — 그 줄 자체가 이미 flex-wrap 인라인 나열이라 새 줄을 만들지
+   않는다. */
+.scr-challenge-countdown { font-size: 12px; font-weight: 700; color: var(--dim); }
 
 /* 다시 신청/재대결로 이어진 기록임을 알리는 라벨 — 다시 신청은 옅은 톤, 재대결은 눈에 띄게
    포인트색으로 구분한다. 라벨에 공백이 있어("다시 신청") 좁은 카드에서 줄바꿈되지 않게 nowrap. */
@@ -4616,8 +4614,14 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    없는(대다수) 카드의 기본 여백은 다시 넉넉하게(6px→10px), 대신 페이징 버튼이 실제로
    뜨는 카드는 그 줄 자신의 음수 마진(.scr-challenge-page-nav-row-active)으로 따로
    당긴다. */
-.scr-challenge-card-body { display: flex; flex-direction: column; gap: 10px; }
+/* 이전/다음 버튼(26px)+간격(2px)이 매치업 앞에 항상 자리를 차지하면서, 그 아래 도전자
+   아바타의 실제 시작점이 카드 왼쪽 끝에서 이만큼 더 들어간 지점이 됐다 — 날짜 줄도 같은
+   변수로 왼쪽 여백을 맞춰 두 줄의 왼쪽 시작선이 서로 나란해지게 한다(요청: "시각 위치도
+   왼쪽을 도전자 아바타 시작점에 맞춰서 공간 마련" / "왼쪽 오른쪽 이동 버튼 부위는
+   카드 전체에서 예약해버리면 될듯"). */
+.scr-challenge-card-body { display: flex; flex-direction: column; gap: 10px; --scr-challenge-nav-inset: 28px; }
 .scr-challenge-card-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.scr-challenge-card-when { padding-left: var(--scr-challenge-nav-inset); }
 /* 매치업 — 도전자편/상대편을 나란히 두고 그 사이에 손가락을 하나만 둔다. 양쪽 다
    align-items:center인 이 flex 행 안에서 자연히 위아래 가운데로 온다(요청: "손가락
    이모티콘을 좀더 도전자와 상대 가운데 느낌에 배치") — 팀전이라 어느 한쪽이 세로로
@@ -4638,53 +4642,74 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    별개로 매치업 내용 자체를 좁게 다시 캡(560px)해서 카드 가운데로 모은다. */
 /* 페이징(다시 신청/재대결 체인) 카드 — 활성 페이지만 자연 높이로 렌더하고, 페이지를 넘길
    때 컨테이너 높이를 이전→새 높이로 부드럽게 모핑한다(요청: "높이는 달라져도 되는데 모핑
-   모션을 넣어서 하나의 체인임을 알게"). height는 JS(useLayoutEffect)가 실측값을 인라인으로
-   박고, 여기 transition이 그 변화를 애니메이션한다. 전환 중 큰 쪽이 잠깐 삐져나오지 않게
+   모션을 넣어서 하나의 체인임을 알게" → "지금보다 더 애니메이션이 눈에 띄게 패널이
+   모핑되게 해줘" — duration을 늘리고 살짝 오버슈트가 있는 이징으로 바꿔 모핑이 더
+   또렷하게 보이게 한다). height는 JS(useLayoutEffect)가 실측값을 인라인으로 박고, 여기
+   transition이 그 변화를 애니메이션한다. 전환 중 큰 쪽이 잠깐 삐져나오지 않게
    overflow:hidden. */
-.scr-challenge-pages { overflow: hidden; transition: height 0.28s cubic-bezier(0.22, 1, 0.36, 1); }
-/* 내용은 opacity로만 크로스페이드(페이드아웃→교체→페이드인) — 높이 모핑은 위 패널이
-   담당한다(요청: "내용은 페이드아웃 페이드인 하면 될거같구 패널만 모핑"). */
+.scr-challenge-pages { overflow: hidden; transition: height 0.42s cubic-bezier(0.34, 1.56, 0.64, 1); }
+/* 이전 내용은 트랜지션 없이 바로 사라지고(교체), 새 내용만 opacity로 페이드인한다 —
+   높이 모핑은 위 패널이 담당한다(요청: "페이지 이동시 현재 내용물 페이드아웃 제거하고
+   바로 사라지게 변경. 페이드인은 유지"). scr-challenge-page-entering은 JS가 딱 한
+   프레임만 걸어두는 "전환 없는 opacity:0" 상태 — 그다음 프레임에 이 클래스를 떼면 이
+   기본 규칙의 transition이 0→1로 자연스럽게 움직인다. */
 .scr-challenge-page {
   display: flex; flex-direction: column; gap: 10px; min-width: 0;
   opacity: 1; transition: opacity 0.15s ease;
 }
-.scr-challenge-page-out { opacity: 0; }
+.scr-challenge-page-entering { opacity: 0; transition: none; }
 @media (prefers-reduced-motion: reduce) {
   .scr-challenge-pages { transition: none; }
   .scr-challenge-page { transition: none; }
 }
-.scr-challenge-matchup { display: flex; align-items: flex-start; width: 100%; }
+/* 이전/다음 버튼 + 매치업을 한 줄에 나란히 둔다. 버튼은 이력이 없는(대다수) 카드에서도
+   항상 DOM에 그려지고 안 보일 때만 visibility:hidden으로 숨긴다(아래 .scr-challenge-
+   page-nav-hidden) — 그래야 매치업이 버튼 유무에 따라 서로 다른 폭으로 눌리지 않고
+   모든 카드에서 로스터/화살표가 항상 같은 자리에 온다(요청: "이동 버튼이 자리를
+   예약하지 못한듯.. 그래서 있을대 없을때 레이아웃이 다름"). visibility:hidden도 자기
+   자리는 그대로 차지하므로, 모든 카드가 버튼 높이만큼만 균일하게 커진다(요청: "이 세
+   요소는 높이를 차지하지 않게 해주고 버튼이 없는 경우 모든 카드의 크기가 동일하게
+   해줘"). */
+.scr-challenge-matchup-row { display: flex; align-items: center; gap: 2px; width: 100%; }
 @media (min-width: 641px) {
-  .scr-challenge-matchup { max-width: 560px; margin: 0 auto; }
+  .scr-challenge-matchup-row { max-width: 560px; margin: 0 auto; }
 }
+/* 버튼이 항상 자리를 차지하니, 카드 자신의 패딩(20px) 쪽으로 살짝 밀어내 매치업 내용을
+   덜 눌러 더 바깥쪽에 자리 잡게 한다(요청: "이동 화살표는 좀 더 바깥쪽에 공간을 예약" /
+   "특히 모바일에서 좌우에 이동버튼 넣을수 있게 공간을 좀 예약해놔야할거 같네") — PC는
+   이미 max-width로 가운데 캡이 걸려 있어 margin:0 auto와 충돌하지 않게 모바일 폭에서만
+   적용한다. */
+@media (max-width: 640px) {
+  .scr-challenge-matchup-row { margin: 0 -6px; }
+}
+/* min-width:0 — 버튼이 옆에 항상 자리를 차지하니 매치업이 그만큼 줄어들 수 있어야 한다. */
+.scr-challenge-matchup { display: flex; align-items: flex-start; width: 100%; min-width: 0; flex: 1 1 auto; }
 /* 손가락은 팀 전체 블록(메시지까지 포함해 세로로 길어질 수 있는)의 한가운데가 아니라
    맨 윗줄(프사+닉네임 줄)에만 자리를 차지하면 된다(요청: "손가락 이모지는 윗 라인에만
    자리 차지하면 돼 — 구성원 첫 줄에만 이모지 들어가니까") — 그 줄의 프사 높이(24px)에
    맞춰 그 안에서만 세로 가운데로 둔다. 모바일은 원래(균일 gap 12px)와 같은 간격을
    그대로 좌우 margin으로 유지한다 — 비대칭 간격은 PC 전용이다(요청: "pc만이야
    모바일은 아니야"). */
-/* 승리 배지(.scr-challenge-side-win)가 뜨는 카드는 양쪽 로스터 첫 줄이 배지 자리만큼
-   아래로 밀리므로, 화살표 앞에도 같은 투명 배지(.scr-challenge-side-win-hidden)를 넣어
-   같이 밀려야 첫 줄과 다시 나란해진다 — 좌우 여백은 화살표 자신이 아니라 이 바깥
-   래퍼가 담당한다. */
-.scr-challenge-arrow-col {
-  flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 6px;
+.scr-challenge-arrow-row {
+  flex-shrink: 0; display: flex; align-items: center; gap: 4px;
   margin-left: 12px; margin-right: 12px;
 }
 .scr-challenge-arrow {
   flex-shrink: 0; font-size: 17px; height: 24px; display: flex; align-items: center;
 }
-/* 상대편(target)이 도전자편보다 넓게 잡혀 있어서(flex 1.15 vs 1, 팀 인원 여러 명이
-   상대에 붙을 수 있어서다) 화살표가 왼쪽으로 치우쳐 보이던 시절엔 좌우 여백을 44/2로
-   비대칭으로 밀었지만, PC에서 양쪽 폭을 1:1로 되돌리고 도전자편 내용을 화살표 쪽으로
-   붙이면서(아래 .scr-challenge-side-row 오른쪽 정렬) 화살표가 자연히 정중앙에 온다 —
-   여백도 다시 대칭(기본 12px)으로 쓴다. */
+/* 승리 배지 — 매치업 위가 아니라 손 이모지 옆, 이긴 편이 있는 방향에 붙인다(요청: "승리
+   배지는 손 이모지 옆에 표시(이긴쪽에)"). 응답 상태 알약(.scr-challenge-pill)만 알약
+   모양을 유지하고, 이 배지는 둥근네모로(요청: "배지는 알약모양이 아닌 둥근네모 형태면
+   좋겠어 — 응답 상태만 알약 모양 배지 유지"). */
+.scr-challenge-inline-win {
+  flex-shrink: 0; font-size: 11px; font-weight: 800; color: #ec6ea8; white-space: nowrap;
+  padding: 1px 6px; border-radius: 6px; border: 1px solid rgba(236, 110, 168, 0.5);
+}
+/* 해당 안 되는 쪽(진 편/결과 없음)에도 같은 자리를 투명하게 남긴다 — 안 그러면 페이지를
+   넘길 때 배지 유무에 따라 손 이모지가 좌우로 흔들린다(요청: "손이모지 양옆에도
+   승리/무승부 배지 넣을 공간 예약해야함"). */
+.scr-challenge-inline-win-hidden { visibility: hidden; }
 
-/* 재신청 체인 슬라이드 UI(요청: "재신청하면 원래건은 종료되고 새로운 도전 행이
-   만들어져... 화면에서는 좌우로 슬라이드되게 구성하는거야") — 이력이 없는(재신청
-   한 번도 안 된) 보통의 카드에는 이 요소들 자체가 렌더링 안 되니 기존 카드 모양에
-   영향이 없다. "이전 기록 n/n" 알약은 화살표+점으로 이미 위치가 드러나 굳이 텍스트로
-   또 안 밝힌다(요청: "이전 기록 n/n 알약은 없어도 될듯"). */
 /* 결과 보기 — 별도 버튼 줄 대신 시간 옆에 텍스트 링크로(요청: "결과보기 버튼은 시간
    옆에 텍스트로 배치해서 레이아웃 공간 차지하지 않게 하자") — 확정된 카드만 이
    자리를 더 차지하는 일이 없어져 카드 높이가 항상 같아진다. margin-left:auto로 시간
@@ -4695,52 +4720,22 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   text-decoration: underline dotted; text-underline-offset: 3px;
 }
 .scr-challenge-result-link:hover { color: var(--text); }
-/* 재신청 이력 탐색 — 스와이프(제스처) 없이 화살표/점 버튼으로만 한다(요청: "대결 카드
-   슬라이드로 넘기기는 삭제하고 버튼이나 페이징으로만 이동"). 매치업 위에 겹쳐 뜨던
-   화살표가 한 줄로 줄어든 한마디와 겹쳐서(요청: "좌우 버튼을 좀 더 아래쪽에 배치(지금
-   한줄메시지랑 겹침)") 매치업 아래 한 줄로(화살표-점-화살표) 옮긴다. min-height —
-   이력 없는(재신청 안 된) 카드는 이 줄 자체가 안 뜨는 빈 자리인데, 그래도 이력 있는
-   카드와 높이가 같아야 목록 스크롤이 안 흔들린다(요청: "아래 페이징 점이 있고 없고에
-   따라 레이아웃이 흔들리지 않게 해줘(높이 동일해야함 항상)"). */
-/* 요청: "버튼 크기는 더 키우고 아래 여백 줄여야 페이징 없을때와 높이가 같을듯?" →
-   "페이징 + 페이징 아래 여백 == 페이징 없을때 아래 전체 여백" — 페이징이 없을 때
-   이 줄은 내용이 비어 0px지만, .scr-challenge-card-body의 gap이 위/아래로 각각
-   또 붙어 결국 "빈 줄 하나 몫"만큼 여백이 이중으로 잡혔다. min-height를 없애
-   빈 상태를 최대한 0에 가깝게 접고, margin-top을 음수로 줘서 위쪽 gap 일부를
-   상쇄한다 — 페이징이 있을 때 버튼이 차지하는 높이가 곧 "원래 있던 여백 자리"를
-   대신 채우는 느낌이 되도록. */
-/* 재신청 이력 탐색 화살표 줄 — 대결카드 기본 하단 여백은 늘리고(이 줄이 비어있는
-   대다수 카드), 실제로 51px 버튼이 뜨는 카드만(.scr-challenge-page-nav-row-active)
-   음수 마진으로 바짝 당긴다. 간격(gap)은 "더 벌리기" 요청과 "카드를 벗어나는듯"
-   요청 사이에서 20px로 절충 — PC(560px까지 넓은 매치업)에선 여유 있지만, 좁은
-   모바일 카드에서 51px 버튼 두 개 + 넓은 간격은 카드 폭을 넘어설 수 있어 아래
-   모바일 전용 규칙으로 버튼 자체를 40px로 줄인다. */
-.scr-challenge-page-nav-row { display: flex; align-items: center; justify-content: center; gap: 20px; min-width: 0; }
-/* 요청: "대결 카드 페이징 있는 경우 하단 패딩 살짝만 더" — 아래쪽 음수 마진을
-   -18px→-12px로 완화해 다음 요소와 살짝 더 떨어지게 한다. 위쪽은 매치업과 너무 붙어
-   (원래 -14px면 카드바디 gap(10px)과 합쳐 실제로는 겹칠 정도로 좁았다) 보기 안
-   좋다는 요청("페이지네이션 부분과 컨텐츠 사이에 갭을 좀더 늘려줘")으로 0으로 되돌려
-   카드바디 기본 gap(10px)만큼 정상적으로 떨어지게 한다. */
-.scr-challenge-page-nav-row-active { margin: 0 0 -12px; }
+/* 이전 기록 탐색 — 페이지네이션(점) 없이 이전/다음 버튼만 매치업 좌우 양쪽에 붙인다(요청:
+   "페이징을 양쪽에 표시(페이징은 아니고 이전 다음 버튼만 있는것)"). 원형이 아니라
+   둥근네모로(요청: "카드 내의 버튼들도" 둥근네모). 모든 카드에서 항상 자리를 차지하는
+   요소가 됐으니(위 .scr-challenge-matchup-row 주석 참고) 폭을 크게 뺏지 않도록
+   작게(요청: "이동버튼이 폭을 너무 많이 차지함"). */
 .scr-challenge-page-nav {
   display: flex; align-items: center; justify-content: center;
-  width: 51px; height: 51px; border-radius: 50%; flex-shrink: 0;
+  width: 26px; height: 26px; border-radius: 7px; flex-shrink: 0;
   background: transparent; border: none; color: var(--dim); cursor: pointer;
 }
 .scr-challenge-page-nav:hover { color: var(--text); background: rgba(var(--overlay-rgb), 0.1); }
-.scr-challenge-page-nav:disabled { opacity: 0.25; cursor: default; }
-.scr-challenge-page-nav:disabled:hover { background: transparent; }
-@media (max-width: 480px) {
-  .scr-challenge-page-nav-row { gap: 14px; }
-  .scr-challenge-page-nav { width: 40px; height: 40px; }
-  .scr-challenge-page-nav svg { width: 22px; height: 22px; }
-}
-.scr-challenge-page-dots { display: flex; align-items: center; justify-content: center; gap: 6px; }
-.scr-challenge-page-dot {
-  width: 6px; height: 6px; border-radius: 50%; padding: 0; border: none;
-  background: rgba(var(--overlay-rgb), 0.25); cursor: pointer;
-}
-.scr-challenge-page-dot-active { background: var(--point); }
+/* 첫/마지막 페이지 또는 이력이 아예 없는 카드 — 회색 비활성화가 아니라 자리만 남기고
+   안 보이게 한다(요청: "버튼 무조건 표시하고 비활성화가 아니라 필요없을땐
+   안나와야해(페이지 없을때나 맨앞/맨뒤 페이지 등)"). visibility:hidden도 레이아웃
+   자리는 그대로 차지해 매치업 폭/카드 높이는 항상 똑같이 유지된다. */
+.scr-challenge-page-nav-hidden { visibility: hidden; }
 
 /* 도전자편/상대편 한 칸 — 인원이 하나든(1:1) 여럿이든(팀전) 항상 세로로 쌓는다(요청:
    "각팀을 세로로 배치"). */
@@ -4750,18 +4745,6 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    닉네임 최대한 나오게"). 처음엔 4:6까지 벌렸다가 이번엔 도전자편이 너무 좁아져(요청:
    "이제 모바일에서 도전자쪽이 너무 좁아") 격차를 완만하게 줄였다. */
 .scr-challenge-side { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
-/* 결과가 입력된 대결에서 이긴 편 구성원 바로 위에 다는 배지 — 결과 입력 폼의 승리
-   배지(.scr-challenge-result-team-win)와 같은 톤. 시간줄의 텍스트 알약만으로는 매치업을
-   봤을 때 어느 편이 이겼는지 바로 안 보여서(요청: "승리 라는 배지를 해당 팀 위에
-   배치해주면 좋을듯해"). */
-.scr-challenge-side-win {
-  align-self: flex-start;
-  font-size: 11px; font-weight: 800; color: #ec6ea8;
-  padding: 1px 7px; border-radius: 999px; border: 1px solid rgba(236, 110, 168, 0.5);
-}
-/* 진 편(또는 결과 없음)에도 같은 자리를 투명하게 남겨야 이긴 편만 한 줄 더 생겨
-   양쪽 로스터 줄이 서로 밀리는 정렬 깨짐이 없다. */
-.scr-challenge-side-win-hidden { visibility: hidden; }
 /* 모바일은 상대편이 요소(응답 알약)가 더 많아 폭을 조금 더 준다 — PC는 아래 미디어
    쿼리에서 1:1 대칭으로 되돌린다(양쪽이 화살표를 가운데 두고 마주 보는 배치라 폭이
    같아야 화살표가 정확히 중앙에 온다). */
@@ -4776,6 +4759,23 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    유지)고, 유저 검색에 걸리면 경기결과 로스터(.scr-team-player-highlight)와 똑같은
    반전색으로 프사까지 함께 칠한다(요청: "랭킹, 너 나와 유저 검색시 하이라이팅 추가 단!
    닉네임뿐 아니라 프사까지 하이라이팅 주고 경기 하이라이트랑 똑같은 css"). */
+/* 응답 배지 — 옆에 텍스트 알약 대신 프사에 겹쳐 작게 그린다(요청: "응답 배지는
+   수락/거절/대기 세개로 통일하고 아바타에 겹쳐서 표시" → "수락 거절 대기 글자
+   배지로 해줘 작고 진하게" — 아이콘이 아니라 글자, 진한 단색). 프사 아래쪽 가운데에
+   살짝 겹쳐 걸친다 — 글자라 아이콘보다 폭이 넓어 모서리 원형 배지로는 다 못 담는다.
+   카드 자체가 반투명 글라스라 배지 테두리에 카드와 같은 고정 배경색을 쓸 수 없어(뒤에
+   뭐가 비치는지 알 수 없다), 테마별 오버레이 톤(--overlay-rgb, 다크=흰색/라이트=검정)
+   으로 옅은 링만 둘러 아바타와 분리한다. */
+.scr-challenge-avatar-wrap { position: relative; display: inline-flex; line-height: 0; flex-shrink: 0; }
+.scr-challenge-avatar-badge {
+  position: absolute; left: 50%; bottom: -5px; transform: translateX(-50%);
+  font-size: 8px; font-weight: 900; line-height: 1; white-space: nowrap; color: #fff;
+  padding: 1.5px 3px; border-radius: 4px;
+  box-shadow: 0 0 0 1.5px rgba(var(--overlay-rgb), 0.85), 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+.scr-challenge-avatar-badge-accepted { background: var(--win); }
+.scr-challenge-avatar-badge-rejected { background: var(--loss); }
+.scr-challenge-avatar-badge-pending { background: #6b7178; }
 .scr-challenge-person { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
 .scr-challenge-person-hit {
   background: var(--highlight-bg); border-radius: 4px;
@@ -4828,12 +4828,16 @@ body *::-webkit-scrollbar-corner { background: transparent; }
      아이템은 왼쪽 정렬(justify-items:start)한다. 한마디가 프사 줄보다 길면 트랙이
      왼쪽으로 넓어지며 프사 줄 오른쪽에 닉네임 몫의 빈 공간이 살짝 남는데, 그건 감수
      하기로 했다(요청: "도전자쪽이 닉네임 예약 공간때문에 살짝 남는건 괜찮아"). */
-  /* 트랙 폭이 글자 길이와 무관하게 고정(150px)이라 도전자/상대 영역 위치가 모든 카드
-     에서 동일해진다(요청: "도전자와 상대 영역은 사이즈가 모든 카드에서 동일하고 위치도
-     동일해야해 지금은 글자 길이에 따라 달라지고 있어") — 예전 max-content는 내용 길이
-     만큼 트랙이 늘었다 줄어 위치가 흔들렸다. 긴 이름/한마디는 말줄임으로 처리한다. */
+  /* 트랙 폭이 글자 길이와 무관하게 고정(원래 150px)이라 도전자/상대 영역 위치가 모든
+     카드에서 동일해진다(요청: "도전자와 상대 영역은 사이즈가 모든 카드에서 동일하고
+     위치도 동일해야해 지금은 글자 길이에 따라 달라지고 있어") — 예전 max-content는 내용
+     길이만큼 트랙이 늘었다 줄어 위치가 흔들렸다. 긴 이름/한마디는 말줄임으로 처리한다.
+     화살표 옆에 승/무 배지 자리(.scr-challenge-inline-win, 항상 예약돼 있음)가 생기면서
+     로스터와 화살표 사이 간격이 그만큼 넓어졌는데, 한마디는 그 늘어난 간격만큼 폭을
+     안 넓혀 괜히 일찍 잘렸다(요청: "한줄메시지는 승무 배지자리까지 포함해서 폭 확보") —
+     트랙을 배지 자리+간격만큼(약 30px) 늘린다. */
   .scr-challenge-side:not(.scr-challenge-side-target) {
-    display: grid; grid-template-columns: 150px;
+    display: grid; grid-template-columns: 180px;
     justify-content: end; justify-items: start; row-gap: 6px;
   }
   .scr-challenge-side:not(.scr-challenge-side-target) .scr-challenge-person { max-width: 100%; }

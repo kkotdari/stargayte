@@ -74,23 +74,16 @@ const resultLabel = (result: ChallengeResult): string =>
   : result === "draw" ? "무승부"
   : "미실시";
 
-type PillTone = "pending" | "accepted" | "rejected" | "done" | "muted";
+type PillTone = "pending" | "accepted" | "rejected";
 
-// 상대 한 명의 응답 알약 — 개별 response뿐 아니라 카드 전체의 파생 상태까지 함께 봐서
-// 문구를 정한다. 예: 팀전에서 한 명이 거절하면 그 순간 전체가 rejected로 끝나버리는데,
-// 아직 응답을 안 한 나머지 상대는 raw response가 여전히 "pending"이라 그대로 "대기"라고
-// 보여주면 마치 아직 진행 중인 것처럼 헷갈린다 — 그럴 땐 "무응답"으로 구분한다.
-function targetPillInfo(t: ChallengeTarget, overall: ChallengeDisplayStatus): { label: string; tone: PillTone } {
-  if (overall === "canceled") return { label: "취소", tone: "muted" };
-  if (t.response === "accepted") return overall === "done" ? { label: "완료", tone: "done" } : { label: "수락", tone: "accepted" };
-  // 거절 중에서도 사람이 직접 거절한 건(한마디 있음)은 "거절", 서버 배치가 마감 경과로
-  // 확정한 무응답거절(한마디 없음)은 "무응답거절"로 라벨만 가른다 — 둘 다 빨강. UI에서
-  // 직접 거절할 땐 항상 한마디를 필수로 받으므로 "한마디 없는 거절 = 무응답"이 성립한다.
-  if (t.response === "rejected") {
-    return t.responseMessage ? { label: "거절", tone: "rejected" } : { label: "무응답거절", tone: "rejected" };
-  }
-  if (overall === "rejected") return { label: "무응답", tone: "muted" };
-  return { label: "응답대기중", tone: "pending" };
+// 상대 한 명의 응답 배지 — 완료/무응답거절/무응답처럼 세분화된 라벨은 텍스트 알약일 때나
+// 의미가 있었지, 아바타에 겹쳐 그리는 작은 배지에서는 다 못 읽는다(요청: "응답 배지는
+// 수락/거절/대기 세개로 통일하고 아바타에 겹쳐서 표시") — 완료는 수락에, 무응답거절/
+// 무응답(카드 전체가 거절로 끝나 이 사람 응답이 의미 없어진 경우)은 거절에 합친다.
+function targetPillInfo(t: ChallengeTarget, overall: ChallengeDisplayStatus): { tone: PillTone } {
+  if (t.response === "accepted") return { tone: "accepted" };
+  if (t.response === "rejected" || overall === "rejected" || overall === "canceled") return { tone: "rejected" };
+  return { tone: "pending" };
 }
 
 interface ChallengeDateGroup {
@@ -180,7 +173,7 @@ type SideMember = { id: string; nickname: string; avatar: string | null };
 // 팀 구성 한 편(도전자편/상대편)을 세로로 쌓는다(요청: "각팀을 세로로 배치") — 1:1이든
 // 팀전이든 모양은 같고, 인원이 하나든 여럿이든 그냥 줄 수만 늘어난다.
 function ChallengeSide({
-  people, message, targets, highlightMemberIds, won, showResultSlot,
+  people, message, targets, highlightMemberIds,
 }: {
   people: SideMember[];
   message?: string;
@@ -188,34 +181,30 @@ function ChallengeSide({
   // 유저 검색에 걸린 사람 — 경기결과 로스터와 같은 반전색으로 프사+닉네임을 함께 칠한다
   // (요청: "랭킹, 너 나와 유저 검색시 하이라이팅 추가 단! 닉네임뿐 아니라 프사까지").
   highlightMemberIds?: Set<string>;
-  // 결과가 입력된 대결에서 이 편이 승리팀이면 카드 위(시간줄의 텍스트 알약)뿐 아니라
-  // 실제 구성원 바로 위에도 배지를 달아 한눈에 보이게 한다(요청: "승리 라는 배지를
-  // 해당 팀 위에 배치해주면 좋을듯해").
-  won?: boolean;
-  // 결과가 입력된 대결이면 이긴 편이 아니어도 배지 자리를 투명하게(visibility:hidden)
-  // 남겨야, 이긴 편만 배지가 붙어 한쪽 줄만 아래로 밀리는 정렬 깨짐이 안 생긴다(요청:
-  // "승리 배지로 인해 레이아웃이 깨졌어 줄이 안맞아").
-  showResultSlot?: boolean;
 }) {
   return (
     <div className={cx("scr-challenge-side", targets && "scr-challenge-side-target")}>
-      {showResultSlot && (
-        <span className={cx("scr-challenge-side-win", !won && "scr-challenge-side-win-hidden")}>승리</span>
-      )}
       {people.map((p, i) => {
         const t = targets?.[i];
+        const tone = t ? targetPillInfo(t.target, t.overall).tone : null;
         return (
           <div key={p.id} className="scr-challenge-side-block">
             <div className="scr-challenge-side-row">
               <span className={cx("scr-challenge-person", highlightMemberIds?.has(p.id) && "scr-challenge-person-hit")}>
-                <Avatar member={p} size={24} />
+                <span className="scr-challenge-avatar-wrap">
+                  <Avatar member={p} size={24} />
+                  {/* 응답 배지 — 수락/거절/대기 세 가지로만 구분하고, 옆에 텍스트 알약
+                      대신 프사에 겹쳐 작게 그린다(요청: "응답 배지는 수락/거절/대기
+                      세개로 통일하고 아바타에 겹쳐서 표시" → "수락 거절 대기 글자
+                      배지로 해줘 작고 진하게" — 아이콘 대신 글자, 작고 진한 색으로). */}
+                  {tone && (
+                    <span className={cx("scr-challenge-avatar-badge", `scr-challenge-avatar-badge-${tone}`)}>
+                      {tone === "accepted" ? "수락" : tone === "rejected" ? "거절" : "대기"}
+                    </span>
+                  )}
+                </span>
                 <span className="scr-challenge-person-name">{p.nickname}</span>
               </span>
-              {t && (
-                <span className={cx("scr-challenge-pill", `scr-challenge-pill-${targetPillInfo(t.target, t.overall).tone}`)}>
-                  {targetPillInfo(t.target, t.overall).label}
-                </span>
-              )}
             </div>
             {targets && <ChallengeMessage text={t?.target.responseMessage} />}
             {/* 도전자편 한마디는 팀 전체 아래가 아니라 실제로 쓴 사람 — 도전자 본인,
@@ -320,24 +309,26 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
   const timeLabelOf = (p: ChallengePage, latest: boolean): string =>
     latest ? (challengeTimeLabel(p.scheduledAt) ?? "시간 미정") : formatChallengeSchedule(p.scheduledAt);
 
-  // 페이지를 넘길 때: 내용은 페이드아웃→페이드인(크로스페이드), 패널은 높이만 모핑한다
-  // (요청: "내용은 페이드아웃 페이드인 하면 될거같구 패널만 모핑"). renderedIndex(지금 실제로
-  // 보여주는 페이지)를 pageIndex(넘기려는 목표)와 분리해서, 먼저 현재 내용을 흐리게
-  // (contentOut) 지운 뒤 목표 페이지로 바꾸고 다시 나타낸다. 높이는 지금 보여주는 페이지
-  // 기준으로 실측해 인라인으로 박고 CSS transition이 이전→새 높이로 모핑한다.
+  // 페이지를 넘길 때: 이전 내용은 바로 사라지고(페이드아웃 없음) 새 내용만 페이드인,
+  // 패널은 높이만 모핑한다(요청: "페이지 이동시 현재 내용물 페이드아웃 제거하고 바로
+  // 사라지게 변경. 페이드인은 유지"). renderedIndex를 pageIndex로 즉시 바꿔 내용을
+  // 곧바로 교체하고, entering을 한 프레임 뒤 꺼서(no-transition 상태 → 있음) opacity가
+  // 0에서 1로 트랜지션하게 만든다. 높이는 지금 보여주는 페이지 기준으로 실측해
+  // 인라인으로 박고 CSS transition이 이전→새 높이로 모핑한다.
   const pagesInnerRef = useRef<HTMLDivElement>(null);
   const [pagesHeight, setPagesHeight] = useState<number | undefined>(undefined);
   const [renderedIndex, setRenderedIndex] = useState(pageIndex);
-  const [contentOut, setContentOut] = useState(false);
+  const [entering, setEntering] = useState(false);
   useEffect(() => {
     if (pageIndex === renderedIndex) return;
-    setContentOut(true);
-    const t = setTimeout(() => {
-      setRenderedIndex(pageIndex);
-      setContentOut(false);
-    }, 150);
-    return () => clearTimeout(t);
+    setRenderedIndex(pageIndex);
+    setEntering(true);
   }, [pageIndex, renderedIndex]);
+  useEffect(() => {
+    if (!entering) return;
+    const raf = requestAnimationFrame(() => setEntering(false));
+    return () => cancelAnimationFrame(raf);
+  }, [entering]);
   useLayoutEffect(() => {
     const inner = pagesInnerRef.current;
     if (!inner) return;
@@ -466,15 +457,6 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
     }
   };
 
-  // 무승부/미실시는 특정 팀이 이긴 게 아니라 배지를 달 대상이 없다 — 이 경우엔 양쪽 다
-  // 배지 자리를 아예 안 만든다(자리만 차지하고 둘 다 안 보이는 건 의미가 없다). 이 카드의
-  // "어느" 페이지가 아니라 체인 전체(pages) 기준으로 판단한다 — 지금 보는 페이지에만
-  // 결과가 있으면, 결과 없는 이전 기록 페이지로 넘길 때마다 배지 자리가 없어져 카드
-  // 높이가 들쭉날쭉해진다(요청: "페이징 있는 경우 다른 페이지들의 카드들도 똑같은
-  // 높이여야 보기 좋을거 같구") — 체인 어느 한 페이지라도 결과가 있으면 모든 페이지에서
-  // 자리를 똑같이 예약해 페이지를 넘겨도 높이가 안 변한다.
-  const hasTeamResult = pages.some((p) => p.resultWinnerSide === "creator" || p.resultWinnerSide === "target");
-
   // 요청자쪽 인원(본인+같은 편) — 도전자/팀 구성은 체인 내내 그대로라 페이지와 무관하게 고정.
   const creatorSideMembers: SideMember[] = [
     { id: challenge.createdBy.id, nickname: challenge.createdBy.nickname, avatar: creatorMember?.avatar ?? null },
@@ -495,13 +477,18 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
       <div className="scr-challenge-card-body">
         {/* 내용은 페이드아웃→페이드인(scr-challenge-page-out 토글), 패널은 높이만 모핑(위
             useLayoutEffect가 실측 높이를 인라인으로 박고 CSS transition이 애니메이션)한다
-            (요청: "내용은 페이드아웃 페이드인 하면 될거같구 패널만 모핑"). 이긴 편은 매치업의
-            해당 팀 위에 "승리" 배지로 표시한다. */}
+            (요청: "내용은 페이드아웃 페이드인 하면 될거같구 패널만 모핑"). 마감 카운트다운/
+            승리 배지/페이지 이전·다음 버튼은 전부 이미 있는 줄(날짜 줄, 화살표 옆, 매치업
+            양옆)에 끼워 넣어 새 줄을 만들지 않는다 — 버튼이 없는 카드는 모두 똑같은 높이가
+            되고, 버튼이 있는 카드만(51px 원형→둥근네모 버튼이 매치업 줄 자체를 키운다)
+            어쩔 수 없이 커진다(요청: "이 세 요소는 높이를 차지하지 않게 해주고 버튼이
+            없는 경우 모든 카드의 크기가 동일하게 해줘"). 그 차이는 위 높이 모핑 애니메이션이
+            그대로 흡수한다. */}
         <div
           className="scr-challenge-pages"
           style={pagesHeight !== undefined ? { height: pagesHeight } : undefined}
         >
-          <div ref={pagesInnerRef} className={cx("scr-challenge-page", contentOut && "scr-challenge-page-out")}>
+          <div ref={pagesInnerRef} className={cx("scr-challenge-page", entering && "scr-challenge-page-entering")}>
             <div className="scr-challenge-card-row scr-challenge-card-when">
               {timeLabelOf(activePage, shownLatest)}
               {/* 체인 라벨 — 이 기록이 다시 신청/재대결로 만들어진 것이면 어느 쪽인지 표시. */}
@@ -510,10 +497,17 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
                   {activePage.chainKind === "revenge" ? "재대결" : "다시 신청"}
                 </span>
               )}
-              {/* 이긴 편은 매치업의 해당 팀 위에 배지로 표시하니, 여기선 팀을 특정할 수
+              {/* 이긴 편은 매치업의 화살표 옆에 배지로 표시하니, 여기선 팀을 특정할 수
                   없는 무승부/미실시만 알약으로 남긴다(요청: "도전자편 승 이런 건 제거"). */}
               {(activePage.resultWinnerSide === "draw" || activePage.resultWinnerSide === "not_held") && (
                 <span className="scr-challenge-pill scr-challenge-pill-done">{resultLabel(activePage.resultWinnerSide)}</span>
+              )}
+              {/* 마감 카운트다운 — 별도 줄 대신 날짜가 있는 이 맨 윗줄에 끼운다(요청: "마감
+                  카운트다운은 날짜있는 맨 윗줄에 표시"). 응답대기중은 항상 최신 페이지에서만
+                  해당하니 다른 페이지에는 자리를 예약할 필요가 없다(이 줄은 원래도 페이지마다
+                  내용이 들쑥날쑥한 줄이라 굳이 안 맞춰도 된다). */}
+              {shownLatest && challenge.status === "pending" && (
+                <span className="scr-challenge-countdown">{responseDeadlineLabel(challenge.createdAt)}</span>
               )}
               {/* 결과 보기는 결과가 입력된 뒤에만 뜬다(요청: "결과보기는 결과 입력후에만 보이고"). */}
               {shownLatest && challenge.resultWinnerSide !== null && (
@@ -523,71 +517,70 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
               )}
             </div>
 
-            <div className="scr-challenge-matchup">
-              <ChallengeSide
-                people={creatorSideMembers} message={activePage.message} highlightMemberIds={highlightMemberIds}
-                won={activePage.resultWinnerSide === "creator"} showResultSlot={hasTeamResult}
-              />
-              {/* 승리 배지가 생기면 로스터 첫 줄이 배지만큼 밀리므로, 화살표 앞에도 같은
-                  배지 자리(투명)를 넣어 같이 밀리게 한다(요청: "손 이모지 위치가 거기가 아니지"). */}
-              <span className="scr-challenge-arrow-col">
-                {hasTeamResult && (
-                  <span className="scr-challenge-side-win scr-challenge-side-win-hidden" aria-hidden="true">승리</span>
-                )}
-                <span className="scr-challenge-arrow" aria-hidden="true">👉🏻</span>
-              </span>
-              <ChallengeSide
-                people={targetSideMembers} targets={activeTargetInfos} highlightMemberIds={highlightMemberIds}
-                won={activePage.resultWinnerSide === "target"} showResultSlot={hasTeamResult}
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className={cx("scr-challenge-page-nav-row", pages.length > 1 && "scr-challenge-page-nav-row-active")}>
-          {pages.length > 1 && (
-            <>
+            {/* 이전 기록 탐색 — 페이지네이션(점) 대신 이전/다음 버튼만 매치업 좌우 양쪽에
+                붙인다(요청: "페이징을 양쪽에 표시(페이징은 아니고 이전 다음 버튼만 있는것)").
+                버튼은 이력이 없는 카드에서도, 그리고 첫/마지막 페이지에서도 항상 같은
+                자리를 차지하고 필요 없을 때만 투명하게(visibility:hidden) 처리한다 —
+                비활성화(회색)로만 두면 여전히 보여서, "필요없을땐 안나와야해(페이지
+                없을때나 맨앞/맨뒤 페이지 등)"라는 요청과도, 자리를 안 차지하면 카드마다
+                로스터/화살표 위치가 어긋난다는 문제("이동 버튼이 자리를 예약하지 못한듯..
+                그래서 있을대 없을때 레이아웃이 다름")와도 둘 다 맞는다. */}
+            <div className="scr-challenge-matchup-row">
               <button
-                type="button" className="scr-challenge-page-nav scr-challenge-page-nav-prev"
+                type="button"
+                className={cx("scr-challenge-page-nav scr-challenge-page-nav-prev", pageIndex === 0 && "scr-challenge-page-nav-hidden")}
                 onClick={() => setPageIndex((i) => i - 1)} disabled={pageIndex === 0}
                 aria-label="이전 기록 보기"
               >
-                <ChevronLeft size={30} />
+                <ChevronLeft size={18} />
               </button>
-              <div className="scr-challenge-page-dots">
-                {pages.map((p, i) => (
-                  <button
-                    key={p.id} type="button"
-                    className={cx("scr-challenge-page-dot", i === pageIndex && "scr-challenge-page-dot-active")}
-                    onClick={() => setPageIndex(i)}
-                    aria-label={`${i + 1}번째 기록 보기`}
-                  />
-                ))}
+              <div className="scr-challenge-matchup">
+                <ChallengeSide people={creatorSideMembers} message={activePage.message} highlightMemberIds={highlightMemberIds} />
+                {/* 승/무 배지 — 이긴 편 쪽으로(손 이모지 기준 이긴 편이 있는 방향에) 붙인다
+                    (요청: "승리배지는 손 이모지 옆에 표시(이긴쪽에)"). 자리가 좁아 "승리"
+                    대신 한 글자만(요청: "좁아서 그냥 승/무 한글자 배지로 표시해야할듯").
+                    무승부는 어느 한쪽 편이 아니라 양쪽 다 표시한다. 양쪽 다 자리를 항상
+                    예약해 두고 해당 안 되는 쪽만 투명하게(visibility:hidden) — 안 그러면
+                    페이지를 넘길 때 배지 유무에 따라 손 이모지가 좌우로 흔들린다(요청:
+                    "손이모지 양옆에도 승리/무승부 배지 넣을 공간 예약해야함"). */}
+                <span className="scr-challenge-arrow-row">
+                  <span
+                    className={cx(
+                      "scr-challenge-inline-win",
+                      activePage.resultWinnerSide !== "creator" && activePage.resultWinnerSide !== "draw"
+                        && "scr-challenge-inline-win-hidden",
+                    )}
+                  >
+                    {activePage.resultWinnerSide === "draw" ? "무" : "승"}
+                  </span>
+                  <span className="scr-challenge-arrow" aria-hidden="true">👉🏻</span>
+                  <span
+                    className={cx(
+                      "scr-challenge-inline-win",
+                      activePage.resultWinnerSide !== "target" && activePage.resultWinnerSide !== "draw"
+                        && "scr-challenge-inline-win-hidden",
+                    )}
+                  >
+                    {activePage.resultWinnerSide === "draw" ? "무" : "승"}
+                  </span>
+                </span>
+                <ChallengeSide people={targetSideMembers} targets={activeTargetInfos} highlightMemberIds={highlightMemberIds} />
               </div>
               <button
-                type="button" className="scr-challenge-page-nav scr-challenge-page-nav-next"
+                type="button"
+                className={cx(
+                  "scr-challenge-page-nav scr-challenge-page-nav-next",
+                  pageIndex === pages.length - 1 && "scr-challenge-page-nav-hidden",
+                )}
                 onClick={() => setPageIndex((i) => i + 1)} disabled={pageIndex === pages.length - 1}
                 aria-label="다음 기록 보기"
               >
-                <ChevronRight size={30} />
+                <ChevronRight size={18} />
               </button>
-            </>
-          )}
+            </div>
+          </div>
         </div>
       </div>
-
-      {/* 응답대기중 카드의 마감 카운트다운(요청: "카운트 다운 필요해!") — 요청일+1일까지
-          남은 시간을 한 줄로 심플하게. 마감이 지나면 서버 배치가 무응답거절로 바꾸므로
-          여기 뜨는 동안은 항상 남은 시간이 있다. 응답대기중은 항상 최신 페이지에서만
-          해당하는 상태라, 이전 기록 페이지에서는 이 줄 자체가 없어져 페이지를 넘길
-          때마다 카드 높이가 또 달라졌다(요청: "응답 마감시간 이것때문에도 차이가
-          생겨") — 승리 배지와 같은 방식으로, 최신 페이지가 응답대기중이면 다른
-          페이지에도 자리를 투명하게 남긴다. */}
-      {challenge.status === "pending" && (
-        <div className={cx("scr-challenge-countdown", !isLatestPage && "scr-challenge-countdown-hidden")}>
-          {responseDeadlineLabel(challenge.createdAt)}
-        </div>
-      )}
 
       {err && <div className="scr-err">{err}</div>}
 
