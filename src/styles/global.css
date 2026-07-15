@@ -1900,7 +1900,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    닉네임 글자만 칠하던 것에서 프사까지 함께 덮는다(요청: "닉네임뿐 아니라 프사까지
    하이라이팅 주고 경기 하이라이트랑 똑같은 css") — 구성원 칸(프사+닉네임) 전체를 감싼다. */
 .scr-team-rank-member-hit {
-  background: var(--highlight-bg); border-radius: 0;
+  background: var(--highlight-bg); border-radius: 4px;
   padding: 2px 4px; margin: -2px -4px;
 }
 .scr-team-rank-member-hit .scr-team-rank-name { color: var(--bar-text); font-weight: 800; }
@@ -1908,11 +1908,12 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    프사와 닉네임이 격자의 이웃 칸이라, 프사 칸의 배경을 칸 사이 간격(column-gap)만큼
    오른쪽으로 더 늘려 닉네임 배경과 한 띠로 이어지게 한다. */
 .scr-rank-row-hit .scr-rank-avatar-btn {
-  background: var(--highlight-bg); border-radius: 0;
+  background: var(--highlight-bg); border-radius: 4px 0 0 4px;
   padding: 2px 14px 2px 4px; margin: -2px -14px -2px -4px;
 }
 .scr-rank-row-hit .scr-rank-name {
   background: var(--highlight-bg); color: var(--bar-text); font-weight: 800;
+  border-radius: 0 4px 4px 0;
   padding: 2px 4px; margin: -2px -4px;
 }
 .scr-team-rank-stats { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; justify-self: end; }
@@ -2784,7 +2785,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    막대 그래프 숫자와 같은 고정 어두운 색(--bar-text)을 쓴다 — 다크 테마 기본 글자색(밝은
    회백색)을 그대로 두면 이 배경 위에서 거의 안 보인다. */
 .scr-team-player-highlight {
-  background: var(--highlight-bg); border-radius: 0;
+  background: var(--highlight-bg); border-radius: 4px;
   padding: 2px 4px; margin: -2px -4px;
 }
 .scr-team-player-highlight .scr-team-name { font-weight: 800; color: var(--bar-text); }
@@ -4713,7 +4714,7 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    닉네임뿐 아니라 프사까지 하이라이팅 주고 경기 하이라이트랑 똑같은 css"). */
 .scr-challenge-person { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
 .scr-challenge-person-hit {
-  background: var(--highlight-bg); border-radius: 0;
+  background: var(--highlight-bg); border-radius: 4px;
   padding: 2px 4px; margin: -2px -4px;
 }
 .scr-challenge-person-hit .scr-challenge-person-name { color: var(--bar-text); font-weight: 800; }
