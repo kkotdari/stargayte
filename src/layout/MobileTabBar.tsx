@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import AdminMenu from "./AdminMenu";
 import { cx } from "../utils/format";
 import { visibleNavMenuItems } from "../constants/menuVersions";
-import { scrollRootTo } from "../utils/scrollRoot";
+import { smoothScrollRootToTop } from "../utils/scrollRoot";
 import { cancelKeyboardScrollRestore } from "../hooks/useRestoreScrollOnKeyboardClose";
 import type { ScreenKey } from "../types";
 
@@ -120,14 +120,14 @@ export default function MobileTabBar({ screen, menuOpen, isAdmin, effectiveVersi
   // click 이벤트를 아예 발생시키지 않는 경우가 있었다(실제로 지적받은 문제 — "필터창
   // 검색창 열린상태에서 탭바 버튼 클릭시 닫힘+메뉴이동"이 첫 탭에 안 됨). pointerdown은
   // 그 어떤 레이아웃 변화보다 먼저 발생하므로 첫 탭에 항상 동작한다. 같은 탭이면 맨
-  // 위로 — smooth 대신 즉시 이동한다(요청: "액티브탭 클릭시 최상단으로 가기가 바로
-  // 안됨" — iOS는 관성 스크롤 중 프로그램적 smooth 스크롤을 무시하기도 해서, 확실하게
-  // 바로 올라가는 instant로 바꾼다). 어느 쪽이든 실행 전에 키보드 닫힘 복원(useRestore-
-  // ScrollOnKeyboardClose)을 취소한다 — 안 그러면 150ms 뒤 복원이 방금 옮긴 스크롤을
-  // 이전 위치로 도로 되돌려버린다.
+  // 위로 — 네이티브 smooth(iOS 관성 스크롤과 겹치면 무시됨, "바로 안됨" 문제)도
+  // instant(순간이동이라 어지러움, 요청: "스크롤탑시 좀 부드럽게 올라가기")도 아닌,
+  // rAF로 직접 굴리는 짧은 감속 애니메이션을 쓴다(smoothScrollRootToTop). 어느 쪽이든
+  // 실행 전에 키보드 닫힘 복원(useRestoreScrollOnKeyboardClose)을 취소한다 — 안 그러면
+  // 150ms 뒤 복원이 방금 옮긴 스크롤을 이전 위치로 도로 되돌려버린다.
   const activate = (key: ScreenKey) => {
     cancelKeyboardScrollRestore();
-    if (screen === key) scrollRootTo({ top: 0, behavior: "instant" });
+    if (screen === key) smoothScrollRootToTop();
     else onNavigate(key);
   };
   // pointerdown으로 이미 처리한 탭이 만들어내는 후속 click은 무시한다 — click 경로는

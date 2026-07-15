@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ArrowUp } from "lucide-react";
-import { addScrollListener, getScrollTop, scrollRootTo } from "../../utils/scrollRoot";
+import { addScrollListener, getScrollTop, smoothScrollRootToTop } from "../../utils/scrollRoot";
 
 const SHOW_AFTER_PX = 400;
 
@@ -20,7 +20,9 @@ export default function ScrollTopButton() {
     <button
       type="button"
       className="scr-scrolltop"
-      onClick={() => scrollRootTo({ top: 0, behavior: "smooth" })}
+      // 네이티브 behavior:"smooth"는 iOS에서 관성 스크롤과 겹치면 무시되는 일이 있어
+      // 탭바의 액티브 탭 재탭과 같은 rAF 애니메이션으로 통일한다.
+      onClick={() => smoothScrollRootToTop()}
       aria-label="맨 위로"
     >
       <ArrowUp size={22} />
