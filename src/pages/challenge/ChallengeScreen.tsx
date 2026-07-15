@@ -17,6 +17,7 @@ import {
   monthInputToRange, pad,
 } from "../../utils/date";
 import { activeMemberSearchTerms, memberMatchesTerm, splitSearchTerms } from "../../utils/memberSearch";
+import { suppressScrollHide } from "../../utils/scrollRoot";
 import type { Challenge, ChallengeResult, ChallengeSide, ChallengeStatus, ChallengeTarget, Member } from "../../types";
 
 // 실제 서버 status(pending/confirmed/rejected/canceled) 외에, 화면에서만 판단하는 파생
@@ -977,6 +978,10 @@ export default function ChallengeScreen() {
     const el = nextCardRef.current;
     if (!el) return;
     didAutoScrollRef.current = true;
+    // 이 자동 스크롤이 "아래로 스크롤 = 숨김"으로 오인돼 탭바/필터·검색 아이콘이 같이
+    // 숨던 문제를 막는다(요청: "next 대결 자동 스크롤하면서 탭바와 아이콘 숨겨지는 문제
+    // 해결") — 부드러운 스크롤이 끝날 때까지 숨김 판정을 잠깐 억제한다.
+    suppressScrollHide();
     el.scrollIntoView({ block: "start" });
   }, [loading, nextChallengeId]);
 

@@ -3155,9 +3155,12 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   .scr-chip-x { padding: 0; }
   .scr-team-slot { min-height: 40px; }
   .scr-header-inner { padding: 12px 16px; gap: 12px; }
-  /* 좌우 패딩을 살짝 줄여 카드/목록이 조금 더 넓게 쓰게 한다(요청: "모바일 좌우 패딩
-     살짝 축소"). */
-  .scr-main { padding: 30px 12px 48px; }
+  .scr-main { padding: 30px 16px 48px; }
+  /* 너나와 카드 좌우 내부 패딩 축소(요청: "모바일 좌우 패딩은 메인이 아니라 너나와 카드
+     내부 패딩"). 예전엔 이 패딩 안에 좌우 이동 버튼(절대배치)이 들어가야 해서 넓게
+     뒀는데(24px), 이동 버튼을 카드 하단 바로 옮긴 뒤로는 그럴 필요가 없어졌다 — 좁혀서
+     로스터/메시지가 더 넓게 쓰게 한다. */
+  .scr-challenge-card { padding-left: 16px; padding-right: 16px; }
   /* 모바일은 타이틀 줄과 그 아래 컨텐츠(필터/목록) 사이 간격이 PC보다 더 헐렁하게
      느껴진다는 피드백 — 툴바 자체 여백(padding-bottom)과 .scr-screen의 형제간 gap을
      모바일에서만 줄인다. */

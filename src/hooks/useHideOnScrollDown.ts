@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { addScrollListener, getScrollMetrics } from "../utils/scrollRoot";
+import { addScrollListener, getScrollMetrics, isScrollHideSuppressed } from "../utils/scrollRoot";
 
 // 아래로 스크롤하면 하단 탭바(+ 헤더/플로팅 필터·검색창)를 숨기고, 위로 스크롤하거나
 // 맨 위/맨 아래에 있으면 보여준다(요청: "아래로 스크롤시: 탭바 숨겨짐 / 위로 스크롤시:
@@ -26,6 +26,14 @@ export function useHideOnScrollDown(screen: string): boolean {
     lastScrollTopRef.current = getScrollMetrics().scrollTop;
     const onScroll = () => {
       const { scrollTop, clientHeight, scrollHeight } = getScrollMetrics();
+      // 프로그램(자동) 스크롤 중엔 숨김 판정을 건너뛴다 — 위치/누적만 최신으로 맞춰 두어,
+      // 억제가 끝난 뒤 첫 사용자 스크롤에서 갑자기 큰 delta로 튀지 않게 한다(요청: "next
+      // 대결 자동 스크롤하면서 탭바와 아이콘 숨겨지는 문제 해결").
+      if (isScrollHideSuppressed()) {
+        lastScrollTopRef.current = scrollTop;
+        accumRef.current = 0;
+        return;
+      }
       const atEdge = scrollTop <= EDGE_PX || scrollTop + clientHeight >= scrollHeight - EDGE_PX;
       const delta = scrollTop - lastScrollTopRef.current;
       lastScrollTopRef.current = scrollTop;
