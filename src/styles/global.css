@@ -4733,10 +4733,15 @@ body *::-webkit-scrollbar-corner { background: transparent; }
      아이템은 왼쪽 정렬(justify-items:start)한다. 한마디가 프사 줄보다 길면 트랙이
      왼쪽으로 넓어지며 프사 줄 오른쪽에 닉네임 몫의 빈 공간이 살짝 남는데, 그건 감수
      하기로 했다(요청: "도전자쪽이 닉네임 예약 공간때문에 살짝 남는건 괜찮아"). */
+  /* 트랙 폭이 글자 길이와 무관하게 고정(150px)이라 도전자/상대 영역 위치가 모든 카드
+     에서 동일해진다(요청: "도전자와 상대 영역은 사이즈가 모든 카드에서 동일하고 위치도
+     동일해야해 지금은 글자 길이에 따라 달라지고 있어") — 예전 max-content는 내용 길이
+     만큼 트랙이 늘었다 줄어 위치가 흔들렸다. 긴 이름/한마디는 말줄임으로 처리한다. */
   .scr-challenge-side:not(.scr-challenge-side-target) {
-    display: grid; grid-template-columns: minmax(0, max-content);
+    display: grid; grid-template-columns: 150px;
     justify-content: end; justify-items: start; row-gap: 6px;
   }
+  .scr-challenge-side:not(.scr-challenge-side-target) .scr-challenge-person { max-width: 100%; }
   /* 한마디가 있으면 실제 그리드 아이템은 span을 감싼 버튼(.scr-challenge-side-message-btn)
      이고, 없으면(빈 자리) div(.scr-challenge-side-message) 그 자신이다 — 둘 다 잡아
      트랙 폭을 넘지 않게 한다. */
