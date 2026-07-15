@@ -78,13 +78,32 @@
             if (h > 0) root.style.setProperty("--safe-area-top", h + "px");
           } catch (e) {}
         }
+        /* 하단 빈 뷰포트 간격 — black-translucent standalone에선 iOS가 레이아웃 뷰포트를
+           상태바 높이만큼 짧게(innerHeight = screen.height - 상태바) 잡고 위에 앵커해서,
+           물리 화면 하단에 그만큼 빈 영역이 생긴다(실측 852-793=59). position:fixed 하단
+           요소들을 이 값만큼 아래로 내려 화면 바닥까지 닿게 하려고 --vp-bottom-gap에 넣는다.
+           키보드가 뜨면 interactive-widget=resizes-content로 innerHeight가 확 줄어 gap이
+           엉뚱하게 커지므로, 이 값은 로드/방향전환/지연 틱에서만 재고(그때는 키보드 없음)
+           plain resize(키보드 개폐 포함)에선 재지 않는다. standalone이 아니면 0. */
+        function readBottomGap() {
+          try {
+            var standalone =
+              (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) ||
+              window.navigator.standalone === true;
+            var gap = standalone ? Math.max(0, window.screen.height - window.innerHeight) : 0;
+            if (gap > 120) gap = 0; // 비정상적으로 큰 값(키보드 등)은 무시
+            root.style.setProperty("--vp-bottom-gap", gap + "px");
+          } catch (e) {}
+        }
         function schedule() {
           readSafeTop();
+          readBottomGap();
           // 리플로우 이후 값이 채워지는 케이스를 잡으려고 몇 번 더 늦게 잰다.
-          [80, 300, 800].forEach(function (t) { setTimeout(readSafeTop, t); });
+          [80, 300, 800].forEach(function (t) { setTimeout(function () { readSafeTop(); readBottomGap(); }, t); });
         }
         if (document.body) schedule();
         else document.addEventListener("DOMContentLoaded", schedule);
+        // plain resize는 키보드 개폐로도 발생하므로 상단 inset만 갱신(하단 gap은 제외).
         window.addEventListener("resize", readSafeTop);
         window.addEventListener("orientationchange", schedule);
       })();

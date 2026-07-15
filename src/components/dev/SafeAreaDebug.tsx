@@ -29,7 +29,9 @@ export default function SafeAreaDebug() {
   // iOS 사파리 전용 플래그(홈화면 웹앱일 때만 true).
   const navStandalone = (window.navigator as unknown as { standalone?: boolean }).standalone ?? false;
   const vv = window.visualViewport;
-  const cssVarTop = getComputedStyle(document.documentElement).getPropertyValue("--safe-area-top").trim();
+  const rootStyle = getComputedStyle(document.documentElement);
+  const cssVarTop = rootStyle.getPropertyValue("--safe-area-top").trim();
+  const cssBottomGap = rootStyle.getPropertyValue("--vp-bottom-gap").trim();
 
   const rows: [string, string][] = [
     ["standalone(media)", String(standaloneMedia)],
@@ -37,6 +39,7 @@ export default function SafeAreaDebug() {
     ["inset top", `${readInset("top")}px`],
     ["inset bottom", `${readInset("bottom")}px`],
     ["--safe-area-top", cssVarTop || "(unset)"],
+    ["--vp-bottom-gap", cssBottomGap || "(unset)"],
     ["innerHeight", `${window.innerHeight}`],
     ["screen.height", `${window.screen.height}`],
     ["visualViewport h", vv ? `${Math.round(vv.height)}` : "n/a"],

@@ -2270,7 +2270,9 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
        사이랑 필터창과 검색창 사이 세로 갭 동일하게")를 -6px로 보정해봤는데, 그만큼
        검색창이 탭바에 살짝 가려지는 부작용이 났다(실제로 지적받은 문제 — "검색창이
        탭바에 살짝 가려져") — 겹치지 않는 값(+8px, 원래 값)으로 되돌린다. */
-    bottom: calc(var(--mobile-tabbar-visible-h, var(--mobile-footer-h)) + 8px + env(safe-area-inset-bottom, 0px));
+    /* 탭바가 --vp-bottom-gap만큼 아래로 내려갔으니(화면 바닥까지) 이 플로팅 검색/필터도
+       같은 값만큼 내려 탭바 바로 위 간격을 그대로 유지한다. */
+    bottom: calc(var(--mobile-tabbar-visible-h, var(--mobile-footer-h)) + 8px + env(safe-area-inset-bottom, 0px) - var(--vp-bottom-gap, 0px));
     max-width: calc(var(--content-max) - 56px);
     /* bottom도 transition에 넣어서, 키보드 인셋(JS가 인라인 style로 얹는 bottom)이
        바뀔 때 순간 이동이 아니라 부드럽게 따라가게 한다(안 그러면 값이 바뀌는 순간
@@ -3705,7 +3707,11 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    (아래 미디어쿼리)이 탭바 몫 공간을 대신 예약한다. */
 .scr-mobile-tabbar {
   display: none;
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 55;
+  /* bottom을 --vp-bottom-gap(하단 빈 뷰포트 간격)만큼 음수로 내려 물리 화면 바닥까지
+     닿게 한다 — black-translucent standalone에서 레이아웃 뷰포트가 짧아 bottom:0이
+     화면 바닥이 아니라 그 위(빈 스트립 위)였다(신고: "하단 빈 띠가 상당히 크게 보임").
+     gap이 0인 환경(PC/브라우저/비-노치)에선 bottom:0 그대로. */
+  position: fixed; left: 0; right: 0; bottom: calc(-1 * var(--vp-bottom-gap, 0px)); z-index: 55;
   /* 높이에 홈 인디케이터 안전영역(env safe-area-inset-bottom)을 "더해" 준다 — 고정
      --mobile-footer-h(56px)만 쓰면 box-sizing:border-box라 아래 패딩에 든 안전영역만큼
      콘텐츠 영역이 줄어, 아이폰 PWA(standalone, 안전영역 ~34px)에서 탭 내용이 짓눌려
