@@ -939,8 +939,9 @@ export default function ChallengeScreen() {
         suggestions={suggestions}
         filterPanel={
           <>
-            {/* 기간이 먼저, 내것만이 뒤(요청: "기간이 먼저 내 것만이 뒤"). */}
-            <FilterItem label="기간">
+            {/* 기간이 먼저, 내것만이 뒤(요청: "기간이 먼저 내 것만이 뒤"). 기간 라벨은
+                전체/월 알약만 봐도 알 수 있어 뗀다(요청: "필터중 기간 라벨은 모두 제거"). */}
+            <FilterItem>
               <PillTabs options={PERIOD_UNIT_OPTS} value={periodUnit} onChange={setPeriodUnit} aria-label="기간" />
             </FilterItem>
             {periodUnit === "month" && (
