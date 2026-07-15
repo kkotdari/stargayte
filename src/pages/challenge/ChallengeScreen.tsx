@@ -75,7 +75,9 @@ type PillTone = "pending" | "accepted" | "rejected";
 // 무응답(카드 전체가 거절로 끝나 이 사람 응답이 의미 없어진 경우)은 거절에 합친다.
 function targetPillInfo(t: ChallengeTarget, overall: ChallengeDisplayStatus): { tone: PillTone } {
   if (t.response === "accepted") return { tone: "accepted" };
-  if (t.response === "rejected" || overall === "rejected" || overall === "canceled") return { tone: "rejected" };
+  // 취소는 카드에 "취소" 알약으로 따로 표시하므로 여기선 각자의 실제 응답(수락/대기)을 그대로
+  // 둔다 — 취소를 거절 톤으로 덮으면 상대가 거절한 것처럼 오해된다.
+  if (t.response === "rejected" || overall === "rejected") return { tone: "rejected" };
   return { tone: "pending" };
 }
 
@@ -250,16 +252,16 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
   const creatorMember = memberOf(challenge.createdBy.id);
 
   const canRespond = !!myTarget && myTarget.response === "pending" && challenge.status !== "canceled";
-  // "결과 입력 전" = 응답 대기중(pending)이거나, 확정됐지만 아직 결과가 안 들어온 상태.
-  // 이때만 요청자가 연기/취소할 수 있다(요청: "결과 입력 전 아이템에는 연기/취소 두 버튼이
-  // 보여야" + "연기/취소는 만든사람한테만 보여야해").
-  const beforeResult =
-    challenge.status === "pending"
-    || (challenge.status === "confirmed" && challenge.resultWinnerSide === null);
-  const canCancel = isCreator && beforeResult;
-  // 재신청은 거절/무응답거절(둘 다 서버 status=rejected)일 때 가능하다 — 무응답거절은
-  // 서버 배치가 rejected로 확정하므로 여기선 status==="rejected" 하나로 다 잡힌다.
-  const canReapply = isCreator && challenge.status === "rejected";
+  // 승패가 안 난 상태 — 결과 미입력이거나 "미실시"(not_held). 이 상태의 확정 대결은 취소/연기
+  // 할 수 있다(요청: "미실시 상태면 카드에 취소/연기 노출"). 무승부/승패 결과는 대상 아님.
+  const resultOpen = challenge.resultWinnerSide === null || challenge.resultWinnerSide === "not_held";
+  // 취소는 응답 대기중(pending)이거나 확정+승패 미확정일 때, "생성자만"(요청: "취소는 생성자만").
+  const canCancel = isCreator
+    && (challenge.status === "pending" || (challenge.status === "confirmed" && resultOpen));
+  // 재신청은 거절/무응답거절(status=rejected)이거나 취소(canceled)된 건에서 가능하다(요청:
+  // "취소된 건은 재신청 가능해야 하지 않나"). 이미 다음 행으로 이어진 건(superseded)은 목록에
+  // 아예 안 뜨니 여기선 status만 보면 된다. 미실시 상태 자체는 confirmed라 안 잡힌다(재신청 X).
+  const canReapply = isCreator && (challenge.status === "rejected" || challenge.status === "canceled");
   // 예정 일시가 지난 확정 대결에서, 아직 결과가 안 들어왔으면 참가자가 결과를 입력한다.
   const schedulePassed = !!challenge.scheduledAt && new Date(challenge.scheduledAt).getTime() < Date.now();
   const canEnterResult = isParticipant && challenge.status === "confirmed" && schedulePassed && challenge.resultWinnerSide === null;
@@ -270,9 +272,9 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
     : challenge.resultWinnerSide === "target" ? "creator"
     : null;
   const canRevenge = losingSide !== null && mySide !== null && mySide === losingSide;
-  // 연기는 확정됐지만 아직 결과가 안 들어온 대결에서 요청자만 할 수 있다(요청: "연기/취소는
-  // 만든사람한테만"). 예정 일시가 지난 뒤에도 가능하다.
-  const canPostpone = isCreator && challenge.status === "confirmed" && challenge.resultWinnerSide === null;
+  // 연기는 확정+승패 미확정(결과 미입력 또는 미실시)일 때 "참가자 누구나" 할 수 있다(요청:
+  // "연기는 참가자 아무나"). 예정 일시가 지난 뒤에도 가능하다.
+  const canPostpone = isParticipant && challenge.status === "confirmed" && resultOpen;
 
   // 재신청/설욕전 이력(오래된 순) 뒤에 지금 살아있는 도전장을 붙여 "페이지" 목록을 만든다 —
   // 기본으로는 맨 뒤(최신)를 보여준다. 이력이 없으면 페이지가 하나뿐이라 슬라이드 UI 자체가
@@ -493,6 +495,10 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
                 <span className={cx("scr-challenge-chain-tag", `scr-challenge-chain-tag-${activePage.chainKind}`)}>
                   {activePage.chainKind === "revenge" ? "재대결" : `${reapplyNo}차 재신청`}
                 </span>
+              )}
+              {/* 취소된 도전장도 이제 목록에 보이므로(요청) "취소" 알약으로 표시한다. */}
+              {activePage.status === "canceled" && (
+                <span className="scr-challenge-pill scr-challenge-pill-done">취소</span>
               )}
               {/* 이긴 편은 매치업의 화살표 옆에 배지로 표시하니, 여기선 팀을 특정할 수 없는
                   무승부만 알약으로 남긴다(요청: "도전자편 승 이런 건 제거"). 미실시는 아예
@@ -889,10 +895,8 @@ export default function ChallengeScreen() {
   // 그냥 아무 일도 안 한다.
   const upsert = (updated: Challenge) => {
     setChallenges((prev) => {
-      // 취소된 도전장은 서버 목록 조회에서도 아예 빠지므로(canceled_at 소프트 취소)
-      // 로컬 목록에서도 그 자리에서 제거한다 — 끼워 넣으면 새로고침 전까지 "취소"
-      // 카드가 남아 서버 목록과 어긋난다.
-      if (updated.status === "canceled") return prev.filter((c) => c.id !== updated.id);
+      // 취소된 도전장도 이제 목록에 남는다(요청: "취소된 도전장도 노출") — 제거하지 않고
+      // 그 자리에서 상태만 갱신한다.
       const withoutSuperseded = updated.reappliedFromId != null
         ? prev.filter((c) => c.id !== updated.reappliedFromId)
         : prev;

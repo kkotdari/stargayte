@@ -3680,7 +3680,12 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-mobile-tabbar {
   display: none;
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 55;
-  height: var(--mobile-footer-h);
+  /* 높이에 홈 인디케이터 안전영역(env safe-area-inset-bottom)을 "더해" 준다 — 고정
+     --mobile-footer-h(67px)만 쓰면 box-sizing:border-box라 아래 패딩에 든 안전영역만큼
+     콘텐츠 영역이 줄어, 아이폰 PWA(standalone, 안전영역 ~34px)에서 탭 내용이 짓눌려
+     탭바가 짧아 보였다(신고: "아이폰 pwa에서 탭바 높이가 짧은데 왜"). 안전영역을 높이에
+     더하면 콘텐츠 몫(패딩 제외 39px)이 브라우저/PWA 상관없이 항상 같아진다. */
+  height: calc(var(--mobile-footer-h) + env(safe-area-inset-bottom, 0px));
   background-color: var(--panel-solid);
   background-image: linear-gradient(90deg, color-mix(in srgb, var(--edge-glow) 22%, transparent) 0%, var(--edge-glow) 50%, color-mix(in srgb, var(--edge-glow) 22%, transparent) 100%);
   background-repeat: no-repeat; background-position: top; background-size: 100% 1px;
@@ -4732,8 +4737,11 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    배경까지 깔아 "승"이 한눈에 들어오게 한다(요청: "승 배지 컬러톤 높여서 승이 더 잘 보이게"). */
 .scr-challenge-inline-win {
   flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;
-  width: 18px; height: 18px; border-radius: 50%; box-sizing: border-box;
-  font-size: 10.5px; font-weight: 900; color: #ff4d97; white-space: nowrap;
+  width: 20px; height: 20px; border-radius: 50%; box-sizing: border-box;
+  /* 아래쪽 패딩으로 원 안 글자를 살짝 위로 올린다(요청: "글자를 원 안에서 살짝 위로") —
+     한글 글리프가 flex 가운데정렬에선 살짝 아래로 앉아 보인다. */
+  padding-bottom: 2px; line-height: 1;
+  font-size: 11.5px; font-weight: 900; color: #ff4d97; white-space: nowrap;
   border: 1px solid rgba(255, 77, 151, 0.75); background: transparent;
 }
 /* 해당 안 되는 쪽(진 편/결과 없음)에도 같은 자리를 투명하게 남긴다 — 안 그러면 페이지를
