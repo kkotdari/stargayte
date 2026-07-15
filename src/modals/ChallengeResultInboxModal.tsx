@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { Spinner } from "../components/common/Feedback";
+import Avatar, { type AvatarMember } from "../components/common/Avatar";
 import { api } from "../api/client";
+import { useAppStore } from "../store/appStore";
 import { useLockBodyScroll } from "../utils/bodyScrollLock";
 import { formatChallengeSchedule } from "../utils/date";
 import { MATCH_TYPE_INFO } from "../constants/matchTypes";
-import type { Challenge, ChallengeSide } from "../types";
+import type { Challenge, ChallengeResult } from "../types";
 
 interface ChallengeResultInboxModalProps {
   challenges: Challenge[];
@@ -13,13 +15,15 @@ interface ChallengeResultInboxModalProps {
 }
 
 // 다음 접속 때 뜨는 "결과 입력" 팝업 — 예정 일시가 지났는데 아직 결과가 안 들어온, 내가
-// 참가한 확정 대결을 한 번에 하나씩 보여주고 승패를 바로 입력하게 한다. 초대(편지지)
+// 참가한 확정 대결을 한 번에 하나씩 보여주고(요청: "결과 입력할게 여러개면 팝업도 여러개
+// 뜨나?" → 큐로 하나씩) 승리팀을 눌러 바로 결과를 입력하게 한다. 초대(편지지)
 // 팝업(ChallengeInboxModal)과 UI 패턴을 맞춘다. "봤는지"는 초대 팝업과 같은 원리로 서버
 // (challenge_participants.result_notified)가 기억한다 — 조회 즉시 "봤음"이 되므로 여기
 // 담겨 넘어온 목록 자체가 이미 "아직 안 본 것"뿐이고, 이 팝업에서 입력하든 넘기든 다시는
 // 자동으로 안 뜬다(대결 화면에서는 결과가 입력될 때까지 계속 "결과 입력" 버튼이 뜬다).
 export default function ChallengeResultInboxModal({ challenges, onClose }: ChallengeResultInboxModalProps) {
   useLockBodyScroll();
+  const memberOf = useAppStore((s) => s.memberOf);
   const [idx, setIdx] = useState(0);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -33,7 +37,7 @@ export default function ChallengeResultInboxModal({ challenges, onClose }: Chall
     else setIdx((i) => i + 1);
   };
 
-  const submit = async (winnerSide: ChallengeSide) => {
+  const submit = async (winnerSide: ChallengeResult) => {
     setErr("");
     setBusy(true);
     try {
@@ -46,14 +50,21 @@ export default function ChallengeResultInboxModal({ challenges, onClose }: Chall
     }
   };
 
-  const creatorNames = [current.createdBy.nickname, ...current.ownMembers.map((m) => m.nickname)].join(", ");
-  const targetNames = current.targets.map((t) => t.nickname).join(", ");
+  // 도전자 본인은 응답 객체에 프사가 없어(닉네임만) 로컬 회원 목록에서 프사를 찾아 채운다 —
+  // 지목된 상대/내 팀원은 서버가 프사까지 내려주니 그대로 쓴다.
+  const creatorMembers: AvatarMember[] = [
+    { id: current.createdBy.id, nickname: current.createdBy.nickname, avatar: memberOf(current.createdBy.id)?.avatar ?? null },
+    ...current.ownMembers.map((m) => ({ id: m.memberId, nickname: m.nickname, avatar: m.avatar })),
+  ];
+  const targetMembers: AvatarMember[] = current.targets.map((t) => ({ id: t.memberId, nickname: t.nickname, avatar: t.avatar }));
 
   return createPortal(
     <div className="scr-modal-overlay">
       <div className="scr-modal scr-modal-sm scr-challenge-inbox-modal">
         <div className="scr-challenge-inbox-title">지난 대결의 결과를 입력해 주세요</div>
         <div className="scr-modal-body scr-challenge-inbox-body">
+          {/* 어떤 경기인지 구분할 수 있게 종류/일시/한마디를 함께 보여준다(요청: "경기일시랑
+              한마디 정보도 표현해줘야 무슨 경기인지 구분하기 쉽겠다"). */}
           <div className="scr-challenge-inbox-row">
             <span className="scr-label">종류</span>
             <span>{MATCH_TYPE_INFO[current.matchType]}</span>
@@ -62,33 +73,58 @@ export default function ChallengeResultInboxModal({ challenges, onClose }: Chall
             <span className="scr-label">일시</span>
             <span>{formatChallengeSchedule(current.scheduledAt)}</span>
           </div>
-          <div className="scr-challenge-inbox-row">
-            <span className="scr-label">도전자편</span>
-            <span>{creatorNames}</span>
-          </div>
-          <div className="scr-challenge-inbox-row">
-            <span className="scr-label">상대편</span>
-            <span>{targetNames}</span>
-          </div>
           {current.message && (
             <p className="scr-challenge-inbox-message">"{current.message}"</p>
           )}
 
-          <p className="scr-challenge-inbox-message">누가 이겼나요? — 먼저 입력하는 쪽이 그대로 인정돼요.</p>
+          <p className="scr-challenge-inbox-message">승리한 팀을 눌러주세요 — 먼저 입력하는 쪽이 그대로 인정돼요.</p>
 
           {err && <div className="scr-err">{err}</div>}
 
+          {/* 구성원을 프사와 함께 보여주고 팀 카드를 눌러 승리팀을 고른다(요청: "구성원이
+              노출되고 승리팀을 고르는게 좋을듯"). */}
+          <div className="scr-challenge-result-teams">
+            <button
+              type="button" className="scr-challenge-result-team" onClick={() => submit("creator")}
+              disabled={busy}
+            >
+              <span className="scr-challenge-result-team-label">도전자편</span>
+              <span className="scr-challenge-result-team-members">
+                {creatorMembers.map((p) => (
+                  <span key={p.id} className="scr-challenge-result-member">
+                    <Avatar member={p} size={20} />
+                    <span className="scr-challenge-result-member-name">{p.nickname}</span>
+                  </span>
+                ))}
+              </span>
+              <span className="scr-challenge-result-team-win">승리</span>
+            </button>
+            <button
+              type="button" className="scr-challenge-result-team" onClick={() => submit("target")}
+              disabled={busy}
+            >
+              <span className="scr-challenge-result-team-label">상대편</span>
+              <span className="scr-challenge-result-team-members">
+                {targetMembers.map((p) => (
+                  <span key={p.id} className="scr-challenge-result-member">
+                    <Avatar member={p} size={20} />
+                    <span className="scr-challenge-result-member-name">{p.nickname}</span>
+                  </span>
+                ))}
+              </span>
+              <span className="scr-challenge-result-team-win">승리</span>
+            </button>
+          </div>
+
+          {/* 승패가 없는 결과(요청: "무승부나 미실시도 있게 해주고"). */}
           <div className="scr-form-actions">
-            <button className="scr-btn scr-challenge-reject-btn" onClick={() => submit("target")} disabled={busy}>
-              {busy ? <Spinner /> : "상대편 승"}
-            </button>
-            <button className="scr-btn scr-challenge-accept-btn" onClick={() => submit("creator")} disabled={busy}>
-              {busy ? <Spinner /> : "도전자편 승"}
-            </button>
+            <button className="scr-btn scr-btn-ghost" onClick={() => submit("draw")} disabled={busy}>무승부</button>
+            <button className="scr-btn scr-btn-ghost" onClick={() => submit("not_held")} disabled={busy}>미실시</button>
           </div>
           <div className="scr-form-actions">
             <button className="scr-btn scr-btn-ghost" onClick={advance} disabled={busy}>나중에</button>
           </div>
+          {busy && <div className="scr-challenge-result-busy"><Spinner /></div>}
         </div>
       </div>
     </div>,

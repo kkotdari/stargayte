@@ -18,7 +18,7 @@ import {
   monthInputToRange, pad,
 } from "../../utils/date";
 import { activeMemberSearchTerms, memberMatchesTerm, splitSearchTerms } from "../../utils/memberSearch";
-import type { Challenge, ChallengeSide, ChallengeStatus, ChallengeTarget, Member } from "../../types";
+import type { Challenge, ChallengeResult, ChallengeSide, ChallengeStatus, ChallengeTarget, Member } from "../../types";
 
 // 실제 서버 status(pending/confirmed/rejected/canceled) 외에, 화면에서만 판단하는 파생
 // 상태 "완료"(done) — 승락(confirmed)됐고 예정 매치 시각이 이미 지난 건(요청: "완료 기준은
@@ -67,7 +67,12 @@ function isoToInputs(iso: string | null): { date: string; time: string } {
   };
 }
 
-const sideLabel = (side: ChallengeSide): string => (side === "creator" ? "도전자편 승" : "상대편 승");
+// 결과 알약 라벨 — 이긴 편(도전자편/상대편) 외에 무승부/미실시도 표시한다.
+const resultLabel = (result: ChallengeResult): string =>
+  result === "creator" ? "도전자편 승"
+  : result === "target" ? "상대편 승"
+  : result === "draw" ? "무승부"
+  : "미실시";
 
 type PillTone = "pending" | "accepted" | "rejected" | "done" | "muted";
 
@@ -229,7 +234,7 @@ interface ChallengePage {
   targets: ChallengeTarget[];
   status: ChallengeStatus;
   createdAt: string;
-  resultWinnerSide: ChallengeSide | null;
+  resultWinnerSide: ChallengeResult | null;
   chainKind: "reapply" | "revenge" | null;
 }
 
@@ -260,20 +265,29 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
   const creatorMember = memberOf(challenge.createdBy.id);
 
   const canRespond = !!myTarget && myTarget.response === "pending" && challenge.status !== "canceled";
-  const canCancel = isCreator && challenge.status === "pending";
+  // "결과 입력 전" = 응답 대기중(pending)이거나, 확정됐지만 아직 결과가 안 들어온 상태.
+  // 이때만 요청자가 연기/취소할 수 있다(요청: "결과 입력 전 아이템에는 연기/취소 두 버튼이
+  // 보여야" + "연기/취소는 만든사람한테만 보여야해").
+  const beforeResult =
+    challenge.status === "pending"
+    || (challenge.status === "confirmed" && challenge.resultWinnerSide === null);
+  const canCancel = isCreator && beforeResult;
   // 재신청은 거절/무응답거절(둘 다 서버 status=rejected)일 때 가능하다 — 무응답거절은
   // 서버 배치가 rejected로 확정하므로 여기선 status==="rejected" 하나로 다 잡힌다.
   const canReapply = isCreator && challenge.status === "rejected";
   // 예정 일시가 지난 확정 대결에서, 아직 결과가 안 들어왔으면 참가자가 결과를 입력한다.
   const schedulePassed = !!challenge.scheduledAt && new Date(challenge.scheduledAt).getTime() < Date.now();
   const canEnterResult = isParticipant && challenge.status === "confirmed" && schedulePassed && challenge.resultWinnerSide === null;
-  // 결과가 입력됐고 내가 패배한 쪽이면 설욕전을 신청할 수 있다.
-  const losingSide: ChallengeSide | null = challenge.resultWinnerSide === null
-    ? null
-    : challenge.resultWinnerSide === "creator" ? "target" : "creator";
-  const canRevenge = challenge.resultWinnerSide !== null && mySide !== null && mySide === losingSide;
-  // 확정된 대결은 예정 일시가 지난 뒤에도 참가자 누구나 연기할 수 있다.
-  const canPostpone = isParticipant && challenge.status === "confirmed";
+  // 결과가 입력됐고 내가 패배한 쪽이면 설욕전을 신청할 수 있다 — 무승부(draw)/미실시
+  // (not_held)는 패자가 없어 설욕전 대상이 아니다(losingSide=null).
+  const losingSide: ChallengeSide | null =
+    challenge.resultWinnerSide === "creator" ? "target"
+    : challenge.resultWinnerSide === "target" ? "creator"
+    : null;
+  const canRevenge = losingSide !== null && mySide !== null && mySide === losingSide;
+  // 연기는 확정됐지만 아직 결과가 안 들어온 대결에서 요청자만 할 수 있다(요청: "연기/취소는
+  // 만든사람한테만"). 예정 일시가 지난 뒤에도 가능하다.
+  const canPostpone = isCreator && challenge.status === "confirmed" && challenge.resultWinnerSide === null;
 
   // 재신청/설욕전 이력(오래된 순) 뒤에 지금 살아있는 도전장을 붙여 "페이지" 목록을 만든다 —
   // 기본으로는 맨 뒤(최신)를 보여준다. 이력이 없으면 페이지가 하나뿐이라 슬라이드 UI 자체가
@@ -408,7 +422,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
     }
   };
 
-  const submitResult = async (winnerSide: ChallengeSide) => {
+  const submitResult = async (winnerSide: ChallengeResult) => {
     setErr("");
     setBusy(true);
     try {
@@ -440,11 +454,12 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
               {page.chainKind === "revenge" ? "설욕전" : "재신청"}
             </span>
           )}
-          {/* 결과가 입력된 대결은 이긴 편을 알약으로 표시. */}
+          {/* 결과가 입력된 대결은 이긴 편(또는 무승부/미실시)을 알약으로 표시. */}
           {page.resultWinnerSide && (
-            <span className="scr-challenge-pill scr-challenge-pill-done">{sideLabel(page.resultWinnerSide)}</span>
+            <span className="scr-challenge-pill scr-challenge-pill-done">{resultLabel(page.resultWinnerSide)}</span>
           )}
-          {isLatestPage && challenge.status === "confirmed" && (
+          {/* 결과 보기는 결과가 입력된 뒤에만 뜬다(요청: "결과보기는 결과 입력후에만 보이고"). */}
+          {isLatestPage && challenge.resultWinnerSide !== null && (
             <button type="button" className="scr-challenge-result-link" onClick={() => onViewResults(challenge)}>
               결과 보기
             </button>
@@ -614,21 +629,57 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
       )}
 
       {mode === "result" && (
-        <div className="scr-challenge-time-change-form">
+        <div className="scr-challenge-result-form">
           <p className="scr-challenge-inbox-message">
-            누가 이겼나요? — 먼저 입력하는 쪽이 그대로 인정돼요.
+            승리한 팀을 눌러주세요 — 먼저 입력하는 쪽이 그대로 인정돼요.
           </p>
-          <div className="scr-challenge-card-actions">
-            <button className="scr-btn scr-btn-ghost scr-btn-sm" onClick={() => submitResult("creator")} disabled={busy}>
-              도전자편 승
+          {/* 구성원을 그대로 보여주고 팀 카드를 눌러 승리팀을 고른다(요청: "구성원이 노출되고
+              승리팀을 고르는게 좋을듯"). */}
+          <div className="scr-challenge-result-teams">
+            <button
+              type="button" className="scr-challenge-result-team" onClick={() => submitResult("creator")}
+              disabled={busy}
+            >
+              <span className="scr-challenge-result-team-label">도전자편</span>
+              <span className="scr-challenge-result-team-members">
+                {creatorSideMembers.map((p) => (
+                  <span key={p.id} className="scr-challenge-result-member">
+                    <Avatar member={p} size={20} />
+                    <span className="scr-challenge-result-member-name">{p.nickname}</span>
+                  </span>
+                ))}
+              </span>
+              <span className="scr-challenge-result-team-win">승리</span>
             </button>
-            <button className="scr-btn scr-btn-ghost scr-btn-sm" onClick={() => submitResult("target")} disabled={busy}>
-              상대편 승
+            <button
+              type="button" className="scr-challenge-result-team" onClick={() => submitResult("target")}
+              disabled={busy}
+            >
+              <span className="scr-challenge-result-team-label">상대편</span>
+              <span className="scr-challenge-result-team-members">
+                {targetSideMembers.map((p) => (
+                  <span key={p.id} className="scr-challenge-result-member">
+                    <Avatar member={p} size={20} />
+                    <span className="scr-challenge-result-member-name">{p.nickname}</span>
+                  </span>
+                ))}
+              </span>
+              <span className="scr-challenge-result-team-win">승리</span>
+            </button>
+          </div>
+          {/* 승패가 없는 결과(요청: "무승부나 미실시도 있게 해주고"). */}
+          <div className="scr-challenge-card-actions">
+            <button className="scr-btn scr-btn-ghost scr-btn-sm" onClick={() => submitResult("draw")} disabled={busy}>
+              무승부
+            </button>
+            <button className="scr-btn scr-btn-ghost scr-btn-sm" onClick={() => submitResult("not_held")} disabled={busy}>
+              미실시
             </button>
           </div>
           <div className="scr-challenge-card-actions">
             <button className="scr-btn scr-btn-ghost scr-btn-sm" onClick={closeMode} disabled={busy}>취소</button>
           </div>
+          {busy && <div className="scr-challenge-result-busy"><Spinner /></div>}
         </div>
       )}
 
@@ -676,13 +727,10 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
   );
 }
 
-// 필터는 전체/내것만 둘뿐이다(요청: "전체 / 내것만 두 개짜리 필터로 교체") — 예전의
-// 확정/응답대기/종료 상태 탭은 없애고, 목록은 상태와 무관하게 하나로 합쳐 보여준다.
-type ChallengeView = "all" | "mine";
-const VIEW_OPTS: { value: ChallengeView; label: string }[] = [
-  { value: "all", label: "전체" },
-  { value: "mine", label: "내것만" },
-];
+// "내것만"은 켜고 끄는 하나짜리 조건이라, 모바일에서 폭을 아끼려고 전체/내것만 두 칸짜리
+// 탭 대신 체크박스 하나로 바꿨다(요청: "너 나와 필터 공간이 좁아(모바일) 내 것만은
+// 체크박스로 변경할게"). 예전의 확정/응답대기/종료 상태 탭은 없앴고 목록은 상태와 무관하게
+// 하나로 합쳐 보여준다.
 
 // 기간 필터 — 경기 화면과 같은 패턴(전체/월 + 월 선택기), 기본은 월(요청: "너나와에
 // 기간 필터 추가 전체 월까지" + "기본은 월"). 경기 화면과 달리 "일" 단위까지는 안 쪼갠다.
@@ -724,7 +772,7 @@ export default function ChallengeScreen() {
   const [error, setError] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const [view, setView] = useState<ChallengeView>("all");
+  const [mineOnly, setMineOnly] = useState(false);
   const [periodUnit, setPeriodUnit] = useState<ChallengePeriodUnit>("month");
   const [periodMonth, setPeriodMonth] = useState(currentMonthValue);
   const suggestions = useMemo(() => activeMemberSearchTerms(members), [members]);
@@ -824,7 +872,7 @@ export default function ChallengeScreen() {
     || c.targets.some((t) => t.memberId === user?.id)
     || c.ownMembers.some((m) => m.memberId === user?.id)
   );
-  const activeList = view === "mine" ? sortedChallenges.filter(isMine) : sortedChallenges;
+  const activeList = mineOnly ? sortedChallenges.filter(isMine) : sortedChallenges;
 
   // 가장 가까운 예정된(수락) 대결 — 확정됐고 예정 일시가 아직 안 지난 것 중 가장 임박한
   // 것 하나. 카드 밖 좌상단에 NEXT 라벨을 달고, 화면 진입 시 그 카드로 스크롤한다(요청:
@@ -869,7 +917,7 @@ export default function ChallengeScreen() {
 
   const emptyLabel = searchTerms.length > 0
     ? "검색 결과가 없어요"
-    : view === "mine" ? "내 대결이 없어요" : "도전장이 없어요";
+    : mineOnly ? "내 대결이 없어요" : "도전장이 없어요";
 
   return (
     <div className="scr-screen scr-challenge-screen-v2">
@@ -891,9 +939,7 @@ export default function ChallengeScreen() {
         suggestions={suggestions}
         filterPanel={
           <>
-            <FilterItem label="범위">
-              <PillTabs options={VIEW_OPTS} value={view} onChange={setView} aria-label="전체/내것만 선택" />
-            </FilterItem>
+            {/* 기간이 먼저, 내것만이 뒤(요청: "기간이 먼저 내 것만이 뒤"). */}
             <FilterItem label="기간">
               <PillTabs options={PERIOD_UNIT_OPTS} value={periodUnit} onChange={setPeriodUnit} aria-label="기간" />
             </FilterItem>
@@ -906,6 +952,12 @@ export default function ChallengeScreen() {
                 />
               </FilterItem>
             )}
+            <FilterItem>
+              <label className="scr-checkbox-field">
+                <input type="checkbox" checked={mineOnly} onChange={(e) => setMineOnly(e.target.checked)} />
+                내것만
+              </label>
+            </FilterItem>
           </>
         }
       />

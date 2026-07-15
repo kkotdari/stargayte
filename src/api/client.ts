@@ -7,7 +7,7 @@ import type {
   MatchPage, MatchStatsResponse, MatchType, Race, TeamRankingResponse,
   MonthlyMatchStatsResponse, MonthlyTeamRankingResponse,
   ReplayNameClassificationEntry, ReplayNameKind, ReplayNameMappingEntry, ReplayNameMappingKind,
-  Challenge, ChallengeCreatePayload, ChallengeReapplyPayload, ChallengeSide,
+  Challenge, ChallengeCreatePayload, ChallengeReapplyPayload, ChallengeResult,
 } from "../types";
 
 // undefined/""/"all"(필터 미지정 관례) 값은 아예 뺀 쿼리스트링을 만든다 — 서버는 파라미터가
@@ -537,7 +537,7 @@ export const api = {
 
   // 확정된 대결의 결과(이긴 쪽)를 입력 — 참가자 누구든 먼저 입력하는 쪽이 인정되고,
   // 예정 일시가 지난 뒤에만 가능하다. 이미 결과가 입력된 대결에는 다시 입력할 수 없다.
-  async enterChallengeResult(id: number, winnerSide: ChallengeSide): Promise<Challenge> {
+  async enterChallengeResult(id: number, winnerSide: ChallengeResult): Promise<Challenge> {
     return request<Challenge>(`/api/challenges/${id}/result`, {
       method: "POST",
       body: JSON.stringify({ winnerSide }),
