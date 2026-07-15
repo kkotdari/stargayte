@@ -11,8 +11,8 @@ import type { Challenge, Member } from "../types";
 
 // 상대는 최대 4명까지 지목할 수 있고(팀전), 내 팀은 본인 자동 포함이라 "본인 제외"
 // 최대 3명(본인 포함 4명)까지 넣을 수 있다 — 서버의 max_length(target 4 / own 3)와 같다.
-// 1명만 지목하고 내 팀이 비어 있으면 서버가 1:1로, 그 외엔 팀전으로 처리한다(폼에서
-// 경기 유형을 직접 고르지 않는다).
+// 폼 맨 위 라디오로 개인전/팀전을 먼저 고르고, 개인전이면 상대 1명·팀 없음으로 제한한다.
+// 실제 경기 유형은 서버가 인원수로 정한다(상대1·팀0 → 1:1, 그 외 팀전).
 const MAX_TARGETS = 4;
 const MAX_OWN_TEAM = 3;
 
@@ -99,8 +99,22 @@ export default function ChallengeFormModal({ onClose, onCreated }: ChallengeForm
   const members = useAppStore((s) => s.members);
   const user = useAppStore((s) => s.user);
 
+  // 시작할 때 개인전(1:1)인지 팀전인지 먼저 고른다(요청: "팀전인지 개인전인지 체크하고
+  // 시작 — 라디오 버튼"). 개인전이면 상대는 1명, 내 팀 구성은 없다. 팀전이면 내 팀을
+  // 짜고 상대도 여럿 지목할 수 있다. 실제 match_type은 서버가 인원수로 정하지만(개인전=
+  // 상대1·팀원0 → 0101), 폼이 인원 제약을 이 선택에 맞춰 그 결과가 선택과 일치하게 한다.
+  const [mode, setMode] = useState<"solo" | "team">("solo");
   const [targetIds, setTargetIds] = useState<string[]>([]);
   const [ownTeamIds, setOwnTeamIds] = useState<string[]>([]);
+
+  // 개인전으로 바꾸면 상대는 1명으로 줄이고 내 팀은 비운다(그래야 서버가 0101로 정한다).
+  const switchMode = (next: "solo" | "team") => {
+    setMode(next);
+    if (next === "solo") {
+      setTargetIds((ids) => ids.slice(0, 1));
+      setOwnTeamIds([]);
+    }
+  };
   // 일시를 아예 자유 입력으로 두던 걸 체크박스로 명시화한다 — 체크하면 그때부턴 "정한다"는
   // 뜻이라 날짜/시간 둘 다 채워야만 보낼 수 있고, 체크를 안 하면(기본값) "시간은 상대방이
   // 정해도 된다"는 뜻이라 날짜/시간 입력 자체를 막는 대신 최소한 무슨 대화인지는 알 수
@@ -128,7 +142,12 @@ export default function ChallengeFormModal({ onClose, onCreated }: ChallengeForm
     [activeMembers, chosen],
   );
 
-  const canSubmit = targetIds.length > 0
+  // 개인전은 상대 정확히 1명. 팀전은 상대 1명 이상이되, 실제로 팀 구성이 되도록(서버가
+  // 0102로 정하도록) 내 팀원이 있거나 상대가 2명 이상이어야 한다.
+  const rosterOk = mode === "solo"
+    ? targetIds.length === 1
+    : targetIds.length >= 1 && (ownTeamIds.length >= 1 || targetIds.length >= 2);
+  const canSubmit = rosterOk
     && (!timeSpecified || (dateStr.length > 0 && timeStr.length > 0))
     && message.trim().length > 0;
 
@@ -164,32 +183,55 @@ export default function ChallengeFormModal({ onClose, onCreated }: ChallengeForm
         </div>
 
         <div className="scr-modal-body">
+          {/* 맨 위에서 개인전/팀전을 먼저 고른다(요청: "팀전인지 개인전인지 체크하고
+              시작 — 라디오 버튼", "맨위에서 체크"). 선택에 따라 아래 폼 구성이 바뀐다. */}
+          <div className="scr-field">
+            <span className="scr-label">경기 유형</span>
+            <div className="scr-challenge-mode-radios">
+              <label className="scr-checkbox-field">
+                <input
+                  type="radio" name="challenge-mode" checked={mode === "solo"}
+                  onChange={() => switchMode("solo")}
+                />
+                개인전 (1:1)
+              </label>
+              <label className="scr-checkbox-field">
+                <input
+                  type="radio" name="challenge-mode" checked={mode === "team"}
+                  onChange={() => switchMode("team")}
+                />
+                팀전
+              </label>
+            </div>
+          </div>
+
           {/* 내 팀/상대 지목은 <label>이 아니라 <div>다 — <label>로 감싸면 칩/버튼처럼
               "제어 대상이 아닌" 부분을 클릭했을 때 브라우저가 그 라벨의 첫 폼 컨트롤(첫
               칩의 X 버튼)에 자동으로 클릭을 한 번 더 쏴서 방금 지목한 사람이 사라지는
               버그가 있었다(MemberPickBlock 내부도 <div>로 감싼 이유). */}
-          {/* 내 팀이 위, 상대가 아래(요청: "도전장 보내기에서 우리팀이 위에") — 카드
-              매치업에서 도전자편이 먼저 오는 순서와도 맞는다. 내 팀은 선택 — 본인은
-              자동 포함이라 여기엔 "본인 제외 나머지 팀원"만 넣는다. 한 명이라도
-              넣으면(또는 상대를 2명 이상 지목하면) 서버가 팀전으로 처리한다. */}
-          <MemberPickBlock
-            label="내 팀 (선택)"
-            ids={ownTeamIds}
-            setIds={setOwnTeamIds}
-            max={MAX_OWN_TEAM}
-            options={memberOptions}
-            memberById={memberById}
-            addLabel="+ 팀원 추가"
-          />
+          {/* 내 팀 구성은 팀전에서만 — 개인전은 나 혼자다. 내 팀이 위, 상대가 아래(요청:
+              "도전장 보내기에서 우리팀이 위에"). 본인은 자동 포함이라 여기엔 "본인 제외
+              나머지 팀원"만 넣는다. */}
+          {mode === "team" && (
+            <MemberPickBlock
+              label="내 팀 (선택)"
+              ids={ownTeamIds}
+              setIds={setOwnTeamIds}
+              max={MAX_OWN_TEAM}
+              options={memberOptions}
+              memberById={memberById}
+              addLabel="+ 팀원 추가"
+            />
+          )}
 
           <MemberPickBlock
-            label="상대 지목"
+            label={mode === "solo" ? "상대" : "상대 지목"}
             ids={targetIds}
             setIds={setTargetIds}
-            max={MAX_TARGETS}
+            max={mode === "solo" ? 1 : MAX_TARGETS}
             options={memberOptions}
             memberById={memberById}
-            addLabel="+ 상대 추가"
+            addLabel={mode === "solo" ? "+ 상대 선택" : "+ 상대 추가"}
           />
 
           <label className="scr-checkbox-field">
