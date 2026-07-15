@@ -4734,7 +4734,7 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;
   width: 18px; height: 18px; border-radius: 50%; box-sizing: border-box;
   font-size: 10.5px; font-weight: 900; color: #ff4d97; white-space: nowrap;
-  border: 1px solid rgba(255, 77, 151, 0.75); background: rgba(255, 77, 151, 0.12);
+  border: 1px solid rgba(255, 77, 151, 0.75); background: transparent;
 }
 /* 해당 안 되는 쪽(진 편/결과 없음)에도 같은 자리를 투명하게 남긴다 — 안 그러면 페이지를
    넘길 때 배지 유무에 따라 손 이모지가 좌우로 흔들린다(요청: "손이모지 양옆에도
