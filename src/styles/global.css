@@ -2068,6 +2068,10 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    토글을 담은 항목만 콕 집어 왼쪽으로 당긴다(다른 화면의 마지막 필터 항목까지 같이
    당겨지지 않도록 :last-child 대신 :has로 특정). */
 .scr-filter-panel > .scr-filter-item:has(.scr-filter-sort-btn) { margin-left: -8px; }
+/* 기간 알약(전체/월/일)과 바로 뒤 달력 입력(월/일 선택) 사이 갭이 16px이라 붕 떠 보였다
+   (요청: "필터에서 날짜와 달력 버튼 사이좀 줄여줘") — 달력 입력을 담은 항목만 왼쪽으로
+   당겨 둘을 붙인다(정렬 토글과 같은 방식). */
+.scr-filter-panel > .scr-filter-item:has(.scr-filter-month-input) { margin-left: -10px; }
 /* 필터창은 테마 불문 밝은 글라스 배경을 쓰므로(위 주석 참고), 그 위에 얹히는 체크박스도
    테마의 --text/--muted(다크 테마에선 흰색이라 밝은 배경 위에서 안 보인다 — 요청: "내것만
    체크박스는 하얗게 나오고 다크테마에서")를 따르지 않고, 라벨/알약과 같은 어두운 톤으로
