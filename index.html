@@ -18,16 +18,16 @@
          탭바 높이나 스크롤탑 버튼이 가려지는 정도가 그때그때 달라져 보였다. -->
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <!-- black-translucent은 웹 콘텐츠를 상태바(노치) 아래까지 끌어올려 채우고, 그만큼을
-         env(safe-area-inset-top)으로 다시 밀어내야 한다. 그런데 iOS 홈화면 PWA(standalone)
-         에서는 이 inset이 0으로 계산되는 버그가 잦아, 상단 스티키(헤더/날짜 줄)가 노치에
-         가려져 안 보였다(신고: "pwa에서 노티바까지 사용해 스티키가 가려짐"). 사파리처럼
-         상태바 영역은 iOS가 알아서 확보하고 그 아래부터 콘텐츠가 시작되게 하되(더 이상
-         불안정한 상단 inset에 의존하지 않음), 그 상태바 영역 배경색은 theme-color(아래
-         동적 세팅: 다크 #060607 / 라이트 #ffffff)를 따라가고 글자색은 iOS가 대비에 맞게
-         자동으로 고르도록 default로 둔다(요청: "윗 공간은 안 쓰되 테마에 맞는 색으로") —
-         black은 테마와 무관하게 검게만 나온다. 하단 홈 인디케이터 inset은
-         viewport-fit=cover로 그대로 유효해 탭바 여백 계산엔 영향 없다. -->
+    <!-- default: 하단 탭바가 진짜 화면 바닥에 붙게(하단 몰입 완성) 하려고 쓴다.
+         black-translucent은 레이아웃 뷰포트를 상태바만큼 짧게 잡아 물리 화면 하단 ~59px가
+         웹뷰 밖(렌더 불가)이 되어 탭바를 바닥에 못 붙였다(실측/신고: "하단이 잘려"). default는
+         iOS가 상태바 영역을 theme-color(다크 #060607 / 라이트 #ffffff, theme.ts가 동적 갱신)로
+         예약하고 그 아래부터 웹뷰가 화면 바닥까지 꽉 차게 준다 — 상태바 글자색은 iOS가
+         theme-color 밝기에 맞춰 자동(다크→흰 글자, 라이트→검은 글자). 다크 앱에선 상태바색이
+         헤더/배경과 거의 같아 "바"처럼 튀지 않는다. 이때 env(safe-area-inset-top)은 0이 되어
+         아래 --safe-top 기반 보정(헤더/스티키/스크림)은 자연히 0으로 잠든다(이중 여백 없음).
+         참고: iOS는 이 값을 "홈 화면에 추가" 시점에만 읽으므로, 이미 설치된 PWA는 아이콘
+         삭제 후 다시 추가해야 반영된다. -->
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="스타게이트" />
     <!-- 매니페스트/theme-color가 없으면 iOS가 홈 화면 웹앱 실행 시 보여줄 스플래시가
@@ -60,6 +60,55 @@
           document.querySelector('meta[name="theme-color"]')?.setAttribute("content", "#ffffff");
         }
       } catch (e) {}
+
+      /* 상단 안전영역(상태바/노치 높이) 실측 — env(safe-area-inset-top)을 폭 0짜리 프로브의
+         padding-top으로 받아 그 offsetHeight를 재서 --safe-area-top에 넣는다. iOS
+         standalone에서 이 값이 최초엔 0이었다가 리플로우 후 채워지는 버그를 이기려고,
+         로드 직후뿐 아니라 리사이즈/방향전환/짧은 지연 틱마다 다시 잰다(한 번이라도 실제
+         값이 잡히면 그때 반영된다). CSS는 max(env, var(--safe-area-top))로 쓰므로 여기서
+         재는 게 실패해도 최소한 env 값은 그대로 유지된다. */
+      (function () {
+        var root = document.documentElement;
+        function readSafeTop() {
+          try {
+            var probe = document.createElement("div");
+            probe.style.cssText =
+              "position:fixed;top:0;left:0;width:0;visibility:hidden;pointer-events:none;padding-top:env(safe-area-inset-top,0px);";
+            (document.body || root).appendChild(probe);
+            var h = probe.offsetHeight;
+            probe.parentNode.removeChild(probe);
+            if (h > 0) root.style.setProperty("--safe-area-top", h + "px");
+          } catch (e) {}
+        }
+        /* 하단 빈 뷰포트 간격 — black-translucent standalone에선 iOS가 레이아웃 뷰포트를
+           상태바 높이만큼 짧게(innerHeight = screen.height - 상태바) 잡고 위에 앵커해서,
+           물리 화면 하단에 그만큼 빈 영역이 생긴다(실측 852-793=59). position:fixed 하단
+           요소들을 이 값만큼 아래로 내려 화면 바닥까지 닿게 하려고 --vp-bottom-gap에 넣는다.
+           키보드가 뜨면 interactive-widget=resizes-content로 innerHeight가 확 줄어 gap이
+           엉뚱하게 커지므로, 이 값은 로드/방향전환/지연 틱에서만 재고(그때는 키보드 없음)
+           plain resize(키보드 개폐 포함)에선 재지 않는다. standalone이 아니면 0. */
+        function readBottomGap() {
+          try {
+            var standalone =
+              (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) ||
+              window.navigator.standalone === true;
+            var gap = standalone ? Math.max(0, window.screen.height - window.innerHeight) : 0;
+            if (gap > 120) gap = 0; // 비정상적으로 큰 값(키보드 등)은 무시
+            root.style.setProperty("--vp-bottom-gap", gap + "px");
+          } catch (e) {}
+        }
+        function schedule() {
+          readSafeTop();
+          readBottomGap();
+          // 리플로우 이후 값이 채워지는 케이스를 잡으려고 몇 번 더 늦게 잰다.
+          [80, 300, 800].forEach(function (t) { setTimeout(function () { readSafeTop(); readBottomGap(); }, t); });
+        }
+        if (document.body) schedule();
+        else document.addEventListener("DOMContentLoaded", schedule);
+        // plain resize는 키보드 개폐로도 발생하므로 상단 inset만 갱신(하단 gap은 제외).
+        window.addEventListener("resize", readSafeTop);
+        window.addEventListener("orientationchange", schedule);
+      })();
     </script>
   </head>
   <body>

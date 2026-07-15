@@ -142,6 +142,10 @@ html {
      기본 흰 배경(html 자체엔 배경색이 없었음)이 비쳐 보였다 — html도 앱과 같은 어두운
      배경을 깔아 어떤 경우에도 흰 여백이 드러나지 않게 한다. */
   background: var(--void);
+  /* 상단 안전영역(상태바/노치) 보정값 — env(safe-area-inset-top)과 부트 스크립트가 실측해
+     넣는 --safe-area-top 중 큰 값. black-translucent 몰입 모드에서 스크롤되는 헤더/스티키를
+     이만큼 내려 노치에 안 가리게 하는 데 쓴다(둘 다 0이면 0이라 PC/비-노치에선 영향 없음). */
+  --safe-top: max(env(safe-area-inset-top, 0px), var(--safe-area-top, 0px));
 }
 /* body는 overflow:hidden 대신 position:fixed로 아예 뷰포트에 못 박는다 — iOS Safari는
    overscroll-behavior:none을 body/html에 걸어도 문서 자체의 러버밴드(당겨서 튕기는)
@@ -738,7 +742,29 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   position: relative; z-index: 2; background-color: var(--header-bg); backdrop-filter: blur(4px);
   background-image: linear-gradient(90deg, color-mix(in srgb, var(--edge-glow) 22%, transparent) 0%, var(--edge-glow) 50%, color-mix(in srgb, var(--edge-glow) 22%, transparent) 100%);
   background-repeat: no-repeat; background-position: bottom; background-size: 100% 1px;
-  padding-top: env(safe-area-inset-top, 0px);
+  /* 상단 안전영역만큼 헤더 콘텐츠를 내려 노치/상태바에 안 가리게 한다(--safe-top).
+     헤더는 스크롤되는 페이지 최상단 콘텐츠라, 맨 위에 있을 때 이 padding이 노치를
+     비켜준다. 스크롤로 헤더가 밀려 올라간 뒤엔 아래 스티키(날짜 줄)가 top:var(--safe-top)
+     으로 노치 밑에 핀된다. */
+  padding-top: var(--safe-top);
+}
+
+/* 상단 안전영역(노치/상태바) 프로스티드 스크림 — black-translucent 몰입 모드에서 콘텐츠가
+   노치 밑으로 스크롤될 때 날것으로 비쳐 어색한 걸(요청: "위에 스티키할때 상단부분에 블러
+   라도 줘야하나 너무 어색") 네이티브 앱처럼 헤더와 같은 반투명색(--header-bg) + 블러로
+   덮는다. iOS가 그 위에 시계/배터리를 그려주니 상태바는 그대로 읽힌다. 높이는 --safe-top
+   (노치 없거나 PC에선 0이라 안 보임). 스티키 날짜 줄은 top:var(--safe-top)로 이 스크림
+   바로 밑에 핀돼 안 가려진다. z-index는 스티키(≤11)/헤더(2)보다 위, 탭바(55)·모달(60+)
+   보다는 아래. 홈화면 PWA(standalone)에서만 — 사파리 브라우저엔 자체 상단 UI가 있어 뺀다. */
+@media (display-mode: standalone) {
+  .scr-app::before {
+    content: "";
+    position: fixed; top: 0; left: 0; right: 0; height: var(--safe-top);
+    z-index: 50; pointer-events: none;
+    background-color: var(--header-bg);
+    -webkit-backdrop-filter: blur(12px) saturate(1.3);
+    backdrop-filter: blur(12px) saturate(1.3);
+  }
 }
 /* 로고/탭/프로필 사진처럼 높이가 제각각인 요소들을 전부 같은 세로 중심선에 맞춘다 —
    예전엔 flex-end + 요소별 개별 translateY 보정으로 로고의 베이스라인에 맞췄었는데,
@@ -2604,11 +2630,11 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    스크롤하면 그 위에 쌓일 게 없으니 스크롤 컨테이너(#scroll-root) 맨 위에 바로 붙는다.
    좌우 페이지 여백도 더 이상 이 안에서 다시 줄 필요 없이(패널 padding:0 보정이 없어짐)
    .scr-main의 기본 페이지 패딩을 그대로 쓴다.
-   앱 셀 마이그레이션 이후: 예전엔 헤더도 페이지와 함께 스크롤돼 사라졌기 때문에 이 sticky가
-   진짜 뷰포트 맨 위(모바일 웹앱 standalone에선 상태바 아래)에 직접 닿아서 안전영역 보정이
-   필요했다 — 이제 헤더가 스크롤 영역 밖의 flex 형제로 항상 떠 있고 #scroll-root는 그 아래에서
-   시작하므로, 이 sticky는 헤더 바로 밑(이미 안전영역 바깥)에서 시작한다. top:0으로 충분. */
-.scr-match-list-panel-v2 .scr-match-date-head { top: 0; }
+   헤더는 #scroll-root 안의 스크롤되는 페이지 최상단 콘텐츠라(고정/스티키 아님), 아래로
+   스크롤하면 헤더가 밀려 올라가 이 날짜 줄이 뷰포트 맨 위에 직접 닿는다 —
+   black-translucent 몰입 모드에선 그 지점이 노치 밑이므로, 안전영역만큼(--safe-top)
+   내려서 핀되게 한다(PC/비-노치에선 --safe-top이 0이라 그대로 top:0). */
+.scr-match-list-panel-v2 .scr-match-date-head { top: var(--safe-top); }
 .scr-match-list-panel-v2 .scr-match-cards { padding: 0; }
 .scr-match-list-panel-v2 .scr-match-date-head { margin: 0; }
 /* 기본 규칙(padding:10px 20px)의 왼쪽 20px는 카드 자신의 좌우 여백(8px)보다 훨씬 넓어
@@ -3690,7 +3716,10 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   background-color: var(--panel-solid);
   background-image: linear-gradient(90deg, color-mix(in srgb, var(--edge-glow) 22%, transparent) 0%, var(--edge-glow) 50%, color-mix(in srgb, var(--edge-glow) 22%, transparent) 100%);
   background-repeat: no-repeat; background-position: top; background-size: 100% 1px;
-  padding: 10px 10px calc(10px + env(safe-area-inset-bottom, 0px));
+  /* 위쪽 패딩을 아래보다 크게 줘서 탭 라벨을 살짝 아래로 내린다(요청: "탭바에서 탭들을
+     좀 아래로 이동") — 전체 높이(--mobile-footer-h + 안전영역)는 그대로 두고 콘텐츠
+     시작점만 내린다. */
+  padding: 16px 10px calc(10px + env(safe-area-inset-bottom, 0px));
   box-shadow: 0 -2px 10px rgba(0,0,0,0.15);
   box-sizing: border-box;
   overflow: hidden;
@@ -3786,7 +3815,7 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   display: flex; flex-direction: column; gap: 14px;
   /* 헤더와 같은 이유로 상태바만큼 위쪽 여백을 더 준다(standalone 웹앱에서만 의미 있음).
      아래쪽도 홈 인디케이터 안전영역만큼 더해 마지막 메뉴/버튼이 그 위에 바짝 붙지 않게 한다. */
-  padding: calc(16px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px));
+  padding: calc(16px + max(env(safe-area-inset-top, 0px), var(--safe-area-top, 0px))) 16px calc(16px + env(safe-area-inset-bottom, 0px));
   overflow-y: auto;
   transform: translateX(100%);
   transition: transform .2s ease;
@@ -4591,7 +4620,8 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    충분하다(요청: "너 나와 목록도 경기 목록처럼 날짜로 그루핑 하니까 스티키 플로팅
    처리 필요"). */
 .scr-challenge-date-head {
-  position: sticky; top: 0; z-index: 9;
+  /* black-translucent 몰입 모드에서 노치 밑에 핀되도록 안전영역만큼 내린다(--safe-top). */
+  position: sticky; top: var(--safe-top); z-index: 9;
   font-size: 13px; font-weight: 700; color: var(--dim); letter-spacing: 0.02em;
   background: var(--panel); backdrop-filter: blur(4px);
   padding: 8px 0; border-bottom: 1px solid var(--line-soft);
@@ -4606,7 +4636,7 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    카드 위에 계속 떠 있으므로, 헤더 높이만큼 여유를 더 크게 잡아야 카드 윗부분(NEXT
    라벨)이 헤더에 가려지지 않는다(요청: "너나와 진입시 next 대결에 스크롤할때 위에
    스티키된 날짜의 높이 고려해서 스크롤 위치 정해야해"). */
-.scr-challenge-card-slot { display: flex; flex-direction: column; min-width: 0; scroll-margin-top: 44px; }
+.scr-challenge-card-slot { display: flex; flex-direction: column; min-width: 0; scroll-margin-top: calc(var(--safe-top) + 44px); }
 .scr-challenge-next-tag {
   align-self: flex-start;
   font-size: 11px; font-weight: 900; letter-spacing: 0.1em;
