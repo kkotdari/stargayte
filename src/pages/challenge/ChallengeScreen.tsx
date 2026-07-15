@@ -297,8 +297,14 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
   // 각 페이지의 파생 라벨/상태는 그 페이지 자신의 값으로 계산한다 — 최신 페이지는 지금 실제
   // 일시/상태, 이력 페이지는 그 시점의 것(거절/무응답취소/완료 등). 아래에서 모든 페이지를
   // 한 칸에 겹쳐 렌더해(카드 높이를 최대 페이지에 고정) 페이지마다 렌더 시점에 계산한다.
-  const timeLabelOf = (p: ChallengePage, latest: boolean): string =>
-    latest ? (challengeTimeLabel(p.scheduledAt) ?? "시간 미정") : formatChallengeSchedule(p.scheduledAt);
+  // 일정 자체가 없는 카드(=일정 미정 그룹)는 그룹 헤더가 이미 "일정 미정"이라 카드 안에 또
+  // 표기하지 않는다(요청). 일시가 있으면 시간만 보여준다 — 날짜만 있고 시간만 미정인 경우는
+  // 없다(일시는 날짜+시간이 항상 함께).
+  const timeLabelOf = (p: ChallengePage, latest: boolean): string => {
+    if (!latest) return formatChallengeSchedule(p.scheduledAt);
+    if (!p.scheduledAt) return "";
+    return challengeTimeLabel(p.scheduledAt) ?? "";
+  };
 
   // 페이지를 넘길 때: 내용은 페이드 없이 바로 교체하고, 패널만 높이를 모핑한다(요청:
   // "페이지 이동시 현재 내용물 페이드아웃 제거하고 바로 사라지게 변경. 페이드인은 유지"
@@ -346,7 +352,8 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
     }
   };
 
-  const startScheduling = () => { setMode("schedule"); setDateStr(""); setTimeStr(""); setMessage(""); };
+  // 수락하며 시간을 정할 때 기본 시간은 오후 10시(요청: "수락할때 기본 시간 오후 10시").
+  const startScheduling = () => { setMode("schedule"); setDateStr(""); setTimeStr("22:00"); setMessage(""); };
   const startReapply = () => { setMode("reapply"); setDateStr(""); setTimeStr(""); setMessage(challenge.message); };
   const startRevenge = () => { setMode("revenge"); setDateStr(""); setTimeStr(""); setMessage(""); };
   const startPostpone = () => {
@@ -549,37 +556,14 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
           </div>
         </div>
 
-        {/* 이전 기록 탐색 — 카드 하단에 [◀ 1/3 ▶] 한 줄로(요청: "카드 페이지 좌우 이동
-            버튼을 하단으로 이동, 1/3 이렇게 페이지 표시"). .scr-challenge-pages(높이 모핑용
-            overflow:hidden 박스) 밖, card-body의 직계 자식이라 페이지가 바뀌어도 다시 안
-            그려지고 잘리지도 않는다. 이력이 여러 개(pages>1)일 때만 뜬다. 맨앞/맨뒤에선
-            해당 화살표만 투명하게(visibility:hidden) 처리해 자리를 지켜 숫자가 안 흔들린다. */}
-        {pages.length > 1 && (
-          <div className="scr-challenge-page-nav-bar">
-            <button
-              type="button"
-              className={cx("scr-challenge-page-nav scr-challenge-page-nav-prev", pageIndex === 0 && "scr-challenge-page-nav-hidden")}
-              onClick={() => setPageIndex((i) => i - 1)} disabled={pageIndex === 0}
-              aria-label="이전 기록 보기"
-            />
-            <span className="scr-challenge-page-count">{pageIndex + 1}/{pages.length}</span>
-            <button
-              type="button"
-              className={cx(
-                "scr-challenge-page-nav scr-challenge-page-nav-next",
-                pageIndex === pages.length - 1 && "scr-challenge-page-nav-hidden",
-              )}
-              onClick={() => setPageIndex((i) => i + 1)} disabled={pageIndex === pages.length - 1}
-              aria-label="다음 기록 보기"
-            />
-          </div>
-        )}
       </div>
 
       {err && <div className="scr-err">{err}</div>}
 
-      {isLatestPage && canRespond && mode === "none" && (
-        <div className="scr-challenge-card-actions">
+      {/* 응답 버튼(수락/거절) — 최신 페이지에서만 실제로 뜨지만, 이력 페이지에선 자리를
+          예약(reserve)만 하고 투명하게 둬서 아래 페이지네이션이 안 튀게 한다. */}
+      {canRespond && mode === "none" && (
+        <div className={cx("scr-challenge-card-actions", !isLatestPage && "scr-challenge-card-actions-reserve")}>
           <button
             className="scr-btn scr-challenge-reject-btn scr-btn-sm" disabled={busy}
             onClick={() => respond("rejected", "거절 사유를 입력해 주세요 (필수)", true)}
@@ -608,7 +592,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
           <div className="scr-challenge-datetime">
             <input
               type="date" className="scr-input" value={dateStr}
-              onChange={(e) => { setDateStr(e.target.value); if (!e.target.value) setTimeStr(""); }}
+              onChange={(e) => { setDateStr(e.target.value); if (!e.target.value) setTimeStr("22:00"); }}
             />
             <input
               type="time" className="scr-input" value={timeStr}
@@ -671,9 +655,10 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
         <div className="scr-challenge-time-change-form">
           <p className="scr-challenge-inbox-message">새 일시로 대결을 연기해요.</p>
           <div className="scr-challenge-datetime">
+            {/* 연기는 기존 시간이 기본값(요청) — 날짜를 지웠다 다시 골라도 기존 시각으로 돌아온다. */}
             <input
               type="date" className="scr-input" value={dateStr}
-              onChange={(e) => { setDateStr(e.target.value); if (!e.target.value) setTimeStr(""); }}
+              onChange={(e) => { setDateStr(e.target.value); if (!e.target.value) setTimeStr(isoToInputs(challenge.scheduledAt).time); }}
             />
             <input
               type="time" className="scr-input" value={timeStr}
@@ -748,9 +733,10 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
         </div>
       )}
 
-      {/* 결과 입력/설욕전/연기/취소/재신청 — 인라인 폼이 안 열려 있을 때만 뜨는 액션 줄. */}
-      {isLatestPage && mode === "none" && (canCancel || canReapply || canEnterResult || canRevenge || canPostpone) && (
-        <div className="scr-challenge-card-actions">
+      {/* 결과 입력/재대결/연기/취소/재신청 — 인라인 폼이 안 열려 있을 때만 뜨는 액션 줄.
+          응답 버튼과 마찬가지로 이력 페이지에선 자리만 예약(투명)해 페이지네이션이 안 튀게. */}
+      {mode === "none" && (canCancel || canReapply || canEnterResult || canRevenge || canPostpone) && (
+        <div className={cx("scr-challenge-card-actions", !isLatestPage && "scr-challenge-card-actions-reserve")}>
           {canEnterResult && (
             <button className="scr-btn scr-challenge-accept-btn scr-btn-sm" onClick={startResult} disabled={busy}>
               결과 입력
@@ -776,6 +762,32 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
               재신청
             </button>
           )}
+        </div>
+      )}
+
+      {/* 이전 기록 탐색 — 카드 "맨 하단"(버튼 로우보다 아래)에 [◀ 1/3 ▶] 한 줄로(요청:
+          "페이지네이션 버튼 로우보다 하단에 배치"). 버튼 로우는 이력 페이지에서도 자리를
+          예약(scr-challenge-card-actions-reserve)하므로 페이지를 넘겨도 이 줄이 위아래로
+          안 움직인다. 이력이 여러 개(pages>1)일 때만 뜬다. 맨앞/맨뒤에선 해당 화살표만
+          투명하게 처리해 숫자가 안 흔들린다. */}
+      {pages.length > 1 && (
+        <div className="scr-challenge-page-nav-bar">
+          <button
+            type="button"
+            className={cx("scr-challenge-page-nav scr-challenge-page-nav-prev", pageIndex === 0 && "scr-challenge-page-nav-hidden")}
+            onClick={() => setPageIndex((i) => i - 1)} disabled={pageIndex === 0}
+            aria-label="이전 기록 보기"
+          />
+          <span className="scr-challenge-page-count">{pageIndex + 1}/{pages.length}</span>
+          <button
+            type="button"
+            className={cx(
+              "scr-challenge-page-nav scr-challenge-page-nav-next",
+              pageIndex === pages.length - 1 && "scr-challenge-page-nav-hidden",
+            )}
+            onClick={() => setPageIndex((i) => i + 1)} disabled={pageIndex === pages.length - 1}
+            aria-label="다음 기록 보기"
+          />
         </div>
       )}
 

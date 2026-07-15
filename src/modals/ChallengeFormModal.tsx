@@ -121,7 +121,9 @@ export default function ChallengeFormModal({ onClose, onCreated }: ChallengeForm
   // 있게 한마디를 필수로 받는다.
   const [timeSpecified, setTimeSpecified] = useState(false);
   const [dateStr, setDateStr] = useState("");
-  const [timeStr, setTimeStr] = useState("");
+  // 기본 시간은 오후 10시(22:00) — 밤 경기가 많아 기본값으로 세팅해둔다(요청: "도전장
+  // 보낼때 기본 시간 오후 10시").
+  const [timeStr, setTimeStr] = useState("22:00");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -250,7 +252,7 @@ export default function ChallengeFormModal({ onClose, onCreated }: ChallengeForm
               <div className="scr-challenge-datetime">
                 <input
                   type="date" className="scr-input" value={dateStr}
-                  onChange={(e) => { setDateStr(e.target.value); if (!e.target.value) setTimeStr(""); }}
+                  onChange={(e) => { setDateStr(e.target.value); if (!e.target.value) setTimeStr("22:00"); }}
                 />
                 <input
                   type="time" className="scr-input" value={timeStr}

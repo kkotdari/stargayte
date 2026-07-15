@@ -4728,9 +4728,13 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    배지는 손 이모지 옆에 표시(이긴쪽에)"). 응답 상태 알약(.scr-challenge-pill)만 알약
    모양을 유지하고, 이 배지는 둥근네모로(요청: "배지는 알약모양이 아닌 둥근네모 형태면
    좋겠어 — 응답 상태만 알약 모양 배지 유지"). */
+/* 승/무 배지는 응답상태 텍스트보다 더 또렷하게 — 색톤을 높이고(더 비비드한 핑크) 옅은
+   배경까지 깔아 "승"이 한눈에 들어오게 한다(요청: "승 배지 컬러톤 높여서 승이 더 잘 보이게"). */
 .scr-challenge-inline-win {
-  flex-shrink: 0; font-size: 11px; font-weight: 800; color: #ec6ea8; white-space: nowrap;
-  padding: 1px 6px; border-radius: 6px; border: 1px solid rgba(236, 110, 168, 0.5);
+  flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;
+  width: 18px; height: 18px; border-radius: 50%; box-sizing: border-box;
+  font-size: 10.5px; font-weight: 900; color: #ff4d97; white-space: nowrap;
+  border: 1px solid rgba(255, 77, 151, 0.75); background: transparent;
 }
 /* 해당 안 되는 쪽(진 편/결과 없음)에도 같은 자리를 투명하게 남긴다 — 안 그러면 페이지를
    넘길 때 배지 유무에 따라 손 이모지가 좌우로 흔들린다(요청: "손이모지 양옆에도
@@ -4790,14 +4794,16 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    그리고 알약 모양으로 해줘 도장이니까"). 색은 앱 전역의 옅은 --win/--loss보다는
    또렷하되(요청: "컬러는 좀더 비비드하게") 너무 형광이진 않게(요청: "응답상태 배지
    덜 비비드하게 수정해줘") 중간 채도로 조정. */
+/* 응답상태(수락/거절/대기)는 도장식 알약을 버리고 그냥 색 텍스트로 — 알약 테두리/패딩이
+   먹던 가로 공간을 아낀다(요청: "응답상태 배지를 그냥 텍스트로 변경해서 공간절약"). 색톤도
+   승 배지보다 눈에 덜 띄게 살짝 낮춘다(요청: "응답상태 배지 컬러톤 살짝 낮추고 승 배지
+   컬러톤 높여 승이 더 잘 보이게"). */
 .scr-challenge-avatar-badge {
-  flex-shrink: 0; font-size: 9px; font-weight: 900; line-height: 1.6; white-space: nowrap;
-  padding: 0 5px; border-radius: 999px;
-  background: transparent; border: 1px solid currentColor;
+  flex-shrink: 0; font-size: 11px; font-weight: 700; white-space: nowrap;
 }
-.scr-challenge-avatar-badge-accepted { color: #4ade80; }
-.scr-challenge-avatar-badge-rejected { color: #f87171; }
-.scr-challenge-avatar-badge-pending { color: #fbbf24; }
+.scr-challenge-avatar-badge-accepted { color: #5cae83; }
+.scr-challenge-avatar-badge-rejected { color: #d1888a; }
+.scr-challenge-avatar-badge-pending { color: #cdaa54; }
 .scr-challenge-person { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
 .scr-challenge-person-hit {
   background: var(--highlight-bg); border-radius: 4px;
@@ -4917,6 +4923,12 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    높이에 영향주는건 괜찮아") — 아무것도 안 뜨는 카드에까지 빈 자리를 예약해두진
    않는다. */
 .scr-challenge-card-actions { display: flex; justify-content: center; gap: 8px; }
+/* 버튼 로우는 최신 페이지에서만 실제로 누를 수 있지만, 하단 페이지네이션이 이 로우 아래에
+   오므로(요청) 이력 페이지에서 로우가 사라지면 페이지네이션이 위로 튄다 — 이력 페이지에선
+   같은 버튼을 자리만 남기고 투명하게(visibility:hidden) 그려 높이를 그대로 예약한다(요청:
+   "버튼 로우가 있는 페이지가 하나라도 있으면 전체 페이지 높이에 버튼 로우 영역 추가해 동일
+   유지"). */
+.scr-challenge-card-actions-reserve { visibility: hidden; pointer-events: none; }
 .scr-challenge-inbox-body .scr-form-actions { justify-content: center; }
 /* 승락(핑크)/거절(검정) 버튼 — 모양은 재신청/취소/연기(.scr-btn-ghost) 버튼과 똑같이
    맞춘다(요청: "거절 승락 버튼 크기 모양을 재신청 취소 연기 버튼과 동일하게 수정") —
