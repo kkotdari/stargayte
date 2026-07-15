@@ -442,8 +442,13 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
   };
 
   // 무승부/미실시는 특정 팀이 이긴 게 아니라 배지를 달 대상이 없다 — 이 경우엔 양쪽 다
-  // 배지 자리를 아예 안 만든다(자리만 차지하고 둘 다 안 보이는 건 의미가 없다).
-  const hasTeamResult = page.resultWinnerSide === "creator" || page.resultWinnerSide === "target";
+  // 배지 자리를 아예 안 만든다(자리만 차지하고 둘 다 안 보이는 건 의미가 없다). 이 카드의
+  // "어느" 페이지가 아니라 체인 전체(pages) 기준으로 판단한다 — 지금 보는 페이지에만
+  // 결과가 있으면, 결과 없는 이전 기록 페이지로 넘길 때마다 배지 자리가 없어져 카드
+  // 높이가 들쭉날쭉해진다(요청: "페이징 있는 경우 다른 페이지들의 카드들도 똑같은
+  // 높이여야 보기 좋을거 같구") — 체인 어느 한 페이지라도 결과가 있으면 모든 페이지에서
+  // 자리를 똑같이 예약해 페이지를 넘겨도 높이가 안 변한다.
+  const hasTeamResult = pages.some((p) => p.resultWinnerSide === "creator" || p.resultWinnerSide === "target");
 
   // 요청자쪽 인원(본인+같은 편) — 도전자/팀 구성은 체인 내내 그대로라 페이지와 무관하게 고정.
   const creatorSideMembers: SideMember[] = [

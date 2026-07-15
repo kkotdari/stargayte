@@ -4697,8 +4697,11 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    모바일 전용 규칙으로 버튼 자체를 40px로 줄인다. */
 .scr-challenge-page-nav-row { display: flex; align-items: center; justify-content: center; gap: 20px; min-width: 0; }
 /* 요청: "대결 카드 페이징 있는 경우 하단 패딩 살짝만 더" — 아래쪽 음수 마진을
-   -18px→-12px로 완화해 다음 요소와 살짝 더 떨어지게 한다. */
-.scr-challenge-page-nav-row-active { margin: -14px 0 -12px; }
+   -18px→-12px로 완화해 다음 요소와 살짝 더 떨어지게 한다. 위쪽은 매치업과 너무 붙어
+   (원래 -14px면 카드바디 gap(10px)과 합쳐 실제로는 겹칠 정도로 좁았다) 보기 안
+   좋다는 요청("페이지네이션 부분과 컨텐츠 사이에 갭을 좀더 늘려줘")으로 0으로 되돌려
+   카드바디 기본 gap(10px)만큼 정상적으로 떨어지게 한다. */
+.scr-challenge-page-nav-row-active { margin: 0 0 -12px; }
 .scr-challenge-page-nav {
   display: flex; align-items: center; justify-content: center;
   width: 51px; height: 51px; border-radius: 50%; flex-shrink: 0;
