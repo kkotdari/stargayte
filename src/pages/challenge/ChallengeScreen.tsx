@@ -459,17 +459,15 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
   const reapplyNo = pages.slice(0, shownIndex + 1).filter((p) => p.chainKind === "reapply").length;
 
   return (
-    <div className="scr-challenge-card">
+    <div className={cx("scr-challenge-card", pages.length > 1 && "scr-challenge-card-paged")}>
       <div className="scr-challenge-card-body">
-        {/* 내용은 페이드아웃→페이드인(scr-challenge-page-out 토글), 패널은 높이만 모핑(위
-            useLayoutEffect가 실측 높이를 인라인으로 박고 CSS transition이 애니메이션)한다
-            (요청: "내용은 페이드아웃 페이드인 하면 될거같구 패널만 모핑"). 마감 카운트다운/
-            승리 배지/페이지 이전·다음 버튼은 전부 이미 있는 줄(날짜 줄, 화살표 옆, 매치업
-            양옆)에 끼워 넣어 새 줄을 만들지 않는다 — 버튼이 없는 카드는 모두 똑같은 높이가
-            되고, 버튼이 있는 카드만(51px 원형→둥근네모 버튼이 매치업 줄 자체를 키운다)
-            어쩔 수 없이 커진다(요청: "이 세 요소는 높이를 차지하지 않게 해주고 버튼이
-            없는 경우 모든 카드의 크기가 동일하게 해줘"). 그 차이는 위 높이 모핑 애니메이션이
-            그대로 흡수한다. */}
+        {/* 내용은 페이드 없이 즉시 교체, 패널은 높이만 모핑(위 useLayoutEffect가 실측
+            높이를 인라인으로 박고 CSS transition이 애니메이션)한다. 마감 카운트다운/승리
+            배지는 이미 있는 줄(날짜 줄, 화살표 옆)에 끼워 넣어 새 줄을 만들지 않는다.
+            이전/다음 버튼은 "내용"이 아니라 카드 패딩에 얹히는 컨트롤이라 이 안(.scr-
+            challenge-page, 페이지 전환마다 통째로 바뀌는 영역)이 아니라 .scr-challenge-
+            pages의 형제로 한 번만 둔다(요청: "이동 버튼은 scr-challenge-page 안에 있으면
+            안돼") — 자세한 배치는 아래 buttons 참고. */}
         <div
           className="scr-challenge-pages"
           style={pagesHeight !== undefined ? { height: pagesHeight } : undefined}
@@ -479,7 +477,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
               {timeLabelOf(activePage, shownLatest)}
               {/* 체인 라벨 — 이 기록이 재신청/재대결로 만들어진 것이면 어느 쪽인지 표시.
                   재신청은 몇 번째인지도 함께(요청: "다시 신청은 n번째 재신청으로 변경하고
-                  다시 신청 -> 재신청으로 모두 변경"). */}
+                  다시 신청 -> 재신청으로 모두 변경" → "배지 N차 재신청으로 변경"). */}
               {activePage.chainKind && (
                 <span className={cx("scr-challenge-chain-tag", `scr-challenge-chain-tag-${activePage.chainKind}`)}>
                   {activePage.chainKind === "revenge" ? "재대결" : `${reapplyNo}차 재신청`}
@@ -512,68 +510,66 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
               )}
             </div>
 
-            {/* 이전 기록 탐색 — 페이지네이션(점) 대신 이전/다음 버튼만 매치업 좌우 양쪽에
-                붙인다(요청: "페이징을 양쪽에 표시(페이징은 아니고 이전 다음 버튼만 있는것)").
-                버튼은 이력이 없는 카드에서도, 그리고 첫/마지막 페이지에서도 항상 같은
-                자리를 차지하고 필요 없을 때만 투명하게(visibility:hidden) 처리한다 —
-                비활성화(회색)로만 두면 여전히 보여서, "필요없을땐 안나와야해(페이지
-                없을때나 맨앞/맨뒤 페이지 등)"라는 요청과도, 자리를 안 차지하면 카드마다
-                로스터/화살표 위치가 어긋난다는 문제("이동 버튼이 자리를 예약하지 못한듯..
-                그래서 있을대 없을때 레이아웃이 다름")와도 둘 다 맞는다. */}
-            <div className="scr-challenge-matchup-row">
-              <button
-                type="button"
-                className={cx("scr-challenge-page-nav scr-challenge-page-nav-prev", pageIndex === 0 && "scr-challenge-page-nav-hidden")}
-                onClick={() => setPageIndex((i) => i - 1)} disabled={pageIndex === 0}
-                aria-label="이전 기록 보기"
-              >
-                <ChevronLeft size={18} />
-              </button>
-              <div className="scr-challenge-matchup">
-                <ChallengeSide people={creatorSideMembers} message={activePage.message} highlightMemberIds={highlightMemberIds} />
-                {/* 승/무 배지 — 이긴 편 쪽으로(손 이모지 기준 이긴 편이 있는 방향에) 붙인다
-                    (요청: "승리배지는 손 이모지 옆에 표시(이긴쪽에)"). 자리가 좁아 "승리"
-                    대신 한 글자만(요청: "좁아서 그냥 승/무 한글자 배지로 표시해야할듯").
-                    무승부는 어느 한쪽 편이 아니라 양쪽 다 표시한다. 양쪽 다 자리를 항상
-                    예약해 두고 해당 안 되는 쪽만 투명하게(visibility:hidden) — 안 그러면
-                    페이지를 넘길 때 배지 유무에 따라 손 이모지가 좌우로 흔들린다(요청:
-                    "손이모지 양옆에도 승리/무승부 배지 넣을 공간 예약해야함"). */}
-                <span className="scr-challenge-arrow-row">
-                  <span
-                    className={cx(
-                      "scr-challenge-inline-win",
-                      activePage.resultWinnerSide !== "creator" && activePage.resultWinnerSide !== "draw"
-                        && "scr-challenge-inline-win-hidden",
-                    )}
-                  >
-                    {activePage.resultWinnerSide === "draw" ? "무" : "승"}
-                  </span>
-                  <span className="scr-challenge-arrow" aria-hidden="true">👉🏻</span>
-                  <span
-                    className={cx(
-                      "scr-challenge-inline-win",
-                      activePage.resultWinnerSide !== "target" && activePage.resultWinnerSide !== "draw"
-                        && "scr-challenge-inline-win-hidden",
-                    )}
-                  >
-                    {activePage.resultWinnerSide === "draw" ? "무" : "승"}
-                  </span>
+            <div className="scr-challenge-matchup">
+              <ChallengeSide people={creatorSideMembers} message={activePage.message} highlightMemberIds={highlightMemberIds} />
+              {/* 승/무 배지 — 이긴 편 쪽으로(손 이모지 기준 이긴 편이 있는 방향에) 붙인다
+                  (요청: "승리배지는 손 이모지 옆에 표시(이긴쪽에)"). 자리가 좁아 "승리"
+                  대신 한 글자만(요청: "좁아서 그냥 승/무 한글자 배지로 표시해야할듯").
+                  무승부는 어느 한쪽 편이 아니라 양쪽 다 표시한다. 양쪽 다 자리를 항상
+                  예약해 두고 해당 안 되는 쪽만 투명하게(visibility:hidden) — 안 그러면
+                  페이지를 넘길 때 배지 유무에 따라 손 이모지가 좌우로 흔들린다(요청:
+                  "손이모지 양옆에도 승리/무승부 배지 넣을 공간 예약해야함"). */}
+              <span className="scr-challenge-arrow-row">
+                <span
+                  className={cx(
+                    "scr-challenge-inline-win",
+                    activePage.resultWinnerSide !== "creator" && activePage.resultWinnerSide !== "draw"
+                      && "scr-challenge-inline-win-hidden",
+                  )}
+                >
+                  {activePage.resultWinnerSide === "draw" ? "무" : "승"}
                 </span>
-                <ChallengeSide people={targetSideMembers} targets={activeTargetInfos} highlightMemberIds={highlightMemberIds} />
-              </div>
-              <button
-                type="button"
-                className={cx(
-                  "scr-challenge-page-nav scr-challenge-page-nav-next",
-                  pageIndex === pages.length - 1 && "scr-challenge-page-nav-hidden",
-                )}
-                onClick={() => setPageIndex((i) => i + 1)} disabled={pageIndex === pages.length - 1}
-                aria-label="다음 기록 보기"
-              >
-                <ChevronRight size={18} />
-              </button>
+                <span className="scr-challenge-arrow" aria-hidden="true">👉🏻</span>
+                <span
+                  className={cx(
+                    "scr-challenge-inline-win",
+                    activePage.resultWinnerSide !== "target" && activePage.resultWinnerSide !== "draw"
+                      && "scr-challenge-inline-win-hidden",
+                  )}
+                >
+                  {activePage.resultWinnerSide === "draw" ? "무" : "승"}
+                </span>
+              </span>
+              <ChallengeSide people={targetSideMembers} targets={activeTargetInfos} highlightMemberIds={highlightMemberIds} />
             </div>
           </div>
+
+          {/* 이전 기록 탐색 — 페이지네이션(점) 없이 이전/다음 버튼만. .scr-challenge-page
+              밖(=이 .scr-challenge-pages의 직계 자식)에 둬서 페이지가 바뀌어도 버튼
+              자체는 다시 그려지지 않는다. 이력이 없는 카드에서도, 첫/마지막 페이지에서도
+              항상 같은 자리(카드 패딩)를 차지하고 필요 없을 때만 투명하게(visibility:
+              hidden) 처리한다 — 비활성화(회색)로만 두면 여전히 보여서, "필요없을땐
+              안나와야해(페이지 없을때나 맨앞/맨뒤 페이지 등)"라는 요청과, 절대배치라
+              레이아웃엔 영향이 없다는 점 둘 다 만족한다. */}
+          <button
+            type="button"
+            className={cx("scr-challenge-page-nav scr-challenge-page-nav-prev", pageIndex === 0 && "scr-challenge-page-nav-hidden")}
+            onClick={() => setPageIndex((i) => i - 1)} disabled={pageIndex === 0}
+            aria-label="이전 기록 보기"
+          >
+            <ChevronLeft size={18} />
+          </button>
+          <button
+            type="button"
+            className={cx(
+              "scr-challenge-page-nav scr-challenge-page-nav-next",
+              pageIndex === pages.length - 1 && "scr-challenge-page-nav-hidden",
+            )}
+            onClick={() => setPageIndex((i) => i + 1)} disabled={pageIndex === pages.length - 1}
+            aria-label="다음 기록 보기"
+          >
+            <ChevronRight size={18} />
+          </button>
         </div>
       </div>
 
