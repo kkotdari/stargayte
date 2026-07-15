@@ -10,6 +10,7 @@ export default function ChallengeScrollTimeline() {
   const [visible, setVisible] = useState(false);
   const [scrollable, setScrollable] = useState(false);
   const [fraction, setFraction] = useState(0); // 0=맨 위(과거) … 1=맨 아래(미래)
+  const [todayFraction, setTodayFraction] = useState<number | null>(null); // "오늘" 눈금 위치
   const [dateLabel, setDateLabel] = useState<string | null>(null);
   const trackRef = useRef<HTMLDivElement>(null);
   const hideTimerRef = useRef<number | null>(null);
@@ -35,6 +36,16 @@ export default function ChallengeScrollTimeline() {
     setScrollable(max > 40);
     setFraction(max > 0 ? Math.min(1, Math.max(0, scrollTop / max)) : 0);
     setDateLabel(currentDateLabel());
+    // "오늘" 그룹의 스크롤 위치를 0~1로 — 트랙에 눈금을 찍는다.
+    const todayEl = document.querySelector<HTMLElement>('.scr-challenge-date-group[data-today="1"]');
+    if (todayEl && max > 0) {
+      const root = getScrollRoot();
+      const rootTop = root instanceof Window ? 0 : root.getBoundingClientRect().top;
+      const offset = scrollTop + (todayEl.getBoundingClientRect().top - rootTop);
+      setTodayFraction(Math.min(1, Math.max(0, offset / max)));
+    } else {
+      setTodayFraction(null);
+    }
   };
 
   const showThenScheduleHide = () => {
@@ -94,6 +105,9 @@ export default function ChallengeScrollTimeline() {
         onPointerUp={endDrag}
         onPointerCancel={endDrag}
       >
+        {todayFraction !== null && (
+          <div className="scr-challenge-timeline-today" style={{ top: `${todayFraction * 100}%` }} />
+        )}
         {dateLabel && (
           <div className="scr-challenge-timeline-date" style={{ top: `${fraction * 100}%` }}>
             {dateLabel}
