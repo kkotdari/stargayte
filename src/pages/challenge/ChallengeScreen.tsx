@@ -484,7 +484,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
                   다시 신청 -> 재신청으로 모두 변경"). */}
               {activePage.chainKind && (
                 <span className={cx("scr-challenge-chain-tag", `scr-challenge-chain-tag-${activePage.chainKind}`)}>
-                  {activePage.chainKind === "revenge" ? "재대결" : `${reapplyNo}번째 재신청`}
+                  {activePage.chainKind === "revenge" ? "재대결" : `${reapplyNo}차 재신청`}
                 </span>
               )}
               {/* 이긴 편은 매치업의 화살표 옆에 배지로 표시하니, 여기선 팀을 특정할 수 없는

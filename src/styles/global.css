@@ -4621,6 +4621,13 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    왼쪽을 도전자 아바타 시작점에 맞춰서 공간 마련" / "왼쪽 오른쪽 이동 버튼 부위는
    카드 전체에서 예약해버리면 될듯"). */
 .scr-challenge-card-body { display: flex; flex-direction: column; gap: 10px; --scr-challenge-nav-inset: 28px; }
+/* 모바일은 매치업 줄 자체가 카드 패딩 쪽으로 -14px 밀려나 있어(아래 .scr-challenge-
+   matchup-row 참고) 아바타의 실제 시작점도 그만큼 더 왼쪽으로 옮겨진다 — 이 변수를
+   거기 맞춰 다시 계산하지 않으면 날짜 줄과 아바타 줄의 왼쪽 시작선이 다시 어긋난다
+   (요청: "시각과 도전팀 아바타 왼쪽선 맞추기"). */
+@media (max-width: 640px) {
+  .scr-challenge-card-body { --scr-challenge-nav-inset: 14px; }
+}
 .scr-challenge-card-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
 .scr-challenge-card-when { padding-left: var(--scr-challenge-nav-inset); }
 /* 매치업 — 도전자편/상대편을 나란히 두고 그 사이에 손가락을 하나만 둔다. 양쪽 다
@@ -4646,9 +4653,13 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    모션을 넣어서 하나의 체인임을 알게" → "지금보다 더 애니메이션이 눈에 띄게 패널이
    모핑되게 해줘" — duration을 늘리고 살짝 오버슈트가 있는 이징으로 바꿔 모핑이 더
    또렷하게 보이게 한다). height는 JS(useLayoutEffect)가 실측값을 인라인으로 박고, 여기
-   transition이 그 변화를 애니메이션한다. 전환 중 큰 쪽이 잠깐 삐져나오지 않게
-   overflow:hidden. */
-.scr-challenge-pages { overflow: hidden; transition: height 0.42s cubic-bezier(0.34, 1.56, 0.64, 1); }
+   transition이 그 변화를 애니메이션한다. 전환 중 큰 쪽이 잠깐 삐져나오지 않게 세로만
+   overflow:hidden — 가로까지 hidden이면 이동 버튼이 카드 패딩 쪽으로 밀려 나가는 자리
+   (.scr-challenge-matchup-row의 음수 마진)가 이 박스 왼쪽 경계에 걸려 잘려 보였다
+   (신고: "이동 화살표 잘려서 잘 안보이는 문제"). overflow-x:visible + overflow-y:hidden
+   조합은 스펙상 안전하다(둘 중 하나가 visible이고 다른 게 hidden이면 visible 쪽은
+   auto로 계산될 뿐 실제로 안 잘린다). */
+.scr-challenge-pages { overflow-x: visible; overflow-y: hidden; transition: height 0.42s cubic-bezier(0.34, 1.56, 0.64, 1); }
 /* 내용은 페이드 없이 즉시 교체 — 높이 모핑만 애니메이션한다(요청: "페이지 이동시 현재
    내용물 페이드아웃 제거하고 바로 사라지게 변경. 페이드인은 유지" → "페이드 인도
    삭제"). */
@@ -4769,22 +4780,22 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    수락/거절/대기 세개로 통일하고 아바타에 겹쳐서 표시" → "수락 거절 대기 글자
    배지로 해줘 작고 진하게" — 아이콘이 아니라 글자, 진한 단색). 프사 아래쪽 가운데에
    살짝 겹쳐 걸친다 — 글자라 아이콘보다 폭이 넓어 모서리 원형 배지로는 다 못 담는다.
-   흰 테두리 링(box-shadow) 대신 다른 배지(.scr-challenge-inline-win 등)와 같은
-   "도장" 톤 — 테마 배경(--panel-solid, 사진 위에서도 안 흐려 보이게 불투명) 위에
-   색 테두리+색 글자만(요청: "응답상태 배지는 다른 배지와 테마를 비슷하게
-   도장느낌으로(지금은 흰색테두리인데 이렇게 말고)"). 프사 밖으로 걸치지 않고 안쪽
-   바닥에 붙여, 바로 아래 한마디 줄을 가리지 않게 한다(요청: "위치 좀더 위로
-   이동(한줄메시지 가리지 않게)"). */
+   진짜 도장처럼 배경 없이 색 테두리+색 글자만, 모양은 알약으로(요청: "응답상태 배지는
+   도장처럼 테두리랑 글자만 있고 배경은 투명해야함 그리고 알약 모양으로 해줘 도장이니까").
+   프사 밖으로 걸치지 않고 안쪽 바닥 라인에 맞춰, 바로 아래 한마디 줄을 가리지 않게 한다
+   (요청: "위치 좀더 위로 이동(한줄메시지 가리지 않게)" → "아래라인 아바타 아래쪽에
+   맞춤"). 색은 사진 위에서도 또렷하게 비비드한 톤으로(요청: "컬러는 좀더 비비드하게") —
+   앱 전역의 옅은 --win/--loss 대신 이 배지 전용의 진한 색을 쓴다. */
 .scr-challenge-avatar-wrap { position: relative; display: inline-flex; line-height: 0; flex-shrink: 0; }
 .scr-challenge-avatar-badge {
   position: absolute; left: 50%; bottom: 0; transform: translateX(-50%);
   font-size: 8px; font-weight: 900; line-height: 1; white-space: nowrap;
-  padding: 1.5px 3px; border-radius: 4px;
-  background: var(--panel-solid); border: 1px solid currentColor;
+  padding: 1.5px 4px; border-radius: 999px;
+  background: transparent; border: 1px solid currentColor;
 }
-.scr-challenge-avatar-badge-accepted { color: var(--win); }
-.scr-challenge-avatar-badge-rejected { color: var(--loss); }
-.scr-challenge-avatar-badge-pending { color: var(--dim); }
+.scr-challenge-avatar-badge-accepted { color: #2fe06f; }
+.scr-challenge-avatar-badge-rejected { color: #ff5470; }
+.scr-challenge-avatar-badge-pending { color: #ffb020; }
 .scr-challenge-person { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
 .scr-challenge-person-hit {
   background: var(--highlight-bg); border-radius: 4px;
