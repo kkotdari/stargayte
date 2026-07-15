@@ -459,7 +459,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
   const reapplyNo = pages.slice(0, shownIndex + 1).filter((p) => p.chainKind === "reapply").length;
 
   return (
-    <div className={cx("scr-challenge-card", pages.length > 1 && "scr-challenge-card-paged")}>
+    <div className="scr-challenge-card">
       <div className="scr-challenge-card-body">
         {/* 내용은 페이드 없이 즉시 교체, 패널은 높이만 모핑(위 useLayoutEffect가 실측
             높이를 인라인으로 박고 CSS transition이 애니메이션)한다. 마감 카운트다운/승리
@@ -557,7 +557,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
             onClick={() => setPageIndex((i) => i - 1)} disabled={pageIndex === 0}
             aria-label="이전 기록 보기"
           >
-            <ChevronLeft size={18} />
+            <ChevronLeft size={12} />
           </button>
           <button
             type="button"
@@ -568,7 +568,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
             onClick={() => setPageIndex((i) => i + 1)} disabled={pageIndex === pages.length - 1}
             aria-label="다음 기록 보기"
           >
-            <ChevronRight size={18} />
+            <ChevronRight size={12} />
           </button>
         </div>
       </div>
