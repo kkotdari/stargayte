@@ -446,25 +446,19 @@ export default function SearchFilterBar({
   //    줄어들며 아이콘이 되어 왼쪽 앞자리로 이동한다 — 두 개체가 교차한다(요청: "활성되는
   //    아이콘이 앞에 배치되면서 창으로 펼쳐지는 트랜스폼. 비활성되는 요소는 아이콘으로
   //    트랜스폼" + "비활성창은 왼쪽으로 아이콘이 되어 이동").
-  //  - 닫힘 시: 열려 있던 창이 아이콘으로 수축하며 맨 앞(slot0)으로 가고, 앞에 있던
-  //    아이콘은 옆자리(slot1)로 밀려나 둘이 자리를 바꾼다(요청: "두 아이콘 자리 바꿈이
-  //    자연스럽고 아름답게"). 접힌 순서는 항상 [필터][검색]... 이 아니라 "방금 열려
-  //    있던 것"이 앞이다 — 창이 자연스럽게 제 앞자리로 접히는 모양을 우선한다.
+  //  - 닫힘 시: 열려 있던 창이 아이콘으로 수축해 제자리로 돌아가고, 접힌 순서는 항상
+  //    [필터][검색] 고정이다(요청: "순서는 무조건 필터가 왼쪽 검색이 오른쪽") — 예컨대
+  //    검색창이 열려 있었다면(앞엔 필터 아이콘) 검색창이 오른쪽 자리(slot1) 아이콘으로
+  //    줄어들며 앉고, 필터 아이콘은 그대로 앞(slot0)에 남는다. 필터창이 열려 있었다면
+  //    필터창이 앞(slot0) 아이콘으로 수축하며 앞에 있던 검색 아이콘과 자리를 바꾼다
+  //    (요청: "두 아이콘 자리 바꿈이 자연스럽고 아름답게").
   // 원(50px)과 캡슐 모두 반경 25px라 모양 전환에 반경 애니메이션이 따로 필요 없다.
   // 배경색은 개체에 붙어 있어(필터=글라스, 검색=흰색) 모핑 내내 그대로 유지된다.
-  //
-  // 접힘 시 어느 아이콘이 앞(slot0)인지 — 마지막으로 열려 있던 창의 아이콘이 앞으로
-  // 온다(위 주석의 "창이 제 앞자리로 접히는 모양"). 첫 상태(none으로 시작한 적 없음)를
-  // 대비해 기본은 필터가 앞이다.
-  const lastOpenRef = useRef<"filter" | "search">(filterPanel ? "filter" : "search");
-  if (panel !== "none") lastOpenRef.current = panel;
-  const frontIcon = lastOpenRef.current;
-
   const objClass = (kind: "filter" | "search"): string => {
     if (panel === kind) return "scr-fs-obj-panel";
     if (panel !== "none") return "scr-fs-obj-slot0"; // 반대 창이 열려 있음 — 내가 왼쪽 앞 아이콘
-    // 접힘 — 방금까지 열려 있던 쪽이 앞(slot0), 나머지가 옆(slot1).
-    return frontIcon === kind ? "scr-fs-obj-slot0" : "scr-fs-obj-slot1";
+    // 접힘 — 항상 필터가 앞(slot0), 검색이 옆(slot1). 필터가 없는 화면이면 검색이 앞.
+    return kind === "filter" || !filterPanel ? "scr-fs-obj-slot0" : "scr-fs-obj-slot1";
   };
 
   // 접혔을 때 보이지 않는 나머지 공간까지 이 줄 자신의 너비로 잡혀 있으면, 그 빈 자리가
