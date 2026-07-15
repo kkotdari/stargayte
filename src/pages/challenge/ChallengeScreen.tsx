@@ -177,11 +177,14 @@ type SideMember = { id: string; nickname: string; avatar: string | null };
 // 팀 구성 한 편(도전자편/상대편)을 세로로 쌓는다(요청: "각팀을 세로로 배치") — 1:1이든
 // 팀전이든 모양은 같고, 인원이 하나든 여럿이든 그냥 줄 수만 늘어난다.
 function ChallengeSide({
-  people, message, targets,
+  people, message, targets, highlightMemberIds,
 }: {
   people: SideMember[];
   message?: string;
   targets?: { target: ChallengeTarget; overall: ChallengeDisplayStatus }[];
+  // 유저 검색에 걸린 사람 — 경기결과 로스터와 같은 반전색으로 프사+닉네임을 함께 칠한다
+  // (요청: "랭킹, 너 나와 유저 검색시 하이라이팅 추가 단! 닉네임뿐 아니라 프사까지").
+  highlightMemberIds?: Set<string>;
 }) {
   return (
     <div className={cx("scr-challenge-side", targets && "scr-challenge-side-target")}>
@@ -190,8 +193,10 @@ function ChallengeSide({
         return (
           <div key={p.id} className="scr-challenge-side-block">
             <div className="scr-challenge-side-row">
-              <Avatar member={p} size={24} />
-              <span className="scr-challenge-person-name">{p.nickname}</span>
+              <span className={cx("scr-challenge-person", highlightMemberIds?.has(p.id) && "scr-challenge-person-hit")}>
+                <Avatar member={p} size={24} />
+                <span className="scr-challenge-person-name">{p.nickname}</span>
+              </span>
               {t && (
                 <span className={cx("scr-challenge-pill", `scr-challenge-pill-${targetPillInfo(t.target, t.overall).tone}`)}>
                   {targetPillInfo(t.target, t.overall).label}
@@ -227,11 +232,13 @@ type CardMode = "none" | "schedule" | "reapply" | "revenge" | "postpone" | "resu
 interface ChallengeCardProps {
   challenge: Challenge;
   myId: string | undefined;
+  // 유저 검색에 걸린 사람들 — 카드 안 프사+닉네임을 반전색으로 칠한다.
+  highlightMemberIds?: Set<string>;
   onResponded: (updated: Challenge) => void;
   onViewResults: (challenge: Challenge) => void;
 }
 
-function ChallengeCard({ challenge, myId, onResponded, onViewResults }: ChallengeCardProps) {
+function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onViewResults }: ChallengeCardProps) {
   const memberOf = useAppStore((s) => s.memberOf);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -440,9 +447,9 @@ function ChallengeCard({ challenge, myId, onResponded, onViewResults }: Challeng
         </div>
 
         <div className="scr-challenge-matchup">
-          <ChallengeSide people={creatorSideMembers} message={page.message} />
+          <ChallengeSide people={creatorSideMembers} message={page.message} highlightMemberIds={highlightMemberIds} />
           <span className="scr-challenge-arrow" aria-hidden="true">👉🏻</span>
-          <ChallengeSide people={targetSideMembers} targets={pageTargetInfos} />
+          <ChallengeSide people={targetSideMembers} targets={pageTargetInfos} highlightMemberIds={highlightMemberIds} />
         </div>
 
         <div className={cx("scr-challenge-page-nav-row", pages.length > 1 && "scr-challenge-page-nav-row-active")}>
@@ -756,6 +763,15 @@ export default function ChallengeScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- challengeMatchesTerm은 memberOf 참조 함수라 매 렌더 새로 만들어져도 무방(값 자체는 members로 충분히 표현됨)
   }, [challenges, searchTerms, members]);
 
+  // 검색어에 걸린 사람들 — 남은 카드 안에서 누구 때문에 걸렸는지 프사+닉네임을 반전색으로
+  // 짚어준다(랭킹 화면과 같은 방식, 요청: "랭킹, 너 나와 유저 검색시 하이라이팅 추가").
+  const highlightMemberIds = useMemo(() => {
+    const ids = new Set<string>();
+    if (searchTerms.length === 0) return ids;
+    members.forEach((m) => { if (searchTerms.some((t) => memberMatchesTerm(m, t))) ids.add(m.id); });
+    return ids;
+  }, [members, searchTerms]);
+
   // 상태 구분 없이 하나의 목록으로 합치고 scheduledAt 내림차순으로 정렬한다.
   const sortedChallenges = useMemo(
     () => [...searchedChallenges].sort(compareChallenges),
@@ -830,6 +846,7 @@ export default function ChallengeScreen() {
                       key={c.id}
                       challenge={c}
                       myId={user?.id}
+                      highlightMemberIds={highlightMemberIds}
                       onResponded={upsert}
                       onViewResults={setResultsTarget}
                     />

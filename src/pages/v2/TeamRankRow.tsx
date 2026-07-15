@@ -58,14 +58,13 @@ export default function TeamRankRow({
         </div>
         <div className="scr-team-rank-grid">
           {members.map((m) => (
-            <div key={m.id} className="scr-team-rank-member">
+            // 검색에 걸린 사람만 경기결과 로스터와 똑같은 반전색으로 칠한다 — 팀에 넷이
+            // 있으면 누구 때문에 이 팀이 남았는지 안 보인다. 닉네임만 칠하던 것에서 프사까지
+            // 함께 덮는다(요청: "닉네임뿐 아니라 프사까지 하이라이팅 주고 경기 하이라이트랑
+            // 똑같은 css").
+            <div key={m.id} className={cx("scr-team-rank-member", highlightMemberIds?.has(m.id) && "scr-team-rank-member-hit")}>
               <Avatar member={m} size={36} />
-              {/* 검색에 걸린 사람만 경기결과 로스터와 똑같은 반전색으로 칠한다 — 팀에 넷이
-                  있으면 누구 때문에 이 팀이 남았는지 안 보인다. 배경은 닉네임 글자에만
-                  두르고 프사는 그대로 둔다(로스터와 같은 방식). */}
-              <span className={cx("scr-team-rank-name", highlightMemberIds?.has(m.id) && "scr-team-rank-name-hit")}>
-                {m.nickname}
-              </span>
+              <span className="scr-team-rank-name">{m.nickname}</span>
             </div>
           ))}
         </div>

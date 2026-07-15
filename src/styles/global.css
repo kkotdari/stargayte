@@ -1897,8 +1897,21 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;
 }
 /* 유저 검색에 걸린 팀원 — 경기결과 로스터(.scr-team-player-highlight)와 완전히 같은 반전색.
-   글자 바깥까지 살짝 넉넉히 칠하고, 밝은 배경 위에서도 읽히도록 고정 어두운 글자색을 쓴다. */
-.scr-team-rank-name-hit {
+   닉네임 글자만 칠하던 것에서 프사까지 함께 덮는다(요청: "닉네임뿐 아니라 프사까지
+   하이라이팅 주고 경기 하이라이트랑 똑같은 css") — 구성원 칸(프사+닉네임) 전체를 감싼다. */
+.scr-team-rank-member-hit {
+  background: var(--highlight-bg); border-radius: 0;
+  padding: 2px 4px; margin: -2px -4px;
+}
+.scr-team-rank-member-hit .scr-team-rank-name { color: var(--bar-text); font-weight: 800; }
+/* 개인(일대일) 랭킹 행의 검색 하이라이트 — 같은 반전색으로 프사와 닉네임을 함께 칠한다.
+   프사와 닉네임이 격자의 이웃 칸이라, 프사 칸의 배경을 칸 사이 간격(column-gap)만큼
+   오른쪽으로 더 늘려 닉네임 배경과 한 띠로 이어지게 한다. */
+.scr-rank-row-hit .scr-rank-avatar-btn {
+  background: var(--highlight-bg); border-radius: 0;
+  padding: 2px 14px 2px 4px; margin: -2px -14px -2px -4px;
+}
+.scr-rank-row-hit .scr-rank-name {
   background: var(--highlight-bg); color: var(--bar-text); font-weight: 800;
   padding: 2px 4px; margin: -2px -4px;
 }
@@ -4653,6 +4666,16 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-challenge-side-block { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .scr-challenge-side-row { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .scr-challenge-side-row .scr-avatar { border-radius: 50% !important; }
+/* 프사+닉네임 묶음 — 평소엔 그냥 자리만 잡는 투명한 래퍼(row의 gap과 같은 간격을 안에서
+   유지)고, 유저 검색에 걸리면 경기결과 로스터(.scr-team-player-highlight)와 똑같은
+   반전색으로 프사까지 함께 칠한다(요청: "랭킹, 너 나와 유저 검색시 하이라이팅 추가 단!
+   닉네임뿐 아니라 프사까지 하이라이팅 주고 경기 하이라이트랑 똑같은 css"). */
+.scr-challenge-person { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.scr-challenge-person-hit {
+  background: var(--highlight-bg); border-radius: 0;
+  padding: 2px 4px; margin: -2px -4px;
+}
+.scr-challenge-person-hit .scr-challenge-person-name { color: var(--bar-text); font-weight: 800; }
 /* flex:1 1 auto로 남는 공간을 다 먹게 뒀더니, 응답 알약이 그 뒤로 밀려 줄 맨 끝에
    고정된 열처럼 보였다(요청: "상대 상태알약은 닉네임 바로 옆에 붙여서 배치(고정
    컬럼X)") — flex-grow를 0으로 바꿔 이름이 자기 내용 크기만큼만 차지하게 하면, 알약이

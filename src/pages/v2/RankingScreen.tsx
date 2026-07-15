@@ -52,11 +52,21 @@ export default function RankingScreenV2() {
   // 개인/각 인원수 팀은 집계 대상 자체가 다른 별도 목록이라, 한쪽에서 걸어둔 검색어·종족
   // 필터를 다른 쪽으로 들고 가면 그 화면에 아무도 안 걸린 채로 남거나 무의미한 필터가
   // 남는다 — 차트를 바꾸면 항상 초기화한다(요청: "개인/팀 전환시 나머지 필터와 검색
-  // 키워드 초기화").
+  // 키워드 초기화"). 목록도 그 자리에서 비운다 — 안 그러면 새 집계가 도착할 때까지
+  // 이전 차트의 목록이 그대로 보이다가 갑자기 갈아치워진다(실제로 지적받은 문제 —
+  // "2/3/4인팀 선택시 기존 화면이 보이다가 새 차트로 변경됨. 화면자체를 다 별도로
+  // 새로 그려야돼"). 비우면 아래 렌더가 로딩 스피너부터 새로 그린다.
   const handleChartChange = (c: ChartOpt) => {
     setChart(c);
     setRace("all");
     setSearch("");
+    setRows([]);
+    setTeamRows([]);
+  };
+  // 종족 칩도 같은 이유 — 조건이 바뀌는 순간 이전 조건의 목록을 지우고 새로 그린다.
+  const handleRaceChange = (r: BaseRace | null) => {
+    setRace(r ?? "all");
+    setRows([]);
   };
 
   const [rows, setRows] = useState<RankRowData[]>([]);
@@ -169,7 +179,7 @@ export default function RankingScreenV2() {
         searchPlaceholder={isTeam ? "유저" : "유저/종족"}
         suggestions={suggestions}
         raceValue={isTeam ? undefined : (race === "all" ? null : race)}
-        onRaceChange={isTeam ? undefined : (r) => setRace(r ?? "all")}
+        onRaceChange={isTeam ? undefined : handleRaceChange}
         filterPanel={
           <FilterItem label="차트">
             <PillTabs options={CHART_OPTS} value={chart} onChange={handleChartChange} aria-label="개인/팀 인원수 선택" />
@@ -217,6 +227,9 @@ export default function RankingScreenV2() {
                 // 공동순위 그룹의 첫 행이 사라져 남은 행만 빈칸으로 보일 수 있어, 검색
                 // 중에는 묶지 않는다.
                 tiedWithPrev={searchTerms.length === 0 && i > 0 && row.rank === visibleRows[i - 1].rank}
+                // 검색에 걸린 사람은 경기 로스터와 같은 반전색으로 프사+닉네임을 함께
+                // 칠한다(요청: "닉네임뿐 아니라 프사까지 하이라이팅").
+                highlighted={highlightMemberIds.has(row.member.id)}
                 onOpenLatestMatch={() => setSoloMatchMember(row.member)}
                 onOpenTrend={() => openSoloTrend(row)}
               />

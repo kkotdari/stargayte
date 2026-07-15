@@ -17,6 +17,10 @@ interface RankRowProps {
   // 카드(행) 전체를 누르면 뜨는 최근 5개월 순위변동 모달(요청: "랭킹 카드 클릭시 최근
   // 5개월 순위변동 모달창 노출").
   onOpenTrend?: () => void;
+  // 유저 검색에 걸린 사람 — 경기결과 로스터(.scr-team-player-highlight)와 같은 반전색으로
+  // 프사+닉네임을 함께 칠한다(요청: "닉네임뿐 아니라 프사까지 하이라이팅 주고 경기
+  // 하이라이트랑 똑같은 css").
+  highlighted?: boolean;
 }
 
 const OUTCOME_LABEL: Record<LatestMatch["outcome"], string> = { win: "승", loss: "패", draw: "무", notHeld: "미실시" };
@@ -33,7 +37,7 @@ const OUTCOME_CLASS: Record<LatestMatch["outcome"], string | undefined> = {
 //
 // 행 전체를 누르면 최근 5개월 순위변동 모달이 뜬다 — 최근 경기("vs 상대 승/패")는 그 안의
 // 별도 클릭 대상이라 이벤트 버블링을 막아 따로 반응한다.
-export default function RankRowV2({ row, tiedWithPrev = false, onOpenLatestMatch, onOpenTrend }: RankRowProps) {
+export default function RankRowV2({ row, tiedWithPrev = false, highlighted = false, onOpenLatestMatch, onOpenTrend }: RankRowProps) {
   const { member, stats, rank, rankDelta, latestMatch } = row;
   const [photoOpen, setPhotoOpen] = useState(false);
 
@@ -53,7 +57,7 @@ export default function RankRowV2({ row, tiedWithPrev = false, onOpenLatestMatch
     <>
       <div className={cx("scr-rank-row", tiedWithPrev && "scr-rank-row-tied")}>
         <div
-          className={cx("scr-rank-row-inner", onOpenTrend && "scr-rank-row-clickable")}
+          className={cx("scr-rank-row-inner", onOpenTrend && "scr-rank-row-clickable", highlighted && "scr-rank-row-hit")}
           onClick={onOpenTrend}
           role={onOpenTrend ? "button" : undefined}
           tabIndex={onOpenTrend ? 0 : undefined}

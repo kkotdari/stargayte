@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { createPortal } from "react-dom";
+import { createPortal, flushSync } from "react-dom";
 import { Search, SlidersHorizontal, X } from "lucide-react";
 import { attachPopover } from "../../utils/popover";
 import { cx } from "../../utils/format";
@@ -436,7 +436,16 @@ export default function SearchFilterBar({
   // 사라지지 않는다. 펼쳐진 뒤 실제 입력칸에 포커스가 가면 그 포커스는 언마운트되지
   // 않는 안정된 엘리먼트라 onFocus/onBlur가 정상 동작한다.
   const openFilter = () => { setStackFocused(false); setPanel("filter"); };
-  const openSearch = () => { setStackFocused(false); setPanel("search"); };
+  // 검색은 여는 즉시 입력칸에 포커스를 준다(요청: "검색아이콘 눌러서 활성화시 바로 인풋
+  // 포커싱") — flushSync로 상태 변경을 그 자리에서 커밋해야 두 가지가 보장된다: (1) 입력칸을
+  // 감추던 visibility가 풀린 뒤에 focus()가 불리고, (2) focus가 탭 제스처의 콜 스택 안에서
+  // 실행돼 모바일 브라우저가 가상 키보드를 실제로 올려준다(rAF/setTimeout으로 미루면 제스처
+  // 밖이라 iOS가 키보드를 안 열 수 있다).
+  const openSearch = () => {
+    setStackFocused(false);
+    flushSync(() => setPanel("search"));
+    inputRef.current?.focus();
+  };
 
   // 한 줄에 아이콘(원)과 활성화된 창(캡슐)이 별도 개체로 나란히 놓인다(요청: "아이콘과
   // 활성화된 창은 별도 개체야 구분되어야하고 아이콘 모양과 색은 원래대로 유지") — 필터/
