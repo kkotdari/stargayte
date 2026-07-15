@@ -1,5 +1,6 @@
 import { todayStr } from "./date";
 import { parseReplayFile, ReplayParseError } from "./replayParser";
+import { buildReplayFileName } from "./replayFileName";
 import { matchReplayPlayerToMember } from "./replayMemberMatch";
 import { api } from "../api/client";
 import { isComputerSlot, newComputerSlotId } from "../constants/computerSlot";
@@ -63,6 +64,9 @@ async function buildDraft(file: File, members: Member[]): Promise<ReplayDraft> {
 
   try {
     const parsed = await parseReplayFile(file);
+    // 업로드(등록) 시점에 알아보기 쉬운 파일명으로 바꿔 저장한다(요청). 파싱 성공한 경우만
+    // — 실패 시엔 원본 파일명을 그대로 둔다. 다운로드는 이 저장된 이름을 그대로 쓴다.
+    attachment.name = buildReplayFileName(parsed);
     const usedIds = new Set<string>();
     const assign = (players: typeof parsed.team1): { rows: MatchSlot[]; unmatched: UnmatchedPlayer[] } => {
       const rows: MatchSlot[] = [];
