@@ -4555,7 +4555,16 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    여기 헤더에서만 보여주고, 카드 안에는 시간만 남긴다(요청: "각 카드엔 시간만 표시"). */
 .scr-challenge-date-group { display: flex; flex-direction: column; gap: 12px; }
 .scr-challenge-date-group + .scr-challenge-date-group { margin-top: 18px; }
-.scr-challenge-date-head { font-size: 13px; font-weight: 700; color: var(--dim); letter-spacing: 0.02em; }
+/* 경기 목록의 날짜 줄(.scr-match-date-head)과 같은 이유로 스티키 — 헤더가 스크롤 영역
+   밖의 flex 형제로 항상 떠 있고 목록은 그 아래 스크롤 컨테이너에서 시작하므로 top:0으로
+   충분하다(요청: "너 나와 목록도 경기 목록처럼 날짜로 그루핑 하니까 스티키 플로팅
+   처리 필요"). */
+.scr-challenge-date-head {
+  position: sticky; top: 0; z-index: 9;
+  font-size: 13px; font-weight: 700; color: var(--dim); letter-spacing: 0.02em;
+  background: var(--panel); backdrop-filter: blur(4px);
+  padding: 8px 0; border-bottom: 1px solid var(--line-soft);
+}
 
 /* 가장 가까운 예정(수락) 대결 — 카드 밖 좌상단에 NEXT 라벨을 단다(요청: "해당 카드에
    NEXT 문구 노출(카드 밖 좌상단)"). 슬롯 래퍼는 라벨과 카드를 세로로 쌓는 투명한
