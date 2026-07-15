@@ -4455,6 +4455,15 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-challenge-add-target:hover { color: var(--point); border-color: var(--point); }
 .scr-challenge-datetime { display: flex; gap: 8px; }
 .scr-challenge-datetime .scr-input { flex: 1; min-width: 0; }
+/* 도전장 작성/인박스 팝업은 앱 다크/라이트 테마와 무관하게 항상 아이보리 편지지 톤인데,
+   OS가 다크 모드면 브라우저가 이 date/time 인풋의 네이티브 UI(플레이스홀더 "연도-월-일"
+   글자, 달력/시계 아이콘)를 페이지 배경과 무관하게 어둡게 렌더링해 밝은 편지지 위에서
+   거의 안 보인다(신고: "도전장 인박스 열면 일시 플레이스 홀더가 안보임") — 기간필터
+   월선택(.scr-filter-month-input)과 같은 이유로 밝은 배경 전용임을 명시한다. */
+.scr-challenge-form-modal .scr-challenge-datetime input,
+.scr-challenge-inbox-modal .scr-challenge-datetime input {
+  color-scheme: light;
+}
 
 /* 목록 카드 */
 .scr-challenge-list { display: flex; flex-direction: column; gap: 12px; margin-top: 16px; }
