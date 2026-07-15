@@ -303,14 +303,11 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
   );
   const [pageIndex, setPageIndex] = useState(pages.length - 1);
   const isLatestPage = pageIndex === pages.length - 1;
-  const page = pages[pageIndex];
-  const pageTimeLabel = isLatestPage
-    ? (challengeTimeLabel(page.scheduledAt) ?? "시간 미정")
-    : formatChallengeSchedule(page.scheduledAt);
-  // 각 페이지의 파생 상태는 그 페이지 자신의 status/일시로 계산한다 — 최신 페이지는 지금
-  // 실제 상태(overall)와 같고, 이력 페이지는 그 시점의 상태(거절/무응답취소/완료 등)가 된다.
-  const pageOverall = displayStatusOf(page);
-  const pageTargetInfos = page.targets.map((t) => ({ target: t, overall: pageOverall }));
+  // 각 페이지의 파생 라벨/상태는 그 페이지 자신의 값으로 계산한다 — 최신 페이지는 지금 실제
+  // 일시/상태, 이력 페이지는 그 시점의 것(거절/무응답취소/완료 등). 아래에서 모든 페이지를
+  // 한 칸에 겹쳐 렌더해(카드 높이를 최대 페이지에 고정) 페이지마다 렌더 시점에 계산한다.
+  const timeLabelOf = (p: ChallengePage, latest: boolean): string =>
+    latest ? (challengeTimeLabel(p.scheduledAt) ?? "시간 미정") : formatChallengeSchedule(p.scheduledAt);
 
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
   const [mode, setMode] = useState<CardMode>("none");
@@ -440,30 +437,48 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
   return (
     <div className="scr-challenge-card">
       <div className="scr-challenge-card-body">
-        <div className="scr-challenge-card-row scr-challenge-card-when">
-          {pageTimeLabel}
-          {/* 체인 라벨 — 이 기록이 재신청/설욕전으로 만들어진 것이면 어느 쪽인지 표시. */}
-          {page.chainKind && (
-            <span className={cx("scr-challenge-chain-tag", `scr-challenge-chain-tag-${page.chainKind}`)}>
-              {page.chainKind === "revenge" ? "재대결" : "다시 신청"}
-            </span>
-          )}
-          {/* 결과가 입력된 대결은 이긴 편(또는 무승부/미실시)을 알약으로 표시. */}
-          {page.resultWinnerSide && (
-            <span className="scr-challenge-pill scr-challenge-pill-done">{resultLabel(page.resultWinnerSide)}</span>
-          )}
-          {/* 결과 보기는 결과가 입력된 뒤에만 뜬다(요청: "결과보기는 결과 입력후에만 보이고"). */}
-          {isLatestPage && challenge.resultWinnerSide !== null && (
-            <button type="button" className="scr-challenge-result-link" onClick={() => onViewResults(challenge)}>
-              결과 보기
-            </button>
-          )}
-        </div>
+        {/* 모든 페이지를 CSS 그리드 한 칸에 겹쳐 놓고 활성 페이지만 보이게 한다 — 칸 크기가
+            가장 큰 페이지에 맞춰지므로, 페이지를 넘겨도 카드 높이가 안 바뀌어 아래가 안
+            움직인다(요청: "페이지들중 최대 높이가 나오는 높이에 맞춰야함"). */}
+        <div className="scr-challenge-pages">
+          {pages.map((p, i) => {
+            const latest = i === pages.length - 1;
+            const overall = displayStatusOf(p);
+            const targetInfos = p.targets.map((t) => ({ target: t, overall }));
+            return (
+              <div
+                key={p.id}
+                className={cx("scr-challenge-page", i !== pageIndex && "scr-challenge-page-hidden")}
+                aria-hidden={i !== pageIndex}
+              >
+                <div className="scr-challenge-card-row scr-challenge-card-when">
+                  {timeLabelOf(p, latest)}
+                  {/* 체인 라벨 — 이 기록이 다시 신청/재대결로 만들어진 것이면 어느 쪽인지 표시. */}
+                  {p.chainKind && (
+                    <span className={cx("scr-challenge-chain-tag", `scr-challenge-chain-tag-${p.chainKind}`)}>
+                      {p.chainKind === "revenge" ? "재대결" : "다시 신청"}
+                    </span>
+                  )}
+                  {/* 결과가 입력된 대결은 이긴 편(또는 무승부/미실시)을 알약으로 표시. */}
+                  {p.resultWinnerSide && (
+                    <span className="scr-challenge-pill scr-challenge-pill-done">{resultLabel(p.resultWinnerSide)}</span>
+                  )}
+                  {/* 결과 보기는 결과가 입력된 뒤에만 뜬다(요청: "결과보기는 결과 입력후에만 보이고"). */}
+                  {latest && challenge.resultWinnerSide !== null && (
+                    <button type="button" className="scr-challenge-result-link" onClick={() => onViewResults(challenge)}>
+                      결과 보기
+                    </button>
+                  )}
+                </div>
 
-        <div className="scr-challenge-matchup">
-          <ChallengeSide people={creatorSideMembers} message={page.message} highlightMemberIds={highlightMemberIds} />
-          <span className="scr-challenge-arrow" aria-hidden="true">👉🏻</span>
-          <ChallengeSide people={targetSideMembers} targets={pageTargetInfos} highlightMemberIds={highlightMemberIds} />
+                <div className="scr-challenge-matchup">
+                  <ChallengeSide people={creatorSideMembers} message={p.message} highlightMemberIds={highlightMemberIds} />
+                  <span className="scr-challenge-arrow" aria-hidden="true">👉🏻</span>
+                  <ChallengeSide people={targetSideMembers} targets={targetInfos} highlightMemberIds={highlightMemberIds} />
+                </div>
+              </div>
+            );
+          })}
         </div>
 
         <div className={cx("scr-challenge-page-nav-row", pages.length > 1 && "scr-challenge-page-nav-row-active")}>
