@@ -4644,6 +4644,50 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   border-radius: 4px; padding: 3px 6px;
 }
 
+/* 우측 네비게이션 타임라인(요청: "위가 과거 아래가 미래, 현재 위치 표시, 스크롤 시에만
+   보임"). 목록이 과거(위)→미래(아래) 순이라 스크롤 위치(0~1)를 그대로 세로 축에 매핑한다.
+   position:fixed로 뷰포트 우측에 떠 있고, 스크롤하는 동안에만 opacity로 나타난다. 위쪽은
+   헤더/툴바/검색줄, 아래쪽은 탭바를 비켜 배치한다. */
+.scr-challenge-timeline {
+  position: fixed; right: 6px; z-index: 40;
+  top: calc(var(--safe-top) + 96px);
+  bottom: calc(var(--mobile-footer-h) + env(safe-area-inset-bottom, 0px) + 40px);
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  opacity: 0; pointer-events: none; transition: opacity 0.25s ease;
+}
+.scr-challenge-timeline-visible { opacity: 1; pointer-events: auto; }
+.scr-challenge-timeline-end {
+  font-size: 9px; font-weight: 800; color: var(--dim); letter-spacing: 0.06em;
+  user-select: none;
+}
+.scr-challenge-timeline-track {
+  position: relative; flex: 1; width: 32px;
+  display: flex; justify-content: center;
+  touch-action: none; cursor: pointer;
+}
+/* 세로 축선 — 위(과거)는 옅고 아래(미래)로 갈수록 포인트색이 진해져 방향을 은근히 전한다. */
+.scr-challenge-timeline-track::before {
+  content: ""; position: absolute; top: 0; bottom: 0; width: 3px; border-radius: 3px;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--point) 20%, transparent),
+    color-mix(in srgb, var(--point) 78%, transparent)
+  );
+}
+.scr-challenge-timeline-thumb {
+  position: absolute; left: 50%; width: 12px; height: 12px; border-radius: 50%;
+  background: var(--point); transform: translate(-50%, -50%);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--point) 26%, transparent), 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+/* 현재 상단에 핀된 날짜를 알약으로 — 트랙 왼쪽에 붙여 현재 위치를 "며칠"인지로 보여준다. */
+.scr-challenge-timeline-date {
+  position: absolute; right: 100%; margin-right: 8px; transform: translateY(-50%);
+  white-space: nowrap; font-size: 11px; font-weight: 700;
+  color: var(--text); background: var(--panel-solid);
+  padding: 3px 7px; border-radius: 5px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22); pointer-events: none;
+}
+
 /* 응답대기중 카드의 마감 카운트다운(요청일+1일까지 남은 시간) — 별도 줄이 아니라 날짜
    줄(.scr-challenge-card-when)에 다른 알약들과 나란히 낀다(요청: "마감 카운트다운은
    날짜있는 맨 윗줄에 표시") — 그 줄 자체가 이미 flex-wrap 인라인 나열이라 새 줄을 만들지

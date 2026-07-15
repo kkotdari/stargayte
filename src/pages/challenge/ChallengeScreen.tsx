@@ -8,6 +8,7 @@ import FilterItem from "../../components/common/FilterItem";
 import PillTabs from "../../components/common/PillTabs";
 import ChallengeFormModal from "../../modals/ChallengeFormModal";
 import TeamMatchesModal from "../../modals/TeamMatchesModal";
+import ChallengeScrollTimeline from "./ChallengeScrollTimeline";
 import { useAppStore } from "../../store/appStore";
 import { api } from "../../api/client";
 import { cx } from "../../utils/format";
@@ -828,13 +829,16 @@ const PERIOD_UNIT_OPTS: { value: ChallengePeriodUnit; label: string }[] = [
 // 위로 올라오는 게 부자연스러웠다). 예정 일시가 없는 건(=아직 응답 대기중인 일정 미정. 종료된
 // 건은 서버가 요청일+1일로 스탬프하므로 null이 남지 않는다)은 날짜가 없어 맨 위에 둔다. 일시가
 // 같거나 둘 다 미정이면 최근 생성 순으로 가른다.
+// 정렬: "일정 미정"(응답 대기중, scheduledAt 없음)은 맨 위 "대기중" 묶음으로, 그 아래
+// 날짜 있는 대결은 과거(위) → 미래(아래) 오름차순으로 둔다(요청: 타임라인 "위가 과거,
+// 아래가 미래" — 아래로 스크롤할수록 미래). 같은 시각/대기중끼리는 최신 생성이 위.
 function compareChallenges(a: Challenge, b: Challenge): number {
   const aNull = !a.scheduledAt;
   const bNull = !b.scheduledAt;
   if (aNull && bNull) return a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0;
   if (aNull) return -1;
   if (bNull) return 1;
-  if (a.scheduledAt !== b.scheduledAt) return a.scheduledAt! > b.scheduledAt! ? -1 : 1;
+  if (a.scheduledAt !== b.scheduledAt) return a.scheduledAt! > b.scheduledAt! ? 1 : -1;
   return a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0;
 }
 
@@ -1076,7 +1080,7 @@ export default function ChallengeScreen() {
             <div className="scr-challenge-list">
               {groupChallengesByDate(activeList).map((g) => (
                 <div key={g.label} className="scr-challenge-date-group">
-                  <div className="scr-challenge-date-head">
+                  <div className="scr-challenge-date-head" data-date-label={g.label}>
                     {g.isToday && <span className="scr-challenge-card-today-tag">오늘</span>}
                     {g.label}
                     {/* NEXT 배지는 카드가 아니라 그 날짜 헤더에 단다(요청: "글로우 없애고
@@ -1106,6 +1110,9 @@ export default function ChallengeScreen() {
           )}
         </section>
       )}
+
+      {/* 우측 네비게이션 타임라인 — 스크롤 시에만 뜨고, 스스로 스크롤 불가 상태면 안 뜬다. */}
+      {!loading && <ChallengeScrollTimeline />}
 
       {formOpen && (
         <ChallengeFormModal
