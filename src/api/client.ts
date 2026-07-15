@@ -4,7 +4,7 @@
 import type {
   Member, Match, NewMatch, SignupPayload, MemberCreatePayload, ImageSettingMap, MemberStatus, MemberRole,
   ScreenKey, AppVersion, AppVersionStatus,
-  MatchPage, MatchStatsResponse, MatchType, Race, TeamRankingResponse,
+  MatchSlot, MatchPage, MatchStatsResponse, MatchType, Race, TeamRankingResponse,
   MonthlyMatchStatsResponse, MonthlyTeamRankingResponse,
   ReplayNameClassificationEntry, ReplayNameKind, ReplayNameMappingEntry, ReplayNameMappingKind,
   Challenge, ChallengeCreatePayload, ChallengeReapplyPayload, ChallengeResult,
@@ -20,6 +20,41 @@ function buildQuery(params: Record<string, string | number | boolean | undefined
   });
   const qs = usp.toString();
   return qs ? `?${qs}` : "";
+}
+
+// ── 슬롯 게임아이디 이름 매핑 (계약↔도메인) ────────────────────────────────
+// 서버 계약은 슬롯의 리플레이 원본 게임아이디를 playerName으로 주고받지만(DB 컬럼
+// player_name), 프론트는 도메인 언어로 rawName을 쓴다. 이 이름 불일치를 여기(API 경계)
+// 한 곳에서만 흡수한다(anti-corruption layer) — 다른 곳은 전부 rawName만 안다. 이 매핑이
+// 없으면 슬롯을 rawName으로 보내도 서버가 못 읽어 리플레이 컴퓨터/비회원 게임아이디가
+// 저장 왕복에서 통째로 유실됐다(실제로 지적받은 문제 — 게임아이디 화면에 안 뜸).
+type WireSlot = Omit<MatchSlot, "rawName"> & { playerName?: string | null };
+type WireMatch = Omit<Match, "team1" | "team2"> & { team1: WireSlot[]; team2: WireSlot[] };
+
+// 수기등록 컴퓨터/비회원 슬롯은 실제 게임아이디가 없어 서버가 이 예약 player_name으로
+// 저장한다(백엔드 schemas.MANUAL_COMPUTER/UNREGISTERED_RAW_NAME와 동일). 읽을 때 이 값을
+// rawName으로 그대로 넘기면 MatchTeams가 "컴퓨터 N"/"비회원 N" 라벨 대신 "__computer__"를
+// 그대로 표시해버리므로(실명 아님), null로 떨궈 순번 라벨로 대체되게 한다.
+const RESERVED_PLAYER_NAMES = new Set(["__computer__", "__unregistered__"]);
+
+function slotToWire(slot: MatchSlot): WireSlot {
+  const { rawName, ...rest } = slot;
+  return { ...rest, playerName: rawName ?? null };
+}
+function matchToWire(match: NewMatch): Omit<NewMatch, "team1" | "team2"> & { team1: WireSlot[]; team2: WireSlot[] } {
+  return { ...match, team1: match.team1.map(slotToWire), team2: match.team2.map(slotToWire) };
+}
+function slotFromWire(slot: WireSlot): MatchSlot {
+  const { playerName, ...rest } = slot;
+  const rawName = playerName && !RESERVED_PLAYER_NAMES.has(playerName) ? playerName : null;
+  return { ...rest, rawName };
+}
+function matchFromWire(match: WireMatch): Match {
+  return {
+    ...match,
+    team1: (match.team1 ?? []).map(slotFromWire),
+    team2: (match.team2 ?? []).map(slotFromWire),
+  };
 }
 
 export interface MatchListParams {
@@ -234,7 +269,8 @@ export const api = {
       matchNo: params.matchNo,
       teamMemberIds: params.teamMemberIds?.length ? params.teamMemberIds.join(",") : undefined,
     });
-    return request<MatchPage>(`/api/matches${qs}`);
+    const page = await request<Omit<MatchPage, "items"> & { items: WireMatch[] }>(`/api/matches${qs}`);
+    return { ...page, items: page.items.map(matchFromWire) };
   },
 
   // 통계/랭킹 공용 — 매치 원본이 아니라 회원별로 이미 집계된 결과를 받는다.
@@ -349,17 +385,19 @@ export const api = {
   },
 
   async createMatch(match: NewMatch): Promise<Match> {
-    return request<Match>("/api/matches", {
+    const res = await request<WireMatch>("/api/matches", {
       method: "POST",
-      body: JSON.stringify(match),
+      body: JSON.stringify(matchToWire(match)),
     });
+    return matchFromWire(res);
   },
 
   async updateMatch(id: number, match: NewMatch): Promise<Match> {
-    return request<Match>(`/api/matches/${id}`, {
+    const res = await request<WireMatch>(`/api/matches/${id}`, {
       method: "PUT",
-      body: JSON.stringify(match),
+      body: JSON.stringify(matchToWire(match)),
     });
+    return matchFromWire(res);
   },
 
   async deleteMatch(id: number): Promise<void> {
@@ -368,10 +406,11 @@ export const api = {
 
   // 정식 수정(updateMatch, 작성자/운영자 전용)과 달리 회원 누구나 남길 수 있는 가벼운 메모.
   async updateMatchMemo(id: number, note: string): Promise<Match> {
-    return request<Match>(`/api/matches/${id}/memo`, {
+    const res = await request<WireMatch>(`/api/matches/${id}/memo`, {
       method: "PATCH",
       body: JSON.stringify({ note }),
     });
+    return matchFromWire(res);
   },
 
   // 인증 헤더가 필요해 <a href> 로 바로 못 받으므로 blob 으로 받아 저장한다.
