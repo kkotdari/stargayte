@@ -4533,7 +4533,10 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-challenge-next-tag {
   align-self: flex-start;
   font-size: 11px; font-weight: 900; letter-spacing: 0.1em;
-  color: var(--point-contrast); background: var(--point);
+  /* 앱에서 강조에 쓰던 그린 계통(검색 하이라이트와 같은 --highlight-bg)으로 — 어두운
+     글자(--bar-text)와 짝지어 두 테마 모두에서 또렷하다(요청: "넥스트 색은 그린계통
+     강조색 쓰던거"). */
+  color: var(--bar-text); background: var(--highlight-bg);
   border-radius: 4px; padding: 2px 7px; margin-bottom: 4px;
 }
 
