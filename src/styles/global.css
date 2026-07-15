@@ -4787,11 +4787,15 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    맞춤"). 색은 사진 위에서도 또렷하게 비비드한 톤으로(요청: "컬러는 좀더 비비드하게") —
    앱 전역의 옅은 --win/--loss 대신 이 배지 전용의 진한 색을 쓴다. */
 .scr-challenge-avatar-wrap { position: relative; display: inline-flex; line-height: 0; flex-shrink: 0; }
+/* 배경은 투명하게 유지하되(도장 느낌), 사진 위에 바로 얹히니 글자가 묻히지 않도록
+   뒤쪽만 블러 처리한다(요청: "응답상황배지 뒤를 블러처리") — 프사 사진의 색/무늬가
+   흐려져 색 테두리+글자의 대비가 항상 살아난다. */
 .scr-challenge-avatar-badge {
   position: absolute; left: 50%; bottom: 0; transform: translateX(-50%);
   font-size: 8px; font-weight: 900; line-height: 1; white-space: nowrap;
   padding: 1.5px 4px; border-radius: 999px;
   background: transparent; border: 1px solid currentColor;
+  backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
 }
 .scr-challenge-avatar-badge-accepted { color: #2fe06f; }
 .scr-challenge-avatar-badge-rejected { color: #ff5470; }
