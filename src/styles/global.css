@@ -4429,17 +4429,19 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   display: flex; align-items: center; justify-content: space-between; gap: 6px;
   background: var(--panel-raised); color: var(--text); border-radius: var(--radius-sm); padding: 8px 10px; font-size: 13.5px;
 }
-/* "+ 상대 추가" — 버튼처럼 테두리로 감싸지 않고 텍스트 링크로만, 누르면 그 자리가
-   드롭다운(scr-challenge-target-slot)으로 바뀐다. 확정된 지목 칩(.scr-challenge-target-picked:
-   가장 큰 자식인 X 버튼 30px + 상하 패딩 8px = 46px)과 세로 크기를 맞춰야, "+추가" ↔ 칩이
-   오갈 때 블록 높이가 안 바뀌어 아래 레이아웃이 흔들리지 않는다(요청: "+팀원추가 일때랑
-   유저칩일때랑 차지하는 높이가 달라서 레이아웃 흔들림 발생"). */
+/* "+ 상대 추가" — 확정된 지목 칩과 오갈 때 블록 높이가 안 흔들리게(요청: "레이아웃 흔들림")
+   세로 크기를 맞췄지만, 투명한 텍스트 링크라 실제로는 같은 46px여도 칩(채워진 박스)보다
+   눈에 띄게 짧아 보였다(요청: "높이 유저칩하고 맞추지 않았어? 아직 안맞는듯"). 그래서 칩과
+   같은 박스(같은 패딩/모서리, 전체 폭)를 쓰되, 눌러 넣는 빈 자리임을 점선 테두리로만
+   구분한다 — 누르면 그 자리가 드롭다운(scr-challenge-target-slot)으로 바뀐다. */
 .scr-challenge-add-target {
-  align-self: flex-start; display: inline-flex; align-items: center; min-height: 46px;
-  background: transparent; border: none; padding: 4px 2px;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  width: 100%; min-height: 46px; box-sizing: border-box;
+  background: transparent; border: 1.5px dashed var(--pipe-dark);
+  border-radius: var(--radius-sm); padding: 8px 10px;
   font-family: inherit; font-size: 13.5px; font-weight: 600; color: var(--muted); cursor: pointer;
 }
-.scr-challenge-add-target:hover { color: var(--point); }
+.scr-challenge-add-target:hover { color: var(--point); border-color: var(--point); }
 .scr-challenge-datetime { display: flex; gap: 8px; }
 .scr-challenge-datetime .scr-input { flex: 1; min-width: 0; }
 
@@ -4565,11 +4567,11 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   text-align: center; font-size: 12px; font-weight: 700; color: var(--dim); margin-top: 2px;
 }
 
-/* 재신청/설욕전으로 이어진 기록임을 알리는 라벨 — 재신청은 옅은 톤, 설욕전은 눈에 띄게
-   포인트색으로 구분한다. */
+/* 다시 신청/재대결로 이어진 기록임을 알리는 라벨 — 다시 신청은 옅은 톤, 재대결은 눈에 띄게
+   포인트색으로 구분한다. 라벨에 공백이 있어("다시 신청") 좁은 카드에서 줄바꿈되지 않게 nowrap. */
 .scr-challenge-chain-tag {
   display: inline-block; font-size: 11px; font-weight: 800; border-radius: 4px;
-  padding: 1px 5px; margin-right: 5px; vertical-align: middle;
+  padding: 1px 5px; margin-right: 5px; vertical-align: middle; white-space: nowrap;
 }
 .scr-challenge-chain-tag-reapply { color: var(--dim); background: rgba(var(--overlay-rgb),0.12); }
 .scr-challenge-chain-tag-revenge { color: var(--point-contrast); background: var(--point); }
@@ -4890,8 +4892,12 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 /* 안내가 사진 위 오버레이가 아니라 사진 아래 일반 텍스트로 바뀌었으니, 사진 위에서
    쓰던 반투명 검정 알약 배경은 필요 없다 — 대신 카드 배경(어두운 스크림)에 맞춰
    흰 글자 + 그림자만 유지한다. */
+/* "눌러서 열어보기"(도전장 열기 버튼)는 눈에 띄게 핑크 알약으로 — 편지봉투 아래에서
+   확실히 "누르는 버튼"으로 보이게 한다(요청: "도전장 열기 버튼 핑크색으로"). */
 .scr-challenge-envelope-hint {
-  font-size: 12.5px; font-weight: 700; color: #fff; text-shadow: 0 1px 6px rgba(0,0,0,0.55);
+  font-size: 12.5px; font-weight: 700; color: #fff;
+  background: #ec6ea8; padding: 8px 18px; border-radius: 999px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.35);
   white-space: nowrap;
 }
 /* 안내 줄이 사진 바로 아래로 내려오면서 카드 하단이 허전해지지 않게 여백을
@@ -4904,7 +4910,10 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    상속해 편지지 배경 위에서 안 보이는 문제가 있었다(실제로 지적받은 문제 — "인박스
    편지지 타이틀 글자 안보임"). 봉투 단계는 아래 전용 규칙이 흰색으로 다시 뒤집는다. */
 .scr-challenge-inbox-title { font-weight: 800; font-size: 19px; margin: 6px 0 10px; color: var(--text); }
-.scr-challenge-inbox-body { text-align: left; }
+/* 모달이 align-items:center라 그냥 두면 편지지 본문이 내용 폭만큼만 좁게 가운데 모여
+   붙어 모달 폭을 못 채웠다(요청: "모달 안의 내용들을 넓히라고") — 본문을 full-width로
+   펴서 행/입력칸이 모달 폭을 꽉 채우게 한다. */
+.scr-challenge-inbox-body { text-align: left; width: 100%; box-sizing: border-box; }
 .scr-challenge-inbox-message { margin: 0 0 6px; font-size: 14px; font-style: italic; color: var(--text); }
 .scr-challenge-inbox-row { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--line-soft); }
 .scr-challenge-inbox-row:last-of-type { border-bottom: none; }
