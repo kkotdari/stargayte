@@ -112,9 +112,21 @@ export interface MatchSlot {
   effectiveCmdCount: number | null;
 }
 
-// 첨부파일. url 은 신규 업로드 시 data URL(base64), 서버 저장 후에는 실제 접근 URL.
-export interface MatchAttachment {
-  name: string;
+// 리플레이(.rep). 서버는 별도 replays 테이블에 풀 메타데이터로 저장하고 경기는 그 id로
+// 매핑한다. originalName은 업로드된 원본 파일명, displayName은 알아보기 쉽게 생성한
+// 파일명(화면 표시/다운로드에 쓴다). url 은 저장 후 실제 접근 URL.
+export interface Replay {
+  id: number;
+  originalName: string;
+  displayName: string;
+  url: string;
+}
+
+// 리플레이 업로드/유지 payload — 신규 업로드 시 url은 data URL(base64), 기존 리플레이를
+// 그대로 유지할 땐 서버 저장 URL(서버가 변경 없음으로 처리). id는 서버가 부여하므로 없다.
+export interface ReplayUpload {
+  originalName: string;
+  displayName: string;
   url: string;
 }
 
@@ -137,7 +149,7 @@ export interface Match {
   result: MatchResult;
   matchType: MatchType; // 경기유형
   note: string; // 비고
-  attachment: MatchAttachment | null; // 파일첨부
+  replay: Replay | null; // 리플레이(.rep) — 없으면 수기등록
   createdBy: MatchAuthor | null; // 작성자가 탈퇴 등으로 사라졌으면 null
   // 아래 3개는 리플레이 파싱으로만 채워진다 (수동 등록 경기는 항상 null)
   mapName: string | null;
@@ -145,8 +157,10 @@ export interface Match {
   durationSeconds: number | null;
 }
 
-// 경기 생성/수정 요청 (id, 작성자는 서버가 채움)
-export type NewMatch = Omit<Match, "id" | "matchNo" | "createdBy">;
+// 경기 생성/수정 요청 (id, 작성자는 서버가 채움). 리플레이는 업로드 payload(id 없음)로 보낸다.
+export type NewMatch = Omit<Match, "id" | "matchNo" | "createdBy" | "replay"> & {
+  replay: ReplayUpload | null;
+};
 
 // 경기결과 화면 무한스크롤용 커서 페이지 — 서버가 필터링/정렬까지 다 해서 내려준다.
 export interface MatchPage {

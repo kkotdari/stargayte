@@ -3323,6 +3323,9 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-attach-name-btn { display: inline-flex !important; align-items: center; gap: 4px; background: transparent; border: none; padding: 0; color: var(--text) !important; font-size: 13px; font-family: var(--font-mono); cursor: pointer; min-width: 0; overflow: hidden; }
 .scr-attach-name-btn span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .scr-attach-name-btn:hover { color: var(--point) !important; }
+/* 알아보기 쉬운 리플레이 파일명(displayName)은 길어질 수 있어 화면에선 말줄임표로 줄인다
+   (요청). 전체 이름은 title 툴팁으로 확인. 버튼/텍스트 양쪽 표시에 공통으로 쓴다. */
+.scr-attach-name-text { display: inline-block; max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
 
 /* ===== 경기상세: 팀 구성 + 선수 기록(APM 등)을 하나로 합친 표 =====
    팀별로 카드 하나(테두리) 안에 "팀 1 (승)" 헤더 + 표. 수치 컬럼(APM~EFF)은 리플레이로

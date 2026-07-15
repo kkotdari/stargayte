@@ -245,7 +245,7 @@ export default function ReplayBatchButton() {
           const payload: NewMatch = {
             // winnerSide가 null인 드래프트는 위에서 이미 실패로 걸렀으므로 승패는 항상 채워져 있다.
             date: filled.date, team1: filled.team1, team2: filled.team2, result: filled.result as MatchResult,
-            matchType: filled.matchType, note: filled.note, attachment: filled.attachment,
+            matchType: filled.matchType, note: filled.note, replay: filled.replay,
             mapName: filled.mapName || null, gameStartedAt: filled.gameStartedAt,
             durationSeconds: filled.durationSeconds,
           };

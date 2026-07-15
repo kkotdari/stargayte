@@ -5,7 +5,7 @@ import { matchReplayPlayerToMember } from "./replayMemberMatch";
 import { api } from "../api/client";
 import { isComputerSlot, newComputerSlotId } from "../constants/computerSlot";
 import { newUnregisteredSlotId } from "../constants/unregisteredSlot";
-import type { MatchAttachment, MatchResult, MatchSlot, MatchType, Race, Member } from "../types";
+import type { ReplayUpload, MatchResult, MatchSlot, MatchType, Race, Member } from "../types";
 
 export interface UnmatchedPlayer {
   rawName: string;
@@ -33,7 +33,7 @@ export interface ReplayDraft {
   result: MatchResult | "";
   matchType: MatchType;
   note: string;
-  attachment: MatchAttachment | null;
+  replay: ReplayUpload | null;
   winnerSide: "team1" | "team2" | null;
   // 조작량이 현저히 적다는 이유로 관전자로 "추정해" 뺀 사람들 — 초반에 나간 실제 참가자를
   // 잘못 지웠을 수 있어, 비어있지 않으면 배치 자동 등록에 맡기지 않고 사람이 확인해야 한다.
@@ -60,13 +60,17 @@ function readFileAsDataUrl(file: File): Promise<string> {
 }
 
 async function buildDraft(file: File, members: Member[]): Promise<ReplayDraft> {
-  const attachment: MatchAttachment = { name: file.name, url: await readFileAsDataUrl(file) };
+  // 원본 파일명(originalName)은 그대로 보존하고, 화면 표시/다운로드에 쓰는 알아보기 쉬운
+  // 이름(displayName)은 파싱 성공 시 생성한다(요청) — 실패하면 원본 파일명을 그대로 쓴다.
+  const replay: ReplayUpload = {
+    originalName: file.name,
+    displayName: file.name,
+    url: await readFileAsDataUrl(file),
+  };
 
   try {
     const parsed = await parseReplayFile(file);
-    // 업로드(등록) 시점에 알아보기 쉬운 파일명으로 바꿔 저장한다(요청). 파싱 성공한 경우만
-    // — 실패 시엔 원본 파일명을 그대로 둔다. 다운로드는 이 저장된 이름을 그대로 쓴다.
-    attachment.name = buildReplayFileName(parsed);
+    replay.displayName = buildReplayFileName(parsed);
     const usedIds = new Set<string>();
     const assign = (players: typeof parsed.team1): { rows: MatchSlot[]; unmatched: UnmatchedPlayer[] } => {
       const rows: MatchSlot[] = [];
@@ -119,7 +123,7 @@ async function buildDraft(file: File, members: Member[]): Promise<ReplayDraft> {
       result: parsed.winnerSide ?? "",
       matchType: parsed.matchType,
       note: "",
-      attachment,
+      replay,
       winnerSide: parsed.winnerSide,
       guessedObservers: parsed.guessedObservers,
       teamSplitUncertain: parsed.teamSplitUncertain,
@@ -142,7 +146,7 @@ async function buildDraft(file: File, members: Member[]): Promise<ReplayDraft> {
       result: "",
       matchType: "0101",
       note: "",
-      attachment,
+      replay,
       winnerSide: null,
       guessedObservers: [],
       teamSplitUncertain: false,

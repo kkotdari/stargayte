@@ -82,13 +82,13 @@ function groupByDate(rows: SearchListRow[]): DateGroup[] {
 // 첨부된 리플레이 파일을 목록에서 바로 내려받는다 — 경기상세(MatchDetailModal)/수정
 // (MatchModal)과 같은 방식(blob → 임시 a태그 클릭).
 async function downloadReplay(match: Match) {
-  if (!match.attachment) return;
+  if (!match.replay) return;
   try {
-    const blob = await api.downloadMatchAttachment(match.id);
+    const blob = await api.downloadReplay(match.id);
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = match.attachment.name;
+    a.download = match.replay.displayName;
     a.click();
     URL.revokeObjectURL(url);
   } catch {
@@ -157,13 +157,13 @@ export default function MatchList({
                     >
                       <Pencil size={15} />
                     </button>
-                    {r.raw.attachment && (
+                    {r.raw.replay && (
                       <button
                         type="button"
                         className="scr-match-memo-btn"
                         onClick={() => downloadReplay(r.raw)}
                         aria-label="리플레이 저장"
-                        title={r.raw.attachment.name}
+                        title={r.raw.replay.displayName}
                       >
                         <Download size={15} />
                       </button>

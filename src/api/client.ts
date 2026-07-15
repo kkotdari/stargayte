@@ -419,11 +419,11 @@ export const api = {
   },
 
   // 인증 헤더가 필요해 <a href> 로 바로 못 받으므로 blob 으로 받아 저장한다.
-  async downloadMatchAttachment(matchId: number): Promise<Blob> {
+  async downloadReplay(matchId: number): Promise<Blob> {
     const headers = new Headers();
     if (accessToken) headers.set("Authorization", `Bearer ${accessToken}`);
-    const res = await fetch(`${API_BASE}/api/matches/${matchId}/attachment`, { headers });
-    if (!res.ok) throw new Error("첨부파일을 다운로드하지 못했어요.");
+    const res = await fetch(`${API_BASE}/api/matches/${matchId}/replay`, { headers });
+    if (!res.ok) throw new Error("리플레이를 다운로드하지 못했어요.");
     return res.blob();
   },
 
