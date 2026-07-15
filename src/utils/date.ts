@@ -143,12 +143,22 @@ export function isToday(scheduledAt: string | null): boolean {
   return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
 }
 
+// 시간은 24시간제 HH:MM이 아니라 "오전/오후 H시 M분"으로 표기한다(요청: "시간은 HH:MM이
+// 아닌 오전/후 H시 M분으로 표기") — 분이 0이면 "H시"까지만.
+export function formatKoreanTime(d: Date): string {
+  const h = d.getHours();
+  const m = d.getMinutes();
+  const ampm = h < 12 ? "오전" : "오후";
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return m > 0 ? `${ampm} ${h12}시 ${m}분` : `${ampm} ${h12}시`;
+}
+
 export function formatChallengeSchedule(scheduledAt: string | null): string {
   if (!scheduledAt) return "미정";
   const d = new Date(scheduledAt);
   const dateStr = `${d.getMonth() + 1}월 ${d.getDate()}일(${DOW[d.getDay()]})`;
   if (d.getHours() === 0 && d.getMinutes() === 0) return dateStr;
-  return `${dateStr} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  return `${dateStr} ${formatKoreanTime(d)}`;
 }
 
 // 도전장 화면을 경기결과 화면처럼 날짜별로 묶어 보여주면서(요청: "경기 화면처럼 날짜별로
@@ -166,7 +176,7 @@ export function challengeTimeLabel(scheduledAt: string | null): string | null {
   if (!scheduledAt) return null;
   const d = new Date(scheduledAt);
   if (d.getHours() === 0 && d.getMinutes() === 0) return null;
-  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  return formatKoreanTime(d);
 }
 export const MONTHS_KR = [
   "1월", "2월", "3월", "4월", "5월", "6월",

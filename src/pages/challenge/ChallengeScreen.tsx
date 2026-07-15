@@ -353,7 +353,8 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
     }
   };
 
-  const startScheduling = () => { setMode("schedule"); setDateStr(""); setTimeStr(""); setMessage(""); };
+  // 수락하며 시간을 정할 때 기본 시간은 오후 10시(요청: "수락할때 기본 시간 오후 10시").
+  const startScheduling = () => { setMode("schedule"); setDateStr(""); setTimeStr("22:00"); setMessage(""); };
   const startReapply = () => { setMode("reapply"); setDateStr(""); setTimeStr(""); setMessage(challenge.message); };
   const startRevenge = () => { setMode("revenge"); setDateStr(""); setTimeStr(""); setMessage(""); };
   const startPostpone = () => {
@@ -592,7 +593,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
           <div className="scr-challenge-datetime">
             <input
               type="date" className="scr-input" value={dateStr}
-              onChange={(e) => { setDateStr(e.target.value); if (!e.target.value) setTimeStr(""); }}
+              onChange={(e) => { setDateStr(e.target.value); if (!e.target.value) setTimeStr("22:00"); }}
             />
             <input
               type="time" className="scr-input" value={timeStr}
