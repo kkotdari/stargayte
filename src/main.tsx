@@ -1,7 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
-import SafeAreaDebug from "./components/dev/SafeAreaDebug";
 import { markAppUpdatePreloadError } from "./utils/appUpdate";
 import "./styles/global.css";
 
@@ -26,6 +25,5 @@ window.addEventListener("vite:preloadError", (event) => {
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     <App />
-    {import.meta.env.DEV && <SafeAreaDebug />}
   </React.StrictMode>,
 );
