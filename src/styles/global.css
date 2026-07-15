@@ -4497,7 +4497,9 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   background: rgba(var(--overlay-rgb), 0.07);
   backdrop-filter: blur(9px) saturate(1.2);
   -webkit-backdrop-filter: blur(9px) saturate(1.2);
-  border-radius: 14px; padding: 17.5px 20px;
+  /* 좌우 패딩이 다른 카드(경기 목록 8px 등)에 비해 유독 넓어 내용(로스터/버튼) 공간을
+     불필요하게 깎아 먹었다(요청: "scr-challenge-card 패딩이 너무 커") — 20px→14px. */
+  border-radius: 14px; padding: 17.5px 14px;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.09),
     inset 0 0 0 1px rgba(255, 255, 255, 0.045),
@@ -4621,12 +4623,12 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    왼쪽을 도전자 아바타 시작점에 맞춰서 공간 마련" / "왼쪽 오른쪽 이동 버튼 부위는
    카드 전체에서 예약해버리면 될듯"). */
 .scr-challenge-card-body { display: flex; flex-direction: column; gap: 10px; --scr-challenge-nav-inset: 28px; }
-/* 모바일은 매치업 줄 자체가 카드 패딩 쪽으로 -14px 밀려나 있어(아래 .scr-challenge-
+/* 모바일은 매치업 줄 자체가 카드 패딩 쪽으로 -10px 밀려나 있어(아래 .scr-challenge-
    matchup-row 참고) 아바타의 실제 시작점도 그만큼 더 왼쪽으로 옮겨진다 — 이 변수를
    거기 맞춰 다시 계산하지 않으면 날짜 줄과 아바타 줄의 왼쪽 시작선이 다시 어긋난다
-   (요청: "시각과 도전팀 아바타 왼쪽선 맞추기"). */
+   (요청: "시각과 도전팀 아바타 왼쪽선 맞추기"). 공식: 버튼(26px)+간격(2px)-마진(10px). */
 @media (max-width: 640px) {
-  .scr-challenge-card-body { --scr-challenge-nav-inset: 14px; }
+  .scr-challenge-card-body { --scr-challenge-nav-inset: 18px; }
 }
 .scr-challenge-card-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
 .scr-challenge-card-when { padding-left: var(--scr-challenge-nav-inset); }
@@ -4681,12 +4683,14 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    보였다(신고: "이동버튼이 왜 이동버튼을 위한 좌우 공간에 안있고 안쪽 컨텐츠 영역에
    있는거 같지?"). 이 줄 자신은 항상 카드 전체 폭이라 버튼이 진짜 좌우 끝에 붙는다. */
 .scr-challenge-matchup-row { display: flex; align-items: center; gap: 2px; width: 100%; }
-/* 버튼이 항상 자리를 차지하니, 카드 자신의 패딩(20px) 쪽으로 밀어내 매치업 내용을 덜
+/* 버튼이 항상 자리를 차지하니, 카드 자신의 패딩(14px) 쪽으로 밀어내 매치업 내용을 덜
    눌러 더 바깥쪽에 자리 잡게 한다(요청: "이동 화살표는 좀 더 바깥쪽에 공간을 예약" →
    "이동 버튼 좀더 바깥쪽으로 이동시킴" / "특히 모바일에서 좌우에 이동버튼 넣을수 있게
-   공간을 좀 예약해놔야할거 같네"). */
+   공간을 좀 예약해놔야할거 같네"). 카드 패딩을 20px→14px로 줄이면서(위 .scr-challenge-
+   card 참고) 이 값도 같이 줄인다 — 패딩 전부를 삼키면 버튼이 카드 테두리에 딱 붙어
+   버려 4px만 남기고 재조정. */
 @media (max-width: 640px) {
-  .scr-challenge-matchup-row { margin: 0 -14px; }
+  .scr-challenge-matchup-row { margin: 0 -10px; }
 }
 /* min-width:0 — 버튼이 옆에 항상 자리를 차지하니 매치업이 그만큼 줄어들 수 있어야 한다.
    max-width+margin:0 auto는(PC만) 여기, 로스터 내용 자신에게 걸어야 버튼은 카드 가장자리에
@@ -4776,26 +4780,18 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    유지)고, 유저 검색에 걸리면 경기결과 로스터(.scr-team-player-highlight)와 똑같은
    반전색으로 프사까지 함께 칠한다(요청: "랭킹, 너 나와 유저 검색시 하이라이팅 추가 단!
    닉네임뿐 아니라 프사까지 하이라이팅 주고 경기 하이라이트랑 똑같은 css"). */
-/* 응답 배지 — 옆에 텍스트 알약 대신 프사에 겹쳐 작게 그린다(요청: "응답 배지는
-   수락/거절/대기 세개로 통일하고 아바타에 겹쳐서 표시" → "수락 거절 대기 글자
-   배지로 해줘 작고 진하게" — 아이콘이 아니라 글자, 진한 단색). 프사 아래쪽 가운데에
-   살짝 겹쳐 걸친다 — 글자라 아이콘보다 폭이 넓어 모서리 원형 배지로는 다 못 담는다.
-   진짜 도장처럼 배경 없이 색 테두리+색 글자만, 모양은 알약으로(요청: "응답상태 배지는
-   도장처럼 테두리랑 글자만 있고 배경은 투명해야함 그리고 알약 모양으로 해줘 도장이니까").
-   프사 밖으로 걸치지 않고 안쪽 바닥 라인에 맞춰, 바로 아래 한마디 줄을 가리지 않게 한다
-   (요청: "위치 좀더 위로 이동(한줄메시지 가리지 않게)" → "아래라인 아바타 아래쪽에
-   맞춤"). 색은 사진 위에서도 또렷하게 비비드한 톤으로(요청: "컬러는 좀더 비비드하게") —
-   앱 전역의 옅은 --win/--loss 대신 이 배지 전용의 진한 색을 쓴다. */
-.scr-challenge-avatar-wrap { position: relative; display: inline-flex; line-height: 0; flex-shrink: 0; }
-/* 배경은 투명하게 유지하되(도장 느낌), 사진 위에 바로 얹히니 글자가 묻히지 않도록
-   뒤쪽만 블러 처리한다(요청: "응답상황배지 뒤를 블러처리") — 프사 사진의 색/무늬가
-   흐려져 색 테두리+글자의 대비가 항상 살아난다. */
+/* 응답 배지 — 수락/거절/대기 세 가지로만 구분한 작은 도장식 알약. 아바타에 겹쳐도
+   보고(→ 뒤 블러 처리도) 해봤지만, 결국 원래대로 닉네임 옆 인라인이 낫다는 결론(요청:
+   "응답 배지는 수락/거절/대기 세개로 통일하고 아바타에 겹쳐서 표시" → "수락 거절 대기
+   글자 배지로 해줘 작고 진하게" → "응답상황배지 뒤를 블러처리" → "블러처리 말구
+   닉네임 옆으로 다시 이동"). 진짜 도장처럼 배경 없이 색 테두리+색 글자만, 모양은
+   알약으로(요청: "응답상태 배지는 도장처럼 테두리랑 글자만 있고 배경은 투명해야함
+   그리고 알약 모양으로 해줘 도장이니까"). 색은 비비드한 전용 톤(요청: "컬러는 좀더
+   비비드하게") — 앱 전역의 옅은 --win/--loss 대신 이 배지만의 진한 색을 쓴다. */
 .scr-challenge-avatar-badge {
-  position: absolute; left: 50%; bottom: 0; transform: translateX(-50%);
-  font-size: 8px; font-weight: 900; line-height: 1; white-space: nowrap;
-  padding: 1.5px 4px; border-radius: 999px;
+  flex-shrink: 0; font-size: 9px; font-weight: 900; line-height: 1.6; white-space: nowrap;
+  padding: 0 5px; border-radius: 999px;
   background: transparent; border: 1px solid currentColor;
-  backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
 }
 .scr-challenge-avatar-badge-accepted { color: #2fe06f; }
 .scr-challenge-avatar-badge-rejected { color: #ff5470; }

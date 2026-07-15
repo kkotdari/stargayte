@@ -184,20 +184,18 @@ function ChallengeSide({
           <div key={p.id} className="scr-challenge-side-block">
             <div className="scr-challenge-side-row">
               <span className={cx("scr-challenge-person", highlightMemberIds?.has(p.id) && "scr-challenge-person-hit")}>
-                <span className="scr-challenge-avatar-wrap">
-                  <Avatar member={p} size={24} />
-                  {/* 응답 배지 — 수락/거절/대기 세 가지로만 구분하고, 옆에 텍스트 알약
-                      대신 프사에 겹쳐 작게 그린다(요청: "응답 배지는 수락/거절/대기
-                      세개로 통일하고 아바타에 겹쳐서 표시" → "수락 거절 대기 글자
-                      배지로 해줘 작고 진하게" — 아이콘 대신 글자, 작고 진한 색으로). */}
-                  {tone && (
-                    <span className={cx("scr-challenge-avatar-badge", `scr-challenge-avatar-badge-${tone}`)}>
-                      {tone === "accepted" ? "수락" : tone === "rejected" ? "거절" : "대기"}
-                    </span>
-                  )}
-                </span>
+                <Avatar member={p} size={24} />
                 <span className="scr-challenge-person-name">{p.nickname}</span>
               </span>
+              {/* 응답 배지 — 수락/거절/대기 세 가지로만 구분한 작은 도장식 알약(요청:
+                  "응답 배지는 수락/거절/대기 세개로 통일" → "수락 거절 대기 글자 배지로
+                  해줘 작고 진하게" → "닉네임 옆으로 다시 이동" — 아바타에 겹치는
+                  대신 다시 이름 옆 인라인으로). */}
+              {tone && (
+                <span className={cx("scr-challenge-avatar-badge", `scr-challenge-avatar-badge-${tone}`)}>
+                  {tone === "accepted" ? "수락" : tone === "rejected" ? "거절" : "대기"}
+                </span>
+              )}
             </div>
             {targets && <ChallengeMessage text={t?.target.responseMessage} />}
             {/* 도전자편 한마디는 팀 전체 아래가 아니라 실제로 쓴 사람 — 도전자 본인,
