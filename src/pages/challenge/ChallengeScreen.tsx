@@ -816,6 +816,22 @@ export default function ChallengeScreen() {
   }, []);
   useEffect(load, [load]);
 
+  // 결과 입력 팝업(앱 부팅 시 뜨는 전역 팝업, ChallengeResultInboxModal)은 이 화면이 이미
+  // 떠 있는 동안에도 열릴 수 있는데, 거기서 결과를 입력해도 이 화면이 이미 불러와 둔
+  // 목록엔 반영이 안 된다 — 신고: "결과 입력 팝업창에서 입력했는데 너 나와 페이지에
+  // 아직도 결과입력 버튼이 보이는 경우가 있다고(새로고침 문제일까?)". 팝업 큐가 (하나
+  // 이상 있다가) 비워지는 순간을 "닫혔다/다 처리했다"로 보고 조용히 다시 불러온다 —
+  // load()처럼 로딩 스피너로 갈아치우면 스크롤 위치가 튀니 목록만 바꿔치기한다.
+  const resultInboxChallenges = useAppStore((s) => s.resultInboxChallenges);
+  const prevResultInboxLenRef = useRef(resultInboxChallenges.length);
+  useEffect(() => {
+    const prevLen = prevResultInboxLenRef.current;
+    prevResultInboxLenRef.current = resultInboxChallenges.length;
+    if (prevLen > 0 && resultInboxChallenges.length === 0) {
+      api.getChallenges().then((res) => setChallenges(res.items)).catch(() => {});
+    }
+  }, [resultInboxChallenges]);
+
   // 재신청/설욕전은 같은 행을 고쳐 쓰지 않고 새 id로 새 도전장을 만든다 — 그 응답(updated)의
   // reappliedFromId가 채워져 있으면, 목록에서 그 원래 도전장은 지우고 새 도전장으로 바꿔
   // 끼운다. 다른 액션(승락/거절/취소/결과입력/연기 등)은 reappliedFromId가 없으니 이 필터는
