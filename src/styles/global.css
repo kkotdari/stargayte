@@ -4416,9 +4416,13 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   background: var(--panel-raised); color: var(--text); border-radius: var(--radius-sm); padding: 8px 10px; font-size: 13.5px;
 }
 /* "+ 상대 추가" — 버튼처럼 테두리로 감싸지 않고 텍스트 링크로만, 누르면 그 자리가
-   드롭다운(scr-challenge-target-slot)으로 바뀐다. */
+   드롭다운(scr-challenge-target-slot)으로 바뀐다. 확정된 지목 칩(.scr-challenge-target-picked:
+   가장 큰 자식인 X 버튼 30px + 상하 패딩 8px = 46px)과 세로 크기를 맞춰야, "+추가" ↔ 칩이
+   오갈 때 블록 높이가 안 바뀌어 아래 레이아웃이 흔들리지 않는다(요청: "+팀원추가 일때랑
+   유저칩일때랑 차지하는 높이가 달라서 레이아웃 흔들림 발생"). */
 .scr-challenge-add-target {
-  align-self: flex-start; background: transparent; border: none; padding: 4px 2px;
+  align-self: flex-start; display: inline-flex; align-items: center; min-height: 46px;
+  background: transparent; border: none; padding: 4px 2px;
   font-family: inherit; font-size: 13.5px; font-weight: 600; color: var(--muted); cursor: pointer;
 }
 .scr-challenge-add-target:hover { color: var(--point); }
@@ -4781,6 +4785,36 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-challenge-accept-btn:hover { background: #f281b7; }
 .scr-challenge-reject-btn { background: #17171a; }
 .scr-challenge-reject-btn:hover { background: #262629; }
+
+/* 결과 입력 폼(카드 인라인 + 인박스 팝업 공용) — 구성원을 그대로 보여주고 승리팀을
+   눌러 고른다(요청: "구성원이 노출되고 승리팀을 고르는게 좋을듯. 무승부나 미실시도"). */
+.scr-challenge-result-form { display: flex; flex-direction: column; gap: 8px; position: relative; }
+.scr-challenge-result-teams { display: flex; flex-direction: column; gap: 8px; }
+.scr-challenge-result-team {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  padding: 10px 12px; border-radius: 12px; cursor: pointer; text-align: left;
+  border: 1.5px solid var(--border, rgba(128, 128, 128, 0.35));
+  background: var(--panel-raised, rgba(128, 128, 128, 0.08));
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.05s ease;
+}
+.scr-challenge-result-team:hover:not(:disabled) { border-color: #ec6ea8; background: rgba(236, 110, 168, 0.1); }
+.scr-challenge-result-team:active:not(:disabled) { transform: scale(0.99); }
+.scr-challenge-result-team:disabled { opacity: 0.6; cursor: default; }
+.scr-challenge-result-team-label {
+  flex: 0 0 auto; font-size: 12px; font-weight: 700; color: var(--muted, #888);
+  min-width: 44px;
+}
+.scr-challenge-result-team-members { display: flex; flex-wrap: wrap; gap: 4px 10px; flex: 1 1 auto; min-width: 0; }
+.scr-challenge-result-member { display: inline-flex; align-items: center; gap: 5px; min-width: 0; }
+.scr-challenge-result-member-name { font-size: 13px; font-weight: 600; color: var(--text); }
+.scr-challenge-result-team-win {
+  flex: 0 0 auto; font-size: 12px; font-weight: 700; color: #ec6ea8;
+  padding: 2px 8px; border-radius: 999px; border: 1px solid rgba(236, 110, 168, 0.5);
+}
+.scr-challenge-result-busy {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  background: rgba(0, 0, 0, 0.06); border-radius: 12px;
+}
 
 /* 다음 접속 시 뜨는 초대장 팝업 — 도전장 작성 모달(.scr-challenge-form-modal)과 같은
    원칙으로 앱 테마와 무관하게 항상 아이보리 편지지 톤(요청: "모달창 편지지 테마
