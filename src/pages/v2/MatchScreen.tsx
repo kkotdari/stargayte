@@ -42,7 +42,8 @@ export default function MatchScreenV2() {
   const [search, setSearch] = useState("");
   // 정렬 토글은 없앴다(요청: "기간 필터 정렬 제거") — 항상 최신순 고정.
   const [sort] = useState<"latest" | "oldest">("latest");
-  const [periodUnit, setPeriodUnit] = useState<"all" | "month" | "day">("day");
+  // 기본은 월(요청: "경기 기간 필터 기본값 월로 변경").
+  const [periodUnit, setPeriodUnit] = useState<"all" | "month" | "day">("month");
   const [periodMonth, setPeriodMonth] = useState(currentMonthValue);
   const [periodDay, setPeriodDay] = useState(todayStr);
   const suggestions = useMemo(() => activeMemberSearchTerms(members), [members]);
