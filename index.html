@@ -18,16 +18,17 @@
          탭바 높이나 스크롤탑 버튼이 가려지는 정도가 그때그때 달라져 보였다. -->
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <!-- 홈화면 PWA(standalone)에서 상/하단(노치·홈 인디케이터)까지 화면 전체를 콘텐츠로
-         쓰는 몰입형(full-bleed)으로 둔다(요청: "pwa에서는 상하단 다 사용하게 하고 상단
-         스티키 지점을 내려서 보정"). 그 대신 노치에 콘텐츠가 가려지지 않게 상단을 안전영역
-         만큼 내려서 보정하는데, iOS standalone에는 env(safe-area-inset-top)이 최초 실행
-         시 0으로 계산됐다가 리플로우 후에야 실제 값이 들어오는 버그가 있어, 아래 부트
-         스크립트가 프로브로 실측해 --safe-area-top에 넣고(리사이즈/방향전환/지연 틱마다
-         갱신) CSS는 max(env, var(--safe-area-top))로 둘 중 큰 값을 쓴다.
-         주의: iOS는 이 status-bar-style 값을 "홈 화면에 추가"하는 시점에만 읽으므로, 이미
-         설치된 PWA는 삭제 후 다시 추가해야 바뀐 설정이 반영된다. -->
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <!-- black-translucent은 iOS standalone에서 뷰포트를 상태바 높이만큼 짧게(innerHeight =
+         화면높이 - 상태바) 잡고 콘텐츠를 노치 밑에서부터 그리기 때문에, 상단은 노치에
+         가려지고 하단(홈 인디케이터 쪽)엔 그만큼 빈 공간이 남는 고질적 문제가 있다(실측:
+         inset-top 59 / innerHeight 793 = 852-59). default로 두면 iOS가 상태바 영역을
+         theme-color(다크 #060607 / 라이트 #ffffff)로 예약하고 그 아래부터 콘텐츠가
+         시작되며(상단 안 가림) 하단은 홈 인디케이터까지 풀블리드가 된다(요청: "하단 다
+         사용 + 상단 보정"). 이때 env(safe-area-inset-top)은 0이 되어 아래 헤더/드로어의
+         max(env, --safe-area-top) 보정도 자연히 0이 되므로 이중 여백이 생기지 않는다.
+         ★중요★ iOS는 이 값을 "홈 화면에 추가"하는 순간에만 읽는다 — 이미 설치된 PWA는
+         반드시 아이콘을 삭제하고 다시 홈 화면에 추가해야 바뀐 설정이 반영된다. -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="스타게이트" />
     <!-- 매니페스트/theme-color가 없으면 iOS가 홈 화면 웹앱 실행 시 보여줄 스플래시가
          아예 없어서, 페이지가 아직 로딩/뷰포트 정착 중인 실제 모습이 그대로 화면에
