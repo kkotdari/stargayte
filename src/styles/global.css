@@ -4293,6 +4293,26 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-usermap-kind-filter .scr-checkbox-field input:checked { background: #10151a; border-color: #10151a; }
 .scr-usermap-kind-filter .scr-checkbox-field input:checked::after { background-color: #ffffff; }
 .scr-usermap-table-v2 { display: flex; flex-direction: column; font-size: 15px; } /* 12.5px * 1.2 */
+
+/* 컴퓨터 아이디 목록 — 메인 매핑 목록과 분리된 단순 리스트(요청). 배틀태그가 없어 회원
+   매핑 대상이 아니므로, 이름만 등록 최근순으로 나열한다. */
+.scr-usermap-computer { margin-top: 26px; }
+.scr-usermap-computer-head {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 13px; font-weight: 800; color: var(--muted);
+  padding: 0 4px 8px; border-bottom: 1px solid var(--line-soft); margin-bottom: 6px;
+}
+.scr-usermap-computer-count {
+  font-size: 11px; font-weight: 700; color: var(--dim);
+  background: rgba(var(--overlay-rgb), 0.08); border-radius: 999px; padding: 1px 7px;
+}
+.scr-usermap-computer-list { display: flex; flex-direction: column; }
+.scr-usermap-computer-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 7px 4px; border-bottom: 1px solid var(--line-soft);
+}
+.scr-usermap-computer-item:last-child { border-bottom: none; }
+.scr-usermap-computer-name { font-size: 13.5px; color: var(--text); }
 .scr-usermap-row {
   /* 게임아이디(첫 번째) 칸도 minmax가 아니라 고정폭으로 둔다 — 세로 구분선을 자식
      요소의 border-right가 아니라(행마다 개별 렌더링되는 별개 그리드라 안티에일리싱

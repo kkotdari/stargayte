@@ -23,12 +23,12 @@ function entryMatchesQuery(entry: ReplayNameMappingEntry, query: string): boolea
   ));
 }
 
-// 필터 체크박스는 회원/비회원/컴퓨터 셋만 — 아무 것도 안 켜면 미지정을 포함해 전부
-// 보여준다(체크는 "이것만 좁혀 보기"이지, 미지정을 감추는 스위치가 아니다).
+// 필터 체크박스는 회원/비회원 둘만 — 아무 것도 안 켜면 미지정을 포함해 전부 보여준다
+// (체크는 "이것만 좁혀 보기"이지, 미지정을 감추는 스위치가 아니다). 컴퓨터는 이제 아래
+// 별도 목록으로 빠져 메인 목록/필터에 없다(요청: "컴퓨터 네임 목록을 분리").
 const FILTER_OPTS: { value: ReplayNameMappingKind; label: string }[] = [
   { value: "member", label: "회원" },
   { value: "unregistered", label: "비회원" },
-  { value: "computer", label: "컴퓨터" },
 ];
 
 interface MappingRowProps {
@@ -72,7 +72,11 @@ function ReadonlyMappingRow({ entry }: { entry: ReplayNameMappingEntry }) {
 // 회원 검색 셀렉트)으로 넘어간다. 예전엔 버튼 3개를 나란히 펼쳐놨는데, 모바일 좁은 칸에서
 // 줄바꿈되고 옆의 취소(X) 버튼까지 밀려나 삐져나오는 문제가 있었다 — 셀렉트 하나(2스텝의
 // "회원 선택"과 같은 컴포넌트)로 통일해 폭 문제를 원천적으로 없앤다.
-const KIND_PICK_OPTS = FILTER_OPTS;
+// 매핑 재지정 셀렉트는 컴퓨터도 고를 수 있어야 하니 별도로 셋을 다 담는다(필터는 둘만).
+const KIND_PICK_OPTS: { value: ReplayNameMappingKind; label: string }[] = [
+  ...FILTER_OPTS,
+  { value: "computer", label: "컴퓨터" },
+];
 
 function PickerButtons({
   memberOptions, memberId, onPickComputer, onPickUnregistered, onPickMemberOpen, onPickMember, showMemberSelect, busy,
@@ -398,18 +402,40 @@ export default function GameIdScreen() {
     });
   };
 
+  const searched = useMemo(
+    () => entries.filter((e) => entryMatchesQuery(e, search)),
+    [entries, search],
+  );
+  const byRecency = (a: ReplayNameMappingEntry, b: ReplayNameMappingEntry) =>
+    (b.lastSeen ?? "").localeCompare(a.lastSeen ?? "");
+  // 메인 목록 — 컴퓨터는 빼고(아래 별도 목록), 회원/비회원/미지정만. 아직 매핑 안 된
+  // (미지정) 항목을 맨 위에, 그 안에서도·나머지도 최근 등장 순으로.
   const rows = useMemo(() => {
-    const filtered = entries
-      .filter((e) => kindFilter.size === 0 || kindFilter.has(e.kind))
-      .filter((e) => entryMatchesQuery(e, search));
-    // 아직 매핑 안 된(미지정) 항목을 맨 위에 — 지금 당장 처리해야 할 것부터 보이게
-    // 한다. 그 안에서도, 그리고 나머지(이미 연결된 것들)도 전부 최근에 등장한 순으로.
-    const byRecency = (a: ReplayNameMappingEntry, b: ReplayNameMappingEntry) =>
-      (b.lastSeen ?? "").localeCompare(a.lastSeen ?? "");
+    const filtered = searched
+      .filter((e) => e.kind !== "computer")
+      .filter((e) => kindFilter.size === 0 || kindFilter.has(e.kind));
     const unresolved = filtered.filter((e) => e.kind === "unresolved").sort(byRecency);
     const resolved = filtered.filter((e) => e.kind !== "unresolved").sort(byRecency);
     return [...unresolved, ...resolved];
-  }, [entries, search, kindFilter]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searched, kindFilter]);
+  // 컴퓨터 아이디 목록 — 단순 리스트, 등록(마지막 등장) 최근 순(요청).
+  const computerRows = useMemo(
+    () => searched.filter((e) => e.kind === "computer").sort(byRecency),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [searched],
+  );
+
+  // 잘못 컴퓨터로 잡힌 항목을 미지정으로 되돌린다(그럼 위 메인 목록에 미지정으로 나타나
+  // 회원/비회원으로 다시 지정할 수 있다). 운영자만.
+  const revertComputer = async (rawName: string) => {
+    try {
+      const saved = await api.setReplayNameMapping(rawName, "unresolved");
+      setEntries((prev) => prev.map((p) => (p.rawName === saved.rawName ? saved : p)));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "되돌리지 못했어요.");
+    }
+  };
 
   return (
     <div className="scr-screen scr-usermap-screen-v2">
@@ -478,6 +504,32 @@ export default function GameIdScreen() {
           ))
         )}
       </div>
+
+      {/* 컴퓨터 아이디 목록 — 배틀태그가 없어 회원 매핑 대상이 아니라, 메인 목록과 분리해
+          단순 리스트로 보여준다(요청). 등록 최근 순. */}
+      {!loading && computerRows.length > 0 && (
+        <div className="scr-usermap-computer">
+          <div className="scr-usermap-computer-head">
+            <Monitor size={13} /> 컴퓨터 <span className="scr-usermap-computer-count">{computerRows.length}</span>
+          </div>
+          <div className="scr-usermap-computer-list">
+            {computerRows.map((e) => (
+              <div key={e.rawName} className="scr-usermap-computer-item">
+                <span className="scr-mono scr-usermap-computer-name">{e.rawName}</span>
+                {isAdmin && (
+                  <button
+                    type="button" className="scr-icon-btn scr-usermap-computer-revert"
+                    onClick={() => revertComputer(e.rawName)}
+                    title="컴퓨터 아님 — 미지정으로 되돌리기" aria-label="미지정으로 되돌리기"
+                  >
+                    <RotateCcw size={13} />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
