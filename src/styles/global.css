@@ -4616,6 +4616,42 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   border-radius: 4px; padding: 2px 7px; margin-bottom: 4px;
 }
 
+/* NEXT 대결 카드 — 라임/에메랄드 글로우로 눈길을 끈다(요청: "next 카드에 눈길이 안감
+   라임 에메랄드색 글로우 효과"). 동일 시각에 NEXT가 여럿이면 모두에 붙는다. box-shadow를
+   부드럽게 들숨/날숨처럼 맥동시켜 시선을 유도한다. */
+@keyframes scr-next-glow {
+  0%, 100% {
+    box-shadow:
+      inset 0 0 0 1px rgba(52, 211, 153, 0.55),
+      0 0 0 1px rgba(52, 211, 153, 0.45),
+      0 0 16px rgba(52, 211, 153, 0.34),
+      0 0 34px rgba(163, 230, 53, 0.20);
+  }
+  50% {
+    box-shadow:
+      inset 0 0 0 1px rgba(52, 211, 153, 0.7),
+      0 0 0 1px rgba(52, 211, 153, 0.6),
+      0 0 24px rgba(52, 211, 153, 0.55),
+      0 0 52px rgba(163, 230, 53, 0.34);
+  }
+}
+.scr-challenge-card-slot-next .scr-challenge-card {
+  animation: scr-next-glow 2.4s ease-in-out infinite;
+}
+.scr-light-theme .scr-challenge-card-slot-next .scr-challenge-card {
+  animation: scr-next-glow 2.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .scr-challenge-card-slot-next .scr-challenge-card,
+  .scr-light-theme .scr-challenge-card-slot-next .scr-challenge-card {
+    animation: none;
+    box-shadow:
+      inset 0 0 0 1px rgba(52, 211, 153, 0.6),
+      0 0 0 1px rgba(52, 211, 153, 0.5),
+      0 0 20px rgba(52, 211, 153, 0.4);
+  }
+}
+
 /* 응답대기중 카드의 마감 카운트다운(요청일+1일까지 남은 시간) — 별도 줄이 아니라 날짜
    줄(.scr-challenge-card-when)에 다른 알약들과 나란히 낀다(요청: "마감 카운트다운은
    날짜있는 맨 윗줄에 표시") — 그 줄 자체가 이미 flex-wrap 인라인 나열이라 새 줄을 만들지

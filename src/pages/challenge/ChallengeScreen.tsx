@@ -966,22 +966,27 @@ export default function ChallengeScreen() {
   );
   const activeList = mineOnly ? sortedChallenges.filter(isMine) : sortedChallenges;
 
-  // 가장 가까운 예정된(수락) 대결 — 확정됐고 예정 일시가 아직 안 지난 것 중 가장 임박한
-  // 것 하나. 카드 밖 좌상단에 NEXT 라벨을 달고, 화면 진입 시 그 카드로 스크롤한다(요청:
-  // "너나와 진입시 가장 가까운 예정된(수락) 경기에 스크롤 및 해당 카드에 NEXT 문구 노출").
-  const nextChallengeId = useMemo(() => {
+  // 가장 가까운 예정된(수락) 대결의 시각 — 확정됐고 예정 일시가 아직 안 지난 것 중 가장 임박.
+  // 같은 시각(exact)에 여러 대결이 잡혀 있으면 그것들 "모두"가 NEXT다(요청: "동일 시각 여러
+  // 개가 next이면 모두 next 배지 + 글로우"). 화면 진입 시엔 그중 첫 카드로 스크롤한다.
+  const nextTime = useMemo(() => {
     const now = Date.now();
-    let bestId: number | null = null;
-    let bestTime = Infinity;
+    let best = Infinity;
     challenges.forEach((c) => {
       if (c.status !== "confirmed" || !c.scheduledAt) return;
       const t = new Date(c.scheduledAt).getTime();
-      if (t < now || t >= bestTime) return;
-      bestTime = t;
-      bestId = c.id;
+      if (t >= now && t < best) best = t;
     });
-    return bestId;
+    return best === Infinity ? null : best;
   }, [challenges]);
+  const isNextCard = (c: Challenge): boolean =>
+    nextTime !== null && c.status === "confirmed" && !!c.scheduledAt
+    && new Date(c.scheduledAt).getTime() === nextTime;
+  // 동일 시각 NEXT가 여럿이면 그중 목록상 첫 카드로만 스크롤한다(배지/글로우는 모두).
+  const firstNextId = useMemo(
+    () => activeList.find(isNextCard)?.id ?? null,
+    [activeList, nextTime],
+  );
   const nextCardRef = useRef<HTMLDivElement | null>(null);
   // 진입 후 첫 로드가 끝났을 때 딱 한 번만 스크롤한다 — 이후 응답/재조회로 목록이 바뀌어도
   // 보던 위치를 뺏지 않는다. scrollIntoView는 #scroll-root의 CSS scroll-behavior:smooth를
@@ -990,7 +995,7 @@ export default function ChallengeScreen() {
   // .scr-challenge-card-slot의 scroll-margin-top이 살짝만 남긴다.
   const didAutoScrollRef = useRef(false);
   useEffect(() => {
-    if (loading || didAutoScrollRef.current || nextChallengeId === null) return;
+    if (loading || didAutoScrollRef.current || firstNextId === null) return;
     const el = nextCardRef.current;
     if (!el) return;
     didAutoScrollRef.current = true;
@@ -999,7 +1004,7 @@ export default function ChallengeScreen() {
     // 해결") — 부드러운 스크롤이 끝날 때까지 숨김 판정을 잠깐 억제한다.
     suppressScrollHide();
     el.scrollIntoView({ block: "start" });
-  }, [loading, nextChallengeId]);
+  }, [loading, firstNextId]);
 
   // "결과 보기" — 랭킹 화면의 팀 경기 목록 모달을 그대로 재사용해 그 도전장의 팀 구성이 그
   // 날짜에 등록한 경기를 보여준다.
@@ -1076,14 +1081,15 @@ export default function ChallengeScreen() {
                     {g.label}
                   </div>
                   {g.items.map((c) => (
-                    // 슬롯 래퍼 — 가장 가까운 예정(수락) 대결에만 카드 밖 좌상단 NEXT
-                    // 라벨을 달고, 진입 스크롤의 목적지가 된다.
+                    // 슬롯 래퍼 — 가장 가까운 예정(수락) 대결(동일 시각이면 모두)에
+                    // 카드 밖 좌상단 NEXT 라벨 + 라임 에메랄드 글로우를 달고, 진입
+                    // 스크롤은 그중 첫 카드가 목적지가 된다.
                     <div
                       key={c.id}
-                      ref={c.id === nextChallengeId ? nextCardRef : undefined}
-                      className="scr-challenge-card-slot"
+                      ref={c.id === firstNextId ? nextCardRef : undefined}
+                      className={cx("scr-challenge-card-slot", isNextCard(c) && "scr-challenge-card-slot-next")}
                     >
-                      {c.id === nextChallengeId && <div className="scr-challenge-next-tag">NEXT</div>}
+                      {isNextCard(c) && <div className="scr-challenge-next-tag">NEXT</div>}
                       <ChallengeCard
                         challenge={c}
                         myId={user?.id}
