@@ -18,17 +18,15 @@
          탭바 높이나 스크롤탑 버튼이 가려지는 정도가 그때그때 달라져 보였다. -->
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <!-- black-translucent은 iOS standalone에서 뷰포트를 상태바 높이만큼 짧게(innerHeight =
-         화면높이 - 상태바) 잡고 콘텐츠를 노치 밑에서부터 그리기 때문에, 상단은 노치에
-         가려지고 하단(홈 인디케이터 쪽)엔 그만큼 빈 공간이 남는 고질적 문제가 있다(실측:
-         inset-top 59 / innerHeight 793 = 852-59). default로 두면 iOS가 상태바 영역을
-         theme-color(다크 #060607 / 라이트 #ffffff)로 예약하고 그 아래부터 콘텐츠가
-         시작되며(상단 안 가림) 하단은 홈 인디케이터까지 풀블리드가 된다(요청: "하단 다
-         사용 + 상단 보정"). 이때 env(safe-area-inset-top)은 0이 되어 아래 헤더/드로어의
-         max(env, --safe-area-top) 보정도 자연히 0이 되므로 이중 여백이 생기지 않는다.
-         ★중요★ iOS는 이 값을 "홈 화면에 추가"하는 순간에만 읽는다 — 이미 설치된 PWA는
-         반드시 아이콘을 삭제하고 다시 홈 화면에 추가해야 바뀐 설정이 반영된다. -->
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <!-- 다른 네이티브 앱처럼 노치 밑까지 콘텐츠가 흐르는 완전 몰입(상단바 없음)을 위해
+         black-translucent을 쓴다(요청: "블랙트랜스루센트로 상하단 다 몰입, 노치 가리는
+         상단바 없이"). 이 모드는 콘텐츠를 노치 밑에서부터 그리므로, 스크롤되는 헤더/스티키
+         (날짜 줄)만 안전영역(--safe-top = max(env, 실측 --safe-area-top))만큼 내려서 노치에
+         안 가리게 보정한다(global.css). 일반 카드가 스크롤되며 노치 밑으로 비치는 건
+         네이티브 앱과 같은 몰입 룩이라 그대로 둔다.
+         참고: iOS는 이 값을 "홈 화면에 추가" 시점에만 읽으므로, 설정을 바꾼 뒤엔 홈 화면
+         아이콘을 삭제 후 다시 추가해야 반영된다. -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="스타게이트" />
     <!-- 매니페스트/theme-color가 없으면 iOS가 홈 화면 웹앱 실행 시 보여줄 스플래시가
          아예 없어서, 페이지가 아직 로딩/뷰포트 정착 중인 실제 모습이 그대로 화면에
