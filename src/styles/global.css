@@ -4570,8 +4570,12 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    NEXT 문구 노출(카드 밖 좌상단)"). 슬롯 래퍼는 라벨과 카드를 세로로 쌓는 투명한
    껍데기라 다른 카드들의 간격(.scr-challenge-date-group의 gap)에는 영향이 없다. */
 /* scroll-margin-top — NEXT 카드로 자동 스크롤(scrollIntoView block:"start")할 때 화면
-   맨 위에 딱 붙지 않고 이만큼만 숨 쉴 여유를 남긴다(위의 다른 카드는 안 보인다). */
-.scr-challenge-card-slot { display: flex; flex-direction: column; min-width: 0; scroll-margin-top: 10px; }
+   맨 위에 딱 붙지 않고 이만큼만 숨 쉴 여유를 남긴다(위의 다른 카드는 안 보인다). 날짜
+   헤더가 스티키로 바뀌면서(.scr-challenge-date-head) 스크롤이 끝난 뒤에도 그 헤더가
+   카드 위에 계속 떠 있으므로, 헤더 높이만큼 여유를 더 크게 잡아야 카드 윗부분(NEXT
+   라벨)이 헤더에 가려지지 않는다(요청: "너나와 진입시 next 대결에 스크롤할때 위에
+   스티키된 날짜의 높이 고려해서 스크롤 위치 정해야해"). */
+.scr-challenge-card-slot { display: flex; flex-direction: column; min-width: 0; scroll-margin-top: 44px; }
 .scr-challenge-next-tag {
   align-self: flex-start;
   font-size: 11px; font-weight: 900; letter-spacing: 0.1em;
