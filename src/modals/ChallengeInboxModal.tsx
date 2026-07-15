@@ -101,7 +101,7 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
             {/* 열어보기 안내는 사진 위에 겹치지 않고 사진 아래 별도 줄로 배치한다(요청:
                 "도전장 열어보기 버튼은 이미지상이 아닌 이미지 하단에 따로 배치"). */}
             <img src="/images/bg/letter.jpg" alt="" className="scr-challenge-envelope-img" />
-            <span className="scr-challenge-envelope-hint">눌러서 열어보기</span>
+            <span className="scr-challenge-envelope-hint">두근두근 편지 열기</span>
           </button>
         ) : (
           <>
