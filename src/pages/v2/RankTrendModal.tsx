@@ -1,6 +1,5 @@
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
-import Avatar from "../../components/common/Avatar";
 import { Spinner } from "../../components/common/Feedback";
 import { useLockBodyScroll } from "../../utils/bodyScrollLock";
 import { MONTHS_KR } from "../../utils/date";
@@ -60,8 +59,8 @@ export default function RankTrendModal({ members, points, onClose }: RankTrendMo
           <button className="scr-icon-btn" onClick={onClose} aria-label="닫기"><X size={14} /></button>
         </div>
         <div className="scr-modal-body">
+          {/* 아바타 없이 이름만 — 요청: "랭킹 상세 모달 아바타 없애기". */}
           <div className="scr-rank-detail-who">
-            {members.slice(0, 1).map((m) => <Avatar key={m.id} member={m} size={40} />)}
             <div className="scr-rank-detail-who-text">
               <span className="scr-rank-detail-name">{title}</span>
             </div>
