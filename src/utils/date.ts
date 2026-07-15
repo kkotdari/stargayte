@@ -157,7 +157,9 @@ export function formatChallengeSchedule(scheduledAt: string | null): string {
   if (!scheduledAt) return "미정";
   const d = new Date(scheduledAt);
   const dateStr = `${d.getMonth() + 1}월 ${d.getDate()}일(${DOW[d.getDay()]})`;
-  if (d.getHours() === 0 && d.getMinutes() === 0) return dateStr;
+  // 날짜만 있고 시간은 미정인 경우는 없다 — 일시는 항상 날짜+시간이 함께 저장/수정된다
+  // (요청: "날짜는 있고 시간은 미정인 경우는 있으면 안돼. 둘은 같이 저장되거나 수정됨").
+  // 그래서 자정(00:00)을 "시간 미정"으로 보던 예외를 없애고 실제 시각(오전 12시)으로 표기한다.
   return `${dateStr} ${formatKoreanTime(d)}`;
 }
 
@@ -170,13 +172,11 @@ export function challengeDateGroupLabel(scheduledAt: string | null): string {
   const d = new Date(scheduledAt);
   return `${d.getMonth() + 1}월 ${d.getDate()}일(${DOW[d.getDay()]})`;
 }
-// 시간까지 정해졌을 때만 값을 주고, 자정(시간을 안 정한 경우) 혹은 일정 자체가 없으면
-// null — 카드에서 아예 시간을 안 보여준다.
+// 일정 자체가 없으면(일정 미정) null, 있으면 실제 시각을 준다 — 날짜만 있고 시간만 미정인
+// 경우는 없으므로(일시는 날짜+시간이 항상 함께) 자정을 "미정"으로 보던 예외는 없앴다.
 export function challengeTimeLabel(scheduledAt: string | null): string | null {
   if (!scheduledAt) return null;
-  const d = new Date(scheduledAt);
-  if (d.getHours() === 0 && d.getMinutes() === 0) return null;
-  return formatKoreanTime(d);
+  return formatKoreanTime(new Date(scheduledAt));
 }
 export const MONTHS_KR = [
   "1월", "2월", "3월", "4월", "5월", "6월",

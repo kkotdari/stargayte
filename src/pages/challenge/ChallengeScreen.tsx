@@ -297,14 +297,13 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
   // 각 페이지의 파생 라벨/상태는 그 페이지 자신의 값으로 계산한다 — 최신 페이지는 지금 실제
   // 일시/상태, 이력 페이지는 그 시점의 것(거절/무응답취소/완료 등). 아래에서 모든 페이지를
   // 한 칸에 겹쳐 렌더해(카드 높이를 최대 페이지에 고정) 페이지마다 렌더 시점에 계산한다.
-  // 일정 자체가 없는 카드(=일정 미정 그룹)는 그룹 헤더가 이미 "일정 미정"이라, 카드 안에
-  // 또 "시간 미정"을 적으면 중복이다(요청: "일정 미정 아래 시간 미정은 중복이라 필요없음")
-  // — 그 경우엔 시간 라벨을 비운다. 날짜는 있는데 시간만 안 정한(자정 저장) 카드는 그룹이
-  // 특정 날짜라 "시간 미정"이 여전히 의미가 있어 그대로 둔다.
+  // 일정 자체가 없는 카드(=일정 미정 그룹)는 그룹 헤더가 이미 "일정 미정"이라 카드 안에 또
+  // 표기하지 않는다(요청). 일시가 있으면 시간만 보여준다 — 날짜만 있고 시간만 미정인 경우는
+  // 없다(일시는 날짜+시간이 항상 함께).
   const timeLabelOf = (p: ChallengePage, latest: boolean): string => {
     if (!latest) return formatChallengeSchedule(p.scheduledAt);
     if (!p.scheduledAt) return "";
-    return challengeTimeLabel(p.scheduledAt) ?? "시간 미정";
+    return challengeTimeLabel(p.scheduledAt) ?? "";
   };
 
   // 페이지를 넘길 때: 내용은 페이드 없이 바로 교체하고, 패널만 높이를 모핑한다(요청:
@@ -656,9 +655,10 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
         <div className="scr-challenge-time-change-form">
           <p className="scr-challenge-inbox-message">새 일시로 대결을 연기해요.</p>
           <div className="scr-challenge-datetime">
+            {/* 연기는 기존 시간이 기본값(요청) — 날짜를 지웠다 다시 골라도 기존 시각으로 돌아온다. */}
             <input
               type="date" className="scr-input" value={dateStr}
-              onChange={(e) => { setDateStr(e.target.value); if (!e.target.value) setTimeStr(""); }}
+              onChange={(e) => { setDateStr(e.target.value); if (!e.target.value) setTimeStr(isoToInputs(challenge.scheduledAt).time); }}
             />
             <input
               type="time" className="scr-input" value={timeStr}
