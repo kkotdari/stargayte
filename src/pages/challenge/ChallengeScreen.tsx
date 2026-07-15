@@ -39,22 +39,29 @@ interface DisplayStatusInput {
   createdAt: string;
 }
 
+// 응답(무응답거절) 마감 시각(ms) — 예정 일시가 지정돼 있으면 그 시각이 곧 마감이고(요청:
+// "예정 일시는 종료 시간으로 지정해줘"), 시간 미정이면 createdAt + 1일. 백엔드
+// _response_deadline과 같은 규칙이라 프론트 파생 상태와 서버 배치가 어긋나지 않는다.
+function responseDeadlineMs(c: DisplayStatusInput): number {
+  return c.scheduledAt ? new Date(c.scheduledAt).getTime() : new Date(c.createdAt).getTime() + EXPIRE_MS;
+}
+
 function displayStatusOf(c: DisplayStatusInput): ChallengeDisplayStatus {
   if (c.status === "canceled") return "canceled";
   if (c.status === "rejected") return "rejected";
   if (c.status === "pending") {
-    return Date.now() - new Date(c.createdAt).getTime() > EXPIRE_MS ? "expired" : "pending";
+    return Date.now() > responseDeadlineMs(c) ? "expired" : "pending";
   }
   // confirmed — 예정 시간이 있고 이미 지났으면 "완료", 아니면(미정 포함) 계속 "승락".
   if (c.scheduledAt && new Date(c.scheduledAt).getTime() < Date.now()) return "done";
   return "confirmed";
 }
 
-// 응답대기중 카드의 카운트다운 — createdAt + 응답 기한(1일)에서 지금까지 남은 시간을
-// "N시간 N분 남음"으로. 기한이 지나면 파생 상태가 expired로 넘어가 이 문구는 더 안 뜨지만, 경계에서 잠깐
-// 음수가 될 수 있어 그 경우는 "곧 응답 마감"으로 대체한다.
-function responseDeadlineLabel(createdAt: string): { text: string; urgent: boolean } {
-  const remain = new Date(createdAt).getTime() + EXPIRE_MS - Date.now();
+// 응답대기중 카드의 카운트다운 — 마감(예정 일시가 있으면 그 시각, 없으면 createdAt +
+// 1일)까지 남은 시간을 "N일 N시간 남음"으로. 기한이 지나면 파생 상태가 expired로 넘어가
+// 이 문구는 더 안 뜨지만, 경계에서 잠깐 음수가 될 수 있어 그 경우는 "곧 응답 마감"으로 대체한다.
+function responseDeadlineLabel(c: DisplayStatusInput): { text: string; urgent: boolean } {
+  const remain = responseDeadlineMs(c) - Date.now();
   if (remain <= 0) return { text: "곧 응답 마감", urgent: true };
   const totalMin = Math.floor(remain / 60000);
   const days = Math.floor(totalMin / (60 * 24));
@@ -91,9 +98,16 @@ function targetPillInfo(t: ChallengeTarget, overall: ChallengeDisplayStatus): { 
   // 무응답 만료는 취소가 아니다 — 요청자가 재신청하라고 살려두는 상태라, 취소선 그은
   // 죽은 톤(muted) 대신 취소선 없는 앰버로 구분해 "아직 할 수 있다"는 느낌을 준다
   // (요청: "무응답 취소된 건은 재신청을 위해 보여주는건데.. 취소처럼 보여주지 말까").
+  // 서버가 배치로 이미 무응답거절(rejected, 메시지 없음)로 확정하기 전의 짧은 순간
+  // (아직 pending인데 마감이 지난)엔 이 파생 상태로 잡힌다 — 아래 rejected 분기와 같은 모양.
   if (overall === "expired") return { label: "무응답", tone: "expired" };
   if (t.response === "accepted") return overall === "done" ? { label: "완료", tone: "done" } : { label: "수락", tone: "accepted" };
-  if (t.response === "rejected") return { label: "거절", tone: "rejected" };
+  // 거절 중에서도 사람이 직접 거절한 건(한마디 있음)은 빨강 "거절", 서버 배치가 마감
+  // 경과로 확정한 무응답거절(한마디 없음)은 앰버 "무응답"으로 가른다 — UI에서 직접
+  // 거절할 땐 항상 한마디를 필수로 받으므로 "한마디 없는 거절 = 무응답"이 성립한다.
+  if (t.response === "rejected") {
+    return t.responseMessage ? { label: "거절", tone: "rejected" } : { label: "무응답", tone: "expired" };
+  }
   if (overall === "rejected") return { label: "무응답", tone: "muted" };
   return { label: "응답대기중", tone: "pending" };
 }
@@ -431,7 +445,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
   ];
   const targetSideMembers: SideMember[] = challenge.targets.map((t) => ({ id: t.memberId, nickname: t.nickname, avatar: t.avatar }));
 
-  const deadline = isLatestPage && overall === "pending" ? responseDeadlineLabel(challenge.createdAt) : null;
+  const deadline = isLatestPage && overall === "pending" ? responseDeadlineLabel(challenge) : null;
 
   return (
     <div className="scr-challenge-card">
