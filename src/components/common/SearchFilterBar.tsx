@@ -145,16 +145,27 @@ export default function SearchFilterBar({
   // 상황이든 페이지에 포커싱 가면 필터랑 검색창은 아이콘으로"). 스크롤로 숨을 때와
   // 똑같이(요청: "아래로 스크롤 할때처럼") 그 트랜지션을 그대로 탄다.
   useEffect(() => {
-    // 이 컴포넌트를 마운트시킨 바로 그 탭 이벤트를 걸러낸다 — 탭바가 pointerdown 시점에
-    // 화면을 전환하므로(MobileTabBar 참고), 새 화면의 이 리스너가 등록된 뒤에도 그
-    // pointerdown이 document까지 마저 버블링해 그대로 잡혀서 화면에 들어오자마자 알약이
-    // 접혀버렸다(실제로 지적받은 문제 — "화면 진입시 바로 필터/검색창 닫히는 문제").
-    // 이벤트 발생 시각이 리스너 등록 시각보다 앞서면(=마운트 전에 시작된 탭) 무시한다.
+    // 바깥을 탭하면 필터/검색을 아이콘으로 접는다. 단, 접힘(setPanel)을 pointerdown 시점
+    // (=탭이 아직 진행 중)에 실행하면 그 순간의 리렌더/레이아웃/포커스 변화가 끼어들어
+    // 방금 누른 대상의 click이 씹혀버린다(그래서 탭바 등 개별 요소가 어쩔 수 없이
+    // pointerdown으로 우회해야 했다 — MobileTabBar 참고). 대신 이번 탭이 대상에서 click으로
+    // 마무리된 "뒤"에 접어서, 원래 클릭이 그대로 통과되게 한다(요청: "축소 이벤트 자체가
+    // 원래 클릭 이벤트를 막지 않게 — 각 요소별이 아니라 축소 쪽에서 바르게"). 접힘 여부만
+    // pointerdown에서 판정하고(스택 안이면 유지, 마운트시킨 탭이면 무시), 실제 접힘은
+    // 뒤따르는 click(캡처 단계 — 대상이 stopPropagation해도 놓치지 않음) 한 번에 건다.
+    // 스크롤/드래그로 click이 안 오는 경우엔 스크롤 숨김이 알아서 접으므로, 리스너만
+    // 잠깐 뒤 정리한다.
     const mountedAt = performance.now();
     const onPointerDown = (e: PointerEvent) => {
       if (e.timeStamp <= mountedAt) return;
       if (stackRef.current?.contains(e.target as Node | null)) return;
-      setPanel("none");
+      const collapse = () => { cleanup(); setPanel("none"); };
+      const cleanup = () => {
+        document.removeEventListener("click", collapse, true);
+        clearTimeout(timer);
+      };
+      const timer = window.setTimeout(cleanup, 700);
+      document.addEventListener("click", collapse, true);
     };
     document.addEventListener("pointerdown", onPointerDown);
     return () => document.removeEventListener("pointerdown", onPointerDown);

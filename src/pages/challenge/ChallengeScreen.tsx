@@ -17,6 +17,7 @@ import {
   monthInputToRange, pad,
 } from "../../utils/date";
 import { activeMemberSearchTerms, memberMatchesTerm, splitSearchTerms } from "../../utils/memberSearch";
+import { suppressScrollHide } from "../../utils/scrollRoot";
 import type { Challenge, ChallengeResult, ChallengeSide, ChallengeStatus, ChallengeTarget, Member } from "../../types";
 
 // 실제 서버 status(pending/confirmed/rejected/canceled) 외에, 화면에서만 판단하는 파생
@@ -548,30 +549,31 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
           </div>
         </div>
 
-        {/* 이전 기록 탐색 — 페이지네이션(점) 없이 이전/다음 버튼만. .scr-challenge-pages
-            (overflow:hidden으로 높이를 자르는 박스) 밖, .scr-challenge-card-body의
-            직계 자식으로 둔다 — 안에 두면 높이 모핑용 overflow에 걸려 버튼이 잘려
-            안 보이는 문제가 있었다(신고: "페이지 있는 카드가 좌우 이동버튼이 안보임").
-            페이지가 바뀌어도 버튼 자체는 다시 그려지지 않는다. 이력이 없는 카드에서도,
-            첫/마지막 페이지에서도 항상 같은 자리(카드 패딩)를 차지하고 필요 없을 때만
-            투명하게(visibility:hidden) 처리한다 — 비활성화(회색)로만 두면 여전히
-            보여서, "필요없을땐 안나와야해(페이지 없을때나 맨앞/맨뒤 페이지 등)"라는
-            요청과, 절대배치라 레이아웃엔 영향이 없다는 점 둘 다 만족한다. */}
-        <button
-          type="button"
-          className={cx("scr-challenge-page-nav scr-challenge-page-nav-prev", pageIndex === 0 && "scr-challenge-page-nav-hidden")}
-          onClick={() => setPageIndex((i) => i - 1)} disabled={pageIndex === 0}
-          aria-label="이전 기록 보기"
-        />
-        <button
-          type="button"
-          className={cx(
-            "scr-challenge-page-nav scr-challenge-page-nav-next",
-            pageIndex === pages.length - 1 && "scr-challenge-page-nav-hidden",
-          )}
-          onClick={() => setPageIndex((i) => i + 1)} disabled={pageIndex === pages.length - 1}
-          aria-label="다음 기록 보기"
-        />
+        {/* 이전 기록 탐색 — 카드 하단에 [◀ 1/3 ▶] 한 줄로(요청: "카드 페이지 좌우 이동
+            버튼을 하단으로 이동, 1/3 이렇게 페이지 표시"). .scr-challenge-pages(높이 모핑용
+            overflow:hidden 박스) 밖, card-body의 직계 자식이라 페이지가 바뀌어도 다시 안
+            그려지고 잘리지도 않는다. 이력이 여러 개(pages>1)일 때만 뜬다. 맨앞/맨뒤에선
+            해당 화살표만 투명하게(visibility:hidden) 처리해 자리를 지켜 숫자가 안 흔들린다. */}
+        {pages.length > 1 && (
+          <div className="scr-challenge-page-nav-bar">
+            <button
+              type="button"
+              className={cx("scr-challenge-page-nav scr-challenge-page-nav-prev", pageIndex === 0 && "scr-challenge-page-nav-hidden")}
+              onClick={() => setPageIndex((i) => i - 1)} disabled={pageIndex === 0}
+              aria-label="이전 기록 보기"
+            />
+            <span className="scr-challenge-page-count">{pageIndex + 1}/{pages.length}</span>
+            <button
+              type="button"
+              className={cx(
+                "scr-challenge-page-nav scr-challenge-page-nav-next",
+                pageIndex === pages.length - 1 && "scr-challenge-page-nav-hidden",
+              )}
+              onClick={() => setPageIndex((i) => i + 1)} disabled={pageIndex === pages.length - 1}
+              aria-label="다음 기록 보기"
+            />
+          </div>
+        )}
       </div>
 
       {err && <div className="scr-err">{err}</div>}
@@ -976,6 +978,10 @@ export default function ChallengeScreen() {
     const el = nextCardRef.current;
     if (!el) return;
     didAutoScrollRef.current = true;
+    // 이 자동 스크롤이 "아래로 스크롤 = 숨김"으로 오인돼 탭바/필터·검색 아이콘이 같이
+    // 숨던 문제를 막는다(요청: "next 대결 자동 스크롤하면서 탭바와 아이콘 숨겨지는 문제
+    // 해결") — 부드러운 스크롤이 끝날 때까지 숨김 판정을 잠깐 억제한다.
+    suppressScrollHide();
     el.scrollIntoView({ block: "start" });
   }, [loading, nextChallengeId]);
 

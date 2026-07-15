@@ -127,8 +127,7 @@ async function buildDraft(file: File, members: Member[]): Promise<ReplayDraft> {
     return {
       fileName: file.name,
       mapName: "",
-      // 리플레이 파싱에 실패해 날짜를 못 뽑아냈을 때의 기본값(todayStr()이 자정이 아니라
-      // 정오를 기준으로 어제/오늘을 가른다, utils/date.ts 참고).
+      // 리플레이 파싱에 실패해 날짜를 못 뽑아냈을 때의 기본값 — 실제 오늘.
       date: todayStr(),
       gameStartedAt: null,
       durationSeconds: null,
