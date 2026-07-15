@@ -1079,17 +1079,18 @@ export default function ChallengeScreen() {
                   <div className="scr-challenge-date-head">
                     {g.isToday && <span className="scr-challenge-card-today-tag">오늘</span>}
                     {g.label}
+                    {/* NEXT 배지는 카드가 아니라 그 날짜 헤더에 단다(요청: "글로우 없애고
+                        NEXT 배지를 날짜에"). 가장 임박한 예정 대결이 속한 날짜 그룹에만
+                        붙는다(동일 시각이면 같은 날짜라 한 그룹). */}
+                    {g.items.some(isNextCard) && <span className="scr-challenge-next-tag">NEXT</span>}
                   </div>
                   {g.items.map((c) => (
-                    // 슬롯 래퍼 — 가장 가까운 예정(수락) 대결(동일 시각이면 모두)에
-                    // 카드 밖 좌상단 NEXT 라벨 + 라임 에메랄드 글로우를 달고, 진입
-                    // 스크롤은 그중 첫 카드가 목적지가 된다.
+                    // 슬롯 래퍼 — 진입 스크롤 목적지는 가장 임박한 예정 대결(그중 첫 카드)이다.
                     <div
                       key={c.id}
                       ref={c.id === firstNextId ? nextCardRef : undefined}
-                      className={cx("scr-challenge-card-slot", isNextCard(c) && "scr-challenge-card-slot-next")}
+                      className="scr-challenge-card-slot"
                     >
-                      {isNextCard(c) && <div className="scr-challenge-next-tag">NEXT</div>}
                       <ChallengeCard
                         challenge={c}
                         myId={user?.id}

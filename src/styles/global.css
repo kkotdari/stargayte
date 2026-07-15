@@ -4622,65 +4622,26 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-challenge-date-head {
   /* black-translucent 몰입 모드에서 노치 밑에 핀되도록 안전영역만큼 내린다(--safe-top). */
   position: sticky; top: var(--safe-top); z-index: 9;
+  /* 날짜 라벨 옆에 "오늘"/"NEXT" 배지를 인라인으로 나란히 둔다. */
+  display: flex; align-items: center; gap: 6px;
   font-size: 13px; font-weight: 700; color: var(--dim); letter-spacing: 0.02em;
   background: var(--panel); backdrop-filter: blur(4px);
   padding: 8px 0; border-bottom: 1px solid var(--line-soft);
 }
 
-/* 가장 가까운 예정(수락) 대결 — 카드 밖 좌상단에 NEXT 라벨을 단다(요청: "해당 카드에
-   NEXT 문구 노출(카드 밖 좌상단)"). 슬롯 래퍼는 라벨과 카드를 세로로 쌓는 투명한
-   껍데기라 다른 카드들의 간격(.scr-challenge-date-group의 gap)에는 영향이 없다. */
-/* scroll-margin-top — NEXT 카드로 자동 스크롤(scrollIntoView block:"start")할 때 화면
+/* scroll-margin-top — NEXT 대결로 자동 스크롤(scrollIntoView block:"start")할 때 화면
    맨 위에 딱 붙지 않고 이만큼만 숨 쉴 여유를 남긴다(위의 다른 카드는 안 보인다). 날짜
-   헤더가 스티키로 바뀌면서(.scr-challenge-date-head) 스크롤이 끝난 뒤에도 그 헤더가
-   카드 위에 계속 떠 있으므로, 헤더 높이만큼 여유를 더 크게 잡아야 카드 윗부분(NEXT
-   라벨)이 헤더에 가려지지 않는다(요청: "너나와 진입시 next 대결에 스크롤할때 위에
-   스티키된 날짜의 높이 고려해서 스크롤 위치 정해야해"). */
+   헤더가 스티키라 스크롤이 끝난 뒤에도 그 헤더가 카드 위에 계속 떠 있으므로, 헤더
+   높이만큼 여유를 더 크게 잡는다. */
 .scr-challenge-card-slot { display: flex; flex-direction: column; min-width: 0; scroll-margin-top: calc(var(--safe-top) + 44px); }
-.scr-challenge-next-tag {
-  align-self: flex-start;
-  font-size: 11px; font-weight: 900; letter-spacing: 0.1em;
-  /* 앱에서 강조에 쓰던 그린 계통(검색 하이라이트와 같은 --highlight-bg)으로 — 어두운
-     글자(--bar-text)와 짝지어 두 테마 모두에서 또렷하다(요청: "넥스트 색은 그린계통
-     강조색 쓰던거"). */
-  color: var(--bar-text); background: var(--highlight-bg);
-  border-radius: 4px; padding: 2px 7px; margin-bottom: 4px;
-}
 
-/* NEXT 대결 카드 — 라임/에메랄드 글로우로 눈길을 끈다(요청: "next 카드에 눈길이 안감
-   라임 에메랄드색 글로우 효과"). 동일 시각에 NEXT가 여럿이면 모두에 붙는다. box-shadow를
-   부드럽게 들숨/날숨처럼 맥동시켜 시선을 유도한다. */
-@keyframes scr-next-glow {
-  0%, 100% {
-    box-shadow:
-      inset 0 0 0 1px rgba(52, 211, 153, 0.55),
-      0 0 0 1px rgba(52, 211, 153, 0.45),
-      0 0 16px rgba(52, 211, 153, 0.34),
-      0 0 34px rgba(163, 230, 53, 0.20);
-  }
-  50% {
-    box-shadow:
-      inset 0 0 0 1px rgba(52, 211, 153, 0.7),
-      0 0 0 1px rgba(52, 211, 153, 0.6),
-      0 0 24px rgba(52, 211, 153, 0.55),
-      0 0 52px rgba(163, 230, 53, 0.34);
-  }
-}
-.scr-challenge-card-slot-next .scr-challenge-card {
-  animation: scr-next-glow 2.4s ease-in-out infinite;
-}
-.scr-light-theme .scr-challenge-card-slot-next .scr-challenge-card {
-  animation: scr-next-glow 2.4s ease-in-out infinite;
-}
-@media (prefers-reduced-motion: reduce) {
-  .scr-challenge-card-slot-next .scr-challenge-card,
-  .scr-light-theme .scr-challenge-card-slot-next .scr-challenge-card {
-    animation: none;
-    box-shadow:
-      inset 0 0 0 1px rgba(52, 211, 153, 0.6),
-      0 0 0 1px rgba(52, 211, 153, 0.5),
-      0 0 20px rgba(52, 211, 153, 0.4);
-  }
+/* NEXT 배지 — 가장 임박한 예정(수락) 대결이 속한 날짜 헤더에 인라인으로 단다(요청:
+   "글로우 없애고 NEXT 배지를 날짜에"). 앱 강조 그린(--highlight-bg) + 어두운 글자
+   (--bar-text)로 두 테마 모두 또렷하게. */
+.scr-challenge-next-tag {
+  font-size: 10.5px; font-weight: 900; letter-spacing: 0.08em; line-height: 1;
+  color: var(--bar-text); background: var(--highlight-bg);
+  border-radius: 4px; padding: 3px 6px;
 }
 
 /* 응답대기중 카드의 마감 카운트다운(요청일+1일까지 남은 시간) — 별도 줄이 아니라 날짜
