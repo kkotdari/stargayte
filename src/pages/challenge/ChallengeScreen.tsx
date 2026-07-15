@@ -19,12 +19,12 @@ import type { Challenge, ChallengeSide, ChallengeStatus, ChallengeTarget, Member
 
 // 실제 서버 status(pending/confirmed/rejected/canceled) 외에, 화면에서만 판단하는 두 가지
 // 파생 상태 — "완료"(예정 시간이 지난 승락 건, 요청: "완료 기준은 예정 시간이 지났을때
-// 승락상태면 완료")와 "expired"(보낸지 3일 안에 응답이 없어 무응답으로 취소 처리, 요청:
-// "보낸지 3일안에 응답 없는건은 무응답 취소 처리... 프론트에서만 그렇게 분류") — 둘 다
+// 승락상태면 완료")와 "expired"(응답 기한 안에 응답이 없어 무응답으로 취소 처리 — 처음
+// 3일에서 1일로 줄였다(요청: "응답가능시간 1일로 축소"), 프론트에서만 그렇게 분류) — 둘 다
 // 서버 status는 그대로 두고(배치처리 없음) 조회 시점마다 다시 계산한다.
 type ChallengeDisplayStatus = "pending" | "confirmed" | "done" | "rejected" | "canceled" | "expired";
 
-const EXPIRE_MS = 3 * 24 * 60 * 60 * 1000;
+const EXPIRE_MS = 24 * 60 * 60 * 1000;
 // 남은 시간이 이보다 적으면 카운트다운을 경고색으로 — 마감 임박.
 const DEADLINE_URGENT_MS = 12 * 60 * 60 * 1000;
 
@@ -47,8 +47,8 @@ function displayStatusOf(c: DisplayStatusInput): ChallengeDisplayStatus {
   return "confirmed";
 }
 
-// 응답대기중 카드의 카운트다운 — createdAt + 3일에서 지금까지 남은 시간을 "N일 N시간 남음"
-// 으로. 3일이 지나면 파생 상태가 expired로 넘어가 이 문구는 더 안 뜨지만, 경계에서 잠깐
+// 응답대기중 카드의 카운트다운 — createdAt + 응답 기한(1일)에서 지금까지 남은 시간을
+// "N시간 N분 남음"으로. 기한이 지나면 파생 상태가 expired로 넘어가 이 문구는 더 안 뜨지만, 경계에서 잠깐
 // 음수가 될 수 있어 그 경우는 "곧 응답 마감"으로 대체한다.
 function responseDeadlineLabel(createdAt: string): { text: string; urgent: boolean } {
   const remain = new Date(createdAt).getTime() + EXPIRE_MS - Date.now();
@@ -255,7 +255,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
   const overall = displayStatusOf(challenge);
   const canRespond = !!myTarget && myTarget.response === "pending" && challenge.status !== "canceled";
   const canCancel = isCreator && challenge.status === "pending";
-  // 재신청은 거절뿐 아니라 3일 무응답으로 만료된 도전장에도 허용한다(서버도 같은 기준).
+  // 재신청은 거절뿐 아니라 기한(1일) 무응답으로 만료된 도전장에도 허용한다(서버도 같은 기준).
   const canReapply = isCreator && (challenge.status === "rejected" || overall === "expired");
   // 예정 일시가 지난 확정 대결에서, 아직 결과가 안 들어왔으면 참가자가 결과를 입력한다.
   const schedulePassed = !!challenge.scheduledAt && new Date(challenge.scheduledAt).getTime() < Date.now();
@@ -484,7 +484,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
         </div>
       </div>
 
-      {/* 응답대기중 카드에만 뜨는 마감 카운트다운 — 3일 무응답이면 자동으로 종료(expired)된다. */}
+      {/* 응답대기중 카드에만 뜨는 마감 카운트다운 — 기한(1일) 무응답이면 자동으로 종료(expired)된다. */}
       {deadline && (
         <div className={cx("scr-challenge-countdown", deadline.urgent && "scr-challenge-countdown-urgent")}>
           {deadline.text}
@@ -786,6 +786,35 @@ export default function ChallengeScreen() {
   );
   const activeList = view === "mine" ? sortedChallenges.filter(isMine) : sortedChallenges;
 
+  // 가장 가까운 예정된(수락) 대결 — 확정됐고 예정 일시가 아직 안 지난 것 중 가장 임박한
+  // 것 하나. 카드 밖 좌상단에 NEXT 라벨을 달고, 화면 진입 시 그 카드로 스크롤한다(요청:
+  // "너나와 진입시 가장 가까운 예정된(수락) 경기에 스크롤 및 해당 카드에 NEXT 문구 노출").
+  const nextChallengeId = useMemo(() => {
+    const now = Date.now();
+    let bestId: number | null = null;
+    let bestTime = Infinity;
+    challenges.forEach((c) => {
+      if (c.status !== "confirmed" || !c.scheduledAt) return;
+      const t = new Date(c.scheduledAt).getTime();
+      if (t < now || t >= bestTime) return;
+      bestTime = t;
+      bestId = c.id;
+    });
+    return bestId;
+  }, [challenges]);
+  const nextCardRef = useRef<HTMLDivElement | null>(null);
+  // 진입 후 첫 로드가 끝났을 때 딱 한 번만 스크롤한다 — 이후 응답/재조회로 목록이 바뀌어도
+  // 보던 위치를 뺏지 않는다. scrollIntoView는 #scroll-root의 CSS scroll-behavior:smooth를
+  // 따라 부드럽게 이동한다.
+  const didAutoScrollRef = useRef(false);
+  useEffect(() => {
+    if (loading || didAutoScrollRef.current || nextChallengeId === null) return;
+    const el = nextCardRef.current;
+    if (!el) return;
+    didAutoScrollRef.current = true;
+    el.scrollIntoView({ block: "center" });
+  }, [loading, nextChallengeId]);
+
   // "결과 보기" — 랭킹 화면의 팀 경기 목록 모달을 그대로 재사용해 그 도전장의 팀 구성이 그
   // 날짜에 등록한 경기를 보여준다.
   const [resultsTarget, setResultsTarget] = useState<Challenge | null>(null);
@@ -842,14 +871,22 @@ export default function ChallengeScreen() {
                     {g.label}
                   </div>
                   {g.items.map((c) => (
-                    <ChallengeCard
+                    // 슬롯 래퍼 — 가장 가까운 예정(수락) 대결에만 카드 밖 좌상단 NEXT
+                    // 라벨을 달고, 진입 스크롤의 목적지가 된다.
+                    <div
                       key={c.id}
-                      challenge={c}
-                      myId={user?.id}
-                      highlightMemberIds={highlightMemberIds}
-                      onResponded={upsert}
-                      onViewResults={setResultsTarget}
-                    />
+                      ref={c.id === nextChallengeId ? nextCardRef : undefined}
+                      className="scr-challenge-card-slot"
+                    >
+                      {c.id === nextChallengeId && <div className="scr-challenge-next-tag">NEXT</div>}
+                      <ChallengeCard
+                        challenge={c}
+                        myId={user?.id}
+                        highlightMemberIds={highlightMemberIds}
+                        onResponded={upsert}
+                        onViewResults={setResultsTarget}
+                      />
+                    </div>
                   ))}
                 </div>
               ))}

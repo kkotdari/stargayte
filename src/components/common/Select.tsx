@@ -26,6 +26,11 @@ interface SelectProps {
   // 쓰인다 — 옵션이 짧으면 그만큼 좁게, 길어도 이 값을 넘어서진 않는다.
   minDropWidth?: number;
   disabled?: boolean;
+  // 마운트되자마자 드롭다운을 펼친 채로 시작한다 — "+ 추가"를 누르면 그 자리가 이
+  // Select로 바뀌는 흐름(도전장 폼의 상대/팀원 지목)에서, 한 번 더 눌러야 목록이
+  // 열리는 단계를 없앤다. 인풋이 아니라 버튼 기반 드롭다운이라 모바일 가상 키보드는
+  // 뜨지 않는다.
+  defaultOpen?: boolean;
 }
 
 /*
@@ -40,8 +45,9 @@ interface SelectProps {
 */
 export default function Select({
   value, options, onChange, placeholder = "선택", className, size = "md", minDropWidth, disabled = false,
+  defaultOpen = false,
 }: SelectProps) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen && !disabled);
   const [activeIdx, setActiveIdx] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
   const dropRef = useRef<HTMLDivElement>(null);

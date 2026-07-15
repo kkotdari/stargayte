@@ -63,10 +63,15 @@ function MemberPickBlock({
         {ids.length < max && (
           picking ? (
             <div className="scr-challenge-target-slot">
+              {/* "+ 추가"를 누르는 순간 이 Select로 바뀌므로, 한 번 더 누를 필요 없이
+                  회원 목록이 바로 펼쳐진 채 시작한다(요청: "+추가 버튼 누르면 자동으로
+                  회원 목록 드롭다운 펼치기"). 버튼 기반 드롭다운이라 모바일 키보드는
+                  뜨지 않는다. */}
               <Select
                 value="" options={options} onChange={pick}
                 placeholder="회원 선택"
                 className="scr-challenge-target-select"
+                defaultOpen
               />
               <button
                 type="button" className="scr-icon-btn scr-challenge-target-remove"
