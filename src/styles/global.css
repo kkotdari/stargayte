@@ -4565,11 +4565,11 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   text-align: center; font-size: 12px; font-weight: 700; color: var(--dim); margin-top: 2px;
 }
 
-/* 재신청/설욕전으로 이어진 기록임을 알리는 라벨 — 재신청은 옅은 톤, 설욕전은 눈에 띄게
-   포인트색으로 구분한다. */
+/* 다시 신청/재대결로 이어진 기록임을 알리는 라벨 — 다시 신청은 옅은 톤, 재대결은 눈에 띄게
+   포인트색으로 구분한다. 라벨에 공백이 있어("다시 신청") 좁은 카드에서 줄바꿈되지 않게 nowrap. */
 .scr-challenge-chain-tag {
   display: inline-block; font-size: 11px; font-weight: 800; border-radius: 4px;
-  padding: 1px 5px; margin-right: 5px; vertical-align: middle;
+  padding: 1px 5px; margin-right: 5px; vertical-align: middle; white-space: nowrap;
 }
 .scr-challenge-chain-tag-reapply { color: var(--dim); background: rgba(var(--overlay-rgb),0.12); }
 .scr-challenge-chain-tag-revenge { color: var(--point-contrast); background: var(--point); }

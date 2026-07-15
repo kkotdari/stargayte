@@ -394,7 +394,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
       onResponded(updated);
       closeMode();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : mode === "revenge" ? "설욕전을 신청하지 못했어요." : "재신청하지 못했어요.");
+      setErr(e instanceof Error ? e.message : mode === "revenge" ? "재대결을 신청하지 못했어요." : "다시 신청하지 못했어요.");
     } finally {
       setBusy(false);
     }
@@ -445,7 +445,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
           {/* 체인 라벨 — 이 기록이 재신청/설욕전으로 만들어진 것이면 어느 쪽인지 표시. */}
           {page.chainKind && (
             <span className={cx("scr-challenge-chain-tag", `scr-challenge-chain-tag-${page.chainKind}`)}>
-              {page.chainKind === "revenge" ? "설욕전" : "재신청"}
+              {page.chainKind === "revenge" ? "재대결" : "다시 신청"}
             </span>
           )}
           {/* 결과가 입력된 대결은 이긴 편(또는 무승부/미실시)을 알약으로 표시. */}
@@ -567,7 +567,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
         <div className="scr-challenge-time-change-form">
           {mode === "revenge" && (
             <p className="scr-challenge-inbox-message">
-              설욕전을 신청해요 — 이번엔 상대가 시간을 정하게 하려면 일시를 비워두세요.
+              재대결을 신청해요 — 이번엔 상대가 시간을 정하게 하려면 일시를 비워두세요.
             </p>
           )}
           <div className="scr-challenge-datetime">
@@ -590,7 +590,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
           <div className="scr-challenge-card-actions">
             <button className="scr-btn scr-btn-ghost scr-btn-sm" onClick={closeMode} disabled={busy}>취소</button>
             <button className="scr-btn scr-challenge-accept-btn scr-btn-sm" onClick={submitReapplyOrRevenge} disabled={busy}>
-              {busy ? <Spinner /> : mode === "revenge" ? "설욕전 신청" : "재신청"}
+              {busy ? <Spinner /> : mode === "revenge" ? "재대결 신청" : "다시 신청"}
             </button>
           </div>
         </div>
@@ -687,7 +687,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
           )}
           {canRevenge && (
             <button className="scr-btn scr-btn-ghost scr-btn-sm" onClick={startRevenge} disabled={busy}>
-              설욕전 신청
+              재대결 신청
             </button>
           )}
           {canPostpone && (
@@ -702,7 +702,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
           )}
           {canReapply && (
             <button className="scr-btn scr-btn-ghost scr-btn-sm" onClick={startReapply} disabled={busy}>
-              재신청
+              다시 신청
             </button>
           )}
         </div>
