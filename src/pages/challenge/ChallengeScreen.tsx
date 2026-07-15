@@ -180,7 +180,7 @@ type SideMember = { id: string; nickname: string; avatar: string | null };
 // 팀 구성 한 편(도전자편/상대편)을 세로로 쌓는다(요청: "각팀을 세로로 배치") — 1:1이든
 // 팀전이든 모양은 같고, 인원이 하나든 여럿이든 그냥 줄 수만 늘어난다.
 function ChallengeSide({
-  people, message, targets, highlightMemberIds,
+  people, message, targets, highlightMemberIds, won, showResultSlot,
 }: {
   people: SideMember[];
   message?: string;
@@ -188,9 +188,20 @@ function ChallengeSide({
   // 유저 검색에 걸린 사람 — 경기결과 로스터와 같은 반전색으로 프사+닉네임을 함께 칠한다
   // (요청: "랭킹, 너 나와 유저 검색시 하이라이팅 추가 단! 닉네임뿐 아니라 프사까지").
   highlightMemberIds?: Set<string>;
+  // 결과가 입력된 대결에서 이 편이 승리팀이면 카드 위(시간줄의 텍스트 알약)뿐 아니라
+  // 실제 구성원 바로 위에도 배지를 달아 한눈에 보이게 한다(요청: "승리 라는 배지를
+  // 해당 팀 위에 배치해주면 좋을듯해").
+  won?: boolean;
+  // 결과가 입력된 대결이면 이긴 편이 아니어도 배지 자리를 투명하게(visibility:hidden)
+  // 남겨야, 이긴 편만 배지가 붙어 한쪽 줄만 아래로 밀리는 정렬 깨짐이 안 생긴다(요청:
+  // "승리 배지로 인해 레이아웃이 깨졌어 줄이 안맞아").
+  showResultSlot?: boolean;
 }) {
   return (
     <div className={cx("scr-challenge-side", targets && "scr-challenge-side-target")}>
+      {showResultSlot && (
+        <span className={cx("scr-challenge-side-win", !won && "scr-challenge-side-win-hidden")}>승리</span>
+      )}
       {people.map((p, i) => {
         const t = targets?.[i];
         return (
@@ -430,6 +441,10 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
     }
   };
 
+  // 무승부/미실시는 특정 팀이 이긴 게 아니라 배지를 달 대상이 없다 — 이 경우엔 양쪽 다
+  // 배지 자리를 아예 안 만든다(자리만 차지하고 둘 다 안 보이는 건 의미가 없다).
+  const hasTeamResult = page.resultWinnerSide === "creator" || page.resultWinnerSide === "target";
+
   // 요청자쪽 인원(본인+같은 편) — 도전자/팀 구성은 체인 내내 그대로라 페이지와 무관하게 고정.
   const creatorSideMembers: SideMember[] = [
     { id: challenge.createdBy.id, nickname: challenge.createdBy.nickname, avatar: creatorMember?.avatar ?? null },
@@ -448,8 +463,10 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
               {page.chainKind === "revenge" ? "재대결" : "다시 신청"}
             </span>
           )}
-          {/* 결과가 입력된 대결은 이긴 편(또는 무승부/미실시)을 알약으로 표시. */}
-          {page.resultWinnerSide && (
+          {/* 이긴 편은 이제 매치업의 해당 팀 위에 배지(scr-challenge-side-win)로 바로 표시되니
+              여기서는 중복이라 뺀다(요청: "도전자편 승 이런 건 이제 제거해도되겠지") —
+              팀을 특정할 수 없는 무승부/미실시만 여기 알약으로 남긴다. */}
+          {(page.resultWinnerSide === "draw" || page.resultWinnerSide === "not_held") && (
             <span className="scr-challenge-pill scr-challenge-pill-done">{resultLabel(page.resultWinnerSide)}</span>
           )}
           {/* 결과 보기는 결과가 입력된 뒤에만 뜬다(요청: "결과보기는 결과 입력후에만 보이고"). */}
@@ -461,9 +478,24 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
         </div>
 
         <div className="scr-challenge-matchup">
-          <ChallengeSide people={creatorSideMembers} message={page.message} highlightMemberIds={highlightMemberIds} />
-          <span className="scr-challenge-arrow" aria-hidden="true">👉🏻</span>
-          <ChallengeSide people={targetSideMembers} targets={pageTargetInfos} highlightMemberIds={highlightMemberIds} />
+          <ChallengeSide
+            people={creatorSideMembers} message={page.message} highlightMemberIds={highlightMemberIds}
+            won={page.resultWinnerSide === "creator"} showResultSlot={hasTeamResult}
+          />
+          {/* 승리 배지가 생기면 양쪽 로스터 첫 줄(프사+닉네임)이 배지 자리만큼 아래로
+              밀리는데, 화살표는 그대로면 옛 위치(첫 줄 자리)에 남아 손이 위로 붕 떠
+              보인다(요청: "손 이모지 위치가 거기가 아니지") — 화살표 앞에도 똑같은
+              배지 자리(투명)를 넣어 같이 밀리게 한다. */}
+          <span className="scr-challenge-arrow-col">
+            {hasTeamResult && (
+              <span className="scr-challenge-side-win scr-challenge-side-win-hidden" aria-hidden="true">승리</span>
+            )}
+            <span className="scr-challenge-arrow" aria-hidden="true">👉🏻</span>
+          </span>
+          <ChallengeSide
+            people={targetSideMembers} targets={pageTargetInfos} highlightMemberIds={highlightMemberIds}
+            won={page.resultWinnerSide === "target"} showResultSlot={hasTeamResult}
+          />
         </div>
 
         <div className={cx("scr-challenge-page-nav-row", pages.length > 1 && "scr-challenge-page-nav-row-active")}>
