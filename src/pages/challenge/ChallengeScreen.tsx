@@ -20,16 +20,12 @@ import {
 import { activeMemberSearchTerms, memberMatchesTerm, splitSearchTerms } from "../../utils/memberSearch";
 import type { Challenge, ChallengeSide, ChallengeStatus, ChallengeTarget, Member } from "../../types";
 
-// 실제 서버 status(pending/confirmed/rejected/canceled) 외에, 화면에서만 판단하는 두 가지
-// 파생 상태 — "완료"(예정 시간이 지난 승락 건, 요청: "완료 기준은 예정 시간이 지났을때
-// 승락상태면 완료")와 "expired"(응답 기한 안에 응답이 없어 무응답으로 취소 처리 — 처음
-// 3일에서 1일로 줄였다(요청: "응답가능시간 1일로 축소"), 프론트에서만 그렇게 분류) — 둘 다
-// 서버 status는 그대로 두고(배치처리 없음) 조회 시점마다 다시 계산한다.
-type ChallengeDisplayStatus = "pending" | "confirmed" | "done" | "rejected" | "canceled" | "expired";
-
-const EXPIRE_MS = 24 * 60 * 60 * 1000;
-// 남은 시간이 이보다 적으면 카운트다운을 경고색으로 — 마감 임박.
-const DEADLINE_URGENT_MS = 12 * 60 * 60 * 1000;
+// 실제 서버 status(pending/confirmed/rejected/canceled) 외에, 화면에서만 판단하는 파생
+// 상태 "완료"(done) — 승락(confirmed)됐고 예정 매치 시각이 이미 지난 건(요청: "완료 기준은
+// 예정 시간이 지났을때 승락상태면 완료"). 응답 기한 만료(무응답거절)는 이제 프론트가 계산
+// 하지 않는다(요청: "프론트 마감 계산은 필요없어") — 기한이 지나면 서버 배치가 상태를
+// rejected로 확정해서 내려주므로, 여기선 서버가 준 status를 그대로 쓰기만 한다.
+type ChallengeDisplayStatus = "pending" | "confirmed" | "done" | "rejected" | "canceled";
 
 // 도전장/재신청 체인 기록이 공통으로 갖는 최소 필드만 보면 파생 상태를 계산할 수 있다 —
 // 살아있는 도전장(Challenge)과 이력 페이지(ChallengeHistoryEntry) 양쪽에 그대로 쓴다.
@@ -39,40 +35,26 @@ interface DisplayStatusInput {
   createdAt: string;
 }
 
-// 응답(무응답거절) 마감 시각(ms) — 예정 일시가 지정돼 있으면 그 시각이 곧 마감이고(요청:
-// "예정 일시는 종료 시간으로 지정해줘"), 시간 미정이면 createdAt + 1일. 백엔드
-// _response_deadline과 같은 규칙이라 프론트 파생 상태와 서버 배치가 어긋나지 않는다.
-function responseDeadlineMs(c: DisplayStatusInput): number {
-  return c.scheduledAt ? new Date(c.scheduledAt).getTime() : new Date(c.createdAt).getTime() + EXPIRE_MS;
-}
-
 function displayStatusOf(c: DisplayStatusInput): ChallengeDisplayStatus {
   if (c.status === "canceled") return "canceled";
   if (c.status === "rejected") return "rejected";
-  if (c.status === "pending") {
-    return Date.now() > responseDeadlineMs(c) ? "expired" : "pending";
-  }
-  // confirmed — 예정 시간이 있고 이미 지났으면 "완료", 아니면(미정 포함) 계속 "승락".
+  if (c.status === "pending") return "pending";
+  // confirmed — 예정 시간(매치 시각)이 있고 이미 지났으면 "완료", 아니면(미정 포함) 계속 "승락".
   if (c.scheduledAt && new Date(c.scheduledAt).getTime() < Date.now()) return "done";
   return "confirmed";
 }
 
-// 응답대기중 카드의 카운트다운 — 마감(예정 일시가 있으면 그 시각, 없으면 createdAt +
-// 1일)까지 남은 시간을 "N일 N시간 남음"으로. 기한이 지나면 파생 상태가 expired로 넘어가
-// 이 문구는 더 안 뜨지만, 경계에서 잠깐 음수가 될 수 있어 그 경우는 "곧 응답 마감"으로 대체한다.
-function responseDeadlineLabel(c: DisplayStatusInput): { text: string; urgent: boolean } {
-  const remain = responseDeadlineMs(c) - Date.now();
-  if (remain <= 0) return { text: "곧 응답 마감", urgent: true };
-  const totalMin = Math.floor(remain / 60000);
-  const days = Math.floor(totalMin / (60 * 24));
-  const hours = Math.floor((totalMin % (60 * 24)) / 60);
-  const mins = totalMin % 60;
-  const text = days > 0
-    ? `응답 마감까지 ${days}일 ${hours}시간 남음`
-    : hours > 0
-      ? `응답 마감까지 ${hours}시간 ${mins}분 남음`
-      : `응답 마감까지 ${mins}분 남음`;
-  return { text, urgent: remain < DEADLINE_URGENT_MS };
+// 응답 마감 = 요청일(createdAt) + 1일. 응답대기중 카드에 남은 시간을 보여주는 카운트다운용
+// (요청: "카운트 다운 필요해!") — 만료 판정 자체는 서버 배치가 하고(프론트는 마감 계산으로
+// 상태를 바꾸지 않는다), 여기선 남은 시간 문구만 심플하게 만든다. 마감이 지나 잠깐 음수가
+// 되면 "곧 마감"으로 대체한다.
+const EXPIRE_MS = 24 * 60 * 60 * 1000;
+function responseDeadlineLabel(createdAt: string): string {
+  const remain = new Date(createdAt).getTime() + EXPIRE_MS - Date.now();
+  if (remain <= 0) return "응답 마감 임박";
+  const hours = Math.floor(remain / (60 * 60 * 1000));
+  const mins = Math.floor((remain % (60 * 60 * 1000)) / (60 * 1000));
+  return hours > 0 ? `응답 마감 ${hours}시간 남음` : `응답 마감 ${mins}분 남음`;
 }
 
 // ISO 문자열을 <input type="date">/<input type="time"> 값으로 — 연기 폼의 기존 일시 프리필용.
@@ -95,11 +77,6 @@ type PillTone = "pending" | "accepted" | "rejected" | "done" | "muted";
 // 보여주면 마치 아직 진행 중인 것처럼 헷갈린다 — 그럴 땐 "무응답"으로 구분한다.
 function targetPillInfo(t: ChallengeTarget, overall: ChallengeDisplayStatus): { label: string; tone: PillTone } {
   if (overall === "canceled") return { label: "취소", tone: "muted" };
-  // 무응답 만료 = 거절과 똑같이 다루므로 카드에도 거절처럼 빨강으로 보여준다(요청:
-  // "카드는 무응답 거절로 하는게 나을듯 빨간색"). 서버가 배치로 무응답거절(rejected,
-  // 메시지 없음)로 확정하기 전의 짧은 순간(아직 pending인데 마감이 지난)엔 이 파생
-  // 상태로 잡히는데, 아래 rejected 분기와 같은 빨강 "무응답거절"로 통일한다.
-  if (overall === "expired") return { label: "무응답거절", tone: "rejected" };
   if (t.response === "accepted") return overall === "done" ? { label: "완료", tone: "done" } : { label: "수락", tone: "accepted" };
   // 거절 중에서도 사람이 직접 거절한 건(한마디 있음)은 "거절", 서버 배치가 마감 경과로
   // 확정한 무응답거절(한마디 없음)은 "무응답거절"로 라벨만 가른다 — 둘 다 빨강. UI에서
@@ -111,6 +88,12 @@ function targetPillInfo(t: ChallengeTarget, overall: ChallengeDisplayStatus): { 
   return { label: "응답대기중", tone: "pending" };
 }
 
+// 더는 지켜볼 필요가 없는 종료 상태 — 거절/취소/무응답거절(만료)/완료.
+function isEndedChallenge(c: Challenge): boolean {
+  const s = displayStatusOf(c);
+  return s === "rejected" || s === "canceled" || s === "done";
+}
+
 interface ChallengeDateGroup {
   label: string;
   isToday: boolean;
@@ -119,7 +102,9 @@ interface ChallengeDateGroup {
 
 // 경기결과 화면처럼 날짜별로 묶어 보여준다(요청: "경기 화면처럼 날짜별로 그룹핑") —
 // 넘어오는 목록은 이미 정렬돼 있어서 같은 날짜 라벨이 연속으로 나올 때만 묶으면 된다.
-// 일정 미정 도전장은 "일정 미정" 하나로 모인다.
+// "일정 미정"(scheduledAt 없음)은 이제 응답 대기중인 건에만 남는다 — 시간 없이 보냈다
+// 거절/무응답으로 끝나는 순간 서버가 예정 일시를 요청일시+1일로 확정하기 때문이다
+// (요청: "일정미정은 응답대기중일때만 가능한거야", "거절하는 순간 scheduled_at도 업데이트").
 function groupChallengesByDate(list: Challenge[]): ChallengeDateGroup[] {
   const groups: ChallengeDateGroup[] = [];
   list.forEach((c) => {
@@ -274,11 +259,11 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
   // 지목된 상대(targets)는 서버가 프사까지 내려주니 그대로 쓴다.
   const creatorMember = memberOf(challenge.createdBy.id);
 
-  const overall = displayStatusOf(challenge);
   const canRespond = !!myTarget && myTarget.response === "pending" && challenge.status !== "canceled";
   const canCancel = isCreator && challenge.status === "pending";
-  // 재신청은 거절뿐 아니라 기한(1일) 무응답으로 만료된 도전장에도 허용한다(서버도 같은 기준).
-  const canReapply = isCreator && (challenge.status === "rejected" || overall === "expired");
+  // 재신청은 거절/무응답거절(둘 다 서버 status=rejected)일 때 가능하다 — 무응답거절은
+  // 서버 배치가 rejected로 확정하므로 여기선 status==="rejected" 하나로 다 잡힌다.
+  const canReapply = isCreator && challenge.status === "rejected";
   // 예정 일시가 지난 확정 대결에서, 아직 결과가 안 들어왔으면 참가자가 결과를 입력한다.
   const schedulePassed = !!challenge.scheduledAt && new Date(challenge.scheduledAt).getTime() < Date.now();
   const canEnterResult = isParticipant && challenge.status === "confirmed" && schedulePassed && challenge.resultWinnerSide === null;
@@ -444,8 +429,6 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
   ];
   const targetSideMembers: SideMember[] = challenge.targets.map((t) => ({ id: t.memberId, nickname: t.nickname, avatar: t.avatar }));
 
-  const deadline = isLatestPage && overall === "pending" ? responseDeadlineLabel(challenge) : null;
-
   return (
     <div className="scr-challenge-card">
       <div className="scr-challenge-card-body">
@@ -506,11 +489,11 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
         </div>
       </div>
 
-      {/* 응답대기중 카드에만 뜨는 마감 카운트다운 — 기한(1일) 무응답이면 자동으로 종료(expired)된다. */}
-      {deadline && (
-        <div className={cx("scr-challenge-countdown", deadline.urgent && "scr-challenge-countdown-urgent")}>
-          {deadline.text}
-        </div>
+      {/* 응답대기중 카드의 마감 카운트다운(요청: "카운트 다운 필요해!") — 요청일+1일까지
+          남은 시간을 한 줄로 심플하게. 마감이 지나면 서버 배치가 무응답거절로 바꾸므로
+          여기 뜨는 동안은 항상 남은 시간이 있다. */}
+      {isLatestPage && challenge.status === "pending" && (
+        <div className="scr-challenge-countdown">{responseDeadlineLabel(challenge.createdAt)}</div>
       )}
 
       {err && <div className="scr-err">{err}</div>}
@@ -709,12 +692,6 @@ const PERIOD_UNIT_OPTS: { value: ChallengePeriodUnit; label: string }[] = [
   { value: "month", label: "월" },
 ];
 
-// 더는 지켜볼 필요가 없는 종료 상태 — 거절/취소/무응답취소(만료)/완료.
-function isEndedChallenge(c: Challenge): boolean {
-  const s = displayStatusOf(c);
-  return s === "rejected" || s === "canceled" || s === "expired" || s === "done";
-}
-
 // 단일 리스트 정렬. 먼저 "진행 중(응답 대기/예정)"을 "종료된 것"보다 항상 위에 둔다 —
 // 안 그러면 시간을 안 정한 채(scheduledAt=null) 무응답으로 만료된 도전장이, 종료됐는데도
 // "일정 미정"이라 계속 목록 맨 위에 박제된다(요청: "상대방이 시간 지정으로 보냈는데
@@ -821,8 +798,10 @@ export default function ChallengeScreen() {
     return ids;
   }, [members, searchTerms]);
 
-  // 기간 필터 — 월이면 예정 일시(scheduledAt)가 그 달에 속하는 것만. 일정 미정(응답 전
-  // 시간 미정) 도전장은 특정 달에 속한다고 볼 수 없고 지금 진행 중인 건이라 항상 보여준다.
+  // 기간 필터 — 월이면 예정 일시가 그 달에 속하는 것만. 아직 진행 중인 시간 미정 도전장
+  // (scheduledAt 없음)은 특정 달에 속한다고 볼 수 없고 지금 진행 중이라 항상 보여준다.
+  // 거절/무응답으로 끝난 시간 미정 건은 서버가 예정 일시를 요청일+1일로 확정하므로 여기서
+  // 자연히 그 달 기준으로 걸린다(=지난 달 건은 이번 달 목록에서 빠진다).
   const periodChallenges = useMemo(() => {
     if (periodUnit !== "month") return searchedChallenges;
     const { from, to } = monthInputToRange(periodMonth);

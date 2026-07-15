@@ -4542,13 +4542,10 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   border-radius: 4px; padding: 2px 7px; margin-bottom: 4px;
 }
 
-/* 응답대기중 카드의 마감 카운트다운(createdAt + 3일까지 남은 시간) — 평소엔 옅은 톤,
-   마감 임박(12시간 이내)이면 경고색(loss)으로 전환한다. */
+/* 응답대기중 카드의 마감 카운트다운(요청일+1일까지 남은 시간) — 한 줄, 옅은 톤. */
 .scr-challenge-countdown {
-  text-align: center; font-size: 12px; font-weight: 700; color: var(--dim);
-  margin-top: 2px;
+  text-align: center; font-size: 12px; font-weight: 700; color: var(--dim); margin-top: 2px;
 }
-.scr-challenge-countdown-urgent { color: var(--loss); }
 
 /* 재신청/설욕전으로 이어진 기록임을 알리는 라벨 — 재신청은 옅은 톤, 설욕전은 눈에 띄게
    포인트색으로 구분한다. */
