@@ -80,7 +80,7 @@ function isoToInputs(iso: string | null): { date: string; time: string } {
 
 const sideLabel = (side: ChallengeSide): string => (side === "creator" ? "도전자편 승" : "상대편 승");
 
-type PillTone = "pending" | "accepted" | "rejected" | "done" | "muted";
+type PillTone = "pending" | "accepted" | "rejected" | "done" | "muted" | "expired";
 
 // 상대 한 명의 응답 알약 — 개별 response뿐 아니라 카드 전체의 파생 상태까지 함께 봐서
 // 문구를 정한다. 예: 팀전에서 한 명이 거절하면 그 순간 전체가 rejected로 끝나버리는데,
@@ -88,7 +88,10 @@ type PillTone = "pending" | "accepted" | "rejected" | "done" | "muted";
 // 보여주면 마치 아직 진행 중인 것처럼 헷갈린다 — 그럴 땐 "무응답"으로 구분한다.
 function targetPillInfo(t: ChallengeTarget, overall: ChallengeDisplayStatus): { label: string; tone: PillTone } {
   if (overall === "canceled") return { label: "취소", tone: "muted" };
-  if (overall === "expired") return { label: "무응답취소", tone: "muted" };
+  // 무응답 만료는 취소가 아니다 — 요청자가 재신청하라고 살려두는 상태라, 취소선 그은
+  // 죽은 톤(muted) 대신 취소선 없는 앰버로 구분해 "아직 할 수 있다"는 느낌을 준다
+  // (요청: "무응답 취소된 건은 재신청을 위해 보여주는건데.. 취소처럼 보여주지 말까").
+  if (overall === "expired") return { label: "무응답", tone: "expired" };
   if (t.response === "accepted") return overall === "done" ? { label: "완료", tone: "done" } : { label: "수락", tone: "accepted" };
   if (t.response === "rejected") return { label: "거절", tone: "rejected" };
   if (overall === "rejected") return { label: "무응답", tone: "muted" };
