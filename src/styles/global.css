@@ -4683,7 +4683,7 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    CSS 삼각형(테두리 트릭)으로 꽉 찬 채워진 화살표를 그린다(요청: "채워진 삼각형
    모양으로 좌우에 잘 보이게"). 배경도 옅게 넣어 카드 위에서 더 도드라지게 한다. */
 .scr-challenge-page-nav {
-  position: absolute; bottom: 0;
+  position: absolute; top: 50%; transform: translateY(-50%);
   display: flex; align-items: center; justify-content: center;
   width: 20px; height: 20px; border-radius: 50%;
   background: transparent; border: none; color: var(--dim); cursor: pointer;
@@ -4887,8 +4887,11 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    않는다. */
 .scr-challenge-card-actions { display: flex; justify-content: center; gap: 8px; }
 .scr-challenge-inbox-body .scr-form-actions { justify-content: center; }
-/* 승락(핑크)/거절(검정) 버튼 — 로그인 버튼과 같은 필(pill) 래디우스. */
-.scr-challenge-accept-btn, .scr-challenge-reject-btn { border-radius: 999px; border-color: transparent; color: #fff; }
+/* 승락(핑크)/거절(검정) 버튼 — 모양은 재신청/취소/연기(.scr-btn-ghost) 버튼과 똑같이
+   맞춘다(요청: "거절 승락 버튼 크기 모양을 재신청 취소 연기 버튼과 동일하게 수정") —
+   크기는 이미 같은 .scr-btn 기본값을 쓰고 있었고, 모양만 필(pill)로 달랐던 걸
+   기본 둥근네모(--radius-sm)로 되돌린다. */
+.scr-challenge-accept-btn, .scr-challenge-reject-btn { border-color: transparent; color: #fff; }
 .scr-challenge-accept-btn { background: #ec6ea8; }
 .scr-challenge-accept-btn:hover { background: #f281b7; }
 .scr-challenge-reject-btn { background: #17171a; }
