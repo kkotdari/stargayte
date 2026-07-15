@@ -164,22 +164,14 @@ export default function ChallengeFormModal({ onClose, onCreated }: ChallengeForm
         </div>
 
         <div className="scr-modal-body">
-          {/* 상대 지목/내 팀은 <label>이 아니라 <div>다 — <label>로 감싸면 칩/버튼처럼
+          {/* 내 팀/상대 지목은 <label>이 아니라 <div>다 — <label>로 감싸면 칩/버튼처럼
               "제어 대상이 아닌" 부분을 클릭했을 때 브라우저가 그 라벨의 첫 폼 컨트롤(첫
               칩의 X 버튼)에 자동으로 클릭을 한 번 더 쏴서 방금 지목한 사람이 사라지는
               버그가 있었다(MemberPickBlock 내부도 <div>로 감싼 이유). */}
-          <MemberPickBlock
-            label="상대 지목"
-            ids={targetIds}
-            setIds={setTargetIds}
-            max={MAX_TARGETS}
-            options={memberOptions}
-            memberById={memberById}
-            addLabel="+ 상대 추가"
-          />
-
-          {/* 내 팀은 선택 — 본인은 자동 포함이라 여기엔 "본인 제외 나머지 팀원"만 넣는다.
-              한 명이라도 넣으면(또는 상대를 2명 이상 지목하면) 서버가 팀전으로 처리한다. */}
+          {/* 내 팀이 위, 상대가 아래(요청: "도전장 보내기에서 우리팀이 위에") — 카드
+              매치업에서 도전자편이 먼저 오는 순서와도 맞는다. 내 팀은 선택 — 본인은
+              자동 포함이라 여기엔 "본인 제외 나머지 팀원"만 넣는다. 한 명이라도
+              넣으면(또는 상대를 2명 이상 지목하면) 서버가 팀전으로 처리한다. */}
           <MemberPickBlock
             label="내 팀 (선택)"
             ids={ownTeamIds}
@@ -188,6 +180,16 @@ export default function ChallengeFormModal({ onClose, onCreated }: ChallengeForm
             options={memberOptions}
             memberById={memberById}
             addLabel="+ 팀원 추가"
+          />
+
+          <MemberPickBlock
+            label="상대 지목"
+            ids={targetIds}
+            setIds={setTargetIds}
+            max={MAX_TARGETS}
+            options={memberOptions}
+            memberById={memberById}
+            addLabel="+ 상대 추가"
           />
 
           <label className="scr-checkbox-field">
