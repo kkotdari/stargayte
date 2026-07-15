@@ -13,7 +13,10 @@ import { useAppStore } from "../../store/appStore";
 import { api } from "../../api/client";
 import { cx } from "../../utils/format";
 import { attachPopover } from "../../utils/popover";
-import { challengeDateGroupLabel, challengeTimeLabel, formatChallengeSchedule, fmt, isToday, pad } from "../../utils/date";
+import {
+  challengeDateGroupLabel, challengeTimeLabel, currentMonthValue, formatChallengeSchedule, fmt, isToday,
+  monthInputToRange, pad,
+} from "../../utils/date";
 import { activeMemberSearchTerms, memberMatchesTerm, splitSearchTerms } from "../../utils/memberSearch";
 import type { Challenge, ChallengeSide, ChallengeStatus, ChallengeTarget, Member } from "../../types";
 
@@ -682,6 +685,14 @@ const VIEW_OPTS: { value: ChallengeView; label: string }[] = [
   { value: "mine", label: "내것만" },
 ];
 
+// 기간 필터 — 경기 화면과 같은 패턴(전체/월 + 월 선택기), 기본은 월(요청: "너나와에
+// 기간 필터 추가 전체 월까지" + "기본은 월"). 경기 화면과 달리 "일" 단위까지는 안 쪼갠다.
+type ChallengePeriodUnit = "all" | "month";
+const PERIOD_UNIT_OPTS: { value: ChallengePeriodUnit; label: string }[] = [
+  { value: "all", label: "전체" },
+  { value: "month", label: "월" },
+];
+
 // 단일 리스트 정렬 — scheduledAt 내림차순(늦은 일시가 위). 일시 미정(응답 전 시간 미정
 // 도전장)은 정렬 기준이 없어 맨 위에 두되, 그들끼리는 최근 생성 순(가장 최근 = 가장 급한
 // 건)으로 놓는다. 일시가 같으면 최근 생성 순으로 가른다.
@@ -708,6 +719,8 @@ export default function ChallengeScreen() {
   const [formOpen, setFormOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [view, setView] = useState<ChallengeView>("all");
+  const [periodUnit, setPeriodUnit] = useState<ChallengePeriodUnit>("month");
+  const [periodMonth, setPeriodMonth] = useState(currentMonthValue);
   const suggestions = useMemo(() => activeMemberSearchTerms(members), [members]);
 
   // 카운트다운(응답 마감)과 완료/무응답취소 같은 시간 기반 파생 상태를 1분마다 다시 그린다 —
@@ -779,10 +792,22 @@ export default function ChallengeScreen() {
     return ids;
   }, [members, searchTerms]);
 
+  // 기간 필터 — 월이면 예정 일시(scheduledAt)가 그 달에 속하는 것만. 일정 미정(응답 전
+  // 시간 미정) 도전장은 특정 달에 속한다고 볼 수 없고 지금 진행 중인 건이라 항상 보여준다.
+  const periodChallenges = useMemo(() => {
+    if (periodUnit !== "month") return searchedChallenges;
+    const { from, to } = monthInputToRange(periodMonth);
+    return searchedChallenges.filter((c) => {
+      if (!c.scheduledAt) return true;
+      const d = fmt(new Date(c.scheduledAt));
+      return d >= from && d <= to;
+    });
+  }, [searchedChallenges, periodUnit, periodMonth]);
+
   // 상태 구분 없이 하나의 목록으로 합치고 scheduledAt 내림차순으로 정렬한다.
   const sortedChallenges = useMemo(
-    () => [...searchedChallenges].sort(compareChallenges),
-    [searchedChallenges],
+    () => [...periodChallenges].sort(compareChallenges),
+    [periodChallenges],
   );
 
   // "내것만" — 내가 보냈거나(창작자/같은 팀) 지목된(상대) 도전장만 남긴다.
@@ -812,14 +837,16 @@ export default function ChallengeScreen() {
   const nextCardRef = useRef<HTMLDivElement | null>(null);
   // 진입 후 첫 로드가 끝났을 때 딱 한 번만 스크롤한다 — 이후 응답/재조회로 목록이 바뀌어도
   // 보던 위치를 뺏지 않는다. scrollIntoView는 #scroll-root의 CSS scroll-behavior:smooth를
-  // 따라 부드럽게 이동한다.
+  // 따라 부드럽게 이동한다. 가운데가 아니라 화면 맨 위에 오게 한다(요청: "next 대결
+  // 스크롤은 가운데가 아니라 상단에 오게(위의 목록은 안보이는 정도로)") — 위쪽 여유는
+  // .scr-challenge-card-slot의 scroll-margin-top이 살짝만 남긴다.
   const didAutoScrollRef = useRef(false);
   useEffect(() => {
     if (loading || didAutoScrollRef.current || nextChallengeId === null) return;
     const el = nextCardRef.current;
     if (!el) return;
     didAutoScrollRef.current = true;
-    el.scrollIntoView({ block: "center" });
+    el.scrollIntoView({ block: "start" });
   }, [loading, nextChallengeId]);
 
   // "결과 보기" — 랭킹 화면의 팀 경기 목록 모달을 그대로 재사용해 그 도전장의 팀 구성이 그
@@ -855,9 +882,23 @@ export default function ChallengeScreen() {
         searchPlaceholder="유저"
         suggestions={suggestions}
         filterPanel={
-          <FilterItem label="범위">
-            <PillTabs options={VIEW_OPTS} value={view} onChange={setView} aria-label="전체/내것만 선택" />
-          </FilterItem>
+          <>
+            <FilterItem label="범위">
+              <PillTabs options={VIEW_OPTS} value={view} onChange={setView} aria-label="전체/내것만 선택" />
+            </FilterItem>
+            <FilterItem label="기간">
+              <PillTabs options={PERIOD_UNIT_OPTS} value={periodUnit} onChange={setPeriodUnit} aria-label="기간" />
+            </FilterItem>
+            {periodUnit === "month" && (
+              <FilterItem>
+                <input
+                  type="month" className="scr-filter-month-input"
+                  value={periodMonth} onChange={(e) => setPeriodMonth(e.target.value)}
+                  aria-label="조회할 월"
+                />
+              </FilterItem>
+            )}
+          </>
         }
       />
 

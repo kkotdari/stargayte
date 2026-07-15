@@ -4529,7 +4529,9 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 /* 가장 가까운 예정(수락) 대결 — 카드 밖 좌상단에 NEXT 라벨을 단다(요청: "해당 카드에
    NEXT 문구 노출(카드 밖 좌상단)"). 슬롯 래퍼는 라벨과 카드를 세로로 쌓는 투명한
    껍데기라 다른 카드들의 간격(.scr-challenge-date-group의 gap)에는 영향이 없다. */
-.scr-challenge-card-slot { display: flex; flex-direction: column; min-width: 0; }
+/* scroll-margin-top — NEXT 카드로 자동 스크롤(scrollIntoView block:"start")할 때 화면
+   맨 위에 딱 붙지 않고 이만큼만 숨 쉴 여유를 남긴다(위의 다른 카드는 안 보인다). */
+.scr-challenge-card-slot { display: flex; flex-direction: column; min-width: 0; scroll-margin-top: 10px; }
 .scr-challenge-next-tag {
   align-self: flex-start;
   font-size: 11px; font-weight: 900; letter-spacing: 0.1em;
