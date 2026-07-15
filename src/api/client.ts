@@ -422,6 +422,15 @@ export const api = {
     return res.blob();
   },
 
+  // 등록된 리플레이(.rep) 전체를 날짜별 폴더 zip으로 받는다(운영자 전용, 관리자 제어판).
+  async downloadReplayArchive(): Promise<Blob> {
+    const headers = new Headers();
+    if (accessToken) headers.set("Authorization", `Bearer ${accessToken}`);
+    const res = await fetch(`${API_BASE}/api/matches/replays/archive`, { headers });
+    if (!res.ok) throw new Error("리플레이를 다운로드하지 못했어요.");
+    return res.blob();
+  },
+
   async updateProfile(id: string, patch: Partial<Member>): Promise<Member> {
     return request<Member>(`/api/members/${id}`, {
       method: "PATCH",

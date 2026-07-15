@@ -36,6 +36,29 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
   // 실제 버전을 바꾸지 않고, 첫 접속 업데이트 안내 모달(AppUpdateNoticeModal)의 내용/모양만
   // 미리 확인해보는 용도 — 배포 전에 문구를 눈으로 검토할 수 있게 한다.
   const [previewingUpdateNotice, setPreviewingUpdateNotice] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+
+  // 등록된 리플레이(.rep) 전체를 날짜별 폴더 zip으로 받는다 — 인증 헤더가 필요해 blob으로
+  // 받아 클라이언트에서 임시 링크로 저장 트리거한다.
+  const downloadReplays = async () => {
+    setDownloading(true);
+    setErr("");
+    try {
+      const blob = await api.downloadReplayArchive();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "replays.zip";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "리플레이를 다운로드하지 못했어요.");
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   const currentNumber = versionNumber(appVersion);
   const [previewInput, setPreviewInput] = useState(String(currentNumber + 1));
@@ -194,6 +217,13 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
                   {/* 리플레이 폴더 일괄 등록 — 버튼을 누르면 바로 폴더 선택창이 뜬다.
                       운영자만 쓰는 데이터 적재용이라 버전 전환 아래에 조용히 둔다. */}
                   <ReplayBatchButton />
+                  {/* 등록된 리플레이 전체를 날짜별 폴더 zip으로 백업 다운로드(운영자). */}
+                  <button
+                    type="button" className="scr-btn scr-btn-ghost scr-admin-panel-replay-download-btn"
+                    onClick={downloadReplays} disabled={downloading}
+                  >
+                    {downloading ? <Spinner /> : "리플레이 전체 다운로드 (날짜별 폴더)"}
+                  </button>
                 </>
               )}
             </>

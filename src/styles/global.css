@@ -3526,6 +3526,14 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   border: 1px solid rgba(255,255,255,0.45);
 }
 .scr-admin-panel-batch-btn:hover { background: rgba(255,255,255,0.12); }
+/* 리플레이 전체 다운로드 — 일괄 등록 버튼과 같은 폭/톤으로 그 아래 정렬한다. */
+.scr-admin-panel-replay-download-btn {
+  width: 100%; max-width: 260px; margin: 8px auto 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; padding: 9px; border-radius: 999px;
+  color: rgba(255,255,255,0.86); border: 1px solid rgba(255,255,255,0.3);
+}
+.scr-admin-panel-replay-download-btn:hover { background: rgba(255,255,255,0.1); }
 .scr-admin-panel-batch-bar { margin-top: 8px; }
 .scr-admin-panel-batch-counts { margin-top: 5px; font-size: 11px; color: rgba(255,255,255,0.8); text-align: center; }
 /* 무엇을 등록할지 고르는 선택지 — 배치 버튼 바로 아래에 펼쳐진다. 대상 버튼을 누르는 순간
