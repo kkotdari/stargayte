@@ -4416,9 +4416,13 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   background: var(--panel-raised); color: var(--text); border-radius: var(--radius-sm); padding: 8px 10px; font-size: 13.5px;
 }
 /* "+ 상대 추가" — 버튼처럼 테두리로 감싸지 않고 텍스트 링크로만, 누르면 그 자리가
-   드롭다운(scr-challenge-target-slot)으로 바뀐다. */
+   드롭다운(scr-challenge-target-slot)으로 바뀐다. 확정된 지목 칩(.scr-challenge-target-picked:
+   가장 큰 자식인 X 버튼 30px + 상하 패딩 8px = 46px)과 세로 크기를 맞춰야, "+추가" ↔ 칩이
+   오갈 때 블록 높이가 안 바뀌어 아래 레이아웃이 흔들리지 않는다(요청: "+팀원추가 일때랑
+   유저칩일때랑 차지하는 높이가 달라서 레이아웃 흔들림 발생"). */
 .scr-challenge-add-target {
-  align-self: flex-start; background: transparent; border: none; padding: 4px 2px;
+  align-self: flex-start; display: inline-flex; align-items: center; min-height: 46px;
+  background: transparent; border: none; padding: 4px 2px;
   font-family: inherit; font-size: 13.5px; font-weight: 600; color: var(--muted); cursor: pointer;
 }
 .scr-challenge-add-target:hover { color: var(--point); }
