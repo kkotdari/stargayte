@@ -4636,6 +4636,13 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    빈 여백만 넓게 벌어져 보였다(요청: "너나와 카드 pc에서 컨텐츠가 너무 양쪽으로
    벌어져있어.. 도전자랑 상대랑 정보 가운데로 좀더 가까이 배치해줘") — 카드 폭과는
    별개로 매치업 내용 자체를 좁게 다시 캡(560px)해서 카드 가운데로 모은다. */
+/* 페이징(다시 신청/재대결 체인) 카드의 각 페이지를 그리드 한 칸(1/1)에 전부 겹쳐 놓는다 —
+   칸 크기가 가장 큰 페이지에 맞춰지므로 페이지를 넘겨도 카드 높이가 안 바뀐다(요청: "페이징
+   있는 카드의 경우 서로 높이가 달라서 움직이는 문제 — 최대 높이에 맞춰야함"). 활성 아닌
+   페이지는 자리는 지키되(visibility:hidden → 레이아웃엔 남음) 안 보이고 클릭도 안 받는다. */
+.scr-challenge-pages { display: grid; }
+.scr-challenge-page { grid-area: 1 / 1; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.scr-challenge-page-hidden { visibility: hidden; pointer-events: none; }
 .scr-challenge-matchup { display: flex; align-items: flex-start; width: 100%; }
 @media (min-width: 641px) {
   .scr-challenge-matchup { max-width: 560px; margin: 0 auto; }
