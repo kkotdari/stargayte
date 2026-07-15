@@ -29,11 +29,16 @@ export function smoothScrollRootToTop(duration = 420, root: ScrollRoot = getScro
   let raf = 0;
   const removeListeners = () => {
     window.removeEventListener("wheel", cancel);
-    window.removeEventListener("touchstart", cancel);
+    window.removeEventListener("touchmove", cancel);
   };
   const cancel = () => { cancelAnimationFrame(raf); removeListeners(); };
   window.addEventListener("wheel", cancel, { passive: true });
-  window.addEventListener("touchstart", cancel, { passive: true });
+  // touchstart가 아니라 touchmove로 취소한다 — 이 스크롤탑을 발동시키는 게 탭(터치)
+  // 자체라, touchstart로 취소하면 방금 시작한 애니메이션을 그 탭의 touchstart가 곧바로
+  // 취소해 버려 "액티브 탭 눌러도 스크롤탑이 안 먹는" 회귀가 있었다. 탭은 손가락을 끌지
+  // 않으므로(touchmove 없음) 발동 탭엔 반응하지 않고, 사용자가 실제로 스크롤하려고
+  // 손가락을 움직일 때(touchmove)만 취소한다.
+  window.addEventListener("touchmove", cancel, { passive: true });
   const ease = (t: number) => 1 - Math.pow(1 - t, 3);
   const step = (now: number) => {
     const p = Math.min(1, (now - t0) / duration);
