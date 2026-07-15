@@ -4642,18 +4642,16 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    박고, 여기 transition이 그 변화를 애니메이션한다. 전환 중 큰 쪽이 잠깐 삐져나오지 않게
    overflow:hidden. */
 .scr-challenge-pages { overflow: hidden; transition: height 0.28s cubic-bezier(0.22, 1, 0.36, 1); }
+/* 내용은 opacity로만 크로스페이드(페이드아웃→교체→페이드인) — 높이 모핑은 위 패널이
+   담당한다(요청: "내용은 페이드아웃 페이드인 하면 될거같구 패널만 모핑"). */
 .scr-challenge-page {
   display: flex; flex-direction: column; gap: 10px; min-width: 0;
-  /* 새 페이지가 살짝 떠오르며 페이드-인 — 높이 모핑과 함께 "체인이 이어지는" 느낌을 준다. */
-  animation: scr-challenge-page-morph 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  opacity: 1; transition: opacity 0.15s ease;
 }
-@keyframes scr-challenge-page-morph {
-  from { opacity: 0.3; transform: translateY(3px); }
-  to { opacity: 1; transform: none; }
-}
+.scr-challenge-page-out { opacity: 0; }
 @media (prefers-reduced-motion: reduce) {
   .scr-challenge-pages { transition: none; }
-  .scr-challenge-page { animation: none; }
+  .scr-challenge-page { transition: none; }
 }
 .scr-challenge-matchup { display: flex; align-items: flex-start; width: 100%; }
 @media (min-width: 641px) {

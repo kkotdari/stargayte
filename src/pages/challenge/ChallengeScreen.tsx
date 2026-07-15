@@ -320,13 +320,24 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
   const timeLabelOf = (p: ChallengePage, latest: boolean): string =>
     latest ? (challengeTimeLabel(p.scheduledAt) ?? "시간 미정") : formatChallengeSchedule(p.scheduledAt);
 
-  // 페이지 높이는 페이지마다 자연스럽게 다르되(빈 공간 없이), 넘길 때 카드 높이를 이전→새
-  // 높이로 부드럽게 모핑해 "하나의 체인"임을 느끼게 한다(요청: "높이는 달라져도 되는데 모핑
-  // 모션을 넣어서 하나의 체인임을 알게"). 활성 페이지의 실측 높이를 컨테이너에 박아 CSS
-  // transition으로 애니메이션하고, ResizeObserver로 내용 변화(메시지 줄바꿈/응답 갱신)에도
-  // 높이를 다시 맞춘다.
+  // 페이지를 넘길 때: 내용은 페이드아웃→페이드인(크로스페이드), 패널은 높이만 모핑한다
+  // (요청: "내용은 페이드아웃 페이드인 하면 될거같구 패널만 모핑"). renderedIndex(지금 실제로
+  // 보여주는 페이지)를 pageIndex(넘기려는 목표)와 분리해서, 먼저 현재 내용을 흐리게
+  // (contentOut) 지운 뒤 목표 페이지로 바꾸고 다시 나타낸다. 높이는 지금 보여주는 페이지
+  // 기준으로 실측해 인라인으로 박고 CSS transition이 이전→새 높이로 모핑한다.
   const pagesInnerRef = useRef<HTMLDivElement>(null);
   const [pagesHeight, setPagesHeight] = useState<number | undefined>(undefined);
+  const [renderedIndex, setRenderedIndex] = useState(pageIndex);
+  const [contentOut, setContentOut] = useState(false);
+  useEffect(() => {
+    if (pageIndex === renderedIndex) return;
+    setContentOut(true);
+    const t = setTimeout(() => {
+      setRenderedIndex(pageIndex);
+      setContentOut(false);
+    }, 150);
+    return () => clearTimeout(t);
+  }, [pageIndex, renderedIndex]);
   useLayoutEffect(() => {
     const inner = pagesInnerRef.current;
     if (!inner) return;
@@ -335,7 +346,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
     const ro = new ResizeObserver(measure);
     ro.observe(inner);
     return () => ro.disconnect();
-  }, [pageIndex, challenge]);
+  }, [renderedIndex, challenge]);
 
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
   const [mode, setMode] = useState<CardMode>("none");
@@ -471,26 +482,28 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
   ];
   const targetSideMembers: SideMember[] = challenge.targets.map((t) => ({ id: t.memberId, nickname: t.nickname, avatar: t.avatar }));
 
-  // 지금 보고 있는 페이지 하나만 자연 높이로 렌더한다(높이 고정 안 함 — 대신 위 모핑으로 전환).
-  const activePage = pages[pageIndex];
+  // 지금 실제로 보여주는 페이지(renderedIndex — 크로스페이드로 pageIndex보다 살짝 늦게
+  // 따라온다) 하나만 자연 높이로 렌더한다. pages가 줄어드는 드문 경우에도 안전하게 클램프.
+  const shownIndex = Math.min(renderedIndex, pages.length - 1);
+  const activePage = pages[shownIndex];
+  const shownLatest = shownIndex === pages.length - 1;
   const activeOverall = displayStatusOf(activePage);
   const activeTargetInfos = activePage.targets.map((t) => ({ target: t, overall: activeOverall }));
 
   return (
     <div className="scr-challenge-card">
       <div className="scr-challenge-card-body">
-        {/* 활성 페이지만 자연 높이로 렌더하고, 페이지를 넘길 때 컨테이너 높이를 이전→새
-            높이로 부드럽게 모핑한다(요청: "높이는 달라져도 되는데 모핑 모션을 넣어서 하나의
-            체인임을 알게"). key로 페이지를 다시 마운트해 새 내용이 페이드-인되고, height는
-            위 useLayoutEffect가 실측값을 박아 transition으로 애니메이션한다. 이긴 편은
-            매치업의 해당 팀 위에 "승리" 배지로 표시한다. */}
+        {/* 내용은 페이드아웃→페이드인(scr-challenge-page-out 토글), 패널은 높이만 모핑(위
+            useLayoutEffect가 실측 높이를 인라인으로 박고 CSS transition이 애니메이션)한다
+            (요청: "내용은 페이드아웃 페이드인 하면 될거같구 패널만 모핑"). 이긴 편은 매치업의
+            해당 팀 위에 "승리" 배지로 표시한다. */}
         <div
           className="scr-challenge-pages"
           style={pagesHeight !== undefined ? { height: pagesHeight } : undefined}
         >
-          <div key={pageIndex} ref={pagesInnerRef} className="scr-challenge-page">
+          <div ref={pagesInnerRef} className={cx("scr-challenge-page", contentOut && "scr-challenge-page-out")}>
             <div className="scr-challenge-card-row scr-challenge-card-when">
-              {timeLabelOf(activePage, isLatestPage)}
+              {timeLabelOf(activePage, shownLatest)}
               {/* 체인 라벨 — 이 기록이 다시 신청/재대결로 만들어진 것이면 어느 쪽인지 표시. */}
               {activePage.chainKind && (
                 <span className={cx("scr-challenge-chain-tag", `scr-challenge-chain-tag-${activePage.chainKind}`)}>
@@ -503,7 +516,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
                 <span className="scr-challenge-pill scr-challenge-pill-done">{resultLabel(activePage.resultWinnerSide)}</span>
               )}
               {/* 결과 보기는 결과가 입력된 뒤에만 뜬다(요청: "결과보기는 결과 입력후에만 보이고"). */}
-              {isLatestPage && challenge.resultWinnerSide !== null && (
+              {shownLatest && challenge.resultWinnerSide !== null && (
                 <button type="button" className="scr-challenge-result-link" onClick={() => onViewResults(challenge)}>
                   결과 보기
                 </button>
