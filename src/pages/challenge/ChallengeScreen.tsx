@@ -731,6 +731,10 @@ export default function ChallengeScreen() {
   // 그냥 아무 일도 안 한다.
   const upsert = (updated: Challenge) => {
     setChallenges((prev) => {
+      // 취소된 도전장은 서버 목록 조회에서도 아예 빠지므로(canceled_at 소프트 취소)
+      // 로컬 목록에서도 그 자리에서 제거한다 — 끼워 넣으면 새로고침 전까지 "취소"
+      // 카드가 남아 서버 목록과 어긋난다.
+      if (updated.status === "canceled") return prev.filter((c) => c.id !== updated.id);
       const withoutSuperseded = updated.reappliedFromId != null
         ? prev.filter((c) => c.id !== updated.reappliedFromId)
         : prev;
