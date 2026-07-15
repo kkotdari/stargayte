@@ -258,9 +258,10 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
   // 취소는 응답 대기중(pending)이거나 확정+승패 미확정일 때, "생성자만"(요청: "취소는 생성자만").
   const canCancel = isCreator
     && (challenge.status === "pending" || (challenge.status === "confirmed" && resultOpen));
-  // 재신청은 거절/무응답거절(둘 다 서버 status=rejected)일 때 가능하다 — 무응답거절은
-  // 서버 배치가 rejected로 확정하므로 여기선 status==="rejected" 하나로 다 잡힌다.
-  const canReapply = isCreator && challenge.status === "rejected";
+  // 재신청은 거절/무응답거절(status=rejected)이거나 취소(canceled)된 건에서 가능하다(요청:
+  // "취소된 건은 재신청 가능해야 하지 않나"). 이미 다음 행으로 이어진 건(superseded)은 목록에
+  // 아예 안 뜨니 여기선 status만 보면 된다. 미실시 상태 자체는 confirmed라 안 잡힌다(재신청 X).
+  const canReapply = isCreator && (challenge.status === "rejected" || challenge.status === "canceled");
   // 예정 일시가 지난 확정 대결에서, 아직 결과가 안 들어왔으면 참가자가 결과를 입력한다.
   const schedulePassed = !!challenge.scheduledAt && new Date(challenge.scheduledAt).getTime() < Date.now();
   const canEnterResult = isParticipant && challenge.status === "confirmed" && schedulePassed && challenge.resultWinnerSide === null;
