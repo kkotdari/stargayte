@@ -93,12 +93,6 @@ function targetPillInfo(t: ChallengeTarget, overall: ChallengeDisplayStatus): { 
   return { label: "응답대기중", tone: "pending" };
 }
 
-// 더는 지켜볼 필요가 없는 종료 상태 — 거절/취소/무응답거절(만료)/완료.
-function isEndedChallenge(c: Challenge): boolean {
-  const s = displayStatusOf(c);
-  return s === "rejected" || s === "canceled" || s === "done";
-}
-
 interface ChallengeDateGroup {
   label: string;
   isToday: boolean;
@@ -740,17 +734,12 @@ const PERIOD_UNIT_OPTS: { value: ChallengePeriodUnit; label: string }[] = [
   { value: "month", label: "월" },
 ];
 
-// 단일 리스트 정렬. 먼저 "진행 중(응답 대기/예정)"을 "종료된 것"보다 항상 위에 둔다 —
-// 안 그러면 시간을 안 정한 채(scheduledAt=null) 무응답으로 만료된 도전장이, 종료됐는데도
-// "일정 미정"이라 계속 목록 맨 위에 박제된다(요청: "상대방이 시간 지정으로 보냈는데
-// 무응답이면 시간이 없잖아.. 계속 일정 미정으로 위에 뜰텐데"). "일정 미정 최상단"이라는
-// 규칙은 아직 살아있는(응답 대기) 도전장에만 의미가 있기 때문이다.
-// 같은 그룹 안에서는 scheduledAt 내림차순(늦은 일시가 위), 일시 미정은 그 그룹 최상단,
-// 일시가 같거나 둘 다 미정이면 최근 생성 순으로 가른다.
+// 순수 날짜(예정 일시) 내림차순 한 줄로 정렬한다(요청: "순수 날짜 내림차순" — 진행/종료를
+// 나눠 진행중을 위로 끌어올리던 예전 규칙 때문에 다가오는 경기(NEXT)가 날짜와 무관하게 맨
+// 위로 올라오는 게 부자연스러웠다). 예정 일시가 없는 건(=아직 응답 대기중인 일정 미정. 종료된
+// 건은 서버가 요청일+1일로 스탬프하므로 null이 남지 않는다)은 날짜가 없어 맨 위에 둔다. 일시가
+// 같거나 둘 다 미정이면 최근 생성 순으로 가른다.
 function compareChallenges(a: Challenge, b: Challenge): number {
-  const aEnded = isEndedChallenge(a);
-  const bEnded = isEndedChallenge(b);
-  if (aEnded !== bEnded) return aEnded ? 1 : -1;
   const aNull = !a.scheduledAt;
   const bNull = !b.scheduledAt;
   if (aNull && bNull) return a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0;
