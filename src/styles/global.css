@@ -4417,6 +4417,8 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 }
 
 /* 작성 폼 — 상대 지목 슬롯 */
+/* 개인전/팀전 라디오 한 줄(요청: "팀전인지 개인전인지 체크하고 시작 — 라디오 버튼"). */
+.scr-challenge-mode-radios { display: flex; gap: 20px; padding: 2px 0; }
 .scr-challenge-target-slots { display: flex; flex-direction: column; gap: 8px; }
 /* 좌우 패딩만 칩(.scr-challenge-target-picked: padding 8px 10px)과 맞춘다 — 세로 패딩은
    0으로 둬야 트리거(46px)에 얹혀 높이가 안 커진다. 이래야 드롭다운 모드의 X 버튼이 칩일
@@ -4923,7 +4925,11 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    펴서 행/입력칸이 모달 폭을 꽉 채우게 한다. */
 .scr-challenge-inbox-body { text-align: left; width: 100%; box-sizing: border-box; }
 .scr-challenge-inbox-message { margin: 0 0 6px; font-size: 14px; font-style: italic; color: var(--text); }
-.scr-challenge-inbox-row { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--line-soft); }
+/* 값 span(종류/일시 오른쪽)은 클래스가 없어 색을 명시 안 하면 앱 루트의 테마 글자색(다크
+   테마에선 흰색)을 그대로 물려받아 밝은 편지지 배경 위에서 거의 안 보였다(요청: "결과
+   입력창 글자가 안보이는데 다크테마 색깔 문제인가?" — 스샷의 '일대일'/'7월 13일…' 값) —
+   이 모달의 편지지 --text(짙은 갈색)로 못박는다. .scr-label은 자기 색이 따로 있어 그대로다. */
+.scr-challenge-inbox-row { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--line-soft); color: var(--text); }
 .scr-challenge-inbox-row:last-of-type { border-bottom: none; }
 /* 편지지를 연 뒤 상단에 크게 넣는 nawa 이미지 — 사각형 대신 가로로 긴 타원으로 크롭하고
    (요청: "nawa 사진 가로로 긴 타원형으로 크롭") 가장자리를 그라데이션으로 흐린다(요청:
