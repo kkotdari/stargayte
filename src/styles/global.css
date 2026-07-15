@@ -4725,23 +4725,25 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    자체를 margin-left:auto로 오른쪽에 붙이면, 폭이 항상 같아 왼쪽 시작점도 항상
    같이 맞는다. */
 @media (min-width: 641px) {
-  /* PC는 도전자편 내용(프사+닉네임/한마디)을 전부 오른쪽 — 즉 가운데 화살표 쪽으로 —
-     붙여서, 양쪽이 화살표를 사이에 두고 딱 마주 보게 한다(요청: "이거 정렬이 아무래도
-     못생겼지? pc에서 좀 예쁘게" — 예전 고정폭(180px) 오른쪽 정렬 방식은 박스 안 내용이
-     왼쪽 정렬이라 박스 안쪽에 빈 공간이 크게 남아 도전자와 화살표 사이가 휑하게
-     벌어져 보였다). */
-  .scr-challenge-side:not(.scr-challenge-side-target) .scr-challenge-side-row {
-    justify-content: flex-end;
+  /* PC는 도전자편 내용(프사+닉네임/한마디)을 통째로 오른쪽 — 즉 가운데 화살표 쪽으로 —
+     붙여서, 양쪽이 화살표를 사이에 두고 딱 마주 보게 한다(요청: "pc에서 좀 예쁘게" —
+     예전 고정폭(180px) 방식은 박스 안 내용이 왼쪽 정렬이라 도전자와 화살표 사이가
+     휑하게 벌어져 보였다). 단, 블록 안에서는 프사 줄과 한마디가 같은 왼쪽 시작선을
+     공유해야 한다(요청: "한마디는 도전자든 상대든 아바타와 왼쪽 라인이 맞아야돼") —
+     내용 최대폭짜리 그리드 트랙 하나를 오른쪽에 앵커하고(justify-content:end) 그 안의
+     아이템은 왼쪽 정렬(justify-items:start)한다. 한마디가 프사 줄보다 길면 트랙이
+     왼쪽으로 넓어지며 프사 줄 오른쪽에 닉네임 몫의 빈 공간이 살짝 남는데, 그건 감수
+     하기로 했다(요청: "도전자쪽이 닉네임 예약 공간때문에 살짝 남는건 괜찮아"). */
+  .scr-challenge-side:not(.scr-challenge-side-target) {
+    display: grid; grid-template-columns: minmax(0, max-content);
+    justify-content: end; justify-items: start; row-gap: 6px;
   }
-  /* 한마디가 있으면 실제 flex 아이템은 span을 감싼 버튼(.scr-challenge-side-message-btn)
-     이고, 없으면(빈 자리) div(.scr-challenge-side-message) 그 자신이 flex 아이템이다 —
-     둘 다 잡아야 한다. 오른쪽 끝(화살표 쪽)에 붙이고 글줄도 오른쪽 정렬한다. */
+  /* 한마디가 있으면 실제 그리드 아이템은 span을 감싼 버튼(.scr-challenge-side-message-btn)
+     이고, 없으면(빈 자리) div(.scr-challenge-side-message) 그 자신이다 — 둘 다 잡아
+     트랙 폭을 넘지 않게 한다. */
   .scr-challenge-side:not(.scr-challenge-side-target) .scr-challenge-side-message-btn,
   .scr-challenge-side:not(.scr-challenge-side-target) > .scr-challenge-side-message {
-    flex: 0 1 auto; margin-left: auto; max-width: 100%;
-  }
-  .scr-challenge-side:not(.scr-challenge-side-target) .scr-challenge-side-message {
-    text-align: right;
+    max-width: 100%;
   }
 }
 /* 한마디가 2줄로 잘려서 더 못 읽던 문제 — 누르면 리플레이 위치 팝오버(ReplayLocationHint)와

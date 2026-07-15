@@ -204,10 +204,13 @@ function ChallengeSide({
               )}
             </div>
             {targets && <ChallengeMessage text={t?.target.responseMessage} />}
+            {/* 도전자편 한마디는 팀 전체 아래가 아니라 실제로 쓴 사람 — 도전자 본인,
+                people의 첫 번째(creatorSideMembers가 [본인, ...팀원] 순) — 바로 아래에
+                붙인다(요청: "팀전에서 도전자 한마디도 실제 입력한 사람 밑에 보이게"). */}
+            {message !== undefined && i === 0 && <ChallengeMessage text={message} />}
           </div>
         );
       })}
-      {message !== undefined && <ChallengeMessage text={message} />}
     </div>
   );
 }
