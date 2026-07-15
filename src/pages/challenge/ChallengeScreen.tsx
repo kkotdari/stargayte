@@ -87,7 +87,7 @@ function isoToInputs(iso: string | null): { date: string; time: string } {
 
 const sideLabel = (side: ChallengeSide): string => (side === "creator" ? "도전자편 승" : "상대편 승");
 
-type PillTone = "pending" | "accepted" | "rejected" | "done" | "muted" | "expired";
+type PillTone = "pending" | "accepted" | "rejected" | "done" | "muted";
 
 // 상대 한 명의 응답 알약 — 개별 response뿐 아니라 카드 전체의 파생 상태까지 함께 봐서
 // 문구를 정한다. 예: 팀전에서 한 명이 거절하면 그 순간 전체가 rejected로 끝나버리는데,
@@ -95,18 +95,17 @@ type PillTone = "pending" | "accepted" | "rejected" | "done" | "muted" | "expire
 // 보여주면 마치 아직 진행 중인 것처럼 헷갈린다 — 그럴 땐 "무응답"으로 구분한다.
 function targetPillInfo(t: ChallengeTarget, overall: ChallengeDisplayStatus): { label: string; tone: PillTone } {
   if (overall === "canceled") return { label: "취소", tone: "muted" };
-  // 무응답 만료는 취소가 아니다 — 요청자가 재신청하라고 살려두는 상태라, 취소선 그은
-  // 죽은 톤(muted) 대신 취소선 없는 앰버로 구분해 "아직 할 수 있다"는 느낌을 준다
-  // (요청: "무응답 취소된 건은 재신청을 위해 보여주는건데.. 취소처럼 보여주지 말까").
-  // 서버가 배치로 이미 무응답거절(rejected, 메시지 없음)로 확정하기 전의 짧은 순간
-  // (아직 pending인데 마감이 지난)엔 이 파생 상태로 잡힌다 — 아래 rejected 분기와 같은 모양.
-  if (overall === "expired") return { label: "무응답", tone: "expired" };
+  // 무응답 만료 = 거절과 똑같이 다루므로 카드에도 거절처럼 빨강으로 보여준다(요청:
+  // "카드는 무응답 거절로 하는게 나을듯 빨간색"). 서버가 배치로 무응답거절(rejected,
+  // 메시지 없음)로 확정하기 전의 짧은 순간(아직 pending인데 마감이 지난)엔 이 파생
+  // 상태로 잡히는데, 아래 rejected 분기와 같은 빨강 "무응답거절"로 통일한다.
+  if (overall === "expired") return { label: "무응답거절", tone: "rejected" };
   if (t.response === "accepted") return overall === "done" ? { label: "완료", tone: "done" } : { label: "수락", tone: "accepted" };
-  // 거절 중에서도 사람이 직접 거절한 건(한마디 있음)은 빨강 "거절", 서버 배치가 마감
-  // 경과로 확정한 무응답거절(한마디 없음)은 앰버 "무응답"으로 가른다 — UI에서 직접
-  // 거절할 땐 항상 한마디를 필수로 받으므로 "한마디 없는 거절 = 무응답"이 성립한다.
+  // 거절 중에서도 사람이 직접 거절한 건(한마디 있음)은 "거절", 서버 배치가 마감 경과로
+  // 확정한 무응답거절(한마디 없음)은 "무응답거절"로 라벨만 가른다 — 둘 다 빨강. UI에서
+  // 직접 거절할 땐 항상 한마디를 필수로 받으므로 "한마디 없는 거절 = 무응답"이 성립한다.
   if (t.response === "rejected") {
-    return t.responseMessage ? { label: "거절", tone: "rejected" } : { label: "무응답", tone: "expired" };
+    return t.responseMessage ? { label: "거절", tone: "rejected" } : { label: "무응답거절", tone: "rejected" };
   }
   if (overall === "rejected") return { label: "무응답", tone: "muted" };
   return { label: "응답대기중", tone: "pending" };

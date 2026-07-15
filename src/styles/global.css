@@ -4507,11 +4507,6 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 /* 취소, 그리고 팀전에서 누군가 거절해 이미 끝났는데 아직 응답을 안 한 나머지 상대(더는
    의미 없는 "대기") — 전부 같은 옅은 톤 + 취소선. */
 .scr-challenge-pill-muted { background: rgba(var(--overlay-rgb),0.12); color: var(--dim); text-decoration: line-through; }
-/* 무응답 만료 — 취소(muted)와 달리 취소선 없이 앰버로. 요청자가 재신청할 수 있게 살려둔
-   상태라 "끝났다"가 아니라 "응답이 없었다(다시 보낼 수 있다)"로 읽혀야 한다. --point는
-   라이트 테마에서 검정이라 못 쓰고, 두 테마 모두에서 읽히는 앰버를 직접 준다. */
-.scr-challenge-pill-expired { background: rgba(230,162,62,0.18); color: #e0a94e; }
-.scr-light-theme .scr-challenge-pill-expired { color: #9c6a1a; }
 /* 거절/재신청 미니 폼(이름은 "time-change"지만 지금은 거절 사유 입력·재신청 시간
    수정 두 곳에서 재사용한다 — 세로로 쌓인 인풋+버튼 묶음이라는 모양 자체는 같다). */
 .scr-challenge-time-change-form { display: flex; flex-direction: column; gap: 8px; }
