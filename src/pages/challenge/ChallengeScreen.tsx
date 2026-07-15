@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
@@ -320,6 +320,34 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
   const timeLabelOf = (p: ChallengePage, latest: boolean): string =>
     latest ? (challengeTimeLabel(p.scheduledAt) ?? "시간 미정") : formatChallengeSchedule(p.scheduledAt);
 
+  // 페이지를 넘길 때: 내용은 페이드아웃→페이드인(크로스페이드), 패널은 높이만 모핑한다
+  // (요청: "내용은 페이드아웃 페이드인 하면 될거같구 패널만 모핑"). renderedIndex(지금 실제로
+  // 보여주는 페이지)를 pageIndex(넘기려는 목표)와 분리해서, 먼저 현재 내용을 흐리게
+  // (contentOut) 지운 뒤 목표 페이지로 바꾸고 다시 나타낸다. 높이는 지금 보여주는 페이지
+  // 기준으로 실측해 인라인으로 박고 CSS transition이 이전→새 높이로 모핑한다.
+  const pagesInnerRef = useRef<HTMLDivElement>(null);
+  const [pagesHeight, setPagesHeight] = useState<number | undefined>(undefined);
+  const [renderedIndex, setRenderedIndex] = useState(pageIndex);
+  const [contentOut, setContentOut] = useState(false);
+  useEffect(() => {
+    if (pageIndex === renderedIndex) return;
+    setContentOut(true);
+    const t = setTimeout(() => {
+      setRenderedIndex(pageIndex);
+      setContentOut(false);
+    }, 150);
+    return () => clearTimeout(t);
+  }, [pageIndex, renderedIndex]);
+  useLayoutEffect(() => {
+    const inner = pagesInnerRef.current;
+    if (!inner) return;
+    const measure = () => setPagesHeight(inner.offsetHeight);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(inner);
+    return () => ro.disconnect();
+  }, [renderedIndex, challenge]);
+
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
   const [mode, setMode] = useState<CardMode>("none");
   const [dateStr, setDateStr] = useState("");
@@ -454,66 +482,66 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
   ];
   const targetSideMembers: SideMember[] = challenge.targets.map((t) => ({ id: t.memberId, nickname: t.nickname, avatar: t.avatar }));
 
+  // 지금 실제로 보여주는 페이지(renderedIndex — 크로스페이드로 pageIndex보다 살짝 늦게
+  // 따라온다) 하나만 자연 높이로 렌더한다. pages가 줄어드는 드문 경우에도 안전하게 클램프.
+  const shownIndex = Math.min(renderedIndex, pages.length - 1);
+  const activePage = pages[shownIndex];
+  const shownLatest = shownIndex === pages.length - 1;
+  const activeOverall = displayStatusOf(activePage);
+  const activeTargetInfos = activePage.targets.map((t) => ({ target: t, overall: activeOverall }));
+
   return (
     <div className="scr-challenge-card">
       <div className="scr-challenge-card-body">
-        {/* 모든 페이지를 CSS 그리드 한 칸에 겹쳐 놓고 활성 페이지만 보이게 한다 — 칸 크기가
-            가장 큰 페이지에 맞춰지므로, 페이지를 넘겨도 카드 높이가 안 바뀌어 아래가 안
-            움직인다(요청: "페이지들중 최대 높이가 나오는 높이에 맞춰야함"). 이긴 편은
-            매치업의 해당 팀 위에 "승리" 배지로 표시한다. */}
-        <div className="scr-challenge-pages">
-          {pages.map((p, i) => {
-            const latest = i === pages.length - 1;
-            const overall = displayStatusOf(p);
-            const targetInfos = p.targets.map((t) => ({ target: t, overall }));
-            return (
-              <div
-                key={p.id}
-                className={cx("scr-challenge-page", i !== pageIndex && "scr-challenge-page-hidden")}
-                aria-hidden={i !== pageIndex}
-              >
-                <div className="scr-challenge-card-row scr-challenge-card-when">
-                  {timeLabelOf(p, latest)}
-                  {/* 체인 라벨 — 이 기록이 다시 신청/재대결로 만들어진 것이면 어느 쪽인지 표시. */}
-                  {p.chainKind && (
-                    <span className={cx("scr-challenge-chain-tag", `scr-challenge-chain-tag-${p.chainKind}`)}>
-                      {p.chainKind === "revenge" ? "재대결" : "다시 신청"}
-                    </span>
-                  )}
-                  {/* 이긴 편은 매치업의 해당 팀 위에 배지로 표시하니, 여기선 팀을 특정할 수
-                      없는 무승부/미실시만 알약으로 남긴다(요청: "도전자편 승 이런 건 제거"). */}
-                  {(p.resultWinnerSide === "draw" || p.resultWinnerSide === "not_held") && (
-                    <span className="scr-challenge-pill scr-challenge-pill-done">{resultLabel(p.resultWinnerSide)}</span>
-                  )}
-                  {/* 결과 보기는 결과가 입력된 뒤에만 뜬다(요청: "결과보기는 결과 입력후에만 보이고"). */}
-                  {latest && challenge.resultWinnerSide !== null && (
-                    <button type="button" className="scr-challenge-result-link" onClick={() => onViewResults(challenge)}>
-                      결과 보기
-                    </button>
-                  )}
-                </div>
+        {/* 내용은 페이드아웃→페이드인(scr-challenge-page-out 토글), 패널은 높이만 모핑(위
+            useLayoutEffect가 실측 높이를 인라인으로 박고 CSS transition이 애니메이션)한다
+            (요청: "내용은 페이드아웃 페이드인 하면 될거같구 패널만 모핑"). 이긴 편은 매치업의
+            해당 팀 위에 "승리" 배지로 표시한다. */}
+        <div
+          className="scr-challenge-pages"
+          style={pagesHeight !== undefined ? { height: pagesHeight } : undefined}
+        >
+          <div ref={pagesInnerRef} className={cx("scr-challenge-page", contentOut && "scr-challenge-page-out")}>
+            <div className="scr-challenge-card-row scr-challenge-card-when">
+              {timeLabelOf(activePage, shownLatest)}
+              {/* 체인 라벨 — 이 기록이 다시 신청/재대결로 만들어진 것이면 어느 쪽인지 표시. */}
+              {activePage.chainKind && (
+                <span className={cx("scr-challenge-chain-tag", `scr-challenge-chain-tag-${activePage.chainKind}`)}>
+                  {activePage.chainKind === "revenge" ? "재대결" : "다시 신청"}
+                </span>
+              )}
+              {/* 이긴 편은 매치업의 해당 팀 위에 배지로 표시하니, 여기선 팀을 특정할 수
+                  없는 무승부/미실시만 알약으로 남긴다(요청: "도전자편 승 이런 건 제거"). */}
+              {(activePage.resultWinnerSide === "draw" || activePage.resultWinnerSide === "not_held") && (
+                <span className="scr-challenge-pill scr-challenge-pill-done">{resultLabel(activePage.resultWinnerSide)}</span>
+              )}
+              {/* 결과 보기는 결과가 입력된 뒤에만 뜬다(요청: "결과보기는 결과 입력후에만 보이고"). */}
+              {shownLatest && challenge.resultWinnerSide !== null && (
+                <button type="button" className="scr-challenge-result-link" onClick={() => onViewResults(challenge)}>
+                  결과 보기
+                </button>
+              )}
+            </div>
 
-                <div className="scr-challenge-matchup">
-                  <ChallengeSide
-                    people={creatorSideMembers} message={p.message} highlightMemberIds={highlightMemberIds}
-                    won={p.resultWinnerSide === "creator"} showResultSlot={hasTeamResult}
-                  />
-                  {/* 승리 배지가 생기면 로스터 첫 줄이 배지만큼 밀리므로, 화살표 앞에도 같은
-                      배지 자리(투명)를 넣어 같이 밀리게 한다(요청: "손 이모지 위치가 거기가 아니지"). */}
-                  <span className="scr-challenge-arrow-col">
-                    {hasTeamResult && (
-                      <span className="scr-challenge-side-win scr-challenge-side-win-hidden" aria-hidden="true">승리</span>
-                    )}
-                    <span className="scr-challenge-arrow" aria-hidden="true">👉🏻</span>
-                  </span>
-                  <ChallengeSide
-                    people={targetSideMembers} targets={targetInfos} highlightMemberIds={highlightMemberIds}
-                    won={p.resultWinnerSide === "target"} showResultSlot={hasTeamResult}
-                  />
-                </div>
-              </div>
-            );
-          })}
+            <div className="scr-challenge-matchup">
+              <ChallengeSide
+                people={creatorSideMembers} message={activePage.message} highlightMemberIds={highlightMemberIds}
+                won={activePage.resultWinnerSide === "creator"} showResultSlot={hasTeamResult}
+              />
+              {/* 승리 배지가 생기면 로스터 첫 줄이 배지만큼 밀리므로, 화살표 앞에도 같은
+                  배지 자리(투명)를 넣어 같이 밀리게 한다(요청: "손 이모지 위치가 거기가 아니지"). */}
+              <span className="scr-challenge-arrow-col">
+                {hasTeamResult && (
+                  <span className="scr-challenge-side-win scr-challenge-side-win-hidden" aria-hidden="true">승리</span>
+                )}
+                <span className="scr-challenge-arrow" aria-hidden="true">👉🏻</span>
+              </span>
+              <ChallengeSide
+                people={targetSideMembers} targets={activeTargetInfos} highlightMemberIds={highlightMemberIds}
+                won={activePage.resultWinnerSide === "target"} showResultSlot={hasTeamResult}
+              />
+            </div>
+          </div>
         </div>
 
         <div className={cx("scr-challenge-page-nav-row", pages.length > 1 && "scr-challenge-page-nav-row-active")}>
