@@ -3680,7 +3680,12 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-mobile-tabbar {
   display: none;
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 55;
-  height: var(--mobile-footer-h);
+  /* 높이에 홈 인디케이터 안전영역(env safe-area-inset-bottom)을 "더해" 준다 — 고정
+     --mobile-footer-h(67px)만 쓰면 box-sizing:border-box라 아래 패딩에 든 안전영역만큼
+     콘텐츠 영역이 줄어, 아이폰 PWA(standalone, 안전영역 ~34px)에서 탭 내용이 짓눌려
+     탭바가 짧아 보였다(신고: "아이폰 pwa에서 탭바 높이가 짧은데 왜"). 안전영역을 높이에
+     더하면 콘텐츠 몫(패딩 제외 39px)이 브라우저/PWA 상관없이 항상 같아진다. */
+  height: calc(var(--mobile-footer-h) + env(safe-area-inset-bottom, 0px));
   background-color: var(--panel-solid);
   background-image: linear-gradient(90deg, color-mix(in srgb, var(--edge-glow) 22%, transparent) 0%, var(--edge-glow) 50%, color-mix(in srgb, var(--edge-glow) 22%, transparent) 100%);
   background-repeat: no-repeat; background-position: top; background-size: 100% 1px;
