@@ -5,7 +5,7 @@ import Avatar, { type AvatarMember } from "../components/common/Avatar";
 import { api } from "../api/client";
 import { useAppStore } from "../store/appStore";
 import { useLockBodyScroll } from "../utils/bodyScrollLock";
-import { formatChallengeSchedule } from "../utils/date";
+import { formatChallengeSchedule, pad } from "../utils/date";
 import { MATCH_TYPE_INFO } from "../constants/matchTypes";
 import type { Challenge, ChallengeResult } from "../types";
 
@@ -24,15 +24,24 @@ interface ChallengeResultInboxModalProps {
 export default function ChallengeResultInboxModal({ challenges, onClose }: ChallengeResultInboxModalProps) {
   useLockBodyScroll();
   const memberOf = useAppStore((s) => s.memberOf);
+  const user = useAppStore((s) => s.user);
   const [idx, setIdx] = useState(0);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  // 결과 입력 대신 연기(날짜/시간 다시 잡기)로 전환한 상태.
+  const [mode, setMode] = useState<"result" | "postpone">("result");
+  const [dateStr, setDateStr] = useState("");
+  const [timeStr, setTimeStr] = useState("22:00");
 
   const current = challenges[idx];
   if (!current) { onClose(); return null; }
 
+  // 취소는 생성자만(요청: "취소는 생성자만"). 연기는 참가자 누구나(이 팝업은 참가자에게만 뜬다).
+  const isCreator = user?.id === current.createdBy.id;
+
   const advance = () => {
     setErr("");
+    setMode("result");
     if (idx + 1 >= challenges.length) onClose();
     else setIdx((i) => i + 1);
   };
@@ -45,6 +54,43 @@ export default function ChallengeResultInboxModal({ challenges, onClose }: Chall
       advance();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "결과를 입력하지 못했어요.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // 연기는 기존 시간을 기본값으로 프리필한다(요청: "연기할때는 기존 시간이 기본값").
+  const startPostpone = () => {
+    const cur = current.scheduledAt ? new Date(current.scheduledAt) : null;
+    setDateStr(cur ? `${cur.getFullYear()}-${pad(cur.getMonth() + 1)}-${pad(cur.getDate())}` : "");
+    setTimeStr(cur ? `${pad(cur.getHours())}:${pad(cur.getMinutes())}` : "22:00");
+    setErr("");
+    setMode("postpone");
+  };
+
+  const doPostpone = async () => {
+    if (!dateStr || !timeStr) return;
+    setErr("");
+    setBusy(true);
+    try {
+      await api.postponeChallenge(current.id, new Date(`${dateStr}T${timeStr}`).toISOString());
+      advance();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "연기하지 못했어요.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const doCancel = async () => {
+    if (!window.confirm("이 도전장을 취소할까요? 되돌릴 수 없어요.")) return;
+    setErr("");
+    setBusy(true);
+    try {
+      await api.cancelChallenge(current.id);
+      advance();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "취소하지 못했어요.");
     } finally {
       setBusy(false);
     }
@@ -77,53 +123,86 @@ export default function ChallengeResultInboxModal({ challenges, onClose }: Chall
             <p className="scr-challenge-inbox-message">"{current.message}"</p>
           )}
 
-          <p className="scr-challenge-inbox-message">승리한 팀을 눌러주세요 — 먼저 입력하는 쪽이 그대로 인정돼요.</p>
-
           {err && <div className="scr-err">{err}</div>}
 
-          {/* 구성원을 프사와 함께 보여주고 팀 카드를 눌러 승리팀을 고른다(요청: "구성원이
-              노출되고 승리팀을 고르는게 좋을듯"). */}
-          <div className="scr-challenge-result-teams">
-            <button
-              type="button" className="scr-challenge-result-team" onClick={() => submit("creator")}
-              disabled={busy}
-            >
-              <span className="scr-challenge-result-team-label">도전자편</span>
-              <span className="scr-challenge-result-team-members">
-                {creatorMembers.map((p) => (
-                  <span key={p.id} className="scr-challenge-result-member">
-                    <Avatar member={p} size={20} />
-                    <span className="scr-challenge-result-member-name">{p.nickname}</span>
-                  </span>
-                ))}
-              </span>
-              <span className="scr-challenge-result-team-win">승리</span>
-            </button>
-            <button
-              type="button" className="scr-challenge-result-team" onClick={() => submit("target")}
-              disabled={busy}
-            >
-              <span className="scr-challenge-result-team-label">상대편</span>
-              <span className="scr-challenge-result-team-members">
-                {targetMembers.map((p) => (
-                  <span key={p.id} className="scr-challenge-result-member">
-                    <Avatar member={p} size={20} />
-                    <span className="scr-challenge-result-member-name">{p.nickname}</span>
-                  </span>
-                ))}
-              </span>
-              <span className="scr-challenge-result-team-win">승리</span>
-            </button>
-          </div>
+          {mode === "postpone" ? (
+            /* 연기 — 새 일시(기존 시간 프리필)로 다시 잡는다. */
+            <>
+              <p className="scr-challenge-inbox-message">새 일시로 연기해요.</p>
+              <div className="scr-challenge-datetime">
+                <input
+                  type="date" className="scr-input" value={dateStr}
+                  onChange={(e) => setDateStr(e.target.value)}
+                />
+                <input
+                  type="time" className="scr-input" value={timeStr}
+                  onChange={(e) => setTimeStr(e.target.value)} disabled={!dateStr}
+                />
+              </div>
+              <div className="scr-form-actions">
+                <button className="scr-btn scr-btn-ghost" onClick={() => setMode("result")} disabled={busy}>뒤로</button>
+                <button
+                  className="scr-btn scr-challenge-accept-btn" onClick={doPostpone}
+                  disabled={busy || !dateStr || !timeStr}
+                >
+                  {busy ? <Spinner /> : "연기"}
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="scr-challenge-inbox-message">승리한 팀을 눌러주세요 — 먼저 입력하는 쪽이 그대로 인정돼요.</p>
 
-          {/* 승패가 없는 결과(요청: "무승부나 미실시도 있게 해주고"). */}
-          <div className="scr-form-actions">
-            <button className="scr-btn scr-btn-ghost" onClick={() => submit("draw")} disabled={busy}>무승부</button>
-            <button className="scr-btn scr-btn-ghost" onClick={() => submit("not_held")} disabled={busy}>미실시</button>
-          </div>
-          <div className="scr-form-actions">
-            <button className="scr-btn scr-btn-ghost" onClick={advance} disabled={busy}>나중에</button>
-          </div>
+              {/* 구성원을 프사와 함께 보여주고 팀 카드를 눌러 승리팀을 고른다(요청: "구성원이
+                  노출되고 승리팀을 고르는게 좋을듯"). */}
+              <div className="scr-challenge-result-teams">
+                <button
+                  type="button" className="scr-challenge-result-team" onClick={() => submit("creator")}
+                  disabled={busy}
+                >
+                  <span className="scr-challenge-result-team-label">도전자편</span>
+                  <span className="scr-challenge-result-team-members">
+                    {creatorMembers.map((p) => (
+                      <span key={p.id} className="scr-challenge-result-member">
+                        <Avatar member={p} size={20} />
+                        <span className="scr-challenge-result-member-name">{p.nickname}</span>
+                      </span>
+                    ))}
+                  </span>
+                  <span className="scr-challenge-result-team-win">승리</span>
+                </button>
+                <button
+                  type="button" className="scr-challenge-result-team" onClick={() => submit("target")}
+                  disabled={busy}
+                >
+                  <span className="scr-challenge-result-team-label">상대편</span>
+                  <span className="scr-challenge-result-team-members">
+                    {targetMembers.map((p) => (
+                      <span key={p.id} className="scr-challenge-result-member">
+                        <Avatar member={p} size={20} />
+                        <span className="scr-challenge-result-member-name">{p.nickname}</span>
+                      </span>
+                    ))}
+                  </span>
+                  <span className="scr-challenge-result-team-win">승리</span>
+                </button>
+              </div>
+
+              {/* 승패가 없는 결과(요청: "무승부나 미실시도 있게 해주고"). */}
+              <div className="scr-form-actions">
+                <button className="scr-btn scr-btn-ghost" onClick={() => submit("draw")} disabled={busy}>무승부</button>
+                <button className="scr-btn scr-btn-ghost" onClick={() => submit("not_held")} disabled={busy}>미실시</button>
+              </div>
+              {/* 연기(참가자 누구나) / 취소(생성자만) / 나중에 — 결과 대신 일정을 바꾸거나 접는다. */}
+              <div className="scr-form-actions">
+                <button className="scr-btn scr-btn-ghost" onClick={startPostpone} disabled={busy}>연기</button>
+                {isCreator && (
+                  <button className="scr-btn scr-btn-ghost" onClick={doCancel} disabled={busy}>취소</button>
+                )}
+                <button className="scr-btn scr-btn-ghost" onClick={advance} disabled={busy}>나중에</button>
+              </div>
+            </>
+          )}
           {busy && <div className="scr-challenge-result-busy"><Spinner /></div>}
         </div>
       </div>
