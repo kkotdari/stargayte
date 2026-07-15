@@ -118,7 +118,7 @@
 
   /* 모바일 하단 고정 탭바가 차지하는 높이(세이프 에어리어 제외) — 본문 하단 여백/맨 위로
      버튼 위치/모달 하단 여백 등 탭바와 겹치면 안 되는 모든 곳이 이 값 하나를 공유한다. */
-  --mobile-footer-h: 67px;
+  --mobile-footer-h: 56px;
 }
 
 * { box-sizing: border-box; }
@@ -3681,15 +3681,16 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   display: none;
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 55;
   /* 높이에 홈 인디케이터 안전영역(env safe-area-inset-bottom)을 "더해" 준다 — 고정
-     --mobile-footer-h(67px)만 쓰면 box-sizing:border-box라 아래 패딩에 든 안전영역만큼
+     --mobile-footer-h(56px)만 쓰면 box-sizing:border-box라 아래 패딩에 든 안전영역만큼
      콘텐츠 영역이 줄어, 아이폰 PWA(standalone, 안전영역 ~34px)에서 탭 내용이 짓눌려
      탭바가 짧아 보였다(신고: "아이폰 pwa에서 탭바 높이가 짧은데 왜"). 안전영역을 높이에
-     더하면 콘텐츠 몫(패딩 제외 39px)이 브라우저/PWA 상관없이 항상 같아진다. */
+     더하면 콘텐츠 몫(패딩 제외 36px)이 브라우저/PWA 상관없이 항상 같아진다. 전체 높이는
+     사파리/PWA 공통으로 살짝 낮췄다(요청: "탭바 높이 좀 줄여도 될듯"). */
   height: calc(var(--mobile-footer-h) + env(safe-area-inset-bottom, 0px));
   background-color: var(--panel-solid);
   background-image: linear-gradient(90deg, color-mix(in srgb, var(--edge-glow) 22%, transparent) 0%, var(--edge-glow) 50%, color-mix(in srgb, var(--edge-glow) 22%, transparent) 100%);
   background-repeat: no-repeat; background-position: top; background-size: 100% 1px;
-  padding: 14px 10px calc(14px + env(safe-area-inset-bottom, 0px));
+  padding: 10px 10px calc(10px + env(safe-area-inset-bottom, 0px));
   box-shadow: 0 -2px 10px rgba(0,0,0,0.15);
   box-sizing: border-box;
   overflow: hidden;
@@ -3726,7 +3727,7 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   position: relative;
   flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
   background: transparent; border: none; color: var(--muted); font-family: inherit; font-size: 12px;
-  padding: 8px 0; cursor: pointer; border-radius: var(--radius-sm); transition: color .12s, background-color .12s;
+  padding: 6px 0; cursor: pointer; border-radius: var(--radius-sm); transition: color .12s, background-color .12s;
   text-align: center;
   /* 탭이 늘어나 자기 몫의 폭이 글자 폭보다 좁아져도(예: "게임아이디") 줄바꿈하는
      대신 그대로 옆 탭과 겹치게 넘친다 — 2줄로 꺾여 세로로 들쭉날쭉해 보이는 것보다
@@ -4614,6 +4615,42 @@ body *::-webkit-scrollbar-corner { background: transparent; }
      강조색 쓰던거"). */
   color: var(--bar-text); background: var(--highlight-bg);
   border-radius: 4px; padding: 2px 7px; margin-bottom: 4px;
+}
+
+/* NEXT 대결 카드 — 라임/에메랄드 글로우로 눈길을 끈다(요청: "next 카드에 눈길이 안감
+   라임 에메랄드색 글로우 효과"). 동일 시각에 NEXT가 여럿이면 모두에 붙는다. box-shadow를
+   부드럽게 들숨/날숨처럼 맥동시켜 시선을 유도한다. */
+@keyframes scr-next-glow {
+  0%, 100% {
+    box-shadow:
+      inset 0 0 0 1px rgba(52, 211, 153, 0.55),
+      0 0 0 1px rgba(52, 211, 153, 0.45),
+      0 0 16px rgba(52, 211, 153, 0.34),
+      0 0 34px rgba(163, 230, 53, 0.20);
+  }
+  50% {
+    box-shadow:
+      inset 0 0 0 1px rgba(52, 211, 153, 0.7),
+      0 0 0 1px rgba(52, 211, 153, 0.6),
+      0 0 24px rgba(52, 211, 153, 0.55),
+      0 0 52px rgba(163, 230, 53, 0.34);
+  }
+}
+.scr-challenge-card-slot-next .scr-challenge-card {
+  animation: scr-next-glow 2.4s ease-in-out infinite;
+}
+.scr-light-theme .scr-challenge-card-slot-next .scr-challenge-card {
+  animation: scr-next-glow 2.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .scr-challenge-card-slot-next .scr-challenge-card,
+  .scr-light-theme .scr-challenge-card-slot-next .scr-challenge-card {
+    animation: none;
+    box-shadow:
+      inset 0 0 0 1px rgba(52, 211, 153, 0.6),
+      0 0 0 1px rgba(52, 211, 153, 0.5),
+      0 0 20px rgba(52, 211, 153, 0.4);
+  }
 }
 
 /* 응답대기중 카드의 마감 카운트다운(요청일+1일까지 남은 시간) — 별도 줄이 아니라 날짜
