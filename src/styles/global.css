@@ -4867,6 +4867,17 @@ body *::-webkit-scrollbar-corner { background: transparent; }
     max-width: calc(100% + 28px);
   }
 }
+/* 모바일 — 도전자편 한줄메시지는 아래 줄이라 윗줄의 승/무 배지·손 이모지가 놓인 가운데
+   공백을 세로로 안 침범한다. 그래서 그 공백만큼 오른쪽(가운데 화살표 쪽)으로 더 써서 더
+   많은 글자를 보여준다(요청: "한줄메시지가 윗줄의 승 배지 시작점에서 잘리는데 그럴 필요가
+   없다 — 좀더 가운데까지 보이게 영역 확보"). 도전자 칸 폭은 flex로 카드마다 고정이라 이
+   확장은 레이아웃을 흔들지 않고 시각적으로만 넘치고, 손 이모지 오른쪽(상대편 몫)까지는
+   침범하지 않게 화살표 부근에서 멈춘다. */
+@media (max-width: 640px) {
+  .scr-challenge-side:not(.scr-challenge-side-target) .scr-challenge-side-message-btn {
+    width: calc(100% + 52px);
+  }
+}
 /* 한마디가 2줄로 잘려서 더 못 읽던 문제 — 누르면 리플레이 위치 팝오버(ReplayLocationHint)와
    같은 방식(attachPopover)으로 전체 텍스트를 보여준다(요청: "너나와 카드에서 한줄
    메시지가 잘리거든? 마우스오버/클릭시 리플레이 툴팁같은 단순한 창으로 팝오버로
