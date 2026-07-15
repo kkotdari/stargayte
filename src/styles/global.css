@@ -738,7 +738,11 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   position: relative; z-index: 2; background-color: var(--header-bg); backdrop-filter: blur(4px);
   background-image: linear-gradient(90deg, color-mix(in srgb, var(--edge-glow) 22%, transparent) 0%, var(--edge-glow) 50%, color-mix(in srgb, var(--edge-glow) 22%, transparent) 100%);
   background-repeat: no-repeat; background-position: bottom; background-size: 100% 1px;
-  padding-top: env(safe-area-inset-top, 0px);
+  /* 상단 안전영역만큼 헤더를 내려 노치/상태바에 콘텐츠가 가리지 않게 한다. env가 iOS
+     standalone 초기에 0으로 나오는 버그를 대비해, 부트 스크립트가 실측해 넣는
+     --safe-area-top과 둘 중 큰 값을 쓴다(둘 다 0이면 0). 이 헤더 아래에서 #scroll-root의
+     sticky(날짜 줄 등)가 시작하므로, 헤더가 내려가면 스티키도 함께 내려가 보정된다. */
+  padding-top: max(env(safe-area-inset-top, 0px), var(--safe-area-top, 0px));
 }
 /* 로고/탭/프로필 사진처럼 높이가 제각각인 요소들을 전부 같은 세로 중심선에 맞춘다 —
    예전엔 flex-end + 요소별 개별 translateY 보정으로 로고의 베이스라인에 맞췄었는데,
@@ -3789,7 +3793,7 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   display: flex; flex-direction: column; gap: 14px;
   /* 헤더와 같은 이유로 상태바만큼 위쪽 여백을 더 준다(standalone 웹앱에서만 의미 있음).
      아래쪽도 홈 인디케이터 안전영역만큼 더해 마지막 메뉴/버튼이 그 위에 바짝 붙지 않게 한다. */
-  padding: calc(16px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px));
+  padding: calc(16px + max(env(safe-area-inset-top, 0px), var(--safe-area-top, 0px))) 16px calc(16px + env(safe-area-inset-bottom, 0px));
   overflow-y: auto;
   transform: translateX(100%);
   transition: transform .2s ease;
