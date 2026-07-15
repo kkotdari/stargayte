@@ -36,50 +36,16 @@ interface SearchFilterBarProps {
 }
 
 const MAX_SUGGESTIONS = 8;
-// 필터/검색 아이콘 ↔ 펼쳐진 창 전환 타이밍(요청: "아주 빠르게") — (1) 지금 내용을 아주
-// 빠르게 페이드아웃, (2) 다 사라진 뒤 내용을 새 것으로 교체(아직 투명, SWAP_MS만큼
-// 잠깐 대기해 레이아웃이 안정된 뒤), (3) 새 내용을 아주 빠르게 페이드인. FADE_MS는
-// (1)/(3) 각각의 길이다.
-const FADE_MS = 70;
-const SWAP_MS = 30;
 
 // 모바일 플로팅 알약(단일 행)이 지금 무엇을 보여주는지 — 접힘(아이콘 두 개)/필터창/검색창
 // 셋 중 하나다. 필터와 검색이 각자 줄을 갖고 독립적으로 접혔다 펴지던 구조에서, 한 줄을
 // 두 창이 나눠 쓰는(교체되는) 구조로 바꿨다(요청: "현재 필터창 자리는 이제 사용하지 않고
-// 검색창 자리에 필터/검색창이 교체되는 방식").
+// 검색창 자리에 필터/검색창이 교체되는 방식"). 전환 애니메이션은 JS 타이머 없이 전부
+// CSS 트랜지션이다 — 필터/검색 두 개체(.scr-fs-obj)가 항상 마운트된 채 상태 클래스에
+// 따라 left/width만 바뀌므로, 아이콘(원)이 미끄러지며 창(캡슐)으로 펼쳐지고 창은
+// 줄어들며 아이콘으로 되돌아간다(요청: "활성되는 아이콘이 앞에 배치되면서 창으로
+// 펼쳐지는 트랜스폼. 비활성되는 요소는 아이콘으로 트랜스폼").
 type MobilePanel = "filter" | "search" | "none";
-
-// 알약 상태 전환을 크로스페이드(페이드아웃 → 내용 교체 → 페이드인)로 애니메이션한다.
-// target은 목표 상태(버튼 클릭 시 바로 바뀐다) — 실제로 화면에 그릴 내용은 renderPanel이
-// 그 target을 따라가되 페이드아웃만큼 늦게 따라간다. hidden은 지금 이 순간 내용을
-// 투명하게 둘지(페이드 중)를 나타낸다. 아이콘(원)과 창(캡슐)이 별도 개체라(요청:
-// "아이콘과 활성화된 창은 별도 개체야 구분되어야하고") 예전처럼 하나의 패널이 폭을
-// 늘였다 줄였다 하지 않는다 — 교체는 전부 빠른 크로스페이드다.
-function useAnimatedPanel(target: MobilePanel): { renderPanel: MobilePanel; hidden: boolean } {
-  const [renderPanel, setRenderPanel] = useState(target);
-  const [hidden, setHidden] = useState(false);
-  const renderPanelRef = useRef(target);
-  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
-
-  useEffect(() => {
-    if (renderPanelRef.current === target) return;
-    timersRef.current.forEach(clearTimeout);
-    timersRef.current = [];
-
-    setHidden(true);
-    const t1 = setTimeout(() => {
-      renderPanelRef.current = target;
-      setRenderPanel(target);
-      const t2 = setTimeout(() => setHidden(false), SWAP_MS);
-      timersRef.current.push(t2);
-    }, FADE_MS);
-    timersRef.current.push(t1);
-  }, [target]);
-
-  useEffect(() => () => { timersRef.current.forEach(clearTimeout); }, []);
-
-  return { renderPanel, hidden };
-}
 
 // 한글 1자 이상, 또는 영문/숫자 2자 이상 입력됐을 때만 자동완성을 보여준다 — 자음/모음
 // 하나나 알파벳 한 글자만으로는 후보가 너무 많고 의미도 없다.
@@ -136,10 +102,6 @@ export default function SearchFilterBar({
   // (요청: "필터/검색은 아이콘으로 트랜스폼되며 숨겨짐") — 아래 effect가 숨는 순간
   // (mobileVisible이 false가 될 때)마다 강제로 접는다.
   const [panel, setPanel] = useState<MobilePanel>(filterPanel ? "filter" : "search");
-  // 클릭 즉시 바뀌는 panel(목표 상태)과 실제로 화면에 그릴 내용/폭(renderPanel)을
-  // 분리해, 페이드아웃 → 폭 전환 → 페이드인 3단계로 부드럽게 전환한다(요청: "빠르게
-  // 기존요소 감추고 형태변환후 새로운 요소 빠르게 보이게 하기") — 위 useAnimatedPanel 참고.
-  const { renderPanel, hidden: contentHidden } = useAnimatedPanel(panel);
   // 칩(완성된 검색어/경기번호/종족)은 부모 state(searchValue 등)를 그대로 진실로 삼아
   // 즉시 반영한다(요청: "엔터 확정 방식을 실시간 반영 방식으로 원복 — 칩 추가/제거시
   // 즉시 적용"). 지금 타이핑 중인, 아직 칩이 안 된 마지막 단어만 로컬 상태(liveText)로
@@ -476,71 +438,73 @@ export default function SearchFilterBar({
   const openFilter = () => { setStackFocused(false); setPanel("filter"); };
   const openSearch = () => { setStackFocused(false); setPanel("search"); };
 
-  // 접혔을 때 보이지 않는 나머지 공간까지 이 줄(.scr-filter-search-row) 자신의
-  // 너비로 잡혀 있으면, 그 빈 자리가 여전히 pointer-events를 먹어 스크롤 제스처가 거기서
-  // 시작되면 씹혔다(실제로 지적받은 문제 — "접혔을때 원래 펼쳐있었던 부분에 터치스크롤이
-  // 안됨") — 바깥 스택(.scr-filter-float-stack) 자체는 항상 pointer-events:none으로
-  // 두고(global.css), 실제 보이는 내용을 담은 이 줄에만 보일 때(mobileVisible)만 다시
-  // auto로 켜서 그 좁은 너비만큼만 클릭/터치를 가로챈다.
-  const rowVisibilityStyle = isMobileFloat
-    ? {
-        opacity: mobileVisible ? 1 : 0,
-        transform: mobileVisible ? "none" : "scale(0.92)",
-        pointerEvents: mobileVisible ? ("auto" as const) : ("none" as const),
-      }
-    : undefined;
-
   // 한 줄에 아이콘(원)과 활성화된 창(캡슐)이 별도 개체로 나란히 놓인다(요청: "아이콘과
-  // 활성화된 창은 별도 개체야 구분되어야하고 아이콘 모양과 색은 원래대로 유지") — 접히면
-  // 필터/검색 아이콘 원 두 개가 수평으로 나란히(살짝 갭), 펼치면 왼쪽 아이콘 자리에
-  // 반대 기능의 아이콘 원이 남고 그 옆으로 해당 창 캡슐이 붙는다. 아이콘을 누르면 창이
-  // 바로 교체된다(요청: "클릭하지 않은 다른 기능의 아이콘이 아이콘 자리에 나타나는
-  // 방식"). 줄 전체가 왼쪽 정렬이다(global.css .scr-filter-float-stack의 align-items)
-  // — 왼손 엄지가 바로 닿는 자리(요청: "필터/검색 아이콘을 왼쪽에 배치(왼손유저가
-  // 많은거 같음)"). 아이콘 배경색은 원래(각자 줄이던 시절)대로 필터=반투명 글라스,
-  // 검색=흰색을 유지한다.
-  const filterIconBtn = (label: string) => (
-    <button
-      type="button" className="scr-filter-search-icon-btn scr-fs-shell-filter" onClick={openFilter}
-      aria-label={label}
-    >
-      <SlidersHorizontal size={16} />
-    </button>
-  );
-  const searchIconBtn = (label: string) => (
-    <button
-      type="button" className="scr-filter-search-icon-btn scr-fs-shell-search" onClick={openSearch}
-      aria-label={label}
-    >
-      <Search size={16} />
-    </button>
-  );
+  // 활성화된 창은 별도 개체야 구분되어야하고 아이콘 모양과 색은 원래대로 유지") — 필터/
+  // 검색 두 개체(.scr-fs-obj)를 항상 마운트해두고 상태 클래스(slot0/slot1/panel)로
+  // left/width만 바꾼다. CSS 트랜지션이 그 사이를 이어주므로:
+  //  - 교체 시: 왼쪽 앞자리의 아이콘이 오른쪽으로 미끄러지며 창으로 펼쳐지고, 기존 창은
+  //    줄어들며 아이콘이 되어 왼쪽 앞자리로 이동한다 — 두 개체가 교차한다(요청: "활성되는
+  //    아이콘이 앞에 배치되면서 창으로 펼쳐지는 트랜스폼. 비활성되는 요소는 아이콘으로
+  //    트랜스폼" + "비활성창은 왼쪽으로 아이콘이 되어 이동").
+  //  - 닫힘 시: 열려 있던 창이 아이콘으로 수축하며 맨 앞(slot0)으로 가고, 앞에 있던
+  //    아이콘은 옆자리(slot1)로 밀려나 둘이 자리를 바꾼다(요청: "두 아이콘 자리 바꿈이
+  //    자연스럽고 아름답게"). 접힌 순서는 항상 [필터][검색]... 이 아니라 "방금 열려
+  //    있던 것"이 앞이다 — 창이 자연스럽게 제 앞자리로 접히는 모양을 우선한다.
+  // 원(50px)과 캡슐 모두 반경 25px라 모양 전환에 반경 애니메이션이 따로 필요 없다.
+  // 배경색은 개체에 붙어 있어(필터=글라스, 검색=흰색) 모핑 내내 그대로 유지된다.
+  //
+  // 접힘 시 어느 아이콘이 앞(slot0)인지 — 마지막으로 열려 있던 창의 아이콘이 앞으로
+  // 온다(위 주석의 "창이 제 앞자리로 접히는 모양"). 첫 상태(none으로 시작한 적 없음)를
+  // 대비해 기본은 필터가 앞이다.
+  const lastOpenRef = useRef<"filter" | "search">(filterPanel ? "filter" : "search");
+  if (panel !== "none") lastOpenRef.current = panel;
+  const frontIcon = lastOpenRef.current;
+
+  const objClass = (kind: "filter" | "search"): string => {
+    if (panel === kind) return "scr-fs-obj-panel";
+    if (panel !== "none") return "scr-fs-obj-slot0"; // 반대 창이 열려 있음 — 내가 왼쪽 앞 아이콘
+    // 접힘 — 방금까지 열려 있던 쪽이 앞(slot0), 나머지가 옆(slot1).
+    return frontIcon === kind ? "scr-fs-obj-slot0" : "scr-fs-obj-slot1";
+  };
+
+  // 접혔을 때 보이지 않는 나머지 공간까지 이 줄 자신의 너비로 잡혀 있으면, 그 빈 자리가
+  // 여전히 pointer-events를 먹어 스크롤 제스처가 거기서 시작되면 씹혔다(실제로 지적받은
+  // 문제 — "접혔을때 원래 펼쳐있었던 부분에 터치스크롤이 안됨") — 줄(좌표 기준 컨테이너,
+  // 항상 100% 폭)은 pointer-events:none으로 두고 두 개체만 auto로 받는다(global.css).
+  // 숨김(스크롤) 상태에서는 개체까지 함께 꺼야 하므로 클래스로 한 번에 내린다.
   const mobileRow = (
     <div
-      className="scr-filter-search-row"
-      style={{ width: renderPanel === "none" ? undefined : "100%", ...rowVisibilityStyle }}
+      className={cx("scr-filter-search-row", !mobileVisible && "scr-filter-search-row-off")}
+      style={{
+        opacity: mobileVisible ? 1 : 0,
+        transform: mobileVisible ? "none" : "scale(0.92)",
+      }}
     >
-      <div className="scr-filter-search-row-inner" style={{ opacity: contentHidden ? 0 : 1 }}>
-        {renderPanel === "none" ? (
-          <>
-            {filterPanel && filterIconBtn("필터 열기")}
-            {searchIconBtn("검색 열기")}
-          </>
-        ) : renderPanel === "filter" ? (
-          <>
-            {searchIconBtn("검색으로 전환")}
-            <div className="scr-filter-search-panel scr-fs-shell-filter">
-              <div className="scr-filter-panel">{filterPanel}</div>
-            </div>
-          </>
-        ) : (
-          <>
-            {filterPanel && filterIconBtn("필터로 전환")}
-            <div className="scr-filter-search-panel scr-fs-shell-search">
-              <div className="scr-search-filter-float">{searchItem}</div>
-            </div>
-          </>
-        )}
+      {filterPanel && (
+        <div className={cx("scr-fs-obj", "scr-fs-shell-filter", objClass("filter"))}>
+          <button
+            type="button" className="scr-fs-glyph" onClick={openFilter}
+            aria-label={panel === "none" ? "필터 열기" : "필터로 전환"}
+            tabIndex={panel === "filter" ? -1 : 0}
+          >
+            <SlidersHorizontal size={16} />
+          </button>
+          <div className="scr-fs-obj-content">
+            <div className="scr-filter-panel">{filterPanel}</div>
+          </div>
+        </div>
+      )}
+      <div className={cx("scr-fs-obj", "scr-fs-shell-search", objClass("search"))}>
+        <button
+          type="button" className="scr-fs-glyph" onClick={openSearch}
+          aria-label={panel === "none" ? "검색 열기" : "검색으로 전환"}
+          tabIndex={panel === "search" ? -1 : 0}
+        >
+          <Search size={16} />
+        </button>
+        <div className="scr-fs-obj-content">
+          <div className="scr-search-filter-float">{searchItem}</div>
+        </div>
       </div>
     </div>
   );

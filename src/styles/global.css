@@ -2235,22 +2235,36 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   /* 필터/검색 내용 자체(접힘/필터/검색 교체)는 안쪽 .scr-filter-search-row가 담당한다
      — 아이콘과 창이 별도 개체라 크기 트랜스폼 없이 빠른 크로스페이드로 교체된다. */
   /* 필터/검색 줄 — 아이콘(원)과 활성화된 창(캡슐)이 별도 개체로 나란히 놓인다(요청:
-     "아이콘과 활성화된 창은 별도 개체야 구분되어야하고"). 줄 자신은 배경 없이 자리만
-     잡고, 스크롤 숨김의 페이드/축소(인라인 style의 opacity/transform)만 담당한다. */
+     "아이콘과 활성화된 창은 별도 개체야 구분되어야하고"). 줄 자신은 배경 없이 두 개체의
+     좌표 기준(position:relative, 항상 100% 폭)이 되고, 스크롤 숨김의 페이드/축소
+     (인라인 style의 opacity/transform)만 담당한다. 빈 영역이 터치를 가로채지 않게
+     줄은 pointer-events를 통과시키고 개체(.scr-fs-obj)만 받는다. */
   .scr-filter-search-row {
-    display: flex; align-items: center;
+    position: relative; width: 100%; height: 50px; pointer-events: none;
     transition: opacity .28s ease-in-out, transform .28s ease-in-out;
   }
-  /* 안쪽 내용은 상태 교체(접힘↔필터↔검색) 때 아주 빠르게 페이드아웃 → 교체 → 페이드인
-     된다(요청: "아주 빠르게") — SearchFilterBar.tsx의 useAnimatedPanel이 이 opacity를
-     인라인 style로 직접 넣는다. gap이 접힌 아이콘 두 개 사이의 "살짝 갭"(요청)이자
-     펼쳐졌을 때 아이콘 원과 창 캡슐 사이의 간격이다. */
-  .scr-filter-search-row-inner {
-    display: flex; align-items: center; gap: 8px; width: 100%;
-    transition: opacity .08s ease-out;
+  /* 스크롤로 숨는 동안엔 개체의 클릭/터치까지 함께 끈다. */
+  .scr-filter-search-row-off .scr-fs-obj { pointer-events: none; }
+  /* 필터/검색 개체 — 항상 둘 다 마운트돼 있고, 상태 클래스(slot0/slot1/panel)가 정하는
+     left/width 사이를 트랜지션으로 오간다: 아이콘(원)이 미끄러지며 창(캡슐)으로
+     펼쳐지고, 창은 줄어들며 아이콘이 되어 왼쪽 앞자리로 이동한다(요청: "활성되는
+     아이콘이 앞에 배치되면서 창으로 펼쳐지는 트랜스폼. 비활성되는 요소는 아이콘으로
+     트랜스폼" + "비활성창은 왼쪽으로 아이콘이 되어 이동" + "두 아이콘 자리 바꿈이
+     자연스럽고 아름답게"). 원(50×50)과 캡슐 모두 반경 25px라(요청: "패널 좌우를
+     반원모양으로") 모양 전환에 반경 애니메이션이 따로 필요 없다. */
+  .scr-fs-obj {
+    position: absolute; top: 0; height: 50px; border-radius: 25px; overflow: hidden;
+    pointer-events: auto;
+    transition: left .3s cubic-bezier(0.4, 0, 0.2, 1), width .3s cubic-bezier(0.4, 0, 0.2, 1);
   }
+  /* 접힌 아이콘 앞자리/옆자리(사이 갭 8px, 요청: "수평으로 나란히 배치 살짝 갭 주고")와
+     펼쳐진 창 자리(왼쪽 아이콘 한 자리를 비워두고 나머지 전부). */
+  .scr-fs-obj-slot0 { left: 0; width: 50px; }
+  .scr-fs-obj-slot1 { left: 58px; width: 50px; }
+  .scr-fs-obj-panel { left: 58px; width: calc(100% - 58px); }
   /* 아이콘 원/창 캡슐의 배경 — 아이콘 모양과 색은 원래(각자 줄이던 시절)대로 유지한다
-     (요청: "아이콘 모양과 색은 원래대로 유지"): 필터=반투명 글라스, 검색=흰 인풋색. */
+     (요청: "아이콘 모양과 색은 원래대로 유지"): 필터=반투명 글라스, 검색=흰 인풋색.
+     배경이 개체에 붙어 있어 아이콘↔창 모핑 내내 색이 그대로 따라간다. */
   /* backdrop-filter(블러)는 뒤에 깔린 배경 내용에 따라 샘플링 결과가 달라져서, 좁을
      때(아이콘)와 넓을 때(펼친 필터창)의 실제 보이는 색이 미묘하게 달라 보였다(실제로
      지적받은 문제 — "아이콘과 펼쳤을때 색이 오묘하게 달라 똑같이 통일") — 블러 없이
@@ -2266,40 +2280,50 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   .scr-light-theme .scr-fs-shell-search {
     border: 1px solid rgba(16,21,26,0.14);
   }
-  /* 펼쳐진 창 캡슐 — 높이(50px)의 절반을 반경으로 줘 좌우가 정확히 반원이 된다(요청:
-     "필터/검색 패널 좌우를 반원모양으로 변경"). 왼쪽의 전환 아이콘 원이 한 자리(50px)를
-     차지하므로 창 자신은 남은 폭만 쓴다(flex:1). */
-  .scr-filter-search-panel {
-    flex: 1 1 0; min-width: 0; height: 50px; border-radius: 25px;
-    display: flex; align-items: center; overflow: hidden;
-  }
-  /* 안쪽 필터창/검색창은 배경/테두리/그림자를 스스로 그리지 않는다 — 그 역할은 캡슐
-     (.scr-filter-search-panel + shell 배경)이 대신 맡는다. 안 그러면 안쪽 패널이 자기
-     배경을 또 그려서 캡슐 배경 위에 겹쳐 보인다(라이트 테마에서 특히 도드라졌던 문제
-     — "라이트 테마에서 펼쳤을때도 아까처럼 드랍쉐도우? 보이는듯 배경 음영"). 아래
-     모바일 공통 규칙(.scr-filter-panel의 flex: 0 0 auto; width: 100%)을 그대로 두면
-     캡슐 밖으로 넘치므로 flex로 줄어들 수 있게 덮어쓴다. */
-  .scr-filter-search-panel > .scr-filter-panel {
-    background: transparent; box-shadow: none; border: none;
-    flex: 1 1 0; min-width: 0; width: auto;
-  }
-  .scr-filter-search-panel .scr-search-filter-float .scr-list-search-input {
-    background: transparent; box-shadow: none; border: none;
-  }
-  /* 접기 버튼은 없앴다 — 화면 아무 데나 터치하면 접힌다(요청: "접기버튼 삭제 화면
-     터치로 접기 사용하면됨" — SearchFilterBar.tsx의 stackRef 바깥 pointerdown이
-     이미 이 역할을 한다). */
-  .scr-filter-search-icon-btn {
-    /* 창 캡슐과 같은 50px 높이의 원 — 배경색은 기능별 shell 클래스(위 -filter/-search)가
-       입힌다. */
-    flex-shrink: 0; width: 50px; height: 50px; border-radius: 50%;
-    border: none; cursor: pointer;
+  /* 아이콘 글리프 버튼 — 개체 왼쪽 끝의 50×50 원 영역. 개체가 아이콘 상태일 땐 개체
+     전체가 이 버튼이고, 창으로 펼쳐지면 서서히 사라지며 클릭도 막힌다(창 안 내용이
+     대신 그 자리부터 시작한다). */
+  .scr-fs-glyph {
+    position: absolute; left: 0; top: 0; width: 50px; height: 50px; z-index: 2;
+    border: none; cursor: pointer; background: transparent;
     display: flex; align-items: center; justify-content: center;
     color: #10151a;
     appearance: none; -webkit-appearance: none;
     outline: none;
     -webkit-tap-highlight-color: transparent;
+    transition: opacity .18s ease-out;
   }
+  .scr-fs-obj-panel > .scr-fs-glyph { opacity: 0; pointer-events: none; }
+  /* 창 내용 — 개체가 캡슐로 펼쳐질 때 드러난다. 내용 폭을 최종 창 폭(뷰포트 - 스택
+     좌우 여백 32px - 아이콘 자리 58px)으로 고정해두면, 개체가 늘어나는 동안 내용이
+     찌그러지지 않고 overflow:hidden에 가려져 있다가 와이프되듯 드러난다. 아이콘
+     상태일 땐 투명+비표시(visibility) — 숨은 입력칸이 포커스/터치를 받는 일이 없다. */
+  .scr-fs-obj-content {
+    min-width: calc(100vw - 90px); height: 100%;
+    display: flex; align-items: center;
+    opacity: 0; visibility: hidden;
+    transition: opacity .16s ease-out, visibility 0s linear .16s;
+  }
+  .scr-fs-obj-panel > .scr-fs-obj-content {
+    opacity: 1; visibility: visible;
+    transition: opacity .18s ease-out .1s, visibility 0s;
+  }
+  /* 안쪽 필터창/검색창은 배경/테두리/그림자를 스스로 그리지 않는다 — 그 역할은 캡슐
+     (개체 + shell 배경)이 대신 맡는다. 안 그러면 안쪽 패널이 자기 배경을 또 그려서
+     캡슐 배경 위에 겹쳐 보인다(라이트 테마에서 특히 도드라졌던 문제 — "라이트 테마에서
+     펼쳤을때도 아까처럼 드랍쉐도우? 보이는듯 배경 음영"). 아래 모바일 공통 규칙
+     (.scr-filter-panel의 flex: 0 0 auto; width: 100%)을 그대로 두면 캡슐 밖으로
+     넘치므로 flex로 줄어들 수 있게 덮어쓴다. */
+  .scr-fs-obj-content > .scr-filter-panel {
+    background: transparent; box-shadow: none; border: none;
+    flex: 1 1 0; min-width: 0; width: auto;
+  }
+  .scr-fs-obj-content .scr-search-filter-float .scr-list-search-input {
+    background: transparent; box-shadow: none; border: none;
+  }
+  /* 접기 버튼은 없앴다 — 화면 아무 데나 터치하면 접힌다(요청: "접기버튼 삭제 화면
+     터치로 접기 사용하면됨" — SearchFilterBar.tsx의 stackRef 바깥 pointerdown이
+     이미 이 역할을 한다). */
   /* 라벨을 알약 위에 쌓던 것(그래서 필터창이 검색창보다 키가 컸던 것)을 되돌린다 —
      PC처럼 라벨을 필터 왼쪽에 가로로 배치하고, 그 김에 필터창 높이도 검색창과 같은
      기본값(50px)으로 줄인다(요청: "모바일에서도 필터창의 라벨을 PC처럼 필터왼쪽에
