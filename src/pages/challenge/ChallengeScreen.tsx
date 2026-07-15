@@ -549,37 +549,14 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
           </div>
         </div>
 
-        {/* 이전 기록 탐색 — 카드 하단에 [◀ 1/3 ▶] 한 줄로(요청: "카드 페이지 좌우 이동
-            버튼을 하단으로 이동, 1/3 이렇게 페이지 표시"). .scr-challenge-pages(높이 모핑용
-            overflow:hidden 박스) 밖, card-body의 직계 자식이라 페이지가 바뀌어도 다시 안
-            그려지고 잘리지도 않는다. 이력이 여러 개(pages>1)일 때만 뜬다. 맨앞/맨뒤에선
-            해당 화살표만 투명하게(visibility:hidden) 처리해 자리를 지켜 숫자가 안 흔들린다. */}
-        {pages.length > 1 && (
-          <div className="scr-challenge-page-nav-bar">
-            <button
-              type="button"
-              className={cx("scr-challenge-page-nav scr-challenge-page-nav-prev", pageIndex === 0 && "scr-challenge-page-nav-hidden")}
-              onClick={() => setPageIndex((i) => i - 1)} disabled={pageIndex === 0}
-              aria-label="이전 기록 보기"
-            />
-            <span className="scr-challenge-page-count">{pageIndex + 1}/{pages.length}</span>
-            <button
-              type="button"
-              className={cx(
-                "scr-challenge-page-nav scr-challenge-page-nav-next",
-                pageIndex === pages.length - 1 && "scr-challenge-page-nav-hidden",
-              )}
-              onClick={() => setPageIndex((i) => i + 1)} disabled={pageIndex === pages.length - 1}
-              aria-label="다음 기록 보기"
-            />
-          </div>
-        )}
       </div>
 
       {err && <div className="scr-err">{err}</div>}
 
-      {isLatestPage && canRespond && mode === "none" && (
-        <div className="scr-challenge-card-actions">
+      {/* 응답 버튼(수락/거절) — 최신 페이지에서만 실제로 뜨지만, 이력 페이지에선 자리를
+          예약(reserve)만 하고 투명하게 둬서 아래 페이지네이션이 안 튀게 한다. */}
+      {canRespond && mode === "none" && (
+        <div className={cx("scr-challenge-card-actions", !isLatestPage && "scr-challenge-card-actions-reserve")}>
           <button
             className="scr-btn scr-challenge-reject-btn scr-btn-sm" disabled={busy}
             onClick={() => respond("rejected", "거절 사유를 입력해 주세요 (필수)", true)}
@@ -748,9 +725,10 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
         </div>
       )}
 
-      {/* 결과 입력/설욕전/연기/취소/재신청 — 인라인 폼이 안 열려 있을 때만 뜨는 액션 줄. */}
-      {isLatestPage && mode === "none" && (canCancel || canReapply || canEnterResult || canRevenge || canPostpone) && (
-        <div className="scr-challenge-card-actions">
+      {/* 결과 입력/재대결/연기/취소/재신청 — 인라인 폼이 안 열려 있을 때만 뜨는 액션 줄.
+          응답 버튼과 마찬가지로 이력 페이지에선 자리만 예약(투명)해 페이지네이션이 안 튀게. */}
+      {mode === "none" && (canCancel || canReapply || canEnterResult || canRevenge || canPostpone) && (
+        <div className={cx("scr-challenge-card-actions", !isLatestPage && "scr-challenge-card-actions-reserve")}>
           {canEnterResult && (
             <button className="scr-btn scr-challenge-accept-btn scr-btn-sm" onClick={startResult} disabled={busy}>
               결과 입력
@@ -776,6 +754,32 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
               재신청
             </button>
           )}
+        </div>
+      )}
+
+      {/* 이전 기록 탐색 — 카드 "맨 하단"(버튼 로우보다 아래)에 [◀ 1/3 ▶] 한 줄로(요청:
+          "페이지네이션 버튼 로우보다 하단에 배치"). 버튼 로우는 이력 페이지에서도 자리를
+          예약(scr-challenge-card-actions-reserve)하므로 페이지를 넘겨도 이 줄이 위아래로
+          안 움직인다. 이력이 여러 개(pages>1)일 때만 뜬다. 맨앞/맨뒤에선 해당 화살표만
+          투명하게 처리해 숫자가 안 흔들린다. */}
+      {pages.length > 1 && (
+        <div className="scr-challenge-page-nav-bar">
+          <button
+            type="button"
+            className={cx("scr-challenge-page-nav scr-challenge-page-nav-prev", pageIndex === 0 && "scr-challenge-page-nav-hidden")}
+            onClick={() => setPageIndex((i) => i - 1)} disabled={pageIndex === 0}
+            aria-label="이전 기록 보기"
+          />
+          <span className="scr-challenge-page-count">{pageIndex + 1}/{pages.length}</span>
+          <button
+            type="button"
+            className={cx(
+              "scr-challenge-page-nav scr-challenge-page-nav-next",
+              pageIndex === pages.length - 1 && "scr-challenge-page-nav-hidden",
+            )}
+            onClick={() => setPageIndex((i) => i + 1)} disabled={pageIndex === pages.length - 1}
+            aria-label="다음 기록 보기"
+          />
         </div>
       )}
 
