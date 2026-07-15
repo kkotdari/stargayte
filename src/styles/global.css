@@ -4599,6 +4599,9 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-challenge-countdown {
   text-align: center; font-size: 12px; font-weight: 700; color: var(--dim); margin-top: 2px;
 }
+/* 이전 기록 페이지엔 해당 안 되는 내용이라 자리만 투명하게 남긴다 — 승리 배지와 같은
+   이유(위 .scr-challenge-side-win-hidden 참고). */
+.scr-challenge-countdown-hidden { visibility: hidden; }
 
 /* 다시 신청/재대결로 이어진 기록임을 알리는 라벨 — 다시 신청은 옅은 톤, 재대결은 눈에 띄게
    포인트색으로 구분한다. 라벨에 공백이 있어("다시 신청") 좁은 카드에서 줄바꿈되지 않게 nowrap. */

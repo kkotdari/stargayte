@@ -537,9 +537,15 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
 
       {/* 응답대기중 카드의 마감 카운트다운(요청: "카운트 다운 필요해!") — 요청일+1일까지
           남은 시간을 한 줄로 심플하게. 마감이 지나면 서버 배치가 무응답거절로 바꾸므로
-          여기 뜨는 동안은 항상 남은 시간이 있다. */}
-      {isLatestPage && challenge.status === "pending" && (
-        <div className="scr-challenge-countdown">{responseDeadlineLabel(challenge.createdAt)}</div>
+          여기 뜨는 동안은 항상 남은 시간이 있다. 응답대기중은 항상 최신 페이지에서만
+          해당하는 상태라, 이전 기록 페이지에서는 이 줄 자체가 없어져 페이지를 넘길
+          때마다 카드 높이가 또 달라졌다(요청: "응답 마감시간 이것때문에도 차이가
+          생겨") — 승리 배지와 같은 방식으로, 최신 페이지가 응답대기중이면 다른
+          페이지에도 자리를 투명하게 남긴다. */}
+      {challenge.status === "pending" && (
+        <div className={cx("scr-challenge-countdown", !isLatestPage && "scr-challenge-countdown-hidden")}>
+          {responseDeadlineLabel(challenge.createdAt)}
+        </div>
       )}
 
       {err && <div className="scr-err">{err}</div>}
