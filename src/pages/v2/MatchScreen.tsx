@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { createPortal } from "react-dom";
-import { Plus, Upload, ArrowUp, ArrowDown } from "lucide-react";
+import { Plus, Upload } from "lucide-react";
 import ReplayLocationHint from "../../components/common/ReplayLocationHint";
 import { Spinner } from "../../components/common/Feedback";
 import PillTabs from "../../components/common/PillTabs";
@@ -40,7 +40,8 @@ export default function MatchScreenV2() {
   // 검색창은 이제 엔터를 눌러야만 확정되는 값이라(SearchFilterBar 참고), search 자체가
   // 이미 "적용된" 값이다 — 예전처럼 디바운스로 한 번 더 늦출 필요가 없다.
   const [search, setSearch] = useState("");
-  const [sort, setSort] = useState<"latest" | "oldest">("latest");
+  // 정렬 토글은 없앴다(요청: "기간 필터 정렬 제거") — 항상 최신순 고정.
+  const [sort] = useState<"latest" | "oldest">("latest");
   const [periodUnit, setPeriodUnit] = useState<"all" | "month" | "day">("day");
   const [periodMonth, setPeriodMonth] = useState(currentMonthValue);
   const [periodDay, setPeriodDay] = useState(todayStr);
@@ -225,16 +226,6 @@ export default function MatchScreenV2() {
                 />
               </FilterItem>
             )}
-            <FilterItem>
-              <button
-                type="button" className="scr-filter-sort-btn"
-                onClick={() => setSort(sort === "oldest" ? "latest" : "oldest")}
-                aria-label={sort === "oldest" ? "오래된순 (누르면 최신순)" : "최신순 (누르면 오래된순)"}
-                title={sort === "oldest" ? "오래된순" : "최신순"}
-              >
-                {sort === "oldest" ? <ArrowUp size={15} /> : <ArrowDown size={15} />}
-              </button>
-            </FilterItem>
           </>
         }
       />
