@@ -1754,42 +1754,21 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    .scr-main이 z-index:1로 쌓임맥락을 만들어주므로, 그 안에서 z-index:-1은 화면 콘텐츠
    뒤·기본 배경(.scr-bg-grid) 앞에 정확히 들어간다. 사진 그대로는 밝아서 흰 글씨가 묻히니
    위아래로 어두운 그라데이션(스크림)을 겹쳐 깐다. */
+/* 이제 배경 사진은 랭킹 하나만 쓴다 — 예전엔 챌린지(battle2.jpg)/경기(space3.jpg)에도
+   각자 사진을 깔았지만 없앴고(요청: "너 나와랑 경기 배경은 삭제"), 랭킹은 그때 경기
+   화면이 쓰던 space3.jpg를 물려받았다(요청: "랭킹의 배경을 현재 경기의 배경으로
+   바꿔주고"). */
 .scr-rank-screen-v2 { position: relative; }
 .scr-rank-screen-v2::before {
-  content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
-  background-image:
-    linear-gradient(180deg, rgba(3,3,6,0.72) 0%, rgba(3,3,6,0.55) 40%, rgba(3,3,6,0.78) 100%),
-    url("/images/bg/space.jpg");
-  background-size: cover; background-position: center; background-repeat: no-repeat;
-}
-/* 라이트 테마는 배경 사진을 아예 안 쓴다(요청: "라이트테마는 화면에서 배경이미지
-   모두 제거") — 예전엔 다른(밝은 톤) 사진으로 바꿔 달았지만, 이제 이 화면(과 같은
-   원칙을 쓰는 .scr-challenge-screen-v2/.scr-match-screen-v2)의 라이트 테마 오버라이드는
-   전부 아래 공용 규칙 하나로 모아 표시 자체를 끈다. */
-
-/* 챌린지("너 나와!")/경기 화면도 같은 방식으로 사진을 깐다(요청: "챌린지 코너 배경
-   battle2.jpg로 적용" / "경기 코너 배경 battle1.jpeg로 적용" 이후 "경기페이지 배경
-   space3으로 변경") — 다크 테마에서만 보이고(위 랭킹과 같은 이유), 라이트 테마는
-   아래 공용 규칙으로 셋 다 함께 꺼진다. */
-.scr-challenge-screen-v2 { position: relative; }
-.scr-challenge-screen-v2::before {
-  content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
-  background-image:
-    linear-gradient(180deg, rgba(3,3,6,0.72) 0%, rgba(3,3,6,0.55) 40%, rgba(3,3,6,0.78) 100%),
-    url("/images/bg/battle2.jpg");
-  background-size: cover; background-position: center; background-repeat: no-repeat;
-}
-.scr-match-screen-v2 { position: relative; }
-.scr-match-screen-v2::before {
   content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
   background-image:
     linear-gradient(180deg, rgba(3,3,6,0.72) 0%, rgba(3,3,6,0.55) 40%, rgba(3,3,6,0.78) 100%),
     url("/images/bg/space3.jpg");
   background-size: cover; background-position: center; background-repeat: no-repeat;
 }
-.scr-light-theme .scr-rank-screen-v2::before,
-.scr-light-theme .scr-challenge-screen-v2::before,
-.scr-light-theme .scr-match-screen-v2::before {
+/* 라이트 테마는 배경 사진을 아예 안 쓴다(요청: "라이트테마는 화면에서 배경이미지
+   모두 제거") — 예전엔 다른(밝은 톤) 사진으로 바꿔 달았지만 표시 자체를 끈다. */
+.scr-light-theme .scr-rank-screen-v2::before {
   display: none;
 }
 
