@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
 import { Spinner } from "../../components/common/Feedback";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
@@ -466,8 +465,12 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
             배지는 이미 있는 줄(날짜 줄, 화살표 옆)에 끼워 넣어 새 줄을 만들지 않는다.
             이전/다음 버튼은 "내용"이 아니라 카드 패딩에 얹히는 컨트롤이라 이 안(.scr-
             challenge-page, 페이지 전환마다 통째로 바뀌는 영역)이 아니라 .scr-challenge-
-            pages의 형제로 한 번만 둔다(요청: "이동 버튼은 scr-challenge-page 안에 있으면
-            안돼") — 자세한 배치는 아래 buttons 참고. */}
+            card-body의 형제로 한 번만 둔다(요청: "이동 버튼은 scr-challenge-page 안에
+            있으면 안돼") — .scr-challenge-pages 안에 두면 높이 모핑용 overflow:hidden에
+            버튼이 그대로 잘려서 안 보이는 문제가 있었다(overflow-x:visible은 스펙상
+            overflow-y가 hidden이면 auto로 바뀌어 실제로는 안 잘리지 않는다 — 여전히
+            스크롤 클리핑 대상이라 버튼이 사라지고, 그 스크롤 트랙이 "이상한 줄"로 보였다).
+            자세한 배치는 아래 buttons 참고. */}
         <div
           className="scr-challenge-pages"
           style={pagesHeight !== undefined ? { height: pagesHeight } : undefined}
@@ -543,34 +546,32 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
               <ChallengeSide people={targetSideMembers} targets={activeTargetInfos} highlightMemberIds={highlightMemberIds} />
             </div>
           </div>
-
-          {/* 이전 기록 탐색 — 페이지네이션(점) 없이 이전/다음 버튼만. .scr-challenge-page
-              밖(=이 .scr-challenge-pages의 직계 자식)에 둬서 페이지가 바뀌어도 버튼
-              자체는 다시 그려지지 않는다. 이력이 없는 카드에서도, 첫/마지막 페이지에서도
-              항상 같은 자리(카드 패딩)를 차지하고 필요 없을 때만 투명하게(visibility:
-              hidden) 처리한다 — 비활성화(회색)로만 두면 여전히 보여서, "필요없을땐
-              안나와야해(페이지 없을때나 맨앞/맨뒤 페이지 등)"라는 요청과, 절대배치라
-              레이아웃엔 영향이 없다는 점 둘 다 만족한다. */}
-          <button
-            type="button"
-            className={cx("scr-challenge-page-nav scr-challenge-page-nav-prev", pageIndex === 0 && "scr-challenge-page-nav-hidden")}
-            onClick={() => setPageIndex((i) => i - 1)} disabled={pageIndex === 0}
-            aria-label="이전 기록 보기"
-          >
-            <ChevronLeft size={12} />
-          </button>
-          <button
-            type="button"
-            className={cx(
-              "scr-challenge-page-nav scr-challenge-page-nav-next",
-              pageIndex === pages.length - 1 && "scr-challenge-page-nav-hidden",
-            )}
-            onClick={() => setPageIndex((i) => i + 1)} disabled={pageIndex === pages.length - 1}
-            aria-label="다음 기록 보기"
-          >
-            <ChevronRight size={12} />
-          </button>
         </div>
+
+        {/* 이전 기록 탐색 — 페이지네이션(점) 없이 이전/다음 버튼만. .scr-challenge-pages
+            (overflow:hidden으로 높이를 자르는 박스) 밖, .scr-challenge-card-body의
+            직계 자식으로 둔다 — 안에 두면 높이 모핑용 overflow에 걸려 버튼이 잘려
+            안 보이는 문제가 있었다(신고: "페이지 있는 카드가 좌우 이동버튼이 안보임").
+            페이지가 바뀌어도 버튼 자체는 다시 그려지지 않는다. 이력이 없는 카드에서도,
+            첫/마지막 페이지에서도 항상 같은 자리(카드 패딩)를 차지하고 필요 없을 때만
+            투명하게(visibility:hidden) 처리한다 — 비활성화(회색)로만 두면 여전히
+            보여서, "필요없을땐 안나와야해(페이지 없을때나 맨앞/맨뒤 페이지 등)"라는
+            요청과, 절대배치라 레이아웃엔 영향이 없다는 점 둘 다 만족한다. */}
+        <button
+          type="button"
+          className={cx("scr-challenge-page-nav scr-challenge-page-nav-prev", pageIndex === 0 && "scr-challenge-page-nav-hidden")}
+          onClick={() => setPageIndex((i) => i - 1)} disabled={pageIndex === 0}
+          aria-label="이전 기록 보기"
+        />
+        <button
+          type="button"
+          className={cx(
+            "scr-challenge-page-nav scr-challenge-page-nav-next",
+            pageIndex === pages.length - 1 && "scr-challenge-page-nav-hidden",
+          )}
+          onClick={() => setPageIndex((i) => i + 1)} disabled={pageIndex === pages.length - 1}
+          aria-label="다음 기록 보기"
+        />
       </div>
 
       {err && <div className="scr-err">{err}</div>}
