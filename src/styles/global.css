@@ -4418,8 +4418,16 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 
 /* 작성 폼 — 상대 지목 슬롯 */
 .scr-challenge-target-slots { display: flex; flex-direction: column; gap: 8px; }
-.scr-challenge-target-slot { display: flex; align-items: center; gap: 6px; }
+/* 좌우 패딩만 칩(.scr-challenge-target-picked: padding 8px 10px)과 맞춘다 — 세로 패딩은
+   0으로 둬야 트리거(46px)에 얹혀 높이가 안 커진다. 이래야 드롭다운 모드의 X 버튼이 칩일
+   때의 X 버튼과 같은 가로 위치(오른쪽에서 10px 안쪽)에 온다(요청: "x 버튼도 유저칩일때랑
+   드롭다운 모드일때 위치가 달라서 안이쁜데 위치 맞춰주라"). */
+.scr-challenge-target-slot { display: flex; align-items: center; gap: 6px; padding: 0 10px; }
 .scr-challenge-target-slot .scr-cselect { flex: 1; }
+/* "+추가"를 눌러 회원을 고르는 "입력중" 드롭다운 트리거도 칩/빈 슬롯(46px)과 같은 높이로
+   맞춘다 — 안 그러면 이 모드일 때만 트리거가 --field-h(38px)라 행이 낮아져 높이가 달라
+   보이고 아래가 흔들렸다(요청: "도전장 보내기에서 팀원추가시 입력중 모드일때 높이가 달라"). */
+.scr-challenge-target-slot .scr-cselect-trigger { min-height: 46px; }
 .scr-challenge-target-remove { width: 30px; height: 30px; flex-shrink: 0; }
 /* 확정된 지목 — 드롭다운이 아니라 이름만 보여주는 칩. color를 직접 선언해야
    .scr-challenge-form-modal이 지역적으로 다시 정의한 --text를 실제로 반영한다 — 그냥
