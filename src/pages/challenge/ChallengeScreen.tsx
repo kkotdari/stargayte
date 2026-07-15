@@ -67,13 +67,6 @@ function isoToInputs(iso: string | null): { date: string; time: string } {
   };
 }
 
-// 결과 알약 라벨 — 이긴 편(도전자편/상대편) 외에 무승부/미실시도 표시한다.
-const resultLabel = (result: ChallengeResult): string =>
-  result === "creator" ? "도전자편 승"
-  : result === "target" ? "상대편 승"
-  : result === "draw" ? "무승부"
-  : "미실시";
-
 type PillTone = "pending" | "accepted" | "rejected";
 
 // 상대 한 명의 응답 배지 — 완료/무응답거절/무응답처럼 세분화된 라벨은 텍스트 알약일 때나
@@ -309,26 +302,17 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
   const timeLabelOf = (p: ChallengePage, latest: boolean): string =>
     latest ? (challengeTimeLabel(p.scheduledAt) ?? "시간 미정") : formatChallengeSchedule(p.scheduledAt);
 
-  // 페이지를 넘길 때: 이전 내용은 바로 사라지고(페이드아웃 없음) 새 내용만 페이드인,
-  // 패널은 높이만 모핑한다(요청: "페이지 이동시 현재 내용물 페이드아웃 제거하고 바로
-  // 사라지게 변경. 페이드인은 유지"). renderedIndex를 pageIndex로 즉시 바꿔 내용을
-  // 곧바로 교체하고, entering을 한 프레임 뒤 꺼서(no-transition 상태 → 있음) opacity가
-  // 0에서 1로 트랜지션하게 만든다. 높이는 지금 보여주는 페이지 기준으로 실측해
-  // 인라인으로 박고 CSS transition이 이전→새 높이로 모핑한다.
+  // 페이지를 넘길 때: 내용은 페이드 없이 바로 교체하고, 패널만 높이를 모핑한다(요청:
+  // "페이지 이동시 현재 내용물 페이드아웃 제거하고 바로 사라지게 변경. 페이드인은 유지"
+  // → "페이드 인도 삭제" — 결국 내용 전환은 전부 즉시, 높이 변화만 애니메이션). 높이는
+  // 지금 보여주는 페이지 기준으로 실측해 인라인으로 박고 CSS transition이 이전→새
+  // 높이로 모핑한다.
   const pagesInnerRef = useRef<HTMLDivElement>(null);
   const [pagesHeight, setPagesHeight] = useState<number | undefined>(undefined);
   const [renderedIndex, setRenderedIndex] = useState(pageIndex);
-  const [entering, setEntering] = useState(false);
   useEffect(() => {
-    if (pageIndex === renderedIndex) return;
     setRenderedIndex(pageIndex);
-    setEntering(true);
-  }, [pageIndex, renderedIndex]);
-  useEffect(() => {
-    if (!entering) return;
-    const raf = requestAnimationFrame(() => setEntering(false));
-    return () => cancelAnimationFrame(raf);
-  }, [entering]);
+  }, [pageIndex]);
   useLayoutEffect(() => {
     const inner = pagesInnerRef.current;
     if (!inner) return;
@@ -421,7 +405,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
       onResponded(updated);
       closeMode();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : mode === "revenge" ? "재대결을 신청하지 못했어요." : "다시 신청하지 못했어요.");
+      setErr(e instanceof Error ? e.message : mode === "revenge" ? "재대결을 신청하지 못했어요." : "재신청하지 못했어요.");
     } finally {
       setBusy(false);
     }
@@ -471,6 +455,10 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
   const shownLatest = shownIndex === pages.length - 1;
   const activeOverall = displayStatusOf(activePage);
   const activeTargetInfos = activePage.targets.map((t) => ({ target: t, overall: activeOverall }));
+  // 재신청은 몇 번째인지도 알 수 있게 "n번째 재신청"으로 표시한다(요청: "다시 신청은
+  // n번째 재신청으로 변경") — 체인 맨 앞부터 이 페이지까지 chainKind가 "reapply"인
+  // 페이지 개수를 센다(설욕전은 별도 라벨이라 세지 않는다).
+  const reapplyNo = pages.slice(0, shownIndex + 1).filter((p) => p.chainKind === "reapply").length;
 
   return (
     <div className="scr-challenge-card">
@@ -488,19 +476,23 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
           className="scr-challenge-pages"
           style={pagesHeight !== undefined ? { height: pagesHeight } : undefined}
         >
-          <div ref={pagesInnerRef} className={cx("scr-challenge-page", entering && "scr-challenge-page-entering")}>
+          <div ref={pagesInnerRef} className="scr-challenge-page">
             <div className="scr-challenge-card-row scr-challenge-card-when">
               {timeLabelOf(activePage, shownLatest)}
-              {/* 체인 라벨 — 이 기록이 다시 신청/재대결로 만들어진 것이면 어느 쪽인지 표시. */}
+              {/* 체인 라벨 — 이 기록이 재신청/재대결로 만들어진 것이면 어느 쪽인지 표시.
+                  재신청은 몇 번째인지도 함께(요청: "다시 신청은 n번째 재신청으로 변경하고
+                  다시 신청 -> 재신청으로 모두 변경"). */}
               {activePage.chainKind && (
                 <span className={cx("scr-challenge-chain-tag", `scr-challenge-chain-tag-${activePage.chainKind}`)}>
-                  {activePage.chainKind === "revenge" ? "재대결" : "다시 신청"}
+                  {activePage.chainKind === "revenge" ? "재대결" : `${reapplyNo}번째 재신청`}
                 </span>
               )}
-              {/* 이긴 편은 매치업의 화살표 옆에 배지로 표시하니, 여기선 팀을 특정할 수
-                  없는 무승부/미실시만 알약으로 남긴다(요청: "도전자편 승 이런 건 제거"). */}
-              {(activePage.resultWinnerSide === "draw" || activePage.resultWinnerSide === "not_held") && (
-                <span className="scr-challenge-pill scr-challenge-pill-done">{resultLabel(activePage.resultWinnerSide)}</span>
+              {/* 이긴 편은 매치업의 화살표 옆에 배지로 표시하니, 여기선 팀을 특정할 수 없는
+                  무승부만 알약으로 남긴다(요청: "도전자편 승 이런 건 제거"). 미실시는 아예
+                  매치가 안 열렸으니 결과보기 자리에 텍스트로만 남기고 이 알약은 없앤다
+                  (요청: "현재 시각 옆의 미실시 배지는 삭제"). */}
+              {activePage.resultWinnerSide === "draw" && (
+                <span className="scr-challenge-pill scr-challenge-pill-done">무승부</span>
               )}
               {/* 마감 카운트다운 — 별도 줄 대신 날짜가 있는 이 맨 윗줄에 끼운다(요청: "마감
                   카운트다운은 날짜있는 맨 윗줄에 표시"). 응답대기중은 항상 최신 페이지에서만
@@ -509,8 +501,13 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
               {shownLatest && challenge.status === "pending" && (
                 <span className="scr-challenge-countdown">{responseDeadlineLabel(challenge.createdAt)}</span>
               )}
-              {/* 결과 보기는 결과가 입력된 뒤에만 뜬다(요청: "결과보기는 결과 입력후에만 보이고"). */}
-              {shownLatest && challenge.resultWinnerSide !== null && (
+              {/* 결과 보기는 결과가 입력된 뒤에만 뜬다(요청: "결과보기는 결과 입력후에만
+                  보이고"). 미실시는 볼 결과 자체가 없으니 버튼 대신 "미실시" 텍스트만
+                  같은 자리에(요청: "미실시인 경우 결과보기 대신 미실시 표시"). */}
+              {shownLatest && challenge.resultWinnerSide === "not_held" && (
+                <span className="scr-challenge-result-link scr-challenge-result-link-static">미실시</span>
+              )}
+              {shownLatest && challenge.resultWinnerSide !== null && challenge.resultWinnerSide !== "not_held" && (
                 <button type="button" className="scr-challenge-result-link" onClick={() => onViewResults(challenge)}>
                   결과 보기
                 </button>
@@ -667,7 +664,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
           <div className="scr-challenge-card-actions">
             <button className="scr-btn scr-btn-ghost scr-btn-sm" onClick={closeMode} disabled={busy}>취소</button>
             <button className="scr-btn scr-challenge-accept-btn scr-btn-sm" onClick={submitReapplyOrRevenge} disabled={busy}>
-              {busy ? <Spinner /> : mode === "revenge" ? "재대결 신청" : "다시 신청"}
+              {busy ? <Spinner /> : mode === "revenge" ? "재대결 신청" : "재신청"}
             </button>
           </div>
         </div>
@@ -779,7 +776,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
           )}
           {canReapply && (
             <button className="scr-btn scr-btn-ghost scr-btn-sm" onClick={startReapply} disabled={busy}>
-              다시 신청
+              재신청
             </button>
           )}
         </div>
@@ -788,7 +785,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
       {cancelConfirmOpen && (
         <ConfirmDialog
           title="도전장을 취소할까요?"
-          message="취소하면 되돌릴 수 없어요 — 다시 신청하려면 새로 보내야 해요."
+          message="취소하면 되돌릴 수 없어요 — 재신청하려면 새로 보내야 해요."
           confirmLabel="취소하기"
           onConfirm={cancel}
           onCancel={() => setCancelConfirmOpen(false)}
