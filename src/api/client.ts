@@ -404,6 +404,11 @@ export const api = {
     await request<void>(`/api/matches/${id}`, { method: "DELETE" });
   },
 
+  // 모든 경기기록 삭제(운영자 제어판) — 첨부 파일까지 서버에서 함께 지운다. 삭제 건수 반환.
+  async deleteAllMatches(): Promise<{ deleted: number }> {
+    return request<{ deleted: number }>("/api/matches/all", { method: "DELETE" });
+  },
+
   // 정식 수정(updateMatch, 작성자/운영자 전용)과 달리 회원 누구나 남길 수 있는 가벼운 메모.
   async updateMatchMemo(id: number, note: string): Promise<Match> {
     const res = await request<WireMatch>(`/api/matches/${id}/memo`, {

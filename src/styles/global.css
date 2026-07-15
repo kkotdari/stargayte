@@ -3534,6 +3534,15 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   color: rgba(255,255,255,0.86); border: 1px solid rgba(255,255,255,0.3);
 }
 .scr-admin-panel-replay-download-btn:hover { background: rgba(255,255,255,0.1); }
+/* 모든 경기기록 삭제 — 파괴적 작업이라 경고(레드) 톤. */
+.scr-admin-panel-delete-all-btn {
+  width: 100%; max-width: 260px; margin: 8px auto 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; padding: 9px; border-radius: 999px;
+  color: #ff9a9a; border: 1px solid rgba(255,90,90,0.5); background: transparent;
+  text-shadow: none; box-shadow: none;
+}
+.scr-admin-panel-delete-all-btn:hover { background: rgba(255,90,90,0.12); }
 .scr-admin-panel-batch-bar { margin-top: 8px; }
 .scr-admin-panel-batch-counts { margin-top: 5px; font-size: 11px; color: rgba(255,255,255,0.8); text-align: center; }
 /* 무엇을 등록할지 고르는 선택지 — 배치 버튼 바로 아래에 펼쳐진다. 대상 버튼을 누르는 순간

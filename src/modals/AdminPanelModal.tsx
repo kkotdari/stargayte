@@ -60,6 +60,24 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
     }
   };
 
+  // 모든 경기기록 삭제 — 되돌릴 수 없는 파괴적 작업이라, "삭제"를 직접 입력해야 실행된다.
+  const deleteAllMatches = async () => {
+    const typed = window.prompt(
+      '모든 경기기록을 삭제합니다. 첨부 리플레이까지 지워지고 되돌릴 수 없어요.\n삭제하려면 "삭제"를 입력하세요.',
+    );
+    if (typed !== "삭제") return;
+    setBusy(true);
+    setErr("");
+    try {
+      const { deleted } = await api.deleteAllMatches();
+      window.alert(`${deleted}건의 경기기록을 삭제했어요.`);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "삭제하지 못했어요.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const currentNumber = versionNumber(appVersion);
   const [previewInput, setPreviewInput] = useState(String(currentNumber + 1));
 
@@ -217,12 +235,19 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
                   {/* 리플레이 폴더 일괄 등록 — 버튼을 누르면 바로 폴더 선택창이 뜬다.
                       운영자만 쓰는 데이터 적재용이라 버전 전환 아래에 조용히 둔다. */}
                   <ReplayBatchButton />
-                  {/* 등록된 리플레이 전체를 날짜별 폴더 zip으로 백업 다운로드(운영자). */}
+                  {/* 등록된 리플레이 전체를 zip으로 백업 다운로드(운영자). */}
                   <button
                     type="button" className="scr-btn scr-btn-ghost scr-admin-panel-replay-download-btn"
                     onClick={downloadReplays} disabled={downloading}
                   >
-                    {downloading ? <Spinner /> : "리플레이 전체 다운로드 (날짜별 폴더)"}
+                    {downloading ? <Spinner /> : "리플레이 전체 다운로드"}
+                  </button>
+                  {/* 모든 경기기록 삭제 — 되돌릴 수 없는 파괴적 작업이라 눈에 띄게 경고색으로. */}
+                  <button
+                    type="button" className="scr-btn scr-admin-panel-delete-all-btn"
+                    onClick={deleteAllMatches} disabled={busy}
+                  >
+                    {busy ? <Spinner /> : "모든 경기기록 삭제"}
                   </button>
                 </>
               )}
