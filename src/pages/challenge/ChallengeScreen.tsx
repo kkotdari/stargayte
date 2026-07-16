@@ -1069,11 +1069,16 @@ export default function ChallengeScreen() {
     <div className="scr-screen scr-challenge-screen-v2">
       <div className="scr-v2-toolbar">
         <h1 className="scr-title scr-v2-toolbar-title">너 나와!</h1>
-        <div className="scr-v2-toolbar-actions">
-          <button type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm" onClick={() => setFormOpen(true)}>
-            🕊️ 도전장 보내기
-          </button>
-        </div>
+        {/* 요청: "도전장 보내기를 오른쪽 상단에 플로팅 처리" — 타이틀과 같은 줄에서
+            폭을 다투는 그리드 칸 대신, 툴바(position:relative) 우측 상단에 얹는
+            오버레이로 뺀다. */}
+        <button
+          type="button"
+          className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm scr-challenge-send-float"
+          onClick={() => setFormOpen(true)}
+        >
+          🕊️ 도전장 보내기
+        </button>
       </div>
 
       <SearchFilterBar
