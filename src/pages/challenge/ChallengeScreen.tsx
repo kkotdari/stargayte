@@ -1018,26 +1018,27 @@ export default function ChallengeScreen() {
 
   return (
     <div className="scr-screen scr-challenge-screen-v2">
+      {/* 휴지통/도전장 보내기 — 수평으로 오른쪽 정렬하고, 스크롤해도 상단에 붙어 뜨는 플로팅
+          스티키다(요청). z-index는 날짜 스티키(9)보다 높아 그 위로 뜬다. 빈 좌측은 클릭을
+          통과시켜(pointer-events) 아래 목록을 가리지 않는다. */}
+      <div className="scr-challenge-float-actions">
+        <button
+          type="button"
+          className="scr-btn scr-btn-ghost scr-btn-sm scr-challenge-discarded-btn"
+          onClick={() => setDiscardedOpen(true)}
+        >
+          🗑️ 휴지통
+        </button>
+        <button
+          type="button"
+          className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm"
+          onClick={() => setFormOpen(true)}
+        >
+          🕊️ 도전장 보내기
+        </button>
+      </div>
       <div className="scr-v2-toolbar">
         <h1 className="scr-title scr-v2-toolbar-title">너 나와!</h1>
-        {/* 우측 상단에 버튼 두 개를 세로로 쌓는다 — 위에 "버려진 도전장"(🗑️), 아래에
-            "도전장 보내기"(요청: "휴지통 버튼을 보내기 버튼 위에"). */}
-        <div className="scr-v2-toolbar-actions scr-challenge-toolbar-actions">
-          <button
-            type="button"
-            className="scr-btn scr-btn-ghost scr-btn-sm scr-challenge-discarded-btn"
-            onClick={() => setDiscardedOpen(true)}
-          >
-            🗑️ 휴지통
-          </button>
-          <button
-            type="button"
-            className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm"
-            onClick={() => setFormOpen(true)}
-          >
-            🕊️ 도전장 보내기
-          </button>
-        </div>
       </div>
 
       <SearchFilterBar
