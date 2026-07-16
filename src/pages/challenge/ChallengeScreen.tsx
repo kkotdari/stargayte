@@ -735,6 +735,14 @@ function compareChallenges(a: Challenge, b: Challenge): number {
   return a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0;
 }
 
+// 휴지통 전용 정렬 — 최근 버려진 게 맨 위(요청: "최근 버려진게 위에 오게"). 폐기 시각
+// (discardedAt) 내림차순, 폐기 시각이 없으면(방어) 생성일로 보정한다.
+function compareByDiscardedDesc(a: Challenge, b: Challenge): number {
+  const aKey = a.discardedAt ?? a.createdAt;
+  const bKey = b.discardedAt ?? b.createdAt;
+  return aKey < bKey ? 1 : aKey > bKey ? -1 : 0;
+}
+
 // "버려진 도전장" 모달 — 흐지부지 끝나(무응답 거절/응답전 취소) 본 목록에서 감춘 초대장들을
 // 모아 보여준다(요청). 본 목록과 같은 날짜/시간 그루핑·카드 형식을 그대로 쓰되, 살짝 어두운
 // 톤에 스티키/필터/검색/타임라인 같은 부가 기능은 없고, 카드는 읽기 전용이라 어떤 응답/체인
@@ -743,7 +751,8 @@ function DiscardedChallengesModal(
   { challenges, myId, onClose }: { challenges: Challenge[]; myId: string | undefined; onClose: () => void },
 ) {
   useLockBodyScroll();
-  const groups = groupChallengesByDate(challenges);
+  // 휴지통은 날짜/시간 그루핑 없이 "최근 버려진 순"의 한 줄 목록으로 보여준다(요청: "최근
+  // 버려진게 위에 오게") — 목록은 이미 그 순서로 정렬돼 넘어온다.
   return createPortal(
     <div className="scr-modal-overlay" onClick={onClose}>
       <div className="scr-modal scr-discarded-modal" onClick={(e) => e.stopPropagation()}>
@@ -756,23 +765,9 @@ function DiscardedChallengesModal(
             <div className="scr-empty">휴지통이 비어 있어요</div>
           ) : (
             <div className="scr-challenge-list scr-discarded-list">
-              {groups.map((g) => (
-                <div key={g.label} className="scr-challenge-date-group">
-                  <div className="scr-challenge-date-head">{g.label}</div>
-                  {groupByTime(g.items).map((tg) => (
-                    <div key={tg.key} className="scr-challenge-time-group">
-                      {tg.timeLabel && (
-                        <div className="scr-challenge-time-head">
-                          <span className="scr-challenge-time-head-label">{tg.timeLabel}</span>
-                        </div>
-                      )}
-                      {tg.items.map((c) => (
-                        <div key={c.id} className="scr-challenge-card-slot">
-                          <ChallengeCard challenge={c} myId={myId} readOnly onResponded={() => {}} onViewResults={() => {}} />
-                        </div>
-                      ))}
-                    </div>
-                  ))}
+              {challenges.map((c) => (
+                <div key={c.id} className="scr-challenge-card-slot">
+                  <ChallengeCard challenge={c} myId={myId} readOnly onResponded={() => {}} onViewResults={() => {}} />
                 </div>
               ))}
             </div>
@@ -913,10 +908,11 @@ export default function ChallengeScreen() {
     ? sortedChallenges.filter((c) => c.status === "confirmed")
     : sortedChallenges;
 
-  // "버려진 도전장" 모달용 — 본 목록에서 감춘(무응답 거절/응답전 취소) 초대장 전부. 여긴
-  // 기간/검색 필터를 안 걸고(요청) 로드된 전체에서 골라 본 목록과 같은 정렬로 준다.
+  // "휴지통" 모달용 — 본 목록에서 감춘(거절/무응답/미실시/폐기) 초대장 전부. 여긴 기간/검색
+  // 필터를 안 걸고(요청) 로드된 전체에서 골라 "최근 버려진 순"으로 준다(요청: "최근 버려진게
+  // 위에 오게"). discardedAt 내림차순, 값이 없으면(방어) createdAt 기준.
   const discardedChallenges = useMemo(
-    () => challenges.filter(isDiscarded).sort(compareChallenges),
+    () => challenges.filter(isDiscarded).sort(compareByDiscardedDesc),
     [challenges],
   );
 
@@ -1020,7 +1016,7 @@ export default function ChallengeScreen() {
             className="scr-btn scr-btn-ghost scr-btn-sm scr-challenge-discarded-btn"
             onClick={() => setDiscardedOpen(true)}
           >
-            🗑️ 휴지통 열기
+            🗑️ 휴지통
           </button>
           <button
             type="button"

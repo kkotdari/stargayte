@@ -320,6 +320,8 @@ export interface Challenge {
   targets: ChallengeTarget[];
   ownMembers: ChallengeOwnMember[];
   createdAt: string;
+  // 폐기(휴지통)된 시각(ISO) — 폐기 상태가 아니면 null. 휴지통을 "최근 버려진 순"으로 정렬한다.
+  discardedAt: string | null;
   // 재대결(설욕전)로 만들어졌으면 원래 도전장의 id, 아니면 null. 값이 있으면 곧 재대결이다.
   reappliedFromId: number | null;
   // 확정 대결의 결과 — 아직 아무도 입력하지 않았으면 null.
