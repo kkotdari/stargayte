@@ -103,9 +103,10 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
   return createPortal(
     <div className="scr-modal-overlay">
       {/* 편지지(letter) — 봉투와는 완전히 별개인 카드다(요청: "봉투랑 편지지는 별도 모달").
-          봉투가 사라지는 순간 그 자리에서 카드째 확대되며 페이드인 등장한다(-emerge). */}
+          봉투가 사라지는 순간 그 자리에 애니메이션 없이 그냥 나타난다(요청: "편지지 확대
+          페이드인 제거 그냥 나오기"). */}
       {stage === "letter" && (
-        <div className="scr-modal scr-modal-sm scr-challenge-inbox-modal scr-challenge-inbox-emerge">
+        <div className="scr-modal scr-modal-sm scr-challenge-inbox-modal">
           <div className="scr-challenge-inbox-title">{title}</div>
           {/* 편지지 상단에 nawa 이미지를 크게, 동그랗게 크롭하고 가장자리를 그라데이션으로
               흐려서 배치한다. */}
