@@ -2,11 +2,8 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Spinner } from "../components/common/Feedback";
 import { api } from "../api/client";
-import { useAppStore } from "../store/appStore";
 import { useLockBodyScroll } from "../utils/bodyScrollLock";
 import { formatChallengeSchedule } from "../utils/date";
-import { MATCH_TYPE_INFO } from "../constants/matchTypes";
-import { cx } from "../utils/format";
 import type { Challenge } from "../types";
 
 interface ChallengeInboxModalProps {
@@ -18,18 +15,16 @@ interface ChallengeInboxModalProps {
 // 다음 도전장으로 넘어간다. 전부 처리되면 onClose로 부모가 닫는다.
 export default function ChallengeInboxModal({ challenges, onClose }: ChallengeInboxModalProps) {
   useLockBodyScroll();
-  const myId = useAppStore((s) => s.user?.id);
   const [idx, setIdx] = useState(0);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   // 처음엔 편지봉투만 보여주고, 잠시 뒤 자동으로 편지지(제목/내용/응답 폼)로 넘어간다
-  // (요청: "열어보기 버튼 제거하고 자동으로 열리게"). 연출은 세 단계 — "envelope"
-  // 동안 봉투가 좌우로 흔들리다가, "opening"에서 빠르게 확대되며 동시에 페이드아웃되고,
-  // "letter"의 편지지는 그 뒤에서 확대되며 페이드인 등장한다(요청: "봉투 좌우로
-  // 흔들리기 -> 봉투 빠르게 확대되면서 동시에 페이드아웃 -> 편지지 모달 뒤에서
-  // 확대되면서 페이드인되면서 등장"). 아래 useEffect 두 개가 각 단계를 정해진 시간만큼만
-  // 유지하고 다음 단계로 넘긴다.
-  const [stage, setStage] = useState<"envelope" | "opening" | "letter">("envelope");
+  // (요청: "열어보기 버튼 제거하고 자동으로 열리게"). 연출은 두 단계 — "envelope"
+  // 동안 봉투가 좌우로 흔들리다가, 흔들림이 끝나면 봉투는 페이드아웃 없이 그냥 사라지고
+  // (요청: "편지봉투 페이드아웃 제거 그냥 사라지기") "letter"의 편지지가 그 뒤에서
+  // 확대되며 페이드인 등장한다. 아래 useEffect가 봉투 단계를 정해진 시간만큼 유지하고
+  // 다음 단계로 넘긴다.
+  const [stage, setStage] = useState<"envelope" | "letter">("envelope");
   const [message, setMessage] = useState("");
   // 요청자가 "시간 지정"을 끄고 보낸(scheduledAt 없음) 도전장은 "상대가 정해도 된다"는
   // 뜻이다 — 승락하는 이 시점에 상대가 직접 정하게 한다(요청: "도전자/상대 모두 시간을
@@ -40,21 +35,17 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
 
   const current = challenges[idx];
 
-  // 봉투를 잠깐 보여준 뒤 자동으로 "opening"(터지는 연출)으로, 그 연출이 끝나면
-  // "letter"로 넘어간다. idx가 바뀌어 새 봉투(stage="envelope")가 뜰 때마다 다시 돈다.
+  // 봉투를 충분히 보여준 뒤 자동으로 "letter"로 넘어간다(봉투는 그냥 사라지고 편지지가
+  // 등장). idx가 바뀌어 새 봉투(stage="envelope")가 뜰 때마다 다시 돈다. 누가 보냈는지
+  // (봉투 위 제목)를 읽을 시간을 넉넉히 주려고 먼저 1.2초 가만히 있다가 흔들린다(요청:
+  // "누가 보낸건지 볼 시간이 짧아서 쉐이킹 전 1.2초 정지"). CSS 쪽 흔들림
+  // animation-delay(1.2s) + 느려진 지속시간(0.9s) = 2.1초에 맞춰 "letter"로 넘긴다.
   useEffect(() => {
     if (!current || stage !== "envelope") return;
-    const t = window.setTimeout(() => setStage("opening"), 1100);
+    const t = window.setTimeout(() => setStage("letter"), 2100);
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- idx가 바뀌면 stage도 항상 "envelope"로 함께 리셋되므로 stage만으로 충분
   }, [stage, idx]);
-  useEffect(() => {
-    if (stage !== "opening") return;
-    // 흔들림이 끝난 뒤 0.2초 멈췄다가 확대(CSS animation-delay)되므로, 그 멈춤(.2s) +
-    // 확대·페이드아웃 지속시간(.45s)을 다 채운 뒤에 편지지로 넘어간다.
-    const t = window.setTimeout(() => setStage("letter"), 650);
-    return () => window.clearTimeout(t);
-  }, [stage]);
 
   if (!current) { onClose(); return null; }
 
@@ -101,18 +92,21 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
     }
   };
 
-  // "함께" 줄은 팀전(2명 이상 지목)에서 나 말고 같이 지목된 상대가 있을 때만 보여준다 —
-  // 1:1이면 이미 상대가 나 하나뿐이라 중복이고, 나 자신의 이름만 나오면 어색하다.
-  const others = current.targets.filter((t) => t.memberId !== myId).map((t) => t.nickname);
+  // 팀전(0102)이면 양 팀을 한눈에 확인할 수 있게 나눠 보여준다(요청: "팀전의 경우 상대팀원과
+  // 우리팀 확인하기 좋게"). 상대팀(도전한 쪽) = 도전자(createdBy) + 그 팀원(ownMembers),
+  // 우리팀(지목된 쪽) = targets(나 포함).
+  const isTeamMatch = current.matchType === "0102";
+  const opposingTeam = [current.createdBy.nickname, ...current.ownMembers.map((m) => m.nickname)];
+  const ourTeam = current.targets.map((t) => t.nickname);
   const title = `${current.createdBy.nickname}님에게서 도전장이 도착했어요`;
 
   return createPortal(
     <div className="scr-modal-overlay">
       {/* 편지지(letter) — 봉투와는 완전히 별개인 카드다(요청: "봉투랑 편지지는 별도 모달").
-          봉투가 터지는 "opening"부터 그 뒤에서 카드째 확대되며 페이드인 등장하고(-emerge),
-          봉투가 사라진 뒤에도 그대로 남는다. */}
-      {stage !== "envelope" && (
-        <div className={cx("scr-modal scr-modal-sm scr-challenge-inbox-modal", stage === "opening" && "scr-challenge-inbox-emerge")}>
+          봉투가 사라지는 순간 그 자리에 애니메이션 없이 그냥 나타난다(요청: "편지지 확대
+          페이드인 제거 그냥 나오기"). */}
+      {stage === "letter" && (
+        <div className="scr-modal scr-modal-sm scr-challenge-inbox-modal">
           <div className="scr-challenge-inbox-title">{title}</div>
           {/* 편지지 상단에 nawa 이미지를 크게, 동그랗게 크롭하고 가장자리를 그라데이션으로
               흐려서 배치한다. */}
@@ -121,16 +115,18 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
             {current.message && (
               <p className="scr-challenge-inbox-message">"{current.message}"</p>
             )}
-            {others.length > 0 && (
-              <div className="scr-challenge-inbox-row">
-                <span className="scr-label">함께</span>
-                <span>{others.join(", ")}</span>
-              </div>
+            {isTeamMatch && (
+              <>
+                <div className="scr-challenge-inbox-row scr-challenge-inbox-team-row">
+                  <span className="scr-label scr-challenge-team-label scr-challenge-team-label-them">상대팀</span>
+                  <span className="scr-challenge-team-names">{opposingTeam.join(", ")}</span>
+                </div>
+                <div className="scr-challenge-inbox-row scr-challenge-inbox-team-row">
+                  <span className="scr-label scr-challenge-team-label scr-challenge-team-label-us">우리팀</span>
+                  <span className="scr-challenge-team-names">{ourTeam.join(", ")}</span>
+                </div>
+              </>
             )}
-            <div className="scr-challenge-inbox-row">
-              <span className="scr-label">종류</span>
-              <span>{MATCH_TYPE_INFO[current.matchType]}</span>
-            </div>
             <div className="scr-challenge-inbox-row">
               <span className="scr-label">일시</span>
               <span>{formatChallengeSchedule(current.scheduledAt)}</span>
@@ -197,15 +193,13 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
       )}
 
       {/* 편지봉투 — 편지지 카드와 한 몸이 아니라(요청) 오버레이 위에 겹치는 별도 레이어다.
-          카드 배경 없이 봉투 사진 + 제목만 스크림 위에 떠서, envelope에서 좌우로 흔들리다
-          opening에서 터지듯(확대+페이드아웃) 사라지며 뒤의 편지지를 드러낸다. */}
-      {stage !== "letter" && (
-        <div className={cx("scr-challenge-envelope-layer", stage === "opening" && "scr-challenge-envelope-layer-opening")}>
-          {/* opening에서는 제목+봉투를 통째로 하나처럼 확대·페이드아웃시켜(inner에 burst)
-              봉투가 완전히 터져 사라지며 뒤의 편지지(자기 제목 포함)가 드러나게 한다. */}
+          카드 배경 없이 봉투 사진 + 제목만 스크림 위에 떠서 envelope에서 좌우로 흔들리다,
+          흔들림이 끝나면 페이드아웃 없이 그냥 언마운트되어 사라진다(요청). */}
+      {stage === "envelope" && (
+        <div className="scr-challenge-envelope-layer">
           <div className="scr-challenge-envelope-inner">
             <div className="scr-challenge-inbox-title">{title}</div>
-            <div className={cx("scr-challenge-envelope scr-challenge-envelope-full", stage === "envelope" && "scr-challenge-envelope-shake")}>
+            <div className="scr-challenge-envelope scr-challenge-envelope-full scr-challenge-envelope-shake">
               <img src="/images/bg/letter.jpg" alt="" className="scr-challenge-envelope-img" />
             </div>
           </div>

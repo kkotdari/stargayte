@@ -7,7 +7,7 @@ import type {
   MatchSlot, MatchPage, MatchStatsResponse, MatchType, Race, TeamRankingResponse,
   MonthlyMatchStatsResponse, MonthlyTeamRankingResponse,
   ReplayNameClassificationEntry, ReplayNameKind, ReplayNameMappingEntry, ReplayNameMappingKind,
-  Challenge, ChallengeCreatePayload, ChallengeReapplyPayload, ChallengeResult,
+  Challenge, ChallengeCreatePayload, ChallengeRevengePayload, ChallengeResult,
 } from "../types";
 
 // undefined/""/"all"(필터 미지정 관례) 값은 아예 뺀 쿼리스트링을 만든다 — 서버는 파라미터가
@@ -573,21 +573,6 @@ export const api = {
     });
   },
 
-  // 요청자(도전자)가 확정 전에 스스로 취소한다 — 이미 전원이 승락한 뒤에는 취소할 수 없다.
-  async cancelChallenge(id: number): Promise<Challenge> {
-    return request<Challenge>(`/api/challenges/${id}/cancel`, {
-      method: "POST",
-    });
-  },
-
-  // 거절된 도전장을 재신청 — 시간/메모를 비우면 기존 값을 그대로 유지한다.
-  async reapplyChallenge(id: number, payload: ChallengeReapplyPayload = {}): Promise<Challenge> {
-    return request<Challenge>(`/api/challenges/${id}/reapply`, {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
-  },
-
   // 확정된 대결의 결과(이긴 쪽)를 입력 — 참가자 누구든 먼저 입력하는 쪽이 인정되고,
   // 예정 일시가 지난 뒤에만 가능하다. 이미 결과가 입력된 대결에는 다시 입력할 수 없다.
   async enterChallengeResult(id: number, winnerSide: ChallengeResult): Promise<Challenge> {
@@ -597,22 +582,12 @@ export const api = {
     });
   },
 
-  // 결과가 입력된 확정 대결에서 패배한 쪽이 같은 대진으로 설욕전을 신청 — 패배한 편이
-  // 새 도전장의 요청자, 승리한 편이 새 지목 대상이 된다(체인으로 이어진다). reapply와
-  // 같은 페이로드(시간/메모 선택)를 쓴다.
-  async requestRevenge(id: number, payload: ChallengeReapplyPayload = {}): Promise<Challenge> {
+  // 완료된 대결에서 패배한 쪽이 같은 대진으로 재대결(설욕전)을 신청 — 패배한 편이 새
+  // 도전장의 요청자, 승리한 편이 새 지목 대상이 된다(체인으로 이어진다).
+  async requestRevenge(id: number, payload: ChallengeRevengePayload = {}): Promise<Challenge> {
     return request<Challenge>(`/api/challenges/${id}/revenge`, {
       method: "POST",
       body: JSON.stringify(payload),
-    });
-  },
-
-  // 확정된 대결을 연기 — 도전자/상대 누구든 가능하고, 예정 일시가 지난 뒤에도 새 일시로
-  // 바꿀 수 있다. 잘못 입력됐을 수 있는 기존 결과는 서버가 새 일정으로 초기화한다.
-  async postponeChallenge(id: number, scheduledAt: string): Promise<Challenge> {
-    return request<Challenge>(`/api/challenges/${id}/postpone`, {
-      method: "POST",
-      body: JSON.stringify({ scheduledAt }),
     });
   },
 };

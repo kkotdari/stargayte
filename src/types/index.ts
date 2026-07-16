@@ -268,17 +268,15 @@ export interface AppVersionStatus {
 // 지목 인원수로 서버가 정한다(1명=1:1, 2명 이상=팀전).
 export type ChallengeMatchType = "0101" | "0102";
 export type ChallengeTargetResponse = "pending" | "accepted" | "rejected";
-// 지목된 전원이 승락하면 confirmed, 한 명이라도 거절하면 그 즉시 rejected, 요청자가
-// 확정 전에 스스로 취소하면 canceled, 그 외엔 pending.
-export type ChallengeStatus = "pending" | "confirmed" | "rejected" | "canceled";
-// 도전자 쪽/지목된 쪽 — 설욕전 신청 자격 판정(패배한 쪽) 등에 쓰인다.
+// 4개 상태만 있다 — 응답대기(pending)/성사(confirmed, 대결 대기)/완료(done)/폐기(discarded,
+// 휴지통). 거절·무응답·미실시·(레거시)취소는 모두 폐기로 통합됐다. 예정 시간이 지나도
+// 결과가 안 들어왔으면 계속 성사(confirmed)다.
+export type ChallengeStatus = "pending" | "confirmed" | "done" | "discarded";
+// 도전자 쪽/지목된 쪽 — 재대결 신청 자격 판정(패배한 쪽) 등에 쓰인다.
 export type ChallengeSide = "creator" | "target";
-// 확정 대결의 결과 — 이긴 쪽(creator/target) 외에 무승부(draw)/미실시(not_held)도 있다
-// (요청: "무승부나 미실시도 있게 해주고"). draw/not_held는 승패가 없어 설욕전 대상이 아니다.
+// 확정 대결의 결과 — 이긴 쪽(creator/target) 외에 무승부(draw)/미실시(not_held)도 있다.
+// not_held(미실시)는 완료가 아니라 폐기(휴지통)로 간다.
 export type ChallengeResult = "creator" | "target" | "draw" | "not_held";
-// reappliedFromId로 이어진 체인이 어떻게 생겼는지 — 거절/무응답만료 뒤 재신청("reapply")인지,
-// 확정+결과 입력 뒤 패배한 쪽의 설욕전("revenge")인지.
-export type ChallengeChainKind = "reapply" | "revenge";
 
 export interface ChallengeTarget {
   memberId: string;
@@ -300,8 +298,7 @@ export interface ChallengeOwnMember {
   avatar: string | null;
 }
 
-// 재신청 체인에서 이 도전장보다 앞선(더 예전) 기록 한 건 — 도전자/팀 구성은 체인
-// 내내 그대로라(재신청이 손대는 건 시간/메시지/응답뿐) 따로 안 담는다.
+// 재대결 체인에서 이 도전장보다 앞선(더 예전) 기록 한 건.
 export interface ChallengeHistoryEntry {
   id: number;
   scheduledAt: string | null;
@@ -311,8 +308,6 @@ export interface ChallengeHistoryEntry {
   createdAt: string;
   // 확정 대결의 결과 — 아직 아무도 입력하지 않았으면 null.
   resultWinnerSide: ChallengeResult | null;
-  // 재신청("reapply")으로 만들어진 기록인지 설욕전("revenge")인지 — 체인의 시작(원본)이면 null.
-  chainKind: ChallengeChainKind | null;
 }
 
 export interface Challenge {
@@ -325,14 +320,12 @@ export interface Challenge {
   targets: ChallengeTarget[];
   ownMembers: ChallengeOwnMember[];
   createdAt: string;
-  // 재신청/설욕전으로 만들어졌으면 원래 도전장의 id, 아니면 null.
+  // 재대결(설욕전)로 만들어졌으면 원래 도전장의 id, 아니면 null. 값이 있으면 곧 재대결이다.
   reappliedFromId: number | null;
-  // reappliedFromId가 있을 때만 의미 있음 — 재신청("reapply")인지 설욕전("revenge")인지.
-  chainKind: ChallengeChainKind | null;
   // 확정 대결의 결과 — 아직 아무도 입력하지 않았으면 null.
   resultWinnerSide: ChallengeResult | null;
   // 이 도전장보다 앞선 체인 기록(오래된 순) — 목록 화면 카드에서 좌우로 슬라이드해
-  // 보여준다. 재신청/설욕전 이력이 없으면 빈 배열.
+  // 보여준다. 재대결 이력이 없으면 빈 배열.
   history: ChallengeHistoryEntry[];
 }
 
@@ -344,8 +337,8 @@ export interface ChallengeCreatePayload {
   ownTeamMemberIds?: string[];
 }
 
-// 거절된 도전장을 재신청할 때 — 둘 다 생략하면 기존 시간/메모를 그대로 유지한다.
-export interface ChallengeReapplyPayload {
+// 재대결(설욕전)을 신청할 때 — 시간/메모는 생략할 수 있다.
+export interface ChallengeRevengePayload {
   scheduledAt?: string | null;
   message?: string;
 }

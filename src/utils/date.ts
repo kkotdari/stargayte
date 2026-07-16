@@ -178,6 +178,35 @@ export function challengeTimeLabel(scheduledAt: string | null): string | null {
   if (!scheduledAt) return null;
   return formatKoreanTime(new Date(scheduledAt));
 }
+
+// 두 날짜 사이를 달력 기준 "N개월 M일"로 — earlier <= later. 일수가 음수면 한 달을 빌려와
+// (later 직전 달의 일수만큼) 채운다. 시:분은 보지 않는 대략 표기라 같은 날이면 0개월 0일.
+function calendarMonthsDays(earlier: Date, later: Date): { months: number; days: number } {
+  let months = (later.getFullYear() - earlier.getFullYear()) * 12 + (later.getMonth() - earlier.getMonth());
+  let days = later.getDate() - earlier.getDate();
+  if (days < 0) {
+    months -= 1;
+    // later가 속한 달의 "0일" = 그 전 달의 마지막 날짜 = 전 달의 총 일수.
+    days += new Date(later.getFullYear(), later.getMonth(), 0).getDate();
+  }
+  return { months: Math.max(0, months), days: Math.max(0, days) };
+}
+
+// 페이징 있는 카드(재신청/재대결 이력)에서 지금 보는 페이지의 일시를 "얼마나 전/후 + 실제
+// 시각"으로 보여준다(요청: "1개월 23일 전 오후 7시 10분 이런식으로"). 하루 미만이면 "오늘".
+export function formatRelativeSchedule(scheduledAt: string | null): string {
+  if (!scheduledAt) return "일정 미정";
+  const d = new Date(scheduledAt);
+  const now = gameNow();
+  const past = d.getTime() <= now.getTime();
+  const [earlier, later] = past ? [d, now] : [now, d];
+  const { months, days } = calendarMonthsDays(earlier, later);
+  const parts: string[] = [];
+  if (months > 0) parts.push(`${months}개월`);
+  if (days > 0) parts.push(`${days}일`);
+  const when = parts.length > 0 ? `${parts.join(" ")} ${past ? "전" : "후"}` : "오늘";
+  return `${when} ${formatKoreanTime(d)}`;
+}
 export const MONTHS_KR = [
   "1월", "2월", "3월", "4월", "5월", "6월",
   "7월", "8월", "9월", "10월", "11월", "12월",
