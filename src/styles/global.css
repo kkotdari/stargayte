@@ -5408,16 +5408,15 @@ html.scr-light-theme .scr-challenge-next-tag {
    잘릴 이유가 없다 — 네 귀퉁이 전부 둥글게(요청: "모서리 네 귀퉁이 똑같이 래디우스
    걸어주고"). */
 .scr-challenge-envelope-full { margin: 0; border-radius: var(--radius); }
-/* 연출 1단계 — 봉투가 뜬 채로 3.15초(JS 타임아웃) 있다가 사라지는데, 처음
-   2.4초는 가만히 있어 누가 보냈는지(봉투 위 제목)를 읽을 시간을 준다(요청: "홀드 시간을
-   두배로" — 정지 시간 1.2s → 2.4s), 그 뒤에만 흔들린다. 좌우로 미끄러지는 대신
-   제어판이 등장할 때(scr-admin-panel-pop)처럼 살짝 커졌다가 회전하며 통통 튀는 "두둥"
-   바운스로, 예전보다 살짝 더 빠르게 흔든다(요청: "쉐이킹은 살짝 더 빠르게" — .9s → .75s).
-   animation-delay(2.4s) + 지속시간(.75s) = 3.15s로 JS 타임아웃과 맞춘다. 시작/끝을
-   안정 상태(scale 1 rotate 0)로 둬서 딜레이가 끝나며 튀는 잔프레임(점프) 없이 이어진다. */
+/* 연출 1단계 — 봉투가 뜨자마자(딜레이 0) 흔들리고, 그 다음 가만히 멈춰 있다가 사라진다
+   (요청: "편지봉투 애니메이션 순서 변경 — 등장할때 쉐이크 그리고 정지 하다가 사라지기").
+   좌우로 미끄러지는 대신 제어판이 등장할 때(scr-admin-panel-pop)처럼 살짝 커졌다가 회전하며
+   통통 튀는 "두둥" 바운스. 흔들림(.75s)이 끝나면 안정 상태(scale 1 rotate 0)로 멈춰 있고,
+   JS 타임아웃(3.15s)이 될 때까지 그대로 정지(≈2.4s)했다가 언마운트되어 사라진다. 시작/끝을
+   같은 안정 상태로 둬서 흔들림이 끝난 뒤 정지로 튀는 잔프레임(점프) 없이 이어진다. */
 .scr-challenge-envelope-shake {
   transform-origin: center;
-  animation: scr-challenge-envelope-shake .75s cubic-bezier(.34, 1.4, .64, 1) 2.4s;
+  animation: scr-challenge-envelope-shake .75s cubic-bezier(.34, 1.4, .64, 1) 0s;
 }
 @keyframes scr-challenge-envelope-shake {
   0%   { transform: scale(1) rotate(0deg); }
