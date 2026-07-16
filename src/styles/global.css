@@ -1764,9 +1764,6 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   font-size: 14px; color: var(--dim); white-space: nowrap;
   min-width: 0; overflow: hidden; text-overflow: ellipsis;
 }
-/* 승점(승-패) — 전적 바로 아래 줄에(요청: "개인 카드에 승점도 표시"). record-wrap이
-   세로 컬럼(우측 정렬)이라 전적 밑에 오른쪽 맞춰 붙는다. */
-.scr-rank-points { font-size: 12px; font-weight: 700; color: var(--muted); white-space: nowrap; }
 /* 최근 일대일 경기 한 줄 — "vs 상대이름 승/패" 세 조각을 한 덩이로 말줄임하면 상대 이름이
    길 때 정작 승/패 표시까지 잘려 안 보였다(실제로 지적받은 문제) — 상대 이름 칸만 따로
    줄어들며(min-width:0) 말줄임되게 하고, "vs"와 승/패 표시는 flex:none으로 항상 온전히

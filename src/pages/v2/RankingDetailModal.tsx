@@ -11,7 +11,7 @@ import { MONTHS_KR } from "../../utils/date";
 import type { Match, MatchType, Member } from "../../types";
 import type { RankTrendPoint } from "./rank";
 
-interface RankTrendModalProps {
+interface RankingDetailModalProps {
   members: Member[];
   // members가 여럿(팀)이면 이름을 이어붙여 보여준다.
   points: RankTrendPoint[] | null; // null이면 아직 불러오는 중.
@@ -39,7 +39,7 @@ function monthLabel(month: string): string {
 // 경기 이력 전체(요청: "랭킹 상세에 그래프 아래에 경기 이력 보여주기"). 그 달에 순위 대상이
 // 아니었으면(한 판도 안 뛰었거나 인원수 필터에 안 맞았거나) rank가 null이라 그 지점은 선을
 // 잇지 않고 건너뛴다.
-export default function RankTrendModal({ members, points, matchType, onClose }: RankTrendModalProps) {
+export default function RankingDetailModal({ members, points, matchType, onClose }: RankingDetailModalProps) {
   useLockBodyScroll();
   const memberOf = useAppStore((s) => s.memberOf);
   const title = members.map((m) => m.nickname).join(", ");

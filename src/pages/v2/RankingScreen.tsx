@@ -5,7 +5,7 @@ import PillTabs from "../../components/common/PillTabs";
 import FilterItem from "../../components/common/FilterItem";
 import RankRow from "./RankRow";
 import TeamRankRow from "./TeamRankRow";
-import RankTrendModal from "./RankTrendModal";
+import RankingDetailModal from "./RankingDetailModal";
 import {
   computeRankRows, computeSoloRankTrend, computeTeamRankRows, computeTeamRankTrend, SOLO_MATCH_TYPE,
   type RankMode, type RankRow as RankRowData, type RankTrendPoint, type TeamRankRow as TeamRankRowData,
@@ -240,7 +240,7 @@ export default function RankingScreenV2() {
         <TeamMatchesModal members={teamMatches} onClose={() => setTeamMatches(null)} />
       )}
       {trendMembers && (
-        <RankTrendModal
+        <RankingDetailModal
           members={trendMembers}
           points={trendPoints}
           // 일대일 랭킹이면 그 회원의 일대일 경기만, 팀 랭킹이면 그 팀 구성 경기 전부.

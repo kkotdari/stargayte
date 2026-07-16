@@ -67,12 +67,17 @@ export default function RankRowV2({ row, tiedWithPrev = false, highlighted = fal
           <div className="scr-rank-name-wrap">
             <span className="scr-rank-name">{member.nickname}</span>
           </div>
+          {/* 승점/전적을 팀 랭킹 카드와 같은 배치로 통일(요청: "승점과 전적 위치도 통일") —
+              승점을 위에 큼직하게("+N점"), 전적을 그 아래에. 승점이 순위를 가르는 기준이라
+              숫자로 도드라지게 한다. */}
           <div className="scr-rank-record-wrap">
+            <span className="scr-mono scr-rank-stat-primary">
+              {points > 0 ? `+${points}` : points}<span className="scr-num-unit">점</span>
+            </span>
             <RecordText
               className="scr-rank-record-v2"
               plays={stats.plays} wins={stats.wins} losses={stats.losses} draws={stats.draws}
             />
-            <span className="scr-rank-points">승점 {points > 0 ? `+${points}` : points}</span>
           </div>
         </div>
       </div>
