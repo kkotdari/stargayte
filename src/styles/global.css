@@ -3505,7 +3505,7 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    grid에서 완전히 빼고, "버전보기"를 누르면 뜨는 별도 팝업(.scr-admin-panel-version-popup)
    안으로 옮긴다. 이제 "버전보기"는 다른 버튼들과 똑같은 순수 .scr-admin-panel-phys-btn. */
 .scr-admin-panel-version-popup .scr-modal-body {
-  align-items: center; gap: 16px; padding: 6px 0 4px;
+  align-items: center; gap: 16px; padding: 0 0 28px;
 }
 /* 브라우저 기본 number 스피너(입력칸 오른쪽에 붙는 위아래 화살표) 대신, 인풋 위/아래에
    삼각형 화살표 버튼을 세로로 쌓아 그걸로 값을 조절한다. */

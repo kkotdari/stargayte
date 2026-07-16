@@ -312,7 +312,7 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
                 </button>
               </div>
               {err && <div className="scr-err">{err}</div>}
-              <button type="button" className="scr-btn scr-btn-primary" onClick={startPreview}>
+              <button type="button" className="scr-btn scr-btn-primary scr-btn-sm" onClick={startPreview}>
                 미리보기 시작
               </button>
             </div>
