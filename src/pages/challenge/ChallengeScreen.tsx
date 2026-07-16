@@ -261,6 +261,13 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
     : challenge.resultWinnerSide === "target" ? "creator"
     : null;
   const canRevenge = !readOnly && challenge.status === "done" && losingSide !== null && mySide === losingSide;
+  // "취소" — 아무도 응답하지 않은 채 폐기(휴지통)로 끝난 건(응답 전 취소/흐지부지). 응답 후
+  // 취소는 이제 없다(요청). 거절/버림(응답 있음)·미실시(결과 있음)와 구분해 휴지통에서
+  // 우상단 "취소" 라벨로 표시한다(요청: "응답전 취소 건은 휴지통에서 '취소' 라벨 우상단에").
+  const isCanceled =
+    challenge.status === "discarded"
+    && challenge.resultWinnerSide === null
+    && challenge.targets.every((t) => t.response === "pending");
 
   // 재신청/설욕전 이력(오래된 순) 뒤에 지금 살아있는 도전장을 붙여 "페이지" 목록을 만든다 —
   // 기본으로는 맨 뒤(최신)를 보여준다. 이력이 없으면 페이지가 하나뿐이라 슬라이드 UI 자체가
@@ -411,6 +418,9 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
 
   return (
     <div className="scr-challenge-card">
+      {/* 응답 전 취소(아무도 응답 안 하고 폐기)된 건은 휴지통에서 우상단에 "취소" 라벨로
+          표시한다(요청). 거절/버림/미실시와는 응답·결과 유무로 구분된다. */}
+      {isCanceled && <span className="scr-challenge-cancel-tag">취소</span>}
       <div className="scr-challenge-card-body">
         {/* 내용은 페이드 없이 즉시 교체, 패널은 높이만 모핑(위 useLayoutEffect가 실측
             높이를 인라인으로 박고 CSS transition이 애니메이션)한다. 마감 카운트다운/승리
