@@ -23,9 +23,12 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   // 처음엔 편지봉투만 보여주고, 잠시 뒤 자동으로 편지지(제목/내용/응답 폼)로 넘어간다
-  // (요청: "열어보기 버튼 제거하고 자동으로 열리게"). "opening"은 봉투가 확대되며
-  // 잔상을 남기고 페이드아웃하는 동안, 편지지가 뒤에서 확대되며 나타나는 전환 단계 —
-  // 아래 useEffect 두 개가 각 단계를 정해진 시간만큼만 유지하고 다음 단계로 넘긴다.
+  // (요청: "열어보기 버튼 제거하고 자동으로 열리게"). 연출은 세 단계 — "envelope"
+  // 동안 봉투가 좌우로 흔들리다가, "opening"에서 빠르게 확대되며 동시에 페이드아웃되고,
+  // "letter"의 편지지는 그 뒤에서 확대되며 페이드인 등장한다(요청: "봉투 좌우로
+  // 흔들리기 -> 봉투 빠르게 확대되면서 동시에 페이드아웃 -> 편지지 모달 뒤에서
+  // 확대되면서 페이드인되면서 등장"). 아래 useEffect 두 개가 각 단계를 정해진 시간만큼만
+  // 유지하고 다음 단계로 넘긴다.
   const [stage, setStage] = useState<"envelope" | "opening" | "letter">("envelope");
   const [message, setMessage] = useState("");
   // 요청자가 "시간 지정"을 끄고 보낸(scheduledAt 없음) 도전장은 "상대가 정해도 된다"는
@@ -47,7 +50,9 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
   }, [stage, idx]);
   useEffect(() => {
     if (stage !== "opening") return;
-    const t = window.setTimeout(() => setStage("letter"), 550);
+    // 흔들림이 끝난 뒤 0.2초 멈췄다가 확대(CSS animation-delay)되므로, 그 멈춤(.2s) +
+    // 확대·페이드아웃 지속시간(.45s)을 다 채운 뒤에 편지지로 넘어간다.
+    const t = window.setTimeout(() => setStage("letter"), 650);
     return () => window.clearTimeout(t);
   }, [stage]);
 
@@ -119,6 +124,7 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
           <div
             className={cx(
               "scr-challenge-envelope scr-challenge-envelope-full",
+              stage === "envelope" && "scr-challenge-envelope-shake",
               stage === "opening" && "scr-challenge-envelope-opening",
             )}
           >
