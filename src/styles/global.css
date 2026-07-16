@@ -4873,7 +4873,10 @@ html.scr-light-theme .scr-challenge-next-tag {
    헤더/툴바/검색줄, 아래쪽은 탭바를 비켜 배치한다. */
 .scr-challenge-timeline {
   position: fixed; right: 6px; z-index: 40;
-  top: calc(var(--safe-top) + 96px);
+  /* 우측 상단에 세로로 쌓인 버튼(휴지통/도전장 보내기) 아래에서 시작하게 한다(요청:
+     "타임라인 상단이 버튼보다 낮게 위치하게") — 헤더(~50) + 본문 상단여백(~30) + 버튼
+     2단 스택(~72)이 대략 안전영역+150 부근에서 끝나므로, 그 아래로 내려 겹치지 않게. */
+  top: calc(var(--safe-top) + 160px);
   bottom: calc(var(--mobile-footer-h) + env(safe-area-inset-bottom, 0px) + 40px);
   display: flex; flex-direction: column; align-items: center; gap: 6px;
   opacity: 0; pointer-events: none; transition: opacity 0.25s ease;
