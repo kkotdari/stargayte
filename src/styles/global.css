@@ -4793,6 +4793,18 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
+/* 휴지통 카드는 폐기건이라 승자가 없어 손 이모지(👉) 양옆 승/무 배지가 늘 숨김인데도
+   visibility:hidden으로 각 20px씩 자리를 예약해, 좁은 카드(모달 안이라 본 목록보다 좁다)
+   에서 상대편 닉네임 공간을 깎아먹었다(요청: "버려진 카드 상대편 프로필 왼쪽으로 이동해서
+   닉네임 공간 확보"). 숨겨진 배지는 아예 자리를 걷어(display:none) 그만큼 양쪽 닉네임
+   폭을 넓히고, 요소(프사+닉네임+응답표시)가 더 많은 상대편에 폭을 조금 더 준다. 실제로
+   보이는 승 배지(재대결 이력 중 완료된 페이지)는 -hidden이 아니라 그대로 남는다. */
+.scr-discarded-list .scr-challenge-inline-win-hidden { display: none; }
+.scr-discarded-list .scr-challenge-side-target { flex: 1.35 1 0; }
+@media (min-width: 641px) {
+  /* 넓은 화면(모달 폭 여유)에서는 본 목록처럼 좌우 대칭으로 되돌린다. */
+  .scr-discarded-list .scr-challenge-side-target { flex: 1 1 0; }
+}
 /* 경기 목록의 날짜 줄(.scr-match-date-head)과 같은 이유로 스티키 — 헤더가 스크롤 영역
    밖의 flex 형제로 항상 떠 있고 목록은 그 아래 스크롤 컨테이너에서 시작하므로 top:0으로
    충분하다(요청: "너 나와 목록도 경기 목록처럼 날짜로 그루핑 하니까 스티키 플로팅
