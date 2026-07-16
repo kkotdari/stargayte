@@ -5229,6 +5229,11 @@ html.scr-light-theme .scr-challenge-next-tag {
 .scr-challenge-accept-btn:hover { background: #f281b7; }
 .scr-challenge-reject-btn { background: #17171a; }
 .scr-challenge-reject-btn:hover { background: #262629; }
+/* "고민중"(ghost) 버튼은 투명 배경 + 흰 테두리라 아이보리 편지지 위에서 테두리가 안 보였다
+   (요청: "고민중 버튼 테두리가 안보여") — 이 모달에선 편지지 톤에 맞춰 어두운 테두리로
+   또렷하게 잡는다. */
+.scr-challenge-inbox-body .scr-btn-ghost { border-color: rgba(42, 36, 32, 0.42); }
+.scr-challenge-inbox-body .scr-btn-ghost:hover { border-color: rgba(42, 36, 32, 0.72); }
 
 /* 결과 입력 폼(카드 인라인 + 인박스 팝업 공용) — 구성원을 그대로 보여주고 승리팀을
    눌러 고른다(요청: "구성원이 노출되고 승리팀을 고르는게 좋을듯. 무승부나 미실시도"). */
@@ -5394,8 +5399,11 @@ html.scr-light-theme .scr-challenge-next-tag {
    길게 늘어놓아 잘 읽히게 한다. 이름이 많으면 줄바꿈해서 다 보이게. */
 .scr-challenge-inbox-team-row { align-items: flex-start; }
 .scr-challenge-team-label { font-weight: 800; flex-shrink: 0; }
-.scr-challenge-team-label-them { color: #c0392b; }
-.scr-challenge-team-label-us { color: #2f6db5; }
+/* 상대팀/우리팀을 산뜻한 색으로 구분한다(요청: "컬러 좀더 산뜻하게") — 칙칙한 벽돌색/
+   남색 대신 밝고 맑은 코랄 레드와 시원한 스카이 블루로. 아이보리 편지지 위에서도 굵은
+   글자라 또렷하게 읽힌다. */
+.scr-challenge-team-label-them { color: #f2555a; }
+.scr-challenge-team-label-us { color: #1aa3d6; }
 .scr-challenge-team-names { font-weight: 700; text-align: right; }
 /* 편지지를 연 뒤 상단에 크게 넣는 nawa 이미지 — 사각형 대신 가로로 긴 타원으로 크롭하고
    (요청: "nawa 사진 가로로 긴 타원형으로 크롭") 가장자리를 그라데이션으로 흐린다(요청:

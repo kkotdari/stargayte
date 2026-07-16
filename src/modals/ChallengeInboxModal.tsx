@@ -2,10 +2,8 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Spinner } from "../components/common/Feedback";
 import { api } from "../api/client";
-import { useAppStore } from "../store/appStore";
 import { useLockBodyScroll } from "../utils/bodyScrollLock";
 import { formatChallengeSchedule } from "../utils/date";
-import { MATCH_TYPE_INFO } from "../constants/matchTypes";
 import { cx } from "../utils/format";
 import type { Challenge } from "../types";
 
@@ -18,7 +16,6 @@ interface ChallengeInboxModalProps {
 // 다음 도전장으로 넘어간다. 전부 처리되면 onClose로 부모가 닫는다.
 export default function ChallengeInboxModal({ challenges, onClose }: ChallengeInboxModalProps) {
   useLockBodyScroll();
-  const myId = useAppStore((s) => s.user?.id);
   const [idx, setIdx] = useState(0);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -106,10 +103,10 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
 
   // 팀전(0102)이면 양 팀을 한눈에 확인할 수 있게 나눠 보여준다(요청: "팀전의 경우 상대팀원과
   // 우리팀 확인하기 좋게"). 상대팀(도전한 쪽) = 도전자(createdBy) + 그 팀원(ownMembers),
-  // 우리팀(지목된 쪽) = targets(나 포함) — 그중 나는 "(나)"로 표시해 바로 알아보게 한다.
+  // 우리팀(지목된 쪽) = targets(나 포함).
   const isTeamMatch = current.matchType === "0102";
   const opposingTeam = [current.createdBy.nickname, ...current.ownMembers.map((m) => m.nickname)];
-  const ourTeam = current.targets.map((t) => (t.memberId === myId ? `${t.nickname} (나)` : t.nickname));
+  const ourTeam = current.targets.map((t) => t.nickname);
   const title = `${current.createdBy.nickname}님에게서 도전장이 도착했어요`;
 
   return createPortal(
@@ -139,10 +136,6 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
                 </div>
               </>
             )}
-            <div className="scr-challenge-inbox-row">
-              <span className="scr-label">종류</span>
-              <span>{MATCH_TYPE_INFO[current.matchType]}</span>
-            </div>
             <div className="scr-challenge-inbox-row">
               <span className="scr-label">일시</span>
               <span>{formatChallengeSchedule(current.scheduledAt)}</span>
