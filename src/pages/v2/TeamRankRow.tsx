@@ -1,4 +1,3 @@
-import type { MouseEvent } from "react";
 import Avatar from "../../components/common/Avatar";
 import RecordText from "../../components/common/RecordText";
 import RankDeltaBadge from "./RankDeltaBadge";
@@ -12,12 +11,9 @@ interface TeamRankRowProps {
   // 유저 검색으로 이 팀이 남은 이유가 된 사람들 — 팀에 4명이 있으면 누구 때문에 걸렸는지
   // 한눈에 안 보여서, 검색어에 걸린 사람만 반전색으로 도드라지게 한다.
   highlightMemberIds?: Set<string>;
-  // 전적 자리를 누르면 이 팀이 함께 뛴 경기 목록을 연다(이벤트 버블링을 막아 카드 클릭과
-  // 구분한다).
-  onOpenMatches?: () => void;
-  // 카드(행) 전체를 누르면 뜨는 최근 5개월 순위변동 모달(요청: "랭킹 카드 클릭시 최근
-  // 5개월 순위변동 모달창 노출") — 예전엔 카드 전체 클릭이 경기 목록이었지만, 그 자리를
-  // 순위변동 모달에 내주고 경기 목록은 전적 자리의 별도 클릭으로 옮겼다.
+  // 카드(행) 전체를 누르면 뜨는 상세 모달(최근 5개월 순위변동 + 이 팀이 함께 뛴 경기 이력).
+  // 개인전 카드와 똑같이 카드 클릭 하나로 그래프와 경기 이력을 모두 보여준다(요청: 팀도
+  // 개인처럼 "카드 클릭 → 상세 모달(그래프+이력)" 하나로 통합).
   onOpenTrend?: () => void;
 }
 
@@ -25,20 +21,15 @@ interface TeamRankRowProps {
 // 위→아래)가 대신하고, 승률 자리에는 승점과 전적을 위아래로 쌓는다. 승점은 이 랭킹의 1순위
 // 정렬 기준이라 숫자로 보여줘야 순서가 납득된다(전적만으론 왜 이 팀이 위인지 안 보인다).
 //
-// 카드를 누르면 최근 5개월 순위변동 모달이, 전적(승점/전적) 자리를 누르면 이 팀이 함께
-// 뛴 경기 목록이 열린다. 개인전 행과 달리 프사를 눌러 사진뷰어를 여는 동작은 없다.
+// 카드를 누르면 상세 모달(최근 5개월 순위변동 그래프 + 함께 뛴 경기 이력)이 열린다.
+// 개인전 행과 달리 프사를 눌러 사진뷰어를 여는 동작은 없다.
 //
 // 구성원 순서는 서버가 개인 승점 높은 순으로 정렬해서 보내준다(그 팀의 "에이스"가 왼쪽 위).
 // 2:2면 두 칸, 3:3이면 세 칸이 차고 남는 칸은 비운다.
 export default function TeamRankRow({
-  row, tiedWithPrev = false, highlightMemberIds, onOpenMatches, onOpenTrend,
+  row, tiedWithPrev = false, highlightMemberIds, onOpenTrend,
 }: TeamRankRowProps) {
   const { members, rank, rankDelta, entry } = row;
-
-  const openMatches = (e: MouseEvent) => {
-    e.stopPropagation();
-    onOpenMatches?.();
-  };
 
   return (
     <div className={cx("scr-rank-row", "scr-team-rank-row", tiedWithPrev && "scr-rank-row-tied")}>
@@ -68,12 +59,7 @@ export default function TeamRankRow({
             </div>
           ))}
         </div>
-        <div
-          className={cx("scr-team-rank-stats", onOpenMatches && "scr-team-rank-stats-clickable")}
-          onClick={onOpenMatches ? openMatches : undefined}
-          role={onOpenMatches ? "button" : undefined}
-          tabIndex={onOpenMatches ? 0 : undefined}
-        >
+        <div className="scr-team-rank-stats">
           {/* 승점은 음수도 흔해서(패가 많은 팀) 양수일 때만 부호를 붙여 "+4 / -4"로 읽히게 한다. */}
           <span className="scr-mono scr-rank-stat-primary">
             {entry.points > 0 ? `+${entry.points}` : entry.points}<span className="scr-num-unit">점</span>

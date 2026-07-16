@@ -14,7 +14,6 @@ import {
 import { activeMemberSearchTerms, memberMatchesTerm, splitSearchTerms } from "../../utils/memberSearch";
 import { currentMonthValue, MONTHS_KR } from "../../utils/date";
 import { useAppStore } from "../../store/appStore";
-import TeamMatchesModal from "../../modals/TeamMatchesModal";
 import type { BaseRace, Member } from "../../types";
 
 // 차트 필터 하나로 통합 — 예전엔 "개인/팀"을 고른 뒤 팀에서만 인원(2/3/4인) 라디오가
@@ -71,12 +70,9 @@ export default function RankingScreenV2() {
 
   const [rows, setRows] = useState<RankRowData[]>([]);
   const [teamRows, setTeamRows] = useState<TeamRankRowData[]>([]);
-  // 카드를 누른 팀 — 그 팀이 함께 뛴 경기 목록 모달을 연다(null이면 안 열림).
-  const [teamMatches, setTeamMatches] = useState<Member[] | null>(null);
-  // 일대일 행의 "최근 경기" 줄을 눌렀을 때 — 그 회원의 일대일 경기 목록 모달을 연다
-  // (팀 랭킹과 같은 TeamMatchesModal을 재활용, members가 한 명뿐인 배열이라는 점만 다르다).
-  // 카드(행) 클릭 — 최근 5개월 순위변동 모달. trendMembers가 null이면 안 열림, trendPoints가
-  // null이면 그 안에서 아직 불러오는 중.
+  // 카드(행) 클릭 — 상세 모달(최근 5개월 순위변동 그래프 + 경기 이력). 개인·팀 모두 카드
+  // 클릭 하나로 이 모달을 연다. trendMembers가 null이면 안 열림, trendPoints가 null이면
+  // 그 안에서 아직 불러오는 중.
   const [trendMembers, setTrendMembers] = useState<Member[] | null>(null);
   const [trendPoints, setTrendPoints] = useState<RankTrendPoint[] | null>(null);
   const [loading, setLoading] = useState(true);
@@ -213,7 +209,6 @@ export default function RankingScreenV2() {
                 // 문제). 검색 중에는 묶지 않고 모든 행이 자기 순위를 그대로 보여준다.
                 tiedWithPrev={searchTerms.length === 0 && i > 0 && row.rank === visibleTeamRows[i - 1].rank}
                 highlightMemberIds={highlightMemberIds}
-                onOpenMatches={() => setTeamMatches(row.members)}
                 onOpenTrend={() => openTeamTrend(row)}
               />
             ))
@@ -236,9 +231,6 @@ export default function RankingScreenV2() {
         </div>
       </div>
 
-      {teamMatches && (
-        <TeamMatchesModal members={teamMatches} onClose={() => setTeamMatches(null)} />
-      )}
       {trendMembers && (
         <RankingDetailModal
           members={trendMembers}

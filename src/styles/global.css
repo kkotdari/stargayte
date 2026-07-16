@@ -1994,9 +1994,6 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   padding: 2px 4px; margin: -2px -4px;
 }
 .scr-team-rank-stats { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; justify-self: end; }
-/* 카드 전체 클릭이 순위변동 모달로 바뀌면서, 경기 목록은 이 자리(승점/전적)만의 별도
-   클릭 대상이 됐다 — 밑줄로 살짝 링크처럼 보이게 구분한다(개인전 최근 경기와 같은 톤). */
-.scr-team-rank-stats-clickable { cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
 .scr-team-rank-record { font-size: 16.5px; color: var(--dim); white-space: nowrap; }
 @media (max-width: 640px) {
   .scr-rank-table-panel-v2 .scr-team-rank-row { padding: 7px 0; }

@@ -62,8 +62,8 @@ export default function RankingDetailModal({ members, points, matchType, onClose
     else segments.push([{ month: p.month, rank: p.rank, i }]);
   });
 
-  // 그래프 아래 경기 이력 — 이 회원(팀)이 뛴 경기를 서버에서 받아온다(TeamMatchesModal과 같은
-  // 방식: teamMemberIds로 "그 구성이 같은 편으로 뛴 경기"만). 일대일이면 matchType="0101".
+  // 그래프 아래 경기 이력 — 이 회원(팀)이 뛴 경기를 서버에서 받아온다(teamMemberIds로 "그
+  // 구성이 같은 편으로 뛴 경기"만 거른다). 일대일이면 matchType="0101".
   const [matches, setMatches] = useState<Match[]>([]);
   const [matchesLoading, setMatchesLoading] = useState(true);
   const [matchesErr, setMatchesErr] = useState("");

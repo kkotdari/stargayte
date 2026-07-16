@@ -18,8 +18,8 @@ import type {
 export type RankMode = "solo" | "team";
 export type TeamSize = 2 | 3 | 4;
 
-// "일대일"은 말 그대로 1:1 경기만 집계한다(팀전에서의 개인 전적은 섞지 않는다). 최근 경기
-// 모달(TeamMatchesModal 재활용)을 열 때도 같은 값으로 걸러야 해서 export한다.
+// "일대일"은 말 그대로 1:1 경기만 집계한다(팀전에서의 개인 전적은 섞지 않는다). 랭킹 상세
+// 모달의 경기 이력을 그 회원의 일대일 경기로만 거를 때도 같은 값을 써서 export한다.
 export const SOLO_MATCH_TYPE = "0101";
 
 export interface LatestMatch {
@@ -49,7 +49,7 @@ export interface RankRow {
 // 전체 회원의 최근 일대일 경기 중 이만큼만 가져와서 "회원별 최근 1경기"를 뽑는다 — 회원별로
 // 따로 조회하면 회원 수만큼 요청이 나가므로, 한 번에 넉넉히 받아 클라이언트에서 나눠 담는다.
 // 이 표본보다 더 오래전에만 뛴 회원은 최근 경기가 없는 것으로 처리된다(허용 가능한 손실 —
-// TeamMatchesModal의 100건 캡과 같은 절충). 서버 GET /matches의 limit 상한(le=100)을
+// 랭킹 상세 모달 경기 이력의 100건 캡과 같은 절충). 서버 GET /matches의 limit 상한(le=100)을
 // 넘길 수 없다 — 그 이상을 요청하면 422로 거절된다.
 const LATEST_MATCH_SAMPLE_SIZE = 100;
 
