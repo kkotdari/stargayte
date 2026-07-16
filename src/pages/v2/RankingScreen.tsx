@@ -12,7 +12,7 @@ import {
   type TeamSize,
 } from "./rank";
 import { activeMemberSearchTerms, memberMatchesTerm, splitSearchTerms } from "../../utils/memberSearch";
-import { currentMonthValue, MONTHS_KR } from "../../utils/date";
+import { rankingMonthValue, MONTHS_KR } from "../../utils/date";
 import { useAppStore } from "../../store/appStore";
 import type { BaseRace, Member } from "../../types";
 
@@ -46,7 +46,10 @@ export default function RankingScreenV2() {
   const teamSize = (chart === "solo" ? 4 : Number(chart)) as TeamSize;
   const [race, setRace] = useState<BaseRace | "all">("all");
   const [search, setSearch] = useState("");
-  const month = currentMonthValue();
+  // 집계 월은 그레이스 기간이 붙는다 — 매월 1일 20시 전까지는 아직 전월 랭킹을 보여준다
+  // (요청: "그레이스기간 적용 매월 1일 20시까지는 전월 랭킹 표시"). rankingMonthValue가 그
+  // 판단까지 해서 "YYYY-MM"을 준다.
+  const month = rankingMonthValue();
 
   // 개인/각 인원수 팀은 집계 대상 자체가 다른 별도 목록이라, 한쪽에서 걸어둔 검색어·종족
   // 필터를 다른 쪽으로 들고 가면 그 화면에 아무도 안 걸린 채로 남거나 무의미한 필터가
