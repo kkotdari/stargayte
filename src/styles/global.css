@@ -1798,14 +1798,15 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    위아래로 어두운 그라데이션(스크림)을 겹쳐 깐다. */
 /* 이제 배경 사진은 랭킹 하나만 쓴다 — 예전엔 챌린지(battle2.jpg)/경기(space3.jpg)에도
    각자 사진을 깔았지만 없앴고(요청: "너 나와랑 경기 배경은 삭제"), 랭킹은 그때 경기
-   화면이 쓰던 space3.jpg를 물려받았다(요청: "랭킹의 배경을 현재 경기의 배경으로
-   바꿔주고"). */
+   화면이 쓰던 space3.jpg를 물려받았다가(요청: "랭킹의 배경을 현재 경기의 배경으로
+   바꿔주고"), 이후 랭킹 전용으로 새로 추가된 ranking.jpg로 교체했다(요청: "새로
+   추가된 ranking.jpg를 랭킹 화면 배경으로 교체"). */
 .scr-rank-screen-v2 { position: relative; }
 .scr-rank-screen-v2::before {
   content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
   background-image:
     linear-gradient(180deg, rgba(3,3,6,0.72) 0%, rgba(3,3,6,0.55) 40%, rgba(3,3,6,0.78) 100%),
-    url("/images/bg/space3.jpg");
+    url("/images/bg/ranking.jpg");
   background-size: cover; background-position: center; background-repeat: no-repeat;
 }
 /* 라이트 테마는 배경 사진을 아예 안 쓴다(요청: "라이트테마는 화면에서 배경이미지
