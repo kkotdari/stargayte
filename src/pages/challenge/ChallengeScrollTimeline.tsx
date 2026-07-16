@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { cx } from "../../utils/format";
-import { getScrollRoot, getScrollMetrics, addScrollListener, scrollRootTo } from "../../utils/scrollRoot";
+import { getScrollRoot, getScrollMetrics, addRafScrollListener, scrollRootTo } from "../../utils/scrollRoot";
 
 // 너 나와 목록 우측의 네비게이션 타임라인(요청: "화면 우측에 네비게이션 타임라인 — 위가
 // 과거 아래가 미래라는 걸 알게, 현재 위치 표시, 스크롤 시에만 보임"). 목록은 과거(위)→
@@ -11,6 +11,7 @@ export default function ChallengeScrollTimeline() {
   const [scrollable, setScrollable] = useState(false);
   const [fraction, setFraction] = useState(0); // 0=맨 위(과거) … 1=맨 아래(미래)
   const [todayFraction, setTodayFraction] = useState<number | null>(null); // "오늘" 눈금 위치
+  const [undecidedFraction, setUndecidedFraction] = useState<number | null>(null); // "일정 미정" 눈금 위치
   const [dateLabel, setDateLabel] = useState<string | null>(null);
   const trackRef = useRef<HTMLDivElement>(null);
   const hideTimerRef = useRef<number | null>(null);
@@ -30,22 +31,25 @@ export default function ChallengeScrollTimeline() {
     return current;
   };
 
+  // 특정 날짜 그룹(selector로 지목)의 스크롤 위치를 0~1로 — 트랙에 눈금을 찍는 데 쓴다.
+  const groupFraction = (selector: string, scrollTop: number, max: number): number | null => {
+    const el = document.querySelector<HTMLElement>(selector);
+    if (!el || max <= 0) return null;
+    const root = getScrollRoot();
+    const rootTop = root instanceof Window ? 0 : root.getBoundingClientRect().top;
+    const offset = scrollTop + (el.getBoundingClientRect().top - rootTop);
+    return Math.min(1, Math.max(0, offset / max));
+  };
+
   const update = () => {
     const { scrollTop, clientHeight, scrollHeight } = getScrollMetrics();
     const max = scrollHeight - clientHeight;
     setScrollable(max > 40);
     setFraction(max > 0 ? Math.min(1, Math.max(0, scrollTop / max)) : 0);
     setDateLabel(currentDateLabel());
-    // "오늘" 그룹의 스크롤 위치를 0~1로 — 트랙에 눈금을 찍는다.
-    const todayEl = document.querySelector<HTMLElement>('.scr-challenge-date-group[data-today="1"]');
-    if (todayEl && max > 0) {
-      const root = getScrollRoot();
-      const rootTop = root instanceof Window ? 0 : root.getBoundingClientRect().top;
-      const offset = scrollTop + (todayEl.getBoundingClientRect().top - rootTop);
-      setTodayFraction(Math.min(1, Math.max(0, offset / max)));
-    } else {
-      setTodayFraction(null);
-    }
+    // "오늘"/"일정 미정" 그룹의 스크롤 위치에 각각 눈금을 찍는다.
+    setTodayFraction(groupFraction('.scr-challenge-date-group[data-today="1"]', scrollTop, max));
+    setUndecidedFraction(groupFraction('.scr-challenge-date-group[data-undecided="1"]', scrollTop, max));
   };
 
   const showThenScheduleHide = () => {
@@ -58,7 +62,7 @@ export default function ChallengeScrollTimeline() {
 
   useEffect(() => {
     const onScroll = () => { update(); showThenScheduleHide(); };
-    const off = addScrollListener(onScroll);
+    const off = addRafScrollListener(onScroll);
     update();
     return () => {
       off();
@@ -105,6 +109,9 @@ export default function ChallengeScrollTimeline() {
         onPointerUp={endDrag}
         onPointerCancel={endDrag}
       >
+        {undecidedFraction !== null && (
+          <div className="scr-challenge-timeline-undecided" style={{ top: `${undecidedFraction * 100}%` }} />
+        )}
         {todayFraction !== null && (
           <div className="scr-challenge-timeline-today" style={{ top: `${todayFraction * 100}%` }} />
         )}

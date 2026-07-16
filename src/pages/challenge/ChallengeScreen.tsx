@@ -811,10 +811,9 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
   );
 }
 
-// "내것만"은 켜고 끄는 하나짜리 조건이라, 모바일에서 폭을 아끼려고 전체/내것만 두 칸짜리
-// 탭 대신 체크박스 하나로 바꿨다(요청: "너 나와 필터 공간이 좁아(모바일) 내 것만은
-// 체크박스로 변경할게"). 예전의 확정/응답대기/종료 상태 탭은 없앴고 목록은 상태와 무관하게
-// 하나로 합쳐 보여준다.
+// "수락만"은 켜고 끄는 하나짜리 조건이라, 모바일에서 폭을 아끼려고 탭 대신 체크박스 하나로
+// 둔다(요청: "필터를 수락만으로 변경하고 수락한 건들만 노출"). 평소 목록은 상태와 무관하게
+// 하나로 합쳐 보여주고, 이 체크박스를 켜면 성사된(confirmed) 대결만 남긴다.
 
 // 기간 필터 — 경기 화면과 같은 패턴(전체/월 + 월 선택기), 기본은 월(요청: "너나와에
 // 기간 필터 추가 전체 월까지" + "기본은 월"). 경기 화면과 달리 "일" 단위까지는 안 쪼갠다.
@@ -854,7 +853,7 @@ export default function ChallengeScreen() {
   const [error, setError] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const [mineOnly, setMineOnly] = useState(false);
+  const [acceptedOnly, setAcceptedOnly] = useState(false);
   const [periodUnit, setPeriodUnit] = useState<ChallengePeriodUnit>("month");
   const [periodMonth, setPeriodMonth] = useState(currentMonthValue);
   const suggestions = useMemo(() => activeMemberSearchTerms(members), [members]);
@@ -962,13 +961,12 @@ export default function ChallengeScreen() {
     [periodChallenges],
   );
 
-  // "내것만" — 내가 보냈거나(창작자/같은 팀) 지목된(상대) 도전장만 남긴다.
-  const isMine = (c: Challenge): boolean => (
-    c.createdBy.id === user?.id
-    || c.targets.some((t) => t.memberId === user?.id)
-    || c.ownMembers.some((m) => m.memberId === user?.id)
-  );
-  const activeList = mineOnly ? sortedChallenges.filter(isMine) : sortedChallenges;
+  // "수락만" — 수락되어 성사된(confirmed) 대결만 남긴다(요청: "필터를 수락만으로 변경하고
+  // 수락한 건들만 노출"). 대기중/거절/취소 건은 빠지고, 이미 지난(done) 대결도 confirmed
+  // 상태라 그대로 포함된다.
+  const activeList = acceptedOnly
+    ? sortedChallenges.filter((c) => c.status === "confirmed")
+    : sortedChallenges;
 
   // 가장 가까운 예정된(수락) 대결의 시각 — 확정됐고 예정 일시가 아직 안 지난 것 중 가장 임박.
   // 같은 시각(exact)에 여러 대결이 잡혀 있으면 그것들 "모두"가 NEXT다(요청: "동일 시각 여러
@@ -1033,7 +1031,7 @@ export default function ChallengeScreen() {
 
   const emptyLabel = searchTerms.length > 0
     ? "검색 결과가 없어요"
-    : mineOnly ? "내 대결이 없어요" : "도전장이 없어요";
+    : acceptedOnly ? "수락된 대결이 없어요" : "도전장이 없어요";
 
   return (
     <div className="scr-screen scr-challenge-screen-v2">
@@ -1071,8 +1069,8 @@ export default function ChallengeScreen() {
             )}
             <FilterItem>
               <label className="scr-checkbox-field">
-                <input type="checkbox" checked={mineOnly} onChange={(e) => setMineOnly(e.target.checked)} />
-                내것만
+                <input type="checkbox" checked={acceptedOnly} onChange={(e) => setAcceptedOnly(e.target.checked)} />
+                수락만
               </label>
             </FilterItem>
           </>
@@ -1094,6 +1092,9 @@ export default function ChallengeScreen() {
                   key={g.label}
                   className="scr-challenge-date-group"
                   data-today={g.isToday ? "1" : undefined}
+                  // "일정 미정" 그룹(scheduledAt 없는 대기중 묶음, 맨 위)에 표식을 달아
+                  // 우측 타임라인이 눈금+라벨을 찍고 스크롤 스냅 타깃으로 삼는다.
+                  data-undecided={g.items.some((c) => !c.scheduledAt) ? "1" : undefined}
                 >
                   <div className="scr-challenge-date-head" data-date-label={g.label}>
                     {g.isToday && <span className="scr-challenge-card-today-tag">오늘</span>}

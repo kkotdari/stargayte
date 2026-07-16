@@ -72,6 +72,31 @@ export function addScrollListener(listener: () => void, root: ScrollRoot = getSc
   return () => root.removeEventListener("scroll", listener);
 }
 
+// rAF로 프레임당 한 번만 실행되게 묶은 스크롤 구독 — 모바일에서 스크롤 이벤트는 한 프레임에도
+// 여러 번 쏟아지는데, 그때마다 리스너가 getScrollMetrics()로 scrollHeight/clientHeight를 읽으면
+// (강제 리플로우) 스크롤 도중 메인 스레드가 밀려 탭바/필터·검색창 숨김·노출 반응이 눈에 띄게
+// 느려졌다(특히 키보드를 한 번 올렸다 내려 뷰포트가 리사이즈된 뒤로 그 페이지 내내 계속됨,
+// 실제로 지적받은 문제). 리스너는 rAF 안에서 실행되므로 항상 그 프레임의 최신 위치를 읽고,
+// 마지막(스크롤이 멈추는) 이벤트도 뒤따르는 rAF 한 번으로 확실히 반영된다. 스크롤을 발동하는
+// passive 리스너 자체는 아무 일도 안 해 스크롤 성능에 영향을 주지 않는다.
+export function addRafScrollListener(listener: () => void, root: ScrollRoot = getScrollRoot()): () => void {
+  let scheduled = false;
+  let removed = false;
+  const onScroll = () => {
+    if (scheduled) return;
+    scheduled = true;
+    requestAnimationFrame(() => {
+      scheduled = false;
+      if (!removed) listener();
+    });
+  };
+  root.addEventListener("scroll", onScroll, { passive: true });
+  return () => {
+    removed = true;
+    root.removeEventListener("scroll", onScroll);
+  };
+}
+
 export interface ScrollMetrics { scrollTop: number; clientHeight: number; scrollHeight: number }
 
 export function getScrollMetrics(root: ScrollRoot = getScrollRoot()): ScrollMetrics {

@@ -3788,7 +3788,10 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   -webkit-tap-highlight-color: transparent;
 }
 .scr-mobile-tab:hover { color: var(--text); }
-.scr-mobile-tab-active { color: var(--text); font-weight: 700; }
+/* 활성 탭은 흰색 광원 알약(아래 -indicator) 위에 얹히므로 글자를 검정으로 반전한다
+   (요청: "액티브시 메뉴 글자를 검정색으로 반전"). 라이트 테마는 원래도 검정 글자라 그대로
+   같은 값이면 되고(현재 유지), 파란 광원 알약 위에서도 검정이 잘 읽힌다. */
+.scr-mobile-tab-active { color: #0b0b0c; font-weight: 700; }
 /* 활성 탭 뒤로 슬라이드하며 이동하는 알약 배경 — 입체감(그림자) 없이 플랫한 색만.
    MobileTabBar.tsx가 실제 활성 버튼의 offsetLeft/offsetTop/offsetWidth/offsetHeight를
    재서 transform/top/width/height로 전부 직접 넘겨준다 — top:50% 같은 "부모 기준 중앙"
@@ -3808,11 +3811,17 @@ body *::-webkit-scrollbar-corner { background: transparent; }
      "테두리 광륜"으로 보여서 안쪽의 타원 그라데이션과 모양이 안 맞아 어색했다(실제로
      지적받은 문제 — "가운데가 밝고 바깥으로 갈수록 희미해져야" 하는데 이상해 보임).
      그라데이션 하나만 쓰면 정확히 중심에서 바깥으로 옅어지는 결이 유지된다. */
-  /* 중심부가 너무 진하고 가장자리로 갈수록 뚝 끊기듯 옅어진다는 피드백 — 정점 농도를
-     낮추고 단계를 하나 더 늘려서(0/45/75/100%) 훨씬 완만하게, 은은하게 퍼지는 느낌으로
-     바꾼다. */
+  /* 다크 테마 기본 — 흰색 그라데이션 광원(요청: "액티브 알약을 흰색 그라데이션 광원으로").
+     가운데가 가장 밝은 흰빛이고 가장자리로 갈수록 투명해진다. 그 위 글자는 검정으로 반전
+     (.scr-mobile-tab-active). */
+  background: radial-gradient(ellipse at center, rgba(255,255,255,0.98) 0%, rgba(255,255,255,0.82) 42%, rgba(255,255,255,0.42) 72%, rgba(255,255,255,0) 100%);
+}
+/* 라이트 테마는 현재대로 — 파란(--edge-glow) 광원 알약을 그대로 유지한다(요청:
+   "라이트모드는 현재 유지"). */
+html.scr-light-theme .scr-mobile-tab-indicator {
   background: radial-gradient(ellipse at center, color-mix(in srgb, var(--edge-glow) 55%, transparent) 0%, color-mix(in srgb, var(--edge-glow) 32%, transparent) 45%, color-mix(in srgb, var(--edge-glow) 14%, transparent) 75%, transparent 100%);
 }
+html.scr-light-theme .scr-mobile-tab-active { color: var(--text); }
 
 .scr-drawer-overlay {
   position: fixed; inset: 0; z-index: 60; background: rgba(2,2,3,0.62);
@@ -3826,11 +3835,14 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    완전히 뺐다 — 지금은 이 경계선 그라데이션만 남는다.) */
 .scr-drawer {
   width: min(300px, 84vw); height: 100%;
-  background-color: var(--panel-solid);
-  /* 예전 실선(border-left) 대신, 탭바 위쪽 선과 같은 그라데이션 글로우로 — 가운데가
-     가장 밝고 위아래 끝으로 갈수록 은은하게 사라진다. */
-  background-image: linear-gradient(180deg, color-mix(in srgb, var(--edge-glow) 22%, transparent) 0%, var(--edge-glow) 50%, color-mix(in srgb, var(--edge-glow) 22%, transparent) 100%);
-  background-repeat: no-repeat; background-position: left; background-size: 1px 100%;
+  /* 반투명 유리 재질(요청: "패널도 반투명 재질로 변경") — 불투명(--panel-solid) 대신
+     반투명 패널색 + 배경 블러로 뒤의 어둡게 깔린 오버레이가 은은히 비친다. */
+  background-color: var(--panel);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  /* 왼쪽 모서리는 예전의 색 광원 그라데이션(요청으로 제거) 대신, 유리 모서리에 빛이
+     스치는 단순한 반사광 한 줄만 남긴다(요청: "왼쪽 모서리 광원제거하고 단순한 반사광으로"). */
+  border-left: 1px solid rgba(255,255,255,0.16);
   box-shadow: -4px 0 16px rgba(0,0,0,0.18);
   display: flex; flex-direction: column; gap: 14px;
   /* 헤더와 같은 이유로 상태바만큼 위쪽 여백을 더 준다(standalone 웹앱에서만 의미 있음).
@@ -3841,6 +3853,8 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   transition: transform .2s ease;
 }
 .scr-drawer-overlay.scr-drawer-open .scr-drawer { transform: translateX(0); }
+/* 라이트 테마는 흰 유리라 흰 반사광이 안 보여, 대신 아주 옅은 어두운 경계선으로 모서리를 잡는다. */
+html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
 /* 구분선을 단색 테두리 대신 붉은(포인트색이 아니라 --pipe-bright 고정) 그라데이션으로
    — 가운데가 밝고 양 끝으로 갈수록 옅어지는, 헤더/탭바와 같은 "우주 광원" 느낌. */
 .scr-drawer-head {
@@ -4694,7 +4708,8 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 /* proximity + 기본 stop(normal) — 오늘 근처에서 멈추면 딱 걸리되, 빠른 플링이나 진입 시
    NEXT로의 자동 스크롤이 오늘에 강제로 멈춰 끊기지 않게 한다(scroll-snap-stop:always는
    그 프로그램 스크롤까지 가로채 위험). */
-.scr-snap-today .scr-challenge-date-group[data-today="1"] { scroll-snap-align: start; }
+.scr-snap-today .scr-challenge-date-group[data-today="1"],
+.scr-snap-today .scr-challenge-date-group[data-undecided="1"] { scroll-snap-align: start; }
 
 /* 우측 네비게이션 타임라인(요청: "위가 과거 아래가 미래, 현재 위치 표시, 스크롤 시에만
    보임"). 목록이 과거(위)→미래(아래) 순이라 스크롤 위치(0~1)를 그대로 세로 축에 매핑한다.
@@ -4744,6 +4759,21 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-challenge-timeline-today::after {
   content: "오늘"; position: absolute; right: 100%; margin-right: 6px;
   font-size: 9px; font-weight: 800; color: var(--highlight-bg);
+  white-space: nowrap;
+}
+/* "일정 미정" 눈금 — 오늘 눈금과 같은 모양이되, 확정되지 않은 대기 묶음이라 은은한
+   회색 톤으로 구분한다. 목록 맨 위에 있어 보통 트랙 최상단 근처에 찍힌다. */
+.scr-challenge-timeline-undecided {
+  position: absolute; left: 50%; transform: translate(-50%, -50%);
+  display: flex; align-items: center;
+}
+.scr-challenge-timeline-undecided::before {
+  content: ""; width: 14px; height: 2px; border-radius: 2px;
+  background: var(--dim);
+}
+.scr-challenge-timeline-undecided::after {
+  content: "미정"; position: absolute; right: 100%; margin-right: 6px;
+  font-size: 9px; font-weight: 800; color: var(--dim);
   white-space: nowrap;
 }
 /* 현재 상단에 핀된 날짜를 알약으로 — 트랙 왼쪽에 붙여 현재 위치를 "며칠"인지로 보여준다. */
