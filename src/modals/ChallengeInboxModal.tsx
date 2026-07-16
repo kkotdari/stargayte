@@ -21,13 +21,13 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
   // 오류가 어느 입력칸 것인지 — 그 칸에 에러 테두리(scr-input-invalid)를 함께 준다
   // (요청: "사유에 에러 테두리도 넣어줘야지").
   const [errField, setErrField] = useState<"message" | "schedule" | "">("");
-  // 처음엔 편지봉투만 보여주고, 잠시 뒤 자동으로 편지지(제목/내용/응답 폼)로 넘어간다
-  // (요청: "열어보기 버튼 제거하고 자동으로 열리게"). 연출은 두 단계 — "envelope"
-  // 동안 봉투가 좌우로 흔들리다가, 흔들림이 끝나면 봉투는 페이드아웃 없이 그냥 사라지고
-  // (요청: "편지봉투 페이드아웃 제거 그냥 사라지기") "letter"의 편지지가 그 뒤에서
-  // 확대되며 페이드인 등장한다. 아래 useEffect가 봉투 단계를 정해진 시간만큼 유지하고
-  // 다음 단계로 넘긴다.
+  // 처음엔 편지봉투(envelope)만 보여준다 — 잠깐 대기했다가 흔들리고(요청: "약간만 대기했다가
+  // 쉐이킹"), 흔들림이 끝나면 "열기/버리기" 버튼이 뜬다(요청: "버튼 다시 살릴게 버튼은
+  // 열기/버리기"). 열기를 누르면 "letter"(편지지: 제목/내용/응답 폼)로 넘어가고, 버리기를
+  // 누르면 응답 없이 다음 도전장으로 넘긴다(고민중과 같은 취급 — 다음 접속 때 다시 뜬다).
   const [stage, setStage] = useState<"envelope" | "letter">("envelope");
+  // 봉투 흔들림이 끝난 뒤에만 열기/버리기 버튼을 띄운다.
+  const [envReady, setEnvReady] = useState(false);
   const [message, setMessage] = useState("");
   // 요청자가 "시간 지정"을 끄고 보낸(scheduledAt 없음) 도전장은 "상대가 정해도 된다"는
   // 뜻이다 — 승락하는 이 시점에 상대가 직접 정하게 한다(요청: "도전자/상대 모두 시간을
@@ -38,14 +38,13 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
 
   const current = challenges[idx];
 
-  // 봉투를 충분히 보여준 뒤 자동으로 "letter"로 넘어간다(봉투는 그냥 사라지고 편지지가
-  // 등장). idx가 바뀌어 새 봉투(stage="envelope")가 뜰 때마다 다시 돈다. 연출 순서는
-  // "등장하자마자 흔들림(0.75s) → 정지(≈2.4s, 누가 보냈는지 읽는 시간) → 사라짐"이다
-  // (요청: "등장할때 쉐이크 그리고 정지 하다가 사라지기"). CSS 흔들림(delay 0 + 0.75s)이
-  // 끝난 뒤 정지 상태로 남아 있다가 이 타임아웃(3.15s)에 "letter"로 넘어간다.
+  // 봉투가 뜨면 잠깐 대기(0.4s) 후 흔들리고(CSS animation-delay), 흔들림(0.75s)이 끝나는
+  // ≈1.15초 뒤에 열기/버리기 버튼을 띄운다. idx가 바뀌어 새 봉투가 뜰 때마다 버튼을 다시
+  // 숨겼다가(setEnvReady(false)) 같은 타이밍으로 재노출한다.
   useEffect(() => {
     if (!current || stage !== "envelope") return;
-    const t = window.setTimeout(() => setStage("letter"), 3150);
+    setEnvReady(false);
+    const t = window.setTimeout(() => setEnvReady(true), 1150);
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- idx가 바뀌면 stage도 항상 "envelope"로 함께 리셋되므로 stage만으로 충분
   }, [stage, idx]);
@@ -95,6 +94,20 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
     } catch (e) {
       setErr(e instanceof Error ? e.message : "응답하지 못했어요.");
     } finally {
+      setBusy(false);
+    }
+  };
+
+  // 편지봉투 "버리기" — 열어보지 않고 사유 없이 완전히 폐기(휴지통)로 보낸다(요청: "완전히
+  // 휴지통행이고 사유 없음"). 응답은 'discarded'(버림)로 기록돼 거절(rejected)과 구분 표시된다.
+  // 성공하면 다음 도전장으로 넘어간다.
+  const discard = async () => {
+    setBusy(true);
+    try {
+      await api.respondToChallenge(current.id, "discarded");
+      advance();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "버리지 못했어요.");
       setBusy(false);
     }
   };
@@ -222,15 +235,36 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
       )}
 
       {/* 편지봉투 — 편지지 카드와 한 몸이 아니라(요청) 오버레이 위에 겹치는 별도 레이어다.
-          카드 배경 없이 봉투 사진 + 제목만 스크림 위에 떠서 envelope에서 좌우로 흔들리다,
-          흔들림이 끝나면 페이드아웃 없이 그냥 언마운트되어 사라진다(요청). */}
+          패널 배경은 투명(요청: "편지봉투 패널 배경은 투명알지?")이라 배경이 투명한 봉투
+          그림 + 제목 + 버튼만 스크림 위에 뜬다. 잠깐 대기 후 흔들리고, 흔들림이 끝나면
+          열기/버리기 버튼이 나타난다. */}
       {stage === "envelope" && (
-        <div className="scr-challenge-envelope-layer">
+        // key로 도전장마다 봉투를 새로 마운트해 흔들림 애니메이션이 매번 다시 재생되게 한다
+        // (버리기로 envelope→envelope 넘어갈 때도 확실히 replay).
+        <div key={current.id} className="scr-challenge-envelope-layer">
           <div className="scr-challenge-envelope-inner">
             <div className="scr-challenge-inbox-title">{title}</div>
             <div className="scr-challenge-envelope scr-challenge-envelope-full scr-challenge-envelope-shake">
-              <img src="/images/bg/letter.jpg" alt="" className="scr-challenge-envelope-img" />
+              <img src="/images/items/envelope.png" alt="" className="scr-challenge-envelope-img" />
             </div>
+            {/* 흔들림이 끝난 뒤에만 뜨는 열기/버리기 — 열기는 편지지로, 버리기는 응답 없이
+                다음 도전장으로 넘긴다(다음 접속 때 다시 뜬다). */}
+            {envReady && (
+              <div className="scr-challenge-envelope-actions">
+                <button
+                  type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid scr-challenge-envelope-open"
+                  onClick={() => setStage("letter")} disabled={busy}
+                >
+                  열기
+                </button>
+                <button
+                  type="button" className="scr-btn scr-btn-ghost scr-challenge-envelope-discard"
+                  onClick={discard} disabled={busy}
+                >
+                  버리기
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

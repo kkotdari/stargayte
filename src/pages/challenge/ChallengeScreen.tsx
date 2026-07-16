@@ -40,14 +40,16 @@ function responseDeadlineLabel(createdAt: string): string {
   return hours > 0 ? `응답 마감 ${hours}시간 남음` : `응답 마감 ${mins}분 남음`;
 }
 
-type PillTone = "pending" | "accepted" | "rejected";
+type PillTone = "pending" | "accepted" | "rejected" | "discarded";
 
-// 상대 한 명의 응답 배지 — 수락/거절/대기 셋으로만 통일한다(아바타에 겹쳐 그리는 작은
-// 배지). 각자의 실제 응답을 그대로 쓴다 — 무응답 거절(폐기)이어도 그 사람이 실제로는
-// 응답하지 않았으므로 "대기"로 남는다(폐기 여부는 카드가 휴지통에 담기는 것으로 드러난다).
+// 상대 한 명의 응답 배지 — 수락/거절/버림/대기로 구분한다(아바타 옆 작은 배지). 각자의 실제
+// 응답을 그대로 쓴다 — 무응답 거절(폐기)이어도 그 사람이 실제로는 응답하지 않았으므로 "대기"로
+// 남는다. "버림"(discarded)은 편지봉투를 열지 않고 사유 없이 버린 것으로, 사유가 있는 "거절"
+// (rejected)과 구분해 표시한다(요청: "버림으로 상태 표시(거절하고 다른 응답)").
 function targetPillInfo(t: ChallengeTarget): { tone: PillTone } {
   if (t.response === "accepted") return { tone: "accepted" };
   if (t.response === "rejected") return { tone: "rejected" };
+  if (t.response === "discarded") return { tone: "discarded" };
   return { tone: "pending" };
 }
 
@@ -188,7 +190,7 @@ function ChallengeSide({
                   대신 다시 이름 옆 인라인으로). */}
               {tone && (
                 <span className={cx("scr-challenge-avatar-badge", `scr-challenge-avatar-badge-${tone}`)}>
-                  {tone === "accepted" ? "수락" : tone === "rejected" ? "거절" : "대기"}
+                  {tone === "accepted" ? "수락" : tone === "rejected" ? "거절" : tone === "discarded" ? "버림" : "대기"}
                 </span>
               )}
             </div>

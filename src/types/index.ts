@@ -267,7 +267,9 @@ export interface AppVersionStatus {
 // "너 나와!" 도전장 — 경기결과/예약 시스템과는 독립된 게시판. 폼에서 직접 고르지 않고
 // 지목 인원수로 서버가 정한다(1명=1:1, 2명 이상=팀전).
 export type ChallengeMatchType = "0101" | "0102";
-export type ChallengeTargetResponse = "pending" | "accepted" | "rejected";
+// "discarded" = 편지봉투를 열지 않고 사유 없이 "버림"(휴지통행) — 사유가 있는 "rejected"
+// (거절)과 구분해 표시한다.
+export type ChallengeTargetResponse = "pending" | "accepted" | "rejected" | "discarded";
 // 4개 상태만 있다 — 응답대기(pending)/성사(confirmed, 대결 대기)/완료(done)/폐기(discarded,
 // 휴지통). 거절·무응답·미실시·(레거시)취소는 모두 폐기로 통합됐다. 예정 시간이 지나도
 // 결과가 안 들어왔으면 계속 성사(confirmed)다.

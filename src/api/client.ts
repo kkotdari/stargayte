@@ -565,7 +565,7 @@ export const api = {
   // "시간 지정"을 끄고 보낸(시간 미정) 도전장을 승락할 때만 의미가 있다 — 그 경우
   // 서버가 필수로 요구한다(안 보내면 400). 이미 시간이 정해진 도전장에는 무시된다.
   async respondToChallenge(
-    id: number, response: "accepted" | "rejected", reason?: string, scheduledAt?: string,
+    id: number, response: "accepted" | "rejected" | "discarded", reason?: string, scheduledAt?: string,
   ): Promise<Challenge> {
     return request<Challenge>(`/api/challenges/${id}/respond`, {
       method: "POST",
