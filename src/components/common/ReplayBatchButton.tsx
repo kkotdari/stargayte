@@ -308,7 +308,7 @@ export default function ReplayBatchButton() {
         className="scr-admin-panel-phys-btn"
         onClick={() => (running ? (abortRef.current = true) : setMenuOpen((v) => !v))}
       >
-        {running ? <><Spinner /> 중단</> : "배치 등록"}
+        {running ? <><Spinner /> 중단</> : "배치등록"}
       </button>
 
       {/* 무엇을 담글지 먼저 고른다 — 대상 버튼을 고르는 즉시 폴더 선택창이 뜨므로, 함께 걸
