@@ -4793,6 +4793,22 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
+/* 휴지통 카드는 폐기건이라 승자가 없어 손 이모지(👉) 양옆 승/무 배지가 늘 숨김인데도
+   visibility:hidden으로 각 20px씩 자리를 예약해, 좁은 카드(모달 안이라 본 목록보다 좁다)
+   에서 상대편 닉네임 공간을 깎아먹었다(요청: "버려진 카드 상대편 프로필 왼쪽으로 이동해서
+   닉네임 공간 확보"). 숨겨진 배지는 아예 자리를 걷어(display:none) 그만큼 양쪽 닉네임
+   폭을 넓히고, 요소(프사+닉네임+응답표시)가 더 많은 상대편에 폭을 조금 더 준다. 실제로
+   보이는 승 배지(재대결 이력 중 완료된 페이지)는 -hidden이 아니라 그대로 남는다. */
+.scr-discarded-list .scr-challenge-inline-win-hidden { display: none; }
+/* 손 이모지(👉)와 상대편 프로필 사이 간격을 거의 붙인다(요청: "손 이모지 바로 거의 옆에
+   상대 프로필을 붙여도 될거같은데") — 그만큼 상대편 닉네임이 더 나온다. 도전자편 쪽
+   간격(margin-left)은 그대로 둔다. */
+.scr-discarded-list .scr-challenge-arrow-row { margin-right: 3px; }
+.scr-discarded-list .scr-challenge-side-target { flex: 1.35 1 0; }
+@media (min-width: 641px) {
+  /* 넓은 화면(모달 폭 여유)에서는 본 목록처럼 좌우 대칭으로 되돌린다. */
+  .scr-discarded-list .scr-challenge-side-target { flex: 1 1 0; }
+}
 /* 경기 목록의 날짜 줄(.scr-match-date-head)과 같은 이유로 스티키 — 헤더가 스크롤 영역
    밖의 flex 형제로 항상 떠 있고 목록은 그 아래 스크롤 컨테이너에서 시작하므로 top:0으로
    충분하다(요청: "너 나와 목록도 경기 목록처럼 날짜로 그루핑 하니까 스티키 플로팅
@@ -4873,7 +4889,10 @@ html.scr-light-theme .scr-challenge-next-tag {
    헤더/툴바/검색줄, 아래쪽은 탭바를 비켜 배치한다. */
 .scr-challenge-timeline {
   position: fixed; right: 6px; z-index: 40;
-  top: calc(var(--safe-top) + 96px);
+  /* 우측 상단에 세로로 쌓인 버튼(휴지통/도전장 보내기) 아래에서 시작하게 한다(요청:
+     "타임라인 상단이 버튼보다 낮게 위치하게") — 헤더(~50) + 본문 상단여백(~30) + 버튼
+     2단 스택(~72)이 대략 안전영역+150 부근에서 끝나므로, 그 아래로 내려 겹치지 않게. */
+  top: calc(var(--safe-top) + 160px);
   bottom: calc(var(--mobile-footer-h) + env(safe-area-inset-bottom, 0px) + 40px);
   display: flex; flex-direction: column; align-items: center; gap: 6px;
   opacity: 0; pointer-events: none; transition: opacity 0.25s ease;
