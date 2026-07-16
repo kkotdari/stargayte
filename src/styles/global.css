@@ -1762,8 +1762,11 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-rank-record-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; justify-self: stretch; min-width: 0; }
 .scr-rank-record-v2 {
   font-size: 14px; color: var(--dim); white-space: nowrap;
-  max-width: 100%; overflow: hidden; text-overflow: ellipsis;
+  min-width: 0; overflow: hidden; text-overflow: ellipsis;
 }
+/* 승점(승-패) — 전적 바로 아래 줄에(요청: "개인 카드에 승점도 표시"). record-wrap이
+   세로 컬럼(우측 정렬)이라 전적 밑에 오른쪽 맞춰 붙는다. */
+.scr-rank-points { font-size: 12px; font-weight: 700; color: var(--muted); white-space: nowrap; }
 /* 최근 일대일 경기 한 줄 — "vs 상대이름 승/패" 세 조각을 한 덩이로 말줄임하면 상대 이름이
    길 때 정작 승/패 표시까지 잘려 안 보였다(실제로 지적받은 문제) — 상대 이름 칸만 따로
    줄어들며(min-width:0) 말줄임되게 하고, "vs"와 승/패 표시는 flex:none으로 항상 온전히
@@ -3326,6 +3329,9 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-rank-detail-chart-area { aspect-ratio: 300 / 140; display: flex; align-items: center; justify-content: center; }
 .scr-rank-detail-chart-area .scr-empty { width: 100%; }
 .scr-rank-detail-chart { width: 100%; height: auto; overflow: visible; }
+/* 그래프 아래 경기 이력 섹션(요청) — 그래프와 구분선으로 나눈다. */
+.scr-rank-detail-history { margin-top: 14px; border-top: 1px solid var(--line-soft); padding-top: 12px; }
+.scr-rank-detail-history-head { font-size: 13px; font-weight: 800; color: var(--muted); margin-bottom: 8px; }
 .scr-rank-detail-line { fill: none; stroke: var(--point); stroke-width: 2; }
 .scr-rank-detail-dot { fill: var(--point); }
 .scr-rank-detail-value { font-size: 11px; font-weight: 700; fill: var(--text); text-anchor: middle; }

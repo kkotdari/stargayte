@@ -75,7 +75,6 @@ export default function RankingScreenV2() {
   const [teamMatches, setTeamMatches] = useState<Member[] | null>(null);
   // 일대일 행의 "최근 경기" 줄을 눌렀을 때 — 그 회원의 일대일 경기 목록 모달을 연다
   // (팀 랭킹과 같은 TeamMatchesModal을 재활용, members가 한 명뿐인 배열이라는 점만 다르다).
-  const [soloMatchMember, setSoloMatchMember] = useState<Member | null>(null);
   // 카드(행) 클릭 — 최근 5개월 순위변동 모달. trendMembers가 null이면 안 열림, trendPoints가
   // null이면 그 안에서 아직 불러오는 중.
   const [trendMembers, setTrendMembers] = useState<Member[] | null>(null);
@@ -230,7 +229,6 @@ export default function RankingScreenV2() {
                 // 검색에 걸린 사람은 경기 로스터와 같은 반전색으로 프사+닉네임을 함께
                 // 칠한다(요청: "닉네임뿐 아니라 프사까지 하이라이팅").
                 highlighted={highlightMemberIds.has(row.member.id)}
-                onOpenLatestMatch={() => setSoloMatchMember(row.member)}
                 onOpenTrend={() => openSoloTrend(row)}
               />
             ))
@@ -241,14 +239,14 @@ export default function RankingScreenV2() {
       {teamMatches && (
         <TeamMatchesModal members={teamMatches} onClose={() => setTeamMatches(null)} />
       )}
-      {soloMatchMember && (
-        <TeamMatchesModal
-          members={[soloMatchMember]} matchType={SOLO_MATCH_TYPE}
-          onClose={() => setSoloMatchMember(null)}
-        />
-      )}
       {trendMembers && (
-        <RankTrendModal members={trendMembers} points={trendPoints} onClose={closeTrend} />
+        <RankTrendModal
+          members={trendMembers}
+          points={trendPoints}
+          // 일대일 랭킹이면 그 회원의 일대일 경기만, 팀 랭킹이면 그 팀 구성 경기 전부.
+          matchType={mode === "solo" ? SOLO_MATCH_TYPE : undefined}
+          onClose={closeTrend}
+        />
       )}
     </div>
   );
