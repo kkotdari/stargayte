@@ -4890,9 +4890,9 @@ html.scr-light-theme .scr-challenge-next-tag {
 .scr-challenge-timeline {
   position: fixed; right: 6px; z-index: 40;
   /* 우측 상단에 세로로 쌓인 버튼(휴지통/도전장 보내기) 아래에서 시작하게 한다(요청:
-     "타임라인 상단이 버튼보다 낮게 위치하게") — 헤더(~50) + 본문 상단여백(~30) + 버튼
-     2단 스택(~72)이 대략 안전영역+150 부근에서 끝나므로, 그 아래로 내려 겹치지 않게. */
-  top: calc(var(--safe-top) + 160px);
+     "타임라인 상단이 버튼보다 낮게 위치하게"). 160px에선 아래 '도전장 보내기' 버튼과 살짝
+     겹친다는 피드백(요청: "타임라인 상단 도전장 보내기 버튼밑에 살짝 겹침 발생")으로 더 내린다. */
+  top: calc(var(--safe-top) + 184px);
   bottom: calc(var(--mobile-footer-h) + env(safe-area-inset-bottom, 0px) + 40px);
   display: flex; flex-direction: column; align-items: center; gap: 6px;
   opacity: 0; pointer-events: none; transition: opacity 0.25s ease;
@@ -5431,12 +5431,12 @@ html.scr-light-theme .scr-challenge-next-tag {
 /* 연출 1단계 — 봉투가 뜨고 잠깐(0.4s) 가만히 있다가 흔들린다(요청: "애니메이션이 안보여
    약간만 대기했다가 쉐이킹" — 딜레이 0이면 마운트와 동시에 흔들려 첫 프레임이 안 보였다).
    좌우로 미끄러지는 대신 제어판이 등장할 때(scr-admin-panel-pop)처럼 살짝 커졌다가 회전하며
-   통통 튀는 "두둥" 바운스. 흔들림(.75s)이 끝나면 안정 상태(scale 1 rotate 0)로 멈추고,
-   그 시점(≈1.15s)에 JS가 열기/버리기 버튼을 띄운다. 시작/끝을 같은 안정 상태로 둬서
-   딜레이가 끝나며 튀는 잔프레임(점프) 없이 이어진다. */
+   통통 튀는 "두둥" 바운스를 3번 반복한다(요청: "쉐이킹 3번으로"). 한 번 .6s × 3회 = 1.8s,
+   딜레이(.4s) 포함 총 2.2s에 맞춰 JS가 열기/버리기 버튼을 띄운다. 시작/끝을 같은 안정 상태
+   (scale 1 rotate 0)로 둬서 반복 사이·딜레이 끝에 튀는 잔프레임(점프) 없이 이어진다. */
 .scr-challenge-envelope-shake {
   transform-origin: center;
-  animation: scr-challenge-envelope-shake .75s cubic-bezier(.34, 1.4, .64, 1) .4s both;
+  animation: scr-challenge-envelope-shake .6s cubic-bezier(.34, 1.4, .64, 1) .4s 3 both;
 }
 @keyframes scr-challenge-envelope-shake {
   0%   { transform: scale(1) rotate(0deg); }
