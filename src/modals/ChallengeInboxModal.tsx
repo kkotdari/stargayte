@@ -108,120 +108,109 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
 
   return createPortal(
     <div className="scr-modal-overlay">
-      {/* 봉투만 보이는 단계에서는 모달의 기본 유리판 배경/그림자를 지워서(요청: "모달창
-          배경은 안보이고 편지봉투 이미지만 보이게") 정말 봉투 사진 + 제목만 떠 있는
-          것처럼 보이게 한다 — "opening"으로 넘어가는 순간 원래의 편지지 카드 배경으로
-          되돌아온다(그 위를 봉투가 잠깐 덮은 채 터지듯 사라진다). */}
-      <div className={cx("scr-modal scr-modal-sm scr-challenge-inbox-modal", stage === "envelope" && "scr-challenge-inbox-modal-envelope")}>
-        <div className="scr-challenge-inbox-title">{title}</div>
-
-        {/* 봉투는 누르는 버튼이 아니라 장식 — 잠깐 보여준 뒤 자동으로 열린다(요청:
-            "열어보기 버튼 제거하고 자동으로 열리게"). "opening" 단계에서는 편지지
-            콘텐츠가 이미 아래(정상 흐름)에 자리 잡은 채로, 이 봉투가 그 위에 얹혀
-            확대되며 흐려지고 옅어지다 사라진다(요청: "편지봉투가 확대되며 잔상 남기며
-            페이드아웃되고 편지지가 뒤에서 확대되며 등장"). */}
-        {stage !== "letter" && (
-          <div
-            className={cx(
-              "scr-challenge-envelope scr-challenge-envelope-full",
-              stage === "envelope" && "scr-challenge-envelope-shake",
-              stage === "opening" && "scr-challenge-envelope-opening",
+      {/* 편지지(letter) — 봉투와는 완전히 별개인 카드다(요청: "봉투랑 편지지는 별도 모달").
+          봉투가 터지는 "opening"부터 그 뒤에서 카드째 확대되며 페이드인 등장하고(-emerge),
+          봉투가 사라진 뒤에도 그대로 남는다. */}
+      {stage !== "envelope" && (
+        <div className={cx("scr-modal scr-modal-sm scr-challenge-inbox-modal", stage === "opening" && "scr-challenge-inbox-emerge")}>
+          <div className="scr-challenge-inbox-title">{title}</div>
+          {/* 편지지 상단에 nawa 이미지를 크게, 동그랗게 크롭하고 가장자리를 그라데이션으로
+              흐려서 배치한다. */}
+          <img src="/images/items/nawa.jpg" alt="" className="scr-challenge-inbox-hero" />
+          <div className="scr-modal-body scr-challenge-inbox-body">
+            {current.message && (
+              <p className="scr-challenge-inbox-message">"{current.message}"</p>
             )}
-          >
-            <img src="/images/bg/letter.jpg" alt="" className="scr-challenge-envelope-img" />
-          </div>
-        )}
-
-        {stage !== "envelope" && (
-          <>
-            {/* 편지지를 연 뒤에는 봉투 이미지를 다시 안 보여준다(요청: "편지 열면
-                편지봉투 이미지는 없어도 됨") — 대신 재미 요소였던 nawa 이미지를 구석
-                장식이 아니라 상단에 크게, 동그랗게 크롭하고 가장자리를 그라데이션으로
-                흐려서 배치한다(요청: "nawa 이미지는 상단에 크게 배치" + "nawa 이미지
-                동그랗게 크롭 & 가장자리 그라데이션 처리"). */}
-            <img
-              src="/images/items/nawa.jpg" alt=""
-              className={cx("scr-challenge-inbox-hero", stage === "opening" && "scr-challenge-inbox-emerge")}
-            />
-            <div className={cx("scr-modal-body scr-challenge-inbox-body", stage === "opening" && "scr-challenge-inbox-emerge")}>
-              {current.message && (
-                <p className="scr-challenge-inbox-message">"{current.message}"</p>
-              )}
-              {others.length > 0 && (
-                <div className="scr-challenge-inbox-row">
-                  <span className="scr-label">함께</span>
-                  <span>{others.join(", ")}</span>
-                </div>
-              )}
+            {others.length > 0 && (
               <div className="scr-challenge-inbox-row">
-                <span className="scr-label">종류</span>
-                <span>{MATCH_TYPE_INFO[current.matchType]}</span>
+                <span className="scr-label">함께</span>
+                <span>{others.join(", ")}</span>
               </div>
-              <div className="scr-challenge-inbox-row">
-                <span className="scr-label">일시</span>
-                <span>{formatChallengeSchedule(current.scheduledAt)}</span>
-              </div>
-
-              {/* 요청자가 시간을 안 정했으면(needsSchedule) 상대인 내가 승락하며 직접
-                  정한다 — 안 그러면 시간이 영원히 안 채워진 채 승락 상태로 박제된다
-                  (요청: "도전자/상대 모두 시간을 지정하지 않았는데 수락이 된 경우가
-                  있네 이러면 안되는데"). 거절할 땐 필요 없으니 항상 보여준다. */}
-              {needsSchedule && (
-                <label className="scr-field">
-                  <span className="scr-label">일시 정하기 (승락 시 필수)</span>
-                  <div className="scr-challenge-datetime">
-                    <input
-                      type="date" className="scr-input" value={dateStr}
-                      onChange={(e) => { setDateStr(e.target.value); if (!e.target.value) setTimeStr(""); }}
-                    />
-                    <input
-                      type="time" className="scr-input" value={timeStr}
-                      onChange={(e) => setTimeStr(e.target.value)}
-                      disabled={!dateStr}
-                    />
-                  </div>
-                </label>
-              )}
-
-              <label className="scr-field">
-                <span className="scr-label">한마디 (거절 시 필수)</span>
-                <input
-                  type="text" className="scr-input" value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  placeholder="예: 네가 감히! / 좋아요, 그날 봐요"
-                  maxLength={60}
-                />
-              </label>
-
-              {err && <div className="scr-err">{err}</div>}
-
-              <div className="scr-form-actions">
-                <button
-                  className="scr-btn scr-challenge-reject-btn" onClick={() => respond("rejected")}
-                  disabled={busy || !canReject}
-                >
-                  {busy ? <Spinner /> : "거절"}
-                </button>
-                {/* 수락도 거절도 아직 — 아무 응답도 안 보내고 그냥 다음(또는 닫기)으로
-                    넘어간다(요청: "수락/거절 말고 고민중 버튼 추가(그냥 아무것도
-                    안하는거)"). 응답이 안 남으므로 다음 접속 때 이 도전장이 다시 뜬다. */}
-                <button
-                  type="button" className="scr-btn scr-btn-ghost" onClick={advance}
-                  disabled={busy}
-                >
-                  고민중
-                </button>
-                <button
-                  className="scr-btn scr-challenge-accept-btn" onClick={() => respond("accepted")}
-                  disabled={busy || !canAccept}
-                >
-                  {busy ? <><Spinner /> 처리 중...</> : "승락"}
-                </button>
-              </div>
+            )}
+            <div className="scr-challenge-inbox-row">
+              <span className="scr-label">종류</span>
+              <span>{MATCH_TYPE_INFO[current.matchType]}</span>
             </div>
-          </>
-        )}
-      </div>
+            <div className="scr-challenge-inbox-row">
+              <span className="scr-label">일시</span>
+              <span>{formatChallengeSchedule(current.scheduledAt)}</span>
+            </div>
+
+            {/* 요청자가 시간을 안 정했으면(needsSchedule) 상대인 내가 승락하며 직접
+                정한다 — 안 그러면 시간이 영원히 안 채워진 채 승락 상태로 박제된다
+                (요청: "도전자/상대 모두 시간을 지정하지 않았는데 수락이 된 경우가
+                있네 이러면 안되는데"). 거절할 땐 필요 없으니 항상 보여준다. */}
+            {needsSchedule && (
+              <label className="scr-field">
+                <span className="scr-label">일시 정하기 (승락 시 필수)</span>
+                <div className="scr-challenge-datetime">
+                  <input
+                    type="date" className="scr-input" value={dateStr}
+                    onChange={(e) => { setDateStr(e.target.value); if (!e.target.value) setTimeStr(""); }}
+                  />
+                  <input
+                    type="time" className="scr-input" value={timeStr}
+                    onChange={(e) => setTimeStr(e.target.value)}
+                    disabled={!dateStr}
+                  />
+                </div>
+              </label>
+            )}
+
+            <label className="scr-field">
+              <span className="scr-label">한마디 (거절 시 필수)</span>
+              <input
+                type="text" className="scr-input" value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder="예: 네가 감히! / 좋아요, 그날 봐요"
+                maxLength={60}
+              />
+            </label>
+
+            {err && <div className="scr-err">{err}</div>}
+
+            <div className="scr-form-actions">
+              <button
+                className="scr-btn scr-challenge-reject-btn" onClick={() => respond("rejected")}
+                disabled={busy || !canReject}
+              >
+                {busy ? <Spinner /> : "거절"}
+              </button>
+              {/* 수락도 거절도 아직 — 아무 응답도 안 보내고 그냥 다음(또는 닫기)으로
+                  넘어간다(요청: "수락/거절 말고 고민중 버튼 추가(그냥 아무것도
+                  안하는거)"). 응답이 안 남으므로 다음 접속 때 이 도전장이 다시 뜬다. */}
+              <button
+                type="button" className="scr-btn scr-btn-ghost" onClick={advance}
+                disabled={busy}
+              >
+                고민중
+              </button>
+              <button
+                className="scr-btn scr-challenge-accept-btn" onClick={() => respond("accepted")}
+                disabled={busy || !canAccept}
+              >
+                {busy ? <><Spinner /> 처리 중...</> : "승락"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 편지봉투 — 편지지 카드와 한 몸이 아니라(요청) 오버레이 위에 겹치는 별도 레이어다.
+          카드 배경 없이 봉투 사진 + 제목만 스크림 위에 떠서, envelope에서 좌우로 흔들리다
+          opening에서 터지듯(확대+페이드아웃) 사라지며 뒤의 편지지를 드러낸다. */}
+      {stage !== "letter" && (
+        <div className={cx("scr-challenge-envelope-layer", stage === "opening" && "scr-challenge-envelope-layer-opening")}>
+          {/* opening에서는 제목+봉투를 통째로 하나처럼 확대·페이드아웃시켜(inner에 burst)
+              봉투가 완전히 터져 사라지며 뒤의 편지지(자기 제목 포함)가 드러나게 한다. */}
+          <div className="scr-challenge-envelope-inner">
+            <div className="scr-challenge-inbox-title">{title}</div>
+            <div className={cx("scr-challenge-envelope scr-challenge-envelope-full", stage === "envelope" && "scr-challenge-envelope-shake")}>
+              <img src="/images/bg/letter.jpg" alt="" className="scr-challenge-envelope-img" />
+            </div>
+          </div>
+        </div>
+      )}
     </div>,
     document.body,
   );
