@@ -2,6 +2,7 @@ import { useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { Spinner } from "../components/common/Feedback";
+import ConfirmDialog from "../components/common/ConfirmDialog";
 import ReplayBatchButton from "../components/common/ReplayBatchButton";
 import AppUpdateNoticeModal from "./AppUpdateNoticeModal";
 import { api } from "../api/client";
@@ -127,6 +128,11 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
     }
   };
 
+  // 관리자 기능 버튼은(단순 조회 제외) 실행 전 확인창을 거친다(요청: "관리자 버튼들은
+  // 다 컨펌창 있어야돼(단순 조회는 제외)"). 배포/롤백은 모든 사용자에게 즉시 반영되는
+  // 실제 버전 전환이라 대상이고, 리플레이 다운로드는 읽기 전용이라 제외한다.
+  const [confirmVersionAction, setConfirmVersionAction] = useState<"rollback" | "deploy" | null>(null);
+
   return createPortal(
     // 바깥(딤 처리된 배경)을 눌러도 안 닫히게 한다 — 숨겨진 화면이라 실수로 바깥을
     // 눌러 닫히면 다시 로고를 여러 번 눌러 찾아 들어와야 해서 번거롭다. 닫기는 모달
@@ -196,21 +202,23 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
                       </svg>
                     </button>
                   </div>
-                  <button
-                    type="button" className="scr-btn scr-admin-panel-preview-btn"
-                    onClick={startPreview}
-                  >
+                </div>
+                {/* "버전 보기"/"업데이트 안내 미리보기"도 아래 운영자 기능 그리드와 같은
+                    투박한 입체 버튼으로 통일하고, 같은 최대폭(320px) grid로 줄을 맞춘다
+                    (요청: "버전보기랑 업데이트 안내 미리보기 버튼도 통일해주고 줄좀
+                    이쁘게 맞춰줘"). 이 둘은 서버에 아무것도 쓰지 않는 순수 조회/미리보기라
+                    확인창 없이 바로 실행한다. */}
+                <div className="scr-admin-panel-grid">
+                  <button type="button" className="scr-admin-panel-phys-btn" onClick={startPreview}>
                     버전 보기
                   </button>
+                  <button
+                    type="button" className="scr-admin-panel-phys-btn"
+                    onClick={() => setPreviewingUpdateNotice(true)}
+                  >
+                    업데이트 안내 미리보기
+                  </button>
                 </div>
-                {/* 실제 버전/배포와 무관하게, 첫 접속 때 뜨는 업데이트 안내 모달의 내용만
-                    미리 확인해본다 — 배포 전에 문구를 눈으로 검토하기 위한 용도. */}
-                <button
-                  type="button" className="scr-btn scr-btn-ghost scr-admin-panel-update-preview-btn"
-                  onClick={() => setPreviewingUpdateNotice(true)}
-                >
-                  업데이트 안내 미리보기
-                </button>
               </div>
               {isAdmin && (
                 <>
@@ -220,30 +228,34 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
                   {err && <div className="scr-err">{err}</div>}
                   {/* 제어판 기능 버튼들 — 투박한 입체(엠보스) 사각 버튼, 3열 그리드(요청:
                       "제어판같은 투박한 입체 사각 버튼... 가로로 세개씩 줄줄이 배치").
-                      아주 위험한(되돌릴 수 없는) 기능만 빨간 톤(-danger). */}
+                      되돌릴 수 없거나 모두에게 즉시 반영되는 기능만 빨간 톤(-danger).
+                      단순 조회(다운로드)를 뺀 나머지는 전부 실행 전 확인창을 거친다
+                      (요청: "관리자 버튼들은 다 컨펌창 있어야돼(단순 조회는 제외)"). */}
                   <div className="scr-admin-panel-grid">
                     <button
                       type="button" className="scr-admin-panel-phys-btn"
-                      onClick={() => changeVersion(currentNumber - 1)} disabled={busy || currentNumber <= 1}
+                      onClick={() => setConfirmVersionAction("rollback")} disabled={busy || currentNumber <= 1}
                     >
                       {busy ? <Spinner /> : `롤백 (v${currentNumber - 1})`}
                     </button>
                     <button
-                      type="button" className="scr-admin-panel-phys-btn"
-                      onClick={() => changeVersion(currentNumber + 1)} disabled={busy}
+                      type="button" className="scr-admin-panel-phys-btn scr-admin-panel-phys-btn-danger"
+                      onClick={() => setConfirmVersionAction("deploy")} disabled={busy}
                     >
                       {busy ? <Spinner /> : `배포 (v${currentNumber + 1})`}
                     </button>
                     {/* 리플레이 폴더 일괄 등록 — 버튼을 누르면 바로 폴더 선택창이 뜬다. */}
                     <ReplayBatchButton />
-                    {/* 등록된 리플레이 전체를 zip으로 백업 다운로드(운영자). */}
+                    {/* 등록된 리플레이 전체를 zip으로 백업 다운로드(운영자) — 읽기 전용이라
+                        확인창 없이 바로 받는다. */}
                     <button
                       type="button" className="scr-admin-panel-phys-btn"
                       onClick={downloadReplays} disabled={downloading}
                     >
                       {downloading ? <Spinner /> : "리플레이 전체 다운로드"}
                     </button>
-                    {/* 모든 경기기록 삭제 — 되돌릴 수 없는 파괴적 작업이라 빨간 버튼으로. */}
+                    {/* 모든 경기기록 삭제 — 되돌릴 수 없는 파괴적 작업이라 빨간 버튼으로.
+                        (window.prompt로 "삭제" 직접 입력하는 확인창이 이미 있다.) */}
                     <button
                       type="button" className="scr-admin-panel-phys-btn scr-admin-panel-phys-btn-danger"
                       onClick={deleteAllMatches} disabled={busy}
@@ -257,6 +269,22 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
           )}
         </div>
       </div>
+
+      {confirmVersionAction && (
+        <ConfirmDialog
+          title={confirmVersionAction === "deploy"
+            ? `v${currentNumber + 1}로 배포할까요?`
+            : `v${currentNumber - 1}로 롤백할까요?`}
+          message="모든 사용자에게 즉시 반영됩니다."
+          confirmLabel={confirmVersionAction === "deploy" ? "배포" : "롤백"}
+          onConfirm={() => {
+            const next = confirmVersionAction === "deploy" ? currentNumber + 1 : currentNumber - 1;
+            setConfirmVersionAction(null);
+            changeVersion(next);
+          }}
+          onCancel={() => setConfirmVersionAction(null)}
+        />
+      )}
 
       {previewingUpdateNotice && (
         <AppUpdateNoticeModal onClose={() => setPreviewingUpdateNotice(false)} />

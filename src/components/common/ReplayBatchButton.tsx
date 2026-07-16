@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { Spinner } from "./Feedback";
+import ConfirmDialog from "./ConfirmDialog";
 import ReplayReviewModal from "../../modals/ReplayReviewModal";
 import { useAppStore } from "../../store/appStore";
 import { cx } from "../../utils/format";
@@ -116,6 +117,8 @@ export default function ReplayBatchButton() {
   // 분리하는 쪽이 근본적으로 더 안전하다. 배치가 시작되면 자동으로 뜨고, 닫아도(X) 배치
   // 자체는 계속 진행된다 — 다시 보고 싶으면 트리거 버튼 옆에 뜨는 "결과 보기"로 재오픈.
   const [resultsOpen, setResultsOpen] = useState(false);
+  // 폴더를 고른 뒤 실제 등록 실행 전 확인창 대상 — 확인 전까지는 실행하지 않는다.
+  const [pendingFiles, setPendingFiles] = useState<File[] | null>(null);
 
   // 중단 요청과 고른 옵션들은 렌더와 무관하게 실행 중인 루프가 즉시 읽어야 해서 ref로 둔다.
   const abortRef = useRef(false);
@@ -149,7 +152,11 @@ export default function ReplayBatchButton() {
     inputRef.current?.click();
   };
 
-  const runBatch = async (fileList: FileList | null) => {
+  // 폴더 선택까지만 처리하고, 실제 등록 실행은 확인창을 거친 뒤(executeBatch)에만
+  // 시작한다 — 관리자 기능은 전부 실행 전 확인이 있어야 한다(요청: "관리자 버튼들은
+  // 다 컨펌창 있어야돼(단순 조회는 제외)"). 이 배치는 경기 기록을 실제로 만드는
+  // 쓰기 작업이라 대상이다.
+  const runBatch = (fileList: FileList | null) => {
     // input.files는 살아있는(live) FileList라, 값을 비우면 이미 잡아둔 이 참조의 내용까지
     // 같이 비워질 수 있다 — 반드시 배열로 먼저 복사해두고 그다음에 input을 비운다(같은
     // 폴더를 다시 골랐을 때도 change가 뜨게 하려면 비워둬야 한다).
@@ -160,15 +167,21 @@ export default function ReplayBatchButton() {
     // 폴더를 골랐는데 아무 일도 안 일어나면 어디서 막혔는지 알 수가 없다 — 브라우저가 넘겨준
     // 파일 수와 그중 리플레이 수를 항상 먼저 남긴다.
     setPickedNote(`폴더에서 파일 ${picked.length}개 · 리플레이(.rep) ${files.length}개를 찾았어요.`);
-    setStarted(true);
-    setResultsOpen(true);
     if (files.length === 0) {
+      setStarted(true);
       setErr(picked.length === 0
         ? "브라우저가 폴더 안의 파일을 넘겨주지 않았어요 (선택을 취소했거나 빈 폴더예요)."
         : "고른 폴더 안에 리플레이(.rep) 파일이 없어요.");
       setProgress(EMPTY_PROGRESS);
       return;
     }
+    setPendingFiles(files);
+  };
+
+  const executeBatch = async (files: File[]) => {
+    setPendingFiles(null);
+    setStarted(true);
+    setResultsOpen(true);
 
     const mode = modeRef.current;
     abortRef.current = false;
@@ -385,6 +398,16 @@ export default function ReplayBatchButton() {
           </div>
         </div>,
         document.body,
+      )}
+
+      {pendingFiles && (
+        <ConfirmDialog
+          title={`리플레이 ${pendingFiles.length}개를 분석해 자동 등록할까요?`}
+          message="분석 결과에 따라 경기 기록이 실제로 만들어집니다."
+          confirmLabel="등록 시작"
+          onConfirm={() => void executeBatch(pendingFiles)}
+          onCancel={() => setPendingFiles(null)}
+        />
       )}
 
       {reviewOpen && (
