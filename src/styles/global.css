@@ -4800,6 +4800,10 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
    폭을 넓히고, 요소(프사+닉네임+응답표시)가 더 많은 상대편에 폭을 조금 더 준다. 실제로
    보이는 승 배지(재대결 이력 중 완료된 페이지)는 -hidden이 아니라 그대로 남는다. */
 .scr-discarded-list .scr-challenge-inline-win-hidden { display: none; }
+/* 손 이모지(👉)와 상대편 프로필 사이 간격을 거의 붙인다(요청: "손 이모지 바로 거의 옆에
+   상대 프로필을 붙여도 될거같은데") — 그만큼 상대편 닉네임이 더 나온다. 도전자편 쪽
+   간격(margin-left)은 그대로 둔다. */
+.scr-discarded-list .scr-challenge-arrow-row { margin-right: 3px; }
 .scr-discarded-list .scr-challenge-side-target { flex: 1.35 1 0; }
 @media (min-width: 641px) {
   /* 넓은 화면(모달 폭 여유)에서는 본 목록처럼 좌우 대칭으로 되돌린다. */
