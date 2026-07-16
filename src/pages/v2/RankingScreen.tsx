@@ -35,7 +35,7 @@ const CHART_OPTS: { value: ChartOpt; label: string }[] = [
 // 기준") — 그래서 타이틀 옆에 몇 월인지 표시하고, 전월 대비 순위변동을 순위 밑에 바로
 // 보여주며, 카드를 누르면 최근 5개월 추이 모달이 뜬다.
 //
-// 순위 계산(승자승 → 간접비교(공통상대) → 승수 / 팀은 승점 → 승수 → 경기수)은 전부 서버가
+// 순위 계산(승자승 → 간접비교(공통상대), 못 가르면 공동순위 / 팀은 승점 → 승수 → 경기수)은 전부 서버가
 // 끝내서 내려준다 — 화면은 그 순서대로 그리고 순위 숫자만 붙인다(./rank.ts).
 export default function RankingScreenV2() {
   const members = useAppStore((s) => s.members);
@@ -193,7 +193,7 @@ export default function RankingScreenV2() {
           그 기준을 설명하던 문구도 같이 없앤다 — 일대일 산정 방법 안내만 남는다. */}
       {!isTeam && (
         <p className="scr-rank-note">
-          승자승 → 간접비교 → 승수
+          승자승 → 간접비교 (못 가르면 공동순위)
           <br />
           방식에 대한 의견은 카톡방에 자유롭게 말해주세요
         </p>

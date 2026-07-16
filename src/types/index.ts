@@ -197,8 +197,8 @@ export interface MemberStatsEntry {
   overall: MemberStats;
   byRace: Record<BaseRace, MemberStats>;
   mostPlayedRace: Race | null;
-  // 랭킹 순서 — 서버가 승자승(맞대결) → 승점 → 공통상대 → 전체 승수 순으로 이미 다 가른
-  // 결과다(승률은 정렬 기준이 아니다). 맞대결/공통상대는 "누구와 비교하느냐"에 따라 달라지는
+  // 랭킹 순서 — 서버가 승자승(맞대결) → 간접비교(공통상대) 두 단계로 가른 결과다(못 가르면
+  // 공동순위, 승률·전체 승수는 정렬 기준이 아니다). 맞대결/공통상대는 "누구와 비교하느냐"에 따라 달라지는
   // 쌍 단위 값이라 회원별 숫자 하나로는 내려올 수 없어서, 클라이언트는 이 자리번호로만
   // 줄세운다. 이 조회 조건에서 한 판도 안 뛴 회원은 순위 대상이 아니라 null.
   sortOrder: number | null;
