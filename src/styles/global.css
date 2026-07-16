@@ -963,8 +963,12 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   position: sticky; top: var(--safe-top); z-index: 25;
   display: flex; justify-content: flex-end; align-items: center; gap: 8px;
   pointer-events: none;
-  /* 스티키로 붙었을 때 아래 타이틀/검색줄과 딱 붙지 않게 살짝만 아래 여백. */
-  padding-bottom: 2px;
+  /* 최상단(스크롤 0)에선 버튼이 타이틀("너 나와!")과 같은 줄을 공유해야 한다(요청: "타이틀과
+     같은 로우에 겹쳐져 있어야해 ... 영역을 공유"). 이 줄은 흐름상 타이틀 바로 위 별도 행인데,
+     자기 높이만큼 음수 아래여백을 줘서 다음 툴바(타이틀)를 이 줄 자리로 끌어올린다 —
+     타이틀은 왼쪽, 버튼은 오른쪽이라 실제로 겹치진 않고 한 줄을 나눠 쓴다. 스크롤하면
+     스티키로 떨어져 상단에 붙고, 타이틀은 그대로 스크롤돼 사라진다. */
+  margin-bottom: calc(-1 * var(--field-h-sm));
 }
 .scr-challenge-float-actions > .scr-btn { pointer-events: auto; }
 /* "휴지통" 버튼 — 보조 액션이라 옅게, 라벨 폭에 맞춰(줄바꿈 없이) 자연 폭. */
