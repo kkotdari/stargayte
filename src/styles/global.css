@@ -5171,6 +5171,8 @@ html.scr-light-theme .scr-challenge-next-tag {
 }
 .scr-challenge-avatar-badge-accepted { color: #5cae83; }
 .scr-challenge-avatar-badge-rejected { color: #d1888a; }
+/* 버림(discarded) — 사유 있는 거절(붉은톤)과 구분되게 무채색 회색으로. */
+.scr-challenge-avatar-badge-discarded { color: #9a97a3; }
 .scr-challenge-avatar-badge-pending { color: #cdaa54; }
 .scr-challenge-person { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
 .scr-challenge-person-hit {

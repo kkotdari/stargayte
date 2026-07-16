@@ -98,6 +98,20 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
     }
   };
 
+  // 편지봉투 "버리기" — 열어보지 않고 사유 없이 완전히 폐기(휴지통)로 보낸다(요청: "완전히
+  // 휴지통행이고 사유 없음"). 응답은 'discarded'(버림)로 기록돼 거절(rejected)과 구분 표시된다.
+  // 성공하면 다음 도전장으로 넘어간다.
+  const discard = async () => {
+    setBusy(true);
+    try {
+      await api.respondToChallenge(current.id, "discarded");
+      advance();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "버리지 못했어요.");
+      setBusy(false);
+    }
+  };
+
   // 팀전(0102)이면 양 팀을 한눈에 확인할 수 있게 나눠 보여준다(요청: "팀전의 경우 상대팀원과
   // 우리팀 확인하기 좋게"). 상대팀(도전한 쪽) = 도전자(createdBy) + 그 팀원(ownMembers),
   // 우리팀(지목된 쪽) = targets(나 포함).
@@ -239,13 +253,13 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
               <div className="scr-challenge-envelope-actions">
                 <button
                   type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid scr-challenge-envelope-open"
-                  onClick={() => setStage("letter")}
+                  onClick={() => setStage("letter")} disabled={busy}
                 >
                   열기
                 </button>
                 <button
                   type="button" className="scr-btn scr-btn-ghost scr-challenge-envelope-discard"
-                  onClick={advance}
+                  onClick={discard} disabled={busy}
                 >
                   버리기
                 </button>
