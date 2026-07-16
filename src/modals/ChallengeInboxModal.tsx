@@ -164,10 +164,10 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
             </label>
 
             {/* 거절 사유(한마디) 없이 거절을 누르면 여기 오류가 뜬다 — 뜰 때 아래 버튼 줄이
-                밀리지 않도록 자리를 미리 예약해 둔다(요청: "메시지없이 거절할때 오류 메시지
-                노출(미리 공간 예약)"). */}
+                크게 밀리지 않게 작은 한 줄 자리만 미리 예약하고, 박스/테두리 없이 작은 글씨만
+                띄운다(요청: "예약공간을 12정도로 하고 그만한 글씨만 띄우자(테두리 없이)"). */}
             <div className="scr-challenge-inbox-err-slot" aria-live="polite">
-              {err && <div className="scr-err">{err}</div>}
+              {err && <span className="scr-challenge-inbox-err-text">{err}</span>}
             </div>
 
             <div className="scr-form-actions">
