@@ -955,10 +955,11 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    맞춰 올린다. */
 .scr-v2-toolbar-actions { grid-area: actions; display: flex; align-items: center; gap: 6px; transform: translateY(-6px); }
 /* 도전장 화면은 우측 상단에 버튼 두 개를 세로로 쌓는다(요청: "휴지통 버튼을 보내기 버튼
-   위에") — actions 칸을 세로 컬럼으로 바꾸고 오른쪽 정렬. 그리드 칸을 쓰므로 세로 공간을
-   자연히 예약해 아래 검색줄과 겹치지 않는다. */
-.scr-challenge-toolbar-actions { flex-direction: column; align-items: flex-end; gap: 8px; }
-/* "버려진 도전장" 버튼 — 보조 액션이라 옅게, 글자 안 줄바꿈. */
+   위에") — actions 칸을 세로 컬럼으로. 두 버튼 폭을 똑같이 맞춘다(요청: "버튼 크기 도전장
+   보내기랑 똑같이") — align-items:stretch로 둘 다 컬럼(=더 넓은 '도전장 보내기') 폭에
+   맞춰 늘린다. 그리드 칸을 쓰므로 세로 공간을 자연히 예약해 아래 검색줄과 겹치지 않는다. */
+.scr-challenge-toolbar-actions { flex-direction: column; align-items: stretch; gap: 8px; }
+/* "휴지통" 버튼 — 보조 액션이라 옅게, 글자 안 줄바꿈. */
 .scr-challenge-discarded-btn { white-space: nowrap; color: var(--muted); }
 /* PC 화면 폭 통일(위 --list-content-max 주석 참고) — 처음엔 목록 패널/타이틀줄/검색창/
    힌트 문구를 화면마다 자식 요소 하나하나 따로 좁혔는데("PC에서 컨텐츠 영역을 800으로
@@ -4760,29 +4761,34 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
    가져온 스티키 날짜 헤더만 이 안에선 그냥 고정 안 되게(static) 되돌린다. */
 .scr-discarded-modal { max-width: 560px; }
 .scr-discarded-modal .scr-modal-head { font-weight: 800; }
-.scr-discarded-modal .scr-challenge-date-head {
-  position: static; top: auto; z-index: auto; background: transparent; backdrop-filter: none;
-}
+/* 휴지통은 순수 스크롤 목록이라 본문 하단에 여백이 0이면 마지막 카드가 모달 아래 끝에
+   딱 붙어 "끝까지 스크롤이 안 되는" 느낌이었다(요청: "휴지통 최하단까지 스크롤이 안됨")
+   — 아래 여백 + 안전영역(홈 인디케이터)만큼 더 밀어 마지막 카드가 충분히 드러나게 한다. */
+.scr-discarded-modal .scr-modal-body { padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px)); }
 /* 버려진 초대장 카드는 누렇게 바랜 "낡은 편지지" 느낌(요청: "카드 배경 낡은 편지지느낌")
    — 옅은 갈색 얼룩이 번진 아이보리 종이에, 글자는 종이 위에서 읽히도록 카드 안에서만 짙은
    갈색 팔레트로 뒤집는다. 어두운 휴지통 배경 위에 낡은 편지지들이 놓인 모양새. 테마와
    무관하게 종이 자체 팔레트를 쓰므로 라이트/다크 공통. */
 .scr-discarded-list .scr-challenge-card {
-  --text: #4a3f2f;
-  --muted: rgba(74, 63, 47, 0.72);
-  --dim: rgba(74, 63, 47, 0.5);
+  /* 글자는 더 진하게(요청: "버려진 휴지통 글씨 더 진하게" + "편지지 내용 글씨 더 진하게")
+     — 짙은 갈색을 한 단계 더 어둡게 내리고, muted/dim도 더 또렷하게. */
+  --text: #2e2413;
+  --muted: rgba(46, 36, 19, 0.86);
+  --dim: rgba(46, 36, 19, 0.64);
   --line: rgba(74, 63, 47, 0.18);
   --line-soft: rgba(74, 63, 47, 0.22);
   color: var(--text);
-  background-color: #e6d9bc;
+  /* 종이는 더 연하게(요청: "편지지 더 연하게") — 바탕과 그라데이션을 밝은 아이보리로
+     올리고, 갈색 얼룩(radial)도 옅게 낮춰 깨끗한 종이에 가깝게. */
+  background-color: #f2ebd6;
   background-image:
-    radial-gradient(ellipse at 16% 12%, rgba(120, 92, 45, 0.16), transparent 42%),
-    radial-gradient(ellipse at 88% 84%, rgba(110, 80, 36, 0.18), transparent 48%),
-    radial-gradient(circle at 58% 46%, rgba(90, 62, 26, 0.06), transparent 66%),
-    linear-gradient(135deg, #efe3c9 0%, #dccdaa 100%);
-  border: 1px solid rgba(92, 70, 40, 0.3);
+    radial-gradient(ellipse at 16% 12%, rgba(120, 92, 45, 0.1), transparent 42%),
+    radial-gradient(ellipse at 88% 84%, rgba(110, 80, 36, 0.12), transparent 48%),
+    radial-gradient(circle at 58% 46%, rgba(90, 62, 26, 0.04), transparent 66%),
+    linear-gradient(135deg, #f8f1de 0%, #ebe1c4 100%);
+  border: 1px solid rgba(92, 70, 40, 0.26);
   box-shadow:
-    inset 0 0 22px rgba(120, 95, 50, 0.18),
+    inset 0 0 22px rgba(120, 95, 50, 0.12),
     0 2px 10px rgba(0, 0, 0, 0.3);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
