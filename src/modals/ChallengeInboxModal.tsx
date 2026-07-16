@@ -37,12 +37,12 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
 
   // 봉투를 충분히 보여준 뒤 자동으로 "letter"로 넘어간다(봉투는 그냥 사라지고 편지지가
   // 등장). idx가 바뀌어 새 봉투(stage="envelope")가 뜰 때마다 다시 돈다. 누가 보냈는지
-  // (봉투 위 제목)를 읽을 시간을 넉넉히 주려고 먼저 1.2초 가만히 있다가 흔들린다(요청:
-  // "누가 보낸건지 볼 시간이 짧아서 쉐이킹 전 1.2초 정지"). CSS 쪽 흔들림
-  // animation-delay(1.2s) + 느려진 지속시간(0.9s) = 2.1초에 맞춰 "letter"로 넘긴다.
+  // (봉투 위 제목)를 읽을 시간을 넉넉히 주려고 먼저 2.4초 가만히 있다가 흔들린다(요청:
+  // "홀드 시간을 두배로" — 1.2s → 2.4s). CSS 쪽 흔들림 animation-delay(2.4s) + 지속시간
+  // (0.75s, 요청: "쉐이킹은 살짝 더 빠르게") = 3.15초에 맞춰 "letter"로 넘긴다.
   useEffect(() => {
     if (!current || stage !== "envelope") return;
-    const t = window.setTimeout(() => setStage("letter"), 2100);
+    const t = window.setTimeout(() => setStage("letter"), 3150);
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- idx가 바뀌면 stage도 항상 "envelope"로 함께 리셋되므로 stage만으로 충분
   }, [stage, idx]);
@@ -163,12 +163,20 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
               />
             </label>
 
-            {err && <div className="scr-err">{err}</div>}
+            {/* 거절 사유(한마디) 없이 거절을 누르면 여기 오류가 뜬다 — 뜰 때 아래 버튼 줄이
+                밀리지 않도록 자리를 미리 예약해 둔다(요청: "메시지없이 거절할때 오류 메시지
+                노출(미리 공간 예약)"). */}
+            <div className="scr-challenge-inbox-err-slot" aria-live="polite">
+              {err && <div className="scr-err">{err}</div>}
+            </div>
 
             <div className="scr-form-actions">
+              {/* 예전엔 한마디가 없으면 거절 버튼 자체를 비활성화했는데(요청: "거절일때는
+                  필수"), 눌러도 반응이 없어 왜 안 되는지 알기 어려웠다 — 이제 버튼은 열어두고
+                  누르면 위 슬롯에 "거절 사유를 입력해 주세요." 오류를 띄운다(요청). */}
               <button
                 className="scr-btn scr-challenge-reject-btn" onClick={() => respond("rejected")}
-                disabled={busy || !canReject}
+                disabled={busy}
               >
                 {busy ? <Spinner /> : "거절"}
               </button>

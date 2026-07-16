@@ -5408,16 +5408,16 @@ html.scr-light-theme .scr-challenge-next-tag {
    잘릴 이유가 없다 — 네 귀퉁이 전부 둥글게(요청: "모서리 네 귀퉁이 똑같이 래디우스
    걸어주고"). */
 .scr-challenge-envelope-full { margin: 0; border-radius: var(--radius); }
-/* 연출 1단계 — 봉투가 뜬 채로 2.1초(JS 타임아웃) 있다가 사라지는데, 처음
-   1.2초는 가만히 있어 누가 보냈는지(봉투 위 제목)를 읽을 시간을 주고(요청: "누가 보낸건지
-   볼 시간이 짧아서 쉐이킹 전 1.2초 정지"), 그 뒤에만 흔들린다. 좌우로 미끄러지는 대신
+/* 연출 1단계 — 봉투가 뜬 채로 3.15초(JS 타임아웃) 있다가 사라지는데, 처음
+   2.4초는 가만히 있어 누가 보냈는지(봉투 위 제목)를 읽을 시간을 준다(요청: "홀드 시간을
+   두배로" — 정지 시간 1.2s → 2.4s), 그 뒤에만 흔들린다. 좌우로 미끄러지는 대신
    제어판이 등장할 때(scr-admin-panel-pop)처럼 살짝 커졌다가 회전하며 통통 튀는 "두둥"
-   바운스로, 예전보다 느리게 흔든다(요청: "쉐이킹도 지금보다 느리게"). animation-delay
-   (1.2s) + 지속시간(.9s) = 2.1s로 JS 타임아웃과 맞춘다. 시작/끝을 안정 상태(scale 1
-   rotate 0)로 둬서 딜레이가 끝나며 튀는 잔프레임(점프) 없이 이어진다. */
+   바운스로, 예전보다 살짝 더 빠르게 흔든다(요청: "쉐이킹은 살짝 더 빠르게" — .9s → .75s).
+   animation-delay(2.4s) + 지속시간(.75s) = 3.15s로 JS 타임아웃과 맞춘다. 시작/끝을
+   안정 상태(scale 1 rotate 0)로 둬서 딜레이가 끝나며 튀는 잔프레임(점프) 없이 이어진다. */
 .scr-challenge-envelope-shake {
   transform-origin: center;
-  animation: scr-challenge-envelope-shake .9s cubic-bezier(.34, 1.4, .64, 1) 1.2s;
+  animation: scr-challenge-envelope-shake .75s cubic-bezier(.34, 1.4, .64, 1) 2.4s;
 }
 @keyframes scr-challenge-envelope-shake {
   0%   { transform: scale(1) rotate(0deg); }
@@ -5442,6 +5442,10 @@ html.scr-light-theme .scr-challenge-next-tag {
    붙어 모달 폭을 못 채웠다(요청: "모달 안의 내용들을 넓히라고") — 본문을 full-width로
    펴서 행/입력칸이 모달 폭을 꽉 채우게 한다. */
 .scr-challenge-inbox-body { text-align: left; width: 100%; box-sizing: border-box; }
+/* 거절 사유 없이 거절을 누르면 뜨는 오류 자리 — 오류가 떠도 아래 버튼 줄이 밀리지 않게
+   오류 박스 높이(.scr-err: 한 줄 + 상하 패딩/테두리 ≈ 36px)만큼 늘 예약해 둔다(요청:
+   "미리 공간 예약"). 오류가 없을 땐 빈 자리로 남는다. */
+.scr-challenge-inbox-err-slot { min-height: 36px; }
 .scr-challenge-inbox-message { margin: 0 0 6px; font-size: 14px; font-style: italic; color: var(--text); }
 /* 값 span(종류/일시 오른쪽)은 클래스가 없어 색을 명시 안 하면 앱 루트의 테마 글자색(다크
    테마에선 흰색)을 그대로 물려받아 밝은 편지지 배경 위에서 거의 안 보였다(요청: "결과
