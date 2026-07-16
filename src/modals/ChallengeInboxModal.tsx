@@ -40,11 +40,14 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
 
   const current = challenges[idx];
 
-  // 봉투를 잠깐 보여준 뒤 자동으로 "opening"(터지는 연출)으로, 그 연출이 끝나면
+  // 봉투를 충분히 보여준 뒤 자동으로 "opening"(터지는 연출)으로, 그 연출이 끝나면
   // "letter"로 넘어간다. idx가 바뀌어 새 봉투(stage="envelope")가 뜰 때마다 다시 돈다.
+  // 누가 보냈는지(봉투 위 제목)를 읽을 시간을 넉넉히 주려고 먼저 1.2초 가만히 있다가
+  // 흔들린다(요청: "누가 보낸건지 볼 시간이 짧아서 쉐이킹 전 1.2초 정지"). CSS 쪽 흔들림
+  // animation-delay(1.2s) + 느려진 지속시간(0.9s) = 2.1초에 맞춰 "opening"으로 넘긴다.
   useEffect(() => {
     if (!current || stage !== "envelope") return;
-    const t = window.setTimeout(() => setStage("opening"), 1100);
+    const t = window.setTimeout(() => setStage("opening"), 2100);
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- idx가 바뀌면 stage도 항상 "envelope"로 함께 리셋되므로 stage만으로 충분
   }, [stage, idx]);
@@ -101,9 +104,12 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
     }
   };
 
-  // "함께" 줄은 팀전(2명 이상 지목)에서 나 말고 같이 지목된 상대가 있을 때만 보여준다 —
-  // 1:1이면 이미 상대가 나 하나뿐이라 중복이고, 나 자신의 이름만 나오면 어색하다.
-  const others = current.targets.filter((t) => t.memberId !== myId).map((t) => t.nickname);
+  // 팀전(0102)이면 양 팀을 한눈에 확인할 수 있게 나눠 보여준다(요청: "팀전의 경우 상대팀원과
+  // 우리팀 확인하기 좋게"). 상대팀(도전한 쪽) = 도전자(createdBy) + 그 팀원(ownMembers),
+  // 우리팀(지목된 쪽) = targets(나 포함) — 그중 나는 "(나)"로 표시해 바로 알아보게 한다.
+  const isTeamMatch = current.matchType === "0102";
+  const opposingTeam = [current.createdBy.nickname, ...current.ownMembers.map((m) => m.nickname)];
+  const ourTeam = current.targets.map((t) => (t.memberId === myId ? `${t.nickname} (나)` : t.nickname));
   const title = `${current.createdBy.nickname}님에게서 도전장이 도착했어요`;
 
   return createPortal(
@@ -121,11 +127,17 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
             {current.message && (
               <p className="scr-challenge-inbox-message">"{current.message}"</p>
             )}
-            {others.length > 0 && (
-              <div className="scr-challenge-inbox-row">
-                <span className="scr-label">함께</span>
-                <span>{others.join(", ")}</span>
-              </div>
+            {isTeamMatch && (
+              <>
+                <div className="scr-challenge-inbox-row scr-challenge-inbox-team-row">
+                  <span className="scr-label scr-challenge-team-label scr-challenge-team-label-them">상대팀</span>
+                  <span className="scr-challenge-team-names">{opposingTeam.join(", ")}</span>
+                </div>
+                <div className="scr-challenge-inbox-row scr-challenge-inbox-team-row">
+                  <span className="scr-label scr-challenge-team-label scr-challenge-team-label-us">우리팀</span>
+                  <span className="scr-challenge-team-names">{ourTeam.join(", ")}</span>
+                </div>
+              </>
             )}
             <div className="scr-challenge-inbox-row">
               <span className="scr-label">종류</span>

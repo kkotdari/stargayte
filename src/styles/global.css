@@ -5327,15 +5327,16 @@ html.scr-light-theme .scr-challenge-next-tag {
    잘릴 이유가 없다 — 네 귀퉁이 전부 둥글게(요청: "모서리 네 귀퉁이 똑같이 래디우스
    걸어주고"). */
 .scr-challenge-envelope-full { margin: 0; border-radius: var(--radius); }
-/* 연출 1단계 — 봉투가 뜬 채로 1.1초(JS 타임아웃) 있다가 "opening"으로 넘어가는데, 그
-   마지막 구간에만 살짝 흔들려 곧 열린다는 긴장감을 준다. 좌우로 미끄러지는 대신 제어판이
-   등장할 때(scr-admin-panel-pop)처럼 살짝 커졌다가 회전하며 통통 튀는 "두둥" 바운스로
-   바꾼다(요청: "제어판 나올때처럼 흔들리면 좋겠다"). animation-delay(.6s) + 지속시간(.5s)
-   = 1.1s로 JS 타임아웃과 맞춘다. 시작/끝을 안정 상태(scale 1 rotate 0)로 둬서 딜레이가
-   끝나며 튀는 잔프레임(점프) 없이 이어진다. */
+/* 연출 1단계 — 봉투가 뜬 채로 2.1초(JS 타임아웃) 있다가 "opening"으로 넘어가는데, 처음
+   1.2초는 가만히 있어 누가 보냈는지(봉투 위 제목)를 읽을 시간을 주고(요청: "누가 보낸건지
+   볼 시간이 짧아서 쉐이킹 전 1.2초 정지"), 그 뒤에만 흔들린다. 좌우로 미끄러지는 대신
+   제어판이 등장할 때(scr-admin-panel-pop)처럼 살짝 커졌다가 회전하며 통통 튀는 "두둥"
+   바운스로, 예전보다 느리게 흔든다(요청: "쉐이킹도 지금보다 느리게"). animation-delay
+   (1.2s) + 지속시간(.9s) = 2.1s로 JS 타임아웃과 맞춘다. 시작/끝을 안정 상태(scale 1
+   rotate 0)로 둬서 딜레이가 끝나며 튀는 잔프레임(점프) 없이 이어진다. */
 .scr-challenge-envelope-shake {
   transform-origin: center;
-  animation: scr-challenge-envelope-shake .5s cubic-bezier(.34, 1.4, .64, 1) .6s;
+  animation: scr-challenge-envelope-shake .9s cubic-bezier(.34, 1.4, .64, 1) 1.2s;
 }
 @keyframes scr-challenge-envelope-shake {
   0%   { transform: scale(1) rotate(0deg); }
@@ -5388,6 +5389,14 @@ html.scr-light-theme .scr-challenge-next-tag {
    이 모달의 편지지 --text(짙은 갈색)로 못박는다. .scr-label은 자기 색이 따로 있어 그대로다. */
 .scr-challenge-inbox-row { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--line-soft); color: var(--text); }
 .scr-challenge-inbox-row:last-of-type { border-bottom: none; }
+/* 팀전에서 상대팀/우리팀을 한눈에 구분하게(요청: "팀전의 경우 상대팀원과 우리팀 확인하기
+   좋게") — 라벨은 색으로 편을 가르고(상대=붉은 톤, 우리=파란 톤) 이름은 굵게 왼쪽으로
+   길게 늘어놓아 잘 읽히게 한다. 이름이 많으면 줄바꿈해서 다 보이게. */
+.scr-challenge-inbox-team-row { align-items: flex-start; }
+.scr-challenge-team-label { font-weight: 800; flex-shrink: 0; }
+.scr-challenge-team-label-them { color: #c0392b; }
+.scr-challenge-team-label-us { color: #2f6db5; }
+.scr-challenge-team-names { font-weight: 700; text-align: right; }
 /* 편지지를 연 뒤 상단에 크게 넣는 nawa 이미지 — 사각형 대신 가로로 긴 타원으로 크롭하고
    (요청: "nawa 사진 가로로 긴 타원형으로 크롭") 가장자리를 그라데이션으로 흐린다(요청:
    "nawa 이미지는 상단에 크게 배치" + "동그랗게 크롭 & 가장자리 그라데이션 처리").
