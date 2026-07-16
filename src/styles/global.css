@@ -4692,6 +4692,16 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
   /* 요청: "최대한 높이는 컴팩트하게" + "수락 거절 버튼 위쪽에 갭이 너무 큰듯" —
      11px→8px. */
   display: flex; flex-direction: column; gap: 8px;
+  /* 우상단 "취소" 라벨(휴지통) 등 절대배치 요소의 기준. */
+  position: relative;
+}
+/* 응답 전 취소(아무도 응답 안 하고 폐기)된 건의 우상단 "취소" 라벨 — 휴지통 낡은 편지지
+   톤에 맞춰 옅은 회갈색 도장식 알약으로(요청: "취소 라벨 우상단에"). */
+.scr-challenge-cancel-tag {
+  position: absolute; top: 8px; right: 10px; z-index: 3;
+  font-size: 11px; font-weight: 800; letter-spacing: 0.02em;
+  color: var(--muted); border: 1px solid var(--line-soft); border-radius: 5px;
+  padding: 1px 6px; background: rgba(120, 95, 50, 0.08); white-space: nowrap;
 }
 .scr-light-theme .scr-challenge-card {
   background: rgba(255, 255, 255, 0.62);
