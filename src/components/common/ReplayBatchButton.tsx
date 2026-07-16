@@ -339,9 +339,16 @@ export default function ReplayBatchButton() {
 
       {err && <div className="scr-err">{err}</div>}
 
-      {/* 진행 중/완료됐는데 결과 창을 닫아둔 경우 다시 열 수 있게. */}
+      {/* 진행 중/완료됐는데 결과 창을 닫아둔 경우 다시 열 수 있게. 그리드 흐름 안에 두면
+          나타났다 사라질 때마다 다른 버튼들이 들썩였다(실제로 지적받은 문제 —
+          "결과보기 생기면 레이아웃이 흔들리잖아") — 그리드에서 완전히 빼고 카드
+          모서리에 고정 배치한다. */}
       {started && total > 0 && !resultsOpen && (
-        <button type="button" className="scr-btn scr-btn-ghost scr-btn-sm" onClick={() => setResultsOpen(true)}>
+        <button
+          type="button"
+          className="scr-btn scr-btn-ghost scr-btn-sm scr-admin-panel-results-reopen"
+          onClick={() => setResultsOpen(true)}
+        >
           결과 보기 ({processed}/{total})
         </button>
       )}

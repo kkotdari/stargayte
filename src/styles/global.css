@@ -1439,14 +1439,19 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   /* v2 통계는 프사가 아예 없다(MemberStatRow avatar=false) — 위 기본(프사 위/닉네임
      아래 세로 배치, 배틀태그 숨김) 대신 이름 칸 전체를 데스크톱과 같은 닉네임/배틀태그
      단순 세로 스택으로 그대로 두고, 폭만 프사가 없어진 만큼 좁혀도 되는 값으로 잡는다. */
-  .scr-stats-list-panel-v2 .scr-stat-row { --scr-stat-name-w: 108px; }
+  /* 모바일 유저 칸 폭/글자 크기를 한 번 더 줄인다(요청: "유저 컬럼 폭 10프로 축소
+     및 텍스트 크기 15프로 축소") — 폭은 108px의 90%, 글자는 각 기본값의 85%. */
+  .scr-stats-list-panel-v2 .scr-stat-row { --scr-stat-name-w: 97px; }
   .scr-stats-list-panel-v2 .scr-stat-name-cell {
     flex-direction: row; align-items: center; justify-content: center;
     padding-left: 10px; padding-right: 10px;
   }
   .scr-stats-list-panel-v2 .scr-stat-name-head { padding-left: 10px; padding-right: 10px; }
-  .scr-stats-list-panel-v2 .scr-stat-name-btn { text-align: center; }
-  .scr-stats-list-panel-v2 .scr-stat-tag-pill { display: block; }
+  .scr-stats-list-panel-v2 .scr-stat-name-btn { text-align: center; font-size: 12.9px; }
+  .scr-stats-list-panel-v2 .scr-stat-tag-pill { display: block; font-size: 10.7px; }
+  /* 나머지 네 칸(게임수/전적/유효APM/유효커맨드)도 모바일에서 10%씩 좁힌다(요청:
+     "다른 컬럼들도 폭 10프로씩 감소") — 기본 150px의 90%. */
+  .scr-stats-list-panel-v2 .scr-stat-row { grid-template-columns: var(--scr-stat-name-w) repeat(4, 135px); }
 
   /* 게임아이디 그리드 헤더(scr-usermap-row-head)와 같은 크기로 맞춘다. */
   .scr-stat-row-head { font-size: 13.5px; }
@@ -3577,11 +3582,17 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-admin-panel-batch { display: contents; }
 .scr-admin-panel-batch-menu,
 .scr-admin-panel-batch-counts,
-.scr-admin-panel-batch .scr-err,
-.scr-admin-panel-batch > .scr-btn-ghost {
+.scr-admin-panel-batch .scr-err {
   grid-column: 1 / -1;
 }
 .scr-admin-panel-batch-menu { margin-top: 2px; }
+/* "결과 보기" 재오픈 버튼 — 그리드 칸으로 두면 나타났다 사라질 때마다 그 아래(경기관리
+   섹션 등) 버튼들이 들썩였다(실제로 지적받은 문제 — "결과보기 생기면 레이아웃이
+   흔들리잖아"). 그리드 흐름에서 완전히 빼고 카드(.scr-modal-body, position:relative)
+   모서리에 고정해 다른 요소에 전혀 영향을 주지 않게 한다. */
+.scr-admin-panel-results-reopen {
+  position: absolute; right: 14px; bottom: 14px; z-index: 2;
+}
 .scr-admin-panel-batch-option { justify-content: center; color: rgba(255,255,255,0.82); font-size: 12px; margin-bottom: 8px; }
 .scr-admin-panel-batch-modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 .scr-admin-panel-batch-mode {
