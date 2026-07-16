@@ -9,6 +9,7 @@ import { useAppStore } from "../store/appStore";
 import { useLockBodyScroll } from "../utils/bodyScrollLock";
 import { cx } from "../utils/format";
 import { versionNumber } from "../utils/appVersion";
+import { parseReplayFile } from "../utils/replayParser";
 
 interface AdminPanelModalProps {
   isAdmin: boolean;
@@ -37,6 +38,43 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
   // 미리 확인해보는 용도 — 배포 전에 문구를 눈으로 검토할 수 있게 한다.
   const [previewingUpdateNotice, setPreviewingUpdateNotice] = useState(false);
   const [downloading, setDownloading] = useState(false);
+
+  // ===== 리플레이 재연결 복구 도구(일회성) — 0013 마이그레이션이 match_attachments를
+  // 백업 없이 드롭하면서, 스토리지엔 남아있지만 DB 연결이 끊긴 예전 리플레이들이 생겼다.
+  // 서버가 준 orphan 파일 목록을 하나씩 받아 기존(이미 프론트에 있는) 리플레이 파서로
+  // 시작시각을 다시 뽑아내고, 그 시각과 정확히 일치하는 기존 경기에 재연결한다. 복구가
+  // 끝나면 이 상태/함수/버튼/로그를 통째로 지워도 된다 — 대충 만든 일회성 도구다. */
+  const [relinking, setRelinking] = useState(false);
+  const [relinkLog, setRelinkLog] = useState<string[]>([]);
+  const runRelink = async () => {
+    setRelinking(true);
+    setRelinkLog([]);
+    const log = (line: string) => setRelinkLog((prev) => [...prev, line]);
+    try {
+      const files = await api.listOrphanedReplays();
+      log(`orphan 파일 ${files.length}개 발견.`);
+      for (const f of files) {
+        const name = f.path.split("/").pop() || f.path;
+        try {
+          const res = await fetch(f.url);
+          if (!res.ok) { log(`[실패] ${name} — 다운로드 못함`); continue; }
+          const blob = await res.blob();
+          const file = new File([blob], name);
+          const parsed = await parseReplayFile(file);
+          if (!parsed.gameStartedAt) { log(`[건너뜀] ${name} — 시작시각을 못 읽음`); continue; }
+          const linked = await api.relinkReplay(f.path, parsed.gameStartedAt);
+          log(`[연결됨] ${name} → 경기 ${linked.matchNo}`);
+        } catch (e) {
+          log(`[실패] ${name} — ${e instanceof Error ? e.message : "알 수 없는 오류"}`);
+        }
+      }
+      log("-- 끝 --");
+    } catch (e) {
+      log(`[중단] ${e instanceof Error ? e.message : "알 수 없는 오류"}`);
+    } finally {
+      setRelinking(false);
+    }
+  };
 
   // 등록된 리플레이(.rep) 전체를 날짜별 폴더 zip으로 받는다 — 인증 헤더가 필요해 blob으로
   // 받아 클라이언트에서 임시 링크로 저장 트리거한다.
@@ -242,6 +280,23 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
                   >
                     {downloading ? <Spinner /> : "리플레이 전체 다운로드"}
                   </button>
+                  {/* 리플레이 재연결 복구(일회성 도구) — 0013 마이그레이션으로 끊긴
+                      예전 리플레이를 다시 찾아 기존 경기에 붙인다. 복구 끝나면 버튼째로
+                      지워도 된다. */}
+                  <button
+                    type="button" className="scr-btn scr-btn-ghost"
+                    onClick={runRelink} disabled={relinking}
+                  >
+                    {relinking ? <Spinner /> : "리플레이 재연결(복구)"}
+                  </button>
+                  {relinkLog.length > 0 && (
+                    <div style={{
+                      maxHeight: 220, overflowY: "auto", fontSize: 12, fontFamily: "monospace",
+                      whiteSpace: "pre-wrap", background: "rgba(0,0,0,0.25)", padding: 8, borderRadius: 6,
+                    }}>
+                      {relinkLog.join("\n")}
+                    </div>
+                  )}
                   {/* 모든 경기기록 삭제 — 되돌릴 수 없는 파괴적 작업이라 눈에 띄게 경고색으로. */}
                   <button
                     type="button" className="scr-btn scr-admin-panel-delete-all-btn"

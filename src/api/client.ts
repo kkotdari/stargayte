@@ -436,6 +436,23 @@ export const api = {
     return res.blob();
   },
 
+  // ===== 리플레이 재연결 복구 도구(일회성) — 0013 마이그레이션으로 DB 연결이 끊긴 채
+  // 스토리지에만 남은 예전 리플레이를 다시 찾아 기존 경기에 붙인다. 복구가 끝나면 이 두
+  // 메서드와 호출부(AdminPanelModal)를 지워도 된다. =====
+  async listOrphanedReplays(): Promise<{ path: string; url: string; size: number }[]> {
+    const { files } = await request<{ files: { path: string; url: string; size: number }[] }>(
+      "/api/matches/replays/orphaned",
+    );
+    return files;
+  },
+
+  async relinkReplay(filePath: string, gameStartedAt: string): Promise<{ matchId: number; matchNo: string }> {
+    return request<{ matchId: number; matchNo: string }>("/api/matches/replays/relink", {
+      method: "POST",
+      body: JSON.stringify({ filePath, gameStartedAt }),
+    });
+  },
+
   async updateProfile(id: string, patch: Partial<Member>): Promise<Member> {
     return request<Member>(`/api/members/${id}`, {
       method: "PATCH",
