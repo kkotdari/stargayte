@@ -54,6 +54,17 @@ export function monthInputToRange(value: string): { from: string; to: string } {
 // 오늘이 속한 달의 <input type="month"> 기본값("YYYY-MM").
 export const currentMonthValue = (): string => todayStr().slice(0, 7);
 
+// 랭킹 화면이 기본으로 보여줄 집계 월 — "그레이스 기간"이 붙는다(요청: "그레이스기간 적용
+// 매월 1일 20시까지는 전월 랭킹 표시"). 새 달로 넘어가도 1일 20시 전까지는 아직 지난달
+// 랭킹을 그대로 보여준다 — 달이 바뀌자마자 새 달(경기 0건)로 갈아치우면 전월 최종 순위를
+// 확인할 틈도 없이 빈 표가 되기 때문이다. 1일 20시부터 비로소 이번 달로 넘어간다.
+// (그 외 날짜엔 항상 이번 달. 시각은 기기 로컬 시간 = 한국 사용자 기준 KST.)
+export function rankingMonthValue(): string {
+  const now = gameNow();
+  if (now.getDate() === 1 && now.getHours() < 20) return shiftMonthValue(currentMonthValue(), -1);
+  return currentMonthValue();
+}
+
 // "YYYY-MM"을 delta개월만큼 앞/뒤로 옮긴다(음수=과거) — 랭킹 화면의 전월 대비 순위변동/
 // 최근 5개월 순위변동 모달이 함께 쓴다.
 export function shiftMonthValue(month: string, delta: number): string {

@@ -5,17 +5,14 @@ import PhotoViewer from "../../components/common/PhotoViewer";
 import RecordText from "../../components/common/RecordText";
 import RankDeltaBadge from "./RankDeltaBadge";
 import { cx } from "../../utils/format";
-import type { LatestMatch, RankRow as RankRowData } from "./rank";
+import type { RankRow as RankRowData } from "./rank";
 
 interface RankRowProps {
   row: RankRowData;
   // 바로 위 행과 공동순위(같은 순위)인지 — 그러면 그 사이 구분선을 그리지 않는다(같은
   // 그룹으로 묶여 보이도록).
   tiedWithPrev?: boolean;
-  // 최근 경기 목록 모달(팀랭킹 모달 재활용)을 연다 — row.latestMatch가 있을 때만 호출된다.
-  onOpenLatestMatch?: () => void;
-  // 카드(행) 전체를 누르면 뜨는 최근 5개월 순위변동 모달(요청: "랭킹 카드 클릭시 최근
-  // 5개월 순위변동 모달창 노출").
+  // 카드(행) 전체를 누르면 뜨는 상세(최근 5개월 순위변동 + 경기 이력) 모달(요청).
   onOpenTrend?: () => void;
   // 유저 검색에 걸린 사람 — 경기결과 로스터(.scr-team-player-highlight)와 같은 반전색으로
   // 프사+닉네임을 함께 칠한다(요청: "닉네임뿐 아니라 프사까지 하이라이팅 주고 경기
@@ -23,31 +20,22 @@ interface RankRowProps {
   highlighted?: boolean;
 }
 
-const OUTCOME_LABEL: Record<LatestMatch["outcome"], string> = { win: "승", loss: "패", draw: "무", notHeld: "미실시" };
-// 전적(RecordText)의 승/무/패와 같은 색 계열 — 미실시는 승패 개념이 없어 색을 안 입힌다.
-const OUTCOME_CLASS: Record<LatestMatch["outcome"], string | undefined> = {
-  win: "scr-record-win", loss: "scr-record-loss", draw: "scr-record-draw", notHeld: undefined,
-};
-
-// v2 일대일 랭킹의 한 줄 — #순위(+전월 대비 변동) | 프사 | 닉네임 | 전적(+최근 경기).
+// v2 일대일 랭킹의 한 줄 — #순위(+전월 대비 변동) | 프사 | 닉네임 | 전적 + 승점.
 //
-// 승률 대신 전적(승/패/무)을 보여준다. 순위를 가르는 기준이 승자승 → 승점 → 공통상대 → 승수로
-// 바뀌면서 승률은 정렬에 아무 역할을 하지 않게 됐는데, 그걸 큰 숫자로 붙여두면 "1위인데 왜
-// 승률이 낮지?"라고 읽히기만 한다. 전적은 승점(승-패)을 눈으로 셀 수 있어 순서와 어긋나지 않는다.
-//
-// 행 전체를 누르면 최근 5개월 순위변동 모달이 뜬다 — 최근 경기("vs 상대 승/패")는 그 안의
-// 별도 클릭 대상이라 이벤트 버블링을 막아 따로 반응한다.
-export default function RankRowV2({ row, tiedWithPrev = false, highlighted = false, onOpenLatestMatch, onOpenTrend }: RankRowProps) {
-  const { member, stats, rank, rankDelta, latestMatch } = row;
+// 승률 대신 전적(승/패/무)과 승점을 보여준다. 순위를 가르는 기준이 승자승 → 간접비교 →
+// 승점으로 바뀌면서 승률은 정렬에 아무 역할을 하지 않게 됐고, 승점(승-패)은 간접비교가
+// 없을 때 순위를 가르는 최후 기준이라 카드에도 함께 보여준다(요청: "개인 카드에 승점도 표시").
+// 예전엔 "최근 vs 상대 승/패" 한 줄을 붙였는데, 이제 일대일 경기 이력 전체를 카드 상세 모달
+// (그래프 아래)에서 보여주므로 카드에선 뺐다(요청: "최근 경기 이력말고 일대일 이력 다").
+export default function RankRowV2({ row, tiedWithPrev = false, highlighted = false, onOpenTrend }: RankRowProps) {
+  const { member, stats, rank, rankDelta } = row;
   const [photoOpen, setPhotoOpen] = useState(false);
+  // 승점(승 +1, 무 0, 패 -1) = 승-패. 양수는 +부호로.
+  const points = stats.wins - stats.losses;
 
   const openPhoto = (e: MouseEvent) => {
     e.stopPropagation();
     setPhotoOpen(true);
-  };
-  const openLatestMatch = (e: MouseEvent) => {
-    e.stopPropagation();
-    onOpenLatestMatch?.();
   };
 
   return (
@@ -79,29 +67,17 @@ export default function RankRowV2({ row, tiedWithPrev = false, highlighted = fal
           <div className="scr-rank-name-wrap">
             <span className="scr-rank-name">{member.nickname}</span>
           </div>
+          {/* 승점/전적을 팀 랭킹 카드와 같은 배치로 통일(요청: "승점과 전적 위치도 통일") —
+              승점을 위에 큼직하게("+N점"), 전적을 그 아래에. 승점이 순위를 가르는 기준이라
+              숫자로 도드라지게 한다. */}
           <div className="scr-rank-record-wrap">
+            <span className="scr-mono scr-rank-stat-primary">
+              {points > 0 ? `+${points}` : points}<span className="scr-num-unit">점</span>
+            </span>
             <RecordText
               className="scr-rank-record-v2"
               plays={stats.plays} wins={stats.wins} losses={stats.losses} draws={stats.draws}
             />
-            {latestMatch && (
-              // 상대 이름이 길면 그 이름만 줄여서(말줄임) 상대 이름 앞뒤(vs/승패 표시)는
-              // 항상 온전히 보이게 한다 — 예전엔 문장 전체를 한 덩이로 말줄임해서, 이름이
-              // 길면 정작 승/패 표시가 잘려서 안 보였다(실제로 지적받은 문제).
-              <span
-                className={cx("scr-rank-latest-match", onOpenLatestMatch && "scr-rank-latest-match-clickable")}
-                onClick={onOpenLatestMatch ? openLatestMatch : undefined}
-                role={onOpenLatestMatch ? "button" : undefined}
-                tabIndex={onOpenLatestMatch ? 0 : undefined}
-              >
-                <span className="scr-rank-latest-match-label">최근</span>
-                <span className="scr-rank-latest-match-vs">vs</span>
-                <span className="scr-rank-latest-match-opponent">{latestMatch.opponentLabel}</span>
-                <span className={cx("scr-rank-latest-match-outcome", OUTCOME_CLASS[latestMatch.outcome])}>
-                  {OUTCOME_LABEL[latestMatch.outcome]}
-                </span>
-              </span>
-            )}
           </div>
         </div>
       </div>

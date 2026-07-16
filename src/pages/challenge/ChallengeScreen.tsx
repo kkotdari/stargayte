@@ -7,7 +7,6 @@ import SearchFilterBar from "../../components/common/SearchFilterBar";
 import FilterItem from "../../components/common/FilterItem";
 import PillTabs from "../../components/common/PillTabs";
 import ChallengeFormModal from "../../modals/ChallengeFormModal";
-import TeamMatchesModal from "../../modals/TeamMatchesModal";
 import ChallengeScrollTimeline from "./ChallengeScrollTimeline";
 import { useAppStore } from "../../store/appStore";
 import { api } from "../../api/client";
@@ -20,7 +19,7 @@ import {
 import { activeMemberSearchTerms, memberMatchesTerm, splitSearchTerms } from "../../utils/memberSearch";
 import { useLockBodyScroll } from "../../utils/bodyScrollLock";
 import { suppressScrollHide, getScrollRoot, getScrollMetrics, scrollRootTo } from "../../utils/scrollRoot";
-import type { Challenge, ChallengeResult, ChallengeSide, ChallengeStatus, ChallengeTarget, Member } from "../../types";
+import type { Challenge, ChallengeResult, ChallengeSide, ChallengeStatus, ChallengeTarget } from "../../types";
 
 // 화면 표시 상태는 서버 status를 그대로 쓴다 — 서버가 4개(응답대기 pending/성사 confirmed/
 // 완료 done/폐기 discarded)로 확정해 내려준다. 예정 시간이 지나도 결과가 없으면 계속 성사
@@ -232,10 +231,9 @@ interface ChallengeCardProps {
   // (버려진 초대장은 체인 될 수 없다). 페이지 넘기기(보기)는 그대로 둔다.
   readOnly?: boolean;
   onResponded: (updated: Challenge) => void;
-  onViewResults: (challenge: Challenge) => void;
 }
 
-function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onResponded, onViewResults }: ChallengeCardProps) {
+function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onResponded }: ChallengeCardProps) {
   const memberOf = useAppStore((s) => s.memberOf);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -408,13 +406,22 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
   // 재대결 기록이다(reappliedFromId를 따로 안 봐도 페이지 순번으로 안다).
   const isRevengePage = shownIndex > 0;
 
+  // 결과 입력 대기 = 성사(수락)됐고 예정 일시가 지났는데 아직 결과가 안 들어온 상태(요청:
+  // "끝났으면 결과 입력 대기"). 완료 = 승패가 입력된 상태(요청: "결과보기 삭제하고 그자리에
+  // 상태 배지 완료"). 무승부/미실시는 각자 알약/텍스트로 따로 표시한다.
+  const isResultPending =
+    shownLatest && challenge.status === "confirmed" && schedulePassed && challenge.resultWinnerSide === null;
+  const isDoneWin =
+    shownLatest && (challenge.resultWinnerSide === "creator" || challenge.resultWinnerSide === "target");
+
   // 이 "맨 윗줄"에 실제로 보여줄 게 하나라도 있을 때만 줄을 그린다(전부 없으면 빈 줄이
-  // 남아 어색하다). 재대결 라벨/무승부 알약/카운트다운/결과보기·미실시 중 하나라도 해당하면.
+  // 남아 어색하다). 재대결 라벨/무승부·완료·결과입력대기 배지/카운트다운/미실시 중 하나라도.
   const whenHasContent =
     isRevengePage
     || activePage.resultWinnerSide === "draw"
     || (shownLatest && challenge.status === "pending")
-    || (shownLatest && challenge.resultWinnerSide !== null);
+    || (shownLatest && challenge.resultWinnerSide !== null)
+    || isResultPending;
 
   return (
     <div className="scr-challenge-card">
@@ -459,16 +466,17 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
               {shownLatest && challenge.status === "pending" && (
                 <span className="scr-challenge-countdown">{responseDeadlineLabel(challenge.createdAt)}</span>
               )}
-              {/* 결과 보기는 결과가 입력된 뒤에만 뜬다(요청: "결과보기는 결과 입력후에만
-                  보이고"). 미실시는 볼 결과 자체가 없으니 버튼 대신 "미실시" 텍스트만
-                  같은 자리에(요청: "미실시인 경우 결과보기 대신 미실시 표시"). */}
+              {/* "결과 보기" 버튼은 없앴다(요청) — 그 자리에 상태 배지를 둔다. 승패가 입력되면
+                  "완료", 예정 일시가 지났는데 아직 결과가 없으면 "결과 입력 대기". 무승부는
+                  무승부 알약으로, 미실시는 "미실시" 텍스트로 각각 따로 표시한다. */}
+              {isResultPending && (
+                <span className="scr-challenge-pill scr-challenge-pill-wait">결과 입력 대기</span>
+              )}
+              {isDoneWin && (
+                <span className="scr-challenge-pill scr-challenge-pill-done">완료</span>
+              )}
               {shownLatest && challenge.resultWinnerSide === "not_held" && (
                 <span className="scr-challenge-result-link scr-challenge-result-link-static">미실시</span>
-              )}
-              {shownLatest && challenge.resultWinnerSide !== null && challenge.resultWinnerSide !== "not_held" && (
-                <button type="button" className="scr-challenge-result-link" onClick={() => onViewResults(challenge)}>
-                  결과 보기
-                </button>
               )}
             </div>
             )}
@@ -779,7 +787,7 @@ function DiscardedChallengesModal(
             <div className="scr-challenge-list scr-discarded-list">
               {challenges.map((c) => (
                 <div key={c.id} className="scr-challenge-card-slot">
-                  <ChallengeCard challenge={c} myId={myId} readOnly onResponded={() => {}} onViewResults={() => {}} />
+                  <ChallengeCard challenge={c} myId={myId} readOnly onResponded={() => {}} />
                 </div>
               ))}
             </div>
@@ -1002,42 +1010,33 @@ export default function ChallengeScreen() {
     return () => { window.clearTimeout(t); root.classList.remove("scr-snap-today"); };
   }, [loading, firstNextId]);
 
-  // "결과 보기" — 랭킹 화면의 팀 경기 목록 모달을 그대로 재사용해 그 도전장의 팀 구성이 그
-  // 날짜에 등록한 경기를 보여준다.
-  const [resultsTarget, setResultsTarget] = useState<Challenge | null>(null);
-  const resultsMembers: Member[] = useMemo(() => {
-    if (!resultsTarget) return [];
-    const ids = [resultsTarget.createdBy.id, ...resultsTarget.ownMembers.map((m) => m.memberId)];
-    return ids.map((id) => memberOf(id)).filter((m): m is Member => !!m);
-  }, [resultsTarget, memberOf]);
-  const resultsDateStr = resultsTarget?.scheduledAt ? fmt(new Date(resultsTarget.scheduledAt)) : undefined;
-
   const emptyLabel = searchTerms.length > 0
     ? "검색 결과가 없어요"
     : acceptedOnly ? "수락된 대결이 없어요" : "도전장이 없어요";
 
   return (
     <div className="scr-screen scr-challenge-screen-v2">
+      {/* 휴지통/도전장 보내기 — 수평으로 오른쪽 정렬하고, 스크롤해도 상단에 붙어 뜨는 플로팅
+          스티키다(요청). z-index는 날짜 스티키(9)보다 높아 그 위로 뜬다. 빈 좌측은 클릭을
+          통과시켜(pointer-events) 아래 목록을 가리지 않는다. */}
+      <div className="scr-challenge-float-actions">
+        <button
+          type="button"
+          className="scr-btn scr-btn-ghost scr-btn-sm scr-challenge-discarded-btn"
+          onClick={() => setDiscardedOpen(true)}
+        >
+          🗑️ 휴지통
+        </button>
+        <button
+          type="button"
+          className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm"
+          onClick={() => setFormOpen(true)}
+        >
+          🕊️ 도전장 보내기
+        </button>
+      </div>
       <div className="scr-v2-toolbar">
         <h1 className="scr-title scr-v2-toolbar-title">너 나와!</h1>
-        {/* 우측 상단에 버튼 두 개를 세로로 쌓는다 — 위에 "버려진 도전장"(🗑️), 아래에
-            "도전장 보내기"(요청: "휴지통 버튼을 보내기 버튼 위에"). */}
-        <div className="scr-v2-toolbar-actions scr-challenge-toolbar-actions">
-          <button
-            type="button"
-            className="scr-btn scr-btn-ghost scr-btn-sm scr-challenge-discarded-btn"
-            onClick={() => setDiscardedOpen(true)}
-          >
-            🗑️ 휴지통
-          </button>
-          <button
-            type="button"
-            className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm"
-            onClick={() => setFormOpen(true)}
-          >
-            🕊️ 도전장 보내기
-          </button>
-        </div>
       </div>
 
       <SearchFilterBar
@@ -1123,7 +1122,6 @@ export default function ChallengeScreen() {
                                 myId={user?.id}
                                 highlightMemberIds={highlightMemberIds}
                                 onResponded={upsert}
-                                onViewResults={setResultsTarget}
                               />
                             </div>
                           ))}
@@ -1156,16 +1154,6 @@ export default function ChallengeScreen() {
         />
       )}
 
-      {resultsTarget && (
-        <TeamMatchesModal
-          members={resultsMembers}
-          matchType={resultsTarget.matchType}
-          dateFrom={resultsDateStr}
-          dateTo={resultsDateStr}
-          highlightMembers={false}
-          onClose={() => setResultsTarget(null)}
-        />
-      )}
     </div>
   );
 }

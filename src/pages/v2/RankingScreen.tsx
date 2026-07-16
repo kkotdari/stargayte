@@ -5,16 +5,15 @@ import PillTabs from "../../components/common/PillTabs";
 import FilterItem from "../../components/common/FilterItem";
 import RankRow from "./RankRow";
 import TeamRankRow from "./TeamRankRow";
-import RankTrendModal from "./RankTrendModal";
+import RankingDetailModal from "./RankingDetailModal";
 import {
   computeRankRows, computeSoloRankTrend, computeTeamRankRows, computeTeamRankTrend, SOLO_MATCH_TYPE,
   type RankMode, type RankRow as RankRowData, type RankTrendPoint, type TeamRankRow as TeamRankRowData,
   type TeamSize,
 } from "./rank";
 import { activeMemberSearchTerms, memberMatchesTerm, splitSearchTerms } from "../../utils/memberSearch";
-import { currentMonthValue, MONTHS_KR } from "../../utils/date";
+import { rankingMonthValue, MONTHS_KR } from "../../utils/date";
 import { useAppStore } from "../../store/appStore";
-import TeamMatchesModal from "../../modals/TeamMatchesModal";
 import type { BaseRace, Member } from "../../types";
 
 // 차트 필터 하나로 통합 — 예전엔 "개인/팀"을 고른 뒤 팀에서만 인원(2/3/4인) 라디오가
@@ -35,7 +34,7 @@ const CHART_OPTS: { value: ChartOpt; label: string }[] = [
 // 기준") — 그래서 타이틀 옆에 몇 월인지 표시하고, 전월 대비 순위변동을 순위 밑에 바로
 // 보여주며, 카드를 누르면 최근 5개월 추이 모달이 뜬다.
 //
-// 순위 계산(승자승 → 간접비교(공통상대) → 승수 / 팀은 승점 → 승수 → 경기수)은 전부 서버가
+// 순위 계산(승자승 → 간접비교(공통상대) → 승점 / 팀은 승점 → 승수 → 경기수)은 전부 서버가
 // 끝내서 내려준다 — 화면은 그 순서대로 그리고 순위 숫자만 붙인다(./rank.ts).
 export default function RankingScreenV2() {
   const members = useAppStore((s) => s.members);
@@ -47,7 +46,10 @@ export default function RankingScreenV2() {
   const teamSize = (chart === "solo" ? 4 : Number(chart)) as TeamSize;
   const [race, setRace] = useState<BaseRace | "all">("all");
   const [search, setSearch] = useState("");
-  const month = currentMonthValue();
+  // 집계 월은 그레이스 기간이 붙는다 — 매월 1일 20시 전까지는 아직 전월 랭킹을 보여준다
+  // (요청: "그레이스기간 적용 매월 1일 20시까지는 전월 랭킹 표시"). rankingMonthValue가 그
+  // 판단까지 해서 "YYYY-MM"을 준다.
+  const month = rankingMonthValue();
 
   // 개인/각 인원수 팀은 집계 대상 자체가 다른 별도 목록이라, 한쪽에서 걸어둔 검색어·종족
   // 필터를 다른 쪽으로 들고 가면 그 화면에 아무도 안 걸린 채로 남거나 무의미한 필터가
@@ -71,13 +73,9 @@ export default function RankingScreenV2() {
 
   const [rows, setRows] = useState<RankRowData[]>([]);
   const [teamRows, setTeamRows] = useState<TeamRankRowData[]>([]);
-  // 카드를 누른 팀 — 그 팀이 함께 뛴 경기 목록 모달을 연다(null이면 안 열림).
-  const [teamMatches, setTeamMatches] = useState<Member[] | null>(null);
-  // 일대일 행의 "최근 경기" 줄을 눌렀을 때 — 그 회원의 일대일 경기 목록 모달을 연다
-  // (팀 랭킹과 같은 TeamMatchesModal을 재활용, members가 한 명뿐인 배열이라는 점만 다르다).
-  const [soloMatchMember, setSoloMatchMember] = useState<Member | null>(null);
-  // 카드(행) 클릭 — 최근 5개월 순위변동 모달. trendMembers가 null이면 안 열림, trendPoints가
-  // null이면 그 안에서 아직 불러오는 중.
+  // 카드(행) 클릭 — 상세 모달(최근 5개월 순위변동 그래프 + 경기 이력). 개인·팀 모두 카드
+  // 클릭 하나로 이 모달을 연다. trendMembers가 null이면 안 열림, trendPoints가 null이면
+  // 그 안에서 아직 불러오는 중.
   const [trendMembers, setTrendMembers] = useState<Member[] | null>(null);
   const [trendPoints, setTrendPoints] = useState<RankTrendPoint[] | null>(null);
   const [loading, setLoading] = useState(true);
@@ -193,7 +191,7 @@ export default function RankingScreenV2() {
           그 기준을 설명하던 문구도 같이 없앤다 — 일대일 산정 방법 안내만 남는다. */}
       {!isTeam && (
         <p className="scr-rank-note">
-          승자승 → 간접비교 → 승수
+          승자승 → 간접비교 → 승점
           <br />
           방식에 대한 의견은 카톡방에 자유롭게 말해주세요
         </p>
@@ -214,7 +212,6 @@ export default function RankingScreenV2() {
                 // 문제). 검색 중에는 묶지 않고 모든 행이 자기 순위를 그대로 보여준다.
                 tiedWithPrev={searchTerms.length === 0 && i > 0 && row.rank === visibleTeamRows[i - 1].rank}
                 highlightMemberIds={highlightMemberIds}
-                onOpenMatches={() => setTeamMatches(row.members)}
                 onOpenTrend={() => openTeamTrend(row)}
               />
             ))
@@ -230,7 +227,6 @@ export default function RankingScreenV2() {
                 // 검색에 걸린 사람은 경기 로스터와 같은 반전색으로 프사+닉네임을 함께
                 // 칠한다(요청: "닉네임뿐 아니라 프사까지 하이라이팅").
                 highlighted={highlightMemberIds.has(row.member.id)}
-                onOpenLatestMatch={() => setSoloMatchMember(row.member)}
                 onOpenTrend={() => openSoloTrend(row)}
               />
             ))
@@ -238,17 +234,14 @@ export default function RankingScreenV2() {
         </div>
       </div>
 
-      {teamMatches && (
-        <TeamMatchesModal members={teamMatches} onClose={() => setTeamMatches(null)} />
-      )}
-      {soloMatchMember && (
-        <TeamMatchesModal
-          members={[soloMatchMember]} matchType={SOLO_MATCH_TYPE}
-          onClose={() => setSoloMatchMember(null)}
-        />
-      )}
       {trendMembers && (
-        <RankTrendModal members={trendMembers} points={trendPoints} onClose={closeTrend} />
+        <RankingDetailModal
+          members={trendMembers}
+          points={trendPoints}
+          // 일대일 랭킹이면 그 회원의 일대일 경기만, 팀 랭킹이면 그 팀 구성 경기 전부.
+          matchType={mode === "solo" ? SOLO_MATCH_TYPE : undefined}
+          onClose={closeTrend}
+        />
       )}
     </div>
   );

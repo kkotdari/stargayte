@@ -18,8 +18,8 @@ import type {
 export type RankMode = "solo" | "team";
 export type TeamSize = 2 | 3 | 4;
 
-// "일대일"은 말 그대로 1:1 경기만 집계한다(팀전에서의 개인 전적은 섞지 않는다). 최근 경기
-// 모달(TeamMatchesModal 재활용)을 열 때도 같은 값으로 걸러야 해서 export한다.
+// "일대일"은 말 그대로 1:1 경기만 집계한다(팀전에서의 개인 전적은 섞지 않는다). 랭킹 상세
+// 모달의 경기 이력을 그 회원의 일대일 경기로만 거를 때도 같은 값을 써서 export한다.
 export const SOLO_MATCH_TYPE = "0101";
 
 export interface LatestMatch {
@@ -49,7 +49,7 @@ export interface RankRow {
 // 전체 회원의 최근 일대일 경기 중 이만큼만 가져와서 "회원별 최근 1경기"를 뽑는다 — 회원별로
 // 따로 조회하면 회원 수만큼 요청이 나가므로, 한 번에 넉넉히 받아 클라이언트에서 나눠 담는다.
 // 이 표본보다 더 오래전에만 뛴 회원은 최근 경기가 없는 것으로 처리된다(허용 가능한 손실 —
-// TeamMatchesModal의 100건 캡과 같은 절충). 서버 GET /matches의 limit 상한(le=100)을
+// 랭킹 상세 모달 경기 이력의 100건 캡과 같은 절충). 서버 GET /matches의 limit 상한(le=100)을
 // 넘길 수 없다 — 그 이상을 요청하면 422로 거절된다.
 const LATEST_MATCH_SAMPLE_SIZE = 100;
 
@@ -116,7 +116,7 @@ function soloRankByMember(entries: MemberStatsEntry[], memberById: Map<string, M
 }
 
 // 일대일 랭킹 — 집계(전적/승률/최다종족)뿐 아니라 정렬까지 서버(GET /matches/stats)가 끝내서
-// sortOrder로 내려준다. 순서는 승자승(맞대결) → 공통상대(간접비교) → 전체 승수 순이고, 승점(승-패)과
+// sortOrder로 내려준다. 순서는 승자승(맞대결) → 공통상대(간접비교) → 승점(승-패) 순이고,
 // 승률은 정렬 기준이 아니다(화면에 숫자로만 보여준다). 맞대결·공통상대 비교는 "누구와 누구를
 // 견주느냐"에 따라 값이 달라지는 쌍 단위 계산이라, 회원별 숫자 하나로 받아서 클라이언트가
 // 다시 정렬할 수가 없기 때문이다. 여기서는 순위 숫자만 붙인다.

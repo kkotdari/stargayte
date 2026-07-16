@@ -954,12 +954,24 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    놓이는 액션 버튼도 그대로 두면 타이틀보다 상대적으로 아래로 처져 보인다 — 같은 양만큼
    맞춰 올린다. */
 .scr-v2-toolbar-actions { grid-area: actions; display: flex; align-items: center; gap: 6px; transform: translateY(-6px); }
-/* 도전장 화면은 우측 상단에 버튼 두 개를 세로로 쌓는다(요청: "휴지통 버튼을 보내기 버튼
-   위에") — actions 칸을 세로 컬럼으로. 두 버튼 폭을 똑같이 맞춘다(요청: "버튼 크기 도전장
-   보내기랑 똑같이") — align-items:stretch로 둘 다 컬럼(=더 넓은 '도전장 보내기') 폭에
-   맞춰 늘린다. 그리드 칸을 쓰므로 세로 공간을 자연히 예약해 아래 검색줄과 겹치지 않는다. */
-.scr-challenge-toolbar-actions { flex-direction: column; align-items: stretch; gap: 8px; }
-/* "휴지통" 버튼 — 보조 액션이라 옅게, 글자 안 줄바꿈. */
+/* 도전장 화면의 휴지통/도전장 보내기 — 수평으로 오른쪽 정렬하고, 스크롤해도 상단(안전영역
+   바로 아래)에 붙어 뜨는 플로팅 스티키다(요청: "수평 배치(오른쪽 정렬) ... 플로팅 스티키야
+   날짜 스티키보다 z축 인덱스 높아야돼"). 스크롤 컨테이너(#scroll-root) 안 .scr-screen의
+   자식이라 목록 전체를 스크롤하는 동안 계속 붙어 있는다. 빈 좌측은 클릭을 통과시켜
+   (pointer-events:none) 아래 목록/카드를 가리지 않고, 버튼만 다시 클릭을 받는다. */
+.scr-challenge-float-actions {
+  position: sticky; top: var(--safe-top); z-index: 25;
+  display: flex; justify-content: flex-end; align-items: center; gap: 8px;
+  pointer-events: none;
+  /* 최상단(스크롤 0)에선 버튼이 타이틀("너 나와!")과 같은 줄을 공유해야 한다(요청: "타이틀과
+     같은 로우에 겹쳐져 있어야해 ... 영역을 공유"). 이 줄은 흐름상 타이틀 바로 위 별도 행인데,
+     자기 높이만큼 음수 아래여백을 줘서 다음 툴바(타이틀)를 이 줄 자리로 끌어올린다 —
+     타이틀은 왼쪽, 버튼은 오른쪽이라 실제로 겹치진 않고 한 줄을 나눠 쓴다. 스크롤하면
+     스티키로 떨어져 상단에 붙고, 타이틀은 그대로 스크롤돼 사라진다. */
+  margin-bottom: calc(-1 * var(--field-h-sm));
+}
+.scr-challenge-float-actions > .scr-btn { pointer-events: auto; }
+/* "휴지통" 버튼 — 보조 액션이라 옅게, 라벨 폭에 맞춰(줄바꿈 없이) 자연 폭. */
 .scr-challenge-discarded-btn { white-space: nowrap; color: var(--muted); }
 /* PC 화면 폭 통일(위 --list-content-max 주석 참고) — 처음엔 목록 패널/타이틀줄/검색창/
    힌트 문구를 화면마다 자식 요소 하나하나 따로 좁혔는데("PC에서 컨텐츠 영역을 800으로
@@ -1750,7 +1762,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-rank-record-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; justify-self: stretch; min-width: 0; }
 .scr-rank-record-v2 {
   font-size: 14px; color: var(--dim); white-space: nowrap;
-  max-width: 100%; overflow: hidden; text-overflow: ellipsis;
+  min-width: 0; overflow: hidden; text-overflow: ellipsis;
 }
 /* 최근 일대일 경기 한 줄 — "vs 상대이름 승/패" 세 조각을 한 덩이로 말줄임하면 상대 이름이
    길 때 정작 승/패 표시까지 잘려 안 보였다(실제로 지적받은 문제) — 상대 이름 칸만 따로
@@ -1982,9 +1994,6 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   padding: 2px 4px; margin: -2px -4px;
 }
 .scr-team-rank-stats { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; justify-self: end; }
-/* 카드 전체 클릭이 순위변동 모달로 바뀌면서, 경기 목록은 이 자리(승점/전적)만의 별도
-   클릭 대상이 됐다 — 밑줄로 살짝 링크처럼 보이게 구분한다(개인전 최근 경기와 같은 톤). */
-.scr-team-rank-stats-clickable { cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
 .scr-team-rank-record { font-size: 16.5px; color: var(--dim); white-space: nowrap; }
 @media (max-width: 640px) {
   .scr-rank-table-panel-v2 .scr-team-rank-row { padding: 7px 0; }
@@ -3314,6 +3323,9 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-rank-detail-chart-area { aspect-ratio: 300 / 140; display: flex; align-items: center; justify-content: center; }
 .scr-rank-detail-chart-area .scr-empty { width: 100%; }
 .scr-rank-detail-chart { width: 100%; height: auto; overflow: visible; }
+/* 그래프 아래 경기 이력 섹션(요청) — 그래프와 구분선으로 나눈다. */
+.scr-rank-detail-history { margin-top: 14px; border-top: 1px solid var(--line-soft); padding-top: 12px; }
+.scr-rank-detail-history-head { font-size: 13px; font-weight: 800; color: var(--muted); margin-bottom: 8px; }
 .scr-rank-detail-line { fill: none; stroke: var(--point); stroke-width: 2; }
 .scr-rank-detail-dot { fill: var(--point); }
 .scr-rank-detail-value { font-size: 11px; font-weight: 700; fill: var(--text); text-anchor: middle; }
@@ -4741,6 +4753,9 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
    아니라 대기중/취소됨과 같은 옅은 톤으로 — 더는 할 일이 없다는 느낌을 준다(요청:
    "완료 기준은 예정 시간이 지났을때 승락상태면 완료"). */
 .scr-challenge-pill-done { background: rgba(var(--overlay-rgb),0.12); color: var(--dim); }
+/* 예정 시간이 지났는데 아직 결과가 안 들어온 "결과 입력 대기" — 아직 할 일이 남았다는
+   신호라 옅은 호박색으로 눈에 띄게(요청: "끝났으면 결과 입력 대기"). */
+.scr-challenge-pill-wait { background: rgba(205,170,84,0.18); color: #cdaa54; }
 /* 취소, 그리고 팀전에서 누군가 거절해 이미 끝났는데 아직 응답을 안 한 나머지 상대(더는
    의미 없는 "대기") — 전부 같은 옅은 톤 + 취소선. */
 .scr-challenge-pill-muted { background: rgba(var(--overlay-rgb),0.12); color: var(--dim); text-decoration: line-through; }
@@ -4899,10 +4914,10 @@ html.scr-light-theme .scr-challenge-next-tag {
    헤더/툴바/검색줄, 아래쪽은 탭바를 비켜 배치한다. */
 .scr-challenge-timeline {
   position: fixed; right: 6px; z-index: 40;
-  /* 우측 상단에 세로로 쌓인 버튼(휴지통/도전장 보내기) 아래에서 시작하게 한다(요청:
-     "타임라인 상단이 버튼보다 낮게 위치하게"). 160px에선 아래 '도전장 보내기' 버튼과 살짝
-     겹친다는 피드백(요청: "타임라인 상단 도전장 보내기 버튼밑에 살짝 겹침 발생")으로 더 내린다. */
-  top: calc(var(--safe-top) + 184px);
+  /* 버튼(휴지통/도전장 보내기)이 이제 한 줄 플로팅 스티키라, 상단에 붙었을 때(top:safe-top,
+     높이 ~40px) 그 바로 아래에서 시작하면 된다(요청: "타임라인도 버튼이 한줄이라 거기까지
+     상단을 올려도 됨"). */
+  top: calc(var(--safe-top) + 50px);
   bottom: calc(var(--mobile-footer-h) + env(safe-area-inset-bottom, 0px) + 40px);
   display: flex; flex-direction: column; align-items: center; gap: 6px;
   opacity: 0; pointer-events: none; transition: opacity 0.25s ease;
