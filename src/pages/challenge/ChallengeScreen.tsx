@@ -234,11 +234,14 @@ interface ChallengeCardProps {
   myId: string | undefined;
   // 유저 검색에 걸린 사람들 — 카드 안 프사+닉네임을 반전색으로 칠한다.
   highlightMemberIds?: Set<string>;
+  // NEXT 배지 번호 — "해당일"(가장 임박한 예정 대결이 속한 날짜)의 수락된 대결에만
+  // 시각 오름차순으로 매겨진다(동일 시각은 같은 번호). 대상이 아니면 null.
+  nextBadgeNumber?: number | null;
   onResponded: (updated: Challenge) => void;
   onViewResults: (challenge: Challenge) => void;
 }
 
-function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onViewResults }: ChallengeCardProps) {
+function ChallengeCard({ challenge, myId, highlightMemberIds, nextBadgeNumber, onResponded, onViewResults }: ChallengeCardProps) {
   const memberOf = useAppStore((s) => s.memberOf);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -489,6 +492,12 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
           <div ref={pagesInnerRef} className="scr-challenge-page">
             <div className="scr-challenge-card-row scr-challenge-card-when">
               {timeLabelOf(activePage, shownLatest)}
+              {/* NEXT 배지 — 날짜 헤더가 아니라 카드 자체에(요청: "NEXT 배지를 날짜가
+                  아니라 대결 카드 위에"), 시각 순서 번호와 함께(요청: "시간 빠른 순서로
+                  NEXT #1... 시간이 같으면 같은 번호"). */}
+              {!!nextBadgeNumber && (
+                <span className="scr-challenge-next-tag">NEXT #{nextBadgeNumber}</span>
+              )}
               {/* 체인 라벨 — 이 기록이 재신청/재대결로 만들어진 것이면 어느 쪽인지 표시.
                   재신청은 몇 번째인지도 함께(요청: "다시 신청은 n번째 재신청으로 변경하고
                   다시 신청 -> 재신청으로 모두 변경" → "배지 N차 재신청으로 변경"). */}
@@ -984,6 +993,21 @@ export default function ChallengeScreen() {
   const isNextCard = (c: Challenge): boolean =>
     nextTime !== null && c.status === "confirmed" && !!c.scheduledAt
     && new Date(c.scheduledAt).getTime() === nextTime;
+  // NEXT 배지 번호 — 날짜 헤더가 아니라 카드 하나하나에 단다(요청: "NEXT 배지를 날짜가
+  // 아니라 대결 카드 위에"). isNextCard(정확히 nextTime과 같은 시각)로 찾은 그룹("해당일")
+  // 안의 수락된(confirmed) 대결 전부에, 시각 오름차순으로 #1/#2.../동일 시각은 같은 번호를
+  // 매긴다(요청: "시간 빠른 순서로 NEXT #1... 시간이 같으면 같은 번호"). 그 그룹이 아닌
+  // 날짜의 카드는 대상이 아니다.
+  const nextBadgeNumbers = (items: Challenge[]): Map<number, number> | null => {
+    if (!items.some(isNextCard)) return null;
+    const confirmed = items.filter((c) => c.status === "confirmed" && !!c.scheduledAt);
+    const times = Array.from(new Set(confirmed.map((c) => new Date(c.scheduledAt as string).getTime()))).sort((a, b) => a - b);
+    const rankByTime = new Map<number, number>();
+    times.forEach((t, i) => rankByTime.set(t, i + 1));
+    const map = new Map<number, number>();
+    confirmed.forEach((c) => map.set(c.id, rankByTime.get(new Date(c.scheduledAt as string).getTime())!));
+    return map;
+  };
   // 동일 시각 NEXT가 여럿이면 그중 목록상 첫 카드로만 스크롤한다(배지/글로우는 모두).
   const firstNextId = useMemo(
     () => activeList.find(isNextCard)?.id ?? null,
@@ -992,17 +1016,18 @@ export default function ChallengeScreen() {
   const nextCardRef = useRef<HTMLDivElement | null>(null);
   // 진입 후 첫 로드가 끝났을 때 딱 한 번만 스크롤한다 — 이후 응답/재조회로 목록이 바뀌어도
   // 보던 위치를 뺏지 않는다. 맨 위 스냅(block:"start")은 스티키 날짜줄에 카드 윗부분이
-  // 바짝 붙어 오히려 눈에 안 들어온다는 피드백으로, 카드 상단을 뷰포트 높이의 약 30%
-  // 지점(화면 중앙보다 조금 위)에 오도록 직접 계산해 스크롤한다.
+  // 바짝 붙어 오히려 눈에 안 들어온다는 피드백으로, 카드 상단을 뷰포트 높이의 22% 지점에
+  // 오도록 직접 계산해 스크롤한다 — 정중앙(50%)으로 해봤다가, 그 날 NEXT 대결이 여러
+  // 개인 경우가 흔해서(요청: "보통 여러개의 매치가 있을수 있으니 가운데가 아니라 좀
+  // 위쪽이어야겠지?" → "진입포커싱 더 위로") 첫 카드를 더 위로 올려 뒤따르는 NEXT
+  // 카드들도 스크롤 없이 같이 보이게 한다.
   //
   // 아래 두 효과("오늘" 스냅 켜기 / NEXT로 진입 스크롤)를 하나로 합친 이유: 스냅
   // (scroll-snap-type: y proximity)이 이미 켜진 채로 이 진입 스크롤을 돌리면, 스크롤의
   // 최종 정지 위치가 근처 스냅 타깃("오늘"/"미정")으로 끌려가 버려 NEXT 카드가 의도한
-  // 위치(화면 중앙보다 조금 위)에서 벗어났다(실제로 지적받은 문제 — "너나와 진입시
-  // 포커싱이 next가 세로 중간보다 조금 위에 위치하게"가 안 지켜짐). 진입 스크롤이 나갈
-  // 대상이 있는 동안은 스냅을 잠깐 꺼 뒀다가, 스크롤이 끝났을 즈음(스무스 스크롤엔 완료
-  // 콜백이 없어 넉넉히 700ms 후로 추정) 다시 켠다. 스크롤할 대상이 없거나 이미 스크롤을
-  // 마쳤으면 스냅을 바로 켠다.
+  // 위치에서 벗어났다(실제로 지적받은 문제). 진입 스크롤이 나갈 대상이 있는 동안은 스냅을
+  // 잠깐 꺼 뒀다가, 스크롤이 끝났을 즈음(스무스 스크롤엔 완료 콜백이 없어 넉넉히 700ms
+  // 후로 추정) 다시 켠다. 스크롤할 대상이 없거나 이미 스크롤을 마쳤으면 스냅을 바로 켠다.
   const didAutoScrollRef = useRef(false);
   useEffect(() => {
     const root = document.getElementById("scroll-root");
@@ -1020,7 +1045,7 @@ export default function ChallengeScreen() {
     const { scrollTop, clientHeight } = getScrollMetrics();
     const rootTop = scrollRootEl instanceof Window ? 0 : scrollRootEl.getBoundingClientRect().top;
     const elTopInViewport = el.getBoundingClientRect().top - rootTop;
-    const target = scrollTop + elTopInViewport - clientHeight * 0.3;
+    const target = scrollTop + elTopInViewport - clientHeight * 0.22;
     scrollRootTo({ top: Math.max(0, target), behavior: "smooth" });
     const t = window.setTimeout(() => root.classList.add("scr-snap-today"), 700);
     return () => { window.clearTimeout(t); root.classList.remove("scr-snap-today"); };
@@ -1094,41 +1119,41 @@ export default function ChallengeScreen() {
             <div className="scr-empty">{emptyLabel}</div>
           ) : (
             <div className="scr-challenge-list">
-              {groupChallengesByDate(activeList).map((g) => (
-                <div
-                  key={g.label}
-                  className="scr-challenge-date-group"
-                  data-today={g.isToday ? "1" : undefined}
-                  // "일정 미정" 그룹(scheduledAt 없는 대기중 묶음, 맨 위)에 표식을 달아
-                  // 우측 타임라인이 눈금+라벨을 찍고 스크롤 스냅 타깃으로 삼는다.
-                  data-undecided={g.items.some((c) => !c.scheduledAt) ? "1" : undefined}
-                >
-                  <div className="scr-challenge-date-head" data-date-label={g.label}>
-                    {g.isToday && <span className="scr-challenge-card-today-tag">오늘</span>}
-                    {g.label}
-                    {/* NEXT 배지는 카드가 아니라 그 날짜 헤더에 단다(요청: "글로우 없애고
-                        NEXT 배지를 날짜에"). 가장 임박한 예정 대결이 속한 날짜 그룹에만
-                        붙는다(동일 시각이면 같은 날짜라 한 그룹). */}
-                    {g.items.some(isNextCard) && <span className="scr-challenge-next-tag">NEXT</span>}
-                  </div>
-                  {g.items.map((c) => (
-                    // 슬롯 래퍼 — 진입 스크롤 목적지는 가장 임박한 예정 대결(그중 첫 카드)이다.
-                    <div
-                      key={c.id}
-                      ref={c.id === firstNextId ? nextCardRef : undefined}
-                      className="scr-challenge-card-slot"
-                    >
-                      <ChallengeCard
-                        challenge={c}
-                        myId={user?.id}
-                        highlightMemberIds={highlightMemberIds}
-                        onResponded={upsert}
-                        onViewResults={setResultsTarget}
-                      />
+              {groupChallengesByDate(activeList).map((g) => {
+                const badgeNumbers = nextBadgeNumbers(g.items);
+                return (
+                  <div
+                    key={g.label}
+                    className="scr-challenge-date-group"
+                    data-today={g.isToday ? "1" : undefined}
+                    // "일정 미정" 그룹(scheduledAt 없는 대기중 묶음, 맨 위)에 표식을 달아
+                    // 우측 타임라인이 눈금+라벨을 찍고 스크롤 스냅 타깃으로 삼는다.
+                    data-undecided={g.items.some((c) => !c.scheduledAt) ? "1" : undefined}
+                  >
+                    <div className="scr-challenge-date-head" data-date-label={g.label}>
+                      {g.isToday && <span className="scr-challenge-card-today-tag">오늘</span>}
+                      {g.label}
                     </div>
-                  ))}
-                </div>
-              ))}
+                    {g.items.map((c) => (
+                      // 슬롯 래퍼 — 진입 스크롤 목적지는 가장 임박한 예정 대결(그중 첫 카드)이다.
+                      <div
+                        key={c.id}
+                        ref={c.id === firstNextId ? nextCardRef : undefined}
+                        className="scr-challenge-card-slot"
+                      >
+                        <ChallengeCard
+                          challenge={c}
+                          myId={user?.id}
+                          highlightMemberIds={highlightMemberIds}
+                          nextBadgeNumber={badgeNumbers?.get(c.id) ?? null}
+                          onResponded={upsert}
+                          onViewResults={setResultsTarget}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
             </div>
           )}
         </section>
