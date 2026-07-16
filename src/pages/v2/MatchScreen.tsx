@@ -175,6 +175,7 @@ export default function MatchScreenV2() {
             type="button"
             className="scr-btn scr-btn-ghost scr-btn-sm"
             onClick={() => setEditing(null)}
+            disabled
           >
             <Plus size={12} /> 수기등록
           </button>

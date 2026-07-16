@@ -9,6 +9,7 @@ import ChangePasswordModal from "./ChangePasswordModal";
 import { useAppStore } from "../store/appStore";
 import { useLockBodyScroll } from "../utils/bodyScrollLock";
 import { cx } from "../utils/format";
+import { isValidBattletag, isValidLoginId, isValidNickname, LOGIN_ID_MAX_LENGTH, NICKNAME_MAX_WIDTH } from "../utils/textLimits";
 
 interface ProfileModalProps {
   onClose: () => void;
@@ -64,6 +65,9 @@ export default function ProfileModal({ onClose }: ProfileModalProps) {
       setErr("아이디, 닉네임, 배틀태그는 비워둘 수 없어요.");
       return;
     }
+    if (!isValidLoginId(id)) { setErr(`아이디는 영문/숫자만, 최대 ${LOGIN_ID_MAX_LENGTH}자로 입력해 주세요.`); return; }
+    if (!isValidNickname(nickname)) { setErr(`닉네임은 영문 기준 최대 ${NICKNAME_MAX_WIDTH}자(한글 ${NICKNAME_MAX_WIDTH / 2}자)까지예요.`); return; }
+    if (!isValidBattletag(battletag)) { setErr("배틀태그는 \"이름#숫자\" 형식으로 입력해 주세요. (예: Nickname#0000)"); return; }
     setErr("");
     setBusy(true);
     try {
@@ -124,13 +128,13 @@ export default function ProfileModal({ onClose }: ProfileModalProps) {
             </div>
             <label className="scr-field scr-avatar-pick-id">
               <span className="scr-label">아이디</span>
-              <input className="scr-input" value={id} onChange={(e) => setId(e.target.value)} />
+              <input className="scr-input" value={id} onChange={(e) => setId(e.target.value)} placeholder="영문/숫자, 최대 12자" />
             </label>
           </div>
 
           <label className="scr-field">
             <span className="scr-label">닉네임</span>
-            <input className="scr-input" value={nickname} onChange={(e) => setNickname(e.target.value)} />
+            <input className="scr-input" value={nickname} onChange={(e) => setNickname(e.target.value)} placeholder="최대 한글 8자/영문·숫자·기호 16자" />
           </label>
           <label className="scr-field">
             <span className="scr-label">배틀태그</span>
@@ -139,7 +143,7 @@ export default function ProfileModal({ onClose }: ProfileModalProps) {
 
           <label className="scr-field">
             <span className="scr-label">인스타 닉네임 (선택)</span>
-            <input className="scr-input" value={insta} onChange={(e) => setInsta(e.target.value)} placeholder="@nickname" />
+            <input className="scr-input" value={insta} onChange={(e) => setInsta(e.target.value)} placeholder="nickname" />
           </label>
 
           <div className="scr-field">

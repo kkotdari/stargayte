@@ -51,6 +51,7 @@ export interface Member {
 export interface SignupPayload {
   id: string;
   password: string;
+  nickname: string;
   battletag: string;
   replayAliases: string[];
   insta: string;
@@ -63,6 +64,7 @@ export interface SignupPayload {
 export interface MemberCreatePayload {
   id: string;
   password: string;
+  nickname: string;
   battletag: string;
   replayAliases?: string[];
   insta: string;

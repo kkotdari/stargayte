@@ -994,30 +994,37 @@ export default function ChallengeScreen() {
   // 보던 위치를 뺏지 않는다. 맨 위 스냅(block:"start")은 스티키 날짜줄에 카드 윗부분이
   // 바짝 붙어 오히려 눈에 안 들어온다는 피드백으로, 카드 상단을 뷰포트 높이의 약 30%
   // 지점(화면 중앙보다 조금 위)에 오도록 직접 계산해 스크롤한다.
+  //
+  // 아래 두 효과("오늘" 스냅 켜기 / NEXT로 진입 스크롤)를 하나로 합친 이유: 스냅
+  // (scroll-snap-type: y proximity)이 이미 켜진 채로 이 진입 스크롤을 돌리면, 스크롤의
+  // 최종 정지 위치가 근처 스냅 타깃("오늘"/"미정")으로 끌려가 버려 NEXT 카드가 의도한
+  // 위치(화면 중앙보다 조금 위)에서 벗어났다(실제로 지적받은 문제 — "너나와 진입시
+  // 포커싱이 next가 세로 중간보다 조금 위에 위치하게"가 안 지켜짐). 진입 스크롤이 나갈
+  // 대상이 있는 동안은 스냅을 잠깐 꺼 뒀다가, 스크롤이 끝났을 즈음(스무스 스크롤엔 완료
+  // 콜백이 없어 넉넉히 700ms 후로 추정) 다시 켠다. 스크롤할 대상이 없거나 이미 스크롤을
+  // 마쳤으면 스냅을 바로 켠다.
   const didAutoScrollRef = useRef(false);
   useEffect(() => {
-    if (loading || didAutoScrollRef.current || firstNextId === null) return;
+    const root = document.getElementById("scroll-root");
+    if (!root) return;
+    if (loading || didAutoScrollRef.current || firstNextId === null || !nextCardRef.current) {
+      root.classList.add("scr-snap-today");
+      return () => root.classList.remove("scr-snap-today");
+    }
     const el = nextCardRef.current;
-    if (!el) return;
     didAutoScrollRef.current = true;
     // 이 자동 스크롤이 "아래로 스크롤 = 숨김"으로 오인돼 탭바/필터·검색 아이콘이 같이
     // 숨던 문제를 막는다 — 부드러운 스크롤이 끝날 때까지 숨김 판정을 잠깐 억제한다.
     suppressScrollHide();
-    const root = getScrollRoot();
+    const scrollRootEl = getScrollRoot();
     const { scrollTop, clientHeight } = getScrollMetrics();
-    const rootTop = root instanceof Window ? 0 : root.getBoundingClientRect().top;
+    const rootTop = scrollRootEl instanceof Window ? 0 : scrollRootEl.getBoundingClientRect().top;
     const elTopInViewport = el.getBoundingClientRect().top - rootTop;
     const target = scrollTop + elTopInViewport - clientHeight * 0.3;
     scrollRootTo({ top: Math.max(0, target), behavior: "smooth" });
+    const t = window.setTimeout(() => root.classList.add("scr-snap-today"), 700);
+    return () => { window.clearTimeout(t); root.classList.remove("scr-snap-today"); };
   }, [loading, firstNextId]);
-
-  // "오늘"에서 스크롤이 딱 걸리게(요청) — #scroll-root에 스냅 타입을 이 화면에서만 켠다.
-  // 다른 화면엔 스냅 타깃(오늘 그룹)이 없으니 영향 없지만, 명시적으로 켜고/끈다.
-  useEffect(() => {
-    const root = document.getElementById("scroll-root");
-    root?.classList.add("scr-snap-today");
-    return () => root?.classList.remove("scr-snap-today");
-  }, []);
 
   // "결과 보기" — 랭킹 화면의 팀 경기 목록 모달을 그대로 재사용해 그 도전장의 팀 구성이 그
   // 날짜에 등록한 경기를 보여준다.

@@ -258,6 +258,16 @@ body {
    못 받음) 위쪽 내용이 상태바에 가려 보이거나 답답하게 붙어 보였다(모바일에서 위쪽
    여백이 더 필요하다는 피드백). 일반 브라우저 탭에서는 이 값이 0이라 영향 없다. */
 .scr-auth-wrap { min-height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: calc(32px + env(safe-area-inset-top, 0px)) 16px 32px; position: relative; }
+/* 로고+카드 묶음을 화면 정중앙보다 살짝 위로(요청: "로그인 폼과 로고를 20프로 정도
+   위로 올려줘") — 이 그룹 자체의 높이 기준만큼 위로 옮긴다. 이후 "로그인 폼 위치 살짝만
+   내려줘"(20% → 14%), "로고와 폼 좀 내려주고"(14% → 6%) 요청으로 계속 줄여왔다. */
+.scr-auth-hero { display: flex; flex-direction: column; align-items: center; width: 100%; transform: translateY(-6%); }
+/* PWA(standalone)는 .scr-auth-wrap의 상단 안전영역 패딩(env(safe-area-inset-top))이 더해져
+   전체가 그만큼 더 아래로 내려가 있으므로, 일반 브라우저 탭과 같은 느낌을 주려면 여기서만
+   더 위로 올려야 한다(요청: "pwa에서만 좀 올려줘"). */
+@media (display-mode: standalone) {
+  .scr-auth-hero { transform: translateY(-15%); }
+}
 /* 로그인 화면 자체의 라이트 테마 토글 — 헤더 없이도(로그인 전) 화면 취향을 바꿀 수 있게
    화면 위쪽 한 켠에 둔다. */
 /* 테두리/배경/그림자 없이 아이콘 자체(반만 색이 채워진 원)만 순수하게 — 다른 화면의
@@ -272,7 +282,11 @@ body {
 /* 로그인 카드 위 브랜드 로고 — 헤더와 같은 imageSettings.home_logo를 쓰되, 여기선 화면의
    히어로 요소라 헤더보다 훨씬 크게 보여준다. 이미지가 없으면(관리자가 아직 안 올렸으면)
    텍스트로 대체된다(헤더의 대체 텍스트와 동일한 로직). */
-.scr-auth-logo { display: flex; align-items: center; justify-content: center; margin-bottom: 20px; z-index: 1; min-height: 64px; }
+/* 로고-폼 간격을 줄이되(요청: "로고와 폼 사이 갭 살짝 줄이기") 폼이 위로 딸려 올라오는
+   느낌 대신 로고 자체가 아래로 내려오는 느낌이 되도록(요청: "로고를 내린다는 느낌으로")
+   margin-bottom만 줄이지 않고 그만큼을 margin-top으로 옮긴다 — 로고 위/아래를 합친
+   총량(20px)은 그대로라 폼 위치는 거의 그대로고, 로고만 그 안에서 아래로 내려온다. */
+.scr-auth-logo { display: flex; align-items: center; justify-content: center; margin: 6px 0 14px; z-index: 1; min-height: 64px; }
 /* height만 고정하면 원본이 가로로 넓은 워드마크일 때 좁은 화면에서 양옆으로 넘칠 수
    있다 — max-height/max-width를 함께 두고 width/height를 auto로 둬서 비율은 유지한 채
    좁은 화면에서는 폭에 맞춰 자동으로 더 작아지게 한다. */
@@ -301,7 +315,7 @@ body {
 /* 회원가입 링크는 카드 안이 아니라 화면 전체 기준 우하단 구석에 — 밑줄 없이. */
 .scr-auth-signup-link {
   position: fixed; right: 20px; bottom: 20px; z-index: 1;
-  font-size: 13.5px; color: var(--muted); text-decoration: none;
+  font-size: 11.5px; color: var(--muted); text-decoration: none;
 }
 .scr-auth-signup-link:hover { color: var(--text); }
 .scr-auth-back-btn { display: inline-flex; align-items: center; gap: 4px; font-size: 12.5px; color: var(--muted); margin-bottom: 14px; text-decoration: none; }
@@ -849,7 +863,9 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-admin-menu-opt-label { display: inline-flex; align-items: center; border-radius: 999px; padding: 3px 8px; }
 .scr-admin-menu-opt-active { color: var(--text); font-weight: 700; }
 .scr-admin-menu-opt-active .scr-admin-menu-opt-label {
-  background: radial-gradient(ellipse at center, color-mix(in srgb, var(--edge-glow) 55%, transparent) 0%, color-mix(in srgb, var(--edge-glow) 32%, transparent) 45%, color-mix(in srgb, var(--edge-glow) 14%, transparent) 75%, transparent 100%);
+  /* 탭바 알약(.scr-mobile-tab-indicator)과 같은 모양·농도로 맞춘다 — 모양은 원래대로
+     (ellipse at center), 농도만 올려 더 또렷한 광원으로. */
+  background: radial-gradient(ellipse at center, color-mix(in srgb, var(--edge-glow) 70%, transparent) 0%, color-mix(in srgb, var(--edge-glow) 45%, transparent) 45%, color-mix(in srgb, var(--edge-glow) 22%, transparent) 75%, transparent 100%);
 }
 /* 드로어 안에서는 팝오버로 띄우지 않고 그 자리에서 펼쳐지는 아코디언 — 왼쪽에 얇은 선을
    둬서 트리거 아래 딸린 하위 목록이라는 걸 표시한다. */
@@ -2758,8 +2774,12 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 /* v2 목록 카드의 날짜/N경기/경기번호/다운로드·메모 아이콘을 전부 지금의 1.5배로 키운다
    (가독성/터치하기 편의 요청). */
 /* 요일 정보가 더해지면서(요청: "요일 정보 추가") 글자가 더 길어져, 기존 크기(19px)는
-   너무 커 보였다 — 줄인다(요청: "날짜 폰트 줄이고"). */
-.scr-match-list-panel-v2 .scr-match-date-head { font-size: 15px; }
+   너무 커 보였다 — 줄인다(요청: "날짜 폰트 줄이고"). 이후 "너 나와!"(.scr-challenge-date-head)와
+   모양·크기를 통일해 달라는 요청으로 그 값(13px/700/--dim/letter-spacing)을 그대로 맞춘다. */
+.scr-match-list-panel-v2 .scr-match-date-head {
+  font-size: 15.6px; /* 13px * 1.5, 이후 20% 감소(요청: "너나와/경기 날짜 20퍼센트 크기 감소") */
+  font-weight: 700; color: var(--dim); letter-spacing: 0.02em;
+}
 /* "N경기"/경기번호는 기존 값(18px/17px)의 75%로 — 날짜(위)보다 두 단계 더 작아 보이게. */
 .scr-match-list-panel-v2 .scr-match-seq { font-size: 13.5px; }
 .scr-match-list-panel-v2 .scr-match-id { font-size: 12.75px; }
@@ -3734,7 +3754,15 @@ body *::-webkit-scrollbar-corner { background: transparent; }
      사파리/PWA 공통으로 살짝 낮췄다(요청: "탭바 높이 좀 줄여도 될듯"). */
   height: calc(var(--mobile-footer-h) + env(safe-area-inset-bottom, 0px));
   background-color: var(--panel-solid);
-  background-image: linear-gradient(90deg, color-mix(in srgb, var(--edge-glow) 22%, transparent) 0%, var(--edge-glow) 50%, color-mix(in srgb, var(--edge-glow) 22%, transparent) 100%);
+  /* 가운데가 밝고 양 끝(화면 모서리)으로 갈수록 옅어지는 광원 그라데이션은, 그 "옅어짐"이
+     다 끝나기 전에 화면 모서리에서 그대로 잘려버려 그 자리가 오히려 또렷한 경계처럼
+     보였다(실제로 지적받은 문제 — "탭바 위의 광원효과 모서리 없애고 자연스러운 반사광
+     모서리로 변경") — 드로어 왼쪽 모서리와 같은 방식으로, 위치에 따라 밝기가 변하지 않는
+     단순한 반사광 한 줄로 바꾼다(옅은 흰 선, 라이트 테마는 아래에서 어두운 톤으로 뒤집음).
+     border-top 대신 background-image를 유지하는 이유는 box-sizing:border-box라 실제
+     border를 더해도 레이아웃에 영향은 없지만, ::after(아래 배경 연장)가 background 전체를
+     그대로 상속(inherit)하는 방식과 한 속성 그룹으로 계속 묶어두기 위함이다. */
+  background-image: linear-gradient(rgba(255,255,255,0.16), rgba(255,255,255,0.16));
   background-repeat: no-repeat; background-position: top; background-size: 100% 1px;
   /* 위쪽 패딩을 아래보다 크게 줘서 탭 라벨을 살짝 아래로 내린다(요청: "탭바에서 탭들을
      좀 아래로 이동") — 전체 높이(--mobile-footer-h + 안전영역)는 그대로 두고 콘텐츠
@@ -3776,7 +3804,11 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   position: relative;
   flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
   background: transparent; border: none; color: var(--muted); font-family: inherit; font-size: 12px;
-  padding: 6px 0; cursor: pointer; border-radius: var(--radius-sm); transition: color .12s, background-color .12s;
+  padding: 6px 0; cursor: pointer; border-radius: var(--radius-sm); transition: background-color .12s;
+  /* color엔 트랜지션을 안 건다 — 탭을 누르면 알약은 .22s에 걸쳐 슬라이드하는 게 맞지만
+     (의도된 움직임), 글자색까지 같이 서서히 바뀌면 눌러도 바로 검정으로 안 바뀐 것처럼
+     보였다(실제로 지적받은 문제 — "액티브탭 글자색이 바로 안바뀌는 문제"). 글자색은
+     클래스가 바뀌는 즉시(트랜지션 없이) 반영한다. */
   text-align: center;
   /* 탭이 늘어나 자기 몫의 폭이 글자 폭보다 좁아져도(예: "게임아이디") 줄바꿈하는
      대신 그대로 옆 탭과 겹치게 넘친다 — 2줄로 꺾여 세로로 들쭉날쭉해 보이는 것보다
@@ -3790,8 +3822,13 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-mobile-tab:hover { color: var(--text); }
 /* 활성 탭은 흰색 광원 알약(아래 -indicator) 위에 얹히므로 글자를 검정으로 반전한다
    (요청: "액티브시 메뉴 글자를 검정색으로 반전"). 라이트 테마는 원래도 검정 글자라 그대로
-   같은 값이면 되고(현재 유지), 파란 광원 알약 위에서도 검정이 잘 읽힌다. */
-.scr-mobile-tab-active { color: #0b0b0c; font-weight: 700; }
+   같은 값이면 되고(현재 유지), 파란 광원 알약 위에서도 검정이 잘 읽힌다.
+   클래스 하나(.scr-mobile-tab-active)만 걸면 명시도가 위 :hover(클래스+가상클래스, 더
+   높음)에 밀려서 실제로는 절대 검정으로 안 바뀌었다(실제로 지적받은 문제 — "글자색이
+   그냥 안 변한다") — 터치 기기는 탭한 뒤에도 :hover가 그대로 눌러붙어 있어서 다른 곳을
+   또 탭하기 전까진 안 풀린다. 명시도를 :hover와 동률(클래스 2개)로 올려서 CSS 소스
+   순서(이 규칙이 더 뒤)로 이기게 한다. */
+.scr-mobile-tab.scr-mobile-tab-active { color: #0b0b0c; font-weight: 700; }
 /* 활성 탭 뒤로 슬라이드하며 이동하는 알약 배경 — 입체감(그림자) 없이 플랫한 색만.
    MobileTabBar.tsx가 실제 활성 버튼의 offsetLeft/offsetTop/offsetWidth/offsetHeight를
    재서 transform/top/width/height로 전부 직접 넘겨준다 — top:50% 같은 "부모 기준 중앙"
@@ -3813,15 +3850,22 @@ body *::-webkit-scrollbar-corner { background: transparent; }
      그라데이션 하나만 쓰면 정확히 중심에서 바깥으로 옅어지는 결이 유지된다. */
   /* 다크 테마 기본 — 흰색 그라데이션 광원(요청: "액티브 알약을 흰색 그라데이션 광원으로").
      가운데가 가장 밝은 흰빛이고 가장자리로 갈수록 투명해진다. 그 위 글자는 검정으로 반전
-     (.scr-mobile-tab-active). */
-  background: radial-gradient(ellipse at center, rgba(255,255,255,0.98) 0%, rgba(255,255,255,0.82) 42%, rgba(255,255,255,0.42) 72%, rgba(255,255,255,0) 100%);
+     (.scr-mobile-tab-active). 모양(ellipse at center)은 원래대로 두고, 대신 각 단계의
+     농도만 올려 더 진하고 또렷한 광원으로(요청: "알약 모양 이전상태로 돌리고 그라데이션
+     투명도만 강하게"). */
+  background: radial-gradient(ellipse at center, rgba(255,255,255,1) 0%, rgba(255,255,255,0.9) 42%, rgba(255,255,255,0.6) 72%, rgba(255,255,255,0) 100%);
 }
 /* 라이트 테마는 현재대로 — 파란(--edge-glow) 광원 알약을 그대로 유지한다(요청:
    "라이트모드는 현재 유지"). */
 html.scr-light-theme .scr-mobile-tab-indicator {
-  background: radial-gradient(ellipse at center, color-mix(in srgb, var(--edge-glow) 55%, transparent) 0%, color-mix(in srgb, var(--edge-glow) 32%, transparent) 45%, color-mix(in srgb, var(--edge-glow) 14%, transparent) 75%, transparent 100%);
+  background: radial-gradient(ellipse at center, color-mix(in srgb, var(--edge-glow) 70%, transparent) 0%, color-mix(in srgb, var(--edge-glow) 45%, transparent) 45%, color-mix(in srgb, var(--edge-glow) 22%, transparent) 75%, transparent 100%);
 }
 html.scr-light-theme .scr-mobile-tab-active { color: var(--text); }
+/* 라이트 테마는 밝은 패널 위라 흰 반사광이 안 보여 — 드로어 왼쪽 모서리와 같은 이유로
+   어두운 톤으로 뒤집는다. */
+html.scr-light-theme .scr-mobile-tabbar {
+  background-image: linear-gradient(rgba(0,0,0,0.12), rgba(0,0,0,0.12));
+}
 
 .scr-drawer-overlay {
   position: fixed; inset: 0; z-index: 60; background: rgba(2,2,3,0.62);
@@ -3849,12 +3893,21 @@ html.scr-light-theme .scr-mobile-tab-active { color: var(--text); }
      아래쪽도 홈 인디케이터 안전영역만큼 더해 마지막 메뉴/버튼이 그 위에 바짝 붙지 않게 한다. */
   padding: calc(16px + max(env(safe-area-inset-top, 0px), var(--safe-area-top, 0px))) 16px calc(16px + env(safe-area-inset-bottom, 0px));
   overflow-y: auto;
+  /* 세로 스크롤(관리자 아코디언 등)은 브라우저가 그대로 처리하되, 가로는 우리가 JS로
+     드래그-닫기를 다루므로(Header.tsx onDrawerPointerMove) 브라우저 자체 가로 제스처와
+     겹치지 않게 한다. */
+  touch-action: pan-y;
   transform: translateX(100%);
   transition: transform .2s ease;
 }
 .scr-drawer-overlay.scr-drawer-open .scr-drawer { transform: translateX(0); }
-/* 라이트 테마는 흰 유리라 흰 반사광이 안 보여, 대신 아주 옅은 어두운 경계선으로 모서리를 잡는다. */
-html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
+/* 라이트 테마는 흰 유리라 흰 반사광이 안 보여, 대신 아주 옅은 어두운 경계선으로 모서리를 잡는다.
+   background-color도 다크 테마와 같은 --panel(0.46 알파)을 그대로 쓰면, 뒤에 항상 깔린
+   어두운 오버레이 스크림(.scr-drawer-overlay, rgba(2,2,3,0.62))이 블러를 뚫고 비쳐서
+   라이트 테마인데도 패널이 탁하고 어둡게 보였다(실제로 지적받은 문제 — "라이트 테마에서
+   서랍메뉴 패널이 너무 어둡게 보여"). 헤더의 라이트 테마 유리(--header-bg, 0.9 알파)와
+   같은 수준으로 불투명도를 올려 스크림이 거의 안 비치게 한다. */
+html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); background-color: rgba(255,255,255,0.9); }
 /* 구분선을 단색 테두리 대신 붉은(포인트색이 아니라 --pipe-bright 고정) 그라데이션으로
    — 가운데가 밝고 양 끝으로 갈수록 옅어지는, 헤더/탭바와 같은 "우주 광원" 느낌. */
 .scr-drawer-head {
@@ -4663,9 +4716,13 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
 .scr-challenge-card-when { font-size: 15px; font-weight: 700; color: var(--text); position: relative; top: 1px; }
 /* 당일 경기는 색 대신 시간 앞에 작은 "오늘" 태그로 표시(요청: "오늘자 경기 색표시
    원복하고 대신 시간 앞에 오늘 이라는 작은 태그 달아주기"). */
+/* 날짜 헤더에서 나란히 붙는 NEXT 배지(.scr-challenge-next-tag)와 같은 크기로 맞춘다(요청:
+   "오늘 배지도 똑같은 크기로") — 색/굵기는 이 배지 고유의 것을 유지한다. line-height를
+   명시하지 않으면 기본값(1.4~)이 이 배지만 더 크게 만들어서(실제로 지적받은 문제 —
+   "오늘배지가 next 배지보다 큰데?") NEXT 배지처럼 line-height:1을 같이 맞춰야 한다. */
 .scr-challenge-card-today-tag {
-  display: inline-block; font-size: 11px; font-weight: 800; color: var(--point-contrast);
-  background: var(--point); border-radius: 4px; padding: 1px 5px; margin-right: 5px; vertical-align: middle;
+  display: inline-block; font-size: 12.6px; font-weight: 800; line-height: 1; color: var(--point-contrast);
+  background: var(--point); border-radius: 4.8px; padding: 3.6px 7.2px; margin-right: 5px; vertical-align: middle;
 }
 /* 경기결과 화면처럼 날짜별로 묶는다(요청: "경기 화면처럼 날짜별로 그룹핑") — 날짜는
    여기 헤더에서만 보여주고, 카드 안에는 시간만 남긴다(요청: "각 카드엔 시간만 표시"). */
@@ -4680,7 +4737,8 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
   position: sticky; top: var(--safe-top); z-index: 9;
   /* 날짜 라벨 옆에 "오늘"/"NEXT" 배지를 인라인으로 나란히 둔다. */
   display: flex; align-items: center; gap: 6px;
-  font-size: 13px; font-weight: 700; color: var(--dim); letter-spacing: 0.02em;
+  font-size: 15.6px; /* 13px * 1.5, 이후 20% 감소(요청: "너나와/경기 날짜 20퍼센트 크기 감소") */
+  font-weight: 700; color: var(--dim); letter-spacing: 0.02em;
   background: var(--panel); backdrop-filter: blur(4px);
   padding: 8px 0; border-bottom: 1px solid var(--line-soft);
 }
@@ -4693,23 +4751,34 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
 
 /* NEXT 배지 — 가장 임박한 예정(수락) 대결이 속한 날짜 헤더에 인라인으로 단다(요청:
    "글로우 없애고 NEXT 배지를 날짜에"). 앱 강조 그린(--highlight-bg) + 어두운 글자
-   (--bar-text)로 두 테마 모두 또렷하게. */
+   (--bar-text)로 두 테마 모두 또렷하게. 1.5배로 키웠다가(요청: "크기 키우기 1.5배") 다시
+   20% 줄였다(요청: "크기 20프로 줄여줘") — 최종 12.6px(10.5 * 1.5 * 0.8). 배지 자체 배경색으로
+   은은한 광원을 둘러 다시 눈에 띄게 한다(요청: "넥스트 버튼에 글로우 효과"). */
 .scr-challenge-next-tag {
-  font-size: 10.5px; font-weight: 900; letter-spacing: 0.08em; line-height: 1;
+  font-size: 12.6px;
+  font-weight: 900; letter-spacing: 0.08em; line-height: 1;
   color: var(--bar-text); background: var(--highlight-bg);
-  border-radius: 4px; padding: 3px 6px;
+  border-radius: 4.8px;
+  padding: 3.6px 7.2px;
+  box-shadow:
+    0 0 3px color-mix(in srgb, var(--highlight-bg) 90%, transparent),
+    0 0 10px color-mix(in srgb, var(--highlight-bg) 60%, transparent);
 }
 
 /* "오늘"에서 스크롤이 딱 걸리게(요청: "타임라인에 오늘 표시하고 지나가다 딱 걸리게") —
    오늘 그룹 하나만 스냅 타깃이라, proximity로 그 근처에서만 딱 멈추고 나머지는 자유
    스크롤. scroll-padding-top으로 상단 안전영역/헤더만큼 비켜 걸리게 한다. 이 화면(scr-snap-today
-   클래스)에서만 켠다. */
+   클래스)에서만 켠다. (JS 기반 임계값 방식도 시도해봤으나 "이전 느낌이 더 좋다"는 피드백으로
+   되돌림.) */
 #scroll-root.scr-snap-today { scroll-snap-type: y proximity; scroll-padding-top: calc(var(--safe-top) + 10px); }
 /* proximity + 기본 stop(normal) — 오늘 근처에서 멈추면 딱 걸리되, 빠른 플링이나 진입 시
    NEXT로의 자동 스크롤이 오늘에 강제로 멈춰 끊기지 않게 한다(scroll-snap-stop:always는
-   그 프로그램 스크롤까지 가로채 위험). */
-.scr-snap-today .scr-challenge-date-group[data-today="1"],
-.scr-snap-today .scr-challenge-date-group[data-undecided="1"] { scroll-snap-align: start; }
+   그 프로그램 스크롤까지 가로채 위험). "미정" 그룹은 보통 목록 맨 위(과거 쪽 끝)에 있어서,
+   그것까지 스냅 타깃으로 두면 위로 스크롤해 올라가려 할 때마다 그 근처에서 자꾸 붙잡혀
+   되돌아갔다(실제로 지적받은 문제 — "위로 올라가고 싶어도 미정 스냅에 걸려서 되돌아가는
+   버그") — 스냅 타깃에서 뺀다. 눈금(타임라인)/뱃지는 그대로 두고 스크롤 정지 동작에서만
+   제외한다. */
+.scr-snap-today .scr-challenge-date-group[data-today="1"] { scroll-snap-align: start; }
 
 /* 우측 네비게이션 타임라인(요청: "위가 과거 아래가 미래, 현재 위치 표시, 스크롤 시에만
    보임"). 목록이 과거(위)→미래(아래) 순이라 스크롤 위치(0~1)를 그대로 세로 축에 매핑한다.
@@ -4747,7 +4816,16 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--point) 26%, transparent), 0 1px 4px rgba(0, 0, 0, 0.3);
   z-index: 1;
 }
-/* "오늘" 눈금 — 트랙 위 오늘 위치에 짧은 가로선 + 라벨. 썸이 지나가며 여기서 딱 걸린다. */
+/* "오늘" 눈금 — 트랙 위 오늘 위치에 짧은 가로선 + 라벨. 썸이 지나가며 여기서 딱 걸린다.
+   라벨을 트랙 왼쪽으로 띄우던 이전 방식은 현재 위치 알약(.scr-challenge-timeline-date,
+   역시 트랙 왼쪽에 붙는다)과 세로 위치가 겹칠 때 서로 부딪혀 지저분해 보였다(실제로
+   지적받은 문제) — "과거"/"미래" 끝 라벨처럼 눈금 바로 위에 작게 얹는 걸로 바꾼다.
+   라벨(::after)을 컨테이너의 플로우 안에 넣으면(flex-direction:column) 컨테이너 높이가
+   라벨+선을 합친 만큼 커져서, translate(-50%,-50%)가 그 전체 묶음의 중앙을 스크롤 위치에
+   맞춰버려 실제 눈금(선)이 정확한 스크롤 지점에서 벗어나 버렸다(실제로 지적받은 문제 —
+   "스냅이 바가 아니라 글자에 걸리는 문제") — 컨테이너의 플로우 콘텐츠는 선(::before)
+   하나만 남기고, 라벨은 그 위에 절대 위치로 얹어서 컨테이너 중앙(=스크롤 위치)은 항상
+   선 기준으로 유지한다. */
 .scr-challenge-timeline-today {
   position: absolute; left: 50%; transform: translate(-50%, -50%);
   display: flex; align-items: center;
@@ -4757,8 +4835,9 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
   background: var(--highlight-bg);
 }
 .scr-challenge-timeline-today::after {
-  content: "오늘"; position: absolute; right: 100%; margin-right: 6px;
-  font-size: 9px; font-weight: 800; color: var(--highlight-bg);
+  content: "오늘"; position: absolute; left: 50%; bottom: 100%; margin-bottom: 2px;
+  transform: translateX(-50%);
+  font-size: 8px; font-weight: 800; color: var(--highlight-bg);
   white-space: nowrap;
 }
 /* "일정 미정" 눈금 — 오늘 눈금과 같은 모양이되, 확정되지 않은 대기 묶음이라 은은한
@@ -4772,8 +4851,9 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
   background: var(--dim);
 }
 .scr-challenge-timeline-undecided::after {
-  content: "미정"; position: absolute; right: 100%; margin-right: 6px;
-  font-size: 9px; font-weight: 800; color: var(--dim);
+  content: "미정"; position: absolute; left: 50%; bottom: 100%; margin-bottom: 2px;
+  transform: translateX(-50%);
+  font-size: 8px; font-weight: 800; color: var(--dim);
   white-space: nowrap;
 }
 /* 현재 상단에 핀된 날짜를 알약으로 — 트랙 왼쪽에 붙여 현재 위치를 "며칠"인지로 보여준다. */
