@@ -218,37 +218,39 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
                     <span className="scr-admin-panel-version-cur">{appVersion}</span>
                   </div>
                   {err && <div className="scr-err">{err}</div>}
-                  <div className="scr-admin-panel-deploy-actions">
+                  {/* 제어판 기능 버튼들 — 투박한 입체(엠보스) 사각 버튼, 3열 그리드(요청:
+                      "제어판같은 투박한 입체 사각 버튼... 가로로 세개씩 줄줄이 배치").
+                      아주 위험한(되돌릴 수 없는) 기능만 빨간 톤(-danger). */}
+                  <div className="scr-admin-panel-grid">
                     <button
-                      type="button" className="scr-btn scr-admin-panel-rollback-btn"
+                      type="button" className="scr-admin-panel-phys-btn"
                       onClick={() => changeVersion(currentNumber - 1)} disabled={busy || currentNumber <= 1}
                     >
                       {busy ? <Spinner /> : `롤백 (v${currentNumber - 1})`}
                     </button>
                     <button
-                      type="button" className="scr-btn scr-admin-panel-submit-btn"
+                      type="button" className="scr-admin-panel-phys-btn"
                       onClick={() => changeVersion(currentNumber + 1)} disabled={busy}
                     >
                       {busy ? <Spinner /> : `배포 (v${currentNumber + 1})`}
                     </button>
+                    {/* 리플레이 폴더 일괄 등록 — 버튼을 누르면 바로 폴더 선택창이 뜬다. */}
+                    <ReplayBatchButton />
+                    {/* 등록된 리플레이 전체를 zip으로 백업 다운로드(운영자). */}
+                    <button
+                      type="button" className="scr-admin-panel-phys-btn"
+                      onClick={downloadReplays} disabled={downloading}
+                    >
+                      {downloading ? <Spinner /> : "리플레이 전체 다운로드"}
+                    </button>
+                    {/* 모든 경기기록 삭제 — 되돌릴 수 없는 파괴적 작업이라 빨간 버튼으로. */}
+                    <button
+                      type="button" className="scr-admin-panel-phys-btn scr-admin-panel-phys-btn-danger"
+                      onClick={deleteAllMatches} disabled={busy}
+                    >
+                      {busy ? <Spinner /> : "모든 경기기록 삭제"}
+                    </button>
                   </div>
-                  {/* 리플레이 폴더 일괄 등록 — 버튼을 누르면 바로 폴더 선택창이 뜬다.
-                      운영자만 쓰는 데이터 적재용이라 버전 전환 아래에 조용히 둔다. */}
-                  <ReplayBatchButton />
-                  {/* 등록된 리플레이 전체를 zip으로 백업 다운로드(운영자). */}
-                  <button
-                    type="button" className="scr-btn scr-btn-ghost scr-admin-panel-replay-download-btn"
-                    onClick={downloadReplays} disabled={downloading}
-                  >
-                    {downloading ? <Spinner /> : "리플레이 전체 다운로드"}
-                  </button>
-                  {/* 모든 경기기록 삭제 — 되돌릴 수 없는 파괴적 작업이라 눈에 띄게 경고색으로. */}
-                  <button
-                    type="button" className="scr-btn scr-admin-panel-delete-all-btn"
-                    onClick={deleteAllMatches} disabled={busy}
-                  >
-                    {busy ? <Spinner /> : "모든 경기기록 삭제"}
-                  </button>
                 </>
               )}
             </>

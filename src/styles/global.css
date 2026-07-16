@@ -3478,20 +3478,6 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   width: 100%; max-width: 260px; margin: 18px auto 0; font-size: 18px; font-weight: 800;
   padding: 16px; border-radius: var(--radius);
 }
-/* 배포·롤백 버튼 — 실제 버전을 바꾸는 유일한 버튼이라 로그인 버튼(.scr-auth-submit)과
-   같은 필(pill) 래디우스를 쓴다. 그라데이션+위쪽 하이라이트/아래쪽 그림자로 입체감을
-   주던 엠보스 스타일은 아랫부분이 어색해 보인다는 피드백으로 뺐다 — 평평한 단색으로.
-   색은 --pipe* 변수 대신 고정값을 쓴다 — 라이트 테마는 포인트색을 전부 무채색(검정)으로
-   덮어써서(위 html.scr-light-theme 참고) 이 변수를 그대로 쓰면 테마에 따라 버튼이 검게
-   바뀌어 버린다. 배포 버튼은 테마와 무관하게 항상 같은 빨간색이어야 한다. */
-.scr-admin-panel-submit-btn {
-  width: 100%; max-width: 260px; margin: 14px auto 0; font-size: 15px; font-weight: 800;
-  padding: 11px; border-radius: 999px;
-  background: #a7302b;
-  border-color: #651d1a; color: #fff; text-shadow: none; box-shadow: none;
-}
-.scr-admin-panel-submit-btn:hover { filter: brightness(1.1); }
-.scr-admin-panel-submit-btn:active { filter: brightness(0.9); }
 .scr-admin-panel-preview {
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
   padding-bottom: 12px; margin-bottom: 12px; border-bottom: 1px solid var(--line-soft);
@@ -3522,12 +3508,11 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   width: 100%; padding: 6px 0; background: transparent; border: none; cursor: pointer;
 }
 .scr-admin-panel-preview-arrow:hover { filter: brightness(1.3); }
-/* 필 래디우스는 배포/롤백 버튼(.scr-admin-panel-submit-btn)과 통일하되, 크기 자체는
-   훨씬 작게 — 운영자가 아니어도 누구나 쓸 수 있는 가벼운 "미리보기"라 실제 배포보다
-   눈에 덜 튀어야 한다는 피드백. flex:1로 남는 폭을 다 채우면 글자는 작아도 버튼
-   박스 자체는 옆의 배포/롤백 버튼보다도 넓어져(실제로 지적받은 문제) 여전히 커
-   보였다 — flex:none으로 내용 크기만큼만 차지하게 하고, 남는 폭은 그냥 줄 오른쪽에
-   빈 자리로 둔다. */
+/* 운영자가 아니어도 누구나 쓸 수 있는 가벼운 "미리보기"라, 아래 운영자 전용 기능
+   그리드(.scr-admin-panel-grid)보다 눈에 덜 튀는 필(pill) 모양으로 따로 둔다.
+   flex:1로 남는 폭을 다 채우면 글자는 작아도 버튼 박스 자체가 넓어져(실제로 지적받은
+   문제) 여전히 커 보였다 — flex:none으로 내용 크기만큼만 차지하게 하고, 남는 폭은
+   그냥 줄 오른쪽에 빈 자리로 둔다. */
 .scr-admin-panel-preview-btn {
   flex: none; font-size: 14px; font-weight: 800;
   padding: 9px 18px; border-radius: 999px;
@@ -3543,50 +3528,72 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   font-family: var(--font-mono); font-size: 20px; font-weight: 700; color: #fff;
   padding: 14px 0;
 }
-/* 배포/롤백 버튼을 나란히 — 각각 .scr-admin-panel-submit-btn 하나만 있을 때 쓰던
-   width:100%/margin:0 auto는 두 버튼이 한 줄에 나란히 있는 지금은 안 맞아서
-   flex 아이템에 맞게 여기서 덮어쓴다. */
-.scr-admin-panel-deploy-actions { display: flex; gap: 10px; width: 100%; max-width: 260px; margin: 18px auto 0; }
-.scr-admin-panel-deploy-actions .scr-admin-panel-submit-btn { width: auto; flex: 1; margin: 0; }
-/* 입체감(inset 링 + 그림자)을 주려던 흔적이 오히려 어색해 보인다는 피드백으로 뺐다 —
-   배포 버튼(.scr-admin-panel-submit-btn)과 마찬가지로 순수한 단색 버튼. */
-.scr-admin-panel-rollback-btn {
-  flex: 1; font-size: 15px; font-weight: 800; padding: 11px; border-radius: 999px;
-  background: #fff; border-color: #fff; color: #10151a; text-shadow: none; box-shadow: none;
+/* 제어판다운 투박한 입체(엠보스) 사각 버튼 그리드로 통일한다(요청: "좀더 제어판같은
+   투박한 입체 사각 버튼으로 만들어줘 흰색에 검은 글씨, 아주 위험한 건 빨간 버튼 그리고
+   가로로 세개씩 줄줄이 배치"). 배포/롤백/배치등록/다운로드/삭제 등 개별 톤(알약,
+   테두리만, 반투명 등)으로 흩어져 있던 실행 버튼들을 전부 이 grid 안에 넣는다. */
+.scr-admin-panel-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+  width: 100%; max-width: 320px; margin: 18px auto 0;
 }
-.scr-admin-panel-rollback-btn:hover { filter: brightness(0.94); }
-.scr-admin-panel-rollback-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-/* 리플레이 폴더 배치 등록 — 운영자용 데이터 적재 도구라, 배포/롤백처럼 눈에 띄면 안 된다.
-   같은 필 래디우스만 유지하고 더 작고 조용한(테두리만 있는) 버튼으로 둔다. */
-.scr-admin-panel-batch { width: 100%; max-width: 260px; margin: 12px auto 0; }
-.scr-admin-panel-batch-btn {
-  width: 100%; font-size: 13px; font-weight: 700; padding: 9px; border-radius: 999px;
-  background: transparent; color: #fff; text-shadow: none; box-shadow: none;
-  border: 1px solid rgba(255,255,255,0.45);
+.scr-admin-panel-phys-btn {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  min-height: 58px; padding: 8px 4px; box-sizing: border-box;
+  font-family: inherit; font-size: 12px; font-weight: 800; line-height: 1.25; text-align: center;
+  color: #10151a; text-shadow: none;
+  background: linear-gradient(180deg, #ffffff 0%, #d7d7d7 100%);
+  border: 2px solid #7a7a7a; border-radius: 8px;
+  /* 위쪽 반사광 + 아래쪽 눌린 홈(inset) + 바닥면(하드 섀도) + 뜬 그림자로 눌러보고 싶은
+     물리 버튼 입체감을 낸다. */
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.95),
+    inset 0 -4px 3px -2px rgba(0,0,0,0.2),
+    0 3px 0 #6b6b6b,
+    0 5px 7px rgba(0,0,0,0.35);
+  cursor: pointer;
+  transition: transform .08s ease, box-shadow .08s ease, filter .08s ease;
 }
-.scr-admin-panel-batch-btn:hover { background: rgba(255,255,255,0.12); }
-/* 리플레이 전체 다운로드 — 일괄 등록 버튼과 같은 폭/톤으로 그 아래 정렬한다. */
-.scr-admin-panel-replay-download-btn {
-  width: 100%; max-width: 260px; margin: 8px auto 0;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 12px; font-weight: 700; padding: 9px; border-radius: 999px;
-  color: rgba(255,255,255,0.86); border: 1px solid rgba(255,255,255,0.3);
+.scr-admin-panel-phys-btn:hover { filter: brightness(0.97); }
+/* 눌리면 바닥면 두께(0 3px 0)만큼 실제로 내려앉게 — 눌린 느낌의 핵심. */
+.scr-admin-panel-phys-btn:active {
+  transform: translateY(3px);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.95),
+    inset 0 -2px 2px -1px rgba(0,0,0,0.15),
+    0 0 0 #6b6b6b,
+    0 1px 2px rgba(0,0,0,0.3);
 }
-.scr-admin-panel-replay-download-btn:hover { background: rgba(255,255,255,0.1); }
-/* 모든 경기기록 삭제 — 파괴적 작업이라 경고(레드) 톤. */
-.scr-admin-panel-delete-all-btn {
-  width: 100%; max-width: 260px; margin: 8px auto 0;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 12px; font-weight: 700; padding: 9px; border-radius: 999px;
-  color: #ff9a9a; border: 1px solid rgba(255,90,90,0.5); background: transparent;
-  text-shadow: none; box-shadow: none;
+.scr-admin-panel-phys-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; filter: none; }
+/* 아주 위험한(되돌릴 수 없는) 기능만 빨간 버튼으로 — "모든 경기기록 삭제". */
+.scr-admin-panel-phys-btn-danger {
+  color: #fff;
+  background: linear-gradient(180deg, #e8574d 0%, #a7302b 100%);
+  border-color: #5c1512;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.4),
+    inset 0 -4px 3px -2px rgba(0,0,0,0.3),
+    0 3px 0 #4a1210,
+    0 5px 7px rgba(0,0,0,0.4);
 }
-.scr-admin-panel-delete-all-btn:hover { background: rgba(255,90,90,0.12); }
-.scr-admin-panel-batch-bar { margin-top: 8px; }
-.scr-admin-panel-batch-counts { margin-top: 5px; font-size: 11px; color: rgba(255,255,255,0.8); text-align: center; }
-/* 무엇을 등록할지 고르는 선택지 — 배치 버튼 바로 아래에 펼쳐진다. 대상 버튼을 누르는 순간
-   폴더 선택창이 뜨므로, 함께 걸 옵션(컴퓨터 제외)은 그 버튼들보다 위에 놓는다. */
-.scr-admin-panel-batch-menu { margin-top: 8px; }
+.scr-admin-panel-phys-btn-danger:active {
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.4),
+    inset 0 -2px 2px -1px rgba(0,0,0,0.25),
+    0 0 0 #4a1210,
+    0 1px 2px rgba(0,0,0,0.3);
+}
+/* 배치 등록 버튼(ReplayBatchButton)은 자체 상태(모드 메뉴/결과 보기 링크/에러)를 가진
+   컴포넌트라 grid 안에서도 레이아웃에 끼어들지 않게 display:contents로 투명화한다 —
+   실제 트리거 버튼만 grid 칸을 차지하고, 메뉴/부가 정보는 아래에서 grid-column:1/-1로
+   가로 전체를 차지하는 한 줄로 펼쳐진다. */
+.scr-admin-panel-batch { display: contents; }
+.scr-admin-panel-batch-menu,
+.scr-admin-panel-batch-counts,
+.scr-admin-panel-batch .scr-err,
+.scr-admin-panel-batch > .scr-btn-ghost {
+  grid-column: 1 / -1;
+}
+.scr-admin-panel-batch-menu { margin-top: 2px; }
 .scr-admin-panel-batch-option { justify-content: center; color: rgba(255,255,255,0.82); font-size: 12px; margin-bottom: 8px; }
 .scr-admin-panel-batch-modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 .scr-admin-panel-batch-mode {
@@ -3645,8 +3652,8 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   .scr-admin-panel-preview-input { font-size: 14px; width: 48px; }
   .scr-admin-panel-preview-btn { font-size: 13px; padding: 8px; }
   .scr-admin-panel-version { font-size: 15px; padding: 8px 0; }
-  .scr-admin-panel-submit-btn, .scr-admin-panel-rollback-btn { font-size: 12px; padding: 8px; }
-  .scr-admin-panel-deploy-actions { margin-top: 10px; }
+  .scr-admin-panel-grid { gap: 8px; margin-top: 12px; }
+  .scr-admin-panel-phys-btn { font-size: 10.5px; min-height: 50px; padding: 6px 3px; }
   /* 폴더 선택 자체가 없는 모바일 브라우저라 배치 등록은 아예 보여주지 않는다. */
   .scr-admin-panel-batch { display: none; }
 }

@@ -292,7 +292,7 @@ export default function ReplayBatchButton() {
       />
       <button
         type="button"
-        className="scr-btn scr-admin-panel-batch-btn"
+        className="scr-admin-panel-phys-btn"
         onClick={() => (running ? (abortRef.current = true) : setMenuOpen((v) => !v))}
       >
         {running ? <><Spinner /> 중단</> : "배치 등록"}
