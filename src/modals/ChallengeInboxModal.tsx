@@ -18,6 +18,9 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
   const [idx, setIdx] = useState(0);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  // 오류가 어느 입력칸 것인지 — 그 칸에 에러 테두리(scr-input-invalid)를 함께 준다
+  // (요청: "사유에 에러 테두리도 넣어줘야지").
+  const [errField, setErrField] = useState<"message" | "schedule" | "">("");
   // 처음엔 편지봉투만 보여주고, 잠시 뒤 자동으로 편지지(제목/내용/응답 폼)로 넘어간다
   // (요청: "열어보기 버튼 제거하고 자동으로 열리게"). 연출은 두 단계 — "envelope"
   // 동안 봉투가 좌우로 흔들리다가, 흔들림이 끝나면 봉투는 페이드아웃 없이 그냥 사라지고
@@ -36,10 +39,10 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
   const current = challenges[idx];
 
   // 봉투를 충분히 보여준 뒤 자동으로 "letter"로 넘어간다(봉투는 그냥 사라지고 편지지가
-  // 등장). idx가 바뀌어 새 봉투(stage="envelope")가 뜰 때마다 다시 돈다. 누가 보냈는지
-  // (봉투 위 제목)를 읽을 시간을 넉넉히 주려고 먼저 2.4초 가만히 있다가 흔들린다(요청:
-  // "홀드 시간을 두배로" — 1.2s → 2.4s). CSS 쪽 흔들림 animation-delay(2.4s) + 지속시간
-  // (0.75s, 요청: "쉐이킹은 살짝 더 빠르게") = 3.15초에 맞춰 "letter"로 넘긴다.
+  // 등장). idx가 바뀌어 새 봉투(stage="envelope")가 뜰 때마다 다시 돈다. 연출 순서는
+  // "등장하자마자 흔들림(0.75s) → 정지(≈2.4s, 누가 보냈는지 읽는 시간) → 사라짐"이다
+  // (요청: "등장할때 쉐이크 그리고 정지 하다가 사라지기"). CSS 흔들림(delay 0 + 0.75s)이
+  // 끝난 뒤 정지 상태로 남아 있다가 이 타임아웃(3.15s)에 "letter"로 넘어간다.
   useEffect(() => {
     if (!current || stage !== "envelope") return;
     const t = window.setTimeout(() => setStage("letter"), 3150);
@@ -57,6 +60,7 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
     setDateStr("");
     setTimeStr("");
     setErr("");
+    setErrField("");
     if (idx + 1 >= challenges.length) onClose();
     else setIdx((i) => i + 1);
   };
@@ -71,13 +75,16 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
   const respond = async (response: "accepted" | "rejected") => {
     if (response === "rejected" && !canReject) {
       setErr("거절 사유를 입력해 주세요.");
+      setErrField("message");
       return;
     }
     if (response === "accepted" && !canAccept) {
       setErr("날짜와 시간을 정해 주세요.");
+      setErrField("schedule");
       return;
     }
     setErr("");
+    setErrField("");
     setBusy(true);
     try {
       const scheduledAt = response === "accepted" && needsSchedule
@@ -141,12 +148,20 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
                 <span className="scr-label">일시 정하기 (승락 시 필수)</span>
                 <div className="scr-challenge-datetime">
                   <input
-                    type="date" className="scr-input" value={dateStr}
-                    onChange={(e) => { setDateStr(e.target.value); if (!e.target.value) setTimeStr(""); }}
+                    type="date"
+                    className={`scr-input${errField === "schedule" ? " scr-input-invalid" : ""}`}
+                    value={dateStr}
+                    onChange={(e) => {
+                      setDateStr(e.target.value);
+                      if (!e.target.value) setTimeStr("");
+                      if (errField === "schedule") { setErr(""); setErrField(""); }
+                    }}
                   />
                   <input
-                    type="time" className="scr-input" value={timeStr}
-                    onChange={(e) => setTimeStr(e.target.value)}
+                    type="time"
+                    className={`scr-input${errField === "schedule" ? " scr-input-invalid" : ""}`}
+                    value={timeStr}
+                    onChange={(e) => { setTimeStr(e.target.value); if (errField === "schedule") { setErr(""); setErrField(""); } }}
                     disabled={!dateStr}
                   />
                 </div>
@@ -156,8 +171,14 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
             <label className="scr-field">
               <span className="scr-label">한마디 (거절 시 필수)</span>
               <input
-                type="text" className="scr-input" value={message}
-                onChange={(e) => setMessage(e.target.value)}
+                type="text"
+                className={`scr-input${errField === "message" ? " scr-input-invalid" : ""}`}
+                value={message}
+                onChange={(e) => {
+                  setMessage(e.target.value);
+                  // 사유를 입력하기 시작하면 그 칸 오류/테두리는 바로 지운다.
+                  if (errField === "message") { setErr(""); setErrField(""); }
+                }}
                 placeholder="예: 네가 감히! / 좋아요, 그날 봐요"
                 maxLength={60}
               />
