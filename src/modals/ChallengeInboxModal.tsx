@@ -38,13 +38,13 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
 
   const current = challenges[idx];
 
-  // 봉투가 뜨면 잠깐 대기(0.4s) 후 흔들리고(CSS animation-delay), 흔들림(0.75s)이 끝나는
-  // ≈1.15초 뒤에 열기/버리기 버튼을 띄운다. idx가 바뀌어 새 봉투가 뜰 때마다 버튼을 다시
-  // 숨겼다가(setEnvReady(false)) 같은 타이밍으로 재노출한다.
+  // 봉투가 뜨면 잠깐 대기(0.4s) 후 흔들리고(CSS animation-delay), 흔들림(0.6s×3회 = 1.8s)이
+  // 끝나는 ≈2.2초 뒤에 열기/버리기 버튼을 띄운다. idx가 바뀌어 새 봉투가 뜰 때마다 버튼을
+  // 다시 숨겼다가(setEnvReady(false)) 같은 타이밍으로 재노출한다.
   useEffect(() => {
     if (!current || stage !== "envelope") return;
     setEnvReady(false);
-    const t = window.setTimeout(() => setEnvReady(true), 1150);
+    const t = window.setTimeout(() => setEnvReady(true), 2200);
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- idx가 바뀌면 stage도 항상 "envelope"로 함께 리셋되므로 stage만으로 충분
   }, [stage, idx]);
