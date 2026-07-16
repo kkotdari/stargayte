@@ -4753,6 +4753,9 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
    아니라 대기중/취소됨과 같은 옅은 톤으로 — 더는 할 일이 없다는 느낌을 준다(요청:
    "완료 기준은 예정 시간이 지났을때 승락상태면 완료"). */
 .scr-challenge-pill-done { background: rgba(var(--overlay-rgb),0.12); color: var(--dim); }
+/* 예정 시간이 지났는데 아직 결과가 안 들어온 "결과 입력 대기" — 아직 할 일이 남았다는
+   신호라 옅은 호박색으로 눈에 띄게(요청: "끝났으면 결과 입력 대기"). */
+.scr-challenge-pill-wait { background: rgba(205,170,84,0.18); color: #cdaa54; }
 /* 취소, 그리고 팀전에서 누군가 거절해 이미 끝났는데 아직 응답을 안 한 나머지 상대(더는
    의미 없는 "대기") — 전부 같은 옅은 톤 + 취소선. */
 .scr-challenge-pill-muted { background: rgba(var(--overlay-rgb),0.12); color: var(--dim); text-decoration: line-through; }
