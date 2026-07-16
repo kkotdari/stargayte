@@ -954,9 +954,12 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    놓이는 액션 버튼도 그대로 두면 타이틀보다 상대적으로 아래로 처져 보인다 — 같은 양만큼
    맞춰 올린다. */
 .scr-v2-toolbar-actions { grid-area: actions; display: flex; align-items: center; gap: 6px; transform: translateY(-6px); }
-/* 도전장 화면의 "도전장 보내기"만 그리드 칸을 다투지 않고 툴바(position:relative) 우측
-   상단에 얹는 플로팅 버튼으로 뺀다(요청: "오른쪽 상단에 플로팅 처리"). */
-.scr-challenge-send-float { position: absolute; top: 0; right: 0; }
+/* 도전장 화면은 우측 상단에 버튼 두 개를 세로로 쌓는다(요청: "휴지통 버튼을 보내기 버튼
+   위에") — actions 칸을 세로 컬럼으로 바꾸고 오른쪽 정렬. 그리드 칸을 쓰므로 세로 공간을
+   자연히 예약해 아래 검색줄과 겹치지 않는다. */
+.scr-challenge-toolbar-actions { flex-direction: column; align-items: flex-end; gap: 8px; }
+/* "버려진 도전장" 버튼 — 보조 액션이라 옅게, 글자 안 줄바꿈. */
+.scr-challenge-discarded-btn { white-space: nowrap; color: var(--muted); }
 /* PC 화면 폭 통일(위 --list-content-max 주석 참고) — 처음엔 목록 패널/타이틀줄/검색창/
    힌트 문구를 화면마다 자식 요소 하나하나 따로 좁혔는데("PC에서 컨텐츠 영역을 800으로
    맞추는 만큼 그냥 가장 바깥쪽 부분에서 프레임을 주면 될거 같은데 왜 하나하나
@@ -4751,6 +4754,26 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
    여기 헤더에서만 보여주고, 카드 안에는 시간만 남긴다(요청: "각 카드엔 시간만 표시"). */
 .scr-challenge-date-group { display: flex; flex-direction: column; gap: 12px; }
 .scr-challenge-date-group + .scr-challenge-date-group { margin-top: 18px; }
+
+/* "버려진 도전장" 모달 — 본 목록과 같은 형식이되 살짝 어두운 톤(요청). 리스트 모달이라
+   기본 모달보다 넓게. 스티키/필터/검색/타임라인은 애초에 안 그리므로, 여기선 본 목록에서
+   가져온 스티키 날짜 헤더만 이 안에선 그냥 고정 안 되게(static) 되돌린다. */
+.scr-discarded-modal { max-width: 560px; }
+.scr-discarded-modal .scr-modal-head { font-weight: 800; }
+.scr-discarded-modal .scr-challenge-date-head {
+  position: static; top: auto; z-index: auto; background: transparent; backdrop-filter: none;
+}
+/* 버려진 카드는 "버려진" 느낌으로 살짝 어둡고 옅게 — 카드 배경을 어두운 워시로 덮고
+   전체를 조금 톤다운한다. */
+.scr-discarded-list { opacity: 0.88; }
+.scr-discarded-list .scr-challenge-card {
+  background: rgba(0, 0, 0, 0.3);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05), 0 2px 10px rgba(0, 0, 0, 0.22);
+}
+html.scr-light-theme .scr-discarded-list .scr-challenge-card {
+  background: rgba(0, 0, 0, 0.06);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.1);
+}
 /* 경기 목록의 날짜 줄(.scr-match-date-head)과 같은 이유로 스티키 — 헤더가 스크롤 영역
    밖의 flex 형제로 항상 떠 있고 목록은 그 아래 스크롤 컨테이너에서 시작하므로 top:0으로
    충분하다(요청: "너 나와 목록도 경기 목록처럼 날짜로 그루핑 하니까 스티키 플로팅

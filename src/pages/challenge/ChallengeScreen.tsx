@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { X } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
 import { Spinner } from "../../components/common/Feedback";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
@@ -18,6 +19,7 @@ import {
   monthInputToRange, pad,
 } from "../../utils/date";
 import { activeMemberSearchTerms, memberMatchesTerm, splitSearchTerms } from "../../utils/memberSearch";
+import { useLockBodyScroll } from "../../utils/bodyScrollLock";
 import { suppressScrollHide, getScrollRoot, getScrollMetrics, scrollRootTo } from "../../utils/scrollRoot";
 import type { Challenge, ChallengeResult, ChallengeSide, ChallengeStatus, ChallengeTarget, Member } from "../../types";
 
@@ -257,11 +259,14 @@ interface ChallengeCardProps {
   myId: string | undefined;
   // 유저 검색에 걸린 사람들 — 카드 안 프사+닉네임을 반전색으로 칠한다.
   highlightMemberIds?: Set<string>;
+  // 읽기 전용 — "버려진 도전장" 모달에서 쓴다. 응답/취소/재신청 등 모든 액션 버튼을 감춘다
+  // (버려진 초대장은 체인 될 수 없다). 페이지 넘기기(보기)는 그대로 둔다.
+  readOnly?: boolean;
   onResponded: (updated: Challenge) => void;
   onViewResults: (challenge: Challenge) => void;
 }
 
-function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onViewResults }: ChallengeCardProps) {
+function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onResponded, onViewResults }: ChallengeCardProps) {
   const memberOf = useAppStore((s) => s.memberOf);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -282,10 +287,12 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
   // 취소는 응답 대기중(pending)이거나 확정+승패 미확정일 때, "생성자만"(요청: "취소는 생성자만").
   const canCancel = isCreator
     && (challenge.status === "pending" || (challenge.status === "confirmed" && resultOpen));
-  // 재신청은 거절/무응답거절(status=rejected)이거나 취소(canceled)된 건에서 가능하다(요청:
-  // "취소된 건은 재신청 가능해야 하지 않나"). 이미 다음 행으로 이어진 건(superseded)은 목록에
-  // 아예 안 뜨니 여기선 status만 보면 된다. 미실시 상태 자체는 confirmed라 안 잡힌다(재신청 X).
-  const canReapply = isCreator && (challenge.status === "rejected" || challenge.status === "canceled");
+  // 재신청은 거절/취소된 건에서 가능하되, "버려진" 건(무응답 거절/응답전 취소)은 제외한다
+  // (요청: "무응답 거절이나 응답 전 취소는 체인 신청에서 제외"). 실제로 누가 거절했거나
+  // 수락 뒤 취소된 건만 재신청 대상이다. 이미 superseded된 건은 목록에 안 뜨니 status만 본다.
+  const canReapply = isCreator
+    && (challenge.status === "rejected" || challenge.status === "canceled")
+    && !isHiddenOutcome(challenge);
   // 예정 일시가 지난 확정 대결에서, 아직 결과가 안 들어왔으면 참가자가 결과를 입력한다.
   const schedulePassed = !!challenge.scheduledAt && new Date(challenge.scheduledAt).getTime() < Date.now();
   const canEnterResult = isParticipant && challenge.status === "confirmed" && schedulePassed && challenge.resultWinnerSide === null;
@@ -596,8 +603,9 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
       {err && <div className="scr-err">{err}</div>}
 
       {/* 응답 버튼(수락/거절) — 최신 페이지에서만 실제로 뜨지만, 이력 페이지에선 자리를
-          예약(reserve)만 하고 투명하게 둬서 아래 페이지네이션이 안 튀게 한다. */}
-      {canRespond && mode === "none" && (
+          예약(reserve)만 하고 투명하게 둬서 아래 페이지네이션이 안 튀게 한다. 읽기 전용
+          (버려진 도전장 모달)에서는 어떤 액션도 없다. */}
+      {!readOnly && canRespond && mode === "none" && (
         <div className={cx("scr-challenge-card-actions", !isLatestPage && "scr-challenge-card-actions-reserve")}>
           <button
             className="scr-btn scr-challenge-reject-btn scr-btn-sm" disabled={busy}
@@ -770,7 +778,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
 
       {/* 결과 입력/재대결/연기/취소/재신청 — 인라인 폼이 안 열려 있을 때만 뜨는 액션 줄.
           응답 버튼과 마찬가지로 이력 페이지에선 자리만 예약(투명)해 페이지네이션이 안 튀게. */}
-      {mode === "none" && (canCancel || canReapply || canEnterResult || canRevenge || canPostpone) && (
+      {!readOnly && mode === "none" && (canCancel || canReapply || canEnterResult || canRevenge || canPostpone) && (
         <div className={cx("scr-challenge-card-actions", !isLatestPage && "scr-challenge-card-actions-reserve")}>
           {canEnterResult && (
             <button className="scr-btn scr-challenge-accept-btn scr-btn-sm" onClick={startResult} disabled={busy}>
@@ -890,6 +898,55 @@ function compareChallenges(a: Challenge, b: Challenge): number {
   return a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0;
 }
 
+// "버려진 도전장" 모달 — 흐지부지 끝나(무응답 거절/응답전 취소) 본 목록에서 감춘 초대장들을
+// 모아 보여준다(요청). 본 목록과 같은 날짜/시간 그루핑·카드 형식을 그대로 쓰되, 살짝 어두운
+// 톤에 스티키/필터/검색/타임라인 같은 부가 기능은 없고, 카드는 읽기 전용이라 어떤 응답/체인
+// 액션도 없다(버려진 초대장은 체인 될 수 없음).
+function DiscardedChallengesModal(
+  { challenges, myId, onClose }: { challenges: Challenge[]; myId: string | undefined; onClose: () => void },
+) {
+  useLockBodyScroll();
+  const groups = groupChallengesByDate(challenges);
+  return createPortal(
+    <div className="scr-modal-overlay" onClick={onClose}>
+      <div className="scr-modal scr-discarded-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="scr-modal-head">
+          <span>🗑️ 버려진 도전장</span>
+          <button type="button" className="scr-icon-btn" onClick={onClose} aria-label="닫기"><X size={20} /></button>
+        </div>
+        <div className="scr-modal-body">
+          {challenges.length === 0 ? (
+            <div className="scr-empty">버려진 도전장이 없어요</div>
+          ) : (
+            <div className="scr-challenge-list scr-discarded-list">
+              {groups.map((g) => (
+                <div key={g.label} className="scr-challenge-date-group">
+                  <div className="scr-challenge-date-head">{g.label}</div>
+                  {groupByTime(g.items).map((tg) => (
+                    <div key={tg.key} className="scr-challenge-time-group">
+                      {tg.timeLabel && (
+                        <div className="scr-challenge-time-head">
+                          <span className="scr-challenge-time-head-label">{tg.timeLabel}</span>
+                        </div>
+                      )}
+                      {tg.items.map((c) => (
+                        <div key={c.id} className="scr-challenge-card-slot">
+                          <ChallengeCard challenge={c} myId={myId} readOnly onResponded={() => {}} onViewResults={() => {}} />
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
 // 도전장("너 나와!") 게시판 — 경기결과/예약 시스템과는 독립적인 별도 게시판이라, 화면 자체도
 // 기간 필터 없이 전체 목록을 그대로 보여준다.
 export default function ChallengeScreen() {
@@ -901,6 +958,7 @@ export default function ChallengeScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [formOpen, setFormOpen] = useState(false);
+  const [discardedOpen, setDiscardedOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [acceptedOnly, setAcceptedOnly] = useState(false);
   const [periodUnit, setPeriodUnit] = useState<ChallengePeriodUnit>("month");
@@ -1018,6 +1076,13 @@ export default function ChallengeScreen() {
     ? sortedChallenges.filter((c) => c.status === "confirmed")
     : sortedChallenges;
 
+  // "버려진 도전장" 모달용 — 본 목록에서 감춘(무응답 거절/응답전 취소) 초대장 전부. 여긴
+  // 기간/검색 필터를 안 걸고(요청) 로드된 전체에서 골라 본 목록과 같은 정렬로 준다.
+  const discardedChallenges = useMemo(
+    () => challenges.filter(isHiddenOutcome).sort(compareChallenges),
+    [challenges],
+  );
+
   // 가장 가까운 예정된(수락) 대결의 시각 — 확정됐고 예정 일시가 아직 안 지난 것 중 가장 임박.
   // 같은 시각(exact)에 여러 대결이 잡혀 있으면 그것들 "모두"가 NEXT다(요청: "동일 시각 여러
   // 개가 next이면 모두 next 배지 + 글로우"). 화면 진입 시엔 그중 첫 카드로 스크롤한다.
@@ -1110,16 +1175,24 @@ export default function ChallengeScreen() {
     <div className="scr-screen scr-challenge-screen-v2">
       <div className="scr-v2-toolbar">
         <h1 className="scr-title scr-v2-toolbar-title">너 나와!</h1>
-        {/* 요청: "도전장 보내기를 오른쪽 상단에 플로팅 처리" — 타이틀과 같은 줄에서
-            폭을 다투는 그리드 칸 대신, 툴바(position:relative) 우측 상단에 얹는
-            오버레이로 뺀다. */}
-        <button
-          type="button"
-          className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm scr-challenge-send-float"
-          onClick={() => setFormOpen(true)}
-        >
-          🕊️ 도전장 보내기
-        </button>
+        {/* 우측 상단에 버튼 두 개를 세로로 쌓는다 — 위에 "버려진 도전장"(🗑️), 아래에
+            "도전장 보내기"(요청: "휴지통 버튼을 보내기 버튼 위에"). */}
+        <div className="scr-v2-toolbar-actions scr-challenge-toolbar-actions">
+          <button
+            type="button"
+            className="scr-btn scr-btn-ghost scr-btn-sm scr-challenge-discarded-btn"
+            onClick={() => setDiscardedOpen(true)}
+          >
+            🗑️ 버려진 도전장
+          </button>
+          <button
+            type="button"
+            className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm"
+            onClick={() => setFormOpen(true)}
+          >
+            🕊️ 도전장 보내기
+          </button>
+        </div>
       </div>
 
       <SearchFilterBar
@@ -1227,6 +1300,14 @@ export default function ChallengeScreen() {
         <ChallengeFormModal
           onClose={() => setFormOpen(false)}
           onCreated={(c) => setChallenges((prev) => [c, ...prev])}
+        />
+      )}
+
+      {discardedOpen && (
+        <DiscardedChallengesModal
+          challenges={discardedChallenges}
+          myId={user?.id}
+          onClose={() => setDiscardedOpen(false)}
         />
       )}
 
