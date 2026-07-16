@@ -4766,6 +4766,18 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
   padding: 8px 0; border-bottom: 1px solid var(--line-soft);
 }
 
+/* 날짜 그룹 안의 시각별 소그룹 — 같은 예정 시각 카드들을 묶고, 그 맨 위에 시간을 한 번만
+   보여준다(요청: "카드 시간 표시 삭제, 대신 시간 그루핑해서 제일 위 카드 위에 한번만 표시").
+   카드끼리 간격은 날짜 그룹과 동일(12px). */
+.scr-challenge-time-group { display: flex; flex-direction: column; gap: 12px; }
+/* 시간 헤더 — 날짜 헤더보다 한 단계 작고 옅게. NEXT 배지가 이 옆에 붙는다(요청: "next
+   배지는 시간 옆으로 이동"). 아래 카드에 붙어 보이도록 헤더-카드 간격은 살짝 좁힌다. */
+.scr-challenge-time-head {
+  display: flex; align-items: center; gap: 6px;
+  margin-bottom: -4px;
+  font-size: 13.5px; font-weight: 800; color: var(--muted); letter-spacing: 0.01em;
+}
+
 /* scroll-margin-top — NEXT 대결로 자동 스크롤(scrollIntoView block:"start")할 때 화면
    맨 위에 딱 붙지 않고 이만큼만 숨 쉴 여유를 남긴다(위의 다른 카드는 안 보인다). 날짜
    헤더가 스티키라 스크롤이 끝난 뒤에도 그 헤더가 카드 위에 계속 떠 있으므로, 헤더
@@ -4978,6 +4990,12 @@ html.scr-light-theme .scr-challenge-next-tag {
    모양으로 좌우에 잘 보이게"). 배경도 옅게 넣어 카드 위에서 더 도드라지게 한다. */
 /* 카드 하단 페이지 네비 바 — [◀ 1/3 ▶] 가운데 정렬 한 줄(요청: "좌우 이동 버튼을 하단으로,
    1/3 이렇게 페이지 표시"). */
+/* 페이징 있는 카드의 "지금 보는 페이지 일시"를 페이지네이션 바로 위에 상대표기로(요청:
+   "1개월 23일 전 오후 7시 10분"). 옅고 작게, 가운데. */
+.scr-challenge-page-when {
+  text-align: center; font-size: 12px; font-weight: 600; color: var(--dim);
+  margin-top: 4px;
+}
 .scr-challenge-page-nav-bar {
   display: flex; align-items: center; justify-content: center; gap: 10px;
 }

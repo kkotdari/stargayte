@@ -14,7 +14,7 @@ import { api } from "../../api/client";
 import { cx } from "../../utils/format";
 import { attachPopover } from "../../utils/popover";
 import {
-  challengeDateGroupLabel, challengeTimeLabel, currentMonthValue, formatChallengeSchedule, fmt, isToday,
+  challengeDateGroupLabel, challengeTimeLabel, currentMonthValue, formatRelativeSchedule, fmt, isToday,
   monthInputToRange, pad,
 } from "../../utils/date";
 import { activeMemberSearchTerms, memberMatchesTerm, splitSearchTerms } from "../../utils/memberSearch";
@@ -100,6 +100,29 @@ function groupChallengesByDate(list: Challenge[]): ChallengeDateGroup[] {
     const last = groups[groups.length - 1];
     if (last && last.label === label) last.items.push(c);
     else groups.push({ label, isToday: isToday(c.scheduledAt), items: [c] });
+  });
+  return groups;
+}
+
+interface ChallengeTimeGroup {
+  // 그룹 식별자 — 같은 예정 시각(scheduledAt)끼리 묶는다. 일정 미정은 "none".
+  key: string;
+  // 그 시각의 라벨("오후 7시 10분") — 일정 미정이면 null이라 시간 헤더를 안 그린다.
+  timeLabel: string | null;
+  items: Challenge[];
+}
+
+// 한 날짜 그룹 안에서 다시 예정 시각별로 묶는다(요청: "시간도 그루핑해서 제일 위 카드 위에
+// 한번만 표시") — 카드마다 시간을 반복해 찍는 대신, 같은 시각 카드들 맨 위에 시간을 한 번만
+// 보여주려는 것. 목록이 이미 scheduledAt 순으로 정렬돼 있어 같은 시각은 연속이라, 라벨이
+// 연달아 같을 때만 묶으면 된다.
+function groupByTime(items: Challenge[]): ChallengeTimeGroup[] {
+  const groups: ChallengeTimeGroup[] = [];
+  items.forEach((c) => {
+    const key = c.scheduledAt ?? "none";
+    const last = groups[groups.length - 1];
+    if (last && last.key === key) last.items.push(c);
+    else groups.push({ key, timeLabel: challengeTimeLabel(c.scheduledAt), items: [c] });
   });
   return groups;
 }
@@ -234,14 +257,11 @@ interface ChallengeCardProps {
   myId: string | undefined;
   // 유저 검색에 걸린 사람들 — 카드 안 프사+닉네임을 반전색으로 칠한다.
   highlightMemberIds?: Set<string>;
-  // NEXT 배지 번호 — "해당일"(가장 임박한 예정 대결이 속한 날짜)의 수락된 대결에만
-  // 시각 오름차순으로 매겨진다(동일 시각은 같은 번호). 대상이 아니면 null.
-  nextBadgeNumber?: number | null;
   onResponded: (updated: Challenge) => void;
   onViewResults: (challenge: Challenge) => void;
 }
 
-function ChallengeCard({ challenge, myId, highlightMemberIds, nextBadgeNumber, onResponded, onViewResults }: ChallengeCardProps) {
+function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onViewResults }: ChallengeCardProps) {
   const memberOf = useAppStore((s) => s.memberOf);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -303,14 +323,8 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, nextBadgeNumber, o
   // 각 페이지의 파생 라벨/상태는 그 페이지 자신의 값으로 계산한다 — 최신 페이지는 지금 실제
   // 일시/상태, 이력 페이지는 그 시점의 것(거절/무응답취소/완료 등). 아래에서 모든 페이지를
   // 한 칸에 겹쳐 렌더해(카드 높이를 최대 페이지에 고정) 페이지마다 렌더 시점에 계산한다.
-  // 일정 자체가 없는 카드(=일정 미정 그룹)는 그룹 헤더가 이미 "일정 미정"이라 카드 안에 또
-  // 표기하지 않는다(요청). 일시가 있으면 시간만 보여준다 — 날짜만 있고 시간만 미정인 경우는
-  // 없다(일시는 날짜+시간이 항상 함께).
-  const timeLabelOf = (p: ChallengePage, latest: boolean): string => {
-    if (!latest) return formatChallengeSchedule(p.scheduledAt);
-    if (!p.scheduledAt) return "";
-    return challengeTimeLabel(p.scheduledAt) ?? "";
-  };
+  // 카드 자체엔 더 이상 시간을 찍지 않는다(요청: "카드 시간 표시 삭제") — 시각은 목록의
+  // 시간 그룹 헤더가, 페이징 이력의 일시는 아래 페이지네이션 위 상대표기가 대신 보여준다.
 
   // 페이지를 넘길 때: 내용은 페이드 없이 바로 교체하고, 패널만 높이를 모핑한다(요청:
   // "페이지 이동시 현재 내용물 페이드아웃 제거하고 바로 사라지게 변경. 페이드인은 유지"
@@ -471,6 +485,16 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, nextBadgeNumber, o
   // 페이지 개수를 센다(설욕전은 별도 라벨이라 세지 않는다).
   const reapplyNo = pages.slice(0, shownIndex + 1).filter((p) => p.chainKind === "reapply").length;
 
+  // 시간/NEXT 배지가 이 줄에서 빠진 뒤로는, 이 "맨 윗줄"에 실제로 보여줄 게 하나라도 있을
+  // 때만 줄을 그린다(전부 없으면 빈 줄이 남아 어색하다). 체인 라벨/취소·무승부 알약/카운트
+  // 다운/결과보기·미실시 중 하나라도 해당하면 그린다.
+  const whenHasContent =
+    !!activePage.chainKind
+    || activePage.status === "canceled"
+    || activePage.resultWinnerSide === "draw"
+    || (shownLatest && challenge.status === "pending")
+    || (shownLatest && challenge.resultWinnerSide !== null);
+
   return (
     <div className="scr-challenge-card">
       <div className="scr-challenge-card-body">
@@ -490,14 +514,8 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, nextBadgeNumber, o
           style={pagesHeight !== undefined ? { height: pagesHeight } : undefined}
         >
           <div ref={pagesInnerRef} className="scr-challenge-page">
+            {whenHasContent && (
             <div className="scr-challenge-card-row scr-challenge-card-when">
-              {timeLabelOf(activePage, shownLatest)}
-              {/* NEXT 배지 — 날짜 헤더가 아니라 카드 자체에(요청: "NEXT 배지를 날짜가
-                  아니라 대결 카드 위에"), 시각 순서 번호와 함께(요청: "시간 빠른 순서로
-                  NEXT #1... 시간이 같으면 같은 번호"). */}
-              {!!nextBadgeNumber && (
-                <span className="scr-challenge-next-tag">NEXT #{nextBadgeNumber}</span>
-              )}
               {/* 체인 라벨 — 이 기록이 재신청/재대결로 만들어진 것이면 어느 쪽인지 표시.
                   재신청은 몇 번째인지도 함께(요청: "다시 신청은 n번째 재신청으로 변경하고
                   다시 신청 -> 재신청으로 모두 변경" → "배지 N차 재신청으로 변경"). */}
@@ -536,6 +554,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, nextBadgeNumber, o
                 </button>
               )}
             </div>
+            )}
 
             <div className="scr-challenge-matchup">
               <ChallengeSide people={creatorSideMembers} message={activePage.message} highlightMemberIds={highlightMemberIds} />
@@ -781,6 +800,14 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, nextBadgeNumber, o
         </div>
       )}
 
+      {/* 페이징 있는 카드는 지금 보는 페이지의 일시를 페이지네이션 바로 위에 상대표기로
+          보여준다(요청: "날짜와 시간을 페이지네이션 바로 위에 '1개월 23일 전 오후 7시 10분'
+          이런식으로"). 카드 시각을 목록 헤더로 옮긴 뒤라, 이력 페이지의 그때 일시를 여기서
+          짚어준다. */}
+      {pages.length > 1 && (
+        <div className="scr-challenge-page-when">{formatRelativeSchedule(activePage.scheduledAt)}</div>
+      )}
+
       {/* 이전 기록 탐색 — 카드 "맨 하단"(버튼 로우보다 아래)에 [◀ 1/3 ▶] 한 줄로(요청:
           "페이지네이션 버튼 로우보다 하단에 배치"). 버튼 로우는 이력 페이지에서도 자리를
           예약(scr-challenge-card-actions-reserve)하므로 페이지를 넘겨도 이 줄이 위아래로
@@ -831,6 +858,19 @@ const PERIOD_UNIT_OPTS: { value: ChallengePeriodUnit; label: string }[] = [
   { value: "all", label: "전체" },
   { value: "month", label: "월" },
 ];
+
+// 목록에서 아예 감추는 "흐지부지 끝난" 건(요청: "응답전 취소와 무응답 거절은 노출 X").
+//  - 응답전 취소: 아무도 응답(수락/거절)하기 전에 도전자가 취소한 건(status=canceled + 전원 pending).
+//    누군가 수락한 뒤 취소(수락후 취소)는 실제로 잡혔던 대결이라 그대로 남긴다.
+//  - 무응답 거절: 아무도 명시적으로 거절하지 않았는데 응답 마감으로 거절 처리된 건
+//    (status=rejected + 명시적 거절 없음). 실제로 누가 "거절"을 누른 건은 그대로 남긴다.
+function isHiddenOutcome(c: Challenge): boolean {
+  const noOneResponded = c.targets.every((t) => t.response === "pending");
+  const someoneRejected = c.targets.some((t) => t.response === "rejected");
+  if (c.status === "canceled" && noOneResponded) return true;
+  if (c.status === "rejected" && !someoneRejected) return true;
+  return false;
+}
 
 // 순수 날짜(예정 일시) 내림차순 한 줄로 정렬한다(요청: "순수 날짜 내림차순" — 진행/종료를
 // 나눠 진행중을 위로 끌어올리던 예전 규칙 때문에 다가오는 경기(NEXT)가 날짜와 무관하게 맨
@@ -964,9 +1004,10 @@ export default function ChallengeScreen() {
     });
   }, [searchedChallenges, periodUnit, periodMonth]);
 
-  // 상태 구분 없이 하나의 목록으로 합치고 scheduledAt 내림차순으로 정렬한다.
+  // 흐지부지 끝난 건(응답전 취소/무응답 거절)은 숨기고, 나머지를 하나의 목록으로 합쳐
+  // scheduledAt 오름차순으로 정렬한다.
   const sortedChallenges = useMemo(
-    () => [...periodChallenges].sort(compareChallenges),
+    () => periodChallenges.filter((c) => !isHiddenOutcome(c)).sort(compareChallenges),
     [periodChallenges],
   );
 
@@ -1139,23 +1180,38 @@ export default function ChallengeScreen() {
                       {g.isToday && <span className="scr-challenge-card-today-tag">오늘</span>}
                       {g.label}
                     </div>
-                    {g.items.map((c) => (
-                      // 슬롯 래퍼 — 진입 스크롤 목적지는 가장 임박한 예정 대결(그중 첫 카드)이다.
-                      <div
-                        key={c.id}
-                        ref={c.id === firstNextId ? nextCardRef : undefined}
-                        className="scr-challenge-card-slot"
-                      >
-                        <ChallengeCard
-                          challenge={c}
-                          myId={user?.id}
-                          highlightMemberIds={highlightMemberIds}
-                          nextBadgeNumber={badgeNumbers?.get(c.id) ?? null}
-                          onResponded={upsert}
-                          onViewResults={setResultsTarget}
-                        />
-                      </div>
-                    ))}
+                    {/* 날짜 안에서 다시 시각별로 묶어, 같은 시각 카드들 맨 위에 시간을 한 번만
+                        보여준다(요청). NEXT 배지도 카드가 아니라 이 시간 헤더 옆으로 옮긴다
+                        (요청: "next 배지는 시간 옆으로 이동"). 같은 시각이면 배지 번호도 같다. */}
+                    {groupByTime(g.items).map((tg) => {
+                      const tgBadge = badgeNumbers?.get(tg.items[0].id) ?? null;
+                      return (
+                        <div key={tg.key} className="scr-challenge-time-group">
+                          {tg.timeLabel && (
+                            <div className="scr-challenge-time-head">
+                              <span className="scr-challenge-time-head-label">{tg.timeLabel}</span>
+                              {!!tgBadge && <span className="scr-challenge-next-tag">NEXT #{tgBadge}</span>}
+                            </div>
+                          )}
+                          {tg.items.map((c) => (
+                            // 슬롯 래퍼 — 진입 스크롤 목적지는 가장 임박한 예정 대결(그중 첫 카드)이다.
+                            <div
+                              key={c.id}
+                              ref={c.id === firstNextId ? nextCardRef : undefined}
+                              className="scr-challenge-card-slot"
+                            >
+                              <ChallengeCard
+                                challenge={c}
+                                myId={user?.id}
+                                highlightMemberIds={highlightMemberIds}
+                                onResponded={upsert}
+                                onViewResults={setResultsTarget}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })}
                   </div>
                 );
               })}
