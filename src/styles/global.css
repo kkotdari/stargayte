@@ -3482,10 +3482,31 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
   padding-bottom: 12px; margin-bottom: 12px; border-bottom: 1px solid var(--line-soft);
 }
-/* 숫자 입력 + 화살표 스테퍼 — 아래 "버전 보기"/"업데이트 안내 미리보기" 버튼 그리드와
-   같은 최대폭(320px)으로 맞춰 위아래 줄이 같은 폭에서 가지런히 정렬되게 한다(요청:
-   "버전보기랑 업데이트 안내 미리보기 버튼도 통일해주고 줄좀 이쁘게 맞춰줘"). */
-.scr-admin-panel-preview-row { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; max-width: 320px; }
+/* 운영자가 아니면 전환 섹션이 아예 없어 이 미리보기 블록이 카드의 마지막 내용이다 —
+   그 아래 구분선은 필요 없다. */
+.scr-admin-panel-preview-solo { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+/* 소제목(요청: "제어판 구성 소제목: 버전관리(현재버전 : N) / 경기관리") — 큰 버전
+   숫자 배지 대신, 각 그리드 위에 이 한 줄로 섹션을 나눈다. */
+.scr-admin-panel-section-title {
+  width: 100%; text-align: center; font-size: 13px; font-weight: 800; color: #fff;
+  margin-top: 4px;
+}
+.scr-admin-panel-section-title-dim { font-weight: 600; color: rgba(255,255,255,0.65); }
+/* 제어판다운 투박한 입체(엠보스) 사각 버튼 그리드로 통일한다(요청: "좀더 제어판같은
+   투박한 입체 사각 버튼으로 만들어줘 흰색에 검은 글씨, 아주 위험한 건 빨간 버튼").
+   처음엔 3열이었다가, 버튼이 너무 좁아 보인다는 이유로 2열로 줄이고 폭을 넓혔다(요청:
+   "가로로 두개씩 배치(버튼 폭 늘리기)"). */
+.scr-admin-panel-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
+  width: 100%; max-width: 320px; margin: 10px auto 0;
+}
+/* 미리볼 버전 스테퍼를 grid 칸 안(버전보기 버튼 옆)에 붙였더니 그 줄만 다른 버튼들보다
+   키가 커졌다(실제로 지적받은 문제 — "버전 선택때문에 그 줄만 높이가 높아졌어") —
+   grid에서 완전히 빼고, "버전보기"를 누르면 뜨는 별도 팝업(.scr-admin-panel-version-popup)
+   안으로 옮긴다. 이제 "버전보기"는 다른 버튼들과 똑같은 순수 .scr-admin-panel-phys-btn. */
+.scr-admin-panel-version-popup .scr-modal-body {
+  align-items: center; gap: 16px; padding: 6px 0 4px;
+}
 /* 브라우저 기본 number 스피너(입력칸 오른쪽에 붙는 위아래 화살표) 대신, 인풋 위/아래에
    삼각형 화살표 버튼을 세로로 쌓아 그걸로 값을 조절한다. */
 .scr-admin-panel-preview-stepper { display: flex; flex-direction: column; align-items: center; gap: 10px; flex: none; }
@@ -3503,22 +3524,6 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   width: 100%; padding: 6px 0; background: transparent; border: none; cursor: pointer;
 }
 .scr-admin-panel-preview-arrow:hover { filter: brightness(1.3); }
-/* 운영자가 아니면 전환 섹션이 아예 없어 이 미리보기 블록이 카드의 마지막 내용이다 —
-   그 아래 구분선은 필요 없다. */
-.scr-admin-panel-preview-solo { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
-.scr-admin-panel-version {
-  display: flex; align-items: center; justify-content: center; gap: 10px;
-  font-family: var(--font-mono); font-size: 20px; font-weight: 700; color: #fff;
-  padding: 14px 0;
-}
-/* 제어판다운 투박한 입체(엠보스) 사각 버튼 그리드로 통일한다(요청: "좀더 제어판같은
-   투박한 입체 사각 버튼으로 만들어줘 흰색에 검은 글씨, 아주 위험한 건 빨간 버튼 그리고
-   가로로 세개씩 줄줄이 배치"). 배포/롤백/배치등록/다운로드/삭제 등 개별 톤(알약,
-   테두리만, 반투명 등)으로 흩어져 있던 실행 버튼들을 전부 이 grid 안에 넣는다. */
-.scr-admin-panel-grid {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
-  width: 100%; max-width: 320px; margin: 18px auto 0;
-}
 .scr-admin-panel-phys-btn {
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
   min-height: 58px; padding: 8px 4px; box-sizing: border-box;
@@ -3630,11 +3635,10 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   .scr-admin-panel-password-input { font-size: 26px; padding: 10px 8px; min-height: 52px; letter-spacing: 3px; }
   .scr-admin-panel-quiz-submit-btn { font-size: 14px; padding: 10px; margin-top: 10px; }
   .scr-admin-panel-preview { padding-bottom: 8px; margin-bottom: 8px; }
-  .scr-admin-panel-preview-stepper { gap: 4px; }
-  .scr-admin-panel-preview-arrow svg { width: 14px; height: 9px; }
+  .scr-admin-panel-section-title { font-size: 12px; }
   .scr-admin-panel-preview-input { font-size: 14px; width: 48px; }
-  .scr-admin-panel-version { font-size: 15px; padding: 8px 0; }
-  .scr-admin-panel-grid { gap: 8px; margin-top: 12px; }
+  .scr-admin-panel-preview-arrow svg { width: 14px; height: 9px; }
+  .scr-admin-panel-grid { gap: 8px; margin-top: 8px; }
   .scr-admin-panel-phys-btn { font-size: 10.5px; min-height: 50px; padding: 6px 3px; }
   /* 폴더 선택 자체가 없는 모바일 브라우저라 배치 등록은 아예 보여주지 않는다. */
   .scr-admin-panel-batch { display: none; }
@@ -5294,33 +5298,42 @@ html.scr-light-theme .scr-challenge-next-tag {
    라운딩 처리" → "지금은 위만 그렇게 돼보임"). 컨테이너의 래디우스에 기대는 대신 사진
    자신에게 직접 네 귀퉁이 래디우스를 준다. */
 .scr-challenge-envelope-img { display: block; width: 100%; height: auto; border-radius: var(--radius); }
-/* 처음엔 봉투만 보여주고 눌러야 편지지(제목/내용/응답 폼)로 넘어간다(요청: "인박스
-   편지봉투만 처음에 나오고 편지지로 이동") — <button>이라 기본 버튼 테두리/배경을
-   지우고, 봉투 이미지 자체는 위 .scr-challenge-envelope와 같은 모양을 유지한다. */
-/* 열어보기 안내가 이제 사진 위에 겹치지 않고 사진 아래 별도 줄로 온다(요청: "도전장
-   열어보기 버튼은 이미지상이 아닌 이미지 하단에 따로 배치") — 세로로 쌓는 flex로. */
-.scr-challenge-envelope-button {
-  width: 100%; padding: 0; border: none; background: transparent; cursor: pointer;
-  display: flex; flex-direction: column; align-items: center; gap: 10px;
-}
+/* 처음엔 봉투만 잠깐 보여주고 자동으로 편지지(제목/내용/응답 폼)로 넘어간다(요청:
+   "열어보기 버튼 제거하고 자동으로 열리게") — 이제 누르는 버튼이 아니라 순수 장식
+   이미지라 클릭 관련 스타일은 없다. */
 /* 봉투만 떠 있는 단계에서는 위(카드 상단 모서리에 맞춤)뿐 아니라 아래쪽도 각지게
    잘릴 이유가 없다 — 네 귀퉁이 전부 둥글게(요청: "모서리 네 귀퉁이 똑같이 래디우스
    걸어주고"). */
 .scr-challenge-envelope-full { margin: 0; border-radius: var(--radius); }
-/* 안내가 사진 위 오버레이가 아니라 사진 아래 일반 텍스트로 바뀌었으니, 사진 위에서
-   쓰던 반투명 검정 알약 배경은 필요 없다 — 대신 카드 배경(어두운 스크림)에 맞춰
-   흰 글자 + 그림자만 유지한다. */
-/* "눌러서 열어보기"(도전장 열기 버튼)는 눈에 띄게 핑크 알약으로 — 편지봉투 아래에서
-   확실히 "누르는 버튼"으로 보이게 한다(요청: "도전장 열기 버튼 핑크색으로"). */
-.scr-challenge-envelope-hint {
-  font-size: 12.5px; font-weight: 700; color: #fff;
-  background: #ec6ea8; padding: 8px 18px; border-radius: 999px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.35);
-  white-space: nowrap;
-}
-/* 안내 줄이 사진 바로 아래로 내려오면서 카드 하단이 허전해지지 않게 여백을
-   보강한다(요청: "인박스 편지봉투 장면에서 하단 패딩 추가해서 균형있게 보이게"). */
+/* 안내 문구가 없어져도 카드 하단이 허전해지지 않게 여백을 유지한다(요청: "인박스
+   편지봉투 장면에서 하단 패딩 추가해서 균형있게 보이게"). */
 .scr-challenge-inbox-modal-envelope { padding-bottom: 16px; }
+/* 봉투 → 편지지 전환("opening") — 편지지 콘텐츠는 이미 정상 흐름으로 자리 잡은 채,
+   봉투가 그 위에 얹혀 확대되며 흐려지고(잔상) 밝아지다 사라진다(요청: "편지봉투가
+   확대되며 잔상 남기며 페이드아웃되고 편지지가 뒤에서 확대되며 등장!" — 이른바
+   "사자후 효과"). 봉투는 position:absolute로 편지지 위에 겹쳐 뜨고(모달 자체가
+   .scr-challenge-inbox-modal에서 이미 position:relative), 편지지는 그 뒤에서 커지며
+   나타난다. */
+.scr-challenge-envelope-opening {
+  position: absolute; top: 0; left: 0; right: 0; z-index: 2;
+  pointer-events: none;
+  animation: scr-challenge-envelope-burst .55s cubic-bezier(.22,.61,.36,1) forwards;
+}
+@keyframes scr-challenge-envelope-burst {
+  0% { transform: scale(1); opacity: 1; filter: blur(0) brightness(1); }
+  55% { transform: scale(1.2); opacity: 0.5; filter: blur(5px) brightness(1.3); }
+  100% { transform: scale(1.4); opacity: 0; filter: blur(11px) brightness(1.5); }
+}
+/* 편지지(nawa 이미지 + 본문)가 봉투 뒤에서 확대되며 등장 — both로 애니메이션 시작
+   전(대기 중)에도 0% 상태(작고 투명)를 유지해 깜빡임 없이 자연스럽게 이어진다. */
+.scr-challenge-inbox-emerge {
+  animation: scr-challenge-letter-emerge .55s cubic-bezier(.16,1,.3,1) both;
+}
+@keyframes scr-challenge-letter-emerge {
+  0% { transform: scale(0.8); opacity: 0; }
+  35% { opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
 /* 제목이 이제 봉투/편지지 두 단계 모두에서 카드 맨 위에 먼저 온다 — 봉투 단계는 위
    그림이 최대한 위쪽에 오도록(요청: "그림이 좀더 위로 가게 배치") 아래 여백만 살짝.
    라이트/다크와 무관하게 이 모달은 항상 아이보리 편지지 톤(--text: 짙은 갈색)이라 —

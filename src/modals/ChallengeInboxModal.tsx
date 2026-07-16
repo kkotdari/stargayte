@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Spinner } from "../components/common/Feedback";
 import { api } from "../api/client";
@@ -22,9 +22,11 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
   const [idx, setIdx] = useState(0);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
-  // 처음엔 편지봉투만 보여주고, 누르면 편지지(제목/내용/응답 폼)로 넘어간다(요청:
-  // "인박스 편지봉투만 처음에 나오고 편지지로 이동").
-  const [stage, setStage] = useState<"envelope" | "letter">("envelope");
+  // 처음엔 편지봉투만 보여주고, 잠시 뒤 자동으로 편지지(제목/내용/응답 폼)로 넘어간다
+  // (요청: "열어보기 버튼 제거하고 자동으로 열리게"). "opening"은 봉투가 확대되며
+  // 잔상을 남기고 페이드아웃하는 동안, 편지지가 뒤에서 확대되며 나타나는 전환 단계 —
+  // 아래 useEffect 두 개가 각 단계를 정해진 시간만큼만 유지하고 다음 단계로 넘긴다.
+  const [stage, setStage] = useState<"envelope" | "opening" | "letter">("envelope");
   const [message, setMessage] = useState("");
   // 요청자가 "시간 지정"을 끄고 보낸(scheduledAt 없음) 도전장은 "상대가 정해도 된다"는
   // 뜻이다 — 승락하는 이 시점에 상대가 직접 정하게 한다(요청: "도전자/상대 모두 시간을
@@ -34,6 +36,21 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
   const [timeStr, setTimeStr] = useState("");
 
   const current = challenges[idx];
+
+  // 봉투를 잠깐 보여준 뒤 자동으로 "opening"(터지는 연출)으로, 그 연출이 끝나면
+  // "letter"로 넘어간다. idx가 바뀌어 새 봉투(stage="envelope")가 뜰 때마다 다시 돈다.
+  useEffect(() => {
+    if (!current || stage !== "envelope") return;
+    const t = window.setTimeout(() => setStage("opening"), 1100);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- idx가 바뀌면 stage도 항상 "envelope"로 함께 리셋되므로 stage만으로 충분
+  }, [stage, idx]);
+  useEffect(() => {
+    if (stage !== "opening") return;
+    const t = window.setTimeout(() => setStage("letter"), 550);
+    return () => window.clearTimeout(t);
+  }, [stage]);
+
   if (!current) { onClose(); return null; }
 
   const needsSchedule = current.scheduledAt === null;
@@ -88,30 +105,39 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
     <div className="scr-modal-overlay">
       {/* 봉투만 보이는 단계에서는 모달의 기본 유리판 배경/그림자를 지워서(요청: "모달창
           배경은 안보이고 편지봉투 이미지만 보이게") 정말 봉투 사진 + 제목만 떠 있는
-          것처럼 보이게 한다 — 편지지를 열면(letter 단계) 원래의 카드 배경으로 되돌아온다. */}
+          것처럼 보이게 한다 — "opening"으로 넘어가는 순간 원래의 편지지 카드 배경으로
+          되돌아온다(그 위를 봉투가 잠깐 덮은 채 터지듯 사라진다). */}
       <div className={cx("scr-modal scr-modal-sm scr-challenge-inbox-modal", stage === "envelope" && "scr-challenge-inbox-modal-envelope")}>
         <div className="scr-challenge-inbox-title">{title}</div>
 
-        {stage === "envelope" ? (
-          <button
-            type="button"
-            className="scr-challenge-envelope scr-challenge-envelope-button scr-challenge-envelope-full"
-            onClick={() => setStage("letter")}
+        {/* 봉투는 누르는 버튼이 아니라 장식 — 잠깐 보여준 뒤 자동으로 열린다(요청:
+            "열어보기 버튼 제거하고 자동으로 열리게"). "opening" 단계에서는 편지지
+            콘텐츠가 이미 아래(정상 흐름)에 자리 잡은 채로, 이 봉투가 그 위에 얹혀
+            확대되며 흐려지고 옅어지다 사라진다(요청: "편지봉투가 확대되며 잔상 남기며
+            페이드아웃되고 편지지가 뒤에서 확대되며 등장"). */}
+        {stage !== "letter" && (
+          <div
+            className={cx(
+              "scr-challenge-envelope scr-challenge-envelope-full",
+              stage === "opening" && "scr-challenge-envelope-opening",
+            )}
           >
-            {/* 열어보기 안내는 사진 위에 겹치지 않고 사진 아래 별도 줄로 배치한다(요청:
-                "도전장 열어보기 버튼은 이미지상이 아닌 이미지 하단에 따로 배치"). */}
             <img src="/images/bg/letter.jpg" alt="" className="scr-challenge-envelope-img" />
-            <span className="scr-challenge-envelope-hint">두근두근 편지 열기</span>
-          </button>
-        ) : (
+          </div>
+        )}
+
+        {stage !== "envelope" && (
           <>
             {/* 편지지를 연 뒤에는 봉투 이미지를 다시 안 보여준다(요청: "편지 열면
                 편지봉투 이미지는 없어도 됨") — 대신 재미 요소였던 nawa 이미지를 구석
                 장식이 아니라 상단에 크게, 동그랗게 크롭하고 가장자리를 그라데이션으로
                 흐려서 배치한다(요청: "nawa 이미지는 상단에 크게 배치" + "nawa 이미지
                 동그랗게 크롭 & 가장자리 그라데이션 처리"). */}
-            <img src="/images/items/nawa.jpg" alt="" className="scr-challenge-inbox-hero" />
-            <div className="scr-modal-body scr-challenge-inbox-body">
+            <img
+              src="/images/items/nawa.jpg" alt=""
+              className={cx("scr-challenge-inbox-hero", stage === "opening" && "scr-challenge-inbox-emerge")}
+            />
+            <div className={cx("scr-modal-body scr-challenge-inbox-body", stage === "opening" && "scr-challenge-inbox-emerge")}>
               {current.message && (
                 <p className="scr-challenge-inbox-message">"{current.message}"</p>
               )}
@@ -169,6 +195,15 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
                   disabled={busy || !canReject}
                 >
                   {busy ? <Spinner /> : "거절"}
+                </button>
+                {/* 수락도 거절도 아직 — 아무 응답도 안 보내고 그냥 다음(또는 닫기)으로
+                    넘어간다(요청: "수락/거절 말고 고민중 버튼 추가(그냥 아무것도
+                    안하는거)"). 응답이 안 남으므로 다음 접속 때 이 도전장이 다시 뜬다. */}
+                <button
+                  type="button" className="scr-btn scr-btn-ghost" onClick={advance}
+                  disabled={busy}
+                >
+                  고민중
                 </button>
                 <button
                   className="scr-btn scr-challenge-accept-btn" onClick={() => respond("accepted")}

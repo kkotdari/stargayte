@@ -132,6 +132,9 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
   // 다 컨펌창 있어야돼(단순 조회는 제외)"). 배포/롤백은 모든 사용자에게 즉시 반영되는
   // 실제 버전 전환이라 대상이고, 리플레이 다운로드는 읽기 전용이라 제외한다.
   const [confirmVersionAction, setConfirmVersionAction] = useState<"rollback" | "deploy" | null>(null);
+  // "버전보기"를 누르면 뜨는 별도 팝업 — 몇 번 버전을 미리볼지 여기서 고른다(요청:
+  // "버전 입력창을 없애고 버전보기 누르면 팝업으로 버전 선택").
+  const [versionPreviewOpen, setVersionPreviewOpen] = useState(false);
 
   return createPortal(
     // 바깥(딤 처리된 배경)을 눌러도 안 닫히게 한다 — 숨겨진 화면이라 실수로 바깥을
@@ -175,74 +178,64 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
             </>
           ) : (
             <>
+              {/* 버전관리 — 소제목(현재 버전 표시 포함) + 2열 그리드(요청: "가로로
+                  두개씩 배치(버튼 폭 늘리기)"). 버전 선택 스테퍼를 이 칸 안에 같이
+                  넣었더니 그 줄만 다른 버튼보다 키가 커졌다(실제로 지적받은 문제) —
+                  "버전보기"는 다른 버튼들과 똑같은 버튼으로 두고, 누르면 뜨는 별도
+                  팝업에서 번호를 고르게 한다. */}
               <div className={cx("scr-admin-panel-preview", !isAdmin && "scr-admin-panel-preview-solo")}>
-                <div className="scr-admin-panel-preview-row">
-                  <div className="scr-admin-panel-preview-stepper">
-                    <button
-                      type="button" className="scr-admin-panel-preview-arrow"
-                      onClick={() => stepPreview(1)} aria-label="미리보기 버전 올리기"
-                    >
-                      <svg width="20" height="13" viewBox="0 0 20 13" aria-hidden="true">
-                        <polygon points="10,0 20,13 0,13" fill="#fff" stroke="#000" strokeWidth="1.3" strokeLinejoin="round" />
-                      </svg>
-                    </button>
-                    <input
-                      type="number" min={1} inputMode="numeric"
-                      className="scr-input scr-admin-panel-preview-input"
-                      value={previewInput}
-                      onChange={(e) => setPreviewInput(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === "Enter") startPreview(); }}
-                    />
-                    <button
-                      type="button" className="scr-admin-panel-preview-arrow"
-                      onClick={() => stepPreview(-1)} aria-label="미리보기 버전 내리기"
-                    >
-                      <svg width="20" height="13" viewBox="0 0 20 13" aria-hidden="true" style={{ transform: "rotate(180deg)" }}>
-                        <polygon points="10,0 20,13 0,13" fill="#fff" stroke="#000" strokeWidth="1.3" strokeLinejoin="round" />
-                      </svg>
-                    </button>
-                  </div>
+                <div className="scr-admin-panel-section-title">
+                  버전관리 <span className="scr-admin-panel-section-title-dim">(현재버전 : {currentNumber})</span>
                 </div>
-                {/* "버전 보기"/"업데이트 안내 미리보기"도 아래 운영자 기능 그리드와 같은
-                    투박한 입체 버튼으로 통일하고, 같은 최대폭(320px) grid로 줄을 맞춘다
-                    (요청: "버전보기랑 업데이트 안내 미리보기 버튼도 통일해주고 줄좀
-                    이쁘게 맞춰줘"). 이 둘은 서버에 아무것도 쓰지 않는 순수 조회/미리보기라
-                    확인창 없이 바로 실행한다. */}
                 <div className="scr-admin-panel-grid">
-                  <button type="button" className="scr-admin-panel-phys-btn" onClick={startPreview}>
-                    버전 보기
+                  <button
+                    type="button" className="scr-admin-panel-phys-btn"
+                    onClick={() => setVersionPreviewOpen(true)}
+                  >
+                    버전보기
                   </button>
                   <button
                     type="button" className="scr-admin-panel-phys-btn"
                     onClick={() => setPreviewingUpdateNotice(true)}
                   >
-                    업데이트 안내 미리보기
+                    안내미리보기
                   </button>
+                  {/* 배포/롤백은 운영자만 — 같은 그리드 안에 이어 붙이면 열 구성이
+                      그대로 유지된 채(2열) 자연스럽게 다음 줄로 넘어간다. */}
+                  {isAdmin && (
+                    <>
+                      <button
+                        type="button" className="scr-admin-panel-phys-btn scr-admin-panel-phys-btn-danger"
+                        onClick={() => setConfirmVersionAction("deploy")} disabled={busy}
+                      >
+                        {busy ? <Spinner /> : "배포"}
+                      </button>
+                      <button
+                        type="button" className="scr-admin-panel-phys-btn"
+                        onClick={() => setConfirmVersionAction("rollback")} disabled={busy || currentNumber <= 1}
+                      >
+                        {busy ? <Spinner /> : "롤백"}
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
               {isAdmin && (
                 <>
-                  <div className="scr-admin-panel-version">
-                    <span className="scr-admin-panel-version-cur">{appVersion}</span>
-                  </div>
                   {err && <div className="scr-err">{err}</div>}
-                  {/* 제어판 기능 버튼들 — 투박한 입체(엠보스) 사각 버튼, 3열 그리드(요청:
-                      "제어판같은 투박한 입체 사각 버튼... 가로로 세개씩 줄줄이 배치").
-                      되돌릴 수 없거나 모두에게 즉시 반영되는 기능만 빨간 톤(-danger).
-                      단순 조회(다운로드)를 뺀 나머지는 전부 실행 전 확인창을 거친다
-                      (요청: "관리자 버튼들은 다 컨펌창 있어야돼(단순 조회는 제외)"). */}
+                  {/* 경기관리 — 되돌릴 수 없거나 모두에게 즉시 반영되는 기능만 빨간 톤
+                      (-danger). 단순 조회(다운로드)를 뺀 나머지는 전부 실행 전 확인창을
+                      거친다(요청: "관리자 버튼들은 다 컨펌창 있어야돼(단순 조회는
+                      제외)"). */}
+                  <div className="scr-admin-panel-section-title">경기관리</div>
                   <div className="scr-admin-panel-grid">
-                    <button
-                      type="button" className="scr-admin-panel-phys-btn"
-                      onClick={() => setConfirmVersionAction("rollback")} disabled={busy || currentNumber <= 1}
-                    >
-                      {busy ? <Spinner /> : `롤백 (v${currentNumber - 1})`}
-                    </button>
+                    {/* 모든 경기기록 삭제 — 되돌릴 수 없는 파괴적 작업이라 빨간 버튼으로.
+                        (window.prompt로 "삭제" 직접 입력하는 확인창이 이미 있다.) */}
                     <button
                       type="button" className="scr-admin-panel-phys-btn scr-admin-panel-phys-btn-danger"
-                      onClick={() => setConfirmVersionAction("deploy")} disabled={busy}
+                      onClick={deleteAllMatches} disabled={busy}
                     >
-                      {busy ? <Spinner /> : `배포 (v${currentNumber + 1})`}
+                      {busy ? <Spinner /> : "배치삭제"}
                     </button>
                     {/* 리플레이 폴더 일괄 등록 — 버튼을 누르면 바로 폴더 선택창이 뜬다. */}
                     <ReplayBatchButton />
@@ -252,15 +245,7 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
                       type="button" className="scr-admin-panel-phys-btn"
                       onClick={downloadReplays} disabled={downloading}
                     >
-                      {downloading ? <Spinner /> : "리플레이 전체 다운로드"}
-                    </button>
-                    {/* 모든 경기기록 삭제 — 되돌릴 수 없는 파괴적 작업이라 빨간 버튼으로.
-                        (window.prompt로 "삭제" 직접 입력하는 확인창이 이미 있다.) */}
-                    <button
-                      type="button" className="scr-admin-panel-phys-btn scr-admin-panel-phys-btn-danger"
-                      onClick={deleteAllMatches} disabled={busy}
-                    >
-                      {busy ? <Spinner /> : "모든 경기기록 삭제"}
+                      {downloading ? <Spinner /> : "배치다운로드"}
                     </button>
                   </div>
                 </>
@@ -288,6 +273,51 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
 
       {previewingUpdateNotice && (
         <AppUpdateNoticeModal onClose={() => setPreviewingUpdateNotice(false)} />
+      )}
+
+      {versionPreviewOpen && (
+        <div className="scr-modal-overlay" onClick={() => setVersionPreviewOpen(false)}>
+          <div
+            className="scr-modal scr-modal-sm scr-admin-panel-version-popup"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="scr-modal-head">
+              <span>미리볼 버전</span>
+              <button className="scr-icon-btn" onClick={() => setVersionPreviewOpen(false)} aria-label="닫기"><X size={14} /></button>
+            </div>
+            <div className="scr-modal-body">
+              <div className="scr-admin-panel-preview-stepper">
+                <button
+                  type="button" className="scr-admin-panel-preview-arrow"
+                  onClick={() => stepPreview(1)} aria-label="미리보기 버전 올리기"
+                >
+                  <svg width="20" height="13" viewBox="0 0 20 13" aria-hidden="true">
+                    <polygon points="10,0 20,13 0,13" fill="#fff" stroke="#000" strokeWidth="1.3" strokeLinejoin="round" />
+                  </svg>
+                </button>
+                <input
+                  type="number" min={1} inputMode="numeric"
+                  className="scr-input scr-admin-panel-preview-input"
+                  value={previewInput}
+                  onChange={(e) => setPreviewInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") startPreview(); }}
+                />
+                <button
+                  type="button" className="scr-admin-panel-preview-arrow"
+                  onClick={() => stepPreview(-1)} aria-label="미리보기 버전 내리기"
+                >
+                  <svg width="20" height="13" viewBox="0 0 20 13" aria-hidden="true" style={{ transform: "rotate(180deg)" }}>
+                    <polygon points="10,0 20,13 0,13" fill="#fff" stroke="#000" strokeWidth="1.3" strokeLinejoin="round" />
+                  </svg>
+                </button>
+              </div>
+              {err && <div className="scr-err">{err}</div>}
+              <button type="button" className="scr-btn scr-btn-primary" onClick={startPreview}>
+                미리보기 시작
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>,
     document.body,
