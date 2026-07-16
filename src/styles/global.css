@@ -5328,17 +5328,22 @@ html.scr-light-theme .scr-challenge-next-tag {
    걸어주고"). */
 .scr-challenge-envelope-full { margin: 0; border-radius: var(--radius); }
 /* 연출 1단계 — 봉투가 뜬 채로 1.1초(JS 타임아웃) 있다가 "opening"으로 넘어가는데, 그
-   마지막 구간에만 좌우로 살짝 흔들려 곧 열린다는 긴장감을 준다(요청: "봉투 좌우로
-   흔들리기"). animation-delay(.6s) + 지속시간(.5s) = 1.1s로 JS 타임아웃과 맞춘다. */
+   마지막 구간에만 살짝 흔들려 곧 열린다는 긴장감을 준다. 좌우로 미끄러지는 대신 제어판이
+   등장할 때(scr-admin-panel-pop)처럼 살짝 커졌다가 회전하며 통통 튀는 "두둥" 바운스로
+   바꾼다(요청: "제어판 나올때처럼 흔들리면 좋겠다"). animation-delay(.6s) + 지속시간(.5s)
+   = 1.1s로 JS 타임아웃과 맞춘다. 시작/끝을 안정 상태(scale 1 rotate 0)로 둬서 딜레이가
+   끝나며 튀는 잔프레임(점프) 없이 이어진다. */
 .scr-challenge-envelope-shake {
-  animation: scr-challenge-envelope-shake .5s ease-in-out .6s;
+  transform-origin: center;
+  animation: scr-challenge-envelope-shake .5s cubic-bezier(.34, 1.4, .64, 1) .6s;
 }
 @keyframes scr-challenge-envelope-shake {
-  0%, 100% { transform: translateX(0); }
-  20% { transform: translateX(-6px); }
-  40% { transform: translateX(6px); }
-  60% { transform: translateX(-4px); }
-  80% { transform: translateX(4px); }
+  0%   { transform: scale(1) rotate(0deg); }
+  20%  { transform: scale(1.07) rotate(-5deg); }
+  45%  { transform: scale(1.05) rotate(4deg); }
+  70%  { transform: scale(1.02) rotate(-2deg); }
+  88%  { transform: scale(1.01) rotate(1deg); }
+  100% { transform: scale(1) rotate(0deg); }
 }
 /* 연출 2단계 — 봉투 → 편지지 전환("opening"). 흔들림이 끝난 뒤 0.2초 멈췄다가(요청:
    "흔들리고 0.2초정도 멈췄다가 확대") 빠르게 확대되면서 동시에 페이드아웃된다(요청:
