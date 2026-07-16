@@ -4732,10 +4732,10 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
 .scr-challenge-card-when { font-size: 15px; font-weight: 700; color: var(--text); position: relative; top: 1px; }
 /* 당일 경기는 색 대신 시간 앞에 작은 "오늘" 태그로 표시(요청: "오늘자 경기 색표시
    원복하고 대신 시간 앞에 오늘 이라는 작은 태그 달아주기"). */
-/* 날짜 헤더에서 나란히 붙는 NEXT 배지(.scr-challenge-next-tag)와 같은 크기로 맞춘다(요청:
-   "오늘 배지도 똑같은 크기로") — 색/굵기는 이 배지 고유의 것을 유지한다. line-height를
-   명시하지 않으면 기본값(1.4~)이 이 배지만 더 크게 만들어서(실제로 지적받은 문제 —
-   "오늘배지가 next 배지보다 큰데?") NEXT 배지처럼 line-height:1을 같이 맞춰야 한다. */
+/* NEXT 배지(.scr-challenge-next-tag, 지금은 카드 자체에 붙는다)와 한때 같은 크기로 맞춰뒀던
+   값을 그대로 유지한다(요청: "오늘 배지도 똑같은 크기로") — 색/굵기는 이 배지 고유의 것을
+   유지한다. line-height를 명시하지 않으면 기본값(1.4~)이 이 배지만 더 크게 만들어서(실제로
+   지적받은 문제 — "오늘배지가 next 배지보다 큰데?") line-height:1을 같이 맞춰야 한다. */
 .scr-challenge-card-today-tag {
   display: inline-block; font-size: 12.6px; font-weight: 800; line-height: 1; color: var(--point-contrast);
   background: var(--point); border-radius: 4.8px; padding: 3.6px 7.2px; margin-right: 5px; vertical-align: middle;
@@ -4765,20 +4765,30 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
    높이만큼 여유를 더 크게 잡는다. */
 .scr-challenge-card-slot { display: flex; flex-direction: column; min-width: 0; scroll-margin-top: calc(var(--safe-top) + 44px); }
 
-/* NEXT 배지 — 가장 임박한 예정(수락) 대결이 속한 날짜 헤더에 인라인으로 단다(요청:
-   "글로우 없애고 NEXT 배지를 날짜에"). 앱 강조 그린(--highlight-bg) + 어두운 글자
-   (--bar-text)로 두 테마 모두 또렷하게. 1.5배로 키웠다가(요청: "크기 키우기 1.5배") 다시
-   20% 줄였다(요청: "크기 20프로 줄여줘") — 최종 12.6px(10.5 * 1.5 * 0.8). 배지 자체 배경색으로
-   은은한 광원을 둘러 다시 눈에 띄게 한다(요청: "넥스트 버튼에 글로우 효과"). */
+/* NEXT 배지 — 날짜 헤더가 아니라 대결 카드 자체(시간 줄)에 단다(요청: "NEXT 배지를
+   날짜가 아니라 대결 카드 위에"). "NEXT #N"으로 시각 순번까지 보여주면서, 카드마다
+   여러 개 나란히 놓일 수 있어 기존보다 살짝 더 줄였다(요청: "크기는 약간 줄여서") —
+   12.6px에서 10.5px로. 앱 강조 그린(--highlight-bg) + 어두운 글자(--bar-text)로 두
+   테마 모두 또렷하게, 배경색으로 은은한 광원을 둘러 눈에 띄게 한다. */
 .scr-challenge-next-tag {
-  font-size: 12.6px;
+  font-size: 10.5px;
   font-weight: 900; letter-spacing: 0.08em; line-height: 1;
   color: var(--bar-text); background: var(--highlight-bg);
-  border-radius: 4.8px;
-  padding: 3.6px 7.2px;
+  border-radius: 4px;
+  padding: 3px 6px;
+  /* 다크 테마도 요청대로 약화(요청: "다크테마도 글로우 약화해주고"). */
   box-shadow:
-    0 0 3px color-mix(in srgb, var(--highlight-bg) 90%, transparent),
-    0 0 10px color-mix(in srgb, var(--highlight-bg) 60%, transparent);
+    0 0 2px color-mix(in srgb, var(--highlight-bg) 65%, transparent),
+    0 0 5px color-mix(in srgb, var(--highlight-bg) 35%, transparent);
+}
+/* 라이트 테마의 흰 배경 위에서는 다크 테마 기준 라임그린이 상대적으로 칙칙해 보인다 —
+   흰색을 섞어 더 밝은 톤으로 올리고, 흰 배경에선 짙은 글로우가 오히려 지저분해 보여
+   더 옅고 좁게 줄인다(요청: "라이트 테마에서 좀더 밝은 톤으로 해주고 글로우 약화"). */
+html.scr-light-theme .scr-challenge-next-tag {
+  background: color-mix(in srgb, var(--highlight-bg) 80%, white 20%);
+  box-shadow:
+    0 0 2px color-mix(in srgb, var(--highlight-bg) 60%, transparent),
+    0 0 5px color-mix(in srgb, var(--highlight-bg) 30%, transparent);
 }
 
 /* "오늘"에서 스크롤이 딱 걸리게(요청: "타임라인에 오늘 표시하고 지나가다 딱 걸리게") —
