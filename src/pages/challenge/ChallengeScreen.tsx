@@ -911,12 +911,12 @@ function DiscardedChallengesModal(
     <div className="scr-modal-overlay" onClick={onClose}>
       <div className="scr-modal scr-discarded-modal" onClick={(e) => e.stopPropagation()}>
         <div className="scr-modal-head">
-          <span>🗑️ 버려진 도전장</span>
+          <span>🗑️ 휴지통</span>
           <button type="button" className="scr-icon-btn" onClick={onClose} aria-label="닫기"><X size={20} /></button>
         </div>
         <div className="scr-modal-body">
           {challenges.length === 0 ? (
-            <div className="scr-empty">버려진 도전장이 없어요</div>
+            <div className="scr-empty">휴지통이 비어 있어요</div>
           ) : (
             <div className="scr-challenge-list scr-discarded-list">
               {groups.map((g) => (
@@ -1183,7 +1183,7 @@ export default function ChallengeScreen() {
             className="scr-btn scr-btn-ghost scr-btn-sm scr-challenge-discarded-btn"
             onClick={() => setDiscardedOpen(true)}
           >
-            🗑️ 버려진 도전장
+            🗑️ 휴지통 열기
           </button>
           <button
             type="button"
