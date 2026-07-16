@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { X } from "lucide-react";
 import { Spinner } from "./Feedback";
 import ReplayReviewModal from "../../modals/ReplayReviewModal";
 import { useAppStore } from "../../store/appStore";
@@ -107,6 +109,13 @@ export default function ReplayBatchButton() {
   // 없어서 여기 못 들어온다(파일을 다시 골라 돌리는 수밖에 없다).
   const [manualDrafts, setManualDrafts] = useState<ReplayDraft[]>([]);
   const [reviewOpen, setReviewOpen] = useState(false);
+  // 진행률/로그를 제어판 모달 안에 그대로 쌓지 않고 별도의 창(모달)으로 띄운다(요청:
+  // "배치 등록시 별도 창에 결과 나오게, 모달 내에 스크린 만들 필요 없이") — 로그가
+  // 길어질수록 제어판 모달의 본문(.scr-admin-panel-modal .scr-modal-body)이 늘어나면서
+  // 그 위에 겹치는 CSS 버그(translateY로 인한 닫기 버튼 클릭 안 됨)까지 있었어서, 아예
+  // 분리하는 쪽이 근본적으로 더 안전하다. 배치가 시작되면 자동으로 뜨고, 닫아도(X) 배치
+  // 자체는 계속 진행된다 — 다시 보고 싶으면 트리거 버튼 옆에 뜨는 "결과 보기"로 재오픈.
+  const [resultsOpen, setResultsOpen] = useState(false);
 
   // 중단 요청과 고른 옵션들은 렌더와 무관하게 실행 중인 루프가 즉시 읽어야 해서 ref로 둔다.
   const abortRef = useRef(false);
@@ -152,6 +161,7 @@ export default function ReplayBatchButton() {
     // 파일 수와 그중 리플레이 수를 항상 먼저 남긴다.
     setPickedNote(`폴더에서 파일 ${picked.length}개 · 리플레이(.rep) ${files.length}개를 찾았어요.`);
     setStarted(true);
+    setResultsOpen(true);
     if (files.length === 0) {
       setErr(picked.length === 0
         ? "브라우저가 폴더 안의 파일을 넘겨주지 않았어요 (선택을 취소했거나 빈 폴더예요)."
@@ -310,30 +320,71 @@ export default function ReplayBatchButton() {
         </div>
       )}
 
-      {started && total > 0 && (
-        <>
-          <div className="scr-rank-bar-track scr-admin-panel-batch-bar">
-            <div className="scr-rank-bar-fill scr-rank-bar-fill-plays" style={{ width: `${percent}%` }} />
-          </div>
-          <div className="scr-mono scr-admin-panel-batch-counts">
-            {processed}/{total} · 등록 {countOf(results, "registered")} · 중복 {countOf(results, "duplicate")}
-            {" "}· 제외 {countOf(results, "skipped")} · 실패 {countOf(results, "failed")}
-          </div>
-        </>
-      )}
-
       {/* 진행이 아예 시작되지 않은 경우(리플레이를 하나도 못 찾음)에만 브라우저가 뭘 넘겨줬는지
-          보여준다 — 정상 실행 중에는 위 카운터가 같은 정보를 더 자세히 담고 있어 중복이다. */}
+          보여준다 — 정상 실행 중에는 결과 창의 카운터가 같은 정보를 더 자세히 담고 있어 중복이다. */}
       {pickedNote && total === 0 && <div className="scr-admin-panel-batch-counts">{pickedNote}</div>}
 
       {err && <div className="scr-err">{err}</div>}
 
-      {/* 배치가 자동으로 처리하지 못한 것들(승자 미판별, 종족 미인식 등)은 사람이 직접
-          채워야 한다 — 다 끝난 뒤 그 리플레이만 모아 검토 화면으로 넘긴다. */}
-      {finished && manualDrafts.length > 0 && (
-        <button type="button" className="scr-btn scr-admin-panel-batch-review" onClick={() => setReviewOpen(true)}>
-          실패한 {manualDrafts.length}개 직접 등록
+      {/* 진행 중/완료됐는데 결과 창을 닫아둔 경우 다시 열 수 있게. */}
+      {started && total > 0 && !resultsOpen && (
+        <button type="button" className="scr-btn scr-btn-ghost scr-btn-sm" onClick={() => setResultsOpen(true)}>
+          결과 보기 ({processed}/{total})
         </button>
+      )}
+
+      {/* 진행률/로그를 별도 창(모달)으로 — 제어판 모달 본문 안에 그대로 쌓지 않는다(요청:
+          "배치 등록시 별도 창에 결과 나오게 해줘 모달 내에 스크린 만들필요 없이"). 배치가
+          시작되면 자동으로 뜨고, X로 닫아도 배치 자체는 백그라운드에서 계속 진행된다. */}
+      {resultsOpen && started && total > 0 && createPortal(
+        <div className="scr-modal-overlay" onClick={() => setResultsOpen(false)}>
+          <div className="scr-modal scr-modal-sm" onClick={(e) => e.stopPropagation()}>
+            <div className="scr-modal-head">
+              <span>배치 등록 결과</span>
+              <button className="scr-icon-btn" onClick={() => setResultsOpen(false)} aria-label="닫기"><X size={14} /></button>
+            </div>
+            <div className="scr-modal-body">
+              <div className="scr-rank-bar-track scr-admin-panel-batch-bar">
+                <div className="scr-rank-bar-fill scr-rank-bar-fill-plays" style={{ width: `${percent}%` }} />
+              </div>
+              <div className="scr-mono scr-admin-panel-batch-counts">
+                {processed}/{total} · 등록 {countOf(results, "registered")} · 중복 {countOf(results, "duplicate")}
+                {" "}· 제외 {countOf(results, "skipped")} · 실패 {countOf(results, "failed")}
+              </div>
+
+              {/* 배치가 자동으로 처리하지 못한 것들(승자 미판별, 종족 미인식 등)은 사람이 직접
+                  채워야 한다 — 다 끝난 뒤 그 리플레이만 모아 검토 화면으로 넘긴다. */}
+              {finished && manualDrafts.length > 0 && (
+                <button type="button" className="scr-btn scr-admin-panel-batch-review" onClick={() => setReviewOpen(true)}>
+                  실패한 {manualDrafts.length}개 직접 등록
+                </button>
+              )}
+
+              {/* 진짜 터미널 로그처럼 — 꾸밈 없이 코딩폰트로 한 줄에 한 파일씩, 상태/일시/몇 대
+                  몇인지/관전자 의심 여부/파일명/사유를 나란히 보여준다. */}
+              {results.length > 0 && (
+                <div className="scr-admin-panel-batch-log" ref={logRef}>
+                  {results.map((r, i) => (
+                    <div key={`${r.fileName}-${i}`} className={cx("scr-admin-panel-batch-log-line", `scr-admin-panel-batch-log-line-${r.outcome}`)}>
+                      <span className="scr-admin-panel-batch-log-tag">{OUTCOME_LABEL[r.outcome]}</span>
+                      <span className="scr-admin-panel-batch-log-when">{r.when}</span>
+                      <span className="scr-admin-panel-batch-log-size">{r.teamSize}</span>
+                      <span className="scr-admin-panel-batch-log-flag">{r.suspected ? "관전자?" : ""}</span>
+                      <span className="scr-admin-panel-batch-log-name">{r.fileName}</span>
+                      {r.reason && <span className="scr-admin-panel-batch-log-reason">{r.reason}</span>}
+                    </div>
+                  ))}
+                  {finished && (
+                    <div className="scr-admin-panel-batch-log-end">
+                      {processed < total ? `-- 중단됨 (${total - processed}개 남음) --` : "-- 배치 등록 완료 --"}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>,
+        document.body,
       )}
 
       {reviewOpen && (
@@ -356,32 +407,6 @@ export default function ReplayBatchButton() {
             setManualDrafts((prev) => prev.filter((d) => d.fileName !== fileName));
           }}
         />
-      )}
-
-      {/* 진짜 터미널 로그처럼 — 꾸밈 없이 코딩폰트로 한 줄에 한 파일씩, 상태/일시/몇 대
-          몇인지/관전자 의심 여부/파일명/사유를 나란히 보여준다. 예전엔 카드 아래로 뽑혀
-          나오는 영수증 용지 모양(포털+절대배치)이었는데, 그 연출을 걷어내고 카드 본문
-          안에 그냥 스크롤되는 상자 하나로 둔다(실제로 지적받은 문제 — 프린터 흉내는
-          필요 없고 정보량만 늘려달라는 요청). PC 전용 기능이라 모바일 레이아웃은 신경
-          쓰지 않는다(아래 min-width:720px 미만에서 이 버튼 자체가 숨겨진다). */}
-      {results.length > 0 && (
-        <div className="scr-admin-panel-batch-log" ref={logRef}>
-          {results.map((r, i) => (
-            <div key={`${r.fileName}-${i}`} className={cx("scr-admin-panel-batch-log-line", `scr-admin-panel-batch-log-line-${r.outcome}`)}>
-              <span className="scr-admin-panel-batch-log-tag">{OUTCOME_LABEL[r.outcome]}</span>
-              <span className="scr-admin-panel-batch-log-when">{r.when}</span>
-              <span className="scr-admin-panel-batch-log-size">{r.teamSize}</span>
-              <span className="scr-admin-panel-batch-log-flag">{r.suspected ? "관전자?" : ""}</span>
-              <span className="scr-admin-panel-batch-log-name">{r.fileName}</span>
-              {r.reason && <span className="scr-admin-panel-batch-log-reason">{r.reason}</span>}
-            </div>
-          ))}
-          {finished && (
-            <div className="scr-admin-panel-batch-log-end">
-              {processed < total ? `-- 중단됨 (${total - processed}개 남음) --` : "-- 배치 등록 완료 --"}
-            </div>
-          )}
-        </div>
       )}
     </div>
   );

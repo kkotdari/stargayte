@@ -1814,6 +1814,16 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-light-theme .scr-rank-screen-v2::before {
   display: none;
 }
+/* 모바일에서는 세로로 긴 화면에 맞게 따로 촬영/크롭된 ranking_mobile.jpg를 쓴다(요청:
+   "랭킹 배경 모바일에서는 방금 추가한 ranking_mobile.jpg로 설정"). 다른 화면들의
+   데스크톱/모바일 갈림 기준(860px, .scr-nav-desktop 등)과 통일한다. */
+@media (max-width: 860px) {
+  .scr-rank-screen-v2::before {
+    background-image:
+      linear-gradient(180deg, rgba(3,3,6,0.72) 0%, rgba(3,3,6,0.55) 40%, rgba(3,3,6,0.78) 100%),
+      url("/images/bg/ranking_mobile.jpg");
+  }
+}
 
 /* 집계 규칙을 조용히 알려주는 한 줄(예: "3전 이상 함께 뛴 팀만") — 도발 문구보다 더 작고
    옅게 두되 그 위에 온다(규칙이 먼저, 농담이 나중). */
@@ -3436,9 +3446,14 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 @media (min-width: 720px) {
   .scr-admin-panel-modal.scr-modal-sm { max-width: 560px; }
 }
-/* 배경 이미지 위 빈 공간에 파묻히지 않도록 내용을 카드 세로 가운데로 모으되, 정확한
-   중앙보다 살짝 위로 당겨서 버튼 아래 여백이 너무 좁아 보이지 않게 한다. */
-.scr-admin-panel-modal .scr-modal-body { justify-content: center; transform: translateY(-8%); }
+/* 배경 이미지 위 빈 공간에 파묻히지 않도록 내용을 카드 세로 가운데로 모은다. 예전엔
+   transform:translateY(-8%)로 정확한 중앙보다 살짝 위로 당겼는데, .scr-admin-panel-modal
+   > *가 모든 직계 자식(.scr-modal-head 포함)에 같은 z-index(1)를 주고 있어서, 내용이
+   길어질수록(배치 등록 로그 등) 그 -8%가 큰 픽셀값이 되어 body가 head(닫기 X 버튼
+   포함) 위로 올라가 덮어버렸다(실제로 지적받은 문제 — "배치 등록/모두 다운로드 등
+   하면 제어판 X 닫기 버튼이 안눌림"). transform 없이 justify-content만으로 중앙 정렬
+   하면 flex가 정상적인 문서 흐름 안에서 공간을 배분하므로 절대 형제 위로 겹치지 않는다. */
+.scr-admin-panel-modal .scr-modal-body { justify-content: center; }
 /* 입력칸을 담는 필드를 중앙 정렬로 — 입력칸이 폭을 좁게 고정하므로(기본 .scr-field는
    stretch라 그냥 두면 폭이 좁아져도 여전히 왼쪽 정렬로 보인다). */
 .scr-admin-panel-modal .scr-field { align-items: center; }
