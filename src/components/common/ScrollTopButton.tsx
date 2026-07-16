@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ArrowUp } from "lucide-react";
-import { addScrollListener, getScrollTop, smoothScrollRootToTop } from "../../utils/scrollRoot";
+import { addRafScrollListener, getScrollTop, smoothScrollRootToTop } from "../../utils/scrollRoot";
 
 const SHOW_AFTER_PX = 400;
 
@@ -11,7 +11,7 @@ export default function ScrollTopButton() {
   useEffect(() => {
     const onScroll = () => setVisible(getScrollTop() > SHOW_AFTER_PX);
     onScroll();
-    return addScrollListener(onScroll);
+    return addRafScrollListener(onScroll);
   }, []);
 
   if (!visible) return null;

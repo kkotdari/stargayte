@@ -66,16 +66,21 @@ export default function AdminMenu({ screen, onNavigate, variant, drawerOpen, onD
     return attachPopover(anchorRef.current, dropRef.current, { growToContent: true, maxWidth: 200 });
   }, [open, variant]);
 
+  // mousedown이 아니라 pointerdown으로 바깥 클릭을 잡는다 — 터치에서 mousedown은
+  // touchend 이후에야(그것도 스크롤/제스처 없이 탭했을 때만) 뒤늦게 합성되는 호환 이벤트라,
+  // 다른 탭 버튼이 자기 pointerdown 시점에 바로 화면을 전환해버리면(MobileTabBar 참고 —
+  // 같은 이유로 이미 click 대신 pointerdown을 쓴다) 이 드롭다운은 그보다 한참 늦게(또는
+  // 아예 안) 닫혔다(실제로 지적받은 문제 — "운영 드롭다운 켠 채 다른 메뉴 터치시 안 닫힘").
   useEffect(() => {
     if (variant === "drawer" || !open) return;
-    const onDoc = (e: MouseEvent) => {
+    const onDoc = (e: PointerEvent) => {
       const t = e.target as Node;
       if (anchorRef.current?.contains(t)) return;
       if (dropRef.current?.contains(t)) return;
       setOpen(false);
     };
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
+    document.addEventListener("pointerdown", onDoc);
+    return () => document.removeEventListener("pointerdown", onDoc);
   }, [open, variant]);
 
   // 마우스 클릭(mousedown) 말고도 키보드 Tab이나 다른 UI로 포커스가 바깥으로 옮겨가는
@@ -123,12 +128,15 @@ export default function AdminMenu({ screen, onNavigate, variant, drawerOpen, onD
     );
   }
 
-  // 눌러서 목록이 펼쳐져 있는 동안엔(open) 아직 실제로 운영 화면으로 넘어간 게 아니어도
-  // "눌린" 상태처럼 활성 표시를 보여준다 — 눌러도 아무 반응이 없어 보인다는 피드백. 목록을
-  // 닫을 때(고르지 않고 바깥을 누르는 등) open이 꺼지면 activeInAdmin(실제 화면 기준)만
-  // 남아 자연히 원래 활성 탭(모바일 탭바의 슬라이딩 알약 포함)으로 되돌아간다.
+  // 데스크톱 상단 드롭다운은 "눌린" 상태도 활성 표시로 보여준다 — 눌러도 아무 반응이
+  // 없어 보인다는 피드백. 모바일 하단 탭바는 다르다: 이 클래스가 슬라이딩 알약
+  // (.scr-mobile-tab-indicator)이 따라붙는 기준이기도 해서, open만으로 켜버리면 아직
+  // 실제로 운영 화면으로 넘어가지 않았는데도(그냥 펼쳐만 본 것) 알약이 운영 쪽으로
+  // 옮겨가 버렸다(실제로 지적받은 문제 — "운영 드롭다운 열었다고 운영이 액티브탭은
+  // 아닌데 알약이 거기로 가네"). 모바일에서는 실제 화면 기준(activeInAdmin)일 때만
+  // 활성 표시를 준다.
   const triggerClass = variant === "mobile"
-    ? cx("scr-mobile-tab", (open || activeInAdmin) && "scr-mobile-tab-active")
+    ? cx("scr-mobile-tab", activeInAdmin && "scr-mobile-tab-active")
     : cx("scr-nav-tab", (open || activeInAdmin) && "scr-nav-tab-active");
 
   return (

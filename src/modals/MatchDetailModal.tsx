@@ -174,13 +174,13 @@ export default function MatchDetailModal({ match, onClose, onEdit, onSaved }: Ma
   };
 
   const handleDownload = async () => {
-    if (!match.attachment) return;
+    if (!match.replay) return;
     try {
-      const blob = await api.downloadMatchAttachment(match.id);
+      const blob = await api.downloadReplay(match.id);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = match.attachment.name;
+      a.download = match.replay.displayName;
       a.click();
       URL.revokeObjectURL(url);
     } catch {
@@ -259,11 +259,11 @@ export default function MatchDetailModal({ match, onClose, onEdit, onSaved }: Ma
             </div>
           )}
 
-          {match.attachment && (
+          {match.replay && (
             <div className="scr-match-detail-row">
-              <span className="scr-label">첨부파일</span>
-              <button type="button" className="scr-attach-name-btn" onClick={handleDownload}>
-                <Download size={12} /> <span>{match.attachment.name}</span>
+              <span className="scr-label">리플레이</span>
+              <button type="button" className="scr-attach-name-btn" onClick={handleDownload} title={match.replay.displayName}>
+                <Download size={12} /> <span className="scr-attach-name-text">{match.replay.displayName}</span>
               </button>
             </div>
           )}

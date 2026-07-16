@@ -16,7 +16,7 @@ import { isUnregisteredSlot, unregisteredSlotLabel } from "../constants/unregist
 import { useLockBodyScroll } from "../utils/bodyScrollLock";
 import { useDefaultRaceResolver } from "../hooks/useDefaultRaceResolver";
 import type {
-  Match, MatchAttachment, MatchResult, MatchSlot, MatchType, Member, NewMatch,
+  Match, ReplayUpload, MatchResult, MatchSlot, MatchType, Member, NewMatch,
 } from "../types";
 
 // 확정된 경기(isLocked)의 팀 구성은 더 손댈 수 없는 데이터라, 편집 가능한
@@ -99,7 +99,7 @@ export default function MatchModal({ match, prefillFrom, onClose, onSaved }: Mat
   const [matchType, setMatchType] = useState<MatchType>(match?.matchType ?? prefillFrom?.matchType ?? "0101");
   const [mapName, setMapName] = useState(match?.mapName ?? prefillFrom?.mapName ?? "");
   const [note, setNote] = useState(match?.note ?? prefillFrom?.note ?? "");
-  const [attachment, setAttachment] = useState<MatchAttachment | null>(match?.attachment ?? null);
+  const [replay, setReplay] = useState<ReplayUpload | null>(match?.replay ?? null);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const [confirmCloseOpen, setConfirmCloseOpen] = useState(false);
@@ -120,9 +120,9 @@ export default function MatchModal({ match, prefillFrom, onClose, onSaved }: Mat
     matchType: match?.matchType ?? "0101",
     mapName: match?.mapName ?? "",
     note: match?.note ?? "",
-    attachment: match?.attachment ?? null,
+    replay: match?.replay ?? null,
   })).current;
-  const isDirty = JSON.stringify({ date, team1, team2, result, matchType, mapName, note, attachment }) !== initialSnapshot;
+  const isDirty = JSON.stringify({ date, team1, team2, result, matchType, mapName, note, replay }) !== initialSnapshot;
 
   const requestClose = () => {
     if (isDirty) setConfirmCloseOpen(true);
@@ -143,7 +143,7 @@ export default function MatchModal({ match, prefillFrom, onClose, onSaved }: Mat
   // (열리지 않은 경기의 리플레이는 있을 수 없으므로).
   const selectNotHeld = () => {
     setResult("not_held");
-    setAttachment(null);
+    setReplay(null);
   };
 
   const handleFile = (e: ChangeEvent<HTMLInputElement>) => {
@@ -156,25 +156,27 @@ export default function MatchModal({ match, prefillFrom, onClose, onSaved }: Mat
     }
     setErr("");
     const reader = new FileReader();
-    reader.onload = () => setAttachment({ name: f.name, url: reader.result as string });
+    // 단건 수동 첨부는 리플레이를 파싱하지 않으므로 원본 파일명을 그대로 표시명으로 쓴다
+    // (알아보기 쉬운 이름 생성은 리플레이 등록/배치 업로드 경로에서만 한다).
+    reader.onload = () => setReplay({ originalName: f.name, displayName: f.name, url: reader.result as string });
     reader.readAsDataURL(f);
   };
 
-  // 서버에 이미 저장된 첨부(= data URL 아님)만 다운로드 가능. 새로 고른(아직 저장 전) 파일은 대상 아님.
-  const canDownloadAttachment = !!match && !!attachment && !attachment.url.startsWith("data:");
+  // 서버에 이미 저장된 리플레이(= data URL 아님)만 다운로드 가능. 새로 고른(아직 저장 전) 파일은 대상 아님.
+  const canDownloadReplay = !!match && !!replay && !replay.url.startsWith("data:");
 
   const handleDownload = async () => {
-    if (!match || !attachment) return;
+    if (!match || !replay) return;
     try {
-      const blob = await api.downloadMatchAttachment(match.id);
+      const blob = await api.downloadReplay(match.id);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = attachment.name;
+      a.download = replay.displayName;
       a.click();
       URL.revokeObjectURL(url);
     } catch {
-      setErr("첨부파일을 다운로드하지 못했어요.");
+      setErr("리플레이를 다운로드하지 못했어요.");
     }
   };
 
@@ -203,7 +205,7 @@ export default function MatchModal({ match, prefillFrom, onClose, onSaved }: Mat
     setErr("");
     setBusy(true);
     const payload: NewMatch = {
-      date, team1, team2, result, matchType, note, attachment,
+      date, team1, team2, result, matchType, note, replay,
       mapName: mapName || null,
       // 리플레이로 등록된 경기는 실제 시작 시각이 있어 "제N경기" 순서를 정확히 매길 수 있는데,
       // 수동 등록 경기는 그 값이 계속 없으면 리플레이 경기와 순서를 비교할 기준이 없다 —
@@ -376,20 +378,20 @@ export default function MatchModal({ match, prefillFrom, onClose, onSaved }: Mat
                 <Paperclip size={15} />
               </button>
             )}
-            {attachment && (
+            {replay && (
               <span className="scr-attach-chip">
-                {canDownloadAttachment ? (
-                  <button type="button" className="scr-attach-name-btn" onClick={handleDownload}>
-                    <Download size={12} /> {attachment.name}
+                {canDownloadReplay ? (
+                  <button type="button" className="scr-attach-name-btn" onClick={handleDownload} title={replay.displayName}>
+                    <Download size={12} /> <span className="scr-attach-name-text">{replay.displayName}</span>
                   </button>
                 ) : (
-                  <span className="scr-mono">{attachment.name}</span>
+                  <span className="scr-mono scr-attach-name-text" title={replay.displayName}>{replay.displayName}</span>
                 )}
                 {/* 이미 저장된(서버의) 리플레이는 삭제 기능을 일단 뺀다 — 나중에 다시
                     필요할 수 있어 지워지지 않게 잠가둔다. 이번에 새로 고르기만 하고
                     아직 저장 전인 파일은 그대로 다시 고르기 전까지 취소할 수 있다. */}
-                {!canDownloadAttachment && (
-                  <button type="button" onClick={() => setAttachment(null)} aria-label="첨부 제거"><X size={12} /></button>
+                {!canDownloadReplay && (
+                  <button type="button" onClick={() => setReplay(null)} aria-label="리플레이 제거"><X size={12} /></button>
                 )}
               </span>
             )}

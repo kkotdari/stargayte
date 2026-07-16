@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { addScrollListener, getScrollMetrics, isScrollHideSuppressed } from "../utils/scrollRoot";
+import { addRafScrollListener, getScrollMetrics, isScrollHideSuppressed } from "../utils/scrollRoot";
 
 // 아래로 스크롤하면 하단 탭바(+ 헤더/플로팅 필터·검색창)를 숨기고, 위로 스크롤하거나
 // 맨 위/맨 아래에 있으면 보여준다(요청: "아래로 스크롤시: 탭바 숨겨짐 / 위로 스크롤시:
@@ -51,7 +51,7 @@ export function useHideOnScrollDown(screen: string): boolean {
         if (accumRef.current < -SHOW_DELTA_PX) setHidden(false);
       }
     };
-    return addScrollListener(onScroll);
+    return addRafScrollListener(onScroll);
   }, []);
 
   // 화면(탭)을 전환하면 새 화면은 항상 보이는 상태로 시작해야 한다 — 누적값을 리셋하고

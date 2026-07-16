@@ -2,6 +2,7 @@ import { useState } from "react";
 import { X } from "lucide-react";
 import { Spinner } from "../components/common/Feedback";
 import { useAppStore } from "../store/appStore";
+import { isValidPasswordLength, PASSWORD_MAX_LENGTH } from "../utils/textLimits";
 
 interface ChangePasswordModalProps {
   onClose: () => void;
@@ -26,6 +27,10 @@ export default function ChangePasswordModal({ onClose }: ChangePasswordModalProp
     }
     if (newPassword.length < 4) {
       setErr("새 비밀번호는 4자 이상이어야 해요.");
+      return;
+    }
+    if (!isValidPasswordLength(newPassword)) {
+      setErr(`새 비밀번호는 최대 ${PASSWORD_MAX_LENGTH}자까지예요.`);
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -71,7 +76,7 @@ export default function ChangePasswordModal({ onClose }: ChangePasswordModalProp
               className="scr-input"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="4자 이상"
+              placeholder={`4~${PASSWORD_MAX_LENGTH}자`}
               autoComplete="new-password"
             />
           </label>

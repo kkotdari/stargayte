@@ -35,30 +35,36 @@ export default function AuthScreen() {
       >
         <ThemeIcon size={30} />
       </button>
-      <div className="scr-auth-logo">
-        {/* 조회가 끝나기 전엔 아무것도 안 보여준다 — homeLogo가 null인 동안 텍스트 대체값을
-            먼저 그리면, 실제 로고 이미지가 도착하는 순간 "텍스트 -> 이미지"로 바뀌는 게
-            눈에 띄게 깜빡여 보였다. */}
-        {homeLogo && (
-          homeLogo.type === "image" && homeLogo.value ? (
-            <img src={homeLogo.value} alt="스타게이트" className="scr-auth-logo-img scr-logo-fadein" />
-          ) : (
-            <span className="scr-auth-logo-text scr-logo-fadein">{homeLogo.value || "스타게이트"}</span>
-          )
+      {/* 로고+폼을 한 덩어리로 묶어 화면 정중앙보다 살짝 위로 올린다(요청: "로그인 폼과
+          로고를 20프로 정도 위로 올려줘") — .scr-auth-wrap의 justify-content:center는
+          그대로 두고, 이 안쪽 그룹에만 translateY를 걸어 옮긴다(테마 토글/배경 그리드는
+          이 그룹 밖의 형제라 영향받지 않는다). */}
+      <div className="scr-auth-hero">
+        <div className="scr-auth-logo">
+          {/* 조회가 끝나기 전엔 아무것도 안 보여준다 — homeLogo가 null인 동안 텍스트 대체값을
+              먼저 그리면, 실제 로고 이미지가 도착하는 순간 "텍스트 -> 이미지"로 바뀌는 게
+              눈에 띄게 깜빡여 보였다. */}
+          {homeLogo && (
+            homeLogo.type === "image" && homeLogo.value ? (
+              <img src={homeLogo.value} alt="스타게이트" className="scr-auth-logo-img scr-logo-fadein" />
+            ) : (
+              <span className="scr-auth-logo-text scr-logo-fadein">{homeLogo.value || "스타게이트"}</span>
+            )
+          )}
+        </div>
+        {tab === "login" ? (
+          <CornerPanel className="scr-auth-card">
+            <LoginForm onSignup={() => setTab("signup")} />
+          </CornerPanel>
+        ) : (
+          <div className="scr-auth-card scr-auth-card-plain">
+            <button type="button" className="scr-link-btn scr-auth-back-btn" onClick={() => setTab("login")}>
+              <ArrowLeft size={13} /> 뒤로가기
+            </button>
+            <SignupForm onDone={() => setTab("login")} />
+          </div>
         )}
       </div>
-      {tab === "login" ? (
-        <CornerPanel className="scr-auth-card">
-          <LoginForm onSignup={() => setTab("signup")} />
-        </CornerPanel>
-      ) : (
-        <div className="scr-auth-card scr-auth-card-plain">
-          <button type="button" className="scr-link-btn scr-auth-back-btn" onClick={() => setTab("login")}>
-            <ArrowLeft size={13} /> 뒤로가기
-          </button>
-          <SignupForm onDone={() => setTab("login")} />
-        </div>
-      )}
     </div>
   );
 }

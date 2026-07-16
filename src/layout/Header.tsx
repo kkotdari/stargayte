@@ -71,6 +71,45 @@ export default function Header({
     return () => clearTimeout(t);
   }, [menuOpen]);
 
+  // 서랍을 오른쪽으로 밀어서(패널이 오른쪽에서 열리므로 닫히는 방향) 닫을 수 있게(요청:
+  // "서랍메뉴 슬라이드로 닫기 가능하게"). 패널 폭의 일정 비율 이상 밀었을 때만 닫힘으로
+  // 판정하고, 그 전까지는 손가락을 따라 패널을 직접 옮겨 즉각적인 드래그 반응을 준다.
+  // 가로 이동이 세로보다 뚜렷하게 커야 드래그로 확정한다 — 안 그러면 드로어 안의 세로
+  // 스크롤(예: 관리자 아코디언이 길어질 때)과 스와이프가 서로 헷갈렸다.
+  const drawerPanelRef = useRef<HTMLDivElement>(null);
+  const drawerDragRef = useRef<{ startX: number; startY: number; dragging: boolean } | null>(null);
+  const DRAWER_CLOSE_RATIO = 0.35;
+  const onDrawerPointerDown = (e: React.PointerEvent) => {
+    drawerDragRef.current = { startX: e.clientX, startY: e.clientY, dragging: false };
+  };
+  const onDrawerPointerMove = (e: React.PointerEvent) => {
+    const st = drawerDragRef.current;
+    if (!st) return;
+    const dx = e.clientX - st.startX;
+    const dy = e.clientY - st.startY;
+    if (!st.dragging) {
+      if (Math.abs(dx) < 10 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+      st.dragging = true;
+      drawerPanelRef.current?.setPointerCapture?.(e.pointerId);
+    }
+    if (dx <= 0) return; // 닫는 방향(오른쪽)으로만 손가락을 따라간다.
+    const panel = drawerPanelRef.current;
+    if (!panel) return;
+    panel.style.transition = "none";
+    panel.style.transform = `translateX(${dx}px)`;
+  };
+  const onDrawerPointerEnd = (e: React.PointerEvent) => {
+    const st = drawerDragRef.current;
+    drawerDragRef.current = null;
+    const panel = drawerPanelRef.current;
+    if (!st?.dragging || !panel) return;
+    const dx = e.clientX - st.startX;
+    const width = panel.getBoundingClientRect().width;
+    panel.style.transition = "";
+    panel.style.transform = "";
+    if (dx > width * DRAWER_CLOSE_RATIO) setMenuOpen(false);
+  };
+
   // 드로어 안의 대카테고리(관리자) 아코디언 — 드로어를 열 때마다 지금 보고 있는 화면
   // 기준으로 미리 펼쳐둔다.
   const [drawerSection, setDrawerSection] = useState<"admin" | null>(null);
@@ -205,7 +244,14 @@ export default function Header({
           (화면 전체가 아니라 헤더 높이만큼만 덮이는 문제) body 에 포털로 렌더링해 완전히 분리한다 */}
       {drawerRendered && createPortal(
         <div className={cx("scr-drawer-overlay", drawerOpen && "scr-drawer-open")} onClick={() => setMenuOpen(false)}>
-          <div className="scr-drawer" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="scr-drawer" ref={drawerPanelRef}
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={onDrawerPointerDown}
+            onPointerMove={onDrawerPointerMove}
+            onPointerUp={onDrawerPointerEnd}
+            onPointerCancel={onDrawerPointerEnd}
+          >
             <div className="scr-drawer-head">
               <span className="scr-brand-mark">전체 메뉴</span>
             </div>

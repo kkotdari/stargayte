@@ -8,6 +8,7 @@ import FilterItem from "../../components/common/FilterItem";
 import PillTabs from "../../components/common/PillTabs";
 import ChallengeFormModal from "../../modals/ChallengeFormModal";
 import TeamMatchesModal from "../../modals/TeamMatchesModal";
+import ChallengeScrollTimeline from "./ChallengeScrollTimeline";
 import { useAppStore } from "../../store/appStore";
 import { api } from "../../api/client";
 import { cx } from "../../utils/format";
@@ -17,7 +18,7 @@ import {
   monthInputToRange, pad,
 } from "../../utils/date";
 import { activeMemberSearchTerms, memberMatchesTerm, splitSearchTerms } from "../../utils/memberSearch";
-import { suppressScrollHide } from "../../utils/scrollRoot";
+import { suppressScrollHide, getScrollRoot, getScrollMetrics, scrollRootTo } from "../../utils/scrollRoot";
 import type { Challenge, ChallengeResult, ChallengeSide, ChallengeStatus, ChallengeTarget, Member } from "../../types";
 
 // 실제 서버 status(pending/confirmed/rejected/canceled) 외에, 화면에서만 판단하는 파생
@@ -810,10 +811,9 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, onResponded, onVie
   );
 }
 
-// "내것만"은 켜고 끄는 하나짜리 조건이라, 모바일에서 폭을 아끼려고 전체/내것만 두 칸짜리
-// 탭 대신 체크박스 하나로 바꿨다(요청: "너 나와 필터 공간이 좁아(모바일) 내 것만은
-// 체크박스로 변경할게"). 예전의 확정/응답대기/종료 상태 탭은 없앴고 목록은 상태와 무관하게
-// 하나로 합쳐 보여준다.
+// "수락만"은 켜고 끄는 하나짜리 조건이라, 모바일에서 폭을 아끼려고 탭 대신 체크박스 하나로
+// 둔다(요청: "필터를 수락만으로 변경하고 수락한 건들만 노출"). 평소 목록은 상태와 무관하게
+// 하나로 합쳐 보여주고, 이 체크박스를 켜면 성사된(confirmed) 대결만 남긴다.
 
 // 기간 필터 — 경기 화면과 같은 패턴(전체/월 + 월 선택기), 기본은 월(요청: "너나와에
 // 기간 필터 추가 전체 월까지" + "기본은 월"). 경기 화면과 달리 "일" 단위까지는 안 쪼갠다.
@@ -828,13 +828,16 @@ const PERIOD_UNIT_OPTS: { value: ChallengePeriodUnit; label: string }[] = [
 // 위로 올라오는 게 부자연스러웠다). 예정 일시가 없는 건(=아직 응답 대기중인 일정 미정. 종료된
 // 건은 서버가 요청일+1일로 스탬프하므로 null이 남지 않는다)은 날짜가 없어 맨 위에 둔다. 일시가
 // 같거나 둘 다 미정이면 최근 생성 순으로 가른다.
+// 정렬: "일정 미정"(응답 대기중, scheduledAt 없음)은 맨 위 "대기중" 묶음으로, 그 아래
+// 날짜 있는 대결은 과거(위) → 미래(아래) 오름차순으로 둔다(요청: 타임라인 "위가 과거,
+// 아래가 미래" — 아래로 스크롤할수록 미래). 같은 시각/대기중끼리는 최신 생성이 위.
 function compareChallenges(a: Challenge, b: Challenge): number {
   const aNull = !a.scheduledAt;
   const bNull = !b.scheduledAt;
   if (aNull && bNull) return a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0;
   if (aNull) return -1;
   if (bNull) return 1;
-  if (a.scheduledAt !== b.scheduledAt) return a.scheduledAt! > b.scheduledAt! ? -1 : 1;
+  if (a.scheduledAt !== b.scheduledAt) return a.scheduledAt! > b.scheduledAt! ? 1 : -1;
   return a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0;
 }
 
@@ -850,7 +853,7 @@ export default function ChallengeScreen() {
   const [error, setError] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const [mineOnly, setMineOnly] = useState(false);
+  const [acceptedOnly, setAcceptedOnly] = useState(false);
   const [periodUnit, setPeriodUnit] = useState<ChallengePeriodUnit>("month");
   const [periodMonth, setPeriodMonth] = useState(currentMonthValue);
   const suggestions = useMemo(() => activeMemberSearchTerms(members), [members]);
@@ -958,13 +961,12 @@ export default function ChallengeScreen() {
     [periodChallenges],
   );
 
-  // "내것만" — 내가 보냈거나(창작자/같은 팀) 지목된(상대) 도전장만 남긴다.
-  const isMine = (c: Challenge): boolean => (
-    c.createdBy.id === user?.id
-    || c.targets.some((t) => t.memberId === user?.id)
-    || c.ownMembers.some((m) => m.memberId === user?.id)
-  );
-  const activeList = mineOnly ? sortedChallenges.filter(isMine) : sortedChallenges;
+  // "수락만" — 수락되어 성사된(confirmed) 대결만 남긴다(요청: "필터를 수락만으로 변경하고
+  // 수락한 건들만 노출"). 대기중/거절/취소 건은 빠지고, 이미 지난(done) 대결도 confirmed
+  // 상태라 그대로 포함된다.
+  const activeList = acceptedOnly
+    ? sortedChallenges.filter((c) => c.status === "confirmed")
+    : sortedChallenges;
 
   // 가장 가까운 예정된(수락) 대결의 시각 — 확정됐고 예정 일시가 아직 안 지난 것 중 가장 임박.
   // 같은 시각(exact)에 여러 대결이 잡혀 있으면 그것들 "모두"가 NEXT다(요청: "동일 시각 여러
@@ -989,21 +991,39 @@ export default function ChallengeScreen() {
   );
   const nextCardRef = useRef<HTMLDivElement | null>(null);
   // 진입 후 첫 로드가 끝났을 때 딱 한 번만 스크롤한다 — 이후 응답/재조회로 목록이 바뀌어도
-  // 보던 위치를 뺏지 않는다. scrollIntoView는 #scroll-root의 CSS scroll-behavior:smooth를
-  // 따라 부드럽게 이동한다. 가운데가 아니라 화면 맨 위에 오게 한다(요청: "next 대결
-  // 스크롤은 가운데가 아니라 상단에 오게(위의 목록은 안보이는 정도로)") — 위쪽 여유는
-  // .scr-challenge-card-slot의 scroll-margin-top이 살짝만 남긴다.
+  // 보던 위치를 뺏지 않는다. 맨 위 스냅(block:"start")은 스티키 날짜줄에 카드 윗부분이
+  // 바짝 붙어 오히려 눈에 안 들어온다는 피드백으로, 카드 상단을 뷰포트 높이의 약 30%
+  // 지점(화면 중앙보다 조금 위)에 오도록 직접 계산해 스크롤한다.
+  //
+  // 아래 두 효과("오늘" 스냅 켜기 / NEXT로 진입 스크롤)를 하나로 합친 이유: 스냅
+  // (scroll-snap-type: y proximity)이 이미 켜진 채로 이 진입 스크롤을 돌리면, 스크롤의
+  // 최종 정지 위치가 근처 스냅 타깃("오늘"/"미정")으로 끌려가 버려 NEXT 카드가 의도한
+  // 위치(화면 중앙보다 조금 위)에서 벗어났다(실제로 지적받은 문제 — "너나와 진입시
+  // 포커싱이 next가 세로 중간보다 조금 위에 위치하게"가 안 지켜짐). 진입 스크롤이 나갈
+  // 대상이 있는 동안은 스냅을 잠깐 꺼 뒀다가, 스크롤이 끝났을 즈음(스무스 스크롤엔 완료
+  // 콜백이 없어 넉넉히 700ms 후로 추정) 다시 켠다. 스크롤할 대상이 없거나 이미 스크롤을
+  // 마쳤으면 스냅을 바로 켠다.
   const didAutoScrollRef = useRef(false);
   useEffect(() => {
-    if (loading || didAutoScrollRef.current || firstNextId === null) return;
+    const root = document.getElementById("scroll-root");
+    if (!root) return;
+    if (loading || didAutoScrollRef.current || firstNextId === null || !nextCardRef.current) {
+      root.classList.add("scr-snap-today");
+      return () => root.classList.remove("scr-snap-today");
+    }
     const el = nextCardRef.current;
-    if (!el) return;
     didAutoScrollRef.current = true;
     // 이 자동 스크롤이 "아래로 스크롤 = 숨김"으로 오인돼 탭바/필터·검색 아이콘이 같이
-    // 숨던 문제를 막는다(요청: "next 대결 자동 스크롤하면서 탭바와 아이콘 숨겨지는 문제
-    // 해결") — 부드러운 스크롤이 끝날 때까지 숨김 판정을 잠깐 억제한다.
+    // 숨던 문제를 막는다 — 부드러운 스크롤이 끝날 때까지 숨김 판정을 잠깐 억제한다.
     suppressScrollHide();
-    el.scrollIntoView({ block: "start" });
+    const scrollRootEl = getScrollRoot();
+    const { scrollTop, clientHeight } = getScrollMetrics();
+    const rootTop = scrollRootEl instanceof Window ? 0 : scrollRootEl.getBoundingClientRect().top;
+    const elTopInViewport = el.getBoundingClientRect().top - rootTop;
+    const target = scrollTop + elTopInViewport - clientHeight * 0.3;
+    scrollRootTo({ top: Math.max(0, target), behavior: "smooth" });
+    const t = window.setTimeout(() => root.classList.add("scr-snap-today"), 700);
+    return () => { window.clearTimeout(t); root.classList.remove("scr-snap-today"); };
   }, [loading, firstNextId]);
 
   // "결과 보기" — 랭킹 화면의 팀 경기 목록 모달을 그대로 재사용해 그 도전장의 팀 구성이 그
@@ -1018,7 +1038,7 @@ export default function ChallengeScreen() {
 
   const emptyLabel = searchTerms.length > 0
     ? "검색 결과가 없어요"
-    : mineOnly ? "내 대결이 없어요" : "도전장이 없어요";
+    : acceptedOnly ? "수락된 대결이 없어요" : "도전장이 없어요";
 
   return (
     <div className="scr-screen scr-challenge-screen-v2">
@@ -1056,8 +1076,8 @@ export default function ChallengeScreen() {
             )}
             <FilterItem>
               <label className="scr-checkbox-field">
-                <input type="checkbox" checked={mineOnly} onChange={(e) => setMineOnly(e.target.checked)} />
-                내것만
+                <input type="checkbox" checked={acceptedOnly} onChange={(e) => setAcceptedOnly(e.target.checked)} />
+                수락만
               </label>
             </FilterItem>
           </>
@@ -1075,21 +1095,29 @@ export default function ChallengeScreen() {
           ) : (
             <div className="scr-challenge-list">
               {groupChallengesByDate(activeList).map((g) => (
-                <div key={g.label} className="scr-challenge-date-group">
-                  <div className="scr-challenge-date-head">
+                <div
+                  key={g.label}
+                  className="scr-challenge-date-group"
+                  data-today={g.isToday ? "1" : undefined}
+                  // "일정 미정" 그룹(scheduledAt 없는 대기중 묶음, 맨 위)에 표식을 달아
+                  // 우측 타임라인이 눈금+라벨을 찍고 스크롤 스냅 타깃으로 삼는다.
+                  data-undecided={g.items.some((c) => !c.scheduledAt) ? "1" : undefined}
+                >
+                  <div className="scr-challenge-date-head" data-date-label={g.label}>
                     {g.isToday && <span className="scr-challenge-card-today-tag">오늘</span>}
                     {g.label}
+                    {/* NEXT 배지는 카드가 아니라 그 날짜 헤더에 단다(요청: "글로우 없애고
+                        NEXT 배지를 날짜에"). 가장 임박한 예정 대결이 속한 날짜 그룹에만
+                        붙는다(동일 시각이면 같은 날짜라 한 그룹). */}
+                    {g.items.some(isNextCard) && <span className="scr-challenge-next-tag">NEXT</span>}
                   </div>
                   {g.items.map((c) => (
-                    // 슬롯 래퍼 — 가장 가까운 예정(수락) 대결(동일 시각이면 모두)에
-                    // 카드 밖 좌상단 NEXT 라벨 + 라임 에메랄드 글로우를 달고, 진입
-                    // 스크롤은 그중 첫 카드가 목적지가 된다.
+                    // 슬롯 래퍼 — 진입 스크롤 목적지는 가장 임박한 예정 대결(그중 첫 카드)이다.
                     <div
                       key={c.id}
                       ref={c.id === firstNextId ? nextCardRef : undefined}
-                      className={cx("scr-challenge-card-slot", isNextCard(c) && "scr-challenge-card-slot-next")}
+                      className="scr-challenge-card-slot"
                     >
-                      {isNextCard(c) && <div className="scr-challenge-next-tag">NEXT</div>}
                       <ChallengeCard
                         challenge={c}
                         myId={user?.id}
@@ -1105,6 +1133,9 @@ export default function ChallengeScreen() {
           )}
         </section>
       )}
+
+      {/* 우측 네비게이션 타임라인 — 스크롤 시에만 뜨고, 스스로 스크롤 불가 상태면 안 뜬다. */}
+      {!loading && <ChallengeScrollTimeline />}
 
       {formOpen && (
         <ChallengeFormModal
