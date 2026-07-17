@@ -160,6 +160,10 @@ export default function RankingScreenV2() {
         <h1 className="scr-title scr-v2-toolbar-title">
           랭킹 <span className="scr-rank-title-month">{MONTHS_KR[monthNum - 1]}</span>
         </h1>
+        {/* 일대일 순위 산정 방식 힌트 — 예전엔 목록 위 별도 문구 블록이었는데, 목록을 바로
+            시작시키려고 타이틀 줄 오른쪽으로 옮겼다(요청: "힌트는 ... 이거만 남기고 타이틀
+            줄 오른쪽에 표시. 랭킹이 바로 시작되게"). 팀 랭킹엔 이 방식이 안 쓰여 숨긴다. */}
+        {!isTeam && <span className="scr-rank-hint-inline">승자승 → 간접비교 → 승점</span>}
       </div>
 
       {/* 차트(개인/2인팀/3인팀/4인팀) 선택은 필터창(왼쪽 알약 탭) 하나가 맡는다 — 팀
@@ -186,16 +190,6 @@ export default function RankingScreenV2() {
       />
 
       {error && <div className="scr-err">{error}</div>}
-
-      {/* 팀 랭킹의 최소 경기수 기준을 없애면서(요청: "팀랭킹 경기수 기준 삭제(설명도)")
-          그 기준을 설명하던 문구도 같이 없앤다 — 일대일 산정 방법 안내만 남는다. */}
-      {!isTeam && (
-        <p className="scr-rank-note">
-          승자승 → 간접비교 → 승점
-          <br />
-          방식에 대한 의견은 카톡방에 자유롭게 말해주세요
-        </p>
-      )}
 
       <div className="scr-rank-table-panel-v2">
         <div className="scr-rank-table">
