@@ -4914,10 +4914,12 @@ html.scr-light-theme .scr-challenge-next-tag {
    헤더/툴바/검색줄, 아래쪽은 탭바를 비켜 배치한다. */
 .scr-challenge-timeline {
   position: fixed; right: 6px; z-index: 40;
-  /* 버튼(휴지통/도전장 보내기)이 이제 한 줄 플로팅 스티키라, 상단에 붙었을 때(top:safe-top,
-     높이 ~40px) 그 바로 아래에서 시작하면 된다(요청: "타임라인도 버튼이 한줄이라 거기까지
-     상단을 올려도 됨"). */
-  top: calc(var(--safe-top) + 50px);
+  /* 버튼(휴지통/도전장 보내기)이 이제 한 줄 플로팅 스티키(top:safe-top, 높이 --field-h-sm)라,
+     타임라인 상단을 딱 그 한 줄 높이만큼만 내려 바로 아래에서 시작한다(요청: "버튼이 한줄로
+     줄어서 그만큼만 올려달라 ... 버튼하고는 겹치지않게"). 버튼 높이(--field-h-sm)에 6px 간격을
+     더해 겹치지 않게 띄운다 — 예전의 고정 50px은 이 한 줄 높이보다 커서 필요 이상으로 내려가
+     있었다. */
+  top: calc(var(--safe-top) + var(--field-h-sm) + 6px);
   bottom: calc(var(--mobile-footer-h) + env(safe-area-inset-bottom, 0px) + 40px);
   display: flex; flex-direction: column; align-items: center; gap: 6px;
   opacity: 0; pointer-events: none; transition: opacity 0.25s ease;
