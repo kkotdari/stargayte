@@ -1039,8 +1039,18 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 }
 .scr-preview-badge button:hover { background: rgba(var(--overlay-rgb),0.18); }
 
+/* 랭킹 타이틀 줄 오른쪽의 산정 방식 힌트(요청: "타이틀 줄에 오른쪽에 표시") — 툴바 그리드의
+   actions 칸에 넣어 타이틀과 한 줄을 나눠 쓴다. 타이틀이 자기 글자 처짐 보정으로 -6px 떠
+   있는 만큼 힌트도 같은 양 올려 베이스라인을 맞춘다. 좁은 화면에선 글자만 살짝 줄인다. */
+.scr-rank-hint-inline {
+  grid-area: actions; justify-self: end; text-align: right;
+  font-size: 13px; color: var(--muted); white-space: nowrap; transform: translateY(-6px);
+}
+@media (max-width: 640px) {
+  .scr-rank-hint-inline { font-size: 11.5px; }
+}
+
 /* ===== search: filters ===== */
-.scr-rank-note { margin-top: 10px; margin-bottom: 6px; }
 /* 주간랭킹 목록 위 — 지금 보여주고 있는 기간("기간 : 날짜 ~ 날짜", 데이터 폰트로 표시).
    월요일 오후 8시 전에는 아직 지난주 기록을 이어서 보여주는 중이라는 안내가 함께 붙는다.
    .scr-screen의 flex gap(18px)이 아래 목록 패널과 이미 충분히 떼어놓으므로, 여기서는
@@ -1851,15 +1861,6 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 
 /* 집계 규칙을 조용히 알려주는 한 줄(예: "3전 이상 함께 뛴 팀만") — 도발 문구보다 더 작고
    옅게 두되 그 위에 온다(규칙이 먼저, 농담이 나중). */
-/* --dim에 opacity까지 겹치면 두 번 옅어져 라이트 테마에서 거의 안 보였다 — 투명도는 빼고
-   색 하나(--muted)로만 톤을 정한다. */
-.scr-rank-note {
-  margin: 0 auto 2px; padding: 0 24px; max-width: 620px;
-  font-size: 15px; color: var(--muted); text-align: center; /* 힌트류(.scr-hint)와 통일 */
-}
-@media (max-width: 640px) {
-  .scr-rank-note { padding: 0 18px; }
-}
 
 /* ===== v2 팀 랭킹 행 =====
    개인전 행에서 프사+닉네임이 쓰던 두 칸을 구성원 격자 한 칸이 대신하고, 승률 자리에는
