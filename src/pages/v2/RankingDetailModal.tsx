@@ -139,13 +139,14 @@ export default function RankingDetailModal({ members, points, matchType, onClose
           <div className="scr-rank-detail-history">
             <div className="scr-rank-detail-history-head">경기 이력{matches.length > 0 && ` (${matches.length})`}</div>
             {matchesErr && <div className="scr-err">{matchesErr}</div>}
+            {/* 이 이력은 어차피 이 회원(팀) 기준으로 이미 걸러진 경기라, 로스터에서 당사자를
+                따로 반전색으로 짚어줄 필요가 없다(요청: "랭킹상세 이력 유저 하이라이트 제거"). */}
             <MatchList
               rows={rows}
               memberOf={memberOf}
               onMemo={setMemoMatch}
               onDeleted={reload}
               loading={matchesLoading}
-              highlightMemberIds={new Set(members.map((m) => m.id))}
             />
           </div>
         </div>
