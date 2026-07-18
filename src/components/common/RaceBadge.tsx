@@ -4,7 +4,7 @@ import { RACE_INFO } from "../../constants/races";
 import { cx } from "../../utils/format";
 import type { Race } from "../../types";
 
-const RACE_LETTER: Record<Race, string> = { "테란": "T", "프로토스": "P", "저그": "Z", "랜덤": "R" };
+const RACE_LETTER: Record<Race, string> = { "테란": "테", "프로토스": "프", "저그": "저", "랜덤": "랜" };
 
 interface RaceBadgeProps {
   race: Race | "";

@@ -154,8 +154,10 @@ export default function MatchTeams({
 }: MatchTeamsProps) {
   const outcome1 = outcomeFor("team1", result);
   const outcome2 = outcomeFor("team2", result);
-  // 팀전 이력 — "우리 로스터 VS 상대 로스터 → 결과 → 점수"를 개인전 카드처럼 한 줄에 흘린다.
-  // 승/패는 주인공(team1) 기준으로 오른쪽 끝에, 그 아래 이 경기 점수를 병기한다.
+  // 팀전 이력 — "우리 로스터 VS 상대 로스터" 뒤 오른쪽에 [승/패] 그리고 그 다음(더 오른쪽)에
+  // 상대 각 구성원에게 얻은 개별 원점수 컬럼을 둔다(요청: "승패는 상대팀 우측에 고정", "승패
+  // 다음에 오른쪽에 개별 점수"). 개별 점수는 상대(team2) 각 행과 세로로 나란히 맞춘다. 양 팀
+  // 모두 아바타→닉네임 순. 최종 합계 계산은 호출부가 카드 아래 로우에 그린다.
   if (bothTeamsTail) {
     return (
       <div className="scr-match-row scr-match-row-result-only scr-match-row-team-tail">
@@ -168,12 +170,18 @@ export default function MatchTeams({
         <TeamRoster
           side="team2" players={team2} memberOf={memberOf} outcome={outcome2}
           highlightMemberIds={highlightMemberIds} disableProfileLink={disableProfileLink}
-          stackedOutcome compact={compact} textRoster={textRoster} pointsByMember={pointsByMember}
+          stackedOutcome compact={compact} textRoster={textRoster}
         />
         <span className="scr-match-result-tail">
           <span className={cx("scr-team-outcome", "scr-team-outcome-result", OUTCOME_CLASS[outcome1])}>{OUTCOME_LABEL[outcome1]}</span>
-          {outcomeNote && <span className="scr-match-result-points">{outcomeNote}</span>}
         </span>
+        {pointsByMember && (
+          <div className="scr-team-points-col">
+            {team2.map((p) => (
+              <span key={p.memberId} className="scr-team-points-row">{pointsByMember.get(p.memberId) ?? ""}</span>
+            ))}
+          </div>
+        )}
       </div>
     );
   }

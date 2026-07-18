@@ -27,6 +27,11 @@ function round1(n: number): number {
   return Math.round(n * 10) / 10;
 }
 
+// 배율(f) 표기용 — 둘째 자리까지(예: 0.25, 0.5). 계산 로우에 '× 0.25' 형태로 보여준다.
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
 // 한 편(팀)의 강함 합 — 그 라인업(랭킹 대상 회원)의 강함(1+max(0,순우열))을 더한다. 컴퓨터/
 // 비회원은 강함 지표가 없어 뺀다(서버와 동일). 팀 강함 비율의 분모/분자로 쓴다.
 function teamStrength(slots: MatchSlot[], strengthByMember: Map<string, number>): number {
@@ -165,35 +170,42 @@ export default function RankMatchHistory({
           <div key={g.date} className="scr-match-date-group">
             <div className="scr-match-date-head scr-match-date-head-compact">{dateWithDow(g.date)}</div>
             {g.items.map((r) => {
-              // 팀전이면 팀 강함 비율(f)을 곱한다 — 각 팀 강함수치와 함께 맨 밑줄에 보여준다.
               const factor = teamFactor(r, strengthByMember, bothTeams);
-              const pts = pointsLabel(gamePoints(r, strengthByMember, weaknessByMember, factor));
+              // 상대별 표시는 스케일 적용 전 '원점수'로 두고(요청), 맨 밑줄에서 원점수 합 ×
+              // 배율 = 최종 점수 계산을 보여준다. 개인전(f=1)은 원점수=최종이라 그대로다.
+              const rawSum = gamePoints(r, strengthByMember, weaknessByMember, 1);
+              const final = gamePoints(r, strengthByMember, weaknessByMember, factor);
               const ourStr = teamStrength(r.team1, strengthByMember);
               const oppStr = teamStrength(r.team2, strengthByMember);
-              // 팀전: 우리팀 대 상대팀을 그대로 보여주고(홈팀을 빼지 않는다), 그 경기에서 얻은
-              // 점수는 카드 아래 오른쪽에 병기한다. 개인전: 예전처럼 "VS 상대 + 승패"만.
+              // 팀전: 우리팀 대 상대팀을 그대로 보여주고, 상대별 원점수는 각 사람 옆에, 최종
+              // 계산은 카드 아래 로우에. 개인전: 예전처럼 "VS 상대 + 승패 + 점수"만.
               return bothTeams ? (
                 <div key={r.id} className="scr-match-card scr-rank-history-team-card">
-                  {/* 개인전 카드처럼 "로스터 VS 로스터 → 결과 → 점수" 순으로 한 줄에(요청). */}
+                  {/* 승패가 먼저 → 로스터 VS 로스터, 상대별 원점수는 오른쪽(요청). */}
                   <MatchTeams
                     team1={r.team1} team2={r.team2} memberOf={memberOf} result={r.result}
-                    disableProfileLink compact textRoster bothTeamsTail
-                    outcomeNote={pts}
-                    pointsByMember={opponentPointsByMember(r, strengthByMember, weaknessByMember, factor)}
+                    disableProfileLink compact bothTeamsTail
+                    pointsByMember={opponentPointsByMember(r, strengthByMember, weaknessByMember, 1)}
                   />
-                  {/* 맨 밑줄 — 각 팀별 강함수치(요청). */}
+                  {/* 맨 밑줄 — 각 팀 강함수치 + '원점수 합 × 배율 = 최종 점수' 계산(요청). */}
                   <div className="scr-rank-history-points-line">
                     <span className="scr-rank-history-strengths">
                       우리 강함 {ourStr} · 상대 강함 {oppStr}
                     </span>
+                    {rawSum !== null && final !== null && (
+                      <span className="scr-rank-history-calc">
+                        {rawSum > 0 ? "+" : ""}{rawSum} × {round2(factor)} =
+                        <strong> {final > 0 ? "+" : ""}{final}점</strong>
+                      </span>
+                    )}
                   </div>
                 </div>
               ) : (
                 <div key={r.id} className="scr-match-card">
                   <MatchTeams
                     team1={r.team1} team2={r.team2} memberOf={memberOf} result={r.result}
-                    disableProfileLink stackedOutcome compact opponentOnly textRoster
-                    outcomeNote={pts}
+                    disableProfileLink stackedOutcome compact opponentOnly
+                    outcomeNote={pointsLabel(final)}
                   />
                 </div>
               );

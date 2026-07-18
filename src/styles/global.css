@@ -2837,12 +2837,21 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   min-width: 34px;
 }
 .scr-match-result-points { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
-/* 팀전 이력 — "우리 로스터 VS 상대 로스터"를 왼쪽에 붙여 두고, 결과(승/패)+점수 묶음을
-   오른쪽 끝으로 민다(요청: "로스터 vs 로스터 결과 점수" 순). 두 팀 로스터는 자연폭으로 두고
-   (개인전과 달리 양 팀을 다 보여줘 flex:1로 늘리면 가운데가 텅 빈다) 사이 VS만 둔다. */
+/* 팀전 이력 — 우리 로스터 VS 상대 로스터를 왼쪽에 붙이고, 오른쪽에 [승/패] → [개별 점수
+   컬럼] 순으로 고정한다(요청: "승패는 상대팀 우측에 고정", "승패 다음에 오른쪽에 개별 점수").
+   승/패+점수 묶음은 margin-left:auto로 오른쪽 끝으로 민다. 양 팀 모두 아바타→닉네임 순으로
+   통일(요청: "홈팀쪽도 아바타 닉네임 순") — 팀1의 기본 뒤집기를 되돌리고 종족 배지도 같은
+   코너(우하)에 둔다. */
 .scr-match-list-panel-v2 .scr-match-row-team-tail { gap: 10px; }
-.scr-match-list-panel-v2 .scr-match-row-team-tail .scr-team-block { flex: 0 1 auto; }
-.scr-match-list-panel-v2 .scr-match-row-team-tail .scr-match-result-tail { margin-left: auto; }
+.scr-match-list-panel-v2 .scr-match-row-team-tail .scr-team-block-team1 { flex: 0 1 auto; }
+.scr-match-list-panel-v2 .scr-match-row-team-tail .scr-team-block-team2 { flex: 0 1 auto; }
+.scr-match-list-panel-v2 .scr-match-row-team-tail .scr-match-result-tail { flex-shrink: 0; margin-left: auto; }
+.scr-match-row-team-tail .scr-team-roster-team1 .scr-team-profile { flex-direction: row; }
+.scr-match-row-team-tail .scr-team-avatar-race-team1 { left: auto; right: -6px; }
+/* 승/패 오른쪽 개별 점수 컬럼 — 상대(team2) 각 행과 세로로 나란히(로스터 gap 4px·행 높이
+   22px에 맞춘다). 컴퓨터/비회원처럼 점수가 없는 행은 빈 칸으로 둬 정렬을 유지한다. */
+.scr-match-row-team-tail .scr-team-points-col { display: flex; flex-direction: column; gap: 4px; padding: 4px 0; flex-shrink: 0; align-items: flex-end; min-width: 26px; }
+.scr-match-row-team-tail .scr-team-points-row { height: 22px; display: flex; align-items: center; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
 /* 팀전 이력 카드 — 우리팀 대 상대팀을 그대로 보여주고, 그 경기에서 얻은 점수는 카드 아래
    오른쪽에 작게 병기한다(개인전은 승패 옆에 붙지만 팀전은 양 팀을 다 보여줘 자리가 없다). */
 .scr-rank-history-points-line {
@@ -2850,9 +2859,12 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums;
   margin-top: 2px;
 }
-/* 맨 밑줄 왼쪽 — 양 팀 강함수치(요청). 오른쪽 합계와 한 줄에 마주 본다. */
+/* 맨 밑줄 왼쪽 — 양 팀 강함수치(요청). 오른쪽 계산과 한 줄에 마주 본다. */
 .scr-rank-history-strengths { color: var(--muted); }
 .scr-rank-history-sum { margin-left: auto; font-weight: 600; }
+/* 맨 밑줄 오른쪽 — '원점수 합 × 배율 = 최종 점수' 계산(요청). 최종만 강조한다. */
+.scr-rank-history-calc { margin-left: auto; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.scr-rank-history-calc strong { font-weight: 700; color: var(--text); }
 /* 팀전 이력에서 상대팀 각 구성원 이름 옆에 '그 상대에게 얻은 점수'를 인라인으로 붙인다
    (요청: "각 구성원에 대해 몇점씩 얻은건지 각각도 표시"). 로스터 칸을 flex로 바꿔 이름 뒤에
    작게 나란히 둔다. */
@@ -3290,7 +3302,10 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 /* ===== 랭킹 상세(최근 순위 변동) 모달 ===== */
 /* 아래 경기 이력 목록이 세로 스크롤(스크롤바)이라 오른쪽만 여백이 더 넓어 보였다 — 모달
    오른쪽 안쪽 여백을 줄여 좌우 균형을 맞춘다(요청). 특이도 위해 .scr-modal과 함께 건다. */
-.scr-modal-rank-detail { max-width: 360px; height: auto; }
+/* 모달 높이를 열 때부터 크게 고정한다(요청: "처음부터 크게 확정하고 나와서 데이터 로딩 후
+   길어지지 않게") — 경기 이력이 나중에 도착해도 총 높이가 안 늘어나고, 넘치면 본체가
+   스크롤된다. 화면이 작으면 88vh로 맞춘다. */
+.scr-modal-rank-detail { max-width: 360px; height: min(88vh, 760px); height: min(88dvh, 760px); }
 .scr-modal.scr-modal-rank-detail { padding-right: 8px; }
 /* .scr-modal-body는 기본적으로 위/아래 패딩이 0이라(모달 하단에 폼 버튼이 있는 화면은
    그 버튼 자신이 padding-bottom을 책임진다) 이 모달처럼 버튼 없이 차트로 끝나면 바닥에
@@ -4478,20 +4493,10 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
 .scr-usermap-kind-filter.scr-checkbox-group-row {
   gap: 4px 12px; height: 36px; align-items: center; box-sizing: border-box;
 }
-/* 필터창 배경이 다크/라이트 공통으로 밝은색이 되면서(위 .scr-filter-panel 주석 참고),
-   여기 체크박스는 --muted 기본값(다크 테마 기준 거의 흰색)을 그대로 쓰면 밝은 배경
-   위에서 라벨 글자도, 체크박스 네모 테두리도 잘 안 보인다 — 테마 불문 어두운 색으로
-   고정한다(요청: "체크박스의 라벨과 네모를 검정으로"). */
-/* 회색 반투명 대신 알약탭 활성 글자와 같은 순검정으로(요청: "회색 아닌 검정(라디오
-   알약의 액티브 폰트 색)"). */
-.scr-usermap-kind-filter .scr-checkbox-field { color: #10151a; }
-.scr-usermap-kind-filter .scr-checkbox-field input { border-color: #10151a; }
-/* 체크됐을 때 채우는 색(기본 --text, 다크 테마에서 거의 흰색)도 밝은 배경에 맞춰
-   어둡게 — 다크 테마의 체크 표시색(--point-contrast: #10151a, 원래는 흰 채움 위에
-   어두운 V) 그대로 두면 채움색과 같은 색이 돼 V가 안 보이므로, 채움을 어둡게 바꾼
-   만큼 체크 표시는 흰색으로 같이 뒤집는다. */
-.scr-usermap-kind-filter .scr-checkbox-field input:checked { background: #10151a; border-color: #10151a; }
-.scr-usermap-kind-filter .scr-checkbox-field input:checked::after { background-color: #ffffff; }
+/* 예전엔 필터창 배경이 밝은색이라 체크박스를 검정으로 고정했지만, 필터가 패널 없이 앱
+   배경 위 인라인으로 바뀌면서(요청: "필터 글라스 패널 제거") 그 고정색이 다크 테마의
+   어두운 배경 위에서 도리어 안 보였다 — 테마 변수(--muted/--text/--point)를 쓰는 기본
+   체크박스 스타일 그대로 둬서 다크/라이트 모두 읽히게 한다. */
 .scr-usermap-table-v2 { display: flex; flex-direction: column; font-size: 15px; } /* 12.5px * 1.2 */
 
 /* 컴퓨터 아이디 목록 — 메인 매핑 목록과 분리된 단순 리스트(요청). 배틀태그가 없어 회원
