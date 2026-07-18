@@ -158,6 +158,8 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
         <div className="scr-modal-body">
           {!unlocked ? (
             <>
+              {/* 입력창 위 큰 자물쇠 — 무엇을 묻는지 문구 없이도 '잠금 해제' 맥락을 준다(요청). */}
+              <div className="scr-admin-panel-lock" aria-hidden>🔒</div>
               <label className="scr-field">
                 {/* 무엇을 묻는지조차 힌트를 주지 않는다 — 라벨/문구 없이 숫자 비밀번호
                     입력칸 하나만 보여준다. 숫자 전용이라 모바일에서도 숫자 키패드가

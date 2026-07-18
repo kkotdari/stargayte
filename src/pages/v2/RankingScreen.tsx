@@ -225,7 +225,7 @@ export default function RankingScreenV2() {
             연다(요청). 개인전/팀전 각각의 참가자 수 기준으로 표가 만들어진다. */}
         <button type="button" className="scr-rank-weight-link" onClick={() => setWeightOpen(true)}>
           <BarChart3 size={13} />
-          <span>가중치 표</span>
+          <span>기준점수표</span>
         </button>
       </div>
 
@@ -287,6 +287,7 @@ export default function RankingScreenV2() {
         <RankWeightModal
           rows={weightRows}
           modeLabel={isTeam ? "팀전" : "개인전"}
+          isTeam={isTeam}
           onClose={() => setWeightOpen(false)}
         />
       )}

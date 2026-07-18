@@ -122,7 +122,9 @@ export default function RankingDetailModal({
                   />
                 ))}
                 {points.map((p, i) => (
-                  <text key={`label-${i}`} className="scr-rank-detail-axis-label" x={xFor(i)} y={H - 6}>
+                  // 기간 라벨을 박스 바닥에서 살짝 띄운다(요청: "그래프 하단 패딩") — viewBox
+                  // 안쪽 값이라 박스 aspect-ratio는 그대로라 로딩→그래프 전환 때 높이가 안 흔들린다.
+                  <text key={`label-${i}`} className="scr-rank-detail-axis-label" x={xFor(i)} y={H - 14}>
                     {p.label}
                   </text>
                 ))}
