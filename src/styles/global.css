@@ -3274,6 +3274,11 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    그 버튼 자신이 padding-bottom을 책임진다) 이 모달처럼 버튼 없이 차트로 끝나면 바닥에
    바로 붙어 보인다 — 다른 패딩(18px)과 같은 값으로 마무리 여백을 준다. */
 .scr-modal-rank-detail .scr-modal-body { padding-bottom: 18px; }
+/* 모달 본체가 통째로 스크롤되면서(경기 이력을 안쪽 고정높이로 가두지 않음) flex 컬럼이
+   그래프 영역(aspect-ratio라 intrinsic min-height가 없다)을 눌러 찌그러뜨리는 문제 —
+   그래프가 얇은 띠로 collapse되고 스크롤도 안 생겼다(긴급). 본체 직계 자식은 안 줄어들게
+   고정해, 각자 자기 높이를 유지한 채 넘치는 만큼 본체가 스크롤되게 한다. */
+.scr-modal-rank-detail .scr-modal-body > * { flex-shrink: 0; }
 .scr-rank-detail-who { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
 .scr-rank-detail-who-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .scr-rank-detail-name { font-size: 15px; font-weight: 700; color: var(--text); }
