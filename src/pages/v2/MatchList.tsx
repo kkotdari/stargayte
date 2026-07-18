@@ -6,6 +6,7 @@ import ConfirmDialog from "../../components/common/ConfirmDialog";
 import { api } from "../../api/client";
 import { useAppStore } from "../../store/appStore";
 import { isAdminRole } from "../../constants/roles";
+import { cx } from "../../utils/format";
 import { dateWithDow } from "../../utils/date";
 import type { Match, Member, MatchSlot, MatchResult } from "../../types";
 
@@ -31,6 +32,10 @@ interface MatchListProps {
   highlightMemberIds?: Set<string>;
   // 경기번호 검색 중이면(부분 일치) 실제로 일치한 부분만 잘라 하이라이트 표시한다.
   matchNoQuery?: string;
+  // 랭킹 상세 모달의 경기 이력처럼 "가볍게 훑어보는" 용도 — 카드 머리글(N경기·경기번호·
+  // 삭제/메모/다운로드 버튼)을 통째로 빼고 날짜 글자도 줄인다(요청: "경기번호 몇경기 라벨
+  // 삭제 / 날짜 글자 축소 / 삭제 수정버튼 삭제"). 남는 건 날짜 + 대진(승/패)뿐.
+  compact?: boolean;
 }
 
 // 경기번호(#YYMMDDHHMMSS+2자리)에서 검색어와 일치하는 부분만 강조한다 — 서버가 이제
@@ -97,7 +102,7 @@ async function downloadReplay(match: Match) {
 }
 
 export default function MatchList({
-  rows, memberOf, onMemo, onDeleted, loading, highlightMemberIds, matchNoQuery,
+  rows, memberOf, onMemo, onDeleted, loading, highlightMemberIds, matchNoQuery, compact = false,
 }: MatchListProps) {
   const groups = groupByDate(rows);
   const user = useAppStore((s) => s.user);
@@ -129,47 +134,50 @@ export default function MatchList({
       <div className="scr-match-cards">
         {groups.map((g) => (
           <div key={g.date} className="scr-match-date-group">
-            <div className="scr-match-date-head">{dateWithDow(g.date)}</div>
+            <div className={cx("scr-match-date-head", compact && "scr-match-date-head-compact")}>{dateWithDow(g.date)}</div>
             {g.items.map(({ row: r, gameNo }) => (
               <div key={r.id} className="scr-match-card">
-                <div className="scr-match-card-head">
-                  <span className="scr-match-seq">
-                    {gameNo}경기 <span className="scr-match-id">#{highlightMatchNo(r.raw.matchNo, matchNoQuery ?? "")}</span>
-                  </span>
-                  <div className="scr-match-card-actions">
-                    {canDelete && (
-                      <button
-                        type="button"
-                        className="scr-match-memo-btn scr-match-delete-btn"
-                        onClick={() => setDeleteTarget(r.raw)}
-                        aria-label="경기 삭제"
-                        title="경기 삭제"
-                      >
-                        <Trash2 size={15} />
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      className="scr-match-memo-btn"
-                      onClick={() => onMemo(r.raw)}
-                      aria-label="메모 남기기"
-                      title={r.raw.note || "메모 남기기"}
-                    >
-                      <Pencil size={15} />
-                    </button>
-                    {r.raw.replay && (
+                {/* compact(랭킹 상세 이력)에선 머리글(N경기·경기번호·액션 버튼)을 통째로 뺀다. */}
+                {!compact && (
+                  <div className="scr-match-card-head">
+                    <span className="scr-match-seq">
+                      {gameNo}경기 <span className="scr-match-id">#{highlightMatchNo(r.raw.matchNo, matchNoQuery ?? "")}</span>
+                    </span>
+                    <div className="scr-match-card-actions">
+                      {canDelete && (
+                        <button
+                          type="button"
+                          className="scr-match-memo-btn scr-match-delete-btn"
+                          onClick={() => setDeleteTarget(r.raw)}
+                          aria-label="경기 삭제"
+                          title="경기 삭제"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      )}
                       <button
                         type="button"
                         className="scr-match-memo-btn"
-                        onClick={() => downloadReplay(r.raw)}
-                        aria-label="리플레이 저장"
-                        title={r.raw.replay.displayName}
+                        onClick={() => onMemo(r.raw)}
+                        aria-label="메모 남기기"
+                        title={r.raw.note || "메모 남기기"}
                       >
-                        <Download size={15} />
+                        <Pencil size={15} />
                       </button>
-                    )}
+                      {r.raw.replay && (
+                        <button
+                          type="button"
+                          className="scr-match-memo-btn"
+                          onClick={() => downloadReplay(r.raw)}
+                          aria-label="리플레이 저장"
+                          title={r.raw.replay.displayName}
+                        >
+                          <Download size={15} />
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </div>
+                )}
                 <MatchTeams
                   team1={r.team1} team2={r.team2} memberOf={memberOf} result={r.result}
                   disableProfileLink stackedOutcome compact
