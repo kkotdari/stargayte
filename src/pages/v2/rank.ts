@@ -30,9 +30,9 @@ export interface LatestMatch {
 export interface RankRow {
   member: Member;
   stats: MemberStats;
-  // 랭킹 2순위 기준값(우세 +1 / 동등 0 / 열세 -1의 사람단위 합) — 카드에 큼직하게 보여준다.
-  personScore: number;
-  // 그 내역 — 몇 명에게 우세/동등/열세인지(인원). 카드가 전적 대신 표시한다.
+  // 랭킹 총점(경기마다 가중 합산) — 카드에 큼직하게 보여준다. 음수 가능.
+  rankScore: number;
+  // 우세/동등/열세 인원 — 랭킹 상세에서 쓴다.
   superiorCount: number;
   equalCount: number;
   inferiorCount: number;
@@ -159,7 +159,7 @@ export async function computeRankRows(
     return {
       member: memberById.get(entry.memberId)!,
       stats: entry.overall,
-      personScore: entry.personScore ?? 0,
+      rankScore: entry.rankScore ?? 0,
       superiorCount: entry.superiorCount ?? 0,
       equalCount: entry.equalCount ?? 0,
       inferiorCount: entry.inferiorCount ?? 0,

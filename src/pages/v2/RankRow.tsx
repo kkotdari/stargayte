@@ -26,14 +26,10 @@ interface RankRowProps {
 // 보여준다. 예전엔 "최근 vs 상대 승/패" 한 줄을 붙였는데, 이제 일대일 경기 이력 전체를 카드
 // 상세 모달(그래프 아래)에서 보여주므로 카드에선 뺐다(요청).
 export default function RankRowV2({ row, tiedWithPrev = false, highlighted = false, onOpenTrend }: RankRowProps) {
-  const { member, personScore, superiorCount, equalCount, inferiorCount, rank, rankDelta } = row;
+  const { member, rankScore, rank, rankDelta } = row;
   const [photoOpen, setPhotoOpen] = useState(false);
-  // 점수 = 참가점수(상대 한 명당 2점) + 우열점수(우세 - 열세). 붙어본 상대별로 이기면 3 /
-  // 비기면 2 / 지면 1점을 받은 것과 같다. 헤드라인엔 합계를, 아래엔 두 갈래를 보여준다.
-  const participation = 2 * (superiorCount + equalCount + inferiorCount);
-  const winloss = personScore; // 우열점수
-  const total = participation + winloss;
-  const signed = (n: number) => (n > 0 ? `+${n}` : `${n}`);
+  // 카드엔 총점만 보여주고(세부는 랭킹 상세에서 — 요청), 경기마다 가중 합산이라 음수도 가능하다.
+  // 항상 양수가 아니므로 +부호는 안 붙이고(양수는 그대로), 음수는 자연히 - 가 붙는다.
 
   const openPhoto = (e: MouseEvent) => {
     e.stopPropagation();
@@ -72,15 +68,10 @@ export default function RankRowV2({ row, tiedWithPrev = false, highlighted = fal
           {/* 점수/전적을 팀 랭킹 카드와 같은 배치로 통일 — 사람단위 점수를 위에 큼직하게
               ("+N점"), 전적을 그 아래에. 이 점수가 순위(승자승 다음)를 가르는 기준이라 숫자로
               도드라지게 한다. */}
-          <div className="scr-rank-record-wrap">
-            {/* 랭킹 점수(참가+우열)는 항상 0 이상이라 +부호를 붙이지 않는다(요청). */}
+          <div className="scr-rank-record-wrap scr-rank-record-wrap-scoreonly">
+            {/* 카드엔 총점만(세부는 상세에서). 음수면 자연히 - 가 붙는다. */}
             <span className="scr-mono scr-rank-stat-primary">
-              {total}<span className="scr-num-unit">점</span>
-            </span>
-            {/* 점수의 두 갈래 — 참가점수(붙은 사람 수 기반)와 우열점수(우세-열세)로 나눠 보여준다(요청). */}
-            <span className="scr-mono scr-rank-record-v2 scr-rank-superiority">
-              <span className="scr-num-unit">참가</span> {participation}{"  "}
-              <span className="scr-num-unit">우열</span> {signed(winloss)}
+              {rankScore}<span className="scr-num-unit">점</span>
             </span>
           </div>
         </div>
