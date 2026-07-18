@@ -13,7 +13,7 @@ import SearchFilterBar from "../../components/common/SearchFilterBar";
 import { useAppStore } from "../../store/appStore";
 import { api } from "../../api/client";
 import { activeMemberSearchTerms, memberMatchesTerm, splitSearchTerms } from "../../utils/memberSearch";
-import { monthInputToRange, currentMonthValue, todayStr } from "../../utils/date";
+import { monthInputToRange, graceMonthValue, todayStr } from "../../utils/date";
 import { buildReplayDrafts, type ReplayDraft } from "../../utils/replayDraft";
 import { hasAppUpdatePreloadErrorOccurred } from "../../utils/appUpdate";
 import { useCursorPagination } from "../../hooks/useCursorPagination";
@@ -42,9 +42,11 @@ export default function MatchScreenV2() {
   const [search, setSearch] = useState("");
   // 정렬 토글은 없앴다(요청: "기간 필터 정렬 제거") — 항상 최신순 고정.
   const [sort] = useState<"latest" | "oldest">("latest");
-  // 기본은 월(요청: "경기 기간 필터 기본값 월로 변경").
+  // 기본은 월(요청: "경기 기간 필터 기본값 월로 변경"). 기본 달은 랭킹과 똑같이 그레이스
+  // 기간을 적용한다(요청: "경기 필터 그레이스기간을 랭킹과 똑같이") — 매월 1일 20시 전까진
+  // 전월을 기본으로 보여준다(graceMonthValue).
   const [periodUnit, setPeriodUnit] = useState<"all" | "month" | "day">("month");
-  const [periodMonth, setPeriodMonth] = useState(currentMonthValue);
+  const [periodMonth, setPeriodMonth] = useState(graceMonthValue);
   const [periodDay, setPeriodDay] = useState(todayStr);
   const suggestions = useMemo(() => activeMemberSearchTerms(members), [members]);
   const searchTerms = useMemo(() => splitSearchTerms(search), [search]);

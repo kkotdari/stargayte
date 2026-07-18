@@ -13,7 +13,7 @@ import {
   type TeamSize,
 } from "./rank";
 import { activeMemberSearchTerms, memberMatchesTerm, splitSearchTerms } from "../../utils/memberSearch";
-import { rankingMonthValue, shiftMonthValue, MONTHS_KR } from "../../utils/date";
+import { graceMonthValue, shiftMonthValue, MONTHS_KR } from "../../utils/date";
 import { cx } from "../../utils/format";
 import { useAppStore } from "../../store/appStore";
 import type { BaseRace, Member } from "../../types";
@@ -48,12 +48,12 @@ export default function RankingScreenV2() {
   const teamSize = (chart === "solo" ? 4 : Number(chart)) as TeamSize;
   const [race, setRace] = useState<BaseRace | "all">("all");
   const [search, setSearch] = useState("");
-  // 집계 월 — 기본은 그레이스 보정된 이번 달(rankingMonthValue: 매월 1일 20시 전까진 전월).
+  // 집계 월 — 기본은 그레이스 보정된 이번 달(graceMonthValue: 매월 1일 20시 전까진 전월).
   // 타이틀의 좌우 화살표로 과거 달의 순위를 볼 수 있다(요청: "월 옆에 좌우 이동 아이콘 버튼").
   // 데이터가 시작된 2026년 7월보다 과거로도, 아직 오지 않은 이번 달(maxMonth)보다 미래로도
   // 갈 수 없다 — 화살표는 갈 수 있을 때만 보이되 자리는 늘 차지해 레이아웃이 안 흔들린다.
   const RANK_MIN_MONTH = "2026-07";
-  const maxMonth = rankingMonthValue();
+  const maxMonth = graceMonthValue();
   const [month, setMonth] = useState(maxMonth);
   const hasPrevMonth = month > RANK_MIN_MONTH;
   const hasNextMonth = month < maxMonth;
