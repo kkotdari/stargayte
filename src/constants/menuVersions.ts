@@ -45,10 +45,6 @@ export function homeScreenFor(effectiveVersionNumber: number): ScreenKey {
   return visibleNavMenuItems(effectiveVersionNumber)[0]?.key ?? "ranking";
 }
 
-// 버전이 바뀐 뒤 처음 접속했을 때(AppUpdateNoticeModal) 보여줄 변경 내용 — 배포 때마다
-// 최신 내용으로 덮어써서 쓴다(버전별로 쌓아두지 않는다. 배포가 잦지 않아 "가장 최근에
-// 뭐가 바뀌었는지"만 한 번 보여주면 충분하다).
-export const APP_UPDATE_NOTES: string[] = [
-  "랭킹이 일대일/팀으로 나뉘었어요.",
-  "챌린지 코너가 새로 생겼어요 — 원하는 상대를 지목해 대결을 신청해보세요!",
-];
+// (버전이 바뀐 뒤 처음 접속했을 때 보여줄 안내 내용은 예전엔 여기 상수(APP_UPDATE_NOTES)에
+// 있었지만, 이제 버전별로 서버(app_versions.notes)에서 관리하고 관리자 패널의 "버전 안내
+// 설정"에서 편집한다 — 코드 배포 없이 버전마다 다른 내용을 넣을 수 있다.)

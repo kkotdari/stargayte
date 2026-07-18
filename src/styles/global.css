@@ -3489,8 +3489,8 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-team-stat-race { display: flex; justify-content: center; }
 
 /* ===== admin panel (v1/v2 전환) ===== */
-/* "몰래 찾아 연" 느낌의 배경 이미지 — cover로 카드 크기에 맞춰 꽉 채운다(정사각형
-   원본(control_panel.png, 943x943)을 어느 비율로 잘라도 무늬 있는 금속판이라 자연스럽다).
+/* "몰래 찾아 연" 느낌의 배경 이미지 — cover로 카드 크기에 맞춰 꽉 채운다(은색 브러시드
+   금속판 텍스처(control_panel_bg.jpg)를 어느 비율로 잘라도 무늬 있는 금속판이라 자연스럽다).
    카드를 정사각형(aspect-ratio 1:1)으로 고정해뒀던 예전 방식은 내용(배치 등록 로그 등)이
    늘어나면 카드 자체가 늘 스크롤됐다(실제로 지적받은 문제) — 내용 높이에 맞춰 자라도록
    비율 고정을 없앤다(기본 .scr-modal의 max-height:88vh가 상한 역할을 그대로 한다). */
@@ -3508,12 +3508,12 @@ body *::-webkit-scrollbar-corner { background: transparent; }
      border-radius(위 .scr-modal)가 남아 있으면 overflow:hidden에 잘리는 배경 이미지
      (아래 ::before)만 둥글게 잘려서 각진 테두리와 어긋나 모서리에 빈 틈(웨지)이 생긴다 —
      0으로 없애 테두리와 배경 모두 각지게 맞춘다. */
-  /* 낡은 쇠 느낌을 더 강하게(요청) — 두께를 7px → 12px로 키우고, 밝은 하이라이트와 시커먼
-     녹/그을음 톤을 더 자주 교차시켜 우툴두툴 부식된 금속처럼 보이게 한다. */
+  /* 낡은 쇠 느낌 — 예전엔 합성 그라데이션으로 흉내 냈지만, 이제 실제 부식된 금속 텍스처
+     사진(control_panel_border.jpg)을 border-image로 둘러 진짜 금속 액자처럼 보이게 한다.
+     텍스처를 8분할(모서리 4 + 변 4)로 잘라 변은 round로 이어 붙인다 — slice 값은 텍스처의
+     자연스러운 결이 변에 반복돼도 티가 덜 나는 정도로 잡는다. */
   border: 12px solid;
-  border-image: linear-gradient(135deg,
-    #ddd5c3 0%, #837c6e 11%, #45423a 22%, #1c1a16 32%, #6f6a5f 44%,
-    #29271f 55%, #a49c8b 66%, #35322b 78%, #746e62 88%, #c9c1af 100%) 1;
+  border-image: url("/images/bg/control_panel_border.jpg") 80 round;
   border-radius: 0;
   /* 안쪽 어두운 홈(inset)을 더 깊게 겹쳐 판이 두껍게 파여 들어간 입체감을 강화한다. */
   box-shadow:
@@ -3539,7 +3539,7 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 }
 .scr-admin-panel-modal::before {
   content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
-  background-image: url("/images/bg/control_panel.png");
+  background-image: url("/images/bg/control_panel_bg.jpg");
   background-size: cover; background-position: center; background-repeat: no-repeat;
 }
 .scr-admin-panel-modal > * { position: relative; z-index: 1; }
@@ -3550,11 +3550,12 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   color: #fff; background: rgba(0,0,0,0.45); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.25);
 }
 .scr-admin-panel-modal .scr-modal-head .scr-icon-btn:hover { background: rgba(0,0,0,0.65); color: #fff; }
-/* 이 모달 안의 글자는 테마(라이트/다크)와 무관하게 항상 흰색으로 고정한다 — 배경이
-   제어판 사진(테마와 무관한 고정 이미지)이라, var(--text) 등 테마 변수를 쓰면 라이트
-   테마에서 검정으로 뒤집혀 사진 위에서 안 보였다. 흰 배경 버튼(미리보기/롤백 등) 위의
-   어두운 글자는 각자 이미 고정값(#10151a)을 쓰고 있어 영향받지 않는다. */
-.scr-admin-panel-modal .scr-modal-head { color: #fff; }
+/* 이 모달 안의 글자는 테마(라이트/다크)와 무관하게 고정한다 — 배경이 제어판 금속판 사진
+   (테마와 무관한 고정 이미지)이라, var(--text) 등 테마 변수를 쓰면 테마에 따라 뒤집힌다.
+   배경이 밝은 은색 금속판이라 어두운 글자로 두고, 밝은 하이라이트(위쪽 반사) 위에서도
+   또렷하게 보이도록 위쪽에 옅은 흰 그림자를 줘 금속판에 새긴(engraved) 느낌을 낸다.
+   흰 배경 버튼(미리보기/배포 등) 위의 어두운 글자는 각자 고정값(#10151a)이라 영향 없다. */
+.scr-admin-panel-modal .scr-modal-head { color: #1a1e24; text-shadow: 0 1px 0 rgba(255,255,255,0.4); }
 /* PC에서는 좁은 모달(360px)이 유난히 작아 보인다 — 카드 자체를 키운다(비율은 위에서
    이미 1:1로 고정했으니 여기선 최대폭만). */
 @media (min-width: 720px) {
@@ -3602,10 +3603,10 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 /* 소제목(요청: "제어판 구성 소제목: 버전관리(현재버전 : N) / 경기관리") — 큰 버전
    숫자 배지 대신, 각 그리드 위에 이 한 줄로 섹션을 나눈다. */
 .scr-admin-panel-section-title {
-  width: 100%; text-align: center; font-size: 13px; font-weight: 800; color: #fff;
-  margin-top: 4px;
+  width: 100%; text-align: center; font-size: 13px; font-weight: 800; color: #1a1e24;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.4); margin-top: 4px;
 }
-.scr-admin-panel-section-title-dim { font-weight: 600; color: rgba(255,255,255,0.65); }
+.scr-admin-panel-section-title-dim { font-weight: 600; color: rgba(26,30,36,0.7); text-shadow: none; }
 /* 제어판다운 투박한 입체(엠보스) 사각 버튼 그리드로 통일한다(요청: "좀더 제어판같은
    투박한 입체 사각 버튼으로 만들어줘 흰색에 검은 글씨, 아주 위험한 건 빨간 버튼").
    처음엔 3열이었다가, 버튼이 너무 좁아 보인다는 이유로 2열로 줄이고 폭을 넓혔다(요청:
@@ -3788,6 +3789,46 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-update-notice-title { font-weight: 700; margin: 0 0 6px; }
 .scr-update-notice-list { margin: 0 0 4px; padding-left: 20px; color: var(--muted); }
 .scr-update-notice-list li { padding: 3px 0; }
+
+/* ===== 버전 안내 설정 모달 ===== */
+/* 제어판(PC 560px, 배경 이미지/최소높이로 큼직한 정사각형)보다 확실히 작고 가벼운 설정
+   카드 — 내용 높이에 맞춰 자연스럽게 열린다(요청: "제어판보다 작은 모달창"). */
+.scr-notice-settings-modal.scr-modal-sm { max-width: 340px; }
+.scr-notice-settings-modal .scr-modal-body { gap: 12px; padding-bottom: 18px; }
+/* (1) 버전 안내 표시 여부 — 전역 토글 행 */
+.scr-notice-toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.scr-notice-toggle-label { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.scr-notice-toggle-title { font-size: 14px; font-weight: 700; color: var(--text); }
+.scr-notice-toggle-desc { font-size: 12px; color: var(--muted); }
+/* 스위치 — 트랙 + 동그란 노브. 꺼짐은 중립 회색 트랙, 켜짐은 포인트 색. */
+.scr-notice-switch {
+  flex: none; position: relative; width: 46px; height: 26px; padding: 0; cursor: pointer;
+  border-radius: 999px; border: 1px solid var(--line); background: var(--line-soft);
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.scr-notice-switch:disabled { opacity: 0.6; cursor: default; }
+.scr-notice-switch-knob {
+  position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; border-radius: 50%;
+  background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.4); transition: transform 0.15s ease;
+}
+.scr-notice-switch-on { background: var(--point); border-color: var(--point); }
+.scr-notice-switch-on .scr-notice-switch-knob { transform: translateX(20px); }
+/* 토글부와 편집부를 나누는 얇은 구분선 */
+.scr-notice-settings-divider { height: 1px; background: var(--line-soft); }
+/* (2) 버전 선택부 + 내용 편집부 */
+.scr-notice-edit-label { font-size: 13px; font-weight: 700; color: var(--text); }
+.scr-notice-version-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.scr-notice-version-tab {
+  min-width: 40px; padding: 5px 10px; border-radius: 8px; cursor: pointer;
+  font-family: var(--font-mono); font-size: 13px; font-weight: 700;
+  color: var(--muted); background: transparent; border: 1px solid var(--line-soft);
+}
+.scr-notice-version-tab:hover { color: var(--text); }
+.scr-notice-version-tab-active {
+  color: #fff; background: var(--point); border-color: var(--point);
+}
+.scr-notice-edit-textarea { resize: vertical; min-height: 110px; line-height: 1.5; font-size: 13.5px; }
+.scr-notice-edit-actions { display: flex; justify-content: flex-end; gap: 8px; }
 /* 팀 경기목록 — 경기 화면의 카드 목록(MatchList)을 그대로 담으므로 로스터 두 팀이 한 줄에
    들어갈 만큼 넓어야 한다(기본 420px로는 닉네임이 줄줄이 접힌다).
    본문(경기 카드)이 주인공이라 아래쪽 여백은 넉넉히 주고, 헤더(팀원 이름)는 최대한 납작하게

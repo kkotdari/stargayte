@@ -1,16 +1,18 @@
 import { create } from "zustand";
 import { api } from "../api/client";
 import { DEFAULT_ICON_SLOTS } from "../constants/iconSlots";
+import { versionNumber } from "../utils/appVersion";
 import type {
   Member, Match, NewMatch, MemberCreatePayload, ImageSettingMap, MemberStatus, MemberRole, AppVersion,
   AppVersionInfo, Challenge,
 } from "../types";
 
-// 버전이 바뀐 걸 감지했을 때 AppUpdateNoticeModal에 넘기는 정보 — 실제 변경 내용 문구는
-// 고정 목록(APP_UPDATE_NOTES)이라 여기엔 안 담고, 모달 제목에 쓸 버전 숫자만 담는다.
+// 버전이 바뀐 걸 감지했을 때 AppUpdateNoticeModal에 넘기는 정보 — 변경 내용 문구(notes)는
+// 이제 버전별로 서버(app_versions.notes)에 있으므로, 활성 버전의 내용을 줄 단위로 담아 넘긴다.
 export interface UpdateNotice {
   prevVersion: string;
   activeVersion: string;
+  notes: string[];
 }
 
 // 숨겨진 제어판 트리거 — 탭 타임스탬프는 리렌더를 일으킬 이유가 없는 순수 내부 상태라
@@ -26,14 +28,29 @@ let secretTapTimestamps: number[] = [];
 // 부르는 refreshAll()에서는 부르지 않는다 — "최초 접속시"만 알리면 되고, 세션 중간에
 // 다른 운영자가 배포해도 그때마다 알림이 뜨면 오히려 방해가 된다.
 const APP_VERSION_SEEN_KEY = "scr_last_seen_app_version";
+// 버전 안내 내용(한 덩어리 문자열)을 줄 단위 항목으로 쪼갠다 — 앞뒤 공백/빈 줄은 버린다.
+export function parseNoticeLines(notes: string | undefined | null): string[] {
+  return (notes ?? "").split("\n").map((s) => s.trim()).filter(Boolean);
+}
 // 버전이 바뀌었으면(그리고 그 바뀐 이후 첫 접속이면) AppUpdateNoticeModal에 보여줄 정보를
-// 돌려주고, 저장된 값은 항상 최신으로 갱신한다 — window.alert 한 줄 대신 실제 변경 내용
-// (APP_UPDATE_NOTES)을 보여주는 모달로 바꾼다.
-function computeUpdateNotice(activeVersion: AppVersion): UpdateNotice | null {
+// 돌려주고, 저장된 값은 항상 최신으로 갱신한다 — window.alert 한 줄 대신 실제 변경 내용을
+// 보여주는 모달로 바꾼다. 단, (1) 관리자가 안내 표시를 꺼두면(noticeEnabled=false), (2) 활성
+// 버전에 안내 내용이 비어 있으면 띄우지 않는다. "마지막으로 본 버전" 저장은 표시 여부와
+// 무관하게 항상 최신으로 갱신한다(안내가 꺼진 동안 쌓인 변경을 나중에 몰아 보여주지 않게).
+function computeUpdateNotice(
+  activeVersion: AppVersion,
+  noticeEnabled: boolean,
+  appVersions: AppVersionInfo[],
+): UpdateNotice | null {
   try {
     const prev = localStorage.getItem(APP_VERSION_SEEN_KEY);
     localStorage.setItem(APP_VERSION_SEEN_KEY, activeVersion);
-    if (prev && prev !== activeVersion) return { prevVersion: prev, activeVersion };
+    if (!noticeEnabled) return null;
+    if (!prev || prev === activeVersion) return null;
+    const entry = appVersions.find((v) => versionNumber(v.number) === versionNumber(activeVersion));
+    const notes = parseNoticeLines(entry?.notes);
+    if (notes.length === 0) return null;
+    return { prevVersion: prev, activeVersion, notes };
   } catch {
     // localStorage 접근 실패(프라이빗 모드 등)는 조용히 무시한다 — 알림 기능 하나 때문에
     // 로그인 자체가 막히면 안 된다.
@@ -56,7 +73,10 @@ interface AppState {
   // 제어판에서 바꾸면 그 자리에서 다시 반영한다.
   appVersion: AppVersion;
   // 제어판의 버전 선택 팝업(미리보기/배포)이 나열할 '등록된 버전' 목록 — 부트스트랩 때 로드.
+  // 각 항목은 버전별 안내 내용(notes)도 함께 들고 있다.
   appVersions: AppVersionInfo[];
+  // 버전 안내(업데이트 안내 모달) 전역 표시 여부 — 관리자가 "버전 안내 설정"에서 끄면 false.
+  noticeEnabled: boolean;
   // 제어판에서 앱 전체 기준(appVersion)을 실제로 바꾸지 않고, 지금 이 브라우저 탭에서만
   // 특정 버전 화면을 미리 둘러보는 로컬 전용 모드 — 서버에 저장하지 않으므로 새로고침하면
   // 꺼진다(의도적으로, 실수로 계속 켜진 채 남지 않게). null이면 미리보기 중이 아님.
@@ -139,6 +159,12 @@ interface AppState {
   // ----- 제어판: 버전 배포(+1)/롤백(-1) -----
   setAppVersion: (version: AppVersion) => Promise<void>;
 
+  // ----- 제어판: 버전 안내 설정 -----
+  // 버전 안내 표시 여부(전역 토글)를 서버에 저장하고 로컬 상태도 갱신한다(운영자 전용).
+  setNoticeEnabled: (enabled: boolean) => Promise<void>;
+  // 특정 버전의 안내 내용을 서버에 저장하고, 로컬 appVersions의 그 버전 notes도 갱신한다.
+  saveVersionNotes: (number: AppVersion, notes: string) => Promise<void>;
+
   // ----- 파생 셀렉터(헬퍼) -----
   memberOf: (id: string) => Member | undefined;
 }
@@ -150,6 +176,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
   earliestMatchDate: null,
   appVersion: "1",
   appVersions: [],
+  noticeEnabled: true,
   previewVersion: null,
   setPreviewVersion: (version) => set({ previewVersion: version }),
   adminPanelOpen: false,
@@ -205,7 +232,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
     set({ booting: true });
     try {
       const [
-        members, imageSettings, { activeVersion }, appVersions, earliestMatchDate,
+        members, imageSettings, { activeVersion, noticeEnabled }, appVersions, earliestMatchDate,
         { items: inboxChallenges }, { items: resultInboxChallenges },
       ] = await Promise.all([
         api.getMembers(),
@@ -217,9 +244,9 @@ export const useAppStore = create<AppState>()((set, get) => ({
         api.getResultPendingChallengesForMe(),
       ]);
       set({
-        members, imageSettings, appVersion: activeVersion, appVersions, earliestMatchDate,
+        members, imageSettings, appVersion: activeVersion, appVersions, noticeEnabled, earliestMatchDate,
         inboxChallenges, resultInboxChallenges,
-        updateNotice: computeUpdateNotice(activeVersion),
+        updateNotice: computeUpdateNotice(activeVersion, noticeEnabled, appVersions),
       });
     } finally {
       set({ booting: false });
@@ -314,6 +341,21 @@ export const useAppStore = create<AppState>()((set, get) => ({
   setAppVersion: async (version) => {
     const { activeVersion } = await api.setAppVersion(version);
     set({ appVersion: activeVersion });
+  },
+
+  setNoticeEnabled: async (enabled) => {
+    const res = await api.setVersionNoticeEnabled(enabled);
+    set({ noticeEnabled: res.enabled });
+  },
+
+  saveVersionNotes: async (number, notes) => {
+    const saved = await api.setVersionNotes(number, notes);
+    // 방금 저장한 버전의 notes만 서버가 정리한 값(앞뒤 공백 제거 등)으로 바꿔 끼운다.
+    set({
+      appVersions: get().appVersions.map((v) =>
+        versionNumber(v.number) === versionNumber(saved.number) ? { ...v, notes: saved.notes } : v,
+      ),
+    });
   },
 
   memberOf: (id) => get().members.find((m) => m.id === id),

@@ -265,11 +265,16 @@ export type AppVersion = string;
 
 export interface AppVersionStatus {
   activeVersion: AppVersion;
+  // 버전 안내(업데이트 안내 모달) 전역 표시 여부 — 관리자가 "버전 안내 설정"에서 끄면 false.
+  noticeEnabled: boolean;
 }
 
 // 제어판의 버전 선택 팝업이 나열하는 '등록된 버전' 하나 — 서버 app_versions 레지스트리의 행.
 export interface AppVersionInfo {
   number: AppVersion;
+  // 이 버전이 배포된 뒤 처음 접속하는 회원에게 보여줄 안내 내용 — 한 줄에 한 항목(줄바꿈
+  // 구분). 비어 있으면 그 버전은 안내를 띄우지 않는다. "버전 안내 설정"에서 편집한다.
+  notes: string;
 }
 
 // "너 나와!" 도전장 — 경기결과/예약 시스템과는 독립된 게시판. 폼에서 직접 고르지 않고

@@ -209,7 +209,7 @@ export default function App() {
         {profileOpen && <ProfileModal onClose={() => setProfileOpen(false)} />}
         {viewingMember && <MemberProfileModal member={viewingMember} onClose={closeMemberProfile} />}
         {adminPanelOpen && <AdminPanelModal isAdmin={isAdmin} onClose={() => setAdminPanelOpen(false)} />}
-        {updateNotice && <AppUpdateNoticeModal onClose={dismissUpdateNotice} />}
+        {updateNotice && <AppUpdateNoticeModal notes={updateNotice.notes} onClose={dismissUpdateNotice} />}
         {inboxChallenges.length > 0 && (
           <ChallengeInboxModal challenges={inboxChallenges} onClose={dismissInboxChallenges} />
         )}
