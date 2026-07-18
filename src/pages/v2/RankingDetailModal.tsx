@@ -144,6 +144,7 @@ export default function RankingDetailModal({
             <RankMatchHistory
               matches={matches} members={members} memberOf={memberOf} loading={matchesLoading}
               strengthByMember={strengthByMember} weaknessByMember={weaknessByMember}
+              bothTeams={matchType === "0102"}
             />
           </div>
         </div>

@@ -2798,6 +2798,12 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   min-width: 34px;
 }
 .scr-match-result-points { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+/* 팀전 이력 카드 — 우리팀 대 상대팀을 그대로 보여주고, 그 경기에서 얻은 점수는 카드 아래
+   오른쪽에 작게 병기한다(개인전은 승패 옆에 붙지만 팀전은 양 팀을 다 보여줘 자리가 없다). */
+.scr-rank-history-points-line {
+  text-align: right; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums;
+  margin-top: 2px;
+}
 
 /* ===== 목록 바로 위에 붙는 보조 툴바 공용(정렬 필터, 랭킹 기간 선택 등) =====
    .scr-screen의 flex gap(18px)이 목록 패널과 이미 떼어놓으므로, 음수 margin으로 그만큼
