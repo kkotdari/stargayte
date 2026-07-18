@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { Spinner } from "../components/common/Feedback";
+import Select from "../components/common/Select";
 import AppUpdateNoticeModal from "./AppUpdateNoticeModal";
 import { useAppStore, parseNoticeLines } from "../store/appStore";
 import { useLockBodyScroll } from "../utils/bodyScrollLock";
@@ -105,18 +106,12 @@ export default function VersionNoticeSettingsModal({ onClose }: VersionNoticeSet
 
           {/* (2) 버전 선택부 + 내용 편집부 — 버전을 고르면 그 버전의 안내 내용을 편집한다. */}
           <div className="scr-notice-edit-label">버전별 안내 내용</div>
-          <div className="scr-notice-version-tabs">
-            {appVersions.map((v) => (
-              <button
-                key={v.number}
-                type="button"
-                className={cx("scr-notice-version-tab", v.number === selected && "scr-notice-version-tab-active")}
-                onClick={() => setSelected(v.number)}
-              >
-                {v.number}
-              </button>
-            ))}
-          </div>
+          <Select
+            value={selected}
+            options={[...appVersions].reverse().map((v) => ({ value: v.number, label: `${v.number} 버전` }))}
+            onChange={setSelected}
+            className="scr-notice-version-select"
+          />
 
           <textarea
             className="scr-input scr-notice-edit-textarea"

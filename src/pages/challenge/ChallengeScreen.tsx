@@ -423,8 +423,12 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
     || (shownLatest && challenge.resultWinnerSide !== null)
     || isResultPending;
 
+  // 이미 종료된 대결(완료/미실시 등 status=done·discarded)은 패널을 더 어둡게, 아직 진행
+  // 중인(응답대기·성사) 대결은 더 밝게 해서 목록에서 한눈에 구분되게 한다(요청).
+  const isEnded = challenge.status === "done" || challenge.status === "discarded";
+
   return (
-    <div className="scr-challenge-card">
+    <div className={cx("scr-challenge-card", isEnded ? "scr-challenge-card-ended" : "scr-challenge-card-active")}>
       {/* 응답 전 취소(아무도 응답 안 하고 폐기)된 건은 휴지통에서 우상단에 "취소" 라벨로
           표시한다(요청). 거절/버림/미실시와는 응답·결과 유무로 구분된다. */}
       {isCanceled && <span className="scr-challenge-cancel-tag">취소</span>}
