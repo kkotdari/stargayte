@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { Spinner } from "../components/common/Feedback";
@@ -10,6 +10,7 @@ import { useAppStore } from "../store/appStore";
 import { useLockBodyScroll } from "../utils/bodyScrollLock";
 import { cx } from "../utils/format";
 import { versionNumber } from "../utils/appVersion";
+import { playCreak } from "../utils/sfx";
 
 interface AdminPanelModalProps {
   isAdmin: boolean;
@@ -26,6 +27,9 @@ interface AdminPanelModalProps {
 // 회원은 통과해도 이 브라우저 탭에서만 켜지는 "미리보기"만 쓸 수 있다.
 export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalProps) {
   useLockBodyScroll();
+  // 숨겨진 제어판이 열리는 순간 낡은 경첩이 삐걱이는 "끼익" 소리(요청) — 로고 3연타라는
+  // 사용자 제스처 직후라 자동재생 정책에 막히지 않는다. 마운트 때 한 번만.
+  useEffect(() => { playCreak(); }, []);
   const appVersion = useAppStore((s) => s.appVersion);
   const appVersions = useAppStore((s) => s.appVersions);
   const previewVersion = useAppStore((s) => s.previewVersion);
