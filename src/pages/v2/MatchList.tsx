@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { Pencil, Download, Trash2, Monitor, UserPlus } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
+import { MoreVertical, Monitor, UserPlus } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
 import RaceBadge from "../../components/common/RaceBadge";
 import { Spinner } from "../../components/common/Feedback";
@@ -10,6 +11,7 @@ import { isAdminRole } from "../../constants/roles";
 import { isComputerSlot, computerSlotLabel } from "../../constants/computerSlot";
 import { isUnregisteredSlot, unregisteredSlotLabel } from "../../constants/unregisteredSlot";
 import { cx } from "../../utils/format";
+import { attachPopover } from "../../utils/popover";
 import { dateWithDow } from "../../utils/date";
 import type { Match, Member, MatchSlot, MatchResult } from "../../types";
 
@@ -145,6 +147,66 @@ async function downloadReplay(match: Match) {
   }
 }
 
+// 카드 오른쪽 세로점세개(⋮) — 누르면 메모/리플레이 저장/삭제를 드롭다운 메뉴로 연다(요청).
+// 위치/뒤집기는 다른 드롭다운과 같은 attachPopover, 바깥 클릭/포커스 이동으로 닫는다.
+function MatchActionsMenu({
+  match, canDelete, onMemo, onDelete,
+}: {
+  match: Match; canDelete: boolean; onMemo: (m: Match) => void; onDelete: (m: Match) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const anchorRef = useRef<HTMLButtonElement>(null);
+  const dropRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open || !anchorRef.current || !dropRef.current) return;
+    return attachPopover(anchorRef.current, dropRef.current, { growToContent: true, maxWidth: 200 });
+  }, [open]);
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: PointerEvent) => {
+      const t = e.target as Node;
+      if (anchorRef.current?.contains(t) || dropRef.current?.contains(t)) return;
+      setOpen(false);
+    };
+    document.addEventListener("pointerdown", onDoc);
+    return () => document.removeEventListener("pointerdown", onDoc);
+  }, [open]);
+
+  const items: { key: string; label: string; danger?: boolean; onSelect: () => void }[] = [
+    { key: "memo", label: match.note ? "메모 수정" : "메모", onSelect: () => onMemo(match) },
+    ...(match.replay ? [{ key: "download", label: "리플레이 저장", onSelect: () => void downloadReplay(match) }] : []),
+    ...(canDelete ? [{ key: "delete", label: "삭제", danger: true, onSelect: () => onDelete(match) }] : []),
+  ];
+
+  return (
+    <div className="scr-match-menu">
+      <button
+        type="button" ref={anchorRef}
+        className="scr-match-memo-btn scr-match-kebab-btn"
+        onClick={() => setOpen((v) => !v)}
+        aria-label="더보기" aria-haspopup="menu" aria-expanded={open}
+      >
+        <MoreVertical size={16} />
+      </button>
+      {open && createPortal(
+        <div className="scr-admin-menu-drop scr-match-menu-drop scr-scroll" ref={dropRef} role="menu">
+          {items.map((it) => (
+            <button
+              key={it.key} type="button" role="menuitem"
+              className={cx("scr-admin-menu-opt", it.danger && "scr-match-menu-opt-danger")}
+              onClick={() => { it.onSelect(); setOpen(false); }}
+            >
+              {it.label}
+            </button>
+          ))}
+        </div>,
+        document.body,
+      )}
+    </div>
+  );
+}
+
 export default function MatchList({
   rows, memberOf, onMemo, onDeleted, loading, highlightMemberIds, matchNoQuery,
 }: MatchListProps) {
@@ -193,34 +255,10 @@ export default function MatchList({
                     <span className="scr-match-trow-dur">{Math.round(r.raw.durationSeconds / 60)}분</span>
                   )}
                   {r.raw.createdBy && <span className="scr-match-trow-by">등록: {r.raw.createdBy.nickname}</span>}
-                  <div className="scr-match-card-actions">
-                    {canDelete && (
-                      <button
-                        type="button"
-                        className="scr-match-memo-btn scr-match-delete-btn"
-                        onClick={() => setDeleteTarget(r.raw)}
-                        aria-label="경기 삭제" title="경기 삭제"
-                      >
-                        <Trash2 size={15} />
-                      </button>
-                    )}
-                    <button
-                      type="button" className="scr-match-memo-btn"
-                      onClick={() => onMemo(r.raw)}
-                      aria-label="메모 남기기" title={r.raw.note || "메모 남기기"}
-                    >
-                      <Pencil size={15} />
-                    </button>
-                    {r.raw.replay && (
-                      <button
-                        type="button" className="scr-match-memo-btn"
-                        onClick={() => downloadReplay(r.raw)}
-                        aria-label="리플레이 저장" title={r.raw.replay.displayName}
-                      >
-                        <Download size={15} />
-                      </button>
-                    )}
-                  </div>
+                  <MatchActionsMenu
+                    match={r.raw} canDelete={canDelete}
+                    onMemo={onMemo} onDelete={setDeleteTarget}
+                  />
                 </div>
                 {/* 팀 2열 + 그 아래 각 팀 승/패(요청). 헤더·컬럼 구분선 없이 로우만. */}
                 <div className="scr-match-trow-grid">

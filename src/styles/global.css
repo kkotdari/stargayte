@@ -2691,6 +2691,12 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 /* 등록자는 오른쪽 정렬(요청) — margin-left:auto로 밀어 액션 버튼 바로 왼쪽에 붙인다. */
 .scr-match-trow-by { color: var(--dim); flex-shrink: 0; margin-left: auto; }
 .scr-match-trow-head .scr-match-card-actions { flex-shrink: 0; }
+/* 세로점세개(⋮) 메뉴 트리거 — 등록자 오른쪽 끝에. 아이콘 버튼 톤은 기존 메모 버튼과 공유. */
+.scr-match-menu { display: inline-flex; flex-shrink: 0; }
+.scr-match-menu-drop { min-width: 128px; }
+/* 삭제 항목만 위험 톤 — 기본 붉은 글자, hover 시 옅은 붉은 배경(공용 드롭다운 hover 흰배경 대신). */
+.scr-match-menu-drop .scr-match-menu-opt-danger { color: var(--loss); }
+.scr-match-menu-drop .scr-match-menu-opt-danger:hover { color: var(--loss); background: rgba(220, 70, 70, 0.14); }
 /* 팀 2열 + 그 아래 승/패 행. 컬럼 구분선은 두지 않는다(요청). */
 .scr-match-trow-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px 16px; align-items: start; }
 /* 로스터 묶음은 각 팀 영역에서 가운데(justify-content: center)에 두되, 그 안의 선수들은
