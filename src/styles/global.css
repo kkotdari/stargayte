@@ -950,6 +950,22 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 /* 요청: "랭킹 몇월 글짜 1.5배 확대" — 0.55em → 0.825em. 밝기도 더 밝게(요청) —
    --dim보다 밝은 --muted로. */
 .scr-rank-title-month { font-size: 0.825em; font-weight: 700; color: var(--muted); margin-left: 8px; }
+/* 월 옆 좌우 이동 화살표(요청: "월 옆에 좌우 이동 아이콘 버튼(심플)"). 타이틀 글자와 세로
+   가운데로 맞춘 인라인 플렉스. 화살표 자체가 좌/우 구분을 주므로 별도 배경 없이 심플하게,
+   호버 때만 살짝 배경을 준다. 월 라벨은 nav가 간격을 관리하므로 자체 margin은 지운다. */
+.scr-rank-month-nav { display: inline-flex; align-items: center; gap: 4px; vertical-align: middle; }
+.scr-rank-month-nav .scr-rank-title-month { margin-left: 0; }
+.scr-rank-month-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; padding: 0; border: none; border-radius: 6px;
+  background: transparent; color: var(--muted); cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.scr-rank-month-btn:hover { background: rgba(255, 255, 255, 0.08); color: var(--text); }
+/* 갈 수 없는 방향의 화살표는 숨기되(visibility) 자리는 그대로 둬서 월 라벨/타이틀이 좌우로
+   밀리지 않게 한다(요청: "이전 다음이 있는 경우만 노출되지만 자리는 예약해서 레이아웃
+   흔들림 없게"). */
+.scr-rank-month-btn-hidden { visibility: hidden; pointer-events: none; }
 /* 타이틀(.scr-v2-toolbar-title)이 자기 글자 처짐 보정으로 -6px 떠 있는 만큼, 같은 줄에
    놓이는 액션 버튼도 그대로 두면 타이틀보다 상대적으로 아래로 처져 보인다 — 같은 양만큼
    맞춰 올린다. */
@@ -3425,7 +3441,12 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    카드를 정사각형(aspect-ratio 1:1)으로 고정해뒀던 예전 방식은 내용(배치 등록 로그 등)이
    늘어나면 카드 자체가 늘 스크롤됐다(실제로 지적받은 문제) — 내용 높이에 맞춰 자라도록
    비율 고정을 없앤다(기본 .scr-modal의 max-height:88vh가 상한 역할을 그대로 한다). */
-.scr-admin-panel-modal {
+/* 선택자를 .scr-modal.scr-admin-panel-modal(특이도 0,2,0)로 둔다 — 라이트 테마의
+   `.scr-light-theme .scr-modal { border:none }`(같은 0,2,0)와 겹치는데, 이 규칙이 뒤에
+   와서 소스 순서로 이긴다. 예전엔 `.scr-admin-panel-modal`(0,1,0)이라 라이트 테마에서
+   쇠테두리·홈 그림자가 통째로 border:none/기본 그림자에 덮여 사라졌다(실제로 지적받은
+   문제 — "모바일(=라이트 테마)에서 쇠테두리가 안 나옴"). */
+.scr-modal.scr-admin-panel-modal {
   position: relative;
   /* 기본 모달의 반사광 느낌 대신, 숨겨진 기능다운 낡은 금속 액자 느낌을 준다 —
      border-image로 비스듬한 명암 그라데이션을 둘러 우툴두툴한 금속처럼 보이게 하고,
@@ -3437,6 +3458,11 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   border: 7px solid; border-image: linear-gradient(135deg, #c9c2b3 0%, #6b665c 22%, #3a3730 45%, #8f8878 60%, #2c2a25 78%, #b3ac9c 100%) 1;
   border-radius: 0;
   box-shadow: inset 0 0 0 2px rgba(0,0,0,0.55), inset 0 2px 4px rgba(0,0,0,0.5), 0 8px 24px rgba(0,0,0,0.35);
+  /* 배경은 이미 불투명한 금속 텍스처 이미지(::before, cover)가 덮으므로 기본 모달의
+     backdrop-filter는 눈에 보이지도 않는데, iOS 사파리에선 backdrop-filter와 border-image를
+     한 요소에 같이 주면 border-image가 아예 안 그려지는 버그가 있다 — 여기선 불필요하니 꺼서
+     쇠테두리가 모바일에서도 확실히 나오게 한다. */
+  backdrop-filter: none; -webkit-backdrop-filter: none;
   /* 숨겨진 기능을 찾아 연 순간이니 살짝 과장된 "두둥" 등장감을 준다(요청: "영혼이
      팍 퍼지는" 느낌) — 작게 시작해 정상 크기보다 살짝 넘치게 커졌다가 제자리로
      안착하는 바운스. */
