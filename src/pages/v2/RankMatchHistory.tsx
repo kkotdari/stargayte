@@ -38,8 +38,8 @@ function teamStrength(slots: MatchSlot[], strengthByMember: Map<string, number>)
   return s;
 }
 
-// 팀 강함 비율 f = (진 팀 강함 합) ÷ (이긴 팀 강함 합) — 서버 산식과 같다. 개인전
-// (teamMatch=false)이나 비김/미실시는 1(비율 없음). 이긴 팀 강함이 0이면(=랭킹 대상이 없으면) 1.
+// 팀 강함 비율 f = (진 팀 강함 합) ÷ (양 팀 강함 합) — 서버 산식과 같다(0~1). 개인전
+// (teamMatch=false)이나 비김/미실시는 1(비율 없음). 양 팀 강함이 0이면(=랭킹 대상이 없으면) 1.
 function teamFactor(
   row: HistoryRow, strengthByMember: Map<string, number>, teamMatch: boolean,
 ): number {
@@ -49,8 +49,9 @@ function teamFactor(
   const oppStr = teamStrength(row.team2, strengthByMember);
   const winnerStr = row.result === "team1" ? ourStr : oppStr;
   const loserStr = row.result === "team1" ? oppStr : ourStr;
-  if (winnerStr <= 0) return 1;
-  return loserStr / winnerStr;
+  const totalStr = winnerStr + loserStr;
+  if (totalStr <= 0) return 1;
+  return loserStr / totalStr;
 }
 
 // 이 경기 하나에서 주인공(team1)이 얻은 점수 — 서버의 총점 산식을 경기 단위로 쪼갠 것과
