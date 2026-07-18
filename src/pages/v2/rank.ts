@@ -30,6 +30,8 @@ export interface LatestMatch {
 export interface RankRow {
   member: Member;
   stats: MemberStats;
+  // 랭킹 2순위 기준값(우세 +1 / 동등 0 / 열세 -1의 사람단위 합) — 카드에 큼직하게 보여준다.
+  personScore: number;
   // 공동순위(완전 동률)면 여러 행이 같은 값을 갖고, 다음 순위는 그만큼 건너뛴다(1,1,3).
   rank: number;
   // 전월 대비 순위 변동 — 양수=순위 상승(숫자가 작아짐), 음수=하락, 0=변동 없음, null=지난달
@@ -116,10 +118,10 @@ function soloRankByMember(entries: MemberStatsEntry[], memberById: Map<string, M
 }
 
 // 일대일 랭킹 — 집계(전적/승률/최다종족)뿐 아니라 정렬까지 서버(GET /matches/stats)가 끝내서
-// sortOrder로 내려준다. 순서는 승자승(맞대결) → 공통상대(간접비교) → 승점(승-패) 순이고,
-// 승률은 정렬 기준이 아니다(화면에 숫자로만 보여준다). 맞대결·공통상대 비교는 "누구와 누구를
-// 견주느냐"에 따라 값이 달라지는 쌍 단위 계산이라, 회원별 숫자 하나로 받아서 클라이언트가
-// 다시 정렬할 수가 없기 때문이다. 여기서는 순위 숫자만 붙인다.
+// sortOrder로 내려준다. 순서는 승자승(맞대결) → 사람단위 점수(우세−열세) 순이고, 승률·경기
+// 승점은 정렬 기준이 아니다(화면엔 사람단위 점수를 숫자로 보여준다). 맞대결 비교는 "누구와
+// 누구를 견주느냐"에 따라 값이 달라지는 쌍 단위 계산이라, 회원별 숫자 하나로 받아서
+// 클라이언트가 다시 정렬할 수가 없기 때문이다. 여기서는 순위 숫자만 붙인다.
 //
 // 순위 대상이 아닌(한 판도 안 뛴, 그래서 sortOrder가 null인) 회원과, 탈퇴 등으로 로컬 회원
 // 목록에 이제 없는 회원은 빠진다. month는 "YYYY-MM"(기본 이번 달) — 전월도 함께 받아
@@ -153,6 +155,7 @@ export async function computeRankRows(
     return {
       member: memberById.get(entry.memberId)!,
       stats: entry.overall,
+      personScore: entry.personScore ?? 0,
       rank: ranks[i],
       rankDelta: prevRank === undefined ? null : prevRank - ranks[i],
       playedRace: entry.mostPlayedRace,
