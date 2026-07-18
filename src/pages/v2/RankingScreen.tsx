@@ -135,27 +135,33 @@ export default function RankingScreenV2() {
     return ids;
   }, [members, searchTerms]);
 
-  // 상세 모달이 경기당 획득 점수를 재구성하는 데 쓸 상대 강함(1+우세수)·약함(1+열세수) 맵 —
-  // 지금 목록(같은 기간·모드)의 회원별 우열 인원에서 그대로 뽑는다. 서버 점수 산식과 같은
-  // 값이라, 상세에서 경기별로 더하면 카드 총점과 맞아떨어진다.
+  // 상세 모달이 경기당 획득 점수를 재구성하는 데 쓸 상대 강함/약함 맵 — 한 지표(순 우열 =
+  // 우세수−열세수)의 양면: 강함 = 1 + max(0, 순우열), 약함 = 1 + max(0, −순우열). 서버 점수
+  // 산식과 같은 값이라, 상세에서 경기별로 더하면 카드 총점과 맞아떨어진다.
   const strengthByMember = useMemo(
-    () => new Map(rows.map((r) => [r.member.id, 1 + r.superiorCount])), [rows],
+    () => new Map(rows.map((r) => [r.member.id, 1 + Math.max(0, r.superiorCount - r.inferiorCount)])), [rows],
   );
   const weaknessByMember = useMemo(
-    () => new Map(rows.map((r) => [r.member.id, 1 + r.inferiorCount])), [rows],
+    () => new Map(rows.map((r) => [r.member.id, 1 + Math.max(0, r.inferiorCount - r.superiorCount)])), [rows],
   );
   const period = useMemo(() => periodAnchorToRange(unit, anchor), [unit, anchor]);
-  // 가중치 표에 실을 유저 순서 — 순위에 든(한 판이라도 뛴) 회원을 '가중치 계산 전'의 우위
-  // (우세수−열세수)가 높은 순으로 세운다(요청). 점수(이김/짐)는 각자의 들쭉날쭉한 실제
-  // 전적이 아니라 이 우위 순서의 '자리'로 매긴다 — 그래야 위에서 아래로 이겼을 때 점수는
-  // 쭉 줄고 졌을 때 점수는 쭉 커진다(요청: "순서대로 줄고 늘어야 하는데 오락가락"). 실제
-  // 전적으로 매기면 우세수/열세수가 서로 딱 반비례하지 않아(비이행적 전적) 중간중간 뒤집힌다.
-  const weightMembers = useMemo(
+  // 가중치 표 — 순위에 든(한 판이라도 뛴) 회원을 순 우열(우세수−열세수)이 높은 순으로 세우고,
+  // 각자의 한 지표(순 우열)에서 강함·약함을 뽑아 '이 사람을 이기면/지면 몇 점'을 매긴다.
+  //   강함 = 1 + max(0, 순우열)  → 이겼을 때 = +강함
+  //   약함 = 1 + max(0, −순우열) → 졌을 때 = −약함  (순 승자에겐 −1 최소)
+  const weightRows = useMemo(
     () => rows
       .filter((r) => r.stats.plays > 0)
-      .map((r) => ({ member: r.member, superiority: r.superiorCount - r.inferiorCount }))
-      .sort((a, b) => b.superiority - a.superiority || a.member.nickname.localeCompare(b.member.nickname))
-      .map((r) => r.member),
+      .map((r) => {
+        const net = r.superiorCount - r.inferiorCount;
+        return {
+          member: r.member,
+          net,
+          win: 1 + Math.max(0, net),
+          loss: -(1 + Math.max(0, -net)),
+        };
+      })
+      .sort((a, b) => b.net - a.net || a.member.nickname.localeCompare(b.member.nickname)),
     [rows],
   );
 
@@ -279,7 +285,7 @@ export default function RankingScreenV2() {
 
       {weightOpen && (
         <RankWeightModal
-          members={weightMembers}
+          rows={weightRows}
           modeLabel={isTeam ? "팀전" : "개인전"}
           onClose={() => setWeightOpen(false)}
         />
