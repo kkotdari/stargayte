@@ -39,8 +39,7 @@ export default function Header({
   const booting = useAppStore((s) => s.booting);
   const registerSecretTap = useAppStore((s) => s.registerSecretTap);
   const appVersion = useAppStore((s) => s.appVersion);
-  const previewVersion = useAppStore((s) => s.previewVersion);
-  const effectiveVersionNumber = previewVersion ?? versionNumber(appVersion);
+  const effectiveVersionNumber = versionNumber(appVersion);
   const isAdmin = isAdminRole(user.roles);
   const scrollHidden = useHideOnScrollDown(screen);
   // 키보드가 뜨면 탭바를 자동으로 숨긴다(요청: "키보드 활성화시 자동으로 탭바 숨기기") —

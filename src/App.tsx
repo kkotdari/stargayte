@@ -46,11 +46,9 @@ export default function App() {
   const clearJustLoggedIn = useAppStore((s) => s.clearJustLoggedIn);
   const imageSettings = useAppStore((s) => s.imageSettings);
   const appVersion = useAppStore((s) => s.appVersion);
-  const previewVersion = useAppStore((s) => s.previewVersion);
-  const setPreviewVersion = useAppStore((s) => s.setPreviewVersion);
   const adminPanelOpen = useAppStore((s) => s.adminPanelOpen);
   const setAdminPanelOpen = useAppStore((s) => s.setAdminPanelOpen);
-  const effectiveVersionNumber = previewVersion ?? versionNumber(appVersion);
+  const effectiveVersionNumber = versionNumber(appVersion);
   const isChallengeEnabled = effectiveVersionNumber >= CHALLENGE_MIN_VERSION;
   const bootstrap = useAppStore((s) => s.bootstrap);
   const refreshAll = useAppStore((s) => s.refreshAll);
@@ -220,13 +218,6 @@ export default function App() {
         )}
 
         {!booting && <ScrollTopButton />}
-
-        {previewVersion !== null && previewVersion !== versionNumber(appVersion) && (
-          <div className="scr-preview-badge">
-            <span>버전 {previewVersion} 미리보기 중</span>
-            <button type="button" onClick={() => setPreviewVersion(null)}>나가기</button>
-          </div>
-        )}
       </div>
     </ImageSettingContext.Provider>
   );
