@@ -2904,11 +2904,25 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 }
 .scr-match-list-panel-v2 .scr-match-row-result-only .scr-team-block { flex: 1; min-width: 0; }
 .scr-match-list-panel-v2 .scr-match-row-result-only .scr-team-outcome-result { flex-shrink: 0; }
-/* 오른쪽 끝 결과 묶음 — 승/무/패 아래에 그 경기에서 얻은 점수를 작게 병기한다(요청: "승무패
-   옆에 각 경기당 획득 점수 표시"). 세로로 쌓아 승패 글자와 중심을 맞춘다. */
+/* 오른쪽 끝 결과 묶음 — 개인전 이력(opponentOnly)은 "에 · 승/패 · +점수"를 세로로 쌓지
+   않고 한 줄에 가로로 나란히 둔다(요청: "에 승 +1이 세로가 아니라 가로로 별도 컬럼으로
+   배치"). 각 조각을 고정폭 칸으로 둬서 카드마다 연결어/승패/점수 세로줄이 일치한다. */
 .scr-match-list-panel-v2 .scr-match-row-result-only .scr-match-result-tail {
-  flex-shrink: 0; display: inline-flex; flex-direction: column; align-items: center; gap: 1px;
-  min-width: 34px;
+  flex-shrink: 0; display: inline-flex; align-items: center;
+}
+.scr-match-list-panel-v2 .scr-match-row-result-only:not(.scr-match-row-team-tail) .scr-match-result-tail {
+  flex-direction: row; gap: 8px;
+}
+/* 개인전: 승/패 글자 칸과 점수 칸을 고정폭·정렬 고정으로 둬 카드 간 세로줄이 맞는다. */
+.scr-match-list-panel-v2 .scr-match-row-result-only:not(.scr-match-row-team-tail) .scr-match-result-tail .scr-team-outcome-result {
+  min-width: 18px; text-align: center;
+}
+.scr-match-list-panel-v2 .scr-match-row-result-only:not(.scr-match-row-team-tail) .scr-match-result-points {
+  min-width: 28px; text-align: right;
+}
+/* 팀전 이력의 결과 묶음(팀에 · 승/패)은 그대로 세로로 쌓는다. */
+.scr-match-list-panel-v2 .scr-match-row-team-tail .scr-match-result-tail {
+  flex-direction: column; align-items: center; gap: 1px; min-width: 34px;
 }
 .scr-match-result-points { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
 /* 팀전 이력 — 우리 로스터 VS 상대 로스터를 왼쪽에 붙이고, 오른쪽에 [승/패] → [개별 점수
@@ -3954,7 +3968,15 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    (아래 미디어쿼리)이 탭바 몫 공간을 대신 예약한다. */
 .scr-mobile-tabbar {
   display: none;
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 55;
+  position: fixed; left: 0; right: 0; z-index: 55;
+  /* iOS 사파리의 하단 주소창(모바일 Safari 기본값)이 탭바를 가려 절반쯤 잘려 보이던
+     문제(신고: "탭바가 저렇게 잘리고") — body가 position:fixed라 문서 스크롤이 없어서
+     사파리가 주소창을 접어주지 않으므로(신고: "스크롤하면 되야했던 주소표시줄 축소가
+     안돼"), 주소창은 사실상 항상 펼쳐진 상태로 남는다. 고정요소의 bottom:0은 큰
+     뷰포트(lvh, 주소창 접힌 크기) 기준이라 그 펼쳐진 주소창 뒤로 깔린다. 큰-작은
+     뷰포트 차(100lvh - 100svh = 펼쳐진 주소창 높이)만큼 위로 올려 실제로 보이는
+     영역 바닥에 딱 맞춘다. PWA(standalone)·데스크톱은 lvh==svh라 0이라 영향 없다. */
+  bottom: calc(100lvh - 100svh);
   /* 높이에 홈 인디케이터 안전영역(env safe-area-inset-bottom)을 "더해" 준다 — 고정
      --mobile-footer-h(56px)만 쓰면 box-sizing:border-box라 아래 패딩에 든 안전영역만큼
      콘텐츠 영역이 줄어, 아이폰 PWA(standalone, 안전영역 ~34px)에서 탭 내용이 짓눌려
@@ -4191,7 +4213,9 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
    몫(50px + 여유 8px)으로 줄였다. */
 @media (max-width: 640px) {
   .scr-main {
-    padding-bottom: calc(10px + var(--mobile-footer-h) + 58px + env(safe-area-inset-bottom, 0px));
+    /* 탭바를 사파리 주소창 위로 (100lvh - 100svh)만큼 올렸으므로, 마지막 줄이 그
+       올라간 탭바에 가리지 않게 하단 여백에도 같은 값을 더한다. */
+    padding-bottom: calc(10px + var(--mobile-footer-h) + 58px + (100lvh - 100svh) + env(safe-area-inset-bottom, 0px));
   }
 }
 
