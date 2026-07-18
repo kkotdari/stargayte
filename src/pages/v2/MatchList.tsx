@@ -250,16 +250,21 @@ export default function MatchList({
                 {/* 머리줄 — N경기는 빼고(요청) 경기번호 · 맵 · 등록자, 오른쪽에 액션. */}
                 <div className="scr-match-trow-head">
                   <span className="scr-match-id">#{highlightMatchNo(r.raw.matchNo, matchNoQuery ?? "")}</span>
-                  {r.raw.mapName && <span className="scr-match-trow-map">{r.raw.mapName}</span>}
-                  {r.raw.durationSeconds != null && (
-                    <span className="scr-match-trow-dur">{Math.round(r.raw.durationSeconds / 60)}분</span>
-                  )}
                   {r.raw.createdBy && <span className="scr-match-trow-by">등록: {r.raw.createdBy.nickname}</span>}
                   <MatchActionsMenu
                     match={r.raw} canDelete={canDelete}
                     onMemo={onMemo} onDelete={setDeleteTarget}
                   />
                 </div>
+                {/* 맵 이름은 길어서 머리줄이 아니라 그 아래 별도 줄에(요청). 플레이시간도 그 옆에. */}
+                {(r.raw.mapName || r.raw.durationSeconds != null) && (
+                  <div className="scr-match-trow-map-line">
+                    {r.raw.mapName && <span className="scr-match-trow-map">{r.raw.mapName}</span>}
+                    {r.raw.durationSeconds != null && (
+                      <span className="scr-match-trow-dur">{Math.round(r.raw.durationSeconds / 60)}분</span>
+                    )}
+                  </div>
+                )}
                 {/* 팀 2열 + 그 아래 각 팀 승/패(요청). 헤더·컬럼 구분선 없이 로우만. */}
                 <div className="scr-match-trow-grid">
                   <div className="scr-match-trow-team">

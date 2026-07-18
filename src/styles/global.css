@@ -2689,7 +2689,9 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-light-theme .scr-match-list-panel-v2 .scr-match-trow + .scr-match-trow::before {
   background: rgba(var(--divider-tint), 0.35);
 }
-.scr-match-trow-head { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; font-size: 12px; min-width: 0; }
+.scr-match-trow-head { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; font-size: 12px; min-width: 0; }
+/* 맵 이름 줄 — 머리줄 아래 별도 줄(요청: 맵이름이 길어서). 플레이시간을 그 옆에 나란히. */
+.scr-match-trow-map-line { display: flex; align-items: baseline; gap: 8px; margin-bottom: 9px; font-size: 12px; min-width: 0; }
 .scr-match-trow-map { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 /* 맵 이름 옆 플레이시간 — 라벨 없이 "23분"(요청). 흐린 색으로 살짝 뒤에. */
 .scr-match-trow-dur { color: var(--dim); flex-shrink: 0; font-variant-numeric: tabular-nums; }
@@ -2698,7 +2700,9 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-match-trow-head .scr-match-card-actions { flex-shrink: 0; }
 /* 세로점세개(⋮) 메뉴 트리거 — 등록자 오른쪽 끝에. 아이콘 버튼 톤은 기존 메모 버튼과 공유. */
 .scr-match-menu { display: inline-flex; flex-shrink: 0; }
-.scr-match-menu-drop { min-width: 128px; }
+/* 위치가 잡히기 전(attachPopover는 비동기)엔 흐름 밖(fixed)에서 숨겨 둔다 — 확정된 뒤
+   attachPopover가 visibility:visible로 드러내, 엉뚱한 위치에서 튀어 보이지 않게 한다. */
+.scr-match-menu-drop { min-width: 128px; position: fixed; visibility: hidden; }
 /* 삭제 항목만 위험 톤 — 기본 붉은 글자, hover 시 옅은 붉은 배경(공용 드롭다운 hover 흰배경 대신). */
 .scr-match-menu-drop .scr-match-menu-opt-danger { color: var(--loss); }
 .scr-match-menu-drop .scr-match-menu-opt-danger:hover { color: var(--loss); background: rgba(220, 70, 70, 0.14); }
