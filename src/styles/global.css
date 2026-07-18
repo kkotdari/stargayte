@@ -1094,9 +1094,13 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 }
 .scr-light-theme .scr-weight-table td { border-bottom-color: rgba(0, 0, 0, 0.06); }
 .scr-weight-table tr:last-child td { border-bottom: none; }
-.scr-weight-col-rank { text-align: left; color: var(--muted); font-weight: 600; }
-.scr-weight-win { color: var(--win); font-weight: 700; }
-.scr-weight-loss { color: var(--loss); font-weight: 700; }
+/* 유저 칸 — 순위 숫자 + 프사 + 닉네임을 왼쪽으로 나란히. */
+.scr-weight-col-user { text-align: left; }
+.scr-weight-user { display: inline-flex; align-items: center; gap: 7px; min-width: 0; }
+.scr-weight-rank { font-size: 11.5px; color: var(--muted); font-weight: 700; min-width: 14px; text-align: right; font-variant-numeric: tabular-nums; }
+.scr-weight-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.scr-weight-win { color: var(--win); font-weight: 700; white-space: nowrap; }
+.scr-weight-loss { color: var(--loss); font-weight: 700; white-space: nowrap; }
 
 /* ===== search: filters ===== */
 /* 주간랭킹 목록 위 — 지금 보여주고 있는 기간("기간 : 날짜 ~ 날짜", 데이터 폰트로 표시).

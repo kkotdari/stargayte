@@ -145,8 +145,19 @@ export default function RankingScreenV2() {
     () => new Map(rows.map((r) => [r.member.id, 1 + r.inferiorCount])), [rows],
   );
   const period = useMemo(() => periodAnchorToRange(unit, anchor), [unit, anchor]);
-  // 가중치 표의 행 수 = 이 기간·모드에서 한 판이라도 뛴 참가자 수(순위에 실제로 든 사람).
-  const participantCount = useMemo(() => rows.filter((r) => r.stats.plays > 0).length, [rows]);
+  // 가중치 표에 실을 실제 유저별 점수 — 순위에 든(한 판이라도 뛴) 회원을 순위 순서 그대로,
+  // 각자의 실제 강함(1+우세수)·약함(1+열세수)으로 "이 사람을 이기면/지면 몇 점"을 계산한다.
+  const weightRows = useMemo(
+    () => rows
+      .filter((r) => r.stats.plays > 0)
+      .map((r) => ({
+        rank: r.rank,
+        member: r.member,
+        win: 2 * (1 + r.superiorCount),
+        loss: -(1 + r.inferiorCount),
+      })),
+    [rows],
+  );
 
   const closeTrend = () => { setTrendMember(null); setTrendPoints(null); };
   const openTrend = (row: RankRowData) => {
@@ -268,7 +279,7 @@ export default function RankingScreenV2() {
 
       {weightOpen && (
         <RankWeightModal
-          count={participantCount}
+          rows={weightRows}
           modeLabel={isTeam ? "팀전" : "개인전"}
           onClose={() => setWeightOpen(false)}
         />
