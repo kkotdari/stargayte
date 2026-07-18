@@ -4,7 +4,7 @@ import { X } from "lucide-react";
 import { Spinner } from "../components/common/Feedback";
 import ConfirmDialog from "../components/common/ConfirmDialog";
 import ReplayBatchButton from "../components/common/ReplayBatchButton";
-import AppUpdateNoticeModal from "./AppUpdateNoticeModal";
+import VersionNoticeSettingsModal from "./VersionNoticeSettingsModal";
 import { api } from "../api/client";
 import { useAppStore } from "../store/appStore";
 import { useLockBodyScroll } from "../utils/bodyScrollLock";
@@ -40,9 +40,8 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
   const [checking, setChecking] = useState(false);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
-  // 실제 버전을 바꾸지 않고, 첫 접속 업데이트 안내 모달(AppUpdateNoticeModal)의 내용/모양만
-  // 미리 확인해보는 용도 — 배포 전에 문구를 눈으로 검토할 수 있게 한다.
-  const [previewingUpdateNotice, setPreviewingUpdateNotice] = useState(false);
+  // "버전 안내 설정" 모달 — 버전 안내 표시 여부(전역 토글)와 버전별 안내 내용 편집을 담는다.
+  const [noticeSettingsOpen, setNoticeSettingsOpen] = useState(false);
   const [downloading, setDownloading] = useState(false);
 
   // 등록된 리플레이(.rep) 전체를 날짜별 폴더 zip으로 받는다 — 인증 헤더가 필요해 blob으로
@@ -189,14 +188,17 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
                   >
                     미리보기
                   </button>
-                  <button
-                    type="button" className="scr-admin-panel-phys-btn"
-                    onClick={() => setPreviewingUpdateNotice(true)}
-                  >
-                    안내미리보기
-                  </button>
-                  {/* 배포는 운영자만 — 같은 그리드 안에 이어 붙이면 2열 구성이 유지된 채
-                      다음 줄로 넘어간다. */}
+                  {/* 버전 안내 설정/배포는 운영자만 — 안내 내용 편집·표시 토글은 서버에서도
+                      운영자 전용이라, 회원에겐 버튼 자체를 노출하지 않는다. 같은 그리드 안에
+                      이어 붙이면 2열 구성이 유지된 채 다음 줄로 넘어간다. */}
+                  {isAdmin && (
+                    <button
+                      type="button" className="scr-admin-panel-phys-btn"
+                      onClick={() => setNoticeSettingsOpen(true)}
+                    >
+                      버전 안내 설정
+                    </button>
+                  )}
                   {isAdmin && (
                     <button
                       type="button" className="scr-admin-panel-phys-btn scr-admin-panel-phys-btn-danger"
@@ -265,8 +267,8 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
         />
       )}
 
-      {previewingUpdateNotice && (
-        <AppUpdateNoticeModal onClose={() => setPreviewingUpdateNotice(false)} />
+      {noticeSettingsOpen && (
+        <VersionNoticeSettingsModal onClose={() => setNoticeSettingsOpen(false)} />
       )}
 
       {versionPickerMode && (

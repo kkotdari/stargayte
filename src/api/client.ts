@@ -519,6 +519,22 @@ export const api = {
     });
   },
 
+  // 운영자 전용: "버전 안내 설정" — 버전 안내(업데이트 안내 모달)를 띄울지 전역 토글.
+  async setVersionNoticeEnabled(enabled: boolean): Promise<{ enabled: boolean }> {
+    return request<{ enabled: boolean }>("/api/app-versions/notice-settings", {
+      method: "PUT",
+      body: JSON.stringify({ enabled }),
+    });
+  },
+
+  // 운영자 전용: "버전 안내 설정" — 특정 버전의 안내 내용(한 줄에 한 항목) 편집.
+  async setVersionNotes(number: AppVersion, notes: string): Promise<AppVersionInfo> {
+    return request<AppVersionInfo>(`/api/app-versions/${encodeURIComponent(number)}/notes`, {
+      method: "PUT",
+      body: JSON.stringify({ notes }),
+    });
+  },
+
   // 숨겨진 제어판 잠금 비밀번호 확인 — 맞는지 여부만 돌려받는다(값 자체는 응답에 없음).
   async verifyAdminPanelPassword(password: string): Promise<boolean> {
     const res = await request<{ ok: boolean }>("/api/env-vars/admin-panel/verify", {
