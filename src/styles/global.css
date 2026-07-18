@@ -2146,7 +2146,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    폭)이 한 줄에 나란히 있고(요청: "둘다 위"), 모바일에서만 세로로 쌓여 필터가 위·검색이
    아래가 된다(아래 미디어쿼리, 요청: "모바일에서 필터아래검색"). 예전의 하단 플로팅
    알약은 제거됐고, 어느 폭에서든 문서 흐름 안에 그대로 있다. */
-.scr-filter-inline-stack { display: flex; flex-direction: row; align-items: stretch; gap: 8px; width: 100%; }
+.scr-filter-inline-stack { display: flex; flex-direction: row; align-items: center; gap: 8px; width: 100%; }
 .scr-filter-panel { flex: 0 0 auto; max-width: 100%; }
 .scr-search-filter-float { flex: 1 1 auto; min-width: 0; }
 
@@ -2168,19 +2168,21 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    어두운 고정 톤 대신 테마를 따르게 한다. 알약탭 트랙/비활성 글자, 월선택 입력, 라벨을
    모두 랭킹 년월 토글(.scr-rank-unit-*)과 같은 톤으로 맞춘다. 활성 알약(흰/검 인디케이터)
    위 글자색은 이미 테마별로 맞춰져 있어 그대로 둔다. */
-.scr-filter-panel .scr-pill-tabs { background: rgba(255,255,255,0.08); }
+.scr-filter-panel .scr-pill-tabs { background: rgba(255,255,255,0.08); height: 32px; }
 .scr-light-theme .scr-filter-panel .scr-pill-tabs { background: rgba(0,0,0,0.06); }
 /* 비활성 알약 글자만 옅게 — :not(active)로 특정해야 활성 알약의 글자색(흰/검 인디케이터
-   위 대비색, 전역 규칙)이 이 옅은 톤에 덮이지 않는다. */
+   위 대비색, 전역 규칙)이 이 옅은 톤에 덮이지 않는다. 폰트도 작게(요청). */
+.scr-filter-panel .scr-pill-tab-btn { font-size: 12.5px; }
 .scr-filter-panel .scr-pill-tab-btn:not(.scr-pill-tab-btn-active) { color: var(--muted); }
 .scr-filter-panel .scr-pill-tab-btn:hover:not(.scr-pill-tab-btn-active) { color: var(--text); }
 .scr-filter-panel .scr-filter-month-input {
   background: rgba(255,255,255,0.08); color: var(--text); color-scheme: dark;
+  height: 32px; font-size: 12.5px; min-width: 104px;
 }
 .scr-light-theme .scr-filter-panel .scr-filter-month-input {
   background: rgba(0,0,0,0.06); color: var(--text); color-scheme: light;
 }
-.scr-filter-panel .scr-filter-sort-btn { color: var(--muted); }
+.scr-filter-panel .scr-filter-sort-btn { color: var(--muted); width: 32px; height: 32px; }
 /* 정렬 토글이 배경 동그라미 없이 아이콘만 남으면서(위 .scr-filter-sort-btn 참고) 그
    앞과의 16px 갭이 유독 헐렁해 보였다(요청: "정렬 필터 토글은 왼쪽 갭 줄이기") — 정렬
    토글을 담은 항목만 콕 집어 왼쪽으로 당긴다(다른 화면의 마지막 필터 항목까지 같이
@@ -2207,7 +2209,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
      미디어쿼리에서 원래 크기(8px)로 다시 줄인다. 필터창이 다크에서도 라이트와 같은
      밝은 배경을 쓰게 되면서(위 .scr-filter-panel 주석 참고) 이 글자색도 테마 불문
      같은 어두운 톤으로 통일한다. */
-  font-size: 13px; font-weight: 600; letter-spacing: 0.02em; line-height: 1;
+  font-size: 12px; font-weight: 600; letter-spacing: 0.02em; line-height: 1;
   /* 패널이 없어져 화면 배경(테마색) 위에 놓이므로 테마를 따르는 옅은 톤으로. */
   color: var(--muted); white-space: nowrap;
 }
@@ -2292,26 +2294,21 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    쓴다(요청: "둥근 알약 형태는 너무 유행이라 지겨워서 각진 형태로"). 테두리 대신
    은은한 그림자로만 살짝 뜬 느낌을 준다. */
 .scr-search-filter-float .scr-list-search-input {
-  background: #ffffff; border: none; border-radius: 14px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.26);
-  padding-left: 18px;
-  /* 필터창(.scr-filter-panel)과 똑같은 고정 높이 — 위 주석 참고. 안의
-     .scr-search-chip-box(같은 엘리먼트)가 이미 display:flex; align-items:center라
-     내용은 이 고정 높이 안에서 알아서 세로 가운데 정렬된다. */
-  height: 50px; box-sizing: border-box;
+  /* 검색창도 필터와 같은 톤·크기로 — 흰 알약/그림자 없이 화면 배경 위에 얹은 옅은
+     반투명 입력, 높이도 필터 알약과 맞춰 작게(요청: "필터 검색 둘다 그렇게 작게"). */
+  background: rgba(255,255,255,0.08); border: none; border-radius: 10px;
+  box-shadow: none; padding-left: 12px;
+  height: 32px; min-height: 32px; box-sizing: border-box;
 }
-.scr-search-filter-float .scr-list-search-input .scr-search-chip-input,
-.scr-search-filter-float .scr-list-search-input .scr-search-chip-input::placeholder { color: #10151a; }
-.scr-search-filter-float .scr-list-search-input .scr-search-chip-input::placeholder { color: rgba(16,21,26,0.45); }
-/* 위 그림자만으로 뜬 느낌을 주는 방식은 다크 테마(밝은 검색창 vs 어두운 배경)에서만
-   또렷하고, 라이트 테마는 배경 자체가 밝아 옅은 검은 그림자가 거의 안 보여 흰 검색창이
-   배경과 거의 구분이 안 됐다(실제로 지적받은 문제) — 라이트 테마에서만 테두리를 더하고,
-   그림자도 가까운 거리의 진한 층을 하나 더 얹어 배경 밝기와 무관하게 경계가 또렷하게
-   보이도록 입체감을 보강한다. */
 .scr-light-theme .scr-search-filter-float .scr-list-search-input {
-  border: 1px solid rgba(16,21,26,0.14);
-  box-shadow: 0 1px 2px rgba(16,21,26,0.08), 0 8px 20px rgba(16,21,26,0.16);
+  background: rgba(0,0,0,0.06); border: none; box-shadow: none;
 }
+/* 배경이 테마색이 됐으니 글자/placeholder도 테마를 따른다(예전 흰 배경 기준 어두운 고정 톤 대체). */
+.scr-search-filter-float .scr-list-search-input .scr-search-chip-input { color: var(--text); font-size: 13.5px; }
+.scr-search-filter-float .scr-list-search-input .scr-search-chip-input::placeholder { color: var(--muted); font-size: 13.5px; }
+/* 컴팩트해진 높이에 맞춰 칩 박스 세로 패딩과 칩 크기를 줄인다. */
+.scr-search-filter-float .scr-search-chip-box { padding-top: 4px; padding-bottom: 4px; }
+.scr-search-filter-float .scr-search-chip { font-size: 12px; padding: 4px 4px 4px 8px; }
 @media (max-width: 640px) {
   /* 모바일은 필터(위) + 검색(아래)으로 세로로 쌓는다(요청: "모바일에서 필터아래검색") —
      PC는 한 줄 나란히. 둘 다 화면 폭 가득, 라벨 폰트만 좁은 폭에 맞춰 조금 줄인다. */
