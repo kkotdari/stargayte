@@ -17,6 +17,9 @@ interface RankMatchHistoryProps {
   // 재구성한다(이김 +2·강함, 비김 +1·강함, 짐 -1·약함, 상대팀 전원 각각 합산).
   strengthByMember: Map<string, number>;
   weaknessByMember: Map<string, number>;
+  // 팀전 이력이면 상대만이 아니라 "우리팀 대 상대팀"을 함께 보여준다(요청) — 개인전이면
+  // 홈팀 없이 "VS 상대 + 승패"만.
+  bothTeams?: boolean;
 }
 
 // 이 경기 하나에서 주인공(team1)이 얻은 점수 — 서버의 총점 산식을 경기 단위로 쪼갠 것과
@@ -92,7 +95,7 @@ function groupByDate(rows: HistoryRow[]): DateGroup[] {
 // 보여준다(요청: "아예 홈팀을 빼고 vs 팀구성 승패 ... 진짜 결과만"). 렌더 규칙이 목록과
 // 충분히 달라져 별도 파일로 분리했다(요청: "경기이력쪽 목록 렌더링은 별도 파일로").
 export default function RankMatchHistory({
-  matches, members, memberOf, loading, strengthByMember, weaknessByMember,
+  matches, members, memberOf, loading, strengthByMember, weaknessByMember, bothTeams = false,
 }: RankMatchHistoryProps) {
   const protagonistIds = new Set(members.map((m) => m.id));
   const groups = groupByDate(toHistoryRows(matches, protagonistIds));
@@ -107,15 +110,28 @@ export default function RankMatchHistory({
         {groups.map((g) => (
           <div key={g.date} className="scr-match-date-group">
             <div className="scr-match-date-head scr-match-date-head-compact">{dateWithDow(g.date)}</div>
-            {g.items.map((r) => (
-              <div key={r.id} className="scr-match-card">
-                <MatchTeams
-                  team1={r.team1} team2={r.team2} memberOf={memberOf} result={r.result}
-                  disableProfileLink stackedOutcome compact opponentOnly
-                  outcomeNote={pointsLabel(gamePoints(r, strengthByMember, weaknessByMember))}
-                />
-              </div>
-            ))}
+            {g.items.map((r) => {
+              const pts = pointsLabel(gamePoints(r, strengthByMember, weaknessByMember));
+              // 팀전: 우리팀 대 상대팀을 그대로 보여주고(홈팀을 빼지 않는다), 그 경기에서 얻은
+              // 점수는 카드 아래 오른쪽에 병기한다. 개인전: 예전처럼 "VS 상대 + 승패"만.
+              return bothTeams ? (
+                <div key={r.id} className="scr-match-card scr-rank-history-team-card">
+                  <MatchTeams
+                    team1={r.team1} team2={r.team2} memberOf={memberOf} result={r.result}
+                    disableProfileLink stackedOutcome compact
+                  />
+                  {pts && <div className="scr-rank-history-points-line">{pts}</div>}
+                </div>
+              ) : (
+                <div key={r.id} className="scr-match-card">
+                  <MatchTeams
+                    team1={r.team1} team2={r.team2} memberOf={memberOf} result={r.result}
+                    disableProfileLink stackedOutcome compact opponentOnly
+                    outcomeNote={pts}
+                  />
+                </div>
+              );
+            })}
           </div>
         ))}
       </div>
