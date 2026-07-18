@@ -4,7 +4,9 @@ import { RACE_INFO } from "../../constants/races";
 import { cx } from "../../utils/format";
 import type { Race } from "../../types";
 
-const RACE_LETTER: Record<Race, string> = { "테란": "테", "프로토스": "프", "저그": "저", "랜덤": "랜" };
+const RACE_LETTER: Record<Race, string> = { "테란": "T", "프로토스": "P", "저그": "Z", "랜덤": "R" };
+// 한글 한 글자 변형 — 랭킹 상세 로스터처럼 요청받은 자리에서만 koreanLetter로 켠다.
+const RACE_LETTER_KO: Record<Race, string> = { "테란": "테", "프로토스": "프", "저그": "저", "랜덤": "랜" };
 
 interface RaceBadgeProps {
   race: Race | "";
@@ -20,11 +22,13 @@ interface RaceBadgeProps {
   // 경기결과 v2 전용 — 운영자가 설정한 아이콘 대신 항상 영문 첫 글자(T/P/Z/R)만, 배경
   // 없이 종족 고유색 글자로 보여준다.
   circleLetter?: boolean;
+  // circleLetter일 때 영문(T/P/Z) 대신 한글 한 글자(테/프/저/랜)로 — 랭킹 상세 로스터 전용(요청).
+  koreanLetter?: boolean;
   className?: string;
 }
 
 // 종족 표시 — 운영자가 설정한 아이콘(텍스트/이모지 또는 이미지)을 그대로 렌더링
-export default function RaceBadge({ race, size = 26, asText, plain, circleLetter, className }: RaceBadgeProps) {
+export default function RaceBadge({ race, size = 26, asText, plain, circleLetter, koreanLetter, className }: RaceBadgeProps) {
   const icons = useImageSettings();
   if (!race) return null;
   const color = plain ? "var(--text)" : RACE_INFO[race].color;
@@ -37,7 +41,7 @@ export default function RaceBadge({ race, size = 26, asText, plain, circleLetter
         style={{ fontSize: Math.max(11, size * 0.5), color: RACE_INFO[race].color }}
         title={race}
       >
-        {RACE_LETTER[race]}
+        {(koreanLetter ? RACE_LETTER_KO : RACE_LETTER)[race]}
       </span>
     );
   }

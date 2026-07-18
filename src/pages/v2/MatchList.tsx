@@ -1,13 +1,62 @@
 import { useState } from "react";
-import { Pencil, Download, Trash2 } from "lucide-react";
-import MatchTeams from "../../components/common/MatchTeams";
+import { Pencil, Download, Trash2, Monitor, UserPlus } from "lucide-react";
+import Avatar from "../../components/common/Avatar";
+import RaceBadge from "../../components/common/RaceBadge";
 import { Spinner } from "../../components/common/Feedback";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 import { api } from "../../api/client";
 import { useAppStore } from "../../store/appStore";
 import { isAdminRole } from "../../constants/roles";
+import { isComputerSlot, computerSlotLabel } from "../../constants/computerSlot";
+import { isUnregisteredSlot, unregisteredSlotLabel } from "../../constants/unregisteredSlot";
+import { cx } from "../../utils/format";
 import { dateWithDow } from "../../utils/date";
 import type { Match, Member, MatchSlot, MatchResult } from "../../types";
+
+type Outcome = "win" | "loss" | "draw" | "notHeld";
+function outcomeFor(side: "team1" | "team2", result: MatchResult): Outcome {
+  if (result === "draw") return "draw";
+  if (result === "not_held") return "notHeld";
+  return side === result ? "win" : "loss";
+}
+const OUTCOME_LABEL: Record<Outcome, string> = { win: "승", loss: "패", draw: "무", notHeld: "미실시" };
+const OUTCOME_CLASS: Record<Outcome, string> = { win: "scr-win", loss: "scr-loss", draw: "scr-draw", notHeld: "scr-draw" };
+
+// 테이블 카드 한 칸 — [프사][닉네임][종족 영문 한 글자 배지]. 컴퓨터/비회원은 아이콘 프사에
+// 원본 이름(없으면 순번 라벨)으로. 종족 배지는 요청대로 영문(circleLetter, 한글 아님).
+function PlayerCell({
+  slot, players, memberOf, highlighted, openProfile,
+}: {
+  slot: MatchSlot; players: MatchSlot[]; memberOf: (id: string) => Member | undefined;
+  highlighted: boolean; openProfile: (id: string) => void;
+}) {
+  const isComputer = isComputerSlot(slot.memberId);
+  const isUnreg = isUnregisteredSlot(slot.memberId);
+  const m = isComputer || isUnreg ? undefined : memberOf(slot.memberId);
+  const name = isComputer
+    ? (slot.rawName || computerSlotLabel(players, slot.memberId))
+    : isUnreg
+      ? (slot.rawName || unregisteredSlotLabel(players, slot.memberId))
+      : (m?.nickname ?? slot.memberId);
+  const avatar = isComputer
+    ? <Avatar icon={<Monitor size={14} className="scr-chip-computer-icon" />} size={22} />
+    : isUnreg
+      ? <Avatar icon={<UserPlus size={14} className="scr-chip-computer-icon" />} size={22} />
+      : <Avatar member={m} size={22} />;
+  const clickable = !isComputer && !isUnreg;
+  return (
+    <button
+      type="button"
+      className={cx("scr-mt-player", highlighted && "scr-mt-player-hl", !clickable && "scr-mt-player-static")}
+      onClick={clickable ? (e) => { e.stopPropagation(); openProfile(slot.memberId); } : undefined}
+      disabled={!clickable}
+    >
+      {avatar}
+      <span className="scr-mt-name">{name}</span>
+      <RaceBadge race={slot.race} circleLetter />
+    </button>
+  );
+}
 
 export interface SearchListRow {
   id: number;
@@ -101,6 +150,7 @@ export default function MatchList({
 }: MatchListProps) {
   const groups = groupByDate(rows);
   const user = useAppStore((s) => s.user);
+  const openMemberProfile = useAppStore((s) => s.openMemberProfile);
   const deleteMatchAction = useAppStore((s) => s.deleteMatch);
   // 삭제는 운영자만 — 카드의 메모(연필)와 달리 실제 경기 기록 자체를 지우는 동작이라
   // 작성자 본인이어도 허용하지 않는다(오삭제 방지, MatchDetailModal의 canDelete와 동일 기준).
@@ -130,53 +180,69 @@ export default function MatchList({
         {groups.map((g) => (
           <div key={g.date} className="scr-match-date-group">
             <div className="scr-match-date-head">{dateWithDow(g.date)}</div>
-            {g.items.map(({ row: r, gameNo }) => (
-              <div key={r.id} className="scr-match-card">
-                <div className="scr-match-card-head">
-                  <span className="scr-match-seq">
-                    {gameNo}경기 <span className="scr-match-id">#{highlightMatchNo(r.raw.matchNo, matchNoQuery ?? "")}</span>
-                  </span>
+            {g.items.map(({ row: r }) => {
+              const o1 = outcomeFor("team1", r.result);
+              const o2 = outcomeFor("team2", r.result);
+              return (
+              <div key={r.id} className="scr-match-trow">
+                {/* 머리줄 — N경기는 빼고(요청) 경기번호 · 맵 · 등록자, 오른쪽에 액션. */}
+                <div className="scr-match-trow-head">
+                  <span className="scr-match-id">#{highlightMatchNo(r.raw.matchNo, matchNoQuery ?? "")}</span>
+                  {r.raw.mapName && <span className="scr-match-trow-map">{r.raw.mapName}</span>}
+                  {r.raw.createdBy && <span className="scr-match-trow-by">등록: {r.raw.createdBy.nickname}</span>}
                   <div className="scr-match-card-actions">
                     {canDelete && (
                       <button
                         type="button"
                         className="scr-match-memo-btn scr-match-delete-btn"
                         onClick={() => setDeleteTarget(r.raw)}
-                        aria-label="경기 삭제"
-                        title="경기 삭제"
+                        aria-label="경기 삭제" title="경기 삭제"
                       >
                         <Trash2 size={15} />
                       </button>
                     )}
                     <button
-                      type="button"
-                      className="scr-match-memo-btn"
+                      type="button" className="scr-match-memo-btn"
                       onClick={() => onMemo(r.raw)}
-                      aria-label="메모 남기기"
-                      title={r.raw.note || "메모 남기기"}
+                      aria-label="메모 남기기" title={r.raw.note || "메모 남기기"}
                     >
                       <Pencil size={15} />
                     </button>
                     {r.raw.replay && (
                       <button
-                        type="button"
-                        className="scr-match-memo-btn"
+                        type="button" className="scr-match-memo-btn"
                         onClick={() => downloadReplay(r.raw)}
-                        aria-label="리플레이 저장"
-                        title={r.raw.replay.displayName}
+                        aria-label="리플레이 저장" title={r.raw.replay.displayName}
                       >
                         <Download size={15} />
                       </button>
                     )}
                   </div>
                 </div>
-                <MatchTeams
-                  team1={r.team1} team2={r.team2} memberOf={memberOf} result={r.result}
-                  disableProfileLink stackedOutcome compact
-                  highlightMemberIds={highlightMemberIds}
-                />
+                {/* 팀 2열 + 그 아래 각 팀 승/패(요청). 헤더·컬럼 구분선 없이 로우만. */}
+                <div className="scr-match-trow-grid">
+                  <div className="scr-match-trow-team">
+                    {r.team1.map((s) => (
+                      <PlayerCell
+                        key={s.memberId} slot={s} players={r.team1} memberOf={memberOf}
+                        highlighted={!!highlightMemberIds?.has(s.memberId)} openProfile={openMemberProfile}
+                      />
+                    ))}
+                  </div>
+                  <div className="scr-match-trow-team">
+                    {r.team2.map((s) => (
+                      <PlayerCell
+                        key={s.memberId} slot={s} players={r.team2} memberOf={memberOf}
+                        highlighted={!!highlightMemberIds?.has(s.memberId)} openProfile={openMemberProfile}
+                      />
+                    ))}
+                  </div>
+                  <div className={cx("scr-match-trow-outcome", OUTCOME_CLASS[o1])}>{OUTCOME_LABEL[o1]}</div>
+                  <div className={cx("scr-match-trow-outcome", OUTCOME_CLASS[o2])}>{OUTCOME_LABEL[o2]}</div>
+                </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         ))}
       </div>

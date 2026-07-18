@@ -2674,6 +2674,37 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 /* 리플레이 분석 중에는 목록 화면은 그대로 두고(가려지거나 사라지지 않고), 그 위에
    모달과 똑같은 방식(fixed, 전체 화면)으로 딤 처리 + 스피너를 띄운다 — 목록 영역에만
    딤을 걸면(이전 시도) 스크롤 위치에 따라 화면 밖에 있어 안 보일 수 있었다. */
+/* 경기 목록 테이블형 카드(요청) — 로스터형 대신, 헤더/컬럼 구분선 없이 로우 구분선(흐린
+   흰색)만 있는 표 구조. 머리줄(경기번호·맵·등록자) / 팀 2열 / 그 아래 각 팀 승·패. */
+.scr-match-list-panel-v2 .scr-match-trow { padding: 11px 8px; position: relative; }
+.scr-match-list-panel-v2 .scr-match-trow + .scr-match-trow::before {
+  content: ""; position: absolute; top: 0; left: 8px; right: 8px; height: 1px;
+  background: rgba(255, 255, 255, 0.32);
+}
+.scr-light-theme .scr-match-list-panel-v2 .scr-match-trow + .scr-match-trow::before {
+  background: rgba(var(--divider-tint), 0.35);
+}
+.scr-match-trow-head { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; font-size: 12px; min-width: 0; }
+.scr-match-trow-map { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.scr-match-trow-by { color: var(--dim); flex-shrink: 0; }
+.scr-match-trow-head .scr-match-card-actions { margin-left: auto; flex-shrink: 0; }
+/* 팀 2열 + 그 아래 승/패 행. 컬럼 구분선은 두지 않는다(요청). */
+.scr-match-trow-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px 16px; align-items: start; }
+.scr-match-trow-team { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.scr-mt-player {
+  display: flex; align-items: center; gap: 8px; min-width: 0;
+  background: transparent; border: none; padding: 0; font: inherit; color: inherit;
+  text-align: left; cursor: pointer;
+}
+.scr-mt-player-static { cursor: default; }
+.scr-mt-player:not(.scr-mt-player-static):hover .scr-mt-name { color: var(--point); }
+.scr-mt-name { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.scr-mt-player-hl { background: var(--highlight-bg); border-radius: 4px; padding: 2px 4px; margin: -2px -4px; }
+.scr-mt-player-hl .scr-mt-name { font-weight: 800; color: var(--bar-text); }
+.scr-mt-player .scr-race-badge-letter { flex-shrink: 0; }
+/* 각 팀 아래 승/패 — 팀 칸과 같은 열에 왼쪽 정렬. 승은 연두, 패는 붉은 계열(공용 클래스). */
+.scr-match-trow-outcome { font-size: 15px; font-weight: 800; padding-left: 2px; }
+
 .scr-match-list-wrap { position: relative; }
 /* 필터/정렬이 바뀌어 새로 불러오는 동안 이전 목록을 옅게 눌러 "새로고침 중"만 표시한다 —
    랭킹 목록과 같은 이유(스피너로 갈아치우면 스크롤이 맨 위로 튐)로 내용은 그대로 둔다. */
@@ -3514,6 +3545,8 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    또렷하게 보이도록 위쪽에 옅은 흰 그림자를 줘 금속판에 새긴(engraved) 느낌을 낸다.
    흰 배경 버튼(미리보기/배포 등) 위의 어두운 글자는 각자 고정값(#10151a)이라 영향 없다. */
 .scr-admin-panel-modal .scr-modal-head { color: #1a1e24; text-shadow: 0 1px 0 rgba(255,255,255,0.4); }
+/* 암호 입력 위 큰 자물쇠 이모지(요청) — 금속판 배경 위에서도 또렷하게 크게, 가운데. */
+.scr-admin-panel-lock { font-size: 52px; line-height: 1; text-align: center; margin: 4px 0 14px; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.35)); }
 /* PC에서는 좁은 모달(360px)이 유난히 작아 보인다 — 카드 자체를 키운다(비율은 위에서
    이미 1:1로 고정했으니 여기선 최대폭만). */
 @media (min-width: 720px) {
