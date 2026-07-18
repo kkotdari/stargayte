@@ -2937,8 +2937,10 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-match-list-panel-v2 .scr-match-row-result-only:not(.scr-match-row-team-tail) .scr-match-result-tail .scr-team-outcome-result {
   min-width: 18px; text-align: center;
 }
+/* 획득 점수는 결과 묶음(에게 승) 밖으로 빼서 카드 오른쪽 끝에 붙인다(요청: "개인전이든
+   팀전이든 획득점수 컬럼은 카드 우측 정렬") — 팀전 점수 컬럼과 같은 오른쪽 정렬. */
 .scr-match-list-panel-v2 .scr-match-row-result-only:not(.scr-match-row-team-tail) .scr-match-result-points {
-  min-width: 28px; text-align: right;
+  margin-left: auto; min-width: 28px; text-align: right; flex-shrink: 0;
 }
 /* 팀전 이력의 결과 묶음(팀에게 · 승/패)도 개인전처럼 한 줄에 가로로 나란히 둔다(요청:
    "팀에게 승 다른 칼럼으로 수평으로 배치"). */

@@ -220,10 +220,10 @@ export default function MatchTeams({
         <span className="scr-match-result-tail">
           <span className="scr-match-conn">에게</span>
           <span className={cx("scr-team-outcome", "scr-team-outcome-result", OUTCOME_CLASS[outcome1])}>{OUTCOME_LABEL[outcome1]}</span>
-          {/* 이 경기에서 얻은 점수(요청) — 승/패 라벨 바로 옆(또는 아래)에 작게 병기한다.
-              점수 부호에 따라 승/패 색을 준다(요청: "점수에도 포인트 색 적용"). */}
-          {outcomeNote && <span className={cx("scr-match-result-points", pointToneClass(outcomeNote))}>{outcomeNote}</span>}
         </span>
+        {/* 이 경기에서 얻은 점수(요청) — 팀전과 마찬가지로 카드 오른쪽 끝에 정렬한다(요청:
+            "개인전이든 팀전이든 획득점수 컬럼은 카드 우측에 정렬"). 부호에 따라 승/패 색. */}
+        {outcomeNote && <span className={cx("scr-match-result-points", pointToneClass(outcomeNote))}>{outcomeNote}</span>}
       </div>
     );
   }
