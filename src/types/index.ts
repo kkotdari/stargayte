@@ -253,15 +253,20 @@ export interface MonthlyTeamRankingResponse {
 // 운영자/회원 둘로 단순화되면서 없앴다).
 export type ScreenKey = "ranking" | "match" | "challenge" | "stats" | "members" | "imageSettings" | "gameId";
 
-// 랭킹/경기결과/전적통계 등 화면·메뉴 구성을 v1, v2, v3, ... 중 어느 세트로 보여줄지 —
-// 제어판의 배포(+1)/롤백(-1)으로 앱 전체가 즉시 바뀐다(개인별 설정이 아니라 서버에 저장된
-// 전역 값). "v" + 1 이상 정수(백엔드 정규식 제약과 동일 형식) — 버전이 계속 늘어나는 걸
-// 전제로 하므로 유니언으로 고정하지 않는다. 숫자만 뽑아 쓰려면 utils/appVersion.ts의
+// 랭킹/경기결과/전적통계 등 화면·메뉴 구성을 어느 버전 세트로 보여줄지 — 제어판에서 등록된
+// 버전 중 하나로 배포하면 앱 전체가 즉시 바뀐다(개인별 설정이 아니라 서버에 저장된 전역 값).
+// 숫자(정수 또는 소수, 예: "3", "3.1")로 구성된다(백엔드 정규식 제약과 동일 형식) — 계속
+// 늘어나는 걸 전제로 유니언으로 고정하지 않는다. 숫자로 비교하려면 utils/appVersion.ts의
 // versionNumber()를 쓴다.
 export type AppVersion = string;
 
 export interface AppVersionStatus {
   activeVersion: AppVersion;
+}
+
+// 제어판의 버전 선택 팝업이 나열하는 '등록된 버전' 하나 — 서버 app_versions 레지스트리의 행.
+export interface AppVersionInfo {
+  number: AppVersion;
 }
 
 // "너 나와!" 도전장 — 경기결과/예약 시스템과는 독립된 게시판. 폼에서 직접 고르지 않고

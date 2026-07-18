@@ -22,11 +22,13 @@ interface AdminPanelModalProps {
 // 코드 배포 없이 DB에서 바로 비밀번호를 바꿀 수 있다.
 
 // 메인 로고를 3번 연달아 눌러야만 뜨는 숨겨진 제어판 — 트리거(로고 탭)도, 통과(비밀번호)도
-// 회원 누구나 할 수 있다. 다만 실제로 앱 버전을 바꾸는 "배포(+1)/롤백(-1)"은 운영자만 할
-// 수 있고, 일반 회원은 통과해도 이 브라우저 탭에서만 켜지는 "N버전 미리보기"만 쓸 수 있다.
+// 회원 누구나 할 수 있다. 다만 실제로 앱 버전을 바꾸는 "배포"는 운영자만 할 수 있고, 일반
+// 회원은 통과해도 이 브라우저 탭에서만 켜지는 "미리보기"만 쓸 수 있다.
 export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalProps) {
   useLockBodyScroll();
   const appVersion = useAppStore((s) => s.appVersion);
+  const appVersions = useAppStore((s) => s.appVersions);
+  const previewVersion = useAppStore((s) => s.previewVersion);
   const setAppVersion = useAppStore((s) => s.setAppVersion);
   const setPreviewVersion = useAppStore((s) => s.setPreviewVersion);
   const [password, setPassword] = useState("");
@@ -80,7 +82,6 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
   };
 
   const currentNumber = versionNumber(appVersion);
-  const [previewInput, setPreviewInput] = useState(String(currentNumber + 1));
 
   const unlock = async () => {
     setChecking(true);
@@ -96,45 +97,36 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
     }
   };
 
-  // 미리보기 입력칸 위/아래 삼각형 화살표로 값을 1씩 올리고 내린다 — 브라우저 기본
-  // number 스피너(위아래 화살표가 인풋 오른쪽에 붙는 모양)는 CSS로 숨기고 대신 이걸 쓴다.
-  const stepPreview = (delta: number) => {
-    const n = Number(previewInput);
-    const base = Number.isInteger(n) && n >= 1 ? n : currentNumber;
-    setPreviewInput(String(Math.max(1, base + delta)));
-  };
+  // 버전 선택 팝업 — 미리보기와 배포가 같은 목록(등록된 버전)을 쓴다(요청: "버전 선택 팝업은
+  // 미리보기랑 배포에 같이"). 어느 동작으로 열렸는지만 mode로 구분한다. null이면 닫힘.
+  const [versionPickerMode, setVersionPickerMode] = useState<"preview" | "deploy" | null>(null);
+  // 배포는 모두에게 즉시 반영되는 실제 전환이라, 버전을 고른 뒤 확인창을 한 번 더 거친다.
+  const [confirmDeployVersion, setConfirmDeployVersion] = useState<string | null>(null);
 
-  const startPreview = () => {
-    const n = Number(previewInput);
-    if (!Number.isInteger(n) || n < 1) {
-      setErr("1 이상의 정수를 입력하세요.");
-      return;
+  // 팝업에서 버전 하나를 고르면 — 미리보기면 이 탭에서만 그 버전으로 둘러보게 켜고(패널을
+  // 닫아 바로 확인), 배포면 확인창으로 넘긴다. 현재 버전은 팝업에서 못 고르게 막아둔다.
+  const pickVersion = (number: string) => {
+    if (versionPickerMode === "preview") {
+      setPreviewVersion(versionNumber(number));
+      setVersionPickerMode(null);
+      onClose();
+    } else {
+      setConfirmDeployVersion(number);
+      setVersionPickerMode(null);
     }
-    setPreviewVersion(n);
-    onClose();
   };
 
-  // 배포(+1)/롤백(-1) — 항상 지금 버전 기준 한 단계씩만 움직인다(임의 버전으로 바로
-  // 점프하는 건 미리보기로만 가능하다). v1 아래로는 못 내려간다.
-  const changeVersion = async (next: number) => {
+  const deploy = async (number: string) => {
     setBusy(true);
     setErr("");
     try {
-      await setAppVersion(`v${next}`);
+      await setAppVersion(number);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "전환에 실패했어요.");
+      setErr(e instanceof Error ? e.message : "배포에 실패했어요.");
     } finally {
       setBusy(false);
     }
   };
-
-  // 관리자 기능 버튼은(단순 조회 제외) 실행 전 확인창을 거친다(요청: "관리자 버튼들은
-  // 다 컨펌창 있어야돼(단순 조회는 제외)"). 배포/롤백은 모든 사용자에게 즉시 반영되는
-  // 실제 버전 전환이라 대상이고, 리플레이 다운로드는 읽기 전용이라 제외한다.
-  const [confirmVersionAction, setConfirmVersionAction] = useState<"rollback" | "deploy" | null>(null);
-  // "버전보기"를 누르면 뜨는 별도 팝업 — 몇 번 버전을 미리볼지 여기서 고른다(요청:
-  // "버전 입력창을 없애고 버전보기 누르면 팝업으로 버전 선택").
-  const [versionPreviewOpen, setVersionPreviewOpen] = useState(false);
 
   return createPortal(
     // 바깥(딤 처리된 배경)을 눌러도 안 닫히게 한다 — 숨겨진 화면이라 실수로 바깥을
@@ -178,11 +170,10 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
             </>
           ) : (
             <>
-              {/* 버전관리 — 소제목(현재 버전 표시 포함) + 2열 그리드(요청: "가로로
-                  두개씩 배치(버튼 폭 늘리기)"). 버전 선택 스테퍼를 이 칸 안에 같이
-                  넣었더니 그 줄만 다른 버튼보다 키가 커졌다(실제로 지적받은 문제) —
-                  "버전보기"는 다른 버튼들과 똑같은 버튼으로 두고, 누르면 뜨는 별도
-                  팝업에서 번호를 고르게 한다. */}
+              {/* 버전관리 — 소제목(현재 버전 표시 포함) + 2열 그리드. 배포/롤백을 배포
+                  하나로 합치고(요청), 누르면 등록된 버전 중에서 고르는 팝업을 연다.
+                  미리보기도 같은 팝업을 쓴다. 미리보기 중일 때만 "미리보기 종료" 버튼이
+                  생긴다(요청: "미리보기 중에는 평소에 없던 미리보기 종료 버튼 활성화"). */}
               <div className={cx("scr-admin-panel-preview", !isAdmin && "scr-admin-panel-preview-solo")}>
                 <div className="scr-admin-panel-section-title">
                   버전관리 <span className="scr-admin-panel-section-title-dim">(현재버전 : {currentNumber})</span>
@@ -190,9 +181,9 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
                 <div className="scr-admin-panel-grid">
                   <button
                     type="button" className="scr-admin-panel-phys-btn"
-                    onClick={() => setVersionPreviewOpen(true)}
+                    onClick={() => setVersionPickerMode("preview")}
                   >
-                    버전보기
+                    미리보기
                   </button>
                   <button
                     type="button" className="scr-admin-panel-phys-btn"
@@ -200,23 +191,24 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
                   >
                     안내미리보기
                   </button>
-                  {/* 배포/롤백은 운영자만 — 같은 그리드 안에 이어 붙이면 열 구성이
-                      그대로 유지된 채(2열) 자연스럽게 다음 줄로 넘어간다. */}
+                  {/* 배포는 운영자만 — 같은 그리드 안에 이어 붙이면 2열 구성이 유지된 채
+                      다음 줄로 넘어간다. */}
                   {isAdmin && (
-                    <>
-                      <button
-                        type="button" className="scr-admin-panel-phys-btn scr-admin-panel-phys-btn-danger"
-                        onClick={() => setConfirmVersionAction("deploy")} disabled={busy}
-                      >
-                        {busy ? <Spinner /> : "배포"}
-                      </button>
-                      <button
-                        type="button" className="scr-admin-panel-phys-btn"
-                        onClick={() => setConfirmVersionAction("rollback")} disabled={busy || currentNumber <= 1}
-                      >
-                        {busy ? <Spinner /> : "롤백"}
-                      </button>
-                    </>
+                    <button
+                      type="button" className="scr-admin-panel-phys-btn scr-admin-panel-phys-btn-danger"
+                      onClick={() => setVersionPickerMode("deploy")} disabled={busy}
+                    >
+                      {busy ? <Spinner /> : "배포"}
+                    </button>
+                  )}
+                  {/* 미리보기 중일 때만 나타나는 종료 버튼 — 회원/운영자 모두 쓸 수 있다. */}
+                  {previewVersion !== null && (
+                    <button
+                      type="button" className="scr-admin-panel-phys-btn"
+                      onClick={() => setPreviewVersion(null)}
+                    >
+                      미리보기 종료
+                    </button>
                   )}
                 </div>
               </div>
@@ -255,19 +247,17 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
         </div>
       </div>
 
-      {confirmVersionAction && (
+      {confirmDeployVersion && (
         <ConfirmDialog
-          title={confirmVersionAction === "deploy"
-            ? `v${currentNumber + 1}로 배포할까요?`
-            : `v${currentNumber - 1}로 롤백할까요?`}
+          title={`${confirmDeployVersion} 버전으로 배포할까요?`}
           message="모든 사용자에게 즉시 반영됩니다."
-          confirmLabel={confirmVersionAction === "deploy" ? "배포" : "롤백"}
+          confirmLabel="배포"
           onConfirm={() => {
-            const next = confirmVersionAction === "deploy" ? currentNumber + 1 : currentNumber - 1;
-            setConfirmVersionAction(null);
-            changeVersion(next);
+            const next = confirmDeployVersion;
+            setConfirmDeployVersion(null);
+            deploy(next);
           }}
-          onCancel={() => setConfirmVersionAction(null)}
+          onCancel={() => setConfirmDeployVersion(null)}
         />
       )}
 
@@ -275,46 +265,36 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
         <AppUpdateNoticeModal onClose={() => setPreviewingUpdateNotice(false)} />
       )}
 
-      {versionPreviewOpen && (
-        <div className="scr-modal-overlay" onClick={() => setVersionPreviewOpen(false)}>
+      {versionPickerMode && (
+        <div className="scr-modal-overlay" onClick={() => setVersionPickerMode(null)}>
           <div
             className="scr-modal scr-modal-sm scr-admin-panel-version-popup"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="scr-modal-head">
-              <span>미리볼 버전</span>
-              <button className="scr-icon-btn" onClick={() => setVersionPreviewOpen(false)} aria-label="닫기"><X size={14} /></button>
+              <span>{versionPickerMode === "deploy" ? "배포할 버전" : "미리볼 버전"}</span>
+              <button className="scr-icon-btn" onClick={() => setVersionPickerMode(null)} aria-label="닫기"><X size={14} /></button>
             </div>
             <div className="scr-modal-body">
-              <div className="scr-admin-panel-preview-stepper">
-                <button
-                  type="button" className="scr-admin-panel-preview-arrow"
-                  onClick={() => stepPreview(1)} aria-label="미리보기 버전 올리기"
-                >
-                  <svg width="20" height="13" viewBox="0 0 20 13" aria-hidden="true">
-                    <polygon points="10,0 20,13 0,13" fill="#fff" stroke="#000" strokeWidth="1.3" strokeLinejoin="round" />
-                  </svg>
-                </button>
-                <input
-                  type="number" min={1} inputMode="numeric"
-                  className="scr-input scr-admin-panel-preview-input"
-                  value={previewInput}
-                  onChange={(e) => setPreviewInput(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") startPreview(); }}
-                />
-                <button
-                  type="button" className="scr-admin-panel-preview-arrow"
-                  onClick={() => stepPreview(-1)} aria-label="미리보기 버전 내리기"
-                >
-                  <svg width="20" height="13" viewBox="0 0 20 13" aria-hidden="true" style={{ transform: "rotate(180deg)" }}>
-                    <polygon points="10,0 20,13 0,13" fill="#fff" stroke="#000" strokeWidth="1.3" strokeLinejoin="round" />
-                  </svg>
-                </button>
+              {/* 등록된 버전만 나열한다(요청) — 현재 버전은 고를 수 없어(요청: "현재 버전으로는
+                  불가") 비활성 + "현재" 표시로 어디에 있는지만 보여준다. */}
+              <div className="scr-version-pick-list">
+                {appVersions.map((v) => {
+                  const isCurrent = versionNumber(v.number) === currentNumber;
+                  return (
+                    <button
+                      key={v.number}
+                      type="button"
+                      className={cx("scr-version-pick-item", isCurrent && "scr-version-pick-item-current")}
+                      disabled={isCurrent}
+                      onClick={() => pickVersion(v.number)}
+                    >
+                      <span className="scr-version-pick-num">{v.number}</span>
+                      {isCurrent && <span className="scr-version-pick-tag">현재</span>}
+                    </button>
+                  );
+                })}
               </div>
-              {err && <div className="scr-err">{err}</div>}
-              <button type="button" className="scr-btn scr-btn-primary scr-btn-sm" onClick={startPreview}>
-                미리보기 시작
-              </button>
             </div>
           </div>
         </div>

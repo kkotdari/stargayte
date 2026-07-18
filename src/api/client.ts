@@ -3,7 +3,7 @@
 // ============================================================
 import type {
   Member, Match, NewMatch, SignupPayload, MemberCreatePayload, ImageSettingMap, MemberStatus, MemberRole,
-  ScreenKey, AppVersion, AppVersionStatus,
+  ScreenKey, AppVersion, AppVersionStatus, AppVersionInfo,
   MatchSlot, MatchPage, MatchStatsResponse, MatchType, Race, TeamRankingResponse,
   MonthlyMatchStatsResponse, MonthlyTeamRankingResponse,
   ReplayNameClassificationEntry, ReplayNameKind, ReplayNameMappingEntry, ReplayNameMappingKind,
@@ -515,12 +515,17 @@ export const api = {
     });
   },
 
-  // 로그인한 회원이면 누구나: 랭킹/경기결과/전적통계를 v1/v2 중 어느 화면 세트로 그릴지.
+  // 로그인한 회원이면 누구나: 랭킹/경기결과/전적통계를 어느 버전 화면 세트로 그릴지.
   async getAppVersion(): Promise<AppVersionStatus> {
     return request<AppVersionStatus>("/api/app-version");
   },
 
-  // 운영자 전용: 관리자 패널의 배포/롤백 토글 — 합의 절차 없이 바로 전환한다.
+  // 로그인한 회원이면 누구나: 제어판의 버전 선택 팝업(미리보기/배포)이 나열할 '등록된 버전' 목록.
+  async getAppVersions(): Promise<AppVersionInfo[]> {
+    return request<AppVersionInfo[]>("/api/app-versions");
+  },
+
+  // 운영자 전용: 관리자 패널의 배포 — 등록된 버전으로만 전환한다(합의 절차 없이 바로).
   async setAppVersion(activeVersion: AppVersion): Promise<AppVersionStatus> {
     return request<AppVersionStatus>("/api/app-version", {
       method: "PUT",

@@ -3573,23 +3573,26 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-admin-panel-version-popup .scr-modal-body {
   align-items: center; gap: 16px; padding: 0 0 28px;
 }
-/* 브라우저 기본 number 스피너(입력칸 오른쪽에 붙는 위아래 화살표) 대신, 인풋 위/아래에
-   삼각형 화살표 버튼을 세로로 쌓아 그걸로 값을 조절한다. */
-.scr-admin-panel-preview-stepper { display: flex; flex-direction: column; align-items: center; gap: 10px; flex: none; }
-.scr-admin-panel-preview-input {
-  width: 64px; flex: none; text-align: center; font-family: var(--font-mono); font-size: 17px;
-  /* 기본 스피너 숨기기 — 크롬/사파리(웹킷)와 파이어폭스는 방식이 달라 둘 다 처리한다. */
-  -moz-appearance: textfield;
+/* 등록된 버전 목록(미리보기/배포 공용 팝업) — 버전 숫자 버튼을 세로로 나열한다. 작은
+   팝업이라 폭을 좁게 잡고, 버튼은 제어판 물리 버튼과 같은 흰색 입체 톤으로 통일한다. */
+.scr-version-pick-list { display: flex; flex-direction: column; gap: 8px; width: 100%; max-width: 220px; }
+.scr-version-pick-item {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 44px; padding: 8px 12px; border-radius: 8px; cursor: pointer;
+  font-family: var(--font-mono); font-size: 17px; font-weight: 800; color: #10151a;
+  background: linear-gradient(180deg, #ffffff 0%, #d7d7d7 100%); border: 2px solid #7a7a7a;
 }
-.scr-admin-panel-preview-input::-webkit-inner-spin-button,
-.scr-admin-panel-preview-input::-webkit-outer-spin-button {
-  -webkit-appearance: none; margin: 0;
+.scr-version-pick-item:hover { filter: brightness(0.97); }
+/* 현재 버전은 못 고른다(요청) — 눌리지 않게 비활성하고 옅게, "현재" 배지로 위치만 알린다. */
+.scr-version-pick-item-current {
+  cursor: default; filter: none; opacity: 0.55;
+  background: linear-gradient(180deg, #d0d0d0 0%, #b6b6b6 100%);
 }
-.scr-admin-panel-preview-arrow {
-  display: flex; align-items: center; justify-content: center;
-  width: 100%; padding: 6px 0; background: transparent; border: none; cursor: pointer;
+.scr-version-pick-num { font-variant-numeric: tabular-nums; }
+.scr-version-pick-tag {
+  font-family: inherit; font-size: 10px; font-weight: 700; color: #fff;
+  background: #6b665c; border-radius: 4px; padding: 1px 5px; letter-spacing: 0.02em;
 }
-.scr-admin-panel-preview-arrow:hover { filter: brightness(1.3); }
 .scr-admin-panel-phys-btn {
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
   min-height: 58px; padding: 8px 4px; box-sizing: border-box;
