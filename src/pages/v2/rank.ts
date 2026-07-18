@@ -32,6 +32,10 @@ export interface RankRow {
   stats: MemberStats;
   // 랭킹 2순위 기준값(우세 +1 / 동등 0 / 열세 -1의 사람단위 합) — 카드에 큼직하게 보여준다.
   personScore: number;
+  // 그 내역 — 몇 명에게 우세/동등/열세인지(인원). 카드가 전적 대신 표시한다.
+  superiorCount: number;
+  equalCount: number;
+  inferiorCount: number;
   // 공동순위(완전 동률)면 여러 행이 같은 값을 갖고, 다음 순위는 그만큼 건너뛴다(1,1,3).
   rank: number;
   // 전월 대비 순위 변동 — 양수=순위 상승(숫자가 작아짐), 음수=하락, 0=변동 없음, null=지난달
@@ -156,6 +160,9 @@ export async function computeRankRows(
       member: memberById.get(entry.memberId)!,
       stats: entry.overall,
       personScore: entry.personScore ?? 0,
+      superiorCount: entry.superiorCount ?? 0,
+      equalCount: entry.equalCount ?? 0,
+      inferiorCount: entry.inferiorCount ?? 0,
       rank: ranks[i],
       rankDelta: prevRank === undefined ? null : prevRank - ranks[i],
       playedRace: entry.mostPlayedRace,
