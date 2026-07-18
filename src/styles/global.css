@@ -1,3 +1,7 @@
+/* 홈페이지 전체 UI 본문 폰트 — Pretendard(요청). 데이터/인풋값은 아래 --font-mono
+   (D2Coding)를 그대로 쓴다. 동적 서브셋 CSS라 실제로 쓰는 글자 범위만 나눠 받아 가볍다. */
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css');
+/* Pretendard 로드 실패 시 폴백으로 남겨 둔다. */
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;900&display=swap');
 /* 순위 배지처럼 눈에 띄어야 하는 작은 숫자용 — 각지고 기계적인 느낌의 디스플레이 폰트 */
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&display=swap');
@@ -167,7 +171,7 @@ body {
   overflow: hidden;
   background: var(--void);
   color: var(--text);
-  font-family: 'Noto Sans KR', sans-serif;
+  font-family: 'Pretendard Variable', Pretendard, 'Noto Sans KR', sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -988,28 +992,11 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    날짜 스티키보다 z축 인덱스 높아야돼"). 스크롤 컨테이너(#scroll-root) 안 .scr-screen의
    자식이라 목록 전체를 스크롤하는 동안 계속 붙어 있는다. 빈 좌측은 클릭을 통과시켜
    (pointer-events:none) 아래 목록/카드를 가리지 않고, 버튼만 다시 클릭을 받는다. */
+/* 휴지통/도전장 보내기 — 더 이상 스티키 플로팅으로 띄우지 않는다(요청: "플로팅 처리하지
+   않음"). 타이틀 위 일반 흐름의 한 줄로, 오른쪽 정렬만 유지한다(스크롤하면 목록과 함께
+   자연스럽게 올라간다 — 상태바에 잘리는 문제도 사라진다). */
 .scr-challenge-float-actions {
-  position: sticky; top: var(--safe-top); z-index: 25;
   display: flex; justify-content: flex-end; align-items: center; gap: 8px;
-  pointer-events: none;
-  /* 최상단(스크롤 0)에선 버튼이 타이틀("너 나와!")과 같은 줄을 공유해야 한다(요청: "타이틀과
-     같은 로우에 겹쳐져 있어야해 ... 영역을 공유"). 이 줄은 흐름상 타이틀 바로 위 별도 행인데,
-     자기 높이만큼 음수 아래여백을 줘서 다음 툴바(타이틀)를 이 줄 자리로 끌어올린다 —
-     타이틀은 왼쪽, 버튼은 오른쪽이라 실제로 겹치진 않고 한 줄을 나눠 쓴다. 스크롤하면
-     스티키로 떨어져 상단에 붙고, 타이틀은 그대로 스크롤돼 사라진다.
-     버튼 높이(--field-h-sm)만큼만 당기면 이 줄이 흐름에서 차지하던 세로 간격(.scr-screen의
-     gap 등, 약 8px)이 남아 타이틀이 다른 화면보다 그만큼 아래로 처졌다(요청: "너나와만
-     버튼로우 때문에 타이틀 세로 위치가 다름") — 그 8px까지 더 당겨 다른 화면 타이틀과
-     세로 위치를 맞춘다. */
-  margin-bottom: calc(-1 * var(--field-h-sm) - 8px);
-}
-.scr-challenge-float-actions > .scr-btn { pointer-events: auto; }
-/* 스크롤해 헤더가 사라지면 이 스티키 바가 상단에 핀되는데, iOS 사파리는 그 상태(상단
-   브라우저 크롬이 없을 때)에서 safe-area-inset-top을 제대로 안 줘서(0에 가깝게) 버튼이
-   상태바/노치에 조금 잘렸다(요청 스크린샷). 터치 기기에서만 안전영역 위에 약간의 여유를
-   더 줘 확실히 상태바 밑으로 내려 앉게 한다(PC/데스크톱은 이 문제가 없어 건드리지 않는다). */
-@media (pointer: coarse) {
-  .scr-challenge-float-actions { top: calc(var(--safe-top) + 14px); }
 }
 /* "휴지통" 버튼 — 보조 액션이라 옅게, 라벨 폭에 맞춰(줄바꿈 없이) 자연 폭. */
 .scr-challenge-discarded-btn { white-space: nowrap; color: var(--muted); }
@@ -2646,8 +2633,9 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 /* 날짜가 바뀌는 경계 — 바로 위 날짜 그룹의 마지막 카드와 확실히 구분되도록 날짜 줄
    위에 선을 하나 더 긋는다(첫 날짜 그룹은 위에 아무것도 없으니 제외). 아래쪽은 이미
    날짜 줄 자체의 기본 border-bottom이 카드와의 경계를 그어주고 있어 따로 안 더한다. */
+/* 날짜 그룹 사이 간격 — 반전 바 자체가 커지지 않게 padding 대신 margin으로 띄운다. */
 .scr-match-list-panel-v2 .scr-match-date-group + .scr-match-date-group .scr-match-date-head {
-  padding-top: 14px;
+  margin-top: 12px;
 }
 /* v2 결과목록 카드 여백 — 로스터 행 간격은 화면 크기와 무관하게 넉넉히 준다. 위아래
    패딩은 넉넉한 쪽(PC)만 늘리고 모바일은 컴팩트한 값을 유지한다 — 아래 min-width:720px
@@ -2771,13 +2759,14 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    매끄럽다. */
 /* 날짜 줄 — 배경 패널·스티키 없이 텍스트만 두고, 위아래로 '살짝 굵은 흰색'(라이트에선
    검정회색) 구분선만 넣는다(요청). 경기 사이의 얇은 선(0.35·1px)과 구분되게 굵고 진하게. */
+/* 날짜 줄 — 구분선 대신 색 반전(채움)으로 날짜를 구분한다(요청: "날짜 로우를 색 반전
+   처리하고 구분선은 제거"). 페이지 배경(--void)과 반대되는 밝은/어두운 바(--text 배경 +
+   --void 글자)로, 다크=흰 바·어두운 글자 / 라이트=검은 바·흰 글자. */
 .scr-match-date-head {
-  margin: 0; padding: 9px 8px 7px;
-  border-top: 1px solid rgba(255, 255, 255, 0.45);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.45);
-  font-size: 12.5px; color: var(--muted);
+  margin: 0; padding: 6px 10px; border: none; border-radius: 6px;
+  background: var(--text); color: var(--void);
+  font-size: 12.5px;
 }
-.scr-light-theme .scr-match-date-head { border-top-color: rgba(0, 0, 0, 0.3); border-bottom-color: rgba(0, 0, 0, 0.3); }
 .scr-match-card { position: relative; padding: 6px 8px 12px; }
 /* 같은 날짜 안에서 경기끼리는 붉은 톤의 얇은 선으로 구분. border-top 대신 절대배치 선을 쓰는
    이유: 카드 자체에 border-radius가 있어서 border-top을 쓰면 양 끝이 둥글게 휘어 보인다. */
@@ -2818,7 +2807,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    모양·크기를 통일해 달라는 요청으로 그 값(13px/700/--dim/letter-spacing)을 그대로 맞춘다. */
 .scr-match-list-panel-v2 .scr-match-date-head {
   font-size: 15.6px; /* 13px * 1.5, 이후 20% 감소(요청: "너나와/경기 날짜 20퍼센트 크기 감소") */
-  font-weight: 700; color: var(--dim); letter-spacing: 0.02em;
+  font-weight: 700; color: var(--void); letter-spacing: 0.02em; /* 반전 바 위 어두운 글자 */
 }
 /* 랭킹 상세 이력(compact)의 날짜 줄은 더 작게 — 카드 머리글을 뺀 가벼운 목록이라 날짜도
    과하지 않게 줄인다(요청: "날짜 글자 축소"). 또 스티키 바(패널색 배경+구분선)를 없애
@@ -2826,6 +2815,8 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-match-list-panel-v2 .scr-match-date-head-compact {
   font-size: 12.5px;
   padding: 9px 8px 7px;
+  /* 랭킹 상세 이력은 반전 바를 쓰지 않고 주변(모달 본문)과 같은 배경/톤으로 둔다(요청). */
+  background: transparent; color: var(--muted); border-radius: 0;
 }
 /* "N경기"/경기번호는 기존 값(18px/17px)의 75%로 — 날짜(위)보다 두 단계 더 작아 보이게. */
 .scr-match-list-panel-v2 .scr-match-seq { font-size: 13.5px; }
@@ -4326,7 +4317,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
 }
 /* 플레이스홀더는 힌트 텍스트(한글 포함)라 입력값의 코딩 폰트 대신 다른 입력칸들과
    같은 기본 폰트를 쓴다 */
-.scr-df-input::placeholder { color: var(--dim); font-family: 'Noto Sans KR', sans-serif; }
+.scr-df-input::placeholder { color: var(--dim); font-family: 'Pretendard Variable', Pretendard, 'Noto Sans KR', sans-serif; }
 .scr-df-input:focus { outline: none; }
 .scr-df-input.scr-input-invalid { color: var(--loss); }
 .scr-df-clear { flex: 0 0 auto; background: transparent; border: none; color: var(--dim); padding: 0 6px; align-self: stretch; cursor: pointer; display: inline-flex; align-items: center; }
@@ -5010,15 +5001,13 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
    충분하다(요청: "너 나와 목록도 경기 목록처럼 날짜로 그루핑 하니까 스티키 플로팅
    처리 필요"). */
 .scr-challenge-date-head {
-  /* 배경 패널·스티키 없이 텍스트만, 위아래로 살짝 굵은 흰색(라이트=검정회색) 구분선만(요청).
-     "오늘"/"NEXT" 배지는 날짜 옆에 인라인으로 나란히. */
+  /* 구분선 대신 색 반전(채움) 바로 날짜를 구분한다(요청). "오늘"/"NEXT" 배지는 날짜 옆에
+     인라인으로 나란히. */
   display: flex; align-items: center; gap: 6px;
-  font-size: 15.6px; font-weight: 700; color: var(--dim); letter-spacing: 0.02em;
-  padding: 9px 0 7px;
-  border-top: 1px solid rgba(255, 255, 255, 0.45);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.45);
+  font-size: 15.6px; font-weight: 700; color: var(--void); letter-spacing: 0.02em;
+  padding: 6px 10px; border: none; border-radius: 6px;
+  background: var(--text);
 }
-.scr-light-theme .scr-challenge-date-head { border-top-color: rgba(0, 0, 0, 0.3); border-bottom-color: rgba(0, 0, 0, 0.3); }
 
 /* 날짜 그룹 안의 시각별 소그룹 — 같은 예정 시각 카드들을 묶고, 그 맨 위에 시간을 한 번만
    보여준다(요청: "카드 시간 표시 삭제, 대신 시간 그루핑해서 제일 위 카드 위에 한번만 표시").
@@ -5315,7 +5304,7 @@ html.scr-light-theme .scr-challenge-next-tag {
    줄의 오른쪽 끝에 붙인다(scr-mono가 아니라 일반 글자라 폰트도 시간과 구분된다). */
 .scr-challenge-result-link {
   margin-left: auto; background: transparent; border: none; padding: 0; cursor: pointer;
-  font-family: 'Noto Sans KR', sans-serif; font-size: 12.5px; font-weight: 700; color: var(--dim);
+  font-family: 'Pretendard Variable', Pretendard, 'Noto Sans KR', sans-serif; font-size: 12.5px; font-weight: 700; color: var(--dim);
   text-decoration: underline dotted; text-underline-offset: 3px;
 }
 .scr-challenge-result-link:hover { color: var(--text); }
