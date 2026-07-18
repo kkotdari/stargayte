@@ -1096,8 +1096,9 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-weight-table tr:last-child td { border-bottom: none; }
 /* 유저 칸 — 순위 숫자 + 프사 + 닉네임을 왼쪽으로 나란히. */
 .scr-weight-col-user { text-align: left; }
-.scr-weight-user { display: inline-flex; align-items: center; gap: 7px; min-width: 0; }
-.scr-weight-rank { font-size: 11.5px; color: var(--muted); font-weight: 700; min-width: 14px; text-align: right; font-variant-numeric: tabular-nums; }
+.scr-weight-user { display: flex; align-items: center; gap: 7px; min-width: 0; }
+/* 순번은 가운데 정렬(고정폭 칸 안), 프사·닉네임은 그 뒤로 왼쪽 정렬(요청). */
+.scr-weight-rank { font-size: 11.5px; color: var(--muted); font-weight: 700; min-width: 20px; text-align: center; font-variant-numeric: tabular-nums; flex-shrink: 0; }
 .scr-weight-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .scr-weight-win { color: var(--win); font-weight: 700; white-space: nowrap; }
 .scr-weight-loss { color: var(--loss); font-weight: 700; white-space: nowrap; }

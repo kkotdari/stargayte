@@ -23,8 +23,8 @@ interface RankMatchHistoryProps {
 }
 
 // 이 경기 하나에서 주인공(team1)이 얻은 점수 — 서버의 총점 산식을 경기 단위로 쪼갠 것과
-// 같다. 상대팀(team2)의 회원 각각에 대해 이기면 +2·강함, 비기면 +1·강함, 지면 -1·약함을
-// 더한다(컴퓨터/비회원은 순위 대상이 아니라 점수에 안 잡힌다 — 서버 head_to_head와 동일).
+// 같다. 상대팀(team2)의 회원 각각에 대해 이기면 +강함, 지면 −약함, 비기면 0을 더한다
+// (컴퓨터/비회원은 순위 대상이 아니라 점수에 안 잡힌다 — 서버 head_to_head와 동일).
 // 미실시는 점수 자체가 없다(null → 병기 안 함).
 function gamePoints(
   row: HistoryRow, strengthByMember: Map<string, number>, weaknessByMember: Map<string, number>,
@@ -33,9 +33,9 @@ function gamePoints(
   let pts = 0;
   for (const s of row.team2) {
     if (isComputerSlot(s.memberId) || isUnregisteredSlot(s.memberId)) continue;
-    if (row.result === "team1") pts += 2 * (strengthByMember.get(s.memberId) ?? 0);
-    else if (row.result === "draw") pts += 1 * (strengthByMember.get(s.memberId) ?? 0);
-    else if (row.result === "team2") pts += -1 * (weaknessByMember.get(s.memberId) ?? 0);
+    if (row.result === "team1") pts += strengthByMember.get(s.memberId) ?? 0;
+    else if (row.result === "team2") pts += -(weaknessByMember.get(s.memberId) ?? 0);
+    // 비김(draw)은 0점.
   }
   return pts;
 }
@@ -57,9 +57,9 @@ function opponentPointsByMember(
   for (const s of row.team2) {
     if (isComputerSlot(s.memberId) || isUnregisteredSlot(s.memberId)) continue;
     let p = 0;
-    if (row.result === "team1") p = 2 * (strengthByMember.get(s.memberId) ?? 0);
-    else if (row.result === "draw") p = 1 * (strengthByMember.get(s.memberId) ?? 0);
-    else if (row.result === "team2") p = -1 * (weaknessByMember.get(s.memberId) ?? 0);
+    if (row.result === "team1") p = strengthByMember.get(s.memberId) ?? 0;
+    else if (row.result === "team2") p = -(weaknessByMember.get(s.memberId) ?? 0);
+    // 비김(draw)은 0점.
     map.set(s.memberId, `${p > 0 ? "+" : ""}${p}`);
   }
   return map;
