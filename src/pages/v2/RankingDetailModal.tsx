@@ -8,7 +8,7 @@ import { api } from "../../api/client";
 import { useAppStore } from "../../store/appStore";
 import { useLockBodyScroll } from "../../utils/bodyScrollLock";
 import { MONTHS_KR } from "../../utils/date";
-import type { Match, MatchType, Member } from "../../types";
+import type { Match, MatchResult, MatchType, Member } from "../../types";
 import type { RankTrendPoint } from "./rank";
 
 interface RankingDetailModalProps {
@@ -83,9 +83,24 @@ export default function RankingDetailModal({ members, points, matchType, onClose
 
   useEffect(() => reload(), [reload]);
 
-  const rows: SearchListRow[] = matches.map((m) => (
-    { id: m.id, date: m.date, team1: m.team1, team2: m.team2, result: m.result, raw: m }
-  ));
+  // 이 상세의 주인공(개인이면 그 회원, 팀이면 그 팀 구성원)이 언제나 홈팀(team1=왼쪽)에
+  // 오도록 필요하면 두 팀을 뒤집는다(요청: "랭킹 상세 경기이력에선 주인공이 무조건 홈팀에
+  // 보이게"). 주인공이 team2였던 경기는 team1↔team2를 바꾸고 승패(result)도 함께 뒤집어야
+  // 실제 승/무/패 표시가 그대로 유지된다.
+  const protagonistIds = new Set(members.map((mm) => mm.id));
+  const rows: SearchListRow[] = matches.map((m) => {
+    const onTeam1 = m.team1.some((s) => protagonistIds.has(s.memberId));
+    const swap = !onTeam1 && m.team2.some((s) => protagonistIds.has(s.memberId));
+    const result: MatchResult = swap
+      ? (m.result === "team1" ? "team2" : m.result === "team2" ? "team1" : m.result)
+      : m.result;
+    return {
+      id: m.id, date: m.date,
+      team1: swap ? m.team2 : m.team1,
+      team2: swap ? m.team1 : m.team2,
+      result, raw: m,
+    };
+  });
 
   return createPortal(
     <div className="scr-modal-overlay" onClick={onClose}>
