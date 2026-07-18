@@ -180,6 +180,12 @@ body {
   flex-direction: column;
 }
 .scr-app * { box-sizing: border-box; }
+/* iOS 사파리는 접근성 이유로 viewport의 user-scalable=no를 무시해서, 더블탭 줌이 가능한
+   요소의 탭(click)을 "두 번째 탭이 올까?" 기다리느라 ~300ms 지연시킨다 — 이게 메뉴/툴팁/
+   모달이 눌러도 '느리게 뜨는' 진짜 원인이었다(blur·useLayoutEffect로는 안 고쳐진 이유:
+   지연은 팝오버가 열리기도 '전'에 생긴다). 상호작용 요소에 touch-action: manipulation을
+   주면 더블탭 줌 판정을 꺼서 클릭이 즉시 발화한다(팬/핀치줌은 그대로). */
+button, a, [role="button"], summary, label, select { touch-action: manipulation; }
 /* 로그인/부팅 화면처럼 #scroll-root가 아직 없는 두 branch(App.tsx)에만 붙는 안전망
    스크롤 — 인증된 본 화면의 .scr-app에는 이 클래스가 없다. 여기도 overflow-y:auto로
    두면 iOS Safari가 (실제로 넘칠 내용이 없어도) 이 박스 자체를 러버밴드 바운스
