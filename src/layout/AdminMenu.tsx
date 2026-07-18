@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
 import { ChevronDown } from "lucide-react";
 import { cx } from "../utils/format";
@@ -61,7 +61,8 @@ export default function AdminMenu({ screen, onNavigate, variant, drawerOpen, onD
   // 드로어 자체가 이미 세로 목록이라, 그냥 그 자리에서 펼쳐지는 아코디언으로 두면 위치 계산도
   // 필요 없고 "떠서 움직이는" 어색함도 없다. nav/mobile 변형만 실제로 다른 요소 위로 떠야
   // 해서 계속 포털+Floating UI를 쓴다.
-  useEffect(() => {
+  // useLayoutEffect(페인트 전)로 위치를 잡아 드롭다운이 즉시 제자리에 뜨게 한다(요청).
+  useLayoutEffect(() => {
     if (variant === "drawer" || !open || !anchorRef.current || !dropRef.current) return;
     return attachPopover(anchorRef.current, dropRef.current, { growToContent: true, maxWidth: 200 });
   }, [open, variant]);
