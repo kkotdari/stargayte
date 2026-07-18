@@ -145,17 +145,20 @@ export default function RankingScreenV2() {
     () => new Map(rows.map((r) => [r.member.id, 1 + r.inferiorCount])), [rows],
   );
   const period = useMemo(() => periodAnchorToRange(unit, anchor), [unit, anchor]);
-  // 가중치 표에 실을 실제 유저별 점수 — 순위에 든(한 판이라도 뛴) 회원을 순위 순서 그대로,
-  // 각자의 실제 강함(1+우세수)·약함(1+열세수)으로 "이 사람을 이기면/지면 몇 점"을 계산한다.
+  // 가중치 표에 실을 실제 유저별 점수 — 순위에 든(한 판이라도 뛴) 회원을, '가중치 계산 전'의
+  // 우위(우세수−열세수, 사람단위 점수)가 높은 순으로 세운다(요청: "랭킹순이 아니라 승점으로
+  // 따진 우위 순서 그대로"). 각자의 실제 강함(1+우세수)·약함(1+열세수)으로 "이 사람을 이기면/
+  // 지면 몇 점"을 계산한다. 최종 랭킹(가중 합산)과 순서가 다를 수 있다.
   const weightRows = useMemo(
     () => rows
       .filter((r) => r.stats.plays > 0)
       .map((r) => ({
-        rank: r.rank,
         member: r.member,
+        superiority: r.superiorCount - r.inferiorCount,
         win: 2 * (1 + r.superiorCount),
         loss: -(1 + r.inferiorCount),
-      })),
+      }))
+      .sort((a, b) => b.superiority - a.superiority || b.win - a.win || a.member.nickname.localeCompare(b.member.nickname)),
     [rows],
   );
 
