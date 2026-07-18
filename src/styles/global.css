@@ -150,6 +150,16 @@ html {
      넣는 --safe-area-top 중 큰 값. black-translucent 몰입 모드에서 스크롤되는 헤더/스티키를
      이만큼 내려 노치에 안 가리게 하는 데 쓴다(둘 다 0이면 0이라 PC/비-노치에선 영향 없음). */
   --safe-top: max(env(safe-area-inset-top, 0px), var(--safe-area-top, 0px));
+  /* 하단 탭바를 사파리 하단 주소창 위로 올리는 보정값. 기본 0 — 홈화면 웹앱(standalone)은
+     주소창이 아예 없으므로 올리면 안 되고(iOS standalone에선 lvh와 svh가 상태바/홈
+     인디케이터만큼 달라서, 이 값을 그냥 쓰면 탭바가 화면 중앙으로 붕 떠버렸다 —
+     실제로 지적받은 PWA 버그), 실제 브라우저 탭에서만 아래 미디어쿼리가 주소창 높이
+     (100lvh - 100svh)를 넣는다. PC/비-노치는 lvh==svh라 어차피 0. */
+  --tabbar-lift: 0px;
+}
+/* 홈화면 웹앱(standalone)이 아닌 "진짜 브라우저 탭"에서만 주소창 높이만큼 보정. */
+@media not all and (display-mode: standalone) {
+  html { --tabbar-lift: calc(100lvh - 100svh); }
 }
 /* body는 overflow:hidden 대신 position:fixed로 아예 뷰포트에 못 박는다 — iOS Safari는
    overscroll-behavior:none을 body/html에 걸어도 문서 자체의 러버밴드(당겨서 튕기는)
@@ -3979,8 +3989,9 @@ body *::-webkit-scrollbar-corner { background: transparent; }
      안돼"), 주소창은 사실상 항상 펼쳐진 상태로 남는다. 고정요소의 bottom:0은 큰
      뷰포트(lvh, 주소창 접힌 크기) 기준이라 그 펼쳐진 주소창 뒤로 깔린다. 큰-작은
      뷰포트 차(100lvh - 100svh = 펼쳐진 주소창 높이)만큼 위로 올려 실제로 보이는
-     영역 바닥에 딱 맞춘다. PWA(standalone)·데스크톱은 lvh==svh라 0이라 영향 없다. */
-  bottom: calc(100lvh - 100svh);
+     영역 바닥에 딱 맞춘다. standalone PWA에선 --tabbar-lift가 0으로 고정된다(정의부
+     참고 — PWA는 주소창이 없고 iOS standalone은 lvh≠svh라 그냥 쓰면 탭바가 붕 뜬다). */
+  bottom: var(--tabbar-lift);
   /* 높이에 홈 인디케이터 안전영역(env safe-area-inset-bottom)을 "더해" 준다 — 고정
      --mobile-footer-h(56px)만 쓰면 box-sizing:border-box라 아래 패딩에 든 안전영역만큼
      콘텐츠 영역이 줄어, 아이폰 PWA(standalone, 안전영역 ~34px)에서 탭 내용이 짓눌려
@@ -4217,9 +4228,9 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
    몫(50px + 여유 8px)으로 줄였다. */
 @media (max-width: 640px) {
   .scr-main {
-    /* 탭바를 사파리 주소창 위로 (100lvh - 100svh)만큼 올렸으므로, 마지막 줄이 그
-       올라간 탭바에 가리지 않게 하단 여백에도 같은 값을 더한다. */
-    padding-bottom: calc(10px + var(--mobile-footer-h) + 58px + (100lvh - 100svh) + env(safe-area-inset-bottom, 0px));
+    /* 탭바를 사파리 주소창 위로 --tabbar-lift만큼 올렸으므로, 마지막 줄이 그 올라간
+       탭바에 가리지 않게 하단 여백에도 같은 값을 더한다(standalone에선 0). */
+    padding-bottom: calc(10px + var(--mobile-footer-h) + 58px + var(--tabbar-lift) + env(safe-area-inset-bottom, 0px));
   }
 }
 
