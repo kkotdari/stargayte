@@ -168,14 +168,14 @@ export default function MatchTeams({
           highlightMemberIds={highlightMemberIds} disableProfileLink={disableProfileLink}
           stackedOutcome compact={compact} textRoster={textRoster}
         />
-        <span className="scr-match-conn">로</span>
+        <span className="scr-match-conn">팀으로</span>
         <TeamRoster
           side="team2" players={team2} memberOf={memberOf} outcome={outcome2}
           highlightMemberIds={highlightMemberIds} disableProfileLink={disableProfileLink}
           stackedOutcome compact={compact} textRoster={textRoster}
         />
         <span className="scr-match-result-tail">
-          <span className="scr-match-conn">에</span>
+          <span className="scr-match-conn">팀에</span>
           <span className={cx("scr-team-outcome", "scr-team-outcome-result", OUTCOME_CLASS[outcome1])}>{OUTCOME_LABEL[outcome1]}</span>
         </span>
         {pointsByMember && (
