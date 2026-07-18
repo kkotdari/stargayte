@@ -2124,7 +2124,12 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-race-badge-letter {
   width: auto; height: auto; background: transparent; font-weight: 900; line-height: normal;
   overflow: visible;
+  /* 획이 얇은 한글(프/저)은 text-stroke가 글자 윤곽 '가운데'에 그려져 안쪽 절반이 글자
+     속을 파고들어 이상하게 보였다(요청) — paint-order로 획을 fill '아래'에 깔아, 채움(종족색)이
+     안쪽을 덮고 바깥쪽 절반만 얇은 외곽선으로 남게 한다(획을 굵히면 얇은 글자를 통째로
+     삼켜버려 1px 유지). */
   -webkit-text-stroke: 1px rgba(0,0,0,0.85);
+  paint-order: stroke fill;
 }
 
 /* ===== match list (search) ===== */
