@@ -243,7 +243,7 @@ export default function MatchList({
       <div className="scr-match-cards">
         {groups.map((g) => (
           <div key={g.date} className="scr-match-date-group">
-            <div className="scr-match-date-head">{dateWithDow(g.date)}</div>
+            <div className="scr-match-date-head" data-date-label={dateWithDow(g.date)}>{dateWithDow(g.date)}</div>
             {g.items.map(({ row: r }) => {
               const o1 = outcomeFor("team1", r.result);
               const o2 = outcomeFor("team2", r.result);

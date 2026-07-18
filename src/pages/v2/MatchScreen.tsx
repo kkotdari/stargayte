@@ -9,6 +9,7 @@ import MatchMemoModal from "../../modals/MatchMemoModal";
 import ReplayReviewModal from "../../modals/ReplayReviewModal";
 import MatchList, { type SearchListRow } from "./MatchList";
 import SearchFilterBar from "../../components/common/SearchFilterBar";
+import ScrollNavTimeline from "../../components/common/ScrollNavTimeline";
 import { useAppStore } from "../../store/appStore";
 import { api } from "../../api/client";
 import { activeMemberSearchTerms, memberMatchesTerm, splitSearchTerms } from "../../utils/memberSearch";
@@ -261,6 +262,11 @@ export default function MatchScreenV2() {
           onSaved={handleSaved}
         />
       )}
+
+      {/* 우측 네비게이션 타임라인 — 너 나와와 동일(요청: "타임라인을 경기 화면에도 적용").
+          경기 목록은 최신순(위=최근, 아래=과거)이라 끝 라벨만 그에 맞춘다. 오늘/미정 눈금은
+          경기 목록엔 없어서 마커는 넘기지 않는다. */}
+      {!loading && <ScrollNavTimeline headSelector=".scr-match-date-head" topLabel="최근" bottomLabel="과거" />}
     </div>
   );
 }

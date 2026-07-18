@@ -50,6 +50,19 @@ function outcomeFor(side: "team1" | "team2", result: MatchResult): Outcome {
 const OUTCOME_LABEL: Record<Outcome, string> = { win: "승", loss: "패", draw: "무", notHeld: "미실시" };
 const OUTCOME_CLASS: Record<Outcome, string> = { win: "scr-win", loss: "scr-loss", draw: "scr-draw", notHeld: "scr-draw" };
 
+// 획득 점수 문자열의 부호로 승/패 색을 정한다(요청: "점수에도 포인트 색 적용") — 양수(+)는
+// 승 색(초록), 음수(-)는 패 색(빨강). 0/빈값은 색을 안 준다.
+function pointToneClass(v: unknown): string {
+  if (v === null || v === undefined) return "";
+  const s = String(v).trim();
+  if (!s) return "";
+  if (s.startsWith("-") || s.startsWith("−")) return "scr-loss";
+  if (s.startsWith("+")) return "scr-win";
+  const n = parseFloat(s);
+  if (Number.isNaN(n) || n === 0) return "";
+  return n > 0 ? "scr-win" : "scr-loss";
+}
+
 interface TeamRosterProps {
   side: "team1" | "team2";
   players: MatchSlot[];
@@ -161,27 +174,34 @@ export default function MatchTeams({
   if (bothTeamsTail) {
     // "VS" 대신 "[우리 팀]로 [상대 팀]에 승/패"로 문장처럼 표현한다(요청). 로스터는 고정폭
     // (양 팀 flex 균등)이라 카드마다 '로/에/승패' 세로줄이 일치한다.
+    // "우리팀 로스터 + 팀으로"와 "상대팀 로스터 + 팀에게 승/패"를 각각 한 덩어리(.scr-match-team-side)로
+    // 묶고, 두 덩어리 사이에 갭을 둔다(요청: "팀1로스터와 팀으로, 팀2로스터와 팀에게 승이 한
+    // 덩어리처럼 모이고 그 사이에 갭"). 점수는 오른쪽 끝 컬럼에 각 상대 구성원과 나란히.
     return (
       <div className="scr-match-row scr-match-row-result-only scr-match-row-team-tail">
-        <TeamRoster
-          side="team1" players={team1} memberOf={memberOf} outcome={outcome1}
-          highlightMemberIds={highlightMemberIds} disableProfileLink={disableProfileLink}
-          stackedOutcome compact={compact} textRoster={textRoster}
-        />
-        <span className="scr-match-conn">팀으로</span>
-        <TeamRoster
-          side="team2" players={team2} memberOf={memberOf} outcome={outcome2}
-          highlightMemberIds={highlightMemberIds} disableProfileLink={disableProfileLink}
-          stackedOutcome compact={compact} textRoster={textRoster}
-        />
-        <span className="scr-match-result-tail">
-          <span className="scr-match-conn">팀에게</span>
-          <span className={cx("scr-team-outcome", "scr-team-outcome-result", OUTCOME_CLASS[outcome1])}>{OUTCOME_LABEL[outcome1]}</span>
-        </span>
+        <div className="scr-match-team-side scr-match-team-side-ours">
+          <TeamRoster
+            side="team1" players={team1} memberOf={memberOf} outcome={outcome1}
+            highlightMemberIds={highlightMemberIds} disableProfileLink={disableProfileLink}
+            stackedOutcome compact={compact} textRoster={textRoster}
+          />
+          <span className="scr-match-conn">팀으로</span>
+        </div>
+        <div className="scr-match-team-side scr-match-team-side-theirs">
+          <TeamRoster
+            side="team2" players={team2} memberOf={memberOf} outcome={outcome2}
+            highlightMemberIds={highlightMemberIds} disableProfileLink={disableProfileLink}
+            stackedOutcome compact={compact} textRoster={textRoster}
+          />
+          <span className="scr-match-result-tail">
+            <span className="scr-match-conn">팀에게</span>
+            <span className={cx("scr-team-outcome", "scr-team-outcome-result", OUTCOME_CLASS[outcome1])}>{OUTCOME_LABEL[outcome1]}</span>
+          </span>
+        </div>
         {pointsByMember && (
           <div className="scr-team-points-col">
             {team2.map((p) => (
-              <span key={p.memberId} className="scr-team-points-row">{pointsByMember.get(p.memberId) ?? ""}</span>
+              <span key={p.memberId} className={cx("scr-team-points-row", pointToneClass(pointsByMember.get(p.memberId)))}>{pointsByMember.get(p.memberId) ?? ""}</span>
             ))}
           </div>
         )}
@@ -200,8 +220,9 @@ export default function MatchTeams({
         <span className="scr-match-result-tail">
           <span className="scr-match-conn">에게</span>
           <span className={cx("scr-team-outcome", "scr-team-outcome-result", OUTCOME_CLASS[outcome1])}>{OUTCOME_LABEL[outcome1]}</span>
-          {/* 이 경기에서 얻은 점수(요청) — 승/패 라벨 바로 옆(또는 아래)에 작게 병기한다. */}
-          {outcomeNote && <span className="scr-match-result-points">{outcomeNote}</span>}
+          {/* 이 경기에서 얻은 점수(요청) — 승/패 라벨 바로 옆(또는 아래)에 작게 병기한다.
+              점수 부호에 따라 승/패 색을 준다(요청: "점수에도 포인트 색 적용"). */}
+          {outcomeNote && <span className={cx("scr-match-result-points", pointToneClass(outcomeNote))}>{outcomeNote}</span>}
         </span>
       </div>
     );

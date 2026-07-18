@@ -7,7 +7,7 @@ import SearchFilterBar from "../../components/common/SearchFilterBar";
 import FilterItem from "../../components/common/FilterItem";
 import PillTabs from "../../components/common/PillTabs";
 import ChallengeFormModal from "../../modals/ChallengeFormModal";
-import ChallengeScrollTimeline from "./ChallengeScrollTimeline";
+import ScrollNavTimeline from "../../components/common/ScrollNavTimeline";
 import { useAppStore } from "../../store/appStore";
 import { api } from "../../api/client";
 import { cx } from "../../utils/format";
@@ -1140,8 +1140,19 @@ export default function ChallengeScreen() {
         </section>
       )}
 
-      {/* 우측 네비게이션 타임라인 — 스크롤 시에만 뜨고, 스스로 스크롤 불가 상태면 안 뜬다. */}
-      {!loading && <ChallengeScrollTimeline />}
+      {/* 우측 네비게이션 타임라인 — 스크롤 시에만 뜨고, 스스로 스크롤 불가 상태면 안 뜬다.
+          너 나와는 과거(위)→미래(아래) 순이고, "오늘"/"미정" 그룹에 눈금을 찍는다. */}
+      {!loading && (
+        <ScrollNavTimeline
+          headSelector=".scr-challenge-date-head"
+          topLabel="과거"
+          bottomLabel="미래"
+          markers={[
+            { key: "undecided", className: "scr-scroll-timeline-undecided", groupSelector: '.scr-challenge-date-group[data-undecided="1"]' },
+            { key: "today", className: "scr-scroll-timeline-today", groupSelector: '.scr-challenge-date-group[data-today="1"]' },
+          ]}
+        />
+      )}
 
       {formOpen && (
         <ChallengeFormModal

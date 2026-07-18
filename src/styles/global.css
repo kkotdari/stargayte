@@ -2946,20 +2946,26 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   flex-direction: row; align-items: center; gap: 6px;
 }
 .scr-match-result-points { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+/* 획득 점수도 부호에 따라 승/패 색을 입힌다(요청: "점수에도 포인트 색 적용"). 개인전 꼬리
+   점수와 팀전 개별 점수 컬럼 공통. */
+.scr-match-list-panel-v2 .scr-match-result-points.scr-win,
+.scr-match-list-panel-v2 .scr-team-points-row.scr-win { color: var(--win); }
+.scr-match-list-panel-v2 .scr-match-result-points.scr-loss,
+.scr-match-list-panel-v2 .scr-team-points-row.scr-loss { color: var(--loss); }
 /* 팀전 이력 — 우리 로스터 VS 상대 로스터를 왼쪽에 붙이고, 오른쪽에 [승/패] → [개별 점수
    컬럼] 순으로 고정한다(요청: "승패는 상대팀 우측에 고정", "승패 다음에 오른쪽에 개별 점수").
    승/패+점수 묶음은 margin-left:auto로 오른쪽 끝으로 민다. 양 팀 모두 아바타→닉네임 순으로
    통일(요청: "홈팀쪽도 아바타 닉네임 순") — 팀1의 기본 뒤집기를 되돌리고 종족 배지도 같은
    코너(우하)에 둔다. */
-.scr-match-list-panel-v2 .scr-match-row-team-tail { gap: 6px; }
-/* 양 팀 로스터를 균등 고정폭(flex:1)으로 둬서 카드마다 '로/에/승패' 세로줄이 일치하게 한다
-   (요청: "로스터부분 고정폭으로 세로줄 카드간 일치"). 이름이 길면 로스터 안에서 줄인다. */
-/* 우리팀(team1)은 내용 폭만 차지하게 해서 "팀으로 · 상대팀"이 우리팀 바로 뒤로 당겨져
-   문장처럼 이어지고, 상대팀 로스터가 왼쪽으로 붙는다(요청: "상대팀 로스터를 살짝 왼쪽으로
-   더 이동"). 상대팀(team2)은 남는 폭을 먹어(flex:1) 결과 묶음(팀에게·승/패)·점수 컬럼을
-   오른쪽 끝으로 민다. */
-.scr-match-list-panel-v2 .scr-match-row-team-tail .scr-team-block-team1 { flex: 0 1 auto; min-width: 0; }
-.scr-match-list-panel-v2 .scr-match-row-team-tail .scr-team-block-team2 { flex: 1 1 0; min-width: 0; }
+/* "우리팀 로스터+팀으로"(왼쪽 덩어리)와 "상대팀 로스터+팀에게 승/패"(오른쪽 덩어리)를 각각
+   하나의 그룹(.scr-match-team-side)으로 묶고, 두 그룹을 균등폭(flex:1)으로 둔 뒤 사이에 갭을
+   준다(요청: "두 덩어리처럼 모이고 그 사이에 갭", "팀으로와 상대팀 로스터 사이 공간"). 각
+   그룹 안에서 로스터는 내용폭(flex:0 1 auto)이라 연결어/결과가 로스터 바로 뒤에 붙는다. */
+.scr-match-list-panel-v2 .scr-match-row-team-tail { gap: 14px; }
+.scr-match-list-panel-v2 .scr-match-team-side {
+  display: flex; align-items: center; gap: 6px; flex: 1 1 0; min-width: 0;
+}
+.scr-match-list-panel-v2 .scr-match-team-side .scr-team-block { flex: 0 1 auto; min-width: 0; }
 .scr-match-list-panel-v2 .scr-match-row-team-tail .scr-match-result-tail { flex-shrink: 0; }
 /* "로"/"에" 연결어 — VS 대신(요청). 얇고 옅게, 세로 가운데. */
 .scr-match-conn { flex-shrink: 0; align-self: center; color: var(--muted); font-size: 12px; padding: 0 1px; }
@@ -4958,7 +4964,9 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
    가라앉게. 기본 라이트 규칙(위, 0,2,0)과 같은 특이도라 소스 순서로 이긴다. */
 /* 라이트도 진행중은 거의 투명(맑게), 완료만 어두운 기운 — 검정 글씨가 읽히게 너무 어둡진 않게. */
 .scr-light-theme .scr-challenge-card-active { background: rgba(255, 255, 255, 0.16); }
-.scr-light-theme .scr-challenge-card-ended { background: rgba(0, 0, 0, 0.2); }
+/* 완료 카드가 라이트 테마에서 너무 어두웠다(신고: "완료된 카드 너무 어두워서 좀 밝게") —
+   검정 기운을 크게 낮춰 은은한 회색 정도로만 가라앉힌다(진행 중과는 여전히 구분됨). */
+.scr-light-theme .scr-challenge-card-ended { background: rgba(0, 0, 0, 0.07); }
 /* "응답하라!" 카드에 경고색 테두리를 줬다가(요청: "카드에 노란 경고 색 테두리 주기" →
    "좀더 경고 느낌 붉은색으로") 그 테두리가 너무 튀어서 정작 "다가오는 대결" 쪽이 상대적으로
    덜 주목받는다는 피드백으로 없앤다(요청: "보더는 취소 다가오는 경기가 주목이 안돼"). */
@@ -5146,7 +5154,7 @@ html.scr-light-theme .scr-challenge-next-tag {
    보임"). 목록이 과거(위)→미래(아래) 순이라 스크롤 위치(0~1)를 그대로 세로 축에 매핑한다.
    position:fixed로 뷰포트 우측에 떠 있고, 스크롤하는 동안에만 opacity로 나타난다. 위쪽은
    헤더/툴바/검색줄, 아래쪽은 탭바를 비켜 배치한다. */
-.scr-challenge-timeline {
+.scr-scroll-timeline {
   position: fixed; right: 6px; z-index: 40;
   /* 버튼(휴지통/도전장 보내기)은 sticky라 스크롤 최상단에선 헤더 바로 아래(제자리)에 있다가
      스크롤하면 top:safe-top까지 올라가 붙는다 — 즉 버튼이 가장 아래로 내려오는 건 최상단일
@@ -5160,18 +5168,18 @@ html.scr-light-theme .scr-challenge-next-tag {
   display: flex; flex-direction: column; align-items: center; gap: 6px;
   opacity: 0; pointer-events: none; transition: opacity 0.25s ease;
 }
-.scr-challenge-timeline-visible { opacity: 1; pointer-events: auto; }
-.scr-challenge-timeline-end {
+.scr-scroll-timeline-visible { opacity: 1; pointer-events: auto; }
+.scr-scroll-timeline-end {
   font-size: 9px; font-weight: 800; color: var(--dim); letter-spacing: 0.06em;
   user-select: none;
 }
-.scr-challenge-timeline-track {
+.scr-scroll-timeline-track {
   position: relative; flex: 1; width: 32px;
   display: flex; justify-content: center;
   touch-action: none; cursor: pointer;
 }
 /* 세로 축선 — 위(과거)는 옅고 아래(미래)로 갈수록 포인트색이 진해져 방향을 은근히 전한다. */
-.scr-challenge-timeline-track::before {
+.scr-scroll-timeline-track::before {
   content: ""; position: absolute; top: 0; bottom: 0; width: 3px; border-radius: 3px;
   background: linear-gradient(
     to bottom,
@@ -5179,14 +5187,14 @@ html.scr-light-theme .scr-challenge-next-tag {
     color-mix(in srgb, var(--point) 78%, transparent)
   );
 }
-.scr-challenge-timeline-thumb {
+.scr-scroll-timeline-thumb {
   position: absolute; left: 50%; width: 12px; height: 12px; border-radius: 50%;
   background: var(--point); transform: translate(-50%, -50%);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--point) 26%, transparent), 0 1px 4px rgba(0, 0, 0, 0.3);
   z-index: 1;
 }
 /* "오늘" 눈금 — 트랙 위 오늘 위치에 짧은 가로선 + 라벨. 썸이 지나가며 여기서 딱 걸린다.
-   라벨을 트랙 왼쪽으로 띄우던 이전 방식은 현재 위치 알약(.scr-challenge-timeline-date,
+   라벨을 트랙 왼쪽으로 띄우던 이전 방식은 현재 위치 알약(.scr-scroll-timeline-date,
    역시 트랙 왼쪽에 붙는다)과 세로 위치가 겹칠 때 서로 부딪혀 지저분해 보였다(실제로
    지적받은 문제) — "과거"/"미래" 끝 라벨처럼 눈금 바로 위에 작게 얹는 걸로 바꾼다.
    라벨(::after)을 컨테이너의 플로우 안에 넣으면(flex-direction:column) 컨테이너 높이가
@@ -5195,15 +5203,15 @@ html.scr-light-theme .scr-challenge-next-tag {
    "스냅이 바가 아니라 글자에 걸리는 문제") — 컨테이너의 플로우 콘텐츠는 선(::before)
    하나만 남기고, 라벨은 그 위에 절대 위치로 얹어서 컨테이너 중앙(=스크롤 위치)은 항상
    선 기준으로 유지한다. */
-.scr-challenge-timeline-today {
+.scr-scroll-timeline-today {
   position: absolute; left: 50%; transform: translate(-50%, -50%);
   display: flex; align-items: center;
 }
-.scr-challenge-timeline-today::before {
+.scr-scroll-timeline-today::before {
   content: ""; width: 16px; height: 2px; border-radius: 2px;
   background: var(--highlight-bg);
 }
-.scr-challenge-timeline-today::after {
+.scr-scroll-timeline-today::after {
   content: "오늘"; position: absolute; left: 50%; bottom: 100%; margin-bottom: 2px;
   transform: translateX(-50%);
   font-size: 8px; font-weight: 800; color: var(--highlight-bg);
@@ -5211,22 +5219,22 @@ html.scr-light-theme .scr-challenge-next-tag {
 }
 /* "일정 미정" 눈금 — 오늘 눈금과 같은 모양이되, 확정되지 않은 대기 묶음이라 은은한
    회색 톤으로 구분한다. 목록 맨 위에 있어 보통 트랙 최상단 근처에 찍힌다. */
-.scr-challenge-timeline-undecided {
+.scr-scroll-timeline-undecided {
   position: absolute; left: 50%; transform: translate(-50%, -50%);
   display: flex; align-items: center;
 }
-.scr-challenge-timeline-undecided::before {
+.scr-scroll-timeline-undecided::before {
   content: ""; width: 14px; height: 2px; border-radius: 2px;
   background: var(--dim);
 }
-.scr-challenge-timeline-undecided::after {
+.scr-scroll-timeline-undecided::after {
   content: "미정"; position: absolute; left: 50%; bottom: 100%; margin-bottom: 2px;
   transform: translateX(-50%);
   font-size: 8px; font-weight: 800; color: var(--dim);
   white-space: nowrap;
 }
 /* 현재 상단에 핀된 날짜를 알약으로 — 트랙 왼쪽에 붙여 현재 위치를 "며칠"인지로 보여준다. */
-.scr-challenge-timeline-date {
+.scr-scroll-timeline-date {
   position: absolute; right: 100%; margin-right: 8px; transform: translateY(-50%);
   white-space: nowrap; font-size: 11px; font-weight: 700;
   color: var(--text); background: var(--panel-solid);
