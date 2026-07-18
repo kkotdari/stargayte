@@ -2837,6 +2837,12 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   min-width: 34px;
 }
 .scr-match-result-points { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+/* 팀전 이력 — "우리 로스터 VS 상대 로스터"를 왼쪽에 붙여 두고, 결과(승/패)+점수 묶음을
+   오른쪽 끝으로 민다(요청: "로스터 vs 로스터 결과 점수" 순). 두 팀 로스터는 자연폭으로 두고
+   (개인전과 달리 양 팀을 다 보여줘 flex:1로 늘리면 가운데가 텅 빈다) 사이 VS만 둔다. */
+.scr-match-list-panel-v2 .scr-match-row-team-tail { gap: 10px; }
+.scr-match-list-panel-v2 .scr-match-row-team-tail .scr-team-block { flex: 0 1 auto; }
+.scr-match-list-panel-v2 .scr-match-row-team-tail .scr-match-result-tail { margin-left: auto; }
 /* 팀전 이력 카드 — 우리팀 대 상대팀을 그대로 보여주고, 그 경기에서 얻은 점수는 카드 아래
    오른쪽에 작게 병기한다(개인전은 승패 옆에 붙지만 팀전은 양 팀을 다 보여줘 자리가 없다). */
 .scr-rank-history-points-line {

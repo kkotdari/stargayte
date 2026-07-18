@@ -34,6 +34,9 @@ interface MatchTeamsProps {
   // 랭킹 상세 경기 이력 전용 — 프사 없이 "닉네임 + 종족(텍스트)"만, 양 팀 모두 같은 순서로
   // 보여준다(요청: "프사 제거, 닉네임과 종족배지(텍스트)만, 팀전은 좌우 팀 모두 닉네임 종족 순").
   textRoster?: boolean;
+  // 랭킹 상세 팀전 이력 전용 — 개인전 카드처럼 "로스터 VS 로스터 → 결과(승/패) → 점수" 순으로
+  // 한 줄에 흘려 보여준다(요청). 승/패를 가운데 VS 칸에 쌓지 않고 오른쪽 끝(결과+점수)에 둔다.
+  bothTeamsTail?: boolean;
 }
 
 type Outcome = "win" | "loss" | "draw" | "notHeld";
@@ -147,10 +150,33 @@ function TeamRoster({ side, players, memberOf, outcome, highlightMemberIds, disa
 // (stackedOutcome이면 대신 VS 위아래에 승/무/패가 붙는다).
 export default function MatchTeams({
   team1, team2, memberOf, result, highlightMemberIds, disableProfileLink, stackedOutcome, compact, opponentOnly,
-  outcomeNote, pointsByMember, textRoster,
+  outcomeNote, pointsByMember, textRoster, bothTeamsTail,
 }: MatchTeamsProps) {
   const outcome1 = outcomeFor("team1", result);
   const outcome2 = outcomeFor("team2", result);
+  // 팀전 이력 — "우리 로스터 VS 상대 로스터 → 결과 → 점수"를 개인전 카드처럼 한 줄에 흘린다.
+  // 승/패는 주인공(team1) 기준으로 오른쪽 끝에, 그 아래 이 경기 점수를 병기한다.
+  if (bothTeamsTail) {
+    return (
+      <div className="scr-match-row scr-match-row-result-only scr-match-row-team-tail">
+        <TeamRoster
+          side="team1" players={team1} memberOf={memberOf} outcome={outcome1}
+          highlightMemberIds={highlightMemberIds} disableProfileLink={disableProfileLink}
+          stackedOutcome compact={compact} textRoster={textRoster}
+        />
+        <span className="scr-list-vs">VS</span>
+        <TeamRoster
+          side="team2" players={team2} memberOf={memberOf} outcome={outcome2}
+          highlightMemberIds={highlightMemberIds} disableProfileLink={disableProfileLink}
+          stackedOutcome compact={compact} textRoster={textRoster} pointsByMember={pointsByMember}
+        />
+        <span className="scr-match-result-tail">
+          <span className={cx("scr-team-outcome", "scr-team-outcome-result", OUTCOME_CLASS[outcome1])}>{OUTCOME_LABEL[outcome1]}</span>
+          {outcomeNote && <span className="scr-match-result-points">{outcomeNote}</span>}
+        </span>
+      </div>
+    );
+  }
   // 홈팀(주인공) 없이 "VS 상대 + 승/패"만 — 결과 위주로 훑는 랭킹 상세 이력용.
   if (opponentOnly) {
     return (

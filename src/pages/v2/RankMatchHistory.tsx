@@ -173,17 +173,18 @@ export default function RankMatchHistory({
               // 점수는 카드 아래 오른쪽에 병기한다. 개인전: 예전처럼 "VS 상대 + 승패"만.
               return bothTeams ? (
                 <div key={r.id} className="scr-match-card scr-rank-history-team-card">
+                  {/* 개인전 카드처럼 "로스터 VS 로스터 → 결과 → 점수" 순으로 한 줄에(요청). */}
                   <MatchTeams
                     team1={r.team1} team2={r.team2} memberOf={memberOf} result={r.result}
-                    disableProfileLink stackedOutcome compact textRoster
+                    disableProfileLink compact textRoster bothTeamsTail
+                    outcomeNote={pts}
                     pointsByMember={opponentPointsByMember(r, strengthByMember, weaknessByMember, factor)}
                   />
-                  {/* 맨 밑줄 — 각 팀별 강함수치(요청)와 이 경기 합계 점수. */}
+                  {/* 맨 밑줄 — 각 팀별 강함수치(요청). */}
                   <div className="scr-rank-history-points-line">
                     <span className="scr-rank-history-strengths">
                       우리 강함 {ourStr} · 상대 강함 {oppStr}
                     </span>
-                    {pts && <span className="scr-rank-history-sum">합계 {pts}</span>}
                   </div>
                 </div>
               ) : (
