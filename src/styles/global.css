@@ -949,7 +949,9 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 /* 랭킹 타이틀 옆 몇 월인지(요청: "타이틀 옆에 몇월 표시") — 타이틀보다 옅고 작게. */
 /* 요청: "랭킹 몇월 글짜 1.5배 확대" — 0.55em → 0.825em. 밝기도 더 밝게(요청) —
    --dim보다 밝은 --muted로. */
-.scr-rank-title-month { font-size: 0.825em; font-weight: 700; color: var(--muted); margin-left: 8px; }
+/* 월 라벨 — 이제 타이틀 h1 안이 아니라 아래 서브행에 있으므로 em(상대) 대신 고정 크기로
+   또렷하게 둔다(예전 0.825em은 h1 22px 기준 ~18px였다). */
+.scr-rank-title-month { font-size: 16px; font-weight: 700; color: var(--muted); margin-left: 8px; }
 /* 월 옆 좌우 이동 화살표(요청: "월 옆에 좌우 이동 아이콘 버튼(심플)"). 타이틀 글자와 세로
    가운데로 맞춘 인라인 플렉스. 화살표 자체가 좌/우 구분을 주므로 별도 배경 없이 심플하게,
    호버 때만 살짝 배경을 준다. 월 라벨은 nav가 간격을 관리하므로 자체 margin은 지운다. */
@@ -1059,12 +1061,15 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 }
 .scr-preview-badge button:hover { background: rgba(var(--overlay-rgb),0.18); }
 
-/* 랭킹 타이틀 줄 오른쪽의 산정 방식 힌트(요청: "타이틀 줄에 오른쪽에 표시") — 툴바 그리드의
-   actions 칸에 넣어 타이틀과 한 줄을 나눠 쓴다. 타이틀이 자기 글자 처짐 보정으로 -6px 떠
-   있는 만큼 힌트도 같은 양 올려 베이스라인을 맞춘다. 좁은 화면에선 글자만 살짝 줄인다. */
+/* 월(좌우 이동)과 산정 방식 힌트를 담는, 타이틀 행 아래의 별도 행(요청) — 월은 왼쪽,
+   힌트는 오른쪽 끝. 타이틀 바로 아래에 붙이고 목록/검색창과의 간격을 준다. */
+.scr-rank-subrow {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  margin: -6px 0 12px;
+}
+/* 산정 방식 힌트 — 서브행 오른쪽에 옅게. 좁은 화면에선 글자만 살짝 줄인다. */
 .scr-rank-hint-inline {
-  grid-area: actions; justify-self: end; text-align: right;
-  font-size: 13px; color: var(--muted); white-space: nowrap; transform: translateY(-6px);
+  text-align: right; font-size: 13px; color: var(--muted); white-space: nowrap;
 }
 @media (max-width: 640px) {
   .scr-rank-hint-inline { font-size: 11.5px; }
