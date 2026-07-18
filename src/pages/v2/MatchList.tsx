@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
 import { MoreVertical, Monitor, UserPlus } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
@@ -158,7 +158,9 @@ function MatchActionsMenu({
   const anchorRef = useRef<HTMLButtonElement>(null);
   const dropRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
+  // useLayoutEffect(페인트 전) — 위치를 첫 페인트 전에 잡아, 엉뚱한 자리에서 한 프레임
+  // 늦게 뜨거나 튀어 보이지 않고 즉시 제자리에 뜬다(요청: "즉시 뜨길 기대").
+  useLayoutEffect(() => {
     if (!open || !anchorRef.current || !dropRef.current) return;
     return attachPopover(anchorRef.current, dropRef.current, { growToContent: true, maxWidth: 200 });
   }, [open]);

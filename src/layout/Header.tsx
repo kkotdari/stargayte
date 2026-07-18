@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
 import NavTab from "./NavTab";
 import AdminMenu from "./AdminMenu";
@@ -138,7 +138,8 @@ export default function Header({
   // 무관하게 헤더에 항상 하나만 있어서 그 변형을 자동으로 못 받았다(요청: "내정보
   // 로그아웃 드롭다운의 크기를 운영과 똑같이 수정") — 같은 폭 기준으로 직접 판단한다.
   const isNarrowHeader = useIsNarrow(640);
-  useEffect(() => {
+  // useLayoutEffect(페인트 전)로 위치를 잡아 프로필 드롭다운이 즉시 제자리에 뜨게 한다(요청).
+  useLayoutEffect(() => {
     if (!profileMenuOpen || !profileAnchorRef.current || !profileDropRef.current) return;
     return attachPopover(profileAnchorRef.current, profileDropRef.current, { growToContent: true, maxWidth: 200 });
   }, [profileMenuOpen]);

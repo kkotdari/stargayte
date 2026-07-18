@@ -91,10 +91,6 @@ export function attachPopover(
       floatingEl.style.position = "fixed";
       floatingEl.style.left = `${x}px`;
       floatingEl.style.top = `${y}px`;
-      // 위치가 확정되기 전(computePosition은 비동기)에는 요소가 문서 흐름 끝의 엉뚱한
-      // 자리에 잠깐 떴다가 튀어 "느리게 열리는" 것처럼 보였다 — 확정된 뒤에야 보이게 한다.
-      // (초기 숨김은 호출부/CSS에서 visibility:hidden으로 잡아 두면 된다.)
-      floatingEl.style.visibility = "visible";
     });
   };
 
