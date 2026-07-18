@@ -3,8 +3,6 @@ import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { attachPopover } from "../../utils/popover";
 import { cx } from "../../utils/format";
-import { BASE_RACES, RACE_INFO } from "../../constants/races";
-import type { BaseRace } from "../../types";
 
 interface SearchFilterBarProps {
   count: number;
@@ -16,20 +14,12 @@ interface SearchFilterBarProps {
   // 랭킹/전적통계는 경기번호 개념이 없어 안 넘기면 이 인식 자체가 꺼진다.
   matchNoValue?: string;
   onMatchNoChange?: (value: string) => void;
-  // 종족 필터 — 라디오 대신 유저 검색창의 예약어로 통합한다(요청: "종족 필터는 라디오
-  // 버튼 체크박스가 아니라 검색창에 예약어로 통합"). 타이핑만으로 자동 인식하진 않는다
-  // (요청: "미선택시 일반 유저 검색어로 처리") — 자동완성 후보에 "종족: 저그" 형태로
-  // 떠서, 그 후보를 직접 골라야만 종족 칩이 된다. 경기번호(matchNoValue)와 같은
-  // 화면(랭킹-일대일/전적통계)만 넘긴다. 라디오와 달리 값 하나만 가능하므로, 이미 하나를
-  // 골라둔 뒤에는 후보 목록에서 종족 항목 자체가 빠진다.
-  raceValue?: BaseRace | null;
-  onRaceChange?: (value: BaseRace | null) => void;
   searchPlaceholder?: string;
   // 유저 검색 자동완성 후보 — 페이지 진입 시 한 번(이미 로드된 회원 목록에서) 계산해서
   // 넘겨준다. 타이핑마다 서버에 새로 묻지 않고 이 안에서만 걸러 보여준다(실시간 조회 X).
   suggestions?: string[];
-  // 검색창 위에 얹히는 필터창 — 화면마다 다른 내용(PillTabs, 월 선택 등)을 그대로 넘긴다.
-  // 없으면(랭킹 이외엔 항상 있음) 검색창만 뜬다.
+  // 검색창 위에 얹히는 필터창 — 화면마다 다른 내용(PillTabs, 종족 셀렉트, 월 선택 등)을
+  // 그대로 넘긴다. 없으면(랭킹 이외엔 항상 있음) 검색창만 뜬다.
   filterPanel?: ReactNode;
 }
 
@@ -49,27 +39,21 @@ function parseSearchChips(value: string): string[] {
   return value.trim() === "" ? [] : value.trim().split(" ").filter(Boolean);
 }
 
-type SuggestItem = { kind: "race"; race: BaseRace } | { kind: "name"; name: string };
-
 // 경기결과/전적통계/랭킹 목록이 공용으로 쓰는, 타이틀 아래 인라인 필터+검색 바(요청:
-// "각 화면의 필터를 화면 상단 타이틀 아래에 배치, 하단 플로팅은 제거"). 필터창이 위,
-// 검색창이 아래로 세로로 쌓인다(요청: "필터가 위 검색이 아래"). 예전엔 모바일에서 하단
-// 탭바 위에 뜨는 플로팅 알약(아이콘↔창 모핑)이었지만, 그 방식을 전부 걷어내고 어느 화면
-// 폭에서든 문서 흐름 안에 그대로 둔다.
+// "각 화면의 필터를 화면 상단 타이틀 아래에 배치, 하단 플로팅은 제거"). 검색창은 유저
+// 입력만 받는다(요청: "검색창에 유저 입력만") — 종족은 필터창의 드롭다운으로 옮겼다.
 export default function SearchFilterBar({
   count, countLabel,
   searchValue, onSearchChange, searchPlaceholder = "예: SSamJang",
   matchNoValue, onMatchNoChange,
-  raceValue, onRaceChange,
   suggestions,
   filterPanel,
 }: SearchFilterBarProps) {
   const [suggestOpen, setSuggestOpen] = useState(false);
   const [highlight, setHighlight] = useState(0);
-  // 칩(완성된 검색어/경기번호/종족)은 부모 state(searchValue 등)를 그대로 진실로 삼아
-  // 즉시 반영한다(요청: "칩 추가/제거시 즉시 적용"). 지금 타이핑 중인, 아직 칩이 안 된
-  // 마지막 단어만 로컬 상태(liveText)로 들고 있다가 스페이스로 완성되거나 엔터로 확정될 때
-  // addChip을 통해 즉시 적용한다.
+  // 칩(완성된 검색어/경기번호)은 부모 state(searchValue 등)를 그대로 진실로 삼아 즉시
+  // 반영한다(요청: "칩 추가/제거시 즉시 적용"). 지금 타이핑 중인, 아직 칩이 안 된 마지막
+  // 단어만 로컬 상태(liveText)로 들고 있다가 스페이스로 완성되거나 엔터로 확정될 때 적용한다.
   const [liveText, setLiveText] = useState("");
   const chips = useMemo(() => parseSearchChips(searchValue), [searchValue]);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -77,10 +61,8 @@ export default function SearchFilterBar({
   const dropRef = useRef<HTMLDivElement>(null);
   const chipBoxRef = useRef<HTMLDivElement>(null);
 
-  // 스페이스로 완성됐거나 엔터로 확정된 단어 하나를 즉시 적용한다 — 숫자만으로 된
-  // 단어는 경기번호로(경기 화면만 onMatchNoChange를 넘긴다), 그 외엔 평범한 유저 검색어
-  // 칩으로 곧장 부모 state에 반영한다. 종족은 이 경로로 인식하지 않는다(요청: "미선택시
-  // 일반 유저 검색어로 처리") — 종족은 아래 자동완성 후보에서 직접 골라야만 적용된다.
+  // 스페이스로 완성됐거나 엔터로 확정된 단어 하나를 즉시 적용한다 — 숫자만으로 된 단어는
+  // 경기번호로(경기 화면만 onMatchNoChange를 넘긴다), 그 외엔 평범한 유저 검색어 칩으로.
   const addChip = (word: string) => {
     const trimmed = word.trim();
     if (!trimmed) return;
@@ -93,27 +75,19 @@ export default function SearchFilterBar({
 
   // 결과 필터(memberMatchesQuery)와 같은 방식으로 띄어쓰기 여러 단어를 지원한다 — 이미
   // 완성된 칩은 다시 후보로 보여줄 필요가 없으니, 지금 입력 중인 마지막 단어(liveText)만
-  // 기준으로 자동완성한다. 종족 후보("종족: 저그")는 이미 하나를 골라둔 뒤엔(raceValue
-  // 존재) 목록에서 아예 빠진다 — 값 하나만 가능한 필터라서다. 이름 후보보다 앞에 둔다.
-  const matchedSuggestions = useMemo<SuggestItem[]>(() => {
+  // 기준으로 유저 이름을 자동완성한다.
+  const matchedSuggestions = useMemo<string[]>(() => {
     const q = liveText.trim().toLowerCase();
-    if (!meetsSuggestThreshold(q)) return [];
-    const items: SuggestItem[] = [];
-    if (onRaceChange && !raceValue) {
-      for (const r of BASE_RACES) {
-        if (r.toLowerCase().includes(q)) items.push({ kind: "race", race: r });
-      }
+    if (!meetsSuggestThreshold(q) || !suggestions) return [];
+    const chosen = new Set(chips.map((c) => c.toLowerCase()));
+    const items: string[] = [];
+    for (const s of suggestions) {
+      if (items.length >= MAX_SUGGESTIONS) break;
+      if (chosen.has(s.toLowerCase()) || !s.toLowerCase().includes(q)) continue;
+      items.push(s);
     }
-    if (suggestions) {
-      const chosen = new Set(chips.map((c) => c.toLowerCase()));
-      for (const s of suggestions) {
-        if (items.length >= MAX_SUGGESTIONS) break;
-        if (chosen.has(s.toLowerCase()) || !s.toLowerCase().includes(q)) continue;
-        items.push({ kind: "name", name: s });
-      }
-    }
-    return items.slice(0, MAX_SUGGESTIONS);
-  }, [suggestions, liveText, chips, onRaceChange, raceValue]);
+    return items;
+  }, [suggestions, liveText, chips]);
 
   const suggestShown = suggestOpen && matchedSuggestions.length > 0;
 
@@ -144,14 +118,11 @@ export default function SearchFilterBar({
   useEffect(() => {
     const el = chipBoxRef.current;
     if (el) el.scrollLeft = el.scrollWidth;
-  }, [searchValue, matchNoValue, raceValue, liveText]);
+  }, [searchValue, matchNoValue, liveText]);
 
-  // 후보를 고르면 즉시 적용한다 — 이름 후보는 검색어 칩으로(addChip), 종족 후보는 이
-  // 경로로만 종족 칩이 된다(타이핑+스페이스로는 안 됨, 위 matchedSuggestions 주석 참고).
-  // liveText는 비워서 인풋이 다음 단어를 받을 준비를 하게 한다.
-  const pick = (item: SuggestItem) => {
-    if (item.kind === "race") onRaceChange?.(item.race);
-    else addChip(item.name);
+  // 후보(유저 이름)를 고르면 즉시 검색어 칩으로 적용하고 liveText를 비운다.
+  const pick = (name: string) => {
+    addChip(name);
     setLiveText("");
     setSuggestOpen(false);
     // 터치로 후보를 고르면(포커스가 안 빠지게 mousedown을 막아둬서) 인풋이 비워졌는데도
@@ -178,10 +149,9 @@ export default function SearchFilterBar({
     if (e.key === "Escape") { setSuggestOpen(false); return; }
     if (e.key === "Backspace" && liveText === "") {
       if (chips.length > 0) { e.preventDefault(); removeChip(chips.length - 1); return; }
-      // 유저 칩이 하나도 안 남았을 때만 예약어 칩(경기번호/종족)까지 지운다 — 맨 앞에
-      // 그려지므로 "가장 최근에 완성한 것부터 지운다"는 되돌리기 감각과 맞는다.
+      // 유저 칩이 하나도 안 남았을 때만 경기번호 칩까지 지운다 — 맨 앞에 그려지므로
+      // "가장 최근에 완성한 것부터 지운다"는 되돌리기 감각과 맞는다.
       if (matchNoValue && onMatchNoChange) { e.preventDefault(); onMatchNoChange(""); return; }
-      if (raceValue && onRaceChange) { e.preventDefault(); onRaceChange(null); return; }
     }
     // 자동완성 후보가 안 떠 있을 때 엔터를 누르면 지금 입력 중이던 단어를(있다면) 그대로
     // 검색어 칩으로 즉시 적용하고, 모바일에서는 입력칸 포커스도 풀어 키보드를 닫는다 —
@@ -200,9 +170,7 @@ export default function SearchFilterBar({
       <span className="scr-field-label-text">유저</span>
       {/* 완성된 검색어는 둥근네모 칩으로, 지금 타이핑 중인 마지막 단어만 실제 인풋
           값이다 — 클릭하면 인풋에 포커스를 준다(칩들 사이 빈 자리를 눌러도 바로
-          이어서 입력할 수 있게). 클릭이 인풋 자체가 아니라 이 바깥 박스(빈 여백)에서
-          일어나면 브라우저의 "클릭한 자리에 커서" 로직이 적용되지 않아 focus()만으로는
-          커서가 맨 앞에 남는다 — 항상 맨 뒤(이어서 타이핑할 위치)로 명시적으로 옮긴다. */}
+          이어서 입력할 수 있게). */}
       <div
         ref={chipBoxRef}
         className="scr-input scr-list-search-input scr-search-chip-box"
@@ -229,25 +197,6 @@ export default function SearchFilterBar({
             </button>
           </span>
         )}
-        {/* 종족 칩도 경기번호 칩과 같은 자리(맨 앞) — 유저 칩과 다른 색(종족 고유색)으로
-            구분한다. */}
-        {raceValue && (
-          <span
-            className="scr-search-chip scr-search-chip-race"
-            style={{ background: RACE_INFO[raceValue].color }}
-          >
-            종족: {raceValue}
-            <button
-              type="button"
-              className="scr-search-chip-x"
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => onRaceChange?.(null)}
-              aria-label="종족 필터 해제"
-            >
-              <X size={9} />
-            </button>
-          </span>
-        )}
         {chips.map((chip, i) => (
           <span key={`${chip}-${i}`} className="scr-search-chip">
             {chip}
@@ -269,9 +218,7 @@ export default function SearchFilterBar({
           onChange={(e) => {
             const nextLive = e.target.value;
             // 스페이스로 단어를 완성하면 곧바로 칩으로 적용한다(요청: "칩 추가/제거시
-            // 즉시 적용") — 종족은 여기서 인식하지 않는다(자동완성 후보에서 직접
-            // 골라야만 종족 칩이 된다), 숫자만 친 단어는 경기번호로, 그 외엔 평범한
-            // 검색어로 addChip이 알아서 적용한다.
+            // 즉시 적용") — 숫자만 친 단어는 경기번호로, 그 외엔 평범한 검색어로.
             if (nextLive.endsWith(" ")) {
               addChip(nextLive);
               setLiveText("");
@@ -284,21 +231,21 @@ export default function SearchFilterBar({
           onFocus={() => setSuggestOpen(true)}
           onBlur={() => setSuggestOpen(false)}
           onKeyDown={onSearchKeyDown}
-          placeholder={chips.length === 0 && !matchNoValue && !raceValue ? searchPlaceholder : ""}
+          placeholder={chips.length === 0 && !matchNoValue ? searchPlaceholder : ""}
           autoComplete="off"
         />
       </div>
       {suggestShown && createPortal(
         <div className="scr-pv-drop scr-scroll" ref={dropRef}>
-          {matchedSuggestions.map((item, i) => (
+          {matchedSuggestions.map((name, i) => (
             <button
-              type="button" key={item.kind === "race" ? `race-${item.race}` : item.name}
+              type="button" key={name}
               className={cx("scr-pv-opt", i === highlight && "scr-pv-opt-active")}
               onMouseEnter={() => setHighlight(i)}
               onMouseDown={(e) => e.preventDefault()}
-              onClick={() => pick(item)}
+              onClick={() => pick(name)}
             >
-              {item.kind === "race" ? `종족: ${item.race}` : item.name}
+              {name}
             </button>
           ))}
         </div>,

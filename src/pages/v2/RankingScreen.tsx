@@ -4,6 +4,7 @@ import { Spinner } from "../../components/common/Feedback";
 import SearchFilterBar from "../../components/common/SearchFilterBar";
 import PillTabs from "../../components/common/PillTabs";
 import FilterItem from "../../components/common/FilterItem";
+import Select from "../../components/common/Select";
 import RankRow from "./RankRow";
 import RankingDetailModal from "./RankingDetailModal";
 import RankWeightModal from "./RankWeightModal";
@@ -26,6 +27,13 @@ import type { BaseRace, Member } from "../../types";
 const CHART_OPTS: { value: RankMode; label: string }[] = [
   { value: "solo", label: "개인전" },
   { value: "team", label: "팀전" },
+];
+// 종족 필터 — 검색창 예약어에서 필터창 드롭다운으로 옮겼다(요청). "전체"면 종족 무관.
+const RACE_SELECT_OPTS = [
+  { value: "all", label: "전체 종족", shortLabel: "종족" },
+  { value: "테란", label: "테란" },
+  { value: "프로토스", label: "프로토스" },
+  { value: "저그", label: "저그" },
 ];
 // 기간 단위 — 월이면 화살표 한 번에 ±1개월, 연이면 ±1년 이동한다(요청: "기간 년/월, 화살표
 // 하나로 그 단위만큼 이동. 캘린더 선택기 없이").
@@ -238,14 +246,27 @@ export default function RankingScreenV2() {
         countLabel="명"
         searchValue={search}
         onSearchChange={setSearch}
-        searchPlaceholder={isTeam ? "유저" : "유저/종족"}
+        searchPlaceholder="유저"
         suggestions={suggestions}
-        raceValue={isTeam ? undefined : (race === "all" ? null : race)}
-        onRaceChange={isTeam ? undefined : handleRaceChange}
         filterPanel={
-          <FilterItem label="차트">
-            <PillTabs options={CHART_OPTS} value={mode} onChange={handleModeChange} aria-label="개인전/팀전 선택" />
-          </FilterItem>
+          <>
+            <FilterItem label="차트">
+              <PillTabs options={CHART_OPTS} value={mode} onChange={handleModeChange} aria-label="개인전/팀전 선택" />
+            </FilterItem>
+            {/* 종족은 검색창 예약어 대신 필터 드롭다운으로(요청). 팀전엔 종족 개념이 없어 숨긴다. */}
+            {!isTeam && (
+              <FilterItem label="종족">
+                <Select
+                  value={race}
+                  options={RACE_SELECT_OPTS}
+                  onChange={(v) => handleRaceChange(v === "all" ? null : (v as BaseRace))}
+                  size="sm"
+                  minDropWidth={110}
+                  className="scr-filter-race-select"
+                />
+              </FilterItem>
+            )}
+          </>
         }
       />
 
