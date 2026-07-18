@@ -60,10 +60,19 @@ function rankSorted(entries: MemberStatsEntry[], memberById: Map<string, Member>
 }
 
 // 한 기간의 랭킹에서 회원별 순위만 뽑아둔다 — 직전 기간 대비 rankDelta / 추이 그래프 계산용.
+// 그 기간에 한 판이라도 뛴 사람(plays>0)만 '순위'로 친다 — 0경기 회원은 순위 변동 비교
+// 대상이 아니다. 경기가 하나도 없던 달은 서버가 전원 0경기·공동 꼴찌(사실상 공동 1위)로
+// 내려주는데, 그걸 그대로 순위로 쓰면 이번 달 뛴 사람이 전부 그 "전원 1위" 대비 변동으로
+// 떠 버렸다(실제로 지적받은 문제) — 안 뛴 기간엔 순위가 없던 것으로 봐서, 이번에 새로 뛰면
+// prevRank가 없어(undefined) rankDelta가 null → "신규"로 뜬다.
 function rankByMember(entries: MemberStatsEntry[], memberById: Map<string, Member>): Map<string, number> {
   const sorted = rankSorted(entries, memberById);
   const ranks = competitionRanks(sorted, (e) => e.tieGroup);
-  return new Map(sorted.map((e, i) => [e.memberId, ranks[i]]));
+  const map = new Map<string, number>();
+  sorted.forEach((e, i) => {
+    if (e.overall.plays > 0) map.set(e.memberId, ranks[i]);
+  });
+  return map;
 }
 
 // 랭킹 목록 — 집계·정렬을 전부 서버(GET /matches/stats)가 끝내서 sortOrder로 내려준다. 순서는
