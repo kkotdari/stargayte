@@ -2142,13 +2142,13 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    — PC는 필터창(왼쪽)+검색창(오른쪽)을 가로로 나란히, 화면 가운데 정렬된 채 문서
    흐름 안에 그냥 있고(진짜 position:fixed는 아님), 모바일만 세로로 쌓아 진짜 고정
    위치로 하단 탭바 위에 뜬다(아래 미디어쿼리). */
-/* 필터창(위) + 검색창(아래)을 세로로 쌓는다(요청: "필터가 위 검색이 아래"). 필터창은
-   내용 폭만큼만 차지해(랭킹 서브행처럼 컴팩트한 반투명 알약) 왼쪽에 붙고, 넘치면 자기
-   가로 스크롤로 접근한다. 검색창은 한 줄 가득. PC/모바일 공통이라 어느 폭에서든 같은
-   인라인 배치다(예전의 하단 플로팅 알약은 제거됐다). */
-.scr-filter-inline-stack { display: flex; flex-direction: column; align-items: stretch; gap: 8px; width: 100%; }
-.scr-filter-panel { align-self: flex-start; max-width: 100%; }
-.scr-search-filter-float { width: 100%; min-width: 0; }
+/* 타이틀 아래 인라인 필터+검색 — PC는 필터창(왼쪽, 내용 폭만큼)과 검색창(오른쪽, 남는
+   폭)이 한 줄에 나란히 있고(요청: "둘다 위"), 모바일에서만 세로로 쌓여 필터가 위·검색이
+   아래가 된다(아래 미디어쿼리, 요청: "모바일에서 필터아래검색"). 예전의 하단 플로팅
+   알약은 제거됐고, 어느 폭에서든 문서 흐름 안에 그대로 있다. */
+.scr-filter-inline-stack { display: flex; flex-direction: row; align-items: stretch; gap: 8px; width: 100%; }
+.scr-filter-panel { flex: 0 0 auto; max-width: 100%; }
+.scr-search-filter-float { flex: 1 1 auto; min-width: 0; }
 
 /* ===== 필터창(FilterPanel) — 검색창과 같은 자리에 뜨는 반투명 글라스 패널 =====
    요청: "반투명 글라스 플레이트에 화이트 폰트, 라디오는 액티브 알약탭" — 검색창정도의
@@ -2332,9 +2332,11 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   box-shadow: 0 1px 2px rgba(16,21,26,0.08), 0 8px 20px rgba(16,21,26,0.16);
 }
 @media (max-width: 640px) {
-  /* 모바일도 PC와 같은 인라인 세로 스택(필터 위, 검색 아래) — 예전의 하단 플로팅
-     알약(아이콘↔창 모핑, 탭바 위 고정)은 전부 제거했다. 필터창은 내용 폭만큼만 두되
-     라벨 폰트만 좁은 폭에 맞춰 조금 줄인다. */
+  /* 모바일은 필터(위) + 검색(아래)으로 세로로 쌓는다(요청: "모바일에서 필터아래검색") —
+     PC는 한 줄 나란히. 둘 다 화면 폭 가득, 라벨 폰트만 좁은 폭에 맞춰 조금 줄인다. */
+  .scr-filter-inline-stack { flex-direction: column; align-items: stretch; }
+  .scr-filter-panel { width: 100%; }
+  .scr-search-filter-float { width: 100%; }
   .scr-filter-item-label { font-size: 10px; }
 }
 /* 건수는 필터 항목들과 같은 줄에 있으면 목록과 멀어 보인다는 피드백 — 그리드 아래
