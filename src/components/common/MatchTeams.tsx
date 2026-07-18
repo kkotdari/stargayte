@@ -159,6 +159,8 @@ export default function MatchTeams({
   // 다음에 오른쪽에 개별 점수"). 개별 점수는 상대(team2) 각 행과 세로로 나란히 맞춘다. 양 팀
   // 모두 아바타→닉네임 순. 최종 합계 계산은 호출부가 카드 아래 로우에 그린다.
   if (bothTeamsTail) {
+    // "VS" 대신 "[우리 팀]로 [상대 팀]에 승/패"로 문장처럼 표현한다(요청). 로스터는 고정폭
+    // (양 팀 flex 균등)이라 카드마다 '로/에/승패' 세로줄이 일치한다.
     return (
       <div className="scr-match-row scr-match-row-result-only scr-match-row-team-tail">
         <TeamRoster
@@ -166,13 +168,14 @@ export default function MatchTeams({
           highlightMemberIds={highlightMemberIds} disableProfileLink={disableProfileLink}
           stackedOutcome compact={compact} textRoster={textRoster}
         />
-        <span className="scr-list-vs">VS</span>
+        <span className="scr-match-conn">로</span>
         <TeamRoster
           side="team2" players={team2} memberOf={memberOf} outcome={outcome2}
           highlightMemberIds={highlightMemberIds} disableProfileLink={disableProfileLink}
           stackedOutcome compact={compact} textRoster={textRoster}
         />
         <span className="scr-match-result-tail">
+          <span className="scr-match-conn">에</span>
           <span className={cx("scr-team-outcome", "scr-team-outcome-result", OUTCOME_CLASS[outcome1])}>{OUTCOME_LABEL[outcome1]}</span>
         </span>
         {pointsByMember && (
@@ -185,17 +188,17 @@ export default function MatchTeams({
       </div>
     );
   }
-  // 홈팀(주인공) 없이 "VS 상대 + 승/패"만 — 결과 위주로 훑는 랭킹 상세 이력용.
+  // 홈팀(주인공) 없이 "[상대]에 승/패 + 점수"만 — 결과 위주로 훑는 랭킹 상세 이력용(요청: VS 제거).
   if (opponentOnly) {
     return (
       <div className="scr-match-row scr-match-row-result-only">
-        <span className="scr-list-vs">VS</span>
         <TeamRoster
           side="team2" players={team2} memberOf={memberOf} outcome={outcome2}
           highlightMemberIds={highlightMemberIds} disableProfileLink={disableProfileLink}
           stackedOutcome compact={compact} textRoster={textRoster}
         />
         <span className="scr-match-result-tail">
+          <span className="scr-match-conn">에</span>
           <span className={cx("scr-team-outcome", "scr-team-outcome-result", OUTCOME_CLASS[outcome1])}>{OUTCOME_LABEL[outcome1]}</span>
           {/* 이 경기에서 얻은 점수(요청) — 승/패 라벨 바로 옆(또는 아래)에 작게 병기한다. */}
           {outcomeNote && <span className="scr-match-result-points">{outcomeNote}</span>}

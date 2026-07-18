@@ -1201,6 +1201,11 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    "승패 줄다 표시하되 승에 녹색 포인트 컬러"). 목록 패널 안(.scr-match-list-panel-v2)으로만
    좁혀, 경기 상세 팝업 등 다른 곳의 승/패 톤은 건드리지 않는다. */
 .scr-match-list-panel-v2 .scr-team-outcome.scr-win { color: var(--win); }
+/* 패도 포인트 색(붉은 계열)을 넣는다(요청: "승 뿐 아니라 패도 포인트 색 붉은 계열"). */
+.scr-match-list-panel-v2 .scr-team-outcome.scr-loss { color: var(--loss); }
+/* 경기 목록 테이블의 승/패에도 포인트 색(요청: "승패 포인트 색 넣기"). */
+.scr-match-trow-outcome.scr-win { color: var(--win); }
+.scr-match-trow-outcome.scr-loss { color: var(--loss); }
 
 /* ===== 전적통계 — 다른 목록 패널(경기결과 등)과 같은 프레임(scr-list-panel)에 담는다 =====
    프사(이름 칸)/전체전적/전체승률/종족별(테란·프로토스·저그) 전적·승률/APM/유효APM/
@@ -2911,10 +2916,14 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    승/패+점수 묶음은 margin-left:auto로 오른쪽 끝으로 민다. 양 팀 모두 아바타→닉네임 순으로
    통일(요청: "홈팀쪽도 아바타 닉네임 순") — 팀1의 기본 뒤집기를 되돌리고 종족 배지도 같은
    코너(우하)에 둔다. */
-.scr-match-list-panel-v2 .scr-match-row-team-tail { gap: 10px; }
-.scr-match-list-panel-v2 .scr-match-row-team-tail .scr-team-block-team1 { flex: 0 1 auto; }
-.scr-match-list-panel-v2 .scr-match-row-team-tail .scr-team-block-team2 { flex: 0 1 auto; }
-.scr-match-list-panel-v2 .scr-match-row-team-tail .scr-match-result-tail { flex-shrink: 0; margin-left: auto; }
+.scr-match-list-panel-v2 .scr-match-row-team-tail { gap: 6px; }
+/* 양 팀 로스터를 균등 고정폭(flex:1)으로 둬서 카드마다 '로/에/승패' 세로줄이 일치하게 한다
+   (요청: "로스터부분 고정폭으로 세로줄 카드간 일치"). 이름이 길면 로스터 안에서 줄인다. */
+.scr-match-list-panel-v2 .scr-match-row-team-tail .scr-team-block-team1,
+.scr-match-list-panel-v2 .scr-match-row-team-tail .scr-team-block-team2 { flex: 1 1 0; min-width: 0; }
+.scr-match-list-panel-v2 .scr-match-row-team-tail .scr-match-result-tail { flex-shrink: 0; }
+/* "로"/"에" 연결어 — VS 대신(요청). 얇고 옅게, 세로 가운데. */
+.scr-match-conn { flex-shrink: 0; align-self: center; color: var(--muted); font-size: 12px; padding: 0 1px; }
 .scr-match-row-team-tail .scr-team-roster-team1 .scr-team-profile { flex-direction: row; }
 .scr-match-row-team-tail .scr-team-avatar-race-team1 { left: auto; right: -6px; }
 /* 승/패 오른쪽 개별 점수 컬럼 — 상대(team2) 각 행과 세로로 나란히(로스터 gap 4px·행 높이
