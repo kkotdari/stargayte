@@ -5,8 +5,9 @@ import { useLockBodyScroll } from "../../utils/bodyScrollLock";
 import type { Member } from "../../types";
 
 export interface WeightRow {
-  rank: number;
   member: Member;
+  // 가중치 계산 전 우위(우세수−열세수) — 이 값이 큰 순으로 정렬된 채 넘어온다.
+  superiority: number;
   // 이 유저를 이겼을 때(+2·강함) / 졌을 때(-1·약함) 얻거나 잃는 점수.
   win: number;
   loss: number;
@@ -20,10 +21,10 @@ interface RankWeightModalProps {
   onClose: () => void;
 }
 
-// 순위표 링크로 여는 "점수 가중치" 모달 — 지금 순위에 든 실제 유저를 순위 순서대로 늘어놓고,
-// 그 사람을 이기면/지면 몇 점인지 표로 보여준다(요청). 산식은 랭킹과 동일: 이김 +2·강함,
-// 짐 -1·약함(강함=1+우세수, 약함=1+열세수). 센 사람(위 순위)을 이길수록 크게 얻고, 약한
-// 사람(아래 순위)에게 질수록 크게 잃는다.
+// 순위표 링크로 여는 "점수 가중치" 모달 — 지금 순위에 든 실제 유저를, 가중치 계산 전 우위
+// (우세수−열세수)가 높은 순으로 늘어놓고(요청), 그 사람을 이기면/지면 몇 점인지 표로 보여준다.
+// 산식은 랭킹과 동일: 이김 +2·강함, 짐 -1·약함(강함=1+우세수, 약함=1+열세수). 순서는 최종
+// 랭킹(가중 합산)과 다를 수 있다.
 export default function RankWeightModal({ rows, modeLabel, onClose }: RankWeightModalProps) {
   useLockBodyScroll();
 
@@ -52,11 +53,11 @@ export default function RankWeightModal({ rows, modeLabel, onClose }: RankWeight
                 </tr>
               </thead>
               <tbody>
-                {rows.map((r) => (
+                {rows.map((r, i) => (
                   <tr key={r.member.id}>
                     <td className="scr-weight-col-user">
                       <span className="scr-weight-user">
-                        <span className="scr-weight-rank">{r.rank}</span>
+                        <span className="scr-weight-rank">{i + 1}</span>
                         <Avatar member={r.member} size={22} />
                         <span className="scr-weight-name">{r.member.nickname}</span>
                       </span>
