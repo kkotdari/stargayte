@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { X, Trash2, Send } from "lucide-react";
+import { X } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
 import { Spinner } from "../../components/common/Feedback";
 import SearchFilterBar from "../../components/common/SearchFilterBar";
@@ -1025,14 +1025,14 @@ export default function ChallengeScreen() {
           className="scr-btn scr-btn-ghost scr-btn-sm scr-challenge-discarded-btn"
           onClick={() => setDiscardedOpen(true)}
         >
-          <Trash2 size={12} /> 휴지통
+          🗑️ 휴지통
         </button>
         <button
           type="button"
           className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm"
           onClick={() => setFormOpen(true)}
         >
-          <Send size={12} /> 도전장 보내기
+          🕊️ 도전장 보내기
         </button>
       </div>
       <div className="scr-v2-toolbar">
