@@ -73,8 +73,9 @@ export default function RankRowV2({ row, tiedWithPrev = false, highlighted = fal
               ("+N점"), 전적을 그 아래에. 이 점수가 순위(승자승 다음)를 가르는 기준이라 숫자로
               도드라지게 한다. */}
           <div className="scr-rank-record-wrap">
+            {/* 랭킹 점수(참가+우열)는 항상 0 이상이라 +부호를 붙이지 않는다(요청). */}
             <span className="scr-mono scr-rank-stat-primary">
-              {signed(total)}<span className="scr-num-unit">점</span>
+              {total}<span className="scr-num-unit">점</span>
             </span>
             {/* 점수의 두 갈래 — 참가점수(붙은 사람 수 기반)와 우열점수(우세-열세)로 나눠 보여준다(요청). */}
             <span className="scr-mono scr-rank-record-v2 scr-rank-superiority">
