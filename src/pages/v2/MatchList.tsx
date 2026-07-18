@@ -180,7 +180,7 @@ export default function MatchList({
                 )}
                 <MatchTeams
                   team1={r.team1} team2={r.team2} memberOf={memberOf} result={r.result}
-                  disableProfileLink stackedOutcome compact
+                  disableProfileLink stackedOutcome compact opponentOnly={compact}
                   highlightMemberIds={highlightMemberIds}
                 />
               </div>

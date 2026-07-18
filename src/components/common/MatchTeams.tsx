@@ -22,6 +22,10 @@ interface MatchTeamsProps {
   stackedOutcome?: boolean;
   // v2 결과 카드 전용 — 프사/종족 아이콘을 더 작게(카드가 컴팩트해서). 기본(false)은 기존 크기.
   compact?: boolean;
+  // 랭킹 상세 이력 전용 — 홈팀(team1=주인공, 호출부에서 항상 team1로 정렬해 넘긴다)은 아예
+  // 빼고 "VS 상대 팀구성 + 승/패"만 한 줄로 보여준다(요청: "아예 홈팀을 빼고 vs 팀구성 승패
+  // ... 진짜 결과만 나오는 느낌"). 승/패는 주인공(team1) 기준.
+  opponentOnly?: boolean;
 }
 
 type Outcome = "win" | "loss" | "draw" | "notHeld";
@@ -120,10 +124,24 @@ function TeamRoster({ side, players, memberOf, outcome, highlightMemberIds, disa
 // 팀2는 항상 오른쪽에 고정된다. VS는 승/무/패 표시를 제외한 명단 영역만의 수직 중앙에 온다
 // (stackedOutcome이면 대신 VS 위아래에 승/무/패가 붙는다).
 export default function MatchTeams({
-  team1, team2, memberOf, result, highlightMemberIds, disableProfileLink, stackedOutcome, compact,
+  team1, team2, memberOf, result, highlightMemberIds, disableProfileLink, stackedOutcome, compact, opponentOnly,
 }: MatchTeamsProps) {
   const outcome1 = outcomeFor("team1", result);
   const outcome2 = outcomeFor("team2", result);
+  // 홈팀(주인공) 없이 "VS 상대 + 승/패"만 — 결과 위주로 훑는 랭킹 상세 이력용.
+  if (opponentOnly) {
+    return (
+      <div className="scr-match-row scr-match-row-result-only">
+        <span className="scr-list-vs">VS</span>
+        <TeamRoster
+          side="team2" players={team2} memberOf={memberOf} outcome={outcome2}
+          highlightMemberIds={highlightMemberIds} disableProfileLink={disableProfileLink}
+          stackedOutcome compact={compact}
+        />
+        <span className={cx("scr-team-outcome", "scr-team-outcome-result", OUTCOME_CLASS[outcome1])}>{OUTCOME_LABEL[outcome1]}</span>
+      </div>
+    );
+  }
   return (
     <div className="scr-match-row">
       <TeamRoster side="team1" players={team1} memberOf={memberOf} outcome={outcome1} highlightMemberIds={highlightMemberIds} disableProfileLink={disableProfileLink} stackedOutcome={stackedOutcome} compact={compact} />

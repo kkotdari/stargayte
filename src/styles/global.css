@@ -2902,6 +2902,14 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-match-vs-col { grid-area: vs; display: flex; flex-direction: row; align-items: center; gap: 6px; }
 .scr-match-vs-col .scr-list-vs { grid-area: auto; }
 .scr-team-outcome-stacked { font-size: 12px; min-width: 0; }
+/* 랭킹 상세 이력 — 홈팀(주인공)을 빼고 "VS 상대 팀구성 ......... 승/패"만 한 줄로(요청:
+   "아예 홈팀을 빼고 vs 팀구성 승패 ... 진짜 결과만"). 3열 그리드 대신 단순 플렉스로 바꾼다:
+   VS(왼쪽) → 상대 로스터(가운데, 남는 폭 차지) → 승/패(오른쪽 끝). */
+.scr-match-list-panel-v2 .scr-match-row-result-only {
+  display: flex; align-items: center; justify-content: flex-start; gap: 12px;
+}
+.scr-match-list-panel-v2 .scr-match-row-result-only .scr-team-block { flex: 1; min-width: 0; }
+.scr-match-list-panel-v2 .scr-match-row-result-only .scr-team-outcome-result { flex-shrink: 0; }
 
 /* ===== 목록 바로 위에 붙는 보조 툴바 공용(정렬 필터, 랭킹 기간 선택 등) =====
    .scr-screen의 flex gap(18px)이 목록 패널과 이미 떼어놓으므로, 음수 margin으로 그만큼
