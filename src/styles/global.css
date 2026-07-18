@@ -2686,8 +2686,11 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 }
 .scr-match-trow-head { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; font-size: 12px; min-width: 0; }
 .scr-match-trow-map { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-.scr-match-trow-by { color: var(--dim); flex-shrink: 0; }
-.scr-match-trow-head .scr-match-card-actions { margin-left: auto; flex-shrink: 0; }
+/* 맵 이름 옆 플레이시간 — 라벨 없이 "23분"(요청). 흐린 색으로 살짝 뒤에. */
+.scr-match-trow-dur { color: var(--dim); flex-shrink: 0; font-variant-numeric: tabular-nums; }
+/* 등록자는 오른쪽 정렬(요청) — margin-left:auto로 밀어 액션 버튼 바로 왼쪽에 붙인다. */
+.scr-match-trow-by { color: var(--dim); flex-shrink: 0; margin-left: auto; }
+.scr-match-trow-head .scr-match-card-actions { flex-shrink: 0; }
 /* 팀 2열 + 그 아래 승/패 행. 컬럼 구분선은 두지 않는다(요청). */
 .scr-match-trow-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px 16px; align-items: start; }
 .scr-match-trow-team { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
@@ -2702,8 +2705,8 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-mt-player-hl { background: var(--highlight-bg); border-radius: 4px; padding: 2px 4px; margin: -2px -4px; }
 .scr-mt-player-hl .scr-mt-name { font-weight: 800; color: var(--bar-text); }
 .scr-mt-player .scr-race-badge-letter { flex-shrink: 0; }
-/* 각 팀 아래 승/패 — 팀 칸과 같은 열에 왼쪽 정렬. 승은 연두, 패는 붉은 계열(공용 클래스). */
-.scr-match-trow-outcome { font-size: 15px; font-weight: 800; padding-left: 2px; }
+/* 각 팀 아래 승/패 — 팀 칸과 같은 열에서 오른쪽 정렬(요청). 승은 연두, 패는 붉은 계열. */
+.scr-match-trow-outcome { font-size: 15px; font-weight: 800; text-align: right; padding-right: 2px; }
 
 .scr-match-list-wrap { position: relative; }
 /* 필터/정렬이 바뀌어 새로 불러오는 동안 이전 목록을 옅게 눌러 "새로고침 중"만 표시한다 —

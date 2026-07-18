@@ -189,6 +189,9 @@ export default function MatchList({
                 <div className="scr-match-trow-head">
                   <span className="scr-match-id">#{highlightMatchNo(r.raw.matchNo, matchNoQuery ?? "")}</span>
                   {r.raw.mapName && <span className="scr-match-trow-map">{r.raw.mapName}</span>}
+                  {r.raw.durationSeconds != null && (
+                    <span className="scr-match-trow-dur">{Math.round(r.raw.durationSeconds / 60)}분</span>
+                  )}
                   {r.raw.createdBy && <span className="scr-match-trow-by">등록: {r.raw.createdBy.nickname}</span>}
                   <div className="scr-match-card-actions">
                     {canDelete && (
