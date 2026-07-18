@@ -2299,10 +2299,11 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-search-filter-float .scr-list-search-input {
   /* 검색창도 필터와 같은 톤·크기로 — 흰 알약/그림자 없이 화면 배경 위에 얹은 옅은
      반투명 입력, 높이도 필터 알약과 맞춰 작게(요청: "필터 검색 둘다 그렇게 작게"). */
-  background: rgba(255,255,255,0.08); border: none; border-radius: 999px;
+  background: rgba(255,255,255,0.08); border: none; border-radius: 10px;
   box-shadow: none; padding-left: 14px;
   /* 검색창은 필터 알약보다 높이를 더 준다(요청: "검색은 높이 더 있어야해") — 타이핑/칩이
-     담기는 입력이라 너무 낮으면 답답하다. */
+     담기는 입력이라 너무 낮으면 답답하다. 높이가 커진 만큼 알약(999px)보다 각을 살린
+     둥근네모(요청: "검색창 래디우스 감소"). */
   height: 34px; min-height: 34px; box-sizing: border-box;
 }
 .scr-light-theme .scr-search-filter-float .scr-list-search-input {
