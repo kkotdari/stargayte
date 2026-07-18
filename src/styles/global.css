@@ -2808,6 +2808,8 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    (요청: "각 구성원에 대해 몇점씩 얻은건지 각각도 표시"). 로스터 칸을 flex로 바꿔 이름 뒤에
    작게 나란히 둔다. */
 .scr-rank-history-team-card .scr-team-player { display: flex; align-items: center; gap: 5px; }
+/* 점수는 팀 칸 오른쪽 끝으로 밀어 세로로 줄을 맞춘다(요청: "점수들 오른쪽 정렬"). */
+.scr-rank-history-team-card .scr-team-player-points { margin-left: auto; padding-left: 6px; }
 .scr-team-player-points { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; flex-shrink: 0; }
 
 /* ===== 목록 바로 위에 붙는 보조 툴바 공용(정렬 필터, 랭킹 기간 선택 등) =====
@@ -3271,13 +3273,10 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-rank-detail-history .scr-match-card + .scr-match-card::before { background: rgba(255, 255, 255, 0.28); }
 .scr-light-theme .scr-rank-detail-history .scr-match-card + .scr-match-card::before { background: rgba(0, 0, 0, 0.2); }
 .scr-rank-detail-history-head { font-size: 13px; font-weight: 800; color: var(--muted); margin-bottom: 8px; }
-/* 모달을 열 때부터 높이를 통일한다(요청: "처음부터 높이를 통일") — 그래프 영역은 이미
-   aspect-ratio로 높이가 고정돼 있고, 나머지 변동 요인인 경기 이력 목록을 고정 높이 +
-   내부 스크롤로 둔다. 그러면 로딩 중(스피너)이든 경기가 많든 적든 모달 전체 높이가 처음
-   그대로 일정하게 열려 "작게 열렸다 데이터 오면 길어지는" 흔들림이 없어진다. */
-.scr-rank-detail-history .scr-match-list-panel-v2 {
-  height: 240px; overflow-y: auto; overscroll-behavior: contain;
-}
+/* 경기 이력 목록은 자기 높이만큼 자연스럽게 흐르게 두고(내부 고정높이·스크롤 없음),
+   스크롤은 모달 본체(.scr-modal-body, 이미 overflow-y:auto + 모달 max-height 88vh)가
+   통째로 맡는다(요청: "스크롤을 경기이력에 주는 게 아니라 모달 전체에 주기") — 그래프·
+   회원명·이력이 한 덩어리로 함께 스크롤된다. */
 .scr-rank-detail-line { fill: none; stroke: var(--point); stroke-width: 2; }
 .scr-rank-detail-dot { fill: var(--point); }
 .scr-rank-detail-value { font-size: 11px; font-weight: 700; fill: var(--text); text-anchor: middle; }

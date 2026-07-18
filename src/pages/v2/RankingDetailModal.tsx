@@ -27,9 +27,12 @@ interface RankingDetailModalProps {
 
 const W = 300;
 const H = 140;
-const PAD_X = 22;
-const PAD_TOP = 20;
-const PAD_BOTTOM = 24;
+// 그래프 안쪽 여백 — 선/점/라벨이 박스 가장자리에 붙지 않게 넉넉히 준다(요청: "그래프
+// 내부 패딩 좀 주기"). viewBox 안쪽 값이라 박스 aspect-ratio는 그대로라 로딩→그래프 전환
+// 때 높이가 안 흔들린다.
+const PAD_X = 32;
+const PAD_TOP = 30;
+const PAD_BOTTOM = 30;
 // 그래프 아래 경기 이력 — "최근 한 경기"가 아니라 (일대일) 전체를 보여준다(요청: "최근 경기
 // 이력말고 일대일 이력 다"). 그래도 아주 많은 경우를 위해 최근 100건까지만.
 const HISTORY_LIMIT = 100;
