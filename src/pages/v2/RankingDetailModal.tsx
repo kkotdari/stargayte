@@ -82,8 +82,10 @@ export default function RankingDetailModal({ members, points, matchType, onClose
   useEffect(() => reload(), [reload]);
 
   return createPortal(
-    <div className="scr-modal-overlay" onClick={onClose}>
-      <div className="scr-modal scr-modal-sm scr-modal-rank-detail" onClick={(e) => e.stopPropagation()}>
+    // 바깥(딤) 클릭으로는 안 닫는다 — 닫기는 헤더 X 버튼으로만(요청: "외부 영역 클릭시
+    // 닫힘이 아니라 무반응"). 실수로 바깥을 눌러 그래프/이력을 다시 열어야 하는 번거로움 방지.
+    <div className="scr-modal-overlay">
+      <div className="scr-modal scr-modal-sm scr-modal-rank-detail">
         <div className="scr-modal-head">
           <span>순위 변동 · 경기 이력</span>
           <button className="scr-icon-btn" onClick={onClose} aria-label="닫기"><X size={14} /></button>
