@@ -137,7 +137,7 @@ export default function RankMatchHistory({
                 <div key={r.id} className="scr-match-card scr-rank-history-team-card">
                   <MatchTeams
                     team1={r.team1} team2={r.team2} memberOf={memberOf} result={r.result}
-                    disableProfileLink stackedOutcome compact
+                    disableProfileLink stackedOutcome compact textRoster
                     pointsByMember={opponentPointsByMember(r, strengthByMember, weaknessByMember)}
                   />
                   {pts && <div className="scr-rank-history-points-line">합계 {pts}</div>}
@@ -146,7 +146,7 @@ export default function RankMatchHistory({
                 <div key={r.id} className="scr-match-card">
                   <MatchTeams
                     team1={r.team1} team2={r.team2} memberOf={memberOf} result={r.result}
-                    disableProfileLink stackedOutcome compact opponentOnly
+                    disableProfileLink stackedOutcome compact opponentOnly textRoster
                     outcomeNote={pts}
                   />
                 </div>

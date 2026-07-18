@@ -2793,6 +2793,13 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-team-profile-btn { background: transparent; border: none; padding: 0; font-family: inherit; color: inherit; cursor: pointer; text-align: left; }
 .scr-team-profile-btn:hover .scr-team-name { color: var(--point); }
 .scr-team-name { font-size: 13px; font-weight: 600; line-height: normal; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 랭킹 상세 이력 전용(textRoster) — 프사 없이 "닉네임 + 종족(텍스트)"만. 양 팀 모두
+   닉네임→종족 순서(왼→오)로 통일한다: 팀1의 프로필 뒤집기(row-reverse)를 되돌리고,
+   닉네임이 종족을 밀어내지 않게 종족 텍스트는 줄지 않도록 둔다. */
+.scr-team-roster-team1.scr-team-roster-text .scr-team-profile,
+.scr-team-roster-team2.scr-team-roster-text .scr-team-profile { flex-direction: row; }
+.scr-team-roster-text .scr-team-name { flex: 0 1 auto; }
+.scr-team-roster-text .scr-race-badge-text { flex-shrink: 0; font-size: 11.5px; font-weight: 700; }
 /* 유저 검색 중 해당 회원을 로스터에서 눈에 띄게 표시 — 프사/아이콘+이름+종족 배지까지
    행 전체를 불투명한 파스텔 라임 배경으로 감싼다(반투명(rgba)으로 패널 위에 얹으면 다크
    테마에서 탁하고 형광에 가깝게 보여서 불투명 색으로 바꿨다). padding/음수 margin으로
