@@ -134,7 +134,7 @@ export default function Header({
   const profileAnchorRef = useRef<HTMLButtonElement>(null);
   const profileDropRef = useRef<HTMLDivElement>(null);
   // "운영" 드롭다운도 모바일 탭바(variant="mobile")에서는 글자/패딩을 1.2~1.5배 키운
-  // 별도 클래스(.scr-admin-menu-drop-mobile)를 쓴다 — 이 프로필 드롭다운은 화면폭과
+  // 별도 클래스(.scr-menu-pop-drop-mobile)를 쓴다 — 이 프로필 드롭다운은 화면폭과
   // 무관하게 헤더에 항상 하나만 있어서 그 변형을 자동으로 못 받았다(요청: "내정보
   // 로그아웃 드롭다운의 크기를 운영과 똑같이 수정") — 같은 폭 기준으로 직접 판단한다.
   const isNarrowHeader = useIsNarrow(640);
@@ -219,20 +219,20 @@ export default function Header({
           </button>
           {profileMenuOpen && createPortal(
             <div
-              className={cx("scr-admin-menu-drop scr-scroll", isNarrowHeader && "scr-admin-menu-drop-mobile")}
+              className={cx("scr-menu-pop-drop scr-scroll", isNarrowHeader && "scr-menu-pop-drop-mobile")}
               ref={profileDropRef}
             >
               <button
-                type="button" className="scr-admin-menu-opt"
+                type="button" className="scr-menu-pop-opt"
                 onClick={() => { onOpenProfile(); setProfileMenuOpen(false); }}
               >
-                <span className="scr-admin-menu-opt-label">내 정보</span>
+                <span className="scr-menu-pop-opt-label">내 정보</span>
               </button>
               <button
-                type="button" className="scr-admin-menu-opt"
+                type="button" className="scr-menu-pop-opt"
                 onClick={() => { onLogout(); setProfileMenuOpen(false); }}
               >
-                <span className="scr-admin-menu-opt-label">로그아웃</span>
+                <span className="scr-menu-pop-opt-label">로그아웃</span>
               </button>
             </div>,
             document.body,

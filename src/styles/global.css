@@ -837,10 +837,10 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 /* ===== 관리자 전용 화면 드롭다운 (AdminMenu) ===== */
 /* 래핑 div가 부모(.scr-nav/.scr-drawer-nav/.scr-mobile-tabbar)의 flex 자식 크기 계산에
    끼어들지 않도록 display:contents로 없앤다 — 실제 트리거 버튼이 형제 탭들과 동일하게 취급된다 */
-.scr-admin-menu { display: contents; }
-.scr-admin-menu-caret { color: var(--dim); transition: transform .15s; }
-.scr-admin-menu-caret-open { transform: rotate(180deg); color: var(--text); }
-.scr-admin-menu-drop {
+.scr-menu-pop { display: contents; }
+.scr-menu-pop-caret { color: var(--dim); transition: transform .15s; }
+.scr-menu-pop-caret-open { transform: rotate(180deg); color: var(--text); }
+.scr-menu-pop-drop {
   /* 모바일 탭바의 "운영" 드롭다운이 플로팅 검색창(.scr-search-filter-float, z-index:45)에
      가려지는 문제(실제로 지적받은 문제) — 다른 드롭다운과 같은 210이었는데도 가려졌던
      걸 보면 뭔가 다른 쌓임 맥락 영향이 있는 듯해서, 이 앱에서 쓰는 어떤 z-index보다도
@@ -868,14 +868,14 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
      없는 제스처가 뷰포트 전체의 러버밴드 바운스로 새어나가 드롭다운이 통째로 흔들렸다. */
   overflow-y: auto; overscroll-behavior: none; touch-action: pan-y;
 }
-.scr-light-theme .scr-admin-menu-drop {
+.scr-light-theme .scr-menu-pop-drop {
   border: none;
   background: rgba(255,255,255,0.97);
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,0.7),
     0 4px 14px rgba(0,0,0,0.12);
 }
-.scr-admin-menu-opt {
+.scr-menu-pop-opt {
   width: 100%; display: flex; align-items: center; gap: 8px;
   background: transparent; border: none; border-radius: 8px; color: var(--text);
   padding: 6px 12px; font-size: 12.5px; font-family: inherit; cursor: pointer; text-align: left; white-space: nowrap;
@@ -885,34 +885,34 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    (radius:999px)이 아니라 살짝만 둥근 사각으로 줄인다(요청: "호버시 래디우스 감소") —
    지금 선택된 화면(active)은 하단 탭바의 슬라이딩 알약(.scr-mobile-tab-indicator)과
    똑같은 광원 그라데이션을 쓰되(요청: "액티브 표시 알약도 탭바의 알약과 똑같은 모양"),
-   그 알약을 행 전체가 아니라 글자를 감싼 .scr-admin-menu-opt-label에만 입혀서 크기가
+   그 알약을 행 전체가 아니라 글자를 감싼 .scr-menu-pop-opt-label에만 입혀서 크기가
    글자에 맞게 좁아진다(요청: "크기도 글자에 맞추기") — 탭바처럼 JS로 폭을 재는 대신,
    어차피 inline-flex라 글자 폭만큼만 자연스럽게 좁아진다. */
-.scr-admin-menu-opt:hover:not(.scr-admin-menu-opt-active) { background: #ffffff; color: #10151a; border-radius: 6px; }
-.scr-admin-menu-opt-label { display: inline-flex; align-items: center; border-radius: 999px; padding: 3px 8px; }
-.scr-admin-menu-opt-active { color: var(--text); font-weight: 700; }
-.scr-admin-menu-opt-active .scr-admin-menu-opt-label {
+.scr-menu-pop-opt:hover:not(.scr-menu-pop-opt-active) { background: #ffffff; color: #10151a; border-radius: 6px; }
+.scr-menu-pop-opt-label { display: inline-flex; align-items: center; border-radius: 999px; padding: 3px 8px; }
+.scr-menu-pop-opt-active { color: var(--text); font-weight: 700; }
+.scr-menu-pop-opt-active .scr-menu-pop-opt-label {
   /* 탭바 알약(.scr-mobile-tab-indicator)과 같은 모양·농도로 맞춘다 — 모양은 원래대로
      (ellipse at center), 농도만 올려 더 또렷한 광원으로. */
   background: radial-gradient(ellipse at center, color-mix(in srgb, var(--edge-glow) 70%, transparent) 0%, color-mix(in srgb, var(--edge-glow) 45%, transparent) 45%, color-mix(in srgb, var(--edge-glow) 22%, transparent) 75%, transparent 100%);
 }
 /* 드로어 안에서는 팝오버로 띄우지 않고 그 자리에서 펼쳐지는 아코디언 — 왼쪽에 얇은 선을
    둬서 트리거 아래 딸린 하위 목록이라는 걸 표시한다. */
-.scr-admin-menu-drop-inline {
+.scr-menu-pop-drop-inline {
   display: flex; flex-direction: column; gap: 2px; margin: 2px 0 0 12px; padding-left: 10px;
   border-left: 1px solid var(--line);
 }
 /* 모바일 탭바(운영 드롭다운)와 드로어(아코디언)의 하위 항목만 살짝 더 키운다 — 데스크톱
-   상단 드롭다운(.scr-admin-menu-nav)은 원래 크기 그대로 둔다. 전엔 데스크톱 기준
+   상단 드롭다운(.scr-menu-pop-nav)은 원래 크기 그대로 둔다. 전엔 데스크톱 기준
    13.5px의 1.2배(16.2px)였는데, 데스크톱 기준 자체가 12.5px로 줄면서 그 배율 그대로
    따라가니 모바일에서 눈에 띄게 커 보였다(실제로 지적받은 문제) — 배율을 낮춰 살짝만
    더 크게 한다. 박스 패딩(플로팅 팝오버에만 해당 — 드로어 아코디언은 박스가 없다)은
    터치 타겟이 커지도록 계속 더 크게 유지한다. */
-.scr-admin-menu-drop-mobile {
+.scr-menu-pop-drop-mobile {
   padding: 3px; /* 2px * 1.5 */
 }
-.scr-admin-menu-drop-mobile .scr-admin-menu-opt,
-.scr-admin-menu-drawer .scr-admin-menu-opt {
+.scr-menu-pop-drop-mobile .scr-menu-pop-opt,
+.scr-menu-pop-drawer .scr-menu-pop-opt {
   font-size: 14px;
   padding: 7px 12px;
 }
@@ -971,6 +971,11 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   grid-template-areas: "title actions";
   align-items: center; column-gap: 20px;
   padding-bottom: 14px;
+  /* 액션 버튼(높이 --field-h-sm)이 있는 화면과 없는 화면이 서로 다른 높이가 되어 그 아래
+     필터/목록이 화면마다 조금씩 밀려 보였다(요청: "타이틀로우 버튼 유무에 따라 레이아웃이
+     흔들리지 않게"). 버튼이 없어도 항상 버튼 한 줄 높이를 예약해 모든 화면의 타이틀 줄
+     높이를 똑같이 맞춘다. */
+  min-height: calc(var(--field-h-sm) + 14px);
 }
 /* 액션 버튼과 나란히 있을 때 세로 중앙정렬만으로는 타이틀 글자가 살짝 처져 보여서,
    그 기준선을 조금 위로 올린다. */
@@ -1001,17 +1006,8 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    놓이는 액션 버튼도 그대로 두면 타이틀보다 상대적으로 아래로 처져 보인다 — 같은 양만큼
    맞춰 올린다. */
 .scr-v2-toolbar-actions { grid-area: actions; display: flex; align-items: center; gap: 6px; transform: translateY(-6px); }
-/* 도전장 화면의 휴지통/도전장 보내기 — 수평으로 오른쪽 정렬하고, 스크롤해도 상단(안전영역
-   바로 아래)에 붙어 뜨는 플로팅 스티키다(요청: "수평 배치(오른쪽 정렬) ... 플로팅 스티키야
-   날짜 스티키보다 z축 인덱스 높아야돼"). 스크롤 컨테이너(#scroll-root) 안 .scr-screen의
-   자식이라 목록 전체를 스크롤하는 동안 계속 붙어 있는다. 빈 좌측은 클릭을 통과시켜
-   (pointer-events:none) 아래 목록/카드를 가리지 않고, 버튼만 다시 클릭을 받는다. */
-/* 휴지통/도전장 보내기 — 더 이상 스티키 플로팅으로 띄우지 않는다(요청: "플로팅 처리하지
-   않음"). 타이틀 위 일반 흐름의 한 줄로, 오른쪽 정렬만 유지한다(스크롤하면 목록과 함께
-   자연스럽게 올라간다 — 상태바에 잘리는 문제도 사라진다). */
-.scr-challenge-float-actions {
-  display: flex; justify-content: flex-end; align-items: center; gap: 8px;
-}
+/* 휴지통/도전장 보내기는 이제 다른 화면들처럼 타이틀 툴바(.scr-v2-toolbar-actions) 안에
+   들어간다(요청) — 별도 래퍼(.scr-challenge-float-actions)는 없앴다. */
 /* "휴지통" 버튼 — 보조 액션이라 옅게, 라벨 폭에 맞춰(줄바꿈 없이) 자연 폭. */
 .scr-challenge-discarded-btn { white-space: nowrap; color: var(--muted); }
 /* PC 화면 폭 통일(위 --list-content-max 주석 참고) — 처음엔 목록 패널/타이틀줄/검색창/
@@ -3468,9 +3464,10 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-light-theme .scr-rank-detail-history .scr-match-card + .scr-match-card::before { background: rgba(0, 0, 0, 0.2); }
 /* 경기 이력 카드 내용(맨 앞 로스터)이 날짜 줄보다 안으로 들여쓰기돼 보이던 걸 없앤다 —
    로스터 자체의 왼쪽 안쪽 여백(6px)을 0으로 줄여 날짜와 같은 x에서 시작하게 한다(요청:
-   "경기이력 카드 들여쓰기 없애기"). 개인전은 맨 앞이 상대 로스터, 팀전은 우리 로스터라
-   :first-child로 둘 다 잡는다. */
-.scr-rank-detail-history .scr-match-row > .scr-team-block:first-child .scr-team-roster { padding-left: 0; }
+   "경기이력 카드 들여쓰기 없애기", "팀랭킹 이력에도 들여쓰기 없어야"). 개인전은 맨 앞이
+   상대 로스터(.scr-team-block), 팀전은 우리 로스터가 .scr-match-team-side-ours 안에 있다. */
+.scr-rank-detail-history .scr-match-row-result-only:not(.scr-match-row-team-tail) > .scr-team-block:first-child .scr-team-roster,
+.scr-rank-detail-history .scr-match-row-team-tail .scr-match-team-side-ours .scr-team-roster { padding-left: 0; }
 .scr-rank-detail-history-head { font-size: 13px; font-weight: 800; color: var(--muted); margin-bottom: 8px; }
 /* 경기 이력 목록은 자기 높이만큼 자연스럽게 흐르게 두고(내부 고정높이·스크롤 없음),
    스크롤은 모달 본체(.scr-modal-body, 이미 overflow-y:auto + 모달 max-height 88vh)가

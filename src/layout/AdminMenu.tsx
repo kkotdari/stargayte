@@ -107,24 +107,24 @@ export default function AdminMenu({ screen, onNavigate, variant, drawerOpen, onD
     <button
       type="button"
       key={item.key}
-      className={cx("scr-admin-menu-opt", item.isActive && "scr-admin-menu-opt-active")}
+      className={cx("scr-menu-pop-opt", item.isActive && "scr-menu-pop-opt-active")}
       onClick={() => { item.onSelect(); setOpen(false); }}
     >
-      <span className="scr-admin-menu-opt-label">{item.label}</span>
+      <span className="scr-menu-pop-opt-label">{item.label}</span>
     </button>
   ));
 
   if (variant === "drawer") {
     return (
-      <div className="scr-admin-menu scr-admin-menu-drawer">
+      <div className="scr-menu-pop scr-menu-pop-drawer">
         {/* "운영" 자체는 화면이 아니라 카테고리 이름이라, 그 안의 회원/이미지 설정 중
             하나가 활성이어도 이 트리거는 반전 효과를 받지 않는다 — 실제 활성 표시는
-            펼쳐진 하위 항목(scr-admin-menu-opt-active) 쪽에서만 보여준다. */}
+            펼쳐진 하위 항목(scr-menu-pop-opt-active) 쪽에서만 보여준다. */}
         <button type="button" className="scr-nav-tab" onClick={toggleOpen}>
           <span>운영</span>
-          <ChevronDown size={12} className={cx("scr-admin-menu-caret", open && "scr-admin-menu-caret-open")} />
+          <ChevronDown size={12} className={cx("scr-menu-pop-caret", open && "scr-menu-pop-caret-open")} />
         </button>
-        {open && <div className="scr-admin-menu-drop-inline">{optionButtons}</div>}
+        {open && <div className="scr-menu-pop-drop-inline">{optionButtons}</div>}
       </div>
     );
   }
@@ -141,15 +141,15 @@ export default function AdminMenu({ screen, onNavigate, variant, drawerOpen, onD
     : cx("scr-nav-tab", (open || activeInAdmin) && "scr-nav-tab-active");
 
   return (
-    <div className={cx("scr-admin-menu", `scr-admin-menu-${variant}`)}>
+    <div className={cx("scr-menu-pop", `scr-menu-pop-${variant}`)}>
       <button type="button" className={triggerClass} ref={anchorRef} onClick={() => setOpen((v) => !v)}>
         <span>운영</span>
-        {variant !== "mobile" && <ChevronDown size={14} className={cx("scr-admin-menu-caret", open && "scr-admin-menu-caret-open")} />}
+        {variant !== "mobile" && <ChevronDown size={14} className={cx("scr-menu-pop-caret", open && "scr-menu-pop-caret-open")} />}
       </button>
 
       {open && createPortal(
         <div
-          className={cx("scr-admin-menu-drop scr-scroll", variant === "mobile" && "scr-admin-menu-drop-mobile")}
+          className={cx("scr-menu-pop-drop scr-scroll", variant === "mobile" && "scr-menu-pop-drop-mobile")}
           ref={dropRef}
         >
           {optionButtons}
