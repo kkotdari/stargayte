@@ -4,6 +4,7 @@ import { Spinner } from "../../components/common/Feedback";
 import SearchFilterBar from "../../components/common/SearchFilterBar";
 import PillTabs from "../../components/common/PillTabs";
 import FilterItem from "../../components/common/FilterItem";
+import Select from "../../components/common/Select";
 import MemberStatRow from "../stats/MemberStatRow";
 import { useAppStore } from "../../store/appStore";
 import { api } from "../../api/client";
@@ -13,6 +14,13 @@ import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import { cx } from "../../utils/format";
 import type { BaseRace, MemberStats, MemberStatsEntry } from "../../types";
 
+// 종족 필터 — 검색창 예약어에서 필터창 드롭다운으로 옮겼다(요청).
+const RACE_SELECT_OPTS = [
+  { value: "all", label: "전체 종족", shortLabel: "종족" },
+  { value: "테란", label: "테란" },
+  { value: "프로토스", label: "프로토스" },
+  { value: "저그", label: "저그" },
+];
 const PERIOD_UNIT_OPTS: { value: "all" | "month"; label: string }[] = [
   { value: "all", label: "전체" },
   { value: "month", label: "월" },
@@ -213,14 +221,23 @@ export default function StatsScreenV2() {
         countLabel="명"
         searchValue={search}
         onSearchChange={setSearch}
-        searchPlaceholder="유저/종족"
+        searchPlaceholder="유저"
         suggestions={suggestions}
-        raceValue={race === "all" ? null : race}
-        onRaceChange={(r) => setRace(r ?? "all")}
         filterPanel={
           <>
             <FilterItem>
               <PillTabs options={PERIOD_UNIT_OPTS} value={periodUnit} onChange={setPeriodUnit} aria-label="기간" />
+            </FilterItem>
+            {/* 종족은 검색창 예약어 대신 필터 드롭다운으로(요청). */}
+            <FilterItem label="종족">
+              <Select
+                value={race}
+                options={RACE_SELECT_OPTS}
+                onChange={(v) => setRace(v as BaseRace | "all")}
+                size="sm"
+                minDropWidth={110}
+                className="scr-filter-race-select"
+              />
             </FilterItem>
             {periodUnit === "month" && (
               <FilterItem>
