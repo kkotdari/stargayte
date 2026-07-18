@@ -5,7 +5,7 @@ import { Spinner } from "../components/common/Feedback";
 import Select from "../components/common/Select";
 import ConfirmDialog from "../components/common/ConfirmDialog";
 import ReplayBatchButton from "../components/common/ReplayBatchButton";
-import VersionNoticeSettingsModal from "./VersionNoticeSettingsModal";
+import VersionManageModal from "./VersionManageModal";
 import { api } from "../api/client";
 import { useAppStore } from "../store/appStore";
 import { useLockBodyScroll } from "../utils/bodyScrollLock";
@@ -24,8 +24,8 @@ interface AdminPanelModalProps {
 // 코드 배포 없이 DB에서 바로 비밀번호를 바꿀 수 있다.
 
 // 메인 로고를 3번 연달아 눌러야만 뜨는 숨겨진 제어판 — 트리거(로고 탭)도, 통과(비밀번호)도
-// 회원 누구나 할 수 있다. 다만 실제로 앱 버전을 바꾸는 "배포"는 운영자만 할 수 있고, 일반
-// 회원은 통과해도 이 브라우저 탭에서만 켜지는 "미리보기"만 쓸 수 있다.
+// 회원 누구나 할 수 있다. 다만 실제로 앱 버전을 바꾸는 등의 관리 기능은 운영자만 쓸 수 있다
+// (예전엔 회원용 "미리보기"가 있었지만 제거됐다).
 export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalProps) {
   useLockBodyScroll();
   // 숨겨진 제어판이 열리는 순간 낡은 경첩이 삐걱이는 "끼익" 소리(요청) — 로고 3연타라는
@@ -33,16 +33,17 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
   useEffect(() => { playCreak(); }, []);
   const appVersion = useAppStore((s) => s.appVersion);
   const appVersions = useAppStore((s) => s.appVersions);
-  const previewVersion = useAppStore((s) => s.previewVersion);
   const setAppVersion = useAppStore((s) => s.setAppVersion);
-  const setPreviewVersion = useAppStore((s) => s.setPreviewVersion);
+  const noticeEnabled = useAppStore((s) => s.noticeEnabled);
+  const setNoticeEnabled = useAppStore((s) => s.setNoticeEnabled);
   const [password, setPassword] = useState("");
   const [unlocked, setUnlocked] = useState(false);
   const [checking, setChecking] = useState(false);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
-  // "버전 안내 설정" 모달 — 버전 안내 표시 여부(전역 토글)와 버전별 안내 내용 편집을 담는다.
-  const [noticeSettingsOpen, setNoticeSettingsOpen] = useState(false);
+  // "버전 관리" 모달 — 버전 추가/삭제와 버전별 안내 내용 편집을 담는다.
+  const [versionManageOpen, setVersionManageOpen] = useState(false);
+  const [togglingNotice, setTogglingNotice] = useState(false);
   const [downloading, setDownloading] = useState(false);
 
   // 등록된 리플레이(.rep) 전체를 날짜별 폴더 zip으로 받는다 — 인증 헤더가 필요해 blob으로
@@ -101,50 +102,45 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
     }
   };
 
-  // 버전 선택 팝업 — 미리보기와 배포가 같은 목록(등록된 버전)을 쓴다(요청: "버전 선택 팝업은
-  // 미리보기랑 배포에 같이"). 어느 동작으로 열렸는지만 mode로 구분한다. null이면 닫힘.
-  const [versionPickerMode, setVersionPickerMode] = useState<"preview" | "deploy" | null>(null);
-  // 배포는 모두에게 즉시 반영되는 실제 전환이라, 버전을 고른 뒤 확인창을 한 번 더 거친다.
-  const [confirmDeployVersion, setConfirmDeployVersion] = useState<string | null>(null);
-  // 팝업의 드롭다운에서 지금 고른 버전 — 현재 버전은 고를 수 없어(요청) 후보에서 제외하고,
-  // 팝업을 열 때 첫 후보로 초기화한다.
+  // "현재 버전 설정" — 등록된 버전 중 하나로 활성 버전을 바꾼다(예전 배포/롤백을 하나로 합침).
+  // 바꾸면 모두에게 즉시 반영되고, 회원들은 다음 접속 때 버전 안내 팝업을 다시 보게 된다.
+  const [versionPickerOpen, setVersionPickerOpen] = useState(false);
+  const [confirmSetVersion, setConfirmSetVersion] = useState<string | null>(null);
   const [pickValue, setPickValue] = useState("");
 
-  // 현재 버전을 뺀 '고를 수 있는' 버전들 — 미리보기/배포 모두 현재 버전으로는 불가하다.
-  // 드롭다운은 최신 버전이 위로 오도록 역순(내림차순)으로 노출한다(요청). appVersions는
-  // 오름차순이라, filter가 만든 새 배열을 그대로 뒤집는다(원본은 건드리지 않음).
+  // 현재 버전을 뺀 '고를 수 있는' 버전들 — 현재 버전으로 다시 설정하는 건 의미가 없어 제외한다.
+  // 드롭다운은 최신 버전이 위로 오도록 역순(내림차순)으로 노출한다. appVersions는 오름차순이라,
+  // filter가 만든 새 배열을 그대로 뒤집는다(원본은 건드리지 않음).
   const pickableVersions = appVersions
     .filter((v) => versionNumber(v.number) !== currentNumber)
     .reverse();
 
-  const openVersionPicker = (mode: "preview" | "deploy") => {
+  const openVersionPicker = () => {
     setPickValue(pickableVersions[0]?.number ?? "");
-    setVersionPickerMode(mode);
+    setVersionPickerOpen(true);
   };
 
-  // 드롭다운에서 고른 버전으로 실행 — 미리보기면 이 탭에서만 그 버전으로 둘러보게 켜고(패널을
-  // 닫아 바로 확인), 배포면 확인창으로 넘긴다.
-  const pickVersion = (number: string) => {
-    if (!number) return;
-    if (versionPickerMode === "preview") {
-      setPreviewVersion(versionNumber(number));
-      setVersionPickerMode(null);
-      onClose();
-    } else {
-      setConfirmDeployVersion(number);
-      setVersionPickerMode(null);
-    }
-  };
-
-  const deploy = async (number: string) => {
+  const setVersion = async (number: string) => {
     setBusy(true);
     setErr("");
     try {
       await setAppVersion(number);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "배포에 실패했어요.");
+      setErr(e instanceof Error ? e.message : "버전 설정에 실패했어요.");
     } finally {
       setBusy(false);
+    }
+  };
+
+  const toggleNotice = async () => {
+    setTogglingNotice(true);
+    setErr("");
+    try {
+      await setNoticeEnabled(!noticeEnabled);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "설정을 바꾸지 못했어요.");
+    } finally {
+      setTogglingNotice(false);
     }
   };
 
@@ -190,51 +186,56 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
             </>
           ) : (
             <>
-              {/* 버전관리 — 소제목(현재 버전 표시 포함) + 2열 그리드. 배포/롤백을 배포
-                  하나로 합치고(요청), 누르면 등록된 버전 중에서 고르는 팝업을 연다.
-                  미리보기도 같은 팝업을 쓴다. 미리보기 중일 때만 "미리보기 종료" 버튼이
-                  생긴다(요청: "미리보기 중에는 평소에 없던 미리보기 종료 버튼 활성화"). */}
-              <div className={cx("scr-admin-panel-preview", !isAdmin && "scr-admin-panel-preview-solo")}>
-                <div className="scr-admin-panel-section-title">
-                  버전관리 <span className="scr-admin-panel-section-title-dim">(현재버전 : {currentNumber})</span>
-                </div>
-                <div className="scr-admin-panel-grid">
-                  <button
-                    type="button" className="scr-admin-panel-phys-btn"
-                    onClick={() => openVersionPicker("preview")}
-                  >
-                    미리보기
-                  </button>
-                  {/* 버전 안내 설정/배포는 운영자만 — 안내 내용 편집·표시 토글은 서버에서도
-                      운영자 전용이라, 회원에겐 버튼 자체를 노출하지 않는다. 같은 그리드 안에
-                      이어 붙이면 2열 구성이 유지된 채 다음 줄로 넘어간다. */}
-                  {isAdmin && (
-                    <button
-                      type="button" className="scr-admin-panel-phys-btn"
-                      onClick={() => setNoticeSettingsOpen(true)}
-                    >
-                      버전 안내 설정
-                    </button>
-                  )}
-                  {isAdmin && (
+              {/* 버전관리 — 소제목(현재 버전 표시 포함) + 버튼들. 관리 기능은 전부 운영자
+                  전용이라 회원에겐 버튼을 노출하지 않는다(현재 버전 표시만 본다). */}
+              <div className="scr-admin-panel-section-title">
+                버전관리 <span className="scr-admin-panel-section-title-dim">(현재버전 : {currentNumber})</span>
+              </div>
+              {isAdmin ? (
+                <>
+                  <div className="scr-admin-panel-grid">
+                    {/* 현재 버전 설정 — 등록된 버전 중에서 골라 활성 버전을 바꾼다(모두에게
+                        즉시 반영·안내 팝업 재노출이라 -danger 톤 + 확인창). */}
                     <button
                       type="button" className="scr-admin-panel-phys-btn scr-admin-panel-phys-btn-danger"
-                      onClick={() => openVersionPicker("deploy")} disabled={busy}
+                      onClick={openVersionPicker} disabled={busy}
                     >
-                      {busy ? <Spinner /> : "배포"}
+                      {busy ? <Spinner /> : "현재 버전 설정"}
                     </button>
-                  )}
-                  {/* 미리보기 중일 때만 나타나는 종료 버튼 — 회원/운영자 모두 쓸 수 있다. */}
-                  {previewVersion !== null && (
+                    {/* 버전 관리 — 버전 추가/삭제 + 버전별 안내 내용 편집 모달. */}
                     <button
                       type="button" className="scr-admin-panel-phys-btn"
-                      onClick={() => setPreviewVersion(null)}
+                      onClick={() => setVersionManageOpen(true)}
                     >
-                      미리보기 종료
+                      버전 관리
                     </button>
-                  )}
-                </div>
-              </div>
+                  </div>
+
+                  {/* 버전 안내 표시 토글 — 예전엔 "버전 안내 설정" 모달 안에 있었지만 제어판
+                      본체로 옮겼다(요청). 켜져 있어야만 버전이 바뀐 뒤 안내 팝업이 뜬다. */}
+                  <div className="scr-notice-toggle-row scr-admin-panel-notice-toggle">
+                    <div className="scr-notice-toggle-label">
+                      <span className="scr-notice-toggle-title">버전 안내 표시</span>
+                      <span className="scr-notice-toggle-desc">
+                        {noticeEnabled ? "새 버전 접속 시 안내를 띄웁니다." : "안내를 띄우지 않습니다."}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={noticeEnabled}
+                      className={cx("scr-notice-switch", noticeEnabled && "scr-notice-switch-on")}
+                      onClick={() => void toggleNotice()}
+                      disabled={togglingNotice}
+                    >
+                      <span className="scr-notice-switch-knob" />
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="scr-admin-panel-member-note">관리 기능은 운영자만 사용할 수 있어요.</div>
+              )}
+
               {isAdmin && (
                 <>
                   {err && <div className="scr-err">{err}</div>}
@@ -270,37 +271,37 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
         </div>
       </div>
 
-      {confirmDeployVersion && (
+      {confirmSetVersion && (
         <ConfirmDialog
-          title={`${confirmDeployVersion} 버전으로 배포할까요?`}
-          message="모든 사용자에게 즉시 반영됩니다."
-          confirmLabel="배포"
+          title={`현재 버전을 ${confirmSetVersion}(으)로 바꿀까요?`}
+          message="모든 사용자에게 즉시 반영되고, 회원들은 다음 접속 시 버전 안내를 다시 보게 됩니다."
+          confirmLabel="설정"
           onConfirm={() => {
-            const next = confirmDeployVersion;
-            setConfirmDeployVersion(null);
-            deploy(next);
+            const next = confirmSetVersion;
+            setConfirmSetVersion(null);
+            void setVersion(next);
           }}
-          onCancel={() => setConfirmDeployVersion(null)}
+          onCancel={() => setConfirmSetVersion(null)}
         />
       )}
 
-      {noticeSettingsOpen && (
-        <VersionNoticeSettingsModal onClose={() => setNoticeSettingsOpen(false)} />
+      {versionManageOpen && (
+        <VersionManageModal onClose={() => setVersionManageOpen(false)} />
       )}
 
-      {versionPickerMode && (
-        <div className="scr-modal-overlay" onClick={() => setVersionPickerMode(null)}>
+      {versionPickerOpen && (
+        <div className="scr-modal-overlay" onClick={() => setVersionPickerOpen(false)}>
           <div
             className="scr-modal scr-modal-sm scr-admin-panel-version-popup"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="scr-modal-head">
-              <span>{versionPickerMode === "deploy" ? "배포할 버전" : "미리볼 버전"}</span>
-              <button className="scr-icon-btn" onClick={() => setVersionPickerMode(null)} aria-label="닫기"><X size={14} /></button>
+              <span>현재 버전 설정</span>
+              <button className="scr-icon-btn" onClick={() => setVersionPickerOpen(false)} aria-label="닫기"><X size={14} /></button>
             </div>
             <div className="scr-modal-body">
-              {/* 등록된 버전 중에서 드롭다운으로 고른다(요청) — 현재 버전은 고를 수 없어(요청:
-                  "현재 버전으로는 불가") 후보에서 아예 뺀다. */}
+              {/* 등록된 버전 중에서 드롭다운으로 고른다 — 현재 버전은 다시 설정할 이유가 없어
+                  후보에서 뺀다. */}
               {pickableVersions.length === 0 ? (
                 <div className="scr-version-pick-empty">고를 수 있는 다른 버전이 없어요.</div>
               ) : (
@@ -314,10 +315,10 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
                   <button
                     type="button"
                     className="scr-btn scr-btn-primary scr-version-pick-confirm"
-                    onClick={() => pickVersion(pickValue)}
+                    onClick={() => { setConfirmSetVersion(pickValue); setVersionPickerOpen(false); }}
                     disabled={!pickValue}
                   >
-                    {versionPickerMode === "deploy" ? "배포" : "미리보기"}
+                    설정
                   </button>
                 </>
               )}

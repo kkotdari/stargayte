@@ -1037,30 +1037,6 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 }
 .scr-scrolltop:hover { background: rgba(var(--overlay-rgb), 0.5); }
 
-/* 제어판에서 앱 전체 기준(appVersion)은 안 바꾸고 이 탭에서만 v2를 미리보는 중임을
-   알려주는 배지 — 실수로 계속 그 상태인 채 다른 화면을 쓰지 않도록 항상 눈에 띄게
-   맨 아래 가운데 떠 있는다. */
-.scr-preview-badge {
-  position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 30;
-  display: flex; align-items: center; gap: 10px;
-  background: var(--panel-raised); color: var(--text); font-size: 12.5px; font-weight: 600;
-  padding: 8px 8px 8px 14px; border-radius: 999px;
-  /* "버전 N 미리보기 중"은 예전 "V2 미리보기 중"보다 길어질 수 있는 문구라(두 자리
-     이상 버전), 좁은 화면에서 줄바꿈되면 알약 모양이 깨져 보인다 — 줄바꿈 없이 한
-     줄로 유지하고, 대신 알약 자체가 필요한 만큼 넓어지게 둔다(고정폭을 주지 않는다). */
-  white-space: nowrap; max-width: calc(100vw - 24px);
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.10),
-    inset 0 -1px 0 rgba(255,255,255,0.04),
-    0 4px 16px rgba(0,0,0,0.4);
-}
-.scr-preview-badge span::before { content: "●"; color: var(--point); margin-right: 6px; font-size: 9px; }
-.scr-preview-badge button {
-  background: rgba(var(--overlay-rgb),0.1); border: none; color: var(--text); cursor: pointer;
-  font-size: 11.5px; font-weight: 700; padding: 5px 12px; border-radius: 999px;
-}
-.scr-preview-badge button:hover { background: rgba(var(--overlay-rgb),0.18); }
-
 /* 월(좌우 이동)과 산정 방식 힌트를 담는, 타이틀 행 아래의 별도 행(요청) — 월은 왼쪽,
    힌트는 오른쪽 끝. 타이틀 바로 아래에 붙이고 목록/검색창과의 간격을 준다. */
 .scr-rank-subrow {
@@ -3861,6 +3837,29 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-notice-edit-label { font-size: 13px; font-weight: 700; color: var(--text); }
 .scr-notice-edit-textarea { resize: vertical; min-height: 110px; line-height: 1.5; font-size: 13.5px; }
 .scr-notice-edit-actions { display: flex; justify-content: flex-end; gap: 8px; }
+/* 버전 관리 — 새 버전 등록 행: 숫자 입력 + 추가 버튼(입력이 남는 폭을 차지). */
+.scr-version-add-row { display: flex; align-items: stretch; gap: 8px; }
+.scr-version-add-input { flex: 1; min-width: 0; }
+.scr-version-add-btn { flex-shrink: 0; padding: 0 18px; }
+.scr-version-add-hint { font-size: 12px; color: var(--point); margin-top: -2px; }
+/* 버전 선택부 — 드롭다운 + 그 버전 삭제(휴지통) 버튼을 한 줄에. */
+.scr-version-pick-row { display: flex; align-items: center; gap: 8px; }
+.scr-version-pick-row .scr-notice-version-select { flex: 1; min-width: 0; }
+.scr-version-delete-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 38px; height: 38px; flex-shrink: 0; padding: 0;
+  border: 1px solid var(--line-soft); border-radius: 10px;
+  background: transparent; color: var(--muted); cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.scr-version-delete-btn:hover:not(:disabled) {
+  background: rgba(220, 80, 80, 0.12); color: #e06060; border-color: rgba(220, 80, 80, 0.4);
+}
+.scr-version-delete-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+/* 제어판 본체로 옮긴 버전 안내 토글 — 버튼 그리드와 경기관리 사이에 위아래 여백을 준다. */
+.scr-admin-panel-notice-toggle { margin: 14px 0 4px; }
+/* 비운영자가 제어판을 열었을 때 — 쓸 수 있는 관리 기능이 없다는 안내 한 줄. */
+.scr-admin-panel-member-note { font-size: 13px; color: var(--muted); margin-top: 10px; }
 /* 팀 경기목록 — 경기 화면의 카드 목록(MatchList)을 그대로 담으므로 로스터 두 팀이 한 줄에
    들어갈 만큼 넓어야 한다(기본 420px로는 닉네임이 줄줄이 접힌다).
    본문(경기 카드)이 주인공이라 아래쪽 여백은 넉넉히 주고, 헤더(팀원 이름)는 최대한 납작하게

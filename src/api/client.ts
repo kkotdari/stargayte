@@ -519,6 +519,19 @@ export const api = {
     });
   },
 
+  // 운영자 전용: 버전 관리 — 새 버전 등록(자유 숫자 입력). 형식/중복은 서버가 검증한다.
+  async addAppVersion(number: AppVersion): Promise<AppVersionInfo> {
+    return request<AppVersionInfo>("/api/app-versions", {
+      method: "POST",
+      body: JSON.stringify({ number }),
+    });
+  },
+
+  // 운영자 전용: 버전 관리 — 등록된 버전 삭제. 활성/마지막 버전은 서버가 막는다.
+  async deleteAppVersion(number: AppVersion): Promise<void> {
+    await request<void>(`/api/app-versions/${encodeURIComponent(number)}`, { method: "DELETE" });
+  },
+
   // 운영자 전용: "버전 안내 설정" — 버전 안내(업데이트 안내 모달)를 띄울지 전역 토글.
   async setVersionNoticeEnabled(enabled: boolean): Promise<{ enabled: boolean }> {
     return request<{ enabled: boolean }>("/api/app-versions/notice-settings", {

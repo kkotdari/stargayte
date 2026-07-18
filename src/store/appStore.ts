@@ -75,13 +75,8 @@ interface AppState {
   // 제어판의 버전 선택 팝업(미리보기/배포)이 나열할 '등록된 버전' 목록 — 부트스트랩 때 로드.
   // 각 항목은 버전별 안내 내용(notes)도 함께 들고 있다.
   appVersions: AppVersionInfo[];
-  // 버전 안내(업데이트 안내 모달) 전역 표시 여부 — 관리자가 "버전 안내 설정"에서 끄면 false.
+  // 버전 안내(업데이트 안내 모달) 전역 표시 여부 — 관리자가 제어판에서 끄면 false.
   noticeEnabled: boolean;
-  // 제어판에서 앱 전체 기준(appVersion)을 실제로 바꾸지 않고, 지금 이 브라우저 탭에서만
-  // 특정 버전 화면을 미리 둘러보는 로컬 전용 모드 — 서버에 저장하지 않으므로 새로고침하면
-  // 꺼진다(의도적으로, 실수로 계속 켜진 채 남지 않게). null이면 미리보기 중이 아님.
-  previewVersion: number | null;
-  setPreviewVersion: (version: number | null) => void;
   // 숨겨진 제어판 — 메인 로고를 짧은 시간 안에 여러 번 누르면 열린다. 트리거 위치가
   // 화면(컴포넌트) 트리 어디든(헤더의 로고 버튼) 아무 데서나 registerSecretTap()만
   // 부르면 되도록 스토어에 둔다.
@@ -156,10 +151,14 @@ interface AppState {
   openMemberProfile: (id: string) => void;
   closeMemberProfile: () => void;
 
-  // ----- 제어판: 버전 배포(+1)/롤백(-1) -----
+  // ----- 제어판: 현재 버전 설정(등록된 버전으로 전환) -----
   setAppVersion: (version: AppVersion) => Promise<void>;
 
-  // ----- 제어판: 버전 안내 설정 -----
+  // ----- 제어판: 버전 관리 -----
+  // 새 버전을 등록하고 로컬 appVersions에 숫자 오름차순으로 끼워 넣는다(운영자 전용).
+  addVersion: (number: AppVersion) => Promise<void>;
+  // 등록된 버전을 삭제하고 로컬 appVersions에서도 뺀다(운영자 전용).
+  deleteVersion: (number: AppVersion) => Promise<void>;
   // 버전 안내 표시 여부(전역 토글)를 서버에 저장하고 로컬 상태도 갱신한다(운영자 전용).
   setNoticeEnabled: (enabled: boolean) => Promise<void>;
   // 특정 버전의 안내 내용을 서버에 저장하고, 로컬 appVersions의 그 버전 notes도 갱신한다.
@@ -177,8 +176,6 @@ export const useAppStore = create<AppState>()((set, get) => ({
   appVersion: "1",
   appVersions: [],
   noticeEnabled: true,
-  previewVersion: null,
-  setPreviewVersion: (version) => set({ previewVersion: version }),
   adminPanelOpen: false,
   setAdminPanelOpen: (open) => set({ adminPanelOpen: open }),
   registerSecretTap: () => {
@@ -341,6 +338,25 @@ export const useAppStore = create<AppState>()((set, get) => ({
   setAppVersion: async (version) => {
     const { activeVersion } = await api.setAppVersion(version);
     set({ appVersion: activeVersion });
+  },
+
+  addVersion: async (number) => {
+    const added = await api.addAppVersion(number);
+    // 숫자 오름차순 유지("10"이 "2" 앞에 오지 않도록 versionNumber로 비교) — 서버 목록과 같은 순서.
+    set({
+      appVersions: [...get().appVersions, added].sort(
+        (a, b) => versionNumber(a.number) - versionNumber(b.number),
+      ),
+    });
+  },
+
+  deleteVersion: async (number) => {
+    await api.deleteAppVersion(number);
+    set({
+      appVersions: get().appVersions.filter(
+        (v) => versionNumber(v.number) !== versionNumber(number),
+      ),
+    });
   },
 
   setNoticeEnabled: async (enabled) => {
