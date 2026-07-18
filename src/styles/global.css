@@ -686,7 +686,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    (.scr-challenge-inbox-modal)은 이런 자체 배경 규칙이 없어서(봉투 이미지로만
    "편지" 느낌을 낸다) 이 베이스 글라스를 그대로 받는 게 맞다. */
 .scr-modal {
-  width: 100%; max-width: 420px; padding: 18px 18px 0; max-height: 88vh; max-height: 88dvh;
+  width: 100%; max-width: 420px; padding: 13px 18px 0; max-height: 88vh; max-height: 88dvh;
   display: flex; flex-direction: column; overflow: hidden; border-radius: var(--radius); backdrop-filter: blur(14px);
   border: none;
   background: rgba(16,21,26,0.55);
@@ -704,12 +704,16 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
     inset 0 1px 0 rgba(255,255,255,0.7),
     0 4px 16px rgba(0,0,0,0.12);
 }
-.scr-modal-head { display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 15.5px; padding-bottom: 12px; margin-bottom: 14px; color: var(--text); flex-shrink: 0; }
+/* 헤더 아래 여백을 줄여 제목 바로 밑에 본문이 붙게 한다 — X 버튼(38px)이 헤더 행 높이를
+   잡고 있어 제목 위아래 여백은 이미 충분하므로, 예전의 padding-bottom 12 + margin-bottom
+   14(합 26px)는 제목과 본문 사이가 휑하게 비어 보였다(요청: "모든 모달에서 헤더 부분
+   상하 여백이 너무 크다"). */
+.scr-modal-head { display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 15.5px; padding-bottom: 2px; margin-bottom: 8px; color: var(--text); flex-shrink: 0; }
 /* 닫기(X) 버튼은 테두리 없이 단순하게, 대신 아이콘 획을 두껍게 해서 존재감은 유지한다.
    기본 아이콘 버튼(약간 둥근 사각)과 달리 완전한 원형으로 — 다른 동그란 버튼들과 통일. */
 /* svg width/height는 CSS가 각 모달의 JSX에 박힌 size={..} 속성보다 우선한다 — 여기
    한 곳만 바꾸면 전체 모달에 적용된다. */
-.scr-modal-head .scr-icon-btn { width: 38px; height: 38px; border: none; background: transparent; border-radius: 50%; }
+.scr-modal-head .scr-icon-btn { width: 32px; height: 32px; border: none; background: transparent; border-radius: 50%; }
 .scr-modal-head .scr-icon-btn:hover { background: rgba(var(--overlay-rgb),0.1); }
 .scr-modal-head .scr-icon-btn svg { width: 20px; height: 20px; stroke-width: 2.5; }
 .scr-modal-head-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
