@@ -210,6 +210,10 @@ export interface MemberStatsEntry {
   // 랭킹 2순위 기준값(승자승 다음) — 우세 +1 / 동등 0 / 열세 -1을 사람별로 합산한 점수.
   // 카드에 이 숫자를 보여준다(경기 승점 대신). 순위 대상이 아니면 null.
   personScore: number | null;
+  // 사람단위 점수 내역 — 몇 명에게 우세/동등/열세인지(인원). 카드가 전적 대신 표시한다.
+  superiorCount: number | null;
+  equalCount: number | null;
+  inferiorCount: number | null;
 }
 
 export interface MatchStatsResponse {

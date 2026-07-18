@@ -2,7 +2,6 @@ import { useState, type MouseEvent } from "react";
 import { createPortal } from "react-dom";
 import Avatar from "../../components/common/Avatar";
 import PhotoViewer from "../../components/common/PhotoViewer";
-import RecordText from "../../components/common/RecordText";
 import RankDeltaBadge from "./RankDeltaBadge";
 import { cx } from "../../utils/format";
 import type { RankRow as RankRowData } from "./rank";
@@ -28,7 +27,7 @@ interface RankRowProps {
 // "최근 vs 상대 승/패" 한 줄을 붙였는데, 이제 일대일 경기 이력 전체를 카드 상세 모달(그래프
 // 아래)에서 보여주므로 카드에선 뺐다(요청: "최근 경기 이력말고 일대일 이력 다").
 export default function RankRowV2({ row, tiedWithPrev = false, highlighted = false, onOpenTrend }: RankRowProps) {
-  const { member, stats, personScore, rank, rankDelta } = row;
+  const { member, personScore, superiorCount, equalCount, inferiorCount, rank, rankDelta } = row;
   const [photoOpen, setPhotoOpen] = useState(false);
   // 사람단위 점수(우세 +1 / 동등 0 / 열세 -1의 합). 양수는 +부호로.
   const points = personScore;
@@ -74,10 +73,13 @@ export default function RankRowV2({ row, tiedWithPrev = false, highlighted = fal
             <span className="scr-mono scr-rank-stat-primary">
               {points > 0 ? `+${points}` : points}<span className="scr-num-unit">점</span>
             </span>
-            <RecordText
-              className="scr-rank-record-v2"
-              plays={stats.plays} wins={stats.wins} losses={stats.losses} draws={stats.draws}
-            />
+            {/* 전적(승/패/무) 대신 '몇 명에게 우세/동등/열세인지' 인원을 보여준다(요청) —
+                우세=초록, 열세=붉은, 동등=회색으로 전적통계 색과 통일한다. */}
+            <span className="scr-mono scr-rank-record-v2 scr-rank-superiority">
+              <span className="scr-record-win">{superiorCount}<span className="scr-num-unit">우세</span></span>{" "}
+              <span className="scr-record-draw">{equalCount}<span className="scr-num-unit">동등</span></span>{" "}
+              <span className="scr-record-loss">{inferiorCount}<span className="scr-num-unit">열세</span></span>
+            </span>
           </div>
         </div>
       </div>
