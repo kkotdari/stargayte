@@ -222,3 +222,46 @@ export const MONTHS_KR = [
   "1월", "2월", "3월", "4월", "5월", "6월",
   "7월", "8월", "9월", "10월", "11월", "12월",
 ] as const;
+
+// 랭킹 집계 기간의 단위 — 월("YYYY-MM")이나 연("YYYY") 하나로 좁혀 순위를 매긴다(요청:
+// "필터 기간 년/월, 화살표 하나로 그 단위만큼 이동"). anchor 문자열은 월이면 "YYYY-MM",
+// 연이면 "YYYY"다. 아래 헬퍼들은 이 anchor를 실제 조회 범위(from~to)·표시 라벨·이동으로
+// 바꿔준다 — 화면(RankingScreen)은 이 헬퍼들만 쓰고 달/연을 직접 계산하지 않는다.
+export type PeriodUnit = "month" | "year";
+
+// 그 단위의 "현재"(월은 그레이스 보정 이번 달, 연은 올해) anchor.
+export function currentPeriodAnchor(unit: PeriodUnit): string {
+  return unit === "year" ? String(gameNow().getFullYear()) : graceMonthValue();
+}
+
+// anchor를 그 단위 delta개(음수=과거)만큼 앞뒤로 옮긴다.
+export function shiftPeriodAnchor(unit: PeriodUnit, anchor: string, delta: number): string {
+  if (unit === "year") return String(Number(anchor) + delta);
+  return shiftMonthValue(anchor, delta);
+}
+
+// anchor를 실제 조회 범위(그 달/그 해의 첫날~마지막날)로 바꾼다.
+export function periodAnchorToRange(unit: PeriodUnit, anchor: string): { from: string; to: string } {
+  if (unit === "year") {
+    const y = Number(anchor);
+    return { from: fmt(new Date(y, 0, 1)), to: fmt(new Date(y, 11, 31)) };
+  }
+  return monthInputToRange(anchor);
+}
+
+// 타이틀 옆에 보여줄 라벨 — 월은 "7월"(그해 안이라 달만), 연은 "2026년".
+export function periodAnchorLabel(unit: PeriodUnit, anchor: string): string {
+  if (unit === "year") return `${anchor}년`;
+  return MONTHS_KR[Number(anchor.slice(5, 7)) - 1];
+}
+
+// 순위변동 그래프의 x축(과거→최근)용 짧은 라벨 — 월은 "7월", 연은 "26"(자리 절약).
+export function periodAxisLabel(unit: PeriodUnit, anchor: string): string {
+  if (unit === "year") return anchor.slice(2);
+  return MONTHS_KR[Number(anchor.slice(5, 7)) - 1];
+}
+
+// 최근 n개 기간(과거→최근 순) — 순위변동 그래프가 왼쪽부터 시간순으로 그려지도록.
+export function recentPeriodAnchors(unit: PeriodUnit, n: number, upto: string): string[] {
+  return Array.from({ length: n }, (_, i) => shiftPeriodAnchor(unit, upto, -(n - 1 - i)));
+}

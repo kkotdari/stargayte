@@ -200,20 +200,21 @@ export interface MemberStatsEntry {
   overall: MemberStats;
   byRace: Record<BaseRace, MemberStats>;
   mostPlayedRace: Race | null;
-  // 랭킹 순서 — 서버가 승자승(맞대결) → 사람단위 점수(우세−열세) 순으로 가른 결과다(승률·
-  // 경기 승점은 정렬 기준이 아니다). 맞대결은 "누구와 비교하느냐"에 따라 달라지는 쌍 단위
-  // 값이라 회원별 숫자 하나로는 내려올 수 없어서, 클라이언트는 이 자리번호로만 줄세운다.
-  // 이 조회 조건에서 한 판도 안 뛴 회원은 순위 대상이 아니라 null.
+  // 랭킹 순서 — 서버가 사람단위 점수(참가+우열) → 상대 강함(SoS) 순으로 가른 결과다.
+  // 이 값(자리번호)으로만 클라이언트가 줄세운다. 0경기 회원도 모두 순위가 매겨진다(0점, 맨 아래).
   sortOrder: number | null;
   // 위 모든 기준까지 같아 완전 동률인 회원끼리 값이 같다 — 공동순위로 묶는 기준.
   tieGroup: number | null;
   // 랭킹 2순위 기준값(승자승 다음) — 우세 +1 / 동등 0 / 열세 -1을 사람별로 합산한 점수.
   // 카드에 이 숫자를 보여준다(경기 승점 대신). 순위 대상이 아니면 null.
   personScore: number | null;
-  // 사람단위 점수 내역 — 몇 명에게 우세/동등/열세인지(인원). 카드가 전적 대신 표시한다.
+  // 사람단위 우세/동등/열세 인원 — 랭킹 상세에서 쓴다.
   superiorCount: number | null;
   equalCount: number | null;
   inferiorCount: number | null;
+  // 랭킹 총점 — 경기마다 (이김 +2·강함 / 비김 +1·강함 / 짐 -1·약함) 합산. 카드에 이 숫자만
+  // 보여준다. 음수 가능. 순위 대상이 아니면 null.
+  rankScore: number | null;
 }
 
 export interface MatchStatsResponse {

@@ -5,81 +5,82 @@ import SearchFilterBar from "../../components/common/SearchFilterBar";
 import PillTabs from "../../components/common/PillTabs";
 import FilterItem from "../../components/common/FilterItem";
 import RankRow from "./RankRow";
-import TeamRankRow from "./TeamRankRow";
 import RankingDetailModal from "./RankingDetailModal";
 import {
-  computeRankRows, computeSoloRankTrend, computeTeamRankRows, computeTeamRankTrend, SOLO_MATCH_TYPE,
-  type RankMode, type RankRow as RankRowData, type RankTrendPoint, type TeamRankRow as TeamRankRowData,
-  type TeamSize,
+  computeRankRows, computeRankTrend, MATCH_TYPE_OF,
+  type RankMode, type RankRow as RankRowData, type RankTrendPoint,
 } from "./rank";
 import { activeMemberSearchTerms, memberMatchesTerm, splitSearchTerms } from "../../utils/memberSearch";
-import { graceMonthValue, shiftMonthValue, MONTHS_KR } from "../../utils/date";
+import {
+  currentPeriodAnchor, periodAnchorLabel, periodAnchorToRange, shiftPeriodAnchor, type PeriodUnit,
+} from "../../utils/date";
 import { cx } from "../../utils/format";
 import { useAppStore } from "../../store/appStore";
 import type { BaseRace, Member } from "../../types";
 
-// 차트 필터 하나로 통합 — 예전엔 "개인/팀"을 고른 뒤 팀에서만 인원(2/3/4인) 라디오가
-// 별도로 떴는데, 그 이단 구조를 없애고 처음부터 넷 중 하나를 고른다(요청: "랭킹 차트
-// 필터 개인/2인팀/3인팀/4인팀으로 구분 팀 세부 필터 삭제").
-type ChartOpt = "solo" | "2" | "3" | "4";
-const CHART_OPTS: { value: ChartOpt; label: string }[] = [
-  { value: "solo", label: "개인" },
-  { value: "2", label: "2인팀" },
-  { value: "3", label: "3인팀" },
-  { value: "4", label: "4인팀" },
+// 랭킹 차트 필터는 "개인전 / 팀전" 둘뿐이다 — 예전의 개인/2인팀/3인팀/4인팀(인원수별) 구분을
+// 없앴다(요청: "개인전/팀전으로만, 팀전은 모든 팀 인원수를 묶어 개인 환산"). 팀전도 개인
+// 카드 목록 그대로 보여주고(상대팀 전원을 각각 이긴/진 것으로 풀어 개인 랭킹과 같은 방식으로
+// 점수를 매긴다), 인원수(2·3·4인)는 한 데 섞는다.
+const CHART_OPTS: { value: RankMode; label: string }[] = [
+  { value: "solo", label: "개인전" },
+  { value: "team", label: "팀전" },
 ];
+// 기간 단위 — 월이면 화살표 한 번에 ±1개월, 연이면 ±1년 이동한다(요청: "기간 년/월, 화살표
+// 하나로 그 단위만큼 이동. 캘린더 선택기 없이").
+const UNIT_OPTS: { value: PeriodUnit; label: string }[] = [
+  { value: "month", label: "월" },
+  { value: "year", label: "년" },
+];
+// 데이터가 시작된 시점 — 이 이전으로는 화살표가 안 넘어간다. 문자열 비교가 그대로 시간
+// 비교라("2026-07" < "2026-08", "2026" < "2027") 별도 파싱 없이 경계를 판단한다.
+const RANK_MIN: Record<PeriodUnit, string> = { month: "2026-07", year: "2026" };
 
-// v2 랭킹 — 먼저 "일대일 / 팀" 중 하나를 고르고, 그다음에야 일대일은 종족을, 팀은 인원수
-// (2/3/4인)와 유저 검색을 쓸 수 있다(집계 대상 자체가 서로 달라 필터를 공유하지 않는다).
-//
-// 집계 기간은 기본적으로 이번 달이다(요청: "개인/팀 랭킹의 집계 기간은 기본적으로 월
-// 기준") — 그래서 타이틀 옆에 몇 월인지 표시하고, 전월 대비 순위변동을 순위 밑에 바로
-// 보여주며, 카드를 누르면 최근 5개월 추이 모달이 뜬다.
-//
-// 순위 계산(개인은 승자승 → 사람단위 점수(우세−열세) / 팀은 승점 → 승수 → 경기수)은 전부
-// 서버가 끝내서 내려준다 — 화면은 그 순서대로 그리고 순위 숫자만 붙인다(./rank.ts).
+// v2 랭킹 — 개인전/팀전을 고르고, 월/연 기간을 좌우 화살표로 옮겨 그 기간의 순위를 본다.
+// 순위 계산(경기마다 상대 강함/약함으로 가중 합산)은 전부 서버가 끝내서 내려주고(./rank.ts),
+// 화면은 그 순서대로 그리며 순위 숫자만 붙인다. 개인전·팀전은 집계 대상 경기(1:1 / 팀경기)만
+// 다를 뿐 목록 모양과 산정 방식이 완전히 같다.
 export default function RankingScreenV2() {
   const members = useAppStore((s) => s.members);
   const suggestions = useMemo(() => activeMemberSearchTerms(members), [members]);
 
-  const [chart, setChart] = useState<ChartOpt>("solo");
-  const mode: RankMode = chart === "solo" ? "solo" : "team";
-  // "solo"일 땐 어차피 팀 조회 자체가 안 나가므로 아무 값이어도 무방하다.
-  const teamSize = (chart === "solo" ? 4 : Number(chart)) as TeamSize;
+  const [mode, setMode] = useState<RankMode>("solo");
+  const matchType = MATCH_TYPE_OF[mode];
+  const isTeam = mode === "team";
   const [race, setRace] = useState<BaseRace | "all">("all");
   const [search, setSearch] = useState("");
-  // 집계 월 — 기본은 그레이스 보정된 이번 달(graceMonthValue: 매월 1일 20시 전까진 전월).
-  // 타이틀의 좌우 화살표로 과거 달의 순위를 볼 수 있다(요청: "월 옆에 좌우 이동 아이콘 버튼").
-  // 데이터가 시작된 2026년 7월보다 과거로도, 아직 오지 않은 이번 달(maxMonth)보다 미래로도
-  // 갈 수 없다 — 화살표는 갈 수 있을 때만 보이되 자리는 늘 차지해 레이아웃이 안 흔들린다.
-  const RANK_MIN_MONTH = "2026-07";
-  const maxMonth = graceMonthValue();
-  const [month, setMonth] = useState(maxMonth);
-  const hasPrevMonth = month > RANK_MIN_MONTH;
-  const hasNextMonth = month < maxMonth;
+  // 집계 기간 단위(월/연)와 그 기준점(anchor: 월 "YYYY-MM" / 연 "YYYY"). 기본은 그 단위의
+  // "현재"(월은 그레이스 보정 이번 달, 연은 올해).
+  const [unit, setUnit] = useState<PeriodUnit>("month");
+  const [anchor, setAnchor] = useState(() => currentPeriodAnchor("month"));
+  const maxAnchor = currentPeriodAnchor(unit);
+  const minAnchor = RANK_MIN[unit];
+  const hasPrev = anchor > minAnchor;
+  const hasNext = anchor < maxAnchor;
 
-  // 개인/각 인원수 팀은 집계 대상 자체가 다른 별도 목록이라, 한쪽에서 걸어둔 검색어·종족
-  // 필터를 다른 쪽으로 들고 가면 그 화면에 아무도 안 걸린 채로 남거나 무의미한 필터가
-  // 남는다 — 차트를 바꾸면 항상 초기화한다(요청: "개인/팀 전환시 나머지 필터와 검색
-  // 키워드 초기화"). 목록도 그 자리에서 비운다 — 안 그러면 새 집계가 도착할 때까지
-  // 이전 차트의 목록이 그대로 보이다가 갑자기 갈아치워진다(실제로 지적받은 문제 —
-  // "2/3/4인팀 선택시 기존 화면이 보이다가 새 차트로 변경됨. 화면자체를 다 별도로
-  // 새로 그려야돼"). 비우면 아래 렌더가 로딩 스피너부터 새로 그린다.
-  const handleChartChange = (c: ChartOpt) => {
-    setChart(c);
+  // 개인전/팀전은 집계 대상 경기 자체가 다른 별도 목록이라, 한쪽에서 걸어둔 검색어·종족
+  // 필터를 그대로 들고 가면 무의미하게 남는다 — 모드를 바꾸면 초기화한다. 목록도 그 자리에서
+  // 비운다(안 그러면 새 집계 도착 전까지 이전 모드 목록이 그대로 보이다가 갑자기 갈아치워짐).
+  const handleModeChange = (m: RankMode) => {
+    setMode(m);
     setRace("all");
     setSearch("");
     setRows([]);
-    setTeamRows([]);
   };
-  // 월 이동 — 범위(2026-07 ~ 이번 달)를 벗어나면 무시한다. 달이 바뀌면 이전 달 목록이
-  // 잠깐 남지 않도록 즉시 비우고 로딩부터 다시 그린다(차트 전환과 같은 원칙).
-  const goMonth = (delta: number) => {
-    const next = shiftMonthValue(month, delta);
-    if (next < RANK_MIN_MONTH || next > maxMonth) return;
-    setMonth(next);
+  // 기간 단위를 바꾸면 그 단위의 "현재"로 기준점을 되돌린다(월↔연은 anchor 형식 자체가 달라
+  // 그대로 둘 수 없다). 목록은 즉시 비우고 로딩부터 다시 그린다.
+  const handleUnitChange = (u: PeriodUnit) => {
+    if (u === unit) return;
+    setUnit(u);
+    setAnchor(currentPeriodAnchor(u));
     setRows([]);
-    setTeamRows([]);
+  };
+  // 기간 이동 — 그 단위(월/연)만큼 한 칸씩. 범위(데이터 시작 ~ 현재)를 벗어나면 무시한다.
+  const goPeriod = (delta: number) => {
+    const next = shiftPeriodAnchor(unit, anchor, delta);
+    if (next < minAnchor || next > maxAnchor) return;
+    setAnchor(next);
+    setRows([]);
   };
   // 종족 칩도 같은 이유 — 조건이 바뀌는 순간 이전 조건의 목록을 지우고 새로 그린다.
   const handleRaceChange = (r: BaseRace | null) => {
@@ -88,11 +89,8 @@ export default function RankingScreenV2() {
   };
 
   const [rows, setRows] = useState<RankRowData[]>([]);
-  const [teamRows, setTeamRows] = useState<TeamRankRowData[]>([]);
-  // 카드(행) 클릭 — 상세 모달(최근 5개월 순위변동 그래프 + 경기 이력). 개인·팀 모두 카드
-  // 클릭 하나로 이 모달을 연다. trendMembers가 null이면 안 열림, trendPoints가 null이면
-  // 그 안에서 아직 불러오는 중.
-  const [trendMembers, setTrendMembers] = useState<Member[] | null>(null);
+  // 카드(행) 클릭 — 상세 모달(최근 5개 기간 순위변동 그래프 + 경기 이력·경기당 점수).
+  const [trendMember, setTrendMember] = useState<Member | null>(null);
   const [trendPoints, setTrendPoints] = useState<RankTrendPoint[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -108,40 +106,25 @@ export default function RankingScreenV2() {
     let cancelled = false;
     setLoading(true);
     setError("");
-    const load = mode === "solo"
-      ? computeRankRows(membersRef.current, race, month).then((res) => { if (!cancelled) setRows(res); })
-      // 인원수(2/3/4인) 필터가 바뀌면 그 인원수 안에서만 다시 순위를 매겨야 해서
-      // (요청: "해당 인원수에 맞는 팀만 노출... 랭킹 집계도 별도임") 목록을 다시 불러온다
-      // (요청: "필터 바뀌면 목록 재조회필요").
-      : computeTeamRankRows(membersRef.current, month, teamSize).then((res) => { if (!cancelled) setTeamRows(res); });
-    load.catch((e) => {
-      if (!cancelled) setError(e instanceof Error ? e.message : "랭킹을 불러오지 못했어요.");
-    }).finally(() => {
-      if (!cancelled) setLoading(false);
-    });
+    computeRankRows(membersRef.current, matchType, race, unit, anchor)
+      .then((res) => { if (!cancelled) setRows(res); })
+      .catch((e) => {
+        if (!cancelled) setError(e instanceof Error ? e.message : "랭킹을 불러오지 못했어요.");
+      })
+      .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [membersSignature, mode, race, teamSize, month]);
+  }, [membersSignature, matchType, race, unit, anchor]);
 
-  // 팀 검색은 순위 재계산 없이(순위는 항상 전체 팀 기준) 화면에 보여줄 행만 거른다 — 그래서
-  // 남은 행의 순위 숫자는 검색 전과 항상 같다. 검색어 중 아무나 팀에 들어있으면 그 팀이 남는다.
-  // SearchFilterBar가 이제 엔터를 눌러야만 onSearchChange를 부르므로(점프 방지), search
-  // 자체가 이미 확정된 값이다 — 더 늦출 디바운스가 필요 없다.
+  // 유저 검색은 순위 재계산 없이(순위는 항상 전체 기준) 화면에 보여줄 행만 거른다 — 남은
+  // 행의 순위 숫자는 검색 전과 항상 같다.
   const searchTerms = useMemo(() => splitSearchTerms(search), [search]);
-  const visibleTeamRows = useMemo(() => {
-    if (searchTerms.length === 0) return teamRows;
-    return teamRows.filter((r) => searchTerms.some((t) => r.members.some((m) => memberMatchesTerm(m, t))));
-  }, [teamRows, searchTerms]);
-  // 일대일(개인) 랭킹도 팀 랭킹과 같은 원칙 — 순위 재계산 없이(종족 필터로 이미 서버가
-  // 다시 매긴 순위는 그대로 두고) 화면에 보여줄 행만 검색어로 거른다. rows 자체를 그대로
-  // 렌더링해 이 필터가 적용된 적이 없었다(실제로 지적받은 문제 — "유저 검색이 개인 차트에서
-  // 안 먹힘").
   const visibleRows = useMemo(() => {
     if (searchTerms.length === 0) return rows;
     return rows.filter((r) => searchTerms.some((t) => memberMatchesTerm(r.member, t)));
   }, [rows, searchTerms]);
 
-  // 검색어에 걸린 사람들 — 남은 팀 안에서 누구 때문에 걸렸는지 반전색으로 짚어준다.
+  // 검색어에 걸린 사람들 — 프사+닉네임을 경기 로스터와 같은 반전색으로 짚어준다.
   const highlightMemberIds = useMemo(() => {
     const ids = new Set<string>();
     if (searchTerms.length === 0) return ids;
@@ -149,26 +132,25 @@ export default function RankingScreenV2() {
     return ids;
   }, [members, searchTerms]);
 
-  const isTeam = mode === "team";
-  const listRows = isTeam ? visibleTeamRows : visibleRows;
+  // 상세 모달이 경기당 획득 점수를 재구성하는 데 쓸 상대 강함(1+우세수)·약함(1+열세수) 맵 —
+  // 지금 목록(같은 기간·모드)의 회원별 우열 인원에서 그대로 뽑는다. 서버 점수 산식과 같은
+  // 값이라, 상세에서 경기별로 더하면 카드 총점과 맞아떨어진다.
+  const strengthByMember = useMemo(
+    () => new Map(rows.map((r) => [r.member.id, 1 + r.superiorCount])), [rows],
+  );
+  const weaknessByMember = useMemo(
+    () => new Map(rows.map((r) => [r.member.id, 1 + r.inferiorCount])), [rows],
+  );
+  const period = useMemo(() => periodAnchorToRange(unit, anchor), [unit, anchor]);
 
-  const closeTrend = () => { setTrendMembers(null); setTrendPoints(null); };
-  const openSoloTrend = (row: RankRowData) => {
-    setTrendMembers([row.member]);
+  const closeTrend = () => { setTrendMember(null); setTrendPoints(null); };
+  const openTrend = (row: RankRowData) => {
+    setTrendMember(row.member);
     setTrendPoints(null);
-    computeSoloRankTrend(membersRef.current, row.member.id, race, month)
+    computeRankTrend(membersRef.current, matchType, row.member.id, race, unit, anchor)
       .then((pts) => setTrendPoints(pts))
       .catch(() => setTrendPoints([]));
   };
-  const openTeamTrend = (row: TeamRankRowData) => {
-    setTrendMembers(row.members);
-    setTrendPoints(null);
-    computeTeamRankTrend(membersRef.current, row.entry.memberIds, teamSize, month)
-      .then((pts) => setTrendPoints(pts))
-      .catch(() => setTrendPoints([]));
-  };
-
-  const monthNum = Number(month.slice(5, 7));
 
   return (
     <div className="scr-screen scr-rank-screen-v2">
@@ -176,47 +158,57 @@ export default function RankingScreenV2() {
         <h1 className="scr-title scr-v2-toolbar-title">랭킹</h1>
       </div>
 
-      {/* 월(좌우 이동)과 산정 방식 힌트를 타이틀 행 아래 별도 행으로 분리한다(요청: "월을
-          타이틀 행 아래의 별도 행으로 분리하고 힌트도 같이 옮기기"). 월은 왼쪽, 힌트는
-          오른쪽. 화살표는 갈 수 있을 때만 보이되 자리는 늘 예약해 레이아웃이 안 흔들린다. */}
+      {/* 기간(단위 토글 + 좌우 이동)과 산정 방식 힌트를 타이틀 아래 별도 행으로 둔다. 화살표는
+          갈 수 있을 때만 보이되 자리는 늘 예약해 레이아웃이 안 흔들린다. */}
       <div className="scr-rank-subrow">
-        <span className="scr-rank-month-nav">
-          <button
-            type="button"
-            className={cx("scr-rank-month-btn", !hasPrevMonth && "scr-rank-month-btn-hidden")}
-            onClick={() => goMonth(-1)}
-            aria-label="이전 달"
-            aria-hidden={!hasPrevMonth}
-            tabIndex={hasPrevMonth ? 0 : -1}
-          >
-            <ChevronLeft size={18} />
-          </button>
-          <span className="scr-rank-title-month">{MONTHS_KR[monthNum - 1]}</span>
-          <button
-            type="button"
-            className={cx("scr-rank-month-btn", !hasNextMonth && "scr-rank-month-btn-hidden")}
-            onClick={() => goMonth(1)}
-            aria-label="다음 달"
-            aria-hidden={!hasNextMonth}
-            tabIndex={hasNextMonth ? 0 : -1}
-          >
-            <ChevronRight size={18} />
-          </button>
+        <span className="scr-rank-period">
+          <span className="scr-rank-unit-toggle" role="group" aria-label="기간 단위(월/연) 선택">
+            {UNIT_OPTS.map((o) => (
+              <button
+                key={o.value}
+                type="button"
+                className={cx("scr-rank-unit-btn", unit === o.value && "scr-rank-unit-btn-active")}
+                onClick={() => handleUnitChange(o.value)}
+                aria-pressed={unit === o.value}
+              >
+                {o.label}
+              </button>
+            ))}
+          </span>
+          <span className="scr-rank-month-nav">
+            <button
+              type="button"
+              className={cx("scr-rank-month-btn", !hasPrev && "scr-rank-month-btn-hidden")}
+              onClick={() => goPeriod(-1)}
+              aria-label="이전 기간"
+              aria-hidden={!hasPrev}
+              tabIndex={hasPrev ? 0 : -1}
+            >
+              <ChevronLeft size={18} />
+            </button>
+            <span className="scr-rank-title-month">{periodAnchorLabel(unit, anchor)}</span>
+            <button
+              type="button"
+              className={cx("scr-rank-month-btn", !hasNext && "scr-rank-month-btn-hidden")}
+              onClick={() => goPeriod(1)}
+              aria-label="다음 기간"
+              aria-hidden={!hasNext}
+              tabIndex={hasNext ? 0 : -1}
+            >
+              <ChevronRight size={18} />
+            </button>
+          </span>
         </span>
-        {/* 일대일 순위 산정 방식 힌트 — 팀 랭킹엔 이 방식이 안 쓰여 숨긴다. */}
-        {!isTeam && <span className="scr-rank-hint-inline">승자승 → 우세−열세</span>}
+        <span className="scr-rank-hint-inline">경기마다 상대 강함/약함으로 가중</span>
       </div>
 
-      {/* 차트(개인/2인팀/3인팀/4인팀) 선택은 필터창(왼쪽 알약 탭) 하나가 맡는다 — 팀
-          인원수 세부 라디오는 이 안으로 흡수돼 없어졌다(요청: "랭킹 차트 필터
-          개인/2인팀/3인팀/4인팀으로 구분 팀 세부 필터 삭제"). 종족은 라디오 필터가 아니라
-          유저 검색창의 예약어(raceValue/onRaceChange) — "테란"/"프로토스"/"저그"를 완성하면
-          종족 칩으로 인식한다. 팀 랭킹엔 종족 개념이 없어(팀 구성원별 종족을 하나로 묶을 수
-          없다) 팀 차트에서는 이 두 prop 자체를 안 넘긴다(요청: "팀 차트에서 종족 제거") —
-          SearchFilterBar가 onRaceChange 없으면 종족 인식을 아예 안 한다. */}
+      {/* 개인전/팀전 선택은 필터창(왼쪽 알약 탭)이 맡는다. 종족은 라디오가 아니라 유저 검색창의
+          예약어(raceValue/onRaceChange) — "테란"/"프로토스"/"저그"를 완성하면 종족 칩으로
+          인식한다. 팀전엔 종족 개념을 두지 않아(구성원별 종족을 하나로 묶을 수 없다) 팀전에서는
+          이 두 prop을 안 넘긴다 — SearchFilterBar가 onRaceChange 없으면 종족 인식을 안 한다. */}
       <SearchFilterBar
-        count={listRows.length}
-        countLabel={isTeam ? "팀" : "명"}
+        count={visibleRows.length}
+        countLabel="명"
         searchValue={search}
         onSearchChange={setSearch}
         searchPlaceholder={isTeam ? "유저" : "유저/종족"}
@@ -225,7 +217,7 @@ export default function RankingScreenV2() {
         onRaceChange={isTeam ? undefined : handleRaceChange}
         filterPanel={
           <FilterItem label="차트">
-            <PillTabs options={CHART_OPTS} value={chart} onChange={handleChartChange} aria-label="개인/팀 인원수 선택" />
+            <PillTabs options={CHART_OPTS} value={mode} onChange={handleModeChange} aria-label="개인전/팀전 선택" />
           </FilterItem>
         }
       />
@@ -234,47 +226,32 @@ export default function RankingScreenV2() {
 
       <div className="scr-rank-table-panel-v2">
         <div className="scr-rank-table">
-          {listRows.length === 0 ? (
+          {visibleRows.length === 0 ? (
             <div className="scr-empty">{loading ? <Spinner size={18} /> : "기록이 없어요"}</div>
-          ) : isTeam ? (
-            visibleTeamRows.map((row, i) => (
-              <TeamRankRow
-                key={row.members.map((m) => m.id).join("|")}
-                row={row}
-                // 공동순위는 그 그룹의 첫 행에만 순위 숫자를 보여주는데(나머지는 빈칸), 그건
-                // 목록이 순위표 전체일 때만 성립한다 — 검색으로 걸러지면 그룹의 첫 행이
-                // 사라진 채 남은 행만 빈칸으로 남아 순위가 아예 안 보인다(실제로 지적받은
-                // 문제). 검색 중에는 묶지 않고 모든 행이 자기 순위를 그대로 보여준다.
-                tiedWithPrev={searchTerms.length === 0 && i > 0 && row.rank === visibleTeamRows[i - 1].rank}
-                highlightMemberIds={highlightMemberIds}
-                onOpenTrend={() => openTeamTrend(row)}
-              />
-            ))
           ) : (
             visibleRows.map((row, i) => (
               <RankRow
                 key={row.member.id}
                 row={row}
-                // 팀 랭킹과 같은 이유(위 visibleTeamRows 주석 참고) — 검색으로 걸러지면
-                // 공동순위 그룹의 첫 행이 사라져 남은 행만 빈칸으로 보일 수 있어, 검색
-                // 중에는 묶지 않는다.
+                // 검색으로 걸러지면 공동순위 그룹의 첫 행이 사라져 남은 행만 빈칸으로 보일 수
+                // 있어, 검색 중에는 묶지 않고 모든 행이 자기 순위를 그대로 보여준다.
                 tiedWithPrev={searchTerms.length === 0 && i > 0 && row.rank === visibleRows[i - 1].rank}
-                // 검색에 걸린 사람은 경기 로스터와 같은 반전색으로 프사+닉네임을 함께
-                // 칠한다(요청: "닉네임뿐 아니라 프사까지 하이라이팅").
                 highlighted={highlightMemberIds.has(row.member.id)}
-                onOpenTrend={() => openSoloTrend(row)}
+                onOpenTrend={() => openTrend(row)}
               />
             ))
           )}
         </div>
       </div>
 
-      {trendMembers && (
+      {trendMember && (
         <RankingDetailModal
-          members={trendMembers}
+          members={[trendMember]}
           points={trendPoints}
-          // 일대일 랭킹이면 그 회원의 일대일 경기만, 팀 랭킹이면 그 팀 구성 경기 전부.
-          matchType={mode === "solo" ? SOLO_MATCH_TYPE : undefined}
+          matchType={matchType}
+          period={period}
+          strengthByMember={strengthByMember}
+          weaknessByMember={weaknessByMember}
           onClose={closeTrend}
         />
       )}

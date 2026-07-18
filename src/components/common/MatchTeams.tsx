@@ -26,6 +26,9 @@ interface MatchTeamsProps {
   // 빼고 "VS 상대 팀구성 + 승/패"만 한 줄로 보여준다(요청: "아예 홈팀을 빼고 vs 팀구성 승패
   // ... 진짜 결과만 나오는 느낌"). 승/패는 주인공(team1) 기준.
   opponentOnly?: boolean;
+  // opponentOnly 이력에서 승/패 라벨 옆에 덧붙이는 문구 — 랭킹 상세의 "이 경기에서 얻은
+  // 점수"(요청: "승무패 옆에 각 경기당 획득 점수 표시")를 담는다.
+  outcomeNote?: string;
 }
 
 type Outcome = "win" | "loss" | "draw" | "notHeld";
@@ -125,6 +128,7 @@ function TeamRoster({ side, players, memberOf, outcome, highlightMemberIds, disa
 // (stackedOutcome이면 대신 VS 위아래에 승/무/패가 붙는다).
 export default function MatchTeams({
   team1, team2, memberOf, result, highlightMemberIds, disableProfileLink, stackedOutcome, compact, opponentOnly,
+  outcomeNote,
 }: MatchTeamsProps) {
   const outcome1 = outcomeFor("team1", result);
   const outcome2 = outcomeFor("team2", result);
@@ -138,7 +142,11 @@ export default function MatchTeams({
           highlightMemberIds={highlightMemberIds} disableProfileLink={disableProfileLink}
           stackedOutcome compact={compact}
         />
-        <span className={cx("scr-team-outcome", "scr-team-outcome-result", OUTCOME_CLASS[outcome1])}>{OUTCOME_LABEL[outcome1]}</span>
+        <span className="scr-match-result-tail">
+          <span className={cx("scr-team-outcome", "scr-team-outcome-result", OUTCOME_CLASS[outcome1])}>{OUTCOME_LABEL[outcome1]}</span>
+          {/* 이 경기에서 얻은 점수(요청) — 승/패 라벨 바로 옆(또는 아래)에 작게 병기한다. */}
+          {outcomeNote && <span className="scr-match-result-points">{outcomeNote}</span>}
+        </span>
       </div>
     );
   }

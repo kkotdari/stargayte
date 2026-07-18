@@ -6,7 +6,6 @@ import RankMatchHistory from "./RankMatchHistory";
 import { api } from "../../api/client";
 import { useAppStore } from "../../store/appStore";
 import { useLockBodyScroll } from "../../utils/bodyScrollLock";
-import { MONTHS_KR } from "../../utils/date";
 import type { Match, MatchType, Member } from "../../types";
 import type { RankTrendPoint } from "./rank";
 
@@ -14,9 +13,15 @@ interface RankingDetailModalProps {
   members: Member[];
   // members가 여럿(팀)이면 이름을 이어붙여 보여준다.
   points: RankTrendPoint[] | null; // null이면 아직 불러오는 중.
-  // 그래프 아래 경기 이력을 어떤 종류로 거를지 — 일대일 랭킹이면 "0101"(그 회원의 일대일
-  // 경기만), 팀 랭킹이면 undefined(그 팀 구성이 함께 뛴 경기 전부). 없으면 이력을 안 그린다.
-  matchType?: MatchType;
+  // 그래프 아래 경기 이력을 어떤 종류로 거를지 — 개인전이면 "0101"(그 회원의 1:1 경기),
+  // 팀전이면 "0102"(팀경기).
+  matchType: MatchType;
+  // 지금 보고 있는 기간(월/연) — 경기 이력을 이 기간으로 좁혀, 카드 총점이 어느 경기들에서
+  // 나왔는지 그대로 훑을 수 있게 한다. 경기당 획득 점수도 이 기간 기준으로 맞아떨어진다.
+  period: { from: string; to: string };
+  // 상대의 강함(1+우세수)·약함(1+열세수) 맵(회원 id 기준) — 경기당 획득 점수를 계산한다.
+  strengthByMember: Map<string, number>;
+  weaknessByMember: Map<string, number>;
   onClose: () => void;
 }
 
@@ -29,21 +34,17 @@ const PAD_BOTTOM = 24;
 // 이력말고 일대일 이력 다"). 그래도 아주 많은 경우를 위해 최근 100건까지만.
 const HISTORY_LIMIT = 100;
 
-function monthLabel(month: string): string {
-  const m = Number(month.slice(5, 7));
-  return MONTHS_KR[m - 1];
-}
-
-// 랭킹 카드를 눌렀을 때 뜨는 상세 — 위엔 최근 5개월 순위변동 그래프, 아래엔 그 회원(팀)의
-// 경기 이력 전체(요청: "랭킹 상세에 그래프 아래에 경기 이력 보여주기"). 그 달에 순위 대상이
-// 아니었으면(한 판도 안 뛰었거나 인원수 필터에 안 맞았거나) rank가 null이라 그 지점은 선을
-// 잇지 않고 건너뛴다.
-export default function RankingDetailModal({ members, points, matchType, onClose }: RankingDetailModalProps) {
+// 랭킹 카드를 눌렀을 때 뜨는 상세 — 위엔 최근 5개 기간 순위변동 그래프, 아래엔 그 회원의
+// 그 기간 경기 이력(경기마다 획득 점수 병기). 그 기간에 순위 대상이 아니었으면(한 판도 안
+// 뛰었으면) rank가 null이라 그 지점은 선을 잇지 않고 건너뛴다.
+export default function RankingDetailModal({
+  members, points, matchType, period, strengthByMember, weaknessByMember, onClose,
+}: RankingDetailModalProps) {
   useLockBodyScroll();
   const memberOf = useAppStore((s) => s.memberOf);
   const title = members.map((m) => m.nickname).join(", ");
 
-  const known = (points ?? []).filter((p): p is { month: string; rank: number } => p.rank !== null);
+  const known = (points ?? []).filter((p): p is { label: string; rank: number } => p.rank !== null);
   const minRank = known.length ? Math.min(...known.map((p) => p.rank)) : 1;
   const maxRank = known.length ? Math.max(...known.map((p) => p.rank)) : 1;
   const span = Math.max(1, maxRank - minRank);
@@ -51,14 +52,14 @@ export default function RankingDetailModal({ members, points, matchType, onClose
   // 순위는 숫자가 작을수록 좋은 성적이라, 위로 갈수록(y가 작을수록) 좋은 순위가 되도록 뒤집는다.
   const yFor = (rank: number) => PAD_TOP + ((rank - minRank) / span) * (H - PAD_TOP - PAD_BOTTOM);
 
-  // 결측(그 달 순위 없음)이 있어도 선은 알고 있는 지점끼리만 잇는다 — 없는 달을 억지로
+  // 결측(그 기간 순위 없음)이 있어도 선은 알고 있는 지점끼리만 잇는다 — 없는 기간을 억지로
   // 보간하면 실제로 없던 순위가 있던 것처럼 보인다.
-  const segments: { month: string; rank: number; i: number }[][] = [];
+  const segments: { rank: number; i: number }[][] = [];
   (points ?? []).forEach((p, i) => {
     if (p.rank === null) return;
     const last = segments[segments.length - 1];
-    if (last && last[last.length - 1].i === i - 1) last.push({ ...p, rank: p.rank, i });
-    else segments.push([{ month: p.month, rank: p.rank, i }]);
+    if (last && last[last.length - 1].i === i - 1) last.push({ rank: p.rank, i });
+    else segments.push([{ rank: p.rank, i }]);
   });
 
   // 그래프 아래 경기 이력 — 이 회원(팀)이 뛴 경기를 서버에서 받아온다(teamMemberIds로 "그
@@ -72,12 +73,17 @@ export default function RankingDetailModal({ members, points, matchType, onClose
     let cancelled = false;
     setMatchesLoading(true);
     setMatchesErr("");
-    api.getMatchesPage({ teamMemberIds: memberIdsKey.split(","), matchType, limit: HISTORY_LIMIT })
+    // 이력을 지금 보고 있는 기간으로 좁힌다 — 카드 총점이 이 경기들에서 나온 것이고, 아래에
+    // 병기하는 경기당 점수도 이 기간 기준으로 더하면 그 총점과 맞아떨어진다.
+    api.getMatchesPage({
+      teamMemberIds: memberIdsKey.split(","), matchType,
+      dateFrom: period.from, dateTo: period.to, limit: HISTORY_LIMIT,
+    })
       .then((page) => { if (!cancelled) setMatches(page.items); })
       .catch((e) => { if (!cancelled) setMatchesErr(e instanceof Error ? e.message : "경기를 불러오지 못했어요."); })
       .finally(() => { if (!cancelled) setMatchesLoading(false); });
     return () => { cancelled = true; };
-  }, [memberIdsKey, matchType]);
+  }, [memberIdsKey, matchType, period.from, period.to]);
 
   useEffect(() => reload(), [reload]);
 
@@ -113,13 +119,13 @@ export default function RankingDetailModal({ members, points, matchType, onClose
                   />
                 ))}
                 {points.map((p, i) => (
-                  <text key={`label-${p.month}`} className="scr-rank-detail-axis-label" x={xFor(i)} y={H - 6}>
-                    {monthLabel(p.month)}
+                  <text key={`label-${i}`} className="scr-rank-detail-axis-label" x={xFor(i)} y={H - 6}>
+                    {p.label}
                   </text>
                 ))}
                 {points.map((p, i) => (
                   p.rank === null ? null : (
-                    <g key={`point-${p.month}`}>
+                    <g key={`point-${i}`}>
                       <circle className="scr-rank-detail-dot" cx={xFor(i)} cy={yFor(p.rank)} r={3} />
                       <text className="scr-rank-detail-value" x={xFor(i)} y={yFor(p.rank) - 8}>
                         {p.rank}위
@@ -135,7 +141,10 @@ export default function RankingDetailModal({ members, points, matchType, onClose
           <div className="scr-rank-detail-history">
             <div className="scr-rank-detail-history-head">경기 이력{matches.length > 0 && ` (${matches.length})`}</div>
             {matchesErr && <div className="scr-err">{matchesErr}</div>}
-            <RankMatchHistory matches={matches} members={members} memberOf={memberOf} loading={matchesLoading} />
+            <RankMatchHistory
+              matches={matches} members={members} memberOf={memberOf} loading={matchesLoading}
+              strengthByMember={strengthByMember} weaknessByMember={weaknessByMember}
+            />
           </div>
         </div>
       </div>
