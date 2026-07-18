@@ -1926,14 +1926,12 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
     url("/images/bg/ranking.jpg");
   background-size: cover; background-position: center; background-repeat: no-repeat;
 }
-/* 라이트 테마는 예전엔 배경 사진을 아예 껐지만, 이제 같은 사진 위에 어두운 스크림 대신
-   '화이트 스크림'(위아래로 흰 그라데이션)을 겹쳐 밝게 깐다(요청: "라이트모드에도 화이트
-   스크림 해서 적용") — 흰 패널/짙은 글씨가 그대로 잘 읽히도록 사진을 옅게만 비친다. */
+/* 라이트 테마는 페이지 배경 사진을 아예 끈다(요청: "라이트 테마에서 페이지 배경 이미지들
+   제거") — ::before 자체를 없애 앱 기본(흰) 배경만 남긴다. display:none이라 아래 모바일
+   미디어쿼리가 background-image만 바꿔도 다시 살아나지 않는다. */
 .scr-light-theme .scr-rank-screen-v2::before,
 .scr-light-theme .scr-challenge-screen-v2::before {
-  background-image:
-    linear-gradient(180deg, rgba(248,249,251,0.86) 0%, rgba(248,249,251,0.74) 40%, rgba(248,249,251,0.9) 100%),
-    url("/images/bg/ranking.jpg");
+  display: none;
 }
 /* 모바일에서는 세로로 긴 화면에 맞게 따로 촬영/크롭된 ranking_mobile.jpg를 쓴다(요청:
    "랭킹 배경 모바일에서는 방금 추가한 ranking_mobile.jpg로 설정"). 다른 화면들의
@@ -2917,12 +2915,20 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   display: flex; align-items: center; justify-content: flex-start; gap: 12px;
 }
 .scr-match-list-panel-v2 .scr-match-row-result-only .scr-team-block { flex: 1; min-width: 0; }
+/* 개인전 이력은 상대 로스터가 남는 폭을 다 먹지 않게(flex-grow 0) 해서, "에게·승/패·점수"가
+   화면 오른쪽 끝이 아니라 닉네임 바로 뒤에 붙는다(요청: "에게를 닉네임 쪽으로 붙이고
+   승패도 왼쪽으로"). 정렬(justify-content: flex-start)이 이미 왼쪽 정렬이라 나머지 여백은
+   오른쪽에 남는다. */
+.scr-match-list-panel-v2 .scr-match-row-result-only:not(.scr-match-row-team-tail) .scr-team-block { flex: 0 1 auto; }
 .scr-match-list-panel-v2 .scr-match-row-result-only .scr-team-outcome-result { flex-shrink: 0; }
 /* 오른쪽 끝 결과 묶음 — 개인전 이력(opponentOnly)은 "에 · 승/패 · +점수"를 세로로 쌓지
    않고 한 줄에 가로로 나란히 둔다(요청: "에 승 +1이 세로가 아니라 가로로 별도 컬럼으로
    배치"). 각 조각을 고정폭 칸으로 둬서 카드마다 연결어/승패/점수 세로줄이 일치한다. */
 .scr-match-list-panel-v2 .scr-match-row-result-only .scr-match-result-tail {
   flex-shrink: 0; display: inline-flex; align-items: center;
+}
+.scr-match-list-panel-v2 .scr-match-row-result-only:not(.scr-match-row-team-tail) {
+  gap: 8px;
 }
 .scr-match-list-panel-v2 .scr-match-row-result-only:not(.scr-match-row-team-tail) .scr-match-result-tail {
   flex-direction: row; gap: 8px;
@@ -2934,9 +2940,10 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-match-list-panel-v2 .scr-match-row-result-only:not(.scr-match-row-team-tail) .scr-match-result-points {
   min-width: 28px; text-align: right;
 }
-/* 팀전 이력의 결과 묶음(팀에 · 승/패)은 그대로 세로로 쌓는다. */
+/* 팀전 이력의 결과 묶음(팀에게 · 승/패)도 개인전처럼 한 줄에 가로로 나란히 둔다(요청:
+   "팀에게 승 다른 칼럼으로 수평으로 배치"). */
 .scr-match-list-panel-v2 .scr-match-row-team-tail .scr-match-result-tail {
-  flex-direction: column; align-items: center; gap: 1px; min-width: 34px;
+  flex-direction: row; align-items: center; gap: 6px;
 }
 .scr-match-result-points { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
 /* 팀전 이력 — 우리 로스터 VS 상대 로스터를 왼쪽에 붙이고, 오른쪽에 [승/패] → [개별 점수
@@ -2947,7 +2954,11 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-match-list-panel-v2 .scr-match-row-team-tail { gap: 6px; }
 /* 양 팀 로스터를 균등 고정폭(flex:1)으로 둬서 카드마다 '로/에/승패' 세로줄이 일치하게 한다
    (요청: "로스터부분 고정폭으로 세로줄 카드간 일치"). 이름이 길면 로스터 안에서 줄인다. */
-.scr-match-list-panel-v2 .scr-match-row-team-tail .scr-team-block-team1,
+/* 우리팀(team1)은 내용 폭만 차지하게 해서 "팀으로 · 상대팀"이 우리팀 바로 뒤로 당겨져
+   문장처럼 이어지고, 상대팀 로스터가 왼쪽으로 붙는다(요청: "상대팀 로스터를 살짝 왼쪽으로
+   더 이동"). 상대팀(team2)은 남는 폭을 먹어(flex:1) 결과 묶음(팀에게·승/패)·점수 컬럼을
+   오른쪽 끝으로 민다. */
+.scr-match-list-panel-v2 .scr-match-row-team-tail .scr-team-block-team1 { flex: 0 1 auto; min-width: 0; }
 .scr-match-list-panel-v2 .scr-match-row-team-tail .scr-team-block-team2 { flex: 1 1 0; min-width: 0; }
 .scr-match-list-panel-v2 .scr-match-row-team-tail .scr-match-result-tail { flex-shrink: 0; }
 /* "로"/"에" 연결어 — VS 대신(요청). 얇고 옅게, 세로 가운데. */
@@ -3447,6 +3458,11 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-light-theme .scr-rank-detail-history { border-top-color: rgba(0, 0, 0, 0.2); }
 .scr-rank-detail-history .scr-match-card + .scr-match-card::before { background: rgba(255, 255, 255, 0.28); }
 .scr-light-theme .scr-rank-detail-history .scr-match-card + .scr-match-card::before { background: rgba(0, 0, 0, 0.2); }
+/* 경기 이력 카드 내용(맨 앞 로스터)이 날짜 줄보다 안으로 들여쓰기돼 보이던 걸 없앤다 —
+   로스터 자체의 왼쪽 안쪽 여백(6px)을 0으로 줄여 날짜와 같은 x에서 시작하게 한다(요청:
+   "경기이력 카드 들여쓰기 없애기"). 개인전은 맨 앞이 상대 로스터, 팀전은 우리 로스터라
+   :first-child로 둘 다 잡는다. */
+.scr-rank-detail-history .scr-match-row > .scr-team-block:first-child .scr-team-roster { padding-left: 0; }
 .scr-rank-detail-history-head { font-size: 13px; font-weight: 800; color: var(--muted); margin-bottom: 8px; }
 /* 경기 이력 목록은 자기 높이만큼 자연스럽게 흐르게 두고(내부 고정높이·스크롤 없음),
    스크롤은 모달 본체(.scr-modal-body, 이미 overflow-y:auto + 모달 max-height 88vh)가
@@ -3893,6 +3909,13 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-admin-panel-notice-toggle { margin: 14px 0 4px; }
 /* 비운영자가 제어판을 열었을 때 — 쓸 수 있는 관리 기능이 없다는 안내 한 줄. */
 .scr-admin-panel-member-note { font-size: 13px; color: var(--muted); margin-top: 10px; }
+/* 제어판(금속판 배경, 테마 무관 고정)은 어두운 글자를 써야 한다 — 이 공용 클래스들
+   (토글 제목/설명, 안내문)은 기본이 var(--text)/var(--muted)라 다크 테마에선 흰/옅은
+   회색으로 나와 밝은 금속판 위에서 묻혔다(신고: "다크 테마에서 일부 글자 하얗게").
+   섹션 제목과 같은 새김(engraved) 톤의 고정 어두운 색으로 덮어쓴다. */
+.scr-admin-panel-modal .scr-notice-toggle-title { color: #1a1e24; text-shadow: 0 1px 0 rgba(255,255,255,0.4); }
+.scr-admin-panel-modal .scr-notice-toggle-desc,
+.scr-admin-panel-modal .scr-admin-panel-member-note { color: rgba(26,30,36,0.72); }
 /* 팀 경기목록 — 경기 화면의 카드 목록(MatchList)을 그대로 담으므로 로스터 두 팀이 한 줄에
    들어갈 만큼 넓어야 한다(기본 420px로는 닉네임이 줄줄이 접힌다).
    본문(경기 카드)이 주인공이라 아래쪽 여백은 넉넉히 주고, 헤더(팀원 이름)는 최대한 납작하게

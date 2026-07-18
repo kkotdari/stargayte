@@ -175,7 +175,7 @@ export default function MatchTeams({
           stackedOutcome compact={compact} textRoster={textRoster}
         />
         <span className="scr-match-result-tail">
-          <span className="scr-match-conn">팀에</span>
+          <span className="scr-match-conn">팀에게</span>
           <span className={cx("scr-team-outcome", "scr-team-outcome-result", OUTCOME_CLASS[outcome1])}>{OUTCOME_LABEL[outcome1]}</span>
         </span>
         {pointsByMember && (
@@ -198,7 +198,7 @@ export default function MatchTeams({
           stackedOutcome compact={compact} textRoster={textRoster}
         />
         <span className="scr-match-result-tail">
-          <span className="scr-match-conn">에</span>
+          <span className="scr-match-conn">에게</span>
           <span className={cx("scr-team-outcome", "scr-team-outcome-result", OUTCOME_CLASS[outcome1])}>{OUTCOME_LABEL[outcome1]}</span>
           {/* 이 경기에서 얻은 점수(요청) — 승/패 라벨 바로 옆(또는 아래)에 작게 병기한다. */}
           {outcomeNote && <span className="scr-match-result-points">{outcomeNote}</span>}
