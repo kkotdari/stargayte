@@ -2764,14 +2764,14 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    매끄럽다. */
 /* 날짜 줄 — 배경 패널·스티키 없이 텍스트만 두고, 위아래로 '살짝 굵은 흰색'(라이트에선
    검정회색) 구분선만 넣는다(요청). 경기 사이의 얇은 선(0.35·1px)과 구분되게 굵고 진하게. */
-/* 날짜 줄 — 구분선 대신 색 반전(채움)으로 날짜를 구분한다(요청: "날짜 로우를 색 반전
-   처리하고 구분선은 제거"). 페이지 배경(--void)과 반대되는 밝은/어두운 바(--text 배경 +
-   --void 글자)로, 다크=흰 바·어두운 글자 / 라이트=검은 바·흰 글자. */
+/* 날짜 줄 — 텍스트만, 구분선은 '날짜 위에만' 한 줄(요청: 색 반전이 너무 튀어 원복하되
+   날짜 위 구분선만). 날짜 줄은 날짜마다 하나뿐이라 이 위쪽 선이 '날짜 바뀔 때 한 번'만 뜬다. */
 .scr-match-date-head {
-  margin: 0; padding: 6px 10px; border: none; border-radius: 6px;
-  background: var(--text); color: var(--void);
-  font-size: 12.5px;
+  margin: 0; padding: 9px 8px 7px;
+  border-top: 1px solid rgba(255, 255, 255, 0.45);
+  font-size: 12.5px; color: var(--muted);
 }
+.scr-light-theme .scr-match-date-head { border-top-color: rgba(0, 0, 0, 0.3); }
 .scr-match-card { position: relative; padding: 6px 8px 12px; }
 /* 같은 날짜 안에서 경기끼리는 붉은 톤의 얇은 선으로 구분. border-top 대신 절대배치 선을 쓰는
    이유: 카드 자체에 border-radius가 있어서 border-top을 쓰면 양 끝이 둥글게 휘어 보인다. */
@@ -2812,7 +2812,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    모양·크기를 통일해 달라는 요청으로 그 값(13px/700/--dim/letter-spacing)을 그대로 맞춘다. */
 .scr-match-list-panel-v2 .scr-match-date-head {
   font-size: 15.6px; /* 13px * 1.5, 이후 20% 감소(요청: "너나와/경기 날짜 20퍼센트 크기 감소") */
-  font-weight: 700; color: var(--void); letter-spacing: 0.02em; /* 반전 바 위 어두운 글자 */
+  font-weight: 700; color: var(--dim); letter-spacing: 0.02em;
 }
 /* 랭킹 상세 이력(compact)의 날짜 줄은 더 작게 — 카드 머리글을 뺀 가벼운 목록이라 날짜도
    과하지 않게 줄인다(요청: "날짜 글자 축소"). 또 스티키 바(패널색 배경+구분선)를 없애
@@ -2820,8 +2820,8 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-match-list-panel-v2 .scr-match-date-head-compact {
   font-size: 12.5px;
   padding: 9px 8px 7px;
-  /* 랭킹 상세 이력은 반전 바를 쓰지 않고 주변(모달 본문)과 같은 배경/톤으로 둔다(요청). */
-  background: transparent; color: var(--muted); border-radius: 0;
+  /* 랭킹 상세 이력은 날짜 위 구분선 없이 주변(모달 본문)과 같은 톤으로 둔다(요청). */
+  border-top: none; color: var(--muted);
 }
 /* "N경기"/경기번호는 기존 값(18px/17px)의 75%로 — 날짜(위)보다 두 단계 더 작아 보이게. */
 .scr-match-list-panel-v2 .scr-match-seq { font-size: 13.5px; }
@@ -5010,13 +5010,14 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
    충분하다(요청: "너 나와 목록도 경기 목록처럼 날짜로 그루핑 하니까 스티키 플로팅
    처리 필요"). */
 .scr-challenge-date-head {
-  /* 구분선 대신 색 반전(채움) 바로 날짜를 구분한다(요청). "오늘"/"NEXT" 배지는 날짜 옆에
-     인라인으로 나란히. */
+  /* 텍스트만, 구분선은 날짜 위에만 한 줄(요청: 색 반전 원복 + 날짜 위 구분선). "오늘"/"NEXT"
+     배지는 날짜 옆에 인라인으로 나란히. */
   display: flex; align-items: center; gap: 6px;
-  font-size: 15.6px; font-weight: 700; color: var(--void); letter-spacing: 0.02em;
-  padding: 6px 10px; border: none; border-radius: 6px;
-  background: var(--text);
+  font-size: 15.6px; font-weight: 700; color: var(--dim); letter-spacing: 0.02em;
+  padding: 9px 0 7px;
+  border-top: 1px solid rgba(255, 255, 255, 0.45);
 }
+.scr-light-theme .scr-challenge-date-head { border-top-color: rgba(0, 0, 0, 0.3); }
 
 /* 날짜 그룹 안의 시각별 소그룹 — 같은 예정 시각 카드들을 묶고, 그 맨 위에 시간을 한 번만
    보여준다(요청: "카드 시간 표시 삭제, 대신 시간 그루핑해서 제일 위 카드 위에 한번만 표시").
@@ -5027,6 +5028,8 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
 .scr-challenge-time-head {
   display: flex; align-items: center; gap: 6px;
   margin-bottom: -4px;
+  /* 시각 로우를 살짝 들여써서 날짜보다 앞으로 튀어나오지 않게 한다(요청). */
+  padding-left: 10px;
   font-size: 13.5px; font-weight: 800; color: var(--muted); letter-spacing: 0.01em;
 }
 
