@@ -251,24 +251,27 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
             <div className="scr-challenge-envelope scr-challenge-envelope-full scr-challenge-envelope-shake">
               <img src="/images/items/envelope.png" alt="" className="scr-challenge-envelope-img" />
             </div>
-            {/* 흔들림이 끝난 뒤에만 뜨는 열기/버리기 — 열기는 편지지로, 버리기는 응답 없이
-                다음 도전장으로 넘긴다(다음 접속 때 다시 뜬다). */}
-            {envReady && (
-              <div className="scr-challenge-envelope-actions">
-                <button
-                  type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid scr-challenge-envelope-open"
-                  onClick={() => setStage("letter")} disabled={busy}
-                >
-                  열기
-                </button>
-                <button
-                  type="button" className="scr-btn scr-btn-ghost scr-challenge-envelope-discard"
-                  onClick={discard} disabled={busy}
-                >
-                  버리기
-                </button>
-              </div>
-            )}
+            {/* 열기/버리기 — 흔들림이 끝나면(envReady) 페이드 인으로 나타난다. 단, 처음부터
+                이 자리를(높이를) 항상 차지하게 두어(조건부 렌더 대신 클래스 토글), 버튼이
+                생길 때 봉투가 위로 밀려 올라가지 않고 제자리에 있고 버튼만 아래에 스르륵
+                떠오르게 한다(요청). 준비 전엔 클릭도 막는다(pointer-events/disabled). */}
+            <div
+              className={`scr-challenge-envelope-actions${envReady ? " scr-challenge-envelope-actions-ready" : ""}`}
+              aria-hidden={!envReady}
+            >
+              <button
+                type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid scr-challenge-envelope-open"
+                onClick={() => setStage("letter")} disabled={busy || !envReady}
+              >
+                열기
+              </button>
+              <button
+                type="button" className="scr-btn scr-btn-ghost scr-challenge-envelope-discard"
+                onClick={discard} disabled={busy || !envReady}
+              >
+                버리기
+              </button>
+            </div>
           </div>
         </div>
       )}

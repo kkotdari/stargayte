@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { Spinner } from "../components/common/Feedback";
+import Select from "../components/common/Select";
 import ConfirmDialog from "../components/common/ConfirmDialog";
 import ReplayBatchButton from "../components/common/ReplayBatchButton";
 import VersionNoticeSettingsModal from "./VersionNoticeSettingsModal";
@@ -105,10 +106,26 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
   const [versionPickerMode, setVersionPickerMode] = useState<"preview" | "deploy" | null>(null);
   // 배포는 모두에게 즉시 반영되는 실제 전환이라, 버전을 고른 뒤 확인창을 한 번 더 거친다.
   const [confirmDeployVersion, setConfirmDeployVersion] = useState<string | null>(null);
+  // 팝업의 드롭다운에서 지금 고른 버전 — 현재 버전은 고를 수 없어(요청) 후보에서 제외하고,
+  // 팝업을 열 때 첫 후보로 초기화한다.
+  const [pickValue, setPickValue] = useState("");
 
-  // 팝업에서 버전 하나를 고르면 — 미리보기면 이 탭에서만 그 버전으로 둘러보게 켜고(패널을
-  // 닫아 바로 확인), 배포면 확인창으로 넘긴다. 현재 버전은 팝업에서 못 고르게 막아둔다.
+  // 현재 버전을 뺀 '고를 수 있는' 버전들 — 미리보기/배포 모두 현재 버전으로는 불가하다.
+  // 드롭다운은 최신 버전이 위로 오도록 역순(내림차순)으로 노출한다(요청). appVersions는
+  // 오름차순이라, filter가 만든 새 배열을 그대로 뒤집는다(원본은 건드리지 않음).
+  const pickableVersions = appVersions
+    .filter((v) => versionNumber(v.number) !== currentNumber)
+    .reverse();
+
+  const openVersionPicker = (mode: "preview" | "deploy") => {
+    setPickValue(pickableVersions[0]?.number ?? "");
+    setVersionPickerMode(mode);
+  };
+
+  // 드롭다운에서 고른 버전으로 실행 — 미리보기면 이 탭에서만 그 버전으로 둘러보게 켜고(패널을
+  // 닫아 바로 확인), 배포면 확인창으로 넘긴다.
   const pickVersion = (number: string) => {
+    if (!number) return;
     if (versionPickerMode === "preview") {
       setPreviewVersion(versionNumber(number));
       setVersionPickerMode(null);
@@ -184,7 +201,7 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
                 <div className="scr-admin-panel-grid">
                   <button
                     type="button" className="scr-admin-panel-phys-btn"
-                    onClick={() => setVersionPickerMode("preview")}
+                    onClick={() => openVersionPicker("preview")}
                   >
                     미리보기
                   </button>
@@ -202,7 +219,7 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
                   {isAdmin && (
                     <button
                       type="button" className="scr-admin-panel-phys-btn scr-admin-panel-phys-btn-danger"
-                      onClick={() => setVersionPickerMode("deploy")} disabled={busy}
+                      onClick={() => openVersionPicker("deploy")} disabled={busy}
                     >
                       {busy ? <Spinner /> : "배포"}
                     </button>
@@ -282,25 +299,28 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
               <button className="scr-icon-btn" onClick={() => setVersionPickerMode(null)} aria-label="닫기"><X size={14} /></button>
             </div>
             <div className="scr-modal-body">
-              {/* 등록된 버전만 나열한다(요청) — 현재 버전은 고를 수 없어(요청: "현재 버전으로는
-                  불가") 비활성 + "현재" 표시로 어디에 있는지만 보여준다. */}
-              <div className="scr-version-pick-list">
-                {appVersions.map((v) => {
-                  const isCurrent = versionNumber(v.number) === currentNumber;
-                  return (
-                    <button
-                      key={v.number}
-                      type="button"
-                      className={cx("scr-version-pick-item", isCurrent && "scr-version-pick-item-current")}
-                      disabled={isCurrent}
-                      onClick={() => pickVersion(v.number)}
-                    >
-                      <span className="scr-version-pick-num">{v.number}</span>
-                      {isCurrent && <span className="scr-version-pick-tag">현재</span>}
-                    </button>
-                  );
-                })}
-              </div>
+              {/* 등록된 버전 중에서 드롭다운으로 고른다(요청) — 현재 버전은 고를 수 없어(요청:
+                  "현재 버전으로는 불가") 후보에서 아예 뺀다. */}
+              {pickableVersions.length === 0 ? (
+                <div className="scr-version-pick-empty">고를 수 있는 다른 버전이 없어요.</div>
+              ) : (
+                <>
+                  <Select
+                    value={pickValue}
+                    options={pickableVersions.map((v) => ({ value: v.number, label: `${v.number} 버전` }))}
+                    onChange={setPickValue}
+                    className="scr-version-pick-select"
+                  />
+                  <button
+                    type="button"
+                    className="scr-btn scr-btn-primary scr-version-pick-confirm"
+                    onClick={() => pickVersion(pickValue)}
+                    disabled={!pickValue}
+                  >
+                    {versionPickerMode === "deploy" ? "배포" : "미리보기"}
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
