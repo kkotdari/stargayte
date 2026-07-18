@@ -1004,6 +1004,13 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   margin-bottom: calc(-1 * var(--field-h-sm) - 8px);
 }
 .scr-challenge-float-actions > .scr-btn { pointer-events: auto; }
+/* 스크롤해 헤더가 사라지면 이 스티키 바가 상단에 핀되는데, iOS 사파리는 그 상태(상단
+   브라우저 크롬이 없을 때)에서 safe-area-inset-top을 제대로 안 줘서(0에 가깝게) 버튼이
+   상태바/노치에 조금 잘렸다(요청 스크린샷). 터치 기기에서만 안전영역 위에 약간의 여유를
+   더 줘 확실히 상태바 밑으로 내려 앉게 한다(PC/데스크톱은 이 문제가 없어 건드리지 않는다). */
+@media (pointer: coarse) {
+  .scr-challenge-float-actions { top: calc(var(--safe-top) + 14px); }
+}
 /* "휴지통" 버튼 — 보조 액션이라 옅게, 라벨 폭에 맞춰(줄바꿈 없이) 자연 폭. */
 .scr-challenge-discarded-btn { white-space: nowrap; color: var(--muted); }
 /* PC 화면 폭 통일(위 --list-content-max 주석 참고) — 처음엔 목록 패널/타이틀줄/검색창/
