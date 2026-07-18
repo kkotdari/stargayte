@@ -2840,9 +2840,13 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 /* 팀전 이력 카드 — 우리팀 대 상대팀을 그대로 보여주고, 그 경기에서 얻은 점수는 카드 아래
    오른쪽에 작게 병기한다(개인전은 승패 옆에 붙지만 팀전은 양 팀을 다 보여줘 자리가 없다). */
 .scr-rank-history-points-line {
-  text-align: right; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums;
+  display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+  font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums;
   margin-top: 2px;
 }
+/* 맨 밑줄 왼쪽 — 양 팀 강함수치(요청). 오른쪽 합계와 한 줄에 마주 본다. */
+.scr-rank-history-strengths { color: var(--muted); }
+.scr-rank-history-sum { margin-left: auto; font-weight: 600; }
 /* 팀전 이력에서 상대팀 각 구성원 이름 옆에 '그 상대에게 얻은 점수'를 인라인으로 붙인다
    (요청: "각 구성원에 대해 몇점씩 얻은건지 각각도 표시"). 로스터 칸을 flex로 바꿔 이름 뒤에
    작게 나란히 둔다. */
