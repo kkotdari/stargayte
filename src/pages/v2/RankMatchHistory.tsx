@@ -1,6 +1,8 @@
 import MatchTeams from "../../components/common/MatchTeams";
 import { Spinner } from "../../components/common/Feedback";
 import { dateWithDow } from "../../utils/date";
+import { isComputerSlot } from "../../constants/computerSlot";
+import { isUnregisteredSlot } from "../../constants/unregisteredSlot";
 import type { Match, MatchResult, MatchSlot, Member } from "../../types";
 
 interface RankMatchHistoryProps {
@@ -11,6 +13,34 @@ interface RankMatchHistoryProps {
   members: Member[];
   memberOf: (id: string) => Member | undefined;
   loading: boolean;
+  // 상대의 강함(1+우세수)·약함(1+열세수) 맵 — 경기당 획득 점수를 서버 산식과 똑같이
+  // 재구성한다(이김 +2·강함, 비김 +1·강함, 짐 -1·약함, 상대팀 전원 각각 합산).
+  strengthByMember: Map<string, number>;
+  weaknessByMember: Map<string, number>;
+}
+
+// 이 경기 하나에서 주인공(team1)이 얻은 점수 — 서버의 총점 산식을 경기 단위로 쪼갠 것과
+// 같다. 상대팀(team2)의 회원 각각에 대해 이기면 +2·강함, 비기면 +1·강함, 지면 -1·약함을
+// 더한다(컴퓨터/비회원은 순위 대상이 아니라 점수에 안 잡힌다 — 서버 head_to_head와 동일).
+// 미실시는 점수 자체가 없다(null → 병기 안 함).
+function gamePoints(
+  row: HistoryRow, strengthByMember: Map<string, number>, weaknessByMember: Map<string, number>,
+): number | null {
+  if (row.result === "not_held") return null;
+  let pts = 0;
+  for (const s of row.team2) {
+    if (isComputerSlot(s.memberId) || isUnregisteredSlot(s.memberId)) continue;
+    if (row.result === "team1") pts += 2 * (strengthByMember.get(s.memberId) ?? 0);
+    else if (row.result === "draw") pts += 1 * (strengthByMember.get(s.memberId) ?? 0);
+    else if (row.result === "team2") pts += -1 * (weaknessByMember.get(s.memberId) ?? 0);
+  }
+  return pts;
+}
+
+// 병기용 라벨 — 양수엔 +를 붙이고(음수는 자연히 -), 0도 그대로 보여준다.
+function pointsLabel(pts: number | null): string | undefined {
+  if (pts === null) return undefined;
+  return `${pts > 0 ? "+" : ""}${pts}점`;
 }
 
 interface HistoryRow {
@@ -61,7 +91,9 @@ function groupByDate(rows: HistoryRow[]): DateGroup[] {
 // 경기번호·삭제/메모/다운로드)도, 홈팀(주인공)도 없이 "VS 상대 팀구성 + 승/패"만 결과 위주로
 // 보여준다(요청: "아예 홈팀을 빼고 vs 팀구성 승패 ... 진짜 결과만"). 렌더 규칙이 목록과
 // 충분히 달라져 별도 파일로 분리했다(요청: "경기이력쪽 목록 렌더링은 별도 파일로").
-export default function RankMatchHistory({ matches, members, memberOf, loading }: RankMatchHistoryProps) {
+export default function RankMatchHistory({
+  matches, members, memberOf, loading, strengthByMember, weaknessByMember,
+}: RankMatchHistoryProps) {
   const protagonistIds = new Set(members.map((m) => m.id));
   const groups = groupByDate(toHistoryRows(matches, protagonistIds));
 
@@ -80,6 +112,7 @@ export default function RankMatchHistory({ matches, members, memberOf, loading }
                 <MatchTeams
                   team1={r.team1} team2={r.team2} memberOf={memberOf} result={r.result}
                   disableProfileLink stackedOutcome compact opponentOnly
+                  outcomeNote={pointsLabel(gamePoints(r, strengthByMember, weaknessByMember))}
                 />
               </div>
             ))}
