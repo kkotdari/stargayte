@@ -19,18 +19,21 @@ interface RankRowProps {
   highlighted?: boolean;
 }
 
-// v2 일대일 랭킹의 한 줄 — #순위(+전월 대비 변동) | 프사 | 닉네임 | 전적 + 사람단위 점수.
+// v2 일대일 랭킹의 한 줄 — #순위(+전월 대비 변동) | 프사 | 닉네임 | 점수(참가+우열).
 //
-// 승률 대신 전적(승/패/무)과 '사람단위 점수'를 보여준다. 순위를 가르는 기준이 승자승 →
-// 사람단위 점수(붙어본 상대별로 우세 +1 / 동등 0 / 열세 -1을 합산)로 바뀌면서, 카드에도 그
-// 점수를 큼직하게 실어 화면 순위와 앞뒤가 맞게 한다(경기 승점(승-패) 자리를 대체). 예전엔
-// "최근 vs 상대 승/패" 한 줄을 붙였는데, 이제 일대일 경기 이력 전체를 카드 상세 모달(그래프
-// 아래)에서 보여주므로 카드에선 뺐다(요청: "최근 경기 이력말고 일대일 이력 다").
+// 순위를 가르는 기준이 '사람 단위 점수'(붙어본 상대별로 이기면 3 / 비기면 2 / 지면 1점 합산
+// = 참가점수 + 우열점수)라, 카드에도 그 합계를 큼직하게 싣고 아래에 참가/우열 두 갈래를
+// 보여준다. 예전엔 "최근 vs 상대 승/패" 한 줄을 붙였는데, 이제 일대일 경기 이력 전체를 카드
+// 상세 모달(그래프 아래)에서 보여주므로 카드에선 뺐다(요청).
 export default function RankRowV2({ row, tiedWithPrev = false, highlighted = false, onOpenTrend }: RankRowProps) {
   const { member, personScore, superiorCount, equalCount, inferiorCount, rank, rankDelta } = row;
   const [photoOpen, setPhotoOpen] = useState(false);
-  // 사람단위 점수(우세 +1 / 동등 0 / 열세 -1의 합). 양수는 +부호로.
-  const points = personScore;
+  // 점수 = 참가점수(상대 한 명당 2점) + 우열점수(우세 - 열세). 붙어본 상대별로 이기면 3 /
+  // 비기면 2 / 지면 1점을 받은 것과 같다. 헤드라인엔 합계를, 아래엔 두 갈래를 보여준다.
+  const participation = 2 * (superiorCount + equalCount + inferiorCount);
+  const winloss = personScore; // 우열점수
+  const total = participation + winloss;
+  const signed = (n: number) => (n > 0 ? `+${n}` : `${n}`);
 
   const openPhoto = (e: MouseEvent) => {
     e.stopPropagation();
@@ -71,14 +74,12 @@ export default function RankRowV2({ row, tiedWithPrev = false, highlighted = fal
               도드라지게 한다. */}
           <div className="scr-rank-record-wrap">
             <span className="scr-mono scr-rank-stat-primary">
-              {points > 0 ? `+${points}` : points}<span className="scr-num-unit">점</span>
+              {signed(total)}<span className="scr-num-unit">점</span>
             </span>
-            {/* 전적(승/패/무) 대신 '몇 명에게 우세/동등/열세인지' 인원을 보여준다(요청) —
-                우세=초록, 열세=붉은, 동등=회색으로 전적통계 색과 통일한다. */}
+            {/* 점수의 두 갈래 — 참가점수(붙은 사람 수 기반)와 우열점수(우세-열세)로 나눠 보여준다(요청). */}
             <span className="scr-mono scr-rank-record-v2 scr-rank-superiority">
-              <span className="scr-record-win">{superiorCount}<span className="scr-num-unit">우세</span></span>{" "}
-              <span className="scr-record-draw">{equalCount}<span className="scr-num-unit">동등</span></span>{" "}
-              <span className="scr-record-loss">{inferiorCount}<span className="scr-num-unit">열세</span></span>
+              <span className="scr-num-unit">참가</span> {participation}{"  "}
+              <span className="scr-num-unit">우열</span> {signed(winloss)}
             </span>
           </div>
         </div>

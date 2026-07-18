@@ -200,10 +200,8 @@ export interface MemberStatsEntry {
   overall: MemberStats;
   byRace: Record<BaseRace, MemberStats>;
   mostPlayedRace: Race | null;
-  // 랭킹 순서 — 서버가 승자승(맞대결) → 사람단위 점수(우세−열세) 순으로 가른 결과다(승률·
-  // 경기 승점은 정렬 기준이 아니다). 맞대결은 "누구와 비교하느냐"에 따라 달라지는 쌍 단위
-  // 값이라 회원별 숫자 하나로는 내려올 수 없어서, 클라이언트는 이 자리번호로만 줄세운다.
-  // 이 조회 조건에서 한 판도 안 뛴 회원은 순위 대상이 아니라 null.
+  // 랭킹 순서 — 서버가 사람단위 점수(참가+우열) → 상대 강함(SoS) 순으로 가른 결과다.
+  // 이 값(자리번호)으로만 클라이언트가 줄세운다. 0경기 회원도 모두 순위가 매겨진다(0점, 맨 아래).
   sortOrder: number | null;
   // 위 모든 기준까지 같아 완전 동률인 회원끼리 값이 같다 — 공동순위로 묶는 기준.
   tieGroup: number | null;
