@@ -20,18 +20,18 @@ interface RankRowProps {
   highlighted?: boolean;
 }
 
-// v2 일대일 랭킹의 한 줄 — #순위(+전월 대비 변동) | 프사 | 닉네임 | 전적 + 승점.
+// v2 일대일 랭킹의 한 줄 — #순위(+전월 대비 변동) | 프사 | 닉네임 | 전적 + 사람단위 점수.
 //
-// 승률 대신 전적(승/패/무)과 승점을 보여준다. 순위를 가르는 기준이 승자승 → 간접비교 →
-// 승점으로 바뀌면서 승률은 정렬에 아무 역할을 하지 않게 됐고, 승점(승-패)은 간접비교가
-// 없을 때 순위를 가르는 최후 기준이라 카드에도 함께 보여준다(요청: "개인 카드에 승점도 표시").
-// 예전엔 "최근 vs 상대 승/패" 한 줄을 붙였는데, 이제 일대일 경기 이력 전체를 카드 상세 모달
-// (그래프 아래)에서 보여주므로 카드에선 뺐다(요청: "최근 경기 이력말고 일대일 이력 다").
+// 승률 대신 전적(승/패/무)과 '사람단위 점수'를 보여준다. 순위를 가르는 기준이 승자승 →
+// 사람단위 점수(붙어본 상대별로 우세 +1 / 동등 0 / 열세 -1을 합산)로 바뀌면서, 카드에도 그
+// 점수를 큼직하게 실어 화면 순위와 앞뒤가 맞게 한다(경기 승점(승-패) 자리를 대체). 예전엔
+// "최근 vs 상대 승/패" 한 줄을 붙였는데, 이제 일대일 경기 이력 전체를 카드 상세 모달(그래프
+// 아래)에서 보여주므로 카드에선 뺐다(요청: "최근 경기 이력말고 일대일 이력 다").
 export default function RankRowV2({ row, tiedWithPrev = false, highlighted = false, onOpenTrend }: RankRowProps) {
-  const { member, stats, rank, rankDelta } = row;
+  const { member, stats, personScore, rank, rankDelta } = row;
   const [photoOpen, setPhotoOpen] = useState(false);
-  // 승점(승 +1, 무 0, 패 -1) = 승-패. 양수는 +부호로.
-  const points = stats.wins - stats.losses;
+  // 사람단위 점수(우세 +1 / 동등 0 / 열세 -1의 합). 양수는 +부호로.
+  const points = personScore;
 
   const openPhoto = (e: MouseEvent) => {
     e.stopPropagation();
@@ -67,9 +67,9 @@ export default function RankRowV2({ row, tiedWithPrev = false, highlighted = fal
           <div className="scr-rank-name-wrap">
             <span className="scr-rank-name">{member.nickname}</span>
           </div>
-          {/* 승점/전적을 팀 랭킹 카드와 같은 배치로 통일(요청: "승점과 전적 위치도 통일") —
-              승점을 위에 큼직하게("+N점"), 전적을 그 아래에. 승점이 순위를 가르는 기준이라
-              숫자로 도드라지게 한다. */}
+          {/* 점수/전적을 팀 랭킹 카드와 같은 배치로 통일 — 사람단위 점수를 위에 큼직하게
+              ("+N점"), 전적을 그 아래에. 이 점수가 순위(승자승 다음)를 가르는 기준이라 숫자로
+              도드라지게 한다. */}
           <div className="scr-rank-record-wrap">
             <span className="scr-mono scr-rank-stat-primary">
               {points > 0 ? `+${points}` : points}<span className="scr-num-unit">점</span>
