@@ -2300,18 +2300,19 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   /* 검색창도 필터와 같은 톤·크기로 — 흰 알약/그림자 없이 화면 배경 위에 얹은 옅은
      반투명 입력, 높이도 필터 알약과 맞춰 작게(요청: "필터 검색 둘다 그렇게 작게"). */
   background: rgba(255,255,255,0.08); border: none; border-radius: 999px;
-  box-shadow: none; padding-left: 12px;
-  height: 26px; min-height: 26px; box-sizing: border-box;
+  box-shadow: none; padding-left: 14px;
+  /* 검색창은 필터 알약보다 높이를 더 준다(요청: "검색은 높이 더 있어야해") — 타이핑/칩이
+     담기는 입력이라 너무 낮으면 답답하다. */
+  height: 34px; min-height: 34px; box-sizing: border-box;
 }
 .scr-light-theme .scr-search-filter-float .scr-list-search-input {
   background: rgba(0,0,0,0.06); border: none; box-shadow: none;
 }
 /* 배경이 테마색이 됐으니 글자/placeholder도 테마를 따른다(예전 흰 배경 기준 어두운 고정 톤 대체). */
-.scr-search-filter-float .scr-list-search-input .scr-search-chip-input { color: var(--text); font-size: 12.5px; }
-.scr-search-filter-float .scr-list-search-input .scr-search-chip-input::placeholder { color: var(--muted); font-size: 12.5px; }
-/* 필터 알약과 같은 작은 높이에 맞춰 칩 박스 세로 패딩과 칩 크기를 줄인다. */
-.scr-search-filter-float .scr-search-chip-box { padding-top: 3px; padding-bottom: 3px; }
-.scr-search-filter-float .scr-search-chip { font-size: 11.5px; padding: 3px 3px 3px 7px; }
+.scr-search-filter-float .scr-list-search-input .scr-search-chip-input { color: var(--text); font-size: 13.5px; }
+.scr-search-filter-float .scr-list-search-input .scr-search-chip-input::placeholder { color: var(--muted); font-size: 13.5px; }
+.scr-search-filter-float .scr-search-chip-box { padding-top: 5px; padding-bottom: 5px; }
+.scr-search-filter-float .scr-search-chip { font-size: 12px; padding: 4px 4px 4px 8px; }
 @media (max-width: 640px) {
   /* 모바일은 필터(위) + 검색(아래)으로 세로로 쌓는다(요청: "모바일에서 필터아래검색") —
      PC는 한 줄 나란히. 둘 다 화면 폭 가득, 라벨 폰트만 좁은 폭에 맞춰 조금 줄인다. */
