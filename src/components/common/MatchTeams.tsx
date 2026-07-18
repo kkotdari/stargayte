@@ -37,8 +37,6 @@ interface MatchTeamsProps {
   // 랭킹 상세 팀전 이력 전용 — 개인전 카드처럼 "로스터 VS 로스터 → 결과(승/패) → 점수" 순으로
   // 한 줄에 흘려 보여준다(요청). 승/패를 가운데 VS 칸에 쌓지 않고 오른쪽 끝(결과+점수)에 둔다.
   bothTeamsTail?: boolean;
-  // 종족 배지 글자를 영문(T/P/Z) 대신 한글(테/프/저)로 — 랭킹 상세 로스터 전용(요청).
-  koreanRaceLetter?: boolean;
 }
 
 type Outcome = "win" | "loss" | "draw" | "notHeld";
@@ -67,14 +65,12 @@ interface TeamRosterProps {
   pointsByMember?: Map<string, string>;
   // 프사 없이 "닉네임 + 종족(텍스트)"만 보여주는 랭킹 상세 이력 전용 모드.
   textRoster?: boolean;
-  // 종족 배지 글자를 한글(테/프/저)로 — 랭킹 상세 로스터 전용(요청).
-  koreanRaceLetter?: boolean;
 }
 
 // 팀 명단 — 한 행에 [프로필(사진+아이디)] · [종족]을 나란히 붙여서 표시한다(별도 컬럼으로
 // 줄 맞추지 않음). 승/무/패 표시는 로스터 바깥쪽(VS와 먼 쪽)에 나란히 붙어서, 세로로는
 // 로스터 전체 높이의 중앙(인원이 1명이면 그 프로필 사진과 같은 줄)에 오도록 정렬한다.
-function TeamRoster({ side, players, memberOf, outcome, highlightMemberIds, disableProfileLink, stackedOutcome, compact, pointsByMember, textRoster, koreanRaceLetter }: TeamRosterProps) {
+function TeamRoster({ side, players, memberOf, outcome, highlightMemberIds, disableProfileLink, stackedOutcome, compact, pointsByMember, textRoster }: TeamRosterProps) {
   const openMemberProfile = useAppStore((s) => s.openMemberProfile);
   // v2 결과 카드(compact)의 프사도 20% 키워서(18px -> 22px, 소수점 반올림) 기본 크기와
   // 같아졌다 — 종족은 이제 프사 옆 별도 칸이 아니라 프사 아래쪽에 작게 걸치는 배지로 표시한다.
@@ -113,7 +109,7 @@ function TeamRoster({ side, players, memberOf, outcome, highlightMemberIds, disa
                     ? <Avatar icon={<UserPlus size={16} className="scr-chip-computer-icon" />} size={avatarSize} />
                     : <Avatar member={m} size={avatarSize} />}
                 <RaceBadge
-                  race={p.race} size={raceSize} circleLetter koreanLetter={koreanRaceLetter}
+                  race={p.race} size={raceSize} circleLetter
                   className={cx("scr-team-avatar-race", `scr-team-avatar-race-${side}`)}
                 />
               </span>
@@ -154,7 +150,7 @@ function TeamRoster({ side, players, memberOf, outcome, highlightMemberIds, disa
 // (stackedOutcome이면 대신 VS 위아래에 승/무/패가 붙는다).
 export default function MatchTeams({
   team1, team2, memberOf, result, highlightMemberIds, disableProfileLink, stackedOutcome, compact, opponentOnly,
-  outcomeNote, pointsByMember, textRoster, bothTeamsTail, koreanRaceLetter,
+  outcomeNote, pointsByMember, textRoster, bothTeamsTail,
 }: MatchTeamsProps) {
   const outcome1 = outcomeFor("team1", result);
   const outcome2 = outcomeFor("team2", result);
@@ -168,13 +164,13 @@ export default function MatchTeams({
         <TeamRoster
           side="team1" players={team1} memberOf={memberOf} outcome={outcome1}
           highlightMemberIds={highlightMemberIds} disableProfileLink={disableProfileLink}
-          stackedOutcome compact={compact} textRoster={textRoster} koreanRaceLetter={koreanRaceLetter}
+          stackedOutcome compact={compact} textRoster={textRoster}
         />
         <span className="scr-list-vs">VS</span>
         <TeamRoster
           side="team2" players={team2} memberOf={memberOf} outcome={outcome2}
           highlightMemberIds={highlightMemberIds} disableProfileLink={disableProfileLink}
-          stackedOutcome compact={compact} textRoster={textRoster} koreanRaceLetter={koreanRaceLetter}
+          stackedOutcome compact={compact} textRoster={textRoster}
         />
         <span className="scr-match-result-tail">
           <span className={cx("scr-team-outcome", "scr-team-outcome-result", OUTCOME_CLASS[outcome1])}>{OUTCOME_LABEL[outcome1]}</span>
@@ -197,7 +193,7 @@ export default function MatchTeams({
         <TeamRoster
           side="team2" players={team2} memberOf={memberOf} outcome={outcome2}
           highlightMemberIds={highlightMemberIds} disableProfileLink={disableProfileLink}
-          stackedOutcome compact={compact} textRoster={textRoster} koreanRaceLetter={koreanRaceLetter}
+          stackedOutcome compact={compact} textRoster={textRoster}
         />
         <span className="scr-match-result-tail">
           <span className={cx("scr-team-outcome", "scr-team-outcome-result", OUTCOME_CLASS[outcome1])}>{OUTCOME_LABEL[outcome1]}</span>
@@ -209,7 +205,7 @@ export default function MatchTeams({
   }
   return (
     <div className="scr-match-row">
-      <TeamRoster side="team1" players={team1} memberOf={memberOf} outcome={outcome1} highlightMemberIds={highlightMemberIds} disableProfileLink={disableProfileLink} stackedOutcome={stackedOutcome} compact={compact} pointsByMember={pointsByMember} textRoster={textRoster} koreanRaceLetter={koreanRaceLetter} />
+      <TeamRoster side="team1" players={team1} memberOf={memberOf} outcome={outcome1} highlightMemberIds={highlightMemberIds} disableProfileLink={disableProfileLink} stackedOutcome={stackedOutcome} compact={compact} pointsByMember={pointsByMember} textRoster={textRoster} />
       {stackedOutcome ? (
         <div className="scr-match-vs-col">
           <span className={cx("scr-team-outcome", "scr-team-outcome-stacked", OUTCOME_CLASS[outcome1])}>{OUTCOME_LABEL[outcome1]}</span>
@@ -219,7 +215,7 @@ export default function MatchTeams({
       ) : (
         <span className="scr-list-vs">VS</span>
       )}
-      <TeamRoster side="team2" players={team2} memberOf={memberOf} outcome={outcome2} highlightMemberIds={highlightMemberIds} disableProfileLink={disableProfileLink} stackedOutcome={stackedOutcome} compact={compact} pointsByMember={pointsByMember} textRoster={textRoster} koreanRaceLetter={koreanRaceLetter} />
+      <TeamRoster side="team2" players={team2} memberOf={memberOf} outcome={outcome2} highlightMemberIds={highlightMemberIds} disableProfileLink={disableProfileLink} stackedOutcome={stackedOutcome} compact={compact} pointsByMember={pointsByMember} textRoster={textRoster} />
     </div>
   );
 }
