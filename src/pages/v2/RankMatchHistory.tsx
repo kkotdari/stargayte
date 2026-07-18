@@ -171,10 +171,12 @@ export default function RankMatchHistory({
             <div className="scr-match-date-head scr-match-date-head-compact">{dateWithDow(g.date)}</div>
             {g.items.map((r) => {
               const factor = teamFactor(r, strengthByMember, bothTeams);
+              // 팀원수(n) = 우리 팀(team1) 라인업 전체 인원(컴퓨터/비회원 포함) — 서버와 동일.
+              const teamSize = Math.max(1, r.team1.length);
               // 상대별 표시는 스케일 적용 전 '원점수'로 두고(요청), 맨 밑줄에서 원점수 합 ×
-              // 배율 = 최종 점수 계산을 보여준다. 개인전(f=1)은 원점수=최종이라 그대로다.
+              // 배율 ÷ 팀원수 = 최종 점수 계산을 보여준다. 개인전(f=1·n=1)은 원점수=최종이라 그대로.
               const rawSum = gamePoints(r, strengthByMember, weaknessByMember, 1);
-              const final = gamePoints(r, strengthByMember, weaknessByMember, factor);
+              const final = gamePoints(r, strengthByMember, weaknessByMember, factor / teamSize);
               const ourStr = teamStrength(r.team1, strengthByMember);
               const oppStr = teamStrength(r.team2, strengthByMember);
               // 팀전: 우리팀 대 상대팀을 그대로 보여주고, 상대별 원점수는 각 사람 옆에, 최종
@@ -187,14 +189,14 @@ export default function RankMatchHistory({
                     disableProfileLink compact bothTeamsTail
                     pointsByMember={opponentPointsByMember(r, strengthByMember, weaknessByMember, 1)}
                   />
-                  {/* 맨 밑줄 — 각 팀 강함수치 + '원점수 합 × 배율 = 최종 점수' 계산(요청). */}
+                  {/* 맨 밑줄 — 각 팀 강함수치 + '원점수 합 × 배율 ÷ 팀원수 = 최종' 계산(요청). */}
                   <div className="scr-rank-history-points-line">
                     <span className="scr-rank-history-strengths">
                       우리 강함 {ourStr} · 상대 강함 {oppStr}
                     </span>
                     {rawSum !== null && final !== null && (
                       <span className="scr-rank-history-calc">
-                        {rawSum > 0 ? "+" : ""}{rawSum} × {round2(factor)} =
+                        {rawSum > 0 ? "+" : ""}{rawSum} × {round2(factor)} ÷ {teamSize} =
                         <strong> {final > 0 ? "+" : ""}{final}점</strong>
                       </span>
                     )}

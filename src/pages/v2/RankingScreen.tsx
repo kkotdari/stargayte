@@ -287,6 +287,7 @@ export default function RankingScreenV2() {
         <RankWeightModal
           rows={weightRows}
           modeLabel={isTeam ? "팀전" : "개인전"}
+          isTeam={isTeam}
           onClose={() => setWeightOpen(false)}
         />
       )}
