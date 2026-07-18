@@ -4,6 +4,7 @@ import { Spinner } from "../components/common/Feedback";
 import { api } from "../api/client";
 import { useLockBodyScroll } from "../utils/bodyScrollLock";
 import { formatChallengeSchedule } from "../utils/date";
+import { playMailChime } from "../utils/sfx";
 import type { Challenge } from "../types";
 
 interface ChallengeInboxModalProps {
@@ -15,6 +16,9 @@ interface ChallengeInboxModalProps {
 // 다음 도전장으로 넘어간다. 전부 처리되면 onClose로 부모가 닫는다.
 export default function ChallengeInboxModal({ challenges, onClose }: ChallengeInboxModalProps) {
   useLockBodyScroll();
+  // 도전장 팝업이 뜨는 순간 우편 알림음(요청) — 마운트 때 한 번. 자동재생이 막힌 상황
+  // (새로고침 복원 등 최근 제스처 없음)에선 조용히 무시된다.
+  useEffect(() => { playMailChime(); }, []);
   const [idx, setIdx] = useState(0);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");

@@ -2,8 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { Spinner } from "../../components/common/Feedback";
-import MatchList, { type SearchListRow } from "./MatchList";
-import MatchMemoModal from "../../modals/MatchMemoModal";
+import RankMatchHistory from "./RankMatchHistory";
 import { api } from "../../api/client";
 import { useAppStore } from "../../store/appStore";
 import { useLockBodyScroll } from "../../utils/bodyScrollLock";
@@ -67,7 +66,6 @@ export default function RankingDetailModal({ members, points, matchType, onClose
   const [matches, setMatches] = useState<Match[]>([]);
   const [matchesLoading, setMatchesLoading] = useState(true);
   const [matchesErr, setMatchesErr] = useState("");
-  const [memoMatch, setMemoMatch] = useState<Match | null>(null);
   const memberIdsKey = members.map((m) => m.id).join(",");
 
   const reload = useCallback(() => {
@@ -83,13 +81,11 @@ export default function RankingDetailModal({ members, points, matchType, onClose
 
   useEffect(() => reload(), [reload]);
 
-  const rows: SearchListRow[] = matches.map((m) => (
-    { id: m.id, date: m.date, team1: m.team1, team2: m.team2, result: m.result, raw: m }
-  ));
-
   return createPortal(
-    <div className="scr-modal-overlay" onClick={onClose}>
-      <div className="scr-modal scr-modal-sm scr-modal-rank-detail" onClick={(e) => e.stopPropagation()}>
+    // 바깥(딤) 클릭으로는 안 닫는다 — 닫기는 헤더 X 버튼으로만(요청: "외부 영역 클릭시
+    // 닫힘이 아니라 무반응"). 실수로 바깥을 눌러 그래프/이력을 다시 열어야 하는 번거로움 방지.
+    <div className="scr-modal-overlay">
+      <div className="scr-modal scr-modal-sm scr-modal-rank-detail">
         <div className="scr-modal-head">
           <span>순위 변동 · 경기 이력</span>
           <button className="scr-icon-btn" onClick={onClose} aria-label="닫기"><X size={14} /></button>
@@ -139,27 +135,10 @@ export default function RankingDetailModal({ members, points, matchType, onClose
           <div className="scr-rank-detail-history">
             <div className="scr-rank-detail-history-head">경기 이력{matches.length > 0 && ` (${matches.length})`}</div>
             {matchesErr && <div className="scr-err">{matchesErr}</div>}
-            {/* 이 이력은 어차피 이 회원(팀) 기준으로 이미 걸러진 경기라, 로스터에서 당사자를
-                따로 반전색으로 짚어줄 필요가 없다(요청: "랭킹상세 이력 유저 하이라이트 제거"). */}
-            <MatchList
-              rows={rows}
-              memberOf={memberOf}
-              onMemo={setMemoMatch}
-              onDeleted={reload}
-              loading={matchesLoading}
-              compact
-            />
+            <RankMatchHistory matches={matches} members={members} memberOf={memberOf} loading={matchesLoading} />
           </div>
         </div>
       </div>
-
-      {memoMatch && (
-        <MatchMemoModal
-          match={memoMatch}
-          onClose={() => setMemoMatch(null)}
-          onSaved={() => { setMemoMatch(null); reload(); }}
-        />
-      )}
     </div>,
     document.body,
   );

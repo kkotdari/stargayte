@@ -13,7 +13,7 @@ import {
   type TeamSize,
 } from "./rank";
 import { activeMemberSearchTerms, memberMatchesTerm, splitSearchTerms } from "../../utils/memberSearch";
-import { rankingMonthValue, shiftMonthValue, MONTHS_KR } from "../../utils/date";
+import { graceMonthValue, shiftMonthValue, MONTHS_KR } from "../../utils/date";
 import { cx } from "../../utils/format";
 import { useAppStore } from "../../store/appStore";
 import type { BaseRace, Member } from "../../types";
@@ -48,12 +48,12 @@ export default function RankingScreenV2() {
   const teamSize = (chart === "solo" ? 4 : Number(chart)) as TeamSize;
   const [race, setRace] = useState<BaseRace | "all">("all");
   const [search, setSearch] = useState("");
-  // 집계 월 — 기본은 그레이스 보정된 이번 달(rankingMonthValue: 매월 1일 20시 전까진 전월).
+  // 집계 월 — 기본은 그레이스 보정된 이번 달(graceMonthValue: 매월 1일 20시 전까진 전월).
   // 타이틀의 좌우 화살표로 과거 달의 순위를 볼 수 있다(요청: "월 옆에 좌우 이동 아이콘 버튼").
   // 데이터가 시작된 2026년 7월보다 과거로도, 아직 오지 않은 이번 달(maxMonth)보다 미래로도
   // 갈 수 없다 — 화살표는 갈 수 있을 때만 보이되 자리는 늘 차지해 레이아웃이 안 흔들린다.
   const RANK_MIN_MONTH = "2026-07";
-  const maxMonth = rankingMonthValue();
+  const maxMonth = graceMonthValue();
   const [month, setMonth] = useState(maxMonth);
   const hasPrevMonth = month > RANK_MIN_MONTH;
   const hasNextMonth = month < maxMonth;
@@ -173,38 +173,37 @@ export default function RankingScreenV2() {
   return (
     <div className="scr-screen scr-rank-screen-v2">
       <div className="scr-v2-toolbar">
-        <h1 className="scr-title scr-v2-toolbar-title">
-          랭킹{" "}
-          {/* 월 옆 좌우 이동(요청) — 왼쪽=이전(과거) 달, 오른쪽=다음(미래) 달. 갈 수 있을 때만
-              보이지만 not-allowed 대신 visibility로 숨겨 자리는 늘 차지한다(요청: "자리는
-              예약해서 레이아웃 흔들림 없게"). */}
-          <span className="scr-rank-month-nav">
-            <button
-              type="button"
-              className={cx("scr-rank-month-btn", !hasPrevMonth && "scr-rank-month-btn-hidden")}
-              onClick={() => goMonth(-1)}
-              aria-label="이전 달"
-              aria-hidden={!hasPrevMonth}
-              tabIndex={hasPrevMonth ? 0 : -1}
-            >
-              <ChevronLeft size={18} />
-            </button>
-            <span className="scr-rank-title-month">{MONTHS_KR[monthNum - 1]}</span>
-            <button
-              type="button"
-              className={cx("scr-rank-month-btn", !hasNextMonth && "scr-rank-month-btn-hidden")}
-              onClick={() => goMonth(1)}
-              aria-label="다음 달"
-              aria-hidden={!hasNextMonth}
-              tabIndex={hasNextMonth ? 0 : -1}
-            >
-              <ChevronRight size={18} />
-            </button>
-          </span>
-        </h1>
-        {/* 일대일 순위 산정 방식 힌트 — 예전엔 목록 위 별도 문구 블록이었는데, 목록을 바로
-            시작시키려고 타이틀 줄 오른쪽으로 옮겼다(요청: "힌트는 ... 이거만 남기고 타이틀
-            줄 오른쪽에 표시. 랭킹이 바로 시작되게"). 팀 랭킹엔 이 방식이 안 쓰여 숨긴다. */}
+        <h1 className="scr-title scr-v2-toolbar-title">랭킹</h1>
+      </div>
+
+      {/* 월(좌우 이동)과 산정 방식 힌트를 타이틀 행 아래 별도 행으로 분리한다(요청: "월을
+          타이틀 행 아래의 별도 행으로 분리하고 힌트도 같이 옮기기"). 월은 왼쪽, 힌트는
+          오른쪽. 화살표는 갈 수 있을 때만 보이되 자리는 늘 예약해 레이아웃이 안 흔들린다. */}
+      <div className="scr-rank-subrow">
+        <span className="scr-rank-month-nav">
+          <button
+            type="button"
+            className={cx("scr-rank-month-btn", !hasPrevMonth && "scr-rank-month-btn-hidden")}
+            onClick={() => goMonth(-1)}
+            aria-label="이전 달"
+            aria-hidden={!hasPrevMonth}
+            tabIndex={hasPrevMonth ? 0 : -1}
+          >
+            <ChevronLeft size={18} />
+          </button>
+          <span className="scr-rank-title-month">{MONTHS_KR[monthNum - 1]}</span>
+          <button
+            type="button"
+            className={cx("scr-rank-month-btn", !hasNextMonth && "scr-rank-month-btn-hidden")}
+            onClick={() => goMonth(1)}
+            aria-label="다음 달"
+            aria-hidden={!hasNextMonth}
+            tabIndex={hasNextMonth ? 0 : -1}
+          >
+            <ChevronRight size={18} />
+          </button>
+        </span>
+        {/* 일대일 순위 산정 방식 힌트 — 팀 랭킹엔 이 방식이 안 쓰여 숨긴다. */}
         {!isTeam && <span className="scr-rank-hint-inline">승자승 → 간접비교 → 승점</span>}
       </div>
 

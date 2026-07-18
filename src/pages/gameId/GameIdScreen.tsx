@@ -142,6 +142,10 @@ function MappingRow({ entry, memberOptions, onSaved, onDeleted, isAdmin }: Mappi
   // 자체를 지우는 동작이라 별도 상태로 구분한다(같은 상태를 공유하면 둘 중 어느
   // 버튼을 눌렀는지 구별할 수 없다).
   const [confirmHardDeleteOpen, setConfirmHardDeleteOpen] = useState(false);
+  // 등록된 경기가 있는 게임아이디는 완전 삭제가 막힌다(서버도 막지만, 눌러보고 실패하는
+  // 대신 미리 경고를 띄워 삭제 자체를 못 하게 한다 — 요청: "경기기록이 있을 땐 경고 보여주고
+  // 삭제 안 되게"). 그 경고 팝업 상태.
+  const [hardDeleteBlockedOpen, setHardDeleteBlockedOpen] = useState(false);
   // 편집 중(연결 상태를 고치려고 선택 UI를 연 상태) 취소 전용 확인창 — 아직 저장 전이라
   // 서버에 아무 영향이 없고, 단순히 편집 UI를 닫고 원래 보여주던 정보로 되돌아간다.
   const [confirmCancelEditOpen, setConfirmCancelEditOpen] = useState(false);
@@ -229,7 +233,8 @@ function MappingRow({ entry, memberOptions, onSaved, onDeleted, isAdmin }: Mappi
             동작이라 이름과 같은 칸에 있는 게 더 직관적이다. */}
         {entry.kind !== "unresolved" && !editing && (
           <button
-            type="button" className="scr-icon-btn scr-usermap-delete-btn" onClick={() => setConfirmHardDeleteOpen(true)}
+            type="button" className="scr-icon-btn scr-usermap-delete-btn"
+            onClick={() => (entry.hasMatches ? setHardDeleteBlockedOpen(true) : setConfirmHardDeleteOpen(true))}
             disabled={busy} aria-label="매핑 완전 삭제" title="매핑 완전 삭제"
           >
             <Trash2 size={14} />
@@ -336,10 +341,21 @@ function MappingRow({ entry, memberOptions, onSaved, onDeleted, isAdmin }: Mappi
       {confirmHardDeleteOpen && (
         <ConfirmDialog
           title="매핑 완전 삭제"
-          message={`"${entry.rawName}" 매핑을 완전히 삭제해요. 삭제하면 되돌릴 수 없어요. (이 이름으로 등록된 경기 기록이 있으면 삭제할 수 없어요)`}
+          message={`"${entry.rawName}" 매핑을 완전히 삭제해요. 삭제하면 되돌릴 수 없어요.`}
           confirmLabel="완전 삭제"
           onConfirm={confirmHardDelete}
           onCancel={() => setConfirmHardDeleteOpen(false)}
+        />
+      )}
+
+      {hardDeleteBlockedOpen && (
+        <ConfirmDialog
+          title="삭제할 수 없어요"
+          message={`"${entry.rawName}"으로 등록된 경기가 있어 완전 삭제할 수 없어요. 삭제하면 그 경기들의 연결이 모두 끊기고 목록에서도 사라져 다시 매핑할 수 없게 돼요. 연결만 바꾸려면 X(미지정으로 되돌리기)를 쓰세요.`}
+          confirmLabel="확인"
+          cancelLabel="닫기"
+          onConfirm={() => setHardDeleteBlockedOpen(false)}
+          onCancel={() => setHardDeleteBlockedOpen(false)}
         />
       )}
 

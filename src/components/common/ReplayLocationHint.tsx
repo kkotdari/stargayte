@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { HelpCircle } from "lucide-react";
 import { attachPopover } from "../../utils/popover";
 import { cx } from "../../utils/format";
 
@@ -8,9 +7,9 @@ interface ReplayLocationHintProps {
   className?: string;
 }
 
-// "등록하기" 버튼 위에 두는 작은 물음표 아이콘 — 누르면 오늘 플레이한 리플레이 파일이
-// 보통 어디 있는지(Windows/Mac 기본 경로) 팝오버로 보여준다. 상시 노출하기엔 버튼
-// 옆 공간이 좁고 매번 볼 필요도 없는 정보라, 필요할 때만 눌러서 확인하게 숨겨둔다.
+// "등록하기" 버튼 왼쪽에 두는 "리플레이 위치 확인" 링크 텍스트 — 누르면 오늘 플레이한
+// 리플레이 파일이 보통 어디 있는지(Windows/Mac 기본 경로) 팝오버로 보여준다. 수기등록이
+// 없어져 이 자리가 비면서, 아이콘 배지 대신 링크 텍스트로 바꿨다(요청).
 export default function ReplayLocationHint({ className }: ReplayLocationHintProps) {
   const [open, setOpen] = useState(false);
   const anchorRef = useRef<HTMLButtonElement>(null);
@@ -54,10 +53,9 @@ export default function ReplayLocationHint({ className }: ReplayLocationHintProp
         className={cx("scr-replay-loc-trigger", className)}
         ref={anchorRef}
         onClick={() => setOpen((v) => !v)}
-        aria-label="리플레이 위치 확인"
         title="리플레이 위치 확인"
       >
-        <HelpCircle size={14} />
+        리플레이 위치 확인
       </button>
       {open && createPortal(
         <div className="scr-replay-loc-pop" ref={popRef}>

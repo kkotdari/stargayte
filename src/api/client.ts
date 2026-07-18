@@ -3,7 +3,7 @@
 // ============================================================
 import type {
   Member, Match, NewMatch, SignupPayload, MemberCreatePayload, ImageSettingMap, MemberStatus, MemberRole,
-  ScreenKey, AppVersion, AppVersionStatus,
+  ScreenKey, AppVersion, AppVersionStatus, AppVersionInfo,
   MatchSlot, MatchPage, MatchStatsResponse, MatchType, Race, TeamRankingResponse,
   MonthlyMatchStatsResponse, MonthlyTeamRankingResponse,
   ReplayNameClassificationEntry, ReplayNameKind, ReplayNameMappingEntry, ReplayNameMappingKind,
@@ -31,12 +31,6 @@ function buildQuery(params: Record<string, string | number | boolean | undefined
 type WireSlot = Omit<MatchSlot, "rawName"> & { playerName?: string | null };
 type WireMatch = Omit<Match, "team1" | "team2"> & { team1: WireSlot[]; team2: WireSlot[] };
 
-// 수기등록 컴퓨터/비회원 슬롯은 실제 게임아이디가 없어 서버가 이 예약 player_name으로
-// 저장한다(백엔드 schemas.MANUAL_COMPUTER/UNREGISTERED_RAW_NAME와 동일). 읽을 때 이 값을
-// rawName으로 그대로 넘기면 MatchTeams가 "컴퓨터 N"/"비회원 N" 라벨 대신 "__computer__"를
-// 그대로 표시해버리므로(실명 아님), null로 떨궈 순번 라벨로 대체되게 한다.
-const RESERVED_PLAYER_NAMES = new Set(["__computer__", "__unregistered__"]);
-
 function slotToWire(slot: MatchSlot): WireSlot {
   const { rawName, ...rest } = slot;
   return { ...rest, playerName: rawName ?? null };
@@ -46,8 +40,7 @@ function matchToWire(match: NewMatch): Omit<NewMatch, "team1" | "team2"> & { tea
 }
 function slotFromWire(slot: WireSlot): MatchSlot {
   const { playerName, ...rest } = slot;
-  const rawName = playerName && !RESERVED_PLAYER_NAMES.has(playerName) ? playerName : null;
-  return { ...rest, rawName };
+  return { ...rest, rawName: playerName || null };
 }
 function matchFromWire(match: WireMatch): Match {
   return {
@@ -392,13 +385,6 @@ export const api = {
     return matchFromWire(res);
   },
 
-  async updateMatch(id: number, match: NewMatch): Promise<Match> {
-    const res = await request<WireMatch>(`/api/matches/${id}`, {
-      method: "PUT",
-      body: JSON.stringify(matchToWire(match)),
-    });
-    return matchFromWire(res);
-  },
 
   async deleteMatch(id: number): Promise<void> {
     await request<void>(`/api/matches/${id}`, { method: "DELETE" });
@@ -515,12 +501,17 @@ export const api = {
     });
   },
 
-  // 로그인한 회원이면 누구나: 랭킹/경기결과/전적통계를 v1/v2 중 어느 화면 세트로 그릴지.
+  // 로그인한 회원이면 누구나: 랭킹/경기결과/전적통계를 어느 버전 화면 세트로 그릴지.
   async getAppVersion(): Promise<AppVersionStatus> {
     return request<AppVersionStatus>("/api/app-version");
   },
 
-  // 운영자 전용: 관리자 패널의 배포/롤백 토글 — 합의 절차 없이 바로 전환한다.
+  // 로그인한 회원이면 누구나: 제어판의 버전 선택 팝업(미리보기/배포)이 나열할 '등록된 버전' 목록.
+  async getAppVersions(): Promise<AppVersionInfo[]> {
+    return request<AppVersionInfo[]>("/api/app-versions");
+  },
+
+  // 운영자 전용: 관리자 패널의 배포 — 등록된 버전으로만 전환한다(합의 절차 없이 바로).
   async setAppVersion(activeVersion: AppVersion): Promise<AppVersionStatus> {
     return request<AppVersionStatus>("/api/app-version", {
       method: "PUT",

@@ -2,7 +2,8 @@ import { create } from "zustand";
 import { api } from "../api/client";
 import { DEFAULT_ICON_SLOTS } from "../constants/iconSlots";
 import type {
-  Member, Match, NewMatch, MemberCreatePayload, ImageSettingMap, MemberStatus, MemberRole, AppVersion, Challenge,
+  Member, Match, NewMatch, MemberCreatePayload, ImageSettingMap, MemberStatus, MemberRole, AppVersion,
+  AppVersionInfo, Challenge,
 } from "../types";
 
 // 버전이 바뀐 걸 감지했을 때 AppUpdateNoticeModal에 넘기는 정보 — 실제 변경 내용 문구는
@@ -54,6 +55,8 @@ interface AppState {
   // 랭킹/경기결과/전적통계를 몇 버전 화면 세트로 그릴지 — 부트스트랩 때 로드하고,
   // 제어판에서 바꾸면 그 자리에서 다시 반영한다.
   appVersion: AppVersion;
+  // 제어판의 버전 선택 팝업(미리보기/배포)이 나열할 '등록된 버전' 목록 — 부트스트랩 때 로드.
+  appVersions: AppVersionInfo[];
   // 제어판에서 앱 전체 기준(appVersion)을 실제로 바꾸지 않고, 지금 이 브라우저 탭에서만
   // 특정 버전 화면을 미리 둘러보는 로컬 전용 모드 — 서버에 저장하지 않으므로 새로고침하면
   // 꺼진다(의도적으로, 실수로 계속 켜진 채 남지 않게). null이면 미리보기 중이 아님.
@@ -104,7 +107,6 @@ interface AppState {
   // 페이지네이션으로 직접 조회) — 아래는 API 호출만 하는 얇은 통과 함수. 각 화면은 저장/삭제
   // 후 자기 로컬 목록(useCursorPagination의 reload)을 직접 새로고침한다.
   addMatch: (match: NewMatch) => Promise<Match>;
-  updateMatch: (id: number, match: NewMatch) => Promise<Match>;
   deleteMatch: (id: number) => Promise<void>;
 
   // 통계/랭킹 화면의 새로고침 버튼용: 회원 목록을 다시 불러온다
@@ -146,7 +148,8 @@ export const useAppStore = create<AppState>()((set, get) => ({
   members: [],
   imageSettings: DEFAULT_ICON_SLOTS,
   earliestMatchDate: null,
-  appVersion: "v1",
+  appVersion: "1",
+  appVersions: [],
   previewVersion: null,
   setPreviewVersion: (version) => set({ previewVersion: version }),
   adminPanelOpen: false,
@@ -202,18 +205,19 @@ export const useAppStore = create<AppState>()((set, get) => ({
     set({ booting: true });
     try {
       const [
-        members, imageSettings, { activeVersion }, earliestMatchDate,
+        members, imageSettings, { activeVersion }, appVersions, earliestMatchDate,
         { items: inboxChallenges }, { items: resultInboxChallenges },
       ] = await Promise.all([
         api.getMembers(),
         api.getImageSettings(),
         api.getAppVersion(),
+        api.getAppVersions(),
         api.getEarliestMatchDate(),
         api.getPendingChallengesForMe(),
         api.getResultPendingChallengesForMe(),
       ]);
       set({
-        members, imageSettings, appVersion: activeVersion, earliestMatchDate,
+        members, imageSettings, appVersion: activeVersion, appVersions, earliestMatchDate,
         inboxChallenges, resultInboxChallenges,
         updateNotice: computeUpdateNotice(activeVersion),
       });
@@ -223,7 +227,6 @@ export const useAppStore = create<AppState>()((set, get) => ({
   },
 
   addMatch: async (match) => api.createMatch(match),
-  updateMatch: async (id, match) => api.updateMatch(id, match),
   deleteMatch: async (id) => { await api.deleteMatch(id); },
 
   // 화면 이동마다 호출 — 회원 목록과 함께 현재 활성 버전도 다시 가져온다. 다른
