@@ -1070,6 +1070,33 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 @media (max-width: 560px) {
   .scr-rank-hint-inline { display: none; }
 }
+/* 순위표 오른쪽의 "가중치 표" 링크 — 점수가 순위별로 어떻게 매겨지는지 표 모달을 연다. */
+.scr-rank-weight-link {
+  display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0;
+  background: none; border: none; cursor: pointer; padding: 2px 0;
+  font-size: 12.5px; color: var(--muted); white-space: nowrap;
+  transition: color 0.15s ease;
+}
+.scr-rank-weight-link:hover { color: var(--text); }
+.scr-rank-weight-link svg { opacity: 0.85; }
+
+/* 점수 가중치 표 모달 */
+.scr-modal-weight .scr-modal-body { padding-bottom: 18px; }
+.scr-weight-desc { font-size: 12.5px; color: var(--muted); line-height: 1.55; margin: 0; }
+.scr-weight-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.scr-weight-table th {
+  text-align: center; font-size: 12px; font-weight: 700; color: var(--muted);
+  padding: 7px 8px; border-bottom: 1px solid var(--line-soft);
+}
+.scr-weight-table td {
+  text-align: center; padding: 7px 8px; color: var(--text);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.scr-light-theme .scr-weight-table td { border-bottom-color: rgba(0, 0, 0, 0.06); }
+.scr-weight-table tr:last-child td { border-bottom: none; }
+.scr-weight-col-rank { text-align: left; color: var(--muted); font-weight: 600; }
+.scr-weight-win { color: var(--win); font-weight: 700; }
+.scr-weight-loss { color: var(--loss); font-weight: 700; }
 
 /* ===== search: filters ===== */
 /* 주간랭킹 목록 위 — 지금 보여주고 있는 기간("기간 : 날짜 ~ 날짜", 데이터 폰트로 표시).

@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { BarChart3, ChevronLeft, ChevronRight } from "lucide-react";
 import { Spinner } from "../../components/common/Feedback";
 import SearchFilterBar from "../../components/common/SearchFilterBar";
 import PillTabs from "../../components/common/PillTabs";
 import FilterItem from "../../components/common/FilterItem";
 import RankRow from "./RankRow";
 import RankingDetailModal from "./RankingDetailModal";
+import RankWeightModal from "./RankWeightModal";
 import {
   computeRankRows, computeRankTrend, MATCH_TYPE_OF,
   type RankMode, type RankRow as RankRowData, type RankTrendPoint,
@@ -92,6 +93,8 @@ export default function RankingScreenV2() {
   // 카드(행) 클릭 — 상세 모달(최근 5개 기간 순위변동 그래프 + 경기 이력·경기당 점수).
   const [trendMember, setTrendMember] = useState<Member | null>(null);
   const [trendPoints, setTrendPoints] = useState<RankTrendPoint[] | null>(null);
+  // 가중치 표 모달 — 순위표 오른쪽 링크로 연다.
+  const [weightOpen, setWeightOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -142,6 +145,8 @@ export default function RankingScreenV2() {
     () => new Map(rows.map((r) => [r.member.id, 1 + r.inferiorCount])), [rows],
   );
   const period = useMemo(() => periodAnchorToRange(unit, anchor), [unit, anchor]);
+  // 가중치 표의 행 수 = 이 기간·모드에서 한 판이라도 뛴 참가자 수(순위에 실제로 든 사람).
+  const participantCount = useMemo(() => rows.filter((r) => r.stats.plays > 0).length, [rows]);
 
   const closeTrend = () => { setTrendMember(null); setTrendPoints(null); };
   const openTrend = (row: RankRowData) => {
@@ -199,7 +204,12 @@ export default function RankingScreenV2() {
             </button>
           </span>
         </span>
-        <span className="scr-rank-hint-inline">경기마다 상대 강함/약함으로 가중</span>
+        {/* 순위표 오른쪽 링크 — 가중치(점수)가 순위별로 어떻게 매겨지는지 표로 보여주는 모달을
+            연다(요청). 개인전/팀전 각각의 참가자 수 기준으로 표가 만들어진다. */}
+        <button type="button" className="scr-rank-weight-link" onClick={() => setWeightOpen(true)}>
+          <BarChart3 size={13} />
+          <span>가중치 표</span>
+        </button>
       </div>
 
       {/* 개인전/팀전 선택은 필터창(왼쪽 알약 탭)이 맡는다. 종족은 라디오가 아니라 유저 검색창의
@@ -253,6 +263,14 @@ export default function RankingScreenV2() {
           strengthByMember={strengthByMember}
           weaknessByMember={weaknessByMember}
           onClose={closeTrend}
+        />
+      )}
+
+      {weightOpen && (
+        <RankWeightModal
+          count={participantCount}
+          modeLabel={isTeam ? "팀전" : "개인전"}
+          onClose={() => setWeightOpen(false)}
         />
       )}
     </div>
