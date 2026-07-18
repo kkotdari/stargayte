@@ -169,20 +169,20 @@ export default function MatchScreenV2() {
       <div className="scr-v2-toolbar">
         <h1 className="scr-title scr-v2-toolbar-title">경기</h1>
         <div className="scr-v2-toolbar-actions">
-          <div className="scr-replay-register-group-corner">
-            <button className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm" onClick={() => replayInputRef.current?.click()}>
-              <Upload size={12} /> 등록하기
-            </button>
-            <ReplayLocationHint className="scr-replay-loc-trigger-corner" />
-            <input
-              ref={replayInputRef}
-              type="file"
-              accept=".rep,application/octet-stream"
-              multiple
-              hidden
-              onChange={handleReplayFilesChosen}
-            />
-          </div>
+          {/* 수기등록이 없어져 이 자리가 비면서, 리플레이 위치 안내를 등록하기 버튼 왼쪽에
+              링크 텍스트로 둔다(요청). */}
+          <ReplayLocationHint className="scr-replay-loc-link" />
+          <button className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm" onClick={() => replayInputRef.current?.click()}>
+            <Upload size={12} /> 등록하기
+          </button>
+          <input
+            ref={replayInputRef}
+            type="file"
+            accept=".rep,application/octet-stream"
+            multiple
+            hidden
+            onChange={handleReplayFilesChosen}
+          />
         </div>
       </div>
 
