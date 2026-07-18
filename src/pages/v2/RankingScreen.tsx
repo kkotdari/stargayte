@@ -145,20 +145,17 @@ export default function RankingScreenV2() {
     () => new Map(rows.map((r) => [r.member.id, 1 + r.inferiorCount])), [rows],
   );
   const period = useMemo(() => periodAnchorToRange(unit, anchor), [unit, anchor]);
-  // 가중치 표에 실을 실제 유저별 점수 — 순위에 든(한 판이라도 뛴) 회원을, '가중치 계산 전'의
-  // 우위(우세수−열세수, 사람단위 점수)가 높은 순으로 세운다(요청: "랭킹순이 아니라 승점으로
-  // 따진 우위 순서 그대로"). 각자의 실제 강함(1+우세수)·약함(1+열세수)으로 "이 사람을 이기면/
-  // 지면 몇 점"을 계산한다. 최종 랭킹(가중 합산)과 순서가 다를 수 있다.
-  const weightRows = useMemo(
+  // 가중치 표에 실을 유저 순서 — 순위에 든(한 판이라도 뛴) 회원을 '가중치 계산 전'의 우위
+  // (우세수−열세수)가 높은 순으로 세운다(요청). 점수(이김/짐)는 각자의 들쭉날쭉한 실제
+  // 전적이 아니라 이 우위 순서의 '자리'로 매긴다 — 그래야 위에서 아래로 이겼을 때 점수는
+  // 쭉 줄고 졌을 때 점수는 쭉 커진다(요청: "순서대로 줄고 늘어야 하는데 오락가락"). 실제
+  // 전적으로 매기면 우세수/열세수가 서로 딱 반비례하지 않아(비이행적 전적) 중간중간 뒤집힌다.
+  const weightMembers = useMemo(
     () => rows
       .filter((r) => r.stats.plays > 0)
-      .map((r) => ({
-        member: r.member,
-        superiority: r.superiorCount - r.inferiorCount,
-        win: 2 * (1 + r.superiorCount),
-        loss: -(1 + r.inferiorCount),
-      }))
-      .sort((a, b) => b.superiority - a.superiority || b.win - a.win || a.member.nickname.localeCompare(b.member.nickname)),
+      .map((r) => ({ member: r.member, superiority: r.superiorCount - r.inferiorCount }))
+      .sort((a, b) => b.superiority - a.superiority || a.member.nickname.localeCompare(b.member.nickname))
+      .map((r) => r.member),
     [rows],
   );
 
@@ -282,7 +279,7 @@ export default function RankingScreenV2() {
 
       {weightOpen && (
         <RankWeightModal
-          rows={weightRows}
+          members={weightMembers}
           modeLabel={isTeam ? "팀전" : "개인전"}
           onClose={() => setWeightOpen(false)}
         />
