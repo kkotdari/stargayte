@@ -2804,6 +2804,11 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   text-align: right; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums;
   margin-top: 2px;
 }
+/* 팀전 이력에서 상대팀 각 구성원 이름 옆에 '그 상대에게 얻은 점수'를 인라인으로 붙인다
+   (요청: "각 구성원에 대해 몇점씩 얻은건지 각각도 표시"). 로스터 칸을 flex로 바꿔 이름 뒤에
+   작게 나란히 둔다. */
+.scr-rank-history-team-card .scr-team-player { display: flex; align-items: center; gap: 5px; }
+.scr-team-player-points { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; flex-shrink: 0; }
 
 /* ===== 목록 바로 위에 붙는 보조 툴바 공용(정렬 필터, 랭킹 기간 선택 등) =====
    .scr-screen의 flex gap(18px)이 목록 패널과 이미 떼어놓으므로, 음수 margin으로 그만큼
