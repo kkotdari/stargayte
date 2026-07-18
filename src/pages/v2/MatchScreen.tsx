@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { createPortal } from "react-dom";
-import { Plus, Upload } from "lucide-react";
+import { Upload } from "lucide-react";
 import ReplayLocationHint from "../../components/common/ReplayLocationHint";
 import { Spinner } from "../../components/common/Feedback";
 import PillTabs from "../../components/common/PillTabs";
 import FilterItem from "../../components/common/FilterItem";
-import MatchModal from "../../modals/MatchModal";
 import MatchMemoModal from "../../modals/MatchMemoModal";
 import ReplayReviewModal from "../../modals/ReplayReviewModal";
 import MatchList, { type SearchListRow } from "./MatchList";
@@ -66,9 +65,6 @@ export default function MatchScreenV2() {
     return { from: "", to: "" };
   }, [periodUnit, periodMonth, periodDay]);
 
-  // 수기등록(신규) 전용 — 카드 클릭으로는 더 이상 이 모달(수정)이 열리지 않지만, 코드는
-  // 나중에 다시 쓸 수 있어 남겨둔다.
-  const [editing, setEditing] = useState<Match | null | undefined>(undefined);
   // 회원 누구나 남길 수 있는 가벼운 메모 — 목록 카드의 연필 아이콘을 누르면 연다.
   const [memoMatch, setMemoMatch] = useState<Match | null>(null);
 
@@ -173,14 +169,6 @@ export default function MatchScreenV2() {
       <div className="scr-v2-toolbar">
         <h1 className="scr-title scr-v2-toolbar-title">경기</h1>
         <div className="scr-v2-toolbar-actions">
-          <button
-            type="button"
-            className="scr-btn scr-btn-ghost scr-btn-sm"
-            onClick={() => setEditing(null)}
-            disabled
-          >
-            <Plus size={12} /> 수기등록
-          </button>
           <div className="scr-replay-register-group-corner">
             <button className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm" onClick={() => replayInputRef.current?.click()}>
               <Upload size={12} /> 등록하기
@@ -256,14 +244,6 @@ export default function MatchScreenV2() {
         <div ref={sentinelRef} />
         {loadingMore && <div className="scr-empty"><Spinner size={16} /></div>}
       </div>
-
-      {editing !== undefined && (
-        <MatchModal
-          match={editing}
-          onClose={() => setEditing(undefined)}
-          onSaved={handleSaved}
-        />
-      )}
 
       {memoMatch && (
         <MatchMemoModal

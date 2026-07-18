@@ -107,7 +107,6 @@ interface AppState {
   // 페이지네이션으로 직접 조회) — 아래는 API 호출만 하는 얇은 통과 함수. 각 화면은 저장/삭제
   // 후 자기 로컬 목록(useCursorPagination의 reload)을 직접 새로고침한다.
   addMatch: (match: NewMatch) => Promise<Match>;
-  updateMatch: (id: number, match: NewMatch) => Promise<Match>;
   deleteMatch: (id: number) => Promise<void>;
 
   // 통계/랭킹 화면의 새로고침 버튼용: 회원 목록을 다시 불러온다
@@ -228,7 +227,6 @@ export const useAppStore = create<AppState>()((set, get) => ({
   },
 
   addMatch: async (match) => api.createMatch(match),
-  updateMatch: async (id, match) => api.updateMatch(id, match),
   deleteMatch: async (id) => { await api.deleteMatch(id); },
 
   // 화면 이동마다 호출 — 회원 목록과 함께 현재 활성 버전도 다시 가져온다. 다른
