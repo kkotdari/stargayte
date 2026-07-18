@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Spinner } from "../../components/common/Feedback";
 import SearchFilterBar from "../../components/common/SearchFilterBar";
 import PillTabs from "../../components/common/PillTabs";
@@ -12,7 +13,8 @@ import {
   type TeamSize,
 } from "./rank";
 import { activeMemberSearchTerms, memberMatchesTerm, splitSearchTerms } from "../../utils/memberSearch";
-import { rankingMonthValue, MONTHS_KR } from "../../utils/date";
+import { rankingMonthValue, shiftMonthValue, MONTHS_KR } from "../../utils/date";
+import { cx } from "../../utils/format";
 import { useAppStore } from "../../store/appStore";
 import type { BaseRace, Member } from "../../types";
 
@@ -46,10 +48,15 @@ export default function RankingScreenV2() {
   const teamSize = (chart === "solo" ? 4 : Number(chart)) as TeamSize;
   const [race, setRace] = useState<BaseRace | "all">("all");
   const [search, setSearch] = useState("");
-  // 집계 월은 그레이스 기간이 붙는다 — 매월 1일 20시 전까지는 아직 전월 랭킹을 보여준다
-  // (요청: "그레이스기간 적용 매월 1일 20시까지는 전월 랭킹 표시"). rankingMonthValue가 그
-  // 판단까지 해서 "YYYY-MM"을 준다.
-  const month = rankingMonthValue();
+  // 집계 월 — 기본은 그레이스 보정된 이번 달(rankingMonthValue: 매월 1일 20시 전까진 전월).
+  // 타이틀의 좌우 화살표로 과거 달의 순위를 볼 수 있다(요청: "월 옆에 좌우 이동 아이콘 버튼").
+  // 데이터가 시작된 2026년 7월보다 과거로도, 아직 오지 않은 이번 달(maxMonth)보다 미래로도
+  // 갈 수 없다 — 화살표는 갈 수 있을 때만 보이되 자리는 늘 차지해 레이아웃이 안 흔들린다.
+  const RANK_MIN_MONTH = "2026-07";
+  const maxMonth = rankingMonthValue();
+  const [month, setMonth] = useState(maxMonth);
+  const hasPrevMonth = month > RANK_MIN_MONTH;
+  const hasNextMonth = month < maxMonth;
 
   // 개인/각 인원수 팀은 집계 대상 자체가 다른 별도 목록이라, 한쪽에서 걸어둔 검색어·종족
   // 필터를 다른 쪽으로 들고 가면 그 화면에 아무도 안 걸린 채로 남거나 무의미한 필터가
@@ -62,6 +69,15 @@ export default function RankingScreenV2() {
     setChart(c);
     setRace("all");
     setSearch("");
+    setRows([]);
+    setTeamRows([]);
+  };
+  // 월 이동 — 범위(2026-07 ~ 이번 달)를 벗어나면 무시한다. 달이 바뀌면 이전 달 목록이
+  // 잠깐 남지 않도록 즉시 비우고 로딩부터 다시 그린다(차트 전환과 같은 원칙).
+  const goMonth = (delta: number) => {
+    const next = shiftMonthValue(month, delta);
+    if (next < RANK_MIN_MONTH || next > maxMonth) return;
+    setMonth(next);
     setRows([]);
     setTeamRows([]);
   };
@@ -158,7 +174,33 @@ export default function RankingScreenV2() {
     <div className="scr-screen scr-rank-screen-v2">
       <div className="scr-v2-toolbar">
         <h1 className="scr-title scr-v2-toolbar-title">
-          랭킹 <span className="scr-rank-title-month">{MONTHS_KR[monthNum - 1]}</span>
+          랭킹{" "}
+          {/* 월 옆 좌우 이동(요청) — 왼쪽=이전(과거) 달, 오른쪽=다음(미래) 달. 갈 수 있을 때만
+              보이지만 not-allowed 대신 visibility로 숨겨 자리는 늘 차지한다(요청: "자리는
+              예약해서 레이아웃 흔들림 없게"). */}
+          <span className="scr-rank-month-nav">
+            <button
+              type="button"
+              className={cx("scr-rank-month-btn", !hasPrevMonth && "scr-rank-month-btn-hidden")}
+              onClick={() => goMonth(-1)}
+              aria-label="이전 달"
+              aria-hidden={!hasPrevMonth}
+              tabIndex={hasPrevMonth ? 0 : -1}
+            >
+              <ChevronLeft size={18} />
+            </button>
+            <span className="scr-rank-title-month">{MONTHS_KR[monthNum - 1]}</span>
+            <button
+              type="button"
+              className={cx("scr-rank-month-btn", !hasNextMonth && "scr-rank-month-btn-hidden")}
+              onClick={() => goMonth(1)}
+              aria-label="다음 달"
+              aria-hidden={!hasNextMonth}
+              tabIndex={hasNextMonth ? 0 : -1}
+            >
+              <ChevronRight size={18} />
+            </button>
+          </span>
         </h1>
         {/* 일대일 순위 산정 방식 힌트 — 예전엔 목록 위 별도 문구 블록이었는데, 목록을 바로
             시작시키려고 타이틀 줄 오른쪽으로 옮겼다(요청: "힌트는 ... 이거만 남기고 타이틀
