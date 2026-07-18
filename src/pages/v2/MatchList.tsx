@@ -225,20 +225,24 @@ export default function MatchList({
                 {/* 팀 2열 + 그 아래 각 팀 승/패(요청). 헤더·컬럼 구분선 없이 로우만. */}
                 <div className="scr-match-trow-grid">
                   <div className="scr-match-trow-team">
-                    {r.team1.map((s) => (
-                      <PlayerCell
-                        key={s.memberId} slot={s} players={r.team1} memberOf={memberOf}
-                        highlighted={!!highlightMemberIds?.has(s.memberId)} openProfile={openMemberProfile}
-                      />
-                    ))}
+                    <div className="scr-match-trow-roster">
+                      {r.team1.map((s) => (
+                        <PlayerCell
+                          key={s.memberId} slot={s} players={r.team1} memberOf={memberOf}
+                          highlighted={!!highlightMemberIds?.has(s.memberId)} openProfile={openMemberProfile}
+                        />
+                      ))}
+                    </div>
                   </div>
                   <div className="scr-match-trow-team">
-                    {r.team2.map((s) => (
-                      <PlayerCell
-                        key={s.memberId} slot={s} players={r.team2} memberOf={memberOf}
-                        highlighted={!!highlightMemberIds?.has(s.memberId)} openProfile={openMemberProfile}
-                      />
-                    ))}
+                    <div className="scr-match-trow-roster">
+                      {r.team2.map((s) => (
+                        <PlayerCell
+                          key={s.memberId} slot={s} players={r.team2} memberOf={memberOf}
+                          highlighted={!!highlightMemberIds?.has(s.memberId)} openProfile={openMemberProfile}
+                        />
+                      ))}
+                    </div>
                   </div>
                   <div className={cx("scr-match-trow-outcome", OUTCOME_CLASS[o1])}>{OUTCOME_LABEL[o1]}</div>
                   <div className={cx("scr-match-trow-outcome", OUTCOME_CLASS[o2])}>{OUTCOME_LABEL[o2]}</div>

@@ -2693,7 +2693,10 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-match-trow-head .scr-match-card-actions { flex-shrink: 0; }
 /* 팀 2열 + 그 아래 승/패 행. 컬럼 구분선은 두지 않는다(요청). */
 .scr-match-trow-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px 16px; align-items: start; }
-.scr-match-trow-team { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+/* 로스터 묶음은 각 팀 영역에서 가운데(justify-content: center)에 두되, 그 안의 선수들은
+   프사 기준 왼쪽 정렬(로스터 묶음 폭 = 가장 긴 행)으로 프사가 세로로 나란히 선다(요청). */
+.scr-match-trow-team { display: flex; justify-content: center; min-width: 0; }
+.scr-match-trow-roster { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .scr-mt-player {
   display: flex; align-items: center; gap: 8px; min-width: 0;
   background: transparent; border: none; padding: 0; font: inherit; color: inherit;
@@ -2705,8 +2708,8 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-mt-player-hl { background: var(--highlight-bg); border-radius: 4px; padding: 2px 4px; margin: -2px -4px; }
 .scr-mt-player-hl .scr-mt-name { font-weight: 800; color: var(--bar-text); }
 .scr-mt-player .scr-race-badge-letter { flex-shrink: 0; }
-/* 각 팀 아래 승/패 — 팀 칸과 같은 열에서 오른쪽 정렬(요청). 승은 연두, 패는 붉은 계열. */
-.scr-match-trow-outcome { font-size: 15px; font-weight: 800; text-align: right; padding-right: 2px; }
+/* 각 팀 아래 승/패 — 팀 칸과 같은 열에서 가운데 정렬(요청). 승은 연두, 패는 붉은 계열. */
+.scr-match-trow-outcome { font-size: 15px; font-weight: 800; text-align: center; }
 
 .scr-match-list-wrap { position: relative; }
 /* 필터/정렬이 바뀌어 새로 불러오는 동안 이전 목록을 옅게 눌러 "새로고침 중"만 표시한다 —

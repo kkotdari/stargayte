@@ -33,7 +33,7 @@ export default function RankWeightModal({ rows, modeLabel, onClose }: RankWeight
     <div className="scr-modal-overlay" onClick={onClose}>
       <div className="scr-modal scr-modal-sm scr-modal-weight" onClick={(e) => e.stopPropagation()}>
         <div className="scr-modal-head">
-          <span>{modeLabel} 점수 가중치</span>
+          <span>{modeLabel} 기준점수표</span>
           <button className="scr-icon-btn" onClick={onClose} aria-label="닫기"><X size={14} /></button>
         </div>
         <div className="scr-modal-body">
