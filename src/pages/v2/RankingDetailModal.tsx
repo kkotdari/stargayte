@@ -2,13 +2,12 @@ import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { Spinner } from "../../components/common/Feedback";
-import MatchList, { type SearchListRow } from "./MatchList";
-import MatchMemoModal from "../../modals/MatchMemoModal";
+import RankMatchHistory from "./RankMatchHistory";
 import { api } from "../../api/client";
 import { useAppStore } from "../../store/appStore";
 import { useLockBodyScroll } from "../../utils/bodyScrollLock";
 import { MONTHS_KR } from "../../utils/date";
-import type { Match, MatchResult, MatchType, Member } from "../../types";
+import type { Match, MatchType, Member } from "../../types";
 import type { RankTrendPoint } from "./rank";
 
 interface RankingDetailModalProps {
@@ -67,7 +66,6 @@ export default function RankingDetailModal({ members, points, matchType, onClose
   const [matches, setMatches] = useState<Match[]>([]);
   const [matchesLoading, setMatchesLoading] = useState(true);
   const [matchesErr, setMatchesErr] = useState("");
-  const [memoMatch, setMemoMatch] = useState<Match | null>(null);
   const memberIdsKey = members.map((m) => m.id).join(",");
 
   const reload = useCallback(() => {
@@ -82,25 +80,6 @@ export default function RankingDetailModal({ members, points, matchType, onClose
   }, [memberIdsKey, matchType]);
 
   useEffect(() => reload(), [reload]);
-
-  // 이 상세의 주인공(개인이면 그 회원, 팀이면 그 팀 구성원)이 언제나 홈팀(team1=왼쪽)에
-  // 오도록 필요하면 두 팀을 뒤집는다(요청: "랭킹 상세 경기이력에선 주인공이 무조건 홈팀에
-  // 보이게"). 주인공이 team2였던 경기는 team1↔team2를 바꾸고 승패(result)도 함께 뒤집어야
-  // 실제 승/무/패 표시가 그대로 유지된다.
-  const protagonistIds = new Set(members.map((mm) => mm.id));
-  const rows: SearchListRow[] = matches.map((m) => {
-    const onTeam1 = m.team1.some((s) => protagonistIds.has(s.memberId));
-    const swap = !onTeam1 && m.team2.some((s) => protagonistIds.has(s.memberId));
-    const result: MatchResult = swap
-      ? (m.result === "team1" ? "team2" : m.result === "team2" ? "team1" : m.result)
-      : m.result;
-    return {
-      id: m.id, date: m.date,
-      team1: swap ? m.team2 : m.team1,
-      team2: swap ? m.team1 : m.team2,
-      result, raw: m,
-    };
-  });
 
   return createPortal(
     <div className="scr-modal-overlay" onClick={onClose}>
@@ -154,27 +133,10 @@ export default function RankingDetailModal({ members, points, matchType, onClose
           <div className="scr-rank-detail-history">
             <div className="scr-rank-detail-history-head">경기 이력{matches.length > 0 && ` (${matches.length})`}</div>
             {matchesErr && <div className="scr-err">{matchesErr}</div>}
-            {/* 이 이력은 어차피 이 회원(팀) 기준으로 이미 걸러진 경기라, 로스터에서 당사자를
-                따로 반전색으로 짚어줄 필요가 없다(요청: "랭킹상세 이력 유저 하이라이트 제거"). */}
-            <MatchList
-              rows={rows}
-              memberOf={memberOf}
-              onMemo={setMemoMatch}
-              onDeleted={reload}
-              loading={matchesLoading}
-              compact
-            />
+            <RankMatchHistory matches={matches} members={members} memberOf={memberOf} loading={matchesLoading} />
           </div>
         </div>
       </div>
-
-      {memoMatch && (
-        <MatchMemoModal
-          match={memoMatch}
-          onClose={() => setMemoMatch(null)}
-          onSaved={() => { setMemoMatch(null); reload(); }}
-        />
-      )}
     </div>,
     document.body,
   );
