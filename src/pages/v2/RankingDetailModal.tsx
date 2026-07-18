@@ -147,6 +147,7 @@ export default function RankingDetailModal({ members, points, matchType, onClose
               onMemo={setMemoMatch}
               onDeleted={reload}
               loading={matchesLoading}
+              compact
             />
           </div>
         </div>

@@ -1155,6 +1155,10 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-win { color: var(--text); font-weight: 600; }
 .scr-loss { color: var(--text); font-weight: 600; }
 .scr-draw { color: var(--muted); font-weight: 600; }
+/* 경기 목록·랭킹 상세 이력에서는 이긴 팀의 "승"을 녹색 포인트색으로 도드라지게 한다(요청:
+   "승패 줄다 표시하되 승에 녹색 포인트 컬러"). 목록 패널 안(.scr-match-list-panel-v2)으로만
+   좁혀, 경기 상세 팝업 등 다른 곳의 승/패 톤은 건드리지 않는다. */
+.scr-match-list-panel-v2 .scr-team-outcome.scr-win { color: var(--win); }
 
 /* ===== 전적통계 — 다른 목록 패널(경기결과 등)과 같은 프레임(scr-list-panel)에 담는다 =====
    프사(이름 칸)/전체전적/전체승률/종족별(테란·프로토스·저그) 전적·승률/APM/유효APM/
@@ -2829,6 +2833,9 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   font-size: 15.6px; /* 13px * 1.5, 이후 20% 감소(요청: "너나와/경기 날짜 20퍼센트 크기 감소") */
   font-weight: 700; color: var(--dim); letter-spacing: 0.02em;
 }
+/* 랭킹 상세 이력(compact)의 날짜 줄은 더 작게 — 카드 머리글을 뺀 가벼운 목록이라 날짜도
+   과하지 않게 줄인다(요청: "날짜 글자 축소"). */
+.scr-match-list-panel-v2 .scr-match-date-head-compact { font-size: 12.5px; }
 /* "N경기"/경기번호는 기존 값(18px/17px)의 75%로 — 날짜(위)보다 두 단계 더 작아 보이게. */
 .scr-match-list-panel-v2 .scr-match-seq { font-size: 13.5px; }
 .scr-match-list-panel-v2 .scr-match-id { font-size: 12.75px; }

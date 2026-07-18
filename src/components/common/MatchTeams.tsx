@@ -34,10 +34,6 @@ function outcomeFor(side: "team1" | "team2", result: MatchResult): Outcome {
 
 const OUTCOME_LABEL: Record<Outcome, string> = { win: "승", loss: "패", draw: "무", notHeld: "미실시" };
 const OUTCOME_CLASS: Record<Outcome, string> = { win: "scr-win", loss: "scr-loss", draw: "scr-draw", notHeld: "scr-draw" };
-// "패"는 굳이 안 써도(이긴 쪽 "승" 표시만으로 결과가 드러나) 되지만, 자리까지 없애면 두
-// 팀 표시 위치가 승부에 따라 오르락내리락해 보여서 자리(폭)는 그대로 두고 글자만 숨긴다.
-const outcomeStyle = (outcome: Outcome): { visibility: "hidden" } | undefined =>
-  outcome === "loss" ? { visibility: "hidden" } : undefined;
 
 interface TeamRosterProps {
   side: "team1" | "team2";
@@ -114,7 +110,7 @@ function TeamRoster({ side, players, memberOf, outcome, highlightMemberIds, disa
         })}
       </div>
       {!stackedOutcome && (
-        <div className={cx("scr-team-outcome", `scr-team-outcome-${side}`, OUTCOME_CLASS[outcome])} style={outcomeStyle(outcome)}>{OUTCOME_LABEL[outcome]}</div>
+        <div className={cx("scr-team-outcome", `scr-team-outcome-${side}`, OUTCOME_CLASS[outcome])}>{OUTCOME_LABEL[outcome]}</div>
       )}
     </div>
   );
@@ -133,9 +129,9 @@ export default function MatchTeams({
       <TeamRoster side="team1" players={team1} memberOf={memberOf} outcome={outcome1} highlightMemberIds={highlightMemberIds} disableProfileLink={disableProfileLink} stackedOutcome={stackedOutcome} compact={compact} />
       {stackedOutcome ? (
         <div className="scr-match-vs-col">
-          <span className={cx("scr-team-outcome", "scr-team-outcome-stacked", OUTCOME_CLASS[outcome1])} style={outcomeStyle(outcome1)}>{OUTCOME_LABEL[outcome1]}</span>
+          <span className={cx("scr-team-outcome", "scr-team-outcome-stacked", OUTCOME_CLASS[outcome1])}>{OUTCOME_LABEL[outcome1]}</span>
           <span className="scr-list-vs">VS</span>
-          <span className={cx("scr-team-outcome", "scr-team-outcome-stacked", OUTCOME_CLASS[outcome2])} style={outcomeStyle(outcome2)}>{OUTCOME_LABEL[outcome2]}</span>
+          <span className={cx("scr-team-outcome", "scr-team-outcome-stacked", OUTCOME_CLASS[outcome2])}>{OUTCOME_LABEL[outcome2]}</span>
         </div>
       ) : (
         <span className="scr-list-vs">VS</span>
