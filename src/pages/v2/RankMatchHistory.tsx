@@ -46,6 +46,25 @@ function pointsLabel(pts: number | null): string | undefined {
   return `${pts > 0 ? "+" : ""}${pts}점`;
 }
 
+// 팀전 이력에서 상대팀 각 구성원에게 얻은 점수를 회원별로 나눠 준다(요청: "각 구성원에 대해
+// 몇점씩 얻은건지 각각도 표시") — gamePoints의 상대별 항(이김 +2·강함 / 비김 +1·강함 /
+// 짐 -1·약함)을 상대 한 명씩 따로 담는다. 컴퓨터/비회원·미실시는 제외.
+function opponentPointsByMember(
+  row: HistoryRow, strengthByMember: Map<string, number>, weaknessByMember: Map<string, number>,
+): Map<string, string> {
+  const map = new Map<string, string>();
+  if (row.result === "not_held") return map;
+  for (const s of row.team2) {
+    if (isComputerSlot(s.memberId) || isUnregisteredSlot(s.memberId)) continue;
+    let p = 0;
+    if (row.result === "team1") p = 2 * (strengthByMember.get(s.memberId) ?? 0);
+    else if (row.result === "draw") p = 1 * (strengthByMember.get(s.memberId) ?? 0);
+    else if (row.result === "team2") p = -1 * (weaknessByMember.get(s.memberId) ?? 0);
+    map.set(s.memberId, `${p > 0 ? "+" : ""}${p}`);
+  }
+  return map;
+}
+
 interface HistoryRow {
   id: number;
   date: string;
@@ -119,8 +138,9 @@ export default function RankMatchHistory({
                   <MatchTeams
                     team1={r.team1} team2={r.team2} memberOf={memberOf} result={r.result}
                     disableProfileLink stackedOutcome compact
+                    pointsByMember={opponentPointsByMember(r, strengthByMember, weaknessByMember)}
                   />
-                  {pts && <div className="scr-rank-history-points-line">{pts}</div>}
+                  {pts && <div className="scr-rank-history-points-line">합계 {pts}</div>}
                 </div>
               ) : (
                 <div key={r.id} className="scr-match-card">
