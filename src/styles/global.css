@@ -1106,12 +1106,16 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 /* 월(좌우 이동)과 산정 방식 힌트를 담는, 타이틀 행 아래의 별도 행(요청) — 월은 왼쪽,
    힌트는 오른쪽 끝. 타이틀 바로 아래에 붙이고 목록/검색창과의 간격을 준다. */
 .scr-rank-subrow {
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  /* 월/년 필터(.scr-rank-period)만 남아 행 가운데에 온다(요청: 필터 가운데 정렬). 기준점수표
+     링크는 이 줄에서 빼내 필터들 아래·목록 위로 옮겼다(아래 .scr-rank-weight-row). */
+  display: flex; align-items: center; justify-content: center; gap: 12px;
   /* 아래쪽은 .scr-screen의 형제간 gap이 이미 다음 요소와 간격을 주므로 따로 마진을
      두지 않는다(요청: "자체 패딩/마진 중복 제거") — 위쪽 -6px만 타이틀과의 베이스라인
      보정으로 남긴다. */
   margin: -6px 0 0;
 }
+/* 기준점수표 링크 줄 — 필터들 아래, 순위 목록 바로 위. 오른쪽 끝에 두고 목록에 바짝 붙인다(요청). */
+.scr-rank-weight-row { display: flex; justify-content: flex-end; margin-bottom: -4px; }
 /* 산정 방식 힌트 — 서브행 오른쪽에 옅게. 좁은 화면에선 글자만 살짝 줄인다. */
 .scr-rank-hint-inline {
   text-align: right; font-size: var(--fs-body); color: var(--muted); white-space: nowrap;
@@ -3659,7 +3663,8 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    들여쓰기 없애기") — 위 3652 규칙이 팀1/개인전만 없앴던 걸 팀2까지 넓힌다. */
 .scr-rank-detail-history .scr-team-roster { gap: 2px; padding-left: 0; }
 /* 이력 목록 닉네임(.scr-team-name)만 한 스텝 키운다(요청) — caption(14)→body(16). */
-.scr-rank-detail-history .scr-team-name { font-size: var(--fs-body); }
+/* 경기 이력 닉네임은 한 스텝 축소(요청) — body(16)→caption(14). */
+.scr-rank-detail-history .scr-team-name { font-size: var(--fs-caption); }
 /* 경기 이력 목록은 자기 높이만큼 자연스럽게 흐르게 두고(내부 고정높이·스크롤 없음),
    스크롤은 모달 본체(.scr-modal-body, 이미 overflow-y:auto + 모달 max-height 88vh)가
    통째로 맡는다(요청: "스크롤을 경기이력에 주는 게 아니라 모달 전체에 주기") — 그래프·
