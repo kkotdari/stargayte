@@ -241,12 +241,6 @@ export default function RankingScreenV2() {
             </button>
           </span>
         </span>
-        {/* 순위표 오른쪽 링크 — 가중치(점수)가 순위별로 어떻게 매겨지는지 표로 보여주는 모달을
-            연다(요청). 개인전/팀전 각각의 참가자 수 기준으로 표가 만들어진다. */}
-        <button type="button" className="scr-rank-weight-link" onClick={() => setWeightOpen(true)}>
-          <BarChart3 size={13} />
-          <span>기준점수표</span>
-        </button>
       </div>
 
       {/* 개인전/팀전 선택은 필터창(왼쪽 알약 탭)이 맡는다. 종족은 라디오가 아니라 유저 검색창의
@@ -282,6 +276,15 @@ export default function RankingScreenV2() {
           </>
         }
       />
+
+      {/* 기준점수표 링크 — 필터들 아래, 순위 목록 바로 위에 붙인다(요청). 가중치(점수)가
+          순위별로 어떻게 매겨지는지 표 모달을 연다. */}
+      <div className="scr-rank-weight-row">
+        <button type="button" className="scr-rank-weight-link" onClick={() => setWeightOpen(true)}>
+          <BarChart3 size={13} />
+          <span>기준점수표</span>
+        </button>
+      </div>
 
       {error && <div className="scr-err">{error}</div>}
 
