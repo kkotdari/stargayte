@@ -5794,42 +5794,63 @@ html.scr-light-theme .scr-challenge-next-tag {
 /* 약간 그라데이션 들어간 흰(유리) 패널 + 반사광(요청). 위가 밝고 아래로 살짝 가라앉는 흰
    반투명 그라데이션에, 상단 모서리 하이라이트와 비스듬히 지나가는 반사광 한 줄을 얹어
    말랑한 유리 카드처럼 보이게 한다. 반투명이라 다크 테마에서도 흰 글씨가 그대로 읽힌다. */
+/* 화이트보드 테마 — 대결 요청 코너는 흰 보드 위에 마커로 적어 두는 느낌(요청: "요청하기
+   패널은 화이트보드 테마"). 살짝 미색인 보드 면 + 아주 옅은 격자, 얇은 회색 프레임과 부드러운
+   그림자로 벽에 걸린 보드처럼 띄운다. 다크/라이트 어느 테마든 보드 자체는 흰색 그대로다.
+   그래서 안쪽 디자인 토큰(글자/보조/선/입력배경)을 어두운 "마커" 값으로 덮어써서, var()로 색을
+   쓰는 자식 요소들이 흰 보드 위에서도 그대로 또렷하게 읽히도록 한다. */
 .scr-mreq-corner {
   position: relative;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.055) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  border-radius: 16px;
+  /* 흰 보드에서 색을 쓰는 자식들이 마커처럼 보이게 토큰을 어둡게 재정의. */
+  --text: #24272d;
+  --muted: rgba(36, 39, 45, 0.66);
+  --dim: rgba(36, 39, 45, 0.5);
+  --line: rgba(0, 0, 0, 0.16);
+  --input-bg: #ffffff;
+  --panel-solid: #ffffff;
+  --overlay-rgb: 0, 0, 0;
+  --divider-tint: 0, 0, 0;
+  --pipe-bright: rgba(0, 0, 0, 0.34);
+  color: var(--text);
+  background-color: #f6f6f1;
+  background-image:
+    linear-gradient(rgba(0, 0, 0, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
+  background-size: 22px 22px;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  border-radius: 14px;
   padding: 13px 15px; margin-bottom: 4px; display: flex; flex-direction: column; gap: 10px;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.5),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.05),
-    0 4px 16px rgba(0, 0, 0, 0.2);
-  backdrop-filter: blur(8px) saturate(1.05);
-  -webkit-backdrop-filter: blur(8px) saturate(1.05);
-}
-/* 반사광 — 좌상단에서 비스듬히 지나가는 밝은 하이라이트 한 줄. */
-.scr-mreq-corner::before {
-  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 0;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, transparent 32%);
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.35),
+    0 6px 18px rgba(0, 0, 0, 0.22);
 }
 .scr-mreq-corner > * { position: relative; z-index: 1; }
-/* 라이트 테마 — 흰 배경 위라 더 또렷한 흰 유리 + 옅은 그림자로 띄운다. */
+/* 라이트 테마 — 배경이 이미 밝으니 보드가 붕 떠 보이지 않게 그림자만 옅게. 보드 면은 동일. */
 .scr-light-theme .scr-mreq-corner {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(255, 255, 255, 0.74) 100%);
-  border-color: rgba(0, 0, 0, 0.08);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95), 0 4px 16px rgba(0, 0, 0, 0.1);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 4px 14px rgba(0, 0, 0, 0.12);
 }
 .scr-mreq-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-/* "요청하기" — 흰색 알약 버튼(요청). 살짝 통통하고 아래로 은은한 그림자로 귀엽게. */
+/* "요청하기" — 보드에 마커로 그린 듯한 잉크 아웃라인 알약. 흰 보드 위라 흰 버튼은 묻히니,
+   진한 테두리 + 살짝 어긋난 그림자로 손그림 느낌을 준다. */
 .scr-mreq-add-btn {
-  border: none; border-radius: 999px; font-weight: 800; letter-spacing: 0.01em;
-  padding: 6px 16px; color: #10151a;
-  background: linear-gradient(180deg, #ffffff 0%, #f1f3f6 100%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 2px 8px rgba(0, 0, 0, 0.2);
-  transition: filter 0.12s ease, transform 0.08s ease;
+  border: 1.5px solid #24272d; border-radius: 999px; font-weight: 800; letter-spacing: 0.01em;
+  padding: 5px 15px; color: #24272d; background: #ffffff;
+  box-shadow: 1.5px 1.5px 0 rgba(36, 39, 45, 0.9);
+  transition: transform 0.08s ease, box-shadow 0.08s ease;
 }
-.scr-mreq-add-btn:hover { filter: brightness(0.98); }
-.scr-mreq-add-btn:active { transform: translateY(1px); }
+.scr-mreq-add-btn:hover { background: #fbfbf7; }
+.scr-mreq-add-btn:active { transform: translate(1.5px, 1.5px); box-shadow: 0 0 0 rgba(36, 39, 45, 0.9); }
+/* 보드 위 프라이머리(올리기 / 들어주기) — 흰 버튼은 안 보이니 잉크색으로 꽉 채운다. */
+.scr-mreq-corner .scr-btn-primary-solid,
+.scr-light-theme .scr-mreq-corner .scr-btn-primary-solid {
+  background: #24272d; border-color: #24272d; color: #ffffff;
+  box-shadow: 1.5px 1.5px 0 rgba(36, 39, 45, 0.32);
+}
+.scr-mreq-corner .scr-btn-primary-solid:hover { filter: brightness(1.15); }
+.scr-mreq-corner .scr-btn-primary-solid:disabled { opacity: 0.45; }
 .scr-mreq-title { margin: 0; font-size: 15.5px; font-weight: 800; color: var(--text); letter-spacing: 0.01em; display: inline-flex; align-items: center; gap: 5px; }
 /* 이모지에 살짝 통통 튀는 느낌 — 은은한 그림자로 붕 떠 보이게. */
 .scr-mreq-title-emoji { font-size: 17px; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.25)); }
@@ -5858,11 +5879,12 @@ html.scr-light-theme .scr-challenge-next-tag {
 .scr-mreq-mention-opt:hover { background: rgba(var(--overlay-rgb), 0.08); }
 .scr-mreq-mention-name { font-size: 13.5px; font-weight: 600; }
 /* 지목 회원은 문장 안 인라인 유저 칩으로(요청: "칩이 문장 안에 포함", "칩에는 @ 없이 표현").
-   검색창 유저칩과 같이 흰 바탕·검은 글씨로 또렷하게(요청: "흰색 칩"). */
+   화이트보드 위라 흰 칩은 안 보이니, 형광펜으로 이름을 칠한 듯한 노란 하이라이트 칩으로. */
 .scr-mreq-chip {
   display: inline-flex; align-items: center; gap: 3px;
-  padding: 1px 6px; border-radius: 5px;
-  background: #ffffff; color: #000000;
+  padding: 1px 6px; border-radius: 4px;
+  background: #ffe9a8; color: #4a3a10;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
   font-size: 12.5px; font-weight: 700; white-space: nowrap;
 }
 /* 인라인 칩 — 텍스트 흐름 안에서 세로 가운데로 앉게 하고, 양옆에 살짝 숨 쉬는 여백. */
