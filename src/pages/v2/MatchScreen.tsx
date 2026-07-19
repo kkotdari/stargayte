@@ -3,8 +3,6 @@ import { createPortal } from "react-dom";
 import { Upload } from "lucide-react";
 import ReplayLocationHint from "../../components/common/ReplayLocationHint";
 import { Spinner } from "../../components/common/Feedback";
-import PillTabs from "../../components/common/PillTabs";
-import FilterItem from "../../components/common/FilterItem";
 import MatchMemoModal from "../../modals/MatchMemoModal";
 import ReplayReviewModal from "../../modals/ReplayReviewModal";
 import MatchList, { type SearchListRow } from "./MatchList";
@@ -13,42 +11,25 @@ import ScrollNavTimeline from "../../components/common/ScrollNavTimeline";
 import { useAppStore } from "../../store/appStore";
 import { api } from "../../api/client";
 import { activeMemberSearchTerms, memberMatchesTerm, splitSearchTerms } from "../../utils/memberSearch";
-import { monthInputToRange, graceMonthValue, graceDayValue } from "../../utils/date";
 import { buildReplayDrafts, type ReplayDraft } from "../../utils/replayDraft";
 import { hasAppUpdatePreloadErrorOccurred } from "../../utils/appUpdate";
 import { useCursorPagination } from "../../hooks/useCursorPagination";
-import { useInfiniteScrollSentinel } from "../../hooks/useInfiniteScrollSentinel";
 import type { Match, Member, MatchSlot } from "../../types";
 
 const MAX_REPLAY_FILES = 20;
-const PAGE_SIZE = 20;
-const PERIOD_UNIT_OPTS: { value: "all" | "month" | "day"; label: string }[] = [
-  { value: "all", label: "전체" },
-  { value: "month", label: "월" },
-  { value: "day", label: "일" },
-];
+// 한 번에 최대한 많이 받아 왕복 횟수를 줄인다 — 서버가 허용하는 상한(limit ≤ 100)에 맞춘다.
+const PAGE_SIZE = 100;
 
-// 경기결과/전적통계/랭킹 공용 상단 모듈(SearchFilterBar)을 쓰는 화면. 기간은 전체/월/일
-// 세 단위다(요청: iOS Safari가 <input type="week">를 지원 안 해서 주 단위 자체를 없앰) —
-// 월은 OS 네이티브 월 선택기(<input type="month">), 일은 날짜 선택기(<input type="date">)
-// 하나로 충분하다. 요청: "경기 화면 기간 필터 기본값은 일" — 화면을 열면 바로 오늘 하루
-// 경기만 보이는 게 기본이다.
+// 경기 목록 화면. 기간 필터(전체/월/일)와 필터창·조회 버튼은 없앴다(요청: "기간 필터 제거하고
+// 무조건 전체로 통일, 필터창 자체 필요없어짐"). 화면을 열면 전체 경기를 최신순으로 한 번에
+// 모두 불러온다(요청: "무한스크롤이 아닌 한번에 모두 불러오기") — 유저 검색만 상단에 남긴다.
 export default function MatchScreenV2() {
   const members = useAppStore((s) => s.members);
   const memberOf = useAppStore((s) => s.memberOf);
 
-  // 검색창은 이제 엔터를 눌러야만 확정되는 값이라(SearchFilterBar 참고), search 자체가
-  // 이미 "적용된" 값이다 — 예전처럼 디바운스로 한 번 더 늦출 필요가 없다.
+  // 검색창은 엔터를 눌러야만 확정되는 값이라(SearchFilterBar 참고), search 자체가 이미
+  // "적용된" 값이다 — 이미 불러온 전체 경기 안에서 클라이언트가 즉시 걸러낸다.
   const [search, setSearch] = useState("");
-  // 정렬 토글은 없앴다(요청: "기간 필터 정렬 제거") — 항상 최신순 고정.
-  const [sort] = useState<"latest" | "oldest">("latest");
-  // 기본은 일(요청: "경기 기록 조회 필터 기본 조건 일로"). 기본 날짜는 그레이스 기간을
-  // 적용한다(요청: "정오까지는 전날로 조회") — 자정 넘어 정오 전까지는 전날을 기본으로
-  // 보여준다(graceDayValue). 월 단위로 직접 바꿨을 때의 기본 달은 랭킹과 같은 그레이스
-  // 기간(graceMonthValue)을 그대로 쓴다.
-  const [periodUnit, setPeriodUnit] = useState<"all" | "month" | "day">("day");
-  const [periodMonth, setPeriodMonth] = useState(graceMonthValue);
-  const [periodDay, setPeriodDay] = useState(graceDayValue);
   const suggestions = useMemo(() => activeMemberSearchTerms(members), [members]);
   const searchTerms = useMemo(() => splitSearchTerms(search), [search]);
   const hasSearch = searchTerms.length > 0;
@@ -60,12 +41,6 @@ export default function MatchScreenV2() {
     });
     return all;
   }, [members, searchTerms]);
-
-  const effectiveRange = useMemo(() => {
-    if (periodUnit === "month") return monthInputToRange(periodMonth);
-    if (periodUnit === "day") return { from: periodDay, to: periodDay };
-    return { from: "", to: "" };
-  }, [periodUnit, periodMonth, periodDay]);
 
   // 회원 누구나 남길 수 있는 가벼운 메모 — 목록 카드의 연필 아이콘을 누르면 연다.
   const [memoMatch, setMemoMatch] = useState<Match | null>(null);
@@ -89,8 +64,6 @@ export default function MatchScreenV2() {
         new Promise((resolve) => setTimeout(resolve, 500)),
       ]);
       if (hasAppUpdatePreloadErrorOccurred()) return;
-      // 매칭이 끝났든 아니든 등록 전에 항상 한 번 내용을 훑어보게 모달을 연다 — 곧장
-      // 등록해버리지 않는다(중복만 있는 경우도 마찬가지로 모달에서 보여준다).
       setReplayDrafts(drafts);
       await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     } finally {
@@ -98,61 +71,28 @@ export default function MatchScreenV2() {
     }
   };
 
-  // 경기 목록은 기본적으로 노출되지 않고, "조회" 버튼을 눌러야만 그 시점의 필터로
-  // 실제 조회가 실행되고 목록이 뜬다(요청: "목록은 기본적으로 노출되지 않음",
-  // "조회시 목록이 나옴"). 필터를 자유롭게 만지는 동안(committed 값이 안 바뀜)엔
-  // 재조회가 일어나지 않도록, 실제 쿼리는 draft 값이 아니라 "조회" 시점에 찍어둔
-  // committed 값을 기준으로 한다.
-  const [hasSearched, setHasSearched] = useState(false);
-  const [committedRange, setCommittedRange] = useState<{ from: string; to: string }>({ from: "", to: "" });
-  const runSearch = () => {
-    setCommittedRange(effectiveRange);
-    setHasSearched(true);
-  };
-
-  // 유저 검색은 더 이상 서버에 안 보낸다 — 항상 AND(모두 참여)로 클라이언트에서
-  // 거른다(아래 listRows). 서버 쿼리는 기간으로만 좁혀서, 검색어가 바뀔 때마다
-  // 다시 네트워크를 타지 않고 이미 불러온 결과 안에서 즉시 걸러진다. 경기유형 필터는
-  // 없앴다(요청: "경기 - 유형구분 삭제") — 항상 전체 유형을 조회한다.
-  const queryKey = useMemo(
-    () => ({
-      dateFrom: committedRange.from, dateTo: committedRange.to, sort, hasSearched,
-    }),
-    [committedRange.from, committedRange.to, sort, hasSearched],
-  );
-
+  // 기간 필터를 없앴으므로 서버 쿼리는 조건 없이 항상 "전체 경기 최신순"이다. 유저 검색은
+  // 서버에 안 보내고, 아래 listRows에서 이미 받은 목록을 클라이언트가 AND로 거른다.
   const fetchPage = useCallback(
-    (cursor: string | null) => {
-      if (!hasSearched) return Promise.resolve({ items: [], nextCursor: null, hasMore: false, total: 0 });
-      return api.getMatchesPage({
-        cursor: cursor ?? undefined,
-        limit: PAGE_SIZE,
-        sort: queryKey.sort,
-        dateFrom: queryKey.dateFrom,
-        dateTo: queryKey.dateTo,
-      });
-    },
-    [queryKey, hasSearched],
+    (cursor: string | null) =>
+      api.getMatchesPage({ cursor: cursor ?? undefined, limit: PAGE_SIZE, sort: "latest" }),
+    [],
   );
 
-  const { items: matches, loading, loadingMore, hasMore, loadMore, reload, error, total } = useCursorPagination(
-    fetchPage, [queryKey],
-  );
-  // 검색어가 있는 동안은 무한스크롤(사용자가 직접 내려서 더 불러오기) 대신, 이 기간의
-  // 경기를 전부 불러올 때까지 계속 다음 페이지를 이어붙인다 — 클라이언트 AND 필터가
-  // 페이지 하나(20건)만 보고 판단하면 검색어와 맞는 경기가 뒤쪽 페이지에 몰려있을 때
-  // 훑어보기 전엔 거의 안 보일 수 있다. 검색어가 없으면(평소 목록 훑어보기) 예전처럼
-  // 스크롤에 따라 페이지씩만 불러온다(속도/트래픽 우월).
+  const { items: matches, loading, loadingMore, hasMore, loadMore, reload, error, total } =
+    useCursorPagination(fetchPage, []);
+
+  // 무한스크롤(스크롤에 따라 한 페이지씩)을 없애고, 다음 페이지가 남아 있으면 계속 이어붙여
+  // 전체를 한 번에 다 불러온다(요청). 첫 페이지가 끝나면 hasMore가 순차적으로 다음 페이지를
+  // 트리거해 마지막 페이지까지 자동으로 채운다.
   useEffect(() => {
-    if (hasSearch && hasMore && !loading && !loadingMore) loadMore();
-  }, [hasSearch, hasMore, loading, loadingMore, loadMore]);
-  const sentinelRef = useInfiniteScrollSentinel(loadMore, { enabled: !hasSearch && hasMore && !loading && !loadingMore });
+    if (hasMore && !loading && !loadingMore) loadMore();
+  }, [hasMore, loading, loadingMore, loadMore]);
 
   const resolveMember = (id: string): Member | undefined => memberOf(id);
 
   // 슬롯 하나가 이 검색어와 맞는지 — 회원으로 연결됐으면 닉네임/배틀태그/게임아이디로,
-  // 컴퓨터/비회원/수기등록 슬롯이면 리플레이 원본 이름(rawName)으로 판단한다(서버의
-  // _participant_term_exists와 같은 기준).
+  // 컴퓨터/비회원/수기등록 슬롯이면 리플레이 원본 이름(rawName)으로 판단한다.
   const slotMatchesTerm = (slot: MatchSlot, term: string): boolean => {
     const m = resolveMember(slot.memberId);
     if (m && memberMatchesTerm(m, term)) return true;
@@ -176,15 +116,16 @@ export default function MatchScreenV2() {
     reload();
   }, [reload]);
 
+  const count = hasSearch ? listRows.length : (total ?? matches.length);
+
   return (
     <div className="scr-screen scr-match-screen-v2">
       <div className="scr-v2-toolbar">
         <h1 className="scr-title scr-v2-toolbar-title">경기 등록</h1>
       </div>
 
-      {/* "등록" 버튼 — 타이틀 줄 아래 별도 줄에 가운데 정렬, 1.2배 확대(요청: "경기 화면의
-          등록 버튼, 회원 화면의 생성 버튼과 동일한 CSS"). 리플레이 위치 안내는 그 아래
-          링크 텍스트로 둔다(요청: "등록 버튼 아래에 배치"). */}
+      {/* "등록" 버튼 — 타이틀 줄 아래 별도 줄에 가운데 정렬. 리플레이 위치 안내는 그 아래
+          링크 텍스트로 둔다. */}
       <div className="scr-v2-primary-row scr-v2-primary-row-col">
         <button className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm" onClick={() => replayInputRef.current?.click()}>
           <Upload size={12} /> 등록
@@ -202,45 +143,16 @@ export default function MatchScreenV2() {
 
       <h2 className="scr-v2-subheading">경기 목록</h2>
 
+      {/* 기간 필터/조회 버튼은 없앴다 — 유저 검색창만 남긴다(전체 목록 안에서 즉시 필터). */}
       <SearchFilterBar
-        count={hasSearched ? (hasSearch ? listRows.length : (total ?? matches.length)) : 0}
+        count={count}
         countLabel="건"
         showCount={false}
         searchValue={search}
         onSearchChange={setSearch}
         searchPlaceholder="유저 검색"
         suggestions={suggestions}
-        filterPanel={
-          // 기간 단위(전체/월/일) 알약탭과 그에 딸린 달력 모듈은 하나로 묶는다(요청:
-          // "기간필터와 달력 모듈은 하나의 요소로 그룹화") — 별개 FilterItem 두 개로
-          // 나뉘어 있으면 서로 다른 필터처럼 벌어져 보였다.
-          <FilterItem label="기간">
-            <PillTabs options={PERIOD_UNIT_OPTS} value={periodUnit} onChange={setPeriodUnit} aria-label="기간" />
-            {periodUnit === "month" && (
-              <input
-                type="month" className="scr-filter-month-input"
-                value={periodMonth} onChange={(e) => setPeriodMonth(e.target.value)}
-                aria-label="조회할 월"
-              />
-            )}
-            {periodUnit === "day" && (
-              <input
-                type="date" className="scr-filter-month-input"
-                value={periodDay} onChange={(e) => setPeriodDay(e.target.value)}
-                aria-label="조회할 날짜"
-              />
-            )}
-          </FilterItem>
-        }
       />
-
-      {/* 필터/검색창 아래 별도 줄의 조회 버튼 — 눌러야 그 시점 조건으로 실제 조회가
-          실행된다(요청: "필터와 검색창 조회 버튼이 한줄씩 배치", "조회시 목록이 나옴"). */}
-      <div className="scr-match-search-row">
-        <button type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm" onClick={runSearch}>
-          조회
-        </button>
-      </div>
 
       {error && <div className="scr-err">{error}</div>}
 
@@ -251,27 +163,20 @@ export default function MatchScreenV2() {
         document.body,
       )}
 
-      {/* 건수는 조회 버튼 아래, 목록 바로 위에 — 조회 전엔 안 보인다(요청). */}
-      {hasSearched && (
-        <span className="scr-list-count scr-match-list-count">
-          {(hasSearch ? listRows.length : (total ?? matches.length))}건
-        </span>
-      )}
+      {/* 건수는 목록 바로 위에. */}
+      <span className="scr-list-count scr-match-list-count">{count}건</span>
 
-      {hasSearched && (
-        <div className="scr-match-list-wrap">
-          <MatchList
-            rows={listRows}
-            memberOf={resolveMember}
-            onMemo={(m) => setMemoMatch(m)}
-            onDeleted={handleSaved}
-            loading={loading}
-            highlightMemberIds={matchedIds}
-          />
-          <div ref={sentinelRef} />
-          {loadingMore && <div className="scr-empty"><Spinner size={16} /></div>}
-        </div>
-      )}
+      <div className="scr-match-list-wrap">
+        <MatchList
+          rows={listRows}
+          memberOf={resolveMember}
+          onMemo={(m) => setMemoMatch(m)}
+          onDeleted={handleSaved}
+          loading={loading}
+          highlightMemberIds={matchedIds}
+        />
+        {loadingMore && <div className="scr-empty"><Spinner size={16} /></div>}
+      </div>
 
       {memoMatch && (
         <MatchMemoModal
@@ -290,11 +195,9 @@ export default function MatchScreenV2() {
         />
       )}
 
-      {/* 우측 네비게이션 타임라인 — 너 나와와 동일(요청: "타임라인을 경기 화면에도 적용").
-          경기 목록은 최신순(위=최근, 아래=과거)이라 끝 라벨만 그에 맞춘다. 오늘/미정 눈금은
-          경기 목록엔 없어서 마커는 넘기지 않는다. 조회 전(목록이 없을 때)은 스크롤할
-          대상이 없으니 타임라인도 안 띄운다. */}
-      {hasSearched && !loading && <ScrollNavTimeline headSelector=".scr-match-date-head" topLabel="최근" bottomLabel="과거" />}
+      {/* 우측 네비게이션 타임라인 — 경기 목록은 최신순(위=최근, 아래=과거). 첫 페이지가
+          로드되면 띄운다. */}
+      {!loading && <ScrollNavTimeline headSelector=".scr-match-date-head" topLabel="최근" bottomLabel="과거" />}
     </div>
   );
 }

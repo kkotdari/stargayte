@@ -256,7 +256,12 @@ export default function StatsScreenV2() {
       {error && <div className="scr-err">{error}</div>}
 
       <div className="scr-stats-list-panel-v2">
-        {loading && cards.length === 0 ? (
+        {/* 첫 로딩 때는 통계가 아직 없어 모든 회원의 게임수가 0 → 닉네임순으로 잠깐 정렬됐다가,
+            데이터가 도착하면 게임수순으로 재정렬되며 목록이 튀는 문제가 있었다(신고). 통계가
+            한 번도 안 들어온 상태(statsByMember 비어 있음)에서는 목록 대신 스피너만 보여줘서
+            그 중간 단계(닉네임순 배치)를 화면에 노출하지 않는다. 필터를 바꿔 재조회할 때는
+            이전 통계가 남아 있어 목록을 계속 보여준 채 갱신된다. */}
+        {loading && Object.keys(statsByMember).length === 0 ? (
           <div className="scr-empty"><Spinner size={18} /></div>
         ) : cards.length === 0 ? (
           <div className="scr-empty">조건에 맞는 회원이 없어요.</div>

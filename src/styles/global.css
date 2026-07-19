@@ -1991,7 +1991,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-rank-screen-v2::before, .scr-challenge-screen-v2::before {
   content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
   background-image:
-    linear-gradient(180deg, rgba(3,3,6,0.72) 0%, rgba(3,3,6,0.55) 40%, rgba(3,3,6,0.78) 100%),
+    linear-gradient(180deg, rgba(3,3,6,0.9) 0%, rgba(3,3,6,0.82) 45%, rgba(3,3,6,0.92) 100%),
     url("/images/bg/ranking.jpg");
   background-size: cover; background-position: center; background-repeat: no-repeat;
 }
@@ -2008,7 +2008,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 @media (max-width: 860px) {
   .scr-rank-screen-v2::before, .scr-challenge-screen-v2::before {
     background-image:
-      linear-gradient(180deg, rgba(3,3,6,0.72) 0%, rgba(3,3,6,0.55) 40%, rgba(3,3,6,0.78) 100%),
+      linear-gradient(180deg, rgba(3,3,6,0.9) 0%, rgba(3,3,6,0.82) 45%, rgba(3,3,6,0.92) 100%),
       url("/images/bg/ranking_mobile.jpg");
   }
   /* 라이트 테마 모바일도 같은 화이트 스크림(위 데스크톱 라이트 규칙과 같은 특이도라,
@@ -2303,12 +2303,12 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 /* PC에서는 필터 알약을 검색 인풋 높이(34px)에 맞춰 키운다(요청: "pc에서는 필터들 크기
    인풋하고 맞춰서 키우기") — 모바일에서는 아래 미디어쿼리에서 랭킹 년월 토글 크기(24px)로
    컴팩트하게 되돌린다. */
-.scr-filter-panel .scr-pill-tabs { background: rgba(255,255,255,0.08); height: 34px; }
+.scr-filter-panel .scr-pill-tabs { background: rgba(255,255,255,0.08); height: 32px; }
 .scr-light-theme .scr-filter-panel .scr-pill-tabs { background: rgba(0,0,0,0.06); }
 /* 필터창의 종족 셀렉트 — 알약탭(.scr-pill-tabs)과 같은 톤/높이로 통일한다(요청: "크기 및
    디자인 다른 요소들과 맞추기"). 테두리는 빼고 같은 반투명 글라스 배경, 높이 34px. */
 .scr-filter-panel .scr-filter-race-select .scr-cselect-trigger {
-  min-height: 34px; height: 34px; padding: 0 10px; font-size: var(--fs-body);
+  min-height: 32px; height: 32px; padding: 0 10px; font-size: var(--fs-body);
   background: rgba(255,255,255,0.08); border-color: transparent;
 }
 .scr-light-theme .scr-filter-panel .scr-filter-race-select .scr-cselect-trigger { background: rgba(0,0,0,0.06); }
@@ -2321,12 +2321,12 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-filter-panel .scr-pill-tab-btn:hover:not(.scr-pill-tab-btn-active) { color: var(--text); }
 .scr-filter-panel .scr-filter-month-input {
   background: rgba(255,255,255,0.08); color: var(--text); color-scheme: dark;
-  height: 34px; font-size: var(--fs-body); min-width: 108px; border-radius: 10px; padding: 0 10px;
+  height: 32px; font-size: var(--fs-body); min-width: 108px; border-radius: 10px; padding: 0 10px;
 }
 .scr-light-theme .scr-filter-panel .scr-filter-month-input {
   background: rgba(0,0,0,0.06); color: var(--text); color-scheme: light;
 }
-.scr-filter-panel .scr-filter-sort-btn { color: var(--muted); width: 34px; height: 34px; }
+.scr-filter-panel .scr-filter-sort-btn { color: var(--muted); width: 32px; height: 32px; }
 /* 정렬 토글이 배경 동그라미 없이 아이콘만 남으면서(위 .scr-filter-sort-btn 참고) 그
    앞과의 16px 갭이 유독 헐렁해 보였다(요청: "정렬 필터 토글은 왼쪽 갭 줄이기") — 정렬
    토글을 담은 항목만 콕 집어 왼쪽으로 당긴다(다른 화면의 마지막 필터 항목까지 같이
@@ -2343,6 +2343,10 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    높이(44px) 안에 안 들어간다. 모바일은 아래 미디어쿼리에서 다시 세로로 쌓는다(그
    대신 필터창 자체를 검색창보다 크게 키운다). */
 .scr-filter-item { display: flex; flex-direction: row; align-items: center; gap: 6px; }
+/* 필터 요소를 키운(검색창 높이/본문 폰트) 뒤 좁은 폭에서 항목들이 눌려 종족 셀렉트의
+   "전체" 같은 글자가 세로로 접히던 문제 방지 — 항목은 내용폭을 유지하고, 넘치면 패널
+   자체가 가로 스크롤한다(.scr-filter-panel의 overflow-x:auto 설계 의도대로). */
+.scr-filter-panel > .scr-filter-item { flex-shrink: 0; }
 .scr-filter-item-label {
   /* PC 기준 기본값 — 8px -> 16px로 키웠다가(요청: "필터의 라벨 글자 2배 키우기") 너무
      커 보인다는 피드백으로 20% 줄인다(요청: "20프로 줄여줘"). 모바일은 아래
@@ -2441,7 +2445,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   /* 검색창은 필터 알약보다 높이를 더 준다(요청: "검색은 높이 더 있어야해") — 타이핑/칩이
      담기는 입력이라 너무 낮으면 답답하다. 높이가 커진 만큼 알약(999px)보다 각을 살린
      둥근네모(요청: "검색창 래디우스 감소"). */
-  height: 34px; min-height: 34px; box-sizing: border-box;
+  height: 32px; min-height: 32px; box-sizing: border-box;
 }
 .scr-light-theme .scr-search-filter-float .scr-list-search-input {
   background: rgba(0,0,0,0.06); border: none; box-shadow: none;
@@ -2463,13 +2467,9 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   .scr-filter-panel:has(> .scr-filter-item:only-child) { justify-content: center; }
   .scr-search-filter-float { width: 100%; }
   .scr-filter-item-label { font-size: var(--fs-caption); }
-  /* 모바일은 필터 알약을 랭킹 년월 토글 크기(24px)로 컴팩트하게 되돌린다(PC만 인풋에 맞춰
-     키운다 — 위 .scr-filter-panel 알약/월선택/정렬 주석 참고). */
-  .scr-filter-panel .scr-pill-tabs { height: 24px; }
-  .scr-filter-panel .scr-pill-tab-btn { font-size: var(--fs-caption); }
-  .scr-filter-panel .scr-filter-month-input { height: 24px; font-size: var(--fs-caption); }
-  .scr-filter-panel .scr-filter-sort-btn { width: 24px; height: 24px; }
-  .scr-filter-panel .scr-filter-race-select .scr-cselect-trigger { min-height: 24px; height: 24px; padding: 0 8px; font-size: var(--fs-caption); }
+  /* 모바일에서도 필터 요소(알약/달력/종족)를 base(PC)와 같은 크기 — 검색창 높이(34px)에 맞춘다
+     (요청: "필터 내 요소 높이를 검색창과 일치, 모바일·PC 모두"). 예전엔 24px로 컴팩트하게
+     줄였지만 이제 축소를 두지 않아 base 34px/본문 폰트를 그대로 쓴다. 라벨만 caption 유지. */
 }
 /* 건수는 필터 항목들과 같은 줄에 있으면 목록과 멀어 보인다는 피드백 — 그리드 아래
    자기 줄로 내려서 목록에 더 가깝게 붙인다(모바일은 이 칸 자체가 안 보이므로 —
@@ -6091,16 +6091,21 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
   .scr-drawer-actions .scr-btn { font-size: var(--fs-caption); }
   /* 도전장(너나와) 팀전 카드만 로스터 텍스트 추가 두 단계 축소(16→12) */
   .scr-challenge-card-team .scr-challenge-person-name { font-size: var(--fs-micro); }
+  /* 랭킹 년월 필터줄(.scr-rank-subrow)과 그 아래 필터줄(차트/종족) 사이 간격을 넓힌다(요청).
+     기본은 .scr-screen 형제 gap에만 기대 붙어 있었는데 좁아 답답했다. */
+  .scr-rank-subrow { margin-bottom: 12px; }
+  /* 경기목록(펼친 카드) 팀2 로스터를 왼쪽으로 당긴다(요청: 카드 폭 20% 정도). 그리드
+     아이템의 % margin은 컨테이너가 아니라 자기 트랙(1fr≈카드의 1/3) 기준이라 -20%로는
+     약 26px밖에 안 밀렸다 — 모바일 카드 폭(약 360px)의 20%인 약 72px을 고정값으로 당긴다.
+     모든 카드가 같은 값이라 로스터 왼쪽 기준선 정렬은 유지된다. 펼친 로스터에만 적용. */
+  .scr-match-trow-grid .scr-match-trow-team:last-child { margin-left: -72px; }
   /* 너나와 카드: 상대 로스터를 왼쪽으로 당기던 방식(-28px)은 상대쪽 승/무 배지 자리를 먹어
      손가락↔닉네임 사이 공간이 사라졌다(신고). 대신 도전자(팀1) 칸을 좁혀 화살표·배지·손가락을
      왼쪽으로 옮기고, 상대(팀2)쪽에 도전자와 같은 폭의 승/무 배지 자리를 확보한다(요청). */
   .scr-challenge-matchup .scr-challenge-side:not(.scr-challenge-side-target) { flex: 0.72 1 0; }
-  /* 경기 이력 팀전 카드: 팀2 로스터를 왼쪽으로 당긴다. 예전엔 팀2 로스터에 음수 margin을
-     줬는데(-80px) 로스터 뒤 '팀에게 승'까지 함께 끌려가 '팀으로'와 겹쳤다(신고). 대신 양 팀
-     덩어리를 균등폭(flex:1) 대신 내용폭(flex:0 1 auto)으로 바꿔 팀2 덩어리가 '팀으로' 바로
-     뒤(갭 14px)에 붙게 하고, 획득점수 컬럼만 오른쪽 끝으로 민다 — 겹침 없이 최대한 왼쪽. */
-  .scr-match-list-panel-v2 .scr-match-row-team-tail .scr-match-team-side { flex: 0 1 auto; }
-  .scr-match-list-panel-v2 .scr-match-row-team-tail .scr-team-points-col { margin-left: auto; }
+  /* 경기 이력 팀전 카드: 양 팀 덩어리는 기본(base)의 균등폭(flex:1 1 0)을 그대로 쓴다 —
+     한때 내용폭(flex:0 1 auto)으로 바꿨더니 팀1(짧은 닉네임)쪽 영역이 팀2보다 눈에 띄게
+     좁아졌다(신고). 균등폭이면 팀1/팀2가 같은 폭을 가져 좌우가 대칭이 된다. */
   /* 이력/경기목록 승·패 글자 한 단계 축소(20→16) */
   .scr-team-outcome { font-size: var(--fs-body); }
   .scr-match-trow-outcome { font-size: var(--fs-body); }
@@ -6135,9 +6140,10 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
 .scr-team-rank-record { font-size: var(--fs-caption); }
 .scr-team-rank-row-inner .scr-rank-stat-primary { font-size: var(--fs-title); }
 .scr-filter-item-label { font-size: var(--fs-caption); }
-.scr-filter-panel .scr-pill-tab-btn { font-size: var(--fs-caption); }
-.scr-filter-panel .scr-filter-month-input { font-size: var(--fs-caption); }
-.scr-filter-panel .scr-filter-race-select .scr-cselect-trigger { font-size: var(--fs-caption); }
+/* 필터 컨트롤 텍스트(알약/달력/종족)는 라벨 제외하고 한 스텝 키운다(요청) — caption→body(16). */
+.scr-filter-panel .scr-pill-tab-btn { font-size: var(--fs-body); }
+.scr-filter-panel .scr-filter-month-input { font-size: var(--fs-body); }
+.scr-filter-panel .scr-filter-race-select .scr-cselect-trigger { font-size: var(--fs-body); }
 .scr-period-value { font-size: var(--fs-caption); }
 .scr-toolbar-actions .scr-btn-sm { font-size: var(--fs-caption); }
 .scr-chip-name { font-size: var(--fs-body); }
