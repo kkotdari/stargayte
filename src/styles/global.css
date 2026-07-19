@@ -4606,6 +4606,8 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
 .scr-member-row-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
 .scr-member-row-name { font-size: 20px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .scr-member-row-tag { font-size: 16px; color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 회원 목록 배틀태그는 모노 대신 기본 폰트로(요청, PC·모바일 공통). */
+.scr-member-row-tag.scr-mono { font-family: inherit; }
 /* 모바일에서 게임아이디(배틀태그)가 닉네임 옆에서 너무 도드라져 보인다는 요청으로
    25% 축소한다(요청: "모바일에서 게임아이디 컬럼 폰트 크기 25% 축소") — PC는 그대로. */
 @media (max-width: 640px) {
@@ -6038,15 +6040,13 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
   /* 랭킹 점수 한 단계 축소(28→20) */
   .scr-rank-stat-primary { font-size: 20px; }
   .scr-team-rank-row-inner .scr-rank-stat-primary { font-size: 20px; }
-  /* 회원 목록 텍스트 두 단계 축소 + 배틀태그 기본 폰트(모노 해제) */
+  /* 회원 목록 텍스트 두 단계 축소(배틀태그 기본 폰트는 아래 전역 규칙에서 처리) */
   .scr-member-row-name { font-size: 14px; }
   .scr-member-row-tag { font-size: 12px; }
-  .scr-member-row-tag.scr-mono { font-family: inherit; }
-  /* 게임아이디 목록 텍스트 두 단계 축소 + 안내문 숨김 */
+  /* 게임아이디 목록 텍스트 두 단계 축소 */
   .scr-usermap-row { font-size: 14px; }
   .scr-usermap-row-head { font-size: 14px; }
   .scr-usermap-raw-name { font-size: 14px; }
-  .scr-usermap-desc { display: none; }
   /* 통계 그리드 모든 컬럼 폭 20% 확대(이름칸 160→192, 데이터칸 150→180) */
   .scr-stats-list-panel-v2 .scr-stat-row {
     --scr-stat-name-w: 192px;
