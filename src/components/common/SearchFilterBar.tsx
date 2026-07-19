@@ -18,6 +18,9 @@ interface SearchFilterBarProps {
   // 유저 검색 자동완성 후보 — 페이지 진입 시 한 번(이미 로드된 회원 목록에서) 계산해서
   // 넘겨준다. 타이핑마다 서버에 새로 묻지 않고 이 안에서만 걸러 보여준다(실시간 조회 X).
   suggestions?: string[];
+  // true면 자동완성을 "@"로만 튼다(요청: "검색창도 @쓰는걸로 통일") — @ 뒤에 친 글자로 유저를
+  // 자동완성하고, 고르면 @ 없는 유저 칩으로 담는다. false(기본)면 지금처럼 입력하면 바로 자동완성.
+  mentionTrigger?: boolean;
   // 검색창 위에 얹히는 필터창 — 화면마다 다른 내용(PillTabs, 종족 셀렉트, 월 선택 등)을
   // 그대로 넘긴다. 없으면(랭킹 이외엔 항상 있음) 검색창만 뜬다.
   filterPanel?: ReactNode;
@@ -47,6 +50,7 @@ export default function SearchFilterBar({
   searchValue, onSearchChange, searchPlaceholder = "예: SSamJang",
   matchNoValue, onMatchNoChange,
   suggestions,
+  mentionTrigger = false,
   filterPanel,
 }: SearchFilterBarProps) {
   const [suggestOpen, setSuggestOpen] = useState(false);
@@ -64,7 +68,8 @@ export default function SearchFilterBar({
   // 스페이스로 완성됐거나 엔터로 확정된 단어 하나를 즉시 적용한다 — 숫자만으로 된 단어는
   // 경기번호로(경기 화면만 onMatchNoChange를 넘긴다), 그 외엔 평범한 유저 검색어 칩으로.
   const addChip = (word: string) => {
-    const trimmed = word.trim();
+    // @트리거 모드에선 앞의 @는 트리거일 뿐이라 칩엔 남기지 않는다.
+    const trimmed = (mentionTrigger ? word.replace(/^@/, "") : word).trim();
     if (!trimmed) return;
     if (onMatchNoChange && /^\d+$/.test(trimmed)) {
       onMatchNoChange(trimmed);
@@ -77,8 +82,17 @@ export default function SearchFilterBar({
   // 완성된 칩은 다시 후보로 보여줄 필요가 없으니, 지금 입력 중인 마지막 단어(liveText)만
   // 기준으로 유저 이름을 자동완성한다.
   const matchedSuggestions = useMemo<string[]>(() => {
-    const q = liveText.trim().toLowerCase();
-    if (!meetsSuggestThreshold(q) || !suggestions) return [];
+    if (!suggestions) return [];
+    const raw = liveText.trim();
+    let q: string;
+    if (mentionTrigger) {
+      // @로 시작할 때만 자동완성 — @ 바로 뒤는 빈 쿼리라도(전체 후보) 보여준다.
+      if (!raw.startsWith("@")) return [];
+      q = raw.slice(1).toLowerCase();
+    } else {
+      q = raw.toLowerCase();
+      if (!meetsSuggestThreshold(q)) return [];
+    }
     const chosen = new Set(chips.map((c) => c.toLowerCase()));
     const items: string[] = [];
     for (const s of suggestions) {
@@ -87,7 +101,7 @@ export default function SearchFilterBar({
       items.push(s);
     }
     return items;
-  }, [suggestions, liveText, chips]);
+  }, [suggestions, liveText, chips, mentionTrigger]);
 
   const suggestShown = suggestOpen && matchedSuggestions.length > 0;
 

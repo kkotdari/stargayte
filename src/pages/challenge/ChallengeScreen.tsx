@@ -5,7 +5,6 @@ import Avatar from "../../components/common/Avatar";
 import { Spinner } from "../../components/common/Feedback";
 import SearchFilterBar from "../../components/common/SearchFilterBar";
 import FilterItem from "../../components/common/FilterItem";
-import PillTabs from "../../components/common/PillTabs";
 import ChallengeFormModal from "../../modals/ChallengeFormModal";
 import MatchRequestCorner from "./MatchRequestCorner";
 import ScrollNavTimeline from "../../components/common/ScrollNavTimeline";
@@ -14,8 +13,7 @@ import { api } from "../../api/client";
 import { cx } from "../../utils/format";
 import { attachPopover } from "../../utils/popover";
 import {
-  challengeDateGroupLabel, challengeTimeLabel, currentMonthValue, formatRelativeSchedule, fmt, isToday,
-  monthInputToRange,
+  challengeDateGroupLabel, challengeTimeLabel, formatRelativeSchedule, isToday,
 } from "../../utils/date";
 import { activeMemberSearchTerms, memberMatchesTerm, splitSearchTerms } from "../../utils/memberSearch";
 import { useLockBodyScroll } from "../../utils/bodyScrollLock";
@@ -249,9 +247,11 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
 
   // 응답(수락/거절)은 아직 응답 안 한 지목자가, 아직 응답대기(pending)인 도전장에서만.
   const canRespond = !!myTarget && myTarget.response === "pending" && challenge.status === "pending";
-  // 예정 일시가 지난 성사(confirmed) 대결에서, 아직 결과가 안 들어왔으면 참가자가 결과를 입력한다.
+  // 결과 입력 가능 시점 — 예정 일시가 지났거나, 시간 미정으로 수락된 대결(요청: "시간 미정
+  // 수락 가능, 완료 시점으로 입력됨")은 언제든. 후자는 서버가 결과 입력 시점을 예정 일시로 채운다.
   const schedulePassed = !!challenge.scheduledAt && new Date(challenge.scheduledAt).getTime() < Date.now();
-  const canEnterResult = isParticipant && challenge.status === "confirmed" && schedulePassed && challenge.resultWinnerSide === null;
+  const resultInputOpen = schedulePassed || !challenge.scheduledAt;
+  const canEnterResult = isParticipant && challenge.status === "confirmed" && resultInputOpen && challenge.resultWinnerSide === null;
   // 완료된 대결에서 내가 패배한 쪽이면 재대결(설욕전)을 신청할 수 있다 — 무승부(draw)/미실시
   // (not_held)는 패자가 없어 대상이 아니다(losingSide=null). 미실시는 애초에 폐기라 완료가 아니다.
   const losingSide: ChallengeSide | null =
@@ -344,11 +344,12 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
   const closeMode = () => setMode("none");
 
   const acceptWithSchedule = async () => {
-    if (!dateStr || !timeStr) return;
     setErr("");
     setBusy(true);
     try {
-      const scheduledAt = new Date(`${dateStr}T${timeStr}`).toISOString();
+      // 날짜+시간을 다 정했으면 그 일시로, 비워두면 시간 미정으로 수락한다(요청: "시간 미정
+      // 수락 가능" — 실제 일시는 완료(결과 입력) 시점에 서버가 채운다).
+      const scheduledAt = dateStr && timeStr ? new Date(`${dateStr}T${timeStr}`).toISOString() : undefined;
       const updated = await api.respondToChallenge(challenge.id, "accepted", message.trim() || undefined, scheduledAt);
       onResponded(updated);
       closeMode();
@@ -410,7 +411,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
   // "끝났으면 결과 입력 대기"). 완료 = 승패가 입력된 상태(요청: "결과보기 삭제하고 그자리에
   // 상태 배지 완료"). 무승부/미실시는 각자 알약/텍스트로 따로 표시한다.
   const isResultPending =
-    shownLatest && challenge.status === "confirmed" && schedulePassed && challenge.resultWinnerSide === null;
+    shownLatest && challenge.status === "confirmed" && resultInputOpen && challenge.resultWinnerSide === null;
   const isDoneWin =
     shownLatest && (challenge.resultWinnerSide === "creator" || challenge.resultWinnerSide === "target");
 
@@ -552,7 +553,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
       {mode === "schedule" && (
         <div className="scr-challenge-time-change-form">
           <p className="scr-challenge-inbox-message">
-            아직 시간이 정해지지 않은 도전장이에요 — 승락하며 시간을 정해주세요.
+            시간을 정하거나, 비워두면 시간 미정으로 수락돼요 (완료할 때 그 시각으로 기록).
           </p>
           <div className="scr-challenge-datetime">
             <input
@@ -575,9 +576,9 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
             <button className="scr-btn scr-btn-ghost scr-btn-sm" onClick={closeMode} disabled={busy}>취소</button>
             <button
               className="scr-btn scr-challenge-accept-btn scr-btn-sm" onClick={acceptWithSchedule}
-              disabled={busy || !dateStr || !timeStr}
+              disabled={busy}
             >
-              {busy ? <Spinner /> : "승락"}
+              {busy ? <Spinner /> : (dateStr && timeStr ? "승락" : "시간 미정 승락")}
             </button>
           </div>
         </div>
@@ -727,13 +728,6 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
 // 둔다(요청: "필터를 수락만으로 변경하고 수락한 건들만 노출"). 평소 목록은 상태와 무관하게
 // 하나로 합쳐 보여주고, 이 체크박스를 켜면 성사된(confirmed) 대결만 남긴다.
 
-// 기간 필터 — 경기 화면과 같은 패턴(전체/월 + 월 선택기), 기본은 월(요청: "너나와에
-// 기간 필터 추가 전체 월까지" + "기본은 월"). 경기 화면과 달리 "일" 단위까지는 안 쪼갠다.
-type ChallengePeriodUnit = "all" | "month";
-const PERIOD_UNIT_OPTS: { value: ChallengePeriodUnit; label: string }[] = [
-  { value: "all", label: "전체" },
-  { value: "month", label: "월" },
-];
 
 // 폐기(휴지통)된 건 — 본 목록에서는 감추고 "휴지통" 모달에만 보여준다. 서버가 거절·무응답·
 // 미실시·(레거시)취소를 모두 status="discarded"로 확정해 내려주므로 그것만 보면 된다.
@@ -866,8 +860,6 @@ export default function ChallengeScreen() {
   const [completedOpen, setCompletedOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [acceptedOnly, setAcceptedOnly] = useState(false);
-  const [periodUnit, setPeriodUnit] = useState<ChallengePeriodUnit>("month");
-  const [periodMonth, setPeriodMonth] = useState(currentMonthValue);
   const suggestions = useMemo(() => activeMemberSearchTerms(members), [members]);
 
   // 카운트다운(응답 마감)과 완료/무응답취소 같은 시간 기반 파생 상태를 1분마다 다시 그린다 —
@@ -953,19 +945,9 @@ export default function ChallengeScreen() {
     return ids;
   }, [members, searchTerms]);
 
-  // 기간 필터 — 월이면 예정 일시가 그 달에 속하는 것만. 아직 진행 중인 시간 미정 도전장
-  // (scheduledAt 없음)은 특정 달에 속한다고 볼 수 없고 지금 진행 중이라 항상 보여준다.
-  // 거절/무응답으로 끝난 시간 미정 건은 서버가 예정 일시를 요청일+1일로 확정하므로 여기서
-  // 자연히 그 달 기준으로 걸린다(=지난 달 건은 이번 달 목록에서 빠진다).
-  const periodChallenges = useMemo(() => {
-    if (periodUnit !== "month") return searchedChallenges;
-    const { from, to } = monthInputToRange(periodMonth);
-    return searchedChallenges.filter((c) => {
-      if (!c.scheduledAt) return true;
-      const d = fmt(new Date(c.scheduledAt));
-      return d >= from && d <= to;
-    });
-  }, [searchedChallenges, periodUnit, periodMonth]);
+  // 너 나와! 목록은 기간 필터 없이 항상 전체를 조회한다(요청: "기본 필터에서 기간 삭제, 무조건
+  // 전체로 조회"). 검색만 적용된 목록을 그대로 쓴다.
+  const periodChallenges = searchedChallenges;
 
   // 흐지부지 끝난 건(폐기)과 이미 완료된(done) 대결은 본 목록에서 뺀다(요청: "메인 목록에서
   // 완료된 대결 제거"). 완료 건은 아래 completedChallenges로 모아 "기록 보기" 모달에만 둔다.
@@ -1108,31 +1090,16 @@ export default function ChallengeScreen() {
         countLabel="건"
         searchValue={search}
         onSearchChange={setSearch}
-        searchPlaceholder="유저"
+        searchPlaceholder="@유저"
         suggestions={suggestions}
+        mentionTrigger
         filterPanel={
-          <>
-            {/* 기간이 먼저, 내것만이 뒤(요청: "기간이 먼저 내 것만이 뒤"). 기간 라벨은
-                전체/월 알약만 봐도 알 수 있어 뗀다(요청: "필터중 기간 라벨은 모두 제거"). */}
-            <FilterItem>
-              <PillTabs options={PERIOD_UNIT_OPTS} value={periodUnit} onChange={setPeriodUnit} aria-label="기간" />
-            </FilterItem>
-            {periodUnit === "month" && (
-              <FilterItem>
-                <input
-                  type="month" className="scr-filter-month-input"
-                  value={periodMonth} onChange={(e) => setPeriodMonth(e.target.value)}
-                  aria-label="조회할 월"
-                />
-              </FilterItem>
-            )}
-            <FilterItem>
-              <label className="scr-checkbox-field">
-                <input type="checkbox" checked={acceptedOnly} onChange={(e) => setAcceptedOnly(e.target.checked)} />
-                수락만
-              </label>
-            </FilterItem>
-          </>
+          <FilterItem>
+            <label className="scr-checkbox-field">
+              <input type="checkbox" checked={acceptedOnly} onChange={(e) => setAcceptedOnly(e.target.checked)} />
+              수락만
+            </label>
+          </FilterItem>
         }
       />
 

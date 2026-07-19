@@ -5081,25 +5081,11 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
 .scr-completed-modal { max-width: 560px; }
 .scr-completed-modal .scr-modal-head { font-weight: 800; }
 .scr-completed-modal .scr-modal-body { padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px)); }
-/* 완료 기록 카드 — 어두운 종료(.scr-challenge-card-ended) 톤을 밝은 유리로 덮고, 은은한
-   컬러 그라데이션으로 화사함을 준다. 승/패 포인트색(--win/--loss)이 그대로 살아 또렷하다. */
-.scr-completed-list .scr-challenge-card {
-  background-color: rgba(255, 255, 255, 0.055);
-  background-image: linear-gradient(135deg, rgba(120, 176, 255, 0.10) 0%, rgba(180, 140, 255, 0.08) 55%, rgba(120, 220, 190, 0.08) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 12px;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.16),
-    0 2px 12px rgba(0, 0, 0, 0.18);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-}
-.scr-light-theme .scr-completed-list .scr-challenge-card {
-  background-color: rgba(255, 255, 255, 0.62);
-  background-image: linear-gradient(135deg, rgba(90, 150, 255, 0.10) 0%, rgba(160, 110, 255, 0.08) 55%, rgba(70, 200, 160, 0.10) 100%);
-  border-color: rgba(0, 0, 0, 0.08);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 2px 12px rgba(0, 0, 0, 0.1);
-}
+/* 완료 기록 카드는 어두운 종료(.scr-challenge-card-ended) 톤 대신 진행중(active) 카드와
+   똑같은 밝은 배경으로 둔다(요청: "기록 모달 카드 구성은 진행중 카드랑 동일"). 모달 자체가
+   이미 깨끗한 유리 패널이라, 그 위의 카드가 본 목록의 진행중 카드와 동일하게 보인다. */
+.scr-completed-list .scr-challenge-card { background: rgba(255, 255, 255, 0.05); }
+.scr-light-theme .scr-completed-list .scr-challenge-card { background: rgba(255, 255, 255, 0.16); }
 /* 카드 사이 살짝 숨 쉬는 간격 — 깨끗한 목록 느낌. */
 .scr-completed-list { gap: 10px; }
 /* 기록 버튼 — 도전장(강조)과 휴지통(옅은 보조) 사이의 중간 톤 보조 버튼. */
@@ -5828,9 +5814,25 @@ html.scr-light-theme .scr-challenge-next-tag {
 }
 .scr-mreq-mention-opt:hover { background: rgba(var(--overlay-rgb), 0.08); }
 .scr-mreq-mention-name { font-size: 13.5px; font-weight: 600; }
-.scr-mreq-tag-list { font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
-/* 본문/지목 목록에서 @닉네임을 강조하는 칩. */
-.scr-mreq-tag { color: var(--point); font-weight: 700; }
+/* @자동완성으로 고른 지목 회원은 유저 칩으로 쌓인다(요청: "@태그 자동완성시 유저칩으로"). */
+.scr-mreq-chip-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.scr-mreq-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 6px 3px 4px; border-radius: 999px;
+  background: color-mix(in srgb, var(--point) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--point) 40%, transparent);
+  color: var(--text); font-size: 12.5px; font-weight: 700; white-space: nowrap;
+}
+.scr-mreq-chip .scr-avatar { border-radius: 50% !important; }
+.scr-mreq-chip-x {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 15px; height: 15px; border-radius: 50%; border: none; cursor: pointer;
+  background: rgba(var(--overlay-rgb), 0.14); color: var(--muted); padding: 0;
+}
+.scr-mreq-chip-x:hover { background: rgba(var(--overlay-rgb), 0.28); color: var(--text); }
+/* 목록 카드의 지목 칩 — 삭제 버튼 없는 작은 읽기용 칩. */
+.scr-mreq-item-targets { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 2px; }
+.scr-mreq-chip-sm { padding: 1px 8px; font-size: 11.5px; color: var(--point); background: color-mix(in srgb, var(--point) 12%, transparent); border-color: color-mix(in srgb, var(--point) 32%, transparent); }
 .scr-mreq-compose-actions { display: flex; justify-content: flex-end; gap: 8px; }
 .scr-mreq-empty { font-size: 13px; color: var(--dim); padding: 6px 2px; }
 .scr-mreq-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ThumbsUp } from "lucide-react";
+import { ThumbsUp, X } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
 import { Spinner } from "../../components/common/Feedback";
 import { useAppStore } from "../../store/appStore";
@@ -14,18 +14,6 @@ interface MatchRequestCornerProps {
   reloadSignal: number;
 }
 
-// 본문에서 @닉네임 토큰을 찾아, 지목된 회원의 닉네임은 강조 칩으로 렌더한다.
-function renderText(text: string, targetNames: Set<string>) {
-  // @뒤에 오는 이름(공백/문장부호 전까지)을 토큰으로 잡는다.
-  const parts = text.split(/(@[^\s@]+)/g);
-  return parts.map((part, i) => {
-    if (part.startsWith("@") && targetNames.has(part.slice(1))) {
-      return <span key={i} className="scr-mreq-tag">{part}</span>;
-    }
-    return <span key={i}>{part}</span>;
-  });
-}
-
 export default function MatchRequestCorner({ onFulfill, reloadSignal }: MatchRequestCornerProps) {
   const members = useAppStore((s) => s.members);
   const user = useAppStore((s) => s.user);
@@ -38,20 +26,22 @@ export default function MatchRequestCorner({ onFulfill, reloadSignal }: MatchReq
 
   const [composing, setComposing] = useState(false);
   const [text, setText] = useState("");
+  // @태그로 지목한 회원들 — 인스타 태그처럼 자동완성으로 고르면 유저 칩으로 쌓인다(요청).
   const [tagged, setTagged] = useState<Member[]>([]);
   const [submitErr, setSubmitErr] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
 
-  // @태그 후보 — 나 자신을 뺀 실제 회원. @쿼리로 닉네임/아이디 부분일치 필터.
+  // @태그 후보 — 나 자신·이미 지목한 사람을 빼고, @뒤 쿼리로 닉네임/아이디 부분일치 필터.
   const candidates = useMemo(() => {
     const q = (mentionQuery ?? "").toLowerCase();
+    const chosen = new Set(tagged.map((m) => m.id));
     return members
-      .filter((m) => m.id !== user?.id)
+      .filter((m) => m.id !== user?.id && !chosen.has(m.id))
       .filter((m) => !q || m.nickname.toLowerCase().includes(q) || m.id.toLowerCase().includes(q))
       .slice(0, 6);
-  }, [members, user?.id, mentionQuery]);
+  }, [members, user?.id, mentionQuery, tagged]);
 
   const load = useCallback(async (p: number) => {
     setLoading(true);
@@ -67,7 +57,6 @@ export default function MatchRequestCorner({ onFulfill, reloadSignal }: MatchReq
   }, []);
 
   useEffect(() => { void load(page); }, [page, load]);
-  // 부모가 들어주기/새 요청 등으로 신호를 올리면 현재 페이지를 다시 불러온다.
   useEffect(() => { if (reloadSignal > 0) void load(page); // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reloadSignal]);
 
@@ -81,16 +70,15 @@ export default function MatchRequestCorner({ onFulfill, reloadSignal }: MatchReq
     setMentionQuery(m ? m[1] : null);
   };
 
+  // 후보를 고르면 본문의 "@쿼리" 토큰은 지우고(칩으로 대체되므로 본문엔 안 남긴다) 유저 칩으로 담는다.
   const pickMention = (member: Member) => {
     const el = inputRef.current;
     const caret = el?.selectionStart ?? text.length;
-    const before = text.slice(0, caret).replace(/@([^\s@]*)$/, `@${member.nickname} `);
+    const before = text.slice(0, caret).replace(/@([^\s@]*)$/, "");
     const after = text.slice(caret);
-    const next = before + after;
-    setText(next);
+    setText(before + after);
     setMentionQuery(null);
     setTagged((prev) => (prev.some((m) => m.id === member.id) ? prev : [...prev, member]));
-    // 포커스/커서를 삽입 위치 뒤로.
     requestAnimationFrame(() => {
       el?.focus();
       const pos = before.length;
@@ -98,29 +86,22 @@ export default function MatchRequestCorner({ onFulfill, reloadSignal }: MatchReq
     });
   };
 
-  // 본문에 아직 @닉네임이 남아있는 지목만 유효 — 태그 텍스트를 지우면 자동 해제된다.
-  const activeTargets = useMemo(
-    () => tagged.filter((m) => text.includes(`@${m.nickname}`)),
-    [tagged, text],
-  );
+  const removeTag = (id: string) => setTagged((prev) => prev.filter((m) => m.id !== id));
 
-  const canSubmit = text.trim().length > 0 && activeTargets.length >= 2 && !submitting;
+  const canSubmit = text.trim().length > 0 && tagged.length >= 2 && !submitting;
+
+  const resetCompose = () => { setComposing(false); setText(""); setTagged([]); setSubmitErr(null); setMentionQuery(null); };
 
   const submit = async () => {
-    if (activeTargets.length < 2) {
+    if (tagged.length < 2) {
       setSubmitErr("@태그로 최소 두 명을 지목해주세요.");
       return;
     }
     setSubmitting(true);
     setSubmitErr(null);
     try {
-      await api.createMatchRequest({
-        text: text.trim(),
-        targetMemberIds: activeTargets.map((m) => m.id),
-      });
-      setText("");
-      setTagged([]);
-      setComposing(false);
+      await api.createMatchRequest({ text: text.trim(), targetMemberIds: tagged.map((m) => m.id) });
+      resetCompose();
       setPage(0);
       await load(0);
     } catch (e) {
@@ -134,10 +115,7 @@ export default function MatchRequestCorner({ onFulfill, reloadSignal }: MatchReq
     setBusyId(req.id);
     try {
       const updated = await api.toggleMatchRequestRecommend(req.id);
-      setData((d) => d && {
-        ...d,
-        items: d.items.map((it) => (it.id === req.id ? updated : it)),
-      });
+      setData((d) => d && { ...d, items: d.items.map((it) => (it.id === req.id ? updated : it)) });
     } catch {
       // 조용히 무시 — 다음 새로고침에 반영된다.
     } finally {
@@ -179,7 +157,7 @@ export default function MatchRequestCorner({ onFulfill, reloadSignal }: MatchReq
               ref={inputRef}
               className="scr-input scr-mreq-input"
               rows={2}
-              placeholder="@닉네임으로 상대를 지목해 대결을 요청하세요 (최소 2명)"
+              placeholder="@로 상대를 지목해 대결을 요청하세요 (최소 2명)"
               value={text}
               onChange={onTextChange}
               maxLength={200}
@@ -187,7 +165,7 @@ export default function MatchRequestCorner({ onFulfill, reloadSignal }: MatchReq
             {mentionQuery !== null && candidates.length > 0 && (
               <div className="scr-mreq-mention-drop">
                 {candidates.map((m) => (
-                  <button key={m.id} type="button" className="scr-mreq-mention-opt" onClick={() => pickMention(m)}>
+                  <button key={m.id} type="button" className="scr-mreq-mention-opt" onMouseDown={(e) => e.preventDefault()} onClick={() => pickMention(m)}>
                     <Avatar member={m} size={22} />
                     <span className="scr-mreq-mention-name">{m.nickname}</span>
                   </button>
@@ -195,18 +173,22 @@ export default function MatchRequestCorner({ onFulfill, reloadSignal }: MatchReq
               </div>
             )}
           </div>
-          {activeTargets.length > 0 && (
-            <div className="scr-mreq-tag-list">
-              지목: {activeTargets.map((m) => (
-                <span key={m.id} className="scr-mreq-tag">@{m.nickname}</span>
+          {tagged.length > 0 && (
+            <div className="scr-mreq-chip-row">
+              {tagged.map((m) => (
+                <span key={m.id} className="scr-mreq-chip">
+                  <Avatar member={m} size={16} />
+                  {m.nickname}
+                  <button type="button" className="scr-mreq-chip-x" onClick={() => removeTag(m.id)} aria-label={`${m.nickname} 지목 해제`}>
+                    <X size={11} />
+                  </button>
+                </span>
               ))}
             </div>
           )}
           {submitErr && <div className="scr-err">{submitErr}</div>}
           <div className="scr-mreq-compose-actions">
-            <button type="button" className="scr-btn scr-btn-ghost scr-btn-sm" onClick={() => { setComposing(false); setText(""); setTagged([]); setSubmitErr(null); }}>
-              취소
-            </button>
+            <button type="button" className="scr-btn scr-btn-ghost scr-btn-sm" onClick={resetCompose}>취소</button>
             <button type="button" className="scr-btn scr-btn-sm scr-btn-primary scr-btn-primary-solid" disabled={!canSubmit} onClick={() => void submit()}>
               {submitting ? <Spinner size={14} /> : "요청 올리기"}
             </button>
@@ -222,40 +204,44 @@ export default function MatchRequestCorner({ onFulfill, reloadSignal }: MatchReq
         <div className="scr-mreq-empty">아직 올라온 대결 요청이 없어요.</div>
       ) : (
         <ul className="scr-mreq-list">
-          {items.map((req) => {
-            const targetNames = new Set(req.targets.map((t) => t.nickname));
-            return (
-              <li key={req.id} className="scr-mreq-item">
-                <div className="scr-mreq-item-main">
-                  <div className="scr-mreq-item-author">
-                    <Avatar member={{ id: req.author.memberId, nickname: req.author.nickname, avatar: req.author.avatar }} size={24} />
-                    <span className="scr-mreq-item-author-name">{req.author.nickname}</span>
+          {items.map((req) => (
+            <li key={req.id} className="scr-mreq-item">
+              <div className="scr-mreq-item-main">
+                <div className="scr-mreq-item-author">
+                  <Avatar member={{ id: req.author.memberId, nickname: req.author.nickname, avatar: req.author.avatar }} size={24} />
+                  <span className="scr-mreq-item-author-name">{req.author.nickname}</span>
+                </div>
+                {req.text && <p className="scr-mreq-item-text">{req.text}</p>}
+                {req.targets.length > 0 && (
+                  <div className="scr-mreq-item-targets">
+                    {req.targets.map((t) => (
+                      <span key={t.memberId} className="scr-mreq-chip scr-mreq-chip-sm">@{t.nickname}</span>
+                    ))}
                   </div>
-                  <p className="scr-mreq-item-text">{renderText(req.text, targetNames)}</p>
-                </div>
-                <div className="scr-mreq-item-actions">
-                  <button
-                    type="button"
-                    className={cx("scr-mreq-rec-btn", req.recommendedByMe && "scr-mreq-rec-btn-on")}
-                    onClick={() => void toggleRecommend(req)}
-                    disabled={busyId === req.id}
-                    aria-pressed={req.recommendedByMe}
-                  >
-                    <ThumbsUp size={14} /> {req.recommendCount}
+                )}
+              </div>
+              <div className="scr-mreq-item-actions">
+                <button
+                  type="button"
+                  className={cx("scr-mreq-rec-btn", req.recommendedByMe && "scr-mreq-rec-btn-on")}
+                  onClick={() => void toggleRecommend(req)}
+                  disabled={busyId === req.id}
+                  aria-pressed={req.recommendedByMe}
+                >
+                  <ThumbsUp size={14} /> {req.recommendCount}
+                </button>
+                {req.mine ? (
+                  <button type="button" className="scr-btn scr-btn-ghost scr-btn-sm scr-mreq-take-btn" onClick={() => void removeOwn(req)} disabled={busyId === req.id}>
+                    내리기
                   </button>
-                  {req.mine ? (
-                    <button type="button" className="scr-btn scr-btn-ghost scr-btn-sm scr-mreq-take-btn" onClick={() => void removeOwn(req)} disabled={busyId === req.id}>
-                      내리기
-                    </button>
-                  ) : req.iAmTarget ? (
-                    <button type="button" className="scr-btn scr-btn-sm scr-btn-primary scr-btn-primary-solid scr-mreq-take-btn" onClick={() => onFulfill(req)}>
-                      들어주기
-                    </button>
-                  ) : null}
-                </div>
-              </li>
-            );
-          })}
+                ) : req.iAmTarget ? (
+                  <button type="button" className="scr-btn scr-btn-sm scr-btn-primary scr-btn-primary-solid scr-mreq-take-btn" onClick={() => onFulfill(req)}>
+                    들어주기
+                  </button>
+                ) : null}
+              </div>
+            </li>
+          ))}
         </ul>
       )}
 
