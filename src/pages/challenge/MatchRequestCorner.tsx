@@ -298,7 +298,7 @@ export default function MatchRequestCorner({ onFulfill, reloadSignal }: MatchReq
       ) : err ? (
         <div className="scr-err">{err}</div>
       ) : items.length === 0 ? (
-        <div className="scr-mreq-empty">아직 올라온 대결 요청이 없어요. 첫 요청을 올려보세요! ✨</div>
+        <div className="scr-mreq-empty">요청 없음</div>
       ) : (
         <ul className="scr-mreq-list">
           {items.map((req) => (

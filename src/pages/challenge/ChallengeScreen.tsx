@@ -1093,9 +1093,8 @@ export default function ChallengeScreen() {
         countLabel="건"
         searchValue={search}
         onSearchChange={setSearch}
-        searchPlaceholder="@로 유저 검색"
+        searchPlaceholder="유저 검색"
         suggestions={suggestions}
-        mentionTrigger
       />
 
       {error && <div className="scr-err">{error}</div>}
