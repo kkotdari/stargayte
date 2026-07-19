@@ -314,7 +314,7 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
   filter: drop-shadow(0 0 18px rgba(var(--point-rgb), 0.35)) drop-shadow(0 0 4px rgba(255,255,255,0.25));
 }
 .scr-auth-logo-text {
-  font-weight: 900; color: var(--text); font-size: 30px; letter-spacing: 0.04em; text-align: center;
+  font-weight: 900; color: var(--text); font-size: 28px; letter-spacing: 0.04em; text-align: center;
   text-shadow: 0 0 18px rgba(var(--point-rgb), 0.45), 0 0 4px rgba(255,255,255,0.3);
 }
 .scr-auth-card { width: 100%; max-width: 342px; z-index: 1; }
@@ -364,7 +364,7 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
 .scr-input-invalid { border-color: var(--loss); }
 .scr-err { color: var(--loss); font-size: 16px; background: rgba(240,99,122,0.12); border: 1px solid rgba(240,99,122,0.4); padding: 8px 10px; }
 .scr-success { color: var(--win); font-size: 16px; display: flex; align-items: center; gap: 8px; padding: 10px; background: rgba(78,222,142,0.12); border: 1px solid rgba(78,222,142,0.4); }
-.scr-hint { font-size: 18px; color: var(--dim); text-align: center; } /* 모든 힌트류 문구를 이 크기로 통일한다(16.8px는 너무 커서 살짝 줄임) */
+.scr-hint { font-size: 20px; color: var(--dim); text-align: center; } /* 모든 힌트류 문구를 이 크기로 통일한다(16.8px는 너무 커서 살짝 줄임) */
 .scr-hint-left { text-align: left; }
 .scr-hint-right { text-align: right; }
 /* 그냥 힌트보다 눈에 띄어야 하는 안내(예: 리플레이 제외 기능) — 화려하게 꾸미지 않고
@@ -652,7 +652,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-photo-close:hover { background: var(--panel); color: var(--text); }
 
 /* ===== boot ===== */
-.scr-boot { min-height: 40vh; display: flex; align-items: center; justify-content: center; gap: 10px; color: var(--muted); font-size: 18px; }
+.scr-boot { min-height: 40vh; display: flex; align-items: center; justify-content: center; gap: 10px; color: var(--muted); font-size: 20px; }
 
 /* ===== modal ===== */
 /* touch-action: none — 배경(오버레이) 쪽 터치는 브라우저가 아예 스크롤 제스처 대상으로
@@ -719,7 +719,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    잡고 있어 제목 위아래 여백은 이미 충분하므로, 예전의 padding-bottom 12 + margin-bottom
    14(합 26px)는 제목과 본문 사이가 휑하게 비어 보였다(요청: "모든 모달에서 헤더 부분
    상하 여백이 너무 크다"). */
-.scr-modal-head { display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 18px; padding-bottom: 2px; margin-bottom: 8px; color: var(--text); flex-shrink: 0; }
+.scr-modal-head { display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 20px; padding-bottom: 2px; margin-bottom: 8px; color: var(--text); flex-shrink: 0; }
 /* 닫기(X) 버튼은 테두리 없이 단순하게, 대신 아이콘 획을 두껍게 해서 존재감은 유지한다.
    기본 아이콘 버튼(약간 둥근 사각)과 달리 완전한 원형으로 — 다른 동그란 버튼들과 통일. */
 /* svg width/height는 CSS가 각 모달의 JSX에 박힌 size={..} 속성보다 우선한다 — 여기
@@ -813,7 +813,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    보였다. 모바일 헤더(아래 반응형 규칙)도 같은 이유로 이미 center를 쓰고 있어 통일. */
 .scr-header-inner { max-width: var(--content-max); margin: 0 auto; display: flex; align-items: center; gap: 20px; padding: 14px 24px; flex-wrap: wrap; }
 .scr-brand { display: flex; align-items: baseline; gap: 8px; background: transparent; border: none; padding: 0; cursor: pointer; font-family: inherit; }
-.scr-brand-mark { font-weight: 900; color: var(--text); font-size: 24px; letter-spacing: 0.02em; }
+.scr-brand-mark { font-weight: 900; color: var(--text); font-size: 28px; letter-spacing: 0.02em; }
 /* 관리자가 "이미지 설정"에서 홈 로고를 텍스트 대신 이미지로 바꿔둔 경우 — 텍스트 로고와
    같은 자리에 비슷한 높이로 들어가도록 */
 .scr-brand-logo-img { height: 22px; width: auto; display: block; }
@@ -833,7 +833,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 /* 데스크톱 상단 메뉴명 — 한때 1.5배(24px)까지 키웠다가 너무 커 보인다는 피드백으로
    다시 줄인다(요청: "PC 헤더 메뉴 크기 축소"). 드로어(.scr-drawer-nav)는 이미 별도로
    튜닝된 크기(14.5px)가 있어 여기 영향을 안 받게 범위를 좁힌다. */
-.scr-nav-desktop .scr-nav-tab { font-size: 18px; }
+.scr-nav-desktop .scr-nav-tab { font-size: 20px; }
 
 /* ===== 관리자 전용 화면 드롭다운 (AdminMenu) ===== */
 /* 래핑 div가 부모(.scr-nav/.scr-drawer-nav/.scr-mobile-tabbar)의 flex 자식 크기 계산에
@@ -938,7 +938,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    미디어쿼리가 이 값을 덮어쓴다). */
 .scr-main { max-width: var(--content-max); margin: 0 auto; padding: 34px 20px 96px; position: relative; z-index: 1; }
 .scr-screen { display: flex; flex-direction: column; gap: 10px; }
-.scr-title { font-weight: 800; font-size: 24px; letter-spacing: 0.01em; margin: 0; color: var(--text); }
+.scr-title { font-weight: 800; font-size: 28px; letter-spacing: 0.01em; margin: 0; color: var(--text); }
 /* baseline 정렬 — 타이틀 옆에 크기가 다른 힌트/배지가 와도(전적통계의 "PC로 보면
    더 예뻐요" 등) 글자 베이스라인이 나란히 맞아 자연스럽게 붙어 보인다. */
 .scr-title-row { display: flex; align-items: baseline; gap: 8px; }
@@ -950,7 +950,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    타이틀 글자 바닥과 나란히 붙어 보인다. 필터 바(FilterBar, .scr-filter-bar)는 이
    타이틀 줄과 분리된 별도 블록이라 여기서 다루지 않는다. */
 .scr-v2-title-actions { display: flex; align-items: center; gap: 6px; margin-left: auto; }
-.scr-v2-match-type-filter .scr-checkbox-field { font-size: 18px; white-space: nowrap; }
+.scr-v2-match-type-filter .scr-checkbox-field { font-size: 20px; white-space: nowrap; }
 .scr-v2-match-type-filter .scr-checkbox-field input[type="radio"] { width: 14px; height: 14px; }
 
 /* v2(개발중) 디자인 컨셉 — 카드형 "컨텐츠 프레임"(테두리+반투명 배경 패널) 없이, 타이틀 +
@@ -986,7 +986,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    --dim보다 밝은 --muted로. */
 /* 월 라벨 — 이제 타이틀 h1 안이 아니라 아래 서브행에 있으므로 em(상대) 대신 고정 크기로
    또렷하게 둔다(예전 0.825em은 h1 22px 기준 ~18px였다). */
-.scr-rank-title-month { font-size: 18px; font-weight: 700; color: var(--muted); margin-left: 8px; }
+.scr-rank-title-month { font-size: 20px; font-weight: 700; color: var(--muted); margin-left: 8px; }
 /* 월 옆 좌우 이동 화살표(요청: "월 옆에 좌우 이동 아이콘 버튼(심플)"). 타이틀 글자와 세로
    가운데로 맞춘 인라인 플렉스. 화살표 자체가 좌/우 구분을 주므로 별도 배경 없이 심플하게,
    호버 때만 살짝 배경을 준다. 월 라벨은 nav가 간격을 관리하므로 자체 margin은 지운다. */
@@ -1016,7 +1016,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 /* 경기 등록 화면 — 등록 버튼 아래에 리플레이 위치 안내 링크를 세로로 쌓는다(요청). */
 .scr-v2-primary-row-col { flex-direction: column; align-items: center; gap: 6px; }
 .scr-v2-primary-row .scr-btn {
-  font-size: 18px; /* 13.5px * 1.2 */
+  font-size: 20px; /* 13.5px * 1.2 */
   padding: 8.4px 14.4px; /* 7px/12px * 1.2 */
   min-height: 38px; /* --field-h-sm(32px) * 1.2 */
 }
@@ -1118,7 +1118,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 /* table-layout:fixed로 컬럼 폭을 고정 비율로 잡는다(요청: "프로필 컬럼이 들쑥날쑥인데
    고정폭 비율") — auto는 행마다 이름 길이에 따라 컬럼 폭이 다시 계산돼 승리/패배 칸이
    행마다 흔들렸다. */
-.scr-weight-table { width: 100%; border-collapse: collapse; font-size: 18px; table-layout: fixed; }
+.scr-weight-table { width: 100%; border-collapse: collapse; font-size: 20px; table-layout: fixed; }
 .scr-weight-table th {
   text-align: center; font-size: 14px; font-weight: 700; color: var(--muted);
   padding: 7px 8px; border-bottom: 1px solid var(--line-soft);
@@ -1161,7 +1161,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    문제, 특히 모바일). 칸이 좁으면 접는 대신 글자 크기를 줄여 한 줄을 지킨다. */
 .scr-period-value {
   display: inline-block; text-align: center; animation: scr-period-swap .22s ease;
-  font-size: 18px; white-space: nowrap;
+  font-size: 20px; white-space: nowrap;
 }
 .scr-rank-period-note { font-size: 14px; }
 /* 목록 패널 맨 위 타이틀 — 위: "월간랭킹(조건)"(다른 목록 패널의 .scr-list-head와 같은
@@ -1465,7 +1465,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   /* 원래는 행의 다른 칸들과 같은 크기(상속)였는데, 닉네임을 눈에 잘 띄게 키웠다가(19px)
      너무 커 보인다는 피드백으로 그 값의 80%(20% 축소)로 다시 낮춘다. */
   background: transparent; border: none; padding: 0; font-family: inherit; cursor: pointer;
-  color: var(--text); font-weight: 600; text-align: left; min-width: 0; font-size: 18px;
+  color: var(--text); font-weight: 600; text-align: left; min-width: 0; font-size: 20px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .scr-stat-name-btn:hover { color: var(--point); }
@@ -1704,7 +1704,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    다른 곳에도 많이 쓰여서 구분되게 골드 톤을 따로 쓴다. */
 .scr-rank-badge { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; justify-self: start; }
 .scr-rank-num {
-  font-family: var(--font-mono); font-size: 26px; font-weight: 700; font-style: italic; color: var(--text);
+  font-family: var(--font-mono); font-size: 28px; font-weight: 700; font-style: italic; color: var(--text);
   font-variant-numeric: tabular-nums;
 }
 .scr-rank-delta { display: inline-flex; align-items: center; gap: 1px; font-size: 12px; font-weight: 700; font-style: italic; }
@@ -1736,13 +1736,13 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-rank-crown {
   display: flex; flex-direction: column; align-items: center; gap: 3px; line-height: 1;
 }
-.scr-rank-crown-icon { font-size: 18px; }
+.scr-rank-crown-icon { font-size: 20px; }
 .scr-rank-crown-label { font-size: 12px; font-weight: 700; white-space: nowrap; }
 /* 1위=밝은 금색, 2위=은색, 3위=동색(청동) — 이모지 자체는 고유색 그림이라 color로는
    안 먹히니 filter로 톤을 바꾼다. 라벨 글자색은 그와 짝을 맞춘다. */
-.scr-rank-crown-1 .scr-rank-crown-icon { font-size: 22px; filter: saturate(1.15) brightness(1.08); }
+.scr-rank-crown-1 .scr-rank-crown-icon { font-size: 20px; filter: saturate(1.15) brightness(1.08); }
 .scr-rank-crown-1 .scr-rank-crown-label { color: #ffd24d; }
-.scr-rank-crown-2 .scr-rank-crown-icon { font-size: 18px; filter: grayscale(0.65) brightness(1.1); }
+.scr-rank-crown-2 .scr-rank-crown-icon { font-size: 20px; filter: grayscale(0.65) brightness(1.1); }
 .scr-rank-crown-2 .scr-rank-crown-label { color: #c3c9d1; }
 .scr-rank-crown-3 .scr-rank-crown-icon { font-size: 16px; filter: saturate(0.5) brightness(0.9); }
 .scr-rank-crown-3 .scr-rank-crown-label { color: #b98a5a; }
@@ -1874,7 +1874,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-rank-table-panel-v2 .scr-rank-name-wrap { min-width: 0; justify-content: flex-start; }
 /* 프사와 이름이 이 행의 주인공이라 시원하게 키운다 — 나머지(순위/전적)는 곁들이다. */
 .scr-rank-table-panel-v2 .scr-rank-name {
-  font-size: 26px; font-weight: 700;
+  font-size: 28px; font-weight: 700;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 /* 전적(v2)과 그 아래 최근 경기 한 줄을 함께 담는 칸 — 이 wrap 자체가 그리드 마지막
@@ -1912,7 +1912,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 /* 순위 변동(화살표+숫자) 배지 — v1보다 v2만 크게(11px) 키운다. */
 .scr-rank-table-panel-v2 .scr-rank-delta { font-size: 14px; }
 /* 승률(주 지표)만 남아서 그 자체로 크고 진하게 — 자기 칸 안에서 오른쪽 정렬. */
-.scr-rank-stat-primary { font-size: 22px; font-weight: 600; color: var(--text); }
+.scr-rank-stat-primary { font-size: 28px; font-weight: 600; color: var(--text); }
 .scr-rank-stat-primary-cell { justify-self: end; }
 /* 공동순위(바로 위와 같은 순위)는 구분선만 없애는 게 아니라 그 사이 간격도 좁혀서
    같은 그룹으로 보이게 한다. */
@@ -2068,7 +2068,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-team-rank-stats { align-self: start; }
 /* 승점은 이 랭킹의 1순위 정렬 기준이라 개인전의 승률(20px)보다도 크게 — 팀 카드에서 가장
    먼저 읽혀야 하는 수다. 전적은 그 근거라 그다음. */
-.scr-team-rank-row-inner .scr-rank-stat-primary { font-size: 32px; }
+.scr-team-rank-row-inner .scr-rank-stat-primary { font-size: 28px; }
 /* 구성원 칸은 유리판에 그대로 녹아들어야 한다 — 테두리도, 배경도, 마우스를 올렸을 때의
    반응도 없다. 팀 행은 눌러서 들어갈 상세 화면 자체가 없으므로(클릭 대상이 아니다) 호버
    효과가 있으면 눌리는 줄 알고 헛클릭하게 된다. */
@@ -2120,7 +2120,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   padding: 2px 4px; margin: -2px -4px;
 }
 .scr-team-rank-stats { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; justify-self: end; }
-.scr-team-rank-record { font-size: 18px; color: var(--dim); white-space: nowrap; }
+.scr-team-rank-record { font-size: 20px; color: var(--dim); white-space: nowrap; }
 @media (max-width: 640px) {
   .scr-rank-table-panel-v2 .scr-team-rank-row { padding: 7px 0; }
   /* PC와 같은 이유로 되돌린다 — 일대일 행의 모바일 순위 칸(44px)과 같은 폭, 왼쪽 정렬.
@@ -2136,7 +2136,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   .scr-team-rank-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); justify-content: stretch; gap: 4px 4px; }
   .scr-team-rank-name { font-size: 16px; }
   .scr-team-rank-record { font-size: 14px; }
-  .scr-team-rank-row-inner .scr-rank-stat-primary { font-size: 24px; }
+  .scr-team-rank-row-inner .scr-rank-stat-primary { font-size: 28px; }
   /* 프사도 한 치수 줄여 닉네임이 들어설 자리를 만든다(Avatar가 인라인 style로 크기를 박으므로
      !important가 필요하다 — .scr-rank-table-panel-v2 .scr-avatar의 border-radius와 같은 이유). */
   .scr-team-rank-member .scr-avatar { width: 30px !important; height: 30px !important; }
@@ -2457,7 +2457,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    더 준다. */
 .scr-match-search-row { display: flex; justify-content: center; margin-bottom: 10px; }
 /* 목록 위 소타이틀(요청: 경기 화면 "경기 목록"). */
-.scr-v2-subheading { margin: 0; font-size: 18px; font-weight: 800; color: var(--text); letter-spacing: 0.02em; }
+.scr-v2-subheading { margin: 0; font-size: 20px; font-weight: 800; color: var(--text); letter-spacing: 0.02em; }
 /* 라디오(전체/월/주)+정렬토글 / 이전버튼 / 날짜표시 / 다음버튼 — 4개 영역을 각각 고정
    폭 칸으로 나눈 그리드. 각 칸 폭이 날짜 표시 내용(예: "26년 6월" ↔ "26년 12월 5주")과
    무관하게 고정이라 옆 버튼이 밀리는 흔들림이 없다. */
@@ -2478,7 +2478,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    넘치는 쪽을 택한다(넘치는 건 최소한 안 겹쳐서 읽을 수는 있다). */
 .scr-period-unit-controls { display: flex; align-items: center; gap: 10px; min-width: max-content; }
 .scr-period-unit-radios { flex-wrap: nowrap; gap: 4px 10px; }
-.scr-period-unit-radios .scr-checkbox-field { font-size: 18px; white-space: nowrap; }
+.scr-period-unit-radios .scr-checkbox-field { font-size: 20px; white-space: nowrap; }
 .scr-period-unit-radios .scr-checkbox-field input[type="radio"] { width: 14px; height: 14px; }
 /* 기간 라디오 옆 최신순/오래된순 토글 — 좌우 화살표(scr-rank-period-nav)와 같은 톤. */
 /* 다른 화면의 동그란 쉐도우 버튼(예: 아바타 편집, 컴퓨터 지정)과 같은 톤 — 테두리 없이
@@ -2564,7 +2564,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-field-label-group { display: flex; align-items: center; gap: 8px; min-width: 0; }
 /* 인풋 안 글자(16px, 아래 .scr-list-search-input 등 공용 규칙)와 같은 크기로 맞춘다 —
    13px는 옆 인풋 텍스트보다 눈에 띄게 작아 보인다는 피드백. */
-.scr-field-label-text { flex-shrink: 0; font-size: 18px; font-weight: 700; color: var(--muted); white-space: nowrap; }
+.scr-field-label-text { flex-shrink: 0; font-size: 20px; font-weight: 700; color: var(--muted); white-space: nowrap; }
 /* 유저 검색칸 — 타이틀+버튼과 한 툴바를 나눠 쓰는 처지라, 기간 필터(라디오/이전·다음/
    날짜) 쪽에 자리를 더 내주기 위해 폭을 좁게 잡는다(160~260px, 화면이 더 좁아지면 그
    폭 안에서 줄어듦). 모바일(아래 미디어쿼리)은 줄 전체 폭을 그대로 쓴다. */
@@ -2627,7 +2627,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   /* 칩이 늘어나면(여러 명 검색) height:auto로 그 위로 자연스럽게 자란다. 배경/테두리는
      위 공용 규칙(흰 배경+오목한 그림자)이 이미 정하므로 여기서 다시 var(--input-bg)로
      덮어쓰지 않는다. */
-  min-height: var(--field-h); height: auto; width: 100%; font-size: 18px; padding: 9px 12px;
+  min-height: var(--field-h); height: auto; width: 100%; font-size: 20px; padding: 9px 12px;
   border-radius: var(--radius-sm);
   transition: border-color .15s;
 }
@@ -2688,9 +2688,9 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    박스(.scr-search-chip-box)가 이미 그려주니 여긴 완전히 투명하게. */
 .scr-search-chip-input {
   flex: 1 0 60px; min-width: 60px; background: transparent; border: none; outline: none;
-  color: var(--text); font-family: inherit; font-size: 18px; padding: 2px 0; line-height: 1;
+  color: var(--text); font-family: inherit; font-size: 20px; padding: 2px 0; line-height: 1;
 }
-.scr-search-chip-input::placeholder { color: var(--dim); font-size: 18px; }
+.scr-search-chip-input::placeholder { color: var(--dim); font-size: 20px; }
 /* v2는 더 이상 타이틀+필터바가 카드 위에 sticky로 쌓이는 패널 구조가 아니다(디자인
    컨셉 변경 — 타이틀/필터바는 툴바로 빠지고 컨텐츠 프레임 자체가 없어짐) — 날짜 줄은
    스크롤하면 그 위에 쌓일 게 없으니 스크롤 컨테이너(#scroll-root) 맨 위에 바로 붙는다.
@@ -2880,7 +2880,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-mt-player-hl .scr-mt-name { font-weight: 800; color: var(--bar-text); }
 .scr-mt-player .scr-race-badge-letter { flex-shrink: 0; }
 /* 각 팀 아래 승/패 — 팀 칸과 같은 열에서 가운데 정렬(요청). 승은 연두, 패는 붉은 계열. */
-.scr-match-trow-outcome { font-size: 18px; font-weight: 800; text-align: center; min-width: 28px; padding: 0 4px; }
+.scr-match-trow-outcome { font-size: 20px; font-weight: 800; text-align: center; min-width: 28px; padding: 0 4px; }
 /* 행을 눌러 펼치기 전 기본(접힌) 상태 — 맵/시간 줄 아래 "누구 외 N명  승  패  누구 외
    N명" 한 줄만 남긴다(요청: "경기목록은 기본적으로 접힌상태로 노출... 클릭하면
    펼쳐지면서 원래대로 케밥메뉴, 등록자, 전체 로스터 등이 노출됨"). 팀 요약칸은 남는
@@ -3042,7 +3042,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 }
 .scr-team-player-highlight .scr-team-name { font-weight: 800; color: var(--bar-text); }
 /* 승/패 표시는 이 표에서 가장 먼저 눈에 들어와야 하는 값이라 닉네임(13px)보다 뚜렷하게 크게 둔다. */
-.scr-team-outcome { flex-shrink: 0; text-align: center; font-size: 18px; font-weight: 800; min-width: 14px; position: relative; }
+.scr-team-outcome { flex-shrink: 0; text-align: center; font-size: 20px; font-weight: 800; min-width: 14px; position: relative; }
 /* 이긴 팀 표시는 패(빨강 계열)와 대비되게 연두색(--win)을 쓴다 — 승만 기본 글자색이면
    패 옆에서 대비가 안 산다. */
 .scr-list-vs { grid-area: vs; align-self: center; color: var(--text); font-size: 14px; font-weight: 800; letter-spacing: 0.04em; padding: 0 2px; }
@@ -3467,8 +3467,8 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    저해상도 티가 나서 깨져 보이므로. Avatar가 인라인 style로 크기를 정해서 !important 필요. */
 @media (min-width: 768px) {
   .scr-avatar-pick .scr-avatar { width: 84px !important; height: 84px !important; }
-  .scr-avatar-pick .scr-avatar-fallback { font-size: 37px !important; }
-  .scr-member-detail-name { font-size: 22px; }
+  .scr-avatar-pick .scr-avatar-fallback { font-size: 36px !important; }
+  .scr-member-detail-name { font-size: 20px; }
   .scr-member-detail-tag { font-size: 16px; }
 }
 @media (max-width: 720px) {
@@ -3511,12 +3511,12 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
      원형 강제 오버라이드와 같은 패턴). */
   /* 로고를 살짝 줄여서(30px→26px) 그만큼 확보한 가로 공간을 닉네임 쪽에 돌려준다. */
   .scr-brand-logo-img { height: 26px; }
-  .scr-brand-mark { font-size: 26px; }
+  .scr-brand-mark { font-size: 28px; }
   .scr-user-chip .scr-avatar { width: 34px !important; height: 34px !important; }
   .scr-user-name { font-size: 20px; }
 }
 @media (max-width: 480px) {
-  .scr-title { font-size: 26px; }
+  .scr-title { font-size: 28px; }
 
   /* 날짜 칸 패딩/보조 아이콘만 여기서 줄이고, 실제 글자 크기는 파일 끝 모바일 확대방지
      블록 근처의 .scr-df-input 전용 규칙에서 소스 순서상 확실히 이기도록 정한다 */
@@ -3588,7 +3588,7 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-modal-rank-detail .scr-modal-body > * { flex-shrink: 0; }
 .scr-rank-detail-who { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
 .scr-rank-detail-who-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.scr-rank-detail-name { font-size: 18px; font-weight: 700; color: var(--text); }
+.scr-rank-detail-name { font-size: 20px; font-weight: 700; color: var(--text); }
 /* 차트(svg)의 viewBox 비율(300:140)과 똑같은 aspect-ratio를 로딩/기록없음 상태에도
    미리 잡아둬서, 데이터가 도착해 실제 차트로 바뀌는 순간 모달 높이가 갑자기 늘어나
    보이지 않게 한다 — 항상 최종 크기로 열린 것처럼 보인다. */
@@ -4095,7 +4095,7 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-modal-team-matches .scr-match-list-panel-v2 .scr-match-date-head { top: 0; }
 /* 배경과 안 섞이게 하는 역할은 .scr-modal의 그라데이션 테두리(다크)/반사광+그림자
    (라이트)가 그대로 맡는다 — 얼럿창도 다른 모달과 같은 테두리를 쓴다. */
-.scr-confirm-head { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 18px; margin-bottom: 10px; color: var(--text); }
+.scr-confirm-head { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 20px; margin-bottom: 10px; color: var(--text); }
 .scr-confirm-icon { color: var(--muted); flex-shrink: 0; }
 .scr-confirm-msg { font-size: 16px; color: var(--muted); line-height: 1.6; margin: 0 0 16px; }
 
@@ -4343,7 +4343,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
   background-repeat: no-repeat; background-position: bottom; background-size: 100% 1px;
 }
 .scr-drawer-user .scr-avatar { border-radius: 50% !important; }
-.scr-drawer-user-name { font-weight: 700; font-size: 18px; }
+.scr-drawer-user-name { font-weight: 700; font-size: 20px; }
 .scr-drawer-user-tag { font-size: 14px; color: var(--dim); }
 .scr-drawer-nav { display: flex; flex-direction: column; gap: 4px; }
 /* border-radius를 활성 반전 블록(.scr-nav-tab-active, 4px)과 똑같이 맞춘다 — 다르면
@@ -4370,7 +4370,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
 .scr-drawer-actions .scr-btn { justify-content: flex-start; border-color: transparent; }
 /* 테마 바꾸기/내 정보/로그아웃/메뉴 닫기 전부 1.2배 키운다 — 한 그룹인데 "메뉴 닫기"만
    작으면 어색해 보인다는 피드백으로 전체를 통일했다. */
-.scr-drawer-actions .scr-btn { font-size: 18px; } /* 13.5px * 1.2 */
+.scr-drawer-actions .scr-btn { font-size: 20px; } /* 13.5px * 1.2 */
 
 /* 반응형: 데스크톱 네비 숨기고 하단 탭바 노출 */
 @media (max-width: 860px) {
@@ -4691,7 +4691,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
 .scr-status-withdrawn { color: var(--dim); border-color: var(--line); }
 .scr-status-admin { color: var(--point); border-color: var(--point); }
 
-.scr-member-detail-name { font-size: 18px; font-weight: 700; }
+.scr-member-detail-name { font-size: 20px; font-weight: 700; }
 .scr-member-detail-tag { font-size: 16px; color: var(--dim); margin-top: 2px; }
 .scr-member-detail-resize { display: inline-flex; align-items: center; gap: 4px; font-size: 14px; margin-top: 6px; }
 .scr-detail-list { display: flex; flex-direction: column; gap: 6px; margin: 14px 0; }
@@ -4780,7 +4780,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
    배경 위 인라인으로 바뀌면서(요청: "필터 글라스 패널 제거") 그 고정색이 다크 테마의
    어두운 배경 위에서 도리어 안 보였다 — 테마 변수(--muted/--text/--point)를 쓰는 기본
    체크박스 스타일 그대로 둬서 다크/라이트 모두 읽히게 한다. */
-.scr-usermap-table-v2 { display: flex; flex-direction: column; font-size: 18px; } /* 12.5px * 1.2 */
+.scr-usermap-table-v2 { display: flex; flex-direction: column; font-size: 20px; } /* 12.5px * 1.2 */
 
 /* 컴퓨터 아이디 목록 — 메인 매핑 목록과 분리된 단순 리스트(요청). 배틀태그가 없어 회원
    매핑 대상이 아니므로, 이름만 등록 최근순으로 나열한다. */
@@ -4833,7 +4833,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
 /* 헤더 행 — 디자인 랭귀지: (1) 그리드 헤더 행은 본문보다 굵고 크게, (2) 헤더 아래
    구분선은 행 사이 선보다 더 두껍고 진하게 — 헤더와 본문 사이 경계가 가장 또렷해야 한다. */
 .scr-usermap-row-head {
-  font-size: 18px; font-weight: 700; color: var(--text); /* 13.5px * 1.2 */
+  font-size: 20px; font-weight: 700; color: var(--text); /* 13.5px * 1.2 */
   padding-top: 8px; padding-bottom: 8px; border-bottom: 2px solid rgba(255, 255, 255, 0.5);
 }
 .scr-light-theme .scr-usermap-row-head { border-bottom-color: rgba(var(--divider-tint), 0.5); }
@@ -4843,7 +4843,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
    담는다. 아이디가 길면 버튼 자리를 남기고 이 안에서만 줄어들며(min-width:0)
    말줄임표로 잘린다. */
 .scr-usermap-raw-name-wrap { display: flex; align-items: center; justify-content: center; gap: 6px; min-width: 0; }
-.scr-usermap-raw-name { font-size: 18px; font-weight: 700; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; } /* 12.5px * 1.2 */
+.scr-usermap-raw-name { font-size: 20px; font-weight: 700; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; } /* 12.5px * 1.2 */
 /* 예전엔 이 칸의 자식(선택 버튼 세트 or 현재값 칩 + 취소 X 버튼)이 그냥 block으로
    쌓여서, 좁은 화면에서 버튼 세트 내부는 nowrap이라 넘치고 X 버튼은 다음 줄로 밀려
    삐져나온 것처럼 보였다 — 이 칸 자체를 flex-wrap으로 만들어 내용물이 항상 나란히,
@@ -5035,7 +5035,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
    떨어뜨린다(요청: 갭 2.5배 — .scr-screen gap 10px + 이 margin으로 확보). 크기는 다른
    소제목(.scr-v2-subheading, 16px)과 맞춘다(요청: "다른 소제목들에 비해 큼. 맞춰줘"). */
 .scr-challenge-list-heading {
-  margin: 54px 0 0; font-size: 18px; font-weight: 800; color: var(--text);
+  margin: 54px 0 0; font-size: 20px; font-weight: 800; color: var(--text);
   letter-spacing: 0.02em;
 }
 .scr-challenge-screen-v2 .scr-filter-bar { margin-top: 0; margin-bottom: 0; }
@@ -5152,7 +5152,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
 /* 경기종류보다 앞, 굵게(요청: "경기유형 앞에 일시를 먼저 표시 진하게"). 고정폭
    숫자 폰트(.scr-mono)라 옆의 배지/일반 텍스트와 광학적 중심이 미묘하게 달라
    위로 떠 보였다 — 살짝 아래로 내린다(요청: "데이터 폰트라 살짝 아래로 배치"). */
-.scr-challenge-card-when { font-size: 18px; font-weight: 700; color: var(--text); position: relative; top: 1px; }
+.scr-challenge-card-when { font-size: 20px; font-weight: 700; color: var(--text); position: relative; top: 1px; }
 /* 당일 경기는 색 대신 시간 앞에 작은 "오늘" 태그로 표시(요청: "오늘자 경기 색표시
    원복하고 대신 시간 앞에 오늘 이라는 작은 태그 달아주기"). */
 /* line-height를 명시하지 않으면 기본값(1.4~)이 이 배지를 더 크게 만들어서 line-height:1을
@@ -5862,7 +5862,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
    그 색을 명시하지 않으면 상위(body)의 테마 글자색(다크 테마에선 흰색)을 그대로
    상속해 편지지 배경 위에서 안 보이는 문제가 있었다(실제로 지적받은 문제 — "인박스
    편지지 타이틀 글자 안보임"). 봉투 단계는 아래 전용 규칙이 흰색으로 다시 뒤집는다. */
-.scr-challenge-inbox-title { font-weight: 800; font-size: 22px; margin: 6px 0 10px; color: var(--text); }
+.scr-challenge-inbox-title { font-weight: 800; font-size: 20px; margin: 6px 0 10px; color: var(--text); }
 /* 모달이 align-items:center라 그냥 두면 편지지 본문이 내용 폭만큼만 좁게 가운데 모여
    붙어 모달 폭을 못 채웠다(요청: "모달 안의 내용들을 넓히라고") — 본문을 full-width로
    펴서 행/입력칸이 모달 폭을 꽉 채우게 한다. */
