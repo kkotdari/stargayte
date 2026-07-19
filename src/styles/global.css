@@ -331,10 +331,10 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
 /* 회원가입 링크는 카드 안이 아니라 화면 전체 기준 우하단 구석에 — 밑줄 없이. */
 .scr-auth-signup-link {
   position: fixed; right: 20px; bottom: 20px; z-index: 1;
-  font-size: 12px; color: var(--muted); text-decoration: none;
+  font-size: 13px; color: var(--muted); text-decoration: none;
 }
 .scr-auth-signup-link:hover { color: var(--text); }
-.scr-auth-back-btn { display: inline-flex; align-items: center; gap: 4px; font-size: 12.5px; color: var(--muted); margin-bottom: 14px; text-decoration: none; }
+.scr-auth-back-btn { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: var(--muted); margin-bottom: 14px; text-decoration: none; }
 .scr-auth-back-btn:hover { color: var(--point); }
 
 /* ===== forms ===== */
@@ -349,7 +349,7 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
    하나로 통일한다 — 화면마다 라벨이 옆에 붙거나 크기가 제각각이면 산만해 보인다.
    line-height:1은 폰트 자체의 위아래 여백(줄간격)을 없애서, 코딩폰트를 쓰는 인풋과
    나란히 있을 때 줄간격 비율 차이로 라벨이 아래로 처져 보이던 문제도 함께 없앤다. */
-.scr-label { font-size: 12.5px; line-height: 1; color: var(--muted); display: flex; align-items: center; gap: 5px; padding-left: 2px; }
+.scr-label { font-size: 13px; line-height: 1; color: var(--muted); display: flex; align-items: center; gap: 5px; padding-left: 2px; }
 /* 라벨 옆에 덧붙이는 짧은 사용법 힌트(예: "유저" 검색창의 "띄어쓰기로 여러 명 검색") — 라벨보다 한
    단계 더 옅게 처리해 보조 정보라는 걸 구분한다. */
 .scr-label-hint { color: var(--dim); font-weight: 400; }
@@ -360,7 +360,7 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
 .scr-input { background: var(--input-bg); border: 1px solid var(--line); color: var(--text); padding: 9px 10px; font-size: 13px; font-family: var(--font-mono); width: 100%; min-height: var(--field-h); box-sizing: border-box; border-radius: var(--radius-sm); border-color: var(--line); }
 .scr-input::placeholder { color: var(--dim); }
 .scr-input:focus { border-color: var(--pipe-bright); outline: none; }
-.scr-input-sm { padding: 7px 8px; font-size: 12.5px; min-height: var(--field-h-sm); }
+.scr-input-sm { padding: 7px 8px; font-size: 13px; min-height: var(--field-h-sm); }
 .scr-input-invalid { border-color: var(--loss); }
 .scr-err { color: var(--loss); font-size: 13.5px; background: rgba(240,99,122,0.12); border: 1px solid rgba(240,99,122,0.4); padding: 8px 10px; }
 .scr-success { color: var(--win); font-size: 14.5px; display: flex; align-items: center; gap: 8px; padding: 10px; background: rgba(78,222,142,0.12); border: 1px solid rgba(78,222,142,0.4); }
@@ -743,7 +743,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 /* 종족 4행과 그 외 이미지 슬롯(홈 로고 등) 사이 구분선 — 같은 목록에 이어 붙지만 서로
    다른 개념이라는 걸 표시한다 */
 .scr-icon-row-divider {
-  font-size: 12px; color: var(--dim); font-weight: 700; letter-spacing: 0.04em;
+  font-size: 13px; color: var(--dim); font-weight: 700; letter-spacing: 0.04em;
   border-top: 1px solid var(--line-soft); padding-top: 14px; margin-top: 4px;
 }
 /* 마지막에서 두 번째 칸은 1fr이 아니라 minmax(0, 1fr) — 그냥 1fr만 쓰면 그리드 트랙의
@@ -879,7 +879,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-menu-pop-opt {
   width: 100%; display: flex; align-items: center; gap: 8px;
   background: transparent; border: none; border-radius: 8px; color: var(--text);
-  padding: 6px 12px; font-size: 12.5px; font-family: inherit; cursor: pointer; text-align: left; white-space: nowrap;
+  padding: 6px 12px; font-size: 13px; font-family: inherit; cursor: pointer; text-align: left; white-space: nowrap;
   transition: color .12s, border-radius .12s;
 }
 /* 지나가는 중(hover)은 행 전체를 흰색으로 반전하되(요청: "배경 흰색으로 반전"), 알약
@@ -942,7 +942,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 /* baseline 정렬 — 타이틀 옆에 크기가 다른 힌트/배지가 와도(전적통계의 "PC로 보면
    더 예뻐요" 등) 글자 베이스라인이 나란히 맞아 자연스럽게 붙어 보인다. */
 .scr-title-row { display: flex; align-items: baseline; gap: 8px; }
-.scr-page-desc { margin: -10px 0 0; font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+.scr-page-desc { margin: -10px 0 0; font-size: 13px; color: var(--muted); line-height: 1.5; }
 
 /* v2(개발중) 화면 공용 — 타이틀+버튼(또는 종족 필터)를 한 줄에 담는다. 타이틀 줄은
    평범한 정적 배치로 컨텐츠 프레임 위에 자연스럽게 얹는다 — 테두리 없이, .scr-title-row와
@@ -1080,7 +1080,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   text-align: right; font-size: 13px; color: var(--muted); white-space: nowrap;
 }
 @media (max-width: 640px) {
-  .scr-rank-hint-inline { font-size: 12px; }
+  .scr-rank-hint-inline { font-size: 13px; }
 }
 /* 서브행 왼쪽 묶음 — 기간 단위 토글(월/년)과 좌우 이동 화살표를 한 데 붙인다. */
 .scr-rank-period { display: inline-flex; align-items: center; gap: 10px; }
@@ -1092,7 +1092,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 }
 .scr-rank-unit-btn {
   border: none; background: transparent; color: var(--muted); cursor: pointer;
-  font-size: 12.5px; font-weight: 600; padding: 3px 11px; border-radius: 999px;
+  font-size: 13px; font-weight: 600; padding: 3px 11px; border-radius: 999px;
   transition: background 0.12s ease, color 0.12s ease;
 }
 .scr-rank-unit-btn-active { background: rgba(255, 255, 255, 0.14); color: var(--text); }
@@ -1106,7 +1106,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-rank-weight-link {
   display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0;
   background: none; border: none; cursor: pointer; padding: 2px 0;
-  font-size: 12.5px; color: var(--muted); white-space: nowrap;
+  font-size: 13px; color: var(--muted); white-space: nowrap;
   transition: color 0.15s ease;
 }
 .scr-rank-weight-link:hover { color: var(--text); }
@@ -1114,18 +1114,18 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 
 /* 점수 가중치 표 모달 */
 .scr-modal-weight .scr-modal-body { padding-bottom: 18px; }
-.scr-weight-desc { font-size: 12.5px; color: var(--muted); line-height: 1.55; margin: 0; }
+.scr-weight-desc { font-size: 13px; color: var(--muted); line-height: 1.55; margin: 0; }
 /* table-layout:fixed로 컬럼 폭을 고정 비율로 잡는다(요청: "프로필 컬럼이 들쑥날쑥인데
    고정폭 비율") — auto는 행마다 이름 길이에 따라 컬럼 폭이 다시 계산돼 승리/패배 칸이
    행마다 흔들렸다. */
 .scr-weight-table { width: 100%; border-collapse: collapse; font-size: 15.5px; table-layout: fixed; }
 .scr-weight-table th {
-  text-align: center; font-size: 12px; font-weight: 700; color: var(--muted);
+  text-align: center; font-size: 13px; font-weight: 700; color: var(--muted);
   padding: 7px 8px; border-bottom: 1px solid var(--line-soft);
 }
 .scr-weight-table td {
   /* 헤더(12px)는 그대로 두고, 데이터 행만 그보다 더 작게 줄인다(요청). */
-  text-align: center; padding: 7px 8px; color: var(--text); font-size: 12px;
+  text-align: center; padding: 7px 8px; color: var(--text); font-size: 13px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 .scr-light-theme .scr-weight-table td { border-bottom-color: rgba(0, 0, 0, 0.06); }
@@ -1163,7 +1163,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   display: inline-block; text-align: center; animation: scr-period-swap .22s ease;
   font-size: 15px; white-space: nowrap;
 }
-.scr-rank-period-note { font-size: 12px; }
+.scr-rank-period-note { font-size: 13px; }
 /* 목록 패널 맨 위 타이틀 — 위: "월간랭킹(조건)"(다른 목록 패널의 .scr-list-head와 같은
    중타이틀 크기로 통일), 아래: "기간 : YYYY-MM" + 이전/다음 버튼 한 줄. 두 줄로 나눠야
    기간 텍스트/데이터가 한 줄에 다 욱여넣어져 뒤엉켜 보이지 않는다. */
@@ -1202,7 +1202,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-cal-view-spacer { flex-shrink: 0; height: 20px; }
 .scr-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; }
 .scr-cal-dow { flex-shrink: 0; margin-bottom: 4px; }
-.scr-cal-dow-cell { text-align: center; font-size: 12px; line-height: 16px; color: var(--dim); }
+.scr-cal-dow-cell { text-align: center; font-size: 13px; line-height: 16px; color: var(--dim); }
 .scr-cal-grid:not(.scr-cal-dow) { flex: 1; min-height: 0; grid-template-rows: repeat(6, 1fr); }
 /* 일자별 기본 테두리/배경 없이 숫자만 깔끔하게 */
 .scr-cal-cell { position: relative; background: transparent; border: none; color: var(--text); font-size: 13.5px; cursor: pointer; border-radius: 0; }
@@ -1475,7 +1475,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-stat-tag-pill {
   align-self: flex-start; max-width: 100%; box-sizing: border-box;
   /* 기존 10.5px의 1.2배. */
-  font-size: 12.6px; color: var(--dim); background: rgba(var(--overlay-rgb),0.08);
+  font-size: 13px; color: var(--dim); background: rgba(var(--overlay-rgb),0.08);
   border-radius: 999px; padding: 1px 7px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
@@ -1577,8 +1577,8 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
     padding-left: 10px; padding-right: 10px;
   }
   .scr-stats-list-panel-v2 .scr-stat-name-head { padding-left: 10px; padding-right: 10px; }
-  .scr-stats-list-panel-v2 .scr-stat-name-btn { text-align: center; font-size: 12.9px; }
-  .scr-stats-list-panel-v2 .scr-stat-tag-pill { display: block; font-size: 12px; }
+  .scr-stats-list-panel-v2 .scr-stat-name-btn { text-align: center; font-size: 13px; }
+  .scr-stats-list-panel-v2 .scr-stat-tag-pill { display: block; font-size: 13px; }
   /* 나머지 네 칸(게임수/전적/유효APM/유효커맨드)도 모바일에서 10%씩 좁힌다(요청:
      "다른 컬럼들도 폭 10프로씩 감소") — 기본 150px의 90%. */
   .scr-stats-list-panel-v2 .scr-stat-row { grid-template-columns: var(--scr-stat-name-w) repeat(4, 135px); }
@@ -1635,7 +1635,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    온다(flex로는 양옆 폭이 다르면 가운데가 밀린다). */
 .scr-stat-bar-top {
   display: grid; grid-template-columns: 1fr auto 1fr; column-gap: 6px;
-  align-items: baseline; font-size: 12px; color: var(--muted); min-width: 0;
+  align-items: baseline; font-size: 13px; color: var(--muted); min-width: 0;
 }
 .scr-stat-bar-label-group { display: flex; align-items: baseline; gap: 4px; min-width: 0; justify-self: start; }
 /* 종족명(테란/프로토스/저그)은 글자 수가 2~4자로 서로 다르다 — 라벨 폭을 가장 긴
@@ -1645,7 +1645,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-stat-bar-label { font-weight: 700; color: var(--muted); min-width: 37px; flex-shrink: 0; }
 /* 승률은 이 표에서 가장 중요한 값이라 트랙 옆(예전 위치)이 아니라 각 그래프 우상단에,
    나머지 top row 글자보다 도드라지게 둔다(전체 전적 칸도 종족별 칸과 동일). */
-.scr-stat-bar-rate { font-size: 12px; font-weight: 700; color: var(--text); justify-self: end; }
+.scr-stat-bar-rate { font-size: 13px; font-weight: 700; color: var(--text); justify-self: end; }
 /* 전적(승/무/패 숫자)은 라벨/승률과 같은 줄, 가운데에 둔다 — 실제 전적 수치라 연하게
    두 겹(줄 기본색 dim + 이 규칙 muted)으로 죽이지 않고 기본 글자색으로 또렷하게 보여준다. */
 .scr-stat-bar-nums { justify-self: center; font-weight: 700; color: var(--text); white-space: nowrap; }
@@ -1756,7 +1756,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-rank-record-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
 /* 코딩폰트(scr-mono)는 숫자 글리프가 프로포셔널 폰트보다 넓고 커 보여서, 닉네임(15px)과
    나란히 있을 때 균형이 맞도록 선언값 자체는 한 단계 낮춰 잡는다. */
-.scr-rank-record-nums { color: var(--muted); font-size: 12.5px; white-space: nowrap; }
+.scr-rank-record-nums { color: var(--muted); font-size: 13px; white-space: nowrap; }
 /* 종족 필터가 걸려 있을 때: 그 종족 전적 + 전체 전적을 라벨과 함께 두 줄로 병기한다.
    그리드로 두면 두 줄의 라벨/숫자 칸 폭이 서로 맞춰져서(각 열의 최대 너비로 통일) 세로로
    깔끔하게 정렬된다 — flex라면 줄마다 너비가 달라 라벨 위치가 어긋난다. */
@@ -1764,9 +1764,9 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   display: grid; grid-template-columns: auto auto; column-gap: 6px; row-gap: 2px;
   justify-content: end; align-items: baseline;
 }
-.scr-rank-record-line-label { font-size: 12px; color: var(--dim); text-align: right; white-space: nowrap; }
+.scr-rank-record-line-label { font-size: 13px; color: var(--dim); text-align: right; white-space: nowrap; }
 .scr-rank-record-line-label-overall, .scr-rank-record-nums-overall { opacity: 0.65; }
-.scr-rank-record-nums-overall { font-size: 12px; }
+.scr-rank-record-nums-overall { font-size: 13px; }
 /* 전적/승률 표기의 단위 글자(전/승/패/무/%)는 숫자보다 한 단계 작게 — 숫자만 도드라져
    보이게. em 기반이라 전적 줄/막대 옆 수치 등 폰트 크기가 다른 곳에서도 똑같이 적용된다. */
 /* 작아진 글자가 베이스라인에 그대로 붙으면 숫자보다 아래로 처져 보인다 — 살짝 위로
@@ -1790,14 +1790,14 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   display: flex; flex-direction: column; gap: 6px;
 }
 .scr-rank-bar-item { display: grid; grid-template-columns: 44px 1fr 32px; column-gap: 8px; align-items: center; }
-.scr-rank-bar-label { font-size: 12px; color: var(--dim); text-align: right; }
+.scr-rank-bar-label { font-size: 13px; color: var(--dim); text-align: right; }
 .scr-rank-bar-track {
   position: relative; height: 8px; background: rgba(128,128,128,0.25); overflow: hidden; border-radius: 1px;
 }
 .scr-rank-bar-fill { position: absolute; inset: 0 auto 0 0; transition: width .2s ease; border-radius: 1px; }
 .scr-rank-bar-fill-winrate { background: var(--bar-winrate); }
 .scr-rank-bar-fill-plays { background: var(--bar-plays); }
-.scr-rank-bar-value { font-size: 12px; font-weight: 700; color: var(--muted); text-align: right; white-space: nowrap; }
+.scr-rank-bar-value { font-size: 13px; font-weight: 700; color: var(--muted); text-align: right; white-space: nowrap; }
 @media (max-width: 480px) {
   /* PC와 거의 같은 간격을 유지하되, 아주 좁은 화면에서만 살짝 더 줄인다. 전적/막대 칸이
      오른쪽 여백 없이 카드 끝까지 밀려나는 걸 막기 위해 좌우 패딩을 줄인 만큼 고정폭 칸
@@ -1806,7 +1806,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   .scr-rank-list-title { padding: 12px 20px 10px; }
   .scr-rank-row + .scr-rank-row::before { left: 12px; right: 12px; }
   .scr-rank-row-inner { grid-template-columns: 40px 44px minmax(92px, 1fr) 24px 90px; gap: 6px; }
-  .scr-rank-record-nums { font-size: 12px; }
+  .scr-rank-record-nums { font-size: 13px; }
   .scr-rank-bar-item { grid-template-columns: 40px 1fr 30px; column-gap: 6px; }
 }
 /* v2 랭킹만 — 전적 상세(승/패/무, 막대그래프)를 없애고 승률/경기수만 짧은 데이터폰트
@@ -1895,7 +1895,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    보이게 한다. */
 .scr-rank-latest-match {
   display: flex; align-items: baseline; gap: 3px; min-width: 0; max-width: 100%;
-  font-size: 12px; color: var(--muted);
+  font-size: 13px; color: var(--muted);
 }
 .scr-rank-latest-match-label { flex: none; color: var(--dim); font-size: 0.85em; }
 /* 행 전체 클릭이 이제 순위변동 모달로 바뀌면서, 최근 경기 클릭(경기 목록 모달)은 이
@@ -1910,7 +1910,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    에서 override하려면 !important가 필요하다). */
 .scr-rank-table-panel-v2 .scr-avatar { border-radius: 50% !important; }
 /* 순위 변동(화살표+숫자) 배지 — v1보다 v2만 크게(11px) 키운다. */
-.scr-rank-table-panel-v2 .scr-rank-delta { font-size: 12px; }
+.scr-rank-table-panel-v2 .scr-rank-delta { font-size: 13px; }
 /* 승률(주 지표)만 남아서 그 자체로 크고 진하게 — 자기 칸 안에서 오른쪽 정렬. */
 .scr-rank-stat-primary { font-size: 20px; font-weight: 600; color: var(--text); }
 .scr-rank-stat-primary-cell { justify-self: end; }
@@ -1933,8 +1933,8 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
     grid-template-columns: 44px 32px minmax(100px, 1fr) 100px; column-gap: 10px;
   }
   .scr-rank-table-panel-v2 .scr-rank-name { font-size: 18px; }
-  .scr-rank-record-v2 { font-size: 12px; }
-  .scr-rank-latest-match { font-size: 12px; max-width: 100px; }
+  .scr-rank-record-v2 { font-size: 13px; }
+  .scr-rank-latest-match { font-size: 13px; max-width: 100px; }
   /* 프사도 한 치수 줄인다(Avatar가 인라인 style로 크기를 박으므로 !important가 필요하다). */
   .scr-rank-table-panel-v2 .scr-rank-avatar-btn .scr-avatar { width: 32px !important; height: 32px !important; }
 }
@@ -2135,7 +2135,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
      카드가 같으므로 카드끼리 줄이 어긋나지도 않는다. */
   .scr-team-rank-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); justify-content: stretch; gap: 4px 4px; }
   .scr-team-rank-name { font-size: 14px; }
-  .scr-team-rank-record { font-size: 12.5px; }
+  .scr-team-rank-record { font-size: 13px; }
   .scr-team-rank-row-inner .scr-rank-stat-primary { font-size: 22px; }
   /* 프사도 한 치수 줄여 닉네임이 들어설 자리를 만든다(Avatar가 인라인 style로 크기를 박으므로
      !important가 필요하다 — .scr-rank-table-panel-v2 .scr-avatar의 border-radius와 같은 이유). */
@@ -2315,7 +2315,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
      미디어쿼리에서 원래 크기(8px)로 다시 줄인다. 필터창이 다크에서도 라이트와 같은
      밝은 배경을 쓰게 되면서(위 .scr-filter-panel 주석 참고) 이 글자색도 테마 불문
      같은 어두운 톤으로 통일한다. */
-  font-size: 12px; font-weight: 600; letter-spacing: 0.02em; line-height: 1;
+  font-size: 13px; font-weight: 600; letter-spacing: 0.02em; line-height: 1;
   /* 패널이 없어져 화면 배경(테마색) 위에 놓이므로 테마를 따르는 옅은 톤으로. */
   color: var(--muted); white-space: nowrap;
 }
@@ -2416,7 +2416,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-search-filter-float .scr-list-search-input .scr-search-chip-input { color: var(--text); font-size: 13.5px; }
 .scr-search-filter-float .scr-list-search-input .scr-search-chip-input::placeholder { color: var(--muted); font-size: 13.5px; }
 .scr-search-filter-float .scr-search-chip-box { padding-top: 5px; padding-bottom: 5px; }
-.scr-search-filter-float .scr-search-chip { font-size: 12px; padding: 4px 4px 4px 8px; }
+.scr-search-filter-float .scr-search-chip { font-size: 13px; padding: 4px 4px 4px 8px; }
 @media (max-width: 640px) {
   /* 모바일은 필터(위) + 검색(아래)으로 세로로 쌓는다(요청: "모바일에서 필터아래검색") —
      PC는 한 줄 나란히. 둘 다 화면 폭 가득, 라벨 폰트만 좁은 폭에 맞춰 조금 줄인다. */
@@ -2428,14 +2428,14 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
      폭 가득 찬 줄에 혼자 왼쪽으로 쏠려 보여서(지적됨) 이땐 가운데로 둔다. */
   .scr-filter-panel:has(> .scr-filter-item:only-child) { justify-content: center; }
   .scr-search-filter-float { width: 100%; }
-  .scr-filter-item-label { font-size: 12px; }
+  .scr-filter-item-label { font-size: 13px; }
   /* 모바일은 필터 알약을 랭킹 년월 토글 크기(24px)로 컴팩트하게 되돌린다(PC만 인풋에 맞춰
      키운다 — 위 .scr-filter-panel 알약/월선택/정렬 주석 참고). */
   .scr-filter-panel .scr-pill-tabs { height: 24px; }
-  .scr-filter-panel .scr-pill-tab-btn { font-size: 12.5px; }
-  .scr-filter-panel .scr-filter-month-input { height: 24px; font-size: 12.5px; }
+  .scr-filter-panel .scr-pill-tab-btn { font-size: 13px; }
+  .scr-filter-panel .scr-filter-month-input { height: 24px; font-size: 13px; }
   .scr-filter-panel .scr-filter-sort-btn { width: 24px; height: 24px; }
-  .scr-filter-panel .scr-filter-race-select .scr-cselect-trigger { min-height: 24px; height: 24px; padding: 0 8px; font-size: 12.5px; }
+  .scr-filter-panel .scr-filter-race-select .scr-cselect-trigger { min-height: 24px; height: 24px; padding: 0 8px; font-size: 13px; }
 }
 /* 건수는 필터 항목들과 같은 줄에 있으면 목록과 멀어 보인다는 피드백 — 그리드 아래
    자기 줄로 내려서 목록에 더 가깝게 붙인다(모바일은 이 칸 자체가 안 보이므로 —
@@ -2469,7 +2469,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    nowrap을 걸어둔 만큼, 대신 글자를 줄여 한 줄 안에 들어오게 한다. 고정폭 폰트라 글자 수 ×
    글자 폭으로 딱 떨어진다(12.5px면 15자가 약 112px). */
 @media (max-width: 640px) {
-  .scr-period-value { font-size: 12.5px; }
+  .scr-period-value { font-size: 13px; }
 }
 /* 라디오 그룹은 다른 화면의 라디오(종족 필터 등)와 같은 톤 — 여기서는 줄바꿈 없이
    한 줄로 촘촘하게 고정한다. */
@@ -2554,7 +2554,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-pv-opt-dim { color: var(--dim); }
 .scr-pv-crumb {
   display: block; width: 100%; text-align: left; background: transparent; border: none;
-  color: var(--dim); padding: 6px 10px; font-size: 12px; cursor: pointer; border-bottom: 1px solid var(--line-soft);
+  color: var(--dim); padding: 6px 10px; font-size: 13px; cursor: pointer; border-bottom: 1px solid var(--line-soft);
   margin-bottom: 2px;
 }
 .scr-pv-crumb:hover { color: var(--text); }
@@ -2827,13 +2827,13 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    그대로 무시하고 항상 카드 padding-box 기준 오른쪽 아래에 붙는다. 펼쳤을 때만 그려지는
    블록이라 그만큼의 아래 여유 공간을 행 자신의 padding-bottom으로 미리 예약해둔다
    (.scr-match-trow:has(.scr-match-trow-head), 아래). */
-.scr-match-trow-head { position: absolute; right: 8px; bottom: 8px; display: flex; align-items: center; gap: 10px; font-size: 12px; min-width: 0; }
+.scr-match-trow-head { position: absolute; right: 8px; bottom: 8px; display: flex; align-items: center; gap: 10px; font-size: 13px; min-width: 0; }
 .scr-match-trow:has(.scr-match-trow-head) { padding-bottom: 34px; }
 /* 맵 이름 줄 — 머리줄 아래 별도 줄(요청: 맵이름이 길어서). 플레이시간을 그 옆에 나란히. */
 /* 내용(맵/시간)이 둘 다 없어도 항상 그려서 높이를 예약한다(위 MatchList.tsx 참고) —
    빈 flex 컨테이너는 내용이 없으면 0으로 찌그러지므로 폰트 라인하이트만큼 min-height로
    붙잡아둔다. */
-.scr-match-trow-map-line { display: flex; align-items: baseline; justify-content: center; gap: 8px; margin-bottom: 9px; font-size: 12px; min-width: 0; min-height: 15px; }
+.scr-match-trow-map-line { display: flex; align-items: baseline; justify-content: center; gap: 8px; margin-bottom: 9px; font-size: 13px; min-width: 0; min-height: 15px; }
 .scr-match-trow-map { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 /* 맵 이름 옆 플레이시간 — 라벨 없이 "23분"(요청). 흐린 색으로 살짝 뒤에. */
 .scr-match-trow-dur { color: var(--dim); flex-shrink: 0; font-variant-numeric: tabular-nums; }
@@ -2925,7 +2925,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    타이틀과 같은 흰색으로(요청). */
 .scr-match-date-head {
   margin: 0; padding: 0 8px;
-  font-size: 12.5px; color: var(--text);
+  font-size: 13px; color: var(--text);
 }
 /* 위아래 패딩을 같게 통일한다(요청: "위아래 패딩 불일치 아래패딩을 줄여서 통일" — 예전엔
    아래가 위보다 두 배 가까이 컸다). */
@@ -2950,12 +2950,12 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   .scr-match-card-clickable:hover { background: rgba(var(--overlay-rgb),0.04); }
 }
 /* "제N경기"는 카드 좌상단에 */
-.scr-match-seq { display: block; text-align: left; font-size: 12px; color: var(--dim); margin-bottom: 6px; }
+.scr-match-seq { display: block; text-align: left; font-size: 13px; color: var(--dim); margin-bottom: 6px; }
 /* v2 카드의 "N경기" 태그는 밝은 글자색으로 또렷하게. */
 .scr-match-list-panel-v2 .scr-match-seq { color: var(--text); font-weight: 700; }
 /* 경기번호(matchNo) — 문의/디버깅 시 특정 경기를 정확히 지목할 수 있게 "제N경기"
    옆에 작게 덧붙인다. 순번(N경기)과 헷갈리지 않도록 옅은 톤에 굵기도 줄인다. */
-.scr-match-id { font-weight: 400; color: var(--dim); font-size: 12px; }
+.scr-match-id { font-weight: 400; color: var(--dim); font-size: 13px; }
 /* 경기번호 검색(부분 일치)에서 실제로 일치한 자리만 강조 — 배경/글자색 다 테마 변수
    대신 고정값을 쓴다(옅은 톤 위에 얹히는 작은 조각이라 테마 변수보다 항상 또렷한
    고정 강조색이 더 잘 보인다). */
@@ -2972,18 +2972,18 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    과하지 않게 줄인다(요청: "날짜 글자 축소"). 또 스티키 바(패널색 배경+구분선)를 없애
    주변(모달 본문)과 같은 배경으로 둔다(요청: "날짜부분 배경 다르게 하지말고 똑같게"). */
 .scr-match-list-panel-v2 .scr-match-date-head-compact {
-  font-size: 12.5px;
+  font-size: 13px;
   padding: 9px 8px 7px;
   /* 랭킹 상세 이력은 날짜 위 구분선 없이 주변(모달 본문)과 같은 톤으로 둔다(요청). */
   border-top: none; color: var(--muted);
 }
 /* "N경기"/경기번호는 기존 값(18px/17px)의 75%로 — 날짜(위)보다 두 단계 더 작아 보이게. */
 .scr-match-list-panel-v2 .scr-match-seq { font-size: 13.5px; }
-.scr-match-list-panel-v2 .scr-match-id { font-size: 12.75px; }
+.scr-match-list-panel-v2 .scr-match-id { font-size: 13px; }
 /* 경기결과 카드: 제N경기(좌) + 같은 팀으로 등록(우) */
 .scr-match-card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; gap: 8px; }
 .scr-match-card-head .scr-match-seq { margin-bottom: 0; }
-.scr-match-duplicate-btn { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--dim); text-decoration: none; flex-shrink: 0; }
+.scr-match-duplicate-btn { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: var(--dim); text-decoration: none; flex-shrink: 0; }
 .scr-match-duplicate-btn:hover { color: var(--point); }
 
 /*
@@ -3045,13 +3045,13 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-team-outcome { flex-shrink: 0; text-align: center; font-size: 16px; font-weight: 800; min-width: 14px; position: relative; }
 /* 이긴 팀 표시는 패(빨강 계열)와 대비되게 연두색(--win)을 쓴다 — 승만 기본 글자색이면
    패 옆에서 대비가 안 산다. */
-.scr-list-vs { grid-area: vs; align-self: center; color: var(--text); font-size: 12.5px; font-weight: 800; letter-spacing: 0.04em; padding: 0 2px; }
+.scr-list-vs { grid-area: vs; align-self: center; color: var(--text); font-size: 13px; font-weight: 800; letter-spacing: 0.04em; padding: 0 2px; }
 /* v2 결과 카드 전용(stackedOutcome) — 승/무/패를 로스터 바깥쪽이 아니라 VS 위아래에
    붙여서 "VS" 칸 하나 안에 [팀1 결과 / VS / 팀2 결과] 세 줄로 쌓는다. VS 자체는 위
    .scr-list-vs 스타일 그대로 재사용하고, 이 칸 전체를 grid-area:vs로 옮긴다. */
 .scr-match-vs-col { grid-area: vs; display: flex; flex-direction: row; align-items: center; gap: 6px; }
 .scr-match-vs-col .scr-list-vs { grid-area: auto; }
-.scr-team-outcome-stacked { font-size: 12px; min-width: 0; }
+.scr-team-outcome-stacked { font-size: 13px; min-width: 0; }
 /* 랭킹 상세 이력 — 홈팀(주인공)을 빼고 "VS 상대 팀구성 ......... 승/패"만 한 줄로(요청:
    "아예 홈팀을 빼고 vs 팀구성 승패 ... 진짜 결과만"). 3열 그리드 대신 단순 플렉스로 바꾼다:
    VS(왼쪽) → 상대 로스터(가운데, 남는 폭 차지) → 승/패(오른쪽 끝). */
@@ -3091,7 +3091,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-match-list-panel-v2 .scr-match-row-team-tail .scr-match-result-tail {
   flex-direction: row; align-items: center; gap: 6px;
 }
-.scr-match-result-points { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.scr-match-result-points { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
 /* 획득 점수도 부호에 따라 승/패 색을 입힌다(요청: "점수에도 포인트 색 적용"). 개인전 꼬리
    점수와 팀전 개별 점수 컬럼 공통. */
 .scr-match-list-panel-v2 .scr-match-result-points.scr-win,
@@ -3114,18 +3114,18 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-match-list-panel-v2 .scr-match-team-side .scr-team-block { flex: 0 1 auto; min-width: 0; }
 .scr-match-list-panel-v2 .scr-match-row-team-tail .scr-match-result-tail { flex-shrink: 0; }
 /* "로"/"에" 연결어 — VS 대신(요청). 얇고 옅게, 세로 가운데. */
-.scr-match-conn { flex-shrink: 0; align-self: center; color: var(--muted); font-size: 12px; padding: 0 1px; }
+.scr-match-conn { flex-shrink: 0; align-self: center; color: var(--muted); font-size: 13px; padding: 0 1px; }
 .scr-match-row-team-tail .scr-team-roster-team1 .scr-team-profile { flex-direction: row; }
 .scr-match-row-team-tail .scr-team-avatar-race-team1 { left: auto; right: -6px; }
 /* 승/패 오른쪽 개별 점수 컬럼 — 상대(team2) 각 행과 세로로 나란히(로스터 gap 4px·행 높이
    22px에 맞춘다). 컴퓨터/비회원처럼 점수가 없는 행은 빈 칸으로 둬 정렬을 유지한다. */
 .scr-match-row-team-tail .scr-team-points-col { display: flex; flex-direction: column; gap: 4px; padding: 4px 0; flex-shrink: 0; align-items: flex-end; min-width: 26px; }
-.scr-match-row-team-tail .scr-team-points-row { height: 22px; display: flex; align-items: center; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.scr-match-row-team-tail .scr-team-points-row { height: 22px; display: flex; align-items: center; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
 /* 팀전 이력 카드 — 우리팀 대 상대팀을 그대로 보여주고, 그 경기에서 얻은 점수는 카드 아래
    오른쪽에 작게 병기한다(개인전은 승패 옆에 붙지만 팀전은 양 팀을 다 보여줘 자리가 없다). */
 .scr-rank-history-points-line {
   display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
-  font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums;
+  font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums;
   /* 팀 로스터와 합산 줄 사이 간격을 넓힌다(요청). */
   margin-top: 10px;
 }
@@ -3141,7 +3141,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-rank-history-team-card .scr-team-player { display: flex; align-items: center; gap: 5px; }
 /* 점수는 팀 칸 오른쪽 끝으로 밀어 세로로 줄을 맞춘다(요청: "점수들 오른쪽 정렬"). */
 .scr-rank-history-team-card .scr-team-player-points { margin-left: auto; padding-left: 6px; }
-.scr-team-player-points { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; flex-shrink: 0; }
+.scr-team-player-points { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; flex-shrink: 0; }
 
 /* ===== 목록 바로 위에 붙는 보조 툴바 공용(정렬 필터, 랭킹 기간 선택 등) =====
    .scr-screen의 flex gap(18px)이 목록 패널과 이미 떼어놓으므로, 음수 margin으로 그만큼
@@ -3165,7 +3165,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   /* 좁은 화면에서 버튼 3개(새로고침/수동 등록/리플레이로 등록)가 한 줄에 눌려 글자가
      두 줄로 내려가던 문제 — 패딩/글자 크기를 줄여서 되도록 한 줄에 들어가게 하고,
      그래도 모자라면 버튼 자체가 다음 줄로 넘어가게 한다(flex-wrap, 위에서 지정). */
-  .scr-toolbar-actions .scr-btn-sm { padding: 6px 9px; font-size: 12.5px; gap: 4px; }
+  .scr-toolbar-actions .scr-btn-sm { padding: 6px 9px; font-size: 13px; gap: 4px; }
 }
 
 /* ===== match detail (읽기 전용) =====
@@ -3177,7 +3177,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    잘 안 됐다 — 더 어두운 --dim + 작은 대문자 스타일로 라벨과 값을 확실히 갈라놓는다. */
 .scr-match-detail-row .scr-label,
 .scr-match-detail-cell .scr-label {
-  font-size: 12px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600;
+  font-size: 13px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600;
 }
 /* 라벨 옆에 오는 값(특히 첨부파일명)이 길어서 flex가 라벨 쪽을 같이 줄이면 "첨부파일"
    글자가 중간에 꺾여 두 줄이 됐다 — 라벨은 줄어들지 않게 고정하고 값 쪽만 말줄임되게 한다. */
@@ -3236,7 +3236,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-result-btn {
   height: 22px; padding: 0 7px; display: inline-flex; align-items: center; justify-content: center;
   background: transparent; border: 1px solid rgba(var(--overlay-rgb),0.3); color: var(--muted);
-  font-family: inherit; font-size: 12px; font-weight: 600; border-radius: 5px; cursor: pointer; white-space: nowrap;
+  font-family: inherit; font-size: 13px; font-weight: 600; border-radius: 5px; cursor: pointer; white-space: nowrap;
   transition: background-color .15s, border-color .15s, color .15s, box-shadow .15s;
 }
 .scr-result-btn-draw { padding: 0 8px; }
@@ -3324,7 +3324,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    줄바꿈을 허용해(overflow-wrap) 좁은 화면에서도 절대 잘리지 않게 한다. */
 .scr-chip-unresolved-mapping { gap: 4px; }
 .scr-chip-name-mapping {
-  font-size: 12px; white-space: normal; overflow: visible; text-overflow: clip;
+  font-size: 13px; white-space: normal; overflow: visible; text-overflow: clip;
   overflow-wrap: anywhere; word-break: break-word;
 }
 .scr-chip-x { background: transparent; border: none; color: var(--dim); cursor: pointer; display: inline-flex; padding: 1px; flex-shrink: 0; }
@@ -3387,7 +3387,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    클래스 하나로 묶는다 — 따로 값을 베껴 쓰면 나중에 한쪽만 바뀌기 쉽다.
    .scr-toolbar-actions .scr-btn-sm과 같은 크기로 맞춘다. */
 .scr-btn-compact,
-.scr-form-actions .scr-btn { padding: 6px 10px; font-size: 12.5px; gap: 4px; min-height: 0; border-radius: 6px; }
+.scr-form-actions .scr-btn { padding: 6px 10px; font-size: 13px; gap: 4px; min-height: 0; border-radius: 6px; }
 /* 리플레이 일괄 등록: 이전/다음은 왼쪽에 붙이고 취소/전체등록은 오른쪽에 그대로 둔다 */
 .scr-replay-nav { display: flex; gap: 8px; margin-right: auto; }
 
@@ -3398,7 +3398,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   display: inline-flex; align-items: center; justify-content: center;
   min-width: 20px; height: 20px; padding: 0 6px; border-radius: var(--radius-chip);
   background: transparent; border: none; color: var(--dim);
-  font-size: 12px; font-weight: 700; font-family: inherit; line-height: 1; cursor: pointer;
+  font-size: 13px; font-weight: 700; font-family: inherit; line-height: 1; cursor: pointer;
   transition: background-color .12s, color .12s;
 }
 .scr-text-pill:hover { color: var(--text); }
@@ -3427,7 +3427,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   border-radius: var(--radius-sm); padding: 12px;
 }
 .scr-replay-mapping-row-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.scr-replay-mapping-row-name { font-size: 12.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.scr-replay-mapping-row-name { font-size: 13px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* 승패 선택 — 리플레이가 승자를 못 가려낸 행에만 나온다. 목록이라 행마다 버튼을 다 깔면
    훑어보기 어려워서, 필요한 행에만 안내 문구와 함께 붙인다. */
 .scr-replay-mapping-result { display: flex; flex-direction: column; gap: 6px; align-items: center; }
@@ -3448,16 +3448,16 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 /* 등록하기 버튼 왼쪽의 "리플레이 위치 확인" 링크 텍스트(요청) — 아이콘 배지 대신 옅은
    밑줄 링크로. 좁은 화면에서도 한 줄로 유지한다. */
 .scr-replay-loc-link {
-  font-size: 12px; white-space: nowrap;
+  font-size: 13px; white-space: nowrap;
   text-decoration: underline; text-underline-offset: 2px;
 }
 .scr-replay-loc-pop {
   z-index: 210; background: var(--panel-solid); border: 1px solid var(--line); border-radius: var(--radius-sm);
   padding: 10px 12px; box-shadow: 0 4px 14px rgba(0,0,0,0.18); display: flex; flex-direction: column; gap: 8px;
 }
-.scr-replay-loc-row { display: flex; flex-direction: column; gap: 2px; font-size: 12.5px; }
+.scr-replay-loc-row { display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
 .scr-replay-loc-os { font-weight: 700; color: var(--text); }
-.scr-replay-loc-row .scr-mono { font-size: 12px; color: var(--muted); word-break: break-all; }
+.scr-replay-loc-row .scr-mono { font-size: 13px; color: var(--muted); word-break: break-all; }
 
 .scr-btn-danger { color: var(--loss); border-color: var(--loss); }
 .scr-btn-danger:hover { background: rgba(240,99,122,0.12); }
@@ -3527,7 +3527,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 
   /* 좁은 화면에서도 팀1/팀2가 좌우로 배치되도록, 쌓는 대신 여백만 더 촘촘하게 */
   .scr-match-row { grid-template-columns: 122px auto 122px; gap: 4px 10px; }
-  .scr-team-name { font-size: 12px; }
+  .scr-team-name { font-size: 13px; }
 }
 
 /* ===== unified scrollbar ===== */
@@ -3626,7 +3626,7 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    회원명·이력이 한 덩어리로 함께 스크롤된다. */
 .scr-rank-detail-line { fill: none; stroke: var(--point); stroke-width: 2; }
 .scr-rank-detail-dot { fill: var(--point); }
-.scr-rank-detail-value { font-size: 12px; font-weight: 700; fill: var(--text); text-anchor: middle; }
+.scr-rank-detail-value { font-size: 13px; font-weight: 700; fill: var(--text); text-anchor: middle; }
 .scr-rank-detail-axis-label { font-size: 9.5px; fill: var(--dim); text-anchor: middle; }
 /* 날짜/게임유형/결과처럼 "분석/기록돼서 바꿀 수 없는" 값을 보여줄 때 — 입력 필드처럼
    보이지 않게 라벨 옆에 바로 값만 적는다(.scr-field-row로 한 줄에), 두 개씩 묶어서 세로
@@ -3641,7 +3641,7 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   padding: 6px 10px; background: rgba(var(--overlay-rgb),0.05); border-radius: var(--radius-sm);
 }
 .scr-readonly-team-name { font-size: 13.5px; font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.scr-readonly-team-race { font-size: 12px; color: var(--dim); flex-shrink: 0; }
+.scr-readonly-team-race { font-size: 13px; color: var(--dim); flex-shrink: 0; }
 .scr-textarea { resize: vertical; min-height: 64px; font-family: var(--font-mono); }
 .scr-attach-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 /* .scr-input은 기본 width:100%라 이 줄에서 혼자 폭을 다 차지해 버튼이 다음 줄로 밀려났다
@@ -3685,7 +3685,7 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    등록된 경기에서만 있어서, 없는 경기는 -compact 변형으로 닉네임/종족 두 칸만 쓴다. */
 .scr-team-stat-wrap { display: flex; flex-direction: column; gap: 12px; }
 .scr-team-stat-block { border: 1px solid var(--line); border-radius: var(--radius-sm); overflow: hidden; }
-.scr-team-stat-head { padding: 7px 10px; font-size: 12.5px; font-weight: 700; background: var(--panel-raised); border-bottom: 1px solid var(--line); }
+.scr-team-stat-head { padding: 7px 10px; font-size: 13px; font-weight: 700; background: var(--panel-raised); border-bottom: 1px solid var(--line); }
 /* 닉네임 밑에 배틀태그까지 두 줄로 보여주면서 APM 등 수치 4칸까지 같이 욱여넣으면, 좁은
    모바일 폭에서 고정폭 수치 칸들(32+42*4+gap)에 밀려 닉네임 칸이 거의 0으로 짜부라진다 —
    닉네임 칸에 최소폭(84px)을 보장하는 대신, 그래서 모자란 폭은 가로 스크롤로 해결한다. */
@@ -3694,12 +3694,12 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    최대폭으로 고정하고 넘치면 말줄임되게 한다(아바타+이름 span에 이미 ellipsis 처리돼 있음). */
 .scr-team-stat-row {
   display: grid; grid-template-columns: minmax(84px, 108px) 32px repeat(4, 42px); gap: 6px; align-items: center;
-  padding: 6px 8px; font-size: 12.5px; border-bottom: 1px solid var(--line-soft);
+  padding: 6px 8px; font-size: 13px; border-bottom: 1px solid var(--line-soft);
 }
 .scr-team-stat-row:last-child { border-bottom: none; }
 .scr-team-stat-row-compact { grid-template-columns: 1fr 32px; }
 .scr-team-stat-row-head {
-  font-size: 12px; color: var(--muted); font-weight: 700; text-transform: uppercase;
+  font-size: 13px; color: var(--muted); font-weight: 700; text-transform: uppercase;
   letter-spacing: 0.03em; border-bottom: 1px solid var(--line);
 }
 .scr-team-stat-row span:not(:first-child) { text-align: center; }
@@ -3712,7 +3712,7 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    옆으로 나란히 두면 자리 싸움에 밀려 겹쳐 보인다. 세로로 쌓아서 폭은 그대로, 행
    높이만 살짝 늘린다. */
 .scr-team-stat-player-info { display: flex; flex-direction: column; min-width: 0; line-height: 1.35; }
-.scr-team-stat-player-tag { font-size: 12px; color: var(--dim); }
+.scr-team-stat-player-tag { font-size: 13px; color: var(--dim); }
 .scr-team-stat-player:hover { color: var(--point); }
 .scr-team-stat-race { display: flex; justify-content: center; }
 
@@ -3869,7 +3869,7 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-admin-panel-phys-btn {
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
   min-height: 58px; padding: 8px 4px; box-sizing: border-box;
-  font-family: inherit; font-size: 12px; font-weight: 800; line-height: 1.25; text-align: center;
+  font-family: inherit; font-size: 13px; font-weight: 800; line-height: 1.25; text-align: center;
   color: #10151a; text-shadow: none;
   background: linear-gradient(180deg, #ffffff 0%, #d7d7d7 100%);
   border: 2px solid #7a7a7a; border-radius: 8px;
@@ -3930,17 +3930,17 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-admin-panel-results-reopen {
   position: absolute; right: 14px; bottom: 14px; z-index: 2;
 }
-.scr-admin-panel-batch-option { justify-content: center; color: rgba(255,255,255,0.82); font-size: 12px; margin-bottom: 8px; }
+.scr-admin-panel-batch-option { justify-content: center; color: rgba(255,255,255,0.82); font-size: 13px; margin-bottom: 8px; }
 .scr-admin-panel-batch-modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 .scr-admin-panel-batch-mode {
-  font-size: 12px; font-weight: 700; padding: 7px 0; border-radius: 999px;
+  font-size: 13px; font-weight: 700; padding: 7px 0; border-radius: 999px;
   background: #fff; border-color: #fff; color: #10151a; text-shadow: none; box-shadow: none;
 }
 .scr-admin-panel-batch-mode:hover { filter: brightness(0.94); }
 /* 배치가 못 처리한 리플레이를 검토 화면으로 넘기는 버튼 — 배치 버튼과 같은 톤이되, 할 일이
    남아있다는 신호라 테두리만 조금 더 또렷하게 준다. */
 .scr-admin-panel-batch-review {
-  width: 100%; margin-top: 8px; font-size: 12px; font-weight: 700; padding: 8px; border-radius: 999px;
+  width: 100%; margin-top: 8px; font-size: 13px; font-weight: 700; padding: 8px; border-radius: 999px;
   background: transparent; color: #fff; text-shadow: none; box-shadow: none;
   border: 1px solid rgba(255,255,255,0.75);
 }
@@ -3955,7 +3955,7 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-admin-panel-batch-log {
   margin-top: 10px; max-height: min(42vh, 280px); overflow-y: auto;
   background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.14); border-radius: 4px;
-  padding: 8px 10px; font-family: var(--font-mono); font-size: 12px; line-height: 1.6; text-align: left;
+  padding: 8px 10px; font-family: var(--font-mono); font-size: 13px; line-height: 1.6; text-align: left;
 }
 .scr-admin-panel-batch-log-line {
   display: flex; flex-wrap: wrap; gap: 0 8px; color: rgba(255,255,255,0.55);
@@ -3983,11 +3983,11 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   .scr-admin-panel-password-input { font-size: 26px; padding: 10px 8px; min-height: 52px; letter-spacing: 3px; }
   .scr-admin-panel-quiz-submit-btn { font-size: 14px; padding: 10px; margin-top: 10px; }
   .scr-admin-panel-preview { padding-bottom: 8px; margin-bottom: 8px; }
-  .scr-admin-panel-section-title { font-size: 12px; }
+  .scr-admin-panel-section-title { font-size: 13px; }
   .scr-admin-panel-preview-input { font-size: 14px; width: 48px; }
   .scr-admin-panel-preview-arrow svg { width: 14px; height: 9px; }
   .scr-admin-panel-grid { gap: 8px; margin-top: 8px; }
-  .scr-admin-panel-phys-btn { font-size: 12px; min-height: 50px; padding: 6px 3px; }
+  .scr-admin-panel-phys-btn { font-size: 13px; min-height: 50px; padding: 6px 3px; }
   /* 폴더 선택 자체가 없는 모바일 브라우저라 배치 등록은 아예 보여주지 않는다. */
   .scr-admin-panel-batch { display: none; }
 }
@@ -4023,7 +4023,7 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-notice-toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .scr-notice-toggle-label { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .scr-notice-toggle-title { font-size: 14px; font-weight: 700; color: var(--text); }
-.scr-notice-toggle-desc { font-size: 12px; color: var(--muted); }
+.scr-notice-toggle-desc { font-size: 13px; color: var(--muted); }
 /* 스위치 — 트랙 + 동그란 노브. 꺼짐은 중립 회색 트랙, 켜짐은 포인트 색. */
 .scr-notice-switch {
   flex: none; position: relative; width: 46px; height: 26px; padding: 0; cursor: pointer;
@@ -4047,7 +4047,7 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-version-add-row { display: flex; align-items: stretch; gap: 8px; }
 .scr-version-add-input { flex: 1; min-width: 0; }
 .scr-version-add-btn { flex-shrink: 0; padding: 0 18px; }
-.scr-version-add-hint { font-size: 12px; color: var(--point); margin-top: -2px; }
+.scr-version-add-hint { font-size: 13px; color: var(--point); margin-top: -2px; }
 /* 버전 선택부 — 드롭다운 + 그 버전 삭제(휴지통) 버튼을 한 줄에. */
 .scr-version-pick-row { display: flex; align-items: center; gap: 8px; }
 .scr-version-pick-row .scr-notice-version-select { flex: 1; min-width: 0; }
@@ -4084,7 +4084,7 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-modal-team-matches .scr-modal-head .scr-icon-btn { width: 30px; height: 30px; }
 .scr-modal-team-matches .scr-modal-head .scr-icon-btn svg { width: 17px; height: 17px; }
 .scr-team-matches-title { display: flex; align-items: baseline; gap: 8px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.scr-team-matches-count { font-size: 12.5px; font-weight: 400; color: var(--dim); flex-shrink: 0; }
+.scr-team-matches-count { font-size: 13px; font-weight: 400; color: var(--dim); flex-shrink: 0; }
 /* 목록 패널 자체가 화면(스크린)용 여백을 갖고 있어 모달 안에서는 위아래가 붕 뜬다. */
 .scr-modal-team-matches .scr-match-list-panel-v2 { padding-top: 0; }
 /* 날짜 줄(.scr-match-date-head)은 전체 화면에서 쓸 때 상태바 안전영역(safe-area-inset-top)
@@ -4113,7 +4113,7 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-cal-today-btn {
   background: transparent; border: 1px solid var(--pipe-dark); color: var(--muted);
   font-weight: 600; letter-spacing: 0.02em;
-  font-size: 12.5px; padding: 4px 9px; border-radius: var(--radius-sm); cursor: pointer;
+  font-size: 13px; padding: 4px 9px; border-radius: var(--radius-sm); cursor: pointer;
   white-space: nowrap;
 }
 .scr-cal-today-btn:hover { border-color: var(--pipe-bright); color: var(--text); }
@@ -4225,7 +4225,7 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-mobile-tab {
   position: relative;
   flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
-  background: transparent; border: none; color: var(--muted); font-family: inherit; font-size: 12px;
+  background: transparent; border: none; color: var(--muted); font-family: inherit; font-size: 13px;
   padding: 6px 0; cursor: pointer; border-radius: var(--radius-sm); transition: background-color .12s;
   /* color엔 트랜지션을 안 건다 — 탭을 누르면 알약은 .22s에 걸쳐 슬라이드하는 게 맞지만
      (의도된 움직임), 글자색까지 같이 서서히 바뀌면 눌러도 바로 검정으로 안 바뀐 것처럼
@@ -4344,7 +4344,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
 }
 .scr-drawer-user .scr-avatar { border-radius: 50% !important; }
 .scr-drawer-user-name { font-weight: 700; font-size: 15px; }
-.scr-drawer-user-tag { font-size: 12px; color: var(--dim); }
+.scr-drawer-user-tag { font-size: 13px; color: var(--dim); }
 .scr-drawer-nav { display: flex; flex-direction: column; gap: 4px; }
 /* border-radius를 활성 반전 블록(.scr-nav-tab-active, 4px)과 똑같이 맞춘다 — 다르면
    터치 시 브라우저 기본 하이라이트(이 버튼 자신의 모양을 그대로 따라간다)와 실제
@@ -4458,7 +4458,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
 /* 칩 안에서는 튀지 않도록 검은 톤에 테두리 없이, 화살표도 작고 은은하게 */
 /* 칩 안 종족 셀렉트는 표준 필드 높이를 따르지 않는 예외 — 칩 자체가 아바타 크기 기준의
    컴팩트한 높이라 표준 높이를 적용하면 칩만 불룩해진다 */
-.scr-chip-race .scr-cselect-trigger { background: rgba(0,0,0,0.35); border-color: transparent; padding: 6px 6px; font-size: 12px; min-height: 0; }
+.scr-chip-race .scr-cselect-trigger { background: rgba(0,0,0,0.35); border-color: transparent; padding: 6px 6px; font-size: 13px; min-height: 0; }
 .scr-chip-race .scr-cselect-trigger:hover { border-color: transparent; }
 .scr-chip-race .scr-cselect-open { border-color: transparent; }
 .scr-chip-race .scr-cselect-caret { transform: scale(0.7); opacity: 0.4; }
@@ -4609,7 +4609,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
 /* 모바일에서 게임아이디(배틀태그)가 닉네임 옆에서 너무 도드라져 보인다는 요청으로
    25% 축소한다(요청: "모바일에서 게임아이디 컬럼 폰트 크기 25% 축소") — PC는 그대로. */
 @media (max-width: 640px) {
-  .scr-member-row-tag { font-size: 12px; }
+  .scr-member-row-tag { font-size: 13px; }
 }
 
 /* ===== login history ===== */
@@ -4667,7 +4667,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
   min-width: 28px; height: 28px; padding: 0 6px; box-sizing: border-box;
   display: inline-flex; align-items: center; justify-content: center;
   background: var(--panel-solid); border: none; border-radius: 999px;
-  color: var(--muted); font-size: 12.5px; font-family: inherit; cursor: pointer;
+  color: var(--muted); font-size: 13px; font-family: inherit; cursor: pointer;
   box-shadow: 0 1px 3px rgba(0,0,0,0.16), 0 0 0 1px rgba(255,255,255,0.05);
   transition: color .12s, box-shadow .12s;
 }
@@ -4682,7 +4682,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
 .scr-pagination-ellipsis { color: var(--dim); padding: 0 2px; font-size: 13px; }
 
 .scr-status-badge {
-  flex-shrink: 0; font-size: 12px; font-weight: 600; padding: 2px 8px;
+  flex-shrink: 0; font-size: 13px; font-weight: 600; padding: 2px 8px;
   border-radius: var(--radius-sm); border: 1px solid var(--line);
 }
 .scr-status-pending { color: var(--point); border-color: var(--point); }
@@ -4693,7 +4693,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
 
 .scr-member-detail-name { font-size: 16px; font-weight: 700; }
 .scr-member-detail-tag { font-size: 13px; color: var(--dim); margin-top: 2px; }
-.scr-member-detail-resize { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; margin-top: 6px; }
+.scr-member-detail-resize { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; margin-top: 6px; }
 .scr-detail-list { display: flex; flex-direction: column; gap: 6px; margin: 14px 0; }
 .scr-detail-row { display: flex; align-items: baseline; gap: 8px; font-size: 14px; }
 .scr-detail-row dt { color: var(--dim); width: 64px; flex-shrink: 0; }
@@ -4755,16 +4755,16 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
    전부 맞추긴 어려워서 결국 맵 이름/달력처럼 실제 input인 필드만 유난히 커 보였다 — 작고
    통일된 크기를 우선해 전부 작게 유지한다(iOS 자동확대 재발 가능성은 감수). */
 @media (max-width: 720px) {
-  .scr-label { font-size: 12px; }
+  .scr-label { font-size: 13px; }
 }
 @media (max-width: 480px) {
   .scr-df-input { padding: 6px 2px 6px 6px; letter-spacing: -0.02em; }
   /* 달력 팝오버 자체(일/월/연 그리드)도 좁은 화면에 맞춰 글자를 줄인다 */
-  .scr-cal-cell { font-size: 12px; }
-  .scr-cal-dow-cell { font-size: 12px; }
+  .scr-cal-cell { font-size: 13px; }
+  .scr-cal-dow-cell { font-size: 13px; }
   .scr-cal-title-btn { font-size: 13px; padding: 3px 6px; }
-  .scr-cal-today-btn { font-size: 12px; padding: 3px 7px; }
-  .scr-picker-cell { font-size: 12.5px; }
+  .scr-cal-today-btn { font-size: 13px; padding: 3px 7px; }
+  .scr-picker-cell { font-size: 13px; }
 }
 
 /* ===== 유저 매핑 관리 (v2 테마 — 컨텐츠 프레임 없이 목록이 바로 놓인다) =====
@@ -4791,7 +4791,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
   padding: 0 4px 8px; border-bottom: 1px solid var(--line-soft); margin-bottom: 6px;
 }
 .scr-usermap-computer-count {
-  font-size: 12px; font-weight: 700; color: var(--dim);
+  font-size: 13px; font-weight: 700; color: var(--dim);
   background: rgba(var(--overlay-rgb), 0.08); border-radius: 999px; padding: 1px 7px;
 }
 .scr-usermap-computer-list { display: flex; flex-direction: column; }
@@ -5094,7 +5094,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
    톤에 맞춰 옅은 회갈색 도장식 알약으로(요청: "취소 라벨 우상단에"). */
 .scr-challenge-cancel-tag {
   position: absolute; top: 8px; right: 10px; z-index: 3;
-  font-size: 12px; font-weight: 800; letter-spacing: 0.02em;
+  font-size: 13px; font-weight: 800; letter-spacing: 0.02em;
   color: var(--muted); border: 1px solid var(--line-soft); border-radius: 5px;
   padding: 1px 6px; background: rgba(120, 95, 50, 0.08); white-space: nowrap;
 }
@@ -5131,7 +5131,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
    응답상태알약(n/n 제거)"). */
 .scr-challenge-pill {
   display: inline-flex; align-items: center; flex-shrink: 0;
-  font-size: 12px; font-weight: 800; line-height: 1; padding: 4px 9px; border-radius: 999px;
+  font-size: 13px; font-weight: 800; line-height: 1; padding: 4px 9px; border-radius: 999px;
 }
 .scr-challenge-pill-pending { background: rgba(var(--overlay-rgb),0.12); color: var(--dim); }
 .scr-challenge-pill-accepted { background: rgba(163,214,147,0.18); color: var(--win); }
@@ -5158,7 +5158,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
 /* line-height를 명시하지 않으면 기본값(1.4~)이 이 배지를 더 크게 만들어서 line-height:1을
    맞춰야 한다. */
 .scr-challenge-card-today-tag {
-  display: inline-block; font-size: 12.6px; font-weight: 800; line-height: 1; color: var(--point-contrast);
+  display: inline-block; font-size: 13px; font-weight: 800; line-height: 1; color: var(--point-contrast);
   background: var(--point); border-radius: 4.8px; padding: 3.6px 7.2px; margin-right: 5px; vertical-align: middle;
 }
 /* 경기결과 화면처럼 날짜별로 묶는다(요청: "경기 화면처럼 날짜별로 그룹핑") — 날짜는
@@ -5248,7 +5248,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
 .scr-challenge-time-head {
   display: flex; align-items: center; gap: 6px;
   margin-bottom: -4px;
-  font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: 0.01em;
+  font-size: 13px; font-weight: 700; color: var(--muted); letter-spacing: 0.01em;
 }
 
 /* scroll-margin-top — NEXT 대결로 자동 스크롤(scrollIntoView block:"start")할 때 화면
@@ -5357,7 +5357,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
 /* 현재 상단에 핀된 날짜를 알약으로 — 트랙 왼쪽에 붙여 현재 위치를 "며칠"인지로 보여준다. */
 .scr-scroll-timeline-date {
   position: absolute; right: 100%; margin-right: 8px; transform: translateY(-50%);
-  white-space: nowrap; font-size: 12px; font-weight: 700;
+  white-space: nowrap; font-size: 13px; font-weight: 700;
   color: var(--text); background: var(--panel-solid);
   padding: 3px 7px; border-radius: 5px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22); pointer-events: none;
@@ -5367,13 +5367,13 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
    줄(.scr-challenge-card-when)에 다른 알약들과 나란히 낀다(요청: "마감 카운트다운은
    날짜있는 맨 윗줄에 표시") — 그 줄 자체가 이미 flex-wrap 인라인 나열이라 새 줄을 만들지
    않는다. */
-.scr-challenge-countdown { font-size: 12px; font-weight: 700; color: var(--dim); }
+.scr-challenge-countdown { font-size: 13px; font-weight: 700; color: var(--dim); }
 
 /* 재신청/재대결로 이어진 기록임을 알리는 라벨 — 재신청은 옅은 톤, 재대결은 눈에 띄게
    포인트색으로 구분한다. 라벨에 공백이 있어("n번째 재신청") 좁은 카드에서 줄바꿈되지
    않게 nowrap. */
 .scr-challenge-chain-tag {
-  display: inline-block; font-size: 12px; font-weight: 800; border-radius: 4px;
+  display: inline-block; font-size: 13px; font-weight: 800; border-radius: 4px;
   padding: 1px 5px; margin-right: 5px; vertical-align: middle; white-space: nowrap;
 }
 .scr-challenge-chain-tag-revenge { color: var(--point-contrast); background: var(--point); }
@@ -5448,14 +5448,14 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
 /* 페이징 있는 카드의 "지금 보는 페이지 일시"를 페이지네이션 바로 위에 상대표기로(요청:
    "1개월 23일 전 오후 7시 10분"). 옅고 작게, 가운데. */
 .scr-challenge-page-when {
-  text-align: center; font-size: 12px; font-weight: 600; color: var(--dim);
+  text-align: center; font-size: 13px; font-weight: 600; color: var(--dim);
   margin-top: 4px;
 }
 .scr-challenge-page-nav-bar {
   display: flex; align-items: center; justify-content: center; gap: 10px;
 }
 .scr-challenge-page-count {
-  font-size: 12px; font-weight: 600; color: var(--dim);
+  font-size: 13px; font-weight: 600; color: var(--dim);
   font-variant-numeric: tabular-nums; min-width: 2.6em; text-align: center;
 }
 .scr-challenge-page-nav {
@@ -5500,7 +5500,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
   /* 아래쪽 패딩으로 원 안 글자를 살짝 위로 올린다(요청: "글자를 원 안에서 살짝 위로") —
      한글 글리프가 flex 가운데정렬에선 살짝 아래로 앉아 보인다. */
   padding-bottom: 2px; line-height: 1;
-  font-size: 12px; font-weight: 900; color: #ff4d97; white-space: nowrap;
+  font-size: 13px; font-weight: 900; color: #ff4d97; white-space: nowrap;
   border: 1px solid rgba(255, 77, 151, 0.75); background: transparent;
 }
 /* 해당 안 되는 쪽(진 편/결과 없음)에도 같은 자리를 투명하게 남긴다 — 안 그러면 페이지를
@@ -5514,7 +5514,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
    줄의 오른쪽 끝에 붙인다(scr-mono가 아니라 일반 글자라 폰트도 시간과 구분된다). */
 .scr-challenge-result-link {
   margin-left: auto; background: transparent; border: none; padding: 0; cursor: pointer;
-  font-family: 'Pretendard Variable', Pretendard, 'Noto Sans KR', sans-serif; font-size: 12.5px; font-weight: 700; color: var(--dim);
+  font-family: 'Pretendard Variable', Pretendard, 'Noto Sans KR', sans-serif; font-size: 13px; font-weight: 700; color: var(--dim);
   text-decoration: underline dotted; text-underline-offset: 3px;
 }
 .scr-challenge-result-link:hover { color: var(--text); }
@@ -5566,7 +5566,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
    승 배지보다 눈에 덜 띄게 살짝 낮춘다(요청: "응답상태 배지 컬러톤 살짝 낮추고 승 배지
    컬러톤 높여 승이 더 잘 보이게"). */
 .scr-challenge-avatar-badge {
-  flex-shrink: 0; font-size: 12px; font-weight: 700; white-space: nowrap;
+  flex-shrink: 0; font-size: 13px; font-weight: 700; white-space: nowrap;
 }
 .scr-challenge-avatar-badge-accepted { color: #5cae83; }
 .scr-challenge-avatar-badge-rejected { color: #d1888a; }
@@ -5598,7 +5598,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
    컴팩트하게.. 한마디도 그냥 한줄로 갈게") 한 줄로 되돌린다 — 넘치는 만큼은 클릭하면
    뜨는 팝오버(ChallengeMessage)로 전체를 볼 수 있으니 잘려도 괜찮다. */
 .scr-challenge-side-message {
-  font-size: 12.5px; color: var(--muted); line-height: 1.3; min-height: 1.3em;
+  font-size: 13px; color: var(--muted); line-height: 1.3; min-height: 1.3em;
   /* display:-webkit-box는 block과 달리 부모 폭을 자동으로 채우지 않고(내용 크기만큼만
      차지하는 shrink-to-fit) 짧은 문장이면 박스 자체가 좁아져 버려서, 그 좁은 폭
      안에서 줄바꿈됐다(요청: "이부분이 폭이 작아서 줄바꿈이 생기잖아" — 실제로
@@ -5735,7 +5735,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
 .scr-challenge-result-team:active:not(:disabled) { transform: scale(0.99); }
 .scr-challenge-result-team:disabled { opacity: 0.6; cursor: default; }
 .scr-challenge-result-team-label {
-  flex: 0 0 auto; font-size: 12px; font-weight: 700; color: var(--muted, #888);
+  flex: 0 0 auto; font-size: 13px; font-weight: 700; color: var(--muted, #888);
   min-width: 44px;
 }
 .scr-challenge-result-team-members { display: flex; flex-wrap: wrap; gap: 4px 10px; flex: 1 1 auto; min-width: 0; }
@@ -5745,7 +5745,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
    "승리" 배지가 떠 있으면 지금 어느 쪽을 고르려는 건지 구분이 안 된다(요청: "결과
    입력창에 승리배지는 선택했을때만 나오게 해줘"). */
 .scr-challenge-result-team-win {
-  flex: 0 0 auto; font-size: 12px; font-weight: 700; color: #ec6ea8;
+  flex: 0 0 auto; font-size: 13px; font-weight: 700; color: #ec6ea8;
   padding: 2px 8px; border-radius: 999px; border: 1px solid rgba(236, 110, 168, 0.5);
   opacity: 0; transition: opacity 0.15s ease;
 }
@@ -5872,7 +5872,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
    글씨만 띄우자(테두리 없이)" — 처음부터 큰 갭이 있는 것보다 낫다고). 오류가 없을 땐
    그 작은 자리만 비워 둔다. */
 .scr-challenge-inbox-err-slot { min-height: 12px; }
-.scr-challenge-inbox-err-text { display: block; color: var(--loss); font-size: 12px; line-height: 1; }
+.scr-challenge-inbox-err-text { display: block; color: var(--loss); font-size: 13px; line-height: 1; }
 .scr-challenge-inbox-message { margin: 0 0 6px; font-size: 14px; font-style: italic; color: var(--text); }
 /* 값 span(종류/일시 오른쪽)은 클래스가 없어 색을 명시 안 하면 앱 루트의 테마 글자색(다크
    테마에선 흰색)을 그대로 물려받아 밝은 편지지 배경 위에서 거의 안 보였다(요청: "결과
@@ -5985,7 +5985,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
   padding: 1px 6px; border-radius: 4px;
   background: #ffffff; color: #24272d;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.22), 0 0 1px rgba(0, 0, 0, 0.12);
-  font-size: 12.5px; font-weight: 700; white-space: nowrap;
+  font-size: 13px; font-weight: 700; white-space: nowrap;
 }
 /* 인라인 칩 — 텍스트 흐름 안에서 세로 가운데로 앉게 하고, 양옆에 살짝 숨 쉬는 여백.
    (목록 카드의 읽기용 렌더에서만 쓰인다 — 입력창은 이제 일반 텍스트 인풋이라 칩이 없다.) */
@@ -5998,14 +5998,14 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
 .scr-mreq-item + .scr-mreq-item { border-top: 1px solid rgba(var(--divider-tint), 0.3); }
 .scr-mreq-item-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .scr-mreq-item-author { display: flex; align-items: center; gap: 6px; }
-.scr-mreq-item-author-name { font-size: 12.5px; font-weight: 600; color: var(--dim); }
+.scr-mreq-item-author-name { font-size: 13px; font-weight: 600; color: var(--dim); }
 .scr-mreq-item-text { margin: 0; font-size: 13.5px; color: var(--text); line-height: 1.4; word-break: break-word; }
 .scr-mreq-item-actions { flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
 /* 추천(엄지척) 버튼 — 눌렀으면 포인트색으로 채운다. */
 .scr-mreq-rec-btn {
   display: inline-flex; align-items: center; gap: 4px; padding: 4px 9px;
   background: transparent; border: 1px solid var(--line); border-radius: 999px;
-  color: var(--muted); font-size: 12px; font-weight: 700; cursor: pointer;
+  color: var(--muted); font-size: 13px; font-weight: 700; cursor: pointer;
   font-variant-numeric: tabular-nums; transition: background .12s, color .12s, border-color .12s;
 }
 .scr-mreq-rec-btn:hover { color: var(--text); border-color: var(--pipe-bright); }
@@ -6014,14 +6014,14 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
 .scr-mreq-pager { display: flex; align-items: center; justify-content: center; gap: 12px; padding-top: 4px; }
 .scr-mreq-pager-btn {
   background: transparent; border: 1px solid var(--line); border-radius: var(--radius-sm);
-  color: var(--muted); font-size: 12.5px; font-weight: 600; padding: 4px 12px; cursor: pointer;
+  color: var(--muted); font-size: 13px; font-weight: 600; padding: 4px 12px; cursor: pointer;
 }
 .scr-mreq-pager-btn:disabled { opacity: 0.4; cursor: default; }
 .scr-mreq-pager-btn:not(:disabled):hover { color: var(--text); border-color: var(--pipe-bright); }
-.scr-mreq-pager-info { font-size: 12px; color: var(--dim); font-variant-numeric: tabular-nums; }
+.scr-mreq-pager-info { font-size: 13px; color: var(--dim); font-variant-numeric: tabular-nums; }
 /* 카드 목록의 언급된 사람 표시(인라인 칩과 별개로, 필요 시) — 지금은 인라인 칩으로 보여주니
    거의 안 쓰이지만, 본문에 마커가 없는 옛 요청 대비용 보조 라인. */
-.scr-mreq-item-mentions { font-size: 12px; color: var(--dim); }
+.scr-mreq-item-mentions { font-size: 13px; color: var(--dim); }
 /* ===== 대결 요청 언급 알림 인박스 팝업 ===== */
 .scr-mreq-inbox-lead { margin: 0 0 10px; font-size: 14px; font-weight: 700; color: var(--text); }
 .scr-mreq-inbox-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
@@ -6029,6 +6029,6 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
   border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;
   background: rgba(var(--overlay-rgb), 0.05); display: flex; flex-direction: column; gap: 4px;
 }
-.scr-mreq-inbox-author { font-size: 12px; font-weight: 700; color: var(--dim); }
+.scr-mreq-inbox-author { font-size: 13px; font-weight: 700; color: var(--dim); }
 .scr-mreq-inbox-text { margin: 0; font-size: 14px; color: var(--text); line-height: 1.4; word-break: break-word; }
-.scr-mreq-inbox-mentioned { font-size: 12px; color: var(--muted); }
+.scr-mreq-inbox-mentioned { font-size: 13px; color: var(--muted); }
