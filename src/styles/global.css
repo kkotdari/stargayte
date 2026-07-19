@@ -6113,6 +6113,9 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
   /* 랭킹 년월 필터줄(.scr-rank-subrow)과 그 아래 필터줄(차트/종족) 사이 간격을 넓힌다(요청).
      기본은 .scr-screen 형제 gap에만 기대 붙어 있었는데 좁아 답답했다. */
   .scr-rank-subrow { margin-bottom: 12px; }
+  /* 경기 이력 팀2 로스터(와 뒤따르는 '팀에게')를 왼쪽으로 8px 이동(요청, 모바일). 모든 카드가
+     같은 값이라 연결어 위치 통일은 유지된다. */
+  .scr-rank-detail-history .scr-match-row-team-tail .scr-team-block-team2 { margin-left: -8px; }
   /* 너나와 카드: 상대 로스터를 왼쪽으로 당기던 방식(-28px)은 상대쪽 승/무 배지 자리를 먹어
      손가락↔닉네임 사이 공간이 사라졌다(신고). 대신 도전자(팀1) 칸을 좁혀 화살표·배지·손가락을
      왼쪽으로 옮기고, 상대(팀2)쪽에 도전자와 같은 폭의 승/무 배지 자리를 확보한다(요청). */
