@@ -1055,21 +1055,21 @@ export default function ChallengeScreen() {
             className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm"
             onClick={() => setFormOpen(true)}
           >
-            🕊️ 도전장발송
+            도전장발송
           </button>
           <button
             type="button"
             className="scr-btn scr-btn-ghost scr-btn-sm scr-challenge-records-btn"
             onClick={() => setCompletedOpen(true)}
           >
-            🏆 기록
+            기록
           </button>
           <button
             type="button"
             className="scr-btn scr-btn-ghost scr-btn-sm scr-challenge-discarded-btn"
             onClick={() => setDiscardedOpen(true)}
           >
-            🗑️ 휴지통
+            휴지통
           </button>
         </div>
       </div>
@@ -1083,6 +1083,10 @@ export default function ChallengeScreen() {
           setFulfillingRequest({ requestId: req.id });
         }}
       />
+
+      {/* 진행중 목록 중타이틀 — 요청 코너와 실제 도전장 목록을 구분하고, 검색창은 이 목록의
+          것임을 분명히 하려고 제목 바로 아래에 둔다(요청). */}
+      <h2 className="scr-challenge-list-heading">진행중 목록</h2>
 
       <SearchFilterBar
         count={activeList.length}
