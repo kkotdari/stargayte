@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
 import { Spinner } from "../../components/common/Feedback";
-import SearchFilterBar from "../../components/common/SearchFilterBar";
 import ChallengeFormModal from "../../modals/ChallengeFormModal";
 import MatchRequestCorner from "./MatchRequestCorner";
 import ScrollNavTimeline from "../../components/common/ScrollNavTimeline";
@@ -14,7 +13,6 @@ import { attachPopover } from "../../utils/popover";
 import {
   challengeDateGroupLabel, challengeTimeLabel, formatRelativeSchedule, isToday,
 } from "../../utils/date";
-import { activeMemberSearchTerms, memberMatchesTerm, splitSearchTerms } from "../../utils/memberSearch";
 import { useLockBodyScroll } from "../../utils/bodyScrollLock";
 import type { Challenge, ChallengeResult, ChallengeSide, ChallengeStatus, ChallengeTarget } from "../../types";
 
@@ -52,6 +50,8 @@ function targetPillInfo(t: ChallengeTarget): { tone: PillTone } {
 interface ChallengeDateGroup {
   label: string;
   isToday: boolean;
+  // 이 그룹의 연도(예정일 기준). 일정 미정(scheduledAt 없음)은 null이라 연도 줄을 안 찍는다.
+  year: number | null;
   items: Challenge[];
 }
 
@@ -66,7 +66,10 @@ function groupChallengesByDate(list: Challenge[]): ChallengeDateGroup[] {
     const label = challengeDateGroupLabel(c.scheduledAt);
     const last = groups[groups.length - 1];
     if (last && last.label === label) last.items.push(c);
-    else groups.push({ label, isToday: isToday(c.scheduledAt), items: [c] });
+    else {
+      const year = c.scheduledAt ? new Date(c.scheduledAt).getFullYear() : null;
+      groups.push({ label, isToday: isToday(c.scheduledAt), year, items: [c] });
+    }
   });
   return groups;
 }
@@ -418,7 +421,6 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
   // 남아 어색하다). 재대결 라벨/무승부·완료·결과입력대기 배지/카운트다운/미실시 중 하나라도.
   const whenHasContent =
     isRevengePage
-    || challenge.fromMatchRequest
     || activePage.resultWinnerSide === "draw"
     || (shownLatest && challenge.status === "pending")
     || (shownLatest && challenge.resultWinnerSide !== null)
@@ -456,10 +458,6 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
                   하나뿐이라, 원본(첫 페이지)을 뺀 모든 페이지가 재대결이다(isRevengePage). */}
               {isRevengePage && (
                 <span className="scr-challenge-chain-tag scr-challenge-chain-tag-revenge">재대결</span>
-              )}
-              {/* 대결 요청 코너의 요청을 들어줘 만들어진 도전장 표식(요청). */}
-              {challenge.fromMatchRequest && (
-                <span className="scr-challenge-chain-tag scr-challenge-req-tag">요청대결</span>
               )}
               {/* 이긴 편은 매치업의 화살표 옆에 배지로 표시하니, 여기선 팀을 특정할 수 없는
                   무승부만 알약으로 남긴다(요청: "도전자편 승 이런 건 제거"). 미실시는 아예
@@ -757,14 +755,6 @@ function compareChallenges(a: Challenge, b: Challenge): number {
   return a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0;
 }
 
-// 휴지통 전용 정렬 — 최근 버려진 게 맨 위(요청: "최근 버려진게 위에 오게"). 폐기 시각
-// (discardedAt) 내림차순, 폐기 시각이 없으면(방어) 생성일로 보정한다.
-function compareByDiscardedDesc(a: Challenge, b: Challenge): number {
-  const aKey = a.discardedAt ?? a.createdAt;
-  const bKey = b.discardedAt ?? b.createdAt;
-  return aKey < bKey ? 1 : aKey > bKey ? -1 : 0;
-}
-
 // "기록 보기" 전용 정렬 — 최근에 치른 완료 대결이 맨 위(예정 일시 내림차순, 없으면 생성일).
 function compareByCompletedDesc(a: Challenge, b: Challenge): number {
   const aKey = a.scheduledAt ?? a.createdAt;
@@ -808,62 +798,16 @@ function CompletedChallengesModal(
   );
 }
 
-// "버려진 도전장" 모달 — 흐지부지 끝나(무응답 거절/응답전 취소) 본 목록에서 감춘 초대장들을
-// 모아 보여준다(요청). 본 목록과 같은 날짜/시간 그루핑·카드 형식을 그대로 쓰되, 살짝 어두운
-// 톤에 스티키/필터/검색/타임라인 같은 부가 기능은 없고, 카드는 읽기 전용이라 어떤 응답/체인
-// 액션도 없다(버려진 초대장은 체인 될 수 없음).
-function DiscardedChallengesModal(
-  { challenges, myId, onClose }: { challenges: Challenge[]; myId: string | undefined; onClose: () => void },
-) {
-  useLockBodyScroll();
-  // 휴지통은 날짜/시간 그루핑 없이 "최근 버려진 순"의 한 줄 목록으로 보여준다(요청: "최근
-  // 버려진게 위에 오게") — 목록은 이미 그 순서로 정렬돼 넘어온다.
-  return createPortal(
-    <div className="scr-modal-overlay" onClick={onClose}>
-      <div className="scr-modal scr-discarded-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="scr-modal-head">
-          <span>🗑️ 휴지통</span>
-          <button type="button" className="scr-icon-btn" onClick={onClose} aria-label="닫기"><X size={20} /></button>
-        </div>
-        <div className="scr-modal-body">
-          {challenges.length === 0 ? (
-            <div className="scr-empty">휴지통이 비어 있어요</div>
-          ) : (
-            <div className="scr-challenge-list scr-discarded-list">
-              {challenges.map((c) => (
-                <div key={c.id} className="scr-challenge-card-slot">
-                  <ChallengeCard challenge={c} myId={myId} readOnly onResponded={() => {}} />
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>,
-    document.body,
-  );
-}
-
 // 도전장("너 나와!") 게시판 — 경기결과/예약 시스템과는 독립적인 별도 게시판이라, 화면 자체도
 // 기간 필터 없이 전체 목록을 그대로 보여준다.
 export default function ChallengeScreen() {
   const user = useAppStore((s) => s.user);
-  const members = useAppStore((s) => s.members);
-  const memberOf = useAppStore((s) => s.memberOf);
 
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [formOpen, setFormOpen] = useState(false);
-  // 대결 요청 "들어주기"로 도전장 폼을 열 때 — 그 요청의 작성자를 상대로 미리 채우고, 도전장을
-  // 실제로 보내면 그 요청을 목록에서 내린다(fulfill). null이면 일반 "도전장 보내기".
-  const [fulfillingRequest, setFulfillingRequest] = useState<{ requestId: number } | null>(null);
-  // 코너에 "목록 다시 불러와" 신호 — 들어주기로 요청이 사라지면 올린다.
-  const [corentReloadSignal, setCornerReloadSignal] = useState(0);
-  const [discardedOpen, setDiscardedOpen] = useState(false);
   const [completedOpen, setCompletedOpen] = useState(false);
-  const [search, setSearch] = useState("");
-  const suggestions = useMemo(() => activeMemberSearchTerms(members), [members]);
 
   // 카운트다운(응답 마감)과 완료/무응답취소 같은 시간 기반 파생 상태를 1분마다 다시 그린다 —
   // 카드들은 렌더 시점의 Date.now()로 계산하므로 부모가 다시 그려지면 자연히 갱신된다.
@@ -917,40 +861,8 @@ export default function ChallengeScreen() {
     });
   };
 
-  // 도전장에 관여된 사람(보낸 사람/지목된 상대/같은 팀) 중 검색어와 맞는 사람이 있으면 그
-  // 도전장이 남는다 — 경기결과 화면의 참가자 검색과 같은 방식(AND: 검색어 전부가 각각 다른
-  // 사람이어도 무방하게 누군가와는 맞아야 한다).
-  const challengePersonMatchesTerm = (
-    p: { memberId: string; nickname: string }, term: string,
-  ): boolean => {
-    const m = memberOf(p.memberId);
-    if (m) return memberMatchesTerm(m, term);
-    return p.nickname.toLowerCase().includes(term);
-  };
-  const challengeMatchesTerm = (c: Challenge, term: string): boolean => (
-    challengePersonMatchesTerm({ memberId: c.createdBy.id, nickname: c.createdBy.nickname }, term)
-    || c.targets.some((t) => challengePersonMatchesTerm(t, term))
-    || c.ownMembers.some((m) => challengePersonMatchesTerm(m, term))
-  );
-  const searchTerms = useMemo(() => splitSearchTerms(search), [search]);
-  const searchedChallenges = useMemo(() => {
-    if (searchTerms.length === 0) return challenges;
-    return challenges.filter((c) => searchTerms.every((t) => challengeMatchesTerm(c, t)));
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- challengeMatchesTerm은 memberOf 참조 함수라 매 렌더 새로 만들어져도 무방(값 자체는 members로 충분히 표현됨)
-  }, [challenges, searchTerms, members]);
-
-  // 검색어에 걸린 사람들 — 남은 카드 안에서 누구 때문에 걸렸는지 프사+닉네임을 반전색으로
-  // 짚어준다(랭킹 화면과 같은 방식, 요청: "랭킹, 너 나와 유저 검색시 하이라이팅 추가").
-  const highlightMemberIds = useMemo(() => {
-    const ids = new Set<string>();
-    if (searchTerms.length === 0) return ids;
-    members.forEach((m) => { if (searchTerms.some((t) => memberMatchesTerm(m, t))) ids.add(m.id); });
-    return ids;
-  }, [members, searchTerms]);
-
-  // 너 나와! 목록은 기간 필터 없이 항상 전체를 조회한다(요청: "기본 필터에서 기간 삭제, 무조건
-  // 전체로 조회"). 검색만 적용된 목록을 그대로 쓴다.
-  const periodChallenges = searchedChallenges;
+  // 너 나와! 목록은 필터/검색 없이 항상 전체를 조회한다(요청: "검색창도 제거", "무조건 전체").
+  const periodChallenges = challenges;
 
   // 흐지부지 끝난 건(폐기)과 이미 완료된(done) 대결은 본 목록에서 뺀다(요청: "메인 목록에서
   // 완료된 대결 제거"). 완료 건은 아래 completedChallenges로 모아 "기록 보기" 모달에만 둔다.
@@ -962,14 +874,6 @@ export default function ChallengeScreen() {
 
   // 필터 없이(요청: "필터 자체가 필요없네") 검색만 적용된 전체 목록을 그대로 쓴다.
   const activeList = sortedChallenges;
-
-  // "휴지통" 모달용 — 본 목록에서 감춘(거절/무응답/미실시/폐기) 초대장 전부. 여긴 기간/검색
-  // 필터를 안 걸고(요청) 로드된 전체에서 골라 "최근 버려진 순"으로 준다(요청: "최근 버려진게
-  // 위에 오게"). discardedAt 내림차순, 값이 없으면(방어) createdAt 기준.
-  const discardedChallenges = useMemo(
-    () => challenges.filter(isDiscarded).sort(compareByDiscardedDesc),
-    [challenges],
-  );
 
   // "기록 보기" 모달용 — 완료된(done) 대결을 최근 경기 순으로 모은다(요청: "완료된 대결을 따로
   // 보여주는 기록"). 기간/검색 필터 없이 로드된 전체에서 고른다.
@@ -1040,16 +944,14 @@ export default function ChallengeScreen() {
     return () => root.classList.remove("scr-snap-today");
   }, []);
 
-  const emptyLabel = searchTerms.length > 0 ? "검색 결과가 없어요" : "도전장이 없어요";
+  const emptyLabel = "도전장이 없어요";
 
   return (
     <div className="scr-screen scr-challenge-screen-v2">
-      {/* 휴지통/도전장 보내기 — 다른 화면들처럼 타이틀 툴바 오른쪽에 넣는다(요청: "버튼툴박스도
-          타이틀로우에 들어가야, 다른 화면들처럼"). */}
+      {/* 도전장발송/기록 — 다른 화면들처럼 타이틀 툴바 오른쪽에 넣는다(휴지통은 제거 — 요청). */}
       <div className="scr-v2-toolbar">
         <h1 className="scr-title scr-v2-toolbar-title">너 나와!</h1>
         <div className="scr-v2-toolbar-actions">
-          {/* 배치 순서(요청): 도전장 보내기 → 기록(결과) → 휴지통. */}
           <button
             type="button"
             className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm"
@@ -1064,38 +966,14 @@ export default function ChallengeScreen() {
           >
             기록
           </button>
-          <button
-            type="button"
-            className="scr-btn scr-btn-ghost scr-btn-sm scr-challenge-discarded-btn"
-            onClick={() => setDiscardedOpen(true)}
-          >
-            휴지통
-          </button>
         </div>
       </div>
 
-      {/* 최상단 대결 요청 코너(요청) — @태그로 지목된 사람만 "들어주기"로 도전장을 보낼 수 있다. */}
-      <MatchRequestCorner
-        reloadSignal={corentReloadSignal}
-        onFulfill={(req) => {
-          // 들어주기 시 인원 구성은 전체 유저에게 열어둔다(요청) — 미리 채우지 않고 빈 도전장
-          // 폼을 열어 들어주는 사람이 상대/팀을 자유롭게 고르게 한다. 전송 성공 시 요청은 사라진다.
-          setFulfillingRequest({ requestId: req.id });
-        }}
-      />
+      {/* 최상단 대결 요청 코너 — 자유 텍스트 + 인라인 언급 칩. 언급된 사람에겐 알림이 간다. */}
+      <MatchRequestCorner />
 
-      {/* 진행중 목록 중타이틀 — 요청 코너와 실제 도전장 목록을 구분하고, 검색창은 이 목록의
-          것임을 분명히 하려고 제목 바로 아래에 둔다(요청). */}
+      {/* 진행중 목록 중타이틀 — 요청 코너와 실제 도전장 목록을 구분한다. */}
       <h2 className="scr-challenge-list-heading">진행중 목록</h2>
-
-      <SearchFilterBar
-        count={activeList.length}
-        countLabel="건"
-        searchValue={search}
-        onSearchChange={setSearch}
-        searchPlaceholder="유저 검색"
-        suggestions={suggestions}
-      />
 
       {error && <div className="scr-err">{error}</div>}
 
@@ -1107,11 +985,18 @@ export default function ChallengeScreen() {
             <div className="scr-empty">{emptyLabel}</div>
           ) : (
             <div className="scr-challenge-list">
-              {groupChallengesByDate(activeList).map((g) => {
+              {(() => {
+                // 전체 조회라 여러 해가 섞일 수 있어, 연도가 바뀌는 첫 그룹 앞에 연도 줄을
+                // 한 번만 끼운다(요청). 일정 미정 그룹(year null)은 연도 줄을 안 찍는다.
+                let lastYear: number | null = null;
+                return groupChallengesByDate(activeList).map((g) => {
+                const showYear = g.year != null && g.year !== lastYear;
+                if (g.year != null) lastYear = g.year;
                 const badgeNumbers = nextBadgeNumbers(g.items);
                 return (
+                  <Fragment key={g.label}>
+                  {showYear && <div className="scr-challenge-year-row">{g.year}년</div>}
                   <div
-                    key={g.label}
                     className="scr-challenge-date-group"
                     data-today={g.isToday ? "1" : undefined}
                     // "일정 미정" 그룹(scheduledAt 없는 대기중 묶음, 맨 위)에 표식을 달아
@@ -1145,7 +1030,6 @@ export default function ChallengeScreen() {
                               <ChallengeCard
                                 challenge={c}
                                 myId={user?.id}
-                                highlightMemberIds={highlightMemberIds}
                                 onResponded={upsert}
                               />
                             </div>
@@ -1154,8 +1038,10 @@ export default function ChallengeScreen() {
                       );
                     })}
                   </div>
+                  </Fragment>
                 );
-              })}
+                });
+              })()}
             </div>
           )}
         </section>
@@ -1182,35 +1068,12 @@ export default function ChallengeScreen() {
         />
       )}
 
-      {/* 들어주기 — 요청 작성자를 상대로 미리 채운 도전장 폼. 실제로 보내면 그 요청을 내린다. */}
-      {fulfillingRequest && (
-        <ChallengeFormModal
-          fromMatchRequest
-          onClose={() => setFulfillingRequest(null)}
-          onCreated={(c) => {
-            setChallenges((prev) => [c, ...prev]);
-            const reqId = fulfillingRequest.requestId;
-            void api.fulfillMatchRequest(reqId)
-              .catch(() => {})
-              .finally(() => setCornerReloadSignal((n) => n + 1));
-          }}
-        />
-      )}
-
       {completedOpen && (
         <CompletedChallengesModal
           challenges={completedChallenges}
           myId={user?.id}
           onResponded={upsert}
           onClose={() => setCompletedOpen(false)}
-        />
-      )}
-
-      {discardedOpen && (
-        <DiscardedChallengesModal
-          challenges={discardedChallenges}
-          myId={user?.id}
-          onClose={() => setDiscardedOpen(false)}
         />
       )}
 

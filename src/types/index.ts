@@ -388,12 +388,20 @@ export interface MatchRequest {
   recommendCount: number;
   // 내가 이미 추천을 눌렀는지(버튼 눌림 상태).
   recommendedByMe: boolean;
-  // 내가 작성자인지 — 본인 글엔 "들어주기" 대신 "내리기"만 보인다.
+  // 내가 작성자인지 — 작성자/운영자만 "성사됨" 완료 처리를 할 수 있다.
   mine: boolean;
-  // @태그로 지목된 회원들 — 본문 하이라이트/버튼 노출용.
+  // 언급된 회원들 — 카드에 "언급: A, B"로 표시(권한 등 다른 기능과는 연결 안 함).
   targets: MatchRequestTarget[];
-  // 내가 지목된 대상인지 — 이 사람만 "들어주기"를 누를 수 있다.
-  iAmTarget: boolean;
+}
+
+// 내가 언급된 안 읽은 요청 알림 — 앱 열 때 인박스 팝업으로 뜬다.
+export interface MatchRequestInboxItem {
+  requestId: number;
+  text: string;
+  author: { memberId: string; nickname: string; avatar: string | null };
+  createdAt: string;
+  // 이 요청에 함께 언급된 사람들(나 포함).
+  mentioned: MatchRequestTarget[];
 }
 
 export interface MatchRequestListResponse {
@@ -406,6 +414,7 @@ export interface MatchRequestListResponse {
 
 export interface MatchRequestCreatePayload {
   text: string;
+  // @태그 기능은 폐지했지만 언급된 사람(알림 대상)은 계속 보낸다. 최소 인원 제한 없음(0명 가능).
   targetMemberIds: string[];
 }
 

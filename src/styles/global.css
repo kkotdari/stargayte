@@ -5111,6 +5111,14 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
 .scr-light-theme .scr-challenge-date-head { border-top-color: rgba(0, 0, 0, 0.3); }
 /* 맨 위 날짜 줄은 위쪽 구분선을 없앤다(그룹 사이 구분선이라 첫 줄엔 불필요). */
 .scr-challenge-list > .scr-challenge-date-group:first-child .scr-challenge-date-head { border-top: none; }
+/* 연도 줄 — 전체 조회라 여러 해가 섞일 수 있어, 연도가 바뀌는 지점에 한 번만 찍는다(요청). */
+.scr-challenge-year-row {
+  font-size: 17px; font-weight: 800; color: var(--point); letter-spacing: 0.03em;
+  margin: 20px 0 4px; padding-bottom: 6px; border-bottom: 2px solid var(--line);
+}
+.scr-challenge-list > .scr-challenge-year-row:first-child { margin-top: 0; }
+/* 연도 줄 바로 아래 날짜 줄은 위쪽 구분선을 없앤다(연도 줄 밑줄과 겹쳐 이중선이 되지 않게). */
+.scr-challenge-year-row + .scr-challenge-date-group .scr-challenge-date-head { border-top: none; }
 
 /* 날짜 그룹 안의 시각별 소그룹 — 같은 예정 시각 카드들을 묶고, 그 맨 위에 시간을 한 번만
    보여준다(요청: "카드 시간 표시 삭제, 대신 시간 그루핑해서 제일 위 카드 위에 한번만 표시").
@@ -5917,3 +5925,16 @@ html.scr-light-theme .scr-challenge-next-tag {
 .scr-mreq-pager-btn:disabled { opacity: 0.4; cursor: default; }
 .scr-mreq-pager-btn:not(:disabled):hover { color: var(--text); border-color: var(--pipe-bright); }
 .scr-mreq-pager-info { font-size: 12px; color: var(--dim); font-variant-numeric: tabular-nums; }
+/* 카드 목록의 언급된 사람 표시(인라인 칩과 별개로, 필요 시) — 지금은 인라인 칩으로 보여주니
+   거의 안 쓰이지만, 본문에 마커가 없는 옛 요청 대비용 보조 라인. */
+.scr-mreq-item-mentions { font-size: 12px; color: var(--dim); }
+/* ===== 대결 요청 언급 알림 인박스 팝업 ===== */
+.scr-mreq-inbox-lead { margin: 0 0 10px; font-size: 14px; font-weight: 700; color: var(--text); }
+.scr-mreq-inbox-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.scr-mreq-inbox-item {
+  border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;
+  background: rgba(var(--overlay-rgb), 0.05); display: flex; flex-direction: column; gap: 4px;
+}
+.scr-mreq-inbox-author { font-size: 12px; font-weight: 700; color: var(--dim); }
+.scr-mreq-inbox-text { margin: 0; font-size: 14px; color: var(--text); line-height: 1.4; word-break: break-word; }
+.scr-mreq-inbox-mentioned { font-size: 12px; color: var(--muted); }

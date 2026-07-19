@@ -22,6 +22,7 @@ import MemberProfileModal from "./modals/MemberProfileModal";
 import AdminPanelModal from "./modals/AdminPanelModal";
 import ChallengeInboxModal from "./modals/ChallengeInboxModal";
 import ChallengeResultInboxModal from "./modals/ChallengeResultInboxModal";
+import MatchRequestInboxModal from "./modals/MatchRequestInboxModal";
 import AppUpdateNoticeModal from "./modals/AppUpdateNoticeModal";
 import RankingScreen from "./pages/v2/RankingScreen";
 import MatchScreen from "./pages/v2/MatchScreen";
@@ -63,6 +64,8 @@ export default function App() {
   const dismissInboxChallenges = useAppStore((s) => s.dismissInboxChallenges);
   const resultInboxChallenges = useAppStore((s) => s.resultInboxChallenges);
   const dismissResultInboxChallenges = useAppStore((s) => s.dismissResultInboxChallenges);
+  const inboxMatchRequests = useAppStore((s) => s.inboxMatchRequests);
+  const dismissInboxMatchRequests = useAppStore((s) => s.dismissInboxMatchRequests);
   const updateNotice = useAppStore((s) => s.updateNotice);
   const dismissUpdateNotice = useAppStore((s) => s.dismissUpdateNotice);
 
@@ -218,6 +221,10 @@ export default function App() {
             겹쳐 뜨지 않게 초대 큐가 빈 뒤로 미룬다. */}
         {inboxChallenges.length === 0 && resultInboxChallenges.length > 0 && (
           <ChallengeResultInboxModal challenges={resultInboxChallenges} onClose={dismissResultInboxChallenges} />
+        )}
+        {/* 도전장 인박스들을 다 처리한 뒤에 "대결 요청 언급" 알림을 띄운다(팝업 겹침 방지). */}
+        {inboxChallenges.length === 0 && resultInboxChallenges.length === 0 && inboxMatchRequests.length > 0 && (
+          <MatchRequestInboxModal items={inboxMatchRequests} onClose={dismissInboxMatchRequests} />
         )}
 
         {!booting && <ScrollTopButton />}

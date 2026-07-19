@@ -7,13 +7,8 @@ import { api } from "../../api/client";
 import { cx } from "../../utils/format";
 import type { Member, MatchRequest } from "../../types";
 
-interface MatchRequestCornerProps {
-  onFulfill: (request: MatchRequest) => void;
-  reloadSignal: number;
-}
-
-// 저장 텍스트는 지목을 "@닉네임" 마커로 담는다 — 화면에선 @ 없이 칩으로 보여준다(요청: "칩에는
-// @ 없이 표현"). 목록 카드에서 본문의 그 마커를 찾아 인라인 칩으로 렌더한다.
+// 저장 텍스트는 언급을 "@닉네임" 마커로 담는다(내부 표식일 뿐 화면엔 @가 안 보인다) — 문장
+// 안에 인라인 유저 칩으로 넣는 구조. 목록 카드에서 그 마커를 찾아 인라인 칩으로 렌더한다.
 function renderInline(text: string, targets: { nickname: string }[]) {
   const names = targets.map((t) => t.nickname).filter(Boolean);
   if (names.length === 0) return text;
@@ -34,9 +29,10 @@ function renderInline(text: string, targets: { nickname: string }[]) {
   return out;
 }
 
-export default function MatchRequestCorner({ onFulfill, reloadSignal }: MatchRequestCornerProps) {
+export default function MatchRequestCorner() {
   const members = useAppStore((s) => s.members);
   const user = useAppStore((s) => s.user);
+  const isAdmin = !!user?.roles?.includes("0202");
 
   const [page, setPage] = useState(0);
   const [data, setData] = useState<{ items: MatchRequest[]; total: number; hasMore: boolean } | null>(null);
@@ -75,8 +71,6 @@ export default function MatchRequestCorner({ onFulfill, reloadSignal }: MatchReq
   }, []);
 
   useEffect(() => { void load(page); }, [page, load]);
-  useEffect(() => { if (reloadSignal > 0) void load(page); // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reloadSignal]);
 
   // 에디터 DOM을 걸어 저장 텍스트("@닉네임" 마커 포함)와 지목 id 목록으로 직렬화한다.
   const readEditor = (): { text: string; ids: string[] } => {
@@ -198,7 +192,8 @@ export default function MatchRequestCorner({ onFulfill, reloadSignal }: MatchReq
   };
 
   const isEmpty = content.text.trim() === "" && content.ids.length === 0;
-  const canSubmit = content.ids.length >= 2 && content.text.trim().length > 0 && !submitting;
+  // 언급은 선택(0명 이상, 알림 대상일 뿐) — 내용만 있으면 올릴 수 있다.
+  const canSubmit = content.text.trim().length > 0 && !submitting;
 
   const resetCompose = () => {
     if (editorRef.current) editorRef.current.innerHTML = "";
@@ -210,8 +205,8 @@ export default function MatchRequestCorner({ onFulfill, reloadSignal }: MatchReq
 
   const submit = async () => {
     const { text, ids } = readEditor();
-    if (ids.length < 2) {
-      setSubmitErr("서로 대결했으면 하는 사람을 두 명 이상 골라주세요.");
+    if (!text.trim()) {
+      setSubmitErr("요청 내용을 입력해주세요.");
       return;
     }
     setSubmitting(true);
@@ -236,10 +231,11 @@ export default function MatchRequestCorner({ onFulfill, reloadSignal }: MatchReq
     } catch { /* 무시 */ } finally { setBusyId(null); }
   };
 
-  const removeOwn = async (req: MatchRequest) => {
+  // 대결이 성사되면 작성자/운영자가 "성사됨"으로 완료 처리 — 목록에서 사라진다.
+  const complete = async (req: MatchRequest) => {
     setBusyId(req.id);
     try {
-      await api.deleteMatchRequest(req.id);
+      await api.completeMatchRequest(req.id);
       await load(page);
     } catch { /* 무시 */ } finally { setBusyId(null); }
   };
@@ -268,7 +264,7 @@ export default function MatchRequestCorner({ onFulfill, reloadSignal }: MatchReq
               contentEditable
               role="textbox"
               aria-multiline="true"
-              data-placeholder="서로 대결했으면 하는 사람 이름을 입력해 골라 요청하세요 (최소 2명)"
+              data-placeholder="예) 팍규 대 Rex 보고싶어요! (이름을 입력해 칩으로 언급 가능)"
               onInput={syncAfterEdit}
               onKeyUp={detectMention}
               onKeyDown={onEditorKeyDown}
@@ -323,15 +319,11 @@ export default function MatchRequestCorner({ onFulfill, reloadSignal }: MatchReq
                 >
                   <ThumbsUp size={14} /> {req.recommendCount}
                 </button>
-                {req.mine ? (
-                  <button type="button" className="scr-btn scr-btn-ghost scr-btn-sm scr-mreq-take-btn" onClick={() => void removeOwn(req)} disabled={busyId === req.id}>
-                    내리기
+                {(req.mine || isAdmin) && (
+                  <button type="button" className="scr-btn scr-btn-sm scr-btn-primary scr-btn-primary-solid scr-mreq-take-btn" onClick={() => void complete(req)} disabled={busyId === req.id}>
+                    성사됨
                   </button>
-                ) : req.iAmTarget ? (
-                  <button type="button" className="scr-btn scr-btn-sm scr-btn-primary scr-btn-primary-solid scr-mreq-take-btn" onClick={() => onFulfill(req)}>
-                    접수
-                  </button>
-                ) : null}
+                )}
               </div>
             </li>
           ))}
