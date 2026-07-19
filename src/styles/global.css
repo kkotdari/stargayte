@@ -3663,7 +3663,8 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    들여쓰기 없애기") — 위 3652 규칙이 팀1/개인전만 없앴던 걸 팀2까지 넓힌다. */
 .scr-rank-detail-history .scr-team-roster { gap: 2px; padding-left: 0; }
 /* 이력 목록 닉네임(.scr-team-name)만 한 스텝 키운다(요청) — caption(14)→body(16). */
-.scr-rank-detail-history .scr-team-name { font-size: var(--fs-body); }
+/* 경기 이력 닉네임은 한 스텝 축소(요청) — body(16)→caption(14). */
+.scr-rank-detail-history .scr-team-name { font-size: var(--fs-caption); }
 /* 경기 이력 목록은 자기 높이만큼 자연스럽게 흐르게 두고(내부 고정높이·스크롤 없음),
    스크롤은 모달 본체(.scr-modal-body, 이미 overflow-y:auto + 모달 max-height 88vh)가
    통째로 맡는다(요청: "스크롤을 경기이력에 주는 게 아니라 모달 전체에 주기") — 그래프·
