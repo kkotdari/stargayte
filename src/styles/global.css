@@ -1052,9 +1052,10 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 /* 경기 등록 화면 — 등록 버튼 아래에 리플레이 위치 안내 링크를 세로로 쌓는다(요청). */
 .scr-v2-primary-row-col { flex-direction: column; align-items: center; gap: 6px; }
 .scr-v2-primary-row .scr-btn {
-  font-size: var(--fs-subhead); /* 13.5px * 1.2 */
-  padding: 8.4px 14.4px; /* 7px/12px * 1.2 */
-  min-height: 38px; /* --field-h-sm(32px) * 1.2 */
+  /* 도전장 쓰기/등록/회원 생성 등 대표 버튼 — 예전 1.2배 확대에서 20% 축소(요청). */
+  font-size: var(--fs-body); /* 20px * 0.8 */
+  padding: 6.7px 11.5px; /* 8.4px/14.4px * 0.8 */
+  min-height: 30px; /* 38px * 0.8 */
 }
 /* 휴지통/도전장 보내기는 이제 다른 화면들처럼 타이틀 툴바(.scr-v2-toolbar-actions) 안에
    들어간다(요청) — 별도 래퍼(.scr-challenge-float-actions)는 없앴다. */
@@ -1156,12 +1157,13 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    행마다 흔들렸다. */
 .scr-weight-table { width: 100%; border-collapse: collapse; font-size: var(--fs-subhead); table-layout: fixed; }
 .scr-weight-table th {
-  text-align: center; font-size: var(--fs-caption); font-weight: 700; color: var(--muted);
-  padding: 7px 8px; border-bottom: 1px solid var(--line-soft);
+  /* 헤더 폰트 한 단계 확대(caption→body), 행 높이도 ~20% 키운다(요청). */
+  text-align: center; font-size: var(--fs-body); font-weight: 700; color: var(--muted);
+  padding: 9px 8px; border-bottom: 1px solid var(--line-soft);
 }
 .scr-weight-table td {
-  /* 헤더(12px)는 그대로 두고, 데이터 행만 그보다 더 작게 줄인다(요청). */
-  text-align: center; padding: 7px 8px; color: var(--text); font-size: var(--fs-caption);
+  /* 승리/패배 점수는 caption 유지, 닉네임만 아래에서 한 단계 키운다. 행 높이 ~20% 확대(요청). */
+  text-align: center; padding: 9px 8px; color: var(--text); font-size: var(--fs-caption);
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 .scr-light-theme .scr-weight-table td { border-bottom-color: rgba(0, 0, 0, 0.06); }
@@ -1172,7 +1174,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-weight-user { display: flex; align-items: center; gap: 7px; min-width: 0; }
 /* 순번은 가운데 정렬(고정폭 칸 안), 프사·닉네임은 그 뒤로 왼쪽 정렬(요청). */
 .scr-weight-rank { font-size: var(--fs-body); color: var(--muted); font-weight: 700; min-width: 22px; text-align: center; font-variant-numeric: tabular-nums; flex-shrink: 0; }
-.scr-weight-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.scr-weight-name { font-size: var(--fs-body); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .scr-weight-win { color: var(--win); font-weight: 700; white-space: nowrap; }
 .scr-weight-loss { color: var(--loss); font-weight: 700; white-space: nowrap; }
 
@@ -2834,7 +2836,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    딤을 걸면(이전 시도) 스크롤 위치에 따라 화면 밖에 있어 안 보일 수 있었다. */
 /* 경기 목록 테이블형 카드(요청) — 로스터형 대신, 헤더/컬럼 구분선 없이 로우 구분선(흐린
    흰색)만 있는 표 구조. 머리줄(경기번호·맵·등록자) / 팀 2열 / 그 아래 각 팀 승·패. */
-.scr-match-list-panel-v2 .scr-match-trow { padding: 11px 8px; position: relative; }
+.scr-match-list-panel-v2 .scr-match-trow { padding: 15px 8px; position: relative; }
 /* 양옆에 패딩을 줘서 짧은 선으로 만들어봤는데(요청: "경기 구분선에 양옆에 패딩줘서
    일자 구분이라는게 구분되게") 내용(팀 로스터 들여쓰기)은 그대로 두되 이 선만 원래대로
    끝까지 되돌린다(요청: "경기 구분선은 원래대로 끝까지 확장") — 행 자신의 원래 패딩과
@@ -2909,7 +2911,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 }
 .scr-mt-player-static { cursor: default; }
 .scr-mt-player:not(.scr-mt-player-static):hover .scr-mt-name { color: var(--point); }
-.scr-mt-name { font-size: var(--fs-body); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.scr-mt-name { font-size: var(--fs-caption); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .scr-mt-player-hl { background: var(--highlight-bg); border-radius: 4px; padding: 2px 4px; margin: -2px -4px; }
 .scr-mt-player-hl .scr-mt-name { font-weight: 800; color: var(--bar-text); }
 .scr-mt-player .scr-race-badge-letter { flex-shrink: 0; }
@@ -2924,7 +2926,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 /* 펼친 로스터의 이름(.scr-mt-name: 13px/600)과 글자 크기·굵기를 맞춘다(요청: "로스터
    글자 크기나 굵기 등은 펼쳤을때 접었을때 동일하게"). */
 .scr-match-trow-summary { display: flex; align-items: center; gap: 10px; font-size: var(--fs-body); font-weight: 600; color: var(--text); }
-.scr-match-trow-summary-team { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.scr-match-trow-summary-team { flex: 1 1 0; min-width: 0; font-size: var(--fs-caption); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .scr-match-trow-summary-team:first-child { text-align: right; }
 .scr-match-trow-summary-team:last-child { text-align: left; }
 /* 행 전체가 클릭 대상 — 눌러서 펼치고 접는다(요청). 터치에서 :hover가 스크롤 스침에
@@ -3652,8 +3654,12 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-rank-detail-history .scr-match-row-result-only:not(.scr-match-row-team-tail) > .scr-team-block:first-child .scr-team-roster,
 .scr-rank-detail-history .scr-match-row-team-tail .scr-match-team-side-ours .scr-team-roster { padding-left: 0; }
 .scr-rank-detail-history-head { font-size: var(--fs-body); font-weight: 800; color: var(--muted); margin-bottom: 8px; }
-/* 팀 로스터 줄간격을 줄인다(요청) — 경기 목록 카드보다 여기(랭킹 상세 이력)는 더 촘촘하게. */
-.scr-rank-detail-history .scr-team-roster { gap: 2px; }
+/* 팀 로스터 줄간격을 줄인다(요청) — 경기 목록 카드보다 여기(랭킹 상세 이력)는 더 촘촘하게.
+   더불어 로스터 왼쪽 안쪽 여백(6px)을 팀1·팀2·개인전 모두 0으로 없앤다(요청: "이력 목록
+   들여쓰기 없애기") — 위 3652 규칙이 팀1/개인전만 없앴던 걸 팀2까지 넓힌다. */
+.scr-rank-detail-history .scr-team-roster { gap: 2px; padding-left: 0; }
+/* 이력 목록 닉네임(.scr-team-name)만 한 스텝 키운다(요청) — caption(14)→body(16). */
+.scr-rank-detail-history .scr-team-name { font-size: var(--fs-body); }
 /* 경기 이력 목록은 자기 높이만큼 자연스럽게 흐르게 두고(내부 고정높이·스크롤 없음),
    스크롤은 모달 본체(.scr-modal-body, 이미 overflow-y:auto + 모달 max-height 88vh)가
    통째로 맡는다(요청: "스크롤을 경기이력에 주는 게 아니라 모달 전체에 주기") — 그래프·
@@ -6098,16 +6104,22 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
      아이템의 % margin은 컨테이너가 아니라 자기 트랙(1fr≈카드의 1/3) 기준이라 -20%로는
      약 26px밖에 안 밀렸다 — 모바일 카드 폭(약 360px)의 20%인 약 72px을 고정값으로 당긴다.
      모든 카드가 같은 값이라 로스터 왼쪽 기준선 정렬은 유지된다. 펼친 로스터에만 적용. */
-  .scr-match-trow-grid .scr-match-trow-team:last-child { margin-left: -72px; }
+  .scr-match-trow-grid .scr-match-trow-team:last-child { margin-left: -56px; }
   /* 너나와 카드: 상대 로스터를 왼쪽으로 당기던 방식(-28px)은 상대쪽 승/무 배지 자리를 먹어
      손가락↔닉네임 사이 공간이 사라졌다(신고). 대신 도전자(팀1) 칸을 좁혀 화살표·배지·손가락을
      왼쪽으로 옮기고, 상대(팀2)쪽에 도전자와 같은 폭의 승/무 배지 자리를 확보한다(요청). */
-  .scr-challenge-matchup .scr-challenge-side:not(.scr-challenge-side-target) { flex: 0.72 1 0; }
+  /* 다만 0.72까지 좁히니 도전자 닉네임이 4글자에서 잘렸다(신고: "양쪽 로스터 닉네임 폭 확보").
+     도전자 칸을 0.85로 넓혀(승 배지가 오른쪽으로 조금 이동) 도전자 닉네임 폭을 확보하고,
+     동시에 가운데 화살표 묶음의 좌우 여백을 12→6px로 줄여 그 절약분을 양쪽 로스터가 나눠
+     가져 상대 닉네임 폭도 함께 넓힌다. */
+  .scr-challenge-matchup .scr-challenge-side:not(.scr-challenge-side-target) { flex: 0.85 1 0; }
+  .scr-challenge-matchup .scr-challenge-arrow-row { margin-left: 5px; margin-right: 5px; gap: 3px; }
   /* 경기 이력 팀전 카드: 양 팀 덩어리는 기본(base)의 균등폭(flex:1 1 0)을 그대로 쓴다 —
      한때 내용폭(flex:0 1 auto)으로 바꿨더니 팀1(짧은 닉네임)쪽 영역이 팀2보다 눈에 띄게
      좁아졌다(신고). 균등폭이면 팀1/팀2가 같은 폭을 가져 좌우가 대칭이 된다. */
-  /* 이력/경기목록 승·패 글자 한 단계 축소(20→16) */
+  /* 이력(경기이력) 승·패 글자는 한 단계 축소(20→16) 유지. */
   .scr-team-outcome { font-size: var(--fs-body); }
+  /* 경기목록 승·패 글자는 body(16) 유지 — 닉네임(caption 14)보다 한 단계 위. */
   .scr-match-trow-outcome { font-size: var(--fs-body); }
   /* 타임라인 폰트 한 단계 축소(날짜 알약 14→12, 끝/오늘/미정 라벨 12→11) */
   .scr-scroll-timeline-end { font-size: var(--fs-11); }
@@ -6194,4 +6206,10 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
     --fs-hero-2: var(--mobile-fs-hero-2);
     --fs-hero-3: var(--mobile-fs-hero-3);
   }
+}
+
+/* 모바일 대타이틀(.scr-title) 폰트를 28→24px로 축소(요청). 통일 블록(위)이 .scr-title을
+   전 폭에서 title(28)로 고정하므로, 그 뒤에서 모바일 폭만 24px로 덮어쓴다. */
+@media (max-width: 640px) {
+  .scr-title { font-size: 24px; }
 }
