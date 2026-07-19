@@ -53,7 +53,8 @@ export default function RankingScreenV2() {
   const members = useAppStore((s) => s.members);
   const suggestions = useMemo(() => activeMemberSearchTerms(members), [members]);
 
-  const [mode, setMode] = useState<RankMode>("solo");
+  // 진입 기본값은 팀전(요청: "랭킹 차트는 팀전 랭킹을 디폴트로").
+  const [mode, setMode] = useState<RankMode>("team");
   const matchType = MATCH_TYPE_OF[mode];
   const isTeam = mode === "team";
   const [race, setRace] = useState<BaseRace | "all">("all");

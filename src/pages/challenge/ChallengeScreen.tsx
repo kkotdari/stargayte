@@ -4,7 +4,6 @@ import { X } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
 import { Spinner } from "../../components/common/Feedback";
 import SearchFilterBar from "../../components/common/SearchFilterBar";
-import FilterItem from "../../components/common/FilterItem";
 import ChallengeFormModal from "../../modals/ChallengeFormModal";
 import MatchRequestCorner from "./MatchRequestCorner";
 import ScrollNavTimeline from "../../components/common/ScrollNavTimeline";
@@ -859,7 +858,6 @@ export default function ChallengeScreen() {
   const [discardedOpen, setDiscardedOpen] = useState(false);
   const [completedOpen, setCompletedOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const [acceptedOnly, setAcceptedOnly] = useState(false);
   const suggestions = useMemo(() => activeMemberSearchTerms(members), [members]);
 
   // 카운트다운(응답 마감)과 완료/무응답취소 같은 시간 기반 파생 상태를 1분마다 다시 그린다 —
@@ -957,12 +955,8 @@ export default function ChallengeScreen() {
     [periodChallenges],
   );
 
-  // "수락만" — 수락되어 성사된(confirmed) 대결만 남긴다(요청: "필터를 수락만으로 변경하고
-  // 수락한 건들만 노출"). 대기중/거절/취소 건은 빠지고, 이미 지난(done) 대결도 confirmed
-  // 상태라 그대로 포함된다.
-  const activeList = acceptedOnly
-    ? sortedChallenges.filter((c) => c.status === "confirmed")
-    : sortedChallenges;
+  // 필터 없이(요청: "필터 자체가 필요없네") 검색만 적용된 전체 목록을 그대로 쓴다.
+  const activeList = sortedChallenges;
 
   // "휴지통" 모달용 — 본 목록에서 감춘(거절/무응답/미실시/폐기) 초대장 전부. 여긴 기간/검색
   // 필터를 안 걸고(요청) 로드된 전체에서 골라 "최근 버려진 순"으로 준다(요청: "최근 버려진게
@@ -1041,9 +1035,7 @@ export default function ChallengeScreen() {
     return () => root.classList.remove("scr-snap-today");
   }, []);
 
-  const emptyLabel = searchTerms.length > 0
-    ? "검색 결과가 없어요"
-    : acceptedOnly ? "수락된 대결이 없어요" : "도전장이 없어요";
+  const emptyLabel = searchTerms.length > 0 ? "검색 결과가 없어요" : "도전장이 없어요";
 
   return (
     <div className="scr-screen scr-challenge-screen-v2">
@@ -1090,17 +1082,9 @@ export default function ChallengeScreen() {
         countLabel="건"
         searchValue={search}
         onSearchChange={setSearch}
-        searchPlaceholder="@유저"
+        searchPlaceholder="@로 유저 검색"
         suggestions={suggestions}
         mentionTrigger
-        filterPanel={
-          <FilterItem>
-            <label className="scr-checkbox-field">
-              <input type="checkbox" checked={acceptedOnly} onChange={(e) => setAcceptedOnly(e.target.checked)} />
-              수락만
-            </label>
-          </FilterItem>
-        }
       />
 
       {error && <div className="scr-err">{error}</div>}
