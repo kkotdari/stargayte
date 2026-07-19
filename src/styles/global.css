@@ -19,19 +19,42 @@
 
 /* ===== tokens (STARCRAFT 심플 테마) ===== */
 :root {
-  /* ── 폰트 크기 스케일(역할 기반). PC/모바일 크기를 하나로 통일하기 위해 값을 변수로
-     고정한다(요청: "pc와 모바일 폰트크기 통일" + "변수화해줘 크기를"). 한 곳에서
-     조절하면 전 화면에 반영된다. 미세12 / 라벨·캡션14 / 본문16 / 소제목20 / 타이틀28 /
-     히어로36·40·52, 타임라인 극소용 11. */
-  --fs-11: 11px;
-  --fs-micro: 12px;
-  --fs-caption: 14px;
-  --fs-body: 16px;
-  --fs-subhead: 20px;
-  --fs-title: 28px;
-  --fs-hero-1: 36px;
-  --fs-hero-2: 40px;
-  --fs-hero-3: 52px;
+  /* ── 폰트 크기 스케일(역할 기반). PC/모바일을 각각 pc-/mobile- 접두사로 따로 관리한다
+     (요청: "pc_ mobile_ 접두사 붙여서 관리 → 나중에 pc만 크게 하기 편하게"). 지금은 두
+     세트 값이 같아 PC=모바일로 통일돼 있고, 나중에 --pc-fs-* 만 키우면 PC만 커진다.
+     미세12 / 라벨·캡션14 / 본문16 / 소제목20 / 타이틀28 / 히어로36·40·52, 타임라인 극소용 11.
+     실제 요소는 활성 변수 --fs-* 만 쓴다. 아래 :root는 기본(PC)이고, 모바일 폭에서는
+     --fs-* 가 --mobile-fs-* 로 스위칭된다(파일 하단 @media (max-width: 640px) :root). */
+  /* PC 기준 */
+  --pc-fs-11: 11px;
+  --pc-fs-micro: 12px;
+  --pc-fs-caption: 14px;
+  --pc-fs-body: 16px;
+  --pc-fs-subhead: 20px;
+  --pc-fs-title: 28px;
+  --pc-fs-hero-1: 36px;
+  --pc-fs-hero-2: 40px;
+  --pc-fs-hero-3: 52px;
+  /* 모바일 기준 */
+  --mobile-fs-11: 11px;
+  --mobile-fs-micro: 12px;
+  --mobile-fs-caption: 14px;
+  --mobile-fs-body: 16px;
+  --mobile-fs-subhead: 20px;
+  --mobile-fs-title: 28px;
+  --mobile-fs-hero-1: 36px;
+  --mobile-fs-hero-2: 40px;
+  --mobile-fs-hero-3: 52px;
+  /* 활성 스케일(기본 = PC). 요소는 이 변수만 참조한다. */
+  --fs-11: var(--pc-fs-11);
+  --fs-micro: var(--pc-fs-micro);
+  --fs-caption: var(--pc-fs-caption);
+  --fs-body: var(--pc-fs-body);
+  --fs-subhead: var(--pc-fs-subhead);
+  --fs-title: var(--pc-fs-title);
+  --fs-hero-1: var(--pc-fs-hero-1);
+  --fs-hero-2: var(--pc-fs-hero-2);
+  --fs-hero-3: var(--pc-fs-hero-3);
   --content-max: 1280px;
   /* PC에서 화면마다 리스트/카드 콘텐츠 폭이 제각각이던 걸(랭킹 560px 고정 그리드,
      너나와 800px, 나머지는 무제한으로 --content-max까지 늘어남) 하나로 통일한다
@@ -6145,3 +6168,19 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
 .scr-scroll-timeline-today::after, .scr-scroll-timeline-undecided::after { font-size: var(--fs-11); }
 .scr-scroll-timeline-date { font-size: var(--fs-micro); }
 .scr-challenge-form-modal .scr-hint { font-size: var(--fs-caption); }
+
+/* ═══ 모바일 폭에서 활성 스케일을 모바일 세트로 스위칭. 지금은 PC/모바일 값이 같아
+   차이가 없지만, --mobile-fs-* 만 바꾸면 모바일만 따로 조절된다(요청: pc/mobile 분리 관리). */
+@media (max-width: 640px) {
+  :root {
+    --fs-11: var(--mobile-fs-11);
+    --fs-micro: var(--mobile-fs-micro);
+    --fs-caption: var(--mobile-fs-caption);
+    --fs-body: var(--mobile-fs-body);
+    --fs-subhead: var(--mobile-fs-subhead);
+    --fs-title: var(--mobile-fs-title);
+    --fs-hero-1: var(--mobile-fs-hero-1);
+    --fs-hero-2: var(--mobile-fs-hero-2);
+    --fs-hero-3: var(--mobile-fs-hero-3);
+  }
+}
