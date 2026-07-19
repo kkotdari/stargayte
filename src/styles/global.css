@@ -4382,8 +4382,10 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
   background-image: linear-gradient(90deg, transparent 0%, var(--pipe-bright) 50%, transparent 100%);
   background-repeat: no-repeat; background-position: bottom; background-size: 100% 1px;
 }
-.scr-drawer-user .scr-avatar { border-radius: 50% !important; }
-.scr-drawer-user-name { font-weight: 700; font-size: var(--fs-subhead); }
+/* 서랍 유저 아바타/닉네임도 헤더와 같이 한 스텝 축소(요청) — 아바타 40→32px(인라인 크기라
+   !important), 닉네임 subhead(20)→body(16). 서랍은 모바일 전용이라 base에서 바로 줄인다. */
+.scr-drawer-user .scr-avatar { border-radius: 50% !important; width: 32px !important; height: 32px !important; }
+.scr-drawer-user-name { font-weight: 700; font-size: var(--fs-body); }
 .scr-drawer-user-tag { font-size: var(--fs-caption); color: var(--dim); }
 .scr-drawer-nav { display: flex; flex-direction: column; gap: 4px; }
 /* border-radius를 활성 반전 블록(.scr-nav-tab-active, 4px)과 똑같이 맞춘다 — 다르면
@@ -6100,6 +6102,8 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
   /* 랭킹 년월 필터줄(.scr-rank-subrow)과 그 아래 필터줄(차트/종족) 사이 간격을 넓힌다(요청).
      기본은 .scr-screen 형제 gap에만 기대 붙어 있었는데 좁아 답답했다. */
   .scr-rank-subrow { margin-bottom: 12px; }
+  /* 소타이틀(.scr-v2-subheading, 예: "경기 목록") 아래 갭을 조금 추가한다(요청: 8px 정도). */
+  .scr-v2-subheading { margin-bottom: 8px; }
   /* 경기목록(펼친 카드) 팀2 로스터를 왼쪽으로 당긴다(요청: 카드 폭 20% 정도). 그리드
      아이템의 % margin은 컨테이너가 아니라 자기 트랙(1fr≈카드의 1/3) 기준이라 -20%로는
      약 26px밖에 안 밀렸다 — 모바일 카드 폭(약 360px)의 20%인 약 72px을 고정값으로 당긴다.
