@@ -2836,7 +2836,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    딤을 걸면(이전 시도) 스크롤 위치에 따라 화면 밖에 있어 안 보일 수 있었다. */
 /* 경기 목록 테이블형 카드(요청) — 로스터형 대신, 헤더/컬럼 구분선 없이 로우 구분선(흐린
    흰색)만 있는 표 구조. 머리줄(경기번호·맵·등록자) / 팀 2열 / 그 아래 각 팀 승·패. */
-.scr-match-list-panel-v2 .scr-match-trow { padding: 11px 8px; position: relative; }
+.scr-match-list-panel-v2 .scr-match-trow { padding: 15px 8px; position: relative; }
 /* 양옆에 패딩을 줘서 짧은 선으로 만들어봤는데(요청: "경기 구분선에 양옆에 패딩줘서
    일자 구분이라는게 구분되게") 내용(팀 로스터 들여쓰기)은 그대로 두되 이 선만 원래대로
    끝까지 되돌린다(요청: "경기 구분선은 원래대로 끝까지 확장") — 행 자신의 원래 패딩과
@@ -2911,7 +2911,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 }
 .scr-mt-player-static { cursor: default; }
 .scr-mt-player:not(.scr-mt-player-static):hover .scr-mt-name { color: var(--point); }
-.scr-mt-name { font-size: var(--fs-body); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.scr-mt-name { font-size: var(--fs-caption); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .scr-mt-player-hl { background: var(--highlight-bg); border-radius: 4px; padding: 2px 4px; margin: -2px -4px; }
 .scr-mt-player-hl .scr-mt-name { font-weight: 800; color: var(--bar-text); }
 .scr-mt-player .scr-race-badge-letter { flex-shrink: 0; }
@@ -2926,7 +2926,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 /* 펼친 로스터의 이름(.scr-mt-name: 13px/600)과 글자 크기·굵기를 맞춘다(요청: "로스터
    글자 크기나 굵기 등은 펼쳤을때 접었을때 동일하게"). */
 .scr-match-trow-summary { display: flex; align-items: center; gap: 10px; font-size: var(--fs-body); font-weight: 600; color: var(--text); }
-.scr-match-trow-summary-team { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.scr-match-trow-summary-team { flex: 1 1 0; min-width: 0; font-size: var(--fs-caption); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .scr-match-trow-summary-team:first-child { text-align: right; }
 .scr-match-trow-summary-team:last-child { text-align: left; }
 /* 행 전체가 클릭 대상 — 눌러서 펼치고 접는다(요청). 터치에서 :hover가 스크롤 스침에
@@ -6105,8 +6105,6 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
      약 26px밖에 안 밀렸다 — 모바일 카드 폭(약 360px)의 20%인 약 72px을 고정값으로 당긴다.
      모든 카드가 같은 값이라 로스터 왼쪽 기준선 정렬은 유지된다. 펼친 로스터에만 적용. */
   .scr-match-trow-grid .scr-match-trow-team:last-child { margin-left: -56px; }
-  /* 경기목록 한 칸(.scr-match-trow) 위아래 패딩을 키운다(요청) — 11→15px. */
-  .scr-match-list-panel-v2 .scr-match-trow { padding-top: 15px; padding-bottom: 15px; }
   /* 너나와 카드: 상대 로스터를 왼쪽으로 당기던 방식(-28px)은 상대쪽 승/무 배지 자리를 먹어
      손가락↔닉네임 사이 공간이 사라졌다(신고). 대신 도전자(팀1) 칸을 좁혀 화살표·배지·손가락을
      왼쪽으로 옮기고, 상대(팀2)쪽에 도전자와 같은 폭의 승/무 배지 자리를 확보한다(요청). */
@@ -6121,8 +6119,8 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
      좁아졌다(신고). 균등폭이면 팀1/팀2가 같은 폭을 가져 좌우가 대칭이 된다. */
   /* 이력(경기이력) 승·패 글자는 한 단계 축소(20→16) 유지. */
   .scr-team-outcome { font-size: var(--fs-body); }
-  /* 경기목록 승·패 글자는 한 스텝 확대(16→20)로 되돌린다(요청). */
-  .scr-match-trow-outcome { font-size: var(--fs-subhead); }
+  /* 경기목록 승·패 글자는 body(16) 유지 — 닉네임(caption 14)보다 한 단계 위. */
+  .scr-match-trow-outcome { font-size: var(--fs-body); }
   /* 타임라인 폰트 한 단계 축소(날짜 알약 14→12, 끝/오늘/미정 라벨 12→11) */
   .scr-scroll-timeline-end { font-size: var(--fs-11); }
   .scr-scroll-timeline-today::after, .scr-scroll-timeline-undecided::after { font-size: var(--fs-11); }
@@ -6188,7 +6186,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
 .scr-drawer-actions .scr-btn { font-size: var(--fs-caption); }
 .scr-challenge-card-team .scr-challenge-person-name { font-size: var(--fs-micro); }
 .scr-team-outcome { font-size: var(--fs-body); }
-.scr-match-trow-outcome { font-size: var(--fs-subhead); }
+.scr-match-trow-outcome { font-size: var(--fs-body); }
 .scr-scroll-timeline-end { font-size: var(--fs-11); }
 .scr-scroll-timeline-today::after, .scr-scroll-timeline-undecided::after { font-size: var(--fs-11); }
 .scr-scroll-timeline-date { font-size: var(--fs-micro); }
