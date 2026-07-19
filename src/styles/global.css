@@ -1233,14 +1233,11 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    "승패 줄다 표시하되 승에 녹색 포인트 컬러"). 목록 패널 안(.scr-match-list-panel-v2)으로만
    좁혀, 경기 상세 팝업 등 다른 곳의 승/패 톤은 건드리지 않는다. */
 .scr-match-list-panel-v2 .scr-team-outcome.scr-win { color: var(--win); }
-/* 패는 붉은 계열 대신 회색으로(요청: "승패 테마 컬러를 녹/적에서 녹/회색으로" —
-   랭킹 경기이력·경기목록·통계에 공통 적용). 이 셀렉터 하나가 랭킹 상세 이력
-   (RankMatchHistory도 같은 .scr-match-list-panel-v2 래퍼를 쓴다)과 경기 목록 팀
-   표시를 모두 포함한다. */
-.scr-match-list-panel-v2 .scr-team-outcome.scr-loss { color: var(--muted); }
+/* 패 글자는 다시 붉은 포인트로(요청: "패 글자와 패 점수에 붉은 포인트"). 이력·경기목록 공통. */
+.scr-match-list-panel-v2 .scr-team-outcome.scr-loss { color: var(--loss); }
 /* 경기 목록 테이블의 승/패에도 포인트 색(요청: "승패 포인트 색 넣기"). */
 .scr-match-trow-outcome.scr-win { color: var(--win); }
-.scr-match-trow-outcome.scr-loss { color: var(--muted); }
+.scr-match-trow-outcome.scr-loss { color: var(--loss); }
 
 /* ===== 전적통계 — 다른 목록 패널(경기결과 등)과 같은 프레임(scr-list-panel)에 담는다 =====
    프사(이름 칸)/전체전적/전체승률/종족별(테란·프로토스·저그) 전적·승률/APM/유효APM/
@@ -2880,7 +2877,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-mt-player-hl .scr-mt-name { font-weight: 800; color: var(--bar-text); }
 .scr-mt-player .scr-race-badge-letter { flex-shrink: 0; }
 /* 각 팀 아래 승/패 — 팀 칸과 같은 열에서 가운데 정렬(요청). 승은 연두, 패는 붉은 계열. */
-.scr-match-trow-outcome { font-size: 20px; font-weight: 800; text-align: center; min-width: 28px; padding: 0 4px; }
+.scr-match-trow-outcome { font-size: 16px; font-weight: 800; text-align: center; min-width: 28px; padding: 0 4px; }
 /* 행을 눌러 펼치기 전 기본(접힌) 상태 — 맵/시간 줄 아래 "누구 외 N명  승  패  누구 외
    N명" 한 줄만 남긴다(요청: "경기목록은 기본적으로 접힌상태로 노출... 클릭하면
    펼쳐지면서 원래대로 케밥메뉴, 등록자, 전체 로스터 등이 노출됨"). 팀 요약칸은 남는
@@ -3042,7 +3039,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 }
 .scr-team-player-highlight .scr-team-name { font-weight: 800; color: var(--bar-text); }
 /* 승/패 표시는 이 표에서 가장 먼저 눈에 들어와야 하는 값이라 닉네임(13px)보다 뚜렷하게 크게 둔다. */
-.scr-team-outcome { flex-shrink: 0; text-align: center; font-size: 20px; font-weight: 800; min-width: 14px; position: relative; }
+.scr-team-outcome { flex-shrink: 0; text-align: center; font-size: 16px; font-weight: 800; min-width: 14px; position: relative; }
 /* 이긴 팀 표시는 패(빨강 계열)와 대비되게 연두색(--win)을 쓴다 — 승만 기본 글자색이면
    패 옆에서 대비가 안 산다. */
 .scr-list-vs { grid-area: vs; align-self: center; color: var(--text); font-size: 14px; font-weight: 800; letter-spacing: 0.04em; padding: 0 2px; }
@@ -3097,7 +3094,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-match-list-panel-v2 .scr-match-result-points.scr-win,
 .scr-match-list-panel-v2 .scr-team-points-row.scr-win { color: var(--win); }
 .scr-match-list-panel-v2 .scr-match-result-points.scr-loss,
-.scr-match-list-panel-v2 .scr-team-points-row.scr-loss { color: var(--muted); }
+.scr-match-list-panel-v2 .scr-team-points-row.scr-loss { color: var(--loss); }
 /* 팀전 이력 — 우리 로스터 VS 상대 로스터를 왼쪽에 붙이고, 오른쪽에 [승/패] → [개별 점수
    컬럼] 순으로 고정한다(요청: "승패는 상대팀 우측에 고정", "승패 다음에 오른쪽에 개별 점수").
    승/패+점수 묶음은 margin-left:auto로 오른쪽 끝으로 민다. 양 팀 모두 아바타→닉네임 순으로
@@ -5293,7 +5290,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
 }
 .scr-scroll-timeline-visible { opacity: 1; pointer-events: auto; }
 .scr-scroll-timeline-end {
-  font-size: 12px; font-weight: 800; color: var(--dim); letter-spacing: 0.06em;
+  font-size: 11px; font-weight: 800; color: var(--dim); letter-spacing: 0.06em;
   user-select: none;
 }
 .scr-scroll-timeline-track {
@@ -5337,7 +5334,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
 .scr-scroll-timeline-today::after {
   content: "오늘"; position: absolute; left: 50%; bottom: 100%; margin-bottom: 2px;
   transform: translateX(-50%);
-  font-size: 12px; font-weight: 800; color: var(--highlight-bg);
+  font-size: 11px; font-weight: 800; color: var(--highlight-bg);
   white-space: nowrap;
 }
 /* "일정 미정" 눈금 — 오늘 눈금과 같은 모양이되, 확정되지 않은 대기 묶음이라 은은한
@@ -5353,13 +5350,13 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
 .scr-scroll-timeline-undecided::after {
   content: "미정"; position: absolute; left: 50%; bottom: 100%; margin-bottom: 2px;
   transform: translateX(-50%);
-  font-size: 12px; font-weight: 800; color: var(--dim);
+  font-size: 11px; font-weight: 800; color: var(--dim);
   white-space: nowrap;
 }
 /* 현재 상단에 핀된 날짜를 알약으로 — 트랙 왼쪽에 붙여 현재 위치를 "며칠"인지로 보여준다. */
 .scr-scroll-timeline-date {
   position: absolute; right: 100%; margin-right: 8px; transform: translateY(-50%);
-  white-space: nowrap; font-size: 14px; font-weight: 700;
+  white-space: nowrap; font-size: 12px; font-weight: 700;
   color: var(--text); background: var(--panel-solid);
   padding: 3px 7px; border-radius: 5px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22); pointer-events: none;
@@ -6057,7 +6054,17 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
   .scr-drawer-actions .scr-btn { font-size: 14px; }
   /* 도전장(너나와) 팀전 카드만 로스터 텍스트 추가 두 단계 축소(16→12) */
   .scr-challenge-card-team .scr-challenge-person-name { font-size: 12px; }
-  /* 팀2(상대/지목) 로스터를 왼쪽으로 충분히 이동 — 너나와 카드 + 경기 결과 카드 */
-  .scr-challenge-matchup .scr-challenge-side-target { margin-left: -16px; }
-  .scr-match-list-panel-v2 .scr-match-row-team-tail .scr-team-roster-team2 { margin-left: -16px; }
+  /* 팀2(상대/지목) 로스터를 왼쪽으로 더 이동 — 너나와는 더, 경기 목록은 많이(요청). */
+  .scr-challenge-matchup .scr-challenge-side-target { margin-left: -28px; }
+  .scr-match-list-panel-v2 .scr-match-row-team-tail .scr-team-roster-team2 { margin-left: -52px; }
 }
+
+/* ===== 요청: 도전장 보내기 힌트 축소 + 날짜/시간 필드 나란히 배치 ===== */
+/* 힌트 메시지 두 단계 축소(20→14) — 도전장 보내기 모달 한정. */
+.scr-challenge-form-modal .scr-hint { font-size: 14px; }
+/* 날짜 선택/시간 선택 체크박스는 한 줄에 나란히. */
+.scr-datetime-checkrow { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+/* 날짜/시간 입력은 반폭으로 수평 나란히, 높이도 한 단계 낮춘다. */
+.scr-datetime-fieldrow { display: flex; gap: 10px; align-items: flex-end; }
+.scr-datetime-fieldrow .scr-datetime-half { flex: 0 1 calc(50% - 5px); min-width: 0; }
+.scr-datetime-fieldrow .scr-datetime-half .scr-input { min-height: var(--field-h-sm); }
