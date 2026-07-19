@@ -192,7 +192,7 @@ export default function RankMatchHistory({
                   {/* 맨 밑줄 — 각 팀 강함수치 + '원점수 합 × 배율 ÷ 팀원수 = 최종' 계산(요청). */}
                   <div className="scr-rank-history-points-line">
                     <span className="scr-rank-history-strengths">
-                      전투력 {ourStr} : {oppStr}
+                      전투력 {round1(ourStr)} : {round1(oppStr)}
                     </span>
                     {rawSum !== null && final !== null && (
                       <span className="scr-rank-history-calc">

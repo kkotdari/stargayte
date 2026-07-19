@@ -6032,3 +6032,32 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
 .scr-mreq-inbox-author { font-size: 14px; font-weight: 700; color: var(--dim); }
 .scr-mreq-inbox-text { margin: 0; font-size: 16px; color: var(--text); line-height: 1.4; word-break: break-word; }
 .scr-mreq-inbox-mentioned { font-size: 14px; color: var(--muted); }
+
+/* ===== 요청: 모바일 전용 크기/폭 조정 (데스크톱은 그대로) ===== */
+@media (max-width: 640px) {
+  /* 랭킹 점수 한 단계 축소(28→20) */
+  .scr-rank-stat-primary { font-size: 20px; }
+  .scr-team-rank-row-inner .scr-rank-stat-primary { font-size: 20px; }
+  /* 회원 목록 텍스트 두 단계 축소 + 배틀태그 기본 폰트(모노 해제) */
+  .scr-member-row-name { font-size: 14px; }
+  .scr-member-row-tag { font-size: 12px; }
+  .scr-member-row-tag.scr-mono { font-family: inherit; }
+  /* 게임아이디 목록 텍스트 두 단계 축소 + 안내문 숨김 */
+  .scr-usermap-row { font-size: 14px; }
+  .scr-usermap-row-head { font-size: 14px; }
+  .scr-usermap-raw-name { font-size: 14px; }
+  .scr-usermap-desc { display: none; }
+  /* 통계 그리드 모든 컬럼 폭 20% 확대(이름칸 160→192, 데이터칸 150→180) */
+  .scr-stats-list-panel-v2 .scr-stat-row {
+    --scr-stat-name-w: 192px;
+    grid-template-columns: var(--scr-stat-name-w) repeat(4, 180px);
+  }
+  /* 서랍메뉴: '전체 메뉴' 타이틀 한 단계 축소(28→20), 테마 바꾸기~메뉴 닫기 한 단계 축소(16→14) */
+  .scr-drawer-head .scr-brand-mark { font-size: 20px; }
+  .scr-drawer-actions .scr-btn { font-size: 14px; }
+  /* 도전장(너나와) 팀전 카드만 로스터 텍스트 추가 두 단계 축소(16→12) */
+  .scr-challenge-card-team .scr-challenge-person-name { font-size: 12px; }
+  /* 팀2(상대/지목) 로스터를 왼쪽으로 충분히 이동 — 너나와 카드 + 경기 결과 카드 */
+  .scr-challenge-matchup .scr-challenge-side-target { margin-left: -16px; }
+  .scr-match-list-panel-v2 .scr-match-row-team-tail .scr-team-roster-team2 { margin-left: -16px; }
+}
