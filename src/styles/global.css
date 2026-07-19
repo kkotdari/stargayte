@@ -1991,7 +1991,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-rank-screen-v2::before, .scr-challenge-screen-v2::before {
   content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
   background-image:
-    linear-gradient(180deg, rgba(3,3,6,0.72) 0%, rgba(3,3,6,0.55) 40%, rgba(3,3,6,0.78) 100%),
+    linear-gradient(180deg, rgba(3,3,6,0.9) 0%, rgba(3,3,6,0.82) 45%, rgba(3,3,6,0.92) 100%),
     url("/images/bg/ranking.jpg");
   background-size: cover; background-position: center; background-repeat: no-repeat;
 }
@@ -2008,7 +2008,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 @media (max-width: 860px) {
   .scr-rank-screen-v2::before, .scr-challenge-screen-v2::before {
     background-image:
-      linear-gradient(180deg, rgba(3,3,6,0.72) 0%, rgba(3,3,6,0.55) 40%, rgba(3,3,6,0.78) 100%),
+      linear-gradient(180deg, rgba(3,3,6,0.9) 0%, rgba(3,3,6,0.82) 45%, rgba(3,3,6,0.92) 100%),
       url("/images/bg/ranking_mobile.jpg");
   }
   /* 라이트 테마 모바일도 같은 화이트 스크림(위 데스크톱 라이트 규칙과 같은 특이도라,
@@ -6091,6 +6091,9 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
   .scr-drawer-actions .scr-btn { font-size: var(--fs-caption); }
   /* 도전장(너나와) 팀전 카드만 로스터 텍스트 추가 두 단계 축소(16→12) */
   .scr-challenge-card-team .scr-challenge-person-name { font-size: var(--fs-micro); }
+  /* 랭킹 년월 필터줄(.scr-rank-subrow)과 그 아래 필터줄(차트/종족) 사이 간격을 넓힌다(요청).
+     기본은 .scr-screen 형제 gap에만 기대 붙어 있었는데 좁아 답답했다. */
+  .scr-rank-subrow { margin-bottom: 12px; }
   /* 경기목록(펼친 카드) 팀2 로스터를 왼쪽으로 당긴다(요청: 카드 폭 20% 정도). 그리드
      아이템의 % margin은 컨테이너가 아니라 자기 트랙(1fr≈카드의 1/3) 기준이라 -20%로는
      약 26px밖에 안 밀렸다 — 모바일 카드 폭(약 360px)의 20%인 약 72px을 고정값으로 당긴다.
