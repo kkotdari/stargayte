@@ -33,33 +33,33 @@ export default function OptionalDateTimeFields({
     onTimeChange(checked ? (timeStr || defaultTime) : "");
   };
 
+  // 날짜/시간을 각각 한 "칸"으로: 칸 안에 [체크박스] 위, [입력] 아래로 쌓는다. 두 칸을 나란히
+  // 두면 시간 체크박스와 시간 입력의 왼쪽이 자동으로 맞고(같은 칸), 날짜/시간 사이 갭도 생긴다(요청).
   return (
-    <>
-      {/* 날짜/시간 체크박스는 한 줄에 나란히(요청). 시간 체크박스는 날짜를 고른 뒤에만 옆에 뜬다. */}
-      <div className="scr-datetime-checkrow">
+    <div className="scr-datetime-cols">
+      <div className="scr-datetime-col">
         <label className="scr-checkbox-field">
           <input type="checkbox" checked={dateEnabled} onChange={(e) => toggleDate(e.target.checked)} />
           날짜 선택
         </label>
-        {dateEnabled && dateStr && (
-          <label className="scr-checkbox-field">
-            <input type="checkbox" checked={timeEnabled} onChange={(e) => toggleTime(e.target.checked)} />
-            시간 선택
-          </label>
-        )}
-      </div>
-      {/* 날짜/시간 입력은 반폭으로 수평 나란히, 높이도 축소(요청). */}
-      {dateEnabled && (
-        <div className="scr-datetime-fieldrow">
-          <label className="scr-field scr-datetime-half">
+        {dateEnabled && (
+          <label className="scr-field scr-datetime-input">
             <span className="scr-label">날짜</span>
             <input
               type="date" className="scr-input" value={dateStr}
               onChange={(e) => onDateChange(e.target.value)}
             />
           </label>
-          {dateEnabled && dateStr && timeEnabled && (
-            <label className="scr-field scr-datetime-half">
+        )}
+      </div>
+      {dateEnabled && dateStr && (
+        <div className="scr-datetime-col">
+          <label className="scr-checkbox-field">
+            <input type="checkbox" checked={timeEnabled} onChange={(e) => toggleTime(e.target.checked)} />
+            시간 선택
+          </label>
+          {timeEnabled && (
+            <label className="scr-field scr-datetime-input">
               <span className="scr-label">시간</span>
               <input
                 type="time" className="scr-input" value={timeStr}
@@ -69,6 +69,6 @@ export default function OptionalDateTimeFields({
           )}
         </div>
       )}
-    </>
+    </div>
   );
 }

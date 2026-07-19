@@ -6054,8 +6054,11 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
   .scr-drawer-actions .scr-btn { font-size: 14px; }
   /* 도전장(너나와) 팀전 카드만 로스터 텍스트 추가 두 단계 축소(16→12) */
   .scr-challenge-card-team .scr-challenge-person-name { font-size: 12px; }
-  /* 팀2(상대/지목) 로스터를 왼쪽으로 더 이동 — 너나와는 더, 경기 목록은 많이(요청). */
-  .scr-challenge-matchup .scr-challenge-side-target { margin-left: -28px; }
+  /* 너나와 카드: 상대 로스터를 왼쪽으로 당기던 방식(-28px)은 상대쪽 승/무 배지 자리를 먹어
+     손가락↔닉네임 사이 공간이 사라졌다(신고). 대신 도전자(팀1) 칸을 좁혀 화살표·배지·손가락을
+     왼쪽으로 옮기고, 상대(팀2)쪽에 도전자와 같은 폭의 승/무 배지 자리를 확보한다(요청). */
+  .scr-challenge-matchup .scr-challenge-side:not(.scr-challenge-side-target) { flex: 0.72 1 0; }
+  /* 경기 결과 카드 팀2 로스터는 그대로 왼쪽으로 많이 이동. */
   .scr-match-list-panel-v2 .scr-match-row-team-tail .scr-team-roster-team2 { margin-left: -52px; }
   /* 이력/경기목록 승·패 글자 한 단계 축소(20→16) */
   .scr-team-outcome { font-size: 16px; }
@@ -6066,9 +6069,12 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
   .scr-scroll-timeline-date { font-size: 12px; }
   /* 도전장 보내기 힌트 두 단계 축소(20→14) */
   .scr-challenge-form-modal .scr-hint { font-size: 14px; }
-  /* 날짜/시간: 체크박스 나란히, 입력 반폭 수평 나란히 + 높이 축소 */
-  .scr-datetime-checkrow { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
-  .scr-datetime-fieldrow { display: flex; gap: 10px; align-items: flex-end; }
-  .scr-datetime-fieldrow .scr-datetime-half { flex: 0 1 calc(50% - 5px); min-width: 0; }
-  .scr-datetime-fieldrow .scr-datetime-half .scr-input { min-height: var(--field-h-sm); }
+  /* 날짜/시간: 각 칸(체크박스 위 + 입력 아래)을 나란히 — 같은 칸이라 시간 체크박스와 시간
+     입력의 왼쪽이 맞는다. 입력은 내용폭으로 훨씬 좁게 + 높이 축소. 두 칸 사이 갭. */
+  .scr-datetime-cols { display: flex; gap: 22px; align-items: flex-start; }
+  /* 칸은 내용폭(입력 크기)만 차지하게 — align-items:flex-start로 자식이 늘어나지 않게 하고,
+     .scr-field/체크박스가 기본 width:100%라도 여기선 내용폭으로 좁힌다(그래야 두 칸이 나란히). */
+  .scr-datetime-col { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; flex: 0 0 auto; }
+  .scr-datetime-col .scr-datetime-input, .scr-datetime-col .scr-checkbox-field { width: auto; }
+  .scr-datetime-col .scr-datetime-input .scr-input { width: auto; min-height: var(--field-h-sm); }
 }
