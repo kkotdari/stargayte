@@ -2774,6 +2774,8 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   font-size: 12.5px; color: var(--muted);
 }
 .scr-light-theme .scr-match-date-head { border-top-color: rgba(0, 0, 0, 0.3); }
+/* 맨 위 날짜 줄은 위에 구분선을 긋지 않는다(그룹 사이 구분용인데 첫 줄엔 위쪽이 없다). */
+.scr-match-date-group:first-child .scr-match-date-head { border-top: none; }
 .scr-match-card { position: relative; padding: 6px 8px 12px; }
 /* 같은 날짜 안에서 경기끼리는 붉은 톤의 얇은 선으로 구분. border-top 대신 절대배치 선을 쓰는
    이유: 카드 자체에 border-radius가 있어서 border-top을 쓰면 양 끝이 둥글게 휘어 보인다. */
@@ -5098,6 +5100,8 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
   border-top: 1px solid rgba(255, 255, 255, 0.45);
 }
 .scr-light-theme .scr-challenge-date-head { border-top-color: rgba(0, 0, 0, 0.3); }
+/* 맨 위 날짜 줄은 위쪽 구분선을 없앤다(그룹 사이 구분선이라 첫 줄엔 불필요). */
+.scr-challenge-list > .scr-challenge-date-group:first-child .scr-challenge-date-head { border-top: none; }
 
 /* 날짜 그룹 안의 시각별 소그룹 — 같은 예정 시각 카드들을 묶고, 그 맨 위에 시간을 한 번만
    보여준다(요청: "카드 시간 표시 삭제, 대신 시간 그루핑해서 제일 위 카드 위에 한번만 표시").
