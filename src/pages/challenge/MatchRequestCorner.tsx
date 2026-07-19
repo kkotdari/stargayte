@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ThumbsUp, X } from "lucide-react";
+import { ThumbsUp } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
 import { Spinner } from "../../components/common/Feedback";
 import { useAppStore } from "../../store/appStore";
@@ -8,10 +8,30 @@ import { cx } from "../../utils/format";
 import type { Member, MatchRequest } from "../../types";
 
 interface MatchRequestCornerProps {
-  // "들어주기"를 누르면 부모(ChallengeScreen)가 도전장 보내기 모달을 요청 작성자를 상대로 연다.
   onFulfill: (request: MatchRequest) => void;
-  // 부모가 도전장 전송을 마치고 이 값을 올리면 코너가 목록을 새로 불러온다(들어준 요청이 사라짐).
   reloadSignal: number;
+}
+
+// 저장 텍스트는 지목을 "@닉네임" 마커로 담는다 — 화면에선 @ 없이 칩으로 보여준다(요청: "칩에는
+// @ 없이 표현"). 목록 카드에서 본문의 그 마커를 찾아 인라인 칩으로 렌더한다.
+function renderInline(text: string, targets: { nickname: string }[]) {
+  const names = targets.map((t) => t.nickname).filter(Boolean);
+  if (names.length === 0) return text;
+  const esc = names
+    .slice()
+    .sort((a, b) => b.length - a.length)
+    .map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  const re = new RegExp(`@(${esc.join("|")})`, "g");
+  const out: React.ReactNode[] = [];
+  let last = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) out.push(<span key={`t${last}`}>{text.slice(last, m.index)}</span>);
+    out.push(<span key={`c${m.index}`} className="scr-mreq-chip scr-mreq-chip-inline">{m[1]}</span>);
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) out.push(<span key={`t${last}`}>{text.slice(last)}</span>);
+  return out;
 }
 
 export default function MatchRequestCorner({ onFulfill, reloadSignal }: MatchRequestCornerProps) {
@@ -25,23 +45,21 @@ export default function MatchRequestCorner({ onFulfill, reloadSignal }: MatchReq
   const [busyId, setBusyId] = useState<number | null>(null);
 
   const [composing, setComposing] = useState(false);
-  const [text, setText] = useState("");
-  // @태그로 지목한 회원들 — 인스타 태그처럼 자동완성으로 고르면 유저 칩으로 쌓인다(요청).
-  const [tagged, setTagged] = useState<Member[]>([]);
   const [submitErr, setSubmitErr] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
+  // 에디터(contenteditable)는 비제어 — 내용은 DOM이 진실이고, 여기엔 검증/후보용 파생값만 둔다.
+  const [content, setContent] = useState<{ text: string; ids: string[] }>({ text: "", ids: [] });
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  const editorRef = useRef<HTMLDivElement>(null);
 
-  // @태그 후보 — 나 자신·이미 지목한 사람을 빼고, @뒤 쿼리로 닉네임/아이디 부분일치 필터.
   const candidates = useMemo(() => {
     const q = (mentionQuery ?? "").toLowerCase();
-    const chosen = new Set(tagged.map((m) => m.id));
+    const chosen = new Set(content.ids);
     return members
       .filter((m) => m.id !== user?.id && !chosen.has(m.id))
       .filter((m) => !q || m.nickname.toLowerCase().includes(q) || m.id.toLowerCase().includes(q))
       .slice(0, 6);
-  }, [members, user?.id, mentionQuery, tagged]);
+  }, [members, user?.id, mentionQuery, content.ids]);
 
   const load = useCallback(async (p: number) => {
     setLoading(true);
@@ -60,47 +78,143 @@ export default function MatchRequestCorner({ onFulfill, reloadSignal }: MatchReq
   useEffect(() => { if (reloadSignal > 0) void load(page); // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reloadSignal]);
 
-  // 입력이 바뀔 때 커서 앞의 "@쿼리"를 잡아 자동완성 드롭다운을 띄운다.
-  const onTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const v = e.target.value;
-    setText(v);
-    const caret = e.target.selectionStart ?? v.length;
-    const before = v.slice(0, caret);
+  // 에디터 DOM을 걸어 저장 텍스트("@닉네임" 마커 포함)와 지목 id 목록으로 직렬화한다.
+  const readEditor = (): { text: string; ids: string[] } => {
+    const el = editorRef.current;
+    if (!el) return { text: "", ids: [] };
+    const serialize = (node: Node): string => {
+      let s = "";
+      node.childNodes.forEach((n) => {
+        if (n.nodeType === Node.TEXT_NODE) s += (n.textContent ?? "").replace(/ /g, " ");
+        else if (n instanceof HTMLElement) {
+          if (n.dataset.memberId) s += `@${n.dataset.nickname}`;
+          else if (n.tagName === "BR") s += "\n";
+          else s += serialize(n);
+        }
+      });
+      return s;
+    };
+    const text = serialize(el);
+    const ids: string[] = [];
+    el.querySelectorAll<HTMLElement>("[data-member-id]").forEach((c) => {
+      const id = c.dataset.memberId;
+      if (id && !ids.includes(id)) ids.push(id);
+    });
+    return { text: text.trim(), ids };
+  };
+
+  // 커서 앞 텍스트에서 "@쿼리"를 잡아 드롭다운을 띄운다(없으면 닫는다).
+  const detectMention = () => {
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) { setMentionQuery(null); return; }
+    const range = sel.getRangeAt(0);
+    const node = range.startContainer;
+    if (node.nodeType !== Node.TEXT_NODE) { setMentionQuery(null); return; }
+    const before = (node.textContent ?? "").slice(0, range.startOffset);
     const m = before.match(/@([^\s@]*)$/);
     setMentionQuery(m ? m[1] : null);
   };
 
-  // 후보를 고르면 본문의 "@쿼리" 토큰은 지우고(칩으로 대체되므로 본문엔 안 남긴다) 유저 칩으로 담는다.
-  const pickMention = (member: Member) => {
-    const el = inputRef.current;
-    const caret = el?.selectionStart ?? text.length;
-    const before = text.slice(0, caret).replace(/@([^\s@]*)$/, "");
-    const after = text.slice(caret);
-    setText(before + after);
-    setMentionQuery(null);
-    setTagged((prev) => (prev.some((m) => m.id === member.id) ? prev : [...prev, member]));
-    requestAnimationFrame(() => {
-      el?.focus();
-      const pos = before.length;
-      el?.setSelectionRange(pos, pos);
-    });
+  const syncAfterEdit = () => { setContent(readEditor()); detectMention(); };
+
+  const makeChip = (member: Member): HTMLElement => {
+    const chip = document.createElement("span");
+    chip.className = "scr-mreq-chip scr-mreq-chip-inline scr-mreq-chip-editable";
+    chip.contentEditable = "false";
+    chip.dataset.memberId = member.id;
+    chip.dataset.nickname = member.nickname;
+    chip.textContent = member.nickname;
+    const x = document.createElement("button");
+    x.type = "button";
+    x.className = "scr-mreq-chip-x";
+    x.dataset.chipRemove = "1";
+    x.textContent = "×";
+    chip.appendChild(x);
+    return chip;
   };
 
-  const removeTag = (id: string) => setTagged((prev) => prev.filter((m) => m.id !== id));
+  // 후보를 고르면 커서 앞의 "@쿼리"를 지우고 그 자리에 인라인 칩을 끼운다(요청: "칩이 문장 안에").
+  const insertChip = (member: Member) => {
+    const el = editorRef.current;
+    const sel = window.getSelection();
+    if (!el) return;
+    const chip = makeChip(member);
+    const space = document.createTextNode(" ");
+    if (sel && sel.rangeCount > 0 && el.contains(sel.getRangeAt(0).startContainer)) {
+      const range = sel.getRangeAt(0);
+      const node = range.startContainer;
+      if (node.nodeType === Node.TEXT_NODE) {
+        const before = (node.textContent ?? "").slice(0, range.startOffset);
+        const mm = before.match(/@([^\s@]*)$/);
+        const removeLen = mm ? mm[0].length : 0;
+        const del = document.createRange();
+        del.setStart(node, range.startOffset - removeLen);
+        del.setEnd(node, range.startOffset);
+        del.deleteContents();
+        del.insertNode(chip);
+        chip.after(space);
+      } else {
+        range.insertNode(chip);
+        chip.after(space);
+      }
+    } else {
+      el.appendChild(chip);
+      el.appendChild(space);
+    }
+    const after = document.createRange();
+    after.setStartAfter(space);
+    after.collapse(true);
+    sel?.removeAllRanges();
+    sel?.addRange(after);
+    setMentionQuery(null);
+    el.focus();
+    setContent(readEditor());
+  };
 
-  const canSubmit = text.trim().length > 0 && tagged.length >= 2 && !submitting;
+  // 칩의 × 클릭 — 칩과 뒤따르는 공백을 지운다.
+  const onEditorClick = (e: React.MouseEvent) => {
+    const t = e.target as HTMLElement;
+    if (t.closest("[data-chip-remove]")) {
+      e.preventDefault();
+      const chip = t.closest(".scr-mreq-chip-editable");
+      const next = chip?.nextSibling;
+      chip?.remove();
+      if (next && next.nodeType === Node.TEXT_NODE && next.textContent === " ") next.remove();
+      setContent(readEditor());
+      editorRef.current?.focus();
+    }
+  };
 
-  const resetCompose = () => { setComposing(false); setText(""); setTagged([]); setSubmitErr(null); setMentionQuery(null); };
+  const onEditorKeyDown = (e: React.KeyboardEvent) => {
+    if (mentionQuery !== null && candidates.length > 0 && e.key === "Enter") {
+      e.preventDefault();
+      insertChip(candidates[0]);
+    } else if (e.key === "Escape") {
+      setMentionQuery(null);
+    }
+  };
+
+  const isEmpty = content.text.trim() === "" && content.ids.length === 0;
+  const canSubmit = content.ids.length >= 2 && content.text.trim().length > 0 && !submitting;
+
+  const resetCompose = () => {
+    if (editorRef.current) editorRef.current.innerHTML = "";
+    setContent({ text: "", ids: [] });
+    setMentionQuery(null);
+    setSubmitErr(null);
+    setComposing(false);
+  };
 
   const submit = async () => {
-    if (tagged.length < 2) {
-      setSubmitErr("@태그로 최소 두 명을 지목해주세요.");
+    const { text, ids } = readEditor();
+    if (ids.length < 2) {
+      setSubmitErr("@로 최소 두 명을 지목해주세요.");
       return;
     }
     setSubmitting(true);
     setSubmitErr(null);
     try {
-      await api.createMatchRequest({ text: text.trim(), targetMemberIds: tagged.map((m) => m.id) });
+      await api.createMatchRequest({ text, targetMemberIds: ids });
       resetCompose();
       setPage(0);
       await load(0);
@@ -116,11 +230,7 @@ export default function MatchRequestCorner({ onFulfill, reloadSignal }: MatchReq
     try {
       const updated = await api.toggleMatchRequestRecommend(req.id);
       setData((d) => d && { ...d, items: d.items.map((it) => (it.id === req.id ? updated : it)) });
-    } catch {
-      // 조용히 무시 — 다음 새로고침에 반영된다.
-    } finally {
-      setBusyId(null);
-    }
+    } catch { /* 무시 */ } finally { setBusyId(null); }
   };
 
   const removeOwn = async (req: MatchRequest) => {
@@ -128,11 +238,7 @@ export default function MatchRequestCorner({ onFulfill, reloadSignal }: MatchReq
     try {
       await api.deleteMatchRequest(req.id);
       await load(page);
-    } catch {
-      // 무시
-    } finally {
-      setBusyId(null);
-    }
+    } catch { /* 무시 */ } finally { setBusyId(null); }
   };
 
   const items = data?.items ?? [];
@@ -153,19 +259,23 @@ export default function MatchRequestCorner({ onFulfill, reloadSignal }: MatchReq
       {composing && (
         <div className="scr-mreq-compose">
           <div className="scr-mreq-input-wrap">
-            <textarea
-              ref={inputRef}
-              className="scr-input scr-mreq-input"
-              rows={2}
-              placeholder="@로 상대를 지목해 대결을 요청하세요 (최소 2명)"
-              value={text}
-              onChange={onTextChange}
-              maxLength={200}
+            <div
+              ref={editorRef}
+              className={cx("scr-input scr-mreq-editor", isEmpty && "scr-mreq-editor-empty")}
+              contentEditable
+              role="textbox"
+              aria-multiline="true"
+              data-placeholder="@로 상대를 지목해 대결을 요청하세요 (최소 2명)"
+              onInput={syncAfterEdit}
+              onKeyUp={detectMention}
+              onKeyDown={onEditorKeyDown}
+              onClick={onEditorClick}
+              suppressContentEditableWarning
             />
             {mentionQuery !== null && candidates.length > 0 && (
               <div className="scr-mreq-mention-drop">
                 {candidates.map((m) => (
-                  <button key={m.id} type="button" className="scr-mreq-mention-opt" onMouseDown={(e) => e.preventDefault()} onClick={() => pickMention(m)}>
+                  <button key={m.id} type="button" className="scr-mreq-mention-opt" onMouseDown={(e) => e.preventDefault()} onClick={() => insertChip(m)}>
                     <Avatar member={m} size={22} />
                     <span className="scr-mreq-mention-name">{m.nickname}</span>
                   </button>
@@ -173,19 +283,6 @@ export default function MatchRequestCorner({ onFulfill, reloadSignal }: MatchReq
               </div>
             )}
           </div>
-          {tagged.length > 0 && (
-            <div className="scr-mreq-chip-row">
-              {tagged.map((m) => (
-                <span key={m.id} className="scr-mreq-chip">
-                  <Avatar member={m} size={16} />
-                  {m.nickname}
-                  <button type="button" className="scr-mreq-chip-x" onClick={() => removeTag(m.id)} aria-label={`${m.nickname} 지목 해제`}>
-                    <X size={11} />
-                  </button>
-                </span>
-              ))}
-            </div>
-          )}
           {submitErr && <div className="scr-err">{submitErr}</div>}
           <div className="scr-mreq-compose-actions">
             <button type="button" className="scr-btn scr-btn-ghost scr-btn-sm" onClick={resetCompose}>취소</button>
@@ -211,14 +308,7 @@ export default function MatchRequestCorner({ onFulfill, reloadSignal }: MatchReq
                   <Avatar member={{ id: req.author.memberId, nickname: req.author.nickname, avatar: req.author.avatar }} size={24} />
                   <span className="scr-mreq-item-author-name">{req.author.nickname}</span>
                 </div>
-                {req.text && <p className="scr-mreq-item-text">{req.text}</p>}
-                {req.targets.length > 0 && (
-                  <div className="scr-mreq-item-targets">
-                    {req.targets.map((t) => (
-                      <span key={t.memberId} className="scr-mreq-chip scr-mreq-chip-sm">@{t.nickname}</span>
-                    ))}
-                  </div>
-                )}
+                <p className="scr-mreq-item-text">{renderInline(req.text, req.targets)}</p>
               </div>
               <div className="scr-mreq-item-actions">
                 <button
