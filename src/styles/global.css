@@ -5820,17 +5820,16 @@ html.scr-light-theme .scr-challenge-next-tag {
   --divider-tint: 0, 0, 0;
   --pipe-bright: rgba(0, 0, 0, 0.34);
   color: var(--text);
-  /* 따뜻한 미색은 "종이" 느낌이 나서(피드백), 살짝 차가운 밝은 흰색 + 은은한 상단 광택으로
-     실제 화이트보드에 가깝게. 격자선도 파란기 도는 회색으로 바꿔 차가운 톤을 유지한다.
-     테두리는 실제 화이트보드처럼 은색 메탈 프레임(요청) — 3px 투명 보더에 border-box로 은색
-     사선 그라데이션을 깔고, 보드 면(광택+격자)은 padding-box로 그 안쪽에 그린다. 사선
-     그라데이션(밝은 좌상 → 어두운 중앙 → 밝은 우하)이 금속 베벨처럼 읽혀 입체감을 준다. */
-  background-color: #fcfdff;
+  /* 보드 면(패널 본체)은 깨끗한 흰색(요청: "본 패널은 흰색"). 격자는 아주 옅은 중립 회색으로
+     화이트보드 느낌만 살짝 준다. 테두리만 은색 메탈 프레임(요청: "프레임이 실버톤") — 3px
+     투명 보더에 border-box로 은색 사선 그라데이션을 깔고, 흰 보드 면(광택+격자)은 padding-box로
+     그 안쪽에 그린다. 사선(밝은 좌상 → 어두운 중앙 → 밝은 우하)이 금속 베벨처럼 읽혀 입체감을 준다. */
+  background-color: #ffffff;
   background-image:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(226, 233, 242, 0.55) 100%),
-    linear-gradient(rgba(64, 96, 140, 0.06) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(64, 96, 140, 0.06) 1px, transparent 1px),
-    linear-gradient(145deg, #f7f9fb 0%, #cdd4dc 20%, #9ba3af 45%, #828b99 52%, #c4cbd3 74%, #eef1f5 100%);
+    linear-gradient(180deg, #ffffff 0%, #fbfbfb 100%),
+    linear-gradient(rgba(120, 120, 118, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(120, 120, 118, 0.05) 1px, transparent 1px),
+    linear-gradient(145deg, #f7f7f6 0%, #d3d3d1 20%, #a3a3a0 45%, #888885 52%, #c9c9c6 74%, #efefed 100%);
   background-clip: padding-box, padding-box, padding-box, border-box;
   background-origin: padding-box, padding-box, padding-box, border-box;
   background-size: 100% 100%, 22px 22px, 22px 22px, 100% 100%;
@@ -5843,7 +5842,7 @@ html.scr-light-theme .scr-challenge-next-tag {
   box-shadow:
     inset 0 0 0 1px rgba(0, 0, 0, 0.12),
     inset 0 2px 4px rgba(255, 255, 255, 0.85),
-    inset 0 -6px 12px rgba(120, 132, 150, 0.14),
+    inset 0 -6px 12px rgba(130, 130, 126, 0.14),
     0 1px 0 rgba(255, 255, 255, 0.5),
     0 14px 26px rgba(0, 0, 0, 0.34),
     0 4px 8px rgba(0, 0, 0, 0.24);
@@ -5854,7 +5853,7 @@ html.scr-light-theme .scr-challenge-next-tag {
   box-shadow:
     inset 0 0 0 1px rgba(0, 0, 0, 0.12),
     inset 0 2px 4px rgba(255, 255, 255, 0.85),
-    inset 0 -6px 12px rgba(120, 132, 150, 0.14),
+    inset 0 -6px 12px rgba(130, 130, 126, 0.14),
     0 1px 0 rgba(255, 255, 255, 0.5),
     0 8px 18px rgba(0, 0, 0, 0.16),
     0 3px 6px rgba(0, 0, 0, 0.12);
@@ -5906,12 +5905,12 @@ html.scr-light-theme .scr-challenge-next-tag {
 .scr-mreq-mention-opt:hover { background: rgba(var(--overlay-rgb), 0.08); }
 .scr-mreq-mention-name { font-size: 13.5px; font-weight: 600; }
 /* 지목 회원은 문장 안 인라인 유저 칩으로(요청: "칩이 문장 안에 포함", "칩에는 @ 없이 표현").
-   화이트보드 위라 흰 칩은 안 보이니, 형광펜으로 이름을 칠한 듯한 노란 하이라이트 칩으로. */
+   흰 칩에 그림자만 줘서(요청) 흰 보드 위에서도 살짝 떠 보이게 한다. */
 .scr-mreq-chip {
   display: inline-flex; align-items: center; gap: 3px;
   padding: 1px 6px; border-radius: 4px;
-  background: #ffe9a8; color: #4a3a10;
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+  background: #ffffff; color: #24272d;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.22), 0 0 1px rgba(0, 0, 0, 0.12);
   font-size: 12.5px; font-weight: 700; white-space: nowrap;
 }
 /* 인라인 칩 — 텍스트 흐름 안에서 세로 가운데로 앉게 하고, 양옆에 살짝 숨 쉬는 여백. */

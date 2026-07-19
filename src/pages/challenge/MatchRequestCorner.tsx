@@ -326,7 +326,7 @@ export default function MatchRequestCorner({ onFulfill, reloadSignal }: MatchReq
                   </button>
                 ) : req.iAmTarget ? (
                   <button type="button" className="scr-btn scr-btn-sm scr-btn-primary scr-btn-primary-solid scr-mreq-take-btn" onClick={() => onFulfill(req)}>
-                    들어주기
+                    접수
                   </button>
                 ) : null}
               </div>
