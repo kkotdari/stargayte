@@ -2343,6 +2343,10 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    높이(44px) 안에 안 들어간다. 모바일은 아래 미디어쿼리에서 다시 세로로 쌓는다(그
    대신 필터창 자체를 검색창보다 크게 키운다). */
 .scr-filter-item { display: flex; flex-direction: row; align-items: center; gap: 6px; }
+/* 필터 요소를 키운(검색창 높이/본문 폰트) 뒤 좁은 폭에서 항목들이 눌려 종족 셀렉트의
+   "전체" 같은 글자가 세로로 접히던 문제 방지 — 항목은 내용폭을 유지하고, 넘치면 패널
+   자체가 가로 스크롤한다(.scr-filter-panel의 overflow-x:auto 설계 의도대로). */
+.scr-filter-panel > .scr-filter-item { flex-shrink: 0; }
 .scr-filter-item-label {
   /* PC 기준 기본값 — 8px -> 16px로 키웠다가(요청: "필터의 라벨 글자 2배 키우기") 너무
      커 보인다는 피드백으로 20% 줄인다(요청: "20프로 줄여줘"). 모바일은 아래
@@ -2463,13 +2467,9 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   .scr-filter-panel:has(> .scr-filter-item:only-child) { justify-content: center; }
   .scr-search-filter-float { width: 100%; }
   .scr-filter-item-label { font-size: var(--fs-caption); }
-  /* 모바일은 필터 알약을 랭킹 년월 토글 크기(24px)로 컴팩트하게 되돌린다(PC만 인풋에 맞춰
-     키운다 — 위 .scr-filter-panel 알약/월선택/정렬 주석 참고). */
-  .scr-filter-panel .scr-pill-tabs { height: 24px; }
-  .scr-filter-panel .scr-pill-tab-btn { font-size: var(--fs-caption); }
-  .scr-filter-panel .scr-filter-month-input { height: 24px; font-size: var(--fs-caption); }
-  .scr-filter-panel .scr-filter-sort-btn { width: 24px; height: 24px; }
-  .scr-filter-panel .scr-filter-race-select .scr-cselect-trigger { min-height: 24px; height: 24px; padding: 0 8px; font-size: var(--fs-caption); }
+  /* 모바일에서도 필터 요소(알약/달력/종족)를 base(PC)와 같은 크기 — 검색창 높이(34px)에 맞춘다
+     (요청: "필터 내 요소 높이를 검색창과 일치, 모바일·PC 모두"). 예전엔 24px로 컴팩트하게
+     줄였지만 이제 축소를 두지 않아 base 34px/본문 폰트를 그대로 쓴다. 라벨만 caption 유지. */
 }
 /* 건수는 필터 항목들과 같은 줄에 있으면 목록과 멀어 보인다는 피드백 — 그리드 아래
    자기 줄로 내려서 목록에 더 가깝게 붙인다(모바일은 이 칸 자체가 안 보이므로 —
@@ -6140,9 +6140,10 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
 .scr-team-rank-record { font-size: var(--fs-caption); }
 .scr-team-rank-row-inner .scr-rank-stat-primary { font-size: var(--fs-title); }
 .scr-filter-item-label { font-size: var(--fs-caption); }
-.scr-filter-panel .scr-pill-tab-btn { font-size: var(--fs-caption); }
-.scr-filter-panel .scr-filter-month-input { font-size: var(--fs-caption); }
-.scr-filter-panel .scr-filter-race-select .scr-cselect-trigger { font-size: var(--fs-caption); }
+/* 필터 컨트롤 텍스트(알약/달력/종족)는 라벨 제외하고 한 스텝 키운다(요청) — caption→body(16). */
+.scr-filter-panel .scr-pill-tab-btn { font-size: var(--fs-body); }
+.scr-filter-panel .scr-filter-month-input { font-size: var(--fs-body); }
+.scr-filter-panel .scr-filter-race-select .scr-cselect-trigger { font-size: var(--fs-body); }
 .scr-period-value { font-size: var(--fs-caption); }
 .scr-toolbar-actions .scr-btn-sm { font-size: var(--fs-caption); }
 .scr-chip-name { font-size: var(--fs-body); }
