@@ -1574,7 +1574,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
     padding-left: 10px; padding-right: 10px;
   }
   .scr-stats-list-panel-v2 .scr-stat-name-head { padding-left: 10px; padding-right: 10px; }
-  .scr-stats-list-panel-v2 .scr-stat-name-btn { text-align: center; font-size: 14px; }
+  .scr-stats-list-panel-v2 .scr-stat-name-btn { text-align: center; font-size: 16px; }
   .scr-stats-list-panel-v2 .scr-stat-tag-pill { display: block; font-size: 14px; }
   /* 나머지 네 칸(게임수/전적/유효APM/유효커맨드)도 모바일에서 10%씩 좁힌다(요청:
      "다른 컬럼들도 폭 10프로씩 감소") — 기본 150px의 90%. */
@@ -2877,7 +2877,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-mt-player-hl .scr-mt-name { font-weight: 800; color: var(--bar-text); }
 .scr-mt-player .scr-race-badge-letter { flex-shrink: 0; }
 /* 각 팀 아래 승/패 — 팀 칸과 같은 열에서 가운데 정렬(요청). 승은 연두, 패는 붉은 계열. */
-.scr-match-trow-outcome { font-size: 16px; font-weight: 800; text-align: center; min-width: 28px; padding: 0 4px; }
+.scr-match-trow-outcome { font-size: 20px; font-weight: 800; text-align: center; min-width: 28px; padding: 0 4px; }
 /* 행을 눌러 펼치기 전 기본(접힌) 상태 — 맵/시간 줄 아래 "누구 외 N명  승  패  누구 외
    N명" 한 줄만 남긴다(요청: "경기목록은 기본적으로 접힌상태로 노출... 클릭하면
    펼쳐지면서 원래대로 케밥메뉴, 등록자, 전체 로스터 등이 노출됨"). 팀 요약칸은 남는
@@ -3039,7 +3039,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 }
 .scr-team-player-highlight .scr-team-name { font-weight: 800; color: var(--bar-text); }
 /* 승/패 표시는 이 표에서 가장 먼저 눈에 들어와야 하는 값이라 닉네임(13px)보다 뚜렷하게 크게 둔다. */
-.scr-team-outcome { flex-shrink: 0; text-align: center; font-size: 16px; font-weight: 800; min-width: 14px; position: relative; }
+.scr-team-outcome { flex-shrink: 0; text-align: center; font-size: 20px; font-weight: 800; min-width: 14px; position: relative; }
 /* 이긴 팀 표시는 패(빨강 계열)와 대비되게 연두색(--win)을 쓴다 — 승만 기본 글자색이면
    패 옆에서 대비가 안 산다. */
 .scr-list-vs { grid-area: vs; align-self: center; color: var(--text); font-size: 14px; font-weight: 800; letter-spacing: 0.04em; padding: 0 2px; }
@@ -5290,7 +5290,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
 }
 .scr-scroll-timeline-visible { opacity: 1; pointer-events: auto; }
 .scr-scroll-timeline-end {
-  font-size: 11px; font-weight: 800; color: var(--dim); letter-spacing: 0.06em;
+  font-size: 12px; font-weight: 800; color: var(--dim); letter-spacing: 0.06em;
   user-select: none;
 }
 .scr-scroll-timeline-track {
@@ -5334,7 +5334,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
 .scr-scroll-timeline-today::after {
   content: "오늘"; position: absolute; left: 50%; bottom: 100%; margin-bottom: 2px;
   transform: translateX(-50%);
-  font-size: 11px; font-weight: 800; color: var(--highlight-bg);
+  font-size: 12px; font-weight: 800; color: var(--highlight-bg);
   white-space: nowrap;
 }
 /* "일정 미정" 눈금 — 오늘 눈금과 같은 모양이되, 확정되지 않은 대기 묶음이라 은은한
@@ -5350,13 +5350,13 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
 .scr-scroll-timeline-undecided::after {
   content: "미정"; position: absolute; left: 50%; bottom: 100%; margin-bottom: 2px;
   transform: translateX(-50%);
-  font-size: 11px; font-weight: 800; color: var(--dim);
+  font-size: 12px; font-weight: 800; color: var(--dim);
   white-space: nowrap;
 }
 /* 현재 상단에 핀된 날짜를 알약으로 — 트랙 왼쪽에 붙여 현재 위치를 "며칠"인지로 보여준다. */
 .scr-scroll-timeline-date {
   position: absolute; right: 100%; margin-right: 8px; transform: translateY(-50%);
-  white-space: nowrap; font-size: 12px; font-weight: 700;
+  white-space: nowrap; font-size: 14px; font-weight: 700;
   color: var(--text); background: var(--panel-solid);
   padding: 3px 7px; border-radius: 5px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22); pointer-events: none;
@@ -6046,7 +6046,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
   .scr-usermap-raw-name { font-size: 14px; }
   /* 통계 그리드 모든 컬럼 폭 20% 확대(이름칸 160→192, 데이터칸 150→180) */
   .scr-stats-list-panel-v2 .scr-stat-row {
-    --scr-stat-name-w: 192px;
+    --scr-stat-name-w: 173px;
     grid-template-columns: var(--scr-stat-name-w) repeat(4, 180px);
   }
   /* 서랍메뉴: '전체 메뉴' 타이틀 한 단계 축소(28→20), 테마 바꾸기~메뉴 닫기 한 단계 축소(16→14) */
@@ -6057,14 +6057,18 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
   /* 팀2(상대/지목) 로스터를 왼쪽으로 더 이동 — 너나와는 더, 경기 목록은 많이(요청). */
   .scr-challenge-matchup .scr-challenge-side-target { margin-left: -28px; }
   .scr-match-list-panel-v2 .scr-match-row-team-tail .scr-team-roster-team2 { margin-left: -52px; }
+  /* 이력/경기목록 승·패 글자 한 단계 축소(20→16) */
+  .scr-team-outcome { font-size: 16px; }
+  .scr-match-trow-outcome { font-size: 16px; }
+  /* 타임라인 폰트 한 단계 축소(날짜 알약 14→12, 끝/오늘/미정 라벨 12→11) */
+  .scr-scroll-timeline-end { font-size: 11px; }
+  .scr-scroll-timeline-today::after, .scr-scroll-timeline-undecided::after { font-size: 11px; }
+  .scr-scroll-timeline-date { font-size: 12px; }
+  /* 도전장 보내기 힌트 두 단계 축소(20→14) */
+  .scr-challenge-form-modal .scr-hint { font-size: 14px; }
+  /* 날짜/시간: 체크박스 나란히, 입력 반폭 수평 나란히 + 높이 축소 */
+  .scr-datetime-checkrow { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+  .scr-datetime-fieldrow { display: flex; gap: 10px; align-items: flex-end; }
+  .scr-datetime-fieldrow .scr-datetime-half { flex: 0 1 calc(50% - 5px); min-width: 0; }
+  .scr-datetime-fieldrow .scr-datetime-half .scr-input { min-height: var(--field-h-sm); }
 }
-
-/* ===== 요청: 도전장 보내기 힌트 축소 + 날짜/시간 필드 나란히 배치 ===== */
-/* 힌트 메시지 두 단계 축소(20→14) — 도전장 보내기 모달 한정. */
-.scr-challenge-form-modal .scr-hint { font-size: 14px; }
-/* 날짜 선택/시간 선택 체크박스는 한 줄에 나란히. */
-.scr-datetime-checkrow { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
-/* 날짜/시간 입력은 반폭으로 수평 나란히, 높이도 한 단계 낮춘다. */
-.scr-datetime-fieldrow { display: flex; gap: 10px; align-items: flex-end; }
-.scr-datetime-fieldrow .scr-datetime-half { flex: 0 1 calc(50% - 5px); min-width: 0; }
-.scr-datetime-fieldrow .scr-datetime-half .scr-input { min-height: var(--field-h-sm); }
