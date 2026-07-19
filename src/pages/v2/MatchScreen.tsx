@@ -130,8 +130,14 @@ export default function MatchScreenV2() {
         <h1 className="scr-title scr-v2-toolbar-title">기록실</h1>
       </div>
 
-      {/* "등록" 버튼 — 타이틀 줄 아래 별도 줄에 가운데 정렬. 리플레이 위치 안내는 그 아래
-          링크 텍스트로 둔다. */}
+      {/* 조회 버튼 — 타이틀 바로 밑(요청). 눌러야 그때 전체 경기를 불러온다(기본 조회 안 함). */}
+      <div className="scr-match-search-row">
+        <button type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm" onClick={runSearch}>
+          조회
+        </button>
+      </div>
+
+      {/* "등록" 버튼 — 리플레이 업로드. 위치 안내는 그 아래 링크. */}
       <div className="scr-v2-primary-row scr-v2-primary-row-col">
         <button className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm" onClick={() => replayInputRef.current?.click()}>
           <Upload size={12} /> 등록
@@ -149,23 +155,18 @@ export default function MatchScreenV2() {
 
       <h2 className="scr-v2-subheading">경기 목록</h2>
 
-      {/* 기간 필터는 없고 유저 검색창만 — 검색은 조회로 불러온 목록 안에서 즉시 필터한다. */}
-      <SearchFilterBar
-        count={count}
-        countLabel="건"
-        showCount={false}
-        searchValue={search}
-        onSearchChange={setSearch}
-        searchPlaceholder="유저 검색"
-        suggestions={suggestions}
-      />
-
-      {/* 조회 버튼 — 눌러야 그때 전체 경기를 불러온다(요청: 기본 조회 안 함). */}
-      <div className="scr-match-search-row">
-        <button type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm" onClick={runSearch}>
-          조회
-        </button>
-      </div>
+      {/* 유저 검색(필터)은 목록이 있을 때(조회 후)에만 노출한다(요청). 불러온 목록 안에서 즉시 필터. */}
+      {hasSearched && (
+        <SearchFilterBar
+          count={count}
+          countLabel="건"
+          showCount={false}
+          searchValue={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="유저 검색"
+          suggestions={suggestions}
+        />
+      )}
 
       {error && <div className="scr-err">{error}</div>}
 
