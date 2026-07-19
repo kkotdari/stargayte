@@ -1055,7 +1055,7 @@ export default function ChallengeScreen() {
             className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm"
             onClick={() => setFormOpen(true)}
           >
-            🕊️ 도전장 보내기
+            🕊️ 도전장발송
           </button>
           <button
             type="button"

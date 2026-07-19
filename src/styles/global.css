@@ -4877,6 +4877,9 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
 /* 첫(그리고 유일한) 섹션은 위 .scr-screen의 gap이 이미 툴바/필터와 간격을 주므로 추가
    margin이 겹쳐 상단 여백이 과했다(신고: "너 나와 상단에 여백이 좀 남음") — 0으로 뗀다. */
 .scr-challenge-section:first-of-type { margin-top: 0; }
+/* 너나와: 대결 요청 코너 ↔ 검색창 사이는 넉넉히 띄우고, 검색창은 아래 목록에 바짝 붙인다
+   (요청: "요청하기와 검색창 사이 갭 늘리고 검색창은 목록쪽에 가깝게"). */
+.scr-challenge-screen-v2 .scr-filter-bar { margin-top: 22px; margin-bottom: 0; }
 .scr-challenge-section-title {
   font-size: 14px; font-weight: 800; color: var(--dim); letter-spacing: 0.02em; margin: 0;
 }
@@ -5817,15 +5820,15 @@ html.scr-light-theme .scr-challenge-next-tag {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95), 0 4px 16px rgba(0, 0, 0, 0.1);
 }
 .scr-mreq-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-/* "요청하기" — 주황 포인트색 알약 버튼, 살짝 통통하고 아래로 은은한 주황 그림자로 귀엽게. */
+/* "요청하기" — 흰색 알약 버튼(요청). 살짝 통통하고 아래로 은은한 그림자로 귀엽게. */
 .scr-mreq-add-btn {
   border: none; border-radius: 999px; font-weight: 800; letter-spacing: 0.01em;
-  padding: 6px 16px; color: var(--point-contrast);
-  background: linear-gradient(180deg, color-mix(in srgb, var(--point) 88%, #fff) 0%, var(--point) 100%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 2px 8px color-mix(in srgb, var(--point) 45%, transparent);
+  padding: 6px 16px; color: #10151a;
+  background: linear-gradient(180deg, #ffffff 0%, #f1f3f6 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 2px 8px rgba(0, 0, 0, 0.2);
   transition: filter 0.12s ease, transform 0.08s ease;
 }
-.scr-mreq-add-btn:hover { filter: brightness(1.05); }
+.scr-mreq-add-btn:hover { filter: brightness(0.98); }
 .scr-mreq-add-btn:active { transform: translateY(1px); }
 .scr-mreq-title { margin: 0; font-size: 15.5px; font-weight: 800; color: var(--text); letter-spacing: 0.01em; display: inline-flex; align-items: center; gap: 5px; }
 /* 이모지에 살짝 통통 튀는 느낌 — 은은한 그림자로 붕 떠 보이게. */
