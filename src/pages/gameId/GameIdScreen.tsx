@@ -482,17 +482,6 @@ export default function GameIdScreen() {
         }
       />
 
-      <div className="scr-hint scr-hint-left scr-usermap-desc">
-        {isAdmin ? (
-          <>
-            게임아이디의 주인을 찾아주세요.
-            <br />
-            정보는 결과 등록시 리플레이의 유저를 연결하는데 사용돼요.
-          </>
-        ) : (
-          "게임아이디가 회원과 어떻게 연결돼 있는지 볼 수 있어요. 연결 수정은 운영자만 할 수 있어요."
-        )}
-      </div>
 
       {error && <div className="scr-err">{error}</div>}
 
