@@ -208,7 +208,7 @@ export default function MatchRequestCorner({ onFulfill, reloadSignal }: MatchReq
   const submit = async () => {
     const { text, ids } = readEditor();
     if (ids.length < 2) {
-      setSubmitErr("@로 최소 두 명을 지목해주세요.");
+      setSubmitErr("@로 서로 대결했으면 하는 사람을 두 명 이상 골라주세요.");
       return;
     }
     setSubmitting(true);
@@ -265,7 +265,7 @@ export default function MatchRequestCorner({ onFulfill, reloadSignal }: MatchReq
               contentEditable
               role="textbox"
               aria-multiline="true"
-              data-placeholder="@로 상대를 지목해 대결을 요청하세요 (최소 2명)"
+              data-placeholder="@로 서로 대결했으면 하는 사람들을 골라 요청하세요 (최소 2명)"
               onInput={syncAfterEdit}
               onKeyUp={detectMention}
               onKeyDown={onEditorKeyDown}
