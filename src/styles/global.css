@@ -3662,9 +3662,15 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    더불어 로스터 왼쪽 안쪽 여백(6px)을 팀1·팀2·개인전 모두 0으로 없앤다(요청: "이력 목록
    들여쓰기 없애기") — 위 3652 규칙이 팀1/개인전만 없앴던 걸 팀2까지 넓힌다. */
 .scr-rank-detail-history .scr-team-roster { gap: 2px; padding-left: 0; }
-/* 이력 목록 닉네임(.scr-team-name)만 한 스텝 키운다(요청) — caption(14)→body(16). */
 /* 경기 이력 닉네임은 한 스텝 축소(요청) — body(16)→caption(14). */
 .scr-rank-detail-history .scr-team-name { font-size: var(--fs-caption); }
+/* 로스터 칸 폭을 미리 고정해 '팀으로/팀에게/에게' 연결어가 모든 경기에서 같은 x에 오게
+   한다(요청). 로스터보다 긴 닉네임은 말줄임된다. 팀전 카드(팀1/팀2 로스터)와 개인전 카드
+   (상대 로스터) 모두에 적용. --hist-roster-w만 바꾸면 폭 조절. */
+.scr-rank-detail-history { --hist-roster-w: 104px; }
+.scr-rank-detail-history .scr-match-list-panel-v2 .scr-match-row-result-only .scr-team-block {
+  flex: 0 0 var(--hist-roster-w); width: var(--hist-roster-w); min-width: 0;
+}
 /* 경기 이력 목록은 자기 높이만큼 자연스럽게 흐르게 두고(내부 고정높이·스크롤 없음),
    스크롤은 모달 본체(.scr-modal-body, 이미 overflow-y:auto + 모달 max-height 88vh)가
    통째로 맡는다(요청: "스크롤을 경기이력에 주는 게 아니라 모달 전체에 주기") — 그래프·
@@ -6107,6 +6113,9 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
   /* 랭킹 년월 필터줄(.scr-rank-subrow)과 그 아래 필터줄(차트/종족) 사이 간격을 넓힌다(요청).
      기본은 .scr-screen 형제 gap에만 기대 붙어 있었는데 좁아 답답했다. */
   .scr-rank-subrow { margin-bottom: 12px; }
+  /* 경기 이력 팀2 로스터(와 뒤따르는 '팀에게')를 왼쪽으로 8px 이동(요청, 모바일). 모든 카드가
+     같은 값이라 연결어 위치 통일은 유지된다. */
+  .scr-rank-detail-history .scr-match-row-team-tail .scr-team-block-team2 { margin-left: -8px; }
   /* 너나와 카드: 상대 로스터를 왼쪽으로 당기던 방식(-28px)은 상대쪽 승/무 배지 자리를 먹어
      손가락↔닉네임 사이 공간이 사라졌다(신고). 대신 도전자(팀1) 칸을 좁혀 화살표·배지·손가락을
      왼쪽으로 옮기고, 상대(팀2)쪽에 도전자와 같은 폭의 승/무 배지 자리를 확보한다(요청). */
