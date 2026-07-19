@@ -1106,12 +1106,16 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 /* 월(좌우 이동)과 산정 방식 힌트를 담는, 타이틀 행 아래의 별도 행(요청) — 월은 왼쪽,
    힌트는 오른쪽 끝. 타이틀 바로 아래에 붙이고 목록/검색창과의 간격을 준다. */
 .scr-rank-subrow {
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  /* 월/년 필터(.scr-rank-period)를 행 가운데에 둔다(요청). 기준점수표 링크는 흐름에서 빼
+     오른쪽 끝에 고정해, 가운데 정렬된 필터를 밀지 않게 한다. */
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  position: relative;
   /* 아래쪽은 .scr-screen의 형제간 gap이 이미 다음 요소와 간격을 주므로 따로 마진을
      두지 않는다(요청: "자체 패딩/마진 중복 제거") — 위쪽 -6px만 타이틀과의 베이스라인
      보정으로 남긴다. */
   margin: -6px 0 0;
 }
+.scr-rank-subrow .scr-rank-weight-link { position: absolute; right: 0; top: 50%; transform: translateY(-50%); }
 /* 산정 방식 힌트 — 서브행 오른쪽에 옅게. 좁은 화면에선 글자만 살짝 줄인다. */
 .scr-rank-hint-inline {
   text-align: right; font-size: var(--fs-body); color: var(--muted); white-space: nowrap;
