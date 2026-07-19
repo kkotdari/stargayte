@@ -6107,7 +6107,12 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
   /* 너나와 카드: 상대 로스터를 왼쪽으로 당기던 방식(-28px)은 상대쪽 승/무 배지 자리를 먹어
      손가락↔닉네임 사이 공간이 사라졌다(신고). 대신 도전자(팀1) 칸을 좁혀 화살표·배지·손가락을
      왼쪽으로 옮기고, 상대(팀2)쪽에 도전자와 같은 폭의 승/무 배지 자리를 확보한다(요청). */
-  .scr-challenge-matchup .scr-challenge-side:not(.scr-challenge-side-target) { flex: 0.72 1 0; }
+  /* 다만 0.72까지 좁히니 도전자 닉네임이 4글자에서 잘렸다(신고: "양쪽 로스터 닉네임 폭 확보").
+     도전자 칸을 0.85로 넓혀(승 배지가 오른쪽으로 조금 이동) 도전자 닉네임 폭을 확보하고,
+     동시에 가운데 화살표 묶음의 좌우 여백을 12→6px로 줄여 그 절약분을 양쪽 로스터가 나눠
+     가져 상대 닉네임 폭도 함께 넓힌다. */
+  .scr-challenge-matchup .scr-challenge-side:not(.scr-challenge-side-target) { flex: 0.85 1 0; }
+  .scr-challenge-matchup .scr-challenge-arrow-row { margin-left: 5px; margin-right: 5px; gap: 3px; }
   /* 경기 이력 팀전 카드: 양 팀 덩어리는 기본(base)의 균등폭(flex:1 1 0)을 그대로 쓴다 —
      한때 내용폭(flex:0 1 auto)으로 바꿨더니 팀1(짧은 닉네임)쪽 영역이 팀2보다 눈에 띄게
      좁아졌다(신고). 균등폭이면 팀1/팀2가 같은 폭을 가져 좌우가 대칭이 된다. */
