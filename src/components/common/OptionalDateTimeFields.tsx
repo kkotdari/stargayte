@@ -35,33 +35,39 @@ export default function OptionalDateTimeFields({
 
   return (
     <>
-      <label className="scr-checkbox-field">
-        <input type="checkbox" checked={dateEnabled} onChange={(e) => toggleDate(e.target.checked)} />
-        날짜 선택
-      </label>
-      {dateEnabled && (
-        <label className="scr-field">
-          <span className="scr-label">날짜</span>
-          <input
-            type="date" className="scr-input" value={dateStr}
-            onChange={(e) => onDateChange(e.target.value)}
-          />
-        </label>
-      )}
-      {dateEnabled && dateStr && (
+      {/* 날짜/시간 체크박스는 한 줄에 나란히(요청). 시간 체크박스는 날짜를 고른 뒤에만 옆에 뜬다. */}
+      <div className="scr-datetime-checkrow">
         <label className="scr-checkbox-field">
-          <input type="checkbox" checked={timeEnabled} onChange={(e) => toggleTime(e.target.checked)} />
-          시간 선택
+          <input type="checkbox" checked={dateEnabled} onChange={(e) => toggleDate(e.target.checked)} />
+          날짜 선택
         </label>
-      )}
-      {dateEnabled && dateStr && timeEnabled && (
-        <label className="scr-field">
-          <span className="scr-label">시간</span>
-          <input
-            type="time" className="scr-input" value={timeStr}
-            onChange={(e) => onTimeChange(e.target.value)}
-          />
-        </label>
+        {dateEnabled && dateStr && (
+          <label className="scr-checkbox-field">
+            <input type="checkbox" checked={timeEnabled} onChange={(e) => toggleTime(e.target.checked)} />
+            시간 선택
+          </label>
+        )}
+      </div>
+      {/* 날짜/시간 입력은 반폭으로 수평 나란히, 높이도 축소(요청). */}
+      {dateEnabled && (
+        <div className="scr-datetime-fieldrow">
+          <label className="scr-field scr-datetime-half">
+            <span className="scr-label">날짜</span>
+            <input
+              type="date" className="scr-input" value={dateStr}
+              onChange={(e) => onDateChange(e.target.value)}
+            />
+          </label>
+          {dateEnabled && dateStr && timeEnabled && (
+            <label className="scr-field scr-datetime-half">
+              <span className="scr-label">시간</span>
+              <input
+                type="time" className="scr-input" value={timeStr}
+                onChange={(e) => onTimeChange(e.target.value)}
+              />
+            </label>
+          )}
+        </div>
       )}
     </>
   );
