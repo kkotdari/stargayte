@@ -5773,3 +5773,61 @@ html.scr-light-theme .scr-challenge-next-tag {
   -webkit-mask-image: radial-gradient(ellipse at center, #000 55%, transparent 78%);
   mask-image: radial-gradient(ellipse at center, #000 55%, transparent 78%);
 }
+
+/* ===== 대결 요청 코너 ("너 나와!" 최상단) =====
+   @태그로 최소 2명을 지목하는 공개 요청글 코너. 지목된 사람만 "들어주기"로 도전장을 보낼 수
+   있고, 다른 회원은 추천(엄지척)만 누른다. 정렬은 추천 많은 순 → 먼저 등록순, 페이지당 5개. */
+.scr-mreq-corner {
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 12px 14px; margin-bottom: 4px; display: flex; flex-direction: column; gap: 10px;
+}
+.scr-mreq-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.scr-mreq-title { margin: 0; font-size: 15px; font-weight: 800; color: var(--text); letter-spacing: 0.01em; }
+.scr-mreq-compose { display: flex; flex-direction: column; gap: 8px; }
+.scr-mreq-input-wrap { position: relative; }
+.scr-mreq-input { width: 100%; resize: vertical; min-height: 52px; font-family: inherit; }
+/* @자동완성 드롭다운 — 입력창 바로 아래 겹쳐 뜬다. */
+.scr-mreq-mention-drop {
+  position: absolute; left: 0; right: 0; top: calc(100% + 2px); z-index: 20;
+  background: var(--panel-solid); border: 1px solid var(--line); border-radius: var(--radius-sm);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.28); overflow: hidden; max-height: 220px; overflow-y: auto;
+}
+.scr-mreq-mention-opt {
+  width: 100%; display: flex; align-items: center; gap: 8px; padding: 7px 10px;
+  background: transparent; border: none; cursor: pointer; color: var(--text); text-align: left;
+}
+.scr-mreq-mention-opt:hover { background: rgba(var(--overlay-rgb), 0.08); }
+.scr-mreq-mention-name { font-size: 13.5px; font-weight: 600; }
+.scr-mreq-tag-list { font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+/* 본문/지목 목록에서 @닉네임을 강조하는 칩. */
+.scr-mreq-tag { color: var(--point); font-weight: 700; }
+.scr-mreq-compose-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.scr-mreq-empty { font-size: 13px; color: var(--dim); padding: 6px 2px; }
+.scr-mreq-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.scr-mreq-item {
+  display: flex; align-items: center; gap: 10px; padding: 10px 2px;
+}
+.scr-mreq-item + .scr-mreq-item { border-top: 1px solid rgba(var(--divider-tint), 0.3); }
+.scr-mreq-item-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.scr-mreq-item-author { display: flex; align-items: center; gap: 6px; }
+.scr-mreq-item-author-name { font-size: 12.5px; font-weight: 700; color: var(--dim); }
+.scr-mreq-item-text { margin: 0; font-size: 13.5px; color: var(--text); line-height: 1.4; word-break: break-word; }
+.scr-mreq-item-actions { flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+/* 추천(엄지척) 버튼 — 눌렀으면 포인트색으로 채운다. */
+.scr-mreq-rec-btn {
+  display: inline-flex; align-items: center; gap: 4px; padding: 4px 9px;
+  background: transparent; border: 1px solid var(--line); border-radius: 999px;
+  color: var(--muted); font-size: 12px; font-weight: 700; cursor: pointer;
+  font-variant-numeric: tabular-nums; transition: background .12s, color .12s, border-color .12s;
+}
+.scr-mreq-rec-btn:hover { color: var(--text); border-color: var(--pipe-bright); }
+.scr-mreq-rec-btn-on { color: var(--point); border-color: var(--point); background: color-mix(in srgb, var(--point) 14%, transparent); }
+.scr-mreq-take-btn { white-space: nowrap; }
+.scr-mreq-pager { display: flex; align-items: center; justify-content: center; gap: 12px; padding-top: 4px; }
+.scr-mreq-pager-btn {
+  background: transparent; border: 1px solid var(--line); border-radius: var(--radius-sm);
+  color: var(--muted); font-size: 12.5px; font-weight: 600; padding: 4px 12px; cursor: pointer;
+}
+.scr-mreq-pager-btn:disabled { opacity: 0.4; cursor: default; }
+.scr-mreq-pager-btn:not(:disabled):hover { color: var(--text); border-color: var(--pipe-bright); }
+.scr-mreq-pager-info { font-size: 12px; color: var(--dim); font-variant-numeric: tabular-nums; }

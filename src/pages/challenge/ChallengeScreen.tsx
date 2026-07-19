@@ -7,6 +7,7 @@ import SearchFilterBar from "../../components/common/SearchFilterBar";
 import FilterItem from "../../components/common/FilterItem";
 import PillTabs from "../../components/common/PillTabs";
 import ChallengeFormModal from "../../modals/ChallengeFormModal";
+import MatchRequestCorner from "./MatchRequestCorner";
 import ScrollNavTimeline from "../../components/common/ScrollNavTimeline";
 import { useAppStore } from "../../store/appStore";
 import { api } from "../../api/client";
@@ -18,7 +19,6 @@ import {
 } from "../../utils/date";
 import { activeMemberSearchTerms, memberMatchesTerm, splitSearchTerms } from "../../utils/memberSearch";
 import { useLockBodyScroll } from "../../utils/bodyScrollLock";
-import { suppressScrollHide, getScrollRoot, getScrollMetrics, scrollRootTo } from "../../utils/scrollRoot";
 import type { Challenge, ChallengeResult, ChallengeSide, ChallengeStatus, ChallengeTarget } from "../../types";
 
 // 화면 표시 상태는 서버 status를 그대로 쓴다 — 서버가 4개(응답대기 pending/성사 confirmed/
@@ -814,6 +814,11 @@ export default function ChallengeScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [formOpen, setFormOpen] = useState(false);
+  // 대결 요청 "들어주기"로 도전장 폼을 열 때 — 그 요청의 작성자를 상대로 미리 채우고, 도전장을
+  // 실제로 보내면 그 요청을 목록에서 내린다(fulfill). null이면 일반 "도전장 보내기".
+  const [fulfillingRequest, setFulfillingRequest] = useState<{ requestId: number; authorId: string } | null>(null);
+  // 코너에 "목록 다시 불러와" 신호 — 들어주기로 요청이 사라지면 올린다.
+  const [corentReloadSignal, setCornerReloadSignal] = useState(0);
   const [discardedOpen, setDiscardedOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [acceptedOnly, setAcceptedOnly] = useState(false);
@@ -991,28 +996,16 @@ export default function ChallengeScreen() {
   // 위치에서 벗어났다(실제로 지적받은 문제). 진입 스크롤이 나갈 대상이 있는 동안은 스냅을
   // 잠깐 꺼 뒀다가, 스크롤이 끝났을 즈음(스무스 스크롤엔 완료 콜백이 없어 넉넉히 700ms
   // 후로 추정) 다시 켠다. 스크롤할 대상이 없거나 이미 스크롤을 마쳤으면 스냅을 바로 켠다.
-  const didAutoScrollRef = useRef(false);
+  // 화면 진입 시엔 NEXT로 자동 스크롤하지 않고 최상단(대결 요청 코너)에서 시작한다(요청:
+  // "너나와 진입 시 next가 아닌 최상단으로 진입"). NEXT로의 이동은 우측 타임라인의 "오늘"
+  // 눈금 스냅으로 편하게 할 수 있게 스냅(scr-snap-today)만 켜 둔다(요청: "next는 타임라인에
+  // 스냅을 걸어서 편하게 이동"). 예전의 진입 자동 스크롤/억제 로직은 제거했다.
   useEffect(() => {
     const root = document.getElementById("scroll-root");
     if (!root) return;
-    if (loading || didAutoScrollRef.current || firstNextId === null || !nextCardRef.current) {
-      root.classList.add("scr-snap-today");
-      return () => root.classList.remove("scr-snap-today");
-    }
-    const el = nextCardRef.current;
-    didAutoScrollRef.current = true;
-    // 이 자동 스크롤이 "아래로 스크롤 = 숨김"으로 오인돼 탭바/필터·검색 아이콘이 같이
-    // 숨던 문제를 막는다 — 부드러운 스크롤이 끝날 때까지 숨김 판정을 잠깐 억제한다.
-    suppressScrollHide();
-    const scrollRootEl = getScrollRoot();
-    const { scrollTop, clientHeight } = getScrollMetrics();
-    const rootTop = scrollRootEl instanceof Window ? 0 : scrollRootEl.getBoundingClientRect().top;
-    const elTopInViewport = el.getBoundingClientRect().top - rootTop;
-    const target = scrollTop + elTopInViewport - clientHeight * 0.22;
-    scrollRootTo({ top: Math.max(0, target), behavior: "smooth" });
-    const t = window.setTimeout(() => root.classList.add("scr-snap-today"), 700);
-    return () => { window.clearTimeout(t); root.classList.remove("scr-snap-today"); };
-  }, [loading, firstNextId]);
+    root.classList.add("scr-snap-today");
+    return () => root.classList.remove("scr-snap-today");
+  }, []);
 
   const emptyLabel = searchTerms.length > 0
     ? "검색 결과가 없어요"
@@ -1041,6 +1034,14 @@ export default function ChallengeScreen() {
           </button>
         </div>
       </div>
+
+      {/* 최상단 대결 요청 코너(요청) — @태그로 지목된 사람만 "들어주기"로 도전장을 보낼 수 있다. */}
+      <MatchRequestCorner
+        reloadSignal={corentReloadSignal}
+        onFulfill={(req) => {
+          setFulfillingRequest({ requestId: req.id, authorId: req.author.memberId });
+        }}
+      />
 
       <SearchFilterBar
         count={activeList.length}
@@ -1157,6 +1158,21 @@ export default function ChallengeScreen() {
         <ChallengeFormModal
           onClose={() => setFormOpen(false)}
           onCreated={(c) => setChallenges((prev) => [c, ...prev])}
+        />
+      )}
+
+      {/* 들어주기 — 요청 작성자를 상대로 미리 채운 도전장 폼. 실제로 보내면 그 요청을 내린다. */}
+      {fulfillingRequest && (
+        <ChallengeFormModal
+          presetTargetIds={[fulfillingRequest.authorId]}
+          onClose={() => setFulfillingRequest(null)}
+          onCreated={(c) => {
+            setChallenges((prev) => [c, ...prev]);
+            const reqId = fulfillingRequest.requestId;
+            void api.fulfillMatchRequest(reqId)
+              .catch(() => {})
+              .finally(() => setCornerReloadSignal((n) => n + 1));
+          }}
         />
       )}
 

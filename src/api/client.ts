@@ -8,6 +8,7 @@ import type {
   MonthlyMatchStatsResponse, MonthlyTeamRankingResponse,
   ReplayNameClassificationEntry, ReplayNameKind, ReplayNameMappingEntry, ReplayNameMappingKind,
   Challenge, ChallengeCreatePayload, ChallengeRevengePayload, ChallengeResult,
+  MatchRequest, MatchRequestCreatePayload, MatchRequestListResponse,
 } from "../types";
 
 // undefined/""/"all"(필터 미지정 관례) 값은 아예 뺀 쿼리스트링을 만든다 — 서버는 파라미터가
@@ -609,5 +610,28 @@ export const api = {
       method: "POST",
       body: JSON.stringify(payload),
     });
+  },
+
+  // ===== 대결 요청 코너 =====
+  async getMatchRequests(page = 0): Promise<MatchRequestListResponse> {
+    return request<MatchRequestListResponse>(`/api/match-requests?page=${page}`);
+  },
+  async createMatchRequest(payload: MatchRequestCreatePayload): Promise<MatchRequest> {
+    return request<MatchRequest>("/api/match-requests", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+  // 추천 토글(누르면 추천, 다시 누르면 취소) — 갱신된 요청을 돌려준다.
+  async toggleMatchRequestRecommend(id: number): Promise<MatchRequest> {
+    return request<MatchRequest>(`/api/match-requests/${id}/recommend`, { method: "POST" });
+  },
+  // "들어주기"로 도전장을 보낸 뒤 요청을 목록에서 내린다(지목된 사람만 가능).
+  async fulfillMatchRequest(id: number): Promise<void> {
+    await request<{ ok: boolean }>(`/api/match-requests/${id}/fulfill`, { method: "POST" });
+  },
+  // 작성자 본인/운영자가 요청을 내린다.
+  async deleteMatchRequest(id: number): Promise<void> {
+    await request<{ ok: boolean }>(`/api/match-requests/${id}`, { method: "DELETE" });
   },
 };

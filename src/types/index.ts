@@ -368,6 +368,43 @@ export interface ChallengeRevengePayload {
   message?: string;
 }
 
+// ===== 대결 요청 코너 ("너 나와!" 최상단) =====
+// 본문에 @태그로 최소 2명을 지목하는 공개 요청글. 지목된 사람만 "들어주기"로 도전장을 보낼
+// 수 있고, 들어주면 목록에서 사라진다. 정렬은 추천 많은 순 → 먼저 등록된 순.
+export interface MatchRequestTarget {
+  memberId: string;
+  nickname: string;
+}
+
+export interface MatchRequest {
+  id: number;
+  text: string;
+  author: { memberId: string; nickname: string; avatar: string | null };
+  createdAt: string;
+  recommendCount: number;
+  // 내가 이미 추천을 눌렀는지(버튼 눌림 상태).
+  recommendedByMe: boolean;
+  // 내가 작성자인지 — 본인 글엔 "들어주기" 대신 "내리기"만 보인다.
+  mine: boolean;
+  // @태그로 지목된 회원들 — 본문 하이라이트/버튼 노출용.
+  targets: MatchRequestTarget[];
+  // 내가 지목된 대상인지 — 이 사람만 "들어주기"를 누를 수 있다.
+  iAmTarget: boolean;
+}
+
+export interface MatchRequestListResponse {
+  items: MatchRequest[];
+  page: number;
+  pageSize: number;
+  total: number;
+  hasMore: boolean;
+}
+
+export interface MatchRequestCreatePayload {
+  text: string;
+  targetMemberIds: string[];
+}
+
 // 기간 필터 프리셋 — "custom"일 때만 실제로 from/to(직접 입력) 값을 사용하고, 나머지는
 // 화면이 오늘 날짜 기준으로 즉시 계산한다(periodPresetRange 참고). "all"은 기간 제한 없이
 // 전체 기록을 본다(from/to 모두 빈 값).
