@@ -248,7 +248,7 @@ export default function MatchRequestCorner({ onFulfill, reloadSignal }: MatchReq
   return (
     <section className="scr-mreq-corner">
       <div className="scr-mreq-head">
-        <h2 className="scr-mreq-title">대결 요청</h2>
+        <h2 className="scr-mreq-title"><span className="scr-mreq-title-emoji" aria-hidden>🥺</span> 대결 요청</h2>
         {!composing && (
           <button type="button" className="scr-btn scr-btn-sm scr-btn-primary scr-btn-primary-solid" onClick={() => setComposing(true)}>
             + 요청 올리기
@@ -298,7 +298,7 @@ export default function MatchRequestCorner({ onFulfill, reloadSignal }: MatchReq
       ) : err ? (
         <div className="scr-err">{err}</div>
       ) : items.length === 0 ? (
-        <div className="scr-mreq-empty">아직 올라온 대결 요청이 없어요.</div>
+        <div className="scr-mreq-empty">아직 올라온 대결 요청이 없어요. 첫 요청을 올려보세요! ✨</div>
       ) : (
         <ul className="scr-mreq-list">
           {items.map((req) => (

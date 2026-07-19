@@ -150,18 +150,10 @@ html {
      넣는 --safe-area-top 중 큰 값. black-translucent 몰입 모드에서 스크롤되는 헤더/스티키를
      이만큼 내려 노치에 안 가리게 하는 데 쓴다(둘 다 0이면 0이라 PC/비-노치에선 영향 없음). */
   --safe-top: max(env(safe-area-inset-top, 0px), var(--safe-area-top, 0px));
-  /* 하단 탭바를 사파리 하단 주소창 위로 올리는 보정값. 기본 0 — 홈화면 웹앱(standalone)은
-     주소창이 없으므로 올리면 안 되고(iOS standalone은 lvh≠svh라 이 값을 그냥 쓰면 탭바가
-     붕 떠버렸다), 실제 브라우저 탭에서만 아래 미디어쿼리가 넣는다.
-     값은 "지금 실제 주소창이 가리는 높이" = 큰 뷰포트(lvh, 고정 기준) − 지금 보이는 높이
-     (dvh, 주소창 상태에 따라 실시간). 예전엔 최대치(lvh−svh) 고정이라, 주소창이 접힌
-     작은 상태에서 그 최대치만큼 올려 탭바가 주소창 위로 크게 떠버렸다(실제로 지적받은
-     문제) — dvh로 지금 상태를 그대로 따라가게 한다. */
-  --tabbar-lift: 0px;
-}
-/* 홈화면 웹앱(standalone)이 아닌 "진짜 브라우저 탭"에서만 주소창 높이만큼 보정. */
-@media not all and (display-mode: standalone) {
-  html { --tabbar-lift: calc(100lvh - 100dvh); }
+  /* 하단 탭바를 사파리 하단 주소창 위로 올리는 보정값 — CSS 뷰포트 단위(svh/lvh/dvh)는 하단
+     주소창과 안 맞아서, JS(useBottomViewportInset)가 visualViewport로 실측해 이 변수를 채운다.
+     PWA·데스크톱·JS 미실행에선 0이라 탭바는 bottom:0. */
+  --vv-bottom-inset: 0px;
 }
 /* body는 overflow:hidden 대신 position:fixed로 아예 뷰포트에 못 박는다 — iOS Safari는
    overscroll-behavior:none을 body/html에 걸어도 문서 자체의 러버밴드(당겨서 튕기는)
@@ -4015,13 +4007,10 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   position: fixed; left: 0; right: 0; z-index: 55;
   /* iOS 사파리의 하단 주소창(모바일 Safari 기본값)이 탭바를 가려 절반쯤 잘려 보이던
      문제(신고: "탭바가 저렇게 잘리고") — body가 position:fixed라 문서 스크롤이 없어서
-     사파리가 주소창을 접어주지 않으므로(신고: "스크롤하면 되야했던 주소표시줄 축소가
-     안돼"), 주소창은 사실상 항상 펼쳐진 상태로 남는다. 고정요소의 bottom:0은 큰
-     뷰포트(lvh, 주소창 접힌 크기) 기준이라 그 펼쳐진 주소창 뒤로 깔린다. 큰-작은
-     뷰포트 차(100lvh - 100svh = 펼쳐진 주소창 높이)만큼 위로 올려 실제로 보이는
-     영역 바닥에 딱 맞춘다. standalone PWA에선 --tabbar-lift가 0으로 고정된다(정의부
-     참고 — PWA는 주소창이 없고 iOS standalone은 lvh≠svh라 그냥 쓰면 탭바가 붕 뜬다). */
-  bottom: var(--tabbar-lift);
+     안돼"). CSS 뷰포트 단위(svh/lvh/dvh)는 하단 주소창과 잘 안 맞아, visualViewport로
+     실측한 "주소창이 가리는 높이"(--vv-bottom-inset, useBottomViewportInset가 갱신)만큼만
+     위로 올려 항상 주소창 바로 위에 붙인다. JS 미실행/데스크톱/PWA에선 0이라 bottom:0. */
+  bottom: var(--vv-bottom-inset, 0px);
   /* 높이에 홈 인디케이터 안전영역(env safe-area-inset-bottom)을 "더해" 준다 — 고정
      --mobile-footer-h(56px)만 쓰면 box-sizing:border-box라 아래 패딩에 든 안전영역만큼
      콘텐츠 영역이 줄어, 아이폰 PWA(standalone, 안전영역 ~34px)에서 탭 내용이 짓눌려
@@ -4258,11 +4247,10 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
    몫(50px + 여유 8px)으로 줄였다. */
 @media (max-width: 640px) {
   .scr-main {
-    /* 탭바가 주소창 위로 뜨는 만큼 하단 여백도 예약한다. 단 여기선 실시간(dvh) 대신 최대치
-       (100lvh - 100svh)로 고정한다 — 스크롤 중 주소창이 접혔다 펴지며 예약 폭이 실시간으로
-       바뀌면 스크롤 가능 범위가 출렁여 "2단 스크롤"이 생긴다. 최대치로 고정하면 주소창이
-       접힌 상태에선 살짝 여유가 남을 뿐이라 안전하다. standalone은 lvh==svh라 0. */
-    padding-bottom: calc(10px + var(--mobile-footer-h) + 58px + (100lvh - 100svh) + env(safe-area-inset-bottom, 0px));
+    /* 탭바가 주소창 위로 뜨는 만큼 하단 여백도 예약한다. 실시간(--vv-bottom-inset)으로 하면
+       주소창이 접혔다 펴질 때 예약 폭이 바뀌어 스크롤 범위가 출렁이므로, 주소창 최대 높이를
+       넉넉히 잡은 고정값(64px)으로 예약한다 — 접힌 상태에선 살짝 여유만 남는다. */
+    padding-bottom: calc(10px + var(--mobile-footer-h) + 58px + 64px + env(safe-area-inset-bottom, 0px));
   }
 }
 
@@ -5800,12 +5788,38 @@ html.scr-light-theme .scr-challenge-next-tag {
 /* ===== 대결 요청 코너 ("너 나와!" 최상단) =====
    @태그로 최소 2명을 지목하는 공개 요청글 코너. 지목된 사람만 "들어주기"로 도전장을 보낼 수
    있고, 다른 회원은 추천(엄지척)만 누른다. 정렬은 추천 많은 순 → 먼저 등록순, 페이지당 5개. */
+/* 약간 그라데이션 들어간 흰(유리) 패널 + 반사광(요청). 위가 밝고 아래로 살짝 가라앉는 흰
+   반투명 그라데이션에, 상단 모서리 하이라이트와 비스듬히 지나가는 반사광 한 줄을 얹어
+   말랑한 유리 카드처럼 보이게 한다. 반투명이라 다크 테마에서도 흰 글씨가 그대로 읽힌다. */
 .scr-mreq-corner {
-  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
-  padding: 12px 14px; margin-bottom: 4px; display: flex; flex-direction: column; gap: 10px;
+  position: relative;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.055) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 16px;
+  padding: 13px 15px; margin-bottom: 4px; display: flex; flex-direction: column; gap: 10px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.05),
+    0 4px 16px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(8px) saturate(1.05);
+  -webkit-backdrop-filter: blur(8px) saturate(1.05);
+}
+/* 반사광 — 좌상단에서 비스듬히 지나가는 밝은 하이라이트 한 줄. */
+.scr-mreq-corner::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, transparent 32%);
+}
+.scr-mreq-corner > * { position: relative; z-index: 1; }
+/* 라이트 테마 — 흰 배경 위라 더 또렷한 흰 유리 + 옅은 그림자로 띄운다. */
+.scr-light-theme .scr-mreq-corner {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(255, 255, 255, 0.74) 100%);
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95), 0 4px 16px rgba(0, 0, 0, 0.1);
 }
 .scr-mreq-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.scr-mreq-title { margin: 0; font-size: 15px; font-weight: 800; color: var(--text); letter-spacing: 0.01em; }
+.scr-mreq-title { margin: 0; font-size: 15.5px; font-weight: 800; color: var(--text); letter-spacing: 0.01em; display: inline-flex; align-items: center; gap: 5px; }
+/* 이모지에 살짝 통통 튀는 느낌 — 은은한 그림자로 붕 떠 보이게. */
+.scr-mreq-title-emoji { font-size: 17px; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.25)); }
 .scr-mreq-compose { display: flex; flex-direction: column; gap: 8px; }
 .scr-mreq-input-wrap { position: relative; }
 /* 본문 입력은 contenteditable — 지목 칩을 문장 안에 인라인으로 끼워 넣는다(요청: "칩이 문장
