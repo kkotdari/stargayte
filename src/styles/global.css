@@ -1963,13 +1963,14 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
      채움)보다 눈에 띄게 좁아 보였다(요청: "모바일에서 랭킹카드 폭 넓히기 다른화면들의
      카드 폭과 동일하게"). */
   .scr-rank-table-panel-v2 .scr-rank-row-inner {
-    grid-template-columns: 44px 32px minmax(100px, 1fr) 100px; column-gap: 10px;
+    grid-template-columns: 44px 38px minmax(100px, 1fr) 100px; column-gap: 10px;
   }
   .scr-rank-table-panel-v2 .scr-rank-name { font-size: var(--fs-subhead); }
   .scr-rank-record-v2 { font-size: var(--fs-caption); }
   .scr-rank-latest-match { font-size: var(--fs-caption); max-width: 100px; }
-  /* 프사도 한 치수 줄인다(Avatar가 인라인 style로 크기를 박으므로 !important가 필요하다). */
-  .scr-rank-table-panel-v2 .scr-rank-avatar-btn .scr-avatar { width: 32px !important; height: 32px !important; }
+  /* 프사 크기(모바일). Avatar가 인라인 style로 크기를 박으므로 !important가 필요하다.
+     기존 32px에서 20% 키운다(요청: 랭킹 아바타 20% 증가 — 모바일). */
+  .scr-rank-table-panel-v2 .scr-rank-avatar-btn .scr-avatar { width: 38px !important; height: 38px !important; }
 }
 
 /* ===== v2 랭킹 화면 배경 =====
