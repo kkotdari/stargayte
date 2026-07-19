@@ -1871,7 +1871,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 @media (min-width: 720px) {
   .scr-rank-table-panel-v2 .scr-rank-row-inner { padding: 0 100px; }
 }
-.scr-rank-table-panel-v2 .scr-rank-name-wrap { min-width: 0; justify-content: flex-start; }
+.scr-rank-table-panel-v2 .scr-rank-name-wrap { min-width: 0; justify-content: flex-start; margin-left: 8px; }
 /* 프사와 이름이 이 행의 주인공이라 시원하게 키운다 — 나머지(순위/전적)는 곁들이다. */
 .scr-rank-table-panel-v2 .scr-rank-name {
   font-size: 28px; font-weight: 700;
