@@ -53,13 +53,12 @@ export default function ReplayLocationHint({ className }: ReplayLocationHintProp
         className={cx("scr-replay-loc-trigger", className)}
         ref={anchorRef}
         onClick={() => setOpen((v) => !v)}
-        title="리플레이 위치 확인"
+        title="리플레이는 어디에?"
       >
-        리플레이 위치 확인
+        리플레이는 어디에?
       </button>
       {open && createPortal(
         <div className="scr-replay-loc-pop" ref={popRef}>
-          <div className="scr-replay-loc-title">리플레이 파일 위치</div>
           <div className="scr-replay-loc-row">
             <span className="scr-replay-loc-os">Windows</span>
             <span className="scr-mono">문서\StarCraft\Maps\Replays\AutoSave\원하는날짜</span>

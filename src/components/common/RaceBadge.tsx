@@ -4,8 +4,9 @@ import { RACE_INFO } from "../../constants/races";
 import { cx } from "../../utils/format";
 import type { Race } from "../../types";
 
-// 종족 한 글자 배지 — 한글로 통일(요청). 테란=테 / 프로토스=프 / 저그=저 / 랜덤=랜.
-const RACE_LETTER: Record<Race, string> = { "테란": "테", "프로토스": "프", "저그": "저", "랜덤": "랜" };
+// 종족 한 글자 배지 — 알파벳 대문자로(요청: "닉네임이 한글이라 그래야 대비가 됨" — 한글
+// 닉네임 옆/위에서 한글 글자 배지보다 라틴 대문자가 더 또렷이 구분된다).
+const RACE_LETTER: Record<Race, string> = { "테란": "T", "프로토스": "P", "저그": "Z", "랜덤": "R" };
 
 interface RaceBadgeProps {
   race: Race | "";
@@ -35,7 +36,7 @@ export default function RaceBadge({ race, size = 26, asText, plain, circleLetter
     return (
       <span
         className={cx("scr-race-badge", "scr-race-badge-letter", className)}
-        style={{ fontSize: Math.max(11, size * 0.5), color: RACE_INFO[race].color }}
+        style={{ fontSize: Math.max(9, size * 0.5), color: RACE_INFO[race].color }}
         title={race}
       >
         {RACE_LETTER[race]}

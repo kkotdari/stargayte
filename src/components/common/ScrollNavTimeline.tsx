@@ -34,9 +34,14 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
   const draggingRef = useRef(false);
 
   // 지금 상단에 스티키로 핀된 날짜 헤더의 라벨 — 현재 위치를 "며칠"인지로 보여준다.
-  const currentDateLabel = (): string | null => {
+  // atBottom이면(더 스크롤할 여지가 없는 맨 끝) 마지막 헤더를 그냥 그대로 쓴다 — 마지막
+  // 그룹의 카드 수가 적어 그 헤더가 화면 맨 위(top<=6)까지 밀려 올라올 만큼 스크롤할 거리
+  // 자체가 없으면(뒤에 남는 여백뿐이면), 아래 top<=6 조건이 그 헤더를 영영 못 만나 한 칸
+  // 전 날짜에 멈춰 있었다(실제로 지적받은 문제 — "타임라인에 마지막 경기 날짜는 안 나와").
+  const currentDateLabel = (atBottom: boolean): string | null => {
     const heads = Array.from(document.querySelectorAll<HTMLElement>(headSelector));
     if (heads.length === 0) return null;
+    if (atBottom) return heads[heads.length - 1].dataset.dateLabel ?? null;
     const root = getScrollRoot();
     const topY = root instanceof Window ? 0 : root.getBoundingClientRect().top;
     let current: string | null = heads[0].dataset.dateLabel ?? null;
@@ -62,7 +67,7 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
     const max = scrollHeight - clientHeight;
     setScrollable(max > 40);
     setFraction(max > 0 ? Math.min(1, Math.max(0, scrollTop / max)) : 0);
-    setDateLabel(currentDateLabel());
+    setDateLabel(currentDateLabel(max <= 0 || scrollTop >= max - 2));
     if (markers && markers.length > 0) {
       const next: Record<string, number | null> = {};
       for (const m of markers) next[m.key] = groupFraction(m.groupSelector, scrollTop, max);

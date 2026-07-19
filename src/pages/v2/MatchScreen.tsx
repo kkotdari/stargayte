@@ -13,7 +13,7 @@ import ScrollNavTimeline from "../../components/common/ScrollNavTimeline";
 import { useAppStore } from "../../store/appStore";
 import { api } from "../../api/client";
 import { activeMemberSearchTerms, memberMatchesTerm, splitSearchTerms } from "../../utils/memberSearch";
-import { monthInputToRange, graceMonthValue, todayStr } from "../../utils/date";
+import { monthInputToRange, graceMonthValue, graceDayValue } from "../../utils/date";
 import { buildReplayDrafts, type ReplayDraft } from "../../utils/replayDraft";
 import { hasAppUpdatePreloadErrorOccurred } from "../../utils/appUpdate";
 import { useCursorPagination } from "../../hooks/useCursorPagination";
@@ -42,12 +42,13 @@ export default function MatchScreenV2() {
   const [search, setSearch] = useState("");
   // 정렬 토글은 없앴다(요청: "기간 필터 정렬 제거") — 항상 최신순 고정.
   const [sort] = useState<"latest" | "oldest">("latest");
-  // 기본은 월(요청: "경기 기간 필터 기본값 월로 변경"). 기본 달은 랭킹과 똑같이 그레이스
-  // 기간을 적용한다(요청: "경기 필터 그레이스기간을 랭킹과 똑같이") — 매월 1일 20시 전까진
-  // 전월을 기본으로 보여준다(graceMonthValue).
-  const [periodUnit, setPeriodUnit] = useState<"all" | "month" | "day">("month");
+  // 기본은 일(요청: "경기 기록 조회 필터 기본 조건 일로"). 기본 날짜는 그레이스 기간을
+  // 적용한다(요청: "정오까지는 전날로 조회") — 자정 넘어 정오 전까지는 전날을 기본으로
+  // 보여준다(graceDayValue). 월 단위로 직접 바꿨을 때의 기본 달은 랭킹과 같은 그레이스
+  // 기간(graceMonthValue)을 그대로 쓴다.
+  const [periodUnit, setPeriodUnit] = useState<"all" | "month" | "day">("day");
   const [periodMonth, setPeriodMonth] = useState(graceMonthValue);
-  const [periodDay, setPeriodDay] = useState(todayStr);
+  const [periodDay, setPeriodDay] = useState(graceDayValue);
   const suggestions = useMemo(() => activeMemberSearchTerms(members), [members]);
   const searchTerms = useMemo(() => splitSearchTerms(search), [search]);
   const hasSearch = searchTerms.length > 0;
@@ -97,31 +98,41 @@ export default function MatchScreenV2() {
     }
   };
 
-  // 문의/디버깅 시 특정 경기 하나를 정확히 찾아볼 때 — 채워지면 다른 조건은 무시하고
-  // 이 번호의 경기 하나만 조회한다. 이것도 이제 엔터로 확정되는 값이라 그대로 서버로 보낸다.
-  const [matchNoInput, setMatchNoInput] = useState("");
+  // 경기 목록은 기본적으로 노출되지 않고, "조회" 버튼을 눌러야만 그 시점의 필터로
+  // 실제 조회가 실행되고 목록이 뜬다(요청: "목록은 기본적으로 노출되지 않음",
+  // "조회시 목록이 나옴"). 필터를 자유롭게 만지는 동안(committed 값이 안 바뀜)엔
+  // 재조회가 일어나지 않도록, 실제 쿼리는 draft 값이 아니라 "조회" 시점에 찍어둔
+  // committed 값을 기준으로 한다.
+  const [hasSearched, setHasSearched] = useState(false);
+  const [committedRange, setCommittedRange] = useState<{ from: string; to: string }>({ from: "", to: "" });
+  const runSearch = () => {
+    setCommittedRange(effectiveRange);
+    setHasSearched(true);
+  };
+
   // 유저 검색은 더 이상 서버에 안 보낸다 — 항상 AND(모두 참여)로 클라이언트에서
-  // 거른다(아래 listRows). 서버 쿼리는 기간/경기번호로만 좁혀서, 검색어가 바뀔 때마다
+  // 거른다(아래 listRows). 서버 쿼리는 기간으로만 좁혀서, 검색어가 바뀔 때마다
   // 다시 네트워크를 타지 않고 이미 불러온 결과 안에서 즉시 걸러진다. 경기유형 필터는
   // 없앴다(요청: "경기 - 유형구분 삭제") — 항상 전체 유형을 조회한다.
   const queryKey = useMemo(
     () => ({
-      dateFrom: effectiveRange.from, dateTo: effectiveRange.to, sort,
-      matchNo: matchNoInput.trim(),
+      dateFrom: committedRange.from, dateTo: committedRange.to, sort, hasSearched,
     }),
-    [effectiveRange.from, effectiveRange.to, sort, matchNoInput],
+    [committedRange.from, committedRange.to, sort, hasSearched],
   );
 
   const fetchPage = useCallback(
-    (cursor: string | null) => api.getMatchesPage({
-      cursor: cursor ?? undefined,
-      limit: PAGE_SIZE,
-      sort: queryKey.sort,
-      dateFrom: queryKey.dateFrom,
-      dateTo: queryKey.dateTo,
-      matchNo: queryKey.matchNo || undefined,
-    }),
-    [queryKey],
+    (cursor: string | null) => {
+      if (!hasSearched) return Promise.resolve({ items: [], nextCursor: null, hasMore: false, total: 0 });
+      return api.getMatchesPage({
+        cursor: cursor ?? undefined,
+        limit: PAGE_SIZE,
+        sort: queryKey.sort,
+        dateFrom: queryKey.dateFrom,
+        dateTo: queryKey.dateTo,
+      });
+    },
+    [queryKey, hasSearched],
   );
 
   const { items: matches, loading, loadingMore, hasMore, loadMore, reload, error, total } = useCursorPagination(
@@ -168,60 +179,68 @@ export default function MatchScreenV2() {
   return (
     <div className="scr-screen scr-match-screen-v2">
       <div className="scr-v2-toolbar">
-        <h1 className="scr-title scr-v2-toolbar-title">경기</h1>
-        <div className="scr-v2-toolbar-actions">
-          {/* 수기등록이 없어져 이 자리가 비면서, 리플레이 위치 안내를 등록하기 버튼 왼쪽에
-              링크 텍스트로 둔다(요청). */}
-          <ReplayLocationHint className="scr-replay-loc-link" />
-          <button className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm" onClick={() => replayInputRef.current?.click()}>
-            <Upload size={12} /> 등록하기
-          </button>
-          <input
-            ref={replayInputRef}
-            type="file"
-            accept=".rep,application/octet-stream"
-            multiple
-            hidden
-            onChange={handleReplayFilesChosen}
-          />
-        </div>
+        <h1 className="scr-title scr-v2-toolbar-title">경기 등록</h1>
       </div>
 
+      {/* "등록" 버튼 — 타이틀 줄 아래 별도 줄에 가운데 정렬, 1.2배 확대(요청: "경기 화면의
+          등록 버튼, 회원 화면의 생성 버튼과 동일한 CSS"). 리플레이 위치 안내는 그 아래
+          링크 텍스트로 둔다(요청: "등록 버튼 아래에 배치"). */}
+      <div className="scr-v2-primary-row scr-v2-primary-row-col">
+        <button className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm" onClick={() => replayInputRef.current?.click()}>
+          <Upload size={12} /> 등록
+        </button>
+        <ReplayLocationHint className="scr-replay-loc-link" />
+        <input
+          ref={replayInputRef}
+          type="file"
+          accept=".rep,application/octet-stream"
+          multiple
+          hidden
+          onChange={handleReplayFilesChosen}
+        />
+      </div>
+
+      <h2 className="scr-v2-subheading">경기 목록</h2>
+
       <SearchFilterBar
-        count={hasSearch ? listRows.length : (total ?? matches.length)}
+        count={hasSearched ? (hasSearch ? listRows.length : (total ?? matches.length)) : 0}
         countLabel="건"
+        showCount={false}
         searchValue={search}
         onSearchChange={setSearch}
-        searchPlaceholder="경기번호/유저"
-        matchNoValue={matchNoInput}
-        onMatchNoChange={setMatchNoInput}
+        searchPlaceholder="유저 검색"
         suggestions={suggestions}
         filterPanel={
-          <>
-            <FilterItem>
-              <PillTabs options={PERIOD_UNIT_OPTS} value={periodUnit} onChange={setPeriodUnit} aria-label="기간" />
-            </FilterItem>
+          // 기간 단위(전체/월/일) 알약탭과 그에 딸린 달력 모듈은 하나로 묶는다(요청:
+          // "기간필터와 달력 모듈은 하나의 요소로 그룹화") — 별개 FilterItem 두 개로
+          // 나뉘어 있으면 서로 다른 필터처럼 벌어져 보였다.
+          <FilterItem label="기간">
+            <PillTabs options={PERIOD_UNIT_OPTS} value={periodUnit} onChange={setPeriodUnit} aria-label="기간" />
             {periodUnit === "month" && (
-              <FilterItem>
-                <input
-                  type="month" className="scr-filter-month-input"
-                  value={periodMonth} onChange={(e) => setPeriodMonth(e.target.value)}
-                  aria-label="조회할 월"
-                />
-              </FilterItem>
+              <input
+                type="month" className="scr-filter-month-input"
+                value={periodMonth} onChange={(e) => setPeriodMonth(e.target.value)}
+                aria-label="조회할 월"
+              />
             )}
             {periodUnit === "day" && (
-              <FilterItem>
-                <input
-                  type="date" className="scr-filter-month-input"
-                  value={periodDay} onChange={(e) => setPeriodDay(e.target.value)}
-                  aria-label="조회할 날짜"
-                />
-              </FilterItem>
+              <input
+                type="date" className="scr-filter-month-input"
+                value={periodDay} onChange={(e) => setPeriodDay(e.target.value)}
+                aria-label="조회할 날짜"
+              />
             )}
-          </>
+          </FilterItem>
         }
       />
+
+      {/* 필터/검색창 아래 별도 줄의 조회 버튼 — 눌러야 그 시점 조건으로 실제 조회가
+          실행된다(요청: "필터와 검색창 조회 버튼이 한줄씩 배치", "조회시 목록이 나옴"). */}
+      <div className="scr-match-search-row">
+        <button type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm" onClick={runSearch}>
+          조회
+        </button>
+      </div>
 
       {error && <div className="scr-err">{error}</div>}
 
@@ -232,19 +251,27 @@ export default function MatchScreenV2() {
         document.body,
       )}
 
-      <div className="scr-match-list-wrap">
-        <MatchList
-          rows={listRows}
-          memberOf={resolveMember}
-          onMemo={(m) => setMemoMatch(m)}
-          onDeleted={handleSaved}
-          loading={loading}
-          highlightMemberIds={matchedIds}
-          matchNoQuery={matchNoInput.trim()}
-        />
-        <div ref={sentinelRef} />
-        {loadingMore && <div className="scr-empty"><Spinner size={16} /></div>}
-      </div>
+      {/* 건수는 조회 버튼 아래, 목록 바로 위에 — 조회 전엔 안 보인다(요청). */}
+      {hasSearched && (
+        <span className="scr-list-count scr-match-list-count">
+          {(hasSearch ? listRows.length : (total ?? matches.length))}건
+        </span>
+      )}
+
+      {hasSearched && (
+        <div className="scr-match-list-wrap">
+          <MatchList
+            rows={listRows}
+            memberOf={resolveMember}
+            onMemo={(m) => setMemoMatch(m)}
+            onDeleted={handleSaved}
+            loading={loading}
+            highlightMemberIds={matchedIds}
+          />
+          <div ref={sentinelRef} />
+          {loadingMore && <div className="scr-empty"><Spinner size={16} /></div>}
+        </div>
+      )}
 
       {memoMatch && (
         <MatchMemoModal
@@ -265,8 +292,9 @@ export default function MatchScreenV2() {
 
       {/* 우측 네비게이션 타임라인 — 너 나와와 동일(요청: "타임라인을 경기 화면에도 적용").
           경기 목록은 최신순(위=최근, 아래=과거)이라 끝 라벨만 그에 맞춘다. 오늘/미정 눈금은
-          경기 목록엔 없어서 마커는 넘기지 않는다. */}
-      {!loading && <ScrollNavTimeline headSelector=".scr-match-date-head" topLabel="최근" bottomLabel="과거" />}
+          경기 목록엔 없어서 마커는 넘기지 않는다. 조회 전(목록이 없을 때)은 스크롤할
+          대상이 없으니 타임라인도 안 띄운다. */}
+      {hasSearched && !loading && <ScrollNavTimeline headSelector=".scr-match-date-head" topLabel="최근" bottomLabel="과거" />}
     </div>
   );
 }

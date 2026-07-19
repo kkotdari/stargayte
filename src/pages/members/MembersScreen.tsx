@@ -79,14 +79,17 @@ export default function MembersScreen() {
     <div className="scr-screen scr-members-screen-v2">
       <div className="scr-v2-toolbar scr-members-toolbar">
         <h1 className="scr-title scr-v2-toolbar-title">회원</h1>
-        <div className="scr-v2-toolbar-actions">
-          {canCreateMember && (
-            <button type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm" onClick={() => setCreating(true)}>
-              <Plus size={14} /> 회원 생성
-            </button>
-          )}
-        </div>
       </div>
+
+      {/* "생성" 버튼 — 타이틀 줄 아래 별도 줄에 가운데 정렬, 1.2배 확대(요청: "경기 화면의
+          등록 버튼, 회원 화면의 생성 버튼과 동일한 CSS"). */}
+      {canCreateMember && (
+        <div className="scr-v2-primary-row">
+          <button type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm" onClick={() => setCreating(true)}>
+            <Plus size={14} /> 생성
+          </button>
+        </div>
+      )}
 
       {/* 경기/랭킹/통계와 똑같은 SearchFilterBar를 그대로 쓴다 — 회원 화면만의 필터/검색
           UI를 따로 두지 않는다(요청: "회원/게임아이디만의 요소가 없도록"). 기간/경기번호
@@ -96,8 +99,9 @@ export default function MembersScreen() {
         countLabel="명"
         searchValue={query}
         onSearchChange={setQuery}
-        searchPlaceholder="유저"
+        searchPlaceholder="유저 검색"
         suggestions={suggestions}
+        showSearch={false}
         filterPanel={
           <FilterItem label="상태">
             <PillTabs options={FILTER_OPTS} value={filter} onChange={setFilter} aria-label="회원 상태" />

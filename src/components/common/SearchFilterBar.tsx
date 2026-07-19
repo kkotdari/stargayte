@@ -9,11 +9,6 @@ interface SearchFilterBarProps {
   countLabel: string;
   searchValue: string;
   onSearchChange: (value: string) => void;
-  // 경기 고유번호 검색 — 별도 칸이 아니라 유저 검색창에 통합돼 있다(숫자로만 이뤄진
-  // 단어를 완성하면 유저 칩이 아니라 "#번호" 칩으로 인식). 경기 화면만 넘긴다 —
-  // 랭킹/전적통계는 경기번호 개념이 없어 안 넘기면 이 인식 자체가 꺼진다.
-  matchNoValue?: string;
-  onMatchNoChange?: (value: string) => void;
   searchPlaceholder?: string;
   // 유저 검색 자동완성 후보 — 페이지 진입 시 한 번(이미 로드된 회원 목록에서) 계산해서
   // 넘겨준다. 타이핑마다 서버에 새로 묻지 않고 이 안에서만 걸러 보여준다(실시간 조회 X).
@@ -24,6 +19,11 @@ interface SearchFilterBarProps {
   // 검색창 위에 얹히는 필터창 — 화면마다 다른 내용(PillTabs, 종족 셀렉트, 월 선택 등)을
   // 그대로 넘긴다. 없으면(랭킹 이외엔 항상 있음) 검색창만 뜬다.
   filterPanel?: ReactNode;
+  // false면 검색창 자체를 안 그린다(요청: "랭킹/회원 검색창 제거") — 필터창 + 건수만 남는다.
+  showSearch?: boolean;
+  // false면 건수 표시를 이 바에서 안 그린다 — 경기 화면처럼 건수를 다른 자리(목록 바로
+  // 위)에 직접 그리고 싶을 때(요청: "목록 건수는 조회 버튼 아래 목록 위에"). 기본 true.
+  showCount?: boolean;
 }
 
 // 후보를 넉넉히 보여준다 — 드롭다운은 max-height 안에서 넘치면 스크롤된다(요청: 자동완성 스크롤).
@@ -49,10 +49,11 @@ function parseSearchChips(value: string): string[] {
 export default function SearchFilterBar({
   count, countLabel,
   searchValue, onSearchChange, searchPlaceholder = "예: SSamJang",
-  matchNoValue, onMatchNoChange,
   suggestions,
   mentionTrigger = false,
   filterPanel,
+  showSearch = true,
+  showCount = true,
 }: SearchFilterBarProps) {
   const [suggestOpen, setSuggestOpen] = useState(false);
   const [highlight, setHighlight] = useState(0);
@@ -66,16 +67,11 @@ export default function SearchFilterBar({
   const dropRef = useRef<HTMLDivElement>(null);
   const chipBoxRef = useRef<HTMLDivElement>(null);
 
-  // 스페이스로 완성됐거나 엔터로 확정된 단어 하나를 즉시 적용한다 — 숫자만으로 된 단어는
-  // 경기번호로(경기 화면만 onMatchNoChange를 넘긴다), 그 외엔 평범한 유저 검색어 칩으로.
+  // 스페이스로 완성됐거나 엔터로 확정된 단어 하나를 즉시 검색어 칩으로 적용한다.
   const addChip = (word: string) => {
     // @트리거 모드에선 앞의 @는 트리거일 뿐이라 칩엔 남기지 않는다.
     const trimmed = (mentionTrigger ? word.replace(/^@/, "") : word).trim();
     if (!trimmed) return;
-    if (onMatchNoChange && /^\d+$/.test(trimmed)) {
-      onMatchNoChange(trimmed);
-      return;
-    }
     onSearchChange(chips.length > 0 ? `${chips.join(" ")} ${trimmed}` : trimmed);
   };
 
@@ -133,7 +129,7 @@ export default function SearchFilterBar({
   useEffect(() => {
     const el = chipBoxRef.current;
     if (el) el.scrollLeft = el.scrollWidth;
-  }, [searchValue, matchNoValue, liveText]);
+  }, [searchValue, liveText]);
 
   // 후보(유저 이름)를 고르면 즉시 검색어 칩으로 적용하고 liveText를 비운다.
   const pick = (name: string) => {
@@ -162,11 +158,8 @@ export default function SearchFilterBar({
     // IME 조합 중임을 나타내는 표준 신호라 이때는 무시한다.
     if (e.nativeEvent.isComposing || e.keyCode === 229) return;
     if (e.key === "Escape") { setSuggestOpen(false); return; }
-    if (e.key === "Backspace" && liveText === "") {
-      if (chips.length > 0) { e.preventDefault(); removeChip(chips.length - 1); return; }
-      // 유저 칩이 하나도 안 남았을 때만 경기번호 칩까지 지운다 — 맨 앞에 그려지므로
-      // "가장 최근에 완성한 것부터 지운다"는 되돌리기 감각과 맞는다.
-      if (matchNoValue && onMatchNoChange) { e.preventDefault(); onMatchNoChange(""); return; }
+    if (e.key === "Backspace" && liveText === "" && chips.length > 0) {
+      e.preventDefault(); removeChip(chips.length - 1); return;
     }
     // 자동완성 후보가 안 떠 있을 때 엔터를 누르면 지금 입력 중이던 단어를(있다면) 그대로
     // 검색어 칩으로 즉시 적용하고, 모바일에서는 입력칸 포커스도 풀어 키보드를 닫는다 —
@@ -196,22 +189,6 @@ export default function SearchFilterBar({
           el.setSelectionRange(el.value.length, el.value.length);
         }}
       >
-        {/* 경기번호 칩은 유저 칩과 구분되는 모양(#번호)으로 — 숫자만 친 단어를 완성하면
-            유저 칩이 아니라 이걸로 인식됐다는 걸 바로 알아볼 수 있게. 맨 앞에 둔다. */}
-        {matchNoValue && (
-          <span className="scr-search-chip scr-search-chip-matchno">
-            #{matchNoValue}
-            <button
-              type="button"
-              className="scr-search-chip-x"
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => onMatchNoChange?.("")}
-              aria-label="경기번호 검색 해제"
-            >
-              <X size={9} />
-            </button>
-          </span>
-        )}
         {chips.map((chip, i) => (
           <span key={`${chip}-${i}`} className="scr-search-chip">
             {chip}
@@ -246,7 +223,7 @@ export default function SearchFilterBar({
           onFocus={() => setSuggestOpen(true)}
           onBlur={() => setSuggestOpen(false)}
           onKeyDown={onSearchKeyDown}
-          placeholder={chips.length === 0 && !matchNoValue ? searchPlaceholder : ""}
+          placeholder={chips.length === 0 ? searchPlaceholder : ""}
           autoComplete="off"
         />
       </div>
@@ -275,9 +252,9 @@ export default function SearchFilterBar({
     <div className="scr-filter-bar">
       <div className="scr-filter-inline-stack">
         {filterPanel && <div className="scr-filter-panel">{filterPanel}</div>}
-        <div className="scr-search-filter-float">{searchItem}</div>
+        {showSearch && <div className="scr-search-filter-float">{searchItem}</div>}
       </div>
-      <span className="scr-list-count">{count}{countLabel}</span>
+      {showCount && <span className="scr-list-count scr-filter-bar-count">{count}{countLabel}</span>}
     </div>
   );
 }

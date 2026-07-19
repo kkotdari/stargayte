@@ -156,6 +156,7 @@ export default function App() {
     screen === "challenge" && !isChallengeEnabled ? "ranking" :
     screen === "members" && !isAdmin ? "ranking" :
     screen === "imageSettings" && !isAdmin ? "ranking" :
+    screen === "gameId" && !isAdmin ? "ranking" :
     screen;
 
   return (
@@ -197,8 +198,8 @@ export default function App() {
             {!booting && resolvedScreen === "stats" && <StatsScreen />}
             {isAdmin && !booting && resolvedScreen === "members" && <MembersScreen />}
             {isAdmin && !booting && resolvedScreen === "imageSettings" && <ImageSettingsScreen />}
-            {/* 조회는 회원 누구나 가능 — 수정/삭제만 화면 내부에서 운영자로 한정한다. */}
-            {!booting && resolvedScreen === "gameId" && <GameIdScreen />}
+            {/* 운영자 전용 메뉴로 변경(요청) — 회원/이미지 설정과 같은 기준으로 운영자만 접근. */}
+            {isAdmin && !booting && resolvedScreen === "gameId" && <GameIdScreen />}
           </main>
         </div>
 

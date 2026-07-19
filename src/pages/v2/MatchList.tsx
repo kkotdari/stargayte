@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
-import { MoreVertical, Monitor, UserPlus } from "lucide-react";
-import Avatar from "../../components/common/Avatar";
+import { MoreVertical, Monitor, CircleHelp } from "lucide-react";
 import RaceBadge from "../../components/common/RaceBadge";
 import { Spinner } from "../../components/common/Feedback";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
@@ -24,6 +23,26 @@ function outcomeFor(side: "team1" | "team2", result: MatchResult): Outcome {
 const OUTCOME_LABEL: Record<Outcome, string> = { win: "승", loss: "패", draw: "무", notHeld: "미실시" };
 const OUTCOME_CLASS: Record<Outcome, string> = { win: "scr-win", loss: "scr-loss", draw: "scr-draw", notHeld: "scr-draw" };
 
+// 컴퓨터/비회원 여부에 따라 표시 이름을 정한다 — PlayerCell(펼친 로스터)과 접힌 상태의
+// 팀 요약("누구 외 N명")이 같은 이름 규칙을 쓰도록 공용으로 뺐다.
+function resolveSlotName(slot: MatchSlot, players: MatchSlot[], memberOf: (id: string) => Member | undefined): string {
+  const isComputer = isComputerSlot(slot.memberId);
+  const isUnreg = isUnregisteredSlot(slot.memberId);
+  const m = isComputer || isUnreg ? undefined : memberOf(slot.memberId);
+  return isComputer
+    ? (slot.rawName || computerSlotLabel(players, slot.memberId))
+    : isUnreg
+      ? (slot.rawName || unregisteredSlotLabel(players, slot.memberId))
+      : (m?.nickname ?? slot.memberId);
+}
+
+// 접힌 상태 요약 줄에 쓰는 "누구 외 N명" — 팀원이 하나뿐이면 그 이름만.
+function teamSummaryName(team: MatchSlot[], memberOf: (id: string) => Member | undefined): string {
+  if (team.length === 0) return "";
+  const first = resolveSlotName(team[0], team, memberOf);
+  return team.length > 1 ? `${first} 외 ${team.length - 1}명` : first;
+}
+
 // 테이블 카드 한 칸 — [프사][닉네임][종족 영문 한 글자 배지]. 컴퓨터/비회원은 아이콘 프사에
 // 원본 이름(없으면 순번 라벨)으로. 종족 배지는 요청대로 영문(circleLetter, 한글 아님).
 function PlayerCell({
@@ -34,17 +53,7 @@ function PlayerCell({
 }) {
   const isComputer = isComputerSlot(slot.memberId);
   const isUnreg = isUnregisteredSlot(slot.memberId);
-  const m = isComputer || isUnreg ? undefined : memberOf(slot.memberId);
-  const name = isComputer
-    ? (slot.rawName || computerSlotLabel(players, slot.memberId))
-    : isUnreg
-      ? (slot.rawName || unregisteredSlotLabel(players, slot.memberId))
-      : (m?.nickname ?? slot.memberId);
-  const avatar = isComputer
-    ? <Avatar icon={<Monitor size={14} className="scr-chip-computer-icon" />} size={22} />
-    : isUnreg
-      ? <Avatar icon={<UserPlus size={14} className="scr-chip-computer-icon" />} size={22} />
-      : <Avatar member={m} size={22} />;
+  const name = resolveSlotName(slot, players, memberOf);
   const clickable = !isComputer && !isUnreg;
   return (
     <button
@@ -53,9 +62,17 @@ function PlayerCell({
       onClick={clickable ? (e) => { e.stopPropagation(); openProfile(slot.memberId); } : undefined}
       disabled={!clickable}
     >
-      {avatar}
-      <span className="scr-mt-name">{name}</span>
-      <RaceBadge race={slot.race} circleLetter />
+      <span className="scr-team-name-wrap">
+        <span className="scr-mt-name">{name}</span>
+        <RaceBadge race={slot.race} size={13} circleLetter className="scr-team-name-race" />
+      </span>
+      {/* 아바타 제거(요청) — 컴퓨터/비회원만 작은 아이콘으로 구분을 남긴다. 닉네임
+          왼쪽이 아니라 오른쪽에(요청). */}
+      {isComputer
+        ? <Monitor size={12} className="scr-chip-computer-icon" />
+        : isUnreg
+          ? <CircleHelp size={12} className="scr-chip-computer-icon" />
+          : null}
     </button>
   );
 }
@@ -80,25 +97,6 @@ interface MatchListProps {
   loading: boolean;
   // 유저 검색 중이면 그 회원(들)을 로스터에서 하이라이트 표시한다
   highlightMemberIds?: Set<string>;
-  // 경기번호 검색 중이면(부분 일치) 실제로 일치한 부분만 잘라 하이라이트 표시한다.
-  matchNoQuery?: string;
-}
-
-// 경기번호(#YYMMDDHHMMSS+2자리)에서 검색어와 일치하는 부분만 강조한다 — 서버가 이제
-// 정확히 일치가 아니라 부분 일치(LIKE)로 찾아주므로, 어디가 일치했는지 눈으로 바로
-// 확인할 수 있어야 한다. 일치 지점이 여럿이어도 첫 번째 지점 하나만 강조한다(검색어
-// 자체가 짧은 숫자 몇 자리뿐이라 여러 번 강조하면 오히려 산만하다).
-function highlightMatchNo(matchNo: string, query: string) {
-  if (!query) return matchNo;
-  const idx = matchNo.indexOf(query);
-  if (idx === -1) return matchNo;
-  return (
-    <>
-      {matchNo.slice(0, idx)}
-      <mark className="scr-match-id-highlight">{matchNo.slice(idx, idx + query.length)}</mark>
-      {matchNo.slice(idx + query.length)}
-    </>
-  );
 }
 
 interface DateGroup {
@@ -186,7 +184,7 @@ function MatchActionsMenu({
       <button
         type="button" ref={anchorRef}
         className="scr-match-memo-btn scr-match-kebab-btn"
-        onClick={() => setOpen((v) => !v)}
+        onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
         aria-label="더보기" aria-haspopup="menu" aria-expanded={open}
       >
         <MoreVertical size={16} />
@@ -197,7 +195,7 @@ function MatchActionsMenu({
             <button
               key={it.key} type="button" role="menuitem"
               className={cx("scr-menu-pop-opt", it.danger && "scr-match-menu-opt-danger")}
-              onClick={() => { it.onSelect(); setOpen(false); }}
+              onClick={(e) => { e.stopPropagation(); it.onSelect(); setOpen(false); }}
             >
               {it.label}
             </button>
@@ -210,7 +208,7 @@ function MatchActionsMenu({
 }
 
 export default function MatchList({
-  rows, memberOf, onMemo, onDeleted, loading, highlightMemberIds, matchNoQuery,
+  rows, memberOf, onMemo, onDeleted, loading, highlightMemberIds,
 }: MatchListProps) {
   const groups = groupByDate(rows);
   const user = useAppStore((s) => s.user);
@@ -221,6 +219,16 @@ export default function MatchList({
   const canDelete = !!user && isAdminRole(user.roles);
   const [deleteTarget, setDeleteTarget] = useState<Match | null>(null);
   const [deleting, setDeleting] = useState(false);
+  // 경기 목록은 기본 접힌 상태(맵/시간 + 팀 요약 + 승패만)로 시작하고, 행을 누르면
+  // 그 경기만 펼쳐져 케밥메뉴·등록자·전체 로스터가 드러난다(요청).
+  const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
+  const toggleExpanded = (id: number) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
 
   const confirmDelete = async () => {
     if (!deleteTarget) return;
@@ -247,51 +255,80 @@ export default function MatchList({
             {g.items.map(({ row: r }) => {
               const o1 = outcomeFor("team1", r.result);
               const o2 = outcomeFor("team2", r.result);
-              return (
-              <div key={r.id} className="scr-match-trow">
-                {/* 머리줄 — N경기는 빼고(요청) 경기번호 · 맵 · 등록자, 오른쪽에 액션. */}
-                <div className="scr-match-trow-head">
-                  <span className="scr-match-id">#{highlightMatchNo(r.raw.matchNo, matchNoQuery ?? "")}</span>
-                  {r.raw.createdBy && <span className="scr-match-trow-by">등록: {r.raw.createdBy.nickname}</span>}
-                  <MatchActionsMenu
-                    match={r.raw} canDelete={canDelete}
-                    onMemo={onMemo} onDelete={setDeleteTarget}
-                  />
+              const expanded = expandedIds.has(r.id);
+              const outcomes = (
+                <div className="scr-match-trow-outcomes">
+                  <span className={cx("scr-match-trow-outcome", OUTCOME_CLASS[o1])}>{OUTCOME_LABEL[o1]}</span>
+                  <span className={cx("scr-match-trow-outcome", OUTCOME_CLASS[o2])}>{OUTCOME_LABEL[o2]}</span>
                 </div>
-                {/* 맵 이름은 길어서 머리줄이 아니라 그 아래 별도 줄에(요청). 플레이시간도 그 옆에. */}
-                {(r.raw.mapName || r.raw.durationSeconds != null) && (
-                  <div className="scr-match-trow-map-line">
-                    {r.raw.mapName && <span className="scr-match-trow-map">{r.raw.mapName}</span>}
-                    {r.raw.durationSeconds != null && (
-                      <span className="scr-match-trow-dur">{Math.round(r.raw.durationSeconds / 60)}분</span>
-                    )}
+              );
+              return (
+              <div
+                key={r.id} className="scr-match-trow scr-match-trow-clickable"
+                onClick={() => toggleExpanded(r.id)} role="button" tabIndex={0}
+                aria-expanded={expanded}
+              >
+                {/* 맵 이름은 길어서 머리줄이 아니라 그 아래 별도 줄에(요청). 플레이시간도 그 옆에.
+                    맵/시간 정보가 둘 다 없는 경기가 섞이면 이 줄이 통째로 빠져서 그 아래
+                    로스터 시작 위치가 경기마다 들쭉날쭉해 보였다(실제로 지적받은 문제:
+                    "경기목록 로스터가 경기별로 줄이 안맞음") — 내용이 없어도 줄 자체는 항상
+                    그려서 높이를 계속 예약해둔다. 접힌 상태에서도 그대로 보인다(요청:
+                    "맵이름 (게임시간)"이 접힌 요약의 첫 줄). */}
+                <div className="scr-match-trow-map-line">
+                  {r.raw.mapName && <span className="scr-match-trow-map">{r.raw.mapName}</span>}
+                  {r.raw.durationSeconds != null && (
+                    <span className="scr-match-trow-dur">({Math.round(r.raw.durationSeconds / 60)}분)</span>
+                  )}
+                </div>
+                {expanded ? (
+                  /* 팀 2열 + 그 사이 승/패(요청). 헤더·컬럼 구분선 없이 로우만. */
+                  <div className="scr-match-trow-grid">
+                    <div className="scr-match-trow-team">
+                      <div className="scr-match-trow-roster">
+                        {r.team1.map((s) => (
+                          <PlayerCell
+                            key={s.memberId} slot={s} players={r.team1} memberOf={memberOf}
+                            highlighted={!!highlightMemberIds?.has(s.memberId)} openProfile={openMemberProfile}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                    {outcomes}
+                    <div className="scr-match-trow-team">
+                      <div className="scr-match-trow-roster">
+                        {r.team2.map((s) => (
+                          <PlayerCell
+                            key={s.memberId} slot={s} players={r.team2} memberOf={memberOf}
+                            highlighted={!!highlightMemberIds?.has(s.memberId)} openProfile={openMemberProfile}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  /* 접힌 요약 줄 — "누구 외 몇명  승  패  누구 외 몇명"(요청). */
+                  <div className="scr-match-trow-summary">
+                    <span className="scr-match-trow-summary-team">{teamSummaryName(r.team1, memberOf)}</span>
+                    {outcomes}
+                    <span className="scr-match-trow-summary-team">{teamSummaryName(r.team2, memberOf)}</span>
                   </div>
                 )}
-                {/* 팀 2열 + 그 아래 각 팀 승/패(요청). 헤더·컬럼 구분선 없이 로우만. */}
-                <div className="scr-match-trow-grid">
-                  <div className="scr-match-trow-team">
-                    <div className="scr-match-trow-roster">
-                      {r.team1.map((s) => (
-                        <PlayerCell
-                          key={s.memberId} slot={s} players={r.team1} memberOf={memberOf}
-                          highlighted={!!highlightMemberIds?.has(s.memberId)} openProfile={openMemberProfile}
-                        />
-                      ))}
-                    </div>
+                {/* 등록자·케밥메뉴는 카드 우하단 고정 자리 — N경기·경기번호는 빼고(요청)
+                    등록자만, 오른쪽에 액션. 접힌 상태에선 감춘다(요청: "기본적으로
+                    접힌상태로 노출... 클릭하면 펼쳐지면서 원래대로 케밥메뉴, 등록자...
+                    노출됨"). 카드 내용(로스터 들여쓰기 등)과 달리 이 자리는 들여쓰기
+                    대상이 아니다(요청: "등록자랑 케밥 메뉴는 들여쓰기 대상 X, 우하단에
+                    표시") — position:absolute라 이 행의 좌우 패딩(들여쓰기)을 그대로
+                    무시하고 카드 padding-box 기준 오른쪽 아래에 고정된다. */}
+                {expanded && (
+                  <div className="scr-match-trow-head">
+                    {r.raw.createdBy && <span className="scr-match-trow-by">등록: {r.raw.createdBy.nickname}</span>}
+                    <MatchActionsMenu
+                      match={r.raw} canDelete={canDelete}
+                      onMemo={onMemo} onDelete={setDeleteTarget}
+                    />
                   </div>
-                  <div className="scr-match-trow-team">
-                    <div className="scr-match-trow-roster">
-                      {r.team2.map((s) => (
-                        <PlayerCell
-                          key={s.memberId} slot={s} players={r.team2} memberOf={memberOf}
-                          highlighted={!!highlightMemberIds?.has(s.memberId)} openProfile={openMemberProfile}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                  <div className={cx("scr-match-trow-outcome", OUTCOME_CLASS[o1])}>{OUTCOME_LABEL[o1]}</div>
-                  <div className={cx("scr-match-trow-outcome", OUTCOME_CLASS[o2])}>{OUTCOME_LABEL[o2]}</div>
-                </div>
+                )}
               </div>
               );
             })}

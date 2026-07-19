@@ -114,7 +114,7 @@ export default function Header({
   const [drawerSection, setDrawerSection] = useState<"admin" | null>(null);
   useEffect(() => {
     if (!drawerRendered) return;
-    if (["members", "imageSettings"].includes(screen)) setDrawerSection("admin");
+    if (["members", "imageSettings", "gameId"].includes(screen)) setDrawerSection("admin");
     else setDrawerSection(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 드로어가 열리는 순간에만 초기화, 그 뒤 screen이 바뀌어도 유저가 직접 연 상태를 건드리지 않는다
   }, [drawerRendered]);
@@ -214,7 +214,7 @@ export default function Header({
             className="scr-user-chip" ref={profileAnchorRef}
             onClick={() => setProfileMenuOpen((v) => !v)}
           >
-            <Avatar member={user} size={36} />
+            <Avatar member={user} size={30} />
             <span className="scr-user-name">{user.nickname}</span>
           </button>
           {profileMenuOpen && createPortal(

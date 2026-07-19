@@ -62,8 +62,6 @@ export interface MatchListParams {
   matchAllUsers?: boolean;
   // 운영자 "유저연결" 화면 전용 — 컴퓨터/비회원 참가자가 있는 경기만 골라본다.
   hasPlaceholder?: boolean;
-  // 경기 고유번호(matchNo)로 정확히 하나만 찾을 때 — 문의/디버깅 시 특정 경기를 바로 지목한다.
-  matchNo?: string;
   // 팀 랭킹에서 팀 하나를 눌렀을 때 — 이 회원들이 전부 "같은 편"으로 뛴 경기만 추린다.
   // userQuery+matchAllUsers("전원이 참가한 경기")와 달리 서로 상대편이었던 경기는 빠진다.
   teamMemberIds?: string[];
@@ -260,7 +258,6 @@ export const api = {
       userQuery: params.userQuery,
       hasPlaceholder: params.hasPlaceholder,
       matchAllUsers: params.matchAllUsers,
-      matchNo: params.matchNo,
       teamMemberIds: params.teamMemberIds?.length ? params.teamMemberIds.join(",") : undefined,
     });
     const page = await request<Omit<MatchPage, "items"> & { items: WireMatch[] }>(`/api/matches${qs}`);

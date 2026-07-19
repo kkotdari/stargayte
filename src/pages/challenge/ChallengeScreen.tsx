@@ -1,8 +1,8 @@
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { X } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
 import { Spinner } from "../../components/common/Feedback";
+import OptionalDateTimeFields from "../../components/common/OptionalDateTimeFields";
 import ChallengeFormModal from "../../modals/ChallengeFormModal";
 import MatchRequestCorner from "./MatchRequestCorner";
 import ScrollNavTimeline from "../../components/common/ScrollNavTimeline";
@@ -13,7 +13,7 @@ import { attachPopover } from "../../utils/popover";
 import {
   challengeDateGroupLabel, challengeTimeLabel, formatRelativeSchedule, isToday,
 } from "../../utils/date";
-import { useLockBodyScroll } from "../../utils/bodyScrollLock";
+import { getScrollMetrics, getScrollRoot } from "../../utils/scrollRoot";
 import type { Challenge, ChallengeResult, ChallengeSide, ChallengeStatus, ChallengeTarget } from "../../types";
 
 // 화면 표시 상태는 서버 status를 그대로 쓴다 — 서버가 4개(응답대기 pending/성사 confirmed/
@@ -50,8 +50,6 @@ function targetPillInfo(t: ChallengeTarget): { tone: PillTone } {
 interface ChallengeDateGroup {
   label: string;
   isToday: boolean;
-  // 이 그룹의 연도(예정일 기준). 일정 미정(scheduledAt 없음)은 null이라 연도 줄을 안 찍는다.
-  year: number | null;
   items: Challenge[];
 }
 
@@ -60,16 +58,15 @@ interface ChallengeDateGroup {
 // "일정 미정"(scheduledAt 없음)은 이제 응답 대기중인 건에만 남는다 — 시간 없이 보냈다
 // 거절/무응답으로 끝나는 순간 서버가 예정 일시를 요청일시+1일로 확정하기 때문이다
 // (요청: "일정미정은 응답대기중일때만 가능한거야", "거절하는 순간 scheduled_at도 업데이트").
+// 날짜 라벨 자체에 연도가 포함돼(challengeDateGroupLabel) 별도 연도 줄은 더 이상 없다
+// (요청: "년도 따로 빼지 않고 날짜에 넣기").
 function groupChallengesByDate(list: Challenge[]): ChallengeDateGroup[] {
   const groups: ChallengeDateGroup[] = [];
   list.forEach((c) => {
     const label = challengeDateGroupLabel(c.scheduledAt);
     const last = groups[groups.length - 1];
     if (last && last.label === label) last.items.push(c);
-    else {
-      const year = c.scheduledAt ? new Date(c.scheduledAt).getFullYear() : null;
-      groups.push({ label, isToday: isToday(c.scheduledAt), year, items: [c] });
-    }
+    else groups.push({ label, isToday: isToday(c.scheduledAt), items: [c] });
   });
   return groups;
 }
@@ -339,8 +336,9 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
     }
   };
 
-  // 수락하며 시간을 정할 때 기본 시간은 오후 10시(요청: "수락할때 기본 시간 오후 10시").
-  const startScheduling = () => { setMode("schedule"); setDateStr(""); setTimeStr("22:00"); setMessage(""); };
+  // 수락하며 시간을 정할 때 — 날짜/시간 체크박스가 각각 꺼진 채로 시작한다(OptionalDateTimeFields가
+  // 시간 체크박스를 켤 때 기본 시간 22:00을 채운다 — 요청: "수락할때 기본 시간 오후 10시").
+  const startScheduling = () => { setMode("schedule"); setDateStr(""); setTimeStr(""); setMessage(""); };
   const startRevenge = () => { setMode("revenge"); setDateStr(""); setTimeStr(""); setMessage(""); };
   const startResult = () => { setMode("result"); setErr(""); };
   const closeMode = () => setMode("none");
@@ -349,9 +347,10 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
     setErr("");
     setBusy(true);
     try {
-      // 날짜+시간을 다 정했으면 그 일시로, 비워두면 시간 미정으로 수락한다(요청: "시간 미정
-      // 수락 가능" — 실제 일시는 완료(결과 입력) 시점에 서버가 채운다).
-      const scheduledAt = dateStr && timeStr ? new Date(`${dateStr}T${timeStr}`).toISOString() : undefined;
+      // 날짜를 정했으면 그 일시로(시간을 안 정했으면 기본 22:00으로 채운다), 날짜도
+      // 안 정하면 시간 미정으로 수락한다(요청: "시간 미정 수락 가능" — 실제 일시는
+      // 완료(결과 입력) 시점에 서버가 채운다).
+      const scheduledAt = dateStr ? new Date(`${dateStr}T${timeStr || "22:00"}`).toISOString() : undefined;
       const updated = await api.respondToChallenge(challenge.id, "accepted", message.trim() || undefined, scheduledAt);
       onResponded(updated);
       closeMode();
@@ -557,17 +556,10 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
           <p className="scr-challenge-inbox-message">
             시간을 정하거나, 비워두면 시간 미정으로 수락돼요 (완료할 때 그 시각으로 기록).
           </p>
-          <div className="scr-challenge-datetime">
-            <input
-              type="date" className="scr-input" value={dateStr}
-              onChange={(e) => { setDateStr(e.target.value); if (!e.target.value) setTimeStr("22:00"); }}
-            />
-            <input
-              type="time" className="scr-input" value={timeStr}
-              onChange={(e) => setTimeStr(e.target.value)}
-              disabled={!dateStr}
-            />
-          </div>
+          <OptionalDateTimeFields
+            dateStr={dateStr} onDateChange={setDateStr}
+            timeStr={timeStr} onTimeChange={setTimeStr}
+          />
           <input
             type="text" className="scr-input" value={message}
             onChange={(e) => setMessage(e.target.value)}
@@ -580,7 +572,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
               className="scr-btn scr-challenge-accept-btn scr-btn-sm" onClick={acceptWithSchedule}
               disabled={busy}
             >
-              {busy ? <Spinner /> : (dateStr && timeStr ? "승락" : "시간 미정 승락")}
+              {busy ? <Spinner /> : (dateStr ? "승락" : "시간 미정 승락")}
             </button>
           </div>
         </div>
@@ -755,49 +747,6 @@ function compareChallenges(a: Challenge, b: Challenge): number {
   return a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0;
 }
 
-// "기록 보기" 전용 정렬 — 최근에 치른 완료 대결이 맨 위(예정 일시 내림차순, 없으면 생성일).
-function compareByCompletedDesc(a: Challenge, b: Challenge): number {
-  const aKey = a.scheduledAt ?? a.createdAt;
-  const bKey = b.scheduledAt ?? b.createdAt;
-  return aKey < bKey ? 1 : aKey > bKey ? -1 : 0;
-}
-
-// "완료된 대결 기록" 모달 — done 상태(결과가 입력돼 끝난) 대결만 모아 최근 순으로 보여준다
-// (요청). 휴지통과 달리 깨끗한 투명 패널 + 화사한 톤(.scr-completed-modal)으로 구분한다.
-// 카드는 읽기 전용(재대결 등 액션 없음 — 기록 열람 전용).
-function CompletedChallengesModal(
-  { challenges, myId, onResponded, onClose }:
-    { challenges: Challenge[]; myId: string | undefined; onResponded: (c: Challenge) => void; onClose: () => void },
-) {
-  useLockBodyScroll();
-  return createPortal(
-    <div className="scr-modal-overlay" onClick={onClose}>
-      <div className="scr-modal scr-completed-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="scr-modal-head">
-          <span>🏆 완료된 대결 기록</span>
-          <button type="button" className="scr-icon-btn" onClick={onClose} aria-label="닫기"><X size={20} /></button>
-        </div>
-        <div className="scr-modal-body">
-          {challenges.length === 0 ? (
-            <div className="scr-empty">아직 완료된 대결이 없어요</div>
-          ) : (
-            // 읽기 전용이 아니라 onResponded를 그대로 넘겨, 패한 쪽이 여기서도 재대결(설욕전)을
-            // 신청할 수 있게 한다(예전 본 목록의 완료 카드가 주던 기능을 잃지 않게).
-            <div className="scr-challenge-list scr-completed-list">
-              {challenges.map((c) => (
-                <div key={c.id} className="scr-challenge-card-slot">
-                  <ChallengeCard challenge={c} myId={myId} onResponded={onResponded} />
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>,
-    document.body,
-  );
-}
-
 // 도전장("너 나와!") 게시판 — 경기결과/예약 시스템과는 독립적인 별도 게시판이라, 화면 자체도
 // 기간 필터 없이 전체 목록을 그대로 보여준다.
 export default function ChallengeScreen() {
@@ -807,7 +756,6 @@ export default function ChallengeScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [formOpen, setFormOpen] = useState(false);
-  const [completedOpen, setCompletedOpen] = useState(false);
 
   // 카운트다운(응답 마감)과 완료/무응답취소 같은 시간 기반 파생 상태를 1분마다 다시 그린다 —
   // 카드들은 렌더 시점의 Date.now()로 계산하므로 부모가 다시 그려지면 자연히 갱신된다.
@@ -862,29 +810,16 @@ export default function ChallengeScreen() {
   };
 
   // 너 나와! 목록은 필터/검색 없이 항상 전체를 조회한다(요청: "검색창도 제거", "무조건 전체").
-  const periodChallenges = challenges;
-
-  // 흐지부지 끝난 건(폐기)과 이미 완료된(done) 대결은 본 목록에서 뺀다(요청: "메인 목록에서
-  // 완료된 대결 제거"). 완료 건은 아래 completedChallenges로 모아 "기록 보기" 모달에만 둔다.
-  // 나머지(대기중/성사/결과대기)를 하나의 목록으로 합쳐 scheduledAt 오름차순으로 정렬한다.
-  const sortedChallenges = useMemo(
-    () => periodChallenges.filter((c) => !isDiscarded(c) && c.status !== "done").sort(compareChallenges),
-    [periodChallenges],
-  );
-
-  // 필터 없이(요청: "필터 자체가 필요없네") 검색만 적용된 전체 목록을 그대로 쓴다.
-  const activeList = sortedChallenges;
-
-  // "기록 보기" 모달용 — 완료된(done) 대결을 최근 경기 순으로 모은다(요청: "완료된 대결을 따로
-  // 보여주는 기록"). 기간/검색 필터 없이 로드된 전체에서 고른다.
-  const completedChallenges = useMemo(
-    () => challenges.filter((c) => c.status === "done").sort(compareByCompletedDesc),
+  // "기록" 메뉴는 폐지하고 완료된 대결도 같은 목록에 합친다(요청: "기록 메뉴 제거 및 원래
+  // 목록에 통합. 결과적으로 대결 목록은 1개만 존재") — 폐기(휴지통)된 건만 뺀다.
+  const unifiedList = useMemo(
+    () => challenges.filter((c) => !isDiscarded(c)).sort(compareChallenges),
     [challenges],
   );
 
   // 가장 가까운 예정된(수락) 대결의 시각 — 확정됐고 예정 일시가 아직 안 지난 것 중 가장 임박.
-  // 같은 시각(exact)에 여러 대결이 잡혀 있으면 그것들 "모두"가 NEXT다(요청: "동일 시각 여러
-  // 개가 next이면 모두 next 배지 + 글로우"). 화면 진입 시엔 그중 첫 카드로 스크롤한다.
+  // "다가오는 매치" 이전(과거에 끝난 대결들)은 기본적으로 접어서 감춘다(요청: "다가오는 매치
+  // 이전은 모두 접혀서 안보임").
   const nextTime = useMemo(() => {
     const now = Date.now();
     let best = Infinity;
@@ -898,45 +833,40 @@ export default function ChallengeScreen() {
   const isNextCard = (c: Challenge): boolean =>
     nextTime !== null && c.status === "confirmed" && !!c.scheduledAt
     && new Date(c.scheduledAt).getTime() === nextTime;
-  // NEXT 배지 번호 — 날짜 헤더가 아니라 카드 하나하나에 단다(요청: "NEXT 배지를 날짜가
-  // 아니라 대결 카드 위에"). isNextCard(정확히 nextTime과 같은 시각)로 찾은 그룹("해당일")
-  // 안의 수락된(confirmed) 대결 전부에, 시각 오름차순으로 #1/#2.../동일 시각은 같은 번호를
-  // 매긴다(요청: "시간 빠른 순서로 NEXT #1... 시간이 같으면 같은 번호"). 그 그룹이 아닌
-  // 날짜의 카드는 대상이 아니다.
-  const nextBadgeNumbers = (items: Challenge[]): Map<number, number> | null => {
-    if (!items.some(isNextCard)) return null;
-    const confirmed = items.filter((c) => c.status === "confirmed" && !!c.scheduledAt);
-    const times = Array.from(new Set(confirmed.map((c) => new Date(c.scheduledAt as string).getTime()))).sort((a, b) => a - b);
-    const rankByTime = new Map<number, number>();
-    times.forEach((t, i) => rankByTime.set(t, i + 1));
-    const map = new Map<number, number>();
-    confirmed.forEach((c) => map.set(c.id, rankByTime.get(new Date(c.scheduledAt as string).getTime())!));
-    return map;
+  // 목록(과거→미래로 정렬됨) 안에서 "다가오는 매치"가 처음 나오는 자리 — 그 앞은 전부
+  // 접힌다. 다가오는 매치가 아예 없으면(전부 과거이거나 확정된 예정이 없으면) 접을 기준이
+  // 없으니 전체를 그대로 보여준다.
+  const boundaryIndex = useMemo(() => {
+    if (nextTime === null) return 0;
+    const idx = unifiedList.findIndex(isNextCard);
+    return idx === -1 ? 0 : idx;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [unifiedList, nextTime]);
+
+  // "종료된 대결 보기" 토글 — 누르면 접혀 있던 앞부분이 지금 보이는 목록 위로 나타난다.
+  // 콘텐츠가 뷰포트 위쪽에 삽입되면 브라우저가 스크롤 위치(px)를 그대로 유지해 화면에 보이던
+  // 내용이 아래로 밀려 보인다(요청: "스크롤이 튀지 않게 조심") — 토글 직전 스크롤 높이를
+  // 기억해뒀다가, 다음 렌더 직후(레이아웃 반영 후) 늘어난/줄어든 높이만큼 스크롤 위치를 같이
+  // 옮겨서 화면에 보이던 내용이 그 자리에 그대로 있는 것처럼 보이게 한다.
+  const [showEnded, setShowEnded] = useState(false);
+  const prevScrollHeightRef = useRef<number | null>(null);
+  const toggleShowEnded = () => {
+    prevScrollHeightRef.current = getScrollMetrics().scrollHeight;
+    setShowEnded((v) => !v);
   };
-  // 동일 시각 NEXT가 여럿이면 그중 목록상 첫 카드로만 스크롤한다(배지/글로우는 모두).
-  const firstNextId = useMemo(
-    () => activeList.find(isNextCard)?.id ?? null,
-    [activeList, nextTime],
-  );
-  const nextCardRef = useRef<HTMLDivElement | null>(null);
-  // 진입 후 첫 로드가 끝났을 때 딱 한 번만 스크롤한다 — 이후 응답/재조회로 목록이 바뀌어도
-  // 보던 위치를 뺏지 않는다. 맨 위 스냅(block:"start")은 스티키 날짜줄에 카드 윗부분이
-  // 바짝 붙어 오히려 눈에 안 들어온다는 피드백으로, 카드 상단을 뷰포트 높이의 22% 지점에
-  // 오도록 직접 계산해 스크롤한다 — 정중앙(50%)으로 해봤다가, 그 날 NEXT 대결이 여러
-  // 개인 경우가 흔해서(요청: "보통 여러개의 매치가 있을수 있으니 가운데가 아니라 좀
-  // 위쪽이어야겠지?" → "진입포커싱 더 위로") 첫 카드를 더 위로 올려 뒤따르는 NEXT
-  // 카드들도 스크롤 없이 같이 보이게 한다.
-  //
-  // 아래 두 효과("오늘" 스냅 켜기 / NEXT로 진입 스크롤)를 하나로 합친 이유: 스냅
-  // (scroll-snap-type: y proximity)이 이미 켜진 채로 이 진입 스크롤을 돌리면, 스크롤의
-  // 최종 정지 위치가 근처 스냅 타깃("오늘"/"미정")으로 끌려가 버려 NEXT 카드가 의도한
-  // 위치에서 벗어났다(실제로 지적받은 문제). 진입 스크롤이 나갈 대상이 있는 동안은 스냅을
-  // 잠깐 꺼 뒀다가, 스크롤이 끝났을 즈음(스무스 스크롤엔 완료 콜백이 없어 넉넉히 700ms
-  // 후로 추정) 다시 켠다. 스크롤할 대상이 없거나 이미 스크롤을 마쳤으면 스냅을 바로 켠다.
-  // 화면 진입 시엔 NEXT로 자동 스크롤하지 않고 최상단(대결 요청 코너)에서 시작한다(요청:
-  // "너나와 진입 시 next가 아닌 최상단으로 진입"). NEXT로의 이동은 우측 타임라인의 "오늘"
-  // 눈금 스냅으로 편하게 할 수 있게 스냅(scr-snap-today)만 켜 둔다(요청: "next는 타임라인에
-  // 스냅을 걸어서 편하게 이동"). 예전의 진입 자동 스크롤/억제 로직은 제거했다.
+  useLayoutEffect(() => {
+    const prevHeight = prevScrollHeightRef.current;
+    if (prevHeight == null) return;
+    prevScrollHeightRef.current = null;
+    const delta = getScrollMetrics().scrollHeight - prevHeight;
+    if (delta === 0) return;
+    const root = getScrollRoot();
+    if (root instanceof Window) window.scrollBy(0, delta);
+    else root.scrollTop += delta;
+  }, [showEnded]);
+
+  const activeList = showEnded ? unifiedList : unifiedList.slice(boundaryIndex);
+
   useEffect(() => {
     const root = document.getElementById("scroll-root");
     if (!root) return;
@@ -948,32 +878,36 @@ export default function ChallengeScreen() {
 
   return (
     <div className="scr-screen scr-challenge-screen-v2">
-      {/* 도전장발송/기록 — 다른 화면들처럼 타이틀 툴바 오른쪽에 넣는다(휴지통은 제거 — 요청). */}
+      {/* "기록" 메뉴는 폐지됐다(요청) — 목록이 하나뿐이라 타이틀 툴바엔 더 이상 액션이
+          없다. 도전장 쓰기 버튼은 타이틀 줄 아래 별도 줄에 가운데 정렬, 1.2배 확대(요청). */}
       <div className="scr-v2-toolbar">
         <h1 className="scr-title scr-v2-toolbar-title">너 나와!</h1>
-        <div className="scr-v2-toolbar-actions">
-          <button
-            type="button"
-            className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm"
-            onClick={() => setFormOpen(true)}
-          >
-            도전장발송
-          </button>
-          <button
-            type="button"
-            className="scr-btn scr-btn-ghost scr-btn-sm scr-challenge-records-btn"
-            onClick={() => setCompletedOpen(true)}
-          >
-            기록
-          </button>
-        </div>
+      </div>
+
+      <div className="scr-v2-primary-row">
+        <button
+          type="button"
+          className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm"
+          onClick={() => setFormOpen(true)}
+        >
+          도전장 쓰기
+        </button>
       </div>
 
       {/* 최상단 대결 요청 코너 — 자유 텍스트 + 인라인 언급 칩. 언급된 사람에겐 알림이 간다. */}
       <MatchRequestCorner />
 
-      {/* 진행중 목록 중타이틀 — 요청 코너와 실제 도전장 목록을 구분한다. */}
-      <h2 className="scr-challenge-list-heading">진행중 목록</h2>
+      {/* 목록 중타이틀 — 요청 코너와 실제 도전장 목록을 구분한다. */}
+      <h2 className="scr-challenge-list-heading">대결 목록</h2>
+
+      {/* 완료된 대결도 이제 같은 목록에 섞여 있지만, 다가오는 매치 이전(과거에 끝난 대결)은
+          기본적으로 접혀서 안 보인다(요청) — 누르면 그 위로 펼쳐진다. 접을 게 없으면
+          (boundaryIndex 0) 링크 자체를 안 보여준다. */}
+      {boundaryIndex > 0 && (
+        <button type="button" className="scr-challenge-toggle-ended-link" onClick={toggleShowEnded}>
+          {showEnded ? "종료된 대결 접기" : "종료된 대결 보기"}
+        </button>
+      )}
 
       {error && <div className="scr-err">{error}</div>}
 
@@ -985,17 +919,8 @@ export default function ChallengeScreen() {
             <div className="scr-empty">{emptyLabel}</div>
           ) : (
             <div className="scr-challenge-list">
-              {(() => {
-                // 전체 조회라 여러 해가 섞일 수 있어, 연도가 바뀌는 첫 그룹 앞에 연도 줄을
-                // 한 번만 끼운다(요청). 일정 미정 그룹(year null)은 연도 줄을 안 찍는다.
-                let lastYear: number | null = null;
-                return groupChallengesByDate(activeList).map((g) => {
-                const showYear = g.year != null && g.year !== lastYear;
-                if (g.year != null) lastYear = g.year;
-                const badgeNumbers = nextBadgeNumbers(g.items);
-                return (
-                  <Fragment key={g.label}>
-                  {showYear && <div className="scr-challenge-year-row">{g.year}년</div>}
+              {groupChallengesByDate(activeList).map((g) => (
+                <Fragment key={g.label}>
                   <div
                     className="scr-challenge-date-group"
                     data-today={g.isToday ? "1" : undefined}
@@ -1008,40 +933,28 @@ export default function ChallengeScreen() {
                       {g.label}
                     </div>
                     {/* 날짜 안에서 다시 시각별로 묶어, 같은 시각 카드들 맨 위에 시간을 한 번만
-                        보여준다(요청). NEXT 배지도 카드가 아니라 이 시간 헤더 옆으로 옮긴다
-                        (요청: "next 배지는 시간 옆으로 이동"). 같은 시각이면 배지 번호도 같다. */}
-                    {groupByTime(g.items).map((tg) => {
-                      const tgBadge = badgeNumbers?.get(tg.items[0].id) ?? null;
-                      return (
-                        <div key={tg.key} className="scr-challenge-time-group">
-                          {tg.timeLabel && (
-                            <div className="scr-challenge-time-head">
-                              <span className="scr-challenge-time-head-label">{tg.timeLabel}</span>
-                              {!!tgBadge && <span className="scr-challenge-next-tag">NEXT #{tgBadge}</span>}
-                            </div>
-                          )}
-                          {tg.items.map((c) => (
-                            // 슬롯 래퍼 — 진입 스크롤 목적지는 가장 임박한 예정 대결(그중 첫 카드)이다.
-                            <div
-                              key={c.id}
-                              ref={c.id === firstNextId ? nextCardRef : undefined}
-                              className="scr-challenge-card-slot"
-                            >
-                              <ChallengeCard
-                                challenge={c}
-                                myId={user?.id}
-                                onResponded={upsert}
-                              />
-                            </div>
-                          ))}
-                        </div>
-                      );
-                    })}
+                        보여준다(요청). NEXT 배지는 폐지됐다(요청: "NEXT 배지 제거"). */}
+                    {groupByTime(g.items).map((tg) => (
+                      <div key={tg.key} className="scr-challenge-time-group">
+                        {tg.timeLabel && (
+                          <div className="scr-challenge-time-head">
+                            <span className="scr-challenge-time-head-label">{tg.timeLabel}</span>
+                          </div>
+                        )}
+                        {tg.items.map((c) => (
+                          <div key={c.id} className="scr-challenge-card-slot">
+                            <ChallengeCard
+                              challenge={c}
+                              myId={user?.id}
+                              onResponded={upsert}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    ))}
                   </div>
-                  </Fragment>
-                );
-                });
-              })()}
+                </Fragment>
+              ))}
             </div>
           )}
         </section>
@@ -1067,16 +980,6 @@ export default function ChallengeScreen() {
           onCreated={(c) => setChallenges((prev) => [c, ...prev])}
         />
       )}
-
-      {completedOpen && (
-        <CompletedChallengesModal
-          challenges={completedChallenges}
-          myId={user?.id}
-          onResponded={upsert}
-          onClose={() => setCompletedOpen(false)}
-        />
-      )}
-
     </div>
   );
 }

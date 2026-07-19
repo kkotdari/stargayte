@@ -16,7 +16,7 @@ import type { BaseRace, MemberStats, MemberStatsEntry } from "../../types";
 
 // 종족 필터 — 검색창 예약어에서 필터창 드롭다운으로 옮겼다(요청).
 const RACE_SELECT_OPTS = [
-  { value: "all", label: "전체 종족", shortLabel: "종족" },
+  { value: "all", label: "전체", shortLabel: "종족" },
   { value: "테란", label: "테란" },
   { value: "프로토스", label: "프로토스" },
   { value: "저그", label: "저그" },
@@ -221,12 +221,22 @@ export default function StatsScreenV2() {
         countLabel="명"
         searchValue={search}
         onSearchChange={setSearch}
-        searchPlaceholder="유저"
+        searchPlaceholder="유저 검색"
         suggestions={suggestions}
         filterPanel={
           <>
-            <FilterItem>
+            {/* 기간 단위 알약탭과 그에 딸린 달력은 원래 하나의 요소 — 종족 필터가
+                둘 사이에 끼어 그룹이 갈라지지 않도록 같은 FilterItem 안에 붙여 두고,
+                종족은 그 뒤(기간·달력 → 종족 순)에 배치한다. */}
+            <FilterItem label="기간">
               <PillTabs options={PERIOD_UNIT_OPTS} value={periodUnit} onChange={setPeriodUnit} aria-label="기간" />
+              {periodUnit === "month" && (
+                <input
+                  type="month" className="scr-filter-month-input"
+                  value={periodMonth} onChange={(e) => setPeriodMonth(e.target.value)}
+                  aria-label="조회할 월"
+                />
+              )}
             </FilterItem>
             {/* 종족은 검색창 예약어 대신 필터 드롭다운으로(요청). */}
             <FilterItem label="종족">
@@ -239,24 +249,11 @@ export default function StatsScreenV2() {
                 className="scr-filter-race-select"
               />
             </FilterItem>
-            {periodUnit === "month" && (
-              <FilterItem>
-                <input
-                  type="month" className="scr-filter-month-input"
-                  value={periodMonth} onChange={(e) => setPeriodMonth(e.target.value)}
-                  aria-label="조회할 월"
-                />
-              </FilterItem>
-            )}
           </>
         }
       />
 
       {error && <div className="scr-err">{error}</div>}
-
-      <p className="scr-hint scr-stats-min-plays-note">
-        {MIN_PLAYS_FOR_STATS}회 미만 플레이한 회원은 정확도가 낮아 게임수만 표시해요.
-      </p>
 
       <div className="scr-stats-list-panel-v2">
         {loading && cards.length === 0 ? (

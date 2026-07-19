@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import Select from "../components/common/Select";
 import Avatar from "../components/common/Avatar";
+import OptionalDateTimeFields from "../components/common/OptionalDateTimeFields";
 import { Spinner } from "../components/common/Feedback";
 import { useAppStore } from "../store/appStore";
 import { api } from "../api/client";
@@ -11,8 +12,8 @@ import type { Challenge, Member } from "../types";
 
 // 상대는 최대 4명까지 지목할 수 있고(팀전), 내 팀은 본인 자동 포함이라 "본인 제외"
 // 최대 3명(본인 포함 4명)까지 넣을 수 있다 — 서버의 max_length(target 4 / own 3)와 같다.
-// 폼 맨 위 라디오로 개인전/팀전을 먼저 고르고, 개인전이면 상대 1명·팀 없음으로 제한한다.
-// 실제 경기 유형은 서버가 인원수로 정한다(상대1·팀0 → 1:1, 그 외 팀전).
+// 경기 유형(개인전/팀전)을 따로 고르지 않는다(요청: "대결 유형 제거하고 자동으로 판단함") —
+// 실제 경기 유형은 서버와 똑같은 규칙으로 인원수만 보고 정해진다(상대1·팀0 → 1:1, 그 외 팀전).
 const MAX_TARGETS = 4;
 const MAX_OWN_TEAM = 3;
 
@@ -29,9 +30,11 @@ interface ChallengeFormModalProps {
 // 그 자리가 회원 드롭다운으로 바뀌었다가 고르면 다시 칩으로 접힌다. 빈 드롭다운을
 // 여러 개 미리 늘어놓지 않는다(ChallengeFormModal 원래 UI 패턴 그대로).
 function MemberPickBlock({
-  label, ids, setIds, max, options, memberById, addLabel,
+  label, hint, ids, setIds, max, options, memberById, addLabel,
 }: {
   label: string;
+  // 라벨 옆에 옅게 붙는 보조 설명(요청: "우리팀 추가 옆에 팀전일 때만 추가 라고 명시").
+  hint?: string;
   ids: string[];
   setIds: (next: string[]) => void;
   max: number;
@@ -47,7 +50,7 @@ function MemberPickBlock({
 
   return (
     <div className="scr-field">
-      <span className="scr-label">{label}</span>
+      <span className="scr-label">{label} {hint && <span className="scr-hint">{hint}</span>}</span>
       <div className="scr-challenge-target-slots">
         {ids.map((id) => {
           const m = memberById.get(id);
@@ -103,33 +106,17 @@ export default function ChallengeFormModal({ onClose, onCreated, presetTargetIds
   const members = useAppStore((s) => s.members);
   const user = useAppStore((s) => s.user);
 
-  // 시작할 때 개인전(1:1)인지 팀전인지 먼저 고른다(요청: "팀전인지 개인전인지 체크하고
-  // 시작 — 라디오 버튼"). 개인전이면 상대는 1명, 내 팀 구성은 없다. 팀전이면 내 팀을
-  // 짜고 상대도 여럿 지목할 수 있다. 실제 match_type은 서버가 인원수로 정하지만(개인전=
-  // 상대1·팀원0 → 0101), 폼이 인원 제약을 이 선택에 맞춰 그 결과가 선택과 일치하게 한다.
-  // 대결 요청 들어주기로 열렸으면 그 작성자를 상대로 미리 채운다(보통 1명 → 1:1).
+  // 대결 요청 들어주기로 열렸으면 그 작성자를 상대로 미리 채운다.
   const preset = presetTargetIds ?? [];
-  const [mode, setMode] = useState<"solo" | "team">(preset.length > 1 ? "team" : "solo");
   const [targetIds, setTargetIds] = useState<string[]>(preset);
   const [ownTeamIds, setOwnTeamIds] = useState<string[]>([]);
 
-  // 개인전으로 바꾸면 상대는 1명으로 줄이고 내 팀은 비운다(그래야 서버가 0101로 정한다).
-  const switchMode = (next: "solo" | "team") => {
-    setMode(next);
-    if (next === "solo") {
-      setTargetIds((ids) => ids.slice(0, 1));
-      setOwnTeamIds([]);
-    }
-  };
-  // 일시를 아예 자유 입력으로 두던 걸 체크박스로 명시화한다 — 체크하면 그때부턴 "정한다"는
-  // 뜻이라 날짜/시간 둘 다 채워야만 보낼 수 있고, 체크를 안 하면(기본값) "시간은 상대방이
-  // 정해도 된다"는 뜻이라 날짜/시간 입력 자체를 막는 대신 최소한 무슨 대화인지는 알 수
-  // 있게 한마디를 필수로 받는다.
-  const [timeSpecified, setTimeSpecified] = useState(false);
+  // 날짜/시간은 각각 독립된 체크박스로 켠다(요청: "날짜 선택 체크박스... 날짜를 선택하면
+  // 시간 선택 체크박스가 노출") — 둘 다 필수는 아니고, 날짜 없이 시간만 있는 조합은 UI상
+  // 애초에 나올 수 없다(시간 체크박스가 날짜를 고른 뒤에만 나타난다). 날짜만 정하고 시간은
+  // 안 정하면(=상대가 시간을 정해도 됨) 제출 시 기본 시간(22:00)으로 채운다.
   const [dateStr, setDateStr] = useState("");
-  // 기본 시간은 오후 10시(22:00) — 밤 경기가 많아 기본값으로 세팅해둔다(요청: "도전장
-  // 보낼때 기본 시간 오후 10시").
-  const [timeStr, setTimeStr] = useState("22:00");
+  const [timeStr, setTimeStr] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -150,23 +137,20 @@ export default function ChallengeFormModal({ onClose, onCreated, presetTargetIds
     [activeMembers, chosen],
   );
 
-  // 개인전은 상대 정확히 1명. 팀전은 상대 1명 이상이되, 실제로 팀 구성이 되도록(서버가
-  // 0102로 정하도록) 내 팀원이 있거나 상대가 2명 이상이어야 한다.
-  const rosterOk = mode === "solo"
-    ? targetIds.length === 1
-    : targetIds.length >= 1 && (ownTeamIds.length >= 1 || targetIds.length >= 2);
-  const canSubmit = rosterOk
-    && (!timeSpecified || (dateStr.length > 0 && timeStr.length > 0))
-    && message.trim().length > 0;
+  // 경기 유형을 따로 안 골라도, 상대를 1명 이상만 지목하면 항상 유효한 조합이 된다 —
+  // 상대 1명·내 팀 0명이면 서버가 1:1로, 그 외(상대 2명 이상이거나 내 팀이 있으면)
+  // 팀전으로 자동 판단한다(요청: "대결 유형 제거하고 자동으로 판단함").
+  const rosterOk = targetIds.length >= 1;
+  const canSubmit = rosterOk && message.trim().length > 0;
 
   const submit = async () => {
     if (!canSubmit) return;
     setErr("");
     setBusy(true);
     try {
-      // 시간을 지정 안 하면(기본값) 상대방이 정하기로 한 것이므로 아예 null로 보낸다 —
-      // 지정했으면 canSubmit이 이미 날짜/시간 둘 다 채워졌음을 보장한다.
-      const scheduledAt = timeSpecified ? new Date(`${dateStr}T${timeStr}`).toISOString() : null;
+      // 날짜를 아예 안 정하면(기본값) 상대방이 정하기로 한 것이므로 null. 날짜만 정하고
+      // 시간은 안 정했으면 기본 시간(22:00)으로 채운다.
+      const scheduledAt = dateStr ? new Date(`${dateStr}T${timeStr || "22:00"}`).toISOString() : null;
       const challenge = await api.createChallenge({
         targetMemberIds: targetIds,
         ownTeamMemberIds: ownTeamIds,
@@ -192,83 +176,39 @@ export default function ChallengeFormModal({ onClose, onCreated, presetTargetIds
         </div>
 
         <div className="scr-modal-body">
-          {/* 맨 위에서 개인전/팀전을 먼저 고른다(요청: "팀전인지 개인전인지 체크하고
-              시작 — 라디오 버튼", "맨위에서 체크"). 선택에 따라 아래 폼 구성이 바뀐다. */}
-          <div className="scr-field">
-            <span className="scr-label">경기 유형</span>
-            <div className="scr-challenge-mode-radios">
-              <label className="scr-checkbox-field">
-                <input
-                  type="radio" name="challenge-mode" checked={mode === "solo"}
-                  onChange={() => switchMode("solo")}
-                />
-                개인전 (1:1)
-              </label>
-              <label className="scr-checkbox-field">
-                <input
-                  type="radio" name="challenge-mode" checked={mode === "team"}
-                  onChange={() => switchMode("team")}
-                />
-                팀전
-              </label>
-            </div>
-          </div>
-
-          {/* 내 팀/상대 지목은 <label>이 아니라 <div>다 — <label>로 감싸면 칩/버튼처럼
-              "제어 대상이 아닌" 부분을 클릭했을 때 브라우저가 그 라벨의 첫 폼 컨트롤(첫
-              칩의 X 버튼)에 자동으로 클릭을 한 번 더 쏴서 방금 지목한 사람이 사라지는
-              버그가 있었다(MemberPickBlock 내부도 <div>로 감싼 이유). */}
-          {/* 내 팀 구성은 팀전에서만 — 개인전은 나 혼자다. 내 팀이 위, 상대가 아래(요청:
-              "도전장 보내기에서 우리팀이 위에"). 본인은 자동 포함이라 여기엔 "본인 제외
-              나머지 팀원"만 넣는다. */}
-          {mode === "team" && (
-            <MemberPickBlock
-              label="내 팀 (선택)"
-              ids={ownTeamIds}
-              setIds={setOwnTeamIds}
-              max={MAX_OWN_TEAM}
-              options={memberOptions}
-              memberById={memberById}
-              addLabel="+ 팀원 추가"
-            />
-          )}
-
+          {/* 경기 유형(개인전/팀전) 선택은 없앴다(요청: "대결 유형 제거하고 자동으로
+              판단함") — 상대/내 팀 인원수만으로 서버가 자동으로 정한다. 내 팀/상대
+              지목은 <label>이 아니라 <div>다 — <label>로 감싸면 칩/버튼처럼 "제어
+              대상이 아닌" 부분을 클릭했을 때 브라우저가 그 라벨의 첫 폼 컨트롤(첫 칩의
+              X 버튼)에 자동으로 클릭을 한 번 더 쏴서 방금 지목한 사람이 사라지는 버그가
+              있었다(MemberPickBlock 내부도 <div>로 감싼 이유). 내 팀이 위, 상대가
+              아래(요청: "도전장 보내기에서 우리팀이 위에"). 본인은 자동 포함이라
+              여기엔 "본인 제외 나머지 팀원"만 넣는다. */}
           <MemberPickBlock
-            label={mode === "solo" ? "상대" : "상대 지목"}
-            ids={targetIds}
-            setIds={setTargetIds}
-            max={mode === "solo" ? 1 : MAX_TARGETS}
+            label="내 팀"
+            hint="(팀전일 때만 추가)"
+            ids={ownTeamIds}
+            setIds={setOwnTeamIds}
+            max={MAX_OWN_TEAM}
             options={memberOptions}
             memberById={memberById}
-            addLabel={mode === "solo" ? "+ 상대 선택" : "+ 상대 추가"}
+            addLabel="+ 팀원 추가"
           />
 
-          <label className="scr-checkbox-field">
-            <input
-              type="checkbox" checked={timeSpecified}
-              onChange={(e) => setTimeSpecified(e.target.checked)}
-            />
-            시간 지정 <span className="scr-hint">(미선택시 상대방이 시간 지정함)</span>
-          </label>
+          <MemberPickBlock
+            label="상대 지목"
+            ids={targetIds}
+            setIds={setTargetIds}
+            max={MAX_TARGETS}
+            options={memberOptions}
+            memberById={memberById}
+            addLabel="+ 상대 추가"
+          />
 
-          {/* 체크를 껐다 켜도 입력값은 그대로 남아있는다 — disabled로 흐리게 두는 대신 아예
-              숨긴다(state는 그대로 dateStr/timeStr에 남아있어 다시 켜면 그 값 그대로 보인다). */}
-          {timeSpecified && (
-            <label className="scr-field">
-              <span className="scr-label">일시</span>
-              <div className="scr-challenge-datetime">
-                <input
-                  type="date" className="scr-input" value={dateStr}
-                  onChange={(e) => { setDateStr(e.target.value); if (!e.target.value) setTimeStr("22:00"); }}
-                />
-                <input
-                  type="time" className="scr-input" value={timeStr}
-                  onChange={(e) => setTimeStr(e.target.value)}
-                  disabled={!dateStr}
-                />
-              </div>
-            </label>
-          )}
+          <OptionalDateTimeFields
+            dateStr={dateStr} onDateChange={setDateStr}
+            timeStr={timeStr} onTimeChange={setTimeStr}
+          />
 
           <label className="scr-field">
             <span className="scr-label">한마디</span>

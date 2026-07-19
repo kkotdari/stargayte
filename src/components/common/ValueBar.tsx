@@ -11,7 +11,7 @@ export default function ValueBar({ value, maxValue }: ValueBarProps) {
   const fillPercent = value !== null && maxValue > 0 ? (value / maxValue) * 100 : 0;
   return (
     <div className="scr-value-bar">
-      <span className="scr-mono scr-value-bar-num">{value ?? "-"}</span>
+      <span className="scr-value-bar-num">{value ?? "-"}</span>
       <div className="scr-value-bar-track-wrap">
         {value !== null && <div className="scr-value-bar-track" style={{ width: `${fillPercent}%` }} />}
       </div>
