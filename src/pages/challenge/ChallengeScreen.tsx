@@ -852,7 +852,7 @@ export default function ChallengeScreen() {
   const [formOpen, setFormOpen] = useState(false);
   // 대결 요청 "들어주기"로 도전장 폼을 열 때 — 그 요청의 작성자를 상대로 미리 채우고, 도전장을
   // 실제로 보내면 그 요청을 목록에서 내린다(fulfill). null이면 일반 "도전장 보내기".
-  const [fulfillingRequest, setFulfillingRequest] = useState<{ requestId: number; targetIds: string[] } | null>(null);
+  const [fulfillingRequest, setFulfillingRequest] = useState<{ requestId: number } | null>(null);
   // 코너에 "목록 다시 불러와" 신호 — 들어주기로 요청이 사라지면 올린다.
   const [corentReloadSignal, setCornerReloadSignal] = useState(0);
   const [discardedOpen, setDiscardedOpen] = useState(false);
@@ -1073,10 +1073,9 @@ export default function ChallengeScreen() {
       <MatchRequestCorner
         reloadSignal={corentReloadSignal}
         onFulfill={(req) => {
-          // 요청은 "지목된 사람들이 서로 대결하면 좋겠다"는 뜻이라, 들어주는 나(지목된 사람)를
-          // 뺀 나머지 지목자들을 상대로 도전장을 보낸다(작성자가 아니라).
-          const others = req.targets.map((t) => t.memberId).filter((id) => id !== user?.id);
-          setFulfillingRequest({ requestId: req.id, targetIds: others.length > 0 ? others : req.targets.map((t) => t.memberId) });
+          // 들어주기 시 인원 구성은 전체 유저에게 열어둔다(요청) — 미리 채우지 않고 빈 도전장
+          // 폼을 열어 들어주는 사람이 상대/팀을 자유롭게 고르게 한다. 전송 성공 시 요청은 사라진다.
+          setFulfillingRequest({ requestId: req.id });
         }}
       />
 
@@ -1178,7 +1177,6 @@ export default function ChallengeScreen() {
       {/* 들어주기 — 요청 작성자를 상대로 미리 채운 도전장 폼. 실제로 보내면 그 요청을 내린다. */}
       {fulfillingRequest && (
         <ChallengeFormModal
-          presetTargetIds={fulfillingRequest.targetIds}
           onClose={() => setFulfillingRequest(null)}
           onCreated={(c) => {
             setChallenges((prev) => [c, ...prev]);
