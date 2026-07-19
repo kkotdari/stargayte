@@ -1116,6 +1116,20 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 }
 /* 기준점수표 링크 줄 — 필터들 아래, 순위 목록 바로 위. 오른쪽 끝에 두고 목록에 바짝 붙인다(요청). */
 .scr-rank-weight-row { display: flex; justify-content: flex-end; margin-bottom: -4px; }
+/* 산정 방식 안내 — 기준점수표를 없앤 자리(필터 아래·목록 위). 레이팅(TrueSkill)이 어떻게
+   매겨지는지 옅은 본문 한 단락으로 설명한다(요청: 기준점수표 대신 산정 방식만 명시). */
+.scr-rank-method-note {
+  margin: 0; padding: 8px 2px 2px;
+  font-size: var(--fs-caption); line-height: 1.5; color: var(--muted);
+}
+.scr-rank-method-note b { color: var(--text); font-weight: 700; }
+/* 잠정 뱃지 — 표본이 적어 아직 덜 여문 레이팅. 카드 점수 옆에 작게. */
+.scr-rank-provisional {
+  display: inline-block; margin-top: 2px; padding: 1px 6px; border-radius: 999px;
+  font-size: var(--fs-micro); font-weight: 700; line-height: 1.4;
+  color: var(--muted); background: rgba(255, 255, 255, 0.08);
+}
+.scr-light-theme .scr-rank-provisional { background: rgba(0, 0, 0, 0.07); }
 /* 산정 방식 힌트 — 서브행 오른쪽에 옅게. 좁은 화면에선 글자만 살짝 줄인다. */
 .scr-rank-hint-inline {
   text-align: right; font-size: var(--fs-body); color: var(--muted); white-space: nowrap;

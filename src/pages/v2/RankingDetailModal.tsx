@@ -16,12 +16,9 @@ interface RankingDetailModalProps {
   // 그래프 아래 경기 이력을 어떤 종류로 거를지 — 개인전이면 "0101"(그 회원의 1:1 경기),
   // 팀전이면 "0102"(팀경기).
   matchType: MatchType;
-  // 지금 보고 있는 기간(월/연) — 경기 이력을 이 기간으로 좁혀, 카드 총점이 어느 경기들에서
-  // 나왔는지 그대로 훑을 수 있게 한다. 경기당 획득 점수도 이 기간 기준으로 맞아떨어진다.
+  // 지금 보고 있는 기간(월/연) — 경기 이력을 이 기간으로 좁혀, 어느 경기들에서 레이팅이
+  // 움직였는지 그대로 훑을 수 있게 한다.
   period: { from: string; to: string };
-  // 상대의 강함(1+우세수)·약함(1+열세수) 맵(회원 id 기준) — 경기당 획득 점수를 계산한다.
-  strengthByMember: Map<string, number>;
-  weaknessByMember: Map<string, number>;
   onClose: () => void;
 }
 
@@ -41,7 +38,7 @@ const HISTORY_LIMIT = 100;
 // 그 기간 경기 이력(경기마다 획득 점수 병기). 그 기간에 순위 대상이 아니었으면(한 판도 안
 // 뛰었으면) rank가 null이라 그 지점은 선을 잇지 않고 건너뛴다.
 export default function RankingDetailModal({
-  members, points, matchType, period, strengthByMember, weaknessByMember, onClose,
+  members, points, matchType, period, onClose,
 }: RankingDetailModalProps) {
   useLockBodyScroll();
   const memberOf = useAppStore((s) => s.memberOf);
@@ -76,8 +73,8 @@ export default function RankingDetailModal({
     let cancelled = false;
     setMatchesLoading(true);
     setMatchesErr("");
-    // 이력을 지금 보고 있는 기간으로 좁힌다 — 카드 총점이 이 경기들에서 나온 것이고, 아래에
-    // 병기하는 경기당 점수도 이 기간 기준으로 더하면 그 총점과 맞아떨어진다.
+    // 이력을 지금 보고 있는 기간으로 좁힌다 — 아래에 병기하는 경기당 레이팅 변화(Δ)를 이
+    // 기간의 경기들에 대해 보여준다.
     api.getMatchesPage({
       teamMemberIds: memberIdsKey.split(","), matchType,
       dateFrom: period.from, dateTo: period.to, limit: HISTORY_LIMIT,
@@ -89,6 +86,21 @@ export default function RankingDetailModal({
   }, [memberIdsKey, matchType, period.from, period.to]);
 
   useEffect(() => reload(), [reload]);
+
+  // 경기당 레이팅 변화(Δμ) — 이 회원(상세 주인공)의 전체 경기에 대한 μ 증감을 matchNo로
+  // 받아둔다. 레이팅은 시간순 누적이라 기간과 무관하게 한 번만 받아, 위에서 기간으로 좁힌
+  // 경기들만 matchNo로 골라 병기한다. 팀 상세도 흐름상 주인공은 한 명(members[0])이다.
+  const focalId = members[0]?.id;
+  const [deltaByMatchNo, setDeltaByMatchNo] = useState<Map<string, number>>(new Map());
+  useEffect(() => {
+    let cancelled = false;
+    setDeltaByMatchNo(new Map());
+    if (!focalId) return;
+    api.getRatingHistory(focalId, matchType)
+      .then((res) => { if (!cancelled) setDeltaByMatchNo(new Map(Object.entries(res.deltas))); })
+      .catch(() => { if (!cancelled) setDeltaByMatchNo(new Map()); });
+    return () => { cancelled = true; };
+  }, [focalId, matchType]);
 
   return createPortal(
     // 바깥(딤) 클릭으로는 안 닫는다 — 닫기는 헤더 X 버튼으로만(요청: "외부 영역 클릭시
@@ -148,7 +160,7 @@ export default function RankingDetailModal({
             {matchesErr && <div className="scr-err">{matchesErr}</div>}
             <RankMatchHistory
               matches={matches} members={members} memberOf={memberOf} loading={matchesLoading}
-              strengthByMember={strengthByMember} weaknessByMember={weaknessByMember}
+              deltaByMatchNo={deltaByMatchNo}
               bothTeams={matchType === "0102"}
             />
           </div>

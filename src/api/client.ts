@@ -5,7 +5,7 @@ import type {
   Member, Match, NewMatch, SignupPayload, MemberCreatePayload, ImageSettingMap, MemberStatus, MemberRole,
   ScreenKey, AppVersion, AppVersionStatus, AppVersionInfo,
   MatchSlot, MatchPage, MatchStatsResponse, MatchType, Race, TeamRankingResponse,
-  MonthlyMatchStatsResponse, MonthlyTeamRankingResponse,
+  MonthlyMatchStatsResponse, MonthlyTeamRankingResponse, RatingHistoryResponse,
   ReplayNameClassificationEntry, ReplayNameKind, ReplayNameMappingEntry, ReplayNameMappingKind,
   Challenge, ChallengeCreatePayload, ChallengeRevengePayload, ChallengeResult,
   MatchRequest, MatchRequestCreatePayload, MatchRequestListResponse, MatchRequestInboxItem,
@@ -188,26 +188,7 @@ async function request<T>(path: string, options: RequestInit = {}, retryOn401 = 
   return res.json() as Promise<T>;
 }
 
-// 평문(text/plain) 응답용 — 레이팅 백테스트 임시 엔드포인트가 텍스트 리포트를 준다.
-async function requestText(path: string): Promise<string> {
-  const build = () => {
-    const h = new Headers();
-    if (accessToken) h.set("Authorization", `Bearer ${accessToken}`);
-    return fetch(`${API_BASE}${path}`, { headers: h });
-  };
-  let res = await build();
-  if (res.status === 401 && (await tryRefresh())) res = await build();
-  if (!res.ok) throw new Error(`요청 실패 (${res.status})`);
-  return res.text();
-}
-
 export const api = {
-  // [임시/분석] 전투력 백테스트 텍스트 리포트.
-  async getRatingBacktest(matchType?: string): Promise<string> {
-    const qs = matchType ? `?match_type=${matchType}` : "";
-    return requestText(`/api/matches/rating-backtest${qs}`);
-  },
-
   async login(id: string, password: string): Promise<AuthResponse> {
     const res = await request<RawAuthResponse>("/api/auth/login", {
       method: "POST",
@@ -293,6 +274,13 @@ export const api = {
       race: params.race,
     });
     return request<MatchStatsResponse>(`/api/matches/stats${qs}`);
+  },
+
+  // 랭킹 상세의 '경기당 레이팅 변화(Δ)' — 이 회원이 뛴 경기의 matchNo → μ 증감. 레이팅은
+  // 시간순 누적이라 클라이언트가 재구성할 수 없어 서버가 계산해 준다.
+  async getRatingHistory(memberId: string, matchType?: string): Promise<RatingHistoryResponse> {
+    const qs = buildQuery({ memberId, matchType });
+    return request<RatingHistoryResponse>(`/api/matches/rating-history${qs}`);
   },
 
   // 팀랭킹 — dateFrom/dateTo를 안 넘기면 전체 경기, 넘기면(랭킹 화면의 월 기준 기본

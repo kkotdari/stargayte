@@ -212,9 +212,27 @@ export interface MemberStatsEntry {
   superiorCount: number | null;
   equalCount: number | null;
   inferiorCount: number | null;
-  // 랭킹 총점 — 경기마다 (이김 +2·강함 / 비김 +1·강함 / 짐 -1·약함) 합산. 카드에 이 숫자만
-  // 보여준다. 음수 가능. 순위 대상이 아니면 null.
+  // 랭킹 총점 — TrueSkill 보수추정 레이팅(μ−3σ). 카드에 이 숫자를 보여주고 이 값으로 순위를
+  // 매긴다. 음수 가능. 순위 대상이 아니면 null.
   rankScore: number | null;
+  // TrueSkill 실력 추정(μ)·불확실성(σ). 순위 대상이 아니면 null.
+  mu: number | null;
+  sigma: number | null;
+  // 이 경기유형에서 레이팅에 반영된 누적 경기 수. 순위 대상이 아니면 null.
+  ratingGames: number | null;
+  // 잠정 — 누적 경기가 기준 미만이라 레이팅이 아직 덜 여문 상태(뱃지 표시). 순위 대상 아니면 null.
+  provisional: boolean | null;
+}
+
+// GET /api/matches/rating-history — 랭킹 상세의 '경기당 레이팅 변화(Δ)'. deltas는 이 회원이
+// 뛴 경기의 matchNo → μ 증감(양수=상승). 레이팅은 시간순 누적이라 백엔드가 계산해 준다.
+export interface RatingHistoryResponse {
+  deltas: Record<string, number>;
+  mu: number | null;
+  sigma: number | null;
+  conservative: number | null;
+  games: number;
+  provisional: boolean;
 }
 
 export interface MatchStatsResponse {

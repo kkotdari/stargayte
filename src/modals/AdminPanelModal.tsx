@@ -45,20 +45,6 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
   const [versionManageOpen, setVersionManageOpen] = useState(false);
   const [togglingNotice, setTogglingNotice] = useState(false);
   const [downloading, setDownloading] = useState(false);
-  // [임시] 레이팅 백테스트 결과 텍스트.
-  const [btText, setBtText] = useState("");
-  const [btBusy, setBtBusy] = useState(false);
-  const runBacktest = async (matchType?: string) => {
-    setBtBusy(true);
-    setBtText("");
-    try {
-      setBtText(await api.getRatingBacktest(matchType));
-    } catch (e) {
-      setBtText(e instanceof Error ? e.message : "실패");
-    } finally {
-      setBtBusy(false);
-    }
-  };
 
   // 등록된 리플레이(.rep) 전체를 날짜별 폴더 zip으로 받는다 — 인증 헤더가 필요해 blob으로
   // 받아 클라이언트에서 임시 링크로 저장 트리거한다.
@@ -280,36 +266,6 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
                       {downloading ? <Spinner /> : "배치다운로드"}
                     </button>
                   </div>
-
-                  {/* [임시] 전투력 산정 방식 검증 — 레이팅(Elo) vs 현재방식 백테스트.
-                      결과 텍스트를 복사해 개발자에게 전달. 검증 끝나면 이 섹션과
-                      백엔드 /matches/rating-backtest 엔드포인트를 함께 제거한다. */}
-                  <div className="scr-admin-panel-section-title">레이팅 검증 (임시)</div>
-                  <div className="scr-admin-panel-grid">
-                    <button type="button" className="scr-admin-panel-phys-btn"
-                      onClick={() => void runBacktest(undefined)} disabled={btBusy}>
-                      {btBusy ? <Spinner /> : "전체"}
-                    </button>
-                    <button type="button" className="scr-admin-panel-phys-btn"
-                      onClick={() => void runBacktest("0102")} disabled={btBusy}>
-                      {btBusy ? <Spinner /> : "팀전"}
-                    </button>
-                    <button type="button" className="scr-admin-panel-phys-btn"
-                      onClick={() => void runBacktest("0101")} disabled={btBusy}>
-                      {btBusy ? <Spinner /> : "개인전"}
-                    </button>
-                  </div>
-                  {btText && (
-                    <textarea
-                      className="scr-input"
-                      readOnly
-                      value={btText}
-                      onFocus={(e) => e.currentTarget.select()}
-                      style={{ width: "100%", minHeight: 240, marginTop: 8,
-                        fontFamily: "var(--font-mono)", fontSize: 11, whiteSpace: "pre",
-                        overflowWrap: "normal" }}
-                    />
-                  )}
                 </>
               )}
             </>
