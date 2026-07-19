@@ -1052,9 +1052,10 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 /* 경기 등록 화면 — 등록 버튼 아래에 리플레이 위치 안내 링크를 세로로 쌓는다(요청). */
 .scr-v2-primary-row-col { flex-direction: column; align-items: center; gap: 6px; }
 .scr-v2-primary-row .scr-btn {
-  font-size: var(--fs-subhead); /* 13.5px * 1.2 */
-  padding: 8.4px 14.4px; /* 7px/12px * 1.2 */
-  min-height: 38px; /* --field-h-sm(32px) * 1.2 */
+  /* 도전장 쓰기/등록/회원 생성 등 대표 버튼 — 예전 1.2배 확대에서 20% 축소(요청). */
+  font-size: var(--fs-body); /* 20px * 0.8 */
+  padding: 6.7px 11.5px; /* 8.4px/14.4px * 0.8 */
+  min-height: 30px; /* 38px * 0.8 */
 }
 /* 휴지통/도전장 보내기는 이제 다른 화면들처럼 타이틀 툴바(.scr-v2-toolbar-actions) 안에
    들어간다(요청) — 별도 래퍼(.scr-challenge-float-actions)는 없앴다. */
@@ -6104,6 +6105,8 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
      약 26px밖에 안 밀렸다 — 모바일 카드 폭(약 360px)의 20%인 약 72px을 고정값으로 당긴다.
      모든 카드가 같은 값이라 로스터 왼쪽 기준선 정렬은 유지된다. 펼친 로스터에만 적용. */
   .scr-match-trow-grid .scr-match-trow-team:last-child { margin-left: -56px; }
+  /* 경기목록 한 칸(.scr-match-trow) 위아래 패딩을 키운다(요청) — 11→15px. */
+  .scr-match-list-panel-v2 .scr-match-trow { padding-top: 15px; padding-bottom: 15px; }
   /* 너나와 카드: 상대 로스터를 왼쪽으로 당기던 방식(-28px)은 상대쪽 승/무 배지 자리를 먹어
      손가락↔닉네임 사이 공간이 사라졌다(신고). 대신 도전자(팀1) 칸을 좁혀 화살표·배지·손가락을
      왼쪽으로 옮기고, 상대(팀2)쪽에 도전자와 같은 폭의 승/무 배지 자리를 확보한다(요청). */
@@ -6205,4 +6208,10 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
     --fs-hero-2: var(--mobile-fs-hero-2);
     --fs-hero-3: var(--mobile-fs-hero-3);
   }
+}
+
+/* 모바일 대타이틀(.scr-title) 폰트를 28→24px로 축소(요청). 통일 블록(위)이 .scr-title을
+   전 폭에서 title(28)로 고정하므로, 그 뒤에서 모바일 폭만 24px로 덮어쓴다. */
+@media (max-width: 640px) {
+  .scr-title { font-size: 24px; }
 }

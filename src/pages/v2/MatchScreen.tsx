@@ -121,7 +121,7 @@ export default function MatchScreenV2() {
   return (
     <div className="scr-screen scr-match-screen-v2">
       <div className="scr-v2-toolbar">
-        <h1 className="scr-title scr-v2-toolbar-title">경기 등록</h1>
+        <h1 className="scr-title scr-v2-toolbar-title">기록실</h1>
       </div>
 
       {/* "등록" 버튼 — 타이틀 줄 아래 별도 줄에 가운데 정렬. 리플레이 위치 안내는 그 아래
