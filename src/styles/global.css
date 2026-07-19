@@ -5817,6 +5817,16 @@ html.scr-light-theme .scr-challenge-next-tag {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95), 0 4px 16px rgba(0, 0, 0, 0.1);
 }
 .scr-mreq-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+/* "요청하기" — 주황 포인트색 알약 버튼, 살짝 통통하고 아래로 은은한 주황 그림자로 귀엽게. */
+.scr-mreq-add-btn {
+  border: none; border-radius: 999px; font-weight: 800; letter-spacing: 0.01em;
+  padding: 6px 16px; color: var(--point-contrast);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--point) 88%, #fff) 0%, var(--point) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 2px 8px color-mix(in srgb, var(--point) 45%, transparent);
+  transition: filter 0.12s ease, transform 0.08s ease;
+}
+.scr-mreq-add-btn:hover { filter: brightness(1.05); }
+.scr-mreq-add-btn:active { transform: translateY(1px); }
 .scr-mreq-title { margin: 0; font-size: 15.5px; font-weight: 800; color: var(--text); letter-spacing: 0.01em; display: inline-flex; align-items: center; gap: 5px; }
 /* 이모지에 살짝 통통 튀는 느낌 — 은은한 그림자로 붕 떠 보이게. */
 .scr-mreq-title-emoji { font-size: 17px; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.25)); }

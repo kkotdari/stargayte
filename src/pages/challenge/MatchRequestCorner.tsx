@@ -250,8 +250,8 @@ export default function MatchRequestCorner({ onFulfill, reloadSignal }: MatchReq
       <div className="scr-mreq-head">
         <h2 className="scr-mreq-title"><span className="scr-mreq-title-emoji" aria-hidden>🥺</span> 대결 요청</h2>
         {!composing && (
-          <button type="button" className="scr-btn scr-btn-sm scr-btn-primary scr-btn-primary-solid" onClick={() => setComposing(true)}>
-            + 요청 올리기
+          <button type="button" className="scr-btn scr-btn-sm scr-mreq-add-btn" onClick={() => setComposing(true)}>
+            요청하기
           </button>
         )}
       </div>
