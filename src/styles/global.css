@@ -3652,8 +3652,12 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-rank-detail-history .scr-match-row-result-only:not(.scr-match-row-team-tail) > .scr-team-block:first-child .scr-team-roster,
 .scr-rank-detail-history .scr-match-row-team-tail .scr-match-team-side-ours .scr-team-roster { padding-left: 0; }
 .scr-rank-detail-history-head { font-size: var(--fs-body); font-weight: 800; color: var(--muted); margin-bottom: 8px; }
-/* 팀 로스터 줄간격을 줄인다(요청) — 경기 목록 카드보다 여기(랭킹 상세 이력)는 더 촘촘하게. */
-.scr-rank-detail-history .scr-team-roster { gap: 2px; }
+/* 팀 로스터 줄간격을 줄인다(요청) — 경기 목록 카드보다 여기(랭킹 상세 이력)는 더 촘촘하게.
+   더불어 로스터 왼쪽 안쪽 여백(6px)을 팀1·팀2·개인전 모두 0으로 없앤다(요청: "이력 목록
+   들여쓰기 없애기") — 위 3652 규칙이 팀1/개인전만 없앴던 걸 팀2까지 넓힌다. */
+.scr-rank-detail-history .scr-team-roster { gap: 2px; padding-left: 0; }
+/* 이력 목록 닉네임(.scr-team-name)만 한 스텝 키운다(요청) — caption(14)→body(16). */
+.scr-rank-detail-history .scr-team-name { font-size: var(--fs-body); }
 /* 경기 이력 목록은 자기 높이만큼 자연스럽게 흐르게 두고(내부 고정높이·스크롤 없음),
    스크롤은 모달 본체(.scr-modal-body, 이미 overflow-y:auto + 모달 max-height 88vh)가
    통째로 맡는다(요청: "스크롤을 경기이력에 주는 게 아니라 모달 전체에 주기") — 그래프·
@@ -6098,7 +6102,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
      아이템의 % margin은 컨테이너가 아니라 자기 트랙(1fr≈카드의 1/3) 기준이라 -20%로는
      약 26px밖에 안 밀렸다 — 모바일 카드 폭(약 360px)의 20%인 약 72px을 고정값으로 당긴다.
      모든 카드가 같은 값이라 로스터 왼쪽 기준선 정렬은 유지된다. 펼친 로스터에만 적용. */
-  .scr-match-trow-grid .scr-match-trow-team:last-child { margin-left: -72px; }
+  .scr-match-trow-grid .scr-match-trow-team:last-child { margin-left: -56px; }
   /* 너나와 카드: 상대 로스터를 왼쪽으로 당기던 방식(-28px)은 상대쪽 승/무 배지 자리를 먹어
      손가락↔닉네임 사이 공간이 사라졌다(신고). 대신 도전자(팀1) 칸을 좁혀 화살표·배지·손가락을
      왼쪽으로 옮기고, 상대(팀2)쪽에 도전자와 같은 폭의 승/무 배지 자리를 확보한다(요청). */
@@ -6106,9 +6110,10 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
   /* 경기 이력 팀전 카드: 양 팀 덩어리는 기본(base)의 균등폭(flex:1 1 0)을 그대로 쓴다 —
      한때 내용폭(flex:0 1 auto)으로 바꿨더니 팀1(짧은 닉네임)쪽 영역이 팀2보다 눈에 띄게
      좁아졌다(신고). 균등폭이면 팀1/팀2가 같은 폭을 가져 좌우가 대칭이 된다. */
-  /* 이력/경기목록 승·패 글자 한 단계 축소(20→16) */
+  /* 이력(경기이력) 승·패 글자는 한 단계 축소(20→16) 유지. */
   .scr-team-outcome { font-size: var(--fs-body); }
-  .scr-match-trow-outcome { font-size: var(--fs-body); }
+  /* 경기목록 승·패 글자는 한 스텝 확대(16→20)로 되돌린다(요청). */
+  .scr-match-trow-outcome { font-size: var(--fs-subhead); }
   /* 타임라인 폰트 한 단계 축소(날짜 알약 14→12, 끝/오늘/미정 라벨 12→11) */
   .scr-scroll-timeline-end { font-size: var(--fs-11); }
   .scr-scroll-timeline-today::after, .scr-scroll-timeline-undecided::after { font-size: var(--fs-11); }
@@ -6174,7 +6179,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
 .scr-drawer-actions .scr-btn { font-size: var(--fs-caption); }
 .scr-challenge-card-team .scr-challenge-person-name { font-size: var(--fs-micro); }
 .scr-team-outcome { font-size: var(--fs-body); }
-.scr-match-trow-outcome { font-size: var(--fs-body); }
+.scr-match-trow-outcome { font-size: var(--fs-subhead); }
 .scr-scroll-timeline-end { font-size: var(--fs-11); }
 .scr-scroll-timeline-today::after, .scr-scroll-timeline-undecided::after { font-size: var(--fs-11); }
 .scr-scroll-timeline-date { font-size: var(--fs-micro); }
