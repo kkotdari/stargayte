@@ -30,6 +30,10 @@ export default function MatchScreenV2() {
   // 검색창은 엔터를 눌러야만 확정되는 값이라(SearchFilterBar 참고), search 자체가 이미
   // "적용된" 값이다 — 이미 불러온 전체 경기 안에서 클라이언트가 즉시 걸러낸다.
   const [search, setSearch] = useState("");
+  // 목록은 기본적으로 안 뜨고 "조회" 버튼을 눌러야만 실제 조회가 실행된다(요청: "기록실은
+  // 기본 조회 안 하고 조회 눌러야 조회"). 기간 필터는 없으므로 조회는 그냥 전체 로드를 켠다.
+  const [hasSearched, setHasSearched] = useState(false);
+  const runSearch = () => setHasSearched(true);
   const suggestions = useMemo(() => activeMemberSearchTerms(members), [members]);
   const searchTerms = useMemo(() => splitSearchTerms(search), [search]);
   const hasSearch = searchTerms.length > 0;
@@ -71,16 +75,18 @@ export default function MatchScreenV2() {
     }
   };
 
-  // 기간 필터를 없앴으므로 서버 쿼리는 조건 없이 항상 "전체 경기 최신순"이다. 유저 검색은
-  // 서버에 안 보내고, 아래 listRows에서 이미 받은 목록을 클라이언트가 AND로 거른다.
+  // 조회 전에는 아무것도 안 불러온다(빈 페이지). 조회를 누르면 기간 조건 없이 "전체 경기
+  // 최신순"을 불러온다. 유저 검색은 서버에 안 보내고, 아래 listRows에서 클라이언트가 AND로 거른다.
   const fetchPage = useCallback(
-    (cursor: string | null) =>
-      api.getMatchesPage({ cursor: cursor ?? undefined, limit: PAGE_SIZE, sort: "latest" }),
-    [],
+    (cursor: string | null) => {
+      if (!hasSearched) return Promise.resolve({ items: [], nextCursor: null, hasMore: false, total: 0 });
+      return api.getMatchesPage({ cursor: cursor ?? undefined, limit: PAGE_SIZE, sort: "latest" });
+    },
+    [hasSearched],
   );
 
   const { items: matches, loading, loadingMore, hasMore, loadMore, reload, error, total } =
-    useCursorPagination(fetchPage, []);
+    useCursorPagination(fetchPage, [hasSearched]);
 
   // 무한스크롤(스크롤에 따라 한 페이지씩)을 없애고, 다음 페이지가 남아 있으면 계속 이어붙여
   // 전체를 한 번에 다 불러온다(요청). 첫 페이지가 끝나면 hasMore가 순차적으로 다음 페이지를
@@ -143,7 +149,7 @@ export default function MatchScreenV2() {
 
       <h2 className="scr-v2-subheading">경기 목록</h2>
 
-      {/* 기간 필터/조회 버튼은 없앴다 — 유저 검색창만 남긴다(전체 목록 안에서 즉시 필터). */}
+      {/* 기간 필터는 없고 유저 검색창만 — 검색은 조회로 불러온 목록 안에서 즉시 필터한다. */}
       <SearchFilterBar
         count={count}
         countLabel="건"
@@ -154,6 +160,13 @@ export default function MatchScreenV2() {
         suggestions={suggestions}
       />
 
+      {/* 조회 버튼 — 눌러야 그때 전체 경기를 불러온다(요청: 기본 조회 안 함). */}
+      <div className="scr-match-search-row">
+        <button type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm" onClick={runSearch}>
+          조회
+        </button>
+      </div>
+
       {error && <div className="scr-err">{error}</div>}
 
       {parsingReplays && createPortal(
@@ -163,20 +176,24 @@ export default function MatchScreenV2() {
         document.body,
       )}
 
-      {/* 건수는 목록 바로 위에. */}
-      <span className="scr-list-count scr-match-list-count">{count}건</span>
+      {/* 건수·목록은 조회한 뒤에만 노출한다. */}
+      {hasSearched && (
+        <span className="scr-list-count scr-match-list-count">{count}건</span>
+      )}
 
-      <div className="scr-match-list-wrap">
-        <MatchList
-          rows={listRows}
-          memberOf={resolveMember}
-          onMemo={(m) => setMemoMatch(m)}
-          onDeleted={handleSaved}
-          loading={loading}
-          highlightMemberIds={matchedIds}
-        />
-        {loadingMore && <div className="scr-empty"><Spinner size={16} /></div>}
-      </div>
+      {hasSearched && (
+        <div className="scr-match-list-wrap">
+          <MatchList
+            rows={listRows}
+            memberOf={resolveMember}
+            onMemo={(m) => setMemoMatch(m)}
+            onDeleted={handleSaved}
+            loading={loading}
+            highlightMemberIds={matchedIds}
+          />
+          {loadingMore && <div className="scr-empty"><Spinner size={16} /></div>}
+        </div>
+      )}
 
       {memoMatch && (
         <MatchMemoModal
@@ -195,9 +212,9 @@ export default function MatchScreenV2() {
         />
       )}
 
-      {/* 우측 네비게이션 타임라인 — 경기 목록은 최신순(위=최근, 아래=과거). 첫 페이지가
-          로드되면 띄운다. */}
-      {!loading && <ScrollNavTimeline headSelector=".scr-match-date-head" topLabel="최근" bottomLabel="과거" />}
+      {/* 우측 네비게이션 타임라인 — 경기 목록은 최신순(위=최근, 아래=과거). 조회해서 목록이
+          뜬 뒤에만 띄운다. */}
+      {hasSearched && !loading && <ScrollNavTimeline headSelector=".scr-match-date-head" topLabel="최근" bottomLabel="과거" />}
     </div>
   );
 }

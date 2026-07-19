@@ -24,7 +24,7 @@ export interface NavMenuItem {
 export const NAV_MENU_ITEMS: NavMenuItem[] = [
   { key: "ranking", label: "랭킹" },
   { key: "challenge", label: "너 나와!", minVersion: CHALLENGE_MIN_VERSION },
-  { key: "match", label: "경기 등록" },
+  { key: "match", label: "기록실" },
   { key: "stats", label: "통계" },
 ];
 
