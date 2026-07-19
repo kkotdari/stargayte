@@ -352,6 +352,8 @@ export interface Challenge {
   // 이 도전장보다 앞선 체인 기록(오래된 순) — 목록 화면 카드에서 좌우로 슬라이드해
   // 보여준다. 재대결 이력이 없으면 빈 배열.
   history: ChallengeHistoryEntry[];
+  // "대결 요청 들어주기"로 만들어졌으면 true — 카드에 "요청대결" 배지를 붙인다.
+  fromMatchRequest: boolean;
 }
 
 export interface ChallengeCreatePayload {
@@ -360,6 +362,8 @@ export interface ChallengeCreatePayload {
   targetMemberIds: string[];
   // 본인 제외 나머지 내 팀원(최대 3명, 본인 포함 최대 4명) — 안 넘기면 나 혼자.
   ownTeamMemberIds?: string[];
+  // "대결 요청 들어주기"로 여는 도전장이면 true.
+  fromMatchRequest?: boolean;
 }
 
 // 재대결(설욕전)을 신청할 때 — 시간/메모는 생략할 수 있다.

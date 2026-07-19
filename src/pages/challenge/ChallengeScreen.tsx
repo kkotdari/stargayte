@@ -418,6 +418,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
   // 남아 어색하다). 재대결 라벨/무승부·완료·결과입력대기 배지/카운트다운/미실시 중 하나라도.
   const whenHasContent =
     isRevengePage
+    || challenge.fromMatchRequest
     || activePage.resultWinnerSide === "draw"
     || (shownLatest && challenge.status === "pending")
     || (shownLatest && challenge.resultWinnerSide !== null)
@@ -455,6 +456,10 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
                   하나뿐이라, 원본(첫 페이지)을 뺀 모든 페이지가 재대결이다(isRevengePage). */}
               {isRevengePage && (
                 <span className="scr-challenge-chain-tag scr-challenge-chain-tag-revenge">재대결</span>
+              )}
+              {/* 대결 요청 코너의 요청을 들어줘 만들어진 도전장 표식(요청). */}
+              {challenge.fromMatchRequest && (
+                <span className="scr-challenge-chain-tag scr-challenge-req-tag">요청대결</span>
               )}
               {/* 이긴 편은 매치업의 화살표 옆에 배지로 표시하니, 여기선 팀을 특정할 수 없는
                   무승부만 알약으로 남긴다(요청: "도전자편 승 이런 건 제거"). 미실시는 아예
@@ -1177,6 +1182,7 @@ export default function ChallengeScreen() {
       {/* 들어주기 — 요청 작성자를 상대로 미리 채운 도전장 폼. 실제로 보내면 그 요청을 내린다. */}
       {fulfillingRequest && (
         <ChallengeFormModal
+          fromMatchRequest
           onClose={() => setFulfillingRequest(null)}
           onCreated={(c) => {
             setChallenges((prev) => [c, ...prev]);
