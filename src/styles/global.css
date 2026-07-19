@@ -5788,18 +5788,33 @@ html.scr-light-theme .scr-challenge-next-tag {
 /* ===== 대결 요청 코너 ("너 나와!" 최상단) =====
    @태그로 최소 2명을 지목하는 공개 요청글 코너. 지목된 사람만 "들어주기"로 도전장을 보낼 수
    있고, 다른 회원은 추천(엄지척)만 누른다. 정렬은 추천 많은 순 → 먼저 등록순, 페이지당 5개. */
-/* 좀더 귀엽게(요청) — 둥근 모서리 + 은은한 핑크/퍼플 파스텔 그라데이션 + 점선 액센트 테두리.
-   위쪽에 살짝 밝은 반사광을 얹어 말랑한 카드 느낌을 준다. */
+/* 약간 그라데이션 들어간 흰(유리) 패널 + 반사광(요청). 위가 밝고 아래로 살짝 가라앉는 흰
+   반투명 그라데이션에, 상단 모서리 하이라이트와 비스듬히 지나가는 반사광 한 줄을 얹어
+   말랑한 유리 카드처럼 보이게 한다. 반투명이라 다크 테마에서도 흰 글씨가 그대로 읽힌다. */
 .scr-mreq-corner {
   position: relative;
-  background:
-    radial-gradient(120% 80% at 0% 0%, rgba(255, 141, 193, 0.10), transparent 60%),
-    radial-gradient(120% 90% at 100% 0%, rgba(140, 158, 255, 0.10), transparent 60%),
-    var(--panel);
-  border: 1.5px dashed color-mix(in srgb, var(--point) 34%, var(--line));
-  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.055) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 16px;
   padding: 13px 15px; margin-bottom: 4px; display: flex; flex-direction: column; gap: 10px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.10), 0 3px 14px rgba(0, 0, 0, 0.12);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.05),
+    0 4px 16px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(8px) saturate(1.05);
+  -webkit-backdrop-filter: blur(8px) saturate(1.05);
+}
+/* 반사광 — 좌상단에서 비스듬히 지나가는 밝은 하이라이트 한 줄. */
+.scr-mreq-corner::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, transparent 32%);
+}
+.scr-mreq-corner > * { position: relative; z-index: 1; }
+/* 라이트 테마 — 흰 배경 위라 더 또렷한 흰 유리 + 옅은 그림자로 띄운다. */
+.scr-light-theme .scr-mreq-corner {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(255, 255, 255, 0.74) 100%);
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95), 0 4px 16px rgba(0, 0, 0, 0.1);
 }
 .scr-mreq-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .scr-mreq-title { margin: 0; font-size: 15.5px; font-weight: 800; color: var(--text); letter-spacing: 0.01em; display: inline-flex; align-items: center; gap: 5px; }
