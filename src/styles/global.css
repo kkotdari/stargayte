@@ -4879,9 +4879,13 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
 /* 첫(그리고 유일한) 섹션은 위 .scr-screen의 gap이 이미 툴바/필터와 간격을 주므로 추가
    margin이 겹쳐 상단 여백이 과했다(신고: "너 나와 상단에 여백이 좀 남음") — 0으로 뗀다. */
 .scr-challenge-section:first-of-type { margin-top: 0; }
-/* 너나와: 대결 요청 코너 ↔ 검색창 사이는 넉넉히 띄우고, 검색창은 아래 목록에 바짝 붙인다
-   (요청: "요청하기와 검색창 사이 갭 늘리고 검색창은 목록쪽에 가깝게"). */
-.scr-challenge-screen-v2 .scr-filter-bar { margin-top: 22px; margin-bottom: 0; }
+/* 너나와: "진행중 목록" 중타이틀이 요청 코너와 목록을 가른다. 중타이틀 위는 코너와 떨어지게
+   넉넉히 띄우고(요청), 그 아래 검색창·목록은 중타이틀에 바짝 붙여 한 덩어리로 묶는다. */
+.scr-challenge-list-heading {
+  margin: 16px 0 0; font-size: 15px; font-weight: 800; color: var(--dim);
+  letter-spacing: 0.02em;
+}
+.scr-challenge-screen-v2 .scr-filter-bar { margin-top: 0; margin-bottom: 0; }
 .scr-challenge-section-title {
   font-size: 14px; font-weight: 800; color: var(--dim); letter-spacing: 0.02em; margin: 0;
 }
@@ -5816,12 +5820,15 @@ html.scr-light-theme .scr-challenge-next-tag {
   --divider-tint: 0, 0, 0;
   --pipe-bright: rgba(0, 0, 0, 0.34);
   color: var(--text);
-  background-color: #f6f6f1;
+  /* 따뜻한 미색은 "종이" 느낌이 나서(피드백), 살짝 차가운 밝은 흰색 + 은은한 상단 광택으로
+     실제 화이트보드에 가깝게. 격자선도 파란기 도는 회색으로 바꿔 차가운 톤을 유지한다. */
+  background-color: #fcfdff;
   background-image:
-    linear-gradient(rgba(0, 0, 0, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
-  background-size: 22px 22px;
-  border: 1px solid rgba(0, 0, 0, 0.14);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(226, 233, 242, 0.55) 100%),
+    linear-gradient(rgba(64, 96, 140, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(64, 96, 140, 0.06) 1px, transparent 1px);
+  background-size: 100% 100%, 22px 22px, 22px 22px;
+  border: 1px solid rgba(40, 70, 110, 0.16);
   border-radius: 14px;
   padding: 13px 15px; margin-bottom: 4px; display: flex; flex-direction: column; gap: 10px;
   box-shadow:

@@ -1084,6 +1084,10 @@ export default function ChallengeScreen() {
         }}
       />
 
+      {/* 진행중 목록 중타이틀 — 요청 코너와 실제 도전장 목록을 구분하고, 검색창은 이 목록의
+          것임을 분명히 하려고 제목 바로 아래에 둔다(요청). */}
+      <h2 className="scr-challenge-list-heading">진행중 목록</h2>
+
       <SearchFilterBar
         count={activeList.length}
         countLabel="건"
