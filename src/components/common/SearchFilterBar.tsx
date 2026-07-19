@@ -26,7 +26,8 @@ interface SearchFilterBarProps {
   filterPanel?: ReactNode;
 }
 
-const MAX_SUGGESTIONS = 8;
+// 후보를 넉넉히 보여준다 — 드롭다운은 max-height 안에서 넘치면 스크롤된다(요청: 자동완성 스크롤).
+const MAX_SUGGESTIONS = 50;
 
 // 한글 1자 이상, 또는 영문/숫자 2자 이상 입력됐을 때만 자동완성을 보여준다 — 자음/모음
 // 하나나 알파벳 한 글자만으로는 후보가 너무 많고 의미도 없다.

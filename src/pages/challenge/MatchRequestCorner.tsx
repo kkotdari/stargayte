@@ -58,7 +58,7 @@ export default function MatchRequestCorner({ onFulfill, reloadSignal }: MatchReq
     return members
       .filter((m) => m.id !== user?.id && !chosen.has(m.id))
       .filter((m) => !q || m.nickname.toLowerCase().includes(q) || m.id.toLowerCase().includes(q))
-      .slice(0, 6);
+      .slice(0, 50);
   }, [members, user?.id, mentionQuery, content.ids]);
 
   const load = useCallback(async (p: number) => {
@@ -111,7 +111,9 @@ export default function MatchRequestCorner({ onFulfill, reloadSignal }: MatchReq
     const node = range.startContainer;
     if (node.nodeType !== Node.TEXT_NODE) { setMentionQuery(null); return; }
     const before = (node.textContent ?? "").slice(0, range.startOffset);
-    const m = before.match(/@([^\s@]*)$/);
+    // @ 없이도 트리거(요청: "멘션없이 입력") — 커서 앞 마지막 단어로 후보를 띄운다. @를 앞에
+    // 붙여도 그대로 동작한다. 단어가 비면(스페이스 직후 등) 후보를 닫는다.
+    const m = before.match(/@?([^\s@]+)$/);
     setMentionQuery(m ? m[1] : null);
   };
 
@@ -145,7 +147,8 @@ export default function MatchRequestCorner({ onFulfill, reloadSignal }: MatchReq
       const node = range.startContainer;
       if (node.nodeType === Node.TEXT_NODE) {
         const before = (node.textContent ?? "").slice(0, range.startOffset);
-        const mm = before.match(/@([^\s@]*)$/);
+        // 앞의 마지막 단어(@가 있으면 @ 포함)를 지우고 그 자리에 칩을 끼운다.
+        const mm = before.match(/@?([^\s@]*)$/);
         const removeLen = mm ? mm[0].length : 0;
         const del = document.createRange();
         del.setStart(node, range.startOffset - removeLen);
@@ -208,7 +211,7 @@ export default function MatchRequestCorner({ onFulfill, reloadSignal }: MatchReq
   const submit = async () => {
     const { text, ids } = readEditor();
     if (ids.length < 2) {
-      setSubmitErr("@로 서로 대결했으면 하는 사람을 두 명 이상 골라주세요.");
+      setSubmitErr("서로 대결했으면 하는 사람을 두 명 이상 골라주세요.");
       return;
     }
     setSubmitting(true);
@@ -265,7 +268,7 @@ export default function MatchRequestCorner({ onFulfill, reloadSignal }: MatchReq
               contentEditable
               role="textbox"
               aria-multiline="true"
-              data-placeholder="@로 서로 대결했으면 하는 사람들을 골라 요청하세요 (최소 2명)"
+              data-placeholder="서로 대결했으면 하는 사람 이름을 입력해 골라 요청하세요 (최소 2명)"
               onInput={syncAfterEdit}
               onKeyUp={detectMention}
               onKeyDown={onEditorKeyDown}
