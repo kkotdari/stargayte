@@ -1,0 +1,7 @@
+{
+  "git": {
+    "deploymentEnabled": {
+      "claude/stargayte-web-session-vtsbdc": false
+    }
+  }
+}
