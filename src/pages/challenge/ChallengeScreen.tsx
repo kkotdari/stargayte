@@ -1055,21 +1055,21 @@ export default function ChallengeScreen() {
             className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm"
             onClick={() => setFormOpen(true)}
           >
-            🕊️ 도전장발송
+            도전장발송
           </button>
           <button
             type="button"
             className="scr-btn scr-btn-ghost scr-btn-sm scr-challenge-records-btn"
             onClick={() => setCompletedOpen(true)}
           >
-            🏆 기록
+            기록
           </button>
           <button
             type="button"
             className="scr-btn scr-btn-ghost scr-btn-sm scr-challenge-discarded-btn"
             onClick={() => setDiscardedOpen(true)}
           >
-            🗑️ 휴지통
+            휴지통
           </button>
         </div>
       </div>
