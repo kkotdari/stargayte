@@ -1156,12 +1156,13 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    행마다 흔들렸다. */
 .scr-weight-table { width: 100%; border-collapse: collapse; font-size: var(--fs-subhead); table-layout: fixed; }
 .scr-weight-table th {
-  text-align: center; font-size: var(--fs-caption); font-weight: 700; color: var(--muted);
-  padding: 7px 8px; border-bottom: 1px solid var(--line-soft);
+  /* 헤더 폰트 한 단계 확대(caption→body), 행 높이도 ~20% 키운다(요청). */
+  text-align: center; font-size: var(--fs-body); font-weight: 700; color: var(--muted);
+  padding: 9px 8px; border-bottom: 1px solid var(--line-soft);
 }
 .scr-weight-table td {
-  /* 헤더(12px)는 그대로 두고, 데이터 행만 그보다 더 작게 줄인다(요청). */
-  text-align: center; padding: 7px 8px; color: var(--text); font-size: var(--fs-caption);
+  /* 승리/패배 점수는 caption 유지, 닉네임만 아래에서 한 단계 키운다. 행 높이 ~20% 확대(요청). */
+  text-align: center; padding: 9px 8px; color: var(--text); font-size: var(--fs-caption);
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 .scr-light-theme .scr-weight-table td { border-bottom-color: rgba(0, 0, 0, 0.06); }
@@ -1172,7 +1173,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-weight-user { display: flex; align-items: center; gap: 7px; min-width: 0; }
 /* 순번은 가운데 정렬(고정폭 칸 안), 프사·닉네임은 그 뒤로 왼쪽 정렬(요청). */
 .scr-weight-rank { font-size: var(--fs-body); color: var(--muted); font-weight: 700; min-width: 22px; text-align: center; font-variant-numeric: tabular-nums; flex-shrink: 0; }
-.scr-weight-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.scr-weight-name { font-size: var(--fs-body); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .scr-weight-win { color: var(--win); font-weight: 700; white-space: nowrap; }
 .scr-weight-loss { color: var(--loss); font-weight: 700; white-space: nowrap; }
 
