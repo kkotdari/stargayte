@@ -1,4 +1,4 @@
-import { Monitor, UserPlus } from "lucide-react";
+import { Monitor, CircleHelp } from "lucide-react";
 import Avatar from "./Avatar";
 import RaceBadge from "./RaceBadge";
 import { cx } from "../../utils/format";
@@ -109,17 +109,17 @@ function TeamRoster({ side, players, memberOf, outcome, highlightMemberIds, disa
           // 서로 대칭되도록, VS와 가까운 안쪽 모서리에 걸친다 — 두 팀 아바타가 서로 마주보듯).
           // textRoster 모드에선 프사를 아예 빼고 "닉네임 + 종족(텍스트)"만 한 줄로 보여준다.
           const profileContent = textRoster ? (
-            <>
+            <span className="scr-team-name-wrap">
               <span className="scr-team-name">{name}</span>
-              <RaceBadge race={p.race} asText />
-            </>
+              <RaceBadge race={p.race} size={raceSize} circleLetter className="scr-team-name-race" />
+            </span>
           ) : (
             <>
               <span className="scr-team-avatar-wrap">
                 {isComputer
                   ? <Avatar icon={<Monitor size={16} className="scr-chip-computer-icon" />} size={avatarSize} />
                   : isUnregistered
-                    ? <Avatar icon={<UserPlus size={16} className="scr-chip-computer-icon" />} size={avatarSize} />
+                    ? <Avatar icon={<CircleHelp size={16} className="scr-chip-computer-icon" />} size={avatarSize} />
                     : <Avatar member={m} size={avatarSize} />}
                 <RaceBadge
                   race={p.race} size={raceSize} circleLetter

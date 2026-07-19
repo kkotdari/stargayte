@@ -65,6 +65,16 @@ export function graceMonthValue(): string {
   return currentMonthValue();
 }
 
+// 경기 화면의 "일" 단위 기본 조회일 — graceMonthValue와 같은 원칙으로, 자정 넘어 정오
+// 전까지는 아직 전날 경기를 등록/조회하는 흐름이 자연스러워 전날을 기본으로 보여준다
+// (요청: "경기 기록 조회 필터 기본 조건 일로 하고 정오까지는 전날로 조회"). 정오부터는
+// 오늘로 넘어간다.
+export function graceDayValue(): string {
+  const now = gameNow();
+  if (now.getHours() < 12) return fmt(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1));
+  return todayStr();
+}
+
 // "YYYY-MM"을 delta개월만큼 앞/뒤로 옮긴다(음수=과거) — 랭킹 화면의 전월 대비 순위변동/
 // 최근 5개월 순위변동 모달이 함께 쓴다.
 export function shiftMonthValue(month: string, delta: number): string {
@@ -154,34 +164,28 @@ export function isToday(scheduledAt: string | null): boolean {
   return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
 }
 
-// 시간은 24시간제 HH:MM이 아니라 "오전/오후 H시 M분"으로 표기한다(요청: "시간은 HH:MM이
-// 아닌 오전/후 H시 M분으로 표기") — 분이 0이면 "H시"까지만.
+// 시간은 24시간제 HH:MM으로 표기한다(요청: "시간도 22:30 형식으로 복귀").
 export function formatKoreanTime(d: Date): string {
-  const h = d.getHours();
-  const m = d.getMinutes();
-  const ampm = h < 12 ? "오전" : "오후";
-  const h12 = h % 12 === 0 ? 12 : h % 12;
-  return m > 0 ? `${ampm} ${h12}시 ${m}분` : `${ampm} ${h12}시`;
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 export function formatChallengeSchedule(scheduledAt: string | null): string {
   if (!scheduledAt) return "미정";
   const d = new Date(scheduledAt);
-  const dateStr = `${d.getMonth() + 1}월 ${d.getDate()}일(${DOW[d.getDay()]})`;
   // 날짜만 있고 시간은 미정인 경우는 없다 — 일시는 항상 날짜+시간이 함께 저장/수정된다
   // (요청: "날짜는 있고 시간은 미정인 경우는 있으면 안돼. 둘은 같이 저장되거나 수정됨").
-  // 그래서 자정(00:00)을 "시간 미정"으로 보던 예외를 없애고 실제 시각(오전 12시)으로 표기한다.
-  return `${dateStr} ${formatKoreanTime(d)}`;
+  // 그래서 자정(00:00)을 "시간 미정"으로 보던 예외를 없애고 실제 시각으로 표기한다.
+  return `${dateWithDow(fmt(d))} ${formatKoreanTime(d)}`;
 }
 
 // 도전장 화면을 경기결과 화면처럼 날짜별로 묶어 보여주면서(요청: "경기 화면처럼 날짜별로
 // 그룹핑"), 카드 하나하나엔 그 날짜 그룹 라벨과 중복되는 날짜를 다시 안 적고 시간만
 // 보여준다(요청: "각 카드엔 시간만 표시") — 그래서 날짜/시간 표시를 둘로 쪼갠다. 일정이
-// 아예 없는 도전장은 별도 그룹으로 모은다.
+// 아예 없는 도전장은 별도 그룹으로 모은다. 연도를 별도 줄로 빼지 않고 라벨 자체에
+// "YYYY-MM-DD (요일)" 형식으로 담는다(요청: "년도 따로 빼지 않고 날짜에 넣기").
 export function challengeDateGroupLabel(scheduledAt: string | null): string {
   if (!scheduledAt) return "일정 미정";
-  const d = new Date(scheduledAt);
-  return `${d.getMonth() + 1}월 ${d.getDate()}일(${DOW[d.getDay()]})`;
+  return dateWithDow(fmt(new Date(scheduledAt)));
 }
 // 일정 자체가 없으면(일정 미정) null, 있으면 실제 시각을 준다 — 날짜만 있고 시간만 미정인
 // 경우는 없으므로(일시는 날짜+시간이 항상 함께) 자정을 "미정"으로 보던 예외는 없앴다.

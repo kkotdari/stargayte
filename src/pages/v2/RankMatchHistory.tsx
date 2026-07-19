@@ -186,7 +186,7 @@ export default function RankMatchHistory({
                   {/* 승패가 먼저 → 로스터 VS 로스터, 상대별 원점수는 오른쪽(요청). */}
                   <MatchTeams
                     team1={r.team1} team2={r.team2} memberOf={memberOf} result={r.result}
-                    disableProfileLink compact bothTeamsTail
+                    disableProfileLink compact bothTeamsTail textRoster
                     pointsByMember={opponentPointsByMember(r, strengthByMember, weaknessByMember, 1)}
                   />
                   {/* 맨 밑줄 — 각 팀 강함수치 + '원점수 합 × 배율 ÷ 팀원수 = 최종' 계산(요청). */}
@@ -206,7 +206,7 @@ export default function RankMatchHistory({
                 <div key={r.id} className="scr-match-card">
                   <MatchTeams
                     team1={r.team1} team2={r.team2} memberOf={memberOf} result={r.result}
-                    disableProfileLink stackedOutcome compact opponentOnly
+                    disableProfileLink stackedOutcome compact opponentOnly textRoster
                     outcomeNote={pointsLabel(final)}
                   />
                 </div>

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { X, Plus, Monitor, UserPlus, UserCheck, UserX, ArrowLeftRight } from "lucide-react";
+import { X, Plus, Monitor, CircleHelp, UserCheck, UserX, ArrowLeftRight } from "lucide-react";
 import Avatar from "../common/Avatar";
 import { BASE_RACES } from "../../constants/races";
 import Select from "../common/Select";
@@ -404,7 +404,7 @@ function ReassignableChip({
       {isComputer
         ? <Avatar icon={<Monitor size={16} className="scr-chip-computer-icon" />} size={26} />
         : isUnregistered
-          ? <Avatar icon={<UserPlus size={16} className="scr-chip-computer-icon" />} size={26} />
+          ? <Avatar icon={<CircleHelp size={16} className="scr-chip-computer-icon" />} size={26} />
           : <Avatar member={member} size={26} />}
       <span className="scr-chip-name">{name}</span>
       {!isComputer && row.race && <span className="scr-chip-race-static">{row.race[0]}</span>}
@@ -621,7 +621,7 @@ export default function MemberMultiSelect({
               {isComputer
                 ? <Avatar icon={<Monitor size={16} className="scr-chip-computer-icon" />} size={26} />
                 : isUnregistered
-                  ? <Avatar icon={<UserPlus size={16} className="scr-chip-computer-icon" />} size={26} />
+                  ? <Avatar icon={<CircleHelp size={16} className="scr-chip-computer-icon" />} size={26} />
                   : <Avatar member={m} size={26} />}
               <span className="scr-chip-name">{name}</span>
               {/* 컴퓨터는 종족이 중요치 않아 고를 필요가 없다 — 리플레이로 등록된 컴퓨터는

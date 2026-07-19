@@ -55,12 +55,12 @@ export default function RankRowV2({ row, tiedWithPrev = false, highlighted = fal
                 별개로 사람마다 다를 수 있어 공동순위여도 매 행 각자 보여준다(요청: "랭킹에서
                 공동순위라도 순위변동은 각각 표시돼야함"). */}
             <span className="scr-rank-num">
-              {!tiedWithPrev && <><span className="scr-rank-num-hash">#</span>{rank}</>}
+              {!tiedWithPrev && rank}
             </span>
             <RankDeltaBadge delta={rankDelta} />
           </div>
           <button type="button" className="scr-rank-avatar-btn" onClick={openPhoto} aria-label={`${member.nickname} 사진 보기`}>
-            <Avatar member={member} size={52} />
+            <Avatar member={member} size={40} />
           </button>
           <div className="scr-rank-name-wrap">
             <span className="scr-rank-name">{member.nickname}</span>
@@ -70,7 +70,7 @@ export default function RankRowV2({ row, tiedWithPrev = false, highlighted = fal
               도드라지게 한다. */}
           <div className="scr-rank-record-wrap scr-rank-record-wrap-scoreonly">
             {/* 카드엔 총점만(세부는 상세에서). 음수면 자연히 - 가 붙는다. */}
-            <span className="scr-mono scr-rank-stat-primary">
+            <span className="scr-rank-stat-primary">
               {rankScore}<span className="scr-num-unit">점</span>
             </span>
           </div>

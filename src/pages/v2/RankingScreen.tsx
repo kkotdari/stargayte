@@ -30,7 +30,7 @@ const CHART_OPTS: { value: RankMode; label: string }[] = [
 ];
 // 종족 필터 — 검색창 예약어에서 필터창 드롭다운으로 옮겼다(요청). "전체"면 종족 무관.
 const RACE_SELECT_OPTS = [
-  { value: "all", label: "전체 종족", shortLabel: "종족" },
+  { value: "all", label: "전체", shortLabel: "종족" },
   { value: "테란", label: "테란" },
   { value: "프로토스", label: "프로토스" },
   { value: "저그", label: "저그" },
@@ -45,6 +45,10 @@ const UNIT_OPTS: { value: PeriodUnit; label: string }[] = [
 // 비교라("2026-07" < "2026-08", "2026" < "2027") 별도 파싱 없이 경계를 판단한다.
 const RANK_MIN: Record<PeriodUnit, string> = { month: "2026-07", year: "2026" };
 
+// 강함/약함 정규화 스케일 — 서버(NET_SCALE_MAX, matches/service.py)와 반드시 같은 값을
+// 유지해야 상세 모달의 경기별 획득 점수 합이 카드 총점과 맞아떨어진다.
+const NET_SCALE_MAX = 9;
+
 // v2 랭킹 — 개인전/팀전을 고르고, 월/연 기간을 좌우 화살표로 옮겨 그 기간의 순위를 본다.
 // 순위 계산(경기마다 상대 강함/약함으로 가중 합산)은 전부 서버가 끝내서 내려주고(./rank.ts),
 // 화면은 그 순서대로 그리며 순위 숫자만 붙인다. 개인전·팀전은 집계 대상 경기(1:1 / 팀경기)만
@@ -53,8 +57,9 @@ export default function RankingScreenV2() {
   const members = useAppStore((s) => s.members);
   const suggestions = useMemo(() => activeMemberSearchTerms(members), [members]);
 
-  // 진입 기본값은 팀전(요청: "랭킹 차트는 팀전 랭킹을 디폴트로").
-  const [mode, setMode] = useState<RankMode>("team");
+  // 진입 기본값은 개인전/팀전 중 랜덤(요청: "랭킹 기본은 개인/팀 랜덤으로 결정") — 특정
+  // 쪽으로 고정하지 않고 매번 새로 들어올 때마다 둘 중 하나를 고른다.
+  const [mode, setMode] = useState<RankMode>(() => (Math.random() < 0.5 ? "solo" : "team"));
   const matchType = MATCH_TYPE_OF[mode];
   const isTeam = mode === "team";
   const [race, setRace] = useState<BaseRace | "all">("all");
@@ -144,34 +149,40 @@ export default function RankingScreenV2() {
     return ids;
   }, [members, searchTerms]);
 
-  // 상세 모달이 경기당 획득 점수를 재구성하는 데 쓸 상대 강함/약함 맵 — 한 지표(순 우열 =
-  // 우세수−열세수)의 양면: 강함 = 1 + max(0, 순우열), 약함 = 1 + max(0, −순우열). 서버 점수
-  // 산식과 같은 값이라, 상세에서 경기별로 더하면 카드 총점과 맞아떨어진다.
+  // 강함/약함은 순우열(우세수−열세수)을 "이번 기간 참가자 수"로 정규화한 비율에 고정
+  // 스케일(NET_SCALE_MAX)을 곱한 값이다 — 클럽 규모가 커질수록 경기 한 판의 점수 스윙이
+  // 부풀어 오르던 문제를 없앤다(요청: "회원이 많아지면 편차가 커지는 게 공평하냐").
+  // 서버(_apply_rank_order)와 같은 산식·같은 상수라 상세에서 경기별로 더하면 카드
+  // 총점과 맞아떨어진다.
+  const participantCount = useMemo(() => rows.filter((r) => r.stats.plays > 0).length, [rows]);
+  const netDenom = Math.max(1, participantCount - 1);
   const strengthByMember = useMemo(
-    () => new Map(rows.map((r) => [r.member.id, 1 + Math.max(0, r.superiorCount - r.inferiorCount)])), [rows],
+    () => new Map(rows.map((r) => [r.member.id, 1 + (NET_SCALE_MAX * Math.max(0, r.superiorCount - r.inferiorCount)) / netDenom])),
+    [rows, netDenom],
   );
   const weaknessByMember = useMemo(
-    () => new Map(rows.map((r) => [r.member.id, 1 + Math.max(0, r.inferiorCount - r.superiorCount)])), [rows],
+    () => new Map(rows.map((r) => [r.member.id, 1 + (NET_SCALE_MAX * Math.max(0, r.inferiorCount - r.superiorCount)) / netDenom])),
+    [rows, netDenom],
   );
   const period = useMemo(() => periodAnchorToRange(unit, anchor), [unit, anchor]);
   // 가중치 표 — 순위에 든(한 판이라도 뛴) 회원을 순 우열(우세수−열세수)이 높은 순으로 세우고,
   // 각자의 한 지표(순 우열)에서 강함·약함을 뽑아 '이 사람을 이기면/지면 몇 점'을 매긴다.
-  //   강함 = 1 + max(0, 순우열)  → 이겼을 때 = +강함
-  //   약함 = 1 + max(0, −순우열) → 졌을 때 = −약함  (순 승자에겐 −1 최소)
   const weightRows = useMemo(
     () => rows
       .filter((r) => r.stats.plays > 0)
       .map((r) => {
         const net = r.superiorCount - r.inferiorCount;
+        const win = 1 + (NET_SCALE_MAX * Math.max(0, net)) / netDenom;
+        const loss = -(1 + (NET_SCALE_MAX * Math.max(0, -net)) / netDenom);
         return {
           member: r.member,
           net,
-          win: 1 + Math.max(0, net),
-          loss: -(1 + Math.max(0, -net)),
+          win: Math.round(win * 10) / 10,
+          loss: Math.round(loss * 10) / 10,
         };
       })
       .sort((a, b) => b.net - a.net || a.member.nickname.localeCompare(b.member.nickname)),
-    [rows],
+    [rows, netDenom],
   );
 
   const closeTrend = () => { setTrendMember(null); setTrendPoints(null); };
@@ -247,8 +258,9 @@ export default function RankingScreenV2() {
         countLabel="명"
         searchValue={search}
         onSearchChange={setSearch}
-        searchPlaceholder="유저"
+        searchPlaceholder="유저 검색"
         suggestions={suggestions}
+        showSearch={false}
         filterPanel={
           <>
             <FilterItem label="차트">

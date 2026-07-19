@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Shuffle, X, Monitor, UserPlus, RotateCcw, Trash2 } from "lucide-react";
+import { Shuffle, X, Monitor, CircleHelp, RotateCcw, Trash2 } from "lucide-react";
 import Select from "../../components/common/Select";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 import SearchFilterBar from "../../components/common/SearchFilterBar";
@@ -57,7 +57,7 @@ function ReadonlyMappingRow({ entry }: { entry: ReplayNameMappingEntry }) {
           ) : entry.kind === "computer" ? (
             <><Monitor size={13} /> <span className="scr-usermap-member-name">컴퓨터</span></>
           ) : entry.kind === "unregistered" ? (
-            <><UserPlus size={13} /> <span className="scr-usermap-member-name">비회원</span></>
+            <><CircleHelp size={13} /> <span className="scr-usermap-member-name">비회원</span></>
           ) : (
             <span className="scr-usermap-unresolved-label">미지정</span>
           )}
@@ -263,7 +263,7 @@ function MappingRow({ entry, memberOptions, onSaved, onDeleted, isAdmin }: Mappi
             ) : entry.kind === "computer" ? (
               <><Monitor size={13} /> <span className="scr-usermap-member-name">컴퓨터</span></>
             ) : (
-              <><UserPlus size={13} /> <span className="scr-usermap-member-name">비회원</span></>
+              <><CircleHelp size={13} /> <span className="scr-usermap-member-name">비회원</span></>
             )}
           </button>
         )}
@@ -376,11 +376,11 @@ function MappingRow({ entry, memberOptions, onSaved, onDeleted, isAdmin }: Mappi
   );
 }
 
-// 조회는 회원 누구나, 수정은 운영자만 — 리플레이 원본 이름(rawName, 게임 아이디)
-// 하나를 기준으로, 그게 지금 회원/컴퓨터/비회원 중 무엇으로 연결돼 있는지(또는 아직
-// 미지정인지) 표로 보여주고, 운영자는 그 자리에서 바로 바꿀 수 있다. 회원으로 연결하면
-// 그 이름으로 남아있던 기존 경기 참가 기록도 소급으로 그 회원에게 연결된다(서버가
-// 처리) — 경기 자체를 하나하나 찾아 고칠 필요가 없다.
+// 운영자 전용 메뉴(요청) — 리플레이 원본 이름(rawName, 게임 아이디) 하나를 기준으로,
+// 그게 지금 회원/컴퓨터/비회원 중 무엇으로 연결돼 있는지(또는 아직 미지정인지) 표로
+// 보여주고, 운영자는 그 자리에서 바로 바꿀 수 있다. 회원으로 연결하면 그 이름으로
+// 남아있던 기존 경기 참가 기록도 소급으로 그 회원에게 연결된다(서버가 처리) — 경기
+// 자체를 하나하나 찾아 고칠 필요가 없다.
 export default function GameIdScreen() {
   const user = useAppStore((s) => s.user);
   const isAdmin = !!user && isAdminRole(user.roles);
@@ -466,7 +466,7 @@ export default function GameIdScreen() {
         countLabel="건"
         searchValue={search}
         onSearchChange={setSearch}
-        searchPlaceholder="유저"
+        searchPlaceholder="유저 검색"
         suggestions={suggestions}
         filterPanel={
           <FilterItem label="유형">

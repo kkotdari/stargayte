@@ -8,7 +8,7 @@ import type {
   MonthlyMatchStatsResponse, MonthlyTeamRankingResponse,
   ReplayNameClassificationEntry, ReplayNameKind, ReplayNameMappingEntry, ReplayNameMappingKind,
   Challenge, ChallengeCreatePayload, ChallengeRevengePayload, ChallengeResult,
-  MatchRequest, MatchRequestCreatePayload, MatchRequestListResponse,
+  MatchRequest, MatchRequestCreatePayload, MatchRequestListResponse, MatchRequestInboxItem,
 } from "../types";
 
 // undefined/""/"all"(필터 미지정 관례) 값은 아예 뺀 쿼리스트링을 만든다 — 서버는 파라미터가
@@ -62,8 +62,6 @@ export interface MatchListParams {
   matchAllUsers?: boolean;
   // 운영자 "유저연결" 화면 전용 — 컴퓨터/비회원 참가자가 있는 경기만 골라본다.
   hasPlaceholder?: boolean;
-  // 경기 고유번호(matchNo)로 정확히 하나만 찾을 때 — 문의/디버깅 시 특정 경기를 바로 지목한다.
-  matchNo?: string;
   // 팀 랭킹에서 팀 하나를 눌렀을 때 — 이 회원들이 전부 "같은 편"으로 뛴 경기만 추린다.
   // userQuery+matchAllUsers("전원이 참가한 경기")와 달리 서로 상대편이었던 경기는 빠진다.
   teamMemberIds?: string[];
@@ -260,7 +258,6 @@ export const api = {
       userQuery: params.userQuery,
       hasPlaceholder: params.hasPlaceholder,
       matchAllUsers: params.matchAllUsers,
-      matchNo: params.matchNo,
       teamMemberIds: params.teamMemberIds?.length ? params.teamMemberIds.join(",") : undefined,
     });
     const page = await request<Omit<MatchPage, "items"> & { items: WireMatch[] }>(`/api/matches${qs}`);
@@ -626,12 +623,16 @@ export const api = {
   async toggleMatchRequestRecommend(id: number): Promise<MatchRequest> {
     return request<MatchRequest>(`/api/match-requests/${id}/recommend`, { method: "POST" });
   },
-  // "들어주기"로 도전장을 보낸 뒤 요청을 목록에서 내린다(지목된 사람만 가능).
-  async fulfillMatchRequest(id: number): Promise<void> {
-    await request<{ ok: boolean }>(`/api/match-requests/${id}/fulfill`, { method: "POST" });
-  },
-  // 작성자 본인/운영자가 요청을 내린다.
-  async deleteMatchRequest(id: number): Promise<void> {
+  // 대결이 성사되면 작성자 본인/운영자가 "성사됨"으로 완료 처리한다(목록에서 사라짐).
+  async completeMatchRequest(id: number): Promise<void> {
     await request<{ ok: boolean }>(`/api/match-requests/${id}`, { method: "DELETE" });
+  },
+  // 내가 언급된 안 읽은 요청 알림(앱 열 때 인박스 팝업용).
+  async getMatchRequestInbox(): Promise<{ items: MatchRequestInboxItem[] }> {
+    return request<{ items: MatchRequestInboxItem[] }>("/api/match-requests/inbox");
+  },
+  // 인박스 팝업을 닫으면 내 안 읽은 알림을 모두 읽음 처리한다.
+  async markMatchRequestInboxRead(): Promise<void> {
+    await request<{ ok: boolean }>("/api/match-requests/inbox/read", { method: "POST" });
   },
 };

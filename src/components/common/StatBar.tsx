@@ -20,16 +20,16 @@ export default function StatBar({ label, plays, wins, draws, losses, winRate, co
       <div className="scr-stat-bar-top">
         <span className="scr-stat-bar-label-group">
           {label && <span className="scr-stat-bar-label">{label}</span>}
-          <span className="scr-mono scr-stat-bar-count">
+          <span className="scr-stat-bar-count">
             {plays > 0 ? (compact ? `${wins}/${plays}` : `${plays}전`) : "-"}
           </span>
         </span>
         {!compact && plays > 0 && (
-          <span className="scr-stat-bar-nums scr-mono">
+          <span className="scr-stat-bar-nums">
             {wins}승{draws > 0 && ` ${draws}무`} {losses}패
           </span>
         )}
-        <span className="scr-mono scr-stat-bar-rate">{plays > 0 ? `${winRate}%` : "-"}</span>
+        <span className="scr-stat-bar-rate">{plays > 0 ? `${winRate}%` : "-"}</span>
       </div>
       <div className="scr-stat-bar-track-wrap">
         {plays > 0 && (

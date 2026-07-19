@@ -86,7 +86,9 @@ function rankByMember(entries: MemberStatsEntry[], memberById: Map<string, Membe
 export async function computeRankRows(
   members: Member[], matchType: MatchType, race: Race | "all", unit: PeriodUnit, anchor: string,
 ): Promise<RankRow[]> {
-  const memberById = new Map(members.map((m) => [m.id, m]));
+  // 집계는 활성 상태인 유저만 대상으로 한다(요청) — 정지/탈퇴/승인대기 회원은 랭킹에서
+  // 뺀다. memberById에 없는 회원의 통계 항목은 rankSorted가 자동으로 걸러낸다.
+  const memberById = new Map(members.filter((m) => m.status === "active").map((m) => [m.id, m]));
   const period = periodAnchorToRange(unit, anchor);
   const prevPeriod = periodAnchorToRange(unit, shiftPeriodAnchor(unit, anchor, -1));
   const [curResp, prevResp, overallResp] = await Promise.all([
@@ -134,7 +136,8 @@ export async function computeRankTrend(
   members: Member[], matchType: MatchType, memberId: string, race: Race | "all",
   unit: PeriodUnit, uptoAnchor: string = currentPeriodAnchor(unit),
 ): Promise<RankTrendPoint[]> {
-  const memberById = new Map(members.map((m) => [m.id, m]));
+  // 목록과 같은 기준(활성 유저만)으로 과거 순위를 다시 매긴다.
+  const memberById = new Map(members.filter((m) => m.status === "active").map((m) => [m.id, m]));
   const anchors = recentPeriodAnchors(unit, TREND_PERIODS, uptoAnchor);
   const resps = await Promise.all(anchors.map((a) => {
     const { from, to } = periodAnchorToRange(unit, a);

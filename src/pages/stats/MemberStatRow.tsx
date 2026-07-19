@@ -42,7 +42,7 @@ export default function MemberStatRow({
           <button type="button" className="scr-stat-name-btn" onClick={() => openMemberProfile(member.id)}>
             {member.nickname}
           </button>
-          <span className="scr-mono scr-stat-tag-pill">{member.battletag}</span>
+          <span className="scr-stat-tag-pill">{member.battletag}</span>
         </div>
       </div>
       <div className="scr-stat-plays-cell">

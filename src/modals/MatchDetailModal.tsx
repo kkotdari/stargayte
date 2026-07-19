@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
-import { X, Trash2, Download, Monitor, UserPlus } from "lucide-react";
+import { X, Trash2, Download, Monitor, CircleHelp } from "lucide-react";
 import Avatar from "../components/common/Avatar";
 import RaceBadge from "../components/common/RaceBadge";
 import ConfirmDialog from "../components/common/ConfirmDialog";
@@ -75,7 +75,7 @@ function TeamStatTable({ side, players, memberOf, outcome, hasStats, onOpenProfi
                   <Avatar
                     icon={isComputer
                       ? <Monitor size={16} className="scr-chip-computer-icon" />
-                      : <UserPlus size={16} className="scr-chip-computer-icon" />}
+                      : <CircleHelp size={16} className="scr-chip-computer-icon" />}
                     size={22}
                   />
                   <span>{name}</span>
