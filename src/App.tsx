@@ -7,6 +7,7 @@ import ScrollTopButton from "./components/common/ScrollTopButton";
 import { api } from "./api/client";
 import { versionNumber } from "./utils/appVersion";
 import { useRestoreScrollOnKeyboardClose } from "./hooks/useRestoreScrollOnKeyboardClose";
+import { useBottomViewportInset } from "./hooks/useBottomViewportInset";
 import { scrollRootTo } from "./utils/scrollRoot";
 import { CHALLENGE_MIN_VERSION, homeScreenFor } from "./constants/menuVersions";
 
@@ -77,6 +78,8 @@ export default function App() {
   // 보여주려고 스크롤을 올리는데, 키보드가 닫혀도 그 자리로 되돌아오지 않았다(실제로
   // 지적받은 문제 — "키보드 내려가면 다시 안 돌아와").
   useRestoreScrollOnKeyboardClose();
+  // 하단 탭바를 iOS 사파리 주소창 바로 위에 붙이는 보정값(--vv-bottom-inset)을 갱신한다.
+  useBottomViewportInset();
 
   // 새로고침 시 저장된 토큰으로 로그인 세션 복원 시도
   useEffect(() => {
