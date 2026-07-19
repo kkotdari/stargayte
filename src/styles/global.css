@@ -6212,4 +6212,9 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
    전 폭에서 title(28)로 고정하므로, 그 뒤에서 모바일 폭만 24px로 덮어쓴다. */
 @media (max-width: 640px) {
   .scr-title { font-size: 24px; }
+  /* 모바일 헤더의 유저 아바타와 닉네임을 한 스텝씩 축소(요청) — 닉네임 subhead(20)→body(16),
+     아바타 30→24px(≈20%, 닉네임 스텝과 같은 비율). 통일 블록이 .scr-user-name을 전 폭에서
+     subhead로 고정하므로 그 뒤(여기)에서 모바일만 덮어쓴다. 아바타는 인라인 크기라 !important. */
+  .scr-user-name { font-size: var(--fs-body); }
+  .scr-user-chip .scr-avatar { width: 24px !important; height: 24px !important; }
 }
