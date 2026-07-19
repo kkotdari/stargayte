@@ -767,6 +767,49 @@ function compareByDiscardedDesc(a: Challenge, b: Challenge): number {
   return aKey < bKey ? 1 : aKey > bKey ? -1 : 0;
 }
 
+// "기록 보기" 전용 정렬 — 최근에 치른 완료 대결이 맨 위(예정 일시 내림차순, 없으면 생성일).
+function compareByCompletedDesc(a: Challenge, b: Challenge): number {
+  const aKey = a.scheduledAt ?? a.createdAt;
+  const bKey = b.scheduledAt ?? b.createdAt;
+  return aKey < bKey ? 1 : aKey > bKey ? -1 : 0;
+}
+
+// "완료된 대결 기록" 모달 — done 상태(결과가 입력돼 끝난) 대결만 모아 최근 순으로 보여준다
+// (요청). 휴지통과 달리 깨끗한 투명 패널 + 화사한 톤(.scr-completed-modal)으로 구분한다.
+// 카드는 읽기 전용(재대결 등 액션 없음 — 기록 열람 전용).
+function CompletedChallengesModal(
+  { challenges, myId, onResponded, onClose }:
+    { challenges: Challenge[]; myId: string | undefined; onResponded: (c: Challenge) => void; onClose: () => void },
+) {
+  useLockBodyScroll();
+  return createPortal(
+    <div className="scr-modal-overlay" onClick={onClose}>
+      <div className="scr-modal scr-completed-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="scr-modal-head">
+          <span>🏆 완료된 대결 기록</span>
+          <button type="button" className="scr-icon-btn" onClick={onClose} aria-label="닫기"><X size={20} /></button>
+        </div>
+        <div className="scr-modal-body">
+          {challenges.length === 0 ? (
+            <div className="scr-empty">아직 완료된 대결이 없어요</div>
+          ) : (
+            // 읽기 전용이 아니라 onResponded를 그대로 넘겨, 패한 쪽이 여기서도 재대결(설욕전)을
+            // 신청할 수 있게 한다(예전 본 목록의 완료 카드가 주던 기능을 잃지 않게).
+            <div className="scr-challenge-list scr-completed-list">
+              {challenges.map((c) => (
+                <div key={c.id} className="scr-challenge-card-slot">
+                  <ChallengeCard challenge={c} myId={myId} onResponded={onResponded} />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
 // "버려진 도전장" 모달 — 흐지부지 끝나(무응답 거절/응답전 취소) 본 목록에서 감춘 초대장들을
 // 모아 보여준다(요청). 본 목록과 같은 날짜/시간 그루핑·카드 형식을 그대로 쓰되, 살짝 어두운
 // 톤에 스티키/필터/검색/타임라인 같은 부가 기능은 없고, 카드는 읽기 전용이라 어떤 응답/체인
@@ -820,6 +863,7 @@ export default function ChallengeScreen() {
   // 코너에 "목록 다시 불러와" 신호 — 들어주기로 요청이 사라지면 올린다.
   const [corentReloadSignal, setCornerReloadSignal] = useState(0);
   const [discardedOpen, setDiscardedOpen] = useState(false);
+  const [completedOpen, setCompletedOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [acceptedOnly, setAcceptedOnly] = useState(false);
   const [periodUnit, setPeriodUnit] = useState<ChallengePeriodUnit>("month");
@@ -923,10 +967,11 @@ export default function ChallengeScreen() {
     });
   }, [searchedChallenges, periodUnit, periodMonth]);
 
-  // 흐지부지 끝난 건(응답전 취소/무응답 거절)은 숨기고, 나머지를 하나의 목록으로 합쳐
-  // scheduledAt 오름차순으로 정렬한다.
+  // 흐지부지 끝난 건(폐기)과 이미 완료된(done) 대결은 본 목록에서 뺀다(요청: "메인 목록에서
+  // 완료된 대결 제거"). 완료 건은 아래 completedChallenges로 모아 "기록 보기" 모달에만 둔다.
+  // 나머지(대기중/성사/결과대기)를 하나의 목록으로 합쳐 scheduledAt 오름차순으로 정렬한다.
   const sortedChallenges = useMemo(
-    () => periodChallenges.filter((c) => !isDiscarded(c)).sort(compareChallenges),
+    () => periodChallenges.filter((c) => !isDiscarded(c) && c.status !== "done").sort(compareChallenges),
     [periodChallenges],
   );
 
@@ -942,6 +987,13 @@ export default function ChallengeScreen() {
   // 위에 오게"). discardedAt 내림차순, 값이 없으면(방어) createdAt 기준.
   const discardedChallenges = useMemo(
     () => challenges.filter(isDiscarded).sort(compareByDiscardedDesc),
+    [challenges],
+  );
+
+  // "기록 보기" 모달용 — 완료된(done) 대결을 최근 경기 순으로 모은다(요청: "완료된 대결을 따로
+  // 보여주는 기록"). 기간/검색 필터 없이 로드된 전체에서 고른다.
+  const completedChallenges = useMemo(
+    () => challenges.filter((c) => c.status === "done").sort(compareByCompletedDesc),
     [challenges],
   );
 
@@ -1018,19 +1070,27 @@ export default function ChallengeScreen() {
       <div className="scr-v2-toolbar">
         <h1 className="scr-title scr-v2-toolbar-title">너 나와!</h1>
         <div className="scr-v2-toolbar-actions">
-          <button
-            type="button"
-            className="scr-btn scr-btn-ghost scr-btn-sm scr-challenge-discarded-btn"
-            onClick={() => setDiscardedOpen(true)}
-          >
-            🗑️ 휴지통
-          </button>
+          {/* 배치 순서(요청): 도전장 보내기 → 기록(결과) → 휴지통. */}
           <button
             type="button"
             className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm"
             onClick={() => setFormOpen(true)}
           >
             🕊️ 도전장 보내기
+          </button>
+          <button
+            type="button"
+            className="scr-btn scr-btn-ghost scr-btn-sm scr-challenge-records-btn"
+            onClick={() => setCompletedOpen(true)}
+          >
+            🏆 기록
+          </button>
+          <button
+            type="button"
+            className="scr-btn scr-btn-ghost scr-btn-sm scr-challenge-discarded-btn"
+            onClick={() => setDiscardedOpen(true)}
+          >
+            🗑️ 휴지통
           </button>
         </div>
       </div>
@@ -1173,6 +1233,15 @@ export default function ChallengeScreen() {
               .catch(() => {})
               .finally(() => setCornerReloadSignal((n) => n + 1));
           }}
+        />
+      )}
+
+      {completedOpen && (
+        <CompletedChallengesModal
+          challenges={completedChallenges}
+          myId={user?.id}
+          onResponded={upsert}
+          onClose={() => setCompletedOpen(false)}
         />
       )}
 
