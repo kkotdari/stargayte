@@ -2493,7 +2493,8 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    더 준다. */
 .scr-match-search-row { display: flex; justify-content: center; margin-bottom: 10px; }
 /* 목록 위 소타이틀(요청: 경기 화면 "경기 목록"). */
-.scr-v2-subheading { margin: 0; font-size: var(--fs-subhead); font-weight: 800; color: var(--text); letter-spacing: 0.02em; }
+/* 소타이틀 아래 갭 12px(요청: PC·모바일 공통). */
+.scr-v2-subheading { margin: 0 0 12px; font-size: var(--fs-subhead); font-weight: 800; color: var(--text); letter-spacing: 0.02em; }
 /* 라디오(전체/월/주)+정렬토글 / 이전버튼 / 날짜표시 / 다음버튼 — 4개 영역을 각각 고정
    폭 칸으로 나눈 그리드. 각 칸 폭이 날짜 표시 내용(예: "26년 6월" ↔ "26년 12월 5주")과
    무관하게 고정이라 옆 버튼이 밀리는 흔들림이 없다. */
@@ -4382,8 +4383,10 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
   background-image: linear-gradient(90deg, transparent 0%, var(--pipe-bright) 50%, transparent 100%);
   background-repeat: no-repeat; background-position: bottom; background-size: 100% 1px;
 }
-.scr-drawer-user .scr-avatar { border-radius: 50% !important; }
-.scr-drawer-user-name { font-weight: 700; font-size: var(--fs-subhead); }
+/* 서랍 유저 아바타/닉네임도 헤더와 같이 한 스텝 축소(요청) — 아바타 40→32px(인라인 크기라
+   !important), 닉네임 subhead(20)→body(16). 서랍은 모바일 전용이라 base에서 바로 줄인다. */
+.scr-drawer-user .scr-avatar { border-radius: 50% !important; width: 32px !important; height: 32px !important; }
+.scr-drawer-user-name { font-weight: 700; font-size: var(--fs-body); }
 .scr-drawer-user-tag { font-size: var(--fs-caption); color: var(--dim); }
 .scr-drawer-nav { display: flex; flex-direction: column; gap: 4px; }
 /* border-radius를 활성 반전 블록(.scr-nav-tab-active, 4px)과 똑같이 맞춘다 — 다르면
@@ -6212,4 +6215,9 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
    전 폭에서 title(28)로 고정하므로, 그 뒤에서 모바일 폭만 24px로 덮어쓴다. */
 @media (max-width: 640px) {
   .scr-title { font-size: 24px; }
+  /* 모바일 헤더의 유저 아바타와 닉네임을 한 스텝씩 축소(요청) — 닉네임 subhead(20)→body(16),
+     아바타 30→24px(≈20%, 닉네임 스텝과 같은 비율). 통일 블록이 .scr-user-name을 전 폭에서
+     subhead로 고정하므로 그 뒤(여기)에서 모바일만 덮어쓴다. 아바타는 인라인 크기라 !important. */
+  .scr-user-name { font-size: var(--fs-body); }
+  .scr-user-chip .scr-avatar { width: 24px !important; height: 24px !important; }
 }
