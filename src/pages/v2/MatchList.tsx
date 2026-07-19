@@ -192,11 +192,11 @@ function MatchActionsMenu({
         <MoreVertical size={16} />
       </button>
       {open && createPortal(
-        <div className="scr-admin-menu-drop scr-match-menu-drop scr-scroll" ref={dropRef} role="menu">
+        <div className="scr-menu-pop-drop scr-match-menu-drop scr-scroll" ref={dropRef} role="menu">
           {items.map((it) => (
             <button
               key={it.key} type="button" role="menuitem"
-              className={cx("scr-admin-menu-opt", it.danger && "scr-match-menu-opt-danger")}
+              className={cx("scr-menu-pop-opt", it.danger && "scr-match-menu-opt-danger")}
               onClick={() => { it.onSelect(); setOpen(false); }}
             >
               {it.label}
@@ -243,7 +243,7 @@ export default function MatchList({
       <div className="scr-match-cards">
         {groups.map((g) => (
           <div key={g.date} className="scr-match-date-group">
-            <div className="scr-match-date-head">{dateWithDow(g.date)}</div>
+            <div className="scr-match-date-head" data-date-label={dateWithDow(g.date)}>{dateWithDow(g.date)}</div>
             {g.items.map(({ row: r }) => {
               const o1 = outcomeFor("team1", r.result);
               const o2 = outcomeFor("team2", r.result);

@@ -19,6 +19,10 @@ const MAX_OWN_TEAM = 3;
 interface ChallengeFormModalProps {
   onClose: () => void;
   onCreated: (challenge: Challenge) => void;
+  // 대결 요청 "들어주기"로 열 때 — 요청 작성자를 상대로 미리 채워 넣는다.
+  presetTargetIds?: string[];
+  // 대결 요청 "들어주기"로 만드는 도전장이면 true — 서버가 "요청대결" 표식을 남긴다.
+  fromMatchRequest?: boolean;
 }
 
 // 상대 지목/내 팀 공용 지목 블록 — 확정된 지목은 이름 칩으로, "+ 추가"는 누르는 순간
@@ -94,7 +98,7 @@ function MemberPickBlock({
 // "너 나와!" 도전장 작성 — 상대 지목(최대 4명)/내 팀(선택, 최대 3명)/일시(선택, 날짜만도
 // 가능)/한마디. 상대가 응답할 때는 이 시간을 바꿀 수 없고 수락/거절만 가능하다 — 거절되면
 // 요청자가 재신청하면서 시간/메모를 고칠 수 있다.
-export default function ChallengeFormModal({ onClose, onCreated }: ChallengeFormModalProps) {
+export default function ChallengeFormModal({ onClose, onCreated, presetTargetIds, fromMatchRequest }: ChallengeFormModalProps) {
   useLockBodyScroll();
   const members = useAppStore((s) => s.members);
   const user = useAppStore((s) => s.user);
@@ -103,8 +107,10 @@ export default function ChallengeFormModal({ onClose, onCreated }: ChallengeForm
   // 시작 — 라디오 버튼"). 개인전이면 상대는 1명, 내 팀 구성은 없다. 팀전이면 내 팀을
   // 짜고 상대도 여럿 지목할 수 있다. 실제 match_type은 서버가 인원수로 정하지만(개인전=
   // 상대1·팀원0 → 0101), 폼이 인원 제약을 이 선택에 맞춰 그 결과가 선택과 일치하게 한다.
-  const [mode, setMode] = useState<"solo" | "team">("solo");
-  const [targetIds, setTargetIds] = useState<string[]>([]);
+  // 대결 요청 들어주기로 열렸으면 그 작성자를 상대로 미리 채운다(보통 1명 → 1:1).
+  const preset = presetTargetIds ?? [];
+  const [mode, setMode] = useState<"solo" | "team">(preset.length > 1 ? "team" : "solo");
+  const [targetIds, setTargetIds] = useState<string[]>(preset);
   const [ownTeamIds, setOwnTeamIds] = useState<string[]>([]);
 
   // 개인전으로 바꾸면 상대는 1명으로 줄이고 내 팀은 비운다(그래야 서버가 0101로 정한다).
@@ -166,6 +172,7 @@ export default function ChallengeFormModal({ onClose, onCreated }: ChallengeForm
         ownTeamMemberIds: ownTeamIds,
         scheduledAt,
         message,
+        fromMatchRequest,
       });
       onCreated(challenge);
       onClose();

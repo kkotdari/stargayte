@@ -4,21 +4,18 @@ import { X } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
 import { Spinner } from "../../components/common/Feedback";
 import SearchFilterBar from "../../components/common/SearchFilterBar";
-import FilterItem from "../../components/common/FilterItem";
-import PillTabs from "../../components/common/PillTabs";
 import ChallengeFormModal from "../../modals/ChallengeFormModal";
-import ChallengeScrollTimeline from "./ChallengeScrollTimeline";
+import MatchRequestCorner from "./MatchRequestCorner";
+import ScrollNavTimeline from "../../components/common/ScrollNavTimeline";
 import { useAppStore } from "../../store/appStore";
 import { api } from "../../api/client";
 import { cx } from "../../utils/format";
 import { attachPopover } from "../../utils/popover";
 import {
-  challengeDateGroupLabel, challengeTimeLabel, currentMonthValue, formatRelativeSchedule, fmt, isToday,
-  monthInputToRange,
+  challengeDateGroupLabel, challengeTimeLabel, formatRelativeSchedule, isToday,
 } from "../../utils/date";
 import { activeMemberSearchTerms, memberMatchesTerm, splitSearchTerms } from "../../utils/memberSearch";
 import { useLockBodyScroll } from "../../utils/bodyScrollLock";
-import { suppressScrollHide, getScrollRoot, getScrollMetrics, scrollRootTo } from "../../utils/scrollRoot";
 import type { Challenge, ChallengeResult, ChallengeSide, ChallengeStatus, ChallengeTarget } from "../../types";
 
 // 화면 표시 상태는 서버 status를 그대로 쓴다 — 서버가 4개(응답대기 pending/성사 confirmed/
@@ -249,9 +246,11 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
 
   // 응답(수락/거절)은 아직 응답 안 한 지목자가, 아직 응답대기(pending)인 도전장에서만.
   const canRespond = !!myTarget && myTarget.response === "pending" && challenge.status === "pending";
-  // 예정 일시가 지난 성사(confirmed) 대결에서, 아직 결과가 안 들어왔으면 참가자가 결과를 입력한다.
+  // 결과 입력 가능 시점 — 예정 일시가 지났거나, 시간 미정으로 수락된 대결(요청: "시간 미정
+  // 수락 가능, 완료 시점으로 입력됨")은 언제든. 후자는 서버가 결과 입력 시점을 예정 일시로 채운다.
   const schedulePassed = !!challenge.scheduledAt && new Date(challenge.scheduledAt).getTime() < Date.now();
-  const canEnterResult = isParticipant && challenge.status === "confirmed" && schedulePassed && challenge.resultWinnerSide === null;
+  const resultInputOpen = schedulePassed || !challenge.scheduledAt;
+  const canEnterResult = isParticipant && challenge.status === "confirmed" && resultInputOpen && challenge.resultWinnerSide === null;
   // 완료된 대결에서 내가 패배한 쪽이면 재대결(설욕전)을 신청할 수 있다 — 무승부(draw)/미실시
   // (not_held)는 패자가 없어 대상이 아니다(losingSide=null). 미실시는 애초에 폐기라 완료가 아니다.
   const losingSide: ChallengeSide | null =
@@ -344,11 +343,12 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
   const closeMode = () => setMode("none");
 
   const acceptWithSchedule = async () => {
-    if (!dateStr || !timeStr) return;
     setErr("");
     setBusy(true);
     try {
-      const scheduledAt = new Date(`${dateStr}T${timeStr}`).toISOString();
+      // 날짜+시간을 다 정했으면 그 일시로, 비워두면 시간 미정으로 수락한다(요청: "시간 미정
+      // 수락 가능" — 실제 일시는 완료(결과 입력) 시점에 서버가 채운다).
+      const scheduledAt = dateStr && timeStr ? new Date(`${dateStr}T${timeStr}`).toISOString() : undefined;
       const updated = await api.respondToChallenge(challenge.id, "accepted", message.trim() || undefined, scheduledAt);
       onResponded(updated);
       closeMode();
@@ -410,7 +410,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
   // "끝났으면 결과 입력 대기"). 완료 = 승패가 입력된 상태(요청: "결과보기 삭제하고 그자리에
   // 상태 배지 완료"). 무승부/미실시는 각자 알약/텍스트로 따로 표시한다.
   const isResultPending =
-    shownLatest && challenge.status === "confirmed" && schedulePassed && challenge.resultWinnerSide === null;
+    shownLatest && challenge.status === "confirmed" && resultInputOpen && challenge.resultWinnerSide === null;
   const isDoneWin =
     shownLatest && (challenge.resultWinnerSide === "creator" || challenge.resultWinnerSide === "target");
 
@@ -418,6 +418,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
   // 남아 어색하다). 재대결 라벨/무승부·완료·결과입력대기 배지/카운트다운/미실시 중 하나라도.
   const whenHasContent =
     isRevengePage
+    || challenge.fromMatchRequest
     || activePage.resultWinnerSide === "draw"
     || (shownLatest && challenge.status === "pending")
     || (shownLatest && challenge.resultWinnerSide !== null)
@@ -455,6 +456,10 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
                   하나뿐이라, 원본(첫 페이지)을 뺀 모든 페이지가 재대결이다(isRevengePage). */}
               {isRevengePage && (
                 <span className="scr-challenge-chain-tag scr-challenge-chain-tag-revenge">재대결</span>
+              )}
+              {/* 대결 요청 코너의 요청을 들어줘 만들어진 도전장 표식(요청). */}
+              {challenge.fromMatchRequest && (
+                <span className="scr-challenge-chain-tag scr-challenge-req-tag">요청대결</span>
               )}
               {/* 이긴 편은 매치업의 화살표 옆에 배지로 표시하니, 여기선 팀을 특정할 수 없는
                   무승부만 알약으로 남긴다(요청: "도전자편 승 이런 건 제거"). 미실시는 아예
@@ -552,7 +557,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
       {mode === "schedule" && (
         <div className="scr-challenge-time-change-form">
           <p className="scr-challenge-inbox-message">
-            아직 시간이 정해지지 않은 도전장이에요 — 승락하며 시간을 정해주세요.
+            시간을 정하거나, 비워두면 시간 미정으로 수락돼요 (완료할 때 그 시각으로 기록).
           </p>
           <div className="scr-challenge-datetime">
             <input
@@ -575,9 +580,9 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
             <button className="scr-btn scr-btn-ghost scr-btn-sm" onClick={closeMode} disabled={busy}>취소</button>
             <button
               className="scr-btn scr-challenge-accept-btn scr-btn-sm" onClick={acceptWithSchedule}
-              disabled={busy || !dateStr || !timeStr}
+              disabled={busy}
             >
-              {busy ? <Spinner /> : "승락"}
+              {busy ? <Spinner /> : (dateStr && timeStr ? "승락" : "시간 미정 승락")}
             </button>
           </div>
         </div>
@@ -727,13 +732,6 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
 // 둔다(요청: "필터를 수락만으로 변경하고 수락한 건들만 노출"). 평소 목록은 상태와 무관하게
 // 하나로 합쳐 보여주고, 이 체크박스를 켜면 성사된(confirmed) 대결만 남긴다.
 
-// 기간 필터 — 경기 화면과 같은 패턴(전체/월 + 월 선택기), 기본은 월(요청: "너나와에
-// 기간 필터 추가 전체 월까지" + "기본은 월"). 경기 화면과 달리 "일" 단위까지는 안 쪼갠다.
-type ChallengePeriodUnit = "all" | "month";
-const PERIOD_UNIT_OPTS: { value: ChallengePeriodUnit; label: string }[] = [
-  { value: "all", label: "전체" },
-  { value: "month", label: "월" },
-];
 
 // 폐기(휴지통)된 건 — 본 목록에서는 감추고 "휴지통" 모달에만 보여준다. 서버가 거절·무응답·
 // 미실시·(레거시)취소를 모두 status="discarded"로 확정해 내려주므로 그것만 보면 된다.
@@ -765,6 +763,49 @@ function compareByDiscardedDesc(a: Challenge, b: Challenge): number {
   const aKey = a.discardedAt ?? a.createdAt;
   const bKey = b.discardedAt ?? b.createdAt;
   return aKey < bKey ? 1 : aKey > bKey ? -1 : 0;
+}
+
+// "기록 보기" 전용 정렬 — 최근에 치른 완료 대결이 맨 위(예정 일시 내림차순, 없으면 생성일).
+function compareByCompletedDesc(a: Challenge, b: Challenge): number {
+  const aKey = a.scheduledAt ?? a.createdAt;
+  const bKey = b.scheduledAt ?? b.createdAt;
+  return aKey < bKey ? 1 : aKey > bKey ? -1 : 0;
+}
+
+// "완료된 대결 기록" 모달 — done 상태(결과가 입력돼 끝난) 대결만 모아 최근 순으로 보여준다
+// (요청). 휴지통과 달리 깨끗한 투명 패널 + 화사한 톤(.scr-completed-modal)으로 구분한다.
+// 카드는 읽기 전용(재대결 등 액션 없음 — 기록 열람 전용).
+function CompletedChallengesModal(
+  { challenges, myId, onResponded, onClose }:
+    { challenges: Challenge[]; myId: string | undefined; onResponded: (c: Challenge) => void; onClose: () => void },
+) {
+  useLockBodyScroll();
+  return createPortal(
+    <div className="scr-modal-overlay" onClick={onClose}>
+      <div className="scr-modal scr-completed-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="scr-modal-head">
+          <span>🏆 완료된 대결 기록</span>
+          <button type="button" className="scr-icon-btn" onClick={onClose} aria-label="닫기"><X size={20} /></button>
+        </div>
+        <div className="scr-modal-body">
+          {challenges.length === 0 ? (
+            <div className="scr-empty">아직 완료된 대결이 없어요</div>
+          ) : (
+            // 읽기 전용이 아니라 onResponded를 그대로 넘겨, 패한 쪽이 여기서도 재대결(설욕전)을
+            // 신청할 수 있게 한다(예전 본 목록의 완료 카드가 주던 기능을 잃지 않게).
+            <div className="scr-challenge-list scr-completed-list">
+              {challenges.map((c) => (
+                <div key={c.id} className="scr-challenge-card-slot">
+                  <ChallengeCard challenge={c} myId={myId} onResponded={onResponded} />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
 }
 
 // "버려진 도전장" 모달 — 흐지부지 끝나(무응답 거절/응답전 취소) 본 목록에서 감춘 초대장들을
@@ -814,11 +855,14 @@ export default function ChallengeScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [formOpen, setFormOpen] = useState(false);
+  // 대결 요청 "들어주기"로 도전장 폼을 열 때 — 그 요청의 작성자를 상대로 미리 채우고, 도전장을
+  // 실제로 보내면 그 요청을 목록에서 내린다(fulfill). null이면 일반 "도전장 보내기".
+  const [fulfillingRequest, setFulfillingRequest] = useState<{ requestId: number } | null>(null);
+  // 코너에 "목록 다시 불러와" 신호 — 들어주기로 요청이 사라지면 올린다.
+  const [corentReloadSignal, setCornerReloadSignal] = useState(0);
   const [discardedOpen, setDiscardedOpen] = useState(false);
+  const [completedOpen, setCompletedOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const [acceptedOnly, setAcceptedOnly] = useState(false);
-  const [periodUnit, setPeriodUnit] = useState<ChallengePeriodUnit>("month");
-  const [periodMonth, setPeriodMonth] = useState(currentMonthValue);
   const suggestions = useMemo(() => activeMemberSearchTerms(members), [members]);
 
   // 카운트다운(응답 마감)과 완료/무응답취소 같은 시간 기반 파생 상태를 1분마다 다시 그린다 —
@@ -904,39 +948,33 @@ export default function ChallengeScreen() {
     return ids;
   }, [members, searchTerms]);
 
-  // 기간 필터 — 월이면 예정 일시가 그 달에 속하는 것만. 아직 진행 중인 시간 미정 도전장
-  // (scheduledAt 없음)은 특정 달에 속한다고 볼 수 없고 지금 진행 중이라 항상 보여준다.
-  // 거절/무응답으로 끝난 시간 미정 건은 서버가 예정 일시를 요청일+1일로 확정하므로 여기서
-  // 자연히 그 달 기준으로 걸린다(=지난 달 건은 이번 달 목록에서 빠진다).
-  const periodChallenges = useMemo(() => {
-    if (periodUnit !== "month") return searchedChallenges;
-    const { from, to } = monthInputToRange(periodMonth);
-    return searchedChallenges.filter((c) => {
-      if (!c.scheduledAt) return true;
-      const d = fmt(new Date(c.scheduledAt));
-      return d >= from && d <= to;
-    });
-  }, [searchedChallenges, periodUnit, periodMonth]);
+  // 너 나와! 목록은 기간 필터 없이 항상 전체를 조회한다(요청: "기본 필터에서 기간 삭제, 무조건
+  // 전체로 조회"). 검색만 적용된 목록을 그대로 쓴다.
+  const periodChallenges = searchedChallenges;
 
-  // 흐지부지 끝난 건(응답전 취소/무응답 거절)은 숨기고, 나머지를 하나의 목록으로 합쳐
-  // scheduledAt 오름차순으로 정렬한다.
+  // 흐지부지 끝난 건(폐기)과 이미 완료된(done) 대결은 본 목록에서 뺀다(요청: "메인 목록에서
+  // 완료된 대결 제거"). 완료 건은 아래 completedChallenges로 모아 "기록 보기" 모달에만 둔다.
+  // 나머지(대기중/성사/결과대기)를 하나의 목록으로 합쳐 scheduledAt 오름차순으로 정렬한다.
   const sortedChallenges = useMemo(
-    () => periodChallenges.filter((c) => !isDiscarded(c)).sort(compareChallenges),
+    () => periodChallenges.filter((c) => !isDiscarded(c) && c.status !== "done").sort(compareChallenges),
     [periodChallenges],
   );
 
-  // "수락만" — 수락되어 성사된(confirmed) 대결만 남긴다(요청: "필터를 수락만으로 변경하고
-  // 수락한 건들만 노출"). 대기중/거절/취소 건은 빠지고, 이미 지난(done) 대결도 confirmed
-  // 상태라 그대로 포함된다.
-  const activeList = acceptedOnly
-    ? sortedChallenges.filter((c) => c.status === "confirmed")
-    : sortedChallenges;
+  // 필터 없이(요청: "필터 자체가 필요없네") 검색만 적용된 전체 목록을 그대로 쓴다.
+  const activeList = sortedChallenges;
 
   // "휴지통" 모달용 — 본 목록에서 감춘(거절/무응답/미실시/폐기) 초대장 전부. 여긴 기간/검색
   // 필터를 안 걸고(요청) 로드된 전체에서 골라 "최근 버려진 순"으로 준다(요청: "최근 버려진게
   // 위에 오게"). discardedAt 내림차순, 값이 없으면(방어) createdAt 기준.
   const discardedChallenges = useMemo(
     () => challenges.filter(isDiscarded).sort(compareByDiscardedDesc),
+    [challenges],
+  );
+
+  // "기록 보기" 모달용 — 완료된(done) 대결을 최근 경기 순으로 모은다(요청: "완료된 대결을 따로
+  // 보여주는 기록"). 기간/검색 필터 없이 로드된 전체에서 고른다.
+  const completedChallenges = useMemo(
+    () => challenges.filter((c) => c.status === "done").sort(compareByCompletedDesc),
     [challenges],
   );
 
@@ -991,89 +1029,69 @@ export default function ChallengeScreen() {
   // 위치에서 벗어났다(실제로 지적받은 문제). 진입 스크롤이 나갈 대상이 있는 동안은 스냅을
   // 잠깐 꺼 뒀다가, 스크롤이 끝났을 즈음(스무스 스크롤엔 완료 콜백이 없어 넉넉히 700ms
   // 후로 추정) 다시 켠다. 스크롤할 대상이 없거나 이미 스크롤을 마쳤으면 스냅을 바로 켠다.
-  const didAutoScrollRef = useRef(false);
+  // 화면 진입 시엔 NEXT로 자동 스크롤하지 않고 최상단(대결 요청 코너)에서 시작한다(요청:
+  // "너나와 진입 시 next가 아닌 최상단으로 진입"). NEXT로의 이동은 우측 타임라인의 "오늘"
+  // 눈금 스냅으로 편하게 할 수 있게 스냅(scr-snap-today)만 켜 둔다(요청: "next는 타임라인에
+  // 스냅을 걸어서 편하게 이동"). 예전의 진입 자동 스크롤/억제 로직은 제거했다.
   useEffect(() => {
     const root = document.getElementById("scroll-root");
     if (!root) return;
-    if (loading || didAutoScrollRef.current || firstNextId === null || !nextCardRef.current) {
-      root.classList.add("scr-snap-today");
-      return () => root.classList.remove("scr-snap-today");
-    }
-    const el = nextCardRef.current;
-    didAutoScrollRef.current = true;
-    // 이 자동 스크롤이 "아래로 스크롤 = 숨김"으로 오인돼 탭바/필터·검색 아이콘이 같이
-    // 숨던 문제를 막는다 — 부드러운 스크롤이 끝날 때까지 숨김 판정을 잠깐 억제한다.
-    suppressScrollHide();
-    const scrollRootEl = getScrollRoot();
-    const { scrollTop, clientHeight } = getScrollMetrics();
-    const rootTop = scrollRootEl instanceof Window ? 0 : scrollRootEl.getBoundingClientRect().top;
-    const elTopInViewport = el.getBoundingClientRect().top - rootTop;
-    const target = scrollTop + elTopInViewport - clientHeight * 0.22;
-    scrollRootTo({ top: Math.max(0, target), behavior: "smooth" });
-    const t = window.setTimeout(() => root.classList.add("scr-snap-today"), 700);
-    return () => { window.clearTimeout(t); root.classList.remove("scr-snap-today"); };
-  }, [loading, firstNextId]);
+    root.classList.add("scr-snap-today");
+    return () => root.classList.remove("scr-snap-today");
+  }, []);
 
-  const emptyLabel = searchTerms.length > 0
-    ? "검색 결과가 없어요"
-    : acceptedOnly ? "수락된 대결이 없어요" : "도전장이 없어요";
+  const emptyLabel = searchTerms.length > 0 ? "검색 결과가 없어요" : "도전장이 없어요";
 
   return (
     <div className="scr-screen scr-challenge-screen-v2">
-      {/* 휴지통/도전장 보내기 — 수평으로 오른쪽 정렬하고, 스크롤해도 상단에 붙어 뜨는 플로팅
-          스티키다(요청). z-index는 날짜 스티키(9)보다 높아 그 위로 뜬다. 빈 좌측은 클릭을
-          통과시켜(pointer-events) 아래 목록을 가리지 않는다. */}
-      <div className="scr-challenge-float-actions">
-        <button
-          type="button"
-          className="scr-btn scr-btn-ghost scr-btn-sm scr-challenge-discarded-btn"
-          onClick={() => setDiscardedOpen(true)}
-        >
-          🗑️ 휴지통
-        </button>
-        <button
-          type="button"
-          className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm"
-          onClick={() => setFormOpen(true)}
-        >
-          🕊️ 도전장 보내기
-        </button>
-      </div>
+      {/* 휴지통/도전장 보내기 — 다른 화면들처럼 타이틀 툴바 오른쪽에 넣는다(요청: "버튼툴박스도
+          타이틀로우에 들어가야, 다른 화면들처럼"). */}
       <div className="scr-v2-toolbar">
         <h1 className="scr-title scr-v2-toolbar-title">너 나와!</h1>
+        <div className="scr-v2-toolbar-actions">
+          {/* 배치 순서(요청): 도전장 보내기 → 기록(결과) → 휴지통. */}
+          <button
+            type="button"
+            className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm"
+            onClick={() => setFormOpen(true)}
+          >
+            🕊️ 도전장 보내기
+          </button>
+          <button
+            type="button"
+            className="scr-btn scr-btn-ghost scr-btn-sm scr-challenge-records-btn"
+            onClick={() => setCompletedOpen(true)}
+          >
+            🏆 기록
+          </button>
+          <button
+            type="button"
+            className="scr-btn scr-btn-ghost scr-btn-sm scr-challenge-discarded-btn"
+            onClick={() => setDiscardedOpen(true)}
+          >
+            🗑️ 휴지통
+          </button>
+        </div>
       </div>
+
+      {/* 최상단 대결 요청 코너(요청) — @태그로 지목된 사람만 "들어주기"로 도전장을 보낼 수 있다. */}
+      <MatchRequestCorner
+        reloadSignal={corentReloadSignal}
+        onFulfill={(req) => {
+          // 들어주기 시 인원 구성은 전체 유저에게 열어둔다(요청) — 미리 채우지 않고 빈 도전장
+          // 폼을 열어 들어주는 사람이 상대/팀을 자유롭게 고르게 한다. 전송 성공 시 요청은 사라진다.
+          setFulfillingRequest({ requestId: req.id });
+        }}
+      />
 
       <SearchFilterBar
         count={activeList.length}
         countLabel="건"
         searchValue={search}
         onSearchChange={setSearch}
-        searchPlaceholder="유저"
+        searchPlaceholder="@로 유저 검색"
         suggestions={suggestions}
-        filterPanel={
-          <>
-            {/* 기간이 먼저, 내것만이 뒤(요청: "기간이 먼저 내 것만이 뒤"). 기간 라벨은
-                전체/월 알약만 봐도 알 수 있어 뗀다(요청: "필터중 기간 라벨은 모두 제거"). */}
-            <FilterItem>
-              <PillTabs options={PERIOD_UNIT_OPTS} value={periodUnit} onChange={setPeriodUnit} aria-label="기간" />
-            </FilterItem>
-            {periodUnit === "month" && (
-              <FilterItem>
-                <input
-                  type="month" className="scr-filter-month-input"
-                  value={periodMonth} onChange={(e) => setPeriodMonth(e.target.value)}
-                  aria-label="조회할 월"
-                />
-              </FilterItem>
-            )}
-            <FilterItem>
-              <label className="scr-checkbox-field">
-                <input type="checkbox" checked={acceptedOnly} onChange={(e) => setAcceptedOnly(e.target.checked)} />
-                수락만
-              </label>
-            </FilterItem>
-          </>
-        }
+        mentionTrigger
       />
 
       {error && <div className="scr-err">{error}</div>}
@@ -1140,13 +1158,48 @@ export default function ChallengeScreen() {
         </section>
       )}
 
-      {/* 우측 네비게이션 타임라인 — 스크롤 시에만 뜨고, 스스로 스크롤 불가 상태면 안 뜬다. */}
-      {!loading && <ChallengeScrollTimeline />}
+      {/* 우측 네비게이션 타임라인 — 스크롤 시에만 뜨고, 스스로 스크롤 불가 상태면 안 뜬다.
+          너 나와는 과거(위)→미래(아래) 순이고, "오늘"/"미정" 그룹에 눈금을 찍는다. */}
+      {!loading && (
+        <ScrollNavTimeline
+          headSelector=".scr-challenge-date-head"
+          topLabel="과거"
+          bottomLabel="미래"
+          markers={[
+            { key: "undecided", className: "scr-scroll-timeline-undecided", groupSelector: '.scr-challenge-date-group[data-undecided="1"]' },
+            { key: "today", className: "scr-scroll-timeline-today", groupSelector: '.scr-challenge-date-group[data-today="1"]' },
+          ]}
+        />
+      )}
 
       {formOpen && (
         <ChallengeFormModal
           onClose={() => setFormOpen(false)}
           onCreated={(c) => setChallenges((prev) => [c, ...prev])}
+        />
+      )}
+
+      {/* 들어주기 — 요청 작성자를 상대로 미리 채운 도전장 폼. 실제로 보내면 그 요청을 내린다. */}
+      {fulfillingRequest && (
+        <ChallengeFormModal
+          fromMatchRequest
+          onClose={() => setFulfillingRequest(null)}
+          onCreated={(c) => {
+            setChallenges((prev) => [c, ...prev]);
+            const reqId = fulfillingRequest.requestId;
+            void api.fulfillMatchRequest(reqId)
+              .catch(() => {})
+              .finally(() => setCornerReloadSignal((n) => n + 1));
+          }}
+        />
+      )}
+
+      {completedOpen && (
+        <CompletedChallengesModal
+          challenges={completedChallenges}
+          myId={user?.id}
+          onResponded={upsert}
+          onClose={() => setCompletedOpen(false)}
         />
       )}
 

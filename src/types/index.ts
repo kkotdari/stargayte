@@ -352,6 +352,8 @@ export interface Challenge {
   // 이 도전장보다 앞선 체인 기록(오래된 순) — 목록 화면 카드에서 좌우로 슬라이드해
   // 보여준다. 재대결 이력이 없으면 빈 배열.
   history: ChallengeHistoryEntry[];
+  // "대결 요청 들어주기"로 만들어졌으면 true — 카드에 "요청대결" 배지를 붙인다.
+  fromMatchRequest: boolean;
 }
 
 export interface ChallengeCreatePayload {
@@ -360,12 +362,51 @@ export interface ChallengeCreatePayload {
   targetMemberIds: string[];
   // 본인 제외 나머지 내 팀원(최대 3명, 본인 포함 최대 4명) — 안 넘기면 나 혼자.
   ownTeamMemberIds?: string[];
+  // "대결 요청 들어주기"로 여는 도전장이면 true.
+  fromMatchRequest?: boolean;
 }
 
 // 재대결(설욕전)을 신청할 때 — 시간/메모는 생략할 수 있다.
 export interface ChallengeRevengePayload {
   scheduledAt?: string | null;
   message?: string;
+}
+
+// ===== 대결 요청 코너 ("너 나와!" 최상단) =====
+// 본문에 @태그로 최소 2명을 지목하는 공개 요청글. 지목된 사람만 "들어주기"로 도전장을 보낼
+// 수 있고, 들어주면 목록에서 사라진다. 정렬은 추천 많은 순 → 먼저 등록된 순.
+export interface MatchRequestTarget {
+  memberId: string;
+  nickname: string;
+}
+
+export interface MatchRequest {
+  id: number;
+  text: string;
+  author: { memberId: string; nickname: string; avatar: string | null };
+  createdAt: string;
+  recommendCount: number;
+  // 내가 이미 추천을 눌렀는지(버튼 눌림 상태).
+  recommendedByMe: boolean;
+  // 내가 작성자인지 — 본인 글엔 "들어주기" 대신 "내리기"만 보인다.
+  mine: boolean;
+  // @태그로 지목된 회원들 — 본문 하이라이트/버튼 노출용.
+  targets: MatchRequestTarget[];
+  // 내가 지목된 대상인지 — 이 사람만 "들어주기"를 누를 수 있다.
+  iAmTarget: boolean;
+}
+
+export interface MatchRequestListResponse {
+  items: MatchRequest[];
+  page: number;
+  pageSize: number;
+  total: number;
+  hasMore: boolean;
+}
+
+export interface MatchRequestCreatePayload {
+  text: string;
+  targetMemberIds: string[];
 }
 
 // 기간 필터 프리셋 — "custom"일 때만 실제로 from/to(직접 입력) 값을 사용하고, 나머지는
