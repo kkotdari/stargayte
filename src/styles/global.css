@@ -3352,6 +3352,8 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
      모바일에서만 줄인다. */
   .scr-v2-toolbar { padding-bottom: 8px; }
   .scr-screen { gap: 6px; }
+  /* 모바일은 형제간 gap이 6px이라, 검색창↔목록 갭 절반 상쇄도 -3px로 맞춘다. */
+  .scr-challenge-screen-v2 .scr-challenge-section:first-of-type { margin-top: -3px; }
   .scr-brand-text { display: none; }
   /* 모바일 헤더에서 내 정보(프로필 칩)를 키운다. Avatar는 크기를 JS(size prop)의
      인라인 style로 그리므로, 여기서 CSS로 덮어쓰려면 !important가 필요하다(다른 화면의
@@ -4877,12 +4879,15 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
    그 아래 같은 형태의 카드 목록. */
 .scr-challenge-section { margin-top: 22px; }
 /* 첫(그리고 유일한) 섹션은 위 .scr-screen의 gap이 이미 툴바/필터와 간격을 주므로 추가
-   margin이 겹쳐 상단 여백이 과했다(신고: "너 나와 상단에 여백이 좀 남음") — 0으로 뗀다. */
-.scr-challenge-section:first-of-type { margin-top: 0; }
-/* 너나와: "진행중 목록" 중타이틀이 요청 코너와 목록을 가른다. 중타이틀 위는 코너와 떨어지게
-   넉넉히 띄우고(요청), 그 아래 검색창·목록은 중타이틀에 바짝 붙여 한 덩어리로 묶는다. */
+   margin이 겹쳐 상단 여백이 과했다(신고: "너 나와 상단에 여백이 좀 남음"). 이제는 검색창과
+   목록 시작 사이 갭을 절반으로 줄여야 해서(요청) .scr-screen의 형제간 gap(PC 10px)에서
+   음수 margin으로 절반을 상쇄한다. */
+.scr-challenge-section:first-of-type { margin-top: -5px; }
+/* 너나와: "진행중 목록" 중타이틀이 요청 코너와 목록을 가른다. 중타이틀 위는 코너와 크게
+   떨어뜨리고(요청: 갭 2.5배 — .scr-screen gap 10px + 이 margin으로 확보), 그 아래 검색창은
+   중타이틀에 바짝 붙여 한 덩어리로 묶는다. 제목 자체도 키운다(요청). */
 .scr-challenge-list-heading {
-  margin: 16px 0 0; font-size: 15px; font-weight: 800; color: var(--dim);
+  margin: 54px 0 0; font-size: 18px; font-weight: 800; color: var(--dim);
   letter-spacing: 0.02em;
 }
 .scr-challenge-screen-v2 .scr-filter-bar { margin-top: 0; margin-bottom: 0; }
@@ -5799,84 +5804,43 @@ html.scr-light-theme .scr-challenge-next-tag {
 /* ===== 대결 요청 코너 ("너 나와!" 최상단) =====
    @태그로 최소 2명을 지목하는 공개 요청글 코너. 지목된 사람만 "들어주기"로 도전장을 보낼 수
    있고, 다른 회원은 추천(엄지척)만 누른다. 정렬은 추천 많은 순 → 먼저 등록순, 페이지당 5개. */
-/* 약간 그라데이션 들어간 흰(유리) 패널 + 반사광(요청). 위가 밝고 아래로 살짝 가라앉는 흰
-   반투명 그라데이션에, 상단 모서리 하이라이트와 비스듬히 지나가는 반사광 한 줄을 얹어
-   말랑한 유리 카드처럼 보이게 한다. 반투명이라 다크 테마에서도 흰 글씨가 그대로 읽힌다. */
-/* 화이트보드 테마 — 대결 요청 코너는 흰 보드 위에 마커로 적어 두는 느낌(요청: "요청하기
-   패널은 화이트보드 테마"). 살짝 미색인 보드 면 + 아주 옅은 격자, 얇은 회색 프레임과 부드러운
-   그림자로 벽에 걸린 보드처럼 띄운다. 다크/라이트 어느 테마든 보드 자체는 흰색 그대로다.
-   그래서 안쪽 디자인 토큰(글자/보조/선/입력배경)을 어두운 "마커" 값으로 덮어써서, var()로 색을
-   쓰는 자식 요소들이 흰 보드 위에서도 그대로 또렷하게 읽히도록 한다. */
+/* 화이트보드 테마는 폐지(요청) — 아래 도전장 목록 카드(.scr-challenge-card)와 같은 유리
+   패널 톤으로 맞춰 화면 전체의 일관성을 준다. 토큰 재정의 없이 기본 테마 색을 그대로 써서
+   자식(제목/칩/버튼/입력)이 목록 카드와 동일하게 보인다. */
 .scr-mreq-corner {
   position: relative;
-  /* 흰 보드에서 색을 쓰는 자식들이 마커처럼 보이게 토큰을 어둡게 재정의. */
-  --text: #24272d;
-  --muted: rgba(36, 39, 45, 0.66);
-  --dim: rgba(36, 39, 45, 0.5);
-  --line: rgba(0, 0, 0, 0.16);
-  --input-bg: #ffffff;
-  --panel-solid: #ffffff;
-  --overlay-rgb: 0, 0, 0;
-  --divider-tint: 0, 0, 0;
-  --pipe-bright: rgba(0, 0, 0, 0.34);
-  color: var(--text);
-  /* 보드 면(패널 본체)은 깨끗한 흰색(요청: "본 패널은 흰색"). 격자는 아주 옅은 중립 회색으로
-     화이트보드 느낌만 살짝 준다. 테두리만 은색 메탈 프레임(요청: "프레임이 실버톤") — 3px
-     투명 보더에 border-box로 은색 사선 그라데이션을 깔고, 흰 보드 면(광택+격자)은 padding-box로
-     그 안쪽에 그린다. 사선(밝은 좌상 → 어두운 중앙 → 밝은 우하)이 금속 베벨처럼 읽혀 입체감을 준다. */
-  background-color: #ffffff;
-  background-image:
-    linear-gradient(180deg, #ffffff 0%, #fbfbfb 100%),
-    linear-gradient(rgba(120, 120, 118, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(120, 120, 118, 0.05) 1px, transparent 1px),
-    linear-gradient(145deg, #f7f7f6 0%, #d3d3d1 20%, #a3a3a0 45%, #888885 52%, #c9c9c6 74%, #efefed 100%);
-  background-clip: padding-box, padding-box, padding-box, border-box;
-  background-origin: padding-box, padding-box, padding-box, border-box;
-  background-size: 100% 100%, 22px 22px, 22px 22px, 100% 100%;
-  background-repeat: no-repeat, repeat, repeat, no-repeat;
-  border: 3px solid transparent;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(9px) saturate(1.2);
+  -webkit-backdrop-filter: blur(9px) saturate(1.2);
   border-radius: 14px;
   padding: 13px 15px; margin-bottom: 4px; display: flex; flex-direction: column; gap: 10px;
-  /* 입체감(요청) — 프레임/보드 경계의 홈, 보드 상단 광택, 프레임 위 하이라이트, 그리고
-     어두운 배경에서 확실히 떠 보이도록 짙은 드롭섀도. */
   box-shadow:
-    inset 0 0 0 1px rgba(0, 0, 0, 0.12),
-    inset 0 2px 4px rgba(255, 255, 255, 0.85),
-    inset 0 -6px 12px rgba(130, 130, 126, 0.14),
-    0 1px 0 rgba(255, 255, 255, 0.5),
-    0 14px 26px rgba(0, 0, 0, 0.34),
-    0 4px 8px rgba(0, 0, 0, 0.24);
+    inset 0 1px 0 rgba(255, 255, 255, 0.09),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.045),
+    0 2px 12px rgba(0, 0, 0, 0.16);
 }
-.scr-mreq-corner > * { position: relative; z-index: 1; }
-/* 라이트 테마 — 메탈 프레임/베벨은 그대로 두고, 배경이 이미 밝으니 드롭섀도만 옅게. */
+/* 라이트 테마 — 목록 카드(.scr-light-theme .scr-challenge-card)와 동일한 불투명 유리 톤. */
 .scr-light-theme .scr-mreq-corner {
+  background: rgba(255, 255, 255, 0.62);
+  backdrop-filter: blur(10px) saturate(1.1);
+  -webkit-backdrop-filter: blur(10px) saturate(1.1);
   box-shadow:
-    inset 0 0 0 1px rgba(0, 0, 0, 0.12),
-    inset 0 2px 4px rgba(255, 255, 255, 0.85),
-    inset 0 -6px 12px rgba(130, 130, 126, 0.14),
-    0 1px 0 rgba(255, 255, 255, 0.5),
-    0 8px 18px rgba(0, 0, 0, 0.16),
-    0 3px 6px rgba(0, 0, 0, 0.12);
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.5),
+    0 0 0 1px rgba(59, 130, 246, 0.18),
+    0 1px 6px rgba(0, 0, 0, 0.08);
 }
 .scr-mreq-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-/* "요청하기" — 보드에 마커로 그린 듯한 잉크 아웃라인 알약. 흰 보드 위라 흰 버튼은 묻히니,
-   진한 테두리 + 살짝 어긋난 그림자로 손그림 느낌을 준다. */
+/* "요청하기" — 흰색 알약 버튼(요청). 살짝 통통하고 아래로 은은한 그림자로. */
 .scr-mreq-add-btn {
-  border: 1.5px solid #24272d; border-radius: 999px; font-weight: 800; letter-spacing: 0.01em;
-  padding: 5px 15px; color: #24272d; background: #ffffff;
-  box-shadow: 1.5px 1.5px 0 rgba(36, 39, 45, 0.9);
-  transition: transform 0.08s ease, box-shadow 0.08s ease;
+  border: none; border-radius: 999px; font-weight: 800; letter-spacing: 0.01em;
+  padding: 6px 16px; color: #10151a;
+  background: linear-gradient(180deg, #ffffff 0%, #f1f3f6 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 2px 8px rgba(0, 0, 0, 0.2);
+  transition: filter 0.12s ease, transform 0.08s ease;
 }
-.scr-mreq-add-btn:hover { background: #fbfbf7; }
-.scr-mreq-add-btn:active { transform: translate(1.5px, 1.5px); box-shadow: 0 0 0 rgba(36, 39, 45, 0.9); }
-/* 보드 위 프라이머리(올리기 / 들어주기) — 흰 버튼은 안 보이니 잉크색으로 꽉 채운다. */
-.scr-mreq-corner .scr-btn-primary-solid,
-.scr-light-theme .scr-mreq-corner .scr-btn-primary-solid {
-  background: #24272d; border-color: #24272d; color: #ffffff;
-  box-shadow: 1.5px 1.5px 0 rgba(36, 39, 45, 0.32);
-}
-.scr-mreq-corner .scr-btn-primary-solid:hover { filter: brightness(1.15); }
-.scr-mreq-corner .scr-btn-primary-solid:disabled { opacity: 0.45; }
+.scr-mreq-add-btn:hover { filter: brightness(0.98); }
+.scr-mreq-add-btn:active { transform: translateY(1px); }
 .scr-mreq-title { margin: 0; font-size: 15.5px; font-weight: 800; color: var(--text); letter-spacing: 0.01em; display: inline-flex; align-items: center; gap: 5px; }
 /* 이모지에 살짝 통통 튀는 느낌 — 은은한 그림자로 붕 떠 보이게. */
 .scr-mreq-title-emoji { font-size: 17px; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.25)); }
