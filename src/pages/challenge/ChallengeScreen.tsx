@@ -4,7 +4,8 @@ import Avatar from "../../components/common/Avatar";
 import { Spinner } from "../../components/common/Feedback";
 import OptionalDateTimeFields from "../../components/common/OptionalDateTimeFields";
 import ChallengeFormModal from "../../modals/ChallengeFormModal";
-import MatchRequestCorner from "./MatchRequestCorner";
+// "보고싶은 챌린지" 코너는 지금 숨김(요청) — 다시 켤 때 import와 렌더 주석을 함께 해제한다.
+// import MatchRequestCorner from "./MatchRequestCorner";
 import ScrollNavTimeline from "../../components/common/ScrollNavTimeline";
 import { useAppStore } from "../../store/appStore";
 import { api } from "../../api/client";
@@ -778,8 +779,18 @@ export default function ChallengeScreen() {
     const delta = getScrollMetrics().scrollHeight - prevHeight;
     if (delta === 0) return;
     const root = getScrollRoot();
-    if (root instanceof Window) window.scrollBy(0, delta);
-    else root.scrollTop += delta;
+    if (root instanceof Window) {
+      window.scrollTo({ top: window.scrollY + delta, behavior: "instant" as ScrollBehavior });
+      return;
+    }
+    // #scroll-root엔 CSS scroll-behavior:smooth + scroll-snap(proximity)이 걸려 있어, 위치
+    // 보정 뒤 스냅이 스무스하게 재정렬되며 "부드럽게 미끄러지는" 이동으로 보였다(요청:
+    // "순간이동했으면 좋겠어"). 보정하는 짧은 동안 인라인으로 scroll-behavior:auto를 씌워
+    // 보정과 그에 뒤따르는 스냅 재정렬까지 전부 즉시(순간이동)로 끝내고, 두 프레임 뒤에
+    // 원래 스무스 동작으로 되돌린다.
+    root.style.scrollBehavior = "auto";
+    root.scrollTop += delta;
+    requestAnimationFrame(() => requestAnimationFrame(() => { root.style.scrollBehavior = ""; }));
   }, [showEnded]);
 
   // 활성(다가오는·진행중) 목록은 늘 보이고, 종료된 앞부분은 펼치기 전엔 감춘다. 펼치면
@@ -856,8 +867,9 @@ export default function ChallengeScreen() {
         </button>
       </div>
 
-      {/* 최상단 챌린지 신청 코너 — 자유 텍스트 + 인라인 언급 칩. 언급된 사람에겐 알림이 간다. */}
-      <MatchRequestCorner />
+      {/* 최상단 챌린지 신청 코너("보고싶은 챌린지") — 지금은 숨김(요청). 다시 켜려면 아래
+          주석을 해제한다. */}
+      {/* <MatchRequestCorner /> */}
 
       {/* 목록 중타이틀 — 요청 코너와 실제 도전장 목록을 구분한다. */}
       <h2 className="scr-challenge-list-heading">챌린지 목록</h2>
