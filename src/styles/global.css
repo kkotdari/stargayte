@@ -1938,9 +1938,11 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    "랭킹카드에 바로 그 상대로 도전장 띄우는 버튼 추가 닉네임 옆에", "랭킹 차트에도
    종이비행기 버튼으로 바꿔야지"). */
 .scr-rank-challenge-btn {
+  /* 랭킹 로우의 호출하기(비행기) 버튼은 숨긴다(요청). 다시 켜려면 display 줄을 제거한다. */
+  display: none;
   /* 크기 확대 + 닉네임과의 간격을 더 벌림(요청: "랭킹카드의 비행기 버튼 크기 확대 및
      닉네임에서 좀더 멀리 위치") — wrap의 기본 gap(4px)에 마진을 더한다. */
-  flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;
+  flex-shrink: 0; align-items: center; justify-content: center;
   width: 28px; height: 28px; margin-left: 6px; padding: 0; border: none; background: transparent;
   border-radius: 50%; color: var(--muted); cursor: pointer; opacity: 0.75;
   transition: opacity .12s, background .12s, color .12s;
