@@ -1,6 +1,5 @@
 import { useState, type MouseEvent } from "react";
 import { createPortal } from "react-dom";
-import { Swords } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
 import PhotoViewer from "../../components/common/PhotoViewer";
 import RankDeltaBadge from "./RankDeltaBadge";
@@ -18,8 +17,6 @@ interface RankRowProps {
   // 프사+닉네임을 함께 칠한다(요청: "닉네임뿐 아니라 프사까지 하이라이팅 주고 경기
   // 하이라이트랑 똑같은 css").
   highlighted?: boolean;
-  // 이 선수에게 바로 도전장을 쓴다(요청: "랭킹목록에 도전장 보내기 칼 아이콘 추가").
-  onChallenge?: () => void;
 }
 
 // v2 일대일 랭킹의 한 줄 — #순위(+전월 대비 변동) | 프사 | 닉네임 | 점수(참가+우열).
@@ -28,7 +25,7 @@ interface RankRowProps {
 // = 참가점수 + 우열점수)라, 카드에도 그 합계를 큼직하게 싣고 아래에 참가/우열 두 갈래를
 // 보여준다. 예전엔 "최근 vs 상대 승/패" 한 줄을 붙였는데, 이제 일대일 경기 이력 전체를 카드
 // 상세 모달(그래프 아래)에서 보여주므로 카드에선 뺐다(요청).
-export default function RankRowV2({ row, tiedWithPrev = false, highlighted = false, onOpenTrend, onChallenge }: RankRowProps) {
+export default function RankRowV2({ row, tiedWithPrev = false, highlighted = false, onOpenTrend }: RankRowProps) {
   const { member, rankScore, rank, rankDelta, provisional } = row;
   const [photoOpen, setPhotoOpen] = useState(false);
   // 카드엔 총점만 보여주고(세부는 랭킹 상세에서 — 요청), 경기마다 가중 합산이라 음수도 가능하다.
@@ -37,10 +34,6 @@ export default function RankRowV2({ row, tiedWithPrev = false, highlighted = fal
   const openPhoto = (e: MouseEvent) => {
     e.stopPropagation();
     setPhotoOpen(true);
-  };
-  const challenge = (e: MouseEvent) => {
-    e.stopPropagation();
-    onChallenge?.();
   };
 
   return (
@@ -66,36 +59,31 @@ export default function RankRowV2({ row, tiedWithPrev = false, highlighted = fal
             </span>
             <RankDeltaBadge delta={rankDelta} />
           </div>
-          {/* 잠정 뱃지는 아바타 왼쪽에 둔다(요청) — 뱃지 유무와 무관하게 항상 이 너비만큼
-              칸을 예약해서, 잠정이 없는 행에서도 아바타 x좌표가 흔들리지 않는다. */}
-          <span className="scr-rank-provisional-slot">
-            {provisional && <span className="scr-rank-provisional">잠정</span>}
-          </span>
-          <button type="button" className="scr-rank-avatar-btn" onClick={openPhoto} aria-label={`${member.nickname} 사진 보기`}>
+          {/* 1~3위는 프사/닉네임에 은은한 글로우를 준다(요청: "1, 2, 3위 닉네임과 프사에
+              너무 강하지 않은 글로우효과 부여") — 공동순위면 그 순위를 공유하는 모두에게. */}
+          <button
+            type="button"
+            className={cx("scr-rank-avatar-btn", rank <= 3 && "scr-rank-avatar-btn-glow")}
+            onClick={openPhoto} aria-label={`${member.nickname} 사진 보기`}
+          >
             <Avatar member={member} size={40} />
           </button>
           <div className="scr-rank-name-wrap">
-            <span className="scr-rank-name">{member.nickname}</span>
+            <span className={cx("scr-rank-name", rank <= 3 && "scr-rank-name-glow")}>{member.nickname}</span>
           </div>
           {/* 점수/전적을 팀 랭킹 카드와 같은 배치로 통일 — 사람단위 점수를 위에 큼직하게
               ("+N점"), 전적을 그 아래에. 이 점수가 순위(승자승 다음)를 가르는 기준이라 숫자로
               도드라지게 한다. */}
           <div className="scr-rank-record-wrap scr-rank-record-wrap-scoreonly">
+            {/* 잠정 뱃지는 이제 자기 칸을 따로 차지하지 않고(요청: "필터의 라벨처럼 영역을
+                차지하지 않고 붙어있는 추가 요소로") 점수 우상단에 절대위치로 겹쳐 붙는다 —
+                레이아웃 흐름에서 완전히 빠져 있어 잠정 유무와 무관하게 다른 요소 위치가
+                흔들리지 않는다. */}
+            {provisional && <span className="scr-rank-provisional">잠정</span>}
             {/* 카드엔 레이팅(보수추정 μ−3σ)만(세부는 상세에서). 음수면 자연히 - 가 붙는다. */}
             <span className="scr-rank-stat-primary">
               {rankScore}<span className="scr-num-unit">점</span>
             </span>
-            {/* 점수 칸(고정폭 열) 안에 얹는다 — grid-template-columns를 새로 안 건드리고
-                기존 칸 세로 공간만 써서, 다른 화면폭(모바일 등)에서 열 폭이 넘칠 위험이
-                없다(요청: "랭킹목록에 도전장 보내기 칼 아이콘 추가"). */}
-            {onChallenge && (
-              <button
-                type="button" className="scr-rank-challenge-btn"
-                onClick={challenge} aria-label={`${member.nickname}에게 도전장 보내기`}
-              >
-                <Swords size={13} />
-              </button>
-            )}
           </div>
         </div>
       </div>
