@@ -1075,8 +1075,10 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    그 아래 별도 줄에 가운데 정렬, 1.2배 확대(요청: "타이틀 로우 아래 줄로 이동 및
    가운데 정렬"). 세 화면이 전부 같은 CSS를 공유한다. */
 /* .scr-screen의 기본 형제간 gap만으로는 주요 액션 로우 아래가 너무 붙어 보였다(요청:
-   "프라이머리 로우인만큼 충분한 갭이 필요함") — 아래쪽에만 추가로 여백을 더 준다. */
-.scr-v2-primary-row { display: flex; justify-content: center; margin-bottom: 10px; }
+   "프라이머리 로우인만큼 충분한 갭이 필요함") — 아래쪽에만 추가로 여백을 더 준다. 필터가
+   없는 너나와/회원은 물론, 기록실까지 메인 버튼 아래 간격을 더 키웠다(요청: "메인버튼의
+   아래 마진만 증가"). */
+.scr-v2-primary-row { display: flex; justify-content: center; margin-bottom: 22px; }
 /* 경기 등록 화면 — 등록 버튼 아래에 리플레이 위치 안내 링크를 세로로 쌓는다(요청). */
 .scr-v2-primary-row-col { flex-direction: column; align-items: center; gap: 6px; }
 .scr-v2-primary-row .scr-btn {
@@ -2394,7 +2396,8 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
      "바로 위"에 붙는다. 안쪽 좌상단에 겹치게도 해봤지만 컨트롤 글자와 뒤섞여 보였다
      (실제로 지적받은 문제 — "필터 위에 있어야하는데") — 다시 위로. 그 대신 패널
      padding-top+음수 margin-top(위 .scr-filter-panel)으로 문서 흐름에는 안 걸리게 한다. */
-  position: absolute; left: 6px; bottom: 100%; margin-bottom: 6px;
+  /* 컨트롤 좌측 끝과 더 맞도록 살짝 왼쪽으로(요청: "필터 라벨 살짝 왼쪽으로 이동"). */
+  position: absolute; left: 2px; bottom: 100%; margin-bottom: 6px;
 }
 
 /* 라디오를 대체하는 슬라이딩 알약 세그먼트 — PillTabs.tsx가 옵션 개수만큼 균등폭
@@ -2530,11 +2533,6 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-match-screen-v2 .scr-filter-panel { width: 100%; }
 .scr-match-screen-v2 .scr-search-filter-float { width: 100%; }
 /* .scr-screen이 이미 형제간 gap을 넣어주므로 자체 마진은 두지 않는다. */
-/* "조회" 버튼처럼 누르면 그 아래 내용이 바뀌는 액션 버튼 줄은 다음 요소(목록)와
-   .scr-screen의 기본 gap(10px)만으로는 붙어 보인다(요청: "조회하는 버튼 다음에는 더
-   큰 갭이 와야함") — .scr-v2-primary-row(생성/등록 버튼)와 같은 크기로 자체 여백을
-   더 준다. */
-.scr-match-search-row { display: flex; justify-content: center; margin-bottom: 10px; }
 /* 목록 위 소타이틀(요청: 경기 화면 "경기 목록"). */
 /* 소타이틀 아래 갭 12px(요청: PC·모바일 공통). */
 .scr-v2-subheading { margin: 0 0 12px; font-size: var(--fs-subhead); font-weight: 800; color: var(--text); letter-spacing: 0.02em; }
@@ -5274,6 +5272,19 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
   margin: 54px 0 0; font-size: var(--fs-subhead); font-weight: 800; color: var(--text);
   letter-spacing: 0.02em;
 }
+/* 소제목 + 오른쪽 nawa 이미지를 한 줄에 벌려 놓는다 — 위 큰 갭(54px)은 이 줄이 대신
+   가진다(중타이틀 margin은 그대로 두면 자식이라 그대로 먹는다). */
+.scr-challenge-list-heading-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+}
+/* 소제목 우측 nawa 이미지 — 챌린지 인박스 히어로처럼 가로로 긴 타원 크롭 + 가장자리
+   페이드아웃(요청). object-fit:cover로 프레임을 꽉 채운다. */
+.scr-challenge-list-nawa {
+  display: block; flex-shrink: 0; width: 112px; height: 42px; object-fit: cover;
+  border-radius: 50%;
+  -webkit-mask-image: radial-gradient(ellipse at center, #000 52%, transparent 80%);
+  mask-image: radial-gradient(ellipse at center, #000 52%, transparent 80%);
+}
 .scr-challenge-screen-v2 .scr-filter-bar { margin-top: 0; margin-bottom: 0; }
 .scr-challenge-section-title {
   font-size: var(--fs-body); font-weight: 800; color: var(--dim); letter-spacing: 0.02em; margin: 0;
@@ -6036,16 +6047,14 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
 .scr-challenge-team-label-them { color: #f2555a; }
 .scr-challenge-team-label-us { color: #1aa3d6; }
 .scr-challenge-team-names { font-weight: 700; text-align: right; }
-/* 편지지를 연 뒤 상단에 크게 넣는 nawa 이미지 — 사각형 대신 가로로 긴 타원으로 크롭하고
-   (요청: "nawa 사진 가로로 긴 타원형으로 크롭") 가장자리를 그라데이션으로 흐린다(요청:
-   "nawa 이미지는 상단에 크게 배치" + "동그랗게 크롭 & 가장자리 그라데이션 처리").
-   width>height인 상태로 border-radius:50%를 걸면 원이 아니라 그 비율의 타원이 된다.
-   object-fit:cover로 원본 비율과 무관하게 프레임을 꽉 채운다. */
+/* 편지지를 연 뒤 상단에 크게 넣는 nawa2 이미지 — 정사각(width=height)에 border-radius:50%
+   와 원형 마스크로 완전한 '원형'으로 크롭하고(요청: "타원이 아닌 원형으로 크롭") 가장자리를
+   그라데이션으로 흐린다. object-fit:cover로 원본 비율과 무관하게 프레임을 꽉 채운다. */
 .scr-challenge-inbox-hero {
-  display: block; width: 220px; height: 124px; margin: 0 auto 10px; object-fit: cover;
+  display: block; width: 150px; height: 150px; margin: 0 auto 10px; object-fit: cover;
   border-radius: 50%;
-  -webkit-mask-image: radial-gradient(ellipse at center, #000 55%, transparent 78%);
-  mask-image: radial-gradient(ellipse at center, #000 55%, transparent 78%);
+  -webkit-mask-image: radial-gradient(circle at center, #000 55%, transparent 78%);
+  mask-image: radial-gradient(circle at center, #000 55%, transparent 78%);
 }
 
 /* ===== 챌린지 신청 코너 ("너 나와!" 최상단) =====

@@ -40,7 +40,7 @@ function parseSearchChips(value: string): string[] {
 // 입력만 받는다(요청: "검색창에 유저 입력만") — 종족은 필터창의 드롭다운으로 옮겼다.
 export default function SearchFilterBar({
   count, countLabel,
-  searchValue, onSearchChange, searchPlaceholder = "@로 유저 입력",
+  searchValue, onSearchChange, searchPlaceholder = "@로 유저 추가",
   suggestions,
   filterPanel,
   showSearch = true,
