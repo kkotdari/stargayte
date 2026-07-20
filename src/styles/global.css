@@ -6520,10 +6520,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
 .scr-cal-title-btn { font-size: var(--fs-body); }
 .scr-cal-today-btn { font-size: var(--fs-caption); }
 .scr-picker-cell { font-size: var(--fs-caption); }
-/* 팀 랭킹도 개인과 똑같은 플랫 차트라 점수 텍스트 크기를 개인(.scr-rank-stat-primary)과
-   동일하게 맞춘다 — 1스텝 축소(subhead→body). 이 통일 블록이 마지막이라 위의 title/subhead
-   선언들을 덮어쓴다. */
-.scr-team-rank-row-inner .scr-rank-stat-primary { font-size: var(--fs-body); }
+.scr-team-rank-row-inner .scr-rank-stat-primary { font-size: var(--fs-subhead); }
 .scr-member-row-name { font-size: var(--fs-caption); }
 .scr-member-row-tag { font-size: var(--fs-micro); }
 .scr-usermap-row { font-size: var(--fs-caption); }
