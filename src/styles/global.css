@@ -5317,13 +5317,13 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
 .scr-challenge-primary-row { position: relative; }
 .scr-challenge-nawa-btn {
   position: relative; display: inline-flex; align-items: center; justify-content: center;
-  width: 176px; height: 110px; padding: 0; border: none; background: transparent; cursor: pointer;
+  width: 208px; height: 130px; padding: 0; border: none; background: transparent; cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
 .scr-challenge-title-nawa {
   /* 버튼(줄) 정중앙을 꽉 채운다 — 절대위치라 줄 높이엔 영향 없이 위아래로 넘친다. */
   position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
-  width: 176px; height: 110px; object-fit: cover; pointer-events: none; z-index: 0;
+  width: 208px; height: 130px; object-fit: cover; pointer-events: none; z-index: 0;
   /* 1.6:1 비율 + 타원 마스크로 가장자리를 흐린다. */
   border-radius: 50%;
   -webkit-mask-image: radial-gradient(ellipse at center, #000 56%, transparent 82%);
@@ -5337,11 +5337,10 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
   transform: translate(-50%, calc(-50% + 2px));
   filter: drop-shadow(0 2px 4px rgba(0,0,0,0.45));
 }
-/* nawa 중앙 "호출하기" — 흰 글씨 + 그림자로 사진 위에서도 또렷하게. */
+/* nawa 중앙 "호출하기" — 보통 솔리드 프라이머리 버튼과 똑같은 알약 모양(요청). 배색/패딩/
+   라운드는 .scr-btn 계열 클래스가 맡고, 여기선 위치(정중앙 위)와 클릭 통과만 준다. */
 .scr-challenge-nawa-label {
   position: relative; z-index: 1; pointer-events: none;
-  color: #fff; font-weight: 800; font-size: var(--fs-subhead); letter-spacing: 0.03em;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.8), 0 0 8px rgba(0,0,0,0.55);
 }
 .scr-challenge-screen-v2 .scr-filter-bar { margin-top: 0; margin-bottom: 0; }
 .scr-challenge-section-title {
