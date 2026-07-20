@@ -207,7 +207,7 @@ function calendarMonthsDays(earlier: Date, later: Date): { months: number; days:
   return { months: Math.max(0, months), days: Math.max(0, days) };
 }
 
-// 페이징 있는 카드(재신청/재대결 이력)에서 지금 보는 페이지의 일시를 "얼마나 전/후 + 실제
+// 페이징 있는 카드(재신청/재결투 이력)에서 지금 보는 페이지의 일시를 "얼마나 전/후 + 실제
 // 시각"으로 보여준다(요청: "1개월 23일 전 오후 7시 10분 이런식으로"). 하루 미만이면 "오늘".
 export function formatRelativeSchedule(scheduledAt: string | null): string {
   if (!scheduledAt) return "일정 미정";

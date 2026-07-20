@@ -28,7 +28,7 @@ export function useHideOnScrollDown(screen: string): boolean {
       const { scrollTop, clientHeight, scrollHeight } = getScrollMetrics();
       // 프로그램(자동) 스크롤 중엔 숨김 판정을 건너뛴다 — 위치/누적만 최신으로 맞춰 두어,
       // 억제가 끝난 뒤 첫 사용자 스크롤에서 갑자기 큰 delta로 튀지 않게 한다(요청: "next
-      // 대결 자동 스크롤하면서 탭바와 아이콘 숨겨지는 문제 해결").
+      // 결투 자동 스크롤하면서 탭바와 아이콘 숨겨지는 문제 해결").
       if (isScrollHideSuppressed()) {
         lastScrollTopRef.current = scrollTop;
         accumRef.current = 0;

@@ -589,7 +589,7 @@ export const api = {
     return request<{ items: Challenge[] }>("/api/challenges/pending-for-me");
   },
 
-  // 위의 "결과 입력" 버전 — 내가 참가한 확정 대결 중 예정 일시가 지났는데 아직 결과가
+  // 위의 "결과 입력" 버전 — 내가 참가한 확정 결투 중 예정 일시가 지났는데 아직 결과가
   // 안 들어온 것을, 아직 팝업으로 안 본 것만 내려준다. 조회하는 즉시 서버가 "봤다"
   // (result_notified)로 표시하므로 참가자별로 딱 한 번만 온다.
   async getResultPendingChallengesForMe(): Promise<{ items: Challenge[] }> {
@@ -614,8 +614,8 @@ export const api = {
     });
   },
 
-  // 확정된 대결의 결과(이긴 쪽)를 입력 — 참가자 누구든 먼저 입력하는 쪽이 인정되고,
-  // 예정 일시가 지난 뒤에만 가능하다. 이미 결과가 입력된 대결에는 다시 입력할 수 없다.
+  // 확정된 결투의 결과(이긴 쪽)를 입력 — 참가자 누구든 먼저 입력하는 쪽이 인정되고,
+  // 예정 일시가 지난 뒤에만 가능하다. 이미 결과가 입력된 결투에는 다시 입력할 수 없다.
   async enterChallengeResult(id: number, winnerSide: ChallengeResult): Promise<Challenge> {
     return request<Challenge>(`/api/challenges/${id}/result`, {
       method: "POST",
@@ -623,7 +623,7 @@ export const api = {
     });
   },
 
-  // 완료된 대결에서 패배한 쪽이 같은 대진으로 재대결(설욕전)을 신청 — 패배한 편이 새
+  // 완료된 결투에서 패배한 쪽이 같은 대진으로 재결투(설욕전)을 신청 — 패배한 편이 새
   // 도전장의 요청자, 승리한 편이 새 지목 대상이 된다(체인으로 이어진다).
   async requestRevenge(id: number, payload: ChallengeRevengePayload = {}): Promise<Challenge> {
     return request<Challenge>(`/api/challenges/${id}/revenge`, {
@@ -632,7 +632,7 @@ export const api = {
     });
   },
 
-  // ===== 대결 요청 코너 =====
+  // ===== 결투 신청 코너 =====
   async getMatchRequests(page = 0): Promise<MatchRequestListResponse> {
     return request<MatchRequestListResponse>(`/api/match-requests?page=${page}`);
   },
@@ -646,7 +646,7 @@ export const api = {
   async toggleMatchRequestRecommend(id: number): Promise<MatchRequest> {
     return request<MatchRequest>(`/api/match-requests/${id}/recommend`, { method: "POST" });
   },
-  // 대결이 성사되면 작성자 본인/운영자가 "성사됨"으로 완료 처리한다(목록에서 사라짐).
+  // 결투가 성사되면 작성자 본인/운영자가 "성사됨"으로 완료 처리한다(목록에서 사라짐).
   async completeMatchRequest(id: number): Promise<void> {
     await request<{ ok: boolean }>(`/api/match-requests/${id}`, { method: "DELETE" });
   },

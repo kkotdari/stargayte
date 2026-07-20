@@ -115,7 +115,7 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
   const isTeamMatch = current.matchType === "0102";
   const opposingTeam = [current.createdBy.nickname, ...current.ownMembers.map((m) => m.nickname)];
   const ourTeam = current.targets.map((t) => t.nickname);
-  const title = `${current.createdBy.nickname}님에게서 대결 신청이 도착했어요`;
+  const title = `${current.createdBy.nickname}님에게서 결투 신청이 도착했어요`;
 
   return createPortal(
     <div className="scr-modal-overlay">
