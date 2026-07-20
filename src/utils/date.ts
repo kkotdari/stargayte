@@ -156,7 +156,7 @@ export function dateWithDow(dateStr: string): string {
 // "너 나와!" 도전장의 일시 표시 — 날짜 없이 미정이면 "미정", 날짜만 있고 시간이 정확히
 // 자정(작성 폼에서 시간을 비우면 자정으로 저장된다)이면 시간은 "시간 미정"으로 보고
 // 날짜만 보여준다. 요일도 같이 보여준다(요청: "요일도 알려줘").
-// 챌린지 일시가 오늘인지(당일 경기는 포인트 컬러로 강조 표시하기 위함).
+// 너 나와 일시가 오늘인지(당일 경기는 포인트 컬러로 강조 표시하기 위함).
 export function isToday(scheduledAt: string | null): boolean {
   if (!scheduledAt) return false;
   const d = new Date(scheduledAt);

@@ -15,12 +15,12 @@ interface ChallengeResultInboxModalProps {
 }
 
 // 다음 접속 때 뜨는 "결과 입력" 팝업 — 예정 일시가 지났는데 아직 결과가 안 들어온, 내가
-// 참가한 확정 챌린지를 한 번에 하나씩 보여주고(요청: "결과 입력할게 여러개면 팝업도 여러개
+// 참가한 확정 너 나와를 한 번에 하나씩 보여주고(요청: "결과 입력할게 여러개면 팝업도 여러개
 // 뜨나?" → 큐로 하나씩) 승리팀을 눌러 바로 결과를 입력하게 한다. 초대(편지지)
 // 팝업(ChallengeInboxModal)과 UI 패턴을 맞춘다. "봤는지"는 초대 팝업과 같은 원리로 서버
 // (challenge_participants.result_notified)가 기억한다 — 조회 즉시 "봤음"이 되므로 여기
 // 담겨 넘어온 목록 자체가 이미 "아직 안 본 것"뿐이고, 이 팝업에서 입력하든 넘기든 다시는
-// 자동으로 안 뜬다(챌린지 화면에서는 결과가 입력될 때까지 계속 "결과 입력" 버튼이 뜬다).
+// 자동으로 안 뜬다(너 나와 화면에서는 결과가 입력될 때까지 계속 "결과 입력" 버튼이 뜬다).
 export default function ChallengeResultInboxModal({ challenges, onClose }: ChallengeResultInboxModalProps) {
   useLockBodyScroll();
   const memberOf = useAppStore((s) => s.memberOf);
@@ -61,7 +61,7 @@ export default function ChallengeResultInboxModal({ challenges, onClose }: Chall
   return createPortal(
     <div className="scr-modal-overlay">
       <div className="scr-modal scr-modal-sm scr-challenge-inbox-modal">
-        <div className="scr-challenge-inbox-title">지난 챌린지의 결과를 입력해 주세요</div>
+        <div className="scr-challenge-inbox-title">지난 너 나와의 결과를 입력해 주세요</div>
         <div className="scr-modal-body scr-challenge-inbox-body">
           {/* 어떤 경기인지 구분할 수 있게 종류/일시를 함께 보여준다. */}
           <div className="scr-challenge-inbox-row">

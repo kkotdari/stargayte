@@ -55,8 +55,8 @@ export function smoothScrollRootToTop(duration = 420, root: ScrollRoot = getScro
 }
 
 // 프로그램(자동) 스크롤이 "아래로 스크롤 = 탭바/필터 숨김"으로 오인되지 않게 하는 창구 —
-// 너나와 진입 시 NEXT 챌린지로 자동 스크롤할 때 탭바/아이콘이 같이 숨던 문제(요청: "next
-// 챌린지로 자동 스크롤하면서 탭바와 아이콘이 숨겨지는 문제 해결")를 막는다. 자동 스크롤 직전에
+// 너나와 진입 시 NEXT 너 나와로 자동 스크롤할 때 탭바/아이콘이 같이 숨던 문제(요청: "next
+// 너 나와로 자동 스크롤하면서 탭바와 아이콘이 숨겨지는 문제 해결")를 막는다. 자동 스크롤 직전에
 // suppressScrollHide()를 부르면 그 짧은 구간 동안 useHideOnScrollDown이 숨김 판정을 건너뛴다.
 let suppressHideUntil = 0;
 export function suppressScrollHide(ms = 900): void {

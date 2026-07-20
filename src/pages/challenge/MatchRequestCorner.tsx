@@ -182,7 +182,7 @@ export default function MatchRequestCorner() {
       const res = await api.getMatchRequests(p);
       setData({ items: res.items, total: res.total, hasMore: res.hasMore, pageSize: res.pageSize });
     } catch {
-      setErr("챌린지 신청을 불러오지 못했어요.");
+      setErr("너 나와 신청을 불러오지 못했어요.");
     } finally {
       setLoading(false);
     }
@@ -303,7 +303,7 @@ export default function MatchRequestCorner() {
     } catch { /* 무시 */ } finally { setBusyId(null); }
   };
 
-  // 챌린지가 성사되면 작성자/운영자가 "성사됨"으로 완료 처리 — 목록에서 사라진다.
+  // 너 나와가 성사되면 작성자/운영자가 "성사됨"으로 완료 처리 — 목록에서 사라진다.
   const complete = async (req: MatchRequest) => {
     setBusyId(req.id);
     try {
@@ -320,7 +320,7 @@ export default function MatchRequestCorner() {
   return (
     <Fragment>
       {/* 소제목은 카드 밖으로(요청) — 카드 안에는 입력폼과 목록만 남는다. */}
-      <h2 className="scr-v2-subheading">보고싶은 챌린지</h2>
+      <h2 className="scr-v2-subheading">보고싶은 너 나와</h2>
       <section className="scr-mreq-corner">
         <div className="scr-mreq-compose">
           {/* 인풋과 확인 버튼을 한 줄에, 높이도 맞춘다(요청) — 지우기는 별도 버튼 대신
