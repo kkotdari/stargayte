@@ -2960,13 +2960,24 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-mt-player-static { cursor: default; }
 .scr-mt-player:not(.scr-mt-player-static):hover .scr-mt-name { color: var(--point); }
 .scr-mt-name { font-size: var(--fs-caption); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-.scr-mt-player-hl { background: var(--highlight-bg); border-radius: 4px; padding: 2px 4px; margin: -2px -4px; }
+/* 종족 배지(.scr-team-name-race)는 이름칸(.scr-team-name-wrap) 기준 right:-8px로 그
+   칸 바깥까지 튀어나와 있다 — 하이라이트 배경을 이름칸까지만 맞추면(기존 4px) 배지가
+   그 배경 밖(원래 어두운 배경)에 걸쳐 남아, 아까 강제한 어두운 글자색(--bar-text)과
+   맞물려 사실상 안 보였다(실제로 지적받은 문제 — "종족배지가 안보이고 하이라이트가
+   종족까지 감싸지도 않음"). 오른쪽 여백을 배지가 튀어나온 만큼(8px) 더 넓혀 배지까지
+   실제로 하이라이트 배경 안에 들어오게 한다. */
+.scr-mt-player-hl { background: var(--highlight-bg); border-radius: 4px; padding: 2px 12px 2px 4px; margin: -2px -12px -2px -4px; }
+/* 팀2(.scr-match-trow-team:last-child)는 배지가 반대로 왼쪽으로 튀어나온다(요청 위
+   .scr-team-name-race 규칙 참고: 팀2만 left:-8px로 뒤집힘) — 하이라이트도 그쪽 기준
+   왼쪽을 넓혀야 한다(실제로 지적받은 문제 — "팀 2에 있으면 왼쪽으로 넓혀야지"). */
+.scr-match-trow-team:last-child .scr-mt-player-hl {
+  padding: 2px 4px 2px 12px; margin: -2px -4px -2px -12px;
+}
 .scr-mt-player-hl .scr-mt-name { font-weight: 800; color: var(--bar-text); }
-/* 종족 배지(RaceBadge circleLetter)는 종족색을 인라인 style로 직접 찍어서(컴포넌트
-   내부) 일반 클래스보다 우선순위가 높다 — 하이라이트 배경 위에서도 이름과 같은 톤으로
-   또렷이 읽히도록 !important로 덮어쓴다(요청: "유저 하이라이트시 종족배지까지도
-   하이라이트 되어야 해"). */
-.scr-mt-player-hl .scr-race-badge-letter { color: var(--bar-text) !important; font-weight: 800; }
+/* 종족 배지는 원래 종족 고유색(테란/프로토스/저그)을 그대로 유지한다 — 강제로 어두운
+   단색(--bar-text)으로 바꾸면 종족 구분이 사라져 보였다(실제로 지적받은 문제 — "종족배지가
+   검정색으로 바뀌네"). 배지가 이제 하이라이트 배경 안에 제대로 들어오므로(위 padding)
+   원래 색 그대로도 충분히 읽힌다. */
 .scr-mt-player .scr-race-badge-letter { flex-shrink: 0; }
 /* 각 팀 아래 승/패 — 팀 칸과 같은 열에서 가운데 정렬(요청). 승은 연두, 패는 붉은 계열. */
 .scr-match-trow-outcome { font-size: var(--fs-subhead); font-weight: 800; text-align: center; min-width: 28px; padding: 0 4px; }
