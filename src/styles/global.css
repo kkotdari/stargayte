@@ -4573,6 +4573,8 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
 /* 반응형: 데스크톱 네비 숨기고 하단 탭바 노출 */
 @media (max-width: 860px) {
   .scr-nav-desktop { display: none !important; }
+  /* 테마 버튼은 모바일 헤더에서 뺀다(요청) — 서랍 메뉴의 "테마 바꾸기"로 대체된다. */
+  .scr-user .scr-theme-btn { display: none; }
   /* 닉네임은 웬만하면 잘리지 않고 그대로 보이게 폭을 넉넉히 준다 — 그래도 극단적으로
      긴 닉네임이 로고까지 밀고 들어가지 않도록 화면 폭 기준 상한(말줄임)은 남겨둔다.
      .scr-header-inner가 flex-wrap이라 정말 안 맞으면 다음 줄로 내려갈 뿐, 로고 위에
@@ -5275,6 +5277,12 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
   border-color: rgba(255, 255, 255, 0.18); opacity: 1;
 }
 .scr-light-theme .scr-challenge-submit-btn:disabled { border-color: rgba(0, 0, 0, 0.14); }
+/* "호출" 버튼 — 활성화 시 붉은색(요청: "호출 모달 버튼 붉은색으로"). 비활성은 위
+   .scr-challenge-submit-btn:disabled의 무채색 처리를 그대로 받는다. */
+.scr-challenge-call-btn:not(:disabled) {
+  background: #d63a3a; border-color: #d63a3a; color: #fff;
+}
+.scr-challenge-call-btn:not(:disabled):hover { background: #e24a4a; border-color: #e24a4a; }
 .scr-challenge-datetime { display: flex; gap: 8px; }
 .scr-challenge-datetime .scr-input { flex: 1; min-width: 0; }
 /* 도전장 작성/인박스 팝업은 앱 다크/라이트 테마와 무관하게 항상 아이보리 편지지 톤인데,
