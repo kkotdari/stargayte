@@ -23,7 +23,6 @@ import AdminPanelModal from "./modals/AdminPanelModal";
 import ChallengeInboxModal from "./modals/ChallengeInboxModal";
 import ChallengeResultInboxModal from "./modals/ChallengeResultInboxModal";
 import MatchRequestInboxModal from "./modals/MatchRequestInboxModal";
-import { MATCH_REQUEST_ENABLED } from "./constants/features";
 import AppUpdateNoticeModal from "./modals/AppUpdateNoticeModal";
 import RankingScreen from "./pages/v2/RankingScreen";
 import MatchScreen from "./pages/v2/MatchScreen";
@@ -224,9 +223,8 @@ export default function App() {
         {inboxChallenges.length === 0 && resultInboxChallenges.length > 0 && (
           <ChallengeResultInboxModal challenges={resultInboxChallenges} onClose={dismissResultInboxChallenges} />
         )}
-        {/* 도전장 인박스들을 다 처리한 뒤에 "대결 요청 언급" 알림을 띄운다(팝업 겹침 방지).
-            대결 요청 기능이 숨김 상태면(추후 오픈) 이 알림 팝업도 함께 가린다. */}
-        {MATCH_REQUEST_ENABLED && inboxChallenges.length === 0 && resultInboxChallenges.length === 0 && inboxMatchRequests.length > 0 && (
+        {/* 도전장 인박스들을 다 처리한 뒤에 "대결 요청 언급" 알림을 띄운다(팝업 겹침 방지). */}
+        {inboxChallenges.length === 0 && resultInboxChallenges.length === 0 && inboxMatchRequests.length > 0 && (
           <MatchRequestInboxModal items={inboxMatchRequests} onClose={dismissInboxMatchRequests} />
         )}
 

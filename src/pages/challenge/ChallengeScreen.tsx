@@ -5,7 +5,6 @@ import { Spinner } from "../../components/common/Feedback";
 import OptionalDateTimeFields from "../../components/common/OptionalDateTimeFields";
 import ChallengeFormModal from "../../modals/ChallengeFormModal";
 import MatchRequestCorner from "./MatchRequestCorner";
-import { MATCH_REQUEST_ENABLED } from "../../constants/features";
 import ScrollNavTimeline from "../../components/common/ScrollNavTimeline";
 import { useAppStore } from "../../store/appStore";
 import { api } from "../../api/client";
@@ -895,9 +894,8 @@ export default function ChallengeScreen() {
         </button>
       </div>
 
-      {/* 최상단 대결 요청 코너 — 자유 텍스트 + 인라인 언급 칩. 언급된 사람에겐 알림이 간다.
-          현재는 임시로 숨김(추후 오픈) — MATCH_REQUEST_ENABLED만 true로 바꾸면 다시 보인다. */}
-      {MATCH_REQUEST_ENABLED && <MatchRequestCorner />}
+      {/* 최상단 대결 요청 코너 — 자유 텍스트 + 인라인 언급 칩. 언급된 사람에겐 알림이 간다. */}
+      <MatchRequestCorner />
 
       {/* 목록 중타이틀 — 요청 코너와 실제 도전장 목록을 구분한다. */}
       <h2 className="scr-challenge-list-heading">대결 목록</h2>

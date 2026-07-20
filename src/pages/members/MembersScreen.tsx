@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus } from "lucide-react";
+import { UserPlus } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
 import Pagination from "../../components/common/Pagination";
 import SearchFilterBar from "../../components/common/SearchFilterBar";
@@ -86,7 +86,7 @@ export default function MembersScreen() {
       {canCreateMember && (
         <div className="scr-v2-primary-row">
           <button type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm" onClick={() => setCreating(true)}>
-            <Plus size={14} /> 생성
+            <UserPlus size={14} /> 생성
           </button>
         </div>
       )}
