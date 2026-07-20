@@ -1890,7 +1890,8 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    다른 곳에도 많이 쓰여서 구분되게 골드 톤을 따로 쓴다. */
 .scr-rank-badge { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; justify-self: start; }
 .scr-rank-num {
-  font-family: var(--font-mono); font-size: var(--fs-title); font-weight: 700; font-style: italic; color: var(--text);
+  /* 랭크 숫자 1스텝 축소(요청): fs-title(28) → fs-subhead(20). */
+  font-family: var(--font-mono); font-size: var(--fs-subhead); font-weight: 700; font-style: italic; color: var(--text);
   font-variant-numeric: tabular-nums;
 }
 .scr-rank-delta { display: inline-flex; align-items: center; gap: 1px; font-size: var(--fs-micro); font-weight: 700; font-style: italic; }

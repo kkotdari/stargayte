@@ -163,10 +163,13 @@ export default function Header({
       if (profileDropRef.current?.contains(t)) return;
       setProfileMenuOpen(false);
     };
-    document.addEventListener("mousedown", closeIfOutside);
+    // 탭바는 탭을 pointerdown에서 처리하는데, 바깥 클릭 닫힘을 mousedown으로 잡으면 터치에서
+    // pointerdown발 화면 전환 뒤 mousedown이 눌리지 않아 프로필 드롭다운이 안 닫히는 버그가
+    // 있었다(신고) — 탭바와 같은 pointerdown으로 잡아 확실히 닫는다.
+    document.addEventListener("pointerdown", closeIfOutside);
     document.addEventListener("focusin", closeIfOutside);
     return () => {
-      document.removeEventListener("mousedown", closeIfOutside);
+      document.removeEventListener("pointerdown", closeIfOutside);
       document.removeEventListener("focusin", closeIfOutside);
     };
   }, [profileMenuOpen]);
