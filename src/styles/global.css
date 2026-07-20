@@ -2068,6 +2068,10 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
      여백이 남는다는 피드백으로 44→36px. */
   .scr-rank-table-panel-v2 .scr-rank-row-inner {
     grid-template-columns: 36px 38px minmax(100px, 1fr) 88px; column-gap: 10px;
+    /* 모바일은 화면이 좁아 내용 좌우 패딩(기본 32px)이 닉네임 폭을 크게 잡아먹는다 —
+       구분선(행 ::before)은 양 끝까지 그대로 두고 내용 패딩만 확 줄여 닉네임이 더 길게
+       보이게 한다(요청: "모바일 랭킹 좌우 패딩 축소해서 닉네임 많이 보이게"). */
+    padding: 0 10px;
   }
   .scr-rank-table-panel-v2 .scr-rank-name { font-size: var(--fs-subhead); }
   .scr-rank-record-v2 { font-size: var(--fs-caption); }
