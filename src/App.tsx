@@ -14,6 +14,7 @@ import { CHALLENGE_MIN_VERSION, homeScreenFor } from "./constants/menuVersions";
 import AuthScreen from "./pages/auth/AuthScreen";
 import Header from "./layout/Header";
 import InstallBanner from "./components/common/InstallBanner";
+import InAppBrowserNotice from "./components/common/InAppBrowserNotice";
 import ChallengeScreen from "./pages/challenge/ChallengeScreen";
 import MembersScreen from "./pages/members/MembersScreen";
 import ImageSettingsScreen from "./pages/imageSettings/ImageSettingsScreen";
@@ -169,7 +170,10 @@ export default function App() {
   if (!user) {
     return (
       <ImageSettingContext.Provider value={imageSettings}>
-        <div className="scr-app scr-app-fallback-scroll" id="scr-app"><AuthScreen /></div>
+        <div className="scr-app scr-app-fallback-scroll" id="scr-app">
+          <InAppBrowserNotice />
+          <AuthScreen />
+        </div>
       </ImageSettingContext.Provider>
     );
   }
@@ -182,6 +186,7 @@ export default function App() {
       <ImageSettingContext.Provider value={imageSettings}>
         <div className="scr-app scr-app-fallback-scroll" id="scr-app">
           <div className="scr-bg-grid" />
+          <InAppBrowserNotice />
           {booting
             ? <div className="scr-boot"><Spinner size={22} /> 데이터 불러오는 중...</div>
             : <SharePage target={shareTarget} onExit={exitShare} />}
@@ -251,6 +256,9 @@ export default function App() {
             와버렸다) #scroll-root 바로 다음이라는 확실한 자리를 이 빈 div로 직접
             고정해준다. */}
         <div id="scr-tabbar-slot" />
+
+        {/* 카톡 등 인앱 브라우저에서 열렸으면 "기본 브라우저로 열기" 안내(로그인 유지 목적). */}
+        <InAppBrowserNotice />
 
         {/* 첫 방문(미설치) 때 한 번 뜨는 "홈 화면에 추가" 유도 배너 — 닫으면 다시 안 뜬다. */}
         <InstallBanner />

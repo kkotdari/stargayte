@@ -1190,6 +1190,37 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-rank-method-share { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); }
 
 /* ===== PWA "홈 화면에 추가" 유도 배너 + iOS 안내 ===== */
+/* 인앱 브라우저(카톡 등) 안내 배너 — 화면 상단에 고정. 로그인이 유지되는 기본 브라우저로
+   열도록 권한다. 헤더/탭바보다 위(z-index)에 둔다. */
+.scr-inapp-notice {
+  position: fixed; z-index: 120; left: 50%; transform: translateX(-50%);
+  top: calc(var(--safe-area-top, 0px) + 8px);
+  width: min(520px, calc(100vw - 16px));
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 11px 12px; border-radius: 14px;
+  background: var(--panel-solid); color: var(--text);
+  box-shadow: 0 8px 26px rgba(0,0,0,0.4), inset 0 0 0 1px rgba(255,255,255,0.08);
+}
+.scr-light-theme .scr-inapp-notice { box-shadow: 0 8px 26px rgba(0,0,0,0.16), inset 0 0 0 1px rgba(0,0,0,0.08); }
+.scr-inapp-notice-main { display: flex; align-items: center; gap: 10px; }
+.scr-inapp-notice-text { display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0; }
+.scr-inapp-notice-text b { font-size: var(--fs-body); }
+.scr-inapp-notice-text span { font-size: var(--fs-caption); color: var(--muted); }
+.scr-inapp-notice-cta {
+  flex-shrink: 0; display: inline-flex; align-items: center; gap: 5px;
+  background: #fee500; color: #3c1e1e; border: none; border-radius: 999px;
+  padding: 7px 13px; font-size: var(--fs-caption); font-weight: 800; font-family: inherit; cursor: pointer;
+}
+.scr-inapp-notice-close {
+  flex-shrink: 0; width: 28px; height: 28px; display: grid; place-items: center;
+  background: transparent; border: none; border-radius: 50%; color: var(--muted); cursor: pointer;
+}
+.scr-inapp-notice-hint {
+  font-size: var(--fs-caption); color: var(--muted); line-height: 1.5;
+  border-top: 1px solid var(--line-soft); padding-top: 8px;
+}
+.scr-inapp-notice-hint b { color: var(--text); }
+
 .scr-install-banner {
   position: fixed; z-index: 55; left: 50%; transform: translateX(-50%);
   /* 모바일 하단 탭바(≈56px + 하단 주소창 보정) 위로 올린다. PC엔 탭바가 없어 살짝 떠 있다. */
