@@ -428,6 +428,13 @@ export default function MatchRequestCorner() {
   // mentionQuery만으로 게이트를 걸어 항상 preventDefault + stopPropagation한다.
   const dropdownOpen = mentionQuery !== null;
   const onEditorKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    // 한글(IME) 조합 중에 마지막 글자를 확정하면서 동시에 누른 스페이스/탭/엔터는
+    // 브라우저가 "조합 확정"과 "진짜 키 입력" 두 번으로 나눠 발생시키는 경우가 있다 —
+    // 여기서 그 키를 가로채 칩 삽입까지 실행해버리면 IME가 막 확정한 마지막 글자와
+    // 우리 처리가 겹쳐서 그 글자가 남거나 공백이 더 들어간다(실제로 지적받은 문제 —
+    // "마지막 타이핑한 글자가 들어가", "공백이 추가로 들어가"). SearchFilterBar의 같은
+    // 패턴과 동일하게 조합 중일 땐 아무 것도 가로채지 않고 그대로 흘려보낸다.
+    if (e.nativeEvent.isComposing || e.keyCode === 229) return;
     if (dropdownOpen && e.key === "ArrowDown") {
       e.preventDefault();
       e.stopPropagation();
@@ -544,7 +551,7 @@ export default function MatchRequestCorner() {
                 contentEditable
                 role="textbox"
                 aria-multiline="false"
-                data-placeholder="보고 싶은 대결을 요청해보세요. (@닉네임으로 태그)"
+                data-placeholder="@닉네임으로 태그"
                 onInput={onEditorInput}
                 onPaste={onEditorPaste}
                 onKeyUp={onEditorKeyUp}
