@@ -322,12 +322,13 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
 /* 로고+카드 묶음을 화면 정중앙보다 살짝 위로(요청: "로그인 폼과 로고를 20프로 정도
    위로 올려줘") — 이 그룹 자체의 높이 기준만큼 위로 옮긴다. 이후 "로그인 폼 위치 살짝만
    내려줘"(20% → 14%), "로고와 폼 좀 내려주고"(14% → 6%) 요청으로 계속 줄여왔다. */
-.scr-auth-hero { display: flex; flex-direction: column; align-items: center; width: 100%; transform: translateY(-6%); }
+/* 로그인 폼(로고+카드)을 살짝 아래로(요청) — 위로 당기던 값을 줄인다. */
+.scr-auth-hero { display: flex; flex-direction: column; align-items: center; width: 100%; transform: translateY(-1%); }
 /* PWA(standalone)는 .scr-auth-wrap의 상단 안전영역 패딩(env(safe-area-inset-top))이 더해져
    전체가 그만큼 더 아래로 내려가 있으므로, 일반 브라우저 탭과 같은 느낌을 주려면 여기서만
    더 위로 올려야 한다(요청: "pwa에서만 좀 올려줘"). */
 @media (display-mode: standalone) {
-  .scr-auth-hero { transform: translateY(-15%); }
+  .scr-auth-hero { transform: translateY(-10%); }
 }
 /* 로그인 화면 자체의 라이트 테마 토글 — 헤더 없이도(로그인 전) 화면 취향을 바꿀 수 있게
    화면 위쪽 한 켠에 둔다. */
@@ -347,7 +348,8 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
    느낌 대신 로고 자체가 아래로 내려오는 느낌이 되도록(요청: "로고를 내린다는 느낌으로")
    margin-bottom만 줄이지 않고 그만큼을 margin-top으로 옮긴다 — 로고 위/아래를 합친
    총량(20px)은 그대로라 폼 위치는 거의 그대로고, 로고만 그 안에서 아래로 내려온다. */
-.scr-auth-logo { display: flex; align-items: center; justify-content: center; margin: 6px 0 14px; z-index: 1; min-height: 64px; }
+/* 로고를 폼 쪽으로 더 내려 붙인다(요청) — 아래 간격을 줄여 폼 바로 위에 붙게. */
+.scr-auth-logo { display: flex; align-items: center; justify-content: center; margin: 18px 0 2px; z-index: 1; min-height: 64px; }
 /* height만 고정하면 원본이 가로로 넓은 워드마크일 때 좁은 화면에서 양옆으로 넘칠 수
    있다 — max-height/max-width를 함께 두고 width/height를 auto로 둬서 비율은 유지한 채
    좁은 화면에서는 폭에 맞춰 자동으로 더 작아지게 한다. */
@@ -367,7 +369,8 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
    반투명 유리 배경만 유지한다. */
 .scr-auth-card-plain {
   background: var(--panel); backdrop-filter: blur(4px);
-  border-radius: var(--radius); padding: 20px; position: relative;
+  /* 위아래 패딩 축소(요청). */
+  border-radius: var(--radius); padding: 12px 20px; position: relative;
 }
 /* 로그인/회원가입을 오가는 버튼 — 로그인 화면에서는 구석에 작은 텍스트 링크 하나로
    ("회원가입"), 회원가입 화면에서는 그 반대 동작(뒤로가기)이 폼 위에 작게 붙는다. */
@@ -5167,7 +5170,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
      느껴졌다(요청: "폼 요소들 전체적으로 폭 넓히기") — 이 모달만 더 넓게. */
   max-width: 460px;
 }
-/* 타이틀("너 나와 신청") 아래 갭을 좀 더(요청: "도전장 보내기 타이틀 아래에 갭을 추가"). */
+/* 타이틀("너 나와! 신청") 아래 갭을 좀 더(요청: "도전장 보내기 타이틀 아래에 갭을 추가"). */
 .scr-challenge-form-modal .scr-modal-head { margin-bottom: 16px; }
 /* ".scr-light-theme .scr-modal"(클래스 두 개, 위 베이스 글라스 규칙)이 이 편지지
    규칙(클래스 하나)보다 특이도가 높아서, 라이트 테마에서는 편지지 배경이 아니라
@@ -5338,13 +5341,13 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
 /* 너 나와 화면의 유일한 섹션은 위 .scr-screen의 gap이 이미 소제목/토글링크와 간격을 주므로
    추가 margin이 겹치면 상단 여백이 과했다(신고: "진행중목록 소제목 아래 공간 남는거
    제거") — .scr-screen의 형제간 gap(PC 10px)에서 음수 margin으로 상쇄한다. 예전엔
-   ":first-of-type"으로 걸었는데, 그 위 너 나와 신청 코너(MatchRequestCorner)도 자기
+   ":first-of-type"으로 걸었는데, 그 위 너 나와! 신청 코너(MatchRequestCorner)도 자기
    루트가 <section>이라 이 섹션이 실제로는 두 번째 section이 되어 그 셀렉터가 전혀
    먹지 않고 있었다(그래서 여백이 과하게 남았다) — 화면 클래스로 직접 스코프한다. */
 .scr-challenge-screen-v2 .scr-challenge-section { margin-top: -5px; }
-/* 너나와: "너 나와 목록" 중타이틀. 예전엔 위쪽 "보고싶은 너 나와" 코너와 크게 떨어뜨리려고
+/* 너나와: "너 나와! 목록" 중타이틀. 예전엔 위쪽 "보고싶은 너 나와!" 코너와 크게 떨어뜨리려고
    margin-top:54px를 뒀는데, 그 코너를 숨기면서 그 자리가 빈 공백으로 남았다(신고: "숨긴
-   보고싶은 너 나와 영역 때문에 공백") — 코너가 없으니 위 여백을 줄인다(버튼 줄의 nawa가
+   보고싶은 너 나와! 영역 때문에 공백") — 코너가 없으니 위 여백을 줄인다(버튼 줄의 nawa가
    아래로 넘치는 만큼만 남긴다). 크기는 다른 소제목(.scr-v2-subheading, 16px)과 맞춘다. */
 .scr-challenge-list-heading {
   margin: 26px 0 0; font-size: var(--fs-subhead); font-weight: 800; color: var(--text);
@@ -5436,7 +5439,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
   /* 우상단 "취소" 라벨(휴지통) 등 절대배치 요소의 기준. */
   position: relative;
 }
-/* 종료된 너 나와도 특별한 CSS 없이 기본 카드와 완전히 동일하게(요청) — 진행중/종료를
+/* 종료된 너 나와!도 특별한 CSS 없이 기본 카드와 완전히 동일하게(요청) — 진행중/종료를
    패널 밝기로 구분하던 것을 없앤다. */
 .scr-challenge-card-active, .scr-challenge-card-ended { background: rgba(255, 255, 255, 0.05); }
 /* 응답 전 취소(아무도 응답 안 하고 폐기)된 건의 우상단 "취소" 라벨 — 휴지통 낡은 편지지
@@ -5458,7 +5461,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
     0 1px 6px rgba(0, 0, 0, 0.08),
     0 0 10px rgba(59, 130, 246, 0.16);
 }
-/* 종료된 너 나와도 기본 카드와 동일하게(요청) — 라이트 테마도 진행중/종료 구분 없이 같다. */
+/* 종료된 너 나와!도 기본 카드와 동일하게(요청) — 라이트 테마도 진행중/종료 구분 없이 같다. */
 .scr-light-theme .scr-challenge-card-active, .scr-light-theme .scr-challenge-card-ended {
   background: rgba(255, 255, 255, 0.16);
 }
@@ -5570,7 +5573,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
   .scr-discarded-list .scr-challenge-side-target { flex: 1 1 0; }
 }
 
-/* "종료된 너 나와 보기" 토글 — 텍스트 링크. 다가오는 매치 이전(과거에 끝난 너 나와)을 접어
+/* "종료된 너 나와! 보기" 토글 — 텍스트 링크. 다가오는 매치 이전(과거에 끝난 너 나와)을 접어
    숨겼다가 눌러서 펼친다(요청). */
 .scr-challenge-toggle-ended-link {
   align-self: center; background: transparent; border: none; padding: 2px 0; cursor: pointer;
@@ -5580,7 +5583,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
 .scr-challenge-toggle-ended-link:hover { color: var(--text); }
 /* 경기 목록의 날짜 줄(.scr-match-date-head)과 같은 이유로 스티키 — 헤더가 스크롤 영역
    밖의 flex 형제로 항상 떠 있고 목록은 그 아래 스크롤 컨테이너에서 시작하므로 top:0으로
-   충분하다(요청: "너 나와 목록도 경기 목록처럼 날짜로 그루핑 하니까 스티키 플로팅
+   충분하다(요청: "너 나와! 목록도 경기 목록처럼 날짜로 그루핑 하니까 스티키 플로팅
    처리 필요"). */
 .scr-challenge-date-head {
   /* 구분선 없이 텍스트만 — 글자색은 타이틀과 같은 흰색으로(요청). 폰트는 축소(요청).
@@ -5726,7 +5729,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
   padding: 1px 5px; margin-right: 5px; vertical-align: middle; white-space: nowrap;
 }
 .scr-challenge-chain-tag-revenge { color: var(--point-contrast); background: var(--point); }
-/* "요청너 나와" — 너 나와 신청 코너에서 온 도전장. 리벤지(포인트색)과 구분되게 파란 톤으로. */
+/* "요청너 나와" — 너 나와! 신청 코너에서 온 도전장. 리벤지(포인트색)과 구분되게 파란 톤으로. */
 .scr-challenge-req-tag { color: #ffffff; background: #3f79d8; }
 .scr-light-theme .scr-challenge-req-tag { background: #2f6fd0; }
 
@@ -6160,7 +6163,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
   mask-image: radial-gradient(circle at center, #000 55%, transparent 78%);
 }
 
-/* ===== 너 나와 신청 코너 ("너 나와!" 최상단) =====
+/* ===== 너 나와! 신청 코너 ("너 나와!" 최상단) =====
    @태그로 최소 2명을 지목하는 공개 요청글 코너. 지목된 사람만 "들어주기"로 도전장을 보낼 수
    있고, 다른 회원은 추천(엄지척)만 누른다. 정렬은 추천 많은 순 → 먼저 등록순, 페이지당 5개. */
 /* 화이트보드 테마는 폐지(요청) — 아래 도전장 목록 카드(.scr-challenge-card)와 같은 유리
@@ -6297,7 +6300,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
      느낌 의도), 정작 입력창(.scr-mreq-editor)이 항상 흰 배경으로 바뀌면서 그 위에 흰
      글자 칩이 그대로 안 보이는 문제가 생겼다(요청: "요청 인풋에 유저칩 글자색 안보임").
      테마/자리(입력창·목록)와 무관하게 항상 불투명 흰 배경 + 어두운 글자로 통일한다
-     (요청: "너 나와 신청 유저칩 다크테마에선 투명 말고 흰색 반전 칩으로 복구", "요청
+     (요청: "너 나와! 신청 유저칩 다크테마에선 투명 말고 흰색 반전 칩으로 복구", "요청
      목록에도 유저칩 디자인 통일"). */
   background: rgba(255, 255, 255, 0.72); color: #24272d;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18), 0 0 1px rgba(0, 0, 0, 0.1);
@@ -6378,7 +6381,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
 /* 카드 목록의 언급된 사람 표시(인라인 칩과 별개로, 필요 시) — 지금은 인라인 칩으로 보여주니
    거의 안 쓰이지만, 본문에 마커가 없는 옛 요청 대비용 보조 라인. */
 .scr-mreq-item-mentions { font-size: var(--fs-caption); color: var(--dim); }
-/* ===== 너 나와 신청 언급 알림 인박스 팝업 ===== */
+/* ===== 너 나와! 신청 언급 알림 인박스 팝업 ===== */
 .scr-mreq-inbox-lead { margin: 0 0 10px; font-size: var(--fs-body); font-weight: 700; color: var(--text); }
 .scr-mreq-inbox-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
 .scr-mreq-inbox-item {

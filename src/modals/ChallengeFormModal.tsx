@@ -20,9 +20,9 @@ const MAX_OWN_TEAM = 3;
 interface ChallengeFormModalProps {
   onClose: () => void;
   onCreated: (challenge: Challenge) => void;
-  // 너 나와 신청 "들어주기"로 열 때 — 요청 작성자를 상대로 미리 채워 넣는다.
+  // 너 나와! 신청 "들어주기"로 열 때 — 요청 작성자를 상대로 미리 채워 넣는다.
   presetTargetIds?: string[];
-  // 너 나와 신청 "들어주기"로 만드는 도전장이면 true — 서버가 "요청너 나와" 표식을 남긴다.
+  // 너 나와! 신청 "들어주기"로 만드는 도전장이면 true — 서버가 "요청너 나와" 표식을 남긴다.
   fromMatchRequest?: boolean;
   // 랭킹 목록의 종이비행기 버튼처럼 "바로 그 상대"로 연 경우 — 상대를 presetTargetIds
   // 그대로 고정해서 더/빼기가 아예 안 되게 하고(요청: "상대팀에도 딱 그 상대만 고정 x
@@ -141,7 +141,7 @@ export default function ChallengeFormModal({ onClose, onCreated, presetTargetIds
   const members = useAppStore((s) => s.members);
   const user = useAppStore((s) => s.user);
 
-  // 너 나와 신청 들어주기로 열렸으면 그 작성자를 상대로 미리 채운다.
+  // 너 나와! 신청 들어주기로 열렸으면 그 작성자를 상대로 미리 채운다.
   const preset = presetTargetIds ?? [];
   const [targetIds, setTargetIds] = useState<string[]>(preset);
   const [ownTeamIds, setOwnTeamIds] = useState<string[]>([]);

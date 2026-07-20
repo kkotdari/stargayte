@@ -3,7 +3,7 @@ import Avatar from "../../components/common/Avatar";
 import { Spinner } from "../../components/common/Feedback";
 import OptionalDateTimeFields from "../../components/common/OptionalDateTimeFields";
 import ChallengeFormModal from "../../modals/ChallengeFormModal";
-// "보고싶은 너 나와" 코너는 지금 숨김(요청) — 다시 켤 때 import와 렌더 주석을 함께 해제한다.
+// "보고싶은 너 나와!" 코너는 지금 숨김(요청) — 다시 켤 때 import와 렌더 주석을 함께 해제한다.
 // import MatchRequestCorner from "./MatchRequestCorner";
 import ScrollNavTimeline from "../../components/common/ScrollNavTimeline";
 import { useAppStore } from "../../store/appStore";
@@ -251,7 +251,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
   // 카드에서 바로 승락/거절 — 한마디 없이 바로 응답한다(아주 단순하게). 거절은 되돌릴 수
   // 없으니 확인만 한 번 받는다.
   const respond = async (response: "accepted" | "rejected") => {
-    if (response === "rejected" && !window.confirm("이 너 나와를 거절할까요?")) return;
+    if (response === "rejected" && !window.confirm("이 너 나와!를 거절할까요?")) return;
     setErr("");
     setBusy(true);
     try {
@@ -354,7 +354,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
     || (shownLatest && challenge.resultWinnerSide !== null)
     || isResultPending;
 
-  // 이미 종료된 너 나와(완료/미실시 등 status=done·discarded)은 패널을 더 어둡게, 아직 진행
+  // 이미 종료된 너 나와!(완료/미실시 등 status=done·discarded)은 패널을 더 어둡게, 아직 진행
   // 중인(응답대기·성사) 너 나와는 더 밝게 해서 목록에서 한눈에 구분되게 한다(요청).
   const isEnded = challenge.status === "done" || challenge.status === "discarded";
 
@@ -728,7 +728,7 @@ export default function ChallengeScreen() {
 
   // 너 나와! 목록은 필터/검색 없이 항상 전체를 조회한다(요청: "검색창도 제거", "무조건 전체").
   // "기록" 메뉴는 폐지하고 완료된 너 나와도 같은 목록에 합친다(요청: "기록 메뉴 제거 및 원래
-  // 목록에 통합. 결과적으로 너 나와 목록은 1개만 존재") — 폐기(휴지통)된 건만 뺀다.
+  // 목록에 통합. 결과적으로 너 나와! 목록은 1개만 존재") — 폐기(휴지통)된 건만 뺀다.
   const unifiedList = useMemo(
     () => challenges.filter((c) => !isDiscarded(c)).sort(compareChallenges),
     [challenges],
@@ -760,7 +760,7 @@ export default function ChallengeScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [unifiedList, nextTime]);
 
-  // "종료된 너 나와 보기" 토글 — 누르면 접혀 있던 앞부분이 지금 보이는 목록 위로 나타난다.
+  // "종료된 너 나와! 보기" 토글 — 누르면 접혀 있던 앞부분이 지금 보이는 목록 위로 나타난다.
   // 콘텐츠가 뷰포트 위쪽에 삽입되면 브라우저가 스크롤 위치(px)를 그대로 유지해 화면에 보이던
   // 내용이 아래로 밀려 보인다(요청: "스크롤이 튀지 않게 조심") — 토글 직전 스크롤 높이를
   // 기억해뒀다가, 다음 렌더 직후(레이아웃 반영 후) 늘어난/줄어든 높이만큼 스크롤 위치를 같이
@@ -851,7 +851,7 @@ export default function ChallengeScreen() {
   return (
     <div className="scr-screen scr-challenge-screen-v2">
       {/* "기록" 메뉴는 폐지됐다(요청) — 목록이 하나뿐이라 타이틀 툴바엔 더 이상 액션이
-          없다. 너 나와 신청 버튼은 타이틀 줄 아래 별도 줄에 가운데 정렬, 1.2배 확대(요청). */}
+          없다. 너 나와! 신청 버튼은 타이틀 줄 아래 별도 줄에 가운데 정렬, 1.2배 확대(요청). */}
       <div className="scr-v2-toolbar">
         <h1 className="scr-title scr-v2-toolbar-title">너 나와!</h1>
       </div>
@@ -863,19 +863,19 @@ export default function ChallengeScreen() {
           type="button"
           className="scr-challenge-nawa-btn"
           onClick={() => setFormOpen(true)}
-          aria-label="너 나와 신청"
+          aria-label="너 나와! 신청"
         >
           <img src="/images/items/nawa.jpg" alt="" className="scr-challenge-title-nawa" />
           <span className="scr-challenge-nawa-label">호출하기</span>
         </button>
       </div>
 
-      {/* 최상단 너 나와 신청 코너("보고싶은 너 나와") — 지금은 숨김(요청). 다시 켜려면 아래
+      {/* 최상단 너 나와! 신청 코너("보고싶은 너 나와!") — 지금은 숨김(요청). 다시 켜려면 아래
           주석을 해제한다. */}
       {/* <MatchRequestCorner /> */}
 
       {/* 목록 중타이틀 — 요청 코너와 실제 도전장 목록을 구분한다. */}
-      <h2 className="scr-challenge-list-heading">너 나와 목록</h2>
+      <h2 className="scr-challenge-list-heading">너 나와! 목록</h2>
 
       {error && <div className="scr-err">{error}</div>}
 
@@ -895,7 +895,7 @@ export default function ChallengeScreen() {
               버튼 자체를 안 보여준다. */}
           {boundaryIndex > 0 && (
             <button type="button" className="scr-challenge-toggle-ended-link" onClick={toggleShowEnded}>
-              {showEnded ? "종료된 너 나와 접기" : "종료된 너 나와 펼치기"}
+              {showEnded ? "종료된 너 나와! 접기" : "종료된 너 나와! 펼치기"}
             </button>
           )}
 

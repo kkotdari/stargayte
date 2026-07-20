@@ -365,7 +365,7 @@ export interface Challenge {
   // 이 도전장보다 앞선 체인 기록(오래된 순) — 목록 화면 카드에서 좌우로 슬라이드해
   // 보여준다. 리벤지 이력이 없으면 빈 배열.
   history: ChallengeHistoryEntry[];
-  // "너 나와 신청 들어주기"로 만들어졌으면 true — 카드에 "요청너 나와" 배지를 붙인다.
+  // "너 나와! 신청 들어주기"로 만들어졌으면 true — 카드에 "요청너 나와" 배지를 붙인다.
   fromMatchRequest: boolean;
 }
 
@@ -374,7 +374,7 @@ export interface ChallengeCreatePayload {
   targetMemberIds: string[];
   // 본인 제외 나머지 내 팀원(최대 3명, 본인 포함 최대 4명) — 안 넘기면 나 혼자.
   ownTeamMemberIds?: string[];
-  // "너 나와 신청 들어주기"로 여는 도전장이면 true.
+  // "너 나와! 신청 들어주기"로 여는 도전장이면 true.
   fromMatchRequest?: boolean;
 }
 
@@ -383,7 +383,7 @@ export interface ChallengeRevengePayload {
   scheduledAt?: string | null;
 }
 
-// ===== 너 나와 신청 코너 ("너 나와!" 최상단) =====
+// ===== 너 나와! 신청 코너 ("너 나와!" 최상단) =====
 // 본문에 @태그로 최소 2명을 지목하는 공개 요청글. 지목된 사람만 "들어주기"로 도전장을 보낼
 // 수 있고, 들어주면 목록에서 사라진다. 정렬은 추천 많은 순 → 먼저 등록된 순.
 export interface MatchRequestTarget {

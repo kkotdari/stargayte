@@ -61,7 +61,7 @@ export default function ChallengeResultInboxModal({ challenges, onClose }: Chall
   return createPortal(
     <div className="scr-modal-overlay">
       <div className="scr-modal scr-modal-sm scr-challenge-inbox-modal">
-        <div className="scr-challenge-inbox-title">지난 너 나와의 결과를 입력해 주세요</div>
+        <div className="scr-challenge-inbox-title">지난 너 나와! 결과를 입력해 주세요</div>
         <div className="scr-modal-body scr-challenge-inbox-body">
           {/* 어떤 경기인지 구분할 수 있게 종류/일시를 함께 보여준다. */}
           <div className="scr-challenge-inbox-row">

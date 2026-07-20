@@ -63,7 +63,7 @@ export default function LoginForm({ onSignup }: LoginFormProps) {
       </label>
       {err && <div className="scr-err">{err}</div>}
       <button type="submit" className="scr-btn scr-btn-primary scr-auth-submit" disabled={busy}>
-        {busy ? <><Spinner /> 접속 중...</> : "로그인"}
+        {busy ? <Spinner /> : "로그인"}
       </button>
       <button type="button" className="scr-link-btn scr-auth-signup-link" onClick={onSignup} aria-label="회원가입">
         <UserPlus size={18} />

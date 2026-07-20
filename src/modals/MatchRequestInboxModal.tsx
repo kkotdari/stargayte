@@ -9,7 +9,7 @@ interface MatchRequestInboxModalProps {
   onClose: () => void;
 }
 
-// 다음 접속 때 뜨는 "너 나와 신청 언급" 알림 팝업 — 내가 언급된 안 읽은 요청들을 한 번에 보여준다.
+// 다음 접속 때 뜨는 "너 나와! 신청 언급" 알림 팝업 — 내가 언급된 안 읽은 요청들을 한 번에 보여준다.
 // 확인을 누르면(onClose) 서버에 읽음 처리돼 다시 뜨지 않는다(요청: "읽으면 다시 안 뜸").
 export default function MatchRequestInboxModal({ items, onClose }: MatchRequestInboxModalProps) {
   useLockBodyScroll();
@@ -22,10 +22,10 @@ export default function MatchRequestInboxModal({ items, onClose }: MatchRequestI
     <div className="scr-modal-overlay" onClick={onClose}>
       <div className="scr-modal scr-modal-sm scr-mreq-inbox-modal" onClick={(e) => e.stopPropagation()}>
         <div className="scr-modal-head">
-          <span>🥺 너 나와 신청 알림</span>
+          <span>🥺 너 나와! 신청 알림</span>
         </div>
         <div className="scr-modal-body scr-mreq-inbox-body">
-          <p className="scr-mreq-inbox-lead">누군가 당신을 너 나와 신청에 언급했어요!</p>
+          <p className="scr-mreq-inbox-lead">누군가 당신을 너 나와! 신청에 언급했어요!</p>
           <ul className="scr-mreq-inbox-list">
             {items.map((it) => (
               <li key={it.requestId} className="scr-mreq-inbox-item">
