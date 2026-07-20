@@ -623,7 +623,7 @@ export const api = {
     });
   },
 
-  // 완료된 챌린지에서 패배한 쪽이 같은 대진으로 재챌린지(설욕전)을 신청 — 패배한 편이 새
+  // 완료된 챌린지에서 패배한 쪽이 같은 대진으로 리벤지(설욕전)을 신청 — 패배한 편이 새
   // 도전장의 요청자, 승리한 편이 새 지목 대상이 된다(체인으로 이어진다).
   async requestRevenge(id: number, payload: ChallengeRevengePayload = {}): Promise<Challenge> {
     return request<Challenge>(`/api/challenges/${id}/revenge`, {

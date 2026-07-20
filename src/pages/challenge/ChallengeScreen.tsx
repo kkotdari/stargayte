@@ -148,7 +148,7 @@ interface ChallengePage {
 }
 
 // 카드가 지금 어떤 인라인 폼을 펼치고 있는지 — 한 번에 하나만 열린다. schedule은 일시 미정
-// 도전장을 수락하며 시간을 정하는 폼, revenge는 재챌린지 신청, result는 결과 입력.
+// 도전장을 수락하며 시간을 정하는 폼, revenge는 리벤지 신청, result는 결과 입력.
 type CardMode = "none" | "schedule" | "revenge" | "result";
 
 interface ChallengeCardProps {
@@ -183,7 +183,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
   const schedulePassed = !!challenge.scheduledAt && new Date(challenge.scheduledAt).getTime() < Date.now();
   const resultInputOpen = schedulePassed || !challenge.scheduledAt;
   const canEnterResult = isParticipant && challenge.status === "confirmed" && resultInputOpen && challenge.resultWinnerSide === null;
-  // 완료된 챌린지에서 내가 패배한 쪽이면 재챌린지(설욕전)을 신청할 수 있다 — 무승부(draw)/미실시
+  // 완료된 챌린지에서 내가 패배한 쪽이면 리벤지(설욕전)을 신청할 수 있다 — 무승부(draw)/미실시
   // (not_held)는 패자가 없어 대상이 아니다(losingSide=null). 미실시는 애초에 폐기라 완료가 아니다.
   const losingSide: ChallengeSide | null =
     challenge.resultWinnerSide === "creator" ? "target"
@@ -290,7 +290,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
     }
   };
 
-  // 재챌린지(설욕전) 신청 — 시간은 비워서 보낼 수 있다(승리한 쪽이 수락하며 시간을 정함).
+  // 리벤지(설욕전) 신청 — 시간은 비워서 보낼 수 있다(승리한 쪽이 수락하며 시간을 정함).
   const submitRevenge = async () => {
     setErr("");
     setBusy(true);
@@ -300,7 +300,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
       onResponded(updated);
       closeMode();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "재챌린지를 신청하지 못했어요.");
+      setErr(e instanceof Error ? e.message : "리벤지를 신청하지 못했어요.");
     } finally {
       setBusy(false);
     }
@@ -333,8 +333,8 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
   const activePage = pages[shownIndex];
   const shownLatest = shownIndex === pages.length - 1;
   const activeTargetInfos = activePage.targets.map((t) => ({ target: t }));
-  // 체인은 이제 재챌린지(revenge) 하나뿐 — 체인의 첫 페이지(원본)를 뺀 나머지 페이지가 곧
-  // 재챌린지 기록이다(reappliedFromId를 따로 안 봐도 페이지 순번으로 안다).
+  // 체인은 이제 리벤지(revenge) 하나뿐 — 체인의 첫 페이지(원본)를 뺀 나머지 페이지가 곧
+  // 리벤지 기록이다(reappliedFromId를 따로 안 봐도 페이지 순번으로 안다).
   const isRevengePage = shownIndex > 0;
 
   // 결과 입력 대기 = 성사(수락)됐고 예정 일시가 지났는데 아직 결과가 안 들어온 상태(요청:
@@ -346,7 +346,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
     shownLatest && (challenge.resultWinnerSide === "creator" || challenge.resultWinnerSide === "target");
 
   // 이 "맨 윗줄"에 실제로 보여줄 게 하나라도 있을 때만 줄을 그린다(전부 없으면 빈 줄이
-  // 남아 어색하다). 재챌린지 라벨/무승부·완료·결과입력대기 배지/카운트다운/미실시 중 하나라도.
+  // 남아 어색하다). 리벤지 라벨/무승부·완료·결과입력대기 배지/카운트다운/미실시 중 하나라도.
   const whenHasContent =
     isRevengePage
     || activePage.resultWinnerSide === "draw"
@@ -382,10 +382,10 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
           <div ref={pagesInnerRef} className="scr-challenge-page">
             {whenHasContent && (
             <div className="scr-challenge-card-row scr-challenge-card-when">
-              {/* 체인 라벨 — 이 페이지가 재챌린지(설욕전) 기록이면 표시한다. 체인은 이제 재챌린지
-                  하나뿐이라, 원본(첫 페이지)을 뺀 모든 페이지가 재챌린지다(isRevengePage). */}
+              {/* 체인 라벨 — 이 페이지가 리벤지(설욕전) 기록이면 표시한다. 체인은 이제 리벤지
+                  하나뿐이라, 원본(첫 페이지)을 뺀 모든 페이지가 리벤지다(isRevengePage). */}
               {isRevengePage && (
-                <span className="scr-challenge-chain-tag scr-challenge-chain-tag-revenge">재챌린지</span>
+                <span className="scr-challenge-chain-tag scr-challenge-chain-tag-revenge">리벤지</span>
               )}
               {/* 이긴 편은 매치업의 화살표 옆에 배지로 표시하니, 여기선 팀을 특정할 수 없는
                   무승부만 알약으로 남긴다(요청: "도전자편 승 이런 건 제거"). 미실시는 아예
@@ -504,7 +504,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
       {mode === "revenge" && (
         <div className="scr-challenge-time-change-form">
           <p className="scr-challenge-inbox-message">
-            재챌린지를 신청해요 — 이번엔 상대가 시간을 정하게 하려면 일시를 비워두세요.
+            리벤지를 신청해요 — 이번엔 상대가 시간을 정하게 하려면 일시를 비워두세요.
           </p>
           <div className="scr-challenge-datetime">
             <input
@@ -520,7 +520,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
           <div className="scr-challenge-card-actions">
             <button className="scr-btn scr-btn-ghost scr-btn-sm" onClick={closeMode} disabled={busy}>취소</button>
             <button className="scr-btn scr-challenge-accept-btn scr-btn-sm" onClick={submitRevenge} disabled={busy}>
-              {busy ? <Spinner /> : "재챌린지 신청"}
+              {busy ? <Spinner /> : "리벤지 신청"}
             </button>
           </div>
         </div>
@@ -581,7 +581,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
         </div>
       )}
 
-      {/* 결과 입력/재챌린지 — 인라인 폼이 안 열려 있을 때만 뜨는 액션 줄. 응답 버튼과 마찬가지로
+      {/* 결과 입력/리벤지 — 인라인 폼이 안 열려 있을 때만 뜨는 액션 줄. 응답 버튼과 마찬가지로
           이력 페이지에선 자리만 예약(투명)해 페이지네이션이 안 튀게. (취소/연기/재신청 제거됨) */}
       {!readOnly && mode === "none" && (canEnterResult || canRevenge) && (
         <div className={cx("scr-challenge-card-actions", !isLatestPage && "scr-challenge-card-actions-reserve")}>
@@ -592,7 +592,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
           )}
           {canRevenge && (
             <button className="scr-btn scr-btn-ghost scr-btn-sm" onClick={startRevenge} disabled={busy}>
-              재챌린지 신청
+              리벤지 신청
             </button>
           )}
         </div>

@@ -313,7 +313,7 @@ export type ChallengeTargetResponse = "pending" | "accepted" | "rejected" | "dis
 // 휴지통). 거절·무응답·미실시·(레거시)취소는 모두 폐기로 통합됐다. 예정 시간이 지나도
 // 결과가 안 들어왔으면 계속 성사(confirmed)다.
 export type ChallengeStatus = "pending" | "confirmed" | "done" | "discarded";
-// 도전자 쪽/지목된 쪽 — 재챌린지 신청 자격 판정(패배한 쪽) 등에 쓰인다.
+// 도전자 쪽/지목된 쪽 — 리벤지 신청 자격 판정(패배한 쪽) 등에 쓰인다.
 export type ChallengeSide = "creator" | "target";
 // 확정 챌린지의 결과 — 이긴 쪽(creator/target) 외에 무승부(draw)/미실시(not_held)도 있다.
 // not_held(미실시)는 완료가 아니라 폐기(휴지통)로 간다.
@@ -336,7 +336,7 @@ export interface ChallengeOwnMember {
   avatar: string | null;
 }
 
-// 재챌린지 체인에서 이 도전장보다 앞선(더 예전) 기록 한 건.
+// 리벤지 체인에서 이 도전장보다 앞선(더 예전) 기록 한 건.
 export interface ChallengeHistoryEntry {
   id: number;
   scheduledAt: string | null;
@@ -358,12 +358,12 @@ export interface Challenge {
   createdAt: string;
   // 폐기(휴지통)된 시각(ISO) — 폐기 상태가 아니면 null. 휴지통을 "최근 버려진 순"으로 정렬한다.
   discardedAt: string | null;
-  // 재챌린지(설욕전)로 만들어졌으면 원래 도전장의 id, 아니면 null. 값이 있으면 곧 재챌린지다.
+  // 리벤지(설욕전)로 만들어졌으면 원래 도전장의 id, 아니면 null. 값이 있으면 곧 리벤지다.
   reappliedFromId: number | null;
   // 확정 챌린지의 결과 — 아직 아무도 입력하지 않았으면 null.
   resultWinnerSide: ChallengeResult | null;
   // 이 도전장보다 앞선 체인 기록(오래된 순) — 목록 화면 카드에서 좌우로 슬라이드해
-  // 보여준다. 재챌린지 이력이 없으면 빈 배열.
+  // 보여준다. 리벤지 이력이 없으면 빈 배열.
   history: ChallengeHistoryEntry[];
   // "챌린지 신청 들어주기"로 만들어졌으면 true — 카드에 "요청챌린지" 배지를 붙인다.
   fromMatchRequest: boolean;
@@ -378,7 +378,7 @@ export interface ChallengeCreatePayload {
   fromMatchRequest?: boolean;
 }
 
-// 재챌린지(설욕전)을 신청할 때 — 시간은 생략할 수 있다.
+// 리벤지(설욕전)을 신청할 때 — 시간은 생략할 수 있다.
 export interface ChallengeRevengePayload {
   scheduledAt?: string | null;
 }

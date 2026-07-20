@@ -5444,7 +5444,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
    에서 상대편 닉네임 공간을 깎아먹었다(요청: "버려진 카드 상대편 프로필 왼쪽으로 이동해서
    닉네임 공간 확보"). 숨겨진 배지는 아예 자리를 걷어(display:none) 그만큼 양쪽 닉네임
    폭을 넓히고, 요소(프사+닉네임+응답표시)가 더 많은 상대편에 폭을 조금 더 준다. 실제로
-   보이는 승 배지(재챌린지 이력 중 완료된 페이지)는 -hidden이 아니라 그대로 남는다. */
+   보이는 승 배지(리벤지 이력 중 완료된 페이지)는 -hidden이 아니라 그대로 남는다. */
 .scr-discarded-list .scr-challenge-inline-win-hidden { display: none; }
 /* 손 이모지(👉)와 상대편 프로필 사이 간격을 거의 붙인다(요청: "손 이모지 바로 거의 옆에
    상대 프로필을 붙여도 될거같은데") — 그만큼 상대편 닉네임이 더 나온다. 도전자편 쪽
@@ -5604,7 +5604,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
    않는다. */
 .scr-challenge-countdown { font-size: var(--fs-caption); font-weight: 700; color: var(--dim); }
 
-/* 재신청/재챌린지로 이어진 기록임을 알리는 라벨 — 재신청은 옅은 톤, 재챌린지는 눈에 띄게
+/* 재신청/리벤지로 이어진 기록임을 알리는 라벨 — 재신청은 옅은 톤, 리벤지는 눈에 띄게
    포인트색으로 구분한다. 라벨에 공백이 있어("n번째 재신청") 좁은 카드에서 줄바꿈되지
    않게 nowrap. */
 .scr-challenge-chain-tag {
@@ -5612,7 +5612,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
   padding: 1px 5px; margin-right: 5px; vertical-align: middle; white-space: nowrap;
 }
 .scr-challenge-chain-tag-revenge { color: var(--point-contrast); background: var(--point); }
-/* "요청챌린지" — 챌린지 신청 코너에서 온 도전장. 재챌린지(포인트색)과 구분되게 파란 톤으로. */
+/* "요청챌린지" — 챌린지 신청 코너에서 온 도전장. 리벤지(포인트색)과 구분되게 파란 톤으로. */
 .scr-challenge-req-tag { color: #ffffff; background: #3f79d8; }
 .scr-light-theme .scr-challenge-req-tag { background: #2f6fd0; }
 
@@ -5643,7 +5643,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
    빈 여백만 넓게 벌어져 보였다(요청: "너나와 카드 pc에서 컨텐츠가 너무 양쪽으로
    벌어져있어.. 도전자랑 상대랑 정보 가운데로 좀더 가까이 배치해줘") — 카드 폭과는
    별개로 매치업 내용 자체를 좁게 다시 캡(560px)해서 카드 가운데로 모은다. */
-/* 페이징(다시 신청/재챌린지 체인) 카드 — 활성 페이지만 자연 높이로 렌더하고, 페이지를 넘길
+/* 페이징(다시 신청/리벤지 체인) 카드 — 활성 페이지만 자연 높이로 렌더하고, 페이지를 넘길
    때 컨테이너 높이를 이전→새 높이로 부드럽게 모핑한다(요청: "높이는 달라져도 되는데 모핑
    모션을 넣어서 하나의 체인임을 알게" → "지금보다 더 애니메이션이 눈에 띄게 패널이
    모핑되게 해줘" — duration을 늘리고 살짝 오버슈트가 있는 이징으로 바꿔 모핑이 더
