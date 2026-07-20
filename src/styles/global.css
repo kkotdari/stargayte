@@ -1980,7 +1980,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 /* 경기수 상위(1~3위) — 닉네임을 파스텔 분홍 메탈색으로(요청: "좀더 파스텔톤"). 메달과 같은
    그라데이션+background-clip:text 패턴. */
 .scr-rank-name-games {
-  background: linear-gradient(115deg, #a82268 0%, #e15fa2 40%, #ffcfe6 50%, #e15fa2 60%, #a82268 100%);
+  background: linear-gradient(115deg, #c25288 0%, #f090bf 40%, #ffe2f0 50%, #f090bf 60%, #c25288 100%);
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
 /* 경기수 상위이면서 메달(1~3위)이기도 하면, 메달메탈(기본)을 깔고 그 위에 분홍 메탈
@@ -1991,7 +1991,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   content: attr(data-name);
   position: absolute; left: 0; top: 0; right: 0;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; pointer-events: none;
-  background: linear-gradient(115deg, #a82268 0%, #e15fa2 40%, #ffcfe6 50%, #e15fa2 60%, #a82268 100%);
+  background: linear-gradient(115deg, #c25288 0%, #f090bf 40%, #ffe2f0 50%, #f090bf 60%, #c25288 100%);
   -webkit-background-clip: text; background-clip: text; color: transparent;
   animation: scr-games-medal-cross 6s ease-in-out infinite;
 }
@@ -2007,7 +2007,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-rank-games-badge {
   flex-shrink: 0; white-space: nowrap;
   font-size: 9px; font-weight: 800; letter-spacing: 0.02em;
-  background: linear-gradient(115deg, #a82268 0%, #e15fa2 40%, #ffcfe6 50%, #e15fa2 60%, #a82268 100%);
+  background: linear-gradient(115deg, #c25288 0%, #f090bf 40%, #ffe2f0 50%, #f090bf 60%, #c25288 100%);
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
 /* 전적/승률도 순위/변동과 같은 패턴으로 위아래 배치, 오른쪽 정렬 */
@@ -2213,9 +2213,8 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
      .scr-rank-provisional 참고) — 마지막 전적 칸도 100→88px, 순위 칸(1번째)도 오른쪽
      여백이 남는다는 피드백으로 44→36px. */
   .scr-rank-table-panel-v2 .scr-rank-row-inner {
-    /* 배지가 붙어 로우가 좁아져 다시 축소(요청) — 순위 칸(1번째) 38→32px로 랭크↔아바타
-       간격을 줄인다. */
-    grid-template-columns: 32px 38px minmax(110px, 1fr) 80px; column-gap: 8px;
+    /* 순위 칸(1번째) 폭이 랭크↔아바타 간격 — 32→35px로 살짝 늘린다(요청). */
+    grid-template-columns: 35px 38px minmax(110px, 1fr) 80px; column-gap: 8px;
     /* 좌우 패딩도 다시 축소(요청) — 18→12px. 구분선(행 ::before)은 양 끝까지 그대로. */
     padding: 0 12px;
   }
