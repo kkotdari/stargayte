@@ -855,12 +855,12 @@ export default function ChallengeScreen() {
           없다. 챌린지 신청 버튼은 타이틀 줄 아래 별도 줄에 가운데 정렬, 1.2배 확대(요청). */}
       <div className="scr-v2-toolbar">
         <h1 className="scr-title scr-v2-toolbar-title">너 나와!</h1>
-        {/* 타이틀 로우 레이아웃엔 관여하지 않고, 제목 옆(살짝 오른쪽)에 그냥 얹는 장식
-            이미지 — 절대위치라 원래 요소들의 배치를 그대로 둔다(요청). */}
-        <img src="/images/items/nawa.jpg" alt="" className="scr-challenge-title-nawa" />
       </div>
 
-      <div className="scr-v2-primary-row">
+      {/* 타이틀 아래 줄 가운데에 nawa를 배경처럼 깔고, 그 안(위)에 "챌린지 신청" 버튼을
+          얹는다(요청). nawa는 절대위치라 줄 높이(버튼)엔 영향을 주지 않고 위아래로 넘친다. */}
+      <div className="scr-v2-primary-row scr-challenge-primary-row">
+        <img src="/images/items/nawa.jpg" alt="" className="scr-challenge-title-nawa" />
         <button
           type="button"
           className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm"

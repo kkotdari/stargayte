@@ -5301,22 +5301,26 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
    루트가 <section>이라 이 섹션이 실제로는 두 번째 section이 되어 그 셀렉터가 전혀
    먹지 않고 있었다(그래서 여백이 과하게 남았다) — 화면 클래스로 직접 스코프한다. */
 .scr-challenge-screen-v2 .scr-challenge-section { margin-top: -5px; }
-/* 너나와: "챌린지 목록" 중타이틀이 요청 코너와 목록을 가른다. 중타이틀 위는 코너와 크게
-   떨어뜨린다(요청: 갭 2.5배 — .scr-screen gap 10px + 이 margin으로 확보). 크기는 다른
-   소제목(.scr-v2-subheading, 16px)과 맞춘다(요청: "다른 소제목들에 비해 큼. 맞춰줘"). */
+/* 너나와: "챌린지 목록" 중타이틀. 예전엔 위쪽 "보고싶은 챌린지" 코너와 크게 떨어뜨리려고
+   margin-top:54px를 뒀는데, 그 코너를 숨기면서 그 자리가 빈 공백으로 남았다(신고: "숨긴
+   보고싶은 챌린지 영역 때문에 공백") — 코너가 없으니 위 여백을 줄인다(버튼 줄의 nawa가
+   아래로 넘치는 만큼만 남긴다). 크기는 다른 소제목(.scr-v2-subheading, 16px)과 맞춘다. */
 .scr-challenge-list-heading {
-  margin: 54px 0 0; font-size: var(--fs-subhead); font-weight: 800; color: var(--text);
+  margin: 26px 0 0; font-size: var(--fs-subhead); font-weight: 800; color: var(--text);
   letter-spacing: 0.02em;
 }
 /* "너 나와!" 제목 옆 nawa 이미지 — 타이틀 로우 레이아웃엔 관여하지 않고 그 위에 절대위치로
    그냥 얹는 장식(요청: "레이아웃은 그대로 두고 그림을 붙이는 것, 약간 오른쪽에 치우쳐서").
    툴바(.scr-v2-toolbar, position:relative)를 기준으로 살짝 오른쪽에 배치하고, 세로로는 툴바
    중앙에 맞춰(제목 높이보다 커서 위아래로 넘친다) 얹는다. 클릭은 통과시킨다. */
+/* 버튼 줄 가운데에 nawa를 배경으로 깔고 버튼을 그 위에 얹는다(요청). */
+.scr-challenge-primary-row { position: relative; }
+.scr-challenge-primary-row .scr-btn { position: relative; z-index: 1; }
 .scr-challenge-title-nawa {
-  /* 거의 오른쪽 정렬 — 가운데 정렬된 "챌린지 신청" 버튼을 안 가리게 한다(요청). 그리고
-     z-index를 음수로 둬 제목/버튼 등 다른 요소들보다 '뒤'(배경처럼)에 깔린다(요청). */
-  position: absolute; right: 2px; top: 50%; transform: translateY(-50%);
-  width: 160px; height: 100px; object-fit: cover; pointer-events: none; z-index: -1;
+  /* 줄(버튼) 정중앙에 배경처럼 — 절대위치라 줄 높이엔 영향 없이 위아래로 넘친다. 버튼보다
+     뒤(z-index:0)에 깔려 버튼이 "nawa 안"에 놓인 것처럼 보인다. */
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: 160px; height: 100px; object-fit: cover; pointer-events: none; z-index: 0;
   /* 1.6:1 비율 + 타원 마스크로 가장자리를 흐린다. */
   border-radius: 50%;
   -webkit-mask-image: radial-gradient(ellipse at center, #000 56%, transparent 82%);
