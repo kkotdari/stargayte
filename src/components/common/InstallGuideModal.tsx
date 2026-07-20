@@ -8,25 +8,29 @@ export default function InstallGuideModal({ onClose }: { onClose: () => void }) 
   useLockBodyScroll();
   return createPortal(
     <div className="scr-modal-overlay" onClick={onClose}>
-      <div className="scr-modal scr-modal-sm" onClick={(e) => e.stopPropagation()}>
+      <div className="scr-modal scr-modal-sm scr-install-guide-modal" onClick={(e) => e.stopPropagation()}>
         <div className="scr-modal-head">
           <span>홈 화면에 추가</span>
           <button className="scr-icon-btn" onClick={onClose} aria-label="닫기"><X size={14} /></button>
         </div>
         <div className="scr-modal-body">
           <p className="scr-install-guide-lead">
-            홈 화면에 추가하면 <b>주소창 없이 앱처럼</b> 열려요. 사파리에서 3초면 됩니다.
+            홈 화면에 추가하면 <b>주소창 없이 앱처럼</b> 열려요. 몇 초면 됩니다.
           </p>
           <ol className="scr-install-guide-steps">
             <li>
-              하단(또는 상단)의 <span className="scr-install-guide-icon"><Share size={15} /></span>
-              <b>공유</b> 버튼을 누르세요.
+              화면 우측 상단(또는 하단)의 <b>⋯ 더보기</b> 버튼을 누르세요.
             </li>
-            <li>메뉴에서 <b>“홈 화면에 추가”</b>를 고르세요.</li>
-            <li>오른쪽 위 <b>“추가”</b>를 누르면 끝!</li>
+            <li>
+              <span className="scr-install-guide-icon"><Share size={15} /></span>
+              <b>공유</b> → <b>“홈 화면에 추가”</b>를 고르세요.
+            </li>
+            <li>
+              <b>“웹 앱으로 열기”</b>를 켠 다음 <b>“추가”</b>를 누르면 끝!
+            </li>
           </ol>
           <p className="scr-install-guide-note">
-            ※ 사파리에서만 됩니다(카카오톡·인스타 인앱 브라우저는 오른쪽 위 ⋯ → “Safari로 열기” 후 진행).
+            ※ 카카오톡·인스타 인앱 브라우저는 우측 상단 ⋯ → “다른 브라우저로 열기(Safari 등)” 후 진행하세요.
           </p>
         </div>
       </div>
