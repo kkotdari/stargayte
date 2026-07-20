@@ -1962,22 +1962,25 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    닉네임은 금색 메탈 늒낌 2위는 은색 메탈 느낌 3위는 동색 메탈느낌", "폰트색
    말하는것") — 그라데이션 + background-clip:text로 살짝 광택 나는 느낌을 준다.
    색상은 최다경기 왕관 배지(.scr-rank-crown-1/2/3)와 같은 톤으로 통일. */
+/* 메탈 그라데이션은 대각선(115deg, 요청: "대각선이 더 좋아")으로 두되, 가운데에 밝은
+   하이라이트를 몰고 양 끝(가장자리)은 어둡게 한다(요청: "안쪽에 빛나는 부분, 가장자리가
+   밝아서 글자가 잘 안 보임") — 글자 윤곽이 또렷해진다. */
 .scr-rank-name-gold {
-  background: linear-gradient(115deg, #fff3c4 0%, #ffd24d 35%, #b8860b 60%, #ffe58a 100%);
+  background: linear-gradient(115deg, #9a6f08 0%, #ffd24d 40%, #fff2c0 50%, #ffd24d 60%, #9a6f08 100%);
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
 .scr-rank-name-silver {
-  background: linear-gradient(115deg, #f5f7fa 0%, #c3c9d1 35%, #8a8f98 60%, #e2e6eb 100%);
+  background: linear-gradient(115deg, #7a7f88 0%, #c3c9d1 40%, #ffffff 50%, #c3c9d1 60%, #7a7f88 100%);
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
 .scr-rank-name-bronze {
-  background: linear-gradient(115deg, #e9c199 0%, #b98a5a 35%, #8a5a34 60%, #d9a876 100%);
+  background: linear-gradient(115deg, #6e4326 0%, #b98a5a 40%, #f0c79a 50%, #b98a5a 60%, #6e4326 100%);
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
 /* 경기수 상위(1~3위) — 닉네임을 파스텔 분홍 메탈색으로(요청: "좀더 파스텔톤"). 메달과 같은
    그라데이션+background-clip:text 패턴. */
 .scr-rank-name-games {
-  background: linear-gradient(115deg, #ffe6f2 0%, #ffb0d6 40%, #f489b8 64%, #ffd6ea 100%);
+  background: linear-gradient(115deg, #d95fa0 0%, #ffb0d6 40%, #ffe9f4 50%, #ffb0d6 60%, #d95fa0 100%);
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
 /* 경기수 상위이면서 메달(1~3위)이기도 하면, 메달색(기본)을 깔고 그 위에 파스텔 분홍
@@ -1987,7 +1990,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   content: attr(data-name);
   position: absolute; left: 0; top: 0; right: 0;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; pointer-events: none;
-  background: linear-gradient(115deg, #ffe6f2 0%, #ffb0d6 40%, #f489b8 64%, #ffd6ea 100%);
+  background: linear-gradient(115deg, #d95fa0 0%, #ffb0d6 40%, #ffe9f4 50%, #ffb0d6 60%, #d95fa0 100%);
   -webkit-background-clip: text; background-clip: text; color: transparent;
   animation: scr-games-medal-cross 6s ease-in-out infinite;
 }
