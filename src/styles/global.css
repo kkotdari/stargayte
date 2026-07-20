@@ -4465,8 +4465,10 @@ html.scr-light-theme .scr-mobile-tabbar {
 }
 
 .scr-drawer-overlay {
-  position: fixed; inset: 0; z-index: 60; background: rgba(2,2,3,0.62);
-  backdrop-filter: blur(2px); display: flex; justify-content: flex-end;
+  /* 딤 처리 없음(요청) — 어둡게 덮지 않고 투명하게 둔다. 바깥 클릭으로 닫는 역할은
+     투명해도 그대로 유지된다(전체를 덮는 클릭 캐처). */
+  position: fixed; inset: 0; z-index: 60; background: transparent;
+  display: flex; justify-content: flex-end;
   opacity: 0; transition: opacity .2s ease;
 }
 .scr-drawer-overlay.scr-drawer-open { opacity: 1; }
