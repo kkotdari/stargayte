@@ -356,7 +356,7 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
   font-weight: 900; color: var(--text); font-size: var(--fs-title); letter-spacing: 0.04em; text-align: center;
   text-shadow: 0 0 18px rgba(var(--point-rgb), 0.45), 0 0 4px rgba(255,255,255,0.3);
 }
-.scr-auth-card { width: 100%; max-width: 342px; z-index: 1; }
+.scr-auth-card { width: 100%; max-width: 290px; z-index: 1; }
 /* 회원가입 화면은 별도 카드 테두리/그림자 없이(테두리 테마 제거) 로그인 카드와 같은
    반투명 유리 배경만 유지한다. */
 .scr-auth-card-plain {
@@ -559,8 +559,9 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
    낮춰서 좀 더 아담하게. 더 둥글게(필 형태), 위 체크박스와 간격을 더 둬서 아래쪽에
    자리 잡게 한다. */
 .scr-auth-submit {
-  align-self: center; width: 50%; min-height: calc(var(--field-h) * 0.8);
-  border-radius: 999px; margin-top: 18px;
+  /* 버튼 크기 축소(요청) — 폭·높이·글자를 한 단계씩 줄인다. */
+  align-self: center; width: 42%; min-height: calc(var(--field-h) * 0.66);
+  font-size: var(--fs-caption); border-radius: 999px; margin-top: 16px;
 }
 /* 아이디/비밀번호 인풋도 은은한 글로우로 테두리를 밝힌다(로그인 버튼과 달리 점멸 없이
    고정된 은은한 빛 — 버튼만 깜빡여야 시선이 그쪽으로 몰린다). 다크 테마는 흰색 계열
