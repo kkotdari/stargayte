@@ -1992,13 +1992,13 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; pointer-events: none;
   background: linear-gradient(115deg, #d95fa0 0%, #ffb0d6 40%, #ffe9f4 50%, #ffb0d6 60%, #d95fa0 100%);
   -webkit-background-clip: text; background-clip: text; color: transparent;
-  animation: scr-games-medal-cross 6s ease-in-out infinite;
+  animation: scr-games-medal-cross 3.4s ease-in-out infinite;
 }
-/* 페이드 전환 자체는 짧게(빠르게), 각 색(메달/분홍)은 오래 유지(요청) — 대부분 구간은
-   같은 값으로 hold하고 45→50 / 95→100 구간에서만 빠르게 넘어간다. */
+/* 페이드는 짧게, 각 색 유지시간은 다르게(요청) — 메달색(base=opacity 0) 약 2초, 경기수
+   분홍(overlay=opacity 1) 약 1초. 3.4초 주기: 0~59%(≈2s) 메달 → 65~94%(≈1s) 분홍. */
 @keyframes scr-games-medal-cross {
-  0%, 45% { opacity: 0; }
-  50%, 95% { opacity: 1; }
+  0%, 59% { opacity: 0; }
+  65%, 94% { opacity: 1; }
   100% { opacity: 0; }
 }
 /* "경기수N위" 배지 — 알약 없이 그냥 파스텔 분홍 글자로, 한 스텝 작게(요청). */
