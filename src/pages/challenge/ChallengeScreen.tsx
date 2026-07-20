@@ -854,7 +854,11 @@ export default function ChallengeScreen() {
       {/* "기록" 메뉴는 폐지됐다(요청) — 목록이 하나뿐이라 타이틀 툴바엔 더 이상 액션이
           없다. 챌린지 신청 버튼은 타이틀 줄 아래 별도 줄에 가운데 정렬, 1.2배 확대(요청). */}
       <div className="scr-v2-toolbar">
-        <h1 className="scr-title scr-v2-toolbar-title">너 나와!</h1>
+        {/* 제목 옆에 nawa 이미지를 크게(가로·세로 2배) + 더 둥글게 크롭해 곁들인다(요청). */}
+        <div className="scr-challenge-title-row">
+          <h1 className="scr-title scr-v2-toolbar-title">너 나와!</h1>
+          <img src="/images/items/nawa.jpg" alt="" className="scr-challenge-title-nawa" />
+        </div>
       </div>
 
       <div className="scr-v2-primary-row">
@@ -871,12 +875,8 @@ export default function ChallengeScreen() {
           주석을 해제한다. */}
       {/* <MatchRequestCorner /> */}
 
-      {/* 목록 중타이틀 — 오른쪽에 nawa 이미지를 인박스처럼 가로로 긴 타원 크롭 + 가장자리
-          페이드아웃으로 곁들인다(요청). */}
-      <div className="scr-challenge-list-heading-row">
-        <h2 className="scr-challenge-list-heading">챌린지 목록</h2>
-        <img src="/images/items/nawa.jpg" alt="" className="scr-challenge-list-nawa" />
-      </div>
+      {/* 목록 중타이틀 — 요청 코너와 실제 도전장 목록을 구분한다. */}
+      <h2 className="scr-challenge-list-heading">챌린지 목록</h2>
 
       {error && <div className="scr-err">{error}</div>}
 
