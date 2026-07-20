@@ -1780,15 +1780,10 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-rank-avatar-btn { background: transparent; border: none; padding: 0; line-height: 0; cursor: pointer; width: 44px; justify-self: start; position: relative; z-index: 1; }
 /* 1~3위 프사에 은은한 글로우(요청: "1, 2, 3위 닉네임과 프사에 너무 강하지 않은
    글로우효과 부여") — 포인트색을 낮은 불투명도로, 번지듯 부드럽게. */
-/* 프사 글로우는 닉네임보다 약하게, 속도는 느리게(요청: "프사 글로우는 좀 약하게
-   닉네임 글로우를 강하게 해주고 점멸 속도를 천천히"). */
-.scr-rank-avatar-btn-glow { animation: scr-rank-avatar-glow-pulse 3s ease-in-out infinite; }
-@keyframes scr-rank-avatar-glow-pulse {
-  /* 너무 진하다는 피드백으로 투명도를 더 낮춤(실제로 지적받은 문제 — "글로우 너무
-     진해서 이상하니 투명도를 높여줘"). */
-  0%, 100% { filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.06)); }
-  50% { filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.35)); }
-}
+/* 점멸(애니메이션) 없이 은은한 고정 노란빛 글로우로(요청: "점멸 효과 제거하고",
+   "글로우는 노란 빛으로하되 은은하게") — 포인트색(--point-rgb, 골드 톤)을 낮은
+   불투명도로. */
+.scr-rank-avatar-btn-glow { filter: drop-shadow(0 0 4px rgba(var(--point-rgb), 0.35)); }
 /* 종족 배지가 닉네임 바로 옆에 붙도록, 닉네임은 flex-grow 없이 내용 크기만큼만 차지하고
    (길면 이 안에서 말줄임) 남는 공간은 배지 뒤로 밀려나게 둔다.
    최다경기 배지(.scr-rank-crown)는 오른쪽에만 있고 왼쪽엔 아무것도 없어서, 배지가 없으면
@@ -1822,15 +1817,11 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .scr-rank-name:hover { color: var(--point); }
-/* 1~3위 닉네임도 같은 은은한 점멸 글로우(요청: "점멸하는 글로우 효과여야해", 위
-   .scr-rank-avatar-btn-glow 참고). */
-.scr-rank-name-glow { animation: scr-rank-name-glow-pulse 3s ease-in-out infinite; }
-@keyframes scr-rank-name-glow-pulse {
-  /* 너무 진하다는 피드백으로 투명도를 더 낮춤(실제로 지적받은 문제 — "글로우 너무
-     진해서 이상하니 투명도를 높여줘"). */
-  0%, 100% { text-shadow: 0 0 1px rgba(255, 255, 255, 0.1); }
-  50% { text-shadow: 0 0 10px rgba(255, 255, 255, 0.55), 0 0 4px rgba(255, 255, 255, 0.5); }
-}
+/* 1~3위 닉네임도 같은 은은한 고정 노란빛 글로우 — 점멸 없이(요청: "점멸 효과
+   제거하고", "글로우는 노란 빛으로하되 은은하게"). blur 반경을 작게 잡아야 글자
+   획 안쪽까지 번지지 않고 또렷하게 남는다(실제로 지적받은 문제 — "폰트 앞으로는
+   번지지 않게해서 폰트 또렷이 보이게"). */
+.scr-rank-name-glow { text-shadow: 0 0 3px rgba(var(--point-rgb), 0.55); }
 /* 전적/승률도 순위/변동과 같은 패턴으로 위아래 배치, 오른쪽 정렬 */
 .scr-rank-record-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
 /* 잠정 뱃지(.scr-rank-provisional)가 이 칸 우상단에 절대위치로 겹쳐 붙는 기준점. */
