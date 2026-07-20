@@ -2929,6 +2929,11 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-mt-name { font-size: var(--fs-caption); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .scr-mt-player-hl { background: var(--highlight-bg); border-radius: 4px; padding: 2px 4px; margin: -2px -4px; }
 .scr-mt-player-hl .scr-mt-name { font-weight: 800; color: var(--bar-text); }
+/* 종족 배지(RaceBadge circleLetter)는 종족색을 인라인 style로 직접 찍어서(컴포넌트
+   내부) 일반 클래스보다 우선순위가 높다 — 하이라이트 배경 위에서도 이름과 같은 톤으로
+   또렷이 읽히도록 !important로 덮어쓴다(요청: "유저 하이라이트시 종족배지까지도
+   하이라이트 되어야 해"). */
+.scr-mt-player-hl .scr-race-badge-letter { color: var(--bar-text) !important; font-weight: 800; }
 .scr-mt-player .scr-race-badge-letter { flex-shrink: 0; }
 /* 각 팀 아래 승/패 — 팀 칸과 같은 열에서 가운데 정렬(요청). 승은 연두, 패는 붉은 계열. */
 .scr-match-trow-outcome { font-size: var(--fs-subhead); font-weight: 800; text-align: center; min-width: 28px; padding: 0 4px; }
