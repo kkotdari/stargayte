@@ -203,6 +203,13 @@ export default function MatchRequestCorner() {
   // Escape로 드롭다운을 닫은 직후 keyup의 재감지를 한 번 건너뛰기 위한 플래그(아래
   // onEditorKeyDown의 Escape 분기, onEditorKeyUp 참고).
   const suppressNextDetectRef = useRef(false);
+  // insertMention 안에서 document.execCommand를 부르면 브라우저가 그 자리에서 진짜
+  // 'input' 이벤트를 한 번 더 쏴서, onEditorInput이 insertMention 실행 도중에 재진입으로
+  // 다시 불린다 — 이때 onEditorInput이 (특히 글자수 초과로) DOM을 통째로 다시 그려버리면
+  // execCommand가 방금 만든 노드 참조와 어긋나 삽입 결과가 꼬일 수 있다(실제로 지적받은
+  // 문제 — "자동완성시 마지막으로 쓴 글자가 추가 입력돼", "공백도 들어가고"). insertMention이
+  // 실행되는 동안은 그 재진입 호출을 완전히 무시한다.
+  const insertingRef = useRef(false);
 
   const mentionedIds = useMemo(() => new Set(extractMentionIds(text, members)), [text, members]);
   const candidates = useMemo(() => {
@@ -288,6 +295,7 @@ export default function MatchRequestCorner() {
   };
 
   const onEditorInput = () => {
+    if (insertingRef.current) return;
     const el = editorRef.current;
     if (!el) return;
     const raw = domToText(el);
@@ -336,12 +344,17 @@ export default function MatchRequestCorner() {
     // 저장해둔 캐럿 위치를 우선 쓴다 — 클릭 시점의 window.getSelection()은 신뢰할 수
     // 없다(위 mentionAnchorRef 선언부 참고). 저장값이 더 이상 유효하지 않으면(그 사이
     // 노드가 지워졌다든가) 편집창 맨 끝으로 안전하게 되돌아간다.
+    // 저장된 offset 숫자를 그대로 믿는 대신, 그 텍스트 노드의 "현재 끝"을 캐럿 자리로
+    // 쓴다 — confirm은 항상 그 쿼리를 마지막으로 건드린 직후에 일어나므로 그 노드의 끝은
+    // 곧 쿼리 끝이다. 저장된 offset 숫자에 어떤 이유로든 하나라도 어긋남이 생기면 쿼리의
+    // 마지막 글자가 안 지워지고 칩 앞에 그대로 남는 문제(실제로 지적받은 문제)로 이어져,
+    // 숫자를 아예 신뢰하지 않는 쪽이 더 안전하다.
     const anchor = mentionAnchorRef.current;
     const range = document.createRange();
     if (anchor && anchor.node.isConnected && el.contains(anchor.node)) {
-      const safeOffset = Math.min(anchor.offset, anchor.node.textContent?.length ?? 0);
-      range.setStart(anchor.node, safeOffset);
-      range.setEnd(anchor.node, safeOffset);
+      const endOffset = anchor.node.textContent?.length ?? 0;
+      range.setStart(anchor.node, endOffset);
+      range.setEnd(anchor.node, endOffset);
     } else {
       range.selectNodeContents(el);
       range.collapse(false);
@@ -362,7 +375,14 @@ export default function MatchRequestCorner() {
     // "@쿼리" 선택 영역을 칩으로 치환. 뒤에 붙는 공백은 일반 스페이스로 두면 칩(비편집
     // 인라인 요소) 바로 뒤에서 브라우저가 종종 지워버려서 넓힌 non-breaking space를 쓴다
     // — domToText/extractMentionIds 쪽 \s 매칭은 nbsp도 공백으로 인식해 문제 없다.
-    document.execCommand("insertHTML", false, chipHtml(member) + "&nbsp;");
+    // execCommand는 그 자리에서 진짜 'input' 이벤트를 다시 쏘는데(onEditorInput 재진입),
+    // 그동안엔 그 재진입 호출이 아무 것도 안 하도록 막는다(위 insertingRef 선언부 참고).
+    insertingRef.current = true;
+    try {
+      document.execCommand("insertHTML", false, chipHtml(member) + "&nbsp;");
+    } finally {
+      insertingRef.current = false;
+    }
 
     mentionAnchorRef.current = null;
     setMentionQuery(null);
@@ -375,6 +395,12 @@ export default function MatchRequestCorner() {
     } else {
       setText(raw);
     }
+
+    // 탭으로 확정했을 때 포커스가 편집창 밖(지우기 X 버튼 등)으로 새는 경우가 있었다
+    // (실제로 지적받은 문제 — "탭으로 자동완성하면 x 버튼에 포커싱이 이동해") — 이번
+    // 이벤트 처리가 다 끝나고 브라우저 자체 기본 동작까지 모두 지나간 다음 프레임에
+    // 한 번 더 편집창으로 강제로 되돌린다.
+    requestAnimationFrame(() => { el.focus(); });
   };
 
   // 칩의 × 클릭을 이벤트 위임으로 처리 — ×를 진짜 <button>으로 만들면 그 요소가
@@ -518,7 +544,7 @@ export default function MatchRequestCorner() {
                 contentEditable
                 role="textbox"
                 aria-multiline="false"
-                data-placeholder="보고 싶은 대결을 요청해보세요."
+                data-placeholder="보고 싶은 대결을 요청해보세요. (@닉네임으로 태그)"
                 onInput={onEditorInput}
                 onPaste={onEditorPaste}
                 onKeyUp={onEditorKeyUp}
