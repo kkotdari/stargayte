@@ -5345,10 +5345,12 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
   transform: translate(-50%, calc(-50% + 2px));
   filter: drop-shadow(0 2px 4px rgba(0,0,0,0.45));
 }
-/* nawa 중앙 "호출하기" — 보통 솔리드 프라이머리 버튼과 똑같은 알약 모양(요청). 배색/패딩/
-   라운드는 .scr-btn 계열 클래스가 맡고, 여기선 위치(정중앙 위)와 클릭 통과만 준다. */
+/* nawa 중앙 "호출하기" — 흰 글씨 + 그림자로 사진 위에서도 또렷하게. 글자 크기는 다른
+   버튼 텍스트와 동일하게(요청) var(--fs-body). */
 .scr-challenge-nawa-label {
   position: relative; z-index: 1; pointer-events: none;
+  color: #fff; font-weight: 700; font-size: var(--fs-body); letter-spacing: 0.02em;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.8), 0 0 8px rgba(0,0,0,0.55);
 }
 .scr-challenge-screen-v2 .scr-filter-bar { margin-top: 0; margin-bottom: 0; }
 .scr-challenge-section-title {

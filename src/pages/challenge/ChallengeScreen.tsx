@@ -866,9 +866,7 @@ export default function ChallengeScreen() {
           aria-label="너 나와 신청"
         >
           <img src="/images/items/nawa.jpg" alt="" className="scr-challenge-title-nawa" />
-          {/* 라벨은 보통(솔리드 프라이머리) 버튼과 똑같은 모양으로(요청). 클릭은 바깥
-              버튼이 받으므로 이 알약은 pointer-events를 끈다. */}
-          <span className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm scr-challenge-nawa-label">호출하기 💅</span>
+          <span className="scr-challenge-nawa-label">호출하기 💅</span>
         </button>
       </div>
 
