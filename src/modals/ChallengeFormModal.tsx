@@ -35,9 +35,11 @@ interface ChallengeFormModalProps {
 // 그 자리가 회원 드롭다운으로 바뀌었다가 고르면 다시 칩으로 접힌다. 빈 드롭다운을
 // 여러 개 미리 늘어놓지 않는다(ChallengeFormModal 원래 UI 패턴 그대로).
 function MemberPickBlock({
-  label, hint, ids, setIds, max, options, memberById, addLabel, addAriaLabel, locked = false, required = false,
+  label, hint, ids, setIds, max, options, memberById, addLabel, addAriaLabel, locked = false, required = false, addTone,
 }: {
   label: string;
+  // 추가 버튼 색 — 동료="blue", 상대="red"(요청: 유치하게 알록달록).
+  addTone?: "blue" | "red";
   // 라벨 옆에 옅게 붙는 보조 설명(요청: "우리팀 추가 옆에 팀전일 때만 추가 라고 명시").
   hint?: string;
   // 필수 항목이면 라벨 옆에 *를 붙인다(요청: "필수인곳(상대)에만 * 표시").
@@ -77,7 +79,8 @@ function MemberPickBlock({
         </span>
         {canAdd && !picking && (
           <button
-            type="button" className="scr-challenge-add-target scr-challenge-add-target-inline"
+            type="button"
+            className={`scr-challenge-add-target scr-challenge-add-target-inline${addTone ? ` scr-challenge-add-target-${addTone}` : ""}`}
             onClick={() => setPicking(true)} aria-label={addAriaLabel}
           >
             <UserPlus size={15} />{addLabel}
@@ -235,6 +238,7 @@ export default function ChallengeFormModal({ onClose, onCreated, presetTargetIds
               memberById={memberById}
               addLabel=""
               addAriaLabel="선수 추가"
+              addTone="blue"
             />
           )}
 
@@ -248,6 +252,7 @@ export default function ChallengeFormModal({ onClose, onCreated, presetTargetIds
             memberById={memberById}
             addLabel=""
             addAriaLabel="상대 추가"
+            addTone="red"
             locked={lockTarget}
           />
 

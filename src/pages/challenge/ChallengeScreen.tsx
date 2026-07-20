@@ -866,7 +866,7 @@ export default function ChallengeScreen() {
           aria-label="너 나와 신청"
         >
           <img src="/images/items/nawa.jpg" alt="" className="scr-challenge-title-nawa" />
-          <span className="scr-challenge-nawa-label">호출하기 💅</span>
+          <span className="scr-challenge-nawa-label">호출하기</span>
         </button>
       </div>
 
