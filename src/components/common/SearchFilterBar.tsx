@@ -170,7 +170,14 @@ export default function SearchFilterBar({
     }
     if (e.key === "ArrowDown") { e.preventDefault(); setHighlight((h) => (h + 1) % matchedSuggestions.length); }
     else if (e.key === "ArrowUp") { e.preventDefault(); setHighlight((h) => (h - 1 + matchedSuggestions.length) % matchedSuggestions.length); }
-    else if (e.key === "Enter") { e.preventDefault(); pick(matchedSuggestions[Math.min(highlight, matchedSuggestions.length - 1)]); }
+    // 후보가 떠 있으면 스페이스/탭/엔터 아무거나로 확정한다(요청: "자동완성은 스페이스,
+    // 탭, 엔터로 입력되게") — 스페이스는 기본적으로 지금 타이핑 중인 글자를 그대로 칩으로
+    // 커밋하지만(위 onChange), 후보가 떠 있을 때만큼은 그 원래 동작 대신 하이라이트된
+    // 후보를 고르는 쪽이 우선한다.
+    else if (e.key === "Enter" || e.key === " " || e.key === "Tab") {
+      e.preventDefault();
+      pick(matchedSuggestions[Math.min(highlight, matchedSuggestions.length - 1)]);
+    }
   };
 
   const searchItem = (
