@@ -1983,13 +1983,32 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   background: linear-gradient(115deg, #a82268 0%, #e15fa2 40%, #ffcfe6 50%, #e15fa2 60%, #a82268 100%);
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
-/* "경기수 TOP N" 배지 — 둥근 네모 필(요청: "둥근네모필로 변경"), 진한 분홍 배경에 흰 글씨,
-   한 스텝 더 작게. 메달인 경우엔 닉네임 색은 그대로 두고 이 배지만 단다. */
+/* 경기수 상위이면서 메달(1~3위)이기도 하면, 메달메탈(기본)을 깔고 그 위에 분홍 메탈
+   텍스트를 겹쳐 opacity를 느리게 교대(요청: 메달 2초 유지 → 1초 페이드 → 분홍 2초 유지 →
+   1초 페이드). */
+.scr-rank-name-games-medal { position: relative; }
+.scr-rank-name-games-medal::after {
+  content: attr(data-name);
+  position: absolute; left: 0; top: 0; right: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; pointer-events: none;
+  background: linear-gradient(115deg, #a82268 0%, #e15fa2 40%, #ffcfe6 50%, #e15fa2 60%, #a82268 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  animation: scr-games-medal-cross 6s ease-in-out infinite;
+}
+/* 6초 주기 — 메달(overlay opacity 0) 2초(0~33.3%) → 1초 페이드(33.3~50%) → 분홍(opacity 1)
+   2초(50~83.3%) → 1초 페이드(83.3~100%)로 메달로 복귀. ease-in-out으로 부드럽게. */
+@keyframes scr-games-medal-cross {
+  0%, 33.3% { opacity: 0; }
+  50%, 83.3% { opacity: 1; }
+  100% { opacity: 0; }
+}
+/* "참가N위" 배지 — 알약 없이 분홍 메탈 그라데이션 투명 폰트로(요청: "짧게, 폰트는 투명"),
+   닉네임과 같은 톤. 한 스텝 작게. */
 .scr-rank-games-badge {
   flex-shrink: 0; white-space: nowrap;
-  padding: 1px 5px; border-radius: 5px;
-  background: #dd4b96; color: #fff;
   font-size: 9px; font-weight: 800; letter-spacing: 0.02em;
+  background: linear-gradient(115deg, #a82268 0%, #e15fa2 40%, #ffcfe6 50%, #e15fa2 60%, #a82268 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
 }
 /* 전적/승률도 순위/변동과 같은 패턴으로 위아래 배치, 오른쪽 정렬 */
 .scr-rank-record-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
