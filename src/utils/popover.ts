@@ -1,4 +1,4 @@
-import { computePosition, autoUpdate, flip, shift, size, offset } from "@floating-ui/dom";
+import { computePosition, autoUpdate, flip, shift, size, offset, type Placement } from "@floating-ui/dom";
 
 interface PopoverOpts {
   // 트리거 너비와 정확히 같게 (검색 결과 목록처럼 칸에 딱 맞춰야 할 때)
@@ -13,6 +13,8 @@ interface PopoverOpts {
   // 고정 최대폭 (달력 팝오버처럼 트리거 폭과 무관하게 일정한 폭을 쓸 때, growFromAnchor/
   // growToContent의 상한으로도 쓰임)
   maxWidth?: number;
+  // 기본은 "bottom-start"(트리거 왼쪽에 맞춤) — 트리거와 가운데 정렬하고 싶을 때 "bottom" 등으로.
+  placement?: Placement;
 }
 
 const MARGIN = 8;
@@ -52,7 +54,7 @@ export function attachPopover(
   const update = () => {
     computePosition(anchorEl, floatingEl, {
       strategy: "fixed",
-      placement: "bottom-start",
+      placement: opts.placement ?? "bottom-start",
       middleware: [
         offset(4),
         flip({ boundary, padding: MARGIN }),
