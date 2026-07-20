@@ -2001,15 +2001,29 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 /* 가운데 하이라이트를 순백(#fff) 대신 그 금속의 옅은 톤으로 낮춘다 — 가운데가 너무 하얘서
    글자가 안 읽히는 문제(요청). 밝되 순백은 아니게. */
 .scr-rank-name-gold {
-  background: linear-gradient(115deg, #9a6f08 0%, #ffd24d 40%, #ffe89a 50%, #ffd24d 60%, #9a6f08 100%);
+  background: linear-gradient(115deg, #9a6f08 0%, #ffd24d 40%, #fff0b8 50%, #ffd24d 60%, #9a6f08 100%);
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
 .scr-rank-name-silver {
-  background: linear-gradient(115deg, #7a7f88 0%, #c3c9d1 40%, #e6eaf0 50%, #c3c9d1 60%, #7a7f88 100%);
+  background: linear-gradient(115deg, #7a7f88 0%, #c3c9d1 40%, #f1f4f8 50%, #c3c9d1 60%, #7a7f88 100%);
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
 .scr-rank-name-bronze {
-  background: linear-gradient(115deg, #6e4326 0%, #b98a5a 40%, #e3b585 50%, #b98a5a 60%, #6e4326 100%);
+  background: linear-gradient(115deg, #6e4326 0%, #b98a5a 40%, #edc79c 50%, #b98a5a 60%, #6e4326 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+/* 라이트 테마(흰 배경)에선 밝은 메탈이 날아가 안 읽혀, 전체적으로 더 어두운 메탈로 낮춘다
+   (요청: "라이트 테마에선 더 어둡게"). 가운데도 순한 중간 톤까지만. */
+.scr-light-theme .scr-rank-name-gold {
+  background: linear-gradient(115deg, #5f4304 0%, #a9790a 40%, #cf9e28 50%, #a9790a 60%, #5f4304 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.scr-light-theme .scr-rank-name-silver {
+  background: linear-gradient(115deg, #3f434a 0%, #6d727c 40%, #8b909b 50%, #6d727c 60%, #3f434a 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.scr-light-theme .scr-rank-name-bronze {
+  background: linear-gradient(115deg, #3f2411 0%, #7c4f28 40%, #a06c3a 50%, #7c4f28 60%, #3f2411 100%);
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
 /* "경기수N위" 배지 — 알약 없이 글자만, 글자에 핑크 메탈 그라데이션을 입힌다(요청). 폰트
@@ -5222,6 +5236,8 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
 }
 /* 타이틀("너 나와! 신청") 아래 갭을 좀 더(요청: "도전장 보내기 타이틀 아래에 갭을 추가"). */
 .scr-challenge-form-modal .scr-modal-head { margin-bottom: 16px; }
+/* 폼 요소(동료/상대/일시/버튼) 사이 세로 간격을 충분히 넓힌다(요청) — 기본 14 → 22px. */
+.scr-challenge-form-modal .scr-modal-body { gap: 22px; }
 /* ".scr-light-theme .scr-modal"(클래스 두 개, 위 베이스 글라스 규칙)이 이 편지지
    규칙(클래스 하나)보다 특이도가 높아서, 라이트 테마에서는 편지지 배경이 아니라
    그 반투명 흰 유리 배경이 이겨버렸다(실제로 지적받은 문제 — "라이트 테마에서도
@@ -5350,8 +5366,8 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
 /* 동료=파랑, 상대=빨강으로 유치하고 알록달록하게(요청) — 꽉 찬 색 알약 + 흰 아이콘. */
 .scr-challenge-add-target-inline.scr-challenge-add-target-blue { background: #2f7bff; color: #fff; }
 .scr-challenge-add-target-inline.scr-challenge-add-target-blue:hover { background: #4a8dff; }
-.scr-challenge-add-target-inline.scr-challenge-add-target-red { background: #ff3b3b; color: #fff; }
-.scr-challenge-add-target-inline.scr-challenge-add-target-red:hover { background: #ff5a5a; }
+.scr-challenge-add-target-inline.scr-challenge-add-target-red { background: #ff2e93; color: #fff; }
+.scr-challenge-add-target-inline.scr-challenge-add-target-red:hover { background: #ff54a8; }
 /* 필수 항목 표시 — 활성화 시 신청 버튼과 같은 핑크로 통일해 "필수→핑크" 흐름을 만든다. */
 .scr-req-mark { color: #f684bb; font-weight: 700; margin-left: -2px; }
 /* 신청 버튼 — 상대(필수) 미지정이면 무채색으로 "꺼짐"을, 지정하면 핑크(.scr-challenge-accept-btn)
@@ -5363,12 +5379,12 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
   border-color: rgba(255, 255, 255, 0.18); opacity: 1;
 }
 .scr-light-theme .scr-challenge-submit-btn:disabled { border-color: rgba(0, 0, 0, 0.14); }
-/* "호출" 버튼 — 활성화 시 붉은색(요청: "호출 모달 버튼 붉은색으로"). 비활성은 위
+/* "호출" 버튼 — 활성화 시 핑크(요청: 빨강 말고 핑크로). 비활성은 위
    .scr-challenge-submit-btn:disabled의 무채색 처리를 그대로 받는다. */
 .scr-challenge-call-btn:not(:disabled) {
-  background: #d63a3a; border-color: #d63a3a; color: #fff;
+  background: #e8529e; border-color: #e8529e; color: #fff;
 }
-.scr-challenge-call-btn:not(:disabled):hover { background: #e24a4a; border-color: #e24a4a; }
+.scr-challenge-call-btn:not(:disabled):hover { background: #f265ab; border-color: #f265ab; }
 .scr-challenge-datetime { display: flex; gap: 8px; }
 .scr-challenge-datetime .scr-input { flex: 1; min-width: 0; }
 /* 도전장 작성/인박스 팝업은 앱 다크/라이트 테마와 무관하게 항상 아이보리 편지지 톤인데,
