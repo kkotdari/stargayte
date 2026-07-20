@@ -1128,9 +1128,23 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
     inset 0 -1px 0 rgba(255,255,255,0.03),
     0 1px 4px rgba(0,0,0,0.15),
     0 4px 14px rgba(0,0,0,0.18);
-  font-size: var(--fs-caption); line-height: 1.5; color: rgba(255,255,255,0.72);
+  /* 탁해 보인다는 피드백으로 불투명도 올림(실제로 지적받은 문제 — "일반 폰트 색
+     하얀색 맞나? 왜케 탁해보여"). */
+  font-size: var(--fs-caption); line-height: 1.5; color: rgba(255,255,255,0.88);
+  list-style: none; margin: 0;
 }
+/* 문장별로 줄바꿈 + 항목 표시점(요청: "산정방식 툴팁 문장별로 줄바꿈및 항목 표시 점 같은거
+   앞에 붙여줘"). */
+.scr-rank-method-tooltip li { position: relative; padding-left: 12px; }
+.scr-rank-method-tooltip li + li { margin-top: 4px; }
+.scr-rank-method-tooltip li::before {
+  content: "•"; position: absolute; left: 0; top: 0; color: rgba(255,255,255,0.4);
+}
+.scr-light-theme .scr-rank-method-tooltip li::before { color: rgba(0,0,0,0.3); }
 .scr-rank-method-tooltip b { color: #fff; font-weight: 700; }
+/* "잠정"만 카드 배지(.scr-rank-provisional)와 같은 붉은 톤으로(요청: "TrueSkill
+   볼드처리 잠정에 붉은톤"). */
+.scr-rank-method-tip-provisional { color: #d97a7a !important; }
 .scr-light-theme .scr-rank-method-tooltip {
   background: rgba(255,255,255,0.97);
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.7), 0 1px 3px rgba(0,0,0,0.06), 0 4px 10px rgba(0,0,0,0.08);
@@ -1143,13 +1157,18 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    흔들린다. */
 .scr-rank-provisional {
   /* 점수 글자와 겹쳐 보인다는 피드백으로 더 위/오른쪽으로(실제로 지적받은 문제 —
-     "잠정 배지 좀더 오른쪽 위로 이동해야함 지금 겹쳐있어 점수랑"). */
-  position: absolute; top: -12px; right: -4px; pointer-events: none;
-  display: inline-block; padding: 1px 4px; border-radius: 999px;
+     "잠정 배지 좀더 오른쪽 위로 이동해야함 지금 겹쳐있어 점수랑"), 이후 배경 제거하고
+     붉은 톤 글자색으로, 위치도 더 위로(요청: "잠정마크 배경 없애고 글자 약간 붉은
+     톤으로해줘", "위치를 조금더 위로 올려줘"). */
+  /* 점수와 안 겹치게 완전히 오른쪽 바깥으로 빼고, 그 자리에서 위쪽으로 살짝 든다
+     (요청: "잠정 배지를 점수의 완전 오른쪽 밖에서 위쪽") — left:100%라 점수 박스와
+     겹치지 않고 딱 붙어 시작한다. */
+  /* 살짝 왼쪽으로(요청: "살짝 왼쪽으로 이동") — 점수와의 간격만 줄인다. */
+  position: absolute; left: 100%; top: -4px; margin-left: 0px; pointer-events: none;
+  display: inline-block; padding: 1px 4px;
   font-size: var(--fs-11); font-weight: 700; line-height: 1.4; white-space: nowrap;
-  color: var(--muted); background: rgba(255, 255, 255, 0.08);
+  color: #d97a7a;
 }
-.scr-light-theme .scr-rank-provisional { background: rgba(0, 0, 0, 0.07); }
 /* 산정 방식 힌트 — 서브행 오른쪽에 옅게. 좁은 화면에선 글자만 살짝 줄인다. */
 .scr-rank-hint-inline {
   text-align: right; font-size: var(--fs-body); color: var(--muted); white-space: nowrap;
@@ -1993,8 +2012,8 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 /* 프사도 원형으로(Avatar.tsx는 인라인 style로 각진 래디우스를 계산해 넣으므로 스타일시트
    에서 override하려면 !important가 필요하다). */
 .scr-rank-table-panel-v2 .scr-avatar { border-radius: 50% !important; }
-/* 순위 변동(화살표+숫자) 배지 — v1보다 v2만 크게(11px) 키운다. */
-.scr-rank-table-panel-v2 .scr-rank-delta { font-size: var(--fs-caption); }
+/* 순위 변동(화살표+숫자) 배지 — v1보다 v2만 크게(11px) 키운다. 요청으로 1단계 축소. */
+.scr-rank-table-panel-v2 .scr-rank-delta { font-size: var(--fs-micro); }
 /* 승률(주 지표)만 남아서 그 자체로 크고 진하게 — 자기 칸 안에서 오른쪽 정렬. */
 .scr-rank-stat-primary { font-size: var(--fs-subhead); font-weight: 600; color: var(--text); }
 .scr-rank-stat-primary-cell { justify-self: end; }

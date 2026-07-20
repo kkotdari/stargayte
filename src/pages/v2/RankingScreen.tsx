@@ -134,10 +134,11 @@ export default function RankingScreenV2() {
   // 보이게"). 헤더의 프로필 드롭다운과 같은 패턴(attachPopover + 바깥 클릭/포커스 이동 시 닫음).
   const [methodTipOpen, setMethodTipOpen] = useState(false);
   const methodAnchorRef = useRef<HTMLButtonElement>(null);
-  const methodTipRef = useRef<HTMLDivElement>(null);
+  const methodTipRef = useRef<HTMLUListElement>(null);
   useEffect(() => {
     if (!methodTipOpen || !methodAnchorRef.current || !methodTipRef.current) return;
-    return attachPopover(methodAnchorRef.current, methodTipRef.current, { growToContent: true, maxWidth: 280 });
+    // 산정 방식 버튼과 가운데 정렬(요청: "툴팁은 산정방식 버튼과 가운데 정렬시키기").
+    return attachPopover(methodAnchorRef.current, methodTipRef.current, { growToContent: true, maxWidth: 280, placement: "bottom" });
   }, [methodTipOpen]);
   useEffect(() => {
     if (!methodTipOpen) return;
@@ -237,11 +238,11 @@ export default function RankingScreenV2() {
         </button>
       </div>
       {methodTipOpen && createPortal(
-        <div className="scr-rank-method-tooltip" ref={methodTipRef}>
-          경기 결과로 실력 레이팅(TrueSkill)을 추정합니다. 강한 상대를 이길수록 크게 오르고,
-          경기가 적으면 <b>잠정</b>으로 낮게 잡힙니다. 팀전은 팀 승패를 개인 실력으로 분해하며,
-          개인전·팀전 레이팅은 따로 계산됩니다.
-        </div>,
+        <ul className="scr-rank-method-tooltip" ref={methodTipRef}>
+          <li>경기 결과로 실력 레이팅(<b>TrueSkill</b>)을 추정합니다.</li>
+          <li>강한 상대를 이길수록 크게 오르고, 경기가 적으면 <b className="scr-rank-method-tip-provisional">잠정</b>으로 낮게 잡힙니다.</li>
+          <li>팀전은 팀 승패를 개인 실력으로 분해하며, 개인전·팀전 레이팅은 따로 계산됩니다.</li>
+        </ul>,
         document.body,
       )}
 
