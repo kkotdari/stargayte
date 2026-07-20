@@ -325,9 +325,6 @@ export interface ChallengeTarget {
   battletag: string;
   avatar: string | null;
   response: ChallengeTargetResponse;
-  // 응답(수락/거절) 한마디 — 요청자가 조회할 때만 값이 오고, 그 외 조회자에게는 항상
-  // null이다.
-  responseMessage: string | null;
 }
 
 // 도전자와 같은 편(내 팀) — 본인은 자동 포함이라 이 목록엔 안 담기고, "본인 제외
@@ -343,7 +340,6 @@ export interface ChallengeOwnMember {
 export interface ChallengeHistoryEntry {
   id: number;
   scheduledAt: string | null;
-  message: string;
   status: ChallengeStatus;
   targets: ChallengeTarget[];
   createdAt: string;
@@ -355,7 +351,6 @@ export interface Challenge {
   id: number;
   matchType: ChallengeMatchType;
   scheduledAt: string | null;
-  message: string;
   status: ChallengeStatus;
   createdBy: { id: string; nickname: string };
   targets: ChallengeTarget[];
@@ -376,7 +371,6 @@ export interface Challenge {
 
 export interface ChallengeCreatePayload {
   scheduledAt?: string | null;
-  message?: string;
   targetMemberIds: string[];
   // 본인 제외 나머지 내 팀원(최대 3명, 본인 포함 최대 4명) — 안 넘기면 나 혼자.
   ownTeamMemberIds?: string[];
@@ -384,10 +378,9 @@ export interface ChallengeCreatePayload {
   fromMatchRequest?: boolean;
 }
 
-// 재대결(설욕전)을 신청할 때 — 시간/메모는 생략할 수 있다.
+// 재대결(설욕전)을 신청할 때 — 시간은 생략할 수 있다.
 export interface ChallengeRevengePayload {
   scheduledAt?: string | null;
-  message?: string;
 }
 
 // ===== 대결 요청 코너 ("너 나와!" 최상단) =====

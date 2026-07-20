@@ -23,10 +23,8 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
   const [idx, setIdx] = useState(0);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
-  // 오류가 어느 입력칸 것인지 — 그 칸에 에러 테두리(scr-input-invalid)를 함께 준다
-  // (요청: "사유에 에러 테두리도 넣어줘야지"). 한마디는 더 이상 필수가 아니라서(요청:
-  // "더이상 도전장 보내기/수락하기/거절하기에서 한마디가 필수가 아님") 이제 일정
-  // 오류만 남는다.
+  // 오류가 어느 입력칸 것인지 — 그 칸에 에러 테두리(scr-input-invalid)를 함께 준다.
+  // 남은 입력은 일정(날짜/시간)뿐이라 일정 오류만 있다.
   const [errField, setErrField] = useState<"schedule" | "">("");
   // 처음엔 편지봉투(envelope)만 보여준다 — 잠깐 대기했다가 흔들리고(요청: "약간만 대기했다가
   // 쉐이킹"), 흔들림이 끝나면 "열기/버리기" 버튼이 뜬다(요청: "버튼 다시 살릴게 버튼은
@@ -35,7 +33,6 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
   const [stage, setStage] = useState<"envelope" | "letter">("envelope");
   // 봉투 흔들림이 끝난 뒤에만 열기/버리기 버튼을 띄운다.
   const [envReady, setEnvReady] = useState(false);
-  const [message, setMessage] = useState("");
   // 요청자가 "시간 지정"을 끄고 보낸(scheduledAt 없음) 도전장은 "상대가 정해도 된다"는
   // 뜻이다 — 승락하는 이 시점에 상대가 직접 정하게 한다(요청: "도전자/상대 모두 시간을
   // 지정하지 않았는데 수락이 된 경우가 있네 이러면 안되는데" — 안 그러면 시간이 영원히
@@ -62,7 +59,6 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
 
   const advance = () => {
     setStage("envelope");
-    setMessage("");
     setDateStr("");
     setTimeStr("");
     setErr("");
@@ -71,9 +67,6 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
     else setIdx((i) => i + 1);
   };
 
-  // 한마디는 수락/거절 어느 쪽도 더 이상 필수가 아니다(요청: "더이상 도전장 보내기/
-  // 수락하기/거절하기에서 한마디가 필수가 아님") — 비어 있어도 그대로 보낸다.
-  const trimmedMessage = message.trim();
   // 승락 시에도 일시는 필수가 아니다(요청: "승락시에도 일시 미선택 가능이야") — 둘 다
   // 비워두면 그냥 미정인 채로 승락되고, 날짜만/시간만처럼 절반만 채운 경우만 막는다
   // (그 상태로 보내면 뜻이 애매해서).
@@ -93,7 +86,7 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
       const scheduledAt = response === "accepted" && needsSchedule && dateStr && timeStr
         ? new Date(`${dateStr}T${timeStr}`).toISOString()
         : undefined;
-      await api.respondToChallenge(current.id, response, trimmedMessage || undefined, scheduledAt);
+      await api.respondToChallenge(current.id, response, scheduledAt);
       advance();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "응답하지 못했어요.");
@@ -136,9 +129,6 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
               흐려서 배치한다. */}
           <img src="/images/items/nawa.jpg" alt="" className="scr-challenge-inbox-hero" />
           <div className="scr-modal-body scr-challenge-inbox-body">
-            {current.message && (
-              <p className="scr-challenge-inbox-message">"{current.message}"</p>
-            )}
             {isTeamMatch && (
               <>
                 <div className="scr-challenge-inbox-row scr-challenge-inbox-team-row">
@@ -175,18 +165,6 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
                 invalid={errField === "schedule"}
               />
             )}
-
-            <label className="scr-field">
-              <span className="scr-label">한마디 (선택)</span>
-              <input
-                type="text"
-                className="scr-input"
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                placeholder="예: 네가 감히! / 좋아요, 그날 봐요"
-                maxLength={60}
-              />
-            </label>
 
             {/* 일정을 안 정하고 승락을 누르면 여기 오류가 뜬다 — 뜰 때 아래 버튼 줄이
                 크게 밀리지 않게 작은 한 줄 자리만 미리 예약하고, 박스/테두리 없이 작은 글씨만

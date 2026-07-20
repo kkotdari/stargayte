@@ -63,8 +63,7 @@ export default function ChallengeResultInboxModal({ challenges, onClose }: Chall
       <div className="scr-modal scr-modal-sm scr-challenge-inbox-modal">
         <div className="scr-challenge-inbox-title">지난 대결의 결과를 입력해 주세요</div>
         <div className="scr-modal-body scr-challenge-inbox-body">
-          {/* 어떤 경기인지 구분할 수 있게 종류/일시/한마디를 함께 보여준다(요청: "경기일시랑
-              한마디 정보도 표현해줘야 무슨 경기인지 구분하기 쉽겠다"). */}
+          {/* 어떤 경기인지 구분할 수 있게 종류/일시를 함께 보여준다. */}
           <div className="scr-challenge-inbox-row">
             <span className="scr-label">종류</span>
             <span>{MATCH_TYPE_INFO[current.matchType]}</span>
@@ -73,9 +72,6 @@ export default function ChallengeResultInboxModal({ challenges, onClose }: Chall
             <span className="scr-label">일시</span>
             <span>{formatChallengeSchedule(current.scheduledAt)}</span>
           </div>
-          {current.message && (
-            <p className="scr-challenge-inbox-message">"{current.message}"</p>
-          )}
 
           {err && <div className="scr-err">{err}</div>}
 
