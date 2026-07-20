@@ -5350,8 +5350,8 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
 /* 동료=파랑, 상대=빨강으로 유치하고 알록달록하게(요청) — 꽉 찬 색 알약 + 흰 아이콘. */
 .scr-challenge-add-target-inline.scr-challenge-add-target-blue { background: #2f7bff; color: #fff; }
 .scr-challenge-add-target-inline.scr-challenge-add-target-blue:hover { background: #4a8dff; }
-.scr-challenge-add-target-inline.scr-challenge-add-target-red { background: #ff3b3b; color: #fff; }
-.scr-challenge-add-target-inline.scr-challenge-add-target-red:hover { background: #ff5a5a; }
+.scr-challenge-add-target-inline.scr-challenge-add-target-red { background: #ff2e93; color: #fff; }
+.scr-challenge-add-target-inline.scr-challenge-add-target-red:hover { background: #ff54a8; }
 /* 필수 항목 표시 — 활성화 시 신청 버튼과 같은 핑크로 통일해 "필수→핑크" 흐름을 만든다. */
 .scr-req-mark { color: #f684bb; font-weight: 700; margin-left: -2px; }
 /* 신청 버튼 — 상대(필수) 미지정이면 무채색으로 "꺼짐"을, 지정하면 핑크(.scr-challenge-accept-btn)
