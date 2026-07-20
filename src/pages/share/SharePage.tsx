@@ -1,55 +1,16 @@
 import { useEffect, useState } from "react";
 import { Spinner } from "../../components/common/Feedback";
 import MatchList, { type SearchListRow } from "../v2/MatchList";
+import ChallengeInboxModal from "../../modals/ChallengeInboxModal";
 import { api } from "../../api/client";
 import { useAppStore } from "../../store/appStore";
-import { formatChallengeSchedule } from "../../utils/date";
 import type { Challenge, Match } from "../../types";
 
 // 카카오톡으로 공유된 링크(?sv=match|challenge&sid=…)가 여는, 그 한 장만 보이는 화면(요청:
-// "너나와/경기 공유시 해당 카드만 있는 화면"). 로그인 뒤에 뜨며, "앱 열기"로 전체 앱으로 들어간다.
+// "너나와/경기 공유시 해당 카드만 있는 화면"). 로그인 뒤에 뜨며, "스타게이트로 가"로 전체 앱에 들어간다.
 export interface ShareTarget {
   type: "match" | "challenge";
   id: number;
-}
-
-// 너 나와 카드(읽기 전용) — 초대 편지지(ChallengeInboxModal)의 안쪽 클래스를 그대로 빌려
-// 쓰되, 전체 화면을 덮는 스크림(.scr-modal의 거대한 box-shadow)은 피하려고 .scr-modal 대신
-// 가벼운 .scr-share-card로 감싼다.
-function ShareChallengeCard({ challenge }: { challenge: Challenge }) {
-  const isTeam = challenge.matchType === "0102";
-  const targetNames = challenge.targets.map((t) => t.nickname);
-  const opposingTeam = [challenge.createdBy.nickname, ...challenge.ownMembers.map((m) => m.nickname)];
-  const ourTeam = challenge.targets.map((t) => t.nickname);
-  return (
-    <div className="scr-share-card scr-challenge-inbox-modal">
-      <div className="scr-challenge-inbox-title">{targetNames.join(", ")} 너 나와!</div>
-      <img src="/images/items/nawa2.jpg" alt="" className="scr-challenge-inbox-hero" />
-      <div className="scr-challenge-inbox-body">
-        {isTeam ? (
-          <>
-            <div className="scr-challenge-inbox-row scr-challenge-inbox-team-row">
-              <span className="scr-label scr-challenge-team-label scr-challenge-team-label-them">상대팀</span>
-              <span className="scr-challenge-team-names">{opposingTeam.join(", ")}</span>
-            </div>
-            <div className="scr-challenge-inbox-row scr-challenge-inbox-team-row">
-              <span className="scr-label scr-challenge-team-label scr-challenge-team-label-us">우리팀</span>
-              <span className="scr-challenge-team-names">{ourTeam.join(", ")}</span>
-            </div>
-          </>
-        ) : (
-          <div className="scr-challenge-inbox-row">
-            <span className="scr-label">도전자</span>
-            <span>{challenge.createdBy.nickname}</span>
-          </div>
-        )}
-        <div className="scr-challenge-inbox-row">
-          <span className="scr-label">일시</span>
-          <span>{formatChallengeSchedule(challenge.scheduledAt)}</span>
-        </div>
-      </div>
-    </div>
-  );
 }
 
 export default function SharePage({ target, onExit }: { target: ShareTarget; onExit: () => void }) {
@@ -88,6 +49,23 @@ export default function SharePage({ target, onExit }: { target: ShareTarget; onE
     return () => { alive = false; };
   }, [target.type, target.id]);
 
+  // 너 나와 공유는 인박스(편지봉투→편지지)를 그대로 재사용한다(요청). 지목된 대상만 응답
+  // 버튼을 보고, 아니면 읽기 전용이며 "스타게이트로 가"로 앱에 들어간다. 인박스 모달이
+  // 전체 화면 오버레이라 별도 상단바 없이 그것만 띄운다.
+  if (target.type === "challenge") {
+    if (loading) return <div className="scr-share-page"><div className="scr-share-body"><Spinner size={18} /></div></div>;
+    if (challenge) return <ChallengeInboxModal challenges={[challenge]} onClose={onExit} closeLabel="스타게이트로 가" />;
+    return (
+      <div className="scr-share-page">
+        <div className="scr-share-head">
+          <span className="scr-share-brand">스타게이트</span>
+          <button type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid" onClick={onExit}>스타게이트로 가</button>
+        </div>
+        <div className="scr-share-body"><div className="scr-err">{err || "찾을 수 없어요."}</div></div>
+      </div>
+    );
+  }
+
   const rows: SearchListRow[] = match
     ? [{ id: match.id, date: match.date, team1: match.team1, team2: match.team2, result: match.result, raw: match }]
     : [];
@@ -97,7 +75,7 @@ export default function SharePage({ target, onExit }: { target: ShareTarget; onE
       <div className="scr-share-head">
         <span className="scr-share-brand">스타게이트</span>
         <button type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid" onClick={onExit}>
-          앱 열기
+          스타게이트로 가
         </button>
       </div>
       <div className="scr-share-body">
@@ -105,12 +83,10 @@ export default function SharePage({ target, onExit }: { target: ShareTarget; onE
           <div className="scr-empty"><Spinner size={18} /></div>
         ) : err ? (
           <div className="scr-err">{err}</div>
-        ) : target.type === "match" && match ? (
+        ) : match ? (
           <div className="scr-share-match">
             <MatchList rows={rows} memberOf={memberOf} onMemo={() => {}} onDeleted={() => {}} loading={false} />
           </div>
-        ) : challenge ? (
-          <ShareChallengeCard challenge={challenge} />
         ) : null}
       </div>
     </div>
