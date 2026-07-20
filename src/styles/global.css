@@ -1108,7 +1108,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 /* 산정 방식 안내 — 기준점수표를 없앤 자리(필터 아래·목록 위). 항상 보이는 문단 대신 눌러야
    뜨는 툴팁으로 바꾼다(요청: "누르면 툴팁형태로 보이게"). 트리거는 작고 옅게, 눌리면(active)
    살짝 밝아진다. */
-.scr-rank-method-row { display: flex; justify-content: center; padding: 6px 0 2px; }
+.scr-rank-method-row { display: flex; justify-content: center; padding: 3px 0 1px; }
 .scr-rank-method-trigger {
   display: inline-flex; align-items: center; gap: 4px;
   background: transparent; border: none; cursor: pointer; padding: 2px 6px; border-radius: 999px;
@@ -1983,9 +1983,9 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    같은 그룹으로 보이게 한다. */
 .scr-rank-table-panel-v2 .scr-rank-row-tied { padding-top: 6px; }
 @media (max-width: 640px) {
-  /* 좌우 패딩은 모바일도 제거(요청) — 위아래만 14px(요청: "랭킹 아바타 크기 축소 및
-     행 높이 축소"). */
-  .scr-rank-table-panel-v2 .scr-rank-row { padding: 14px 0; }
+  /* 좌우 패딩은 모바일도 제거(요청) — 위아래는 14px였다가 카드가 더 많이 보이도록
+     추가로 줄인다(요청: "모바일 - 랭킹 카드의 위아래 패딩을 줄여서 더 많이 나오게"). */
+  .scr-rank-table-panel-v2 .scr-rank-row { padding: 10px 0; }
   .scr-rank-table-panel-v2 .scr-rank-row-tied { padding-top: 5px; }
   /* 좁은 폭에서도 위와 같은 이유로 고정폭을 유지한다(프사 정렬이 흔들리지 않도록) —
      프사만 이 화면폭에서 32px로 줄어들므로(아래 .scr-rank-avatar-btn .scr-avatar) 칸
