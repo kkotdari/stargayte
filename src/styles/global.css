@@ -2066,10 +2066,9 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 @media (max-width: 640px) {
   /* 좌우 패딩은 모바일도 제거(요청) — 위아래는 14px였다가 카드가 더 많이 보이도록
      추가로 줄인다(요청: "모바일 - 랭킹 카드의 위아래 패딩을 줄여서 더 많이 나오게").
-     행 높이를 조금 더 줄인다(요청: "모바일에서만 행 높이 약간 축소") — 세로 패딩을
-     10→8px로. */
-  .scr-rank-table-panel-v2 .scr-rank-row { padding: 8px 0; }
-  .scr-rank-table-panel-v2 .scr-rank-row-tied { padding-top: 4px; }
+     행 높이를 조금 줄였다가(10→8px), 다시 8~10%만 키운다(요청) — 세로 패딩 8→10px. */
+  .scr-rank-table-panel-v2 .scr-rank-row { padding: 10px 0; }
+  .scr-rank-table-panel-v2 .scr-rank-row-tied { padding-top: 5px; }
   /* 순위 숫자와 순위변동 사이 간격을 없애 배지 세로 높이를 줄인다(요청: "랭크와 순위변동
      사이가 줄어야") — 숫자 자체의 행간(line-height)도 1로 바짝 붙인다. */
   .scr-rank-table-panel-v2 .scr-rank-badge { gap: 0; }
