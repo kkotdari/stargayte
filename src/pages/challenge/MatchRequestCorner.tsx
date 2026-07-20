@@ -320,7 +320,7 @@ export default function MatchRequestCorner() {
   return (
     <Fragment>
       {/* 소제목은 카드 밖으로(요청) — 카드 안에는 입력폼과 목록만 남는다. */}
-      <h2 className="scr-v2-subheading">대결 요청하기</h2>
+      <h2 className="scr-v2-subheading">보고싶은 대결</h2>
       <section className="scr-mreq-corner">
         <div className="scr-mreq-compose">
           {/* 인풋과 확인 버튼을 한 줄에, 높이도 맞춘다(요청) — 지우기는 별도 버튼 대신
