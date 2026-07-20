@@ -6198,14 +6198,18 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
      패딩도 줄여서 문장에 섞여드는 만큼 "칩" 느낌을 줄인다(요청: "유저칩이 문장에
      섞이는 만큼 패딩을 좀 줄여서 칩의 느낌을 감소시키기"). */
   padding: 0 4px; border-radius: 8px;
-  /* 좀 더 투명하게(요청: "내용의 유저칩을 좀 투명하게 해주고"). */
-  background: rgba(255, 255, 255, 0.72); color: #24272d;
+  /* 다크 테마는 투명도를 훨씬 높이고 글자도 흰색으로(요청: "칩 투명도 훨씬 높게
+     하고 폰트를 흰색으로(다크 테마)") — 거의 안 보이는 은은한 하이라이트 느낌.
+     라이트 테마는 흰 배경 위라 이 조합이면 안 보이니 아래에서 기존 배색(불투명
+     흰 배경 + 어두운 글자)으로 되돌린다. */
+  background: rgba(255, 255, 255, 0.2); color: #ffffff;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18), 0 0 1px rgba(0, 0, 0, 0.1);
   /* 주변 본문(.scr-mreq-item-text)과 글자 크기가 달랐던 게(caption vs body) 세로
      정렬이 어긋나 보이던 원인이었다(실제로 지적받은 문제 — "유저칩과 일반 텍스트가
      세로 정렬이 안맞으니 맞춰줘") — 본문과 같은 크기로 맞춘다. */
   font-size: var(--fs-body); font-weight: 700; white-space: nowrap;
 }
+.scr-light-theme .scr-mreq-chip { background: rgba(255, 255, 255, 0.72); color: #24272d; }
 /* 인라인 칩 — 텍스트 흐름 안에서 세로로 앉는 위치를 잡는다(목록 카드의 읽기용 렌더에서
    쓴다). middle만으로는 패딩이 있는 칩이 주변 글자보다 살짝 아래로 처져 보였다(실제로
    지적받은 문제 — "일반 텍스트가 칩보다 좀 위에 있는 느낌") — 위로 살짝 밀어 보정한다. */
@@ -6214,11 +6218,15 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
    클릭해서 지울 수 있다. 백스페이스로 통째로 지우는 것도 여전히 된다(SearchFilterBar와
    동일한 되돌리기 동작). */
 .scr-mreq-chip-editor { flex-shrink: 0; padding: 1px 4px 1px 8px; }
+/* × 아이콘 색도 다크 테마 칩(어두운 반투명 배경 + 흰 글자)에 맞춰 밝게, 라이트
+   테마는 기존처럼 어둡게. */
 .scr-mreq-chip-x {
   display: inline-flex; align-items: center; justify-content: center;
-  background: transparent; border: none; border-radius: 50%; color: rgba(0,0,0,0.55); cursor: pointer; padding: 2px;
+  background: transparent; border: none; border-radius: 50%; color: rgba(255,255,255,0.6); cursor: pointer; padding: 2px;
 }
-.scr-mreq-chip-x:hover { background: rgba(0,0,0,0.12); color: #000000; }
+.scr-mreq-chip-x:hover { background: rgba(255,255,255,0.18); color: #ffffff; }
+.scr-light-theme .scr-mreq-chip-x { color: rgba(0,0,0,0.55); }
+.scr-light-theme .scr-mreq-chip-x:hover { background: rgba(0,0,0,0.12); color: #000000; }
 .scr-mreq-empty { font-size: var(--fs-body); color: var(--dim); padding: 6px 2px; text-align: center; }
 .scr-mreq-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 /* 요청자+버튼 줄, 메시지 줄 — 세로로 두 단(요청: "요청자와 버튼로우가 한줄에 배치"). */
