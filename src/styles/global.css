@@ -5525,7 +5525,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
    position:fixed로 뷰포트 우측에 떠 있고, 스크롤하는 동안에만 opacity로 나타난다. 위쪽은
    헤더/툴바/검색줄, 아래쪽은 탭바를 비켜 배치한다. */
 .scr-scroll-timeline {
-  position: fixed; right: 6px; z-index: 40;
+  position: fixed; right: 2px; z-index: 40;
   /* 타이틀 아래 버튼 로우(등록/생성/도전장 쓰기 등)는 이제 sticky가 아니라 그냥 문서
      흐름 안에 있어 스크롤하면 같이 밀려 올라간다 — 더 이상 그 버튼 높이만큼 비워둘
      필요가 없다. 헤더 자리만 남겨두고 최대한 위로 올린다(요청: "타임라인 상단 페이지
