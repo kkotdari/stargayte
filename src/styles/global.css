@@ -6213,7 +6213,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
 /* 편집창 안의 칩 — 이제 진짜 DOM 요소라(검색창의 칩과 동일 구조) × 버튼도 실제로
    클릭해서 지울 수 있다. 백스페이스로 통째로 지우는 것도 여전히 된다(SearchFilterBar와
    동일한 되돌리기 동작). */
-.scr-mreq-chip-editor { flex-shrink: 0; padding: 3px 4px 3px 8px; }
+.scr-mreq-chip-editor { flex-shrink: 0; padding: 1px 4px 1px 8px; }
 .scr-mreq-chip-x {
   display: inline-flex; align-items: center; justify-content: center;
   background: transparent; border: none; border-radius: 50%; color: rgba(0,0,0,0.55); cursor: pointer; padding: 2px;
