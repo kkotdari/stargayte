@@ -2327,13 +2327,16 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
      안의 요소(라벨/알약탭/월선택)는 이제 테마 배경 위에 놓이므로 아래에서 테마별 톤으로
      맞춘다(랭킹 서브행의 년월 토글과 같은 방식). */
   display: flex; flex-wrap: nowrap; align-items: center; gap: 4px 10px;
-  /* overflow-x:auto인 채로 overflow-y만 visible로 둬도 스펙상 두 축 모두 auto로 같이
-     계산돼(.scr-access-history-table 주석과 같은 원인) "visible"이 실제로는 안 먹혀
-     라벨이 잘려 안 보였다(실제로 지적받은 문제 — "필터 라벨이 하나도 안보이는데?") —
-     대신 라벨이 얹힐 만큼 padding-top으로 실제 공간을 미리 확보해, auto로 계산돼도
-     그 안에서 잘릴 일이 없게 한다. */
   overflow-x: auto; overflow-y: auto;
-  background: none; border: none; box-shadow: none; padding: 20px 0 0;
+  background: none; border: none; box-shadow: none;
+  /* 라벨을 컨트롤 위(항목 박스 바깥)로 다시 띄운다(요청: "필터 위에 있어야하는데" —
+     안쪽에 겹치면 컨트롤 글자와 뒤섞여 보였다). overflow-x:auto인 채로는 overflow-y가
+     스펙상 auto로 같이 계산돼 박스 위로 넘친 만큼은 그냥 잘리므로, 그 자리를
+     padding-top으로 안쪽에 미리 마련해 잘리지 않게 한다 — 다만 그 padding만큼 패널이
+     커지면 아래(검색창 줄 등)가 밀려 내려가므로, 똑같은 값의 음수 margin-top으로
+     상쇄해 패널 바깥(부모 flex 행 기준)에서 본 높이/위치는 padding이 없을 때와 동일하게
+     유지한다 — 라벨을 위해 문서 흐름 전체가 밀리지 않는다. */
+  padding: 18px 0 0; margin-top: -18px;
 }
 /* 패널이 사라져 라벨/알약이 화면 배경(테마색) 위에 바로 놓인다 — 예전의 밝은 글라스용
    어두운 고정 톤 대신 테마를 따르게 한다. 알약탭 트랙/비활성 글자, 월선택 입력, 라벨을
@@ -2398,10 +2401,12 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   /* 패널이 없어져 화면 배경(테마색) 위에 놓이므로 테마를 따르는 옅은 톤으로. */
   color: var(--muted); white-space: nowrap;
   /* 원래는 항목과 같은 줄에서 나란히(flex row) 자리를 차지해 컨트롤을 오른쪽으로
-     밀었는데, 항목 좌상단 "위"로 옮기되 레이아웃(컨트롤의 자리/크기)엔 영향을 주지
-     않아야 한다(요청) — flex 흐름에서 완전히 빼고(position:absolute) 항목 바로 위에
-     얹는다. bottom:100%로 항목의 실제 렌더 높이와 무관하게 항상 그 "바로 위"에 붙는다. */
-  /* 라벨↔항목 간격(2px→6px)과 좌측 들여쓰기(2px→6px)를 늘린다(요청). */
+     밀었는데, 컨트롤 위(항목 박스 바깥)로 옮기되 레이아웃(컨트롤의 자리/크기, 패널 전체
+     높이)엔 영향을 주지 않아야 한다(요청) — flex 흐름에서 완전히 빼고(position:absolute)
+     항목 바로 위에 얹는다. bottom:100%로 항목의 실제 렌더 높이와 무관하게 항상 그
+     "바로 위"에 붙는다. 안쪽 좌상단에 겹치게도 해봤지만 컨트롤 글자와 뒤섞여 보였다
+     (실제로 지적받은 문제 — "필터 위에 있어야하는데") — 다시 위로. 그 대신 패널
+     padding-top+음수 margin-top(위 .scr-filter-panel)으로 문서 흐름에는 안 걸리게 한다. */
   position: absolute; left: 6px; bottom: 100%; margin-bottom: 6px;
 }
 
