@@ -150,6 +150,12 @@
   --radius-sm: 8px;
   /* 알약형 선택 버튼(.scr-text-pill)과 라벨 배경 칩 등 작은 버튼/칩 공통 반경. */
   --radius-chip: 6px;
+  /* 드롭다운 통일(요청) — 호버=옅은 반전, 액티브=진한 반전. --overlay-rgb가 테마별로
+     흰(다크)↔검(라이트)으로 뒤집히므로 반투명 반전이 자동으로 테마를 따른다. 패널은
+     반투명 유리(테마별 값)로 통일한다. */
+  --dd-hover-bg: rgba(var(--overlay-rgb), 0.08);
+  --dd-active-bg: rgba(var(--overlay-rgb), 0.16);
+  --dd-panel-bg: rgba(20, 25, 31, 0.82);
 
   /* 타이틀이 아닌 "데이터"(입력값/표시값 — 날짜, 배틀태그, 수치, 아이디 등)에 쓰는 고정폭
      폰트. 한글은 이 폰트들도 결국 시스템 UI 폰트로 폴백되지만(고정폭 한글 글리프가 없어서),
@@ -649,6 +655,7 @@ html.scr-light-theme {
   --info: #2f6fb3;
   --divider-tint: 0, 0, 0;
   --overlay-rgb: 0, 0, 0;
+  --dd-panel-bg: rgba(255, 255, 255, 0.9);
   --bar-winrate: #2f8f3e;
   --bar-plays: #2f6fb3;
 }
@@ -6489,4 +6496,61 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
      subhead로 고정하므로 그 뒤(여기)에서 모바일만 덮어쓴다. 아바타는 인라인 크기라 !important. */
   .scr-user-name { font-size: var(--fs-body); }
   .scr-user-chip .scr-avatar { width: 24px !important; height: 24px !important; }
+}
+
+/* ===================================================================
+   드롭다운 통일(요청) — 테두리 제거 · 반투명 유리 패널 · 옵션 hover=옅은 반전 /
+   active·선택=진한 반전(+볼드). 폰트는 큰 드롭다운(Select/유저·종족 선택/자동완성)은
+   16px, 작은 메뉴 팝오버(케밥·운영)는 14px로 이미 나뉘어 있어 그대로 둔다. 서랍
+   아코디언(.scr-menu-pop-drop-inline)은 서랍 톤(밑줄)을 유지하므로 여기서 제외한다.
+   =================================================================== */
+/* 패널 — 테두리 없이 반투명 + 블러, 반사광 그림자로만 구분. */
+.scr-select-drop,
+.scr-cselect-drop,
+.scr-pv-drop,
+.scr-menu-pop-drop {
+  border: none;
+  background: var(--dd-panel-bg);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border-radius: 10px;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.10),
+    inset 0 -1px 0 rgba(255,255,255,0.05),
+    0 6px 18px rgba(0,0,0,0.30);
+}
+.scr-light-theme .scr-select-drop,
+.scr-light-theme .scr-cselect-drop,
+.scr-light-theme .scr-pv-drop,
+.scr-light-theme .scr-menu-pop-drop {
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.7),
+    0 6px 18px rgba(0,0,0,0.12);
+}
+/* 옵션 행 — 줄간격/패딩/라운드 통일. */
+.scr-select-opt,
+.scr-cselect-opt,
+.scr-pv-opt,
+.scr-menu-pop-drop .scr-menu-pop-opt,
+.scr-menu-pop-drop-mobile .scr-menu-pop-opt {
+  padding: 8px 12px; border-radius: 6px;
+}
+/* hover = 옅은 반전(반투명 유지). */
+.scr-select-opt:hover,
+.scr-cselect-opt:hover,
+.scr-pv-opt:hover,
+.scr-pv-opt:focus-visible,
+.scr-menu-pop-drop .scr-menu-pop-opt:hover:not(.scr-menu-pop-opt-active) {
+  background: var(--dd-hover-bg); color: var(--text);
+}
+/* active·선택 = 진한 반전(반투명 유지) + 볼드. 케밥/운영 메뉴는 예전 알약 광원 대신
+   행 배경 반전으로 바꾸므로 라벨 알약 배경은 지운다. */
+.scr-select-opt-active,
+.scr-cselect-opt-active,
+.scr-pv-opt-active,
+.scr-menu-pop-drop .scr-menu-pop-opt-active {
+  background: var(--dd-active-bg); color: var(--text); font-weight: 700;
+}
+.scr-menu-pop-drop .scr-menu-pop-opt-active .scr-menu-pop-opt-label {
+  background: none; padding: 0;
 }
