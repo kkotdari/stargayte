@@ -242,6 +242,8 @@ export default function MatchRequestCorner() {
       // 선택 화면(ChallengeFormModal 등)과 같은 기준.
       .filter((m) => m.status === "active" && m.id !== user?.id && !mentionedIds.has(m.id))
       .filter((m) => !q || m.nickname.toLowerCase().includes(q) || m.id.toLowerCase().includes(q))
+      // 정렬 순서는 닉네임 순(요청).
+      .sort((a, b) => a.nickname.localeCompare(b.nickname, "ko"))
       .slice(0, 50);
   }, [members, user?.id, mentionQuery, mentionedIds]);
 
