@@ -5,6 +5,7 @@ import { Spinner } from "../../components/common/Feedback";
 import SearchFilterBar from "../../components/common/SearchFilterBar";
 import PillTabs from "../../components/common/PillTabs";
 import FilterItem from "../../components/common/FilterItem";
+import Select from "../../components/common/Select";
 import RankRow from "./RankRow";
 import RankingDetailModal from "./RankingDetailModal";
 import ChallengeFormModal from "../../modals/ChallengeFormModal";
@@ -19,7 +20,7 @@ import {
 import { attachPopover } from "../../utils/popover";
 import { cx } from "../../utils/format";
 import { useAppStore } from "../../store/appStore";
-import type { Member } from "../../types";
+import type { BaseRace, Member } from "../../types";
 
 // 랭킹 차트 필터는 "개인전 / 팀전" 둘뿐이다 — 예전의 개인/2인팀/3인팀/4인팀(인원수별) 구분을
 // 없앴다(요청: "개인전/팀전으로만, 팀전은 모든 팀 인원수를 묶어 개인 환산"). 팀전도 개인
@@ -28,6 +29,14 @@ import type { Member } from "../../types";
 const CHART_OPTS: { value: RankMode; label: string }[] = [
   { value: "solo", label: "개인전" },
   { value: "team", label: "팀전" },
+];
+// 종족 필터 — "랭커의 종족"(그 경기에서 낸 종족) 기준. "전체"면 종족 무관 회원 단위 레이팅.
+// 개인전·팀전 모두 지원한다(각자 그 경기에서 낸 종족으로 (회원,종족) 레이팅이 쌓인다).
+const RACE_SELECT_OPTS = [
+  { value: "all", label: "전체", shortLabel: "종족" },
+  { value: "테란", label: "테란" },
+  { value: "프로토스", label: "프로토스" },
+  { value: "저그", label: "저그" },
 ];
 // 기간 단위 — 월이면 화살표 한 번에 ±1개월, 연이면 ±1년 이동한다(요청: "기간 년/월, 화살표
 // 하나로 그 단위만큼 이동. 캘린더 선택기 없이").
@@ -55,6 +64,8 @@ export default function RankingScreenV2() {
   // 쪽으로 고정하지 않고 매번 새로 들어올 때마다 둘 중 하나를 고른다.
   const [mode, setMode] = useState<RankMode>(() => (Math.random() < 0.5 ? "solo" : "team"));
   const matchType = MATCH_TYPE_OF[mode];
+  // 종족 필터(랭커 종족 기준). "all"이면 종족 무관.
+  const [race, setRace] = useState<BaseRace | "all">("all");
   const [search, setSearch] = useState("");
   // 집계 기간 단위(월/연)와 그 기준점(anchor: 월 "YYYY-MM" / 연 "YYYY"). 기본은 그 단위의
   // "현재"(월은 그레이스 보정 이번 달, 연은 올해).
@@ -78,6 +89,7 @@ export default function RankingScreenV2() {
   const handleModeChange = (m: RankMode) => {
     setMode(m);
     setSearch("");
+    setRace("all");
   };
   // 기간 단위를 바꾸면 그 단위의 "현재"로 기준점을 되돌린다(월↔연은 anchor 형식 자체가 달라
   // 그대로 둘 수 없다).
@@ -108,8 +120,8 @@ export default function RankingScreenV2() {
     let cancelled = false;
     setLoading(true);
     setError("");
-    // 종족 필터는 없앴다(레이팅은 회원 단위 하나 — 종족별로 나누지 않는다) — 항상 "all".
-    computeRankRows(membersRef.current, matchType, "all", unit, anchor)
+    // 종족 필터는 '랭커의 종족' 기준 — 서버가 (회원,종족) 레이팅으로 순위를 매긴다("all"이면 회원 단위).
+    computeRankRows(membersRef.current, matchType, race, unit, anchor)
       .then((res) => { if (!cancelled) setRows(res); })
       .catch((e) => {
         if (!cancelled) setError(e instanceof Error ? e.message : "랭킹을 불러오지 못했어요.");
@@ -117,7 +129,7 @@ export default function RankingScreenV2() {
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [membersSignature, matchType, unit, anchor]);
+  }, [membersSignature, matchType, race, unit, anchor]);
 
   // 유저 검색은 순위 재계산 없이(순위는 항상 전체 기준) 화면에 보여줄 행만 거른다 — 남은
   // 행의 순위 숫자는 검색 전과 항상 같다.
@@ -167,15 +179,20 @@ export default function RankingScreenV2() {
   const openTrend = (row: RankRowData) => {
     setTrendMember(row.member);
     setTrendPoints(null);
-    computeRankTrend(membersRef.current, matchType, row.member.id, "all", unit, anchor)
+    computeRankTrend(membersRef.current, matchType, row.member.id, race, unit, anchor)
       .then((pts) => setTrendPoints(pts))
       .catch(() => setTrendPoints([]));
   };
 
   return (
     <div className="scr-screen scr-rank-screen-v2">
-      <div className="scr-v2-toolbar">
+      {/* 개인전/팀전은 '필터'라기보다 목록의 종류라, 필터 패널이 아니라 타이틀 줄에 둔다(요청:
+          "팀전 개인전 라디오는 목록타입에 가까워서 타이틀로우로 이동"). */}
+      <div className="scr-v2-toolbar scr-rank-toolbar">
         <h1 className="scr-title scr-v2-toolbar-title">랭킹</h1>
+        <span className="scr-rank-mode-tabs">
+          <PillTabs options={CHART_OPTS} value={mode} onChange={handleModeChange} aria-label="개인전/팀전 선택" />
+        </span>
       </div>
 
       {/* 기간(단위 토글 + 좌우 이동) 선택을 다른 화면과 같은 필터 모듈 안으로 옮긴다(요청:
@@ -220,13 +237,16 @@ export default function RankingScreenV2() {
                 </button>
               </span>
             </FilterItem>
-            {/* 개인전/팀전 선택. 종족은 라디오가 아니라 유저 검색창의 예약어(raceValue/
-                onRaceChange) — "테란"/"프로토스"/"저그"를 완성하면 종족 칩으로 인식한다.
-                팀전엔 종족 개념을 두지 않아(구성원별 종족을 하나로 묶을 수 없다) 팀전에서는
-                이 두 prop을 안 넘긴다 — SearchFilterBar가 onRaceChange 없으면 종족 인식을
-                안 한다. */}
-            <FilterItem label="차트">
-              <PillTabs options={CHART_OPTS} value={mode} onChange={handleModeChange} aria-label="개인전/팀전 선택" />
+            {/* 종족 필터 — '랭커의 종족'(그 경기에서 낸 종족) 기준. 개인전·팀전 모두 지원한다. */}
+            <FilterItem label="종족">
+              <Select
+                value={race}
+                options={RACE_SELECT_OPTS}
+                onChange={(v) => setRace(v as BaseRace | "all")}
+                size="sm"
+                minDropWidth={110}
+                className="scr-filter-race-select"
+              />
             </FilterItem>
           </>
         }
@@ -249,6 +269,7 @@ export default function RankingScreenV2() {
           <li>경기 결과로 실력 레이팅(<b>TrueSkill</b>)을 추정합니다.</li>
           <li>강한 상대를 이길수록 크게 오르고, 경기가 적으면 <b className="scr-rank-method-tip-provisional">잠정</b>으로 낮게 잡힙니다.</li>
           <li>팀전은 팀 승패를 개인 실력으로 분해하며, 개인전·팀전 레이팅은 따로 계산됩니다.</li>
+          <li>종족 필터를 걸면 <b>그 종족으로 낸 경기</b>만의 레이팅으로 순위를 매깁니다.</li>
         </ul>,
         document.body,
       )}
@@ -290,6 +311,7 @@ export default function RankingScreenV2() {
           points={trendPoints}
           matchType={matchType}
           period={period}
+          race={race}
           onClose={closeTrend}
         />
       )}

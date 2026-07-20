@@ -1027,6 +1027,9 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 /* 액션 버튼과 나란히 있을 때 세로 중앙정렬만으로는 타이틀 글자가 살짝 처져 보여서,
    그 기준선을 조금 위로 올린다. */
 .scr-v2-toolbar-title { grid-area: title; margin: 0; align-self: center; transform: translateY(-6px); }
+/* 랭킹의 개인전/팀전 탭 — 타이틀 줄 오른쪽(actions 자리)에 둔다(요청: "목록타입이라 타이틀
+   로우로"). 액션 버튼과 같은 기준선 보정(-6px). */
+.scr-rank-toolbar .scr-rank-mode-tabs { grid-area: actions; display: inline-flex; transform: translateY(-6px); }
 /* 랭킹 타이틀 옆 몇 월인지(요청: "타이틀 옆에 몇월 표시") — 타이틀보다 옅고 작게. */
 /* 요청: "랭킹 몇월 글짜 1.5배 확대" — 0.55em → 0.825em. 밝기도 더 밝게(요청) —
    --dim보다 밝은 --muted로. */
@@ -2051,9 +2054,15 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-rank-table-panel-v2 .scr-rank-row-tied { padding-top: 6px; }
 @media (max-width: 640px) {
   /* 좌우 패딩은 모바일도 제거(요청) — 위아래는 14px였다가 카드가 더 많이 보이도록
-     추가로 줄인다(요청: "모바일 - 랭킹 카드의 위아래 패딩을 줄여서 더 많이 나오게"). */
-  .scr-rank-table-panel-v2 .scr-rank-row { padding: 10px 0; }
-  .scr-rank-table-panel-v2 .scr-rank-row-tied { padding-top: 5px; }
+     추가로 줄인다(요청: "모바일 - 랭킹 카드의 위아래 패딩을 줄여서 더 많이 나오게").
+     행 높이를 조금 더 줄인다(요청: "모바일에서만 행 높이 약간 축소") — 세로 패딩을
+     10→8px로. */
+  .scr-rank-table-panel-v2 .scr-rank-row { padding: 8px 0; }
+  .scr-rank-table-panel-v2 .scr-rank-row-tied { padding-top: 4px; }
+  /* 순위 숫자와 순위변동 사이 간격을 없애 배지 세로 높이를 줄인다(요청: "랭크와 순위변동
+     사이가 줄어야") — 숫자 자체의 행간(line-height)도 1로 바짝 붙인다. */
+  .scr-rank-table-panel-v2 .scr-rank-badge { gap: 0; }
+  .scr-rank-table-panel-v2 .scr-rank-num { line-height: 1; }
   /* 좁은 폭에서도 위와 같은 이유로 고정폭을 유지한다(프사 정렬이 흔들리지 않도록) —
      프사만 이 화면폭에서 32px로 줄어들므로(아래 .scr-rank-avatar-btn .scr-avatar) 칸
      폭도 같이 32px로 맞춘다. 닉네임 칸만은 고정폭이 아니라 minmax(...,1fr)로 남는

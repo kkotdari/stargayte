@@ -96,10 +96,10 @@ export async function computeRankRows(
   const period = periodAnchorToRange(unit, anchor);
   const prevPeriod = periodAnchorToRange(unit, shiftPeriodAnchor(unit, anchor, -1));
   const [curResp, prevResp, overallResp] = await Promise.all([
-    api.getMatchStats({ dateFrom: period.from, dateTo: period.to, matchType, race }),
-    api.getMatchStats({ dateFrom: prevPeriod.from, dateTo: prevPeriod.to, matchType, race }),
+    api.getRanking({ dateFrom: period.from, dateTo: period.to, matchType, race }),
+    api.getRanking({ dateFrom: prevPeriod.from, dateTo: prevPeriod.to, matchType, race }),
     race !== "all"
-      ? api.getMatchStats({ dateFrom: period.from, dateTo: period.to, matchType, race: "all" })
+      ? api.getRanking({ dateFrom: period.from, dateTo: period.to, matchType, race: "all" })
       : Promise.resolve(null),
   ]);
 
@@ -149,7 +149,7 @@ export async function computeRankTrend(
   const anchors = recentPeriodAnchors(unit, TREND_PERIODS, uptoAnchor);
   const resps = await Promise.all(anchors.map((a) => {
     const { from, to } = periodAnchorToRange(unit, a);
-    return api.getMatchStats({ dateFrom: from, dateTo: to, matchType, race });
+    return api.getRanking({ dateFrom: from, dateTo: to, matchType, race });
   }));
   return anchors.map((a, i) => ({
     label: periodAxisLabel(unit, a),

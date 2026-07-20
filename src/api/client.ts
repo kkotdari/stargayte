@@ -264,7 +264,7 @@ export const api = {
     return { ...page, items: page.items.map(matchFromWire) };
   },
 
-  // 통계/랭킹 공용 — 매치 원본이 아니라 회원별로 이미 집계된 결과를 받는다.
+  // 전적통계 화면 전용 — 회원별로 이미 집계된 전적을 받는다.
   async getMatchStats(params: MatchStatsParams = {}): Promise<MatchStatsResponse> {
     const qs = buildQuery({
       memberIds: params.memberIds?.length ? params.memberIds.join(",") : undefined,
@@ -276,14 +276,27 @@ export const api = {
     return request<MatchStatsResponse>(`/api/matches/stats${qs}`);
   },
 
+  // 랭킹 조회 전용 엔드포인트 — 응답 구조는 전적통계와 같지만(순위/레이팅 + 전적) URL을
+  // 의미(랭킹)에 맞춰 분리했다(요청). 종족 필터는 '랭커의 종족' 기준이라 서버가 (회원,종족)
+  // 레이팅으로 순위를 매긴다.
+  async getRanking(params: MatchStatsParams = {}): Promise<MatchStatsResponse> {
+    const qs = buildQuery({
+      dateFrom: params.dateFrom,
+      dateTo: params.dateTo,
+      matchType: params.matchType,
+      race: params.race,
+    });
+    return request<MatchStatsResponse>(`/api/matches/ranking${qs}`);
+  },
+
   // 랭킹 상세의 '경기당 레이팅 변화(Δ)' — 이 회원이 뛴 경기의 matchNo → μ 증감. 레이팅은
   // 클라이언트가 재구성할 수 없어 서버가 계산해 준다. 목록이 조회 기간만으로 리셋해 매겨지므로
   // (요청: "해당 월이나 년도만의 리셋된 데이터로 조회"), 여기도 같은 dateFrom/dateTo를 넘겨야
-  // 목록의 μ/σ와 이 상세의 Δ 합이 어긋나지 않는다.
+  // 목록의 μ/σ와 이 상세의 Δ 합이 어긋나지 않는다. 종족 필터 시 그 종족 Δ만 온다.
   async getRatingHistory(
-    memberId: string, matchType?: string, dateFrom?: string, dateTo?: string,
+    memberId: string, matchType?: string, dateFrom?: string, dateTo?: string, race?: string,
   ): Promise<RatingHistoryResponse> {
-    const qs = buildQuery({ memberId, matchType, dateFrom, dateTo });
+    const qs = buildQuery({ memberId, matchType, dateFrom, dateTo, race });
     return request<RatingHistoryResponse>(`/api/matches/rating-history${qs}`);
   },
 
