@@ -2012,15 +2012,20 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   background: linear-gradient(115deg, #6e4326 0%, #b98a5a 40%, #e3b585 50%, #b98a5a 60%, #6e4326 100%);
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
-/* "경기수N위" 배지 — 알약 배경에 핑크 메탈 그라데이션(가장자리 진한 핑크 → 가운데 밝은
-   광택)을 주고(요청), 조금 덜 둥글게(6→4px), 폰트 한 스텝 키운다(9→10px). 글자는 밝은
-   메탈 위에서도 또렷하게 흰색+옅은 그림자. */
+/* "경기수N위" 배지 — 알약 배경에 핑크 메탈 그라데이션(요청), 조금 덜 둥글게(6→4px), 폰트
+   한 스텝(9→10px). 글자는 흰색이 아니라 투명 클립(요청) — 배경 두 겹으로 얹어 첫 겹(밝은
+   메탈)은 글자(clip:text)에만, 둘째 겹(핑크 메탈)은 알약 몸통(padding-box)에. 투명 글자가
+   읽히도록 알약 메탈은 가운데를 순백 대신 중간 톤으로 둔다. */
 .scr-rank-games-badge {
   flex-shrink: 0; white-space: nowrap;
   padding: 1px 6px; border-radius: 4px;
   font-size: 10px; font-weight: 800; letter-spacing: 0.02em;
-  color: #fff; text-shadow: 0 1px 1.5px rgba(74, 20, 52, 0.5);
-  background: linear-gradient(115deg, #a5356f 0%, #e06aa6 44%, #f7a3cf 50%, #e06aa6 56%, #a5356f 100%);
+  background:
+    linear-gradient(115deg, #ffd9ec 0%, #ffffff 45%, #ffe4f1 55%, #ffffff 50%, #ffd9ec 100%) text,
+    linear-gradient(115deg, #7e1f52 0%, #b83c7d 44%, #d96aa0 50%, #b83c7d 56%, #7e1f52 100%) padding-box;
+  -webkit-background-clip: text, padding-box;
+  background-clip: text, padding-box;
+  color: transparent;
 }
 /* 전적/승률도 순위/변동과 같은 패턴으로 위아래 배치, 오른쪽 정렬 */
 .scr-rank-record-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
