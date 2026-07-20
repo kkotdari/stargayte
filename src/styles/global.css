@@ -5162,6 +5162,26 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
   font-family: inherit; font-size: var(--fs-body); font-weight: 600; color: var(--muted); cursor: pointer;
 }
 .scr-challenge-add-target:hover { color: var(--point); }
+/* 타이틀 줄 — 라벨(왼쪽) + "선수 추가" 버튼(오른쪽)을 한 줄에 둔다(요청: "선수 추가 버튼을
+   동료/상대 타이틀 옆에 인라인 배치"). 슬롯이 비어 있어도 추가 버튼이 별도 행을 안 만든다. */
+.scr-challenge-pick-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+/* 인라인 배치용 — 전폭 점선 박스(위 기본형)가 아니라 타이틀 옆에 얹히는 작은 아이콘 버튼. */
+.scr-challenge-add-target-inline {
+  width: auto; min-height: 0; padding: 2px 8px; border-radius: 999px;
+  color: var(--point);
+}
+.scr-challenge-add-target-inline:hover { background: rgba(var(--overlay-rgb), 0.08); }
+/* 필수 항목 표시 — 활성화 시 신청 버튼과 같은 핑크로 통일해 "필수→핑크" 흐름을 만든다. */
+.scr-req-mark { color: #f684bb; font-weight: 700; margin-left: -2px; }
+/* 신청 버튼 — 상대(필수) 미지정이면 무채색으로 "꺼짐"을, 지정하면 핑크(.scr-challenge-accept-btn)
+   로 "켜짐"을 또렷이 보여준다(요청: "비활성이던 신청 버튼이 핑크색으로 활성화되면 딱 알듯").
+   기본 .scr-btn:disabled의 옅은 처리(opacity)만으로는 핑크가 흐려질 뿐이라, 비활성 때는
+   아예 무채색으로 덮어써서 활성화 순간의 대비를 키운다. */
+.scr-challenge-submit-btn:disabled {
+  background: var(--panel-raised); color: var(--muted);
+  border-color: rgba(255, 255, 255, 0.18); opacity: 1;
+}
+.scr-light-theme .scr-challenge-submit-btn:disabled { border-color: rgba(0, 0, 0, 0.14); }
 .scr-challenge-datetime { display: flex; gap: 8px; }
 .scr-challenge-datetime .scr-input { flex: 1; min-width: 0; }
 /* 도전장 작성/인박스 팝업은 앱 다크/라이트 테마와 무관하게 항상 아이보리 편지지 톤인데,

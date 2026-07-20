@@ -35,11 +35,13 @@ interface ChallengeFormModalProps {
 // 그 자리가 회원 드롭다운으로 바뀌었다가 고르면 다시 칩으로 접힌다. 빈 드롭다운을
 // 여러 개 미리 늘어놓지 않는다(ChallengeFormModal 원래 UI 패턴 그대로).
 function MemberPickBlock({
-  label, hint, ids, setIds, max, options, memberById, addLabel, addAriaLabel, locked = false,
+  label, hint, ids, setIds, max, options, memberById, addLabel, addAriaLabel, locked = false, required = false,
 }: {
   label: string;
   // 라벨 옆에 옅게 붙는 보조 설명(요청: "우리팀 추가 옆에 팀전일 때만 추가 라고 명시").
   hint?: string;
+  // 필수 항목이면 라벨 옆에 *를 붙인다(요청: "필수인곳(상대)에만 * 표시").
+  required?: boolean;
   ids: string[];
   setIds: (next: string[]) => void;
   max: number;
@@ -61,29 +63,47 @@ function MemberPickBlock({
   const pick = (id: string) => { setIds([...ids, id]); setPicking(false); };
   const remove = (id: string) => setIds(ids.filter((v) => v !== id));
 
+  const canAdd = !locked && ids.length < max;
   return (
     <div className="scr-field">
-      <span className="scr-label">{label} {hint && <span className="scr-hint">{hint}</span>}</span>
-      <div className="scr-challenge-target-slots">
-        {ids.map((id) => {
-          const m = memberById.get(id);
-          return (
-            <div key={id} className="scr-challenge-target-picked">
-              {m && <Avatar member={m} size={20} />}
-              <span className="scr-challenge-target-picked-name">{m?.nickname ?? id}</span>
-              {!locked && (
-                <button
-                  type="button" className="scr-icon-btn scr-challenge-target-remove"
-                  onClick={() => remove(id)} aria-label="지목 취소"
-                >
-                  <X size={13} />
-                </button>
-              )}
-            </div>
-          );
-        })}
-        {!locked && ids.length < max && (
-          picking ? (
+      {/* 타이틀 줄에 "선수 추가" 버튼을 인라인으로 얹는다(요청: "선수 추가 버튼을 동료/상대
+          타이틀 옆에 인라인 배치해서 열이 늘어나지 않게") — 지목 슬롯이 비어 있어도 추가
+          버튼이 별도 행을 차지하지 않아 블록 높이가 안 늘어난다. */}
+      <div className="scr-challenge-pick-head">
+        <span className="scr-label">
+          {label}
+          {required && <span className="scr-req-mark" aria-hidden="true">*</span>}
+          {hint && <span className="scr-hint">{hint}</span>}
+        </span>
+        {canAdd && !picking && (
+          <button
+            type="button" className="scr-challenge-add-target scr-challenge-add-target-inline"
+            onClick={() => setPicking(true)} aria-label={addAriaLabel}
+          >
+            <UserPlus size={15} />{addLabel}
+          </button>
+        )}
+      </div>
+      {(ids.length > 0 || picking) && (
+        <div className="scr-challenge-target-slots">
+          {ids.map((id) => {
+            const m = memberById.get(id);
+            return (
+              <div key={id} className="scr-challenge-target-picked">
+                {m && <Avatar member={m} size={20} />}
+                <span className="scr-challenge-target-picked-name">{m?.nickname ?? id}</span>
+                {!locked && (
+                  <button
+                    type="button" className="scr-icon-btn scr-challenge-target-remove"
+                    onClick={() => remove(id)} aria-label="지목 취소"
+                  >
+                    <X size={13} />
+                  </button>
+                )}
+              </div>
+            );
+          })}
+          {picking && (
             <div className="scr-challenge-target-slot">
               {/* "+ 추가"를 누르는 순간 이 Select로 바뀌므로, 한 번 더 누를 필요 없이
                   회원 목록이 바로 펼쳐진 채 시작한다(요청: "+추가 버튼 누르면 자동으로
@@ -103,16 +123,9 @@ function MemberPickBlock({
                 <X size={13} />
               </button>
             </div>
-          ) : (
-            <button
-              type="button" className="scr-challenge-add-target" onClick={() => setPicking(true)}
-              aria-label={addAriaLabel}
-            >
-              <UserPlus size={15} />{addLabel}
-            </button>
-          )
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -217,6 +230,7 @@ export default function ChallengeFormModal({ onClose, onCreated, presetTargetIds
 
           <MemberPickBlock
             label="상대"
+            required
             ids={targetIds}
             setIds={setTargetIds}
             max={MAX_TARGETS}
@@ -236,7 +250,9 @@ export default function ChallengeFormModal({ onClose, onCreated, presetTargetIds
 
           <div className="scr-form-actions">
             <button className="scr-btn scr-btn-ghost" onClick={onClose}>취소</button>
-            <button className="scr-btn scr-btn-primary" onClick={submit} disabled={!canSubmit || busy}>
+            {/* 상대(필수)를 지정하면 비활성→핑크로 또렷하게 활성화돼 바로 눈에 띈다(요청).
+                비활성 상태는 .scr-btn:disabled의 옅은 처리로 자연히 흐려진다. */}
+            <button className="scr-btn scr-challenge-accept-btn scr-challenge-submit-btn" onClick={submit} disabled={!canSubmit || busy}>
               {busy ? <><Spinner /> 신청하는 중...</> : <><Send size={14} /> 신청</>}
             </button>
           </div>

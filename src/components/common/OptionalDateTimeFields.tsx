@@ -23,7 +23,7 @@ export default function OptionalDateTimeFields({
     <div className="scr-datetime-cols">
       <div className="scr-datetime-col">
         <label className="scr-field scr-datetime-input">
-          <span className="scr-label">날짜 (선택)</span>
+          <span className="scr-label">날짜</span>
           <input
             type="date" className={cls} value={dateStr}
             onChange={(e) => {
@@ -36,7 +36,7 @@ export default function OptionalDateTimeFields({
       </div>
       <div className="scr-datetime-col">
         <label className="scr-field scr-datetime-input">
-          <span className="scr-label">시간 (선택)</span>
+          <span className="scr-label">시간</span>
           <input
             type="time" className={cls} value={timeStr}
             onChange={(e) => onTimeChange(e.target.value)}
