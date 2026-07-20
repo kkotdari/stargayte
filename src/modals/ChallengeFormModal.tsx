@@ -137,7 +137,6 @@ export default function ChallengeFormModal({ onClose, onCreated, presetTargetIds
   // 기본 시간(22:00)으로 채운다.
   const [dateStr, setDateStr] = useState("");
   const [timeStr, setTimeStr] = useState("");
-  const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
 
@@ -160,10 +159,7 @@ export default function ChallengeFormModal({ onClose, onCreated, presetTargetIds
   // 경기 유형을 따로 안 골라도, 상대를 1명 이상만 지목하면 항상 유효한 조합이 된다 —
   // 상대 1명·내 팀 0명이면 서버가 1:1로, 그 외(상대 2명 이상이거나 내 팀이 있으면)
   // 팀전으로 자동 판단한다(요청: "대결 유형 제거하고 자동으로 판단함").
-  const rosterOk = targetIds.length >= 1;
-  // 한마디는 더 이상 필수가 아니다(요청: "더이상 도전장 보내기/수락하기/거절하기에서
-  // 한마디가 필수가 아님").
-  const canSubmit = rosterOk;
+  const canSubmit = targetIds.length >= 1;
 
   const submit = async () => {
     if (!canSubmit) return;
@@ -177,7 +173,6 @@ export default function ChallengeFormModal({ onClose, onCreated, presetTargetIds
         targetMemberIds: targetIds,
         ownTeamMemberIds: ownTeamIds,
         scheduledAt,
-        message,
         fromMatchRequest,
       });
       onCreated(challenge);
@@ -236,16 +231,6 @@ export default function ChallengeFormModal({ onClose, onCreated, presetTargetIds
             dateStr={dateStr} onDateChange={setDateStr}
             timeStr={timeStr} onTimeChange={setTimeStr}
           />
-
-          <label className="scr-field">
-            <span className="scr-label">한마디 (선택)</span>
-            <input
-              type="text" className="scr-input" value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="예: 한판 하실래요?"
-              maxLength={60}
-            />
-          </label>
 
           {err && <div className="scr-err">{err}</div>}
 

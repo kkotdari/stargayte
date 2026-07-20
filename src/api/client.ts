@@ -590,15 +590,14 @@ export const api = {
     });
   },
 
-  // 지목된 쪽의 응답 — 거절할 때만 reason(선택)이 의미가 있다. scheduledAt은 요청자가
-  // "시간 지정"을 끄고 보낸(시간 미정) 도전장을 승락할 때만 의미가 있다 — 그 경우
-  // 서버가 필수로 요구한다(안 보내면 400). 이미 시간이 정해진 도전장에는 무시된다.
+  // 지목된 쪽의 응답 — 수락/거절/버림. scheduledAt은 요청자가 "시간 지정"을 끄고 보낸
+  // (시간 미정) 도전장을 승락할 때만 의미가 있다 — 이미 시간이 정해진 도전장에는 무시된다.
   async respondToChallenge(
-    id: number, response: "accepted" | "rejected" | "discarded", reason?: string, scheduledAt?: string,
+    id: number, response: "accepted" | "rejected" | "discarded", scheduledAt?: string,
   ): Promise<Challenge> {
     return request<Challenge>(`/api/challenges/${id}/respond`, {
       method: "POST",
-      body: JSON.stringify({ response, reason, scheduledAt }),
+      body: JSON.stringify({ response, scheduledAt }),
     });
   },
 

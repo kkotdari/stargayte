@@ -1,5 +1,4 @@
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { Send } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
 import { Spinner } from "../../components/common/Feedback";
@@ -10,7 +9,6 @@ import ScrollNavTimeline from "../../components/common/ScrollNavTimeline";
 import { useAppStore } from "../../store/appStore";
 import { api } from "../../api/client";
 import { cx } from "../../utils/format";
-import { attachPopover } from "../../utils/popover";
 import {
   challengeDateGroupLabel, challengeTimeLabel, formatRelativeSchedule, isToday,
 } from "../../utils/date";
@@ -95,75 +93,14 @@ function groupByTime(items: Challenge[]): ChallengeTimeGroup[] {
   return groups;
 }
 
-// 한마디/응답 메시지 — 카드에서는 2줄로 잘리는데, 길면 그 이상 읽을 방법이 없었다(요청:
-// "마우스오버/클릭시 리플레이 툴팁같은 단순한 창으로 팝오버로 전체메시지를 다 볼수 있게") —
-// ReplayLocationHint와 같은 패턴(attachPopover + 바깥 클릭/포커스이동 시 닫힘)으로 클릭하면
-// 전체 텍스트를 팝오버로 보여준다. 내용이 없으면 그대로 정적인 div로 둔다.
-function ChallengeMessage({ text }: { text: string | null | undefined }) {
-  const [open, setOpen] = useState(false);
-  const anchorRef = useRef<HTMLButtonElement>(null);
-  const popRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open || !anchorRef.current || !popRef.current) return;
-    return attachPopover(anchorRef.current, popRef.current, { growFromAnchor: true, maxWidth: 280 });
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    const onDoc = (e: MouseEvent) => {
-      const t = e.target as Node;
-      if (anchorRef.current?.contains(t)) return;
-      if (popRef.current?.contains(t)) return;
-      setOpen(false);
-    };
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    const onFocusIn = (e: FocusEvent) => {
-      const t = e.target as Node;
-      if (anchorRef.current?.contains(t)) return;
-      if (popRef.current?.contains(t)) return;
-      setOpen(false);
-    };
-    document.addEventListener("focusin", onFocusIn);
-    return () => document.removeEventListener("focusin", onFocusIn);
-  }, [open]);
-
-  if (!text) return <div className="scr-challenge-side-message"> </div>;
-  const quoted = `"${text}"`;
-
-  return (
-    <>
-      <button
-        type="button"
-        className="scr-challenge-side-message-btn"
-        ref={anchorRef}
-        onClick={() => setOpen((v) => !v)}
-        title="전체 메시지 보기"
-      >
-        <span className="scr-challenge-side-message">{quoted}</span>
-      </button>
-      {open && createPortal(
-        <div className="scr-challenge-msg-pop" ref={popRef}>{quoted}</div>,
-        document.body,
-      )}
-    </>
-  );
-}
-
 type SideMember = { id: string; nickname: string; avatar: string | null };
 
 // 팀 구성 한 편(도전자편/상대편)을 세로로 쌓는다(요청: "각팀을 세로로 배치") — 1:1이든
 // 팀전이든 모양은 같고, 인원이 하나든 여럿이든 그냥 줄 수만 늘어난다.
 function ChallengeSide({
-  people, message, targets, highlightMemberIds,
+  people, targets, highlightMemberIds,
 }: {
   people: SideMember[];
-  message?: string;
   targets?: { target: ChallengeTarget }[];
   // 유저 검색에 걸린 사람 — 경기결과 로스터와 같은 반전색으로 프사+닉네임을 함께 칠한다
   // (요청: "랭킹, 너 나와 유저 검색시 하이라이팅 추가 단! 닉네임뿐 아니라 프사까지").
@@ -191,11 +128,6 @@ function ChallengeSide({
                 </span>
               )}
             </div>
-            {targets && <ChallengeMessage text={t?.target.responseMessage} />}
-            {/* 도전자편 한마디는 팀 전체 아래가 아니라 실제로 쓴 사람 — 도전자 본인,
-                people의 첫 번째(creatorSideMembers가 [본인, ...팀원] 순) — 바로 아래에
-                붙인다(요청: "팀전에서 도전자 한마디도 실제 입력한 사람 밑에 보이게"). */}
-            {message !== undefined && i === 0 && <ChallengeMessage text={message} />}
           </div>
         );
       })}
@@ -209,7 +141,6 @@ function ChallengeSide({
 interface ChallengePage {
   id: number;
   scheduledAt: string | null;
-  message: string;
   targets: ChallengeTarget[];
   status: ChallengeStatus;
   createdAt: string;
@@ -274,11 +205,11 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
   const pages: ChallengePage[] = useMemo(
     () => [
       ...challenge.history.map((h) => ({
-        id: h.id, scheduledAt: h.scheduledAt, message: h.message, targets: h.targets,
+        id: h.id, scheduledAt: h.scheduledAt, targets: h.targets,
         status: h.status, createdAt: h.createdAt, resultWinnerSide: h.resultWinnerSide,
       })),
       {
-        id: challenge.id, scheduledAt: challenge.scheduledAt, message: challenge.message, targets: challenge.targets,
+        id: challenge.id, scheduledAt: challenge.scheduledAt, targets: challenge.targets,
         status: challenge.status, createdAt: challenge.createdAt, resultWinnerSide: challenge.resultWinnerSide,
       },
     ],
@@ -316,19 +247,15 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
   const [mode, setMode] = useState<CardMode>("none");
   const [dateStr, setDateStr] = useState("");
   const [timeStr, setTimeStr] = useState("");
-  const [message, setMessage] = useState("");
 
-  // 카드에서 바로 승락/거절 — OS 기본 prompt로 한마디를 받는다. 승락은 선택(요청: "승락시
-  // 메시지 필수 아니게"), 거절은 필수다 — required가 그 둘을 가른다.
-  const respond = async (response: "accepted" | "rejected", promptLabel: string, required: boolean) => {
-    const input = window.prompt(promptLabel);
-    if (input === null) return;
-    const trimmed = input.trim();
-    if (required && !trimmed) return;
+  // 카드에서 바로 승락/거절 — 한마디 없이 바로 응답한다(아주 단순하게). 거절은 되돌릴 수
+  // 없으니 확인만 한 번 받는다.
+  const respond = async (response: "accepted" | "rejected") => {
+    if (response === "rejected" && !window.confirm("이 대결을 거절할까요?")) return;
     setErr("");
     setBusy(true);
     try {
-      const updated = await api.respondToChallenge(challenge.id, response, trimmed || undefined);
+      const updated = await api.respondToChallenge(challenge.id, response);
       onResponded(updated);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "응답하지 못했어요.");
@@ -340,8 +267,8 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
   // 수락하며 시간을 정할 때 — 날짜/시간 입력칸을 비운 채로 시작한다(OptionalDateTimeFields는
   // 체크박스 없이 처음부터 두 칸을 다 보여준다 — 요청: "날짜 선택, 시간 선택 체크박스
   // 제거하고 처음부터 둘다 노출").
-  const startScheduling = () => { setMode("schedule"); setDateStr(""); setTimeStr(""); setMessage(""); };
-  const startRevenge = () => { setMode("revenge"); setDateStr(""); setTimeStr(""); setMessage(""); };
+  const startScheduling = () => { setMode("schedule"); setDateStr(""); setTimeStr(""); };
+  const startRevenge = () => { setMode("revenge"); setDateStr(""); setTimeStr(""); };
   const startResult = () => { setMode("result"); setErr(""); };
   const closeMode = () => setMode("none");
 
@@ -353,7 +280,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
       // 안 정하면 시간 미정으로 수락한다(요청: "시간 미정 수락 가능" — 실제 일시는
       // 완료(결과 입력) 시점에 서버가 채운다).
       const scheduledAt = dateStr ? new Date(`${dateStr}T${timeStr || "22:00"}`).toISOString() : undefined;
-      const updated = await api.respondToChallenge(challenge.id, "accepted", message.trim() || undefined, scheduledAt);
+      const updated = await api.respondToChallenge(challenge.id, "accepted", scheduledAt);
       onResponded(updated);
       closeMode();
     } catch (e) {
@@ -363,13 +290,13 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
     }
   };
 
-  // 재대결(설욕전) 신청 — 시간/메모는 비워서 보낼 수 있다(승리한 쪽이 수락하며 시간을 정함).
+  // 재대결(설욕전) 신청 — 시간은 비워서 보낼 수 있다(승리한 쪽이 수락하며 시간을 정함).
   const submitRevenge = async () => {
     setErr("");
     setBusy(true);
     try {
       const scheduledAt = dateStr ? new Date(`${dateStr}T${timeStr || "00:00"}`).toISOString() : undefined;
-      const updated = await api.requestRevenge(challenge.id, { scheduledAt, message });
+      const updated = await api.requestRevenge(challenge.id, { scheduledAt });
       onResponded(updated);
       closeMode();
     } catch (e) {
@@ -490,7 +417,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
             )}
 
             <div className="scr-challenge-matchup">
-              <ChallengeSide people={creatorSideMembers} message={activePage.message} highlightMemberIds={highlightMemberIds} />
+              <ChallengeSide people={creatorSideMembers} highlightMemberIds={highlightMemberIds} />
               {/* 승/무 배지 — 이긴 편 쪽으로(손 이모지 기준 이긴 편이 있는 방향에) 붙인다
                   (요청: "승리배지는 손 이모지 옆에 표시(이긴쪽에)"). 자리가 좁아 "승리"
                   대신 한 글자만(요청: "좁아서 그냥 승/무 한글자 배지로 표시해야할듯").
@@ -535,7 +462,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
         <div className={cx("scr-challenge-card-actions", !isLatestPage && "scr-challenge-card-actions-reserve")}>
           <button
             className="scr-btn scr-challenge-reject-btn scr-btn-sm" disabled={busy}
-            onClick={() => respond("rejected", "거절 사유를 입력해 주세요 (필수)", true)}
+            onClick={() => respond("rejected")}
           >
             거절
           </button>
@@ -543,9 +470,9 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
             className="scr-btn scr-challenge-accept-btn scr-btn-sm" disabled={busy}
             onClick={() => {
               // 시간이 아직 안 정해진 도전장이면(요청자가 "상대가 정해도 된다"로 보낸 경우)
-              // window.prompt 한 줄로는 날짜+시간을 못 받으니 인라인 폼을 연다.
+              // 인라인 폼을 열어 날짜/시간을 받는다. 이미 정해졌으면 바로 승락한다.
               if (challenge.scheduledAt === null) startScheduling();
-              else respond("accepted", "한마디를 입력해 주세요 (선택)", false);
+              else respond("accepted");
             }}
           >
             {busy ? <Spinner /> : "승락"}
@@ -561,12 +488,6 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
           <OptionalDateTimeFields
             dateStr={dateStr} onDateChange={setDateStr}
             timeStr={timeStr} onTimeChange={setTimeStr}
-          />
-          <input
-            type="text" className="scr-input" value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder="한마디 (선택)"
-            maxLength={60}
           />
           <div className="scr-challenge-card-actions">
             <button className="scr-btn scr-btn-ghost scr-btn-sm" onClick={closeMode} disabled={busy}>취소</button>
@@ -596,12 +517,6 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
               disabled={!dateStr}
             />
           </div>
-          <input
-            type="text" className="scr-input" value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder="한마디 (선택)"
-            maxLength={60}
-          />
           <div className="scr-challenge-card-actions">
             <button className="scr-btn scr-btn-ghost scr-btn-sm" onClick={closeMode} disabled={busy}>취소</button>
             <button className="scr-btn scr-challenge-accept-btn scr-btn-sm" onClick={submitRevenge} disabled={busy}>
