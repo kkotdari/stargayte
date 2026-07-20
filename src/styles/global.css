@@ -6559,3 +6559,26 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
 .scr-menu-pop-drop .scr-menu-pop-opt-active .scr-menu-pop-opt-label {
   background: none; padding: 0;
 }
+
+/* 드롭다운 스크롤바도 반투명 흰(다크)/검(라이트)으로 통일(요청) — --overlay-rgb가 테마를 따른다. */
+.scr-select-drop,
+.scr-cselect-drop,
+.scr-pv-drop,
+.scr-menu-pop-drop {
+  scrollbar-color: rgba(var(--overlay-rgb), 0.28) transparent;
+}
+.scr-select-drop.scr-scroll::-webkit-scrollbar-thumb,
+.scr-select-drop::-webkit-scrollbar-thumb,
+.scr-cselect-drop::-webkit-scrollbar-thumb,
+.scr-pv-drop::-webkit-scrollbar-thumb,
+.scr-menu-pop-drop::-webkit-scrollbar-thumb,
+.scr-challenge-target-select.scr-cselect-drop::-webkit-scrollbar-thumb {
+  background: rgba(var(--overlay-rgb), 0.28); border: none; border-radius: 999px;
+}
+.scr-select-drop.scr-scroll::-webkit-scrollbar-thumb:hover,
+.scr-cselect-drop::-webkit-scrollbar-thumb:hover,
+.scr-pv-drop::-webkit-scrollbar-thumb:hover,
+.scr-menu-pop-drop::-webkit-scrollbar-thumb:hover,
+.scr-challenge-target-select.scr-cselect-drop::-webkit-scrollbar-thumb:hover {
+  background: rgba(var(--overlay-rgb), 0.42);
+}
