@@ -591,8 +591,10 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
 .scr-btn-ghost { background: transparent; }
 .scr-btn-sm { padding: 7px 12px; font-size: var(--fs-body); min-height: var(--field-h-sm); }
 
-.scr-icon-btn { background: transparent; border: 1px solid var(--line); color: var(--muted); width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;  border-radius: var(--radius-sm); border-color: var(--pipe-dark); }
-.scr-icon-btn:hover { color: var(--text); border-color: var(--pipe-bright); }
+/* 아이콘 버튼 표준 = 동그란 투명 버튼(요청: "모두 동그란 투명으로 통일") — 테두리 없이
+   원형, 상태 표시는 테두리 대신 글자색 + 옅은 반투명 배경 틴트로 한다. */
+.scr-icon-btn { background: transparent; border: none; color: var(--muted); width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;  border-radius: 50%; }
+.scr-icon-btn:hover { color: var(--text); background: rgba(var(--overlay-rgb), 0.08); }
 /* 헤더 우측 테마토글/로그아웃 버튼 — 순수 아이콘으로(테두리 없이). 호버도 다른 상단바
    메뉴(.scr-nav-tab, 내 화면, 유저칩)와 같은 톤 — 배경을 채우지 않고 글자/아이콘 색만
    밝아진다. 켜짐(scr-icon-btn-active) 상태도 테두리·배경·그림자 없이 순수 아이콘만. */
@@ -610,12 +612,13 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
 .scr-icon-btn.scr-theme-btn:hover { background: transparent; border-color: transparent; color: var(--text); }
 .scr-icon-btn.scr-theme-btn.scr-icon-btn-active { border-color: transparent; background: transparent; }
 .scr-icon-btn:disabled { opacity: 0.35; cursor: default; }
-.scr-icon-btn:disabled:hover { color: var(--muted); border-color: var(--pipe-dark); }
+.scr-icon-btn:disabled:hover { color: var(--muted); background: transparent; }
 /* 사진 삭제처럼 늘 위험한 동작임을 미리 알려야 하는 아이콘 버튼은 평소에도 위험색 —
    호버에서만 빨개지던 것과 달리(하단 참고는 유지) 사진 삭제 버튼은 평소에도 빨갛다. */
 .scr-icon-btn-danger { color: var(--loss); }
-.scr-icon-btn-danger:hover { color: var(--loss); border-color: var(--loss); }
-.scr-icon-btn-active { color: var(--point); border-color: var(--point); background: rgba(var(--point-rgb),0.1); }
+.scr-icon-btn-danger:hover { color: var(--loss); background: rgba(var(--overlay-rgb), 0.08); }
+/* 켜짐 상태 — 테두리 대신 포인트색 글자 + 옅은 포인트 배경 틴트. */
+.scr-icon-btn-active { color: var(--point); background: rgba(var(--point-rgb),0.12); }
 
 /* 라이트 테마 — 흰 배경 + 검은 글씨 기조로 뒤집는다. filter:grayscale 대신 테마 변수
    자체를 라이트 팔레트 값으로 바꾼다 — 필터는 조상에 걸리면 자손이 뭘 하든 최종 합성에
