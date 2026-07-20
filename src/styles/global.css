@@ -5222,6 +5222,8 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
 }
 /* 타이틀("너 나와! 신청") 아래 갭을 좀 더(요청: "도전장 보내기 타이틀 아래에 갭을 추가"). */
 .scr-challenge-form-modal .scr-modal-head { margin-bottom: 16px; }
+/* 폼 요소(동료/상대/일시/버튼) 사이 세로 간격을 충분히 넓힌다(요청) — 기본 14 → 22px. */
+.scr-challenge-form-modal .scr-modal-body { gap: 22px; }
 /* ".scr-light-theme .scr-modal"(클래스 두 개, 위 베이스 글라스 규칙)이 이 편지지
    규칙(클래스 하나)보다 특이도가 높아서, 라이트 테마에서는 편지지 배경이 아니라
    그 반투명 흰 유리 배경이 이겨버렸다(실제로 지적받은 문제 — "라이트 테마에서도
