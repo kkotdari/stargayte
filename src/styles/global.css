@@ -1989,9 +1989,15 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; pointer-events: none;
   background: linear-gradient(115deg, #ffe6f2 0%, #ffb0d6 40%, #f489b8 64%, #ffd6ea 100%);
   -webkit-background-clip: text; background-clip: text; color: transparent;
-  animation: scr-games-medal-cross 5.4s ease-in-out infinite alternate;
+  animation: scr-games-medal-cross 6s ease-in-out infinite;
 }
-@keyframes scr-games-medal-cross { from { opacity: 0; } to { opacity: 1; } }
+/* 페이드 전환 자체는 짧게(빠르게), 각 색(메달/분홍)은 오래 유지(요청) — 대부분 구간은
+   같은 값으로 hold하고 45→50 / 95→100 구간에서만 빠르게 넘어간다. */
+@keyframes scr-games-medal-cross {
+  0%, 45% { opacity: 0; }
+  50%, 95% { opacity: 1; }
+  100% { opacity: 0; }
+}
 /* "경기수N위" 배지 — 알약 없이 그냥 파스텔 분홍 글자로, 한 스텝 작게(요청). */
 .scr-rank-games-badge {
   flex-shrink: 0; white-space: nowrap;
