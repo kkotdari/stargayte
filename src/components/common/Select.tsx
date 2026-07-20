@@ -9,6 +9,9 @@ export interface SelectOption {
   label: string;
   // 모바일 등 좁은 공간에서 label 대신 보여줄 축약 표시 (예: 종족 한 글자)
   shortLabel?: string;
+  // 회원 선택처럼 옵션 앞에 프사를 붙이고 싶을 때(요청: "도전장 드롭다운에 아바타가
+  // 없는데 똑같이 추가해줘") — <Avatar .../> 를 그대로 넘긴다.
+  avatar?: React.ReactNode;
 }
 
 interface SelectProps {
@@ -31,6 +34,12 @@ interface SelectProps {
   // 열리는 단계를 없앤다. 인풋이 아니라 버튼 기반 드롭다운이라 모바일 가상 키보드는
   // 뜨지 않는다.
   defaultOpen?: boolean;
+  // 열림/닫힘이 바뀔 때마다 알려준다 — defaultOpen으로 열어둔 채 시작하는 곳(도전장
+  // 폼의 상대/팀원 지목)에서, 값을 안 고르고 바깥을 클릭/포커스 이동으로 닫힐 때도
+  // 그 사실을 알아야 "선택 대기" 자리를 도로 접을 수 있다(요청: "대결 요청 드롭다운
+  // 포커싱을 잃어도 안없어지는 문제") — 지금까진 내부 open 상태만 닫힐 뿐 부모는
+  // 몰라서, 빈 트리거+취소 버튼 자리가 계속 남아 있었다.
+  onOpenChange?: (open: boolean) => void;
 }
 
 /*
@@ -45,9 +54,12 @@ interface SelectProps {
 */
 export default function Select({
   value, options, onChange, placeholder = "선택", className, size = "md", minDropWidth, disabled = false,
-  defaultOpen = false,
+  defaultOpen = false, onOpenChange,
 }: SelectProps) {
   const [open, setOpen] = useState(defaultOpen && !disabled);
+  const onOpenChangeRef = useRef(onOpenChange);
+  onOpenChangeRef.current = onOpenChange;
+  useEffect(() => { onOpenChangeRef.current?.(open); }, [open]);
   const [activeIdx, setActiveIdx] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
   const dropRef = useRef<HTMLDivElement>(null);
@@ -133,6 +145,7 @@ export default function Select({
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => commit(o.value)}
             >
+              {o.avatar}
               <span className="scr-cselect-opt-label">{o.label}</span>
               {o.value === value && <Check size={13} />}
             </button>

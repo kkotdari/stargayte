@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Spinner } from "../components/common/Feedback";
+import OptionalDateTimeFields from "../components/common/OptionalDateTimeFields";
 import { api } from "../api/client";
 import { useLockBodyScroll } from "../utils/bodyScrollLock";
 import { formatChallengeSchedule } from "../utils/date";
@@ -73,11 +74,15 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
   // 한마디는 수락/거절 어느 쪽도 더 이상 필수가 아니다(요청: "더이상 도전장 보내기/
   // 수락하기/거절하기에서 한마디가 필수가 아님") — 비어 있어도 그대로 보낸다.
   const trimmedMessage = message.trim();
-  const canAccept = !needsSchedule || (dateStr.length > 0 && timeStr.length > 0);
+  // 승락 시에도 일시는 필수가 아니다(요청: "승락시에도 일시 미선택 가능이야") — 둘 다
+  // 비워두면 그냥 미정인 채로 승락되고, 날짜만/시간만처럼 절반만 채운 경우만 막는다
+  // (그 상태로 보내면 뜻이 애매해서).
+  const scheduleIncomplete = needsSchedule && (dateStr.length > 0) !== (timeStr.length > 0);
+  const canAccept = !scheduleIncomplete;
 
   const respond = async (response: "accepted" | "rejected") => {
     if (response === "accepted" && !canAccept) {
-      setErr("날짜와 시간을 정해 주세요.");
+      setErr("날짜와 시간을 둘 다 정하거나, 둘 다 비워두세요.");
       setErrField("schedule");
       return;
     }
@@ -85,7 +90,7 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
     setErrField("");
     setBusy(true);
     try {
-      const scheduledAt = response === "accepted" && needsSchedule
+      const scheduledAt = response === "accepted" && needsSchedule && dateStr && timeStr
         ? new Date(`${dateStr}T${timeStr}`).toISOString()
         : undefined;
       await api.respondToChallenge(current.id, response, trimmedMessage || undefined, scheduledAt);
@@ -117,7 +122,7 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
   const isTeamMatch = current.matchType === "0102";
   const opposingTeam = [current.createdBy.nickname, ...current.ownMembers.map((m) => m.nickname)];
   const ourTeam = current.targets.map((t) => t.nickname);
-  const title = `${current.createdBy.nickname}님에게서 도전장이 도착했어요`;
+  const title = `${current.createdBy.nickname}님에게서 대결 신청이 도착했어요`;
 
   return createPortal(
     <div className="scr-modal-overlay">
@@ -152,36 +157,27 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
             </div>
 
             {/* 요청자가 시간을 안 정했으면(needsSchedule) 상대인 내가 승락하며 직접
-                정한다 — 안 그러면 시간이 영원히 안 채워진 채 승락 상태로 박제된다
-                (요청: "도전자/상대 모두 시간을 지정하지 않았는데 수락이 된 경우가
-                있네 이러면 안되는데"). 거절할 땐 필요 없으니 항상 보여준다. */}
+                정할 수 있다 — 다만 필수는 아니다(요청: "승락시에도 일시 미선택
+                가능이야"). 둘 다 비워두면 여전히 미정인 채로 승락되고, 날짜/시간을
+                절반만 채운 경우만 막는다. 거절할 땐 필요 없으니 항상 보여준다. */}
             {needsSchedule && (
-              <label className="scr-field">
-                <span className="scr-label">일시 정하기 (승락 시 필수)</span>
-                <div className="scr-challenge-datetime">
-                  <input
-                    type="date"
-                    className={`scr-input${errField === "schedule" ? " scr-input-invalid" : ""}`}
-                    value={dateStr}
-                    onChange={(e) => {
-                      setDateStr(e.target.value);
-                      if (!e.target.value) setTimeStr("");
-                      if (errField === "schedule") { setErr(""); setErrField(""); }
-                    }}
-                  />
-                  <input
-                    type="time"
-                    className={`scr-input${errField === "schedule" ? " scr-input-invalid" : ""}`}
-                    value={timeStr}
-                    onChange={(e) => { setTimeStr(e.target.value); if (errField === "schedule") { setErr(""); setErrField(""); } }}
-                    disabled={!dateStr}
-                  />
-                </div>
-              </label>
+              <OptionalDateTimeFields
+                dateStr={dateStr}
+                onDateChange={(v) => {
+                  setDateStr(v);
+                  if (errField === "schedule") { setErr(""); setErrField(""); }
+                }}
+                timeStr={timeStr}
+                onTimeChange={(v) => {
+                  setTimeStr(v);
+                  if (errField === "schedule") { setErr(""); setErrField(""); }
+                }}
+                invalid={errField === "schedule"}
+              />
             )}
 
             <label className="scr-field">
-              <span className="scr-label">한마디</span>
+              <span className="scr-label">한마디 (선택)</span>
               <input
                 type="text"
                 className="scr-input"

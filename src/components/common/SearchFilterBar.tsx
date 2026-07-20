@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
+import Avatar from "./Avatar";
 import { attachPopover } from "../../utils/popover";
 import { cx } from "../../utils/format";
+import type { MemberSearchSuggestion } from "../../utils/memberSearch";
 
 interface SearchFilterBarProps {
   count: number;
@@ -12,7 +14,7 @@ interface SearchFilterBarProps {
   searchPlaceholder?: string;
   // 유저 검색 자동완성 후보 — 페이지 진입 시 한 번(이미 로드된 회원 목록에서) 계산해서
   // 넘겨준다. 타이핑마다 서버에 새로 묻지 않고 이 안에서만 걸러 보여준다(실시간 조회 X).
-  suggestions?: string[];
+  suggestions?: MemberSearchSuggestion[];
   // 검색창 위에 얹히는 필터창 — 화면마다 다른 내용(PillTabs, 종족 셀렉트, 월 선택 등)을
   // 그대로 넘긴다. 없으면(랭킹 이외엔 항상 있음) 검색창만 뜬다.
   filterPanel?: ReactNode;
@@ -69,16 +71,20 @@ export default function SearchFilterBar({
   // 완성된 칩은 다시 후보로 보여줄 필요가 없으니, 지금 입력 중인 마지막 단어(liveText)만
   // 기준으로 유저 이름을 자동완성한다. @로 시작할 때만 자동완성이 뜬다(요청: "유저
   // 검색창도 @로 시작하게") — @ 바로 뒤는 빈 쿼리라도(전체 후보) 보여준다.
-  const matchedSuggestions = useMemo<string[]>(() => {
+  const matchedSuggestions = useMemo<MemberSearchSuggestion[]>(() => {
     if (!suggestions) return [];
     const raw = liveText.trim();
     if (!raw.startsWith("@")) return [];
     const q = raw.slice(1).toLowerCase();
     const chosen = new Set(chips.map((c) => c.toLowerCase()));
-    const items: string[] = [];
+    const items: MemberSearchSuggestion[] = [];
     for (const s of suggestions) {
       if (items.length >= MAX_SUGGESTIONS) break;
-      if (chosen.has(s.toLowerCase()) || !s.toLowerCase().includes(q)) continue;
+      // 매칭은 닉네임뿐 아니라 리플레이 인게임 아이디(player_name)로도 되지만, 후보로
+      // 뜨는/골라지는 값은 항상 매핑된 회원 닉네임이다(요청: "player_name 말고
+      // 유저닉네임만 노출").
+      if (chosen.has(s.member.nickname.toLowerCase())) continue;
+      if (!s.matchTexts.some((t) => t.toLowerCase().includes(q))) continue;
       items.push(s);
     }
     return items;
@@ -160,7 +166,7 @@ export default function SearchFilterBar({
     // 후보를 고르는 쪽이 우선한다.
     else if (e.key === "Enter" || e.key === " " || e.key === "Tab") {
       e.preventDefault();
-      pick(matchedSuggestions[Math.min(highlight, matchedSuggestions.length - 1)]);
+      pick(matchedSuggestions[Math.min(highlight, matchedSuggestions.length - 1)].member.nickname);
     }
   };
 
@@ -220,15 +226,18 @@ export default function SearchFilterBar({
       </div>
       {suggestShown && createPortal(
         <div className="scr-pv-drop scr-scroll" ref={dropRef}>
-          {matchedSuggestions.map((name, i) => (
+          {/* 프사를 함께 보여준다(요청: "프사 추가(동그랗게)") — 도전장 작성의 지목
+              드롭다운(MatchRequestCorner)과 같은 요소를 그대로 재사용한다. */}
+          {matchedSuggestions.map((s, i) => (
             <button
-              type="button" key={name}
-              className={cx("scr-pv-opt", i === highlight && "scr-pv-opt-active")}
+              type="button" key={s.member.id}
+              className={cx("scr-pv-opt scr-mreq-mention-opt", i === highlight && "scr-pv-opt-active")}
               onMouseEnter={() => setHighlight(i)}
               onMouseDown={(e) => e.preventDefault()}
-              onClick={() => pick(name)}
+              onClick={() => pick(s.member.nickname)}
             >
-              {name}
+              <Avatar member={s.member} size={22} />
+              <span className="scr-mreq-mention-name">{s.member.nickname}</span>
             </button>
           ))}
         </div>,

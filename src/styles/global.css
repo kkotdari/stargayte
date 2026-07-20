@@ -381,6 +381,13 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
 .scr-modal-profile .scr-field { gap: 9px; }
 /* 라벨을 필드 위가 아니라 옆에 가로로 둘 때(랭킹 전용 필터 등) */
 .scr-field-row { flex-direction: row; align-items: center; gap: 8px; }
+/* 날짜/시간(OptionalDateTimeFields) 칸을 나란히 한 줄로, 입력 자체도 필요 이상
+   크지 않게(요청: "날짜 시간 한줄에 배치하고 너무 크니까 좀 줄여줘 인풋창자체를") —
+   예전엔 모바일 전용 미디어쿼리 안에만 있어서 데스크톱에선 세로로 쌓였다. */
+.scr-datetime-cols { display: flex; gap: 14px; align-items: flex-start; }
+.scr-datetime-col { display: flex; flex-direction: column; gap: 5px; align-items: flex-start; flex: 0 0 auto; }
+.scr-datetime-col .scr-datetime-input { width: auto; }
+.scr-datetime-col .scr-datetime-input .scr-input { width: auto; min-height: var(--field-h-sm); padding: 6px 8px; }
 /* 라벨은 어디서든(검색 필터·모달 폼 전부) 필드 위에 두고, 크기와 왼쪽 들여쓰기를
    하나로 통일한다 — 화면마다 라벨이 옆에 붙거나 크기가 제각각이면 산만해 보인다.
    line-height:1은 폰트 자체의 위아래 여백(줄간격)을 없애서, 코딩폰트를 쓰는 인풋과
@@ -396,6 +403,9 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
 .scr-input { background: var(--input-bg); border: 1px solid var(--line); color: var(--text); padding: 9px 10px; font-size: var(--fs-body); font-family: var(--font-mono); width: 100%; min-height: var(--field-h); box-sizing: border-box; border-radius: var(--radius-sm); border-color: var(--line); }
 .scr-input::placeholder { color: var(--dim); }
 .scr-input:focus { border-color: var(--pipe-bright); outline: none; }
+/* 날짜 고르기 전 시간 입력처럼, 비활성 상태가 시각적으로도 드러나야 한다(요청: "시간은
+   날짜 선택전엔 비활성화 표시"). */
+.scr-input:disabled { opacity: 0.45; cursor: not-allowed; }
 .scr-input-sm { padding: 7px 8px; font-size: var(--fs-caption); min-height: var(--field-h-sm); }
 .scr-input-invalid { border-color: var(--loss); }
 .scr-err { color: var(--loss); font-size: var(--fs-body); background: rgba(240,99,122,0.12); border: 1px solid rgba(240,99,122,0.4); padding: 8px 10px; }
@@ -1832,6 +1842,18 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .scr-rank-name:hover { color: var(--point); }
+/* 닉네임 옆 도전장 버튼 — "도전장 쓰기" 버튼과 같은 종이비행기 아이콘으로 통일(요청:
+   "랭킹카드에 바로 그 상대로 도전장 띄우는 버튼 추가 닉네임 옆에", "랭킹 차트에도
+   종이비행기 버튼으로 바꿔야지"). */
+.scr-rank-challenge-btn {
+  /* 크기 확대 + 닉네임과의 간격을 더 벌림(요청: "랭킹카드의 비행기 버튼 크기 확대 및
+     닉네임에서 좀더 멀리 위치") — wrap의 기본 gap(4px)에 마진을 더한다. */
+  flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; margin-left: 6px; padding: 0; border: none; background: transparent;
+  border-radius: 50%; color: var(--muted); cursor: pointer; opacity: 0.75;
+  transition: opacity .12s, background .12s, color .12s;
+}
+.scr-rank-challenge-btn:hover { opacity: 1; color: var(--text); background: rgba(var(--overlay-rgb), 0.08); }
 /* 글로우 대신 1~3위 닉네임을 금/은/동 메탈 폰트색으로(요청: "글로우 제거 대신 1위
    닉네임은 금색 메탈 늒낌 2위는 은색 메탈 느낌 3위는 동색 메탈느낌", "폰트색
    말하는것") — 그라데이션 + background-clip:text로 살짝 광택 나는 느낌을 준다.
@@ -3468,6 +3490,10 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 }
 /* 옵션 행은 래디우스 없이(사각) 호버 배경이 항상 꽉 찬 사각형으로 보이게 한다. */
 .scr-select-opt { display: flex; align-items: center; gap: 8px; padding: 8px 10px; font-size: var(--fs-body); cursor: pointer; border-radius: 0; }
+/* Avatar.tsx는 크기별로 각진 래디우스를 인라인 style로 계산해 넣어서, 다른 원형 프사
+   자리(.scr-user-chip 등)와 같이 여기서도 !important로 덮어써야 동그랗게 통일된다
+   (요청: "드롭다운의 아바타 동그랗게 통일"). */
+.scr-select-opt .scr-avatar { border-radius: 50% !important; }
 /* 호버는 배경을 반전해서(테마에 따라 뒤집히는 --text/--point-contrast 쌍) 옅은 틴트보다
    또렷하게 보이게 한다. */
 .scr-select-opt:hover, .scr-select-opt-active { background: var(--text); color: var(--point-contrast); }
@@ -4695,6 +4721,9 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
   background: transparent; border: none; border-radius: 0; color: var(--text);
   padding: 8px 9px; font-size: var(--fs-body); font-family: var(--font-mono); cursor: pointer; text-align: left;
 }
+/* 회원 선택 드롭다운처럼 옵션에 프사(SelectOption.avatar)를 붙인 경우, 다른 원형 프사
+   자리와 동일하게 동그랗게 통일(요청: "드롭다운과 유저칩 모두 아바타는 동그랗게"). */
+.scr-cselect-opt .scr-avatar { flex-shrink: 0; border-radius: 50% !important; }
 /* 호버는 배경을 반전(밝은 배경 위에 어두운 글자, 또는 그 반대 — 테마에 따라 뒤집히는
    --text/--point-contrast 쌍)해서 옅은 틴트보다 훨씬 또렷하게 보이게 한다. 골라도 바로
    닫히니 옵션 자체엔 별도 "선택됨" 배경 없이, 지금 값이라는 건 굵은 글씨+체크 아이콘
@@ -5157,6 +5186,8 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
      느껴졌다(요청: "폼 요소들 전체적으로 폭 넓히기") — 이 모달만 더 넓게. */
   max-width: 460px;
 }
+/* 타이틀("대결 신청") 아래 갭을 좀 더(요청: "도전장 보내기 타이틀 아래에 갭을 추가"). */
+.scr-challenge-form-modal .scr-modal-head { margin-bottom: 16px; }
 /* ".scr-light-theme .scr-modal"(클래스 두 개, 위 베이스 글라스 규칙)이 이 편지지
    규칙(클래스 하나)보다 특이도가 높아서, 라이트 테마에서는 편지지 배경이 아니라
    그 반투명 흰 유리 배경이 이겨버렸다(실제로 지적받은 문제 — "라이트 테마에서도
@@ -5189,6 +5220,32 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
   --overlay-rgb: 0, 0, 0;
   --point-contrast: #fdfbf5;
 }
+/* 위 변수 재정의만으론 부족했다 — .scr-cselect-drop 자체의 배경이 rgba(20,25,31,0.94)
+   (다크 전용 고정값)로 하드코딩돼 있어서, 앱이 다크 테마일 땐 이 편지지 톤 어두운
+   글자(--text #2a2420)가 그 어두운 배경과 겹쳐 그대로 안 보였다(요청: "너나와 도전장
+   쓰기에서 다크모드에서 유저 드롭다운이 안보임"). 라이트 테마 전용 오버라이드
+   (.scr-light-theme .scr-cselect-drop)만 있고 다크 테마 기본값엔 없었던 게 원인 —
+   여기서 테마와 무관하게 항상 밝은 편지지 배경으로 못박는다. */
+.scr-challenge-target-select.scr-cselect-drop {
+  background: var(--input-bg);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.7), 0 1px 3px rgba(0,0,0,0.06), 0 4px 10px rgba(0,0,0,0.08);
+  /* 스크롤바도 편지지 톤(--line, 갈색 계열)이 흰 배경 위에서 붉은 기가 도는 것처럼
+     보여서, 중립 회색으로 못박는다(요청: "드롭다운 스크롤바 붉은 색 아닌 회색계열
+     사용"). */
+  scrollbar-color: rgba(120,120,120,0.45) transparent;
+}
+.scr-challenge-target-select.scr-cselect-drop::-webkit-scrollbar-thumb {
+  background: rgba(120,120,120,0.45); border: 2px solid var(--input-bg);
+}
+.scr-challenge-target-select.scr-cselect-drop::-webkit-scrollbar-thumb:hover { background: rgba(120,120,120,0.65); }
+/* 옵션/선택값 폰트도 데이터폰트 대신 기본 폰트(프리텐다드)로(요청: "유저 드롭다운의
+   폰트 기본 폰트 사용", "모든 유저 드롭다운 마찬가지로 기본 폰트인 프리텐다드 사용")
+   — 회원 이름을 고르는 드롭다운(여기와 게임 아이디 매핑 화면의 회원 선택)에만 적용,
+   종족/버전 등 다른 select는 그대로 데이터폰트를 쓴다. */
+.scr-challenge-target-select .scr-cselect-opt,
+.scr-challenge-target-select .scr-cselect-trigger,
+.scr-usermap-member-select .scr-cselect-opt,
+.scr-usermap-member-select .scr-cselect-trigger { font-family: unset; }
 
 /* 작성 폼 — 상대 지목 슬롯 */
 /* 개인전/팀전 라디오 한 줄(요청: "팀전인지 개인전인지 체크하고 시작 — 라디오 버튼"). */
@@ -5204,15 +5261,33 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
    맞춘다 — 안 그러면 이 모드일 때만 트리거가 --field-h(38px)라 행이 낮아져 높이가 달라
    보이고 아래가 흔들렸다(요청: "도전장 보내기에서 팀원추가시 입력중 모드일때 높이가 달라"). */
 .scr-challenge-target-slot .scr-cselect-trigger { min-height: 46px; }
-.scr-challenge-target-remove { width: 30px; height: 30px; flex-shrink: 0; }
+/* 테두리 있는 사각 아이콘 버튼 대신, 동그랗고 투명한 배경에 반사광+그림자로만 입체감을
+   준다(요청: "x 아이콘 동그란 아이콘 버튼 (투명 및 반사광 그림자)") — 다른 곳의 원형
+   아이콘 버튼(.scr-usermap-restore-btn 등)과 같은 톤. */
+.scr-challenge-target-remove {
+  width: 30px; height: 30px; flex-shrink: 0; border: none; border-radius: 50%;
+  background: transparent;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.10),
+    inset 0 -1px 0 rgba(255,255,255,0.04),
+    0 2px 6px rgba(0,0,0,0.16);
+}
+.scr-challenge-target-remove:hover { background: rgba(var(--overlay-rgb), 0.08); color: var(--text); }
 /* 확정된 지목 — 드롭다운이 아니라 이름만 보여주는 칩. color를 직접 선언해야
    .scr-challenge-form-modal이 지역적으로 다시 정의한 --text를 실제로 반영한다 — 그냥
    상속에 맡기면 이 값을 만난 적 없는(에: body의 color) 계산된 색이 그대로 내려와서,
    앱이 다크 테마일 때 옅은(거의 흰색) 글자가 편지지 배경 위에 그대로 보였다. */
 .scr-challenge-target-picked {
-  display: flex; align-items: center; justify-content: space-between; gap: 6px;
+  /* 아바타+닉네임이 서로 떨어져 양쪽에 붙어 보이던 문제 — space-between이 자식 3개
+     (아바타/이름/X버튼) 사이 여백을 고르게 벌려서 아바타와 이름 사이에도 빈 공간이
+     생겼다(요청: "아바타와 닉네임을 옆에 배치, 지금은 양쪽 배치인데 왼쪽 정렬로
+     변경"). flex-start로 왼쪽부터 붙이고, 이름 쪽에 남는 공간을 몰아줘서(아래
+     -name 규칙) X 버튼만 오른쪽 끝에 남게 한다. */
+  display: flex; align-items: center; justify-content: flex-start; gap: 6px;
   background: var(--panel-raised); color: var(--text); border-radius: var(--radius-sm); padding: 8px 10px; font-size: var(--fs-body);
 }
+.scr-challenge-target-picked .scr-avatar { flex-shrink: 0; border-radius: 50% !important; }
+.scr-challenge-target-picked-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* "+ 상대 추가" — 확정된 지목 칩과 오갈 때 블록 높이가 안 흔들리게(요청: "레이아웃 흔들림")
    세로 크기를 맞췄지만, 투명한 텍스트 링크라 실제로는 같은 46px여도 칩(채워진 박스)보다
    눈에 띄게 짧아 보였다(요청: "높이 유저칩하고 맞추지 않았어? 아직 안맞는듯"). 그래서 칩과
@@ -5221,12 +5296,13 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
 .scr-challenge-add-target {
   display: flex; align-items: center; justify-content: center; gap: 6px;
   width: 100%; min-height: 46px; box-sizing: border-box;
-  /* 점선 대신 실선 테두리로(요청: "점선 테두리 -> 실선으로 변경"). */
-  background: transparent; border: 1.5px solid var(--pipe-dark);
+  /* 테두리 제거, 텍스트 앞에 사람+아이콘으로("+" 기호 대신, 요청: "+ 버튼 테두리
+     없애기", "+ 말고 사람 + 아이콘 사용"). */
+  background: transparent; border: none;
   border-radius: var(--radius-sm); padding: 8px 10px;
   font-family: inherit; font-size: var(--fs-body); font-weight: 600; color: var(--muted); cursor: pointer;
 }
-.scr-challenge-add-target:hover { color: var(--point); border-color: var(--point); }
+.scr-challenge-add-target:hover { color: var(--point); }
 .scr-challenge-datetime { display: flex; gap: 8px; }
 .scr-challenge-datetime .scr-input { flex: 1; min-width: 0; }
 /* 도전장 작성/인박스 팝업은 앱 다크/라이트 테마와 무관하게 항상 아이보리 편지지 톤인데,
@@ -6179,17 +6255,24 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
   overflow-x: auto; scrollbar-width: none;
   cursor: text;
   border: none;
-  background: rgba(255, 255, 255, 0.08);
+  /* 다크 테마에서 패널(.scr-mreq-corner)이 이미 거의 투명한 어두운 유리라, 반투명
+     흰색 입력창은 잘 안 보였다(요청: "다크테마에서 요청하기 입력창 흰색으로
+     변경(글자 검정)") — 불투명 흰 박스 + 어두운 글자로, 다른 일반 입력칸처럼 뚜렷하게
+     구분되게 한다. --text/--muted를 지역적으로 재정의해 안의 칩 텍스트/placeholder도
+     같이 따라온다. */
+  background: #ffffff;
+  --text: #1f2328;
+  --muted: rgba(31, 35, 40, 0.6);
   /* .scr-input 공용 규칙의 데이터 폰트(D2Coding) 대신 기본 UI 폰트(Pretendard)를 쓴다
      (요청: "요청 인풋 폰트 데이터펀트 말고 기본 폰트(pretendard) 적용") — 검색창
      (.scr-search-chip-box)과 같은 방식으로 unset해서 body의 기본 폰트를 물려받는다. */
   font-family: unset;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.14), inset 0 -1px 0 rgba(255,255,255,0.04);
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.08);
 }
 .scr-mreq-editor::-webkit-scrollbar { display: none; }
 .scr-mreq-editor:focus-within {
   outline: none;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.26), inset 0 -1px 0 rgba(255,255,255,0.06);
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.08), 0 0 0 1px rgba(59,130,246,0.35);
 }
 /* 라이트 테마의 패널(.scr-mreq-corner)이 이미 반투명 흰색이라, 인풋도 흰색 반사광만
    주면 배경과 거의 안 구분됐다(실제로 지적받은 문제 — "라이트 테마에서 요청 인풋창
@@ -6237,6 +6320,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
    재사용한다(요청: "드롭다운도 같은 요소를 재사용") — .scr-pv-drop/.scr-pv-opt. 여기선
    아바타를 함께 보여줘야 해서 가로 정렬만 얹는다. */
 .scr-mreq-mention-opt { display: flex; align-items: center; gap: 8px; }
+.scr-mreq-mention-opt .scr-avatar { flex-shrink: 0; border-radius: 50% !important; }
 .scr-mreq-mention-name { font-size: var(--fs-body); font-weight: 600; }
 /* 지목 회원은 문장 안 인라인 유저 칩으로(요청: "칩이 문장 안에 포함", "칩에는 @ 없이 표현").
    흰 칩에 그림자만 줘서(요청) 흰 보드 위에서도 살짝 떠 보이게 한다. */
@@ -6246,18 +6330,19 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
      패딩도 줄여서 문장에 섞여드는 만큼 "칩" 느낌을 줄인다(요청: "유저칩이 문장에
      섞이는 만큼 패딩을 좀 줄여서 칩의 느낌을 감소시키기"). */
   padding: 0 4px; border-radius: 8px;
-  /* 다크 테마는 투명도를 훨씬 높이고 글자도 흰색으로(요청: "칩 투명도 훨씬 높게
-     하고 폰트를 흰색으로(다크 테마)") — 거의 안 보이는 은은한 하이라이트 느낌.
-     라이트 테마는 흰 배경 위라 이 조합이면 안 보이니 아래에서 기존 배색(불투명
-     흰 배경 + 어두운 글자)으로 되돌린다. */
-  background: rgba(255, 255, 255, 0.2); color: #ffffff;
+  /* 한때 다크 테마만 투명도를 훨씬 높이고 글자를 흰색으로 바꿨었는데(은은한 하이라이트
+     느낌 의도), 정작 입력창(.scr-mreq-editor)이 항상 흰 배경으로 바뀌면서 그 위에 흰
+     글자 칩이 그대로 안 보이는 문제가 생겼다(요청: "요청 인풋에 유저칩 글자색 안보임").
+     테마/자리(입력창·목록)와 무관하게 항상 불투명 흰 배경 + 어두운 글자로 통일한다
+     (요청: "대결 요청 유저칩 다크테마에선 투명 말고 흰색 반전 칩으로 복구", "요청
+     목록에도 유저칩 디자인 통일"). */
+  background: rgba(255, 255, 255, 0.72); color: #24272d;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18), 0 0 1px rgba(0, 0, 0, 0.1);
   /* 주변 본문(.scr-mreq-item-text)과 글자 크기가 달랐던 게(caption vs body) 세로
      정렬이 어긋나 보이던 원인이었다(실제로 지적받은 문제 — "유저칩과 일반 텍스트가
      세로 정렬이 안맞으니 맞춰줘") — 본문과 같은 크기로 맞춘다. */
   font-size: var(--fs-body); font-weight: 700; white-space: nowrap;
 }
-.scr-light-theme .scr-mreq-chip { background: rgba(255, 255, 255, 0.72); color: #24272d; }
 /* 인라인 칩 — 텍스트 흐름 안에서 세로로 앉는 위치를 잡는다(목록 카드의 읽기용 렌더에서
    쓴다). middle만으로는 패딩이 있는 칩이 주변 글자보다 살짝 아래로 처져 보였다(실제로
    지적받은 문제 — "일반 텍스트가 칩보다 좀 위에 있는 느낌") — 위로 살짝 밀어 보정한다. */
@@ -6388,14 +6473,6 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
   .scr-scroll-timeline-date { font-size: var(--fs-micro); }
   /* 도전장 보내기 힌트 두 단계 축소(20→14) */
   .scr-challenge-form-modal .scr-hint { font-size: var(--fs-caption); }
-  /* 날짜/시간: 각 칸(체크박스 위 + 입력 아래)을 나란히 — 같은 칸이라 시간 체크박스와 시간
-     입력의 왼쪽이 맞는다. 입력은 내용폭으로 훨씬 좁게 + 높이 축소. 두 칸 사이 갭. */
-  .scr-datetime-cols { display: flex; gap: 22px; align-items: flex-start; }
-  /* 칸은 내용폭(입력 크기)만 차지하게 — align-items:flex-start로 자식이 늘어나지 않게 하고,
-     .scr-field/체크박스가 기본 width:100%라도 여기선 내용폭으로 좁힌다(그래야 두 칸이 나란히). */
-  .scr-datetime-col { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; flex: 0 0 auto; }
-  .scr-datetime-col .scr-datetime-input, .scr-datetime-col .scr-checkbox-field { width: auto; }
-  .scr-datetime-col .scr-datetime-input .scr-input { width: auto; min-height: var(--field-h-sm); }
 }
 
 /* ═══ PC=모바일 폰트 통일 ─ 모바일(max-width)에서 줄여둔 글자 크기를 전 폭에 그대로
