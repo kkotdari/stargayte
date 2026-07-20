@@ -7,7 +7,7 @@ import { useAppStore } from "../../store/appStore";
 import type { Challenge, Match } from "../../types";
 
 // 카카오톡으로 공유된 링크(?sv=match|challenge&sid=…)가 여는, 그 한 장만 보이는 화면(요청:
-// "너나와/경기 공유시 해당 카드만 있는 화면"). 로그인 뒤에 뜨며, "스타게이트로 가"로 전체 앱에 들어간다.
+// "너나와/경기 공유시 해당 카드만 있는 화면"). 로그인 뒤에 뜨며, "스타게이트로"로 전체 앱에 들어간다.
 export interface ShareTarget {
   type: "match" | "challenge";
   id: number;
@@ -50,16 +50,16 @@ export default function SharePage({ target, onExit }: { target: ShareTarget; onE
   }, [target.type, target.id]);
 
   // 너 나와 공유는 인박스(편지봉투→편지지)를 그대로 재사용한다(요청). 지목된 대상만 응답
-  // 버튼을 보고, 아니면 읽기 전용이며 "스타게이트로 가"로 앱에 들어간다. 인박스 모달이
+  // 버튼을 보고, 아니면 읽기 전용이며 "스타게이트로"로 앱에 들어간다. 인박스 모달이
   // 전체 화면 오버레이라 별도 상단바 없이 그것만 띄운다.
   if (target.type === "challenge") {
     if (loading) return <div className="scr-share-page"><div className="scr-share-body"><Spinner size={18} /></div></div>;
-    if (challenge) return <ChallengeInboxModal challenges={[challenge]} onClose={onExit} closeLabel="스타게이트로 가" />;
+    if (challenge) return <ChallengeInboxModal challenges={[challenge]} onClose={onExit} closeLabel="스타게이트로" />;
     return (
       <div className="scr-share-page">
         <div className="scr-share-head">
           <span className="scr-share-brand">스타게이트</span>
-          <button type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid" onClick={onExit}>스타게이트로 가</button>
+          <button type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid" onClick={onExit}>스타게이트로</button>
         </div>
         <div className="scr-share-body"><div className="scr-err">{err || "찾을 수 없어요."}</div></div>
       </div>
@@ -75,7 +75,7 @@ export default function SharePage({ target, onExit }: { target: ShareTarget; onE
       <div className="scr-share-head">
         <span className="scr-share-brand">스타게이트</span>
         <button type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid" onClick={onExit}>
-          스타게이트로 가
+          스타게이트로
         </button>
       </div>
       <div className="scr-share-body">

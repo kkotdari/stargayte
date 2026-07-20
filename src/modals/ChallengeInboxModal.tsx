@@ -15,7 +15,7 @@ interface ChallengeInboxModalProps {
   challenges: Challenge[];
   onClose: () => void;
   // 공유 화면(SharePage)에서 재사용할 때, 응답 버튼 없이 읽기만 하는 사람(대상이 아닌 사람)이
-  // 누를 마무리 버튼 문구. 기본 "닫기". 공유 화면에선 "스타게이트로 가"를 넘긴다.
+  // 누를 마무리 버튼 문구. 기본 "닫기". 공유 화면에선 "스타게이트로"를 넘긴다.
   closeLabel?: string;
 }
 
