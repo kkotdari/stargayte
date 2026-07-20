@@ -360,13 +360,15 @@ export default function RankingScreenV2() {
             (요청: "밖에 복사/저장보다는 메뉴에 복사가 있는 게 나을 듯"). */}
         <button
           type="button"
-          className={cx("scr-rank-method-trigger", shotMenuOpen && "scr-rank-method-trigger-active")}
+          className={cx("scr-icon-btn scr-rank-shot-btn", shotMenuOpen && "scr-icon-btn-active")}
           ref={shotAnchorRef}
           onClick={() => setShotMenuOpen((v) => !v)}
           disabled={shooting || rows.length === 0}
+          aria-label="랭킹 스크린샷"
+          aria-haspopup="menu"
+          aria-expanded={shotMenuOpen}
         >
-          {shooting ? <Spinner size={13} /> : copied ? <Check size={13} /> : <Camera size={13} />}{" "}
-          {copied ? "복사됨" : "스크린샷"}
+          {shooting ? <Spinner size={15} /> : copied ? <Check size={15} /> : <Camera size={15} />}
         </button>
       </div>
       {methodTipOpen && createPortal(

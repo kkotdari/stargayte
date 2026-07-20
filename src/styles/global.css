@@ -1142,6 +1142,12 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 /* 스크린샷 버튼 하나에 복사/저장을 담는 드롭다운 메뉴(요청) — 케밥 메뉴와 같은 톤
    (.scr-menu-pop-drop)에 살짝 최소 폭만 준다. */
 .scr-rank-shot-menu { min-width: 96px; }
+/* 스크린샷 트리거는 테두리 없는 순수 투명 아이콘 버튼(요청: "카메라 아이콘 투명 아이콘
+   버튼 테마 적용") — 배경/테두리 없이 아이콘 색만 테마를 따르고, 호버/활성에서 또렷해진다. */
+.scr-icon-btn.scr-rank-shot-btn { border: none; }
+.scr-icon-btn.scr-rank-shot-btn:hover { border: none; background: transparent; color: var(--text); }
+.scr-icon-btn.scr-rank-shot-btn.scr-icon-btn-active { border: none; background: transparent; color: var(--text); }
+.scr-icon-btn.scr-rank-shot-btn:disabled:hover { border: none; color: var(--muted); }
 .scr-rank-method-trigger:disabled { opacity: 0.45; cursor: default; }
 
 /* ===== PWA "홈 화면에 추가" 유도 배너 + iOS 안내 ===== */
