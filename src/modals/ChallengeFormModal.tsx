@@ -12,7 +12,7 @@ import type { Challenge, Member } from "../types";
 
 // 상대는 최대 4명까지 지목할 수 있고(팀전), 내 팀은 본인 자동 포함이라 "본인 제외"
 // 최대 3명(본인 포함 4명)까지 넣을 수 있다 — 서버의 max_length(target 4 / own 3)와 같다.
-// 경기 유형(개인전/팀전)을 따로 고르지 않는다(요청: "챌린지 유형 제거하고 자동으로 판단함") —
+// 경기 유형(개인전/팀전)을 따로 고르지 않는다(요청: "너 나와 유형 제거하고 자동으로 판단함") —
 // 실제 경기 유형은 서버와 똑같은 규칙으로 인원수만 보고 정해진다(상대1·팀0 → 1:1, 그 외 팀전).
 const MAX_TARGETS = 4;
 const MAX_OWN_TEAM = 3;
@@ -20,9 +20,9 @@ const MAX_OWN_TEAM = 3;
 interface ChallengeFormModalProps {
   onClose: () => void;
   onCreated: (challenge: Challenge) => void;
-  // 챌린지 신청 "들어주기"로 열 때 — 요청 작성자를 상대로 미리 채워 넣는다.
+  // 너 나와 신청 "들어주기"로 열 때 — 요청 작성자를 상대로 미리 채워 넣는다.
   presetTargetIds?: string[];
-  // 챌린지 신청 "들어주기"로 만드는 도전장이면 true — 서버가 "요청챌린지" 표식을 남긴다.
+  // 너 나와 신청 "들어주기"로 만드는 도전장이면 true — 서버가 "요청너 나와" 표식을 남긴다.
   fromMatchRequest?: boolean;
   // 랭킹 목록의 종이비행기 버튼처럼 "바로 그 상대"로 연 경우 — 상대를 presetTargetIds
   // 그대로 고정해서 더/빼기가 아예 안 되게 하고(요청: "상대팀에도 딱 그 상대만 고정 x
@@ -138,7 +138,7 @@ export default function ChallengeFormModal({ onClose, onCreated, presetTargetIds
   const members = useAppStore((s) => s.members);
   const user = useAppStore((s) => s.user);
 
-  // 챌린지 신청 들어주기로 열렸으면 그 작성자를 상대로 미리 채운다.
+  // 너 나와 신청 들어주기로 열렸으면 그 작성자를 상대로 미리 채운다.
   const preset = presetTargetIds ?? [];
   const [targetIds, setTargetIds] = useState<string[]>(preset);
   const [ownTeamIds, setOwnTeamIds] = useState<string[]>([]);
@@ -171,7 +171,7 @@ export default function ChallengeFormModal({ onClose, onCreated, presetTargetIds
 
   // 경기 유형을 따로 안 골라도, 상대를 1명 이상만 지목하면 항상 유효한 조합이 된다 —
   // 상대 1명·내 팀 0명이면 서버가 1:1로, 그 외(상대 2명 이상이거나 내 팀이 있으면)
-  // 팀전으로 자동 판단한다(요청: "챌린지 유형 제거하고 자동으로 판단함").
+  // 팀전으로 자동 판단한다(요청: "너 나와 유형 제거하고 자동으로 판단함").
   const canSubmit = targetIds.length >= 1;
 
   const submit = async () => {
@@ -201,12 +201,12 @@ export default function ChallengeFormModal({ onClose, onCreated, presetTargetIds
     <div className="scr-modal-overlay">
       <div className="scr-modal scr-modal-sm scr-challenge-form-modal">
         <div className="scr-modal-head">
-          <span>챌린지 신청</span>
+          <span>너 나와 신청</span>
           <button className="scr-icon-btn" onClick={onClose} aria-label="닫기"><X size={14} /></button>
         </div>
 
         <div className="scr-modal-body">
-          {/* 경기 유형(개인전/팀전) 선택은 없앴다(요청: "챌린지 유형 제거하고 자동으로
+          {/* 경기 유형(개인전/팀전) 선택은 없앴다(요청: "너 나와 유형 제거하고 자동으로
               판단함") — 상대/내 팀 인원수만으로 서버가 자동으로 정한다. 내 팀/상대
               지목은 <label>이 아니라 <div>다 — <label>로 감싸면 칩/버튼처럼 "제어
               대상이 아닌" 부분을 클릭했을 때 브라우저가 그 라벨의 첫 폼 컨트롤(첫 칩의

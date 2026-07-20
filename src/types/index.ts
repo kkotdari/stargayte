@@ -309,13 +309,13 @@ export type ChallengeMatchType = "0101" | "0102";
 // "discarded" = 편지봉투를 열지 않고 사유 없이 "버림"(휴지통행) — 사유가 있는 "rejected"
 // (거절)과 구분해 표시한다.
 export type ChallengeTargetResponse = "pending" | "accepted" | "rejected" | "discarded";
-// 4개 상태만 있다 — 응답대기(pending)/성사(confirmed, 챌린지 대기)/완료(done)/폐기(discarded,
+// 4개 상태만 있다 — 응답대기(pending)/성사(confirmed, 너 나와 대기)/완료(done)/폐기(discarded,
 // 휴지통). 거절·무응답·미실시·(레거시)취소는 모두 폐기로 통합됐다. 예정 시간이 지나도
 // 결과가 안 들어왔으면 계속 성사(confirmed)다.
 export type ChallengeStatus = "pending" | "confirmed" | "done" | "discarded";
 // 도전자 쪽/지목된 쪽 — 리벤지 신청 자격 판정(패배한 쪽) 등에 쓰인다.
 export type ChallengeSide = "creator" | "target";
-// 확정 챌린지의 결과 — 이긴 쪽(creator/target) 외에 무승부(draw)/미실시(not_held)도 있다.
+// 확정 너 나와의 결과 — 이긴 쪽(creator/target) 외에 무승부(draw)/미실시(not_held)도 있다.
 // not_held(미실시)는 완료가 아니라 폐기(휴지통)로 간다.
 export type ChallengeResult = "creator" | "target" | "draw" | "not_held";
 
@@ -343,7 +343,7 @@ export interface ChallengeHistoryEntry {
   status: ChallengeStatus;
   targets: ChallengeTarget[];
   createdAt: string;
-  // 확정 챌린지의 결과 — 아직 아무도 입력하지 않았으면 null.
+  // 확정 너 나와의 결과 — 아직 아무도 입력하지 않았으면 null.
   resultWinnerSide: ChallengeResult | null;
 }
 
@@ -360,12 +360,12 @@ export interface Challenge {
   discardedAt: string | null;
   // 리벤지(설욕전)로 만들어졌으면 원래 도전장의 id, 아니면 null. 값이 있으면 곧 리벤지다.
   reappliedFromId: number | null;
-  // 확정 챌린지의 결과 — 아직 아무도 입력하지 않았으면 null.
+  // 확정 너 나와의 결과 — 아직 아무도 입력하지 않았으면 null.
   resultWinnerSide: ChallengeResult | null;
   // 이 도전장보다 앞선 체인 기록(오래된 순) — 목록 화면 카드에서 좌우로 슬라이드해
   // 보여준다. 리벤지 이력이 없으면 빈 배열.
   history: ChallengeHistoryEntry[];
-  // "챌린지 신청 들어주기"로 만들어졌으면 true — 카드에 "요청챌린지" 배지를 붙인다.
+  // "너 나와 신청 들어주기"로 만들어졌으면 true — 카드에 "요청너 나와" 배지를 붙인다.
   fromMatchRequest: boolean;
 }
 
@@ -374,7 +374,7 @@ export interface ChallengeCreatePayload {
   targetMemberIds: string[];
   // 본인 제외 나머지 내 팀원(최대 3명, 본인 포함 최대 4명) — 안 넘기면 나 혼자.
   ownTeamMemberIds?: string[];
-  // "챌린지 신청 들어주기"로 여는 도전장이면 true.
+  // "너 나와 신청 들어주기"로 여는 도전장이면 true.
   fromMatchRequest?: boolean;
 }
 
@@ -383,7 +383,7 @@ export interface ChallengeRevengePayload {
   scheduledAt?: string | null;
 }
 
-// ===== 챌린지 신청 코너 ("너 나와!" 최상단) =====
+// ===== 너 나와 신청 코너 ("너 나와!" 최상단) =====
 // 본문에 @태그로 최소 2명을 지목하는 공개 요청글. 지목된 사람만 "들어주기"로 도전장을 보낼
 // 수 있고, 들어주면 목록에서 사라진다. 정렬은 추천 많은 순 → 먼저 등록된 순.
 export interface MatchRequestTarget {

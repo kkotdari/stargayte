@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { Spinner } from "../components/common/Feedback";
 import OptionalDateTimeFields from "../components/common/OptionalDateTimeFields";
 import { api } from "../api/client";
+import { useAppStore } from "../store/appStore";
 import { useLockBodyScroll } from "../utils/bodyScrollLock";
 import { formatChallengeSchedule } from "../utils/date";
 import { playMailChime } from "../utils/sfx";
@@ -17,6 +18,8 @@ interface ChallengeInboxModalProps {
 // 다음 도전장으로 넘어간다. 전부 처리되면 onClose로 부모가 닫는다.
 export default function ChallengeInboxModal({ challenges, onClose }: ChallengeInboxModalProps) {
   useLockBodyScroll();
+  // 편지지 제목("야 OO, 나와!")에 쓸 받는 사람(나) 닉네임.
+  const user = useAppStore((s) => s.user);
   // 도전장 팝업이 뜨는 순간 우편 알림음(요청) — 마운트 때 한 번. 자동재생이 막힌 상황
   // (새로고침 복원 등 최근 제스처 없음)에선 조용히 무시된다.
   useEffect(() => { playMailChime(); }, []);
@@ -115,7 +118,9 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
   const isTeamMatch = current.matchType === "0102";
   const opposingTeam = [current.createdBy.nickname, ...current.ownMembers.map((m) => m.nickname)];
   const ourTeam = current.targets.map((t) => t.nickname);
-  const title = `${current.createdBy.nickname}님에게서 챌린지 신청이 도착했어요`;
+  // 편지봉투 위 문구와 편지지 제목을 다르게 둔다(요청).
+  const envelopeTitle = `${current.createdBy.nickname}님에게 호출당함`;
+  const letterTitle = `야 ${user?.nickname ?? "너"}, 나와!`;
 
   return createPortal(
     <div className="scr-modal-overlay">
@@ -124,7 +129,7 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
           페이드인 제거 그냥 나오기"). */}
       {stage === "letter" && (
         <div className="scr-modal scr-modal-sm scr-challenge-inbox-modal">
-          <div className="scr-challenge-inbox-title">{title}</div>
+          <div className="scr-challenge-inbox-title">{letterTitle}</div>
           {/* 편지지 상단에 nawa2 이미지를 크게, 원형으로 크롭하고 가장자리를 그라데이션으로
               흐려서 배치한다(요청). */}
           <img src="/images/items/nawa2.jpg" alt="" className="scr-challenge-inbox-hero" />
@@ -209,7 +214,7 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
         // (버리기로 envelope→envelope 넘어갈 때도 확실히 replay).
         <div key={current.id} className="scr-challenge-envelope-layer">
           <div className="scr-challenge-envelope-inner">
-            <div className="scr-challenge-inbox-title">{title}</div>
+            <div className="scr-challenge-inbox-title">{envelopeTitle}</div>
             <div className="scr-challenge-envelope scr-challenge-envelope-full scr-challenge-envelope-shake">
               <img src="/images/items/envelope.png" alt="" className="scr-challenge-envelope-img" />
             </div>

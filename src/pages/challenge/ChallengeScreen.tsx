@@ -1,10 +1,9 @@
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Send } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
 import { Spinner } from "../../components/common/Feedback";
 import OptionalDateTimeFields from "../../components/common/OptionalDateTimeFields";
 import ChallengeFormModal from "../../modals/ChallengeFormModal";
-// "보고싶은 챌린지" 코너는 지금 숨김(요청) — 다시 켤 때 import와 렌더 주석을 함께 해제한다.
+// "보고싶은 너 나와" 코너는 지금 숨김(요청) — 다시 켤 때 import와 렌더 주석을 함께 해제한다.
 // import MatchRequestCorner from "./MatchRequestCorner";
 import ScrollNavTimeline from "../../components/common/ScrollNavTimeline";
 import { useAppStore } from "../../store/appStore";
@@ -170,7 +169,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
   const myTarget = challenge.targets.find((t) => t.memberId === myId);
   const isCreator = challenge.createdBy.id === myId;
   const inOwnTeam = challenge.ownMembers.some((m) => m.memberId === myId);
-  // 이 챌린지의 참가자인지, 참가자라면 어느 편인지 — 결과 입력/설욕전/연기 노출 판정에 쓴다.
+  // 이 너 나와의 참가자인지, 참가자라면 어느 편인지 — 결과 입력/설욕전/연기 노출 판정에 쓴다.
   const isParticipant = isCreator || inOwnTeam || !!myTarget;
   const mySide: ChallengeSide | null = isCreator || inOwnTeam ? "creator" : myTarget ? "target" : null;
   // 응답(ChallengeAuthor)엔 프사가 없어서(닉네임만) 로컬 회원 목록에서 찾아 보여준다 —
@@ -179,12 +178,12 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
 
   // 응답(수락/거절)은 아직 응답 안 한 지목자가, 아직 응답대기(pending)인 도전장에서만.
   const canRespond = !!myTarget && myTarget.response === "pending" && challenge.status === "pending";
-  // 결과 입력 가능 시점 — 예정 일시가 지났거나, 시간 미정으로 수락된 챌린지(요청: "시간 미정
+  // 결과 입력 가능 시점 — 예정 일시가 지났거나, 시간 미정으로 수락된 너 나와(요청: "시간 미정
   // 수락 가능, 완료 시점으로 입력됨")은 언제든. 후자는 서버가 결과 입력 시점을 예정 일시로 채운다.
   const schedulePassed = !!challenge.scheduledAt && new Date(challenge.scheduledAt).getTime() < Date.now();
   const resultInputOpen = schedulePassed || !challenge.scheduledAt;
   const canEnterResult = isParticipant && challenge.status === "confirmed" && resultInputOpen && challenge.resultWinnerSide === null;
-  // 완료된 챌린지에서 내가 패배한 쪽이면 리벤지(설욕전)을 신청할 수 있다 — 무승부(draw)/미실시
+  // 완료된 너 나와에서 내가 패배한 쪽이면 리벤지(설욕전)을 신청할 수 있다 — 무승부(draw)/미실시
   // (not_held)는 패자가 없어 대상이 아니다(losingSide=null). 미실시는 애초에 폐기라 완료가 아니다.
   const losingSide: ChallengeSide | null =
     challenge.resultWinnerSide === "creator" ? "target"
@@ -252,7 +251,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
   // 카드에서 바로 승락/거절 — 한마디 없이 바로 응답한다(아주 단순하게). 거절은 되돌릴 수
   // 없으니 확인만 한 번 받는다.
   const respond = async (response: "accepted" | "rejected") => {
-    if (response === "rejected" && !window.confirm("이 챌린지를 거절할까요?")) return;
+    if (response === "rejected" && !window.confirm("이 너 나와를 거절할까요?")) return;
     setErr("");
     setBusy(true);
     try {
@@ -355,8 +354,8 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
     || (shownLatest && challenge.resultWinnerSide !== null)
     || isResultPending;
 
-  // 이미 종료된 챌린지(완료/미실시 등 status=done·discarded)은 패널을 더 어둡게, 아직 진행
-  // 중인(응답대기·성사) 챌린지는 더 밝게 해서 목록에서 한눈에 구분되게 한다(요청).
+  // 이미 종료된 너 나와(완료/미실시 등 status=done·discarded)은 패널을 더 어둡게, 아직 진행
+  // 중인(응답대기·성사) 너 나와는 더 밝게 해서 목록에서 한눈에 구분되게 한다(요청).
   const isEnded = challenge.status === "done" || challenge.status === "discarded";
 
   return (
@@ -638,7 +637,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
 
 // "수락만"은 켜고 끄는 하나짜리 조건이라, 모바일에서 폭을 아끼려고 탭 대신 체크박스 하나로
 // 둔다(요청: "필터를 수락만으로 변경하고 수락한 건들만 노출"). 평소 목록은 상태와 무관하게
-// 하나로 합쳐 보여주고, 이 체크박스를 켜면 성사된(confirmed) 챌린지만 남긴다.
+// 하나로 합쳐 보여주고, 이 체크박스를 켜면 성사된(confirmed) 너 나와만 남긴다.
 
 
 // 폐기(휴지통)된 건 — 본 목록에서는 감추고 "휴지통" 모달에만 보여준다. 서버가 거절·무응답·
@@ -653,7 +652,7 @@ function isDiscarded(c: Challenge): boolean {
 // 건은 서버가 요청일+1일로 스탬프하므로 null이 남지 않는다)은 날짜가 없어 맨 위에 둔다. 일시가
 // 같거나 둘 다 미정이면 최근 생성 순으로 가른다.
 // 정렬: "일정 미정"(응답 대기중, scheduledAt 없음)은 맨 위 "대기중" 묶음으로, 그 아래
-// 날짜 있는 챌린지는 과거(위) → 미래(아래) 오름차순으로 둔다(요청: 타임라인 "위가 과거,
+// 날짜 있는 너 나와는 과거(위) → 미래(아래) 오름차순으로 둔다(요청: 타임라인 "위가 과거,
 // 아래가 미래" — 아래로 스크롤할수록 미래). 같은 시각/대기중끼리는 최신 생성이 위.
 function compareChallenges(a: Challenge, b: Challenge): number {
   const aNull = !a.scheduledAt;
@@ -728,15 +727,15 @@ export default function ChallengeScreen() {
   };
 
   // 너 나와! 목록은 필터/검색 없이 항상 전체를 조회한다(요청: "검색창도 제거", "무조건 전체").
-  // "기록" 메뉴는 폐지하고 완료된 챌린지도 같은 목록에 합친다(요청: "기록 메뉴 제거 및 원래
-  // 목록에 통합. 결과적으로 챌린지 목록은 1개만 존재") — 폐기(휴지통)된 건만 뺀다.
+  // "기록" 메뉴는 폐지하고 완료된 너 나와도 같은 목록에 합친다(요청: "기록 메뉴 제거 및 원래
+  // 목록에 통합. 결과적으로 너 나와 목록은 1개만 존재") — 폐기(휴지통)된 건만 뺀다.
   const unifiedList = useMemo(
     () => challenges.filter((c) => !isDiscarded(c)).sort(compareChallenges),
     [challenges],
   );
 
-  // 가장 가까운 예정된(수락) 챌린지의 시각 — 확정됐고 예정 일시가 아직 안 지난 것 중 가장 임박.
-  // "다가오는 매치" 이전(과거에 끝난 챌린지들)은 기본적으로 접어서 감춘다(요청: "다가오는 매치
+  // 가장 가까운 예정된(수락) 너 나와의 시각 — 확정됐고 예정 일시가 아직 안 지난 것 중 가장 임박.
+  // "다가오는 매치" 이전(과거에 끝난 너 나와들)은 기본적으로 접어서 감춘다(요청: "다가오는 매치
   // 이전은 모두 접혀서 안보임").
   const nextTime = useMemo(() => {
     const now = Date.now();
@@ -761,7 +760,7 @@ export default function ChallengeScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [unifiedList, nextTime]);
 
-  // "종료된 챌린지 보기" 토글 — 누르면 접혀 있던 앞부분이 지금 보이는 목록 위로 나타난다.
+  // "종료된 너 나와 보기" 토글 — 누르면 접혀 있던 앞부분이 지금 보이는 목록 위로 나타난다.
   // 콘텐츠가 뷰포트 위쪽에 삽입되면 브라우저가 스크롤 위치(px)를 그대로 유지해 화면에 보이던
   // 내용이 아래로 밀려 보인다(요청: "스크롤이 튀지 않게 조심") — 토글 직전 스크롤 높이를
   // 기억해뒀다가, 다음 렌더 직후(레이아웃 반영 후) 늘어난/줄어든 높이만큼 스크롤 위치를 같이
@@ -852,30 +851,31 @@ export default function ChallengeScreen() {
   return (
     <div className="scr-screen scr-challenge-screen-v2">
       {/* "기록" 메뉴는 폐지됐다(요청) — 목록이 하나뿐이라 타이틀 툴바엔 더 이상 액션이
-          없다. 챌린지 신청 버튼은 타이틀 줄 아래 별도 줄에 가운데 정렬, 1.2배 확대(요청). */}
+          없다. 너 나와 신청 버튼은 타이틀 줄 아래 별도 줄에 가운데 정렬, 1.2배 확대(요청). */}
       <div className="scr-v2-toolbar">
         <h1 className="scr-title scr-v2-toolbar-title">너 나와!</h1>
       </div>
 
-      {/* 타이틀 아래 줄 가운데에 nawa를 배경처럼 깔고, 그 안(위)에 "챌린지 신청" 버튼을
-          얹는다(요청). nawa는 절대위치라 줄 높이(버튼)엔 영향을 주지 않고 위아래로 넘친다. */}
+      {/* nawa 자체가 버튼(요청) — 이미지 위에 흰 글씨 "호출하기" 라벨을 얹고, 눌리는 입체감을
+          준다. 별도의 텍스트 버튼은 없앴다. */}
       <div className="scr-v2-primary-row scr-challenge-primary-row">
-        <img src="/images/items/nawa.jpg" alt="" className="scr-challenge-title-nawa" />
         <button
           type="button"
-          className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm"
+          className="scr-challenge-nawa-btn"
           onClick={() => setFormOpen(true)}
+          aria-label="너 나와 신청"
         >
-          <Send size={15} /> 챌린지 신청
+          <img src="/images/items/nawa.jpg" alt="" className="scr-challenge-title-nawa" />
+          <span className="scr-challenge-nawa-label">호출하기</span>
         </button>
       </div>
 
-      {/* 최상단 챌린지 신청 코너("보고싶은 챌린지") — 지금은 숨김(요청). 다시 켜려면 아래
+      {/* 최상단 너 나와 신청 코너("보고싶은 너 나와") — 지금은 숨김(요청). 다시 켜려면 아래
           주석을 해제한다. */}
       {/* <MatchRequestCorner /> */}
 
       {/* 목록 중타이틀 — 요청 코너와 실제 도전장 목록을 구분한다. */}
-      <h2 className="scr-challenge-list-heading">챌린지 목록</h2>
+      <h2 className="scr-challenge-list-heading">너 나와 목록</h2>
 
       {error && <div className="scr-err">{error}</div>}
 
@@ -883,19 +883,19 @@ export default function ChallengeScreen() {
         <div className="scr-empty"><Spinner size={18} /></div>
       ) : (
         <>
-          {/* 종료된(과거) 챌린지는 펼쳤을 때만, 토글 버튼 '위'에 나타난다(요청). */}
+          {/* 종료된(과거) 너 나와는 펼쳤을 때만, 토글 버튼 '위'에 나타난다(요청). */}
           {showEnded && endedList.length > 0 && (
             <section className="scr-challenge-section scr-challenge-section-ended">
               {renderChallengeList(endedList)}
             </section>
           )}
 
-          {/* 과거에 끝난 챌린지는 기본적으로 접혀 있고, 이 버튼이 종료/활성 목록 사이의
+          {/* 과거에 끝난 너 나와는 기본적으로 접혀 있고, 이 버튼이 종료/활성 목록 사이의
               구분선이 된다(요청) — 누르면 그 위로 펼쳐진다. 접을 게 없으면(boundaryIndex 0)
               버튼 자체를 안 보여준다. */}
           {boundaryIndex > 0 && (
             <button type="button" className="scr-challenge-toggle-ended-link" onClick={toggleShowEnded}>
-              {showEnded ? "종료된 챌린지 접기" : "종료된 챌린지 펼치기"}
+              {showEnded ? "종료된 너 나와 접기" : "종료된 너 나와 펼치기"}
             </button>
           )}
 
