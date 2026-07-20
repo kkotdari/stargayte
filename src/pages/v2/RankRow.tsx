@@ -59,6 +59,11 @@ export default function RankRowV2({ row, tiedWithPrev = false, highlighted = fal
             </span>
             <RankDeltaBadge delta={rankDelta} />
           </div>
+          {/* 잠정 뱃지는 아바타 왼쪽에 둔다(요청) — 뱃지 유무와 무관하게 항상 이 너비만큼
+              칸을 예약해서, 잠정이 없는 행에서도 아바타 x좌표가 흔들리지 않는다. */}
+          <span className="scr-rank-provisional-slot">
+            {provisional && <span className="scr-rank-provisional">잠정</span>}
+          </span>
           <button type="button" className="scr-rank-avatar-btn" onClick={openPhoto} aria-label={`${member.nickname} 사진 보기`}>
             <Avatar member={member} size={40} />
           </button>
@@ -69,12 +74,10 @@ export default function RankRowV2({ row, tiedWithPrev = false, highlighted = fal
               ("+N점"), 전적을 그 아래에. 이 점수가 순위(승자승 다음)를 가르는 기준이라 숫자로
               도드라지게 한다. */}
           <div className="scr-rank-record-wrap scr-rank-record-wrap-scoreonly">
-            {/* 카드엔 레이팅(보수추정 μ−3σ)만(세부는 상세에서). 음수면 자연히 - 가 붙는다.
-                경기 표본이 적어 아직 덜 여문 레이팅은 '잠정' 뱃지로 표시한다. */}
+            {/* 카드엔 레이팅(보수추정 μ−3σ)만(세부는 상세에서). 음수면 자연히 - 가 붙는다. */}
             <span className="scr-rank-stat-primary">
               {rankScore}<span className="scr-num-unit">점</span>
             </span>
-            {provisional && <span className="scr-rank-provisional">잠정</span>}
           </div>
         </div>
       </div>

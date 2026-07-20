@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
+import Avatar from "../../components/common/Avatar";
 import { Spinner } from "../../components/common/Feedback";
 import RankMatchHistory from "./RankMatchHistory";
 import { api } from "../../api/client";
@@ -28,7 +29,10 @@ const H = 140;
 // 내부 패딩 좀 주기"). viewBox 안쪽 값이라 박스 aspect-ratio는 그대로라 로딩→그래프 전환
 // 때 높이가 안 흔들린다.
 const PAD_X = 32;
-const PAD_TOP = 30;
+// 순위 값 라벨(점 위 "N위" 텍스트)이 점보다 8px 위에 그려져서(아래 y={yFor(p.rank) - 8}),
+// 위쪽 PAD_TOP을 아래 PAD_BOTTOM과 같은 숫자로 둬도 실제 눈에 보이는 여백은 그 8px만큼
+// 아래쪽보다 좁아 보였다(요청: "윗쪽 패딩 아래랑 동일하게") — 그만큼 더 얹어 보정한다.
+const PAD_TOP = 38;
 const PAD_BOTTOM = 30;
 // 그래프 아래 경기 이력 — "최근 한 경기"가 아니라 (일대일) 전체를 보여준다(요청: "최근 경기
 // 이력말고 일대일 이력 다"). 그래도 아주 많은 경우를 위해 최근 100건까지만.
@@ -74,9 +78,10 @@ export default function RankingDetailModal({
     setMatchesLoading(true);
     setMatchesErr("");
     // 이력을 지금 보고 있는 기간으로 좁힌다 — 아래에 병기하는 경기당 레이팅 변화(Δ)를 이
-    // 기간의 경기들에 대해 보여준다.
+    // 기간의 경기들에 대해 보여준다. 정렬은 오래된 순(요청: "경기이력을 역순이 아닌
+    // 정순으로") — 기본값(latest, 최신순)이 아니라 명시적으로 oldest를 지정한다.
     api.getMatchesPage({
-      teamMemberIds: memberIdsKey.split(","), matchType,
+      teamMemberIds: memberIdsKey.split(","), matchType, sort: "oldest",
       dateFrom: period.from, dateTo: period.to, limit: HISTORY_LIMIT,
     })
       .then((page) => { if (!cancelled) setMatches(page.items); })
@@ -108,17 +113,21 @@ export default function RankingDetailModal({
     <div className="scr-modal-overlay">
       <div className="scr-modal scr-modal-sm scr-modal-rank-detail">
         <div className="scr-modal-head">
-          <span>순위 변동 · 경기 이력</span>
+          <span>랭킹 상세</span>
           <button className="scr-icon-btn" onClick={onClose} aria-label="닫기"><X size={14} /></button>
         </div>
         <div className="scr-modal-body">
-          {/* 아바타 없이 이름만 — 요청: "랭킹 상세 모달 아바타 없애기". */}
+          {/* 닉네임 옆에 프사 — 20px에서 1.5배(30px)로 키웠다가 더 키워 달라는 요청으로 40px. */}
           <div className="scr-rank-detail-who">
+            <Avatar member={members[0]} size={40} />
             <div className="scr-rank-detail-who-text">
               <span className="scr-rank-detail-name">{title}</span>
             </div>
           </div>
 
+          {/* 타이틀 "랭킹 상세" → 닉네임 → 소제목 "순위변동" → 그래프 → 소제목 "경기 이력" →
+              목록 순서로 구성한다(요청). */}
+          <div className="scr-rank-detail-section-head">순위변동</div>
           <div className="scr-rank-detail-chart-area">
             {points === null ? (
               <Spinner size={18} />
@@ -156,7 +165,7 @@ export default function RankingDetailModal({
 
           {/* 그래프 아래 경기 이력(요청) — 일대일이면 그 회원의 일대일 경기 전체를 보여준다. */}
           <div className="scr-rank-detail-history">
-            <div className="scr-rank-detail-history-head">경기 이력{matches.length > 0 && ` (${matches.length})`}</div>
+            <div className="scr-rank-detail-section-head">경기 이력{matches.length > 0 && ` (${matches.length})`}</div>
             {matchesErr && <div className="scr-err">{matchesErr}</div>}
             <RankMatchHistory
               matches={matches} members={members} memberOf={memberOf} loading={matchesLoading}

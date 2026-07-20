@@ -51,8 +51,9 @@ const OUTCOME_LABEL: Record<Outcome, string> = { win: "승", loss: "패", draw: 
 const OUTCOME_CLASS: Record<Outcome, string> = { win: "scr-win", loss: "scr-loss", draw: "scr-draw", notHeld: "scr-draw" };
 
 // 획득 점수 문자열의 부호로 승/패 색을 정한다(요청: "점수에도 포인트 색 적용") — 양수(+)는
-// 승 색(초록), 음수(-)는 패 색(빨강). 0/빈값은 색을 안 준다.
-function pointToneClass(v: unknown): string {
+// 승 색(초록), 음수(-)는 패 색(빨강). 0/빈값은 색을 안 준다. 랭킹 상세의 팀전 이력
+// (RankMatchHistory)도 같은 규칙으로 레이팅 Δ에 색을 입히려고 내보낸다.
+export function pointToneClass(v: unknown): string {
   if (v === null || v === undefined) return "";
   const s = String(v).trim();
   if (!s) return "";
