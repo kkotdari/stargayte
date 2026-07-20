@@ -825,7 +825,8 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    0이라 아무 영향이 없다. */
 .scr-header {
   position: relative; z-index: 2; background-color: var(--header-bg); backdrop-filter: blur(4px);
-  background-image: linear-gradient(90deg, color-mix(in srgb, var(--edge-glow) 22%, transparent) 0%, var(--edge-glow) 50%, color-mix(in srgb, var(--edge-glow) 22%, transparent) 100%);
+  /* 구분선을 포인트색(--edge-glow) 대신 기본 구분선색(--pipe-bright) 그라데이션으로(요청). */
+  background-image: linear-gradient(90deg, color-mix(in srgb, var(--pipe-bright) 22%, transparent) 0%, var(--pipe-bright) 50%, color-mix(in srgb, var(--pipe-bright) 22%, transparent) 100%);
   background-repeat: no-repeat; background-position: bottom; background-size: 100% 1px;
   /* 상단 안전영역만큼 헤더 콘텐츠를 내려 노치/상태바에 안 가리게 한다(--safe-top).
      헤더는 스크롤되는 페이지 최상단 콘텐츠라, 맨 위에 있을 때 이 padding이 노치를
@@ -873,6 +874,8 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   position: relative; background: transparent; border: none; color: var(--muted);
   padding: 12px 14px; font-size: var(--fs-body); font-weight: 600; cursor: pointer; font-family: inherit;
   display: flex; align-items: center; gap: 6px; white-space: nowrap; flex-shrink: 0; transition: color .12s;
+  /* 헤더/서랍 메뉴 탭의 터치 시 브라우저 기본 클릭 하이라이트 제거(요청). */
+  -webkit-tap-highlight-color: transparent;
 }
 .scr-nav-tab:hover { color: var(--text); }
 .scr-nav-tab-active, .scr-nav-tab-active:hover { color: var(--text); font-weight: 700; }
