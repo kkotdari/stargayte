@@ -1783,7 +1783,9 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 /* 점멸(애니메이션) 없이 은은한 고정 노란빛 글로우로(요청: "점멸 효과 제거하고",
    "글로우는 노란 빛으로하되 은은하게") — 포인트색(--point-rgb, 골드 톤)을 낮은
    불투명도로. */
-.scr-rank-avatar-btn-glow { filter: drop-shadow(0 0 4px rgba(var(--point-rgb), 0.35)); }
+/* 너무 약해서 티가 안 난다는 피드백으로 한 번 더 강하게(실제로 지적받은 문제 —
+   "너무 약해서 티가 안나 좀더 강한 금빛으로"). */
+.scr-rank-avatar-btn-glow { filter: drop-shadow(0 0 6px rgba(var(--point-rgb), 0.75)); }
 /* 종족 배지가 닉네임 바로 옆에 붙도록, 닉네임은 flex-grow 없이 내용 크기만큼만 차지하고
    (길면 이 안에서 말줄임) 남는 공간은 배지 뒤로 밀려나게 둔다.
    최다경기 배지(.scr-rank-crown)는 오른쪽에만 있고 왼쪽엔 아무것도 없어서, 배지가 없으면
@@ -1821,7 +1823,10 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    제거하고", "글로우는 노란 빛으로하되 은은하게"). blur 반경을 작게 잡아야 글자
    획 안쪽까지 번지지 않고 또렷하게 남는다(실제로 지적받은 문제 — "폰트 앞으로는
    번지지 않게해서 폰트 또렷이 보이게"). */
-.scr-rank-name-glow { text-shadow: 0 0 3px rgba(var(--point-rgb), 0.55); }
+/* 너무 약해서 티가 안 난다는 피드백으로 진하게(실제로 지적받은 문제 — "너무 약해서
+   티가 안나 좀더 강한 금빛으로") — blur 반경은 여전히 작게 유지해 글자가 안 번지게
+   (요청: "폰트 앞으로는 번지지 않게해서 폰트 또렷이 보이게") 두 겹으로 진하게 쌓는다. */
+.scr-rank-name-glow { text-shadow: 0 0 3px rgba(var(--point-rgb), 1), 0 0 6px rgba(var(--point-rgb), 0.6); }
 /* 전적/승률도 순위/변동과 같은 패턴으로 위아래 배치, 오른쪽 정렬 */
 .scr-rank-record-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
 /* 잠정 뱃지(.scr-rank-provisional)가 이 칸 우상단에 절대위치로 겹쳐 붙는 기준점. */
