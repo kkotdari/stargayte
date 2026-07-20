@@ -141,7 +141,9 @@ export default function ChallengeFormModal({ onClose, onCreated, presetTargetIds
   // 상대 1명·내 팀 0명이면 서버가 1:1로, 그 외(상대 2명 이상이거나 내 팀이 있으면)
   // 팀전으로 자동 판단한다(요청: "대결 유형 제거하고 자동으로 판단함").
   const rosterOk = targetIds.length >= 1;
-  const canSubmit = rosterOk && message.trim().length > 0;
+  // 한마디는 더 이상 필수가 아니다(요청: "더이상 도전장 보내기/수락하기/거절하기에서
+  // 한마디가 필수가 아님").
+  const canSubmit = rosterOk;
 
   const submit = async () => {
     if (!canSubmit) return;

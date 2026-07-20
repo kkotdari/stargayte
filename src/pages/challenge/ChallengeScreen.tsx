@@ -1,5 +1,6 @@
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { Swords } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
 import { Spinner } from "../../components/common/Feedback";
 import OptionalDateTimeFields from "../../components/common/OptionalDateTimeFields";
@@ -890,6 +891,7 @@ export default function ChallengeScreen() {
           className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm"
           onClick={() => setFormOpen(true)}
         >
+          <Swords size={15} />
           도전장 쓰기
         </button>
       </div>

@@ -23,8 +23,10 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   // 오류가 어느 입력칸 것인지 — 그 칸에 에러 테두리(scr-input-invalid)를 함께 준다
-  // (요청: "사유에 에러 테두리도 넣어줘야지").
-  const [errField, setErrField] = useState<"message" | "schedule" | "">("");
+  // (요청: "사유에 에러 테두리도 넣어줘야지"). 한마디는 더 이상 필수가 아니라서(요청:
+  // "더이상 도전장 보내기/수락하기/거절하기에서 한마디가 필수가 아님") 이제 일정
+  // 오류만 남는다.
+  const [errField, setErrField] = useState<"schedule" | "">("");
   // 처음엔 편지봉투(envelope)만 보여준다 — 잠깐 대기했다가 흔들리고(요청: "약간만 대기했다가
   // 쉐이킹"), 흔들림이 끝나면 "열기/버리기" 버튼이 뜬다(요청: "버튼 다시 살릴게 버튼은
   // 열기/버리기"). 열기를 누르면 "letter"(편지지: 제목/내용/응답 폼)로 넘어가고, 버리기를
@@ -68,19 +70,12 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
     else setIdx((i) => i + 1);
   };
 
-  // 편지지에서 한마디는 거절할 때만 필수다(요청: "승락시에는 메시지 필수 아니게 변경
-  // 거절일때는 필수") — 거절 버튼만 막아두고, 혹시라도 뚫려 눌리는 경우를 대비해
-  // 핸들러 안에서도 한 번 더 확인한다. 승락은 메시지가 비어 있어도 그대로 보낸다.
+  // 한마디는 수락/거절 어느 쪽도 더 이상 필수가 아니다(요청: "더이상 도전장 보내기/
+  // 수락하기/거절하기에서 한마디가 필수가 아님") — 비어 있어도 그대로 보낸다.
   const trimmedMessage = message.trim();
-  const canReject = trimmedMessage.length > 0;
   const canAccept = !needsSchedule || (dateStr.length > 0 && timeStr.length > 0);
 
   const respond = async (response: "accepted" | "rejected") => {
-    if (response === "rejected" && !canReject) {
-      setErr("거절 사유를 입력해 주세요.");
-      setErrField("message");
-      return;
-    }
     if (response === "accepted" && !canAccept) {
       setErr("날짜와 시간을 정해 주세요.");
       setErrField("schedule");
@@ -186,22 +181,18 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
             )}
 
             <label className="scr-field">
-              <span className="scr-label">한마디 (거절 시 필수)</span>
+              <span className="scr-label">한마디</span>
               <input
                 type="text"
-                className={`scr-input${errField === "message" ? " scr-input-invalid" : ""}`}
+                className="scr-input"
                 value={message}
-                onChange={(e) => {
-                  setMessage(e.target.value);
-                  // 사유를 입력하기 시작하면 그 칸 오류/테두리는 바로 지운다.
-                  if (errField === "message") { setErr(""); setErrField(""); }
-                }}
+                onChange={(e) => setMessage(e.target.value)}
                 placeholder="예: 네가 감히! / 좋아요, 그날 봐요"
                 maxLength={60}
               />
             </label>
 
-            {/* 거절 사유(한마디) 없이 거절을 누르면 여기 오류가 뜬다 — 뜰 때 아래 버튼 줄이
+            {/* 일정을 안 정하고 승락을 누르면 여기 오류가 뜬다 — 뜰 때 아래 버튼 줄이
                 크게 밀리지 않게 작은 한 줄 자리만 미리 예약하고, 박스/테두리 없이 작은 글씨만
                 띄운다(요청: "예약공간을 12정도로 하고 그만한 글씨만 띄우자(테두리 없이)"). */}
             <div className="scr-challenge-inbox-err-slot" aria-live="polite">
@@ -209,9 +200,6 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
             </div>
 
             <div className="scr-form-actions">
-              {/* 예전엔 한마디가 없으면 거절 버튼 자체를 비활성화했는데(요청: "거절일때는
-                  필수"), 눌러도 반응이 없어 왜 안 되는지 알기 어려웠다 — 이제 버튼은 열어두고
-                  누르면 위 슬롯에 "거절 사유를 입력해 주세요." 오류를 띄운다(요청). */}
               <button
                 className="scr-btn scr-challenge-reject-btn" onClick={() => respond("rejected")}
                 disabled={busy}

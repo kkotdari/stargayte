@@ -1,5 +1,6 @@
 import { useState, type MouseEvent } from "react";
 import { createPortal } from "react-dom";
+import { Swords } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
 import PhotoViewer from "../../components/common/PhotoViewer";
 import RankDeltaBadge from "./RankDeltaBadge";
@@ -17,6 +18,8 @@ interface RankRowProps {
   // 프사+닉네임을 함께 칠한다(요청: "닉네임뿐 아니라 프사까지 하이라이팅 주고 경기
   // 하이라이트랑 똑같은 css").
   highlighted?: boolean;
+  // 이 선수에게 바로 도전장을 쓴다(요청: "랭킹목록에 도전장 보내기 칼 아이콘 추가").
+  onChallenge?: () => void;
 }
 
 // v2 일대일 랭킹의 한 줄 — #순위(+전월 대비 변동) | 프사 | 닉네임 | 점수(참가+우열).
@@ -25,7 +28,7 @@ interface RankRowProps {
 // = 참가점수 + 우열점수)라, 카드에도 그 합계를 큼직하게 싣고 아래에 참가/우열 두 갈래를
 // 보여준다. 예전엔 "최근 vs 상대 승/패" 한 줄을 붙였는데, 이제 일대일 경기 이력 전체를 카드
 // 상세 모달(그래프 아래)에서 보여주므로 카드에선 뺐다(요청).
-export default function RankRowV2({ row, tiedWithPrev = false, highlighted = false, onOpenTrend }: RankRowProps) {
+export default function RankRowV2({ row, tiedWithPrev = false, highlighted = false, onOpenTrend, onChallenge }: RankRowProps) {
   const { member, rankScore, rank, rankDelta, provisional } = row;
   const [photoOpen, setPhotoOpen] = useState(false);
   // 카드엔 총점만 보여주고(세부는 랭킹 상세에서 — 요청), 경기마다 가중 합산이라 음수도 가능하다.
@@ -34,6 +37,10 @@ export default function RankRowV2({ row, tiedWithPrev = false, highlighted = fal
   const openPhoto = (e: MouseEvent) => {
     e.stopPropagation();
     setPhotoOpen(true);
+  };
+  const challenge = (e: MouseEvent) => {
+    e.stopPropagation();
+    onChallenge?.();
   };
 
   return (
@@ -78,6 +85,17 @@ export default function RankRowV2({ row, tiedWithPrev = false, highlighted = fal
             <span className="scr-rank-stat-primary">
               {rankScore}<span className="scr-num-unit">점</span>
             </span>
+            {/* 점수 칸(고정폭 열) 안에 얹는다 — grid-template-columns를 새로 안 건드리고
+                기존 칸 세로 공간만 써서, 다른 화면폭(모바일 등)에서 열 폭이 넘칠 위험이
+                없다(요청: "랭킹목록에 도전장 보내기 칼 아이콘 추가"). */}
+            {onChallenge && (
+              <button
+                type="button" className="scr-rank-challenge-btn"
+                onClick={challenge} aria-label={`${member.nickname}에게 도전장 보내기`}
+              >
+                <Swords size={13} />
+              </button>
+            )}
           </div>
         </div>
       </div>

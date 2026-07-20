@@ -7,6 +7,7 @@ import PillTabs from "../../components/common/PillTabs";
 import FilterItem from "../../components/common/FilterItem";
 import RankRow from "./RankRow";
 import RankingDetailModal from "./RankingDetailModal";
+import ChallengeFormModal from "../../modals/ChallengeFormModal";
 import {
   computeRankRows, computeRankTrend, MATCH_TYPE_OF,
   type RankMode, type RankRow as RankRowData, type RankTrendPoint,
@@ -44,6 +45,7 @@ const RANK_MIN: Record<PeriodUnit, string> = { month: "2026-07", year: "2026" };
 // 레이팅으로 계산된다.
 export default function RankingScreenV2() {
   const members = useAppStore((s) => s.members);
+  const user = useAppStore((s) => s.user);
   const suggestions = useMemo(() => activeMemberSearchTerms(members), [members]);
 
   // 진입 기본값은 개인전/팀전 중 랜덤(요청: "랭킹 기본은 개인/팀 랜덤으로 결정") — 특정
@@ -89,6 +91,9 @@ export default function RankingScreenV2() {
   const [trendPoints, setTrendPoints] = useState<RankTrendPoint[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  // 랭킹 카드의 칼 아이콘 — 그 선수를 상대로 지목한 채 도전장 쓰기 모달을 바로 연다
+  // (요청: "랭킹목록에 도전장 보내기 칼 아이콘 추가").
+  const [challengeTarget, setChallengeTarget] = useState<Member | null>(null);
 
   // 화면 전환마다(App.tsx의 refreshAll) members가 내용은 같아도 새 배열 참조로 갱신되는데,
   // 그걸 그대로 effect 의존성에 두면 랭킹 화면에 들어갈 때마다 조회가 한 번 더 나간다 —
@@ -261,6 +266,8 @@ export default function RankingScreenV2() {
                 tiedWithPrev={searchTerms.length === 0 && i > 0 && row.rank === visibleRows[i - 1].rank}
                 highlighted={highlightMemberIds.has(row.member.id)}
                 onOpenTrend={() => openTrend(row)}
+                // 본인에게는 도전장을 쓸 수 없으니 그 행만 칼 아이콘을 안 보여준다.
+                onChallenge={row.member.id === user?.id ? undefined : () => setChallengeTarget(row.member)}
               />
             ))
           )}
@@ -274,6 +281,14 @@ export default function RankingScreenV2() {
           matchType={matchType}
           period={period}
           onClose={closeTrend}
+        />
+      )}
+
+      {challengeTarget && (
+        <ChallengeFormModal
+          presetTargetIds={[challengeTarget.id]}
+          onClose={() => setChallengeTarget(null)}
+          onCreated={() => setChallengeTarget(null)}
         />
       )}
     </div>
