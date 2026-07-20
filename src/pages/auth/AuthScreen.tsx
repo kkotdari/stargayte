@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { ArrowLeft } from "lucide-react";
-import CornerPanel from "../../components/common/CornerPanel";
 import ThemeIcon from "../../components/common/ThemeIcon";
 import LoginForm from "./LoginForm";
 import SignupForm from "./SignupForm";
@@ -53,9 +52,10 @@ export default function AuthScreen() {
           )}
         </div>
         {tab === "login" ? (
-          <CornerPanel className="scr-auth-card">
+          // 로그인 카드도 회원가입 카드처럼 테두리 없이 반투명 유리 배경만(요청: "테두리 제거").
+          <div className="scr-auth-card scr-auth-card-plain">
             <LoginForm onSignup={() => setTab("signup")} />
-          </CornerPanel>
+          </div>
         ) : (
           <div className="scr-auth-card scr-auth-card-plain">
             <button type="button" className="scr-link-btn scr-auth-back-btn" onClick={() => setTab("login")}>

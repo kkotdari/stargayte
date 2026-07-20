@@ -1,4 +1,5 @@
 import { useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { UserPlus } from "lucide-react";
 import { useAppStore } from "../../store/appStore";
 import { Spinner } from "../../components/common/Feedback";
 
@@ -64,8 +65,8 @@ export default function LoginForm({ onSignup }: LoginFormProps) {
       <button type="submit" className="scr-btn scr-btn-primary scr-auth-submit" disabled={busy}>
         {busy ? <><Spinner /> 접속 중...</> : "로그인"}
       </button>
-      <button type="button" className="scr-link-btn scr-auth-signup-link" onClick={onSignup}>
-        회원가입
+      <button type="button" className="scr-link-btn scr-auth-signup-link" onClick={onSignup} aria-label="회원가입">
+        <UserPlus size={18} />
       </button>
     </form>
   );

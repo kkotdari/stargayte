@@ -2,7 +2,6 @@ import { useRef, useState, type ChangeEvent } from "react";
 import { createPortal } from "react-dom";
 import { Camera, Trash2, X } from "lucide-react";
 import Avatar from "../components/common/Avatar";
-import ReplayAliasesField, { cleanReplayAliases } from "../components/common/ReplayAliasesField";
 import { Spinner } from "../components/common/Feedback";
 import AvatarCropModal from "../components/common/AvatarCropModal";
 import { useAppStore } from "../store/appStore";
@@ -15,8 +14,8 @@ interface CreateMemberModalProps {
 }
 
 // 운영자가 회원 화면에서 회원을 바로 생성 — 가입 신청/승인 절차 없이 즉시
-// active로 만들어진다. 필드 구성은 SignupForm과 거의 같지만, 게임아이디는 선택이다
-// (운영자가 대신 만들어주는 계정이라 아직 실제 플레이 이름을 모를 수 있다).
+// active로 만들어진다. 게임아이디(리플레이 매칭용)는 여기서 받지 않는다(요청) —
+// 나중에 회원 상세/수정에서 채운다.
 export default function CreateMemberModal({ onClose }: CreateMemberModalProps) {
   useLockBodyScroll();
   const createMemberByAdmin = useAppStore((s) => s.createMemberByAdmin);
@@ -25,7 +24,6 @@ export default function CreateMemberModal({ onClose }: CreateMemberModalProps) {
   const [pw, setPw] = useState("");
   const [nickname, setNickname] = useState("");
   const [tag, setTag] = useState("");
-  const [replayAliases, setReplayAliases] = useState<string[]>([""]);
   const [insta, setInsta] = useState("");
   const [avatar, setAvatar] = useState<string | null>(null);
   const [err, setErr] = useState("");
@@ -51,7 +49,6 @@ export default function CreateMemberModal({ onClose }: CreateMemberModalProps) {
     try {
       await createMemberByAdmin({
         id, password: pw, nickname, battletag: tag,
-        replayAliases: cleanReplayAliases(replayAliases),
         insta, avatar,
       });
       onClose();
@@ -117,7 +114,6 @@ export default function CreateMemberModal({ onClose }: CreateMemberModalProps) {
             <span className="scr-label">배틀태그 *</span>
             <input className="scr-input" value={tag} onChange={(e) => setTag(e.target.value)} placeholder="Nickname#0000" />
           </label>
-          <ReplayAliasesField rows={replayAliases} onChange={setReplayAliases} />
           <label className="scr-field">
             <span className="scr-label">인스타 닉네임 (선택)</span>
             <input className="scr-input" value={insta} onChange={(e) => setInsta(e.target.value)} placeholder="nickname" />
