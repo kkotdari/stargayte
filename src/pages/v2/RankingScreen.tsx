@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ChevronLeft, ChevronRight, Info, Copy, Download, Check } from "lucide-react";
+import { ChevronLeft, ChevronRight, Info, Copy, Download, Check, Camera } from "lucide-react";
 import * as htmlToImage from "html-to-image";
 import { Spinner } from "../../components/common/Feedback";
 import SearchFilterBar from "../../components/common/SearchFilterBar";
@@ -192,6 +192,30 @@ export default function RankingScreenV2() {
   const snapshotRef = useRef<HTMLDivElement>(null);
   const [shooting, setShooting] = useState(false);
   const [copied, setCopied] = useState(false);
+  // 복사/저장 두 버튼을 밖에 늘어놓는 대신 스크린샷 버튼 하나를 누르면 뜨는 메뉴로 묶는다
+  // (요청). 산정 방식 툴팁과 같은 패턴(attachPopover + 바깥 클릭/포커스 이동 시 닫음).
+  const [shotMenuOpen, setShotMenuOpen] = useState(false);
+  const shotAnchorRef = useRef<HTMLButtonElement>(null);
+  const shotMenuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!shotMenuOpen || !shotAnchorRef.current || !shotMenuRef.current) return;
+    return attachPopover(shotAnchorRef.current, shotMenuRef.current, { growToContent: true, maxWidth: 160, placement: "bottom" });
+  }, [shotMenuOpen]);
+  useEffect(() => {
+    if (!shotMenuOpen) return;
+    const closeIfOutside = (e: Event) => {
+      const t = e.target as Node;
+      if (shotAnchorRef.current?.contains(t)) return;
+      if (shotMenuRef.current?.contains(t)) return;
+      setShotMenuOpen(false);
+    };
+    document.addEventListener("mousedown", closeIfOutside);
+    document.addEventListener("focusin", closeIfOutside);
+    return () => {
+      document.removeEventListener("mousedown", closeIfOutside);
+      document.removeEventListener("focusin", closeIfOutside);
+    };
+  }, [shotMenuOpen]);
 
   const generateBlob = async (): Promise<Blob> => {
     const node = snapshotRef.current;
@@ -225,6 +249,7 @@ export default function RankingScreenV2() {
   };
   const onSave = async () => {
     if (shooting || rows.length === 0) return;
+    setShotMenuOpen(false);
     setShooting(true);
     try { await saveOrShare(); }
     catch (e) { setError(e instanceof Error ? e.message : "스크린샷을 만들지 못했어요."); }
@@ -236,6 +261,7 @@ export default function RankingScreenV2() {
   // 이미지 생성을 기다리게 한다. 클립보드 이미지 쓰기가 안 되는 환경은 저장/공유로 폴백.
   const onCopy = async () => {
     if (shooting || rows.length === 0) return;
+    setShotMenuOpen(false);
     const canClipboard = typeof ClipboardItem !== "undefined" && !!navigator.clipboard?.write;
     if (!canClipboard) { await onSave(); return; }
     setShooting(true);
@@ -330,25 +356,18 @@ export default function RankingScreenV2() {
         >
           <Info size={13} /> 산정 방식
         </button>
-        {/* 지금 필터가 적용된 랭킹 전체를 이미지로 — 복사(클립보드) / 저장(공유·다운로드). */}
-        <span className="scr-rank-shot-actions">
-          <button
-            type="button"
-            className="scr-rank-method-trigger"
-            onClick={onCopy}
-            disabled={shooting || rows.length === 0}
-          >
-            {copied ? <Check size={13} /> : <Copy size={13} />} {copied ? "복사됨" : "복사"}
-          </button>
-          <button
-            type="button"
-            className="scr-rank-method-trigger"
-            onClick={onSave}
-            disabled={shooting || rows.length === 0}
-          >
-            {shooting ? <Spinner size={13} /> : <Download size={13} />} 저장
-          </button>
-        </span>
+        {/* 지금 필터가 적용된 랭킹 전체를 이미지로 — 버튼 하나에 복사/저장을 메뉴로 묶는다
+            (요청: "밖에 복사/저장보다는 메뉴에 복사가 있는 게 나을 듯"). */}
+        <button
+          type="button"
+          className={cx("scr-rank-method-trigger", shotMenuOpen && "scr-rank-method-trigger-active")}
+          ref={shotAnchorRef}
+          onClick={() => setShotMenuOpen((v) => !v)}
+          disabled={shooting || rows.length === 0}
+        >
+          {shooting ? <Spinner size={13} /> : copied ? <Check size={13} /> : <Camera size={13} />}{" "}
+          {copied ? "복사됨" : "스크린샷"}
+        </button>
       </div>
       {methodTipOpen && createPortal(
         <ul className="scr-rank-method-tooltip" ref={methodTipRef}>
@@ -357,6 +376,17 @@ export default function RankingScreenV2() {
           <li>팀전은 팀 승패를 개인 실력으로 분해하며, 개인전·팀전 레이팅은 따로 계산됩니다.</li>
           <li>종족 필터를 걸면 <b>그 종족으로 낸 경기</b>만의 레이팅으로 순위를 매깁니다.</li>
         </ul>,
+        document.body,
+      )}
+      {shotMenuOpen && createPortal(
+        <div className="scr-menu-pop-drop scr-rank-shot-menu" ref={shotMenuRef} role="menu">
+          <button type="button" role="menuitem" className="scr-menu-pop-opt" onClick={onCopy}>
+            <Copy size={14} /> 복사
+          </button>
+          <button type="button" role="menuitem" className="scr-menu-pop-opt" onClick={onSave}>
+            <Download size={14} /> 저장
+          </button>
+        </div>,
         document.body,
       )}
 

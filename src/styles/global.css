@@ -1139,7 +1139,9 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-rank-method-row { display: flex; justify-content: center; padding: 3px 0 1px; }
 /* 산정 방식(왼쪽) + 복사·저장(오른쪽)을 한 줄에 벌려 놓는다. */
 .scr-rank-method-row-split { justify-content: space-between; }
-.scr-rank-shot-actions { display: inline-flex; align-items: center; gap: 12px; }
+/* 스크린샷 버튼 하나에 복사/저장을 담는 드롭다운 메뉴(요청) — 케밥 메뉴와 같은 톤
+   (.scr-menu-pop-drop)에 살짝 최소 폭만 준다. */
+.scr-rank-shot-menu { min-width: 96px; }
 .scr-rank-method-trigger:disabled { opacity: 0.45; cursor: default; }
 
 /* ===== PWA "홈 화면에 추가" 유도 배너 + iOS 안내 ===== */
