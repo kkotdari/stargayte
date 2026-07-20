@@ -4347,7 +4347,11 @@ body *::-webkit-scrollbar-corner { background: transparent; }
      더하면 콘텐츠 몫(패딩 제외 36px)이 브라우저/PWA 상관없이 항상 같아진다. 전체 높이는
      사파리/PWA 공통으로 살짝 낮췄다(요청: "탭바 높이 좀 줄여도 될듯"). */
   height: calc(var(--mobile-footer-h) + env(safe-area-inset-bottom, 0px));
-  background-color: var(--panel-solid);
+  /* 불투명 패널 대신 반투명 유리(--panel) + 블러로(요청: "탭바 패널을 반투명 글래스화").
+     테마별 색은 --panel이 이미 다크/라이트 각각 반투명값을 갖는다. */
+  background-color: var(--panel);
+  -webkit-backdrop-filter: blur(14px) saturate(1.3);
+  backdrop-filter: blur(14px) saturate(1.3);
   /* 가운데가 밝고 양 끝(화면 모서리)으로 갈수록 옅어지는 광원 그라데이션은, 그 "옅어짐"이
      다 끝나기 전에 화면 모서리에서 그대로 잘려버려 그 자리가 오히려 또렷한 경계처럼
      보였다(실제로 지적받은 문제 — "탭바 위의 광원효과 모서리 없애고 자연스러운 반사광
