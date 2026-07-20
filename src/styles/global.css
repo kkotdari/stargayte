@@ -1142,9 +1142,10 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 }
 .scr-light-theme .scr-rank-method-tooltip li::before { color: rgba(0,0,0,0.3); }
 .scr-rank-method-tooltip b { color: #fff; font-weight: 700; }
-/* "잠정"만 카드 배지(.scr-rank-provisional)와 같은 붉은 톤으로(요청: "TrueSkill
-   볼드처리 잠정에 붉은톤"). */
-.scr-rank-method-tip-provisional { color: #d97a7a !important; }
+/* "잠정"만 카드 배지(.scr-rank-provisional)와 같은 톤으로 — 처음엔 붉은 톤이었다가
+   카드 배지가 주황으로 바뀌면서 맞춤(요청: "잠정 배지 폰트색 주황으로 변경", "툴팁의
+   잠정도 색깔 오렌지로 맞춰서"). */
+.scr-rank-method-tip-provisional { color: #e69a4a !important; }
 .scr-light-theme .scr-rank-method-tooltip {
   background: rgba(255,255,255,0.97);
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.7), 0 1px 3px rgba(0,0,0,0.06), 0 4px 10px rgba(0,0,0,0.08);
