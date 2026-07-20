@@ -6194,10 +6194,15 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
    흰 칩에 그림자만 줘서(요청) 흰 보드 위에서도 살짝 떠 보이게 한다. */
 .scr-mreq-chip {
   display: inline-flex; align-items: center; gap: 3px;
-  padding: 1px 6px; border-radius: 4px;
-  background: #ffffff; color: #24272d;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.22), 0 0 1px rgba(0, 0, 0, 0.12);
-  font-size: var(--fs-caption); font-weight: 700; white-space: nowrap;
+  /* 좀더 둥글게(요청) — 알약에 가깝게 크게 잡아서 실제 높이가 얼마든 항상 최대로 둥글다. */
+  padding: 1px 6px; border-radius: 999px;
+  /* 좀 더 투명하게(요청: "내용의 유저칩을 좀 투명하게 해주고"). */
+  background: rgba(255, 255, 255, 0.72); color: #24272d;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18), 0 0 1px rgba(0, 0, 0, 0.1);
+  /* 주변 본문(.scr-mreq-item-text)과 글자 크기가 달랐던 게(caption vs body) 세로
+     정렬이 어긋나 보이던 원인이었다(실제로 지적받은 문제 — "유저칩과 일반 텍스트가
+     세로 정렬이 안맞으니 맞춰줘") — 본문과 같은 크기로 맞춘다. */
+  font-size: var(--fs-body); font-weight: 700; white-space: nowrap;
 }
 /* 인라인 칩 — 텍스트 흐름 안에서 세로 가운데로 앉게 하고, 양옆에 살짝 숨 쉬는 여백.
    (목록 카드의 읽기용 렌더에서 쓴다.) */
