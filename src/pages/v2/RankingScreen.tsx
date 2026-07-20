@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ChevronLeft, ChevronRight, Info, Camera } from "lucide-react";
+import { ChevronLeft, ChevronRight, Info, Copy, Download, Check } from "lucide-react";
 import * as htmlToImage from "html-to-image";
 import { Spinner } from "../../components/common/Feedback";
 import SearchFilterBar from "../../components/common/SearchFilterBar";
@@ -188,38 +188,64 @@ export default function RankingScreenV2() {
 
   // 랭킹 스크린샷 — 지금 필터(개인/팀·종족·기간)가 적용된 전체 랭킹을 화면 밖 캡처 전용
   // 레이아웃(RankingSnapshot)으로 그려 PNG로 뽑는다. 스크롤로 잘리는 실제 목록과 달리 전체
-  // 행이 다 담긴다(요청). 모바일은 공유 시트, PC는 다운로드로 떨어진다. PC/모바일 모두 지원.
+  // 행이 다 담긴다(요청). 복사(클립보드)·저장(공유/다운로드) 두 갈래. PC/모바일 모두 지원.
   const snapshotRef = useRef<HTMLDivElement>(null);
   const [shooting, setShooting] = useState(false);
-  const takeScreenshot = async () => {
+  const [copied, setCopied] = useState(false);
+
+  const generateBlob = async (): Promise<Blob> => {
     const node = snapshotRef.current;
-    if (!node || shooting) return;
+    if (!node) throw new Error("캡처 대상을 찾지 못했어요.");
+    await (document.fonts?.ready ?? Promise.resolve()); // 웹폰트 로딩 대기
+    const bg = getComputedStyle(node).backgroundColor || "#0f1216";
+    const blob = await htmlToImage.toBlob(node, { pixelRatio: 2, cacheBust: true, backgroundColor: bg });
+    if (!blob) throw new Error("이미지를 만들지 못했어요.");
+    return blob;
+  };
+
+  const shotName = () => `랭킹_${mode === "solo" ? "개인전" : "팀전"}_${periodAnchorLabel(unit, anchor).replace(/\s+/g, "")}.png`;
+
+  // 저장/공유 — 모바일은 공유 시트(사진 저장/카톡 등), 지원 안 하면 다운로드.
+  const saveOrShare = async () => {
+    const blob = await generateBlob();
+    const file = new File([blob], shotName(), { type: "image/png" });
+    const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
+    if (nav.canShare?.({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: "랭킹" });
+        return;
+      } catch (e) {
+        if (e instanceof DOMException && e.name === "AbortError") return; // 사용자가 취소
+      }
+    }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = file.name; a.click();
+    URL.revokeObjectURL(url);
+  };
+  const onSave = async () => {
+    if (shooting || rows.length === 0) return;
+    setShooting(true);
+    try { await saveOrShare(); }
+    catch (e) { setError(e instanceof Error ? e.message : "스크린샷을 만들지 못했어요."); }
+    finally { setShooting(false); }
+  };
+
+  // 클립보드 복사 — 사파리는 유저 제스처 안에서 clipboard.write를 동기 호출해야 하므로,
+  // await 없이 곧바로 ClipboardItem에 Promise<Blob>을 넘겨 브라우저가 제스처를 유지한 채
+  // 이미지 생성을 기다리게 한다. 클립보드 이미지 쓰기가 안 되는 환경은 저장/공유로 폴백.
+  const onCopy = async () => {
+    if (shooting || rows.length === 0) return;
+    const canClipboard = typeof ClipboardItem !== "undefined" && !!navigator.clipboard?.write;
+    if (!canClipboard) { await onSave(); return; }
     setShooting(true);
     try {
-      // 웹폰트/이미지가 캡처 시점에 확실히 준비되도록 한 틱 양보 + 폰트 로딩 대기.
-      await (document.fonts?.ready ?? Promise.resolve());
-      const bg = getComputedStyle(node).backgroundColor || "#0f1216";
-      const blob = await htmlToImage.toBlob(node, { pixelRatio: 2, cacheBust: true, backgroundColor: bg });
-      if (!blob) throw new Error("이미지를 만들지 못했어요.");
-      const stamp = periodAnchorLabel(unit, anchor).replace(/\s+/g, "");
-      const file = new File([blob], `랭킹_${mode === "solo" ? "개인전" : "팀전"}_${stamp}.png`, { type: "image/png" });
-      // 모바일은 공유 시트(사진 저장/카톡 등), 지원 안 하면 다운로드로 폴백.
-      const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
-      if (nav.canShare?.({ files: [file] })) {
-        try {
-          await navigator.share({ files: [file], title: "랭킹" });
-          return;
-        } catch (e) {
-          if (e instanceof DOMException && e.name === "AbortError") return; // 사용자가 취소
-          // 그 외(공유 실패)는 아래 다운로드로 폴백
-        }
-      }
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url; a.download = file.name; a.click();
-      URL.revokeObjectURL(url);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "스크린샷을 만들지 못했어요.");
+      await navigator.clipboard.write([new ClipboardItem({ "image/png": generateBlob() })]);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1600);
+    } catch {
+      try { await saveOrShare(); } // 클립보드 실패 → 저장/공유 폴백
+      catch (e) { setError(e instanceof Error ? e.message : "스크린샷을 만들지 못했어요."); }
     } finally {
       setShooting(false);
     }
@@ -304,15 +330,25 @@ export default function RankingScreenV2() {
         >
           <Info size={13} /> 산정 방식
         </button>
-        {/* 지금 필터가 적용된 랭킹 전체를 이미지로 저장/공유(요청). PC/모바일 모두 지원. */}
-        <button
-          type="button"
-          className="scr-rank-method-trigger"
-          onClick={takeScreenshot}
-          disabled={shooting || rows.length === 0}
-        >
-          {shooting ? <Spinner size={13} /> : <Camera size={13} />} 스크린샷
-        </button>
+        {/* 지금 필터가 적용된 랭킹 전체를 이미지로 — 복사(클립보드) / 저장(공유·다운로드). */}
+        <span className="scr-rank-shot-actions">
+          <button
+            type="button"
+            className="scr-rank-method-trigger"
+            onClick={onCopy}
+            disabled={shooting || rows.length === 0}
+          >
+            {copied ? <Check size={13} /> : <Copy size={13} />} {copied ? "복사됨" : "복사"}
+          </button>
+          <button
+            type="button"
+            className="scr-rank-method-trigger"
+            onClick={onSave}
+            disabled={shooting || rows.length === 0}
+          >
+            {shooting ? <Spinner size={13} /> : <Download size={13} />} 저장
+          </button>
+        </span>
       </div>
       {methodTipOpen && createPortal(
         <ul className="scr-rank-method-tooltip" ref={methodTipRef}>
