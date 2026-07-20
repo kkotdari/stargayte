@@ -1,6 +1,6 @@
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Swords } from "lucide-react";
+import { Send } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
 import { Spinner } from "../../components/common/Feedback";
 import OptionalDateTimeFields from "../../components/common/OptionalDateTimeFields";
@@ -337,8 +337,9 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
     }
   };
 
-  // 수락하며 시간을 정할 때 — 날짜/시간 체크박스가 각각 꺼진 채로 시작한다(OptionalDateTimeFields가
-  // 시간 체크박스를 켤 때 기본 시간 22:00을 채운다 — 요청: "수락할때 기본 시간 오후 10시").
+  // 수락하며 시간을 정할 때 — 날짜/시간 입력칸을 비운 채로 시작한다(OptionalDateTimeFields는
+  // 체크박스 없이 처음부터 두 칸을 다 보여준다 — 요청: "날짜 선택, 시간 선택 체크박스
+  // 제거하고 처음부터 둘다 노출").
   const startScheduling = () => { setMode("schedule"); setDateStr(""); setTimeStr(""); setMessage(""); };
   const startRevenge = () => { setMode("revenge"); setDateStr(""); setTimeStr(""); setMessage(""); };
   const startResult = () => { setMode("result"); setErr(""); };
@@ -880,7 +881,7 @@ export default function ChallengeScreen() {
   return (
     <div className="scr-screen scr-challenge-screen-v2">
       {/* "기록" 메뉴는 폐지됐다(요청) — 목록이 하나뿐이라 타이틀 툴바엔 더 이상 액션이
-          없다. 도전장 쓰기 버튼은 타이틀 줄 아래 별도 줄에 가운데 정렬, 1.2배 확대(요청). */}
+          없다. 대결 신청 버튼은 타이틀 줄 아래 별도 줄에 가운데 정렬, 1.2배 확대(요청). */}
       <div className="scr-v2-toolbar">
         <h1 className="scr-title scr-v2-toolbar-title">너 나와!</h1>
       </div>
@@ -891,8 +892,7 @@ export default function ChallengeScreen() {
           className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm"
           onClick={() => setFormOpen(true)}
         >
-          <Swords size={15} />
-          도전장 쓰기
+          <Send size={15} /> 대결 신청
         </button>
       </div>
 

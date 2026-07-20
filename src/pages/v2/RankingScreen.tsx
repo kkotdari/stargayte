@@ -7,6 +7,7 @@ import PillTabs from "../../components/common/PillTabs";
 import FilterItem from "../../components/common/FilterItem";
 import RankRow from "./RankRow";
 import RankingDetailModal from "./RankingDetailModal";
+import ChallengeFormModal from "../../modals/ChallengeFormModal";
 import {
   computeRankRows, computeRankTrend, MATCH_TYPE_OF,
   type RankMode, type RankRow as RankRowData, type RankTrendPoint,
@@ -44,7 +45,11 @@ const RANK_MIN: Record<PeriodUnit, string> = { month: "2026-07", year: "2026" };
 // 레이팅으로 계산된다.
 export default function RankingScreenV2() {
   const members = useAppStore((s) => s.members);
+  const user = useAppStore((s) => s.user);
   const suggestions = useMemo(() => activeMemberSearchTerms(members), [members]);
+  // 닉네임 옆 주먹 버튼으로 지목한 상대 — 있으면 그 상대를 미리 채운 도전장 작성 모달을
+  // 띄운다(요청: "랭킹카드에 바로 그 상대로 도전장 띄우는 버튼 추가 닉네임 옆에").
+  const [challengeTarget, setChallengeTarget] = useState<Member | null>(null);
 
   // 진입 기본값은 개인전/팀전 중 랜덤(요청: "랭킹 기본은 개인/팀 랜덤으로 결정") — 특정
   // 쪽으로 고정하지 않고 매번 새로 들어올 때마다 둘 중 하나를 고른다.
@@ -269,6 +274,7 @@ export default function RankingScreenV2() {
                 tiedWithPrev={searchTerms.length === 0 && i > 0 && row.rank === visibleRows[i - 1].rank}
                 highlighted={highlightMemberIds.has(row.member.id)}
                 onOpenTrend={() => openTrend(row)}
+                onChallenge={row.member.id !== user?.id ? setChallengeTarget : undefined}
               />
             ))
           )}
@@ -285,6 +291,15 @@ export default function RankingScreenV2() {
           matchType={matchType}
           period={period}
           onClose={closeTrend}
+        />
+      )}
+
+      {challengeTarget && (
+        <ChallengeFormModal
+          presetTargetIds={[challengeTarget.id]}
+          lockTarget
+          onClose={() => setChallengeTarget(null)}
+          onCreated={() => setChallengeTarget(null)}
         />
       )}
     </div>

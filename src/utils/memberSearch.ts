@@ -24,13 +24,22 @@ export function memberMatchesQuery(member: Member, query: string): boolean {
   return terms.some((t) => memberMatchesTerm(member, t));
 }
 
+// 유저 검색 자동완성 후보 하나 — 리플레이 인게임 아이디(replayAliases, 소위 "player_name")
+// 로도 찾을 수 있게 matchTexts에 같이 담지만, 화면에 보여주고 실제로 검색어로 확정되는
+// 값은 항상 매핑된 회원(member)이다(요청: "player_name 말고 유저닉네임만 노출 —
+// player_name에 매핑되는 유저 닉네임을 노출하면 됨").
+export interface MemberSearchSuggestion {
+  member: Member;
+  matchTexts: string[];
+}
+
 // v2 목록(경기결과/전적통계/랭킹)의 유저 검색 자동완성 후보 — 페이지 진입 시 이미 로드된
 // 회원 목록에서 한 번만 계산해 쓴다(타이핑마다 서버에 새로 묻지 않음). 탈퇴/정지 회원은
 // 검색해도 어차피 목록에 안 나오니 후보에서도 뺀다. 배틀태그는 검색 자체(memberMatchesTerm)는
 // 여전히 매칭하지만 실제로 그걸로 찾는 일이 거의 없어 추천 후보에는 안 올린다 — 닉네임/
 // 게임아이디(리플레이 별칭)만 추천한다.
-export function activeMemberSearchTerms(members: Member[]): string[] {
+export function activeMemberSearchTerms(members: Member[]): MemberSearchSuggestion[] {
   return members
     .filter((m) => m.status !== "withdrawn" && m.status !== "suspended")
-    .flatMap((m) => [m.nickname, ...m.replayAliases]);
+    .map((m) => ({ member: m, matchTexts: [m.nickname, ...m.replayAliases] }));
 }

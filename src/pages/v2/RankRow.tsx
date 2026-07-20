@@ -1,10 +1,12 @@
 import { useState, type MouseEvent } from "react";
 import { createPortal } from "react-dom";
+import { Send } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
 import PhotoViewer from "../../components/common/PhotoViewer";
 import RankDeltaBadge from "./RankDeltaBadge";
 import { cx } from "../../utils/format";
 import type { RankRow as RankRowData } from "./rank";
+import type { Member } from "../../types";
 
 interface RankRowProps {
   row: RankRowData;
@@ -17,6 +19,10 @@ interface RankRowProps {
   // 프사+닉네임을 함께 칠한다(요청: "닉네임뿐 아니라 프사까지 하이라이팅 주고 경기
   // 하이라이트랑 똑같은 css").
   highlighted?: boolean;
+  // 닉네임 옆 주먹 버튼 — 그 상대를 바로 지목한 도전장 작성 모달을 띄운다(요청: "랭킹카드에
+  // 바로 그 상대로 도전장 띄우는 버튼 추가 닉네임 옆에"). 본인 행에는 안 넘겨줘서 버튼 자체가
+  // 안 뜬다.
+  onChallenge?: (member: Member) => void;
 }
 
 // v2 일대일 랭킹의 한 줄 — #순위(+전월 대비 변동) | 프사 | 닉네임 | 점수(참가+우열).
@@ -33,7 +39,7 @@ const MEDAL_NAME_CLASS: Record<number, string> = {
   3: "scr-rank-name-bronze",
 };
 
-export default function RankRowV2({ row, tiedWithPrev = false, highlighted = false, onOpenTrend }: RankRowProps) {
+export default function RankRowV2({ row, tiedWithPrev = false, highlighted = false, onOpenTrend, onChallenge }: RankRowProps) {
   const { member, rankScore, rank, rankDelta, provisional } = row;
   const [photoOpen, setPhotoOpen] = useState(false);
   // 카드엔 총점만 보여주고(세부는 랭킹 상세에서 — 요청), 경기마다 가중 합산이라 음수도 가능하다.
@@ -42,6 +48,11 @@ export default function RankRowV2({ row, tiedWithPrev = false, highlighted = fal
   const openPhoto = (e: MouseEvent) => {
     e.stopPropagation();
     setPhotoOpen(true);
+  };
+
+  const challenge = (e: MouseEvent) => {
+    e.stopPropagation();
+    onChallenge?.(member);
   };
 
   return (
@@ -72,6 +83,14 @@ export default function RankRowV2({ row, tiedWithPrev = false, highlighted = fal
           </button>
           <div className="scr-rank-name-wrap">
             <span className={cx("scr-rank-name", MEDAL_NAME_CLASS[rank])}>{member.nickname}</span>
+            {onChallenge && (
+              <button
+                type="button" className="scr-rank-challenge-btn" onClick={challenge}
+                aria-label={`${member.nickname}에게 대결 신청`}
+              >
+                <Send size={16} />
+              </button>
+            )}
           </div>
           {/* 점수/전적을 팀 랭킹 카드와 같은 배치로 통일 — 사람단위 점수를 위에 큼직하게
               ("+N점"), 전적을 그 아래에. 이 점수가 순위(승자승 다음)를 가르는 기준이라 숫자로
