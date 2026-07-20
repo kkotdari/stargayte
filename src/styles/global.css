@@ -2002,13 +2002,19 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   50%, 83.3% { opacity: 1; }
   100% { opacity: 0; }
 }
-/* "참가N위" 배지 — 알약 없이 분홍 메탈 그라데이션 투명 폰트로(요청: "짧게, 폰트는 투명"),
-   닉네임과 같은 톤. 한 스텝 작게. */
+/* "참가N위" 배지 — 네모둥근 핑크 알약을 유지하되 알약 안의 글자만 투명 클립으로(요청:
+   "알약 제거가 아니라 핑크 알약 안의 폰트만 투명"). 배경을 두 겹으로 얹어, 첫 겹(밝은 메탈
+   그라데이션)은 글자(clip:text)에만, 둘째 겹(진분홍)은 알약 몸통(padding-box)에 채운다. */
 .scr-rank-games-badge {
   flex-shrink: 0; white-space: nowrap;
+  padding: 1px 6px; border-radius: 6px;
   font-size: 9px; font-weight: 800; letter-spacing: 0.02em;
-  background: linear-gradient(115deg, #c25288 0%, #f090bf 40%, #ffe2f0 50%, #f090bf 60%, #c25288 100%);
-  -webkit-background-clip: text; background-clip: text; color: transparent;
+  background:
+    linear-gradient(115deg, #ffd6ea 0%, #ffffff 45%, #ffe9f4 55%, #ffffff 50%, #ffd6ea 100%) text,
+    #d95fa0;
+  -webkit-background-clip: text, padding-box;
+  background-clip: text, padding-box;
+  color: transparent;
 }
 /* 전적/승률도 순위/변동과 같은 패턴으로 위아래 배치, 오른쪽 정렬 */
 .scr-rank-record-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
