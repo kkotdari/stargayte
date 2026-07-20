@@ -238,7 +238,9 @@ export default function MatchRequestCorner() {
   const candidates = useMemo(() => {
     const q = (mentionQuery ?? "").toLowerCase();
     return members
-      .filter((m) => m.id !== user?.id && !mentionedIds.has(m.id))
+      // 활성 상태 회원만(요청) — 대기/정지/탈퇴 회원은 태그 대상에서 뺀다. 다른 상대
+      // 선택 화면(ChallengeFormModal 등)과 같은 기준.
+      .filter((m) => m.status === "active" && m.id !== user?.id && !mentionedIds.has(m.id))
       .filter((m) => !q || m.nickname.toLowerCase().includes(q) || m.id.toLowerCase().includes(q))
       .slice(0, 50);
   }, [members, user?.id, mentionQuery, mentionedIds]);
