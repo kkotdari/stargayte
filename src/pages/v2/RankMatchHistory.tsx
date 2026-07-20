@@ -1,5 +1,6 @@
-import MatchTeams from "../../components/common/MatchTeams";
+import MatchTeams, { pointToneClass } from "../../components/common/MatchTeams";
 import { Spinner } from "../../components/common/Feedback";
+import { cx } from "../../utils/format";
 import { dateWithDow } from "../../utils/date";
 import type { Match, MatchResult, MatchSlot, Member } from "../../types";
 
@@ -103,7 +104,7 @@ export default function RankMatchHistory({
                   {dLabel && (
                     <div className="scr-rank-history-points-line">
                       <span className="scr-rank-history-calc">
-                        레이팅 <strong>{dLabel}</strong>
+                        레이팅 <strong className={cx(pointToneClass(dLabel))}>{dLabel}</strong>
                       </span>
                     </div>
                   )}
