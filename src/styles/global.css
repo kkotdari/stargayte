@@ -6194,8 +6194,8 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
    흰 칩에 그림자만 줘서(요청) 흰 보드 위에서도 살짝 떠 보이게 한다. */
 .scr-mreq-chip {
   display: inline-flex; align-items: center; gap: 3px;
-  /* 좀더 둥글게(요청) — 알약에 가깝게 크게 잡아서 실제 높이가 얼마든 항상 최대로 둥글다. */
-  padding: 1px 6px; border-radius: 999px;
+  /* 래디우스는 완전한 알약보다 살짝 감소(요청: "유저칩 래디우스 살짝 감소시켜줘"). */
+  padding: 0 7px; border-radius: 8px;
   /* 좀 더 투명하게(요청: "내용의 유저칩을 좀 투명하게 해주고"). */
   background: rgba(255, 255, 255, 0.72); color: #24272d;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18), 0 0 1px rgba(0, 0, 0, 0.1);
@@ -6204,9 +6204,10 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
      세로 정렬이 안맞으니 맞춰줘") — 본문과 같은 크기로 맞춘다. */
   font-size: var(--fs-body); font-weight: 700; white-space: nowrap;
 }
-/* 인라인 칩 — 텍스트 흐름 안에서 세로 가운데로 앉게 하고, 양옆에 살짝 숨 쉬는 여백.
-   (목록 카드의 읽기용 렌더에서 쓴다.) */
-.scr-mreq-chip-inline { vertical-align: middle; margin: 0 1px; user-select: none; }
+/* 인라인 칩 — 텍스트 흐름 안에서 세로로 앉는 위치를 잡는다(목록 카드의 읽기용 렌더에서
+   쓴다). middle만으로는 패딩이 있는 칩이 주변 글자보다 살짝 아래로 처져 보였다(실제로
+   지적받은 문제 — "일반 텍스트가 칩보다 좀 위에 있는 느낌") — 위로 살짝 밀어 보정한다. */
+.scr-mreq-chip-inline { vertical-align: middle; position: relative; top: -1px; margin: 0 1px; user-select: none; }
 /* 편집창 안의 칩 — 이제 진짜 DOM 요소라(검색창의 칩과 동일 구조) × 버튼도 실제로
    클릭해서 지울 수 있다. 백스페이스로 통째로 지우는 것도 여전히 된다(SearchFilterBar와
    동일한 되돌리기 동작). */
