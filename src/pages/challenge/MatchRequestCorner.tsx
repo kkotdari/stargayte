@@ -83,33 +83,27 @@ function renderInline(text: string, targets: { nickname: string }[]) {
   return out;
 }
 
-// 텍스트에서 "@닉네임"으로 실제 지목된 회원 id들을 뽑아낸다 — 편집창은 이제 칩으로
-// 보여주지만(요청: "태그된 유저를 @유저가 아닌 칩으로 실시간으로 보여주고 편집할수있게"),
-// 저장/제출용 진실은 여전히 이 마커 문자열이다(입력창 DOM에서 그대로 다시 만들어낸다 —
-// 아래 domToText). 긴 닉네임부터 매칭해 짧은 닉네임이 긴 닉네임의 일부로 잘못 걸리는 걸 피한다.
-function extractMentionIds(text: string, members: Member[]): string[] {
-  const ids: string[] = [];
-  const sorted = [...members].sort((a, b) => b.nickname.length - a.nickname.length);
-  for (const m of sorted) {
-    if (!m.nickname || ids.includes(m.id)) continue;
-    const esc = m.nickname.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const re = new RegExp(`@${esc}(?!${MENTION_BOUNDARY_RE})`);
-    if (re.test(text)) ids.push(m.id);
-  }
-  return ids;
-}
-
 const MESSAGE_MAX_LENGTH = 30;
 const MENTION_DATA_ATTR = "data-mention-nickname";
-// 칩 바로 뒤에 눈에 보이는 공백 없이 커서를 두기 위한 구분자(요청: "칩 다음에 공백 없이
-// 바로 커서가 놓여야해 ... ~님 이런식으로 문장으로 이어서 쓸테니까"). 화면엔 안 보이지만
-// (너비 0) 실제 문자라서, 저장 문자열에서 "@닉네임"과 바로 뒤에 이어붙는 텍스트("님" 등)
-// 사이 경계를 정규식이 여전히 구분할 수 있다 — 이게 없으면 "@닉네임님"이 통째로 한
-// 단어처럼 보여 태그 인식(extractMentionIds)이 깨진다.
-const MENTION_SEPARATOR = "\u200B";
-// 위 구분자를 "공백"으로 함께 인식시키는 문자 클래스 — extractMentionIds/renderEditorFromText의
-// "닉네임 뒤에 다른 글자가 바로 안 붙어야 한다" 경계 검사에 쓴다.
-const MENTION_BOUNDARY_RE = "[^\\s@\\u200B]";
+// 칩에 회원 id도 함께 심어둔다 — 태그된 회원 목록은 저장 문자열("@닉네임")을 정규식으로
+// 다시 파싱하는 대신 이 속성으로 DOM에서 직접 걸어온다(아래 chipMemberIds). 예전엔
+// 문자열 파싱 방식이라 "@닉네임" 뒤에 다른 글자가 안 붙어야 한다는 경계 제약이
+// 있었고, 그 경계를 표시하려고 폭 0인 안 보이는 문자를 칩 뒤에 심었더니 백스페이스가
+// 그 문자부터 지워지는(칩이 한 번에 안 지워지는) 이상한 사용감과 편집창 높이가 튀는
+// 문제가 있었다(실제로 지적받은 문제 — "이상한 문자 넣는 방식은 폐기"). DOM을 직접 걸으면
+// 그런 경계 표시 자체가 필요 없어 칩 뒤에 아무것도 안 붙여도 된다.
+const MENTION_ID_ATTR = "data-mention-id";
+
+// 편집창 안 칩들의 회원 id를 모아 지금 태그된 회원 집합을 만든다 — 후보 목록에서 이미
+// 태그된 사람을 빼거나(candidates), 제출할 대상 목록을 만들 때(submit) 쓴다.
+function chipMemberIds(el: HTMLElement): Set<string> {
+  const ids = new Set<string>();
+  el.querySelectorAll(`[${MENTION_ID_ATTR}]`).forEach((node) => {
+    const id = node.getAttribute(MENTION_ID_ATTR);
+    if (id) ids.add(id);
+  });
+  return ids;
+}
 
 function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -124,8 +118,9 @@ function escapeHtml(s: string): string {
 // 않는 순수 span으로 바꾸고 클릭은 이벤트 위임(아래 onEditorClick)으로 처리한다.
 function chipHtml(member: Member): string {
   const nickname = escapeHtml(member.nickname);
+  const id = escapeHtml(member.id);
   return (
-    `<span class="scr-mreq-chip scr-mreq-chip-editor" contenteditable="false" ${MENTION_DATA_ATTR}="${nickname}">` +
+    `<span class="scr-mreq-chip scr-mreq-chip-editor" contenteditable="false" ${MENTION_DATA_ATTR}="${nickname}" ${MENTION_ID_ATTR}="${id}">` +
     `<span>${nickname}</span>` +
     `<span class="scr-mreq-chip-x" role="button" aria-label="${nickname} 태그 제거">×</span>` +
     `</span>`
@@ -133,7 +128,8 @@ function chipHtml(member: Member): string {
 }
 
 // 편집창의 실제 DOM(텍스트 노드 + 유저 칩 span)을 저장용 문자열("@닉네임" 마커 포함)로
-// 되돌린다 — extractMentionIds가 그대로 읽을 수 있는 예전과 같은 형식.
+// 되돌린다 — 저장/제출되는 메시지 본문 자체이자, 다른 회원이 목록에서 볼 때
+// renderInline이 그대로 읽어 칩으로 다시 하이라이트하는 형식이다.
 function domToText(el: HTMLElement): string {
   let out = "";
   el.childNodes.forEach((node) => {
@@ -160,7 +156,7 @@ function renderEditorFromText(el: HTMLElement, text: string, members: Member[]) 
       .slice()
       .sort((a, b) => b.length - a.length)
       .map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
-    const re = new RegExp(`@(${esc.join("|")})(?!${MENTION_BOUNDARY_RE})`, "g");
+    const re = new RegExp(`@(${esc.join("|")})`, "g");
     const byNickname = new Map(members.map((m) => [m.nickname, m]));
     let html = "";
     let last = 0;
@@ -220,7 +216,13 @@ export default function MatchRequestCorner() {
   // 실행되는 동안은 그 재진입 호출을 완전히 무시한다.
   const insertingRef = useRef(false);
 
-  const mentionedIds = useMemo(() => new Set(extractMentionIds(text, members)), [text, members]);
+  // text가 바뀔 때마다(칩 추가/제거 포함) 다시 계산한다 — 실제 DOM 변경은 항상 그 text
+  // 상태 갱신보다 먼저 끝나 있어(우리 코드가 항상 DOM을 먼저 바꾸고 나서 setText를 부르는
+  // 순서라) 이 시점에 editorRef.current를 다시 읽으면 최신 칩 목록이다.
+  const mentionedIds = useMemo(() => {
+    const el = editorRef.current;
+    return el ? chipMemberIds(el) : new Set<string>();
+  }, [text]);
   const candidates = useMemo(() => {
     const q = (mentionQuery ?? "").toLowerCase();
     return members
@@ -286,7 +288,10 @@ export default function MatchRequestCorner() {
     // 뜨고 있었다. 그 상태에서 스페이스/탭/엔터를 누르면 평범한 공백/이동 대신 엉뚱하게
     // 칩이 끼어들었다 — 실제로 지적받은 문제("스페이스 입력시 칩과 함께 공백이 들어가는
     // 오류", "자동완성시 마지막 타이핑한 글자가 들어가는 오류")의 근본 원인.
-    const m = before.match(/@([^\s@]+)$/);
+    // 쿼리 글자 수는 0개(막 "@"만 친 상태)도 허용한다(요청: "@ 치면 모든 유저가 일단
+    // 뜨게 하자") — 그때는 mentionQuery가 빈 문자열이 되고, candidates 필터가 빈 쿼리를
+    // "전부 보여주기"로 취급한다.
+    const m = before.match(/@([^\s@]*)$/);
     if (m) {
       // 지금은 selection이 확실히 유효한 시점이라 여기서 캐럿 위치를 붙잡아 둔다.
       mentionAnchorRef.current = { node: node as Text, offset };
@@ -350,46 +355,59 @@ export default function MatchRequestCorner() {
     if (!el) return;
     el.focus();
 
-    // 저장해둔 캐럿 위치를 우선 쓴다 — 클릭 시점의 window.getSelection()은 신뢰할 수
-    // 없다(위 mentionAnchorRef 선언부 참고). 저장값이 더 이상 유효하지 않으면(그 사이
-    // 노드가 지워졌다든가) 편집창 맨 끝으로 안전하게 되돌아간다.
-    // 저장된 offset 숫자를 그대로 믿는 대신, 그 텍스트 노드의 "현재 끝"을 캐럿 자리로
-    // 쓴다 — confirm은 항상 그 쿼리를 마지막으로 건드린 직후에 일어나므로 그 노드의 끝은
-    // 곧 쿼리 끝이다. 저장된 offset 숫자에 어떤 이유로든 하나라도 어긋남이 생기면 쿼리의
-    // 마지막 글자가 안 지워지고 칩 앞에 그대로 남는 문제(실제로 지적받은 문제)로 이어져,
-    // 숫자를 아예 신뢰하지 않는 쪽이 더 안전하다.
+    // 지울 글자 수는 "지금 화면에 보이는 자동완성 쿼리 문자열"(mentionQuery, React state로
+    // 항상 최신값 유지)의 길이 + 1("@" 자신)로 정확히 계산한다 — DOM 텍스트를 다시 읽어
+    // 정규식으로 재추정하던 예전 방식들은 상황에 따라 하나씩 어긋나 마지막 글자가 칩 앞에
+    // 그대로 남거나 공백이 더 들어가는 문제가 있었다(실제로 지적받은 문제 — "스페이스로
+    // 자동완성시 아직도 마지막 입력한 글자가 들어가"). mentionQuery는 타이핑할 때마다(IME
+    // 조합 중간 상태 포함) 갱신되니 그 길이를 그대로 믿는 쪽이 훨씬 안전하다.
+    const deleteLen = (mentionQuery?.length ?? 0) + 1;
+
+    // 캐럿 위치는 지금 이 순간의 live selection을 우선 쓴다 — 키보드로 확정할 땐(스페이스/
+    // 탭/엔터) 포커스가 편집창을 벗어난 적이 없어 이게 가장 최신이다. 저장해둔
+    // mentionAnchorRef는 마우스로 후보를 클릭했을 때만 쓴다 — 그 시점엔 window.getSelection()
+    // 이 이미 비어있거나 딴 곳을 가리키는 경우가 있다(위 mentionAnchorRef 선언부 참고).
+    const liveSel = window.getSelection();
+    const liveRange = liveSel && liveSel.rangeCount > 0 ? liveSel.getRangeAt(0) : null;
     const anchor = mentionAnchorRef.current;
+
+    let endNode: Text | null = null;
+    let endOffset = 0;
+    if (
+      liveRange && liveRange.collapsed &&
+      liveRange.startContainer.nodeType === Node.TEXT_NODE &&
+      el.contains(liveRange.startContainer)
+    ) {
+      endNode = liveRange.startContainer as Text;
+      endOffset = liveRange.startOffset;
+    } else if (anchor && anchor.node.isConnected && el.contains(anchor.node)) {
+      endNode = anchor.node;
+      endOffset = anchor.node.textContent?.length ?? 0;
+    }
+
     const range = document.createRange();
-    if (anchor && anchor.node.isConnected && el.contains(anchor.node)) {
-      const endOffset = anchor.node.textContent?.length ?? 0;
-      range.setStart(anchor.node, endOffset);
-      range.setEnd(anchor.node, endOffset);
+    if (endNode) {
+      range.setStart(endNode, Math.max(0, endOffset - deleteLen));
+      range.setEnd(endNode, endOffset);
     } else {
       range.selectNodeContents(el);
       range.collapse(false);
-    }
-
-    const node = range.startContainer;
-    if (node.nodeType === Node.TEXT_NODE) {
-      const before = (node.textContent ?? "").slice(0, range.startOffset);
-      const mm = before.match(/@([^\s@]*)$/);
-      const removeLen = mm ? mm[0].length : 0;
-      if (removeLen > 0) range.setStart(node, range.startOffset - removeLen);
     }
 
     const sel = window.getSelection();
     sel?.removeAllRanges();
     sel?.addRange(range);
 
-    // "@쿼리" 선택 영역을 칩으로 치환. 칩 뒤엔 눈에 보이는 공백을 넣지 않는다(요청: "칩
-    // 다음에 공백 없이 바로 커서가 놓여야해") — 대신 폭 0인 구분자(MENTION_SEPARATOR)만
-    // 붙여서 커서가 칩에 딱 붙어 보이면서도 "@닉네임"과 바로 이어 쓰는 글자("님" 등) 사이
-    // 경계는 여전히 구분할 수 있게 한다.
+    // "@쿼리" 선택 영역을 칩으로 치환. 칩 뒤엔 아무 것도 안 붙인다(요청: "칩 다음에 공백
+    // 없이 바로 커서가 놓여야해") — 안 보이는 구분 문자를 심었던 이전 시도는 백스페이스가
+    // 그 문자부터 지워져 칩이 한 번에 안 지워지고, 편집창 높이도 이상하게 늘어나는 문제가
+    // 있었다(실제로 지적받은 문제 — "이상한 문자 넣는 방식은 폐기"). 칩은 진짜 DOM 노드라
+    // 태그 인식(chipMemberIds)에 구분 문자가 애초에 필요 없다.
     // execCommand는 그 자리에서 진짜 'input' 이벤트를 다시 쏘는데(onEditorInput 재진입),
     // 그동안엔 그 재진입 호출이 아무 것도 안 하도록 막는다(위 insertingRef 선언부 참고).
     insertingRef.current = true;
     try {
-      document.execCommand("insertHTML", false, chipHtml(member) + MENTION_SEPARATOR);
+      document.execCommand("insertHTML", false, chipHtml(member));
     } finally {
       insertingRef.current = false;
     }
@@ -512,7 +530,7 @@ export default function MatchRequestCorner() {
     setSubmitting(true);
     setSubmitErr(null);
     try {
-      const ids = extractMentionIds(trimmed, members);
+      const ids = editorRef.current ? Array.from(chipMemberIds(editorRef.current)) : [];
       await api.createMatchRequest({ text: trimmed, targetMemberIds: ids });
       resetCompose();
       setPage(0);
