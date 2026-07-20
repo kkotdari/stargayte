@@ -5,6 +5,8 @@ import AdminMenu from "./AdminMenu";
 import MobileTabBar from "./MobileTabBar";
 import Avatar from "../components/common/Avatar";
 import ThemeIcon from "../components/common/ThemeIcon";
+import InstallGuideModal from "../components/common/InstallGuideModal";
+import { usePwaInstall } from "../hooks/usePwaInstall";
 import { cx } from "../utils/format";
 import { attachPopover } from "../utils/popover";
 import { useIsNarrow } from "../utils/useIsNarrow";
@@ -53,6 +55,16 @@ export default function Header({
   // 따로 관리했지만 이제 누구나 쓸 수 있다.
   const [lightTheme, setLightTheme] = useLightTheme();
   const homeLogo = lightTheme ? homeLogoLight : homeLogoDark;
+
+  // 서랍 메뉴의 "홈 화면에 추가" — 안드로이드는 네이티브 설치 창, iOS는 안내 모달을 연다.
+  // 이미 설치(standalone)면 canInstall=false라 항목 자체가 안 뜬다.
+  const { canInstall, promptInstall } = usePwaInstall();
+  const [installGuideOpen, setInstallGuideOpen] = useState(false);
+  const onInstallClick = async () => {
+    const r = await promptInstall();
+    if (r === "ios") setInstallGuideOpen(true);
+    else setMenuOpen(false);
+  };
 
   // 드로어를 열 때뿐 아니라 "닫힐 때"도 슬라이드 아웃 트랜지션이 끝까지 재생되도록,
   // menuOpen이 false가 된 뒤에도 트랜지션 시간(.2s) 동안은 DOM에 그대로 남겨둔다 —
@@ -284,6 +296,11 @@ export default function Header({
               <button className="scr-btn scr-btn-ghost scr-btn-sm" onClick={() => { onLogout(); setMenuOpen(false); }}>
                 로그아웃
               </button>
+              {canInstall && (
+                <button className="scr-btn scr-btn-ghost scr-btn-sm" onClick={onInstallClick}>
+                  홈 화면에 추가
+                </button>
+              )}
               <button className="scr-btn scr-btn-ghost scr-btn-sm" onClick={() => setMenuOpen(false)}>
                 메뉴 닫기
               </button>
@@ -291,6 +308,10 @@ export default function Header({
           </div>
         </div>,
         document.body,
+      )}
+
+      {installGuideOpen && (
+        <InstallGuideModal onClose={() => { setInstallGuideOpen(false); setMenuOpen(false); }} />
       )}
 
       <MobileTabBar

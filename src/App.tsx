@@ -13,6 +13,7 @@ import { CHALLENGE_MIN_VERSION, homeScreenFor } from "./constants/menuVersions";
 
 import AuthScreen from "./pages/auth/AuthScreen";
 import Header from "./layout/Header";
+import InstallBanner from "./components/common/InstallBanner";
 import ChallengeScreen from "./pages/challenge/ChallengeScreen";
 import MembersScreen from "./pages/members/MembersScreen";
 import ImageSettingsScreen from "./pages/imageSettings/ImageSettingsScreen";
@@ -210,6 +211,9 @@ export default function App() {
             와버렸다) #scroll-root 바로 다음이라는 확실한 자리를 이 빈 div로 직접
             고정해준다. */}
         <div id="scr-tabbar-slot" />
+
+        {/* 첫 방문(미설치) 때 한 번 뜨는 "홈 화면에 추가" 유도 배너 — 닫으면 다시 안 뜬다. */}
+        <InstallBanner />
 
         {profileOpen && <ProfileModal onClose={() => setProfileOpen(false)} />}
         {viewingMember && <MemberProfileModal member={viewingMember} onClose={closeMemberProfile} />}

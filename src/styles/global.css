@@ -1137,6 +1137,40 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    뜨는 툴팁으로 바꾼다(요청: "누르면 툴팁형태로 보이게"). 트리거는 작고 옅게, 눌리면(active)
    살짝 밝아진다. */
 .scr-rank-method-row { display: flex; justify-content: center; padding: 3px 0 1px; }
+/* 산정 방식(왼쪽) + 스크린샷(오른쪽)을 한 줄에 벌려 놓는다. */
+.scr-rank-method-row-split { justify-content: space-between; }
+.scr-rank-method-trigger:disabled { opacity: 0.45; cursor: default; }
+
+/* ===== PWA "홈 화면에 추가" 유도 배너 + iOS 안내 ===== */
+.scr-install-banner {
+  position: fixed; z-index: 55; left: 50%; transform: translateX(-50%);
+  /* 모바일 하단 탭바(≈56px + 하단 주소창 보정) 위로 올린다. PC엔 탭바가 없어 살짝 떠 있다. */
+  bottom: calc(var(--vv-bottom-inset, 0px) + 70px);
+  width: min(440px, calc(100vw - 24px));
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; border-radius: 14px;
+  background: var(--panel-solid); color: var(--text);
+  box-shadow: 0 6px 24px rgba(0,0,0,0.32), inset 0 0 0 1px rgba(255,255,255,0.07);
+}
+.scr-light-theme .scr-install-banner { box-shadow: 0 6px 24px rgba(0,0,0,0.14), inset 0 0 0 1px rgba(0,0,0,0.08); }
+.scr-install-banner-text { display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0; }
+.scr-install-banner-text b { font-size: var(--fs-body); }
+.scr-install-banner-text span { font-size: var(--fs-caption); color: var(--muted); }
+.scr-install-banner-cta {
+  flex-shrink: 0; display: inline-flex; align-items: center; gap: 5px;
+  background: #f684bb; color: #fff; border: none; border-radius: 999px;
+  padding: 7px 14px; font-size: var(--fs-caption); font-weight: 700; cursor: pointer;
+}
+.scr-install-banner-cta:hover { filter: brightness(1.04); }
+.scr-install-banner-close {
+  flex-shrink: 0; background: transparent; border: none; color: var(--muted);
+  cursor: pointer; padding: 4px; display: inline-flex; align-items: center;
+}
+.scr-install-guide-lead { margin: 0 0 6px; font-size: var(--fs-body); color: var(--text); line-height: 1.5; }
+.scr-install-guide-steps { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 9px; }
+.scr-install-guide-steps li { font-size: var(--fs-body); color: var(--text); line-height: 1.5; }
+.scr-install-guide-icon { display: inline-flex; vertical-align: middle; margin: 0 3px; color: var(--text); }
+.scr-install-guide-note { margin: 14px 0 0; font-size: var(--fs-caption); color: var(--muted); line-height: 1.45; }
 .scr-rank-method-trigger {
   display: inline-flex; align-items: center; gap: 4px;
   background: transparent; border: none; cursor: pointer; padding: 2px 6px; border-radius: 999px;

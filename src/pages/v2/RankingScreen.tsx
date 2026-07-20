@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ChevronLeft, ChevronRight, Info } from "lucide-react";
+import { ChevronLeft, ChevronRight, Info, Camera } from "lucide-react";
+import * as htmlToImage from "html-to-image";
 import { Spinner } from "../../components/common/Feedback";
 import SearchFilterBar from "../../components/common/SearchFilterBar";
 import PillTabs from "../../components/common/PillTabs";
 import FilterItem from "../../components/common/FilterItem";
 import Select from "../../components/common/Select";
 import RankRow from "./RankRow";
+import RankingSnapshot from "./RankingSnapshot";
 import RankingDetailModal from "./RankingDetailModal";
 import ChallengeFormModal from "../../modals/ChallengeFormModal";
 import {
@@ -184,6 +186,45 @@ export default function RankingScreenV2() {
       .catch(() => setTrendPoints([]));
   };
 
+  // 랭킹 스크린샷 — 지금 필터(개인/팀·종족·기간)가 적용된 전체 랭킹을 화면 밖 캡처 전용
+  // 레이아웃(RankingSnapshot)으로 그려 PNG로 뽑는다. 스크롤로 잘리는 실제 목록과 달리 전체
+  // 행이 다 담긴다(요청). 모바일은 공유 시트, PC는 다운로드로 떨어진다. PC/모바일 모두 지원.
+  const snapshotRef = useRef<HTMLDivElement>(null);
+  const [shooting, setShooting] = useState(false);
+  const takeScreenshot = async () => {
+    const node = snapshotRef.current;
+    if (!node || shooting) return;
+    setShooting(true);
+    try {
+      // 웹폰트/이미지가 캡처 시점에 확실히 준비되도록 한 틱 양보 + 폰트 로딩 대기.
+      await (document.fonts?.ready ?? Promise.resolve());
+      const bg = getComputedStyle(node).backgroundColor || "#0f1216";
+      const blob = await htmlToImage.toBlob(node, { pixelRatio: 2, cacheBust: true, backgroundColor: bg });
+      if (!blob) throw new Error("이미지를 만들지 못했어요.");
+      const stamp = periodAnchorLabel(unit, anchor).replace(/\s+/g, "");
+      const file = new File([blob], `랭킹_${mode === "solo" ? "개인전" : "팀전"}_${stamp}.png`, { type: "image/png" });
+      // 모바일은 공유 시트(사진 저장/카톡 등), 지원 안 하면 다운로드로 폴백.
+      const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
+      if (nav.canShare?.({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file], title: "랭킹" });
+          return;
+        } catch (e) {
+          if (e instanceof DOMException && e.name === "AbortError") return; // 사용자가 취소
+          // 그 외(공유 실패)는 아래 다운로드로 폴백
+        }
+      }
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = file.name; a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "스크린샷을 만들지 못했어요.");
+    } finally {
+      setShooting(false);
+    }
+  };
+
   return (
     <div className="scr-screen scr-rank-screen-v2">
       {/* 개인전/팀전은 '필터'라기보다 목록의 종류라, 필터 패널이 아니라 타이틀 줄에 둔다(요청:
@@ -254,7 +295,7 @@ export default function RankingScreenV2() {
 
       {/* 산정 방식 안내 — 필터들 아래, 순위 목록 바로 위(예전 기준점수표 자리). 항상 보이는
           문단 대신 눌러야 뜨는 툴팁으로(요청: "누르면 툴팁형태로 보이게"). */}
-      <div className="scr-rank-method-row">
+      <div className="scr-rank-method-row scr-rank-method-row-split">
         <button
           type="button"
           className={cx("scr-rank-method-trigger", methodTipOpen && "scr-rank-method-trigger-active")}
@@ -262,6 +303,15 @@ export default function RankingScreenV2() {
           onClick={() => setMethodTipOpen((v) => !v)}
         >
           <Info size={13} /> 산정 방식
+        </button>
+        {/* 지금 필터가 적용된 랭킹 전체를 이미지로 저장/공유(요청). PC/모바일 모두 지원. */}
+        <button
+          type="button"
+          className="scr-rank-method-trigger"
+          onClick={takeScreenshot}
+          disabled={shooting || rows.length === 0}
+        >
+          {shooting ? <Spinner size={13} /> : <Camera size={13} />} 스크린샷
         </button>
       </div>
       {methodTipOpen && createPortal(
@@ -324,6 +374,18 @@ export default function RankingScreenV2() {
           onCreated={() => setChallengeTarget(null)}
         />
       )}
+
+      {/* 스크린샷 캡처 전용(화면 밖) — 실제 목록과 달리 스크롤로 안 잘리고 전체 행이 담긴다.
+          지금 활성 필터가 반영된 rows를 그대로 그린다. */}
+      <div aria-hidden style={{ position: "fixed", left: -100000, top: 0, pointerEvents: "none" }}>
+        <RankingSnapshot
+          ref={snapshotRef}
+          rows={rows}
+          modeLabel={mode === "solo" ? "개인전" : "팀전"}
+          raceLabel={race === "all" ? null : race}
+          periodLabel={periodAnchorLabel(unit, anchor)}
+        />
+      </div>
     </div>
   );
 }
