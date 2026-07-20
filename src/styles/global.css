@@ -2046,7 +2046,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 /* 순위 변동(화살표+숫자) 배지 — v1보다 v2만 크게(11px) 키운다. 요청으로 1단계 축소. */
 .scr-rank-table-panel-v2 .scr-rank-delta { font-size: var(--fs-micro); }
 /* 승률(주 지표)만 남아서 그 자체로 크고 진하게 — 자기 칸 안에서 오른쪽 정렬. */
-.scr-rank-stat-primary { font-size: var(--fs-subhead); font-weight: 600; color: var(--text); }
+.scr-rank-stat-primary { font-size: var(--fs-body); font-weight: 600; color: var(--text); }
 .scr-rank-stat-primary-cell { justify-self: end; }
 /* 공동순위(바로 위와 같은 순위)는 구분선만 없애는 게 아니라 그 사이 간격도 좁혀서
    같은 그룹으로 보이게 한다. */
