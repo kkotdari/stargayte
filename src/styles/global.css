@@ -1951,9 +1951,8 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
      꽉 채우고, 내용만 여백을 갖는다(요청: "구분선은 그대로 두고 내용만 양쪽 패딩"). */
   padding: 10px 0;
 }
-/* 일대일 랭킹(v2)만 구분선을 흰색 계열로 — 팀 랭킹은 카드형이라 이 구분선 자체가 없다
-   (아래 .scr-team-rank-row + .scr-team-rank-row::before가 content:none으로 끈다).
-   다크 테마 배경 위에서 옅은 붉은기(기본 --divider-tint)보다 흰 선이 더 또렷하다.
+/* 랭킹(v2) 구분선을 흰색 계열로 — 다크 테마 배경 위에서 옅은 붉은기(기본 --divider-tint)보다
+   흰 선이 더 또렷하다.
    라이트 테마는 흰 배경이라 흰 선이 안 보이므로 원래 톤(검정 계열)을 그대로 쓴다.
    좌우 패딩을 없앤 만큼(위) 구분선도 양 끝까지 꽉 채운다(요청: "구분선도 맞춰서 확장"). */
 .scr-rank-table-panel-v2 .scr-rank-row + .scr-rank-row::before { left: 0; right: 0; background: rgba(255, 255, 255, 0.32); }
@@ -1974,8 +1973,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
      auto(내용 크기)로 두면 순위 자릿수(#1 vs #100)나 전적 길이에 따라 행마다 grid 전체
      폭이 달라지고, justify-content:center가 그 달라진 폭을 기준으로 매번 다시 가운데
      정렬해버려 프사(2번째 칸)의 x좌표가 행마다 흔들린다(실제로 지적받은 "프사 줄이
-     안 맞는다"). 팀 랭킹 카드(.scr-team-rank-row-inner)도 같은 이유로 고정폭을 쓴다.
-     닉네임 칸만 minmax(220px, 1fr)로 남는 폭을 먹게 한다 — 이 grid 컨테이너 자체의 폭이
+     안 맞는다"). 닉네임 칸만 minmax(220px, 1fr)로 남는 폭을 먹게 한다 — 이 grid 컨테이너 자체의 폭이
      이제 콘텐츠가 아니라 width:100%+max-width로 정해지므로(모든 행이 항상 같은 폭)
      1fr이어도 행마다 다른 값으로 흔들리지 않는다. PC에서 카드는 다른 화면과 같은 폭
      (800px, --list-content-max)까지 늘어나는데 이 안쪽 그리드는 예전 560px에 갇혀 있어
@@ -2129,126 +2127,6 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   }
 }
 
-/* 집계 규칙을 조용히 알려주는 한 줄(예: "3전 이상 함께 뛴 팀만") — 도발 문구보다 더 작고
-   옅게 두되 그 위에 온다(규칙이 먼저, 농담이 나중). */
-
-/* ===== v2 팀 랭킹 행 =====
-   개인전 행에서 프사+닉네임이 쓰던 두 칸을 구성원 격자 한 칸이 대신하고, 승률 자리에는
-   승점과 전적을 위아래로 쌓는다(순위 | 구성원 격자 | 승점+전적). 순위 배지·행 패딩·구분선은
-   개인전 행(.scr-rank-row)의 것을 그대로 물려받는다. */
-/* 행 전체(순위 + 구성원 + 승점/전적)가 하나의 유리판 카드다 — 구성원만 카드에 담고 순위와
-   전적을 밖에 두면 "이 숫자가 이 팀 것"이라는 게 한눈에 안 묶인다(실제로 지적받았다).
-   또렷한 테두리 상자는 촌스러워서, 선 대신 반투명 배경 + 흐림 + 아주 옅은 안쪽 하이라이트
-   만으로 면(面)을 만든다. 아래 우주 배경이 비쳐 보일 만큼만 옅게 덮는다. */
-.scr-rank-table-panel-v2 .scr-team-rank-row-inner {
-  /* 순위 칸을 넓히고 오른쪽 정렬(justify-self:end)로 팀원 영역을 가운데로 모아보려던
-     시도는 오히려 순위 숫자가 팀원 영역에 바짝 붙어 보이고(요청 전 화면에서 지적받은
-     "딱 붙었다") PC에서는 숫자가 잘 안 보일 정도로 존재감이 옅어졌다 — 결국 일대일
-     행(.scr-rank-row-inner)과 같은 단순한 배치(왼쪽 정렬, 좁은 고정폭)가 낫다는
-     피드백으로 되돌린다("일대일 정도의 배치가 좋은듯"). */
-  /* TeamRankRow.tsx가 이 클래스를 scr-rank-row-inner와 함께 쓰는데, 그 v1 기본 규칙이
-     max-width:460px; margin:0 auto를 갖고 있어(위 .scr-rank-row-inner 참고) 여기서
-     새로 안 풀어주면 일대일 행과 똑같이 460px에 갇힌다 — 요청: "팀랭킹카드 폭이 좁아
-     PC/모바일 모두". */
-  grid-template-columns: 60px minmax(0, 1fr) 144px;
-  column-gap: 14px; max-width: none; margin: 0;
-  align-items: center;
-  padding: 18px 18px; border-radius: 14px;
-  background: rgba(var(--overlay-rgb), 0.07);
-  backdrop-filter: blur(9px) saturate(1.2);
-  -webkit-backdrop-filter: blur(9px) saturate(1.2);
-  /* 위쪽 안쪽 테두리만 밝게 — 유리 모서리에 빛이 걸리는 느낌. 바깥 그림자는 낮고 넓게 깔아
-     카드가 배경 위에 살짝 떠 있게 한다(선을 그리지 않고 깊이만으로 경계를 만든다). */
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.09),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.045),
-    0 2px 12px rgba(0, 0, 0, 0.16);
-}
-/* 라이트 테마도 이제 배경 사진(space2.png)이 깔린다 — 예전엔 사진이 없어 아주 옅은 먹빛
-   틴트+글로우만으로 카드 경계를 만들었지만, 이제는 사진(질감 있는 배경) 위에 실제로
-   "뜨는" 반투명 유리판이어야 카드가 또렷이 구분된다 — 흰 배경을 충분히 채워 넣고
-   블러(backdrop-filter)로 사진을 부드럽게 흐린 유리 느낌을 낸다(다크 테마 유리판과
-   같은 원칙, 톤만 반전). 테두리 대신 위쪽 반사광 + 옅은 바깥 글로우로 경계를 드러낸다.
-   글로우 색은 --point를 쓰지 않는다 — 라이트 테마에서 그 값은 검정이라(위 html.scr-light-theme
-   참고) 글로우가 아니라 그림자가 되어버린다. 그 테마가 이미 "빛"으로 쓰기로 정해둔 색
-   (--edge-glow, 푸른빛)을 그대로 쓴다. 번지지 않게 반경은 좁게 — 카드 가장자리에만 걸린다. */
-.scr-light-theme .scr-rank-table-panel-v2 .scr-team-rank-row-inner {
-  background: rgba(255, 255, 255, 0.62);
-  backdrop-filter: blur(10px) saturate(1.1);
-  -webkit-backdrop-filter: blur(10px) saturate(1.1);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.85),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.5),
-    0 0 0 1px rgba(59, 130, 246, 0.18),
-    0 1px 6px rgba(0, 0, 0, 0.08),
-    0 0 10px rgba(59, 130, 246, 0.16);
-}
-/* 마우스를 올리면 유리판이 살짝 더 진해지고 글로우도 한 단계 밝아진다. */
-@media (hover: hover) {
-  .scr-light-theme .scr-team-rank-row-clickable:hover {
-    background: rgba(255, 255, 255, 0.75);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.9),
-      inset 0 0 0 1px rgba(255, 255, 255, 0.6),
-      0 0 0 1px rgba(59, 130, 246, 0.3),
-      0 1px 6px rgba(0, 0, 0, 0.1),
-      0 0 14px rgba(59, 130, 246, 0.3);
-  }
-}
-/* 카드가 곧 행이라 행 자신의 구분선은 필요 없다 — 카드 사이 간격이 구분을 대신한다. */
-.scr-rank-table-panel-v2 .scr-team-rank-row + .scr-team-rank-row::before { content: none; }
-/* 카드를 누르면 그 팀이 함께 뛴 경기 목록이 열린다. 터치 화면에서 스크롤 중 손가락이 스치면
-   :hover가 고착돼 번쩍이므로, 마우스처럼 hover가 실제로 되는 입력장치에서만 켠다. */
-.scr-team-rank-row-clickable { cursor: pointer; }
-@media (hover: hover) {
-  .scr-team-rank-row-clickable:hover { background: rgba(var(--overlay-rgb), 0.13); }
-}
-/* 순위 숫자와 승점/전적은 카드 세로 가운데가 아니라 첫 줄(구성원 첫 행)에 맞춰 올린다 —
-   4인 팀처럼 카드가 두 줄이 되면 가운데 정렬된 값이 두 줄 사이 허공에 뜬다. 가로 정렬은
-   기본값(justify-self:start, 일대일 행과 같은 왼쪽 정렬)을 그대로 따른다. */
-.scr-team-rank-row-inner > .scr-rank-badge { align-self: start; margin-top: 5px; }
-.scr-team-rank-stats { align-self: start; }
-/* 승점은 이 랭킹의 1순위 정렬 기준이라 개인전의 승률(20px)보다도 크게 — 팀 카드에서 가장
-   먼저 읽혀야 하는 수다. 전적은 그 근거라 그다음. */
-.scr-team-rank-row-inner .scr-rank-stat-primary { font-size: var(--fs-title); }
-/* 구성원 칸은 유리판에 그대로 녹아들어야 한다 — 테두리도, 배경도, 마우스를 올렸을 때의
-   반응도 없다. 팀 행은 눌러서 들어갈 상세 화면 자체가 없으므로(클릭 대상이 아니다) 호버
-   효과가 있으면 눌리는 줄 알고 헛클릭하게 된다. */
-.scr-team-rank-member { background: transparent; border: none; }
-.scr-team-rank-member:hover .scr-team-rank-name { color: var(--text); }
-/* 2열 격자 — 왼→오, 위→아래. 2인이면 한 줄, 3~4인이면 두 줄이 되고 빈 칸은 그냥 비운다.
-   행마다 인원이 달라 높이가 들쭉날쭉해지는 걸 막으려고 행 높이를 고정하지는 않는다(2:2만
-   있는 화면에서 괜히 아래가 비어 보인다).
-   구성원 격자 자체는 아무 장식도 두지 않는다 — 카드(유리판)는 행 전체(.scr-team-rank-row-inner)
-   가 이미 그리고 있어서, 여기에 또 배경을 깔면 면이 두 겹으로 겹쳐 보인다. */
-.scr-team-rank-grid {
-  /* 두 칸을 1fr로 나누면 구성원이 카드 좌우 끝으로 밀려 서로 멀어 보이고, auto로 두면
-     칸 폭이 그 카드 안 닉네임 길이에 따라 정해져서 카드마다 프사 x좌표가 제각각이 된다
-     (실제로 지적받은 "줄이 안 맞는" 문제). 칸을 고정폭으로 두고 묶음만 가운데로 모아서,
-     모든 팀 카드의 첫 칸/둘째 칸이 항상 같은 자리에서 시작하게 한다. 긴 닉네임은 칸 안에서
-     말줄임된다. */
-  display: grid; grid-template-columns: repeat(2, 146px); justify-content: center;
-  gap: 8px 14px; min-width: 0;
-}
-/* 카드와 카드 사이 간격 — 카드 자신이 안쪽 여백을 갖고 있으니 행 패딩은 순전히 카드 사이를
-   벌리는 용도다. 좌우는 0이어야 한다 — 24px를 주면 카드 자신의 패딩(18px, 아래
-   .scr-team-rank-row-inner)과 겹으로 쌓여 총 42px가 되고, 다른 화면 카드(20px)의 두 배로
-   유독 안쪽에 떠 보였다(요청: "src-rank-row 문제 아냐?" — 정확히 이 규칙이었다). */
-.scr-rank-table-panel-v2 .scr-team-rank-row { padding: 9px 0; }
-/* 프사는 위 .scr-rank-table-panel-v2 .scr-avatar 규칙이 이미 원형으로 만들어준다. */
-.scr-team-rank-member { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.scr-team-rank-name {
-  font-size: var(--fs-subhead); font-weight: 600; color: var(--text);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;
-}
-/* 유저 검색에 걸린 팀원 — 경기결과 로스터(.scr-team-player-highlight)와 완전히 같은 반전색.
-   닉네임 글자만 칠하던 것에서 프사까지 함께 덮는다(요청: "닉네임뿐 아니라 프사까지
-   하이라이팅 주고 경기 하이라이트랑 똑같은 css") — 구성원 칸(프사+닉네임) 전체를 감싼다. */
-.scr-team-rank-member-hit {
-  background: var(--highlight-bg); border-radius: 4px;
-  padding: 2px 4px; margin: -2px -4px;
-}
-.scr-team-rank-member-hit .scr-team-rank-name { color: var(--bar-text); font-weight: 800; }
 /* 개인(일대일) 랭킹 행의 검색 하이라이트 — 같은 반전색으로 프사와 닉네임을 함께 칠한다.
    프사와 닉네임이 격자의 이웃 칸이라, 프사 칸의 배경을 칸 사이 간격(column-gap)만큼
    오른쪽으로 더 늘려 닉네임 배경과 한 띠로 이어지게 한다. */
@@ -2260,29 +2138,6 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   background: var(--highlight-bg); color: var(--bar-text); font-weight: 800;
   border-radius: 0 4px 4px 0;
   padding: 2px 4px; margin: -2px -4px;
-}
-.scr-team-rank-stats { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; justify-self: end; }
-.scr-team-rank-record { font-size: var(--fs-subhead); color: var(--dim); white-space: nowrap; }
-@media (max-width: 640px) {
-  .scr-rank-table-panel-v2 .scr-team-rank-row { padding: 7px 0; }
-  /* PC와 같은 이유로 되돌린다 — 일대일 행의 모바일 순위 칸(44px)과 같은 폭, 왼쪽 정렬.
-     좌우 패딩은 개인 랭킹 행과 똑같이 10px로 통일한다(요청: "팀과 개인 똑같이 통일") —
-     개인 카드가 닉네임 노출을 위해 좌우 10px로 줄었으므로 팀 카드도 같은 값으로 맞춘다. */
-  .scr-rank-table-panel-v2 .scr-team-rank-row-inner {
-    grid-template-columns: 44px minmax(0, 1fr) 82px; column-gap: 8px; padding: 14px 10px;
-  }
-  /* 좁은 폭에서는 칸을 고정폭으로 두면 안 된다 — 두 칸 합이 실제로 주어진 트랙보다 넓어지면
-     justify-content:center가 넘친 만큼을 좌우로 균등하게 밀어내서, 왼쪽 순위 숫자 위를 덮는다
-     (실제로 지적받은 문제). 남는 폭을 반씩 나눠 갖게 하면 넘칠 수가 없고, 트랙 폭 자체는 모든
-     카드가 같으므로 카드끼리 줄이 어긋나지도 않는다. */
-  .scr-team-rank-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); justify-content: stretch; gap: 4px 4px; }
-  .scr-team-rank-name { font-size: var(--fs-body); }
-  .scr-team-rank-record { font-size: var(--fs-caption); }
-  .scr-team-rank-row-inner .scr-rank-stat-primary { font-size: var(--fs-title); }
-  /* 프사도 한 치수 줄여 닉네임이 들어설 자리를 만든다(Avatar가 인라인 style로 크기를 박으므로
-     !important가 필요하다 — .scr-rank-table-panel-v2 .scr-avatar의 border-radius와 같은 이유). */
-  .scr-team-rank-member .scr-avatar { width: 30px !important; height: 30px !important; }
-  .scr-team-rank-member { gap: 4px; }
 }
 
 /* ===== donut (승률) ===== */
@@ -5360,9 +5215,8 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
 /* 다크 테마에서 카드끼리 배경과 구분이 잘 안 돼서(요청: "다크모드에서 챌린지 카드
    구분이 잘 안됨 글라스테마로") 운영 드롭다운과 같은 반투명 글라스 톤으로. 라이트
    테마는 원래의 불투명 패널을 그대로 유지(아래 .scr-light-theme 오버라이드). */
-/* 팀랭킹 카드(.scr-team-rank-row-inner)와 같은 색/모양으로 통일한다(요청: "챌린지
-   패널을 팀랭킹 패널처럼 색이나 모양을 바꿔줘") — 또렷한 테두리 대신 반투명 배경 +
-   블러 + 옅은 안쪽 하이라이트만으로 면을 만드는 같은 "유리판" 톤. */
+/* 또렷한 테두리 대신 반투명 배경 + 블러 + 옅은 안쪽 하이라이트만으로 면을 만드는
+   "유리판" 톤(요청: "챌린지 패널 색이나 모양을 유리판처럼 바꿔줘"). */
 .scr-challenge-card {
   background: rgba(var(--overlay-rgb), 0.07);
   backdrop-filter: blur(9px) saturate(1.2);
@@ -6432,9 +6286,6 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
 
 /* ===== 요청: 모바일 전용 크기/폭 조정 (데스크톱은 그대로) ===== */
 @media (max-width: 640px) {
-  /* 개인 랭킹 점수는 PC/모바일 공통으로 기본 규칙(--fs-subhead)을 그대로 쓴다 — 팀
-     랭킹 점수만 여기서 따로 낮춘다. */
-  .scr-team-rank-row-inner .scr-rank-stat-primary { font-size: var(--fs-subhead); }
   /* 회원 목록 텍스트 두 단계 축소(배틀태그 기본 폰트는 아래 전역 규칙에서 처리) */
   .scr-member-row-name { font-size: var(--fs-caption); }
   .scr-member-row-tag { font-size: var(--fs-micro); }
@@ -6490,9 +6341,6 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
 .scr-rank-table-panel-v2 .scr-rank-name { font-size: var(--fs-subhead); }
 .scr-rank-record-v2 { font-size: var(--fs-caption); }
 .scr-rank-latest-match { font-size: var(--fs-caption); }
-.scr-team-rank-name { font-size: var(--fs-body); }
-.scr-team-rank-record { font-size: var(--fs-caption); }
-.scr-team-rank-row-inner .scr-rank-stat-primary { font-size: var(--fs-title); }
 /* 필터/검색창 폰트를 전부 한 스텝씩 낮춘다(요청: "모든 필터와 검색창의 폰트들을
    1스텝씩 낮춰줘(라벨도)") — 라벨 caption(14)→micro(12), 필터 컨트롤(알약/달력/종족)
    body(16)→caption(14). 검색창 쪽(input/칩)은 아래 .scr-search-filter-float 규칙에서
@@ -6520,7 +6368,6 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
 .scr-cal-title-btn { font-size: var(--fs-body); }
 .scr-cal-today-btn { font-size: var(--fs-caption); }
 .scr-picker-cell { font-size: var(--fs-caption); }
-.scr-team-rank-row-inner .scr-rank-stat-primary { font-size: var(--fs-subhead); }
 .scr-member-row-name { font-size: var(--fs-caption); }
 .scr-member-row-tag { font-size: var(--fs-micro); }
 .scr-usermap-row { font-size: var(--fs-caption); }
