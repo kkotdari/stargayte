@@ -341,19 +341,10 @@ export default function MatchRequestCorner() {
                 }}
               >
                 {committedParts.map((part, i) =>
+                  // x 버튼 없이 컴팩트하게(요청: "요청하기 입력에서는 유저칩에 x 버튼
+                  // 제거", "컴팩트하게 가자") — 지우기는 백스페이스로만(이미 지원).
                   part.type === "mention" ? (
-                    <span key={i} className="scr-mreq-chip scr-mreq-chip-editor">
-                      {part.nickname}
-                      <button
-                        type="button"
-                        className="scr-mreq-chip-x"
-                        onMouseDown={(e) => e.preventDefault()}
-                        onClick={() => setCommittedParts((prev) => prev.filter((_, idx) => idx !== i))}
-                        aria-label={`${part.nickname} 태그 제거`}
-                      >
-                        <X size={9} />
-                      </button>
-                    </span>
+                    <span key={i} className="scr-mreq-chip scr-mreq-chip-editor">{part.nickname}</span>
                   ) : (
                     <span key={i} className="scr-mreq-text-part">{part.value}</span>
                   ),
