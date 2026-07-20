@@ -1075,8 +1075,10 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    그 아래 별도 줄에 가운데 정렬, 1.2배 확대(요청: "타이틀 로우 아래 줄로 이동 및
    가운데 정렬"). 세 화면이 전부 같은 CSS를 공유한다. */
 /* .scr-screen의 기본 형제간 gap만으로는 주요 액션 로우 아래가 너무 붙어 보였다(요청:
-   "프라이머리 로우인만큼 충분한 갭이 필요함") — 아래쪽에만 추가로 여백을 더 준다. */
-.scr-v2-primary-row { display: flex; justify-content: center; margin-bottom: 10px; }
+   "프라이머리 로우인만큼 충분한 갭이 필요함") — 아래쪽에만 추가로 여백을 더 준다. 필터가
+   없는 너나와/회원은 물론, 기록실까지 메인 버튼 아래 간격을 더 키웠다(요청: "메인버튼의
+   아래 마진만 증가"). */
+.scr-v2-primary-row { display: flex; justify-content: center; margin-bottom: 22px; }
 /* 경기 등록 화면 — 등록 버튼 아래에 리플레이 위치 안내 링크를 세로로 쌓는다(요청). */
 .scr-v2-primary-row-col { flex-direction: column; align-items: center; gap: 6px; }
 .scr-v2-primary-row .scr-btn {
@@ -2394,7 +2396,8 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
      "바로 위"에 붙는다. 안쪽 좌상단에 겹치게도 해봤지만 컨트롤 글자와 뒤섞여 보였다
      (실제로 지적받은 문제 — "필터 위에 있어야하는데") — 다시 위로. 그 대신 패널
      padding-top+음수 margin-top(위 .scr-filter-panel)으로 문서 흐름에는 안 걸리게 한다. */
-  position: absolute; left: 6px; bottom: 100%; margin-bottom: 6px;
+  /* 컨트롤 좌측 끝과 더 맞도록 살짝 왼쪽으로(요청: "필터 라벨 살짝 왼쪽으로 이동"). */
+  position: absolute; left: 2px; bottom: 100%; margin-bottom: 6px;
 }
 
 /* 라디오를 대체하는 슬라이딩 알약 세그먼트 — PillTabs.tsx가 옵션 개수만큼 균등폭
