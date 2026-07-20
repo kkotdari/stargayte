@@ -139,6 +139,15 @@ export default function RankingScreenV2() {
     return rows.filter((r) => searchTerms.some((t) => memberMatchesTerm(r.member, t)));
   }, [rows, searchTerms]);
 
+  // 참여퀸 — 이 기간 경기수(plays)가 가장 많은 사람(들). 검색 필터와 무관하게 전체 기준으로
+  // 뽑는다. 0경기뿐이면 아무도 아니다.
+  const queenMemberIds = useMemo(() => {
+    const maxPlays = rows.reduce((m, r) => Math.max(m, r.stats.plays), 0);
+    const ids = new Set<string>();
+    if (maxPlays > 0) rows.forEach((r) => { if (r.stats.plays === maxPlays) ids.add(r.member.id); });
+    return ids;
+  }, [rows]);
+
   // 검색어에 걸린 사람들 — 프사+닉네임을 경기 로스터와 같은 반전색으로 짚어준다.
   const highlightMemberIds = useMemo(() => {
     const ids = new Set<string>();
@@ -294,6 +303,7 @@ export default function RankingScreenV2() {
                 // 있어, 검색 중에는 묶지 않고 모든 행이 자기 순위를 그대로 보여준다.
                 tiedWithPrev={searchTerms.length === 0 && i > 0 && row.rank === visibleRows[i - 1].rank}
                 highlighted={highlightMemberIds.has(row.member.id)}
+                participationQueen={queenMemberIds.has(row.member.id)}
                 onOpenTrend={() => openTrend(row)}
                 onChallenge={row.member.id !== user?.id ? setChallengeTarget : undefined}
               />

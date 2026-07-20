@@ -1893,8 +1893,8 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    다른 곳에도 많이 쓰여서 구분되게 골드 톤을 따로 쓴다. */
 .scr-rank-badge { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; justify-self: start; }
 .scr-rank-num {
-  /* 랭크 숫자 크기 — 새 스케일 단계 fs-headline(24)로(요청). */
-  font-family: var(--font-mono); font-size: var(--fs-headline); font-weight: 700; font-style: italic; color: var(--text);
+  /* 랭크 숫자 크기 fs-headline(24). 폰트는 코딩폰트(mono) 대신 기본 UI 폰트로(요청). */
+  font-family: inherit; font-size: var(--fs-headline); font-weight: 700; font-style: italic; color: var(--text);
   font-variant-numeric: tabular-nums;
 }
 .scr-rank-delta { display: inline-flex; align-items: center; gap: 1px; font-size: var(--fs-micro); font-weight: 700; font-style: italic; }
@@ -1973,6 +1973,32 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-rank-name-bronze {
   background: linear-gradient(115deg, #e9c199 0%, #b98a5a 35%, #8a5a34 60%, #d9a876 100%);
   -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+/* 참여퀸(이 기간 경기수 1위) — 닉네임을 진분홍 메탈색으로(요청). 메달과 같은
+   그라데이션+background-clip:text 패턴. */
+.scr-rank-name-queen {
+  background: linear-gradient(115deg, #ffd6ec 0%, #ff4fa3 34%, #b3005e 60%, #ff8fc7 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+/* 참여퀸이면서 메달(1~3위)이기도 하면, 메달색(기본)을 깔고 그 위에 진분홍색 텍스트를
+   겹쳐 opacity를 교대로 크로스페이드해 두 색이 번갈아 보이게 한다(요청: "색깔 교대로 변경
+   트랜지션"). ::after는 data-name의 같은 텍스트를 같은 자리에 얹는다. */
+.scr-rank-name-queen-medal { position: relative; }
+.scr-rank-name-queen-medal::after {
+  content: attr(data-name);
+  position: absolute; left: 0; top: 0; right: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; pointer-events: none;
+  background: linear-gradient(115deg, #ffd6ec 0%, #ff4fa3 34%, #b3005e 60%, #ff8fc7 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  animation: scr-queen-medal-cross 2.6s ease-in-out infinite alternate;
+}
+@keyframes scr-queen-medal-cross { from { opacity: 0; } to { opacity: 1; } }
+/* "참여퀸" 배지 — 닉네임 옆 작은 진분홍 알약(요청). */
+.scr-rank-queen-badge {
+  flex-shrink: 0; display: inline-flex; align-items: center;
+  padding: 1px 7px; border-radius: 999px; font-size: var(--fs-11); font-weight: 800;
+  letter-spacing: 0.02em; white-space: nowrap;
+  background: #cc1b6b; color: #fff; box-shadow: 0 1px 3px rgba(204,27,107,0.45);
 }
 /* 전적/승률도 순위/변동과 같은 패턴으로 위아래 배치, 오른쪽 정렬 */
 .scr-rank-record-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
@@ -2159,8 +2185,9 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   /* 좌우 패딩은 모바일도 제거(요청) — 위아래는 14px였다가 카드가 더 많이 보이도록
      추가로 줄인다(요청: "모바일 - 랭킹 카드의 위아래 패딩을 줄여서 더 많이 나오게").
      행 높이를 조금 줄였다가(10→8px), 다시 8~10%만 키운다(요청) — 세로 패딩 8→10px. */
-  .scr-rank-table-panel-v2 .scr-rank-row { padding: 10px 0; }
-  .scr-rank-table-panel-v2 .scr-rank-row-tied { padding-top: 5px; }
+  /* 로우 높이 약 8% 증가(요청) — 세로 패딩 10→12px. */
+  .scr-rank-table-panel-v2 .scr-rank-row { padding: 12px 0; }
+  .scr-rank-table-panel-v2 .scr-rank-row-tied { padding-top: 6px; }
   /* 순위 숫자와 순위변동 사이 간격을 없애 배지 세로 높이를 줄인다(요청: "랭크와 순위변동
      사이가 줄어야") — 숫자 자체의 행간(line-height)도 1로 바짝 붙인다. */
   .scr-rank-table-panel-v2 .scr-rank-badge { gap: 0; }
@@ -2176,11 +2203,10 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
      .scr-rank-provisional 참고) — 마지막 전적 칸도 100→88px, 순위 칸(1번째)도 오른쪽
      여백이 남는다는 피드백으로 44→36px. */
   .scr-rank-table-panel-v2 .scr-rank-row-inner {
-    grid-template-columns: 32px 38px minmax(116px, 1fr) 80px; column-gap: 8px;
-    /* 모바일은 화면이 좁아 내용 좌우 패딩(기본 32px)이 닉네임 폭을 크게 잡아먹는다 —
-       구분선(행 ::before)은 양 끝까지 그대로 두고 내용 패딩만 확 줄여 닉네임이 더 길게
-       보이게 한다(요청: "모바일 랭킹 좌우 패딩 축소해서 닉네임 많이 보이게"). */
-    padding: 0 10px;
+    /* 순위 칸(1번째)을 32→38px로 넓혀 랭크 숫자와 아바타 사이를 살짝 벌린다(요청). */
+    grid-template-columns: 38px 38px minmax(110px, 1fr) 80px; column-gap: 8px;
+    /* 양쪽 패딩 증가(요청) — 10→18px. 구분선(행 ::before)은 양 끝까지 그대로. */
+    padding: 0 18px;
   }
   .scr-rank-table-panel-v2 .scr-rank-name { font-size: var(--fs-subhead); }
   .scr-rank-record-v2 { font-size: var(--fs-caption); }
