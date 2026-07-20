@@ -2,11 +2,13 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Spinner } from "../components/common/Feedback";
 import OptionalDateTimeFields from "../components/common/OptionalDateTimeFields";
+import KakaoShareButton from "../components/common/KakaoShareButton";
 import { api } from "../api/client";
 import { useAppStore } from "../store/appStore";
 import { useLockBodyScroll } from "../utils/bodyScrollLock";
 import { formatChallengeSchedule } from "../utils/date";
 import { playMailChime } from "../utils/sfx";
+import type { KakaoShareContent } from "../utils/kakaoShare";
 import type { Challenge } from "../types";
 
 interface ChallengeInboxModalProps {
@@ -33,7 +35,9 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
   // 쉐이킹"), 흔들림이 끝나면 "열기/버리기" 버튼이 뜬다(요청: "버튼 다시 살릴게 버튼은
   // 열기/버리기"). 열기를 누르면 "letter"(편지지: 제목/내용/응답 폼)로 넘어가고, 버리기를
   // 누르면 응답 없이 다음 도전장으로 넘긴다(고민중과 같은 취급 — 다음 접속 때 다시 뜬다).
-  const [stage, setStage] = useState<"envelope" | "letter">("envelope");
+  // "accepted"는 승락 성공 뒤 뜨는 확인창 — 카카오톡 공유 버튼을 보여준다(요청). 확인을
+  // 누르면 다음 도전장으로 넘어간다(advance).
+  const [stage, setStage] = useState<"envelope" | "letter" | "accepted">("envelope");
   // 봉투 흔들림이 끝난 뒤에만 열기/버리기 버튼을 띄운다.
   const [envReady, setEnvReady] = useState(false);
   // 요청자가 "시간 지정"을 끄고 보낸(scheduledAt 없음) 도전장은 "상대가 정해도 된다"는
@@ -90,7 +94,9 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
         ? new Date(`${dateStr}T${timeStr}`).toISOString()
         : undefined;
       await api.respondToChallenge(current.id, response, scheduledAt);
-      advance();
+      // 승락은 확인창(카카오 공유)으로, 거절은 곧바로 다음 도전장으로.
+      if (response === "accepted") setStage("accepted");
+      else advance();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "응답하지 못했어요.");
     } finally {
@@ -121,6 +127,24 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
   // 편지봉투 위 문구와 편지지 제목을 다르게 둔다(요청).
   const envelopeTitle = `${current.createdBy.nickname}님에게 호출당함`;
   const letterTitle = `${user?.nickname ?? "너"} 너 나와!`;
+
+  // 승락 확인창 — 최종 확정된 일시(요청자가 안 정했으면 내가 방금 고른 값)로 공유 내용을 만든다.
+  const acceptedWhen = current.scheduledAt
+    ? formatChallengeSchedule(current.scheduledAt)
+    : dateStr && timeStr
+      ? formatChallengeSchedule(new Date(`${dateStr}T${timeStr}`).toISOString())
+      : formatChallengeSchedule(null);
+  const shareAccept = (): KakaoShareContent => {
+    const caller = current.createdBy.nickname;
+    const me = user?.nickname ?? "";
+    const matchup = isTeamMatch ? `${opposingTeam.join(", ")} vs ${ourTeam.join(", ")}` : `${caller} vs ${me}`;
+    return {
+      title: "대결 수락!",
+      description: `${matchup} · ${acceptedWhen}`,
+      imageUrl: `${window.location.origin}/images/items/nawa2.jpg`,
+      fallbackText: `[스타게이트] ${me}님이 ${caller}님의 호출을 수락했어요!\n${matchup}\n일시: ${acceptedWhen}`,
+    };
+  };
 
   return createPortal(
     <div className="scr-modal-overlay">
@@ -200,6 +224,21 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
               >
                 {busy ? <><Spinner /> 처리 중...</> : "승락"}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 승락 확인창 — 수락하고 나면 이 카드로 바뀌어 카카오톡 공유를 권한다(요청). */}
+      {stage === "accepted" && (
+        <div className="scr-modal scr-modal-sm scr-challenge-inbox-modal">
+          <div className="scr-modal-body scr-challenge-sent">
+            <img src="/images/items/nawa2.jpg" alt="" className="scr-challenge-sent-hero" />
+            <div className="scr-challenge-sent-title">대결 수락!</div>
+            <div className="scr-challenge-sent-desc">{acceptedWhen}에 만나요. 카카오톡으로도 알려줄까요?</div>
+            <div className="scr-form-actions scr-challenge-sent-actions">
+              <KakaoShareButton variant="full" content={shareAccept} />
+              <button type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid" onClick={advance}>확인</button>
             </div>
           </div>
         </div>

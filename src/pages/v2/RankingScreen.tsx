@@ -9,6 +9,8 @@ import Select from "../../components/common/Select";
 import RankRow from "./RankRow";
 import RankingDetailModal from "./RankingDetailModal";
 import ChallengeFormModal from "../../modals/ChallengeFormModal";
+import KakaoShareButton from "../../components/common/KakaoShareButton";
+import type { KakaoShareContent } from "../../utils/kakaoShare";
 import {
   computeRankRows, computeRankTrend, MATCH_TYPE_OF,
   type RankMode, type RankRow as RankRowData, type RankTrendPoint,
@@ -163,6 +165,20 @@ export default function RankingScreenV2() {
 
   const period = useMemo(() => periodAnchorToRange(unit, anchor), [unit, anchor]);
 
+  // 카카오톡 공유 내용 — 누르는 시점의 필터/순위로 만든다(상위 5명 + 조건 라벨). 함수로
+  // 넘겨 버튼이 최신 상태를 읽게 한다.
+  const shareRanking = (): KakaoShareContent => {
+    const modeLabel = mode === "team" ? "팀전" : "개인전";
+    const raceLabel = race === "all" ? "" : ` · ${race}`;
+    const label = `${modeLabel}${raceLabel} · ${periodAnchorLabel(unit, anchor)}`;
+    const top = visibleRows.slice(0, 5).map((r) => `${r.rank}. ${r.member.nickname} (${r.rankScore}점)`);
+    return {
+      title: `스타게이트 랭킹 · ${label}`,
+      description: top.slice(0, 3).join("  "),
+      fallbackText: `[스타게이트 랭킹] ${label}\n${top.join("\n")}`,
+    };
+  };
+
   // 산정 방식 안내 — 항상 보이는 문단 대신, 눌러야 뜨는 툴팁으로(요청: "누르면 툴팁형태로
   // 보이게"). 헤더의 프로필 드롭다운과 같은 패턴(attachPopover + 바깥 클릭/포커스 이동 시 닫음).
   const [methodTipOpen, setMethodTipOpen] = useState(false);
@@ -277,6 +293,8 @@ export default function RankingScreenV2() {
         >
           <Info size={13} /> 산정 방식
         </button>
+        {/* 우측 구석 카카오톡 공유 — 지금 필터/순위를 카톡으로 보낸다(요청). */}
+        <KakaoShareButton content={shareRanking} variant="icon" className="scr-rank-method-share" />
       </div>
       {methodTipOpen && createPortal(
         <ul className="scr-rank-method-tooltip" ref={methodTipRef}>

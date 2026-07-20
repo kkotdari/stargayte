@@ -5,9 +5,12 @@ import Select from "../components/common/Select";
 import Avatar from "../components/common/Avatar";
 import OptionalDateTimeFields from "../components/common/OptionalDateTimeFields";
 import { Spinner } from "../components/common/Feedback";
+import KakaoShareButton from "../components/common/KakaoShareButton";
 import { useAppStore } from "../store/appStore";
 import { api } from "../api/client";
 import { useLockBodyScroll } from "../utils/bodyScrollLock";
+import { formatChallengeSchedule } from "../utils/date";
+import type { KakaoShareContent } from "../utils/kakaoShare";
 import type { Challenge, Member } from "../types";
 
 // 상대는 최대 4명까지 지목할 수 있고(팀전), 내 팀은 본인 자동 포함이라 "본인 제외"
@@ -155,6 +158,10 @@ export default function ChallengeFormModal({ onClose, onCreated, presetTargetIds
   const [timeStr, setTimeStr] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  // 호출을 보내고 나면(성공) 이 확인창으로 넘어가 카카오톡 공유 버튼을 보여준다(요청). 여기서
+  // 확인/닫기를 누를 때 비로소 onCreated로 목록을 갱신하고 모달을 닫는다(그 전에 onCreated를
+  // 부르면 호출부에 따라 모달이 즉시 언마운트돼 확인창을 못 보여준다).
+  const [sentChallenge, setSentChallenge] = useState<Challenge | null>(null);
 
   const memberById = useMemo(() => new Map(members.map((m) => [m.id, m])), [members]);
   const activeMembers = useMemo(
@@ -201,14 +208,59 @@ export default function ChallengeFormModal({ onClose, onCreated, presetTargetIds
         scheduledAt,
         fromMatchRequest,
       });
-      onCreated(challenge);
-      onClose();
+      // 바로 닫지 않고 확인창(카카오 공유)으로 넘어간다.
+      setSentChallenge(challenge);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "도전장을 보내지 못했어요.");
     } finally {
       setBusy(false);
     }
   };
+
+  // 확인창에서 확인/닫기 — 이때 목록 갱신(onCreated) 후 모달을 닫는다.
+  const finish = () => {
+    if (sentChallenge) onCreated(sentChallenge);
+    onClose();
+  };
+
+  // 호출 완료 확인창의 카카오톡 공유 내용.
+  const shareCall = (challenge: Challenge): KakaoShareContent => {
+    const names = challenge.targets.map((t) => t.nickname).join(", ");
+    const when = formatChallengeSchedule(challenge.scheduledAt);
+    const caller = user?.nickname ?? "";
+    return {
+      title: `${names} 너 나와!`,
+      description: `${caller ? `${caller}님의 호출` : "호출"} · ${when}`,
+      imageUrl: `${window.location.origin}/images/items/nawa2.jpg`,
+      fallbackText: `[스타게이트] ${caller ? `${caller}님이 ` : ""}${names}님을 호출했어요! "${names} 너 나와!"\n일시: ${when}`,
+    };
+  };
+
+  // 호출 완료 확인창 — 보내고 나면 이 화면으로 바뀌어 카카오톡 공유를 권한다(요청).
+  if (sentChallenge) {
+    return createPortal(
+      <div className="scr-modal-overlay">
+        <div className="scr-modal scr-modal-sm scr-challenge-form-modal">
+          <div className="scr-modal-head">
+            <span>호출 완료</span>
+            <button className="scr-icon-btn" onClick={finish} aria-label="닫기"><X size={14} /></button>
+          </div>
+          <div className="scr-modal-body scr-challenge-sent">
+            <img src="/images/items/nawa2.jpg" alt="" className="scr-challenge-sent-hero" />
+            <div className="scr-challenge-sent-title">
+              {sentChallenge.targets.map((t) => t.nickname).join(", ")} 너 나와!
+            </div>
+            <div className="scr-challenge-sent-desc">호출을 보냈어요. 카카오톡으로도 알려줄까요?</div>
+            <div className="scr-form-actions scr-challenge-sent-actions">
+              <KakaoShareButton variant="full" content={() => shareCall(sentChallenge)} />
+              <button className="scr-btn scr-btn-primary scr-btn-primary-solid" onClick={finish}>확인</button>
+            </div>
+          </div>
+        </div>
+      </div>,
+      document.body,
+    );
+  }
 
   return createPortal(
     <div className="scr-modal-overlay">
