@@ -6132,6 +6132,10 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
   cursor: text;
   border: none;
   background: rgba(255, 255, 255, 0.08);
+  /* .scr-input 공용 규칙의 데이터 폰트(D2Coding) 대신 기본 UI 폰트(Pretendard)를 쓴다
+     (요청: "요청 인풋 폰트 데이터펀트 말고 기본 폰트(pretendard) 적용") — 검색창
+     (.scr-search-chip-box)과 같은 방식으로 unset해서 body의 기본 폰트를 물려받는다. */
+  font-family: unset;
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.14), inset 0 -1px 0 rgba(255,255,255,0.04);
 }
 .scr-mreq-editor::-webkit-scrollbar { display: none; }
