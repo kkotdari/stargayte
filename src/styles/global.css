@@ -6194,8 +6194,10 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
    흰 칩에 그림자만 줘서(요청) 흰 보드 위에서도 살짝 떠 보이게 한다. */
 .scr-mreq-chip {
   display: inline-flex; align-items: center; gap: 3px;
-  /* 래디우스는 완전한 알약보다 살짝 감소(요청: "유저칩 래디우스 살짝 감소시켜줘"). */
-  padding: 0 7px; border-radius: 8px;
+  /* 래디우스는 완전한 알약보다 살짝 감소(요청: "유저칩 래디우스 살짝 감소시켜줘").
+     패딩도 줄여서 문장에 섞여드는 만큼 "칩" 느낌을 줄인다(요청: "유저칩이 문장에
+     섞이는 만큼 패딩을 좀 줄여서 칩의 느낌을 감소시키기"). */
+  padding: 0 4px; border-radius: 8px;
   /* 좀 더 투명하게(요청: "내용의 유저칩을 좀 투명하게 해주고"). */
   background: rgba(255, 255, 255, 0.72); color: #24272d;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18), 0 0 1px rgba(0, 0, 0, 0.1);
