@@ -6112,47 +6112,38 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
    서로의 높이에 맞춰 늘려준다. */
 .scr-mreq-compose-row { display: flex; align-items: stretch; gap: 8px; }
 .scr-mreq-input-wrap { position: relative; flex: 1; min-width: 0; }
-.scr-mreq-confirm-btn { flex-shrink: 0; }
-/* 편집은 평범한 <input>이 전담하고(캐럿/선택/IME/백스페이스 전부 브라우저 네이티브라
-   Range/execCommand 같은 손수 DOM 조작이 필요 없다 — contentEditable 방식은 브라우저마다
-   캐럿/포커스 처리가 미묘하게 달라 아무리 고쳐도 새 버그가 계속 나왔다, 실제로 지적받은
-   문제 — "근본적인 구조 변경이 필요해 보여"), 그 위에 읽기전용 오버레이를 겹쳐 "@{닉네임}"
-   구간만 칩처럼 그려 보여준다(노션 등의 인라인 태그/코드 표기 방식과 같은 원리, 요청:
-   "노션같은것도 보면 태그나 미니 코드 보여주는 것도 있고 그런거 활용해봐"). 두 레이어가
-   폭/패딩/폰트가 완전히 같아야 겹쳐 보이므로 같은 .scr-input .scr-mreq-editor 기반
-   클래스를 공유한다. */
-.scr-mreq-editor-stack { position: relative; height: 100%; }
+/* 편집창은 검색창(SearchFilterBar)의 유저 태그 칩 입력과 완전히 같은 구조(요청: "검색창의
+   소스를 그대로 가져와서") — 확정된 평문/칩 조각은 실제 DOM 요소로 굳어지고, 지금
+   타이핑 중인 마지막 조각만 진짜 <input> 하나가 담당한다. contentEditable+execCommand로
+   DOM 칩을 직접 다루던 이전 방식들은 브라우저마다 캐럿/포커스 처리가 미묘하게 달라
+   고쳐도 계속 새 버그가 나왔다(실제로 지적받은 문제 — "근본적인 구조 변경이 필요해
+   보여"). 이 구조는 캐럿/선택/IME가 전부 그 작은 input 하나의 네이티브 동작이라 그런
+   문제가 생길 여지가 없다. */
 .scr-mreq-editor {
-  width: 100%; height: 100%; box-sizing: border-box; font-family: inherit;
-  display: flex; align-items: center;
-  /* 지우기(X) 버튼 자리만큼 오른쪽 패딩을 넉넉히 둔다. */
-  padding-right: 30px;
-  /* 한 줄 인풋처럼 — 줄바꿈 없이 옆으로만 늘어나고, 넘치면 가로 스크롤. */
-  white-space: pre; overflow: hidden;
-}
-/* 진짜 입력을 받는 레이어 — 글자 자체는 투명하게 숨기고 caret-color만 살려서 캐럿은
-   보이게 한다(위 오버레이가 그 자리에 칩/평문을 그대로 겹쳐 보여준다). */
-.scr-mreq-editor-real {
+  width: 100%; height: 100%; box-sizing: border-box;
+  display: flex; align-items: center; flex-wrap: nowrap; gap: 4px;
+  padding-right: 30px; /* 지우기(X) 버튼 자리 */
+  overflow-x: auto; scrollbar-width: none;
+  cursor: text;
   border-color: rgba(255, 255, 255, 0.4);
   background: rgba(255, 255, 255, 0.08);
-  color: transparent; caret-color: var(--text);
-  cursor: text; overflow-x: auto;
 }
-.scr-mreq-editor-real::selection { background: rgba(255, 255, 255, 0.28); }
-.scr-mreq-editor-real:focus { outline: none; border-color: rgba(255, 255, 255, 0.7); }
-/* 오버레이 — 클릭/키보드가 전부 아래 입력창으로 그대로 통과하도록 pointer-events:none,
-   테두리/배경은 투명해서 입력창의 테두리/배경만 보인다. */
-.scr-mreq-editor-overlay {
-  position: absolute; inset: 0;
-  border-color: transparent; background: transparent;
-  pointer-events: none; color: var(--text);
-}
+.scr-mreq-editor::-webkit-scrollbar { display: none; }
+.scr-mreq-editor:focus-within { outline: none; border-color: rgba(255, 255, 255, 0.7); }
 /* 라이트 테마는 흰 배경 위라 흰색 계열 테두리가 그림자처럼 진하게 도드라져 보였다 —
    더 옅게 낮추고, 어떤 내장 그림자도 확실히 죽인다(요청: "인풋창 그림자 살짝 죽이기"). */
-.scr-light-theme .scr-mreq-editor-real {
-  border-color: rgba(0, 0, 0, 0.16); box-shadow: none;
+.scr-light-theme .scr-mreq-editor { border-color: rgba(0, 0, 0, 0.16); box-shadow: none; }
+.scr-light-theme .scr-mreq-editor:focus-within { border-color: rgba(0, 0, 0, 0.32); }
+/* 확정된 평문 조각 — 다시 편집은 안 되고 그냥 흘러가는 문장의 일부로 보인다. */
+.scr-mreq-text-part { flex-shrink: 0; white-space: pre; color: var(--text); font-size: var(--fs-body); }
+/* 지금 타이핑 중인 마지막 조각 — 칩들 옆에 이어지는 진짜 인풋(검색창의
+   .scr-search-chip-input과 동일 패턴). 테두리/배경은 바깥 박스가 이미 그려주니 여긴
+   완전히 투명하게. */
+.scr-mreq-live-input {
+  flex: 1 0 40px; min-width: 40px; background: transparent; border: none; outline: none;
+  color: var(--text); font-family: inherit; font-size: var(--fs-body); padding: 0; line-height: 1;
 }
-.scr-light-theme .scr-mreq-editor-real:focus { border-color: rgba(0, 0, 0, 0.32); }
+.scr-mreq-live-input::placeholder { color: var(--muted); }
 /* 지우기 — 별도 버튼 대신 인풋 안의 X로(요청). */
 .scr-mreq-clear-btn {
   position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
@@ -6161,21 +6152,20 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
   background: transparent; color: var(--muted); padding: 0;
 }
 .scr-mreq-clear-btn:hover { background: rgba(var(--overlay-rgb), 0.12); color: var(--text); }
-/* @자동완성 드롭다운 — 입력창 바로 아래 겹쳐 뜬다. */
-.scr-mreq-mention-drop {
-  position: absolute; left: 0; right: 0; top: calc(100% + 2px); z-index: 20;
-  background: var(--panel-solid); border: 1px solid var(--line); border-radius: var(--radius-sm);
-  box-shadow: 0 6px 18px rgba(0,0,0,0.28); overflow: hidden; max-height: 220px; overflow-y: auto;
+/* 요청 등록 버튼 — 동그란 엔터 아이콘 버튼으로(요청: "요청하기 확인 버튼을 동그란
+   엔터아이콘 버튼으로 수정"). */
+.scr-mreq-submit-btn {
+  flex-shrink: 0; align-self: center;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; border-radius: 50%; border: none; cursor: pointer;
+  background: var(--point); color: var(--point-contrast); transition: filter .12s, opacity .12s;
 }
-.scr-mreq-mention-opt {
-  width: 100%; display: flex; align-items: center; gap: 8px; padding: 7px 10px;
-  background: transparent; border: none; cursor: pointer; color: var(--text); text-align: left;
-}
-/* 유저 추천(자동완성) 드롭다운과 동일한 하이라이트 — 흰색 배경 반전(.scr-pv-opt 참고). */
-.scr-mreq-mention-opt:hover,
-.scr-mreq-mention-opt-active { background: var(--text); color: var(--point-contrast); }
-.scr-mreq-mention-opt:hover .scr-mreq-mention-name,
-.scr-mreq-mention-opt-active .scr-mreq-mention-name { color: inherit; }
+.scr-mreq-submit-btn:disabled { opacity: 0.4; cursor: default; }
+.scr-mreq-submit-btn:not(:disabled):hover { filter: brightness(1.08); }
+/* 자동완성 드롭다운은 검색창(SearchFilterBar)의 유저 추천 드롭다운과 같은 요소를
+   재사용한다(요청: "드롭다운도 같은 요소를 재사용") — .scr-pv-drop/.scr-pv-opt. 여기선
+   아바타를 함께 보여줘야 해서 가로 정렬만 얹는다. */
+.scr-mreq-mention-opt { display: flex; align-items: center; gap: 8px; }
 .scr-mreq-mention-name { font-size: var(--fs-body); font-weight: 600; }
 /* 지목 회원은 문장 안 인라인 유저 칩으로(요청: "칩이 문장 안에 포함", "칩에는 @ 없이 표현").
    흰 칩에 그림자만 줘서(요청) 흰 보드 위에서도 살짝 떠 보이게 한다. */
@@ -6189,9 +6179,15 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
 /* 인라인 칩 — 텍스트 흐름 안에서 세로 가운데로 앉게 하고, 양옆에 살짝 숨 쉬는 여백.
    (목록 카드의 읽기용 렌더에서 쓴다.) */
 .scr-mreq-chip-inline { vertical-align: middle; margin: 0 1px; user-select: none; }
-/* 편집창 오버레이 안의 칩 — 읽기전용이라(위 .scr-mreq-editor-overlay) 클릭으로 지울 수
-   없고 백스페이스로만 통째로 지워진다(요청: "지울때도 해당 문자 사이는 한번에 지워지게"). */
-.scr-mreq-chip-editor { vertical-align: middle; margin: 0 1px; }
+/* 편집창 안의 칩 — 이제 진짜 DOM 요소라(검색창의 칩과 동일 구조) × 버튼도 실제로
+   클릭해서 지울 수 있다. 백스페이스로 통째로 지우는 것도 여전히 된다(SearchFilterBar와
+   동일한 되돌리기 동작). */
+.scr-mreq-chip-editor { flex-shrink: 0; padding: 3px 4px 3px 8px; }
+.scr-mreq-chip-x {
+  display: inline-flex; align-items: center; justify-content: center;
+  background: transparent; border: none; border-radius: 50%; color: rgba(0,0,0,0.55); cursor: pointer; padding: 2px;
+}
+.scr-mreq-chip-x:hover { background: rgba(0,0,0,0.12); color: #000000; }
 .scr-mreq-empty { font-size: var(--fs-body); color: var(--dim); padding: 6px 2px; text-align: center; }
 .scr-mreq-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 /* 요청자+버튼 줄, 메시지 줄 — 세로로 두 단(요청: "요청자와 버튼로우가 한줄에 배치"). */
