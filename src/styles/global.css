@@ -748,8 +748,9 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   width: 100%; max-width: 420px; padding: 13px 18px 0; max-height: 88vh; max-height: 88dvh;
   display: flex; flex-direction: column; overflow: hidden; border-radius: var(--radius); backdrop-filter: blur(14px);
   border: none;
-  /* 패널 불투명도를 높여 뒤 배경이 덜 비치고 내용이 또렷하게 읽히도록 한다(요청: 불투명도 증가). */
-  background: rgba(16,21,26,0.72);
+  /* 팝업을 더 투명하게(요청) — 알파를 낮춰 뒤가 더 비친다. backdrop blur(14px)가 있어
+     글자 가독성은 유지된다. */
+  background: rgba(16,21,26,0.52);
   /* 테두리를 없앤 대신 위쪽 반사광(inset)과 그림자로 배경과의 구분감을 준다(요청:
      "테두리 제거한 대신 반사광과 그림자 활용하여 구분감 주기"). */
   box-shadow:
@@ -760,7 +761,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 }
 .scr-light-theme .scr-modal {
   border: none;
-  background: rgba(255,255,255,0.8);
+  background: rgba(255,255,255,0.62);
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,0.7),
     0 4px 16px rgba(0,0,0,0.12),
@@ -951,6 +952,17 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
      (ellipse at center), 농도만 올려 더 또렷한 광원으로. */
   background: radial-gradient(ellipse at center, color-mix(in srgb, var(--edge-glow) 70%, transparent) 0%, color-mix(in srgb, var(--edge-glow) 45%, transparent) 45%, color-mix(in srgb, var(--edge-glow) 22%, transparent) 75%, transparent 100%);
 }
+/* 서랍 운영 하위메뉴(아코디언)는 서랍 상단 메뉴와 톤을 맞춰, 액티브를 알약 광원 대신
+   기본색 밑줄로 심플하게 표현하고 터치/호버 반전 효과도 없앤다(요청). */
+.scr-menu-pop-drop-inline .scr-menu-pop-opt { -webkit-tap-highlight-color: transparent; }
+.scr-menu-pop-drop-inline .scr-menu-pop-opt:hover:not(.scr-menu-pop-opt-active) {
+  background: transparent; color: var(--text); border-radius: 8px;
+}
+.scr-menu-pop-drop-inline .scr-menu-pop-opt-active .scr-menu-pop-opt-label {
+  background: none; padding: 0;
+  text-decoration: underline; text-decoration-color: var(--text);
+  text-decoration-thickness: 2px; text-underline-offset: 4px;
+}
 /* 드로어 안에서는 팝오버로 띄우지 않고 그 자리에서 펼쳐지는 아코디언 — 왼쪽에 얇은 선을
    둬서 트리거 아래 딸린 하위 목록이라는 걸 표시한다. */
 .scr-menu-pop-drop-inline {
@@ -1087,7 +1099,13 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    "프라이머리 로우인만큼 충분한 갭이 필요함") — 아래쪽에만 추가로 여백을 더 준다. 필터가
    없는 너나와/회원은 물론, 기록실까지 메인 버튼 아래 간격을 더 키웠다(요청: "메인버튼의
    아래 마진만 증가"). */
-.scr-v2-primary-row { display: flex; justify-content: center; margin-bottom: 22px; }
+.scr-v2-primary-row { display: flex; justify-content: center; margin-bottom: 12px; }
+/* 회원 화면만 생성 버튼 바로 아래에 필터 바(.scr-filter-panel)가 붙는데, 그 패널이 라벨을
+   얹으려고 margin-top:-18px로 스스로를 끌어올려 버튼의 아래 여백(22px)을 거의 다 먹어
+   버튼이 "상태" 위에 딱 붙어 보였다(신고: "회원 생성버튼만 아래 공간이 없어"). 다른 화면은
+   버튼과 필터 사이에 소제목이 있어 영향이 없다 — 여기서만 -18px만큼을 더해 되돌린다
+   (기본 여백 12px + 18px = 30px). */
+.scr-members-screen-v2 .scr-v2-primary-row { margin-bottom: 30px; }
 /* 경기 등록 화면 — 등록 버튼 아래에 리플레이 위치 안내 링크를 세로로 쌓는다(요청). */
 .scr-v2-primary-row-col { flex-direction: column; align-items: center; gap: 6px; }
 .scr-v2-primary-row .scr-btn {
@@ -4347,9 +4365,9 @@ body *::-webkit-scrollbar-corner { background: transparent; }
      더하면 콘텐츠 몫(패딩 제외 36px)이 브라우저/PWA 상관없이 항상 같아진다. 전체 높이는
      사파리/PWA 공통으로 살짝 낮췄다(요청: "탭바 높이 좀 줄여도 될듯"). */
   height: calc(var(--mobile-footer-h) + env(safe-area-inset-bottom, 0px));
-  /* 불투명 패널 대신 반투명 유리(--panel) + 블러로(요청: "탭바 패널을 반투명 글래스화").
-     테마별 색은 --panel이 이미 다크/라이트 각각 반투명값을 갖는다. */
-  background-color: var(--panel);
+  /* 반투명 유리(--panel) + 블러 — 더 투명하게(요청: "투명도를 올려서 더 투명해 보이게")
+     --panel 알파를 60%로 낮춘다. 테마별 색은 --panel이 다크/라이트 각각 값을 갖는다. */
+  background-color: color-mix(in srgb, var(--panel) 60%, transparent);
   -webkit-backdrop-filter: blur(14px) saturate(1.3);
   backdrop-filter: blur(14px) saturate(1.3);
   /* 가운데가 밝고 양 끝(화면 모서리)으로 갈수록 옅어지는 광원 그라데이션은, 그 "옅어짐"이
@@ -4478,9 +4496,9 @@ html.scr-light-theme .scr-mobile-tabbar {
    완전히 뺐다 — 지금은 이 경계선 그라데이션만 남는다.) */
 .scr-drawer {
   width: min(300px, 84vw); height: 100%;
-  /* 반투명 유리 재질(요청: "패널도 반투명 재질로 변경") — 불투명(--panel-solid) 대신
-     반투명 패널색 + 배경 블러로 뒤의 어둡게 깔린 오버레이가 은은히 비친다. */
-  background-color: var(--panel);
+  /* 반투명 유리 재질 — 더 투명하게(요청: "투명도를 올려서 더 투명해 보이게") --panel의
+     알파를 60%로 낮춘 색 + 배경 블러. 블러가 있어 글자 가독성은 유지된다. */
+  background-color: color-mix(in srgb, var(--panel) 60%, transparent);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   /* 왼쪽 모서리는 예전의 색 광원 그라데이션(요청으로 제거) 대신, 유리 모서리에 빛이
@@ -5290,15 +5308,16 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
   margin: 54px 0 0; font-size: var(--fs-subhead); font-weight: 800; color: var(--text);
   letter-spacing: 0.02em;
 }
-/* "너 나와!" 제목 옆 nawa 이미지 — 제목과 한 줄에 두고(그리드 title 영역 차지),
-   가로·세로를 2배로 키우고 더 둥근 비율로 크롭한다(요청: "제목 옆에 2배로 + 더 둥글게").
-   가장자리는 인박스 히어로처럼 그라데이션으로 흐린다. */
-.scr-challenge-title-row {
-  grid-area: title; display: flex; align-items: center; gap: 14px; min-width: 0;
-}
+/* "너 나와!" 제목 옆 nawa 이미지 — 타이틀 로우 레이아웃엔 관여하지 않고 그 위에 절대위치로
+   그냥 얹는 장식(요청: "레이아웃은 그대로 두고 그림을 붙이는 것, 약간 오른쪽에 치우쳐서").
+   툴바(.scr-v2-toolbar, position:relative)를 기준으로 살짝 오른쪽에 배치하고, 세로로는 툴바
+   중앙에 맞춰(제목 높이보다 커서 위아래로 넘친다) 얹는다. 클릭은 통과시킨다. */
 .scr-challenge-title-nawa {
-  display: block; flex-shrink: 0; width: 160px; height: 100px; object-fit: cover;
-  /* 예전 112x42(2.66:1)보다 둥근 1.6:1 비율 + 원형 마스크로 타원기를 줄인다. */
+  /* 거의 오른쪽 정렬 — 가운데 정렬된 "챌린지 신청" 버튼을 안 가리게 한다(요청). 그리고
+     z-index를 음수로 둬 제목/버튼 등 다른 요소들보다 '뒤'(배경처럼)에 깔린다(요청). */
+  position: absolute; right: 2px; top: 50%; transform: translateY(-50%);
+  width: 160px; height: 100px; object-fit: cover; pointer-events: none; z-index: -1;
+  /* 1.6:1 비율 + 타원 마스크로 가장자리를 흐린다. */
   border-radius: 50%;
   -webkit-mask-image: radial-gradient(ellipse at center, #000 56%, transparent 82%);
   mask-image: radial-gradient(ellipse at center, #000 56%, transparent 82%);

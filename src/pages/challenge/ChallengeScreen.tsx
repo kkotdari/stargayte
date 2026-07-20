@@ -854,11 +854,10 @@ export default function ChallengeScreen() {
       {/* "기록" 메뉴는 폐지됐다(요청) — 목록이 하나뿐이라 타이틀 툴바엔 더 이상 액션이
           없다. 챌린지 신청 버튼은 타이틀 줄 아래 별도 줄에 가운데 정렬, 1.2배 확대(요청). */}
       <div className="scr-v2-toolbar">
-        {/* 제목 옆에 nawa 이미지를 크게(가로·세로 2배) + 더 둥글게 크롭해 곁들인다(요청). */}
-        <div className="scr-challenge-title-row">
-          <h1 className="scr-title scr-v2-toolbar-title">너 나와!</h1>
-          <img src="/images/items/nawa.jpg" alt="" className="scr-challenge-title-nawa" />
-        </div>
+        <h1 className="scr-title scr-v2-toolbar-title">너 나와!</h1>
+        {/* 타이틀 로우 레이아웃엔 관여하지 않고, 제목 옆(살짝 오른쪽)에 그냥 얹는 장식
+            이미지 — 절대위치라 원래 요소들의 배치를 그대로 둔다(요청). */}
+        <img src="/images/items/nawa.jpg" alt="" className="scr-challenge-title-nawa" />
       </div>
 
       <div className="scr-v2-primary-row">
