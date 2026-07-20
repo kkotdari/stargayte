@@ -86,7 +86,7 @@ export default function RankRowV2({ row, tiedWithPrev = false, highlighted = fal
             {onChallenge && (
               <button
                 type="button" className="scr-rank-challenge-btn" onClick={challenge}
-                aria-label={`${member.nickname}에게 결투 신청`}
+                aria-label={`${member.nickname}에게 대결 신청`}
               >
                 <Send size={16} />
               </button>

@@ -148,7 +148,7 @@ interface ChallengePage {
 }
 
 // 카드가 지금 어떤 인라인 폼을 펼치고 있는지 — 한 번에 하나만 열린다. schedule은 일시 미정
-// 도전장을 수락하며 시간을 정하는 폼, revenge는 재결투 신청, result는 결과 입력.
+// 도전장을 수락하며 시간을 정하는 폼, revenge는 재대결 신청, result는 결과 입력.
 type CardMode = "none" | "schedule" | "revenge" | "result";
 
 interface ChallengeCardProps {
@@ -169,7 +169,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
   const myTarget = challenge.targets.find((t) => t.memberId === myId);
   const isCreator = challenge.createdBy.id === myId;
   const inOwnTeam = challenge.ownMembers.some((m) => m.memberId === myId);
-  // 이 결투의 참가자인지, 참가자라면 어느 편인지 — 결과 입력/설욕전/연기 노출 판정에 쓴다.
+  // 이 대결의 참가자인지, 참가자라면 어느 편인지 — 결과 입력/설욕전/연기 노출 판정에 쓴다.
   const isParticipant = isCreator || inOwnTeam || !!myTarget;
   const mySide: ChallengeSide | null = isCreator || inOwnTeam ? "creator" : myTarget ? "target" : null;
   // 응답(ChallengeAuthor)엔 프사가 없어서(닉네임만) 로컬 회원 목록에서 찾아 보여준다 —
@@ -178,12 +178,12 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
 
   // 응답(수락/거절)은 아직 응답 안 한 지목자가, 아직 응답대기(pending)인 도전장에서만.
   const canRespond = !!myTarget && myTarget.response === "pending" && challenge.status === "pending";
-  // 결과 입력 가능 시점 — 예정 일시가 지났거나, 시간 미정으로 수락된 결투(요청: "시간 미정
+  // 결과 입력 가능 시점 — 예정 일시가 지났거나, 시간 미정으로 수락된 대결(요청: "시간 미정
   // 수락 가능, 완료 시점으로 입력됨")은 언제든. 후자는 서버가 결과 입력 시점을 예정 일시로 채운다.
   const schedulePassed = !!challenge.scheduledAt && new Date(challenge.scheduledAt).getTime() < Date.now();
   const resultInputOpen = schedulePassed || !challenge.scheduledAt;
   const canEnterResult = isParticipant && challenge.status === "confirmed" && resultInputOpen && challenge.resultWinnerSide === null;
-  // 완료된 결투에서 내가 패배한 쪽이면 재결투(설욕전)을 신청할 수 있다 — 무승부(draw)/미실시
+  // 완료된 대결에서 내가 패배한 쪽이면 재대결(설욕전)을 신청할 수 있다 — 무승부(draw)/미실시
   // (not_held)는 패자가 없어 대상이 아니다(losingSide=null). 미실시는 애초에 폐기라 완료가 아니다.
   const losingSide: ChallengeSide | null =
     challenge.resultWinnerSide === "creator" ? "target"
@@ -251,7 +251,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
   // 카드에서 바로 승락/거절 — 한마디 없이 바로 응답한다(아주 단순하게). 거절은 되돌릴 수
   // 없으니 확인만 한 번 받는다.
   const respond = async (response: "accepted" | "rejected") => {
-    if (response === "rejected" && !window.confirm("이 결투를 거절할까요?")) return;
+    if (response === "rejected" && !window.confirm("이 대결을 거절할까요?")) return;
     setErr("");
     setBusy(true);
     try {
@@ -290,7 +290,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
     }
   };
 
-  // 재결투(설욕전) 신청 — 시간은 비워서 보낼 수 있다(승리한 쪽이 수락하며 시간을 정함).
+  // 재대결(설욕전) 신청 — 시간은 비워서 보낼 수 있다(승리한 쪽이 수락하며 시간을 정함).
   const submitRevenge = async () => {
     setErr("");
     setBusy(true);
@@ -300,7 +300,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
       onResponded(updated);
       closeMode();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "재결투를 신청하지 못했어요.");
+      setErr(e instanceof Error ? e.message : "재대결을 신청하지 못했어요.");
     } finally {
       setBusy(false);
     }
@@ -333,8 +333,8 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
   const activePage = pages[shownIndex];
   const shownLatest = shownIndex === pages.length - 1;
   const activeTargetInfos = activePage.targets.map((t) => ({ target: t }));
-  // 체인은 이제 재결투(revenge) 하나뿐 — 체인의 첫 페이지(원본)를 뺀 나머지 페이지가 곧
-  // 재결투 기록이다(reappliedFromId를 따로 안 봐도 페이지 순번으로 안다).
+  // 체인은 이제 재대결(revenge) 하나뿐 — 체인의 첫 페이지(원본)를 뺀 나머지 페이지가 곧
+  // 재대결 기록이다(reappliedFromId를 따로 안 봐도 페이지 순번으로 안다).
   const isRevengePage = shownIndex > 0;
 
   // 결과 입력 대기 = 성사(수락)됐고 예정 일시가 지났는데 아직 결과가 안 들어온 상태(요청:
@@ -346,7 +346,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
     shownLatest && (challenge.resultWinnerSide === "creator" || challenge.resultWinnerSide === "target");
 
   // 이 "맨 윗줄"에 실제로 보여줄 게 하나라도 있을 때만 줄을 그린다(전부 없으면 빈 줄이
-  // 남아 어색하다). 재결투 라벨/무승부·완료·결과입력대기 배지/카운트다운/미실시 중 하나라도.
+  // 남아 어색하다). 재대결 라벨/무승부·완료·결과입력대기 배지/카운트다운/미실시 중 하나라도.
   const whenHasContent =
     isRevengePage
     || activePage.resultWinnerSide === "draw"
@@ -354,8 +354,8 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
     || (shownLatest && challenge.resultWinnerSide !== null)
     || isResultPending;
 
-  // 이미 종료된 결투(완료/미실시 등 status=done·discarded)은 패널을 더 어둡게, 아직 진행
-  // 중인(응답대기·성사) 결투는 더 밝게 해서 목록에서 한눈에 구분되게 한다(요청).
+  // 이미 종료된 대결(완료/미실시 등 status=done·discarded)은 패널을 더 어둡게, 아직 진행
+  // 중인(응답대기·성사) 대결은 더 밝게 해서 목록에서 한눈에 구분되게 한다(요청).
   const isEnded = challenge.status === "done" || challenge.status === "discarded";
 
   return (
@@ -382,10 +382,10 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
           <div ref={pagesInnerRef} className="scr-challenge-page">
             {whenHasContent && (
             <div className="scr-challenge-card-row scr-challenge-card-when">
-              {/* 체인 라벨 — 이 페이지가 재결투(설욕전) 기록이면 표시한다. 체인은 이제 재결투
-                  하나뿐이라, 원본(첫 페이지)을 뺀 모든 페이지가 재결투다(isRevengePage). */}
+              {/* 체인 라벨 — 이 페이지가 재대결(설욕전) 기록이면 표시한다. 체인은 이제 재대결
+                  하나뿐이라, 원본(첫 페이지)을 뺀 모든 페이지가 재대결이다(isRevengePage). */}
               {isRevengePage && (
-                <span className="scr-challenge-chain-tag scr-challenge-chain-tag-revenge">재결투</span>
+                <span className="scr-challenge-chain-tag scr-challenge-chain-tag-revenge">재대결</span>
               )}
               {/* 이긴 편은 매치업의 화살표 옆에 배지로 표시하니, 여기선 팀을 특정할 수 없는
                   무승부만 알약으로 남긴다(요청: "도전자편 승 이런 건 제거"). 미실시는 아예
@@ -504,7 +504,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
       {mode === "revenge" && (
         <div className="scr-challenge-time-change-form">
           <p className="scr-challenge-inbox-message">
-            재결투를 신청해요 — 이번엔 상대가 시간을 정하게 하려면 일시를 비워두세요.
+            재대결을 신청해요 — 이번엔 상대가 시간을 정하게 하려면 일시를 비워두세요.
           </p>
           <div className="scr-challenge-datetime">
             <input
@@ -520,7 +520,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
           <div className="scr-challenge-card-actions">
             <button className="scr-btn scr-btn-ghost scr-btn-sm" onClick={closeMode} disabled={busy}>취소</button>
             <button className="scr-btn scr-challenge-accept-btn scr-btn-sm" onClick={submitRevenge} disabled={busy}>
-              {busy ? <Spinner /> : "재결투 신청"}
+              {busy ? <Spinner /> : "재대결 신청"}
             </button>
           </div>
         </div>
@@ -581,7 +581,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
         </div>
       )}
 
-      {/* 결과 입력/재결투 — 인라인 폼이 안 열려 있을 때만 뜨는 액션 줄. 응답 버튼과 마찬가지로
+      {/* 결과 입력/재대결 — 인라인 폼이 안 열려 있을 때만 뜨는 액션 줄. 응답 버튼과 마찬가지로
           이력 페이지에선 자리만 예약(투명)해 페이지네이션이 안 튀게. (취소/연기/재신청 제거됨) */}
       {!readOnly && mode === "none" && (canEnterResult || canRevenge) && (
         <div className={cx("scr-challenge-card-actions", !isLatestPage && "scr-challenge-card-actions-reserve")}>
@@ -592,7 +592,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
           )}
           {canRevenge && (
             <button className="scr-btn scr-btn-ghost scr-btn-sm" onClick={startRevenge} disabled={busy}>
-              재결투 신청
+              재대결 신청
             </button>
           )}
         </div>
@@ -637,7 +637,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
 
 // "수락만"은 켜고 끄는 하나짜리 조건이라, 모바일에서 폭을 아끼려고 탭 대신 체크박스 하나로
 // 둔다(요청: "필터를 수락만으로 변경하고 수락한 건들만 노출"). 평소 목록은 상태와 무관하게
-// 하나로 합쳐 보여주고, 이 체크박스를 켜면 성사된(confirmed) 결투만 남긴다.
+// 하나로 합쳐 보여주고, 이 체크박스를 켜면 성사된(confirmed) 대결만 남긴다.
 
 
 // 폐기(휴지통)된 건 — 본 목록에서는 감추고 "휴지통" 모달에만 보여준다. 서버가 거절·무응답·
@@ -652,7 +652,7 @@ function isDiscarded(c: Challenge): boolean {
 // 건은 서버가 요청일+1일로 스탬프하므로 null이 남지 않는다)은 날짜가 없어 맨 위에 둔다. 일시가
 // 같거나 둘 다 미정이면 최근 생성 순으로 가른다.
 // 정렬: "일정 미정"(응답 대기중, scheduledAt 없음)은 맨 위 "대기중" 묶음으로, 그 아래
-// 날짜 있는 결투는 과거(위) → 미래(아래) 오름차순으로 둔다(요청: 타임라인 "위가 과거,
+// 날짜 있는 대결은 과거(위) → 미래(아래) 오름차순으로 둔다(요청: 타임라인 "위가 과거,
 // 아래가 미래" — 아래로 스크롤할수록 미래). 같은 시각/대기중끼리는 최신 생성이 위.
 function compareChallenges(a: Challenge, b: Challenge): number {
   const aNull = !a.scheduledAt;
@@ -727,15 +727,15 @@ export default function ChallengeScreen() {
   };
 
   // 너 나와! 목록은 필터/검색 없이 항상 전체를 조회한다(요청: "검색창도 제거", "무조건 전체").
-  // "기록" 메뉴는 폐지하고 완료된 결투도 같은 목록에 합친다(요청: "기록 메뉴 제거 및 원래
-  // 목록에 통합. 결과적으로 결투 목록은 1개만 존재") — 폐기(휴지통)된 건만 뺀다.
+  // "기록" 메뉴는 폐지하고 완료된 대결도 같은 목록에 합친다(요청: "기록 메뉴 제거 및 원래
+  // 목록에 통합. 결과적으로 대결 목록은 1개만 존재") — 폐기(휴지통)된 건만 뺀다.
   const unifiedList = useMemo(
     () => challenges.filter((c) => !isDiscarded(c)).sort(compareChallenges),
     [challenges],
   );
 
-  // 가장 가까운 예정된(수락) 결투의 시각 — 확정됐고 예정 일시가 아직 안 지난 것 중 가장 임박.
-  // "다가오는 매치" 이전(과거에 끝난 결투들)은 기본적으로 접어서 감춘다(요청: "다가오는 매치
+  // 가장 가까운 예정된(수락) 대결의 시각 — 확정됐고 예정 일시가 아직 안 지난 것 중 가장 임박.
+  // "다가오는 매치" 이전(과거에 끝난 대결들)은 기본적으로 접어서 감춘다(요청: "다가오는 매치
   // 이전은 모두 접혀서 안보임").
   const nextTime = useMemo(() => {
     const now = Date.now();
@@ -760,7 +760,7 @@ export default function ChallengeScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [unifiedList, nextTime]);
 
-  // "종료된 결투 보기" 토글 — 누르면 접혀 있던 앞부분이 지금 보이는 목록 위로 나타난다.
+  // "종료된 대결 보기" 토글 — 누르면 접혀 있던 앞부분이 지금 보이는 목록 위로 나타난다.
   // 콘텐츠가 뷰포트 위쪽에 삽입되면 브라우저가 스크롤 위치(px)를 그대로 유지해 화면에 보이던
   // 내용이 아래로 밀려 보인다(요청: "스크롤이 튀지 않게 조심") — 토글 직전 스크롤 높이를
   // 기억해뒀다가, 다음 렌더 직후(레이아웃 반영 후) 늘어난/줄어든 높이만큼 스크롤 위치를 같이
@@ -796,7 +796,7 @@ export default function ChallengeScreen() {
   return (
     <div className="scr-screen scr-challenge-screen-v2">
       {/* "기록" 메뉴는 폐지됐다(요청) — 목록이 하나뿐이라 타이틀 툴바엔 더 이상 액션이
-          없다. 결투 신청 버튼은 타이틀 줄 아래 별도 줄에 가운데 정렬, 1.2배 확대(요청). */}
+          없다. 대결 신청 버튼은 타이틀 줄 아래 별도 줄에 가운데 정렬, 1.2배 확대(요청). */}
       <div className="scr-v2-toolbar">
         <h1 className="scr-title scr-v2-toolbar-title">너 나와!</h1>
       </div>
@@ -807,22 +807,22 @@ export default function ChallengeScreen() {
           className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm"
           onClick={() => setFormOpen(true)}
         >
-          <Send size={15} /> 결투 신청
+          <Send size={15} /> 대결 신청
         </button>
       </div>
 
-      {/* 최상단 결투 신청 코너 — 자유 텍스트 + 인라인 언급 칩. 언급된 사람에겐 알림이 간다. */}
+      {/* 최상단 대결 신청 코너 — 자유 텍스트 + 인라인 언급 칩. 언급된 사람에겐 알림이 간다. */}
       <MatchRequestCorner />
 
       {/* 목록 중타이틀 — 요청 코너와 실제 도전장 목록을 구분한다. */}
-      <h2 className="scr-challenge-list-heading">결투 목록</h2>
+      <h2 className="scr-challenge-list-heading">대결 목록</h2>
 
-      {/* 완료된 결투도 이제 같은 목록에 섞여 있지만, 다가오는 매치 이전(과거에 끝난 결투)은
+      {/* 완료된 대결도 이제 같은 목록에 섞여 있지만, 다가오는 매치 이전(과거에 끝난 대결)은
           기본적으로 접혀서 안 보인다(요청) — 누르면 그 위로 펼쳐진다. 접을 게 없으면
           (boundaryIndex 0) 링크 자체를 안 보여준다. */}
       {boundaryIndex > 0 && (
         <button type="button" className="scr-challenge-toggle-ended-link" onClick={toggleShowEnded}>
-          {showEnded ? "종료된 결투 접기" : "종료된 결투 보기"}
+          {showEnded ? "종료된 대결 접기" : "종료된 대결 보기"}
         </button>
       )}
 
