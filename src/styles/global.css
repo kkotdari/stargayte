@@ -1980,7 +1980,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 /* 경기수 상위(1~3위) — 닉네임을 파스텔 분홍 메탈색으로(요청: "좀더 파스텔톤"). 메달과 같은
    그라데이션+background-clip:text 패턴. */
 .scr-rank-name-games {
-  background: linear-gradient(115deg, #d95fa0 0%, #ffb0d6 40%, #ffe9f4 50%, #ffb0d6 60%, #d95fa0 100%);
+  background: linear-gradient(115deg, #a82268 0%, #e15fa2 40%, #ffcfe6 50%, #e15fa2 60%, #a82268 100%);
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
 /* "경기수 TOP N" 배지 — 둥근 네모 필(요청: "둥근네모필로 변경"), 진한 분홍 배경에 흰 글씨,
