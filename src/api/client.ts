@@ -264,6 +264,11 @@ export const api = {
     return { ...page, items: page.items.map(matchFromWire) };
   },
 
+  // 카카오톡 공유 링크가 여는 "이 경기만 보이는" 화면용 단건 조회.
+  async getMatch(id: number): Promise<Match> {
+    return matchFromWire(await request<WireMatch>(`/api/matches/${id}`));
+  },
+
   // 전적통계 화면 전용 — 회원별로 이미 집계된 전적을 받는다.
   async getMatchStats(params: MatchStatsParams = {}): Promise<MatchStatsResponse> {
     const qs = buildQuery({

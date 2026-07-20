@@ -12,6 +12,8 @@ import { isUnregisteredSlot, unregisteredSlotLabel } from "../../constants/unreg
 import { cx } from "../../utils/format";
 import { attachPopover } from "../../utils/popover";
 import { dateWithDow } from "../../utils/date";
+import KakaoShareButton from "../../components/common/KakaoShareButton";
+import type { KakaoShareContent } from "../../utils/kakaoShare";
 import type { Match, Member, MatchSlot, MatchResult } from "../../types";
 
 type Outcome = "win" | "loss" | "draw" | "notHeld";
@@ -41,6 +43,23 @@ function teamSummaryName(team: MatchSlot[], memberOf: (id: string) => Member | u
   if (team.length === 0) return "";
   const first = resolveSlotName(team[0], team, memberOf);
   return team.length > 1 ? `${first} 외 ${team.length - 1}명` : first;
+}
+
+// 케밥 메뉴의 카카오톡 공유에 쓸 경기 요약 — 양 팀 이름과 결과/맵/날짜.
+function matchShareContent(match: Match, memberOf: (id: string) => Member | undefined): KakaoShareContent {
+  const t1 = teamSummaryName(match.team1, memberOf) || "팀1";
+  const t2 = teamSummaryName(match.team2, memberOf) || "팀2";
+  const resultLabel =
+    match.result === "draw" ? "무승부"
+    : match.result === "not_held" ? "미실시"
+    : `${outcomeFor("team1", match.result) === "win" ? t1 : t2} 승`;
+  const mapPart = match.mapName ? ` · ${match.mapName}` : "";
+  return {
+    title: `${t1} vs ${t2}`,
+    description: `${resultLabel}${mapPart} · ${match.date}`,
+    link: `${window.location.origin}/?sv=match&sid=${match.id}`,
+    fallbackText: `[스타게이트 경기결과]\n${t1} vs ${t2}\n결과: ${resultLabel}${mapPart}\n${match.date}`,
+  };
 }
 
 // 테이블 카드 한 칸 — [프사][닉네임][종족 영문 한 글자 배지]. 컴퓨터/비회원은 아이콘 프사에
@@ -148,9 +167,10 @@ async function downloadReplay(match: Match) {
 // 카드 오른쪽 세로점세개(⋮) — 누르면 메모/리플레이 저장/삭제를 드롭다운 메뉴로 연다(요청).
 // 위치/뒤집기는 다른 드롭다운과 같은 attachPopover, 바깥 클릭/포커스 이동으로 닫는다.
 function MatchActionsMenu({
-  match, canDelete, onMemo, onDelete,
+  match, canDelete, memberOf, onMemo, onDelete,
 }: {
-  match: Match; canDelete: boolean; onMemo: (m: Match) => void; onDelete: (m: Match) => void;
+  match: Match; canDelete: boolean; memberOf: (id: string) => Member | undefined;
+  onMemo: (m: Match) => void; onDelete: (m: Match) => void;
 }) {
   const [open, setOpen] = useState(false);
   const anchorRef = useRef<HTMLButtonElement>(null);
@@ -200,6 +220,12 @@ function MatchActionsMenu({
               {it.label}
             </button>
           ))}
+          {/* 이 경기 결과를 카카오톡으로 공유(요청). 누르면 메뉴를 닫는다. */}
+          <KakaoShareButton
+            variant="menu"
+            content={() => matchShareContent(match, memberOf)}
+            onDone={() => setOpen(false)}
+          />
         </div>,
         document.body,
       )}
@@ -324,7 +350,7 @@ export default function MatchList({
                   <div className="scr-match-trow-head">
                     {r.raw.createdBy && <span className="scr-match-trow-by">등록: {r.raw.createdBy.nickname}</span>}
                     <MatchActionsMenu
-                      match={r.raw} canDelete={canDelete}
+                      match={r.raw} canDelete={canDelete} memberOf={memberOf}
                       onMemo={onMemo} onDelete={setDeleteTarget}
                     />
                   </div>

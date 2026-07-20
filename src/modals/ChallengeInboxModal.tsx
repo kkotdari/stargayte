@@ -2,21 +2,28 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Spinner } from "../components/common/Feedback";
 import OptionalDateTimeFields from "../components/common/OptionalDateTimeFields";
+import KakaoShareButton from "../components/common/KakaoShareButton";
 import { api } from "../api/client";
 import { useAppStore } from "../store/appStore";
 import { useLockBodyScroll } from "../utils/bodyScrollLock";
 import { formatChallengeSchedule } from "../utils/date";
 import { playMailChime } from "../utils/sfx";
+import type { KakaoShareContent } from "../utils/kakaoShare";
 import type { Challenge } from "../types";
 
 interface ChallengeInboxModalProps {
   challenges: Challenge[];
   onClose: () => void;
+  // 공유 화면(SharePage)에서 재사용할 때, 응답 버튼 없이 읽기만 하는 사람(대상이 아닌 사람)이
+  // 누를 마무리 버튼 문구. 기본 "닫기". 공유 화면에선 "스타게이트로"를 넘긴다.
+  closeLabel?: string;
 }
 
 // 다음 접속 때 뜨는 도전장 팝업 — 한 번에 하나씩만 보여주고, 응답하거나 닫으면 큐의
-// 다음 도전장으로 넘어간다. 전부 처리되면 onClose로 부모가 닫는다.
-export default function ChallengeInboxModal({ challenges, onClose }: ChallengeInboxModalProps) {
+// 다음 도전장으로 넘어간다. 전부 처리되면 onClose로 부모가 닫는다. 공유 링크가 여는 화면
+// (SharePage)에서도 그대로 재사용한다 — 편지봉투부터 시작하되, 지목된 대상(targets)만
+// 거절/승락/고민중 버튼을 볼 수 있고, 대상이 아니면 읽기 전용으로만 보여준다(요청).
+export default function ChallengeInboxModal({ challenges, onClose, closeLabel = "닫기" }: ChallengeInboxModalProps) {
   useLockBodyScroll();
   // 편지지 제목("야 OO, 나와!")에 쓸 받는 사람(나) 닉네임.
   const user = useAppStore((s) => s.user);
@@ -33,7 +40,11 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
   // 쉐이킹"), 흔들림이 끝나면 "열기/버리기" 버튼이 뜬다(요청: "버튼 다시 살릴게 버튼은
   // 열기/버리기"). 열기를 누르면 "letter"(편지지: 제목/내용/응답 폼)로 넘어가고, 버리기를
   // 누르면 응답 없이 다음 도전장으로 넘긴다(고민중과 같은 취급 — 다음 접속 때 다시 뜬다).
-  const [stage, setStage] = useState<"envelope" | "letter">("envelope");
+  // "responded"는 승락/거절 성공 뒤 뜨는 확인창 — 카카오톡 공유 버튼을 보여준다(요청: 수락
+  // 뿐 아니라 거절도 공유 가능). 확인을 누르면 다음 도전장으로 넘어간다(advance).
+  const [stage, setStage] = useState<"envelope" | "letter" | "responded">("envelope");
+  // 방금 보낸 응답 종류 — 확인창 제목/공유 문구를 수락/거절에 맞춰 바꾼다.
+  const [respondedAs, setRespondedAs] = useState<"accepted" | "rejected" | null>(null);
   // 봉투 흔들림이 끝난 뒤에만 열기/버리기 버튼을 띄운다.
   const [envReady, setEnvReady] = useState(false);
   // 요청자가 "시간 지정"을 끄고 보낸(scheduledAt 없음) 도전장은 "상대가 정해도 된다"는
@@ -60,8 +71,14 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
 
   const needsSchedule = current.scheduledAt === null;
 
+  // 지목된 대상(targets)만 응답 버튼을 볼 수 있다(요청: "대상만 거절/수락/고민중 버튼").
+  // 인박스 팝업은 애초에 pending-for-me(나=대상)만 오므로 항상 true, 공유 화면에선 링크를
+  // 연 사람이 대상인지에 따라 갈린다.
+  const canRespond = !!user && current.targets.some((t) => t.memberId === user.id);
+
   const advance = () => {
     setStage("envelope");
+    setRespondedAs(null);
     setDateStr("");
     setTimeStr("");
     setErr("");
@@ -90,7 +107,9 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
         ? new Date(`${dateStr}T${timeStr}`).toISOString()
         : undefined;
       await api.respondToChallenge(current.id, response, scheduledAt);
-      advance();
+      // 승락/거절 모두 확인창(카카오 공유)으로 넘어간다(요청).
+      setRespondedAs(response);
+      setStage("responded");
     } catch (e) {
       setErr(e instanceof Error ? e.message : "응답하지 못했어요.");
     } finally {
@@ -121,6 +140,38 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
   // 편지봉투 위 문구와 편지지 제목을 다르게 둔다(요청).
   const envelopeTitle = `${current.createdBy.nickname}님에게 호출당함`;
   const letterTitle = `${user?.nickname ?? "너"} 너 나와!`;
+
+  // 응답 확인창 — 최종 확정된 일시(요청자가 안 정했으면 내가 방금 고른 값)로 공유 내용을 만든다.
+  const acceptedWhen = current.scheduledAt
+    ? formatChallengeSchedule(current.scheduledAt)
+    : dateStr && timeStr
+      ? formatChallengeSchedule(new Date(`${dateStr}T${timeStr}`).toISOString())
+      : formatChallengeSchedule(null);
+  const respondedTitle = respondedAs === "rejected" ? "대결 거절" : "대결 수락!";
+  const respondedDesc = respondedAs === "rejected"
+    ? "호출을 거절했어요. 카카오톡으로도 알려줄까요?"
+    : `${acceptedWhen}에 만나요. 카카오톡으로도 알려줄까요?`;
+  const shareResponded = (): KakaoShareContent => {
+    const caller = current.createdBy.nickname;
+    const me = user?.nickname ?? "";
+    const matchup = isTeamMatch ? `${opposingTeam.join(", ")} vs ${ourTeam.join(", ")}` : `${caller} vs ${me}`;
+    if (respondedAs === "rejected") {
+      return {
+        title: "대결 거절",
+        description: `${matchup}`,
+        imageUrl: `${window.location.origin}/images/items/nawa2.jpg`,
+        link: `${window.location.origin}/?sv=challenge&sid=${current.id}`,
+        fallbackText: `[스타게이트] ${me}님이 ${caller}님의 호출을 거절했어요.\n${matchup}`,
+      };
+    }
+    return {
+      title: "대결 수락!",
+      description: `${matchup} · ${acceptedWhen}`,
+      imageUrl: `${window.location.origin}/images/items/nawa2.jpg`,
+      link: `${window.location.origin}/?sv=challenge&sid=${current.id}`,
+      fallbackText: `[스타게이트] ${me}님이 ${caller}님의 호출을 수락했어요!\n${matchup}\n일시: ${acceptedWhen}`,
+    };
+  };
 
   return createPortal(
     <div className="scr-modal-overlay">
@@ -155,7 +206,7 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
                 정할 수 있다 — 다만 필수는 아니다(요청: "승락시에도 일시 미선택
                 가능이야"). 둘 다 비워두면 여전히 미정인 채로 승락되고, 날짜/시간을
                 절반만 채운 경우만 막는다. 거절할 땐 필요 없으니 항상 보여준다. */}
-            {needsSchedule && (
+            {needsSchedule && canRespond && (
               <OptionalDateTimeFields
                 dateStr={dateStr}
                 onDateChange={(v) => {
@@ -178,28 +229,53 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
               {err && <span className="scr-challenge-inbox-err-text">{err}</span>}
             </div>
 
-            <div className="scr-form-actions">
-              <button
-                className="scr-btn scr-challenge-reject-btn" onClick={() => respond("rejected")}
-                disabled={busy}
-              >
-                {busy ? <Spinner /> : "거절"}
-              </button>
-              {/* 수락도 거절도 아직 — 아무 응답도 안 보내고 그냥 다음(또는 닫기)으로
-                  넘어간다(요청: "수락/거절 말고 고민중 버튼 추가(그냥 아무것도
-                  안하는거)"). 응답이 안 남으므로 다음 접속 때 이 도전장이 다시 뜬다. */}
-              <button
-                type="button" className="scr-btn scr-btn-ghost" onClick={advance}
-                disabled={busy}
-              >
-                고민중
-              </button>
-              <button
-                className="scr-btn scr-challenge-accept-btn" onClick={() => respond("accepted")}
-                disabled={busy || !canAccept}
-              >
-                {busy ? <><Spinner /> 처리 중...</> : "승락"}
-              </button>
+            {/* 지목된 대상만 응답 버튼을 본다(요청). 대상이 아니면(공유 링크를 구경만 하는
+                사람) 읽기 전용이라, 마무리 버튼 하나만 둔다. */}
+            {canRespond ? (
+              <div className="scr-form-actions">
+                <button
+                  className="scr-btn scr-challenge-reject-btn" onClick={() => respond("rejected")}
+                  disabled={busy}
+                >
+                  {busy ? <Spinner /> : "거절"}
+                </button>
+                {/* 수락도 거절도 아직 — 아무 응답도 안 보내고 그냥 다음(또는 닫기)으로
+                    넘어간다(요청: "수락/거절 말고 고민중 버튼 추가(그냥 아무것도
+                    안하는거)"). 응답이 안 남으므로 다음 접속 때 이 도전장이 다시 뜬다. */}
+                <button
+                  type="button" className="scr-btn scr-btn-ghost" onClick={advance}
+                  disabled={busy}
+                >
+                  고민중
+                </button>
+                <button
+                  className="scr-btn scr-challenge-accept-btn" onClick={() => respond("accepted")}
+                  disabled={busy || !canAccept}
+                >
+                  {busy ? <><Spinner /> 처리 중...</> : "승락"}
+                </button>
+              </div>
+            ) : (
+              <div className="scr-form-actions">
+                <button type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid" onClick={advance}>
+                  {closeLabel}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 응답 확인창 — 승락/거절하고 나면 이 카드로 바뀌어 카카오톡 공유를 권한다(요청). */}
+      {stage === "responded" && (
+        <div className="scr-modal scr-modal-sm scr-challenge-inbox-modal">
+          <div className="scr-modal-body scr-challenge-sent">
+            <img src="/images/items/nawa2.jpg" alt="" className="scr-challenge-sent-hero" />
+            <div className="scr-challenge-sent-title">{respondedTitle}</div>
+            <div className="scr-challenge-sent-desc">{respondedDesc}</div>
+            <div className="scr-form-actions scr-challenge-sent-actions">
+              <KakaoShareButton variant="full" content={shareResponded} />
+              <button type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid" onClick={advance}>확인</button>
             </div>
           </div>
         </div>
@@ -232,12 +308,15 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
               >
                 열기
               </button>
-              <button
-                type="button" className="scr-btn scr-btn-ghost scr-challenge-envelope-discard"
-                onClick={discard} disabled={busy || !envReady}
-              >
-                버리기
-              </button>
+              {/* 버리기(휴지통행)는 응답의 일종이라 지목된 대상만 — 구경만 하는 사람에겐 안 뜬다. */}
+              {canRespond && (
+                <button
+                  type="button" className="scr-btn scr-btn-ghost scr-challenge-envelope-discard"
+                  onClick={discard} disabled={busy || !envReady}
+                >
+                  버리기
+                </button>
+              )}
             </div>
           </div>
         </div>

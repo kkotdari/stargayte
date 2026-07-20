@@ -14,6 +14,7 @@ import { CHALLENGE_MIN_VERSION, homeScreenFor } from "./constants/menuVersions";
 import AuthScreen from "./pages/auth/AuthScreen";
 import Header from "./layout/Header";
 import InstallBanner from "./components/common/InstallBanner";
+import InAppBrowserNotice from "./components/common/InAppBrowserNotice";
 import ChallengeScreen from "./pages/challenge/ChallengeScreen";
 import MembersScreen from "./pages/members/MembersScreen";
 import ImageSettingsScreen from "./pages/imageSettings/ImageSettingsScreen";
@@ -28,6 +29,7 @@ import AppUpdateNoticeModal from "./modals/AppUpdateNoticeModal";
 import RankingScreen from "./pages/v2/RankingScreen";
 import MatchScreen from "./pages/v2/MatchScreen";
 import StatsScreen from "./pages/v2/StatsScreen";
+import SharePage, { type ShareTarget } from "./pages/share/SharePage";
 
 import type { ScreenKey } from "./types";
 
@@ -39,6 +41,17 @@ const SCREEN_KEYS: ScreenKey[] = ["ranking", "match", "challenge", "stats", "mem
 function screenFromUrl(): ScreenKey {
   const s = new URLSearchParams(window.location.search).get("screen");
   return (SCREEN_KEYS as string[]).includes(s ?? "") ? (s as ScreenKey) : "ranking";
+}
+
+// 카카오톡 공유 링크(?sv=match|challenge&sid=123) — 있으면 그 한 장만 보이는 공유 화면을 연다.
+function shareTargetFromUrl(): ShareTarget | null {
+  const params = new URLSearchParams(window.location.search);
+  const sv = params.get("sv");
+  const id = Number(params.get("sid"));
+  if ((sv === "match" || sv === "challenge") && Number.isFinite(id) && id > 0) {
+    return { type: sv, id };
+  }
+  return null;
 }
 
 export default function App() {
@@ -71,6 +84,8 @@ export default function App() {
   const dismissUpdateNotice = useAppStore((s) => s.dismissUpdateNotice);
 
   const [screen, setScreen] = useState<ScreenKey>(screenFromUrl);
+  // 공유 링크로 들어왔으면 그 카드만 보이는 화면을 띄운다(로그인 뒤). "앱 열기"로 해제한다.
+  const [shareTarget, setShareTarget] = useState<ShareTarget | null>(shareTargetFromUrl);
   const [profileOpen, setProfileOpen] = useState(false);
   // 로그인 직후 최초 진입 화면에서는 bootstrap()이 이미 방금 다 불러온 상태라, 그 화면으로
   // "이동"한 게 아닌데도 아래 새로고침 effect가 곧바로 또 중복 조회하지 않도록 건너뛴다.
@@ -78,6 +93,16 @@ export default function App() {
   // 화면을 옮기면 항상 처음 상태로 — 이전 화면의 스크롤 위치/필터/검색 등은 기억하지
   // 않는다(요청: "페이지 상태 유지 기능 삭제 — 페이지 이동시 항상 초기상태로 로딩").
   const navigate = (next: ScreenKey) => setScreen(next);
+  // 공유 화면에서 "앱 열기" — URL의 공유 파라미터를 지우고 전체 앱(랭킹)으로 들어간다.
+  const exitShare = () => {
+    const params = new URLSearchParams(window.location.search);
+    params.delete("sv");
+    params.delete("sid");
+    const qs = params.toString();
+    window.history.replaceState(null, "", `${window.location.pathname}${qs ? `?${qs}` : ""}${window.location.hash}`);
+    setShareTarget(null);
+    setScreen("ranking");
+  };
   // 키보드가 뜨면(resizes-content라 뷰포트가 줄어들며) 브라우저가 포커스된 입력칸을
   // 보여주려고 스크롤을 올리는데, 키보드가 닫혀도 그 자리로 되돌아오지 않았다(실제로
   // 지적받은 문제 — "키보드 내려가면 다시 안 돌아와").
@@ -145,7 +170,27 @@ export default function App() {
   if (!user) {
     return (
       <ImageSettingContext.Provider value={imageSettings}>
-        <div className="scr-app scr-app-fallback-scroll" id="scr-app"><AuthScreen /></div>
+        <div className="scr-app scr-app-fallback-scroll" id="scr-app">
+          <InAppBrowserNotice />
+          <AuthScreen />
+        </div>
+      </ImageSettingContext.Provider>
+    );
+  }
+
+  // 공유 링크(?sv=…&sid=…)로 들어왔으면 그 카드 한 장만 보이는 화면을 띄운다(요청). 헤더/
+  // 탭바 등 앱 크롬 없이 카드만 — "앱 열기"로 전체 앱에 들어간다. 회원 목록(memberOf) 등
+  // 기초 데이터가 준비된 뒤에 그린다.
+  if (shareTarget) {
+    return (
+      <ImageSettingContext.Provider value={imageSettings}>
+        <div className="scr-app scr-app-fallback-scroll" id="scr-app">
+          <div className="scr-bg-grid" />
+          <InAppBrowserNotice />
+          {booting
+            ? <div className="scr-boot"><Spinner size={22} /> 데이터 불러오는 중...</div>
+            : <SharePage target={shareTarget} onExit={exitShare} />}
+        </div>
       </ImageSettingContext.Provider>
     );
   }
@@ -211,6 +256,9 @@ export default function App() {
             와버렸다) #scroll-root 바로 다음이라는 확실한 자리를 이 빈 div로 직접
             고정해준다. */}
         <div id="scr-tabbar-slot" />
+
+        {/* 카톡 등 인앱 브라우저에서 열렸으면 "기본 브라우저로 열기" 안내(로그인 유지 목적). */}
+        <InAppBrowserNotice />
 
         {/* 첫 방문(미설치) 때 한 번 뜨는 "홈 화면에 추가" 유도 배너 — 닫으면 다시 안 뜬다. */}
         <InstallBanner />
