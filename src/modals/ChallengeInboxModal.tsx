@@ -142,6 +142,7 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
       title: "대결 수락!",
       description: `${matchup} · ${acceptedWhen}`,
       imageUrl: `${window.location.origin}/images/items/nawa2.jpg`,
+      link: `${window.location.origin}/?sv=challenge&sid=${current.id}`,
       fallbackText: `[스타게이트] ${me}님이 ${caller}님의 호출을 수락했어요!\n${matchup}\n일시: ${acceptedWhen}`,
     };
   };

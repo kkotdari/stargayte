@@ -232,6 +232,7 @@ export default function ChallengeFormModal({ onClose, onCreated, presetTargetIds
       title: `${names} 너 나와!`,
       description: `${caller ? `${caller}님의 호출` : "호출"} · ${when}`,
       imageUrl: `${window.location.origin}/images/items/nawa2.jpg`,
+      link: `${window.location.origin}/?sv=challenge&sid=${challenge.id}`,
       fallbackText: `[스타게이트] ${caller ? `${caller}님이 ` : ""}${names}님을 호출했어요! "${names} 너 나와!"\n일시: ${when}`,
     };
   };

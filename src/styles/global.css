@@ -6232,6 +6232,25 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
 .scr-challenge-sent-desc { font-size: var(--fs-caption); color: var(--muted); }
 .scr-challenge-sent-actions { justify-content: center; gap: 8px; }
 
+/* ===== 공유 링크가 여는 "카드만 있는" 화면(SharePage) ===== */
+.scr-share-page { min-height: 100%; display: flex; flex-direction: column; }
+.scr-share-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 12px;
+}
+.scr-share-brand { font-weight: 800; letter-spacing: 0.02em; color: var(--text); }
+.scr-share-body {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+  gap: 12px; padding: 12px 16px calc(24px + env(safe-area-inset-bottom, 0px)); width: 100%;
+}
+.scr-share-match { width: 100%; max-width: 460px; }
+/* 너 나와 공유 카드 — 편지지(.scr-challenge-inbox-modal) 아이보리 테마/그림자를 그대로
+   쓰되, .scr-modal을 안 쓰므로 여기서 패딩/라운드만 보태준다(전체를 덮는 스크림도 없음). */
+.scr-share-card {
+  width: 100%; max-width: 460px; padding: 14px 18px 6px; border-radius: var(--radius);
+}
+.scr-share-card .scr-challenge-inbox-body { padding-bottom: 8px; }
+
 /* ===== 너 나와! 신청 코너 ("너 나와!" 최상단) =====
    @태그로 최소 2명을 지목하는 공개 요청글 코너. 지목된 사람만 "들어주기"로 도전장을 보낼 수
    있고, 다른 회원은 추천(엄지척)만 누른다. 정렬은 추천 많은 순 → 먼저 등록순, 페이지당 5개. */

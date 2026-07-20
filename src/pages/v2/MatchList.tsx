@@ -57,6 +57,7 @@ function matchShareContent(match: Match, memberOf: (id: string) => Member | unde
   return {
     title: `${t1} vs ${t2}`,
     description: `${resultLabel}${mapPart} · ${match.date}`,
+    link: `${window.location.origin}/?sv=match&sid=${match.id}`,
     fallbackText: `[스타게이트 경기결과]\n${t1} vs ${t2}\n결과: ${resultLabel}${mapPart}\n${match.date}`,
   };
 }
