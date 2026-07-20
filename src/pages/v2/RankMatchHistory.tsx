@@ -12,8 +12,9 @@ interface RankMatchHistoryProps {
   members: Member[];
   memberOf: (id: string) => Member | undefined;
   loading: boolean;
-  // 경기당 레이팅 변화(Δμ) — matchNo로 조회한다. 레이팅은 시간순 누적이라 클라이언트가
-  // 재구성할 수 없어 서버(rating-history)가 이 회원의 경기별 μ 증감을 계산해 준다.
+  // 경기당 보수레이팅(μ−3σ, 카드에 보이는 그 점수) 변화 — matchNo로 조회한다. 레이팅은
+  // 시간순 누적이라 클라이언트가 재구성할 수 없어 서버(rating-history)가 계산해 준다. 신규
+  // 회원의 초기 보수레이팅이 0이라 이 Δ들의 합이 카드 점수와 정확히 일치한다.
   deltaByMatchNo: Map<string, number>;
   // 팀전 이력이면 "우리팀 대 상대팀"을 함께 보여준다(요청) — 개인전이면 "VS 상대 + 승패"만.
   bothTeams?: boolean;
