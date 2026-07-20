@@ -2042,9 +2042,11 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
      라벨처럼 영역을 차지하지 않고") — 그만큼 아꼈던 칸을 그대로 닉네임 칸(minmax(...,1fr))
      에 돌려준다. 순위 칸(1번째)도 실제 내용(숫자+변동배지)보다 오른쪽에 빈 여백이 많이
      남는다는 피드백으로 60→48px. */
-  display: grid; grid-template-columns: 48px 40px minmax(220px, 1fr) 94px;
+  /* 닉네임 칸(3번째, 1fr)에 폭을 더 몰아준다(요청: "닉네임 폭 할당 늘리기") — 순위/점수
+     칸과 칸 간격을 조금씩 줄이고 닉네임 최소폭을 키운다. */
+  display: grid; grid-template-columns: 44px 40px minmax(248px, 1fr) 84px;
   justify-content: center; max-width: none; margin: 0;
-  align-items: center; column-gap: 18px; width: 100%; min-width: 0;
+  align-items: center; column-gap: 14px; width: 100%; min-width: 0;
   box-sizing: border-box;
   /* 구분선(행 자체의 ::after)은 양 끝까지 꽉 채우고, 내용만 좌우 여백을 둔다(요청:
      "구분선은 끝까지 차지하되 실제 내용들은 양옆에 충분한 패딩을 가지게 — 내용들이
@@ -2125,7 +2127,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
      .scr-rank-provisional 참고) — 마지막 전적 칸도 100→88px, 순위 칸(1번째)도 오른쪽
      여백이 남는다는 피드백으로 44→36px. */
   .scr-rank-table-panel-v2 .scr-rank-row-inner {
-    grid-template-columns: 36px 38px minmax(100px, 1fr) 88px; column-gap: 10px;
+    grid-template-columns: 32px 38px minmax(116px, 1fr) 80px; column-gap: 8px;
     /* 모바일은 화면이 좁아 내용 좌우 패딩(기본 32px)이 닉네임 폭을 크게 잡아먹는다 —
        구분선(행 ::before)은 양 끝까지 그대로 두고 내용 패딩만 확 줄여 닉네임이 더 길게
        보이게 한다(요청: "모바일 랭킹 좌우 패딩 축소해서 닉네임 많이 보이게"). */
