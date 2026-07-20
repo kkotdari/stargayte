@@ -77,14 +77,20 @@ export default function RankRowV2({ row, tiedWithPrev = false, highlighted = fal
               ("+N점"), 전적을 그 아래에. 이 점수가 순위(승자승 다음)를 가르는 기준이라 숫자로
               도드라지게 한다. */}
           <div className="scr-rank-record-wrap scr-rank-record-wrap-scoreonly">
-            {/* 잠정 뱃지는 이제 자기 칸을 따로 차지하지 않고(요청: "필터의 라벨처럼 영역을
-                차지하지 않고 붙어있는 추가 요소로") 점수 우상단에 절대위치로 겹쳐 붙는다 —
+            {/* 잠정 뱃지는 자기 칸을 따로 차지하지 않고(요청: "필터의 라벨처럼 영역을
+                차지하지 않고 붙어있는 추가 요소로") 점수에 절대위치로 겹쳐 붙는다 —
                 레이아웃 흐름에서 완전히 빠져 있어 잠정 유무와 무관하게 다른 요소 위치가
-                흔들리지 않는다. */}
-            {provisional && <span className="scr-rank-provisional">잠정</span>}
-            {/* 카드엔 레이팅(보수추정 μ−3σ)만(세부는 상세에서). 음수면 자연히 - 가 붙는다. */}
-            <span className="scr-rank-stat-primary">
-              {rankScore}<span className="scr-num-unit">점</span>
+                흔들리지 않는다. 바깥 wrap은 그리드 칸 너비만큼 늘어나 있어서(justify-self:
+                stretch) 그 기준으로 절대위치를 잡으면 실제 점수 숫자와 멀리 떨어져 보인다
+                (요청: "잠정배지가 ...wrap 이거 밖에 있고 안으로 못들어가서 멀리 떨어져
+                보여") — 점수 글자 폭만큼만 딱 맞는 인라인 래퍼를 하나 더 둬서 그 기준으로
+                붙인다. */}
+            <span className="scr-rank-score-inline">
+              {provisional && <span className="scr-rank-provisional">잠정</span>}
+              {/* 카드엔 레이팅(보수추정 μ−3σ)만(세부는 상세에서). 음수면 자연히 - 가 붙는다. */}
+              <span className="scr-rank-stat-primary">
+                {rankScore}<span className="scr-num-unit">점</span>
+              </span>
             </span>
           </div>
         </div>

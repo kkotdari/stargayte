@@ -1156,18 +1156,17 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    차지하지 않는다 — 레이아웃 흐름 밖이라 잠정 유무와 무관하게 다른 요소 위치가 안
    흔들린다. */
 .scr-rank-provisional {
-  /* 점수 글자와 겹쳐 보인다는 피드백으로 더 위/오른쪽으로(실제로 지적받은 문제 —
-     "잠정 배지 좀더 오른쪽 위로 이동해야함 지금 겹쳐있어 점수랑"), 이후 배경 제거하고
-     붉은 톤 글자색으로, 위치도 더 위로(요청: "잠정마크 배경 없애고 글자 약간 붉은
-     톤으로해줘", "위치를 조금더 위로 올려줘"). */
-  /* 점수와 안 겹치게 완전히 오른쪽 바깥으로 빼고, 그 자리에서 위쪽으로 살짝 든다
-     (요청: "잠정 배지를 점수의 완전 오른쪽 밖에서 위쪽") — left:100%라 점수 박스와
-     겹치지 않고 딱 붙어 시작한다. */
-  /* 살짝 왼쪽으로(요청: "살짝 왼쪽으로 이동") — 점수와의 간격만 줄인다. */
-  position: absolute; left: 100%; top: -4px; margin-left: 0px; pointer-events: none;
+  /* 배경 제거, 점수 왼쪽에 자연스럽게 세로 가운데 정렬, 여전히 자기 칸은 차지하지
+     않는다(요청: "잠정 배지를 점수 왼쪽에 자연스럽게 배치 세로 가운데 정렬 맞추고
+     지금처럼 영역은 차지 X") — right:100%로 점수 왼쪽 바깥에서 시작해 겹치지 않고,
+     top:50%+translateY(-50%)로 세로 중앙에 맞춘다. 간격은 점수에 더 가깝게(요청:
+     "잠정 배지 너무 왼쪽이야 점수에 가깝게 이동"). */
+  position: absolute; top: 50%; right: 100%; margin-right: 2px; transform: translateY(-50%);
+  pointer-events: none;
   display: inline-block; padding: 1px 4px;
   font-size: var(--fs-11); font-weight: 700; line-height: 1.4; white-space: nowrap;
-  color: #d97a7a;
+  /* 주황 톤 글자색(요청: "잠정 배지 폰트색 주황으로 변경"). */
+  color: #e69a4a;
 }
 /* 산정 방식 힌트 — 서브행 오른쪽에 옅게. 좁은 화면에선 글자만 살짝 줄인다. */
 .scr-rank-hint-inline {
@@ -1850,8 +1849,10 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 }
 /* 전적/승률도 순위/변동과 같은 패턴으로 위아래 배치, 오른쪽 정렬 */
 .scr-rank-record-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
-/* 잠정 뱃지(.scr-rank-provisional)가 이 칸 우상단에 절대위치로 겹쳐 붙는 기준점. */
-.scr-rank-record-wrap-scoreonly { position: relative; }
+/* 점수 글자 폭에 딱 맞는 인라인 래퍼 — 잠정 뱃지(.scr-rank-provisional)가 이 래퍼를
+   기준으로 절대위치로 붙는다(바깥 wrap은 그리드 칸만큼 늘어나 있어 그 기준으로 잡으면
+   실제 점수 숫자와 멀어져 보인다). */
+.scr-rank-score-inline { position: relative; display: inline-block; }
 /* 코딩폰트(scr-mono)는 숫자 글리프가 프로포셔널 폰트보다 넓고 커 보여서, 닉네임(15px)과
    나란히 있을 때 균형이 맞도록 선언값 자체는 한 단계 낮춰 잡는다. */
 .scr-rank-record-nums { color: var(--muted); font-size: var(--fs-caption); white-space: nowrap; }
@@ -1912,6 +1913,13 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    목적이라 순위 숫자와 이름을 크게, 나머지는 부가정보로 작게 둔다. 행 전체를 누르면
    순위 상세(최근 순위 변동 그래프) 모달이 뜬다. v1 랭킹 화면(RankRow.tsx)은 그대로 둔다. */
 .scr-rank-table-panel-v2 { position: relative; }
+/* 필터/기간 변경으로 새 목록을 다시 불러오는 동안 이전 목록을 흐리게 깔아두고(요청:
+   "필터바꾸면 스피너 돌면서 스크롤탑되는듯" — 목록을 비우지 않아야 패널 높이가 안
+   줄어 스크롤이 안 밀린다) 그 위에 스피너를 얹는다. */
+.scr-rank-table-refreshing { opacity: 0.4; pointer-events: none; transition: opacity .15s; }
+.scr-rank-table-refresh-spinner {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+}
 /* 좌우 패딩을 다른 화면 카드(챌린지 20px 등)와 맞춘다 — 24px로 남아 있던 예전 값이
    같은 800px 프레임 안에서도 유독 안쪽으로 더 들어와 보였다(요청: "외부 마진? 패딩
    아직 있어 랭킹 개인/팀 모두"). */
