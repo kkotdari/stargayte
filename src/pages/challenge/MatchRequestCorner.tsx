@@ -1,11 +1,65 @@
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ThumbsUp, X } from "lucide-react";
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { ThumbsUp, X, MoreVertical } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
 import { Spinner } from "../../components/common/Feedback";
 import { useAppStore } from "../../store/appStore";
 import { api } from "../../api/client";
 import { cx } from "../../utils/format";
+import { attachPopover } from "../../utils/popover";
 import type { Member, MatchRequest } from "../../types";
+
+// 추천 버튼 오른쪽 세로점세개(⋮) — 성사됨은 항목마다 상시 노출하기엔 너무 무거운
+// 액션이라(요청: "성사됨 버튼은 안보이게 해주고 ... 케밥메뉴 ... 거기에 성사됨을
+// 넣어줘") 케밥 메뉴 안으로 옮긴다. 작성자/운영자가 아니면 할 수 있는 액션이 아예
+// 없으니 케밥 자체를 렌더링하지 않는다. 위치 계산/바깥 클릭 닫힘은 경기 목록의
+// MatchActionsMenu와 같은 attachPopover 패턴을 그대로 따른다.
+function RequestKebabMenu({ onComplete, busy }: { onComplete: () => void; busy: boolean }) {
+  const [open, setOpen] = useState(false);
+  const anchorRef = useRef<HTMLButtonElement>(null);
+  const dropRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    if (!open || !anchorRef.current || !dropRef.current) return;
+    return attachPopover(anchorRef.current, dropRef.current, { growToContent: true, maxWidth: 140 });
+  }, [open]);
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: PointerEvent) => {
+      const t = e.target as Node;
+      if (anchorRef.current?.contains(t) || dropRef.current?.contains(t)) return;
+      setOpen(false);
+    };
+    document.addEventListener("pointerdown", onDoc);
+    return () => document.removeEventListener("pointerdown", onDoc);
+  }, [open]);
+
+  return (
+    <div className="scr-mreq-kebab">
+      <button
+        type="button" ref={anchorRef}
+        className="scr-match-memo-btn scr-mreq-kebab-btn"
+        onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
+        disabled={busy}
+        aria-label="더보기" aria-haspopup="menu" aria-expanded={open}
+      >
+        <MoreVertical size={16} />
+      </button>
+      {open && createPortal(
+        <div className="scr-menu-pop-drop scr-mreq-kebab-drop" ref={dropRef} role="menu">
+          <button
+            type="button" role="menuitem"
+            className="scr-menu-pop-opt"
+            onClick={(e) => { e.stopPropagation(); onComplete(); setOpen(false); }}
+          >
+            성사됨
+          </button>
+        </div>,
+        document.body,
+      )}
+    </div>
+  );
+}
 
 // 저장 텍스트는 언급을 "@닉네임" 마커로 담는다(내부 표식일 뿐 화면엔 @가 안 보인다) — 문장
 // 안에 인라인 유저 칩으로 넣는 구조. 목록 카드에서 그 마커를 찾아 인라인 칩으로 렌더한다.
@@ -375,7 +429,13 @@ export default function MatchRequestCorner() {
   const canSubmit = text.trim().length > 0 && !submitting;
 
   const resetCompose = () => {
-    if (editorRef.current) editorRef.current.innerHTML = "";
+    if (editorRef.current) {
+      editorRef.current.innerHTML = "";
+      // X는 편집창 밖의 별도 <button>이라 클릭하면 기본적으로 그쪽으로 포커스가
+      // 넘어가버린다 — 지우고 나서 다시 이어 쓸 수 있게 편집창으로 되돌린다(실제로
+      // 지적받은 문제 — "요청 입력 x버튼 누르면 포커싱을 잃는 문제").
+      editorRef.current.focus();
+    }
     setText("");
     setMentionQuery(null);
     setSubmitErr(null);
@@ -449,7 +509,13 @@ export default function MatchRequestCorner() {
                 suppressContentEditableWarning
               />
               {!isEmpty && (
-                <button type="button" className="scr-mreq-clear-btn" onClick={resetCompose} aria-label="지우기">
+                <button
+                  type="button"
+                  className="scr-mreq-clear-btn"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={resetCompose}
+                  aria-label="지우기"
+                >
                   <X size={14} />
                 </button>
               )}
@@ -497,11 +563,6 @@ export default function MatchRequestCorner() {
                   <span className="scr-mreq-item-author-name">{req.author.nickname}</span>
                 </div>
                 <div className="scr-mreq-item-actions">
-                  {(req.mine || isAdmin) && (
-                    <button type="button" className="scr-btn scr-btn-sm scr-btn-primary scr-btn-primary-solid scr-mreq-take-btn" onClick={() => void complete(req)} disabled={busyId === req.id}>
-                      성사됨
-                    </button>
-                  )}
                   <button
                     type="button"
                     className={cx("scr-mreq-rec-btn", req.recommendedByMe && "scr-mreq-rec-btn-on")}
@@ -511,6 +572,9 @@ export default function MatchRequestCorner() {
                   >
                     <ThumbsUp size={14} /> {req.recommendCount}
                   </button>
+                  {(req.mine || isAdmin) && (
+                    <RequestKebabMenu onComplete={() => void complete(req)} busy={busyId === req.id} />
+                  )}
                 </div>
               </div>
               <p className="scr-mreq-item-text">{renderInline(req.text, req.targets)}</p>

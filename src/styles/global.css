@@ -6134,9 +6134,14 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
 }
 .scr-mreq-editor:focus { outline: none; border-color: rgba(255, 255, 255, 0.7); }
 /* 네이티브 placeholder는 input/textarea 전용이라 div에는 안 먹는다 — 비어 있을 때만
-   (React가 계산한 isEmpty 기준, DOM :empty보다 신뢰도 높음) 안내 문구를 흉내낸다. */
+   (React가 계산한 isEmpty 기준, DOM :empty보다 신뢰도 높음) 안내 문구를 흉내낸다.
+   editor가 display:flex라 :before를 그냥 두면 placeholder 자신이 하나의 flex 아이템으로
+   본문 앞자리를 차지해버려서, 빈 편집창을 클릭했을 때 진짜(빈) 캐럿이 그 placeholder
+   뒤로 밀려 보이는 문제가 있었다(요청: "아무 내용없을때 ... 플레이스 홀더 끝에 커서가
+   놓이는 현상") — flex 흐름에서 아예 빼고(position:absolute) 겹쳐서만 보여준다. */
 .scr-mreq-editor-empty:before {
   content: attr(data-placeholder); color: var(--muted); pointer-events: none;
+  position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
 }
 /* 라이트 테마는 흰 배경 위라 흰색 계열 테두리가 그림자처럼 진하게 도드라져 보였다 —
    더 옅게 낮추고, 어떤 내장 그림자도 확실히 죽인다(요청: "인풋창 그림자 살짝 죽이기"). */
@@ -6215,8 +6220,12 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
 }
 .scr-mreq-rec-btn:hover { color: var(--text); border-color: var(--pipe-bright); }
 .scr-mreq-rec-btn-on { color: var(--point); border-color: var(--point); background: color-mix(in srgb, var(--point) 14%, transparent); }
-/* "성사됨"을 2스텝 축소(body→caption→micro)해서 액션 칸 폭을 줄인다(요청). */
-.scr-mreq-take-btn { white-space: nowrap; font-size: var(--fs-micro); padding: 4px 8px; min-height: 0; }
+/* "성사됨"은 항목마다 상시 노출하기엔 무거운 액션이라 케밥(⋮) 메뉴 안으로(요청).
+   버튼/드롭다운 자체는 경기 목록 케밥과 톤을 맞춰 .scr-match-memo-btn·.scr-menu-pop-drop을
+   그대로 재사용한다. */
+.scr-mreq-kebab { display: inline-flex; flex-shrink: 0; }
+.scr-mreq-kebab-btn { padding: 4px; margin: 0; }
+.scr-mreq-kebab-drop { min-width: 96px; }
 .scr-mreq-pager { display: flex; align-items: center; justify-content: center; gap: 12px; padding-top: 4px; }
 .scr-mreq-pager-btn {
   background: transparent; border: 1px solid var(--line); border-radius: var(--radius-sm);
