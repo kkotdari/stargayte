@@ -60,34 +60,36 @@ export default function RankingScreenV2() {
   const hasPrev = anchor > minAnchor;
   const hasNext = anchor < maxAnchor;
 
-  // 개인전/팀전은 집계 대상 경기 자체가 다른 별도 목록이라, 한쪽에서 걸어둔 검색어·종족
-  // 필터를 그대로 들고 가면 무의미하게 남는다 — 모드를 바꾸면 초기화한다. 목록도 그 자리에서
-  // 비운다(안 그러면 새 집계 도착 전까지 이전 모드 목록이 그대로 보이다가 갑자기 갈아치워짐).
+  const [rows, setRows] = useState<RankRowData[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // 개인전/팀전은 집계 대상 경기 자체가 다른 별도 목록이다 — 모드를 바꾸면 검색어만
+  // 초기화한다. 목록(rows)은 더 이상 여기서 비우지 않는다: 비우면 그 순간 패널 높이가
+  // 확 줄었다가 새 데이터로 다시 늘어나는데, 그 사이 브라우저가 지금 스크롤 위치를 줄어든
+  // 높이에 맞춰 top으로 당겨버리는 문제가 있었다(요청: "필터바꾸면 스피너 돌면서
+  // 스크롤탑되는듯"). 대신 새 데이터가 도착할 때까지 이전 목록을 그대로 둔 채 흐리게+
+  // 스피너로 "갱신 중"만 표시한다(아래 JSX, loading && rows.length > 0) — 높이가 안
+  // 줄어드니 스크롤도 안 밀린다.
   const handleModeChange = (m: RankMode) => {
     setMode(m);
     setSearch("");
-    setRows([]);
   };
   // 기간 단위를 바꾸면 그 단위의 "현재"로 기준점을 되돌린다(월↔연은 anchor 형식 자체가 달라
-  // 그대로 둘 수 없다). 목록은 즉시 비우고 로딩부터 다시 그린다.
+  // 그대로 둘 수 없다).
   const handleUnitChange = (u: PeriodUnit) => {
     if (u === unit) return;
     setUnit(u);
     setAnchor(currentPeriodAnchor(u));
-    setRows([]);
   };
   // 기간 이동 — 그 단위(월/연)만큼 한 칸씩. 범위(데이터 시작 ~ 현재)를 벗어나면 무시한다.
   const goPeriod = (delta: number) => {
     const next = shiftPeriodAnchor(unit, anchor, delta);
     if (next < minAnchor || next > maxAnchor) return;
     setAnchor(next);
-    setRows([]);
   };
-  const [rows, setRows] = useState<RankRowData[]>([]);
   // 카드(행) 클릭 — 상세 모달(최근 5개 기간 순위변동 그래프 + 경기 이력·경기당 Δ).
   const [trendMember, setTrendMember] = useState<Member | null>(null);
   const [trendPoints, setTrendPoints] = useState<RankTrendPoint[] | null>(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   // 화면 전환마다(App.tsx의 refreshAll) members가 내용은 같아도 새 배열 참조로 갱신되는데,
@@ -249,7 +251,12 @@ export default function RankingScreenV2() {
       {error && <div className="scr-err">{error}</div>}
 
       <div className="scr-rank-table-panel-v2">
-        <div className="scr-rank-table">
+        {/* 필터/기간을 바꿔 새 데이터를 다시 불러오는 동안, 목록을 비우지 않고 이전
+            목록 위에 흐림+스피너만 얹는다 — 목록을 비우면 그 순간 패널 높이가 줄었다가
+            다시 늘어나면서 브라우저가 스크롤 위치를 top으로 당겨버렸다(요청: "필터바꾸면
+            스피너 돌면서 스크롤탑되는듯"). rows.length>0인데 loading이면 "갱신 중"이고,
+            rows.length===0인데 loading이면 첫 진입(보여줄 게 아예 없음)이라 스피너만. */}
+        <div className={cx("scr-rank-table", loading && rows.length > 0 && "scr-rank-table-refreshing")}>
           {visibleRows.length === 0 ? (
             <div className="scr-empty">{loading ? <Spinner size={18} /> : "기록이 없어요"}</div>
           ) : (
@@ -266,6 +273,9 @@ export default function RankingScreenV2() {
             ))
           )}
         </div>
+        {loading && rows.length > 0 && (
+          <div className="scr-rank-table-refresh-spinner"><Spinner size={18} /></div>
+        )}
       </div>
 
       {trendMember && (
