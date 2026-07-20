@@ -154,7 +154,7 @@
      흰(다크)↔검(라이트)으로 뒤집히므로 반투명 반전이 자동으로 테마를 따른다. 패널은
      반투명 유리(테마별 값)로 통일한다. */
   --dd-hover-bg: rgba(var(--overlay-rgb), 0.08);
-  --dd-active-bg: rgba(var(--overlay-rgb), 0.16);
+  --dd-active-bg: rgba(var(--overlay-rgb), 0.28);
   --dd-panel-bg: rgba(20, 25, 31, 0.82);
 
   /* 타이틀이 아닌 "데이터"(입력값/표시값 — 날짜, 배틀태그, 수치, 아이디 등)에 쓰는 고정폭
@@ -968,8 +968,11 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-menu-pop-drop-inline .scr-menu-pop-opt:hover:not(.scr-menu-pop-opt-active) {
   background: transparent; color: var(--text); border-radius: 8px;
 }
+/* 아코디언엔 알약이 없으므로 라벨의 알약 패딩(3px 8px)을 모두 없앤다 — 액티브만 padding:0라
+   글자가 8px 왼쪽으로 튀어나와 보이던 버그(신고: "액티브만 앞으로 더 내어쓰기")를 없앤다. */
+.scr-menu-pop-drop-inline .scr-menu-pop-opt-label { padding: 0; }
 .scr-menu-pop-drop-inline .scr-menu-pop-opt-active .scr-menu-pop-opt-label {
-  background: none; padding: 0;
+  background: none;
   text-decoration: underline; text-decoration-color: var(--text);
   text-decoration-thickness: 2px; text-underline-offset: 4px;
 }
@@ -1938,9 +1941,11 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    "랭킹카드에 바로 그 상대로 도전장 띄우는 버튼 추가 닉네임 옆에", "랭킹 차트에도
    종이비행기 버튼으로 바꿔야지"). */
 .scr-rank-challenge-btn {
+  /* 랭킹 로우의 호출하기(비행기) 버튼은 숨긴다(요청). 다시 켜려면 display 줄을 제거한다. */
+  display: none;
   /* 크기 확대 + 닉네임과의 간격을 더 벌림(요청: "랭킹카드의 비행기 버튼 크기 확대 및
      닉네임에서 좀더 멀리 위치") — wrap의 기본 gap(4px)에 마진을 더한다. */
-  flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;
+  flex-shrink: 0; align-items: center; justify-content: center;
   width: 28px; height: 28px; margin-left: 6px; padding: 0; border: none; background: transparent;
   border-radius: 50%; color: var(--muted); cursor: pointer; opacity: 0.75;
   transition: opacity .12s, background .12s, color .12s;
