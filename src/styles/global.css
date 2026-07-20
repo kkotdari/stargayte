@@ -1017,12 +1017,12 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   grid-template-columns: 1fr auto;
   grid-template-areas: "title actions";
   align-items: center; column-gap: 20px;
-  padding-bottom: 14px;
+  /* 메인 타이틀 아래 갭을 기존의 두 배로(요청: "메인 타이틀 아래 갭 두배정도로") — 14→28px. */
+  padding-bottom: 28px;
   /* 액션 버튼(높이 --field-h-sm)이 있는 화면과 없는 화면이 서로 다른 높이가 되어 그 아래
-     필터/목록이 화면마다 조금씩 밀려 보였다(요청: "타이틀로우 버튼 유무에 따라 레이아웃이
-     흔들리지 않게"). 버튼이 없어도 항상 버튼 한 줄 높이를 예약해 모든 화면의 타이틀 줄
-     높이를 똑같이 맞춘다. */
-  min-height: calc(var(--field-h-sm) + 14px);
+     필터/목록이 화면마다 조금씩 밀려 보였다 — 버튼이 없어도 버튼 한 줄 높이를 예약해 모든
+     화면의 타이틀 줄 높이를 똑같이 맞춘다. 위 padding-bottom과 짝을 맞춰 함께 키운다. */
+  min-height: calc(var(--field-h-sm) + 28px);
 }
 /* 액션 버튼과 나란히 있을 때 세로 중앙정렬만으로는 타이틀 글자가 살짝 처져 보여서,
    그 기준선을 조금 위로 올린다. */
@@ -1032,8 +1032,12 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-rank-toolbar { display: flex; align-items: center; gap: 24px; }
 .scr-rank-toolbar .scr-v2-toolbar-title { flex: 0 0 auto; }
 .scr-rank-mode-tabs { display: inline-flex; transform: translateY(-6px); }
-/* 라디오를 한 스텝 작게(텍스트 caption) + 높이는 타이틀 텍스트보다 조금 작게(요청). */
-.scr-rank-mode-tabs .scr-pill-tabs { height: 24px; background: rgba(255, 255, 255, 0.08); }
+/* 라디오를 한 스텝 작게(텍스트 caption) + 높이는 다른 필탭(필터패널 알약, 28px)과 맞춘다(요청).
+   래디우스도 여기서만 완전 알약(999px) 대신 둥근 사각으로 낮춘다 — 안의 인디케이터/버튼도
+   함께(요청: "개인전팀전 필탭만 래디우스 줄여줘, 안의 알약도 같이"). */
+.scr-rank-mode-tabs .scr-pill-tabs { height: 28px; background: rgba(255, 255, 255, 0.08); border-radius: 8px; }
+.scr-rank-mode-tabs .scr-pill-tabs-indicator { border-radius: 6px; }
+.scr-rank-mode-tabs .scr-pill-tab-btn { border-radius: 6px; }
 .scr-light-theme .scr-rank-mode-tabs .scr-pill-tabs { background: rgba(0, 0, 0, 0.06); }
 .scr-rank-mode-tabs .scr-pill-tab-btn { font-size: var(--fs-caption); padding: 0 12px; }
 /* 다크에서 미선택 쪽 글자가 안 보이던 문제 — 타이틀 줄은 필터패널(.scr-filter-panel)이
@@ -2066,10 +2070,9 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 @media (max-width: 640px) {
   /* 좌우 패딩은 모바일도 제거(요청) — 위아래는 14px였다가 카드가 더 많이 보이도록
      추가로 줄인다(요청: "모바일 - 랭킹 카드의 위아래 패딩을 줄여서 더 많이 나오게").
-     행 높이를 조금 더 줄인다(요청: "모바일에서만 행 높이 약간 축소") — 세로 패딩을
-     10→8px로. */
-  .scr-rank-table-panel-v2 .scr-rank-row { padding: 8px 0; }
-  .scr-rank-table-panel-v2 .scr-rank-row-tied { padding-top: 4px; }
+     행 높이를 조금 줄였다가(10→8px), 다시 8~10%만 키운다(요청) — 세로 패딩 8→10px. */
+  .scr-rank-table-panel-v2 .scr-rank-row { padding: 10px 0; }
+  .scr-rank-table-panel-v2 .scr-rank-row-tied { padding-top: 5px; }
   /* 순위 숫자와 순위변동 사이 간격을 없애 배지 세로 높이를 줄인다(요청: "랭크와 순위변동
      사이가 줄어야") — 숫자 자체의 행간(line-height)도 1로 바짝 붙인다. */
   .scr-rank-table-panel-v2 .scr-rank-badge { gap: 0; }
@@ -3599,7 +3602,8 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   /* 모바일은 타이틀 줄과 그 아래 컨텐츠(필터/목록) 사이 간격이 PC보다 더 헐렁하게
      느껴진다는 피드백 — 툴바 자체 여백(padding-bottom)과 .scr-screen의 형제간 gap을
      모바일에서만 줄인다. */
-  .scr-v2-toolbar { padding-bottom: 8px; }
+  /* 모바일도 타이틀 아래 갭 두 배로(요청) — 8→16px. min-height도 짝을 맞춰 키운다. */
+  .scr-v2-toolbar { padding-bottom: 16px; min-height: calc(var(--field-h-sm) + 16px); }
   .scr-screen { gap: 6px; }
   .scr-brand-text { display: none; }
   /* 모바일 헤더에서 내 정보(프로필 칩)를 키운다. Avatar는 크기를 JS(size prop)의
