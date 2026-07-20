@@ -4484,12 +4484,15 @@ html.scr-light-theme .scr-mobile-tabbar {
 
 .scr-drawer-overlay {
   /* 딤 처리 없음(요청) — 어둡게 덮지 않고 투명하게 둔다. 바깥 클릭으로 닫는 역할은
-     투명해도 그대로 유지된다(전체를 덮는 클릭 캐처). */
+     투명해도 그대로 유지된다(전체를 덮는 클릭 캐처).
+     opacity 페이드는 뺐다 — 오버레이가 opacity<1로 애니메이션되는 동안 그 자체가 하나의
+     그룹(backdrop root)이 되어, 안쪽 드로어의 backdrop-filter가 '페이지'가 아니라 이
+     투명한 그룹을 배경으로 삼는 바람에 다 열리기 전까지 블러가 안 걸려 보이는 버그가
+     있었다(신고). 오버레이는 어차피 투명하니 페이드가 필요 없고, 드로어는 슬라이드
+     (transform)만으로 자연스럽게 나타난다 — 이러면 슬라이드 도중에도 블러가 정상 적용된다. */
   position: fixed; inset: 0; z-index: 60; background: transparent;
   display: flex; justify-content: flex-end;
-  opacity: 0; transition: opacity .2s ease;
 }
-.scr-drawer-overlay.scr-drawer-open { opacity: 1; }
 /* 드로어 경계선(아래 그라데이션) — 다른 곳(탭바 선 등)과 같은 전역 --edge-glow(다크는
    붉은 파이프색, 라이트는 파랑)를 그대로 따른다(주황으로 바꿔봤다가 원래 톤으로 되돌림).
    (경계선 옆 원형/타원 헤일로도 시도해봤으나 여러 번 다듬어도 원하는 느낌이 안 나와
@@ -5346,17 +5349,20 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
   filter: drop-shadow(0 7px 13px rgba(0,0,0,0.62));
   transition: transform .1s ease, filter .1s ease;
 }
-/* 누르면 살짝 내려앉으며 그림자가 줄어 "눌리는" 느낌(요청: "버튼처럼 입체감"). */
+/* 누르면 살짝 내려앉으며 그림자가 줄어 "눌리는" 느낌(요청: "버튼처럼 입체감"). 이미지와
+   라벨을 같이 내려 라벨만 안 움직여 어색하던 문제를 없앤다(신고). */
 .scr-challenge-nawa-btn:active .scr-challenge-title-nawa {
   transform: translate(-50%, calc(-50% + 3px));
   filter: drop-shadow(0 3px 5px rgba(0,0,0,0.5));
 }
+.scr-challenge-nawa-btn:active .scr-challenge-nawa-label { transform: translateY(3px); }
 /* nawa 중앙 "호출하기" — 흰 글씨 + 그림자로 사진 위에서도 또렷하게. 폰트 한 스텝 확대 +
    볼드(요청). */
 .scr-challenge-nawa-label {
   position: relative; z-index: 1; pointer-events: none;
   color: #fff; font-weight: 800; font-size: var(--fs-subhead); letter-spacing: 0.02em;
   text-shadow: 0 1px 2px rgba(0,0,0,0.8), 0 0 8px rgba(0,0,0,0.55);
+  transition: transform .1s ease;
 }
 .scr-challenge-screen-v2 .scr-filter-bar { margin-top: 0; margin-bottom: 0; }
 .scr-challenge-section-title {
