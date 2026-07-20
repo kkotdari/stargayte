@@ -5259,13 +5259,19 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
 .scr-challenge-add-target:hover { color: var(--point); }
 /* 타이틀 줄 — 라벨(왼쪽) + "선수 추가" 버튼(오른쪽)을 한 줄에 둔다(요청: "선수 추가 버튼을
    동료/상대 타이틀 옆에 인라인 배치"). 슬롯이 비어 있어도 추가 버튼이 별도 행을 안 만든다. */
-.scr-challenge-pick-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+/* 추가 버튼을 오른쪽 끝이 아니라 "동료"/"상대" 글자 바로 옆에 붙인다(요청). */
+.scr-challenge-pick-head { display: flex; align-items: center; justify-content: flex-start; gap: 8px; }
 /* 인라인 배치용 — 전폭 점선 박스(위 기본형)가 아니라 타이틀 옆에 얹히는 작은 아이콘 버튼. */
 .scr-challenge-add-target-inline {
-  width: auto; min-height: 0; padding: 2px 8px; border-radius: 999px;
+  width: auto; min-height: 0; padding: 3px 9px; border-radius: 999px;
   color: var(--point);
 }
 .scr-challenge-add-target-inline:hover { background: rgba(var(--overlay-rgb), 0.08); }
+/* 동료=파랑, 상대=빨강으로 유치하고 알록달록하게(요청) — 꽉 찬 색 알약 + 흰 아이콘. */
+.scr-challenge-add-target-inline.scr-challenge-add-target-blue { background: #2f7bff; color: #fff; }
+.scr-challenge-add-target-inline.scr-challenge-add-target-blue:hover { background: #4a8dff; }
+.scr-challenge-add-target-inline.scr-challenge-add-target-red { background: #ff3b3b; color: #fff; }
+.scr-challenge-add-target-inline.scr-challenge-add-target-red:hover { background: #ff5a5a; }
 /* 필수 항목 표시 — 활성화 시 신청 버튼과 같은 핑크로 통일해 "필수→핑크" 흐름을 만든다. */
 .scr-req-mark { color: #f684bb; font-weight: 700; margin-left: -2px; }
 /* 신청 버튼 — 상대(필수) 미지정이면 무채색으로 "꺼짐"을, 지정하면 핑크(.scr-challenge-accept-btn)
@@ -5325,31 +5331,31 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
 .scr-challenge-primary-row { position: relative; }
 .scr-challenge-nawa-btn {
   position: relative; display: inline-flex; align-items: center; justify-content: center;
-  width: 208px; height: 130px; padding: 0; border: none; background: transparent; cursor: pointer;
+  width: 166px; height: 104px; padding: 0; border: none; background: transparent; cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
 .scr-challenge-title-nawa {
   /* 버튼(줄) 정중앙을 꽉 채운다 — 절대위치라 줄 높이엔 영향 없이 위아래로 넘친다. */
   position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
-  width: 208px; height: 130px; object-fit: cover; pointer-events: none; z-index: 0;
+  width: 166px; height: 104px; object-fit: cover; pointer-events: none; z-index: 0;
   /* 1.6:1 비율 + 타원 마스크로 가장자리를 흐린다. */
   border-radius: 50%;
   -webkit-mask-image: radial-gradient(ellipse at center, #000 56%, transparent 82%);
   mask-image: radial-gradient(ellipse at center, #000 56%, transparent 82%);
-  /* 버튼처럼 떠 있는 입체감(그림자) + 눌림 전이. */
-  filter: drop-shadow(0 5px 9px rgba(0,0,0,0.5));
+  /* 버튼처럼 떠 있는 입체감 강화(요청) — 그림자를 더 진하고 깊게. */
+  filter: drop-shadow(0 7px 13px rgba(0,0,0,0.62));
   transition: transform .1s ease, filter .1s ease;
 }
 /* 누르면 살짝 내려앉으며 그림자가 줄어 "눌리는" 느낌(요청: "버튼처럼 입체감"). */
 .scr-challenge-nawa-btn:active .scr-challenge-title-nawa {
-  transform: translate(-50%, calc(-50% + 2px));
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.45));
+  transform: translate(-50%, calc(-50% + 3px));
+  filter: drop-shadow(0 3px 5px rgba(0,0,0,0.5));
 }
-/* nawa 중앙 "호출하기" — 흰 글씨 + 그림자로 사진 위에서도 또렷하게. 글자 크기는 다른
-   버튼 텍스트와 동일하게(요청) var(--fs-body). */
+/* nawa 중앙 "호출하기" — 흰 글씨 + 그림자로 사진 위에서도 또렷하게. 폰트 한 스텝 확대 +
+   볼드(요청). */
 .scr-challenge-nawa-label {
   position: relative; z-index: 1; pointer-events: none;
-  color: #fff; font-weight: 700; font-size: var(--fs-body); letter-spacing: 0.02em;
+  color: #fff; font-weight: 800; font-size: var(--fs-subhead); letter-spacing: 0.02em;
   text-shadow: 0 1px 2px rgba(0,0,0,0.8), 0 0 8px rgba(0,0,0,0.55);
 }
 .scr-challenge-screen-v2 .scr-filter-bar { margin-top: 0; margin-bottom: 0; }
