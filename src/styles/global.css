@@ -5307,15 +5307,14 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
   margin: 54px 0 0; font-size: var(--fs-subhead); font-weight: 800; color: var(--text);
   letter-spacing: 0.02em;
 }
-/* "너 나와!" 제목 옆 nawa 이미지 — 제목과 한 줄에 두고(그리드 title 영역 차지),
-   가로·세로를 2배로 키우고 더 둥근 비율로 크롭한다(요청: "제목 옆에 2배로 + 더 둥글게").
-   가장자리는 인박스 히어로처럼 그라데이션으로 흐린다. */
-.scr-challenge-title-row {
-  grid-area: title; display: flex; align-items: center; gap: 14px; min-width: 0;
-}
+/* "너 나와!" 제목 옆 nawa 이미지 — 타이틀 로우 레이아웃엔 관여하지 않고 그 위에 절대위치로
+   그냥 얹는 장식(요청: "레이아웃은 그대로 두고 그림을 붙이는 것, 약간 오른쪽에 치우쳐서").
+   툴바(.scr-v2-toolbar, position:relative)를 기준으로 살짝 오른쪽에 배치하고, 세로로는 툴바
+   중앙에 맞춰(제목 높이보다 커서 위아래로 넘친다) 얹는다. 클릭은 통과시킨다. */
 .scr-challenge-title-nawa {
-  display: block; flex-shrink: 0; width: 160px; height: 100px; object-fit: cover;
-  /* 예전 112x42(2.66:1)보다 둥근 1.6:1 비율 + 원형 마스크로 타원기를 줄인다. */
+  position: absolute; left: 44%; top: 50%; transform: translateY(-50%);
+  width: 160px; height: 100px; object-fit: cover; pointer-events: none; z-index: 0;
+  /* 1.6:1 비율 + 타원 마스크로 가장자리를 흐린다. */
   border-radius: 50%;
   -webkit-mask-image: radial-gradient(ellipse at center, #000 56%, transparent 82%);
   mask-image: radial-gradient(ellipse at center, #000 56%, transparent 82%);
