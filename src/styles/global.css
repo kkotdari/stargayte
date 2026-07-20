@@ -6164,9 +6164,13 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
   /* 배색은 .scr-btn-primary/.scr-btn-primary-solid가 그대로 맡는다(요청: "버튼 기본색으로
      바꿔주고", "프라이머리 버튼 테마") — 여기서 background/color를 따로 주면 이 규칙이
      스타일시트 뒤쪽에 있어 그 배색을 덮어써버린다. 모양(동그란 아이콘 버튼)만 준다. */
-  flex-shrink: 0; align-self: center;
+  /* 입력 내용이 길어지면 flex 행에서 눌려 타원으로 찌그러졌다(요청: "항상 원형 유지") —
+     너비/높이를 min·max까지 못 박고 flex-basis도 고정, aspect-ratio로 정사각을 보장한다. */
+  flex: 0 0 36px; align-self: center;
   display: inline-flex; align-items: center; justify-content: center;
-  width: 36px; height: 36px; padding: 0; border-radius: 50%; cursor: pointer;
+  width: 36px; height: 36px; min-width: 36px; min-height: 36px; max-width: 36px; max-height: 36px;
+  aspect-ratio: 1 / 1; box-sizing: border-box;
+  padding: 0; border-radius: 50%; cursor: pointer;
   transition: filter .12s, opacity .12s;
 }
 .scr-mreq-submit-btn:disabled { opacity: 0.4; cursor: default; }
