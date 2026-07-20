@@ -400,7 +400,7 @@ export default function MatchRequestCorner() {
             </div>
             <button
               type="button"
-              className="scr-mreq-submit-btn"
+              className="scr-btn scr-btn-primary scr-btn-primary-solid scr-mreq-submit-btn"
               disabled={!canSubmit}
               onClick={() => void submit()}
               aria-label="요청 등록"
