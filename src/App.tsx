@@ -13,6 +13,7 @@ import { CHALLENGE_MIN_VERSION, homeScreenFor } from "./constants/menuVersions";
 
 import AuthScreen from "./pages/auth/AuthScreen";
 import Header from "./layout/Header";
+import InstallBanner from "./components/common/InstallBanner";
 import ChallengeScreen from "./pages/challenge/ChallengeScreen";
 import MembersScreen from "./pages/members/MembersScreen";
 import ImageSettingsScreen from "./pages/imageSettings/ImageSettingsScreen";
@@ -211,6 +212,9 @@ export default function App() {
             고정해준다. */}
         <div id="scr-tabbar-slot" />
 
+        {/* 첫 방문(미설치) 때 한 번 뜨는 "홈 화면에 추가" 유도 배너 — 닫으면 다시 안 뜬다. */}
+        <InstallBanner />
+
         {profileOpen && <ProfileModal onClose={() => setProfileOpen(false)} />}
         {viewingMember && <MemberProfileModal member={viewingMember} onClose={closeMemberProfile} />}
         {adminPanelOpen && <AdminPanelModal isAdmin={isAdmin} onClose={() => setAdminPanelOpen(false)} />}
@@ -223,7 +227,7 @@ export default function App() {
         {inboxChallenges.length === 0 && resultInboxChallenges.length > 0 && (
           <ChallengeResultInboxModal challenges={resultInboxChallenges} onClose={dismissResultInboxChallenges} />
         )}
-        {/* 도전장 인박스들을 다 처리한 뒤에 "대결 요청 언급" 알림을 띄운다(팝업 겹침 방지). */}
+        {/* 도전장 인박스들을 다 처리한 뒤에 "챌린지 신청 언급" 알림을 띄운다(팝업 겹침 방지). */}
         {inboxChallenges.length === 0 && resultInboxChallenges.length === 0 && inboxMatchRequests.length > 0 && (
           <MatchRequestInboxModal items={inboxMatchRequests} onClose={dismissInboxMatchRequests} />
         )}

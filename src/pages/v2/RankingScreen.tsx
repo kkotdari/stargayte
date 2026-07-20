@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ChevronLeft, ChevronRight, Info } from "lucide-react";
+import { ChevronLeft, ChevronRight, Info, Copy, Download, Check, Camera } from "lucide-react";
+import * as htmlToImage from "html-to-image";
 import { Spinner } from "../../components/common/Feedback";
 import SearchFilterBar from "../../components/common/SearchFilterBar";
 import PillTabs from "../../components/common/PillTabs";
 import FilterItem from "../../components/common/FilterItem";
 import Select from "../../components/common/Select";
 import RankRow from "./RankRow";
+import RankingSnapshot from "./RankingSnapshot";
 import RankingDetailModal from "./RankingDetailModal";
 import ChallengeFormModal from "../../modals/ChallengeFormModal";
 import {
@@ -184,6 +186,97 @@ export default function RankingScreenV2() {
       .catch(() => setTrendPoints([]));
   };
 
+  // 랭킹 스크린샷 — 지금 필터(개인/팀·종족·기간)가 적용된 전체 랭킹을 화면 밖 캡처 전용
+  // 레이아웃(RankingSnapshot)으로 그려 PNG로 뽑는다. 스크롤로 잘리는 실제 목록과 달리 전체
+  // 행이 다 담긴다(요청). 복사(클립보드)·저장(공유/다운로드) 두 갈래. PC/모바일 모두 지원.
+  const snapshotRef = useRef<HTMLDivElement>(null);
+  const [shooting, setShooting] = useState(false);
+  const [copied, setCopied] = useState(false);
+  // 복사/저장 두 버튼을 밖에 늘어놓는 대신 스크린샷 버튼 하나를 누르면 뜨는 메뉴로 묶는다
+  // (요청). 산정 방식 툴팁과 같은 패턴(attachPopover + 바깥 클릭/포커스 이동 시 닫음).
+  const [shotMenuOpen, setShotMenuOpen] = useState(false);
+  const shotAnchorRef = useRef<HTMLButtonElement>(null);
+  const shotMenuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!shotMenuOpen || !shotAnchorRef.current || !shotMenuRef.current) return;
+    return attachPopover(shotAnchorRef.current, shotMenuRef.current, { growToContent: true, maxWidth: 160, placement: "bottom" });
+  }, [shotMenuOpen]);
+  useEffect(() => {
+    if (!shotMenuOpen) return;
+    const closeIfOutside = (e: Event) => {
+      const t = e.target as Node;
+      if (shotAnchorRef.current?.contains(t)) return;
+      if (shotMenuRef.current?.contains(t)) return;
+      setShotMenuOpen(false);
+    };
+    document.addEventListener("mousedown", closeIfOutside);
+    document.addEventListener("focusin", closeIfOutside);
+    return () => {
+      document.removeEventListener("mousedown", closeIfOutside);
+      document.removeEventListener("focusin", closeIfOutside);
+    };
+  }, [shotMenuOpen]);
+
+  const generateBlob = async (): Promise<Blob> => {
+    const node = snapshotRef.current;
+    if (!node) throw new Error("캡처 대상을 찾지 못했어요.");
+    await (document.fonts?.ready ?? Promise.resolve()); // 웹폰트 로딩 대기
+    const bg = getComputedStyle(node).backgroundColor || "#0f1216";
+    const blob = await htmlToImage.toBlob(node, { pixelRatio: 2, cacheBust: true, backgroundColor: bg });
+    if (!blob) throw new Error("이미지를 만들지 못했어요.");
+    return blob;
+  };
+
+  const shotName = () => `랭킹_${mode === "solo" ? "개인전" : "팀전"}_${periodAnchorLabel(unit, anchor).replace(/\s+/g, "")}.png`;
+
+  // 저장/공유 — 모바일은 공유 시트(사진 저장/카톡 등), 지원 안 하면 다운로드.
+  const saveOrShare = async () => {
+    const blob = await generateBlob();
+    const file = new File([blob], shotName(), { type: "image/png" });
+    const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
+    if (nav.canShare?.({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: "랭킹" });
+        return;
+      } catch (e) {
+        if (e instanceof DOMException && e.name === "AbortError") return; // 사용자가 취소
+      }
+    }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = file.name; a.click();
+    URL.revokeObjectURL(url);
+  };
+  const onSave = async () => {
+    if (shooting || rows.length === 0) return;
+    setShotMenuOpen(false);
+    setShooting(true);
+    try { await saveOrShare(); }
+    catch (e) { setError(e instanceof Error ? e.message : "스크린샷을 만들지 못했어요."); }
+    finally { setShooting(false); }
+  };
+
+  // 클립보드 복사 — 사파리는 유저 제스처 안에서 clipboard.write를 동기 호출해야 하므로,
+  // await 없이 곧바로 ClipboardItem에 Promise<Blob>을 넘겨 브라우저가 제스처를 유지한 채
+  // 이미지 생성을 기다리게 한다. 클립보드 이미지 쓰기가 안 되는 환경은 저장/공유로 폴백.
+  const onCopy = async () => {
+    if (shooting || rows.length === 0) return;
+    setShotMenuOpen(false);
+    const canClipboard = typeof ClipboardItem !== "undefined" && !!navigator.clipboard?.write;
+    if (!canClipboard) { await onSave(); return; }
+    setShooting(true);
+    try {
+      await navigator.clipboard.write([new ClipboardItem({ "image/png": generateBlob() })]);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1600);
+    } catch {
+      try { await saveOrShare(); } // 클립보드 실패 → 저장/공유 폴백
+      catch (e) { setError(e instanceof Error ? e.message : "스크린샷을 만들지 못했어요."); }
+    } finally {
+      setShooting(false);
+    }
+  };
+
   return (
     <div className="scr-screen scr-rank-screen-v2">
       {/* 개인전/팀전은 '필터'라기보다 목록의 종류라, 필터 패널이 아니라 타이틀 줄에 둔다(요청:
@@ -254,7 +347,7 @@ export default function RankingScreenV2() {
 
       {/* 산정 방식 안내 — 필터들 아래, 순위 목록 바로 위(예전 기준점수표 자리). 항상 보이는
           문단 대신 눌러야 뜨는 툴팁으로(요청: "누르면 툴팁형태로 보이게"). */}
-      <div className="scr-rank-method-row">
+      <div className="scr-rank-method-row scr-rank-method-row-split">
         <button
           type="button"
           className={cx("scr-rank-method-trigger", methodTipOpen && "scr-rank-method-trigger-active")}
@@ -262,6 +355,20 @@ export default function RankingScreenV2() {
           onClick={() => setMethodTipOpen((v) => !v)}
         >
           <Info size={13} /> 산정 방식
+        </button>
+        {/* 지금 필터가 적용된 랭킹 전체를 이미지로 — 버튼 하나에 복사/저장을 메뉴로 묶는다
+            (요청: "밖에 복사/저장보다는 메뉴에 복사가 있는 게 나을 듯"). */}
+        <button
+          type="button"
+          className={cx("scr-icon-btn scr-rank-shot-btn", shotMenuOpen && "scr-icon-btn-active")}
+          ref={shotAnchorRef}
+          onClick={() => setShotMenuOpen((v) => !v)}
+          disabled={shooting || rows.length === 0}
+          aria-label="랭킹 스크린샷"
+          aria-haspopup="menu"
+          aria-expanded={shotMenuOpen}
+        >
+          {shooting ? <Spinner size={15} /> : copied ? <Check size={15} /> : <Camera size={15} />}
         </button>
       </div>
       {methodTipOpen && createPortal(
@@ -271,6 +378,17 @@ export default function RankingScreenV2() {
           <li>팀전은 팀 승패를 개인 실력으로 분해하며, 개인전·팀전 레이팅은 따로 계산됩니다.</li>
           <li>종족 필터를 걸면 <b>그 종족으로 낸 경기</b>만의 레이팅으로 순위를 매깁니다.</li>
         </ul>,
+        document.body,
+      )}
+      {shotMenuOpen && createPortal(
+        <div className="scr-menu-pop-drop scr-rank-shot-menu" ref={shotMenuRef} role="menu">
+          <button type="button" role="menuitem" className="scr-menu-pop-opt" onClick={onCopy}>
+            <Copy size={14} /> 복사
+          </button>
+          <button type="button" role="menuitem" className="scr-menu-pop-opt" onClick={onSave}>
+            <Download size={14} /> 저장
+          </button>
+        </div>,
         document.body,
       )}
 
@@ -324,6 +442,18 @@ export default function RankingScreenV2() {
           onCreated={() => setChallengeTarget(null)}
         />
       )}
+
+      {/* 스크린샷 캡처 전용(화면 밖) — 실제 목록과 달리 스크롤로 안 잘리고 전체 행이 담긴다.
+          지금 활성 필터가 반영된 rows를 그대로 그린다. */}
+      <div aria-hidden style={{ position: "fixed", left: -100000, top: 0, pointerEvents: "none" }}>
+        <RankingSnapshot
+          ref={snapshotRef}
+          rows={rows}
+          modeLabel={mode === "solo" ? "개인전" : "팀전"}
+          raceLabel={race === "all" ? null : race}
+          periodLabel={periodAnchorLabel(unit, anchor)}
+        />
+      </div>
     </div>
   );
 }

@@ -98,13 +98,13 @@ interface AppState {
   // 다시 새로고침해도 재등장하지 않는다.
   inboxChallenges: Challenge[];
   dismissInboxChallenges: () => void;
-  // 예정 일시가 지났는데 아직 결과가 안 들어온 내 확정 대결 — 다음 접속 때(부트스트랩
+  // 예정 일시가 지났는데 아직 결과가 안 들어온 내 확정 챌린지 — 다음 접속 때(부트스트랩
   // 시점) 아직 팝업으로 안 본 것만 한 번 띄워 결과를 바로 입력하게 한다. "봤는지"는
   // 서버(challenge_participants.result_notified)가 기억한다 — 기기/브라우저를 바꿔도
   // 다시 안 뜬다(요청: "결과 입력 팝업 확인 여부는 디비에 관리").
   resultInboxChallenges: Challenge[];
   dismissResultInboxChallenges: () => void;
-  // 대결 요청에 언급된 나에게 온 알림 — 부트스트랩 시점에 안 읽은 것만 담겨 팝업으로 한 번
+  // 챌린지 신청에 언급된 나에게 온 알림 — 부트스트랩 시점에 안 읽은 것만 담겨 팝업으로 한 번
   // 보여준다. 닫으면 서버에 읽음 처리해 다시 안 뜬다(요청: "읽으면 다시 안 뜸").
   inboxMatchRequests: MatchRequestInboxItem[];
   dismissInboxMatchRequests: () => void;
