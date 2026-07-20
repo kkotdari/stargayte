@@ -466,7 +466,7 @@ export default function GameIdScreen() {
         countLabel="건"
         searchValue={search}
         onSearchChange={setSearch}
-        searchPlaceholder="유저 검색"
+        searchPlaceholder="@로 유저 추가"
         suggestions={suggestions}
         filterPanel={
           <FilterItem label="유형">

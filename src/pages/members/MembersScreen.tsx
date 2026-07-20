@@ -99,7 +99,7 @@ export default function MembersScreen() {
         countLabel="명"
         searchValue={query}
         onSearchChange={setQuery}
-        searchPlaceholder="유저 검색"
+        searchPlaceholder="@로 유저 추가"
         suggestions={suggestions}
         showSearch={false}
         filterPanel={
