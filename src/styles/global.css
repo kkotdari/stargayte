@@ -6113,19 +6113,36 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
 .scr-mreq-compose-row { display: flex; align-items: stretch; gap: 8px; }
 .scr-mreq-input-wrap { position: relative; flex: 1; min-width: 0; }
 .scr-mreq-confirm-btn { flex-shrink: 0; }
-/* 일반 텍스트 인풋으로(요청: "텍스트 에어리어를 일반 텍스트 인풋으로") — @멘션은 문장
-   안에 "@닉네임" 그대로 타이핑되고, 제출 시 텍스트에서 알려진 닉네임을 찾아 지목
-   대상으로 해석한다. .scr-input 기본 테두리/배경을 그대로 쓴다. */
+/* contentEditable 편집창 — @멘션이 실시간으로 인라인 유저 칩으로 보이고 편집(× 버튼/
+   백스페이스로 제거)도 가능해야 해서(요청: "태그된 유저를 @유저가 아닌 칩으로 실시간
+   으로 보여주고 편집할수있게") 일반 텍스트 인풋 대신 contentEditable div를 쓴다. 저장용
+   진실은 여전히 "@닉네임" 마커 문자열이고(domToText가 DOM에서 그대로 재구성), 이 칸은
+   그 문자열을 사람이 보기 편한 칩으로 그린 뷰일 뿐이다. .scr-input 기본 테두리/배경은
+   그대로 쓴다. */
 .scr-mreq-editor {
   width: 100%; height: 100%; box-sizing: border-box; font-family: inherit;
+  display: flex; align-items: center;
   /* 지우기(X) 버튼 자리만큼 오른쪽 패딩을 넉넉히 둔다. */
   padding-right: 30px;
   /* 테두리는 흰색 계열로, 배경은 투명도를 높여 코너 패널 위에 살짝만 얹힌 느낌으로(요청). */
   border-color: rgba(255, 255, 255, 0.4);
   background: rgba(255, 255, 255, 0.08);
+  /* 한 줄 인풋처럼 — 줄바꿈 없이 옆으로만 늘어나고, 넘치면 가로 스크롤(세로로 접히면
+     행 높이를 벗어나 잘린다). */
+  white-space: nowrap; overflow-x: auto; overflow-y: hidden;
+  cursor: text;
 }
 .scr-mreq-editor:focus { outline: none; border-color: rgba(255, 255, 255, 0.7); }
-.scr-mreq-editor::placeholder { color: var(--muted); }
+/* 네이티브 placeholder는 input/textarea 전용이라 div에는 안 먹는다 — 비어 있을 때만
+   (React가 계산한 isEmpty 기준, DOM :empty보다 신뢰도 높음) 안내 문구를 흉내낸다.
+   editor가 display:flex라 :before를 그냥 두면 placeholder 자신이 하나의 flex 아이템으로
+   본문 앞자리를 차지해버려서, 빈 편집창을 클릭했을 때 진짜(빈) 캐럿이 그 placeholder
+   뒤로 밀려 보이는 문제가 있었다(요청: "아무 내용없을때 ... 플레이스 홀더 끝에 커서가
+   놓이는 현상") — flex 흐름에서 아예 빼고(position:absolute) 겹쳐서만 보여준다. */
+.scr-mreq-editor-empty:before {
+  content: attr(data-placeholder); color: var(--muted); pointer-events: none;
+  position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+}
 /* 라이트 테마는 흰 배경 위라 흰색 계열 테두리가 그림자처럼 진하게 도드라져 보였다 —
    더 옅게 낮추고, 어떤 내장 그림자도 확실히 죽인다(요청: "인풋창 그림자 살짝 죽이기"). */
 .scr-light-theme .scr-mreq-editor {
@@ -6150,7 +6167,11 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
   width: 100%; display: flex; align-items: center; gap: 8px; padding: 7px 10px;
   background: transparent; border: none; cursor: pointer; color: var(--text); text-align: left;
 }
-.scr-mreq-mention-opt:hover { background: rgba(var(--overlay-rgb), 0.08); }
+/* 유저 추천(자동완성) 드롭다운과 동일한 하이라이트 — 흰색 배경 반전(.scr-pv-opt 참고). */
+.scr-mreq-mention-opt:hover,
+.scr-mreq-mention-opt-active { background: var(--text); color: var(--point-contrast); }
+.scr-mreq-mention-opt:hover .scr-mreq-mention-name,
+.scr-mreq-mention-opt-active .scr-mreq-mention-name { color: inherit; }
 .scr-mreq-mention-name { font-size: var(--fs-body); font-weight: 600; }
 /* 지목 회원은 문장 안 인라인 유저 칩으로(요청: "칩이 문장 안에 포함", "칩에는 @ 없이 표현").
    흰 칩에 그림자만 줘서(요청) 흰 보드 위에서도 살짝 떠 보이게 한다. */
@@ -6162,19 +6183,34 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
   font-size: var(--fs-caption); font-weight: 700; white-space: nowrap;
 }
 /* 인라인 칩 — 텍스트 흐름 안에서 세로 가운데로 앉게 하고, 양옆에 살짝 숨 쉬는 여백.
-   (목록 카드의 읽기용 렌더에서만 쓰인다 — 입력창은 이제 일반 텍스트 인풋이라 칩이 없다.) */
+   (목록 카드의 읽기용 렌더에서 쓴다.) */
 .scr-mreq-chip-inline { vertical-align: middle; margin: 0 1px; user-select: none; }
+/* 편집창 안의 칩 — contentEditable=false라 이 칩 자체는 글자 단위로 편집이 안 되고
+   통째로만(× 버튼 클릭 또는 백스페이스로) 지워진다(요청: "x버튼이나 백스페이스로는
+   지워지게"). flex-shrink:0로 옆 텍스트가 줄어도 칩 자체는 안 찌그러진다. */
+.scr-mreq-chip-editor { vertical-align: middle; margin: 0 1px; flex-shrink: 0; cursor: default; }
+.scr-mreq-chip-x {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 12px; height: 12px; padding: 0; margin-left: 1px; border: none; border-radius: 50%;
+  background: rgba(0, 0, 0, 0.12); color: inherit; font-size: 10px; line-height: 1; cursor: pointer;
+}
+.scr-mreq-chip-x:hover { background: rgba(0, 0, 0, 0.24); }
 .scr-mreq-empty { font-size: var(--fs-body); color: var(--dim); padding: 6px 2px; text-align: center; }
 .scr-mreq-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+/* 요청자+버튼 줄, 메시지 줄 — 세로로 두 단(요청: "요청자와 버튼로우가 한줄에 배치"). */
 .scr-mreq-item {
-  display: flex; align-items: center; gap: 10px; padding: 10px 2px;
+  display: flex; flex-direction: column; gap: 4px; padding: 10px 2px;
 }
 .scr-mreq-item + .scr-mreq-item { border-top: 1px solid rgba(var(--divider-tint), 0.3); }
-.scr-mreq-item-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-.scr-mreq-item-author { display: flex; align-items: center; gap: 6px; }
-.scr-mreq-item-author-name { font-size: var(--fs-caption); font-weight: 600; color: var(--dim); }
+.scr-mreq-item-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.scr-mreq-item-author { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.scr-mreq-item-author-name { font-size: var(--fs-caption); font-weight: 600; color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 요청자 프사는 완전한 원으로, 살짝 축소(요청) — Avatar가 size 비례 borderRadius를
+   인라인 style로 직접 주기 때문에 클래스만으로는 못 이겨 !important가 필요하다. */
+.scr-mreq-item-author-avatar { border-radius: 50% !important; }
 .scr-mreq-item-text { margin: 0; font-size: var(--fs-body); color: var(--text); line-height: 1.4; word-break: break-word; }
-.scr-mreq-item-actions { flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+/* 성사됨을 추천 왼쪽에(요청) — 세로 스택 대신 가로 한 줄로. */
+.scr-mreq-item-actions { flex-shrink: 0; display: flex; flex-direction: row; align-items: center; gap: 6px; }
 /* 추천(엄지척) 버튼 — 눌렀으면 포인트색으로 채운다. */
 .scr-mreq-rec-btn {
   display: inline-flex; align-items: center; gap: 4px; padding: 4px 9px;
@@ -6184,7 +6220,12 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
 }
 .scr-mreq-rec-btn:hover { color: var(--text); border-color: var(--pipe-bright); }
 .scr-mreq-rec-btn-on { color: var(--point); border-color: var(--point); background: color-mix(in srgb, var(--point) 14%, transparent); }
-.scr-mreq-take-btn { white-space: nowrap; }
+/* "성사됨"은 항목마다 상시 노출하기엔 무거운 액션이라 케밥(⋮) 메뉴 안으로(요청).
+   버튼/드롭다운 자체는 경기 목록 케밥과 톤을 맞춰 .scr-match-memo-btn·.scr-menu-pop-drop을
+   그대로 재사용한다. */
+.scr-mreq-kebab { display: inline-flex; flex-shrink: 0; }
+.scr-mreq-kebab-btn { padding: 4px; margin: 0; }
+.scr-mreq-kebab-drop { min-width: 96px; }
 .scr-mreq-pager { display: flex; align-items: center; justify-content: center; gap: 12px; padding-top: 4px; }
 .scr-mreq-pager-btn {
   background: transparent; border: 1px solid var(--line); border-radius: var(--radius-sm);
