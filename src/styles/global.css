@@ -6220,6 +6220,24 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
 }
 .scr-mreq-rec-btn:hover { color: var(--text); border-color: var(--pipe-bright); }
 .scr-mreq-rec-btn-on { color: var(--point); border-color: var(--point); background: color-mix(in srgb, var(--point) 14%, transparent); }
+/* 누가 추천했는지 PC 마우스오버 팝오버(요청) — 마우스가 실제로 되는 입력장치에서만
+   켠다(터치 화면은 탭 후 :hover가 고착돼 계속 떠 있는 문제가 있어, 다른 곳의
+   scr-period-sort-btn 등과 같은 원칙으로 원천 차단). */
+.scr-mreq-rec-wrap { position: relative; display: inline-flex; }
+.scr-mreq-rec-pop {
+  position: absolute; left: 50%; bottom: calc(100% + 6px); transform: translateX(-50%) translateY(4px);
+  z-index: 20; min-width: 96px; max-width: 220px; max-height: 200px; overflow-y: auto;
+  background: var(--panel-solid); border: 1px solid var(--line); border-radius: var(--radius-sm);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.28); padding: 6px; display: flex; flex-direction: column; gap: 4px;
+  opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .12s, transform .12s;
+}
+@media (hover: hover) and (pointer: fine) {
+  .scr-mreq-rec-wrap:hover .scr-mreq-rec-pop {
+    opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0);
+  }
+}
+.scr-mreq-rec-pop-row { display: flex; align-items: center; gap: 6px; }
+.scr-mreq-rec-pop-row span { font-size: var(--fs-caption); color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* "성사됨"은 항목마다 상시 노출하기엔 무거운 액션이라 케밥(⋮) 메뉴 안으로(요청).
    버튼/드롭다운 자체는 경기 목록 케밥과 톤을 맞춰 .scr-match-memo-btn·.scr-menu-pop-drop을
    그대로 재사용한다. */
