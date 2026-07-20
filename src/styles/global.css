@@ -5363,12 +5363,12 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
   border-color: rgba(255, 255, 255, 0.18); opacity: 1;
 }
 .scr-light-theme .scr-challenge-submit-btn:disabled { border-color: rgba(0, 0, 0, 0.14); }
-/* "호출" 버튼 — 활성화 시 붉은색(요청: "호출 모달 버튼 붉은색으로"). 비활성은 위
+/* "호출" 버튼 — 활성화 시 핑크(요청: 빨강 말고 핑크로). 비활성은 위
    .scr-challenge-submit-btn:disabled의 무채색 처리를 그대로 받는다. */
 .scr-challenge-call-btn:not(:disabled) {
-  background: #d63a3a; border-color: #d63a3a; color: #fff;
+  background: #e8529e; border-color: #e8529e; color: #fff;
 }
-.scr-challenge-call-btn:not(:disabled):hover { background: #e24a4a; border-color: #e24a4a; }
+.scr-challenge-call-btn:not(:disabled):hover { background: #f265ab; border-color: #f265ab; }
 .scr-challenge-datetime { display: flex; gap: 8px; }
 .scr-challenge-datetime .scr-input { flex: 1; min-width: 0; }
 /* 도전장 작성/인박스 팝업은 앱 다크/라이트 테마와 무관하게 항상 아이보리 편지지 톤인데,
