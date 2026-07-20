@@ -88,18 +88,20 @@ const MENTION_DATA_ATTR = "data-mention-nickname";
 // 칩에 회원 id도 함께 심어둔다 — 태그된 회원 목록은 저장 문자열("@닉네임")을 정규식으로
 // 다시 파싱하는 대신 이 속성으로 DOM에서 직접 걸어온다(아래 chipMemberIds).
 const MENTION_ID_ATTR = "data-mention-id";
-// 칩 바로 뒤에 붙이는 폭 0 마커 — 칩 자체가 contenteditable=false 원자 요소라, 뒤에
+// 칩 바로 뒤에 붙이는 캐럿용 마커 — 칩 자체가 contenteditable=false 원자 요소라, 뒤에
 // 진짜 텍스트 노드가 하나도 없으면 캐럿이 기댈 자리가 없어서 칩 앞으로 튀거나 편집창이
 // 아예 포커스/입력을 잃는 문제가 있었다(실제로 지적받은 문제 — "칩 입력후 포커싱이 칩
-// 앞에 가거나 아예 포커싱을 잃고 아무것도 입력이 안됨"). 그렇다고 일반 스페이스나 이전에
-// 썼던 U+200B(줄바꿈 가능 지점으로 취급돼 nowrap인데도 줄바꿈을 유발해 편집창 높이가
-// 튀는 문제가 있었다)는 쓰지 않고, 줄바꿈 지점으로 취급되지 않는 U+200C(zero-width
-// non-joiner)를 쓴다 — 눈에는 안 보이면서 캐럿이 기댈 진짜 텍스트 노드 역할만 한다.
-// 백스페이스를 누르면 이 마커와 칩을 한 번에 같이 지운다(아래 onEditorKeyDown의
-// Backspace 분기) — 그래야 마커 한 글자 지우고 또 눌러야 칩이 지워지는 이상한
-// 사용감(실제로 지적받은 문제 — "안보이는데 백스페이스는 먹히는 이상한 유저 경험")이
-// 안 생긴다. 저장되는 문자열에는 안 남게 domToText에서 걸러낸다.
+// 앞에 가거나 아예 포커싱을 잃고 아무것도 입력이 안됨"). U+200B(줄바꿈 가능 지점으로
+// 취급돼 편집창 높이를 튀게 함)도 U+200C 문자 자체도 시도해봤지만, U+200C조차 폰트에
+// "폭 0" 글리프가 없으면 대체 글리프가 세로로 자리를 차지해 그 순간 편집창이 살짝
+// 늘어나는 문제가 있었다(실제로 지적받은 문제 — "u200c 이게 세로길이가 커서 인풋창을
+// 그 순간 높게 늘리는거 같아") — 문자 자체의 "폭 0" 의미론에 기대는 대신, font-size:0인
+// span으로 감싸서 어떤 글리프가 나오든 화면에 아예 아무 자리도 차지하지 않게 강제한다.
 const MENTION_MARKER = "\u200C";
+
+function markerHtml(): string {
+  return `<span class="scr-mreq-chip-marker">${MENTION_MARKER}</span>`;
+}
 
 // 편집창 안 칩들의 회원 id를 모아 지금 태그된 회원 집합을 만든다 — 후보 목록에서 이미
 // 태그된 사람을 빼거나(candidates), 제출할 대상 목록을 만들 때(submit) 쓴다.
@@ -141,10 +143,10 @@ function domToText(el: HTMLElement): string {
   let out = "";
   el.childNodes.forEach((node) => {
     if (node.nodeType === Node.TEXT_NODE) {
-      // 캐럿 anchor용 마커(MENTION_MARKER)는 저장되는 문자열엔 안 남긴다 — 편집 중에만
-      // 필요한 기술적 장치일 뿐 메시지 내용이 아니다.
-      out += (node.textContent ?? "").split(MENTION_MARKER).join("");
+      out += node.textContent ?? "";
     } else if (node instanceof HTMLElement) {
+      // 캐럿 anchor용 마커 span(markerHtml)은 MENTION_DATA_ATTR이 없어 그냥 건너뛴다 —
+      // 편집 중에만 필요한 기술적 장치일 뿐 메시지 내용이 아니라 저장 문자열엔 안 남는다.
       const nickname = node.getAttribute(MENTION_DATA_ATTR);
       if (nickname) out += `@${nickname}`;
     }
@@ -173,7 +175,7 @@ function renderEditorFromText(el: HTMLElement, text: string, members: Member[]) 
     while ((m = re.exec(text)) !== null) {
       if (m.index > last) html += escapeHtml(text.slice(last, m.index));
       const member = byNickname.get(m[1]);
-      html += member ? chipHtml(member) : escapeHtml(m[0]);
+      html += member ? chipHtml(member) + markerHtml() : escapeHtml(m[0]);
       last = m.index + m[0].length;
     }
     if (last < text.length) html += escapeHtml(text.slice(last));
@@ -205,6 +207,7 @@ export default function MatchRequestCorner() {
   const [text, setText] = useState("");
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const editorRef = useRef<HTMLDivElement>(null);
+  const mentionDropRef = useRef<HTMLDivElement>(null);
   // 자동완성 후보를 고를 때(드롭다운 버튼 클릭) window.getSelection()이 그 시점엔 이미
   // 비어있거나 딴 곳을 가리키는 경우가 있어(포커스 자체는 mousedown preventDefault로
   // 지켜지지만, contentEditable의 selection 보존은 input/textarea만큼 브라우저마다
@@ -245,6 +248,15 @@ export default function MatchRequestCorner() {
   // 되돌린다.
   const [highlight, setHighlight] = useState(0);
   useEffect(() => { setHighlight(0); }, [candidates]);
+  // 위/아래로 하이라이트를 옮길 때, 그 항목이 스크롤 밖에 있으면 보이게 자동 스크롤한다
+  // (요청: "드롭다운에서 위아래 키 조작시 포커싱된 항목이 화면 밖에 있을때 자동
+  // 스크롤이 되어야 보일듯"). block:"nearest"라 꼭 필요한 만큼만 움직이고, 이미 보이는
+  // 항목이면 스크롤이 안 움직인다.
+  useEffect(() => {
+    mentionDropRef.current
+      ?.querySelector(".scr-mreq-mention-opt-active")
+      ?.scrollIntoView({ block: "nearest" });
+  }, [highlight]);
 
   const load = useCallback(async (p: number) => {
     setLoading(true);
@@ -416,7 +428,7 @@ export default function MatchRequestCorner() {
     // 그동안엔 그 재진입 호출이 아무 것도 안 하도록 막는다(위 insertingRef 선언부 참고).
     insertingRef.current = true;
     try {
-      document.execCommand("insertHTML", false, chipHtml(member) + MENTION_MARKER);
+      document.execCommand("insertHTML", false, chipHtml(member) + markerHtml());
     } finally {
       insertingRef.current = false;
     }
@@ -424,10 +436,18 @@ export default function MatchRequestCorner() {
     mentionAnchorRef.current = null;
     setMentionQuery(null);
 
+    // 삽입 직후의 캐럿 위치(마커 뒤)를 붙잡아 둔다 — 아래 rAF에서 focus()만 다시 부르면
+    // 그 사이 selection이 흐트러져 캐럿이 편집창 맨 앞(칩보다도 앞)으로 돌아가 버리는
+    // 경우가 있었다(실제로 지적받은 문제 — "칩 입력 후 바로 @누르면 칩 앞에 @이 입력됨").
+    const afterSel = window.getSelection();
+    const afterRange = afterSel && afterSel.rangeCount > 0 ? afterSel.getRangeAt(0).cloneRange() : null;
+
     const raw = domToText(el);
+    let didTruncate = false;
     if (raw.length > MESSAGE_MAX_LENGTH) {
+      didTruncate = true;
       const truncated = raw.slice(0, MESSAGE_MAX_LENGTH);
-      renderEditorFromText(el, truncated, members);
+      renderEditorFromText(el, truncated, members); // 이 함수가 스스로 캐럿을 끝에 둔다
       setText(truncated);
     } else {
       setText(raw);
@@ -436,8 +456,16 @@ export default function MatchRequestCorner() {
     // 탭으로 확정했을 때 포커스가 편집창 밖(지우기 X 버튼 등)으로 새는 경우가 있었다
     // (실제로 지적받은 문제 — "탭으로 자동완성하면 x 버튼에 포커싱이 이동해") — 이번
     // 이벤트 처리가 다 끝나고 브라우저 자체 기본 동작까지 모두 지나간 다음 프레임에
-    // 한 번 더 편집창으로 강제로 되돌린다.
-    requestAnimationFrame(() => { el.focus(); });
+    // 한 번 더 편집창으로 강제로 되돌린다. 글자수 초과로 다시 그려진 경우(didTruncate)는
+    // renderEditorFromText가 이미 올바른 캐럿을 잡아뒀으니 여기서 덮어쓰지 않는다.
+    requestAnimationFrame(() => {
+      el.focus();
+      if (!didTruncate && afterRange) {
+        const s = window.getSelection();
+        s?.removeAllRanges();
+        s?.addRange(afterRange);
+      }
+    });
   };
 
   // 칩의 × 클릭을 이벤트 위임으로 처리 — ×를 진짜 <button>으로 만들면 그 요소가
@@ -465,23 +493,27 @@ export default function MatchRequestCorner() {
   // mentionQuery만으로 게이트를 걸어 항상 preventDefault + stopPropagation한다.
   const dropdownOpen = mentionQuery !== null;
   const onEditorKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    // 칩 뒤에는 캐럿용 마커(MENTION_MARKER)가 붙어있어서, 백스페이스를 있는 그대로
+    // 칩 뒤에는 캐럿용 마커 span(markerHtml)이 붙어있어서, 백스페이스를 있는 그대로
     // 브라우저에 맡기면 그 마커 한 글자만 지워지고 칩은 그대로 남는다 — 한 번 더 눌러야
     // 지워지는 이상한 사용감이었다(실제로 지적받은 문제 — "안보이는데 백스페이스는
-    // 먹히는 이상한 유저 경험"). 캐럿 바로 앞이 "마커 + 칩"이면 둘을 한 번에 지운다.
+    // 먹히는 이상한 유저 경험"). 캐럿 바로 앞이 "마커 span + 칩"이면 둘을 한 번에 지운다.
     if (e.key === "Backspace") {
       const sel = window.getSelection();
       const r = sel && sel.rangeCount > 0 ? sel.getRangeAt(0) : null;
       if (r && r.collapsed && r.startContainer.nodeType === Node.TEXT_NODE) {
         const node = r.startContainer as Text;
         const offset = r.startOffset;
-        if (offset > 0 && (node.textContent ?? "")[offset - 1] === MENTION_MARKER) {
-          const prev = offset === 1 ? node.previousSibling : null;
-          if (prev instanceof HTMLElement && prev.hasAttribute(MENTION_DATA_ATTR)) {
+        const markerSpan = node.parentElement;
+        if (
+          offset === (node.textContent?.length ?? 0) &&
+          markerSpan?.classList.contains("scr-mreq-chip-marker")
+        ) {
+          const chip = markerSpan.previousElementSibling;
+          if (chip instanceof HTMLElement && chip.hasAttribute(MENTION_DATA_ATTR)) {
             e.preventDefault();
             const delRange = document.createRange();
-            delRange.setStartBefore(prev);
-            delRange.setEnd(node, offset);
+            delRange.setStartBefore(chip);
+            delRange.setEndAfter(markerSpan);
             delRange.deleteContents();
             const after = window.getSelection();
             after?.removeAllRanges();
@@ -642,7 +674,7 @@ export default function MatchRequestCorner() {
                 </button>
               )}
               {mentionQuery !== null && candidates.length > 0 && (
-                <div className="scr-mreq-mention-drop">
+                <div className="scr-mreq-mention-drop" ref={mentionDropRef}>
                   {candidates.map((m, i) => (
                     <button
                       key={m.id} type="button"

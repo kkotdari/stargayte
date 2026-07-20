@@ -6195,6 +6195,10 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
   background: rgba(0, 0, 0, 0.12); color: inherit; font-size: 10px; line-height: 1; cursor: pointer;
 }
 .scr-mreq-chip-x:hover { background: rgba(0, 0, 0, 0.24); }
+/* 칩 바로 뒤 캐럿용 마커(markerHtml) — font-size:0으로 어떤 폰트의 대체 글리프가 나오든
+   화면에 자리를 차지하지 않게 강제한다(요청: "u200c 이게 세로길이가 커서 인풋창을 그
+   순간 높게 늘리는거 같아" — 문자의 "폭 0" 의미론만으로는 못 믿어서 CSS로 이중 방어). */
+.scr-mreq-chip-marker { font-size: 0; line-height: 0; }
 .scr-mreq-empty { font-size: var(--fs-body); color: var(--dim); padding: 6px 2px; text-align: center; }
 .scr-mreq-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 /* 요청자+버튼 줄, 메시지 줄 — 세로로 두 단(요청: "요청자와 버튼로우가 한줄에 배치"). */
