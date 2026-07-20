@@ -347,7 +347,8 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
    느낌 대신 로고 자체가 아래로 내려오는 느낌이 되도록(요청: "로고를 내린다는 느낌으로")
    margin-bottom만 줄이지 않고 그만큼을 margin-top으로 옮긴다 — 로고 위/아래를 합친
    총량(20px)은 그대로라 폼 위치는 거의 그대로고, 로고만 그 안에서 아래로 내려온다. */
-.scr-auth-logo { display: flex; align-items: center; justify-content: center; margin: 6px 0 14px; z-index: 1; min-height: 64px; }
+/* 로고를 폼 쪽으로 더 내려 붙인다(요청) — 아래 간격을 줄여 폼 바로 위에 붙게. */
+.scr-auth-logo { display: flex; align-items: center; justify-content: center; margin: 18px 0 2px; z-index: 1; min-height: 64px; }
 /* height만 고정하면 원본이 가로로 넓은 워드마크일 때 좁은 화면에서 양옆으로 넘칠 수
    있다 — max-height/max-width를 함께 두고 width/height를 auto로 둬서 비율은 유지한 채
    좁은 화면에서는 폭에 맞춰 자동으로 더 작아지게 한다. */
@@ -367,7 +368,8 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
    반투명 유리 배경만 유지한다. */
 .scr-auth-card-plain {
   background: var(--panel); backdrop-filter: blur(4px);
-  border-radius: var(--radius); padding: 20px; position: relative;
+  /* 위아래 패딩 축소(요청). */
+  border-radius: var(--radius); padding: 12px 20px; position: relative;
 }
 /* 로그인/회원가입을 오가는 버튼 — 로그인 화면에서는 구석에 작은 텍스트 링크 하나로
    ("회원가입"), 회원가입 화면에서는 그 반대 동작(뒤로가기)이 폼 위에 작게 붙는다. */
