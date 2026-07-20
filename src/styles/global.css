@@ -6514,6 +6514,9 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
   border-radius: 10px;
+  /* 옵션의 반전 배경이 좌우 끝까지 꽉 차게(요청) — 컨테이너 좌우 패딩을 없앤다. 둥근
+     모서리는 각 컨테이너의 overflow-y:auto가 이미 클리핑한다. */
+  padding: 0;
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,0.10),
     inset 0 -1px 0 rgba(255,255,255,0.05),
@@ -6533,7 +6536,9 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
 .scr-pv-opt,
 .scr-menu-pop-drop .scr-menu-pop-opt,
 .scr-menu-pop-drop-mobile .scr-menu-pop-opt {
-  padding: 8px 12px; border-radius: 6px;
+  /* 반전 배경이 좌우로 꽉 차게 라운드 없이(요청). 패딩은 글자 인셋용이라 배경은 그대로
+     행 전체를 채운다. */
+  padding: 8px 12px; border-radius: 0;
 }
 /* hover = 옅은 반전(반투명 유지). */
 .scr-select-opt:hover,
