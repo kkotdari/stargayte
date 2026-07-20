@@ -120,7 +120,7 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
   const ourTeam = current.targets.map((t) => t.nickname);
   // 편지봉투 위 문구와 편지지 제목을 다르게 둔다(요청).
   const envelopeTitle = `${current.createdBy.nickname}님에게 호출당함`;
-  const letterTitle = `야 ${user?.nickname ?? "너"}, 나와!`;
+  const letterTitle = `${user?.nickname ?? "너"} 너 나와!`;
 
   return createPortal(
     <div className="scr-modal-overlay">

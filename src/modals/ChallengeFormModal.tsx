@@ -174,6 +174,16 @@ export default function ChallengeFormModal({ onClose, onCreated, presetTargetIds
   // 팀전으로 자동 판단한다(요청: "너 나와 유형 제거하고 자동으로 판단함").
   const canSubmit = targetIds.length >= 1;
 
+  // 모달 타이틀은 지목한 상대 이름을 넣어 "누구누구 호출하기"로(요청). 아직 안 골랐으면
+  // 그냥 "호출하기", 여럿이면 "OO 외 N명 호출하기".
+  const targetNames = targetIds.map((id) => memberById.get(id)?.nickname).filter(Boolean) as string[];
+  const titleName = targetNames.length === 0
+    ? ""
+    : targetNames.length === 1
+      ? targetNames[0]
+      : `${targetNames[0]} 외 ${targetNames.length - 1}명`;
+  const modalTitle = titleName ? `${titleName} 호출하기` : "호출하기";
+
   const submit = async () => {
     if (!canSubmit) return;
     setErr("");
@@ -201,7 +211,7 @@ export default function ChallengeFormModal({ onClose, onCreated, presetTargetIds
     <div className="scr-modal-overlay">
       <div className="scr-modal scr-modal-sm scr-challenge-form-modal">
         <div className="scr-modal-head">
-          <span>너 나와 신청</span>
+          <span>{modalTitle}</span>
           <button className="scr-icon-btn" onClick={onClose} aria-label="닫기"><X size={14} /></button>
         </div>
 
