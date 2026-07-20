@@ -1027,9 +1027,20 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 /* 액션 버튼과 나란히 있을 때 세로 중앙정렬만으로는 타이틀 글자가 살짝 처져 보여서,
    그 기준선을 조금 위로 올린다. */
 .scr-v2-toolbar-title { grid-area: title; margin: 0; align-self: center; transform: translateY(-6px); }
-/* 랭킹의 개인전/팀전 탭 — 타이틀 줄 오른쪽(actions 자리)에 둔다(요청: "목록타입이라 타이틀
-   로우로"). 액션 버튼과 같은 기준선 보정(-6px). */
-.scr-rank-toolbar .scr-rank-mode-tabs { grid-area: actions; display: inline-flex; transform: translateY(-6px); }
+/* 랭킹의 개인전/팀전 탭 — 타이틀 바로 옆에 붙인다(요청). 타이틀 줄을 grid→flex로 바꿔
+   제목과 라디오가 나란히 왼쪽에 온다. 액션 버튼과 같은 기준선 보정(-6px). */
+.scr-rank-toolbar { display: flex; align-items: center; gap: 10px; }
+.scr-rank-toolbar .scr-v2-toolbar-title { flex: 0 0 auto; }
+.scr-rank-mode-tabs { display: inline-flex; transform: translateY(-6px); }
+/* 라디오를 한 스텝 작게(텍스트 caption) + 높이는 타이틀 텍스트보다 조금 작게(요청). */
+.scr-rank-mode-tabs .scr-pill-tabs { height: 24px; background: rgba(255, 255, 255, 0.08); }
+.scr-light-theme .scr-rank-mode-tabs .scr-pill-tabs { background: rgba(0, 0, 0, 0.06); }
+.scr-rank-mode-tabs .scr-pill-tab-btn { font-size: var(--fs-caption); padding: 0 12px; }
+/* 다크에서 미선택 쪽 글자가 안 보이던 문제 — 타이틀 줄은 필터패널(.scr-filter-panel)이
+   아니라 기본 하드코딩 어두운색(rgba(16,21,26,0.55))이 그대로 새어 들어와 어두운 배경 위에서
+   안 보였다. 테마 인지 색(--muted)으로 바꾼다(필터패널과 같은 처리). */
+.scr-rank-mode-tabs .scr-pill-tab-btn:not(.scr-pill-tab-btn-active) { color: var(--muted); }
+.scr-rank-mode-tabs .scr-pill-tab-btn:hover:not(.scr-pill-tab-btn-active) { color: var(--text); }
 /* 랭킹 타이틀 옆 몇 월인지(요청: "타이틀 옆에 몇월 표시") — 타이틀보다 옅고 작게. */
 /* 요청: "랭킹 몇월 글짜 1.5배 확대" — 0.55em → 0.825em. 밝기도 더 밝게(요청) —
    --dim보다 밝은 --muted로. */
