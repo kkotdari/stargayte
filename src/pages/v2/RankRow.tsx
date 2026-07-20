@@ -23,8 +23,7 @@ interface RankRowProps {
   // 바로 그 상대로 도전장 띄우는 버튼 추가 닉네임 옆에"). 본인 행에는 안 넘겨줘서 버튼 자체가
   // 안 뜬다.
   onChallenge?: (member: Member) => void;
-  // 이 기간 경기수 순위(1~3) — 닉네임 옆에 "경기수N위" 글자 배지를 붙이고 닉네임을 파스텔
-  // 분홍 메탈색으로 칠한다(요청). 순위(메달 1~3위)이기도 하면 메달색↔분홍을 느리게 교대.
+  // 이 기간 경기수 순위(1~3) — 닉네임 옆에 "경기수N위" 배지만 단다(닉네임 색은 안 바꾼다).
   gamesRank?: number;
 }
 
@@ -45,16 +44,10 @@ const MEDAL_NAME_CLASS: Record<number, string> = {
 export default function RankRowV2({ row, tiedWithPrev = false, highlighted = false, onOpenTrend, onChallenge, gamesRank }: RankRowProps) {
   const { member, rankScore, rank, rankDelta, provisional } = row;
   const [photoOpen, setPhotoOpen] = useState(false);
-  // 닉네임 색: 메달(1~3위)이면서 경기수 상위면 메달메탈↔분홍메탈을 느리게 교대(요청: 메달
-  // 2초 → 1초 페이드 → 분홍 2초 → 1초 페이드). 메달만이면 메달색, 경기수 상위만이면 분홍,
-  // 그 외엔 기본색.
+  // 닉네임 색은 메달(1~3위)만 — 경기수 상위여도 닉네임 색은 바꾸지 않고 배지만 단다(요청:
+  // 분홍메탈 닉네임 제도 전부 삭제).
   const isGamesTop = gamesRank !== undefined;
-  const medalClass = MEDAL_NAME_CLASS[rank];
-  const isMedalGames = medalClass !== undefined && isGamesTop;
-  const nameClass = cx(
-    medalClass ?? (isGamesTop ? "scr-rank-name-games" : undefined),
-    isMedalGames && "scr-rank-name-games-medal",
-  );
+  const nameClass = MEDAL_NAME_CLASS[rank];
   // 카드엔 총점만 보여주고(세부는 랭킹 상세에서 — 요청), 경기마다 가중 합산이라 음수도 가능하다.
   // 항상 양수가 아니므로 +부호는 안 붙이고(양수는 그대로), 음수는 자연히 - 가 붙는다.
 
@@ -95,8 +88,8 @@ export default function RankRowV2({ row, tiedWithPrev = false, highlighted = fal
             <Avatar member={member} size={40} />
           </button>
           <div className="scr-rank-name-wrap">
-            <span className={cx("scr-rank-name", nameClass)} data-name={member.nickname}>{member.nickname}</span>
-            {isGamesTop && <span className="scr-rank-games-badge">참가{gamesRank}위</span>}
+            <span className={cx("scr-rank-name", nameClass)}>{member.nickname}</span>
+            {isGamesTop && <span className="scr-rank-games-badge">경기수{gamesRank}위</span>}
             {onChallenge && (
               <button
                 type="button" className="scr-rank-challenge-btn" onClick={challenge}
