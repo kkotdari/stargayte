@@ -1180,6 +1180,9 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-install-guide-steps li { font-size: var(--fs-body); color: var(--text); line-height: 1.5; }
 .scr-install-guide-icon { display: inline-flex; vertical-align: middle; margin: 0 3px; color: var(--text); }
 .scr-install-guide-note { margin: 14px 0 0; font-size: var(--fs-caption); color: var(--muted); line-height: 1.45; }
+/* 모달 본문은 기본 하단 패딩이 0이라 안내 문구가 바닥에 딱 붙었다(요청: "하단 패딩 부족") —
+   다른 모달들(.scr-modal-weight 등)처럼 아래 여백을 준다. */
+.scr-install-guide-modal .scr-modal-body { padding-bottom: 18px; }
 .scr-rank-method-trigger {
   display: inline-flex; align-items: center; gap: 4px;
   background: transparent; border: none; cursor: pointer; padding: 2px 6px; border-radius: 999px;
