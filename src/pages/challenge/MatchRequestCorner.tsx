@@ -239,13 +239,31 @@ export default function MatchRequestCorner() {
   // 쿼리에 섞이지 않는다).
   const detectMentionFromCaret = () => {
     const sel = window.getSelection();
-    const node = sel?.rangeCount ? sel.getRangeAt(0).startContainer : null;
-    if (!node || node.nodeType !== Node.TEXT_NODE || !editorRef.current?.contains(node)) {
+    if (!sel || sel.rangeCount === 0) {
       setMentionQuery(null);
       mentionAnchorRef.current = null;
       return;
     }
-    const offset = sel!.getRangeAt(0).startOffset;
+    const range = sel.getRangeAt(0);
+    let node: Node = range.startContainer;
+    let offset = range.startOffset;
+    // 캐럿이 텍스트 노드가 아니라 편집창(엘리먼트) 자체를 가리킬 때가 있다 — 특히 빈
+    // 칸에 첫 글자를 막 쳤을 때처럼 경계 케이스에서 브라우저가 selection을 텍스트 노드
+    // 안으로 안 들어가고 부모 엘리먼트 기준으로 잡아버리는 경우(실제로 지적받은 문제 —
+    // "자동완성 안떠"). 그 offset 바로 앞 자식이 텍스트 노드면 그 끝으로 캐럿을 옮겨
+    // 계산한다.
+    if (node.nodeType !== Node.TEXT_NODE) {
+      const child = node.childNodes[offset - 1];
+      if (child && child.nodeType === Node.TEXT_NODE) {
+        node = child;
+        offset = child.textContent?.length ?? 0;
+      }
+    }
+    if (node.nodeType !== Node.TEXT_NODE || !editorRef.current?.contains(node)) {
+      setMentionQuery(null);
+      mentionAnchorRef.current = null;
+      return;
+    }
     const before = (node.textContent ?? "").slice(0, offset);
     // "@"가 실제로 있을 때만 태그 모드로 들어간다 — 예전엔 "@" 없이도 매칭돼서, 그냥
     // 평범한 단어를 치는 중에도(그 단어가 어느 닉네임의 일부와 겹치면) 자동완성이 몰래
