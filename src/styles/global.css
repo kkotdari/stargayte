@@ -1088,6 +1088,11 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    없는 너나와/회원은 물론, 기록실까지 메인 버튼 아래 간격을 더 키웠다(요청: "메인버튼의
    아래 마진만 증가"). */
 .scr-v2-primary-row { display: flex; justify-content: center; margin-bottom: 22px; }
+/* 회원 화면만 생성 버튼 바로 아래에 필터 바(.scr-filter-panel)가 붙는데, 그 패널이 라벨을
+   얹으려고 margin-top:-18px로 스스로를 끌어올려 버튼의 아래 여백(22px)을 거의 다 먹어
+   버튼이 "상태" 위에 딱 붙어 보였다(신고: "회원 생성버튼만 아래 공간이 없어"). 다른 화면은
+   버튼과 필터 사이에 소제목이 있어 영향이 없다 — 여기서만 -18px만큼을 더해 되돌린다. */
+.scr-members-screen-v2 .scr-v2-primary-row { margin-bottom: 40px; }
 /* 경기 등록 화면 — 등록 버튼 아래에 리플레이 위치 안내 링크를 세로로 쌓는다(요청). */
 .scr-v2-primary-row-col { flex-direction: column; align-items: center; gap: 6px; }
 .scr-v2-primary-row .scr-btn {
