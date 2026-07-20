@@ -2266,10 +2266,10 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 @media (max-width: 640px) {
   .scr-rank-table-panel-v2 .scr-team-rank-row { padding: 7px 0; }
   /* PC와 같은 이유로 되돌린다 — 일대일 행의 모바일 순위 칸(44px)과 같은 폭, 왼쪽 정렬.
-     좌우 패딩(카드 자신의 몫, 10px→16px)은 요청: "모바일에서 랭킹(개인/팀) 카드의
-     좌우 패딩 확대". */
+     좌우 패딩은 개인 랭킹 행과 똑같이 10px로 통일한다(요청: "팀과 개인 똑같이 통일") —
+     개인 카드가 닉네임 노출을 위해 좌우 10px로 줄었으므로 팀 카드도 같은 값으로 맞춘다. */
   .scr-rank-table-panel-v2 .scr-team-rank-row-inner {
-    grid-template-columns: 44px minmax(0, 1fr) 82px; column-gap: 8px; padding: 14px 16px;
+    grid-template-columns: 44px minmax(0, 1fr) 82px; column-gap: 8px; padding: 14px 10px;
   }
   /* 좁은 폭에서는 칸을 고정폭으로 두면 안 된다 — 두 칸 합이 실제로 주어진 트랙보다 넓어지면
      justify-content:center가 넘친 만큼을 좌우로 균등하게 밀어내서, 왼쪽 순위 숫자 위를 덮는다
