@@ -93,7 +93,7 @@ function extractMentionIds(text: string, members: Member[]): string[] {
   for (const m of sorted) {
     if (!m.nickname || ids.includes(m.id)) continue;
     const esc = m.nickname.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const re = new RegExp(`@${esc}(?![^\\s@])`);
+    const re = new RegExp(`@${esc}(?!${MENTION_BOUNDARY_RE})`);
     if (re.test(text)) ids.push(m.id);
   }
   return ids;
@@ -101,6 +101,15 @@ function extractMentionIds(text: string, members: Member[]): string[] {
 
 const MESSAGE_MAX_LENGTH = 30;
 const MENTION_DATA_ATTR = "data-mention-nickname";
+// 칩 바로 뒤에 눈에 보이는 공백 없이 커서를 두기 위한 구분자(요청: "칩 다음에 공백 없이
+// 바로 커서가 놓여야해 ... ~님 이런식으로 문장으로 이어서 쓸테니까"). 화면엔 안 보이지만
+// (너비 0) 실제 문자라서, 저장 문자열에서 "@닉네임"과 바로 뒤에 이어붙는 텍스트("님" 등)
+// 사이 경계를 정규식이 여전히 구분할 수 있다 — 이게 없으면 "@닉네임님"이 통째로 한
+// 단어처럼 보여 태그 인식(extractMentionIds)이 깨진다.
+const MENTION_SEPARATOR = "\u200B";
+// 위 구분자를 "공백"으로 함께 인식시키는 문자 클래스 — extractMentionIds/renderEditorFromText의
+// "닉네임 뒤에 다른 글자가 바로 안 붙어야 한다" 경계 검사에 쓴다.
+const MENTION_BOUNDARY_RE = "[^\\s@\\u200B]";
 
 function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -151,7 +160,7 @@ function renderEditorFromText(el: HTMLElement, text: string, members: Member[]) 
       .slice()
       .sort((a, b) => b.length - a.length)
       .map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
-    const re = new RegExp(`@(${esc.join("|")})(?![^\\s@])`, "g");
+    const re = new RegExp(`@(${esc.join("|")})(?!${MENTION_BOUNDARY_RE})`, "g");
     const byNickname = new Map(members.map((m) => [m.nickname, m]));
     let html = "";
     let last = 0;
@@ -372,14 +381,15 @@ export default function MatchRequestCorner() {
     sel?.removeAllRanges();
     sel?.addRange(range);
 
-    // "@쿼리" 선택 영역을 칩으로 치환. 뒤에 붙는 공백은 일반 스페이스로 두면 칩(비편집
-    // 인라인 요소) 바로 뒤에서 브라우저가 종종 지워버려서 넓힌 non-breaking space를 쓴다
-    // — domToText/extractMentionIds 쪽 \s 매칭은 nbsp도 공백으로 인식해 문제 없다.
+    // "@쿼리" 선택 영역을 칩으로 치환. 칩 뒤엔 눈에 보이는 공백을 넣지 않는다(요청: "칩
+    // 다음에 공백 없이 바로 커서가 놓여야해") — 대신 폭 0인 구분자(MENTION_SEPARATOR)만
+    // 붙여서 커서가 칩에 딱 붙어 보이면서도 "@닉네임"과 바로 이어 쓰는 글자("님" 등) 사이
+    // 경계는 여전히 구분할 수 있게 한다.
     // execCommand는 그 자리에서 진짜 'input' 이벤트를 다시 쏘는데(onEditorInput 재진입),
     // 그동안엔 그 재진입 호출이 아무 것도 안 하도록 막는다(위 insertingRef 선언부 참고).
     insertingRef.current = true;
     try {
-      document.execCommand("insertHTML", false, chipHtml(member) + "&nbsp;");
+      document.execCommand("insertHTML", false, chipHtml(member) + MENTION_SEPARATOR);
     } finally {
       insertingRef.current = false;
     }
@@ -428,13 +438,6 @@ export default function MatchRequestCorner() {
   // mentionQuery만으로 게이트를 걸어 항상 preventDefault + stopPropagation한다.
   const dropdownOpen = mentionQuery !== null;
   const onEditorKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    // 한글(IME) 조합 중에 마지막 글자를 확정하면서 동시에 누른 스페이스/탭/엔터는
-    // 브라우저가 "조합 확정"과 "진짜 키 입력" 두 번으로 나눠 발생시키는 경우가 있다 —
-    // 여기서 그 키를 가로채 칩 삽입까지 실행해버리면 IME가 막 확정한 마지막 글자와
-    // 우리 처리가 겹쳐서 그 글자가 남거나 공백이 더 들어간다(실제로 지적받은 문제 —
-    // "마지막 타이핑한 글자가 들어가", "공백이 추가로 들어가"). SearchFilterBar의 같은
-    // 패턴과 동일하게 조합 중일 땐 아무 것도 가로채지 않고 그대로 흘려보낸다.
-    if (e.nativeEvent.isComposing || e.keyCode === 229) return;
     if (dropdownOpen && e.key === "ArrowDown") {
       e.preventDefault();
       e.stopPropagation();
@@ -448,6 +451,14 @@ export default function MatchRequestCorner() {
       return;
     }
     if (dropdownOpen && (e.key === "Enter" || e.key === " " || e.key === "Tab")) {
+      // 한글(IME) 조합 중 마지막 글자를 확정하며 동시에 누른 Enter는 브라우저가 "조합
+      // 확정"과 "진짜 Enter" 두 번으로 나눠 발생시키는 경우가 있다(SearchFilterBar와
+      // 동일한 현상). 그 첫 번째(가짜, isComposing) Enter만 건너뛰고 곧이어 오는 진짜
+      // Enter에서 처리한다 — Space/Tab은 이런 이중발생이 없는 키라 그대로 처리해야
+      // 하는데, 예전에 Enter/Space/Tab을 한꺼번에 가드로 걸렀더니 스페이스로 확정하는
+      // 것 자체가 아예 안 먹는 회귀가 생겼다(실제로 지적받은 문제 — "스페이스로
+      // 자동완성 결정이 안되네").
+      if (e.key === "Enter" && (e.nativeEvent.isComposing || e.keyCode === 229)) return;
       e.preventDefault();
       e.stopPropagation();
       if (candidates.length > 0) insertMention(candidates[Math.min(highlight, candidates.length - 1)]);
@@ -551,7 +562,7 @@ export default function MatchRequestCorner() {
                 contentEditable
                 role="textbox"
                 aria-multiline="false"
-                data-placeholder="@닉네임으로 태그"
+                data-placeholder="@로 유저 태그"
                 onInput={onEditorInput}
                 onPaste={onEditorPaste}
                 onKeyUp={onEditorKeyUp}
@@ -614,15 +625,29 @@ export default function MatchRequestCorner() {
                   <span className="scr-mreq-item-author-name">{req.author.nickname}</span>
                 </div>
                 <div className="scr-mreq-item-actions">
-                  <button
-                    type="button"
-                    className={cx("scr-mreq-rec-btn", req.recommendedByMe && "scr-mreq-rec-btn-on")}
-                    onClick={() => void toggleRecommend(req)}
-                    disabled={busyId === req.id}
-                    aria-pressed={req.recommendedByMe}
-                  >
-                    <ThumbsUp size={14} /> {req.recommendCount}
-                  </button>
+                  <div className="scr-mreq-rec-wrap">
+                    <button
+                      type="button"
+                      className={cx("scr-mreq-rec-btn", req.recommendedByMe && "scr-mreq-rec-btn-on")}
+                      onClick={() => void toggleRecommend(req)}
+                      disabled={busyId === req.id}
+                      aria-pressed={req.recommendedByMe}
+                    >
+                      <ThumbsUp size={14} /> {req.recommendCount}
+                    </button>
+                    {/* 누가 추천했는지 — PC(마우스 있는 기기)에서만 마우스오버로 팝오버 노출(요청).
+                        터치 기기는 hover가 없거나 탭 후 고착되는 문제가 있어 CSS로 원천 차단. */}
+                    {req.recommenders.length > 0 && (
+                      <div className="scr-mreq-rec-pop" role="tooltip">
+                        {req.recommenders.map((r) => (
+                          <div key={r.memberId} className="scr-mreq-rec-pop-row">
+                            <Avatar member={{ id: r.memberId, nickname: r.nickname, avatar: r.avatar }} size={18} />
+                            <span>{r.nickname}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                   {(req.mine || isAdmin) && (
                     <RequestKebabMenu onComplete={() => void complete(req)} busy={busyId === req.id} />
                   )}

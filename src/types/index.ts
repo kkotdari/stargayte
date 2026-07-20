@@ -406,6 +406,8 @@ export interface MatchRequest {
   recommendCount: number;
   // 내가 이미 추천을 눌렀는지(버튼 눌림 상태).
   recommendedByMe: boolean;
+  // 추천한 사람 목록(PC 한정 마우스오버 팝오버용).
+  recommenders: { memberId: string; nickname: string; avatar: string | null }[];
   // 내가 작성자인지 — 작성자/운영자만 "성사됨" 완료 처리를 할 수 있다.
   mine: boolean;
   // 언급된 회원들 — 카드에 "언급: A, B"로 표시(권한 등 다른 기능과는 연결 안 함).
