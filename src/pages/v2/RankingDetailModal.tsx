@@ -87,20 +87,20 @@ export default function RankingDetailModal({
 
   useEffect(() => reload(), [reload]);
 
-  // 경기당 레이팅 변화(Δμ) — 이 회원(상세 주인공)의 전체 경기에 대한 μ 증감을 matchNo로
-  // 받아둔다. 레이팅은 시간순 누적이라 기간과 무관하게 한 번만 받아, 위에서 기간으로 좁힌
-  // 경기들만 matchNo로 골라 병기한다. 팀 상세도 흐름상 주인공은 한 명(members[0])이다.
+  // 경기당 레이팅 변화(Δμ) — 이 회원(상세 주인공)의 이 기간 경기에 대한 μ 증감을 matchNo로
+  // 받아둔다. 목록이 조회 기간만으로 리셋해 매겨지므로 여기도 같은 period(from/to)로 좁혀
+  // 받아야 위 목록의 μ/σ와 어긋나지 않는다. 팀 상세도 흐름상 주인공은 한 명(members[0])이다.
   const focalId = members[0]?.id;
   const [deltaByMatchNo, setDeltaByMatchNo] = useState<Map<string, number>>(new Map());
   useEffect(() => {
     let cancelled = false;
     setDeltaByMatchNo(new Map());
     if (!focalId) return;
-    api.getRatingHistory(focalId, matchType)
+    api.getRatingHistory(focalId, matchType, period.from, period.to)
       .then((res) => { if (!cancelled) setDeltaByMatchNo(new Map(Object.entries(res.deltas))); })
       .catch(() => { if (!cancelled) setDeltaByMatchNo(new Map()); });
     return () => { cancelled = true; };
-  }, [focalId, matchType]);
+  }, [focalId, matchType, period.from, period.to]);
 
   return createPortal(
     // 바깥(딤) 클릭으로는 안 닫는다 — 닫기는 헤더 X 버튼으로만(요청: "외부 영역 클릭시

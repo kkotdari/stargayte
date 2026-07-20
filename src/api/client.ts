@@ -277,9 +277,13 @@ export const api = {
   },
 
   // 랭킹 상세의 '경기당 레이팅 변화(Δ)' — 이 회원이 뛴 경기의 matchNo → μ 증감. 레이팅은
-  // 시간순 누적이라 클라이언트가 재구성할 수 없어 서버가 계산해 준다.
-  async getRatingHistory(memberId: string, matchType?: string): Promise<RatingHistoryResponse> {
-    const qs = buildQuery({ memberId, matchType });
+  // 클라이언트가 재구성할 수 없어 서버가 계산해 준다. 목록이 조회 기간만으로 리셋해 매겨지므로
+  // (요청: "해당 월이나 년도만의 리셋된 데이터로 조회"), 여기도 같은 dateFrom/dateTo를 넘겨야
+  // 목록의 μ/σ와 이 상세의 Δ 합이 어긋나지 않는다.
+  async getRatingHistory(
+    memberId: string, matchType?: string, dateFrom?: string, dateTo?: string,
+  ): Promise<RatingHistoryResponse> {
+    const qs = buildQuery({ memberId, matchType, dateFrom, dateTo });
     return request<RatingHistoryResponse>(`/api/matches/rating-history${qs}`);
   },
 

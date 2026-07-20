@@ -1103,26 +1103,40 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 }
 .scr-scrolltop:hover { background: rgba(var(--overlay-rgb), 0.5); }
 
-/* 월(좌우 이동)과 산정 방식 힌트를 담는, 타이틀 행 아래의 별도 행(요청) — 월은 왼쪽,
-   힌트는 오른쪽 끝. 타이틀 바로 아래에 붙이고 목록/검색창과의 간격을 준다. */
-.scr-rank-subrow {
-  /* 월/년 필터(.scr-rank-period)만 남아 행 가운데에 온다(요청: 필터 가운데 정렬). 기준점수표
-     링크는 이 줄에서 빼내 필터들 아래·목록 위로 옮겼다(아래 .scr-rank-weight-row). */
-  display: flex; align-items: center; justify-content: center; gap: 12px;
-  /* 아래쪽은 .scr-screen의 형제간 gap이 이미 다음 요소와 간격을 주므로 따로 마진을
-     두지 않는다(요청: "자체 패딩/마진 중복 제거") — 위쪽 -6px만 타이틀과의 베이스라인
-     보정으로 남긴다. */
-  margin: -6px 0 0;
-}
 /* 기준점수표 링크 줄 — 필터들 아래, 순위 목록 바로 위. 오른쪽 끝에 두고 목록에 바짝 붙인다(요청). */
 .scr-rank-weight-row { display: flex; justify-content: flex-end; margin-bottom: -4px; }
-/* 산정 방식 안내 — 기준점수표를 없앤 자리(필터 아래·목록 위). 레이팅(TrueSkill)이 어떻게
-   매겨지는지 옅은 본문 한 단락으로 설명한다(요청: 기준점수표 대신 산정 방식만 명시). */
-.scr-rank-method-note {
-  margin: 0; padding: 8px 2px 2px;
-  font-size: var(--fs-caption); line-height: 1.5; color: var(--muted);
+/* 산정 방식 안내 — 기준점수표를 없앤 자리(필터 아래·목록 위). 항상 보이는 문단 대신 눌러야
+   뜨는 툴팁으로 바꾼다(요청: "누르면 툴팁형태로 보이게"). 트리거는 작고 옅게, 눌리면(active)
+   살짝 밝아진다. */
+.scr-rank-method-row { display: flex; justify-content: center; padding: 6px 0 2px; }
+.scr-rank-method-trigger {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: transparent; border: none; cursor: pointer; padding: 2px 6px; border-radius: 999px;
+  font-size: var(--fs-caption); font-weight: 600; color: var(--muted);
+  transition: background 0.12s ease, color 0.12s ease;
 }
-.scr-rank-method-note b { color: var(--text); font-weight: 700; }
+.scr-rank-method-trigger:hover,
+.scr-rank-method-trigger-active { background: rgba(255, 255, 255, 0.08); color: var(--text); }
+.scr-light-theme .scr-rank-method-trigger:hover,
+.scr-light-theme .scr-rank-method-trigger-active { background: rgba(0, 0, 0, 0.06); }
+/* 트리거를 누르면 뜨는 툴팁 본문 — 다른 팝오버(.scr-pv-drop)와 같은 톤의 떠 있는 카드. */
+.scr-rank-method-tooltip {
+  z-index: 210; backdrop-filter: blur(4px); border-radius: 10px; padding: 10px 12px;
+  background: rgba(20,25,31,0.94);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.06),
+    inset 0 -1px 0 rgba(255,255,255,0.03),
+    0 1px 4px rgba(0,0,0,0.15),
+    0 4px 14px rgba(0,0,0,0.18);
+  font-size: var(--fs-caption); line-height: 1.5; color: rgba(255,255,255,0.72);
+}
+.scr-rank-method-tooltip b { color: #fff; font-weight: 700; }
+.scr-light-theme .scr-rank-method-tooltip {
+  background: rgba(255,255,255,0.97);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.7), 0 1px 3px rgba(0,0,0,0.06), 0 4px 10px rgba(0,0,0,0.08);
+  color: var(--muted);
+}
+.scr-light-theme .scr-rank-method-tooltip b { color: var(--text); }
 /* 잠정 뱃지 — 표본이 적어 아직 덜 여문 레이팅. 카드 점수 옆에 작게. */
 .scr-rank-provisional {
   display: inline-block; margin-top: 2px; padding: 1px 6px; border-radius: 999px;
@@ -1137,23 +1151,9 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 @media (max-width: 640px) {
   .scr-rank-hint-inline { font-size: var(--fs-caption); }
 }
-/* 서브행 왼쪽 묶음 — 기간 단위 토글(월/년)과 좌우 이동 화살표를 한 데 붙인다. */
-.scr-rank-period { display: inline-flex; align-items: center; gap: 10px; }
-/* 기간 단위(월/년) 토글 — 어두운 서브행 배경 위에 얹히므로(필터창의 밝은 알약탭과 달리)
-   테마에 맞는 자체 톤으로 둔다. 작은 세그먼트 두 칸. */
-.scr-rank-unit-toggle {
-  display: inline-flex; gap: 2px; padding: 2px; border-radius: 999px;
-  background: rgba(255, 255, 255, 0.06);
-}
-.scr-rank-unit-btn {
-  border: none; background: transparent; color: var(--muted); cursor: pointer;
-  font-size: var(--fs-caption); font-weight: 600; padding: 3px 11px; border-radius: 999px;
-  transition: background 0.12s ease, color 0.12s ease;
-}
-.scr-rank-unit-btn-active { background: rgba(255, 255, 255, 0.14); color: var(--text); }
-.scr-light-theme .scr-rank-unit-toggle { background: rgba(0, 0, 0, 0.06); }
-.scr-light-theme .scr-rank-unit-btn-active { background: rgba(0, 0, 0, 0.12); }
-/* 좁은 화면에선 단위 토글이 자리를 차지하므로 힌트는 접어 공간을 양보한다. */
+/* 기간 단위(월/년) 토글은 필터창의 공용 PillTabs를 그대로 쓴다(요청: "필터의 기간모듈로
+   통합") — 전용 스타일은 더 이상 필요 없다. 좁은 화면에선 단위 토글이 자리를 차지하므로
+   힌트는 접어 공간을 양보한다. */
 @media (max-width: 560px) {
   .scr-rank-hint-inline { display: none; }
 }
@@ -6124,9 +6124,6 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
   .scr-drawer-actions .scr-btn { font-size: var(--fs-body); }
   /* 도전장(너나와) 팀전 카드만 로스터 텍스트 추가 두 단계 축소(16→12) */
   .scr-challenge-card-team .scr-challenge-person-name { font-size: var(--fs-micro); }
-  /* 랭킹 년월 필터줄(.scr-rank-subrow)과 그 아래 필터줄(차트/종족) 사이 간격을 넓힌다(요청).
-     기본은 .scr-screen 형제 gap에만 기대 붙어 있었는데 좁아 답답했다. */
-  .scr-rank-subrow { margin-bottom: 12px; }
   /* 경기 이력 팀2 로스터(와 뒤따르는 '팀에게')를 왼쪽으로 8px 이동(요청, 모바일). 모든 카드가
      같은 값이라 연결어 위치 통일은 유지된다. */
   .scr-rank-detail-history .scr-match-row-team-tail .scr-team-block-team2 { margin-left: -8px; }

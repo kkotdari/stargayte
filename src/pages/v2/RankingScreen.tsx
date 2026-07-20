@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { createPortal } from "react-dom";
+import { ChevronLeft, ChevronRight, Info } from "lucide-react";
 import { Spinner } from "../../components/common/Feedback";
 import SearchFilterBar from "../../components/common/SearchFilterBar";
 import PillTabs from "../../components/common/PillTabs";
@@ -14,6 +15,7 @@ import { activeMemberSearchTerms, memberMatchesTerm, splitSearchTerms } from "..
 import {
   currentPeriodAnchor, periodAnchorLabel, periodAnchorToRange, shiftPeriodAnchor, type PeriodUnit,
 } from "../../utils/date";
+import { attachPopover } from "../../utils/popover";
 import { cx } from "../../utils/format";
 import { useAppStore } from "../../store/appStore";
 import type { Member } from "../../types";
@@ -128,6 +130,31 @@ export default function RankingScreenV2() {
 
   const period = useMemo(() => periodAnchorToRange(unit, anchor), [unit, anchor]);
 
+  // 산정 방식 안내 — 항상 보이는 문단 대신, 눌러야 뜨는 툴팁으로(요청: "누르면 툴팁형태로
+  // 보이게"). 헤더의 프로필 드롭다운과 같은 패턴(attachPopover + 바깥 클릭/포커스 이동 시 닫음).
+  const [methodTipOpen, setMethodTipOpen] = useState(false);
+  const methodAnchorRef = useRef<HTMLButtonElement>(null);
+  const methodTipRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!methodTipOpen || !methodAnchorRef.current || !methodTipRef.current) return;
+    return attachPopover(methodAnchorRef.current, methodTipRef.current, { growToContent: true, maxWidth: 280 });
+  }, [methodTipOpen]);
+  useEffect(() => {
+    if (!methodTipOpen) return;
+    const closeIfOutside = (e: Event) => {
+      const t = e.target as Node;
+      if (methodAnchorRef.current?.contains(t)) return;
+      if (methodTipRef.current?.contains(t)) return;
+      setMethodTipOpen(false);
+    };
+    document.addEventListener("mousedown", closeIfOutside);
+    document.addEventListener("focusin", closeIfOutside);
+    return () => {
+      document.removeEventListener("mousedown", closeIfOutside);
+      document.removeEventListener("focusin", closeIfOutside);
+    };
+  }, [methodTipOpen]);
+
   const closeTrend = () => { setTrendMember(null); setTrendPoints(null); };
   const openTrend = (row: RankRowData) => {
     setTrendMember(row.member);
@@ -143,53 +170,10 @@ export default function RankingScreenV2() {
         <h1 className="scr-title scr-v2-toolbar-title">랭킹</h1>
       </div>
 
-      {/* 기간(단위 토글 + 좌우 이동)과 산정 방식 힌트를 타이틀 아래 별도 행으로 둔다. 화살표는
-          갈 수 있을 때만 보이되 자리는 늘 예약해 레이아웃이 안 흔들린다. */}
-      <div className="scr-rank-subrow">
-        <span className="scr-rank-period">
-          <span className="scr-rank-unit-toggle" role="group" aria-label="기간 단위(월/연) 선택">
-            {UNIT_OPTS.map((o) => (
-              <button
-                key={o.value}
-                type="button"
-                className={cx("scr-rank-unit-btn", unit === o.value && "scr-rank-unit-btn-active")}
-                onClick={() => handleUnitChange(o.value)}
-                aria-pressed={unit === o.value}
-              >
-                {o.label}
-              </button>
-            ))}
-          </span>
-          <span className="scr-rank-month-nav">
-            <button
-              type="button"
-              className={cx("scr-rank-month-btn", !hasPrev && "scr-rank-month-btn-hidden")}
-              onClick={() => goPeriod(-1)}
-              aria-label="이전 기간"
-              aria-hidden={!hasPrev}
-              tabIndex={hasPrev ? 0 : -1}
-            >
-              <ChevronLeft size={18} />
-            </button>
-            <span className="scr-rank-title-month">{periodAnchorLabel(unit, anchor)}</span>
-            <button
-              type="button"
-              className={cx("scr-rank-month-btn", !hasNext && "scr-rank-month-btn-hidden")}
-              onClick={() => goPeriod(1)}
-              aria-label="다음 기간"
-              aria-hidden={!hasNext}
-              tabIndex={hasNext ? 0 : -1}
-            >
-              <ChevronRight size={18} />
-            </button>
-          </span>
-        </span>
-      </div>
-
-      {/* 개인전/팀전 선택은 필터창(왼쪽 알약 탭)이 맡는다. 종족은 라디오가 아니라 유저 검색창의
-          예약어(raceValue/onRaceChange) — "테란"/"프로토스"/"저그"를 완성하면 종족 칩으로
-          인식한다. 팀전엔 종족 개념을 두지 않아(구성원별 종족을 하나로 묶을 수 없다) 팀전에서는
-          이 두 prop을 안 넘긴다 — SearchFilterBar가 onRaceChange 없으면 종족 인식을 안 한다. */}
+      {/* 기간(단위 토글 + 좌우 이동) 선택을 다른 화면과 같은 필터 모듈 안으로 옮긴다(요청:
+          "랭킹의 년월 선택기능을 필터의 기간모듈로 통합"). 선택지는 년/월뿐 — 캘린더/전체
+          기간 선택 없이 화살표 한 번에 그 단위만큼만 이동한다. 화살표는 갈 수 있을 때만
+          보이되 자리는 늘 예약해 레이아웃이 안 흔들린다. */}
       <SearchFilterBar
         count={visibleRows.length}
         countLabel="명"
@@ -199,19 +183,67 @@ export default function RankingScreenV2() {
         suggestions={suggestions}
         showSearch={false}
         filterPanel={
-          <FilterItem label="차트">
-            <PillTabs options={CHART_OPTS} value={mode} onChange={handleModeChange} aria-label="개인전/팀전 선택" />
-          </FilterItem>
+          <>
+            <FilterItem label="기간">
+              {/* 필터창의 다른 알약탭(차트 등)과 같은 공용 컴포넌트를 그대로 써서 톤을
+                  맞춘다 — 선택지는 년/월뿐(요청: "선택지는 년/월만 가능"). */}
+              <PillTabs options={UNIT_OPTS} value={unit} onChange={handleUnitChange} aria-label="기간 단위(월/연) 선택" />
+              <span className="scr-rank-month-nav">
+                <button
+                  type="button"
+                  className={cx("scr-rank-month-btn", !hasPrev && "scr-rank-month-btn-hidden")}
+                  onClick={() => goPeriod(-1)}
+                  aria-label="이전 기간"
+                  aria-hidden={!hasPrev}
+                  tabIndex={hasPrev ? 0 : -1}
+                >
+                  <ChevronLeft size={18} />
+                </button>
+                <span className="scr-rank-title-month">{periodAnchorLabel(unit, anchor)}</span>
+                <button
+                  type="button"
+                  className={cx("scr-rank-month-btn", !hasNext && "scr-rank-month-btn-hidden")}
+                  onClick={() => goPeriod(1)}
+                  aria-label="다음 기간"
+                  aria-hidden={!hasNext}
+                  tabIndex={hasNext ? 0 : -1}
+                >
+                  <ChevronRight size={18} />
+                </button>
+              </span>
+            </FilterItem>
+            {/* 개인전/팀전 선택. 종족은 라디오가 아니라 유저 검색창의 예약어(raceValue/
+                onRaceChange) — "테란"/"프로토스"/"저그"를 완성하면 종족 칩으로 인식한다.
+                팀전엔 종족 개념을 두지 않아(구성원별 종족을 하나로 묶을 수 없다) 팀전에서는
+                이 두 prop을 안 넘긴다 — SearchFilterBar가 onRaceChange 없으면 종족 인식을
+                안 한다. */}
+            <FilterItem label="차트">
+              <PillTabs options={CHART_OPTS} value={mode} onChange={handleModeChange} aria-label="개인전/팀전 선택" />
+            </FilterItem>
+          </>
         }
       />
 
-      {/* 산정 방식 안내 — 필터들 아래, 순위 목록 바로 위(예전 기준점수표 자리). 레이팅이
-          어떻게 매겨지는지 한 줄로 설명한다(요청: 기준점수표 대신 산정 방식만 명시). */}
-      <p className="scr-rank-method-note">
-        산정 방식: 경기 결과로 실력 레이팅(TrueSkill)을 추정합니다. 강한 상대를 이길수록 크게
-        오르고, 경기가 적으면 <b>잠정</b>으로 낮게 잡힙니다. 팀전은 팀 승패를 개인 실력으로
-        분해하며, 개인전·팀전 레이팅은 따로 계산됩니다.
-      </p>
+      {/* 산정 방식 안내 — 필터들 아래, 순위 목록 바로 위(예전 기준점수표 자리). 항상 보이는
+          문단 대신 눌러야 뜨는 툴팁으로(요청: "누르면 툴팁형태로 보이게"). */}
+      <div className="scr-rank-method-row">
+        <button
+          type="button"
+          className={cx("scr-rank-method-trigger", methodTipOpen && "scr-rank-method-trigger-active")}
+          ref={methodAnchorRef}
+          onClick={() => setMethodTipOpen((v) => !v)}
+        >
+          <Info size={13} /> 산정 방식
+        </button>
+      </div>
+      {methodTipOpen && createPortal(
+        <div className="scr-rank-method-tooltip" ref={methodTipRef}>
+          경기 결과로 실력 레이팅(TrueSkill)을 추정합니다. 강한 상대를 이길수록 크게 오르고,
+          경기가 적으면 <b>잠정</b>으로 낮게 잡힙니다. 팀전은 팀 승패를 개인 실력으로 분해하며,
+          개인전·팀전 레이팅은 따로 계산됩니다.
+        </div>,
+        document.body,
+      )}
 
       {error && <div className="scr-err">{error}</div>}
 
