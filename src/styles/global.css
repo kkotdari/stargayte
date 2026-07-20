@@ -5313,8 +5313,10 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
    툴바(.scr-v2-toolbar, position:relative)를 기준으로 살짝 오른쪽에 배치하고, 세로로는 툴바
    중앙에 맞춰(제목 높이보다 커서 위아래로 넘친다) 얹는다. 클릭은 통과시킨다. */
 .scr-challenge-title-nawa {
-  position: absolute; left: 44%; top: 50%; transform: translateY(-50%);
-  width: 160px; height: 100px; object-fit: cover; pointer-events: none; z-index: 0;
+  /* 거의 오른쪽 정렬 — 가운데 정렬된 "챌린지 신청" 버튼을 안 가리게 한다(요청). 그리고
+     z-index를 음수로 둬 제목/버튼 등 다른 요소들보다 '뒤'(배경처럼)에 깔린다(요청). */
+  position: absolute; right: 2px; top: 50%; transform: translateY(-50%);
+  width: 160px; height: 100px; object-fit: cover; pointer-events: none; z-index: -1;
   /* 1.6:1 비율 + 타원 마스크로 가장자리를 흐린다. */
   border-radius: 50%;
   -webkit-mask-image: radial-gradient(ellipse at center, #000 56%, transparent 82%);
