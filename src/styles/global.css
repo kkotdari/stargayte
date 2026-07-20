@@ -968,8 +968,11 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-menu-pop-drop-inline .scr-menu-pop-opt:hover:not(.scr-menu-pop-opt-active) {
   background: transparent; color: var(--text); border-radius: 8px;
 }
+/* 아코디언엔 알약이 없으므로 라벨의 알약 패딩(3px 8px)을 모두 없앤다 — 액티브만 padding:0라
+   글자가 8px 왼쪽으로 튀어나와 보이던 버그(신고: "액티브만 앞으로 더 내어쓰기")를 없앤다. */
+.scr-menu-pop-drop-inline .scr-menu-pop-opt-label { padding: 0; }
 .scr-menu-pop-drop-inline .scr-menu-pop-opt-active .scr-menu-pop-opt-label {
-  background: none; padding: 0;
+  background: none;
   text-decoration: underline; text-decoration-color: var(--text);
   text-decoration-thickness: 2px; text-underline-offset: 4px;
 }
