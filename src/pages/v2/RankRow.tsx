@@ -23,6 +23,9 @@ interface RankRowProps {
   // 바로 그 상대로 도전장 띄우는 버튼 추가 닉네임 옆에"). 본인 행에는 안 넘겨줘서 버튼 자체가
   // 안 뜬다.
   onChallenge?: (member: Member) => void;
+  // 이 기간 경기수가 가장 많은 사람 — 닉네임 옆에 "참여퀸" 배지를 붙이고 닉네임을 진분홍
+  // 메탈색으로 칠한다(요청). 1~3위(메달)이기도 하면 메달색↔진분홍을 교대로 크로스페이드.
+  participationQueen?: boolean;
 }
 
 // v2 일대일 랭킹의 한 줄 — #순위(+전월 대비 변동) | 프사 | 닉네임 | 점수(참가+우열).
@@ -39,9 +42,15 @@ const MEDAL_NAME_CLASS: Record<number, string> = {
   3: "scr-rank-name-bronze",
 };
 
-export default function RankRowV2({ row, tiedWithPrev = false, highlighted = false, onOpenTrend, onChallenge }: RankRowProps) {
+export default function RankRowV2({ row, tiedWithPrev = false, highlighted = false, onOpenTrend, onChallenge, participationQueen = false }: RankRowProps) {
   const { member, rankScore, rank, rankDelta, provisional } = row;
   const [photoOpen, setPhotoOpen] = useState(false);
+  // 닉네임 색: 참여퀸이면서 메달(1~3위)이면 메달 클래스 + 교대 애니(queen-medal), 참여퀸이지만
+  // 메달이 아니면 진분홍 정적(queen), 그 외엔 메달 클래스(또는 기본).
+  const medalClass = MEDAL_NAME_CLASS[rank];
+  const nameClass = participationQueen
+    ? (medalClass ? cx(medalClass, "scr-rank-name-queen-medal") : "scr-rank-name-queen")
+    : medalClass;
   // 카드엔 총점만 보여주고(세부는 랭킹 상세에서 — 요청), 경기마다 가중 합산이라 음수도 가능하다.
   // 항상 양수가 아니므로 +부호는 안 붙이고(양수는 그대로), 음수는 자연히 - 가 붙는다.
 
@@ -82,7 +91,8 @@ export default function RankRowV2({ row, tiedWithPrev = false, highlighted = fal
             <Avatar member={member} size={40} />
           </button>
           <div className="scr-rank-name-wrap">
-            <span className={cx("scr-rank-name", MEDAL_NAME_CLASS[rank])}>{member.nickname}</span>
+            <span className={cx("scr-rank-name", nameClass)} data-name={member.nickname}>{member.nickname}</span>
+            {participationQueen && <span className="scr-rank-queen-badge">참여퀸</span>}
             {onChallenge && (
               <button
                 type="button" className="scr-rank-challenge-btn" onClick={challenge}

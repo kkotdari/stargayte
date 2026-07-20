@@ -1974,6 +1974,32 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   background: linear-gradient(115deg, #e9c199 0%, #b98a5a 35%, #8a5a34 60%, #d9a876 100%);
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
+/* 참여퀸(이 기간 경기수 1위) — 닉네임을 진분홍 메탈색으로(요청). 메달과 같은
+   그라데이션+background-clip:text 패턴. */
+.scr-rank-name-queen {
+  background: linear-gradient(115deg, #ffd6ec 0%, #ff4fa3 34%, #b3005e 60%, #ff8fc7 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+/* 참여퀸이면서 메달(1~3위)이기도 하면, 메달색(기본)을 깔고 그 위에 진분홍색 텍스트를
+   겹쳐 opacity를 교대로 크로스페이드해 두 색이 번갈아 보이게 한다(요청: "색깔 교대로 변경
+   트랜지션"). ::after는 data-name의 같은 텍스트를 같은 자리에 얹는다. */
+.scr-rank-name-queen-medal { position: relative; }
+.scr-rank-name-queen-medal::after {
+  content: attr(data-name);
+  position: absolute; left: 0; top: 0; right: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; pointer-events: none;
+  background: linear-gradient(115deg, #ffd6ec 0%, #ff4fa3 34%, #b3005e 60%, #ff8fc7 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  animation: scr-queen-medal-cross 2.6s ease-in-out infinite alternate;
+}
+@keyframes scr-queen-medal-cross { from { opacity: 0; } to { opacity: 1; } }
+/* "참여퀸" 배지 — 닉네임 옆 작은 진분홍 알약(요청). */
+.scr-rank-queen-badge {
+  flex-shrink: 0; display: inline-flex; align-items: center;
+  padding: 1px 7px; border-radius: 999px; font-size: var(--fs-11); font-weight: 800;
+  letter-spacing: 0.02em; white-space: nowrap;
+  background: #cc1b6b; color: #fff; box-shadow: 0 1px 3px rgba(204,27,107,0.45);
+}
 /* 전적/승률도 순위/변동과 같은 패턴으로 위아래 배치, 오른쪽 정렬 */
 .scr-rank-record-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
 /* 점수 글자 폭에 딱 맞는 인라인 래퍼 — 잠정 뱃지(.scr-rank-provisional)가 이 래퍼를
