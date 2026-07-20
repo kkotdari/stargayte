@@ -188,26 +188,7 @@ async function request<T>(path: string, options: RequestInit = {}, retryOn401 = 
   return res.json() as Promise<T>;
 }
 
-// 평문(text/plain) 응답용 — 레이팅 백테스트 임시 엔드포인트가 텍스트 리포트를 준다.
-async function requestText(path: string): Promise<string> {
-  const build = () => {
-    const h = new Headers();
-    if (accessToken) h.set("Authorization", `Bearer ${accessToken}`);
-    return fetch(`${API_BASE}${path}`, { headers: h });
-  };
-  let res = await build();
-  if (res.status === 401 && (await tryRefresh())) res = await build();
-  if (!res.ok) throw new Error(`요청 실패 (${res.status})`);
-  return res.text();
-}
-
 export const api = {
-  // [임시/분석] 전투력 백테스트 텍스트 리포트.
-  async getRatingBacktest(matchType?: string): Promise<string> {
-    const qs = matchType ? `?match_type=${matchType}` : "";
-    return requestText(`/api/matches/rating-backtest${qs}`);
-  },
-
   async login(id: string, password: string): Promise<AuthResponse> {
     const res = await request<RawAuthResponse>("/api/auth/login", {
       method: "POST",
