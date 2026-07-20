@@ -45,13 +45,11 @@ const MEDAL_NAME_CLASS: Record<number, string> = {
 export default function RankRowV2({ row, tiedWithPrev = false, highlighted = false, onOpenTrend, onChallenge, gamesRank }: RankRowProps) {
   const { member, rankScore, rank, rankDelta, provisional } = row;
   const [photoOpen, setPhotoOpen] = useState(false);
-  // 닉네임 색: 경기수 상위(1~3)면서 메달(1~3위)이면 메달 클래스 + 느린 교대 애니(games-medal),
-  // 경기수 상위지만 메달이 아니면 파스텔 분홍 정적(games), 그 외엔 메달 클래스(또는 기본).
+  // 닉네임 색: 메달(1~3위)이면 메달색 그대로 두고(경기수 상위여도 색 변경 없이 배지만 단다 —
+  // 요청). 메달이 아니면서 경기수 상위면 파스텔 분홍. 그 외엔 기본색.
   const isGamesTop = gamesRank !== undefined;
   const medalClass = MEDAL_NAME_CLASS[rank];
-  const nameClass = isGamesTop
-    ? (medalClass ? cx(medalClass, "scr-rank-name-games-medal") : "scr-rank-name-games")
-    : medalClass;
+  const nameClass = medalClass ?? (isGamesTop ? "scr-rank-name-games" : undefined);
   // 카드엔 총점만 보여주고(세부는 랭킹 상세에서 — 요청), 경기마다 가중 합산이라 음수도 가능하다.
   // 항상 양수가 아니므로 +부호는 안 붙이고(양수는 그대로), 음수는 자연히 - 가 붙는다.
 
@@ -92,8 +90,8 @@ export default function RankRowV2({ row, tiedWithPrev = false, highlighted = fal
             <Avatar member={member} size={40} />
           </button>
           <div className="scr-rank-name-wrap">
-            <span className={cx("scr-rank-name", nameClass)} data-name={member.nickname}>{member.nickname}</span>
-            {isGamesTop && <span className="scr-rank-games-badge">경기수{gamesRank}위</span>}
+            <span className={cx("scr-rank-name", nameClass)}>{member.nickname}</span>
+            {isGamesTop && <span className="scr-rank-games-badge">경기수 TOP{gamesRank}</span>}
             {onChallenge && (
               <button
                 type="button" className="scr-rank-challenge-btn" onClick={challenge}

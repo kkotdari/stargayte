@@ -1983,28 +1983,13 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   background: linear-gradient(115deg, #d95fa0 0%, #ffb0d6 40%, #ffe9f4 50%, #ffb0d6 60%, #d95fa0 100%);
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
-/* 경기수 상위이면서 메달(1~3위)이기도 하면, 메달색(기본)을 깔고 그 위에 파스텔 분홍
-   텍스트를 겹쳐 opacity를 느리게 교대(요청: "색 바뀌는 타이밍 좀더 느리게"). */
-.scr-rank-name-games-medal { position: relative; }
-.scr-rank-name-games-medal::after {
-  content: attr(data-name);
-  position: absolute; left: 0; top: 0; right: 0;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; pointer-events: none;
-  background: linear-gradient(115deg, #d95fa0 0%, #ffb0d6 40%, #ffe9f4 50%, #ffb0d6 60%, #d95fa0 100%);
-  -webkit-background-clip: text; background-clip: text; color: transparent;
-  animation: scr-games-medal-cross 3.4s ease-in-out infinite;
-}
-/* 페이드는 짧게, 각 색 유지시간은 다르게(요청) — 메달색(base=opacity 0) 약 2초, 경기수
-   분홍(overlay=opacity 1) 약 1초. 3.4초 주기: 0~59%(≈2s) 메달 → 65~94%(≈1s) 분홍. */
-@keyframes scr-games-medal-cross {
-  0%, 59% { opacity: 0; }
-  65%, 94% { opacity: 1; }
-  100% { opacity: 0; }
-}
-/* "경기수N위" 배지 — 알약 없이 그냥 파스텔 분홍 글자로, 한 스텝 작게(요청). */
+/* "경기수 TOP N" 배지 — 둥근 네모 필(요청: "둥근네모필로 변경"), 진한 분홍 배경에 흰 글씨,
+   한 스텝 더 작게. 메달인 경우엔 닉네임 색은 그대로 두고 이 배지만 단다. */
 .scr-rank-games-badge {
   flex-shrink: 0; white-space: nowrap;
-  font-size: 10px; font-weight: 800; letter-spacing: 0.02em; color: #f489b8;
+  padding: 1px 5px; border-radius: 5px;
+  background: #dd4b96; color: #fff;
+  font-size: 9px; font-weight: 800; letter-spacing: 0.02em;
 }
 /* 전적/승률도 순위/변동과 같은 패턴으로 위아래 배치, 오른쪽 정렬 */
 .scr-rank-record-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
@@ -2209,10 +2194,11 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
      .scr-rank-provisional 참고) — 마지막 전적 칸도 100→88px, 순위 칸(1번째)도 오른쪽
      여백이 남는다는 피드백으로 44→36px. */
   .scr-rank-table-panel-v2 .scr-rank-row-inner {
-    /* 순위 칸(1번째)을 32→38px로 넓혀 랭크 숫자와 아바타 사이를 살짝 벌린다(요청). */
-    grid-template-columns: 38px 38px minmax(110px, 1fr) 80px; column-gap: 8px;
-    /* 양쪽 패딩 증가(요청) — 10→18px. 구분선(행 ::before)은 양 끝까지 그대로. */
-    padding: 0 18px;
+    /* 배지가 붙어 로우가 좁아져 다시 축소(요청) — 순위 칸(1번째) 38→32px로 랭크↔아바타
+       간격을 줄인다. */
+    grid-template-columns: 32px 38px minmax(110px, 1fr) 80px; column-gap: 8px;
+    /* 좌우 패딩도 다시 축소(요청) — 18→12px. 구분선(행 ::before)은 양 끝까지 그대로. */
+    padding: 0 12px;
   }
   .scr-rank-table-panel-v2 .scr-rank-name { font-size: var(--fs-subhead); }
   .scr-rank-record-v2 { font-size: var(--fs-caption); }
