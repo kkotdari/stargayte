@@ -86,13 +86,20 @@ function renderInline(text: string, targets: { nickname: string }[]) {
 const MESSAGE_MAX_LENGTH = 30;
 const MENTION_DATA_ATTR = "data-mention-nickname";
 // 칩에 회원 id도 함께 심어둔다 — 태그된 회원 목록은 저장 문자열("@닉네임")을 정규식으로
-// 다시 파싱하는 대신 이 속성으로 DOM에서 직접 걸어온다(아래 chipMemberIds). 예전엔
-// 문자열 파싱 방식이라 "@닉네임" 뒤에 다른 글자가 안 붙어야 한다는 경계 제약이
-// 있었고, 그 경계를 표시하려고 폭 0인 안 보이는 문자를 칩 뒤에 심었더니 백스페이스가
-// 그 문자부터 지워지는(칩이 한 번에 안 지워지는) 이상한 사용감과 편집창 높이가 튀는
-// 문제가 있었다(실제로 지적받은 문제 — "이상한 문자 넣는 방식은 폐기"). DOM을 직접 걸으면
-// 그런 경계 표시 자체가 필요 없어 칩 뒤에 아무것도 안 붙여도 된다.
+// 다시 파싱하는 대신 이 속성으로 DOM에서 직접 걸어온다(아래 chipMemberIds).
 const MENTION_ID_ATTR = "data-mention-id";
+// 칩 바로 뒤에 붙이는 폭 0 마커 — 칩 자체가 contenteditable=false 원자 요소라, 뒤에
+// 진짜 텍스트 노드가 하나도 없으면 캐럿이 기댈 자리가 없어서 칩 앞으로 튀거나 편집창이
+// 아예 포커스/입력을 잃는 문제가 있었다(실제로 지적받은 문제 — "칩 입력후 포커싱이 칩
+// 앞에 가거나 아예 포커싱을 잃고 아무것도 입력이 안됨"). 그렇다고 일반 스페이스나 이전에
+// 썼던 U+200B(줄바꿈 가능 지점으로 취급돼 nowrap인데도 줄바꿈을 유발해 편집창 높이가
+// 튀는 문제가 있었다)는 쓰지 않고, 줄바꿈 지점으로 취급되지 않는 U+200C(zero-width
+// non-joiner)를 쓴다 — 눈에는 안 보이면서 캐럿이 기댈 진짜 텍스트 노드 역할만 한다.
+// 백스페이스를 누르면 이 마커와 칩을 한 번에 같이 지운다(아래 onEditorKeyDown의
+// Backspace 분기) — 그래야 마커 한 글자 지우고 또 눌러야 칩이 지워지는 이상한
+// 사용감(실제로 지적받은 문제 — "안보이는데 백스페이스는 먹히는 이상한 유저 경험")이
+// 안 생긴다. 저장되는 문자열에는 안 남게 domToText에서 걸러낸다.
+const MENTION_MARKER = "\u200C";
 
 // 편집창 안 칩들의 회원 id를 모아 지금 태그된 회원 집합을 만든다 — 후보 목록에서 이미
 // 태그된 사람을 빼거나(candidates), 제출할 대상 목록을 만들 때(submit) 쓴다.
@@ -134,7 +141,9 @@ function domToText(el: HTMLElement): string {
   let out = "";
   el.childNodes.forEach((node) => {
     if (node.nodeType === Node.TEXT_NODE) {
-      out += node.textContent ?? "";
+      // 캐럿 anchor용 마커(MENTION_MARKER)는 저장되는 문자열엔 안 남긴다 — 편집 중에만
+      // 필요한 기술적 장치일 뿐 메시지 내용이 아니다.
+      out += (node.textContent ?? "").split(MENTION_MARKER).join("");
     } else if (node instanceof HTMLElement) {
       const nickname = node.getAttribute(MENTION_DATA_ATTR);
       if (nickname) out += `@${nickname}`;
@@ -398,16 +407,16 @@ export default function MatchRequestCorner() {
     sel?.removeAllRanges();
     sel?.addRange(range);
 
-    // "@쿼리" 선택 영역을 칩으로 치환. 칩 뒤엔 아무 것도 안 붙인다(요청: "칩 다음에 공백
-    // 없이 바로 커서가 놓여야해") — 안 보이는 구분 문자를 심었던 이전 시도는 백스페이스가
-    // 그 문자부터 지워져 칩이 한 번에 안 지워지고, 편집창 높이도 이상하게 늘어나는 문제가
-    // 있었다(실제로 지적받은 문제 — "이상한 문자 넣는 방식은 폐기"). 칩은 진짜 DOM 노드라
-    // 태그 인식(chipMemberIds)에 구분 문자가 애초에 필요 없다.
+    // "@쿼리" 선택 영역을 칩으로 치환하고, 캐럿이 기댈 폭 0 마커를 바로 뒤에 붙인다(위
+    // MENTION_MARKER 선언부 참고) — 눈엔 안 보이니 "칩 다음에 공백 없이 바로 커서가
+    // 놓여야해" 요구는 그대로 지키면서도, 칩(원자 요소) 바로 뒤에 진짜 텍스트 노드가
+    // 없어서 캐럿/포커스가 불안정해지는 문제(실제로 지적받은 문제 — "칩 입력후 포커싱이
+    // 칩 앞에 가거나 아예 포커싱을 잃고 아무것도 입력이 안됨")는 막아준다.
     // execCommand는 그 자리에서 진짜 'input' 이벤트를 다시 쏘는데(onEditorInput 재진입),
     // 그동안엔 그 재진입 호출이 아무 것도 안 하도록 막는다(위 insertingRef 선언부 참고).
     insertingRef.current = true;
     try {
-      document.execCommand("insertHTML", false, chipHtml(member));
+      document.execCommand("insertHTML", false, chipHtml(member) + MENTION_MARKER);
     } finally {
       insertingRef.current = false;
     }
@@ -456,6 +465,34 @@ export default function MatchRequestCorner() {
   // mentionQuery만으로 게이트를 걸어 항상 preventDefault + stopPropagation한다.
   const dropdownOpen = mentionQuery !== null;
   const onEditorKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    // 칩 뒤에는 캐럿용 마커(MENTION_MARKER)가 붙어있어서, 백스페이스를 있는 그대로
+    // 브라우저에 맡기면 그 마커 한 글자만 지워지고 칩은 그대로 남는다 — 한 번 더 눌러야
+    // 지워지는 이상한 사용감이었다(실제로 지적받은 문제 — "안보이는데 백스페이스는
+    // 먹히는 이상한 유저 경험"). 캐럿 바로 앞이 "마커 + 칩"이면 둘을 한 번에 지운다.
+    if (e.key === "Backspace") {
+      const sel = window.getSelection();
+      const r = sel && sel.rangeCount > 0 ? sel.getRangeAt(0) : null;
+      if (r && r.collapsed && r.startContainer.nodeType === Node.TEXT_NODE) {
+        const node = r.startContainer as Text;
+        const offset = r.startOffset;
+        if (offset > 0 && (node.textContent ?? "")[offset - 1] === MENTION_MARKER) {
+          const prev = offset === 1 ? node.previousSibling : null;
+          if (prev instanceof HTMLElement && prev.hasAttribute(MENTION_DATA_ATTR)) {
+            e.preventDefault();
+            const delRange = document.createRange();
+            delRange.setStartBefore(prev);
+            delRange.setEnd(node, offset);
+            delRange.deleteContents();
+            const after = window.getSelection();
+            after?.removeAllRanges();
+            after?.addRange(delRange);
+            syncTextFromDom();
+            detectMentionFromCaret();
+            return;
+          }
+        }
+      }
+    }
     if (dropdownOpen && e.key === "ArrowDown") {
       e.preventDefault();
       e.stopPropagation();
