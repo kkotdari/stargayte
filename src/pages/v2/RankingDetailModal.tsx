@@ -7,7 +7,7 @@ import RankMatchHistory from "./RankMatchHistory";
 import { api } from "../../api/client";
 import { useAppStore } from "../../store/appStore";
 import { useLockBodyScroll } from "../../utils/bodyScrollLock";
-import type { Match, MatchType, Member } from "../../types";
+import type { Match, MatchType, Member, Race } from "../../types";
 import type { RankTrendPoint } from "./rank";
 
 interface RankingDetailModalProps {
@@ -20,6 +20,8 @@ interface RankingDetailModalProps {
   // 지금 보고 있는 기간(월/연) — 경기 이력을 이 기간으로 좁혀, 어느 경기들에서 레이팅이
   // 움직였는지 그대로 훑을 수 있게 한다.
   period: { from: string; to: string };
+  // 목록에 걸린 종족 필터 — "all"이 아니면 그 종족 레이팅 기준의 경기당 Δ만 병기한다.
+  race: Race | "all";
   onClose: () => void;
 }
 
@@ -42,7 +44,7 @@ const HISTORY_LIMIT = 100;
 // 그 기간 경기 이력(경기마다 획득 점수 병기). 그 기간에 순위 대상이 아니었으면(한 판도 안
 // 뛰었으면) rank가 null이라 그 지점은 선을 잇지 않고 건너뛴다.
 export default function RankingDetailModal({
-  members, points, matchType, period, onClose,
+  members, points, matchType, period, race, onClose,
 }: RankingDetailModalProps) {
   useLockBodyScroll();
   const memberOf = useAppStore((s) => s.memberOf);
@@ -101,11 +103,11 @@ export default function RankingDetailModal({
     let cancelled = false;
     setDeltaByMatchNo(new Map());
     if (!focalId) return;
-    api.getRatingHistory(focalId, matchType, period.from, period.to)
+    api.getRatingHistory(focalId, matchType, period.from, period.to, race === "all" ? undefined : race)
       .then((res) => { if (!cancelled) setDeltaByMatchNo(new Map(Object.entries(res.deltas))); })
       .catch(() => { if (!cancelled) setDeltaByMatchNo(new Map()); });
     return () => { cancelled = true; };
-  }, [focalId, matchType, period.from, period.to]);
+  }, [focalId, matchType, period.from, period.to, race]);
 
   return createPortal(
     // 바깥(딤) 클릭으로는 안 닫는다 — 닫기는 헤더 X 버튼으로만(요청: "외부 영역 클릭시

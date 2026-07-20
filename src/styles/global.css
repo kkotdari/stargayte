@@ -1027,6 +1027,9 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 /* 액션 버튼과 나란히 있을 때 세로 중앙정렬만으로는 타이틀 글자가 살짝 처져 보여서,
    그 기준선을 조금 위로 올린다. */
 .scr-v2-toolbar-title { grid-area: title; margin: 0; align-self: center; transform: translateY(-6px); }
+/* 랭킹의 개인전/팀전 탭 — 타이틀 줄 오른쪽(actions 자리)에 둔다(요청: "목록타입이라 타이틀
+   로우로"). 액션 버튼과 같은 기준선 보정(-6px). */
+.scr-rank-toolbar .scr-rank-mode-tabs { grid-area: actions; display: inline-flex; transform: translateY(-6px); }
 /* 랭킹 타이틀 옆 몇 월인지(요청: "타이틀 옆에 몇월 표시") — 타이틀보다 옅고 작게. */
 /* 요청: "랭킹 몇월 글짜 1.5배 확대" — 0.55em → 0.825em. 밝기도 더 밝게(요청) —
    --dim보다 밝은 --muted로. */
