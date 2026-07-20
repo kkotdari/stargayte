@@ -125,9 +125,9 @@ export default function ChallengeInboxModal({ challenges, onClose }: ChallengeIn
       {stage === "letter" && (
         <div className="scr-modal scr-modal-sm scr-challenge-inbox-modal">
           <div className="scr-challenge-inbox-title">{title}</div>
-          {/* 편지지 상단에 nawa 이미지를 크게, 동그랗게 크롭하고 가장자리를 그라데이션으로
-              흐려서 배치한다. */}
-          <img src="/images/items/nawa.jpg" alt="" className="scr-challenge-inbox-hero" />
+          {/* 편지지 상단에 nawa2 이미지를 크게, 원형으로 크롭하고 가장자리를 그라데이션으로
+              흐려서 배치한다(요청). */}
+          <img src="/images/items/nawa2.jpg" alt="" className="scr-challenge-inbox-hero" />
           <div className="scr-modal-body scr-challenge-inbox-body">
             {isTeamMatch && (
               <>

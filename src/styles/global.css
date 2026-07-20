@@ -5269,6 +5269,19 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
   margin: 54px 0 0; font-size: var(--fs-subhead); font-weight: 800; color: var(--text);
   letter-spacing: 0.02em;
 }
+/* 소제목 + 오른쪽 nawa 이미지를 한 줄에 벌려 놓는다 — 위 큰 갭(54px)은 이 줄이 대신
+   가진다(중타이틀 margin은 그대로 두면 자식이라 그대로 먹는다). */
+.scr-challenge-list-heading-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+}
+/* 소제목 우측 nawa 이미지 — 챌린지 인박스 히어로처럼 가로로 긴 타원 크롭 + 가장자리
+   페이드아웃(요청). object-fit:cover로 프레임을 꽉 채운다. */
+.scr-challenge-list-nawa {
+  display: block; flex-shrink: 0; width: 112px; height: 42px; object-fit: cover;
+  border-radius: 50%;
+  -webkit-mask-image: radial-gradient(ellipse at center, #000 52%, transparent 80%);
+  mask-image: radial-gradient(ellipse at center, #000 52%, transparent 80%);
+}
 .scr-challenge-screen-v2 .scr-filter-bar { margin-top: 0; margin-bottom: 0; }
 .scr-challenge-section-title {
   font-size: var(--fs-body); font-weight: 800; color: var(--dim); letter-spacing: 0.02em; margin: 0;
@@ -6031,16 +6044,14 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); backgrou
 .scr-challenge-team-label-them { color: #f2555a; }
 .scr-challenge-team-label-us { color: #1aa3d6; }
 .scr-challenge-team-names { font-weight: 700; text-align: right; }
-/* 편지지를 연 뒤 상단에 크게 넣는 nawa 이미지 — 사각형 대신 가로로 긴 타원으로 크롭하고
-   (요청: "nawa 사진 가로로 긴 타원형으로 크롭") 가장자리를 그라데이션으로 흐린다(요청:
-   "nawa 이미지는 상단에 크게 배치" + "동그랗게 크롭 & 가장자리 그라데이션 처리").
-   width>height인 상태로 border-radius:50%를 걸면 원이 아니라 그 비율의 타원이 된다.
-   object-fit:cover로 원본 비율과 무관하게 프레임을 꽉 채운다. */
+/* 편지지를 연 뒤 상단에 크게 넣는 nawa2 이미지 — 정사각(width=height)에 border-radius:50%
+   와 원형 마스크로 완전한 '원형'으로 크롭하고(요청: "타원이 아닌 원형으로 크롭") 가장자리를
+   그라데이션으로 흐린다. object-fit:cover로 원본 비율과 무관하게 프레임을 꽉 채운다. */
 .scr-challenge-inbox-hero {
-  display: block; width: 220px; height: 124px; margin: 0 auto 10px; object-fit: cover;
+  display: block; width: 150px; height: 150px; margin: 0 auto 10px; object-fit: cover;
   border-radius: 50%;
-  -webkit-mask-image: radial-gradient(ellipse at center, #000 55%, transparent 78%);
-  mask-image: radial-gradient(ellipse at center, #000 55%, transparent 78%);
+  -webkit-mask-image: radial-gradient(circle at center, #000 55%, transparent 78%);
+  mask-image: radial-gradient(circle at center, #000 55%, transparent 78%);
 }
 
 /* ===== 챌린지 신청 코너 ("너 나와!" 최상단) =====

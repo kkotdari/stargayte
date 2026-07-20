@@ -871,8 +871,12 @@ export default function ChallengeScreen() {
           주석을 해제한다. */}
       {/* <MatchRequestCorner /> */}
 
-      {/* 목록 중타이틀 — 요청 코너와 실제 도전장 목록을 구분한다. */}
-      <h2 className="scr-challenge-list-heading">챌린지 목록</h2>
+      {/* 목록 중타이틀 — 오른쪽에 nawa 이미지를 인박스처럼 가로로 긴 타원 크롭 + 가장자리
+          페이드아웃으로 곁들인다(요청). */}
+      <div className="scr-challenge-list-heading-row">
+        <h2 className="scr-challenge-list-heading">챌린지 목록</h2>
+        <img src="/images/items/nawa.jpg" alt="" className="scr-challenge-list-nawa" />
+      </div>
 
       {error && <div className="scr-err">{error}</div>}
 
