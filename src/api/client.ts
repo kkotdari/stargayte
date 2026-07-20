@@ -632,7 +632,7 @@ export const api = {
     });
   },
 
-  // ===== 너 나와 신청 코너 =====
+  // ===== 너 나와! 신청 코너 =====
   async getMatchRequests(page = 0): Promise<MatchRequestListResponse> {
     return request<MatchRequestListResponse>(`/api/match-requests?page=${page}`);
   },
