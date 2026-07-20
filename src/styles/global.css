@@ -2034,6 +2034,11 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   background: linear-gradient(115deg, #c25288 0%, #f090bf 40%, #ffcfe6 50%, #f090bf 60%, #c25288 100%);
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
+/* 라이트 테마: 메탈 닉네임과 같은 이유로 가운데 하이라이트만 어둡게(요청) — 가장자리/중간 유지. */
+.scr-light-theme .scr-rank-games-badge {
+  background: linear-gradient(115deg, #c25288 0%, #f090bf 40%, #e888bd 50%, #f090bf 60%, #c25288 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
 /* 전적/승률도 순위/변동과 같은 패턴으로 위아래 배치, 오른쪽 정렬 */
 .scr-rank-record-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
 /* 점수 글자 폭에 딱 맞는 인라인 래퍼 — 잠정 뱃지(.scr-rank-provisional)가 이 래퍼를
