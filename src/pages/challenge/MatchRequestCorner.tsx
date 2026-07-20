@@ -542,7 +542,12 @@ export default function MatchRequestCorner() {
     detectMentionFromCaret();
   };
 
-  const isEmpty = text.trim() === "";
+  // 플레이스홀더/지우기 버튼은 "실제로 뭐라도 쳤는지"(공백 하나만 쳐도 포함) 기준이라
+  // trim하지 않는다 — trim된 값으로 판단하면 스페이스만 쳤을 때 편집창엔 공백이 들어가
+  // 있는데도 플레이스홀더가 그 위에 그대로 겹쳐 보이는 문제가 있었다(실제로 지적받은
+  // 문제 — "스페이스를 입력하면 플레이스 홀더가 안보여야하는데 보이는 문제"). 제출
+  // 가능 여부(canSubmit)는 공백만 있는 메시지를 막아야 하니 그대로 trim해서 판단한다.
+  const isEmpty = text === "";
   const canSubmit = text.trim().length > 0 && !submitting;
 
   const resetCompose = () => {
