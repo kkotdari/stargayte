@@ -25,6 +25,14 @@ interface RankRowProps {
 // = 참가점수 + 우열점수)라, 카드에도 그 합계를 큼직하게 싣고 아래에 참가/우열 두 갈래를
 // 보여준다. 예전엔 "최근 vs 상대 승/패" 한 줄을 붙였는데, 이제 일대일 경기 이력 전체를 카드
 // 상세 모달(그래프 아래)에서 보여주므로 카드에선 뺐다(요청).
+// 1~3위 닉네임 색 — 글로우 대신 금/은/동 메탈 폰트색으로(요청: "글로우 제거 대신 1위
+// 닉네임은 금색 메탈 늒낌 2위는 은색 메탈 느낌 3위는 동색 메탈느낌", "폰트색 말하는것").
+const MEDAL_NAME_CLASS: Record<number, string> = {
+  1: "scr-rank-name-gold",
+  2: "scr-rank-name-silver",
+  3: "scr-rank-name-bronze",
+};
+
 export default function RankRowV2({ row, tiedWithPrev = false, highlighted = false, onOpenTrend }: RankRowProps) {
   const { member, rankScore, rank, rankDelta, provisional } = row;
   const [photoOpen, setPhotoOpen] = useState(false);
@@ -59,17 +67,11 @@ export default function RankRowV2({ row, tiedWithPrev = false, highlighted = fal
             </span>
             <RankDeltaBadge delta={rankDelta} />
           </div>
-          {/* 1~3위는 프사/닉네임에 은은한 글로우를 준다(요청: "1, 2, 3위 닉네임과 프사에
-              너무 강하지 않은 글로우효과 부여") — 공동순위면 그 순위를 공유하는 모두에게. */}
-          <button
-            type="button"
-            className={cx("scr-rank-avatar-btn", rank <= 3 && "scr-rank-avatar-btn-glow")}
-            onClick={openPhoto} aria-label={`${member.nickname} 사진 보기`}
-          >
+          <button type="button" className="scr-rank-avatar-btn" onClick={openPhoto} aria-label={`${member.nickname} 사진 보기`}>
             <Avatar member={member} size={40} />
           </button>
           <div className="scr-rank-name-wrap">
-            <span className={cx("scr-rank-name", rank <= 3 && "scr-rank-name-glow")}>{member.nickname}</span>
+            <span className={cx("scr-rank-name", MEDAL_NAME_CLASS[rank])}>{member.nickname}</span>
           </div>
           {/* 점수/전적을 팀 랭킹 카드와 같은 배치로 통일 — 사람단위 점수를 위에 큼직하게
               ("+N점"), 전적을 그 아래에. 이 점수가 순위(승자승 다음)를 가르는 기준이라 숫자로
