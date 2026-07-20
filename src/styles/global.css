@@ -4542,7 +4542,9 @@ html.scr-light-theme .scr-mobile-tabbar {
    라이트 테마인데도 패널이 탁하고 어둡게 보였다(실제로 지적받은 문제 — "라이트 테마에서
    서랍메뉴 패널이 너무 어둡게 보여"). 헤더의 라이트 테마 유리(--header-bg, 0.9 알파)와
    같은 수준으로 불투명도를 올려 스크림이 거의 안 비치게 한다. */
-html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); background-color: rgba(255,255,255,0.9); }
+/* 라이트 테마도 반투명 유지(신고: "라이트 서랍이 전혀 투명하지 않음") — 배경색 하드코딩을
+   빼서 base의 color-mix(--panel 60%) 반투명 유리(--panel 라이트=흰 0.46)를 그대로 쓴다. */
+html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
 /* 구분선을 단색 테두리 대신 붉은(포인트색이 아니라 --pipe-bright 고정) 그라데이션으로
    — 가운데가 밝고 양 끝으로 갈수록 옅어지는, 헤더/탭바와 같은 "우주 광원" 느낌. */
 .scr-drawer-head {
