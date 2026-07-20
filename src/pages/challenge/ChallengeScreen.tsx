@@ -782,7 +782,52 @@ export default function ChallengeScreen() {
     else root.scrollTop += delta;
   }, [showEnded]);
 
-  const activeList = showEnded ? unifiedList : unifiedList.slice(boundaryIndex);
+  // 활성(다가오는·진행중) 목록은 늘 보이고, 종료된 앞부분은 펼치기 전엔 감춘다. 펼치면
+  // 토글 버튼 '위'로 나타난다(요청: "버튼 상단에 과거 목록이 펼쳐지고") — 버튼이 종료/활성
+  // 사이의 구분선 역할을 한다.
+  const activeList = unifiedList.slice(boundaryIndex);
+  const endedList = unifiedList.slice(0, boundaryIndex);
+
+  const renderChallengeList = (items: typeof unifiedList) => (
+    <div className="scr-challenge-list">
+      {groupChallengesByDate(items).map((g) => (
+        <Fragment key={g.label}>
+          <div
+            className="scr-challenge-date-group"
+            data-today={g.isToday ? "1" : undefined}
+            // "일정 미정" 그룹(scheduledAt 없는 대기중 묶음, 맨 위)에 표식을 달아
+            // 우측 타임라인이 눈금+라벨을 찍고 스크롤 스냅 타깃으로 삼는다.
+            data-undecided={g.items.some((c) => !c.scheduledAt) ? "1" : undefined}
+          >
+            <div className="scr-challenge-date-head" data-date-label={g.label}>
+              {g.isToday && <span className="scr-challenge-card-today-tag">오늘</span>}
+              {g.label}
+            </div>
+            {/* 날짜 안에서 다시 시각별로 묶어, 같은 시각 카드들 맨 위에 시간을 한 번만
+                보여준다(요청). NEXT 배지는 폐지됐다(요청: "NEXT 배지 제거"). */}
+            {groupByTime(g.items).map((tg) => (
+              <div key={tg.key} className="scr-challenge-time-group">
+                {tg.timeLabel && (
+                  <div className="scr-challenge-time-head">
+                    <span className="scr-challenge-time-head-label">{tg.timeLabel}</span>
+                  </div>
+                )}
+                {tg.items.map((c) => (
+                  <div key={c.id} className="scr-challenge-card-slot">
+                    <ChallengeCard
+                      challenge={c}
+                      myId={user?.id}
+                      onResponded={upsert}
+                    />
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </Fragment>
+      ))}
+    </div>
+  );
 
   useEffect(() => {
     const root = document.getElementById("scroll-root");
@@ -817,64 +862,36 @@ export default function ChallengeScreen() {
       {/* 목록 중타이틀 — 요청 코너와 실제 도전장 목록을 구분한다. */}
       <h2 className="scr-challenge-list-heading">챌린지 목록</h2>
 
-      {/* 완료된 챌린지도 이제 같은 목록에 섞여 있지만, 다가오는 매치 이전(과거에 끝난 챌린지)은
-          기본적으로 접혀서 안 보인다(요청) — 누르면 그 위로 펼쳐진다. 접을 게 없으면
-          (boundaryIndex 0) 링크 자체를 안 보여준다. */}
-      {boundaryIndex > 0 && (
-        <button type="button" className="scr-challenge-toggle-ended-link" onClick={toggleShowEnded}>
-          {showEnded ? "종료된 챌린지 접기" : "종료된 챌린지 보기"}
-        </button>
-      )}
-
       {error && <div className="scr-err">{error}</div>}
 
       {loading ? (
         <div className="scr-empty"><Spinner size={18} /></div>
       ) : (
-        <section className="scr-challenge-section">
-          {activeList.length === 0 ? (
-            <div className="scr-empty">{emptyLabel}</div>
-          ) : (
-            <div className="scr-challenge-list">
-              {groupChallengesByDate(activeList).map((g) => (
-                <Fragment key={g.label}>
-                  <div
-                    className="scr-challenge-date-group"
-                    data-today={g.isToday ? "1" : undefined}
-                    // "일정 미정" 그룹(scheduledAt 없는 대기중 묶음, 맨 위)에 표식을 달아
-                    // 우측 타임라인이 눈금+라벨을 찍고 스크롤 스냅 타깃으로 삼는다.
-                    data-undecided={g.items.some((c) => !c.scheduledAt) ? "1" : undefined}
-                  >
-                    <div className="scr-challenge-date-head" data-date-label={g.label}>
-                      {g.isToday && <span className="scr-challenge-card-today-tag">오늘</span>}
-                      {g.label}
-                    </div>
-                    {/* 날짜 안에서 다시 시각별로 묶어, 같은 시각 카드들 맨 위에 시간을 한 번만
-                        보여준다(요청). NEXT 배지는 폐지됐다(요청: "NEXT 배지 제거"). */}
-                    {groupByTime(g.items).map((tg) => (
-                      <div key={tg.key} className="scr-challenge-time-group">
-                        {tg.timeLabel && (
-                          <div className="scr-challenge-time-head">
-                            <span className="scr-challenge-time-head-label">{tg.timeLabel}</span>
-                          </div>
-                        )}
-                        {tg.items.map((c) => (
-                          <div key={c.id} className="scr-challenge-card-slot">
-                            <ChallengeCard
-                              challenge={c}
-                              myId={user?.id}
-                              onResponded={upsert}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    ))}
-                  </div>
-                </Fragment>
-              ))}
-            </div>
+        <>
+          {/* 종료된(과거) 챌린지는 펼쳤을 때만, 토글 버튼 '위'에 나타난다(요청). */}
+          {showEnded && endedList.length > 0 && (
+            <section className="scr-challenge-section scr-challenge-section-ended">
+              {renderChallengeList(endedList)}
+            </section>
           )}
-        </section>
+
+          {/* 과거에 끝난 챌린지는 기본적으로 접혀 있고, 이 버튼이 종료/활성 목록 사이의
+              구분선이 된다(요청) — 누르면 그 위로 펼쳐진다. 접을 게 없으면(boundaryIndex 0)
+              버튼 자체를 안 보여준다. */}
+          {boundaryIndex > 0 && (
+            <button type="button" className="scr-challenge-toggle-ended-link" onClick={toggleShowEnded}>
+              {showEnded ? "종료된 챌린지 접기" : "종료된 챌린지 펼치기"}
+            </button>
+          )}
+
+          <section className="scr-challenge-section">
+            {activeList.length === 0 ? (
+              <div className="scr-empty">{emptyLabel}</div>
+            ) : (
+              renderChallengeList(activeList)
+            )}
+          </section>
+        </>
       )}
 
       {/* 우측 네비게이션 타임라인 — 스크롤 시에만 뜨고, 스스로 스크롤 불가 상태면 안 뜬다.
