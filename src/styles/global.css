@@ -31,6 +31,7 @@
   --pc-fs-caption: 14px;
   --pc-fs-body: 16px;
   --pc-fs-subhead: 20px;
+  --pc-fs-headline: 24px;   /* subhead(20)와 title(28) 사이 — 랭크 숫자 등 */
   --pc-fs-title: 28px;
   --pc-fs-hero-1: 36px;
   --pc-fs-hero-2: 40px;
@@ -41,6 +42,7 @@
   --mobile-fs-caption: 14px;
   --mobile-fs-body: 16px;
   --mobile-fs-subhead: 20px;
+  --mobile-fs-headline: 24px;
   --mobile-fs-title: 28px;
   --mobile-fs-hero-1: 36px;
   --mobile-fs-hero-2: 40px;
@@ -51,6 +53,7 @@
   --fs-caption: var(--pc-fs-caption);
   --fs-body: var(--pc-fs-body);
   --fs-subhead: var(--pc-fs-subhead);
+  --fs-headline: var(--pc-fs-headline);
   --fs-title: var(--pc-fs-title);
   --fs-hero-1: var(--pc-fs-hero-1);
   --fs-hero-2: var(--pc-fs-hero-2);
@@ -1890,7 +1893,8 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    다른 곳에도 많이 쓰여서 구분되게 골드 톤을 따로 쓴다. */
 .scr-rank-badge { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; justify-self: start; }
 .scr-rank-num {
-  font-family: var(--font-mono); font-size: var(--fs-title); font-weight: 700; font-style: italic; color: var(--text);
+  /* 랭크 숫자 크기 — 새 스케일 단계 fs-headline(24)로(요청). */
+  font-family: var(--font-mono); font-size: var(--fs-headline); font-weight: 700; font-style: italic; color: var(--text);
   font-variant-numeric: tabular-nums;
 }
 .scr-rank-delta { display: inline-flex; align-items: center; gap: 1px; font-size: var(--fs-micro); font-weight: 700; font-style: italic; }
@@ -6500,6 +6504,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
     --fs-caption: var(--mobile-fs-caption);
     --fs-body: var(--mobile-fs-body);
     --fs-subhead: var(--mobile-fs-subhead);
+    --fs-headline: var(--mobile-fs-headline);
     --fs-title: var(--mobile-fs-title);
     --fs-hero-1: var(--mobile-fs-hero-1);
     --fs-hero-2: var(--mobile-fs-hero-2);
