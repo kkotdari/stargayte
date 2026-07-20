@@ -2530,11 +2530,6 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-match-screen-v2 .scr-filter-panel { width: 100%; }
 .scr-match-screen-v2 .scr-search-filter-float { width: 100%; }
 /* .scr-screen이 이미 형제간 gap을 넣어주므로 자체 마진은 두지 않는다. */
-/* "조회" 버튼처럼 누르면 그 아래 내용이 바뀌는 액션 버튼 줄은 다음 요소(목록)와
-   .scr-screen의 기본 gap(10px)만으로는 붙어 보인다(요청: "조회하는 버튼 다음에는 더
-   큰 갭이 와야함") — .scr-v2-primary-row(생성/등록 버튼)와 같은 크기로 자체 여백을
-   더 준다. */
-.scr-match-search-row { display: flex; justify-content: center; margin-bottom: 10px; }
 /* 목록 위 소타이틀(요청: 경기 화면 "경기 목록"). */
 /* 소타이틀 아래 갭 12px(요청: PC·모바일 공통). */
 .scr-v2-subheading { margin: 0 0 12px; font-size: var(--fs-subhead); font-weight: 800; color: var(--text); letter-spacing: 0.02em; }

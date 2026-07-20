@@ -30,10 +30,8 @@ export default function MatchScreenV2() {
   // 검색창은 엔터를 눌러야만 확정되는 값이라(SearchFilterBar 참고), search 자체가 이미
   // "적용된" 값이다 — 이미 불러온 전체 경기 안에서 클라이언트가 즉시 걸러낸다.
   const [search, setSearch] = useState("");
-  // 목록은 기본적으로 안 뜨고 "조회" 버튼을 눌러야만 실제 조회가 실행된다(요청: "기록실은
-  // 기본 조회 안 하고 조회 눌러야 조회"). 기간 필터는 없으므로 조회는 그냥 전체 로드를 켠다.
-  const [hasSearched, setHasSearched] = useState(false);
-  const runSearch = () => setHasSearched(true);
+  // 진입하면 조회 버튼 없이 곧바로 전체 경기를 불러온다(요청: "조회 버튼 제거하고 자동
+  // 조회로 변경"). 기간 필터가 없어 조회는 그냥 전체 로드다.
   const suggestions = useMemo(() => activeMemberSearchTerms(members), [members]);
   const searchTerms = useMemo(() => splitSearchTerms(search), [search]);
   const hasSearch = searchTerms.length > 0;
@@ -75,18 +73,16 @@ export default function MatchScreenV2() {
     }
   };
 
-  // 조회 전에는 아무것도 안 불러온다(빈 페이지). 조회를 누르면 기간 조건 없이 "전체 경기
-  // 최신순"을 불러온다. 유저 검색은 서버에 안 보내고, 아래 listRows에서 클라이언트가 AND로 거른다.
+  // 진입 즉시 기간 조건 없이 "전체 경기 최신순"을 불러온다. 유저 검색은 서버에 안 보내고,
+  // 아래 listRows에서 클라이언트가 AND로 거른다.
   const fetchPage = useCallback(
-    (cursor: string | null) => {
-      if (!hasSearched) return Promise.resolve({ items: [], nextCursor: null, hasMore: false, total: 0 });
-      return api.getMatchesPage({ cursor: cursor ?? undefined, limit: PAGE_SIZE, sort: "latest" });
-    },
-    [hasSearched],
+    (cursor: string | null) =>
+      api.getMatchesPage({ cursor: cursor ?? undefined, limit: PAGE_SIZE, sort: "latest" }),
+    [],
   );
 
   const { items: matches, loading, loadingMore, hasMore, loadMore, reload, error, total } =
-    useCursorPagination(fetchPage, [hasSearched]);
+    useCursorPagination(fetchPage, []);
 
   // 무한스크롤(스크롤에 따라 한 페이지씩)을 없애고, 다음 페이지가 남아 있으면 계속 이어붙여
   // 전체를 한 번에 다 불러온다(요청). 첫 페이지가 끝나면 hasMore가 순차적으로 다음 페이지를
@@ -148,29 +144,16 @@ export default function MatchScreenV2() {
 
       <h2 className="scr-v2-subheading">경기 목록</h2>
 
-      {/* 조회 버튼 — 경기목록 소타이틀 바로 아래(요청). 눌러야 그때 전체 경기를 불러온다.
-          목록이 이미 조회된 상태에서는 다시 누를 이유가 없어 숨긴다(요청: "목록 조회된
-          상태에선 안보이게"). */}
-      {!hasSearched && (
-        <div className="scr-match-search-row">
-          <button type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm" onClick={runSearch}>
-            조회
-          </button>
-        </div>
-      )}
-
-      {/* 유저 검색(필터)은 목록이 있을 때(조회 후)에만 노출한다(요청). 불러온 목록 안에서 즉시 필터. */}
-      {hasSearched && (
-        <SearchFilterBar
-          count={count}
-          countLabel="건"
-          showCount={false}
-          searchValue={search}
-          onSearchChange={setSearch}
-          searchPlaceholder="유저 검색"
-          suggestions={suggestions}
-        />
-      )}
+      {/* 유저 검색(필터) — 자동 조회로 목록이 늘 있으므로 상시 노출한다. 불러온 목록 안에서 즉시 필터. */}
+      <SearchFilterBar
+        count={count}
+        countLabel="건"
+        showCount={false}
+        searchValue={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="유저 검색"
+        suggestions={suggestions}
+      />
 
       {error && <div className="scr-err">{error}</div>}
 
@@ -181,24 +164,19 @@ export default function MatchScreenV2() {
         document.body,
       )}
 
-      {/* 건수·목록은 조회한 뒤에만 노출한다. */}
-      {hasSearched && (
-        <span className="scr-list-count scr-match-list-count">{count}건</span>
-      )}
+      <span className="scr-list-count scr-match-list-count">{count}건</span>
 
-      {hasSearched && (
-        <div className="scr-match-list-wrap">
-          <MatchList
-            rows={listRows}
-            memberOf={resolveMember}
-            onMemo={(m) => setMemoMatch(m)}
-            onDeleted={handleSaved}
-            loading={loading}
-            highlightMemberIds={matchedIds}
-          />
-          {loadingMore && <div className="scr-empty"><Spinner size={16} /></div>}
-        </div>
-      )}
+      <div className="scr-match-list-wrap">
+        <MatchList
+          rows={listRows}
+          memberOf={resolveMember}
+          onMemo={(m) => setMemoMatch(m)}
+          onDeleted={handleSaved}
+          loading={loading}
+          highlightMemberIds={matchedIds}
+        />
+        {loadingMore && <div className="scr-empty"><Spinner size={16} /></div>}
+      </div>
 
       {memoMatch && (
         <MatchMemoModal
@@ -217,9 +195,8 @@ export default function MatchScreenV2() {
         />
       )}
 
-      {/* 우측 네비게이션 타임라인 — 경기 목록은 최신순(위=최근, 아래=과거). 조회해서 목록이
-          뜬 뒤에만 띄운다. */}
-      {hasSearched && !loading && <ScrollNavTimeline headSelector=".scr-match-date-head" topLabel="최근" bottomLabel="과거" />}
+      {/* 우측 네비게이션 타임라인 — 경기 목록은 최신순(위=최근, 아래=과거). 로딩이 끝나면 띄운다. */}
+      {!loading && <ScrollNavTimeline headSelector=".scr-match-date-head" topLabel="최근" bottomLabel="과거" />}
     </div>
   );
 }
