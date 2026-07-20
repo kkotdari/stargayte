@@ -748,8 +748,9 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   width: 100%; max-width: 420px; padding: 13px 18px 0; max-height: 88vh; max-height: 88dvh;
   display: flex; flex-direction: column; overflow: hidden; border-radius: var(--radius); backdrop-filter: blur(14px);
   border: none;
-  /* 패널 불투명도를 높여 뒤 배경이 덜 비치고 내용이 또렷하게 읽히도록 한다(요청: 불투명도 증가). */
-  background: rgba(16,21,26,0.72);
+  /* 팝업을 더 투명하게(요청) — 알파를 낮춰 뒤가 더 비친다. backdrop blur(14px)가 있어
+     글자 가독성은 유지된다. */
+  background: rgba(16,21,26,0.52);
   /* 테두리를 없앤 대신 위쪽 반사광(inset)과 그림자로 배경과의 구분감을 준다(요청:
      "테두리 제거한 대신 반사광과 그림자 활용하여 구분감 주기"). */
   box-shadow:
@@ -760,7 +761,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 }
 .scr-light-theme .scr-modal {
   border: none;
-  background: rgba(255,255,255,0.8);
+  background: rgba(255,255,255,0.62);
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,0.7),
     0 4px 16px rgba(0,0,0,0.12),
