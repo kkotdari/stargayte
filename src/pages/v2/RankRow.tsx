@@ -26,7 +26,7 @@ interface RankRowProps {
 // 보여준다. 예전엔 "최근 vs 상대 승/패" 한 줄을 붙였는데, 이제 일대일 경기 이력 전체를 카드
 // 상세 모달(그래프 아래)에서 보여주므로 카드에선 뺐다(요청).
 export default function RankRowV2({ row, tiedWithPrev = false, highlighted = false, onOpenTrend }: RankRowProps) {
-  const { member, rankScore, rank, rankDelta } = row;
+  const { member, rankScore, rank, rankDelta, provisional } = row;
   const [photoOpen, setPhotoOpen] = useState(false);
   // 카드엔 총점만 보여주고(세부는 랭킹 상세에서 — 요청), 경기마다 가중 합산이라 음수도 가능하다.
   // 항상 양수가 아니므로 +부호는 안 붙이고(양수는 그대로), 음수는 자연히 - 가 붙는다.
@@ -69,10 +69,12 @@ export default function RankRowV2({ row, tiedWithPrev = false, highlighted = fal
               ("+N점"), 전적을 그 아래에. 이 점수가 순위(승자승 다음)를 가르는 기준이라 숫자로
               도드라지게 한다. */}
           <div className="scr-rank-record-wrap scr-rank-record-wrap-scoreonly">
-            {/* 카드엔 총점만(세부는 상세에서). 음수면 자연히 - 가 붙는다. */}
+            {/* 카드엔 레이팅(보수추정 μ−3σ)만(세부는 상세에서). 음수면 자연히 - 가 붙는다.
+                경기 표본이 적어 아직 덜 여문 레이팅은 '잠정' 뱃지로 표시한다. */}
             <span className="scr-rank-stat-primary">
               {rankScore}<span className="scr-num-unit">점</span>
             </span>
+            {provisional && <span className="scr-rank-provisional">잠정</span>}
           </div>
         </div>
       </div>

@@ -148,12 +148,16 @@ export default function MatchScreenV2() {
 
       <h2 className="scr-v2-subheading">경기 목록</h2>
 
-      {/* 조회 버튼 — 경기목록 소타이틀 바로 아래(요청). 눌러야 그때 전체 경기를 불러온다. */}
-      <div className="scr-match-search-row">
-        <button type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm" onClick={runSearch}>
-          조회
-        </button>
-      </div>
+      {/* 조회 버튼 — 경기목록 소타이틀 바로 아래(요청). 눌러야 그때 전체 경기를 불러온다.
+          목록이 이미 조회된 상태에서는 다시 누를 이유가 없어 숨긴다(요청: "목록 조회된
+          상태에선 안보이게"). */}
+      {!hasSearched && (
+        <div className="scr-match-search-row">
+          <button type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm" onClick={runSearch}>
+            조회
+          </button>
+        </div>
+      )}
 
       {/* 유저 검색(필터)은 목록이 있을 때(조회 후)에만 노출한다(요청). 불러온 목록 안에서 즉시 필터. */}
       {hasSearched && (

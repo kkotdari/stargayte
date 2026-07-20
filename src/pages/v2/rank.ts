@@ -22,10 +22,14 @@ export const MATCH_TYPE_OF: Record<RankMode, MatchType> = { solo: "0101", team: 
 export interface RankRow {
   member: Member;
   stats: MemberStats;
-  // 랭킹 총점(경기마다 가중 합산) — 카드에 큼직하게 보여준다. 음수 가능.
+  // 랭킹 총점 = TrueSkill 보수추정 레이팅(μ−3σ) — 카드에 큼직하게 보여준다. 음수 가능.
   rankScore: number;
-  // 우세/동등/열세 인원 — 상대의 강함(1+우세수)·약함(1+열세수)을 매기는 근거이자, 랭킹
-  // 상세에서 경기당 획득 점수를 재구성하는 데 쓴다.
+  // TrueSkill 실력 추정(μ)·불확실성(σ)·누적 경기 수·잠정 여부 — 카드 뱃지/상세 표시용.
+  mu: number;
+  sigma: number;
+  ratingGames: number;
+  provisional: boolean;
+  // 우세/동등/열세 인원 — 이 기간 상세 참고값(순위 산정에는 더 이상 쓰지 않는다).
   superiorCount: number;
   equalCount: number;
   inferiorCount: number;
@@ -110,6 +114,10 @@ export async function computeRankRows(
       member: memberById.get(entry.memberId)!,
       stats: entry.overall,
       rankScore: entry.rankScore ?? 0,
+      mu: entry.mu ?? 0,
+      sigma: entry.sigma ?? 0,
+      ratingGames: entry.ratingGames ?? 0,
+      provisional: entry.provisional ?? false,
       superiorCount: entry.superiorCount ?? 0,
       equalCount: entry.equalCount ?? 0,
       inferiorCount: entry.inferiorCount ?? 0,

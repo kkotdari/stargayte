@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BarChart3, ChevronLeft, ChevronRight } from "lucide-react";
+import { createPortal } from "react-dom";
+import { ChevronLeft, ChevronRight, Info } from "lucide-react";
 import { Spinner } from "../../components/common/Feedback";
 import SearchFilterBar from "../../components/common/SearchFilterBar";
 import PillTabs from "../../components/common/PillTabs";
 import FilterItem from "../../components/common/FilterItem";
-import Select from "../../components/common/Select";
 import RankRow from "./RankRow";
 import RankingDetailModal from "./RankingDetailModal";
-import RankWeightModal from "./RankWeightModal";
 import {
   computeRankRows, computeRankTrend, MATCH_TYPE_OF,
   type RankMode, type RankRow as RankRowData, type RankTrendPoint,
@@ -16,9 +15,10 @@ import { activeMemberSearchTerms, memberMatchesTerm, splitSearchTerms } from "..
 import {
   currentPeriodAnchor, periodAnchorLabel, periodAnchorToRange, shiftPeriodAnchor, type PeriodUnit,
 } from "../../utils/date";
+import { attachPopover } from "../../utils/popover";
 import { cx } from "../../utils/format";
 import { useAppStore } from "../../store/appStore";
-import type { BaseRace, Member } from "../../types";
+import type { Member } from "../../types";
 
 // 랭킹 차트 필터는 "개인전 / 팀전" 둘뿐이다 — 예전의 개인/2인팀/3인팀/4인팀(인원수별) 구분을
 // 없앴다(요청: "개인전/팀전으로만, 팀전은 모든 팀 인원수를 묶어 개인 환산"). 팀전도 개인
@@ -27,13 +27,6 @@ import type { BaseRace, Member } from "../../types";
 const CHART_OPTS: { value: RankMode; label: string }[] = [
   { value: "solo", label: "개인전" },
   { value: "team", label: "팀전" },
-];
-// 종족 필터 — 검색창 예약어에서 필터창 드롭다운으로 옮겼다(요청). "전체"면 종족 무관.
-const RACE_SELECT_OPTS = [
-  { value: "all", label: "전체", shortLabel: "종족" },
-  { value: "테란", label: "테란" },
-  { value: "프로토스", label: "프로토스" },
-  { value: "저그", label: "저그" },
 ];
 // 기간 단위 — 월이면 화살표 한 번에 ±1개월, 연이면 ±1년 이동한다(요청: "기간 년/월, 화살표
 // 하나로 그 단위만큼 이동. 캘린더 선택기 없이").
@@ -45,14 +38,10 @@ const UNIT_OPTS: { value: PeriodUnit; label: string }[] = [
 // 비교라("2026-07" < "2026-08", "2026" < "2027") 별도 파싱 없이 경계를 판단한다.
 const RANK_MIN: Record<PeriodUnit, string> = { month: "2026-07", year: "2026" };
 
-// 강함/약함 정규화 스케일 — 서버(NET_SCALE_MAX, matches/service.py)와 반드시 같은 값을
-// 유지해야 상세 모달의 경기별 획득 점수 합이 카드 총점과 맞아떨어진다.
-const NET_SCALE_MAX = 9;
-
 // v2 랭킹 — 개인전/팀전을 고르고, 월/연 기간을 좌우 화살표로 옮겨 그 기간의 순위를 본다.
-// 순위 계산(경기마다 상대 강함/약함으로 가중 합산)은 전부 서버가 끝내서 내려주고(./rank.ts),
-// 화면은 그 순서대로 그리며 순위 숫자만 붙인다. 개인전·팀전은 집계 대상 경기(1:1 / 팀경기)만
-// 다를 뿐 목록 모양과 산정 방식이 완전히 같다.
+// 순위 계산(TrueSkill 레이팅)은 전부 서버가 끝내서 내려주고(./rank.ts), 화면은 그 순서대로
+// 그리며 순위 숫자만 붙인다. 개인전·팀전은 집계 대상 경기(1:1 / 팀경기)만 다르고 각각 별도
+// 레이팅으로 계산된다.
 export default function RankingScreenV2() {
   const members = useAppStore((s) => s.members);
   const suggestions = useMemo(() => activeMemberSearchTerms(members), [members]);
@@ -61,8 +50,6 @@ export default function RankingScreenV2() {
   // 쪽으로 고정하지 않고 매번 새로 들어올 때마다 둘 중 하나를 고른다.
   const [mode, setMode] = useState<RankMode>(() => (Math.random() < 0.5 ? "solo" : "team"));
   const matchType = MATCH_TYPE_OF[mode];
-  const isTeam = mode === "team";
-  const [race, setRace] = useState<BaseRace | "all">("all");
   const [search, setSearch] = useState("");
   // 집계 기간 단위(월/연)와 그 기준점(anchor: 월 "YYYY-MM" / 연 "YYYY"). 기본은 그 단위의
   // "현재"(월은 그레이스 보정 이번 달, 연은 올해).
@@ -78,7 +65,6 @@ export default function RankingScreenV2() {
   // 비운다(안 그러면 새 집계 도착 전까지 이전 모드 목록이 그대로 보이다가 갑자기 갈아치워짐).
   const handleModeChange = (m: RankMode) => {
     setMode(m);
-    setRace("all");
     setSearch("");
     setRows([]);
   };
@@ -97,18 +83,10 @@ export default function RankingScreenV2() {
     setAnchor(next);
     setRows([]);
   };
-  // 종족 칩도 같은 이유 — 조건이 바뀌는 순간 이전 조건의 목록을 지우고 새로 그린다.
-  const handleRaceChange = (r: BaseRace | null) => {
-    setRace(r ?? "all");
-    setRows([]);
-  };
-
   const [rows, setRows] = useState<RankRowData[]>([]);
-  // 카드(행) 클릭 — 상세 모달(최근 5개 기간 순위변동 그래프 + 경기 이력·경기당 점수).
+  // 카드(행) 클릭 — 상세 모달(최근 5개 기간 순위변동 그래프 + 경기 이력·경기당 Δ).
   const [trendMember, setTrendMember] = useState<Member | null>(null);
   const [trendPoints, setTrendPoints] = useState<RankTrendPoint[] | null>(null);
-  // 가중치 표 모달 — 순위표 오른쪽 링크로 연다.
-  const [weightOpen, setWeightOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -123,7 +101,8 @@ export default function RankingScreenV2() {
     let cancelled = false;
     setLoading(true);
     setError("");
-    computeRankRows(membersRef.current, matchType, race, unit, anchor)
+    // 종족 필터는 없앴다(레이팅은 회원 단위 하나 — 종족별로 나누지 않는다) — 항상 "all".
+    computeRankRows(membersRef.current, matchType, "all", unit, anchor)
       .then((res) => { if (!cancelled) setRows(res); })
       .catch((e) => {
         if (!cancelled) setError(e instanceof Error ? e.message : "랭킹을 불러오지 못했어요.");
@@ -131,7 +110,7 @@ export default function RankingScreenV2() {
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [membersSignature, matchType, race, unit, anchor]);
+  }, [membersSignature, matchType, unit, anchor]);
 
   // 유저 검색은 순위 재계산 없이(순위는 항상 전체 기준) 화면에 보여줄 행만 거른다 — 남은
   // 행의 순위 숫자는 검색 전과 항상 같다.
@@ -149,47 +128,38 @@ export default function RankingScreenV2() {
     return ids;
   }, [members, searchTerms]);
 
-  // 강함/약함은 순우열(우세수−열세수)을 "이번 기간 참가자 수"로 정규화한 비율에 고정
-  // 스케일(NET_SCALE_MAX)을 곱한 값이다 — 클럽 규모가 커질수록 경기 한 판의 점수 스윙이
-  // 부풀어 오르던 문제를 없앤다(요청: "회원이 많아지면 편차가 커지는 게 공평하냐").
-  // 서버(_apply_rank_order)와 같은 산식·같은 상수라 상세에서 경기별로 더하면 카드
-  // 총점과 맞아떨어진다.
-  const participantCount = useMemo(() => rows.filter((r) => r.stats.plays > 0).length, [rows]);
-  const netDenom = Math.max(1, participantCount - 1);
-  const strengthByMember = useMemo(
-    () => new Map(rows.map((r) => [r.member.id, 1 + (NET_SCALE_MAX * Math.max(0, r.superiorCount - r.inferiorCount)) / netDenom])),
-    [rows, netDenom],
-  );
-  const weaknessByMember = useMemo(
-    () => new Map(rows.map((r) => [r.member.id, 1 + (NET_SCALE_MAX * Math.max(0, r.inferiorCount - r.superiorCount)) / netDenom])),
-    [rows, netDenom],
-  );
   const period = useMemo(() => periodAnchorToRange(unit, anchor), [unit, anchor]);
-  // 가중치 표 — 순위에 든(한 판이라도 뛴) 회원을 순 우열(우세수−열세수)이 높은 순으로 세우고,
-  // 각자의 한 지표(순 우열)에서 강함·약함을 뽑아 '이 사람을 이기면/지면 몇 점'을 매긴다.
-  const weightRows = useMemo(
-    () => rows
-      .filter((r) => r.stats.plays > 0)
-      .map((r) => {
-        const net = r.superiorCount - r.inferiorCount;
-        const win = 1 + (NET_SCALE_MAX * Math.max(0, net)) / netDenom;
-        const loss = -(1 + (NET_SCALE_MAX * Math.max(0, -net)) / netDenom);
-        return {
-          member: r.member,
-          net,
-          win: Math.round(win * 10) / 10,
-          loss: Math.round(loss * 10) / 10,
-        };
-      })
-      .sort((a, b) => b.net - a.net || a.member.nickname.localeCompare(b.member.nickname)),
-    [rows, netDenom],
-  );
+
+  // 산정 방식 안내 — 항상 보이는 문단 대신, 눌러야 뜨는 툴팁으로(요청: "누르면 툴팁형태로
+  // 보이게"). 헤더의 프로필 드롭다운과 같은 패턴(attachPopover + 바깥 클릭/포커스 이동 시 닫음).
+  const [methodTipOpen, setMethodTipOpen] = useState(false);
+  const methodAnchorRef = useRef<HTMLButtonElement>(null);
+  const methodTipRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!methodTipOpen || !methodAnchorRef.current || !methodTipRef.current) return;
+    return attachPopover(methodAnchorRef.current, methodTipRef.current, { growToContent: true, maxWidth: 280 });
+  }, [methodTipOpen]);
+  useEffect(() => {
+    if (!methodTipOpen) return;
+    const closeIfOutside = (e: Event) => {
+      const t = e.target as Node;
+      if (methodAnchorRef.current?.contains(t)) return;
+      if (methodTipRef.current?.contains(t)) return;
+      setMethodTipOpen(false);
+    };
+    document.addEventListener("mousedown", closeIfOutside);
+    document.addEventListener("focusin", closeIfOutside);
+    return () => {
+      document.removeEventListener("mousedown", closeIfOutside);
+      document.removeEventListener("focusin", closeIfOutside);
+    };
+  }, [methodTipOpen]);
 
   const closeTrend = () => { setTrendMember(null); setTrendPoints(null); };
   const openTrend = (row: RankRowData) => {
     setTrendMember(row.member);
     setTrendPoints(null);
-    computeRankTrend(membersRef.current, matchType, row.member.id, race, unit, anchor)
+    computeRankTrend(membersRef.current, matchType, row.member.id, "all", unit, anchor)
       .then((pts) => setTrendPoints(pts))
       .catch(() => setTrendPoints([]));
   };
@@ -200,53 +170,10 @@ export default function RankingScreenV2() {
         <h1 className="scr-title scr-v2-toolbar-title">랭킹</h1>
       </div>
 
-      {/* 기간(단위 토글 + 좌우 이동)과 산정 방식 힌트를 타이틀 아래 별도 행으로 둔다. 화살표는
-          갈 수 있을 때만 보이되 자리는 늘 예약해 레이아웃이 안 흔들린다. */}
-      <div className="scr-rank-subrow">
-        <span className="scr-rank-period">
-          <span className="scr-rank-unit-toggle" role="group" aria-label="기간 단위(월/연) 선택">
-            {UNIT_OPTS.map((o) => (
-              <button
-                key={o.value}
-                type="button"
-                className={cx("scr-rank-unit-btn", unit === o.value && "scr-rank-unit-btn-active")}
-                onClick={() => handleUnitChange(o.value)}
-                aria-pressed={unit === o.value}
-              >
-                {o.label}
-              </button>
-            ))}
-          </span>
-          <span className="scr-rank-month-nav">
-            <button
-              type="button"
-              className={cx("scr-rank-month-btn", !hasPrev && "scr-rank-month-btn-hidden")}
-              onClick={() => goPeriod(-1)}
-              aria-label="이전 기간"
-              aria-hidden={!hasPrev}
-              tabIndex={hasPrev ? 0 : -1}
-            >
-              <ChevronLeft size={18} />
-            </button>
-            <span className="scr-rank-title-month">{periodAnchorLabel(unit, anchor)}</span>
-            <button
-              type="button"
-              className={cx("scr-rank-month-btn", !hasNext && "scr-rank-month-btn-hidden")}
-              onClick={() => goPeriod(1)}
-              aria-label="다음 기간"
-              aria-hidden={!hasNext}
-              tabIndex={hasNext ? 0 : -1}
-            >
-              <ChevronRight size={18} />
-            </button>
-          </span>
-        </span>
-      </div>
-
-      {/* 개인전/팀전 선택은 필터창(왼쪽 알약 탭)이 맡는다. 종족은 라디오가 아니라 유저 검색창의
-          예약어(raceValue/onRaceChange) — "테란"/"프로토스"/"저그"를 완성하면 종족 칩으로
-          인식한다. 팀전엔 종족 개념을 두지 않아(구성원별 종족을 하나로 묶을 수 없다) 팀전에서는
-          이 두 prop을 안 넘긴다 — SearchFilterBar가 onRaceChange 없으면 종족 인식을 안 한다. */}
+      {/* 기간(단위 토글 + 좌우 이동) 선택을 다른 화면과 같은 필터 모듈 안으로 옮긴다(요청:
+          "랭킹의 년월 선택기능을 필터의 기간모듈로 통합"). 선택지는 년/월뿐 — 캘린더/전체
+          기간 선택 없이 화살표 한 번에 그 단위만큼만 이동한다. 화살표는 갈 수 있을 때만
+          보이되 자리는 늘 예약해 레이아웃이 안 흔들린다. */}
       <SearchFilterBar
         count={visibleRows.length}
         countLabel="명"
@@ -257,34 +184,66 @@ export default function RankingScreenV2() {
         showSearch={false}
         filterPanel={
           <>
+            <FilterItem label="기간">
+              {/* 필터창의 다른 알약탭(차트 등)과 같은 공용 컴포넌트를 그대로 써서 톤을
+                  맞춘다 — 선택지는 년/월뿐(요청: "선택지는 년/월만 가능"). */}
+              <PillTabs options={UNIT_OPTS} value={unit} onChange={handleUnitChange} aria-label="기간 단위(월/연) 선택" />
+              <span className="scr-rank-month-nav">
+                <button
+                  type="button"
+                  className={cx("scr-rank-month-btn", !hasPrev && "scr-rank-month-btn-hidden")}
+                  onClick={() => goPeriod(-1)}
+                  aria-label="이전 기간"
+                  aria-hidden={!hasPrev}
+                  tabIndex={hasPrev ? 0 : -1}
+                >
+                  <ChevronLeft size={18} />
+                </button>
+                <span className="scr-rank-title-month">{periodAnchorLabel(unit, anchor)}</span>
+                <button
+                  type="button"
+                  className={cx("scr-rank-month-btn", !hasNext && "scr-rank-month-btn-hidden")}
+                  onClick={() => goPeriod(1)}
+                  aria-label="다음 기간"
+                  aria-hidden={!hasNext}
+                  tabIndex={hasNext ? 0 : -1}
+                >
+                  <ChevronRight size={18} />
+                </button>
+              </span>
+            </FilterItem>
+            {/* 개인전/팀전 선택. 종족은 라디오가 아니라 유저 검색창의 예약어(raceValue/
+                onRaceChange) — "테란"/"프로토스"/"저그"를 완성하면 종족 칩으로 인식한다.
+                팀전엔 종족 개념을 두지 않아(구성원별 종족을 하나로 묶을 수 없다) 팀전에서는
+                이 두 prop을 안 넘긴다 — SearchFilterBar가 onRaceChange 없으면 종족 인식을
+                안 한다. */}
             <FilterItem label="차트">
               <PillTabs options={CHART_OPTS} value={mode} onChange={handleModeChange} aria-label="개인전/팀전 선택" />
             </FilterItem>
-            {/* 종족은 검색창 예약어 대신 필터 드롭다운으로(요청). 팀전엔 종족 개념이 없어 숨긴다. */}
-            {!isTeam && (
-              <FilterItem label="종족">
-                <Select
-                  value={race}
-                  options={RACE_SELECT_OPTS}
-                  onChange={(v) => handleRaceChange(v === "all" ? null : (v as BaseRace))}
-                  size="sm"
-                  minDropWidth={110}
-                  className="scr-filter-race-select"
-                />
-              </FilterItem>
-            )}
           </>
         }
       />
 
-      {/* 기준점수표 링크 — 필터들 아래, 순위 목록 바로 위에 붙인다(요청). 가중치(점수)가
-          순위별로 어떻게 매겨지는지 표 모달을 연다. */}
-      <div className="scr-rank-weight-row">
-        <button type="button" className="scr-rank-weight-link" onClick={() => setWeightOpen(true)}>
-          <BarChart3 size={13} />
-          <span>기준점수표</span>
+      {/* 산정 방식 안내 — 필터들 아래, 순위 목록 바로 위(예전 기준점수표 자리). 항상 보이는
+          문단 대신 눌러야 뜨는 툴팁으로(요청: "누르면 툴팁형태로 보이게"). */}
+      <div className="scr-rank-method-row">
+        <button
+          type="button"
+          className={cx("scr-rank-method-trigger", methodTipOpen && "scr-rank-method-trigger-active")}
+          ref={methodAnchorRef}
+          onClick={() => setMethodTipOpen((v) => !v)}
+        >
+          <Info size={13} /> 산정 방식
         </button>
       </div>
+      {methodTipOpen && createPortal(
+        <div className="scr-rank-method-tooltip" ref={methodTipRef}>
+          경기 결과로 실력 레이팅(TrueSkill)을 추정합니다. 강한 상대를 이길수록 크게 오르고,
+          경기가 적으면 <b>잠정</b>으로 낮게 잡힙니다. 팀전은 팀 승패를 개인 실력으로 분해하며,
+          개인전·팀전 레이팅은 따로 계산됩니다.
+        </div>,
+        document.body,
+      )}
 
       {error && <div className="scr-err">{error}</div>}
 
@@ -314,18 +273,7 @@ export default function RankingScreenV2() {
           points={trendPoints}
           matchType={matchType}
           period={period}
-          strengthByMember={strengthByMember}
-          weaknessByMember={weaknessByMember}
           onClose={closeTrend}
-        />
-      )}
-
-      {weightOpen && (
-        <RankWeightModal
-          rows={weightRows}
-          modeLabel={isTeam ? "팀전" : "개인전"}
-          isTeam={isTeam}
-          onClose={() => setWeightOpen(false)}
         />
       )}
     </div>
