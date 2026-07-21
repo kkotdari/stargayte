@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Plus, Trash2, Pencil } from "lucide-react";
+import { Plus, Trash2, Pencil, Check } from "lucide-react";
 import Select from "../../components/common/Select";
 import { Spinner } from "../../components/common/Feedback";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
@@ -160,8 +160,21 @@ export default function LeagueScreen() {
                 </button>
               )}
             </span>
-            <span className={cx("scr-league-status-pill", `scr-league-status-${league.status}`)}>
-              {STATUS_LABEL[league.status]}
+            <span className="scr-league-summary-row-right">
+              {/* 수정 모드로 들어가는 연필은 다시 누르면 닫히는 걸 막으려 감췄으므로, 나가는
+                  건 이 '수정 완료' 버튼으로만 한다(요청: "수정모드에서 나가는 방법이 없다"). */}
+              {canEdit && (
+                <button
+                  type="button"
+                  className="scr-btn scr-btn-sm scr-league-edit-done"
+                  onClick={() => setEditMode(false)}
+                >
+                  <Check size={14} /> 수정 완료
+                </button>
+              )}
+              <span className={cx("scr-league-status-pill", `scr-league-status-${league.status}`)}>
+                {STATUS_LABEL[league.status]}
+              </span>
             </span>
           </div>
           <div className="scr-league-summary-meta">

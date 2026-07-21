@@ -248,7 +248,7 @@ export default function LeagueBracket({
   };
   const generateRow = canEdit && !league.bracketLocked && (
     <div className="scr-league-bracket-generate-row">
-      <span className="scr-label">{league.mode === "individual" ? "참가선수수" : "참가팀수"}</span>
+      <span className="scr-label">시드수</span>
       <input
         type="number" min={2} value={teamCountInput}
         onChange={(e) => setTeamCountInput(e.target.value)}
@@ -259,7 +259,7 @@ export default function LeagueBracket({
         type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm"
         onClick={generate} disabled={busy}
       >
-        {busy && <Spinner size={14} />} 저장
+        {busy && <Spinner size={14} />} 적용
       </button>
     </div>
   );

@@ -6927,6 +6927,9 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
   padding: 16px; border: 1px solid var(--league-line); border-radius: 14px; background: var(--league-panel);
 }
 .scr-league-summary-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+/* 이름/삭제 반대편 — '수정 완료' 버튼 + 상태 배지를 오른쪽에 나란히 둔다. */
+.scr-league-summary-row-right { display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.scr-league-edit-done { padding: 4px 10px; height: 28px; min-height: 28px; box-sizing: border-box; font-size: var(--fs-caption); }
 .scr-league-summary-name { font-size: var(--fs-subhead); font-weight: 800; display: inline-flex; align-items: center; gap: 4px; }
 .scr-league-edit-toggle { width: 22px; height: 22px; }
 /* 완전한 알약(999px) 대신 평평한(광택 없이) 둥근 네모 — 정확한 스퀴클 곡률을 맞추기
