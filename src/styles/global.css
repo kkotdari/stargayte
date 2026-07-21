@@ -7047,8 +7047,16 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
     width: auto; font-size: var(--fs-body);
   }
 }
+/* 팀 카드(.scr-league-bracket-team-card)와 박스 모델(패딩/최소높이)을 맞춘다 — 부전/
+   미정처럼 빈 자리가 실제 카드보다 훨씬 짧으면 짝 커넥터의 25/75% 중심 계산이
+   틀어져 "이긴 팀과 연결된 선"이 카드 중심을 비껴간다(요청: "두 팀이 붙으면 그
+   브라켓이 합쳐진 하나의 선에 이긴 팀이 연결돼야해"). 로스터가 여러 명이라 카드가
+   더 길어지는 경우까지 완벽히 맞추진 못하지만(그런 경우는 애초에 두 자리 모두 실제
+   카드라 이 규칙과 무관), 카드-대-빈자리 조합에서는 이제 높이가 맞는다. */
 .scr-league-bracket-team-empty {
-  padding: 8px; text-align: center; font-size: var(--fs-caption); color: var(--dim);
+  display: flex; align-items: center; justify-content: center;
+  padding: 6px 8px; min-height: 34px; box-sizing: border-box;
+  text-align: center; font-size: var(--fs-caption); color: var(--dim);
   border: 1px dashed var(--line); border-radius: 8px; width: 100%;
 }
 /* 개인전 1라운드 수정 모드 — 로스터 자리에 드롭다운이 그대로 들어간다(빈 슬롯이면
