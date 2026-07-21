@@ -233,6 +233,54 @@ function MatchActionsMenu({
   );
 }
 
+// 펼쳤을 때 카드 하단에 붙는 상세 스탯 표(요청) — 양 팀 전원을 한 표에 모아 유효커맨드
+// 높은 순으로 정렬한다. 리플레이 파싱값(apm/eapm/커맨드/유효커맨드)은 수기등록이면 없어서 '–'.
+function MatchStatsTable({
+  team1, team2, memberOf,
+}: {
+  team1: MatchSlot[]; team2: MatchSlot[]; memberOf: (id: string) => Member | undefined;
+}) {
+  const rows = [
+    ...team1.map((s) => ({ s, players: team1 })),
+    ...team2.map((s) => ({ s, players: team2 })),
+  ]
+    .map(({ s, players }) => ({
+      nickname: resolveSlotName(s, players, memberOf),
+      rawName: s.rawName ?? "",
+      race: s.race,
+      apm: s.apm, cmd: s.cmdCount, eapm: s.eapm, ecmd: s.effectiveCmdCount,
+    }))
+    // 유효커맨드(effectiveCmdCount) 높은 순 — 값이 없으면(수기등록) 맨 아래로.
+    .sort((a, b) => (b.ecmd ?? -1) - (a.ecmd ?? -1));
+  const n = (v: number | null) => (v == null ? "–" : v.toLocaleString());
+  return (
+    <div className="scr-match-stats-table-wrap scr-scroll" onClick={(e) => e.stopPropagation()}>
+      <table className="scr-match-stats-table">
+        <thead>
+          <tr>
+            <th className="scr-mst-left">닉네임</th>
+            <th className="scr-mst-left">플레이어</th>
+            <th>종족</th><th>APM</th><th>커맨드</th><th>유효APM</th><th>유효커맨드</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            <tr key={i}>
+              <td className="scr-mst-left">{r.nickname}</td>
+              <td className="scr-mst-left scr-mst-raw">{r.rawName || "–"}</td>
+              <td className="scr-mst-race"><RaceBadge race={r.race} size={14} circleLetter /></td>
+              <td>{n(r.apm)}</td>
+              <td>{n(r.cmd)}</td>
+              <td>{n(r.eapm)}</td>
+              <td className="scr-mst-ecmd">{n(r.ecmd)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export default function MatchList({
   rows, memberOf, onMemo, onDeleted, loading, highlightMemberIds,
 }: MatchListProps) {
@@ -294,67 +342,49 @@ export default function MatchList({
                 onClick={() => toggleExpanded(r.id)} role="button" tabIndex={0}
                 aria-expanded={expanded}
               >
-                {/* 맵 이름은 길어서 머리줄이 아니라 그 아래 별도 줄에(요청). 플레이시간도 그 옆에.
-                    맵/시간 정보가 둘 다 없는 경기가 섞이면 이 줄이 통째로 빠져서 그 아래
-                    로스터 시작 위치가 경기마다 들쭉날쭉해 보였다(실제로 지적받은 문제:
-                    "경기목록 로스터가 경기별로 줄이 안맞음") — 내용이 없어도 줄 자체는 항상
-                    그려서 높이를 계속 예약해둔다. 접힌 상태에서도 그대로 보인다(요청:
-                    "맵이름 (게임시간)"이 접힌 요약의 첫 줄). */}
-                <div className="scr-match-trow-map-line">
-                  {r.raw.mapName && <span className="scr-match-trow-map">{r.raw.mapName}</span>}
-                  {r.raw.durationSeconds != null && (
-                    <span className="scr-match-trow-dur">({Math.round(r.raw.durationSeconds / 60)}분)</span>
-                  )}
-                </div>
-                {expanded ? (
-                  /* 팀 2열 + 그 사이 승/패(요청). 헤더·컬럼 구분선 없이 로우만. */
-                  <div className="scr-match-trow-grid">
-                    <div className="scr-match-trow-team">
-                      <div className="scr-match-trow-roster">
-                        {r.team1.map((s) => (
-                          <PlayerCell
-                            key={s.memberId} slot={s} players={r.team1} memberOf={memberOf}
-                            highlighted={!!highlightMemberIds?.has(s.memberId)} openProfile={openMemberProfile}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                    {outcomes}
-                    <div className="scr-match-trow-team">
-                      <div className="scr-match-trow-roster">
-                        {r.team2.map((s) => (
-                          <PlayerCell
-                            key={s.memberId} slot={s} players={r.team2} memberOf={memberOf}
-                            highlighted={!!highlightMemberIds?.has(s.memberId)} openProfile={openMemberProfile}
-                          />
-                        ))}
-                      </div>
-                    </div>
+                {/* 윗줄 — 맵·플레이시간과 함께 등록자·케밥메뉴도 여기 표시(요청). 내용이 없어도
+                    줄 높이를 예약해 카드마다 로스터 시작 위치가 흔들리지 않게 한다. */}
+                <div className="scr-match-trow-topline">
+                  <div className="scr-match-trow-map-line">
+                    {r.raw.mapName && <span className="scr-match-trow-map">{r.raw.mapName}</span>}
+                    {r.raw.durationSeconds != null && (
+                      <span className="scr-match-trow-dur">({Math.round(r.raw.durationSeconds / 60)}분)</span>
+                    )}
                   </div>
-                ) : (
-                  /* 접힌 요약 줄 — "누구 외 몇명  승  패  누구 외 몇명"(요청). */
-                  <div className="scr-match-trow-summary">
-                    <span className="scr-match-trow-summary-team">{teamSummaryName(r.team1, memberOf)}</span>
-                    {outcomes}
-                    <span className="scr-match-trow-summary-team">{teamSummaryName(r.team2, memberOf)}</span>
-                  </div>
-                )}
-                {/* 등록자·케밥메뉴는 카드 우하단 고정 자리 — N경기·경기번호는 빼고(요청)
-                    등록자만, 오른쪽에 액션. 접힌 상태에선 감춘다(요청: "기본적으로
-                    접힌상태로 노출... 클릭하면 펼쳐지면서 원래대로 케밥메뉴, 등록자...
-                    노출됨"). 카드 내용(로스터 들여쓰기 등)과 달리 이 자리는 들여쓰기
-                    대상이 아니다(요청: "등록자랑 케밥 메뉴는 들여쓰기 대상 X, 우하단에
-                    표시") — position:absolute라 이 행의 좌우 패딩(들여쓰기)을 그대로
-                    무시하고 카드 padding-box 기준 오른쪽 아래에 고정된다. */}
-                {expanded && (
-                  <div className="scr-match-trow-head">
+                  <div className="scr-match-trow-topmeta">
                     {r.raw.createdBy && <span className="scr-match-trow-by">등록: {r.raw.createdBy.nickname}</span>}
                     <MatchActionsMenu
                       match={r.raw} canDelete={canDelete} memberOf={memberOf}
                       onMemo={onMemo} onDelete={setDeleteTarget}
                     />
                   </div>
-                )}
+                </div>
+                {/* 팀1(2열) · 승/패 · 팀2(2열) — 접힘/펼침 공통으로 전원 표시(요청). */}
+                <div className="scr-match-trow-grid">
+                  <div className="scr-match-trow-team">
+                    <div className="scr-match-trow-roster scr-match-trow-roster-grid">
+                      {r.team1.map((s) => (
+                        <PlayerCell
+                          key={s.memberId} slot={s} players={r.team1} memberOf={memberOf}
+                          highlighted={!!highlightMemberIds?.has(s.memberId)} openProfile={openMemberProfile}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  {outcomes}
+                  <div className="scr-match-trow-team">
+                    <div className="scr-match-trow-roster scr-match-trow-roster-grid">
+                      {r.team2.map((s) => (
+                        <PlayerCell
+                          key={s.memberId} slot={s} players={r.team2} memberOf={memberOf}
+                          highlighted={!!highlightMemberIds?.has(s.memberId)} openProfile={openMemberProfile}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                {/* 펼치면 접힘 내용 아래에 상세 스탯 표(양 팀 전원, 유효커맨드 높은 순). */}
+                {expanded && <MatchStatsTable team1={r.team1} team2={r.team2} memberOf={memberOf} />}
               </div>
               );
             })}

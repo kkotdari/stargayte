@@ -3092,12 +3092,15 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 /* 내용(맵/시간)이 둘 다 없어도 항상 그려서 높이를 예약한다(위 MatchList.tsx 참고) —
    빈 flex 컨테이너는 내용이 없으면 0으로 찌그러지므로 폰트 라인하이트만큼 min-height로
    붙잡아둔다. */
-.scr-match-trow-map-line { display: flex; align-items: baseline; justify-content: center; gap: 8px; margin-bottom: 9px; font-size: var(--fs-caption); min-width: 0; min-height: 15px; }
+/* 윗줄 — 왼쪽 맵/시간, 오른쪽 등록자/케밥(요청). 내용이 비어도 높이 예약. */
+.scr-match-trow-topline { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; min-height: 20px; }
+.scr-match-trow-map-line { display: flex; align-items: baseline; justify-content: flex-start; gap: 8px; font-size: var(--fs-caption); min-width: 0; flex: 1 1 auto; }
 .scr-match-trow-map { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 /* 맵 이름 옆 플레이시간 — 라벨 없이 "23분"(요청). 흐린 색으로 살짝 뒤에. */
 .scr-match-trow-dur { color: var(--dim); flex-shrink: 0; font-variant-numeric: tabular-nums; }
-/* 등록자는 오른쪽 정렬(요청) — margin-left:auto로 밀어 액션 버튼 바로 왼쪽에 붙인다. */
-.scr-match-trow-by { color: var(--dim); flex-shrink: 0; margin-left: auto; }
+/* 윗줄 오른쪽 — 등록자 + 케밥. */
+.scr-match-trow-topmeta { display: flex; align-items: center; gap: 8px; flex-shrink: 0; font-size: var(--fs-caption); }
+.scr-match-trow-by { color: var(--dim); flex-shrink: 0; }
 .scr-match-trow-head .scr-match-card-actions { flex-shrink: 0; }
 /* 세로점세개(⋮) 메뉴 트리거 — 등록자 오른쪽 끝에. 아이콘 버튼 톤은 기존 메모 버튼과 공유. */
 .scr-match-menu { display: inline-flex; flex-shrink: 0; }
@@ -3123,6 +3126,11 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-match-trow-grid .scr-match-trow-team:first-child .scr-match-trow-roster { align-items: flex-end; }
 .scr-match-trow-grid .scr-match-trow-team:last-child .scr-match-trow-roster { align-items: flex-start; }
 .scr-match-trow-roster { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+/* 팀 로스터를 2열 그리드로(요청: 팀선수1 팀선수2 / 팀선수3 팀선수4). 팀1은 승패 쪽(오른쪽)
+   으로, 팀2는 왼쪽으로 정렬. 선수가 1~2명이면 한 줄, 3~4명이면 2줄이 된다. */
+.scr-match-trow-roster-grid { display: grid; grid-template-columns: repeat(2, minmax(0, max-content)); gap: 4px 14px; }
+.scr-match-trow-grid .scr-match-trow-team:first-child .scr-match-trow-roster-grid { justify-content: end; justify-items: end; }
+.scr-match-trow-grid .scr-match-trow-team:last-child .scr-match-trow-roster-grid { justify-content: start; justify-items: start; }
 .scr-mt-player {
   display: flex; align-items: center; gap: 8px; min-width: 0;
   background: transparent; border: none; padding: 0; font: inherit; color: inherit;
@@ -3164,6 +3172,20 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-match-trow-summary-team { flex: 1 1 0; min-width: 0; font-size: var(--fs-caption); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .scr-match-trow-summary-team:first-child { text-align: right; }
 .scr-match-trow-summary-team:last-child { text-align: left; }
+/* 펼침 상세 스탯 표(요청) — 양 팀 전원의 닉네임/플레이어네임/종족/APM/커맨드/유효APM/
+   유효커맨드. 유효커맨드 높은 순 정렬. 좁은 폭에선 가로 스크롤. */
+.scr-match-stats-table-wrap { margin-top: 12px; overflow-x: auto; }
+.scr-match-stats-table { width: 100%; border-collapse: collapse; font-size: var(--fs-caption); font-variant-numeric: tabular-nums; }
+.scr-match-stats-table th {
+  color: var(--muted); font-weight: 700; text-align: right; white-space: nowrap;
+  padding: 5px 9px; border-bottom: 1px solid var(--line-soft);
+}
+.scr-match-stats-table td { color: var(--text); text-align: right; white-space: nowrap; padding: 5px 9px; }
+.scr-match-stats-table .scr-mst-left { text-align: left; }
+.scr-match-stats-table .scr-mst-race { text-align: center; }
+.scr-match-stats-table tbody tr + tr td { border-top: 1px solid rgba(var(--overlay-rgb), 0.06); }
+.scr-match-stats-table .scr-mst-raw { color: var(--muted); }
+.scr-match-stats-table .scr-mst-ecmd { font-weight: 800; }
 /* 행 전체가 클릭 대상 — 눌러서 펼치고 접는다(요청). 터치에서 :hover가 스크롤 스침에
    고착되는 문제(다른 클릭 가능 행들과 같은 원칙)를 피하려 실제 hover 입력장치에서만 켠다. */
 .scr-match-trow-clickable { cursor: pointer; }
