@@ -628,6 +628,15 @@ export const api = {
     });
   },
 
+  // 성사(진행중)된 너 나와의 예정 일시를 바꾼다 — 참가자 또는 운영자만(요청: "너나와
+  // 목록에서 진행중인건은 날짜와 시간 수정이 가능하게").
+  async rescheduleChallenge(id: number, scheduledAt: string): Promise<Challenge> {
+    return request<Challenge>(`/api/challenges/${id}/schedule`, {
+      method: "PATCH",
+      body: JSON.stringify({ scheduledAt }),
+    });
+  },
+
   // 확정된 너 나와의 결과(이긴 쪽)를 입력 — 참가자 누구든 먼저 입력하는 쪽이 인정되고,
   // 예정 일시가 지난 뒤에만 가능하다. 이미 결과가 입력된 너 나와에는 다시 입력할 수 없다.
   async enterChallengeResult(id: number, winnerSide: ChallengeResult): Promise<Challenge> {

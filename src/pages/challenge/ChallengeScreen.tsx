@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Pencil } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
 import { Spinner } from "../../components/common/Feedback";
 import OptionalDateTimeFields from "../../components/common/OptionalDateTimeFields";
@@ -8,9 +9,10 @@ import ChallengeFormModal from "../../modals/ChallengeFormModal";
 import ScrollNavTimeline from "../../components/common/ScrollNavTimeline";
 import { useAppStore } from "../../store/appStore";
 import { api } from "../../api/client";
+import { isAdminRole } from "../../constants/roles";
 import { cx } from "../../utils/format";
 import {
-  challengeDateGroupLabel, challengeTimeLabel, formatRelativeSchedule, isToday,
+  challengeDateGroupLabel, challengeTimeLabel, formatRelativeSchedule, isToday, pad,
 } from "../../utils/date";
 import { getScrollMetrics, getScrollRoot } from "../../utils/scrollRoot";
 import type { Challenge, ChallengeResult, ChallengeSide, ChallengeStatus, ChallengeTarget } from "../../types";
@@ -662,10 +664,93 @@ function compareChallenges(a: Challenge, b: Challenge): number {
   return a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0;
 }
 
+// 시각 헤더(scr-challenge-time-head)는 같은 시각의 카드들 맨 위에 한 번만 뜨는데, 진행중
+// (성사)인 너 나와는 그 시각 옆에 연필 아이콘으로 일시를 바로 수정할 수 있다(요청: "너나와
+// 목록에서 진행중인건은 날짜와 시간 수정이 가능하게할거야, 시간 옆에 연필모양 아이콘 추가,
+// 권한은 참가자 또는 운영자는 가능하게"). 같은 시각에 서로 다른 너 나와가 여럿 묶이면(드묾)
+// 어느 것을 수정할지 모호해지므로, 그 시각 그룹에 너 나와가 정확히 하나일 때만 연필을
+// 보여준다 — 호출부(groupByTime map)에서 tg.items.length===1일 때만 이 컴포넌트를 쓴다.
+function ChallengeTimeHeadEdit({
+  challenge, timeLabel, myId, isAdmin, onUpdated,
+}: {
+  challenge: Challenge; timeLabel: string; myId: string | undefined; isAdmin: boolean;
+  onUpdated: (updated: Challenge) => void;
+}) {
+  const isParticipant =
+    challenge.createdBy.id === myId
+    || challenge.ownMembers.some((m) => m.memberId === myId)
+    || challenge.targets.some((t) => t.memberId === myId);
+  const canEdit = challenge.status === "confirmed" && (isParticipant || isAdmin);
+
+  const [editing, setEditing] = useState(false);
+  const [dateStr, setDateStr] = useState("");
+  const [timeStr, setTimeStr] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+
+  const startEdit = () => {
+    if (challenge.scheduledAt) {
+      const d = new Date(challenge.scheduledAt);
+      setDateStr(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`);
+      setTimeStr(`${pad(d.getHours())}:${pad(d.getMinutes())}`);
+    }
+    setErr("");
+    setEditing(true);
+  };
+
+  const save = async () => {
+    if (!dateStr) { setErr("날짜를 선택하세요."); return; }
+    setErr("");
+    setBusy(true);
+    try {
+      const scheduledAt = new Date(`${dateStr}T${timeStr || "22:00"}`).toISOString();
+      const updated = await api.rescheduleChallenge(challenge.id, scheduledAt);
+      onUpdated(updated);
+      setEditing(false);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "일정을 바꾸지 못했어요.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (editing) {
+    return (
+      <div className="scr-challenge-time-edit-form">
+        <OptionalDateTimeFields dateStr={dateStr} onDateChange={setDateStr} timeStr={timeStr} onTimeChange={setTimeStr} />
+        {err && <div className="scr-err">{err}</div>}
+        <div className="scr-challenge-card-actions">
+          <button type="button" className="scr-btn scr-btn-ghost scr-btn-sm" onClick={() => setEditing(false)} disabled={busy}>
+            취소
+          </button>
+          <button type="button" className="scr-btn scr-challenge-accept-btn scr-btn-sm" onClick={save} disabled={busy}>
+            {busy ? <Spinner /> : "저장"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="scr-challenge-time-head">
+      <span className="scr-challenge-time-head-label">{timeLabel}</span>
+      {canEdit && (
+        <button
+          type="button" className="scr-challenge-time-edit-btn"
+          onClick={startEdit} aria-label="일시 수정"
+        >
+          <Pencil size={13} />
+        </button>
+      )}
+    </div>
+  );
+}
+
 // 도전장("너 나와!") 게시판 — 경기결과/예약 시스템과는 독립적인 별도 게시판이라, 화면 자체도
 // 기간 필터 없이 전체 목록을 그대로 보여준다.
 export default function ChallengeScreen() {
   const user = useAppStore((s) => s.user);
+  const isAdmin = isAdminRole(user?.roles ?? []);
 
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [loading, setLoading] = useState(true);
@@ -782,9 +867,6 @@ export default function ChallengeScreen() {
           <div
             className="scr-challenge-date-group"
             data-today={g.isToday ? "1" : undefined}
-            // "일정 미정" 그룹(scheduledAt 없는 대기중 묶음, 정렬상 맨 뒤)에 표식을 달아
-            // 우측 타임라인이 눈금+라벨을 찍는다(스냅 타깃은 아니다 — 아래 .scr-snap-today).
-            data-undecided={g.items.some((c) => !c.scheduledAt) ? "1" : undefined}
           >
             <div className="scr-challenge-date-head" data-date-label={g.label}>
               {g.isToday && <span className="scr-challenge-card-today-tag">오늘</span>}
@@ -795,9 +877,18 @@ export default function ChallengeScreen() {
             {groupByTime(g.items).map((tg) => (
               <div key={tg.key} className="scr-challenge-time-group">
                 {tg.timeLabel && (
-                  <div className="scr-challenge-time-head">
-                    <span className="scr-challenge-time-head-label">{tg.timeLabel}</span>
-                  </div>
+                  // 시각 그룹에 너 나와가 정확히 하나일 때만 연필(일시 수정)을 보여준다
+                  // (ChallengeTimeHeadEdit 주석 참고 — 여럿이면 어느 걸 고칠지 모호해서).
+                  tg.items.length === 1 ? (
+                    <ChallengeTimeHeadEdit
+                      challenge={tg.items[0]} timeLabel={tg.timeLabel}
+                      myId={user?.id} isAdmin={isAdmin} onUpdated={upsert}
+                    />
+                  ) : (
+                    <div className="scr-challenge-time-head">
+                      <span className="scr-challenge-time-head-label">{tg.timeLabel}</span>
+                    </div>
+                  )
                 )}
                 {tg.items.map((c) => (
                   <div key={c.id} className="scr-challenge-card-slot">
@@ -887,14 +978,14 @@ export default function ChallengeScreen() {
       )}
 
       {/* 우측 네비게이션 타임라인 — 스크롤 시에만 뜨고, 스스로 스크롤 불가 상태면 안 뜬다.
-          너 나와는 과거(위)→미래(아래) 순이고, "오늘"/"미정" 그룹에 눈금을 찍는다. */}
+          너 나와는 과거(위)→미래(아래) 순이고, "오늘" 그룹에만 눈금을 찍는다(요청:
+          "타임라인에 미정은 표시 X"). */}
       {!loading && (
         <ScrollNavTimeline
           headSelector=".scr-challenge-date-head"
           topLabel="과거"
           bottomLabel="미래"
           markers={[
-            { key: "undecided", className: "scr-scroll-timeline-undecided", groupSelector: '.scr-challenge-date-group[data-undecided="1"]' },
             { key: "today", className: "scr-scroll-timeline-today", groupSelector: '.scr-challenge-date-group[data-today="1"]' },
           ]}
         />

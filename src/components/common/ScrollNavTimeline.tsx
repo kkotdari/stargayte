@@ -52,14 +52,20 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
     return current;
   };
 
-  // 특정 날짜 그룹(selector)의 스크롤 위치를 0~1로 — 트랙에 눈금을 찍는 데 쓴다.
-  const groupFraction = (selector: string, scrollTop: number, max: number): number | null => {
+  // 특정 날짜 그룹(selector)이 "전체 문서에서" 몇 %쯤 위치하는지 — 트랙에 눈금을 찍는 데
+  // 쓴다. 분모는 반드시 scrollHeight(전체 문서 길이)여야 한다 — max(=scrollHeight-
+  // clientHeight, 스크롤 가능한 "이동 거리")로 나누면, 콘텐츠가 뷰포트보다 살짝만 더 길어
+  // max가 작을 때(예: 카드 몇 개뿐이라 거의 안 스크롤되는 목록) 뷰포트 상단부에 있는
+  // 그룹조차 offset > max가 돼 1로 클램프돼 버려 트랙 맨 아래에 찍히는 버그가 있었다
+  // (실제로 지적받은 문제 — "뒤에 일정이 더 있는데도 맨 아래에 표시됨"). offset은 항상
+  // scrollHeight 이내이므로 scrollHeight로 나누면 그런 오버슈트가 생기지 않는다.
+  const groupFraction = (selector: string, scrollTop: number, scrollHeight: number): number | null => {
     const el = document.querySelector<HTMLElement>(selector);
-    if (!el || max <= 0) return null;
+    if (!el || scrollHeight <= 0) return null;
     const root = getScrollRoot();
     const rootTop = root instanceof Window ? 0 : root.getBoundingClientRect().top;
     const offset = scrollTop + (el.getBoundingClientRect().top - rootTop);
-    return Math.min(1, Math.max(0, offset / max));
+    return Math.min(1, Math.max(0, offset / scrollHeight));
   };
 
   const update = () => {
@@ -70,7 +76,7 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
     setDateLabel(currentDateLabel(max <= 0 || scrollTop >= max - 2));
     if (markers && markers.length > 0) {
       const next: Record<string, number | null> = {};
-      for (const m of markers) next[m.key] = groupFraction(m.groupSelector, scrollTop, max);
+      for (const m of markers) next[m.key] = groupFraction(m.groupSelector, scrollTop, scrollHeight);
       setMarkerFractions(next);
     }
   };

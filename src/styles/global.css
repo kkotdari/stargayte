@@ -5701,9 +5701,9 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
 /* "종료된 너 나와! 보기" 토글 — 텍스트 링크. 다가오는 매치 이전(과거에 끝난 너 나와)을 접어
    숨겼다가 눌러서 펼친다(요청). */
 .scr-challenge-toggle-ended-link {
-  align-self: center; background: transparent; border: none; padding: 2px 0; cursor: pointer;
+  align-self: center; background: transparent; border: none; padding: 12px 0; cursor: pointer;
   font-family: inherit; font-size: var(--fs-body); font-weight: 700; color: var(--muted);
-  text-decoration: underline; text-underline-offset: 2px; margin-top: 4px;
+  text-decoration: underline; text-underline-offset: 2px; margin: 10px 0;
 }
 .scr-challenge-toggle-ended-link:hover { color: var(--text); }
 /* 경기 목록의 날짜 줄(.scr-match-date-head)과 같은 이유로 스티키 — 헤더가 스크롤 영역
@@ -5726,6 +5726,19 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
   display: flex; align-items: center; gap: 6px;
   margin-bottom: -4px;
   font-size: var(--fs-caption); font-weight: 700; color: var(--muted); letter-spacing: 0.01em;
+}
+/* 시간 옆 연필(일시 수정) — 진행중(성사)인 너 나와의 참가자/운영자에게만 보인다(요청).
+   작고 옅게 뒀다가 눌리기 쉽게 터치 영역만 넉넉히. */
+.scr-challenge-time-edit-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; padding: 0; margin: -4px 0; border: none; border-radius: 5px;
+  background: transparent; color: var(--muted); cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.scr-challenge-time-edit-btn:hover, .scr-challenge-time-edit-btn:active { color: var(--text); background: rgba(255,255,255,0.06); }
+/* 일시 수정 인라인 폼 — 시간 헤더 자리를 그대로 대신한다. */
+.scr-challenge-time-edit-form {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 10px; border-radius: 10px; background: rgba(255,255,255,0.04);
 }
 
 /* scroll-margin-top — NEXT 너 나와로 자동 스크롤(scrollIntoView block:"start")할 때 화면
@@ -5813,22 +5826,6 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
   content: "오늘"; position: absolute; left: 50%; bottom: 100%; margin-bottom: 2px;
   transform: translateX(-50%);
   font-size: var(--fs-micro); font-weight: 800; color: var(--highlight-bg);
-  white-space: nowrap;
-}
-/* "일정 미정" 눈금 — 오늘 눈금과 같은 모양이되, 확정되지 않은 대기 묶음이라 은은한
-   회색 톤으로 구분한다. 목록 맨 위에 있어 보통 트랙 최상단 근처에 찍힌다. */
-.scr-scroll-timeline-undecided {
-  position: absolute; left: 50%; transform: translate(-50%, -50%);
-  display: flex; align-items: center;
-}
-.scr-scroll-timeline-undecided::before {
-  content: ""; width: 14px; height: 2px; border-radius: 2px;
-  background: var(--dim);
-}
-.scr-scroll-timeline-undecided::after {
-  content: "미정"; position: absolute; left: 50%; bottom: 100%; margin-bottom: 2px;
-  transform: translateX(-50%);
-  font-size: var(--fs-micro); font-weight: 800; color: var(--dim);
   white-space: nowrap;
 }
 /* 현재 상단에 핀된 날짜를 알약으로 — 트랙 왼쪽에 붙여 현재 위치를 "며칠"인지로 보여준다. */
@@ -6592,9 +6589,9 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
   .scr-team-outcome { font-size: var(--fs-body); }
   /* 경기목록 승·패 글자는 body(16) 유지 — 닉네임(caption 14)보다 한 단계 위. */
   .scr-match-trow-outcome { font-size: var(--fs-body); }
-  /* 타임라인 폰트 한 단계 축소(날짜 알약 14→12, 끝/오늘/미정 라벨 12→11) */
+  /* 타임라인 폰트 한 단계 축소(날짜 알약 14→12, 끝/오늘 라벨 12→11) */
   .scr-scroll-timeline-end { font-size: var(--fs-11); }
-  .scr-scroll-timeline-today::after, .scr-scroll-timeline-undecided::after { font-size: var(--fs-11); }
+  .scr-scroll-timeline-today::after { font-size: var(--fs-11); }
   .scr-scroll-timeline-date { font-size: var(--fs-micro); }
   /* 도전장 보내기 힌트 두 단계 축소(20→14) */
   .scr-challenge-form-modal .scr-hint { font-size: var(--fs-caption); }
