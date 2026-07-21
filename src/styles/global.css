@@ -1655,7 +1655,10 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    똑같이 width:max-content로 실제 콘텐츠 폭만큼 그려지고, JS가 몸통의 스크롤 위치를
    그대로 translateX로 발라 칸 경계를 맞춘다. */
 .scr-stat-head-sticky {
-  position: sticky; z-index: 10; overflow: hidden; background-color: var(--panel-raised);
+  /* 헤더 행도 불투명하게 — 세로 스크롤 시 아래 데이터 행이 헤더 뒤로 비쳐 보이던 문제
+     (요청). 표 컨테이너와 같은 --panel-solid를 깔고 raised 틴트를 얹는다(이름칸과 동일 방식). */
+  position: sticky; z-index: 10; overflow: hidden;
+  background-color: var(--panel-solid); background-image: linear-gradient(var(--panel-raised), var(--panel-raised));
   top: 78px; /* v1: 위에 쌓인 두 sticky 줄(타이틀 46px + 기간 32px) 바로 아래 */
 }
 /* v2 통계는 헤더 행을 화면에 고정하지 않는다 — 헤더가 데이터 행과 같은 가로 스크롤
@@ -4626,15 +4629,16 @@ body *::-webkit-scrollbar-corner { background: transparent; }
      버튼 폭으로 인라인 지정하므로, 둘레선은 border 대신 inset box-shadow로 그려 크기가
      안 흔들리게 한다. */
   background:
-    radial-gradient(62% 44% at 50% 24%, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0) 72%),
-    radial-gradient(ellipse at center, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.05) 60%, rgba(255,255,255,0.02) 100%);
-  backdrop-filter: blur(5px) saturate(1.3);
-  -webkit-backdrop-filter: blur(5px) saturate(1.3);
+    radial-gradient(62% 44% at 50% 24%, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 72%),
+    radial-gradient(ellipse at center, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.03) 60%, rgba(255,255,255,0.01) 100%);
+  backdrop-filter: blur(4px) saturate(1.2);
+  -webkit-backdrop-filter: blur(4px) saturate(1.2);
+  /* 테두리(림광)·음영 약화(요청) — 은은하게만 남긴다. */
   box-shadow:
-    inset 0 1.5px 0.5px rgba(255,255,255,0.6),
-    inset 0 -3px 6px rgba(0,0,0,0.2),
-    inset 0 0 0 1px rgba(255,255,255,0.16),
-    0 2px 7px rgba(0,0,0,0.3);
+    inset 0 1px 0.5px rgba(255,255,255,0.3),
+    inset 0 -2px 5px rgba(0,0,0,0.09),
+    inset 0 0 0 1px rgba(255,255,255,0.07),
+    0 1px 4px rgba(0,0,0,0.16);
 }
 /* 라이트 테마는 물방울 유리 효과 없이 기존 컬러 광원 그대로(요청은 다크 테마 대상) — 다크
    base에서 얹은 backdrop blur/그림자를 여기서 되돌린다. */
@@ -6856,7 +6860,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
   /* 대진표 "진출팀" 표시(연결선/카드 강조)에 쓰는 라임녹색(요청: "진출팀 표시 포인트
      컬러는 라임녹색") — 앱 기본 --point(호박색)와 별개로 리그 화면에서만 쓴다. */
   /* 진출선 색 — 라임(노란기)에서 연두-에메랄드 쪽으로 조금 옮긴다(요청). */
-  --league-advance: #34e08a;
+  --league-advance: #5fe06a;
 }
 .scr-league-toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
 .scr-league-select { flex: 1 1 auto; min-width: 0; }
@@ -6965,6 +6969,10 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
 /* 라이트 테마에선 흰 선이 흰 배경에 묻혀 안 보였다(요청) — 어두운 선으로 뒤집는다. */
 .scr-light-theme .scr-league-bracket-line { stroke: rgba(0,0,0,0.4); }
 .scr-league-bracket-line-won { stroke: var(--league-advance); stroke-width: 2; }
+/* 라이트 테마 일반선 override(.scr-light-theme .scr-league-bracket-line, 특이도 0,2,0)가
+   승리선(.scr-league-bracket-line-won, 0,1,0)까지 덮어 진출선이 회색이 되던 버그(요청) —
+   같은 특이도로 뒤에 둬서 진출선은 다시 연두-에메랄드로 되돌린다. */
+.scr-light-theme .scr-league-bracket-line-won { stroke: var(--league-advance); }
 .scr-league-bracket-slot { position: absolute; box-sizing: border-box; }
 .scr-league-bracket-badge {
   position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column;
