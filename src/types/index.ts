@@ -280,7 +280,7 @@ export interface MonthlyTeamRankingResponse {
 // 화면 라우팅 — 회원/이미지 설정/유저연결(게임아이디)은 운영자만, 나머지는 로그인한
 // 회원 누구나 접근 가능(역할 기준으로만 판단 — 예전에 있던 메뉴 권한 매트릭스는 역할이
 // 운영자/회원 둘로 단순화되면서 없앴다).
-export type ScreenKey = "ranking" | "match" | "challenge" | "stats" | "members" | "imageSettings" | "gameId";
+export type ScreenKey = "ranking" | "match" | "challenge" | "stats" | "members" | "imageSettings" | "gameId" | "leagues";
 
 // 랭킹/경기결과/전적통계 등 화면·메뉴 구성을 어느 버전 세트로 보여줄지 — 제어판에서 등록된
 // 버전 중 하나로 배포하면 앱 전체가 즉시 바뀐다(개인별 설정이 아니라 서버에 저장된 전역 값).
@@ -456,4 +456,100 @@ export interface MatchFilterState {
   // 경우만 보여준다(AND). 꺼져 있으면(기본) 그중 한 명이라도 있으면 보여준다(OR).
   // 경기결과 화면 전용 — 통계 화면은 회원 한 명 단위 필터라 이 조건이 적용되지 않는다.
   matchAllUsers: boolean;
+}
+
+// ===== 리그(League/Tournament) — 운영자 전용, 단일 엘리미네이션 대진표 =====
+
+export type LeagueMode = "team" | "individual";
+export type LeagueStatus = "setup" | "active" | "completed";
+export type LeagueMatchSide = "a" | "b";
+
+export interface LeagueRosterMember {
+  memberId: string;
+  nickname: string;
+  battletag: string;
+  avatar: string | null;
+  position: number;
+}
+
+export interface LeagueTeam {
+  id: number;
+  label: string; // A~F
+  roster: LeagueRosterMember[];
+}
+
+export interface LeagueMatchTeamRef {
+  id: number;
+  label: string;
+}
+
+export interface LeagueMatchSubstitution {
+  teamId: number;
+  rosterPosition: number;
+  substituteMemberId: string;
+  substituteNickname: string;
+  note: string;
+}
+
+export interface LeagueMatch {
+  id: number;
+  round: number;
+  slotInRound: number;
+  teamA: LeagueMatchTeamRef | null;
+  teamB: LeagueMatchTeamRef | null;
+  // 대진판이 2의 거듭제곱이 아니라 생기는, 구조적으로 영원히 안 열리는 칸.
+  isDead: boolean;
+  scheduledAt: string | null;
+  setsWonA: number | null;
+  setsWonB: number | null;
+  winnerTeamId: number | null;
+  substitutions: LeagueMatchSubstitution[];
+}
+
+export interface League {
+  id: number;
+  name: string;
+  mode: LeagueMode;
+  bestOf: number;
+  status: LeagueStatus;
+  // 대진표 생성 전엔 null — 생성 시점에 관리자가 정한 team_count 기준 다음 2의
+  // 거듭제곱으로 확정된다.
+  drawSize: number | null;
+  // 대진표 생성 시 예약해둔 규모(실제 지금 만들어진 팀 수와 다를 수 있다) — 생성 전엔 null.
+  plannedTeams: number | null;
+  // 대진(시드)이 확정됐는지 — true면 1라운드 슬롯을 더 이상 바꿀 수 없다.
+  bracketLocked: boolean;
+  teams: LeagueTeam[];
+  matches: LeagueMatch[];
+  createdAt: string;
+}
+
+export interface LeagueListItem {
+  id: number;
+  name: string;
+  mode: LeagueMode;
+  status: LeagueStatus;
+  teamCount: number;
+}
+
+export interface LeagueCreatePayload {
+  name: string;
+  mode: LeagueMode;
+  bestOf?: number;
+}
+
+export interface LeagueUpdatePayload {
+  name?: string;
+  bestOf?: number;
+}
+
+export interface LeagueMatchResultPayload {
+  setsWonA: number;
+  setsWonB: number;
+  substitutes?: {
+    teamId: number;
+    rosterPosition: number;
+    substituteMemberId: string;
+    note?: string;
+  }[];
 }

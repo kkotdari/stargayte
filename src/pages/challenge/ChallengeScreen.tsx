@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Pencil } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
 import { Spinner } from "../../components/common/Feedback";
 import OptionalDateTimeFields from "../../components/common/OptionalDateTimeFields";
@@ -8,9 +9,10 @@ import ChallengeFormModal from "../../modals/ChallengeFormModal";
 import ScrollNavTimeline from "../../components/common/ScrollNavTimeline";
 import { useAppStore } from "../../store/appStore";
 import { api } from "../../api/client";
+import { isAdminRole } from "../../constants/roles";
 import { cx } from "../../utils/format";
 import {
-  challengeDateGroupLabel, challengeTimeLabel, formatRelativeSchedule, isToday,
+  challengeDateGroupLabel, challengeTimeLabel, formatRelativeSchedule, isToday, pad,
 } from "../../utils/date";
 import { getScrollMetrics, getScrollRoot } from "../../utils/scrollRoot";
 import type { Challenge, ChallengeResult, ChallengeSide, ChallengeStatus, ChallengeTarget } from "../../types";
@@ -646,28 +648,143 @@ function isDiscarded(c: Challenge): boolean {
   return c.status === "discarded";
 }
 
-// 순수 날짜(예정 일시) 내림차순 한 줄로 정렬한다(요청: "순수 날짜 내림차순" — 진행/종료를
-// 나눠 진행중을 위로 끌어올리던 예전 규칙 때문에 다가오는 경기(NEXT)가 날짜와 무관하게 맨
-// 위로 올라오는 게 부자연스러웠다). 예정 일시가 없는 건(=아직 응답 대기중인 일정 미정. 종료된
-// 건은 서버가 요청일+1일로 스탬프하므로 null이 남지 않는다)은 날짜가 없어 맨 위에 둔다. 일시가
-// 같거나 둘 다 미정이면 최근 생성 순으로 가른다.
-// 정렬: "일정 미정"(응답 대기중, scheduledAt 없음)은 맨 위 "대기중" 묶음으로, 그 아래
-// 날짜 있는 너 나와는 과거(위) → 미래(아래) 오름차순으로 둔다(요청: 타임라인 "위가 과거,
-// 아래가 미래" — 아래로 스크롤할수록 미래). 같은 시각/대기중끼리는 최신 생성이 위.
+// 순수 날짜(예정 일시) 오름차순(과거→미래) 한 줄로 정렬한다. 예정 일시가 없는 건(=아직
+// 응답 대기중인 일정 미정)은 날짜로 자리를 정할 수 없어 맨 뒤에 둔다(요청: "일정 미정인
+// 건들은 목록 맨 마지막에 있어야 돼(항상 보임)") — "종료된" 섹션 접힘 여부는 이제 정렬
+// 순서가 아니라 실제 상태(status==="done")로만 가른다(아래 endedList/activeList 참고).
+// 우측 타임라인의 스크롤 스냅은 "오늘" 그룹만 스냅 타깃이라(global.css의 .scr-snap-today)
+// 미정 그룹 위치가 바뀌어도 영향 없다. 일시가 같거나 둘 다 미정이면 최근 생성 순으로 가른다.
 function compareChallenges(a: Challenge, b: Challenge): number {
   const aNull = !a.scheduledAt;
   const bNull = !b.scheduledAt;
   if (aNull && bNull) return a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0;
-  if (aNull) return -1;
-  if (bNull) return 1;
+  if (aNull) return 1;
+  if (bNull) return -1;
   if (a.scheduledAt !== b.scheduledAt) return a.scheduledAt! > b.scheduledAt! ? 1 : -1;
   return a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0;
+}
+
+// 시각 헤더(scr-challenge-time-head)는 같은 시각의 카드들 맨 위에 한 번만 뜨는데, 진행중
+// (성사)인 너 나와는 그 시각 옆에 연필 아이콘으로 일시를 바로 수정할 수 있다(요청: "너나와
+// 목록에서 진행중인건은 날짜와 시간 수정이 가능하게할거야, 시간 옆에 연필모양 아이콘 추가,
+// 권한은 참가자 또는 운영자는 가능하게"). 같은 시각에 서로 다른 너 나와가 여럿 묶이면(드묾)
+// 어느 것을 수정할지 모호해지므로, 그 시각 그룹에 너 나와가 정확히 하나일 때만 연필을
+// 보여준다 — 호출부(groupByTime map)에서 tg.items.length===1일 때만 이 컴포넌트를 쓴다.
+function ChallengeTimeHeadEdit({
+  challenge, timeLabel, myId, isAdmin, onUpdated,
+}: {
+  challenge: Challenge; timeLabel: string; myId: string | undefined; isAdmin: boolean;
+  onUpdated: (updated: Challenge) => void;
+}) {
+  const isParticipant =
+    challenge.createdBy.id === myId
+    || challenge.ownMembers.some((m) => m.memberId === myId)
+    || challenge.targets.some((t) => t.memberId === myId);
+  const canEdit = challenge.status === "confirmed" && (isParticipant || isAdmin);
+
+  const [editing, setEditing] = useState(false);
+  const [dateStr, setDateStr] = useState("");
+  const [timeStr, setTimeStr] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+
+  const startEdit = () => {
+    if (challenge.scheduledAt) {
+      const d = new Date(challenge.scheduledAt);
+      setDateStr(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`);
+      setTimeStr(`${pad(d.getHours())}:${pad(d.getMinutes())}`);
+    }
+    setErr("");
+    setEditing(true);
+  };
+
+  const save = async () => {
+    if (!dateStr) { setErr("날짜를 선택하세요."); return; }
+    setErr("");
+    setBusy(true);
+    try {
+      const scheduledAt = new Date(`${dateStr}T${timeStr || "22:00"}`).toISOString();
+      const updated = await api.rescheduleChallenge(challenge.id, scheduledAt);
+      onUpdated(updated);
+      setEditing(false);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "일정을 바꾸지 못했어요.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // 연필을 누르면(라벨 줄 ↔ 수정 폼) 내용이 바뀌는 만큼 자리를 즉시 뺏는 대신, 실측 높이를
+  // 인라인으로 박고 CSS transition으로 모핑한다(요청: "연필 누르면 공간이 자연스럽게
+  // 확보되는 영역 트랜스폼") — ChallengeCard의 페이지 높이 모핑과 같은 패턴.
+  const innerRef = useRef<HTMLDivElement>(null);
+  const [wrapHeight, setWrapHeight] = useState<number | undefined>(undefined);
+  useLayoutEffect(() => {
+    const inner = innerRef.current;
+    if (!inner) return;
+    const measure = () => setWrapHeight(inner.offsetHeight);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(inner);
+    return () => ro.disconnect();
+  }, [editing]);
+
+  return (
+    <div
+      className="scr-challenge-time-head-wrap"
+      style={wrapHeight !== undefined ? { height: wrapHeight } : undefined}
+    >
+      <div ref={innerRef}>
+        {editing ? (
+          <div className="scr-challenge-time-edit-form">
+            {/* 날짜/시간/취소/확인을 한 줄로(요청) — 큰 폼용 OptionalDateTimeFields 대신
+                이 자리 전용의 좁은 인라인 입력을 쓴다. */}
+            <div className="scr-challenge-time-edit-row">
+              <input
+                type="date" className="scr-input scr-challenge-time-edit-input"
+                value={dateStr}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setDateStr(v);
+                  if (!v) setTimeStr("");
+                }}
+              />
+              <input
+                type="time" className="scr-input scr-challenge-time-edit-input"
+                value={timeStr} onChange={(e) => setTimeStr(e.target.value)} disabled={!dateStr}
+              />
+              <button type="button" className="scr-btn scr-btn-ghost scr-btn-sm" onClick={() => setEditing(false)} disabled={busy}>
+                취소
+              </button>
+              <button type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm" onClick={save} disabled={busy}>
+                {busy ? <Spinner /> : "확인"}
+              </button>
+            </div>
+            {err && <div className="scr-err">{err}</div>}
+          </div>
+        ) : (
+          <div className="scr-challenge-time-head">
+            <span className="scr-challenge-time-head-label">{timeLabel}</span>
+            {canEdit && (
+              <button
+                type="button" className="scr-challenge-time-edit-btn"
+                onClick={startEdit} aria-label="일시 수정"
+              >
+                <Pencil size={13} />
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 // 도전장("너 나와!") 게시판 — 경기결과/예약 시스템과는 독립적인 별도 게시판이라, 화면 자체도
 // 기간 필터 없이 전체 목록을 그대로 보여준다.
 export default function ChallengeScreen() {
   const user = useAppStore((s) => s.user);
+  const isAdmin = isAdminRole(user?.roles ?? []);
 
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [loading, setLoading] = useState(true);
@@ -734,31 +851,13 @@ export default function ChallengeScreen() {
     [challenges],
   );
 
-  // 가장 가까운 예정된(수락) 너 나와의 시각 — 확정됐고 예정 일시가 아직 안 지난 것 중 가장 임박.
-  // "다가오는 매치" 이전(과거에 끝난 너 나와들)은 기본적으로 접어서 감춘다(요청: "다가오는 매치
-  // 이전은 모두 접혀서 안보임").
-  const nextTime = useMemo(() => {
-    const now = Date.now();
-    let best = Infinity;
-    challenges.forEach((c) => {
-      if (c.status !== "confirmed" || !c.scheduledAt) return;
-      const t = new Date(c.scheduledAt).getTime();
-      if (t >= now && t < best) best = t;
-    });
-    return best === Infinity ? null : best;
-  }, [challenges]);
-  const isNextCard = (c: Challenge): boolean =>
-    nextTime !== null && c.status === "confirmed" && !!c.scheduledAt
-    && new Date(c.scheduledAt).getTime() === nextTime;
-  // 목록(과거→미래로 정렬됨) 안에서 "다가오는 매치"가 처음 나오는 자리 — 그 앞은 전부
-  // 접힌다. 다가오는 매치가 아예 없으면(전부 과거이거나 확정된 예정이 없으면) 접을 기준이
-  // 없으니 전체를 그대로 보여준다.
-  const boundaryIndex = useMemo(() => {
-    if (nextTime === null) return 0;
-    const idx = unifiedList.findIndex(isNextCard);
-    return idx === -1 ? 0 : idx;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [unifiedList, nextTime]);
+  // "종료된"은 정렬 순서가 아니라 실제 상태로만 가른다 — 결과가 입력된(승/무/미실시*)
+  // status==="done" 건만 접어 넣는다(*미실시는 서버가 discarded로 확정해 내려오므로
+  // 여기엔 안 잡힌다, isDiscarded로 이미 걸러짐). 응답대기(미정 포함)·성사(예정)는 상태와
+  // 무관하게 항상 보이는 목록에 남는다(요청: "종료된 너 나와에는 실제 완료된 애들만 들어가
+  // 있고 일정 미정인 건들은 목록 맨 마지막에 있어야 돼(항상 보임)").
+  const endedList = useMemo(() => unifiedList.filter((c) => c.status === "done"), [unifiedList]);
+  const activeList = useMemo(() => unifiedList.filter((c) => c.status !== "done"), [unifiedList]);
 
   // "종료된 너 나와! 보기" 토글 — 누르면 접혀 있던 앞부분이 지금 보이는 목록 위로 나타난다.
   // 콘텐츠가 뷰포트 위쪽에 삽입되면 브라우저가 스크롤 위치(px)를 그대로 유지해 화면에 보이던
@@ -792,12 +891,9 @@ export default function ChallengeScreen() {
     requestAnimationFrame(() => requestAnimationFrame(() => { root.style.scrollBehavior = ""; }));
   }, [showEnded]);
 
-  // 활성(다가오는·진행중) 목록은 늘 보이고, 종료된 앞부분은 펼치기 전엔 감춘다. 펼치면
-  // 토글 버튼 '위'로 나타난다(요청: "버튼 상단에 과거 목록이 펼쳐지고") — 버튼이 종료/활성
-  // 사이의 구분선 역할을 한다.
-  const activeList = unifiedList.slice(boundaryIndex);
-  const endedList = unifiedList.slice(0, boundaryIndex);
-
+  // 활성(응답대기·성사) 목록은 늘 보이고(activeList/endedList는 위에서 status로 이미
+  // 갈랐다), 종료된 건 펼치기 전엔 감춘다. 펼치면 토글 버튼 '위'로 나타난다(요청: "버튼
+  // 상단에 과거 목록이 펼쳐지고") — 버튼이 종료/활성 사이의 구분선 역할을 한다.
   const renderChallengeList = (items: typeof unifiedList) => (
     <div className="scr-challenge-list">
       {groupChallengesByDate(items).map((g) => (
@@ -805,9 +901,6 @@ export default function ChallengeScreen() {
           <div
             className="scr-challenge-date-group"
             data-today={g.isToday ? "1" : undefined}
-            // "일정 미정" 그룹(scheduledAt 없는 대기중 묶음, 맨 위)에 표식을 달아
-            // 우측 타임라인이 눈금+라벨을 찍고 스크롤 스냅 타깃으로 삼는다.
-            data-undecided={g.items.some((c) => !c.scheduledAt) ? "1" : undefined}
           >
             <div className="scr-challenge-date-head" data-date-label={g.label}>
               {g.isToday && <span className="scr-challenge-card-today-tag">오늘</span>}
@@ -818,9 +911,18 @@ export default function ChallengeScreen() {
             {groupByTime(g.items).map((tg) => (
               <div key={tg.key} className="scr-challenge-time-group">
                 {tg.timeLabel && (
-                  <div className="scr-challenge-time-head">
-                    <span className="scr-challenge-time-head-label">{tg.timeLabel}</span>
-                  </div>
+                  // 시각 그룹에 너 나와가 정확히 하나일 때만 연필(일시 수정)을 보여준다
+                  // (ChallengeTimeHeadEdit 주석 참고 — 여럿이면 어느 걸 고칠지 모호해서).
+                  tg.items.length === 1 ? (
+                    <ChallengeTimeHeadEdit
+                      challenge={tg.items[0]} timeLabel={tg.timeLabel}
+                      myId={user?.id} isAdmin={isAdmin} onUpdated={upsert}
+                    />
+                  ) : (
+                    <div className="scr-challenge-time-head">
+                      <span className="scr-challenge-time-head-label">{tg.timeLabel}</span>
+                    </div>
+                  )
                 )}
                 {tg.items.map((c) => (
                   <div key={c.id} className="scr-challenge-card-slot">
@@ -891,9 +993,9 @@ export default function ChallengeScreen() {
           )}
 
           {/* 과거에 끝난 너 나와는 기본적으로 접혀 있고, 이 버튼이 종료/활성 목록 사이의
-              구분선이 된다(요청) — 누르면 그 위로 펼쳐진다. 접을 게 없으면(boundaryIndex 0)
+              구분선이 된다(요청) — 누르면 그 위로 펼쳐진다. 접을 게 없으면(끝난 건 0개)
               버튼 자체를 안 보여준다. */}
-          {boundaryIndex > 0 && (
+          {endedList.length > 0 && (
             <button type="button" className="scr-challenge-toggle-ended-link" onClick={toggleShowEnded}>
               {showEnded ? "종료된 너 나와! 접기" : "종료된 너 나와! 펼치기"}
             </button>
@@ -910,14 +1012,14 @@ export default function ChallengeScreen() {
       )}
 
       {/* 우측 네비게이션 타임라인 — 스크롤 시에만 뜨고, 스스로 스크롤 불가 상태면 안 뜬다.
-          너 나와는 과거(위)→미래(아래) 순이고, "오늘"/"미정" 그룹에 눈금을 찍는다. */}
+          너 나와는 과거(위)→미래(아래) 순이고, "오늘" 그룹에만 눈금을 찍는다(요청:
+          "타임라인에 미정은 표시 X"). */}
       {!loading && (
         <ScrollNavTimeline
           headSelector=".scr-challenge-date-head"
           topLabel="과거"
           bottomLabel="미래"
           markers={[
-            { key: "undecided", className: "scr-scroll-timeline-undecided", groupSelector: '.scr-challenge-date-group[data-undecided="1"]' },
             { key: "today", className: "scr-scroll-timeline-today", groupSelector: '.scr-challenge-date-group[data-today="1"]' },
           ]}
         />

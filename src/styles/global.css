@@ -65,11 +65,14 @@
      제시해줘" → "800px로 적용"). */
   --list-content-max: 800px;
 
-  /* 배경: 반투명 블랙 유리 패널 */
+  /* 배경: 반투명 유리 패널 — 예전엔 미세하게 붉은기가 도는 톤(#2b2427 계열)이었는데,
+     이제 붉은 톤을 앱 전체에서 걷어내는 방향으로 정해서(요청: "기존 따뜻한 갈색 테마의
+     패널이나 선 모두 삭제처리", "지금 테마는 패널은 투명, 선은 흰색이야") 패널은 더
+     투명하게, 선은 흰 톤으로 통일했다. */
   --void: #060607;                         /* 페이지 최하단 배경 */
-  --panel: rgba(9, 9, 10, 0.58);           /* 패널 (반투명 유리) */
+  --panel: rgba(255, 255, 255, 0.04);      /* 패널 (반투명 유리) */
   --panel-solid: #101011;                  /* 불투명이 필요한 곳 */
-  --panel-raised: rgba(20, 19, 19, 0.92);  /* 드롭다운/칩 등 */
+  --panel-raised: rgba(255, 255, 255, 0.12); /* 드롭다운/칩 등 */
   --input-bg: rgba(6, 6, 7, 0.86);         /* 입력 필드 */
   --header-bg: rgba(7, 7, 8, 0.74);        /* 헤더 전용 배경 — .scr-light-theme에서 재정의 */
 
@@ -83,7 +86,7 @@
      푸른 빛으로 바꿔 "빛" 느낌을 낸다(검정은 광원이 아니라 그림자처럼 보여서). */
   --edge-glow: var(--pipe-bright);
 
-  --line: #2b2427;          /* 내부 구분선 */
+  --line: rgba(255, 255, 255, 0.16);          /* 내부 구분선 — 흰 톤 */
   /* 헤더/서랍의 구분선을 파이프(붉은 강조) 대신 중립 톤으로 쓸 때의 색(요청: "포인트가 아닌
      기본 컬러"). 어두운 테마는 옅은 흰색, 라이트는 옅은 검정. */
   --divider-soft: rgba(255, 255, 255, 0.32);
@@ -1541,6 +1544,14 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
      위에 있을 때 세로 스크롤이 페이지로 전달(체이닝)되지 않아 화면이 안 움직인다 —
      세로축은 그대로 페이지로 넘어가게 둔다. */
   overscroll-behavior-x: none;
+  /* 아이폰 사파리 가로모드에서 이 표(가로 스크롤 + sticky 이름 칸)의 칼럼들이 왼쪽으로
+     밀려나 화면 밖으로 벗어나 보이는 문제(요청) — iOS 사파리는 가로/세로 전환처럼
+     뷰포트 크기가 바뀔 때 overflow-x 컨테이너 안의 sticky 자식 위치를 새로 합성
+     (compositing)하지 않고 예전 좌표를 그대로 들고 있는 경우가 있다(알려진 WebKit
+     버그). translateZ(0)로 이 컨테이너를 강제로 별도 컴포지팅 레이어로 승격하면
+     뷰포트가 바뀔 때마다 확실히 다시 그려진다. */
+  -webkit-overflow-scrolling: touch;
+  transform: translateZ(0);
 }
 /* align-items를 grid 기본값(stretch)으로 둬서 셀이 행 전체 높이를 채우게 한다 — 그런데
    위아래 padding을 행(그리드 컨테이너) 자신에게 주면, 셀이 늘어나도 그 padding 영역까지는
@@ -1743,19 +1754,39 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    다르게 새로 선언한다. */
 .scr-stats-list-panel-v2 .scr-stat-row {
   --scr-stat-name-w: 160px;
-  grid-template-columns: var(--scr-stat-name-w) repeat(4, 150px);
+  /* 칸 폭도 변수로 뽑아둔다 — 구분선 위치 계산(아래 background-position)이 이 값을
+     같이 참조해야 한다(요청: "아이폰 사파리 가로모드에서 통계의 내용들이 컬럼
+     왼쪽으로 벗어나서 렌더링되는 버그"). */
+  --scr-stat-col-w: 150px;
+  grid-template-columns: var(--scr-stat-name-w) repeat(4, var(--scr-stat-col-w));
   background-image:
     linear-gradient(var(--line-soft), var(--line-soft)),
     linear-gradient(var(--line-soft), var(--line-soft)),
     linear-gradient(var(--line-soft), var(--line-soft));
+  /* 진짜 원인: 이 행(.scr-stat-row)은 `width:max-content; min-width:100%;`라, 화면
+     폭이 실제 칸 합(name-w + col-w*4)보다는 넓은데 아직 900px(아래 minmax(1fr)
+     분기) 미만인 구간(대략 760~900px, 아이폰 가로모드 대부분이 여기 걸린다)에서는
+     `min-width:100%`가 이겨서 행 박스 자체가 칸 합보다 넓게 늘어난다. 그런데 실제
+     그리드 칸(각 150px 고정)은 늘어나지 않고 그대로라, 늘어난 여백은 맨 오른쪽에만
+     생긴다 — 반면 이 구분선은 "(100% - 이름칸폭) * 0.25/0.5/0.75"로, 그 "100%"를
+     늘어난 행 전체 폭 기준으로 계산해서 실제 칸 경계보다 점점 더 오른쪽에 그려졌다
+     (칸이 뒤로 갈수록 오차가 누적 — 사용자 표현으로는 "내용이 조금씩 왼쪽으로
+     치우쳐서 결국 칸을 벗어나는" 것처럼 보인다). 퍼센트 대신 실제 고정 칸 폭의
+     정수배(절대값)로 계산하면 행이 아무리 늘어나도 항상 실제 칸 경계와 일치한다. */
   background-position:
-    calc(var(--scr-stat-name-w) + (100% - var(--scr-stat-name-w)) * 0.25) 0,
-    calc(var(--scr-stat-name-w) + (100% - var(--scr-stat-name-w)) * 0.5) 0,
-    calc(var(--scr-stat-name-w) + (100% - var(--scr-stat-name-w)) * 0.75) 0;
+    calc(var(--scr-stat-name-w) + var(--scr-stat-col-w) * 1) 0,
+    calc(var(--scr-stat-name-w) + var(--scr-stat-col-w) * 2) 0,
+    calc(var(--scr-stat-name-w) + var(--scr-stat-col-w) * 3) 0;
 }
 @media (min-width: 900px) {
   .scr-stats-list-panel-v2 .scr-stat-row {
     grid-template-columns: var(--scr-stat-name-w) repeat(4, minmax(150px, 1fr));
+    /* 이 폭부터는 칸이 minmax(_,1fr)로 실제로 남는 폭을 비례해서 나눠 가지므로(칸
+       자체가 늘어남), 구분선도 다시 그 비례(퍼센트) 기준으로 맞아떨어진다. */
+    background-position:
+      calc(var(--scr-stat-name-w) + (100% - var(--scr-stat-name-w)) * 0.25) 0,
+      calc(var(--scr-stat-name-w) + (100% - var(--scr-stat-name-w)) * 0.5) 0,
+      calc(var(--scr-stat-name-w) + (100% - var(--scr-stat-name-w)) * 0.75) 0;
   }
 }
 .scr-stats-list-panel-v2 .scr-stat-name-cell { padding-right: 20px; }
@@ -1822,8 +1853,13 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   .scr-stats-list-panel-v2 .scr-stat-name-btn { text-align: center; font-size: var(--fs-body); }
   .scr-stats-list-panel-v2 .scr-stat-tag-pill { display: block; font-size: var(--fs-caption); }
   /* 나머지 네 칸(게임수/전적/유효APM/유효커맨드)도 모바일에서 10%씩 좁힌다(요청:
-     "다른 컬럼들도 폭 10프로씩 감소") — 기본 150px의 90%. */
-  .scr-stats-list-panel-v2 .scr-stat-row { grid-template-columns: var(--scr-stat-name-w) repeat(4, 135px); }
+     "다른 컬럼들도 폭 10프로씩 감소") — 기본 150px의 90%. --scr-stat-col-w도 같이
+     135px로 맞춰야(위 background-position이 참조) 구분선이 실제 칸 폭과 어긋나지
+     않는다. */
+  .scr-stats-list-panel-v2 .scr-stat-row {
+    --scr-stat-col-w: 135px;
+    grid-template-columns: var(--scr-stat-name-w) repeat(4, var(--scr-stat-col-w));
+  }
 
   /* 게임아이디 그리드 헤더(scr-usermap-row-head)와 같은 크기로 맞춘다. */
   .scr-stat-row-head { font-size: var(--fs-body); }
@@ -3823,10 +3859,13 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-select-drop.scr-scroll { scrollbar-color: var(--line) transparent; }
 .scr-select-drop.scr-scroll::-webkit-scrollbar-thumb { background: var(--line); border: none; }
 .scr-select-drop.scr-scroll::-webkit-scrollbar-thumb:hover { background: var(--dim); }
-/* 모바일: 페이지 스크롤바도 같이 숨긴다 */
+/* 모바일: 페이지 스크롤바도 같이 숨긴다 — 실제 스크롤 주체가 html/body에서 #scroll-root로
+   옮겨진 뒤로 html의 스크롤바를 숨기는 건 더 이상 의미가 없어졌다(실제로 보이는 건
+   #scroll-root 자신의 스크롤바 — 실제로 지적받은 문제: "세로 스크롤 안 보이게 해달라고
+   했는데 보이네"). html은 혹시 몰라 그대로 두고 실제 스크롤 컨테이너에도 같이 건다. */
 @media (max-width: 860px) {
-  html { scrollbar-width: none; }
-  html::-webkit-scrollbar { width: 0; }
+  html, #scroll-root { scrollbar-width: none; }
+  html::-webkit-scrollbar, #scroll-root::-webkit-scrollbar { width: 0; }
 }
 
 /* ===== match modal (등록/수정) ===== */
@@ -4575,12 +4614,13 @@ body *::-webkit-scrollbar-corner { background: transparent; }
      (.scr-mobile-tab-active). 모양(ellipse at center)은 원래대로 두고, 대신 각 단계의
      농도만 올려 더 진하고 또렷한 광원으로(요청: "알약 모양 이전상태로 돌리고 그라데이션
      투명도만 강하게"). */
-  background: radial-gradient(ellipse at center, rgba(255,255,255,1) 0%, rgba(255,255,255,0.9) 42%, rgba(255,255,255,0.6) 72%, rgba(255,255,255,0) 100%);
+  /* 투명도를 더 높였다(요청: "액티브탭 알약 투명도 높이기") — 모양/농도 falloff
+     비율은 그대로 두고 전체 알파값만 낮췄다. */
+  background: radial-gradient(ellipse at center, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.6) 42%, rgba(255,255,255,0.38) 72%, rgba(255,255,255,0) 100%);
 }
-/* 라이트 테마는 현재대로 — 파란(--edge-glow) 광원 알약을 그대로 유지한다(요청:
-   "라이트모드는 현재 유지"). */
+/* 라이트 테마도 같이 더 투명하게(요청). */
 html.scr-light-theme .scr-mobile-tab-indicator {
-  background: radial-gradient(ellipse at center, color-mix(in srgb, var(--edge-glow) 70%, transparent) 0%, color-mix(in srgb, var(--edge-glow) 45%, transparent) 45%, color-mix(in srgb, var(--edge-glow) 22%, transparent) 75%, transparent 100%);
+  background: radial-gradient(ellipse at center, color-mix(in srgb, var(--edge-glow) 48%, transparent) 0%, color-mix(in srgb, var(--edge-glow) 30%, transparent) 45%, color-mix(in srgb, var(--edge-glow) 14%, transparent) 75%, transparent 100%);
 }
 html.scr-light-theme .scr-mobile-tab-active { color: var(--text); }
 /* 라이트 테마는 밝은 패널 위라 흰 반사광이 안 보여 — 드로어 왼쪽 모서리와 같은 이유로
@@ -4741,6 +4781,16 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
 .scr-cselect-value-short { display: none; }
 .scr-cselect-caret { color: var(--dim); flex-shrink: 0; transition: transform .15s; }
 .scr-cselect-open .scr-cselect-caret { transform: rotate(180deg); color: var(--text); }
+/* 데이터/코딩 폰트(D2Coding, --font-mono) 대신 앱 기본 폰트로 되돌리는 유틸 — 리그
+   드롭다운은 숫자/코드값이 아니라 팀명·라운드 같은 일반 텍스트라 기본 폰트가 맞다
+   (요청: "리그 드롭다운 폰트 기본 폰트(데이터 폰트는 내가 말할때만 써줘 앞으로는)").
+   드롭다운 옵션 목록은 body로 포털링되므로 트리거뿐 아니라 .scr-cselect-drop 쪽에도
+   같은 클래스가 함께 걸린다(Select의 className prop이 트리거 래퍼와 드롭다운 양쪽에
+   다 전달된다 — .scr-cselect-drop.scr-chip-race 패턴과 동일). */
+.scr-cselect-plain .scr-cselect-trigger,
+.scr-cselect-drop.scr-cselect-plain .scr-cselect-opt {
+  font-family: 'Pretendard Variable', Pretendard, 'Noto Sans KR', sans-serif;
+}
 /* position/top/left/width는 Select.tsx가 body 포털 + 인라인 스타일로 뷰포트 기준 계산해서
    직접 채운다 (모달 본문 등 overflow:hidden/auto 인 스크롤 영역 안에서도 잘리지 않도록) */
 /* touch-action: pan-y — 이 팝오버는 모달 내부 트리거 위에 body 포털로 떠서 모달 본문과
@@ -5668,9 +5718,9 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
 /* "종료된 너 나와! 보기" 토글 — 텍스트 링크. 다가오는 매치 이전(과거에 끝난 너 나와)을 접어
    숨겼다가 눌러서 펼친다(요청). */
 .scr-challenge-toggle-ended-link {
-  align-self: center; background: transparent; border: none; padding: 2px 0; cursor: pointer;
+  align-self: center; background: transparent; border: none; padding: 12px 0; cursor: pointer;
   font-family: inherit; font-size: var(--fs-body); font-weight: 700; color: var(--muted);
-  text-decoration: underline; text-underline-offset: 2px; margin-top: 4px;
+  text-decoration: underline; text-underline-offset: 2px; margin: 10px 0;
 }
 .scr-challenge-toggle-ended-link:hover { color: var(--text); }
 /* 경기 목록의 날짜 줄(.scr-match-date-head)과 같은 이유로 스티키 — 헤더가 스크롤 영역
@@ -5694,6 +5744,45 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
   margin-bottom: -4px;
   font-size: var(--fs-caption); font-weight: 700; color: var(--muted); letter-spacing: 0.01em;
 }
+/* 시간 옆 연필(일시 수정) — 진행중(성사)인 너 나와의 참가자/운영자에게만 보인다(요청).
+   작고 옅게 뒀다가 눌리기 쉽게 터치 영역만 넉넉히. */
+.scr-challenge-time-edit-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; padding: 0; margin: -4px 0; border: none; border-radius: 5px;
+  background: transparent; color: var(--muted); cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.scr-challenge-time-edit-btn:hover, .scr-challenge-time-edit-btn:active { color: var(--text); background: rgba(255,255,255,0.06); }
+/* 라벨 줄 ↔ 수정 폼을 전환할 때, 내용이 바뀌는 만큼의 자리를 즉시 뺏지 않고 실측 높이를
+   CSS transition으로 모핑한다(요청: "연필 누르면 공간이 자연스럽게 확보되는 영역
+   트랜스폼") — ChallengeCard의 페이지 높이 모핑과 같은 패턴. */
+.scr-challenge-time-head-wrap { overflow: hidden; transition: height .18s ease; }
+/* 일시 수정 인라인 폼 — 시간 헤더 자리를 그대로 대신한다. */
+.scr-challenge-time-edit-form {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 8px 10px; border-radius: 10px; background: rgba(255,255,255,0.04);
+}
+/* 날짜/시간/취소/확인을 한 줄로(요청) — 좁은 화면에서도 안 깨지게 입력칸은 필요한
+   만큼만, 버튼은 줄어들지 않게 최소 폭을 보장한다. */
+.scr-challenge-time-edit-row { display: flex; align-items: center; gap: 6px; }
+/* 인풋이 너무 튄다는 피드백으로, 기본 .scr-input의 뚜렷한 테두리 대신 모달과 같은
+   "테두리 없이 위쪽 반사광(inset)+옅은 그림자로만 구분감" 스타일을 쓴다(요청: "쉐도우
+   반사광 스타일로 심플하게"). */
+.scr-challenge-time-edit-input {
+  flex: 1 1 0; min-width: 0; padding: 6px 8px; font-size: var(--fs-caption);
+  border: none; background: rgba(255,255,255,0.05);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.10), inset 0 -1px 0 rgba(255,255,255,0.03);
+}
+.scr-challenge-time-edit-input:focus {
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.14), inset 0 -1px 0 rgba(255,255,255,0.04), 0 0 0 1.5px var(--pipe-bright);
+}
+.scr-light-theme .scr-challenge-time-edit-input {
+  background: rgba(0,0,0,0.03);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.7), inset 0 -1px 0 rgba(0,0,0,0.04);
+}
+.scr-light-theme .scr-challenge-time-edit-input:focus {
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.7), inset 0 -1px 0 rgba(0,0,0,0.04), 0 0 0 1.5px var(--pipe-bright);
+}
+.scr-challenge-time-edit-row .scr-btn { flex: 0 0 auto; }
 
 /* scroll-margin-top — NEXT 너 나와로 자동 스크롤(scrollIntoView block:"start")할 때 화면
    맨 위에 딱 붙지 않고 이만큼만 숨 쉴 여유를 남긴다(위의 다른 카드는 안 보인다). 날짜
@@ -5727,11 +5816,18 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
      필요가 없다. 헤더 자리만 남겨두고 최대한 위로 올린다(요청: "타임라인 상단 페이지
      상단까지 올려도 됨 이제(헤더 자리는 남겨놓고)"). 헤더 자체 높이(PC 기준 상단
      패딩 6px + 안쪽 14px×2 + 아바타/로고 콘텐츠 ~38px ≈ 72px)를 다 가려서(신고: "PC에서
-     타임라인 상단이 헤더에 가려짐") 여유를 조금 더 둔다. */
-  top: calc(var(--safe-top) + 88px);
-  bottom: calc(var(--mobile-footer-h) + env(safe-area-inset-bottom, 0px) + 40px);
+     타임라인 상단이 헤더에 가려짐") 여유를 조금 더 둔다 — 다만 위아래 다 너무 넉넉하다는
+     피드백으로(요청: "위아래로 늘려도 됨") 여유값 자체는 줄였다. */
+  top: calc(var(--safe-top) + 76px);
+  bottom: calc(var(--mobile-footer-h) + env(safe-area-inset-bottom, 0px) + 16px);
   display: flex; flex-direction: column; align-items: center; gap: 6px;
   opacity: 0; pointer-events: none; transition: opacity 0.25s ease;
+}
+/* 모바일은 세로 스크롤바를 숨기므로(@media (max-width: 860px) 스크롤바 숨김 규칙)
+   그만큼 오른쪽 가장자리에 더 붙여도 된다(요청: "스크롤 없는 만큼 모바일에서 타임라인을
+   더 오른쪽으로 이동"). */
+@media (max-width: 860px) {
+  .scr-scroll-timeline { right: -1px; }
 }
 .scr-scroll-timeline-visible { opacity: 1; pointer-events: auto; }
 .scr-scroll-timeline-end {
@@ -5780,22 +5876,6 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
   content: "오늘"; position: absolute; left: 50%; bottom: 100%; margin-bottom: 2px;
   transform: translateX(-50%);
   font-size: var(--fs-micro); font-weight: 800; color: var(--highlight-bg);
-  white-space: nowrap;
-}
-/* "일정 미정" 눈금 — 오늘 눈금과 같은 모양이되, 확정되지 않은 대기 묶음이라 은은한
-   회색 톤으로 구분한다. 목록 맨 위에 있어 보통 트랙 최상단 근처에 찍힌다. */
-.scr-scroll-timeline-undecided {
-  position: absolute; left: 50%; transform: translate(-50%, -50%);
-  display: flex; align-items: center;
-}
-.scr-scroll-timeline-undecided::before {
-  content: ""; width: 14px; height: 2px; border-radius: 2px;
-  background: var(--dim);
-}
-.scr-scroll-timeline-undecided::after {
-  content: "미정"; position: absolute; left: 50%; bottom: 100%; margin-bottom: 2px;
-  transform: translateX(-50%);
-  font-size: var(--fs-micro); font-weight: 800; color: var(--dim);
   white-space: nowrap;
 }
 /* 현재 상단에 핀된 날짜를 알약으로 — 트랙 왼쪽에 붙여 현재 위치를 "며칠"인지로 보여준다. */
@@ -6527,10 +6607,13 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
   .scr-usermap-row { font-size: var(--fs-caption); }
   .scr-usermap-row-head { font-size: var(--fs-caption); }
   .scr-usermap-raw-name { font-size: var(--fs-caption); }
-  /* 통계 그리드 모든 컬럼 폭 20% 확대(이름칸 160→192, 데이터칸 150→180) */
+  /* 통계 그리드 모든 컬럼 폭 20% 확대(이름칸 160→192, 데이터칸 150→180).
+     --scr-stat-col-w도 여기서 같이 지정해야(구분선 위치 계산이 참조) 이 규칙이
+     이기는 화면 폭에서 구분선이 실제 칸 폭과 어긋나지 않는다. */
   .scr-stats-list-panel-v2 .scr-stat-row {
     --scr-stat-name-w: 173px;
-    grid-template-columns: var(--scr-stat-name-w) repeat(4, 180px);
+    --scr-stat-col-w: 180px;
+    grid-template-columns: var(--scr-stat-name-w) repeat(4, var(--scr-stat-col-w));
   }
   /* 서랍메뉴: '전체 메뉴' 타이틀 한 단계 축소(28→20). 테마 바꾸기~메뉴 닫기는 한 스텝 키운다(요청: 14→16). */
   .scr-drawer-head .scr-brand-mark { font-size: var(--fs-subhead); }
@@ -6556,9 +6639,9 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
   .scr-team-outcome { font-size: var(--fs-body); }
   /* 경기목록 승·패 글자는 body(16) 유지 — 닉네임(caption 14)보다 한 단계 위. */
   .scr-match-trow-outcome { font-size: var(--fs-body); }
-  /* 타임라인 폰트 한 단계 축소(날짜 알약 14→12, 끝/오늘/미정 라벨 12→11) */
+  /* 타임라인 폰트 한 단계 축소(날짜 알약 14→12, 끝/오늘 라벨 12→11) */
   .scr-scroll-timeline-end { font-size: var(--fs-11); }
-  .scr-scroll-timeline-today::after, .scr-scroll-timeline-undecided::after { font-size: var(--fs-11); }
+  .scr-scroll-timeline-today::after { font-size: var(--fs-11); }
   .scr-scroll-timeline-date { font-size: var(--fs-micro); }
   /* 도전장 보내기 힌트 두 단계 축소(20→14) */
   .scr-challenge-form-modal .scr-hint { font-size: var(--fs-caption); }
@@ -6728,4 +6811,224 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
 .scr-menu-pop-drop::-webkit-scrollbar-thumb:hover,
 .scr-challenge-target-select.scr-cselect-drop::-webkit-scrollbar-thumb:hover {
   background: rgba(var(--overlay-rgb), 0.42);
+}
+
+/* ===== 리그(League) — 1단계(목록/생성/삭제/기본 정보), 2단계(팀/로스터) ===== */
+.scr-league-toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+.scr-league-select { flex: 1 1 auto; min-width: 0; }
+/* "새 리그" 버튼이 Select와 같은 줄에서 좁아질 때 눌려서 글자가 줄바꿈되던 문제(실제로
+   지적받음) — 버튼은 안 눌리게 고정폭으로 둔다. */
+.scr-league-toolbar > .scr-btn { flex: 0 0 auto; white-space: nowrap; }
+.scr-league-mode-toggle { display: flex; gap: 8px; margin-top: 4px; }
+/* 개인리그 설명 힌트만 기본 .scr-hint(--fs-subhead)보다 두 단계 작게(요청: "폰트 2스텝
+   축소") — 다른 화면의 공용 .scr-hint 크기는 그대로 둔다. */
+.scr-league-mode-hint { font-size: var(--fs-caption); }
+/* 리그 화면 전용 "투명 글래스" 톤 — 이 앱의 기존 --panel/--line 토큰은 다크 테마에서
+   따뜻한 갈색 계열(#2b2427 등)이라, 리그 화면에서 지향하는 최신 테마(패널 투명, 선은
+   흰색)와 안 맞는다(요청: "아직도 배경이나 선이 예전에 쓴 테마색을 사용하고 있어...
+   지금 테마는 패널은 투명, 선은 흰색이야"). 리그 화면 안에서만 쓰는 자체 변수로 분리해
+   나머지 화면(기존 --panel/--line 그대로 쓰는)에 영향이 안 가게 한다. */
+.scr-league-screen {
+  --league-line: rgba(255,255,255,0.22);
+  --league-panel: transparent;
+  /* 대진표 "진출팀" 표시(연결선/카드 강조)에 쓰는 라임녹색(요청: "진출팀 표시 포인트
+     컬러는 라임녹색") — 앱 기본 --point(호박색)와 별개로 리그 화면에서만 쓴다. */
+  --league-advance: #a3e635;
+}
+.scr-league-toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+.scr-league-select { flex: 1 1 auto; min-width: 0; }
+/* "새 리그" 버튼이 Select와 같은 줄에서 좁아질 때 눌려서 글자가 줄바꿈되던 문제(실제로
+   지적받음) — 버튼은 안 눌리게 고정폭으로 둔다. */
+.scr-league-toolbar > .scr-btn { flex: 0 0 auto; white-space: nowrap; }
+.scr-league-mode-toggle { display: flex; gap: 8px; margin-top: 4px; }
+/* 개인리그 설명 힌트만 기본 .scr-hint(--fs-subhead)보다 두 단계 작게(요청: "폰트 2스텝
+   축소") — 다른 화면의 공용 .scr-hint 크기는 그대로 둔다. */
+.scr-league-mode-hint { font-size: var(--fs-caption); }
+.scr-league-summary-card {
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 16px; border: 1px solid var(--league-line); border-radius: 14px; background: var(--league-panel);
+}
+.scr-league-summary-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.scr-league-summary-name { font-size: var(--fs-subhead); font-weight: 800; display: inline-flex; align-items: center; gap: 4px; }
+.scr-league-edit-toggle { width: 22px; height: 22px; }
+/* 완전한 알약(999px) 대신 평평한(광택 없이) 둥근 네모 — 정확한 스퀴클 곡률을 맞추기
+   어려워 단순한 고정값 라운드로 정리한다(요청: "유튜브 로고 같은 형태를 만들기
+   어려우면 그냥 둥근 네모로"). */
+.scr-league-status-pill {
+  flex: 0 0 auto; padding: 4px 12px; border-radius: 8px; font-size: var(--fs-caption); font-weight: 700;
+}
+.scr-league-status-setup { background: rgba(255,255,255,0.08); color: var(--muted); }
+/* "진행중"은 보통 초록 포인트색을 쓴다(요청) — 완료(같은 초록 계열)와는 문구로 구분된다. */
+.scr-league-status-active { background: color-mix(in srgb, var(--win) 26%, rgba(255,255,255,0.06)); color: var(--win); }
+.scr-league-status-completed { background: color-mix(in srgb, var(--win) 20%, transparent); color: var(--win); }
+.scr-league-summary-meta {
+  display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: var(--fs-caption); color: var(--muted);
+}
+/* 팀 패널 — 리그 상세 안에 이어 붙는 섹션. */
+.scr-league-teams-panel { display: flex; flex-direction: column; gap: 10px; padding-top: 4px; border-top: 1px solid var(--league-line); }
+.scr-league-teams-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+/* 팀/선수 추가 버튼 한 단계 축소(요청: "팀추가 대진확정 버튼 1스텝 축소"). */
+.scr-league-teams-panel-head .scr-btn-sm {
+  padding: 4px 8px; font-size: var(--fs-caption); height: 28px; min-height: 28px; box-sizing: border-box;
+}
+.scr-league-section-title { font-size: var(--fs-body); font-weight: 800; color: var(--dim); letter-spacing: 0.02em; margin: 0; }
+.scr-league-teams-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+/* 완전 투명 글래스 패널(요청: "팀 카드 투명 패널로 교체") — 테두리 대신 다크모드 팝업
+   공통 원칙과 같은 위/아래 반사광(inset)으로 카드 경계를 표현한다(요청: "팀 목록 팀
+   패널 테두리 제거 반사광 이용" — .scr-cselect-drop과 같은 기법). */
+.scr-league-team-card {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 12px; border: none; border-radius: 12px; background: transparent;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -1px 0 rgba(255,255,255,0.04);
+}
+/* 헤더 한 줄에 팀명 + 선수 추가(아이콘) + 삭제(아이콘)를 모두 두고 "로스터" 라벨
+   줄은 아예 없앤다(요청: "팀카드 선수추가 아이콘으로 대체하고 팀명 옆으로 이동,
+   로스터라는 라벨 제거해서 한줄 없앰"). */
+.scr-league-team-card-head { display: flex; align-items: center; gap: 4px; }
+.scr-league-team-label { font-size: var(--fs-body); font-weight: 800; flex: 1 1 auto; }
+.scr-league-team-card-busy { display: flex; justify-content: center; padding: 4px 0; }
+/* 로스터 한 줄당 하나의 얇은 행 — 유저칩 크기를 한 단계 다시 키웠다(요청: "유저칩과
+   드롭다운 크기 스텝 1씩 증가" — 아바타 16px→18px, 패딩도 비례해서). */
+.scr-league-roster-list { display: flex; flex-direction: column; gap: 4px; }
+.scr-league-roster-row {
+  display: flex; align-items: center; gap: 7px; padding: 5px 7px;
+  background: rgba(255,255,255,0.05); border-radius: 7px;
+}
+.scr-league-roster-row-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-body); font-weight: 600; }
+.scr-league-roster-row-remove { flex: 0 0 auto; width: 20px; height: 20px; }
+/* 개인전 — 팀 카드 없이 유저칩만 나열(요청: "팀 카드가 아닌 유저칩이 바로 추가됨"). */
+.scr-league-players-wrap { display: flex; flex-wrap: wrap; gap: 6px; }
+.scr-league-player-chip {
+  display: flex; align-items: center; gap: 7px; padding: 5px 9px 5px 6px;
+  background: rgba(255,255,255,0.05); border: 1px solid var(--league-line); border-radius: 999px;
+}
+.scr-league-player-chip-name { font-size: var(--fs-body); font-weight: 600; }
+.scr-league-player-chip-remove { flex: 0 0 auto; width: 20px; height: 20px; }
+.scr-league-player-chip-pick { min-width: 180px; }
+
+/* 대진표 — 각 팀 슬롯의 좌표를 React에서 직접 계산해 position:absolute로 배치하고,
+   연결선은 그 좌표를 그대로 잇는 SVG로 그린다(요청: "브라켓 수정... 좌표를 직접
+   계산해서 정확히 배치하는 방식으로"). CSS flexbox 중첩만으로 "짝 커넥터 중심"을
+   근사하던 이전 방식은 라운드/로스터 인원수가 달라질 때마다 계속 어긋났다 — 카드
+   높이를 고정값(CARD_H, JS)으로 통일해 쓰므로 N라운드 M번째 매치는 항상 (N-1)
+   라운드의 두 매치 정중앙에 수학적으로 정확히 온다. */
+.scr-league-bracket-panel { display: flex; flex-direction: column; gap: 10px; padding-top: 4px; border-top: 1px solid var(--league-line); }
+/* 모바일에서 가로 스크롤 — 전적통계 표(.scr-stat-table)와 같은 패턴(요청: "모바일에선
+   통계 화면처럼 가로 스크롤 활용"). 세로축은 페이지로 넘겨(overscroll-behavior-x만). */
+.scr-league-bracket-scroll {
+  overflow-x: auto; overscroll-behavior-x: none; -webkit-overflow-scrolling: touch;
+  /* 스크롤바가 마지막 라운드 카드 바로 밑에 겹쳐 안 보이지 않게 여유를 준다 — 잘려서
+     "더 볼 게 있는지" 알아채기 어렵다는 피드백(요청: "스크롤바 처리 필요")에 대응. */
+  padding-bottom: 10px;
+}
+.scr-league-bracket-heads { display: flex; padding: 0 4px 8px; }
+.scr-league-bracket-col-head {
+  flex: 0 0 auto; font-size: var(--fs-caption); font-weight: 700; color: var(--muted); text-align: center;
+}
+.scr-league-bracket-canvas { position: relative; margin: 6px 4px 0; }
+.scr-league-bracket-svg { position: absolute; top: 0; left: 0; overflow: visible; pointer-events: none; }
+/* 선은 흰 톤(요청: "선은 흰색")이지만 더 진하게(요청: "브라켓 선 색깔 더 진하게") —
+   기본 --league-line은 옅은 반투명이라 그 위에 불투명도를 더 준 값을 따로 쓴다.
+   이긴(진출한) 쪽 선만 굵고 라임녹색으로 강조한다(요청: "이긴쪽의 선이 두껍거나
+   포인트색으로 표시되는 방식", "진출팀 표시 포인트 컬러는 라임녹색"). 꺾이는 부분은
+   곡선 없이 직각으로(요청: "가지가 합쳐지는 부분은 직각으로 표현해줘"). */
+.scr-league-bracket-line { fill: none; stroke: rgba(255,255,255,0.45); stroke-width: 1.25; }
+.scr-league-bracket-line-won { stroke: var(--league-advance); stroke-width: 2; }
+.scr-league-bracket-slot { position: absolute; box-sizing: border-box; }
+.scr-league-bracket-badge {
+  position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column;
+  align-items: center; gap: 1px; pointer-events: none;
+}
+.scr-league-bracket-team-card-win { box-shadow: 0 0 0 2px var(--league-advance) inset; }
+/* 팀/선수 카드는 테마와 무관하게 항상 하얀 배경 + 검정 글씨(요청: "팀카드는 하얀색
+   배경에 검은글씨와 아바타") — 대진표 특성상 흰 유니폼 카드처럼 또렷하게 구분되길
+   바란 것으로 보고, 다크/라이트 테마 변수 대신 고정값을 쓴다. 카드는 항상 부모
+   (.scr-league-bracket-slot, JS가 좌표와 함께 고정 높이를 준다)를 꽉 채운다. */
+.scr-league-bracket-team-card {
+  display: flex; align-items: center; gap: 7px; padding: 6px 8px; width: 100%; height: 100%;
+  background: #fff; color: #10151a; border-radius: 8px;
+  border: none; font: inherit; text-align: left; box-sizing: border-box;
+}
+.scr-league-bracket-team-card-label {
+  flex: 0 0 auto; font-weight: 800; font-size: var(--fs-micro); color: #10151a;
+  width: 16px; text-align: center;
+}
+/* 팀전 1라운드 수정 모드 — 팀명(라벨) 자리에 항상 작은 드롭다운이 끼워진다(요청: "팀명
+   부분이 드롭다운으로 바뀌는거야... 드롭다운 열때 아무것도 바뀔필요 없이 드롭다운만
+   열려야돼") — 라벨과 같은 자리·크기를 유지하도록 폭을 좁히고 옵션 라벨 대신
+   shortLabel(팀 글자)만 표시한다. 나머지(로스터 목록)는 읽기전용과 동일하게 그대로
+   둔다. */
+.scr-league-bracket-label-select { width: 34px; flex: 0 0 auto; }
+.scr-league-bracket-label-select .scr-cselect-trigger {
+  padding: 2px 2px; min-height: 0; background: rgba(16,21,26,0.08); border: none;
+  font-weight: 800; font-size: var(--fs-micro); color: #10151a; justify-content: center; gap: 2px;
+}
+.scr-league-bracket-label-select .scr-cselect-value-full { display: none; }
+.scr-league-bracket-label-select .scr-cselect-value-short { display: inline; }
+.scr-league-bracket-label-select .scr-cselect-caret { width: 10px; height: 10px; }
+.scr-league-bracket-team-card-empty-roster { font-size: var(--fs-micro); font-weight: 600; color: #10151a; }
+/* 로스터 전원을 세로로(요청: "팀이름이 아니라 구성원이름 보이게(세로로)") — 팀전은
+   최대 4명까지라 줄바꿈돼도 카드가 과하게 안 늘어난다. */
+.scr-league-bracket-team-card-roster { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 auto; }
+.scr-league-bracket-team-card-member {
+  display: flex; align-items: center; gap: 5px; font-size: var(--fs-micro); font-weight: 700;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #10151a;
+}
+/* 대진표 로스터 프사는 동그랗게(요청: "대진표의 아바타 동그랗게 처리") — Avatar 기본은
+   각진 사각형(size 비례 radius)이라 여기서만 원형으로 덮어쓴다. */
+.scr-league-bracket-team-card-member .scr-avatar { border-radius: 50% !important; }
+/* 모바일에서만 2라운드 이상은 로스터 대신 팀명(라벨)만 — 대진표가 라운드를 거듭할수록
+   옆으로 넓어지는 걸 아낀다(요청: "팀전, 모바일인 경우 2라운드부터는 팀명만 노출").
+   데스크톱은 이 규칙 없이 항상 로스터 전원을 보여준다. */
+@media (max-width: 640px) {
+  .scr-league-bracket-team-card-compact .scr-league-bracket-team-card-roster { display: none; }
+  .scr-league-bracket-team-card-compact .scr-league-bracket-team-card-label {
+    width: auto; font-size: var(--fs-body);
+  }
+}
+/* 빈 자리("미정"/"부전"/"공백")도 부모(.scr-league-bracket-slot)를 꽉 채운다 — 이제
+   모든 라운드가 좌표로 정확히 배치되므로 카드-대-빈자리 높이를 굳이 맞출 필요가
+   없다(고정 CARD_H를 부모가 이미 강제한다). */
+.scr-league-bracket-team-empty {
+  display: flex; align-items: center; justify-content: center;
+  padding: 6px 8px; width: 100%; height: 100%; box-sizing: border-box;
+  text-align: center; font-size: var(--fs-caption); color: var(--dim);
+  border: 1px dashed var(--line); border-radius: 8px;
+}
+/* 개인전 1라운드 수정 모드 — 로스터 자리에 드롭다운이 그대로 들어간다(빈 슬롯이면
+   "미지정"이 선택된 채로, 하얀 카드는 그대로라 팀원 목록만 없는 것과 같은 모양이다,
+   요청: "빈슬롯을 하얀 배경에 팀 드롭다운만 미지정 선택돼 있으면 돼"). */
+.scr-league-bracket-slot-select { width: 100%; }
+.scr-league-bracket-score {
+  text-align: center; font-size: var(--fs-micro); font-weight: 700; color: var(--muted);
+}
+.scr-league-bracket-when {
+  text-align: center; font-size: var(--fs-11); color: var(--dim);
+}
+.scr-league-bracket-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+/* 대진 확정 버튼도 한 단계 축소(요청: "팀추가 대진확정 버튼 1스텝 축소"). */
+.scr-league-bracket-toolbar > .scr-btn-sm {
+  padding: 4px 8px; font-size: var(--fs-caption); height: 28px; min-height: 28px; box-sizing: border-box;
+}
+.scr-league-bracket-generate-row { display: flex; align-items: center; gap: 8px; }
+/* 팀수/대진표 규모는 상한이 없어(요청: "팀수 무제한... 대진표 슬롯 무제한") 목록형
+   Select 대신 숫자 입력 하나로 받는다 — 자리만 차지하지 않게 좁게 고정한다. 인풋과
+   버튼 둘 다 한 단계 더 작게, 높이는 서로 정확히 맞춘다(요청: "인풋창과 버튼 스텝
+   1씩 감소... 위아래 버튼 없애기"). */
+.scr-league-bracket-generate-row .scr-btn-sm {
+  padding: 4px 8px; font-size: var(--fs-caption); height: 28px; min-height: 28px; box-sizing: border-box;
+}
+/* 테두리 대신 반사광(inset)으로 정리하고(요청: "인풋창 테두리 제거하고 반사광 그림자
+   이용" — 팀 카드와 같은 기법), 데이터 폰트 대신 기본 폰트를 쓰고(요청: "기본 폰트
+   사용"), 네이티브 숫자 스피너(위아래 버튼)를 없앤다. min-height 대신 고정 height로
+   둬야 border 유무에 따른 미묘한 높이 차이 없이 버튼과 정확히 일치한다. */
+.scr-league-bracket-count-input {
+  width: 44px; flex: 0 0 auto; padding: 4px 5px; height: 28px; box-sizing: border-box;
+  border: none; box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -1px 0 rgba(255,255,255,0.04);
+  font-size: var(--fs-caption); font-family: 'Pretendard Variable', Pretendard, 'Noto Sans KR', sans-serif;
+  -moz-appearance: textfield; appearance: textfield;
+}
+.scr-league-bracket-count-input::-webkit-outer-spin-button,
+.scr-league-bracket-count-input::-webkit-inner-spin-button {
+  -webkit-appearance: none; margin: 0;
 }

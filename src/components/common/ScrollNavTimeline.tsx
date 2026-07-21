@@ -52,7 +52,11 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
     return current;
   };
 
-  // 특정 날짜 그룹(selector)의 스크롤 위치를 0~1로 — 트랙에 눈금을 찍는 데 쓴다.
+  // 특정 날짜 그룹(selector)의 스크롤 위치를 0~1로 — 트랙에 눈금을 찍는 데 쓴다. thumb
+  // (현재 위치 점)와 같은 척도(scrollTop/max, "실제로 스크롤 가능한 이동 거리" 기준)를
+  // 써야, 스크롤이 실제로 이 그룹에 멈췄을 때 thumb과 눈금이 같은 위치를 가리킨다(요청:
+  // "thumb과 오늘 눈금이 같은 %를 안 가리킴" — 한때 분모를 scrollHeight로 바꿔봤지만
+  // 그러면 thumb과 척도가 달라져 실제로 멈춘 자리와 눈금 위치가 어긋나 보였다).
   const groupFraction = (selector: string, scrollTop: number, max: number): number | null => {
     const el = document.querySelector<HTMLElement>(selector);
     if (!el || max <= 0) return null;
