@@ -29,11 +29,17 @@ export default function MatchScreenV2() {
   // 검색창은 엔터를 눌러야만 확정되는 값이라(SearchFilterBar 참고), search 자체가 이미
   // "적용된" 값이다 — 이미 불러온 전체 경기 안에서 클라이언트가 즉시 걸러낸다.
   const [search, setSearch] = useState("");
+  // 공통 검색창(위 search)은 유저 전용이고, 경기번호·댓글은 이 화면 전용 별도 필드로 받는다
+  // (요청). 셋은 AND로 함께 걸린다.
+  const [matchNoQuery, setMatchNoQuery] = useState("");
+  const [commentQuery, setCommentQuery] = useState("");
   // 진입하면 조회 버튼 없이 곧바로 전체 경기를 불러온다(요청: "조회 버튼 제거하고 자동
   // 조회로 변경"). 기간 필터가 없어 조회는 그냥 전체 로드다.
   const suggestions = useMemo(() => activeMemberSearchTerms(members), [members]);
   const searchTerms = useMemo(() => splitSearchTerms(search), [search]);
-  const hasSearch = searchTerms.length > 0;
+  const matchNoTerm = matchNoQuery.trim().toLowerCase();
+  const commentTerm = commentQuery.trim().toLowerCase();
+  const hasSearch = searchTerms.length > 0 || matchNoTerm !== "" || commentTerm !== "";
   const matchedIds = useMemo(() => {
     if (searchTerms.length === 0) return undefined;
     const all = new Set<string>();
@@ -102,18 +108,19 @@ export default function MatchScreenV2() {
       { id: m.id, date: m.date, team1: m.team1, team2: m.team2, result: m.result, raw: m }
     ));
     if (!hasSearch) return rows;
-    // AND — 검색어 전부가 각각(서로 다른 참가자여도 무방) 이 경기 참가자 중 누군가와, 또는
-    // 그 경기의 경기번호(matchNo)·댓글 내용과 맞아야 한다(요청: 경기번호/댓글 내용으로도 찾기).
     return rows.filter((r) => {
       const slots = [...r.team1, ...r.team2];
-      const no = r.raw.matchNo.toLowerCase();
-      const commentText = r.raw.comments.map((c) => c.text).join(" ").toLowerCase();
-      return searchTerms.every((term) =>
-        no.includes(term) || commentText.includes(term) || slots.some((slot) => slotMatchesTerm(slot, term)),
-      );
+      // 공통 검색창은 유저 전용 — 검색어 전부가 각각(서로 다른 참가자여도 무방) 이 경기
+      // 참가자 중 누군가와 맞아야 한다(요청: 검색창은 유저 전용으로).
+      const userOk = searchTerms.every((term) => slots.some((slot) => slotMatchesTerm(slot, term)));
+      // 경기번호 필드 — 부분일치.
+      const noOk = matchNoTerm === "" || r.raw.matchNo.toLowerCase().includes(matchNoTerm);
+      // 댓글 필드 — 이 경기 댓글 중 하나라도 내용에 포함하면 통과.
+      const commentOk = commentTerm === "" || r.raw.comments.some((c) => c.text.toLowerCase().includes(commentTerm));
+      return userOk && noOk && commentOk;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- resolveMember/slotMatchesTerm은 members 참조 함수라 매 렌더 새로 만들어져도 무방(값 자체는 members로 충분히 표현됨)
-  }, [matches, hasSearch, searchTerms, members]);
+  }, [matches, hasSearch, searchTerms, matchNoTerm, commentTerm, members]);
 
   const handleSaved = useCallback(async () => {
     reload();
@@ -152,9 +159,35 @@ export default function MatchScreenV2() {
         showCount={false}
         searchValue={search}
         onSearchChange={setSearch}
-        searchPlaceholder="@유저 또는 경기번호로 검색"
+        searchPlaceholder="@유저 검색"
         suggestions={suggestions}
       />
+
+      {/* 경기번호·댓글 검색 — 유저 전용 공통 검색창과 별개인 이 화면 전용 필드. 한 줄에
+          나란히 두고 모바일에서도 한 줄을 유지한다(요청). */}
+      <div className="scr-match-extra-search">
+        <label className="scr-match-extra-field">
+          <span className="scr-field-label-text">경기번호</span>
+          <input
+            className="scr-input scr-list-search-input"
+            value={matchNoQuery}
+            onChange={(e) => setMatchNoQuery(e.target.value)}
+            placeholder="경기번호"
+            inputMode="numeric"
+            autoComplete="off"
+          />
+        </label>
+        <label className="scr-match-extra-field">
+          <span className="scr-field-label-text">댓글</span>
+          <input
+            className="scr-input scr-list-search-input"
+            value={commentQuery}
+            onChange={(e) => setCommentQuery(e.target.value)}
+            placeholder="댓글 내용"
+            autoComplete="off"
+          />
+        </label>
+      </div>
 
       {error && <div className="scr-err">{error}</div>}
 
