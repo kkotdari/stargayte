@@ -4611,12 +4611,13 @@ body *::-webkit-scrollbar-corner { background: transparent; }
      (.scr-mobile-tab-active). 모양(ellipse at center)은 원래대로 두고, 대신 각 단계의
      농도만 올려 더 진하고 또렷한 광원으로(요청: "알약 모양 이전상태로 돌리고 그라데이션
      투명도만 강하게"). */
-  background: radial-gradient(ellipse at center, rgba(255,255,255,1) 0%, rgba(255,255,255,0.9) 42%, rgba(255,255,255,0.6) 72%, rgba(255,255,255,0) 100%);
+  /* 투명도를 더 높였다(요청: "액티브탭 알약 투명도 높이기") — 모양/농도 falloff
+     비율은 그대로 두고 전체 알파값만 낮췄다. */
+  background: radial-gradient(ellipse at center, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.6) 42%, rgba(255,255,255,0.38) 72%, rgba(255,255,255,0) 100%);
 }
-/* 라이트 테마는 현재대로 — 파란(--edge-glow) 광원 알약을 그대로 유지한다(요청:
-   "라이트모드는 현재 유지"). */
+/* 라이트 테마도 같이 더 투명하게(요청). */
 html.scr-light-theme .scr-mobile-tab-indicator {
-  background: radial-gradient(ellipse at center, color-mix(in srgb, var(--edge-glow) 70%, transparent) 0%, color-mix(in srgb, var(--edge-glow) 45%, transparent) 45%, color-mix(in srgb, var(--edge-glow) 22%, transparent) 75%, transparent 100%);
+  background: radial-gradient(ellipse at center, color-mix(in srgb, var(--edge-glow) 48%, transparent) 0%, color-mix(in srgb, var(--edge-glow) 30%, transparent) 45%, color-mix(in srgb, var(--edge-glow) 14%, transparent) 75%, transparent 100%);
 }
 html.scr-light-theme .scr-mobile-tab-active { color: var(--text); }
 /* 라이트 테마는 밝은 패널 위라 흰 반사광이 안 보여 — 드로어 왼쪽 모서리와 같은 이유로
@@ -5813,7 +5814,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
    그만큼 오른쪽 가장자리에 더 붙여도 된다(요청: "스크롤 없는 만큼 모바일에서 타임라인을
    더 오른쪽으로 이동"). */
 @media (max-width: 860px) {
-  .scr-scroll-timeline { right: -6px; }
+  .scr-scroll-timeline { right: -1px; }
 }
 .scr-scroll-timeline-visible { opacity: 1; pointer-events: auto; }
 .scr-scroll-timeline-end {
