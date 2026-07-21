@@ -6841,3 +6841,32 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
   font-size: var(--fs-caption); font-weight: 600;
 }
 .scr-league-team-card-busy { display: flex; justify-content: center; padding: 4px 0; }
+
+/* 대진표 — 3단계는 읽기 전용 표시만(드래그앤드랍/결과 입력은 다음 단계). 라운드를
+   가로로 늘어놓고 스크롤, 각 라운드 안에서는 세로로 경기 카드를 쌓는다(트리 연결선은
+   다음 단계에서 손볼 여지로 남겨둔다). */
+.scr-league-bracket-panel { display: flex; flex-direction: column; gap: 10px; padding-top: 4px; border-top: 1px solid var(--line); }
+.scr-league-bracket-scroll { overflow-x: auto; }
+.scr-league-bracket-grid { display: flex; gap: 16px; padding-bottom: 4px; }
+.scr-league-bracket-col { display: flex; flex-direction: column; gap: 10px; min-width: 140px; flex: 0 0 auto; }
+.scr-league-bracket-col-head {
+  font-size: var(--fs-caption); font-weight: 700; color: var(--muted); text-align: center;
+}
+.scr-league-bracket-match {
+  display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 10px;
+  overflow: hidden; background: var(--panel);
+}
+.scr-league-bracket-match-dead { opacity: 0.45; }
+.scr-league-bracket-match-empty {
+  padding: 10px 8px; text-align: center; font-size: var(--fs-caption); color: var(--muted);
+}
+.scr-league-bracket-side {
+  padding: 7px 10px; font-size: var(--fs-caption); font-weight: 600;
+}
+.scr-league-bracket-side + .scr-league-bracket-side { border-top: 1px solid var(--line); }
+.scr-league-bracket-side-win { color: var(--win); font-weight: 800; background: color-mix(in srgb, var(--win) 12%, transparent); }
+.scr-league-bracket-side-empty { color: var(--dim); font-weight: 500; }
+.scr-league-bracket-score {
+  padding: 4px 10px; border-top: 1px solid var(--line); text-align: center;
+  font-size: var(--fs-micro); color: var(--muted);
+}

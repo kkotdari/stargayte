@@ -5,6 +5,7 @@ import { Spinner } from "../../components/common/Feedback";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 import LeagueCreateModal from "../../modals/LeagueCreateModal";
 import LeagueTeamsPanel from "./LeagueTeamsPanel";
+import LeagueBracket from "./LeagueBracket";
 import { api } from "../../api/client";
 import { cx } from "../../utils/format";
 import type { League, LeagueListItem, LeagueMode, LeagueStatus } from "../../types";
@@ -140,9 +141,10 @@ export default function LeagueScreen() {
           </div>
 
           <LeagueTeamsPanel league={league} onUpdated={handleLeagueUpdated} />
+          <LeagueBracket league={league} onUpdated={handleLeagueUpdated} />
 
           <p className="scr-hint scr-hint-left">
-            대진표 생성/결과 입력은 다음 업데이트에서 이어서 열려요.
+            결과 입력/대타/슬롯 조정은 다음 업데이트에서 이어서 열려요.
           </p>
         </div>
       )}
