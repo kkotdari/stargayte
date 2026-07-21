@@ -6815,12 +6815,16 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
   padding: 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel-raised);
 }
 .scr-league-summary-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.scr-league-summary-name { font-size: var(--fs-subhead); font-weight: 800; }
+.scr-league-summary-name { font-size: var(--fs-subhead); font-weight: 800; display: inline-flex; align-items: center; gap: 4px; }
+.scr-league-edit-toggle { width: 22px; height: 22px; }
 .scr-league-status-pill {
   flex: 0 0 auto; padding: 3px 10px; border-radius: 999px; font-size: var(--fs-caption); font-weight: 700;
 }
 .scr-league-status-setup { background: rgba(var(--overlay-rgb), 0.1); color: var(--muted); }
-.scr-league-status-active { background: color-mix(in srgb, var(--edge-glow) 22%, transparent); color: var(--edge-glow); }
+/* "진행중"은 --edge-glow를 쓰면 이 앱 다크 테마에서 붉은기(#ce4a3a)로 보여서(요청: "붉은
+   톤의 선이나 배경 폰트 등 안쓰기로 했잖아... 다 기본 색으로") 흰 톤 투명 글래스로
+   바꿨다 — 완료(초록)와만 색으로 구분되면 충분하다. */
+.scr-league-status-active { background: rgba(255,255,255,0.12); color: var(--text); }
 .scr-league-status-completed { background: color-mix(in srgb, var(--win) 20%, transparent); color: var(--win); }
 .scr-league-summary-meta {
   display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: var(--fs-caption); color: var(--muted);
@@ -6857,8 +6861,15 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
 .scr-league-bracket-scroll {
   overflow-x: auto; overscroll-behavior-x: none; -webkit-overflow-scrolling: touch;
 }
-.scr-league-bracket-grid { display: flex; align-items: stretch; gap: 44px; padding: 6px 4px 10px; }
-.scr-league-bracket-col { display: flex; flex-direction: column; min-width: 168px; flex: 0 0 auto; }
+/* --league-bracket-gap을 그리드 간격과 커넥터 선 길이 양쪽에서 같이 참조한다 — 값이
+   둘로 따로 박혀 있으면(이전 버전의 버그) 커넥터가 다음 라운드 칸 절반 앞에서 끊겨
+   떠 보인다. 하나로 묶어 항상 정확히 다음 칸 왼쪽 끝까지 닿게 한다(요청: "연결되는
+   선 구조" 업그레이드 — 참고 이미지처럼 끊김 없이 이어지도록). */
+.scr-league-bracket-grid {
+  --league-bracket-gap: 40px;
+  display: flex; align-items: stretch; gap: var(--league-bracket-gap); padding: 6px 4px 10px;
+}
+.scr-league-bracket-col { display: flex; flex-direction: column; min-width: 172px; flex: 0 0 auto; }
 .scr-league-bracket-col-head {
   font-size: var(--fs-caption); font-weight: 700; color: var(--muted); text-align: center;
   padding-bottom: 8px;
@@ -6867,33 +6878,45 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
   flex: 1 1 auto; display: flex; flex-direction: column; justify-content: space-around; gap: 14px;
 }
 .scr-league-bracket-pair { position: relative; display: flex; flex-direction: column; gap: 10px; }
-/* 짝 상자 오른쪽에서 다음 라운드로 모이는 커넥터 — 위/아래 절반을 각각 별도
+/* 짝 상자 오른쪽에서 다음 라운드 칸까지 이어지는 커넥터 — 위/아래 절반을 각각 별도
    가상요소(::before/::after)로 그려, 결과가 난 쪽 선만 굵게+포인트색으로 강조할 수
    있게 한다(요청: "이긴쪽의 선이 두껍거나 포인트색으로 표시되는 방식" — 참고 이미지
-   기준). 위쪽은 아래로 꺾이고 아래쪽은 위로 꺾여 가운데(다음 칸 자리)에서 만난다. */
+   기준). 위쪽은 아래로, 아래쪽은 위로 꺾여 가운데(다음 칸의 세로 중심)에서 만나고,
+   가로 길이를 그리드 간격과 정확히 맞춰 다음 칸 왼쪽 끝에 선이 딱 닿는다. */
 .scr-league-bracket-pair::before, .scr-league-bracket-pair::after {
-  content: ""; position: absolute; left: 100%; width: 22px;
-  border-right: 2px solid var(--line);
+  content: ""; position: absolute; left: 100%; width: var(--league-bracket-gap);
+  border-right: 2px solid var(--line); transition: border-color .15s;
 }
 .scr-league-bracket-pair::before {
-  top: 25%; height: 25%; border-top: 2px solid var(--line); border-top-right-radius: 8px;
+  top: 25%; height: 25%; border-top: 2px solid var(--line); border-top-right-radius: 10px;
 }
 .scr-league-bracket-pair::after {
-  bottom: 25%; height: 25%; border-bottom: 2px solid var(--line); border-bottom-right-radius: 8px;
+  bottom: 25%; height: 25%; border-bottom: 2px solid var(--line); border-bottom-right-radius: 10px;
 }
 .scr-league-bracket-pair-top-won::before {
-  border-color: var(--point); border-width: 3px;
+  border-color: var(--point); border-width: 3px; z-index: 1;
 }
 .scr-league-bracket-pair-bottom-won::after {
+  border-color: var(--point); border-width: 3px; z-index: 1;
+}
+.scr-league-bracket-match-wrap { display: flex; flex-direction: column; gap: 4px; }
+/* 맞붙는 두 팀은 테두리로 묶지 않고 선으로만 연결한다(요청: "경기상대끼리 테두리로
+   묶는게 아니라 선으로 연결하는거야 가지로") — 카드 두 장은 서로 독립적으로 뜨고,
+   .scr-league-bracket-match-connect가 오른쪽에 작은 대괄호 선을 그려 하나로 모은다.
+   그 모인 지점이 곧 라운드 간 커넥터(.scr-league-bracket-pair)가 시작하는 자리라,
+   margin-right로 그 폭(14px)만큼 미리 자리를 비워둬야 두 선이 끊김 없이 이어진다. */
+.scr-league-bracket-match { position: relative; display: flex; flex-direction: column; gap: 8px; }
+.scr-league-bracket-match-connect { margin-right: 14px; }
+.scr-league-bracket-match-connect::after {
+  content: ""; position: absolute; top: 25%; bottom: 25%; left: 100%; width: 14px;
+  border-top: 2px solid var(--line); border-right: 2px solid var(--line); border-bottom: 2px solid var(--line);
+  border-top-right-radius: 8px; border-bottom-right-radius: 8px; transition: border-color .15s;
+}
+.scr-league-bracket-match-won.scr-league-bracket-match-connect::after {
   border-color: var(--point); border-width: 3px;
 }
-.scr-league-bracket-match {
-  display: flex; flex-direction: column; gap: 6px; border: 1px solid var(--line); border-radius: 10px;
-  padding: 8px; background: var(--panel);
-}
-.scr-league-bracket-match-dead { opacity: 0.4; }
 .scr-league-bracket-match-empty {
-  padding: 14px 8px; text-align: center; font-size: var(--fs-caption); color: var(--muted);
+  padding: 14px 8px; text-align: center; font-size: var(--fs-caption); color: var(--muted); opacity: 0.6;
 }
 .scr-league-bracket-slot-filled { position: relative; }
 /* 팀/선수 카드는 테마와 무관하게 항상 하얀 배경 + 검정 글씨(요청: "팀카드는 하얀색

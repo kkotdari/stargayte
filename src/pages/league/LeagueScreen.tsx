@@ -112,7 +112,7 @@ export default function LeagueScreen() {
           disabled={leagues.length === 0}
           className="scr-league-select"
         />
-        {canEdit && (
+        {isAdmin && (
           <button
             type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm"
             onClick={() => setCreating(true)}
@@ -136,7 +136,7 @@ export default function LeagueScreen() {
               {isAdmin && (
                 <button
                   type="button"
-                  className={cx("scr-league-edit-toggle", editMode && "scr-league-edit-toggle-active")}
+                  className={cx("scr-icon-btn", "scr-league-edit-toggle", editMode && "scr-icon-btn-active")}
                   onClick={() => setEditMode((v) => !v)}
                   aria-label={editMode ? "보기 모드로 전환" : "수정 모드로 전환"}
                   title={editMode ? "보기 모드로 전환" : "수정 모드로 전환"}

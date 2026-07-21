@@ -73,9 +73,9 @@ function EmptySlot({
 }
 
 function MatchCard({
-  league, match, canEdit, busy, onAssign, onClear,
+  league, match, canEdit, busy, isFinal, onAssign, onClear,
 }: {
-  league: League; match: LeagueMatch; canEdit: boolean; busy: boolean;
+  league: League; match: LeagueMatch; canEdit: boolean; busy: boolean; isFinal: boolean;
   onAssign: (side: LeagueMatchSide, teamId: number) => void;
   onClear: (side: LeagueMatchSide) => void;
 }) {
@@ -102,21 +102,25 @@ function MatchCard({
     );
   };
 
+  if (match.isDead) {
+    return <div className="scr-league-bracket-match-empty">공백(부전 없음)</div>;
+  }
+
   return (
-    <div className={cx("scr-league-bracket-match", match.isDead && "scr-league-bracket-match-dead")}>
-      {match.isDead ? (
-        <div className="scr-league-bracket-match-empty">공백(부전 없음)</div>
-      ) : (
-        <>
-          {renderSide("a", teamA, match.teamA)}
-          {renderSide("b", teamB, match.teamB)}
-          {match.setsWonA !== null && match.setsWonB !== null && (
-            <div className="scr-league-bracket-score">{match.setsWonA} : {match.setsWonB}</div>
-          )}
-          {match.scheduledAt && (
-            <div className="scr-league-bracket-when">{formatChallengeSchedule(match.scheduledAt)}</div>
-          )}
-        </>
+    <div className="scr-league-bracket-match-wrap">
+      {/* 맞붙는 두 팀은 테두리로 묶지 않고 선(가지)으로만 연결한다(요청: "경기상대끼리
+          테두리로 묶는게 아니라 선으로 연결하는거야 가지로") — 카드 자체는 서로 독립된
+          채로 뜨고, 오른쪽에 작은 대괄호 선이 둘을 하나로 모아 다음 라운드 커넥터로
+          이어간다(마지막 라운드는 다음 라운드가 없어 선을 안 그린다). */}
+      <div className={cx("scr-league-bracket-match", !isFinal && "scr-league-bracket-match-connect", decided && "scr-league-bracket-match-won")}>
+        {renderSide("a", teamA, match.teamA)}
+        {renderSide("b", teamB, match.teamB)}
+      </div>
+      {match.setsWonA !== null && match.setsWonB !== null && (
+        <div className="scr-league-bracket-score">{match.setsWonA} : {match.setsWonB}</div>
+      )}
+      {match.scheduledAt && (
+        <div className="scr-league-bracket-when">{formatChallengeSchedule(match.scheduledAt)}</div>
       )}
     </div>
   );
@@ -204,7 +208,7 @@ export default function LeagueBracket({
 
   return (
     <div className="scr-league-bracket-panel">
-      <h2 className="scr-league-section-title">대진표 ({league.drawSize}강)</h2>
+      <h2 className="scr-league-section-title">대진표</h2>
       {err && <div className="scr-err">{err}</div>}
       <div className="scr-league-bracket-scroll scr-scroll">
         <div className="scr-league-bracket-grid">
@@ -226,7 +230,7 @@ export default function LeagueBracket({
                   {isFinal ? (
                     matches.map((m) => (
                       <MatchCard
-                        key={m.id} league={league} match={m} canEdit={canEdit} busy={busy}
+                        key={m.id} league={league} match={m} canEdit={canEdit} busy={busy} isFinal
                         onAssign={(side, teamId) => handleAssign(m.id, side, teamId)}
                         onClear={(side) => handleClear(m.id, side)}
                       />
@@ -242,12 +246,12 @@ export default function LeagueBracket({
                         )}
                       >
                         <MatchCard
-                          league={league} match={m1} canEdit={canEdit} busy={busy}
+                          league={league} match={m1} canEdit={canEdit} busy={busy} isFinal={false}
                           onAssign={(side, teamId) => handleAssign(m1.id, side, teamId)}
                           onClear={(side) => handleClear(m1.id, side)}
                         />
                         <MatchCard
-                          league={league} match={m2} canEdit={canEdit} busy={busy}
+                          league={league} match={m2} canEdit={canEdit} busy={busy} isFinal={false}
                           onAssign={(side, teamId) => handleAssign(m2.id, side, teamId)}
                           onClear={(side) => handleClear(m2.id, side)}
                         />
