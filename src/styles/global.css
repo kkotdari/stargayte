@@ -5808,6 +5808,12 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
   display: flex; flex-direction: column; align-items: center; gap: 6px;
   opacity: 0; pointer-events: none; transition: opacity 0.25s ease;
 }
+/* 모바일은 세로 스크롤바를 숨기므로(@media (max-width: 860px) 스크롤바 숨김 규칙)
+   그만큼 오른쪽 가장자리에 더 붙여도 된다(요청: "스크롤 없는 만큼 모바일에서 타임라인을
+   더 오른쪽으로 이동"). */
+@media (max-width: 860px) {
+  .scr-scroll-timeline { right: -6px; }
+}
 .scr-scroll-timeline-visible { opacity: 1; pointer-events: auto; }
 .scr-scroll-timeline-end {
   font-size: var(--fs-micro); font-weight: 800; color: var(--dim); letter-spacing: 0.06em;
