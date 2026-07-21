@@ -6929,15 +6929,18 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
 }
 .scr-league-roster-row-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-body); font-weight: 600; }
 .scr-league-roster-row-remove { flex: 0 0 auto; width: 20px; height: 20px; }
-/* 개인전 — 팀 카드 없이 유저칩만 나열(요청: "팀 카드가 아닌 유저칩이 바로 추가됨"). */
-.scr-league-players-wrap { display: flex; flex-wrap: wrap; gap: 6px; }
+/* 개인전 선수 목록 — 팀전 로스터의 유저칩·드롭다운과 완전히 동일한 디자인/폭(요청). 팀
+   그리드와 같은 셀(minmax 220)에, 칩은 팀 로스터 행과 똑같이(배경 rgba 0.05·라운드 7·
+   테두리 없음). 별도 테두리/배경을 더하지 않는다. */
+.scr-league-players-wrap { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px; }
 .scr-league-player-chip {
-  display: flex; align-items: center; gap: 7px; padding: 5px 9px 5px 6px;
-  background: rgba(255,255,255,0.05); border: 1px solid var(--league-line); border-radius: 999px;
+  display: flex; align-items: center; gap: 7px; padding: 5px 7px;
+  background: rgba(255,255,255,0.05); border: none; border-radius: 7px;
 }
-.scr-league-player-chip-name { font-size: var(--fs-body); font-weight: 600; }
+.scr-league-player-chip-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-body); font-weight: 600; }
 .scr-league-player-chip-remove { flex: 0 0 auto; width: 20px; height: 20px; }
-.scr-league-player-chip-pick { min-width: 180px; }
+/* 선택 드롭다운 자리 — 팀전 드롭다운처럼 칩 배경/패딩 없이 Select만 셀을 채운다. */
+.scr-league-player-chip-pick { background: none; border: none; padding: 0; min-width: 0; }
 
 /* 대진표 — 각 팀 슬롯의 좌표를 React에서 직접 계산해 position:absolute로 배치하고,
    연결선은 그 좌표를 그대로 잇는 SVG로 그린다(요청: "브라켓 수정... 좌표를 직접
