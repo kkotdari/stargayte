@@ -53,7 +53,7 @@ export default function AuthScreen() {
         {tab === "login" ? (
           // 로그인 카드도 회원가입 카드처럼 테두리 없이 반투명 유리 배경만(요청: "테두리 제거").
           <div className="scr-auth-card scr-auth-card-plain">
-            <LoginForm onSignup={() => setTab("signup")} />
+            <LoginForm />
           </div>
         ) : (
           <div className="scr-auth-card scr-auth-card-plain">
@@ -64,6 +64,13 @@ export default function AuthScreen() {
           </div>
         )}
       </div>
+      {/* 회원가입 링크 — 아이콘이 아니라 텍스트로, 화면 최하단 가운데에 둔다(요청). 로그인
+          탭에서만 보인다(회원가입 탭엔 이미 뒤로가기가 있다). */}
+      {tab === "login" && (
+        <button type="button" className="scr-link-btn scr-auth-signup-link" onClick={() => setTab("signup")}>
+          회원가입
+        </button>
+      )}
     </div>
   );
 }

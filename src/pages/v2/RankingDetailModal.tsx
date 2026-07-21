@@ -80,10 +80,10 @@ export default function RankingDetailModal({
     setMatchesLoading(true);
     setMatchesErr("");
     // 이력을 지금 보고 있는 기간으로 좁힌다 — 아래에 병기하는 경기당 레이팅 변화(Δ)를 이
-    // 기간의 경기들에 대해 보여준다. 정렬은 오래된 순(요청: "경기이력을 역순이 아닌
-    // 정순으로") — 기본값(latest, 최신순)이 아니라 명시적으로 oldest를 지정한다.
+    // 기간의 경기들에 대해 보여준다. 정렬은 최신순(날짜 역순 — 요청: "경기이력은 날짜 역순으로
+    // 복귀").
     api.getMatchesPage({
-      teamMemberIds: memberIdsKey.split(","), matchType, sort: "oldest",
+      teamMemberIds: memberIdsKey.split(","), matchType, sort: "latest",
       dateFrom: period.from, dateTo: period.to, limit: HISTORY_LIMIT,
     })
       .then((page) => { if (!cancelled) setMatches(page.items); })

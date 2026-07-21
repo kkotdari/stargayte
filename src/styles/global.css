@@ -380,10 +380,14 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
 /* 아이디 저장 체크박스는 카드 왼쪽 끝에 바로 붙지 않게 살짝 안쪽으로 들여쓴다. */
 .scr-auth-remember { margin-left: 6px; }
 /* 회원가입 링크는 카드 안이 아니라 화면 전체 기준 우하단 구석에 — 밑줄 없이. */
+/* 회원가입 링크 — 화면 최하단 가운데(요청). 텍스트, 한 스텝 축소(caption→micro), 바닥에
+   바짝 붙지 않게 하단 패딩(+안전영역). */
 .scr-auth-signup-link {
-  position: fixed; right: 20px; bottom: 20px; z-index: 1;
-  font-size: var(--fs-caption); color: var(--muted); text-decoration: none;
+  position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: calc(18px + env(safe-area-inset-bottom, 0px)); z-index: 1;
+  font-size: var(--fs-micro); color: var(--muted); text-decoration: none;
 }
+.scr-auth-signup-link:hover { color: var(--point); }
 .scr-auth-signup-link:hover { color: var(--text); }
 .scr-auth-back-btn { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-caption); color: var(--muted); margin-bottom: 14px; text-decoration: none; }
 .scr-auth-back-btn:hover { color: var(--point); }
