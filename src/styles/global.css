@@ -6860,8 +6860,11 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
 .scr-menu-pop-drop .scr-menu-pop-opt-active {
   background: var(--dd-active-bg); color: var(--text); font-weight: 700;
 }
+/* 알약 배경만 지우고 패딩(3px 8px)은 비액티브 라벨과 똑같이 유지한다 — 예전엔 여기서
+   padding:0으로 지워, 액티브 항목만 글자가 8px 왼쪽으로 튀어나와(들여쓰기가 달라) 보였다
+   (요청: "액티브와 아닌것 들여쓰기가 다른것 해결"). */
 .scr-menu-pop-drop .scr-menu-pop-opt-active .scr-menu-pop-opt-label {
-  background: none; padding: 0;
+  background: none;
 }
 
 /* 드롭다운 스크롤바도 반투명 흰(다크)/검(라이트)으로 통일(요청) — --overlay-rgb가 테마를 따른다. */
