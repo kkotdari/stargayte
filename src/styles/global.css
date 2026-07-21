@@ -6831,6 +6831,9 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
 .scr-league-screen {
   --league-line: rgba(255,255,255,0.22);
   --league-panel: transparent;
+  /* 대진표 "진출팀" 표시(연결선/카드 강조)에 쓰는 라임녹색(요청: "진출팀 표시 포인트
+     컬러는 라임녹색") — 앱 기본 --point(호박색)와 별개로 리그 화면에서만 쓴다. */
+  --league-advance: #a3e635;
 }
 .scr-league-toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
 .scr-league-select { flex: 1 1 auto; min-width: 0; }
@@ -6903,12 +6906,12 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
 .scr-league-player-chip-remove { flex: 0 0 auto; width: 20px; height: 20px; }
 .scr-league-player-chip-pick { min-width: 180px; }
 
-/* 대진표 — 라운드를 가로로 늘어놓고 각 라운드 안에서는 세로로 경기 카드를 쌓는다.
-   토너먼트답게 인접한 두 경기를 하나의 "짝(pair)" 상자로 묶어 그 오른쪽에 다음 라운드로
-   모이는 커넥터 선을 그린다(요청: "토너먼트답게 선으로 이어서... 가운데로 타고타고
-   올라가는 식"). 짝의 위/아래 절반 지점에서 선이 시작해 가운데(다음 칸)로 모인다 —
-   경기 카드 높이가 로스터 인원수에 따라 조금씩 달라질 수 있어(1~4명) 완벽히 수학적으로
-   정확하진 않지만, 비슷한 인원 구성에서는 잘 맞는다. */
+/* 대진표 — 각 팀 슬롯의 좌표를 React에서 직접 계산해 position:absolute로 배치하고,
+   연결선은 그 좌표를 그대로 잇는 SVG로 그린다(요청: "브라켓 수정... 좌표를 직접
+   계산해서 정확히 배치하는 방식으로"). CSS flexbox 중첩만으로 "짝 커넥터 중심"을
+   근사하던 이전 방식은 라운드/로스터 인원수가 달라질 때마다 계속 어긋났다 — 카드
+   높이를 고정값(CARD_H, JS)으로 통일해 쓰므로 N라운드 M번째 매치는 항상 (N-1)
+   라운드의 두 매치 정중앙에 수학적으로 정확히 온다. */
 .scr-league-bracket-panel { display: flex; flex-direction: column; gap: 10px; padding-top: 4px; border-top: 1px solid var(--league-line); }
 /* 모바일에서 가로 스크롤 — 전적통계 표(.scr-stat-table)와 같은 패턴(요청: "모바일에선
    통계 화면처럼 가로 스크롤 활용"). 세로축은 페이지로 넘겨(overscroll-behavior-x만). */
@@ -6918,106 +6921,34 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
      "더 볼 게 있는지" 알아채기 어렵다는 피드백(요청: "스크롤바 처리 필요")에 대응. */
   padding-bottom: 10px;
 }
-/* --league-bracket-gap을 그리드 간격과 커넥터 선 길이 양쪽에서 같이 참조한다 — 값이
-   둘로 따로 박혀 있으면 커넥터가 다음 라운드 칸 절반 앞에서 끊겨 떠 보인다. 하나로 묶어
-   항상 정확히 다음 칸 왼쪽 끝까지 닿게 한다. */
-.scr-league-bracket-grid {
-  --league-bracket-gap: 36px;
-  display: flex; align-items: stretch; gap: var(--league-bracket-gap); padding: 6px 4px 10px;
-}
-.scr-league-bracket-col { display: flex; flex-direction: column; min-width: 172px; flex: 0 0 auto; }
+.scr-league-bracket-heads { display: flex; padding: 0 4px 8px; }
 .scr-league-bracket-col-head {
-  font-size: var(--fs-caption); font-weight: 700; color: var(--muted); text-align: center;
-  padding-bottom: 8px;
+  flex: 0 0 auto; font-size: var(--fs-caption); font-weight: 700; color: var(--muted); text-align: center;
 }
-/* 1라운드(리프가 가장 많은 라운드)는 내용물(로스터 카드) 높이를 그대로 써서 이 칸이
-   grid 전체의 기준 높이를 정한다(align-items:stretch로 2라운드부터는 이 높이에 맞춰
-   늘어난다) — space-around로 자연스러운 높이 그대로 분배한다. 2라운드부터는(-stretch
-   수정자, JSX에서 round>1일 때 붙임) 칸 높이가 이미 1라운드에 맞춰 정해진 상태이므로
-   그 안에서 짝/경기를 flex:1로 정확히 등분해야 1라운드 커넥터 중심과 어긋나지 않는다
-   — 로스터 카드(1라운드) 대신 "팀 배정" 드롭다운 한 줄(2라운드+)처럼 내용물 높이가
-   훨씬 짧아도 항상 칸을 리프 개수만큼 정확히 등분한다. 주의: 이 flex:1 1 0 +
-   min-height:0을 1라운드 자신에도 걸면 기준으로 삼을 높이 자체가 사라져 grid 전체가
-   0으로 찌그러진다(실제 발생한 회귀 — flex-basis:0인 자식은 min-height:auto가 주는
-   content 기반 최소 높이가 없으면 아예 높이가 없다고 계산된다). */
-.scr-league-bracket-col-matches { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: space-around; gap: 14px; }
-.scr-league-bracket-pair {
-  position: relative; display: flex; flex-direction: column; justify-content: center; gap: 10px;
+.scr-league-bracket-canvas { position: relative; margin: 6px 4px 0; }
+.scr-league-bracket-svg { position: absolute; top: 0; left: 0; overflow: visible; pointer-events: none; }
+/* 선은 흰 톤(요청: "선은 흰색")이지만 더 진하게(요청: "브라켓 선 색깔 더 진하게") —
+   기본 --league-line은 옅은 반투명이라 그 위에 불투명도를 더 준 값을 따로 쓴다.
+   이긴(진출한) 쪽 선만 굵고 라임녹색으로 강조한다(요청: "이긴쪽의 선이 두껍거나
+   포인트색으로 표시되는 방식", "진출팀 표시 포인트 컬러는 라임녹색"). 꺾이는 부분은
+   곡선 없이 직각으로(요청: "가지가 합쳐지는 부분은 직각으로 표현해줘"). */
+.scr-league-bracket-line { fill: none; stroke: rgba(255,255,255,0.45); stroke-width: 1.25; }
+.scr-league-bracket-line-won { stroke: var(--league-advance); stroke-width: 2; }
+.scr-league-bracket-slot { position: absolute; box-sizing: border-box; }
+.scr-league-bracket-badge {
+  position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column;
+  align-items: center; gap: 1px; pointer-events: none;
 }
-.scr-league-bracket-pair-stretch { flex: 1 1 0; min-height: 0; }
-/* 짝 상자(경기 두 개) 오른쪽에서 다음 라운드 칸까지 이어지는 커넥터 — 위/아래 절반을
-   각각 별도 가상요소(::before/::after)로 그려, 결과가 난 쪽 선만 굵게+포인트색으로
-   강조한다(요청: "이긴쪽의 선이 두껍거나 포인트색으로 표시되는 방식", 참고 이미지 기준
-   — 부전승으로 자동 결정된 경기도 winnerTeamId가 있으므로 똑같이 강조된다, 요청:
-   "부전승팀이 갑자기 대진에서 제외돼"의 수정). 위쪽은 아래로, 아래쪽은 위로 꺾여
-   가운데(다음 칸의 세로 중심)에서 만나고, 가로 길이를 그리드 간격과 정확히 맞춰 다음
-   칸 왼쪽 끝에 선이 딱 닿는다. 색은 흰 톤 선(요청: "선은 흰색"). */
-.scr-league-bracket-pair::before, .scr-league-bracket-pair::after {
-  content: ""; position: absolute; left: 100%; width: var(--league-bracket-gap);
-  border-right: 2px solid var(--league-line); transition: border-color .15s;
-}
-.scr-league-bracket-pair::before {
-  top: 25%; height: 25%; border-top: 2px solid var(--league-line); border-top-right-radius: 10px;
-}
-.scr-league-bracket-pair::after {
-  bottom: 25%; height: 25%; border-bottom: 2px solid var(--league-line); border-bottom-right-radius: 10px;
-}
-.scr-league-bracket-pair-top-won::before {
-  border-color: var(--point); border-width: 3px; z-index: 1;
-}
-.scr-league-bracket-pair-bottom-won::after {
-  border-color: var(--point); border-width: 3px; z-index: 1;
-}
-.scr-league-bracket-match-wrap { display: flex; flex-direction: column; justify-content: center; gap: 4px; }
-.scr-league-bracket-match-wrap-stretch { flex: 1 1 0; min-height: 0; }
-/* 맞붙는 두 팀은 상자로 묶지 않고(요청: "대결팀끼리 묶는 테두리를 없애고 대결팀끼리
-   브라켓으로 연결해야돼"), .scr-league-bracket-pair와 똑같은 quarter-point 기법으로 두
-   팀 슬롯 사이를 선으로 잇는다 — margin-right로 폭을 확보해 그 연결점이 그대로
-   .scr-league-bracket-pair 커넥터의 시작점이 되고(container가 margin만큼 자동으로
-   넓어짐), 두 단계 선이 한 줄처럼 이어져 보인다. */
-.scr-league-bracket-match {
-  position: relative; display: flex; flex-direction: column; gap: 8px;
-  margin-right: var(--league-match-connect-gap, 16px);
-}
-.scr-league-bracket-match::before, .scr-league-bracket-match::after {
-  content: ""; position: absolute; left: 100%; width: var(--league-match-connect-gap, 16px);
-  border-right: 2px solid var(--league-line); transition: border-color .15s;
-}
-.scr-league-bracket-match::before {
-  top: 25%; height: 25%; border-top: 2px solid var(--league-line); border-top-right-radius: 8px;
-}
-.scr-league-bracket-match::after {
-  bottom: 25%; height: 25%; border-bottom: 2px solid var(--league-line); border-bottom-right-radius: 8px;
-}
-.scr-league-bracket-match-a-won::before { border-color: var(--point); border-width: 3px; z-index: 1; }
-.scr-league-bracket-match-b-won::after { border-color: var(--point); border-width: 3px; z-index: 1; }
-/* 죽은(is_dead, 부전승 상대가 구조적으로 없는) 칸만 예외적으로 자리표시 상자를 그린다
-   — 실제 대결이 없으니 연결선 대신 점선 박스. 짝 커넥터가 두 자식의 높이를 반반으로
-   가정하므로 크기는 실제 경기와 맞춘다. */
-.scr-league-bracket-match-void {
-  margin-right: 0; align-items: center; justify-content: center; opacity: 0.5;
-  border: 1px dashed var(--league-line); border-radius: 10px; padding: 10px;
-}
-.scr-league-bracket-match-void::before, .scr-league-bracket-match-void::after { content: none; }
+.scr-league-bracket-team-card-win { box-shadow: 0 0 0 2px var(--league-advance) inset; }
 /* 팀/선수 카드는 테마와 무관하게 항상 하얀 배경 + 검정 글씨(요청: "팀카드는 하얀색
    배경에 검은글씨와 아바타") — 대진표 특성상 흰 유니폼 카드처럼 또렷하게 구분되길
-   바란 것으로 보고, 다크/라이트 테마 변수 대신 고정값을 쓴다. */
+   바란 것으로 보고, 다크/라이트 테마 변수 대신 고정값을 쓴다. 카드는 항상 부모
+   (.scr-league-bracket-slot, JS가 좌표와 함께 고정 높이를 준다)를 꽉 채운다. */
 .scr-league-bracket-team-card {
-  display: flex; align-items: center; gap: 7px; padding: 6px 8px; width: 100%;
-  background: #fff; color: #10151a; border-radius: 8px; min-height: 34px;
-  border: none; font: inherit; text-align: left;
+  display: flex; align-items: center; gap: 7px; padding: 6px 8px; width: 100%; height: 100%;
+  background: #fff; color: #10151a; border-radius: 8px;
+  border: none; font: inherit; text-align: left; box-sizing: border-box;
 }
-.scr-league-bracket-team-card-win { box-shadow: 0 0 0 2px var(--win) inset; }
-/* 팀전 카드 높이를 로스터 인원수(1~4명)와 무관하게 통일한다 — 짝(pair) 커넥터가
-   두 자식의 높이를 반반(25%/75%)으로 가정해 위치를 잡는데, 로스터가 짧은 매치와
-   긴 매치가 섞이면 그 가정이 깨져 이긴 팀과 연결된 선이 카드 중심을 비껴간다(요청:
-   "두 팀이 붙으면 그 브라켓이 합쳐진 하나의 선에 이긴 팀이 연결돼야해",
-   "1,2번 시드의 가운데에 있어야해" — 짝 안의 두 경기 높이가 서로 달라 중심이
-   밀렸었다). 4명 로스터 기준 높이로 고정하고 짧은 내용은(align-items:center로)
-   가운데 정렬한다 — 이제 모든 1라운드 매치가 같은 높이라 25/75% 계산이 항상
-   정확하다. 개인전(로스터 항상 1명)과 모바일 컴팩트 모드는 애초에 불균형이 없어
-   적용하지 않는다. */
-.scr-league-bracket-team-card-uniform { min-height: 100px; }
 .scr-league-bracket-team-card-label {
   flex: 0 0 auto; font-weight: 800; font-size: var(--fs-micro); color: #10151a;
   width: 16px; text-align: center;
@@ -7055,17 +6986,14 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
     width: auto; font-size: var(--fs-body);
   }
 }
-/* 팀 카드(.scr-league-bracket-team-card)와 박스 모델(패딩/최소높이)을 맞춘다 — 부전/
-   미정처럼 빈 자리가 실제 카드보다 훨씬 짧으면 짝 커넥터의 25/75% 중심 계산이
-   틀어져 "이긴 팀과 연결된 선"이 카드 중심을 비껴간다(요청: "두 팀이 붙으면 그
-   브라켓이 합쳐진 하나의 선에 이긴 팀이 연결돼야해"). 로스터가 여러 명이라 카드가
-   더 길어지는 경우까지 완벽히 맞추진 못하지만(그런 경우는 애초에 두 자리 모두 실제
-   카드라 이 규칙과 무관), 카드-대-빈자리 조합에서는 이제 높이가 맞는다. */
+/* 빈 자리("미정"/"부전"/"공백")도 부모(.scr-league-bracket-slot)를 꽉 채운다 — 이제
+   모든 라운드가 좌표로 정확히 배치되므로 카드-대-빈자리 높이를 굳이 맞출 필요가
+   없다(고정 CARD_H를 부모가 이미 강제한다). */
 .scr-league-bracket-team-empty {
   display: flex; align-items: center; justify-content: center;
-  padding: 6px 8px; min-height: 34px; box-sizing: border-box;
+  padding: 6px 8px; width: 100%; height: 100%; box-sizing: border-box;
   text-align: center; font-size: var(--fs-caption); color: var(--dim);
-  border: 1px dashed var(--line); border-radius: 8px; width: 100%;
+  border: 1px dashed var(--line); border-radius: 8px;
 }
 /* 개인전 1라운드 수정 모드 — 로스터 자리에 드롭다운이 그대로 들어간다(빈 슬롯이면
    "미지정"이 선택된 채로, 하얀 카드는 그대로라 팀원 목록만 없는 것과 같은 모양이다,
