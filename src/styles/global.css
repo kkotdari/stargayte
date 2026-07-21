@@ -6866,18 +6866,38 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
 .scr-league-teams-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .scr-league-section-title { font-size: var(--fs-body); font-weight: 800; color: var(--dim); letter-spacing: 0.02em; margin: 0; }
 .scr-league-teams-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+/* 완전 투명 글래스 패널(요청: "팀 카드 투명 패널로 교체") — 테두리 대신 다크모드 팝업
+   공통 원칙과 같은 위/아래 반사광(inset)으로 카드 경계를 표현한다(요청: "팀 목록 팀
+   패널 테두리 제거 반사광 이용" — .scr-cselect-drop과 같은 기법). */
 .scr-league-team-card {
   display: flex; flex-direction: column; gap: 6px;
-  padding: 12px; border: 1px solid var(--league-line); border-radius: 12px; background: var(--league-panel);
+  padding: 12px; border: none; border-radius: 12px; background: transparent;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -1px 0 rgba(255,255,255,0.04);
 }
-.scr-league-team-card-head { display: flex; align-items: center; justify-content: space-between; }
-.scr-league-team-label { font-size: var(--fs-body); font-weight: 800; }
-.scr-league-team-roster-readonly { display: flex; flex-wrap: wrap; gap: 6px; }
-.scr-league-roster-chip {
-  padding: 3px 9px; border-radius: 999px; background: rgba(255,255,255,0.08);
-  font-size: var(--fs-caption); font-weight: 600;
-}
+/* 헤더 한 줄에 팀명 + 선수 추가(아이콘) + 삭제(아이콘)를 모두 두고 "로스터" 라벨
+   줄은 아예 없앤다(요청: "팀카드 선수추가 아이콘으로 대체하고 팀명 옆으로 이동,
+   로스터라는 라벨 제거해서 한줄 없앰"). */
+.scr-league-team-card-head { display: flex; align-items: center; gap: 4px; }
+.scr-league-team-label { font-size: var(--fs-body); font-weight: 800; flex: 1 1 auto; }
 .scr-league-team-card-busy { display: flex; justify-content: center; padding: 4px 0; }
+/* 로스터 한 줄당 하나의 얇은 행 — 유저칩을 이전보다 20% 작게(요청: "팀카드 유저칩
+   크기 20프로 축소" — 아바타 20px→16px, 패딩/글자도 비례해 줄임). */
+.scr-league-roster-list { display: flex; flex-direction: column; gap: 4px; }
+.scr-league-roster-row {
+  display: flex; align-items: center; gap: 6px; padding: 4px 6px;
+  background: rgba(255,255,255,0.05); border-radius: 7px;
+}
+.scr-league-roster-row-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-caption); font-weight: 600; }
+.scr-league-roster-row-remove { flex: 0 0 auto; width: 18px; height: 18px; }
+/* 개인전 — 팀 카드 없이 유저칩만 나열(요청: "팀 카드가 아닌 유저칩이 바로 추가됨"). */
+.scr-league-players-wrap { display: flex; flex-wrap: wrap; gap: 6px; }
+.scr-league-player-chip {
+  display: flex; align-items: center; gap: 6px; padding: 4px 8px 4px 5px;
+  background: rgba(255,255,255,0.05); border: 1px solid var(--league-line); border-radius: 999px;
+}
+.scr-league-player-chip-name { font-size: var(--fs-caption); font-weight: 600; }
+.scr-league-player-chip-remove { flex: 0 0 auto; width: 18px; height: 18px; }
+.scr-league-player-chip-pick { min-width: 180px; }
 
 /* 대진표 — 라운드를 가로로 늘어놓고 각 라운드 안에서는 세로로 경기 카드를 쌓는다.
    토너먼트답게 인접한 두 경기를 하나의 "짝(pair)" 상자로 묶어 그 오른쪽에 다음 라운드로
@@ -6890,6 +6910,9 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
    통계 화면처럼 가로 스크롤 활용"). 세로축은 페이지로 넘겨(overscroll-behavior-x만). */
 .scr-league-bracket-scroll {
   overflow-x: auto; overscroll-behavior-x: none; -webkit-overflow-scrolling: touch;
+  /* 스크롤바가 마지막 라운드 카드 바로 밑에 겹쳐 안 보이지 않게 여유를 준다 — 잘려서
+     "더 볼 게 있는지" 알아채기 어렵다는 피드백(요청: "스크롤바 처리 필요")에 대응. */
+  padding-bottom: 10px;
 }
 /* --league-bracket-gap을 그리드 간격과 커넥터 선 길이 양쪽에서 같이 참조한다 — 값이
    둘로 따로 박혀 있으면 커넥터가 다음 라운드 칸 절반 앞에서 끊겨 떠 보인다. 하나로 묶어
@@ -7006,6 +7029,9 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
   display: flex; align-items: center; gap: 5px; font-size: var(--fs-micro); font-weight: 700;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #10151a;
 }
+/* 대진표 로스터 프사는 동그랗게(요청: "대진표의 아바타 동그랗게 처리") — Avatar 기본은
+   각진 사각형(size 비례 radius)이라 여기서만 원형으로 덮어쓴다. */
+.scr-league-bracket-team-card-member .scr-avatar { border-radius: 50% !important; }
 /* 모바일에서만 2라운드 이상은 로스터 대신 팀명(라벨)만 — 대진표가 라운드를 거듭할수록
    옆으로 넓어지는 걸 아낀다(요청: "팀전, 모바일인 경우 2라운드부터는 팀명만 노출").
    데스크톱은 이 규칙 없이 항상 로스터 전원을 보여준다. */
@@ -7032,4 +7058,4 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
 .scr-league-bracket-generate-row { display: flex; align-items: center; gap: 8px; }
 /* 팀수/대진표 규모는 상한이 없어(요청: "팀수 무제한... 대진표 슬롯 무제한") 목록형
    Select 대신 숫자 입력 하나로 받는다 — 자리만 차지하지 않게 좁게 고정한다. */
-.scr-league-bracket-count-input { width: 72px; flex: 0 0 auto; }
+.scr-league-bracket-count-input { width: 56px; flex: 0 0 auto; padding: 6px 7px; min-height: var(--field-h-sm); }

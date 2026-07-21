@@ -72,9 +72,9 @@ function TeamSlotCard({
 // 포함) 경기의 빈 자리는 "미정"이 아니라 "부전"으로 다르게 표시한다. 드래그앤드랍
 // 편집은 폐기 — 이 드롭다운 방식으로 대체한다.
 function SlotCell({
-  league, match, team, teamRef, canEdit, busy, mode, compact, onAssign, onClear,
+  league, match, side, team, teamRef, canEdit, busy, mode, compact, onAssign, onClear,
 }: {
-  league: League; match: LeagueMatch;
+  league: League; match: LeagueMatch; side: LeagueMatchSide;
   team: LeagueTeam | null; teamRef: { id: number } | null; canEdit: boolean; busy: boolean;
   mode: League["mode"]; compact: boolean;
   onAssign: (teamId: number) => void; onClear: () => void;
@@ -90,15 +90,15 @@ function SlotCell({
     return <TeamSlotCard team={team} isWinner={decided && match.winnerTeamId === teamRef?.id} mode={mode} compact={compact} />;
   }
 
-  // 이 라운드의 다른 자리에 이미 배정된 팀은 목록에서 뺀다(요청: "드롭다운에 현재
-  // 지정된 팀은 안나와야지 그래도") — 지금 이 자리에 배정된 팀 자신은 당연히 남긴다.
-  const usedElsewhereInRound = new Set(
-    league.matches
-      .filter((m) => m.round === match.round && m.id !== match.id)
-      .flatMap((m) => [m.teamA?.id, m.teamB?.id])
-      .filter((id): id is number => id != null),
-  );
-  const pickableTeams = league.teams.filter((t) => !usedElsewhereInRound.has(t.id));
+  // 다른 매치로 옮기는 건 자유롭게 허용하고(요청: "이미 지정된 팀도 드롭다운에 나오고
+  // 새로 지정하면 기존 지정된 슬롯을 미지정으로 지우는 식" — set_match_slot이 옮기기를
+  // 처리한다), 딱 하나만 막는다 — 같은 경기의 반대편에 이미 있는 팀(자기 자신과 붙는
+  // 경기가 되는 것)만 뺀다(요청: "팀 드롭다운에 자기 자신만 빼고 나머지는 다
+  // 나와야돼" — 전에는 이 라운드에서 쓰인 팀을 전부 뺐더니 같은 경기 반대편 선택이
+  // 막혀 있어야 할 자리를 못 채우는 게 아니라, 반대로 반대편에 같은 팀을 또 넣을 수
+  // 있어서 한 경기에 같은 팀이 둘 다 배정되는 버그가 났다).
+  const opponentTeamId = side === "a" ? match.teamB?.id : match.teamA?.id;
+  const pickableTeams = league.teams.filter((t) => t.id !== opponentTeamId);
 
   const handleChange = (v: string) => (v === "" ? onClear() : onAssign(Number(v)));
   const select = mode === "individual" ? (
@@ -148,7 +148,7 @@ function MatchCard({
 
   const renderSide = (side: LeagueMatchSide, team: LeagueTeam | null, teamRef: { id: number } | null) => (
     <SlotCell
-      league={league} match={match} team={team} teamRef={teamRef} canEdit={canEdit} busy={busy}
+      league={league} match={match} side={side} team={team} teamRef={teamRef} canEdit={canEdit} busy={busy}
       mode={league.mode} compact={compact}
       onAssign={(id) => onAssign(side, id)} onClear={() => onClear(side)}
     />
