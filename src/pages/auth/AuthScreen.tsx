@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { ArrowLeft } from "lucide-react";
-import ThemeIcon from "../../components/common/ThemeIcon";
 import LoginForm from "./LoginForm";
 import SignupForm from "./SignupForm";
 import { api } from "../../api/client";
@@ -25,14 +24,14 @@ export default function AuthScreen() {
   return (
     <div className="scr-auth-wrap">
       <div className="scr-bg-grid" />
+      {/* 테마 전환 — 아이콘 대신 텍스트로(요청). */}
       <button
         type="button"
-        className="scr-icon-btn scr-auth-theme-btn"
+        className="scr-header-text-btn scr-auth-theme-btn"
         onClick={() => setLightTheme((v) => !v)}
         aria-label="라이트 테마 토글"
-        title="라이트 테마(흰 배경 + 검은 글씨)"
       >
-        <ThemeIcon size={30} />
+        테마
       </button>
       {/* 로고+폼을 한 덩어리로 묶어 화면 정중앙보다 살짝 위로 올린다(요청: "로그인 폼과
           로고를 20프로 정도 위로 올려줘") — .scr-auth-wrap의 justify-content:center는
@@ -54,7 +53,7 @@ export default function AuthScreen() {
         {tab === "login" ? (
           // 로그인 카드도 회원가입 카드처럼 테두리 없이 반투명 유리 배경만(요청: "테두리 제거").
           <div className="scr-auth-card scr-auth-card-plain">
-            <LoginForm onSignup={() => setTab("signup")} />
+            <LoginForm />
           </div>
         ) : (
           <div className="scr-auth-card scr-auth-card-plain">
@@ -65,6 +64,13 @@ export default function AuthScreen() {
           </div>
         )}
       </div>
+      {/* 회원가입 링크 — 아이콘이 아니라 텍스트로, 화면 최하단 가운데에 둔다(요청). 로그인
+          탭에서만 보인다(회원가입 탭엔 이미 뒤로가기가 있다). */}
+      {tab === "login" && (
+        <button type="button" className="scr-link-btn scr-auth-signup-link" onClick={() => setTab("signup")}>
+          회원가입
+        </button>
+      )}
     </div>
   );
 }

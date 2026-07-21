@@ -326,12 +326,14 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
    위로 올려줘") — 이 그룹 자체의 높이 기준만큼 위로 옮긴다. 이후 "로그인 폼 위치 살짝만
    내려줘"(20% → 14%), "로고와 폼 좀 내려주고"(14% → 6%) 요청으로 계속 줄여왔다. */
 /* 로그인 폼(로고+카드)을 살짝 아래로(요청) — 위로 당기던 값을 줄인다. */
-.scr-auth-hero { display: flex; flex-direction: column; align-items: center; width: 100%; transform: translateY(-1%); }
+/* 회원가입 버튼을 폼 밖(화면 하단)으로 뺐더니 카드가 짧아져 폼이 위로 올라가 보였다 —
+   그만큼 아래로 되돌린다(요청: -1% → +2%). */
+.scr-auth-hero { display: flex; flex-direction: column; align-items: center; width: 100%; transform: translateY(2%); }
 /* PWA(standalone)는 .scr-auth-wrap의 상단 안전영역 패딩(env(safe-area-inset-top))이 더해져
    전체가 그만큼 더 아래로 내려가 있으므로, 일반 브라우저 탭과 같은 느낌을 주려면 여기서만
    더 위로 올려야 한다(요청: "pwa에서만 좀 올려줘"). */
 @media (display-mode: standalone) {
-  .scr-auth-hero { transform: translateY(-10%); }
+  .scr-auth-hero { transform: translateY(-7%); }
 }
 /* 로그인 화면 자체의 라이트 테마 토글 — 헤더 없이도(로그인 전) 화면 취향을 바꿀 수 있게
    화면 위쪽 한 켠에 둔다. */
@@ -339,9 +341,9 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
    사각 아이콘 버튼(.scr-icon-btn)과 달리 로그인 화면 히어로 영역 위에 홀로 떠 있다.
    단일 클래스(.scr-auth-theme-btn)만으론 .scr-icon-btn 기본 규칙(테두리 1px)과 특이도가
    같아 소스 순서상 밀리므로, .scr-icon-btn.scr-auth-theme-btn로 특이도를 올려 이긴다. */
-.scr-icon-btn.scr-auth-theme-btn {
+.scr-auth-theme-btn {
   position: absolute; top: calc(16px + env(safe-area-inset-top, 0px)); right: 16px; z-index: 2;
-  width: 60px; height: 60px; background: transparent; border: none;
+  background: transparent; border: none;
 }
 .scr-icon-btn.scr-auth-theme-btn:hover { border-color: transparent; }
 /* 로그인 카드 위 브랜드 로고 — 헤더와 같은 imageSettings.home_logo를 쓰되, 여기선 화면의
@@ -380,10 +382,14 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
 /* 아이디 저장 체크박스는 카드 왼쪽 끝에 바로 붙지 않게 살짝 안쪽으로 들여쓴다. */
 .scr-auth-remember { margin-left: 6px; }
 /* 회원가입 링크는 카드 안이 아니라 화면 전체 기준 우하단 구석에 — 밑줄 없이. */
+/* 회원가입 링크 — 화면 최하단 가운데(요청). 텍스트, 한 스텝 축소(caption→micro), 바닥에
+   바짝 붙지 않게 하단 패딩(+안전영역). */
 .scr-auth-signup-link {
-  position: fixed; right: 20px; bottom: 20px; z-index: 1;
+  position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: calc(18px + env(safe-area-inset-bottom, 0px)); z-index: 1;
   font-size: var(--fs-caption); color: var(--muted); text-decoration: none;
 }
+.scr-auth-signup-link:hover { color: var(--point); }
 .scr-auth-signup-link:hover { color: var(--text); }
 .scr-auth-back-btn { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-caption); color: var(--muted); margin-bottom: 14px; text-decoration: none; }
 .scr-auth-back-btn:hover { color: var(--point); }
@@ -1004,6 +1010,16 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   padding: 7px 12px;
 }
 .scr-user { display: flex; align-items: center; gap: 8px; flex-shrink: 0; margin-left: auto; }
+/* 헤더의 텍스트 버튼(앱 설치·테마) — 아이콘 대신 텍스트로(요청). 네비 탭과 같은 톤: 평소
+   옅게, 호버 때 또렷하게. 로그인 화면 테마 토글(.scr-auth-theme-btn)도 이 스타일을 쓴다. */
+.scr-header-text-btn {
+  background: transparent; border: none; cursor: pointer; font-family: inherit;
+  color: var(--muted); font-size: var(--fs-caption); font-weight: 600;
+  padding: 6px 8px; border-radius: 8px; white-space: nowrap;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.scr-header-text-btn:hover { color: var(--text); background: rgba(var(--overlay-rgb), 0.08); }
+.scr-header-text-btn.scr-header-text-btn-active { color: var(--text); }
 /* 다른 메뉴 탭(.scr-nav-tab)과 같은 호버 효과로 통일 — 배경 채움 대신 닉네임 글자색만
    밝아진다(평소엔 옅게, 호버 때 또렷하게). */
 .scr-user-chip { display: flex; align-items: center; gap: 8px; background: transparent; border: none; padding: 4px 10px 4px 4px; cursor: pointer; color: var(--muted); border-radius: var(--radius-sm); overflow: hidden; }
@@ -1184,10 +1200,14 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 /* 산정 방식 안내 — 기준점수표를 없앤 자리(필터 아래·목록 위). 항상 보이는 문단 대신 눌러야
    뜨는 툴팁으로 바꾼다(요청: "누르면 툴팁형태로 보이게"). 트리거는 작고 옅게, 눌리면(active)
    살짝 밝아진다. */
-.scr-rank-method-row { position: relative; display: flex; justify-content: center; padding: 3px 0 1px; }
 .scr-rank-method-trigger:disabled { opacity: 0.45; cursor: default; }
-/* 산정 방식은 가운데 그대로 두고, 카카오 공유는 우측 구석에 절대위치로 얹는다(요청). */
-.scr-rank-method-share { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); }
+/* 산정 방식 + 카톡 공유를 타이틀 줄 우측에 정렬한다(요청: 타이틀 로우로 이동, 우측정렬).
+   margin-left:auto로 개인/팀 탭 오른쪽 남은 공간을 밀어 끝에 붙인다. 타이틀/탭이 위로
+   6px 당겨져 있어(translateY) 세로선을 맞추려 같은 값으로 올린다. */
+.scr-rank-title-actions {
+  margin-left: auto; display: inline-flex; align-items: center; gap: 4px;
+  transform: translateY(-6px);
+}
 
 /* ===== PWA "홈 화면에 추가" 유도 배너 + iOS 안내 ===== */
 /* 인앱 브라우저(카톡 등) 안내 배너 — 화면 상단에 고정. 로그인이 유지되는 기본 브라우저로
@@ -4672,8 +4692,9 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
 /* 반응형: 데스크톱 네비 숨기고 하단 탭바 노출 */
 @media (max-width: 860px) {
   .scr-nav-desktop { display: none !important; }
-  /* 테마 버튼은 모바일 헤더에서 뺀다(요청) — 서랍 메뉴의 "테마 바꾸기"로 대체된다. */
-  .scr-user .scr-theme-btn { display: none; }
+  /* 헤더의 텍스트 버튼(앱 설치·테마)은 모바일 헤더에서 뺀다 — 서랍 메뉴의 "테마 바꾸기"/
+     "홈 화면에 추가"로 대체된다(요청은 데스크톱 헤더 대상). */
+  .scr-user .scr-header-text-btn { display: none; }
   /* 닉네임은 웬만하면 잘리지 않고 그대로 보이게 폭을 넉넉히 준다 — 그래도 극단적으로
      긴 닉네임이 로고까지 밀고 들어가지 않도록 화면 폭 기준 상한(말줄임)은 남겨둔다.
      .scr-header-inner가 flex-wrap이라 정말 안 맞으면 다음 줄로 내려갈 뿐, 로고 위에

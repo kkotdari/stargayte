@@ -81,17 +81,14 @@ export default function RankingScreenV2() {
   const [rows, setRows] = useState<RankRowData[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // 개인전/팀전은 집계 대상 경기 자체가 다른 별도 목록이다 — 모드를 바꾸면 검색어만
-  // 초기화한다. 목록(rows)은 더 이상 여기서 비우지 않는다: 비우면 그 순간 패널 높이가
-  // 확 줄었다가 새 데이터로 다시 늘어나는데, 그 사이 브라우저가 지금 스크롤 위치를 줄어든
-  // 높이에 맞춰 top으로 당겨버리는 문제가 있었다(요청: "필터바꾸면 스피너 돌면서
+  // 개인전/팀전은 집계 대상 경기 자체가 다른 별도 목록이지만, 모드를 바꿔도 필터(종족·검색·
+  // 기간)는 그대로 유지한다(요청). 목록(rows)은 여기서 비우지 않는다: 비우면 그 순간 패널
+  // 높이가 확 줄었다가 새 데이터로 다시 늘어나는데, 그 사이 브라우저가 지금 스크롤 위치를
+  // 줄어든 높이에 맞춰 top으로 당겨버리는 문제가 있었다(요청: "필터바꾸면 스피너 돌면서
   // 스크롤탑되는듯"). 대신 새 데이터가 도착할 때까지 이전 목록을 그대로 둔 채 흐리게+
-  // 스피너로 "갱신 중"만 표시한다(아래 JSX, loading && rows.length > 0) — 높이가 안
-  // 줄어드니 스크롤도 안 밀린다.
+  // 스피너로 "갱신 중"만 표시한다(아래 JSX, loading && rows.length > 0).
   const handleModeChange = (m: RankMode) => {
     setMode(m);
-    setSearch("");
-    setRace("all");
   };
   // 기간 단위를 바꾸면 그 단위의 "현재"로 기준점을 되돌린다(월↔연은 anchor 형식 자체가 달라
   // 그대로 둘 수 없다).
@@ -223,6 +220,18 @@ export default function RankingScreenV2() {
         <span className="scr-rank-mode-tabs">
           <PillTabs options={CHART_OPTS} value={mode} onChange={handleModeChange} aria-label="개인전/팀전 선택" />
         </span>
+        {/* 산정 방식 + 카톡 공유를 타이틀 줄 우측에 붙인다(요청). */}
+        <span className="scr-rank-title-actions">
+          <button
+            type="button"
+            className={cx("scr-rank-method-trigger", methodTipOpen && "scr-rank-method-trigger-active")}
+            ref={methodAnchorRef}
+            onClick={() => setMethodTipOpen((v) => !v)}
+          >
+            <Info size={13} /> 산정 방식
+          </button>
+          <KakaoShareButton content={shareRanking} variant="icon" />
+        </span>
       </div>
 
       {/* 기간(단위 토글 + 좌우 이동) 선택을 다른 화면과 같은 필터 모듈 안으로 옮긴다(요청:
@@ -282,20 +291,6 @@ export default function RankingScreenV2() {
         }
       />
 
-      {/* 산정 방식 안내 — 필터들 아래, 순위 목록 바로 위(예전 기준점수표 자리). 항상 보이는
-          문단 대신 눌러야 뜨는 툴팁으로(요청: "누르면 툴팁형태로 보이게"). */}
-      <div className="scr-rank-method-row">
-        <button
-          type="button"
-          className={cx("scr-rank-method-trigger", methodTipOpen && "scr-rank-method-trigger-active")}
-          ref={methodAnchorRef}
-          onClick={() => setMethodTipOpen((v) => !v)}
-        >
-          <Info size={13} /> 산정 방식
-        </button>
-        {/* 우측 구석 카카오톡 공유 — 지금 필터/순위를 카톡으로 보낸다(요청). */}
-        <KakaoShareButton content={shareRanking} variant="icon" className="scr-rank-method-share" />
-      </div>
       {methodTipOpen && createPortal(
         <ul className="scr-rank-method-tooltip" ref={methodTipRef}>
           <li>경기 결과로 실력 레이팅(<b>TrueSkill</b>)을 추정합니다.</li>

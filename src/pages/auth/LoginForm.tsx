@@ -1,15 +1,10 @@
 import { useRef, useState, type FormEvent, type KeyboardEvent } from "react";
-import { UserPlus } from "lucide-react";
 import { useAppStore } from "../../store/appStore";
 import { Spinner } from "../../components/common/Feedback";
 
 const REMEMBER_ID_KEY = "stargayte:rememberedId";
 
-interface LoginFormProps {
-  onSignup: () => void;
-}
-
-export default function LoginForm({ onSignup }: LoginFormProps) {
+export default function LoginForm() {
   const login = useAppStore((s) => s.login);
   const [id, setId] = useState(() => localStorage.getItem(REMEMBER_ID_KEY) ?? "");
   const [pw, setPw] = useState("");
@@ -64,9 +59,6 @@ export default function LoginForm({ onSignup }: LoginFormProps) {
       {err && <div className="scr-err">{err}</div>}
       <button type="submit" className="scr-btn scr-btn-primary scr-auth-submit" disabled={busy}>
         {busy ? <Spinner /> : "로그인"}
-      </button>
-      <button type="button" className="scr-link-btn scr-auth-signup-link" onClick={onSignup} aria-label="회원가입">
-        <UserPlus size={18} />
       </button>
     </form>
   );

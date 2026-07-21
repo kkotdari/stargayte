@@ -4,7 +4,6 @@ import NavTab from "./NavTab";
 import AdminMenu from "./AdminMenu";
 import MobileTabBar from "./MobileTabBar";
 import Avatar from "../components/common/Avatar";
-import ThemeIcon from "../components/common/ThemeIcon";
 import InstallGuideModal from "../components/common/InstallGuideModal";
 import { usePwaInstall } from "../hooks/usePwaInstall";
 import { cx } from "../utils/format";
@@ -216,14 +215,21 @@ export default function Header({
         </nav>
 
         <div className="scr-user">
-          {/* 테마 버튼을 프로필 왼쪽으로(요청: "테마버튼 프로필 좌측 이동"). */}
+          {/* 앱 설치(홈 화면에 추가) — 데스크톱엔 드로어가 없어 헤더에 텍스트로 노출한다(요청).
+              이미 설치(standalone)면 canInstall=false라 안 뜬다. iOS는 안내 모달, 그 외는
+              네이티브 설치 창을 연다. */}
+          {canInstall && (
+            <button type="button" className="scr-header-text-btn" onClick={onInstallClick}>
+              앱 설치
+            </button>
+          )}
+          {/* 테마 전환 — 아이콘 대신 텍스트로(요청). 프로필 왼쪽. */}
           <button
-            className={cx("scr-icon-btn", "scr-theme-btn", lightTheme && "scr-icon-btn-active")}
+            type="button"
+            className={cx("scr-header-text-btn", lightTheme && "scr-header-text-btn-active")}
             onClick={() => setLightTheme((v) => !v)}
-            aria-label="테마 바꾸기"
-            title="테마 바꾸기"
           >
-            <ThemeIcon size={24} />
+            테마
           </button>
           <button
             className="scr-user-chip" ref={profileAnchorRef}
