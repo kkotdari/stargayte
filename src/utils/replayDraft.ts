@@ -14,6 +14,7 @@ export interface UnmatchedPlayer {
   eapm: number | null;
   cmdCount: number | null;
   effectiveCmdCount: number | null;
+  buildCount: number | null;
 }
 
 export interface ReplayDraft {
@@ -81,7 +82,7 @@ async function buildDraft(file: File, members: Member[]): Promise<ReplayDraft> {
         if (p.isComputer) {
           rows.push({
             memberId: newComputerSlotId(), race: p.race, rawName: p.rawName,
-            apm: p.apm, eapm: p.eapm, cmdCount: p.cmdCount, effectiveCmdCount: p.effectiveCmdCount,
+            apm: p.apm, eapm: p.eapm, cmdCount: p.cmdCount, effectiveCmdCount: p.effectiveCmdCount, buildCount: p.buildCount,
           });
           return;
         }
@@ -92,12 +93,12 @@ async function buildDraft(file: File, members: Member[]): Promise<ReplayDraft> {
             // 회원으로 매칭돼도 리플레이 원본 게임 아이디(rawName)는 그대로 들고 간다 —
             // member.battletag는 나중에 바뀔 수 있어 이 값이 이 경기 시점의 유일한 증거다.
             memberId: member.id, race: p.race, rawName: p.rawName,
-            apm: p.apm, eapm: p.eapm, cmdCount: p.cmdCount, effectiveCmdCount: p.effectiveCmdCount,
+            apm: p.apm, eapm: p.eapm, cmdCount: p.cmdCount, effectiveCmdCount: p.effectiveCmdCount, buildCount: p.buildCount,
           });
         } else {
           unmatched.push({
             rawName: p.rawName, race: p.race,
-            apm: p.apm, eapm: p.eapm, cmdCount: p.cmdCount, effectiveCmdCount: p.effectiveCmdCount,
+            apm: p.apm, eapm: p.eapm, cmdCount: p.cmdCount, effectiveCmdCount: p.effectiveCmdCount, buildCount: p.buildCount,
           });
         }
       });
@@ -165,7 +166,7 @@ export function resolveUnmatchedAsUnregistered(d: ReplayDraft): ReplayDraft {
   if (d.unmatchedTeam1.length === 0 && d.unmatchedTeam2.length === 0) return d;
   const toSlot = (p: UnmatchedPlayer): MatchSlot => ({
     memberId: newUnregisteredSlotId(), rawName: p.rawName,
-    race: p.race, apm: p.apm, eapm: p.eapm, cmdCount: p.cmdCount, effectiveCmdCount: p.effectiveCmdCount,
+    race: p.race, apm: p.apm, eapm: p.eapm, cmdCount: p.cmdCount, effectiveCmdCount: p.effectiveCmdCount, buildCount: p.buildCount,
   });
   return {
     ...d,
@@ -220,7 +221,7 @@ async function applyKnownClassifications(drafts: ReplayDraft[]): Promise<ReplayD
       if (!kind) { unmatched.push(p); return; }
       rows.push({
         memberId: kind === "computer" ? newComputerSlotId() : newUnregisteredSlotId(), rawName: p.rawName,
-        race: p.race, apm: p.apm, eapm: p.eapm, cmdCount: p.cmdCount, effectiveCmdCount: p.effectiveCmdCount,
+        race: p.race, apm: p.apm, eapm: p.eapm, cmdCount: p.cmdCount, effectiveCmdCount: p.effectiveCmdCount, buildCount: p.buildCount,
       });
     });
     return { rows, unmatched };

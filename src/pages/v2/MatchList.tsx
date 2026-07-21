@@ -248,7 +248,7 @@ function MatchStatsTable({
       nickname: resolveSlotName(s, players, memberOf),
       rawName: s.rawName ?? "",
       race: s.race,
-      apm: s.apm, cmd: s.cmdCount, eapm: s.eapm, ecmd: s.effectiveCmdCount,
+      apm: s.apm, cmd: s.cmdCount, eapm: s.eapm, ecmd: s.effectiveCmdCount, build: s.buildCount,
     }))
     // 유효커맨드(effectiveCmdCount) 높은 순 — 값이 없으면(수기등록) 맨 아래로.
     .sort((a, b) => (b.ecmd ?? -1) - (a.ecmd ?? -1));
@@ -260,7 +260,7 @@ function MatchStatsTable({
           <tr>
             <th className="scr-mst-left">닉네임</th>
             <th className="scr-mst-left">플레이어</th>
-            <th>종족</th><th>APM</th><th>커맨드</th><th>유효APM</th><th>유효커맨드</th>
+            <th>종족</th><th>APM</th><th>커맨드</th><th>유효APM</th><th>유효커맨드</th><th>생산</th>
           </tr>
         </thead>
         <tbody>
@@ -273,6 +273,7 @@ function MatchStatsTable({
               <td>{n(r.cmd)}</td>
               <td>{n(r.eapm)}</td>
               <td className="scr-mst-ecmd">{n(r.ecmd)}</td>
+              <td className="scr-mst-build">{n(r.build)}</td>
             </tr>
           ))}
         </tbody>

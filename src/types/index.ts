@@ -110,11 +110,14 @@ export interface MatchSlot {
   // 바꾸지 않는다. 컴퓨터/비회원 슬롯은 "컴퓨터 N"/"비회원 N" 같은 순번 라벨 대신 이
   // 값이 있으면 그대로 표시에도 쓴다.
   rawName?: string | null;
-  // 아래 4개는 리플레이 파싱으로 자동 등록된 참가자만 값이 있다 (수동 등록은 전부 null)
+  // 아래 5개는 리플레이 파싱으로 자동 등록된 참가자만 값이 있다 (수동 등록은 전부 null)
   apm: number | null;
   eapm: number | null;
   cmdCount: number | null;
   effectiveCmdCount: number | null;
+  // 커맨드 스트림에서 센 '생산' 지표(유닛 훈련+건물 건설+변태 커맨드 수). 커맨드 스트림을
+  // 못 읽은 리플레이/수동 등록은 null.
+  buildCount: number | null;
 }
 
 // 리플레이(.rep). 서버는 별도 replays 테이블에 풀 메타데이터로 저장하고 경기는 그 id로

@@ -105,7 +105,7 @@ export default function ReplayRegisterModal({ drafts: initialDrafts, truncated =
       // member.battletag는 나중에 바뀔 수 있어 이 값이 이 경기 시점의 유일한 증거다.
       const slot: MatchSlot = {
         memberId: member.id, race: match.race, rawName: match.rawName,
-        apm: match.apm, eapm: match.eapm, cmdCount: match.cmdCount, effectiveCmdCount: match.effectiveCmdCount,
+        apm: match.apm, eapm: match.eapm, cmdCount: match.cmdCount, effectiveCmdCount: match.effectiveCmdCount, buildCount: match.buildCount,
       };
       if (side === "team1") {
         return { ...d, team1: [...d.team1, slot], unmatchedTeam1: d.unmatchedTeam1.filter((p) => p.rawName !== player.rawName) };
@@ -129,7 +129,7 @@ export default function ReplayRegisterModal({ drafts: initialDrafts, truncated =
       if (!match) return d;
       const slot: MatchSlot = {
         memberId: newComputerSlotId(), race: match.race, rawName: match.rawName,
-        apm: match.apm, eapm: match.eapm, cmdCount: match.cmdCount, effectiveCmdCount: match.effectiveCmdCount,
+        apm: match.apm, eapm: match.eapm, cmdCount: match.cmdCount, effectiveCmdCount: match.effectiveCmdCount, buildCount: match.buildCount,
       };
       if (side === "team1") {
         return { ...d, team1: [...d.team1, slot], unmatchedTeam1: d.unmatchedTeam1.filter((p) => p.rawName !== player.rawName) };
@@ -149,7 +149,7 @@ export default function ReplayRegisterModal({ drafts: initialDrafts, truncated =
       if (!match) return d;
       const slot: MatchSlot = {
         memberId: newUnregisteredSlotId(), race: match.race, rawName: match.rawName,
-        apm: match.apm, eapm: match.eapm, cmdCount: match.cmdCount, effectiveCmdCount: match.effectiveCmdCount,
+        apm: match.apm, eapm: match.eapm, cmdCount: match.cmdCount, effectiveCmdCount: match.effectiveCmdCount, buildCount: match.buildCount,
       };
       if (side === "team1") {
         return { ...d, team1: [...d.team1, slot], unmatchedTeam1: d.unmatchedTeam1.filter((p) => p.rawName !== player.rawName) };

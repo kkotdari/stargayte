@@ -3186,6 +3186,8 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-match-stats-table tbody tr + tr td { border-top: 1px solid rgba(var(--overlay-rgb), 0.06); }
 .scr-match-stats-table .scr-mst-raw { color: var(--muted); }
 .scr-match-stats-table .scr-mst-ecmd { font-weight: 800; }
+/* '생산'(빌드/생산 커맨드 수) — 리플레이 커맨드 스트림에서 센 어림 지표라 살짝 강조만 준다. */
+.scr-match-stats-table .scr-mst-build { font-weight: 700; color: var(--point); }
 /* 행 전체가 클릭 대상 — 눌러서 펼치고 접는다(요청). 터치에서 :hover가 스크롤 스침에
    고착되는 문제(다른 클릭 가능 행들과 같은 원칙)를 피하려 실제 hover 입력장치에서만 켠다. */
 .scr-match-trow-clickable { cursor: pointer; }

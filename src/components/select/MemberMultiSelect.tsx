@@ -519,7 +519,7 @@ export default function MemberMultiSelect({
     if (chosenIds.includes(id)) return;
     setRows([...rows, {
       memberId: id, race: resolveDefaultRace(id),
-      apm: null, eapm: null, cmdCount: null, effectiveCmdCount: null,
+      apm: null, eapm: null, cmdCount: null, effectiveCmdCount: null, buildCount: null,
     }]);
     setAdding(false);
   };
@@ -552,7 +552,7 @@ export default function MemberMultiSelect({
   const addComputerSlot = () => {
     setRows([...rows, {
       memberId: newComputerSlotId(), race: "",
-      apm: null, eapm: null, cmdCount: null, effectiveCmdCount: null,
+      apm: null, eapm: null, cmdCount: null, effectiveCmdCount: null, buildCount: null,
     }]);
   };
 

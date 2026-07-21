@@ -28,6 +28,11 @@ export interface ParsedReplayPlayer {
   eapm: number | null;
   cmdCount: number | null;
   effectiveCmdCount: number | null;
+  // 리플레이 커맨드 스트림에서 센 '생산' 지표 — 유닛 훈련/건물 건설/변태(저그) 커맨드의
+  // 총합이다(build order 규모의 거친 대용치). 커맨드 스트림을 못 읽은 리플레이면 null.
+  // 정확한 유닛 수가 아님을 유의: 저그 라바 여러 마리를 한 번에 변태시키면 커맨드는 1개라
+  // 실제 생산량보다 적게 세질 수 있다(어림 지표).
+  buildCount: number | null;
   // 리플레이 슬롯 타입이 "Computer"(AI)인 참가자 — 배틀태그가 있을 리 없으니 회원 매칭을
   // 아예 시도하지 않고 컴퓨터 슬롯으로 바로 채운다.
   isComputer: boolean;
@@ -108,6 +113,13 @@ interface ScrepPlayerDesc {
   EffectiveCmdCount: number;
 }
 
+// screp 커맨드 스트림의 한 항목 — 우리는 생산 지표 집계에 PlayerID와 커맨드 종류(Type.Name)만
+// 쓴다(프레임/좌표/유닛태그 등 나머지 필드는 무시).
+interface ScrepCmd {
+  PlayerID: number;
+  Type?: { Name?: string };
+}
+
 interface ScrepResult {
   Header: {
     StartTime: string;
@@ -119,7 +131,21 @@ interface ScrepResult {
     WinnerTeam: number;
     PlayerDescs: ScrepPlayerDesc[] | null;
   };
+  // cmds:true 옵션을 줘야 채워진다. 옵션이 없거나 파싱 실패면 null.
+  Commands?: { Cmds?: ScrepCmd[] | null } | null;
 }
+
+// '생산'으로 셀 커맨드 종류(screp Type.Name). 유닛 훈련·건물 건설·저그 변태만 센다 —
+// 테크/업그레이드는 '생산량'이 아니라 별개라 제외한다. 이 이름들은 icza/screp가 내려주는
+// 커맨드 타입 이름과 정확히 일치해야 한다(node_modules/screp-js 확인).
+const PRODUCTION_CMD_NAMES = new Set<string>([
+  "Build",          // 건물 건설(저그 드론 건물 변태 시작 포함)
+  "Train",          // 유닛 훈련(배럭/게이트웨이 등)
+  "Train Fighter",  // 인터셉터/스캐럽
+  "Unit Morph",     // 저그 유닛 변태(라바→유닛, 히드라→러커 등)
+  "Building Morph", // 저그 건물 변태(해처리→레어, 크립콜로니→성큰 등)
+  "Hatch",          // 저그 부화 관련 커맨드
+]);
 
 export async function parseReplayFile(file: File): Promise<ParsedReplay> {
   const buf = new Uint8Array(await file.arrayBuffer());
@@ -128,13 +154,31 @@ export async function parseReplayFile(file: File): Promise<ParsedReplay> {
     // screp-js는 GopherJS로 컴파일된 무거운 라이브러리(~1.3MB)라, 리플레이 등록 화면을
     // 실제로 열 때만 불러오도록 동적 import로 별도 청크로 분리한다.
     const { default: Screp } = await import("screp-js");
-    res = (await Screp.parseBuffer(buf)) as ScrepResult;
+    // cmds:true를 줘야 커맨드 스트림(Commands.Cmds)이 채워진다 — 생산 지표 집계에 필요하다.
+    // 기본값은 false라 예전엔 헤더/집계치만 받았다. 커맨드 배열이 커져 파싱이 조금 무거워지지만
+    // 등록 시 한 번뿐이라 감수한다.
+    res = (await Screp.parseBuffer(buf, { cmds: true })) as ScrepResult;
   } catch {
     throw new ReplayParseError(`"${file.name}" 파일을 리플레이로 읽지 못했어요.`);
   }
 
   const descByPlayerId = new Map<number, ScrepPlayerDesc>();
   (res.Computed?.PlayerDescs ?? []).forEach((d) => descByPlayerId.set(d.PlayerID, d));
+
+  // 커맨드 스트림에서 플레이어별 '생산' 커맨드 수를 센다. 스트림을 아예 못 읽었으면(cmds가
+  // null) 지표 자체를 알 수 없다는 뜻이라 전원 null로 남긴다 — 스트림이 있으면 생산 커맨드가
+  // 없던 사람도 0으로 확정된다.
+  const cmds = res.Commands?.Cmds ?? null;
+  const buildCountByPlayerId = cmds
+    ? cmds.reduce((acc, c) => {
+        if (c.Type?.Name && PRODUCTION_CMD_NAMES.has(c.Type.Name)) {
+          acc.set(c.PlayerID, (acc.get(c.PlayerID) ?? 0) + 1);
+        }
+        return acc;
+      }, new Map<number, number>())
+    : null;
+  const buildCountOf = (playerId: number): number | null =>
+    buildCountByPlayerId ? buildCountByPlayerId.get(playerId) ?? 0 : null;
 
   // 확실한 관전자(Observer 플래그/슬롯 타입)는 여기서 걸러낸다. 조작량만으로 의심되는
   // 사람(guessedObservers)은 확정 근거가 아니므로 걸러내지 않고 로스터에 그대로 남겨
@@ -151,6 +195,7 @@ export async function parseReplayFile(file: File): Promise<ParsedReplay> {
         eapm: desc?.EAPM ?? null,
         cmdCount: desc?.CmdCount ?? null,
         effectiveCmdCount: desc?.EffectiveCmdCount ?? null,
+        buildCount: buildCountOf(p.ID),
         isComputer: p.Type?.Name === "Computer",
       };
     });
