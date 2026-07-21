@@ -126,7 +126,7 @@ function TeamModeCard({
               value="" options={options} onChange={pick}
               placeholder="유저 선택" defaultOpen
               onOpenChange={(open) => { if (!open) setPicking(false); }}
-              className="scr-cselect-plain" size="sm"
+              className="scr-cselect-plain scr-league-roster-select" size="sm"
               disabled={busy}
             />
           )}
@@ -221,7 +221,7 @@ function IndividualPlayerChip({
           value="" options={options} onChange={pickPlayer}
           placeholder="선수 선택" defaultOpen
           onOpenChange={(open) => { if (!open && !pickedRef.current) cancelPick(); }}
-          className="scr-cselect-plain" size="sm"
+          className="scr-cselect-plain scr-league-roster-select" size="sm"
           disabled={busy}
         />
       </div>

@@ -234,7 +234,7 @@ export default function LeagueBracket({
         type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm"
         onClick={generate} disabled={busy}
       >
-        {busy && <Spinner size={14} />} 확인
+        {busy && <Spinner size={14} />} 저장
       </button>
     </div>
   );

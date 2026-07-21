@@ -4791,6 +4791,12 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
 .scr-cselect-drop.scr-cselect-plain .scr-cselect-opt {
   font-family: 'Pretendard Variable', Pretendard, 'Noto Sans KR', sans-serif;
 }
+/* 팀 목록에서 선수 추가할 때 뜨는 드롭다운은 폰트를 한 단계 줄인다(요청: "팀 목록
+   선수 추가시 드롭다운의 폰트 1스텝 감소") — 트리거와 포털링된 옵션 목록 양쪽 다. */
+.scr-league-roster-select .scr-cselect-trigger,
+.scr-cselect-drop.scr-league-roster-select .scr-cselect-opt {
+  font-size: var(--fs-caption);
+}
 /* position/top/left/width는 Select.tsx가 body 포털 + 인라인 스타일로 뷰포트 기준 계산해서
    직접 채운다 (모달 본문 등 overflow:hidden/auto 인 스크롤 영역 안에서도 잘리지 않도록) */
 /* touch-action: pan-y — 이 팝오버는 모달 내부 트리거 위에 body 포털로 떠서 모달 본문과
@@ -7057,12 +7063,23 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
 }
 .scr-league-bracket-generate-row { display: flex; align-items: center; gap: 8px; }
 /* 팀수/대진표 규모는 상한이 없어(요청: "팀수 무제한... 대진표 슬롯 무제한") 목록형
-   Select 대신 숫자 입력 하나로 받는다 — 자리만 차지하지 않게 좁게 고정한다. */
-/* 버튼(scr-btn-sm)과 높이를 정확히 맞추고(요청: "인풋창과 버튼 축소 높이 맞추고"),
-   테두리 대신 반사광(inset)으로 정리한다(요청: "인풋창 테두리 제거하고 반사광 그림자
-   이용" — 팀 카드와 같은 기법). min-height 대신 고정 height로 둬야 border 유무에
-   따른 미묘한 높이 차이 없이 버튼과 정확히 일치한다. */
+   Select 대신 숫자 입력 하나로 받는다 — 자리만 차지하지 않게 좁게 고정한다. 인풋과
+   버튼 둘 다 한 단계 더 작게, 높이는 서로 정확히 맞춘다(요청: "인풋창과 버튼 스텝
+   1씩 감소... 위아래 버튼 없애기"). */
+.scr-league-bracket-generate-row .scr-btn-sm {
+  padding: 4px 8px; font-size: var(--fs-caption); height: 28px; min-height: 28px; box-sizing: border-box;
+}
+/* 테두리 대신 반사광(inset)으로 정리하고(요청: "인풋창 테두리 제거하고 반사광 그림자
+   이용" — 팀 카드와 같은 기법), 데이터 폰트 대신 기본 폰트를 쓰고(요청: "기본 폰트
+   사용"), 네이티브 숫자 스피너(위아래 버튼)를 없앤다. min-height 대신 고정 height로
+   둬야 border 유무에 따른 미묘한 높이 차이 없이 버튼과 정확히 일치한다. */
 .scr-league-bracket-count-input {
-  width: 56px; flex: 0 0 auto; padding: 6px 7px; height: var(--field-h-sm); box-sizing: border-box;
+  width: 44px; flex: 0 0 auto; padding: 4px 5px; height: 28px; box-sizing: border-box;
   border: none; box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -1px 0 rgba(255,255,255,0.04);
+  font-size: var(--fs-caption); font-family: 'Pretendard Variable', Pretendard, 'Noto Sans KR', sans-serif;
+  -moz-appearance: textfield; appearance: textfield;
+}
+.scr-league-bracket-count-input::-webkit-outer-spin-button,
+.scr-league-bracket-count-input::-webkit-inner-spin-button {
+  -webkit-appearance: none; margin: 0;
 }
