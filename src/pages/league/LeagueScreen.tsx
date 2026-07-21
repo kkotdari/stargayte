@@ -133,13 +133,17 @@ export default function LeagueScreen() {
           <div className="scr-league-summary-row">
             <span className="scr-league-summary-name">
               {league.name}
-              {isAdmin && (
+              {/* 수정 모드로 "들어가는" 버튼일 뿐, 다시 눌러서 나가는 토글이 아니다
+                  (요청: "수정모드에서 수정버튼 다시 누르면 바로 닫히는거 방지") — 수정
+                  모드에 들어간 뒤에는 이 버튼 자체를 감춰서 다시 눌러도 아무 일이
+                  안 생기는 상태를 아예 없앤다. */}
+              {isAdmin && !editMode && (
                 <button
                   type="button"
-                  className={cx("scr-icon-btn", "scr-league-edit-toggle", editMode && "scr-icon-btn-active")}
-                  onClick={() => setEditMode((v) => !v)}
-                  aria-label={editMode ? "보기 모드로 전환" : "수정 모드로 전환"}
-                  title={editMode ? "보기 모드로 전환" : "수정 모드로 전환"}
+                  className="scr-icon-btn scr-league-edit-toggle"
+                  onClick={() => setEditMode(true)}
+                  aria-label="수정 모드로 전환"
+                  title="수정 모드로 전환"
                 >
                   <Pencil size={13} />
                 </button>
