@@ -6800,9 +6800,12 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
   background: rgba(var(--overlay-rgb), 0.42);
 }
 
-/* ===== 리그(League) — 1단계: 목록/생성/삭제 + 기본 정보만 ===== */
+/* ===== 리그(League) — 1단계(목록/생성/삭제/기본 정보), 2단계(팀/로스터) ===== */
 .scr-league-toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
 .scr-league-select { flex: 1 1 auto; min-width: 0; }
+/* "새 리그" 버튼이 Select와 같은 줄에서 좁아질 때 눌려서 글자가 줄바꿈되던 문제(실제로
+   지적받음) — 버튼은 안 눌리게 고정폭으로 둔다. */
+.scr-league-toolbar > .scr-btn { flex: 0 0 auto; white-space: nowrap; }
 .scr-league-mode-toggle { display: flex; gap: 8px; margin-top: 4px; }
 .scr-league-summary-card {
   display: flex; flex-direction: column; gap: 10px;
@@ -6820,3 +6823,21 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
   display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: var(--fs-caption); color: var(--muted);
 }
 .scr-league-summary-actions { display: flex; justify-content: flex-end; }
+
+/* 팀 패널 — 리그 상세 안에 이어 붙는 섹션. */
+.scr-league-teams-panel { display: flex; flex-direction: column; gap: 10px; padding-top: 4px; border-top: 1px solid var(--line); }
+.scr-league-teams-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.scr-league-section-title { font-size: var(--fs-body); font-weight: 800; color: var(--dim); letter-spacing: 0.02em; margin: 0; }
+.scr-league-teams-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.scr-league-team-card {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel);
+}
+.scr-league-team-card-head { display: flex; align-items: center; justify-content: space-between; }
+.scr-league-team-label { font-size: var(--fs-body); font-weight: 800; }
+.scr-league-team-roster-readonly { display: flex; flex-wrap: wrap; gap: 6px; }
+.scr-league-roster-chip {
+  padding: 3px 9px; border-radius: 999px; background: rgba(var(--overlay-rgb), 0.08);
+  font-size: var(--fs-caption); font-weight: 600;
+}
+.scr-league-team-card-busy { display: flex; justify-content: center; padding: 4px 0; }

@@ -4,6 +4,7 @@ import Select from "../../components/common/Select";
 import { Spinner } from "../../components/common/Feedback";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 import LeagueCreateModal from "../../modals/LeagueCreateModal";
+import LeagueTeamsPanel from "./LeagueTeamsPanel";
 import { api } from "../../api/client";
 import { cx } from "../../utils/format";
 import type { League, LeagueListItem, LeagueMode, LeagueStatus } from "../../types";
@@ -54,6 +55,17 @@ export default function LeagueScreen() {
       ...prev,
     ]);
     setSelectedId(created.id);
+  };
+
+  // 팀 추가/삭제/로스터 편집 등 하위 패널에서 리그를 다시 불러온 뒤 — 상세 화면과
+  // 목록의 팀 수 표시를 같이 최신화한다.
+  const handleLeagueUpdated = (updated: League) => {
+    setLeague(updated);
+    setLeagues((prev) => prev.map((l) => (
+      l.id === updated.id
+        ? { id: updated.id, name: updated.name, mode: updated.mode, status: updated.status, teamCount: updated.teams.length }
+        : l
+    )));
   };
 
   const confirmDelete = async () => {
@@ -126,8 +138,11 @@ export default function LeagueScreen() {
               <Trash2 size={14} /> 리그 삭제
             </button>
           </div>
+
+          <LeagueTeamsPanel league={league} onUpdated={handleLeagueUpdated} />
+
           <p className="scr-hint scr-hint-left">
-            팀 구성/대진표/결과 입력은 다음 업데이트에서 이어서 열려요.
+            대진표 생성/결과 입력은 다음 업데이트에서 이어서 열려요.
           </p>
         </div>
       )}
