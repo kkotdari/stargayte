@@ -5802,9 +5802,10 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
      필요가 없다. 헤더 자리만 남겨두고 최대한 위로 올린다(요청: "타임라인 상단 페이지
      상단까지 올려도 됨 이제(헤더 자리는 남겨놓고)"). 헤더 자체 높이(PC 기준 상단
      패딩 6px + 안쪽 14px×2 + 아바타/로고 콘텐츠 ~38px ≈ 72px)를 다 가려서(신고: "PC에서
-     타임라인 상단이 헤더에 가려짐") 여유를 조금 더 둔다. */
-  top: calc(var(--safe-top) + 88px);
-  bottom: calc(var(--mobile-footer-h) + env(safe-area-inset-bottom, 0px) + 40px);
+     타임라인 상단이 헤더에 가려짐") 여유를 조금 더 둔다 — 다만 위아래 다 너무 넉넉하다는
+     피드백으로(요청: "위아래로 늘려도 됨") 여유값 자체는 줄였다. */
+  top: calc(var(--safe-top) + 76px);
+  bottom: calc(var(--mobile-footer-h) + env(safe-area-inset-bottom, 0px) + 16px);
   display: flex; flex-direction: column; align-items: center; gap: 6px;
   opacity: 0; pointer-events: none; transition: opacity 0.25s ease;
 }
