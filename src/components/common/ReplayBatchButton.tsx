@@ -127,15 +127,28 @@ export default function ReplayBatchButton() {
   const inputRef = useRef<HTMLInputElement>(null);
   const logRef = useRef<HTMLDivElement>(null);
 
-  // <input webkitdirectory>는 고른 폴더의 하위 전체를 재귀적으로 훑어서 파일 목록을 준다 —
-  // 폴더 순회를 직접 구현할 필요가 없다. React가 모르는 표준 밖 속성이라 ref로 직접 심는다
-  // (크롬/엣지/파이어폭스/사파리 모두 지원. 모바일 브라우저엔 폴더 선택 자체가 없다).
+  // 데스크톱은 <input webkitdirectory>로 폴더 하위 전체를 재귀적으로 훑고(폴더 순회 구현
+  // 불필요), 모바일은 폴더 선택 자체가 없어 .rep 파일 여러 개를 직접 고르게 한다(요청:
+  // 모바일에서도 배치등록 오픈). 어느 모드든 아래 runBatch가 .rep만 걸러 처리하므로 동일하게
+  // 동작한다. React가 모르는 표준 밖 속성(webkitdirectory)이라 ref로 직접 심는다.
   const setDirInput = (el: HTMLInputElement | null) => {
     inputRef.current = el;
-    if (el) {
+  };
+  // 폴더 선택창을 열기 직전, 지금이 모바일인지(폴더 선택 불가)에 따라 input 속성을 맞춘다.
+  const openPicker = () => {
+    const el = inputRef.current;
+    if (!el) return;
+    const mobile = window.matchMedia("(max-width: 480px)").matches;
+    if (mobile) {
+      el.removeAttribute("webkitdirectory");
+      el.removeAttribute("directory");
+      el.setAttribute("accept", ".rep,application/octet-stream");
+    } else {
       el.setAttribute("webkitdirectory", "");
       el.setAttribute("directory", "");
+      el.removeAttribute("accept");
     }
+    el.click();
   };
 
   const results = progress.results;
@@ -149,7 +162,7 @@ export default function ReplayBatchButton() {
     modeRef.current = mode;
     excludeComputerRef.current = excludeComputer;
     setMenuOpen(false);
-    inputRef.current?.click();
+    openPicker();
   };
 
   // 폴더 선택까지만 처리하고, 실제 등록 실행은 확인창을 거친 뒤(executeBatch)에만
@@ -166,7 +179,7 @@ export default function ReplayBatchButton() {
     const files = picked.filter((f) => f.name.toLowerCase().endsWith(".rep"));
     // 폴더를 골랐는데 아무 일도 안 일어나면 어디서 막혔는지 알 수가 없다 — 브라우저가 넘겨준
     // 파일 수와 그중 리플레이 수를 항상 먼저 남긴다.
-    setPickedNote(`폴더에서 파일 ${picked.length}개 · 리플레이(.rep) ${files.length}개를 찾았어요.`);
+    setPickedNote(`파일 ${picked.length}개 · 리플레이(.rep) ${files.length}개를 찾았어요.`);
     if (files.length === 0) {
       setStarted(true);
       setErr(picked.length === 0

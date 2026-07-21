@@ -1765,8 +1765,10 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
      같이 참조해야 한다(요청: "아이폰 사파리 가로모드에서 통계의 내용들이 컬럼
      왼쪽으로 벗어나서 렌더링되는 버그"). */
   --scr-stat-col-w: 150px;
-  grid-template-columns: var(--scr-stat-name-w) repeat(4, var(--scr-stat-col-w));
+  /* 데이터 5칸(게임수/승률/생산/유효APM/유효커맨드) — 생산 컬럼 추가로 4→5칸(구분선 4개). */
+  grid-template-columns: var(--scr-stat-name-w) repeat(5, var(--scr-stat-col-w));
   background-image:
+    linear-gradient(var(--line-soft), var(--line-soft)),
     linear-gradient(var(--line-soft), var(--line-soft)),
     linear-gradient(var(--line-soft), var(--line-soft)),
     linear-gradient(var(--line-soft), var(--line-soft));
@@ -1783,17 +1785,19 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   background-position:
     calc(var(--scr-stat-name-w) + var(--scr-stat-col-w) * 1) 0,
     calc(var(--scr-stat-name-w) + var(--scr-stat-col-w) * 2) 0,
-    calc(var(--scr-stat-name-w) + var(--scr-stat-col-w) * 3) 0;
+    calc(var(--scr-stat-name-w) + var(--scr-stat-col-w) * 3) 0,
+    calc(var(--scr-stat-name-w) + var(--scr-stat-col-w) * 4) 0;
 }
 @media (min-width: 900px) {
   .scr-stats-list-panel-v2 .scr-stat-row {
-    grid-template-columns: var(--scr-stat-name-w) repeat(4, minmax(150px, 1fr));
+    grid-template-columns: var(--scr-stat-name-w) repeat(5, minmax(150px, 1fr));
     /* 이 폭부터는 칸이 minmax(_,1fr)로 실제로 남는 폭을 비례해서 나눠 가지므로(칸
-       자체가 늘어남), 구분선도 다시 그 비례(퍼센트) 기준으로 맞아떨어진다. */
+       자체가 늘어남), 구분선도 다시 그 비례(퍼센트) 기준으로 맞아떨어진다. 5칸이라 4등분. */
     background-position:
-      calc(var(--scr-stat-name-w) + (100% - var(--scr-stat-name-w)) * 0.25) 0,
-      calc(var(--scr-stat-name-w) + (100% - var(--scr-stat-name-w)) * 0.5) 0,
-      calc(var(--scr-stat-name-w) + (100% - var(--scr-stat-name-w)) * 0.75) 0;
+      calc(var(--scr-stat-name-w) + (100% - var(--scr-stat-name-w)) * 0.2) 0,
+      calc(var(--scr-stat-name-w) + (100% - var(--scr-stat-name-w)) * 0.4) 0,
+      calc(var(--scr-stat-name-w) + (100% - var(--scr-stat-name-w)) * 0.6) 0,
+      calc(var(--scr-stat-name-w) + (100% - var(--scr-stat-name-w)) * 0.8) 0;
   }
 }
 .scr-stats-list-panel-v2 .scr-stat-name-cell { padding-right: 20px; }
@@ -1864,8 +1868,8 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
      135px로 맞춰야(위 background-position이 참조) 구분선이 실제 칸 폭과 어긋나지
      않는다. */
   .scr-stats-list-panel-v2 .scr-stat-row {
-    --scr-stat-col-w: 135px;
-    grid-template-columns: var(--scr-stat-name-w) repeat(4, var(--scr-stat-col-w));
+    --scr-stat-col-w: 120px;
+    grid-template-columns: var(--scr-stat-name-w) repeat(5, var(--scr-stat-col-w));
   }
 
   /* 게임아이디 그리드 헤더(scr-usermap-row-head)와 같은 크기로 맞춘다. */
@@ -4404,8 +4408,6 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   .scr-admin-panel-preview-arrow svg { width: 14px; height: 9px; }
   .scr-admin-panel-grid { gap: 8px; margin-top: 8px; }
   .scr-admin-panel-phys-btn { font-size: var(--fs-caption); min-height: 50px; padding: 6px 3px; }
-  /* 폴더 선택 자체가 없는 모바일 브라우저라 배치 등록은 아예 보여주지 않는다. */
-  .scr-admin-panel-batch { display: none; }
 }
 
 /* ===== confirm dialog ===== */
@@ -6721,7 +6723,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
   .scr-stats-list-panel-v2 .scr-stat-row {
     --scr-stat-name-w: 173px;
     --scr-stat-col-w: 180px;
-    grid-template-columns: var(--scr-stat-name-w) repeat(4, var(--scr-stat-col-w));
+    grid-template-columns: var(--scr-stat-name-w) repeat(5, var(--scr-stat-col-w));
   }
   /* 서랍메뉴: '전체 메뉴' 타이틀 한 단계 축소(28→20). 테마 바꾸기~메뉴 닫기는 한 스텝 키운다(요청: 14→16). */
   .scr-drawer-head .scr-brand-mark { font-size: var(--fs-subhead); }
