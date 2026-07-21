@@ -256,7 +256,7 @@ export default function ReplayRegisterModal({ drafts: initialDrafts, truncated =
         const payload: NewMatch = {
           // validateReplayDraft가 바로 위에서 빈 승패를 걸러냈으므로 여기선 항상 값이 있다.
           date: d.date, team1: d.team1, team2: d.team2, result: d.result as MatchResult, matchType: d.matchType,
-          note: d.note, replay: d.replay,
+          replay: d.replay,
           mapName: d.mapName || null, gameStartedAt: d.gameStartedAt, durationSeconds: d.durationSeconds,
         };
         await addMatch(payload);
@@ -452,16 +452,6 @@ export default function ReplayRegisterModal({ drafts: initialDrafts, truncated =
               </div>
             )}
 
-            <label className="scr-field">
-              <span className="scr-label">메모</span>
-              <textarea
-                className="scr-input scr-textarea"
-                value={active.note}
-                onChange={(e) => updateActive({ note: e.target.value })}
-                rows={3}
-                disabled={active.excluded}
-              />
-            </label>
           </div>
 
           {err && <div className="scr-err">{err}</div>}

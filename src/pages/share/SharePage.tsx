@@ -85,7 +85,7 @@ export default function SharePage({ target, onExit }: { target: ShareTarget; onE
           <div className="scr-err">{err}</div>
         ) : match ? (
           <div className="scr-share-match">
-            <MatchList rows={rows} memberOf={memberOf} onMemo={() => {}} onDeleted={() => {}} loading={false} />
+            <MatchList rows={rows} memberOf={memberOf} onDeleted={() => {}} loading={false} />
           </div>
         ) : null}
       </div>

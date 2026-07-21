@@ -3,7 +3,6 @@ import { createPortal } from "react-dom";
 import { Upload } from "lucide-react";
 import ReplayLocationHint from "../../components/common/ReplayLocationHint";
 import { Spinner } from "../../components/common/Feedback";
-import MatchMemoModal from "../../modals/MatchMemoModal";
 import ReplayReviewModal from "../../modals/ReplayReviewModal";
 import MatchList, { type SearchListRow } from "./MatchList";
 import SearchFilterBar from "../../components/common/SearchFilterBar";
@@ -14,7 +13,7 @@ import { activeMemberSearchTerms, memberMatchesTerm, splitSearchTerms } from "..
 import { buildReplayDrafts, type ReplayDraft } from "../../utils/replayDraft";
 import { hasAppUpdatePreloadErrorOccurred } from "../../utils/appUpdate";
 import { useCursorPagination } from "../../hooks/useCursorPagination";
-import type { Match, Member, MatchSlot } from "../../types";
+import type { Member, MatchSlot } from "../../types";
 
 const MAX_REPLAY_FILES = 20;
 // 한 번에 최대한 많이 받아 왕복 횟수를 줄인다 — 서버가 허용하는 상한(limit ≤ 100)에 맞춘다.
@@ -43,9 +42,6 @@ export default function MatchScreenV2() {
     });
     return all;
   }, [members, searchTerms]);
-
-  // 회원 누구나 남길 수 있는 가벼운 메모 — 목록 카드의 연필 아이콘을 누르면 연다.
-  const [memoMatch, setMemoMatch] = useState<Match | null>(null);
 
   const replayInputRef = useRef<HTMLInputElement>(null);
   const [parsingReplays, setParsingReplays] = useState(false);
@@ -107,11 +103,14 @@ export default function MatchScreenV2() {
     ));
     if (!hasSearch) return rows;
     // AND — 검색어 전부가 각각(서로 다른 참가자여도 무방) 이 경기 참가자 중 누군가와, 또는
-    // 그 경기의 경기번호(matchNo)와 맞아야 한다(요청: 검색창에서 경기번호로도 찾기).
+    // 그 경기의 경기번호(matchNo)·댓글 내용과 맞아야 한다(요청: 경기번호/댓글 내용으로도 찾기).
     return rows.filter((r) => {
       const slots = [...r.team1, ...r.team2];
       const no = r.raw.matchNo.toLowerCase();
-      return searchTerms.every((term) => no.includes(term) || slots.some((slot) => slotMatchesTerm(slot, term)));
+      const commentText = r.raw.comments.map((c) => c.text).join(" ").toLowerCase();
+      return searchTerms.every((term) =>
+        no.includes(term) || commentText.includes(term) || slots.some((slot) => slotMatchesTerm(slot, term)),
+      );
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- resolveMember/slotMatchesTerm은 members 참조 함수라 매 렌더 새로 만들어져도 무방(값 자체는 members로 충분히 표현됨)
   }, [matches, hasSearch, searchTerms, members]);
@@ -172,21 +171,12 @@ export default function MatchScreenV2() {
         <MatchList
           rows={listRows}
           memberOf={resolveMember}
-          onMemo={(m) => setMemoMatch(m)}
           onDeleted={handleSaved}
           loading={loading}
           highlightMemberIds={matchedIds}
         />
         {loadingMore && <div className="scr-empty"><Spinner size={16} /></div>}
       </div>
-
-      {memoMatch && (
-        <MatchMemoModal
-          match={memoMatch}
-          onClose={() => setMemoMatch(null)}
-          onSaved={handleSaved}
-        />
-      )}
 
       {replayDrafts && (
         <ReplayReviewModal

@@ -13,6 +13,7 @@ import { cx } from "../../utils/format";
 import { attachPopover } from "../../utils/popover";
 import { dateWithDow } from "../../utils/date";
 import KakaoShareButton from "../../components/common/KakaoShareButton";
+import MatchComments from "./MatchComments";
 import type { KakaoShareContent } from "../../utils/kakaoShare";
 import type { Match, Member, MatchSlot, MatchResult } from "../../types";
 
@@ -126,9 +127,6 @@ export interface SearchListRow {
 interface MatchListProps {
   rows: SearchListRow[];
   memberOf: (id: string) => Member | undefined;
-  // 경기 결과 자체(팀/승패 등)를 바꾸는 정식 수정은 더 이상 카드 클릭으로 열지 않는다 —
-  // 대신 회원 누구나 남길 수 있는 가벼운 메모(연필 아이콘)만 이 목록에서 연다.
-  onMemo: (match: Match) => void;
   // 삭제 성공 후 목록을 새로고침하기 위한 콜백(호출부가 이미 쓰는 reload를 그대로 넘겨준다).
   onDeleted: () => void;
   loading: boolean;
@@ -185,10 +183,10 @@ async function downloadReplay(match: Match) {
 // 카드 오른쪽 세로점세개(⋮) — 누르면 메모/리플레이 저장/삭제를 드롭다운 메뉴로 연다(요청).
 // 위치/뒤집기는 다른 드롭다운과 같은 attachPopover, 바깥 클릭/포커스 이동으로 닫는다.
 function MatchActionsMenu({
-  match, canDelete, memberOf, onMemo, onDelete,
+  match, canDelete, memberOf, onDelete,
 }: {
   match: Match; canDelete: boolean; memberOf: (id: string) => Member | undefined;
-  onMemo: (m: Match) => void; onDelete: (m: Match) => void;
+  onDelete: (m: Match) => void;
 }) {
   const [open, setOpen] = useState(false);
   const anchorRef = useRef<HTMLButtonElement>(null);
@@ -212,7 +210,6 @@ function MatchActionsMenu({
   }, [open]);
 
   const items: { key: string; label: string; danger?: boolean; onSelect: () => void }[] = [
-    { key: "memo", label: match.note ? "메모 수정" : "메모", onSelect: () => onMemo(match) },
     ...(match.replay ? [{ key: "download", label: "리플레이 저장", onSelect: () => void downloadReplay(match) }] : []),
     ...(canDelete ? [{ key: "delete", label: "삭제", danger: true, onSelect: () => onDelete(match) }] : []),
   ];
@@ -306,7 +303,7 @@ function MatchStatsTable({
 }
 
 export default function MatchList({
-  rows, memberOf, onMemo, onDeleted, loading, highlightMemberIds,
+  rows, memberOf, onDeleted, loading, highlightMemberIds,
 }: MatchListProps) {
   const groups = groupByDate(rows);
   const user = useAppStore((s) => s.user);
@@ -396,7 +393,7 @@ export default function MatchList({
                   <div className="scr-match-trow-topmeta">
                     <MatchActionsMenu
                       match={r.raw} canDelete={canDelete} memberOf={memberOf}
-                      onMemo={onMemo} onDelete={setDeleteTarget}
+                      onDelete={setDeleteTarget}
                     />
                   </div>
                 </div>
@@ -446,6 +443,8 @@ export default function MatchList({
                           </span>
                           {r.raw.createdBy && <span className="scr-match-trow-by">등록: {r.raw.createdBy.nickname}</span>}
                         </div>
+                        {/* 댓글(메모) 영역 — 게시판 댓글 스타일. 로우 최하단에 붙는다(요청). */}
+                        <MatchComments match={r.raw} />
                       </>
                     )}
                   </div>

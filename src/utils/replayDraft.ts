@@ -33,7 +33,6 @@ export interface ReplayDraft {
   // (실제로 지적받은 문제) — 아무것도 선택되지 않은 상태로 두고 직접 고르게 한다.
   result: MatchResult | "";
   matchType: MatchType;
-  note: string;
   replay: ReplayUpload | null;
   winnerSide: "team1" | "team2" | null;
   // 조작량이 현저히 적다는 이유로 관전자로 "추정해" 뺀 사람들 — 초반에 나간 실제 참가자를
@@ -127,7 +126,6 @@ async function buildDraft(file: File, members: Member[]): Promise<ReplayDraft> {
       // 승자를 못 가려냈으면 아무것도 고르지 않은 채로 둔다(사용자가 반드시 직접 선택).
       result: parsed.winnerSide ?? "",
       matchType: parsed.matchType,
-      note: "",
       replay,
       winnerSide: parsed.winnerSide,
       guessedObservers: parsed.guessedObservers,
@@ -150,7 +148,6 @@ async function buildDraft(file: File, members: Member[]): Promise<ReplayDraft> {
       unmatchedTeam2: [],
       result: "",
       matchType: "0101",
-      note: "",
       replay,
       winnerSide: null,
       guessedObservers: [],

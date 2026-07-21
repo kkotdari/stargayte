@@ -224,7 +224,7 @@ export default function ReplayReviewModal({
         const payload: NewMatch = {
           // validateReplayDraft가 바로 위에서 빈 승패(리플레이가 승자를 못 가려낸 경기)를 걸렀다.
           date: d.date, team1: d.team1, team2: d.team2, result: d.result as MatchResult, matchType: d.matchType,
-          note: d.note, replay: d.replay,
+          replay: d.replay,
           mapName: d.mapName || null, gameStartedAt: d.gameStartedAt, durationSeconds: d.durationSeconds,
         };
         await addMatch(payload);

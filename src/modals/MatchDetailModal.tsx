@@ -252,13 +252,6 @@ export default function MatchDetailModal({ match, onClose, onEdit, onSaved }: Ma
             />
           </div>
 
-          {match.note && (
-            <div className="scr-match-detail-row scr-match-detail-row-block">
-              <span className="scr-label">메모</span>
-              <p className="scr-match-detail-note">{match.note}</p>
-            </div>
-          )}
-
           {match.replay && (
             <div className="scr-match-detail-row">
               <span className="scr-label">리플레이</span>

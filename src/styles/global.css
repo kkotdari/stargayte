@@ -3138,6 +3138,37 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   padding: 2px; border-radius: 4px; line-height: 0;
 }
 .scr-match-trow-no-copy:hover { color: var(--point); background: rgba(var(--overlay-rgb), 0.08); }
+
+/* 펼침 로우 하단 댓글(메모) 영역 — 게시판 댓글 스타일. 목록·입력창은 "너 나와!"(scr-mreq-*)
+   CSS를 그대로 차용한다(요청). 로우 자체가 클릭 토글이라 이 영역은 stopPropagation으로
+   접힘을 막는다. */
+.scr-match-comments { margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(var(--overlay-rgb), 0.08); }
+.scr-match-comments-title {
+  display: flex; align-items: center; gap: 6px;
+  font-size: var(--fs-caption); font-weight: 700; color: var(--dim); margin-bottom: 8px;
+}
+.scr-match-comments-count {
+  display: inline-flex; align-items: center; justify-content: center; min-width: 16px; height: 16px;
+  padding: 0 5px; border-radius: 8px; background: rgba(var(--overlay-rgb), 0.12);
+  color: var(--text); font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums;
+}
+.scr-match-comments-list { margin-bottom: 8px; }
+/* 각 댓글은 상하 여백만(구분선은 옅게) — scr-mreq-item의 카드 톤 대신 콤팩트하게. */
+.scr-match-comment-item { padding: 7px 0; }
+.scr-match-comment-item + .scr-match-comment-item { border-top: 1px solid rgba(var(--overlay-rgb), 0.06); }
+.scr-match-comment-item .scr-mreq-item-top { margin-bottom: 3px; }
+.scr-match-comment-time { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; flex-shrink: 0; }
+.scr-match-comment-text { font-size: var(--fs-caption); }
+.scr-match-comment-icon-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  background: transparent; border: none; color: var(--muted); cursor: pointer;
+  padding: 3px; border-radius: 4px; line-height: 0;
+}
+.scr-match-comment-icon-btn:hover { color: var(--text); background: rgba(var(--overlay-rgb), 0.08); }
+.scr-match-comment-icon-danger:hover { color: var(--loss); background: rgba(220, 70, 70, 0.14); }
+.scr-match-comment-err { margin: 4px 0 8px; }
+/* 입력 줄 — "너 나와!"의 compose-row를 그대로 쓰되(인풋+제출 버튼 한 줄), 상단 여백만 살짝. */
+.scr-match-comment-compose-row { margin-top: 2px; }
 /* 펼침 상세 높이 애니메이션 — grid-template-rows 0fr↔1fr 트릭으로 내용 높이를 몰라도
    부드럽게 늘었다 줄었다 한다(요청: 펼치거나 접을 때 트랜지션). 안쪽은 overflow:hidden로
    접힐 때 잘리게 한다. */

@@ -144,6 +144,31 @@ export interface MatchAuthor {
   nickname: string;
 }
 
+// 경기 댓글(메모)에 언급(@)된 회원 — 렌더 시 인라인 칩으로 표시한다.
+export interface MatchCommentMention {
+  memberId: string;
+  nickname: string;
+}
+
+export interface MatchCommentAuthor {
+  memberId: string;
+  nickname: string;
+  avatar: string | null;
+}
+
+// 경기 하나에 달린 댓글(메모) 한 건 — 게시판 댓글처럼 작성자와 본문(최대 50자)으로 이뤄지고
+// 본인/운영자만 수정·삭제할 수 있다(canEdit). 본문에 @닉네임으로 언급 가능.
+export interface MatchComment {
+  id: number;
+  matchId: number;
+  text: string;
+  author: MatchCommentAuthor;
+  createdAt: string;
+  updatedAt: string;
+  canEdit: boolean;
+  mentions: MatchCommentMention[];
+}
+
 // 저장된 경기
 export interface Match {
   id: number;
@@ -156,17 +181,20 @@ export interface Match {
   team2: MatchSlot[];
   result: MatchResult;
   matchType: MatchType; // 경기유형
-  note: string; // 비고
   replay: Replay | null; // 리플레이(.rep) — 없으면 수기등록
   createdBy: MatchAuthor | null; // 작성자가 탈퇴 등으로 사라졌으면 null
   // 아래 3개는 리플레이 파싱으로만 채워진다 (수동 등록 경기는 항상 null)
   mapName: string | null;
   gameStartedAt: string | null; // ISO 8601 (리플레이 실제 시작 시각 — date와 별개)
   durationSeconds: number | null;
+  // 이 경기에 달린 댓글(메모) — 목록 응답에 함께 실려 온다(오래된 순). 검색창에서 댓글
+  // 내용으로도 필터하고, 펼침 시 하단 댓글 영역에 렌더한다.
+  comments: MatchComment[];
 }
 
 // 경기 생성/수정 요청 (id, 작성자는 서버가 채움). 리플레이는 업로드 payload(id 없음)로 보낸다.
-export type NewMatch = Omit<Match, "id" | "matchNo" | "createdBy" | "replay"> & {
+// 댓글은 별도 API로 관리하므로 경기 저장 payload에는 넣지 않는다.
+export type NewMatch = Omit<Match, "id" | "matchNo" | "createdBy" | "replay" | "comments"> & {
   replay: ReplayUpload | null;
 };
 
