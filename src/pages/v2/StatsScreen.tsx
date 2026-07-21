@@ -32,10 +32,10 @@ const MIN_PLAYS_FOR_STATS = 10;
 
 const EMPTY_STATS: MemberStats = {
   plays: 0, wins: 0, losses: 0, draws: 0, winRate: 0,
-  avgApm: null, avgEapm: null, avgCmd: null, avgEcmd: null,
+  avgApm: null, avgEapm: null, avgCmd: null, avgEcmd: null, avgBuild: null,
 };
 
-type StatSortKey = "name" | "rate" | "plays" | "eapm" | "ecmd";
+type StatSortKey = "name" | "rate" | "plays" | "build" | "eapm" | "ecmd";
 type StatSortDir = "desc" | "asc";
 interface StatSort { key: StatSortKey; dir: StatSortDir }
 
@@ -173,7 +173,7 @@ export default function StatsScreenV2() {
       if (bBelow) return -1;
       return 0;
     };
-    const noAvgLast = (a: (typeof list)[number], b: (typeof list)[number], key: "avgEapm" | "avgEcmd") => {
+    const noAvgLast = (a: (typeof list)[number], b: (typeof list)[number], key: "avgEapm" | "avgEcmd" | "avgBuild") => {
       const aMissing = a.stats.plays < MIN_PLAYS_FOR_STATS || a.stats[key] === null;
       const bMissing = b.stats.plays < MIN_PLAYS_FOR_STATS || b.stats[key] === null;
       if (aMissing && bMissing) return nicknameTiebreak(a, b);
@@ -195,6 +195,9 @@ export default function StatsScreenV2() {
     if (sort.key === "plays") {
       sorted.sort((a, b) => noPlaysLast(a, b) || dirSign * (a.stats.plays - b.stats.plays) || nicknameTiebreak(a, b));
     }
+    if (sort.key === "build") {
+      sorted.sort((a, b) => noAvgLast(a, b, "avgBuild") || dirSign * ((a.stats.avgBuild ?? 0) - (b.stats.avgBuild ?? 0)) || nicknameTiebreak(a, b));
+    }
     if (sort.key === "eapm") {
       sorted.sort((a, b) => noAvgLast(a, b, "avgEapm") || dirSign * ((a.stats.avgEapm ?? 0) - (b.stats.avgEapm ?? 0)) || nicknameTiebreak(a, b));
     }
@@ -206,6 +209,9 @@ export default function StatsScreenV2() {
 
   const maxOverallPlays = useMemo(
     () => Math.max(1, ...cards.map((c) => c.stats.plays)), [cards],
+  );
+  const maxBuild = useMemo(
+    () => Math.max(1, ...cards.map((c) => c.stats.avgBuild ?? 0)), [cards],
   );
   const maxEapm = useMemo(
     () => Math.max(1, ...cards.map((c) => c.stats.avgEapm ?? 0)), [cards],
@@ -285,6 +291,10 @@ export default function StatsScreenV2() {
                 <SortableHead label="게임수" sortKey="plays" sort={sort} onToggle={toggleSort} className="scr-stat-plays-cell" />
                 <SortableHead label="승률" sortKey="rate" sort={sort} onToggle={toggleSort} />
                 <SortableHead
+                  label="생산" sortKey="build" sort={sort} onToggle={toggleSort} className="scr-stat-build-cell"
+                  tooltip="경기당 평균 '생산'(유닛 훈련+건물 건설+저그 변태 커맨드 수) — 리플레이로 등록된 경기만 반영된다. 유닛·건물을 얼마나 뽑고 지었나의 어림 지표."
+                />
+                <SortableHead
                   label="유효APM" sortKey="eapm" sort={sort} onToggle={toggleSort} className="scr-stat-eapm-cell"
                   tooltip="분당 유효 조작 수(EAPM) — 리플레이에서 실제 게임에 영향을 준 명령만 센 APM. 화면 이동·중복 클릭 같은 불필요한 입력은 빠져 순수 조작량에 가깝다."
                 />
@@ -302,6 +312,7 @@ export default function StatsScreenV2() {
                   avatar={false}
                   compact
                   maxOverallPlays={maxOverallPlays}
+                  maxBuild={maxBuild}
                   maxEapm={maxEapm}
                   maxEcmd={maxEcmd}
                 />

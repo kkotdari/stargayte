@@ -1742,7 +1742,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 /* 숫자 칸(게임수/유효APM/유효커맨드)도 전적 칸과 같은 원칙으로 막대 그래프를 곁들인다 —
    승/패 구분이 없는 값 하나라 구간 색 없이 단색 막대로, 가장 높은 값이 칸을 꽉 채우는
    상대값이다(StatsScreen의 maxOverallPlays/maxEapm/maxEcmd 참고). */
-.scr-stat-plays-cell, .scr-stat-eapm-cell, .scr-stat-ecmd-cell { justify-content: center; }
+.scr-stat-plays-cell, .scr-stat-build-cell, .scr-stat-eapm-cell, .scr-stat-ecmd-cell { justify-content: center; }
 /* 표 오른쪽 끝 칸 — 위 .scr-stat-table이 더는 오른쪽 패딩을 안 줘서, 마지막 칸이 직접
    여백을 책임진다(왼쪽은 이름 칸이 자기 padding-left로 책임지는 것과 대칭). */
 .scr-stat-ecmd-cell { padding-right: 20px; }
@@ -3203,6 +3203,8 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-match-stats-table tbody tr + tr td { border-top: 1px solid rgba(var(--overlay-rgb), 0.06); }
 .scr-match-stats-table .scr-mst-raw { color: var(--muted); }
 .scr-match-stats-table .scr-mst-ecmd { font-weight: 800; }
+/* 닉네임 칸: 종족 배지 + 닉네임을 한 줄로(요청 — 종족을 닉네임에 붙임). */
+.scr-match-stats-table .scr-mst-name { display: inline-flex; align-items: center; gap: 6px; }
 /* '생산'(빌드/생산 커맨드 수) — 리플레이 커맨드 스트림에서 센 어림 지표라 살짝 강조만 준다. */
 .scr-match-stats-table .scr-mst-build { font-weight: 700; color: var(--point); }
 /* 행 전체가 클릭 대상 — 눌러서 펼치고 접는다(요청). 터치에서 :hover가 스크롤 스침에

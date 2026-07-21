@@ -193,6 +193,8 @@ export interface MemberStats {
   avgEapm: number | null;
   avgCmd: number | null;
   avgEcmd: number | null;
+  // 경기당 평균 '생산'(유닛 훈련+건물 건설+변태 커맨드 수). 리플레이 등록 경기만 반영, 없으면 null.
+  avgBuild: number | null;
 }
 
 // 서버 집계(GET /api/matches/stats) 응답 — 통계/랭킹 화면이 매치 원본을 직접 스캔하지 않고

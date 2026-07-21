@@ -11,7 +11,8 @@ interface MemberStatRowProps {
   stats: MemberStats;
   // 게임수 칸(ValueBar)의 기준값(이 목록에서 가장 많이 뛴 사람 = 100%).
   maxOverallPlays: number;
-  // 유효APM/유효커맨드 막대의 기준값(이 목록에서 가장 높은 값) — 게임수 막대와 같은 원칙.
+  // 생산/유효APM/유효커맨드 막대의 기준값(이 목록에서 가장 높은 값) — 게임수 막대와 같은 원칙.
+  maxBuild: number;
   maxEapm: number;
   maxEcmd: number;
   // false면 프사를 아예 그리지 않는다 — 닉네임 버튼을 눌러도 프로필은 그대로 열린다.
@@ -25,7 +26,7 @@ interface MemberStatRowProps {
 
 // 전적통계 목록의 테이블 한 행.
 export default function MemberStatRow({
-  member, stats, maxOverallPlays, maxEapm, maxEcmd, avatar = true, compact = false, belowMinPlays = false,
+  member, stats, maxOverallPlays, maxBuild, maxEapm, maxEcmd, avatar = true, compact = false, belowMinPlays = false,
 }: MemberStatRowProps) {
   const openMemberProfile = useAppStore((s) => s.openMemberProfile);
   const [photoOpen, setPhotoOpen] = useState(false);
@@ -50,6 +51,9 @@ export default function MemberStatRow({
       </div>
       <div className="scr-stat-bar-cell">
         <StatBar plays={belowMinPlays ? 0 : stats.plays} wins={stats.wins} draws={stats.draws} losses={stats.losses} winRate={stats.winRate} compact={compact} />
+      </div>
+      <div className="scr-stat-build-cell">
+        <ValueBar value={belowMinPlays ? null : stats.avgBuild} maxValue={maxBuild} />
       </div>
       <div className="scr-stat-eapm-cell">
         <ValueBar value={belowMinPlays ? null : stats.avgEapm} maxValue={maxEapm} />

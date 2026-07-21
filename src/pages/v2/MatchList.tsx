@@ -246,7 +246,6 @@ function MatchStatsTable({
   ]
     .map(({ s, players }) => ({
       nickname: resolveSlotName(s, players, memberOf),
-      rawName: s.rawName ?? "",
       race: s.race,
       apm: s.apm, cmd: s.cmdCount, eapm: s.eapm, ecmd: s.effectiveCmdCount, build: s.buildCount,
     }))
@@ -258,22 +257,26 @@ function MatchStatsTable({
       <table className="scr-match-stats-table">
         <thead>
           <tr>
+            {/* 종족은 닉네임 칸에 배지로 붙이고, 별도 플레이어 네임 칸은 없앤다(요청). 생산은
+                닉네임 바로 옆(요청). */}
             <th className="scr-mst-left">닉네임</th>
-            <th className="scr-mst-left">플레이어</th>
-            <th>종족</th><th>APM</th><th>커맨드</th><th>유효APM</th><th>유효커맨드</th><th>생산</th>
+            <th>생산</th><th>APM</th><th>커맨드</th><th>유효APM</th><th>유효커맨드</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((r, i) => (
             <tr key={i}>
-              <td className="scr-mst-left">{r.nickname}</td>
-              <td className="scr-mst-left scr-mst-raw">{r.rawName || "–"}</td>
-              <td className="scr-mst-race"><RaceBadge race={r.race} size={14} circleLetter /></td>
+              <td className="scr-mst-left">
+                <span className="scr-mst-name">
+                  <RaceBadge race={r.race} size={14} circleLetter />
+                  {r.nickname}
+                </span>
+              </td>
+              <td className="scr-mst-build">{n(r.build)}</td>
               <td>{n(r.apm)}</td>
               <td>{n(r.cmd)}</td>
               <td>{n(r.eapm)}</td>
               <td className="scr-mst-ecmd">{n(r.ecmd)}</td>
-              <td className="scr-mst-build">{n(r.build)}</td>
             </tr>
           ))}
         </tbody>
