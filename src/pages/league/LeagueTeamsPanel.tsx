@@ -1,12 +1,11 @@
-import { useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Plus, Trash2, UserPlus, X } from "lucide-react";
 import Select from "../../components/common/Select";
 import Avatar from "../../components/common/Avatar";
-import ConfirmDialog from "../../components/common/ConfirmDialog";
 import { Spinner } from "../../components/common/Feedback";
 import { useAppStore } from "../../store/appStore";
 import { api } from "../../api/client";
-import type { League, LeagueTeam } from "../../types";
+import type { League } from "../../types";
 
 const TEAM_ROSTER_MAX = 4;
 
@@ -15,82 +14,82 @@ const TEAM_ROSTER_MAX = 4;
 // 아무도 안 붙어봤는데 로스터가 잠기는 건 과했다). 실제 결과만 setsWonA가 채워진다
 // (부전승 자동 처리는 세트 스코어를 안 남긴다) — 서버의 _team_has_decided_match와
 // 같은 기준.
-function teamHasDecidedMatch(league: League, teamId: number): boolean {
+function teamHasDecidedMatch(league: League, teamId: number | null): boolean {
+  if (teamId === null) return false;
   return league.matches.some(
     (m) => m.setsWonA !== null && (m.teamA?.id === teamId || m.teamB?.id === teamId),
   );
 }
 
-// 팀전 팀 카드 — 헤더 한 줄에 팀명 + 선수 추가(아이콘) + 삭제(아이콘)를 모두 놓고
-// (요청: "팀카드 선수추가 아이콘으로 대체하고 팀명 옆으로 이동, 로스터라는 라벨
-// 제거해서 한줄 없앰"), 그 아래 로스터를 세로로 나열한다. 선수 추가를 누르면 그
-// 자리가 바로 유저 선택 드롭다운으로 바뀌고, 고르면 자리가 남아있는 한(최대 4명)
-// 곧바로 다음 드롭다운이 열려 이어서 고를 수 있다(요청: "하나 추가하면 바로 다음
-// 드롭다운이 자동으로 열려서 편하게 추가할수 있게").
+// 팀 라벨(A, B, ... Z, AA, ...)을 인덱스로 계산한다 — 새 팀은 저장 전까진 서버 라벨이
+// 없고, 로컬에서 순서를 바꾸면 서버 라벨이 어긋나므로, 항상 현재 로컬 순서로 라벨을
+// 만들어 보여준다(서버의 _team_label과 동일 규칙).
+function labelForIndex(index: number): string {
+  const A = "A".charCodeAt(0);
+  let n = index;
+  let label = "";
+  for (;;) {
+    label = String.fromCharCode(A + (n % 26)) + label;
+    n = Math.floor(n / 26);
+    if (n === 0) break;
+    n -= 1;
+  }
+  return label;
+}
+
+// 로컬 편집용 팀 — id가 null이면 아직 저장 안 된 새 팀. key는 리액트 렌더 키(새 팀도
+// 안정적으로 유지되도록 별도 부여). roster는 화면 표시에 필요한 최소 정보만.
+interface LocalRoster {
+  memberId: string;
+  nickname: string;
+  avatar: string | null;
+}
+interface LocalTeam {
+  key: string;
+  id: number | null;
+  roster: LocalRoster[];
+}
+
+function toLocalTeams(league: League): LocalTeam[] {
+  return league.teams.map((t) => ({
+    key: `t${t.id}`,
+    id: t.id,
+    roster: t.roster.map((r) => ({ memberId: r.memberId, nickname: r.nickname, avatar: r.avatar })),
+  }));
+}
+
+// 팀전 팀 카드 — 헤더 한 줄에 팀명 + 선수 추가(아이콘) + 삭제(아이콘)를 놓고, 그 아래
+// 로스터를 세로로 나열한다. 편집은 모두 로컬 상태만 바꾸고(저장은 패널의 '팀구성 저장'
+// 버튼), 선수 추가를 누르면 그 자리가 유저 선택 드롭다운으로 바뀌며 자리가 남은 한(최대
+// 4명) 고르면 곧바로 다음 드롭다운이 열려 이어서 고를 수 있다.
 function TeamModeCard({
-  league, team, editable, autoOpenAdd, onUpdated,
+  label, team, editable, autoOpenAdd, options, onPick, onRemove, onDelete,
 }: {
-  league: League; team: LeagueTeam; editable: boolean; autoOpenAdd: boolean; onUpdated: (l: League) => void;
+  label: string;
+  team: LocalTeam;
+  editable: boolean;
+  autoOpenAdd: boolean;
+  options: { value: string; label: string; avatar: React.ReactNode }[];
+  onPick: (memberId: string) => void;
+  onRemove: (memberId: string) => void;
+  onDelete: () => void;
 }) {
-  const members = useAppStore((s) => s.members);
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState("");
   const [picking, setPicking] = useState(autoOpenAdd);
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+  const canAddMore = editable && team.roster.length < TEAM_ROSTER_MAX;
 
-  const rosterIds = team.roster.map((r) => r.memberId);
-  // 이 리그의 다른 팀에 이미 등록된 회원은 후보에서 뺀다(요청 6 — 같은 리그 안에서 한
-  // 선수가 두 팀에 동시에 속할 수 없음).
-  const takenElsewhere = new Set(
-    league.teams.filter((t) => t.id !== team.id).flatMap((t) => t.roster.map((r) => r.memberId)),
-  );
-  const options = members
-    .filter((m) => !takenElsewhere.has(m.id) && !rosterIds.includes(m.id))
-    .map((m) => ({ value: m.id, label: `${m.nickname} (${m.battletag})`, avatar: <Avatar member={m} size={20} /> }));
-
-  const saveRoster = async (nextIds: string[]) => {
-    setErr("");
-    setBusy(true);
-    try {
-      await api.setLeagueTeamRoster(league.id, team.id, nextIds);
-      onUpdated(await api.getLeague(league.id));
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "로스터를 저장하지 못했어요.");
-    } finally {
-      setBusy(false);
-    }
-  };
   const pick = (id: string) => {
-    const next = [...rosterIds, id];
-    saveRoster(next);
-    setPicking(next.length < TEAM_ROSTER_MAX);
+    onPick(id);
+    setPicking(team.roster.length + 1 < TEAM_ROSTER_MAX);
   };
-  const removeMember = (id: string) => saveRoster(rosterIds.filter((v) => v !== id));
-
-  const deleteTeam = async () => {
-    setDeleting(true);
-    setErr("");
-    try {
-      onUpdated(await api.deleteLeagueTeam(league.id, team.id));
-      setConfirmingDelete(false);
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "팀을 삭제하지 못했어요.");
-    } finally {
-      setDeleting(false);
-    }
-  };
-
-  const canAddMore = editable && rosterIds.length < TEAM_ROSTER_MAX;
 
   return (
     <div className="scr-league-team-card">
       <div className="scr-league-team-card-head">
-        <span className="scr-league-team-label">{team.label}팀</span>
+        <span className="scr-league-team-label">{label}팀</span>
         {canAddMore && !picking && (
           <button
             type="button" className="scr-icon-btn"
-            onClick={() => setPicking(true)} aria-label={`${team.label}팀 선수 추가`}
+            onClick={() => setPicking(true)} aria-label={`${label}팀 선수 추가`}
           >
             <UserPlus size={13} />
           </button>
@@ -98,7 +97,7 @@ function TeamModeCard({
         {editable && (
           <button
             type="button" className="scr-icon-btn scr-icon-btn-danger"
-            onClick={() => setConfirmingDelete(true)} aria-label={`${team.label}팀 삭제`}
+            onClick={onDelete} aria-label={`${label}팀 삭제`}
           >
             <Trash2 size={13} />
           </button>
@@ -114,7 +113,7 @@ function TeamModeCard({
               {editable && (
                 <button
                   type="button" className="scr-icon-btn scr-league-roster-row-remove"
-                  onClick={() => removeMember(r.memberId)} disabled={busy} aria-label="제외"
+                  onClick={() => onRemove(r.memberId)} aria-label="제외"
                 >
                   <X size={13} />
                 </button>
@@ -127,102 +126,44 @@ function TeamModeCard({
               placeholder="유저 선택" defaultOpen
               onOpenChange={(open) => { if (!open) setPicking(false); }}
               className="scr-cselect-plain" size="sm"
-              disabled={busy}
             />
           )}
         </div>
       )}
       {team.roster.length === 0 && !picking && <span className="scr-hint">로스터 없음</span>}
-
-      {busy && <div className="scr-league-team-card-busy"><Spinner size={14} /></div>}
-      {err && <div className="scr-err">{err}</div>}
-
-      {confirmingDelete && (
-        <ConfirmDialog
-          title={`${team.label}팀 삭제`}
-          message="팀을 삭제하면 로스터도 함께 사라지고, 남은 팀의 라벨이 다시 A부터 채워져요."
-          confirmLabel={deleting ? "삭제 중..." : "삭제"}
-          onConfirm={deleteTeam}
-          onCancel={() => setConfirmingDelete(false)}
-        />
-      )}
     </div>
   );
 }
 
 // 개인전 선수 칩 — 개인전은 "팀"이 곧 선수 1명이라 팀 카드로 묶지 않고 유저칩 하나로
-// 바로 보여준다(요청: "개인전은 팀 추가가 아니라 선수추가 버튼이고 추가하면 팀
-// 카드가 아닌 유저칩이 바로 추가됨"). 빈 자리(방금 만든 팀)는 곧바로 열린 선택
-// 드롭다운으로 나오고, 고르면 칩으로 접힌다 — 골랐는지 여부를 pickedRef로 구분해야
-// 드롭다운이 닫힐 때(고른 직후에도 자동으로 닫힘) 방금 채운 자리를 다시 지워버리는
-// 걸 막을 수 있다. 고르지 않고 취소하면(바깥 클릭 등) 빈 자리 자체가 의미 없으니
-// 팀을 통째로 지운다.
+// 바로 보여준다. 빈 자리(방금 만든 팀)는 곧바로 열린 선택 드롭다운으로 나오고, 고르면
+// 칩으로 접힌다 — 골랐는지 여부를 pickedRef로 구분해야 드롭다운이 닫힐 때(고른 직후에도
+// 자동으로 닫힘) 방금 채운 자리를 다시 지워버리는 걸 막을 수 있다. 고르지 않고 취소하면
+// (바깥 클릭 등) 빈 자리 자체가 의미 없으니 그 팀을 통째로 지운다.
 function IndividualPlayerChip({
-  league, team, editable, autoOpen, onUpdated, onSettled,
+  team, editable, autoOpen, options, onPick, onRemove, onCancelEmpty,
 }: {
-  league: League; team: LeagueTeam; editable: boolean; autoOpen: boolean;
-  onUpdated: (l: League) => void; onSettled: (teamId: number, filled: boolean) => void;
+  team: LocalTeam;
+  editable: boolean;
+  autoOpen: boolean;
+  options: { value: string; label: string; avatar: React.ReactNode }[];
+  onPick: (memberId: string) => void;
+  onRemove: () => void;
+  onCancelEmpty: () => void;
 }) {
-  const members = useAppStore((s) => s.members);
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState("");
   const [picking, setPicking] = useState(autoOpen);
   const pickedRef = useRef(false);
-
-  const takenElsewhere = new Set(
-    league.teams.filter((t) => t.id !== team.id).flatMap((t) => t.roster.map((r) => r.memberId)),
-  );
-  const options = members
-    .filter((m) => !takenElsewhere.has(m.id))
-    .map((m) => ({ value: m.id, label: `${m.nickname} (${m.battletag})`, avatar: <Avatar member={m} size={20} /> }));
-
-  const pickPlayer = async (memberId: string) => {
-    pickedRef.current = true;
-    setErr("");
-    setBusy(true);
-    try {
-      await api.setLeagueTeamRoster(league.id, team.id, [memberId]);
-      onUpdated(await api.getLeague(league.id));
-      onSettled(team.id, true);
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "선수를 등록하지 못했어요.");
-      pickedRef.current = false;
-    } finally {
-      setBusy(false);
-      setPicking(false);
-    }
-  };
-  const cancelPick = async () => {
-    setPicking(false);
-    onSettled(team.id, false);
-    try {
-      onUpdated(await api.deleteLeagueTeam(league.id, team.id));
-    } catch {
-      // 빈 자리 정리 실패는 조용히 무시 — 다음에 관리자가 직접 지울 수 있다.
-    }
-  };
-  const removeChip = async () => {
-    setErr("");
-    setBusy(true);
-    try {
-      onUpdated(await api.deleteLeagueTeam(league.id, team.id));
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "삭제하지 못했어요.");
-    } finally {
-      setBusy(false);
-    }
-  };
 
   if (team.roster.length === 0) {
     if (!picking) return null;
     return (
       <div className="scr-league-player-chip scr-league-player-chip-pick">
         <Select
-          value="" options={options} onChange={pickPlayer}
+          value="" options={options}
+          onChange={(id) => { pickedRef.current = true; setPicking(false); onPick(id); }}
           placeholder="선수 선택" defaultOpen
-          onOpenChange={(open) => { if (!open && !pickedRef.current) cancelPick(); }}
+          onOpenChange={(open) => { if (!open && !pickedRef.current) { setPicking(false); onCancelEmpty(); } }}
           className="scr-cselect-plain" size="sm"
-          disabled={busy}
         />
       </div>
     );
@@ -235,88 +176,172 @@ function IndividualPlayerChip({
       {editable && (
         <button
           type="button" className="scr-icon-btn scr-league-player-chip-remove"
-          onClick={removeChip} disabled={busy} aria-label={`${r.nickname} 제외`}
+          onClick={onRemove} aria-label={`${r.nickname} 제외`}
         >
           <X size={13} />
         </button>
       )}
-      {err && <div className="scr-err">{err}</div>}
     </div>
   );
 }
 
-// 리그의 팀/선수 구성 — 상한이 없다(요청: "팀수 무제한 개인전 선수 무제한"). 대진표
-// 생성 여부/리그 상태와 무관하게 언제든 추가할 수 있고(단, 대진표가 이미 있으면 그때
-// 예약해둔 자리(plannedTeams)만큼만 — 서버 규칙과 동일), 편집 가능 여부는 그 팀이
-// 이미 실제 결과가 정해진 경기에 참가했는지로 개별 판단한다.
+// 리그의 팀/선수 구성 — 편집은 전부 로컬 상태로만 하고 '팀구성 저장' 버튼을 눌러야 서버로
+// 한 번에 보낸다(요청: "팀구성 따로 배치 저장"). 저장하면 서버가 원자적으로 반영한 리그를
+// 돌려주고, 상위(LeagueScreen)가 그걸 반영하면서 대진표도 새 팀 구성으로 다시 로드된다
+// (요청: "팀구성 변경되면 대진표 다시로드"). 상한은 없다(요청: "팀수 무제한 개인전 선수
+// 무제한") — 단 대진표가 이미 있으면 예약된 자리(plannedTeams)만큼만.
 export default function LeagueTeamsPanel({ league, onUpdated }: { league: League; onUpdated: (l: League) => void }) {
-  const [addBusy, setAddBusy] = useState(false);
-  const [err, setErr] = useState("");
-  const [chainTeamId, setChainTeamId] = useState<number | null>(null);
+  const members = useAppStore((s) => s.members);
   const isIndividual = league.mode === "individual";
-  const canAddTeam = league.drawSize === null || league.teams.length < (league.plannedTeams ?? 0);
 
-  const addTeam = async () => {
-    setErr("");
-    setAddBusy(true);
-    try {
-      const created = await api.addLeagueTeam(league.id);
-      onUpdated(await api.getLeague(league.id));
-      setChainTeamId(created.id);
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "추가하지 못했어요.");
-    } finally {
-      setAddBusy(false);
+  const [localTeams, setLocalTeams] = useState<LocalTeam[]>(() => toLocalTeams(league));
+  // league prop이 실제로 바뀔 때(저장/대진표 생성/외부 갱신)만 로컬을 서버 값으로 리셋한다 —
+  // 로컬 편집 중에는 API를 안 부르니 league 참조가 그대로라 편집이 유지된다.
+  useEffect(() => {
+    setLocalTeams(toLocalTeams(league));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [league]);
+
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const [chainKey, setChainKey] = useState<string | null>(null);
+  const keyCounter = useRef(0);
+  const newKey = () => `new${keyCounter.current++}`;
+
+  const canAddTeam = league.drawSize === null || localTeams.length < (league.plannedTeams ?? 0);
+
+  const dirty = useMemo(() => {
+    const srv = toLocalTeams(league);
+    if (srv.length !== localTeams.length) return true;
+    for (let i = 0; i < srv.length; i++) {
+      if (srv[i].id !== localTeams[i].id) return true;
+      const a = srv[i].roster.map((r) => r.memberId);
+      const b = localTeams[i].roster.map((r) => r.memberId);
+      if (a.length !== b.length || a.some((v, j) => v !== b[j])) return true;
     }
+    return false;
+  }, [localTeams, league]);
+
+  // 이 리그의 다른 로컬 팀에 이미 든 회원은 후보에서 뺀다(같은 리그 안에서 한 선수가 두
+  // 팀에 동시에 속할 수 없음) — 서버가 아니라 로컬 편집 상태 기준으로 계산해야 방금 옮긴
+  // 것도 즉시 반영된다.
+  const optionsFor = (teamKey: string) => {
+    const taken = new Set(
+      localTeams.filter((t) => t.key !== teamKey).flatMap((t) => t.roster.map((r) => r.memberId)),
+    );
+    const self = localTeams.find((t) => t.key === teamKey);
+    const selfIds = new Set(self?.roster.map((r) => r.memberId) ?? []);
+    return members
+      .filter((m) => !taken.has(m.id) && !selfIds.has(m.id))
+      .map((m) => ({ value: m.id, label: `${m.nickname} (${m.battletag})`, avatar: <Avatar member={m} size={20} /> }));
   };
 
-  const handleChainSettled = (teamId: number, filled: boolean) => {
-    if (chainTeamId !== teamId) return;
-    setChainTeamId(null);
-    // 개인전만 "선수 하나 고르면 바로 다음 자리"로 이어간다(요청: "하나 추가하면
-    // 바로 다음 드롭다운이 자동으로 열려서") — 취소했으면 체인을 멈춘다.
-    if (filled && isIndividual) addTeam();
+  const addTeam = () => {
+    const key = newKey();
+    setLocalTeams((prev) => [...prev, { key, id: null, roster: [] }]);
+    setChainKey(key);
+  };
+
+  const deleteTeam = (key: string) => {
+    setLocalTeams((prev) => prev.filter((t) => t.key !== key));
+  };
+
+  const addMember = (key: string, memberId: string) => {
+    const m = members.find((x) => x.id === memberId);
+    if (!m) return;
+    setLocalTeams((prev) => prev.map((t) => (
+      t.key === key ? { ...t, roster: [...t.roster, { memberId: m.id, nickname: m.nickname, avatar: m.avatar }] } : t
+    )));
+  };
+
+  const removeMember = (key: string, memberId: string) => {
+    setLocalTeams((prev) => prev.map((t) => (
+      t.key === key ? { ...t, roster: t.roster.filter((r) => r.memberId !== memberId) } : t
+    )));
+  };
+
+  // 개인전: 선수 하나를 고르면 곧바로 다음 빈 자리를 열어 이어서 추가한다(요청: "하나
+  // 추가하면 바로 다음 드롭다운이 자동으로 열려서"). 취소하면 체인을 멈춘다.
+  const pickIndividual = (key: string, memberId: string) => {
+    addMember(key, memberId);
+    if (chainKey === key) {
+      const nk = newKey();
+      setLocalTeams((prev) => [...prev, { key: nk, id: null, roster: [] }]);
+      setChainKey(nk);
+    }
+  };
+  const cancelIndividualEmpty = (key: string) => {
+    setChainKey(null);
+    deleteTeam(key);
+  };
+
+  const save = async () => {
+    setErr("");
+    setBusy(true);
+    try {
+      const payload = localTeams.map((t) => ({ id: t.id, roster: t.roster.map((r) => r.memberId) }));
+      onUpdated(await api.setLeagueTeamComposition(league.id, payload));
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "팀구성을 저장하지 못했어요.");
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
     <div className="scr-league-teams-panel">
       <div className="scr-league-teams-panel-head">
         <h2 className="scr-league-section-title">
-          {isIndividual ? "선수" : "팀"} ({league.teams.length}{league.drawSize !== null ? `/${league.plannedTeams}` : ""})
+          {isIndividual ? "선수" : "팀"} ({localTeams.length}{league.drawSize !== null ? `/${league.plannedTeams}` : ""})
         </h2>
-        {canAddTeam && (
+        <div className="scr-league-teams-panel-actions">
+          {canAddTeam && (
+            <button
+              type="button" className="scr-btn scr-btn-sm"
+              onClick={addTeam} disabled={busy}
+            >
+              <Plus size={14} /> {isIndividual ? "선수 추가" : "팀 추가"}
+            </button>
+          )}
+          {dirty && <span className="scr-league-bracket-dirty-hint">저장되지 않은 변경사항</span>}
           <button
             type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm"
-            onClick={addTeam} disabled={addBusy}
+            onClick={save} disabled={busy || !dirty}
           >
-            {addBusy ? <Spinner size={14} /> : <Plus size={14} />} {isIndividual ? "선수 추가" : "팀 추가"}
+            {busy && <Spinner size={14} />} 팀구성 저장
           </button>
-        )}
+        </div>
       </div>
 
       {err && <div className="scr-err">{err}</div>}
 
-      {league.teams.length === 0 ? (
+      {localTeams.length === 0 ? (
         <div className="scr-empty">아직 {isIndividual ? "선수가" : "팀이"} 없어요</div>
       ) : isIndividual ? (
         <div className="scr-league-players-wrap">
-          {league.teams.map((team) => (
+          {localTeams.map((team) => (
             <IndividualPlayerChip
-              key={team.id} league={league} team={team}
+              key={team.key} team={team}
               editable={!teamHasDecidedMatch(league, team.id)}
-              autoOpen={team.id === chainTeamId}
-              onUpdated={onUpdated} onSettled={handleChainSettled}
+              autoOpen={team.key === chainKey}
+              options={optionsFor(team.key)}
+              onPick={(id) => pickIndividual(team.key, id)}
+              onRemove={() => deleteTeam(team.key)}
+              onCancelEmpty={() => cancelIndividualEmpty(team.key)}
             />
           ))}
         </div>
       ) : (
         <div className="scr-league-teams-grid">
-          {league.teams.map((team) => (
+          {localTeams.map((team, i) => (
             <TeamModeCard
-              key={team.id} league={league} team={team}
+              key={team.key} label={labelForIndex(i)} team={team}
               editable={!teamHasDecidedMatch(league, team.id)}
-              autoOpenAdd={team.id === chainTeamId}
-              onUpdated={onUpdated}
+              autoOpenAdd={team.key === chainKey}
+              options={optionsFor(team.key)}
+              onPick={(id) => addMember(team.key, id)}
+              onRemove={(id) => removeMember(team.key, id)}
+              onDelete={() => deleteTeam(team.key)}
             />
           ))}
         </div>

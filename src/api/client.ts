@@ -712,6 +712,16 @@ export const api = {
       method: "PUT", body: JSON.stringify({ memberIds }),
     });
   },
+  // 팀/선수 구성 전체를 한 번에 저장한다(요청: "팀구성 따로 배치 저장"). teams는 원하는
+  // 전체 구성(순서=라벨 순서). id가 있으면 기존 팀, null이면 새 팀. 서버가 원자적으로
+  // (생성/삭제/로스터/라벨 재정렬) 반영하고 리그 전체를 돌려준다.
+  async setLeagueTeamComposition(
+    leagueId: number, teams: { id: number | null; roster: string[] }[],
+  ): Promise<League> {
+    return request<League>(`/api/leagues/${leagueId}/teams`, {
+      method: "PUT", body: JSON.stringify({ teams }),
+    });
+  },
   async generateLeagueBracket(leagueId: number, teamCount: number): Promise<League> {
     return request<League>(`/api/leagues/${leagueId}/bracket/generate`, {
       method: "POST", body: JSON.stringify({ teamCount }),

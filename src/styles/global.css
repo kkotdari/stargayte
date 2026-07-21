@@ -1885,6 +1885,23 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   align-items: center; justify-content: center; gap: 5px; cursor: pointer;
   will-change: color;
 }
+
+/* 컬럼 설명 툴팁 트리거(ⓘ)와 말풍선 — 말풍선은 body로 포털되므로 여기 위치는 트리거만.
+   좁은 sticky 헤더 칸에서도 안 잘리게 말풍선은 fixed로 뜬다(InfoTip.tsx 참고). */
+.scr-infotip {
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--muted); cursor: pointer; opacity: 0.75; vertical-align: middle;
+}
+.scr-infotip:hover, .scr-infotip:focus-visible { opacity: 1; color: var(--point); outline: none; }
+.scr-infotip-bubble {
+  position: fixed; transform: translateX(-50%); z-index: 1200;
+  max-width: min(260px, 78vw); width: max-content; padding: 8px 11px;
+  background: var(--panel-solid); color: var(--text);
+  border: 1px solid rgba(var(--overlay-rgb), 0.14); border-radius: 9px;
+  font-size: var(--fs-caption); font-weight: 500; line-height: 1.45; letter-spacing: normal;
+  text-transform: none; text-align: left; white-space: normal;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.3);
+}
 /* "유저" 헤더도 정렬 버튼(.scr-stat-sort-btn)이 되면서, 그 규칙의 background:none이
    이름 칸의 불투명 배경(.scr-stat-name-head, 가로 스크롤 중 옆 칸이 이 sticky 칸
    밑으로 비치지 않게 하는 용도)을 지워버렸다 — 두 클래스가 겹치는 조합 선택자로
@@ -6924,7 +6941,9 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
 }
 /* 팀 패널 — 리그 상세 안에 이어 붙는 섹션. */
 .scr-league-teams-panel { display: flex; flex-direction: column; gap: 10px; padding-top: 4px; border-top: 1px solid var(--league-line); }
-.scr-league-teams-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.scr-league-teams-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+/* 팀 추가 + '팀구성 저장' 버튼과 미저장 안내를 오른쪽에 한 줄로 묶는다. */
+.scr-league-teams-panel-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 /* 팀/선수 추가 버튼 한 단계 축소(요청: "팀추가 대진확정 버튼 1스텝 축소"). */
 .scr-league-teams-panel-head .scr-btn-sm {
   padding: 4px 8px; font-size: var(--fs-caption); height: 28px; min-height: 28px; box-sizing: border-box;

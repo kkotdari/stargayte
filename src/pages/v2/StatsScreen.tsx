@@ -6,6 +6,7 @@ import PillTabs from "../../components/common/PillTabs";
 import FilterItem from "../../components/common/FilterItem";
 import Select from "../../components/common/Select";
 import MemberStatRow from "../stats/MemberStatRow";
+import InfoTip from "../../components/common/InfoTip";
 import { useAppStore } from "../../store/appStore";
 import { api } from "../../api/client";
 import { activeMemberSearchTerms, memberMatchesQuery } from "../../utils/memberSearch";
@@ -56,17 +57,20 @@ interface SortableHeadProps {
   sort: StatSort | null;
   onToggle: (key: StatSortKey) => void;
   className?: string;
+  // 있으면 라벨 옆에 ⓘ를 띄우고 탭하면 이 설명 말풍선을 보여준다(요청: 컬럼 설명 툴팁).
+  tooltip?: string;
 }
 
 // 기간 필터의 정렬 토글(화살표 아이콘 하나)과 같은 언어로 통일 — 이 컬럼이 지금 정렬
 // 기준이면 방향에 맞는 화살표 하나(오름차순=위, 내림차순=아래)만, 아직 정렬 기준이
 // 아니면(눌러본 적 없거나 다른 컬럼이 활성) 위아래 화살표가 같이 있는 중립 아이콘으로
 // "정렬 가능하지만 지금은 안 걸려 있다"는 걸 흐리게 보여준다.
-function SortableHead({ label, sortKey, sort, onToggle, className }: SortableHeadProps) {
+function SortableHead({ label, sortKey, sort, onToggle, className, tooltip }: SortableHeadProps) {
   const active = sort?.key === sortKey;
   return (
     <button type="button" className={cx("scr-stat-sort-btn", className, active && "scr-stat-sort-btn-active")} onClick={() => onToggle(sortKey)}>
       {label}
+      {tooltip && <InfoTip text={tooltip} label={label} />}
       {active
         ? (sort?.dir === "asc" ? <ArrowUp size={13} /> : <ArrowDown size={13} />)
         : <ArrowUpDown size={13} className="scr-stat-sort-icon-idle" />}
@@ -280,8 +284,14 @@ export default function StatsScreenV2() {
                 <SortableHead label="유저" sortKey="name" sort={sort} onToggle={toggleSort} className="scr-stat-name-head" />
                 <SortableHead label="게임수" sortKey="plays" sort={sort} onToggle={toggleSort} className="scr-stat-plays-cell" />
                 <SortableHead label="승률" sortKey="rate" sort={sort} onToggle={toggleSort} />
-                <SortableHead label="유효APM" sortKey="eapm" sort={sort} onToggle={toggleSort} className="scr-stat-eapm-cell" />
-                <SortableHead label="유효커맨드/분" sortKey="ecmd" sort={sort} onToggle={toggleSort} className="scr-stat-ecmd-cell" />
+                <SortableHead
+                  label="유효APM" sortKey="eapm" sort={sort} onToggle={toggleSort} className="scr-stat-eapm-cell"
+                  tooltip="분당 유효 조작 수(EAPM) — 리플레이에서 실제 게임에 영향을 준 명령만 센 APM. 화면 이동·중복 클릭 같은 불필요한 입력은 빠져 순수 조작량에 가깝다."
+                />
+                <SortableHead
+                  label="유효커맨드/분" sortKey="ecmd" sort={sort} onToggle={toggleSort} className="scr-stat-ecmd-cell"
+                  tooltip="유효 명령 총합을 경기 시간(분)으로 나눈 값 — 경기 길이가 제각각이라 총합 대신 분당으로 환산해 공정하게 비교한다."
+                />
               </div>
               {cards.map((c) => (
                 <MemberStatRow
