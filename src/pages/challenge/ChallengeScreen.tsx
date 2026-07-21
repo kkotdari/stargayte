@@ -648,18 +648,19 @@ function isDiscarded(c: Challenge): boolean {
 
 // 순수 날짜(예정 일시) 내림차순 한 줄로 정렬한다(요청: "순수 날짜 내림차순" — 진행/종료를
 // 나눠 진행중을 위로 끌어올리던 예전 규칙 때문에 다가오는 경기(NEXT)가 날짜와 무관하게 맨
-// 위로 올라오는 게 부자연스러웠다). 예정 일시가 없는 건(=아직 응답 대기중인 일정 미정. 종료된
-// 건은 서버가 요청일+1일로 스탬프하므로 null이 남지 않는다)은 날짜가 없어 맨 위에 둔다. 일시가
-// 같거나 둘 다 미정이면 최근 생성 순으로 가른다.
-// 정렬: "일정 미정"(응답 대기중, scheduledAt 없음)은 맨 위 "대기중" 묶음으로, 그 아래
-// 날짜 있는 너 나와는 과거(위) → 미래(아래) 오름차순으로 둔다(요청: 타임라인 "위가 과거,
-// 아래가 미래" — 아래로 스크롤할수록 미래). 같은 시각/대기중끼리는 최신 생성이 위.
+// 위로 올라오는 게 부자연스러웠다). 일시가 같거나 둘 다 미정이면 최근 생성 순으로 가른다.
+// 일정 미정(응답 대기중, scheduledAt 없음) 건은 맨 뒤(아래)로 보낸다 — 예전엔 맨 앞(위)에
+// 뒀는데, 그러면 "다가오는 매치"(boundaryIndex) 기준으로 그 앞은 전부 접히는 "종료된 너
+// 나와!" 섹션이라, 아직 안 끝난 일정 미정 건이 종료된 것과 함께 접혀 안 보이는 버그가
+// 있었다(요청: "너나와가 일정미정이면 종료된 너나와에 들어가서 접혀있어서 안보이네",
+// "일정미정은 제일 뒤로 가야할듯"). 맨 뒤에 두면 항상 "다가오는 매치" 경계 뒤쪽(펼쳐진
+// 활성 목록)에 남아 계속 보인다.
 function compareChallenges(a: Challenge, b: Challenge): number {
   const aNull = !a.scheduledAt;
   const bNull = !b.scheduledAt;
   if (aNull && bNull) return a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0;
-  if (aNull) return -1;
-  if (bNull) return 1;
+  if (aNull) return 1;
+  if (bNull) return -1;
   if (a.scheduledAt !== b.scheduledAt) return a.scheduledAt! > b.scheduledAt! ? 1 : -1;
   return a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0;
 }

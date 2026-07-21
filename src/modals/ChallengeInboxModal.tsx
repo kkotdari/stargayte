@@ -139,7 +139,13 @@ export default function ChallengeInboxModal({ challenges, onClose, closeLabel = 
   const ourTeam = current.targets.map((t) => t.nickname);
   // 편지봉투 위 문구와 편지지 제목을 다르게 둔다(요청).
   const envelopeTitle = `${current.createdBy.nickname}님에게 호출당함`;
-  const letterTitle = `${user?.nickname ?? "너"} 너 나와!`;
+  // 편지지 제목은 실제로 지목된 사람(들)의 닉네임을 써야 한다 — 지금 로그인해서 이
+  // 편지를 보고 있는 사람(user)을 그대로 썼더니, 요청자 본인이 방금 보낸 카카오톡
+  // 공유 카드를 열어보면 상대가 아니라 자기 자신의 닉네임이 "OO 너 나와!"로 뜨는
+  // 버그가 있었다(요청: "카톡 공유시 진짜 지목당한 사람이 아니라 로그인한 사람
+  // 닉네임으로 뜬다"). 실제 지목 대상(targets)을 써야 누가 보든 항상 같은, 맞는
+  // 제목이 뜬다.
+  const letterTitle = ourTeam.length > 0 ? `${ourTeam.join(", ")} 너 나와!` : "너 나와!";
 
   // 응답 확인창 — 최종 확정된 일시(요청자가 안 정했으면 내가 방금 고른 값)로 공유 내용을 만든다.
   const acceptedWhen = current.scheduledAt
