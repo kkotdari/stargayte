@@ -346,8 +346,9 @@ export default function MatchList({
                 onClick={() => toggleExpanded(r.id)} role="button" tabIndex={0}
                 aria-expanded={expanded}
               >
-                {/* 윗줄 — 맵·플레이시간과 함께 등록자·케밥메뉴도 여기 표시(요청). 내용이 없어도
-                    줄 높이를 예약해 카드마다 로스터 시작 위치가 흔들리지 않게 한다. */}
+                {/* 윗줄 — 맵·플레이시간과 케밥메뉴. 등록자는 접힘 땐 숨기고 펼침 때 최하단에
+                    표시한다(요청). 내용이 없어도 줄 높이를 예약해 카드마다 로스터 시작 위치가
+                    흔들리지 않게 한다. */}
                 <div className="scr-match-trow-topline">
                   <div className="scr-match-trow-map-line">
                     {r.raw.mapName && <span className="scr-match-trow-map">{r.raw.mapName}</span>}
@@ -356,7 +357,6 @@ export default function MatchList({
                     )}
                   </div>
                   <div className="scr-match-trow-topmeta">
-                    {r.raw.createdBy && <span className="scr-match-trow-by">등록: {r.raw.createdBy.nickname}</span>}
                     <MatchActionsMenu
                       match={r.raw} canDelete={canDelete} memberOf={memberOf}
                       onMemo={onMemo} onDelete={setDeleteTarget}
@@ -389,6 +389,13 @@ export default function MatchList({
                 </div>
                 {/* 펼치면 접힘 내용 아래에 상세 스탯 표(양 팀 전원, 유효커맨드 높은 순). */}
                 {expanded && <MatchStatsTable team1={r.team1} team2={r.team2} memberOf={memberOf} />}
+                {/* 최하단 — 왼쪽 끝에 경기번호(#없이), 오른쪽에 등록자(요청). */}
+                {expanded && (
+                  <div className="scr-match-trow-footer">
+                    <span className="scr-match-trow-no">{r.raw.matchNo}</span>
+                    {r.raw.createdBy && <span className="scr-match-trow-by">등록: {r.raw.createdBy.nickname}</span>}
+                  </div>
+                )}
               </div>
               );
             })}

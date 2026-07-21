@@ -106,10 +106,12 @@ export default function MatchScreenV2() {
       { id: m.id, date: m.date, team1: m.team1, team2: m.team2, result: m.result, raw: m }
     ));
     if (!hasSearch) return rows;
-    // AND — 검색어 전부가 각각(서로 다른 참가자여도 무방) 이 경기 참가자 중 누군가와 맞아야 한다.
+    // AND — 검색어 전부가 각각(서로 다른 참가자여도 무방) 이 경기 참가자 중 누군가와, 또는
+    // 그 경기의 경기번호(matchNo)와 맞아야 한다(요청: 검색창에서 경기번호로도 찾기).
     return rows.filter((r) => {
       const slots = [...r.team1, ...r.team2];
-      return searchTerms.every((term) => slots.some((slot) => slotMatchesTerm(slot, term)));
+      const no = r.raw.matchNo.toLowerCase();
+      return searchTerms.every((term) => no.includes(term) || slots.some((slot) => slotMatchesTerm(slot, term)));
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- resolveMember/slotMatchesTerm은 members 참조 함수라 매 렌더 새로 만들어져도 무방(값 자체는 members로 충분히 표현됨)
   }, [matches, hasSearch, searchTerms, members]);

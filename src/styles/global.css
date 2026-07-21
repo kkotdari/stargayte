@@ -3115,9 +3115,21 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-match-trow-map { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 /* 맵 이름 옆 플레이시간 — 라벨 없이 "23분"(요청). 흐린 색으로 살짝 뒤에. */
 .scr-match-trow-dur { color: var(--dim); flex-shrink: 0; font-variant-numeric: tabular-nums; }
-/* 윗줄 오른쪽 — 등록자 + 케밥. */
+/* 윗줄 오른쪽 — 케밥(등록자는 펼침 때 최하단으로 이동). */
 .scr-match-trow-topmeta { display: flex; align-items: center; gap: 8px; flex-shrink: 0; font-size: var(--fs-caption); }
 .scr-match-trow-by { color: var(--dim); flex-shrink: 0; }
+/* 모바일에서 케밥이 오른쪽 가장자리의 스크롤 타임라인(32px 터치존, touch-action:none)과
+   겹쳐 탭이 안 먹던 문제 — 케밥을 살짝 왼쪽으로 당겨 타임라인 터치존을 피한다(요청). */
+@media (max-width: 860px) {
+  .scr-match-trow-topmeta { margin-right: 22px; }
+}
+/* 펼침 최하단 줄 — 왼쪽 끝 경기번호(#없이), 오른쪽 끝 등록자(요청). */
+.scr-match-trow-footer {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(var(--overlay-rgb), 0.08);
+  font-size: var(--fs-caption);
+}
+.scr-match-trow-no { color: var(--dim); font-variant-numeric: tabular-nums; flex-shrink: 0; }
 .scr-match-trow-head .scr-match-card-actions { flex-shrink: 0; }
 /* 세로점세개(⋮) 메뉴 트리거 — 등록자 오른쪽 끝에. 아이콘 버튼 톤은 기존 메모 버튼과 공유. */
 .scr-match-menu { display: inline-flex; flex-shrink: 0; }
