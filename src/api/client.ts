@@ -9,6 +9,8 @@ import type {
   ReplayNameClassificationEntry, ReplayNameKind, ReplayNameMappingEntry, ReplayNameMappingKind,
   Challenge, ChallengeCreatePayload, ChallengeRevengePayload, ChallengeResult,
   MatchRequest, MatchRequestCreatePayload, MatchRequestListResponse, MatchRequestInboxItem,
+  League, LeagueListItem, LeagueCreatePayload, LeagueUpdatePayload, LeagueTeam,
+  LeagueMatch, LeagueMatchSide, LeagueMatchResultPayload,
 } from "../types";
 
 // undefined/""/"all"(필터 미지정 관례) 값은 아예 뺀 쿼리스트링을 만든다 — 서버는 파라미터가
@@ -680,5 +682,57 @@ export const api = {
   // 인박스 팝업을 닫으면 내 안 읽은 알림을 모두 읽음 처리한다.
   async markMatchRequestInboxRead(): Promise<void> {
     await request<{ ok: boolean }>("/api/match-requests/inbox/read", { method: "POST" });
+  },
+
+  // 리그(League/Tournament) — 운영자 전용, 조회(GET) 포함 전부 CurrentAdmin 게이트.
+  async getLeagues(): Promise<LeagueListItem[]> {
+    const res = await request<{ items: LeagueListItem[] }>("/api/leagues");
+    return res.items;
+  },
+  async getLeague(id: number): Promise<League> {
+    return request<League>(`/api/leagues/${id}`);
+  },
+  async createLeague(payload: LeagueCreatePayload): Promise<League> {
+    return request<League>("/api/leagues", { method: "POST", body: JSON.stringify(payload) });
+  },
+  async updateLeague(id: number, payload: LeagueUpdatePayload): Promise<League> {
+    return request<League>(`/api/leagues/${id}`, { method: "PATCH", body: JSON.stringify(payload) });
+  },
+  async deleteLeague(id: number): Promise<void> {
+    await request<void>(`/api/leagues/${id}`, { method: "DELETE" });
+  },
+  async addLeagueTeam(leagueId: number): Promise<LeagueTeam> {
+    return request<LeagueTeam>(`/api/leagues/${leagueId}/teams`, { method: "POST" });
+  },
+  async deleteLeagueTeam(leagueId: number, teamId: number): Promise<League> {
+    return request<League>(`/api/leagues/${leagueId}/teams/${teamId}`, { method: "DELETE" });
+  },
+  async setLeagueTeamRoster(leagueId: number, teamId: number, memberIds: string[]): Promise<LeagueTeam> {
+    return request<LeagueTeam>(`/api/leagues/${leagueId}/teams/${teamId}/roster`, {
+      method: "PUT", body: JSON.stringify({ memberIds }),
+    });
+  },
+  async generateLeagueBracket(leagueId: number): Promise<League> {
+    return request<League>(`/api/leagues/${leagueId}/bracket/generate`, { method: "POST" });
+  },
+  async setLeagueMatchSlot(
+    leagueId: number, matchId: number, side: LeagueMatchSide, teamId: number | null,
+  ): Promise<LeagueMatch> {
+    return request<LeagueMatch>(`/api/leagues/${leagueId}/matches/${matchId}/slot`, {
+      method: "PATCH", body: JSON.stringify({ side, teamId }),
+    });
+  },
+  async setLeagueMatchSchedule(leagueId: number, matchId: number, scheduledAt: string | null): Promise<LeagueMatch> {
+    return request<LeagueMatch>(`/api/leagues/${leagueId}/matches/${matchId}/schedule`, {
+      method: "PATCH", body: JSON.stringify({ scheduledAt }),
+    });
+  },
+  async enterLeagueMatchResult(leagueId: number, matchId: number, payload: LeagueMatchResultPayload): Promise<League> {
+    return request<League>(`/api/leagues/${leagueId}/matches/${matchId}/result`, {
+      method: "POST", body: JSON.stringify(payload),
+    });
+  },
+  async clearLeagueMatchResult(leagueId: number, matchId: number): Promise<League> {
+    return request<League>(`/api/leagues/${leagueId}/matches/${matchId}/result`, { method: "DELETE" });
   },
 };

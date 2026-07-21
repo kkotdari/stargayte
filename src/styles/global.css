@@ -6799,3 +6799,24 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
 .scr-challenge-target-select.scr-cselect-drop::-webkit-scrollbar-thumb:hover {
   background: rgba(var(--overlay-rgb), 0.42);
 }
+
+/* ===== 리그(League) — 1단계: 목록/생성/삭제 + 기본 정보만 ===== */
+.scr-league-toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+.scr-league-select { flex: 1 1 auto; min-width: 0; }
+.scr-league-mode-toggle { display: flex; gap: 8px; margin-top: 4px; }
+.scr-league-summary-card {
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel-raised);
+}
+.scr-league-summary-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.scr-league-summary-name { font-size: var(--fs-subhead); font-weight: 800; }
+.scr-league-status-pill {
+  flex: 0 0 auto; padding: 3px 10px; border-radius: 999px; font-size: var(--fs-caption); font-weight: 700;
+}
+.scr-league-status-setup { background: rgba(var(--overlay-rgb), 0.1); color: var(--muted); }
+.scr-league-status-active { background: color-mix(in srgb, var(--edge-glow) 22%, transparent); color: var(--edge-glow); }
+.scr-league-status-completed { background: color-mix(in srgb, var(--win) 20%, transparent); color: var(--win); }
+.scr-league-summary-meta {
+  display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: var(--fs-caption); color: var(--muted);
+}
+.scr-league-summary-actions { display: flex; justify-content: flex-end; }
