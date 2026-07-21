@@ -318,8 +318,11 @@ export default function ReplayRegisterModal({ drafts: initialDrafts, truncated =
           <div className="scr-replay-exclude-row">
             {active.excludeReason === "duplicate" ? (
               // 중복은 이미 등록된 경기라는 뜻이라, 제외를 풀고 다시 등록하면 같은 경기가
-              // 중복 저장된다 — 되돌릴 수 있는 버튼 자체를 안 보여준다.
-              <span className="scr-hint">이미 등록된 경기예요 (중복 등록을 막기 위해 제외를 해제할 수 없어요)</span>
+              // 중복 저장된다 — 되돌릴 수 있는 버튼 자체를 안 보여준다. 리플레이 내부 정보는
+              // 기존 경기에 자동 머지되므로 "업데이트됨"으로 알린다.
+              <span className="scr-hint">
+                {active.merged ? "기존 경기에 업데이트됨" : "이미 등록된 경기예요 (중복 등록을 막기 위해 제외를 해제할 수 없어요)"}
+              </span>
             ) : (
               <button
                 type="button"

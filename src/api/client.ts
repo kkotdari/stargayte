@@ -362,6 +362,31 @@ export const api = {
     return res.existing;
   },
 
+  // 이미 등록된 경기(gameStartedAt 일치)에 리플레이 내부 정보만 다시 덮어쓴다 — 중복
+  // 리플레이를 다시 배치 등록할 때 새 지표(생산 등)를 백필하는 용도. result=null이면 승패는
+  // 그대로 두고(리플레이가 승자를 못 가림), 지표/맵/시간은 항상 갱신한다. 일치하는 경기가
+  // 없으면 merged=false로 조용히 돌아온다.
+  async mergeReplay(payload: {
+    gameStartedAt: string;
+    result: "team1" | "team2" | "draw" | null;
+    mapName: string | null;
+    durationSeconds: number | null;
+    players: {
+      playerName: string;
+      race: string | null;
+      apm: number | null;
+      eapm: number | null;
+      cmdCount: number | null;
+      effectiveCmdCount: number | null;
+      buildCount: number | null;
+    }[];
+  }): Promise<{ merged: boolean; matchNo: string | null }> {
+    return request<{ merged: boolean; matchNo: string | null }>("/api/matches/merge-replay", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
   // 배틀태그로 못 찾은 리플레이 참가자 이름 중, 예전에 컴퓨터/비회원으로 지정해둔 적이
   // 있는 이름만 그 분류와 함께 돌아온다(없으면 그 이름은 응답에서 빠짐 — 그대로 미매칭으로
   // 남아 사용자가 지정해야 함).

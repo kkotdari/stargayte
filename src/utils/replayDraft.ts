@@ -49,6 +49,10 @@ export interface ReplayDraft {
   // "제외" 버튼 옆에 왜 제외됐는지 짧게 보여줄 안내 — 자동 제외일 때만 값이 있다.
   // "duplicate"는 되돌릴 수 없고(같은 경기가 두 번 저장된다), "computer"는 체크박스로 되돌린다.
   excludeReason: "duplicate" | "computer" | null;
+  // 중복건은 그냥 제외하지 않고 리플레이 내부 정보(지표/맵/시간/승패)를 기존 경기에 조용히
+  // 머지한다(요청) — 성공하면 true라, 검토 화면이 "제외"가 아니라 "기존 경기에 업데이트됨"으로
+  // 보여준다. 머지 호출이 실패하면 false로 남아 예전처럼 중복(건너뜀)으로 표시된다.
+  merged?: boolean;
 }
 
 function readFileAsDataUrl(file: File): Promise<string> {
@@ -254,9 +258,42 @@ export async function buildReplayDrafts(files: File[], members: Member[]): Promi
   // 서버가 UTC로 정규화해서 판단해준다.
   const candidates = classified.map((d) => d.gameStartedAt).filter((v): v is string => v !== null);
   const existing = new Set(candidates.length > 0 ? await api.checkReplayDuplicates(candidates) : []);
-  return classified.map((d) => (
-    d.gameStartedAt && existing.has(d.gameStartedAt)
-      ? { ...d, excluded: true, excludeReason: "duplicate" as const }
-      : d
-  ));
+  // 중복건은 제외만 하지 않고 리플레이 내부 정보를 기존 경기에 조용히 머지한다(요청 — 오늘
+  // 생산 지표처럼 새 컬럼이 추가되면 재등록으로 백필). 성공하면 merged=true로 "업데이트됨"
+  // 표시, 실패하면 예전처럼 중복(건너뜀).
+  return Promise.all(classified.map(async (d) => {
+    if (!(d.gameStartedAt && existing.has(d.gameStartedAt))) return d;
+    try {
+      const res = await api.mergeReplay(draftToMergePayload(d, d.gameStartedAt));
+      return { ...d, excluded: true, excludeReason: "duplicate" as const, merged: res.merged };
+    } catch {
+      return { ...d, excluded: true, excludeReason: "duplicate" as const, merged: false };
+    }
+  }));
+}
+
+// 중복 경기 머지 payload — 파싱된 전원(팀1/팀2 매칭 + 미매칭)을 player_name(리플레이 원본
+// 게임 아이디)으로 보낸다. 지표만 갱신하므로 회원 매칭 여부와 무관하게 전원이 필요하다.
+// 승패(result)는 screp이 확실히 가린 경우(winnerSide)만, 못 가리면 null로 보내 기존 승패를
+// 유지시킨다(요청: "확실할 때만 덮어쓰기").
+function draftToMergePayload(d: ReplayDraft, gameStartedAt: string) {
+  // race가 ""(파싱 실패)면 서버 Race 리터럴에 없어 검증에서 막힌다 — null로 보내 승패처럼
+  // "값이 있을 때만" 갱신되게 한다(기존 종족 보존).
+  const fromSlots = [...d.team1, ...d.team2].map((s) => ({
+    playerName: s.rawName ?? "",
+    race: s.race || null, apm: s.apm, eapm: s.eapm, cmdCount: s.cmdCount,
+    effectiveCmdCount: s.effectiveCmdCount, buildCount: s.buildCount,
+  }));
+  const fromUnmatched = [...d.unmatchedTeam1, ...d.unmatchedTeam2].map((p) => ({
+    playerName: p.rawName,
+    race: p.race || null, apm: p.apm, eapm: p.eapm, cmdCount: p.cmdCount,
+    effectiveCmdCount: p.effectiveCmdCount, buildCount: p.buildCount,
+  }));
+  return {
+    gameStartedAt,
+    result: d.winnerSide,
+    mapName: d.mapName || null,
+    durationSeconds: d.durationSeconds,
+    players: [...fromSlots, ...fromUnmatched].filter((p) => p.playerName),
+  };
 }

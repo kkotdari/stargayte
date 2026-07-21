@@ -285,7 +285,7 @@ export default function ReplayReviewModal({
                         {d.fileName}{d.mapName ? ` · ${d.mapName}` : ""}
                       </span>
                       {d.excludeReason === "duplicate" ? (
-                        <span className="scr-hint">이미 등록된 경기예요</span>
+                        <span className="scr-hint">{d.merged ? "기존 경기에 업데이트됨" : "이미 등록된 경기예요"}</span>
                       ) : (
                         <button
                           type="button" className="scr-btn scr-btn-ghost scr-btn-sm"
