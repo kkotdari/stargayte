@@ -269,15 +269,26 @@ function MatchStatsTable({
     // 유효커맨드(effectiveCmdCount) 높은 순 — 값이 없으면(수기등록) 맨 아래로.
     .sort((a, b) => (b.ecmd ?? -1) - (a.ecmd ?? -1));
   const n = (v: number | null) => (v == null ? "–" : v.toLocaleString());
+  // APM·커맨드는 '유효/전체' 한 칸에 합쳐 보여준다(요청) — 유효값은 강조, 전체값은 흐리게.
+  // 둘 다 없으면(수기등록) '–' 하나만.
+  const pair = (eff: number | null, tot: number | null) => {
+    if (eff == null && tot == null) return <>–</>;
+    return (
+      <>
+        <span className="scr-mst-eff">{n(eff)}</span>
+        <span className="scr-mst-sep">/</span>
+        <span className="scr-mst-tot">{n(tot)}</span>
+      </>
+    );
+  };
   return (
     <div className="scr-match-stats-table-wrap scr-scroll" onClick={(e) => e.stopPropagation()}>
       <table className="scr-match-stats-table">
         <thead>
           <tr>
-            {/* 종족은 닉네임 칸에 배지로 붙이고, 별도 플레이어 네임 칸은 없앤다(요청). 생산은
-                닉네임 바로 옆(요청). */}
-            <th className="scr-mst-left">닉네임</th>
-            <th>생산</th><th>APM</th><th>커맨드</th><th>유효APM</th><th>유효커맨드</th>
+            {/* 유저(종족은 닉네임에 배지로 붙임)·생산은 그대로, APM·커맨드는 유효/전체 형식(요청). */}
+            <th className="scr-mst-left">유저</th>
+            <th>생산</th><th>APM</th><th>커맨드</th>
           </tr>
         </thead>
         <tbody>
@@ -290,10 +301,8 @@ function MatchStatsTable({
                 </span>
               </td>
               <td className="scr-mst-build">{n(r.build)}</td>
-              <td>{n(r.apm)}</td>
-              <td>{n(r.cmd)}</td>
-              <td>{n(r.eapm)}</td>
-              <td className="scr-mst-ecmd">{n(r.ecmd)}</td>
+              <td className="scr-mst-pair">{pair(r.eapm, r.apm)}</td>
+              <td className="scr-mst-pair">{pair(r.ecmd, r.cmd)}</td>
             </tr>
           ))}
         </tbody>

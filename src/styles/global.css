@@ -3174,10 +3174,14 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    접힐 때 잘리게 한다. */
 .scr-match-trow-expand {
   display: grid; grid-template-rows: 0fr;
+  /* 단일 열을 minmax(0,1fr)로 못박아 컨텐츠(넓은 스탯표)가 로우 폭을 밀어내지 못하게 한다 —
+     이게 없으면 암묵적 auto 열이 표 max-content만큼 커져 페이지에 가로 스크롤이 생겼다(요청:
+     테이블 내부 스크롤만 남기고 페이지 가로 스크롤 제거). */
+  grid-template-columns: minmax(0, 1fr);
   transition: grid-template-rows 0.26s ease;
 }
 .scr-match-trow-expand-open { grid-template-rows: 1fr; }
-.scr-match-trow-expand-inner { overflow: hidden; min-height: 0; }
+.scr-match-trow-expand-inner { overflow: hidden; min-height: 0; min-width: 0; }
 .scr-match-trow-head .scr-match-card-actions { flex-shrink: 0; }
 /* 세로점세개(⋮) 메뉴 트리거 — 등록자 오른쪽 끝에. 아이콘 버튼 톤은 기존 메모 버튼과 공유. */
 .scr-match-menu { display: inline-flex; flex-shrink: 0; }
@@ -3262,7 +3266,11 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-match-stats-table .scr-mst-race { text-align: center; }
 .scr-match-stats-table tbody tr + tr td { border-top: 1px solid rgba(var(--overlay-rgb), 0.06); }
 .scr-match-stats-table .scr-mst-raw { color: var(--muted); }
-.scr-match-stats-table .scr-mst-ecmd { font-weight: 800; }
+/* APM·커맨드 '유효/전체' 한 칸 — 유효값은 진하게, 슬래시/전체값은 흐리게. */
+.scr-match-stats-table .scr-mst-pair { white-space: nowrap; }
+.scr-match-stats-table .scr-mst-pair .scr-mst-eff { font-weight: 800; }
+.scr-match-stats-table .scr-mst-pair .scr-mst-sep { color: var(--muted); margin: 0 2px; }
+.scr-match-stats-table .scr-mst-pair .scr-mst-tot { color: var(--muted); }
 /* 닉네임 칸: 종족 배지 + 닉네임을 한 줄로(요청 — 종족을 닉네임에 붙임). */
 .scr-match-stats-table .scr-mst-name { display: inline-flex; align-items: center; gap: 6px; }
 /* '생산'(빌드/생산 커맨드 수) — 리플레이 커맨드 스트림에서 센 어림 지표라 살짝 강조만 준다. */
