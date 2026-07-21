@@ -4781,6 +4781,16 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
 .scr-cselect-value-short { display: none; }
 .scr-cselect-caret { color: var(--dim); flex-shrink: 0; transition: transform .15s; }
 .scr-cselect-open .scr-cselect-caret { transform: rotate(180deg); color: var(--text); }
+/* 데이터/코딩 폰트(D2Coding, --font-mono) 대신 앱 기본 폰트로 되돌리는 유틸 — 리그
+   드롭다운은 숫자/코드값이 아니라 팀명·라운드 같은 일반 텍스트라 기본 폰트가 맞다
+   (요청: "리그 드롭다운 폰트 기본 폰트(데이터 폰트는 내가 말할때만 써줘 앞으로는)").
+   드롭다운 옵션 목록은 body로 포털링되므로 트리거뿐 아니라 .scr-cselect-drop 쪽에도
+   같은 클래스가 함께 걸린다(Select의 className prop이 트리거 래퍼와 드롭다운 양쪽에
+   다 전달된다 — .scr-cselect-drop.scr-chip-race 패턴과 동일). */
+.scr-cselect-plain .scr-cselect-trigger,
+.scr-cselect-drop.scr-cselect-plain .scr-cselect-opt {
+  font-family: 'Pretendard Variable', Pretendard, 'Noto Sans KR', sans-serif;
+}
 /* position/top/left/width는 Select.tsx가 body 포털 + 인라인 스타일로 뷰포트 기준 계산해서
    직접 채운다 (모달 본문 등 overflow:hidden/auto 인 스크롤 영역 안에서도 잘리지 않도록) */
 /* touch-action: pan-y — 이 팝오버는 모달 내부 트리거 위에 body 포털로 떠서 모달 본문과
@@ -6838,12 +6848,11 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
 .scr-league-summary-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .scr-league-summary-name { font-size: var(--fs-subhead); font-weight: 800; display: inline-flex; align-items: center; gap: 4px; }
 .scr-league-edit-toggle { width: 22px; height: 22px; }
-/* 완전한 알약 대신 둥근 네모 + 안쪽 하이라이트로 브라운관(CRT)처럼 네 면이 살짝 볼록한
-   느낌을 준다(요청: "좀더 둥근 네모스타일로 바꾸돼 브라운관처럼 네 면이 약간 볼록한
-   느낌"). 위쪽에서 빛이 비치는 것처럼 옅은 흰 그라데이션 + 안쪽 그림자로 곡면감을 낸다. */
+/* 완전한 알약(999px) 대신 평평한(광택 없이) 둥근 네모 — 정확한 스퀴클 곡률을 맞추기
+   어려워 단순한 고정값 라운드로 정리한다(요청: "유튜브 로고 같은 형태를 만들기
+   어려우면 그냥 둥근 네모로"). */
 .scr-league-status-pill {
-  flex: 0 0 auto; padding: 4px 12px; border-radius: 9px; font-size: var(--fs-caption); font-weight: 700;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), inset 0 -2px 3px rgba(0,0,0,0.25), inset 0 0 0 1px rgba(255,255,255,0.08);
+  flex: 0 0 auto; padding: 4px 12px; border-radius: 8px; font-size: var(--fs-caption); font-weight: 700;
 }
 .scr-league-status-setup { background: rgba(255,255,255,0.08); color: var(--muted); }
 /* "진행중"은 보통 초록 포인트색을 쓴다(요청) — 완료(같은 초록 계열)와는 문구로 구분된다. */
@@ -6852,8 +6861,6 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
 .scr-league-summary-meta {
   display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: var(--fs-caption); color: var(--muted);
 }
-.scr-league-summary-actions { display: flex; justify-content: flex-end; }
-
 /* 팀 패널 — 리그 상세 안에 이어 붙는 섹션. */
 .scr-league-teams-panel { display: flex; flex-direction: column; gap: 10px; padding-top: 4px; border-top: 1px solid var(--league-line); }
 .scr-league-teams-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
@@ -6896,10 +6903,21 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
   font-size: var(--fs-caption); font-weight: 700; color: var(--muted); text-align: center;
   padding-bottom: 8px;
 }
-.scr-league-bracket-col-matches {
-  flex: 1 1 auto; display: flex; flex-direction: column; justify-content: space-around; gap: 14px;
+/* 1라운드(리프가 가장 많은 라운드)는 내용물(로스터 카드) 높이를 그대로 써서 이 칸이
+   grid 전체의 기준 높이를 정한다(align-items:stretch로 2라운드부터는 이 높이에 맞춰
+   늘어난다) — space-around로 자연스러운 높이 그대로 분배한다. 2라운드부터는(-stretch
+   수정자, JSX에서 round>1일 때 붙임) 칸 높이가 이미 1라운드에 맞춰 정해진 상태이므로
+   그 안에서 짝/경기를 flex:1로 정확히 등분해야 1라운드 커넥터 중심과 어긋나지 않는다
+   — 로스터 카드(1라운드) 대신 "팀 배정" 드롭다운 한 줄(2라운드+)처럼 내용물 높이가
+   훨씬 짧아도 항상 칸을 리프 개수만큼 정확히 등분한다. 주의: 이 flex:1 1 0 +
+   min-height:0을 1라운드 자신에도 걸면 기준으로 삼을 높이 자체가 사라져 grid 전체가
+   0으로 찌그러진다(실제 발생한 회귀 — flex-basis:0인 자식은 min-height:auto가 주는
+   content 기반 최소 높이가 없으면 아예 높이가 없다고 계산된다). */
+.scr-league-bracket-col-matches { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: space-around; gap: 14px; }
+.scr-league-bracket-pair {
+  position: relative; display: flex; flex-direction: column; justify-content: center; gap: 10px;
 }
-.scr-league-bracket-pair { position: relative; display: flex; flex-direction: column; gap: 10px; }
+.scr-league-bracket-pair-stretch { flex: 1 1 0; min-height: 0; }
 /* 짝 상자(경기 두 개) 오른쪽에서 다음 라운드 칸까지 이어지는 커넥터 — 위/아래 절반을
    각각 별도 가상요소(::before/::after)로 그려, 결과가 난 쪽 선만 굵게+포인트색으로
    강조한다(요청: "이긴쪽의 선이 두껍거나 포인트색으로 표시되는 방식", 참고 이미지 기준
@@ -6923,30 +6941,63 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
 .scr-league-bracket-pair-bottom-won::after {
   border-color: var(--point); border-width: 3px; z-index: 1;
 }
-.scr-league-bracket-match-wrap { display: flex; flex-direction: column; gap: 4px; }
-/* 경기 하나 = 상자 하나(참고 이미지 — FIFA/AFC 대진표처럼), 상자와 상자 사이만 위
-   .scr-league-bracket-pair 선으로 잇는다. 배경은 투명, 테두리는 흰 톤(요청: "패널은
-   투명, 선은 흰색"). */
+.scr-league-bracket-match-wrap { display: flex; flex-direction: column; justify-content: center; gap: 4px; }
+.scr-league-bracket-match-wrap-stretch { flex: 1 1 0; min-height: 0; }
+/* 맞붙는 두 팀은 상자로 묶지 않고(요청: "대결팀끼리 묶는 테두리를 없애고 대결팀끼리
+   브라켓으로 연결해야돼"), .scr-league-bracket-pair와 똑같은 quarter-point 기법으로 두
+   팀 슬롯 사이를 선으로 잇는다 — margin-right로 폭을 확보해 그 연결점이 그대로
+   .scr-league-bracket-pair 커넥터의 시작점이 되고(container가 margin만큼 자동으로
+   넓어짐), 두 단계 선이 한 줄처럼 이어져 보인다. */
 .scr-league-bracket-match {
-  display: flex; flex-direction: column; gap: 6px; border: 1px solid var(--league-line);
-  border-radius: 10px; padding: 6px; background: var(--league-panel);
+  position: relative; display: flex; flex-direction: column; gap: 8px;
+  margin-right: var(--league-match-connect-gap, 16px);
 }
+.scr-league-bracket-match::before, .scr-league-bracket-match::after {
+  content: ""; position: absolute; left: 100%; width: var(--league-match-connect-gap, 16px);
+  border-right: 2px solid var(--league-line); transition: border-color .15s;
+}
+.scr-league-bracket-match::before {
+  top: 25%; height: 25%; border-top: 2px solid var(--league-line); border-top-right-radius: 8px;
+}
+.scr-league-bracket-match::after {
+  bottom: 25%; height: 25%; border-bottom: 2px solid var(--league-line); border-bottom-right-radius: 8px;
+}
+.scr-league-bracket-match-a-won::before { border-color: var(--point); border-width: 3px; z-index: 1; }
+.scr-league-bracket-match-b-won::after { border-color: var(--point); border-width: 3px; z-index: 1; }
+/* 죽은(is_dead, 부전승 상대가 구조적으로 없는) 칸만 예외적으로 자리표시 상자를 그린다
+   — 실제 대결이 없으니 연결선 대신 점선 박스. 짝 커넥터가 두 자식의 높이를 반반으로
+   가정하므로 크기는 실제 경기와 맞춘다. */
 .scr-league-bracket-match-void {
-  align-items: center; justify-content: center; opacity: 0.5; border-style: dashed;
+  margin-right: 0; align-items: center; justify-content: center; opacity: 0.5;
+  border: 1px dashed var(--league-line); border-radius: 10px; padding: 10px;
 }
-.scr-league-bracket-slot-filled { position: relative; }
+.scr-league-bracket-match-void::before, .scr-league-bracket-match-void::after { content: none; }
 /* 팀/선수 카드는 테마와 무관하게 항상 하얀 배경 + 검정 글씨(요청: "팀카드는 하얀색
    배경에 검은글씨와 아바타") — 대진표 특성상 흰 유니폼 카드처럼 또렷하게 구분되길
    바란 것으로 보고, 다크/라이트 테마 변수 대신 고정값을 쓴다. */
 .scr-league-bracket-team-card {
-  display: flex; align-items: center; gap: 7px; padding: 6px 8px;
+  display: flex; align-items: center; gap: 7px; padding: 6px 8px; width: 100%;
   background: #fff; color: #10151a; border-radius: 8px; min-height: 34px;
+  border: none; font: inherit; text-align: left;
 }
 .scr-league-bracket-team-card-win { box-shadow: 0 0 0 2px var(--win) inset; }
 .scr-league-bracket-team-card-label {
   flex: 0 0 auto; font-weight: 800; font-size: var(--fs-micro); color: #10151a;
   width: 16px; text-align: center;
 }
+/* 팀전 1라운드 수정 모드 — 팀명(라벨) 자리에 항상 작은 드롭다운이 끼워진다(요청: "팀명
+   부분이 드롭다운으로 바뀌는거야... 드롭다운 열때 아무것도 바뀔필요 없이 드롭다운만
+   열려야돼") — 라벨과 같은 자리·크기를 유지하도록 폭을 좁히고 옵션 라벨 대신
+   shortLabel(팀 글자)만 표시한다. 나머지(로스터 목록)는 읽기전용과 동일하게 그대로
+   둔다. */
+.scr-league-bracket-label-select { width: 34px; flex: 0 0 auto; }
+.scr-league-bracket-label-select .scr-cselect-trigger {
+  padding: 2px 2px; min-height: 0; background: rgba(16,21,26,0.08); border: none;
+  font-weight: 800; font-size: var(--fs-micro); color: #10151a; justify-content: center; gap: 2px;
+}
+.scr-league-bracket-label-select .scr-cselect-value-full { display: none; }
+.scr-league-bracket-label-select .scr-cselect-value-short { display: inline; }
+.scr-league-bracket-label-select .scr-cselect-caret { width: 10px; height: 10px; }
 .scr-league-bracket-team-card-empty-roster { font-size: var(--fs-micro); font-weight: 600; color: #10151a; }
 /* 로스터 전원을 세로로(요청: "팀이름이 아니라 구성원이름 보이게(세로로)") — 팀전은
    최대 4명까지라 줄바꿈돼도 카드가 과하게 안 늘어난다. */
@@ -6966,14 +7017,12 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
 }
 .scr-league-bracket-team-empty {
   padding: 8px; text-align: center; font-size: var(--fs-caption); color: var(--dim);
-  border: 1px dashed var(--line); border-radius: 8px;
+  border: 1px dashed var(--line); border-radius: 8px; width: 100%;
 }
+/* 개인전 1라운드 수정 모드 — 로스터 자리에 드롭다운이 그대로 들어간다(빈 슬롯이면
+   "미지정"이 선택된 채로, 하얀 카드는 그대로라 팀원 목록만 없는 것과 같은 모양이다,
+   요청: "빈슬롯을 하얀 배경에 팀 드롭다운만 미지정 선택돼 있으면 돼"). */
 .scr-league-bracket-slot-select { width: 100%; }
-.scr-league-bracket-slot-clear {
-  position: absolute; top: -6px; right: -6px; width: 18px; height: 18px; border-radius: 999px;
-  display: flex; align-items: center; justify-content: center; border: none; cursor: pointer;
-  background: rgba(16,21,26,0.82); color: #fff; padding: 0;
-}
 .scr-league-bracket-score {
   text-align: center; font-size: var(--fs-micro); font-weight: 700; color: var(--muted);
 }
@@ -6981,3 +7030,6 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
   text-align: center; font-size: var(--fs-11); color: var(--dim);
 }
 .scr-league-bracket-generate-row { display: flex; align-items: center; gap: 8px; }
+/* 팀수/대진표 규모는 상한이 없어(요청: "팀수 무제한... 대진표 슬롯 무제한") 목록형
+   Select 대신 숫자 입력 하나로 받는다 — 자리만 차지하지 않게 좁게 고정한다. */
+.scr-league-bracket-count-input { width: 72px; flex: 0 0 auto; }

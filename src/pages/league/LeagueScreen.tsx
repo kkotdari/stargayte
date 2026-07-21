@@ -110,14 +110,14 @@ export default function LeagueScreen() {
           onChange={(v) => setSelectedId(Number(v))}
           placeholder={leagues.length === 0 ? "리그 없음" : "리그 선택"}
           disabled={leagues.length === 0}
-          className="scr-league-select"
+          className="scr-league-select scr-cselect-plain"
         />
         {isAdmin && (
           <button
             type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm"
             onClick={() => setCreating(true)}
           >
-            <Plus size={14} /> 새 리그
+            <Plus size={14} /> 개최
           </button>
         )}
       </div>
@@ -144,6 +144,17 @@ export default function LeagueScreen() {
                   <Pencil size={13} />
                 </button>
               )}
+              {canEdit && (
+                <button
+                  type="button"
+                  className="scr-icon-btn scr-icon-btn-danger"
+                  onClick={() => setDeleteTarget(leagues.find((l) => l.id === league.id) ?? null)}
+                  aria-label="리그 삭제"
+                  title="리그 삭제"
+                >
+                  <Trash2 size={13} />
+                </button>
+              )}
             </span>
             <span className={cx("scr-league-status-pill", `scr-league-status-${league.status}`)}>
               {STATUS_LABEL[league.status]}
@@ -157,17 +168,6 @@ export default function LeagueScreen() {
               {league.drawSize ? ` · 대진표 ${league.drawSize}강` : ""}
             </span>
           </div>
-          {canEdit && (
-            <div className="scr-league-summary-actions">
-              <button
-                type="button" className="scr-btn scr-btn-ghost scr-btn-danger scr-btn-sm"
-                onClick={() => setDeleteTarget(leagues.find((l) => l.id === league.id) ?? null)}
-              >
-                <Trash2 size={14} /> 리그 삭제
-              </button>
-            </div>
-          )}
-
           {canEdit && <LeagueTeamsPanel league={league} onUpdated={handleLeagueUpdated} />}
           <LeagueBracket league={league} canEdit={canEdit} onUpdated={handleLeagueUpdated} />
 

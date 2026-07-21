@@ -8,7 +8,16 @@ import { useAppStore } from "../../store/appStore";
 import { api } from "../../api/client";
 import type { League, LeagueTeam } from "../../types";
 
-const MAX_TEAMS = 6;
+// 이미 결과가 정해진(부전승 포함) 경기에 참가했던 팀은 이력이 깨지므로 로스터/삭제를
+// 막는다(서버 규칙과 동일 — _team_has_decided_match) — 그 외에는 대진표 생성 여부나
+// 리그 상태(setup/active)와 무관하게 항상 편집 가능하다(요청: "팀원도 당연히
+// 수정가능해야해... 팀자체도 삭제 가능해야하고" — 예전엔 "대진표 생성 전(setup)에만"
+// 으로 전부 잠갔는데, 서버는 이미 팀별로 따로 풀어놨었다).
+function teamHasDecidedMatch(league: League, teamId: number): boolean {
+  return league.matches.some(
+    (m) => (m.teamA?.id === teamId || m.teamB?.id === teamId) && m.winnerTeamId !== null,
+  );
+}
 
 function LeagueTeamCard({
   league, team, editable, onUpdated,
@@ -108,12 +117,14 @@ function LeagueTeamCard({
   );
 }
 
-// 리그의 팀 구성 — 대진표 생성 전(setup)에만 팀 추가/삭제/로스터 편집이 가능하다(서버
-// 규칙과 동일). 생성 후에는 읽기 전용으로 로스터만 보여준다.
+// 리그의 팀 구성 — 팀/선수 수는 상한이 없다(요청: "팀수 무제한 개인전 선수 무제한").
+// 대진표 생성 여부/리그 상태와 무관하게 언제든 팀을 추가할 수 있고(단, 대진표가 이미
+// 있으면 그때 예약해둔 자리(plannedTeams)만큼만 — 서버 규칙과 동일), 팀별 편집 가능
+// 여부는 LeagueTeamCard가 그 팀이 이미 결과가 정해진 경기에 참가했는지로 따로 판단한다.
 export default function LeagueTeamsPanel({ league, onUpdated }: { league: League; onUpdated: (l: League) => void }) {
   const [addBusy, setAddBusy] = useState(false);
   const [err, setErr] = useState("");
-  const editable = league.status === "setup";
+  const canAddTeam = league.drawSize === null || league.teams.length < (league.plannedTeams ?? 0);
 
   const addTeam = async () => {
     setErr("");
@@ -131,8 +142,10 @@ export default function LeagueTeamsPanel({ league, onUpdated }: { league: League
   return (
     <div className="scr-league-teams-panel">
       <div className="scr-league-teams-panel-head">
-        <h2 className="scr-league-section-title">팀 ({league.teams.length}/{MAX_TEAMS})</h2>
-        {editable && league.teams.length < MAX_TEAMS && (
+        <h2 className="scr-league-section-title">
+          팀 ({league.teams.length}{league.drawSize !== null ? `/${league.plannedTeams}` : ""})
+        </h2>
+        {canAddTeam && (
           <button
             type="button" className="scr-btn scr-btn-ghost scr-btn-sm"
             onClick={addTeam} disabled={addBusy}
@@ -149,7 +162,10 @@ export default function LeagueTeamsPanel({ league, onUpdated }: { league: League
       ) : (
         <div className="scr-league-teams-grid">
           {league.teams.map((team) => (
-            <LeagueTeamCard key={team.id} league={league} team={team} editable={editable} onUpdated={onUpdated} />
+            <LeagueTeamCard
+              key={team.id} league={league} team={team} editable={!teamHasDecidedMatch(league, team.id)}
+              onUpdated={onUpdated}
+            />
           ))}
         </div>
       )}
