@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import MemberPickBlock from "../../components/common/MemberPickBlock";
+import Avatar from "../../components/common/Avatar";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 import { Spinner } from "../../components/common/Feedback";
 import { useAppStore } from "../../store/appStore";
@@ -30,7 +31,7 @@ function LeagueTeamCard({
   const memberById = new Map(members.map((m) => [m.id, m]));
   const options = members
     .filter((m) => !takenElsewhere.has(m.id) && !rosterIds.includes(m.id))
-    .map((m) => ({ value: m.id, label: `${m.nickname} (${m.battletag})` }));
+    .map((m) => ({ value: m.id, label: `${m.nickname} (${m.battletag})`, avatar: <Avatar member={m} size={20} /> }));
 
   // MemberPickBlock은 ids를 즉시 자기 state로 들고 있지 않고 매번 props(team.roster)를
   // 그대로 보여주는 완전 제어 컴포넌트라, 여기서 실제 저장(API)까지 하고 성공하면 리그

@@ -512,8 +512,11 @@ export interface League {
   mode: LeagueMode;
   bestOf: number;
   status: LeagueStatus;
-  // 대진표 생성 전엔 null — 생성 시점에 참가 팀 수 기준 다음 2의 거듭제곱으로 확정된다.
+  // 대진표 생성 전엔 null — 생성 시점에 관리자가 정한 team_count 기준 다음 2의
+  // 거듭제곱으로 확정된다.
   drawSize: number | null;
+  // 대진표 생성 시 예약해둔 규모(실제 지금 만들어진 팀 수와 다를 수 있다) — 생성 전엔 null.
+  plannedTeams: number | null;
   teams: LeagueTeam[];
   matches: LeagueMatch[];
   createdAt: string;

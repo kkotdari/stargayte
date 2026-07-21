@@ -712,13 +712,17 @@ export const api = {
       method: "PUT", body: JSON.stringify({ memberIds }),
     });
   },
-  async generateLeagueBracket(leagueId: number): Promise<League> {
-    return request<League>(`/api/leagues/${leagueId}/bracket/generate`, { method: "POST" });
+  async generateLeagueBracket(leagueId: number, teamCount: number): Promise<League> {
+    return request<League>(`/api/leagues/${leagueId}/bracket/generate`, {
+      method: "POST", body: JSON.stringify({ teamCount }),
+    });
   },
+  // 슬롯에 팀을 배정하면 반대쪽이 구조적으로 영원히 비는 자리일 때 그 즉시 부전승이
+  // 연쇄될 수 있어(서버가 처리), 매치 하나가 아니라 리그 전체를 다시 받는다.
   async setLeagueMatchSlot(
     leagueId: number, matchId: number, side: LeagueMatchSide, teamId: number | null,
-  ): Promise<LeagueMatch> {
-    return request<LeagueMatch>(`/api/leagues/${leagueId}/matches/${matchId}/slot`, {
+  ): Promise<League> {
+    return request<League>(`/api/leagues/${leagueId}/matches/${matchId}/slot`, {
       method: "PATCH", body: JSON.stringify({ side, teamId }),
     });
   },

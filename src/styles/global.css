@@ -6807,6 +6807,9 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
    지적받음) — 버튼은 안 눌리게 고정폭으로 둔다. */
 .scr-league-toolbar > .scr-btn { flex: 0 0 auto; white-space: nowrap; }
 .scr-league-mode-toggle { display: flex; gap: 8px; margin-top: 4px; }
+/* 개인리그 설명 힌트만 기본 .scr-hint(--fs-subhead)보다 두 단계 작게(요청: "폰트 2스텝
+   축소") — 다른 화면의 공용 .scr-hint 크기는 그대로 둔다. */
+.scr-league-mode-hint { font-size: var(--fs-caption); }
 .scr-league-summary-card {
   display: flex; flex-direction: column; gap: 10px;
   padding: 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel-raised);
@@ -6842,31 +6845,78 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
 }
 .scr-league-team-card-busy { display: flex; justify-content: center; padding: 4px 0; }
 
-/* 대진표 — 3단계는 읽기 전용 표시만(드래그앤드랍/결과 입력은 다음 단계). 라운드를
-   가로로 늘어놓고 스크롤, 각 라운드 안에서는 세로로 경기 카드를 쌓는다(트리 연결선은
-   다음 단계에서 손볼 여지로 남겨둔다). */
+/* 대진표 — 라운드를 가로로 늘어놓고 각 라운드 안에서는 세로로 경기 카드를 쌓는다.
+   토너먼트답게 인접한 두 경기를 하나의 "짝(pair)" 상자로 묶어 그 오른쪽에 다음 라운드로
+   모이는 커넥터 선을 그린다(요청: "토너먼트답게 선으로 이어서... 가운데로 타고타고
+   올라가는 식"). 짝의 위/아래 절반 지점에서 선이 시작해 가운데(다음 칸)로 모인다 —
+   경기 카드 높이가 로스터 인원수에 따라 조금씩 달라질 수 있어(1~4명) 완벽히 수학적으로
+   정확하진 않지만, 비슷한 인원 구성에서는 잘 맞는다. */
 .scr-league-bracket-panel { display: flex; flex-direction: column; gap: 10px; padding-top: 4px; border-top: 1px solid var(--line); }
-.scr-league-bracket-scroll { overflow-x: auto; }
-.scr-league-bracket-grid { display: flex; gap: 16px; padding-bottom: 4px; }
-.scr-league-bracket-col { display: flex; flex-direction: column; gap: 10px; min-width: 140px; flex: 0 0 auto; }
+/* 모바일에서 가로 스크롤 — 전적통계 표(.scr-stat-table)와 같은 패턴(요청: "모바일에선
+   통계 화면처럼 가로 스크롤 활용"). 세로축은 페이지로 넘겨(overscroll-behavior-x만). */
+.scr-league-bracket-scroll {
+  overflow-x: auto; overscroll-behavior-x: none; -webkit-overflow-scrolling: touch;
+}
+.scr-league-bracket-grid { display: flex; align-items: stretch; gap: 44px; padding: 6px 4px 10px; }
+.scr-league-bracket-col { display: flex; flex-direction: column; min-width: 168px; flex: 0 0 auto; }
 .scr-league-bracket-col-head {
   font-size: var(--fs-caption); font-weight: 700; color: var(--muted); text-align: center;
+  padding-bottom: 8px;
+}
+.scr-league-bracket-col-matches {
+  flex: 1 1 auto; display: flex; flex-direction: column; justify-content: space-around; gap: 14px;
+}
+.scr-league-bracket-pair { position: relative; display: flex; flex-direction: column; gap: 10px; }
+/* 짝 상자 오른쪽에서 다음 라운드로 모이는 커넥터 — 위쪽 절반은 아래로, 그 다음
+   순회에서 아래쪽 절반은 위로 꺾여 가운데(다음 칸 자리)로 모인다. */
+.scr-league-bracket-pair::after {
+  content: ""; position: absolute; top: 25%; bottom: 25%; left: 100%;
+  width: 22px; border-top: 2px solid var(--line); border-right: 2px solid var(--line);
+  border-bottom: 2px solid var(--line); border-top-right-radius: 8px; border-bottom-right-radius: 8px;
 }
 .scr-league-bracket-match {
-  display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 10px;
-  overflow: hidden; background: var(--panel);
+  display: flex; flex-direction: column; gap: 6px; border: 1px solid var(--line); border-radius: 10px;
+  padding: 8px; background: var(--panel);
 }
-.scr-league-bracket-match-dead { opacity: 0.45; }
+.scr-league-bracket-match-dead { opacity: 0.4; }
 .scr-league-bracket-match-empty {
-  padding: 10px 8px; text-align: center; font-size: var(--fs-caption); color: var(--muted);
+  padding: 14px 8px; text-align: center; font-size: var(--fs-caption); color: var(--muted);
 }
-.scr-league-bracket-side {
-  padding: 7px 10px; font-size: var(--fs-caption); font-weight: 600;
+.scr-league-bracket-slot-filled { position: relative; }
+/* 팀/선수 카드는 테마와 무관하게 항상 하얀 배경 + 검정 글씨(요청: "팀카드는 하얀색
+   배경에 검은글씨와 아바타") — 대진표 특성상 흰 유니폼 카드처럼 또렷하게 구분되길
+   바란 것으로 보고, 다크/라이트 테마 변수 대신 고정값을 쓴다. */
+.scr-league-bracket-team-card {
+  display: flex; align-items: center; gap: 7px; padding: 6px 8px;
+  background: #fff; color: #10151a; border-radius: 8px; min-height: 34px;
 }
-.scr-league-bracket-side + .scr-league-bracket-side { border-top: 1px solid var(--line); }
-.scr-league-bracket-side-win { color: var(--win); font-weight: 800; background: color-mix(in srgb, var(--win) 12%, transparent); }
-.scr-league-bracket-side-empty { color: var(--dim); font-weight: 500; }
+.scr-league-bracket-team-card-win { box-shadow: 0 0 0 2px var(--win) inset; }
+.scr-league-bracket-team-card-label {
+  flex: 0 0 auto; font-weight: 800; font-size: var(--fs-micro); color: #10151a;
+  width: 16px; text-align: center;
+}
+.scr-league-bracket-team-card-empty-roster { font-size: var(--fs-micro); font-weight: 600; color: #10151a; }
+/* 로스터 전원을 세로로(요청: "팀이름이 아니라 구성원이름 보이게(세로로)") — 팀전은
+   최대 4명까지라 줄바꿈돼도 카드가 과하게 안 늘어난다. */
+.scr-league-bracket-team-card-roster { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 auto; }
+.scr-league-bracket-team-card-member {
+  display: flex; align-items: center; gap: 5px; font-size: var(--fs-micro); font-weight: 700;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #10151a;
+}
+.scr-league-bracket-team-empty {
+  padding: 8px; text-align: center; font-size: var(--fs-caption); color: var(--dim);
+  border: 1px dashed var(--line); border-radius: 8px;
+}
+.scr-league-bracket-slot-select { width: 100%; }
+.scr-league-bracket-slot-clear {
+  position: absolute; top: -6px; right: -6px; width: 18px; height: 18px; border-radius: 999px;
+  display: flex; align-items: center; justify-content: center; border: none; cursor: pointer;
+  background: rgba(16,21,26,0.82); color: #fff; padding: 0;
+}
 .scr-league-bracket-score {
-  padding: 4px 10px; border-top: 1px solid var(--line); text-align: center;
-  font-size: var(--fs-micro); color: var(--muted);
+  text-align: center; font-size: var(--fs-micro); font-weight: 700; color: var(--muted);
 }
+.scr-league-bracket-when {
+  text-align: center; font-size: var(--fs-11); color: var(--dim);
+}
+.scr-league-bracket-generate-row { display: flex; align-items: center; gap: 8px; }

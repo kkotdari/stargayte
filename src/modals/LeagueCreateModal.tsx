@@ -12,6 +12,10 @@ interface LeagueCreateModalProps {
   onCreated: (league: League) => void;
 }
 
+// N전 M선승의 N — 짝수는 무승부가 나올 수 있어 홀수만 고르게 한다(요청: "1, 3, 5, 7 중
+// 선택하는 식으로 변경").
+const BEST_OF_OPTIONS = [1, 3, 5, 7] as const;
+
 // 리그 생성 — 팀/개인 구분(mode)은 생성 후 바꿀 수 없다(로스터/대타 제약이 여기 달려있어
 // 중간에 바꾸면 이미 만든 팀 구성과 모순될 수 있어서, 서버도 수정 API에서 이 필드를 안
 // 받는다) — 그래서 생성 시점에만 고르게 한다.
@@ -19,18 +23,16 @@ export default function LeagueCreateModal({ onClose, onCreated }: LeagueCreateMo
   useLockBodyScroll();
   const [name, setName] = useState("");
   const [mode, setMode] = useState<LeagueMode>("team");
-  const [bestOf, setBestOf] = useState("3");
+  const [bestOf, setBestOf] = useState<number>(3);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
 
   const submit = async () => {
     if (!name.trim()) { setErr("리그 이름을 입력해 주세요."); return; }
-    const bestOfNum = Number(bestOf);
-    if (!Number.isInteger(bestOfNum) || bestOfNum < 1) { setErr("경기 방식(N전 M선승)을 올바르게 입력해 주세요."); return; }
     setErr("");
     setBusy(true);
     try {
-      const league = await api.createLeague({ name: name.trim(), mode, bestOf: bestOfNum });
+      const league = await api.createLeague({ name: name.trim(), mode, bestOf });
       onCreated(league);
       onClose();
     } catch (e) {
@@ -72,18 +74,25 @@ export default function LeagueCreateModal({ onClose, onCreated }: LeagueCreateMo
                 개인리그
               </button>
             </div>
-            <p className="scr-hint scr-hint-left">
+            <p className="scr-hint scr-hint-left scr-league-mode-hint">
               개인리그는 팀 로스터가 1명으로 고정되고 대타를 쓸 수 없어요. 생성 후에는 바꿀 수 없어요.
             </p>
           </div>
 
-          <label className="scr-field">
-            <span className="scr-label">경기 방식 (N전 M선승의 N)</span>
-            <input
-              className="scr-input" type="number" min={1} value={bestOf}
-              onChange={(e) => setBestOf(e.target.value)}
-            />
-          </label>
+          <div className="scr-field">
+            <span className="scr-label">경기 방식</span>
+            <div className="scr-league-mode-toggle">
+              {BEST_OF_OPTIONS.map((n) => (
+                <button
+                  key={n} type="button"
+                  className={cx("scr-btn scr-btn-sm", bestOf === n ? "scr-btn-primary" : "scr-btn-ghost")}
+                  onClick={() => setBestOf(n)}
+                >
+                  {n}전 {Math.floor(n / 2) + 1}선승
+                </button>
+              ))}
+            </div>
+          </div>
 
           {err && <div className="scr-err">{err}</div>}
 

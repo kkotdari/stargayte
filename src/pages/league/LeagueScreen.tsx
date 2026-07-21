@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Pencil } from "lucide-react";
 import Select from "../../components/common/Select";
 import { Spinner } from "../../components/common/Feedback";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 import LeagueCreateModal from "../../modals/LeagueCreateModal";
 import LeagueTeamsPanel from "./LeagueTeamsPanel";
 import LeagueBracket from "./LeagueBracket";
+import { useAppStore } from "../../store/appStore";
+import { isAdminRole } from "../../constants/roles";
 import { api } from "../../api/client";
 import { cx } from "../../utils/format";
 import type { League, LeagueListItem, LeagueMode, LeagueStatus } from "../../types";
@@ -13,10 +15,16 @@ import type { League, LeagueListItem, LeagueMode, LeagueStatus } from "../../typ
 const MODE_LABEL: Record<LeagueMode, string> = { team: "팀리그", individual: "개인리그" };
 const STATUS_LABEL: Record<LeagueStatus, string> = { setup: "준비중", active: "진행중", completed: "완료" };
 
-// 공식 리그 대진/결과 관리 — 1단계(요청: "기능을 나눠서 조금씩 배포") — 리그 목록/생성/삭제와
-// 선택한 리그의 기본 정보만 보여준다. 팀 구성/로스터/대진표/결과 입력은 다음 단계에서 이어
-// 붙인다. App.tsx가 이미 운영자만 이 화면으로 들어오게 게이팅한다.
+// 공식 리그 대진/결과 관리 — 지금은 운영 메뉴에만 노출돼 사실상 운영자만 들어오지만,
+// 화면 자체는 나중에 일반 회원에게도 공개할 걸 감안해 만들어둔다(요청: "수정하는
+// 사람만 팀 목록과 대진표가 따로 보이고 일반 회원들은 대진표만 보기" — "같은 화면을
+// 쓰는데 운영자는 수정권한이 있어서 수정버튼 누르면 다른 편집용 UI 노출"). 운영자만
+// 보이는 "수정" 토글을 누르기 전까진 운영자도 일반 회원과 같은 읽기 전용 대진표만 본다.
 export default function LeagueScreen() {
+  const user = useAppStore((s) => s.user);
+  const isAdmin = isAdminRole(user?.roles ?? []);
+  const [editMode, setEditMode] = useState(false);
+  const canEdit = isAdmin && editMode;
   const [leagues, setLeagues] = useState<LeagueListItem[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [league, setLeague] = useState<League | null>(null);
@@ -104,12 +112,14 @@ export default function LeagueScreen() {
           disabled={leagues.length === 0}
           className="scr-league-select"
         />
-        <button
-          type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm"
-          onClick={() => setCreating(true)}
-        >
-          <Plus size={14} /> 새 리그
-        </button>
+        {canEdit && (
+          <button
+            type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm"
+            onClick={() => setCreating(true)}
+          >
+            <Plus size={14} /> 새 리그
+          </button>
+        )}
       </div>
 
       {loadingList ? (
@@ -121,7 +131,20 @@ export default function LeagueScreen() {
       ) : (
         <div className="scr-league-summary-card">
           <div className="scr-league-summary-row">
-            <span className="scr-league-summary-name">{league.name}</span>
+            <span className="scr-league-summary-name">
+              {league.name}
+              {isAdmin && (
+                <button
+                  type="button"
+                  className={cx("scr-league-edit-toggle", editMode && "scr-league-edit-toggle-active")}
+                  onClick={() => setEditMode((v) => !v)}
+                  aria-label={editMode ? "보기 모드로 전환" : "수정 모드로 전환"}
+                  title={editMode ? "보기 모드로 전환" : "수정 모드로 전환"}
+                >
+                  <Pencil size={13} />
+                </button>
+              )}
+            </span>
             <span className={cx("scr-league-status-pill", `scr-league-status-${league.status}`)}>
               {STATUS_LABEL[league.status]}
             </span>
@@ -129,23 +152,30 @@ export default function LeagueScreen() {
           <div className="scr-league-summary-meta">
             <span>{MODE_LABEL[league.mode]}</span>
             <span>{league.bestOf}전 {Math.floor(league.bestOf / 2) + 1}선승</span>
-            <span>{league.teams.length}팀{league.drawSize ? ` · 대진표 ${league.drawSize}강` : ""}</span>
+            <span>
+              {league.teams.length}{league.mode === "individual" ? "명" : "팀"}
+              {league.drawSize ? ` · 대진표 ${league.drawSize}강` : ""}
+            </span>
           </div>
-          <div className="scr-league-summary-actions">
-            <button
-              type="button" className="scr-btn scr-btn-ghost scr-btn-danger scr-btn-sm"
-              onClick={() => setDeleteTarget(leagues.find((l) => l.id === league.id) ?? null)}
-            >
-              <Trash2 size={14} /> 리그 삭제
-            </button>
-          </div>
+          {canEdit && (
+            <div className="scr-league-summary-actions">
+              <button
+                type="button" className="scr-btn scr-btn-ghost scr-btn-danger scr-btn-sm"
+                onClick={() => setDeleteTarget(leagues.find((l) => l.id === league.id) ?? null)}
+              >
+                <Trash2 size={14} /> 리그 삭제
+              </button>
+            </div>
+          )}
 
-          <LeagueTeamsPanel league={league} onUpdated={handleLeagueUpdated} />
-          <LeagueBracket league={league} onUpdated={handleLeagueUpdated} />
+          {canEdit && <LeagueTeamsPanel league={league} onUpdated={handleLeagueUpdated} />}
+          <LeagueBracket league={league} canEdit={canEdit} onUpdated={handleLeagueUpdated} />
 
-          <p className="scr-hint scr-hint-left">
-            결과 입력/대타/슬롯 조정은 다음 업데이트에서 이어서 열려요.
-          </p>
+          {canEdit && (
+            <p className="scr-hint scr-hint-left">
+              결과 입력/대타는 다음 업데이트에서 이어서 열려요.
+            </p>
+          )}
         </div>
       )}
 
