@@ -24,7 +24,28 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
   ctx.closePath();
 }
 
-export function renderRankingShareImage(title: string, label: string, rows: RankingShareRow[]): string {
+// 캔버스에 쓰는 폰트 굵기/크기 조합을 전부 미리 로드해둔다 — Pretendard(웹폰트)가 아직
+// 로드되기 전에 fillText를 부르면, DOM 텍스트처럼 나중에 다시 그려주지 않고 그 자리에서
+// "글자 없음"으로 한 번에 그려져 버리는 브라우저가 있다(실제로 지적받은 문제 — "미리보기에
+// 바만 있고 아무런 정보가 없어서 무의미해"). document.fonts.load로 각 조합을 명시적으로
+// 미리 불러온 뒤에만 그린다.
+const FONT_SPECS = [
+  "700 30px Pretendard", "500 24px Pretendard", "800 34px Pretendard",
+  "600 22px Pretendard", "500 26px Pretendard", "500 20px Pretendard",
+];
+async function ensureFontsReady(): Promise<void> {
+  try {
+    await Promise.all(FONT_SPECS.map((spec) => document.fonts.load(spec)));
+    await document.fonts.ready;
+  } catch {
+    // 폰트 API를 못 쓰는 환경이면 그냥 fallback(sans-serif)으로 그린다.
+  }
+}
+
+export async function renderRankingShareImage(
+  title: string, label: string, rows: RankingShareRow[],
+): Promise<string> {
+  await ensureFontsReady();
   const canvas = document.createElement("canvas");
   canvas.width = WIDTH;
   canvas.height = HEIGHT;

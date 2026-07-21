@@ -214,7 +214,7 @@ export default function RankingScreenV2() {
 
     let imageUrl: string | undefined;
     try {
-      const dataUrl = renderRankingShareImage(
+      const dataUrl = await renderRankingShareImage(
         "스타게이트 랭킹", label,
         topRows.map((r) => ({ rank: r.rank, nickname: r.member.nickname, score: r.rankScore })),
       );
