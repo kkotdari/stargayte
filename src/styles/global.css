@@ -2012,18 +2012,18 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   background: linear-gradient(115deg, #6e4326 0%, #b98a5a 40%, #edc79c 50%, #b98a5a 60%, #6e4326 100%);
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
-/* 라이트 테마(흰 배경)에선 밝은 메탈이 날아가 안 읽혀, 전체적으로 더 어두운 메탈로 낮춘다
-   (요청: "라이트 테마에선 더 어둡게"). 가운데도 순한 중간 톤까지만. */
+/* 라이트 테마(흰 배경)에선 가운데 하이라이트(50%)만 밝기를 낮춘다(요청: "가운데 빛나는
+   부분만 어둡게") — 가장자리/중간(40·60%)은 다크 테마와 동일하게 두고, 중앙만 어둡게. */
 .scr-light-theme .scr-rank-name-gold {
-  background: linear-gradient(115deg, #5f4304 0%, #a9790a 40%, #cf9e28 50%, #a9790a 60%, #5f4304 100%);
+  background: linear-gradient(115deg, #9a6f08 0%, #ffd24d 40%, #f0c53a 50%, #ffd24d 60%, #9a6f08 100%);
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
 .scr-light-theme .scr-rank-name-silver {
-  background: linear-gradient(115deg, #3f434a 0%, #6d727c 40%, #8b909b 50%, #6d727c 60%, #3f434a 100%);
+  background: linear-gradient(115deg, #7a7f88 0%, #c3c9d1 40%, #b3bac4 50%, #c3c9d1 60%, #7a7f88 100%);
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
 .scr-light-theme .scr-rank-name-bronze {
-  background: linear-gradient(115deg, #3f2411 0%, #7c4f28 40%, #a06c3a 50%, #7c4f28 60%, #3f2411 100%);
+  background: linear-gradient(115deg, #6e4326 0%, #b98a5a 40%, #ab7c4c 50%, #b98a5a 60%, #6e4326 100%);
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
 /* "경기수N위" 배지 — 알약 없이 글자만, 글자에 핑크 메탈 그라데이션을 입힌다(요청). 폰트
@@ -2032,6 +2032,11 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   flex-shrink: 0; white-space: nowrap;
   font-size: 10px; font-weight: 800; letter-spacing: 0.02em;
   background: linear-gradient(115deg, #c25288 0%, #f090bf 40%, #ffcfe6 50%, #f090bf 60%, #c25288 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+/* 라이트 테마: 메탈 닉네임과 같은 이유로 가운데 하이라이트만 어둡게(요청) — 가장자리/중간 유지. */
+.scr-light-theme .scr-rank-games-badge {
+  background: linear-gradient(115deg, #c25288 0%, #f090bf 40%, #e888bd 50%, #f090bf 60%, #c25288 100%);
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
 /* 전적/승률도 순위/변동과 같은 패턴으로 위아래 배치, 오른쪽 정렬 */
