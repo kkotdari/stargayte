@@ -9,8 +9,12 @@ export interface RankingShareRow {
   score: number;
 }
 
-const WIDTH = 1200;
-const HEIGHT = 630;
+// 카톡 미리보기는 놓이는 자리(피드 카드/채팅 썸네일 등)마다 비율이 달라 상하나 좌우가
+// 잘릴 수 있다 — 정사각형으로 만들고 사방에 넉넉히 패딩을 둬서, 어떤 비율로 크롭돼도
+// 핵심 내용(타이틀/순위)은 항상 안전영역 안에 남게 한다(요청: "이미지는 정사각형으로
+// 만들되 사방에 패딩을 좀 많이 둬야할듯").
+const SIZE = 1080;
+const PAD = 96;
 // 상위 1~3위는 랭킹 카드(scr-rank-name-gold/silver/bronze)와 같은 금/은/동 톤.
 const MEDAL_COLORS: Record<number, string> = { 1: "#ffd24d", 2: "#c3c9d1", 3: "#b98a5a" };
 
@@ -47,34 +51,40 @@ export async function renderRankingShareImage(
 ): Promise<string> {
   await ensureFontsReady();
   const canvas = document.createElement("canvas");
-  canvas.width = WIDTH;
-  canvas.height = HEIGHT;
+  canvas.width = SIZE;
+  canvas.height = SIZE;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("canvas 2d context를 만들 수 없어요.");
 
-  // 배경 — 앱 다크 테마와 같은 톤의 은은한 세로 그라데이션.
-  const bg = ctx.createLinearGradient(0, 0, 0, HEIGHT);
+  // 배경 — 앱 다크 테마와 같은 톤의 은은한 세로 그라데이션. 크롭에 대비해 배경만은
+  // 캔버스 전체(패딩 포함 바깥까지)를 채운다 — 잘려도 빈 여백이 드러나지 않게.
+  const bg = ctx.createLinearGradient(0, 0, 0, SIZE);
   bg.addColorStop(0, "#181d24");
   bg.addColorStop(1, "#0e1116");
   ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, WIDTH, HEIGHT);
+  ctx.fillRect(0, 0, SIZE, SIZE);
+
+  // 이 안전영역(PAD만큼 안쪽) 밖으로는 텍스트/막대 등 핵심 내용을 그리지 않는다.
+  const left = PAD;
+  const right = SIZE - PAD;
+  const contentW = right - left;
 
   // 상단 타이틀 — 브랜드 + 필터 라벨.
   ctx.fillStyle = "#e8935a";
-  ctx.font = "700 30px Pretendard, sans-serif";
+  ctx.font = "700 34px Pretendard, sans-serif";
   ctx.textBaseline = "alphabetic";
-  ctx.fillText(title, 56, 78);
+  ctx.fillText(title, left, PAD + 34);
   ctx.fillStyle = "rgba(255,255,255,0.6)";
-  ctx.font = "500 24px Pretendard, sans-serif";
-  ctx.fillText(label, 56, 114);
+  ctx.font = "500 26px Pretendard, sans-serif";
+  ctx.fillText(label, left, PAD + 76);
 
   // 순위 목록 — 최대 5명, 점수 상대 비율로 막대를 그린다(요청: "차트가 보이면").
   const top = rows.slice(0, 5);
   const maxScore = Math.max(1, ...top.map((r) => Math.abs(r.score)));
-  const listTop = 150;
-  const rowH = 88;
-  const barX = 340;
-  const barMaxW = WIDTH - barX - 80;
+  const listTop = PAD + 130;
+  const rowH = 118;
+  const barX = left + 240;
+  const barMaxW = right - barX;
 
   top.forEach((r, i) => {
     const y = listTop + i * rowH;
@@ -82,45 +92,43 @@ export async function renderRankingShareImage(
 
     // 행 배경 카드.
     ctx.fillStyle = i % 2 === 0 ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.02)";
-    roundRect(ctx, 40, y, WIDTH - 80, rowH - 12, 12);
+    roundRect(ctx, left, y, contentW, rowH - 16, 14);
     ctx.fill();
 
     // 순위 숫자.
     ctx.fillStyle = medal ?? "rgba(255,255,255,0.85)";
-    ctx.font = "800 34px Pretendard, sans-serif";
-    ctx.fillText(String(r.rank), 64, y + 52);
+    ctx.font = "800 38px Pretendard, sans-serif";
+    ctx.fillText(String(r.rank), left + 24, y + 62);
 
     // 닉네임.
     ctx.fillStyle = medal ?? "#f2f2f2";
-    ctx.font = "700 30px Pretendard, sans-serif";
-    ctx.fillText(r.nickname.length > 10 ? `${r.nickname.slice(0, 10)}…` : r.nickname, 140, y + 52);
+    ctx.font = "700 32px Pretendard, sans-serif";
+    ctx.fillText(r.nickname.length > 8 ? `${r.nickname.slice(0, 8)}…` : r.nickname, left + 100, y + 42);
 
-    // 점수 막대.
-    const w = Math.max(6, (Math.abs(r.score) / maxScore) * barMaxW);
+    // 점수 막대 + 숫자(닉네임 아래 한 줄로, 좁은 정사각형 폭에서도 안 겹치게).
+    const w = Math.max(6, (Math.abs(r.score) / maxScore) * (barMaxW - 130));
     ctx.fillStyle = "rgba(255,255,255,0.08)";
-    roundRect(ctx, barX, y + 20, barMaxW, 14, 7);
+    roundRect(ctx, left + 100, y + 60, barMaxW - 130, 14, 7);
     ctx.fill();
     ctx.fillStyle = medal ?? "#e8935a";
-    roundRect(ctx, barX, y + 20, w, 14, 7);
+    roundRect(ctx, left + 100, y + 60, w, 14, 7);
     ctx.fill();
-
-    // 점수 숫자(막대 오른쪽).
     ctx.fillStyle = "rgba(255,255,255,0.85)";
-    ctx.font = "600 22px Pretendard, sans-serif";
+    ctx.font = "600 24px Pretendard, sans-serif";
     ctx.textAlign = "right";
-    ctx.fillText(`${r.score}점`, WIDTH - 56, y + 52);
+    ctx.fillText(`${r.score}점`, right, y + 46);
     ctx.textAlign = "left";
   });
 
   if (top.length === 0) {
     ctx.fillStyle = "rgba(255,255,255,0.5)";
-    ctx.font = "500 26px Pretendard, sans-serif";
-    ctx.fillText("아직 기록이 없어요", 56, listTop + 40);
+    ctx.font = "500 28px Pretendard, sans-serif";
+    ctx.fillText("아직 기록이 없어요", left, listTop + 40);
   }
 
   ctx.fillStyle = "rgba(255,255,255,0.35)";
-  ctx.font = "500 20px Pretendard, sans-serif";
-  ctx.fillText("stargayte", 56, HEIGHT - 36);
+  ctx.font = "500 22px Pretendard, sans-serif";
+  ctx.fillText("stargayte", left, SIZE - PAD);
 
   return canvas.toDataURL("image/png");
 }
