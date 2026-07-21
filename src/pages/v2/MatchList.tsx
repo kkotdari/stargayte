@@ -266,8 +266,8 @@ function MatchStatsTable({
       race: s.race,
       apm: s.apm, cmd: s.cmdCount, eapm: s.eapm, ecmd: s.effectiveCmdCount, build: s.buildCount,
     }))
-    // 유효커맨드(effectiveCmdCount) 높은 순 — 값이 없으면(수기등록) 맨 아래로.
-    .sort((a, b) => (b.ecmd ?? -1) - (a.ecmd ?? -1));
+    // 생산(build) 높은 순 — 값이 없으면(수기등록) 맨 아래로(요청).
+    .sort((a, b) => (b.build ?? -1) - (a.build ?? -1));
   const n = (v: number | null) => (v == null ? "–" : v.toLocaleString());
   // APM·커맨드는 '유효/전체' 한 칸에 합쳐 보여준다(요청) — 유효값은 강조, 전체값은 흐리게.
   // 둘 다 없으면(수기등록) '–' 하나만.

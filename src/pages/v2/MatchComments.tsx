@@ -261,7 +261,7 @@ function CommentComposer({
         className="scr-btn scr-btn-primary scr-btn-primary-solid scr-mreq-submit-btn"
         disabled={!canSubmit}
         onClick={doSubmit}
-        aria-label="댓글 등록"
+        aria-label="메모 등록"
       >
         {submitting ? <Spinner size={14} /> : submitLabel}
       </button>
@@ -303,7 +303,7 @@ export default function MatchComments({ match }: { match: Match }) {
       const created = await api.createMatchComment(match.id, text, ids);
       setComments((prev) => [...prev, created]);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "댓글을 남기지 못했어요.");
+      setErr(e instanceof Error ? e.message : "메모를 남기지 못했어요.");
     } finally {
       setBusy(false);
     }
@@ -316,7 +316,7 @@ export default function MatchComments({ match }: { match: Match }) {
       setComments((prev) => prev.map((c) => (c.id === id ? updated : c)));
       setEditingId(null);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "댓글을 수정하지 못했어요.");
+      setErr(e instanceof Error ? e.message : "메모를 수정하지 못했어요.");
     } finally {
       setBusy(false);
     }
@@ -328,7 +328,7 @@ export default function MatchComments({ match }: { match: Match }) {
       await api.deleteMatchComment(match.id, id);
       setComments((prev) => prev.filter((c) => c.id !== id));
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "댓글을 삭제하지 못했어요.");
+      setErr(e instanceof Error ? e.message : "메모를 삭제하지 못했어요.");
     } finally {
       setBusy(false);
       setDeleteTarget(null);
@@ -338,7 +338,7 @@ export default function MatchComments({ match }: { match: Match }) {
   return (
     // 로우 전체가 클릭 토글이라, 댓글 영역에서의 클릭/입력은 로우 접힘을 막는다.
     <div className="scr-match-comments" onClick={(e) => e.stopPropagation()}>
-      <div className="scr-match-comments-title">댓글 {comments.length > 0 && <span className="scr-match-comments-count">{comments.length}</span>}</div>
+      <div className="scr-match-comments-title">메모 {comments.length > 0 && <span className="scr-match-comments-count">{comments.length}</span>}</div>
 
       {comments.length > 0 && (
         <ul className="scr-mreq-list scr-match-comments-list">
@@ -380,7 +380,7 @@ export default function MatchComments({ match }: { match: Match }) {
                   submitting={busy}
                   onSubmit={(text, ids) => void update(c.id, text, ids)}
                   onCancel={() => setEditingId(null)}
-                  placeholder="댓글 수정"
+                  placeholder="메모 수정"
                   submitLabel={<CornerDownLeft size={16} />}
                 />
               ) : (
@@ -399,14 +399,14 @@ export default function MatchComments({ match }: { match: Match }) {
           initialParts={[]}
           submitting={busy}
           onSubmit={(text, ids) => void create(text, ids)}
-          placeholder="댓글 달기 (@로 유저 태그)"
+          placeholder="메모 남기기 (@로 유저 태그)"
           submitLabel={<CornerDownLeft size={16} />}
         />
       )}
 
       {deleteTarget && (
         <ConfirmDialog
-          title="댓글을 삭제할까요?"
+          title="메모를 삭제할까요?"
           message="삭제하면 되돌릴 수 없어요."
           confirmLabel={busy ? "삭제 중..." : "삭제"}
           cancelLabel="취소"

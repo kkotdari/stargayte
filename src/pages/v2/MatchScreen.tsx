@@ -178,12 +178,12 @@ export default function MatchScreenV2() {
           />
         </label>
         <label className="scr-match-extra-field">
-          <span className="scr-field-label-text">댓글</span>
+          <span className="scr-field-label-text">메모</span>
           <input
             className="scr-input scr-list-search-input"
             value={commentQuery}
             onChange={(e) => setCommentQuery(e.target.value)}
-            placeholder="댓글 내용"
+            placeholder="메모 내용"
             autoComplete="off"
           />
         </label>
