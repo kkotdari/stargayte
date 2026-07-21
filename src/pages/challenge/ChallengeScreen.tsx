@@ -756,7 +756,7 @@ function ChallengeTimeHeadEdit({
               <button type="button" className="scr-btn scr-btn-ghost scr-btn-sm" onClick={() => setEditing(false)} disabled={busy}>
                 취소
               </button>
-              <button type="button" className="scr-btn scr-btn-primary scr-btn-sm" onClick={save} disabled={busy}>
+              <button type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm" onClick={save} disabled={busy}>
                 {busy ? <Spinner /> : "확인"}
               </button>
             </div>
