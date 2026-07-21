@@ -153,7 +153,7 @@ export default function MatchScreenV2() {
         showCount={false}
         searchValue={search}
         onSearchChange={setSearch}
-        searchPlaceholder="@로 유저 추가"
+        searchPlaceholder="@유저 또는 경기번호로 검색"
         suggestions={suggestions}
       />
 

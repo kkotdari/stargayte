@@ -3062,15 +3062,27 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    흰색)만 있는 표 구조. 머리줄(경기번호·맵·등록자) / 팀 2열 / 그 아래 각 팀 승·패. */
 /* 로우마다 투명 글라스 패널(요청 — 구분선 제거하고 로우별 패널로). 반투명 채움 + backdrop
    blur로 유리감을 주고, 로우 사이는 세로 여백으로 나눈다(별도 구분선 없음). */
+/* 너 나와!(.scr-challenge-card) 패널과 동일한 투명 글라스 + 반사광(inset 하이라이트)과
+   그림자(요청 — 글로우가 아니라 반사광). 라이트 테마는 파란 글로우는 빼고 흰 반사광만 둔다. */
 .scr-match-list-panel-v2 .scr-match-trow {
   padding: 15px 8px; position: relative;
   margin: 8px 0; border-radius: 12px;
-  /* 반투명 채움(테마 따라 흰/검 옅게) + backdrop blur = 유리감. --panel-raised는 라이트
-     테마에서 불투명이라 투명 글라스가 안 나와, --overlay-rgb 기반 반투명으로 직접 깐다. */
-  background: rgba(var(--overlay-rgb), 0.08);
-  backdrop-filter: blur(8px) saturate(1.1);
-  -webkit-backdrop-filter: blur(8px) saturate(1.1);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  background: rgba(var(--overlay-rgb), 0.07);
+  backdrop-filter: blur(9px) saturate(1.2);
+  -webkit-backdrop-filter: blur(9px) saturate(1.2);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.09),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.045),
+    0 2px 12px rgba(0, 0, 0, 0.16);
+}
+.scr-light-theme .scr-match-list-panel-v2 .scr-match-trow {
+  background: rgba(255, 255, 255, 0.62);
+  backdrop-filter: blur(10px) saturate(1.1);
+  -webkit-backdrop-filter: blur(10px) saturate(1.1);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.5),
+    0 1px 6px rgba(0, 0, 0, 0.08);
 }
 /* PC에서는 좌우가 카드 끝에 바짝 붙어 답답해 보였다(요청: "PC에서 경기 목록 내용에만
    좌우 패딩 많이 주기", "내용은 맵이름과 케밥메뉴까지 다 포함" — 머리줄/맵줄/팀그리드
@@ -3113,7 +3125,15 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(var(--overlay-rgb), 0.08);
   font-size: var(--fs-caption);
 }
-.scr-match-trow-no { color: var(--dim); font-variant-numeric: tabular-nums; flex-shrink: 0; }
+.scr-match-trow-no { display: inline-flex; align-items: center; gap: 6px; color: var(--dim); font-variant-numeric: tabular-nums; flex-shrink: 0; }
+.scr-match-trow-no-label { color: var(--muted); }
+.scr-match-trow-no-val { font-weight: 700; color: var(--text); }
+.scr-match-trow-no-copy {
+  display: inline-flex; align-items: center; justify-content: center;
+  background: transparent; border: none; color: var(--dim); cursor: pointer;
+  padding: 2px; border-radius: 4px; line-height: 0;
+}
+.scr-match-trow-no-copy:hover { color: var(--point); background: rgba(var(--overlay-rgb), 0.08); }
 /* 펼침 상세 높이 애니메이션 — grid-template-rows 0fr↔1fr 트릭으로 내용 높이를 몰라도
    부드럽게 늘었다 줄었다 한다(요청: 펼치거나 접을 때 트랜지션). 안쪽은 overflow:hidden로
    접힐 때 잘리게 한다. */

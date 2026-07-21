@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
-import { MoreVertical, Monitor, CircleHelp } from "lucide-react";
+import { MoreVertical, Monitor, CircleHelp, Copy, Check } from "lucide-react";
 import RaceBadge from "../../components/common/RaceBadge";
 import { Spinner } from "../../components/common/Feedback";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
@@ -89,6 +89,28 @@ function PlayerCell({
           ? <CircleHelp size={12} className="scr-chip-computer-icon" />
           : null}
     </span>
+  );
+}
+
+// 경기번호 복사 버튼 — 누르면 클립보드에 복사하고 잠깐 체크 아이콘으로 바뀐다. 로우
+// 클릭(펼침/접힘)이 같이 발동하지 않게 클릭 전파를 막는다.
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      type="button"
+      className="scr-match-trow-no-copy"
+      aria-label="경기번호 복사"
+      title="경기번호 복사"
+      onClick={(e) => {
+        e.stopPropagation();
+        navigator.clipboard?.writeText(text)
+          .then(() => { setCopied(true); window.setTimeout(() => setCopied(false), 1200); })
+          .catch(() => {});
+      }}
+    >
+      {copied ? <Check size={12} /> : <Copy size={12} />}
+    </button>
   );
 }
 
@@ -415,9 +437,13 @@ export default function MatchList({
                           team1={r.team1} team2={r.team2} memberOf={memberOf}
                           highlightMemberIds={highlightMemberIds}
                         />
-                        {/* 최하단 — 왼쪽 끝에 경기번호(#없이), 오른쪽에 등록자(요청). */}
+                        {/* 최하단 — 왼쪽에 '경기번호' 라벨 + 번호(#없이) + 복사 버튼, 오른쪽에 등록자(요청). */}
                         <div className="scr-match-trow-footer">
-                          <span className="scr-match-trow-no">{r.raw.matchNo}</span>
+                          <span className="scr-match-trow-no">
+                            <span className="scr-match-trow-no-label">경기번호</span>
+                            <span className="scr-match-trow-no-val">{r.raw.matchNo}</span>
+                            <CopyButton text={r.raw.matchNo} />
+                          </span>
                           {r.raw.createdBy && <span className="scr-match-trow-by">등록: {r.raw.createdBy.nickname}</span>}
                         </div>
                       </>
