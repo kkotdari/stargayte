@@ -6974,6 +6974,14 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
   background: #fff; color: #10151a; border-radius: 8px;
   border: none; font: inherit; text-align: left; box-sizing: border-box;
 }
+/* 라이트 테마에선 흰 카드가 흰 배경에 묻혀 안 보인다(요청) — 옅은 그림자 + 얇은 림으로
+   카드가 배경 위에 떠 보이게 한다. 승리 카드는 초록 링과 함께 그림자도 유지한다. */
+.scr-light-theme .scr-league-bracket-team-card {
+  box-shadow: 0 1px 4px rgba(0,0,0,0.16), 0 0 0 1px rgba(0,0,0,0.06);
+}
+.scr-light-theme .scr-league-bracket-team-card-win {
+  box-shadow: 0 0 0 2px var(--league-advance) inset, 0 1px 4px rgba(0,0,0,0.16);
+}
 .scr-league-bracket-team-card-label {
   flex: 0 0 auto; font-weight: 800; font-size: var(--fs-micro); color: #10151a;
   width: 16px; text-align: center;
