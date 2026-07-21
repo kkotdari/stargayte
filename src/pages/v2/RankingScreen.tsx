@@ -11,6 +11,8 @@ import RankingDetailModal from "./RankingDetailModal";
 import ChallengeFormModal from "../../modals/ChallengeFormModal";
 import KakaoShareButton from "../../components/common/KakaoShareButton";
 import type { KakaoShareContent } from "../../utils/kakaoShare";
+import { renderRankingShareImage } from "../../utils/rankingShareImage";
+import { api } from "../../api/client";
 import {
   computeRankRows, computeRankTrend, MATCH_TYPE_OF,
   type RankMode, type RankRow as RankRowData, type RankTrendPoint,
@@ -50,6 +52,24 @@ const UNIT_OPTS: { value: PeriodUnit; label: string }[] = [
 // 비교라("2026-07" < "2026-08", "2026" < "2027") 별도 파싱 없이 경계를 판단한다.
 const RANK_MIN: Record<PeriodUnit, string> = { month: "2026-07", year: "2026" };
 
+// 카톡 공유 링크(?screen=ranking&mode=...&unit=...&anchor=...&race=...)로 들어왔을 때
+// 그 필터를 초기값으로 복원한다(요청: "차트 공유시 필터가 그대로 적용되서 가야하는데
+// 안가") — shareRanking이 같은 파라미터로 링크를 만든다. 값이 없거나 알 수 없는
+// 값이면 undefined를 돌려줘 기존 기본값(랜덤 모드 등)을 그대로 쓰게 한다.
+function rankingParamsFromUrl(): { mode?: RankMode; race?: BaseRace | "all"; unit?: PeriodUnit; anchor?: string } {
+  const params = new URLSearchParams(window.location.search);
+  const mode = params.get("mode");
+  const race = params.get("race");
+  const unit = params.get("unit");
+  const anchor = params.get("anchor");
+  return {
+    mode: mode === "solo" || mode === "team" ? mode : undefined,
+    race: race === "테란" || race === "프로토스" || race === "저그" ? race : undefined,
+    unit: unit === "month" || unit === "year" ? unit : undefined,
+    anchor: anchor || undefined,
+  };
+}
+
 // v2 랭킹 — 개인전/팀전을 고르고, 월/연 기간을 좌우 화살표로 옮겨 그 기간의 순위를 본다.
 // 순위 계산(TrueSkill 레이팅)은 전부 서버가 끝내서 내려주고(./rank.ts), 화면은 그 순서대로
 // 그리며 순위 숫자만 붙인다. 개인전·팀전은 집계 대상 경기(1:1 / 팀경기)만 다르고 각각 별도
@@ -63,16 +83,29 @@ export default function RankingScreenV2() {
   const [challengeTarget, setChallengeTarget] = useState<Member | null>(null);
 
   // 진입 기본값은 개인전/팀전 중 랜덤(요청: "랭킹 기본은 개인/팀 랜덤으로 결정") — 특정
-  // 쪽으로 고정하지 않고 매번 새로 들어올 때마다 둘 중 하나를 고른다.
-  const [mode, setMode] = useState<RankMode>(() => (Math.random() < 0.5 ? "solo" : "team"));
+  // 쪽으로 고정하지 않고 매번 새로 들어올 때마다 둘 중 하나를 고른다. 다만 카톡 공유
+  // 링크로 들어왔으면(rankingParamsFromUrl) 그 필터를 랜덤보다 우선한다.
+  const shareParams = useMemo(rankingParamsFromUrl, []);
+  const [mode, setMode] = useState<RankMode>(() => shareParams.mode ?? (Math.random() < 0.5 ? "solo" : "team"));
   const matchType = MATCH_TYPE_OF[mode];
   // 종족 필터(랭커 종족 기준). "all"이면 종족 무관.
-  const [race, setRace] = useState<BaseRace | "all">("all");
+  const [race, setRace] = useState<BaseRace | "all">(() => shareParams.race ?? "all");
   const [search, setSearch] = useState("");
   // 집계 기간 단위(월/연)와 그 기준점(anchor: 월 "YYYY-MM" / 연 "YYYY"). 기본은 그 단위의
   // "현재"(월은 그레이스 보정 이번 달, 연은 올해).
-  const [unit, setUnit] = useState<PeriodUnit>("month");
-  const [anchor, setAnchor] = useState(() => currentPeriodAnchor("month"));
+  const [unit, setUnit] = useState<PeriodUnit>(() => shareParams.unit ?? "month");
+  const [anchor, setAnchor] = useState(() => shareParams.anchor ?? currentPeriodAnchor(shareParams.unit ?? "month"));
+  // 위 초기값에 한 번 쓰고 나면 URL에서 지운다 — 남아있으면 이 화면을 벗어났다 다시
+  // 들어올 때마다(재마운트) 계속 이 필터로 되돌아가 버려서, "화면 이동 시 항상 초기
+  // 상태로" 원칙(다른 화면들과 동일)이 깨진다.
+  useEffect(() => {
+    if (!shareParams.mode && !shareParams.race && !shareParams.unit && !shareParams.anchor) return;
+    const params = new URLSearchParams(window.location.search);
+    params.delete("mode"); params.delete("race"); params.delete("unit"); params.delete("anchor");
+    const qs = params.toString();
+    window.history.replaceState(null, "", `${window.location.pathname}${qs ? `?${qs}` : ""}${window.location.hash}`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const maxAnchor = currentPeriodAnchor(unit);
   const minAnchor = RANK_MIN[unit];
   const hasPrev = anchor > minAnchor;
@@ -163,16 +196,39 @@ export default function RankingScreenV2() {
   const period = useMemo(() => periodAnchorToRange(unit, anchor), [unit, anchor]);
 
   // 카카오톡 공유 내용 — 누르는 시점의 필터/순위로 만든다(상위 5명 + 조건 라벨). 함수로
-  // 넘겨 버튼이 최신 상태를 읽게 한다.
-  const shareRanking = (): KakaoShareContent => {
+  // 넘겨 버튼이 최신 상태를 읽게 한다. link에 지금 필터(개인전/팀전·종족·기간)를 쿼리로
+  // 실어 보내야 상대가 열었을 때도 같은 조건으로 보인다 — 예전엔 link를 안 줘서 항상
+  // 사이트 루트(기본값)로만 열렸다(요청: "차트 공유시 필터가 그대로 적용되서 가야하는데
+  // 안가"). RankingScreenV2의 useState 초기값이 이 쿼리를 읽는다(아래 rankingParamsFromUrl).
+  // 미리보기 이미지는 그 순간 상위 5명을 캔버스로 그려 업로드한 뒤 URL을 붙인다(요청:
+  // "카톡 미리보기에서 차트가 보이면 좋겠어") — 실패해도(네트워크 등) 공유 자체는 이미지
+  // 없이 계속 진행한다(카톡 기본 아이콘으로 대체될 뿐, 공유가 막히면 안 된다).
+  const shareRanking = async (): Promise<KakaoShareContent> => {
     const modeLabel = mode === "team" ? "팀전" : "개인전";
     const raceLabel = race === "all" ? "" : ` · ${race}`;
     const label = `${modeLabel}${raceLabel} · ${periodAnchorLabel(unit, anchor)}`;
-    const top = visibleRows.slice(0, 5).map((r) => `${r.rank}. ${r.member.nickname} (${r.rankScore}점)`);
+    const topRows = visibleRows.slice(0, 5);
+    const top = topRows.map((r) => `${r.rank}. ${r.member.nickname} (${r.rankScore}점)`);
+    const linkParams = new URLSearchParams({ screen: "ranking", mode, unit, anchor });
+    if (race !== "all") linkParams.set("race", race);
+
+    let imageUrl: string | undefined;
+    try {
+      const dataUrl = renderRankingShareImage(
+        "스타게이트 랭킹", label,
+        topRows.map((r) => ({ rank: r.rank, nickname: r.member.nickname, score: r.rankScore })),
+      );
+      imageUrl = (await api.uploadShareImage(dataUrl)).url;
+    } catch {
+      // 무시 — 위 주석 참고.
+    }
+
     return {
       title: `스타게이트 랭킹 · ${label}`,
       description: top.slice(0, 3).join("  "),
       fallbackText: `[스타게이트 랭킹] ${label}\n${top.join("\n")}`,
+      link: `${window.location.origin}/?${linkParams.toString()}`,
+      imageUrl,
     };
   };
 

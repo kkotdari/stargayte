@@ -608,6 +608,15 @@ export const api = {
     });
   },
 
+  // 카톡 공유 카드 미리보기 이미지 — 캔버스로 그린 이미지(dataUrl)를 올리고 공개 URL을
+  // 받는다(요청: "카톡 미리보기에서 차트가 보이면 좋겠어").
+  async uploadShareImage(dataUrl: string): Promise<{ url: string }> {
+    return request<{ url: string }>("/api/share-images", {
+      method: "POST",
+      body: JSON.stringify({ dataUrl }),
+    });
+  },
+
   // 지목된 쪽의 응답 — 수락/거절/버림. scheduledAt은 요청자가 "시간 지정"을 끄고 보낸
   // (시간 미정) 도전장을 승락할 때만 의미가 있다 — 이미 시간이 정해진 도전장에는 무시된다.
   async respondToChallenge(

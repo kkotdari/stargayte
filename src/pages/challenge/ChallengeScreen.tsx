@@ -648,19 +648,19 @@ function isDiscarded(c: Challenge): boolean {
 
 // 순수 날짜(예정 일시) 내림차순 한 줄로 정렬한다(요청: "순수 날짜 내림차순" — 진행/종료를
 // 나눠 진행중을 위로 끌어올리던 예전 규칙 때문에 다가오는 경기(NEXT)가 날짜와 무관하게 맨
-// 위로 올라오는 게 부자연스러웠다). 일시가 같거나 둘 다 미정이면 최근 생성 순으로 가른다.
-// 일정 미정(응답 대기중, scheduledAt 없음) 건은 맨 뒤(아래)로 보낸다 — 예전엔 맨 앞(위)에
-// 뒀는데, 그러면 "다가오는 매치"(boundaryIndex) 기준으로 그 앞은 전부 접히는 "종료된 너
-// 나와!" 섹션이라, 아직 안 끝난 일정 미정 건이 종료된 것과 함께 접혀 안 보이는 버그가
-// 있었다(요청: "너나와가 일정미정이면 종료된 너나와에 들어가서 접혀있어서 안보이네",
-// "일정미정은 제일 뒤로 가야할듯"). 맨 뒤에 두면 항상 "다가오는 매치" 경계 뒤쪽(펼쳐진
-// 활성 목록)에 남아 계속 보인다.
+// 위로 올라오는 게 부자연스러웠다). 예정 일시가 없는 건(=아직 응답 대기중인 일정 미정)은
+// 날짜가 없어 맨 위(과거 쪽 끝)에 둔다 — 우측 타임라인의 "미정" 눈금·스크롤 스냅 제외
+// 로직(global.css의 .scr-snap-today 주석)도 "미정은 맨 위"라는 전제로 짜여 있어, 여기를
+// 다른 자리로 옮기면 "오늘" 눈금과 겹쳐 보이거나 스크롤이 이상하게 걸리는 회귀가 있었다
+// (요청: "타임라인에서 오늘과 미정이 겹쳐서 보임", "자동으로 이끌려서 스크롤을 올릴수가
+// 없음"). 일정 미정이 종료 섹션에 접혀 숨는 문제는 정렬 순서가 아니라 아래 boundaryIndex
+// 쪽에서 따로 고쳤다. 일시가 같거나 둘 다 미정이면 최근 생성 순으로 가른다.
 function compareChallenges(a: Challenge, b: Challenge): number {
   const aNull = !a.scheduledAt;
   const bNull = !b.scheduledAt;
   if (aNull && bNull) return a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0;
-  if (aNull) return 1;
-  if (bNull) return -1;
+  if (aNull) return -1;
+  if (bNull) return 1;
   if (a.scheduledAt !== b.scheduledAt) return a.scheduledAt! > b.scheduledAt! ? 1 : -1;
   return a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0;
 }
@@ -757,7 +757,15 @@ export default function ChallengeScreen() {
   const boundaryIndex = useMemo(() => {
     if (nextTime === null) return 0;
     const idx = unifiedList.findIndex(isNextCard);
-    return idx === -1 ? 0 : idx;
+    const raw = idx === -1 ? 0 : idx;
+    // 일정 미정(응답 대기중, scheduledAt 없음) 건은 정렬상 맨 위(과거 쪽 끝)에 몰려 있는데,
+    // boundaryIndex보다 앞이면 전부 "종료된" 섹션으로 접혀 아직 안 끝난 미정 건도 같이
+    // 숨어버리는 버그가 있었다(요청: "너나와가 일정미정이면 종료된 너나와에 들어가서
+    // 접혀있어서 안보이네"). 정렬 맨 앞부터 연속된 미정 건 개수만큼은 절대 접지 않도록
+    // 경계를 그 이상 넘지 못하게 막는다 — 미정이 없으면(firstDated=0) 원래 값 그대로다.
+    let firstDated = 0;
+    while (firstDated < unifiedList.length && !unifiedList[firstDated].scheduledAt) firstDated++;
+    return Math.min(raw, firstDated);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [unifiedList, nextTime]);
 

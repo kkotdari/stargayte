@@ -1,0 +1,105 @@
+// 랭킹 카카오톡 공유용 미리보기 이미지 — 그 순간의 필터/순위를 캔버스로 그려 카드
+// 썸네일로 쓴다(요청: "카톡 미리보기에서 차트가 보이면 좋겠어"). 서버 렌더링 없이
+// 클라이언트에서 즉석으로 그린 뒤 dataUrl로 반환하면, 호출부가 api.uploadShareImage로
+// 올려 공개 URL을 받는다.
+
+export interface RankingShareRow {
+  rank: number;
+  nickname: string;
+  score: number;
+}
+
+const WIDTH = 1200;
+const HEIGHT = 630;
+// 상위 1~3위는 랭킹 카드(scr-rank-name-gold/silver/bronze)와 같은 금/은/동 톤.
+const MEDAL_COLORS: Record<number, string> = { 1: "#ffd24d", 2: "#c3c9d1", 3: "#b98a5a" };
+
+function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+export function renderRankingShareImage(title: string, label: string, rows: RankingShareRow[]): string {
+  const canvas = document.createElement("canvas");
+  canvas.width = WIDTH;
+  canvas.height = HEIGHT;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("canvas 2d context를 만들 수 없어요.");
+
+  // 배경 — 앱 다크 테마와 같은 톤의 은은한 세로 그라데이션.
+  const bg = ctx.createLinearGradient(0, 0, 0, HEIGHT);
+  bg.addColorStop(0, "#181d24");
+  bg.addColorStop(1, "#0e1116");
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+  // 상단 타이틀 — 브랜드 + 필터 라벨.
+  ctx.fillStyle = "#e8935a";
+  ctx.font = "700 30px Pretendard, sans-serif";
+  ctx.textBaseline = "alphabetic";
+  ctx.fillText(title, 56, 78);
+  ctx.fillStyle = "rgba(255,255,255,0.6)";
+  ctx.font = "500 24px Pretendard, sans-serif";
+  ctx.fillText(label, 56, 114);
+
+  // 순위 목록 — 최대 5명, 점수 상대 비율로 막대를 그린다(요청: "차트가 보이면").
+  const top = rows.slice(0, 5);
+  const maxScore = Math.max(1, ...top.map((r) => Math.abs(r.score)));
+  const listTop = 150;
+  const rowH = 88;
+  const barX = 340;
+  const barMaxW = WIDTH - barX - 80;
+
+  top.forEach((r, i) => {
+    const y = listTop + i * rowH;
+    const medal = MEDAL_COLORS[r.rank];
+
+    // 행 배경 카드.
+    ctx.fillStyle = i % 2 === 0 ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.02)";
+    roundRect(ctx, 40, y, WIDTH - 80, rowH - 12, 12);
+    ctx.fill();
+
+    // 순위 숫자.
+    ctx.fillStyle = medal ?? "rgba(255,255,255,0.85)";
+    ctx.font = "800 34px Pretendard, sans-serif";
+    ctx.fillText(String(r.rank), 64, y + 52);
+
+    // 닉네임.
+    ctx.fillStyle = medal ?? "#f2f2f2";
+    ctx.font = "700 30px Pretendard, sans-serif";
+    ctx.fillText(r.nickname.length > 10 ? `${r.nickname.slice(0, 10)}…` : r.nickname, 140, y + 52);
+
+    // 점수 막대.
+    const w = Math.max(6, (Math.abs(r.score) / maxScore) * barMaxW);
+    ctx.fillStyle = "rgba(255,255,255,0.08)";
+    roundRect(ctx, barX, y + 20, barMaxW, 14, 7);
+    ctx.fill();
+    ctx.fillStyle = medal ?? "#e8935a";
+    roundRect(ctx, barX, y + 20, w, 14, 7);
+    ctx.fill();
+
+    // 점수 숫자(막대 오른쪽).
+    ctx.fillStyle = "rgba(255,255,255,0.85)";
+    ctx.font = "600 22px Pretendard, sans-serif";
+    ctx.textAlign = "right";
+    ctx.fillText(`${r.score}점`, WIDTH - 56, y + 52);
+    ctx.textAlign = "left";
+  });
+
+  if (top.length === 0) {
+    ctx.fillStyle = "rgba(255,255,255,0.5)";
+    ctx.font = "500 26px Pretendard, sans-serif";
+    ctx.fillText("아직 기록이 없어요", 56, listTop + 40);
+  }
+
+  ctx.fillStyle = "rgba(255,255,255,0.35)";
+  ctx.font = "500 20px Pretendard, sans-serif";
+  ctx.fillText("stargayte", 56, HEIGHT - 36);
+
+  return canvas.toDataURL("image/png");
+}
