@@ -65,22 +65,18 @@ function matchShareContent(match: Match, memberOf: (id: string) => Member | unde
 // 테이블 카드 한 칸 — [프사][닉네임][종족 영문 한 글자 배지]. 컴퓨터/비회원은 아이콘 프사에
 // 원본 이름(없으면 순번 라벨)으로. 종족 배지는 요청대로 영문(circleLetter, 한글 아님).
 function PlayerCell({
-  slot, players, memberOf, highlighted, openProfile,
+  slot, players, memberOf, highlighted,
 }: {
   slot: MatchSlot; players: MatchSlot[]; memberOf: (id: string) => Member | undefined;
-  highlighted: boolean; openProfile: (id: string) => void;
+  highlighted: boolean;
 }) {
   const isComputer = isComputerSlot(slot.memberId);
   const isUnreg = isUnregisteredSlot(slot.memberId);
   const name = resolveSlotName(slot, players, memberOf);
-  const clickable = !isComputer && !isUnreg;
+  // 닉네임을 눌러도 프로필 모달을 열지 않는다(요청) — 로우 어디를 눌러도 무조건 펼침/접힘만
+  // 하도록 버튼/클릭 핸들러를 없애고 클릭이 로우로 그대로 올라가게 둔다.
   return (
-    <button
-      type="button"
-      className={cx("scr-mt-player", highlighted && "scr-mt-player-hl", !clickable && "scr-mt-player-static")}
-      onClick={clickable ? (e) => { e.stopPropagation(); openProfile(slot.memberId); } : undefined}
-      disabled={!clickable}
-    >
+    <span className={cx("scr-mt-player", highlighted && "scr-mt-player-hl")}>
       <span className="scr-team-name-wrap">
         <span className="scr-mt-name">{name}</span>
         <RaceBadge race={slot.race} size={13} circleLetter className="scr-team-name-race" />
@@ -92,7 +88,7 @@ function PlayerCell({
         : isUnreg
           ? <CircleHelp size={12} className="scr-chip-computer-icon" />
           : null}
-    </button>
+    </span>
   );
 }
 
@@ -236,15 +232,17 @@ function MatchActionsMenu({
 // 펼쳤을 때 카드 하단에 붙는 상세 스탯 표(요청) — 양 팀 전원을 한 표에 모아 유효커맨드
 // 높은 순으로 정렬한다. 리플레이 파싱값(apm/eapm/커맨드/유효커맨드)은 수기등록이면 없어서 '–'.
 function MatchStatsTable({
-  team1, team2, memberOf,
+  team1, team2, memberOf, highlightMemberIds,
 }: {
   team1: MatchSlot[]; team2: MatchSlot[]; memberOf: (id: string) => Member | undefined;
+  highlightMemberIds?: Set<string>;
 }) {
   const rows = [
     ...team1.map((s) => ({ s, players: team1 })),
     ...team2.map((s) => ({ s, players: team2 })),
   ]
     .map(({ s, players }) => ({
+      memberId: s.memberId,
       nickname: resolveSlotName(s, players, memberOf),
       race: s.race,
       apm: s.apm, cmd: s.cmdCount, eapm: s.eapm, ecmd: s.effectiveCmdCount, build: s.buildCount,
@@ -265,7 +263,7 @@ function MatchStatsTable({
         </thead>
         <tbody>
           {rows.map((r, i) => (
-            <tr key={i}>
+            <tr key={i} className={cx(highlightMemberIds?.has(r.memberId) && "scr-mst-row-hl")}>
               <td className="scr-mst-left">
                 <span className="scr-mst-name">
                   <RaceBadge race={r.race} size={14} circleLetter />
@@ -290,7 +288,6 @@ export default function MatchList({
 }: MatchListProps) {
   const groups = groupByDate(rows);
   const user = useAppStore((s) => s.user);
-  const openMemberProfile = useAppStore((s) => s.openMemberProfile);
   const deleteMatchAction = useAppStore((s) => s.deleteMatch);
   // 삭제는 운영자만 — 카드의 메모(연필)와 달리 실제 경기 기록 자체를 지우는 동작이라
   // 작성자 본인이어도 허용하지 않는다(오삭제 방지, MatchDetailModal의 canDelete와 동일 기준).
@@ -300,12 +297,30 @@ export default function MatchList({
   // 경기 목록은 기본 접힌 상태(맵/시간 + 팀 요약 + 승패만)로 시작하고, 행을 누르면
   // 그 경기만 펼쳐져 케밥메뉴·등록자·전체 로스터가 드러난다(요청).
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
+  // 펼침 트랜지션(높이 애니메이션)을 위해 "지금 열려 있는지"(expandedIds)와 "아직 DOM에
+  // 남겨둬야 하는지"(renderedIds)를 나눈다 — 접을 때도 애니메이션이 끝날 때까지 상세 내용을
+  // 그대로 두고, 트랜지션이 끝나면 그때 언마운트한다. 접힌 로우는 상세표를 아예 안 그려
+  // (목록이 길어도) 가볍게 유지한다.
+  const [renderedIds, setRenderedIds] = useState<Set<number>>(new Set());
   const toggleExpanded = (id: number) => {
     setExpandedIds((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+        setRenderedIds((r) => new Set(r).add(id)); // 열기 직전에 먼저 마운트해 0fr→1fr 애니메이션이 걸리게
+      }
       return next;
     });
+  };
+  // 접힘 애니메이션(1fr→0fr)이 끝나면 상세 내용을 언마운트한다. 다른 트랜지션(배경 등)이
+  // 버블링돼도 grid-template-rows 종료에만 반응한다.
+  const onExpandTransitionEnd = (id: number, e: React.TransitionEvent) => {
+    if (e.propertyName !== "grid-template-rows") return;
+    if (!expandedIds.has(id)) {
+      setRenderedIds((r) => { const n = new Set(r); n.delete(id); return n; });
+    }
   };
 
   const confirmDelete = async () => {
@@ -370,7 +385,7 @@ export default function MatchList({
                       {r.team1.map((s) => (
                         <PlayerCell
                           key={s.memberId} slot={s} players={r.team1} memberOf={memberOf}
-                          highlighted={!!highlightMemberIds?.has(s.memberId)} openProfile={openMemberProfile}
+                          highlighted={!!highlightMemberIds?.has(s.memberId)}
                         />
                       ))}
                     </div>
@@ -381,21 +396,34 @@ export default function MatchList({
                       {r.team2.map((s) => (
                         <PlayerCell
                           key={s.memberId} slot={s} players={r.team2} memberOf={memberOf}
-                          highlighted={!!highlightMemberIds?.has(s.memberId)} openProfile={openMemberProfile}
+                          highlighted={!!highlightMemberIds?.has(s.memberId)}
                         />
                       ))}
                     </div>
                   </div>
                 </div>
-                {/* 펼치면 접힘 내용 아래에 상세 스탯 표(양 팀 전원, 유효커맨드 높은 순). */}
-                {expanded && <MatchStatsTable team1={r.team1} team2={r.team2} memberOf={memberOf} />}
-                {/* 최하단 — 왼쪽 끝에 경기번호(#없이), 오른쪽에 등록자(요청). */}
-                {expanded && (
-                  <div className="scr-match-trow-footer">
-                    <span className="scr-match-trow-no">{r.raw.matchNo}</span>
-                    {r.raw.createdBy && <span className="scr-match-trow-by">등록: {r.raw.createdBy.nickname}</span>}
+                {/* 펼침 상세 — grid-template-rows 0fr↔1fr로 높이를 부드럽게 애니메이션한다
+                    (요청: 펼치거나 접을 때 트랜지션). 접힌 로우는 상세 내용을 아예 안 그린다. */}
+                <div
+                  className={cx("scr-match-trow-expand", expanded && "scr-match-trow-expand-open")}
+                  onTransitionEnd={(e) => onExpandTransitionEnd(r.id, e)}
+                >
+                  <div className="scr-match-trow-expand-inner">
+                    {(expanded || renderedIds.has(r.id)) && (
+                      <>
+                        <MatchStatsTable
+                          team1={r.team1} team2={r.team2} memberOf={memberOf}
+                          highlightMemberIds={highlightMemberIds}
+                        />
+                        {/* 최하단 — 왼쪽 끝에 경기번호(#없이), 오른쪽에 등록자(요청). */}
+                        <div className="scr-match-trow-footer">
+                          <span className="scr-match-trow-no">{r.raw.matchNo}</span>
+                          {r.raw.createdBy && <span className="scr-match-trow-by">등록: {r.raw.createdBy.nickname}</span>}
+                        </div>
+                      </>
+                    )}
                   </div>
-                )}
+                </div>
               </div>
               );
             })}
