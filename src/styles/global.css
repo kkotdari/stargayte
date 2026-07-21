@@ -6904,6 +6904,12 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
   padding: 12px; border: none; border-radius: 12px; background: transparent;
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -1px 0 rgba(255,255,255,0.04);
 }
+/* 라이트 테마: 투명 카드가 흰 배경에 묻혀 안 보인다(요청) — 옅은 카드 배경 + 그림자/림으로
+   대진표 팀카드와 같은 톤으로 배경 위에 떠 보이게 한다. */
+.scr-light-theme .scr-league-team-card {
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.16), 0 0 0 1px rgba(0,0,0,0.06);
+}
 /* 헤더 한 줄에 팀명 + 선수 추가(아이콘) + 삭제(아이콘)를 모두 두고 "로스터" 라벨
    줄은 아예 없앤다(요청: "팀카드 선수추가 아이콘으로 대체하고 팀명 옆으로 이동,
    로스터라는 라벨 제거해서 한줄 없앰"). */
