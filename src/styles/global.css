@@ -1541,6 +1541,14 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
      위에 있을 때 세로 스크롤이 페이지로 전달(체이닝)되지 않아 화면이 안 움직인다 —
      세로축은 그대로 페이지로 넘어가게 둔다. */
   overscroll-behavior-x: none;
+  /* 아이폰 사파리 가로모드에서 이 표(가로 스크롤 + sticky 이름 칸)의 칼럼들이 왼쪽으로
+     밀려나 화면 밖으로 벗어나 보이는 문제(요청) — iOS 사파리는 가로/세로 전환처럼
+     뷰포트 크기가 바뀔 때 overflow-x 컨테이너 안의 sticky 자식 위치를 새로 합성
+     (compositing)하지 않고 예전 좌표를 그대로 들고 있는 경우가 있다(알려진 WebKit
+     버그). translateZ(0)로 이 컨테이너를 강제로 별도 컴포지팅 레이어로 승격하면
+     뷰포트가 바뀔 때마다 확실히 다시 그려진다. */
+  -webkit-overflow-scrolling: touch;
+  transform: translateZ(0);
 }
 /* align-items를 grid 기본값(stretch)으로 둬서 셀이 행 전체 높이를 채우게 한다 — 그런데
    위아래 padding을 행(그리드 컨테이너) 자신에게 주면, 셀이 늘어나도 그 padding 영역까지는
@@ -1743,19 +1751,39 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    다르게 새로 선언한다. */
 .scr-stats-list-panel-v2 .scr-stat-row {
   --scr-stat-name-w: 160px;
-  grid-template-columns: var(--scr-stat-name-w) repeat(4, 150px);
+  /* 칸 폭도 변수로 뽑아둔다 — 구분선 위치 계산(아래 background-position)이 이 값을
+     같이 참조해야 한다(요청: "아이폰 사파리 가로모드에서 통계의 내용들이 컬럼
+     왼쪽으로 벗어나서 렌더링되는 버그"). */
+  --scr-stat-col-w: 150px;
+  grid-template-columns: var(--scr-stat-name-w) repeat(4, var(--scr-stat-col-w));
   background-image:
     linear-gradient(var(--line-soft), var(--line-soft)),
     linear-gradient(var(--line-soft), var(--line-soft)),
     linear-gradient(var(--line-soft), var(--line-soft));
+  /* 진짜 원인: 이 행(.scr-stat-row)은 `width:max-content; min-width:100%;`라, 화면
+     폭이 실제 칸 합(name-w + col-w*4)보다는 넓은데 아직 900px(아래 minmax(1fr)
+     분기) 미만인 구간(대략 760~900px, 아이폰 가로모드 대부분이 여기 걸린다)에서는
+     `min-width:100%`가 이겨서 행 박스 자체가 칸 합보다 넓게 늘어난다. 그런데 실제
+     그리드 칸(각 150px 고정)은 늘어나지 않고 그대로라, 늘어난 여백은 맨 오른쪽에만
+     생긴다 — 반면 이 구분선은 "(100% - 이름칸폭) * 0.25/0.5/0.75"로, 그 "100%"를
+     늘어난 행 전체 폭 기준으로 계산해서 실제 칸 경계보다 점점 더 오른쪽에 그려졌다
+     (칸이 뒤로 갈수록 오차가 누적 — 사용자 표현으로는 "내용이 조금씩 왼쪽으로
+     치우쳐서 결국 칸을 벗어나는" 것처럼 보인다). 퍼센트 대신 실제 고정 칸 폭의
+     정수배(절대값)로 계산하면 행이 아무리 늘어나도 항상 실제 칸 경계와 일치한다. */
   background-position:
-    calc(var(--scr-stat-name-w) + (100% - var(--scr-stat-name-w)) * 0.25) 0,
-    calc(var(--scr-stat-name-w) + (100% - var(--scr-stat-name-w)) * 0.5) 0,
-    calc(var(--scr-stat-name-w) + (100% - var(--scr-stat-name-w)) * 0.75) 0;
+    calc(var(--scr-stat-name-w) + var(--scr-stat-col-w) * 1) 0,
+    calc(var(--scr-stat-name-w) + var(--scr-stat-col-w) * 2) 0,
+    calc(var(--scr-stat-name-w) + var(--scr-stat-col-w) * 3) 0;
 }
 @media (min-width: 900px) {
   .scr-stats-list-panel-v2 .scr-stat-row {
     grid-template-columns: var(--scr-stat-name-w) repeat(4, minmax(150px, 1fr));
+    /* 이 폭부터는 칸이 minmax(_,1fr)로 실제로 남는 폭을 비례해서 나눠 가지므로(칸
+       자체가 늘어남), 구분선도 다시 그 비례(퍼센트) 기준으로 맞아떨어진다. */
+    background-position:
+      calc(var(--scr-stat-name-w) + (100% - var(--scr-stat-name-w)) * 0.25) 0,
+      calc(var(--scr-stat-name-w) + (100% - var(--scr-stat-name-w)) * 0.5) 0,
+      calc(var(--scr-stat-name-w) + (100% - var(--scr-stat-name-w)) * 0.75) 0;
   }
 }
 .scr-stats-list-panel-v2 .scr-stat-name-cell { padding-right: 20px; }
@@ -1822,8 +1850,13 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   .scr-stats-list-panel-v2 .scr-stat-name-btn { text-align: center; font-size: var(--fs-body); }
   .scr-stats-list-panel-v2 .scr-stat-tag-pill { display: block; font-size: var(--fs-caption); }
   /* 나머지 네 칸(게임수/전적/유효APM/유효커맨드)도 모바일에서 10%씩 좁힌다(요청:
-     "다른 컬럼들도 폭 10프로씩 감소") — 기본 150px의 90%. */
-  .scr-stats-list-panel-v2 .scr-stat-row { grid-template-columns: var(--scr-stat-name-w) repeat(4, 135px); }
+     "다른 컬럼들도 폭 10프로씩 감소") — 기본 150px의 90%. --scr-stat-col-w도 같이
+     135px로 맞춰야(위 background-position이 참조) 구분선이 실제 칸 폭과 어긋나지
+     않는다. */
+  .scr-stats-list-panel-v2 .scr-stat-row {
+    --scr-stat-col-w: 135px;
+    grid-template-columns: var(--scr-stat-name-w) repeat(4, var(--scr-stat-col-w));
+  }
 
   /* 게임아이디 그리드 헤더(scr-usermap-row-head)와 같은 크기로 맞춘다. */
   .scr-stat-row-head { font-size: var(--fs-body); }
@@ -6527,10 +6560,13 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
   .scr-usermap-row { font-size: var(--fs-caption); }
   .scr-usermap-row-head { font-size: var(--fs-caption); }
   .scr-usermap-raw-name { font-size: var(--fs-caption); }
-  /* 통계 그리드 모든 컬럼 폭 20% 확대(이름칸 160→192, 데이터칸 150→180) */
+  /* 통계 그리드 모든 컬럼 폭 20% 확대(이름칸 160→192, 데이터칸 150→180).
+     --scr-stat-col-w도 여기서 같이 지정해야(구분선 위치 계산이 참조) 이 규칙이
+     이기는 화면 폭에서 구분선이 실제 칸 폭과 어긋나지 않는다. */
   .scr-stats-list-panel-v2 .scr-stat-row {
     --scr-stat-name-w: 173px;
-    grid-template-columns: var(--scr-stat-name-w) repeat(4, 180px);
+    --scr-stat-col-w: 180px;
+    grid-template-columns: var(--scr-stat-name-w) repeat(4, var(--scr-stat-col-w));
   }
   /* 서랍메뉴: '전체 메뉴' 타이틀 한 단계 축소(28→20). 테마 바꾸기~메뉴 닫기는 한 스텝 키운다(요청: 14→16). */
   .scr-drawer-head .scr-brand-mark { font-size: var(--fs-subhead); }
