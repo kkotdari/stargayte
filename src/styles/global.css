@@ -4593,9 +4593,9 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    그냥 안 변한다") — 터치 기기는 탭한 뒤에도 :hover가 그대로 눌러붙어 있어서 다른 곳을
    또 탭하기 전까진 안 풀린다. 명시도를 :hover와 동률(클래스 2개)로 올려서 CSS 소스
    순서(이 규칙이 더 뒤)로 이기게 한다. */
-/* 액티브 알약이 흰색 채움이 아니라 투명 물방울(유리)로 바뀌어(요청), 그 위 글자는 검정
-   반전 대신 테마 기본 글자색으로 둔다 — 다크는 밝은 글자, 라이트는 어두운 글자. */
-.scr-mobile-tab.scr-mobile-tab-active { color: var(--text); font-weight: 700; }
+/* 물방울(유리) 알약 위에서도 글자는 검정 유지(요청: 흰색이면 안 보임) — 알약을 밝은
+   프로스티드 톤으로 올려 검정 글자가 또렷하게 읽히게 한다. */
+.scr-mobile-tab.scr-mobile-tab-active { color: #0b0b0c; font-weight: 700; }
 /* 활성 탭 뒤로 슬라이드하며 이동하는 알약 배경 — 입체감(그림자) 없이 플랫한 색만.
    MobileTabBar.tsx가 실제 활성 버튼의 offsetLeft/offsetTop/offsetWidth/offsetHeight를
    재서 transform/top/width/height로 전부 직접 넘겨준다 — top:50% 같은 "부모 기준 중앙"
@@ -4626,14 +4626,14 @@ body *::-webkit-scrollbar-corner { background: transparent; }
      버튼 폭으로 인라인 지정하므로, 둘레선은 border 대신 inset box-shadow로 그려 크기가
      안 흔들리게 한다. */
   background:
-    radial-gradient(62% 44% at 50% 24%, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0) 72%),
-    radial-gradient(ellipse at center, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.05) 60%, rgba(255,255,255,0.02) 100%);
-  backdrop-filter: blur(5px) saturate(1.3);
-  -webkit-backdrop-filter: blur(5px) saturate(1.3);
+    radial-gradient(66% 46% at 50% 22%, rgba(255,255,255,0.72) 0%, rgba(255,255,255,0.2) 72%),
+    radial-gradient(ellipse at center, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.42) 60%, rgba(255,255,255,0.3) 100%);
+  backdrop-filter: blur(6px) saturate(1.3);
+  -webkit-backdrop-filter: blur(6px) saturate(1.3);
   box-shadow:
-    inset 0 1.5px 0.5px rgba(255,255,255,0.6),
-    inset 0 -3px 6px rgba(0,0,0,0.2),
-    inset 0 0 0 1px rgba(255,255,255,0.16),
+    inset 0 1.5px 0.5px rgba(255,255,255,0.75),
+    inset 0 -3px 6px rgba(0,0,0,0.14),
+    inset 0 0 0 1px rgba(255,255,255,0.24),
     0 2px 7px rgba(0,0,0,0.3);
 }
 /* 라이트 테마는 물방울 유리 효과 없이 기존 컬러 광원 그대로(요청은 다크 테마 대상) — 다크
