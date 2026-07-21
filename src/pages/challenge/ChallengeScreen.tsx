@@ -866,6 +866,8 @@ export default function ChallengeScreen() {
   // 옮겨서 화면에 보이던 내용이 그 자리에 그대로 있는 것처럼 보이게 한다.
   const [showEnded, setShowEnded] = useState(false);
   const prevScrollHeightRef = useRef<number | null>(null);
+  // 오늘 그룹 스크롤 스냅 활성화 판단에 콘텐츠 높이를 재려고 화면 컨테이너를 참조한다.
+  const screenRef = useRef<HTMLDivElement>(null);
   const toggleShowEnded = () => {
     prevScrollHeightRef.current = getScrollMetrics().scrollHeight;
     setShowEnded((v) => !v);
@@ -941,17 +943,33 @@ export default function ChallengeScreen() {
     </div>
   );
 
+  // 오늘 그룹 스크롤 스냅 — 목록이 짧을 땐 오늘로 끌어당기는 스냅이 오히려 걸리적거려서
+  // (요청: "페이지 길이가 특정 길이 이상일 때만 활성화"), 스크롤할 거리가 한 화면분을
+  // 넘게 넉넉할 때만 켠다. 데이터가 늦게 로드되거나 종료목록을 펼쳐 길이가 수시로 바뀔 수
+  // 있어, 한 번 재고 마는 게 아니라 ResizeObserver로 콘텐츠/뷰포트 크기 변화를 계속 다시
+  // 판단한다.
   useEffect(() => {
     const root = document.getElementById("scroll-root");
-    if (!root) return;
-    root.classList.add("scr-snap-today");
-    return () => root.classList.remove("scr-snap-today");
+    const content = screenRef.current;
+    if (!root || !content) return;
+    const apply = () => {
+      const overflow = root.scrollHeight - root.clientHeight;
+      root.classList.toggle("scr-snap-today", overflow > root.clientHeight);
+    };
+    apply();
+    const ro = new ResizeObserver(apply);
+    ro.observe(content);
+    ro.observe(root);
+    return () => {
+      ro.disconnect();
+      root.classList.remove("scr-snap-today");
+    };
   }, []);
 
   const emptyLabel = "도전장이 없어요";
 
   return (
-    <div className="scr-screen scr-challenge-screen-v2">
+    <div className="scr-screen scr-challenge-screen-v2" ref={screenRef}>
       {/* "기록" 메뉴는 폐지됐다(요청) — 목록이 하나뿐이라 타이틀 툴바엔 더 이상 액션이
           없다. 너 나와! 신청 버튼은 타이틀 줄 아래 별도 줄에 가운데 정렬, 1.2배 확대(요청). */}
       <div className="scr-v2-toolbar">

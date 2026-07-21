@@ -7088,6 +7088,8 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
 .scr-league-bracket-toolbar > .scr-btn-sm {
   padding: 4px 8px; font-size: var(--fs-caption); height: 28px; min-height: 28px; box-sizing: border-box;
 }
+/* 저장 안 된 시드 편집이 있을 때 '시드 저장' 버튼 옆에 뜨는 안내. */
+.scr-league-bracket-dirty-hint { font-size: var(--fs-caption); color: var(--point); font-weight: 600; }
 .scr-league-bracket-generate-row { display: flex; align-items: center; gap: 8px; }
 /* 팀수/대진표 규모는 상한이 없어(요청: "팀수 무제한... 대진표 슬롯 무제한") 목록형
    Select 대신 숫자 입력 하나로 받는다 — 자리만 차지하지 않게 좁게 고정한다. 인풋과

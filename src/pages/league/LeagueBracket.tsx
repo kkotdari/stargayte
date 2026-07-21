@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Spinner } from "../../components/common/Feedback";
 import Select from "../../components/common/Select";
 import Avatar from "../../components/common/Avatar";
@@ -152,6 +152,28 @@ function elbowPath(x1: number, y1: number, bendX: number, x2: number, y2: number
   ].join(" ");
 }
 
+// 로컬 시드 편집 상태 — 편집 가능한 1라운드 슬롯의 배정을 `${matchId}:${side}` → teamId(미지정
+// null)로 담는다. 드롭다운을 만질 때마다 서버에 저장하지 않고 이 로컬 상태만 바꾼 뒤, '시드 저장'
+// 버튼을 눌러야 한 번에 서버로 보낸다(요청).
+type SeedMap = Record<string, number | null>;
+
+// 이 경기가 시드(1라운드 팀 배정)를 지금 바꿀 수 있는 자리인지 — SlotCell의 editable 판정과
+// 같은 기준(1라운드 & 부전 아님 & 실제 결과 없음 & 대진 미확정 & 편집 권한).
+function isEditableRound1(league: League, match: LeagueMatch, canEdit: boolean): boolean {
+  return canEdit && match.round === 1 && !match.isDead && match.setsWonA === null && !league.bracketLocked;
+}
+
+// 서버가 내려준 현재 시드(편집 가능한 1라운드 슬롯만) → SeedMap. 로컬 편집의 시작점이자
+// '변경됨(dirty)' 판정의 기준이다.
+function serverSeeding(league: League, canEdit: boolean): SeedMap {
+  const m: SeedMap = {};
+  league.matches.filter((match) => isEditableRound1(league, match, canEdit)).forEach((match) => {
+    m[`${match.id}:a`] = match.teamA?.id ?? null;
+    m[`${match.id}:b`] = match.teamB?.id ?? null;
+  });
+  return m;
+}
+
 // 리그 대진표. canEdit이면 팀 수를 미리 정해 빈 대진표를 만들고, 각 칸에 팀을 직접
 // 배정할 수 있다(요청: "대진표 생성 누르면 빈 대진표가 생기고 각 칸에 누가 들어갈지
 // 정할 수 있는 시스템으로"). 아닌 경우(일반 회원/보기 모드)는 순수 읽기 전용.
@@ -181,6 +203,22 @@ export default function LeagueBracket({
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [confirmingBracket, setConfirmingBracket] = useState(false);
+
+  // 시드 편집은 로컬 상태로만 하고 '시드 저장'을 눌러야 서버로 보낸다(요청: 그때그때
+  // 저장하면 매번 왕복+리렌더로 느려서). league prop이 실제로 바뀔 때(생성/확정/저장/팀편집
+  // 으로 새 리그를 받았을 때)만 로컬 시드를 서버 값으로 리셋한다 — 로컬 편집 중에는 API를
+  // 안 부르니 league 참조가 그대로라 편집이 유지된다.
+  const [seeds, setSeeds] = useState<SeedMap>(() => serverSeeding(league, canEdit));
+  useEffect(() => {
+    setSeeds(serverSeeding(league, canEdit));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [league]);
+  const dirty = useMemo(() => {
+    const srv = serverSeeding(league, canEdit);
+    const keys = new Set([...Object.keys(srv), ...Object.keys(seeds)]);
+    for (const k of keys) if ((srv[k] ?? null) !== (seeds[k] ?? null)) return true;
+    return false;
+  }, [seeds, league, canEdit]);
 
   const generate = async () => {
     setErr("");
@@ -247,24 +285,37 @@ export default function LeagueBracket({
   const totalRounds = Math.round(Math.log2(drawSize));
   const compact = league.mode === "team";
 
-  const handleAssign = async (matchId: number, side: LeagueMatchSide, teamId: number) => {
-    setErr("");
-    setBusy(true);
-    try {
-      onUpdated(await api.setLeagueMatchSlot(league.id, matchId, side, teamId));
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "배정하지 못했어요.");
-    } finally {
-      setBusy(false);
-    }
+  // 로컬 시드 편집 — 서버에 저장하지 않고 seeds 상태만 바꾼다. 같은 팀을 다른 편집 자리에
+  // 골라 넣으면 그 자리를 비워(서버 set_match_slot의 '팀 이동'을 로컬에서도 재현) 한 팀이
+  // 두 자리에 동시에 보이지 않게 한다.
+  const handleAssign = (matchId: number, side: LeagueMatchSide, teamId: number) => {
+    setSeeds((prev) => {
+      const next = { ...prev };
+      for (const k of Object.keys(next)) if (next[k] === teamId) next[k] = null;
+      next[`${matchId}:${side}`] = teamId;
+      return next;
+    });
   };
-  const handleClear = async (matchId: number, side: LeagueMatchSide) => {
+  const handleClear = (matchId: number, side: LeagueMatchSide) => {
+    setSeeds((prev) => ({ ...prev, [`${matchId}:${side}`]: null }));
+  };
+  // '시드 저장' — 편집 가능한 1라운드 슬롯 '전체'의 현재 로컬 배정을 한 번에 보낸다(서버가
+  // 비우고→다시 배정→부전승 자동처리). 응답으로 온 리그로 화면이 갱신되며 부전승/진출선도
+  // 이때 계산돼 반영된다.
+  const saveSeeding = async () => {
+    const assignments: { matchId: number; side: LeagueMatchSide; teamId: number | null }[] = [];
+    league.matches
+      .filter((m) => isEditableRound1(league, m, canEdit))
+      .forEach((m) => {
+        assignments.push({ matchId: m.id, side: "a", teamId: seeds[`${m.id}:a`] ?? null });
+        assignments.push({ matchId: m.id, side: "b", teamId: seeds[`${m.id}:b`] ?? null });
+      });
     setErr("");
     setBusy(true);
     try {
-      onUpdated(await api.setLeagueMatchSlot(league.id, matchId, side, null));
+      onUpdated(await api.setLeagueBracketSeeding(league.id, assignments));
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "배정을 취소하지 못했어요.");
+      setErr(e instanceof Error ? e.message : "시드를 저장하지 못했어요.");
     } finally {
       setBusy(false);
     }
@@ -321,8 +372,11 @@ export default function LeagueBracket({
     for (let m = 0; m < matchCount; m++) {
       const match = matchByRoundSlot.get(`${r}:${m}`);
       if (!match) continue;
-      const teamA = match.teamA ? (league.teams.find((t) => t.id === match.teamA!.id) ?? null) : null;
-      const teamB = match.teamB ? (league.teams.find((t) => t.id === match.teamB!.id) ?? null) : null;
+      // 편집 가능한 1라운드 슬롯은 서버 값이 아니라 로컬 시드(아직 저장 안 된 편집)를 보여준다.
+      const editable = isEditableRound1(league, match, canEdit);
+      const teamOf = (id: number | null | undefined) => (id == null ? null : league.teams.find((t) => t.id === id) ?? null);
+      const teamA = editable ? teamOf(seeds[`${match.id}:a`]) : teamOf(match.teamA?.id);
+      const teamB = editable ? teamOf(seeds[`${match.id}:b`]) : teamOf(match.teamB?.id);
       const isCompact = compact && r > 1;
       const x = colX(r);
       const sideAY = slotY(2 * m, count);
@@ -376,10 +430,24 @@ export default function LeagueBracket({
           줄에 이미 "대진표 N강"이 있어 중복이었다. */}
       <div className="scr-league-bracket-toolbar">
         {generateRow}
+        {/* 시드 편집은 로컬로만 하고 이 버튼으로 한 번에 저장한다(요청). 변경분이 있을 때만
+            활성화하고, 저장 안 한 편집이 있으면 옆에 안내를 띄운다. */}
         {canEdit && !league.bracketLocked && (
           <button
             type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm"
-            onClick={() => setConfirmingBracket(true)} disabled={busy}
+            onClick={saveSeeding} disabled={busy || !dirty}
+          >
+            {busy && <Spinner size={14} />} 시드 저장
+          </button>
+        )}
+        {canEdit && !league.bracketLocked && dirty && (
+          <span className="scr-league-bracket-dirty-hint">저장되지 않은 변경사항</span>
+        )}
+        {canEdit && !league.bracketLocked && (
+          <button
+            type="button" className="scr-btn scr-btn-sm"
+            onClick={() => setConfirmingBracket(true)} disabled={busy || dirty}
+            title={dirty ? "먼저 시드를 저장하세요" : undefined}
           >
             대진 확정
           </button>

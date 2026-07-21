@@ -729,6 +729,17 @@ export const api = {
       method: "PATCH", body: JSON.stringify({ side, teamId }),
     });
   },
+  // 1라운드 시드 전체를 한 번에 저장한다(요청: "대진표 수정 시 그때그때 저장해서 느림 —
+  // 화면만 수정하고 저장 버튼 누르면 그때 한 번에 저장"). assignments는 편집 가능한 1라운드
+  // 슬롯 전체의 최종 배정(미지정은 teamId=null). 서버가 원자적으로(비우고→다시 배정→부전승
+  // 자동처리) 반영하고 리그 전체를 돌려준다.
+  async setLeagueBracketSeeding(
+    leagueId: number, assignments: { matchId: number; side: LeagueMatchSide; teamId: number | null }[],
+  ): Promise<League> {
+    return request<League>(`/api/leagues/${leagueId}/bracket/seeding`, {
+      method: "PUT", body: JSON.stringify({ assignments }),
+    });
+  },
   async setLeagueMatchSchedule(leagueId: number, matchId: number, scheduledAt: string | null): Promise<LeagueMatch> {
     return request<LeagueMatch>(`/api/leagues/${leagueId}/matches/${matchId}/schedule`, {
       method: "PATCH", body: JSON.stringify({ scheduledAt }),
