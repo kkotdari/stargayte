@@ -779,7 +779,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   border: none;
   /* 팝업을 더 투명하게(요청) — 알파를 낮춰 뒤가 더 비친다. backdrop blur(14px)가 있어
      글자 가독성은 유지된다. */
-  background: rgba(16,21,26,0.52);
+  background: rgba(16,21,26,0.76);
   /* 테두리를 없앤 대신 위쪽 반사광(inset)과 그림자로 배경과의 구분감을 준다(요청:
      "테두리 제거한 대신 반사광과 그림자 활용하여 구분감 주기"). */
   box-shadow:
@@ -790,7 +790,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 }
 .scr-light-theme .scr-modal {
   border: none;
-  background: rgba(255,255,255,0.62);
+  background: rgba(255,255,255,0.81);
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,0.7),
     0 4px 16px rgba(0,0,0,0.12),
@@ -4517,7 +4517,7 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   height: calc(var(--mobile-footer-h) + env(safe-area-inset-bottom, 0px));
   /* 반투명 유리(--panel) + 블러 — 더 투명하게(요청: "투명도를 올려서 더 투명해 보이게")
      --panel 알파를 60%로 낮춘다. 테마별 색은 --panel이 다크/라이트 각각 값을 갖는다. */
-  background-color: color-mix(in srgb, var(--panel) 60%, transparent);
+  background-color: color-mix(in srgb, var(--panel-solid) 68%, transparent);
   -webkit-backdrop-filter: blur(14px) saturate(1.3);
   backdrop-filter: blur(14px) saturate(1.3);
   /* 가운데가 밝고 양 끝(화면 모서리)으로 갈수록 옅어지는 광원 그라데이션은, 그 "옅어짐"이
@@ -4593,9 +4593,9 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    그냥 안 변한다") — 터치 기기는 탭한 뒤에도 :hover가 그대로 눌러붙어 있어서 다른 곳을
    또 탭하기 전까진 안 풀린다. 명시도를 :hover와 동률(클래스 2개)로 올려서 CSS 소스
    순서(이 규칙이 더 뒤)로 이기게 한다. */
-/* 물방울(유리) 알약 위에서도 글자는 검정 유지(요청: 흰색이면 안 보임) — 알약을 밝은
-   프로스티드 톤으로 올려 검정 글자가 또렷하게 읽히게 한다. */
-.scr-mobile-tab.scr-mobile-tab-active { color: #0b0b0c; font-weight: 700; }
+/* 다크모드 물방울(투명) 알약 위에선 밝은 글자가 맞다(요청) — 테마 기본 글자색으로 두면
+   다크=흰 글자(투명 알약 뒤 어두운 탭바 위에서 또렷), 라이트=어두운 글자. */
+.scr-mobile-tab.scr-mobile-tab-active { color: var(--text); font-weight: 700; }
 /* 활성 탭 뒤로 슬라이드하며 이동하는 알약 배경 — 입체감(그림자) 없이 플랫한 색만.
    MobileTabBar.tsx가 실제 활성 버튼의 offsetLeft/offsetTop/offsetWidth/offsetHeight를
    재서 transform/top/width/height로 전부 직접 넘겨준다 — top:50% 같은 "부모 기준 중앙"
@@ -4626,14 +4626,14 @@ body *::-webkit-scrollbar-corner { background: transparent; }
      버튼 폭으로 인라인 지정하므로, 둘레선은 border 대신 inset box-shadow로 그려 크기가
      안 흔들리게 한다. */
   background:
-    radial-gradient(66% 46% at 50% 22%, rgba(255,255,255,0.72) 0%, rgba(255,255,255,0.2) 72%),
-    radial-gradient(ellipse at center, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.42) 60%, rgba(255,255,255,0.3) 100%);
-  backdrop-filter: blur(6px) saturate(1.3);
-  -webkit-backdrop-filter: blur(6px) saturate(1.3);
+    radial-gradient(62% 44% at 50% 24%, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0) 72%),
+    radial-gradient(ellipse at center, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.05) 60%, rgba(255,255,255,0.02) 100%);
+  backdrop-filter: blur(5px) saturate(1.3);
+  -webkit-backdrop-filter: blur(5px) saturate(1.3);
   box-shadow:
-    inset 0 1.5px 0.5px rgba(255,255,255,0.75),
-    inset 0 -3px 6px rgba(0,0,0,0.14),
-    inset 0 0 0 1px rgba(255,255,255,0.24),
+    inset 0 1.5px 0.5px rgba(255,255,255,0.6),
+    inset 0 -3px 6px rgba(0,0,0,0.2),
+    inset 0 0 0 1px rgba(255,255,255,0.16),
     0 2px 7px rgba(0,0,0,0.3);
 }
 /* 라이트 테마는 물방울 유리 효과 없이 기존 컬러 광원 그대로(요청은 다크 테마 대상) — 다크
@@ -4668,7 +4668,7 @@ html.scr-light-theme .scr-mobile-tabbar {
   width: min(300px, 84vw); height: 100%;
   /* 반투명 유리 재질 — 더 투명하게(요청: "투명도를 올려서 더 투명해 보이게") --panel의
      알파를 60%로 낮춘 색 + 배경 블러. 블러가 있어 글자 가독성은 유지된다. */
-  background-color: color-mix(in srgb, var(--panel) 60%, transparent);
+  background-color: color-mix(in srgb, var(--panel-solid) 68%, transparent);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   /* 왼쪽 모서리는 예전의 색 광원 그라데이션(요청으로 제거) 대신, 유리 모서리에 빛이
@@ -6956,6 +6956,8 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
    포인트색으로 표시되는 방식", "진출팀 표시 포인트 컬러는 라임녹색"). 꺾이는 부분은
    곡선 없이 직각으로(요청: "가지가 합쳐지는 부분은 직각으로 표현해줘"). */
 .scr-league-bracket-line { fill: none; stroke: rgba(255,255,255,0.45); stroke-width: 1.25; }
+/* 라이트 테마에선 흰 선이 흰 배경에 묻혀 안 보였다(요청) — 어두운 선으로 뒤집는다. */
+.scr-light-theme .scr-league-bracket-line { stroke: rgba(0,0,0,0.4); }
 .scr-league-bracket-line-won { stroke: var(--league-advance); stroke-width: 2; }
 .scr-league-bracket-slot { position: absolute; box-sizing: border-box; }
 .scr-league-bracket-badge {
@@ -7000,15 +7002,8 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
 /* 대진표 로스터 프사는 동그랗게(요청: "대진표의 아바타 동그랗게 처리") — Avatar 기본은
    각진 사각형(size 비례 radius)이라 여기서만 원형으로 덮어쓴다. */
 .scr-league-bracket-team-card-member .scr-avatar { border-radius: 50% !important; }
-/* 모바일에서만 2라운드 이상은 로스터 대신 팀명(라벨)만 — 대진표가 라운드를 거듭할수록
-   옆으로 넓어지는 걸 아낀다(요청: "팀전, 모바일인 경우 2라운드부터는 팀명만 노출").
-   데스크톱은 이 규칙 없이 항상 로스터 전원을 보여준다. */
-@media (max-width: 640px) {
-  .scr-league-bracket-team-card-compact .scr-league-bracket-team-card-roster { display: none; }
-  .scr-league-bracket-team-card-compact .scr-league-bracket-team-card-label {
-    width: auto; font-size: var(--fs-body);
-  }
-}
+/* 모바일에서도 팀 로스터를 그대로 보여준다(요청) — 예전엔 모바일 2라운드부터 팀명만
+   노출해 폭을 아꼈지만, 이제 라운드/화면폭과 무관하게 항상 로스터 전원을 표시한다. */
 /* 빈 자리("미정"/"부전"/"공백")도 부모(.scr-league-bracket-slot)를 꽉 채운다 — 이제
    모든 라운드가 좌표로 정확히 배치되므로 카드-대-빈자리 높이를 굳이 맞출 필요가
    없다(고정 CARD_H를 부모가 이미 강제한다). */
@@ -7016,7 +7011,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
   display: flex; align-items: center; justify-content: center;
   padding: 6px 8px; width: 100%; height: 100%; box-sizing: border-box;
   text-align: center; font-size: var(--fs-caption); color: var(--dim);
-  border: 1px dashed var(--line); border-radius: 8px;
+  border: 1px dashed rgba(var(--overlay-rgb), 0.32); border-radius: 8px;
 }
 /* 개인전 1라운드 수정 모드 — 로스터 자리에 드롭다운이 그대로 들어간다(빈 슬롯이면
    "미지정"이 선택된 채로, 하얀 카드는 그대로라 팀원 목록만 없는 것과 같은 모양이다,
