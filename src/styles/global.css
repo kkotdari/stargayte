@@ -6833,7 +6833,8 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
   --league-panel: transparent;
   /* 대진표 "진출팀" 표시(연결선/카드 강조)에 쓰는 라임녹색(요청: "진출팀 표시 포인트
      컬러는 라임녹색") — 앱 기본 --point(호박색)와 별개로 리그 화면에서만 쓴다. */
-  --league-advance: #a3e635;
+  /* 진출선 색 — 라임(노란기)에서 연두-에메랄드 쪽으로 조금 옮긴다(요청). */
+  --league-advance: #34e08a;
 }
 .scr-league-toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
 .scr-league-select { flex: 1 1 auto; min-width: 0; }

@@ -133,20 +133,21 @@ function SlotCell({
   );
 }
 
-// 가지가 합쳐지는(소거되는) 부분은 곡선 없이 직각으로(요청: "브라켓 꺾이는 부분의
-// 곡률 좀 낮춰줘" → "가지가 합쳐지는 부분은 직각으로 표현해줘"). (x1,y1)에서 시작해
-// bendX에서 수직으로 꺾여 (x2,y2)로 끝난다 — y1===y2면 그냥 직선, r>0이면 꺾이는
-// 지점만 살짝 둥글게(현재는 0으로 완전한 직각).
+// 커넥터 모서리 처리(요청): "두 가지가 만나는 부분은 직각, 한 선이 그냥 꺾이는 부분은
+// 둥글게". (x1,y1)에서 가로로 나와 bendX에서 세로로 꺾여 (x2,y2=두 가지가 만나는 mergeY)로
+// 이어진다. 첫 꺾임(카드에서 나온 가로선→세로선)만 반지름 r로 둥글게 하고, 두 가지가
+// 합쳐지는 지점(bendX, y2)은 직각 그대로 둔다.
 function elbowPath(x1: number, y1: number, bendX: number, x2: number, y2: number, r: number): string {
   if (Math.abs(y1 - y2) < 0.5) return `M ${x1} ${y1} L ${x2} ${y2}`;
-  if (r <= 0) return `M ${x1} ${y1} L ${bendX} ${y1} L ${bendX} ${y2} L ${x2} ${y2}`;
   const dir = y2 > y1 ? 1 : -1;
+  // r을 실제 가용 구간(가로 여백 / 세로 거리) 안으로 눌러 담아, 작은 브라켓에서도 안 깨지게.
+  const rr = Math.max(0, Math.min(r, bendX - x1, Math.abs(y2 - y1)));
+  if (rr <= 0) return `M ${x1} ${y1} L ${bendX} ${y1} L ${bendX} ${y2} L ${x2} ${y2}`;
   return [
     `M ${x1} ${y1}`,
-    `L ${bendX - r} ${y1}`,
-    `Q ${bendX} ${y1} ${bendX} ${y1 + r * dir}`,
-    `L ${bendX} ${y2 - r * dir}`,
-    `Q ${bendX} ${y2} ${bendX + r} ${y2}`,
+    `L ${bendX - rr} ${y1}`,
+    `Q ${bendX} ${y1} ${bendX} ${y1 + rr * dir}`, // 첫 꺾임만 둥글게
+    `L ${bendX} ${y2}`,                            // 두 가지가 만나는 지점은 직각
     `L ${x2} ${y2}`,
   ].join(" ");
 }
@@ -275,9 +276,9 @@ export default function LeagueBracket({
   const ROW_GAP = 10;
   const COL_W = 180;
   const COL_GAP = 44;
-  // 가지가 합쳐지는(소거되는) 부분은 곡선 없이 직각으로(요청: "브라켓 꺾이는 부분의
-  // 곡률 좀 낮춰줘" → "가지가 합쳐지는 부분은 직각으로 표현해줘" — 아예 0으로).
-  const CORNER_R = 0;
+  // 첫 꺾임(카드에서 나온 선이 꺾이는 곳)만 살짝 둥글게(요청). 두 가지가 만나는 지점은
+  // elbowPath에서 직각으로 유지한다.
+  const CORNER_R = 8;
 
   const totalHeight = drawSize * CARD_H + (drawSize - 1) * ROW_GAP;
   const totalWidth = totalRounds * COL_W + (totalRounds - 1) * COL_GAP;
