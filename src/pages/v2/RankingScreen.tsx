@@ -220,6 +220,18 @@ export default function RankingScreenV2() {
         <span className="scr-rank-mode-tabs">
           <PillTabs options={CHART_OPTS} value={mode} onChange={handleModeChange} aria-label="개인전/팀전 선택" />
         </span>
+        {/* 산정 방식 + 카톡 공유를 타이틀 줄 우측에 붙인다(요청). */}
+        <span className="scr-rank-title-actions">
+          <button
+            type="button"
+            className={cx("scr-rank-method-trigger", methodTipOpen && "scr-rank-method-trigger-active")}
+            ref={methodAnchorRef}
+            onClick={() => setMethodTipOpen((v) => !v)}
+          >
+            <Info size={13} /> 산정 방식
+          </button>
+          <KakaoShareButton content={shareRanking} variant="icon" />
+        </span>
       </div>
 
       {/* 기간(단위 토글 + 좌우 이동) 선택을 다른 화면과 같은 필터 모듈 안으로 옮긴다(요청:
@@ -279,20 +291,6 @@ export default function RankingScreenV2() {
         }
       />
 
-      {/* 산정 방식 안내 — 필터들 아래, 순위 목록 바로 위(예전 기준점수표 자리). 항상 보이는
-          문단 대신 눌러야 뜨는 툴팁으로(요청: "누르면 툴팁형태로 보이게"). */}
-      <div className="scr-rank-method-row">
-        <button
-          type="button"
-          className={cx("scr-rank-method-trigger", methodTipOpen && "scr-rank-method-trigger-active")}
-          ref={methodAnchorRef}
-          onClick={() => setMethodTipOpen((v) => !v)}
-        >
-          <Info size={13} /> 산정 방식
-        </button>
-        {/* 우측 구석 카카오톡 공유 — 지금 필터/순위를 카톡으로 보낸다(요청). */}
-        <KakaoShareButton content={shareRanking} variant="icon" className="scr-rank-method-share" />
-      </div>
       {methodTipOpen && createPortal(
         <ul className="scr-rank-method-tooltip" ref={methodTipRef}>
           <li>경기 결과로 실력 레이팅(<b>TrueSkill</b>)을 추정합니다.</li>
