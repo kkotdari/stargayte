@@ -646,21 +646,18 @@ function isDiscarded(c: Challenge): boolean {
   return c.status === "discarded";
 }
 
-// 순수 날짜(예정 일시) 내림차순 한 줄로 정렬한다(요청: "순수 날짜 내림차순" — 진행/종료를
-// 나눠 진행중을 위로 끌어올리던 예전 규칙 때문에 다가오는 경기(NEXT)가 날짜와 무관하게 맨
-// 위로 올라오는 게 부자연스러웠다). 예정 일시가 없는 건(=아직 응답 대기중인 일정 미정)은
-// 날짜가 없어 맨 위(과거 쪽 끝)에 둔다 — 우측 타임라인의 "미정" 눈금·스크롤 스냅 제외
-// 로직(global.css의 .scr-snap-today 주석)도 "미정은 맨 위"라는 전제로 짜여 있어, 여기를
-// 다른 자리로 옮기면 "오늘" 눈금과 겹쳐 보이거나 스크롤이 이상하게 걸리는 회귀가 있었다
-// (요청: "타임라인에서 오늘과 미정이 겹쳐서 보임", "자동으로 이끌려서 스크롤을 올릴수가
-// 없음"). 일정 미정이 종료 섹션에 접혀 숨는 문제는 정렬 순서가 아니라 아래 boundaryIndex
-// 쪽에서 따로 고쳤다. 일시가 같거나 둘 다 미정이면 최근 생성 순으로 가른다.
+// 순수 날짜(예정 일시) 오름차순(과거→미래) 한 줄로 정렬한다. 예정 일시가 없는 건(=아직
+// 응답 대기중인 일정 미정)은 날짜로 자리를 정할 수 없어 맨 뒤에 둔다(요청: "일정 미정인
+// 건들은 목록 맨 마지막에 있어야 돼(항상 보임)") — "종료된" 섹션 접힘 여부는 이제 정렬
+// 순서가 아니라 실제 상태(status==="done")로만 가른다(아래 endedList/activeList 참고).
+// 우측 타임라인의 스크롤 스냅은 "오늘" 그룹만 스냅 타깃이라(global.css의 .scr-snap-today)
+// 미정 그룹 위치가 바뀌어도 영향 없다. 일시가 같거나 둘 다 미정이면 최근 생성 순으로 가른다.
 function compareChallenges(a: Challenge, b: Challenge): number {
   const aNull = !a.scheduledAt;
   const bNull = !b.scheduledAt;
   if (aNull && bNull) return a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0;
-  if (aNull) return -1;
-  if (bNull) return 1;
+  if (aNull) return 1;
+  if (bNull) return -1;
   if (a.scheduledAt !== b.scheduledAt) return a.scheduledAt! > b.scheduledAt! ? 1 : -1;
   return a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0;
 }
@@ -735,39 +732,13 @@ export default function ChallengeScreen() {
     [challenges],
   );
 
-  // 가장 가까운 예정된(수락) 너 나와의 시각 — 확정됐고 예정 일시가 아직 안 지난 것 중 가장 임박.
-  // "다가오는 매치" 이전(과거에 끝난 너 나와들)은 기본적으로 접어서 감춘다(요청: "다가오는 매치
-  // 이전은 모두 접혀서 안보임").
-  const nextTime = useMemo(() => {
-    const now = Date.now();
-    let best = Infinity;
-    challenges.forEach((c) => {
-      if (c.status !== "confirmed" || !c.scheduledAt) return;
-      const t = new Date(c.scheduledAt).getTime();
-      if (t >= now && t < best) best = t;
-    });
-    return best === Infinity ? null : best;
-  }, [challenges]);
-  const isNextCard = (c: Challenge): boolean =>
-    nextTime !== null && c.status === "confirmed" && !!c.scheduledAt
-    && new Date(c.scheduledAt).getTime() === nextTime;
-  // 목록(과거→미래로 정렬됨) 안에서 "다가오는 매치"가 처음 나오는 자리 — 그 앞은 전부
-  // 접힌다. 다가오는 매치가 아예 없으면(전부 과거이거나 확정된 예정이 없으면) 접을 기준이
-  // 없으니 전체를 그대로 보여준다.
-  const boundaryIndex = useMemo(() => {
-    if (nextTime === null) return 0;
-    const idx = unifiedList.findIndex(isNextCard);
-    const raw = idx === -1 ? 0 : idx;
-    // 일정 미정(응답 대기중, scheduledAt 없음) 건은 정렬상 맨 위(과거 쪽 끝)에 몰려 있는데,
-    // boundaryIndex보다 앞이면 전부 "종료된" 섹션으로 접혀 아직 안 끝난 미정 건도 같이
-    // 숨어버리는 버그가 있었다(요청: "너나와가 일정미정이면 종료된 너나와에 들어가서
-    // 접혀있어서 안보이네"). 정렬 맨 앞부터 연속된 미정 건 개수만큼은 절대 접지 않도록
-    // 경계를 그 이상 넘지 못하게 막는다 — 미정이 없으면(firstDated=0) 원래 값 그대로다.
-    let firstDated = 0;
-    while (firstDated < unifiedList.length && !unifiedList[firstDated].scheduledAt) firstDated++;
-    return Math.min(raw, firstDated);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [unifiedList, nextTime]);
+  // "종료된"은 정렬 순서가 아니라 실제 상태로만 가른다 — 결과가 입력된(승/무/미실시*)
+  // status==="done" 건만 접어 넣는다(*미실시는 서버가 discarded로 확정해 내려오므로
+  // 여기엔 안 잡힌다, isDiscarded로 이미 걸러짐). 응답대기(미정 포함)·성사(예정)는 상태와
+  // 무관하게 항상 보이는 목록에 남는다(요청: "종료된 너 나와에는 실제 완료된 애들만 들어가
+  // 있고 일정 미정인 건들은 목록 맨 마지막에 있어야 돼(항상 보임)").
+  const endedList = useMemo(() => unifiedList.filter((c) => c.status === "done"), [unifiedList]);
+  const activeList = useMemo(() => unifiedList.filter((c) => c.status !== "done"), [unifiedList]);
 
   // "종료된 너 나와! 보기" 토글 — 누르면 접혀 있던 앞부분이 지금 보이는 목록 위로 나타난다.
   // 콘텐츠가 뷰포트 위쪽에 삽입되면 브라우저가 스크롤 위치(px)를 그대로 유지해 화면에 보이던
@@ -801,12 +772,9 @@ export default function ChallengeScreen() {
     requestAnimationFrame(() => requestAnimationFrame(() => { root.style.scrollBehavior = ""; }));
   }, [showEnded]);
 
-  // 활성(다가오는·진행중) 목록은 늘 보이고, 종료된 앞부분은 펼치기 전엔 감춘다. 펼치면
-  // 토글 버튼 '위'로 나타난다(요청: "버튼 상단에 과거 목록이 펼쳐지고") — 버튼이 종료/활성
-  // 사이의 구분선 역할을 한다.
-  const activeList = unifiedList.slice(boundaryIndex);
-  const endedList = unifiedList.slice(0, boundaryIndex);
-
+  // 활성(응답대기·성사) 목록은 늘 보이고(activeList/endedList는 위에서 status로 이미
+  // 갈랐다), 종료된 건 펼치기 전엔 감춘다. 펼치면 토글 버튼 '위'로 나타난다(요청: "버튼
+  // 상단에 과거 목록이 펼쳐지고") — 버튼이 종료/활성 사이의 구분선 역할을 한다.
   const renderChallengeList = (items: typeof unifiedList) => (
     <div className="scr-challenge-list">
       {groupChallengesByDate(items).map((g) => (
@@ -814,8 +782,8 @@ export default function ChallengeScreen() {
           <div
             className="scr-challenge-date-group"
             data-today={g.isToday ? "1" : undefined}
-            // "일정 미정" 그룹(scheduledAt 없는 대기중 묶음, 맨 위)에 표식을 달아
-            // 우측 타임라인이 눈금+라벨을 찍고 스크롤 스냅 타깃으로 삼는다.
+            // "일정 미정" 그룹(scheduledAt 없는 대기중 묶음, 정렬상 맨 뒤)에 표식을 달아
+            // 우측 타임라인이 눈금+라벨을 찍는다(스냅 타깃은 아니다 — 아래 .scr-snap-today).
             data-undecided={g.items.some((c) => !c.scheduledAt) ? "1" : undefined}
           >
             <div className="scr-challenge-date-head" data-date-label={g.label}>
@@ -900,9 +868,9 @@ export default function ChallengeScreen() {
           )}
 
           {/* 과거에 끝난 너 나와는 기본적으로 접혀 있고, 이 버튼이 종료/활성 목록 사이의
-              구분선이 된다(요청) — 누르면 그 위로 펼쳐진다. 접을 게 없으면(boundaryIndex 0)
+              구분선이 된다(요청) — 누르면 그 위로 펼쳐진다. 접을 게 없으면(끝난 건 0개)
               버튼 자체를 안 보여준다. */}
-          {boundaryIndex > 0 && (
+          {endedList.length > 0 && (
             <button type="button" className="scr-challenge-toggle-ended-link" onClick={toggleShowEnded}>
               {showEnded ? "종료된 너 나와! 접기" : "종료된 너 나와! 펼치기"}
             </button>
