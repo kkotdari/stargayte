@@ -714,34 +714,68 @@ function ChallengeTimeHeadEdit({
     }
   };
 
-  if (editing) {
-    return (
-      <div className="scr-challenge-time-edit-form">
-        <OptionalDateTimeFields dateStr={dateStr} onDateChange={setDateStr} timeStr={timeStr} onTimeChange={setTimeStr} />
-        {err && <div className="scr-err">{err}</div>}
-        <div className="scr-challenge-card-actions">
-          <button type="button" className="scr-btn scr-btn-ghost scr-btn-sm" onClick={() => setEditing(false)} disabled={busy}>
-            취소
-          </button>
-          <button type="button" className="scr-btn scr-challenge-accept-btn scr-btn-sm" onClick={save} disabled={busy}>
-            {busy ? <Spinner /> : "저장"}
-          </button>
-        </div>
-      </div>
-    );
-  }
+  // 연필을 누르면(라벨 줄 ↔ 수정 폼) 내용이 바뀌는 만큼 자리를 즉시 뺏는 대신, 실측 높이를
+  // 인라인으로 박고 CSS transition으로 모핑한다(요청: "연필 누르면 공간이 자연스럽게
+  // 확보되는 영역 트랜스폼") — ChallengeCard의 페이지 높이 모핑과 같은 패턴.
+  const innerRef = useRef<HTMLDivElement>(null);
+  const [wrapHeight, setWrapHeight] = useState<number | undefined>(undefined);
+  useLayoutEffect(() => {
+    const inner = innerRef.current;
+    if (!inner) return;
+    const measure = () => setWrapHeight(inner.offsetHeight);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(inner);
+    return () => ro.disconnect();
+  }, [editing]);
 
   return (
-    <div className="scr-challenge-time-head">
-      <span className="scr-challenge-time-head-label">{timeLabel}</span>
-      {canEdit && (
-        <button
-          type="button" className="scr-challenge-time-edit-btn"
-          onClick={startEdit} aria-label="일시 수정"
-        >
-          <Pencil size={13} />
-        </button>
-      )}
+    <div
+      className="scr-challenge-time-head-wrap"
+      style={wrapHeight !== undefined ? { height: wrapHeight } : undefined}
+    >
+      <div ref={innerRef}>
+        {editing ? (
+          <div className="scr-challenge-time-edit-form">
+            {/* 날짜/시간/취소/확인을 한 줄로(요청) — 큰 폼용 OptionalDateTimeFields 대신
+                이 자리 전용의 좁은 인라인 입력을 쓴다. */}
+            <div className="scr-challenge-time-edit-row">
+              <input
+                type="date" className="scr-input scr-challenge-time-edit-input"
+                value={dateStr}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setDateStr(v);
+                  if (!v) setTimeStr("");
+                }}
+              />
+              <input
+                type="time" className="scr-input scr-challenge-time-edit-input"
+                value={timeStr} onChange={(e) => setTimeStr(e.target.value)} disabled={!dateStr}
+              />
+              <button type="button" className="scr-btn scr-btn-ghost scr-btn-sm" onClick={() => setEditing(false)} disabled={busy}>
+                취소
+              </button>
+              <button type="button" className="scr-btn scr-challenge-accept-btn scr-btn-sm" onClick={save} disabled={busy}>
+                {busy ? <Spinner /> : "확인"}
+              </button>
+            </div>
+            {err && <div className="scr-err">{err}</div>}
+          </div>
+        ) : (
+          <div className="scr-challenge-time-head">
+            <span className="scr-challenge-time-head-label">{timeLabel}</span>
+            {canEdit && (
+              <button
+                type="button" className="scr-challenge-time-edit-btn"
+                onClick={startEdit} aria-label="일시 수정"
+              >
+                <Pencil size={13} />
+              </button>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

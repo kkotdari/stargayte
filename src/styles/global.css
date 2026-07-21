@@ -5735,11 +5735,22 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
   background: transparent; color: var(--muted); cursor: pointer; -webkit-tap-highlight-color: transparent;
 }
 .scr-challenge-time-edit-btn:hover, .scr-challenge-time-edit-btn:active { color: var(--text); background: rgba(255,255,255,0.06); }
+/* 라벨 줄 ↔ 수정 폼을 전환할 때, 내용이 바뀌는 만큼의 자리를 즉시 뺏지 않고 실측 높이를
+   CSS transition으로 모핑한다(요청: "연필 누르면 공간이 자연스럽게 확보되는 영역
+   트랜스폼") — ChallengeCard의 페이지 높이 모핑과 같은 패턴. */
+.scr-challenge-time-head-wrap { overflow: hidden; transition: height .18s ease; }
 /* 일시 수정 인라인 폼 — 시간 헤더 자리를 그대로 대신한다. */
 .scr-challenge-time-edit-form {
-  display: flex; flex-direction: column; gap: 8px;
-  padding: 10px; border-radius: 10px; background: rgba(255,255,255,0.04);
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 8px 10px; border-radius: 10px; background: rgba(255,255,255,0.04);
 }
+/* 날짜/시간/취소/확인을 한 줄로(요청) — 좁은 화면에서도 안 깨지게 입력칸은 필요한
+   만큼만, 버튼은 줄어들지 않게 최소 폭을 보장한다. */
+.scr-challenge-time-edit-row { display: flex; align-items: center; gap: 6px; }
+.scr-challenge-time-edit-input {
+  flex: 1 1 0; min-width: 0; padding: 6px 8px; font-size: var(--fs-caption);
+}
+.scr-challenge-time-edit-row .scr-btn { flex: 0 0 auto; }
 
 /* scroll-margin-top — NEXT 너 나와로 자동 스크롤(scrollIntoView block:"start")할 때 화면
    맨 위에 딱 붙지 않고 이만큼만 숨 쉴 여유를 남긴다(위의 다른 카드는 안 보인다). 날짜
