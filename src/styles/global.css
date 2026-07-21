@@ -3856,10 +3856,13 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-select-drop.scr-scroll { scrollbar-color: var(--line) transparent; }
 .scr-select-drop.scr-scroll::-webkit-scrollbar-thumb { background: var(--line); border: none; }
 .scr-select-drop.scr-scroll::-webkit-scrollbar-thumb:hover { background: var(--dim); }
-/* 모바일: 페이지 스크롤바도 같이 숨긴다 */
+/* 모바일: 페이지 스크롤바도 같이 숨긴다 — 실제 스크롤 주체가 html/body에서 #scroll-root로
+   옮겨진 뒤로 html의 스크롤바를 숨기는 건 더 이상 의미가 없어졌다(실제로 보이는 건
+   #scroll-root 자신의 스크롤바 — 실제로 지적받은 문제: "세로 스크롤 안 보이게 해달라고
+   했는데 보이네"). html은 혹시 몰라 그대로 두고 실제 스크롤 컨테이너에도 같이 건다. */
 @media (max-width: 860px) {
-  html { scrollbar-width: none; }
-  html::-webkit-scrollbar { width: 0; }
+  html, #scroll-root { scrollbar-width: none; }
+  html::-webkit-scrollbar, #scroll-root::-webkit-scrollbar { width: 0; }
 }
 
 /* ===== match modal (등록/수정) ===== */
