@@ -117,7 +117,7 @@ export default function LeagueScreen() {
             type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm"
             onClick={() => setCreating(true)}
           >
-            <Plus size={14} /> 개최
+            <Plus size={14} /> 생성
           </button>
         )}
       </div>
