@@ -6867,12 +6867,25 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
   flex: 1 1 auto; display: flex; flex-direction: column; justify-content: space-around; gap: 14px;
 }
 .scr-league-bracket-pair { position: relative; display: flex; flex-direction: column; gap: 10px; }
-/* 짝 상자 오른쪽에서 다음 라운드로 모이는 커넥터 — 위쪽 절반은 아래로, 그 다음
-   순회에서 아래쪽 절반은 위로 꺾여 가운데(다음 칸 자리)로 모인다. */
+/* 짝 상자 오른쪽에서 다음 라운드로 모이는 커넥터 — 위/아래 절반을 각각 별도
+   가상요소(::before/::after)로 그려, 결과가 난 쪽 선만 굵게+포인트색으로 강조할 수
+   있게 한다(요청: "이긴쪽의 선이 두껍거나 포인트색으로 표시되는 방식" — 참고 이미지
+   기준). 위쪽은 아래로 꺾이고 아래쪽은 위로 꺾여 가운데(다음 칸 자리)에서 만난다. */
+.scr-league-bracket-pair::before, .scr-league-bracket-pair::after {
+  content: ""; position: absolute; left: 100%; width: 22px;
+  border-right: 2px solid var(--line);
+}
+.scr-league-bracket-pair::before {
+  top: 25%; height: 25%; border-top: 2px solid var(--line); border-top-right-radius: 8px;
+}
 .scr-league-bracket-pair::after {
-  content: ""; position: absolute; top: 25%; bottom: 25%; left: 100%;
-  width: 22px; border-top: 2px solid var(--line); border-right: 2px solid var(--line);
-  border-bottom: 2px solid var(--line); border-top-right-radius: 8px; border-bottom-right-radius: 8px;
+  bottom: 25%; height: 25%; border-bottom: 2px solid var(--line); border-bottom-right-radius: 8px;
+}
+.scr-league-bracket-pair-top-won::before {
+  border-color: var(--point); border-width: 3px;
+}
+.scr-league-bracket-pair-bottom-won::after {
+  border-color: var(--point); border-width: 3px;
 }
 .scr-league-bracket-match {
   display: flex; flex-direction: column; gap: 6px; border: 1px solid var(--line); border-radius: 10px;

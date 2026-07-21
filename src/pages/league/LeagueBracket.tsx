@@ -233,7 +233,14 @@ export default function LeagueBracket({
                     ))
                   ) : (
                     pairs!.map(([m1, m2], i) => (
-                      <div key={i} className="scr-league-bracket-pair">
+                      <div
+                        key={i}
+                        className={cx(
+                          "scr-league-bracket-pair",
+                          m1.winnerTeamId !== null && "scr-league-bracket-pair-top-won",
+                          m2.winnerTeamId !== null && "scr-league-bracket-pair-bottom-won",
+                        )}
+                      >
                         <MatchCard
                           league={league} match={m1} canEdit={canEdit} busy={busy}
                           onAssign={(side, teamId) => handleAssign(m1.id, side, teamId)}
