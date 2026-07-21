@@ -4625,28 +4625,33 @@ body *::-webkit-scrollbar-corner { background: transparent; }
      (.scr-mobile-tab-active). 모양(ellipse at center)은 원래대로 두고, 대신 각 단계의
      농도만 올려 더 진하고 또렷한 광원으로(요청: "알약 모양 이전상태로 돌리고 그라데이션
      투명도만 강하게"). */
-  /* 다크 테마 — 투명 물방울(유리 방울) 느낌(요청). 뒤(탭바)을 살짝 굴절시키는 backdrop
-     blur로 유리감을 주고, 위쪽에 하이라이트(빛 반사)·아래쪽 그늘·둘레 림광으로 볼록한
-     물방울 볼륨을 만든다. 채움은 거의 투명해서 알약 안으로 배경이 비친다. 크기는 JS가
-     버튼 폭으로 인라인 지정하므로, 둘레선은 border 대신 inset box-shadow로 그려 크기가
-     안 흔들리게 한다. */
+  /* 리퀴드 글래스(요청, 다크·라이트 공통) — 채움은 거의 100% 투명. 뒤(탭바)를 굴절시키는
+     backdrop blur로 유리감을 주고, 위쪽 스펙큘러 반사광(물방울 하이라이트)과 검은톤 그림자
+     (바깥 드롭 + 아래 굴절 그늘)로 떠 있는 유리 방울처럼 표현한다. 테두리(둘레 림)는 최대한
+     없애고, 위쪽 얇은 반사광 한 줄만 남긴다. */
   background:
-    radial-gradient(62% 44% at 50% 24%, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 72%),
-    radial-gradient(ellipse at center, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.03) 60%, rgba(255,255,255,0.01) 100%);
-  backdrop-filter: blur(4px) saturate(1.2);
-  -webkit-backdrop-filter: blur(4px) saturate(1.2);
-  /* 테두리(림광)·음영 약화(요청) — 은은하게만 남긴다. */
+    radial-gradient(72% 48% at 50% 15%, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0) 60%),
+    radial-gradient(46% 30% at 32% 84%, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0) 72%);
+  backdrop-filter: blur(6px) saturate(1.5) brightness(1.06);
+  -webkit-backdrop-filter: blur(6px) saturate(1.5) brightness(1.06);
   box-shadow:
-    inset 0 1px 0.5px rgba(255,255,255,0.3),
-    inset 0 -2px 5px rgba(0,0,0,0.09),
-    inset 0 0 0 1px rgba(255,255,255,0.07),
-    0 1px 4px rgba(0,0,0,0.16);
+    inset 0 1px 1.5px rgba(255,255,255,0.5),   /* 위 가장자리 스펙큘러(테두리 대신) */
+    inset 0 -5px 9px rgba(0,0,0,0.16),          /* 아래 유리 굴절 그늘 */
+    0 4px 10px rgba(0,0,0,0.34);                /* 바깥 검은 그림자 — 떠 있는 느낌 */
 }
-/* 라이트 테마는 물방울 유리 효과 없이 기존 컬러 광원 그대로(요청은 다크 테마 대상) — 다크
-   base에서 얹은 backdrop blur/그림자를 여기서 되돌린다. */
+/* 라이트 테마도 같은 리퀴드 글래스로(요청). 흰 배경 위라 흰 반사광은 옅게만 보이므로,
+   유리 볼륨은 검은톤 그림자/굴절 그늘이 주로 잡아준다. backdrop blur의 brightness로 방울이
+   살짝 밝아져 배경과 구분된다. */
 html.scr-light-theme .scr-mobile-tab-indicator {
-  background: radial-gradient(ellipse at center, color-mix(in srgb, var(--edge-glow) 48%, transparent) 0%, color-mix(in srgb, var(--edge-glow) 30%, transparent) 45%, color-mix(in srgb, var(--edge-glow) 14%, transparent) 75%, transparent 100%);
-  backdrop-filter: none; -webkit-backdrop-filter: none; box-shadow: none;
+  background:
+    radial-gradient(72% 48% at 50% 15%, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0) 60%),
+    radial-gradient(46% 30% at 32% 84%, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0) 72%);
+  backdrop-filter: blur(6px) saturate(1.4) brightness(1.08);
+  -webkit-backdrop-filter: blur(6px) saturate(1.4) brightness(1.08);
+  box-shadow:
+    inset 0 1px 1.5px rgba(255,255,255,0.85),
+    inset 0 -5px 9px rgba(0,0,0,0.1),
+    0 4px 10px rgba(0,0,0,0.22);
 }
 html.scr-light-theme .scr-mobile-tab-active { color: var(--text); }
 /* 라이트 테마는 밝은 패널 위라 흰 반사광이 안 보여 — 드로어 왼쪽 모서리와 같은 이유로

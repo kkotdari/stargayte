@@ -37,12 +37,12 @@ interface MobileTabBarProps {
 // 바뀌어도 따로 손볼 필요가 없다.
 // 알약 세로 인셋(버튼 높이에서 위아래로 이만큼씩 줄인다) — 짧은 글자(예: "기록")에서
 // 너무 납작한 타원보다 더 원에 가깝게 보이도록 인셋을 줄여 세로로 키운다.
-const INDICATOR_VERTICAL_INSET = 1;
+const INDICATOR_VERTICAL_INSET = 4;
 // 알약을 버튼 자신의 폭보다 좌우로 이만큼씩 더 넓게 그린다 — 텍스트에 좌우 패딩이
 // 거의 없어서(탭이 많아진 뒤로 줄바꿈 방지 차 없앴다), 버튼 폭에 딱 맞추면 "게임아이디"
 // 같은 긴 라벨이 알약 가장자리에 바짝 붙어 보였다. 전체적인 크기감을 키워달라는 요청으로
 // 살짝 더 늘렸다.
-const INDICATOR_HORIZONTAL_PAD = 10;
+const INDICATOR_HORIZONTAL_PAD = 13;
 
 function useActiveTabIndicator(navRef: { current: HTMLElement | null }, deps: unknown[]) {
   const [indicator, setIndicator] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
