@@ -4791,12 +4791,6 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
 .scr-cselect-drop.scr-cselect-plain .scr-cselect-opt {
   font-family: 'Pretendard Variable', Pretendard, 'Noto Sans KR', sans-serif;
 }
-/* 팀 목록에서 선수 추가할 때 뜨는 드롭다운은 폰트를 한 단계 줄인다(요청: "팀 목록
-   선수 추가시 드롭다운의 폰트 1스텝 감소") — 트리거와 포털링된 옵션 목록 양쪽 다. */
-.scr-league-roster-select .scr-cselect-trigger,
-.scr-cselect-drop.scr-league-roster-select .scr-cselect-opt {
-  font-size: var(--fs-caption);
-}
 /* position/top/left/width는 Select.tsx가 body 포털 + 인라인 스타일로 뷰포트 기준 계산해서
    직접 채운다 (모달 본문 등 overflow:hidden/auto 인 스크롤 영역 안에서도 잘리지 않도록) */
 /* touch-action: pan-y — 이 팝오버는 모달 내부 트리거 위에 body 포털로 떠서 모달 본문과
@@ -6870,6 +6864,10 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
 /* 팀 패널 — 리그 상세 안에 이어 붙는 섹션. */
 .scr-league-teams-panel { display: flex; flex-direction: column; gap: 10px; padding-top: 4px; border-top: 1px solid var(--league-line); }
 .scr-league-teams-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+/* 팀/선수 추가 버튼 한 단계 축소(요청: "팀추가 대진확정 버튼 1스텝 축소"). */
+.scr-league-teams-panel-head .scr-btn-sm {
+  padding: 4px 8px; font-size: var(--fs-caption); height: 28px; min-height: 28px; box-sizing: border-box;
+}
 .scr-league-section-title { font-size: var(--fs-body); font-weight: 800; color: var(--dim); letter-spacing: 0.02em; margin: 0; }
 .scr-league-teams-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
 /* 완전 투명 글래스 패널(요청: "팀 카드 투명 패널로 교체") — 테두리 대신 다크모드 팝업
@@ -6886,23 +6884,23 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
 .scr-league-team-card-head { display: flex; align-items: center; gap: 4px; }
 .scr-league-team-label { font-size: var(--fs-body); font-weight: 800; flex: 1 1 auto; }
 .scr-league-team-card-busy { display: flex; justify-content: center; padding: 4px 0; }
-/* 로스터 한 줄당 하나의 얇은 행 — 유저칩을 이전보다 20% 작게(요청: "팀카드 유저칩
-   크기 20프로 축소" — 아바타 20px→16px, 패딩/글자도 비례해 줄임). */
+/* 로스터 한 줄당 하나의 얇은 행 — 유저칩 크기를 한 단계 다시 키웠다(요청: "유저칩과
+   드롭다운 크기 스텝 1씩 증가" — 아바타 16px→18px, 패딩도 비례해서). */
 .scr-league-roster-list { display: flex; flex-direction: column; gap: 4px; }
 .scr-league-roster-row {
-  display: flex; align-items: center; gap: 6px; padding: 4px 6px;
+  display: flex; align-items: center; gap: 7px; padding: 5px 7px;
   background: rgba(255,255,255,0.05); border-radius: 7px;
 }
-.scr-league-roster-row-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-caption); font-weight: 600; }
-.scr-league-roster-row-remove { flex: 0 0 auto; width: 18px; height: 18px; }
+.scr-league-roster-row-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-body); font-weight: 600; }
+.scr-league-roster-row-remove { flex: 0 0 auto; width: 20px; height: 20px; }
 /* 개인전 — 팀 카드 없이 유저칩만 나열(요청: "팀 카드가 아닌 유저칩이 바로 추가됨"). */
 .scr-league-players-wrap { display: flex; flex-wrap: wrap; gap: 6px; }
 .scr-league-player-chip {
-  display: flex; align-items: center; gap: 6px; padding: 4px 8px 4px 5px;
+  display: flex; align-items: center; gap: 7px; padding: 5px 9px 5px 6px;
   background: rgba(255,255,255,0.05); border: 1px solid var(--league-line); border-radius: 999px;
 }
-.scr-league-player-chip-name { font-size: var(--fs-caption); font-weight: 600; }
-.scr-league-player-chip-remove { flex: 0 0 auto; width: 18px; height: 18px; }
+.scr-league-player-chip-name { font-size: var(--fs-body); font-weight: 600; }
+.scr-league-player-chip-remove { flex: 0 0 auto; width: 20px; height: 20px; }
 .scr-league-player-chip-pick { min-width: 180px; }
 
 /* 대진표 — 라운드를 가로로 늘어놓고 각 라운드 안에서는 세로로 경기 카드를 쌓는다.
@@ -7010,6 +7008,16 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
   border: none; font: inherit; text-align: left;
 }
 .scr-league-bracket-team-card-win { box-shadow: 0 0 0 2px var(--win) inset; }
+/* 팀전 카드 높이를 로스터 인원수(1~4명)와 무관하게 통일한다 — 짝(pair) 커넥터가
+   두 자식의 높이를 반반(25%/75%)으로 가정해 위치를 잡는데, 로스터가 짧은 매치와
+   긴 매치가 섞이면 그 가정이 깨져 이긴 팀과 연결된 선이 카드 중심을 비껴간다(요청:
+   "두 팀이 붙으면 그 브라켓이 합쳐진 하나의 선에 이긴 팀이 연결돼야해",
+   "1,2번 시드의 가운데에 있어야해" — 짝 안의 두 경기 높이가 서로 달라 중심이
+   밀렸었다). 4명 로스터 기준 높이로 고정하고 짧은 내용은(align-items:center로)
+   가운데 정렬한다 — 이제 모든 1라운드 매치가 같은 높이라 25/75% 계산이 항상
+   정확하다. 개인전(로스터 항상 1명)과 모바일 컴팩트 모드는 애초에 불균형이 없어
+   적용하지 않는다. */
+.scr-league-bracket-team-card-uniform { min-height: 100px; }
 .scr-league-bracket-team-card-label {
   flex: 0 0 auto; font-weight: 800; font-size: var(--fs-micro); color: #10151a;
   width: 16px; text-align: center;
@@ -7068,6 +7076,11 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
 }
 .scr-league-bracket-when {
   text-align: center; font-size: var(--fs-11); color: var(--dim);
+}
+.scr-league-bracket-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+/* 대진 확정 버튼도 한 단계 축소(요청: "팀추가 대진확정 버튼 1스텝 축소"). */
+.scr-league-bracket-toolbar > .scr-btn-sm {
+  padding: 4px 8px; font-size: var(--fs-caption); height: 28px; min-height: 28px; box-sizing: border-box;
 }
 .scr-league-bracket-generate-row { display: flex; align-items: center; gap: 8px; }
 /* 팀수/대진표 규모는 상한이 없어(요청: "팀수 무제한... 대진표 슬롯 무제한") 목록형

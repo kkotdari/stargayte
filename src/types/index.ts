@@ -517,6 +517,8 @@ export interface League {
   drawSize: number | null;
   // 대진표 생성 시 예약해둔 규모(실제 지금 만들어진 팀 수와 다를 수 있다) — 생성 전엔 null.
   plannedTeams: number | null;
+  // 대진(시드)이 확정됐는지 — true면 1라운드 슬롯을 더 이상 바꿀 수 없다.
+  bracketLocked: boolean;
   teams: LeagueTeam[];
   matches: LeagueMatch[];
   createdAt: string;

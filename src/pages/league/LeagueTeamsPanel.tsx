@@ -109,14 +109,14 @@ function TeamModeCard({
         <div className="scr-league-roster-list">
           {team.roster.map((r) => (
             <div key={r.memberId} className="scr-league-roster-row">
-              <Avatar member={{ id: r.memberId, nickname: r.nickname, avatar: r.avatar }} size={16} />
+              <Avatar member={{ id: r.memberId, nickname: r.nickname, avatar: r.avatar }} size={18} />
               <span className="scr-league-roster-row-name">{r.nickname}</span>
               {editable && (
                 <button
                   type="button" className="scr-icon-btn scr-league-roster-row-remove"
                   onClick={() => removeMember(r.memberId)} disabled={busy} aria-label="제외"
                 >
-                  <X size={11} />
+                  <X size={13} />
                 </button>
               )}
             </div>
@@ -126,7 +126,7 @@ function TeamModeCard({
               value="" options={options} onChange={pick}
               placeholder="유저 선택" defaultOpen
               onOpenChange={(open) => { if (!open) setPicking(false); }}
-              className="scr-cselect-plain scr-league-roster-select" size="sm"
+              className="scr-cselect-plain" size="sm"
               disabled={busy}
             />
           )}
@@ -221,7 +221,7 @@ function IndividualPlayerChip({
           value="" options={options} onChange={pickPlayer}
           placeholder="선수 선택" defaultOpen
           onOpenChange={(open) => { if (!open && !pickedRef.current) cancelPick(); }}
-          className="scr-cselect-plain scr-league-roster-select" size="sm"
+          className="scr-cselect-plain" size="sm"
           disabled={busy}
         />
       </div>
@@ -230,14 +230,14 @@ function IndividualPlayerChip({
   const r = team.roster[0];
   return (
     <div className="scr-league-player-chip">
-      <Avatar member={{ id: r.memberId, nickname: r.nickname, avatar: r.avatar }} size={16} />
+      <Avatar member={{ id: r.memberId, nickname: r.nickname, avatar: r.avatar }} size={18} />
       <span className="scr-league-player-chip-name">{r.nickname}</span>
       {editable && (
         <button
           type="button" className="scr-icon-btn scr-league-player-chip-remove"
           onClick={removeChip} disabled={busy} aria-label={`${r.nickname} 제외`}
         >
-          <X size={11} />
+          <X size={13} />
         </button>
       )}
       {err && <div className="scr-err">{err}</div>}
@@ -286,7 +286,7 @@ export default function LeagueTeamsPanel({ league, onUpdated }: { league: League
         </h2>
         {canAddTeam && (
           <button
-            type="button" className="scr-btn scr-btn-ghost scr-btn-sm"
+            type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm"
             onClick={addTeam} disabled={addBusy}
           >
             {addBusy ? <Spinner size={14} /> : <Plus size={14} />} {isIndividual ? "선수 추가" : "팀 추가"}

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Spinner } from "../../components/common/Feedback";
 import Select from "../../components/common/Select";
 import Avatar from "../../components/common/Avatar";
+import ConfirmDialog from "../../components/common/ConfirmDialog";
 import { api } from "../../api/client";
 import { cx } from "../../utils/format";
 import { formatChallengeSchedule } from "../../utils/date";
@@ -38,6 +39,7 @@ function TeamSlotCard({
     "scr-league-bracket-team-card",
     isWinner && "scr-league-bracket-team-card-win",
     compact && "scr-league-bracket-team-card-compact",
+    mode === "team" && !compact && "scr-league-bracket-team-card-uniform",
   );
   const roster = !team ? null : team.roster.length === 0 ? (
     <span className="scr-league-bracket-team-card-empty-roster">{team.label}팀(로스터 없음)</span>
@@ -68,9 +70,11 @@ function TeamSlotCard({
 // 식" — set_match_slot이 이 "옮기기"를 한 번에 처리한다). 2라운드부터는 팀을 직접
 // 배정하는 게 아니라 이전 라운드 결과가 입력되면 이긴 팀이 자동으로 채워지는
 // 자리라 드롭다운을 아예 보여주지 않는다(요청: "2라운드 부터는 팀배정으로 할게
-// 아니라 경기 결과 입력시 이긴팀을 자동으로 렌더해야지"). 이미 결과가 정해진(부전승
-// 포함) 경기의 빈 자리는 "미정"이 아니라 "부전"으로 다르게 표시한다. 드래그앤드랍
-// 편집은 폐기 — 이 드롭다운 방식으로 대체한다.
+// 아니라 경기 결과 입력시 이긴팀을 자동으로 렌더해야지"). 대진이 확정되기 전에는
+// 부전승으로만 결정된 자리도 계속 드롭다운으로 재배정할 수 있다(요청: "대진 확정
+// 버튼을 누르면 그때부터 시드는 변경 못하게... 그전엔 부전승팀도 수정 가능해야해") —
+// 실제로 치른 경기 결과(setsWonA가 있는 경기)만 확정 여부와 무관하게 항상 잠긴다.
+// 드래그앤드랍 편집은 폐기 — 이 드롭다운 방식으로 대체한다.
 function SlotCell({
   league, match, side, team, teamRef, canEdit, busy, mode, compact, onAssign, onClear,
 }: {
@@ -80,12 +84,15 @@ function SlotCell({
   onAssign: (teamId: number) => void; onClear: () => void;
 }) {
   const decided = match.winnerTeamId !== null;
-  const editable = canEdit && match.round === 1 && !match.isDead && !decided;
+  const realResult = match.setsWonA !== null;
+  const editable = canEdit && match.round === 1 && !match.isDead && !realResult && !league.bracketLocked;
+
+  const emptyClass = cx("scr-league-bracket-team-empty", mode === "team" && !compact && "scr-league-bracket-team-card-uniform");
 
   if (!editable) {
     if (!team) {
-      if (decided) return <div className="scr-league-bracket-team-empty">부전</div>;
-      return <div className="scr-league-bracket-team-empty">{match.isDead ? "공백" : "미정"}</div>;
+      if (decided) return <div className={emptyClass}>부전</div>;
+      return <div className={emptyClass}>{match.isDead ? "공백" : "미정"}</div>;
     }
     return <TeamSlotCard team={team} isWinner={decided && match.winnerTeamId === teamRef?.id} mode={mode} compact={compact} />;
   }
@@ -128,7 +135,12 @@ function SlotCell({
       disabled={busy}
     />
   );
-  return <TeamSlotCard team={team} isWinner={false} mode={mode} compact={compact} editSelect={select} />;
+  return (
+    <TeamSlotCard
+      team={team} isWinner={decided && match.winnerTeamId === teamRef?.id} mode={mode} compact={compact}
+      editSelect={select}
+    />
+  );
 }
 
 function MatchCard({
@@ -210,6 +222,7 @@ export default function LeagueBracket({
   const [teamCount, setTeamCount] = useState(() => Math.max(2, league.teams.length || 2));
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const [confirmingBracket, setConfirmingBracket] = useState(false);
 
   const generate = async () => {
     setErr("");
@@ -222,7 +235,22 @@ export default function LeagueBracket({
       setBusy(false);
     }
   };
-  const generateRow = canEdit && (
+  // 대진 확정 — 그 뒤로는 1라운드 시드를 더 이상 바꿀 수 없다(요청: "대진 확정 버튼을
+  // 추가해주고 그걸 누르면 그때부터 시드는 변경 못하게 해줘 그전엔 부전승팀도 수정
+  // 가능해야해"). 되돌릴 수 없는 조작이라 확인창을 거친다.
+  const confirmBracket = async () => {
+    setErr("");
+    setBusy(true);
+    try {
+      onUpdated(await api.confirmLeagueBracket(league.id));
+      setConfirmingBracket(false);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "대진을 확정하지 못했어요.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const generateRow = canEdit && !league.bracketLocked && (
     <div className="scr-league-bracket-generate-row">
       <span className="scr-label">{league.mode === "individual" ? "참가선수수" : "참가팀수"}</span>
       <input
@@ -286,7 +314,17 @@ export default function LeagueBracket({
     <div className="scr-league-bracket-panel">
       {/* "대진표" 타이틀 생략(요청: "대진표 타이틀은 없어도 다 아니까 삭제") — 위 요약
           줄에 이미 "대진표 N강"이 있어 중복이었다. */}
-      {generateRow}
+      <div className="scr-league-bracket-toolbar">
+        {generateRow}
+        {canEdit && !league.bracketLocked && (
+          <button
+            type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm"
+            onClick={() => setConfirmingBracket(true)} disabled={busy}
+          >
+            대진 확정
+          </button>
+        )}
+      </div>
       {err && <div className="scr-err">{err}</div>}
       <div className="scr-league-bracket-scroll scr-scroll">
         <div className="scr-league-bracket-grid">
@@ -347,6 +385,15 @@ export default function LeagueBracket({
           })}
         </div>
       </div>
+      {confirmingBracket && (
+        <ConfirmDialog
+          title="대진 확정"
+          message="대진을 확정하면 1라운드 시드(팀 배정)를 더 이상 바꿀 수 없어요. 계속할까요?"
+          confirmLabel={busy ? "확정 중..." : "확정"}
+          onConfirm={confirmBracket}
+          onCancel={() => setConfirmingBracket(false)}
+        />
+      )}
     </div>
   );
 }
