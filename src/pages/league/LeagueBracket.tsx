@@ -22,10 +22,20 @@ function roundLabel(round: number, totalRounds: number): string {
 // 대진표 칸 하나(팀/선수 카드) — 항상 하얀 배경에 검정 글씨 + 아바타로, 다크/라이트
 // 테마와 무관하게 또렷하게 보이도록 고정한다(요청: "팀카드는 하얀색 배경에 검은글씨와
 // 아바타"). 팀리그는 로스터 전원을 세로로(요청: "팀이름이 아니라 구성원이름 보이게
-// (세로로)"), 개인리그는 그 팀(=선수 1명)의 이름만 보여준다.
-function TeamSlotCard({ team, isWinner, mode }: { team: LeagueTeam; isWinner: boolean; mode: League["mode"] }) {
+// (세로로)"), 개인리그는 그 팀(=선수 1명)의 이름만 보여준다. 팀전은 라운드가 진행될수록
+// 대진표가 옆으로 넓어지는데, 모바일에서는 2라운드부터 로스터 대신 팀명(라벨)만 보여
+// 폭을 아낀다(요청: "팀전, 모바일인 경우 2라운드부터는 팀명만 노출") — 데스크톱은
+// 라운드와 무관하게 항상 로스터 전원을 보여준다.
+function TeamSlotCard({
+  team, isWinner, mode, compact,
+}: { team: LeagueTeam; isWinner: boolean; mode: League["mode"]; compact: boolean }) {
   return (
-    <div className={cx("scr-league-bracket-team-card", isWinner && "scr-league-bracket-team-card-win")}>
+    <div className={cx(
+      "scr-league-bracket-team-card",
+      isWinner && "scr-league-bracket-team-card-win",
+      compact && "scr-league-bracket-team-card-compact",
+    )}
+    >
       {mode === "team" && <span className="scr-league-bracket-team-card-label">{team.label}</span>}
       {team.roster.length === 0 ? (
         <span className="scr-league-bracket-team-card-empty-roster">{team.label}팀(로스터 없음)</span>
@@ -44,15 +54,21 @@ function TeamSlotCard({ team, isWinner, mode }: { team: LeagueTeam; isWinner: bo
 }
 
 // 비어있는 칸 — 수정 모드면 배정 가능한 팀(이 라운드 다른 칸에 없는 팀)을 고르는
-// 드롭다운, 아니면 그냥 "미정".
+// 드롭다운, 아니면 "미정". 이미 부전승으로 결정된 경기의 빈 자리는 "그냥 안 채워진
+// 미정"이 아니라 "상대가 구조적으로 없어서 자동으로 이겼다"는 뜻이라 다르게 표시한다
+// (요청: "부전승이 있는경우 고려가 잘 안된듯. 부전승팀이 갑자기 대진에서 제외돼" —
+// 이전엔 부전승으로 이미 결정된 경기도 반대쪽이 그냥 "미정"으로만 보여 헷갈렸다).
 function EmptySlot({
   league, match, canEdit, onAssign,
 }: {
   league: League; match: LeagueMatch; canEdit: boolean;
   onAssign: (teamId: number) => void;
 }) {
-  if (!canEdit || match.isDead || match.winnerTeamId !== null) {
-    return <div className="scr-league-bracket-team-empty">{match.isDead ? "부전(공백)" : "미정"}</div>;
+  if (match.winnerTeamId !== null) {
+    return <div className="scr-league-bracket-team-empty">부전</div>;
+  }
+  if (!canEdit || match.isDead) {
+    return <div className="scr-league-bracket-team-empty">{match.isDead ? "공백" : "미정"}</div>;
   }
   const usedInRound = new Set(
     league.matches
@@ -73,15 +89,16 @@ function EmptySlot({
 }
 
 function MatchCard({
-  league, match, canEdit, busy, isFinal, onAssign, onClear,
+  league, match, canEdit, busy, onAssign, onClear,
 }: {
-  league: League; match: LeagueMatch; canEdit: boolean; busy: boolean; isFinal: boolean;
+  league: League; match: LeagueMatch; canEdit: boolean; busy: boolean;
   onAssign: (side: LeagueMatchSide, teamId: number) => void;
   onClear: (side: LeagueMatchSide) => void;
 }) {
   const decided = match.winnerTeamId !== null;
   const teamA = match.teamA ? (league.teams.find((t) => t.id === match.teamA!.id) ?? null) : null;
   const teamB = match.teamB ? (league.teams.find((t) => t.id === match.teamB!.id) ?? null) : null;
+  const compact = league.mode === "team" && match.round > 1;
 
   const renderSide = (side: LeagueMatchSide, team: LeagueTeam | null, teamRef: { id: number } | null) => {
     if (!team) {
@@ -89,7 +106,10 @@ function MatchCard({
     }
     return (
       <div className="scr-league-bracket-slot-filled">
-        <TeamSlotCard team={team} isWinner={decided && match.winnerTeamId === teamRef?.id} mode={league.mode} />
+        <TeamSlotCard
+          team={team} isWinner={decided && match.winnerTeamId === teamRef?.id} mode={league.mode}
+          compact={compact}
+        />
         {canEdit && !decided && (
           <button
             type="button" className="scr-league-bracket-slot-clear"
@@ -102,17 +122,24 @@ function MatchCard({
     );
   };
 
+  // 죽은(is_dead) 칸도 실제 경기와 같은 크기의 상자로 그린다 — 짝(pair) 커넥터가 두
+  // 자식의 높이를 반반(25%/75%)으로 가정하고 위치를 잡기 때문에, 죽은 쪽만 모양이
+  // 다르면(예전엔 텍스트 한 줄) 그 계산이 어긋나 연결선이 이상한 자리를 가리켰다.
   if (match.isDead) {
-    return <div className="scr-league-bracket-match-empty">공백(부전 없음)</div>;
+    return (
+      <div className="scr-league-bracket-match scr-league-bracket-match-void">
+        <div className="scr-league-bracket-team-empty">공백</div>
+      </div>
+    );
   }
 
   return (
     <div className="scr-league-bracket-match-wrap">
-      {/* 맞붙는 두 팀은 테두리로 묶지 않고 선(가지)으로만 연결한다(요청: "경기상대끼리
-          테두리로 묶는게 아니라 선으로 연결하는거야 가지로") — 카드 자체는 서로 독립된
-          채로 뜨고, 오른쪽에 작은 대괄호 선이 둘을 하나로 모아 다음 라운드 커넥터로
-          이어간다(마지막 라운드는 다음 라운드가 없어 선을 안 그린다). */}
-      <div className={cx("scr-league-bracket-match", !isFinal && "scr-league-bracket-match-connect", decided && "scr-league-bracket-match-won")}>
+      {/* 맞붙는 두 팀은 한 상자 안에 묶고(요청 참고 이미지 — FIFA/AFC 대진표처럼 경기 하나
+          = 상자 하나), 그 상자와 상자 사이만 선(가지)으로 잇는다 — 다음 라운드로 이어지는
+          커넥터는 .scr-league-bracket-pair가 그린다(마지막 라운드는 다음 라운드가 없어
+          커넥터를 안 그린다). */}
+      <div className="scr-league-bracket-match">
         {renderSide("a", teamA, match.teamA)}
         {renderSide("b", teamB, match.teamB)}
       </div>
@@ -208,7 +235,8 @@ export default function LeagueBracket({
 
   return (
     <div className="scr-league-bracket-panel">
-      <h2 className="scr-league-section-title">대진표</h2>
+      {/* "대진표" 타이틀 생략(요청: "대진표 타이틀은 없어도 다 아니까 삭제") — 위 요약
+          줄에 이미 "대진표 N강"이 있어 중복이었다. */}
       {err && <div className="scr-err">{err}</div>}
       <div className="scr-league-bracket-scroll scr-scroll">
         <div className="scr-league-bracket-grid">
@@ -230,7 +258,7 @@ export default function LeagueBracket({
                   {isFinal ? (
                     matches.map((m) => (
                       <MatchCard
-                        key={m.id} league={league} match={m} canEdit={canEdit} busy={busy} isFinal
+                        key={m.id} league={league} match={m} canEdit={canEdit} busy={busy}
                         onAssign={(side, teamId) => handleAssign(m.id, side, teamId)}
                         onClear={(side) => handleClear(m.id, side)}
                       />
@@ -246,12 +274,12 @@ export default function LeagueBracket({
                         )}
                       >
                         <MatchCard
-                          league={league} match={m1} canEdit={canEdit} busy={busy} isFinal={false}
+                          league={league} match={m1} canEdit={canEdit} busy={busy}
                           onAssign={(side, teamId) => handleAssign(m1.id, side, teamId)}
                           onClear={(side) => handleClear(m1.id, side)}
                         />
                         <MatchCard
-                          league={league} match={m2} canEdit={canEdit} busy={busy} isFinal={false}
+                          league={league} match={m2} canEdit={canEdit} busy={busy}
                           onAssign={(side, teamId) => handleAssign(m2.id, side, teamId)}
                           onClear={(side) => handleClear(m2.id, side)}
                         />
