@@ -917,7 +917,7 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 /* 관리자가 "이미지 설정"에서 홈 로고를 텍스트 대신 이미지로 바꿔둔 경우 — 텍스트 로고와
    같은 자리에 비슷한 높이로 들어가도록 */
 /* PC 로고 확대(요청, 20%씩 두 번): 22→26→31px. 모바일은 아래 반응형 블록이 따로 정한다. */
-.scr-brand-logo-img { height: 31px; width: auto; display: block; }
+.scr-brand-logo-img { height: 36px; width: auto; display: block; }
 .scr-brand-text { font-size: var(--fs-body); color: var(--muted); letter-spacing: 0.02em; white-space: nowrap; }
 .scr-nav { display: flex; gap: 6px; flex: 1; overflow-x: auto; scrollbar-width: none; }
 .scr-nav::-webkit-scrollbar { display: none; }
