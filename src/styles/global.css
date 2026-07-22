@@ -1819,8 +1819,27 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-stats-list-panel-v2 .scr-stat-bar-track { height: 6px; }
 /* 종족별 전적 칸의 막대 세 줄(테/프/저) 사이 수직 간격을 더 좁혀서 그만큼 행 높이도 줄인다. */
 .scr-stats-list-panel-v2 .scr-stat-bar-cell { gap: 1px; }
-.scr-stats-list-panel-v2 .scr-stat-bar-row { gap: 0; }
 .scr-stats-list-panel-v2 .scr-value-bar-track-wrap { height: 6px; }
+/* 전적 칸을 다른 데이터 칸(ValueBar)과 똑같은 구성으로 맞춘다(지적: 승률 컬럼만 바
+   두께/위치가 달라 어색) — ① 트랙 래퍼의 기본 min-height(14px) 때문에 6px 막대가 큰
+   상자 안에 떠 있던 것을 래퍼 자체를 6px로, ② 숫자(승률)와 막대 사이 간격을 ValueBar와
+   같은 4px로, ③ 승률 숫자를 ValueBar 숫자처럼 가운데 정렬 + 같은 크기(body, 모바일에선
+   아래 480px 블록이 caption으로 덮음)로. */
+.scr-stats-list-panel-v2 .scr-stat-bar-row { gap: 4px; }
+.scr-stats-list-panel-v2 .scr-stat-bar-track-wrap { min-height: 0; height: 6px; }
+.scr-stats-list-panel-v2 .scr-stat-bar-top { display: flex; justify-content: center; gap: 0; }
+.scr-stats-list-panel-v2 .scr-stat-bar-rate { font-size: var(--fs-body); }
+/* ④ 세로 위치 — 전적 칸만 아래 승/전 줄이 하나 더 있어 내용이 더 크고, 모든 칸이
+   세로 가운데 정렬이라 전적 칸의 막대만 위로 밀려 높이가 안 맞았다. 데이터 칸 전부를
+   위 정렬로 통일하면 숫자·막대의 y좌표가 컬럼마다 똑같아지고, 승/전 줄만 전적 칸
+   아래로 자연스럽게 더 내려온다. ValueBar 칸들은 flex row(세로축 = align-items,
+   .scr-stat-row > * 의 center를 덮음)이고, 전적 칸(.scr-stat-bar-cell)만 flex
+   column(세로축 = justify-content)이라 각각 다른 속성을 바꿔야 한다. */
+.scr-stats-list-panel-v2 .scr-stat-plays-cell,
+.scr-stats-list-panel-v2 .scr-stat-build-cell,
+.scr-stats-list-panel-v2 .scr-stat-eapm-cell,
+.scr-stats-list-panel-v2 .scr-stat-ecmd-cell { align-items: flex-start; }
+.scr-stats-list-panel-v2 .scr-stat-bar-cell { justify-content: flex-start; }
 /* 위 8px는 모바일 기준 — PC는 화면/행 자체가 넓어 여유가 있으니 위아래 패딩을 더
    넉넉하게 되돌린다(경기결과 카드와 같은 원칙: PC만 증가, 모바일은 컴팩트 유지). */
 @media (min-width: 720px) {
