@@ -3348,7 +3348,10 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    표가 아니라 페이지가 처리하게 넘기고, overscroll-behavior-x:contain으로 가로 끝까지
    스크롤해도 그 스크롤이 페이지로 체이닝되지 않게 한다. */
 .scr-match-stats-table-wrap {
-  margin-top: 12px; overflow-x: auto; overflow-y: hidden;
+  /* 좌우 14px 마진으로 아래 경기번호/등록자 줄(.scr-match-trow-footer 좌우 패딩 14px)과
+     좌우를 맞춘다(요청). 마진이라 표의 가로 스크롤 영역이 이 안쪽에서만 움직여 양쪽 여백이
+     그대로 유지된다. */
+  margin: 12px 14px 0; overflow-x: auto; overflow-y: hidden;
   overscroll-behavior-x: contain; touch-action: pan-x;
 }
 .scr-match-stats-table { width: 100%; border-collapse: collapse; font-size: var(--fs-caption); font-variant-numeric: tabular-nums; }
