@@ -10,10 +10,10 @@ const MIN_GAMES = 1;
 const STRONG = 0.6;
 
 // 우세/열세가 강할수록(승률이 50%에서 멀수록) 선을 두껍게, 약하면 얇게(요청).
-// 변화폭을 더 크게(요청) — strength 0(50%) → 0.25, 1(100%) → 1.8.
+// 상한은 1.2까지만(요청) — strength 0(50%) → 0.25, 1(100%) → 1.2.
 const edgeWidth = (winRate: number) => {
   const strength = Math.abs(winRate - 0.5) * 2;
-  return Math.round((0.25 + 1.55 * strength) * 100) / 100;
+  return Math.round((0.25 + 0.95 * strength) * 100) / 100;
 };
 
 interface Edge {
@@ -53,8 +53,8 @@ export default function RivalryMap({
       } else if (aWr <= 1 - STRONG) {
         edges.push({ from: p.b, to: p.a, kind: "strong", games, fromWins: p.bWins, toWins: p.aWins, width: edgeWidth(aWr) });
       } else {
-        // 대등은 강도 개념이 없으니 중간 굵기 고정(요청) — 우세 굵기 범위(0.25~1.8)의 중간.
-        edges.push({ from: p.a, to: p.b, kind: "even", games, fromWins: p.aWins, toWins: p.bWins, width: 1.0 });
+        // 대등은 강도 개념이 없으니 중간 굵기 고정(요청) — 우세 굵기 범위(0.25~1.2)의 중간.
+        edges.push({ from: p.a, to: p.b, kind: "even", games, fromWins: p.aWins, toWins: p.bWins, width: 0.7 });
       }
       ids.add(p.a);
       ids.add(p.b);
@@ -126,7 +126,7 @@ export default function RivalryMap({
             const edgeRadius = (vx: number, vy: number) =>
               (halfW * halfH) / (Math.hypot(halfH * vx, halfW * vy) || 1);
             let trimStart = edgeRadius(ux, uy) + 0.7;
-            let trimEnd = edgeRadius(ux, uy) + 1.2;
+            let trimEnd = edgeRadius(ux, uy) + 2.0;
             // 바로 옆 칩처럼 가까우면 트림이 선을 다 먹어 화살촉만 남는다(지적된 버그)
             // — 촉 길이 + 여유만큼의 기둥은 반드시 남도록 트림을 비례 축소한다.
             const minShaft = headLen + 1.6;
@@ -142,18 +142,22 @@ export default function RivalryMap({
             const bx = x2 - ux * headLen;
             const by = y2 - uy * headLen;
             const arrowPoints = `${x2},${y2} ${bx - uy * half},${by + ux * half} ${bx + uy * half},${by - ux * half}`;
-            // 기둥은 촉 꼭짓점이 아니라 촉 밑변에서 끊는다 — 꼭짓점까지 그리면 삼각형이
-            // 뾰족해지는 끝에서 기둥(굵은 선)이 촉보다 넓어 옆으로 삐져나왔다(지적).
-            const shaftX2 = e.kind === "strong" ? bx : x2;
-            const shaftY2 = e.kind === "strong" ? by : y2;
+            // 우세 기둥은 시작이 얇고 화살촉 쪽으로 갈수록 두꺼워지는 사다리꼴(요청) —
+            // <line>은 굵기가 균일해서 폴리곤으로 직접 그린다. 시작 폭은 끝 폭의 35%,
+            // 끝은 촉 밑변에서 끊는다(꼭짓점까지 그리면 촉 옆으로 삐져나온다 — 지적).
+            const startHalf = (e.width * 0.35) / 2;
+            const endHalf = e.width / 2;
+            const shaftPoints = `${x1 - uy * startHalf},${y1 + ux * startHalf} ${bx - uy * endHalf},${by + ux * endHalf} ${bx + uy * endHalf},${by - ux * endHalf} ${x1 + uy * startHalf},${y1 - ux * startHalf}`;
             return (
               <g key={i} className={cx("scr-rivalry-edge", `scr-rivalry-edge-${e.kind}`, selected !== null && "scr-rivalry-edge-focus")}>
-                <line
-                  x1={x1} y1={y1} x2={shaftX2} y2={shaftY2}
-                  // 우세 강도 비례 굵기 — 인라인 style이라 CSS 기본 굵기를 덮는다.
-                  style={{ strokeWidth: e.width }}
-                />
-                {e.kind === "strong" && <polygon points={arrowPoints} className="scr-rivalry-arrow-head" />}
+                {e.kind === "strong" ? (
+                  <>
+                    <polygon points={shaftPoints} className="scr-rivalry-shaft" />
+                    <polygon points={arrowPoints} className="scr-rivalry-arrow-head" />
+                  </>
+                ) : (
+                  <line x1={x1} y1={y1} x2={x2} y2={y2} style={{ strokeWidth: e.width }} />
+                )}
                 {/* 선택 모드에서만 전적 라벨을 선 중앙에 보여준다 — 전체 보기에선 겹쳐서 소음.
                     띄우는 방향은 화면 위쪽 고정이 아니라 선의 수직 방향(perp) — 고정 y 오프셋은
                     세로/대각선 선에서 "선을 따라" 밀려 라벨이 한쪽 끝으로 치우쳐 보였다(지적).

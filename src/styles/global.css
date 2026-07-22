@@ -7733,11 +7733,14 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 /* 우세 화살표 — 어느 모드든 "우세" 한 가지 의미라 색도 초록 하나(요청: "선택시랑
    전체에서 모두 우세니까 우세는 초록"). 대등은 옅은 회색 점선. */
 .scr-rivalry-edge-strong line { stroke: rgba(96, 190, 120, 0.7); }
+/* 우세 기둥(사다리꼴 폴리곤 — 시작 얇고 끝 두꺼움)은 stroke가 아니라 fill로 칠한다. */
+.scr-rivalry-edge-strong .scr-rivalry-shaft { fill: rgba(96, 190, 120, 0.7); }
 .scr-rivalry-arrow-head { fill: rgba(96, 190, 120, 1); }
 /* 대등 — 점선에서 실선으로(요청), 뉴트럴 회색 유지·중간 굵기(컴포넌트에서 0.7 고정). */
 .scr-rivalry-edge-even line { stroke: rgba(var(--overlay-rgb), 0.35); }
 /* 유저 하나를 골라 그 유저의 선만 남긴 상태 — 굵기는 그대로, 색만 더 진하게. */
 .scr-rivalry-edge-focus.scr-rivalry-edge-strong line { stroke: rgba(96, 190, 120, 0.95); }
+.scr-rivalry-edge-focus.scr-rivalry-edge-strong .scr-rivalry-shaft { fill: rgba(96, 190, 120, 0.95); }
 .scr-rivalry-edge-focus.scr-rivalry-edge-even line { stroke: rgba(var(--overlay-rgb), 0.6); }
 /* 선 가운데 전적 라벨(선택 모드에서만) — 글자 둘레를 배경색으로 둘러 선 위에서도 읽힌다. */
 .scr-rivalry-edge-label {
