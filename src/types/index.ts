@@ -417,9 +417,10 @@ export interface ChallengeCreatePayload {
   fromMatchRequest?: boolean;
 }
 
-// 리벤지(설욕전)을 신청할 때 — 시간은 생략할 수 있다.
+// 리벤지(설욕전)을 신청할 때 — 시간은 생략할 수 있다. 한마디(선택)도 함께 보낼 수 있다.
 export interface ChallengeRevengePayload {
   scheduledAt?: string | null;
+  message?: string;
 }
 
 // ===== 너 나와! 신청 코너 ("너 나와!" 최상단) =====

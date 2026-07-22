@@ -256,6 +256,9 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
   // 응답 한마디(선택) — 아이콘 버튼을 눌러야 입력창이 트랜지션으로 열린다(요청).
   const [respondMessage, setRespondMessage] = useState("");
   const [respondMsgOpen, setRespondMsgOpen] = useState(false);
+  // 리벤지 한마디(선택) — 응답 한마디와 같은 방식(요청: 리벤지 요청에도 한마디).
+  const [revengeMessage, setRevengeMessage] = useState("");
+  const [revengeMsgOpen, setRevengeMsgOpen] = useState(false);
 
   // 카드에서 바로 승락/거절 — 한마디(선택)와 함께 응답한다. 거절은 되돌릴 수 없으니 확인만 받는다.
   const respond = async (response: "accepted" | "rejected") => {
@@ -276,7 +279,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
   // 체크박스 없이 처음부터 두 칸을 다 보여준다 — 요청: "날짜 선택, 시간 선택 체크박스
   // 제거하고 처음부터 둘다 노출").
   const startScheduling = () => { setMode("schedule"); setDateStr(""); setTimeStr(""); };
-  const startRevenge = () => { setMode("revenge"); setDateStr(""); setTimeStr(""); };
+  const startRevenge = () => { setMode("revenge"); setDateStr(""); setTimeStr(""); setRevengeMessage(""); setRevengeMsgOpen(false); };
   const startResult = () => { setMode("result"); setErr(""); };
   const closeMode = () => setMode("none");
 
@@ -304,7 +307,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
     setBusy(true);
     try {
       const scheduledAt = dateStr ? new Date(`${dateStr}T${timeStr || "00:00"}`).toISOString() : undefined;
-      const updated = await api.requestRevenge(challenge.id, { scheduledAt });
+      const updated = await api.requestRevenge(challenge.id, { scheduledAt, message: revengeMessage.trim() });
       onResponded(updated);
       closeMode();
     } catch (e) {
@@ -566,6 +569,26 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
               onChange={(e) => setTimeStr(e.target.value)}
               disabled={!dateStr}
             />
+          </div>
+          {/* 리벤지 한마디(선택) — 응답 한마디와 같은 아이콘 토글 + 트랜지션 입력창(요청). */}
+          <button
+            type="button"
+            className={cx("scr-challenge-msg-toggle", revengeMsgOpen && "scr-challenge-msg-toggle-on")}
+            onClick={() => setRevengeMsgOpen((v) => !v)}
+            aria-expanded={revengeMsgOpen}
+          >
+            <MessageSquarePlus size={13} /> 한마디{revengeMessage.trim() && !revengeMsgOpen ? ` · ${revengeMessage.trim()}` : ""}
+          </button>
+          <div className={cx("scr-challenge-msg-wrap", revengeMsgOpen && "scr-challenge-msg-wrap-open")}>
+            <div className="scr-challenge-msg-inner">
+              <input
+                className="scr-input"
+                value={revengeMessage}
+                onChange={(e) => setRevengeMessage(e.target.value.slice(0, 50))}
+                placeholder="한마디 (선택, 최대 50자)"
+                maxLength={50}
+              />
+            </div>
           </div>
           <div className="scr-challenge-card-actions">
             <button className="scr-btn scr-btn-ghost scr-btn-sm" onClick={closeMode} disabled={busy}>취소</button>
