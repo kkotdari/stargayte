@@ -56,9 +56,14 @@ export default function RivalryMap({
       ids.add(p.a);
       ids.add(p.b);
     });
-    // 배치 순서를 안정시키려 닉네임순으로 고정한다(응답 순서가 바뀌어도 원 위 자리가 안 바뀜).
-    const nodes = [...ids].sort((x, y) =>
-      (memberOf(x)?.nickname ?? x).localeCompare(memberOf(y)?.nickname ?? y, "ko"));
+    // 원 위 배치는 닉네임순 고정 대신 무작위로 섞는다(요청: "그때그때 달라지게") —
+    // 데이터가 새로 로드될 때(화면 진입/기간·탭 변경)마다 셔플되고, 그 사이(유저
+    // 선택 등 상호작용)에는 useMemo가 지켜줘 자리가 안 흔들린다.
+    const nodes = [...ids];
+    for (let i = nodes.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [nodes[i], nodes[j]] = [nodes[j], nodes[i]];
+    }
     return { nodes, edges };
   }, [pairs, memberOf]);
 
