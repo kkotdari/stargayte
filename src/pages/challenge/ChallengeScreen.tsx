@@ -1021,9 +1021,10 @@ export default function ChallengeScreen() {
   // 있어, 한 번 재고 마는 게 아니라 ResizeObserver로 콘텐츠/뷰포트 크기 변화를 계속 다시
   // 판단한다.
   useEffect(() => {
-    const root = document.getElementById("scroll-root");
+    // 문서 스크롤 전환 — 스냅 클래스/판정 기준이 #scroll-root에서 문서(html)로 옮겨졌다.
+    const root = document.documentElement;
     const content = screenRef.current;
-    if (!root || !content) return;
+    if (!content) return;
     const apply = () => {
       const overflow = root.scrollHeight - root.clientHeight;
       root.classList.toggle("scr-snap-today", overflow > root.clientHeight);
@@ -1031,7 +1032,7 @@ export default function ChallengeScreen() {
     apply();
     const ro = new ResizeObserver(apply);
     ro.observe(content);
-    ro.observe(root);
+    ro.observe(document.body);
     return () => {
       ro.disconnect();
       root.classList.remove("scr-snap-today");

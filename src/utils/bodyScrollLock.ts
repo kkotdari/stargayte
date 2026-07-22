@@ -1,33 +1,39 @@
 import { useEffect } from "react";
-import { getScrollRoot } from "./scrollRoot";
 
 // 모듈 스코프 카운터 — 모달이 여러 개 겹쳐 떠도(예: 등록 모달 위에 확인 다이얼로그) 마지막
 // 하나가 닫힐 때만 실제로 스크롤을 풀어준다. 단일 SPA 탭 기준이라 모듈 전역 상태로 충분하다.
 let lockCount = 0;
-// 잠글 때 실제로 건드린 엘리먼트를 기억해뒀다가 풀 때 그대로 재사용한다 — 잠근 채로
-// #scroll-root가 통째로 사라지는(예: 모달이 떠 있는 동안 로그아웃) 극단적인 경우에도
-// unlock이 그 사이 새로 계산한 다른 엘리먼트를 잘못 건드리지 않게.
-let lockedEl: HTMLElement | null = null;
+// 잠글 때의 문서 스크롤 위치 — 풀 때 그대로 복원한다.
+let savedScrollY = 0;
 
-// 앱 셀 마이그레이션 이후 html/body는 항상 overflow:hidden이라(global.css) 더 이상 잠글
-// 대상이 아니다 — 실제로 스크롤되는 건 #scroll-root 하나뿐이라 그것만 잠그면 된다.
-// (예전엔 body 자체를 position:fixed로 고정했다 되돌리는 방식이라 스크롤 위치를
-// 저장/복원해야 했는데, 그 방식 자체가 웹뷰에서 탭바/모달이 밀렸다 자리잡는 문제를
-// 일으켜 overflow:hidden 토글로 이미 바꿔뒀었다 — 여기서는 그 토글 대상만 옮긴다.)
+// 문서 스크롤 전환(사파리 툴바 축소) 이후의 잠금 — overflow:hidden은 iOS 사파리에서
+// 문서 스크롤을 확실히 못 막아, 표준 기법(body position:fixed + top 보정)을 쓴다(조사:
+// css-tricks/jayfreestone). 고정하는 순간 문서가 0으로 리셋되는 문제를 top:-scrollY로
+// 상쇄해 화면이 안 움직이고, 풀 때 저장해둔 위치로 즉시(behavior:instant — html의
+// scroll-behavior:smooth가 애니메이션해버리지 않게) 되돌린다.
 function lockBodyScroll() {
   if (lockCount === 0) {
-    const root = getScrollRoot();
-    lockedEl = root instanceof Window ? document.body : root;
-    lockedEl.style.overflow = "hidden";
+    savedScrollY = window.scrollY;
+    const b = document.body.style;
+    b.position = "fixed";
+    b.top = `${-savedScrollY}px`;
+    b.left = "0";
+    b.right = "0";
+    b.width = "100%";
   }
   lockCount++;
 }
 
 function unlockBodyScroll() {
   lockCount = Math.max(0, lockCount - 1);
-  if (lockCount === 0 && lockedEl) {
-    lockedEl.style.overflow = "";
-    lockedEl = null;
+  if (lockCount === 0) {
+    const b = document.body.style;
+    b.position = "";
+    b.top = "";
+    b.left = "";
+    b.right = "";
+    b.width = "";
+    window.scrollTo({ top: savedScrollY, behavior: "instant" });
   }
 }
 

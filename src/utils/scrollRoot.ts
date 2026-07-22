@@ -1,11 +1,10 @@
-// 지금은 항상 window가 스크롤 컨테이너지만, 앱 셀 마이그레이션(4단계)에서 body 스크롤을
-// #scroll-root 컨테이너로 옮기면 이 파일의 getScrollRoot()만 그 엘리먼트를 가리키도록
-// 바꾸면 된다 — 나머지 스크롤 관련 코드는 window를 직접 참조하지 않고 전부 이 파일의
-// 헬퍼를 거치므로 그때 가서 각자 손볼 필요가 없다.
+// 문서 스크롤 전환(요청: 사파리 주소창/내비바 축소) — 사파리는 문서 자체가 스크롤될
+// 때만 툴바를 접으므로, 내부 컨테이너(#scroll-root) 스크롤을 버리고 window가 유일한
+// 스크롤 주체다. 스크롤 관련 코드는 전부 이 헬퍼를 거치므로 여기 하나만 바꾸면 된다.
 export type ScrollRoot = Window | HTMLElement;
 
 export function getScrollRoot(): ScrollRoot {
-  return document.getElementById("scroll-root") ?? window;
+  return window;
 }
 
 export function getScrollTop(root: ScrollRoot = getScrollRoot()): number {

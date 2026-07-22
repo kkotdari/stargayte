@@ -14,6 +14,8 @@ interface MobileTabBarProps {
   // (constants/menuVersions.ts)을 걸러 노출 여부/순서를 정한다.
   effectiveVersionNumber: number;
   hidden: boolean;
+  // 아래로 스크롤 중 — 완전 숨김 대신 60% 축소(요청).
+  mini: boolean;
   onNavigate: (screen: ScreenKey) => void;
   onOpenMenu: () => void;
 }
@@ -115,7 +117,7 @@ function useActiveTabIndicator(navRef: { current: HTMLElement | null }, deps: un
   return indicator;
 }
 
-export default function MobileTabBar({ screen, menuOpen, effectiveVersionNumber, hidden, onNavigate, onOpenMenu }: MobileTabBarProps) {
+export default function MobileTabBar({ screen, menuOpen, effectiveVersionNumber, hidden, mini, onNavigate, onOpenMenu }: MobileTabBarProps) {
   const navRef = useRef<HTMLElement>(null);
   const visibleItems = visibleNavMenuItems(effectiveVersionNumber);
 
@@ -152,7 +154,7 @@ export default function MobileTabBar({ screen, menuOpen, effectiveVersionNumber,
   return createPortal(
     <nav
       ref={navRef}
-      className={cx("scr-mobile-tabbar", hidden && "scr-mobile-tabbar-hidden")}
+      className={cx("scr-mobile-tabbar", hidden && "scr-mobile-tabbar-hidden", !hidden && mini && "scr-mobile-tabbar-mini")}
       aria-label="하단 메뉴"
     >
       {indicator && (

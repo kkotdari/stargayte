@@ -46,7 +46,9 @@ export default function Header({
   // 키보드가 뜨면 탭바를 자동으로 숨긴다(요청: "키보드 활성화시 자동으로 탭바 숨기기") —
   // 스크롤 방향과 무관한 별도 신호라 OR로 합친다(둘 중 하나라도 숨김 조건이면 숨김).
   const keyboardInset = useKeyboardInset();
-  const tabBarHidden = scrollHidden || keyboardInset > 0;
+  // 아래로 스크롤 = 완전 숨김이 아니라 60% 축소(요청) — 완전 숨김은 키보드가 떠 있을 때만.
+  const tabBarHidden = keyboardInset > 0;
+  const tabBarMini = scrollHidden && keyboardInset === 0;
 
   // 라이트 테마 — 흰 배경 + 검은 글씨 기조로 바꾸는 토글(발표/인쇄 등에서 색상 없이 보고
   // 싶을 때). 로그인 화면(AuthScreen)에도 같은 토글이 따로 있어 로그인 전에도 켤 수
@@ -332,6 +334,7 @@ export default function Header({
         menuOpen={menuOpen}
         effectiveVersionNumber={effectiveVersionNumber}
         hidden={tabBarHidden}
+        mini={tabBarMini}
         onNavigate={go}
         onOpenMenu={() => setMenuOpen(true)}
       />

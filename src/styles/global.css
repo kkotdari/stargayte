@@ -200,7 +200,12 @@ input, textarea, select { -webkit-tap-highlight-color: transparent; }
    뜨고 닫힐 때마다 흔들리는 문제 — html/#root를 height:100%로 고정 상속시켜, 뷰포트
    단위 대신 "레이아웃 뷰포트 100%"를 기준으로 삼는다(훨씬 안정적). 아래 화면 요소들
    (.scr-app 등)은 vh/dvh 대신 이 100% 체인을 그대로 물려받는다. */
-html, #root { height: 100%; overflow: hidden; }
+/* ── 문서 스크롤 전환(요청: 사파리에서 스크롤 시 주소창·내비바가 축소되게) ──
+   사파리는 "문서(body) 자체"가 스크롤될 때만 주소창/툴바를 접는다 — 예전의
+   #scroll-root 내부 스크롤 + body position:fixed 구조에선 절대 안 접혔다. html/#root의
+   overflow:hidden을 걷고 문서가 실제 스크롤 주체가 된다. height:100%는 짧은 화면에서
+   배경/레이아웃이 뷰포트를 채우기 위한 최소 높이 체인(.scr-app min-height)의 기준. */
+html, #root { height: 100%; }
 html {
   /* 모달이 떠 있는 동안 body를 position:fixed로 잠그면(useLockBodyScroll) body의 높이가
      내용 기준으로 계산되는데, 이때 실제 뷰포트보다 짧아지는 순간이 생기면 그 빈 자리로
@@ -215,25 +220,17 @@ html {
      주소창과 안 맞아서, JS(useBottomViewportInset)가 visualViewport로 실측해 이 변수를 채운다.
      PWA·데스크톱·JS 미실행에선 0이라 탭바는 bottom:0. */
   --vv-bottom-inset: 0px;
+  /* 러버밴드는 이제 CSS로 막는다 — Safari 16+가 overscroll-behavior를 지원한다(조사).
+     scroll-behavior/scrollbar-gutter는 예전 #scroll-root에서 문서 스크롤 주체인 여기로. */
+  overscroll-behavior-y: none; scroll-behavior: smooth; scrollbar-gutter: stable;
 }
-/* body는 overflow:hidden 대신 position:fixed로 아예 뷰포트에 못 박는다 — iOS Safari는
-   overscroll-behavior:none을 body/html에 걸어도 문서 자체의 러버밴드(당겨서 튕기는)
-   바운스를 확실히 막지 못한다(알려진 WebKit 한계). #scroll-root 안에 스크롤할 내용이
-   없는 짧은 화면(예: 랭킹 일대일 탭)에서 아래로 드래그하면 그 제스처가 문서 바운스로
-   새서 화면 전체가 위로 밀렸다 튕겨 돌아오며 그 아래로 빈 배경이 드러났다(실제로
-   지적받은 문제). position:fixed + inset:0인 요소는 애초에 스크롤/바운스할 문서 흐름
-   자체에서 빠지므로 이 문제가 구조적으로 생길 수 없다 — 예전에 이 방식을 모달 열고
-   닫을 때마다 토글해서 썼다가(스크롤 위치 저장/복원 필요, 그 재배치 과정에서 탭바가
-   튀는 다른 문제가 있었다) 지금의 overflow:hidden 토글로 바꿨는데, 여기 body는 처음
-   부터 끝까지 계속 고정이라(토글 없음) 그 문제가 재발하지 않는다.
-   position:fixed 요소는 iOS Safari가 하단 URL바 등 동적 툴바를 감안해 항상 실제로
-   보이는 영역에 맞춰주므로, 탭바가 툴바 뒤에 깔리거나 스크롤 중 레이아웃이 튀는
-   문제도 이걸로 함께 해결된다(100svh를 따로 쓸 필요가 없어져 제거). */
+/* body — 문서 스크롤 전환(위 html 주석)으로 position:fixed 봉인을 푼다. 예전 고정의
+   이유였던 러버밴드는 Safari 16+의 overscroll-behavior:none(html/body 양쪽)으로 막고,
+   모달 잠금은 bodyScrollLock이 position:fixed+top 보정으로 그때만 잠근다. */
 body {
-  position: fixed;
-  inset: 0;
   margin: 0;
-  overflow: hidden;
+  min-height: 100%;
+  overscroll-behavior-y: none;
   background: var(--void);
   color: var(--text);
   font-family: 'Pretendard Variable', Pretendard, 'Noto Sans KR', sans-serif;
@@ -243,8 +240,9 @@ body {
 .scr-app {
   background: var(--void);
   background-attachment: fixed;
-  /* vh/dvh 대신 위 body(position:fixed)의 실제 픽셀 크기를 그대로 물려받는다. */
-  height: 100%;
+  /* 문서 스크롤 구조 — 짧은 화면도 뷰포트를 채우되(최소 100%), 내용이 길면 문서와 함께
+     자연스럽게 늘어난다. */
+  min-height: 100%;
   display: flex;
   flex-direction: column;
 }
@@ -262,7 +260,8 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
    일대일)에서 화면 전체가 튕기며 검정 여백이 드러나는 문제가 있었다(실제로 지적받은
    문제 — body를 position:fixed로 바꿔도 해결 안 됐던 게 사실은 이 overflow였다).
    본 화면은 #scroll-root 하나만 스크롤 가능하면 충분하므로 아예 없앤다. */
-.scr-app-fallback-scroll { overflow-y: auto; }
+/* (문서 스크롤 전환 후 별도 안전망 스크롤이 필요 없어졌다 — 클래스는 마크업에 남아 있어 빈 규칙만 유지.) */
+.scr-app-fallback-scroll { }
 
 .scr-mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 .scr-spin { animation: scr-spin 0.9s linear infinite; }
@@ -1054,14 +1053,9 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 .scr-user-chip:hover { background: transparent; color: var(--text); }
 .scr-user-name { font-size: var(--fs-body); font-weight: 700; }
 
-/* 앱 셀의 실제 스크롤 컨테이너 — 헤더/탭바는 그 위아래 flex 형제라 이 안에 안 끼고,
-   여기서만 스크롤이 일어난다(utils/scrollRoot.ts의 getScrollRoot()가 이 id를 찾는다).
-   overscroll-behavior/scrollbar-gutter는 예전에 html에 있던 것을 실제 스크롤 주체가
-   여기로 바뀌면서 그대로 옮겨왔다. */
-#scroll-root {
-  flex: 1; min-height: 0; overflow-y: auto;
-  overscroll-behavior-y: none; scroll-behavior: smooth; scrollbar-gutter: stable;
-}
+/* 예전의 내부 스크롤 컨테이너 — 문서 스크롤 전환으로 스크롤 역할은 문서(html)로 넘어갔고
+   (getScrollRoot()도 window를 돌려준다), 여기는 flex 채움 역할만 남는다. */
+#scroll-root { flex: 1; }
 /* 맨 위로 이동 버튼(.scr-scrolltop)이 화면 맨 아래 실제 버튼(저장 등)을 가리지 않도록
    그 버튼 높이만큼 아래쪽에 여백을 둔다(모바일은 탭바 몫으로 별도 여백을 두므로 아래
    미디어쿼리가 이 값을 덮어쓴다). */
@@ -4948,6 +4942,13 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-mobile-tabbar-hidden {
   opacity: 0; transform: translateY(24px); pointer-events: none;
 }
+/* 아래로 스크롤 중에는 완전히 숨기는 대신 60%로 축소한다(요청) — 바닥 중앙을 기준으로
+   줄어들어 자리(하단)는 유지하고, 계속 누를 수 있게 pointer-events는 살려둔다.
+   완전 숨김(-hidden)은 키보드가 떠 있을 때만 쓴다. */
+.scr-mobile-tabbar-mini {
+  transform: scale(0.6);
+  transform-origin: 50% 100%;
+}
 /* 화면(탭) 전환 그 순간만 트랜지션을 꺼서 상태가 즉시 바뀌게 한다 — 이전 화면의
    숨김 상태와 새 화면의 초기 상태가 다르면 탭바/필터창이 스르륵 나타나거나 사라지는
    게 화면 전환 자체와 겹쳐 부자연스러워 보였다(요청: "페이지 이동시 필터창 검색창이
@@ -6382,7 +6383,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
    스크롤. scroll-padding-top으로 상단 안전영역/헤더만큼 비켜 걸리게 한다. 이 화면(scr-snap-today
    클래스)에서만 켠다. (JS 기반 임계값 방식도 시도해봤으나 "이전 느낌이 더 좋다"는 피드백으로
    되돌림.) */
-#scroll-root.scr-snap-today { scroll-snap-type: y proximity; scroll-padding-top: calc(var(--safe-top) + 10px); }
+html.scr-snap-today { scroll-snap-type: y proximity; scroll-padding-top: calc(var(--safe-top) + 10px); }
 /* proximity + 기본 stop(normal) — 오늘 근처에서 멈추면 딱 걸리되, 빠른 플링이나 진입 시
    NEXT로의 자동 스크롤이 오늘에 강제로 멈춰 끊기지 않게 한다(scroll-snap-stop:always는
    그 프로그램 스크롤까지 가로채 위험). "미정" 그룹은 보통 목록 맨 위(과거 쪽 끝)에 있어서,
