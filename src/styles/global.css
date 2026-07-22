@@ -910,7 +910,9 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    프사/메뉴글자 크기를 키우고 나니(1.5배) 그 보정값들이 더 이상 안 맞아 서로 어긋나
    보였다. 모바일 헤더(아래 반응형 규칙)도 같은 이유로 이미 center를 쓰고 있어 통일. */
 .scr-header-inner { max-width: var(--content-max); margin: 0 auto; display: flex; align-items: center; gap: 20px; padding: 14px 24px; flex-wrap: wrap; }
-.scr-brand { display: flex; align-items: baseline; gap: 8px; background: transparent; border: none; padding: 0; cursor: pointer; font-family: inherit; }
+/* 로고 버튼 안도 baseline 대신 center — baseline이면 이미지 로고가 자기 바닥 기준으로
+   놓여 아바타/닉네임의 세로 중심선과 어긋났다(지적: "세로 중심이 수평선상에 놓이게"). */
+.scr-brand { display: flex; align-items: center; gap: 8px; background: transparent; border: none; padding: 0; cursor: pointer; font-family: inherit; }
 .scr-brand-mark { font-weight: 900; color: var(--text); font-size: var(--fs-title); letter-spacing: 0.02em; }
 /* 관리자가 "이미지 설정"에서 홈 로고를 텍스트 대신 이미지로 바꿔둔 경우 — 텍스트 로고와
    같은 자리에 비슷한 높이로 들어가도록 */
@@ -4074,7 +4076,8 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   .scr-chip .scr-chip-race .scr-cselect-caret { display: none; }
   .scr-chip-x { padding: 0; }
   .scr-team-slot { min-height: 40px; }
-  .scr-header-inner { padding: 14px 16px 12px; gap: 12px; }
+  /* 위아래 패딩 대칭 — 비대칭(14/12)이면 전체가 살짝 아래로 치우쳐 보인다. */
+  .scr-header-inner { padding: 13px 16px; gap: 12px; }
   .scr-main { padding: 30px 16px 48px; }
   /* 너나와 카드 좌우 내부 패딩 축소(요청: "모바일 좌우 패딩은 메인이 아니라 너나와 카드
      내부 패딩"). 예전엔 이 패딩 안에 좌우 이동 버튼(절대배치)이 들어가야 해서 넓게
