@@ -4079,7 +4079,7 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   .scr-team-slot { min-height: 40px; }
   /* 위아래 패딩 대칭 — 비대칭(14/12)이면 전체가 살짝 아래로 치우쳐 보인다.
      우측은 프로필 칩이 자기 패딩(10px)을 갖고 있어 더 좁게(요청: 우측 여백 축소). */
-  .scr-header-inner { padding: 13px 8px 13px 16px; gap: 12px; }
+  .scr-header-inner { padding: 13px 12px 13px 16px; gap: 12px; }
   .scr-main { padding: 30px 16px 48px; }
   /* 너나와 카드 좌우 내부 패딩 축소(요청: "모바일 좌우 패딩은 메인이 아니라 너나와 카드
      내부 패딩"). 예전엔 이 패딩 안에 좌우 이동 버튼(절대배치)이 들어가야 해서 넓게
@@ -4104,7 +4104,7 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   .scr-user-name { font-size: var(--fs-body); }
   /* 프로필 칩(아바타+닉네임)은 로고의 중심선보다 아래로(요청: 2px에서 6px 더), 로고도
      4px 내린다. */
-  .scr-user-chip { transform: translateY(12px); }
+  .scr-user-chip { transform: translateY(10px); }
   .scr-brand { transform: translateY(6px); }
 }
 @media (max-width: 480px) {
