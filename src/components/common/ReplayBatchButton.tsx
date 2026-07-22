@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { X } from "lucide-react";
+import { X, ClipboardList } from "lucide-react";
 import { Spinner } from "./Feedback";
 import ConfirmDialog from "./ConfirmDialog";
 import ReplayReviewModal from "../../modals/ReplayReviewModal";
@@ -359,10 +359,10 @@ export default function ReplayBatchButton() {
       {started && total > 0 && !resultsOpen && (
         <button
           type="button"
-          className="scr-btn scr-btn-ghost scr-btn-sm scr-admin-panel-results-reopen"
+          className="scr-admin-panel-results-reopen"
           onClick={() => setResultsOpen(true)}
         >
-          결과 보기 ({processed}/{total})
+          <ClipboardList size={13} /> 결과 보기 ({processed}/{total})
         </button>
       )}
 
@@ -376,7 +376,7 @@ export default function ReplayBatchButton() {
               <span>배치 등록 결과</span>
               <button className="scr-icon-btn" onClick={() => setResultsOpen(false)} aria-label="닫기"><X size={14} /></button>
             </div>
-            <div className="scr-modal-body">
+            <div className="scr-modal-body scr-admin-panel-batch-modal-body">
               <div className="scr-rank-bar-track scr-admin-panel-batch-bar">
                 <div className="scr-rank-bar-fill scr-rank-bar-fill-plays" style={{ width: `${percent}%` }} />
               </div>

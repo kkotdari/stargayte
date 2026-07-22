@@ -4439,7 +4439,23 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    모서리에 고정해 다른 요소에 전혀 영향을 주지 않게 한다. */
 .scr-admin-panel-results-reopen {
   position: absolute; right: 14px; bottom: 14px; z-index: 2;
+  /* 리포트 아이콘 + 회색톤 알약 버튼(요청) — 배치 모드 버튼과 같은 알약 형태로 맞추되
+     흰 버튼과 구분되게 반투명 회색으로. */
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 6px 12px; border: none; border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12); color: rgba(255, 255, 255, 0.92);
+  font-size: var(--fs-caption); font-weight: 700; cursor: pointer;
+  box-shadow: none; text-shadow: none;
 }
+.scr-admin-panel-results-reopen:hover { background: rgba(255, 255, 255, 0.2); color: #fff; }
+.scr-light-theme .scr-admin-panel-results-reopen {
+  background: rgba(0, 0, 0, 0.08); color: var(--text);
+}
+.scr-light-theme .scr-admin-panel-results-reopen:hover { background: rgba(0, 0, 0, 0.14); }
+/* 배치 결과 모달 — 로그/카운트가 본문 맨 아래에 딱 붙어 답답해 보이던 문제(요청): 아래 여백을 준다. */
+.scr-admin-panel-batch-modal-body { padding-bottom: 16px; }
+/* 카운트 요약("등록 X · 중복 Y ...") 데이터 텍스트를 2스텝 작게(요청). */
+.scr-admin-panel-batch-counts { font-size: var(--fs-11); }
 .scr-admin-panel-batch-option { justify-content: center; color: rgba(255,255,255,0.82); font-size: var(--fs-caption); margin-bottom: 8px; }
 .scr-admin-panel-batch-modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 .scr-admin-panel-batch-mode {
