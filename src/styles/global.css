@@ -4371,14 +4371,18 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    포함) 위로 올라가 덮어버렸다(실제로 지적받은 문제 — "배치 등록/모두 다운로드 등
    하면 제어판 X 닫기 버튼이 안눌림"). transform 없이 justify-content만으로 중앙 정렬
    하면 flex가 정상적인 문서 흐름 안에서 공간을 배분하므로 절대 형제 위로 겹치지 않는다. */
-.scr-admin-panel-modal .scr-modal-body { justify-content: center; }
+/* 관리 화면은 위에서부터 쌓는다(flex-start) — 아래 min-height로 미리 넉넉히 자리를
+   예약해두면, 배치등록으로 옵션 메뉴가 펼쳐져도 예약된 아래 여백 안에서 나타나 위 내용이
+   밀리지 않고 모달 세로도 안 늘어난다(요청). 잠긴 비밀번호 화면만 아래 규칙으로 가운데. */
+.scr-admin-panel-modal .scr-modal-body { justify-content: flex-start; }
+.scr-admin-panel-modal .scr-modal-body.scr-admin-panel-body-locked { justify-content: center; }
 /* 입력칸을 담는 필드를 중앙 정렬로 — 입력칸이 폭을 좁게 고정하므로(기본 .scr-field는
    stretch라 그냥 두면 폭이 좁아져도 여전히 왼쪽 정렬로 보인다). */
 .scr-admin-panel-modal .scr-field { align-items: center; }
 /* 비밀번호 입력 전(잠긴) 상태는 입력칸+버튼뿐이라 내용이 짧아서, 다 풀린 뒤(버전
    전환/배포 버튼 등)보다 카드가 훨씬 납작해 보였다(실제로 지적받은 문제 — "제어판과
    똑같은 크기로") — 최소 높이를 걸어 두 상태의 카드 크기가 비슷하게 느껴지게 한다. */
-.scr-admin-panel-modal .scr-modal-body { min-height: 420px; }
+.scr-admin-panel-modal .scr-modal-body { min-height: 456px; }
 /* 어떤 라벨도 없이 숫자 PIN 입력칸 하나만 보여준다 — type="password"라 실제로는 점으로
    가려지지만, 자간을 넉넉히 둬서 PIN 입력칸 느낌을 준다. 가로 폭은 숫자 몇 자리만 들어갈
    정도로 좁게 잡는다(기본 100%는 정사각형 카드에서 유난히 넓어 보인다). 점(마스킹 글자)이
@@ -4512,10 +4516,22 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-admin-panel-batch-modal-body { padding-bottom: 16px; }
 /* 카운트 요약("등록 X · 중복 Y ...") 데이터 텍스트를 2스텝 작게(요청). */
 .scr-admin-panel-batch-counts { font-size: var(--fs-11); }
-.scr-admin-panel-batch-option { justify-content: center; color: rgba(255,255,255,0.82); font-size: var(--fs-caption); margin-bottom: 8px; }
-.scr-admin-panel-batch-modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+/* 제어판은 밝은 콘크리트 배경이라 테마와 무관하게 어두운 글씨/체크박스로 통일한다(요청:
+   컴퓨터 낀 경기 제외 체크박스·텍스트가 다크/라이트 모두 안 보임 → 검은 글씨로). */
+.scr-admin-panel-batch-option { justify-content: center; color: #1a1e24; font-size: var(--fs-caption); margin-bottom: 8px; }
+.scr-admin-panel-modal .scr-admin-panel-batch-option input:not([type="radio"]) {
+  border-color: rgba(26,30,36,0.6); background: rgba(255,255,255,0.6);
+}
+.scr-admin-panel-modal .scr-admin-panel-batch-option input:not([type="radio"]):checked {
+  background: #1a1e24; border-color: #1a1e24;
+}
+.scr-admin-panel-modal .scr-admin-panel-batch-option input:not([type="radio"]):checked::after { background-color: #fff; }
+/* 대상 버튼(일대일만/팀전만/전체) — 좌우 패딩을 줄인 콤팩트한 완전 원형(알약) 버튼을
+   가운데에 넉넉한 갭으로 나란히(요청). 그리드 스트레치 대신 내용폭 flex로. */
+.scr-admin-panel-batch-modes { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; }
 .scr-admin-panel-batch-mode {
-  font-size: var(--fs-caption); font-weight: 700; padding: 7px 0; border-radius: 999px;
+  flex: 0 0 auto; min-height: 0;
+  font-size: var(--fs-caption); font-weight: 700; padding: 6px 13px; border-radius: 999px;
   background: #fff; border-color: #fff; color: #10151a; text-shadow: none; box-shadow: none;
 }
 .scr-admin-panel-batch-mode:hover { filter: brightness(0.94); }
@@ -4642,8 +4658,10 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   background: rgba(220, 80, 80, 0.12); color: #e06060; border-color: rgba(220, 80, 80, 0.4);
 }
 .scr-version-delete-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-/* 제어판 본체로 옮긴 버전 안내 토글 — 버튼 그리드와 경기관리 사이에 위아래 여백을 준다. */
-.scr-admin-panel-notice-toggle { margin: 14px 0 4px; }
+/* 제어판 본체로 옮긴 버전 안내 토글 — 버튼 그리드와 경기관리 사이에 위아래 여백을 준다.
+   버튼 그리드(max-width:320, 가운데)와 좌우를 맞춰 줄이 어긋나 보이지 않게 폭/정렬을
+   똑같이 맞춘다(요청: 버전 안내 표시 영역이 좌우 여백이 없어 버튼들과 안 맞음). */
+.scr-admin-panel-notice-toggle { margin: 14px auto 4px; width: 100%; max-width: 320px; }
 /* 비운영자가 제어판을 열었을 때 — 쓸 수 있는 관리 기능이 없다는 안내 한 줄. */
 .scr-admin-panel-member-note { font-size: var(--fs-body); color: var(--muted); margin-top: 10px; }
 /* 제어판(금속판 배경, 테마 무관 고정)은 어두운 글자를 써야 한다 — 이 공용 클래스들

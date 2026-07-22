@@ -164,7 +164,9 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
           <button className="scr-icon-btn" onClick={onClose} aria-label="닫기"><X size={14} /></button>
         </div>
 
-        <div className="scr-modal-body">
+        {/* 잠긴(비밀번호) 화면은 내용이 짧아 가운데 정렬로, 풀린 뒤(관리 화면)는 위에서부터
+            쌓아 배치등록으로 메뉴가 펼쳐져도 위 내용이 안 밀리게 한다(요청: 공간 예약). */}
+        <div className={cx("scr-modal-body", !unlocked && "scr-admin-panel-body-locked")}>
           {!unlocked ? (
             <>
               {/* 입력창 위 큰 자물쇠 — 무엇을 묻는지 문구 없이도 '잠금 해제' 맥락을 준다(요청). */}
