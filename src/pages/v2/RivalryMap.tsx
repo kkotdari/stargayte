@@ -22,10 +22,12 @@ interface Edge {
 // 잇는다. 전원 연결선을 다 그리면 실타래가 되므로, 칩 하나를 탭하면 그 유저의 선만
 // 진하게 남고 나머지는 숨겨진다(다시 탭하면 전체 보기).
 export default function RivalryMap({
-  pairs, memberOf,
+  pairs, memberOf, team = false,
 }: {
   pairs: RivalryPair[];
   memberOf: (id: string) => Member | undefined;
+  // 팀전(개인 환산) 데이터 여부 — 집계/그리기는 동일하고 안내 문구만 달라진다.
+  team?: boolean;
 }) {
   const { nodes, edges } = useMemo(() => {
     const edges: Edge[] = [];
@@ -54,7 +56,11 @@ export default function RivalryMap({
   const [selected, setSelected] = useState<string | null>(null);
 
   if (nodes.length < 2) {
-    return <div className="scr-empty">아직 상성을 그릴 만큼 쌓인 1:1 상대전적(3전 이상)이 없어요.</div>;
+    return (
+      <div className="scr-empty">
+        아직 상성을 그릴 만큼 쌓인 {team ? "팀전" : "1:1"} 상대전적({MIN_GAMES}전 이상)이 없어요.
+      </div>
+    );
   }
 
   // 원형 배치 — 좌표는 0~100 좌표계(정사각 컨테이너의 %)로 계산해 카드(%)와 SVG(viewBox
@@ -132,7 +138,9 @@ export default function RivalryMap({
       <div className="scr-rivalry-legend">
         <span className="scr-rivalry-legend-item"><span className="scr-rivalry-legend-arrow" /> 우세(화살표가 가리키는 쪽이 열세)</span>
         <span className="scr-rivalry-legend-item"><span className="scr-rivalry-legend-even" /> 대등</span>
-        <span className="scr-rivalry-legend-note">1:1 {MIN_GAMES}전 이상만 · 유저를 누르면 그 유저의 상성만 표시</span>
+        <span className="scr-rivalry-legend-note">
+          {team ? `팀전 개인환산 ${MIN_GAMES}전 이상만` : `1:1 ${MIN_GAMES}전 이상만`} · 유저를 누르면 그 유저의 상성만 표시
+        </span>
       </div>
     </div>
   );

@@ -283,9 +283,10 @@ export const api = {
     return request<MatchStatsResponse>(`/api/matches/stats${qs}`);
   },
 
-  // 유저 상성(1:1 상대전적 쌍) — 통계 화면 하단의 상성 맵이 쓴다.
-  async getRivalries(params: { dateFrom?: string; dateTo?: string } = {}): Promise<{ pairs: RivalryPair[] }> {
-    const qs = buildQuery({ dateFrom: params.dateFrom, dateTo: params.dateTo });
+  // 유저 상성(상대전적 쌍) — 상성 맵 화면이 쓴다. mode: solo(기본)=1:1만,
+  // team=팀전을 개인 단위 쌍으로 환산(상성맵 팀전 탭).
+  async getRivalries(params: { dateFrom?: string; dateTo?: string; mode?: "solo" | "team" } = {}): Promise<{ pairs: RivalryPair[] }> {
+    const qs = buildQuery({ dateFrom: params.dateFrom, dateTo: params.dateTo, mode: params.mode });
     return request<{ pairs: RivalryPair[] }>(`/api/matches/stats/rivalries${qs}`);
   },
 

@@ -7264,7 +7264,16 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
   /* 반전 배경이 좌우로 꽉 차게 라운드 없이(요청). 패딩은 글자 인셋용이라 배경은 그대로
      행 전체를 채운다. */
   padding: 8px 12px; border-radius: 0;
+  /* 모바일 탭 하이라이트(회색 플래시)는 둥근 모서리를 무시한 사각형이라 메뉴 밖으로
+     비어져 보인다 — 행 반전 배경이 이미 눌림 표시를 하므로 끈다. */
+  -webkit-tap-highlight-color: transparent;
 }
+/* 클릭(반전) 배경이 메뉴 영역을 벗어나 보이던 문제(지적) — iOS 사파리는 스크롤 컨테이너
+   (overflow-y:auto)의 자식을 컨테이너의 border-radius로 잘라주지 않아, 첫/끝 행의 각진
+   반전 배경이 드롭다운의 둥근 모서리(10px) 밖으로 튀어나왔다. 행 자신에게 컨테이너
+   radius(10px)에서 패딩(2px)을 뺀 radius를 줘서 모서리를 스스로 따라가게 한다. */
+.scr-menu-pop-drop .scr-menu-pop-opt:first-child { border-radius: 8px 8px 0 0; }
+.scr-menu-pop-drop .scr-menu-pop-opt:last-child { border-radius: 0 0 8px 8px; }
 /* hover = 옅은 반전(반투명 유지). */
 .scr-select-opt:hover,
 .scr-cselect-opt:hover,
@@ -7633,6 +7642,25 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
 
 /* ===== 유저 상성 맵(운영 메뉴, 요청) ===== */
 .scr-rivalry { display: flex; flex-direction: column; gap: 10px; }
+/* 개인전/팀전 탭(요청: 루페 스타일) — 하단 탭바의 물방울(.scr-mobile-tab-indicator)을
+   그대로 재사용하고, 위치만 이 탭줄 기준으로 다시 잡는다: 두 탭이 정확히 반반이라
+   JS 실측 없이 폭 50% + translateX(0%/100%)로 슬라이드한다. */
+.scr-rivalry-tabs {
+  position: relative; display: flex; width: 210px; margin: 2px auto 6px;
+}
+.scr-rivalry-tab-indicator {
+  /* 재사용하는 원본이 left:0 + transition(transform/width 등)을 이미 갖고 있다 —
+     여기선 크기만 이 탭줄에 맞춘다(세로는 탭바처럼 버튼보다 살짝 크게). */
+  top: -3px; bottom: -3px; width: 50%; height: auto;
+}
+.scr-rivalry-tab {
+  flex: 1; position: relative; z-index: 1;
+  background: transparent; border: none; cursor: pointer; text-align: center;
+  padding: 7px 0; color: var(--muted); font-family: inherit; font-size: var(--fs-caption);
+  -webkit-tap-highlight-color: transparent;
+}
+/* 활성 탭 — 하단 탭바와 같은 규칙: 글자색 반전 + 폰트 1스텝 확대(루페 확대 착시). */
+.scr-rivalry-tab-active { color: var(--text); font-weight: 700; font-size: var(--fs-body); }
 /* 정사각 캔버스 — 칩은 %, 선은 같은 0~100 좌표계의 SVG(viewBox)로 그려 서로 정확히 겹친다. */
 .scr-rivalry-wrap { position: relative; width: 100%; max-width: 560px; margin: 0 auto; aspect-ratio: 1; }
 .scr-rivalry-svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
@@ -7653,7 +7681,8 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
 /* 유저 칩 — 개인전 대진 카드와 같은 투명 글라스(아바타+닉네임). */
 .scr-rivalry-card {
   position: absolute; transform: translate(-50%, -50%); z-index: 1;
-  display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px; max-width: 30%;
+  /* 좌우 패딩 = 위아래 패딩(요청) — 둥근 아바타가 알약 왼쪽 곡률과 동심원으로 맞물린다. */
+  display: inline-flex; align-items: center; gap: 5px; padding: 4px; max-width: 30%;
   border: none; border-radius: 999px; cursor: pointer;
   color: var(--text); font-family: var(--font-ui); font-size: var(--fs-micro); font-weight: 700;
   background: rgba(var(--overlay-rgb), 0.07);
