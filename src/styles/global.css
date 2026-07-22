@@ -5153,7 +5153,8 @@ html.scr-light-theme .scr-mobile-tabbar {
      겹치지 않게 한다. */
   touch-action: pan-y;
   transform: translateX(100%);
-  transition: transform .2s ease;
+  /* 살짝만 더 부드럽게(요청) — 시간 소폭 연장 + 끝에서 길게 감속하는 이징. */
+  transition: transform .3s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .scr-drawer-overlay.scr-drawer-open .scr-drawer { transform: translateX(0); }
 /* 라이트 테마는 흰 유리라 흰 반사광이 안 보여, 대신 아주 옅은 어두운 경계선으로 모서리를 잡는다.
