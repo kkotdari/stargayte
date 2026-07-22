@@ -10,10 +10,10 @@ const MIN_GAMES = 1;
 const STRONG = 0.6;
 
 // 우세/열세가 강할수록(승률이 50%에서 멀수록) 선을 두껍게, 약하면 얇게(요청).
-// 상한은 1.2까지만(요청) — strength 0(50%) → 0.25, 1(100%) → 1.2.
+// 테이퍼 도입 후 전체적으로 얇아 보여 상한을 1.4로(요청) — strength 0(50%) → 0.25, 1(100%) → 1.4.
 const edgeWidth = (winRate: number) => {
   const strength = Math.abs(winRate - 0.5) * 2;
-  return Math.round((0.25 + 0.95 * strength) * 100) / 100;
+  return Math.round((0.25 + 1.15 * strength) * 100) / 100;
 };
 
 interface Edge {
@@ -53,8 +53,8 @@ export default function RivalryMap({
       } else if (aWr <= 1 - STRONG) {
         edges.push({ from: p.b, to: p.a, kind: "strong", games, fromWins: p.bWins, toWins: p.aWins, width: edgeWidth(aWr) });
       } else {
-        // 대등은 강도 개념이 없으니 중간 굵기 고정(요청) — 우세 굵기 범위(0.25~1.2)의 중간.
-        edges.push({ from: p.a, to: p.b, kind: "even", games, fromWins: p.aWins, toWins: p.bWins, width: 0.7 });
+        // 대등은 강도 개념이 없으니 중간 굵기 고정(요청) — 우세 굵기 범위(0.25~1.4)의 중간.
+        edges.push({ from: p.a, to: p.b, kind: "even", games, fromWins: p.aWins, toWins: p.bWins, width: 0.8 });
       }
       ids.add(p.a);
       ids.add(p.b);
@@ -81,11 +81,13 @@ export default function RivalryMap({
   }
 
   // 원형 배치 — 좌표는 0~100 좌표계(정사각 컨테이너의 %)로 계산해 카드(%)와 SVG(viewBox
-  // 0 0 100 100)가 같은 값을 공유한다.
+  // 0 0 100 100)가 같은 값을 공유한다. 인접 칩끼리 계속 붙어 보여(지적) 화면을 더 넓게
+  // 쓴다 — 칩이 가로로 길고 세로로 납작하니 좌우보다 상하 여백을 더 줄인 타원(41×46)으로
+  // 배치해 칩 사이 거리를 벌린다.
   const pos = new Map<string, { x: number; y: number }>();
   nodes.forEach((id, i) => {
     const ang = (i / nodes.length) * Math.PI * 2 - Math.PI / 2;
-    pos.set(id, { x: 50 + 40 * Math.cos(ang), y: 50 + 40 * Math.sin(ang) });
+    pos.set(id, { x: 50 + 41 * Math.cos(ang), y: 50 + 46 * Math.sin(ang) });
   });
 
   const related = (e: Edge) => selected !== null && (e.from === selected || e.to === selected);

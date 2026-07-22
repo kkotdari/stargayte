@@ -5246,10 +5246,11 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
    여전히 몫이 필요한 --mobile-footer-h)와 모바일 브라우저 주소창 여유분만 남긴다. */
 @media (max-width: 640px) {
   .scr-main {
-    /* 탭바가 주소창 위로 뜨는 만큼 하단 여백도 예약한다. 실시간(--vv-bottom-inset)으로 하면
-       주소창이 접혔다 펴질 때 예약 폭이 바뀌어 스크롤 범위가 출렁이므로, 주소창 최대 높이를
-       넉넉히 잡은 고정값(64px)으로 예약한다 — 접힌 상태에선 살짝 여유만 남는다. */
-    padding-bottom: calc(10px + var(--mobile-footer-h) + 64px + env(safe-area-inset-bottom, 0px));
+    /* 탭바가 주소창 위로 뜨는 만큼 하단 여백도 예약한다. 예전엔 주소창 최대 높이를 통째로
+       잡은 64px 고정 예약이었는데, 콘텐츠가 딱 맞는 화면에서도 사파리에 불필요한 세로
+       스크롤이 생겼다(지적) — 예약을 28px로 줄인다(주소창이 완전히 펼쳐진 순간엔 마지막
+       줄이 탭바에 살짝 가까워질 수 있지만 스크롤 여유는 충분). */
+    padding-bottom: calc(10px + var(--mobile-footer-h) + 28px + env(safe-area-inset-bottom, 0px));
   }
 }
 
