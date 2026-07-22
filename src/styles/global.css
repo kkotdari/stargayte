@@ -7753,6 +7753,9 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 .scr-rivalry-card {
   position: absolute; transform: translate(-50%, -50%); z-index: 1;
   transition: transform .15s ease;
+  /* 터치/클릭 효과 제거(요청) — 모바일 탭 하이라이트와 포커스 링을 끈다(선택 표시는
+     칩 확대가 담당). */
+  -webkit-tap-highlight-color: transparent;
   /* 좌우 패딩은 위아래(4px)보다 살짝 넓게(6px) — 수치가 똑같으면 왼쪽이 더 좁아 보인다
      (지적). 아바타 원과 알약 끝 곡선이 동심원이라 곡선 전체가 균일한 4px로 평행하게
      붙는 반면, 위아래 직선 변은 접점에서 멀어질수록 여백이 벌어져 상대적으로 넓어
@@ -7771,6 +7774,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 }
 .scr-rivalry-card .scr-avatar { border-radius: 50% !important; flex-shrink: 0; }
 .scr-rivalry-card-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.scr-rivalry-card:focus, .scr-rivalry-card:focus-visible { outline: none; }
 /* 선택 표시 — 노란 테두리 대신 칩 확대(요청). 원래 transform(중심 정렬)에 scale만 얹고,
    커진 칩이 이웃 칩/선 위에 오도록 z-index를 올린다. */
 .scr-rivalry-card-selected { transform: translate(-50%, -50%) scale(1.18); z-index: 2; }
