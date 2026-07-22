@@ -4532,15 +4532,13 @@ body *::-webkit-scrollbar-corner { background: transparent; }
      흰 버튼과 구분되게 반투명 회색으로. */
   display: inline-flex; align-items: center; justify-content: center; gap: 5px; max-width: 100%;
   padding: 8px 12px; border: none; border-radius: 999px;
-  background: rgba(255, 255, 255, 0.12); color: rgba(255, 255, 255, 0.92);
+  /* 제어판은 밝은 콘크리트 배경(테마 무관)이라 흰 글자는 안 읽혔다(지적됨) — 검은
+     글자 + 반투명 흰 알약으로 고정한다. */
+  background: rgba(255, 255, 255, 0.55); color: #10151a;
   font-size: var(--fs-caption); font-weight: 700; cursor: pointer;
   box-shadow: none; text-shadow: none; white-space: nowrap;
 }
-.scr-admin-panel-results-reopen:hover { background: rgba(255, 255, 255, 0.2); color: #fff; }
-.scr-light-theme .scr-admin-panel-results-reopen {
-  background: rgba(0, 0, 0, 0.08); color: var(--text);
-}
-.scr-light-theme .scr-admin-panel-results-reopen:hover { background: rgba(0, 0, 0, 0.14); }
+.scr-admin-panel-results-reopen:hover { background: rgba(255, 255, 255, 0.75); color: #000; }
 /* 배치 결과 모달 — 로그/카운트가 본문 맨 아래에 딱 붙어 답답해 보이던 문제(요청): 아래 여백을 준다. */
 .scr-admin-panel-batch-modal-body { padding-bottom: 16px; }
 /* 카운트 요약("등록 X · 중복 Y ...") 데이터 텍스트를 2스텝 작게(요청). */
@@ -4832,8 +4830,9 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   /* 반투명 유리(--panel) + 블러 — 물방울이 더 투명해 보이도록 탭바 패널 자체의 투명도를
      한 번 더 올린다(요청: 58%→38%). 테마별 색은 --panel-solid가 다크/라이트 각각 값을 갖는다. */
   background-color: color-mix(in srgb, var(--panel-solid) 38%, transparent);
-  -webkit-backdrop-filter: blur(14px) saturate(1.3);
-  backdrop-filter: blur(14px) saturate(1.3);
+  /* 블러도 약화(14→5px, 요청) — 뒤 내용의 형태가 실제로 알아보이게. */
+  -webkit-backdrop-filter: blur(5px) saturate(1.15);
+  backdrop-filter: blur(5px) saturate(1.15);
   /* 가운데가 밝고 양 끝(화면 모서리)으로 갈수록 옅어지는 광원 그라데이션은, 그 "옅어짐"이
      다 끝나기 전에 화면 모서리에서 그대로 잘려버려 그 자리가 오히려 또렷한 경계처럼
      보였다(실제로 지적받은 문제 — "탭바 위의 광원효과 모서리 없애고 자연스러운 반사광
@@ -4993,18 +4992,18 @@ html.scr-light-theme .scr-mobile-tab-indicator {
   background:
     /* 좌상단 샤프 스펙큘러(고정 px 크기·위치 → 폭 무관하게 동일한 글린트) */
     radial-gradient(18px 11px at 25px 8px, rgba(255,255,255,1) 0%, rgba(255,255,255,0.5) 45%, rgba(255,255,255,0) 72%),
-    /* 아래로 모이는 파란 굴절광(caustic) — 파란색 강화 + 살짝 보랏빛(요청) */
-    radial-gradient(150% 80% at 50% 142%, rgba(110,160,255,0.5) 0%, rgba(110,160,255,0) 46%),
-    /* 아주 옅은 파란(살짝 보라) 틴트 — 투명 유지 */
-    linear-gradient(180deg, rgba(150,175,255,0.12) 0%, rgba(115,140,250,0.17) 100%);
+    /* 아래로 모이는 파란 굴절광(caustic) — 보라끼 제거(요청), 순수한 파란 계열로 */
+    radial-gradient(150% 80% at 50% 142%, rgba(90,190,250,0.48) 0%, rgba(90,190,250,0) 46%),
+    /* 아주 옅은 파란 틴트 — 물색을 내는 최소한만 남긴다(투명 유지) */
+    linear-gradient(180deg, rgba(150,210,250,0.10) 0%, rgba(100,180,245,0.14) 100%);
   /* 블러 제거(요청: 최대 투명) — 채도만 살짝. */
   backdrop-filter: saturate(1.05);
   -webkit-backdrop-filter: saturate(1.05);
   box-shadow:
     inset 0 0 6px rgba(255,255,255,0.45),          /* 부드럽게 번진 가장자리 광 */
     inset 0 2px 2px rgba(255,255,255,0.8),         /* 위 광택 */
-    inset 0 -6px 10px rgba(95,110,235,0.24),       /* 아래 청보라 안쪽 그늘 → 렌즈 볼륨 */
-    0 3px 8px -4px rgba(80,100,220,0.3);           /* 옅은 쿨톤 접촉 그림자 */
+    inset 0 -6px 10px rgba(60,150,230,0.22),       /* 아래 파란 안쪽 그늘 → 렌즈 볼륨 */
+    0 3px 8px -4px rgba(55,130,210,0.28);          /* 옅은 쿨톤 접촉 그림자 */
 }
 html.scr-light-theme .scr-mobile-tab-active { color: var(--text); }
 /* 라이트 테마는 밝은 패널 위라 흰 반사광이 안 보여 — 드로어 왼쪽 모서리와 같은 이유로
