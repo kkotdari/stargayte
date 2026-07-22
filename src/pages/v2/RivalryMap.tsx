@@ -224,7 +224,7 @@ export default function RivalryMap({
           <span className="scr-rivalry-legend-item"><span className="scr-rivalry-legend-arrow" /> 우세(화살표가 가리키는 쪽이 열세)</span>
         ) : (
           <>
-            <span className="scr-rivalry-legend-item"><span className="scr-rivalry-legend-arrow" /> 선택한 유저가 우세</span>
+            <span className="scr-rivalry-legend-item"><span className="scr-rivalry-legend-arrow" /> 우세</span>
             <span className="scr-rivalry-legend-item"><span className="scr-rivalry-legend-arrow scr-rivalry-legend-arrow-lose" /> 열세</span>
           </>
         )}
