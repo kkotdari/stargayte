@@ -7248,6 +7248,19 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
    팀전 목록처럼 동그랗게(요청). Avatar는 인라인 style로 각진 래디우스를 주므로 !important로 덮는다. */
 .scr-league-roster-row .scr-avatar,
 .scr-league-player-chip .scr-avatar { border-radius: 50% !important; }
+/* 라이트 테마 — 흰 5% 반투명 배경은 밝은 배경/흰 팀카드 위에서 안 보인다(지적됨).
+   팀 로스터 행은 흰 팀카드 안이라 옅은 회색조로 살짝 꺼진 느낌을, 개인전 선수 칩은
+   화면 바탕 위에 바로 놓이므로 대진표 개인전 카드와 같은 흰 유리(림+그림자)로 띄운다. */
+.scr-light-theme .scr-league-roster-row { background: rgba(0,0,0,0.05); }
+.scr-light-theme .scr-league-player-chip {
+  background: rgba(255,255,255,0.55);
+  backdrop-filter: blur(10px) saturate(1.1);
+  -webkit-backdrop-filter: blur(10px) saturate(1.1);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.85),
+    inset 0 0 0 1px rgba(255,255,255,0.5),
+    0 1px 4px rgba(0,0,0,0.09);
+}
 .scr-league-roster-row-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-body); font-weight: 600; }
 .scr-league-roster-row-remove { flex: 0 0 auto; width: 20px; height: 20px; }
 /* 개인전 선수 목록 — 팀전 로스터의 유저칩·드롭다운과 완전히 동일한 디자인/폭(요청). 팀
@@ -7410,7 +7423,10 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
 /* 시드수 입력(적용) + 시드 저장을 한 묶음으로 — 둘 사이에 갭을 준다(요청). */
 .scr-league-bracket-seed-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 /* 대진 확정 버튼도 한 단계 축소(요청: "팀추가 대진확정 버튼 1스텝 축소"). */
-.scr-league-bracket-toolbar > .scr-btn-sm {
+/* '시드 저장'은 이제 seed-actions 래퍼 안이라 직계(>) 선택자에 안 걸렸다(그래서 옆
+   버튼들보다 커 보였음, 지적됨) — 래퍼 안 버튼도 같은 28px/caption로 통일한다. */
+.scr-league-bracket-toolbar > .scr-btn-sm,
+.scr-league-bracket-seed-actions .scr-btn-sm {
   padding: 4px 8px; font-size: var(--fs-caption); height: 28px; min-height: 28px; box-sizing: border-box;
 }
 /* 저장 안 된 시드 편집이 있을 때 '시드 저장' 버튼 옆에 뜨는 안내. */
