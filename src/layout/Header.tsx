@@ -285,8 +285,15 @@ export default function Header({
             onPointerUp={onDrawerPointerEnd}
             onPointerCancel={onDrawerPointerEnd}
           >
-            {/* 프로필 블록은 뺐다(요청) — 서랍이 2/3 높이가 되면서 뒤 헤더의 프로필 칩과
-                동시에 보여 중복이었다. */}
+            {/* 프로필 블록 복구(요청) — 모바일 헤더에서 프사를 없애면서 중복이 사라져
+                서랍이 다시 프로필(프사/닉네임/배틀태그)을 보여준다. */}
+            <div className="scr-drawer-user">
+              <Avatar member={user} size={48} />
+              <div>
+                <div className="scr-drawer-user-name">{user.nickname}</div>
+                <div className="scr-drawer-user-tag">{user.battletag}</div>
+              </div>
+            </div>
             {/* 탭바에 이미 있는 메뉴(commonNavItems)는 서랍에 안 보여준다(요청) —
                 서랍엔 탭바에 없는 운영 아코디언과 액션들만 남는다. */}
             <nav className="scr-drawer-nav">
