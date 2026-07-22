@@ -1790,24 +1790,13 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    1|2(유저|게임수) 경계는 이름 칸(.scr-stat-name-cell/head)의 border-right가 그린다.
    box-sizing:border-box라 border가 칸 폭을 바꾸지 않아 트랙 정렬에도 영향이 없다. */
 .scr-stats-list-panel-v2 .scr-stat-row > *:nth-child(n+3) { border-left: 1px solid var(--line-soft); }
-@media (min-width: 900px) {
-  .scr-stats-list-panel-v2 .scr-stat-row {
-    grid-template-columns: var(--scr-stat-name-w) repeat(5, minmax(150px, 1fr));
-    /* 이 폭에서는 width를 확정값(100%)으로 못박아야 한다 — base의 width:max-content가
-       남아 있으면 max-content 박스 안의 1fr은 "남는 폭 분배"가 아니라 각 칸 내용의
-       max-content로 동작해서, 헤더 행(짧은 라벨)과 데이터 행(숫자+막대)의 칸 폭이 서로
-       달라져 세로 정렬과 구분선이 전부 어긋난다(실제로 지적받은 버그). 100% 확정폭이면
-       모든 행이 동일하게 1fr을 나눠 가져 칸/구분선이 정확히 일치한다. */
-    width: 100%; min-width: 0;
-    /* 이 폭부터는 칸이 minmax(_,1fr)로 실제로 남는 폭을 비례해서 나눠 가지므로(칸
-       자체가 늘어남), 구분선도 다시 그 비례(퍼센트) 기준으로 맞아떨어진다. 5칸이라 4등분. */
-    background-position:
-      calc(var(--scr-stat-name-w) + (100% - var(--scr-stat-name-w)) * 0.2) 0,
-      calc(var(--scr-stat-name-w) + (100% - var(--scr-stat-name-w)) * 0.4) 0,
-      calc(var(--scr-stat-name-w) + (100% - var(--scr-stat-name-w)) * 0.6) 0,
-      calc(var(--scr-stat-name-w) + (100% - var(--scr-stat-name-w)) * 0.8) 0;
-  }
-}
+/* (구) 900px 이상에서 minmax(1fr)+width:100%로 남는 폭을 나눠 채우던 분기는 제거 —
+   v2 통계 패널은 --list-content-max(800px)로 폭이 상한되는데 칸 합(이름 160 + 150×5 =
+   910px)이 그보다 항상 커서 "남는 폭"이라는 게 존재하지 않았고, width:100%(=800px)만
+   남아 행 박스가 실제 칸 합보다 좁아졌다. 그 결과 처음 화면에 안 보이던(스크롤로
+   가려진) 칸들엔 행 배경/구분선이 아예 안 그려졌다(지적된 버그: "처음 로딩시 스크롤에
+   가려져 있던 부분은 그리드가 안 그려짐"). base(.scr-stats-list-panel-v2 .scr-stat-row —
+   고정 칸 폭 + width:max-content)가 모든 폭에서 행을 콘텐츠 끝까지 늘려 그린다. */
 .scr-stats-list-panel-v2 .scr-stat-name-cell { padding-right: 20px; }
 /* 프사가 없으니(avatar=false) 닉네임/배틀태그를 칸 왼쪽에 붙일 이유가 없다 — 가운데
    정렬한다. */
