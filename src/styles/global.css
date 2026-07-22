@@ -1865,6 +1865,12 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   .scr-stats-list-panel-v2 .scr-stat-name-head { padding-left: 7px; padding-right: 7px; }
   .scr-stats-list-panel-v2 .scr-stat-name-btn { text-align: center; font-size: var(--fs-micro); }
   .scr-stats-list-panel-v2 .scr-stat-tag-pill { display: block; font-size: var(--fs-11); }
+  /* 데이터 값들은 행 폰트를 안 물려받는다 — 게임수/생산/유효APM/유효커맨드 숫자
+     (.scr-value-bar-num)는 body, 승률 칸(.scr-stat-bar-top/-rate)은 caption으로 각자
+     고정돼 있어서 위 행 축소가 안 보였다(지적된 버그). 모바일에서 전부 micro로 직접 축소. */
+  .scr-stats-list-panel-v2 .scr-value-bar-num { font-size: var(--fs-micro); }
+  .scr-stats-list-panel-v2 .scr-stat-bar-top { font-size: var(--fs-micro); }
+  .scr-stats-list-panel-v2 .scr-stat-bar-rate { font-size: var(--fs-micro); }
   /* 나머지 네 칸(게임수/전적/유효APM/유효커맨드)도 모바일에서 10%씩 좁힌다(요청:
      "다른 컬럼들도 폭 10프로씩 감소") — 기본 150px의 90%. --scr-stat-col-w도 같이
      135px로 맞춰야(위 background-position이 참조) 구분선이 실제 칸 폭과 어긋나지
