@@ -100,24 +100,39 @@ export default function RivalryMap({
             const focusKind = selected !== null && e.kind === "strong"
               ? (e.from === selected ? "win" : "lose")
               : null;
-            // 칩 아래 숨지 않게 양 끝을 칩 반지름만큼 안쪽으로 당긴다(화살촉 쪽은 조금 더).
-            // 단, 바로 옆 칩처럼 두 점이 가까우면 트림(9+11)이 선을 다 먹어 화살촉만
-            // 남았다(지적된 버그) — 최소 4유닛의 선은 남도록 트림을 비례 축소한다.
             const dx = b.x - a.x;
             const dy = b.y - a.y;
             const len = Math.hypot(dx, dy) || 1;
             const ux = dx / len;
             const uy = dy / len;
-            const trimScale = Math.max(0, Math.min(1, (len - 4) / 20));
-            const x1 = a.x + ux * 9 * trimScale;
-            const y1 = a.y + uy * 9 * trimScale;
-            const x2 = b.x - ux * 11 * trimScale;
-            const y2 = b.y - uy * 11 * trimScale;
             // 화살촉 — marker 대신 직접 그린다: 굵기에 비례하되(요청) 최소/최대를
             // 클램프해 얇은 선에서도 보이고 굵은 선에서도 과하지 않게. 길이 h, 밑변
             // 폭은 h의 0.9배. 삼각형이 선 끝을 덮으므로 선은 그대로 x2까지 긋는다.
             const headLen = Math.min(3.6, Math.max(2.2, e.width * 3.4));
             const half = headLen * 0.45;
+            // 양 끝 트림 — 예전엔 방향 불문 고정(9/11)이었는데, 칩이 가로로 긴 알약이라
+            // 세로로 들어가는 화살표는 칩 가장자리보다 한참 앞에서 멈춰 촉이 허공에
+            // 떠 보였다(지적: "기둥하고 촉이 위치가 안맞아"). 칩을 타원(halfW×halfH)로
+            // 근사해 들어가는 방향에 맞는 타원 반지름만큼만 당긴다 — 어느 각도든 촉이
+            // 칩 가장자리에 딱 붙는다. 칩이 위(z-index)라 살짝 넘쳐도 칩 밑에 숨는다.
+            const halfW = 8 * chipScale;
+            const halfH = 3 * chipScale;
+            const edgeRadius = (vx: number, vy: number) =>
+              (halfW * halfH) / (Math.hypot(halfH * vx, halfW * vy) || 1);
+            let trimStart = edgeRadius(ux, uy) + 0.6;
+            let trimEnd = edgeRadius(ux, uy) + 0.4;
+            // 바로 옆 칩처럼 가까우면 트림이 선을 다 먹어 화살촉만 남는다(지적된 버그)
+            // — 촉 길이 + 여유만큼의 기둥은 반드시 남도록 트림을 비례 축소한다.
+            const minShaft = headLen + 1.6;
+            if (len - trimStart - trimEnd < minShaft) {
+              const k = Math.max(0, Math.min(1, (len - minShaft) / (trimStart + trimEnd)));
+              trimStart *= k;
+              trimEnd *= k;
+            }
+            const x1 = a.x + ux * trimStart;
+            const y1 = a.y + uy * trimStart;
+            const x2 = b.x - ux * trimEnd;
+            const y2 = b.y - uy * trimEnd;
             const bx = x2 - ux * headLen;
             const by = y2 - uy * headLen;
             const arrowPoints = `${x2},${y2} ${bx - uy * half},${by + ux * half} ${bx + uy * half},${by - ux * half}`;
