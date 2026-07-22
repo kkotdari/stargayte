@@ -120,14 +120,13 @@ export default function Header({
     if (dx > width * DRAWER_CLOSE_RATIO) setMenuOpen(false);
   };
 
-  // 드로어 안의 대카테고리(관리자) 아코디언 — 드로어를 열 때마다 지금 보고 있는 화면
-  // 기준으로 미리 펼쳐둔다.
-  const [drawerSection, setDrawerSection] = useState<"admin" | null>(null);
+  // 드로어 안의 대카테고리(관리자) 아코디언 — 항상 미리 펼쳐둔 채로 시작한다(요청:
+  // "아코디언 메뉴는 미리 펼쳐있게").
+  const [drawerSection, setDrawerSection] = useState<"admin" | null>("admin");
   useEffect(() => {
     if (!drawerRendered) return;
-    if (["members", "imageSettings", "gameId"].includes(screen)) setDrawerSection("admin");
-    else setDrawerSection(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- 드로어가 열리는 순간에만 초기화, 그 뒤 screen이 바뀌어도 유저가 직접 연 상태를 건드리지 않는다
+    setDrawerSection("admin");
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 드로어가 열리는 순간에만 초기화, 그 뒤 유저가 직접 접은 상태를 건드리지 않는다
   }, [drawerRendered]);
 
   // 메뉴 열렸을 때 뒤 스크롤 잠금 — 모달들과 같은 공유 카운터를 쓴다 (드로어가 열린 채
@@ -273,20 +272,18 @@ export default function Header({
             onPointerUp={onDrawerPointerEnd}
             onPointerCancel={onDrawerPointerEnd}
           >
-            <div className="scr-drawer-head">
-              <span className="scr-brand-mark">전체 메뉴</span>
-            </div>
-
             <div className="scr-drawer-user">
               <Avatar member={user} size={40} />
               <div>
                 <div className="scr-drawer-user-name">{user.nickname}</div>
-                <div className="scr-drawer-user-tag scr-mono">{user.battletag}</div>
+                {/* 배틀태그는 데이터(모노) 폰트 대신 기본 폰트로(요청). */}
+                <div className="scr-drawer-user-tag">{user.battletag}</div>
               </div>
             </div>
 
+            {/* 탭바에 이미 있는 메뉴(commonNavItems)는 서랍에 안 보여준다(요청) —
+                서랍엔 탭바에 없는 운영 아코디언과 액션들만 남는다. */}
             <nav className="scr-drawer-nav">
-              {commonNavItems}
               {isAdmin && (
                 <AdminMenu
                   screen={screen} onNavigate={go} variant="drawer"

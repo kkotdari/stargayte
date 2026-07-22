@@ -5117,7 +5117,8 @@ html.scr-light-theme .scr-mobile-tabbar {
    (경계선 옆 원형/타원 헤일로도 시도해봤으나 여러 번 다듬어도 원하는 느낌이 안 나와
    완전히 뺐다 — 지금은 이 경계선 그라데이션만 남는다.) */
 .scr-drawer {
-  width: min(300px, 84vw); height: 100%;
+  /* 폭 2/3로 감축(요청) — 300px→200px, 84vw→56vw. */
+  width: min(200px, 56vw); height: 100%;
   /* 반투명 유리 재질 — 더 투명하게(요청: "투명도를 올려서 더 투명해 보이게") --panel의
      알파를 60%로 낮춘 색 + 배경 블러. 블러가 있어 글자 가독성은 유지된다. */
   background-color: color-mix(in srgb, var(--panel-solid) 58%, transparent);
@@ -5163,12 +5164,14 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
   background-image: linear-gradient(90deg, transparent 0%, var(--divider-soft) 50%, transparent 100%);
   background-repeat: no-repeat; background-position: bottom; background-size: 100% 1px;
 }
-/* 서랍 유저 아바타/닉네임도 헤더와 같이 한 스텝 축소(요청) — 아바타 40→32px(인라인 크기라
-   !important), 닉네임 subhead(20)→body(16). 서랍은 모바일 전용이라 base에서 바로 줄인다. */
-.scr-drawer-user .scr-avatar { border-radius: 50% !important; width: 32px !important; height: 32px !important; }
-.scr-drawer-user-name { font-weight: 700; font-size: var(--fs-body); }
+/* 프사/닉네임 2스텝씩 확대(요청) — 아바타 32→48px(8px 스텝 둘), 닉네임 body(16)→
+   headline(24, 두 스텝). 배틀태그는 데이터 폰트 대신 기본 폰트(마크업에서 scr-mono 제거). */
+.scr-drawer-user .scr-avatar { border-radius: 50% !important; width: 48px !important; height: 48px !important; }
+.scr-drawer-user-name { font-weight: 700; font-size: var(--fs-headline); }
 .scr-drawer-user-tag { font-size: var(--fs-caption); color: var(--dim); }
-.scr-drawer-nav { display: flex; flex-direction: column; gap: 4px; }
+/* 메뉴 묶음을 서랍 하단으로 몰아 정렬(요청) — margin-top:auto로 남는 세로 공간을 위에서
+   먹는다(액션 묶음은 nav 바로 뒤 흐름 그대로라 함께 하단에 붙는다). */
+.scr-drawer-nav { display: flex; flex-direction: column; gap: 4px; margin-top: auto; }
 /* border-radius를 활성 반전 블록(.scr-nav-tab-active, 4px)과 똑같이 맞춘다 — 다르면
    터치 시 브라우저 기본 하이라이트(이 버튼 자신의 모양을 그대로 따라간다)와 실제
    활성 표시가 서로 다른 둥글기로 보였다. */
