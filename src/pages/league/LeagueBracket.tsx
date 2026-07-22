@@ -443,9 +443,6 @@ export default function LeagueBracket({
             {busy && <Spinner size={14} />} 시드 저장
           </button>
         )}
-        {canEdit && !league.bracketLocked && dirty && (
-          <span className="scr-league-bracket-dirty-hint">저장되지 않은 변경사항</span>
-        )}
         {canEdit && !league.bracketLocked && (
           <button
             type="button" className="scr-btn scr-btn-sm"

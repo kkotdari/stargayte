@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { Spinner } from "../components/common/Feedback";
@@ -38,6 +38,15 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
   const setNoticeEnabled = useAppStore((s) => s.setNoticeEnabled);
   const [password, setPassword] = useState("");
   const [unlocked, setUnlocked] = useState(false);
+  // PC에서만 열자마자 비밀번호 칸에 포커스를 준다(요청) — 마우스(fine pointer)가 있는
+  // 기기에서만. 모바일/터치에선 모달이 뜨자마자 키보드가 튀어나오는 걸 막으려 포커스를
+  // 주지 않는다(이 코드베이스 전반의 원칙).
+  const passwordRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
+      passwordRef.current?.focus();
+    }
+  }, []);
   const [checking, setChecking] = useState(false);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
@@ -167,6 +176,7 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
                     autoFocus는 안 준다 — 모바일에서 모달이 뜨자마자 키보드가 튀어나오는
                     걸 막는다(이 코드베이스 전반의 원칙). */}
                 <input
+                  ref={passwordRef}
                   type="password"
                   inputMode="numeric"
                   className="scr-input scr-admin-panel-password-input"

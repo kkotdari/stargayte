@@ -4848,10 +4848,10 @@ body *::-webkit-scrollbar-corner { background: transparent; }
      정적 위치(static position) 추정에 기대지 않는다 — translateX만으로 순수하게
      버튼의 offsetLeft만큼 이동한다는 걸 보장한다. */
   position: absolute; left: 0;
-  /* 불규칙한 유기적 물방울이 아니라 완전히 대칭되는 원형/타원으로(요청). border-radius:50%는
-     정사각형이면 정원, 폭이 넓은(글자 수 많은) 탭이면 자연스럽게 좌우로 늘어난 타원이 된다.
-     상하좌우가 모두 대칭이라 어느 탭에서도 반듯한 물방울(원형) 모양이 유지된다. */
-  border-radius: 50%;
+  /* 완전히 대칭이되(상하좌우), 순수 타원(50%)은 폭이 넓을 때 좌우 끝이 너무 뾰족해서
+     좌우 곡률을 낮춰 둥글게 만든다(요청) — 가로 반지름을 38%로 줄이면 좌우 끝이 뾰족한
+     타원 대신 부드럽게 둥근 물방울이 된다(세로는 50% 유지). 폭이 달라도 이 비율은 그대로. */
+  border-radius: 38% / 50%;
   pointer-events: none;
   transition: transform .22s ease, width .22s ease, top .22s ease, height .22s ease;
   /* 밋밋한 반투명 알약 대신 --edge-glow를 얹은 광원 느낌 — 가운데가 가장 밝고 가장자리로
@@ -4878,8 +4878,8 @@ body *::-webkit-scrollbar-corner { background: transparent; }
     radial-gradient(26% 22% at 66% 30%, rgba(255,255,255,0.28) 0%, rgba(255,255,255,0) 60%),
     /* 아래로 모이는 굴절광(caustic) */
     radial-gradient(120% 118% at 50% 122%, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 44%),
-    /* 몸통 틴트 */
-    radial-gradient(130% 120% at 50% 48%, rgba(210,225,235,0.05) 0%, rgba(170,190,205,0.12) 82%);
+    /* 몸통 틴트 — 회색톤을 살짝 푸른 톤으로(요청). */
+    radial-gradient(130% 120% at 50% 48%, rgba(200,218,245,0.05) 0%, rgba(150,178,222,0.13) 82%);
   backdrop-filter: blur(3px) brightness(1.05) saturate(1.15);
   -webkit-backdrop-filter: blur(3px) brightness(1.05) saturate(1.15);
   box-shadow:
@@ -4896,12 +4896,13 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    비쳐야 하니 backdrop blur/brightness로 배경과만 살짝 구분한다. */
 html.scr-light-theme .scr-mobile-tab-indicator {
   /* 같은 '젖은 유리' 물방울 — 밝은 배경 위라 볼륨은 어두운톤 안쪽 그늘과 바닥 접촉 그림자가
-     주로 잡아준다. 모양(대칭 원형 border-radius:50%)은 기본 규칙을 그대로 상속한다. */
+     주로 잡아준다. 모양(대칭 둥근 물방울 border-radius:38%/50%)은 기본 규칙을 그대로
+     상속한다. 몸통 틴트는 회색톤을 살짝 푸른 톤으로(요청). */
   background:
     radial-gradient(115% 85% at 32% 20%, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0) 32%),
     radial-gradient(26% 22% at 66% 28%, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0) 60%),
     radial-gradient(120% 118% at 50% 120%, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0) 42%),
-    radial-gradient(135% 120% at 50% 46%, rgba(150,170,185,0.1) 0%, rgba(150,170,185,0.2) 82%);
+    radial-gradient(135% 120% at 50% 46%, rgba(132,158,205,0.11) 0%, rgba(120,150,200,0.2) 82%);
   backdrop-filter: blur(3px) brightness(1.06) saturate(1.1);
   -webkit-backdrop-filter: blur(3px) brightness(1.06) saturate(1.1);
   box-shadow:
@@ -7168,16 +7169,17 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
 /* 개인리그 설명 힌트만 기본 .scr-hint(--fs-subhead)보다 두 단계 작게(요청: "폰트 2스텝
    축소") — 다른 화면의 공용 .scr-hint 크기는 그대로 둔다. */
 .scr-league-mode-hint { font-size: var(--fs-caption); }
+/* 리그 상세는 별도 패널(테두리/배경) 없이 화면 바탕에 그대로 녹아든다(요청: 라이트에서
+   패널 구분이 안 되던 문제 → 다크도 아예 패널을 없애고 바탕에 통합). 섹션 구분은 내부의
+   옅은 구분선(border-top --league-line)들이 담당한다. */
 .scr-league-summary-card {
   display: flex; flex-direction: column; gap: 10px;
-  padding: 16px; border: 1px solid var(--league-line); border-radius: 14px; background: var(--league-panel);
+  padding: 0; border: none; background: transparent;
 }
 .scr-league-summary-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-/* 이름/삭제 반대편 — '수정 완료' 버튼 + 상태 배지를 오른쪽에 나란히 둔다. */
-.scr-league-summary-row-right { display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0; }
-.scr-league-edit-done { padding: 4px 10px; height: 28px; min-height: 28px; box-sizing: border-box; font-size: var(--fs-caption); }
 .scr-league-summary-name { font-size: var(--fs-subhead); font-weight: 800; display: inline-flex; align-items: center; gap: 4px; }
-.scr-league-edit-toggle { width: 22px; height: 22px; }
+/* 리그명 아랫줄 — 수정/완료/취소/삭제 아이콘 버튼을 한 줄에 모은다(요청). */
+.scr-league-btn-row { display: flex; align-items: center; gap: 4px; margin-top: -2px; }
 /* 완전한 알약(999px) 대신 평평한(광택 없이) 둥근 네모 — 정확한 스퀴클 곡률을 맞추기
    어려워 단순한 고정값 라운드로 정리한다(요청: "유튜브 로고 같은 형태를 만들기
    어려우면 그냥 둥근 네모로"). */

@@ -303,7 +303,6 @@ export default function LeagueTeamsPanel({ league, onUpdated }: { league: League
               <Plus size={14} /> {isIndividual ? "선수 추가" : "팀 추가"}
             </button>
           )}
-          {dirty && <span className="scr-league-bracket-dirty-hint">저장되지 않은 변경사항</span>}
           <button
             type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm"
             onClick={save} disabled={busy || !dirty}

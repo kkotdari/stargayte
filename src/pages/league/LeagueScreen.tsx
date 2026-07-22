@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Plus, Trash2, Pencil, Check } from "lucide-react";
+import { Plus, Trash2, Pencil, Check, X } from "lucide-react";
 import Select from "../../components/common/Select";
 import { Spinner } from "../../components/common/Feedback";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
@@ -95,6 +95,12 @@ export default function LeagueScreen() {
 
   const options = leagues.map((l) => ({ value: String(l.id), label: `${l.name} · ${MODE_LABEL[l.mode]}` }));
 
+  // 표시용 상태 — "진행중"은 대진 확정(bracketLocked) 이후에만, 그 전엔 "준비중"으로 본다
+  // (요청). 완료는 백엔드 상태 그대로. 백엔드 status가 확정 전에 active여도 여기서 눌러 앉힌다.
+  const shownStatus: LeagueStatus = league
+    ? (league.status === "completed" ? "completed" : (league.bracketLocked ? "active" : "setup"))
+    : "setup";
+
   return (
     <div className="scr-screen scr-league-screen">
       <div className="scr-v2-toolbar">
@@ -131,52 +137,57 @@ export default function LeagueScreen() {
       ) : (
         <div className="scr-league-summary-card">
           <div className="scr-league-summary-row">
-            <span className="scr-league-summary-name">
-              {league.name}
-              {/* 수정 모드로 "들어가는" 버튼일 뿐, 다시 눌러서 나가는 토글이 아니다
-                  (요청: "수정모드에서 수정버튼 다시 누르면 바로 닫히는거 방지") — 수정
-                  모드에 들어간 뒤에는 이 버튼 자체를 감춰서 다시 눌러도 아무 일이
-                  안 생기는 상태를 아예 없앤다. */}
-              {isAdmin && !editMode && (
-                <button
-                  type="button"
-                  className="scr-icon-btn scr-league-edit-toggle"
-                  onClick={() => setEditMode(true)}
-                  aria-label="수정 모드로 전환"
-                  title="수정 모드로 전환"
-                >
-                  <Pencil size={13} />
-                </button>
-              )}
-              {canEdit && (
-                <button
-                  type="button"
-                  className="scr-icon-btn scr-icon-btn-danger"
-                  onClick={() => setDeleteTarget(leagues.find((l) => l.id === league.id) ?? null)}
-                  aria-label="리그 삭제"
-                  title="리그 삭제"
-                >
-                  <Trash2 size={13} />
-                </button>
-              )}
-            </span>
-            <span className="scr-league-summary-row-right">
-              {/* 수정 모드로 들어가는 연필은 다시 누르면 닫히는 걸 막으려 감췄으므로, 나가는
-                  건 이 '수정 완료' 버튼으로만 한다(요청: "수정모드에서 나가는 방법이 없다"). */}
-              {canEdit && (
-                <button
-                  type="button"
-                  className="scr-btn scr-btn-sm scr-league-edit-done"
-                  onClick={() => setEditMode(false)}
-                >
-                  <Check size={14} /> 수정 완료
-                </button>
-              )}
-              <span className={cx("scr-league-status-pill", `scr-league-status-${league.status}`)}>
-                {STATUS_LABEL[league.status]}
-              </span>
+            <span className="scr-league-summary-name">{league.name}</span>
+            {/* 상태 배지 — "진행중"은 대진을 확정(bracketLocked)해야만 뜨고, 그 전에는
+                항상 "준비중"으로 본다(요청). 완료는 그대로 유지한다. */}
+            <span className={cx("scr-league-status-pill", `scr-league-status-${shownStatus}`)}>
+              {STATUS_LABEL[shownStatus]}
             </span>
           </div>
+
+          {/* 액션 버튼 줄 — 리그명 아랫줄에 아이콘 버튼으로 모은다(요청). 수정 모드로
+              들어가는 연필은 다시 누르면 닫히는 걸 막으려(요청) 편집 중엔 감추고, 나가는
+              건 완료(체크)/취소(X)로만 한다. 둘 다 편집 모드를 벗어난다 — 하위 패널(팀/
+              대진)은 각자 저장 버튼으로 즉시 반영하므로, 취소는 아직 저장 안 한 로컬
+              편집(예: 시드 이동)을 버리고 나가는 의미가 된다. */}
+          {isAdmin && (
+            <div className="scr-league-btn-row">
+              {!editMode ? (
+                <button
+                  type="button" className="scr-icon-btn"
+                  onClick={() => setEditMode(true)}
+                  aria-label="수정" title="수정"
+                >
+                  <Pencil size={15} />
+                </button>
+              ) : (
+                <>
+                  <button
+                    type="button" className="scr-icon-btn"
+                    onClick={() => setEditMode(false)}
+                    aria-label="수정 완료" title="수정 완료"
+                  >
+                    <Check size={16} />
+                  </button>
+                  <button
+                    type="button" className="scr-icon-btn"
+                    onClick={() => setEditMode(false)}
+                    aria-label="수정 취소" title="수정 취소"
+                  >
+                    <X size={16} />
+                  </button>
+                  <button
+                    type="button" className="scr-icon-btn scr-icon-btn-danger"
+                    onClick={() => setDeleteTarget(leagues.find((l) => l.id === league.id) ?? null)}
+                    aria-label="리그 삭제" title="리그 삭제"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+
           <div className="scr-league-summary-meta">
             <span>{MODE_LABEL[league.mode]}</span>
             <span>{league.bestOf}전 {Math.floor(league.bestOf / 2) + 1}선승</span>
@@ -187,12 +198,6 @@ export default function LeagueScreen() {
           </div>
           {canEdit && <LeagueTeamsPanel league={league} onUpdated={handleLeagueUpdated} />}
           <LeagueBracket league={league} canEdit={canEdit} onUpdated={handleLeagueUpdated} />
-
-          {canEdit && (
-            <p className="scr-hint scr-hint-left">
-              결과 입력/대타는 다음 업데이트에서 이어서 열려요.
-            </p>
-          )}
         </div>
       )}
 
