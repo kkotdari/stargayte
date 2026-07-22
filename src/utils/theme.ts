@@ -22,10 +22,25 @@ function applyThemeColor(on: boolean): void {
     ?.setAttribute("content", on ? VOID_COLOR.light : VOID_COLOR.dark);
 }
 
+// iOS 26 사파리는 툴바(주소창/내비바) 색을 theme-color 메타보다 "페이지 실제 픽셀 샘플링"
+// 으로 정하는데, 그 샘플링이 스크롤 등 화면 변화 때만 다시 돌아서 테마를 바꿔도 툴바가
+// 한 박자 늦게 따라오는 버그가 있었다(지적: "화면이 조금이라도 바뀌어야 뒤늦게 변함").
+// 새 테마 색이 실제로 그려진 다음(더블 rAF) 스크롤을 1px 움직였다 즉시 되돌려 재샘플링을
+// 강제한다 — behavior:instant라 화면에는 보이지 않고, 1px 이동은 탭바 숨김 판정 임계값
+// (useHideOnScrollDown, 4px/10px)보다 작아 다른 동작을 건드리지 않는다.
+function nudgeToolbarResample(): void {
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    const y = window.scrollY;
+    window.scrollTo({ top: y > 0 ? y - 1 : 1, behavior: "instant" });
+    window.scrollTo({ top: y, behavior: "instant" });
+  }));
+}
+
 function applyLightTheme(on: boolean): void {
   document.documentElement.classList.toggle("scr-light-theme", on);
   applyThemeColor(on);
   localStorage.setItem(LIGHT_THEME_KEY, on ? "1" : "0");
+  nudgeToolbarResample();
 }
 
 // 새로고침해도, 로그인/로그아웃을 거쳐도 유지되도록 localStorage에 저장한다 — 대부분
