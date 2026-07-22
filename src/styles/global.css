@@ -4958,17 +4958,18 @@ body *::-webkit-scrollbar-corner { background: transparent; }
      안쪽은 backdrop blur만 남겨 뒤가 그대로 비치고, 물방울의 존재감은 가장자리
      효과(글린트·번진 림·아래 그늘)로만 낸다. 파란끼도 뺀다(요청) — 전부 무채색. */
   background:
-    /* 좌상단 샤프 스펙큘러(고정 px → 폭 무관하게 동일한 글린트) */
-    radial-gradient(18px 11px at 25px 8px, rgba(255,255,255,0.75) 0%, rgba(255,255,255,0.3) 45%, rgba(255,255,255,0) 72%),
+    /* 좌상단 스펙큘러(고정 px → 폭 무관하게 동일한 글린트) — 흰 반사가 너무 불투명해
+       물방울 전체가 막힌 듯 보이던 원인(지적됨)이라 반투명하게 낮췄다. */
+    radial-gradient(11px 7px at 21px 9px, rgba(255,255,255,0.42) 0%, rgba(255,255,255,0.16) 45%, rgba(255,255,255,0) 72%),
     /* 아래로 모이는 옅은 흰 굴절광(caustic) */
-    radial-gradient(150% 80% at 50% 142%, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0) 46%);
+    radial-gradient(150% 80% at 50% 142%, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0) 46%);
   /* 블러 제거(요청: 최대 투명 — 블러가 있으면 뒤가 뿌옇게 서리 낀 듯 불투명해 보인다).
      밝기만 살짝 올려 물방울 영역이 지각되게 한다. */
   backdrop-filter: brightness(1.07);
   -webkit-backdrop-filter: brightness(1.07);
   box-shadow:
-    inset 0 0 6px rgba(255,255,255,0.14),        /* 부드럽게 번진 가장자리 광 */
-    inset 0 1.5px 2px rgba(255,255,255,0.35),    /* 위 안쪽 반사 */
+    inset 0 0 6px rgba(255,255,255,0.12),        /* 부드럽게 번진 가장자리 광 */
+    inset 0 1.5px 2px rgba(255,255,255,0.24),    /* 위 안쪽 반사 */
     inset 0 -6px 10px rgba(0,0,0,0.22),          /* 아래 안쪽 그늘 → 볼륨 */
     4px 8px 14px -6px rgba(0,0,0,0.4);           /* 부드럽게 오프셋된 바닥 접촉 그림자 */
 }
@@ -4992,8 +4993,9 @@ html.scr-light-theme .scr-mobile-tab-indicator {
      틴트만 남기고, 노란끼의 원인이던 brightness/saturate 부스트를 걷어낸다. 색감은
      시원한 파란 계열로 더 기울인다(요청: 노란끼 제거·물색). */
   background:
-    /* 좌상단 샤프 스펙큘러(고정 px 크기·위치 → 폭 무관하게 동일한 글린트) */
-    radial-gradient(18px 11px at 25px 8px, rgba(255,255,255,1) 0%, rgba(255,255,255,0.5) 45%, rgba(255,255,255,0) 72%),
+    /* 좌상단 스펙큘러(고정 px 크기·위치 → 폭 무관하게 동일한 글린트) — 흰 반사가 너무
+       불투명하고 커서(지적됨) 크기·농도를 낮췄다. */
+    radial-gradient(11px 7px at 21px 9px, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.28) 45%, rgba(255,255,255,0) 72%),
     /* 아래로 모이는 파란 굴절광(caustic) — 보라끼 제거(요청), 순수한 파란 계열로 */
     radial-gradient(150% 80% at 50% 142%, rgba(90,190,250,0.48) 0%, rgba(90,190,250,0) 46%),
     /* 아주 옅은 파란 틴트 — 물색을 내는 최소한만 남긴다(투명 유지) */
@@ -5002,8 +5004,8 @@ html.scr-light-theme .scr-mobile-tab-indicator {
   backdrop-filter: saturate(1.05);
   -webkit-backdrop-filter: saturate(1.05);
   box-shadow:
-    inset 0 0 6px rgba(255,255,255,0.45),          /* 부드럽게 번진 가장자리 광 */
-    inset 0 2px 2px rgba(255,255,255,0.8),         /* 위 광택 */
+    inset 0 0 6px rgba(255,255,255,0.35),          /* 부드럽게 번진 가장자리 광 */
+    inset 0 2px 2px rgba(255,255,255,0.55),        /* 위 광택 */
     inset 0 -6px 10px rgba(60,150,230,0.22),       /* 아래 파란 안쪽 그늘 → 렌즈 볼륨 */
     0 3px 8px -4px rgba(55,130,210,0.28);          /* 옅은 쿨톤 접촉 그림자 */
 }
