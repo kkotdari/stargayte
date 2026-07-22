@@ -120,15 +120,6 @@ export default function Header({
     if (dx > width * DRAWER_CLOSE_RATIO) setMenuOpen(false);
   };
 
-  // 드로어 안의 대카테고리(관리자) 아코디언 — 항상 미리 펼쳐둔 채로 시작한다(요청:
-  // "아코디언 메뉴는 미리 펼쳐있게").
-  const [drawerSection, setDrawerSection] = useState<"admin" | null>("admin");
-  useEffect(() => {
-    if (!drawerRendered) return;
-    setDrawerSection("admin");
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- 드로어가 열리는 순간에만 초기화, 그 뒤 유저가 직접 접은 상태를 건드리지 않는다
-  }, [drawerRendered]);
-
   // 메뉴 열렸을 때 뒤 스크롤 잠금 — 모달들과 같은 공유 카운터를 쓴다 (드로어가 열린 채
   // 모달도 함께 뜨는 경우에도 한쪽이 먼저 닫혀서 스크롤이 풀려버리지 않도록). 닫히는
   // 트랜지션이 재생되는 동안도 잠가둔다(drawerRendered 기준).
@@ -284,12 +275,8 @@ export default function Header({
             {/* 탭바에 이미 있는 메뉴(commonNavItems)는 서랍에 안 보여준다(요청) —
                 서랍엔 탭바에 없는 운영 아코디언과 액션들만 남는다. */}
             <nav className="scr-drawer-nav">
-              {isAdmin && (
-                <AdminMenu
-                  screen={screen} onNavigate={go} variant="drawer"
-                  drawerOpen={drawerSection === "admin"} onDrawerToggle={() => setDrawerSection((s) => (s === "admin" ? null : "admin"))}
-                />
-              )}
+              {/* 운영은 접을 수 없는 고정 섹션(AdminMenu drawer 변형이 항상 펼쳐 그린다). */}
+              {isAdmin && <AdminMenu screen={screen} onNavigate={go} variant="drawer" />}
             </nav>
 
             <div className="scr-drawer-actions">

@@ -11,10 +11,6 @@ interface AdminMenuProps {
   // nav: 데스크톱 상단 네비 탭 스타일 · drawer: 모바일 드로어 세로 목록 스타일 ·
   // mobile: 하단 탭바 아이콘 스타일
   variant: "nav" | "drawer" | "mobile";
-  // 드로어(아코디언)에서만 쓰는 제어 상태 — 부모(Header)가 이 상태를 관리해서 넘겨준다.
-  // 안 넘기면 내부 상태를 그대로 쓴다.
-  drawerOpen?: boolean;
-  onDrawerToggle?: () => void;
   // mobile 변형에서만 — 이 열림 상태 자체는 여기서 그대로 내부 관리하지만(제어권은 안
   // 넘김), 부모(MobileTabBar)가 슬라이딩 알약 인디케이터를 다시 계산하려면 "언제 바뀌는지"는
   // 알아야 한다(그 상태가 이 컴포넌트 내부에만 있어 props로는 안 보였다 — 실제로 지적받은
@@ -35,7 +31,7 @@ interface AdminItem {
 // 역할/권한 체크 없이 항상 전체 항목을 보여준다. 위치 계산은 커스텀 셀렉트(Select.tsx)와
 // 동일하게 attachPopover를 재사용 — 하단 탭바에 놓였을 때도 아래쪽 공간이 부족하면 자동으로
 // 위로 뒤집어 열린다.
-export default function AdminMenu({ screen, onNavigate, variant, drawerOpen, onDrawerToggle, onOpenChange }: AdminMenuProps) {
+export default function AdminMenu({ screen, onNavigate, variant, onOpenChange }: AdminMenuProps) {
   const items: AdminItem[] = [
     { key: "members", label: "회원", isActive: screen === "members", onSelect: () => onNavigate("members") },
     { key: "imageSettings", label: "이미지 설정", isActive: screen === "imageSettings", onSelect: () => onNavigate("imageSettings") },
@@ -44,15 +40,7 @@ export default function AdminMenu({ screen, onNavigate, variant, drawerOpen, onD
     { key: "rivalry", label: "상성맵", isActive: screen === "rivalry", onSelect: () => onNavigate("rivalry") },
   ];
   const activeInAdmin = items.some((i) => i.isActive);
-  // 햄버거 드로어는 열 때마다 새로 마운트되므로(Header가 menuOpen일 때만 렌더), 지금 보고
-  // 있는 화면이 운영 화면이면 드로어 안 드롭다운은 처음부터 펼쳐진 채로 보여준다.
-  const [internalOpen, setInternalOpen] = useState(() => variant === "drawer" && activeInAdmin);
-  const open = variant === "drawer" && drawerOpen !== undefined ? drawerOpen : internalOpen;
-  const toggleOpen = () => {
-    if (variant === "drawer" && onDrawerToggle) onDrawerToggle();
-    else setInternalOpen((v) => !v);
-  };
-  const setOpen = setInternalOpen;
+  const [open, setOpen] = useState(false);
   useEffect(() => { onOpenChange?.(open); }, [open, onOpenChange]);
   // 트리거 버튼에 직접 앵커를 건다 — 감싸는 바깥 div는 display:contents라 레이아웃 박스가
   // 없어서(getBoundingClientRect가 0크기를 반환) 거기에 걸면 팝오버 위치가 엉뚱한 곳(주로
@@ -118,16 +106,12 @@ export default function AdminMenu({ screen, onNavigate, variant, drawerOpen, onD
   ));
 
   if (variant === "drawer") {
+    // 서랍의 운영 메뉴는 더 이상 아코디언이 아니다(요청: "접기 불가") — 클릭할 수 없는
+    // 카테고리 제목 + 항상 펼쳐진 목록으로 고정한다.
     return (
       <div className="scr-menu-pop scr-menu-pop-drawer">
-        {/* "운영" 자체는 화면이 아니라 카테고리 이름이라, 그 안의 회원/이미지 설정 중
-            하나가 활성이어도 이 트리거는 반전 효과를 받지 않는다 — 실제 활성 표시는
-            펼쳐진 하위 항목(scr-menu-pop-opt-active) 쪽에서만 보여준다. */}
-        <button type="button" className="scr-nav-tab" onClick={toggleOpen}>
-          <span>운영</span>
-          <ChevronDown size={12} className={cx("scr-menu-pop-caret", open && "scr-menu-pop-caret-open")} />
-        </button>
-        {open && <div className="scr-menu-pop-drop-inline">{optionButtons}</div>}
+        <div className="scr-nav-tab scr-menu-pop-drawer-title"><span>운영</span></div>
+        <div className="scr-menu-pop-drop-inline">{optionButtons}</div>
       </div>
     );
   }

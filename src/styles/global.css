@@ -5172,6 +5172,10 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
 /* 메뉴 묶음을 서랍 하단으로 몰아 정렬(요청) — margin-top:auto로 남는 세로 공간을 위에서
    먹는다(액션 묶음은 nav 바로 뒤 흐름 그대로라 함께 하단에 붙는다). */
 .scr-drawer-nav { display: flex; flex-direction: column; gap: 4px; margin-top: auto; }
+/* 서랍 '운영'은 이제 접히지 않는 고정 섹션(요청) — 버튼이 아니라 카테고리 제목이라
+   눌리는 것처럼 보이지 않게 커서/호버 반응 없이 흐린 색으로만 둔다. */
+.scr-menu-pop-drawer-title { cursor: default; color: var(--muted); }
+.scr-menu-pop-drawer-title:hover { background: transparent; color: var(--muted); }
 /* border-radius를 활성 반전 블록(.scr-nav-tab-active, 4px)과 똑같이 맞춘다 — 다르면
    터치 시 브라우저 기본 하이라이트(이 버튼 자신의 모양을 그대로 따라간다)와 실제
    활성 표시가 서로 다른 둥글기로 보였다. */
