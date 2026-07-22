@@ -1855,9 +1855,9 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   /* 유저 컬럼 폭 추가 축소(요청: 닉네임/배틀태그가 생각보다 공간을 안 씀): 97→73→60px.
      칸이 좁아진 만큼 안쪽 패딩도 10→7px로 줄여 실제 글자 공간을 확보하고, 넘치는
      이름은 기존 말줄임이 처리한다. */
-  /* 모바일 최종 스펙(요청): 유저 칸 96px · 데이터 칸 128px · 데이터 행 폰트 2스텝 축소
+  /* 모바일 최종 스펙(요청): 유저 칸 100px · 데이터 칸 140px · 데이터 행 폰트 2스텝 축소
      (body→caption→micro, 헤더 제외 — 아래 .scr-stat-row-head가 body로 되돌린다). */
-  .scr-stats-list-panel-v2 .scr-stat-row { --scr-stat-name-w: 96px; font-size: var(--fs-micro); }
+  .scr-stats-list-panel-v2 .scr-stat-row { --scr-stat-name-w: 100px; font-size: var(--fs-micro); }
   .scr-stats-list-panel-v2 .scr-stat-name-cell {
     flex-direction: row; align-items: center; justify-content: center;
     padding-left: 7px; padding-right: 7px;
@@ -1870,7 +1870,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
      135px로 맞춰야(위 background-position이 참조) 구분선이 실제 칸 폭과 어긋나지
      않는다. */
   .scr-stats-list-panel-v2 .scr-stat-row {
-    --scr-stat-col-w: 128px;
+    --scr-stat-col-w: 140px;
     grid-template-columns: var(--scr-stat-name-w) repeat(5, var(--scr-stat-col-w));
   }
 
