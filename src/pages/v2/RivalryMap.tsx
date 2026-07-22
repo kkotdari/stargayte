@@ -130,8 +130,8 @@ export default function RivalryMap({
             const halfH = 3 * chipScale;
             const edgeRadius = (vx: number, vy: number) =>
               (halfW * halfH) / (Math.hypot(halfH * vx, halfW * vy) || 1);
-            let trimStart = edgeRadius(ux, uy) + 0.8;
-            let trimEnd = edgeRadius(ux, uy) + 1.8;
+            let trimStart = edgeRadius(ux, uy) + 0.7;
+            let trimEnd = edgeRadius(ux, uy) + 1.2;
             // 바로 옆 칩처럼 가까우면 트림이 선을 다 먹어 화살촉만 남는다(지적된 버그)
             // — 촉 길이 + 여유만큼의 기둥은 반드시 남도록 트림을 비례 축소한다.
             const minShaft = headLen + 1.6;
@@ -164,9 +164,18 @@ export default function RivalryMap({
                     세로/대각선 선에서 "선을 따라" 밀려 라벨이 한쪽 끝으로 치우쳐 보였다(지적).
                     글자 크기는 칩 축소 비율(chipScale)을 따라간다(요청 — 칩 사이가 좁아지므로). */}
                 {selected !== null && (() => {
-                  const side = ux > 0 ? -1 : 1; // perp(-uy,ux)의 y성분(ux)이 음수(위쪽)가 되게
-                  const lx = (x1 + x2) / 2 + side * -uy * 1.6;
-                  const ly = (y1 + y2) / 2 + side * ux * 1.6;
+                  const midX = (x1 + x2) / 2;
+                  const midY = (y1 + y2) / 2;
+                  let side = ux > 0 ? -1 : 1; // perp(-uy,ux)의 y성분(ux)이 음수(위쪽)가 되게
+                  let off = 1.6;
+                  // 바로 옆 칩 사이 짧은 선은 라벨이 칩(위층 DOM)에 덮인다(지적) — 빈
+                  // 공간인 원 중심 쪽으로 방향을 잡고 더 멀리 띄운다.
+                  if (len < 32) {
+                    side = (-uy * (50 - midX) + ux * (50 - midY)) >= 0 ? 1 : -1;
+                    off = 4.2;
+                  }
+                  const lx = midX + side * -uy * off;
+                  const ly = midY + side * ux * off;
                   // 선택한 유저의 승수가 항상 앞에 오게 방향을 맞춘다(지적된 오류).
                   const label = e.from === selected
                     ? `${e.fromWins}:${e.toWins}`
