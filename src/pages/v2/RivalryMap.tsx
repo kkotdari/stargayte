@@ -10,10 +10,10 @@ const MIN_GAMES = 1;
 const STRONG = 0.6;
 
 // 우세/열세가 강할수록(승률이 50%에서 멀수록) 선을 두껍게, 약하면 얇게(요청).
-// strength 0(50%) → 0.35, 1(100%) → 1.1.
+// 변화폭을 더 크게(요청) — strength 0(50%) → 0.25, 1(100%) → 1.8.
 const edgeWidth = (winRate: number) => {
   const strength = Math.abs(winRate - 0.5) * 2;
-  return Math.round((0.35 + 0.75 * strength) * 100) / 100;
+  return Math.round((0.25 + 1.55 * strength) * 100) / 100;
 };
 
 interface Edge {
@@ -53,8 +53,8 @@ export default function RivalryMap({
       } else if (aWr <= 1 - STRONG) {
         edges.push({ from: p.b, to: p.a, kind: "strong", games, fromWins: p.bWins, toWins: p.aWins, width: edgeWidth(aWr) });
       } else {
-        // 대등은 강도 개념이 없으니 중간 굵기 고정(요청) — 우세 굵기 범위(0.35~1.1)의 중간.
-        edges.push({ from: p.a, to: p.b, kind: "even", games, fromWins: p.aWins, toWins: p.bWins, width: 0.7 });
+        // 대등은 강도 개념이 없으니 중간 굵기 고정(요청) — 우세 굵기 범위(0.25~1.8)의 중간.
+        edges.push({ from: p.a, to: p.b, kind: "even", games, fromWins: p.aWins, toWins: p.bWins, width: 1.0 });
       }
       ids.add(p.a);
       ids.add(p.b);
