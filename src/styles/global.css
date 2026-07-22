@@ -6480,7 +6480,9 @@ html.scr-snap-today { scroll-snap-type: y proximity; scroll-padding-top: calc(va
 .scr-scroll-timeline-date {
   position: absolute; right: 100%; margin-right: 8px; transform: translateY(-50%);
   white-space: nowrap; font-size: var(--fs-caption); font-weight: 700;
-  color: var(--text); background: var(--panel-solid);
+  /* 완전 불투명(--panel-solid)이던 알약을 반투명으로(요청: "타임라인 다크 라이트에서 탭
+     투명도 높여줘") — --panel-solid가 테마별 색을 갖고 있어 다크/라이트 모두 한 규칙로 덮인다. */
+  color: var(--text); background: color-mix(in srgb, var(--panel-solid) 55%, transparent);
   padding: 3px 7px; border-radius: 5px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22); pointer-events: none;
 }
@@ -7748,6 +7750,36 @@ html.scr-snap-today { scroll-snap-type: y proximity; scroll-padding-top: calc(va
 
 /* ===== 유저 상성 맵(운영 메뉴, 요청) ===== */
 .scr-rivalry { display: flex; flex-direction: column; gap: 10px; }
+/* ── 랭킹 필터 줄의 "상성맵" 버튼 + 반투명 오버레이(요청) ──
+   버튼은 필터 줄 가운데 빈 자리(기간과 종족 사이)에 굵은 텍스트로만 — 개인전에서만
+   렌더된다(RankingScreen). 필터 항목들과 세로 중심을 맞추기 위한 최소한의 높이만 갖는다. */
+.scr-rank-rivalry-btn {
+  background: transparent; border: none; cursor: pointer; padding: 4px 8px;
+  font-family: inherit; font-size: var(--fs-caption); font-weight: 800; color: var(--text);
+  -webkit-tap-highlight-color: transparent;
+  /* 라벨 달린 FilterItem들 사이에서 혼자 라벨이 없어 위로 떠 보이지 않게 살짝 내린다. */
+  align-self: center;
+}
+.scr-rank-rivalry-btn:hover { color: var(--point); }
+/* 반투명 오버레이 — 뒤의 랭킹이 비쳐 보이는 딤+블러 위에 맵만 띄운다(자체 패널 없음). */
+.scr-rivalry-overlay {
+  position: fixed; inset: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: center;
+  padding: calc(12px + var(--safe-top)) 12px calc(12px + env(safe-area-inset-bottom, 0px));
+  background: rgba(4, 6, 10, 0.62);
+  -webkit-backdrop-filter: blur(7px); backdrop-filter: blur(7px);
+}
+html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62); }
+.scr-rivalry-overlay-body { width: min(560px, 100%); }
+.scr-rivalry-overlay-head {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;
+}
+.scr-rivalry-overlay-title { font-size: var(--fs-subhead); font-weight: 800; }
+.scr-rivalry-overlay-close {
+  background: transparent; border: none; cursor: pointer; color: var(--muted);
+  padding: 6px; display: inline-flex; -webkit-tap-highlight-color: transparent;
+}
+.scr-rivalry-overlay-close:hover { color: var(--text); }
 /* 개인전/팀전 탭(요청: 루페 스타일) — 하단 탭바의 물방울(.scr-mobile-tab-indicator)을
    그대로 재사용하고, 위치만 이 탭줄 기준으로 다시 잡는다: 두 탭이 정확히 반반이라
    JS 실측 없이 폭 50% + translateX(0%/100%)로 슬라이드한다. */

@@ -37,7 +37,8 @@ export default function AdminMenu({ screen, onNavigate, variant, onOpenChange }:
     { key: "imageSettings", label: "이미지 설정", isActive: screen === "imageSettings", onSelect: () => onNavigate("imageSettings") },
     { key: "gameId", label: "게임아이디", isActive: screen === "gameId", onSelect: () => onNavigate("gameId") },
     { key: "leagues", label: "리그", isActive: screen === "leagues", onSelect: () => onNavigate("leagues") },
-    { key: "rivalry", label: "상성맵", isActive: screen === "rivalry", onSelect: () => onNavigate("rivalry") },
+    // 상성맵은 운영 메뉴에서 뺐다(요청) — 이제 랭킹 화면(개인전)의 "상성맵" 버튼이
+    // 오버레이(RivalryOverlay)로 띄운다. 운영 전용 화면(RivalryScreen) 자체는 남아 있다.
   ];
   const activeInAdmin = items.some((i) => i.isActive);
   const [open, setOpen] = useState(false);

@@ -9,6 +9,7 @@ import Select from "../../components/common/Select";
 import RankRow from "./RankRow";
 import RankingDetailModal from "./RankingDetailModal";
 import ChallengeFormModal from "../../modals/ChallengeFormModal";
+import RivalryOverlay from "../rivalry/RivalryOverlay";
 import KakaoShareButton from "../../components/common/KakaoShareButton";
 import type { KakaoShareContent } from "../../utils/kakaoShare";
 import { renderRankingShareImage } from "../../utils/rankingShareImage";
@@ -81,6 +82,9 @@ export default function RankingScreenV2() {
   // 닉네임 옆 주먹 버튼으로 지목한 상대 — 있으면 그 상대를 미리 채운 도전장 작성 모달을
   // 띄운다(요청: "랭킹카드에 바로 그 상대로 도전장 띄우는 버튼 추가 닉네임 옆에").
   const [challengeTarget, setChallengeTarget] = useState<Member | null>(null);
+  // 필터 줄 가운데 "상성맵" 버튼(개인전 전용)으로 여는 반투명 오버레이 — 기간은 지금
+  // 보고 있는 랭킹 필터(월/연 기준점)를 그대로 따른다(요청).
+  const [rivalryOpen, setRivalryOpen] = useState(false);
 
   // 진입 기본값은 개인전/팀전 중 랜덤(요청: "랭킹 기본은 개인/팀 랜덤으로 결정") — 특정
   // 쪽으로 고정하지 않고 매번 새로 들어올 때마다 둘 중 하나를 고른다. 다만 카톡 공유
@@ -332,6 +336,13 @@ export default function RankingScreenV2() {
                 </button>
               </span>
             </FilterItem>
+            {/* 상성맵 열기(개인전 전용, 요청) — 필터 줄 가운데 빈 자리에 굵은 텍스트
+                버튼으로. 기간 필터를 그대로 따르는 오버레이를 띄운다. */}
+            {mode === "solo" && (
+              <button type="button" className="scr-rank-rivalry-btn" onClick={() => setRivalryOpen(true)}>
+                상성맵
+              </button>
+            )}
             {/* 종족 필터 — '랭커의 종족'(그 경기에서 낸 종족) 기준. 개인전·팀전 모두 지원한다. */}
             <FilterItem label="종족">
               <Select
@@ -407,6 +418,10 @@ export default function RankingScreenV2() {
           onClose={() => setChallengeTarget(null)}
           onCreated={() => setChallengeTarget(null)}
         />
+      )}
+
+      {rivalryOpen && (
+        <RivalryOverlay from={period.from} to={period.to} onClose={() => setRivalryOpen(false)} />
       )}
     </div>
   );
