@@ -4366,7 +4366,9 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 /* 비밀번호 입력 전(잠긴) 상태는 입력칸+버튼뿐이라 내용이 짧아서, 다 풀린 뒤(버전
    전환/배포 버튼 등)보다 카드가 훨씬 납작해 보였다(실제로 지적받은 문제 — "제어판과
    똑같은 크기로") — 최소 높이를 걸어 두 상태의 카드 크기가 비슷하게 느껴지게 한다. */
-.scr-admin-panel-modal .scr-modal-body { min-height: 456px; }
+/* 배치 메뉴(원형 대상 버튼 58px)가 펼쳐진 상태의 실측 높이(509px)까지 미리 예약 —
+   배치등록을 눌러도 모달 세로가 안 늘어난다(요청, 원형 버튼으로 키우면서 재계산). */
+.scr-admin-panel-modal .scr-modal-body { min-height: 510px; }
 /* 어떤 라벨도 없이 숫자 PIN 입력칸 하나만 보여준다 — type="password"라 실제로는 점으로
    가려지지만, 자간을 넉넉히 둬서 PIN 입력칸 느낌을 준다. 가로 폭은 숫자 몇 자리만 들어갈
    정도로 좁게 잡는다(기본 100%는 정사각형 카드에서 유난히 넓어 보인다). 점(마스킹 글자)이
@@ -4510,12 +4512,14 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   background: #1a1e24; border-color: #1a1e24;
 }
 .scr-admin-panel-modal .scr-admin-panel-batch-option input:not([type="radio"]):checked::after { background-color: #fff; }
-/* 대상 버튼(일대일만/팀전만/전체) — 좌우 패딩을 줄인 콤팩트한 완전 원형(알약) 버튼을
-   가운데에 넉넉한 갭으로 나란히(요청). 그리드 스트레치 대신 내용폭 flex로. */
+/* 대상 버튼(일대일만/팀전만/전체) — 셋 다 같은 지름의 완전한 원형으로 통일(요청: 알약이
+   아니라 진짜 원). 지름은 가장 긴 라벨("일대일만" 4자 × micro 12px ≈ 48px)이 한 줄로
+   들어가는 크기. 텍스트는 caption→micro로 1스텝 축소(요청). */
 .scr-admin-panel-batch-modes { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; }
 .scr-admin-panel-batch-mode {
-  flex: 0 0 auto; min-height: 0;
-  font-size: var(--fs-caption); font-weight: 700; padding: 6px 13px; border-radius: 999px;
+  flex: 0 0 auto; width: 58px; height: 58px; min-height: 0; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: var(--fs-micro); font-weight: 700; border-radius: 50%;
   background: #fff; border-color: #fff; color: #10151a; text-shadow: none; box-shadow: none;
 }
 .scr-admin-panel-batch-mode:hover { filter: brightness(0.94); }
