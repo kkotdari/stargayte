@@ -3,11 +3,18 @@ import Avatar from "../../components/common/Avatar";
 import { cx } from "../../utils/format";
 import type { Member, RivalryPair } from "../../types";
 
-// 상성 판정 기준 — 무승부를 뺀 1:1 판수가 이만큼은 돼야 쌍을 그린다(표본이 적으면 상성이
-// 아니라 우연이다).
-const MIN_GAMES = 3;
+// 상성 판정 기준 — 1전이라도 있으면 다 그린다(요청: "1전이라도 다 표현"). 표본 크기는
+// 선 굵기(우세 강도)가 아니라 보여주는 범위의 문제로 두지 않고 전부 노출한다.
+const MIN_GAMES = 1;
 // 이 승률 이상이면 "우세"(화살표), 그 사이(40~60%)는 "대등"(회색 선).
 const STRONG = 0.6;
+
+// 우세/열세가 강할수록(승률이 50%에서 멀수록) 선을 두껍게, 약하면 얇게(요청).
+// strength 0(50%) → 0.35, 1(100%) → 1.1.
+const edgeWidth = (winRate: number) => {
+  const strength = Math.abs(winRate - 0.5) * 2;
+  return Math.round((0.35 + 0.75 * strength) * 100) / 100;
+};
 
 interface Edge {
   from: string; // 우세한 쪽(대등이면 그냥 a)
@@ -15,6 +22,7 @@ interface Edge {
   kind: "strong" | "even";
   games: number;
   label: string; // "7:3" 같은 전적 라벨
+  width: number; // 우세 강도에 비례한 선 굵기(SVG 좌표계 단위)
 }
 
 // 통계 화면 하단의 유저 상성 맵(요청) — 회원들을 원형으로 배치한 투명 글라스 칩(아바타+
@@ -37,12 +45,13 @@ export default function RivalryMap({
       if (games < MIN_GAMES) return;
       if (!memberOf(p.a) || !memberOf(p.b)) return;
       const aWr = p.aWins / games;
+      const width = edgeWidth(aWr);
       if (aWr >= STRONG) {
-        edges.push({ from: p.a, to: p.b, kind: "strong", games, label: `${p.aWins}:${p.bWins}` });
+        edges.push({ from: p.a, to: p.b, kind: "strong", games, label: `${p.aWins}:${p.bWins}`, width });
       } else if (aWr <= 1 - STRONG) {
-        edges.push({ from: p.b, to: p.a, kind: "strong", games, label: `${p.bWins}:${p.aWins}` });
+        edges.push({ from: p.b, to: p.a, kind: "strong", games, label: `${p.bWins}:${p.aWins}`, width });
       } else {
-        edges.push({ from: p.a, to: p.b, kind: "even", games, label: `${p.aWins}:${p.bWins}` });
+        edges.push({ from: p.a, to: p.b, kind: "even", games, label: `${p.aWins}:${p.bWins}`, width });
       }
       ids.add(p.a);
       ids.add(p.b);
@@ -108,6 +117,8 @@ export default function RivalryMap({
               <g key={i} className={cx("scr-rivalry-edge", `scr-rivalry-edge-${e.kind}`, selected !== null && "scr-rivalry-edge-focus")}>
                 <line
                   x1={x1} y1={y1} x2={x2} y2={y2}
+                  // 우세 강도 비례 굵기 — 인라인 style이라 CSS 기본 굵기를 덮는다.
+                  style={{ strokeWidth: e.width }}
                   markerEnd={e.kind === "strong" ? "url(#scr-rivalry-arrow)" : undefined}
                 />
                 {/* 선택 모드에서만 전적 라벨을 선 중앙에 보여준다 — 전체 보기에선 겹쳐서 소음. */}
@@ -152,7 +163,7 @@ export default function RivalryMap({
         <span className="scr-rivalry-legend-item"><span className="scr-rivalry-legend-arrow" /> 우세(화살표가 가리키는 쪽이 열세)</span>
         <span className="scr-rivalry-legend-item"><span className="scr-rivalry-legend-even" /> 대등</span>
         <span className="scr-rivalry-legend-note">
-          {team ? `팀전 개인환산 ${MIN_GAMES}전 이상만` : `1:1 ${MIN_GAMES}전 이상만`} · 유저를 누르면 그 유저의 상성만 표시
+          선이 굵을수록 상성이 뚜렷 · 유저를 누르면 그 유저의 상성만 표시
         </span>
       </div>
     </div>

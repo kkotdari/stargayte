@@ -7657,6 +7657,8 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
      여기선 크기만 이 탭줄에 맞춘다(세로는 탭바처럼 버튼보다 살짝 크게). */
   top: -3px; bottom: -3px; width: 50%; height: auto;
 }
+/* 기간 필터 줄(전체/월 알약탭 + 달력) — 지도 위 가운데 정렬. */
+.scr-rivalry-period { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 6px; }
 .scr-rivalry-tab {
   flex: 1; position: relative; z-index: 1;
   background: transparent; border: none; cursor: pointer; text-align: center;
