@@ -89,8 +89,8 @@ export default function Header({
       return () => { cancelAnimationFrame(raf); clearTimeout(t); };
     }
     setDrawerOpen(false);
-    // 슬라이드 트랜지션(.3s)이 끝까지 재생된 뒤 언마운트한다.
-    const t = setTimeout(() => setDrawerRendered(false), 320);
+    // 슬라이드 트랜지션(.34s)이 끝까지 재생된 뒤 언마운트한다.
+    const t = setTimeout(() => setDrawerRendered(false), 380);
     return () => clearTimeout(t);
   }, [menuOpen]);
 

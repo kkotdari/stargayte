@@ -2418,7 +2418,7 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 .scr-rank-screen-v2::before {
   content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
   background-image:
-    linear-gradient(180deg, rgba(3,3,6,0.72) 0%, rgba(3,3,6,0.6) 45%, rgba(3,3,6,0.78) 100%),
+    linear-gradient(180deg, rgba(3,3,6,0.78) 0%, rgba(3,3,6,0.67) 45%, rgba(3,3,6,0.83) 100%),
     url("/images/bg/ranking.jpg");
   background-size: cover; background-position: center; background-repeat: no-repeat;
 }
@@ -2434,7 +2434,7 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 @media (max-width: 860px) {
   .scr-rank-screen-v2::before {
     background-image:
-      linear-gradient(180deg, rgba(3,3,6,0.72) 0%, rgba(3,3,6,0.6) 45%, rgba(3,3,6,0.78) 100%),
+      linear-gradient(180deg, rgba(3,3,6,0.78) 0%, rgba(3,3,6,0.67) 45%, rgba(3,3,6,0.83) 100%),
       url("/images/bg/ranking_mobile.jpg");
   }
 }
@@ -4104,9 +4104,11 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
      원형 강제 오버라이드와 같은 패턴). */
   /* 로고/아바타 확대 + 닉네임 1스텝 확대(요청, 재조정: 로고 32·아바타 36) — 닉네임은
      보이던 크기(body 16) 기준 한 스텝 위인 subhead(20). */
-  .scr-brand-logo-img { height: 28px; }
+  .scr-brand-logo-img { height: 32px; }
   .scr-brand-mark { font-size: var(--fs-title); }
-  .scr-user-chip .scr-avatar { width: 28px !important; height: 28px !important; }
+  .scr-user-chip .scr-avatar { width: 32px !important; height: 32px !important; }
+  /* 아바타 우측 패딩 2px 축소(요청) — 칩 기본 4px 10px 4px 4px에서 우측만. */
+  .scr-user-chip { padding-right: 8px; }
   /* 모바일 헤더에선 닉네임 없이 아바타만(요청). */
   .scr-user-name { display: none; }
   /* 프로필 칩(아바타+닉네임)은 로고의 중심선보다 아래로(요청: 2px에서 6px 더), 로고도
@@ -5182,8 +5184,8 @@ html.scr-light-theme .scr-mobile-tabbar {
      겹치지 않게 한다. */
   touch-action: pan-y;
   transform: translateX(100%);
-  /* 살짝만 더 부드럽게(요청) — 시간 소폭 연장 + 끝에서 길게 감속하는 이징. */
-  transition: transform .3s cubic-bezier(0.22, 1, 0.36, 1);
+  /* 살짝만 더 부드럽게(요청) — 열림/닫힘 모두 iOS 시트 계열의 감속 곡선. */
+  transition: transform .34s cubic-bezier(0.32, 0.72, 0, 1);
 }
 .scr-drawer-overlay.scr-drawer-open .scr-drawer { transform: translateX(0); }
 /* 라이트 테마는 흰 유리라 흰 반사광이 안 보여, 대신 아주 옅은 어두운 경계선으로 모서리를 잡는다.
