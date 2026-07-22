@@ -44,7 +44,9 @@ const INDICATOR_VERTICAL_INSET = -6;
 // 거의 없어서(탭이 많아진 뒤로 줄바꿈 방지 차 없앴다), 버튼 폭에 딱 맞추면 "게임아이디"
 // 같은 긴 라벨이 알약 가장자리에 바짝 붙어 보였다. 전체적인 크기감을 키워달라는 요청으로
 // 살짝 더 늘렸다.
-const INDICATOR_HORIZONTAL_PAD = 13;
+// 세로를 키운 것과 함께, 가로로만 길쭉해 보이지 않게 좌우 여유는 줄인다(요청: "너무
+// 옆으로 긴 모양이 아니게" — 라벨이 문자열이라 가로가 원래 길다). 13 → 8.
+const INDICATOR_HORIZONTAL_PAD = 8;
 
 function useActiveTabIndicator(navRef: { current: HTMLElement | null }, deps: unknown[]) {
   const [indicator, setIndicator] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
