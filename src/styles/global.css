@@ -2392,6 +2392,12 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
     padding: 0 12px;
   }
   .scr-rank-table-panel-v2 .scr-rank-name { font-size: var(--fs-subhead); }
+  /* 모바일 정렬 미세 조정(요청): 순위 +4px, 프사 +12px(트랜스폼 — 칸 폭 유지), 닉네임은
+     margin으로 +12px(가용 폭이 같이 줄어 말줄임이 점수 칸을 안 침범), 점수 칸 -4px. */
+  .scr-rank-table-panel-v2 .scr-rank-badge { transform: translateX(4px); }
+  .scr-rank-table-panel-v2 .scr-rank-avatar-btn { transform: translateX(12px); }
+  .scr-rank-table-panel-v2 .scr-rank-name-wrap { margin-left: 20px; }
+  .scr-rank-table-panel-v2 .scr-rank-record-wrap { transform: translateX(-4px); }
   .scr-rank-record-v2 { font-size: var(--fs-caption); }
   .scr-rank-latest-match { font-size: var(--fs-caption); max-width: 100px; }
   /* 프사 크기(모바일). Avatar가 인라인 style로 크기를 박으므로 !important가 필요하다.
