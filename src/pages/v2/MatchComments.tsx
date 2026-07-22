@@ -348,7 +348,7 @@ export default function MatchComments({ match }: { match: Match }) {
                 <div className="scr-mreq-item-author">
                   <Avatar
                     member={{ id: c.author.memberId, nickname: c.author.nickname, avatar: c.author.avatar }}
-                    size={20}
+                    size={18}
                     className="scr-mreq-item-author-avatar"
                   />
                   <span className="scr-mreq-item-author-name">{c.author.nickname}</span>
@@ -381,7 +381,7 @@ export default function MatchComments({ match }: { match: Match }) {
                   onSubmit={(text, ids) => void update(c.id, text, ids)}
                   onCancel={() => setEditingId(null)}
                   placeholder="메모 수정"
-                  submitLabel={<CornerDownLeft size={16} />}
+                  submitLabel={<CornerDownLeft size={14} />}
                 />
               ) : (
                 <p className="scr-mreq-item-text scr-match-comment-text">{renderInline(c.text, c.mentions)}</p>
@@ -400,7 +400,7 @@ export default function MatchComments({ match }: { match: Match }) {
           submitting={busy}
           onSubmit={(text, ids) => void create(text, ids)}
           placeholder="메모 남기기 (@로 유저 태그)"
-          submitLabel={<CornerDownLeft size={16} />}
+          submitLabel={<CornerDownLeft size={14} />}
         />
       )}
 

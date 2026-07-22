@@ -163,30 +163,24 @@ export default function MatchScreenV2() {
         suggestions={suggestions}
       />
 
-      {/* 경기번호·댓글 검색 — 유저 전용 공통 검색창과 별개인 이 화면 전용 필드. 한 줄에
-          나란히 두고 모바일에서도 한 줄을 유지한다(요청). */}
+      {/* 경기번호·메모 검색 — 유저 전용 공통 검색창과 별개인 이 화면 전용 필드. 라벨 없이
+          플레이스홀더로만 힌트를 주고(요청), 한 줄에 나란히(모바일도 한 줄) 둔다. */}
       <div className="scr-match-extra-search">
-        <label className="scr-match-extra-field">
-          <span className="scr-field-label-text">경기번호</span>
-          <input
-            className="scr-input scr-list-search-input"
-            value={matchNoQuery}
-            onChange={(e) => setMatchNoQuery(e.target.value)}
-            placeholder="경기번호"
-            inputMode="numeric"
-            autoComplete="off"
-          />
-        </label>
-        <label className="scr-match-extra-field">
-          <span className="scr-field-label-text">메모</span>
-          <input
-            className="scr-input scr-list-search-input"
-            value={commentQuery}
-            onChange={(e) => setCommentQuery(e.target.value)}
-            placeholder="메모 내용"
-            autoComplete="off"
-          />
-        </label>
+        <input
+          className="scr-input scr-list-search-input scr-match-extra-field"
+          value={matchNoQuery}
+          onChange={(e) => setMatchNoQuery(e.target.value)}
+          placeholder="경기번호"
+          inputMode="numeric"
+          autoComplete="off"
+        />
+        <input
+          className="scr-input scr-list-search-input scr-match-extra-field"
+          value={commentQuery}
+          onChange={(e) => setCommentQuery(e.target.value)}
+          placeholder="메모 내용"
+          autoComplete="off"
+        />
       </div>
 
       {error && <div className="scr-err">{error}</div>}

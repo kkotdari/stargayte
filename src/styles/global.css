@@ -2734,20 +2734,18 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-match-screen-v2 .scr-filter-inline-stack { flex-direction: column; align-items: stretch; }
 .scr-match-screen-v2 .scr-filter-panel { width: 100%; }
 .scr-match-screen-v2 .scr-search-filter-float { width: 100%; }
-/* 경기번호·댓글 검색 필드(경기 화면 전용) — 유저 검색창 바로 아래에 한 줄로 나란히 두고,
-   모바일에서도 한 줄을 유지한다(요청). 인풋 톤은 유저 검색창과 같은 옅은 반투명. */
+/* 경기번호·메모 검색 필드(경기 화면 전용) — 유저 검색창 바로 아래에 한 줄로 나란히 두고,
+   모바일에서도 한 줄을 유지한다(요청). 라벨 없이 플레이스홀더로만 힌트를 준다(요청). 인풋
+   톤은 유저 검색창과 같은 옅은 반투명. */
 .scr-match-extra-search { display: flex; gap: 8px; width: 100%; margin: -6px 0 14px; }
-.scr-match-extra-field { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-.scr-match-extra-field .scr-field-label-text {
-  display: block; font-size: var(--fs-micro); color: var(--muted); padding-left: 2px;
-}
-.scr-match-extra-field .scr-list-search-input {
-  width: 100%; box-sizing: border-box; height: 30px; min-height: 30px;
+.scr-match-extra-field {
+  flex: 1 1 0; min-width: 0;
+  box-sizing: border-box; height: 30px; min-height: 30px;
   background: rgba(255,255,255,0.08); border: none; border-radius: 10px; box-shadow: none;
   padding: 0 12px; color: var(--text); font-size: var(--fs-caption);
 }
-.scr-light-theme .scr-match-extra-field .scr-list-search-input { background: rgba(0,0,0,0.06); }
-.scr-match-extra-field .scr-list-search-input::placeholder { color: var(--muted); font-size: var(--fs-caption); }
+.scr-light-theme .scr-match-extra-field { background: rgba(0,0,0,0.06); }
+.scr-match-extra-field::placeholder { color: var(--muted); font-size: var(--fs-caption); }
 /* .scr-screen이 이미 형제간 gap을 넣어주므로 자체 마진은 두지 않는다. */
 /* 목록 위 소타이틀(요청: 경기 화면 "경기 목록"). */
 /* 소타이틀 아래 갭 12px(요청: PC·모바일 공통). */
@@ -3171,8 +3169,20 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-match-comment-item { padding: 7px 0; }
 .scr-match-comment-item + .scr-match-comment-item { border-top: 1px solid rgba(var(--overlay-rgb), 0.06); }
 .scr-match-comment-item .scr-mreq-item-top { margin-bottom: 3px; }
-.scr-match-comment-time { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; flex-shrink: 0; }
-.scr-match-comment-text { font-size: var(--fs-caption); }
+.scr-match-comment-time { font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; flex-shrink: 0; }
+.scr-match-comment-text { font-size: var(--fs-micro); }
+/* 메모 영역 전체를 한 스텝 작게(요청) — 목록 텍스트·입력창·버튼 폰트/크기를 함께 줄인다.
+   입력 편집기(scr-mreq-*)는 --field-h를 지역 재정의해 높이만 줄이고, 폰트/칩/버튼은 아래에서
+   개별로 한 스텝 낮춘다. */
+.scr-match-comments { --field-h: 30px; }
+.scr-match-comments .scr-mreq-item-author-name { font-size: var(--fs-micro); }
+.scr-match-comments .scr-mreq-text-part,
+.scr-match-comments .scr-mreq-live-input { font-size: var(--fs-caption); }
+.scr-match-comments .scr-mreq-chip-editor { font-size: var(--fs-micro); }
+.scr-match-comments .scr-mreq-submit-btn {
+  flex-basis: 30px; width: 30px; height: 30px;
+  min-width: 30px; min-height: 30px; max-width: 30px; max-height: 30px;
+}
 .scr-match-comment-icon-btn {
   display: inline-flex; align-items: center; justify-content: center;
   background: transparent; border: none; color: var(--muted); cursor: pointer;
