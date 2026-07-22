@@ -7,9 +7,10 @@ import { cx } from "../../utils/format";
 import type { RivalryPair } from "../../types";
 
 type RivalryMode = "solo" | "team";
+// 팀전 모드는 잠시 내려둔다(요청: "프론트에서 잠시 삭제(백엔드는 유지)") — 탭을
+// 되살리려면 여기 "team" 항목을 복구하면 된다(mode=team API/캐시 구조는 그대로 동작).
 const MODES: { key: RivalryMode; label: string }[] = [
   { key: "solo", label: "개인전" },
-  { key: "team", label: "팀전" },
 ];
 
 // 유저 상성 맵 — 운영 메뉴 전용 화면(요청). 전체 기간의 상대전적으로 누가 누구에게
@@ -40,8 +41,9 @@ export default function RivalryScreen() {
         <h1 className="scr-title scr-v2-toolbar-title">상성맵</h1>
       </div>
       {/* 개인전/팀전 탭 — 하단 탭바와 같은 루페 물방울이 활성 탭 위에 얹힌다(요청).
-          두 탭이 같은 폭이라 물방울은 CSS transform만으로 좌우 슬라이드한다. */}
-      <div className="scr-rivalry-tabs" role="tablist">
+          두 탭이 같은 폭이라 물방울은 CSS transform만으로 좌우 슬라이드한다.
+          모드가 하나뿐인 동안(팀전 임시 제거)은 탭줄 자체를 숨긴다. */}
+      {MODES.length > 1 && <div className="scr-rivalry-tabs" role="tablist">
         <div
           className={cx("scr-mobile-tab-indicator", "scr-rivalry-tab-indicator")}
           style={{ transform: `translateX(${MODES.findIndex((m) => m.key === mode) * 100}%)` }}
@@ -58,7 +60,7 @@ export default function RivalryScreen() {
             {m.label}
           </button>
         ))}
-      </div>
+      </div>}
       {error && <div className="scr-err">{error}</div>}
       {pairs === undefined && !error
         ? <div className="scr-empty"><Spinner size={18} /></div>
