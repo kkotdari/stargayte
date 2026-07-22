@@ -1778,27 +1778,18 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   --scr-stat-col-w: 150px;
   /* 데이터 5칸(게임수/승률/생산/유효APM/유효커맨드) — 생산 컬럼 추가로 4→5칸(구분선 4개). */
   grid-template-columns: var(--scr-stat-name-w) repeat(5, var(--scr-stat-col-w));
-  background-image:
-    linear-gradient(var(--line-soft), var(--line-soft)),
-    linear-gradient(var(--line-soft), var(--line-soft)),
-    linear-gradient(var(--line-soft), var(--line-soft)),
-    linear-gradient(var(--line-soft), var(--line-soft));
-  /* 진짜 원인: 이 행(.scr-stat-row)은 `width:max-content; min-width:100%;`라, 화면
-     폭이 실제 칸 합(name-w + col-w*4)보다는 넓은데 아직 900px(아래 minmax(1fr)
-     분기) 미만인 구간(대략 760~900px, 아이폰 가로모드 대부분이 여기 걸린다)에서는
-     `min-width:100%`가 이겨서 행 박스 자체가 칸 합보다 넓게 늘어난다. 그런데 실제
-     그리드 칸(각 150px 고정)은 늘어나지 않고 그대로라, 늘어난 여백은 맨 오른쪽에만
-     생긴다 — 반면 이 구분선은 "(100% - 이름칸폭) * 0.25/0.5/0.75"로, 그 "100%"를
-     늘어난 행 전체 폭 기준으로 계산해서 실제 칸 경계보다 점점 더 오른쪽에 그려졌다
-     (칸이 뒤로 갈수록 오차가 누적 — 사용자 표현으로는 "내용이 조금씩 왼쪽으로
-     치우쳐서 결국 칸을 벗어나는" 것처럼 보인다). 퍼센트 대신 실제 고정 칸 폭의
-     정수배(절대값)로 계산하면 행이 아무리 늘어나도 항상 실제 칸 경계와 일치한다. */
-  background-position:
-    calc(var(--scr-stat-name-w) + var(--scr-stat-col-w) * 1) 0,
-    calc(var(--scr-stat-name-w) + var(--scr-stat-col-w) * 2) 0,
-    calc(var(--scr-stat-name-w) + var(--scr-stat-col-w) * 3) 0,
-    calc(var(--scr-stat-name-w) + var(--scr-stat-col-w) * 4) 0;
+  /* 세로 구분선은 background-gradient(계산된 위치) 대신 각 칸의 border-left로 그린다
+     (아래 nth-child 규칙) — gradient 방식은 "칸이 실제로 얼마나 넓게 렌더됐는지"를
+     퍼센트/고정값으로 다시 계산해야 해서, 패널 폭이 좁아 칸이 min폭으로 넘칠 때(가로
+     스크롤)와 넓어 1fr로 채울 때가 서로 다른 공식이 필요했고 그 경계에서 늘 어긋났다
+     (실제로 지적받은 버그). border는 항상 그 칸의 진짜 경계에 붙으니 폭이 어떻게 되든
+     구분선이 칸과 정확히 일치한다. */
+  background-image: none;
 }
+/* 데이터 5칸 사이 4개 구분선 — 3~6번째 칸(승률/생산/유효APM/유효커맨드)의 왼쪽 경계.
+   1|2(유저|게임수) 경계는 이름 칸(.scr-stat-name-cell/head)의 border-right가 그린다.
+   box-sizing:border-box라 border가 칸 폭을 바꾸지 않아 트랙 정렬에도 영향이 없다. */
+.scr-stats-list-panel-v2 .scr-stat-row > *:nth-child(n+3) { border-left: 1px solid var(--line-soft); }
 @media (min-width: 900px) {
   .scr-stats-list-panel-v2 .scr-stat-row {
     grid-template-columns: var(--scr-stat-name-w) repeat(5, minmax(150px, 1fr));
