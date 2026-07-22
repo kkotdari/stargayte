@@ -5934,7 +5934,11 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,0.5),    /* 위 반사광 */
     inset 0 -4px 9px rgba(0,0,0,0.5),       /* 아래 눌린 홈 */
-    0 6px 0 #8f2424,                        /* 붉은 옆면(버튼 두께) */
+    /* 붉은 옆면(버튼 두께 6px) — 하드 섀도 3단으로 위는 밝고 아래로 갈수록 어두운
+       세로 명암을 만들어 옆면에도 입체감을 준다(요청). */
+    0 2px 0 #b53a3a,
+    0 4px 0 #992a2a,
+    0 6px 0 #741c1c,
     0 7px 0 rgba(0,0,0,0.4),                /* 옆면 아래 얇은 접지선 */
     0 11px 16px rgba(0,0,0,0.45);           /* 뜬 그림자 */
   transition: transform .1s ease, box-shadow .1s ease;
@@ -5950,7 +5954,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,0.5),
     inset 0 -3px 8px rgba(0,0,0,0.5),
-    0 1px 0 #8f2424,
+    0 1px 0 #992a2a,
     0 2px 0 rgba(0,0,0,0.4),
     0 4px 7px rgba(0,0,0,0.4);
 }
