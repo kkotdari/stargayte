@@ -5079,6 +5079,10 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
 .scr-cselect-trigger:hover { border-color: var(--muted); }
 .scr-cselect-open { border-color: var(--text); }
 .scr-cselect-value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 트리거에 프사가 붙는 경우(옵션 avatar가 있을 때 — 개인리그 대진 수정 등) 아바타+이름을
+   읽기전용 멤버 칩과 같은 가로 배치로 정렬한다. 프사는 다른 곳과 통일해 원형으로. */
+.scr-cselect-value:has(.scr-avatar) { display: inline-flex; align-items: center; gap: 5px; }
+.scr-cselect-value .scr-avatar { flex-shrink: 0; border-radius: 50% !important; }
 .scr-cselect-placeholder { color: var(--dim); }
 .scr-cselect-value-short { display: none; }
 .scr-cselect-caret { color: var(--dim); flex-shrink: 0; transition: transform .15s; }

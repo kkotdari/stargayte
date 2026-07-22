@@ -118,6 +118,9 @@ export default function Select({
         <span className={cx("scr-cselect-value", !selected && "scr-cselect-placeholder")}>
           {selected ? (
             <>
+              {/* 옵션에 프사가 있으면 트리거(선택된 값)에도 같이 보여준다 — 개인리그 대진
+                  수정 드롭다운이 읽기전용 카드(아바타+이름)와 같은 모양이 되게(요청). */}
+              {selected.avatar}
               <span className="scr-cselect-value-full">{selected.label}</span>
               {selected.shortLabel && (
                 <span className="scr-cselect-value-short">{selected.shortLabel}</span>

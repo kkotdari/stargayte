@@ -89,7 +89,7 @@ export default function RankRowV2({ row, tiedWithPrev = false, highlighted = fal
           </button>
           <div className="scr-rank-name-wrap">
             <span className={cx("scr-rank-name", nameClass)}>{member.nickname}</span>
-            {isGamesTop && <span className="scr-rank-games-badge">경기수{gamesRank}위</span>}
+            {isGamesTop && <span className="scr-rank-games-badge">경기수TOP{gamesRank}</span>}
             {onChallenge && (
               <button
                 type="button" className="scr-rank-challenge-btn" onClick={challenge}

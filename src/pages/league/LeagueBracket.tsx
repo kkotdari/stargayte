@@ -106,7 +106,16 @@ function SlotCell({
       value={team ? String(team.id) : ""}
       options={[
         { value: "", label: "미지정" },
-        ...league.teams.map((t) => ({ value: String(t.id), label: t.roster[0]?.nickname ?? `${t.label}(로스터 없음)` })),
+        // 읽기전용 카드(아바타 18px + 이름)와 같은 모양이 되도록 옵션마다 프사를 넘긴다
+        // (요청: 편집 중인 대진표에도 아바타 표시) — Select가 선택된 값(트리거)에도
+        // 이 아바타를 그대로 보여준다.
+        ...league.teams.map((t) => ({
+          value: String(t.id),
+          label: t.roster[0]?.nickname ?? `${t.label}(로스터 없음)`,
+          avatar: t.roster[0]
+            ? <Avatar member={{ id: t.roster[0].memberId, nickname: t.roster[0].nickname, avatar: t.roster[0].avatar }} size={18} />
+            : undefined,
+        })),
       ]}
       onChange={handleChange}
       placeholder="미지정"
