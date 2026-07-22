@@ -916,8 +916,8 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 .scr-brand-mark { font-weight: 900; color: var(--text); font-size: var(--fs-title); letter-spacing: 0.02em; }
 /* 관리자가 "이미지 설정"에서 홈 로고를 텍스트 대신 이미지로 바꿔둔 경우 — 텍스트 로고와
    같은 자리에 비슷한 높이로 들어가도록 */
-/* PC 로고 20% 확대(요청): 22→26px. 모바일은 아래 반응형 블록이 따로 정한다. */
-.scr-brand-logo-img { height: 26px; width: auto; display: block; }
+/* PC 로고 확대(요청, 20%씩 두 번): 22→26→31px. 모바일은 아래 반응형 블록이 따로 정한다. */
+.scr-brand-logo-img { height: 31px; width: auto; display: block; }
 .scr-brand-text { font-size: var(--fs-body); color: var(--muted); letter-spacing: 0.02em; white-space: nowrap; }
 .scr-nav { display: flex; gap: 6px; flex: 1; overflow-x: auto; scrollbar-width: none; }
 .scr-nav::-webkit-scrollbar { display: none; }
@@ -936,7 +936,8 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 /* 데스크톱 상단 메뉴명 — 한때 1.5배(24px)까지 키웠다가 너무 커 보인다는 피드백으로
    다시 줄인다(요청: "PC 헤더 메뉴 크기 축소"). 드로어(.scr-drawer-nav)는 이미 별도로
    튜닝된 크기(14.5px)가 있어 여기 영향을 안 받게 범위를 좁힌다. */
-.scr-nav-desktop .scr-nav-tab { font-size: var(--fs-subhead); }
+/* PC 상단 메뉴명 1스텝 축소(요청): subhead(20)→body(16). */
+.scr-nav-desktop .scr-nav-tab { font-size: var(--fs-body); }
 
 /* ===== 관리자 전용 화면 드롭다운 (AdminMenu) ===== */
 /* 래핑 div가 부모(.scr-nav/.scr-drawer-nav/.scr-mobile-tabbar)의 flex 자식 크기 계산에
