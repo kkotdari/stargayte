@@ -432,17 +432,20 @@ export default function LeagueBracket({
       {/* "대진표" 타이틀 생략(요청: "대진표 타이틀은 없어도 다 아니까 삭제") — 위 요약
           줄에 이미 "대진표 N강"이 있어 중복이었다. */}
       <div className="scr-league-bracket-toolbar">
-        {generateRow}
-        {/* 시드 편집은 로컬로만 하고 이 버튼으로 한 번에 저장한다(요청). 변경분이 있을 때만
-            활성화하고, 저장 안 한 편집이 있으면 옆에 안내를 띄운다. */}
-        {canEdit && !league.bracketLocked && (
-          <button
-            type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm"
-            onClick={saveSeeding} disabled={busy || !dirty}
-          >
-            {busy && <Spinner size={14} />} 시드 저장
-          </button>
-        )}
+        {/* 시드수 입력(적용)과 '시드 저장'을 한 묶음으로 왼쪽에 나란히 둔다(요청: 시드저장을
+            시드수 입력 옆으로, 갭을 주고). '대진 확정'만 오른쪽에 남긴다. */}
+        <div className="scr-league-bracket-seed-actions">
+          {generateRow}
+          {/* 시드 편집은 로컬로만 하고 이 버튼으로 한 번에 저장한다(요청). 변경분이 있을 때만 활성화. */}
+          {canEdit && !league.bracketLocked && (
+            <button
+              type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm"
+              onClick={saveSeeding} disabled={busy || !dirty}
+            >
+              {busy && <Spinner size={14} />} 시드 저장
+            </button>
+          )}
+        </div>
         {canEdit && !league.bracketLocked && (
           <button
             type="button" className="scr-btn scr-btn-sm"

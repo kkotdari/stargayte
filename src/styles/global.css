@@ -3164,13 +3164,16 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-match-trow-map { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 /* 맵 이름 옆 플레이시간 — 라벨 없이 "23분"(요청). 흐린 색으로 살짝 뒤에. */
 .scr-match-trow-dur { color: var(--dim); flex-shrink: 0; font-variant-numeric: tabular-nums; }
-/* 윗줄 오른쪽 — 케밥(등록자는 펼침 때 최하단으로 이동). */
-.scr-match-trow-topmeta { display: flex; align-items: center; gap: 8px; flex-shrink: 0; justify-self: end; font-size: var(--fs-caption); }
+/* 윗줄 오른쪽 — 케밥. PC는 로우 좌우 패딩(720px↑에서 100px)이 커서 그리드 흐름에 두면
+   케밥이 카드 오른쪽 끝에서 100px이나 안쪽에 놓였다 — 카드(.scr-match-trow, position:relative)
+   기준 절대배치로 빼서 패딩과 무관하게 카드 오른쪽 끝 가까이 둔다(요청: PC 케밥 오른쪽).
+   절대배치라 윗줄 그리드에서 빠지고, 남은 맵/시간은 그대로 가운데에 온다. */
+.scr-match-trow-topmeta { position: absolute; top: 12px; right: 12px; z-index: 2; display: flex; align-items: center; gap: 8px; font-size: var(--fs-caption); }
 .scr-match-trow-by { color: var(--dim); flex-shrink: 0; }
-/* 모바일에서 케밥이 오른쪽 가장자리의 스크롤 타임라인(32px 터치존, touch-action:none)과
-   겹쳐 탭이 안 먹던 문제 — 케밥을 살짝 왼쪽으로 당겨 타임라인 터치존을 피한다(요청). */
+/* 모바일에선 오른쪽 가장자리의 스크롤 타임라인(32px 터치존)과 겹치지 않게 살짝만 왼쪽으로
+   — 예전(margin 22px)엔 너무 왼쪽으로 갔다는 피드백으로 조금 더 오른쪽에 붙인다(요청). */
 @media (max-width: 860px) {
-  .scr-match-trow-topmeta { margin-right: 22px; }
+  .scr-match-trow-topmeta { right: 20px; }
 }
 /* 펼침 최하단 줄 — 왼쪽 끝 경기번호(#없이), 오른쪽 끝 등록자(요청). */
 .scr-match-trow-footer {
@@ -3293,11 +3296,12 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-match-trow-grid .scr-match-trow-team:first-child .scr-match-trow-roster { align-items: flex-end; }
 .scr-match-trow-grid .scr-match-trow-team:last-child .scr-match-trow-roster { align-items: flex-start; }
 .scr-match-trow-roster { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-/* 팀 로스터를 2열 그리드로(요청: 팀선수1 팀선수2 / 팀선수3 팀선수4). 팀1은 승패 쪽(오른쪽)
-   으로, 팀2는 왼쪽으로 정렬. 선수가 1~2명이면 한 줄, 3~4명이면 2줄이 된다. */
-.scr-match-trow-roster-grid { display: grid; grid-template-columns: repeat(2, minmax(0, max-content)); gap: 4px 14px; }
-.scr-match-trow-grid .scr-match-trow-team:first-child .scr-match-trow-roster-grid { justify-content: end; justify-items: end; }
-.scr-match-trow-grid .scr-match-trow-team:last-child .scr-match-trow-roster-grid { justify-content: start; justify-items: start; }
+/* 팀 로스터를 예전처럼 각 팀 한 줄로(요청) — 2열 그리드(3~4명이면 두 줄) 대신 가로 한 줄에
+   전원 나열. 팀1은 승패 쪽(오른쪽) 정렬, 팀2는 왼쪽 정렬. 인원이 많아 폭을 넘겨도 줄바꿈
+   없이(nowrap) 한 줄을 유지하고, 각 이름은 min-width:0으로 필요 시 말줄임 처리된다. */
+.scr-match-trow-roster-grid { display: flex; flex-flow: row nowrap; gap: 4px 14px; }
+.scr-match-trow-grid .scr-match-trow-team:first-child .scr-match-trow-roster-grid { justify-content: flex-end; }
+.scr-match-trow-grid .scr-match-trow-team:last-child .scr-match-trow-roster-grid { justify-content: flex-start; }
 .scr-mt-player {
   display: flex; align-items: center; gap: 8px; min-width: 0;
   background: transparent; border: none; padding: 0; font: inherit; color: inherit;
@@ -7346,9 +7350,17 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
   -webkit-backdrop-filter: blur(8px) saturate(1.15);
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.10), inset 0 0 0 1px rgba(255,255,255,0.06);
 }
+/* 라이트도 다른 라이트 유리 패널(.scr-light-theme .scr-match-trow 등)과 같은 반투명 유리로
+   — backdrop blur를 명시해 확실히 유리 효과가 나게 한다(요청: 라이트에서 개인전 선수 패널
+   글래스 효과). */
 .scr-light-theme .scr-league-bracket-team-card-individual {
-  background: rgba(255,255,255,0.5);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.7), inset 0 0 0 1px rgba(0,0,0,0.07), 0 1px 3px rgba(0,0,0,0.08);
+  background: rgba(255,255,255,0.55);
+  backdrop-filter: blur(10px) saturate(1.1);
+  -webkit-backdrop-filter: blur(10px) saturate(1.1);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.85),
+    inset 0 0 0 1px rgba(255,255,255,0.5),
+    0 1px 4px rgba(0,0,0,0.09);
 }
 /* 승리 강조는 초록 링으로(유리 배경은 그대로 유지 — background는 위에서 이미 정해짐). */
 .scr-league-bracket-team-card-individual.scr-league-bracket-team-card-win,
@@ -7410,6 +7422,8 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
   text-align: center; font-size: var(--fs-11); color: var(--dim);
 }
 .scr-league-bracket-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+/* 시드수 입력(적용) + 시드 저장을 한 묶음으로 — 둘 사이에 갭을 준다(요청). */
+.scr-league-bracket-seed-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 /* 대진 확정 버튼도 한 단계 축소(요청: "팀추가 대진확정 버튼 1스텝 축소"). */
 .scr-league-bracket-toolbar > .scr-btn-sm {
   padding: 4px 8px; font-size: var(--fs-caption); height: 28px; min-height: 28px; box-sizing: border-box;
@@ -7429,7 +7443,9 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
    사용"), 네이티브 숫자 스피너(위아래 버튼)를 없앤다. min-height 대신 고정 height로
    둬야 border 유무에 따른 미묘한 높이 차이 없이 버튼과 정확히 일치한다. */
 .scr-league-bracket-count-input {
-  width: 44px; flex: 0 0 auto; padding: 4px 5px; height: 28px; box-sizing: border-box;
+  /* .scr-input의 min-height(--field-h:38px)가 height:28px를 눌러버려 인풋만 옆 버튼(28px)보다
+     컸다 — min-height도 28px로 눌러 버튼과 정확히 같은 높이로 맞춘다(요청). */
+  width: 44px; flex: 0 0 auto; padding: 4px 5px; height: 28px; min-height: 28px; box-sizing: border-box;
   border: none;
   /* 예전엔 반사광이 너무 옅어 두 테마 모두 배경에 묻혀 인풋인지 안 보였다(요청) — 오목하게
      파인 우물(안쪽 위 그림자) + 아래 반사광 + 얇은 테두리 링으로 확실히 떠 보이게 한다.
