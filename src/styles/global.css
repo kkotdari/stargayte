@@ -7659,6 +7659,21 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
 }
 /* 기간 필터 줄(전체/월 알약탭 + 달력) — 지도 위 가운데 정렬. */
 .scr-rivalry-period { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 6px; }
+/* 알약탭/월선택의 기본 색은 밝은 유리 필터 패널 안을 전제로 한 어두운 톤이라, 패널 없이
+   맨 화면에 놓인 여기서는 다크 테마에서 배경/글자가 안 보였다(지적) — 필터 패널
+   (.scr-filter-panel)과 같은 다크 대응 톤을 그대로 입힌다. */
+.scr-rivalry-period .scr-pill-tabs { background: rgba(255,255,255,0.08); height: 28px; }
+.scr-light-theme .scr-rivalry-period .scr-pill-tabs { background: rgba(0,0,0,0.06); }
+.scr-rivalry-period .scr-pill-tab-btn { font-size: var(--fs-caption); }
+.scr-rivalry-period .scr-pill-tab-btn:not(.scr-pill-tab-btn-active) { color: var(--muted); }
+.scr-rivalry-period .scr-pill-tab-btn:hover:not(.scr-pill-tab-btn-active) { color: var(--text); }
+.scr-rivalry-period .scr-filter-month-input {
+  background: rgba(255,255,255,0.08); color: var(--text); color-scheme: dark;
+  height: 28px; font-size: var(--fs-caption); min-width: 108px; border-radius: 10px; padding: 0 8px;
+}
+.scr-light-theme .scr-rivalry-period .scr-filter-month-input {
+  background: rgba(0,0,0,0.06); color: var(--text); color-scheme: light;
+}
 .scr-rivalry-tab {
   flex: 1; position: relative; z-index: 1;
   background: transparent; border: none; cursor: pointer; text-align: center;
