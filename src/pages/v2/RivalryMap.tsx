@@ -95,7 +95,11 @@ export default function RivalryMap({
             {/* 화살촉은 marker 정의라 선의 stroke 색을 못 물려받아 CSS 클래스로 따로
                 칠한다. 화살표는 어느 모드든 "우세"라는 한 가지 의미라 색도 초록 하나다
                 (요청: "선택시랑 전체에서 모두 우세니까 우세는 초록"). */}
-            <marker id="scr-rivalry-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+            {/* markerUnits 기본값(strokeWidth)은 화살촉이 선 굵기에 비례해 커진다 —
+                강한 상성(굵은 선) + 바로 옆 칩이면 짧은 선이 화살촉에 다 먹혀 대가리만
+                보였다(지적된 버그). userSpaceOnUse로 굵기와 무관한 고정 크기로 두고,
+                전체 크기도 한 단계 줄인다(5→3.8). */}
+            <marker id="scr-rivalry-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="3.8" markerHeight="3.8" markerUnits="userSpaceOnUse" orient="auto-start-reverse">
               <path d="M0,0 L8,4 L0,8 z" className="scr-rivalry-arrow-head" />
             </marker>
           </defs>
@@ -104,15 +108,18 @@ export default function RivalryMap({
             const b = pos.get(e.to);
             if (!a || !b) return null;
             // 칩 아래 숨지 않게 양 끝을 칩 반지름만큼 안쪽으로 당긴다(화살촉 쪽은 조금 더).
+            // 단, 바로 옆 칩처럼 두 점이 가까우면 트림(9+11)이 선을 다 먹어 화살촉만
+            // 남았다(지적된 버그) — 최소 4유닛의 선은 남도록 트림을 비례 축소한다.
             const dx = b.x - a.x;
             const dy = b.y - a.y;
             const len = Math.hypot(dx, dy) || 1;
             const ux = dx / len;
             const uy = dy / len;
-            const x1 = a.x + ux * 9;
-            const y1 = a.y + uy * 9;
-            const x2 = b.x - ux * 11;
-            const y2 = b.y - uy * 11;
+            const trimScale = Math.max(0, Math.min(1, (len - 4) / 20));
+            const x1 = a.x + ux * 9 * trimScale;
+            const y1 = a.y + uy * 9 * trimScale;
+            const x2 = b.x - ux * 11 * trimScale;
+            const y2 = b.y - uy * 11 * trimScale;
             return (
               <g key={i} className={cx("scr-rivalry-edge", `scr-rivalry-edge-${e.kind}`, selected !== null && "scr-rivalry-edge-focus")}>
                 <line
