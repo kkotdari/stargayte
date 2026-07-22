@@ -1,6 +1,14 @@
 // 날짜 관련 유틸
 import type { PeriodPreset } from "../types";
 
+// <input type="date"/"month">의 연도 칸 상·하한. max에 명시하지 않으면 브라우저 기본 상한이
+// 275760년(6자리)이라 키보드로 연도에 5~6자리가 들어가는 문제가 있다 — 4자리 연도의 min/max를
+// 주면 연도 칸이 4자리로 제한된다. 모든 날짜/월 입력이 이 상수를 공유한다(요청: 전수 적용).
+export const DATE_INPUT_MIN = "1990-01-01";
+export const DATE_INPUT_MAX = "2100-12-31";
+export const MONTH_INPUT_MIN = "1990-01";
+export const MONTH_INPUT_MAX = "2100-12";
+
 export const pad = (n: number): string => String(n).padStart(2, "0");
 
 export const fmt = (d: Date): string =>

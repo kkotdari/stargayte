@@ -13,6 +13,7 @@ import { isAdminRole } from "../../constants/roles";
 import { cx } from "../../utils/format";
 import {
   challengeDateGroupLabel, challengeTimeLabel, formatRelativeSchedule, isToday, pad,
+  DATE_INPUT_MIN, DATE_INPUT_MAX,
 } from "../../utils/date";
 import { getScrollMetrics, getScrollRoot } from "../../utils/scrollRoot";
 import type { Challenge, ChallengeResult, ChallengeSide, ChallengeStatus, ChallengeTarget } from "../../types";
@@ -511,6 +512,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
           <div className="scr-challenge-datetime">
             <input
               type="date" className="scr-input" value={dateStr}
+              min={DATE_INPUT_MIN} max={DATE_INPUT_MAX}
               onChange={(e) => { setDateStr(e.target.value); if (!e.target.value) setTimeStr(""); }}
             />
             <input
@@ -743,6 +745,7 @@ function ChallengeTimeHeadEdit({
               <input
                 type="date" className="scr-input scr-challenge-time-edit-input"
                 value={dateStr}
+                min={DATE_INPUT_MIN} max={DATE_INPUT_MAX}
                 onChange={(e) => {
                   const v = e.target.value;
                   setDateStr(v);

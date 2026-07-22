@@ -1,3 +1,5 @@
+import { DATE_INPUT_MIN, DATE_INPUT_MAX } from "../../utils/date";
+
 interface OptionalDateTimeFieldsProps {
   dateStr: string;
   onDateChange: (value: string) => void;
@@ -26,6 +28,7 @@ export default function OptionalDateTimeFields({
           <span className="scr-label">날짜</span>
           <input
             type="date" className={cls} value={dateStr}
+            min={DATE_INPUT_MIN} max={DATE_INPUT_MAX}
             onChange={(e) => {
               const v = e.target.value;
               onDateChange(v);

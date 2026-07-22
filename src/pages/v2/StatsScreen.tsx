@@ -10,7 +10,7 @@ import InfoTip from "../../components/common/InfoTip";
 import { useAppStore } from "../../store/appStore";
 import { api } from "../../api/client";
 import { activeMemberSearchTerms, memberMatchesQuery } from "../../utils/memberSearch";
-import { monthInputToRange, currentMonthValue } from "../../utils/date";
+import { monthInputToRange, currentMonthValue, MONTH_INPUT_MIN, MONTH_INPUT_MAX } from "../../utils/date";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import { cx } from "../../utils/format";
 import type { BaseRace, MemberStats, MemberStatsEntry } from "../../types";
@@ -243,6 +243,7 @@ export default function StatsScreenV2() {
               {periodUnit === "month" && (
                 <input
                   type="month" className="scr-filter-month-input"
+                  min={MONTH_INPUT_MIN} max={MONTH_INPUT_MAX}
                   value={periodMonth} onChange={(e) => setPeriodMonth(e.target.value)}
                   aria-label="조회할 월"
                 />
