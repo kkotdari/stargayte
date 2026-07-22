@@ -3296,12 +3296,9 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-match-trow-grid .scr-match-trow-team:first-child .scr-match-trow-roster { align-items: flex-end; }
 .scr-match-trow-grid .scr-match-trow-team:last-child .scr-match-trow-roster { align-items: flex-start; }
 .scr-match-trow-roster { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-/* 팀 로스터를 예전처럼 각 팀 한 줄로(요청) — 2열 그리드(3~4명이면 두 줄) 대신 가로 한 줄에
-   전원 나열. 팀1은 승패 쪽(오른쪽) 정렬, 팀2는 왼쪽 정렬. 인원이 많아 폭을 넘겨도 줄바꿈
-   없이(nowrap) 한 줄을 유지하고, 각 이름은 min-width:0으로 필요 시 말줄임 처리된다. */
-.scr-match-trow-roster-grid { display: flex; flex-flow: row nowrap; gap: 4px 14px; }
-.scr-match-trow-grid .scr-match-trow-team:first-child .scr-match-trow-roster-grid { justify-content: flex-end; }
-.scr-match-trow-grid .scr-match-trow-team:last-child .scr-match-trow-roster-grid { justify-content: flex-start; }
+/* 팀 로스터를 예전처럼 팀별 세로 정렬(요청) — 2열 그리드 대신 각 팀 선수를 세로로 쌓는다.
+   가로 정렬(팀1 오른쪽/팀2 왼쪽)은 위 .scr-match-trow-roster의 align-items가 담당한다. */
+.scr-match-trow-roster-grid { display: flex; flex-direction: column; gap: 4px; }
 .scr-mt-player {
   display: flex; align-items: center; gap: 8px; min-width: 0;
   background: transparent; border: none; padding: 0; font: inherit; color: inherit;
