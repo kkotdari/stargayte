@@ -1115,7 +1115,8 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    제목과 라디오가 나란히 왼쪽에 온다. 액션 버튼과 같은 기준선 보정(-6px). */
 .scr-rank-toolbar { display: flex; align-items: center; gap: 24px; }
 .scr-rank-toolbar .scr-v2-toolbar-title { flex: 0 0 auto; }
-.scr-rank-mode-tabs { display: inline-flex; transform: translateY(-6px); }
+/* 요청: "랭킹 개인전 팀전 토글 80프로로 축소" — 좌측(타이틀 쪽) 기준으로 전체 스케일. */
+.scr-rank-mode-tabs { display: inline-flex; transform: translateY(-6px) scale(0.8); transform-origin: 0 50%; }
 /* 라디오를 한 스텝 작게(텍스트 caption) + 높이는 다른 필탭(필터패널 알약, 28px)과 맞춘다(요청).
    래디우스도 여기서만 완전 알약(999px) 대신 둥근 사각으로 낮춘다 — 안의 인디케이터/버튼도
    함께(요청: "개인전팀전 필탭만 래디우스 줄여줘, 안의 알약도 같이"). */
@@ -5159,8 +5160,8 @@ html.scr-light-theme .scr-mobile-tabbar {
    (경계선 옆 원형/타원 헤일로도 시도해봤으나 여러 번 다듬어도 원하는 느낌이 안 나와
    완전히 뺐다 — 지금은 이 경계선 그라데이션만 남는다.) */
 .scr-drawer {
-  /* 폭은 고정 250px(요청 — 비율 대신). 아주 좁은 화면만 비율로 방어. */
-  width: min(240px, 70vw);
+  /* 폭은 고정(요청 — 비율 대신, 240에서 20% 축소 → 192). 아주 좁은 화면만 비율로 방어. */
+  width: min(192px, 70vw);
   /* 상부는 사실상 안 쓰므로 높이도 과감히 바닥 기준 2/3로(요청) — 오버레이(flex)에서
      바닥에 붙인다. 새로 생긴 왼쪽 위 모서리엔 크지 않은 radius + 유리 반사광(테두리),
      그림자도 위쪽 경계를 따라 한 겹 더 두른다. */
@@ -5222,7 +5223,8 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 /* 프사/닉네임 2스텝씩 확대(요청) — 아바타 32→48px(8px 스텝 둘), 닉네임 body(16)→
    headline(24, 두 스텝). 배틀태그는 데이터 폰트 대신 기본 폰트(마크업에서 scr-mono 제거). */
 .scr-drawer-user .scr-avatar { border-radius: 50% !important; width: 48px !important; height: 48px !important; }
-.scr-drawer-user-name { font-weight: 700; font-size: var(--fs-headline); }
+/* 요청: 서랍 폭 20% 축소에 맞춰 닉네임도 1스텝 축소(headline→subhead). */
+.scr-drawer-user-name { font-weight: 700; font-size: var(--fs-subhead); }
 .scr-drawer-user-tag { font-size: var(--fs-caption); color: var(--dim); }
 /* 메뉴 묶음을 서랍 하단으로 몰아 정렬(요청) — margin-top:auto로 남는 세로 공간을 위에서
    먹는다(액션 묶음은 nav 바로 뒤 흐름 그대로라 함께 하단에 붙는다). */
