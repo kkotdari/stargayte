@@ -5159,7 +5159,7 @@ html.scr-light-theme .scr-mobile-tabbar {
    완전히 뺐다 — 지금은 이 경계선 그라데이션만 남는다.) */
 .scr-drawer {
   /* 폭은 고정 250px(요청 — 비율 대신). 아주 좁은 화면만 비율로 방어. */
-  width: min(250px, 70vw);
+  width: min(240px, 70vw);
   /* 상부는 사실상 안 쓰므로 높이도 과감히 바닥 기준 2/3로(요청) — 오버레이(flex)에서
      바닥에 붙인다. 새로 생긴 왼쪽 위 모서리엔 크지 않은 radius + 유리 반사광(테두리),
      그림자도 위쪽 경계를 따라 한 겹 더 두른다. */
@@ -5212,7 +5212,8 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
   background-repeat: no-repeat; background-position: bottom; background-size: 100% 1px;
 }
 .scr-drawer-user {
-  display: flex; align-items: center; gap: 10px; padding: 4px 2px 10px;
+  /* 프사 아래 닉네임 세로 스택(요청) — 왼쪽 정렬. */
+  display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 4px 2px 10px;
   /* 유저 프로필 아래 구분선도 중립 톤 그라데이션으로(요청). */
   background-image: linear-gradient(90deg, transparent 0%, var(--divider-soft) 50%, transparent 100%);
   background-repeat: no-repeat; background-position: bottom; background-size: 100% 1px;
