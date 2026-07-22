@@ -1656,6 +1656,9 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   background-color: var(--panel-raised);
   font-size: var(--fs-body); color: var(--muted);
   font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+  /* 아래 선은 ::after 오버레이 하나만 그린다 — .scr-stat-row가 물려준 border-bottom과
+     겹쳐 1px 선 두 장이 붙어 두껍게 보였다(지적). */
+  border-bottom: none;
 }
 /* 헤더 행을 감싸는 래퍼 — 데이터 행(.scr-stat-table, overflow-x:auto)과 분리된
    요소라야 페이지 스크롤 기준 sticky가 먹는다(overflow-x:auto인 박스 안에 있으면
@@ -1835,11 +1838,13 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    아래로 자연스럽게 더 내려온다. ValueBar 칸들은 flex row(세로축 = align-items,
    .scr-stat-row > * 의 center를 덮음)이고, 전적 칸(.scr-stat-bar-cell)만 flex
    column(세로축 = justify-content)이라 각각 다른 속성을 바꿔야 한다. */
-.scr-stats-list-panel-v2 .scr-stat-plays-cell,
-.scr-stats-list-panel-v2 .scr-stat-build-cell,
-.scr-stats-list-panel-v2 .scr-stat-eapm-cell,
-.scr-stats-list-panel-v2 .scr-stat-ecmd-cell { align-items: flex-start; }
-.scr-stats-list-panel-v2 .scr-stat-bar-cell { justify-content: flex-start; }
+/* 헤더 행 제외(:not) — 헤더 버튼도 같은 칸 클래스를 달고 있어서 이 위 정렬이 헤더의
+   툴팁/정렬 아이콘까지 글자 위로 밀어올렸다(지적된 버그 — 클래스 없는 승률 헤더만 멀쩡). */
+.scr-stats-list-panel-v2 .scr-stat-row:not(.scr-stat-row-head) > .scr-stat-plays-cell,
+.scr-stats-list-panel-v2 .scr-stat-row:not(.scr-stat-row-head) > .scr-stat-build-cell,
+.scr-stats-list-panel-v2 .scr-stat-row:not(.scr-stat-row-head) > .scr-stat-eapm-cell,
+.scr-stats-list-panel-v2 .scr-stat-row:not(.scr-stat-row-head) > .scr-stat-ecmd-cell { align-items: flex-start; }
+.scr-stats-list-panel-v2 .scr-stat-row:not(.scr-stat-row-head) > .scr-stat-bar-cell { justify-content: flex-start; }
 /* 위 8px는 모바일 기준 — PC는 화면/행 자체가 넓어 여유가 있으니 위아래 패딩을 더
    넉넉하게 되돌린다(경기결과 카드와 같은 원칙: PC만 증가, 모바일은 컴팩트 유지). */
 @media (min-width: 720px) {
