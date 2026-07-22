@@ -2268,9 +2268,10 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    흰 선이 더 또렷하다.
    라이트 테마는 흰 배경이라 흰 선이 안 보이므로 원래 톤(검정 계열)을 그대로 쓴다.
    좌우 패딩을 없앤 만큼(위) 구분선도 양 끝까지 꽉 채운다(요청: "구분선도 맞춰서 확장"). */
-.scr-rank-table-panel-v2 .scr-rank-row + .scr-rank-row::before { left: 0; right: 0; background: rgba(255, 255, 255, 0.32); }
+/* 구분선 더 얇고 투명하게(요청) — 헤어라인(0.5px, 레티나에서 실제 절반 픽셀) + 알파 절반. */
+.scr-rank-table-panel-v2 .scr-rank-row + .scr-rank-row::before { left: 0; right: 0; height: 0.5px; background: rgba(255, 255, 255, 0.16); }
 .scr-light-theme .scr-rank-table-panel-v2 .scr-rank-row + .scr-rank-row::before {
-  background: rgba(var(--divider-tint), 0.35);
+  background: rgba(var(--divider-tint), 0.2);
 }
 .scr-rank-row-clickable { cursor: pointer; }
 /* 터치 화면에서 스크롤 중 손가락이 스치면 :hover가 고착돼 번쩍이는 문제 — 마우스처럼
