@@ -5033,15 +5033,17 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   position: absolute; left: 0;
   pointer-events: none;
   transition: transform .22s ease, width .22s ease, top .22s ease, height .22s ease;
-  border-radius: 50%;
+  /* 모양은 물방울과 동일(요청) — 좌우 고정 곡률 22px / 상하 50%의 알약 실루엣.
+     빛이 상자보다 크게 퍼지다 이 radius에서 잘려 물방울 형태의 광이 된다. */
+  border-radius: 22px / 50%;
   background:
-    radial-gradient(58% 52% at 50% 50%, rgba(255,255,255,0.26) 0%, rgba(255,255,255,0) 70%),
-    radial-gradient(100% 100% at 50% 50%, rgba(255,255,255,0.11) 0%, rgba(255,255,255,0) 74%);
+    radial-gradient(72% 72% at 50% 50%, rgba(255,255,255,0.24) 0%, rgba(255,255,255,0) 78%),
+    radial-gradient(140% 150% at 50% 50%, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0) 82%);
 }
 html.scr-light-theme .scr-mobile-tab-glow {
   background:
-    radial-gradient(58% 52% at 50% 50%, rgba(70,140,235,0.30) 0%, rgba(70,140,235,0) 70%),
-    radial-gradient(100% 100% at 50% 50%, rgba(70,140,235,0.13) 0%, rgba(70,140,235,0) 74%);
+    radial-gradient(72% 72% at 50% 50%, rgba(70,140,235,0.28) 0%, rgba(70,140,235,0) 78%),
+    radial-gradient(140% 150% at 50% 50%, rgba(70,140,235,0.12) 0%, rgba(70,140,235,0) 82%);
 }
 /* 라이트 테마도 같은 리퀴드 글래스로(요청). 흰 배경 위라 흰 반사광은 옅게만 보이므로,
    유리 볼륨은 검은톤 그림자/굴절 그늘이 주로 잡아준다. backdrop blur의 brightness로 방울이
