@@ -221,7 +221,7 @@ export default function RivalryMap({
       </div>
       <div className="scr-rivalry-legend">
         {/* 우세/열세는 색이 아니라 화살표 방향으로만 구분한다(요청) — 어느 모드든 초록 하나. */}
-        <span className="scr-rivalry-legend-item"><span className="scr-rivalry-legend-arrow" /> 우세</span>
+        <span className="scr-rivalry-legend-item"><span className="scr-rivalry-legend-arrow" /> 우세→열세</span>
         <span className="scr-rivalry-legend-item"><span className="scr-rivalry-legend-even" /> 대등</span>
         <span className="scr-rivalry-legend-note">
           선이 굵을수록 상성이 뚜렷 · 유저를 누르면 그 유저의 상성만 표시
