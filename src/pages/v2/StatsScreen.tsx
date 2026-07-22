@@ -300,8 +300,8 @@ export default function StatsScreenV2() {
                   tooltip="분당 유효 조작 수(EAPM) — 리플레이에서 실제 게임에 영향을 준 명령만 센 APM. 화면 이동·중복 클릭 같은 불필요한 입력은 빠져 순수 조작량에 가깝다."
                 />
                 <SortableHead
-                  label="유효커맨드/분" sortKey="ecmd" sort={sort} onToggle={toggleSort} className="scr-stat-ecmd-cell"
-                  tooltip="유효 명령 총합을 경기 시간(분)으로 나눈 값 — 경기 길이가 제각각이라 총합 대신 분당으로 환산해 공정하게 비교한다."
+                  label="유효커맨드" sortKey="ecmd" sort={sort} onToggle={toggleSort} className="scr-stat-ecmd-cell"
+                  tooltip="경기당 평균 유효 명령 수 — 리플레이에서 실제 게임에 영향을 준 명령만 센다."
                 />
               </div>
               {cards.map((c) => (
