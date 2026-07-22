@@ -168,10 +168,11 @@ export default function RivalryMap({
                   const midY = (y1 + y2) / 2;
                   let side = ux > 0 ? -1 : 1; // perp(-uy,ux)의 y성분(ux)이 음수(위쪽)가 되게
                   let off = 1.6;
-                  // 바로 옆 칩 사이 짧은 선은 라벨이 칩(위층 DOM)에 덮인다(지적) — 빈
-                  // 공간인 원 중심 쪽으로 방향을 잡고 더 멀리 띄운다.
+                  // 바로 옆 칩 사이 짧은 선은 라벨이 칩(위층 DOM)에 덮인다(지적). 처음엔
+                  // 원 중심 쪽으로 뺐는데 중심부는 다른 선들이 다 지나는 자리라 오히려
+                  // 헷갈렸다(지적) — 반대로 원 바깥쪽(선이 없는 빈 공간)으로 띄운다.
                   if (len < 32) {
-                    side = (-uy * (50 - midX) + ux * (50 - midY)) >= 0 ? 1 : -1;
+                    side = (-uy * (50 - midX) + ux * (50 - midY)) >= 0 ? -1 : 1;
                     off = 4.2;
                   }
                   const lx = midX + side * -uy * off;
