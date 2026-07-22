@@ -83,24 +83,17 @@ export default function RivalryMap({
       <div className="scr-rivalry-wrap" onClick={() => setSelected(null)}>
         <svg className="scr-rivalry-svg" viewBox="0 0 100 100" aria-hidden>
           <defs>
-            {/* 화살촉은 marker 정의라 선의 stroke 색을 못 물려받는다(context-stroke는 iOS
-                사파리 지원이 불안) — 기본(파랑)/우세(초록)/열세(빨강) 세 벌을 두고 엣지가
-                상태에 맞는 것을 고른다. */}
-            {(["base", "win", "lose"] as const).map((kind) => (
-              <marker key={kind} id={`scr-rivalry-arrow-${kind}`} viewBox="0 0 8 8" refX="7" refY="4" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
-                <path d="M0,0 L8,4 L0,8 z" className={`scr-rivalry-arrow-${kind}`} />
-              </marker>
-            ))}
+            {/* 화살촉은 marker 정의라 선의 stroke 색을 못 물려받아 CSS 클래스로 따로
+                칠한다. 화살표는 어느 모드든 "우세"라는 한 가지 의미라 색도 초록 하나다
+                (요청: "선택시랑 전체에서 모두 우세니까 우세는 초록"). */}
+            <marker id="scr-rivalry-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+              <path d="M0,0 L8,4 L0,8 z" className="scr-rivalry-arrow-head" />
+            </marker>
           </defs>
           {shownEdges.map((e, i) => {
             const a = pos.get(e.from);
             const b = pos.get(e.to);
             if (!a || !b) return null;
-            // 선택 모드의 우세 화살표 색 — 선택한 유저가 이기는 쪽(from)이면 초록,
-            // 지는 쪽(to)이면 빨강(요청). 전체 보기는 중립 파랑.
-            const focusKind = selected !== null && e.kind === "strong"
-              ? (e.from === selected ? "win" : "lose")
-              : null;
             // 칩 아래 숨지 않게 양 끝을 칩 반지름만큼 안쪽으로 당긴다(화살촉 쪽은 조금 더).
             const dx = b.x - a.x;
             const dy = b.y - a.y;
@@ -112,10 +105,10 @@ export default function RivalryMap({
             const x2 = b.x - ux * 11;
             const y2 = b.y - uy * 11;
             return (
-              <g key={i} className={cx("scr-rivalry-edge", `scr-rivalry-edge-${e.kind}`, selected !== null && "scr-rivalry-edge-focus", focusKind && `scr-rivalry-edge-${focusKind}`)}>
+              <g key={i} className={cx("scr-rivalry-edge", `scr-rivalry-edge-${e.kind}`, selected !== null && "scr-rivalry-edge-focus")}>
                 <line
                   x1={x1} y1={y1} x2={x2} y2={y2}
-                  markerEnd={e.kind === "strong" ? `url(#scr-rivalry-arrow-${focusKind ?? "base"})` : undefined}
+                  markerEnd={e.kind === "strong" ? "url(#scr-rivalry-arrow)" : undefined}
                 />
                 {/* 선택 모드에서만 전적 라벨을 선 중앙에 보여준다 — 전체 보기에선 겹쳐서 소음. */}
                 {selected !== null && (
@@ -156,14 +149,7 @@ export default function RivalryMap({
         })}
       </div>
       <div className="scr-rivalry-legend">
-        {selected === null ? (
-          <span className="scr-rivalry-legend-item"><span className="scr-rivalry-legend-arrow" /> 우세(화살표가 가리키는 쪽이 열세)</span>
-        ) : (
-          <>
-            <span className="scr-rivalry-legend-item"><span className="scr-rivalry-legend-arrow scr-rivalry-legend-arrow-win" /> 선택한 유저가 우세</span>
-            <span className="scr-rivalry-legend-item"><span className="scr-rivalry-legend-arrow scr-rivalry-legend-arrow-lose" /> 열세</span>
-          </>
-        )}
+        <span className="scr-rivalry-legend-item"><span className="scr-rivalry-legend-arrow" /> 우세(화살표가 가리키는 쪽이 열세)</span>
         <span className="scr-rivalry-legend-item"><span className="scr-rivalry-legend-even" /> 대등</span>
         <span className="scr-rivalry-legend-note">
           {team ? `팀전 개인환산 ${MIN_GAMES}전 이상만` : `1:1 ${MIN_GAMES}전 이상만`} · 유저를 누르면 그 유저의 상성만 표시
