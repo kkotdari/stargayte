@@ -255,8 +255,6 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
                     >
                       {busy ? <Spinner /> : "배치삭제"}
                     </button>
-                    {/* 리플레이 폴더 일괄 등록 — 버튼을 누르면 바로 폴더 선택창이 뜬다. */}
-                    <ReplayBatchButton />
                     {/* 등록된 리플레이 전체를 zip으로 백업 다운로드(운영자) — 읽기 전용이라
                         확인창 없이 바로 받는다. */}
                     <button
@@ -265,6 +263,10 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
                     >
                       {downloading ? <Spinner /> : "배치다운로드"}
                     </button>
+                    {/* 리플레이 폴더 일괄 등록 — 버튼을 누르면 바로 폴더 선택창이 뜬다. 바로 옆
+                        칸에 "결과 보기"를 예약해두려고 마지막에 둔다(그 칸이 항상 비어 있어야
+                        결과 보기가 나타나도 레이아웃이 안 흔들린다). */}
+                    <ReplayBatchButton />
                   </div>
                 </>
               )}

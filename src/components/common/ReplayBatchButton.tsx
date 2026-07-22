@@ -352,19 +352,20 @@ export default function ReplayBatchButton() {
 
       {err && <div className="scr-err">{err}</div>}
 
-      {/* 진행 중/완료됐는데 결과 창을 닫아둔 경우 다시 열 수 있게. 그리드 흐름 안에 두면
-          나타났다 사라질 때마다 다른 버튼들이 들썩였다(실제로 지적받은 문제 —
-          "결과보기 생기면 레이아웃이 흔들리잖아") — 그리드에서 완전히 빼고 카드
-          모서리에 고정 배치한다. */}
-      {started && total > 0 && !resultsOpen && (
-        <button
-          type="button"
-          className="scr-admin-panel-results-reopen"
-          onClick={() => setResultsOpen(true)}
-        >
-          <ClipboardList size={13} /> 결과 보기 ({processed}/{total})
-        </button>
-      )}
+      {/* 배치등록 버튼 바로 옆 칸을 항상 비워 예약해두고(그리드 셀 하나), 진행 중/완료됐는데
+          결과 창을 닫아둔 경우에만 그 자리에 "결과 보기"를 렌더한다(요청) — 자리 자체는 늘
+          있으므로 나타났다 사라져도 다른 버튼이 들썩이지 않는다. */}
+      <div className="scr-admin-panel-results-slot">
+        {started && total > 0 && !resultsOpen && (
+          <button
+            type="button"
+            className="scr-admin-panel-results-reopen"
+            onClick={() => setResultsOpen(true)}
+          >
+            <ClipboardList size={13} /> 결과 보기 ({processed}/{total})
+          </button>
+        )}
+      </div>
 
       {/* 진행률/로그를 별도 창(모달)으로 — 제어판 모달 본문 안에 그대로 쌓지 않는다(요청:
           "배치 등록시 별도 창에 결과 나오게 해줘 모달 내에 스크린 만들필요 없이"). 배치가

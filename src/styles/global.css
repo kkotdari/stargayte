@@ -4437,15 +4437,17 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    섹션 등) 버튼들이 들썩였다(실제로 지적받은 문제 — "결과보기 생기면 레이아웃이
    흔들리잖아"). 그리드 흐름에서 완전히 빼고 카드(.scr-modal-body, position:relative)
    모서리에 고정해 다른 요소에 전혀 영향을 주지 않게 한다. */
+/* 배치등록 버튼 바로 옆 예약 칸 — 항상 그리드 셀 하나를 차지해 자리를 비워둔다(요청).
+   비어 있어도 옆 배치등록 버튼이 행 높이를 잡아주므로 결과 보기가 나타나도 안 흔들린다. */
+.scr-admin-panel-results-slot { display: flex; align-items: center; justify-content: center; min-width: 0; }
 .scr-admin-panel-results-reopen {
-  position: absolute; right: 14px; bottom: 14px; z-index: 2;
   /* 리포트 아이콘 + 회색톤 알약 버튼(요청) — 배치 모드 버튼과 같은 알약 형태로 맞추되
      흰 버튼과 구분되게 반투명 회색으로. */
-  display: inline-flex; align-items: center; gap: 5px;
-  padding: 6px 12px; border: none; border-radius: 999px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 5px; max-width: 100%;
+  padding: 8px 12px; border: none; border-radius: 999px;
   background: rgba(255, 255, 255, 0.12); color: rgba(255, 255, 255, 0.92);
   font-size: var(--fs-caption); font-weight: 700; cursor: pointer;
-  box-shadow: none; text-shadow: none;
+  box-shadow: none; text-shadow: none; white-space: nowrap;
 }
 .scr-admin-panel-results-reopen:hover { background: rgba(255, 255, 255, 0.2); color: #fff; }
 .scr-light-theme .scr-admin-panel-results-reopen {
