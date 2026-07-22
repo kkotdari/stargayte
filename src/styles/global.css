@@ -4377,25 +4377,29 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    재생 중에만 overflow를 풀어 바깥까지 퍼지게 한다(이 모달은 라운드 0이라 부작용 없음). */
 .scr-modal.scr-admin-panel-roar { overflow: visible; }
 .scr-admin-panel-roar { animation: scr-admin-panel-roar .65s cubic-bezier(.36,.07,.19,.97) both; }
-/* 모달 테두리에서 바깥으로 퍼져나가는 충격파 링 — 사자후가 모달 밖까지 울리는 연출. */
+/* 사자후의 본체 — 잠금 화면의 쇠 뚜껑(테두리 영역까지 덮던 그 텍스처)이 통째로 확대되며
+   페이드 아웃돼 날아가고, 그 아래 열린 제어판이 드러난다(요청: 링 대신 뚜껑 전체가
+   커지면서 사라지는 형태). ::after가 뚜껑과 같은 모습(inset:-12px + 같은 텍스처/비네트)
+   으로 위(z-index:3)에 덮여 있다가 커지며 사라진다. */
 .scr-admin-panel-roar::after {
   content: ""; position: absolute; inset: -12px; z-index: 3; pointer-events: none;
-  border: 3px solid rgba(255,255,255,0.85);
-  box-shadow: 0 0 34px rgba(255,255,255,0.55), inset 0 0 22px rgba(255,255,255,0.3);
+  background-image: url("/images/bg/control_panel_border.jpg");
+  background-size: cover; background-position: center; background-repeat: no-repeat;
+  box-shadow: inset 0 0 46px rgba(0,0,0,0.55), inset 0 0 0 2px rgba(0,0,0,0.5);
   animation: scr-admin-panel-roar-wave .65s ease-out both;
 }
 @keyframes scr-admin-panel-roar-wave {
   0%   { transform: scale(1); opacity: 1; }
-  100% { transform: scale(1.35); opacity: 0; }
+  100% { transform: scale(1.55); opacity: 0; }
 }
+/* 본체는 뚜껑이 날아가는 반동만 — 큰 섬광/요동 대신 짧게 울리다 잦아드는 잔진동(뚜껑
+   확대·페이드가 주인공이라 과한 흔들림은 오히려 부자연스러웠다, 지적됨). */
 @keyframes scr-admin-panel-roar {
-  0%   { transform: scale(1.09); filter: brightness(2.1); }
-  12%  { transform: scale(1.05) translate(-12px, 5px) rotate(-1.4deg); filter: brightness(1.5); }
-  26%  { transform: translate(11px, -4px) rotate(1.2deg); }
-  40%  { transform: translate(-9px, 3px) rotate(-1deg); filter: brightness(1.15); }
-  54%  { transform: translate(7px, -3px) rotate(0.8deg); }
-  68%  { transform: translate(-5px, 2px) rotate(-0.5deg); filter: brightness(1); }
-  82%  { transform: translate(3px, -1px); }
+  0%   { transform: scale(1.03); filter: brightness(1.25); }
+  20%  { transform: translate(-5px, 2px); filter: brightness(1.1); }
+  40%  { transform: translate(4px, -2px); }
+  60%  { transform: translate(-3px, 1px); filter: brightness(1); }
+  80%  { transform: translate(2px, -1px); }
   100% { transform: translate(0, 0) scale(1); }
 }
 /* PC에서는 좁은 모달(360px)이 유난히 작아 보인다 — 카드 자체를 키운다(비율은 위에서
@@ -4596,7 +4600,8 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-admin-panel-batch-log {
   margin-top: 10px; max-height: min(42vh, 280px); overflow-y: auto;
   background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.14); border-radius: 4px;
-  padding: 8px 10px; font-family: var(--font-mono); font-size: var(--fs-caption); line-height: 1.6; text-align: left;
+  /* 터미널 로그 텍스트 2스텝 축소(요청): caption(14) → 11px. */
+  padding: 8px 10px; font-family: var(--font-mono); font-size: var(--fs-11); line-height: 1.6; text-align: left;
 }
 .scr-admin-panel-batch-log-line {
   display: flex; flex-wrap: wrap; gap: 0 8px; color: rgba(255,255,255,0.55);
@@ -4870,6 +4875,10 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-mobile-tab {
   position: relative;
   flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+}
+/* 메뉴 탭(햄버거 아이콘 전용, 요청) — 아이콘이 글자 라인하이트와 어긋나지 않게 블록으로. */
+.scr-mobile-tab-menu svg { display: block; }
+.scr-mobile-tab {
   background: transparent; border: none; color: var(--muted); font-family: inherit; font-size: var(--fs-caption);
   padding: 6px 0; cursor: pointer; border-radius: var(--radius-sm); transition: background-color .12s;
   /* color엔 트랜지션을 안 건다 — 탭을 누르면 알약은 .22s에 걸쳐 슬라이드하는 게 맞지만
@@ -4937,20 +4946,21 @@ body *::-webkit-scrollbar-corner { background: transparent; }
      하이라이트가 윗면 전체에 길게 번진 기름때처럼 보였다(검토 결과). 글린트를 px 고정
      크기·위치로 바꿔 어느 폭에서도 같은 물방울 맺힘이 유지되게 하고, 얇은 밝은 림 +
      시안빛 카우스틱으로 라이트 테마 물방울과 질감·색감을 통일한다. */
+  /* 몸통 채움을 아예 없앤다(요청: 뒤 탭바 패널이 반투명인데 물방울만 불투명해 보임) —
+     안쪽은 backdrop blur만 남겨 뒤가 그대로 비치고, 물방울의 존재감은 가장자리
+     효과(글린트·번진 림·아래 그늘)로만 낸다. 파란끼도 뺀다(요청) — 전부 무채색. */
   background:
     /* 좌상단 샤프 스펙큘러(고정 px → 폭 무관하게 동일한 글린트) */
-    radial-gradient(18px 11px at 25px 8px, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0.35) 45%, rgba(255,255,255,0) 72%),
-    /* 아래로 모이는 옅은 시안 굴절광(caustic) — 어두운 배경이라 라이트보다 약하게 */
-    radial-gradient(150% 80% at 50% 142%, rgba(130,205,255,0.28) 0%, rgba(130,205,255,0) 46%),
-    /* 거의 투명한 푸른 유리 몸통 */
-    linear-gradient(180deg, rgba(200,230,255,0.10) 0%, rgba(140,190,240,0.10) 100%);
-  backdrop-filter: blur(3px) brightness(1.06) saturate(1.2);
-  -webkit-backdrop-filter: blur(3px) brightness(1.06) saturate(1.2);
+    radial-gradient(18px 11px at 25px 8px, rgba(255,255,255,0.75) 0%, rgba(255,255,255,0.3) 45%, rgba(255,255,255,0) 72%),
+    /* 아래로 모이는 옅은 흰 굴절광(caustic) */
+    radial-gradient(150% 80% at 50% 142%, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0) 46%);
+  backdrop-filter: blur(2px) brightness(1.08);
+  -webkit-backdrop-filter: blur(2px) brightness(1.08);
   box-shadow:
-    inset 0 0 6px rgba(255,255,255,0.16),        /* 부드럽게 번진 가장자리 광(딱딱한 1px 링 대체 — 요청) */
-    inset 0 1.5px 2px rgba(255,255,255,0.4),     /* 위 안쪽 반사 */
-    inset 0 -7px 11px rgba(0,10,30,0.3),         /* 아래 쿨톤 안쪽 그늘 → 볼륨 */
-    4px 8px 14px -6px rgba(0,0,0,0.42);          /* 부드럽게 오프셋된 바닥 접촉 그림자 */
+    inset 0 0 6px rgba(255,255,255,0.14),        /* 부드럽게 번진 가장자리 광 */
+    inset 0 1.5px 2px rgba(255,255,255,0.35),    /* 위 안쪽 반사 */
+    inset 0 -6px 10px rgba(0,0,0,0.22),          /* 아래 안쪽 그늘 → 볼륨 */
+    4px 8px 14px -6px rgba(0,0,0,0.4);           /* 부드럽게 오프셋된 바닥 접촉 그림자 */
 }
 /* 라이트 테마도 같은 리퀴드 글래스로(요청). 흰 배경 위라 흰 반사광은 옅게만 보이므로,
    유리 볼륨은 검은톤 그림자/굴절 그늘이 주로 잡아준다. backdrop blur의 brightness로 방울이
@@ -4968,20 +4978,23 @@ html.scr-light-theme .scr-mobile-tab-indicator {
   /* 어두운 남색빛 몸통이 종이/수채화처럼 보였다(요청) — 훨씬 밝고 맑은 하늘색으로,
      몸통은 거의 투명한 유리 틴트만 남기고 얇은 밝은 림 + 또렷한 글린트 + 시안빛
      카우스틱으로 매끈한 투명 질감을 낸다. */
+  /* 몸통을 거의 완전 투명하게(요청: 뒤 반투명 패널이 그대로 비치게) — 아주 옅은 파란
+     틴트만 남기고, 노란끼의 원인이던 brightness/saturate 부스트를 걷어낸다. 색감은
+     시원한 파란 계열로 더 기울인다(요청: 노란끼 제거·물색). */
   background:
     /* 좌상단 샤프 스펙큘러(고정 px 크기·위치 → 폭 무관하게 동일한 글린트) */
     radial-gradient(18px 11px at 25px 8px, rgba(255,255,255,1) 0%, rgba(255,255,255,0.5) 45%, rgba(255,255,255,0) 72%),
-    /* 아래로 모이는 맑은 아쿠아 굴절광(caustic) — 더 시원한 물색으로(요청) */
-    radial-gradient(150% 80% at 50% 142%, rgba(105,225,250,0.62) 0%, rgba(105,225,250,0) 46%),
-    /* 거의 투명한 시원한 물색 유리 몸통 */
-    linear-gradient(180deg, rgba(215,248,252,0.30) 0%, rgba(130,220,245,0.20) 100%);
-  backdrop-filter: blur(1.5px) brightness(1.06) saturate(1.4);
-  -webkit-backdrop-filter: blur(1.5px) brightness(1.06) saturate(1.4);
+    /* 아래로 모이는 시원한 파란 굴절광(caustic) */
+    radial-gradient(150% 80% at 50% 142%, rgba(90,200,245,0.5) 0%, rgba(90,200,245,0) 46%),
+    /* 아주 옅은 시원한 파란 틴트(투명 유지) */
+    linear-gradient(180deg, rgba(160,225,250,0.10) 0%, rgba(90,190,240,0.14) 100%);
+  backdrop-filter: blur(1.5px) saturate(1.05);
+  -webkit-backdrop-filter: blur(1.5px) saturate(1.05);
   box-shadow:
-    inset 0 0 6px rgba(255,255,255,0.5),           /* 부드럽게 번진 가장자리 광(딱딱한 1px 링 대체 — 요청) */
-    inset 0 2px 2px rgba(255,255,255,0.9),         /* 위 광택 */
-    inset 0 -6px 10px rgba(70,185,220,0.28),       /* 아래 아쿠아 안쪽 그늘 → 렌즈 볼륨 */
-    0 3px 8px -4px rgba(55,160,195,0.33);          /* 옅은 쿨톤 접촉 그림자 */
+    inset 0 0 6px rgba(255,255,255,0.45),          /* 부드럽게 번진 가장자리 광 */
+    inset 0 2px 2px rgba(255,255,255,0.8),         /* 위 광택 */
+    inset 0 -6px 10px rgba(60,170,220,0.25),       /* 아래 파란 안쪽 그늘 → 렌즈 볼륨 */
+    0 3px 8px -4px rgba(50,150,195,0.3);           /* 옅은 쿨톤 접촉 그림자 */
 }
 html.scr-light-theme .scr-mobile-tab-active { color: var(--text); }
 /* 라이트 테마는 밝은 패널 위라 흰 반사광이 안 보여 — 드로어 왼쪽 모서리와 같은 이유로

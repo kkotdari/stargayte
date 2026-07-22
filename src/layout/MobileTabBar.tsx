@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { Menu as MenuIcon } from "lucide-react";
 import AdminMenu from "./AdminMenu";
 import { cx } from "../utils/format";
 import { visibleNavMenuItems } from "../constants/menuVersions";
@@ -180,14 +181,18 @@ export default function MobileTabBar({ screen, menuOpen, isAdmin, effectiveVersi
         </button>
       ))}
       {isAdmin && <AdminMenu screen={screen} onNavigate={onNavigate} variant="mobile" onOpenChange={setAdminMenuOpen} />}
+      {/* 메뉴 탭은 글자 대신 햄버거 아이콘으로(요청). 드로어가 열려도 활성 클래스
+          (.scr-mobile-tab-active)를 달지 않는다 — 물방울 인디케이터가 이 탭으로는
+          이동하지 않고(요청: 열려도 물방울 적용 X) 지금 화면 탭에 그대로 남는다. */}
       <button
         type="button"
-        className={cx("scr-mobile-tab", menuOpen && "scr-mobile-tab-active")}
+        className="scr-mobile-tab scr-mobile-tab-menu"
         onPointerDown={(e) => onTabPointerDown(e, onOpenMenu)}
         onClick={() => onTabClick(onOpenMenu)}
         aria-label="메뉴 열기"
+        aria-expanded={menuOpen}
       >
-        <span>메뉴</span>
+        <MenuIcon size={19} aria-hidden />
       </button>
     </nav>,
     document.getElementById("scr-tabbar-slot") ?? document.body,
