@@ -25,7 +25,7 @@ export function useHideOnScrollDown(screen: string): boolean {
   useEffect(() => {
     lastScrollTopRef.current = getScrollMetrics().scrollTop;
     const onScroll = () => {
-      const { scrollTop, clientHeight, scrollHeight } = getScrollMetrics();
+      const { scrollTop } = getScrollMetrics();
       // 프로그램(자동) 스크롤 중엔 숨김 판정을 건너뛴다 — 위치/누적만 최신으로 맞춰 두어,
       // 억제가 끝난 뒤 첫 사용자 스크롤에서 갑자기 큰 delta로 튀지 않게 한다(요청: "next
       // 너 나와 자동 스크롤하면서 탭바와 아이콘 숨겨지는 문제 해결").
@@ -34,7 +34,11 @@ export function useHideOnScrollDown(screen: string): boolean {
         accumRef.current = 0;
         return;
       }
-      const atEdge = scrollTop <= EDGE_PX || scrollTop + clientHeight >= scrollHeight - EDGE_PX;
+      // 맨 위에서만 강제 노출한다 — 예전엔 맨 아래 도달 시에도 노출했지만("끝까지 내리면
+      // 탭바 보임"), 탭바가 완전 숨김 대신 축소(미니)로 바뀐 뒤로는 맨 아래에서 자동으로
+      // 다시 커질 필요가 없다(요청: "화면 최하단에서 탭바 자동 확대 필요없음") — 위로
+      // 스크롤을 시작하면 그때 커진다.
+      const atEdge = scrollTop <= EDGE_PX;
       const delta = scrollTop - lastScrollTopRef.current;
       lastScrollTopRef.current = scrollTop;
 
