@@ -5927,8 +5927,10 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
    눌린 홈 + 바닥면(하드 섀도) + 뜬 그림자. 면은 그대로 nawa.jpg 사진. */
 .scr-challenge-nawa-btn {
   position: relative; display: inline-flex; align-items: center; justify-content: center;
-  width: 128px; height: 72px; padding: 0; cursor: pointer;
-  border-radius: 16px; overflow: hidden;
+  /* 모양은 원에 가까운 타원(요청) — 높이를 키워(72→96) 가로세로 비를 좁히고
+     border-radius:50%로 타원을 만든다. */
+  width: 122px; height: 96px; padding: 0; cursor: pointer;
+  border-radius: 50%; overflow: hidden;
   border: 2px solid #7a7a7a;
   background: transparent;
   box-shadow:
