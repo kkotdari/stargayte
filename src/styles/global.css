@@ -1856,8 +1856,8 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
      칸이 좁아진 만큼 안쪽 패딩도 10→7px로 줄여 실제 글자 공간을 확보하고, 넘치는
      이름은 기존 말줄임이 처리한다. */
   /* 640px의 낡은 확대 규칙(173/180)을 걷어내자 실제 적용값이 한꺼번에 드러나 너무
-     좁아졌다는 피드백 — 유저/데이터 칸 모두 1.5배로(72→108, 120→180). */
-  .scr-stats-list-panel-v2 .scr-stat-row { --scr-stat-name-w: 108px; }
+     좁아졌다는 피드백 — 유저 칸은 1.5배 후 20% 추가(72→108→130), 데이터 칸 1.5배(120→180). */
+  .scr-stats-list-panel-v2 .scr-stat-row { --scr-stat-name-w: 130px; }
   .scr-stats-list-panel-v2 .scr-stat-name-cell {
     flex-direction: row; align-items: center; justify-content: center;
     padding-left: 7px; padding-right: 7px;
