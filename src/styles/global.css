@@ -1852,13 +1852,15 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
      단순 세로 스택으로 그대로 두고, 폭만 프사가 없어진 만큼 좁혀도 되는 값으로 잡는다. */
   /* 모바일 유저 칸 폭/글자 크기를 한 번 더 줄인다(요청: "유저 컬럼 폭 10프로 축소
      및 텍스트 크기 15프로 축소") — 폭은 108px의 90%, 글자는 각 기본값의 85%. */
-  /* 유저 컬럼 최대폭 25% 추가 감소(요청): 97 → 73px. */
-  .scr-stats-list-panel-v2 .scr-stat-row { --scr-stat-name-w: 73px; }
+  /* 유저 컬럼 폭 추가 축소(요청: 닉네임/배틀태그가 생각보다 공간을 안 씀): 97→73→60px.
+     칸이 좁아진 만큼 안쪽 패딩도 10→7px로 줄여 실제 글자 공간을 확보하고, 넘치는
+     이름은 기존 말줄임이 처리한다. */
+  .scr-stats-list-panel-v2 .scr-stat-row { --scr-stat-name-w: 60px; }
   .scr-stats-list-panel-v2 .scr-stat-name-cell {
     flex-direction: row; align-items: center; justify-content: center;
-    padding-left: 10px; padding-right: 10px;
+    padding-left: 7px; padding-right: 7px;
   }
-  .scr-stats-list-panel-v2 .scr-stat-name-head { padding-left: 10px; padding-right: 10px; }
+  .scr-stats-list-panel-v2 .scr-stat-name-head { padding-left: 7px; padding-right: 7px; }
   .scr-stats-list-panel-v2 .scr-stat-name-btn { text-align: center; font-size: var(--fs-body); }
   .scr-stats-list-panel-v2 .scr-stat-tag-pill { display: block; font-size: var(--fs-caption); }
   /* 나머지 네 칸(게임수/전적/유효APM/유효커맨드)도 모바일에서 10%씩 좁힌다(요청:
