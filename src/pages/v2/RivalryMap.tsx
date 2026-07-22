@@ -21,7 +21,10 @@ interface Edge {
   to: string;
   kind: "strong" | "even";
   games: number;
-  label: string; // "7:3" 같은 전적 라벨
+  // 전적 라벨은 "누가 선택됐는지"에 따라 방향이 뒤집혀야 해서(선택한 유저의 승수가
+  // 항상 앞 — 요청) 문자열 대신 양쪽 승수를 그대로 들고 렌더 시점에 조합한다.
+  fromWins: number;
+  toWins: number;
   width: number; // 우세 강도에 비례한 선 굵기(SVG 좌표계 단위)
 }
 
@@ -46,12 +49,12 @@ export default function RivalryMap({
       if (!memberOf(p.a) || !memberOf(p.b)) return;
       const aWr = p.aWins / games;
       if (aWr >= STRONG) {
-        edges.push({ from: p.a, to: p.b, kind: "strong", games, label: `${p.aWins}:${p.bWins}`, width: edgeWidth(aWr) });
+        edges.push({ from: p.a, to: p.b, kind: "strong", games, fromWins: p.aWins, toWins: p.bWins, width: edgeWidth(aWr) });
       } else if (aWr <= 1 - STRONG) {
-        edges.push({ from: p.b, to: p.a, kind: "strong", games, label: `${p.bWins}:${p.aWins}`, width: edgeWidth(aWr) });
+        edges.push({ from: p.b, to: p.a, kind: "strong", games, fromWins: p.bWins, toWins: p.aWins, width: edgeWidth(aWr) });
       } else {
         // 대등은 강도 개념이 없으니 중간 굵기 고정(요청) — 우세 굵기 범위(0.35~1.1)의 중간.
-        edges.push({ from: p.a, to: p.b, kind: "even", games, label: `${p.aWins}:${p.bWins}`, width: 0.7 });
+        edges.push({ from: p.a, to: p.b, kind: "even", games, fromWins: p.aWins, toWins: p.bWins, width: 0.7 });
       }
       ids.add(p.a);
       ids.add(p.b);
@@ -164,8 +167,12 @@ export default function RivalryMap({
                   const side = ux > 0 ? -1 : 1; // perp(-uy,ux)의 y성분(ux)이 음수(위쪽)가 되게
                   const lx = (x1 + x2) / 2 + side * -uy * 1.6;
                   const ly = (y1 + y2) / 2 + side * ux * 1.6;
+                  // 선택한 유저의 승수가 항상 앞에 오게 방향을 맞춘다(지적된 오류).
+                  const label = e.from === selected
+                    ? `${e.fromWins}:${e.toWins}`
+                    : `${e.toWins}:${e.fromWins}`;
                   return (
-                    <text x={lx} y={ly} dominantBaseline="central" style={{ fontSize: 3.2 * chipScale }} className="scr-rivalry-edge-label">{e.label}</text>
+                    <text x={lx} y={ly} dominantBaseline="central" style={{ fontSize: 3.2 * chipScale }} className="scr-rivalry-edge-label">{label}</text>
                   );
                 })()}
               </g>
