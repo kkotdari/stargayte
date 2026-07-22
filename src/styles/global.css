@@ -4079,11 +4079,12 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   /* 모바일 헤더에서 내 정보(프로필 칩)를 키운다. Avatar는 크기를 JS(size prop)의
      인라인 style로 그리므로, 여기서 CSS로 덮어쓰려면 !important가 필요하다(다른 화면의
      원형 강제 오버라이드와 같은 패턴). */
-  /* 로고를 살짝 줄여서(30px→26px) 그만큼 확보한 가로 공간을 닉네임 쪽에 돌려준다. */
-  .scr-brand-logo-img { height: 26px; }
+  /* 로고/아바타 과감히 확대 + 닉네임 1스텝 확대(요청) — 로고 26→36px, 아바타 34→44px,
+     닉네임 subhead(20)→headline(24). */
+  .scr-brand-logo-img { height: 36px; }
   .scr-brand-mark { font-size: var(--fs-title); }
-  .scr-user-chip .scr-avatar { width: 34px !important; height: 34px !important; }
-  .scr-user-name { font-size: var(--fs-subhead); }
+  .scr-user-chip .scr-avatar { width: 44px !important; height: 44px !important; }
+  .scr-user-name { font-size: var(--fs-headline); }
 }
 @media (max-width: 480px) {
   .scr-title { font-size: var(--fs-title); }
