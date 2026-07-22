@@ -4904,20 +4904,23 @@ html.scr-light-theme .scr-mobile-tab-indicator {
      또렷한 스펙큘러 글린트(폭이 달라도 같은 점 — px 고정), (3) 아래로 빛이 모이는 밝은
      파란 카우스틱, (4) 아래 안쪽 쿨톤 그늘로 렌즈 볼륨 — 이 넷으로 '빛나는 물방울'을 낸다.
      backdrop blur/brightness로 뒤 배경이 살짝 비쳐 유리감을 더한다. */
+  /* 어두운 남색빛 몸통이 종이/수채화처럼 보였다(요청) — 훨씬 밝고 맑은 하늘색으로,
+     몸통은 거의 투명한 유리 틴트만 남기고 얇은 밝은 림 + 또렷한 글린트 + 시안빛
+     카우스틱으로 매끈한 투명 질감을 낸다. */
   background:
     /* 좌상단 샤프 스펙큘러(고정 px 크기·위치 → 폭 무관하게 동일한 글린트) */
-    radial-gradient(20px 12px at 26px 9px, rgba(255,255,255,0.98) 0%, rgba(255,255,255,0.5) 40%, rgba(255,255,255,0) 72%),
-    /* 아래로 모이는 밝은 파란 굴절광(caustic) */
-    radial-gradient(150% 85% at 50% 140%, rgba(150,205,255,0.9) 0%, rgba(150,205,255,0) 48%),
-    /* 투명한 파란 유리 몸통(흰 불투명 대신 물색) */
-    radial-gradient(120% 120% at 50% 55%, rgba(120,170,225,0.18) 0%, rgba(80,140,210,0.30) 92%);
-  backdrop-filter: blur(1.5px) brightness(1.04) saturate(1.4);
-  -webkit-backdrop-filter: blur(1.5px) brightness(1.04) saturate(1.4);
+    radial-gradient(18px 11px at 25px 8px, rgba(255,255,255,1) 0%, rgba(255,255,255,0.5) 45%, rgba(255,255,255,0) 72%),
+    /* 아래로 모이는 맑은 시안 굴절광(caustic) */
+    radial-gradient(150% 80% at 50% 142%, rgba(130,215,255,0.65) 0%, rgba(130,215,255,0) 46%),
+    /* 거의 투명한 하늘색 유리 몸통 */
+    linear-gradient(180deg, rgba(225,245,255,0.30) 0%, rgba(150,215,250,0.18) 100%);
+  backdrop-filter: blur(1.5px) brightness(1.06) saturate(1.4);
+  -webkit-backdrop-filter: blur(1.5px) brightness(1.06) saturate(1.4);
   box-shadow:
-    inset 0 2px 3px rgba(255,255,255,0.9),        /* 위 밝은 림 */
-    inset 0 -8px 13px rgba(40,90,150,0.35),       /* 아래 쿨톤 안쪽 그늘 → 렌즈 볼륨 */
-    inset 3px -3px 7px rgba(255,255,255,0.45),     /* 젖은 시엔 */
-    0 4px 10px -5px rgba(30,70,120,0.4);          /* 쿨톤 바닥 접촉 그림자 */
+    inset 0 0 0 1px rgba(255,255,255,0.65),        /* 얇은 밝은 림(유리 가장자리) */
+    inset 0 2px 2px rgba(255,255,255,0.9),         /* 위 광택 */
+    inset 0 -6px 10px rgba(100,180,235,0.30),      /* 아래 하늘색 안쪽 그늘 → 렌즈 볼륨 */
+    0 3px 8px -4px rgba(80,150,205,0.35);          /* 옅은 쿨톤 접촉 그림자 */
 }
 html.scr-light-theme .scr-mobile-tab-active { color: var(--text); }
 /* 라이트 테마는 밝은 패널 위라 흰 반사광이 안 보여 — 드로어 왼쪽 모서리와 같은 이유로
