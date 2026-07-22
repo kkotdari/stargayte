@@ -1047,6 +1047,13 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    미디어쿼리가 이 값을 덮어쓴다). */
 .scr-main { max-width: var(--content-max); margin: 0 auto; padding: 34px 20px 96px; position: relative; z-index: 1; }
 .scr-screen { display: flex; flex-direction: column; gap: 10px; }
+/* 기록실(경기 목록)은 펼친 로우의 넓은 스탯표가 내부(.scr-match-stats-table-wrap의
+   overflow-x:auto)에서만 가로 스크롤돼야 하고 페이지 자체엔 가로 스크롤이 생기면 안 된다
+   (요청). 로우 내부 어딘가에서 넘치는 폭이 페이지로 새는 경우를 대비해 화면 루트에서
+   가로만 clip한다 — overflow:hidden과 달리 clip은 스크롤 컨테이너를 만들지 않으므로
+   날짜 헤더의 세로 sticky나 오른쪽 고정(fixed) 타임라인엔 영향이 없고, overflow-y도
+   visible로 그대로 둔다(표 내부의 자체 가로 스크롤도 그대로 동작). */
+.scr-match-screen-v2 { overflow-x: clip; }
 .scr-title { font-weight: 800; font-size: var(--fs-title); letter-spacing: 0.01em; margin: 0; color: var(--text); }
 /* baseline 정렬 — 타이틀 옆에 크기가 다른 힌트/배지가 와도(전적통계의 "PC로 보면
    더 예뻐요" 등) 글자 베이스라인이 나란히 맞아 자연스럽게 붙어 보인다. */
@@ -2744,14 +2751,31 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    모바일에서도 한 줄을 유지한다(요청). 라벨 없이 플레이스홀더로만 힌트를 준다(요청). 인풋
    톤은 유저 검색창과 같은 옅은 반투명. */
 .scr-match-extra-search { display: flex; gap: 8px; width: 100%; margin: -6px 0 14px; }
-.scr-match-extra-field {
-  flex: 1 1 0; min-width: 0;
-  box-sizing: border-box; height: 30px; min-height: 30px;
+/* 세 검색 필드(유저·경기번호·메모)를 크기·디자인·폰트까지 유저 검색창과 완전히 똑같이
+   통일한다(요청). 값은 유저 검색창(.scr-search-filter-float .scr-list-search-input)과
+   동일 — 옅은 반투명 배경, 각진 라운드(10px), caption 폰트. 폰트도 유저 검색창의 입력
+   글자(.scr-search-chip-input이 .scr-input에서 물려받는 데이터폰트 D2Coding)와 똑같이
+   맞춘다 — 그래서 font-family를 따로 덮지 않고 .scr-input의 var(--font-mono)를 그대로
+   쓴다. 선택자 특이도를 .scr-list-search-input 공용 규칙(0,1,0)보다 한 단계 높여(부모
+   클래스 동반, 0,2,0) 그 흰 배경/subhead 폰트/radius-sm 규칙에 덮이지 않게 한다 —
+   예전엔 덮여서 유저 검색창과 톤이 달랐다. */
+.scr-match-extra-search .scr-match-extra-field {
+  flex: 1 1 0; width: auto; min-width: 0; box-sizing: border-box;
+  height: 30px; min-height: 30px;
   background: rgba(255,255,255,0.08); border: none; border-radius: 10px; box-shadow: none;
-  padding: 0 12px; color: var(--text); font-size: var(--fs-caption);
+  padding: 0 12px; color: var(--text);
+  font-size: var(--fs-caption);
 }
-.scr-light-theme .scr-match-extra-field { background: rgba(0,0,0,0.06); }
-.scr-match-extra-field::placeholder { color: var(--muted); font-size: var(--fs-caption); }
+.scr-light-theme .scr-match-extra-search .scr-match-extra-field { background: rgba(0,0,0,0.06); }
+.scr-match-extra-search .scr-match-extra-field::placeholder { color: var(--muted); font-size: var(--fs-caption); }
+/* 모바일에선 세 검색 필드 모두 높이를 20% 키운다(30 → 36px, 요청) — 경기 화면 전용
+   스코프라 다른 화면(랭킹/전적통계 등)의 유저 검색창 높이는 그대로 둔다. */
+@media (max-width: 640px) {
+  .scr-match-screen-v2 .scr-search-filter-float .scr-list-search-input,
+  .scr-match-screen-v2 .scr-match-extra-search .scr-match-extra-field {
+    height: 36px; min-height: 36px;
+  }
+}
 /* .scr-screen이 이미 형제간 gap을 넣어주므로 자체 마진은 두지 않는다. */
 /* 목록 위 소타이틀(요청: 경기 화면 "경기 목록"). */
 /* 소타이틀 아래 갭 12px(요청: PC·모바일 공통). */
@@ -3337,7 +3361,13 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   .scr-match-trow-clickable:hover { background: rgba(var(--overlay-rgb), 0.04); }
 }
 
-.scr-match-list-wrap { position: relative; }
+/* .scr-screen이 flex column이라 그 직계 자식(이 래퍼)은 기본 min-width:auto로 자기
+   min-content(가장 넓은 자손 = 펼친 스탯표) 폭까지 늘어나 화면을 가로로 밀 수 있다 —
+   min-width:0으로 눌러 폭을 화면에 맞추면, 넘치는 표는 자기 래퍼(overflow-x:auto)에서만
+   가로 스크롤되고 페이지엔 스크롤이 안 생긴다(요청). 위 .scr-match-screen-v2의 clip은
+   그래도 새는 극단적 경우를 위한 안전망. */
+.scr-match-list-wrap { position: relative; min-width: 0; }
+.scr-match-list-panel-v2, .scr-match-cards { min-width: 0; }
 /* 필터/정렬이 바뀌어 새로 불러오는 동안 이전 목록을 옅게 눌러 "새로고침 중"만 표시한다 —
    랭킹 목록과 같은 이유(스피너로 갈아치우면 스크롤이 맨 위로 튐)로 내용은 그대로 둔다. */
 .scr-match-list-wrap-loading { opacity: 0.5; pointer-events: none; transition: opacity 0.15s; }
@@ -4794,10 +4824,10 @@ body *::-webkit-scrollbar-corner { background: transparent; }
      정적 위치(static position) 추정에 기대지 않는다 — translateX만으로 순수하게
      버튼의 offsetLeft만큼 이동한다는 걸 보장한다. */
   position: absolute; left: 0;
-  /* 알약(999px)이 아니라 이미지 예시처럼 물방울 같은 자연스러운 유기적 원형 — 위는 둥글고
-     아래는 살짝 평평(표면에 앉은 물방울, 요청). 폭이 탭마다 달라도 이 상대비율은 그대로라
-     좁은 탭은 더 동그랗게, 넓은 탭은 자연스러운 물방울로 늘어난다. */
-  border-radius: 48% 52% 47% 53% / 60% 60% 40% 40%;
+  /* 불규칙한 유기적 물방울이 아니라 완전히 대칭되는 원형/타원으로(요청). border-radius:50%는
+     정사각형이면 정원, 폭이 넓은(글자 수 많은) 탭이면 자연스럽게 좌우로 늘어난 타원이 된다.
+     상하좌우가 모두 대칭이라 어느 탭에서도 반듯한 물방울(원형) 모양이 유지된다. */
+  border-radius: 50%;
   pointer-events: none;
   transition: transform .22s ease, width .22s ease, top .22s ease, height .22s ease;
   /* 밋밋한 반투명 알약 대신 --edge-glow를 얹은 광원 느낌 — 가운데가 가장 밝고 가장자리로
@@ -4842,7 +4872,7 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    비쳐야 하니 backdrop blur/brightness로 배경과만 살짝 구분한다. */
 html.scr-light-theme .scr-mobile-tab-indicator {
   /* 같은 '젖은 유리' 물방울 — 밝은 배경 위라 볼륨은 어두운톤 안쪽 그늘과 바닥 접촉 그림자가
-     주로 잡아준다. 모양(유기적 물방울 border-radius)은 기본 규칙을 그대로 상속한다. */
+     주로 잡아준다. 모양(대칭 원형 border-radius:50%)은 기본 규칙을 그대로 상속한다. */
   background:
     radial-gradient(115% 85% at 32% 20%, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0) 32%),
     radial-gradient(26% 22% at 66% 28%, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0) 60%),
