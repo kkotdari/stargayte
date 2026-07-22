@@ -326,7 +326,6 @@ export default function Header({
       <MobileTabBar
         screen={screen}
         menuOpen={menuOpen}
-        isAdmin={isAdmin}
         effectiveVersionNumber={effectiveVersionNumber}
         hidden={tabBarHidden}
         onNavigate={go}

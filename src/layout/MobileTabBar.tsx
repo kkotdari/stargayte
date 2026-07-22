@@ -1,7 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Menu as MenuIcon } from "lucide-react";
-import AdminMenu from "./AdminMenu";
 import { cx } from "../utils/format";
 import { visibleNavMenuItems } from "../constants/menuVersions";
 import { smoothScrollRootToTop } from "../utils/scrollRoot";
@@ -11,7 +10,6 @@ import type { ScreenKey } from "../types";
 interface MobileTabBarProps {
   screen: ScreenKey;
   menuOpen: boolean;
-  isAdmin: boolean;
   // 지금 실제로 보여줄 버전(미리보기 중이면 미리보기 버전) — 이 숫자로 메뉴 배열
   // (constants/menuVersions.ts)을 걸러 노출 여부/순서를 정한다.
   effectiveVersionNumber: number;
@@ -22,8 +20,9 @@ interface MobileTabBarProps {
 
 // 모바일 전용 하단 탭바 — 자주 쓰는 화면들(랭킹/일정/경기결과/전적통계)을 바로 노출하고,
 // 내 정보/로그아웃처럼 자주 안 쓰는 항목은 "메뉴"(햄버거)로 묶어 기존 우측 슬라이드
-// 드로어를 연다. 운영자 전용 화면(회원 화면/이미지 설정/유저연결)은 운영자에게만
-// 보이는 별도 "운영" 탭 드롭다운으로 노출.
+// 드로어를 연다. 운영자 전용 화면은 탭바에 안 둔다(요청: 모바일에선 서랍에서만) —
+// 서랍(햄버거)의 "운영" 아코디언으로만 접근하고, 운영 화면을 보는 동안 탭바엔 활성
+// 탭이 없어 물방울 인디케이터도 숨는다(measure()가 active 없음 → null).
 // .scr-header가 backdrop-filter로 새 컨테이닝 블록을 만들어서 그 안의 position:fixed가
 // 화면 전체가 아니라 헤더 영역 기준으로 잡히므로, 헤더 바깥(App.tsx의 #scr-tabbar-slot)
 // 으로 포털링한다 — #scr-app에 직접 포털링하면 React가 포털을 항상 "마지막 자식"으로
@@ -116,7 +115,7 @@ function useActiveTabIndicator(navRef: { current: HTMLElement | null }, deps: un
   return indicator;
 }
 
-export default function MobileTabBar({ screen, menuOpen, isAdmin, effectiveVersionNumber, hidden, onNavigate, onOpenMenu }: MobileTabBarProps) {
+export default function MobileTabBar({ screen, menuOpen, effectiveVersionNumber, hidden, onNavigate, onOpenMenu }: MobileTabBarProps) {
   const navRef = useRef<HTMLElement>(null);
   const visibleItems = visibleNavMenuItems(effectiveVersionNumber);
 
@@ -148,12 +147,7 @@ export default function MobileTabBar({ screen, menuOpen, isAdmin, effectiveVersi
     if (pointerHandledRef.current) { pointerHandledRef.current = false; return; }
     run();
   };
-  // "운영" 드롭다운의 열림 상태는 AdminMenu 내부에만 있어(제어권까지 끌어올리진 않는다)
-  // props로 직접 안 보인다 — 그 값이 바뀔 때마다 AdminMenu가 이걸 통해 알려준다. 아래
-  // MutationObserver(클래스 변화 직접 감시)와 이중으로 걸어, 어느 한쪽이 놓쳐도 알약이
-  // 확실히 "운영"을 따라가게 한다.
-  const [adminMenuOpen, setAdminMenuOpen] = useState(false);
-  const indicator = useActiveTabIndicator(navRef, [screen, menuOpen, isAdmin, effectiveVersionNumber, adminMenuOpen]);
+  const indicator = useActiveTabIndicator(navRef, [screen, menuOpen, effectiveVersionNumber]);
 
   return createPortal(
     <nav
@@ -184,7 +178,6 @@ export default function MobileTabBar({ screen, menuOpen, isAdmin, effectiveVersi
           <span>{item.label}</span>
         </button>
       ))}
-      {isAdmin && <AdminMenu screen={screen} onNavigate={onNavigate} variant="mobile" onOpenChange={setAdminMenuOpen} />}
       {/* 메뉴 탭은 글자 대신 햄버거 아이콘으로(요청). 드로어가 열려도 활성 클래스
           (.scr-mobile-tab-active)를 달지 않는다 — 물방울 인디케이터가 이 탭으로는
           이동하지 않고(요청: 열려도 물방울 적용 X) 지금 화면 탭에 그대로 남는다. */}

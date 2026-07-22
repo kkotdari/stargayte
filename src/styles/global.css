@@ -7668,15 +7668,21 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
 /* 정사각 캔버스 — 칩은 %, 선은 같은 0~100 좌표계의 SVG(viewBox)로 그려 서로 정확히 겹친다. */
 .scr-rivalry-wrap { position: relative; width: 100%; max-width: 560px; margin: 0 auto; aspect-ratio: 1; }
 .scr-rivalry-svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
-.scr-rivalry-edge line { stroke-width: 0.7; }
-/* 우세 화살표 — 붉은 계열(전적의 패 색과 같은 결). 대등은 옅은 회색 점선. */
-.scr-rivalry-edge-strong line { stroke: rgba(224, 96, 96, 0.55); }
-.scr-rivalry-arrow-head { fill: rgba(224, 96, 96, 0.9); }
+/* 화살표는 더 가늘게(요청: 굵기 감소 — 0.7→0.5, 포커스 1→0.7). */
+.scr-rivalry-edge line { stroke-width: 0.5; }
+/* 전체 보기 우세 화살표 — 중립 파랑(요청). 대등은 옅은 회색 점선. */
+.scr-rivalry-edge-strong line { stroke: rgba(96, 156, 235, 0.6); }
+.scr-rivalry-arrow-base { fill: rgba(96, 156, 235, 0.95); }
 .scr-rivalry-edge-even line { stroke: rgba(var(--overlay-rgb), 0.35); stroke-dasharray: 2 1.6; }
-/* 유저 하나를 골라 그 유저의 선만 남긴 상태 — 더 진하고 두껍게. */
-.scr-rivalry-edge-focus line { stroke-width: 1; }
-.scr-rivalry-edge-focus.scr-rivalry-edge-strong line { stroke: rgba(224, 96, 96, 0.9); }
+/* 유저 하나를 골라 그 유저의 선만 남긴 상태 — 더 진하고 살짝 두껍게. */
+.scr-rivalry-edge-focus line { stroke-width: 0.7; }
 .scr-rivalry-edge-focus.scr-rivalry-edge-even line { stroke: rgba(var(--overlay-rgb), 0.6); }
+/* 선택 모드의 우세 화살표 색(요청) — 선택한 유저가 이기는 관계는 초록, 지는 관계는 빨강.
+   (승/패 막대의 녹/적과 같은 계열이되 선으로 또렷하게 보이게 살짝 진한 톤.) */
+.scr-rivalry-edge-win line { stroke: rgba(96, 190, 120, 0.9); }
+.scr-rivalry-arrow-win { fill: rgba(96, 190, 120, 1); }
+.scr-rivalry-edge-lose line { stroke: rgba(224, 96, 96, 0.9); }
+.scr-rivalry-arrow-lose { fill: rgba(224, 96, 96, 1); }
 /* 선 가운데 전적 라벨(선택 모드에서만) — 글자 둘레를 배경색으로 둘러 선 위에서도 읽힌다. */
 .scr-rivalry-edge-label {
   font-size: 3.2px; font-weight: 700; text-anchor: middle; fill: var(--text);
@@ -7708,10 +7714,14 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
 /* 범례 — 화살표/점선 견본 + 사용 힌트. */
 .scr-rivalry-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; justify-content: center; font-size: var(--fs-micro); color: var(--muted); }
 .scr-rivalry-legend-item { display: inline-flex; align-items: center; }
-.scr-rivalry-legend-arrow { display: inline-block; width: 16px; height: 2px; background: rgba(224,96,96,0.9); position: relative; margin-right: 5px; }
+/* 범례 화살표 — 기본은 전체 보기와 같은 파랑, 선택 모드에선 초록(우세)/빨강(열세)으로
+   변형 클래스가 색만 바꾼다(currentColor로 몸통·촉이 같이 바뀜). */
+.scr-rivalry-legend-arrow { display: inline-block; width: 16px; height: 2px; color: rgba(96,156,235,0.95); background: currentColor; position: relative; margin-right: 5px; }
 .scr-rivalry-legend-arrow::after {
   content: ""; position: absolute; right: -3px; top: -2.5px;
-  border-left: 5px solid rgba(224,96,96,0.9); border-top: 3.5px solid transparent; border-bottom: 3.5px solid transparent;
+  border-left: 5px solid currentColor; border-top: 3.5px solid transparent; border-bottom: 3.5px solid transparent;
 }
+.scr-rivalry-legend-arrow-win { color: rgba(96,190,120,1); }
+.scr-rivalry-legend-arrow-lose { color: rgba(224,96,96,1); }
 .scr-rivalry-legend-even { display: inline-block; width: 16px; height: 0; border-top: 2px dashed rgba(var(--overlay-rgb), 0.5); margin-right: 5px; }
 .scr-rivalry-legend-note { width: 100%; text-align: center; color: var(--dim); }

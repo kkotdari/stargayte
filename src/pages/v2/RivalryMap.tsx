@@ -74,19 +74,33 @@ export default function RivalryMap({
   const related = (e: Edge) => selected !== null && (e.from === selected || e.to === selected);
   const shownEdges = selected === null ? edges : edges.filter(related);
 
+  // 참여자가 많을수록 원 위 자리가 좁아지므로 칩을 단계적으로 줄인다(요청) —
+  // 8명까지는 원래 크기, 그 뒤로 한 명당 3%씩, 최소 70%까지.
+  const chipScale = Math.max(0.7, Math.min(1, 1 - Math.max(0, nodes.length - 8) * 0.03));
+
   return (
     <div className="scr-rivalry">
       <div className="scr-rivalry-wrap" onClick={() => setSelected(null)}>
         <svg className="scr-rivalry-svg" viewBox="0 0 100 100" aria-hidden>
           <defs>
-            <marker id="scr-rivalry-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
-              <path d="M0,0 L8,4 L0,8 z" className="scr-rivalry-arrow-head" />
-            </marker>
+            {/* 화살촉은 marker 정의라 선의 stroke 색을 못 물려받는다(context-stroke는 iOS
+                사파리 지원이 불안) — 기본(파랑)/우세(초록)/열세(빨강) 세 벌을 두고 엣지가
+                상태에 맞는 것을 고른다. */}
+            {(["base", "win", "lose"] as const).map((kind) => (
+              <marker key={kind} id={`scr-rivalry-arrow-${kind}`} viewBox="0 0 8 8" refX="7" refY="4" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                <path d="M0,0 L8,4 L0,8 z" className={`scr-rivalry-arrow-${kind}`} />
+              </marker>
+            ))}
           </defs>
           {shownEdges.map((e, i) => {
             const a = pos.get(e.from);
             const b = pos.get(e.to);
             if (!a || !b) return null;
+            // 선택 모드의 우세 화살표 색 — 선택한 유저가 이기는 쪽(from)이면 초록,
+            // 지는 쪽(to)이면 빨강(요청). 전체 보기는 중립 파랑.
+            const focusKind = selected !== null && e.kind === "strong"
+              ? (e.from === selected ? "win" : "lose")
+              : null;
             // 칩 아래 숨지 않게 양 끝을 칩 반지름만큼 안쪽으로 당긴다(화살촉 쪽은 조금 더).
             const dx = b.x - a.x;
             const dy = b.y - a.y;
@@ -98,10 +112,10 @@ export default function RivalryMap({
             const x2 = b.x - ux * 11;
             const y2 = b.y - uy * 11;
             return (
-              <g key={i} className={cx("scr-rivalry-edge", `scr-rivalry-edge-${e.kind}`, selected !== null && "scr-rivalry-edge-focus")}>
+              <g key={i} className={cx("scr-rivalry-edge", `scr-rivalry-edge-${e.kind}`, selected !== null && "scr-rivalry-edge-focus", focusKind && `scr-rivalry-edge-${focusKind}`)}>
                 <line
                   x1={x1} y1={y1} x2={x2} y2={y2}
-                  markerEnd={e.kind === "strong" ? "url(#scr-rivalry-arrow)" : undefined}
+                  markerEnd={e.kind === "strong" ? `url(#scr-rivalry-arrow-${focusKind ?? "base"})` : undefined}
                 />
                 {/* 선택 모드에서만 전적 라벨을 선 중앙에 보여준다 — 전체 보기에선 겹쳐서 소음. */}
                 {selected !== null && (
@@ -126,17 +140,30 @@ export default function RivalryMap({
                 selected === id && "scr-rivalry-card-selected",
                 dimmed && "scr-rivalry-card-dim",
               )}
-              style={{ left: `${p.x}%`, top: `${p.y}%` }}
+              style={{
+                left: `${p.x}%`, top: `${p.y}%`,
+                // 참여자수에 따른 칩 축소(요청) — 폰트/아바타/패딩을 같은 비율로.
+                fontSize: `${Math.round(12 * chipScale * 10) / 10}px`,
+                padding: `${4 * chipScale}px ${6 * chipScale}px`,
+                gap: `${5 * chipScale}px`,
+              }}
               onClick={(e) => { e.stopPropagation(); setSelected((s) => (s === id ? null : id)); }}
             >
-              <Avatar member={m} size={18} />
+              <Avatar member={m} size={Math.round(18 * chipScale)} />
               <span className="scr-rivalry-card-name">{m.nickname}</span>
             </button>
           );
         })}
       </div>
       <div className="scr-rivalry-legend">
-        <span className="scr-rivalry-legend-item"><span className="scr-rivalry-legend-arrow" /> 우세(화살표가 가리키는 쪽이 열세)</span>
+        {selected === null ? (
+          <span className="scr-rivalry-legend-item"><span className="scr-rivalry-legend-arrow" /> 우세(화살표가 가리키는 쪽이 열세)</span>
+        ) : (
+          <>
+            <span className="scr-rivalry-legend-item"><span className="scr-rivalry-legend-arrow scr-rivalry-legend-arrow-win" /> 선택한 유저가 우세</span>
+            <span className="scr-rivalry-legend-item"><span className="scr-rivalry-legend-arrow scr-rivalry-legend-arrow-lose" /> 열세</span>
+          </>
+        )}
         <span className="scr-rivalry-legend-item"><span className="scr-rivalry-legend-even" /> 대등</span>
         <span className="scr-rivalry-legend-note">
           {team ? `팀전 개인환산 ${MIN_GAMES}전 이상만` : `1:1 ${MIN_GAMES}전 이상만`} · 유저를 누르면 그 유저의 상성만 표시
