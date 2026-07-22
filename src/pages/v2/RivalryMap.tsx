@@ -45,13 +45,13 @@ export default function RivalryMap({
       if (games < MIN_GAMES) return;
       if (!memberOf(p.a) || !memberOf(p.b)) return;
       const aWr = p.aWins / games;
-      const width = edgeWidth(aWr);
       if (aWr >= STRONG) {
-        edges.push({ from: p.a, to: p.b, kind: "strong", games, label: `${p.aWins}:${p.bWins}`, width });
+        edges.push({ from: p.a, to: p.b, kind: "strong", games, label: `${p.aWins}:${p.bWins}`, width: edgeWidth(aWr) });
       } else if (aWr <= 1 - STRONG) {
-        edges.push({ from: p.b, to: p.a, kind: "strong", games, label: `${p.bWins}:${p.aWins}`, width });
+        edges.push({ from: p.b, to: p.a, kind: "strong", games, label: `${p.bWins}:${p.aWins}`, width: edgeWidth(aWr) });
       } else {
-        edges.push({ from: p.a, to: p.b, kind: "even", games, label: `${p.aWins}:${p.bWins}`, width });
+        // 대등은 강도 개념이 없으니 중간 굵기 고정(요청) — 우세 굵기 범위(0.35~1.1)의 중간.
+        edges.push({ from: p.a, to: p.b, kind: "even", games, label: `${p.aWins}:${p.bWins}`, width: 0.7 });
       }
       ids.add(p.a);
       ids.add(p.b);

@@ -289,18 +289,18 @@ export default function StatsScreenV2() {
                   네이티브 스크롤이 완벽히 동기화해서 그 흔들림 자체가 원천적으로 사라진다. */}
               <div className="scr-stat-row scr-stat-row-head">
                 <SortableHead label="유저" sortKey="name" sort={sort} onToggle={toggleSort} className="scr-stat-name-head" />
-                <SortableHead label="게임수" sortKey="plays" sort={sort} onToggle={toggleSort} className="scr-stat-plays-cell" />
+                <SortableHead label="게임수" sortKey="plays" sort={sort} onToggle={toggleSort} />
                 <SortableHead label="승률" sortKey="rate" sort={sort} onToggle={toggleSort} />
                 <SortableHead
-                  label="생산" sortKey="build" sort={sort} onToggle={toggleSort} className="scr-stat-build-cell"
+                  label="생산" sortKey="build" sort={sort} onToggle={toggleSort}
                   tooltip="경기당 평균 '생산'(유닛 훈련+건물 건설+저그 변태 커맨드 수) — 유닛·건물을 얼마나 뽑고 지었나의 어림 지표."
                 />
                 <SortableHead
-                  label="유효APM" sortKey="eapm" sort={sort} onToggle={toggleSort} className="scr-stat-eapm-cell"
+                  label="유효APM" sortKey="eapm" sort={sort} onToggle={toggleSort}
                   tooltip="분당 유효 조작 수(EAPM) — 리플레이에서 실제 게임에 영향을 준 명령만 센 APM. 화면 이동·중복 클릭 같은 불필요한 입력은 빠져 순수 조작량에 가깝다."
                 />
                 <SortableHead
-                  label="유효커맨드" sortKey="ecmd" sort={sort} onToggle={toggleSort} className="scr-stat-ecmd-cell"
+                  label="유효커맨드" sortKey="ecmd" sort={sort} onToggle={toggleSort}
                   tooltip="경기당 평균 유효 명령 수 — 리플레이에서 실제 게임에 영향을 준 명령만 센다."
                 />
               </div>

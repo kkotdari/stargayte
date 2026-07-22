@@ -1838,13 +1838,14 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    아래로 자연스럽게 더 내려온다. ValueBar 칸들은 flex row(세로축 = align-items,
    .scr-stat-row > * 의 center를 덮음)이고, 전적 칸(.scr-stat-bar-cell)만 flex
    column(세로축 = justify-content)이라 각각 다른 속성을 바꿔야 한다. */
-/* 헤더 행 제외(:not) — 헤더 버튼도 같은 칸 클래스를 달고 있어서 이 위 정렬이 헤더의
-   툴팁/정렬 아이콘까지 글자 위로 밀어올렸다(지적된 버그 — 클래스 없는 승률 헤더만 멀쩡). */
-.scr-stats-list-panel-v2 .scr-stat-row:not(.scr-stat-row-head) > .scr-stat-plays-cell,
-.scr-stats-list-panel-v2 .scr-stat-row:not(.scr-stat-row-head) > .scr-stat-build-cell,
-.scr-stats-list-panel-v2 .scr-stat-row:not(.scr-stat-row-head) > .scr-stat-eapm-cell,
-.scr-stats-list-panel-v2 .scr-stat-row:not(.scr-stat-row-head) > .scr-stat-ecmd-cell { align-items: flex-start; }
-.scr-stats-list-panel-v2 .scr-stat-row:not(.scr-stat-row-head) > .scr-stat-bar-cell { justify-content: flex-start; }
+/* (헤더 버튼이 한때 이 칸 클래스들을 같이 달고 있어 :not(.scr-stat-row-head)로 헤더를
+   제외해야 했는데, 헤더에서 데이터 칸 클래스를 아예 걷어내(StatsScreen) 단순한 선택자로
+   되돌렸다 — 이제 이 클래스들은 데이터 행에만 존재한다.) */
+.scr-stats-list-panel-v2 .scr-stat-plays-cell,
+.scr-stats-list-panel-v2 .scr-stat-build-cell,
+.scr-stats-list-panel-v2 .scr-stat-eapm-cell,
+.scr-stats-list-panel-v2 .scr-stat-ecmd-cell { align-items: flex-start; }
+.scr-stats-list-panel-v2 .scr-stat-bar-cell { justify-content: flex-start; }
 /* 위 8px는 모바일 기준 — PC는 화면/행 자체가 넓어 여유가 있으니 위아래 패딩을 더
    넉넉하게 되돌린다(경기결과 카드와 같은 원칙: PC만 증가, 모바일은 컴팩트 유지). */
 @media (min-width: 720px) {
@@ -7718,7 +7719,8 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
    전체에서 모두 우세니까 우세는 초록"). 대등은 옅은 회색 점선. */
 .scr-rivalry-edge-strong line { stroke: rgba(96, 190, 120, 0.7); }
 .scr-rivalry-arrow-head { fill: rgba(96, 190, 120, 1); }
-.scr-rivalry-edge-even line { stroke: rgba(var(--overlay-rgb), 0.35); stroke-dasharray: 2 1.6; }
+/* 대등 — 점선에서 실선으로(요청), 뉴트럴 회색 유지·중간 굵기(컴포넌트에서 0.7 고정). */
+.scr-rivalry-edge-even line { stroke: rgba(var(--overlay-rgb), 0.35); }
 /* 유저 하나를 골라 그 유저의 선만 남긴 상태 — 굵기는 그대로, 색만 더 진하게. */
 .scr-rivalry-edge-focus.scr-rivalry-edge-strong line { stroke: rgba(96, 190, 120, 0.95); }
 .scr-rivalry-edge-focus.scr-rivalry-edge-even line { stroke: rgba(var(--overlay-rgb), 0.6); }
@@ -7766,5 +7768,5 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
   border-left: 5px solid currentColor; border-top: 3.5px solid transparent; border-bottom: 3.5px solid transparent;
 }
 .scr-rivalry-legend-arrow-lose { color: rgba(224,96,96,1); }
-.scr-rivalry-legend-even { display: inline-block; width: 16px; height: 0; border-top: 2px dashed rgba(var(--overlay-rgb), 0.5); margin-right: 5px; }
+.scr-rivalry-legend-even { display: inline-block; width: 16px; height: 0; border-top: 2px solid rgba(var(--overlay-rgb), 0.5); margin-right: 5px; }
 .scr-rivalry-legend-note { width: 100%; text-align: center; color: var(--dim); }
