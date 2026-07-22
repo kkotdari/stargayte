@@ -338,8 +338,6 @@ export default function MatchComments({ match }: { match: Match }) {
   return (
     // 로우 전체가 클릭 토글이라, 댓글 영역에서의 클릭/입력은 로우 접힘을 막는다.
     <div className="scr-match-comments" onClick={(e) => e.stopPropagation()}>
-      <div className="scr-match-comments-title">메모 {comments.length > 0 && <span className="scr-match-comments-count">{comments.length}</span>}</div>
-
       {comments.length > 0 && (
         <ul className="scr-mreq-list scr-match-comments-list">
           {comments.map((c) => (
