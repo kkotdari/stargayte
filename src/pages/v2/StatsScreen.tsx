@@ -293,7 +293,7 @@ export default function StatsScreenV2() {
                 <SortableHead label="승률" sortKey="rate" sort={sort} onToggle={toggleSort} />
                 <SortableHead
                   label="생산" sortKey="build" sort={sort} onToggle={toggleSort} className="scr-stat-build-cell"
-                  tooltip="경기당 평균 '생산'(유닛 훈련+건물 건설+저그 변태 커맨드 수) — 리플레이로 등록된 경기만 반영된다. 유닛·건물을 얼마나 뽑고 지었나의 어림 지표."
+                  tooltip="경기당 평균 '생산'(유닛 훈련+건물 건설+저그 변태 커맨드 수) — 유닛·건물을 얼마나 뽑고 지었나의 어림 지표."
                 />
                 <SortableHead
                   label="유효APM" sortKey="eapm" sort={sort} onToggle={toggleSort} className="scr-stat-eapm-cell"
