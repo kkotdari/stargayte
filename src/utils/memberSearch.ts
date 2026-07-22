@@ -4,10 +4,17 @@
 // 정리된다 (예: "철수  영희 민수" -> ["철수","영희","민수"]).
 import type { Member } from "../types";
 
-// 공백으로 구분된 검색어를 항목별로 다듬는다(소문자 변환, 빈 항목 제외). 경기결과 화면의
+// 검색어 칩 구분자 — 공백이 아니라 탭(\t)을 쓴다. 닉네임 자체에 공백이 들어갈 수 있어
+// (예: "Team Liquid") 공백으로 나누면 한 유저가 두 칩으로 쪼개지는 버그가 있었다(요청).
+// 닉네임엔 탭이 들어갈 일이 없으므로 탭을 칩 구분자로 삼으면 공백 포함 닉네임도 한 칩으로
+// 온전히 유지된다. SearchFilterBar가 칩을 이 구분자로 이어 붙이고, 여기서 다시 나눈다.
+export const SEARCH_TERM_SEP = "\t";
+
+// 구분자(탭)로 구분된 검색어를 항목별로 다듬는다(소문자 변환, 앞뒤 공백 제거, 빈 항목 제외).
+// 각 항목(칩)은 공백을 포함할 수 있으므로 항목 안의 공백은 그대로 둔다. 경기결과 화면의
 // "모두 있는 경기만" 체크박스처럼 항목 하나하나를 따로 다뤄야 할 때 재사용.
 export function splitSearchTerms(query: string): string[] {
-  return query.trim().split(/\s+/).map((t) => t.toLowerCase()).filter(Boolean);
+  return query.split(SEARCH_TERM_SEP).map((t) => t.trim().toLowerCase()).filter(Boolean);
 }
 
 export function memberMatchesTerm(member: Member, term: string): boolean {

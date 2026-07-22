@@ -4,7 +4,7 @@ import { X } from "lucide-react";
 import Avatar from "./Avatar";
 import { attachPopover } from "../../utils/popover";
 import { cx } from "../../utils/format";
-import type { MemberSearchSuggestion } from "../../utils/memberSearch";
+import { SEARCH_TERM_SEP, type MemberSearchSuggestion } from "../../utils/memberSearch";
 
 interface SearchFilterBarProps {
   count: number;
@@ -28,11 +28,13 @@ interface SearchFilterBarProps {
 // 후보를 넉넉히 보여준다 — 드롭다운은 max-height 안에서 넘치면 스크롤된다(요청: 자동완성 스크롤).
 const MAX_SUGGESTIONS = 50;
 
-// searchValue(공백으로 구분된 검색어 문자열, memberMatchesQuery가 그대로 쓰는 형식)를
-// 칩 배열로 나눈다. 지금 타이핑 중인 마지막 단어는 이 값에 안 들어있다 — 그건 별도의
-// liveText 로컬 상태다(칩이 완성되기 전까진 부모에 알리지 않는다).
+// searchValue(구분자 SEARCH_TERM_SEP로 이어 붙인 검색어 문자열, memberMatchesQuery/
+// splitSearchTerms가 그대로 쓰는 형식)를 칩 배열로 나눈다. 구분자는 공백이 아니라 탭이라,
+// 닉네임에 공백이 들어 있어도(예: "Team Liquid") 한 칩으로 온전히 유지된다(요청: 공백
+// 포함 닉네임이 두 칩으로 쪼개지던 버그 수정). 지금 타이핑 중인 마지막 단어는 이 값에
+// 안 들어있다 — 그건 별도의 liveText 로컬 상태다(칩이 완성되기 전까진 부모에 안 알린다).
 function parseSearchChips(value: string): string[] {
-  return value.trim() === "" ? [] : value.trim().split(" ").filter(Boolean);
+  return value.split(SEARCH_TERM_SEP).map((c) => c.trim()).filter(Boolean);
 }
 
 // 경기결과/전적통계/랭킹 목록이 공용으로 쓰는, 타이틀 아래 인라인 필터+검색 바(요청:
@@ -64,7 +66,7 @@ export default function SearchFilterBar({
     // 시작하게").
     const trimmed = word.replace(/^@/, "").trim();
     if (!trimmed) return;
-    onSearchChange(chips.length > 0 ? `${chips.join(" ")} ${trimmed}` : trimmed);
+    onSearchChange(chips.length > 0 ? `${chips.join(SEARCH_TERM_SEP)}${SEARCH_TERM_SEP}${trimmed}` : trimmed);
   };
 
   // 결과 필터(memberMatchesQuery)와 같은 방식으로 띄어쓰기 여러 단어를 지원한다 — 이미
@@ -135,7 +137,7 @@ export default function SearchFilterBar({
   // 칩(완성된 검색어) 하나를 지우고 즉시 반영한다 — 지금 타이핑 중이던 마지막 단어는
   // 그대로 둔다.
   const removeChip = (index: number) => {
-    onSearchChange(chips.filter((_, i) => i !== index).join(" "));
+    onSearchChange(chips.filter((_, i) => i !== index).join(SEARCH_TERM_SEP));
   };
 
   // 검색칸에서 방향키로 후보를 이동, 엔터로 포커싱된 후보를 선택, ESC로 닫기 — 다른
