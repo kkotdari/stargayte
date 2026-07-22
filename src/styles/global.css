@@ -7058,14 +7058,9 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
   .scr-usermap-row { font-size: var(--fs-caption); }
   .scr-usermap-row-head { font-size: var(--fs-caption); }
   .scr-usermap-raw-name { font-size: var(--fs-caption); }
-  /* 통계 그리드 모든 컬럼 폭 20% 확대(이름칸 160→192, 데이터칸 150→180).
-     --scr-stat-col-w도 여기서 같이 지정해야(구분선 위치 계산이 참조) 이 규칙이
-     이기는 화면 폭에서 구분선이 실제 칸 폭과 어긋나지 않는다. */
-  .scr-stats-list-panel-v2 .scr-stat-row {
-    --scr-stat-name-w: 173px;
-    --scr-stat-col-w: 180px;
-    grid-template-columns: var(--scr-stat-name-w) repeat(5, var(--scr-stat-col-w));
-  }
+  /* (제거) 예전 "통계 컬럼 20% 확대(173/180px)" 규칙이 여기 있었다 — 소스상 더 뒤라
+     위 480px 블록의 유저 칸 축소(97→73→60px)를 전부 덮어써 실제로는 하나도 적용되지
+     않던 원인(지적된 버그: "안 줄어드는데?"). 축소 요청이 확대 요청을 대체했으므로 삭제. */
   /* 서랍메뉴: '전체 메뉴' 타이틀 한 단계 축소(28→20). 테마 바꾸기~메뉴 닫기는 한 스텝 키운다(요청: 14→16). */
   .scr-drawer-head .scr-brand-mark { font-size: var(--fs-subhead); }
   .scr-drawer-actions .scr-btn { font-size: var(--fs-body); }
