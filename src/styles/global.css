@@ -4866,10 +4866,11 @@ body *::-webkit-scrollbar-corner { background: transparent; }
      정적 위치(static position) 추정에 기대지 않는다 — translateX만으로 순수하게
      버튼의 offsetLeft만큼 이동한다는 걸 보장한다. */
   position: absolute; left: 0;
-  /* 완전히 대칭이되(상하좌우), 순수 타원(50%)은 폭이 넓을 때 좌우 끝이 너무 뾰족해서
-     좌우 곡률을 낮춰 둥글게 만든다(요청) — 가로 반지름을 38%로 줄이면 좌우 끝이 뾰족한
-     타원 대신 부드럽게 둥근 물방울이 된다(세로는 50% 유지). 폭이 달라도 이 비율은 그대로. */
-  border-radius: 38% / 50%;
+  /* 좌우 곡률을 폭과 무관하게 '고정'한다(요청: 폭이 길어져도 곡률 유지). 가로 반지름을
+     퍼센트(폭 비례)로 두면 넓은 탭일수록 끝이 점점 평평/뾰족해져 곡률이 달라졌다 —
+     고정 px(22px)로 두면 좁은 탭이든 넓은 탭이든 좌우 끝 둥근 모양이 똑같이 유지되고,
+     가운데 직선 구간만 폭에 따라 늘어난다. 세로는 50%(높이 절반)로 위아래를 꽉 둥글게. */
+  border-radius: 22px / 50%;
   pointer-events: none;
   transition: transform .22s ease, width .22s ease, top .22s ease, height .22s ease;
   /* 밋밋한 반투명 알약 대신 --edge-glow를 얹은 광원 느낌 — 가운데가 가장 밝고 가장자리로
@@ -4913,21 +4914,26 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    굴절 그늘을 빼고, 왼쪽 위 빛 반사 + 아주 옅은 반사광 테두리만으로 볼륨을 낸다. 뒤가
    비쳐야 하니 backdrop blur/brightness로 배경과만 살짝 구분한다. */
 html.scr-light-theme .scr-mobile-tab-indicator {
-  /* 같은 '젖은 유리' 물방울 — 밝은 배경 위라 볼륨은 어두운톤 안쪽 그늘과 바닥 접촉 그림자가
-     주로 잡아준다. 모양(대칭 둥근 물방울 border-radius:38%/50%)은 기본 규칙을 그대로
-     상속한다. 몸통 틴트는 회색톤을 살짝 푸른 톤으로(요청). */
+  /* 라이트 테마도 '젖은 물' 느낌으로(요청: 계란/플라스틱처럼 보이던 문제 수정). 예전엔
+     불투명 흰 몸통 + 넓고 부드러운 흰 하이라이트라 매끈한 계란/플라스틱처럼 보였다.
+     이제 (1) 투명한 파란 유리 몸통(흰색 대신 물색 틴트), (2) 좌상단 고정 크기의 작고
+     또렷한 스펙큘러 글린트(폭이 달라도 같은 점 — px 고정), (3) 아래로 빛이 모이는 밝은
+     파란 카우스틱, (4) 아래 안쪽 쿨톤 그늘로 렌즈 볼륨 — 이 넷으로 '빛나는 물방울'을 낸다.
+     backdrop blur/brightness로 뒤 배경이 살짝 비쳐 유리감을 더한다. */
   background:
-    radial-gradient(115% 85% at 32% 20%, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0) 32%),
-    radial-gradient(26% 22% at 66% 28%, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0) 60%),
-    radial-gradient(120% 118% at 50% 120%, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0) 42%),
-    radial-gradient(135% 120% at 50% 46%, rgba(132,158,205,0.11) 0%, rgba(120,150,200,0.2) 82%);
-  backdrop-filter: blur(3px) brightness(1.06) saturate(1.1);
-  -webkit-backdrop-filter: blur(3px) brightness(1.06) saturate(1.1);
+    /* 좌상단 샤프 스펙큘러(고정 px 크기·위치 → 폭 무관하게 동일한 글린트) */
+    radial-gradient(20px 12px at 26px 9px, rgba(255,255,255,0.98) 0%, rgba(255,255,255,0.5) 40%, rgba(255,255,255,0) 72%),
+    /* 아래로 모이는 밝은 파란 굴절광(caustic) */
+    radial-gradient(150% 85% at 50% 140%, rgba(150,205,255,0.9) 0%, rgba(150,205,255,0) 48%),
+    /* 투명한 파란 유리 몸통(흰 불투명 대신 물색) */
+    radial-gradient(120% 120% at 50% 55%, rgba(120,170,225,0.18) 0%, rgba(80,140,210,0.30) 92%);
+  backdrop-filter: blur(1.5px) brightness(1.04) saturate(1.4);
+  -webkit-backdrop-filter: blur(1.5px) brightness(1.04) saturate(1.4);
   box-shadow:
-    inset 0 2px 3px rgba(255,255,255,0.6),        /* 위 안쪽 반사 */
-    inset 0 -8px 14px rgba(90,112,128,0.28),      /* 아래 안쪽 그늘 → 볼륨 */
-    inset 4px -5px 9px rgba(255,255,255,0.22),    /* 젖은 시엔 */
-    3px 7px 13px -5px rgba(58,80,96,0.32);        /* 부드럽게 오프셋된 바닥 접촉 그림자 */
+    inset 0 2px 3px rgba(255,255,255,0.9),        /* 위 밝은 림 */
+    inset 0 -8px 13px rgba(40,90,150,0.35),       /* 아래 쿨톤 안쪽 그늘 → 렌즈 볼륨 */
+    inset 3px -3px 7px rgba(255,255,255,0.45),     /* 젖은 시엔 */
+    0 4px 10px -5px rgba(30,70,120,0.4);          /* 쿨톤 바닥 접촉 그림자 */
 }
 html.scr-light-theme .scr-mobile-tab-active { color: var(--text); }
 /* 라이트 테마는 밝은 패널 위라 흰 반사광이 안 보여 — 드로어 왼쪽 모서리와 같은 이유로
