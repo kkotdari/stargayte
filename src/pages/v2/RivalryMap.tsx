@@ -91,22 +91,15 @@ export default function RivalryMap({
     <div className="scr-rivalry">
       <div className="scr-rivalry-wrap" onClick={() => setSelected(null)}>
         <svg className="scr-rivalry-svg" viewBox="0 0 100 100" aria-hidden>
-          <defs>
-            {/* 화살촉은 marker 정의라 선의 stroke 색을 못 물려받아 CSS 클래스로 따로
-                칠한다. 화살표는 어느 모드든 "우세"라는 한 가지 의미라 색도 초록 하나다
-                (요청: "선택시랑 전체에서 모두 우세니까 우세는 초록"). */}
-            {/* markerUnits 기본값(strokeWidth)은 화살촉이 선 굵기에 비례해 커진다 —
-                강한 상성(굵은 선) + 바로 옆 칩이면 짧은 선이 화살촉에 다 먹혀 대가리만
-                보였다(지적된 버그). userSpaceOnUse로 굵기와 무관한 고정 크기로 두고,
-                전체 크기도 한 단계 줄인다(5→3.8). */}
-            <marker id="scr-rivalry-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="3.8" markerHeight="3.8" markerUnits="userSpaceOnUse" orient="auto-start-reverse">
-              <path d="M0,0 L8,4 L0,8 z" className="scr-rivalry-arrow-head" />
-            </marker>
-          </defs>
           {shownEdges.map((e, i) => {
             const a = pos.get(e.from);
             const b = pos.get(e.to);
             if (!a || !b) return null;
+            // 선택 모드에선 선택한 유저가 주인공(요청) — 그 유저가 이기는 관계(from)는
+            // 초록, 지는 관계(to)는 빨강. 전체 보기는 우세=초록 하나.
+            const focusKind = selected !== null && e.kind === "strong"
+              ? (e.from === selected ? "win" : "lose")
+              : null;
             // 칩 아래 숨지 않게 양 끝을 칩 반지름만큼 안쪽으로 당긴다(화살촉 쪽은 조금 더).
             // 단, 바로 옆 칩처럼 두 점이 가까우면 트림(9+11)이 선을 다 먹어 화살촉만
             // 남았다(지적된 버그) — 최소 4유닛의 선은 남도록 트림을 비례 축소한다.
@@ -120,14 +113,22 @@ export default function RivalryMap({
             const y1 = a.y + uy * 9 * trimScale;
             const x2 = b.x - ux * 11 * trimScale;
             const y2 = b.y - uy * 11 * trimScale;
+            // 화살촉 — marker 대신 직접 그린다: 굵기에 비례하되(요청) 최소/최대를
+            // 클램프해 얇은 선에서도 보이고 굵은 선에서도 과하지 않게. 길이 h, 밑변
+            // 폭은 h의 0.9배. 삼각형이 선 끝을 덮으므로 선은 그대로 x2까지 긋는다.
+            const headLen = Math.min(3.6, Math.max(2.2, e.width * 3.4));
+            const half = headLen * 0.45;
+            const bx = x2 - ux * headLen;
+            const by = y2 - uy * headLen;
+            const arrowPoints = `${x2},${y2} ${bx - uy * half},${by + ux * half} ${bx + uy * half},${by - ux * half}`;
             return (
-              <g key={i} className={cx("scr-rivalry-edge", `scr-rivalry-edge-${e.kind}`, selected !== null && "scr-rivalry-edge-focus")}>
+              <g key={i} className={cx("scr-rivalry-edge", `scr-rivalry-edge-${e.kind}`, selected !== null && "scr-rivalry-edge-focus", focusKind && `scr-rivalry-edge-${focusKind}`)}>
                 <line
                   x1={x1} y1={y1} x2={x2} y2={y2}
                   // 우세 강도 비례 굵기 — 인라인 style이라 CSS 기본 굵기를 덮는다.
                   style={{ strokeWidth: e.width }}
-                  markerEnd={e.kind === "strong" ? "url(#scr-rivalry-arrow)" : undefined}
                 />
+                {e.kind === "strong" && <polygon points={arrowPoints} className="scr-rivalry-arrow-head" />}
                 {/* 선택 모드에서만 전적 라벨을 선 중앙에 보여준다 — 전체 보기에선 겹쳐서 소음. */}
                 {selected !== null && (
                   <text x={(x1 + x2) / 2} y={(y1 + y2) / 2 - 1.2} className="scr-rivalry-edge-label">{e.label}</text>
@@ -167,7 +168,14 @@ export default function RivalryMap({
         })}
       </div>
       <div className="scr-rivalry-legend">
-        <span className="scr-rivalry-legend-item"><span className="scr-rivalry-legend-arrow" /> 우세(화살표가 가리키는 쪽이 열세)</span>
+        {selected === null ? (
+          <span className="scr-rivalry-legend-item"><span className="scr-rivalry-legend-arrow" /> 우세(화살표가 가리키는 쪽이 열세)</span>
+        ) : (
+          <>
+            <span className="scr-rivalry-legend-item"><span className="scr-rivalry-legend-arrow" /> 선택한 유저가 우세</span>
+            <span className="scr-rivalry-legend-item"><span className="scr-rivalry-legend-arrow scr-rivalry-legend-arrow-lose" /> 열세</span>
+          </>
+        )}
         <span className="scr-rivalry-legend-item"><span className="scr-rivalry-legend-even" /> 대등</span>
         <span className="scr-rivalry-legend-note">
           선이 굵을수록 상성이 뚜렷 · 유저를 누르면 그 유저의 상성만 표시

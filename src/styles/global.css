@@ -7680,6 +7680,11 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
 /* 유저 하나를 골라 그 유저의 선만 남긴 상태 — 굵기는 그대로, 색만 더 진하게. */
 .scr-rivalry-edge-focus.scr-rivalry-edge-strong line { stroke: rgba(96, 190, 120, 0.95); }
 .scr-rivalry-edge-focus.scr-rivalry-edge-even line { stroke: rgba(var(--overlay-rgb), 0.6); }
+/* 선택 모드 — 선택한 유저가 주인공(요청): 그 유저가 지는 관계(자기를 가리키는 화살표)만
+   빨강으로 뒤집는다(이기는 관계는 기본 초록 그대로). 화살촉(polygon)도 선을 따라간다.
+   위의 focus+strong(2클래스) 초록 규칙을 특이도로 이겨야 해서 focus를 같이 붙인다. */
+.scr-rivalry-edge-focus.scr-rivalry-edge-lose line { stroke: rgba(224, 96, 96, 0.95); }
+.scr-rivalry-edge-lose .scr-rivalry-arrow-head { fill: rgba(224, 96, 96, 1); }
 /* 선 가운데 전적 라벨(선택 모드에서만) — 글자 둘레를 배경색으로 둘러 선 위에서도 읽힌다. */
 .scr-rivalry-edge-label {
   font-size: 3.2px; font-weight: 700; text-anchor: middle; fill: var(--text);
@@ -7711,11 +7716,13 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
 /* 범례 — 화살표/점선 견본 + 사용 힌트. */
 .scr-rivalry-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; justify-content: center; font-size: var(--fs-micro); color: var(--muted); }
 .scr-rivalry-legend-item { display: inline-flex; align-items: center; }
-/* 범례 화살표 — 지도와 같은 초록(우세) 하나(currentColor로 몸통·촉이 같이 칠해진다). */
+/* 범례 화살표 — 기본 초록(우세), 선택 모드의 열세 항목만 빨강 변형(currentColor로
+   몸통·촉이 같이 칠해진다). */
 .scr-rivalry-legend-arrow { display: inline-block; width: 16px; height: 2px; color: rgba(96,190,120,1); background: currentColor; position: relative; margin-right: 5px; }
 .scr-rivalry-legend-arrow::after {
   content: ""; position: absolute; right: -3px; top: -2.5px;
   border-left: 5px solid currentColor; border-top: 3.5px solid transparent; border-bottom: 3.5px solid transparent;
 }
+.scr-rivalry-legend-arrow-lose { color: rgba(224,96,96,1); }
 .scr-rivalry-legend-even { display: inline-block; width: 16px; height: 0; border-top: 2px dashed rgba(var(--overlay-rgb), 0.5); margin-right: 5px; }
 .scr-rivalry-legend-note { width: 100%; text-align: center; color: var(--dim); }
