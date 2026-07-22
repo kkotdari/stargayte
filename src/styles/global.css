@@ -863,10 +863,8 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    가려지지 않게 한다 — 일반 사파리 탭에서는 상태바가 브라우저 자체 영역이라 이 값이
    0이라 아무 영향이 없다. */
 .scr-header {
-  position: relative; z-index: 2; background-color: var(--header-bg); backdrop-filter: blur(4px);
-  /* 구분선을 파이프(붉은 강조)가 아닌 중립 톤 그라데이션으로(요청). */
-  background-image: linear-gradient(90deg, transparent 0%, var(--divider-soft) 50%, transparent 100%);
-  background-repeat: no-repeat; background-position: bottom; background-size: 100% 1px;
+  /* 하단 구분선과 블러는 제거(요청) — 배경색만 남긴다. */
+  position: relative; z-index: 2; background-color: var(--header-bg);
   /* 상단 안전영역만큼 헤더 콘텐츠를 내려 노치/상태바에 안 가리게 한다(--safe-top).
      헤더는 스크롤되는 페이지 최상단 콘텐츠라, 맨 위에 있을 때 이 padding이 노치를
      비켜준다. 스크롤로 헤더가 밀려 올라간 뒤엔 아래 스티키(날짜 줄)가 top:var(--safe-top)
@@ -882,10 +880,8 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    라이트 테마는 배경 사진 자체를 끄므로(위 .scr-light-theme ...::before display:none)
    헤더 배경을 그대로 유지한다. 하단 구분선(background-image 그라데이션)은 남긴다. */
 html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
-  /* 재조정(요청): 배경색은 완전 투명, 블러는 약하게만 남긴다. */
+  /* 배경 화면에선 완전 투명 — 블러도 전부 제거(요청). */
   background-color: transparent;
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
 }
 
 /* 상단 안전영역(노치/상태바) 프로스티드 스크림 — black-translucent 몰입 모드에서 콘텐츠가
@@ -6416,6 +6412,11 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
    더 오른쪽으로 이동"). */
 @media (max-width: 860px) {
   .scr-scroll-timeline { right: -1px; }
+}
+/* 모바일 헤더가 로고만 남고 낮아져(패딩 10px + 로고 24px ≈ 44px) 타임라인 상단도 그만큼
+   끌어올린다(요청). */
+@media (max-width: 640px) {
+  .scr-scroll-timeline { top: calc(var(--safe-top) + 52px); }
 }
 .scr-scroll-timeline-visible { opacity: 1; pointer-events: auto; }
 .scr-scroll-timeline-end {
