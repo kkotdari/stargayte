@@ -4113,9 +4113,9 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
      보이던 크기(body 16) 기준 한 스텝 위인 subhead(20). */
   .scr-brand-logo-img { height: 32px; }
   .scr-brand-mark { font-size: var(--fs-title); }
-  .scr-user-chip .scr-avatar { width: 32px !important; height: 32px !important; }
-  /* 아바타 우측 패딩 2px 축소(요청) — 칩 기본 4px 10px 4px 4px에서 우측만. */
-  .scr-user-chip { padding-right: 8px; }
+  .scr-user-chip .scr-avatar { width: 36px !important; height: 36px !important; }
+  /* 아바타 우측 패딩(요청: 8에서 6 추가) — 칩 기본 4px 10px 4px 4px에서 우측만. */
+  .scr-user-chip { padding-right: 14px; }
   /* 모바일 헤더에선 닉네임 없이 아바타만(요청). */
   .scr-user-name { display: none; }
   /* 프로필 칩(아바타+닉네임)은 로고의 중심선보다 아래로(요청: 2px에서 6px 더), 로고도
