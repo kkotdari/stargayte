@@ -40,8 +40,11 @@ export default function RivalryOverlay({ from, to, onClose }: {
           </button>
         </div>
         {error && <div className="scr-err">{error}</div>}
+        {/* 로딩 자리도 맵과 같은 정사각으로 잡아둔다 — 스피너만 있는 낮은 높이로 세로
+            가운데 정렬됐다가 데이터가 오면 본체가 커지며 타이틀/닫기가 위로 튀어 오르던
+            부자연스러움(지적) 방지. */}
         {pairs === undefined && !error
-          ? <div className="scr-empty"><Spinner size={18} /></div>
+          ? <div className="scr-rivalry-overlay-loading"><Spinner size={18} /></div>
           : pairs !== undefined && <RivalryMap pairs={pairs} memberOf={memberOf} />}
       </div>
     </div>,

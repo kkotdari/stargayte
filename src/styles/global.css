@@ -7780,6 +7780,12 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   padding: 6px; display: inline-flex; -webkit-tap-highlight-color: transparent;
 }
 .scr-rivalry-overlay-close:hover { color: var(--text); }
+/* 로딩 플레이스홀더 — 맵 캔버스(.scr-rivalry-wrap)와 같은 정사각을 미리 차지해, 로드
+   완료 시 오버레이 높이가 변하며 헤더가 튀지 않게 한다. */
+.scr-rivalry-overlay-loading {
+  width: 100%; max-width: 560px; margin: 0 auto; aspect-ratio: 1;
+  display: flex; align-items: center; justify-content: center;
+}
 /* 개인전/팀전 탭(요청: 루페 스타일) — 하단 탭바의 물방울(.scr-mobile-tab-indicator)을
    그대로 재사용하고, 위치만 이 탭줄 기준으로 다시 잡는다: 두 탭이 정확히 반반이라
    JS 실측 없이 폭 50% + translateX(0%/100%)로 슬라이드한다. */
