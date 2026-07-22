@@ -17,12 +17,12 @@ export function useBottomViewportInset() {
         // interactive-widget=resizes-content라 키보드는 양쪽에서 함께 빠져 주소창 몫만 남는다.
         inset = window.innerHeight - vv.height - vv.offsetTop;
       }
-      // 문서 스크롤 전환 후엔 음수도 허용한다 — 사파리 툴바가 접힐 때 레이아웃 뷰포트
-      // (innerHeight)가 실제 보이는 영역만큼 안 늘어나는 경우, 실측 간격이 음수가 되고
-      // 탭바는 bottom:음수로 그만큼 내려가 접히며 생긴 하단 공간까지 따라붙는다(신고:
-      // "주소창 내비바 접히긴 하는데 화면이 거기까지 나오진 않네"). 주소창/툴바는 아무리
-      // 커도 ~80px이라 ±120px 밖(키보드 등 이상치)은 무시한다.
-      inset = Math.min(120, Math.max(-120, Math.round(inset)));
+      // 음수는 다시 0으로 막는다 — 툴바가 접힐 때 탭바가 따라 내려가라고 잠시 음수를
+      // 허용해봤지만, iOS가 레이아웃 뷰포트(innerHeight)도 함께 늘리는 경우 그 성장분과
+      // 이중으로 밀려 탭바 아래가 화면 밖으로 잘렸다(신고: "탭바 축소시 아래 잘리는 경우
+      // 발생"). 접힘 추적은 레이아웃 뷰포트 성장(bottom:0이 자동으로 따라감)에 맡긴다.
+      // 주소창은 아무리 커도 ~80px이라 그 이상(키보드 등 이상치)은 무시한다.
+      inset = Math.min(120, Math.max(0, Math.round(inset)));
       root.style.setProperty("--vv-bottom-inset", `${inset}px`);
     };
     update();
