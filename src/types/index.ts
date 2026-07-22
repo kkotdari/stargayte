@@ -358,6 +358,8 @@ export interface ChallengeTarget {
   battletag: string;
   avatar: string | null;
   response: ChallengeTargetResponse;
+  // 이 대상이 응답하며 남긴 한마디(선택) — 없으면 빈 문자열.
+  responseMessage: string;
 }
 
 // 도전자와 같은 편(내 팀) — 본인은 자동 포함이라 이 목록엔 안 담기고, "본인 제외
@@ -383,6 +385,8 @@ export interface ChallengeHistoryEntry {
 export interface Challenge {
   id: number;
   matchType: ChallengeMatchType;
+  // 도전자가 호출 때 남긴 한마디(선택) — 없으면 빈 문자열.
+  message: string;
   scheduledAt: string | null;
   status: ChallengeStatus;
   createdBy: { id: string; nickname: string };
@@ -404,6 +408,8 @@ export interface Challenge {
 
 export interface ChallengeCreatePayload {
   scheduledAt?: string | null;
+  // 호출 한마디(선택, 한글 50자).
+  message?: string;
   targetMemberIds: string[];
   // 본인 제외 나머지 내 팀원(최대 3명, 본인 포함 최대 4명) — 안 넘기면 나 혼자.
   ownTeamMemberIds?: string[];

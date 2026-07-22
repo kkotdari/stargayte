@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { X, Send } from "lucide-react";
+import { X, Send, MessageSquarePlus } from "lucide-react";
+import { cx } from "../utils/format";
 import Avatar from "../components/common/Avatar";
 import OptionalDateTimeFields from "../components/common/OptionalDateTimeFields";
 import { Spinner } from "../components/common/Feedback";
@@ -54,6 +55,9 @@ export default function ChallengeFormModal({ onClose, onCreated, presetTargetIds
   // 기본 시간(22:00)으로 채운다.
   const [dateStr, setDateStr] = useState("");
   const [timeStr, setTimeStr] = useState("");
+  // 호출 한마디(선택) — 아이콘 버튼을 눌러야 입력창이 트랜지션으로 열린다(요청).
+  const [message, setMessage] = useState("");
+  const [messageOpen, setMessageOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   // 호출을 보내고 나면(성공) 이 확인창으로 넘어가 카카오톡 공유 버튼을 보여준다(요청). 여기서
@@ -104,6 +108,7 @@ export default function ChallengeFormModal({ onClose, onCreated, presetTargetIds
         targetMemberIds: targetIds,
         ownTeamMemberIds: ownTeamIds,
         scheduledAt,
+        message: message.trim(),
         fromMatchRequest,
       });
       // 바로 닫지 않고 확인창(카카오 공유)으로 넘어간다.
@@ -211,6 +216,29 @@ export default function ChallengeFormModal({ onClose, onCreated, presetTargetIds
             dateStr={dateStr} onDateChange={setDateStr}
             timeStr={timeStr} onTimeChange={setTimeStr}
           />
+
+          {/* 호출 한마디(선택) — 아이콘 버튼을 누르면 입력창이 높이 트랜지션으로 열린다(요청). */}
+          <div className="scr-challenge-msg">
+            <button
+              type="button"
+              className={cx("scr-challenge-msg-toggle", messageOpen && "scr-challenge-msg-toggle-on")}
+              onClick={() => setMessageOpen((v) => !v)}
+              aria-expanded={messageOpen}
+            >
+              <MessageSquarePlus size={14} /> 한마디{message.trim() && !messageOpen ? ` · ${message.trim()}` : ""}
+            </button>
+            <div className={cx("scr-challenge-msg-wrap", messageOpen && "scr-challenge-msg-wrap-open")}>
+              <div className="scr-challenge-msg-inner">
+                <input
+                  className="scr-input"
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value.slice(0, 50))}
+                  placeholder="한마디 (선택, 최대 50자)"
+                  maxLength={50}
+                />
+              </div>
+            </div>
+          </div>
 
           {err && <div className="scr-err">{err}</div>}
 

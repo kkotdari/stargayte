@@ -5688,6 +5688,28 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
   background: var(--panel-raised); color: var(--muted);
   border-color: rgba(255, 255, 255, 0.18); opacity: 1;
 }
+/* 호출 한마디 — 아이콘 토글 버튼 + 높이 트랜지션 입력창(요청). grid-rows 0fr↔1fr 트릭으로
+   내용 높이를 몰라도 부드럽게 열고 닫는다. */
+.scr-challenge-msg { display: flex; flex-direction: column; gap: 8px; }
+.scr-challenge-msg-toggle {
+  align-self: flex-start; display: inline-flex; align-items: center; gap: 5px;
+  background: rgba(var(--overlay-rgb), 0.06); border: none; border-radius: 999px;
+  padding: 6px 12px; color: var(--muted); font-size: var(--fs-caption); font-weight: 700; cursor: pointer;
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.scr-challenge-msg-toggle:hover { color: var(--text); background: rgba(var(--overlay-rgb), 0.1); }
+.scr-challenge-msg-toggle-on { color: var(--point); }
+.scr-challenge-msg-wrap { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.24s ease; }
+.scr-challenge-msg-wrap-open { grid-template-rows: 1fr; }
+.scr-challenge-msg-inner { overflow: hidden; min-height: 0; }
+.scr-challenge-msg-inner .scr-input { width: 100%; }
+/* 응답 영역 — 한마디 토글/입력 + 버튼 행을 세로로 쌓는다. */
+.scr-challenge-respond { display: flex; flex-direction: column; gap: 8px; }
+/* 카드에 보여주는 한마디(호출/응답) — 따옴표 없이, 본문보다 한 스텝 작게(요청). */
+.scr-challenge-card-msgs { display: flex; flex-direction: column; gap: 3px; margin-top: 8px; }
+.scr-challenge-card-msg { display: flex; gap: 6px; align-items: baseline; font-size: var(--fs-caption); line-height: 1.4; }
+.scr-challenge-card-msg-who { flex: 0 0 auto; font-weight: 700; color: var(--dim); font-size: var(--fs-micro); }
+.scr-challenge-card-msg-text { color: var(--text); word-break: break-word; }
 .scr-light-theme .scr-challenge-submit-btn:disabled { border-color: rgba(0, 0, 0, 0.14); }
 /* "호출" 버튼 — 활성화 시 핑크(요청: 빨강 말고 핑크로). 비활성은 위
    .scr-challenge-submit-btn:disabled의 무채색 처리를 그대로 받는다. */

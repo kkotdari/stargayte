@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Pencil } from "lucide-react";
+import { Pencil, MessageSquarePlus } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
 import { Spinner } from "../../components/common/Feedback";
 import OptionalDateTimeFields from "../../components/common/OptionalDateTimeFields";
@@ -23,16 +23,19 @@ import type { Challenge, ChallengeResult, ChallengeSide, ChallengeStatus, Challe
 // (confirmed)고, 거절·무응답·미실시·(레거시)취소는 모두 폐기(discarded)로 통합됐다. 프론트가
 // 파생 계산을 하지 않는다(서버가 내려준 status를 그대로 쓴다).
 
-// 응답 마감 = 요청일(createdAt) + 1일. 응답대기중 카드에 남은 시간을 보여주는 카운트다운용
-// (요청: "카운트 다운 필요해!") — 만료 판정 자체는 서버 배치가 하고(프론트는 마감 계산으로
-// 상태를 바꾸지 않는다), 여기선 남은 시간 문구만 심플하게 만든다. 마감이 지나 잠깐 음수가
-// 되면 "곧 마감"으로 대체한다.
-const EXPIRE_MS = 24 * 60 * 60 * 1000;
-function responseDeadlineLabel(createdAt: string): string {
-  const remain = new Date(createdAt).getTime() + EXPIRE_MS - Date.now();
+// 응답 마감 = 요청일(createdAt) + 72시간(요청). 단, 예정 시각이 그보다 먼저면 예정 시각이
+// 마감이다 — 그때까지 응답이 없으면 서버가 무응답 거절 처리한다. 여기선 남은 시간 문구만
+// 만든다(만료 판정은 서버 배치). 마감이 지나 잠깐 음수가 되면 "곧 마감"으로 대체한다.
+const EXPIRE_MS = 72 * 60 * 60 * 1000;
+function responseDeadlineLabel(createdAt: string, scheduledAt: string | null): string {
+  const base = new Date(createdAt).getTime() + EXPIRE_MS;
+  const deadline = scheduledAt ? Math.min(base, new Date(scheduledAt).getTime()) : base;
+  const remain = deadline - Date.now();
   if (remain <= 0) return "응답 마감 임박";
-  const hours = Math.floor(remain / (60 * 60 * 1000));
+  const days = Math.floor(remain / (24 * 60 * 60 * 1000));
+  const hours = Math.floor((remain % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
   const mins = Math.floor((remain % (60 * 60 * 1000)) / (60 * 1000));
+  if (days > 0) return `응답 마감 ${days}일 ${hours}시간 남음`;
   return hours > 0 ? `응답 마감 ${hours}시간 남음` : `응답 마감 ${mins}분 남음`;
 }
 
@@ -250,15 +253,17 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
   const [mode, setMode] = useState<CardMode>("none");
   const [dateStr, setDateStr] = useState("");
   const [timeStr, setTimeStr] = useState("");
+  // 응답 한마디(선택) — 아이콘 버튼을 눌러야 입력창이 트랜지션으로 열린다(요청).
+  const [respondMessage, setRespondMessage] = useState("");
+  const [respondMsgOpen, setRespondMsgOpen] = useState(false);
 
-  // 카드에서 바로 승락/거절 — 한마디 없이 바로 응답한다(아주 단순하게). 거절은 되돌릴 수
-  // 없으니 확인만 한 번 받는다.
+  // 카드에서 바로 승락/거절 — 한마디(선택)와 함께 응답한다. 거절은 되돌릴 수 없으니 확인만 받는다.
   const respond = async (response: "accepted" | "rejected") => {
     if (response === "rejected" && !window.confirm("이 너 나와!를 거절할까요?")) return;
     setErr("");
     setBusy(true);
     try {
-      const updated = await api.respondToChallenge(challenge.id, response);
+      const updated = await api.respondToChallenge(challenge.id, response, undefined, respondMessage.trim());
       onResponded(updated);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "응답하지 못했어요.");
@@ -283,7 +288,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
       // 안 정하면 시간 미정으로 수락한다(요청: "시간 미정 수락 가능" — 실제 일시는
       // 완료(결과 입력) 시점에 서버가 채운다).
       const scheduledAt = dateStr ? new Date(`${dateStr}T${timeStr || "22:00"}`).toISOString() : undefined;
-      const updated = await api.respondToChallenge(challenge.id, "accepted", scheduledAt);
+      const updated = await api.respondToChallenge(challenge.id, "accepted", scheduledAt, respondMessage.trim());
       onResponded(updated);
       closeMode();
     } catch (e) {
@@ -402,7 +407,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
                   해당하니 다른 페이지에는 자리를 예약할 필요가 없다(이 줄은 원래도 페이지마다
                   내용이 들쑥날쑥한 줄이라 굳이 안 맞춰도 된다). */}
               {shownLatest && challenge.status === "pending" && (
-                <span className="scr-challenge-countdown">{responseDeadlineLabel(challenge.createdAt)}</span>
+                <span className="scr-challenge-countdown">{responseDeadlineLabel(challenge.createdAt, challenge.scheduledAt)}</span>
               )}
               {/* "결과 보기" 버튼은 없앴다(요청) — 그 자리에 상태 배지를 둔다. 승패가 입력되면
                   "완료", 예정 일시가 지났는데 아직 결과가 없으면 "결과 입력 대기". 무승부는
@@ -451,6 +456,25 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
               </span>
               <ChallengeSide people={targetSideMembers} targets={activeTargetInfos} highlightMemberIds={highlightMemberIds} />
             </div>
+
+            {/* 한마디 — 호출자의 한마디(challenge.message)와 각 대상의 응답 한마디를 카드에
+                보여준다(요청). 따옴표 없이, 본문보다 한 스텝 작게. */}
+            {(challenge.message || activePage.targets.some((t) => t.responseMessage)) && (
+              <div className="scr-challenge-card-msgs">
+                {challenge.message && (
+                  <div className="scr-challenge-card-msg">
+                    <span className="scr-challenge-card-msg-who">{challenge.createdBy.nickname}</span>
+                    <span className="scr-challenge-card-msg-text">{challenge.message}</span>
+                  </div>
+                )}
+                {activePage.targets.filter((t) => t.responseMessage).map((t) => (
+                  <div key={t.memberId} className="scr-challenge-card-msg">
+                    <span className="scr-challenge-card-msg-who">{t.nickname}</span>
+                    <span className="scr-challenge-card-msg-text">{t.responseMessage}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -462,7 +486,28 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
           예약(reserve)만 하고 투명하게 둬서 아래 페이지네이션이 안 튀게 한다. 읽기 전용
           (버려진 도전장 모달)에서는 어떤 액션도 없다. */}
       {!readOnly && canRespond && mode === "none" && (
-        <div className={cx("scr-challenge-card-actions", !isLatestPage && "scr-challenge-card-actions-reserve")}>
+        <div className={cx("scr-challenge-respond", !isLatestPage && "scr-challenge-card-actions-reserve")}>
+          {/* 응답 한마디(선택) — 아이콘 버튼을 누르면 입력창이 트랜지션으로 열린다(요청). */}
+          <button
+            type="button"
+            className={cx("scr-challenge-msg-toggle", respondMsgOpen && "scr-challenge-msg-toggle-on")}
+            onClick={() => setRespondMsgOpen((v) => !v)}
+            aria-expanded={respondMsgOpen}
+          >
+            <MessageSquarePlus size={13} /> 한마디{respondMessage.trim() && !respondMsgOpen ? ` · ${respondMessage.trim()}` : ""}
+          </button>
+          <div className={cx("scr-challenge-msg-wrap", respondMsgOpen && "scr-challenge-msg-wrap-open")}>
+            <div className="scr-challenge-msg-inner">
+              <input
+                className="scr-input"
+                value={respondMessage}
+                onChange={(e) => setRespondMessage(e.target.value.slice(0, 50))}
+                placeholder="한마디 (선택, 최대 50자)"
+                maxLength={50}
+              />
+            </div>
+          </div>
+          <div className="scr-challenge-card-actions">
           <button
             className="scr-btn scr-challenge-reject-btn scr-btn-sm" disabled={busy}
             onClick={() => respond("rejected")}
@@ -480,6 +525,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
           >
             {busy ? <Spinner /> : "승락"}
           </button>
+          </div>
         </div>
       )}
 
