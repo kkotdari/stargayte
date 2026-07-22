@@ -4090,9 +4090,9 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   .scr-chip .scr-chip-race .scr-cselect-caret { display: none; }
   .scr-chip-x { padding: 0; }
   .scr-team-slot { min-height: 40px; }
-  /* 위아래 패딩 대칭 — 비대칭(14/12)이면 전체가 살짝 아래로 치우쳐 보인다.
-     우측은 프로필 칩이 자기 패딩(10px)을 갖고 있어 더 좁게(요청: 우측 여백 축소). */
-  .scr-header-inner { padding: 13px 12px 13px 16px; gap: 12px; }
+  /* 헤더 높이 20% 축소(요청) — 위아래 패딩 13→10px. 모바일 헤더엔 로고만 남았으니
+     가로도 정가운데 정렬(요청). */
+  .scr-header-inner { padding: 10px 12px 10px 16px; gap: 12px; justify-content: center; }
   .scr-main { padding: 30px 16px 48px; }
   /* 너나와 카드 좌우 내부 패딩 축소(요청: "모바일 좌우 패딩은 메인이 아니라 너나와 카드
      내부 패딩"). 예전엔 이 패딩 안에 좌우 이동 버튼(절대배치)이 들어가야 해서 넓게
@@ -4111,7 +4111,7 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
      원형 강제 오버라이드와 같은 패턴). */
   /* 로고/아바타 확대 + 닉네임 1스텝 확대(요청, 재조정: 로고 32·아바타 36) — 닉네임은
      보이던 크기(body 16) 기준 한 스텝 위인 subhead(20). */
-  .scr-brand-logo-img { height: 32px; }
+  .scr-brand-logo-img { height: 24px; }
   .scr-brand-mark { font-size: var(--fs-title); }
   /* 모바일 헤더에선 프로필 칩(프사)을 아예 숨긴다(요청) — 프로필은 서랍이 보여주고,
      내 정보/로그아웃도 서랍 액션에 있다. */
@@ -4121,7 +4121,8 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   /* 프로필 칩(아바타+닉네임)은 로고의 중심선보다 아래로(요청: 2px에서 6px 더), 로고도
      4px 내린다. */
   .scr-user-chip { transform: translateY(6px); }
-  .scr-brand { transform: translateY(2px); }
+  /* 정가운데 정렬(요청) — 세로 보정 트랜스폼 제거. */
+  .scr-brand { transform: none; }
 }
 @media (max-width: 480px) {
   .scr-title { font-size: var(--fs-title); }
