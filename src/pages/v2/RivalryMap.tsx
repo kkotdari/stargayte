@@ -148,10 +148,18 @@ export default function RivalryMap({
                   style={{ strokeWidth: e.width }}
                 />
                 {e.kind === "strong" && <polygon points={arrowPoints} className="scr-rivalry-arrow-head" />}
-                {/* 선택 모드에서만 전적 라벨을 선 중앙에 보여준다 — 전체 보기에선 겹쳐서 소음. */}
-                {selected !== null && (
-                  <text x={(x1 + x2) / 2} y={(y1 + y2) / 2 - 1.2} className="scr-rivalry-edge-label">{e.label}</text>
-                )}
+                {/* 선택 모드에서만 전적 라벨을 선 중앙에 보여준다 — 전체 보기에선 겹쳐서 소음.
+                    띄우는 방향은 화면 위쪽 고정이 아니라 선의 수직 방향(perp) — 고정 y 오프셋은
+                    세로/대각선 선에서 "선을 따라" 밀려 라벨이 한쪽 끝으로 치우쳐 보였다(지적).
+                    글자 크기는 칩 축소 비율(chipScale)을 따라간다(요청 — 칩 사이가 좁아지므로). */}
+                {selected !== null && (() => {
+                  const side = ux > 0 ? -1 : 1; // perp(-uy,ux)의 y성분(ux)이 음수(위쪽)가 되게
+                  const lx = (x1 + x2) / 2 + side * -uy * 1.6;
+                  const ly = (y1 + y2) / 2 + side * ux * 1.6;
+                  return (
+                    <text x={lx} y={ly} dominantBaseline="central" style={{ fontSize: 3.2 * chipScale }} className="scr-rivalry-edge-label">{e.label}</text>
+                  );
+                })()}
               </g>
             );
           })}
