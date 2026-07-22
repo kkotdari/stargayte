@@ -4089,6 +4089,9 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   /* 헤더 높이 20% 축소(요청) — 위아래 패딩 13→10px. 모바일 헤더엔 로고만 남았으니
      가로도 정가운데 정렬(요청). */
   .scr-header-inner { padding: 10px 12px 10px 16px; gap: 12px; justify-content: center; }
+  /* 우측 버튼 묶음(.scr-user)은 모바일에서 자식이 전부 숨김인데 margin-left:auto가 남아
+     justify-content:center를 무력화했다(지적: 가로 가운데가 안 됨) — 묶음째 숨긴다. */
+  .scr-user { display: none; }
   .scr-main { padding: 30px 16px 48px; }
   /* 너나와 카드 좌우 내부 패딩 축소(요청: "모바일 좌우 패딩은 메인이 아니라 너나와 카드
      내부 패딩"). 예전엔 이 패딩 안에 좌우 이동 버튼(절대배치)이 들어가야 해서 넓게
