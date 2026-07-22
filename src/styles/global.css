@@ -4912,27 +4912,10 @@ body *::-webkit-scrollbar-corner { background: transparent; }
      더하면 콘텐츠 몫(패딩 제외 36px)이 브라우저/PWA 상관없이 항상 같아진다. 전체 높이는
      사파리/PWA 공통으로 살짝 낮췄다(요청: "탭바 높이 좀 줄여도 될듯"). */
   height: calc(var(--mobile-footer-h) + env(safe-area-inset-bottom, 0px));
-  /* 반투명 유리(--panel) + 블러 — 물방울이 더 투명해 보이도록 탭바 패널 자체의 투명도를
-     한 번 더 올린다(요청: 58%→38%). 테마별 색은 --panel-solid가 다크/라이트 각각 값을 갖는다. */
-  background-color: color-mix(in srgb, var(--panel-solid) 38%, transparent);
-  /* 블러도 약화(14→5px, 요청) — 뒤 내용의 형태가 실제로 알아보이게. */
-  -webkit-backdrop-filter: blur(5px) saturate(1.15);
-  backdrop-filter: blur(5px) saturate(1.15);
-  /* 가운데가 밝고 양 끝(화면 모서리)으로 갈수록 옅어지는 광원 그라데이션은, 그 "옅어짐"이
-     다 끝나기 전에 화면 모서리에서 그대로 잘려버려 그 자리가 오히려 또렷한 경계처럼
-     보였다(실제로 지적받은 문제 — "탭바 위의 광원효과 모서리 없애고 자연스러운 반사광
-     모서리로 변경") — 드로어 왼쪽 모서리와 같은 방식으로, 위치에 따라 밝기가 변하지 않는
-     단순한 반사광 한 줄로 바꾼다(옅은 흰 선, 라이트 테마는 아래에서 어두운 톤으로 뒤집음).
-     border-top 대신 background-image를 유지하는 이유는 box-sizing:border-box라 실제
-     border를 더해도 레이아웃에 영향은 없지만, ::after(아래 배경 연장)가 background 전체를
-     그대로 상속(inherit)하는 방식과 한 속성 그룹으로 계속 묶어두기 위함이다. */
-  background-image: linear-gradient(rgba(255,255,255,0.16), rgba(255,255,255,0.16));
-  background-repeat: no-repeat; background-position: top; background-size: 100% 1px;
   /* 위쪽 패딩을 아래보다 크게 줘서 탭 라벨을 살짝 아래로 내린다(요청: "탭바에서 탭들을
      좀 아래로 이동") — 전체 높이(--mobile-footer-h + 안전영역)는 그대로 두고 콘텐츠
      시작점만 내린다. */
   padding: 16px 10px calc(10px + env(safe-area-inset-bottom, 0px));
-  box-shadow: 0 -2px 10px rgba(0,0,0,0.15);
   box-sizing: border-box;
   overflow: hidden;
   /* 필터/검색창(.scr-filter-float-stack)과 같은 지속시간/이징으로 맞춰(요청: "숨기고
@@ -4940,6 +4923,27 @@ body *::-webkit-scrollbar-corner { background: transparent; }
      한 세트처럼 보이게 한다. transform도 같이 걸어 아래로 슬라이드하며 빠져나가는
      느낌을 더한다(요청: "탭바는 슬라이드로 아래로 내려가고"). */
   transition: opacity .22s ease-in-out, transform .28s ease-in-out, border-radius .28s ease-in-out;
+}
+/* 유리 재질(반투명 배경 + 블러 + 반사광 선 + 그림자)은 탭바(fixed) 자신이 아니라 이
+   absolute 자식 레이어에 그린다 — iOS 26 사파리는 화면 가장자리의 fixed/sticky 요소에
+   background-color/backdrop-filter가 '직접' 걸려 있으면 그걸 사이트의 툴바로 간주해,
+   접힌 주소창 알약 뒤 영역을 콘텐츠 대신 불투명 띠로 채워버린다(조사 — 네이버처럼
+   알약 뒤까지 콘텐츠가 차려면 fixed 요소 자체는 투명해야 하고 유리는 자식에 둬야 한다).
+   시각 결과는 이전과 동일하다: inset:0이라 탭바 박스를 그대로 덮고, border-radius는
+   미니 모드 라운딩을 상속하며, overflow:hidden이 모서리를 자른다. */
+.scr-mobile-tabbar::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit;
+  /* 반투명 유리(--panel) + 블러 — 물방울이 더 투명해 보이도록 탭바 패널 자체의 투명도를
+     한 번 더 올린다(요청: 58%→38%). 테마별 색은 --panel-solid가 다크/라이트 각각 값을 갖는다. */
+  background-color: color-mix(in srgb, var(--panel-solid) 38%, transparent);
+  /* 블러도 약화(14→5px, 요청) — 뒤 내용의 형태가 실제로 알아보이게. */
+  -webkit-backdrop-filter: blur(5px) saturate(1.15);
+  backdrop-filter: blur(5px) saturate(1.15);
+  /* 위쪽 반사광 한 줄(옅은 흰 선, 라이트 테마는 아래에서 어두운 톤으로 뒤집음) — 가운데가
+     밝은 광원 그라데이션은 화면 모서리에서 잘려 경계처럼 보여(지적) 단순한 선으로 바꿨다. */
+  background-image: linear-gradient(rgba(255,255,255,0.16), rgba(255,255,255,0.16));
+  background-repeat: no-repeat; background-position: top; background-size: 100% 1px;
+  box-shadow: 0 -2px 10px rgba(0,0,0,0.15);
 }
 /* 아래로 스크롤하면 숨긴다(요청: "모바일 아래로 스크롤시 탭바 숨김(단 끝까지 내리면
    탭바 보임)") — 이제 오버레이라 #scroll-root 크기와 무관하게 순수 시각 효과만
@@ -5137,8 +5141,8 @@ html.scr-light-theme .scr-mobile-tab-indicator {
 }
 html.scr-light-theme .scr-mobile-tab-active { color: var(--text); }
 /* 라이트 테마는 밝은 패널 위라 흰 반사광이 안 보여 — 드로어 왼쪽 모서리와 같은 이유로
-   어두운 톤으로 뒤집는다. */
-html.scr-light-theme .scr-mobile-tabbar {
+   어두운 톤으로 뒤집는다. (유리 재질이 ::before 자식 레이어로 옮겨가서 여기도 함께.) */
+html.scr-light-theme .scr-mobile-tabbar::before {
   background-image: linear-gradient(rgba(0,0,0,0.12), rgba(0,0,0,0.12));
 }
 
