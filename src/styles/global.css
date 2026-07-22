@@ -5166,8 +5166,8 @@ html.scr-light-theme .scr-mobile-tabbar {
   /* 최소 높이는 화면의 1/2(요청) — 내용(프로필+운영 목록+액션)이 더 길면 그만큼
      늘어나고(높이는 내용을 따라감), 화면을 넘으면 그때만 스크롤. */
   height: auto; min-height: 50%; max-height: 100%; align-self: flex-end;
-  /* 래디우스 확대(14→24px), 반사광은 더 은은하게(요청). */
-  border-top-left-radius: 24px;
+  /* 래디우스 확대(14→24→32px), 반사광은 더 은은하게(요청). */
+  border-top-left-radius: 32px;
   border-top: 1px solid rgba(255,255,255,0.09);
   /* 반투명 유리 재질 — 더 투명하게(요청: "투명도를 올려서 더 투명해 보이게") --panel의
      알파를 60%로 낮춘 색 + 배경 블러. 블러가 있어 글자 가독성은 유지된다. */
