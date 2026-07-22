@@ -4483,6 +4483,11 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   transition: transform .08s ease, box-shadow .08s ease, filter .08s ease;
 }
 .scr-admin-panel-phys-btn:hover { filter: brightness(0.97); }
+/* 누르는 순간은 즉시 반응(트랜지션 0) — 뗄 때만 위 트랜지션으로 부드럽게 복귀한다
+   (요청: 눌림 반응이 느려 보임). 배치 원형/호출하기 버튼도 동일 원칙. */
+.scr-admin-panel-phys-btn:active,
+.scr-admin-panel-batch-mode:active,
+.scr-challenge-nawa-btn:active { transition-duration: 0s; }
 /* 눌리면 바닥면 두께(0 3px 0)만큼 실제로 내려앉게 — 눌린 느낌의 핵심. */
 .scr-admin-panel-phys-btn:active {
   transform: translateY(3px);
