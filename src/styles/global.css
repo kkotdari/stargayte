@@ -3179,12 +3179,12 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-match-trow-footer {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
   /* 경기번호(왼쪽)·등록자(오른쪽)를 표 좌우 끝에 바짝 붙이지 않고 좌우 여백을 좀 준다(요청). */
-  margin-top: 10px; padding: 8px 14px 0; border-top: 1px solid rgba(var(--overlay-rgb), 0.08);
+  margin-top: 10px; padding: 8px 6px 0; border-top: 1px solid rgba(var(--overlay-rgb), 0.08);
   font-size: var(--fs-caption);
 }
 .scr-match-trow-no { display: inline-flex; align-items: center; gap: 6px; color: var(--dim); font-variant-numeric: tabular-nums; flex-shrink: 0; }
 .scr-match-trow-no-label { color: var(--muted); }
-.scr-match-trow-no-val { font-weight: 700; color: var(--text); }
+.scr-match-trow-no-val { font-weight: 400; color: var(--text); }
 .scr-match-trow-no-copy {
   display: inline-flex; align-items: center; justify-content: center;
   background: transparent; border: none; color: var(--dim); cursor: pointer;
@@ -3348,10 +3348,10 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    표가 아니라 페이지가 처리하게 넘기고, overscroll-behavior-x:contain으로 가로 끝까지
    스크롤해도 그 스크롤이 페이지로 체이닝되지 않게 한다. */
 .scr-match-stats-table-wrap {
-  /* 좌우 14px 마진으로 아래 경기번호/등록자 줄(.scr-match-trow-footer 좌우 패딩 14px)과
-     좌우를 맞춘다(요청). 마진이라 표의 가로 스크롤 영역이 이 안쪽에서만 움직여 양쪽 여백이
-     그대로 유지된다. */
-  margin: 12px 14px 0; overflow-x: auto; overflow-y: hidden;
+  /* 좌우 마진으로 아래 경기번호/등록자 줄(.scr-match-trow-footer 좌우 패딩)과 좌우를 맞춘다
+     (요청). 마진이라 표의 가로 스크롤 영역이 이 안쪽에서만 움직여 양쪽 여백이 유지된다.
+     여백은 둘 다 줄였다(14→6px, 요청). */
+  margin: 12px 6px 0; overflow-x: auto; overflow-y: hidden;
   overscroll-behavior-x: contain; touch-action: pan-x;
 }
 .scr-match-stats-table { width: 100%; border-collapse: collapse; font-size: var(--fs-caption); font-variant-numeric: tabular-nums; }
