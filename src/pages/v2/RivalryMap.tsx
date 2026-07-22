@@ -107,7 +107,7 @@ export default function RivalryMap({
             const uy = dy / len;
             // 화살촉 — marker 대신 직접 그린다: 굵기에 비례하되(요청) 최소/최대를
             // 클램프해 얇은 선에서도 보이고 굵은 선에서도 과하지 않게. 길이 h, 밑변
-            // 폭은 h의 0.9배. 삼각형이 선 끝을 덮으므로 선은 그대로 x2까지 긋는다.
+            // 폭은 h의 0.9배.
             const headLen = Math.min(3.6, Math.max(2.2, e.width * 3.4));
             const half = headLen * 0.45;
             // 양 끝 트림 — 예전엔 방향 불문 고정(9/11)이었는데, 칩이 가로로 긴 알약이라
@@ -136,10 +136,14 @@ export default function RivalryMap({
             const bx = x2 - ux * headLen;
             const by = y2 - uy * headLen;
             const arrowPoints = `${x2},${y2} ${bx - uy * half},${by + ux * half} ${bx + uy * half},${by - ux * half}`;
+            // 기둥은 촉 꼭짓점이 아니라 촉 밑변에서 끊는다 — 꼭짓점까지 그리면 삼각형이
+            // 뾰족해지는 끝에서 기둥(굵은 선)이 촉보다 넓어 옆으로 삐져나왔다(지적).
+            const shaftX2 = e.kind === "strong" ? bx : x2;
+            const shaftY2 = e.kind === "strong" ? by : y2;
             return (
               <g key={i} className={cx("scr-rivalry-edge", `scr-rivalry-edge-${e.kind}`, selected !== null && "scr-rivalry-edge-focus", focusKind && `scr-rivalry-edge-${focusKind}`)}>
                 <line
-                  x1={x1} y1={y1} x2={x2} y2={y2}
+                  x1={x1} y1={y1} x2={shaftX2} y2={shaftY2}
                   // 우세 강도 비례 굵기 — 인라인 style이라 CSS 기본 굵기를 덮는다.
                   style={{ strokeWidth: e.width }}
                 />
