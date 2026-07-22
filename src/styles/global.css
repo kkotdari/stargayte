@@ -5118,7 +5118,13 @@ html.scr-light-theme .scr-mobile-tabbar {
    완전히 뺐다 — 지금은 이 경계선 그라데이션만 남는다.) */
 .scr-drawer {
   /* 폭 2/3로 감축(요청) — 300px→200px, 84vw→56vw. */
-  width: min(200px, 56vw); height: 100%;
+  width: min(200px, 56vw);
+  /* 상부는 사실상 안 쓰므로 높이도 과감히 바닥 기준 2/3로(요청) — 오버레이(flex)에서
+     바닥에 붙인다. 새로 생긴 왼쪽 위 모서리엔 크지 않은 radius + 유리 반사광(테두리),
+     그림자도 위쪽 경계를 따라 한 겹 더 두른다. */
+  height: calc(100% * 2 / 3); align-self: flex-end;
+  border-top-left-radius: 14px;
+  border-top: 1px solid rgba(255,255,255,0.16);
   /* 반투명 유리 재질 — 더 투명하게(요청: "투명도를 올려서 더 투명해 보이게") --panel의
      알파를 60%로 낮춘 색 + 배경 블러. 블러가 있어 글자 가독성은 유지된다. */
   background-color: color-mix(in srgb, var(--panel-solid) 58%, transparent);
@@ -5127,11 +5133,12 @@ html.scr-light-theme .scr-mobile-tabbar {
   /* 왼쪽 모서리는 예전의 색 광원 그라데이션(요청으로 제거) 대신, 유리 모서리에 빛이
      스치는 단순한 반사광 한 줄만 남긴다(요청: "왼쪽 모서리 광원제거하고 단순한 반사광으로"). */
   border-left: 1px solid rgba(255,255,255,0.16);
-  box-shadow: -4px 0 16px rgba(0,0,0,0.18);
+  box-shadow: -4px 0 16px rgba(0,0,0,0.18), 0 -4px 16px rgba(0,0,0,0.18);
   display: flex; flex-direction: column; gap: 14px;
   /* 헤더와 같은 이유로 상태바만큼 위쪽 여백을 더 준다(standalone 웹앱에서만 의미 있음).
      아래쪽도 홈 인디케이터 안전영역만큼 더해 마지막 메뉴/버튼이 그 위에 바짝 붙지 않게 한다. */
-  padding: calc(16px + max(env(safe-area-inset-top, 0px), var(--safe-area-top, 0px))) 16px calc(16px + env(safe-area-inset-bottom, 0px));
+  /* 더는 화면 맨 위에 닿지 않으니 상태바 안전영역 가산은 뺀다. */
+  padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px));
   overflow-y: auto;
   /* 세로 스크롤(관리자 아코디언 등)은 브라우저가 그대로 처리하되, 가로는 우리가 JS로
      드래그-닫기를 다루므로(Header.tsx onDrawerPointerMove) 브라우저 자체 가로 제스처와
@@ -5149,7 +5156,7 @@ html.scr-light-theme .scr-mobile-tabbar {
    같은 수준으로 불투명도를 올려 스크림이 거의 안 비치게 한다. */
 /* 라이트 테마도 반투명 유지(신고: "라이트 서랍이 전혀 투명하지 않음") — 배경색 하드코딩을
    빼서 base의 color-mix(--panel 60%) 반투명 유리(--panel 라이트=흰 0.46)를 그대로 쓴다. */
-html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
+html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-top-color: rgba(0,0,0,0.12); }
 /* 구분선을 단색 테두리 대신 붉은(포인트색이 아니라 --pipe-bright 고정) 그라데이션으로
    — 가운데가 밝고 양 끝으로 갈수록 옅어지는, 헤더/탭바와 같은 "우주 광원" 느낌. */
 .scr-drawer-head {
