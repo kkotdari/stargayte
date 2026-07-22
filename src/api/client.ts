@@ -2,7 +2,7 @@
 // API 클라이언트 — stargayte-api 서버와 통신한다.
 // ============================================================
 import type {
-  Member, Match, MatchComment, NewMatch, SignupPayload, MemberCreatePayload, ImageSettingMap, MemberStatus, MemberRole,
+  Member, Match, MatchNote, NewMatch, SignupPayload, MemberCreatePayload, ImageSettingMap, MemberStatus, MemberRole,
   ScreenKey, AppVersion, AppVersionStatus, AppVersionInfo,
   MatchSlot, MatchPage, MatchStatsResponse, MatchType, Race, TeamRankingResponse,
   MonthlyMatchStatsResponse, MonthlyTeamRankingResponse, RatingHistoryResponse,
@@ -452,27 +452,27 @@ export const api = {
   // 경기 댓글(메모) — 게시판 댓글처럼 회원 누구나 한 줄(최대 50자)을 남기고 본인/운영자만
   // 수정·삭제한다. 본문에 @닉네임 언급 가능(targetMemberIds). 목록/상세 응답에 이미 comments가
   // 실려 오므로 별도 조회는 잘 안 쓰지만, 필요 시 이 경기 댓글만 다시 받아올 수도 있다.
-  async listMatchComments(matchId: number): Promise<MatchComment[]> {
-    return request<MatchComment[]>(`/api/matches/${matchId}/comments`);
+  async listMatchNotes(matchId: number): Promise<MatchNote[]> {
+    return request<MatchNote[]>(`/api/matches/${matchId}/notes`);
   },
-  async createMatchComment(
+  async createMatchNote(
     matchId: number, text: string, targetMemberIds: string[],
-  ): Promise<MatchComment> {
-    return request<MatchComment>(`/api/matches/${matchId}/comments`, {
+  ): Promise<MatchNote> {
+    return request<MatchNote>(`/api/matches/${matchId}/notes`, {
       method: "POST",
       body: JSON.stringify({ text, targetMemberIds }),
     });
   },
-  async updateMatchComment(
-    matchId: number, commentId: number, text: string, targetMemberIds: string[],
-  ): Promise<MatchComment> {
-    return request<MatchComment>(`/api/matches/${matchId}/comments/${commentId}`, {
+  async updateMatchNote(
+    matchId: number, noteId: number, text: string, targetMemberIds: string[],
+  ): Promise<MatchNote> {
+    return request<MatchNote>(`/api/matches/${matchId}/notes/${noteId}`, {
       method: "PATCH",
       body: JSON.stringify({ text, targetMemberIds }),
     });
   },
-  async deleteMatchComment(matchId: number, commentId: number): Promise<void> {
-    await request<void>(`/api/matches/${matchId}/comments/${commentId}`, { method: "DELETE" });
+  async deleteMatchNote(matchId: number, noteId: number): Promise<void> {
+    await request<void>(`/api/matches/${matchId}/notes/${noteId}`, { method: "DELETE" });
   },
 
   // 인증 헤더가 필요해 <a href> 로 바로 못 받으므로 blob 으로 받아 저장한다.

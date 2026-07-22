@@ -116,7 +116,7 @@ export default function MatchScreenV2() {
       // 경기번호 필드 — 부분일치.
       const noOk = matchNoTerm === "" || r.raw.matchNo.toLowerCase().includes(matchNoTerm);
       // 댓글 필드 — 이 경기 댓글 중 하나라도 내용에 포함하면 통과.
-      const commentOk = commentTerm === "" || r.raw.comments.some((c) => c.text.toLowerCase().includes(commentTerm));
+      const commentOk = commentTerm === "" || r.raw.notes.some((c) => c.text.toLowerCase().includes(commentTerm));
       return userOk && noOk && commentOk;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- resolveMember/slotMatchesTerm은 members 참조 함수라 매 렌더 새로 만들어져도 무방(값 자체는 members로 충분히 표현됨)

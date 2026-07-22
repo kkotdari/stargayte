@@ -8,7 +8,7 @@ import { useAppStore } from "../../store/appStore";
 import { api } from "../../api/client";
 import { cx } from "../../utils/format";
 import { attachPopover } from "../../utils/popover";
-import type { Member, Match, MatchComment } from "../../types";
+import type { Member, Match, MatchNote } from "../../types";
 
 // 게시판 댓글처럼 한 줄(요청: 한글 50자 제한). 입력부·목록 디자인은 "너 나와!"(MatchRequestCorner)
 // 요청 입력의 CSS(scr-mreq-*)를 그대로 차용한다(요청: "기본 입력 테마로 사용").
@@ -284,24 +284,24 @@ function formatCommentTime(iso: string): string {
 export default function MatchComments({ match }: { match: Match }) {
   const user = useAppStore((s) => s.user);
   const members = useAppStore((s) => s.members);
-  // 댓글은 이 컴포넌트가 로컬로 관리한다 — 목록 응답(match.comments)을 초기값으로 받고,
+  // 댓글은 이 컴포넌트가 로컬로 관리한다 — 목록 응답(match.notes)을 초기값으로 받고,
   // 작성/수정/삭제 시 서버가 돌려준 댓글로 그 자리만 갱신해 전체 목록을 다시 안 불러온다.
-  const [comments, setComments] = useState<MatchComment[]>(match.comments ?? []);
+  const [notes, setNotes] = useState<MatchNote[]>(match.notes ?? []);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<MatchComment | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<MatchNote | null>(null);
 
   // 부모가 목록을 다시 불러오면(경기 등록/삭제 등) 새 배열로 재동기화. 댓글 작성/수정/삭제는
   // 부모 리로드를 트리거하지 않아 이 효과가 로컬 편집을 덮어쓰지 않는다(같은 배열 참조 유지).
-  useEffect(() => { setComments(match.comments ?? []); }, [match.comments]);
+  useEffect(() => { setNotes(match.notes ?? []); }, [match.notes]);
 
   const create = async (text: string, ids: string[]) => {
     setBusy(true);
     setErr(null);
     try {
-      const created = await api.createMatchComment(match.id, text, ids);
-      setComments((prev) => [...prev, created]);
+      const created = await api.createMatchNote(match.id, text, ids);
+      setNotes((prev) => [...prev, created]);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "메모를 남기지 못했어요.");
     } finally {
@@ -312,8 +312,8 @@ export default function MatchComments({ match }: { match: Match }) {
     setBusy(true);
     setErr(null);
     try {
-      const updated = await api.updateMatchComment(match.id, id, text, ids);
-      setComments((prev) => prev.map((c) => (c.id === id ? updated : c)));
+      const updated = await api.updateMatchNote(match.id, id, text, ids);
+      setNotes((prev) => prev.map((c) => (c.id === id ? updated : c)));
       setEditingId(null);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "메모를 수정하지 못했어요.");
@@ -325,8 +325,8 @@ export default function MatchComments({ match }: { match: Match }) {
     setBusy(true);
     setErr(null);
     try {
-      await api.deleteMatchComment(match.id, id);
-      setComments((prev) => prev.filter((c) => c.id !== id));
+      await api.deleteMatchNote(match.id, id);
+      setNotes((prev) => prev.filter((c) => c.id !== id));
     } catch (e) {
       setErr(e instanceof Error ? e.message : "메모를 삭제하지 못했어요.");
     } finally {
@@ -338,9 +338,9 @@ export default function MatchComments({ match }: { match: Match }) {
   return (
     // 로우 전체가 클릭 토글이라, 댓글 영역에서의 클릭/입력은 로우 접힘을 막는다.
     <div className="scr-match-comments" onClick={(e) => e.stopPropagation()}>
-      {comments.length > 0 && (
+      {notes.length > 0 && (
         <ul className="scr-mreq-list scr-match-comments-list">
-          {comments.map((c) => (
+          {notes.map((c) => (
             <li key={c.id} className="scr-mreq-item scr-match-comment-item">
               <div className="scr-mreq-item-top">
                 <div className="scr-mreq-item-author">
