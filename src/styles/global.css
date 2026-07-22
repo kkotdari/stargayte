@@ -4104,8 +4104,8 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   .scr-user-name { font-size: var(--fs-body); }
   /* 프로필 칩(아바타+닉네임)은 로고의 중심선보다 아래로(요청: 2px에서 6px 더), 로고도
      4px 내린다. */
-  .scr-user-chip { transform: translateY(10px); }
-  .scr-brand { transform: translateY(6px); }
+  .scr-user-chip { transform: translateY(6px); }
+  .scr-brand { transform: translateY(2px); }
 }
 @media (max-width: 480px) {
   .scr-title { font-size: var(--fs-title); }
