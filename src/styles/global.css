@@ -2350,38 +2350,30 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    화면이 쓰던 space3.jpg를 물려받았다가(요청: "랭킹의 배경을 현재 경기의 배경으로
    바꿔주고"), 이후 랭킹 전용으로 새로 추가된 ranking.jpg로 교체했다(요청: "새로
    추가된 ranking.jpg를 랭킹 화면 배경으로 교체"). */
-/* 랭킹과 "너 나와!"(너 나와)가 같은 배경 사진을 공유한다(요청: "랭킹 배경을 너 나와에도
-   적용"). 예전엔 너 나와 배경을 지웠었지만, 이제 랭킹과 같은 ranking.jpg를 함께 쓴다. */
-.scr-rank-screen-v2, .scr-challenge-screen-v2 { position: relative; }
-.scr-rank-screen-v2::before, .scr-challenge-screen-v2::before {
+/* 배경 사진은 이제 랭킹 화면 하나만 쓴다 — 너 나와는 한때 랭킹과 같은 ranking.jpg를
+   공유했지만 다시 뺐다(요청: "너나와 화면 배경 제거"). 스크림(어두운 덮개)은 사진이
+   더 비치도록 약화했다(요청: "랭킹 화면 배경의 스크린 약화"). */
+.scr-rank-screen-v2 { position: relative; }
+.scr-rank-screen-v2::before {
   content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
   background-image:
-    linear-gradient(180deg, rgba(3,3,6,0.9) 0%, rgba(3,3,6,0.82) 45%, rgba(3,3,6,0.92) 100%),
+    linear-gradient(180deg, rgba(3,3,6,0.72) 0%, rgba(3,3,6,0.6) 45%, rgba(3,3,6,0.78) 100%),
     url("/images/bg/ranking.jpg");
   background-size: cover; background-position: center; background-repeat: no-repeat;
 }
 /* 라이트 테마는 페이지 배경 사진을 아예 끈다(요청: "라이트 테마에서 페이지 배경 이미지들
    제거") — ::before 자체를 없애 앱 기본(흰) 배경만 남긴다. display:none이라 아래 모바일
    미디어쿼리가 background-image만 바꿔도 다시 살아나지 않는다. */
-.scr-light-theme .scr-rank-screen-v2::before,
-.scr-light-theme .scr-challenge-screen-v2::before {
+.scr-light-theme .scr-rank-screen-v2::before {
   display: none;
 }
 /* 모바일에서는 세로로 긴 화면에 맞게 따로 촬영/크롭된 ranking_mobile.jpg를 쓴다(요청:
    "랭킹 배경 모바일에서는 방금 추가한 ranking_mobile.jpg로 설정"). 다른 화면들의
    데스크톱/모바일 갈림 기준(860px, .scr-nav-desktop 등)과 통일한다. */
 @media (max-width: 860px) {
-  .scr-rank-screen-v2::before, .scr-challenge-screen-v2::before {
+  .scr-rank-screen-v2::before {
     background-image:
-      linear-gradient(180deg, rgba(3,3,6,0.9) 0%, rgba(3,3,6,0.82) 45%, rgba(3,3,6,0.92) 100%),
-      url("/images/bg/ranking_mobile.jpg");
-  }
-  /* 라이트 테마 모바일도 같은 화이트 스크림(위 데스크톱 라이트 규칙과 같은 특이도라,
-     소스 순서상 이 규칙이 뒤에 와서 모바일에서 이긴다). */
-  .scr-light-theme .scr-rank-screen-v2::before,
-  .scr-light-theme .scr-challenge-screen-v2::before {
-    background-image:
-      linear-gradient(180deg, rgba(248,249,251,0.86) 0%, rgba(248,249,251,0.74) 40%, rgba(248,249,251,0.9) 100%),
+      linear-gradient(180deg, rgba(3,3,6,0.72) 0%, rgba(3,3,6,0.6) 45%, rgba(3,3,6,0.78) 100%),
       url("/images/bg/ranking_mobile.jpg");
   }
 }
@@ -5914,39 +5906,43 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
    그냥 얹는 장식(요청: "레이아웃은 그대로 두고 그림을 붙이는 것, 약간 오른쪽에 치우쳐서").
    툴바(.scr-v2-toolbar, position:relative)를 기준으로 살짝 오른쪽에 배치하고, 세로로는 툴바
    중앙에 맞춰(제목 높이보다 커서 위아래로 넘친다) 얹는다. 클릭은 통과시킨다. */
-/* nawa 자체가 버튼(요청) — 이미지 위에 "호출하기" 흰 라벨을 얹고, 눌리는 입체감을 준다. */
+/* nawa 자체가 버튼(요청) — 예전의 타원 마스크(붕 뜬 그림 느낌) 대신, 축소된 둥근네모
+   버튼 프레임 안에 사진을 꽉 채워 진짜 버튼처럼 보이게 한다(요청: 크기 축소 + 버튼
+   모양 + 테두리/입체효과 강화). 눌리면 통째로 내려앉는다. */
 .scr-challenge-primary-row { position: relative; }
 .scr-challenge-nawa-btn {
   position: relative; display: inline-flex; align-items: center; justify-content: center;
-  width: 166px; height: 104px; padding: 0; border: none; background: transparent; cursor: pointer;
+  width: 128px; height: 72px; padding: 0; cursor: pointer;
+  border-radius: 14px; overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.4);
+  background: transparent;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.5),    /* 위 반사광 */
+    inset 0 -4px 9px rgba(0,0,0,0.5),       /* 아래 눌린 홈 */
+    0 2px 0 rgba(0,0,0,0.55),               /* 바닥면 */
+    0 6px 12px rgba(0,0,0,0.45);            /* 뜬 그림자 */
+  transition: transform .1s ease, box-shadow .1s ease;
   -webkit-tap-highlight-color: transparent;
 }
 .scr-challenge-title-nawa {
-  /* 버튼(줄) 정중앙을 꽉 채운다 — 절대위치라 줄 높이엔 영향 없이 위아래로 넘친다. */
-  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
-  width: 166px; height: 104px; object-fit: cover; pointer-events: none; z-index: 0;
-  /* 1.6:1 비율 + 타원 마스크로 가장자리를 흐린다. */
-  border-radius: 50%;
-  -webkit-mask-image: radial-gradient(ellipse at center, #000 56%, transparent 82%);
-  mask-image: radial-gradient(ellipse at center, #000 56%, transparent 82%);
-  /* 버튼처럼 떠 있는 입체감 강화(요청) — 그림자를 더 진하고 깊게. */
-  filter: drop-shadow(0 7px 13px rgba(0,0,0,0.62));
-  transition: transform .1s ease, filter .1s ease;
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; pointer-events: none; z-index: 0;
 }
-/* 누르면 살짝 내려앉으며 그림자가 줄어 "눌리는" 느낌(요청: "버튼처럼 입체감"). 이미지와
-   라벨을 같이 내려 라벨만 안 움직여 어색하던 문제를 없앤다(신고). */
-.scr-challenge-nawa-btn:active .scr-challenge-title-nawa {
-  transform: translate(-50%, calc(-50% + 3px));
-  filter: drop-shadow(0 3px 5px rgba(0,0,0,0.5));
+/* 누르면 통째로 살짝 내려앉으며 그림자가 줄어 "눌리는" 느낌. */
+.scr-challenge-nawa-btn:active {
+  transform: translateY(2px);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.5),
+    inset 0 -3px 8px rgba(0,0,0,0.5),
+    0 1px 0 rgba(0,0,0,0.55),
+    0 3px 6px rgba(0,0,0,0.4);
 }
-.scr-challenge-nawa-btn:active .scr-challenge-nawa-label { transform: translateY(3px); }
-/* nawa 중앙 "호출하기" — 흰 글씨 + 그림자로 사진 위에서도 또렷하게. 폰트 한 스텝 확대 +
-   볼드(요청). */
+/* nawa 중앙 "호출하기" — 흰 글씨 + 그림자로 사진 위에서도 또렷하게. 버튼이 작아진 만큼
+   폰트도 한 스텝 내린다(subhead→caption). */
 .scr-challenge-nawa-label {
   position: relative; z-index: 1; pointer-events: none;
-  color: #fff; font-weight: 800; font-size: var(--fs-subhead); letter-spacing: 0.02em;
+  color: #fff; font-weight: 800; font-size: var(--fs-caption); letter-spacing: 0.02em;
   text-shadow: 0 1px 2px rgba(0,0,0,0.8), 0 0 8px rgba(0,0,0,0.55);
-  transition: transform .1s ease;
 }
 .scr-challenge-screen-v2 .scr-filter-bar { margin-top: 0; margin-bottom: 0; }
 .scr-challenge-section-title {
