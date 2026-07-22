@@ -20,9 +20,11 @@ export default function StatBar({ label, plays, wins, draws, losses, winRate, co
       <div className="scr-stat-bar-top">
         <span className="scr-stat-bar-label-group">
           {label && <span className="scr-stat-bar-label">{label}</span>}
-          <span className="scr-stat-bar-count">
-            {plays > 0 ? (compact ? `${wins}/${plays}` : `${plays}전`) : "-"}
-          </span>
+          {/* compact(통계 그리드)에선 승/전 수치를 승률과 같은 줄에 두면 좁다(지적) —
+              막대 아래 줄로 내린다. */}
+          {!compact && (
+            <span className="scr-stat-bar-count">{plays > 0 ? `${plays}전` : "-"}</span>
+          )}
         </span>
         {!compact && plays > 0 && (
           <span className="scr-stat-bar-nums">
@@ -40,6 +42,9 @@ export default function StatBar({ label, plays, wins, draws, losses, winRate, co
           </div>
         )}
       </div>
+      {compact && plays > 0 && (
+        <div className="scr-stat-bar-count-below">{wins}/{plays}</div>
+      )}
     </div>
   );
 }

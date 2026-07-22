@@ -1972,6 +1972,11 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-stat-bar-track {
   width: 100%; height: 14px; display: flex; overflow: hidden; flex-shrink: 0; border-radius: 1px;
 }
+/* compact(통계 그리드)의 승/전 수치 — 승률과 같은 줄에 있으면 좁아서(지적) 막대 아래로
+   내리고 top row(caption)보다 1스텝 작게(micro) 둔다. */
+.scr-stat-bar-count-below {
+  font-size: var(--fs-micro); color: var(--muted); text-align: center; line-height: 1.2;
+}
 .scr-stat-bar-seg { height: 100%; }
 .scr-stat-bar-seg-win { background: var(--bar-win); }
 .scr-stat-bar-seg-draw { background: var(--bar-draw); }
