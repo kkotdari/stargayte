@@ -297,7 +297,10 @@ function MatchStatsTable({
               <td className="scr-mst-left">
                 <span className="scr-mst-name">
                   <RaceBadge race={r.race} size={14} circleLetter />
-                  {r.nickname}
+                  {/* 닉네임만 감싸는 스팬 — 모바일에서 유저 칸 최대폭(한글 4자 정도)을
+                      제한할 때 넘치는 글자를 말줄임 처리하기 위함(flex 컨테이너의 맨글자
+                      텍스트는 ellipsis가 안 걸린다). */}
+                  <span className="scr-mst-nick">{r.nickname}</span>
                 </span>
               </td>
               <td className="scr-mst-build">{n(r.build)}</td>

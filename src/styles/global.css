@@ -3332,7 +3332,10 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
      (요청). 마진이라 표의 가로 스크롤 영역이 이 안쪽에서만 움직여 양쪽 여백이 유지된다.
      여백은 둘 다 줄였다(14→6px, 요청). */
   margin: 12px 6px 0; overflow-x: auto; overflow-y: hidden;
-  overscroll-behavior-x: contain; touch-action: pan-x;
+  /* pan-x만 주면 세로 제스처 자체가 무시돼 표 위에서 페이지 세로 스크롤이 아예 안 됐다
+     (지적된 버그) — pan-y도 허용해 세로 드래그는 페이지가 받게 한다. 대각선 동시
+     스크롤은 브라우저의 제스처 축 고정(axis lock)이 자연스럽게 막아준다. */
+  overscroll-behavior-x: contain; touch-action: pan-x pan-y;
 }
 .scr-match-stats-table { width: 100%; border-collapse: collapse; font-size: var(--fs-caption); font-variant-numeric: tabular-nums; }
 .scr-match-stats-table th {
@@ -3355,6 +3358,12 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-match-stats-table .scr-mst-pair .scr-mst-tot { color: var(--muted); }
 /* 닉네임 칸: 종족 배지 + 닉네임을 한 줄로(요청 — 종족을 닉네임에 붙임). */
 .scr-match-stats-table .scr-mst-name { display: inline-flex; align-items: center; gap: 6px; }
+.scr-match-stats-table .scr-mst-nick { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 모바일 — 유저 칸 최대폭을 한글 4자 정도로 제한(요청): 배지 14 + 갭 6 + 4자(caption
+   14px × 4 = 56) ≈ 78px. 넘치는 닉네임은 위 .scr-mst-nick이 말줄임 처리한다. */
+@media (max-width: 640px) {
+  .scr-match-stats-table .scr-mst-name { max-width: 78px; }
+}
 /* '생산'(빌드/생산 커맨드 수) — 리플레이 커맨드 스트림에서 센 어림 지표라 살짝 강조만 준다. */
 .scr-match-stats-table .scr-mst-build { font-weight: 700; color: var(--point); }
 /* 유저 검색 중이면 그 회원 행을 스탯표에서도 강조(요청) — 로스터 하이라이트와 같은 색을
@@ -4362,8 +4371,23 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 /* 어두운 쇠 뚜껑 위라 글자는 흰색으로(요청). */
 .scr-admin-panel-modal-locked .scr-modal-head { color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.7); }
 /* 잠금 해제 순간의 사자후 연출(요청) — 섬광과 함께 크게 울리듯 강하게 흔들리고 점점
-   잦아들며 제자리로. 한 번만 재생하고 클래스는 JS(onAnimationEnd)가 뗀다. */
+   잦아들며 제자리로. 한 번만 재생하고 클래스는 JS(onAnimationEnd)가 뗀다.
+   해제 직후엔 잠금 클래스가 떨어져 .scr-modal의 overflow:hidden이 돌아오는데, 그러면
+   모달 밖으로 퍼지는 충격파(::after)가 잘려 안(內)에서만 보였다(지적된 버그) — 사자후
+   재생 중에만 overflow를 풀어 바깥까지 퍼지게 한다(이 모달은 라운드 0이라 부작용 없음). */
+.scr-modal.scr-admin-panel-roar { overflow: visible; }
 .scr-admin-panel-roar { animation: scr-admin-panel-roar .65s cubic-bezier(.36,.07,.19,.97) both; }
+/* 모달 테두리에서 바깥으로 퍼져나가는 충격파 링 — 사자후가 모달 밖까지 울리는 연출. */
+.scr-admin-panel-roar::after {
+  content: ""; position: absolute; inset: -12px; z-index: 3; pointer-events: none;
+  border: 3px solid rgba(255,255,255,0.85);
+  box-shadow: 0 0 34px rgba(255,255,255,0.55), inset 0 0 22px rgba(255,255,255,0.3);
+  animation: scr-admin-panel-roar-wave .65s ease-out both;
+}
+@keyframes scr-admin-panel-roar-wave {
+  0%   { transform: scale(1); opacity: 1; }
+  100% { transform: scale(1.35); opacity: 0; }
+}
 @keyframes scr-admin-panel-roar {
   0%   { transform: scale(1.09); filter: brightness(2.1); }
   12%  { transform: scale(1.05) translate(-12px, 5px) rotate(-1.4deg); filter: brightness(1.5); }
@@ -4923,7 +4947,7 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   backdrop-filter: blur(3px) brightness(1.06) saturate(1.2);
   -webkit-backdrop-filter: blur(3px) brightness(1.06) saturate(1.2);
   box-shadow:
-    inset 0 0 0 1px rgba(255,255,255,0.22),      /* 얇은 밝은 림(유리 가장자리) */
+    inset 0 0 6px rgba(255,255,255,0.16),        /* 부드럽게 번진 가장자리 광(딱딱한 1px 링 대체 — 요청) */
     inset 0 1.5px 2px rgba(255,255,255,0.4),     /* 위 안쪽 반사 */
     inset 0 -7px 11px rgba(0,10,30,0.3),         /* 아래 쿨톤 안쪽 그늘 → 볼륨 */
     4px 8px 14px -6px rgba(0,0,0,0.42);          /* 부드럽게 오프셋된 바닥 접촉 그림자 */
@@ -4947,17 +4971,17 @@ html.scr-light-theme .scr-mobile-tab-indicator {
   background:
     /* 좌상단 샤프 스펙큘러(고정 px 크기·위치 → 폭 무관하게 동일한 글린트) */
     radial-gradient(18px 11px at 25px 8px, rgba(255,255,255,1) 0%, rgba(255,255,255,0.5) 45%, rgba(255,255,255,0) 72%),
-    /* 아래로 모이는 맑은 시안 굴절광(caustic) */
-    radial-gradient(150% 80% at 50% 142%, rgba(130,215,255,0.65) 0%, rgba(130,215,255,0) 46%),
-    /* 거의 투명한 하늘색 유리 몸통 */
-    linear-gradient(180deg, rgba(225,245,255,0.30) 0%, rgba(150,215,250,0.18) 100%);
+    /* 아래로 모이는 맑은 아쿠아 굴절광(caustic) — 더 시원한 물색으로(요청) */
+    radial-gradient(150% 80% at 50% 142%, rgba(105,225,250,0.62) 0%, rgba(105,225,250,0) 46%),
+    /* 거의 투명한 시원한 물색 유리 몸통 */
+    linear-gradient(180deg, rgba(215,248,252,0.30) 0%, rgba(130,220,245,0.20) 100%);
   backdrop-filter: blur(1.5px) brightness(1.06) saturate(1.4);
   -webkit-backdrop-filter: blur(1.5px) brightness(1.06) saturate(1.4);
   box-shadow:
-    inset 0 0 0 1px rgba(255,255,255,0.65),        /* 얇은 밝은 림(유리 가장자리) */
+    inset 0 0 6px rgba(255,255,255,0.5),           /* 부드럽게 번진 가장자리 광(딱딱한 1px 링 대체 — 요청) */
     inset 0 2px 2px rgba(255,255,255,0.9),         /* 위 광택 */
-    inset 0 -6px 10px rgba(100,180,235,0.30),      /* 아래 하늘색 안쪽 그늘 → 렌즈 볼륨 */
-    0 3px 8px -4px rgba(80,150,205,0.35);          /* 옅은 쿨톤 접촉 그림자 */
+    inset 0 -6px 10px rgba(70,185,220,0.28),       /* 아래 아쿠아 안쪽 그늘 → 렌즈 볼륨 */
+    0 3px 8px -4px rgba(55,160,195,0.33);          /* 옅은 쿨톤 접촉 그림자 */
 }
 html.scr-light-theme .scr-mobile-tab-active { color: var(--text); }
 /* 라이트 테마는 밝은 패널 위라 흰 반사광이 안 보여 — 드로어 왼쪽 모서리와 같은 이유로
