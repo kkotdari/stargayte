@@ -63,7 +63,7 @@ export default function RivalryScreen() {
       {MODES.length > 1 && (
         <div className="scr-rivalry-tabs" role="tablist">
           <div
-            className={cx("scr-mobile-tab-indicator", "scr-rivalry-tab-indicator")}
+            className={cx("scr-mobile-tab-glow", "scr-rivalry-tab-indicator")}
             style={{ transform: `translateX(${MODES.findIndex((m) => m.key === mode) * 100}%)` }}
           />
           {MODES.map((m) => (

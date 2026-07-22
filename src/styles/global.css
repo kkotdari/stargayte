@@ -5025,6 +5025,24 @@ body *::-webkit-scrollbar-corner { background: transparent; }
     inset 0 1px 1.5px rgba(255,255,255,0.3),     /* 위 림 반사 */
     4px 8px 14px -6px rgba(0,0,0,0.38);          /* 부드럽게 오프셋된 바닥 접촉 그림자 */
 }
+/* ─ 실제 사용 중인 탭 인디케이터: 은은한 라이팅(우주 느낌, 요청) ─
+   루페 물방울(.scr-mobile-tab-indicator, 위)은 테스트 개발이라 CSS만 남겨두고 실사용은
+   이 글로우로 바꾼다(요청) — 중심이 가장 밝고 바깥으로 부드럽게 사라지는 이중 라디얼
+   (작은 심지 + 넓은 무리)로 성운처럼 은은하게. 다크는 흰 빛, 라이트는 블루. */
+.scr-mobile-tab-glow {
+  position: absolute; left: 0;
+  pointer-events: none;
+  transition: transform .22s ease, width .22s ease, top .22s ease, height .22s ease;
+  border-radius: 50%;
+  background:
+    radial-gradient(58% 52% at 50% 50%, rgba(255,255,255,0.26) 0%, rgba(255,255,255,0) 70%),
+    radial-gradient(100% 100% at 50% 50%, rgba(255,255,255,0.11) 0%, rgba(255,255,255,0) 74%);
+}
+html.scr-light-theme .scr-mobile-tab-glow {
+  background:
+    radial-gradient(58% 52% at 50% 50%, rgba(70,140,235,0.30) 0%, rgba(70,140,235,0) 70%),
+    radial-gradient(100% 100% at 50% 50%, rgba(70,140,235,0.13) 0%, rgba(70,140,235,0) 74%);
+}
 /* 라이트 테마도 같은 리퀴드 글래스로(요청). 흰 배경 위라 흰 반사광은 옅게만 보이므로,
    유리 볼륨은 검은톤 그림자/굴절 그늘이 주로 잡아준다. backdrop blur의 brightness로 방울이
    살짝 밝아져 배경과 구분된다. */

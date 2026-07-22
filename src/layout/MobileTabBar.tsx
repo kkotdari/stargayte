@@ -157,7 +157,9 @@ export default function MobileTabBar({ screen, menuOpen, effectiveVersionNumber,
     >
       {indicator && (
         <span
-          className="scr-mobile-tab-indicator"
+          // 루페 물방울(scr-mobile-tab-indicator)은 테스트로 CSS만 남기고, 실사용은
+          // 은은한 우주 라이팅(다크 흰빛/라이트 블루)으로(요청).
+          className="scr-mobile-tab-glow"
           style={{
             transform: `translateX(${indicator.left}px)`,
             width: indicator.width, top: indicator.top, height: indicator.height,
