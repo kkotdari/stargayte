@@ -32,14 +32,14 @@ export default function MatchScreenV2() {
   // 공통 검색창(위 search)은 유저 전용이고, 경기번호·댓글은 이 화면 전용 별도 필드로 받는다
   // (요청). 셋은 AND로 함께 걸린다.
   const [matchNoQuery, setMatchNoQuery] = useState("");
-  const [commentQuery, setCommentQuery] = useState("");
+  const [noteQuery, setNoteQuery] = useState("");
   // 진입하면 조회 버튼 없이 곧바로 전체 경기를 불러온다(요청: "조회 버튼 제거하고 자동
   // 조회로 변경"). 기간 필터가 없어 조회는 그냥 전체 로드다.
   const suggestions = useMemo(() => activeMemberSearchTerms(members), [members]);
   const searchTerms = useMemo(() => splitSearchTerms(search), [search]);
   const matchNoTerm = matchNoQuery.trim().toLowerCase();
-  const commentTerm = commentQuery.trim().toLowerCase();
-  const hasSearch = searchTerms.length > 0 || matchNoTerm !== "" || commentTerm !== "";
+  const noteTerm = noteQuery.trim().toLowerCase();
+  const hasSearch = searchTerms.length > 0 || matchNoTerm !== "" || noteTerm !== "";
   const matchedIds = useMemo(() => {
     if (searchTerms.length === 0) return undefined;
     const all = new Set<string>();
@@ -116,11 +116,11 @@ export default function MatchScreenV2() {
       // 경기번호 필드 — 부분일치.
       const noOk = matchNoTerm === "" || r.raw.matchNo.toLowerCase().includes(matchNoTerm);
       // 댓글 필드 — 이 경기 댓글 중 하나라도 내용에 포함하면 통과.
-      const commentOk = commentTerm === "" || r.raw.notes.some((c) => c.text.toLowerCase().includes(commentTerm));
-      return userOk && noOk && commentOk;
+      const noteOk = noteTerm === "" || r.raw.notes.some((c) => c.text.toLowerCase().includes(noteTerm));
+      return userOk && noOk && noteOk;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- resolveMember/slotMatchesTerm은 members 참조 함수라 매 렌더 새로 만들어져도 무방(값 자체는 members로 충분히 표현됨)
-  }, [matches, hasSearch, searchTerms, matchNoTerm, commentTerm, members]);
+  }, [matches, hasSearch, searchTerms, matchNoTerm, noteTerm, members]);
 
   const handleSaved = useCallback(async () => {
     reload();
@@ -176,8 +176,8 @@ export default function MatchScreenV2() {
         />
         <input
           className="scr-input scr-list-search-input scr-match-extra-field"
-          value={commentQuery}
-          onChange={(e) => setCommentQuery(e.target.value)}
+          value={noteQuery}
+          onChange={(e) => setNoteQuery(e.target.value)}
           placeholder="메모 내용"
           autoComplete="off"
         />

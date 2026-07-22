@@ -13,7 +13,7 @@ import { cx } from "../../utils/format";
 import { attachPopover } from "../../utils/popover";
 import { dateWithDow } from "../../utils/date";
 import KakaoShareButton from "../../components/common/KakaoShareButton";
-import MatchComments from "./MatchComments";
+import MatchNotes from "./MatchNotes";
 import type { KakaoShareContent } from "../../utils/kakaoShare";
 import type { Match, Member, MatchSlot, MatchResult } from "../../types";
 
@@ -453,7 +453,7 @@ export default function MatchList({
                           {r.raw.createdBy && <span className="scr-match-trow-by">등록: {r.raw.createdBy.nickname}</span>}
                         </div>
                         {/* 댓글(메모) 영역 — 게시판 댓글 스타일. 로우 최하단에 붙는다(요청). */}
-                        <MatchComments match={r.raw} />
+                        <MatchNotes match={r.raw} />
                       </>
                     )}
                   </div>

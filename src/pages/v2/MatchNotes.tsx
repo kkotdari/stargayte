@@ -69,7 +69,7 @@ function textToParts(text: string, mentions: { memberId: string; nickname: strin
 }
 
 // 댓글 입력/수정 공용 편집기 — "너 나와!" 요청 입력의 멘션 칩 편집기를 그대로 옮겼다.
-function CommentComposer({
+function NoteComposer({
   members,
   initialParts,
   submitting,
@@ -197,7 +197,7 @@ function CommentComposer({
   };
 
   return (
-    <div className="scr-mreq-compose-row scr-match-comment-compose-row">
+    <div className="scr-mreq-compose-row scr-match-note-compose-row">
       <div className="scr-mreq-input-wrap">
         <div
           ref={boxRef}
@@ -281,7 +281,7 @@ function formatCommentTime(iso: string): string {
 // 펼쳐진 경기 로우 하단의 댓글(메모) 영역 — 게시판 댓글 스타일. 목록·입력은 "너 나와!" 요청
 // 입력의 CSS(scr-mreq-*)를 차용한다. 대댓글은 없다(요청). 로그인 회원만 작성할 수 있고
 // 작성자 본인/운영자만 수정·삭제할 수 있다(comment.canEdit).
-export default function MatchComments({ match }: { match: Match }) {
+export default function MatchNotes({ match }: { match: Match }) {
   const user = useAppStore((s) => s.user);
   const members = useAppStore((s) => s.members);
   // 댓글은 이 컴포넌트가 로컬로 관리한다 — 목록 응답(match.notes)을 초기값으로 받고,
@@ -337,11 +337,11 @@ export default function MatchComments({ match }: { match: Match }) {
 
   return (
     // 로우 전체가 클릭 토글이라, 댓글 영역에서의 클릭/입력은 로우 접힘을 막는다.
-    <div className="scr-match-comments" onClick={(e) => e.stopPropagation()}>
+    <div className="scr-match-notes" onClick={(e) => e.stopPropagation()}>
       {notes.length > 0 && (
-        <ul className="scr-mreq-list scr-match-comments-list">
+        <ul className="scr-mreq-list scr-match-notes-list">
           {notes.map((c) => (
-            <li key={c.id} className="scr-mreq-item scr-match-comment-item">
+            <li key={c.id} className="scr-mreq-item scr-match-note-item">
               <div className="scr-mreq-item-top">
                 <div className="scr-mreq-item-author">
                   <Avatar
@@ -350,19 +350,19 @@ export default function MatchComments({ match }: { match: Match }) {
                     className="scr-mreq-item-author-avatar"
                   />
                   <span className="scr-mreq-item-author-name">{c.author.nickname}</span>
-                  <span className="scr-match-comment-time">{formatCommentTime(c.createdAt)}</span>
+                  <span className="scr-match-note-time">{formatCommentTime(c.createdAt)}</span>
                 </div>
                 {c.canEdit && editingId !== c.id && (
                   <div className="scr-mreq-item-actions">
                     <button
-                      type="button" className="scr-match-comment-icon-btn"
+                      type="button" className="scr-match-note-icon-btn"
                       onClick={() => { setErr(null); setEditingId(c.id); }}
                       aria-label="수정"
                     >
                       <Pencil size={13} />
                     </button>
                     <button
-                      type="button" className="scr-match-comment-icon-btn scr-match-comment-icon-danger"
+                      type="button" className="scr-match-note-icon-btn scr-match-note-icon-danger"
                       onClick={() => setDeleteTarget(c)}
                       aria-label="삭제"
                     >
@@ -372,7 +372,7 @@ export default function MatchComments({ match }: { match: Match }) {
                 )}
               </div>
               {editingId === c.id ? (
-                <CommentComposer
+                <NoteComposer
                   members={members}
                   initialParts={textToParts(c.text, c.mentions)}
                   submitting={busy}
@@ -382,17 +382,17 @@ export default function MatchComments({ match }: { match: Match }) {
                   submitLabel={<CornerDownLeft size={14} />}
                 />
               ) : (
-                <p className="scr-mreq-item-text scr-match-comment-text">{renderInline(c.text, c.mentions)}</p>
+                <p className="scr-mreq-item-text scr-match-note-text">{renderInline(c.text, c.mentions)}</p>
               )}
             </li>
           ))}
         </ul>
       )}
 
-      {err && <div className="scr-err scr-match-comment-err">{err}</div>}
+      {err && <div className="scr-err scr-match-note-err">{err}</div>}
 
       {user && editingId === null && (
-        <CommentComposer
+        <NoteComposer
           members={members}
           initialParts={[]}
           submitting={busy}

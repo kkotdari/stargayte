@@ -3154,32 +3154,32 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 /* 펼침 로우 하단 댓글(메모) 영역 — 게시판 댓글 스타일. 목록·입력창은 "너 나와!"(scr-mreq-*)
    CSS를 그대로 차용한다(요청). 로우 자체가 클릭 토글이라 이 영역은 stopPropagation으로
    접힘을 막는다. */
-.scr-match-comments { margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(var(--overlay-rgb), 0.08); }
-.scr-match-comments-title {
+.scr-match-notes { margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(var(--overlay-rgb), 0.08); }
+.scr-match-notes-title {
   display: flex; align-items: center; gap: 6px;
   font-size: var(--fs-caption); font-weight: 700; color: var(--dim); margin-bottom: 8px;
 }
-.scr-match-comments-count {
+.scr-match-notes-count {
   display: inline-flex; align-items: center; justify-content: center; min-width: 16px; height: 16px;
   padding: 0 5px; border-radius: 8px; background: rgba(var(--overlay-rgb), 0.12);
   color: var(--text); font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums;
 }
-.scr-match-comments-list { margin-bottom: 8px; }
+.scr-match-notes-list { margin-bottom: 8px; }
 /* 각 댓글은 상하 여백만(구분선은 옅게) — scr-mreq-item의 카드 톤 대신 콤팩트하게. */
-.scr-match-comment-item { padding: 7px 0; }
-.scr-match-comment-item + .scr-match-comment-item { border-top: 1px solid rgba(var(--overlay-rgb), 0.06); }
-.scr-match-comment-item .scr-mreq-item-top { margin-bottom: 3px; }
-.scr-match-comment-time { font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; flex-shrink: 0; }
-.scr-match-comment-text { font-size: var(--fs-micro); }
+.scr-match-note-item { padding: 7px 0; }
+.scr-match-note-item + .scr-match-note-item { border-top: 1px solid rgba(var(--overlay-rgb), 0.06); }
+.scr-match-note-item .scr-mreq-item-top { margin-bottom: 3px; }
+.scr-match-note-time { font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; flex-shrink: 0; }
+.scr-match-note-text { font-size: var(--fs-micro); }
 /* 메모 영역 전체를 한 스텝 작게(요청) — 목록 텍스트·입력창·버튼 폰트/크기를 함께 줄인다.
    입력 편집기(scr-mreq-*)는 --field-h를 지역 재정의해 높이만 줄이고, 폰트/칩/버튼은 아래에서
    개별로 한 스텝 낮춘다. */
-.scr-match-comments { --field-h: 30px; }
-.scr-match-comments .scr-mreq-item-author-name { font-size: var(--fs-micro); }
-.scr-match-comments .scr-mreq-text-part,
-.scr-match-comments .scr-mreq-live-input { font-size: var(--fs-caption); }
-.scr-match-comments .scr-mreq-chip-editor { font-size: var(--fs-micro); }
-.scr-match-comments .scr-mreq-submit-btn {
+.scr-match-notes { --field-h: 30px; }
+.scr-match-notes .scr-mreq-item-author-name { font-size: var(--fs-micro); }
+.scr-match-notes .scr-mreq-text-part,
+.scr-match-notes .scr-mreq-live-input { font-size: var(--fs-caption); }
+.scr-match-notes .scr-mreq-chip-editor { font-size: var(--fs-micro); }
+.scr-match-notes .scr-mreq-submit-btn {
   flex-basis: 30px; width: 30px; height: 30px;
   min-width: 30px; min-height: 30px; max-width: 30px; max-height: 30px;
 }
@@ -3187,7 +3187,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    (요청: 튀지 않게 최대한 — 반투명 + 아주 옅은 반사광/그림자). --overlay-rgb가 테마별로
    흑/백이라 배경도 자동으로 테마에 맞는 옅은 틴트가 된다. 흰 박스용으로 지역 재정의된
    --text/--muted는 테마 글자색으로 되돌린다. */
-.scr-match-comments .scr-mreq-editor {
+.scr-match-notes .scr-mreq-editor {
   background: rgba(var(--overlay-rgb), 0.06);
   --text: #e7edf2; --muted: rgba(231, 237, 242, 0.5);
   box-shadow:
@@ -3195,25 +3195,25 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
     inset 0 -3px 7px rgba(0, 0, 0, 0.07),           /* 아래 옅은 그림자 */
     0 1px 2px rgba(0, 0, 0, 0.06);
 }
-.scr-match-comments .scr-mreq-editor:focus-within {
+.scr-match-notes .scr-mreq-editor:focus-within {
   box-shadow:
     inset 0 1px 0 rgba(var(--overlay-rgb), 0.14),
     0 0 0 1px rgba(var(--overlay-rgb), 0.2);         /* 파란 링 대신 옅은 반사광 테두리 */
 }
-.scr-light-theme .scr-match-comments .scr-mreq-editor {
+.scr-light-theme .scr-match-notes .scr-mreq-editor {
   background: rgba(var(--overlay-rgb), 0.05);
   --text: #1f2328; --muted: rgba(31, 35, 40, 0.5);
 }
-.scr-match-comment-icon-btn {
+.scr-match-note-icon-btn {
   display: inline-flex; align-items: center; justify-content: center;
   background: transparent; border: none; color: var(--muted); cursor: pointer;
   padding: 3px; border-radius: 4px; line-height: 0;
 }
-.scr-match-comment-icon-btn:hover { color: var(--text); background: rgba(var(--overlay-rgb), 0.08); }
-.scr-match-comment-icon-danger:hover { color: var(--loss); background: rgba(220, 70, 70, 0.14); }
-.scr-match-comment-err { margin: 4px 0 8px; }
+.scr-match-note-icon-btn:hover { color: var(--text); background: rgba(var(--overlay-rgb), 0.08); }
+.scr-match-note-icon-danger:hover { color: var(--loss); background: rgba(220, 70, 70, 0.14); }
+.scr-match-note-err { margin: 4px 0 8px; }
 /* 입력 줄 — "너 나와!"의 compose-row를 그대로 쓰되(인풋+제출 버튼 한 줄), 상단 여백만 살짝. */
-.scr-match-comment-compose-row { margin-top: 2px; }
+.scr-match-note-compose-row { margin-top: 2px; }
 /* 펼침 상세 높이 애니메이션 — grid-template-rows 0fr↔1fr 트릭으로 내용 높이를 몰라도
    부드럽게 늘었다 줄었다 한다(요청: 펼치거나 접을 때 트랜지션). 안쪽은 overflow:hidden로
    접힐 때 잘리게 한다. */
