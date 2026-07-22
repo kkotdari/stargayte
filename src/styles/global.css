@@ -4952,11 +4952,10 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    그냥 안 변한다") — 터치 기기는 탭한 뒤에도 :hover가 그대로 눌러붙어 있어서 다른 곳을
    또 탭하기 전까진 안 풀린다. 명시도를 :hover와 동률(클래스 2개)로 올려서 CSS 소스
    순서(이 규칙이 더 뒤)로 이기게 한다. */
-/* 다크모드 물방울(투명) 알약 위에선 밝은 글자가 맞다(요청) — 테마 기본 글자색으로 두면
-   다크=흰 글자(투명 알약 뒤 어두운 탭바 위에서 또렷), 라이트=어두운 글자.
-   폰트 1스텝 확대(caption→body, 요청) — 루페(돋보기) 스타일이라 물방울 아래 글자가
-   실제로 "확대되어 보이는" 착시를 만든다. */
-.scr-mobile-tab.scr-mobile-tab-active { color: var(--text); font-weight: 700; font-size: var(--fs-body); }
+/* 글로우(밝은 빛) 위 글자는 다크에서도 검정으로 반전(요청) — 라이트는 아래 테마
+   오버라이드가 var(--text)(어두운 색)로 되돌린다.
+   폰트 1스텝 확대(caption→body, 요청) — 루페 시절의 확대 착시를 그대로 유지한다. */
+.scr-mobile-tab.scr-mobile-tab-active { color: #10151a; font-weight: 700; font-size: var(--fs-body); }
 /* 활성 탭 뒤로 슬라이드하며 이동하는 알약 배경 — 입체감(그림자) 없이 플랫한 색만.
    MobileTabBar.tsx가 실제 활성 버튼의 offsetLeft/offsetTop/offsetWidth/offsetHeight를
    재서 transform/top/width/height로 전부 직접 넘겨준다 — top:50% 같은 "부모 기준 중앙"
@@ -5036,14 +5035,16 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   /* 모양은 물방울과 동일(요청) — 좌우 고정 곡률 22px / 상하 50%의 알약 실루엣.
      빛이 상자보다 크게 퍼지다 이 radius에서 잘려 물방울 형태의 광이 된다. */
   border-radius: 22px / 50%;
+  /* 더 밝게(요청) — 가운데가 넓게 환한 판(plateau)을 이루고 가장자리로 부드럽게
+     사라진다. 다크는 이 빛 위 글자를 검정으로 반전한다(아래 active 규칙). */
   background:
-    radial-gradient(72% 72% at 50% 50%, rgba(255,255,255,0.24) 0%, rgba(255,255,255,0) 78%),
-    radial-gradient(140% 150% at 50% 50%, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0) 82%);
+    radial-gradient(88% 96% at 50% 50%, rgba(255,255,255,0.72) 0%, rgba(255,255,255,0.5) 50%, rgba(255,255,255,0.12) 78%, rgba(255,255,255,0) 92%),
+    radial-gradient(150% 160% at 50% 50%, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 85%);
 }
 html.scr-light-theme .scr-mobile-tab-glow {
   background:
-    radial-gradient(72% 72% at 50% 50%, rgba(70,140,235,0.28) 0%, rgba(70,140,235,0) 78%),
-    radial-gradient(140% 150% at 50% 50%, rgba(70,140,235,0.12) 0%, rgba(70,140,235,0) 82%);
+    radial-gradient(88% 96% at 50% 50%, rgba(90,155,240,0.55) 0%, rgba(90,155,240,0.38) 50%, rgba(90,155,240,0.1) 78%, rgba(90,155,240,0) 92%),
+    radial-gradient(150% 160% at 50% 50%, rgba(90,155,240,0.16) 0%, rgba(90,155,240,0) 85%);
 }
 /* 라이트 테마도 같은 리퀴드 글래스로(요청). 흰 배경 위라 흰 반사광은 옅게만 보이므로,
    유리 볼륨은 검은톤 그림자/굴절 그늘이 주로 잡아준다. backdrop blur의 brightness로 방울이
@@ -7700,8 +7701,8 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
   padding: 7px 0; color: var(--muted); font-family: inherit; font-size: var(--fs-caption);
   -webkit-tap-highlight-color: transparent;
 }
-/* 활성 탭 — 하단 탭바와 같은 규칙: 글자색 반전 + 폰트 1스텝 확대(루페 확대 착시). */
-.scr-rivalry-tab-active { color: var(--text); font-weight: 700; font-size: var(--fs-body); }
+/* 활성 탭 — 하단 탭바와 같은 규칙: 밝은 글로우 위 검정 글자 + 폰트 1스텝 확대. */
+.scr-rivalry-tab-active { color: #10151a; font-weight: 700; font-size: var(--fs-body); }
 /* 정사각 캔버스 — 칩은 %, 선은 같은 0~100 좌표계의 SVG(viewBox)로 그려 서로 정확히 겹친다. */
 .scr-rivalry-wrap { position: relative; width: 100%; max-width: 560px; margin: 0 auto; aspect-ratio: 1; }
 .scr-rivalry-svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
