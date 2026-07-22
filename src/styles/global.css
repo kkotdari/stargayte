@@ -3220,6 +3220,16 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
   background: rgba(var(--overlay-rgb), 0.05);
   --text: #1f2328; --muted: rgba(31, 35, 40, 0.5);
 }
+/* 라이트 테마 포커스 — 너나와 공용의 라이트 포커스 규칙(.scr-light-theme .scr-mreq-editor
+   :focus-within, 바깥으로 나가는 파란 링)이 위 메모 전용 inset 규칙과 특이도가 같으면서
+   소스상 더 뒤라 이겨버려, 라이트에서만 바깥 링이 되살아나 펼침영역 overflow에 아래가
+   잘렸다(지적된 버그 — "특히 아래부분 특히 라이트"). 특이도를 한 단계 높인 이 규칙으로
+   라이트에서도 inset만 쓰게 못박는다. */
+.scr-light-theme .scr-match-notes .scr-mreq-editor:focus-within {
+  box-shadow:
+    inset 0 1px 0 rgba(var(--overlay-rgb), 0.1),
+    inset 0 0 0 1px rgba(var(--overlay-rgb), 0.22);
+}
 .scr-match-note-icon-btn {
   display: inline-flex; align-items: center; justify-content: center;
   background: transparent; border: none; color: var(--muted); cursor: pointer;
