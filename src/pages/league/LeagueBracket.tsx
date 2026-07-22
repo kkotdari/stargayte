@@ -38,6 +38,9 @@ function TeamSlotCard({
 }) {
   const cardClass = cx(
     "scr-league-bracket-team-card",
+    // 개인전은 슬롯을 팀 카드 패널로 한 번 더 감싸지 않는다(요청: 유저칩 자체가 패널) —
+    // 안의 드롭다운(수정)/멤버 칩(읽기)이 곧 패널이 되도록 카드 배경/테두리를 없앤다.
+    mode === "individual" && "scr-league-bracket-team-card-individual",
     isWinner && "scr-league-bracket-team-card-win",
     compact && "scr-league-bracket-team-card-compact",
   );

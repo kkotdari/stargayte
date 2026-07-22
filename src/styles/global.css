@@ -7127,6 +7127,10 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
   display: flex; align-items: center; gap: 7px; padding: 5px 7px;
   background: rgba(255,255,255,0.05); border-radius: 7px;
 }
+/* 리그 로스터/개인전 선수 칩의 아바타는 대진표(.scr-league-bracket-team-card-member)와
+   팀전 목록처럼 동그랗게(요청). Avatar는 인라인 style로 각진 래디우스를 주므로 !important로 덮는다. */
+.scr-league-roster-row .scr-avatar,
+.scr-league-player-chip .scr-avatar { border-radius: 50% !important; }
 .scr-league-roster-row-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-body); font-weight: 600; }
 .scr-league-roster-row-remove { flex: 0 0 auto; width: 20px; height: 20px; }
 /* 개인전 선수 목록 — 팀전 로스터의 유저칩·드롭다운과 완전히 동일한 디자인/폭(요청). 팀
@@ -7202,6 +7206,16 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
 }
 .scr-light-theme .scr-league-bracket-team-card-win {
   box-shadow: 0 0 0 2px var(--league-advance) inset, 0 1px 4px rgba(0,0,0,0.16);
+}
+/* 개인전 대진 슬롯 — 팀 카드 패널(배경·테두리·패딩)을 없애 안의 유저칩/드롭다운 자체가
+   패널이 되게 한다(요청). 승리 강조(-win)일 때만 안쪽 링을 남긴다. */
+.scr-league-bracket-team-card-individual {
+  background: none; box-shadow: none; padding: 0;
+}
+.scr-light-theme .scr-league-bracket-team-card-individual { box-shadow: none; }
+.scr-league-bracket-team-card-individual.scr-league-bracket-team-card-win,
+.scr-light-theme .scr-league-bracket-team-card-individual.scr-league-bracket-team-card-win {
+  box-shadow: 0 0 0 2px var(--league-advance) inset;
 }
 .scr-league-bracket-team-card-label {
   flex: 0 0 auto; font-weight: 800; font-size: var(--fs-micro); color: var(--text);
