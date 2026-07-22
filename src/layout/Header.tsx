@@ -70,9 +70,15 @@ export default function Header({
   // {menuOpen && ...}로 바로 언마운트하면 닫힐 때만 애니메이션 없이 순간 사라져 버렸다.
   const [drawerRendered, setDrawerRendered] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  // 서랍이 열리자마자 손가락이 놓인 자리의 항목이 눌리는 문제(지적) — 햄버거 탭은
+  // pointerdown 시점에 서랍을 여는데, 손가락을 떼는 순간의 click이 "그때 그 좌표에
+  // 새로 나타난" 서랍 항목으로 떨어진다(고스트 클릭). 열린 직후 잠깐은 서랍 안 클릭을
+  // 캡처 단계에서 무시한다.
+  const drawerOpenedAtRef = useRef(0);
   useEffect(() => {
     if (menuOpen) {
       setDrawerRendered(true);
+      drawerOpenedAtRef.current = Date.now();
       const raf = requestAnimationFrame(() => setDrawerOpen(true));
       return () => cancelAnimationFrame(raf);
     }
@@ -258,6 +264,9 @@ export default function Header({
           <div
             className="scr-drawer" ref={drawerPanelRef}
             onClick={(e) => e.stopPropagation()}
+            onClickCapture={(e) => {
+              if (Date.now() - drawerOpenedAtRef.current < 400) { e.preventDefault(); e.stopPropagation(); }
+            }}
             onPointerDown={onDrawerPointerDown}
             onPointerMove={onDrawerPointerMove}
             onPointerUp={onDrawerPointerEnd}
