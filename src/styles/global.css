@@ -5125,7 +5125,10 @@ html.scr-light-theme .scr-mobile-tabbar {
   /* 상부는 사실상 안 쓰므로 높이도 과감히 바닥 기준 2/3로(요청) — 오버레이(flex)에서
      바닥에 붙인다. 새로 생긴 왼쪽 위 모서리엔 크지 않은 radius + 유리 반사광(테두리),
      그림자도 위쪽 경계를 따라 한 겹 더 두른다. */
-  height: calc(100% * 2 / 3); align-self: flex-end;
+  /* 2/3는 "고정 높이"가 아니라 최소치 — 내용(운영 목록+액션)이 그보다 길면 고정 높이
+     안에서 스크롤로 숨어 하단이 잘려 보였다(지적, 특히 사파리 작은 화면). 내용만큼
+     늘어나되 화면은 안 넘게 한다. */
+  height: auto; min-height: calc(100% * 2 / 3); max-height: 100%; align-self: flex-end;
   /* 래디우스 확대(14→24px), 반사광은 더 은은하게(요청). */
   border-top-left-radius: 24px;
   border-top: 1px solid rgba(255,255,255,0.09);
