@@ -7685,8 +7685,11 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
 /* 유저 칩 — 개인전 대진 카드와 같은 투명 글라스(아바타+닉네임). */
 .scr-rivalry-card {
   position: absolute; transform: translate(-50%, -50%); z-index: 1;
-  /* 좌우 패딩 = 위아래 패딩(요청) — 둥근 아바타가 알약 왼쪽 곡률과 동심원으로 맞물린다. */
-  display: inline-flex; align-items: center; gap: 5px; padding: 4px; max-width: 30%;
+  /* 좌우 패딩은 위아래(4px)보다 살짝 넓게(6px) — 수치가 똑같으면 왼쪽이 더 좁아 보인다
+     (지적). 아바타 원과 알약 끝 곡선이 동심원이라 곡선 전체가 균일한 4px로 평행하게
+     붙는 반면, 위아래 직선 변은 접점에서 멀어질수록 여백이 벌어져 상대적으로 넓어
+     보이는 착시 — 좌우만 +2px 시각보정한다. */
+  display: inline-flex; align-items: center; gap: 5px; padding: 4px 6px; max-width: 30%;
   border: none; border-radius: 999px; cursor: pointer;
   color: var(--text); font-family: var(--font-ui); font-size: var(--fs-micro); font-weight: 700;
   background: rgba(var(--overlay-rgb), 0.07);
