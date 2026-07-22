@@ -52,6 +52,9 @@ function resizeLoadedImage(
 // 아이콘/이모지 이미지가 많아 알파 채널이 사라지는 JPEG 대신 PNG로 인코딩한다.
 export async function resizeIconSlotImage(file: File, maxSide = 128): Promise<string> {
   const dataUrl = await readAsDataUrl(file);
+  // 애니메이션 GIF(예: 별 포인트가 도는 홈 로고)는 canvas 재인코딩을 거치면 첫 프레임만
+  // 남은 정지 PNG가 되므로 원본 그대로 저장한다. 크기 최적화는 업로드 전에 파일 쪽에서.
+  if (file.type === "image/gif") return dataUrl;
   const img = await loadImage(dataUrl);
   return resizeLoadedImage(img, dataUrl, maxSide, 1, "image/png");
 }
