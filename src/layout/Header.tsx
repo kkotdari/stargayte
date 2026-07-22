@@ -263,15 +263,8 @@ export default function Header({
             onPointerUp={onDrawerPointerEnd}
             onPointerCancel={onDrawerPointerEnd}
           >
-            <div className="scr-drawer-user">
-              <Avatar member={user} size={40} />
-              <div>
-                <div className="scr-drawer-user-name">{user.nickname}</div>
-                {/* 배틀태그는 데이터(모노) 폰트 대신 기본 폰트로(요청). */}
-                <div className="scr-drawer-user-tag">{user.battletag}</div>
-              </div>
-            </div>
-
+            {/* 프로필 블록은 뺐다(요청) — 서랍이 2/3 높이가 되면서 뒤 헤더의 프로필 칩과
+                동시에 보여 중복이었다. */}
             {/* 탭바에 이미 있는 메뉴(commonNavItems)는 서랍에 안 보여준다(요청) —
                 서랍엔 탭바에 없는 운영 아코디언과 액션들만 남는다. */}
             <nav className="scr-drawer-nav">
