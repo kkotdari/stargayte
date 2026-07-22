@@ -425,6 +425,7 @@ export default function ReplayBatchButton() {
         <ConfirmDialog
           title={`리플레이 ${pendingFiles.length}개를 분석해 자동 등록할까요?`}
           message="분석 결과에 따라 경기 기록이 실제로 만들어집니다."
+          className="scr-admin-panel-batch-confirm"
           confirmLabel="등록 시작"
           onConfirm={() => void executeBatch(pendingFiles)}
           onCancel={() => setPendingFiles(null)}

@@ -171,7 +171,7 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
           !unlocked && "scr-admin-panel-modal-locked",
           roar && "scr-admin-panel-roar",
         )}
-        onAnimationEnd={(e) => { if (e.animationName === "scr-admin-panel-roar") setRoar(false); }}
+        onAnimationEnd={(e) => { if (e.animationName === "scr-admin-panel-lid-fade") setRoar(false); }}
       >
         <div className="scr-modal-head">
           <span>숨겨진 제어판</span>
