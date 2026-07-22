@@ -921,7 +921,7 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 /* PC에서 로고가 중심선보다 낮아 보인다(지적) — 로고 이미지 자체의 아래쪽 여백 탓이라
    버튼째 살짝 올려 보정한다(모바일은 아래 블록의 translateY가 따로 정한다). */
 @media (min-width: 641px) {
-  .scr-brand { transform: translateY(-3px); }
+  .scr-brand { transform: translateY(-6px); }
 }
 .scr-brand-text { font-size: var(--fs-body); color: var(--muted); letter-spacing: 0.02em; white-space: nowrap; }
 .scr-nav { display: flex; gap: 6px; flex: 1; overflow-x: auto; scrollbar-width: none; }
