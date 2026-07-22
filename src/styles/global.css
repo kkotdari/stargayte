@@ -1791,6 +1791,12 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 @media (min-width: 900px) {
   .scr-stats-list-panel-v2 .scr-stat-row {
     grid-template-columns: var(--scr-stat-name-w) repeat(5, minmax(150px, 1fr));
+    /* 이 폭에서는 width를 확정값(100%)으로 못박아야 한다 — base의 width:max-content가
+       남아 있으면 max-content 박스 안의 1fr은 "남는 폭 분배"가 아니라 각 칸 내용의
+       max-content로 동작해서, 헤더 행(짧은 라벨)과 데이터 행(숫자+막대)의 칸 폭이 서로
+       달라져 세로 정렬과 구분선이 전부 어긋난다(실제로 지적받은 버그). 100% 확정폭이면
+       모든 행이 동일하게 1fr을 나눠 가져 칸/구분선이 정확히 일치한다. */
+    width: 100%; min-width: 0;
     /* 이 폭부터는 칸이 minmax(_,1fr)로 실제로 남는 폭을 비례해서 나눠 가지므로(칸
        자체가 늘어남), 구분선도 다시 그 비례(퍼센트) 기준으로 맞아떨어진다. 5칸이라 4등분. */
     background-position:
