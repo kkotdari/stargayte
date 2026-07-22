@@ -103,11 +103,6 @@ export default function RivalryMap({
             const a = pos.get(e.from);
             const b = pos.get(e.to);
             if (!a || !b) return null;
-            // 선택 모드에선 선택한 유저가 주인공(요청) — 그 유저가 이기는 관계(from)는
-            // 초록, 지는 관계(to)는 빨강. 전체 보기는 우세=초록 하나.
-            const focusKind = selected !== null && e.kind === "strong"
-              ? (e.from === selected ? "win" : "lose")
-              : null;
             const dx = b.x - a.x;
             const dy = b.y - a.y;
             const len = Math.hypot(dx, dy) || 1;
@@ -152,7 +147,7 @@ export default function RivalryMap({
             const shaftX2 = e.kind === "strong" ? bx : x2;
             const shaftY2 = e.kind === "strong" ? by : y2;
             return (
-              <g key={i} className={cx("scr-rivalry-edge", `scr-rivalry-edge-${e.kind}`, selected !== null && "scr-rivalry-edge-focus", focusKind && `scr-rivalry-edge-${focusKind}`)}>
+              <g key={i} className={cx("scr-rivalry-edge", `scr-rivalry-edge-${e.kind}`, selected !== null && "scr-rivalry-edge-focus")}>
                 <line
                   x1={x1} y1={y1} x2={shaftX2} y2={shaftY2}
                   // 우세 강도 비례 굵기 — 인라인 style이라 CSS 기본 굵기를 덮는다.
@@ -220,14 +215,8 @@ export default function RivalryMap({
         })}
       </div>
       <div className="scr-rivalry-legend">
-        {selected === null ? (
-          <span className="scr-rivalry-legend-item"><span className="scr-rivalry-legend-arrow" /> 우세(화살표가 가리키는 쪽이 열세)</span>
-        ) : (
-          <>
-            <span className="scr-rivalry-legend-item"><span className="scr-rivalry-legend-arrow" /> 우세</span>
-            <span className="scr-rivalry-legend-item"><span className="scr-rivalry-legend-arrow scr-rivalry-legend-arrow-lose" /> 열세</span>
-          </>
-        )}
+        {/* 우세/열세는 색이 아니라 화살표 방향으로만 구분한다(요청) — 어느 모드든 초록 하나. */}
+        <span className="scr-rivalry-legend-item"><span className="scr-rivalry-legend-arrow" /> 우세</span>
         <span className="scr-rivalry-legend-item"><span className="scr-rivalry-legend-even" /> 대등</span>
         <span className="scr-rivalry-legend-note">
           선이 굵을수록 상성이 뚜렷 · 유저를 누르면 그 유저의 상성만 표시
