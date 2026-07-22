@@ -48,8 +48,11 @@ export default function LeagueScreen() {
   };
   useEffect(loadList, []);
 
-  // 선택한 리그가 바뀔 때마다 상세(팀+경기 포함)를 새로 불러온다.
+  // 선택한 리그가 바뀔 때마다 상세(팀+경기 포함)를 새로 불러온다. 수정 모드는 리그별
+  // 상태가 아니라서, 수정 중 다른 리그로 전환하면 수정 모드가 그대로 딸려 들어갔다
+  // (지적된 버그) — 전환 시 항상 읽기 모드로 되돌린다.
   useEffect(() => {
+    setEditMode(false);
     if (selectedId === null) { setLeague(null); return; }
     setLoadingDetail(true);
     api.getLeague(selectedId)
