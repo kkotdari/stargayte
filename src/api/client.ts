@@ -5,7 +5,7 @@ import type {
   Member, Match, MatchNote, NewMatch, SignupPayload, MemberCreatePayload, ImageSettingMap, MemberStatus, MemberRole,
   ScreenKey, AppVersion, AppVersionStatus, AppVersionInfo,
   MatchSlot, MatchPage, MatchStatsResponse, MatchType, Race, TeamRankingResponse,
-  MonthlyMatchStatsResponse, MonthlyTeamRankingResponse, RatingHistoryResponse,
+  MonthlyMatchStatsResponse, MonthlyTeamRankingResponse, RatingHistoryResponse, RivalryPair,
   ReplayNameClassificationEntry, ReplayNameKind, ReplayNameMappingEntry, ReplayNameMappingKind,
   Challenge, ChallengeCreatePayload, ChallengeRevengePayload, ChallengeResult,
   MatchRequest, MatchRequestCreatePayload, MatchRequestListResponse, MatchRequestInboxItem,
@@ -281,6 +281,12 @@ export const api = {
       race: params.race,
     });
     return request<MatchStatsResponse>(`/api/matches/stats${qs}`);
+  },
+
+  // 유저 상성(1:1 상대전적 쌍) — 통계 화면 하단의 상성 맵이 쓴다.
+  async getRivalries(params: { dateFrom?: string; dateTo?: string } = {}): Promise<{ pairs: RivalryPair[] }> {
+    const qs = buildQuery({ dateFrom: params.dateFrom, dateTo: params.dateTo });
+    return request<{ pairs: RivalryPair[] }>(`/api/matches/stats/rivalries${qs}`);
   },
 
   // 랭킹 조회 전용 엔드포인트 — 응답 구조는 전적통계와 같지만(순위/레이팅 + 전적) URL을

@@ -41,6 +41,7 @@ export default function AdminMenu({ screen, onNavigate, variant, drawerOpen, onD
     { key: "imageSettings", label: "이미지 설정", isActive: screen === "imageSettings", onSelect: () => onNavigate("imageSettings") },
     { key: "gameId", label: "게임아이디", isActive: screen === "gameId", onSelect: () => onNavigate("gameId") },
     { key: "leagues", label: "리그", isActive: screen === "leagues", onSelect: () => onNavigate("leagues") },
+    { key: "rivalry", label: "상성맵", isActive: screen === "rivalry", onSelect: () => onNavigate("rivalry") },
   ];
   const activeInAdmin = items.some((i) => i.isActive);
   // 햄버거 드로어는 열 때마다 새로 마운트되므로(Header가 menuOpen일 때만 렌더), 지금 보고

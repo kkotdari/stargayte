@@ -18,6 +18,7 @@ import InAppBrowserNotice from "./components/common/InAppBrowserNotice";
 import ChallengeScreen from "./pages/challenge/ChallengeScreen";
 import MembersScreen from "./pages/members/MembersScreen";
 import ImageSettingsScreen from "./pages/imageSettings/ImageSettingsScreen";
+import RivalryScreen from "./pages/rivalry/RivalryScreen";
 import GameIdScreen from "./pages/gameId/GameIdScreen";
 import LeagueScreen from "./pages/league/LeagueScreen";
 import ProfileModal from "./modals/ProfileModal";
@@ -34,7 +35,7 @@ import SharePage, { type ShareTarget } from "./pages/share/SharePage";
 
 import type { ScreenKey } from "./types";
 
-const SCREEN_KEYS: ScreenKey[] = ["ranking", "match", "challenge", "stats", "members", "imageSettings", "gameId", "leagues"];
+const SCREEN_KEYS: ScreenKey[] = ["ranking", "match", "challenge", "stats", "members", "imageSettings", "gameId", "leagues", "rivalry"];
 
 // 새로고침해도 보던 화면 그대로 있도록 URL의 ?screen= 쿼리에 현재 화면을 기록해둔다 —
 // 사파리의 pull-to-refresh 등 브라우저 기본 새로고침은 앱 상태를 그대로 날려서 첫 화면으로
@@ -205,6 +206,7 @@ export default function App() {
     screen === "imageSettings" && !isAdmin ? "ranking" :
     screen === "gameId" && !isAdmin ? "ranking" :
     screen === "leagues" && !isAdmin ? "ranking" :
+    screen === "rivalry" && !isAdmin ? "ranking" :
     screen;
 
   return (
@@ -250,6 +252,8 @@ export default function App() {
             {isAdmin && !booting && resolvedScreen === "gameId" && <GameIdScreen />}
             {/* 공식 리그 대진/결과 관리 — 다음 버전에서 열 예정, 지금은 운영자만(요청). */}
             {isAdmin && !booting && resolvedScreen === "leagues" && <LeagueScreen />}
+            {/* 유저 상성 맵 — 운영 메뉴 전용(요청). */}
+            {isAdmin && !booting && resolvedScreen === "rivalry" && <RivalryScreen />}
           </main>
         </div>
 
