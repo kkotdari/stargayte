@@ -4343,6 +4343,37 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-admin-panel-modal .scr-modal-head { color: #1a1e24; text-shadow: 0 1px 0 rgba(255,255,255,0.4); }
 /* 암호 입력 위 큰 자물쇠 이모지(요청) — 금속판 배경 위에서도 또렷하게 크게, 가운데. */
 .scr-admin-panel-lock { font-size: var(--fs-hero-3); line-height: 1; text-align: center; margin: 4px 0 14px; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.35)); }
+/* ── 잠금(비밀번호) 상태 = 뚜껑이 덮인 제어판(요청) ──
+   처음 들어오면 밝은 금속판(bg) 대신 부식된 쇠 텍스처(border 이미지)가 테두리 구분 없이
+   전체를 꽉 채워 "아직 안 열린 뚜껑"처럼 보인다. 쇠테두리 border-image는 끄고(같은
+   텍스처가 중앙 채움과 이음새 없이 이어지도록) 그 12px 영역까지 ::before(inset:-12px)가
+   덮는다 — .scr-modal의 overflow:hidden이 ::before를 패딩 박스로 잘라버리므로 잠금
+   상태에선 visible로 푼다(라운드도 0이라 잘라낼 모서리도 없다). */
+.scr-modal.scr-admin-panel-modal-locked {
+  overflow: visible;
+  border-color: transparent; border-image: none;
+}
+.scr-admin-panel-modal-locked::before {
+  inset: -12px;
+  background-image: url("/images/bg/control_panel_border.jpg");
+  /* 뚜껑판 특유의 살짝 어두운 비네트 — 열린 상태의 "파여 들어간 판" 그림자 대신. */
+  box-shadow: inset 0 0 46px rgba(0,0,0,0.55), inset 0 0 0 2px rgba(0,0,0,0.5);
+}
+/* 어두운 쇠 뚜껑 위라 글자는 흰색으로(요청). */
+.scr-admin-panel-modal-locked .scr-modal-head { color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.7); }
+/* 잠금 해제 순간의 사자후 연출(요청) — 섬광과 함께 크게 울리듯 강하게 흔들리고 점점
+   잦아들며 제자리로. 한 번만 재생하고 클래스는 JS(onAnimationEnd)가 뗀다. */
+.scr-admin-panel-roar { animation: scr-admin-panel-roar .65s cubic-bezier(.36,.07,.19,.97) both; }
+@keyframes scr-admin-panel-roar {
+  0%   { transform: scale(1.09); filter: brightness(2.1); }
+  12%  { transform: scale(1.05) translate(-12px, 5px) rotate(-1.4deg); filter: brightness(1.5); }
+  26%  { transform: translate(11px, -4px) rotate(1.2deg); }
+  40%  { transform: translate(-9px, 3px) rotate(-1deg); filter: brightness(1.15); }
+  54%  { transform: translate(7px, -3px) rotate(0.8deg); }
+  68%  { transform: translate(-5px, 2px) rotate(-0.5deg); filter: brightness(1); }
+  82%  { transform: translate(3px, -1px); }
+  100% { transform: translate(0, 0) scale(1); }
+}
 /* PC에서는 좁은 모달(360px)이 유난히 작아 보인다 — 카드 자체를 키운다(비율은 위에서
    이미 1:1로 고정했으니 여기선 최대폭만). */
 @media (min-width: 720px) {
