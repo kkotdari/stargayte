@@ -211,7 +211,10 @@ export default function App() {
 
   return (
     <ImageSettingContext.Provider value={imageSettings}>
-      <div className="scr-app" id="scr-app">
+      {/* 배경 사진이 있는 화면(지금은 랭킹뿐)에서는 헤더까지 사진이 이어져 보이게 —
+          헤더의 불투명 배경을 끄는 클래스를 앱 루트에 건다(CSS .scr-app-hasbg 참고).
+          배경 있는 화면이 늘면 이 조건에 추가하면 된다. */}
+      <div className={"scr-app" + (resolvedScreen === "ranking" ? " scr-app-hasbg" : "")} id="scr-app">
         <div className="scr-bg-grid" />
         <span className="scr-rail scr-rail-left" aria-hidden="true" />
         <span className="scr-rail scr-rail-right" aria-hidden="true" />
