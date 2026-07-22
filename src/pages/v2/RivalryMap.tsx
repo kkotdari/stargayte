@@ -81,13 +81,12 @@ export default function RivalryMap({
   }
 
   // 원형 배치 — 좌표는 0~100 좌표계(정사각 컨테이너의 %)로 계산해 카드(%)와 SVG(viewBox
-  // 0 0 100 100)가 같은 값을 공유한다. 인접 칩끼리 계속 붙어 보여(지적) 화면을 더 넓게
-  // 쓴다 — 칩이 가로로 길고 세로로 납작하니 좌우보다 상하 여백을 더 줄인 타원(41×46)으로
-  // 배치해 칩 사이 거리를 벌린다.
+  // 0 0 100 100)가 같은 값을 공유한다. 타원(41×46)도 시도했지만 원형이 예뻐 되돌리고
+  // (요청), 대신 반지름을 40→42로 살짝 키워 여백만 줄인다.
   const pos = new Map<string, { x: number; y: number }>();
   nodes.forEach((id, i) => {
     const ang = (i / nodes.length) * Math.PI * 2 - Math.PI / 2;
-    pos.set(id, { x: 50 + 41 * Math.cos(ang), y: 50 + 46 * Math.sin(ang) });
+    pos.set(id, { x: 50 + 42 * Math.cos(ang), y: 50 + 42 * Math.sin(ang) });
   });
 
   const related = (e: Edge) => selected !== null && (e.from === selected || e.to === selected);
