@@ -882,8 +882,10 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    라이트 테마는 배경 사진 자체를 끄므로(위 .scr-light-theme ...::before display:none)
    헤더 배경을 그대로 유지한다. 하단 구분선(background-image 그라데이션)은 남긴다. */
 html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
-  background-color: transparent;
-  backdrop-filter: none;
+  /* 완전 투명 대신 하단 탭바와 똑같은 반투명+블러(요청) — 사진이 비치면서도 글자가 뜬다. */
+  background-color: color-mix(in srgb, var(--panel-solid) 38%, transparent);
+  backdrop-filter: blur(5px) saturate(1.15);
+  -webkit-backdrop-filter: blur(5px) saturate(1.15);
 }
 
 /* 상단 안전영역(노치/상태바) 프로스티드 스크림 — black-translucent 몰입 모드에서 콘텐츠가
