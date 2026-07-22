@@ -30,9 +30,19 @@ function applyThemeColor(on: boolean): void {
 // (useHideOnScrollDown, 4px/10px)보다 작아 다른 동작을 건드리지 않는다.
 function nudgeToolbarResample(): void {
   requestAnimationFrame(() => requestAnimationFrame(() => {
+    // 테마 토글은 대개 서랍(메뉴)이 열린 채 눌린다 — 그때는 body가 모달 잠금
+    // (position:fixed, bodyScrollLock)이라 문서에 스크롤 여지가 없어 scrollTo가
+    // 통째로 무효였고, 그래서 "메뉴를 닫아야(잠금 해제 시 스크롤 복원) 그제서야
+    // 툴바 색이 바뀌는" 증상이 됐다(지적). 짧아서 스크롤이 없는 화면도 마찬가지.
+    // html에 2px 여유 높이를 한 프레임만 줘서 어떤 상태에서든 진짜 문서 스크롤
+    // 이벤트를 만들어 재샘플링을 강제한다. 1px 왕복은 즉시 원위치라 보이지 않는다.
+    const root = document.documentElement;
+    const prevHeight = root.style.height;
+    root.style.height = "calc(100% + 2px)";
     const y = window.scrollY;
     window.scrollTo({ top: y > 0 ? y - 1 : 1, behavior: "instant" });
     window.scrollTo({ top: y, behavior: "instant" });
+    root.style.height = prevHeight;
   }));
 }
 
