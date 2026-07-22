@@ -863,8 +863,8 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    가려지지 않게 한다 — 일반 사파리 탭에서는 상태바가 브라우저 자체 영역이라 이 값이
    0이라 아무 영향이 없다. */
 .scr-header {
-  /* 하단 구분선과 블러는 제거(요청) — 배경색만 남긴다. */
-  position: relative; z-index: 2; background-color: var(--header-bg);
+  /* 하단 구분선·블러에 이어 배경색도 제거(요청) — 완전 투명한 헤더. */
+  position: relative; z-index: 2; background: transparent;
   /* 상단 안전영역만큼 헤더 콘텐츠를 내려 노치/상태바에 안 가리게 한다(--safe-top).
      헤더는 스크롤되는 페이지 최상단 콘텐츠라, 맨 위에 있을 때 이 padding이 노치를
      비켜준다. 스크롤로 헤더가 밀려 올라간 뒤엔 아래 스티키(날짜 줄)가 top:var(--safe-top)
