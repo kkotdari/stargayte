@@ -5111,9 +5111,9 @@ html.scr-light-theme .scr-mobile-tabbar {
   position: fixed; inset: 0; z-index: 60; background: transparent;
   display: flex; justify-content: flex-end;
   /* iOS 사파리 — inset:0(레이아웃 뷰포트)은 하단 툴바 밑까지 내려가, 바닥 정렬된
-     서랍의 아래쪽이 툴바에 가려 잘렸다(지적). 동적 뷰포트 높이(dvh)로 실제 보이는
-     영역까지만 차지하게 한다(미지원 브라우저는 위 inset:0 그대로). */
-  height: 100dvh;
+     서랍의 아래쪽이 툴바에 가려 잘렸다(지적). 100dvh로도 안 잡혀서, 탭바가 쓰는 것과
+     같은 실측 값(--vv-bottom-inset, useBottomViewportInset가 갱신)만큼 바닥을 띄운다. */
+  bottom: var(--vv-bottom-inset, 0px);
 }
 /* 드로어 경계선(아래 그라데이션) — 다른 곳(탭바 선 등)과 같은 전역 --edge-glow(다크는
    붉은 파이프색, 라이트는 파랑)를 그대로 따른다(주황으로 바꿔봤다가 원래 톤으로 되돌림).

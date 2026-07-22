@@ -75,12 +75,18 @@ export default function Header({
   // 새로 나타난" 서랍 항목으로 떨어진다(고스트 클릭). 열린 직후 잠깐은 서랍 안 클릭을
   // 캡처 단계에서 무시한다.
   const drawerOpenedAtRef = useRef(0);
+  // 클릭 가드만으로는 부족했다(지적) — 손가락이 아직 눌린 채로 서랍이 나타나면 그 아래
+  // 항목에 :active/터치 하이라이트가 켜진다. 열리고 잠깐은 pointer-events 자체를 꺼서
+  // 어떤 터치 반응도 안 생기게 한다.
+  const [drawerInteractive, setDrawerInteractive] = useState(false);
   useEffect(() => {
     if (menuOpen) {
       setDrawerRendered(true);
       drawerOpenedAtRef.current = Date.now();
+      setDrawerInteractive(false);
+      const t = setTimeout(() => setDrawerInteractive(true), 450);
       const raf = requestAnimationFrame(() => setDrawerOpen(true));
-      return () => cancelAnimationFrame(raf);
+      return () => { cancelAnimationFrame(raf); clearTimeout(t); };
     }
     setDrawerOpen(false);
     const t = setTimeout(() => setDrawerRendered(false), 220);
@@ -260,9 +266,15 @@ export default function Header({
       {/* 모바일 드로어 — 헤더의 backdrop-filter 가 position:fixed 자식의 컨테이닝 블록이 되어버려서
           (화면 전체가 아니라 헤더 높이만큼만 덮이는 문제) body 에 포털로 렌더링해 완전히 분리한다 */}
       {drawerRendered && createPortal(
-        <div className={cx("scr-drawer-overlay", drawerOpen && "scr-drawer-open")} onClick={() => setMenuOpen(false)}>
+        <div
+          className={cx("scr-drawer-overlay", drawerOpen && "scr-drawer-open")}
+          // 서랍이 비활성(pointer-events:none)인 동안 고스트 클릭이 오버레이로 새면
+          // 방금 연 서랍이 도로 닫힌다 — 같은 시간창 안의 오버레이 클릭도 무시한다.
+          onClick={() => { if (Date.now() - drawerOpenedAtRef.current < 450) return; setMenuOpen(false); }}
+        >
           <div
             className="scr-drawer" ref={drawerPanelRef}
+            style={{ pointerEvents: drawerInteractive ? undefined : "none" }}
             onClick={(e) => e.stopPropagation()}
             onClickCapture={(e) => {
               if (Date.now() - drawerOpenedAtRef.current < 400) { e.preventDefault(); e.stopPropagation(); }
