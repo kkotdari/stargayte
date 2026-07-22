@@ -916,7 +916,8 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 .scr-brand-mark { font-weight: 900; color: var(--text); font-size: var(--fs-title); letter-spacing: 0.02em; }
 /* 관리자가 "이미지 설정"에서 홈 로고를 텍스트 대신 이미지로 바꿔둔 경우 — 텍스트 로고와
    같은 자리에 비슷한 높이로 들어가도록 */
-.scr-brand-logo-img { height: 22px; width: auto; display: block; }
+/* PC 로고 20% 확대(요청): 22→26px. 모바일은 아래 반응형 블록이 따로 정한다. */
+.scr-brand-logo-img { height: 26px; width: auto; display: block; }
 .scr-brand-text { font-size: var(--fs-body); color: var(--muted); letter-spacing: 0.02em; white-space: nowrap; }
 .scr-nav { display: flex; gap: 6px; flex: 1; overflow-x: auto; scrollbar-width: none; }
 .scr-nav::-webkit-scrollbar { display: none; }
@@ -7242,10 +7243,11 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 .scr-toolbar-actions .scr-btn-sm { font-size: var(--fs-caption); }
 .scr-chip-name { font-size: var(--fs-body); }
 .scr-brand-mark { font-size: var(--fs-title); }
-/* 헤더 닉네임 — 파일 끝의 이 무조건 규칙이 모바일 블록(640px, micro)을 덮어 닉네임이
-   안 줄어드는 제약이었다(지적) — PC에서만 적용한다. */
+/* 헤더 닉네임 — 파일 끝의 이 무조건 규칙이 모바일 블록(640px)을 덮어 닉네임이 안
+   줄어드는 제약이었어서 PC에서만 적용한다. PC 크기는 옆 '테마' 텍스트 버튼
+   (.scr-header-text-btn, caption)과 동일하게 — 같은 줄에서 세로 중심도 맞는다(요청). */
 @media (min-width: 641px) {
-  .scr-user-name { font-size: var(--fs-subhead); }
+  .scr-user-name { font-size: var(--fs-caption); }
 }
 .scr-title { font-size: var(--fs-title); }
 .scr-team-name { font-size: var(--fs-caption); }
