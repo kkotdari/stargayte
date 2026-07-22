@@ -4898,24 +4898,21 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    (아래 미디어쿼리)이 탭바 몫 공간을 대신 예약한다. */
 .scr-mobile-tabbar {
   display: none;
-  position: fixed; left: 0; right: 0; z-index: 55;
-  /* iOS 사파리의 하단 주소창(모바일 Safari 기본값)이 탭바를 가려 절반쯤 잘려 보이던
-     문제(신고: "탭바가 저렇게 잘리고") — body가 position:fixed라 문서 스크롤이 없어서
-     안돼"). CSS 뷰포트 단위(svh/lvh/dvh)는 하단 주소창과 잘 안 맞아, visualViewport로
-     실측한 "주소창이 가리는 높이"(--vv-bottom-inset, useBottomViewportInset가 갱신)만큼만
-     위로 올려 항상 주소창 바로 위에 붙인다. JS 미실행/데스크톱/PWA에선 0이라 bottom:0. */
-  bottom: var(--vv-bottom-inset, 0px);
-  /* 높이에 홈 인디케이터 안전영역(env safe-area-inset-bottom)을 "더해" 준다 — 고정
-     --mobile-footer-h(56px)만 쓰면 box-sizing:border-box라 아래 패딩에 든 안전영역만큼
-     콘텐츠 영역이 줄어, 아이폰 PWA(standalone, 안전영역 ~34px)에서 탭 내용이 짓눌려
-     탭바가 짧아 보였다(신고: "아이폰 pwa에서 탭바 높이가 짧은데 왜"). 안전영역을 높이에
-     더하면 콘텐츠 몫(패딩 제외 36px)이 브라우저/PWA 상관없이 항상 같아진다. 전체 높이는
-     사파리/PWA 공통으로 살짝 낮췄다(요청: "탭바 높이 좀 줄여도 될듯"). */
-  height: calc(var(--mobile-footer-h) + env(safe-area-inset-bottom, 0px));
-  /* 위쪽 패딩을 아래보다 크게 줘서 탭 라벨을 살짝 아래로 내린다(요청: "탭바에서 탭들을
-     좀 아래로 이동") — 전체 높이(--mobile-footer-h + 안전영역)는 그대로 두고 콘텐츠
-     시작점만 내린다. */
-  padding: 16px 10px calc(10px + env(safe-area-inset-bottom, 0px));
+  position: fixed; z-index: 55;
+  /* 플로팅 아일랜드(요청: "탭바를 아일랜드 플로팅으로") — 화면 하단 가장자리에 붙이지
+     않고 좌우·아래를 띄운 알약 섬으로 만든다. 시각 목적 외에 결정적인 이유가 있다:
+     iOS 26 사파리는 하단 가장자리에 '붙은'(수 px 이내) fixed 바를 사이트 툴바로 간주해
+     접힌 주소창 알약 뒤 콘텐츠 확장을 막는데(조사 — 유리를 자식으로 옮겨도 부족했다),
+     가장자리에서 떨어진 플로팅 요소는 그 판정을 받지 않는다. */
+  left: 12px; right: 12px;
+  /* 바닥 띄우기 — 주소창이 가리는 실측 높이(--vv-bottom-inset) 또는 홈 인디케이터
+     안전영역(PWA/데스크톱은 vv-inset이 0) 중 큰 쪽 위에 10px 간격. max로 고르므로
+     둘이 겹쳐 이중으로 뜨는 일은 없다. */
+  bottom: max(calc(var(--vv-bottom-inset, 0px) + 10px), calc(env(safe-area-inset-bottom, 0px) + 10px));
+  /* 섬은 안전영역을 품지 않으므로 높이는 콘텐츠 몫만. */
+  height: var(--mobile-footer-h);
+  padding: 10px;
+  border-radius: 26px;
   box-sizing: border-box;
   overflow: hidden;
   /* 필터/검색창(.scr-filter-float-stack)과 같은 지속시간/이징으로 맞춰(요청: "숨기고
@@ -4959,7 +4956,7 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-mobile-tabbar-mini {
   transform: scale(0.8);
   transform-origin: 50% 100%;
-  border-radius: 22px;
+  /* (라운딩은 이제 플로팅 아일랜드 기본값(26px)에 항상 있어서 미니 전용 값이 필요 없다.) */
 }
 /* (예전 이 자리의 .scr-screen-switch-jump 트랜지션 차단 규칙은 뺐다 — 완전 숨김 시절
    "화면 전환 때 탭바가 스르륵 나타나는 게 부자연스럽다"는 문제의 해법이었는데, 축소
