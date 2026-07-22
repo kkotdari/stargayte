@@ -7105,8 +7105,12 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
    적용한다(요청: PC를 모바일 값으로 낮춰 통일). 폭/여백/배치 조정은 모바일 전용으로
    남겨두고, 오직 font-size만 전역으로 승격한다. 파일 맨 끝이라 기존 규칙을 덮어쓴다. */
 .scr-rank-hint-inline { font-size: var(--fs-caption); }
-.scr-stats-list-panel-v2 .scr-stat-name-btn { font-size: var(--fs-body); }
-.scr-stats-list-panel-v2 .scr-stat-tag-pill { font-size: var(--fs-caption); }
+/* 유저 칸 두 줄은 PC에서만 — 파일 맨 끝의 이 통일 섹션이 480px 블록의 모바일 축소
+   (micro/11px)까지 덮어써 유저 컬럼만 폰트가 안 줄던 원인(지적된 버그). */
+@media (min-width: 481px) {
+  .scr-stats-list-panel-v2 .scr-stat-name-btn { font-size: var(--fs-body); }
+  .scr-stats-list-panel-v2 .scr-stat-tag-pill { font-size: var(--fs-caption); }
+}
 .scr-stat-row-head { font-size: var(--fs-body); }
 .scr-rank-record-nums { font-size: var(--fs-caption); }
 .scr-rank-table-panel-v2 .scr-rank-name { font-size: var(--fs-subhead); }
