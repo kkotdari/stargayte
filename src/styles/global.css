@@ -4929,8 +4929,10 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    또 탭하기 전까진 안 풀린다. 명시도를 :hover와 동률(클래스 2개)로 올려서 CSS 소스
    순서(이 규칙이 더 뒤)로 이기게 한다. */
 /* 다크모드 물방울(투명) 알약 위에선 밝은 글자가 맞다(요청) — 테마 기본 글자색으로 두면
-   다크=흰 글자(투명 알약 뒤 어두운 탭바 위에서 또렷), 라이트=어두운 글자. */
-.scr-mobile-tab.scr-mobile-tab-active { color: var(--text); font-weight: 700; }
+   다크=흰 글자(투명 알약 뒤 어두운 탭바 위에서 또렷), 라이트=어두운 글자.
+   폰트 1스텝 확대(caption→body, 요청) — 루페(돋보기) 스타일이라 물방울 아래 글자가
+   실제로 "확대되어 보이는" 착시를 만든다. */
+.scr-mobile-tab.scr-mobile-tab-active { color: var(--text); font-weight: 700; font-size: var(--fs-body); }
 /* 활성 탭 뒤로 슬라이드하며 이동하는 알약 배경 — 입체감(그림자) 없이 플랫한 색만.
    MobileTabBar.tsx가 실제 활성 버튼의 offsetLeft/offsetTop/offsetWidth/offsetHeight를
    재서 transform/top/width/height로 전부 직접 넘겨준다 — top:50% 같은 "부모 기준 중앙"
