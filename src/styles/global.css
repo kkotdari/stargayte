@@ -7241,7 +7241,11 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 .scr-toolbar-actions .scr-btn-sm { font-size: var(--fs-caption); }
 .scr-chip-name { font-size: var(--fs-body); }
 .scr-brand-mark { font-size: var(--fs-title); }
-.scr-user-name { font-size: var(--fs-subhead); }
+/* 헤더 닉네임 — 파일 끝의 이 무조건 규칙이 모바일 블록(640px, micro)을 덮어 닉네임이
+   안 줄어드는 제약이었다(지적) — PC에서만 적용한다. */
+@media (min-width: 641px) {
+  .scr-user-name { font-size: var(--fs-subhead); }
+}
 .scr-title { font-size: var(--fs-title); }
 .scr-team-name { font-size: var(--fs-caption); }
 .scr-admin-panel-password-input { font-size: var(--fs-title); }
