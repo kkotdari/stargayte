@@ -5971,7 +5971,8 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); }
    폰트도 한 스텝 내린다(subhead→caption). */
 .scr-challenge-nawa-label {
   position: relative; z-index: 2; pointer-events: none;
-  color: #fff; font-weight: 900; font-size: var(--fs-caption); letter-spacing: 0.02em;
+  /* 텍스트 2스텝 확대(요청): caption → body → subhead. */
+  color: #fff; font-weight: 900; font-size: var(--fs-subhead); letter-spacing: 0.02em;
   /* 글자를 더 두껍게(요청) — 최대 웨이트(900)에 얇은 스트로크를 더해 실제 획 두께를 키운다. */
   -webkit-text-stroke: 0.4px #fff;
   text-shadow: 0 1px 2px rgba(0,0,0,0.8), 0 0 8px rgba(0,0,0,0.55);
