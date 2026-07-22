@@ -4099,7 +4099,7 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   .scr-brand-logo-img { height: 28px; }
   .scr-brand-mark { font-size: var(--fs-title); }
   .scr-user-chip .scr-avatar { width: 24px !important; height: 24px !important; }
-  .scr-user-name { font-size: var(--fs-micro); }
+  .scr-user-name { font-size: var(--fs-caption); }
   /* 프로필 칩(아바타+닉네임)은 로고의 중심선보다 아래로(요청: 2px에서 6px 더), 로고도
      4px 내린다. */
   .scr-user-chip { transform: translateY(8px); }
