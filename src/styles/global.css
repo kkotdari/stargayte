@@ -5127,9 +5127,10 @@ html.scr-light-theme .scr-mobile-tabbar {
   border-top: 1px solid rgba(255,255,255,0.16);
   /* 반투명 유리 재질 — 더 투명하게(요청: "투명도를 올려서 더 투명해 보이게") --panel의
      알파를 60%로 낮춘 색 + 배경 블러. 블러가 있어 글자 가독성은 유지된다. */
-  background-color: color-mix(in srgb, var(--panel-solid) 58%, transparent);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  /* 더 투명하게 + 블러 약화(요청) — 58%→40%, 14px→7px. */
+  background-color: color-mix(in srgb, var(--panel-solid) 40%, transparent);
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
   /* 왼쪽 모서리는 예전의 색 광원 그라데이션(요청으로 제거) 대신, 유리 모서리에 빛이
      스치는 단순한 반사광 한 줄만 남긴다(요청: "왼쪽 모서리 광원제거하고 단순한 반사광으로"). */
   border-left: 1px solid rgba(255,255,255,0.16);
