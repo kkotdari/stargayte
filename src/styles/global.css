@@ -2352,11 +2352,14 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 .scr-rank-screen-v2 { position: relative; }
 .scr-rank-screen-v2::before {
   content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
-  /* inset:0(bottom:0)만으로는 iOS 사파리에서 주소창이 접힐 때 하단에 배경이 못 미쳐
-     빈 띠가 생겼다(.scr-app이 min-height:100dvh로 같은 문제를 잡은 것과 동일한 원인) —
-     큰 뷰포트(툴바 숨김 높이)까지 항상 채우도록 height를 lvh로 못박아, 주소창/탭바
-     뒤까지 위아래로 꽉 채운다. 폭은 inset:0(left/right:0) 그대로라 데스크톱 스크롤바
-     너비만큼 넘치지 않는다. background-size:cover라 기기 화면비율에 맞춰 크롭된다. */
+  /* 배경 사진이 iOS 사파리의 상단 주소창·하단 내비바 "뒤까지" 깔리길 바란다(요청) —
+     즉 브라우저 크롬 영역 아래로도 사진이 이어져 엣지-투-엣지로 보이게. inset:0(bottom:0)만
+     쓰면 이 고정 레이어가 작은 뷰포트(크롬 보이는 상태) 높이에 머물러 크롬 뒤/하단을 못
+     덮는다 — height를 큰 뷰포트(크롬 숨김 높이, lvh)로 못박으면 레이어가 화면 전체(=크롬
+     뒤 영역 포함)를 덮어, 주소창/내비바 뒤로도 사진이 이어진다. 폭은 inset:0(left/right:0)
+     그대로라 데스크톱 스크롤바 너비만큼 넘치지 않고, background-size:cover라 기기 화면
+     비율에 맞춰 크롭된다. (다크 테마는 theme-color 메타를 빼둬서 사파리가 크롬 뒤를
+     불투명 띠로 덮지 않고 이 사진이 그대로 비친다 — theme.ts 참고.) */
   height: 100vh;
   height: 100lvh;
   background-image:
