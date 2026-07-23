@@ -66,13 +66,16 @@ export default function RankRowV2({ row, tiedWithPrev = false, highlighted = fal
     // DOM이 아니라 JSX 트리를 따라 버블링돼서, 행 안(자손)에 두면 그 안의 클릭이 행까지
     // 올라간다(실제로 지적받은 문제).
     <>
-      <div className={cx("scr-rank-row", tiedWithPrev && "scr-rank-row-tied")}>
-        <div
-          className={cx("scr-rank-row-inner", onOpenTrend && "scr-rank-row-clickable", highlighted && "scr-rank-row-hit")}
-          onClick={onOpenTrend}
-          role={onOpenTrend ? "button" : undefined}
-          tabIndex={onOpenTrend ? 0 : undefined}
-        >
+      {/* 클릭/호버 대상은 가운데 460px 내용(inner)이 아니라 "행 전체"다(요청) — 그래서
+          onClick/role/tabIndex와 -clickable을 바깥 .scr-rank-row에 건다. 안쪽 프사/도전장
+          버튼은 각자 stopPropagation하므로 행 클릭과 안 겹친다. */}
+      <div
+        className={cx("scr-rank-row", tiedWithPrev && "scr-rank-row-tied", onOpenTrend && "scr-rank-row-clickable")}
+        onClick={onOpenTrend}
+        role={onOpenTrend ? "button" : undefined}
+        tabIndex={onOpenTrend ? 0 : undefined}
+      >
+        <div className={cx("scr-rank-row-inner", highlighted && "scr-rank-row-hit")}>
           <div className="scr-rank-badge">
             {/* 공동순위(같은 순위가 여러 명)일 때는 그 그룹의 첫 행에서만 순위 숫자를 보여주고,
                 나머지는 비워둔다(칸 자체는 남겨 높이가 흔들리지 않게 한다). "#"은 팀 카드와

@@ -2230,6 +2230,8 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 .scr-light-theme .scr-rank-table-panel-v2 .scr-rank-row + .scr-rank-row::before {
   background: rgba(var(--divider-tint), 0.2);
 }
+/* 클릭/호버 영역은 행 전체(.scr-rank-row)다(요청) — 가운데 460px 내용(inner)이 아니라
+   바깥 행에 -clickable이 붙으므로, 호버 배경도 행 폭 전체에 깔린다. */
 .scr-rank-row-clickable { cursor: pointer; }
 /* 터치 화면에서 스크롤 중 손가락이 스치면 :hover가 고착돼 번쩍이는 문제 — 마우스처럼
    hover가 실제로 되는 입력장치에서만 켠다. */
