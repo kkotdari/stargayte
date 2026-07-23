@@ -354,12 +354,13 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
 /* 로그인 폼(로고+카드)을 살짝 아래로(요청) — 위로 당기던 값을 줄인다. */
 /* 회원가입 버튼을 폼 밖(화면 하단)으로 뺐더니 카드가 짧아져 폼이 위로 올라가 보였다 —
    그만큼 아래로 되돌린다(요청: -1% → +2%). */
-.scr-auth-hero { display: flex; flex-direction: column; align-items: center; width: 100%; transform: translateY(2%); }
+/* 더 아래로(지적: "로고와 폼이 너무 위에 있음") — 2%→8%. */
+.scr-auth-hero { display: flex; flex-direction: column; align-items: center; width: 100%; transform: translateY(8%); }
 /* PWA(standalone)는 .scr-auth-wrap의 상단 안전영역 패딩(env(safe-area-inset-top))이 더해져
    전체가 그만큼 더 아래로 내려가 있으므로, 일반 브라우저 탭과 같은 느낌을 주려면 여기서만
    더 위로 올려야 한다(요청: "pwa에서만 좀 올려줘"). */
 @media (display-mode: standalone) {
-  .scr-auth-hero { transform: translateY(-7%); }
+  .scr-auth-hero { transform: translateY(-1%); }
 }
 /* 로그인 화면 자체의 라이트 테마 토글 — 헤더 없이도(로그인 전) 화면 취향을 바꿀 수 있게
    화면 위쪽 한 켠에 둔다. */
@@ -397,7 +398,9 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
 /* 회원가입 화면은 별도 카드 테두리/그림자 없이(테두리 테마 제거) 로그인 카드와 같은
    반투명 유리 배경만 유지한다. */
 .scr-auth-card-plain {
-  background: var(--panel); backdrop-filter: blur(4px);
+  /* 유리 패널이 배경 위에 살짝 비쳐 보이는 게 거슬린다(지적) — 완전 투명으로, 폼
+     요소들만 배경 위에 직접 얹는다. */
+  background: transparent;
   /* 위아래 패딩 축소(요청). */
   border-radius: var(--radius); padding: 12px 20px; position: relative;
 }
@@ -5205,19 +5208,19 @@ html.scr-light-theme .scr-mobile-tabbar::before {
      사라진다. 다크는 이 빛 위 글자를 검정으로 반전한다(아래 active 규칙). */
   /* 다크는 거의 완전한 흰색 알약으로(요청: "더 하얗게 거의 하얀색") — 중심부를 불투명에
      가깝게 채우고 가장자리만 빛처럼 흩어지게. */
-  /* 가로 반경을 넉넉히(88%→130%) — 타원 광의 좌우 끝이 뾰족하게 모이던 문제(지적:
-     "알약 왼쪽 가운데가 뾰족해"). 끝까지 밝기가 유지되고 모양은 border-radius 클리핑이
-     둥글게 잘라 알약 실루엣이 된다. */
-  background:
-    radial-gradient(130% 96% at 50% 50%, rgba(255,255,255,0.96) 0%, rgba(255,255,255,0.82) 50%, rgba(255,255,255,0.24) 78%, rgba(255,255,255,0) 92%),
-    radial-gradient(170% 160% at 50% 50%, rgba(255,255,255,0.24) 0%, rgba(255,255,255,0) 85%);
+  /* 근본 대책(지적: 캡슐 radius로도 왼쪽이 뾰족해 보임) — 뾰족함의 진짜 원인은 라디얼
+     그라데이션 자체다: 밝기 등고선이 타원이라 어느 반경으로 키워도 좌우 끝에서 빛이
+     점으로 모인다. 그라데이션을 버리고 "균일한 채움 + 모양(border-radius)을 그대로
+     따라가는 box-shadow 글로우"로 바꾼다 — 실루엣이 정확히 캡슐이고 빛 번짐도 캡슐
+     윤곽을 따라 고르게 퍼진다. */
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.45), 0 0 26px rgba(255, 255, 255, 0.2);
 }
 /* 요청: "라이트 탭바 알약을 좀더 투명하고 색도 밝게" — 파랑을 한 톤 밝은 하늘색
    (90,155,240→140,190,255)으로 올리고 각 단계 농도도 낮춘다. */
 html.scr-light-theme .scr-mobile-tab-glow {
-  background:
-    radial-gradient(130% 96% at 50% 50%, rgba(140,190,255,0.38) 0%, rgba(140,190,255,0.26) 50%, rgba(140,190,255,0.08) 78%, rgba(140,190,255,0) 92%),
-    radial-gradient(170% 160% at 50% 50%, rgba(140,190,255,0.1) 0%, rgba(140,190,255,0) 85%);
+  background: rgba(140, 190, 255, 0.34);
+  box-shadow: 0 0 10px rgba(140, 190, 255, 0.35), 0 0 24px rgba(140, 190, 255, 0.16);
 }
 /* 라이트 테마도 같은 리퀴드 글래스로(요청). 흰 배경 위라 흰 반사광은 옅게만 보이므로,
    유리 볼륨은 검은톤 그림자/굴절 그늘이 주로 잡아준다. backdrop blur의 brightness로 방울이
@@ -6360,7 +6363,14 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 .scr-challenge-pill-muted { background: rgba(var(--overlay-rgb),0.12); color: var(--dim); text-decoration: line-through; }
 /* 거절/재신청 미니 폼(이름은 "time-change"지만 지금은 거절 사유 입력·재신청 시간
    수정 두 곳에서 재사용한다 — 세로로 쌓인 인풋+버튼 묶음이라는 모양 자체는 같다). */
-.scr-challenge-time-change-form { display: flex; flex-direction: column; gap: 8px; }
+.scr-challenge-time-change-form { display: flex; flex-direction: column; gap: 8px;
+  /* 리벤지/승락 인라인 폼이 버튼을 누르는 순간 뚝 나타나던 것에 등장 트랜지션(요청:
+     "리벤지 요청 버튼 눌렀을때 트랜지션") — 마운트 시 자동 재생되는 짧은 페이드+슬라이드. */
+  animation: scr-inline-form-in .24s ease;
+}
+@keyframes scr-inline-form-in {
+  from { opacity: 0; transform: translateY(-6px); }
+}
 /* 경기종류보다 앞, 굵게(요청: "경기유형 앞에 일시를 먼저 표시 진하게"). 고정폭
    숫자 폰트(.scr-mono)라 옆의 배지/일반 텍스트와 광학적 중심이 미묘하게 달라
    위로 떠 보였다 — 살짝 아래로 내린다(요청: "데이터 폰트라 살짝 아래로 배치"). */
