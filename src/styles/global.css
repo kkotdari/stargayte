@@ -1415,19 +1415,10 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 .scr-light-theme .scr-rank-method-trigger:hover,
 .scr-light-theme .scr-rank-method-trigger-active { background: rgba(0, 0, 0, 0.06); }
 /* 트리거를 누르면 뜨는 툴팁 본문 — 다른 팝오버(.scr-pv-drop)와 같은 톤의 떠 있는 카드. */
+/* 배경/블러/테두리/그림자는 "라이팅 유리 패널 공통"(파일 뒤) 한 벌이 담당. 글자색은
+   하드코딩 흰색 대신 테마 변수(--text)를 써서 두 테마에서 자동으로 맞는다. */
 .scr-rank-method-tooltip {
   z-index: 210; border-radius: 10px; padding: 10px 12px;
-  /* 라이팅 테마(요청) — 다른 툴팁/드롭다운 패널과 같은 반투명 유리 한 벌. 거의 불투명한
-     하드코딩 배경(다크 0.94 / 라이트 0.97) 대신 테마를 따르는 --dd-panel-bg + 강한 블러로
-     뒤가 은은히 비치게 하고, 경계는 위/아래 얇은 반사광 + 부양 그림자로 잡는다.
-     글자색도 하드코딩 흰색 대신 테마 변수(--text)를 써서 두 테마에서 자동으로 맞는다. */
-  background: var(--dd-panel-bg);
-  -webkit-backdrop-filter: blur(18px) saturate(1.3);
-  backdrop-filter: blur(18px) saturate(1.3);
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.10),
-    inset 0 -1px 0 rgba(255,255,255,0.05),
-    0 6px 18px rgba(0,0,0,0.30);
   font-size: var(--fs-caption); line-height: 1.5; color: var(--text);
   list-style: none; margin: 0;
 }
@@ -1444,13 +1435,6 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    카드 배지가 주황으로 바뀌면서 맞춤(요청: "잠정 배지 폰트색 주황으로 변경", "툴팁의
    잠정도 색깔 오렌지로 맞춰서"). */
 .scr-rank-method-tip-provisional { color: #e69a4a !important; }
-/* 라이트는 밝은 배경이라 위쪽 반사광을 또렷하게, 그림자는 옅게(드롭다운/툴팁과 동일).
-   배경·글자색은 위 기본 규칙이 테마 변수로 처리하므로 여기선 그림자만 덮는다. */
-.scr-light-theme .scr-rank-method-tooltip {
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.7),
-    0 6px 18px rgba(0,0,0,0.12);
-}
 /* 잠정 뱃지 — 표본이 적어 아직 덜 여문 레이팅. 점수 우상단에 절대위치로 겹쳐 붙어서
    (요청: "필터의 라벨처럼 영역을 차지하지 않고 붙어있는 추가 요소로") 자기 칸을 따로
    차지하지 않는다 — 레이아웃 흐름 밖이라 잠정 유무와 무관하게 다른 요소 위치가 안
@@ -1937,29 +1921,14 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   color: var(--muted); cursor: pointer; opacity: 0.75; vertical-align: middle;
 }
 .scr-infotip:hover, .scr-infotip:focus-visible { opacity: 1; color: var(--point); outline: none; }
+/* 배경/블러/테두리/그림자는 "라이팅 유리 패널 공통"(파일 뒤) 한 벌이 담당 — 여기엔
+   이 툴팁 고유의 위치/크기/타이포만 둔다. */
 .scr-infotip-bubble {
   position: fixed; transform: translateX(-50%); z-index: 1200;
   max-width: min(260px, 78vw); width: max-content; padding: 8px 11px;
-  color: var(--text);
-  /* 라이팅 테마(요청: 툴팁도 투명 패널로) — 드롭다운 패널과 같은 반투명 유리 한 벌.
-     불투명 --panel-solid + 테두리 대신, 테마를 따르는 --dd-panel-bg + 블러로 뒤가 은은히
-     비치게 하고, 경계는 테두리 없이 위/아래 얇은 반사광(inset) + 부양 그림자로 잡는다. */
-  background: var(--dd-panel-bg);
-  -webkit-backdrop-filter: blur(18px) saturate(1.3);
-  backdrop-filter: blur(18px) saturate(1.3);
-  border: none; border-radius: 9px;
+  color: var(--text); border-radius: 9px;
   font-size: var(--fs-caption); font-weight: 500; line-height: 1.45; letter-spacing: normal;
   text-transform: none; text-align: left; white-space: normal;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.10),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.05),
-    0 6px 18px rgba(0, 0, 0, 0.30);
-}
-/* 라이트는 밝은 배경이라 위쪽 반사광을 또렷하게, 그림자는 옅게(드롭다운 패널과 동일). */
-.scr-light-theme .scr-infotip-bubble {
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.7),
-    0 6px 18px rgba(0, 0, 0, 0.12);
 }
 /* "유저" 헤더도 정렬 버튼(.scr-stat-sort-btn)이 되면서, 그 규칙의 background:none이
    이름 칸의 불투명 배경(.scr-stat-name-head, 가로 스크롤 중 옆 칸이 이 sticky 칸
@@ -3905,26 +3874,11 @@ html.scr-page-bg:not(.scr-light-theme) .scr-rank-screen-v2::before {
 .scr-replay-loc-link {
   font-size: var(--fs-caption); white-space: nowrap;
 }
-/* 리플레이 위치 팝오버 — 최초 커밋 이후 손대지 않아 혼자 불투명 패널 + 테두리로 남아
-   있었다. 모든 툴팁은 동일 테마라는 원칙(요청)에 맞춰 다른 툴팁·드롭다운과 같은 라이팅
-   반투명 유리 한 벌로 통일한다(테두리 제거 → 반사광 inset + 부양 그림자). */
+/* 배경/블러/테두리/그림자는 "라이팅 유리 패널 공통"(파일 뒤) 한 벌이 담당 — 여기엔
+   이 팝오버 고유의 기하/레이아웃만. */
 .scr-replay-loc-pop {
   z-index: 210; border-radius: var(--radius-sm);
-  background: var(--dd-panel-bg);
-  -webkit-backdrop-filter: blur(18px) saturate(1.3);
-  backdrop-filter: blur(18px) saturate(1.3);
-  border: none;
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.10),
-    inset 0 -1px 0 rgba(255,255,255,0.05),
-    0 6px 18px rgba(0,0,0,0.30);
   padding: 10px 12px; display: flex; flex-direction: column; gap: 8px;
-}
-/* 라이트는 위쪽 반사광을 또렷하게, 그림자는 옅게(다른 툴팁/드롭다운과 동일). */
-.scr-light-theme .scr-replay-loc-pop {
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.7),
-    0 6px 18px rgba(0,0,0,0.12);
 }
 .scr-replay-loc-row { display: flex; flex-direction: column; gap: 2px; font-size: var(--fs-caption); }
 .scr-replay-loc-os { font-weight: 700; color: var(--text); }
@@ -6902,33 +6856,49 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
    16px, 작은 메뉴 팝오버(케밥·운영)는 14px로 이미 나뉘어 있어 그대로 둔다. 서랍
    아코디언(.scr-menu-pop-drop-inline)은 서랍 톤(밑줄)을 유지하므로 여기서 제외한다.
    =================================================================== */
-/* 패널 — 테두리 없이 반투명 + 블러, 반사광 그림자로만 구분. */
+/* ── 라이팅 유리 패널 공통 (드롭다운 + 모든 툴팁/팝오버) ──
+   테두리 없이 반투명 + 강한 블러, 경계는 위/아래 반사광(inset) + 부양 그림자로만.
+   예전엔 이 블록이 패널마다 복붙돼 4벌이었는데(드롭다운/InfoTip/산정방식/리플레이 위치),
+   "패널 CSS는 통일"(요청)에 따라 한 벌로 합쳤다 — 각 패널은 여기에 자기 고유의
+   radius/padding/레이아웃만 더한다. 새 팝오버가 생기면 이 선택자 목록에만 추가하면 된다.
+   블러+채도를 세게 줘서, 반투명해도 글자가 또렷하게 읽히면서 뒤 콘텐츠가 유리처럼
+   은은히 비친다(라이팅 테마의 핵심). */
 .scr-select-drop,
 .scr-cselect-drop,
 .scr-pv-drop,
-.scr-menu-pop-drop {
+.scr-menu-pop-drop,
+.scr-infotip-bubble,
+.scr-rank-method-tooltip,
+.scr-replay-loc-pop {
   border: none;
   background: var(--dd-panel-bg);
-  /* 탭바(::before)와 같은 강한 블러+채도로 얇은 알파를 보완해, 반투명해도 옵션 글자가
-     또렷하게 읽히면서 뒤 콘텐츠가 유리처럼 은은히 비친다(라이팅 테마의 핵심). */
   -webkit-backdrop-filter: blur(18px) saturate(1.3);
   backdrop-filter: blur(18px) saturate(1.3);
-  /* 반전 배경이 모서리(테두리)까지 빈틈없이 차게(요청) — 둥근 모서리가 코너에서 fill을
-     잘라내므로 각지게 두고, 좌우 패딩도 없애 옵션이 패널 끝까지 닿게 한다. */
-  border-radius: 4px;
-  padding: 0;
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,0.10),
     inset 0 -1px 0 rgba(255,255,255,0.05),
     0 6px 18px rgba(0,0,0,0.30);
 }
+/* 라이트는 밝은 배경이라 위쪽 반사광을 또렷하게, 그림자는 옅게. */
 .scr-light-theme .scr-select-drop,
 .scr-light-theme .scr-cselect-drop,
 .scr-light-theme .scr-pv-drop,
-.scr-light-theme .scr-menu-pop-drop {
+.scr-light-theme .scr-menu-pop-drop,
+.scr-light-theme .scr-infotip-bubble,
+.scr-light-theme .scr-rank-method-tooltip,
+.scr-light-theme .scr-replay-loc-pop {
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,0.7),
     0 6px 18px rgba(0,0,0,0.12);
+}
+/* 드롭다운만의 기하 — 반전 배경이 모서리까지 빈틈없이 차게(요청) 각진 모서리를 쓰고,
+   좌우 패딩도 없애 옵션 행이 패널 끝까지 닿게 한다. (툴팁류는 각자 radius/padding 사용) */
+.scr-select-drop,
+.scr-cselect-drop,
+.scr-pv-drop,
+.scr-menu-pop-drop {
+  border-radius: 4px;
+  padding: 0;
 }
 /* 옵션 행 — 줄간격/패딩/라운드 통일. */
 .scr-select-opt,
