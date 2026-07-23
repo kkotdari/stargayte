@@ -4941,8 +4941,8 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   bottom: max(calc(var(--vv-bottom-inset, 0px) + 6px), calc(env(safe-area-inset-bottom, 0px) + 6px));
   /* 섬은 안전영역을 품지 않으므로 높이는 콘텐츠 몫만. */
   height: var(--mobile-footer-h);
-  /* 높이 원복(66px)에 맞춰 상하 패딩 다시 15px(요청) — 좌우는 4px 유지. */
-  padding: 15px 4px;
+  /* 상하 패딩 15→14px(요청) — 좌우는 4px 유지. */
+  padding: 14px 4px;
   /* 완전 알약(26px≈높이 절반) 대신 둥근 네모 패널로(요청 — 참고 사진의 패널 곡률처럼).
      16px은 좀 각져 보여 한 단계 더 둥글게(요청: "곡률 좀 더 둥글게"). */
   border-radius: 20px;
