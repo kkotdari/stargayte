@@ -57,7 +57,7 @@ export default function LoginForm() {
         아이디 저장
       </label>
       {err && <div className="scr-err">{err}</div>}
-      <button type="submit" className="scr-btn scr-btn-primary scr-auth-submit" disabled={busy}>
+      <button type="submit" className="scr-btn scr-btn-primary scr-btn-primary-solid scr-auth-submit" disabled={busy}>
         {busy ? <Spinner /> : "로그인"}
       </button>
     </form>
