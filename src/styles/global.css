@@ -4972,13 +4972,10 @@ body *::-webkit-scrollbar-corner { background: transparent; }
      안전영역(PWA/데스크톱은 vv-inset이 0) 중 큰 쪽 위에 10px 간격. max로 고르므로
      둘이 겹쳐 이중으로 뜨는 일은 없다. */
   /* 바닥 간격 미세조정(요청 반복) — 10→6→4→6px(다시 2px 위로).
-     --vp-bottom-gap: black-translucent PWA에서 레이아웃 뷰포트가 물리 화면보다 상태바
-     높이만큼 짧게 잡히는 만큼(부트 스크립트 실측) 아래로 더 내려 진짜 바닥에 붙인다.
-     브라우저/비-standalone에선 0이라 무영향. */
-  bottom: max(
-    calc(var(--vv-bottom-inset, 0px) + 6px - var(--vp-bottom-gap, 0px)),
-    calc(env(safe-area-inset-bottom, 0px) + 6px - var(--vp-bottom-gap, 0px))
-  );
+     (--vp-bottom-gap 차감 시도는 철회 — black-translucent PWA에서 레이아웃 뷰포트 아래
+     영역은 실제로 렌더되지 않아, 내린 만큼 탭바 하단이 잘렸다(지적). 탭바는 레이아웃
+     뷰포트 바닥 기준으로 둔다.) */
+  bottom: max(calc(var(--vv-bottom-inset, 0px) + 6px), calc(env(safe-area-inset-bottom, 0px) + 6px));
   /* 섬은 안전영역을 품지 않으므로 높이는 콘텐츠 몫만. */
   height: var(--mobile-footer-h);
   /* 상하 패딩 14→16px(요청: +2) — 좌우는 4px 유지. */
@@ -5252,9 +5249,9 @@ html.scr-light-theme .scr-mobile-tab-active { color: var(--text); }
   /* 내부 스크롤이 문서(배경)로 이어지는 스크롤 체이닝을 끊는다(문서 리스너 차단과 한 세트). */
   overscroll-behavior-y: contain;
   /* 오버레이 없이 패널 스스로 화면 우하단에 뜬다(위 주석) — 바닥은 예전 오버레이와
-     같은 실측 값(--vv-bottom-inset)만큼 툴바 위로. --vp-bottom-gap 차감은 탭바와 같은
-     black-translucent PWA 보정. ::before 유리 레이어의 기준 박스이기도 하다. */
-  position: fixed; right: 0; bottom: calc(var(--vv-bottom-inset, 0px) - var(--vp-bottom-gap, 0px)); z-index: 60;
+     같은 실측 값(--vv-bottom-inset)만큼 툴바 위로(--vp-bottom-gap 차감은 탭바와 같은
+     이유로 철회). ::before 유리 레이어의 기준 박스이기도 하다. */
+  position: fixed; right: 0; bottom: var(--vv-bottom-inset, 0px); z-index: 60;
   /* 래디우스 확대(14→24→32px), 반사광은 더 은은하게(요청). */
   border-top-left-radius: 32px;
   border-top: 1px solid rgba(255,255,255,0.09);
