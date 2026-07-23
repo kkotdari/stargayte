@@ -4913,8 +4913,9 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   /* 섬은 안전영역을 품지 않으므로 높이는 콘텐츠 몫만. */
   height: var(--mobile-footer-h);
   padding: 10px;
-  /* 완전 알약(26px≈높이 절반) 대신 둥근 네모 패널로(요청 — 참고 사진의 패널 곡률처럼). */
-  border-radius: 16px;
+  /* 완전 알약(26px≈높이 절반) 대신 둥근 네모 패널로(요청 — 참고 사진의 패널 곡률처럼).
+     16px은 좀 각져 보여 한 단계 더 둥글게(요청: "곡률 좀 더 둥글게"). */
+  border-radius: 20px;
   box-sizing: border-box;
   overflow: hidden;
   /* 필터/검색창(.scr-filter-float-stack)과 같은 지속시간/이징으로 맞춰(요청: "숨기고
@@ -5166,10 +5167,10 @@ html.scr-light-theme .scr-mobile-tab-active { color: var(--text); }
      (transform)만으로 자연스럽게 나타난다 — 이러면 슬라이드 도중에도 블러가 정상 적용된다. */
   position: fixed; inset: 0; z-index: 60; background: transparent;
   display: flex; justify-content: flex-end;
-  /* 서랍이 body 잠금(position:fixed)을 그만 쓰면서(잠그면 문서가 스크롤 불가 → iOS 26
-     사파리가 접었던 툴바를 도로 펼침, 지적) 배경 스크롤 차단을 여기서 맡는다 — 전체
-     화면을 덮는 이 오버레이가 스크롤 제스처 자체를 막는다. 서랍 내부는 아래에서 pan-y. */
-  touch-action: none;
+  /* (touch-action:none 시도는 철회 — 전체 화면 요소에 CSS로 스크롤을 봉쇄하면 iOS 26
+     사파리가 body 잠금 때와 똑같이 "스크롤 불가"로 읽고 크롬을 도로 펼쳤다(지적).
+     배경 스크롤 차단은 Header.tsx의 논패시브 touchmove preventDefault가 맡는다 —
+     CSS/레이아웃 신호를 남기지 않아 크롬이 접힌 채 유지된다.) */
   /* iOS 사파리 — inset:0(레이아웃 뷰포트)은 하단 툴바 밑까지 내려가, 바닥 정렬된
      서랍의 아래쪽이 툴바에 가려 잘렸다(지적). 100dvh로도 안 잡혀서, 탭바가 쓰는 것과
      같은 실측 값(--vv-bottom-inset, useBottomViewportInset가 갱신)만큼 바닥을 띄운다. */

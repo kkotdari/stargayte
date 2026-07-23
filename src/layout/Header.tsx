@@ -136,10 +136,24 @@ export default function Header({
 
   // 서랍은 더 이상 body를 position:fixed로 잠그지 않는다 — 잠그는 순간 문서가 스크롤
   // 불가가 되어 iOS 26 사파리가 접었던 툴바를 도로 펼치고 엣지-투-엣지 확장도 풀렸다
-  // (지적: "서랍 열면 주소창까지 안 나옴"). 대신 배경 스크롤 차단은 CSS로 한다:
-  // 오버레이(전체 화면)가 touch-action:none으로 스크롤 제스처를 막고, 서랍 자신은
-  // pan-y + overscroll-contain으로 내부만 스크롤한다(.scr-drawer-overlay/.scr-drawer).
-  // 테마 토글이 서랍 안에 있어서, 잠금이 없어야 툴바 색 재샘플링도 토글 즉시 걸린다.
+  // (지적: "서랍 열면 주소창까지 안 나옴"). 배경 스크롤 차단을 오버레이의
+  // touch-action:none으로도 해봤지만 마찬가지였다 — 전체 화면을 덮는 요소에 CSS로
+  // 스크롤 제스처를 원천 봉쇄해도 사파리는 "이 페이지는 지금 스크롤 불가"로 읽고
+  // 크롬을 도로 펼친다(지적: "그 방법 안 통함"). 그래서 레이아웃/CSS로는 아무것도
+  // 안 바꾸고, JS 논패시브 touchmove 리스너로 서랍 밖 스크롤 제스처만 조용히
+  // preventDefault한다 — 사파리가 정적으로 감지할 신호가 없어 크롬이 접힌 채 남는다.
+  const drawerOverlayRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!drawerRendered) return;
+    const el = drawerOverlayRef.current;
+    if (!el) return;
+    const block = (e: TouchEvent) => {
+      if (drawerPanelRef.current?.contains(e.target as Node)) return;
+      e.preventDefault();
+    };
+    el.addEventListener("touchmove", block, { passive: false });
+    return () => el.removeEventListener("touchmove", block);
+  }, [drawerRendered]);
 
   const go = (s: ScreenKey) => { onNavigate(s); setMenuOpen(false); };
 
@@ -272,6 +286,7 @@ export default function Header({
       {drawerRendered && createPortal(
         <div
           className={cx("scr-drawer-overlay", drawerOpen && "scr-drawer-open")}
+          ref={drawerOverlayRef}
           // 서랍이 비활성(pointer-events:none)인 동안 고스트 클릭이 오버레이로 새면
           // 방금 연 서랍이 도로 닫힌다 — 같은 시간창 안의 오버레이 클릭도 무시한다.
           onClick={() => { if (Date.now() - drawerOpenedAtRef.current < 450) return; setMenuOpen(false); }}

@@ -54,8 +54,13 @@ function nudgeToolbarResample(on: boolean): void {
     root.style.height = "calc(100% + 2px)";
     const y = window.scrollY;
     window.scrollTo({ top: y > 0 ? y - 1 : 1, behavior: "instant" });
-    window.scrollTo({ top: y, behavior: "instant" });
-    root.style.height = prevHeight;
+    // 같은 프레임 안에서 곧장 되돌리면 순이동이 0이라 사파리가 스크롤 자체가 없었던
+    // 것으로 합쳐 재샘플링이 불발됐다(지적 — 여전히 늦게 바뀜). 1px 이동을 한 프레임
+    // 실제로 렌더시킨 뒤에 원위치한다 — 1px이라 눈에는 안 보인다.
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: y, behavior: "instant" });
+      root.style.height = prevHeight;
+    });
   }));
 }
 
