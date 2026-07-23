@@ -987,15 +987,14 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
      크기(모바일 24px 높이, 폭 ~209px) 기준 2px ≈ 0.4%p로 환산. */
   position: absolute; left: 29.1%; top: 29.8%;
   width: 15.9%; height: auto; pointer-events: none;
-  /* 3초 정지 + 1.4초 회전(요청: 속도차를 키우려 1초에서 살짝 연장) — 4.4초 주기의
-     68% 지점까지 정지, 나머지 동안 Y축 중심으로 두 바퀴. 이징을 가파른 커스텀 베지어
-     (0.85,0,0.15,1)로 잡아 시작·끝은 아주 느리고 중간에서 확 몰아치게(요청: 속도차
-     더 크게). */
-  animation: scr-brand-star-spin 4.4s linear infinite;
+  /* 3초 정지 + 2초 회전(요청) — 5초 주기의 60% 지점까지 정지, 나머지 2초 동안 Y축
+     중심으로 두 바퀴. 느리게 시작 → 중간에 적당히 빠르게 → 다시 느려지며 정지(요청 —
+     가파른 베지어는 중간이 지나치게 빨라서 표준 ease-in-out으로). */
+  animation: scr-brand-star-spin 5s linear infinite;
   transform: translate(-50%, -50%);
 }
 @keyframes scr-brand-star-spin {
-  0%, 68% { transform: translate(-50%, -50%) rotateY(0deg); animation-timing-function: cubic-bezier(0.85, 0, 0.15, 1); }
+  0%, 60% { transform: translate(-50%, -50%) rotateY(0deg); animation-timing-function: ease-in-out; }
   100% { transform: translate(-50%, -50%) rotateY(720deg); }
 }
 /* PC에서 로고가 중심선보다 낮아 보인다(지적) — 로고 이미지 자체의 아래쪽 여백 탓이라
