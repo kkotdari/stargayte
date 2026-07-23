@@ -80,33 +80,41 @@ export function playMailChime(): void {
       [5.40, 0.28, 0.4],
       [8.93, 0.1, 0.26],
     ];
-    // 종 한 번 치기 — 기본 주파수 base로 비조화 배음을 한꺼번에 울리고 각자 감쇠시킨다.
-    const strike = (start: number, base: number, peak: number) => {
+    // 종 한 번 치기 — 기본 주파수 base로 비조화 배음을 한꺼번에 울린다. 진짜 쇠종은 클래퍼가
+    // 부딪히는 순간 음이 살짝 높았다가 바로 안정되므로(금속 "팅~" 어택), 주파수를 아주 조금
+    // 높은 데서 base로 미끄러뜨려 그 느낌을 준다. ring으로 음마다 잔향 길이를 달리한다.
+    const strike = (start: number, base: number, peak: number, ring: number) => {
       for (const [ratio, vol, decay] of partials) {
+        const f = base * ratio;
         const o = ac.createOscillator();
         o.type = "sine";
-        o.frequency.setValueAtTime(base * ratio, start);
+        o.frequency.setValueAtTime(f * 1.012, start);
+        o.frequency.exponentialRampToValueAtTime(f, start + 0.03);
         const g = ac.createGain();
+        const d = decay * ring;
         g.gain.setValueAtTime(0.0001, start);
         g.gain.exponentialRampToValueAtTime(peak * vol, start + 0.004);
-        g.gain.exponentialRampToValueAtTime(0.0001, start + decay);
+        g.gain.exponentialRampToValueAtTime(0.0001, start + d);
         o.connect(g).connect(ac.destination);
         o.start(start);
-        o.stop(start + decay + 0.05);
+        o.stop(start + d + 0.05);
       }
     };
-    // 높은 두 음(C7↔F7)을 번갈아 — 딸-랑-딸-랑.
-    const seq: [number, number][] = [
-      [0.0, 2093],
-      [0.13, 2793],
-      [0.30, 2093],
-      [0.43, 2793],
+    // 딱 떨어지는 두 음 반복이 아니라 실제 방울이 흔들리듯 높낮이가 자연스럽게 오르내리고,
+    // 타이밍도 살짝 들쭉날쭉하게. 전보다 살짝 더 높게 잡고(E7~B7대), 마지막 음이 가장 높고
+    // 가장 길게 울려 퍼지며 마무리된다. [지연(초), 기본 주파수, 잔향 배율]
+    const seq: [number, number, number][] = [
+      [0.0, 2637, 0.6],   // E7
+      [0.11, 3520, 0.55], // A7 (살짝 뛰어오름)
+      [0.24, 3136, 0.6],  // G7 (내려감)
+      [0.36, 3951, 0.6],  // B7 (다시 위로)
+      [0.5, 3136, 1.3],   // G7 — 자리를 잡으며 가장 길게 울려 마무리
     ];
-    for (const [delay, base] of seq) {
+    for (const [delay, base, ring] of seq) {
       const start = t0 + delay;
-      strike(start, base, 0.11);
+      strike(start, base, 0.1, ring);
       // 아주 살짝 디튠한 겹종 — 방울들이 함께 흔들리며 생기는 반짝임(맥놀이)을 더한다.
-      strike(start + 0.005, base * 1.006, 0.04);
+      strike(start + 0.005, base * 1.006, 0.038, ring);
     }
   } catch {
     // 합성 실패는 무시.
