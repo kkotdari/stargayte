@@ -215,6 +215,12 @@ html {
      기본 흰 배경(html 자체엔 배경색이 없었음)이 비쳐 보였다 — html도 앱과 같은 어두운
      배경을 깔아 어떤 경우에도 흰 여백이 드러나지 않게 한다. */
   background: var(--void);
+  /* 이 페이지가 "다크 페이지"임을 사파리에 정식으로 선언한다 — 선언이 없으면 사파리는
+     라이트 페이지로 간주하고, 어두운 픽셀 위에 라이트 크롬을 얹으려니 가독성 보호로
+     위아래에 불투명 백킹(검은 띠)을 깔았다(지적: "라이트에선 아주 잘 되는데 다크에서만
+     위아래가 잘린다" — 라이트는 '라이트 페이지' 가정이 우연히 맞아 잘 됐던 것). 선언하면
+     다크 크롬으로 합성해 알약 뒤까지 콘텐츠가 비친다. 라이트 테마는 아래에서 뒤집는다. */
+  color-scheme: dark;
   /* 상단 안전영역(상태바/노치) 보정값 — env(safe-area-inset-top)과 부트 스크립트가 실측해
      넣는 --safe-area-top 중 큰 값. black-translucent 몰입 모드에서 스크롤되는 헤더/스티키를
      이만큼 내려 노치에 안 가리게 하는 데 쓴다(둘 다 0이면 0이라 PC/비-노치에선 영향 없음). */
@@ -223,20 +229,20 @@ html {
      주소창과 안 맞아서, JS(useBottomViewportInset)가 visualViewport로 실측해 이 변수를 채운다.
      PWA·데스크톱·JS 미실행에선 0이라 탭바는 bottom:0. */
   --vv-bottom-inset: 0px;
-  /* overscroll-behavior:none(러버밴드 차단)은 뺐다 — iOS 26은 접힌 주소창 알약 뒤/툴바
-     가장자리 영역을 '오버스크롤 렌더링' 경로로 그리는데(조사: zulip #37367 — 내비바 위로
-     오버스크롤이 비쳐 보임), 오버스크롤을 CSS로 꺼두면 그 영역에 콘텐츠 대신 루트 배경만
-     칠해져 다크에서 검은 띠가 됐다(지적). 러버밴드는 되살아나지만 html/body 배경이 테마색과
-     일치해 예전 같은 이질감(검은 여백)은 없다.
+  /* 러버밴드는 CSS로 막는다(Safari 16+) — 한때 다크 검은 띠의 원인으로 의심해 빼봤지만
+     무관함이 확인돼(지적) 원복. 진짜 원인은 위의 color-scheme 미선언이었다.
      scroll-behavior/scrollbar-gutter는 예전 #scroll-root에서 문서 스크롤 주체인 여기로. */
-  scroll-behavior: smooth; scrollbar-gutter: stable;
+  overscroll-behavior-y: none; scroll-behavior: smooth; scrollbar-gutter: stable;
 }
+/* 라이트 테마는 라이트 페이지로 선언을 뒤집는다(위 color-scheme 주석 참고). */
+html.scr-light-theme { color-scheme: light; }
 /* body — 문서 스크롤 전환(위 html 주석)으로 position:fixed 봉인을 푼다. 예전 고정의
    이유였던 러버밴드는 Safari 16+의 overscroll-behavior:none(html/body 양쪽)으로 막고,
    모달 잠금은 bodyScrollLock이 position:fixed+top 보정으로 그때만 잠근다. */
 body {
   margin: 0;
   min-height: 100%;
+  overscroll-behavior-y: none;
   background: var(--void);
   color: var(--text);
   font-family: 'Pretendard Variable', Pretendard, 'Noto Sans KR', sans-serif;
