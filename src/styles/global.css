@@ -354,13 +354,14 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
 /* 로그인 폼(로고+카드)을 살짝 아래로(요청) — 위로 당기던 값을 줄인다. */
 /* 회원가입 버튼을 폼 밖(화면 하단)으로 뺐더니 카드가 짧아져 폼이 위로 올라가 보였다 —
    그만큼 아래로 되돌린다(요청: -1% → +2%). */
-/* 화면 가운데쯤으로(요청 반복 조정: 2%→8%→4%). */
-.scr-auth-hero { display: flex; flex-direction: column; align-items: center; width: 100%; transform: translateY(4%); }
+/* 화면 "세로 가운데"에(요청 — 래퍼가 이미 justify-content:center라 오프셋 0이 정중앙). */
+.scr-auth-hero { display: flex; flex-direction: column; align-items: center; width: 100%; }
 /* PWA(standalone)는 .scr-auth-wrap의 상단 안전영역 패딩(env(safe-area-inset-top))이 더해져
    전체가 그만큼 더 아래로 내려가 있으므로, 일반 브라우저 탭과 같은 느낌을 주려면 여기서만
    더 위로 올려야 한다(요청: "pwa에서만 좀 올려줘"). */
 @media (display-mode: standalone) {
-  .scr-auth-hero { transform: translateY(-5%); }
+  /* PWA는 래퍼의 상단 안전영역 패딩만큼 중심이 아래로 밀리므로 그 절반만 되올린다. */
+  .scr-auth-hero { transform: translateY(-3%); }
 }
 /* 로그인 화면 자체의 라이트 테마 토글 — 헤더 없이도(로그인 전) 화면 취향을 바꿀 수 있게
    화면 위쪽 한 켠에 둔다. */
