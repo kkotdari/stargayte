@@ -22,10 +22,17 @@ function applyThemeColor(on: boolean): void {
   // 툴바 색이 즉시 안 바뀌는 문제의 일부), 메타 태그 자체를 새로 만들어 교체한다 —
   // 요소 삽입은 사파리가 theme-color를 다시 읽는 확실한 트리거다.
   document.querySelector('meta[name="theme-color"]')?.remove();
-  const meta = document.createElement("meta");
-  meta.name = "theme-color";
-  meta.content = on ? VOID_COLOR.light : VOID_COLOR.dark;
-  document.head.appendChild(meta);
+  // 실험(지적: 다크에서 하단(주소줄) 뒤 콘텐츠가 거의 100% 안 나옴): 다크일 땐
+  // theme-color 메타를 아예 두지 않는다 — iOS 26이 어두운 theme-color를 보고 알약 뒤에
+  // 불투명 백킹을 까는 것으로 의심된다. 메타가 없으면 사파리는 페이지 픽셀 샘플링으로
+  // 폴백해 색은 거의 같게 보이고(배경 #060607), 합성 판단만 달라질 수 있다.
+  // 라이트는 지금도 잘 되므로 기존대로 흰색을 명시한다.
+  if (on) {
+    const meta = document.createElement("meta");
+    meta.name = "theme-color";
+    meta.content = VOID_COLOR.light;
+    document.head.appendChild(meta);
+  }
   // color-scheme 메타도 함께 — 다크 페이지 선언(index.html)이 토글 후에도 실제 테마와
   // 일치해야 사파리가 크롬 합성(알약 뒤 콘텐츠)을 올바른 스킴으로 유지한다.
   document.querySelector('meta[name="color-scheme"]')?.setAttribute("content", on ? "light" : "dark");
