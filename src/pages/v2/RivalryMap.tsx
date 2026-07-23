@@ -223,14 +223,24 @@ export default function RivalryMap({
           );
         })}
       </div>
-      <div className="scr-rivalry-legend">
-        {/* 우세/열세는 색이 아니라 화살표 방향으로만 구분한다(요청) — 어느 모드든 초록 하나. */}
-        <span className="scr-rivalry-legend-item"><span className="scr-rivalry-legend-arrow" /> 우세→열세</span>
-        <span className="scr-rivalry-legend-item"><span className="scr-rivalry-legend-even" /> 대등</span>
-        <span className="scr-rivalry-legend-note">
-          선이 굵을수록 상성이 뚜렷 · 유저를 누르면 그 유저의 상성만 표시
-        </span>
-      </div>
+      <RivalryLegend />
+    </div>
+  );
+}
+
+// 범례는 데이터와 무관한 고정 내용이라 따로 뽑아둔다 — 로딩 화면도 이걸 그대로 렌더해서
+// 로딩/로드 상태의 본체 높이를 "정확히" 같게 만든다(오버레이가 세로 가운데 정렬이라
+// 높이가 조금이라도 달라지면 타이틀이 위/아래로 튄다 — 지적). 높이를 px로 어림해
+// 예약하던 방식은 화면 폭에 따라 범례가 줄바꿈되면 어긋나서 폐기.
+export function RivalryLegend() {
+  return (
+    <div className="scr-rivalry-legend">
+      {/* 우세/열세는 색이 아니라 화살표 방향으로만 구분한다(요청) — 어느 모드든 초록 하나. */}
+      <span className="scr-rivalry-legend-item"><span className="scr-rivalry-legend-arrow" /> 우세→열세</span>
+      <span className="scr-rivalry-legend-item"><span className="scr-rivalry-legend-even" /> 대등</span>
+      <span className="scr-rivalry-legend-note">
+        선이 굵을수록 상성이 뚜렷 · 유저를 누르면 그 유저의 상성만 표시
+      </span>
     </div>
   );
 }

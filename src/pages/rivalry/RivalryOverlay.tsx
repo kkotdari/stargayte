@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { Spinner } from "../../components/common/Feedback";
-import RivalryMap from "../v2/RivalryMap";
+import RivalryMap, { RivalryLegend } from "../v2/RivalryMap";
 import { useAppStore } from "../../store/appStore";
 import { api } from "../../api/client";
 import { useLockBodyScroll } from "../../utils/bodyScrollLock";
@@ -41,11 +41,18 @@ export default function RivalryOverlay({ from, to, onClose }: {
           </button>
         </div>
         {error && <div className="scr-err">{error}</div>}
-        {/* 로딩 자리도 맵과 같은 정사각으로 잡아둔다 — 스피너만 있는 낮은 높이로 세로
-            가운데 정렬됐다가 데이터가 오면 본체가 커지며 타이틀/닫기가 위로 튀어 오르던
-            부자연스러움(지적) 방지. */}
+        {/* 로딩 화면을 로드된 화면과 "구조적으로 동일"하게 만든다 — 같은 .scr-rivalry
+            컬럼에 같은 정사각(맵 자리) + 같은 범례. 그래야 본체 높이가 정확히 일치해서,
+            세로 가운데 정렬인 이 오버레이에서 로드 순간 타이틀이 위/아래로 안 튄다
+            (지적: 내용 로드되니 타이틀이 조금 내려감). 예전처럼 범례 높이를 px로 어림해
+            예약하면 화면 폭에 따라 범례 줄바꿈이 달라져 늘 조금씩 어긋난다. */}
         {pairs === undefined && !error
-          ? <div className="scr-rivalry-overlay-loading"><Spinner size={18} /></div>
+          ? (
+            <div className="scr-rivalry">
+              <div className="scr-rivalry-overlay-loading"><Spinner size={18} /></div>
+              <RivalryLegend />
+            </div>
+          )
           : pairs !== undefined && <RivalryMap pairs={pairs} memberOf={memberOf} />}
       </div>
     </div>,

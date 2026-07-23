@@ -7325,13 +7325,13 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-rivalry-overlay-close:hover { color: var(--text); }
 /* 로딩 플레이스홀더 — 맵 캔버스(.scr-rivalry-wrap)와 같은 정사각을 미리 차지해, 로드
    완료 시 오버레이 높이가 변하며 헤더가 튀지 않게 한다. */
+/* 맵 자리(.scr-rivalry-wrap)와 정확히 같은 정사각 — 로딩 화면은 이 자리 + 진짜 범례
+   (RivalryLegend)를 같은 .scr-rivalry 컬럼에 그려서 로드 전후 본체 높이를 일치시킨다.
+   예전엔 범례 높이를 margin-bottom으로 어림 예약했는데, 화면 폭에 따라 범례 줄바꿈이
+   달라져 늘 몇 px씩 어긋났다(지적: 로드되면 타이틀이 조금 내려감) — 그 방식은 폐기. */
 .scr-rivalry-overlay-loading {
   width: 100%; max-width: 560px; margin: 0 auto; aspect-ratio: 1;
   display: flex; align-items: center; justify-content: center;
-  /* 로드되면 정사각 아래에 붙는 범례(.scr-rivalry gap 10px + 범례 ~2줄)만큼 로딩 때도
-     미리 자리를 잡아둬, 로드 순간 본체 높이가 거의 안 변하게(세로 가운데 정렬이 다시
-     잡히며 타이틀이 튀는 것 방지). */
-  margin-bottom: 56px;
 }
 /* 개인전/팀전 탭(요청: 루페 스타일) — 하단 탭바의 물방울(.scr-mobile-tab-indicator)을
    그대로 재사용하고, 위치만 이 탭줄 기준으로 다시 잡는다: 두 탭이 정확히 반반이라
