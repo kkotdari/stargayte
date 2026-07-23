@@ -73,14 +73,16 @@ export function playMailChime(): void {
   if (!ac) return;
   try {
     const t0 = ac.currentTime;
-    // 메아리(에코) 버스 — 친 소리를 딜레이로 되울리고, 피드백으로 점점 작아지며 반복시킨다.
+    // 메아리(에코) 버스 — 친 소리를 딜레이로 한 번 되울려 깔끔한 여운만 남긴다. 피드백을
+    // 아주 낮게(0.12) 둬서 메아리가 겹겹이 쌓여 뭉개지지 않고(지적: "너무 겹쳐서 이상"),
+    // 한 번 살짝 울린 뒤 곧 사라진다.
     const echo = ac.createDelay(1.0);
-    echo.delayTime.setValueAtTime(0.19, t0);
+    echo.delayTime.setValueAtTime(0.26, t0);
     const feedback = ac.createGain();
-    feedback.gain.setValueAtTime(0.42, t0); // <1이라 메아리가 점점 잦아든다.
+    feedback.gain.setValueAtTime(0.12, t0);
     const echoLevel = ac.createGain();
-    echoLevel.gain.setValueAtTime(0.5, t0);
-    echo.connect(feedback).connect(echo);      // 피드백 루프
+    echoLevel.gain.setValueAtTime(0.28, t0);
+    echo.connect(feedback).connect(echo);      // 피드백 루프(약하게)
     echo.connect(echoLevel).connect(ac.destination);
     // 마른 소리(dry) + 에코로 함께 보내는 버스.
     const bus = ac.createGain();
@@ -88,12 +90,13 @@ export function playMailChime(): void {
     bus.connect(ac.destination);
     bus.connect(echo);
 
-    // [배음 주파수비, 상대 볼륨, 감쇠(초)] — 한 음의 음색(금속 종).
+    // [배음 주파수비, 상대 볼륨, 감쇠(초)] — 한 음의 음색(금속 종). 타격당 감쇠를 짧게 둬
+    // 각 "딸랑"이 서로 뭉개지지 않고 또렷하게 끊어져 깔끔하게 울린다.
     const partials: [number, number, number][] = [
-      [1.0, 1.0, 0.7],
-      [2.76, 0.55, 0.45],
-      [5.40, 0.28, 0.3],
-      [8.93, 0.1, 0.2],
+      [1.0, 1.0, 0.45],
+      [2.76, 0.5, 0.3],
+      [5.40, 0.24, 0.2],
+      [8.93, 0.08, 0.14],
     ];
     // 방울 한 번 치기 — 진짜 쇠종은 클래퍼가 부딪히는 순간 음이 살짝 높았다가 바로 안정되므로
     // (금속 "팅~" 어택) 주파수를 아주 조금 높은 데서 base로 미끄러뜨린다. 소리는 에코 버스로.
@@ -113,8 +116,8 @@ export function playMailChime(): void {
         o.stop(start + decay + 0.05);
       }
     };
-    // 같은 음(E7)이 네 번 딸랑딸랑. 이후는 에코가 알아서 메아리를 만든다.
-    const BASE = 2637;
+    // 같은 음(G7)이 네 번 딸랑딸랑. 이후는 에코가 알아서 옅은 메아리를 남긴다.
+    const BASE = 3136;
     for (let i = 0; i < 4; i++) {
       strike(t0 + i * 0.15, BASE, 0.11);
     }
