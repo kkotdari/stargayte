@@ -722,13 +722,14 @@ html.scr-light-theme {
   /* 승/패 텍스트, 순위 변동 화살표, 랭킹 막대(승률/경기수) — 전부 검정으로 눌러뒀던 걸
      흰 배경에서도 잘 보이도록 진하게 채도를 살린 색으로 되돌린다(다크 테마의 파스텔
      톤과 같은 색 계열이지만, 흰 배경 대비를 위해 훨씬 진하게). */
-  --win: #2f8f3e;
-  --loss: #c23b4a;
-  /* 통계 그래프(막대/차트) 채움색 — 예전엔 흰 배경 대비만 신경 써 어둡고 탁한 톤
-     (#2f6fb3 등)이었는데, 더 밝고 맑은 톤으로(요청: "라이트 통계 그래프 좀더 밝고
-     맑게"). 승/패 "텍스트"는 위 --win/--loss(진한 톤)를 그대로 쓰므로 대비는 유지되고,
-     여기 --info/--bar-*(막대 채움 전용)만 맑게 올린다. */
-  --info: #3d9bf0;
+  /* 승/패 텍스트색 — 통계 차트 채움색과 똑같이 맞춘다(요청: "기록실 승무패 텍스트도
+     차트 색과 동일하게") — 승=맑은 초록(--bar-win과 동일), 패=맑은 코랄(--bar-loss와
+     동일). 이제 텍스트와 막대가 완전히 같은 색 계열로 통일된다. */
+  --win: #34c759;
+  --loss: #f2637a;
+  /* 통계 그래프(막대/차트) 채움색 — 밝고 맑게(요청). 파랑은 더 시원하고 파란 톤이 강한
+     쪽으로(요청: "차트 파란색 좀더 시원해보이는 강한 파랑"). */
+  --info: #2f7cf0;
   --divider-tint: 0, 0, 0;
   --overlay-rgb: 0, 0, 0;
   --dd-panel-bg: rgba(255, 255, 255, 0.62);
@@ -741,7 +742,7 @@ html.scr-light-theme {
   --lit-hover-glow: 0 0 8px rgba(140, 190, 255, 0.28), 0 0 16px rgba(140, 190, 255, 0.12);
   --lit-press-glow: 0 0 10px rgba(140, 190, 255, 0.35), 0 0 22px rgba(140, 190, 255, 0.16);
   --bar-winrate: #34c759;
-  --bar-plays: #3d9bf0;
+  --bar-plays: #2f7cf0;
   /* 전적통계 승/무/패 막대(StatBar) — 라이트 테마 전용 값이 없어 다크 파스텔을 그대로
      썼는데, 무승부(--bar-draw #eef0f2, 거의 흰색)가 흰 배경에서 안 보였다. 흰 배경에서
      맑게 보이는 톤으로 다시 잡는다(승=맑은 초록, 무=옅은 회색, 패=맑은 코랄). */
@@ -2651,13 +2652,16 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   .scr-match-type-filter .scr-pill-tab-btn:hover:not(.scr-pill-tab-btn-active),
   .scr-rivalry-period .scr-pill-tab-btn:hover:not(.scr-pill-tab-btn-active) { color: var(--text); }
 }
-/* 기록실 경기유형 필터 로우 — 검색창 바로 위. PC는 좌측 정렬(다른 필터와 동일). */
-.scr-match-type-filter { margin-bottom: 10px; max-width: 320px; }
-/* 필터가 하나뿐이라 모바일에선 라벨+알약을 화면 가운데로(요청). max-width 제약을 풀고
-   FilterItem 행 자체를 가운데 정렬한다. */
+/* 기록실 경기유형 필터 로우 — 검색창 바로 위. 공통 필터 라벨(.scr-filter-item-label)은
+   position:absolute; bottom:100%로 항목 "바로 위"에 얹히므로, 필터창(.scr-filter-panel)
+   처럼 위쪽에 라벨 얹힐 공간(padding-top)을 반드시 마련해야 라벨이 알약 바로 위에 온다
+   (안 그러면 위 제목과 겹쳐 엉뚱한 곳에 떠 보인다 — 지적). 라벨은 항목(.scr-filter-item)
+   기준 left:2px라, 항목을 내용폭으로 두고 컨테이너에서 정렬하면 라벨이 알약 좌측과
+   맞는다. PC는 좌측 정렬, 필터가 하나뿐이라 모바일은 가운데 정렬(요청). */
+.scr-match-type-filter { display: flex; padding-top: 16px; margin-bottom: 10px; }
+.scr-match-type-filter .scr-filter-item { flex: 0 0 auto; }
 @media (max-width: 860px) {
-  .scr-match-type-filter { max-width: none; }
-  .scr-match-type-filter .scr-filter-item { justify-content: center; }
+  .scr-match-type-filter { justify-content: center; }
 }
 
 /* 기간필터(월) — OS 기본 달력을 그대로 쓴다(요청: "os기본 기능으로 연결"). 필터창과
@@ -5711,31 +5715,36 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
    편다(한마디 입력창과 같은 기법). 카드가 flex gap(8px) 컬럼이라 접힌 0높이 래퍼도
    gap 한 칸을 차지하는데, 음수 마진이 그 칸을 삼켜 접힘 상태가 완전히 "없던 것처럼"
    보인다 — 마진도 함께 트랜지션돼 gap까지 부드럽게 열리고 닫힌다. */
+/* 높이(grid-rows)와 내용 페이드를 "순차"로 돌려 잘림을 없앤다(지적: "펼치거나 접을 때
+   카드 아래부분이 잘리면서 트랜지션" — overflow:hidden 높이 접힘이 폼 마지막 줄인 버튼을
+   반쯤 잘라 보여줬다). 열 때: 먼저 높이가 자리를 다 잡을 때까지 내용은 투명(opacity 0)
+   이라 잘리는 게 안 보이고, 그 뒤에 페이드인. 닫을 때: 내용이 먼저 빠르게 사라진 뒤
+   높이가 접힌다. 그래서 어느 순간에도 "반쯤 잘린 내용"이 보이지 않는다. */
 .scr-inline-collapse {
   display: grid; grid-template-rows: 0fr; visibility: hidden; margin-top: -8px;
+  /* 닫힐 때(→이 상태): 내용 페이드아웃(.16s)이 끝난 뒤 높이가 접히도록 지연을 준다. */
   transition:
-    grid-template-rows .42s cubic-bezier(0.32, 0.72, 0, 1),
-    margin-top .42s cubic-bezier(0.32, 0.72, 0, 1),
-    visibility 0s linear .42s;
+    grid-template-rows .34s cubic-bezier(0.32, 0.72, 0, 1) .12s,
+    margin-top .34s cubic-bezier(0.32, 0.72, 0, 1) .12s,
+    visibility 0s linear .46s;
 }
 .scr-inline-collapse-open {
   grid-template-rows: 1fr; visibility: visible; margin-top: 0;
+  /* 열릴 때: 높이는 즉시 애니메이션(지연 0). */
   transition:
-    grid-template-rows .42s cubic-bezier(0.32, 0.72, 0, 1),
-    margin-top .42s cubic-bezier(0.32, 0.72, 0, 1);
+    grid-template-rows .34s cubic-bezier(0.32, 0.72, 0, 1),
+    margin-top .34s cubic-bezier(0.32, 0.72, 0, 1);
 }
-/* 예전엔 여기에 translateY(-6px) 슬라이드를 얹었는데, overflow:hidden 높이 접힘과
-   겹치면서 폼 아래쪽이 위로 밀려 잘려나가는 것처럼 보였다(지적: "펼치거나 접을 때 카드
-   아래부분이 잘리면서 트랜지션") — 슬라이드를 빼고 순수 높이(grid-rows)+페이드만 남겨
-   내용이 위아래로 밀리지 않고 제자리에서 부드럽게 드러났다 사라지게 한다. */
 .scr-inline-collapse-inner {
   overflow: hidden; min-height: 0;
+  /* 닫힐 때: 지연 없이 빠르게 사라진다(높이가 접히기 전에). */
   opacity: 0;
-  transition: opacity .3s ease;
+  transition: opacity .16s ease;
 }
 .scr-inline-collapse-open > .scr-inline-collapse-inner {
+  /* 열릴 때: 높이가 거의 다 자리 잡은 뒤(지연) 페이드인 — 잘린 내용이 안 보인다. */
   opacity: 1;
-  transition: opacity .34s ease .06s;
+  transition: opacity .22s ease .26s;
 }
 /* 경기종류보다 앞, 굵게(요청: "경기유형 앞에 일시를 먼저 표시 진하게"). 고정폭
    숫자 폰트(.scr-mono)라 옆의 배지/일반 텍스트와 광학적 중심이 미묘하게 달라
@@ -7239,8 +7248,13 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
 /* 반투명 오버레이 — 뒤의 랭킹이 비쳐 보이는 딤+블러 위에 맵만 띄운다(자체 패널 없음). */
 .scr-rivalry-overlay {
   position: fixed; inset: 0; z-index: 100;
-  display: flex; align-items: center; justify-content: center;
-  padding: calc(12px + var(--safe-top)) 12px calc(12px + env(safe-area-inset-bottom, 0px));
+  /* 세로 가운데 정렬을 쓰면 로딩(정사각) → 로드(정사각+범례)로 본체가 커질 때 가운데가
+     다시 잡히며 타이틀이 위로 튀어 올랐다(지적: "타이틀이 아래에서 위로 살짝 움직여").
+     상단 앵커(flex-start)로 두면 본체가 아래로만 자라 타이틀은 항상 제자리에 고정된다.
+     세로 여백은 위쪽에 넉넉히 줘 화면 상단에 붙어 보이지 않게 한다. */
+  display: flex; align-items: flex-start; justify-content: center;
+  padding: calc(max(24px, 6vh) + var(--safe-top)) 12px calc(12px + env(safe-area-inset-bottom, 0px));
+  overflow-y: auto;
   background: rgba(4, 6, 10, 0.62);
   -webkit-backdrop-filter: blur(7px); backdrop-filter: blur(7px);
 }
