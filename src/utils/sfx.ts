@@ -63,36 +63,50 @@ export function playCreak(): void {
   }
 }
 
-// 우편 알림 "딩동" — 사인파 두 음(E6→A6)에 배음을 살짝 얹고 빠르게 감쇠시켜 맑은 종소리
-// 느낌을 낸다(요청: "도전장 인박스 모달 뜰때 우편벨소리").
+// 우편 알림 "딸랑딸랑" — 진짜 방울/차임벨처럼 맑고 영롱하게(요청). 사인파 배음을 정수배로
+// 쌓으면 오르간처럼 밋밋해서 종 느낌이 안 난다 — 그래서 튜블러 벨(금속 종)의 비조화 배음비
+// (1 : 2.76 : 5.40 : 8.93)로 배음을 얹어 "댕~" 하는 금속 종 특유의 맑은 울림을 만들고,
+// 높은 배음일수록 빨리 사라지게 해 반짝이는 잔향만 남긴다. 높은 두 음을 번갈아 빠르게 네 번
+// 쳐서 작은 방울이 딸랑딸랑 흔들리는 소리를 낸다.
 export function playMailChime(): void {
   const ac = getCtx();
   if (!ac) return;
   try {
-    const t = ac.currentTime;
-    const notes: [number, number][] = [[0, 1318.5], [0.13, 1760]];
-    for (const [delay, freq] of notes) {
-      const start = t + delay;
-      const o = ac.createOscillator();
-      o.type = "sine";
-      o.frequency.setValueAtTime(freq, start);
-      const harmonic = ac.createOscillator();
-      harmonic.type = "sine";
-      harmonic.frequency.setValueAtTime(freq * 2, start);
-
-      const g = ac.createGain();
-      g.gain.setValueAtTime(0.0001, start);
-      g.gain.exponentialRampToValueAtTime(0.16, start + 0.012);
-      g.gain.exponentialRampToValueAtTime(0.0001, start + 0.5);
-      const hg = ac.createGain();
-      hg.gain.setValueAtTime(0.05, start);
-
-      o.connect(g).connect(ac.destination);
-      harmonic.connect(hg).connect(g);
-      o.start(start);
-      harmonic.start(start);
-      o.stop(start + 0.55);
-      harmonic.stop(start + 0.55);
+    const t0 = ac.currentTime;
+    // [배음 주파수비, 상대 볼륨, 감쇠(초)]
+    const partials: [number, number, number][] = [
+      [1.0, 1.0, 0.9],
+      [2.76, 0.55, 0.6],
+      [5.40, 0.28, 0.4],
+      [8.93, 0.1, 0.26],
+    ];
+    // 종 한 번 치기 — 기본 주파수 base로 비조화 배음을 한꺼번에 울리고 각자 감쇠시킨다.
+    const strike = (start: number, base: number, peak: number) => {
+      for (const [ratio, vol, decay] of partials) {
+        const o = ac.createOscillator();
+        o.type = "sine";
+        o.frequency.setValueAtTime(base * ratio, start);
+        const g = ac.createGain();
+        g.gain.setValueAtTime(0.0001, start);
+        g.gain.exponentialRampToValueAtTime(peak * vol, start + 0.004);
+        g.gain.exponentialRampToValueAtTime(0.0001, start + decay);
+        o.connect(g).connect(ac.destination);
+        o.start(start);
+        o.stop(start + decay + 0.05);
+      }
+    };
+    // 높은 두 음(C7↔F7)을 번갈아 — 딸-랑-딸-랑.
+    const seq: [number, number][] = [
+      [0.0, 2093],
+      [0.13, 2793],
+      [0.30, 2093],
+      [0.43, 2793],
+    ];
+    for (const [delay, base] of seq) {
+      const start = t0 + delay;
+      strike(start, base, 0.11);
+      // 아주 살짝 디튠한 겹종 — 방울들이 함께 흔들리며 생기는 반짝임(맥놀이)을 더한다.
+      strike(start + 0.005, base * 1.006, 0.04);
     }
   } catch {
     // 합성 실패는 무시.
