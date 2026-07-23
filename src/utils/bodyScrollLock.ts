@@ -25,8 +25,27 @@ function isShieldedTarget(t: EventTarget | null): boolean {
   return !!el.closest(".scr-app") && !el.closest(INLINE_ALLOW);
 }
 
+// 대상에서 위로 올라가며(문서 루트 전까지) 실제로 스크롤 가능한 조상이 있는지 — 모달/
+// 서랍/드롭다운 "안"이라도 스크롤할 곳이 없으면 iOS가 제스처를 문서(뒷 페이지)로
+// 체이닝해 배경이 스크롤됐다(지적: "팝업 내부를 문지르면 뒷 페이지가 스크롤돼").
+function canScrollWithin(start: Element): boolean {
+  for (let n: Element | null = start; n && n !== document.body && n !== document.documentElement; n = n.parentElement) {
+    if (n.scrollHeight > n.clientHeight + 1) {
+      const oy = getComputedStyle(n).overflowY;
+      if (oy === "auto" || oy === "scroll") return true;
+    }
+  }
+  return false;
+}
+
 function onScrollIntent(e: Event) {
-  if (isShieldedTarget(e.target)) e.preventDefault();
+  const el = e.target instanceof Element ? e.target : null;
+  if (!el) return;
+  if (isShieldedTarget(el)) { e.preventDefault(); return; }
+  // 잠금 중엔 문서가 스크롤 주체가 될 일이 없다 — 안쪽에 스크롤 가능한 영역이 있으면
+  // 그 스크롤은 브라우저에 맡기고(끝에서의 체이닝은 overscroll-behavior:contain이 차단),
+  // 없으면 제스처 자체를 막아 문서로 새지 않게 한다.
+  if (!canScrollWithin(el)) e.preventDefault();
 }
 // "바깥 탭 → 창 닫힘 → 실드 해제 → 뒤따라온 click이 배경 요소에 명중"의 구멍(지적:
 // "주변부 터치 시 활성화된 창이 닫히는 용도로만 쓰여야 함") — 닫히기 직전에 다음 click

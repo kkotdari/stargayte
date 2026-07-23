@@ -861,7 +861,9 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 /* margin으로 부모(.scr-modal)의 좌우 padding(18px)을 상쇄해 카드 끝까지 넓힌 다음, 좌우
    똑같이 18px로 다시 채운다 — scrollbar-gutter: stable이 스크롤바 자리를 따로 예약하므로
    오른쪽만 좁힐 필요가 없다. */
-.scr-modal-body { display: flex; flex-direction: column; gap: 14px; flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; margin: 0 -18px; padding: 0 18px; scrollbar-gutter: stable; touch-action: pan-y; }
+/* overscroll-behavior:contain — 본문이 끝까지 스크롤된 뒤 제스처가 문서(뒷 페이지)로
+   체이닝되는 것을 끊는다(실드의 canScrollWithin 차단과 한 세트). */
+.scr-modal-body { display: flex; flex-direction: column; gap: 14px; flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; margin: 0 -18px; padding: 0 18px; scrollbar-gutter: stable; touch-action: pan-y; overscroll-behavior: contain; }
 /* 종족 아이콘 설정 페이지 — 행 사이 간격은 이 래퍼가 담당한다. */
 .scr-race-icon-list { display: flex; flex-direction: column; gap: 14px; margin-bottom: 14px; }
 /* 라벨을 위에, 아이콘 미리보기·셀렉트·입력을 한 줄(같은 그리드 행)에 둬서 세로 정렬이
