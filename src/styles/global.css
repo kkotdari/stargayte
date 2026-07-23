@@ -987,15 +987,15 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
      크기(모바일 24px 높이, 폭 ~209px) 기준 2px ≈ 0.4%p로 환산. */
   position: absolute; left: 29.1%; top: 29.8%;
   width: 15.9%; height: auto; pointer-events: none;
-  /* 3초 정지 + 2초 회전(요청) — 5초 주기의 60% 지점까지 정지, 나머지 2초 동안 Y축
-     중심으로 세 바퀴(요청: 중간이 좀 더 빨라야 — 회전수 2→3바퀴 + 이징도 반 단계만
-     가파르게). 느리게 시작 → 중간 빠르게 → 다시 느려지며 정지. */
+  /* 순서 교체(요청): 나오자마자 2초 회전 → 3초 정지(5초 주기의 40%까지 회전, 나머지
+     정지). 회전은 Y축 세 바퀴 — 느리게 시작 → 중간 빠르게 → 느려지며 정지. 1080°는
+     한 바퀴의 배수라 주기 끝(1080°)→다음 시작(0°) 전환이 눈에 안 보인다. */
   animation: scr-brand-star-spin 5s linear infinite;
   transform: translate(-50%, -50%);
 }
 @keyframes scr-brand-star-spin {
-  0%, 60% { transform: translate(-50%, -50%) rotateY(0deg); animation-timing-function: cubic-bezier(0.6, 0, 0.4, 1); }
-  100% { transform: translate(-50%, -50%) rotateY(1080deg); }
+  0% { transform: translate(-50%, -50%) rotateY(0deg); animation-timing-function: cubic-bezier(0.6, 0, 0.4, 1); }
+  40%, 100% { transform: translate(-50%, -50%) rotateY(1080deg); }
 }
 /* PC에서 로고가 중심선보다 낮아 보인다(지적) — 로고 이미지 자체의 아래쪽 여백 탓이라
    버튼째 살짝 올려 보정한다(모바일은 아래 블록의 translateY가 따로 정한다). */
