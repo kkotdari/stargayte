@@ -2380,6 +2380,36 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   }
 }
 
+/* ── 화면 전체 배경(공용, usePageBackground) ──
+   사진을 fixed ::before 대신 정상 흐름 레이어 .scr-app 배경으로 얹는다 — .scr-app 배경은
+   상태바/내비바/안전영역 뒤까지 뻗기 때문(사용자 실기기 확인). 지금은 다크에서만 적용
+   (:not(.scr-light-theme)); 다른 화면/라이트로 확장하려면 이 게이팅만 늘리면 된다.
+   --page-bg-image/-mobile은 훅이 <html>에 인라인으로 넣는다. 어두운 그라데이션은 사진 위에
+   얹어 글자 가독성을 지킨다. background-attachment:fixed로 스크롤에도 고정. */
+html.scr-page-bg:not(.scr-light-theme) .scr-app {
+  background-color: var(--void);
+  background-image:
+    linear-gradient(180deg, rgba(3,3,6,0.78) 0%, rgba(3,3,6,0.67) 45%, rgba(3,3,6,0.83) 100%),
+    var(--page-bg-image);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+@media (max-width: 860px) {
+  html.scr-page-bg:not(.scr-light-theme) .scr-app {
+    background-image:
+      linear-gradient(180deg, rgba(3,3,6,0.78) 0%, rgba(3,3,6,0.67) 45%, rgba(3,3,6,0.83) 100%),
+      var(--page-bg-image-mobile);
+  }
+}
+/* 페이지 배경이 켜지면, 위에 겹쳐 사진을 가릴 fixed 레이어들(void 판/기존 랭킹 사진)을
+   끈다 — .scr-app 배경 사진 하나만 전체를 덮게. */
+html.scr-page-bg:not(.scr-light-theme) .scr-main::before,
+html.scr-page-bg:not(.scr-light-theme) .scr-rank-screen-v2::before {
+  display: none;
+}
+
 /* 개인(일대일) 랭킹 행의 검색 하이라이트 — 같은 반전색으로 프사와 닉네임을 함께 칠한다.
    프사와 닉네임이 격자의 이웃 칸이라, 프사 칸의 배경을 칸 사이 간격(column-gap)만큼
    오른쪽으로 더 늘려 닉네임 배경과 한 띠로 이어지게 한다. */

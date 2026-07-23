@@ -19,6 +19,7 @@ import {
   currentPeriodAnchor, periodAnchorLabel, periodAnchorToRange, shiftPeriodAnchor, type PeriodUnit,
 } from "../../utils/date";
 import { attachPopover } from "../../utils/popover";
+import { usePageBackground } from "../../hooks/usePageBackground";
 import { cx } from "../../utils/format";
 import { swallowNextClick } from "../../utils/bodyScrollLock";
 import { useAppStore } from "../../store/appStore";
@@ -73,6 +74,9 @@ function rankingParamsFromUrl(): { mode?: RankMode; race?: BaseRace | "all"; uni
 // 그리며 순위 숫자만 붙인다. 개인전·팀전은 집계 대상 경기(1:1 / 팀경기)만 다르고 각각 별도
 // 레이팅으로 계산된다.
 export default function RankingScreenV2() {
+  // 화면 전체 배경 사진(다크에서만 CSS가 적용) — fixed ::before가 iOS 안전영역에 갇히는
+  // 한계를 피해 .scr-app 흐름 배경으로 얹어 상태바/내비바 뒤까지 채운다(실험).
+  usePageBackground("/images/bg/ranking.jpg", "/images/bg/ranking_mobile.jpg");
   const members = useAppStore((s) => s.members);
   const user = useAppStore((s) => s.user);
   const suggestions = useMemo(() => activeMemberSearchTerms(members), [members]);
