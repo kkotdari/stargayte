@@ -187,9 +187,6 @@ export default function ChallengeInboxModal({ challenges, onClose, closeLabel = 
       {stage === "letter" && (
         <div className="scr-modal scr-modal-sm scr-challenge-inbox-modal">
           <div className="scr-challenge-inbox-title">{letterTitle}</div>
-          {/* 편지지 상단에 nawa2 이미지를 크게, 원형으로 크롭하고 가장자리를 그라데이션으로
-              흐려서 배치한다(요청). */}
-          <img src="/images/items/nawa2.jpg" alt="" className="scr-challenge-inbox-hero" />
           <div className="scr-modal-body scr-challenge-inbox-body">
             {isTeamMatch && (
               <>
@@ -203,10 +200,11 @@ export default function ChallengeInboxModal({ challenges, onClose, closeLabel = 
                 </div>
               </>
             )}
-            <div className="scr-challenge-inbox-row">
-              <span className="scr-label">일시</span>
-              <span>{formatChallengeSchedule(current.scheduledAt)}</span>
-            </div>
+            {/* 도전자가 남긴 한마디(선택)와 일시 — 라벨 없이 크게, 가운데 정렬(요청). */}
+            {current.message.trim() && (
+              <p className="scr-challenge-inbox-message">{current.message}</p>
+            )}
+            <div className="scr-challenge-inbox-when">{formatChallengeSchedule(current.scheduledAt)}</div>
 
             {/* 요청자가 시간을 안 정했으면(needsSchedule) 상대인 내가 승락하며 직접
                 정할 수 있다 — 다만 필수는 아니다(요청: "승락시에도 일시 미선택
@@ -276,7 +274,6 @@ export default function ChallengeInboxModal({ challenges, onClose, closeLabel = 
       {stage === "responded" && (
         <div className="scr-modal scr-modal-sm scr-challenge-inbox-modal">
           <div className="scr-modal-body scr-challenge-sent">
-            <img src="/images/items/nawa2.jpg" alt="" className="scr-challenge-sent-hero" />
             <div className="scr-challenge-sent-title">{respondedTitle}</div>
             <div className="scr-challenge-sent-desc">{respondedDesc}</div>
             <div className="scr-form-actions scr-challenge-sent-actions">

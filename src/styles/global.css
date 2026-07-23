@@ -886,7 +886,6 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 /* 요소 자신에 배경을 직접 정의하는 특수 모달들(편지지/스캔/제어판)은 기본 유리 레이어를
    끈다 — ::before(z:-1)가 요소 자신의 배경보다 위에 그려져 그 배경을 덮어버리기 때문.
    이들은 배경이 요소에 있어 크롬 펼침 회피 대상에서도 빠진다(운영·특수 화면이라 감수). */
-.scr-challenge-inbox-modal::before,
 .scr-admin-panel-modal::before,
 .scr-admin-panel-modal-locked::before { content: none; }
 .scr-light-theme .scr-modal {
@@ -5584,14 +5583,6 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 }
 .scr-challenge-datetime { display: flex; gap: 8px; }
 .scr-challenge-datetime .scr-input { flex: 1; min-width: 0; }
-/* 초대장 인박스 팝업은 여전히 아이보리 편지지 톤이라, OS가 다크 모드면 브라우저가 이
-   date/time 인풋의 네이티브 UI(플레이스홀더 글자, 달력/시계 아이콘)를 어둡게 렌더링해
-   밝은 편지지 위에서 안 보인다(신고 이력) — 밝은 배경 전용임을 명시한다. (호출 작성
-   모달은 이제 각 테마 글라스라 color-scheme을 강제하지 않고 테마를 따른다.) */
-.scr-challenge-inbox-modal .scr-challenge-datetime input {
-  color-scheme: light;
-}
-
 /* 목록 카드 */
 /* 날짜 그룹 사이 간격을 충분히 넓혀 구분선 없이도 그룹이 갈린다는 게 한눈에 보이게
    한다(요청: "scr-challenge-list 갭을 충분히 증가시키기" — 꺽쇠 장식을 뺀 대신). */
@@ -6282,17 +6273,15 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
     filter: none; box-shadow: inset 0 0 11px rgba(var(--lit-rgb), 0.5);
   }
 }
-/* 거절 버튼 — 흰 솔리드 대신 아웃라인(요청: 취소/거절 류는 채움 없는 테두리 버튼).
-   인박스는 아이보리 편지지라 어두운 테두리 + 투명 내부로 얹어 고민중(ghost)과 톤을 맞춘다. */
+/* 거절 버튼 — 채움 없는 아웃라인(요청: 취소/거절 류는 테두리 버튼). 예전엔 아이보리
+   편지지 톤(갈색)이었으나 편지지 제거와 함께 각 테마 라이팅 아웃라인으로 통일한다 —
+   인박스와 카드 인라인이 이 클래스를 공유하므로 둘 다 유리 위에서 또렷해진다. */
 .scr-challenge-reject-btn {
-  background: transparent; border-color: rgba(42, 36, 32, 0.42); color: #2a2420; text-shadow: none;
+  background: transparent; border-color: rgba(255, 255, 255, 0.32); color: var(--text); text-shadow: none;
 }
-.scr-challenge-reject-btn:hover { border-color: rgba(42, 36, 32, 0.72); }
-/* "고민중"(ghost) 버튼은 투명 배경 + 흰 테두리라 아이보리 편지지 위에서 테두리가 안 보였다
-   (요청: "고민중 버튼 테두리가 안보여") — 이 모달에선 편지지 톤에 맞춰 어두운 테두리로
-   또렷하게 잡는다. */
-.scr-challenge-inbox-body .scr-btn-ghost { border-color: rgba(42, 36, 32, 0.42); }
-.scr-challenge-inbox-body .scr-btn-ghost:hover { border-color: rgba(42, 36, 32, 0.72); }
+.scr-light-theme .scr-challenge-reject-btn { border-color: rgba(0, 0, 0, 0.28); }
+.scr-challenge-reject-btn:hover { border-color: rgba(255, 255, 255, 0.5); }
+.scr-light-theme .scr-challenge-reject-btn:hover { border-color: rgba(0, 0, 0, 0.45); }
 
 /* 결과 입력 폼(카드 인라인 + 인박스 팝업 공용) — 구성원을 그대로 보여주고 승리팀을
    눌러 고른다(요청: "구성원이 노출되고 승리팀을 고르는게 좋을듯. 무승부나 미실시도"). */
@@ -6333,30 +6322,16 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
 }
 
 /* 다음 접속 시 뜨는 초대장 팝업 — 도전장 작성 모달(.scr-challenge-form-modal)과 같은
-   원칙으로 앱 테마와 무관하게 항상 아이보리 편지지 톤(요청: "모달창 편지지 테마
-   적용(다크,라이트 모두)"). */
+   원칙으로 편지지(아이보리) 톤을 버리고 각 테마의 라이팅 글라스를 그대로 입는다(요청). */
 .scr-challenge-inbox-modal {
   /* 제어판과 같은 이유로 relative → fixed(기본 모달 센터링 유지). */
   position: fixed; align-items: center; text-align: center;
-  background: #fdfbf5;
   /* 도전장 보내기 모달과 같은 폭으로 넓힌다(요청: "폼요소들 폭 넓혀도 도전장 보내기
      처럼"). */
   max-width: 460px;
-  --text: #2a2420;
-  --muted: rgba(42, 36, 32, 0.75);
-  --dim: rgba(42, 36, 32, 0.55);
-  --input-bg: #ffffff;
-  --panel-raised: #f3efe6;
-  --line: rgba(42, 36, 32, 0.16);
-  --line-soft: rgba(42, 36, 32, 0.2);
-  --overlay-rgb: 0, 0, 0;
-  --point-contrast: #fdfbf5;
-  box-shadow: 0 10px 34px rgba(0,0,0,0.4), inset 0 0 0 1px rgba(0,0,0,0.06);
+  /* 편지지(아이보리) 테마 제거 — 기본 유리 모달(.scr-modal + ::before)을 그대로 써서
+     각 테마의 라이팅 글라스를 입힌다(요청: "너나와 인박스 라이팅 테마 적용, 편지지 제거"). */
 }
-/* .scr-challenge-form-modal과 같은 이유로 특이도를 클래스 두 개로 다시 못박는다 —
-   ".scr-light-theme .scr-modal"(마찬가지로 클래스 두 개, 베이스 글라스 규칙)이 소스
-   순서상 더 뒤에 있어 그냥 두면 라이트 테마에서 그 반투명 흰 유리 배경이 이겨버린다. */
-.scr-light-theme .scr-challenge-inbox-modal { background: #fdfbf5; }
 /* 편지봉투는 편지지 카드와 한 몸이 아니라(요청: "봉투랑 편지지는 별도 모달") 오버레이
    위에 겹치는 별도 레이어다 — 카드 배경/그림자 없이 봉투 사진 + 제목만 어두운 스크림
    위에 떠 있고, 편지지 카드(정상 흐름의 flex 자식)와 정확히 같은 중앙에 정렬된다. */
@@ -6431,12 +6406,9 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
    "편지봉투 페이드아웃 제거 그냥 사라지기"), 그 자리에 편지지도 확대·페이드인 연출
    없이 그냥 나타난다(요청: "편지지 확대 페이드인 제거 그냥 나오기") — 예전의
    opening/burst·letter-emerge 연출은 모두 제거했다. */
-/* 제목이 이제 봉투/편지지 두 단계 모두에서 카드 맨 위에 먼저 온다 — 봉투 단계는 위
-   그림이 최대한 위쪽에 오도록(요청: "그림이 좀더 위로 가게 배치") 아래 여백만 살짝.
-   라이트/다크와 무관하게 이 모달은 항상 아이보리 편지지 톤(--text: 짙은 갈색)이라 —
-   그 색을 명시하지 않으면 상위(body)의 테마 글자색(다크 테마에선 흰색)을 그대로
-   상속해 편지지 배경 위에서 안 보이는 문제가 있었다(실제로 지적받은 문제 — "인박스
-   편지지 타이틀 글자 안보임"). 봉투 단계는 아래 전용 규칙이 흰색으로 다시 뒤집는다. */
+/* 제목은 봉투/편지지 두 단계 모두에서 카드 맨 위에 먼저 온다. 편지지 카드 안에서는 각
+   테마 글자색(--text)을 따르고(라이팅 글라스), 봉투 단계는 어두운 스크림 위라 아래 전용
+   규칙이 흰색으로 뒤집는다. */
 .scr-challenge-inbox-title { font-weight: 800; font-size: var(--fs-subhead); margin: 6px 0 10px; color: var(--text); }
 /* 모달이 align-items:center라 그냥 두면 편지지 본문이 내용 폭만큼만 좁게 가운데 모여
    붙어 모달 폭을 못 채웠다(요청: "모달 안의 내용들을 넓히라고") — 본문을 full-width로
@@ -6448,7 +6420,17 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
    그 작은 자리만 비워 둔다. */
 .scr-challenge-inbox-err-slot { min-height: 12px; }
 .scr-challenge-inbox-err-text { display: block; color: var(--loss); font-size: var(--fs-caption); line-height: 1; }
-.scr-challenge-inbox-message { margin: 0 0 6px; font-size: var(--fs-body); font-style: italic; color: var(--text); }
+/* 도전자 한마디 + 일시 — 라벨 없이 크게(기본 body에서 2스텝 위 headline), 가운데 정렬
+   (요청: "일시·한마디 라벨 제거, 텍스트 2스텝 확대 및 가운데 정렬"). 한마디는 인용 느낌의
+   이탤릭, 일시는 또렷한 굵기로. */
+.scr-challenge-inbox-message {
+  margin: 10px 0 2px; font-size: var(--fs-headline); font-style: italic;
+  color: var(--text); text-align: center; line-height: 1.35; word-break: keep-all;
+}
+.scr-challenge-inbox-when {
+  margin: 6px 0; font-size: var(--fs-headline); font-weight: 700;
+  color: var(--text); text-align: center; line-height: 1.3;
+}
 /* 값 span(종류/일시 오른쪽)은 클래스가 없어 색을 명시 안 하면 앱 루트의 테마 글자색(다크
    테마에선 흰색)을 그대로 물려받아 밝은 편지지 배경 위에서 거의 안 보였다(요청: "결과
    입력창 글자가 안보이는데 다크테마 색깔 문제인가?" — 스샷의 '일대일'/'7월 13일…' 값) —
@@ -6466,15 +6448,6 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
 .scr-challenge-team-label-them { color: #f2555a; }
 .scr-challenge-team-label-us { color: #1aa3d6; }
 .scr-challenge-team-names { font-weight: 700; text-align: right; }
-/* 편지지를 연 뒤 상단에 크게 넣는 nawa2 이미지 — 정사각(width=height)에 border-radius:50%
-   와 원형 마스크로 완전한 '원형'으로 크롭하고(요청: "타원이 아닌 원형으로 크롭") 가장자리를
-   그라데이션으로 흐린다. object-fit:cover로 원본 비율과 무관하게 프레임을 꽉 채운다. */
-.scr-challenge-inbox-hero {
-  display: block; width: 150px; height: 150px; margin: 0 auto 10px; object-fit: cover;
-  border-radius: 50%;
-  -webkit-mask-image: radial-gradient(circle at center, #000 55%, transparent 78%);
-  mask-image: radial-gradient(circle at center, #000 55%, transparent 78%);
-}
 
 /* ===== 카카오톡 공유 + 호출/수락 완료 확인창 ===== */
 /* 노란 카카오 버튼(확인창의 full 변형) — 카카오 브랜드색(#fee500) 위에 진한 갈색 글자. */
@@ -6486,13 +6459,8 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
 .scr-kakao-share-btn svg { color: #3c1e1e; }
 /* 케밥 메뉴 안 카카오 항목 — 다른 항목과 같은 행 스타일(.scr-menu-pop-opt)에 아이콘만 얹는다. */
 .scr-kakao-menu-opt svg { flex-shrink: 0; }
-/* 호출/수락 완료 확인창 본문 — 가운데 정렬로 nawa 이미지 + 제목 + 안내 + 버튼. */
+/* 호출/수락 완료 확인창 본문 — 가운데 정렬로 제목 + 안내 + 버튼. */
 .scr-challenge-sent { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; padding-top: 4px; }
-.scr-challenge-sent-hero {
-  display: block; width: 132px; height: 132px; object-fit: cover; border-radius: 50%;
-  -webkit-mask-image: radial-gradient(circle at center, #000 55%, transparent 78%);
-  mask-image: radial-gradient(circle at center, #000 55%, transparent 78%);
-}
 .scr-challenge-sent-title { font-size: var(--fs-subhead); font-weight: 800; }
 .scr-challenge-sent-desc { font-size: var(--fs-caption); color: var(--muted); }
 .scr-challenge-sent-actions { justify-content: center; gap: 8px; }
