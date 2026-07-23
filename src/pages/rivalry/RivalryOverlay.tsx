@@ -30,9 +30,10 @@ export default function RivalryOverlay({ from, to, onClose }: {
   }, [from, to]);
 
   return createPortal(
-    <div className="scr-rivalry-overlay" onClick={onClose}>
-      {/* 맵 영역 탭은 오버레이 닫힘으로 새지 않게 막는다 — 칩 선택/해제는 맵 자신의 몫. */}
-      <div className="scr-rivalry-overlay-body" onClick={(e) => e.stopPropagation()}>
+    // 빈 공간(딤) 탭으로는 닫지 않는다(지적: "빈공간 클릭시 닫히는 문제") — 칩을 이리저리
+    // 탭하다 배경을 스치면 통째로 닫혀버려서, 닫기는 우상단 X로만 한다.
+    <div className="scr-rivalry-overlay">
+      <div className="scr-rivalry-overlay-body">
         <div className="scr-rivalry-overlay-head">
           <span className="scr-rivalry-overlay-title">상성맵</span>
           <button type="button" className="scr-rivalry-overlay-close" onClick={onClose} aria-label="닫기">

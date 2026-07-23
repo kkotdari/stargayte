@@ -72,7 +72,30 @@ function nudgeToolbarResample(on: boolean): void {
 // 채 남는 케이스가 있었다(지적: "초기 진입시 위아래가 다 잘려"). App.tsx가 booting이
 // 풀리는 순간 호출한다.
 export function resampleSafariChrome(): void {
-  requestAnimationFrame(() => requestAnimationFrame(() => jiggleScroll()));
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    const dark = !document.documentElement.classList.contains("scr-light-theme");
+    if (dark) {
+      // 결정적 관찰(지적): 라이트→다크로 "토글"한 화면은 위아래가 완벽하게 나오는데,
+      // 다크로 "로드"하면 하단이 거의 항상 실패한다 — 사파리가 로드 시점에 다크 페이지로
+      // 판정하면 하단 백킹을 깔고, 토글 경로(라이트로 판정된 뒤 다크로 전환)는 백킹 없이
+      // 유지되는 것. 그 성공 경로의 신호 시퀀스("라이트였다 → 다크가 됐다")를 부팅 직후
+      // 메타(color-scheme/theme-color)로만 한 프레임 재연한다. 픽셀은 안 건드리므로
+      // 화면 깜빡임은 없다.
+      const cs = document.querySelector('meta[name="color-scheme"]');
+      cs?.setAttribute("content", "light");
+      const tc = document.createElement("meta");
+      tc.name = "theme-color";
+      tc.content = VOID_COLOR.light;
+      document.head.appendChild(tc);
+      requestAnimationFrame(() => {
+        cs?.setAttribute("content", "dark");
+        tc.remove();
+        jiggleScroll();
+      });
+      return;
+    }
+    jiggleScroll();
+  }));
 }
 
 // 1px 왕복 문서 스크롤 — 사파리 툴바 색/엣지 렌더 재샘플링의 검증된 트리거. 같은 프레임
