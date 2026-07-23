@@ -223,14 +223,14 @@ export default function Header({
             버튼에 얹어서 평소 쓰는 사람에겐 그냥 홈 버튼일 뿐이라 눈에 띄지 않는다. */}
         <button
           type="button" className="scr-brand"
-          onClick={() => { go("ranking"); registerSecretTap(); }}
+          onClick={() => go("ranking")}
           aria-label="홈으로"
         >
           {/* 부트스트랩이 끝나기 전엔 아무것도 안 보여준다(기본 텍스트 깜빡임 방지). 로고는
               이제 정적 자산(별 도는 BrandLogo)이 기본 — 관리자 이미지 설정(home_logo)은
               더 이상 헤더 로고에 쓰지 않는다(요청: 별 제거 로고 + 회전 별 심볼 조합). */}
           {!booting && (
-            <BrandLogo light={lightTheme} />
+            <BrandLogo light={lightTheme} onStarTap={registerSecretTap} />
           )}
           <span className="scr-brand-text"></span>
         </button>
