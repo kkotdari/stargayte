@@ -1,4 +1,5 @@
 import { X } from "lucide-react";
+import { useLockBodyScroll } from "../../utils/bodyScrollLock";
 
 interface PhotoViewerProps {
   src: string;
@@ -15,6 +16,10 @@ interface PhotoViewerProps {
 // 문제: 사진 X를 눌러 닫으면 카드가 다시 클릭된 것처럼 상세 모달이 열림) — 이 클릭이
 // 더 못 올라가게 여기서 확실히 멈춘다(호출부에서 구조적으로 분리해도 이중 방어로 남긴다).
 export default function PhotoViewer({ src, alt, onClose }: PhotoViewerProps) {
+  // 딤 오버레이가 사라지면서(iOS 26 크롬 재펼침 회피, global.css 참고) 배경 차단을
+  // 잃었다 — 모달들과 같은 입력 실드로 배경 스크롤/클릭을 막는다. 바깥 탭으로는 안
+  // 닫는 기존 원칙 유지(onOutside 없음, X로만 닫힘).
+  useLockBodyScroll();
   return (
     <div className="scr-photo-overlay">
       <div className="scr-photo-frame">

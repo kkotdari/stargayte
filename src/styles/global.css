@@ -720,13 +720,16 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-avatar-open-btn:disabled { cursor: default; }
 
 /* ===== 사진 크게 보기 (라이트박스) ===== */
-.scr-photo-overlay {
-  position: fixed; inset: 0; z-index: 60; background: rgba(3,3,4,0.86);
-  display: flex; align-items: center; justify-content: center; padding: 24px;
-}
-/* (인화 사진풍 하얀 프레임은 제거 — 요청: "사진뷰어의 테두리 삭제". 사진만 깔끔하게.) */
+/* 딤 오버레이 제거(요청) — 모달과 같은 이유(뷰포트를 덮는 fixed 박스 + 전면 딤 페인트가
+   iOS 26 크롬을 도로 펼침). 오버레이는 박스 없이(display:contents), 사진 프레임이 스스로
+   화면 중앙에 뜬다. 배경 입력 차단은 PhotoViewer의 useLockBodyScroll(실드)이 맡는다. */
+.scr-photo-overlay { display: contents; }
+/* (인화 사진풍 하얀 프레임은 제거 — 요청: "사진뷰어의 테두리 삭제". 사진만 깔끔하게.
+   딤이 없어진 대신 진한 부양 그림자로 배경과 분리한다.) */
 .scr-photo-frame {
-  position: relative; max-width: min(420px, 100%);
+  position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 110;
+  max-width: min(420px, calc(100vw - 48px));
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55), 0 4px 14px rgba(0, 0, 0, 0.35);
 }
 .scr-photo-large { display: block; width: 100%; max-height: 70vh; object-fit: contain; }
 /* 닫기 버튼은 다른 화면의 동그란 버튼(테두리 대신 그림자로 띄우는 톤 — 아바타 편집
@@ -4408,12 +4411,13 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   border-image: url("/images/bg/control_panel_border.jpg") 80 round;
   border-radius: 0;
   /* 안쪽 어두운 홈(inset)을 더 깊게 겹쳐 판이 두껍게 파여 들어간 입체감을 강화한다. */
+  /* 딤(9999px 스프레드) 제거(요청: "제어판 딤처리 제거" — 다른 모달들과 같은 크롬
+     재펼침 실험) — 대신 바깥 그림자를 더 진하게. */
   box-shadow:
     inset 0 0 0 2px rgba(0,0,0,0.65),
     inset 0 3px 7px rgba(0,0,0,0.6),
     inset 0 0 16px rgba(0,0,0,0.45),
-    0 10px 30px rgba(0,0,0,0.4),
-    0 0 0 9999px rgba(3,3,4,0.74);
+    0 14px 44px rgba(0,0,0,0.6);
   /* 배경은 이미 불투명한 금속 텍스처 이미지(::before, cover)가 덮으므로 기본 모달의
      backdrop-filter는 눈에 보이지도 않는데, iOS 사파리에선 backdrop-filter와 border-image를
      한 요소에 같이 주면 border-image가 아예 안 그려지는 버그가 있다 — 여기선 불필요하니 꺼서
@@ -4936,8 +4940,8 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   /* 바닥 띄우기 — 주소창이 가리는 실측 높이(--vv-bottom-inset) 또는 홈 인디케이터
      안전영역(PWA/데스크톱은 vv-inset이 0) 중 큰 쪽 위에 10px 간격. max로 고르므로
      둘이 겹쳐 이중으로 뜨는 일은 없다. */
-  /* 살짝 더 아래로(요청 두 차례) — 바닥 간격 10→6→4px. */
-  bottom: max(calc(var(--vv-bottom-inset, 0px) + 4px), calc(env(safe-area-inset-bottom, 0px) + 4px));
+  /* 바닥 간격 미세조정(요청 반복) — 10→6→4→6px(다시 2px 위로). */
+  bottom: max(calc(var(--vv-bottom-inset, 0px) + 6px), calc(env(safe-area-inset-bottom, 0px) + 6px));
   /* 섬은 안전영역을 품지 않으므로 높이는 콘텐츠 몫만. */
   height: var(--mobile-footer-h);
   /* 상하 패딩 14→16px(요청: +2) — 좌우는 4px 유지. */
@@ -5904,7 +5908,8 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
      안보임") — 이 편지지도 항상 밝은 배경이니 다른 밝은 배경 변수들과 같은 톤으로
      고정한다. */
   --point-contrast: #fdfbf5;
-  box-shadow: 0 10px 34px rgba(0,0,0,0.4), inset 0 0 0 1px rgba(0,0,0,0.06), 0 0 0 9999px rgba(3,3,4,0.74);
+  /* 딤 스프레드 제거(모달 공통 실험) — 부양 그림자만으로 분리. */
+  box-shadow: 0 12px 40px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(0,0,0,0.06);
   /* 상대 지목/일시/한마디/사진 등 폼 요소가 늘면서 기본 .scr-modal-sm(360px)이 좁게
      느껴졌다(요청: "폼 요소들 전체적으로 폭 넓히기") — 이 모달만 더 넓게. */
   max-width: 460px;
@@ -5919,7 +5924,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
    아이보리 편지지 테마 적용") — 같은 특이도(클래스 두 개)로 다시 못박는다. */
 .scr-light-theme .scr-challenge-form-modal {
   background: #fdfbf5;
-  box-shadow: 0 10px 34px rgba(0,0,0,0.4), inset 0 0 0 1px rgba(0,0,0,0.06), 0 0 0 9999px rgba(60,60,66,0.35);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.32), inset 0 0 0 1px rgba(0,0,0,0.06);
 }
 .scr-challenge-send-icon { color: #ec6ea8; }
 /* 상대 지목 드롭다운(Select)의 옵션 목록은 body에 포털링돼 이 모달의 DOM 밖으로

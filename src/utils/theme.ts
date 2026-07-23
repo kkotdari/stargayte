@@ -49,19 +49,28 @@ function nudgeToolbarResample(on: boolean): void {
     // 서랍이 더는 body를 잠그지 않으므로 토글 시점에도 문서가 스크롤 가능해졌다 —
     // 1px 왕복 스크롤로 그 트리거를 즉시 만든다. 스크롤 여지가 없는 짧은 화면 대비로
     // html에 2px 여유 높이를 한 프레임만 준다(즉시 원복, 보이지 않음).
-    const root = document.documentElement;
-    const prevHeight = root.style.height;
-    root.style.height = "calc(100% + 2px)";
-    const y = window.scrollY;
-    window.scrollTo({ top: y > 0 ? y - 1 : 1, behavior: "instant" });
-    // 같은 프레임 안에서 곧장 되돌리면 순이동이 0이라 사파리가 스크롤 자체가 없었던
-    // 것으로 합쳐 재샘플링이 불발됐다(지적 — 여전히 늦게 바뀜). 1px 이동을 한 프레임
-    // 실제로 렌더시킨 뒤에 원위치한다 — 1px이라 눈에는 안 보인다.
-    requestAnimationFrame(() => {
-      window.scrollTo({ top: y, behavior: "instant" });
-      root.style.height = prevHeight;
-    });
+    jiggleScroll();
   }));
+  // 부팅 직후엔 첫 넛지가 사파리가 자리 잡기 전에 지나가 버리는 일이 있다(지적: "다크일
+  // 때만 새로고침하면 주소줄에 화면이 안 보여" — 마운트 시 applyLightTheme의 넛지가 너무
+  // 이른 케이스). 한 박자 쉬고 한 번 더 굴려 늦게 안정된 상태에서도 재샘플링을 보장한다.
+  window.setTimeout(jiggleScroll, 700);
+}
+
+// 1px 왕복 문서 스크롤 — 사파리 툴바 색/엣지 렌더 재샘플링의 검증된 트리거. 같은 프레임
+// 안에서 곧장 되돌리면 순이동이 0이라 스크롤 자체가 없었던 것으로 합쳐 불발됐다(지적) —
+// 1px 이동을 한 프레임 실제로 렌더시킨 뒤 원위치한다(1px이라 눈에는 안 보인다). 스크롤
+// 여지가 없는 짧은 화면 대비로 html에 2px 여유 높이를 잠깐 준다.
+function jiggleScroll(): void {
+  const root = document.documentElement;
+  const prevHeight = root.style.height;
+  root.style.height = "calc(100% + 2px)";
+  const y = window.scrollY;
+  window.scrollTo({ top: y > 0 ? y - 1 : 1, behavior: "instant" });
+  requestAnimationFrame(() => {
+    window.scrollTo({ top: y, behavior: "instant" });
+    root.style.height = prevHeight;
+  });
 }
 
 function applyLightTheme(on: boolean): void {
