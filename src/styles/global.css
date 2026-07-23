@@ -5171,18 +5171,17 @@ html.scr-light-theme .scr-mobile-tab-active { color: var(--text); }
   /* 최소 높이는 화면의 1/2(요청) — 내용(프로필+운영 목록+액션)이 더 길면 그만큼
      늘어나고(높이는 내용을 따라감), 화면을 넘으면 그때만 스크롤. */
   height: auto; min-height: 50%; max-height: 100%; align-self: flex-end;
-  /* 내용이 화면을 넘으면 서랍 안에서만 스크롤 — contain으로 문서(배경)로 이어지는
-     스크롤 체이닝을 끊는다(오버레이 touch-action:none과 한 세트, body 잠금 대체). */
-  overflow-y: auto; overscroll-behavior-y: contain; touch-action: pan-y;
+  /* 내부 스크롤이 문서(배경)로 이어지는 스크롤 체이닝을 끊는다(오버레이
+     touch-action:none과 한 세트, body 잠금 대체). overflow/touch-action은 아래 기존 선언. */
+  overscroll-behavior-y: contain;
+  /* 유리 재질을 ::before 자식으로 옮기며 그 기준 박스가 된다. */
+  position: relative;
   /* 래디우스 확대(14→24→32px), 반사광은 더 은은하게(요청). */
   border-top-left-radius: 32px;
   border-top: 1px solid rgba(255,255,255,0.09);
-  /* 반투명 유리 재질 — 더 투명하게(요청: "투명도를 올려서 더 투명해 보이게") --panel의
-     알파를 60%로 낮춘 색 + 배경 블러. 블러가 있어 글자 가독성은 유지된다. */
-  /* 더 투명하게 + 블러 약화(요청) — 58%→40%, 14px→7px. */
-  background-color: color-mix(in srgb, var(--panel-solid) 40%, transparent);
-  backdrop-filter: blur(7px);
-  -webkit-backdrop-filter: blur(7px);
+  /* (반투명 유리 배경/블러는 아래 ::before 자식 레이어로 — 탭바와 같은 이유: 서랍이
+     열리면 iOS 26 사파리가 하단 영역을 콘텐츠 대신 띠로 채우는 문제(지적)가 있어,
+     background-color/backdrop-filter를 요소 자신에서 떼어 툴바/시트 오인을 피한다.) */
   /* 왼쪽 모서리는 예전의 색 광원 그라데이션(요청으로 제거) 대신, 유리 모서리에 빛이
      스치는 단순한 반사광 한 줄만 남긴다(요청: "왼쪽 모서리 광원제거하고 단순한 반사광으로"). */
   border-left: 1px solid rgba(255,255,255,0.09);
@@ -5200,6 +5199,19 @@ html.scr-light-theme .scr-mobile-tab-active { color: var(--text); }
   transform: translateX(100%);
   /* 살짝만 더 부드럽게(요청) — 열림/닫힘 모두 iOS 시트 계열의 감속 곡선. */
   transition: transform .34s cubic-bezier(0.32, 0.72, 0, 1);
+}
+/* 서랍의 유리 재질 — 요소 자신이 아니라 absolute 자식에 그린다(위 주석 참고). 서랍은
+   transform이 항상 걸려 있어 자체 스택 컨텍스트라 z-index:-1이 내용물 뒤, 서랍 밖으로는
+   안 나간다. (알려진 한계: 내용이 화면보다 길어 서랍 안이 스크롤되는 드문 경우 inset:0
+   absolute는 내용과 함께 밀린다 — 지금 서랍 내용은 화면 절반 수준이라 실사용 영향 없음.
+   음수 bottom으로 연장하면 그 자체가 스크롤 여지를 만들어 역효과라 쓰지 않는다.) */
+.scr-drawer::before {
+  content: ""; position: absolute; inset: 0; z-index: -1;
+  border-radius: inherit;
+  /* 더 투명하게 + 블러 약화(요청) — 58%→40%, 14px→7px. */
+  background-color: color-mix(in srgb, var(--panel-solid) 40%, transparent);
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
 }
 .scr-drawer-overlay.scr-drawer-open .scr-drawer { transform: translateX(0); }
 /* 라이트 테마는 흰 유리라 흰 반사광이 안 보여, 대신 아주 옅은 어두운 경계선으로 모서리를 잡는다.

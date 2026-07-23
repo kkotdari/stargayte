@@ -44,11 +44,18 @@ function nudgeToolbarResample(on: boolean): void {
   //     투명이라 눈에 보이지 않고, background-color가 없어 툴바로 오인되지도 않는다.
   document.body.style.backgroundColor = on ? VOID_COLOR.light : VOID_COLOR.dark;
   requestAnimationFrame(() => requestAnimationFrame(() => {
-    const probe = document.createElement("div");
-    probe.style.cssText =
-      "position:fixed;left:0;right:0;bottom:0;height:1px;background:transparent;pointer-events:none;";
-    document.body.appendChild(probe);
-    requestAnimationFrame(() => probe.remove());
+    // 가장자리 프로브 삽입은 효과가 없었다(지적) — 확실히 검증된 트리거는 "실제 문서
+    // 스크롤"이다(서랍을 닫는 순간=잠금 해제 스크롤 복원 때만 색이 바뀌던 증상).
+    // 서랍이 더는 body를 잠그지 않으므로 토글 시점에도 문서가 스크롤 가능해졌다 —
+    // 1px 왕복 스크롤로 그 트리거를 즉시 만든다. 스크롤 여지가 없는 짧은 화면 대비로
+    // html에 2px 여유 높이를 한 프레임만 준다(즉시 원복, 보이지 않음).
+    const root = document.documentElement;
+    const prevHeight = root.style.height;
+    root.style.height = "calc(100% + 2px)";
+    const y = window.scrollY;
+    window.scrollTo({ top: y > 0 ? y - 1 : 1, behavior: "instant" });
+    window.scrollTo({ top: y, behavior: "instant" });
+    root.style.height = prevHeight;
   }));
 }
 
