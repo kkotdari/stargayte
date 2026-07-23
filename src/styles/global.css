@@ -354,13 +354,13 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
 /* 로그인 폼(로고+카드)을 살짝 아래로(요청) — 위로 당기던 값을 줄인다. */
 /* 회원가입 버튼을 폼 밖(화면 하단)으로 뺐더니 카드가 짧아져 폼이 위로 올라가 보였다 —
    그만큼 아래로 되돌린다(요청: -1% → +2%). */
-/* 더 아래로(지적: "로고와 폼이 너무 위에 있음") — 2%→8%. */
-.scr-auth-hero { display: flex; flex-direction: column; align-items: center; width: 100%; transform: translateY(8%); }
+/* 화면 가운데쯤으로(요청 반복 조정: 2%→8%→4%). */
+.scr-auth-hero { display: flex; flex-direction: column; align-items: center; width: 100%; transform: translateY(4%); }
 /* PWA(standalone)는 .scr-auth-wrap의 상단 안전영역 패딩(env(safe-area-inset-top))이 더해져
    전체가 그만큼 더 아래로 내려가 있으므로, 일반 브라우저 탭과 같은 느낌을 주려면 여기서만
    더 위로 올려야 한다(요청: "pwa에서만 좀 올려줘"). */
 @media (display-mode: standalone) {
-  .scr-auth-hero { transform: translateY(-1%); }
+  .scr-auth-hero { transform: translateY(-5%); }
 }
 /* 로그인 화면 자체의 라이트 테마 토글 — 헤더 없이도(로그인 전) 화면 취향을 바꿀 수 있게
    화면 위쪽 한 켠에 둔다. */
@@ -381,7 +381,8 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
    margin-bottom만 줄이지 않고 그만큼을 margin-top으로 옮긴다 — 로고 위/아래를 합친
    총량(20px)은 그대로라 폼 위치는 거의 그대로고, 로고만 그 안에서 아래로 내려온다. */
 /* 로고를 폼 쪽으로 더 내려 붙인다(요청) — 아래 간격을 줄여 폼 바로 위에 붙게. */
-.scr-auth-logo { display: flex; align-items: center; justify-content: center; margin: 18px 0 2px; z-index: 1; min-height: 64px; }
+/* 로고-폼 사이를 다시 벌린다(요청) — 아래 여백 2→18px. */
+.scr-auth-logo { display: flex; align-items: center; justify-content: center; margin: 18px 0 18px; z-index: 1; min-height: 64px; }
 /* height만 고정하면 원본이 가로로 넓은 워드마크일 때 좁은 화면에서 양옆으로 넘칠 수
    있다 — max-height/max-width를 함께 두고 width/height를 auto로 둬서 비율은 유지한 채
    좁은 화면에서는 폭에 맞춰 자동으로 더 작아지게 한다. */
