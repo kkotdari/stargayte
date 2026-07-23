@@ -907,7 +907,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    오른쪽만 좁힐 필요가 없다. */
 /* overscroll-behavior:contain — 본문이 끝까지 스크롤된 뒤 제스처가 문서(뒷 페이지)로
    체이닝되는 것을 끊는다(실드의 canScrollWithin 차단과 한 세트). */
-.scr-modal-body { display: flex; flex-direction: column; gap: 14px; flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; margin: 0 -18px; padding: 0 18px; scrollbar-gutter: stable; touch-action: pan-y; overscroll-behavior: contain; }
+.scr-modal-body { display: flex; flex-direction: column; gap: 14px; flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; margin: 0 -18px; padding: 0 18px; scrollbar-gutter: stable; touch-action: pan-y; overscroll-behavior: none; }
 /* 종족 아이콘 설정 페이지 — 행 사이 간격은 이 래퍼가 담당한다. */
 .scr-race-icon-list { display: flex; flex-direction: column; gap: 14px; margin-bottom: 14px; }
 /* 라벨을 위에, 아이콘 미리보기·셀렉트·입력을 한 줄(같은 그리드 행)에 둬서 세로 정렬이
@@ -7324,8 +7324,9 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
      정렬로 안전하게 폴백한다. */
   display: flex; align-items: safe center; justify-content: center;
   padding: calc(12px + var(--safe-top)) 12px calc(12px + env(safe-area-inset-bottom, 0px));
-  /* 리바운드/배경 스크롤 전파 차단(요청: 모달류 아래로 슬라이드 닫기가 튕김으로 새지 않게). */
-  overflow-y: auto; overscroll-behavior: contain;
+  /* 리바운드(자기 고무줄)/배경 스크롤 전파 둘 다 차단 — contain은 전파만 막고 요소 자체
+     고무줄은 남아 위아래 튕김이 있었다(지적). none으로 요소 자신의 리바운드까지 없앤다. */
+  overflow-y: auto; overscroll-behavior: none;
   background: rgba(4, 6, 10, 0.62);
   -webkit-backdrop-filter: blur(7px); backdrop-filter: blur(7px);
 }

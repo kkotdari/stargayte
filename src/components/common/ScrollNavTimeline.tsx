@@ -68,7 +68,13 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
 
   const update = () => {
     const { scrollTop, clientHeight, scrollHeight } = getScrollMetrics();
-    const max = scrollHeight - clientHeight;
+    // iOS 사파리는 아래로 스크롤하면 주소창/툴바가 접히며 실제 보이는 뷰포트가 커지는데
+    // documentElement.clientHeight는 접히기 전(작은) 레이아웃 뷰포트를 반환할 때가 있어
+    // max = scrollHeight - clientHeight가 실제보다 커진다 → 페이지 끝까지 내려도
+    // scrollTop/max < 1이라 thumb이 바닥에 못 닿고 살짝 위에 머문다(지적된 문제).
+    // 접힌 상태를 반영하는 innerHeight와 더 큰 값을 써서 max를 실제 바닥에 맞춘다.
+    const vh = Math.max(clientHeight, window.innerHeight || 0);
+    const max = scrollHeight - vh;
     setScrollable(max > 40);
     setFraction(max > 0 ? Math.min(1, Math.max(0, scrollTop / max)) : 0);
     setDateLabel(currentDateLabel(max <= 0 || scrollTop >= max - 2));
@@ -105,7 +111,8 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
     const rect = track.getBoundingClientRect();
     const f = Math.min(1, Math.max(0, (clientY - rect.top) / rect.height));
     const { clientHeight, scrollHeight } = getScrollMetrics();
-    scrollRootTo({ top: f * Math.max(0, scrollHeight - clientHeight), behavior: "instant" as ScrollBehavior });
+    const vh = Math.max(clientHeight, window.innerHeight || 0);
+    scrollRootTo({ top: f * Math.max(0, scrollHeight - vh), behavior: "instant" as ScrollBehavior });
   };
 
   const onPointerDown = (e: React.PointerEvent) => {
