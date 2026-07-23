@@ -223,9 +223,13 @@ html {
      주소창과 안 맞아서, JS(useBottomViewportInset)가 visualViewport로 실측해 이 변수를 채운다.
      PWA·데스크톱·JS 미실행에선 0이라 탭바는 bottom:0. */
   --vv-bottom-inset: 0px;
-  /* 러버밴드는 이제 CSS로 막는다 — Safari 16+가 overscroll-behavior를 지원한다(조사).
+  /* overscroll-behavior:none(러버밴드 차단)은 뺐다 — iOS 26은 접힌 주소창 알약 뒤/툴바
+     가장자리 영역을 '오버스크롤 렌더링' 경로로 그리는데(조사: zulip #37367 — 내비바 위로
+     오버스크롤이 비쳐 보임), 오버스크롤을 CSS로 꺼두면 그 영역에 콘텐츠 대신 루트 배경만
+     칠해져 다크에서 검은 띠가 됐다(지적). 러버밴드는 되살아나지만 html/body 배경이 테마색과
+     일치해 예전 같은 이질감(검은 여백)은 없다.
      scroll-behavior/scrollbar-gutter는 예전 #scroll-root에서 문서 스크롤 주체인 여기로. */
-  overscroll-behavior-y: none; scroll-behavior: smooth; scrollbar-gutter: stable;
+  scroll-behavior: smooth; scrollbar-gutter: stable;
 }
 /* body — 문서 스크롤 전환(위 html 주석)으로 position:fixed 봉인을 푼다. 예전 고정의
    이유였던 러버밴드는 Safari 16+의 overscroll-behavior:none(html/body 양쪽)으로 막고,
@@ -233,7 +237,6 @@ html {
 body {
   margin: 0;
   min-height: 100%;
-  overscroll-behavior-y: none;
   background: var(--void);
   color: var(--text);
   font-family: 'Pretendard Variable', Pretendard, 'Noto Sans KR', sans-serif;
@@ -822,6 +825,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    끈다 — ::before(z:-1)가 요소 자신의 배경보다 위에 그려져 그 배경을 덮어버리기 때문.
    이들은 배경이 요소에 있어 크롬 펼침 회피 대상에서도 빠진다(운영·특수 화면이라 감수). */
 .scr-challenge-form-modal::before,
+.scr-challenge-inbox-modal::before,
 .scr-replay-scan-modal::before,
 .scr-admin-panel-modal::before,
 .scr-admin-panel-modal-locked::before { content: none; }
@@ -4395,7 +4399,11 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    쇠테두리·홈 그림자가 통째로 border:none/기본 그림자에 덮여 사라졌다(실제로 지적받은
    문제 — "모바일(=라이트 테마)에서 쇠테두리가 안 나옴"). */
 .scr-modal.scr-admin-panel-modal {
-  position: relative;
+  /* 오버레이(flex 센터) 시절엔 relative였지만, 이제 모달은 스스로 fixed로 화면 중앙에
+     떠야 한다(오버레이는 display:contents) — relative로 두면 문서 흐름에 박혀 화면 밖으로
+     사라진다(지적: "제어판이 아예 안 보여"). fixed도 ::before/자식 absolute의 기준 박스
+     역할은 동일하다. */
+  position: fixed;
   /* 기본 모달의 반사광 느낌 대신, 숨겨진 기능다운 낡은 금속 액자 느낌을 준다 —
      border-image로 비스듬한 명암 그라데이션을 둘러 우툴두툴한 금속처럼 보이게 하고,
      안쪽에 어두운 홈(inset shadow)을 하나 더 줘서 판이 파여 들어간 깊이감을 더한다.
@@ -6857,7 +6865,8 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
    원칙으로 앱 테마와 무관하게 항상 아이보리 편지지 톤(요청: "모달창 편지지 테마
    적용(다크,라이트 모두)"). */
 .scr-challenge-inbox-modal {
-  position: relative; align-items: center; text-align: center;
+  /* 제어판과 같은 이유로 relative → fixed(기본 모달 센터링 유지). */
+  position: fixed; align-items: center; text-align: center;
   background: #fdfbf5;
   /* 도전장 보내기 모달과 같은 폭으로 넓힌다(요청: "폼요소들 폭 넓혀도 도전장 보내기
      처럼"). */
