@@ -65,7 +65,15 @@
          (theme.ts의 applyThemeColor와 정확히 같은 다크/라이트 값을 쓴다). -->
     <script>
       try {
-        if (localStorage.getItem("scr-light-theme") === "1") {
+        /* 여름 시즌 기본 테마 = 라이트(요청: "시원한 라이트테마를 기본으로, 쿠키 있어도
+           한 번은 강제 변경"). 마이그레이션 플래그가 없으면 저장된 선택이 있어도 라이트로
+           한 번 덮어쓴다 — 그 뒤로는 사용자가 다시 고른 값이 평소처럼 유지된다. 저장값이
+           아예 없을 때의 기본도 라이트("0"이 아닌 한 라이트, theme.ts와 동일 규칙). */
+        if (!localStorage.getItem("scr-theme-default-light-v1")) {
+          localStorage.setItem("scr-light-theme", "1");
+          localStorage.setItem("scr-theme-default-light-v1", "1");
+        }
+        if (localStorage.getItem("scr-light-theme") !== "0") {
           document.documentElement.classList.add("scr-light-theme");
           document.querySelector('meta[name="theme-color"]')?.setAttribute("content", "#ffffff");
           document.querySelector('meta[name="color-scheme"]')?.setAttribute("content", "light");
