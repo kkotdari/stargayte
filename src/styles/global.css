@@ -185,8 +185,8 @@
      버튼 위치/모달 하단 여백 등 탭바와 겹치면 안 되는 모든 곳이 이 값 하나를 공유한다.
      위아래 패딩 확대(10→12px)와 함께 높이도 키워(요청: "패딩만 늘리면 안 되고 탭바
      자체 높이도") 탭 콘텐츠 몫(높이-패딩)이 이전과 같게 유지된다. */
-  /* 다시 66px로 원복(요청) — 상하 패딩도 함께 늘려(15px) 콘텐츠 몫 36px 유지. */
-  --mobile-footer-h: 66px;
+  /* 66→69px(요청: "높이 3 늘리고"). */
+  --mobile-footer-h: 69px;
 }
 
 * { box-sizing: border-box; }
@@ -796,9 +796,10 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
      접었던 크롬을 도로 펼친다. 지적: "모달창 팝업 등에서 위아래 화면 안나옴 여전").
      딤(9999px 스프레드)과 바깥 그림자는 요소에 남긴다 — 자식으로 옮기면 overflow:hidden에
      잘려 아예 안 그려진다(요소 자신의 그림자는 자기 overflow에 안 잘린다). */
-  box-shadow:
-    0 8px 24px rgba(0,0,0,0.28),
-    0 0 0 9999px rgba(3,3,4,0.74);
+  /* 딤(9999px 스프레드) 제거 실험 — 화면 전체를 칠하는 이 그림자가 크롬 재펼침의
+     마지막 용의자다(유리 ::before 분리로도 여전해서, 지적: "진짜 딤이 문제인가").
+     구분감은 더 크고 진한 부양 그림자로 보완한다. 딤이 원인이 아니면 되살릴 것. */
+  box-shadow: 0 12px 40px rgba(0,0,0,0.55), 0 4px 14px rgba(0,0,0,0.35);
 }
 /* 유리 재질(반투명 배경 + 블러 + 위쪽 반사광) — transform이 있어 자체 스택 컨텍스트라
    z-index:-1이 내용물 뒤, 모달 밖으로는 안 나간다. */
@@ -823,9 +824,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-admin-panel-modal-locked::before { content: none; }
 .scr-light-theme .scr-modal {
   border: none;
-  box-shadow:
-    0 4px 16px rgba(0,0,0,0.12),
-    0 0 0 9999px rgba(60,60,66,0.35);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.28), 0 4px 14px rgba(0,0,0,0.16);
 }
 .scr-light-theme .scr-modal::before {
   background: rgba(255,255,255,0.72);
@@ -4937,12 +4936,12 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   /* 바닥 띄우기 — 주소창이 가리는 실측 높이(--vv-bottom-inset) 또는 홈 인디케이터
      안전영역(PWA/데스크톱은 vv-inset이 0) 중 큰 쪽 위에 10px 간격. max로 고르므로
      둘이 겹쳐 이중으로 뜨는 일은 없다. */
-  /* 살짝 더 아래로(요청) — 바닥 간격 10→6px. */
-  bottom: max(calc(var(--vv-bottom-inset, 0px) + 6px), calc(env(safe-area-inset-bottom, 0px) + 6px));
+  /* 살짝 더 아래로(요청 두 차례) — 바닥 간격 10→6→4px. */
+  bottom: max(calc(var(--vv-bottom-inset, 0px) + 4px), calc(env(safe-area-inset-bottom, 0px) + 4px));
   /* 섬은 안전영역을 품지 않으므로 높이는 콘텐츠 몫만. */
   height: var(--mobile-footer-h);
-  /* 상하 패딩 15→14px(요청) — 좌우는 4px 유지. */
-  padding: 14px 4px;
+  /* 상하 패딩 14→16px(요청: +2) — 좌우는 4px 유지. */
+  padding: 16px 4px;
   /* 완전 알약(26px≈높이 절반) 대신 둥근 네모 패널로(요청 — 참고 사진의 패널 곡률처럼).
      16px은 좀 각져 보여 한 단계 더 둥글게(요청: "곡률 좀 더 둥글게"). */
   border-radius: 20px;
