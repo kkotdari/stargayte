@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { Info } from "lucide-react";
 import { attachPopover } from "../../utils/popover";
 import { cx } from "../../utils/format";
+import { swallowNextClick } from "../../utils/bodyScrollLock";
 
 interface ReplayLocationHintProps {
   className?: string;
@@ -24,14 +25,19 @@ export default function ReplayLocationHint({ className }: ReplayLocationHintProp
 
   useEffect(() => {
     if (!open) return;
-    const onDoc = (e: MouseEvent) => {
+    // 바깥 탭은 "닫기" 전용(지적: 열린 상태에서 다른 곳이 같이 클릭됨) — pointerdown
+    // 캡처에서 닫으며 삼키고, 뒤따르는 click은 swallowNextClick이 마저 삼킨다.
+    const onDoc = (e: PointerEvent) => {
       const t = e.target as Node;
       if (anchorRef.current?.contains(t)) return;
       if (popRef.current?.contains(t)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      swallowNextClick();
       setOpen(false);
     };
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
+    document.addEventListener("pointerdown", onDoc, true);
+    return () => document.removeEventListener("pointerdown", onDoc, true);
   }, [open]);
 
   // 포커스가 트리거/팝오버 바깥의 다른 요소로 이동하면(탭 이동 등 클릭이 아닌 경우 포함)

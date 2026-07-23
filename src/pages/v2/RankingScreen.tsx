@@ -24,6 +24,7 @@ import {
 } from "../../utils/date";
 import { attachPopover } from "../../utils/popover";
 import { cx } from "../../utils/format";
+import { swallowNextClick } from "../../utils/bodyScrollLock";
 import { useAppStore } from "../../store/appStore";
 import type { BaseRace, Member } from "../../types";
 
@@ -248,17 +249,29 @@ export default function RankingScreenV2() {
   }, [methodTipOpen]);
   useEffect(() => {
     if (!methodTipOpen) return;
+    // 바깥 탭은 "툴팁 닫기" 전용(지적: 열린 상태에서 다른 곳이 같이 클릭됨) —
+    // pointerdown 캡처에서 닫으며 그 제스처를 삼키고, 리스너가 내려간 뒤 도착하는
+    // click은 swallowNextClick이 마저 삼킨다(InfoTip과 같은 패턴).
     const closeIfOutside = (e: Event) => {
+      const t = e.target as Node;
+      if (methodAnchorRef.current?.contains(t)) return;
+      if (methodTipRef.current?.contains(t)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      swallowNextClick();
+      setMethodTipOpen(false);
+    };
+    const closeOnFocus = (e: Event) => {
       const t = e.target as Node;
       if (methodAnchorRef.current?.contains(t)) return;
       if (methodTipRef.current?.contains(t)) return;
       setMethodTipOpen(false);
     };
-    document.addEventListener("mousedown", closeIfOutside);
-    document.addEventListener("focusin", closeIfOutside);
+    document.addEventListener("pointerdown", closeIfOutside, true);
+    document.addEventListener("focusin", closeOnFocus);
     return () => {
-      document.removeEventListener("mousedown", closeIfOutside);
-      document.removeEventListener("focusin", closeIfOutside);
+      document.removeEventListener("pointerdown", closeIfOutside, true);
+      document.removeEventListener("focusin", closeOnFocus);
     };
   }, [methodTipOpen]);
 
