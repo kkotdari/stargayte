@@ -2352,6 +2352,13 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 .scr-rank-screen-v2 { position: relative; }
 .scr-rank-screen-v2::before {
   content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  /* inset:0(bottom:0)만으로는 iOS 사파리에서 주소창이 접힐 때 하단에 배경이 못 미쳐
+     빈 띠가 생겼다(.scr-app이 min-height:100dvh로 같은 문제를 잡은 것과 동일한 원인) —
+     큰 뷰포트(툴바 숨김 높이)까지 항상 채우도록 height를 lvh로 못박아, 주소창/탭바
+     뒤까지 위아래로 꽉 채운다. 폭은 inset:0(left/right:0) 그대로라 데스크톱 스크롤바
+     너비만큼 넘치지 않는다. background-size:cover라 기기 화면비율에 맞춰 크롭된다. */
+  height: 100vh;
+  height: 100lvh;
   background-image:
     linear-gradient(180deg, rgba(3,3,6,0.78) 0%, rgba(3,3,6,0.67) 45%, rgba(3,3,6,0.83) 100%),
     url("/images/bg/ranking.jpg");
