@@ -602,39 +602,31 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
 @media (hover: hover) {
   .scr-btn-primary:hover { box-shadow: var(--lit-pill-glow); }
 }
-/* 라이트 프라이머리솔리드 — 탭바 액티브 알약과 같은 테마(요청): 하늘색 반투명 채움 +
-   윤곽을 따라 퍼지는 글로우. 글자는 라이트 액티브 탭과 같은 어두운 색. */
-.scr-light-theme .scr-btn-primary-solid {
+/* 라이트 프라이머리 — 검정 버튼 완전 제거(요청: "라이트테마 프라이머리 버튼 색이
+   라이팅색이어야 하는데 검정임. 검정 버튼은 완전 제거!"). 모달 안이든 밖이든, -solid
+   클래스가 있든 없든 전부 라이팅 알약(하늘색 반투명 채움 + 윤곽 글로우 + 어두운 글자)
+   한 벌로 통일한다 — 예전의 모달 전용 검정 반전 규칙도 함께 삭제. */
+.scr-light-theme .scr-btn-primary {
   background: var(--lit-pill-bg); border-color: transparent; color: var(--text);
   box-shadow: var(--lit-pill-glow);
 }
 /* 평소에도 글로우를 켜둔 버튼이라 호버는 같은 빛을 한 단계 세게. */
 @media (hover: hover) {
-  .scr-light-theme .scr-btn-primary-solid:hover {
+  .scr-light-theme .scr-btn-primary:hover {
     box-shadow: 0 0 12px rgba(var(--lit-rgb), 0.5), 0 0 28px rgba(var(--lit-rgb), 0.26);
   }
 }
-/* 세컨더리 버튼 — 예전 프라이머리솔리드의 모습을 그대로 물려받는다(요청): 다크는 기본
-   흰 프라이머리와 동일, 라이트는 그림자 없는 검정 솔리드. */
+/* 세컨더리 버튼 — 다크는 기본 흰 프라이머리와 동일, 라이트는 검정 솔리드 대신(검정 버튼
+   전면 제거 — 요청) 프라이머리보다 한 단계 약한 라이팅 채움. */
 .scr-btn-secondary { background: #fff; border-color: #fff; color: #10151a; text-shadow: none; }
 @media (hover: hover) {
   .scr-btn-secondary:hover { box-shadow: var(--lit-pill-glow); }
 }
 .scr-light-theme .scr-btn-secondary {
-  background: #10151a; border-color: #10151a; color: #fff; box-shadow: none;
+  background: var(--lit-hover-bg); border-color: transparent; color: var(--text); box-shadow: none;
 }
 @media (hover: hover) {
   .scr-light-theme .scr-btn-secondary:hover { box-shadow: var(--lit-pill-glow); }
-}
-/* 모달/팝업 안의 프라이머리 버튼(저장/확인 등)도 위와 같은 원칙 — 다크 테마는 기본값
-   그대로 흰색, 라이트 테마는 흰 배경 위에서 존재감이 흐린 흰 버튼 대신 검정으로
-   뒤집는다. 화면 상단 버튼처럼 개별 클래스(-solid)를 안 붙여도 모달 안이면 전부
-   적용되게 .scr-modal 후손 기준으로 건다. */
-.scr-light-theme .scr-modal .scr-btn-primary {
-  background: #10151a; border-color: #10151a; color: #fff; box-shadow: none;
-}
-@media (hover: hover) {
-  .scr-light-theme .scr-modal .scr-btn-primary:hover { box-shadow: var(--lit-pill-glow); }
 }
 /* 로그인 버튼 — 가로 폭은 절반으로 줄여 가운데 두고, 세로는 기본 필드 높이의 80%로
    낮춰서 좀 더 아담하게. 더 둥글게(필 형태), 위 체크박스와 간격을 더 둬서 아래쪽에
@@ -6840,12 +6832,14 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
      비어져 보인다 — 행 반전 배경이 이미 눌림 표시를 하므로 끈다. */
   -webkit-tap-highlight-color: transparent;
 }
-/* 클릭(반전) 배경이 메뉴 영역을 벗어나 보이던 문제(지적) — iOS 사파리는 스크롤 컨테이너
+/* 클릭 배경이 메뉴 영역을 벗어나 보이던 문제(지적) — iOS 사파리는 스크롤 컨테이너
    (overflow-y:auto)의 자식을 컨테이너의 border-radius로 잘라주지 않아, 첫/끝 행의 각진
-   반전 배경이 드롭다운의 둥근 모서리(10px) 밖으로 튀어나왔다. 행 자신에게 컨테이너
-   radius(10px)에서 패딩(2px)을 뺀 radius를 줘서 모서리를 스스로 따라가게 한다. */
-.scr-menu-pop-drop .scr-menu-pop-opt:first-child { border-radius: 8px 8px 0 0; }
-.scr-menu-pop-drop .scr-menu-pop-opt:last-child { border-radius: 0 0 8px 8px; }
+   배경이 드롭다운의 둥근 모서리 밖으로 튀어나왔다. 행 자신에게 컨테이너와 같은 radius를
+   줘서 모서리를 스스로 따라가게 한다 — 컨테이너(위 4px)보다 크게 주면 반대로 행 모서리가
+   더 깎여 모서리에 빈틈이 보인다(지적: "프로필 드롭다운 배경 곡률과 내부 요소 곡률이
+   달라 빈공간") — 반드시 컨테이너 radius와 같은 값으로. */
+.scr-menu-pop-drop .scr-menu-pop-opt:first-child { border-radius: 4px 4px 0 0; }
+.scr-menu-pop-drop .scr-menu-pop-opt:last-child { border-radius: 0 0 4px 4px; }
 /* hover = 액티브와 동일한 라이팅(요청: "호버시는 액티브와 동일한 효과") — 빛 채움 +
    얇은 빛 테 + 안쪽 글로우. 행이 스크롤 컨테이너에 잘리므로 바깥 글로우 대신 inset으로
    빛을 담는다. 액티브와의 차이는 볼드(굵기)뿐. */
