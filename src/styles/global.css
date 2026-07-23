@@ -598,10 +598,16 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
    라이트 테마에선 그 변수가 흰색으로 뒤집혀 흰 배경에 흰 글자가 될 수 있다)을 쓴다. */
 .scr-btn-primary {
   background: #fff; border-color: #fff; color: #10151a; text-shadow: none;
+  /* 라이트와 달리 다크는 글로우가 호버에만 걸려 있어서, 평소(특히 터치 기기)엔 빛이 아예
+     없었다(지적: "다크테마에선 버튼에 글로우효과가 없네") — 라이트와 똑같이 평소에도
+     알약 글로우를 켠다. */
+  box-shadow: var(--lit-pill-glow);
 }
-/* 솔리드 채움 버튼의 호버는 밝기 조절 대신 라이팅 — 채움은 그대로 두고 알약 글로우만 켠다. */
+/* 평소에도 글로우가 켜져 있으므로 호버는 같은 빛을 한 단계 세게(라이트와 동일한 패턴). */
 @media (hover: hover) {
-  .scr-btn-primary:hover { box-shadow: var(--lit-pill-glow); }
+  .scr-btn-primary:hover {
+    box-shadow: 0 0 12px rgba(var(--lit-rgb), 0.5), 0 0 28px rgba(var(--lit-rgb), 0.26);
+  }
 }
 /* 라이트 프라이머리 — 검정 버튼 완전 제거(요청: "라이트테마 프라이머리 버튼 색이
    라이팅색이어야 하는데 검정임. 검정 버튼은 완전 제거!"). 모달 안이든 밖이든, -solid
@@ -2624,16 +2630,19 @@ html.scr-page-bg:not(.scr-light-theme) .scr-rank-screen-v2::before {
      끌어올린다 — 반대로 알약을 옆 항목(월선택) 높이로 낮췄더니 "기간 높이를 줄일게
      아니라 라디오 높이를 늘렸어야지"라는 피드백. */
   height: 36px; box-sizing: border-box;
-  /* 라이팅 테마(요청) — 트랙도 탭바 패널처럼 블러 유리 + 얇은 림 반사. 인디케이터
-     글로우가 트랙(알약) 모양을 벗어나 사각형으로 번져 보이던 문제(지적)는 여기서
-     잘라낸다(overflow) — 탭바도 패널 overflow:hidden이 글로우를 담아두는 같은 구조다. */
-  overflow: hidden;
+  /* 라이팅 테마(요청) — 트랙은 탭바 패널처럼 블러 유리.
+     예전엔 overflow:hidden으로 인디케이터 글로우를 트랙 안에 가둬뒀는데, 이제는 알약이
+     버튼처럼 주변까지 빛나길 원해서(요청) 그 클리핑을 걷어낸다. 글로우는 인디케이터
+     자신의 알약 radius(999px)를 따르는 box-shadow라 트랙 밖으로 나가도 알약 모양으로
+     번진다.
+     패널 "두께감"을 주던 림/반사 인셋은 아주 옅고 얇게만 남긴다(요청: 지우거나 아주 옅고
+     얇게) — 빛의 주인공은 알약 글로우 쪽이 되게. */
   -webkit-backdrop-filter: blur(8px) saturate(1.15);
   backdrop-filter: blur(8px) saturate(1.15);
-  box-shadow: inset 0 0 0 0.5px rgba(255,255,255,0.12), inset 0 1px 1px rgba(255,255,255,0.14);
+  box-shadow: inset 0 0 0 0.5px rgba(255,255,255,0.06);
 }
 .scr-light-theme .scr-pill-tabs {
-  box-shadow: inset 0 0 0 0.5px rgba(255,255,255,0.55), inset 0 1px 1px rgba(255,255,255,0.7), inset 0 -1px 1px rgba(0,0,0,0.06);
+  box-shadow: inset 0 0 0 0.5px rgba(0,0,0,0.05);
 }
 /* 필터창 배경/라벨/비활성 글자 등은 위에서 라이트 테마 톤으로 통일했지만, 알약탭의
    "버튼" 자체(움직이는 인디케이터+활성 글자)만 원래 다크 테마 색으로 되돌린다(요청:
