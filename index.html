@@ -64,11 +64,6 @@
           document.documentElement.classList.add("scr-light-theme");
           document.querySelector('meta[name="theme-color"]')?.setAttribute("content", "#ffffff");
           document.querySelector('meta[name="color-scheme"]')?.setAttribute("content", "light");
-        } else {
-          /* 다크 실험(theme.ts applyThemeColor와 동일): 어두운 theme-color가 주소줄 알약
-             뒤 불투명 백킹의 원인으로 의심돼, 다크에선 메타를 제거해 페이지 샘플링으로
-             폴백시킨다(색은 배경 #060607이라 거의 동일). */
-          document.querySelector('meta[name="theme-color"]')?.remove();
         }
       } catch (e) {}
 
