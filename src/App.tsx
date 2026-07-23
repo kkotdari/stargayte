@@ -8,6 +8,7 @@ import { api } from "./api/client";
 import { versionNumber } from "./utils/appVersion";
 import { useRestoreScrollOnKeyboardClose } from "./hooks/useRestoreScrollOnKeyboardClose";
 import { useBottomViewportInset } from "./hooks/useBottomViewportInset";
+import { useModalDragDismiss } from "./hooks/useModalDragDismiss";
 import { scrollRootTo } from "./utils/scrollRoot";
 import { resampleSafariChrome } from "./utils/theme";
 import { CHALLENGE_MIN_VERSION, homeScreenFor } from "./constants/menuVersions";
@@ -58,6 +59,9 @@ function shareTargetFromUrl(): ShareTarget | null {
 }
 
 export default function App() {
+  // 모바일 공통 "아래로 슬라이드해서 닫기"(요청) — 모달/상성관계/제어판/인박스 등 모달류에
+  // 문서 레벨 위임 핸들러 하나로 공통 적용한다. 조건부 return보다 위에서 항상 활성화한다.
+  useModalDragDismiss();
   const user = useAppStore((s) => s.user);
   const booting = useAppStore((s) => s.booting);
   const restoringSession = useAppStore((s) => s.restoringSession);

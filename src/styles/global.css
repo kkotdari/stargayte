@@ -7265,7 +7265,8 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
      정렬로 안전하게 폴백한다. */
   display: flex; align-items: safe center; justify-content: center;
   padding: calc(12px + var(--safe-top)) 12px calc(12px + env(safe-area-inset-bottom, 0px));
-  overflow-y: auto;
+  /* 리바운드/배경 스크롤 전파 차단(요청: 모달류 아래로 슬라이드 닫기가 튕김으로 새지 않게). */
+  overflow-y: auto; overscroll-behavior: contain;
   background: rgba(4, 6, 10, 0.62);
   -webkit-backdrop-filter: blur(7px); backdrop-filter: blur(7px);
 }
