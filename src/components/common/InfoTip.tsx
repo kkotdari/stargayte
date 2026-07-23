@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Info } from "lucide-react";
+import { swallowNextClick } from "../../utils/bodyScrollLock";
 
 // 작은 정보 아이콘(ⓘ) — 탭/클릭하면 설명 말풍선을 띄운다. 통계표 컬럼 헤더처럼 가로
 // 스크롤·sticky가 걸린 좁은 칸 안에서도 안 잘리게, 말풍선은 body로 포털해서 fixed 좌표로
@@ -30,13 +31,23 @@ export default function InfoTip({ text, label }: { text: string; label?: string 
 
   useEffect(() => {
     if (!open) return;
+    // 바깥 탭은 "툴팁 닫기" 전용(지적: 주변부 터치가 배경 요소를 활성화하면 안 됨) —
+    // pointerdown 캡처에서 닫으면서 그 제스처를 삼키고, 리스너가 내려간 뒤 도착하는
+    // click은 swallowNextClick이 마저 삼킨다. 아이콘/말풍선 안은 그대로 통과.
+    const closeIfOutside = (e: PointerEvent) => {
+      const t = e.target as Node;
+      if (ref.current?.contains(t)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      swallowNextClick();
+      setPos(null);
+    };
     const close = () => setPos(null);
-    // 아이콘 자체 클릭은 stopPropagation로 여기 안 닿으므로, 바깥 클릭이면 닫힌다.
-    document.addEventListener("click", close);
+    document.addEventListener("pointerdown", closeIfOutside, true);
     window.addEventListener("scroll", close, true);
     window.addEventListener("resize", close);
     return () => {
-      document.removeEventListener("click", close);
+      document.removeEventListener("pointerdown", closeIfOutside, true);
       window.removeEventListener("scroll", close, true);
       window.removeEventListener("resize", close);
     };

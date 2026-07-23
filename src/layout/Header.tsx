@@ -10,6 +10,7 @@ import { cx } from "../utils/format";
 import { attachPopover } from "../utils/popover";
 import { useIsNarrow } from "../utils/useIsNarrow";
 import { useHideOnScrollDown } from "../hooks/useHideOnScrollDown";
+import { swallowNextClick } from "../utils/bodyScrollLock";
 import { useKeyboardInset } from "../hooks/useKeyboardInset";
 import { useAppStore } from "../store/appStore";
 import { isAdminRole } from "../constants/roles";
@@ -144,20 +145,29 @@ export default function Header({
   // (2) 배경 스크롤 차단 — 패널 밖 touchmove만 논패시브 preventDefault.
   useEffect(() => {
     if (!drawerRendered) return;
+    // 바깥 탭은 "서랍 닫기" 전용이다(지적: 주변부 터치가 배경 요소를 활성화하면 안 됨) —
+    // pointerdown을 삼키고, 서랍이 닫히며 이 리스너들이 내려간 뒤 도착하는 click까지
+    // swallowNextClick으로 마저 삼킨다. touchstart도 막아 배경의 :active/터치 하이라이트
+    // 시각 반응 자체를 없앤다.
     const closeIfOutside = (e: PointerEvent) => {
-      if (Date.now() - drawerOpenedAtRef.current < 450) return;
       if (drawerPanelRef.current?.contains(e.target as Node)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      swallowNextClick();
+      if (Date.now() - drawerOpenedAtRef.current < 450) return;
       setMenuOpen(false);
     };
-    const blockScroll = (e: TouchEvent) => {
+    const blockTouch = (e: TouchEvent) => {
       if (drawerPanelRef.current?.contains(e.target as Node)) return;
       e.preventDefault();
     };
     document.addEventListener("pointerdown", closeIfOutside, true);
-    document.addEventListener("touchmove", blockScroll, { passive: false });
+    document.addEventListener("touchstart", blockTouch, { passive: false, capture: true });
+    document.addEventListener("touchmove", blockTouch, { passive: false });
     return () => {
       document.removeEventListener("pointerdown", closeIfOutside, true);
-      document.removeEventListener("touchmove", blockScroll);
+      document.removeEventListener("touchstart", blockTouch, { capture: true } as EventListenerOptions);
+      document.removeEventListener("touchmove", blockTouch);
     };
   }, [drawerRendered]);
 

@@ -26,6 +26,9 @@ function applyThemeColor(on: boolean): void {
   meta.name = "theme-color";
   meta.content = on ? VOID_COLOR.light : VOID_COLOR.dark;
   document.head.appendChild(meta);
+  // color-scheme 메타도 함께 — 다크 페이지 선언(index.html)이 토글 후에도 실제 테마와
+  // 일치해야 사파리가 크롬 합성(알약 뒤 콘텐츠)을 올바른 스킴으로 유지한다.
+  document.querySelector('meta[name="color-scheme"]')?.setAttribute("content", on ? "light" : "dark");
 }
 
 // iOS 26 사파리는 툴바(주소창/내비바) 색을 theme-color 메타보다 "페이지 실제 픽셀 샘플링"

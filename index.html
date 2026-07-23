@@ -35,6 +35,11 @@
          노출된다(탭바가 느리게 제자리를 잡는 것처럼 보이던 문제의 근본 원인 — 스플래시가
          있는 다른 앱들은 이 정착 과정을 가려준다). void 배경색과 맞춘다. -->
     <meta name="theme-color" content="#060607" />
+    <!-- 루트 color-scheme을 CSS(번들)보다 먼저 선언한다 — CSS 로드 전 첫 프레임에 사파리가
+         "라이트 페이지"로 판정해 버리면 다크 테마에서 위아래에 불투명 백킹(검은 띠)을 깐
+         채로 굳는 레이스가 있었다(간헐적 잘림의 원인). 라이트 테마 저장 시 아래 부트
+         스크립트가 light로 바꾼다(theme.ts가 토글 시에도 동기화). -->
+    <meta name="color-scheme" content="dark" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" href="/favicon.png">
     <!-- 홈 화면 아이콘 — 파비콘(favicon.png, 128x128)을 180x180으로 키운 버전. 원본에
@@ -58,6 +63,7 @@
         if (localStorage.getItem("scr-light-theme") === "1") {
           document.documentElement.classList.add("scr-light-theme");
           document.querySelector('meta[name="theme-color"]')?.setAttribute("content", "#ffffff");
+          document.querySelector('meta[name="color-scheme"]')?.setAttribute("content", "light");
         }
       } catch (e) {}
 

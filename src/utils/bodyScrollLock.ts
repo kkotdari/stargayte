@@ -28,10 +28,26 @@ function isShieldedTarget(t: EventTarget | null): boolean {
 function onScrollIntent(e: Event) {
   if (isShieldedTarget(e.target)) e.preventDefault();
 }
+// "바깥 탭 → 창 닫힘 → 실드 해제 → 뒤따라온 click이 배경 요소에 명중"의 구멍(지적:
+// "주변부 터치 시 활성화된 창이 닫히는 용도로만 쓰여야 함") — 닫히기 직전에 다음 click
+// 한 번을 문서 캡처에서 삼키는 일회용 가드를 심는다. 실드가 이미 내려간 뒤에 도착하는
+// click까지 책임진다. 600ms 안에 click이 안 오면(드래그 등) 스스로 걷힌다.
+export function swallowNextClick(): void {
+  const swallow = (e: Event) => { e.preventDefault(); e.stopPropagation(); cleanup(); };
+  const cleanup = () => { document.removeEventListener("click", swallow, true); window.clearTimeout(timer); };
+  document.addEventListener("click", swallow, true);
+  const timer = window.setTimeout(cleanup, 600);
+}
+// touchstart까지 막아야 배경 요소의 :active/터치 하이라이트(눌린 시각 효과)가 아예 안
+// 생긴다 — pointerdown/click 차단만으로는 iOS가 시각 반응을 먼저 그려버린다.
+function onTouchStart(e: Event) {
+  if (isShieldedTarget(e.target)) e.preventDefault();
+}
 function onPointerDown(e: Event) {
   if (!isShieldedTarget(e.target)) return;
   e.preventDefault();
   e.stopPropagation();
+  swallowNextClick();
   outsideStack[outsideStack.length - 1]?.onOutside?.();
 }
 function onClick(e: Event) {
@@ -44,6 +60,7 @@ function lockBodyScroll(onOutside?: () => void): () => void {
   if (lockCount === 0) {
     document.addEventListener("touchmove", onScrollIntent, { passive: false, capture: true });
     document.addEventListener("wheel", onScrollIntent, { passive: false, capture: true });
+    document.addEventListener("touchstart", onTouchStart, { passive: false, capture: true });
     document.addEventListener("pointerdown", onPointerDown, true);
     document.addEventListener("click", onClick, true);
   }
@@ -57,6 +74,7 @@ function lockBodyScroll(onOutside?: () => void): () => void {
     if (lockCount === 0) {
       document.removeEventListener("touchmove", onScrollIntent, { capture: true } as EventListenerOptions);
       document.removeEventListener("wheel", onScrollIntent, { capture: true } as EventListenerOptions);
+      document.removeEventListener("touchstart", onTouchStart, { capture: true } as EventListenerOptions);
       document.removeEventListener("pointerdown", onPointerDown, true);
       document.removeEventListener("click", onClick, true);
     }
