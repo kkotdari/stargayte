@@ -1,10 +1,13 @@
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Pencil, MessageSquarePlus } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
 import { Spinner } from "../../components/common/Feedback";
 import OptionalDateTimeFields from "../../components/common/OptionalDateTimeFields";
 import InlineCollapse from "../../components/common/InlineCollapse";
+import KakaoShareButton from "../../components/common/KakaoShareButton";
 import ChallengeFormModal from "../../modals/ChallengeFormModal";
+import type { KakaoShareContent } from "../../utils/kakaoShare";
 // "보고싶은 너 나와!" 코너는 지금 숨김(요청) — 다시 켤 때 import와 렌더 주석을 함께 해제한다.
 // import MatchRequestCorner from "./MatchRequestCorner";
 import ScrollNavTimeline from "../../components/common/ScrollNavTimeline";
@@ -13,7 +16,7 @@ import { api } from "../../api/client";
 import { isAdminRole } from "../../constants/roles";
 import { cx } from "../../utils/format";
 import {
-  challengeDateGroupLabel, challengeTimeLabel, formatRelativeSchedule, isToday, pad,
+  challengeDateGroupLabel, challengeTimeLabel, formatChallengeSchedule, formatRelativeSchedule, isToday, pad,
   DATE_INPUT_MIN, DATE_INPUT_MAX,
 } from "../../utils/date";
 import { getScrollMetrics, getScrollRoot } from "../../utils/scrollRoot";
@@ -171,7 +174,14 @@ interface ChallengeCardProps {
 
 function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onResponded }: ChallengeCardProps) {
   const memberOf = useAppStore((s) => s.memberOf);
+  const user = useAppStore((s) => s.user);
   const [busy, setBusy] = useState(false);
+  // 카드에서 수락/거절/리벤지 신청을 하면, 인박스와 똑같이 확인창(+카카오 공유)을 띄운다
+  // (요청). 이 창을 닫을 때 비로소 onResponded로 목록을 갱신한다 — 리벤지는 새 도전장으로
+  // 카드가 교체(언마운트)되므로, 갱신을 확인창 닫는 시점까지 미뤄야 창이 사라지지 않는다.
+  const [sharePrompt, setSharePrompt] = useState<
+    { kind: "accepted" | "rejected" | "revenge"; updated: Challenge } | null
+  >(null);
   const [err, setErr] = useState("");
   const myTarget = challenge.targets.find((t) => t.memberId === myId);
   const isCreator = challenge.createdBy.id === myId;
@@ -268,7 +278,8 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
     setBusy(true);
     try {
       const updated = await api.respondToChallenge(challenge.id, response, undefined, respondMessage.trim());
-      onResponded(updated);
+      // 목록 갱신(onResponded)은 확인창을 닫을 때로 미룬다.
+      setSharePrompt({ kind: response, updated });
     } catch (e) {
       setErr(e instanceof Error ? e.message : "응답하지 못했어요.");
     } finally {
@@ -293,8 +304,8 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
       // 완료(결과 입력) 시점에 서버가 채운다).
       const scheduledAt = dateStr ? new Date(`${dateStr}T${timeStr || "22:00"}`).toISOString() : undefined;
       const updated = await api.respondToChallenge(challenge.id, "accepted", scheduledAt, respondMessage.trim());
-      onResponded(updated);
       closeMode();
+      setSharePrompt({ kind: "accepted", updated });
     } catch (e) {
       setErr(e instanceof Error ? e.message : "응답하지 못했어요.");
     } finally {
@@ -309,8 +320,8 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
     try {
       const scheduledAt = dateStr ? new Date(`${dateStr}T${timeStr || "00:00"}`).toISOString() : undefined;
       const updated = await api.requestRevenge(challenge.id, { scheduledAt, message: revengeMessage.trim() });
-      onResponded(updated);
       closeMode();
+      setSharePrompt({ kind: "revenge", updated });
     } catch (e) {
       setErr(e instanceof Error ? e.message : "리벤지를 신청하지 못했어요.");
     } finally {
@@ -338,6 +349,41 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
     ...challenge.ownMembers.map((m) => ({ id: m.memberId, nickname: m.nickname, avatar: m.avatar })),
   ];
   const targetSideMembers: SideMember[] = challenge.targets.map((t) => ({ id: t.memberId, nickname: t.nickname, avatar: t.avatar }));
+
+  // 확인창을 닫을 때 비로소 목록을 갱신한다(리벤지로 카드가 교체돼도 창이 유지되도록 미뤘던 것).
+  const dismissShare = () => {
+    const p = sharePrompt;
+    setSharePrompt(null);
+    if (p) onResponded(p.updated);
+  };
+  // 확인창 제목/설명 — 수락/거절/설욕전에 맞춰. (인박스의 응답 확인창과 같은 톤.)
+  const sharePromptTitle =
+    sharePrompt?.kind === "rejected" ? "대결 거절"
+    : sharePrompt?.kind === "revenge" ? "설욕전 신청!"
+    : "대결 수락!";
+  const sharePromptWhen = formatChallengeSchedule(sharePrompt?.updated.scheduledAt ?? null);
+  const sharePromptDesc =
+    sharePrompt?.kind === "rejected" ? "호출을 거절했어요. 카카오톡으로도 알려줄까요?"
+    : sharePrompt?.kind === "revenge" ? "설욕전을 신청했어요. 카카오톡으로도 알려줄까요?"
+    : `${sharePromptWhen}에 만나요. 카카오톡으로도 알려줄까요?`;
+  // 카카오 공유 내용 — 인박스 응답 공유와 같은 형식(대진/일시 + 폴백 텍스트 + 링크).
+  const buildShareContent = (): KakaoShareContent => {
+    const caller = challenge.createdBy.nickname;
+    const me = user?.nickname ?? "";
+    const matchup = `${creatorSideMembers.map((m) => m.nickname).join(", ")} vs ${targetSideMembers.map((m) => m.nickname).join(", ")}`;
+    const link = `${window.location.origin}/?sv=challenge&sid=${sharePrompt?.updated.id ?? challenge.id}`;
+    const imageUrl = `${window.location.origin}/images/items/nawa2.jpg`;
+    if (sharePrompt?.kind === "rejected") {
+      return { title: "대결 거절", description: matchup, imageUrl, link,
+        fallbackText: `[스타게이트] ${me}님이 ${caller}님의 호출을 거절했어요.\n${matchup}` };
+    }
+    if (sharePrompt?.kind === "revenge") {
+      return { title: "설욕전 신청!", description: matchup, imageUrl, link,
+        fallbackText: `[스타게이트] ${me}님이 설욕전(리벤지)을 신청했어요!\n${matchup}` };
+    }
+    return { title: "대결 수락!", description: `${matchup} · ${sharePromptWhen}`, imageUrl, link,
+      fallbackText: `[스타게이트] ${me}님이 ${caller}님의 호출을 수락했어요!\n${matchup}\n일시: ${sharePromptWhen}` };
+  };
 
   // 지금 실제로 보여주는 페이지(renderedIndex — 크로스페이드로 pageIndex보다 살짝 늦게
   // 따라온다) 하나만 자연 높이로 렌더한다. pages가 줄어드는 드문 경우에도 안전하게 클램프.
@@ -713,6 +759,25 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
             aria-label="다음 기록 보기"
           />
         </div>
+      )}
+
+      {/* 카드에서 수락/거절/설욕전 신청을 하면 뜨는 확인창 — 인박스와 똑같이 카카오 공유를
+          권한다(요청). 확인을 눌러야 목록이 갱신된다(dismissShare). */}
+      {sharePrompt && createPortal(
+        <div className="scr-modal-overlay">
+          <div className="scr-modal scr-modal-sm scr-challenge-inbox-modal">
+            <div className="scr-modal-body scr-challenge-sent">
+              <img src="/images/items/nawa2.jpg" alt="" className="scr-challenge-sent-hero" />
+              <div className="scr-challenge-sent-title">{sharePromptTitle}</div>
+              <div className="scr-challenge-sent-desc">{sharePromptDesc}</div>
+              <div className="scr-form-actions scr-challenge-sent-actions">
+                <KakaoShareButton variant="full" content={buildShareContent} />
+                <button type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid" onClick={dismissShare}>확인</button>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
