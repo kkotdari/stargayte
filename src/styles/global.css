@@ -976,8 +976,10 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   /* rotateY에 살짝 원근을 줘 평면 회전이 아니라 실제로 도는 느낌을 낸다. */
   perspective: 240px;
 }
-/* 별만 비밀 제어판 트리거(요청) — 기본은 장식(포인터 무시)이지만 헤더에선 탭을 받는다. */
-.scr-brand-logo-star-tappable { pointer-events: auto; }
+/* 별만 비밀 제어판 트리거(요청) — 기본은 장식(포인터 무시)이지만 헤더에선 탭을 받는다.
+   기본 규칙(.scr-brand-logo-star의 pointer-events:none)이 소스상 뒤에 있어 단일 클래스로는
+   밀렸다(버그 — 트리거 불발). 클래스 둘을 겹쳐 특이도로 확실히 이긴다. */
+.scr-brand-logo-star.scr-brand-logo-star-tappable { pointer-events: auto; cursor: pointer; }
 .scr-brand-logo-star {
   /* 세로 기준(요청): "별의 양팔이 T와 R 윗부분과 높이 일치"(양팔 꼭짓점 = 심볼 높이의
      37.0%, 캡 톱 = 워드마크 y42/327). 크기는 운영 로고 실측 비율(지적: "미묘하게 달라")
