@@ -4910,17 +4910,18 @@ body *::-webkit-scrollbar-corner { background: transparent; }
      iOS 26 사파리는 하단 가장자리에 '붙은'(수 px 이내) fixed 바를 사이트 툴바로 간주해
      접힌 주소창 알약 뒤 콘텐츠 확장을 막는데(조사 — 유리를 자식으로 옮겨도 부족했다),
      가장자리에서 떨어진 플로팅 요소는 그 판정을 받지 않는다. */
-  /* 폭 축소(요청: 살짝 → 추가로 10% 더) — 좌우 여백 12→18→36px. */
-  left: 36px; right: 36px;
+  /* 폭 다시 크게(요청: "폭은 많이 넓히기") — 좌우 여백 36→16px. */
+  left: 16px; right: 16px;
   /* 바닥 띄우기 — 주소창이 가리는 실측 높이(--vv-bottom-inset) 또는 홈 인디케이터
      안전영역(PWA/데스크톱은 vv-inset이 0) 중 큰 쪽 위에 10px 간격. max로 고르므로
      둘이 겹쳐 이중으로 뜨는 일은 없다. */
-  bottom: max(calc(var(--vv-bottom-inset, 0px) + 10px), calc(env(safe-area-inset-bottom, 0px) + 10px));
+  /* 살짝 더 아래로(요청) — 바닥 간격 10→6px. */
+  bottom: max(calc(var(--vv-bottom-inset, 0px) + 6px), calc(env(safe-area-inset-bottom, 0px) + 6px));
   /* 섬은 안전영역을 품지 않으므로 높이는 콘텐츠 몫만. */
   height: var(--mobile-footer-h);
-  /* 좌우 패딩 축소(요청) — 폭이 좁아진 섬 안에서 탭들이 공간을 더 쓰게.
-     위아래는 높이 확대(60→66px)에 맞춰 더 늘린다(요청: 12→15px, 콘텐츠 몫 36px 유지). */
-  padding: 15px 6px;
+  /* 패딩 축소(요청: "상하 좌우 패딩 줄이고") — 상하 15→10px(콘텐츠 몫 46px로 커짐),
+     좌우 6→4px. */
+  padding: 10px 4px;
   /* 완전 알약(26px≈높이 절반) 대신 둥근 네모 패널로(요청 — 참고 사진의 패널 곡률처럼).
      16px은 좀 각져 보여 한 단계 더 둥글게(요청: "곡률 좀 더 둥글게"). */
   border-radius: 20px;
