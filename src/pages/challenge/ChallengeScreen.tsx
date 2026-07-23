@@ -3,6 +3,7 @@ import { Pencil, MessageSquarePlus } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
 import { Spinner } from "../../components/common/Feedback";
 import OptionalDateTimeFields from "../../components/common/OptionalDateTimeFields";
+import InlineCollapse from "../../components/common/InlineCollapse";
 import ChallengeFormModal from "../../modals/ChallengeFormModal";
 // "보고싶은 너 나와!" 코너는 지금 숨김(요청) — 다시 켤 때 import와 렌더 주석을 함께 해제한다.
 // import MatchRequestCorner from "./MatchRequestCorner";
@@ -488,7 +489,8 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
       {/* 응답 버튼(수락/거절) — 최신 페이지에서만 실제로 뜨지만, 이력 페이지에선 자리를
           예약(reserve)만 하고 투명하게 둬서 아래 페이지네이션이 안 튀게 한다. 읽기 전용
           (버려진 도전장 모달)에서는 어떤 액션도 없다. */}
-      {!readOnly && canRespond && mode === "none" && (
+      {!readOnly && canRespond && (
+        <InlineCollapse open={mode === "none"}>
         <div className={cx("scr-challenge-respond", !isLatestPage && "scr-challenge-card-actions-reserve")}>
           {/* 응답 한마디(선택) — 아이콘 버튼을 누르면 입력창이 트랜지션으로 열린다(요청). */}
           <button
@@ -530,9 +532,13 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
           </button>
           </div>
         </div>
+        </InlineCollapse>
       )}
 
-      {mode === "schedule" && (
+      {/* 인라인 폼들(승락 시간지정/리벤지/결과입력) — 조건부 마운트 대신 InlineCollapse로
+          늘 마운트해 두고 열림/닫힘 모두 부드럽게 접었다 편다(요청: "트랜지션을 지금보다
+          길고 부드럽게, 취소로 원복될 때도"). */}
+      <InlineCollapse open={mode === "schedule"}>
         <div className="scr-challenge-time-change-form">
           <p className="scr-challenge-inbox-message">
             시간을 정하거나, 비워두면 시간 미정으로 수락돼요 (완료할 때 그 시각으로 기록).
@@ -551,9 +557,9 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
             </button>
           </div>
         </div>
-      )}
+      </InlineCollapse>
 
-      {mode === "revenge" && (
+      <InlineCollapse open={mode === "revenge"}>
         <div className="scr-challenge-time-change-form">
           <p className="scr-challenge-inbox-message">
             리벤지를 신청해요 — 이번엔 상대가 시간을 정하게 하려면 일시를 비워두세요.
@@ -597,9 +603,9 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
             </button>
           </div>
         </div>
-      )}
+      </InlineCollapse>
 
-      {mode === "result" && (
+      <InlineCollapse open={mode === "result"}>
         <div className="scr-challenge-result-form">
           <p className="scr-challenge-inbox-message">
             승리한 팀을 눌러주세요 — 먼저 입력하는 쪽이 그대로 인정돼요.
@@ -652,23 +658,27 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
           </div>
           {busy && <div className="scr-challenge-result-busy"><Spinner /></div>}
         </div>
-      )}
+      </InlineCollapse>
 
       {/* 결과 입력/리벤지 — 인라인 폼이 안 열려 있을 때만 뜨는 액션 줄. 응답 버튼과 마찬가지로
-          이력 페이지에선 자리만 예약(투명)해 페이지네이션이 안 튀게. (취소/연기/재신청 제거됨) */}
-      {!readOnly && mode === "none" && (canEnterResult || canRevenge) && (
-        <div className={cx("scr-challenge-card-actions", !isLatestPage && "scr-challenge-card-actions-reserve")}>
-          {canEnterResult && (
-            <button className="scr-btn scr-challenge-accept-btn scr-btn-sm" onClick={startResult} disabled={busy}>
-              결과 입력
-            </button>
-          )}
-          {canRevenge && (
-            <button className="scr-btn scr-btn-ghost scr-btn-sm" onClick={startRevenge} disabled={busy}>
-              리벤지 신청
-            </button>
-          )}
-        </div>
+          이력 페이지에선 자리만 예약(투명)해 페이지네이션이 안 튀게. (취소/연기/재신청 제거됨)
+          이 줄도 InlineCollapse로 감싸 폼이 열릴 땐 부드럽게 접히고, 취소로 폼이 접힐 땐
+          부드럽게 되살아난다(요청: 원복 트랜지션). */}
+      {!readOnly && (canEnterResult || canRevenge) && (
+        <InlineCollapse open={mode === "none"}>
+          <div className={cx("scr-challenge-card-actions", !isLatestPage && "scr-challenge-card-actions-reserve")}>
+            {canEnterResult && (
+              <button className="scr-btn scr-challenge-accept-btn scr-btn-sm" onClick={startResult} disabled={busy}>
+                결과 입력
+              </button>
+            )}
+            {canRevenge && (
+              <button className="scr-btn scr-btn-ghost scr-btn-sm" onClick={startRevenge} disabled={busy}>
+                리벤지 신청
+              </button>
+            )}
+          </div>
+        </InlineCollapse>
       )}
 
       {/* 페이징 있는 카드는 지금 보는 페이지의 일시를 페이지네이션 바로 위에 상대표기로

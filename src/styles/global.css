@@ -5729,14 +5729,38 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
    의미 없는 "대기") — 전부 같은 옅은 톤 + 취소선. */
 .scr-challenge-pill-muted { background: rgba(var(--overlay-rgb),0.12); color: var(--dim); text-decoration: line-through; }
 /* 거절/재신청 미니 폼(이름은 "time-change"지만 지금은 거절 사유 입력·재신청 시간
-   수정 두 곳에서 재사용한다 — 세로로 쌓인 인풋+버튼 묶음이라는 모양 자체는 같다). */
-.scr-challenge-time-change-form { display: flex; flex-direction: column; gap: 8px;
-  /* 리벤지/승락 인라인 폼이 버튼을 누르는 순간 뚝 나타나던 것에 등장 트랜지션(요청:
-     "리벤지 요청 버튼 눌렀을때 트랜지션") — 마운트 시 자동 재생되는 짧은 페이드+슬라이드. */
-  animation: scr-inline-form-in .24s ease;
+   수정 두 곳에서 재사용한다 — 세로로 쌓인 인풋+버튼 묶음이라는 모양 자체는 같다).
+   (예전의 마운트 등장 애니메이션은 아래 .scr-inline-collapse 래퍼가 대체 — 요청:
+   "지금보다 길고 부드럽게, 취소로 원복될 때도".) */
+.scr-challenge-time-change-form { display: flex; flex-direction: column; gap: 8px; }
+
+/* 카드 인라인 폼 공통 펼침/접힘(InlineCollapse.tsx) — 리벤지 신청/승락 시간지정/결과
+   입력 등 카드 안에서 폼이 생기고 사라지는 모든 곳. 조건부 마운트는 접힘을 못 그리므로
+   래퍼를 늘 마운트하고 grid-template-rows 0fr↔1fr로 내용 높이를 자동 추적하며 접었다
+   편다(한마디 입력창과 같은 기법). 카드가 flex gap(8px) 컬럼이라 접힌 0높이 래퍼도
+   gap 한 칸을 차지하는데, 음수 마진이 그 칸을 삼켜 접힘 상태가 완전히 "없던 것처럼"
+   보인다 — 마진도 함께 트랜지션돼 gap까지 부드럽게 열리고 닫힌다. */
+.scr-inline-collapse {
+  display: grid; grid-template-rows: 0fr; visibility: hidden; margin-top: -8px;
+  transition:
+    grid-template-rows .42s cubic-bezier(0.32, 0.72, 0, 1),
+    margin-top .42s cubic-bezier(0.32, 0.72, 0, 1),
+    visibility 0s linear .42s;
 }
-@keyframes scr-inline-form-in {
-  from { opacity: 0; transform: translateY(-6px); }
+.scr-inline-collapse-open {
+  grid-template-rows: 1fr; visibility: visible; margin-top: 0;
+  transition:
+    grid-template-rows .42s cubic-bezier(0.32, 0.72, 0, 1),
+    margin-top .42s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.scr-inline-collapse-inner {
+  overflow: hidden; min-height: 0;
+  opacity: 0; transform: translateY(-6px);
+  transition: opacity .3s ease, transform .42s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.scr-inline-collapse-open > .scr-inline-collapse-inner {
+  opacity: 1; transform: none;
+  transition: opacity .34s ease .06s, transform .42s cubic-bezier(0.32, 0.72, 0, 1);
 }
 /* 경기종류보다 앞, 굵게(요청: "경기유형 앞에 일시를 먼저 표시 진하게"). 고정폭
    숫자 폰트(.scr-mono)라 옆의 배지/일반 텍스트와 광학적 중심이 미묘하게 달라
@@ -6822,21 +6846,22 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
    radius(10px)에서 패딩(2px)을 뺀 radius를 줘서 모서리를 스스로 따라가게 한다. */
 .scr-menu-pop-drop .scr-menu-pop-opt:first-child { border-radius: 8px 8px 0 0; }
 .scr-menu-pop-drop .scr-menu-pop-opt:last-child { border-radius: 0 0 8px 8px; }
-/* hover = 은은한 라이팅(요청: 라이팅 테마) — 옅은 빛 채움 + 안쪽으로 부드럽게 퍼지는
-   글로우. 행이 스크롤 컨테이너에 잘리므로 바깥 글로우 대신 inset으로 빛을 담는다. */
+/* hover = 액티브와 동일한 라이팅(요청: "호버시는 액티브와 동일한 효과") — 빛 채움 +
+   얇은 빛 테 + 안쪽 글로우. 행이 스크롤 컨테이너에 잘리므로 바깥 글로우 대신 inset으로
+   빛을 담는다. 액티브와의 차이는 볼드(굵기)뿐. */
 @media (hover: hover) {
   .scr-select-opt:hover,
   .scr-cselect-opt:hover,
   .scr-pv-opt:hover,
   .scr-menu-pop-drop .scr-menu-pop-opt:hover:not(.scr-menu-pop-opt-active) {
-    background: var(--lit-hover-bg); color: var(--text);
-    box-shadow: inset 0 0 12px rgba(var(--lit-rgb), 0.1);
+    background: rgba(var(--lit-rgb), 0.22); color: var(--text);
+    box-shadow: inset 0 0 0 0.5px rgba(var(--lit-rgb), 0.28), inset 0 0 14px rgba(var(--lit-rgb), 0.16);
   }
 }
 /* 키보드 포커스는 기기 무관 — 호버와 같은 라이팅. */
 .scr-pv-opt:focus-visible {
-  background: var(--lit-hover-bg); color: var(--text);
-  box-shadow: inset 0 0 12px rgba(var(--lit-rgb), 0.1);
+  background: rgba(var(--lit-rgb), 0.22); color: var(--text);
+  box-shadow: inset 0 0 0 0.5px rgba(var(--lit-rgb), 0.28), inset 0 0 14px rgba(var(--lit-rgb), 0.16);
 }
 /* active·선택 = 라이팅 강조 + 볼드 — 채움을 한 단계 올리고 얇은 빛 테 + 안쪽 글로우.
    케밥/운영 메뉴는 예전 알약 광원 대신 행 라이팅으로 바꾸므로 라벨 알약 배경은 지운다. */
@@ -7197,16 +7222,15 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
 /* ===== 유저 상성 맵(운영 메뉴, 요청) ===== */
 .scr-rivalry { display: flex; flex-direction: column; gap: 10px; }
 /* ── 랭킹 필터 줄의 "상성맵" 버튼 + 반투명 오버레이(요청) ──
-   버튼은 필터 줄 가운데 빈 자리(기간과 종족 사이)에 굵은 텍스트로만 — 개인전에서만
-   렌더된다(RankingScreen). 필터 항목들과 세로 중심을 맞추기 위한 최소한의 높이만 갖는다. */
+   버튼은 프라이머리솔리드 테마(요청)를 입되 필터 줄에 맞게 작게 — .scr-btn 기본
+   높이(38px)를 필터 항목 높이(28px)로 줄이고 알약형으로. 개인전 + 종족 필터
+   "전체"일 때만 렌더된다(RankingScreen). */
 .scr-rank-rivalry-btn {
-  background: transparent; border: none; cursor: pointer; padding: 4px 8px;
-  font-family: inherit; font-size: var(--fs-caption); font-weight: 800; color: var(--text);
-  -webkit-tap-highlight-color: transparent;
-  /* 라벨 달린 FilterItem들 사이에서 혼자 라벨이 없어 위로 떠 보이지 않게 살짝 내린다. */
+  min-height: 0; height: 28px; padding: 0 12px;
+  font-size: var(--fs-caption); font-weight: 800; border-radius: 999px;
+  /* 라벨 달린 FilterItem들 사이에서 혼자 라벨이 없어 위로 떠 보이지 않게 가운데로. */
   align-self: center;
 }
-.scr-rank-rivalry-btn:hover { color: var(--point); }
 /* 반투명 오버레이 — 뒤의 랭킹이 비쳐 보이는 딤+블러 위에 맵만 띄운다(자체 패널 없음). */
 .scr-rivalry-overlay {
   position: fixed; inset: 0; z-index: 100;
@@ -7351,11 +7375,12 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-pagination-btn:not(:disabled):active {
   box-shadow: var(--lit-press-glow);
 }
-/* 드롭다운 옵션 행은 바깥 글로우가 컨테이너에 잘리므로 눌림도 빛 채움(inset)으로. */
+/* 드롭다운 옵션 행의 눌림도 액티브와 동일한 라이팅(요청) — 바깥 글로우가 컨테이너에
+   잘리므로 inset으로. */
 .scr-select-opt:active,
 .scr-cselect-opt:active,
 .scr-pv-opt:active,
 .scr-menu-pop-drop .scr-menu-pop-opt:active {
-  background: var(--lit-hover-bg);
-  box-shadow: inset 0 0 12px rgba(var(--lit-rgb), 0.1);
+  background: rgba(var(--lit-rgb), 0.22); color: var(--text);
+  box-shadow: inset 0 0 0 0.5px rgba(var(--lit-rgb), 0.28), inset 0 0 14px rgba(var(--lit-rgb), 0.16);
 }

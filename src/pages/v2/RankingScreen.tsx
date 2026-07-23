@@ -307,10 +307,16 @@ export default function RankingScreenV2() {
                 </button>
               </span>
             </FilterItem>
-            {/* 상성맵 열기(개인전 전용, 요청) — 필터 줄 가운데 빈 자리에 굵은 텍스트
-                버튼으로. 기간 필터를 그대로 따르는 오버레이를 띄운다. */}
-            {mode === "solo" && (
-              <button type="button" className="scr-rank-rivalry-btn" onClick={() => setRivalryOpen(true)}>
+            {/* 상성맵 열기(개인전 전용, 요청) — 필터 줄 가운데 빈 자리에 작은
+                프라이머리솔리드 버튼으로(요청: "프라이머리 솔리드 테마, 크기는 작게").
+                상성맵 자체가 종족 무관 전체 지도라 종족 필터가 "전체"일 때만 노출한다
+                (요청: "종족필터가 전체일때만 노출"). 기간 필터는 그대로 따른다. */}
+            {mode === "solo" && race === "all" && (
+              <button
+                type="button"
+                className="scr-btn scr-btn-primary scr-btn-primary-solid scr-rank-rivalry-btn"
+                onClick={() => setRivalryOpen(true)}
+              >
                 상성맵
               </button>
             )}
