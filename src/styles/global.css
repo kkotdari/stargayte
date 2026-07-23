@@ -994,7 +994,7 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    대한 %라 자동으로 같이 줄어든다. */
 .scr-brand-logo-img { height: 32px; width: auto; display: block; }
 /* ── 별이 도는 로고(BrandLogo, 요청) ──
-   별 없는 워드마크(white/black.png) 위에 별 심볼(symbol.png)을 원래 자리(A 위치)에
+   별 없는 워드마크(logo_no_symbol_white/black.png) 위에 별 심볼(symbol.png)을 원래 자리(A 위치)에
    겹친다. 좌표는 이미지 픽셀 실측: 로고 2847×327에서 별 슬롯이 x 613–1041이라
    중심 x = 827/2847 = 29.05%, 폭 = 429/2847 = 15.07%. 심볼(457×430)을 슬롯 폭에 맞추면
    세로가 텍스트보다 커(403px vs 327px) 위아래로 살짝 넘치는 원본 디자인이 재현된다. */
