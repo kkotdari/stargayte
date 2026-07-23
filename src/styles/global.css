@@ -1347,7 +1347,9 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 .scr-inapp-notice {
   position: fixed; z-index: 120; left: 50%; transform: translateX(-50%);
   top: calc(var(--safe-area-top, 0px) + 8px);
-  width: min(520px, calc(100vw - 16px));
+  /* 설명 문구를 없앤 뒤로 버튼만 남아, 배너가 폭을 꽉 채우면 버튼이 과하게 넓어 보였다
+     (지적: "버튼 폭이 너무 넓음"). 내용(버튼+닫기)만큼만 폭을 잡아 아담하게. */
+  width: auto; max-width: min(520px, calc(100vw - 16px));
   display: flex; flex-direction: column; gap: 8px;
   padding: 11px 12px; border-radius: 14px;
   background: var(--panel-solid); color: var(--text);
@@ -1358,7 +1360,7 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 /* 설명 문구는 제거(요청) — 이제 버튼만 남아 가로를 채운다. CTA는 카톡 노랑 대신 각 테마
    라이팅 알약(다크=흰 빛, 라이트=하늘 빛)으로 통일한다(요청: "버튼에 라이팅 테마 적용"). */
 .scr-inapp-notice-cta {
-  flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   background: var(--lit-pill-bg); color: var(--lit-pill-text); border: none; border-radius: 999px;
   box-shadow: inset 0 0 0 0.5px rgba(var(--lit-rgb), 0.5);
   padding: 8px 13px; font-size: var(--fs-caption); font-weight: 800; font-family: inherit; cursor: pointer;
@@ -6343,17 +6345,11 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
   position: absolute; inset: 0; z-index: 2;
   display: flex; align-items: center; justify-content: center;
   padding: calc(16px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px));
-  /* 이 레이어는 화면 전체(inset:0)를 덮지만 실제로는 가운데 봉투만 조작 대상이다. body로
-     포털돼 z-index:2로 앱 위에 얹히므로, 그대로 두면 빈 영역이 인앱 안내 배너의 닫기 버튼
-     같은 아래 요소의 클릭을 가로챈다(지적: "처음에 닫기 버튼이 안 눌림"). 레이어 자체는
-     클릭을 통과시키고(none), 실제 콘텐츠(봉투/버튼)만 다시 받게(auto) 한다. */
-  pointer-events: none;
 }
 .scr-challenge-envelope-inner {
   width: 100%; max-width: 460px;
   display: flex; flex-direction: column; align-items: center;
   padding-bottom: 8px;
-  pointer-events: auto;
 }
 /* 봉투 레이어의 제목은 어두운 스크림 위에 떠서, 편지지 톤(짙은 갈색)이 아니라 흰 글자+
    그림자로 뒤집는다(편지지 카드 안 제목은 자기 규칙대로 짙은 갈색 그대로). */
@@ -6420,26 +6416,37 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
    테마 글자색(--text)을 따르고(라이팅 글라스), 봉투 단계는 어두운 스크림 위라 아래 전용
    규칙이 흰색으로 뒤집는다. */
 .scr-challenge-inbox-title { font-weight: 800; font-size: var(--fs-subhead); margin: 6px 0 10px; color: var(--text); }
+/* 편지지(letter)를 열었을 때의 "OO 너 나와!" 제목만 2스텝 키운다(요청) — subhead→title.
+   봉투 단계 제목(.scr-challenge-envelope-layer 안)은 그대로 subhead. */
+.scr-challenge-inbox-modal .scr-challenge-inbox-title { font-size: var(--fs-title); }
 /* 모달이 align-items:center라 그냥 두면 편지지 본문이 내용 폭만큼만 좁게 가운데 모여
    붙어 모달 폭을 못 채웠다(요청: "모달 안의 내용들을 넓히라고") — 본문을 full-width로
-   펴서 행/입력칸이 모달 폭을 꽉 채우게 한다. */
-.scr-challenge-inbox-body { text-align: left; width: 100%; box-sizing: border-box; }
+   펴서 행/입력칸이 모달 폭을 꽉 채우게 한다. 줄 사이 갭은 조금 넉넉하게(요청). */
+.scr-challenge-inbox-body { text-align: left; width: 100%; box-sizing: border-box; gap: 18px; }
 /* 거절 사유 없이 거절을 누르면 뜨는 오류 자리 — 박스/테두리 없이 작은 글씨만 띄우고,
    자리도 그 글씨 한 줄(≈12px)만 미리 예약한다(요청: "예약공간을 12정도로 하고 그만한
    글씨만 띄우자(테두리 없이)" — 처음부터 큰 갭이 있는 것보다 낫다고). 오류가 없을 땐
    그 작은 자리만 비워 둔다. */
 .scr-challenge-inbox-err-slot { min-height: 12px; }
 .scr-challenge-inbox-err-text { display: block; color: var(--loss); font-size: var(--fs-caption); line-height: 1; }
-/* 도전자 한마디 + 일시 — 라벨 없이 크게(기본 body에서 2스텝 위 headline), 가운데 정렬
-   (요청: "일시·한마디 라벨 제거, 텍스트 2스텝 확대 및 가운데 정렬"). 한마디는 인용 느낌의
-   이탤릭, 일시는 또렷한 굵기로. */
+/* 도전자 한마디 + 일시 — 라벨 없이 가운데 정렬. 한 스텝 줄여(headline→subhead) 제목과
+   위계를 벌린다(요청). 세로 여백은 본문 gap(18px)에 맡기고 margin은 0. 한마디는 인용
+   느낌의 이탤릭, 일시는 또렷한 굵기로. */
 .scr-challenge-inbox-message {
-  margin: 10px 0 2px; font-size: var(--fs-headline); font-style: italic;
+  margin: 0; font-size: var(--fs-subhead); font-style: italic;
   color: var(--text); text-align: center; line-height: 1.35; word-break: keep-all;
 }
 .scr-challenge-inbox-when {
-  margin: 6px 0; font-size: var(--fs-headline); font-weight: 700;
+  margin: 0; font-size: var(--fs-subhead); font-weight: 700;
   color: var(--text); text-align: center; line-height: 1.3;
+}
+/* 일/시를 안 정한 채 수락할 때 뜨는 날짜·시간 입력 — 폼 모달에선 축소판(--field-h-sm)을
+   쓰지만, 인박스에서는 표준 크기로(요청). 두 칸을 같은 폭으로 나눠 모달 폭을 채운다. */
+.scr-challenge-inbox-body .scr-datetime-col { flex: 1 1 0; }
+.scr-challenge-inbox-body .scr-datetime-col .scr-datetime-input,
+.scr-challenge-inbox-body .scr-datetime-col .scr-datetime-input .scr-input { width: 100%; }
+.scr-challenge-inbox-body .scr-datetime-col .scr-datetime-input .scr-input {
+  min-height: var(--field-h); padding: 9px 10px;
 }
 /* 값 span(종류/일시 오른쪽)은 클래스가 없어 색을 명시 안 하면 앱 루트의 테마 글자색(다크
    테마에선 흰색)을 그대로 물려받아 밝은 편지지 배경 위에서 거의 안 보였다(요청: "결과

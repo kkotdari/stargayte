@@ -17,7 +17,11 @@ let lockCount = 0;
 // 겹쳐 뜬 모달들의 바깥-클릭 콜백 스택 — 맨 위(마지막에 잠근) 모달만 반응한다.
 const outsideStack: Array<{ onOutside?: () => void }> = [];
 
-const INLINE_ALLOW = ".scr-modal, .scr-photo-overlay, .scr-drawer";
+// 인앱 브라우저 안내 배너(.scr-inapp-notice)는 .scr-app 안에 있지만 모달과 무관한 상시
+// 상단 배너다 — 실드가 이걸 "본문"으로 보고 터치/클릭을 막으면 모달(초대장 봉투 등)이
+// 떠 있는 동안 "기본 브라우저로 열기"·닫기 버튼이 안 눌린다(지적: "모달 영역 밖 터치가
+// 막혀 있음"). 허용 목록에 넣어 실드에서 제외한다.
+const INLINE_ALLOW = ".scr-modal, .scr-photo-overlay, .scr-drawer, .scr-inapp-notice";
 
 function isShieldedTarget(t: EventTarget | null): boolean {
   const el = t instanceof Element ? t : null;
