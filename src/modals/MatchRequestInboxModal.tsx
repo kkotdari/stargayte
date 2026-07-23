@@ -12,7 +12,7 @@ interface MatchRequestInboxModalProps {
 // 다음 접속 때 뜨는 "너 나와! 신청 언급" 알림 팝업 — 내가 언급된 안 읽은 요청들을 한 번에 보여준다.
 // 확인을 누르면(onClose) 서버에 읽음 처리돼 다시 뜨지 않는다(요청: "읽으면 다시 안 뜸").
 export default function MatchRequestInboxModal({ items, onClose }: MatchRequestInboxModalProps) {
-  useLockBodyScroll();
+  useLockBodyScroll(true, onClose);
   // 뜨는 순간 우편 알림음(도전장 인박스와 같은 소리). 자동재생이 막힌 상황이면 조용히 무시된다.
   useEffect(() => { playMailChime(); }, []);
 

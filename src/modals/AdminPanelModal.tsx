@@ -121,6 +121,9 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
   // "현재 버전 설정" — 등록된 버전 중 하나로 활성 버전을 바꾼다(예전 배포/롤백을 하나로 합침).
   // 바꾸면 모두에게 즉시 반영되고, 회원들은 다음 접속 때 버전 안내 팝업을 다시 보게 된다.
   const [versionPickerOpen, setVersionPickerOpen] = useState(false);
+  // 중첩 미니 모달(현재버전 선택)의 바깥 탭 닫기 — 오버레이 클릭 대신 실드 콜백으로
+  // (오버레이는 display:contents라 더 이상 클릭을 받지 않는다, bodyScrollLock 참고).
+  useLockBodyScroll(versionPickerOpen, () => setVersionPickerOpen(false));
   const [confirmSetVersion, setConfirmSetVersion] = useState<string | null>(null);
   const [pickValue, setPickValue] = useState("");
 

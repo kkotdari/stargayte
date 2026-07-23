@@ -14,7 +14,7 @@ interface AppUpdateNoticeModalProps {
 // 내용은 배포된 버전에 저장된 안내 내용(notes)을 그대로 보여준다 — 관리자가 "버전 안내
 // 설정"에서 버전별로 편집하고, 전역 토글로 표시 자체를 끌 수도 있다.
 export default function AppUpdateNoticeModal({ notes, onClose }: AppUpdateNoticeModalProps) {
-  useLockBodyScroll();
+  useLockBodyScroll(true, onClose);
 
   return createPortal(
     <div className="scr-modal-overlay" onClick={onClose}>

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { X, ClipboardList } from "lucide-react";
 import { Spinner } from "./Feedback";
+import { useLockBodyScroll } from "../../utils/bodyScrollLock";
 import ConfirmDialog from "./ConfirmDialog";
 import ReplayReviewModal from "../../modals/ReplayReviewModal";
 import { useAppStore } from "../../store/appStore";
@@ -117,6 +118,9 @@ export default function ReplayBatchButton() {
   // 분리하는 쪽이 근본적으로 더 안전하다. 배치가 시작되면 자동으로 뜨고, 닫아도(X) 배치
   // 자체는 계속 진행된다 — 다시 보고 싶으면 트리거 버튼 옆에 뜨는 "결과 보기"로 재오픈.
   const [resultsOpen, setResultsOpen] = useState(false);
+  // 결과 모달의 배경 입력 차단 + 바깥 탭 닫기 — 예전엔 오버레이 클릭이 담당했지만
+  // 오버레이는 display:contents라 더 이상 박스/클릭이 없다(bodyScrollLock 실드 참고).
+  useLockBodyScroll(resultsOpen, () => setResultsOpen(false));
   // 폴더를 고른 뒤 실제 등록 실행 전 확인창 대상 — 확인 전까지는 실행하지 않는다.
   const [pendingFiles, setPendingFiles] = useState<File[] | null>(null);
 

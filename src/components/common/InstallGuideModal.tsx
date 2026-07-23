@@ -5,7 +5,7 @@ import { useLockBodyScroll } from "../../utils/bodyScrollLock";
 // iOS 사파리는 자동 설치 API가 없어, "공유 → 홈 화면에 추가" 절차를 그림/글로 안내한다.
 // (안드로이드는 네이티브 설치 창이 바로 떠서 이 모달이 필요 없다.)
 export default function InstallGuideModal({ onClose }: { onClose: () => void }) {
-  useLockBodyScroll();
+  useLockBodyScroll(true, onClose);
   return createPortal(
     <div className="scr-modal-overlay" onClick={onClose}>
       <div className="scr-modal scr-modal-sm scr-install-guide-modal" onClick={(e) => e.stopPropagation()}>
