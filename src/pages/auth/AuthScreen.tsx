@@ -52,7 +52,7 @@ export default function AuthScreen() {
       {/* 회원가입 링크 — 아이콘이 아니라 텍스트로, 화면 최하단 가운데에 둔다(요청). 로그인
           탭에서만 보인다(회원가입 탭엔 이미 뒤로가기가 있다). */}
       {tab === "login" && (
-        <button type="button" className="scr-link-btn scr-auth-signup-link" onClick={() => setTab("signup")}>
+        <button type="button" className="scr-header-text-btn scr-auth-signup-link" onClick={() => setTab("signup")}>
           회원가입
         </button>
       )}

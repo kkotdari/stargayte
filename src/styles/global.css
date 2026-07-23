@@ -413,17 +413,13 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
 /* 회원가입 링크는 카드 안이 아니라 화면 전체 기준 우하단 구석에 — 밑줄 없이. */
 /* 회원가입 링크 — 화면 최하단 가운데(요청). 텍스트, 한 스텝 축소(caption→micro), 바닥에
    바짝 붙지 않게 하단 패딩(+안전영역). */
-/* 밑줄 대신 테마 버튼(.scr-header-text-btn)과 같은 둥근 네모 배경(요청). */
+/* 테마 버튼(scr-header-text-btn)과 완전히 같은 모양(요청) — 여기서는 위치만 잡는다.
+   글자/배경/호버는 공용 .scr-header-text-btn이 전부 담당한다. */
 .scr-auth-signup-link {
   position: fixed; left: 50%; transform: translateX(-50%);
   bottom: calc(18px + env(safe-area-inset-bottom, 0px)); z-index: 1;
-  font-size: var(--fs-caption); font-weight: 600; color: var(--muted);
   text-decoration: none !important;
-  background: rgba(var(--overlay-rgb), 0.08); border: none;
-  padding: 6px 12px; border-radius: 8px;
-  transition: color 0.15s ease, background 0.15s ease;
 }
-.scr-auth-signup-link:hover { color: var(--text); background: rgba(var(--overlay-rgb), 0.12); }
 .scr-auth-back-btn { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-caption); color: var(--muted); margin-bottom: 14px; text-decoration: none; }
 .scr-auth-back-btn:hover { color: var(--point); }
 
