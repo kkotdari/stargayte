@@ -959,6 +959,28 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    같은 자리에 비슷한 높이로 들어가도록 */
 /* PC 로고 확대(요청): 22→36px. 모바일은 아래 반응형 블록이 따로 정한다. */
 .scr-brand-logo-img { height: 36px; width: auto; display: block; }
+/* ── 별이 도는 로고(BrandLogo, 요청) ──
+   별 없는 워드마크(white/black.png) 위에 별 심볼(symbol.png)을 원래 자리(A 위치)에
+   겹친다. 좌표는 이미지 픽셀 실측: 로고 2847×327에서 별 슬롯이 x 613–1041이라
+   중심 x = 827/2847 = 29.05%, 폭 = 429/2847 = 15.07%. 심볼(457×430)을 슬롯 폭에 맞추면
+   세로가 텍스트보다 커(403px vs 327px) 위아래로 살짝 넘치는 원본 디자인이 재현된다. */
+.scr-brand-logo-wrap {
+  position: relative; display: inline-flex; flex-shrink: 0;
+  /* rotateY에 살짝 원근을 줘 평면 회전이 아니라 실제로 도는 느낌을 낸다. */
+  perspective: 240px;
+}
+.scr-brand-logo-star {
+  position: absolute; left: 29.05%; top: 50%;
+  width: 15.07%; height: auto; pointer-events: none;
+  /* 3초 정지 + 1초 회전(요청) — 4초 주기의 75% 지점까지 정지, 나머지 25%(1초) 동안
+     Y축(세로축) 중심으로 한 바퀴. 물레처럼 감았다 풀리는 느낌은 ease-in-out이 만든다. */
+  animation: scr-brand-star-spin 4s linear infinite;
+  transform: translate(-50%, -50%);
+}
+@keyframes scr-brand-star-spin {
+  0%, 75% { transform: translate(-50%, -50%) rotateY(0deg); animation-timing-function: ease-in-out; }
+  100% { transform: translate(-50%, -50%) rotateY(360deg); }
+}
 /* PC에서 로고가 중심선보다 낮아 보인다(지적) — 로고 이미지 자체의 아래쪽 여백 탓이라
    버튼째 살짝 올려 보정한다(모바일은 아래 블록의 translateY가 따로 정한다). */
 @media (min-width: 641px) {

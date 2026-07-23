@@ -4,6 +4,7 @@ import NavTab from "./NavTab";
 import AdminMenu from "./AdminMenu";
 import MobileTabBar from "./MobileTabBar";
 import Avatar from "../components/common/Avatar";
+import BrandLogo from "../components/common/BrandLogo";
 import InstallGuideModal from "../components/common/InstallGuideModal";
 import { usePwaInstall } from "../hooks/usePwaInstall";
 import { cx } from "../utils/format";
@@ -31,12 +32,8 @@ export default function Header({
   user, screen, onNavigate, onOpenProfile, onLogout,
 }: HeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
-  // 운영자가 "이미지 설정"에서 텍스트 대신 이미지로 바꿔둔 경우 그 이미지를, 아니면
-  // 기본 텍스트를 그대로 보여준다 (Avatar 컴포넌트의 사진/이니셜 대체 패턴과 동일).
-  // 라이트 테마는 배경이 흰색으로 바뀌어 어두운 배경을 전제로 만든 로고가 잘 안 보일 수
-  // 있으므로, 완전히 별도로 등록된 home_logo_light를 대신 쓴다(아래 lightTheme 참고).
-  const homeLogoDark = useAppStore((s) => s.imageSettings.home_logo);
-  const homeLogoLight = useAppStore((s) => s.imageSettings.home_logo_light);
+  // (헤더 로고는 이제 정적 자산 + 회전 별(BrandLogo)이라 이미지 설정(home_logo)을 읽지
+  // 않는다 — 설정 화면 자체는 다른 슬롯(종족 아이콘 등) 때문에 그대로 남는다.)
   const booting = useAppStore((s) => s.booting);
   const registerSecretTap = useAppStore((s) => s.registerSecretTap);
   const appVersion = useAppStore((s) => s.appVersion);
@@ -55,7 +52,6 @@ export default function Header({
   // 있다 — 저장/적용 로직은 utils/theme.ts에 공유돼 있다. 예전엔 역할별로 허용 여부를
   // 따로 관리했지만 이제 누구나 쓸 수 있다.
   const [lightTheme, setLightTheme] = useLightTheme();
-  const homeLogo = lightTheme ? homeLogoLight : homeLogoDark;
 
   // 서랍 메뉴의 "홈 화면에 추가" — 안드로이드는 네이티브 설치 창, iOS는 안내 모달을 연다.
   // 이미 설치(standalone)면 canInstall=false라 항목 자체가 안 뜬다.
@@ -230,16 +226,11 @@ export default function Header({
           onClick={() => { go("ranking"); registerSecretTap(); }}
           aria-label="홈으로"
         >
-          {/* 부트스트랩(imageSettings 조회)이 끝나기 전엔 아무것도 안 보여준다 — 그 전에 기본
-              텍스트("스타게이트")부터 그렸다가 실제 값(대개 이미지)으로 바뀌면 눈에 띄게
-              깜빡였다. 처음 나타날 때만 살짝 페이드인하고(scr-logo-fadein), 이후 화면
-              이동은 이 컴포넌트가 계속 마운트된 채라 다시 그려지거나 다시 깜빡이지 않는다. */}
+          {/* 부트스트랩이 끝나기 전엔 아무것도 안 보여준다(기본 텍스트 깜빡임 방지). 로고는
+              이제 정적 자산(별 도는 BrandLogo)이 기본 — 관리자 이미지 설정(home_logo)은
+              더 이상 헤더 로고에 쓰지 않는다(요청: 별 제거 로고 + 회전 별 심볼 조합). */}
           {!booting && (
-            homeLogo?.type === "image" && homeLogo.value ? (
-              <img src={homeLogo.value} alt="스타게이트" className="scr-brand-logo-img scr-logo-fadein" />
-            ) : (
-              <span className="scr-brand-mark scr-logo-fadein">{homeLogo?.value || "스타게이트"}</span>
-            )
+            <BrandLogo light={lightTheme} />
           )}
           <span className="scr-brand-text"></span>
         </button>
