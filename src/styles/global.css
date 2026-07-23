@@ -1104,6 +1104,19 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    그 버튼 높이만큼 아래쪽에 여백을 둔다(모바일은 탭바 몫으로 별도 여백을 두므로 아래
    미디어쿼리가 이 값을 덮어쓴다). */
 .scr-main { max-width: var(--content-max); margin: 0 auto; padding: 34px 20px 96px; position: relative; z-index: 1; }
+/* 전 화면 공통 고정 배경판 — 결정적 관찰(지적): 배경 사진이 있는 랭킹 화면만 다크에서도
+   위아래(주소줄/상태바 뒤)가 잘 나왔다. 랭킹의 사진은 position:fixed inset:0 레이어
+   (.scr-rank-screen-v2::before)로 깔리는데, 사파리는 이런 "뷰포트 크기 고정 배경 레이어"를
+   크롬(알약/상태바) 뒤까지 확장 합성해 준다. 그 구조를 모든 화면에 일반화한다 — 같은
+   슬롯(z-index:-1, .scr-main의 쌓임맥락 안)에 테마색 배경판 + 아주 옅은 그라데이션(완전
+   단색은 샘플러가 '빈 화면'으로 볼 가능성 차단)을 깐다. 랭킹의 사진 ::before는 DOM이 더
+   깊어 이 판 위에 그려지므로 그대로 이긴다. */
+.scr-main::before {
+  content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0) 18%, rgba(255, 255, 255, 0) 82%, rgba(255, 255, 255, 0.02) 100%),
+    var(--void);
+}
 .scr-screen { display: flex; flex-direction: column; gap: 10px; }
 /* 기록실(경기 목록)은 펼친 로우의 넓은 스탯표가 내부(.scr-match-stats-table-wrap의
    overflow-x:auto)에서만 가로 스크롤돼야 하고 페이지 자체엔 가로 스크롤이 생기면 안 된다
