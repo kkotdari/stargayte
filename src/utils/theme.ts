@@ -22,12 +22,17 @@ function applyThemeColor(on: boolean): void {
   // 툴바 색이 즉시 안 바뀌는 문제의 일부), 메타 태그 자체를 새로 만들어 교체한다 —
   // 요소 삽입은 사파리가 theme-color를 다시 읽는 확실한 트리거다.
   document.querySelector('meta[name="theme-color"]')?.remove();
-  // (다크에서 theme-color 메타를 제거하는 실험은 철회 — 하단 백킹은 안 고쳐졌고,
-  // 대신 시스템 요소들이 라이트 폴백으로 떨어지는 부작용만 생겼다(지적). 항상 명시.)
-  const meta = document.createElement("meta");
-  meta.name = "theme-color";
-  meta.content = on ? VOID_COLOR.light : VOID_COLOR.dark;
-  document.head.appendChild(meta);
+  // 다크에선 theme-color 메타를 두지 않는다(재확정) — 한 번 철회했다가, "토글로 다크
+  // 진입 시 위아래 완벽"하던 상태가 이 메타를 되살리자마자 악화되는 것으로(지적)
+  // 어두운 theme-color 자체가 상단 백킹의 트리거임이 확인됐다. 시스템 요소(키보드·
+  // 네이티브 컨트롤)의 다크는 color-scheme(메타+CSS)이, PWA 상태바는 매니페스트
+  // theme_color가 각각 담당하므로 이 메타 없이도 커버된다.
+  if (on) {
+    const meta = document.createElement("meta");
+    meta.name = "theme-color";
+    meta.content = VOID_COLOR.light;
+    document.head.appendChild(meta);
+  }
   // color-scheme 메타도 함께 — 다크 페이지 선언(index.html)이 토글 후에도 실제 테마와
   // 일치해야 사파리가 크롬 합성(알약 뒤 콘텐츠)을 올바른 스킴으로 유지한다.
   document.querySelector('meta[name="color-scheme"]')?.setAttribute("content", on ? "light" : "dark");

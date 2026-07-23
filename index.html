@@ -69,6 +69,11 @@
           document.documentElement.classList.add("scr-light-theme");
           document.querySelector('meta[name="theme-color"]')?.setAttribute("content", "#ffffff");
           document.querySelector('meta[name="color-scheme"]')?.setAttribute("content", "light");
+        } else {
+          /* 다크는 theme-color 메타를 제거(theme.ts와 동일 재확정) — 어두운 theme-color가
+             있으면 사파리가 다크 페이지 위아래에 불투명 백킹을 깐다(토글 실험으로 확인).
+             시스템 다크는 color-scheme이, PWA 상태바는 매니페스트가 담당. */
+          document.querySelector('meta[name="theme-color"]')?.remove();
         }
       } catch (e) {}
 
