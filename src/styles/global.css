@@ -162,7 +162,10 @@
   --radius-chip: 6px;
   /* 드롭다운 통일(요청) — 패널은 반투명 유리(테마별 값). 호버/액티브는 --lit-* 라이팅
      토큰(아래)으로 넘어가 예전 --dd-hover/--dd-active 반전 변수는 제거했다. */
-  --dd-panel-bg: rgba(20, 25, 31, 0.82);
+  /* 드롭다운 패널도 탭바 아일랜드처럼 확실히 반투명한 라이팅 글라스로(요청: "드롭다운
+     패널에 탭바 같은 투명함이 라이팅 테마의 중요한 특징인데 빠졌다") — 알파를 크게
+     낮추고 아래 패널 규칙에서 블러/채도를 올려 뒤가 은은히 비치게 한다. */
+  --dd-panel-bg: rgba(20, 25, 31, 0.55);
 
   /* "라이팅 테마"(요청 용어) — 패널은 블러 유리, 액티브/호버 강조는 은은한 라이팅.
      탭바 액티브 알약(.scr-mobile-tab-glow)의 값을 전역 토큰으로 승격해서 라디오알약
@@ -614,17 +617,13 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
     box-shadow: 0 0 12px rgba(var(--lit-rgb), 0.5), 0 0 28px rgba(var(--lit-rgb), 0.26);
   }
 }
-/* 세컨더리 버튼 — 다크는 기본 흰 프라이머리와 동일, 라이트는 검정 솔리드 대신(검정 버튼
-   전면 제거 — 요청) 프라이머리보다 한 단계 약한 라이팅 채움. */
-.scr-btn-secondary { background: #fff; border-color: #fff; color: #10151a; text-shadow: none; }
+/* 세컨더리 버튼(취소/거절 류) — 채움 없는 아웃라인(요청: "다크에서 흰 테두리에 속은
+   비어있는(검정) 버튼"). 다크=흰 테두리 + 투명 내부, 라이트=어두운 테두리 + 투명 내부.
+   호버는 다른 버튼과 같은 라이팅(테두리가 빛색으로). */
+.scr-btn-secondary { background: transparent; border-color: rgba(255, 255, 255, 0.55); color: var(--text); text-shadow: none; }
+.scr-light-theme .scr-btn-secondary { background: transparent; border-color: rgba(0, 0, 0, 0.32); color: var(--text); }
 @media (hover: hover) {
-  .scr-btn-secondary:hover { box-shadow: var(--lit-pill-glow); }
-}
-.scr-light-theme .scr-btn-secondary {
-  background: var(--lit-hover-bg); border-color: transparent; color: var(--text); box-shadow: none;
-}
-@media (hover: hover) {
-  .scr-light-theme .scr-btn-secondary:hover { box-shadow: var(--lit-pill-glow); }
+  .scr-btn-secondary:hover { border-color: rgba(var(--lit-rgb), 0.55); box-shadow: var(--lit-hover-glow); }
 }
 /* 로그인 버튼 — 가로 폭은 절반으로 줄여 가운데 두고, 세로는 기본 필드 높이의 80%로
    낮춰서 좀 더 아담하게. 더 둥글게(필 형태), 위 체크박스와 간격을 더 둬서 아래쪽에
@@ -732,7 +731,7 @@ html.scr-light-theme {
   --info: #3d9bf0;
   --divider-tint: 0, 0, 0;
   --overlay-rgb: 0, 0, 0;
-  --dd-panel-bg: rgba(255, 255, 255, 0.9);
+  --dd-panel-bg: rgba(255, 255, 255, 0.62);
   /* 라이팅 테마 토큰 — 라이트는 탭바 라이트 알약과 같은 하늘색 빛. */
   --lit-rgb: 140, 190, 255;
   --lit-pill-bg: rgba(140, 190, 255, 0.34);
@@ -2652,8 +2651,14 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   .scr-match-type-filter .scr-pill-tab-btn:hover:not(.scr-pill-tab-btn-active),
   .scr-rivalry-period .scr-pill-tab-btn:hover:not(.scr-pill-tab-btn-active) { color: var(--text); }
 }
-/* 기록실 경기유형 필터 로우 — 검색창 바로 위. 검색창과의 간격만 준다(요청: 검색창 위에). */
+/* 기록실 경기유형 필터 로우 — 검색창 바로 위. PC는 좌측 정렬(다른 필터와 동일). */
 .scr-match-type-filter { margin-bottom: 10px; max-width: 320px; }
+/* 필터가 하나뿐이라 모바일에선 라벨+알약을 화면 가운데로(요청). max-width 제약을 풀고
+   FilterItem 행 자체를 가운데 정렬한다. */
+@media (max-width: 860px) {
+  .scr-match-type-filter { max-width: none; }
+  .scr-match-type-filter .scr-filter-item { justify-content: center; }
+}
 
 /* 기간필터(월) — OS 기본 달력을 그대로 쓴다(요청: "os기본 기능으로 연결"). 필터창과
    같은 밝은 반투명 바탕 위에 얹히므로 텍스트/아이콘을 어두운 톤으로 맞춘다. */
@@ -5719,14 +5724,18 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
     grid-template-rows .42s cubic-bezier(0.32, 0.72, 0, 1),
     margin-top .42s cubic-bezier(0.32, 0.72, 0, 1);
 }
+/* 예전엔 여기에 translateY(-6px) 슬라이드를 얹었는데, overflow:hidden 높이 접힘과
+   겹치면서 폼 아래쪽이 위로 밀려 잘려나가는 것처럼 보였다(지적: "펼치거나 접을 때 카드
+   아래부분이 잘리면서 트랜지션") — 슬라이드를 빼고 순수 높이(grid-rows)+페이드만 남겨
+   내용이 위아래로 밀리지 않고 제자리에서 부드럽게 드러났다 사라지게 한다. */
 .scr-inline-collapse-inner {
   overflow: hidden; min-height: 0;
-  opacity: 0; transform: translateY(-6px);
-  transition: opacity .3s ease, transform .42s cubic-bezier(0.32, 0.72, 0, 1);
+  opacity: 0;
+  transition: opacity .3s ease;
 }
 .scr-inline-collapse-open > .scr-inline-collapse-inner {
-  opacity: 1; transform: none;
-  transition: opacity .34s ease .06s, transform .42s cubic-bezier(0.32, 0.72, 0, 1);
+  opacity: 1;
+  transition: opacity .34s ease .06s;
 }
 /* 경기종류보다 앞, 굵게(요청: "경기유형 앞에 일시를 먼저 표시 진하게"). 고정폭
    숫자 폰트(.scr-mono)라 옆의 배지/일반 텍스트와 광학적 중심이 미묘하게 달라
@@ -6183,11 +6192,13 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
    승락은 파스텔톤의 러블리한 분홍 그라데이션(요청) — 위는 옅고 아래로 갈수록 조금 진해져
    입체감을 주고, 흰 글씨가 파스텔 위에서도 읽히도록 옅은 분홍 그림자를 살짝 얹는다.
    거절은 검정 대신 프라이머리(흰 버튼) 톤으로 바꾼다(요청: "거절은 프라이머리 테마, 검정 X").*/
+/* 인박스(편지지) 수락 버튼 — 분홍 대신 연두톤 초록(요청: "인박스 수락하기를 초록(연두톤)
+   으로, 라이트/다크 둘다"). 인박스는 항상 아이보리 편지지라 테마와 무관하게 같은 연두다. */
 .scr-challenge-accept-btn {
-  border-color: transparent; color: #fff;
-  background: #f684bb;
+  border-color: transparent; color: #ffffff;
+  background: #7cbf3f;
 }
-.scr-challenge-accept-btn:hover { filter: brightness(1.04); }
+.scr-challenge-accept-btn:hover { filter: brightness(1.05); }
 /* 카드 안 인라인 폼(리벤지 신청/시간지정 승락/응답 승락)의 버튼은 편지지 인박스와 달리
    각 테마 라이팅 프라이머리로(요청: "인라인 리벤지 요청 폼의 버튼도 라이팅 테마") —
    인박스(.scr-challenge-inbox-body)의 분홍 승락 버튼은 봉투 편지지 톤 그대로 유지.
@@ -6202,10 +6213,12 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
     filter: none; box-shadow: inset 0 0 11px rgba(var(--lit-rgb), 0.5);
   }
 }
+/* 거절 버튼 — 흰 솔리드 대신 아웃라인(요청: 취소/거절 류는 채움 없는 테두리 버튼).
+   인박스는 아이보리 편지지라 어두운 테두리 + 투명 내부로 얹어 고민중(ghost)과 톤을 맞춘다. */
 .scr-challenge-reject-btn {
-  background: #fff; border-color: #fff; color: #10151a; text-shadow: none;
+  background: transparent; border-color: rgba(42, 36, 32, 0.42); color: #2a2420; text-shadow: none;
 }
-.scr-challenge-reject-btn:hover { filter: brightness(0.94); }
+.scr-challenge-reject-btn:hover { border-color: rgba(42, 36, 32, 0.72); }
 /* "고민중"(ghost) 버튼은 투명 배경 + 흰 테두리라 아이보리 편지지 위에서 테두리가 안 보였다
    (요청: "고민중 버튼 테두리가 안보여") — 이 모달에선 편지지 톤에 맞춰 어두운 테두리로
    또렷하게 잡는다. */
@@ -6788,8 +6801,10 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
 .scr-menu-pop-drop {
   border: none;
   background: var(--dd-panel-bg);
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
+  /* 탭바(::before)와 같은 강한 블러+채도로 얇은 알파를 보완해, 반투명해도 옵션 글자가
+     또렷하게 읽히면서 뒤 콘텐츠가 유리처럼 은은히 비친다(라이팅 테마의 핵심). */
+  -webkit-backdrop-filter: blur(18px) saturate(1.3);
+  backdrop-filter: blur(18px) saturate(1.3);
   /* 반전 배경이 모서리(테두리)까지 빈틈없이 차게(요청) — 둥근 모서리가 코너에서 fill을
      잘라내므로 각지게 두고, 좌우 패딩도 없애 옵션이 패널 끝까지 닿게 한다. */
   border-radius: 4px;

@@ -673,7 +673,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
               </button>
             )}
             {canRevenge && (
-              <button className="scr-btn scr-btn-ghost scr-btn-sm" onClick={startRevenge} disabled={busy}>
+              <button className="scr-btn scr-challenge-accept-btn scr-btn-sm" onClick={startRevenge} disabled={busy}>
                 리벤지 신청
               </button>
             )}

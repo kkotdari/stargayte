@@ -7,6 +7,7 @@ import ReplayReviewModal from "../../modals/ReplayReviewModal";
 import MatchList, { type SearchListRow } from "./MatchList";
 import SearchFilterBar from "../../components/common/SearchFilterBar";
 import PillTabs from "../../components/common/PillTabs";
+import FilterItem from "../../components/common/FilterItem";
 import ScrollNavTimeline from "../../components/common/ScrollNavTimeline";
 import { useAppStore } from "../../store/appStore";
 import { api } from "../../api/client";
@@ -160,19 +161,22 @@ export default function MatchScreenV2() {
 
       <h2 className="scr-v2-subheading">경기 목록</h2>
 
-      {/* 경기유형 필터(요청) — 검색창 바로 위에 전체/개인전/팀전 알약 로우. 불러온 목록
-          안에서 즉시 필터. 랭킹 모드 토글과 같은 컴팩트 알약탭 톤을 공유한다. */}
+      {/* 경기유형 필터(요청) — 검색창 바로 위에 전체/개인전/팀전 알약 로우. '경기 유형'
+          라벨을 달고, 필터가 하나뿐이라 모바일에선 가운데 정렬한다(요청). 불러온 목록
+          안에서 즉시 필터하며 랭킹 모드 토글과 같은 컴팩트 알약탭 톤을 공유한다. */}
       <div className="scr-match-type-filter">
-        <PillTabs
-          aria-label="경기유형 필터"
-          value={typeFilter}
-          onChange={setTypeFilter}
-          options={[
-            { value: "all", label: "전체" },
-            { value: "0101", label: "개인전" },
-            { value: "0102", label: "팀전" },
-          ]}
-        />
+        <FilterItem label="경기 유형">
+          <PillTabs
+            aria-label="경기유형 필터"
+            value={typeFilter}
+            onChange={setTypeFilter}
+            options={[
+              { value: "all", label: "전체" },
+              { value: "0101", label: "개인전" },
+              { value: "0102", label: "팀전" },
+            ]}
+          />
+        </FilterItem>
       </div>
 
       {/* 유저 검색(필터) — 자동 조회로 목록이 늘 있으므로 상시 노출한다. 불러온 목록 안에서 즉시 필터. */}
