@@ -185,8 +185,8 @@
      버튼 위치/모달 하단 여백 등 탭바와 겹치면 안 되는 모든 곳이 이 값 하나를 공유한다.
      위아래 패딩 확대(10→12px)와 함께 높이도 키워(요청: "패딩만 늘리면 안 되고 탭바
      자체 높이도") 탭 콘텐츠 몫(높이-패딩)이 이전과 같게 유지된다. */
-  /* 상하 패딩 축소(15→10px)에 맞춰 높이도 같이 줄인다(요청) — 콘텐츠 몫 36px 유지. */
-  --mobile-footer-h: 56px;
+  /* 다시 66px로 원복(요청) — 상하 패딩도 함께 늘려(15px) 콘텐츠 몫 36px 유지. */
+  --mobile-footer-h: 66px;
 }
 
 * { box-sizing: border-box; }
@@ -789,26 +789,47 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
      중첩 모달(컨펌 등)에선 부모 박스 폭으로 잡혀 부모(overflow:hidden) 밖으로 안 넘친다. */
   position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 100;
   width: min(calc(100vw - 32px), 100%); max-width: 420px; padding: 13px 18px 0; max-height: 88vh; max-height: 88dvh;
-  display: flex; flex-direction: column; overflow: hidden; border-radius: var(--radius); backdrop-filter: blur(14px);
+  display: flex; flex-direction: column; overflow: hidden; border-radius: var(--radius);
   border: none;
-  /* 팝업을 더 투명하게(요청) — 알파를 낮춰 뒤가 더 비친다. backdrop blur(14px)가 있어
-     글자 가독성은 유지된다. */
-  background: rgba(16,21,26,0.66);
-  /* 테두리를 없앤 대신 위쪽 반사광(inset)과 그림자로 배경과의 구분감을 준다(요청:
-     "테두리 제거한 대신 반사광과 그림자 활용하여 구분감 주기"). */
+  /* 배경/블러는 아래 ::before 자식 레이어로(탭바·서랍과 같은 이유 — iOS 26 사파리는
+     fixed 요소 '자신'에 background/backdrop-filter가 있으면 사이트의 시트/툴바로 간주해
+     접었던 크롬을 도로 펼친다. 지적: "모달창 팝업 등에서 위아래 화면 안나옴 여전").
+     딤(9999px 스프레드)과 바깥 그림자는 요소에 남긴다 — 자식으로 옮기면 overflow:hidden에
+     잘려 아예 안 그려진다(요소 자신의 그림자는 자기 overflow에 안 잘린다). */
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.12),
-    inset 0 -1px 0 rgba(255,255,255,0.04),
     0 8px 24px rgba(0,0,0,0.28),
     0 0 0 9999px rgba(3,3,4,0.74);
 }
+/* 유리 재질(반투명 배경 + 블러 + 위쪽 반사광) — transform이 있어 자체 스택 컨텍스트라
+   z-index:-1이 내용물 뒤, 모달 밖으로는 안 나간다. */
+.scr-modal::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit;
+  /* 팝업을 더 투명하게(요청) — 알파를 낮춰 뒤가 더 비친다. backdrop blur(14px)가 있어
+     글자 가독성은 유지된다. */
+  background: rgba(16,21,26,0.66);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  /* 테두리를 없앤 대신 위쪽 반사광(inset)으로 구분감(요청). */
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.12),
+    inset 0 -1px 0 rgba(255,255,255,0.04);
+}
+/* 요소 자신에 배경을 직접 정의하는 특수 모달들(편지지/스캔/제어판)은 기본 유리 레이어를
+   끈다 — ::before(z:-1)가 요소 자신의 배경보다 위에 그려져 그 배경을 덮어버리기 때문.
+   이들은 배경이 요소에 있어 크롬 펼침 회피 대상에서도 빠진다(운영·특수 화면이라 감수). */
+.scr-challenge-form-modal::before,
+.scr-replay-scan-modal::before,
+.scr-admin-panel-modal::before,
+.scr-admin-panel-modal-locked::before { content: none; }
 .scr-light-theme .scr-modal {
   border: none;
-  background: rgba(255,255,255,0.72);
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.7),
     0 4px 16px rgba(0,0,0,0.12),
     0 0 0 9999px rgba(60,60,66,0.35);
+}
+.scr-light-theme .scr-modal::before {
+  background: rgba(255,255,255,0.72);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.7);
 }
 /* 헤더 아래 여백을 줄여 제목 바로 밑에 본문이 붙게 한다 — X 버튼(38px)이 헤더 행 높이를
    잡고 있어 제목 위아래 여백은 이미 충분하므로, 예전의 padding-bottom 12 + margin-bottom
@@ -4920,9 +4941,8 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   bottom: max(calc(var(--vv-bottom-inset, 0px) + 6px), calc(env(safe-area-inset-bottom, 0px) + 6px));
   /* 섬은 안전영역을 품지 않으므로 높이는 콘텐츠 몫만. */
   height: var(--mobile-footer-h);
-  /* 패딩 축소(요청: "상하 좌우 패딩 줄이고") — 상하 15→10px(콘텐츠 몫 46px로 커짐),
-     좌우 6→4px. */
-  padding: 10px 4px;
+  /* 높이 원복(66px)에 맞춰 상하 패딩 다시 15px(요청) — 좌우는 4px 유지. */
+  padding: 15px 4px;
   /* 완전 알약(26px≈높이 절반) 대신 둥근 네모 패널로(요청 — 참고 사진의 패널 곡률처럼).
      16px은 좀 각져 보여 한 단계 더 둥글게(요청: "곡률 좀 더 둥글게"). */
   border-radius: 20px;
