@@ -9,6 +9,7 @@ import { versionNumber } from "./utils/appVersion";
 import { useRestoreScrollOnKeyboardClose } from "./hooks/useRestoreScrollOnKeyboardClose";
 import { useBottomViewportInset } from "./hooks/useBottomViewportInset";
 import { scrollRootTo } from "./utils/scrollRoot";
+import { resampleSafariChrome } from "./utils/theme";
 import { CHALLENGE_MIN_VERSION, homeScreenFor } from "./constants/menuVersions";
 
 import AuthScreen from "./pages/auth/AuthScreen";
@@ -69,6 +70,11 @@ export default function App() {
   const effectiveVersionNumber = versionNumber(appVersion);
   const isChallengeEnabled = effectiveVersionNumber >= CHALLENGE_MIN_VERSION;
   const bootstrap = useAppStore((s) => s.bootstrap);
+  // 부팅(스플래시)이 끝나 본 화면이 처음 그려진 직후, 사파리 엣지 렌더(주소창 알약 뒤
+  // 콘텐츠 합성)를 다시 굴린다 — 초기 진입 시 위아래가 잘린 채 남던 문제(지적) 대응.
+  useEffect(() => {
+    if (!booting) resampleSafariChrome();
+  }, [booting]);
   const refreshAll = useAppStore((s) => s.refreshAll);
   const logout = useAppStore((s) => s.logout);
   const restoreSession = useAppStore((s) => s.restoreSession);

@@ -57,6 +57,14 @@ function nudgeToolbarResample(on: boolean): void {
   window.setTimeout(jiggleScroll, 700);
 }
 
+// 부팅(스플래시)이 끝나 실제 화면이 처음 그려진 직후에도 한 번 굴려준다 — 초기 진입
+// 시점의 넛지들은 스플래시 위에서 돌아서, 본 화면 기준의 엣지 렌더가 아직 잡히지 않은
+// 채 남는 케이스가 있었다(지적: "초기 진입시 위아래가 다 잘려"). App.tsx가 booting이
+// 풀리는 순간 호출한다.
+export function resampleSafariChrome(): void {
+  requestAnimationFrame(() => requestAnimationFrame(() => jiggleScroll()));
+}
+
 // 1px 왕복 문서 스크롤 — 사파리 툴바 색/엣지 렌더 재샘플링의 검증된 트리거. 같은 프레임
 // 안에서 곧장 되돌리면 순이동이 0이라 스크롤 자체가 없었던 것으로 합쳐 불발됐다(지적) —
 // 1px 이동을 한 프레임 실제로 렌더시킨 뒤 원위치한다(1px이라 눈에는 안 보인다). 스크롤

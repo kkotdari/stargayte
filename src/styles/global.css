@@ -4436,11 +4436,15 @@ body *::-webkit-scrollbar-corner { background: transparent; }
      안착하는 바운스. */
   animation: scr-admin-panel-pop .5s cubic-bezier(.34, 1.56, .64, 1);
 }
+/* 키프레임의 transform이 기본 센터링(translate(-50%,-50%), .scr-modal fixed)을 통째로
+   대체하므로 translate를 매 프레임에 함께 싣는다 — 빼먹으면 애니메이션 동안 좌상단
+   앵커가 화면 중앙에 걸려 구석에서 커지다가 끝나는 순간 가운데로 튄다(지적: "제어판은
+   왜 구석에서 나왔다가 가운데로 이동하지?"). */
 @keyframes scr-admin-panel-pop {
-  0% { opacity: 0; transform: scale(0.35) rotate(-4deg); }
-  60% { opacity: 1; transform: scale(1.06) rotate(1deg); }
-  80% { transform: scale(0.97) rotate(-0.5deg); }
-  100% { transform: scale(1) rotate(0deg); }
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.35) rotate(-4deg); }
+  60% { opacity: 1; transform: translate(-50%, -50%) scale(1.06) rotate(1deg); }
+  80% { transform: translate(-50%, -50%) scale(0.97) rotate(-0.5deg); }
+  100% { transform: translate(-50%, -50%) scale(1) rotate(0deg); }
 }
 .scr-admin-panel-modal::before {
   content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
