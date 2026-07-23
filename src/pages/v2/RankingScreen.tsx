@@ -317,7 +317,7 @@ export default function RankingScreenV2() {
                 className="scr-btn scr-btn-primary scr-btn-primary-solid scr-rank-rivalry-btn"
                 onClick={() => setRivalryOpen(true)}
               >
-                상성맵
+                상성 보기
               </button>
             )}
             {/* 종족 필터 — '랭커의 종족'(그 경기에서 낸 종족) 기준. 개인전·팀전 모두 지원한다. */}

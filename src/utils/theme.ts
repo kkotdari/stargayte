@@ -126,10 +126,7 @@ function applyLightTheme(on: boolean): void {
 // 공유한다(로그아웃한다고 되돌리지 않는다). 로그인 화면(AuthScreen)과 헤더 둘 다 이
 // 훅으로 마운트되는 즉시 저장된 값을 읽어와 이어서 쓴다.
 export function useLightTheme(): [boolean, Dispatch<SetStateAction<boolean>>] {
-  // 기본 테마 = 라이트(요청: 여름 시즌 기본) — 저장값이 명시적으로 "0"(다크)일 때만
-  // 다크. 기존 사용자 1회 강제 라이트 전환(마이그레이션 플래그)은 index.html 부트
-  // 스크립트가 React보다 먼저 처리한다.
-  const [on, setOn] = useState(() => localStorage.getItem(LIGHT_THEME_KEY) !== "0");
+  const [on, setOn] = useState(() => localStorage.getItem(LIGHT_THEME_KEY) === "1");
   useEffect(() => { applyLightTheme(on); }, [on]);
   return [on, setOn];
 }

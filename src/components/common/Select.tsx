@@ -75,16 +75,32 @@ export default function Select({
       : attachPopover(ref.current, dropRef.current, { matchAnchor: true });
   }, [open, minDropWidth]);
 
+  // 바깥을 누르면 닫되, 그 첫 클릭 자체는 "삼켜서"(dismiss-only) 아래 요소(햄버거 버튼
+   // 등)가 함께 눌리지 않게 한다(요청: 종족 드롭다운 열림 중 ① 햄버거 누르면 서랍이 같이
+   // 열림 ② 다른 곳 누르면 그 클릭이 함께 적용됨 — 둘 다 "바깥 클릭이 dismiss로 소비되지
+   // 않던" 같은 원인). 열려 있을 때만 문서 리스너를 달고, 캡처 단계에서 pointerdown을
+   // 가로채 전파를 끊은 뒤 뒤따르는 click 한 번을 캡처에서 한 번만 삼킨다.
   useEffect(() => {
-    const onDoc = (e: MouseEvent) => {
+    if (!open) return;
+    const onDown = (e: PointerEvent) => {
       const t = e.target as Node;
       if (ref.current?.contains(t)) return;
       if (dropRef.current?.contains(t)) return;
       setOpen(false);
+      e.preventDefault();
+      e.stopPropagation();
+      const swallowClick = (ev: Event) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        document.removeEventListener("click", swallowClick, true);
+      };
+      document.addEventListener("click", swallowClick, true);
+      // 클릭 없이 끝나는 상호작용(드래그/취소) 대비 — 곧 정리한다.
+      window.setTimeout(() => document.removeEventListener("click", swallowClick, true), 400);
     };
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, []);
+    document.addEventListener("pointerdown", onDown, true);
+    return () => document.removeEventListener("pointerdown", onDown, true);
+  }, [open]);
 
   useEffect(() => {
     if (open) {

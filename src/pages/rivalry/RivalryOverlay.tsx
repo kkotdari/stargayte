@@ -35,7 +35,7 @@ export default function RivalryOverlay({ from, to, onClose }: {
     <div className="scr-rivalry-overlay">
       <div className="scr-rivalry-overlay-body">
         <div className="scr-rivalry-overlay-head">
-          <span className="scr-rivalry-overlay-title">상성맵</span>
+          <span className="scr-rivalry-overlay-title">상성 관계</span>
           <button type="button" className="scr-rivalry-overlay-close" onClick={onClose} aria-label="닫기">
             <X size={20} />
           </button>

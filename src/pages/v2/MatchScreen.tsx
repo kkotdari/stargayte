@@ -6,6 +6,7 @@ import { Spinner } from "../../components/common/Feedback";
 import ReplayReviewModal from "../../modals/ReplayReviewModal";
 import MatchList, { type SearchListRow } from "./MatchList";
 import SearchFilterBar from "../../components/common/SearchFilterBar";
+import PillTabs from "../../components/common/PillTabs";
 import ScrollNavTimeline from "../../components/common/ScrollNavTimeline";
 import { useAppStore } from "../../store/appStore";
 import { api } from "../../api/client";
@@ -33,6 +34,9 @@ export default function MatchScreenV2() {
   // (요청). 셋은 AND로 함께 걸린다.
   const [matchNoQuery, setMatchNoQuery] = useState("");
   const [noteQuery, setNoteQuery] = useState("");
+  // 경기유형 필터(요청: 검색창 위에 전체/개인전/팀전 로우) — 이미 불러온 전체 목록 안에서
+  // 클라이언트가 즉시 걸러낸다. "0101"=개인전(1:1), "0102"=팀전.
+  const [typeFilter, setTypeFilter] = useState<"all" | "0101" | "0102">("all");
   // 진입하면 조회 버튼 없이 곧바로 전체 경기를 불러온다(요청: "조회 버튼 제거하고 자동
   // 조회로 변경"). 기간 필터가 없어 조회는 그냥 전체 로드다.
   const suggestions = useMemo(() => activeMemberSearchTerms(members), [members]);
@@ -104,9 +108,11 @@ export default function MatchScreenV2() {
   };
 
   const listRows: SearchListRow[] = useMemo(() => {
-    const rows = matches.map((m) => (
+    let rows = matches.map((m) => (
       { id: m.id, date: m.date, team1: m.team1, team2: m.team2, result: m.result, raw: m }
     ));
+    // 경기유형 필터(전체/개인전/팀전)를 검색보다 먼저 적용한다.
+    if (typeFilter !== "all") rows = rows.filter((r) => r.raw.matchType === typeFilter);
     if (!hasSearch) return rows;
     return rows.filter((r) => {
       const slots = [...r.team1, ...r.team2];
@@ -120,13 +126,15 @@ export default function MatchScreenV2() {
       return userOk && noOk && noteOk;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- resolveMember/slotMatchesTerm은 members 참조 함수라 매 렌더 새로 만들어져도 무방(값 자체는 members로 충분히 표현됨)
-  }, [matches, hasSearch, searchTerms, matchNoTerm, noteTerm, members]);
+  }, [matches, hasSearch, searchTerms, matchNoTerm, noteTerm, members, typeFilter]);
 
   const handleSaved = useCallback(async () => {
     reload();
   }, [reload]);
 
-  const count = hasSearch ? listRows.length : (total ?? matches.length);
+  // 유형 필터나 검색이 걸리면 목록이 걸러지므로 그 실제 개수를, 아니면 서버 total을 쓴다.
+  const hasFilter = hasSearch || typeFilter !== "all";
+  const count = hasFilter ? listRows.length : (total ?? matches.length);
 
   return (
     <div className="scr-screen scr-match-screen-v2">
@@ -151,6 +159,21 @@ export default function MatchScreenV2() {
       </div>
 
       <h2 className="scr-v2-subheading">경기 목록</h2>
+
+      {/* 경기유형 필터(요청) — 검색창 바로 위에 전체/개인전/팀전 알약 로우. 불러온 목록
+          안에서 즉시 필터. 랭킹 모드 토글과 같은 컴팩트 알약탭 톤을 공유한다. */}
+      <div className="scr-match-type-filter">
+        <PillTabs
+          aria-label="경기유형 필터"
+          value={typeFilter}
+          onChange={setTypeFilter}
+          options={[
+            { value: "all", label: "전체" },
+            { value: "0101", label: "개인전" },
+            { value: "0102", label: "팀전" },
+          ]}
+        />
+      </div>
 
       {/* 유저 검색(필터) — 자동 조회로 목록이 늘 있으므로 상시 노출한다. 불러온 목록 안에서 즉시 필터. */}
       <SearchFilterBar

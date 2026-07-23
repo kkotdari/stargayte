@@ -725,7 +725,11 @@ html.scr-light-theme {
      톤과 같은 색 계열이지만, 흰 배경 대비를 위해 훨씬 진하게). */
   --win: #2f8f3e;
   --loss: #c23b4a;
-  --info: #2f6fb3;
+  /* 통계 그래프(막대/차트) 채움색 — 예전엔 흰 배경 대비만 신경 써 어둡고 탁한 톤
+     (#2f6fb3 등)이었는데, 더 밝고 맑은 톤으로(요청: "라이트 통계 그래프 좀더 밝고
+     맑게"). 승/패 "텍스트"는 위 --win/--loss(진한 톤)를 그대로 쓰므로 대비는 유지되고,
+     여기 --info/--bar-*(막대 채움 전용)만 맑게 올린다. */
+  --info: #3d9bf0;
   --divider-tint: 0, 0, 0;
   --overlay-rgb: 0, 0, 0;
   --dd-panel-bg: rgba(255, 255, 255, 0.9);
@@ -737,8 +741,14 @@ html.scr-light-theme {
   --lit-hover-bg: rgba(140, 190, 255, 0.18);
   --lit-hover-glow: 0 0 8px rgba(140, 190, 255, 0.28), 0 0 16px rgba(140, 190, 255, 0.12);
   --lit-press-glow: 0 0 10px rgba(140, 190, 255, 0.35), 0 0 22px rgba(140, 190, 255, 0.16);
-  --bar-winrate: #2f8f3e;
-  --bar-plays: #2f6fb3;
+  --bar-winrate: #34c759;
+  --bar-plays: #3d9bf0;
+  /* 전적통계 승/무/패 막대(StatBar) — 라이트 테마 전용 값이 없어 다크 파스텔을 그대로
+     썼는데, 무승부(--bar-draw #eef0f2, 거의 흰색)가 흰 배경에서 안 보였다. 흰 배경에서
+     맑게 보이는 톤으로 다시 잡는다(승=맑은 초록, 무=옅은 회색, 패=맑은 코랄). */
+  --bar-win: #34c759;
+  --bar-draw: #c2c8d0;
+  --bar-loss: #f2637a;
 }
 /* 공동순위가 아닌 한 랭킹에 항상 있는 신규 진입(NEW) 배지 — 검정 하나로만 눌러두면
    다른 순위 변동(상승/하락)과 구분이 안 돼서, 클럽 로고와 같은 포인트 톤(주황) 계열로
@@ -825,16 +835,9 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 /* max-height는 vh 다음에 dvh로 덮어써서(모바일 브라우저 주소창 등으로 실제 보이는 높이가
    vh보다 작을 때) 모달이 화면 밖으로 넘쳐 위쪽이 잘리는 일이 없게 한다 — .scr-shell과 동일한 패턴. */
 /* 테두리 글로우 대신 다른 팝업(필터창/메뉴 드롭다운)과 같은 반투명 글라스 톤 — 테두리
-   없이(요청: "모달 팝업창 종류에서 테두리 제거하고 반투명으로"). 도전장 작성 모달
-   (.scr-challenge-form-modal)은 아래(초대장 게시판 섹션)에 이미 앱 테마와 무관하게
-   항상 아이보리 편지지 톤으로 고정하는 자신만의 규칙이 있고, 이 베이스 규칙과 같은
-   특이도(클래스 하나)라 소스 순서상(이 규칙보다 뒤에 나옴) 자연히 그 규칙이 이긴다 —
-   따로 예외를 안 둬도 된다. 한 번 ".scr-modal.scr-challenge-form-modal"로 특이도를
-   올려 명시적으로 "복원"해봤는데, 그러면 오히려 이 예외가 편지지 규칙보다 특이도가
-   높아져서 이겨버려 편지지 배경이 사라졌다(실제로 지적받은 문제 — "도전장 보내기는
-   테마 바꾸지 말라고 했는데... 흰색 아니고 아이보리색!"). 초대장 팝업
-   (.scr-challenge-inbox-modal)은 이런 자체 배경 규칙이 없어서(봉투 이미지로만
-   "편지" 느낌을 낸다) 이 베이스 글라스를 그대로 받는 게 맞다. */
+   없이(요청: "모달 팝업창 종류에서 테두리 제거하고 반투명으로"). 호출 작성 모달
+   (.scr-challenge-form-modal)도 이제 이 기본 글라스를 그대로 쓴다(편지지 톤 제거).
+   초대장 인박스(.scr-challenge-inbox-modal)만 봉투 연출과 함께 아이보리를 유지한다. */
 .scr-modal {
   /* 오버레이(flex 센터) 대신 스스로 화면 중앙에 뜬다 — min()의 100%는 최상위(뷰포트
      기준)에선 100vw와 같아 좌우 16px 여백이 되고, 다른 모달 '안'에 인라인으로 뜬
@@ -870,7 +873,6 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 /* 요소 자신에 배경을 직접 정의하는 특수 모달들(편지지/스캔/제어판)은 기본 유리 레이어를
    끈다 — ::before(z:-1)가 요소 자신의 배경보다 위에 그려져 그 배경을 덮어버리기 때문.
    이들은 배경이 요소에 있어 크롬 펼침 회피 대상에서도 빠진다(운영·특수 화면이라 감수). */
-.scr-challenge-form-modal::before,
 .scr-challenge-inbox-modal::before,
 .scr-admin-panel-modal::before,
 .scr-admin-panel-modal-locked::before { content: none; }
@@ -987,7 +989,10 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 /* 관리자가 "이미지 설정"에서 홈 로고를 텍스트 대신 이미지로 바꿔둔 경우 — 텍스트 로고와
    같은 자리에 비슷한 높이로 들어가도록 */
 /* PC 로고 확대(요청): 22→36px. 모바일은 아래 반응형 블록이 따로 정한다. */
-.scr-brand-logo-img { height: 36px; width: auto; display: block; }
+/* PC 헤더 로고 — 요청으로 약 10% 축소(36→32px). 모바일은 아래 미디어쿼리에서 24px
+   유지, 로그인 화면 로고는 .scr-auth-logo 전용 크기라 영향 없다. 별(자식)은 이 높이에
+   대한 %라 자동으로 같이 줄어든다. */
+.scr-brand-logo-img { height: 32px; width: auto; display: block; }
 /* ── 별이 도는 로고(BrandLogo, 요청) ──
    별 없는 워드마크(white/black.png) 위에 별 심볼(symbol.png)을 원래 자리(A 위치)에
    겹친다. 좌표는 이미지 픽셀 실측: 로고 2847×327에서 별 슬롯이 x 613–1041이라
@@ -1366,12 +1371,17 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 .scr-install-banner-text { display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0; }
 .scr-install-banner-text b { font-size: var(--fs-body); }
 .scr-install-banner-text span { font-size: var(--fs-caption); color: var(--muted); }
+/* "홈 화면에 추가" 유도 배너의 CTA — 분홍 고유색 대신 각 테마 라이팅 프라이머리로
+   공통화(요청). 다크=거의 흰 알약, 라이트=하늘빛 알약 + 윤곽 글로우. */
 .scr-install-banner-cta {
   flex-shrink: 0; display: inline-flex; align-items: center; gap: 5px;
-  background: #f684bb; color: #fff; border: none; border-radius: 999px;
+  background: var(--lit-pill-bg); color: var(--lit-pill-text); border: none; border-radius: 999px;
+  box-shadow: var(--lit-pill-glow);
   padding: 7px 14px; font-size: var(--fs-caption); font-weight: 700; cursor: pointer;
 }
-.scr-install-banner-cta:hover { filter: brightness(1.04); }
+@media (hover: hover) {
+  .scr-install-banner-cta:hover { box-shadow: 0 0 12px rgba(var(--lit-rgb), 0.5), 0 0 28px rgba(var(--lit-rgb), 0.26); }
+}
 .scr-install-banner-close {
   flex-shrink: 0; background: transparent; border: none; color: var(--muted);
   cursor: pointer; padding: 4px; display: inline-flex; align-items: center;
@@ -2626,18 +2636,24 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    놓이는 이 컨텍스트들은 다크에서 글자가 안 보였다(지적 이력) — --muted/--text로 뒤집는다. */
 .scr-rank-mode-tabs .scr-pill-tabs,
 .scr-filter-panel .scr-pill-tabs,
+.scr-match-type-filter .scr-pill-tabs,
 .scr-rivalry-period .scr-pill-tabs { height: 28px; background: rgba(255, 255, 255, 0.08); }
 .scr-light-theme .scr-rank-mode-tabs .scr-pill-tabs,
 .scr-light-theme .scr-filter-panel .scr-pill-tabs,
+.scr-light-theme .scr-match-type-filter .scr-pill-tabs,
 .scr-light-theme .scr-rivalry-period .scr-pill-tabs { background: rgba(0, 0, 0, 0.06); }
 .scr-rank-mode-tabs .scr-pill-tab-btn:not(.scr-pill-tab-btn-active),
 .scr-filter-panel .scr-pill-tab-btn:not(.scr-pill-tab-btn-active),
+.scr-match-type-filter .scr-pill-tab-btn:not(.scr-pill-tab-btn-active),
 .scr-rivalry-period .scr-pill-tab-btn:not(.scr-pill-tab-btn-active) { color: var(--muted); }
 @media (hover: hover) {
   .scr-rank-mode-tabs .scr-pill-tab-btn:hover:not(.scr-pill-tab-btn-active),
   .scr-filter-panel .scr-pill-tab-btn:hover:not(.scr-pill-tab-btn-active),
+  .scr-match-type-filter .scr-pill-tab-btn:hover:not(.scr-pill-tab-btn-active),
   .scr-rivalry-period .scr-pill-tab-btn:hover:not(.scr-pill-tab-btn-active) { color: var(--text); }
 }
+/* 기록실 경기유형 필터 로우 — 검색창 바로 위. 검색창과의 간격만 준다(요청: 검색창 위에). */
+.scr-match-type-filter { margin-bottom: 10px; max-width: 320px; }
 
 /* 기간필터(월) — OS 기본 달력을 그대로 쓴다(요청: "os기본 기능으로 연결"). 필터창과
    같은 밝은 반투명 바탕 위에 얹히므로 텍스트/아이콘을 어두운 톤으로 맞춘다. */
@@ -3095,6 +3111,14 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 .scr-match-notes .scr-mreq-submit-btn {
   flex-basis: 30px; width: 30px; height: 30px;
   min-width: 30px; min-height: 30px; max-width: 30px; max-height: 30px;
+  /* 이 버튼은 펼침 영역(.scr-match-trow-expand-inner { overflow:hidden })의 맨 아래에
+     붙어 있어, 프라이머리솔리드의 바깥 알약 글로우(box-shadow)가 하단 클립 경계에서
+     싹둑 잘려 "베이스라인에서 단절"돼 보였다(지적) — 편집칸(.scr-mreq-editor)과 같은
+     원칙으로 글로우를 inset(안쪽)으로 담아 절대 잘리지 않게 한다. */
+  box-shadow: inset 0 0 9px rgba(var(--lit-rgb), 0.4);
+}
+@media (hover: hover) {
+  .scr-match-notes .scr-mreq-submit-btn:hover { box-shadow: inset 0 0 12px rgba(var(--lit-rgb), 0.55); }
 }
 /* 메모 입력칸 — 너나와의 불투명 흰 박스 대신, 로우 글라스 패널에 녹아드는 반투명 유리로
    (요청: 튀지 않게 최대한 — 반투명 + 아주 옅은 반사광/그림자). --overlay-rgb가 테마별로
@@ -5348,84 +5372,24 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 }
 
 /* ===== "너 나와!" 초대장 게시판 ===== */
-/* 초대장 작성 모달 — 앱 테마(다크/라이트)와 무관하게 항상 흰 편지지 느낌으로 고정한다.
-   내부 요소는 전부 var(--text)/var(--line) 등 테마 변수를 쓰므로, 이 변수들만 밝은
-   값으로 다시 정의해주면 자식 전체가 자동으로 따라간다(전역 라이트 테마와 같은 기법). */
+/* 호출("너 나와!") 작성 모달 — 예전엔 앱 테마와 무관하게 아이보리 편지지 톤으로
+   고정했지만, 이제 각 테마의 기본 라이팅 글라스를 그대로 쓴다(요청: "호출하기 모달을
+   편지지 대신 각 라이팅 테마로, 공통 CSS 재사용"). 배경/팔레트 재정의를 걷어내면
+   기본 .scr-modal 글라스(다크=어두운 유리, 라이트=밝은 유리)를 자동으로 따른다.
+   (초대장 인박스 .scr-challenge-inbox-modal은 편지봉투 연출 그대로 아이보리 유지.) */
 .scr-challenge-form-modal {
-  background: #fdfbf5;
-  --text: #2a2420;
-  --muted: rgba(42, 36, 32, 0.75);
-  --dim: rgba(42, 36, 32, 0.55);
-  --input-bg: #ffffff;
-  --panel-raised: #f3efe6;
-  --line: rgba(42, 36, 32, 0.16);
-  --line-soft: rgba(42, 36, 32, 0.2);
-  --overlay-rgb: 0, 0, 0;
-  /* 체크박스 등 "채운 배경 위 아이콘"류가 쓰는 --point-contrast를 안 바꿔서, 다크
-     테마에서는 이 값이 어두운 색으로 내려와 체크 표시(어두운 채움 위에 어두운
-     아이콘)가 안 보였다(실제로 지적받은 문제 — "다크테마에서 시간지정 체크가
-     안보임") — 이 편지지도 항상 밝은 배경이니 다른 밝은 배경 변수들과 같은 톤으로
-     고정한다. */
-  --point-contrast: #fdfbf5;
-  /* 딤 스프레드 제거(모달 공통 실험) — 부양 그림자만으로 분리. */
-  box-shadow: 0 12px 40px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(0,0,0,0.06);
-  /* 상대 지목/일시/한마디/사진 등 폼 요소가 늘면서 기본 .scr-modal-sm(360px)이 좁게
-     느껴졌다(요청: "폼 요소들 전체적으로 폭 넓히기") — 이 모달만 더 넓게. */
+  /* 상대 지목/일시/한마디 등 폼 요소가 늘어 기본 .scr-modal-sm(360px)이 좁게 느껴져
+     이 모달만 더 넓게(요청). */
   max-width: 460px;
 }
 /* 타이틀("너 나와! 신청") 아래 갭을 좀 더(요청: "도전장 보내기 타이틀 아래에 갭을 추가"). */
 .scr-challenge-form-modal .scr-modal-head { margin-bottom: 16px; }
 /* 폼 요소(동료/상대/일시/버튼) 사이 세로 간격을 충분히 넓힌다(요청) — 기본 14 → 22px. */
 .scr-challenge-form-modal .scr-modal-body { gap: 22px; }
-/* ".scr-light-theme .scr-modal"(클래스 두 개, 위 베이스 글라스 규칙)이 이 편지지
-   규칙(클래스 하나)보다 특이도가 높아서, 라이트 테마에서는 편지지 배경이 아니라
-   그 반투명 흰 유리 배경이 이겨버렸다(실제로 지적받은 문제 — "라이트 테마에서도
-   아이보리 편지지 테마 적용") — 같은 특이도(클래스 두 개)로 다시 못박는다. */
-.scr-light-theme .scr-challenge-form-modal {
-  background: #fdfbf5;
-  box-shadow: 0 12px 40px rgba(0,0,0,0.32), inset 0 0 0 1px rgba(0,0,0,0.06);
-}
-/* 상대 지목 드롭다운(Select)의 옵션 목록은 body에 포털링돼 이 모달의 DOM 밖으로
-   나가므로, 위 .scr-challenge-form-modal의 변수 재정의가 상속되지 않는다 — 그 결과
-   라이트 테마에서는 앱의 실제 --panel-raised(옅은 회색)가 이미 밝은 페이지 위에 놓여
-   거의 안 보였다. Select가 트리거/드롭다운 둘 다에 이 className을 그대로 붙여주므로,
-   같은 변수를 여기서도 한 번 더 정의해 드롭다운도 항상 편지지 톤을 따르게 한다.
-   --point-contrast가 빠져 있었다(요청: "도전장 보내기에 상대 드롭다운 글자가
-   안보임") — .scr-cselect-opt-active(드롭다운을 열면 기본으로 활성화되는 첫 옵션,
-   또는 마우스가 올라간 옵션)는 background:var(--text)/color:var(--point-contrast)로
-   반전되는데, 다크 테마의 전역 --point-contrast(#10151a, 거의 검정)가 그대로 새어
-   들어와 어두운 배경(--text 재정의값 #2a2420) 위에 어두운 글자가 겹쳐 안 보였다 —
-   .scr-challenge-form-modal이 같은 이유(요청: "다크테마에서 시간지정 체크가
-   안보임")로 이미 고정해둔 것과 같은 값을 여기도 맞춘다. */
-.scr-challenge-target-select {
-  --text: #2a2420;
-  --muted: rgba(42, 36, 32, 0.75);
-  --dim: rgba(42, 36, 32, 0.55);
-  --input-bg: #ffffff;
-  --panel-raised: #f3efe6;
-  --line: rgba(42, 36, 32, 0.16);
-  --line-soft: rgba(42, 36, 32, 0.2);
-  --overlay-rgb: 0, 0, 0;
-  --point-contrast: #fdfbf5;
-}
-/* 위 변수 재정의만으론 부족했다 — .scr-cselect-drop 자체의 배경이 rgba(20,25,31,0.94)
-   (다크 전용 고정값)로 하드코딩돼 있어서, 앱이 다크 테마일 땐 이 편지지 톤 어두운
-   글자(--text #2a2420)가 그 어두운 배경과 겹쳐 그대로 안 보였다(요청: "너나와 도전장
-   쓰기에서 다크모드에서 유저 드롭다운이 안보임"). 라이트 테마 전용 오버라이드
-   (.scr-light-theme .scr-cselect-drop)만 있고 다크 테마 기본값엔 없었던 게 원인 —
-   여기서 테마와 무관하게 항상 밝은 편지지 배경으로 못박는다. */
-.scr-challenge-target-select.scr-cselect-drop {
-  background: var(--input-bg);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.7), 0 1px 3px rgba(0,0,0,0.06), 0 4px 10px rgba(0,0,0,0.08);
-  /* 스크롤바도 편지지 톤(--line, 갈색 계열)이 흰 배경 위에서 붉은 기가 도는 것처럼
-     보여서, 중립 회색으로 못박는다(요청: "드롭다운 스크롤바 붉은 색 아닌 회색계열
-     사용"). */
-  scrollbar-color: rgba(120,120,120,0.45) transparent;
-}
-.scr-challenge-target-select.scr-cselect-drop::-webkit-scrollbar-thumb {
-  background: rgba(120,120,120,0.45); border: 2px solid var(--input-bg);
-}
-.scr-challenge-target-select.scr-cselect-drop::-webkit-scrollbar-thumb:hover { background: rgba(120,120,120,0.65); }
+/* 상대 지목 드롭다운(Select) — 예전엔 편지지 톤을 유지하려 변수/배경을 아이보리로
+   덮었지만, 이제 호출 모달이 각 테마 글라스를 쓰므로 이 드롭다운도 다른 드롭다운과
+   똑같은 공통 .scr-cselect-drop 라이팅 글라스를 그대로 쓴다(요청: 공통 CSS 재사용).
+   폰트만 데이터폰트 대신 기본 폰트(프리텐다드)로 남긴다. */
 /* 옵션/선택값 폰트도 데이터폰트 대신 기본 폰트(프리텐다드)로(요청: "유저 드롭다운의
    폰트 기본 폰트 사용", "모든 유저 드롭다운 마찬가지로 기본 폰트인 프리텐다드 사용")
    — 회원 이름을 고르는 드롭다운(여기와 게임 아이디 매핑 화면의 회원 선택)에만 적용,
@@ -5537,20 +5501,24 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 .scr-challenge-card-msg-who { flex: 0 0 auto; font-weight: 700; color: var(--dim); font-size: var(--fs-micro); }
 .scr-challenge-card-msg-text { color: var(--text); word-break: break-word; }
 .scr-light-theme .scr-challenge-submit-btn:disabled { border-color: rgba(0, 0, 0, 0.14); }
-/* "호출" 버튼 — 활성화 시 핑크(요청: 빨강 말고 핑크로). 비활성은 위
+/* "호출" 버튼 — 활성화 시 각 테마의 라이팅 프라이머리(요청: 핑크 고유색 대신 공통
+   라이팅 테마). 다크=거의 흰 알약, 라이트=하늘빛 알약 + 윤곽 글로우. 비활성은 위
    .scr-challenge-submit-btn:disabled의 무채색 처리를 그대로 받는다. */
 .scr-challenge-call-btn:not(:disabled) {
-  background: #e8529e; border-color: #e8529e; color: #fff;
+  background: var(--lit-pill-bg); border-color: transparent; color: var(--lit-pill-text);
+  box-shadow: var(--lit-pill-glow);
 }
-.scr-challenge-call-btn:not(:disabled):hover { background: #f265ab; border-color: #f265ab; }
+@media (hover: hover) {
+  .scr-challenge-call-btn:not(:disabled):hover {
+    box-shadow: 0 0 12px rgba(var(--lit-rgb), 0.5), 0 0 28px rgba(var(--lit-rgb), 0.26);
+  }
+}
 .scr-challenge-datetime { display: flex; gap: 8px; }
 .scr-challenge-datetime .scr-input { flex: 1; min-width: 0; }
-/* 도전장 작성/인박스 팝업은 앱 다크/라이트 테마와 무관하게 항상 아이보리 편지지 톤인데,
-   OS가 다크 모드면 브라우저가 이 date/time 인풋의 네이티브 UI(플레이스홀더 "연도-월-일"
-   글자, 달력/시계 아이콘)를 페이지 배경과 무관하게 어둡게 렌더링해 밝은 편지지 위에서
-   거의 안 보인다(신고: "도전장 인박스 열면 일시 플레이스 홀더가 안보임") — 기간필터
-   월선택(.scr-filter-month-input)과 같은 이유로 밝은 배경 전용임을 명시한다. */
-.scr-challenge-form-modal .scr-challenge-datetime input,
+/* 초대장 인박스 팝업은 여전히 아이보리 편지지 톤이라, OS가 다크 모드면 브라우저가 이
+   date/time 인풋의 네이티브 UI(플레이스홀더 글자, 달력/시계 아이콘)를 어둡게 렌더링해
+   밝은 편지지 위에서 안 보인다(신고 이력) — 밝은 배경 전용임을 명시한다. (호출 작성
+   모달은 이제 각 테마 글라스라 color-scheme을 강제하지 않고 테마를 따른다.) */
 .scr-challenge-inbox-modal .scr-challenge-datetime input {
   color-scheme: light;
 }
@@ -6220,6 +6188,20 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
   background: #f684bb;
 }
 .scr-challenge-accept-btn:hover { filter: brightness(1.04); }
+/* 카드 안 인라인 폼(리벤지 신청/시간지정 승락/응답 승락)의 버튼은 편지지 인박스와 달리
+   각 테마 라이팅 프라이머리로(요청: "인라인 리벤지 요청 폼의 버튼도 라이팅 테마") —
+   인박스(.scr-challenge-inbox-body)의 분홍 승락 버튼은 봉투 편지지 톤 그대로 유지.
+   이 버튼들은 InlineCollapse(.scr-inline-collapse-inner { overflow:hidden }) 안에 있어
+   바깥 알약 글로우가 잘리므로, 글로우는 inset(안쪽)으로 담아 절대 잘리지 않게 한다. */
+.scr-challenge-card .scr-challenge-accept-btn {
+  background: var(--lit-pill-bg); border-color: transparent; color: var(--lit-pill-text);
+  box-shadow: inset 0 0 0 0.5px rgba(var(--lit-rgb), 0.5);
+}
+@media (hover: hover) {
+  .scr-challenge-card .scr-challenge-accept-btn:hover {
+    filter: none; box-shadow: inset 0 0 11px rgba(var(--lit-rgb), 0.5);
+  }
+}
 .scr-challenge-reject-btn {
   background: #fff; border-color: #fff; color: #10151a; text-shadow: none;
 }
@@ -6850,9 +6832,9 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
    얇은 빛 테 + 안쪽 글로우. 행이 스크롤 컨테이너에 잘리므로 바깥 글로우 대신 inset으로
    빛을 담는다. 액티브와의 차이는 볼드(굵기)뿐. */
 @media (hover: hover) {
-  .scr-select-opt:hover,
-  .scr-cselect-opt:hover,
-  .scr-pv-opt:hover,
+  .scr-select-opt:hover:not(.scr-select-opt-active),
+  .scr-cselect-opt:hover:not(.scr-cselect-opt-active),
+  .scr-pv-opt:hover:not(.scr-pv-opt-active),
   .scr-menu-pop-drop .scr-menu-pop-opt:hover:not(.scr-menu-pop-opt-active) {
     background: rgba(var(--lit-rgb), 0.22); color: var(--text);
     box-shadow: inset 0 0 0 0.5px rgba(var(--lit-rgb), 0.28), inset 0 0 14px rgba(var(--lit-rgb), 0.16);
@@ -6863,14 +6845,17 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
   background: rgba(var(--lit-rgb), 0.22); color: var(--text);
   box-shadow: inset 0 0 0 0.5px rgba(var(--lit-rgb), 0.28), inset 0 0 14px rgba(var(--lit-rgb), 0.16);
 }
-/* active·선택 = 라이팅 강조 + 볼드 — 채움을 한 단계 올리고 얇은 빛 테 + 안쪽 글로우.
-   케밥/운영 메뉴는 예전 알약 광원 대신 행 라이팅으로 바꾸므로 라벨 알약 배경은 지운다. */
+/* active·선택 = 라이팅 테마 화이트(요청: "액티브 더 하얗게") — 호버(옅은 반투명)보다
+   한참 위로, 탭바 액티브 알약과 같은 거의 불투명한 흰(다크)/하늘(라이트) 채움 + 어두운
+   글자. 채움이 거의 불투명이라 글자는 --text(테마색) 대신 --lit-pill-text(항상 어두운
+   대비색)로. 행이 스크롤 컨테이너에 잘리므로 바깥 알약 글로우 대신 얇은 inset 빛 테만.
+   케밥/운영 메뉴도 예전 알약 광원 대신 이 행 라이팅으로(라벨 알약 배경은 지운다). */
 .scr-select-opt-active,
 .scr-cselect-opt-active,
 .scr-pv-opt-active,
 .scr-menu-pop-drop .scr-menu-pop-opt-active {
-  background: rgba(var(--lit-rgb), 0.22); color: var(--text); font-weight: 700;
-  box-shadow: inset 0 0 0 0.5px rgba(var(--lit-rgb), 0.28), inset 0 0 14px rgba(var(--lit-rgb), 0.16);
+  background: var(--lit-pill-bg); color: var(--lit-pill-text); font-weight: 700;
+  box-shadow: inset 0 0 0 0.5px rgba(var(--lit-rgb), 0.5);
 }
 /* 알약 배경만 지우고 패딩(3px 8px)은 비액티브 라벨과 똑같이 유지한다 — 예전엔 여기서
    padding:0으로 지워, 액티브 항목만 글자가 8px 왼쪽으로 튀어나와(들여쓰기가 달라) 보였다
