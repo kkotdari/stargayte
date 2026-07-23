@@ -594,8 +594,13 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
    --line은 다크 테마에서 너무 어두워(패널 배경과 거의 안 구분됨) 직접 값을 쓴다. */
 .scr-btn { border: 1.5px solid rgba(255,255,255,0.32); background: var(--panel-raised); color: var(--text); padding: 10px 16px; font-size: var(--fs-body); font-weight: 600; cursor: pointer; font-family: inherit; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: var(--field-h); box-sizing: border-box; transition: background .15s, border-color .15s, color .15s, box-shadow .15s;  border-radius: var(--radius-sm); }
 /* 라이팅 테마 공통 호버(요청: "모든 클릭되는 요소에 호버/터치 효과를 통일") — 테두리가
-   빛의 색으로 밝아지고 윤곽을 따라 은은한 글로우가 번진다. */
-.scr-btn:hover { border-color: rgba(var(--lit-rgb), 0.55); box-shadow: var(--lit-hover-glow); }
+   빛의 색으로 밝아지고 윤곽을 따라 은은한 글로우가 번진다. 터치 기기는 탭한 뒤에도
+   :hover가 다른 곳을 탭할 때까지 눌러붙어 빛이 안 꺼지므로(지적: "터치 효과가 다른 곳
+   터치할 때까지 안 없어짐") 호버 글로우는 실제 호버가 되는 기기에서만 켜고, 터치는
+   파일 끝의 공통 :active(눌리는 동안만) 피드백이 맡는다 — 이하 라이팅 호버 전부 동일. */
+@media (hover: hover) {
+  .scr-btn:hover { border-color: rgba(var(--lit-rgb), 0.55); box-shadow: var(--lit-hover-glow); }
+}
 /* 라이트 테마는 배경 자체가 밝아서 흰 테두리는 안 보인다 — 어두운 계열로 뒤집는다. */
 .scr-light-theme .scr-btn { border-color: rgba(0,0,0,0.28); }
 .scr-btn:disabled { opacity: 0.6; cursor: not-allowed; }
@@ -608,7 +613,9 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
 /* 비밀번호 변경 버튼 — sm에서 한 스텝 더 작게(요청): 글자 caption→micro, 패딩 축소. */
 .scr-btn-pw { font-size: var(--fs-micro); padding: 3px 9px; }
 /* 솔리드 채움 버튼의 호버는 밝기 조절 대신 라이팅 — 채움은 그대로 두고 알약 글로우만 켠다. */
-.scr-btn-primary:hover { box-shadow: var(--lit-pill-glow); }
+@media (hover: hover) {
+  .scr-btn-primary:hover { box-shadow: var(--lit-pill-glow); }
+}
 /* 라이트 프라이머리솔리드 — 탭바 액티브 알약과 같은 테마(요청): 하늘색 반투명 채움 +
    윤곽을 따라 퍼지는 글로우. 글자는 라이트 액티브 탭과 같은 어두운 색. */
 .scr-light-theme .scr-btn-primary-solid {
@@ -616,17 +623,23 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
   box-shadow: 0 0 10px rgba(140, 190, 255, 0.35), 0 0 24px rgba(140, 190, 255, 0.16);
 }
 /* 평소에도 글로우를 켜둔 버튼이라 호버는 같은 빛을 한 단계 세게. */
-.scr-light-theme .scr-btn-primary-solid:hover {
-  box-shadow: 0 0 12px rgba(140, 190, 255, 0.5), 0 0 28px rgba(140, 190, 255, 0.26);
+@media (hover: hover) {
+  .scr-light-theme .scr-btn-primary-solid:hover {
+    box-shadow: 0 0 12px rgba(140, 190, 255, 0.5), 0 0 28px rgba(140, 190, 255, 0.26);
+  }
 }
 /* 세컨더리 버튼 — 예전 프라이머리솔리드의 모습을 그대로 물려받는다(요청): 다크는 기본
    흰 프라이머리와 동일, 라이트는 그림자 없는 검정 솔리드. */
 .scr-btn-secondary { background: #fff; border-color: #fff; color: #10151a; text-shadow: none; }
-.scr-btn-secondary:hover { box-shadow: var(--lit-pill-glow); }
+@media (hover: hover) {
+  .scr-btn-secondary:hover { box-shadow: var(--lit-pill-glow); }
+}
 .scr-light-theme .scr-btn-secondary {
   background: #10151a; border-color: #10151a; color: #fff; box-shadow: none;
 }
-.scr-light-theme .scr-btn-secondary:hover { box-shadow: var(--lit-pill-glow); }
+@media (hover: hover) {
+  .scr-light-theme .scr-btn-secondary:hover { box-shadow: var(--lit-pill-glow); }
+}
 /* 모달/팝업 안의 프라이머리 버튼(저장/확인 등)도 위와 같은 원칙 — 다크 테마는 기본값
    그대로 흰색, 라이트 테마는 흰 배경 위에서 존재감이 흐린 흰 버튼 대신 검정으로
    뒤집는다. 화면 상단 버튼처럼 개별 클래스(-solid)를 안 붙여도 모달 안이면 전부
@@ -634,7 +647,9 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
 .scr-light-theme .scr-modal .scr-btn-primary {
   background: #10151a; border-color: #10151a; color: #fff; box-shadow: none;
 }
-.scr-light-theme .scr-modal .scr-btn-primary:hover { box-shadow: var(--lit-pill-glow); }
+@media (hover: hover) {
+  .scr-light-theme .scr-modal .scr-btn-primary:hover { box-shadow: var(--lit-pill-glow); }
+}
 /* 로그인 버튼 — 가로 폭은 절반으로 줄여 가운데 두고, 세로는 기본 필드 높이의 80%로
    낮춰서 좀 더 아담하게. 더 둥글게(필 형태), 위 체크박스와 간격을 더 둬서 아래쪽에
    자리 잡게 한다. */
@@ -668,7 +683,9 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
 /* 아이콘 버튼 표준 = 동그란 투명 버튼(요청: "모두 동그란 투명으로 통일") — 테두리 없이
    원형, 상태 표시는 테두리 대신 글자색 + 옅은 반투명 배경 틴트로 한다. */
 .scr-icon-btn { background: transparent; border: none; color: var(--muted); width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;  border-radius: 50%; }
-.scr-icon-btn:hover { color: var(--text); background: var(--lit-hover-bg); box-shadow: var(--lit-hover-glow); }
+@media (hover: hover) {
+  .scr-icon-btn:hover { color: var(--text); background: var(--lit-hover-bg); box-shadow: var(--lit-hover-glow); }
+}
 /* 헤더 우측 테마토글/로그아웃 버튼 — 순수 아이콘으로(테두리 없이). 호버도 다른 상단바
    메뉴(.scr-nav-tab, 내 화면, 유저칩)와 같은 톤 — 배경을 채우지 않고 글자/아이콘 색만
    밝아진다. 켜짐(scr-icon-btn-active) 상태도 테두리·배경·그림자 없이 순수 아이콘만. */
@@ -691,9 +708,11 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
    호버에서만 빨개지던 것과 달리(하단 참고는 유지) 사진 삭제 버튼은 평소에도 빨갛다. */
 .scr-icon-btn-danger { color: var(--loss); }
 /* 위험 동작은 흰/하늘빛 대신 같은 문법의 붉은 라이팅 — 의미색은 유지한 채 질감만 통일. */
-.scr-icon-btn-danger:hover {
-  color: var(--loss); background: rgba(240, 99, 122, 0.12);
-  box-shadow: 0 0 8px rgba(240, 99, 122, 0.25), 0 0 16px rgba(240, 99, 122, 0.1);
+@media (hover: hover) {
+  .scr-icon-btn-danger:hover {
+    color: var(--loss); background: rgba(240, 99, 122, 0.12);
+    box-shadow: 0 0 8px rgba(240, 99, 122, 0.25), 0 0 16px rgba(240, 99, 122, 0.1);
+  }
 }
 /* 켜짐 상태 — 테두리 대신 포인트색 글자 + 옅은 포인트 배경 틴트. */
 .scr-icon-btn-active { color: var(--point); background: rgba(var(--point-rgb),0.12); }
@@ -1174,7 +1193,9 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   padding: 6px 8px; border-radius: 8px; white-space: nowrap;
   transition: color 0.15s ease, background 0.15s ease;
 }
-.scr-header-text-btn:hover { color: var(--text); background: var(--lit-hover-bg); box-shadow: var(--lit-hover-glow); }
+@media (hover: hover) {
+  .scr-header-text-btn:hover { color: var(--text); background: var(--lit-hover-bg); box-shadow: var(--lit-hover-glow); }
+}
 .scr-header-text-btn.scr-header-text-btn-active { color: var(--text); }
 /* 다른 메뉴 탭(.scr-nav-tab)과 같은 호버 효과로 통일 — 배경 채움 대신 닉네임 글자색만
    밝아진다(평소엔 옅게, 호버 때 또렷하게). */
@@ -3030,7 +3051,9 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   background: transparent; border: none; padding: 2px 4px; border-radius: 4px;
   color: inherit; font: inherit; cursor: pointer; transition: background-color .12s;
 }
-.scr-pv-trigger:hover { background: var(--lit-hover-bg); box-shadow: var(--lit-hover-glow); }
+@media (hover: hover) {
+  .scr-pv-trigger:hover { background: var(--lit-hover-bg); box-shadow: var(--lit-hover-glow); }
+}
 /* 예전엔 --edge-glow 그라데이션 테두리(border-image 트릭)로 광원 테두리를 둘렀는데,
    다른 팝업들이 이미 "테두리 없이 반투명 글라스"로 정리된 것과 어긋나 낡아 보였다
    (전수조사 요청: "테두리 광원 가진 곳 모두 반투명 패널 느낌으로") — 같은 원리로
@@ -4145,7 +4168,9 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   font-size: var(--fs-caption); font-weight: 700; font-family: inherit; line-height: 1; cursor: pointer;
   transition: background-color .12s, color .12s;
 }
-.scr-text-pill:hover { color: var(--text); background: var(--lit-hover-bg); box-shadow: var(--lit-hover-glow); }
+@media (hover: hover) {
+  .scr-text-pill:hover { color: var(--text); background: var(--lit-hover-bg); box-shadow: var(--lit-hover-glow); }
+}
 /* 알약형 선택 버튼의 액티브도 라이팅 알약으로(요청: 라디오알약 전반 라이팅 테마). */
 .scr-text-pill-active, .scr-text-pill-active:hover {
   background: var(--lit-pill-bg); color: var(--lit-pill-text); box-shadow: var(--lit-pill-glow);
@@ -4207,9 +4232,11 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 .scr-replay-loc-row .scr-mono { font-size: var(--fs-caption); color: var(--muted); word-break: break-all; }
 
 .scr-btn-danger { color: var(--loss); border-color: var(--loss); }
-.scr-btn-danger:hover {
-  background: rgba(240,99,122,0.12); border-color: rgba(240, 99, 122, 0.55);
-  box-shadow: 0 0 8px rgba(240, 99, 122, 0.25), 0 0 16px rgba(240, 99, 122, 0.1);
+@media (hover: hover) {
+  .scr-btn-danger:hover {
+    background: rgba(240,99,122,0.12); border-color: rgba(240, 99, 122, 0.55);
+    box-shadow: 0 0 8px rgba(240, 99, 122, 0.25), 0 0 16px rgba(240, 99, 122, 0.1);
+  }
 }
 
 /* ===== responsive ===== */
@@ -5515,7 +5542,9 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 }
 .scr-cselect-sm .scr-cselect-trigger { padding: 6px 8px; font-size: var(--fs-body); min-height: var(--field-h-sm); }
 .scr-cselect-trigger:disabled { opacity: 0.5; cursor: not-allowed; }
-.scr-cselect-trigger:hover { border-color: rgba(var(--lit-rgb), 0.55); box-shadow: var(--lit-hover-glow); }
+@media (hover: hover) {
+  .scr-cselect-trigger:hover { border-color: rgba(var(--lit-rgb), 0.55); box-shadow: var(--lit-hover-glow); }
+}
 .scr-cselect-open { border-color: var(--text); }
 .scr-cselect-value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* 트리거에 프사가 붙는 경우(옵션 avatar가 있을 때 — 개인리그 대진 수정 등) 아바타+이름을
@@ -5723,7 +5752,9 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
   transition: background .12s;
 }
 .scr-member-row:last-child { border-bottom: none; }
-.scr-member-row:hover { background: rgba(var(--lit-rgb), 0.07); }
+@media (hover: hover) {
+  .scr-member-row:hover { background: rgba(var(--lit-rgb), 0.07); }
+}
 /* Avatar가 인라인 style로 각진 래디우스를 계산해 넣으므로 원형으로 강제하려면
    !important가 필요하다(다른 화면의 원형 강제 오버라이드와 같은 패턴). */
 .scr-member-row .scr-avatar { border-radius: 50% !important; }
@@ -7601,11 +7632,17 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
 .scr-menu-pop-drop .scr-menu-pop-opt:last-child { border-radius: 0 0 8px 8px; }
 /* hover = 은은한 라이팅(요청: 라이팅 테마) — 옅은 빛 채움 + 안쪽으로 부드럽게 퍼지는
    글로우. 행이 스크롤 컨테이너에 잘리므로 바깥 글로우 대신 inset으로 빛을 담는다. */
-.scr-select-opt:hover,
-.scr-cselect-opt:hover,
-.scr-pv-opt:hover,
-.scr-pv-opt:focus-visible,
-.scr-menu-pop-drop .scr-menu-pop-opt:hover:not(.scr-menu-pop-opt-active) {
+@media (hover: hover) {
+  .scr-select-opt:hover,
+  .scr-cselect-opt:hover,
+  .scr-pv-opt:hover,
+  .scr-menu-pop-drop .scr-menu-pop-opt:hover:not(.scr-menu-pop-opt-active) {
+    background: var(--lit-hover-bg); color: var(--text);
+    box-shadow: inset 0 0 12px rgba(var(--lit-rgb), 0.1);
+  }
+}
+/* 키보드 포커스는 기기 무관 — 호버와 같은 라이팅. */
+.scr-pv-opt:focus-visible {
   background: var(--lit-hover-bg); color: var(--text);
   box-shadow: inset 0 0 12px rgba(var(--lit-rgb), 0.1);
 }
