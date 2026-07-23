@@ -2381,30 +2381,30 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 }
 
 /* ── 화면 전체 배경(공용, usePageBackground) ──
-   사진을 fixed ::before 대신 정상 흐름 레이어 .scr-app 배경으로 얹는다 — .scr-app 배경은
-   상태바/내비바/안전영역 뒤까지 뻗기 때문(사용자 실기기 확인). 지금은 다크에서만 적용
-   (:not(.scr-light-theme)); 다른 화면/라이트로 확장하려면 이 게이팅만 늘리면 된다.
-   --page-bg-image/-mobile은 훅이 <html>에 인라인으로 넣는다. 어두운 그라데이션은 사진 위에
-   얹어 글자 가독성을 지킨다. background-attachment:fixed로 스크롤에도 고정. */
-html.scr-page-bg:not(.scr-light-theme) .scr-app {
-  background-color: var(--void);
+   "요소 배경"이 아니라 position:fixed 레이어로 깐다. iOS는 background-attachment:fixed를
+   무시해서(실기기 확인) 요소 배경으로 깔면 ① 사진이 컨텐츠와 함께 스크롤되고 ② .scr-app
+   박스(=문서 전체 높이) 기준으로 cover돼 과하게 확대된다. 고정 레이어는 iOS에서도 스크롤에
+   안 딸려가고 뷰포트 기준 cover라 크기가 정확하다.
+   z-index:-1이라 .scr-app 자신의 배경 위, 컨텐츠 아래에 놓인다.
+   --page-bg-image/-mobile은 훅이 <html>에 인라인으로 넣는다. 지금은 다크만 적용
+   (:not(.scr-light-theme)) — 다른 화면/라이트로 넓히려면 이 게이팅만 늘리면 된다. */
+html.scr-page-bg:not(.scr-light-theme) .scr-app::after {
+  content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
   background-image:
     linear-gradient(180deg, rgba(3,3,6,0.78) 0%, rgba(3,3,6,0.67) 45%, rgba(3,3,6,0.83) 100%),
     var(--page-bg-image);
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  background-attachment: fixed;
 }
 @media (max-width: 860px) {
-  html.scr-page-bg:not(.scr-light-theme) .scr-app {
+  html.scr-page-bg:not(.scr-light-theme) .scr-app::after {
     background-image:
       linear-gradient(180deg, rgba(3,3,6,0.78) 0%, rgba(3,3,6,0.67) 45%, rgba(3,3,6,0.83) 100%),
       var(--page-bg-image-mobile);
   }
 }
-/* 페이지 배경이 켜지면, 위에 겹쳐 사진을 가릴 fixed 레이어들(void 판/기존 랭킹 사진)을
-   끈다 — .scr-app 배경 사진 하나만 전체를 덮게. */
+/* 페이지 배경이 켜지면, 위에 겹쳐 사진을 가릴 레이어들(void 판/기존 랭킹 사진)을 끈다. */
 html.scr-page-bg:not(.scr-light-theme) .scr-main::before,
 html.scr-page-bg:not(.scr-light-theme) .scr-rank-screen-v2::before {
   display: none;
