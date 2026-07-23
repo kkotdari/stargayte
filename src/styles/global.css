@@ -7258,12 +7258,13 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
 /* 반투명 오버레이 — 뒤의 랭킹이 비쳐 보이는 딤+블러 위에 맵만 띄운다(자체 패널 없음). */
 .scr-rivalry-overlay {
   position: fixed; inset: 0; z-index: 100;
-  /* 세로 가운데 정렬을 쓰면 로딩(정사각) → 로드(정사각+범례)로 본체가 커질 때 가운데가
-     다시 잡히며 타이틀이 위로 튀어 올랐다(지적: "타이틀이 아래에서 위로 살짝 움직여").
-     상단 앵커(flex-start)로 두면 본체가 아래로만 자라 타이틀은 항상 제자리에 고정된다.
-     세로 여백은 위쪽에 넉넉히 줘 화면 상단에 붙어 보이지 않게 한다. */
-  display: flex; align-items: flex-start; justify-content: center;
-  padding: calc(max(24px, 6vh) + var(--safe-top)) 12px calc(12px + env(safe-area-inset-bottom, 0px));
+  /* 맵+범례를 세로 가운데에 둔다(요청). 예전엔 로딩(정사각)→로드(정사각+범례)로 본체가
+     커지며 가운데가 다시 잡혀 타이틀이 튀어 올랐는데(지적), 로딩 자리에서 범례 높이만큼
+     미리 자리를 잡아두면(.scr-rivalry-overlay-loading margin-bottom) 높이 변화가 거의
+     없어 타이틀이 안 흔들린다. safe center라 내용이 화면보다 크면 위가 잘리지 않고 위에서
+     정렬로 안전하게 폴백한다. */
+  display: flex; align-items: safe center; justify-content: center;
+  padding: calc(12px + var(--safe-top)) 12px calc(12px + env(safe-area-inset-bottom, 0px));
   overflow-y: auto;
   background: rgba(4, 6, 10, 0.62);
   -webkit-backdrop-filter: blur(7px); backdrop-filter: blur(7px);
@@ -7284,6 +7285,10 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-rivalry-overlay-loading {
   width: 100%; max-width: 560px; margin: 0 auto; aspect-ratio: 1;
   display: flex; align-items: center; justify-content: center;
+  /* 로드되면 정사각 아래에 붙는 범례(.scr-rivalry gap 10px + 범례 ~2줄)만큼 로딩 때도
+     미리 자리를 잡아둬, 로드 순간 본체 높이가 거의 안 변하게(세로 가운데 정렬이 다시
+     잡히며 타이틀이 튀는 것 방지). */
+  margin-bottom: 56px;
 }
 /* 개인전/팀전 탭(요청: 루페 스타일) — 하단 탭바의 물방울(.scr-mobile-tab-indicator)을
    그대로 재사용하고, 위치만 이 탭줄 기준으로 다시 잡는다: 두 탭이 정확히 반반이라

@@ -126,8 +126,12 @@ export default function RivalryMap({
             const halfH = 3 * chipScale;
             const edgeRadius = (vx: number, vy: number) =>
               (halfW * halfH) / (Math.hypot(halfH * vx, halfW * vy) || 1);
-            let trimStart = edgeRadius(ux, uy) + 0.7;
-            let trimEnd = edgeRadius(ux, uy) + 2.0;
+            // 양 끝을 유저칩에 더 가깝게(요청) — 예전엔 촉이 칩 밑에 숨는 걸 피하려 칩
+            // 타원 반지름 위에 여유(0.7/2.0)를 넉넉히 얹었는데, 그만큼 화살표가 칩에서
+            // 떠 보였다. 여유를 크게 줄여 촉/꼬리가 칩 가장자리에 바짝 붙게 한다(칩이 위
+            // z-index라 살짝 겹쳐도 칩 밑에 자연스럽게 숨는다).
+            let trimStart = edgeRadius(ux, uy) + 0.2;
+            let trimEnd = edgeRadius(ux, uy) + 0.7;
             // 바로 옆 칩처럼 가까우면 트림이 선을 다 먹어 화살촉만 남는다(지적된 버그)
             // — 촉 길이 + 여유만큼의 기둥은 반드시 남도록 트림을 비례 축소한다.
             const minShaft = headLen + 1.6;
