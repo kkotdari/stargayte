@@ -454,10 +454,13 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
 /* 날짜/시간(OptionalDateTimeFields) 칸을 나란히 한 줄로, 입력 자체도 필요 이상
    크지 않게(요청: "날짜 시간 한줄에 배치하고 너무 크니까 좀 줄여줘 인풋창자체를") —
    예전엔 모바일 전용 미디어쿼리 안에만 있어서 데스크톱에선 세로로 쌓였다. */
-.scr-datetime-cols { display: flex; gap: 14px; align-items: flex-start; }
-.scr-datetime-col { display: flex; flex-direction: column; gap: 5px; align-items: flex-start; flex: 0 0 auto; }
-.scr-datetime-col .scr-datetime-input { width: auto; }
-.scr-datetime-col .scr-datetime-input .scr-input { width: auto; min-height: var(--field-h-sm); padding: 6px 8px; }
+/* 날짜/시간 입력은 호출하기 모달·인박스·리벤지 폼에서 크기·모양을 표준으로 통일(요청) —
+   두 칸을 같은 폭으로 나눠(각 flex:1) 모달 폭을 채우고, 입력 자체도 표준 필드 크기
+   (--field-h, padding 9/10)로. 예전의 축소판(--field-h-sm·auto 폭)은 걷어낸다. */
+.scr-datetime-cols { display: flex; gap: 10px; align-items: flex-start; }
+.scr-datetime-col { display: flex; flex-direction: column; gap: 5px; align-items: stretch; flex: 1 1 0; min-width: 0; }
+.scr-datetime-col .scr-datetime-input { width: 100%; }
+.scr-datetime-col .scr-datetime-input .scr-input { width: 100%; min-height: var(--field-h); padding: 9px 10px; }
 /* 라벨은 어디서든(검색 필터·모달 폼 전부) 필드 위에 두고, 크기와 왼쪽 들여쓰기를
    하나로 통일한다 — 화면마다 라벨이 옆에 붙거나 크기가 제각각이면 산만해 보인다.
    line-height:1은 폰트 자체의 위아래 여백(줄간격)을 없애서, 코딩폰트를 쓰는 인풋과
@@ -6351,6 +6354,20 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
   display: flex; flex-direction: column; align-items: center;
   padding-bottom: 8px;
 }
+/* 카톡 공유 링크로 열렸을 때 인박스 뒤에 까는 흰 벽지 — "너 나와~"가 벽지처럼 어긋난
+   행으로 반복(요청). 텍스트는 봉투 타이틀(subhead)보다 2스텝 작은 14px 검은 글자. SVG
+   타일을 배경으로 반복시켜 어긋난 두 줄이 격자로 이어지게 한다. 봉투/편지지보다 아래(z축)에
+   깔려 배경으로만 보이고, 클릭은 통과시킨다. */
+.scr-challenge-share-bg {
+  position: fixed; inset: 0; pointer-events: none;
+  background-color: #ffffff;
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='220'%20height='130'%3E%3Ctext%20x='14'%20y='44'%20font-family='sans-serif'%20font-size='14'%20font-weight='700'%20fill='%23111'%3E%EB%84%88%20%EB%82%98%EC%99%80~%3C/text%3E%3Ctext%20x='125'%20y='106'%20font-family='sans-serif'%20font-size='14'%20font-weight='700'%20fill='%23111'%3E%EB%84%88%20%EB%82%98%EC%99%80~%3C/text%3E%3C/svg%3E");
+  background-repeat: repeat;
+}
+/* 흰 벽지 위에선 봉투 제목을 흰색으로 두면 안 보인다 — 공유 모드에선 검은 글자로. */
+.scr-challenge-share .scr-challenge-envelope-layer .scr-challenge-inbox-title {
+  color: #111; text-shadow: none;
+}
 /* 봉투 레이어의 제목은 어두운 스크림 위에 떠서, 편지지 톤(짙은 갈색)이 아니라 흰 글자+
    그림자로 뒤집는다(편지지 카드 안 제목은 자기 규칙대로 짙은 갈색 그대로). */
 .scr-challenge-envelope-layer .scr-challenge-inbox-title {
@@ -6439,14 +6456,6 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
 .scr-challenge-inbox-when {
   margin: 0; font-size: var(--fs-subhead); font-weight: 700;
   color: var(--text); text-align: center; line-height: 1.3;
-}
-/* 일/시를 안 정한 채 수락할 때 뜨는 날짜·시간 입력 — 폼 모달에선 축소판(--field-h-sm)을
-   쓰지만, 인박스에서는 표준 크기로(요청). 두 칸을 같은 폭으로 나눠 모달 폭을 채운다. */
-.scr-challenge-inbox-body .scr-datetime-col { flex: 1 1 0; }
-.scr-challenge-inbox-body .scr-datetime-col .scr-datetime-input,
-.scr-challenge-inbox-body .scr-datetime-col .scr-datetime-input .scr-input { width: 100%; }
-.scr-challenge-inbox-body .scr-datetime-col .scr-datetime-input .scr-input {
-  min-height: var(--field-h); padding: 9px 10px;
 }
 /* 값 span(종류/일시 오른쪽)은 클래스가 없어 색을 명시 안 하면 앱 루트의 테마 글자색(다크
    테마에선 흰색)을 그대로 물려받아 밝은 편지지 배경 위에서 거의 안 보였다(요청: "결과

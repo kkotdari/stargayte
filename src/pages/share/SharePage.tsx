@@ -54,7 +54,7 @@ export default function SharePage({ target, onExit }: { target: ShareTarget; onE
   // 전체 화면 오버레이라 별도 상단바 없이 그것만 띄운다.
   if (target.type === "challenge") {
     if (loading) return <div className="scr-share-page"><div className="scr-share-body"><Spinner size={18} /></div></div>;
-    if (challenge) return <ChallengeInboxModal challenges={[challenge]} onClose={onExit} closeLabel="스타게이트로" />;
+    if (challenge) return <ChallengeInboxModal challenges={[challenge]} onClose={onExit} closeLabel="스타게이트로" shareBackdrop />;
     return (
       <div className="scr-share-page">
         <div className="scr-share-head">

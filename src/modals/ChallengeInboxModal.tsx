@@ -17,13 +17,16 @@ interface ChallengeInboxModalProps {
   // 공유 화면(SharePage)에서 재사용할 때, 응답 버튼 없이 읽기만 하는 사람(대상이 아닌 사람)이
   // 누를 마무리 버튼 문구. 기본 "닫기". 공유 화면에선 "스타게이트로"를 넘긴다.
   closeLabel?: string;
+  // 카톡 공유 링크로 열렸을 때(SharePage) 뒤에 깔 흰 벽지 배경("너 나와~" 반복). 앱 안에서
+  // 뜨는 평소 인박스 팝업에선 앱 배경을 그대로 두므로 false(기본).
+  shareBackdrop?: boolean;
 }
 
 // 다음 접속 때 뜨는 도전장 팝업 — 한 번에 하나씩만 보여주고, 응답하거나 닫으면 큐의
 // 다음 도전장으로 넘어간다. 전부 처리되면 onClose로 부모가 닫는다. 공유 링크가 여는 화면
 // (SharePage)에서도 그대로 재사용한다 — 편지봉투부터 시작하되, 지목된 대상(targets)만
 // 거절/승락/고민중 버튼을 볼 수 있고, 대상이 아니면 읽기 전용으로만 보여준다(요청).
-export default function ChallengeInboxModal({ challenges, onClose, closeLabel = "닫기" }: ChallengeInboxModalProps) {
+export default function ChallengeInboxModal({ challenges, onClose, closeLabel = "닫기", shareBackdrop = false }: ChallengeInboxModalProps) {
   useLockBodyScroll();
   // 편지지 제목("야 OO, 나와!")에 쓸 받는 사람(나) 닉네임.
   const user = useAppStore((s) => s.user);
@@ -180,7 +183,10 @@ export default function ChallengeInboxModal({ challenges, onClose, closeLabel = 
   };
 
   return createPortal(
-    <div className="scr-modal-overlay">
+    <div className={`scr-modal-overlay${shareBackdrop ? " scr-challenge-share" : ""}`}>
+      {/* 카톡 공유로 열렸을 때만 뒤에 흰 벽지("너 나와~" 반복)를 깐다(요청). 봉투/편지지보다
+          아래(z-index 없음)에 위치해 배경으로만 보인다. */}
+      {shareBackdrop && <div className="scr-challenge-share-bg" aria-hidden="true" />}
       {/* 편지지(letter) — 봉투와는 완전히 별개인 카드다(요청: "봉투랑 편지지는 별도 모달").
           봉투가 사라지는 순간 그 자리에 애니메이션 없이 그냥 나타난다(요청: "편지지 확대
           페이드인 제거 그냥 나오기"). */}
