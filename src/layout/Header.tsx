@@ -11,7 +11,6 @@ import { attachPopover } from "../utils/popover";
 import { useIsNarrow } from "../utils/useIsNarrow";
 import { useHideOnScrollDown } from "../hooks/useHideOnScrollDown";
 import { useKeyboardInset } from "../hooks/useKeyboardInset";
-import { useLockBodyScroll } from "../utils/bodyScrollLock";
 import { useAppStore } from "../store/appStore";
 import { isAdminRole } from "../constants/roles";
 import { useLightTheme } from "../utils/theme";
@@ -135,10 +134,12 @@ export default function Header({
     if (dx > width * DRAWER_CLOSE_RATIO) setMenuOpen(false);
   };
 
-  // 메뉴 열렸을 때 뒤 스크롤 잠금 — 모달들과 같은 공유 카운터를 쓴다 (드로어가 열린 채
-  // 모달도 함께 뜨는 경우에도 한쪽이 먼저 닫혀서 스크롤이 풀려버리지 않도록). 닫히는
-  // 트랜지션이 재생되는 동안도 잠가둔다(drawerRendered 기준).
-  useLockBodyScroll(drawerRendered);
+  // 서랍은 더 이상 body를 position:fixed로 잠그지 않는다 — 잠그는 순간 문서가 스크롤
+  // 불가가 되어 iOS 26 사파리가 접었던 툴바를 도로 펼치고 엣지-투-엣지 확장도 풀렸다
+  // (지적: "서랍 열면 주소창까지 안 나옴"). 대신 배경 스크롤 차단은 CSS로 한다:
+  // 오버레이(전체 화면)가 touch-action:none으로 스크롤 제스처를 막고, 서랍 자신은
+  // pan-y + overscroll-contain으로 내부만 스크롤한다(.scr-drawer-overlay/.scr-drawer).
+  // 테마 토글이 서랍 안에 있어서, 잠금이 없어야 툴바 색 재샘플링도 토글 즉시 걸린다.
 
   const go = (s: ScreenKey) => { onNavigate(s); setMenuOpen(false); };
 

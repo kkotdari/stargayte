@@ -18,8 +18,14 @@ const VOID_COLOR = { dark: "#060607", light: "#ffffff" };
 // 보여... 우리도 이렇게 하면 좋겠어"). 테마를 바꿀 때마다 이 메타 태그도 같이 갱신해
 // 상태바/주소창 색이 항상 지금 페이지 배경과 정확히 같게 한다.
 function applyThemeColor(on: boolean): void {
-  document.querySelector('meta[name="theme-color"]')
-    ?.setAttribute("content", on ? VOID_COLOR.light : VOID_COLOR.dark);
+  // setAttribute로 content만 바꾸면 iOS 26 사파리가 무시하는 일이 있어(테마 전환 시
+  // 툴바 색이 즉시 안 바뀌는 문제의 일부), 메타 태그 자체를 새로 만들어 교체한다 —
+  // 요소 삽입은 사파리가 theme-color를 다시 읽는 확실한 트리거다.
+  document.querySelector('meta[name="theme-color"]')?.remove();
+  const meta = document.createElement("meta");
+  meta.name = "theme-color";
+  meta.content = on ? VOID_COLOR.light : VOID_COLOR.dark;
+  document.head.appendChild(meta);
 }
 
 // iOS 26 사파리는 툴바(주소창/내비바) 색을 theme-color 메타보다 "페이지 실제 픽셀 샘플링"

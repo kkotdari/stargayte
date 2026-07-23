@@ -4904,7 +4904,8 @@ body *::-webkit-scrollbar-corner { background: transparent; }
      iOS 26 사파리는 하단 가장자리에 '붙은'(수 px 이내) fixed 바를 사이트 툴바로 간주해
      접힌 주소창 알약 뒤 콘텐츠 확장을 막는데(조사 — 유리를 자식으로 옮겨도 부족했다),
      가장자리에서 떨어진 플로팅 요소는 그 판정을 받지 않는다. */
-  left: 12px; right: 12px;
+  /* 폭 살짝 축소(요청) — 좌우 여백 12→18px. */
+  left: 18px; right: 18px;
   /* 바닥 띄우기 — 주소창이 가리는 실측 높이(--vv-bottom-inset) 또는 홈 인디케이터
      안전영역(PWA/데스크톱은 vv-inset이 0) 중 큰 쪽 위에 10px 간격. max로 고르므로
      둘이 겹쳐 이중으로 뜨는 일은 없다. */
@@ -4936,10 +4937,8 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   /* 블러도 약화(14→5px, 요청) — 뒤 내용의 형태가 실제로 알아보이게. */
   -webkit-backdrop-filter: blur(5px) saturate(1.15);
   backdrop-filter: blur(5px) saturate(1.15);
-  /* 위쪽 반사광 한 줄(옅은 흰 선, 라이트 테마는 아래에서 어두운 톤으로 뒤집음) — 가운데가
-     밝은 광원 그라데이션은 화면 모서리에서 잘려 경계처럼 보여(지적) 단순한 선으로 바꿨다. */
-  background-image: linear-gradient(rgba(255,255,255,0.16), rgba(255,255,255,0.16));
-  background-repeat: no-repeat; background-position: top; background-size: 100% 1px;
+  /* (위쪽 반사광 한 줄은 플로팅 아일랜드 전환 후 제거 — 전폭 바 시절 화면과의 경계
+     표시였는데, 떠 있는 섬에는 어울리지 않는다(요청: "위쪽 구분선 제거").) */
   box-shadow: 0 -2px 10px rgba(0,0,0,0.15);
 }
 /* 아래로 스크롤하면 숨긴다(요청: "모바일 아래로 스크롤시 탭바 숨김(단 끝까지 내리면
@@ -5137,11 +5136,7 @@ html.scr-light-theme .scr-mobile-tab-indicator {
     0 3px 8px -4px rgba(55,130,210,0.26);          /* 옅은 쿨톤 접촉 그림자 */
 }
 html.scr-light-theme .scr-mobile-tab-active { color: var(--text); }
-/* 라이트 테마는 밝은 패널 위라 흰 반사광이 안 보여 — 드로어 왼쪽 모서리와 같은 이유로
-   어두운 톤으로 뒤집는다. (유리 재질이 ::before 자식 레이어로 옮겨가서 여기도 함께.) */
-html.scr-light-theme .scr-mobile-tabbar::before {
-  background-image: linear-gradient(rgba(0,0,0,0.12), rgba(0,0,0,0.12));
-}
+/* (라이트 테마 반사광 뒤집기도 위 구분선 제거와 함께 삭제.) */
 
 .scr-drawer-overlay {
   /* 딤 처리 없음(요청) — 어둡게 덮지 않고 투명하게 둔다. 바깥 클릭으로 닫는 역할은
@@ -5153,6 +5148,10 @@ html.scr-light-theme .scr-mobile-tabbar::before {
      (transform)만으로 자연스럽게 나타난다 — 이러면 슬라이드 도중에도 블러가 정상 적용된다. */
   position: fixed; inset: 0; z-index: 60; background: transparent;
   display: flex; justify-content: flex-end;
+  /* 서랍이 body 잠금(position:fixed)을 그만 쓰면서(잠그면 문서가 스크롤 불가 → iOS 26
+     사파리가 접었던 툴바를 도로 펼침, 지적) 배경 스크롤 차단을 여기서 맡는다 — 전체
+     화면을 덮는 이 오버레이가 스크롤 제스처 자체를 막는다. 서랍 내부는 아래에서 pan-y. */
+  touch-action: none;
   /* iOS 사파리 — inset:0(레이아웃 뷰포트)은 하단 툴바 밑까지 내려가, 바닥 정렬된
      서랍의 아래쪽이 툴바에 가려 잘렸다(지적). 100dvh로도 안 잡혀서, 탭바가 쓰는 것과
      같은 실측 값(--vv-bottom-inset, useBottomViewportInset가 갱신)만큼 바닥을 띄운다. */
@@ -5171,6 +5170,9 @@ html.scr-light-theme .scr-mobile-tabbar::before {
   /* 최소 높이는 화면의 1/2(요청) — 내용(프로필+운영 목록+액션)이 더 길면 그만큼
      늘어나고(높이는 내용을 따라감), 화면을 넘으면 그때만 스크롤. */
   height: auto; min-height: 50%; max-height: 100%; align-self: flex-end;
+  /* 내용이 화면을 넘으면 서랍 안에서만 스크롤 — contain으로 문서(배경)로 이어지는
+     스크롤 체이닝을 끊는다(오버레이 touch-action:none과 한 세트, body 잠금 대체). */
+  overflow-y: auto; overscroll-behavior-y: contain; touch-action: pan-y;
   /* 래디우스 확대(14→24→32px), 반사광은 더 은은하게(요청). */
   border-top-left-radius: 32px;
   border-top: 1px solid rgba(255,255,255,0.09);
