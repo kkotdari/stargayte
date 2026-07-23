@@ -1,10 +1,9 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import LoginForm from "./LoginForm";
 import SignupForm from "./SignupForm";
-import { api } from "../../api/client";
+import BrandLogo from "../../components/common/BrandLogo";
 import { useLightTheme } from "../../utils/theme";
-import type { ImageSettingMap } from "../../types";
 
 export default function AuthScreen() {
   const [tab, setTab] = useState<"login" | "signup">("login");
@@ -12,14 +11,6 @@ export default function AuthScreen() {
   // 헤더의 토글과 같은 저장소를 공유한다(utils/theme.ts). 로그아웃하면 appStore가 항상
   // 기본(다크)으로 되돌리므로, 로그인 화면에 온 채로 다시 켜고 싶으면 여기서 켠다.
   const [lightTheme, setLightTheme] = useLightTheme();
-  // 헤더의 브랜드 로고를 로그인 화면에도 그대로 보여준다 — 이 화면은 로그인 전이라 전체
-  // 부트스트랩(App.tsx)을 못 타므로 로고 맵만 따로 조회한다. 라이트 테마면 어두운 배경을
-  // 전제로 만들었을 기본 로고 대신 별도 등록된 라이트 테마 전용 로고를 쓴다.
-  const [icons, setIcons] = useState<ImageSettingMap | null>(null);
-  useEffect(() => {
-    api.getImageSettings().then(setIcons).catch(() => {});
-  }, []);
-  const homeLogo = icons ? (lightTheme ? icons.home_logo_light : icons.home_logo) : null;
 
   return (
     <div className="scr-auth-wrap">
@@ -39,16 +30,10 @@ export default function AuthScreen() {
           이 그룹 밖의 형제라 영향받지 않는다). */}
       <div className="scr-auth-hero">
         <div className="scr-auth-logo">
-          {/* 조회가 끝나기 전엔 아무것도 안 보여준다 — homeLogo가 null인 동안 텍스트 대체값을
-              먼저 그리면, 실제 로고 이미지가 도착하는 순간 "텍스트 -> 이미지"로 바뀌는 게
-              눈에 띄게 깜빡여 보였다. */}
-          {homeLogo && (
-            homeLogo.type === "image" && homeLogo.value ? (
-              <img src={homeLogo.value} alt="스타게이트" className="scr-auth-logo-img scr-logo-fadein" />
-            ) : (
-              <span className="scr-auth-logo-text scr-logo-fadein">{homeLogo.value || "스타게이트"}</span>
-            )
-          )}
+          {/* 헤더와 같은 정적 로고 + 회전 별(BrandLogo) — 서버 조회 없이 즉시 그려져
+              예전의 "텍스트→이미지 깜빡임"도 원천적으로 없다. 크기/글로우는
+              .scr-auth-logo 스코프 CSS가 키워준다. */}
+          <BrandLogo light={lightTheme} />
         </div>
         {tab === "login" ? (
           // 로그인 카드도 회원가입 카드처럼 테두리 없이 반투명 유리 배경만(요청: "테두리 제거").

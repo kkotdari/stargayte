@@ -19,11 +19,9 @@ export type MemberStatus = "pending" | "active" | "suspended" | "withdrawn";
 // 회원 권한 — 0202=운영자, 0203=회원.
 export type MemberRole = "0202" | "0203";
 
-// 종족 아이콘(텍스트/이모지 또는 이미지)뿐 아니라, 화면에서 쓰는 다른 이미지 슬롯(예: 홈
-// 로고)도 같은 맵에 함께 담는다 — 관리 화면 하나, 저장 API 하나로 통합하기 위함.
-// home_logo_light는 라이트 테마 전용 홈 로고 — 어두운 배경을 전제로 만든 로고가 라이트
-// 테마의 흰 배경에서 잘 안 보일 수 있어 완전히 별도로 등록한다(Header.tsx 참고).
-export type IconSlot = Race | "home_logo" | "home_logo_light";
+// 운영자가 교체 가능한 이미지 슬롯 — 이제 종족 아이콘만 남는다(홈 로고 슬롯은 정적
+// 자산 + 회전 별(BrandLogo)로 대체되며 완전히 제거됐다).
+export type IconSlot = Race;
 export interface ImageSetting {
   type: "text" | "image";
   value: string;

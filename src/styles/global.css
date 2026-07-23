@@ -387,13 +387,11 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
 /* 은은한 글로우 — 로고 자체를 밝은 그림자(포인트/화이트 계열)로 여러 겹 흐리게 둘러싸서
    광원처럼 보이게 한다. 이미지/텍스트 로고 둘 다 drop-shadow로 통일(이미지는 투명 배경
    PNG가 대부분이라 box-shadow 대신 drop-shadow를 써야 로고 모양을 따라 은은하게 퍼진다). */
-.scr-auth-logo-img {
-  max-height: 64px; max-width: 70%; width: auto; height: auto; display: block;
+/* 로그인 화면의 BrandLogo — 헤더(36px)보다 크게, 예전 이미지 로고와 같은 글로우.
+   글로우는 wrap이 아니라 워드마크 이미지에만 건다(별은 자체 회전 중이라 겹치면 과함). */
+.scr-auth-logo .scr-brand-logo-img {
+  height: auto; max-height: 52px; max-width: 70vw; width: auto;
   filter: drop-shadow(0 0 18px rgba(var(--point-rgb), 0.35)) drop-shadow(0 0 4px rgba(255,255,255,0.25));
-}
-.scr-auth-logo-text {
-  font-weight: 900; color: var(--text); font-size: var(--fs-title); letter-spacing: 0.04em; text-align: center;
-  text-shadow: 0 0 18px rgba(var(--point-rgb), 0.45), 0 0 4px rgba(255,255,255,0.3);
 }
 .scr-auth-card { width: 100%; max-width: 290px; z-index: 1; }
 /* 회원가입 화면은 별도 카드 테두리/그림자 없이(테두리 테마 제거) 로그인 카드와 같은
