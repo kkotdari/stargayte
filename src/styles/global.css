@@ -4912,8 +4912,9 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   bottom: max(calc(var(--vv-bottom-inset, 0px) + 10px), calc(env(safe-area-inset-bottom, 0px) + 10px));
   /* 섬은 안전영역을 품지 않으므로 높이는 콘텐츠 몫만. */
   height: var(--mobile-footer-h);
-  /* 좌우 패딩 축소(요청) — 폭이 좁아진 섬 안에서 탭들이 공간을 더 쓰게. */
-  padding: 10px 6px;
+  /* 좌우 패딩 축소(요청) — 폭이 좁아진 섬 안에서 탭들이 공간을 더 쓰게.
+     위아래는 살짝 여유를 더한다(요청: 10→12px). */
+  padding: 12px 6px;
   /* 완전 알약(26px≈높이 절반) 대신 둥근 네모 패널로(요청 — 참고 사진의 패널 곡률처럼).
      16px은 좀 각져 보여 한 단계 더 둥글게(요청: "곡률 좀 더 둥글게"). */
   border-radius: 20px;
