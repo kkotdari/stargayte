@@ -10,10 +10,6 @@ import RankRow from "./RankRow";
 import RankingDetailModal from "./RankingDetailModal";
 import ChallengeFormModal from "../../modals/ChallengeFormModal";
 import RivalryOverlay from "../rivalry/RivalryOverlay";
-import KakaoShareButton from "../../components/common/KakaoShareButton";
-import type { KakaoShareContent } from "../../utils/kakaoShare";
-import { renderRankingShareImage } from "../../utils/rankingShareImage";
-import { api } from "../../api/client";
 import {
   computeRankRows, computeRankTrend, MATCH_TYPE_OF,
   type RankMode, type RankRow as RankRowData, type RankTrendPoint,
@@ -200,43 +196,6 @@ export default function RankingScreenV2() {
 
   const period = useMemo(() => periodAnchorToRange(unit, anchor), [unit, anchor]);
 
-  // 카카오톡 공유 내용 — 누르는 시점의 필터/순위로 만든다(상위 5명 + 조건 라벨). 함수로
-  // 넘겨 버튼이 최신 상태를 읽게 한다. link에 지금 필터(개인전/팀전·종족·기간)를 쿼리로
-  // 실어 보내야 상대가 열었을 때도 같은 조건으로 보인다 — 예전엔 link를 안 줘서 항상
-  // 사이트 루트(기본값)로만 열렸다(요청: "차트 공유시 필터가 그대로 적용되서 가야하는데
-  // 안가"). RankingScreenV2의 useState 초기값이 이 쿼리를 읽는다(아래 rankingParamsFromUrl).
-  // 미리보기 이미지는 그 순간 상위 5명을 캔버스로 그려 업로드한 뒤 URL을 붙인다(요청:
-  // "카톡 미리보기에서 차트가 보이면 좋겠어") — 실패해도(네트워크 등) 공유 자체는 이미지
-  // 없이 계속 진행한다(카톡 기본 아이콘으로 대체될 뿐, 공유가 막히면 안 된다).
-  const shareRanking = async (): Promise<KakaoShareContent> => {
-    const modeLabel = mode === "team" ? "팀전" : "개인전";
-    const raceLabel = race === "all" ? "" : ` · ${race}`;
-    const label = `${modeLabel}${raceLabel} · ${periodAnchorLabel(unit, anchor)}`;
-    const topRows = visibleRows.slice(0, 5);
-    const top = topRows.map((r) => `${r.rank}. ${r.member.nickname} (${r.rankScore}점)`);
-    const linkParams = new URLSearchParams({ screen: "ranking", mode, unit, anchor });
-    if (race !== "all") linkParams.set("race", race);
-
-    let imageUrl: string | undefined;
-    try {
-      const dataUrl = await renderRankingShareImage(
-        "스타게이트 랭킹", label,
-        topRows.map((r) => ({ rank: r.rank, nickname: r.member.nickname, score: r.rankScore })),
-      );
-      imageUrl = (await api.uploadShareImage(dataUrl)).url;
-    } catch {
-      // 무시 — 위 주석 참고.
-    }
-
-    return {
-      title: `스타게이트 랭킹 · ${label}`,
-      description: top.slice(0, 3).join("  "),
-      fallbackText: `[스타게이트 랭킹] ${label}\n${top.join("\n")}`,
-      link: `${window.location.origin}/?${linkParams.toString()}`,
-      imageUrl,
-    };
-  };
-
   // 산정 방식 안내 — 항상 보이는 문단 대신, 눌러야 뜨는 툴팁으로(요청: "누르면 툴팁형태로
   // 보이게"). 헤더의 프로필 드롭다운과 같은 패턴(attachPopover + 바깥 클릭/포커스 이동 시 닫음).
   const [methodTipOpen, setMethodTipOpen] = useState(false);
@@ -303,7 +262,6 @@ export default function RankingScreenV2() {
           >
             <Info size={13} /> 산정 방식
           </button>
-          <KakaoShareButton content={shareRanking} variant="icon" />
         </span>
       </div>
 

@@ -149,7 +149,7 @@ export default function ProfileModal({ onClose }: ProfileModalProps) {
           <div className="scr-field">
             <span className="scr-label">비밀번호</span>
             <div className="scr-field-actions">
-              <button type="button" className="scr-btn scr-btn-ghost scr-btn-sm" onClick={() => setPasswordModalOpen(true)}>
+              <button type="button" className="scr-btn scr-btn-ghost scr-btn-sm scr-btn-pw" onClick={() => setPasswordModalOpen(true)}>
                 비밀번호 변경
               </button>
             </div>
