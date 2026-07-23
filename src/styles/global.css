@@ -5192,9 +5192,10 @@ html.scr-light-theme .scr-mobile-tabbar::before {
   position: absolute; left: 0;
   pointer-events: none;
   transition: transform .22s ease, width .22s ease, top .22s ease, height .22s ease;
-  /* 모양은 물방울과 동일(요청) — 좌우 고정 곡률 22px / 상하 50%의 알약 실루엣.
-     빛이 상자보다 크게 퍼지다 이 radius에서 잘려 물방울 형태의 광이 된다. */
-  border-radius: 22px / 50%;
+  /* 물방울 실루엣(22px/50% 비대칭 곡률)은 좌우 변 한가운데서 타원 호 둘이 만나는
+     꼭짓점을 만들었다 — 아이폰의 밝은 채움에서 그 이음새가 뾰족하게 도드라짐(지적:
+     "왼쪽 모서리 가운데가 뾰족해"). 완전한 캡슐로 바꿔 이음새 자체를 없앤다(뭉뚝하게). */
+  border-radius: 999px;
   /* 더 밝게(요청) — 가운데가 넓게 환한 판(plateau)을 이루고 가장자리로 부드럽게
      사라진다. 다크는 이 빛 위 글자를 검정으로 반전한다(아래 active 규칙). */
   /* 다크는 거의 완전한 흰색 알약으로(요청: "더 하얗게 거의 하얀색") — 중심부를 불투명에
