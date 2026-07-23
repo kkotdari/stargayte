@@ -189,37 +189,9 @@ export default function ImageSettingsScreen() {
       </div>
 
       <div className="scr-code-groups">
-        <div className="scr-admin-group-v2">
-          <div className="scr-list-head">
-            <span>홈 로고</span>
-          </div>
-          <div className="scr-race-icon-list">
-            <SlotRow
-              label="홈 로고"
-              color="var(--point)"
-              icon={draft.home_logo}
-              dirty={isDirty("home_logo")}
-              onChange={(patch) => update("home_logo", patch)}
-              onReset={() => resetSlot("home_logo")}
-              onError={setErr}
-              maxSide={1600}
-            />
-            {/* 라이트 테마는 배경이 흰색으로 바뀌는데, 어두운 배경을 전제로 만든 로고
-                이미지는 그 위에서 잘 안 보일 수 있어 완전히 별도 이미지로 등록한다
-                (Header.tsx가 라이트 테마일 때 이 슬롯을 대신 쓴다). */}
-            <SlotRow
-              label="홈 로고 (라이트 테마)"
-              color="var(--point)"
-              icon={draft.home_logo_light}
-              dirty={isDirty("home_logo_light")}
-              onChange={(patch) => update("home_logo_light", patch)}
-              onReset={() => resetSlot("home_logo_light")}
-              onError={setErr}
-              maxSide={1600}
-            />
-          </div>
-        </div>
-
+        {/* (홈 로고 슬롯 관리는 제거 — 로고는 이제 정적 자산 + 회전 별(BrandLogo)이라
+            운영자가 갈아끼울 일이 없다(요청). 백엔드 슬롯/스토어 코드는 그대로 두고
+            편집 UI만 뺀다.) */}
         <div className="scr-admin-group-v2">
           <div className="scr-list-head">
             <span>종족 아이콘</span>
