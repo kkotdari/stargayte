@@ -134,25 +134,31 @@ export default function Header({
     if (dx > width * DRAWER_CLOSE_RATIO) setMenuOpen(false);
   };
 
-  // 서랍은 더 이상 body를 position:fixed로 잠그지 않는다 — 잠그는 순간 문서가 스크롤
-  // 불가가 되어 iOS 26 사파리가 접었던 툴바를 도로 펼치고 엣지-투-엣지 확장도 풀렸다
-  // (지적: "서랍 열면 주소창까지 안 나옴"). 배경 스크롤 차단을 오버레이의
-  // touch-action:none으로도 해봤지만 마찬가지였다 — 전체 화면을 덮는 요소에 CSS로
-  // 스크롤 제스처를 원천 봉쇄해도 사파리는 "이 페이지는 지금 스크롤 불가"로 읽고
-  // 크롬을 도로 펼친다(지적: "그 방법 안 통함"). 그래서 레이아웃/CSS로는 아무것도
-  // 안 바꾸고, JS 논패시브 touchmove 리스너로 서랍 밖 스크롤 제스처만 조용히
-  // preventDefault한다 — 사파리가 정적으로 감지할 신호가 없어 크롬이 접힌 채 남는다.
-  const drawerOverlayRef = useRef<HTMLDivElement>(null);
+  // 서랍이 열려도 화면 전체를 덮는 요소를 하나도 만들지 않는다 — body 잠금(1차),
+  // 오버레이 touch-action:none(2차), 오버레이 유지+JS 차단(3차) 모두 실패한 공통점은
+  // "전체 화면 fixed 오버레이"의 존재 자체였다(지적 — 서랍이 닫혀야 비로소 메인이
+  // 다시 렌더링/재샘플링됨). iOS 26 사파리는 뷰포트를 덮는 fixed 요소가 있으면 모달
+  // 상태로 보고 크롬을 도로 펼치는 것으로 관찰된다. 그래서 오버레이 div를 아예 없애고
+  // 서랍 패널만 fixed로 띄우며, 오버레이가 하던 두 역할은 document 리스너로 옮긴다:
+  // (1) 바깥 탭으로 닫기 — pointerdown이 패널 밖이면 닫는다(고스트 클릭 시간 가드 유지).
+  // (2) 배경 스크롤 차단 — 패널 밖 touchmove만 논패시브 preventDefault.
   useEffect(() => {
     if (!drawerRendered) return;
-    const el = drawerOverlayRef.current;
-    if (!el) return;
-    const block = (e: TouchEvent) => {
+    const closeIfOutside = (e: PointerEvent) => {
+      if (Date.now() - drawerOpenedAtRef.current < 450) return;
+      if (drawerPanelRef.current?.contains(e.target as Node)) return;
+      setMenuOpen(false);
+    };
+    const blockScroll = (e: TouchEvent) => {
       if (drawerPanelRef.current?.contains(e.target as Node)) return;
       e.preventDefault();
     };
-    el.addEventListener("touchmove", block, { passive: false });
-    return () => el.removeEventListener("touchmove", block);
+    document.addEventListener("pointerdown", closeIfOutside, true);
+    document.addEventListener("touchmove", blockScroll, { passive: false });
+    return () => {
+      document.removeEventListener("pointerdown", closeIfOutside, true);
+      document.removeEventListener("touchmove", blockScroll);
+    };
   }, [drawerRendered]);
 
   const go = (s: ScreenKey) => { onNavigate(s); setMenuOpen(false); };
@@ -282,19 +288,13 @@ export default function Header({
       </div>
 
       {/* 모바일 드로어 — 헤더의 backdrop-filter 가 position:fixed 자식의 컨테이닝 블록이 되어버려서
-          (화면 전체가 아니라 헤더 높이만큼만 덮이는 문제) body 에 포털로 렌더링해 완전히 분리한다 */}
+          (화면 전체가 아니라 헤더 높이만큼만 덮이는 문제) body 에 포털로 렌더링해 완전히 분리한다.
+          전체 화면 오버레이 없이 패널 하나만 fixed로 띄운다(위 주석 — iOS 26 크롬 재펼침 회피).
+          바깥 탭 닫기/배경 스크롤 차단은 위 document 리스너가 맡는다. */}
       {drawerRendered && createPortal(
-        <div
-          className={cx("scr-drawer-overlay", drawerOpen && "scr-drawer-open")}
-          ref={drawerOverlayRef}
-          // 서랍이 비활성(pointer-events:none)인 동안 고스트 클릭이 오버레이로 새면
-          // 방금 연 서랍이 도로 닫힌다 — 같은 시간창 안의 오버레이 클릭도 무시한다.
-          onClick={() => { if (Date.now() - drawerOpenedAtRef.current < 450) return; setMenuOpen(false); }}
-        >
           <div
-            className="scr-drawer" ref={drawerPanelRef}
+            className={cx("scr-drawer", drawerOpen && "scr-drawer-open")} ref={drawerPanelRef}
             style={{ pointerEvents: drawerInteractive ? undefined : "none" }}
-            onClick={(e) => e.stopPropagation()}
             onClickCapture={(e) => {
               if (Date.now() - drawerOpenedAtRef.current < 400) { e.preventDefault(); e.stopPropagation(); }
             }}
@@ -336,8 +336,7 @@ export default function Header({
                 메뉴 닫기
               </button>
             </div>
-          </div>
-        </div>,
+          </div>,
         document.body,
       )}
 

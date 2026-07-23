@@ -5157,25 +5157,11 @@ html.scr-light-theme .scr-mobile-tab-indicator {
 html.scr-light-theme .scr-mobile-tab-active { color: var(--text); }
 /* (라이트 테마 반사광 뒤집기도 위 구분선 제거와 함께 삭제.) */
 
-.scr-drawer-overlay {
-  /* 딤 처리 없음(요청) — 어둡게 덮지 않고 투명하게 둔다. 바깥 클릭으로 닫는 역할은
-     투명해도 그대로 유지된다(전체를 덮는 클릭 캐처).
-     opacity 페이드는 뺐다 — 오버레이가 opacity<1로 애니메이션되는 동안 그 자체가 하나의
-     그룹(backdrop root)이 되어, 안쪽 드로어의 backdrop-filter가 '페이지'가 아니라 이
-     투명한 그룹을 배경으로 삼는 바람에 다 열리기 전까지 블러가 안 걸려 보이는 버그가
-     있었다(신고). 오버레이는 어차피 투명하니 페이드가 필요 없고, 드로어는 슬라이드
-     (transform)만으로 자연스럽게 나타난다 — 이러면 슬라이드 도중에도 블러가 정상 적용된다. */
-  position: fixed; inset: 0; z-index: 60; background: transparent;
-  display: flex; justify-content: flex-end;
-  /* (touch-action:none 시도는 철회 — 전체 화면 요소에 CSS로 스크롤을 봉쇄하면 iOS 26
-     사파리가 body 잠금 때와 똑같이 "스크롤 불가"로 읽고 크롬을 도로 펼쳤다(지적).
-     배경 스크롤 차단은 Header.tsx의 논패시브 touchmove preventDefault가 맡는다 —
-     CSS/레이아웃 신호를 남기지 않아 크롬이 접힌 채 유지된다.) */
-  /* iOS 사파리 — inset:0(레이아웃 뷰포트)은 하단 툴바 밑까지 내려가, 바닥 정렬된
-     서랍의 아래쪽이 툴바에 가려 잘렸다(지적). 100dvh로도 안 잡혀서, 탭바가 쓰는 것과
-     같은 실측 값(--vv-bottom-inset, useBottomViewportInset가 갱신)만큼 바닥을 띄운다. */
-  bottom: var(--vv-bottom-inset, 0px);
-}
+/* (전체 화면 오버레이(.scr-drawer-overlay)는 완전히 제거 — body 잠금, touch-action:none,
+   투명 유지 등 무엇을 하든 "뷰포트를 덮는 fixed 요소"가 존재하는 것만으로 iOS 26
+   사파리가 모달 상태로 보고 접었던 크롬을 도로 펼쳤다(지적: 서랍이 닫혀야 메인이 다시
+   렌더링됨). 바깥 탭 닫기/배경 스크롤 차단은 Header.tsx의 document 리스너가 맡고,
+   서랍 패널(.scr-drawer)이 스스로 fixed로 뜬다.) */
 /* 드로어 경계선(아래 그라데이션) — 다른 곳(탭바 선 등)과 같은 전역 --edge-glow(다크는
    붉은 파이프색, 라이트는 파랑)를 그대로 따른다(주황으로 바꿔봤다가 원래 톤으로 되돌림).
    (경계선 옆 원형/타원 헤일로도 시도해봤으나 여러 번 다듬어도 원하는 느낌이 안 나와
@@ -5187,13 +5173,13 @@ html.scr-light-theme .scr-mobile-tab-active { color: var(--text); }
      바닥에 붙인다. 새로 생긴 왼쪽 위 모서리엔 크지 않은 radius + 유리 반사광(테두리),
      그림자도 위쪽 경계를 따라 한 겹 더 두른다. */
   /* 최소 높이는 화면의 1/2(요청) — 내용(프로필+운영 목록+액션)이 더 길면 그만큼
-     늘어나고(높이는 내용을 따라감), 화면을 넘으면 그때만 스크롤. */
-  height: auto; min-height: 50%; max-height: 100%; align-self: flex-end;
-  /* 내부 스크롤이 문서(배경)로 이어지는 스크롤 체이닝을 끊는다(오버레이
-     touch-action:none과 한 세트, body 잠금 대체). overflow/touch-action은 아래 기존 선언. */
+     늘어나고(높이는 내용을 따라감), 화면을 넘으면 그때만 스크롤. fixed라 %는 뷰포트 기준. */
+  height: auto; min-height: 50%; max-height: 100%;
+  /* 내부 스크롤이 문서(배경)로 이어지는 스크롤 체이닝을 끊는다(문서 리스너 차단과 한 세트). */
   overscroll-behavior-y: contain;
-  /* 유리 재질을 ::before 자식으로 옮기며 그 기준 박스가 된다. */
-  position: relative;
+  /* 오버레이 없이 패널 스스로 화면 우하단에 뜬다(위 주석) — 바닥은 예전 오버레이와
+     같은 실측 값(--vv-bottom-inset)만큼 툴바 위로. ::before 유리 레이어의 기준 박스이기도 하다. */
+  position: fixed; right: 0; bottom: var(--vv-bottom-inset, 0px); z-index: 60;
   /* 래디우스 확대(14→24→32px), 반사광은 더 은은하게(요청). */
   border-top-left-radius: 32px;
   border-top: 1px solid rgba(255,255,255,0.09);
@@ -5231,7 +5217,7 @@ html.scr-light-theme .scr-mobile-tab-active { color: var(--text); }
   backdrop-filter: blur(7px);
   -webkit-backdrop-filter: blur(7px);
 }
-.scr-drawer-overlay.scr-drawer-open .scr-drawer { transform: translateX(0); }
+.scr-drawer.scr-drawer-open { transform: translateX(0); }
 /* 라이트 테마는 흰 유리라 흰 반사광이 안 보여, 대신 아주 옅은 어두운 경계선으로 모서리를 잡는다.
    background-color도 다크 테마와 같은 --panel(0.46 알파)을 그대로 쓰면, 뒤에 항상 깔린
    어두운 오버레이 스크림(.scr-drawer-overlay, rgba(2,2,3,0.62))이 블러를 뚫고 비쳐서
