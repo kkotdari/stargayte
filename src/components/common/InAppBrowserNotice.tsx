@@ -28,15 +28,10 @@ export default function InAppBrowserNotice() {
     if (!ok) setHint(true);
   };
 
-  const label = info.kind === "kakao" ? "카카오톡 브라우저" : "인앱 브라우저";
-
   return (
     <div className="scr-inapp-notice" role="dialog" aria-label="외부 브라우저로 열기 안내">
       <div className="scr-inapp-notice-main">
-        <div className="scr-inapp-notice-text">
-          <b>{label}에선 로그인이 유지되지 않아요</b>
-          <span>Chrome·Safari로 열면 로그인 상태가 그대로 유지돼요.</span>
-        </div>
+        {/* 설명 문구 없이 "기본 브라우저로 열기" 버튼만 둔다(요청) — 버튼은 각 테마 라이팅. */}
         <button type="button" className="scr-inapp-notice-cta" onClick={openExternal}>
           <ExternalLink size={14} /> 기본 브라우저로 열기
         </button>

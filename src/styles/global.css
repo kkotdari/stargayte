@@ -1355,13 +1355,17 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 }
 .scr-light-theme .scr-inapp-notice { box-shadow: 0 8px 26px rgba(0,0,0,0.16), inset 0 0 0 1px rgba(0,0,0,0.08); }
 .scr-inapp-notice-main { display: flex; align-items: center; gap: 10px; }
-.scr-inapp-notice-text { display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0; }
-.scr-inapp-notice-text b { font-size: var(--fs-body); }
-.scr-inapp-notice-text span { font-size: var(--fs-caption); color: var(--muted); }
+/* 설명 문구는 제거(요청) — 이제 버튼만 남아 가로를 채운다. CTA는 카톡 노랑 대신 각 테마
+   라이팅 알약(다크=흰 빛, 라이트=하늘 빛)으로 통일한다(요청: "버튼에 라이팅 테마 적용"). */
 .scr-inapp-notice-cta {
-  flex-shrink: 0; display: inline-flex; align-items: center; gap: 5px;
-  background: #fee500; color: #3c1e1e; border: none; border-radius: 999px;
-  padding: 7px 13px; font-size: var(--fs-caption); font-weight: 800; font-family: inherit; cursor: pointer;
+  flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  background: var(--lit-pill-bg); color: var(--lit-pill-text); border: none; border-radius: 999px;
+  box-shadow: inset 0 0 0 0.5px rgba(var(--lit-rgb), 0.5);
+  padding: 8px 13px; font-size: var(--fs-caption); font-weight: 800; font-family: inherit; cursor: pointer;
+  transition: box-shadow .15s;
+}
+@media (hover: hover) {
+  .scr-inapp-notice-cta:hover { box-shadow: inset 0 0 11px rgba(var(--lit-rgb), 0.5); }
 }
 .scr-inapp-notice-close {
   flex-shrink: 0; width: 28px; height: 28px; display: grid; place-items: center;
@@ -6339,11 +6343,17 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
   position: absolute; inset: 0; z-index: 2;
   display: flex; align-items: center; justify-content: center;
   padding: calc(16px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px));
+  /* 이 레이어는 화면 전체(inset:0)를 덮지만 실제로는 가운데 봉투만 조작 대상이다. body로
+     포털돼 z-index:2로 앱 위에 얹히므로, 그대로 두면 빈 영역이 인앱 안내 배너의 닫기 버튼
+     같은 아래 요소의 클릭을 가로챈다(지적: "처음에 닫기 버튼이 안 눌림"). 레이어 자체는
+     클릭을 통과시키고(none), 실제 콘텐츠(봉투/버튼)만 다시 받게(auto) 한다. */
+  pointer-events: none;
 }
 .scr-challenge-envelope-inner {
   width: 100%; max-width: 460px;
   display: flex; flex-direction: column; align-items: center;
   padding-bottom: 8px;
+  pointer-events: auto;
 }
 /* 봉투 레이어의 제목은 어두운 스크림 위에 떠서, 편지지 톤(짙은 갈색)이 아니라 흰 글자+
    그림자로 뒤집는다(편지지 카드 안 제목은 자기 규칙대로 짙은 갈색 그대로). */
