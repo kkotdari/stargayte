@@ -606,9 +606,9 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
    낮춰서 좀 더 아담하게. 더 둥글게(필 형태), 위 체크박스와 간격을 더 둬서 아래쪽에
    자리 잡게 한다. */
 .scr-auth-submit {
-  /* 버튼 크기 축소(요청) — 폭·높이·글자를 한 단계씩 줄인다. */
-  align-self: center; width: 42%; min-height: calc(var(--field-h) * 0.66);
-  font-size: var(--fs-caption); border-radius: 999px; margin-top: 16px;
+  /* 다시 1스텝 확대(요청) — 글자 caption→body, 폭·높이도 한 단계 위로. */
+  align-self: center; width: 50%; min-height: calc(var(--field-h) * 0.8);
+  font-size: var(--fs-body); border-radius: 999px; margin-top: 16px;
 }
 /* 아이디/비밀번호 인풋도 은은한 글로우로 테두리를 밝힌다(로그인 버튼과 달리 점멸 없이
    고정된 은은한 빛 — 버튼만 깜빡여야 시선이 그쪽으로 몰린다). 다크 테마는 흰색 계열
