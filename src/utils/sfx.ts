@@ -63,58 +63,60 @@ export function playCreak(): void {
   }
 }
 
-// 우편 알림 "딸랑딸랑" — 진짜 방울/차임벨처럼 맑고 영롱하게(요청). 사인파 배음을 정수배로
-// 쌓으면 오르간처럼 밋밋해서 종 느낌이 안 난다 — 그래서 튜블러 벨(금속 종)의 비조화 배음비
-// (1 : 2.76 : 5.40 : 8.93)로 배음을 얹어 "댕~" 하는 금속 종 특유의 맑은 울림을 만들고,
-// 높은 배음일수록 빨리 사라지게 해 반짝이는 잔향만 남긴다. 높은 두 음을 번갈아 빠르게 네 번
-// 쳐서 작은 방울이 딸랑딸랑 흔들리는 소리를 낸다.
+// 우편 알림 "딸랑딸랑" — 진짜 방울처럼(요청). 실제 방울은 음이 여러 개가 아니라 한 가지고,
+// 같은 음이 빠르게 네 번 딸랑거린 뒤 메아리(에코)로 잦아든다. 그래서 하나의 기본음만 쓰되,
+// 사인파를 정수배로 쌓으면 오르간처럼 밋밋해 종 느낌이 안 나므로 튜블러 벨(금속 종)의 비조화
+// 배음비(1 : 2.76 : 5.40 : 8.93)로 그 한 음의 음색을 "댕~" 하는 맑은 금속 울림으로 만든다.
+// 딜레이+피드백으로 친 소리가 메아리처럼 반복되며 사라지는 잔향을 붙인다.
 export function playMailChime(): void {
   const ac = getCtx();
   if (!ac) return;
   try {
     const t0 = ac.currentTime;
-    // [배음 주파수비, 상대 볼륨, 감쇠(초)]
+    // 메아리(에코) 버스 — 친 소리를 딜레이로 되울리고, 피드백으로 점점 작아지며 반복시킨다.
+    const echo = ac.createDelay(1.0);
+    echo.delayTime.setValueAtTime(0.19, t0);
+    const feedback = ac.createGain();
+    feedback.gain.setValueAtTime(0.42, t0); // <1이라 메아리가 점점 잦아든다.
+    const echoLevel = ac.createGain();
+    echoLevel.gain.setValueAtTime(0.5, t0);
+    echo.connect(feedback).connect(echo);      // 피드백 루프
+    echo.connect(echoLevel).connect(ac.destination);
+    // 마른 소리(dry) + 에코로 함께 보내는 버스.
+    const bus = ac.createGain();
+    bus.gain.setValueAtTime(1, t0);
+    bus.connect(ac.destination);
+    bus.connect(echo);
+
+    // [배음 주파수비, 상대 볼륨, 감쇠(초)] — 한 음의 음색(금속 종).
     const partials: [number, number, number][] = [
-      [1.0, 1.0, 0.9],
-      [2.76, 0.55, 0.6],
-      [5.40, 0.28, 0.4],
-      [8.93, 0.1, 0.26],
+      [1.0, 1.0, 0.7],
+      [2.76, 0.55, 0.45],
+      [5.40, 0.28, 0.3],
+      [8.93, 0.1, 0.2],
     ];
-    // 종 한 번 치기 — 기본 주파수 base로 비조화 배음을 한꺼번에 울린다. 진짜 쇠종은 클래퍼가
-    // 부딪히는 순간 음이 살짝 높았다가 바로 안정되므로(금속 "팅~" 어택), 주파수를 아주 조금
-    // 높은 데서 base로 미끄러뜨려 그 느낌을 준다. ring으로 음마다 잔향 길이를 달리한다.
-    const strike = (start: number, base: number, peak: number, ring: number) => {
+    // 방울 한 번 치기 — 진짜 쇠종은 클래퍼가 부딪히는 순간 음이 살짝 높았다가 바로 안정되므로
+    // (금속 "팅~" 어택) 주파수를 아주 조금 높은 데서 base로 미끄러뜨린다. 소리는 에코 버스로.
+    const strike = (start: number, base: number, peak: number) => {
       for (const [ratio, vol, decay] of partials) {
         const f = base * ratio;
         const o = ac.createOscillator();
         o.type = "sine";
         o.frequency.setValueAtTime(f * 1.012, start);
-        o.frequency.exponentialRampToValueAtTime(f, start + 0.03);
+        o.frequency.exponentialRampToValueAtTime(f, start + 0.025);
         const g = ac.createGain();
-        const d = decay * ring;
         g.gain.setValueAtTime(0.0001, start);
-        g.gain.exponentialRampToValueAtTime(peak * vol, start + 0.004);
-        g.gain.exponentialRampToValueAtTime(0.0001, start + d);
-        o.connect(g).connect(ac.destination);
+        g.gain.exponentialRampToValueAtTime(peak * vol, start + 0.003);
+        g.gain.exponentialRampToValueAtTime(0.0001, start + decay);
+        o.connect(g).connect(bus);
         o.start(start);
-        o.stop(start + d + 0.05);
+        o.stop(start + decay + 0.05);
       }
     };
-    // 딱 떨어지는 두 음 반복이 아니라 실제 방울이 흔들리듯 높낮이가 자연스럽게 오르내리고,
-    // 타이밍도 살짝 들쭉날쭉하게. 전보다 살짝 더 높게 잡고(E7~B7대), 마지막 음이 가장 높고
-    // 가장 길게 울려 퍼지며 마무리된다. [지연(초), 기본 주파수, 잔향 배율]
-    const seq: [number, number, number][] = [
-      [0.0, 2637, 0.6],   // E7
-      [0.11, 3520, 0.55], // A7 (살짝 뛰어오름)
-      [0.24, 3136, 0.6],  // G7 (내려감)
-      [0.36, 3951, 0.6],  // B7 (다시 위로)
-      [0.5, 3136, 1.3],   // G7 — 자리를 잡으며 가장 길게 울려 마무리
-    ];
-    for (const [delay, base, ring] of seq) {
-      const start = t0 + delay;
-      strike(start, base, 0.1, ring);
-      // 아주 살짝 디튠한 겹종 — 방울들이 함께 흔들리며 생기는 반짝임(맥놀이)을 더한다.
-      strike(start + 0.005, base * 1.006, 0.038, ring);
+    // 같은 음(E7)이 네 번 딸랑딸랑. 이후는 에코가 알아서 메아리를 만든다.
+    const BASE = 2637;
+    for (let i = 0; i < 4; i++) {
+      strike(t0 + i * 0.15, BASE, 0.11);
     }
   } catch {
     // 합성 실패는 무시.
