@@ -28,7 +28,12 @@
          아래 --safe-top 기반 보정(헤더/스티키/스크림)은 자연히 0으로 잠든다(이중 여백 없음).
          참고: iOS는 이 값을 "홈 화면에 추가" 시점에만 읽으므로, 이미 설치된 PWA는 아이콘
          삭제 후 다시 추가해야 반영된다. -->
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <!-- black-translucent: PWA에서 콘텐츠가 상단 상태바 뒤까지 그려진다(지적: "PWA에서
+         위는 안 나오고") — default는 상태바가 불투명해 위쪽이 항상 잘렸다. 콘텐츠가
+         노치/상태바에 가리지 않게 하는 보정은 이미 --safe-top(부트 스크립트 실측)이
+         담당한다. 참고: iOS는 이 값을 "홈 화면에 추가" 시점에만 읽으므로, 이미 설치된
+         PWA는 아이콘 삭제 후 다시 추가해야 반영된다. -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="스타게이트" />
     <!-- 매니페스트/theme-color가 없으면 iOS가 홈 화면 웹앱 실행 시 보여줄 스플래시가
          아예 없어서, 페이지가 아직 로딩/뷰포트 정착 중인 실제 모습이 그대로 화면에
