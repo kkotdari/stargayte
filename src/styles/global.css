@@ -596,9 +596,6 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
 .scr-btn-primary {
   background: #fff; border-color: #fff; color: #10151a; text-shadow: none;
 }
-/* 비밀번호 변경 버튼 — 다시 2스텝 더 축소(요청): micro(12px)→10px, 패딩/최소높이도
-   비례해서 줄인다(.scr-btn-sm의 min-height 32px가 크기를 붙들지 않게 해제). */
-.scr-btn-pw { font-size: 10px; padding: 2px 7px; min-height: 0; }
 /* 솔리드 채움 버튼의 호버는 밝기 조절 대신 라이팅 — 채움은 그대로 두고 알약 글로우만 켠다. */
 @media (hover: hover) {
   .scr-btn-primary:hover { box-shadow: var(--lit-pill-glow); }
@@ -658,6 +655,11 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
 }
 .scr-btn-ghost { background: transparent; }
 .scr-btn-sm { padding: 7px 12px; font-size: var(--fs-body); min-height: var(--field-h-sm); }
+/* 비밀번호 변경 버튼 — 2스텝 더 축소(요청): micro(12px)→10px, 패딩/최소높이도 비례 축소.
+   반드시 .scr-btn-sm보다 뒤에 둬야 한다 — 같은 특이도라 앞에 있으면 sm의 폰트/패딩/
+   min-height(32px)에 전부 덮여 아무리 줄여도 안 작아진다(실제로 지적받은 문제 —
+   "제약에 걸린 듯 안 줄어듦"의 원인이 바로 이 소스 순서였다). */
+.scr-btn-pw { font-size: 10px; padding: 2px 7px; min-height: 0; }
 
 /* 아이콘 버튼 표준 = 동그란 투명 버튼(요청: "모두 동그란 투명으로 통일") — 테두리 없이
    원형, 상태 표시는 테두리 대신 글자색 + 옅은 반투명 배경 틴트로 한다. */
@@ -2488,7 +2490,10 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
      커지면 아래(검색창 줄 등)가 밀려 내려가므로, 똑같은 값의 음수 margin-top으로
      상쇄해 패널 바깥(부모 flex 행 기준)에서 본 높이/위치는 padding이 없을 때와 동일하게
      유지한다 — 라벨을 위해 문서 흐름 전체가 밀리지 않는다. */
-  padding: 18px 0 0; margin-top: -18px;
+  /* 아래쪽에도 같은 트릭 — 상성맵 버튼의 라이팅 글로우가 패널 바닥선(overflow 클립
+     경계)에서 잘려 보였다(지적: "글로우가 버튼 바닥 기준으로 잘려"). 글로우 블러만큼
+     안쪽 여유를 padding-bottom으로 만들고 음수 margin-bottom으로 상쇄한다. */
+  padding: 18px 0 12px; margin: -18px 0 -12px;
 }
 /* 패널이 사라져 라벨/알약이 화면 배경(테마색) 위에 바로 놓인다 — 예전의 밝은 글라스용
    어두운 고정 톤 대신 테마를 따르게 한다. 알약탭 트랙/비활성 글자, 월선택 입력, 라벨을
@@ -7226,19 +7231,9 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
   /* 라벨 달린 FilterItem들 사이에서 혼자 라벨이 없어 위로 떠 보이지 않게 가운데로. */
   align-self: center;
 }
-/* 작은(28px) 버튼엔 표준 알약 글로우(블러 10/24px)가 커서, 빛이 캡슐 윤곽을 잃고 버튼
-   영역 밖으로 사각형처럼 번져 보였다(지적 — 알약탭 글로우 사각 번짐과 같은 증상). 블러
-   반경을 버튼 크기에 맞게 줄여 빛이 캡슐 모양을 꼭 따라가게 한다(호버 포함). */
-.scr-light-theme .scr-rank-rivalry-btn {
-  box-shadow: 0 0 5px rgba(var(--lit-rgb), 0.4), 0 0 10px rgba(var(--lit-rgb), 0.18);
-}
-@media (hover: hover) {
-  /* 다크(흰 솔리드) 호버 글로우도 같은 축소 비율로. */
-  .scr-rank-rivalry-btn:hover { box-shadow: 0 0 6px rgba(var(--lit-rgb), 0.5), 0 0 12px rgba(var(--lit-rgb), 0.24); }
-  .scr-light-theme .scr-rank-rivalry-btn:hover {
-    box-shadow: 0 0 6px rgba(var(--lit-rgb), 0.5), 0 0 12px rgba(var(--lit-rgb), 0.24);
-  }
-}
+/* (한때 여기서 글로우 블러를 줄여봤지만 오진이었다 — "사각형으로 잘려 보임"의 진짜
+   원인은 필터 패널(overflow:auto)의 바닥 클리핑. .scr-filter-panel의 padding-bottom
+   +음수 margin 트릭으로 해결했고 글로우는 표준 알약 글로우 그대로 쓴다.) */
 /* 반투명 오버레이 — 뒤의 랭킹이 비쳐 보이는 딤+블러 위에 맵만 띄운다(자체 패널 없음). */
 .scr-rivalry-overlay {
   position: fixed; inset: 0; z-index: 100;
