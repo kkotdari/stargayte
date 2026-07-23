@@ -1148,6 +1148,21 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
     linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0) 18%, rgba(255, 255, 255, 0) 82%, rgba(255, 255, 255, 0.02) 100%),
     var(--void);
 }
+/* 사파리(브라우저 탭)에서만 — 스크롤로 주소창/툴바가 접히면 뷰포트 높이가 변하는데,
+   inset:0 고정 레이어는 거기 맞춰 리사이즈되고 background-size:cover가 다시 크롭돼
+   배경 사진이 살짝 확대돼 보인다(지적: "아래로 스크롤하면 배경그림이 살짝 확대"). 큰
+   뷰포트(lvh, 툴바 접힌 상태 높이)로 높이를 못박아 툴바 상태와 무관하게 같은 크기를
+   유지한다 — 덤으로 레이어가 아래 툴바 뒤까지 내려가고, 위로는 안전영역만큼 끌어올려
+   상/하 크롬 영역도 최대한 덮는다.
+   PWA(standalone)는 지금 정상이고 예전에 lvh로 회귀난 적이 있어 절대 건드리지 않는다 —
+   그래서 display-mode: browser로 사파리 탭에만 한정한다. */
+@media (display-mode: browser) {
+  .scr-main::before {
+    top: calc(-1 * env(safe-area-inset-top, 0px));
+    bottom: auto;
+    height: calc(100lvh + env(safe-area-inset-top, 0px) + env(safe-area-inset-bottom, 0px));
+  }
+}
 .scr-screen { display: flex; flex-direction: column; gap: 10px; }
 /* 기록실(경기 목록)은 펼친 로우의 넓은 스탯표가 내부(.scr-match-stats-table-wrap의
    overflow-x:auto)에서만 가로 스크롤돼야 하고 페이지 자체엔 가로 스크롤이 생기면 안 된다
