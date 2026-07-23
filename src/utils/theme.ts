@@ -28,21 +28,21 @@ function applyThemeColor(on: boolean): void {
 // 새 테마 색이 실제로 그려진 다음(더블 rAF) 스크롤을 1px 움직였다 즉시 되돌려 재샘플링을
 // 강제한다 — behavior:instant라 화면에는 보이지 않고, 1px 이동은 탭바 숨김 판정 임계값
 // (useHideOnScrollDown, 4px/10px)보다 작아 다른 동작을 건드리지 않는다.
-function nudgeToolbarResample(): void {
+function nudgeToolbarResample(on: boolean): void {
+  // 스크롤 넛지 대신 요소 기반(요청: "스크롤 말고 요소를 바꿔서 재샘플링") —
+  // (1) 사파리 26은 툴바 색을 body의 배경색 샘플링으로 정하므로(조사), CSS 변수 재계산에
+  //     맡기지 않고 새 테마의 배경 hex를 body에 인라인으로 직접 다시 칠해 명시적인
+  //     스타일 변경 이벤트를 만든다(인라인 값은 테마와 항상 같은 값이라 부작용 없음).
+  // (2) 새 색이 그려진 다음 프레임에 화면 하단 가장자리에 투명 fixed 요소를 한 프레임
+  //     넣었다 빼서, 사파리가 가장자리 렌더 트리를 다시 훑게(재샘플링) 유도한다.
+  //     투명이라 눈에 보이지 않고, background-color가 없어 툴바로 오인되지도 않는다.
+  document.body.style.backgroundColor = on ? VOID_COLOR.light : VOID_COLOR.dark;
   requestAnimationFrame(() => requestAnimationFrame(() => {
-    // 테마 토글은 대개 서랍(메뉴)이 열린 채 눌린다 — 그때는 body가 모달 잠금
-    // (position:fixed, bodyScrollLock)이라 문서에 스크롤 여지가 없어 scrollTo가
-    // 통째로 무효였고, 그래서 "메뉴를 닫아야(잠금 해제 시 스크롤 복원) 그제서야
-    // 툴바 색이 바뀌는" 증상이 됐다(지적). 짧아서 스크롤이 없는 화면도 마찬가지.
-    // html에 2px 여유 높이를 한 프레임만 줘서 어떤 상태에서든 진짜 문서 스크롤
-    // 이벤트를 만들어 재샘플링을 강제한다. 1px 왕복은 즉시 원위치라 보이지 않는다.
-    const root = document.documentElement;
-    const prevHeight = root.style.height;
-    root.style.height = "calc(100% + 2px)";
-    const y = window.scrollY;
-    window.scrollTo({ top: y > 0 ? y - 1 : 1, behavior: "instant" });
-    window.scrollTo({ top: y, behavior: "instant" });
-    root.style.height = prevHeight;
+    const probe = document.createElement("div");
+    probe.style.cssText =
+      "position:fixed;left:0;right:0;bottom:0;height:1px;background:transparent;pointer-events:none;";
+    document.body.appendChild(probe);
+    requestAnimationFrame(() => probe.remove());
   }));
 }
 
@@ -50,7 +50,7 @@ function applyLightTheme(on: boolean): void {
   document.documentElement.classList.toggle("scr-light-theme", on);
   applyThemeColor(on);
   localStorage.setItem(LIGHT_THEME_KEY, on ? "1" : "0");
-  nudgeToolbarResample();
+  nudgeToolbarResample(on);
 }
 
 // 새로고침해도, 로그인/로그아웃을 거쳐도 유지되도록 localStorage에 저장한다 — 대부분
