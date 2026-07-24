@@ -2146,8 +2146,8 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 .scr-rank-avatar-btn.scr-rank-avatar-bronze::before {
   content: ""; position: absolute; z-index: -1;
   top: 50%; left: 50%; transform: translate(-50%, -50%);
-  /* 링 두께 추가 10% 감소(요청) — 두께 2.5px → 2.25px, 판 45 → 44.5px. */
-  width: 44.5px; height: 44.5px; border-radius: 50%;
+  /* 링 두께 추가 20% 감소(요청) — 두께 2.25px → 1.8px, 판 44.5 → 43.6px. */
+  width: 43.6px; height: 43.6px; border-radius: 50%;
   /* 림 추가(요청): 링 바깥/안쪽에 얇은 어두운 테두리를 둘러 금속 링의 가장자리를 또렷하게.
      바깥은 배경과, 안쪽은 아바타와 경계를 지어 링으로 명확히 읽히게 한다. */
   box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.38), inset 0 0 0 0.5px rgba(0, 0, 0, 0.32);
