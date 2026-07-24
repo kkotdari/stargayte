@@ -3233,7 +3233,8 @@ html.scr-page-bg.scr-light-theme .scr-rank-screen-v2::before { display: none; }
 .scr-match-trow-topline::before { content: ""; }
 /* 맵이름·경기시간은 그 줄의 가운데(위 그리드 가운데 칸)에 모은다(요청). */
 .scr-match-trow-map-line { display: flex; align-items: baseline; justify-content: center; gap: 8px; font-size: var(--fs-caption); min-width: 0; }
-.scr-match-trow-map { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+/* 맵 이름은 잘라내지 않고 전부 보여준다(요청) — 길면 말줄임 대신 줄바꿈으로 다 노출한다. */
+.scr-match-trow-map { color: var(--muted); min-width: 0; white-space: normal; overflow-wrap: anywhere; text-align: center; }
 /* 맵 이름 옆 플레이시간 — 라벨 없이 "23분"(요청). 흐린 색으로 살짝 뒤에. */
 .scr-match-trow-dur { color: var(--dim); flex-shrink: 0; font-variant-numeric: tabular-nums; }
 /* 윗줄 오른쪽 — 케밥. PC는 로우 좌우 패딩(720px↑에서 100px)이 커서 그리드 흐름에 두면
