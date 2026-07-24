@@ -2388,6 +2388,14 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   /* 프사 크기(모바일). Avatar가 인라인 style로 크기를 박으므로 !important가 필요하다.
      기존 32px에서 20% 키운다(요청: 랭킹 아바타 20% 증가 — 모바일). */
   .scr-rank-table-panel-v2 .scr-rank-avatar-btn .scr-avatar { width: 38px !important; height: 38px !important; }
+  /* 금은동 링도 모바일 아바타(38px)에 비례해 축소(요청: "모바일은 비율적으로 같이 줄였어야지").
+     데스크톱은 프사 40→38, 판 42px. 모바일은 38/40 비율로 프사 38→36, 판 40px(링 두께 ~2px 유지). */
+  .scr-rank-table-panel-v2 .scr-rank-avatar-btn.scr-rank-avatar-gold .scr-avatar,
+  .scr-rank-table-panel-v2 .scr-rank-avatar-btn.scr-rank-avatar-silver .scr-avatar,
+  .scr-rank-table-panel-v2 .scr-rank-avatar-btn.scr-rank-avatar-bronze .scr-avatar { width: 36px !important; height: 36px !important; }
+  .scr-rank-table-panel-v2 .scr-rank-avatar-btn.scr-rank-avatar-gold::before,
+  .scr-rank-table-panel-v2 .scr-rank-avatar-btn.scr-rank-avatar-silver::before,
+  .scr-rank-table-panel-v2 .scr-rank-avatar-btn.scr-rank-avatar-bronze::before { width: 40px; height: 40px; }
 }
 
 /* ===== v2 랭킹 화면 배경 =====
