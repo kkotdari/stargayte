@@ -288,6 +288,9 @@ export default function MatchNotes({ match }: { match: Match }) {
   // 작성/수정/삭제 시 서버가 돌려준 댓글로 그 자리만 갱신해 전체 목록을 다시 안 불러온다.
   const [notes, setNotes] = useState<MatchNote[]>(match.notes ?? []);
   const [editingId, setEditingId] = useState<number | null>(null);
+  // 새 메모를 남기면 작성 컴포저를 새로 마운트해 입력을 비운다(요청: 남긴 뒤 인풋창이 그대로
+  // 있는 문제). 컴포저는 자기 입력 상태를 로컬로 들고 있어, 성공 시 이 key를 올려 초기화한다.
+  const [composerKey, setComposerKey] = useState(0);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<MatchNote | null>(null);
@@ -302,6 +305,7 @@ export default function MatchNotes({ match }: { match: Match }) {
     try {
       const created = await api.createMatchNote(match.id, text, ids);
       setNotes((prev) => [...prev, created]);
+      setComposerKey((k) => k + 1); // 성공 시 작성 컴포저 초기화(입력 비우기)
     } catch (e) {
       setErr(e instanceof Error ? e.message : "메모를 남기지 못했어요.");
     } finally {
@@ -393,6 +397,7 @@ export default function MatchNotes({ match }: { match: Match }) {
 
       {user && editingId === null && (
         <NoteComposer
+          key={composerKey}
           members={members}
           initialParts={[]}
           submitting={busy}
