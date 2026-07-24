@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Spinner } from "../components/common/Feedback";
+import Avatar from "../components/common/Avatar";
 import OptionalDateTimeFields from "../components/common/OptionalDateTimeFields";
 import KakaoShareButton from "../components/common/KakaoShareButton";
 import { api } from "../api/client";
@@ -193,6 +194,27 @@ export default function ChallengeInboxModal({ challenges, onClose, closeLabel = 
           페이드인 제거 그냥 나오기"). */}
       {stage === "letter" && (
         <div className="scr-modal scr-modal-sm scr-challenge-inbox-modal">
+          {/* 두 사람의 아바타를 카드 좌상단(To.=지목당한 대상)·우하단(From.=호출자)에 원형
+              크롭+가장자리 페이드로 얹는다(요청). 절대 위치라 공간이 좁으면 본문(제목/내용)이
+              앞에서 겹쳐 가린다(아바타가 뒤). */}
+          {current.targets[0] && (
+            <div className="scr-challenge-corner scr-challenge-corner-to" aria-hidden="true">
+              <span className="scr-challenge-corner-tag">To.</span>
+              <Avatar
+                size={72}
+                className="scr-challenge-corner-av"
+                member={{ id: current.targets[0].memberId, nickname: current.targets[0].nickname, avatar: current.targets[0].avatar }}
+              />
+            </div>
+          )}
+          <div className="scr-challenge-corner scr-challenge-corner-from" aria-hidden="true">
+            <span className="scr-challenge-corner-tag">From.</span>
+            <Avatar
+              size={72}
+              className="scr-challenge-corner-av"
+              member={{ id: current.createdBy.id, nickname: current.createdBy.nickname, avatar: current.createdBy.avatar }}
+            />
+          </div>
           <div className="scr-challenge-inbox-title">{letterTitle}</div>
           <div className="scr-modal-body scr-challenge-inbox-body">
             {isTeamMatch && (

@@ -396,7 +396,7 @@ export interface Challenge {
   message: string;
   scheduledAt: string | null;
   status: ChallengeStatus;
-  createdBy: { id: string; nickname: string };
+  createdBy: { id: string; nickname: string; avatar: string | null };
   targets: ChallengeTarget[];
   ownMembers: ChallengeOwnMember[];
   createdAt: string;

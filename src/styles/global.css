@@ -6436,6 +6436,21 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
 /* 편지지(letter)를 열었을 때의 "OO 너 나와!" 제목만 2스텝 키운다(요청) — subhead→title.
    봉투 단계 제목(.scr-challenge-envelope-layer 안)은 그대로 subhead. */
 .scr-challenge-inbox-modal .scr-challenge-inbox-title { font-size: var(--fs-title); }
+/* 편지지 두 사람 아바타 — 좌상단 To.(대상)·우하단 From.(호출자). 원형 크롭 + 가장자리
+   페이드(옛 nawa2 히어로와 동일 효과)에 크기는 그 절반(150→72). 절대 위치·z-index:0으로
+   본문 뒤에 깔려, 공간이 좁으면 제목/내용이 앞에서 겹쳐 가린다(요청). 클릭은 통과. */
+.scr-challenge-corner { position: absolute; z-index: 0; pointer-events: none; display: flex; flex-direction: column; align-items: center; gap: 1px; }
+.scr-challenge-corner-to { top: 8px; left: 10px; }
+.scr-challenge-corner-from { bottom: 10px; right: 10px; }
+.scr-challenge-corner-tag { font-size: var(--fs-caption); font-weight: 800; color: var(--dim); line-height: 1; }
+.scr-challenge-corner-av {
+  border-radius: 50% !important; object-fit: cover;
+  -webkit-mask-image: radial-gradient(circle at center, #000 54%, transparent 78%);
+  mask-image: radial-gradient(circle at center, #000 54%, transparent 78%);
+}
+/* 본문(제목·내용)은 아바타보다 앞에 오게 relative + 양수 z-index로 올린다. */
+.scr-challenge-inbox-modal .scr-challenge-inbox-title,
+.scr-challenge-inbox-modal .scr-challenge-inbox-body { position: relative; z-index: 1; }
 /* 모달이 align-items:center라 그냥 두면 편지지 본문이 내용 폭만큼만 좁게 가운데 모여
    붙어 모달 폭을 못 채웠다(요청: "모달 안의 내용들을 넓히라고") — 본문을 full-width로
    펴서 행/입력칸이 모달 폭을 꽉 채우게 한다. 줄 사이 갭은 조금 넉넉하게(요청). */
