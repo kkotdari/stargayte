@@ -1,6 +1,5 @@
 import { todayStr } from "./date";
 import { parseReplayFile, ReplayParseError } from "./replayParser";
-import { buildReplayFileName } from "./replayFileName";
 import { matchReplayPlayerToMember } from "./replayMemberMatch";
 import { api } from "../api/client";
 import { isComputerSlot, newComputerSlotId } from "../constants/computerSlot";
@@ -64,8 +63,8 @@ function readFileAsDataUrl(file: File): Promise<string> {
 }
 
 async function buildDraft(file: File, members: Member[]): Promise<ReplayDraft> {
-  // 원본 파일명(originalName)은 그대로 보존하고, 화면 표시/다운로드에 쓰는 알아보기 쉬운
-  // 이름(displayName)은 파싱 성공 시 생성한다(요청) — 실패하면 원본 파일명을 그대로 쓴다.
+  // 원본 파일명(originalName)만 보존한다. 다운로드 표시 이름(displayName)은 이제 서버가
+  // 경기번호+로스터+맵으로 새로 만들므로(요청), 여기선 원본 파일명만 담아 보낸다(서버가 무시).
   const replay: ReplayUpload = {
     originalName: file.name,
     displayName: file.name,
@@ -74,7 +73,6 @@ async function buildDraft(file: File, members: Member[]): Promise<ReplayDraft> {
 
   try {
     const parsed = await parseReplayFile(file);
-    replay.displayName = buildReplayFileName(parsed);
     const usedIds = new Set<string>();
     const assign = (players: typeof parsed.team1): { rows: MatchSlot[]; unmatched: UnmatchedPlayer[] } => {
       const rows: MatchSlot[] = [];
