@@ -1,4 +1,5 @@
 import { X } from "lucide-react";
+import { cx } from "../../utils/format";
 import { DATE_INPUT_MIN, DATE_INPUT_MAX } from "../../utils/date";
 
 interface OptionalDateTimeFieldsProps {
@@ -6,24 +7,26 @@ interface OptionalDateTimeFieldsProps {
   onDateChange: (value: string) => void;
   timeStr: string;
   onTimeChange: (value: string) => void;
+  // 이미 값이 정해져 온(요청자가 지정한) 칸은 응답자가 못 바꾸게 잠근다(요청: "이미 입력되어
+  // 온 값은 수정불가 상태로 노출"). 날짜만 잠그고 시간은 열어둘 수도 있다(요청: "날짜가
+  // 입력되었어도 시간은 별도로 입력 가능"). 잠긴 칸도 텍스트가 아니라 입력칸 모양 그대로 보인다.
+  dateLocked?: boolean;
+  timeLocked?: boolean;
   // 날짜/시간 둘 다 비어 있어도 되는 상태에서, 절반만 채운 값처럼 뜻이 애매한 경우
   // 호출부가 에러 테두리를 얹고 싶을 때(요청: "사유에 에러 테두리도 넣어줘야지"의 연장).
   invalid?: boolean;
 }
 
-// 도전장 쓰기/수락/리벤지 공용 — 날짜/시간 둘 다 처음부터 보여준다. 예전엔 각각 별도
-// 체크박스로 켜야 입력칸이 나타났는데, 어차피 전부 선택 사항이라 굳이 한 단계를 더
-// 거칠 필요가 없다(요청: "날짜 선택, 시간 선택 체크박스 제거하고 처음부터 둘다 노출").
-// 시간은 날짜 없이는 의미가 없으므로 날짜를 고르기 전까지는 비활성화해 둔다 — 비활성
-// 상태가 시각적으로도 드러나야 한다(요청: "시간은 날짜 선택전엔 비활성화 표시").
+// 도전장 쓰기/수락/리벤지 공용 — 날짜/시간 둘 다 처음부터 입력칸으로 보여준다(요청: "일자
+// 시간은 텍스트가 아니라 인풋창 그대로 표출"). 시간은 날짜 없이는 의미가 없으므로 날짜가
+// 비어 있으면 비활성화한다(요청: "시간만 입력은 못함"). 이미 정해져 온 값은 잠가서
+// 수정 불가로 보여준다(요청).
 export default function OptionalDateTimeFields({
-  dateStr, onDateChange, timeStr, onTimeChange, invalid = false,
+  dateStr, onDateChange, timeStr, onTimeChange,
+  dateLocked = false, timeLocked = false, invalid = false,
 }: OptionalDateTimeFieldsProps) {
   const cls = `scr-input${invalid ? " scr-input-invalid" : ""}`;
 
-  // 날짜/시간을 각각 한 "칸"으로: 칸 안에 [라벨] 위, [입력] 아래로 쌓는다. 값이 있으면
-  // 입력칸 위에 지우기(×) 버튼을 얹어 다시 "미정"으로 되돌릴 수 있게 한다(요청: "이미 입력한
-  // 시간/날짜 삭제 버튼 필요").
   return (
     <div className="scr-datetime-cols">
       <div className="scr-datetime-col">
@@ -31,9 +34,10 @@ export default function OptionalDateTimeFields({
           <span className="scr-label">날짜 <span className="scr-label-optional">(선택)</span></span>
           <span className="scr-datetime-input-wrap">
             <input
-              type="date" className={cls} value={dateStr}
+              type="date" className={cx(cls, dateLocked && "scr-datetime-locked")} value={dateStr}
               min={DATE_INPUT_MIN} max={DATE_INPUT_MAX}
-              onChange={(e) => {
+              readOnly={dateLocked} tabIndex={dateLocked ? -1 : undefined}
+              onChange={dateLocked ? undefined : (e) => {
                 const v = e.target.value;
                 onDateChange(v);
                 // 날짜를 지우면 시간도 비운다. 날짜를 골라도 시간은 자동으로 채우지 않는다 —
@@ -41,17 +45,18 @@ export default function OptionalDateTimeFields({
                 if (!v) onTimeChange("");
               }}
             />
-            {/* 자리는 항상 예약(data-empty로 숨김만) — 나타나고 사라질 때 폭이 안 변한다.
-                label 안이라 클릭이 인풋으로 전달되지 않게 preventDefault까지 건다. */}
-            <button
-              type="button" className="scr-datetime-clear" aria-label="날짜 지우기"
-              data-empty={dateStr ? undefined : "1"} tabIndex={dateStr ? 0 : -1}
-              onMouseDown={(e) => e.preventDefault()}
-              // 날짜를 지우면 시간도 함께 비운다(시간은 날짜 없이 의미가 없다).
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDateChange(""); onTimeChange(""); }}
-            >
-              <X size={12} />
-            </button>
+            {/* 잠긴 칸엔 지우기 버튼을 두지 않는다(수정 불가). 편집 가능한 칸만 자리를 예약하고
+                (data-empty로 숨김만) 값이 있으면 ×로 다시 "미정"으로 되돌릴 수 있다(요청). */}
+            {!dateLocked && (
+              <button
+                type="button" className="scr-datetime-clear" aria-label="날짜 지우기"
+                data-empty={dateStr ? undefined : "1"} tabIndex={dateStr ? 0 : -1}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDateChange(""); onTimeChange(""); }}
+              >
+                <X size={12} />
+              </button>
+            )}
           </span>
         </label>
       </div>
@@ -60,21 +65,24 @@ export default function OptionalDateTimeFields({
           <span className="scr-label">시간 <span className="scr-label-optional">(선택)</span></span>
           <span className="scr-datetime-input-wrap">
             <input
-              type="time" className={cls} value={timeStr}
+              type="time" className={cx(cls, timeLocked && "scr-datetime-locked")} value={timeStr}
+              readOnly={timeLocked} tabIndex={timeLocked ? -1 : undefined}
               // 시간을 정하려고 빈 칸을 누르면 21시로 시작한다(요청: "선택 UI를 눌렀을 때 값이
               // 없으면 21시로 선택된 상태로 열림"). 안 누르면 빈 채로 남아 "시간 미정"이 된다.
-              onFocus={() => { if (dateStr && !timeStr) onTimeChange("21:00"); }}
-              onChange={(e) => onTimeChange(e.target.value)}
-              disabled={!dateStr}
+              onFocus={timeLocked ? undefined : () => { if (dateStr && !timeStr) onTimeChange("21:00"); }}
+              onChange={timeLocked ? undefined : (e) => onTimeChange(e.target.value)}
+              disabled={!timeLocked && !dateStr}
             />
-            <button
-              type="button" className="scr-datetime-clear" aria-label="시간 지우기"
-              data-empty={dateStr && timeStr ? undefined : "1"} tabIndex={dateStr && timeStr ? 0 : -1}
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onTimeChange(""); }}
-            >
-              <X size={12} />
-            </button>
+            {!timeLocked && (
+              <button
+                type="button" className="scr-datetime-clear" aria-label="시간 지우기"
+                data-empty={dateStr && timeStr ? undefined : "1"} tabIndex={dateStr && timeStr ? 0 : -1}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onTimeChange(""); }}
+              >
+                <X size={12} />
+              </button>
+            )}
           </span>
         </label>
       </div>

@@ -73,7 +73,10 @@ export default function ChallengeInboxModal({ challenges, onClose, closeLabel = 
 
   if (!current) { onClose(); return null; }
 
-  const needsSchedule = current.scheduledDate === null;
+  // 요청자가 이미 정해서 온 날짜/시간은 응답자가 못 바꾸게 잠근다(요청). 날짜만 정하고
+  // 시간은 비운 도전장이면 날짜는 잠긴 채 시간만 응답자가 추가할 수 있다(요청).
+  const dateLocked = current.scheduledDate !== null;
+  const timeLocked = current.scheduledTime !== null;
 
   // 지목된 대상(targets)만 응답 버튼을 볼 수 있다(요청: "대상만 거절/수락/고민중 버튼").
   // 인박스 팝업은 애초에 pending-for-me(나=대상)만 오므로 항상 true, 공유 화면에선 링크를
@@ -101,11 +104,14 @@ export default function ChallengeInboxModal({ challenges, onClose, closeLabel = 
     setErrField("");
     setBusy(true);
     try {
-      // 날짜를 골랐으면 그 날짜로 수락한다 — 시간을 비웠으면 "시간 미정"(날짜만)으로 저장된다.
-      // 날짜도 안 골랐으면 일정 전체 미정으로 수락(실제 일시는 나중에 채운다).
-      const schedule = response === "accepted" && needsSchedule
-        ? { scheduledDate: dateStr || null, scheduledTime: dateStr && timeStr ? timeStr : null }
-        : undefined;
+      // 확정 일정 = 이미 정해져 온 값(잠김)이 있으면 그걸, 없으면 응답자가 입력한 값. 날짜 없이
+      // 시간만은 불가하므로 날짜가 없으면 시간도 버린다. 날짜만 정하고 시간을 비우면 "시간 미정".
+      let schedule: { scheduledDate: string | null; scheduledTime: string | null } | undefined;
+      if (response === "accepted") {
+        const finalDate = current.scheduledDate ?? (dateStr || null);
+        const finalTime = current.scheduledTime ?? (finalDate ? (timeStr || null) : null);
+        schedule = { scheduledDate: finalDate, scheduledTime: finalTime };
+      }
       await api.respondToChallenge(current.id, response, schedule);
       // 승락/거절 모두 확인창(카카오 공유)으로 넘어간다(요청).
       setRespondedAs(response);
@@ -149,9 +155,9 @@ export default function ChallengeInboxModal({ challenges, onClose, closeLabel = 
   const letterTitle = ourTeam.length > 0 ? `${ourTeam.join(", ")} 너 나와!` : "너 나와!";
 
   // 응답 확인창 — 최종 확정된 일시(요청자가 안 정했으면 내가 방금 고른 값)로 공유 내용을 만든다.
-  const acceptedWhen = current.scheduledDate
-    ? formatChallengeSchedule(current)
-    : formatChallengeSchedule({ scheduledDate: dateStr || null, scheduledTime: dateStr && timeStr ? timeStr : null });
+  const acceptedEffDate = current.scheduledDate ?? (dateStr || null);
+  const acceptedEffTime = current.scheduledTime ?? (acceptedEffDate ? (timeStr || null) : null);
+  const acceptedWhen = formatChallengeSchedule({ scheduledDate: acceptedEffDate, scheduledTime: acceptedEffTime });
   const respondedTitle = respondedAs === "rejected" ? "대결 거절" : "대결 수락!";
   const respondedDesc = respondedAs === "rejected"
     ? "호출을 거절했어요."
@@ -213,33 +219,36 @@ export default function ChallengeInboxModal({ challenges, onClose, closeLabel = 
                 </div>
               </>
             )}
-            {/* 일자·시간을 각각 한 줄로, 그 아래 한마디 — 모두 가운데 정렬(요청). */}
-            <div className="scr-challenge-inbox-date">{challengeDateGroupLabel(current)}</div>
-            {challengeTimeLabel(current) && (
-              <div className="scr-challenge-inbox-time">{challengeTimeLabel(current)}</div>
-            )}
-            {current.message.trim() && (
-              <p className="scr-challenge-inbox-message">{current.message}</p>
-            )}
-
-            {/* 요청자가 시간을 안 정했으면(needsSchedule) 상대인 내가 승락하며 직접
-                정할 수 있다 — 다만 필수는 아니다(요청: "승락시에도 일시 미선택
-                가능이야"). 둘 다 비워두면 여전히 미정인 채로 승락되고, 날짜/시간을
-                절반만 채운 경우만 막는다. 거절할 땐 필요 없으니 항상 보여준다. */}
-            {needsSchedule && canRespond && (
+            {/* 일자·시간 — 응답자에겐 항상 입력칸 형태로 보여준다(요청: "텍스트가 아니라 인풋창
+                그대로"). 이미 정해져 온 값은 잠긴(수정불가) 입력칸으로, 비어 있는 쪽은 지금 채울
+                수 있다(날짜만 온 도전장은 시간만 추가 가능). 응답 대상이 아닌 구경(공유 링크)
+                에선 입력이 의미 없어 텍스트로만 보여준다. */}
+            {canRespond ? (
               <OptionalDateTimeFields
-                dateStr={dateStr}
+                dateStr={dateLocked ? current.scheduledDate! : dateStr}
                 onDateChange={(v) => {
                   setDateStr(v);
                   if (errField === "schedule") { setErr(""); setErrField(""); }
                 }}
-                timeStr={timeStr}
+                timeStr={timeLocked ? current.scheduledTime! : timeStr}
                 onTimeChange={(v) => {
                   setTimeStr(v);
                   if (errField === "schedule") { setErr(""); setErrField(""); }
                 }}
+                dateLocked={dateLocked}
+                timeLocked={timeLocked}
                 invalid={errField === "schedule"}
               />
+            ) : (
+              <>
+                <div className="scr-challenge-inbox-date">{challengeDateGroupLabel(current)}</div>
+                {challengeTimeLabel(current) && (
+                  <div className="scr-challenge-inbox-time">{challengeTimeLabel(current)}</div>
+                )}
+              </>
+            )}
+            {current.message.trim() && (
+              <p className="scr-challenge-inbox-message">{current.message}</p>
             )}
 
             {/* 일정을 안 정하고 승락을 누르면 여기 오류가 뜬다 — 뜰 때 아래 버튼 줄이

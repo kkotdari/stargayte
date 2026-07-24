@@ -488,6 +488,9 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
 .scr-light-theme .scr-datetime-clear { background: rgba(0, 0, 0, 0.10); }
 .scr-light-theme .scr-datetime-clear:hover { background: rgba(0, 0, 0, 0.18); }
 .scr-datetime-clear svg { display: block; }
+/* 이미 정해져 온(잠긴) 날짜/시간 — 입력칸 모양은 그대로 두고 상호작용만 막고 살짝 흐리게 해서
+   "수정 불가"임을 드러낸다(요청: "이미 입력되어 온 값은 수정불가 상태로 노출"). */
+.scr-datetime-locked { pointer-events: none; opacity: 0.72; }
 /* 라벨은 어디서든(검색 필터·모달 폼 전부) 필드 위에 두고, 크기와 왼쪽 들여쓰기를
    하나로 통일한다 — 화면마다 라벨이 옆에 붙거나 크기가 제각각이면 산만해 보인다.
    line-height:1은 폰트 자체의 위아래 여백(줄간격)을 없애서, 코딩폰트를 쓰는 인풋과

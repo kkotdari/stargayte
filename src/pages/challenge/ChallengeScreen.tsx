@@ -270,6 +270,10 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
   const [mode, setMode] = useState<CardMode>("none");
   const [dateStr, setDateStr] = useState("");
   const [timeStr, setTimeStr] = useState("");
+  // 요청자가 이미 정해서 온 날짜/시간은 응답자가 못 바꾸게 잠근다(요청: "이미 입력되어 온 값은
+  // 수정불가"). 날짜만 온 도전장은 날짜는 잠긴 채 시간만 추가할 수 있다(요청).
+  const dateLocked = challenge.scheduledDate !== null;
+  const timeLocked = challenge.scheduledTime !== null;
   // 응답 한마디(선택) — 아이콘 버튼을 눌러야 입력창이 트랜지션으로 열린다(요청).
   const [respondMessage, setRespondMessage] = useState("");
   const [respondMsgOpen, setRespondMsgOpen] = useState(false);
@@ -309,10 +313,11 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
     setErr("");
     setBusy(true);
     try {
-      // 날짜를 정했으면 그 날짜로(시간을 비우면 "시간 미정"으로 저장), 날짜도 안 정하면
-      // 일정 전체 미정으로 수락한다(요청: "시간 미정 수락 가능" — 실제 일시는 완료(결과
-      // 입력) 시점에 서버가 채운다).
-      const schedule = { scheduledDate: dateStr || null, scheduledTime: dateStr && timeStr ? timeStr : null };
+      // 확정 일정 = 이미 정해져 온 값(잠김)이 있으면 그걸, 없으면 응답자가 입력한 값. 날짜가
+      // 없으면 시간도 버린다(시간만은 불가). 날짜만 있고 시간을 비우면 "시간 미정"으로 수락된다.
+      const finalDate = challenge.scheduledDate ?? (dateStr || null);
+      const finalTime = challenge.scheduledTime ?? (finalDate ? (timeStr || null) : null);
+      const schedule = { scheduledDate: finalDate, scheduledTime: finalTime };
       const updated = await api.respondToChallenge(challenge.id, "accepted", schedule, respondMessage.trim());
       closeMode();
       setSharePrompt({ kind: "accepted", updated });
@@ -553,15 +558,17 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
       {!readOnly && canRespond && (
         <InlineCollapse open={mode === "none"}>
         <div className={cx("scr-challenge-respond", !isLatestPage && "scr-challenge-card-actions-reserve")}>
-          {/* 일정 미정 도전장이면 날짜/시간 입력칸을 처음부터 노출한다(요청: "일자·시간이 없는
-              경우 처음부터 입력창을 띄워놔줘") — 예전엔 승락을 눌러야 입력폼이 열렸다. 비워둔 채
-              승락하면 "시간 미정"으로 수락된다. */}
-          {challenge.scheduledDate === null && (
-            <OptionalDateTimeFields
-              dateStr={dateStr} onDateChange={setDateStr}
-              timeStr={timeStr} onTimeChange={setTimeStr}
-            />
-          )}
+          {/* 날짜/시간을 항상 입력칸 형태로 보여준다(요청: "텍스트가 아니라 인풋창 그대로").
+              이미 정해져 온 값은 잠긴(수정불가) 입력칸으로, 비어 있는 쪽은 지금 채울 수 있다 —
+              날짜만 온 도전장은 시간만 추가 가능(요청). */}
+          <OptionalDateTimeFields
+            dateStr={dateLocked ? challenge.scheduledDate! : dateStr}
+            onDateChange={setDateStr}
+            timeStr={timeLocked ? challenge.scheduledTime! : timeStr}
+            onTimeChange={setTimeStr}
+            dateLocked={dateLocked}
+            timeLocked={timeLocked}
+          />
           {/* 응답 한마디(선택) — 아이콘 버튼을 누르면 입력창이 트랜지션으로 열린다(요청). */}
           <button
             type="button"
@@ -591,14 +598,9 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
           </button>
           <button
             className="scr-btn scr-challenge-accept-btn scr-btn-sm" disabled={busy}
-            onClick={() => {
-              // 일정 미정 도전장이면 위에 늘 떠 있는 날짜/시간 입력값 그대로 승락한다(비우면
-              // 시간 미정). 이미 일정이 정해진 도전장이면 그대로 바로 승락한다.
-              if (challenge.scheduledDate === null) acceptWithSchedule();
-              else respond("accepted");
-            }}
+            onClick={acceptWithSchedule}
           >
-            {busy ? <Spinner /> : (challenge.scheduledDate === null && !dateStr ? "시간 미정 승락" : "승락")}
+            {busy ? <Spinner /> : ((challenge.scheduledDate ?? dateStr) ? "승락" : "시간 미정 승락")}
           </button>
           </div>
         </div>
