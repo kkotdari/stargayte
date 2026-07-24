@@ -545,7 +545,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
             onClick={() => setRespondMsgOpen((v) => !v)}
             aria-expanded={respondMsgOpen}
           >
-            <MessageSquarePlus size={13} /> 한마디{respondMessage.trim() && !respondMsgOpen ? ` · ${respondMessage.trim()}` : ""}
+            <MessageSquarePlus size={13} /> 응답 메시지{respondMessage.trim() && !respondMsgOpen ? ` · ${respondMessage.trim()}` : ""}
           </button>
           <div className={cx("scr-challenge-msg-wrap", respondMsgOpen && "scr-challenge-msg-wrap-open")}>
             <div className="scr-challenge-msg-inner">
@@ -553,7 +553,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
                 className="scr-input"
                 value={respondMessage}
                 onChange={(e) => setRespondMessage(e.target.value.slice(0, 50))}
-                placeholder="한마디 (선택, 최대 50자)"
+                placeholder="응답 메시지 (선택, 최대 50자)"
                 maxLength={50}
               />
             </div>
@@ -629,7 +629,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
             onClick={() => setRevengeMsgOpen((v) => !v)}
             aria-expanded={revengeMsgOpen}
           >
-            <MessageSquarePlus size={13} /> 한마디{revengeMessage.trim() && !revengeMsgOpen ? ` · ${revengeMessage.trim()}` : ""}
+            <MessageSquarePlus size={13} /> 신청 메시지{revengeMessage.trim() && !revengeMsgOpen ? ` · ${revengeMessage.trim()}` : ""}
           </button>
           <div className={cx("scr-challenge-msg-wrap", revengeMsgOpen && "scr-challenge-msg-wrap-open")}>
             <div className="scr-challenge-msg-inner">
@@ -637,7 +637,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
                 className="scr-input"
                 value={revengeMessage}
                 onChange={(e) => setRevengeMessage(e.target.value.slice(0, 50))}
-                placeholder="한마디 (선택, 최대 50자)"
+                placeholder="신청 메시지 (선택, 최대 50자)"
                 maxLength={50}
               />
             </div>

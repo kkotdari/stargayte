@@ -6389,7 +6389,7 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
 }
 /* 편지지(letter) — 정사각형 강제는 폐지(요청). 대신 위아래 패딩을 넉넉히 주고(위는 From.
    아바타 아래에서 내용이 시작되게) 아래도 여유. 요소 간 줄간격은 본문 gap으로 크게 준다. */
-.scr-challenge-inbox-modal.scr-challenge-letter { padding-top: 88px; padding-bottom: 26px; }
+.scr-challenge-inbox-modal.scr-challenge-letter { padding-top: 60px; padding-bottom: 56px; }
 /* 편지봉투는 편지지 카드와 한 몸이 아니라(요청: "봉투랑 편지지는 별도 모달") 오버레이
    위에 겹치는 별도 레이어다 — 카드 배경/그림자 없이 봉투 사진 + 제목만 어두운 스크림
    위에 떠 있고, 편지지 카드(정상 흐름의 flex 자식)와 정확히 같은 중앙에 정렬된다. */
@@ -6478,11 +6478,30 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
 }
 .scr-challenge-envelope-actions-ready { opacity: 1; pointer-events: auto; }
 .scr-challenge-envelope-actions .scr-btn { min-width: 96px; }
+/* "열기"는 기본 라이팅 솔리드 버튼(요청) — 반투명 알약(--lit-pill-bg 0.34)은 봉투 뒤가
+   흰 벽지(공유)일 때 묻혀 안 보였다. 벽지든 어두운 스크림이든 또렷하게, 라이팅 색을 거의
+   불투명하게 채우고 어두운 글자 + 은은한 그림자로 버튼임을 확실히 드러낸다. 다크(흰 벽지
+   아님)에선 --lit-rgb가 흰색이라 흰 알약, 라이트/공유에선 하늘빛 알약으로 각각 솔리드. */
+.scr-challenge-envelope-open {
+  background: rgba(var(--lit-rgb), 0.92); border-color: transparent; color: #10151a;
+  box-shadow: inset 0 0 0 0.5px rgba(var(--lit-rgb), 0.7), 0 2px 12px rgba(0, 0, 0, 0.18);
+}
+@media (hover: hover) {
+  .scr-challenge-envelope-open:hover { filter: brightness(1.04); }
+}
 .scr-challenge-envelope-discard {
   color: #fff; border-color: rgba(255, 255, 255, 0.5); background: rgba(0, 0, 0, 0.28);
 }
 .scr-challenge-envelope-discard:hover {
   color: #fff; border-color: rgba(255, 255, 255, 0.85); background: rgba(0, 0, 0, 0.42);
+}
+/* 공유(라이트) 봉투는 흰 벽지 위라 어두운 스크림용 "버리기"(흰 글자)가 묻힌다 — 라이트
+   테마에선 어두운 글자 + 어두운 외곽선 + 옅은 흰 채움으로 뒤집어 또렷하게. */
+.scr-light-theme .scr-challenge-envelope-discard {
+  color: var(--text); border-color: rgba(0, 0, 0, 0.3); background: rgba(255, 255, 255, 0.55);
+}
+.scr-light-theme .scr-challenge-envelope-discard:hover {
+  color: var(--text); border-color: rgba(0, 0, 0, 0.5); background: rgba(255, 255, 255, 0.72);
 }
 /* 연출 1단계 — 봉투가 뜨고 잠깐(0.4s) 가만히 있다가 흔들린다(요청: "애니메이션이 안보여
    약간만 대기했다가 쉐이킹" — 딜레이 0이면 마운트와 동시에 흔들려 첫 프레임이 안 보였다).
@@ -6521,7 +6540,7 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
 }
 /* From.은 좌상단 절대 위치, To.는 흐름 안(본문 아래·버튼 위)에서 오른쪽 정렬(요청: 버튼이
    To. 아바타보다 아래). */
-.scr-challenge-party-from { position: absolute; top: 16px; left: 18px; }
+.scr-challenge-party-from { position: absolute; top: 20px; left: 20px; }
 .scr-challenge-party-to { align-self: flex-end; margin: 10px 4px 0 0; }
 .scr-challenge-party-tag { font-size: var(--fs-caption); font-weight: 800; color: var(--dim); line-height: 1; }
 .scr-challenge-party-av { border-radius: 50% !important; object-fit: cover; }

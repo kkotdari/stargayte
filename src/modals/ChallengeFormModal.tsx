@@ -230,7 +230,7 @@ export default function ChallengeFormModal({ onClose, onCreated, presetTargetIds
               onClick={() => setMessageOpen((v) => !v)}
               aria-expanded={messageOpen}
             >
-              <MessageSquarePlus size={14} /> 한마디{message.trim() && !messageOpen ? ` · ${message.trim()}` : ""}
+              <MessageSquarePlus size={14} /> 신청 메시지{message.trim() && !messageOpen ? ` · ${message.trim()}` : ""}
             </button>
             <div className={cx("scr-challenge-msg-wrap", messageOpen && "scr-challenge-msg-wrap-open")}>
               <div className="scr-challenge-msg-inner">
@@ -238,7 +238,7 @@ export default function ChallengeFormModal({ onClose, onCreated, presetTargetIds
                   className="scr-input"
                   value={message}
                   onChange={(e) => setMessage(e.target.value.slice(0, 50))}
-                  placeholder="한마디 (선택, 최대 50자)"
+                  placeholder="신청 메시지 (선택, 최대 50자)"
                   maxLength={50}
                 />
               </div>
