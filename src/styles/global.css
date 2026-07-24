@@ -3012,12 +3012,6 @@ html.scr-page-bg.scr-light-theme .scr-rank-screen-v2::before { display: none; }
 }
 /* lucide 아이콘(svg)이 인라인 기본 정렬로 미세하게 처지지 않게 블록화. */
 .scr-search-mention-add svg { display: block; }
-/* 빈 검색창의 플레이스홀더 — 인풋이 커서 폭만큼만 차지해(+가 커서 뒤에 붙도록) 네이티브
-   placeholder가 안 보이므로 별도 스팬으로 그린다. 클릭은 박스가 받아 인풋에 포커스한다. */
-.scr-search-chip-ph {
-  flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  color: var(--dim); font-size: var(--fs-subhead); pointer-events: none;
-}
 /* 칩 하나 — "둥근네모"(완전한 알약도, 각진 사각도 아닌) 느낌으로 radius를 살짝만 준다.
    테마와 무관하게 항상 흰 바탕에 검은 글씨로 고정 — 다크 테마에서 옅은 반투명 톤보다
    또렷한 태그처럼 도드라져 보이게 한다. */
@@ -3044,8 +3038,11 @@ html.scr-page-bg.scr-light-theme .scr-rank-screen-v2::before { display: none; }
 /* 지금 타이핑 중인 마지막 단어 — 칩들 옆에 이어지는 진짜 인풋. 테두리/배경은 바깥
    박스(.scr-search-chip-box)가 이미 그려주니 여긴 완전히 투명하게. */
 .scr-search-chip-input {
-  flex: 1 0 60px; min-width: 60px; background: transparent; border: none; outline: none;
+  flex: 1 1 60px; min-width: 40px; background: transparent; border: none; outline: none;
   color: var(--text); font-family: var(--font-ui); font-size: var(--fs-subhead); padding: 2px 0; line-height: 1;
+  /* 입력칸을 오른쪽 정렬 — 커서/타이핑 글자가 오른쪽 끝에 오고, 그 바로 뒤(오른쪽 끝)에
+     + 버튼이 붙는다(요청: "인풋창 오른쪽 정렬"). placeholder도 함께 오른쪽으로 정렬된다. */
+  text-align: right;
 }
 .scr-search-chip-input::placeholder { color: var(--dim); font-size: var(--fs-subhead); }
 /* v2는 더 이상 타이틀+필터바가 카드 위에 sticky로 쌓이는 패널 구조가 아니다(디자인
@@ -5974,6 +5971,13 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
    이었는데, × 를 옆에 붙이려고 래퍼(scr-datetime-input-wrap, flex)로 감싸며 행에서의
    flex:1을 셀로 옮긴다. × 자리는 래퍼가 항상 예약해 폭이 안 변한다. */
 .scr-challenge-time-edit-cell { flex: 1 1 0; min-width: 0; }
+/* 취소/확인을 글자 대신 아이콘으로 — 정사각 컴팩트 버튼(요청). 입력칸 폭을 아끼려는 것이라
+   가로 패딩을 없애고 높이만큼의 정사각으로 고정한다. */
+.scr-challenge-time-edit-btn.scr-btn-icon {
+  flex: 0 0 auto; width: 30px; height: 30px; min-width: 0; padding: 0;
+  display: inline-grid; place-items: center;
+}
+.scr-challenge-time-edit-btn.scr-btn-icon svg { display: block; }
 
 /* scroll-margin-top — NEXT 너 나와로 자동 스크롤(scrollIntoView block:"start")할 때 화면
    맨 위에 딱 붙지 않고 이만큼만 숨 쉴 여유를 남긴다(위의 다른 카드는 안 보인다). 날짜

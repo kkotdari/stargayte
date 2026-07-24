@@ -220,12 +220,6 @@ export default function SearchFilterBar({
         <input
           ref={inputRef}
           className="scr-search-chip-input"
-          // 입력칸을 지금 타이핑 중인 글자 폭만큼만 잡는다 — 그래야 + 버튼이 항상 커서
-          // 바로 뒤(칩이 없으면 맨 앞, 칩이 있으면 마지막 칩 뒤)에 붙는다(요청). 한글은
-          // 글자당 약 1em이라 em 기준으로 잡는다(영문은 살짝 여유가 남지만 무해).
-          // minWidth까지 함께 줘야 한다 — 스타일시트의 min-width:60px가 남아 있으면
-          // 인라인 width가 12px여도 실제 폭은 60px이 돼 +가 커서에서 떨어진다.
-          style={{ flex: "0 0 auto", width: `calc(${liveText.length}em + 12px)`, minWidth: 0 }}
           value={liveText}
           onChange={(e) => {
             const nextLive = e.target.value;
@@ -243,12 +237,13 @@ export default function SearchFilterBar({
           onFocus={() => setSuggestOpen(true)}
           onBlur={() => setSuggestOpen(false)}
           onKeyDown={onSearchKeyDown}
+          placeholder={chips.length === 0 ? searchPlaceholder : ""}
           autoComplete="off"
         />
-        {/* 커서 바로 뒤의 + 버튼 — "@" 없이 탭/클릭 한 번으로 유저 후보 드롭다운을 연다.
-            입력칸이 커서 폭만큼만 차지하므로 이 버튼이 항상 커서/마지막 칩 바로 뒤에
-            붙는다(요청). 후보 목록이 있을 때만 띄운다. */}
-        {suggestions && (
+        {/* + 버튼 — "@" 없이 탭 한 번으로 유저 후보 드롭다운을 연다. 입력칸이 오른쪽 정렬로
+            폭을 채워 커서가 오른쪽 끝에 오므로 이 버튼도 오른쪽 끝(커서 바로 뒤)에 온다.
+            타이핑/드롭다운 중(suggestOpen)엔 숨긴다(요청). */}
+        {suggestions && !suggestOpen && (
           <button
             type="button"
             className="scr-search-mention-add"
@@ -258,11 +253,6 @@ export default function SearchFilterBar({
           >
             <Plus size={15} />
           </button>
-        )}
-        {/* 플레이스홀더 — 입력칸이 커서 폭만큼만 차지해 네이티브 placeholder가 안 보이므로
-            빈 상태에서만 별도 스팬으로 그린다. 박스 어디를 눌러도 인풋으로 포커스된다. */}
-        {chips.length === 0 && liveText === "" && (
-          <span className="scr-search-chip-ph">{searchPlaceholder}</span>
         )}
       </div>
       {suggestShown && createPortal(

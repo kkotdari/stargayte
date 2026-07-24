@@ -1,6 +1,6 @@
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Pencil, MessageSquarePlus, X } from "lucide-react";
+import { Pencil, MessageSquarePlus, X, Check } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
 import { Spinner } from "../../components/common/Feedback";
 import OptionalDateTimeFields from "../../components/common/OptionalDateTimeFields";
@@ -958,11 +958,19 @@ function ChallengeTimeHeadEdit({
                   <X size={12} />
                 </button>
               </span>
-              <button type="button" className="scr-btn scr-btn-ghost scr-btn-sm" onClick={() => setEditing(false)} disabled={busy}>
-                취소
+              {/* 취소/확인을 아이콘 버튼으로 줄여(요청) 날짜/시간 입력칸에 폭을 더 준다 —
+                  글자 버튼이 넓어 입력칸이 눌리고 지우기(×)가 옆 칸에 겹치던 문제. */}
+              <button
+                type="button" className="scr-btn scr-btn-ghost scr-btn-icon scr-challenge-time-edit-btn"
+                onClick={() => setEditing(false)} disabled={busy} aria-label="취소"
+              >
+                <X size={15} />
               </button>
-              <button type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm" onClick={save} disabled={busy}>
-                {busy ? <Spinner /> : "확인"}
+              <button
+                type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-icon scr-challenge-time-edit-btn"
+                onClick={save} disabled={busy} aria-label="확인"
+              >
+                {busy ? <Spinner /> : <Check size={15} />}
               </button>
             </div>
             {err && <div className="scr-err">{err}</div>}
