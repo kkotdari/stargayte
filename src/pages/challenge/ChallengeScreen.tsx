@@ -557,15 +557,10 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
               경우 처음부터 입력창을 띄워놔줘") — 예전엔 승락을 눌러야 입력폼이 열렸다. 비워둔 채
               승락하면 "시간 미정"으로 수락된다. */}
           {challenge.scheduledDate === null && (
-            <>
-              <p className="scr-challenge-inbox-message">
-                시간을 정하거나, 비워두면 시간 미정으로 수락돼요 (완료할 때 그 시각으로 기록).
-              </p>
-              <OptionalDateTimeFields
-                dateStr={dateStr} onDateChange={setDateStr}
-                timeStr={timeStr} onTimeChange={setTimeStr}
-              />
-            </>
+            <OptionalDateTimeFields
+              dateStr={dateStr} onDateChange={setDateStr}
+              timeStr={timeStr} onTimeChange={setTimeStr}
+            />
           )}
           {/* 응답 한마디(선택) — 아이콘 버튼을 누르면 입력창이 트랜지션으로 열린다(요청). */}
           <button
@@ -615,9 +610,6 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
           길고 부드럽게, 취소로 원복될 때도"). */}
       <InlineCollapse open={mode === "revenge"}>
         <div className="scr-challenge-time-change-form">
-          <p className="scr-challenge-inbox-message">
-            리벤지를 신청해요 — 이번엔 상대가 시간을 정하게 하려면 일시를 비워두세요.
-          </p>
           <div className="scr-challenge-datetime">
             <input
               type="date" className="scr-input" value={dateStr}
