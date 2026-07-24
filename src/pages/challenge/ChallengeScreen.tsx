@@ -17,7 +17,7 @@ import { isAdminRole } from "../../constants/roles";
 import { cx } from "../../utils/format";
 import {
   challengeDateGroupLabel, challengeTimeLabel, formatChallengeSchedule, formatRelativeSchedule, isToday, pad,
-  DATE_INPUT_MIN, DATE_INPUT_MAX,
+  DATE_INPUT_MIN, DATE_INPUT_MAX, DEFAULT_CHALLENGE_TIME,
 } from "../../utils/date";
 import { getScrollMetrics, getScrollRoot } from "../../utils/scrollRoot";
 import type { Challenge, ChallengeResult, ChallengeSide, ChallengeStatus, ChallengeTarget } from "../../types";
@@ -299,10 +299,10 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
     setErr("");
     setBusy(true);
     try {
-      // 날짜를 정했으면 그 일시로(시간을 안 정했으면 기본 22:00으로 채운다), 날짜도
+      // 날짜를 정했으면 그 일시로(시간을 안 정했으면 기본 시간(21시)으로 채운다), 날짜도
       // 안 정하면 시간 미정으로 수락한다(요청: "시간 미정 수락 가능" — 실제 일시는
       // 완료(결과 입력) 시점에 서버가 채운다).
-      const scheduledAt = dateStr ? new Date(`${dateStr}T${timeStr || "22:00"}`).toISOString() : undefined;
+      const scheduledAt = dateStr ? new Date(`${dateStr}T${timeStr || DEFAULT_CHALLENGE_TIME}`).toISOString() : undefined;
       const updated = await api.respondToChallenge(challenge.id, "accepted", scheduledAt, respondMessage.trim());
       closeMode();
       setSharePrompt({ kind: "accepted", updated });
@@ -318,7 +318,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
     setErr("");
     setBusy(true);
     try {
-      const scheduledAt = dateStr ? new Date(`${dateStr}T${timeStr || "00:00"}`).toISOString() : undefined;
+      const scheduledAt = dateStr ? new Date(`${dateStr}T${timeStr || DEFAULT_CHALLENGE_TIME}`).toISOString() : undefined;
       const updated = await api.requestRevenge(challenge.id, { scheduledAt, message: revengeMessage.trim() });
       closeMode();
       setSharePrompt({ kind: "revenge", updated });
@@ -848,7 +848,7 @@ function ChallengeTimeHeadEdit({
     setErr("");
     setBusy(true);
     try {
-      const scheduledAt = new Date(`${dateStr}T${timeStr || "22:00"}`).toISOString();
+      const scheduledAt = new Date(`${dateStr}T${timeStr || DEFAULT_CHALLENGE_TIME}`).toISOString();
       const updated = await api.rescheduleChallenge(challenge.id, scheduledAt);
       onUpdated(updated);
       setEditing(false);
@@ -892,7 +892,10 @@ function ChallengeTimeHeadEdit({
                 onChange={(e) => {
                   const v = e.target.value;
                   setDateStr(v);
+                  // 날짜를 지우면 시간도 비우고, 날짜를 고르는데 시간이 비어 있으면 기본 시간(21시)으로
+                  // 자동으로 채운다(요청).
                   if (!v) setTimeStr("");
+                  else if (!timeStr) setTimeStr(DEFAULT_CHALLENGE_TIME);
                 }}
               />
               <input

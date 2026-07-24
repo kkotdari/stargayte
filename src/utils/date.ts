@@ -11,6 +11,11 @@ export const MONTH_INPUT_MAX = "2100-12";
 
 export const pad = (n: number): string => String(n).padStart(2, "0");
 
+// 너 나와(도전장) 일정의 기본 시간 — 호출/응답/인라인 응답/시간 변경 등에서 아직 시간을
+// 저장하지 않았을 때 무조건 이 값(21시)을 기본값으로 쓴다(요청). 날짜를 고르는 순간
+// 시간 입력이 비어 있으면 이 값으로 자동 채우고, 제출 시에도 비어 있으면 이 값으로 메운다.
+export const DEFAULT_CHALLENGE_TIME = "21:00";
+
 export const fmt = (d: Date): string =>
   `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 

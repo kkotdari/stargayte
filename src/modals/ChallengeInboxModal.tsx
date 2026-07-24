@@ -7,7 +7,7 @@ import KakaoShareButton from "../components/common/KakaoShareButton";
 import { api } from "../api/client";
 import { useAppStore } from "../store/appStore";
 import { useLockBodyScroll } from "../utils/bodyScrollLock";
-import { formatChallengeSchedule, challengeDateGroupLabel, challengeTimeLabel } from "../utils/date";
+import { formatChallengeSchedule, challengeDateGroupLabel, challengeTimeLabel, DEFAULT_CHALLENGE_TIME } from "../utils/date";
 import { playMailChime } from "../utils/sfx";
 import type { KakaoShareContent } from "../utils/kakaoShare";
 import type { Challenge } from "../types";
@@ -107,8 +107,10 @@ export default function ChallengeInboxModal({ challenges, onClose, closeLabel = 
     setErrField("");
     setBusy(true);
     try {
-      const scheduledAt = response === "accepted" && needsSchedule && dateStr && timeStr
-        ? new Date(`${dateStr}T${timeStr}`).toISOString()
+      // 날짜를 골랐으면 그 일시로 수락한다 — 시간을 비웠으면 기본 시간(21시)으로 채운다(요청).
+      // 날짜도 안 골랐으면 미정으로 수락(실제 일시는 나중에 채운다).
+      const scheduledAt = response === "accepted" && needsSchedule && dateStr
+        ? new Date(`${dateStr}T${timeStr || DEFAULT_CHALLENGE_TIME}`).toISOString()
         : undefined;
       await api.respondToChallenge(current.id, response, scheduledAt);
       // 승락/거절 모두 확인창(카카오 공유)으로 넘어간다(요청).

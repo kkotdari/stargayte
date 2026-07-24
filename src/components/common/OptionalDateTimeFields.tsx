@@ -1,4 +1,4 @@
-import { DATE_INPUT_MIN, DATE_INPUT_MAX } from "../../utils/date";
+import { DATE_INPUT_MIN, DATE_INPUT_MAX, DEFAULT_CHALLENGE_TIME } from "../../utils/date";
 
 interface OptionalDateTimeFieldsProps {
   dateStr: string;
@@ -32,7 +32,10 @@ export default function OptionalDateTimeFields({
             onChange={(e) => {
               const v = e.target.value;
               onDateChange(v);
+              // 날짜를 지우면 시간도 비우고, 날짜를 고르는데 시간이 비어 있으면 기본 시간(21시)으로
+              // 자동으로 채운다(요청: "아직 시간이 저장 안된 경우 기본값은 무조건 21시로").
               if (!v) onTimeChange("");
+              else if (!timeStr) onTimeChange(DEFAULT_CHALLENGE_TIME);
             }}
           />
         </label>
