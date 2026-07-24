@@ -281,9 +281,9 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
   const [revengeMessage, setRevengeMessage] = useState("");
   const [revengeMsgOpen, setRevengeMsgOpen] = useState(false);
 
-  // 카드에서 바로 승락/거절 — 한마디(선택)와 함께 응답한다. 거절은 되돌릴 수 없으니 확인만 받는다.
+  // 카드에서 바로 승락/거절 — 한마디(선택)와 함께 응답한다. 네이티브 confirm 창은 띄우지
+  // 않고(요청) 누르는 즉시 응답하고, 성공하면 공유 확인창으로 넘어간다.
   const respond = async (response: "accepted" | "rejected") => {
-    if (response === "rejected" && !window.confirm("이 너 나와!를 거절할까요?")) return;
     setErr("");
     setBusy(true);
     try {
