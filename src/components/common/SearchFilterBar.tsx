@@ -246,10 +246,10 @@ export default function SearchFilterBar({
           placeholder={chips.length === 0 ? searchPlaceholder : ""}
           autoComplete="off"
         />
-        {/* + 버튼 — "@" 없이 탭 한 번으로 유저 후보 드롭다운을 연다. 입력칸이 오른쪽 정렬로
-            폭을 채워 커서가 오른쪽 끝에 오므로 이 버튼도 오른쪽 끝(커서 바로 뒤)에 온다.
-            타이핑/드롭다운 중(suggestOpen)엔 숨긴다(요청). */}
-        {suggestions && !suggestOpen && (
+        {/* + 버튼 — "@" 없이 탭 한 번으로 유저 후보 드롭다운을 연다. 항상 오른쪽 끝에 고정.
+            인풋을 눌러 포커스만 한 상태에선 그대로 두고, 실제로 타이핑을 시작하면(liveText가
+            차면) 숨긴다(요청: "포커스됐을 땐 안 없어지고 타이핑해야 없어져야"). */}
+        {suggestions && liveText === "" && (
           <button
             type="button"
             className="scr-search-mention-add"
