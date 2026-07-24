@@ -4,7 +4,7 @@ import { X, Plus } from "lucide-react";
 import Avatar from "./Avatar";
 import { attachPopover } from "../../utils/popover";
 import { cx } from "../../utils/format";
-import { SEARCH_TERM_SEP, type MemberSearchSuggestion } from "../../utils/memberSearch";
+import { SEARCH_TERM_SEP, normalizeSearchText, type MemberSearchSuggestion } from "../../utils/memberSearch";
 
 interface SearchFilterBarProps {
   count: number;
@@ -77,16 +77,18 @@ export default function SearchFilterBar({
     if (!suggestions) return [];
     const raw = liveText.trim();
     if (!raw.startsWith("@")) return [];
-    const q = raw.slice(1).toLowerCase();
-    const chosen = new Set(chips.map((c) => c.toLowerCase()));
+    // 검색 필터와 같은 정규화(NFC/제로폭 정리)로 비교한다 — 겉보기 같은 한글이 바이트만
+    // 달라 자동완성/중복 판정이 어긋나지 않게.
+    const q = normalizeSearchText(raw.slice(1));
+    const chosen = new Set(chips.map((c) => normalizeSearchText(c)));
     const items: MemberSearchSuggestion[] = [];
     for (const s of suggestions) {
       if (items.length >= MAX_SUGGESTIONS) break;
       // 매칭은 닉네임뿐 아니라 리플레이 인게임 아이디(player_name)로도 되지만, 후보로
       // 뜨는/골라지는 값은 항상 매핑된 회원 닉네임이다(요청: "player_name 말고
       // 유저닉네임만 노출").
-      if (chosen.has(s.member.nickname.toLowerCase())) continue;
-      if (!s.matchTexts.some((t) => t.toLowerCase().includes(q))) continue;
+      if (chosen.has(normalizeSearchText(s.member.nickname))) continue;
+      if (!s.matchTexts.some((t) => normalizeSearchText(t).includes(q))) continue;
       items.push(s);
     }
     return items;
@@ -94,11 +96,13 @@ export default function SearchFilterBar({
 
   const suggestShown = suggestOpen && matchedSuggestions.length > 0;
 
-  // 인풋 폭에 맞춰 body에 포털링한다 — 그냥 흐름 안에 두면 목록이 뜰 때 그만큼 아래
-  // 요소들을 밀어내려 레이아웃이 출렁인다(실제로 지적받은 문제).
+  // 검색 박스(칩+인풋 전체) 폭에 맞춰 body에 포털링한다 — 그냥 흐름 안에 두면 목록이 뜰 때
+  // 그만큼 아래 요소들을 밀어내려 레이아웃이 출렁인다(실제로 지적받은 문제). 앵커는 인풋이
+  // 아니라 박스다 — 인풋은 이제 커서 폭만큼만 좁아서 인풋에 맞추면 드롭다운이 손톱만 하게
+  // 열린다(실제로 지적받은 버그).
   useEffect(() => {
-    if (!suggestShown || !inputRef.current || !dropRef.current) return;
-    return attachPopover(inputRef.current, dropRef.current, { matchAnchor: true });
+    if (!suggestShown || !chipBoxRef.current || !dropRef.current) return;
+    return attachPopover(chipBoxRef.current, dropRef.current, { matchAnchor: true });
   }, [suggestShown]);
 
   useEffect(() => {
@@ -216,9 +220,12 @@ export default function SearchFilterBar({
         <input
           ref={inputRef}
           className="scr-search-chip-input"
-          // 칩이 있으면 입력칸을 넓게 늘리지 않아(작게 유지) + 버튼이 마지막 칩/커서 바로
-          // 뒤에 붙는다. 칩이 없을 땐(플레이스홀더가 보여야 하니) 기본대로 넓게 채운다.
-          style={chips.length > 0 ? { flex: "0 1 48px", minWidth: 24 } : undefined}
+          // 입력칸을 지금 타이핑 중인 글자 폭만큼만 잡는다 — 그래야 + 버튼이 항상 커서
+          // 바로 뒤(칩이 없으면 맨 앞, 칩이 있으면 마지막 칩 뒤)에 붙는다(요청). 한글은
+          // 글자당 약 1em이라 em 기준으로 잡는다(영문은 살짝 여유가 남지만 무해).
+          // minWidth까지 함께 줘야 한다 — 스타일시트의 min-width:60px가 남아 있으면
+          // 인라인 width가 12px여도 실제 폭은 60px이 돼 +가 커서에서 떨어진다.
+          style={{ flex: "0 0 auto", width: `calc(${liveText.length}em + 12px)`, minWidth: 0 }}
           value={liveText}
           onChange={(e) => {
             const nextLive = e.target.value;
@@ -236,11 +243,11 @@ export default function SearchFilterBar({
           onFocus={() => setSuggestOpen(true)}
           onBlur={() => setSuggestOpen(false)}
           onKeyDown={onSearchKeyDown}
-          placeholder={chips.length === 0 ? searchPlaceholder : ""}
           autoComplete="off"
         />
-        {/* 커서 자리의 + 버튼 — "@" 없이 탭/클릭 한 번으로 유저 후보 드롭다운을 연다. 모바일
-            편의용이지만 PC에서도 항상 노출한다(요청). 후보 목록이 있을 때만 띄운다. */}
+        {/* 커서 바로 뒤의 + 버튼 — "@" 없이 탭/클릭 한 번으로 유저 후보 드롭다운을 연다.
+            입력칸이 커서 폭만큼만 차지하므로 이 버튼이 항상 커서/마지막 칩 바로 뒤에
+            붙는다(요청). 후보 목록이 있을 때만 띄운다. */}
         {suggestions && (
           <button
             type="button"
@@ -251,6 +258,11 @@ export default function SearchFilterBar({
           >
             <Plus size={15} />
           </button>
+        )}
+        {/* 플레이스홀더 — 입력칸이 커서 폭만큼만 차지해 네이티브 placeholder가 안 보이므로
+            빈 상태에서만 별도 스팬으로 그린다. 박스 어디를 눌러도 인풋으로 포커스된다. */}
+        {chips.length === 0 && liveText === "" && (
+          <span className="scr-search-chip-ph">{searchPlaceholder}</span>
         )}
       </div>
       {suggestShown && createPortal(

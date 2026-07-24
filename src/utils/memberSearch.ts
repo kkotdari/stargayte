@@ -10,18 +10,32 @@ import type { Member } from "../types";
 // 온전히 유지된다. SearchFilterBar가 칩을 이 구분자로 이어 붙이고, 여기서 다시 나눈다.
 export const SEARCH_TERM_SEP = "\t";
 
-// 구분자(탭)로 구분된 검색어를 항목별로 다듬는다(소문자 변환, 앞뒤 공백 제거, 빈 항목 제외).
-// 각 항목(칩)은 공백을 포함할 수 있으므로 항목 안의 공백은 그대로 둔다. 경기결과 화면의
-// "모두 있는 경기만" 체크박스처럼 항목 하나하나를 따로 다뤄야 할 때 재사용.
-export function splitSearchTerms(query: string): string[] {
-  return query.split(SEARCH_TERM_SEP).map((t) => t.trim().toLowerCase()).filter(Boolean);
+// 비교용 텍스트 정규화 — 모든 검색 매칭(필터/하이라이트/자동완성)이 이 하나를 거친다.
+// 1) 유니코드 NFC 합성: 맥 계열에서 유래한 NFD 한글은 화면상 완전히 같아 보여도 바이트가
+//    달라 includes()가 조용히 실패한다(실제 증상: 겉보기 동일한 닉네임인데 검색 필터엔
+//    잡히면서 하이라이트만 안 됨 — 저장 경로(회원 닉네임/리플레이 원본이름)마다 정규화가
+//    다를 수 있어서). 2) 제로폭 문자 제거, NBSP는 일반 공백으로. 3) 소문자.
+export function normalizeSearchText(s: string): string {
+  return s
+    .normalize("NFC")
+    .replace(/[\u200B-\u200D\uFEFF]/g, "")
+    .replace(/\u00A0/g, " ")
+    .toLowerCase();
 }
 
+// 구분자(탭)로 구분된 검색어를 항목별로 다듬는다(정규화+소문자, 앞뒤 공백 제거, 빈 항목 제외).
+// 각 항목(칩)은 공백을 포함할 수 있으므로 항목 안의 공백은 그대로 둔다.
+export function splitSearchTerms(query: string): string[] {
+  return query.split(SEARCH_TERM_SEP).map((t) => normalizeSearchText(t).trim()).filter(Boolean);
+}
+
+// term은 splitSearchTerms를 거친(정규화된) 값이라고 가정한다 — 회원 쪽 필드도 같은
+// 정규화를 거쳐 비교해야 NFC/NFD가 섞인 데이터에서도 일관되게 맞는다.
 export function memberMatchesTerm(member: Member, term: string): boolean {
   return (
-    member.nickname.toLowerCase().includes(term)
-    || member.battletag.toLowerCase().includes(term)
-    || member.replayAliases.some((a) => a.toLowerCase().includes(term))
+    normalizeSearchText(member.nickname).includes(term)
+    || normalizeSearchText(member.battletag).includes(term)
+    || member.replayAliases.some((a) => normalizeSearchText(a).includes(term))
   );
 }
 

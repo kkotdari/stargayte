@@ -41,16 +41,17 @@ export default function OptionalDateTimeFields({
                 if (!v) onTimeChange("");
               }}
             />
-            {dateStr && (
-              <button
-                type="button" className="scr-datetime-clear" aria-label="날짜 지우기"
-                // 날짜를 지우면 시간도 함께 비운다(시간은 날짜 없이 의미가 없다).
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => { onDateChange(""); onTimeChange(""); }}
-              >
-                <X size={12} />
-              </button>
-            )}
+            {/* 자리는 항상 예약(data-empty로 숨김만) — 나타나고 사라질 때 폭이 안 변한다.
+                label 안이라 클릭이 인풋으로 전달되지 않게 preventDefault까지 건다. */}
+            <button
+              type="button" className="scr-datetime-clear" aria-label="날짜 지우기"
+              data-empty={dateStr ? undefined : "1"} tabIndex={dateStr ? 0 : -1}
+              onMouseDown={(e) => e.preventDefault()}
+              // 날짜를 지우면 시간도 함께 비운다(시간은 날짜 없이 의미가 없다).
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDateChange(""); onTimeChange(""); }}
+            >
+              <X size={12} />
+            </button>
           </span>
         </label>
       </div>
@@ -66,15 +67,14 @@ export default function OptionalDateTimeFields({
               onChange={(e) => onTimeChange(e.target.value)}
               disabled={!dateStr}
             />
-            {dateStr && timeStr && (
-              <button
-                type="button" className="scr-datetime-clear" aria-label="시간 지우기"
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => onTimeChange("")}
-              >
-                <X size={12} />
-              </button>
-            )}
+            <button
+              type="button" className="scr-datetime-clear" aria-label="시간 지우기"
+              data-empty={dateStr && timeStr ? undefined : "1"} tabIndex={dateStr && timeStr ? 0 : -1}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onTimeChange(""); }}
+            >
+              <X size={12} />
+            </button>
           </span>
         </label>
       </div>

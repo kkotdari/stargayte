@@ -2,6 +2,7 @@ import { Monitor, CircleHelp } from "lucide-react";
 import Avatar from "./Avatar";
 import RaceBadge from "./RaceBadge";
 import { cx } from "../../utils/format";
+import { normalizeSearchText } from "../../utils/memberSearch";
 import { useAppStore } from "../../store/appStore";
 import { isComputerSlot, computerSlotLabel } from "../../constants/computerSlot";
 import { isUnregisteredSlot, unregisteredSlotLabel } from "../../constants/unregisteredSlot";
@@ -112,7 +113,7 @@ function TeamRoster({ side, players, memberOf, outcome, highlightMemberIds, high
               : (m?.nickname ?? p.memberId);
           // memberId가 검색 결과에 들거나, 표시 이름이 검색어를 포함하면 하이라이트한다 —
           // 후자는 참가자 memberId가 검색된 회원 id와 어긋나는 경우(별칭/비회원 등)를 보완한다.
-          const nameLc = name.toLowerCase();
+          const nameLc = normalizeSearchText(name);
           const highlighted =
             highlightMemberIds?.has(p.memberId)
             || (!!highlightTerms && highlightTerms.some((t) => nameLc.includes(t)));

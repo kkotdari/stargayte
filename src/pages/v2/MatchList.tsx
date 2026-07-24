@@ -12,6 +12,7 @@ import { isUnregisteredSlot, unregisteredSlotLabel } from "../../constants/unreg
 import { cx } from "../../utils/format";
 import { attachPopover } from "../../utils/popover";
 import { dateWithDow } from "../../utils/date";
+import { normalizeSearchText } from "../../utils/memberSearch";
 import KakaoShareButton from "../../components/common/KakaoShareButton";
 import MatchNotes from "./MatchNotes";
 import type { KakaoShareContent } from "../../utils/kakaoShare";
@@ -76,7 +77,9 @@ function PlayerCell({
   const name = resolveSlotName(slot, players, memberOf);
   // memberId 매칭(highlighted)에 더해, 표시 이름이 검색어를 포함해도 하이라이트한다 —
   // 참가자 memberId가 검색된 회원 id와 어긋나는 경우(별칭/비회원 등)를 보완한다(요청).
-  const nameLc = name.toLowerCase();
+  // 비교는 검색 필터와 같은 정규화(NFC/제로폭 정리)를 거친다 — 겉보기 동일한 한글이
+  // 바이트만 달라(NFD) 하이라이트만 빠지던 문제를 막는다.
+  const nameLc = normalizeSearchText(name);
   const hl = highlighted || !!highlightTerms?.some((t) => nameLc.includes(t));
   // 닉네임을 눌러도 프로필 모달을 열지 않는다(요청) — 로우 어디를 눌러도 무조건 펼침/접힘만
   // 하도록 버튼/클릭 핸들러를 없애고 클릭이 로우로 그대로 올라가게 둔다.
@@ -299,7 +302,7 @@ function MatchStatsTable({
         </thead>
         <tbody>
           {rows.map((r, i) => {
-            const nameLc = r.nickname.toLowerCase();
+            const nameLc = normalizeSearchText(r.nickname);
             const hl = highlightMemberIds?.has(r.memberId) || !!highlightTerms?.some((t) => nameLc.includes(t));
             return (
             <tr key={i} className={cx(hl && "scr-mst-row-hl")}>

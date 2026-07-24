@@ -11,7 +11,7 @@ import FilterItem from "../../components/common/FilterItem";
 import ScrollNavTimeline from "../../components/common/ScrollNavTimeline";
 import { useAppStore } from "../../store/appStore";
 import { api } from "../../api/client";
-import { activeMemberSearchTerms, memberMatchesTerm, splitSearchTerms } from "../../utils/memberSearch";
+import { activeMemberSearchTerms, memberMatchesTerm, normalizeSearchText, splitSearchTerms } from "../../utils/memberSearch";
 import { buildReplayDrafts, type ReplayDraft } from "../../utils/replayDraft";
 import { hasAppUpdatePreloadErrorOccurred } from "../../utils/appUpdate";
 import { useCursorPagination } from "../../hooks/useCursorPagination";
@@ -105,7 +105,9 @@ export default function MatchScreenV2() {
   const slotMatchesTerm = (slot: MatchSlot, term: string): boolean => {
     const m = resolveMember(slot.memberId);
     if (m && memberMatchesTerm(m, term)) return true;
-    return !!slot.rawName && slot.rawName.toLowerCase().includes(term);
+    // rawName도 회원 필드와 같은 정규화(NFC/제로폭 정리)를 거쳐 비교한다 — 하이라이트와
+    // 판정이 어긋나지 않게(하이라이트도 같은 normalizeSearchText 기준).
+    return !!slot.rawName && normalizeSearchText(slot.rawName).includes(term);
   };
 
   const listRows: SearchListRow[] = useMemo(() => {

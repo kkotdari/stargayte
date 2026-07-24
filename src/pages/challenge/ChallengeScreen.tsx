@@ -932,15 +932,15 @@ function ChallengeTimeHeadEdit({
                     if (!v) setTimeStr("");
                   }}
                 />
-                {dateStr && (
-                  <button
-                    type="button" className="scr-datetime-clear" aria-label="날짜 지우기"
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => { setDateStr(""); setTimeStr(""); }}
-                  >
-                    <X size={12} />
-                  </button>
-                )}
+                {/* 자리는 항상 예약(data-empty로 숨김만) — × 가 생기고 사라져도 폭이 안 변한다. */}
+                <button
+                  type="button" className="scr-datetime-clear" aria-label="날짜 지우기"
+                  data-empty={dateStr ? undefined : "1"} tabIndex={dateStr ? 0 : -1}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => { setDateStr(""); setTimeStr(""); }}
+                >
+                  <X size={12} />
+                </button>
               </span>
               <span className="scr-datetime-input-wrap scr-challenge-time-edit-cell">
                 <input
@@ -949,15 +949,14 @@ function ChallengeTimeHeadEdit({
                   onFocus={() => { if (dateStr && !timeStr) setTimeStr("21:00"); }}
                   onChange={(e) => setTimeStr(e.target.value)} disabled={!dateStr}
                 />
-                {dateStr && timeStr && (
-                  <button
-                    type="button" className="scr-datetime-clear" aria-label="시간 지우기"
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => setTimeStr("")}
-                  >
-                    <X size={12} />
-                  </button>
-                )}
+                <button
+                  type="button" className="scr-datetime-clear" aria-label="시간 지우기"
+                  data-empty={dateStr && timeStr ? undefined : "1"} tabIndex={dateStr && timeStr ? 0 : -1}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => setTimeStr("")}
+                >
+                  <X size={12} />
+                </button>
               </span>
               <button type="button" className="scr-btn scr-btn-ghost scr-btn-sm" onClick={() => setEditing(false)} disabled={busy}>
                 취소

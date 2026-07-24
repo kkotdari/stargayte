@@ -465,20 +465,24 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
 .scr-datetime-col { display: flex; flex-direction: column; gap: 5px; align-items: stretch; flex: 1 1 0; min-width: 0; }
 .scr-datetime-col .scr-datetime-input { width: 100%; }
 .scr-datetime-col .scr-datetime-input .scr-input { width: 100%; min-height: var(--field-h); padding: 9px 10px; }
-/* 입력칸 + 지우기(×) 버튼을 겹쳐 얹는 래퍼 — 값이 있을 때만 × 가 뜬다(요청: 이미 입력한
-   날짜/시간 삭제). × 는 오른쪽 안쪽에 작은 알약으로, 네이티브 달력/시계 아이콘 위에 겹친다
-   (모바일엔 그 아이콘이 없어 깔끔하고, 데스크톱에선 × 가 위에 올라와 그대로 눌린다). */
-.scr-datetime-input-wrap { position: relative; display: block; width: 100%; }
+/* 입력칸 옆에 지우기(×) 버튼을 붙이는 래퍼 — 처음엔 입력칸 위에 절대배치로 겹쳤는데,
+   iOS 날짜/시간 입력의 가운데 정렬된 값 텍스트와 겹치는 문제가 있었다(실제로 지적받은
+   문제). 이제 × 는 입력칸 "밖" 오른쪽의 별도 flex 아이템이고, 값이 없어도 자리는 항상
+   예약해 둔다(visibility로만 토글) — × 가 나타나고 사라져도 폭/레이아웃이 안 변한다. */
+.scr-datetime-input-wrap { display: flex; align-items: center; gap: 4px; width: 100%; min-width: 0; }
+.scr-datetime-input-wrap > .scr-input { flex: 1 1 auto; min-width: 0; }
 .scr-datetime-clear {
-  position: absolute; top: 50%; right: 7px; transform: translateY(-50%);
-  display: grid; place-items: center; width: 18px; height: 18px; padding: 0;
-  border: none; border-radius: 50%; cursor: pointer; z-index: 1;
+  flex: 0 0 auto; display: grid; place-items: center;
+  width: 18px; height: 18px; padding: 0;
+  border: none; border-radius: 50%; cursor: pointer;
   background: rgba(255, 255, 255, 0.14); color: var(--muted);
   -webkit-tap-highlight-color: transparent;
 }
+.scr-datetime-clear[data-empty="1"] { visibility: hidden; pointer-events: none; }
 .scr-datetime-clear:hover { color: var(--text); background: rgba(255, 255, 255, 0.24); }
 .scr-light-theme .scr-datetime-clear { background: rgba(0, 0, 0, 0.08); }
 .scr-light-theme .scr-datetime-clear:hover { background: rgba(0, 0, 0, 0.16); }
+.scr-datetime-clear svg { display: block; }
 /* 라벨은 어디서든(검색 필터·모달 폼 전부) 필드 위에 두고, 크기와 왼쪽 들여쓰기를
    하나로 통일한다 — 화면마다 라벨이 옆에 붙거나 크기가 제각각이면 산만해 보인다.
    line-height:1은 폰트 자체의 위아래 여백(줄간격)을 없애서, 코딩폰트를 쓰는 인풋과
@@ -2998,10 +3002,21 @@ html.scr-page-bg.scr-light-theme .scr-rank-screen-v2::before { display: none; }
 .scr-search-mention-add {
   flex-shrink: 0;
   display: inline-grid; place-items: center; width: 22px; height: 22px;
+  /* 브라우저 기본 버튼 패딩이 남아 있으면 22px 고정 원 안에서 + 아이콘이 한쪽으로
+     쏠린다(실제로 지적받은 문제 — "+가 동그라미 중심에 안 맞음") — 반드시 0으로. */
+  padding: 0; line-height: 1;
   border: none; border-radius: 50%; cursor: pointer;
   background: var(--lit-pill-bg); color: var(--lit-pill-text);
   box-shadow: inset 0 0 0 0.5px rgba(var(--lit-rgb), 0.5);
   -webkit-tap-highlight-color: transparent;
+}
+/* lucide 아이콘(svg)이 인라인 기본 정렬로 미세하게 처지지 않게 블록화. */
+.scr-search-mention-add svg { display: block; }
+/* 빈 검색창의 플레이스홀더 — 인풋이 커서 폭만큼만 차지해(+가 커서 뒤에 붙도록) 네이티브
+   placeholder가 안 보이므로 별도 스팬으로 그린다. 클릭은 박스가 받아 인풋에 포커스한다. */
+.scr-search-chip-ph {
+  flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  color: var(--dim); font-size: var(--fs-subhead); pointer-events: none;
 }
 /* 칩 하나 — "둥근네모"(완전한 알약도, 각진 사각도 아닌) 느낌으로 radius를 살짝만 준다.
    테마와 무관하게 항상 흰 바탕에 검은 글씨로 고정 — 다크 테마에서 옅은 반투명 톤보다
@@ -5955,10 +5970,10 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 .scr-challenge-time-edit-row .scr-btn { flex: 0 0 auto; }
 /* 결과 입력 폼의 날짜/시간 줄 — 인박스 행(라벨+내용) 안에서 남는 폭을 채운다. */
 .scr-challenge-result-when { flex: 1 1 auto; min-width: 0; }
-/* 일정 변경 인라인 행에서 입력칸 + 지우기(×)를 겹쳐 얹는 셀 — 예전엔 input이 직접 flex 자식
-   이었는데, × 를 얹으려고 span으로 감싸며 flex:1을 셀로 옮긴다. */
+/* 일정 변경 인라인 행에서 [입력칸 | ×] 한 쌍을 담는 셀 — 예전엔 input이 직접 flex 자식
+   이었는데, × 를 옆에 붙이려고 래퍼(scr-datetime-input-wrap, flex)로 감싸며 행에서의
+   flex:1을 셀로 옮긴다. × 자리는 래퍼가 항상 예약해 폭이 안 변한다. */
 .scr-challenge-time-edit-cell { flex: 1 1 0; min-width: 0; }
-.scr-challenge-time-edit-cell .scr-challenge-time-edit-input { width: 100%; flex: none; }
 
 /* scroll-margin-top — NEXT 너 나와로 자동 스크롤(scrollIntoView block:"start")할 때 화면
    맨 위에 딱 붙지 않고 이만큼만 숨 쉴 여유를 남긴다(위의 다른 카드는 안 보인다). 날짜
