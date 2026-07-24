@@ -10,17 +10,32 @@ import { useEffect } from "react";
 // 사용법: 배경을 원하는 화면이 이 훅을 호출하며 데스크톱/모바일 이미지 URL을 넘긴다.
 // 실제 적용 여부(테마 등)는 CSS(html.scr-page-bg …)가 결정한다 — 지금은 다크에서만.
 // 다른 화면/라이트 테마로 확장하려면 CSS 게이팅만 늘리면 된다(공통 구조 유지).
-export function usePageBackground(desktopUrl: string | null | undefined, mobileUrl?: string): void {
+export function usePageBackground(
+  desktopUrl: string | null | undefined,
+  mobileUrl?: string,
+  // 라이트 테마 전용 배경(선택) — 다크와 다른 사진을 쓰고 싶을 때. CSS(html.scr-page-bg
+  // .scr-light-theme …)가 이 토큰을 읽어 라이트에서만 얹는다(요청: 라이트 랭킹 배경).
+  lightUrl?: string,
+  lightMobileUrl?: string,
+): void {
   useEffect(() => {
     const root = document.documentElement;
-    if (!desktopUrl) return;
-    root.style.setProperty("--page-bg-image", `url("${desktopUrl}")`);
-    root.style.setProperty("--page-bg-image-mobile", `url("${mobileUrl ?? desktopUrl}")`);
+    if (!desktopUrl && !lightUrl) return;
+    if (desktopUrl) {
+      root.style.setProperty("--page-bg-image", `url("${desktopUrl}")`);
+      root.style.setProperty("--page-bg-image-mobile", `url("${mobileUrl ?? desktopUrl}")`);
+    }
+    if (lightUrl) {
+      root.style.setProperty("--page-bg-image-light", `url("${lightUrl}")`);
+      root.style.setProperty("--page-bg-image-light-mobile", `url("${lightMobileUrl ?? lightUrl}")`);
+    }
     root.classList.add("scr-page-bg");
     return () => {
       root.classList.remove("scr-page-bg");
       root.style.removeProperty("--page-bg-image");
       root.style.removeProperty("--page-bg-image-mobile");
+      root.style.removeProperty("--page-bg-image-light");
+      root.style.removeProperty("--page-bg-image-light-mobile");
     };
-  }, [desktopUrl, mobileUrl]);
+  }, [desktopUrl, mobileUrl, lightUrl, lightMobileUrl]);
 }

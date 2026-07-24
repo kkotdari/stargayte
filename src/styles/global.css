@@ -2427,6 +2427,24 @@ html.scr-page-bg:not(.scr-light-theme) .scr-main::before {
 html.scr-page-bg:not(.scr-light-theme) .scr-rank-screen-v2::before {
   display: none;
 }
+/* 라이트 테마 배경(요청: 라이트 랭킹은 miss_korea.png). 다크처럼 같은 공통 고정판의 배경만
+   바꾸되, 어두운 스크림 대신 "살짝만" 옅은 화이트 스크림을 얹어 사진은 거의 그대로 보이게
+   하고(배경 투명 유지) 글자 가독성만 살짝 확보한다. */
+html.scr-page-bg.scr-light-theme .scr-main::before {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.34) 0%, rgba(255,255,255,0.22) 45%, rgba(255,255,255,0.40) 100%),
+    var(--page-bg-image-light) center / cover no-repeat,
+    var(--void);
+}
+@media (max-width: 860px) {
+  html.scr-page-bg.scr-light-theme .scr-main::before {
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.34) 0%, rgba(255,255,255,0.22) 45%, rgba(255,255,255,0.40) 100%),
+      var(--page-bg-image-light-mobile) center / cover no-repeat,
+      var(--void);
+  }
+}
+html.scr-page-bg.scr-light-theme .scr-rank-screen-v2::before { display: none; }
 
 /* 개인(일대일) 랭킹 행의 검색 하이라이트 — 같은 반전색으로 프사와 닉네임을 함께 칠한다.
    프사와 닉네임이 격자의 이웃 칸이라, 프사 칸의 배경을 칸 사이 간격(column-gap)만큼
