@@ -33,12 +33,11 @@ interface RankRowProps {
 // = 참가점수 + 우열점수)라, 카드에도 그 합계를 큼직하게 싣고 아래에 참가/우열 두 갈래를
 // 보여준다. 예전엔 "최근 vs 상대 승/패" 한 줄을 붙였는데, 이제 일대일 경기 이력 전체를 카드
 // 상세 모달(그래프 아래)에서 보여주므로 카드에선 뺐다(요청).
-// 1~3위 닉네임 색 — 글로우 대신 금/은/동 메탈 폰트색으로(요청: "글로우 제거 대신 1위
-// 닉네임은 금색 메탈 늒낌 2위는 은색 메탈 느낌 3위는 동색 메탈느낌", "폰트색 말하는것").
-const MEDAL_NAME_CLASS: Record<number, string> = {
-  1: "scr-rank-name-gold",
-  2: "scr-rank-name-silver",
-  3: "scr-rank-name-bronze",
+// 1~3위 금/은/동 — 닉네임 폰트색 효과는 없애고(요청) 대신 아바타 테두리(얇은 링)에 준다.
+const MEDAL_AVATAR_CLASS: Record<number, string> = {
+  1: "scr-rank-avatar-gold",
+  2: "scr-rank-avatar-silver",
+  3: "scr-rank-avatar-bronze",
 };
 
 export default function RankRowV2({ row, tiedWithPrev = false, highlighted = false, onOpenTrend, onChallenge, gamesRank }: RankRowProps) {
@@ -47,7 +46,7 @@ export default function RankRowV2({ row, tiedWithPrev = false, highlighted = fal
   // 닉네임 색은 메달(1~3위)만 — 경기수 상위여도 닉네임 색은 바꾸지 않고 배지만 단다(요청:
   // 분홍메탈 닉네임 제도 전부 삭제).
   const isGamesTop = gamesRank !== undefined;
-  const nameClass = MEDAL_NAME_CLASS[rank];
+  const medalAvatarClass = MEDAL_AVATAR_CLASS[rank];
   // 카드엔 총점만 보여주고(세부는 랭킹 상세에서 — 요청), 경기마다 가중 합산이라 음수도 가능하다.
   // 항상 양수가 아니므로 +부호는 안 붙이고(양수는 그대로), 음수는 자연히 - 가 붙는다.
 
@@ -88,10 +87,10 @@ export default function RankRowV2({ row, tiedWithPrev = false, highlighted = fal
             <RankDeltaBadge delta={rankDelta} />
           </div>
           <button type="button" className="scr-rank-avatar-btn" onClick={openPhoto} aria-label={`${member.nickname} 사진 보기`}>
-            <Avatar member={member} size={40} />
+            <Avatar member={member} size={40} className={medalAvatarClass} />
           </button>
           <div className="scr-rank-name-wrap">
-            <span className={cx("scr-rank-name", nameClass)}>{member.nickname}</span>
+            <span className="scr-rank-name">{member.nickname}</span>
             {isGamesTop && <span className="scr-rank-games-badge">경기수TOP{gamesRank}</span>}
             {onChallenge && (
               <button
