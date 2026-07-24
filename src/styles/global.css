@@ -6303,11 +6303,17 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
    거절은 검정 대신 프라이머리(흰 버튼) 톤으로 바꾼다(요청: "거절은 프라이머리 테마, 검정 X").*/
 /* 인박스(편지지) 수락 버튼 — 분홍 대신 연두톤 초록(요청: "인박스 수락하기를 초록(연두톤)
    으로, 라이트/다크 둘다"). 인박스는 항상 아이보리 편지지라 테마와 무관하게 같은 연두다. */
+/* 승락 버튼 — 편지지에서 무의미해진 편지지 톤(연두) 대신 각 테마 라이팅 프라이머리로
+   통일(요청). 알약 글로우는 inset(안쪽)으로 담아 어디서든 잘리지 않게 한다. */
 .scr-challenge-accept-btn {
-  border-color: transparent; color: #ffffff;
-  background: #7cbf3f;
+  background: var(--lit-pill-bg); border-color: transparent; color: var(--lit-pill-text);
+  box-shadow: inset 0 0 0 0.5px rgba(var(--lit-rgb), 0.5);
 }
-.scr-challenge-accept-btn:hover { filter: brightness(1.05); }
+@media (hover: hover) {
+  .scr-challenge-accept-btn:hover {
+    filter: none; box-shadow: inset 0 0 11px rgba(var(--lit-rgb), 0.5);
+  }
+}
 /* 카드 안 인라인 폼(리벤지 신청/시간지정 승락/응답 승락)의 버튼은 편지지 인박스와 달리
    각 테마 라이팅 프라이머리로(요청: "인라인 리벤지 요청 폼의 버튼도 라이팅 테마") —
    인박스(.scr-challenge-inbox-body)의 분홍 승락 버튼은 봉투 편지지 톤 그대로 유지.
@@ -6383,7 +6389,7 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
 }
 /* 편지지(letter) — 정사각형 강제는 폐지(요청). 대신 위아래 패딩을 넉넉히 주고(위는 From.
    아바타 아래에서 내용이 시작되게) 아래도 여유. 요소 간 줄간격은 본문 gap으로 크게 준다. */
-.scr-challenge-inbox-modal.scr-challenge-letter { padding-top: 62px; padding-bottom: 26px; }
+.scr-challenge-inbox-modal.scr-challenge-letter { padding-top: 88px; padding-bottom: 26px; }
 /* 편지봉투는 편지지 카드와 한 몸이 아니라(요청: "봉투랑 편지지는 별도 모달") 오버레이
    위에 겹치는 별도 레이어다 — 카드 배경/그림자 없이 봉투 사진 + 제목만 어두운 스크림
    위에 떠 있고, 편지지 카드(정상 흐름의 flex 자식)와 정확히 같은 중앙에 정렬된다. */
