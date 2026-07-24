@@ -2116,11 +2116,18 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 .scr-rank-avatar-btn.scr-rank-avatar-gold,
 .scr-rank-avatar-btn.scr-rank-avatar-silver,
 .scr-rank-avatar-btn.scr-rank-avatar-bronze { display: grid; place-items: center; }
+/* 아바타도 링과 같은 원형으로(요청) — 컴포넌트가 인라인으로 준 둥근사각 radius를 덮어쓴다. */
+.scr-rank-avatar-btn.scr-rank-avatar-gold .scr-avatar,
+.scr-rank-avatar-btn.scr-rank-avatar-silver .scr-avatar,
+.scr-rank-avatar-btn.scr-rank-avatar-bronze .scr-avatar { border-radius: 50% !important; }
+/* 링(그라데이션 판) — 원형, 버튼 정중앙에 정확히(top/left 50% + translate로 박스 크기와
+   무관하게 중앙 고정). 아바타도 grid로 같은 중앙에 있어 동심원이 된다. */
 .scr-rank-avatar-btn.scr-rank-avatar-gold::before,
 .scr-rank-avatar-btn.scr-rank-avatar-silver::before,
 .scr-rank-avatar-btn.scr-rank-avatar-bronze::before {
-  content: ""; position: absolute; z-index: -1; inset: 0; margin: auto;
-  width: 48px; height: 48px; border-radius: 12px;
+  content: ""; position: absolute; z-index: -1;
+  top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: 48px; height: 48px; border-radius: 50%;
 }
 .scr-rank-avatar-btn.scr-rank-avatar-gold::before {
   background: linear-gradient(115deg, #9a6f08 0%, #ffd24d 40%, #fff0b8 50%, #ffd24d 60%, #9a6f08 100%);
