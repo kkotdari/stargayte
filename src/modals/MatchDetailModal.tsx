@@ -8,6 +8,7 @@ import { MATCH_TYPE_INFO } from "../constants/matchTypes";
 import { isAdminRole } from "../constants/roles";
 import { useAppStore } from "../store/appStore";
 import { api } from "../api/client";
+import { cleanMapName } from "../utils/mapName";
 import { cx } from "../utils/format";
 import { useLockBodyScroll } from "../utils/bodyScrollLock";
 import { isComputerSlot, computerSlotLabel } from "../constants/computerSlot";
@@ -226,10 +227,10 @@ export default function MatchDetailModal({ match, onClose, onEdit, onSaved }: Ma
             </div>
           )}
 
-          {match.mapName && (
+          {cleanMapName(match.mapName) && (
             <div className="scr-match-detail-cell scr-match-detail-cell-full">
               <span className="scr-label">맵</span>
-              <span>{match.mapName}</span>
+              <span>{cleanMapName(match.mapName)}</span>
             </div>
           )}
 

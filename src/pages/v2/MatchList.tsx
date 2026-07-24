@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { MoreVertical, Monitor, CircleHelp, Copy, Check } from "lucide-react";
 import RaceBadge from "../../components/common/RaceBadge";
 import { Spinner } from "../../components/common/Feedback";
+import { cleanMapName } from "../../utils/mapName";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 import { api } from "../../api/client";
 import { useAppStore } from "../../store/appStore";
@@ -55,7 +56,8 @@ function matchShareContent(match: Match, memberOf: (id: string) => Member | unde
     match.result === "draw" ? "무승부"
     : match.result === "not_held" ? "미실시"
     : `${outcomeFor("team1", match.result) === "win" ? t1 : t2} 승`;
-  const mapPart = match.mapName ? ` · ${match.mapName}` : "";
+  const cleanedMap = cleanMapName(match.mapName);
+  const mapPart = cleanedMap ? ` · ${cleanedMap}` : "";
   return {
     title: `${t1} vs ${t2}`,
     description: `${resultLabel}${mapPart} · ${match.date}`,
@@ -410,7 +412,7 @@ export default function MatchList({
                     흔들리지 않게 한다. */}
                 <div className="scr-match-trow-topline">
                   <div className="scr-match-trow-map-line">
-                    {r.raw.mapName && <span className="scr-match-trow-map">{r.raw.mapName}</span>}
+                    {cleanMapName(r.raw.mapName) && <span className="scr-match-trow-map">{cleanMapName(r.raw.mapName)}</span>}
                     {r.raw.durationSeconds != null && (
                       <span className="scr-match-trow-dur">({Math.round(r.raw.durationSeconds / 60)}분)</span>
                     )}
