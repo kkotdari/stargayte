@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { X } from "lucide-react";
+import { X, Plus } from "lucide-react";
 import Avatar from "./Avatar";
 import { attachPopover } from "../../utils/popover";
 import { cx } from "../../utils/format";
@@ -123,6 +123,17 @@ export default function SearchFilterBar({
     if (el) el.scrollLeft = el.scrollWidth;
   }, [searchValue, liveText]);
 
+  // 모바일에서 "@"를 직접 치지 않고도 유저 후보 드롭다운을 열 수 있게 하는 + 버튼(요청).
+  // 커서 자리(입력칸 끝)에 두고, 누르면 "@"를 심어 전체 후보 목록을 띄우고 포커스한다.
+  const openMention = () => {
+    setLiveText("@");
+    setSuggestOpen(true);
+    requestAnimationFrame(() => {
+      const el = inputRef.current;
+      if (el) { el.focus(); el.setSelectionRange(1, 1); }
+    });
+  };
+
   // 후보(유저 이름)를 고르면 즉시 검색어 칩으로 적용하고 liveText를 비운다.
   const pick = (name: string) => {
     addChip(name);
@@ -225,6 +236,16 @@ export default function SearchFilterBar({
           placeholder={chips.length === 0 ? searchPlaceholder : ""}
           autoComplete="off"
         />
+        {/* 커서 자리의 + 버튼 — "@" 없이 탭 한 번으로 유저 후보 드롭다운을 연다(모바일 편의). */}
+        <button
+          type="button"
+          className="scr-search-mention-add"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={openMention}
+          aria-label="유저 추가"
+        >
+          <Plus size={15} />
+        </button>
       </div>
       {suggestShown && createPortal(
         <div className="scr-pv-drop scr-scroll" ref={dropRef}>

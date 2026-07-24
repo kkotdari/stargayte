@@ -2945,6 +2945,16 @@ html.scr-page-bg:not(.scr-light-theme) .scr-rank-screen-v2::before {
 .scr-search-chip-box::-webkit-scrollbar { display: none; }
 .scr-search-chip-box:focus-within { border-color: var(--pipe-bright); }
 .scr-search-chip-box .scr-search-chip { flex-shrink: 0; }
+/* "@" 없이 유저 후보 드롭다운을 여는 + 버튼 — 커서 자리(오른쪽 끝)에 라이팅 알약으로.
+   가로 스크롤돼도 오른쪽에 붙어 항상 보이게 sticky. */
+.scr-search-mention-add {
+  flex-shrink: 0; position: sticky; right: 0; margin-left: auto;
+  display: inline-grid; place-items: center; width: 22px; height: 22px;
+  border: none; border-radius: 50%; cursor: pointer;
+  background: var(--lit-pill-bg); color: var(--lit-pill-text);
+  box-shadow: inset 0 0 0 0.5px rgba(var(--lit-rgb), 0.5);
+  -webkit-tap-highlight-color: transparent;
+}
 /* 칩 하나 — "둥근네모"(완전한 알약도, 각진 사각도 아닌) 느낌으로 radius를 살짝만 준다.
    테마와 무관하게 항상 흰 바탕에 검은 글씨로 고정 — 다크 테마에서 옅은 반투명 톤보다
    또렷한 태그처럼 도드라져 보이게 한다. */
