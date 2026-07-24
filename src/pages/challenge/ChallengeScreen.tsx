@@ -164,7 +164,7 @@ interface ChallengePage {
 
 // 카드가 지금 어떤 인라인 폼을 펼치고 있는지 — 한 번에 하나만 열린다. schedule은 일시 미정
 // 도전장을 수락하며 시간을 정하는 폼, revenge는 리벤지 신청, result는 결과 입력.
-type CardMode = "none" | "schedule" | "revenge" | "result";
+type CardMode = "none" | "revenge" | "result";
 
 interface ChallengeCardProps {
   challenge: Challenge;
@@ -293,10 +293,6 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
     }
   };
 
-  // 수락하며 시간을 정할 때 — 날짜/시간 입력칸을 비운 채로 시작한다(OptionalDateTimeFields는
-  // 체크박스 없이 처음부터 두 칸을 다 보여준다 — 요청: "날짜 선택, 시간 선택 체크박스
-  // 제거하고 처음부터 둘다 노출").
-  const startScheduling = () => { setMode("schedule"); setDateStr(""); setTimeStr(""); };
   const startRevenge = () => { setMode("revenge"); setDateStr(""); setTimeStr(""); setRevengeMessage(""); setRevengeMsgOpen(false); };
   // 결과 입력을 열 때 날짜/시간을 미리 채운다 — 이미 예정 일시가 있으면 그걸로, 없으면
   // 오늘 날짜 + 21시(요청: 시간 기본 21시)로 시작한다. 실제 값은 사용자가 확인/수정한다.
@@ -557,6 +553,20 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
       {!readOnly && canRespond && (
         <InlineCollapse open={mode === "none"}>
         <div className={cx("scr-challenge-respond", !isLatestPage && "scr-challenge-card-actions-reserve")}>
+          {/* 일정 미정 도전장이면 날짜/시간 입력칸을 처음부터 노출한다(요청: "일자·시간이 없는
+              경우 처음부터 입력창을 띄워놔줘") — 예전엔 승락을 눌러야 입력폼이 열렸다. 비워둔 채
+              승락하면 "시간 미정"으로 수락된다. */}
+          {challenge.scheduledDate === null && (
+            <>
+              <p className="scr-challenge-inbox-message">
+                시간을 정하거나, 비워두면 시간 미정으로 수락돼요 (완료할 때 그 시각으로 기록).
+              </p>
+              <OptionalDateTimeFields
+                dateStr={dateStr} onDateChange={setDateStr}
+                timeStr={timeStr} onTimeChange={setTimeStr}
+              />
+            </>
+          )}
           {/* 응답 한마디(선택) — 아이콘 버튼을 누르면 입력창이 트랜지션으로 열린다(요청). */}
           <button
             type="button"
@@ -587,13 +597,13 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
           <button
             className="scr-btn scr-challenge-accept-btn scr-btn-sm" disabled={busy}
             onClick={() => {
-              // 시간이 아직 안 정해진 도전장이면(요청자가 "상대가 정해도 된다"로 보낸 경우)
-              // 인라인 폼을 열어 날짜/시간을 받는다. 이미 정해졌으면 바로 승락한다.
-              if (challenge.scheduledDate === null) startScheduling();
+              // 일정 미정 도전장이면 위에 늘 떠 있는 날짜/시간 입력값 그대로 승락한다(비우면
+              // 시간 미정). 이미 일정이 정해진 도전장이면 그대로 바로 승락한다.
+              if (challenge.scheduledDate === null) acceptWithSchedule();
               else respond("accepted");
             }}
           >
-            {busy ? <Spinner /> : "승락"}
+            {busy ? <Spinner /> : (challenge.scheduledDate === null && !dateStr ? "시간 미정 승락" : "승락")}
           </button>
           </div>
         </div>
@@ -603,27 +613,6 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
       {/* 인라인 폼들(승락 시간지정/리벤지/결과입력) — 조건부 마운트 대신 InlineCollapse로
           늘 마운트해 두고 열림/닫힘 모두 부드럽게 접었다 편다(요청: "트랜지션을 지금보다
           길고 부드럽게, 취소로 원복될 때도"). */}
-      <InlineCollapse open={mode === "schedule"}>
-        <div className="scr-challenge-time-change-form">
-          <p className="scr-challenge-inbox-message">
-            시간을 정하거나, 비워두면 시간 미정으로 수락돼요 (완료할 때 그 시각으로 기록).
-          </p>
-          <OptionalDateTimeFields
-            dateStr={dateStr} onDateChange={setDateStr}
-            timeStr={timeStr} onTimeChange={setTimeStr}
-          />
-          <div className="scr-challenge-card-actions">
-            <button className="scr-btn scr-btn-ghost scr-btn-sm" onClick={closeMode} disabled={busy}>취소</button>
-            <button
-              className="scr-btn scr-challenge-accept-btn scr-btn-sm" onClick={acceptWithSchedule}
-              disabled={busy}
-            >
-              {busy ? <Spinner /> : (dateStr ? "승락" : "시간 미정 승락")}
-            </button>
-          </div>
-        </div>
-      </InlineCollapse>
-
       <InlineCollapse open={mode === "revenge"}>
         <div className="scr-challenge-time-change-form">
           <p className="scr-challenge-inbox-message">
