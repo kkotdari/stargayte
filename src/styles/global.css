@@ -473,8 +473,17 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
    입력칸엔 오른쪽 패딩을 넉넉히 줘서 값 텍스트가 × 밑으로 들어가지 않게 한다. 값이 없으면
    ×만 숨기고(자리·패딩은 유지) 레이아웃은 안 변한다. */
 .scr-datetime-input-wrap { position: relative; display: block; width: 100%; min-width: 0; }
-/* 오른쪽 한 자리에 아이콘 또는 ×(스왑) 하나만 얹으므로 값이 그 밑으로 안 들어가게 패딩을 준다. */
-.scr-datetime-input-wrap > .scr-input { width: 100%; padding-right: 30px; }
+/* 오른쪽 한 자리에 아이콘 또는 ×(스왑) 하나만 얹으므로 값이 그 밑으로 안 들어가게 패딩을 준다.
+   -webkit-appearance:none 이 핵심: iOS 사파리는 네이티브 date/time 입력의 값 컨테이너
+   (::-webkit-date-and-time-value)에 고유 최소폭을 강제해서, grid minmax(0,1fr) 트랙(반칸)을
+   넘어 옆칸을 덮는다(요청: "겹침 아직 해결 안됨"). 네이티브 외형을 벗기면 일반 박스처럼
+   width:100%/min-width:0 을 지켜 트랙 안에 들어온다. 어차피 표시기·피커는 우리 아이콘 +
+   showPicker로 대체했으므로 네이티브 외형이 필요 없다. */
+.scr-datetime-input-wrap > .scr-input {
+  width: 100%; min-width: 0; padding-right: 30px;
+  -webkit-appearance: none; appearance: none;
+}
+.scr-datetime-input-wrap > .scr-input::-webkit-date-and-time-value { min-width: 0; margin: 0; text-align: left; }
 /* 네이티브 달력/시계 표시기는 숨기고(우리 아이콘/×로 대체) 위치를 직접 잡는다. 데스크톱은
    인풋 클릭 시 showPicker로 피커를 연다. */
 .scr-datetime-input-wrap > .scr-input::-webkit-calendar-picker-indicator { display: none; }
