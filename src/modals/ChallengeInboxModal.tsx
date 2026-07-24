@@ -7,7 +7,7 @@ import KakaoShareButton from "../components/common/KakaoShareButton";
 import { api } from "../api/client";
 import { useAppStore } from "../store/appStore";
 import { useLockBodyScroll } from "../utils/bodyScrollLock";
-import { formatChallengeSchedule, challengeDateGroupLabel, challengeTimeLabel, DEFAULT_CHALLENGE_TIME } from "../utils/date";
+import { formatChallengeSchedule, challengeDateGroupLabel, challengeTimeLabel, buildScheduledAt } from "../utils/date";
 import { playMailChime } from "../utils/sfx";
 import type { KakaoShareContent } from "../utils/kakaoShare";
 import type { Challenge } from "../types";
@@ -91,26 +91,20 @@ export default function ChallengeInboxModal({ challenges, onClose, closeLabel = 
     else setIdx((i) => i + 1);
   };
 
-  // 승락 시에도 일시는 필수가 아니다(요청: "승락시에도 일시 미선택 가능이야") — 둘 다
-  // 비워두면 그냥 미정인 채로 승락되고, 날짜만/시간만처럼 절반만 채운 경우만 막는다
-  // (그 상태로 보내면 뜻이 애매해서).
-  const scheduleIncomplete = needsSchedule && (dateStr.length > 0) !== (timeStr.length > 0);
-  const canAccept = !scheduleIncomplete;
+  // 승락 시에도 일시는 필수가 아니다(요청: "승락시에도 일시 미선택 가능이야"). 이제 날짜만
+  // 정하고 시간은 비워두는 것도 허용하므로(요청: "시간은 나중에 결정") 막을 조합이 없다 —
+  // 날짜 없이 시간만 넣는 건 시간 입력이 날짜 전엔 비활성화라 애초에 불가능하다.
+  const canAccept = true;
 
   const respond = async (response: "accepted" | "rejected") => {
-    if (response === "accepted" && !canAccept) {
-      setErr("날짜와 시간을 둘 다 정하거나, 둘 다 비워두세요.");
-      setErrField("schedule");
-      return;
-    }
     setErr("");
     setErrField("");
     setBusy(true);
     try {
-      // 날짜를 골랐으면 그 일시로 수락한다 — 시간을 비웠으면 기본 시간(21시)으로 채운다(요청).
-      // 날짜도 안 골랐으면 미정으로 수락(실제 일시는 나중에 채운다).
-      const scheduledAt = response === "accepted" && needsSchedule && dateStr
-        ? new Date(`${dateStr}T${timeStr || DEFAULT_CHALLENGE_TIME}`).toISOString()
+      // 날짜를 골랐으면 그 날짜로 수락한다 — 시간을 비웠으면 "시간 미정"(날짜만)으로 저장된다.
+      // 날짜도 안 골랐으면 일정 전체 미정으로 수락(실제 일시는 나중에 채운다).
+      const scheduledAt = response === "accepted" && needsSchedule
+        ? buildScheduledAt(dateStr, timeStr) ?? undefined
         : undefined;
       await api.respondToChallenge(current.id, response, scheduledAt);
       // 승락/거절 모두 확인창(카카오 공유)으로 넘어간다(요청).
@@ -157,9 +151,7 @@ export default function ChallengeInboxModal({ challenges, onClose, closeLabel = 
   // 응답 확인창 — 최종 확정된 일시(요청자가 안 정했으면 내가 방금 고른 값)로 공유 내용을 만든다.
   const acceptedWhen = current.scheduledAt
     ? formatChallengeSchedule(current.scheduledAt)
-    : dateStr && timeStr
-      ? formatChallengeSchedule(new Date(`${dateStr}T${timeStr}`).toISOString())
-      : formatChallengeSchedule(null);
+    : formatChallengeSchedule(buildScheduledAt(dateStr, timeStr));
   const respondedTitle = respondedAs === "rejected" ? "대결 거절" : "대결 수락!";
   const respondedDesc = respondedAs === "rejected"
     ? "호출을 거절했어요."

@@ -11,10 +11,21 @@ export const MONTH_INPUT_MAX = "2100-12";
 
 export const pad = (n: number): string => String(n).padStart(2, "0");
 
-// 너 나와(도전장) 일정의 기본 시간 — 호출/응답/인라인 응답/시간 변경 등에서 아직 시간을
-// 저장하지 않았을 때 무조건 이 값(21시)을 기본값으로 쓴다(요청). 날짜를 고르는 순간
-// 시간 입력이 비어 있으면 이 값으로 자동 채우고, 제출 시에도 비어 있으면 이 값으로 메운다.
-export const DEFAULT_CHALLENGE_TIME = "21:00";
+// 너 나와(도전장) 일정은 "날짜만 정하고 시간은 나중에 결정"하는 경우를 허용한다(요청:
+// "날짜만 지정하고 시간은 나중에 결정하는 경우도 많을거 같거든"). 시간을 비워두면 억지로
+// 채우지 않고, 자정(00:00)을 "시간 미정" 표식으로 써서 날짜만 저장한다 — 화면에선 시각
+// 대신 "시간 미정"으로 보여준다. (예전 "날짜+시간 항상 함께" 규칙은 이 요청으로 해제.)
+function isTimeUnset(d: Date): boolean {
+  return d.getHours() === 0 && d.getMinutes() === 0;
+}
+
+// dateStr("YYYY-MM-DD")/timeStr("HH:MM")로 저장용 ISO 문자열을 만든다. 날짜가 아예 없으면
+// null(일정 전체 미정). 날짜만 있고 시간이 비어 있으면 자정(=시간 미정)으로 채워 날짜만
+// 저장한다 — 별도 체크박스 없이 "시간 칸을 비워두면 곧 시간 미정"이 되게 하는 방식(요청).
+export function buildScheduledAt(dateStr: string, timeStr: string): string | null {
+  if (!dateStr) return null;
+  return new Date(`${dateStr}T${timeStr || "00:00"}`).toISOString();
+}
 
 export const fmt = (d: Date): string =>
   `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -185,9 +196,8 @@ export function formatKoreanTime(d: Date): string {
 export function formatChallengeSchedule(scheduledAt: string | null): string {
   if (!scheduledAt) return "미정";
   const d = new Date(scheduledAt);
-  // 날짜만 있고 시간은 미정인 경우는 없다 — 일시는 항상 날짜+시간이 함께 저장/수정된다
-  // (요청: "날짜는 있고 시간은 미정인 경우는 있으면 안돼. 둘은 같이 저장되거나 수정됨").
-  // 그래서 자정(00:00)을 "시간 미정"으로 보던 예외를 없애고 실제 시각으로 표기한다.
+  // 자정(00:00)은 "시간 미정" 표식이다(날짜만 저장) — 날짜와 함께 "시간 미정"으로 표기한다.
+  if (isTimeUnset(d)) return `${dateWithDow(fmt(d))} 시간 미정`;
   return `${dateWithDow(fmt(d))} ${formatKoreanTime(d)}`;
 }
 
@@ -200,11 +210,13 @@ export function challengeDateGroupLabel(scheduledAt: string | null): string {
   if (!scheduledAt) return "일정 미정";
   return dateWithDow(fmt(new Date(scheduledAt)));
 }
-// 일정 자체가 없으면(일정 미정) null, 있으면 실제 시각을 준다 — 날짜만 있고 시간만 미정인
-// 경우는 없으므로(일시는 날짜+시간이 항상 함께) 자정을 "미정"으로 보던 예외는 없앴다.
+// 일정 자체가 없으면(일정 미정) null, 있으면 시각을 준다. 자정(00:00)은 "시간 미정" 표식이라
+// 실제 시각 대신 "시간 미정"을 돌려준다(날짜만 저장한 경우).
 export function challengeTimeLabel(scheduledAt: string | null): string | null {
   if (!scheduledAt) return null;
-  return formatKoreanTime(new Date(scheduledAt));
+  const d = new Date(scheduledAt);
+  if (isTimeUnset(d)) return "시간 미정";
+  return formatKoreanTime(d);
 }
 
 // 두 날짜 사이를 달력 기준 "N개월 M일"로 — earlier <= later. 일수가 음수면 한 달을 빌려와
@@ -233,7 +245,8 @@ export function formatRelativeSchedule(scheduledAt: string | null): string {
   if (months > 0) parts.push(`${months}개월`);
   if (days > 0) parts.push(`${days}일`);
   const when = parts.length > 0 ? `${parts.join(" ")} ${past ? "전" : "후"}` : "오늘";
-  return `${when} ${formatKoreanTime(d)}`;
+  // 자정(00:00)은 "시간 미정" 표식 — 실제 시각 대신 "시간 미정"으로 표기한다.
+  return `${when} ${isTimeUnset(d) ? "시간 미정" : formatKoreanTime(d)}`;
 }
 export const MONTHS_KR = [
   "1월", "2월", "3월", "4월", "5월", "6월",

@@ -17,7 +17,7 @@ import { isAdminRole } from "../../constants/roles";
 import { cx } from "../../utils/format";
 import {
   challengeDateGroupLabel, challengeTimeLabel, formatChallengeSchedule, formatRelativeSchedule, isToday, pad,
-  DATE_INPUT_MIN, DATE_INPUT_MAX, DEFAULT_CHALLENGE_TIME,
+  DATE_INPUT_MIN, DATE_INPUT_MAX, buildScheduledAt,
 } from "../../utils/date";
 import { getScrollMetrics, getScrollRoot } from "../../utils/scrollRoot";
 import type { Challenge, ChallengeResult, ChallengeSide, ChallengeStatus, ChallengeTarget } from "../../types";
@@ -299,10 +299,10 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
     setErr("");
     setBusy(true);
     try {
-      // 날짜를 정했으면 그 일시로(시간을 안 정했으면 기본 시간(21시)으로 채운다), 날짜도
-      // 안 정하면 시간 미정으로 수락한다(요청: "시간 미정 수락 가능" — 실제 일시는
-      // 완료(결과 입력) 시점에 서버가 채운다).
-      const scheduledAt = dateStr ? new Date(`${dateStr}T${timeStr || DEFAULT_CHALLENGE_TIME}`).toISOString() : undefined;
+      // 날짜를 정했으면 그 날짜로(시간을 비우면 "시간 미정"으로 저장), 날짜도 안 정하면
+      // 일정 전체 미정으로 수락한다(요청: "시간 미정 수락 가능" — 실제 일시는 완료(결과
+      // 입력) 시점에 서버가 채운다).
+      const scheduledAt = buildScheduledAt(dateStr, timeStr) ?? undefined;
       const updated = await api.respondToChallenge(challenge.id, "accepted", scheduledAt, respondMessage.trim());
       closeMode();
       setSharePrompt({ kind: "accepted", updated });
@@ -318,7 +318,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
     setErr("");
     setBusy(true);
     try {
-      const scheduledAt = dateStr ? new Date(`${dateStr}T${timeStr || DEFAULT_CHALLENGE_TIME}`).toISOString() : undefined;
+      const scheduledAt = buildScheduledAt(dateStr, timeStr) ?? undefined;
       const updated = await api.requestRevenge(challenge.id, { scheduledAt, message: revengeMessage.trim() });
       closeMode();
       setSharePrompt({ kind: "revenge", updated });
@@ -837,7 +837,10 @@ function ChallengeTimeHeadEdit({
     if (challenge.scheduledAt) {
       const d = new Date(challenge.scheduledAt);
       setDateStr(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`);
-      setTimeStr(`${pad(d.getHours())}:${pad(d.getMinutes())}`);
+      // 자정(00:00)은 "시간 미정" 표식이므로 시간 칸을 비워서 연다 — 그래야 그대로 저장해도
+      // 미정이 유지되고, 원하면 이때 시각을 새로 넣을 수 있다.
+      const unset = d.getHours() === 0 && d.getMinutes() === 0;
+      setTimeStr(unset ? "" : `${pad(d.getHours())}:${pad(d.getMinutes())}`);
     }
     setErr("");
     setEditing(true);
@@ -848,7 +851,8 @@ function ChallengeTimeHeadEdit({
     setErr("");
     setBusy(true);
     try {
-      const scheduledAt = new Date(`${dateStr}T${timeStr || DEFAULT_CHALLENGE_TIME}`).toISOString();
+      // 시간을 비우면 "시간 미정"(날짜만)으로 저장된다(요청). 날짜는 위에서 필수 확인.
+      const scheduledAt = buildScheduledAt(dateStr, timeStr)!;
       const updated = await api.rescheduleChallenge(challenge.id, scheduledAt);
       onUpdated(updated);
       setEditing(false);
@@ -892,10 +896,9 @@ function ChallengeTimeHeadEdit({
                 onChange={(e) => {
                   const v = e.target.value;
                   setDateStr(v);
-                  // 날짜를 지우면 시간도 비우고, 날짜를 고르는데 시간이 비어 있으면 기본 시간(21시)으로
-                  // 자동으로 채운다(요청).
+                  // 날짜를 지우면 시간도 비운다. 날짜를 골라도 시간은 자동으로 채우지 않는다 —
+                  // 시간 칸을 비워두면 그게 곧 "시간 미정"(날짜만)이다(요청).
                   if (!v) setTimeStr("");
-                  else if (!timeStr) setTimeStr(DEFAULT_CHALLENGE_TIME);
                 }}
               />
               <input
