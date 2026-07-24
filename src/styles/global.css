@@ -6382,33 +6382,34 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
 .scr-challenge-share .scr-challenge-envelope-layer .scr-challenge-inbox-title {
   color: #111; text-shadow: none;
 }
-/* 공유 링크 로그인 관문 — 정보 없는 봉투 그림만 배경으로 깔고 그 위에 라이팅 글라스
-   로그인 패널을 얹는다(요청). */
+/* 공유 링크 로그인 관문 — 흰 "너 나와~" 벽지 + 정보 없는 봉투 그림 위에, 배경이 거의
+   투명하고 블러만 살짝 든 로그인 폼을 얹는다(요청). 벽지가 흰색이라 뷰어 테마와 무관하게
+   글자/입력칸을 밝은 배경용(어두운 글자·옅은 입력칸)으로 고정한다. */
 .scr-share-login-gate {
   position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
   padding: calc(16px + var(--safe-top)) 16px calc(16px + env(safe-area-inset-bottom, 0px));
+  --text: #16181c; --muted: rgba(0, 0, 0, 0.55);
+  --input-bg: rgba(255, 255, 255, 0.55); --line: rgba(0, 0, 0, 0.2); --line-soft: rgba(0, 0, 0, 0.14);
+  /* 벽지가 흰색이라 다크 뷰어에서도 라이팅 버튼(로그인)을 라이트 톤 하늘빛 알약으로 고정 —
+     안 그러면 다크의 흰 알약이 흰 벽지에 묻힌다. */
+  --lit-rgb: 140, 190, 255; --lit-pill-bg: rgba(140, 190, 255, 0.5); --lit-pill-text: var(--text);
 }
 .scr-share-login-envelope {
-  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-  width: min(76vw, 290px); pointer-events: none;
+  position: absolute; top: 44%; left: 50%; transform: translate(-50%, -50%);
+  width: min(86vw, 360px); pointer-events: none;
 }
 .scr-share-login-envelope .scr-challenge-envelope-img { display: block; width: 100%; height: auto; border-radius: var(--radius); }
-.scr-share-login-scrim { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.4); }
-.scr-light-theme .scr-share-login-scrim { background: rgba(0, 0, 0, 0.28); }
 .scr-share-login-panel {
-  position: relative; z-index: 2; width: min(calc(100vw - 40px), 340px);
-  padding: 22px 20px; border-radius: var(--radius);
+  position: relative; z-index: 2; width: min(calc(100vw - 40px), 330px);
+  padding: 20px 18px; border-radius: var(--radius);
   display: flex; flex-direction: column; gap: 4px;
-  background: rgba(16, 21, 26, 0.86);
-  -webkit-backdrop-filter: blur(18px) saturate(1.3); backdrop-filter: blur(18px) saturate(1.3);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 24px 60px rgba(0, 0, 0, 0.55);
+  /* 거의 완전 투명 + 살짝 블러만 — 뒤 봉투/벽지가 비친다. */
+  background: rgba(255, 255, 255, 0.1);
+  -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
 }
-.scr-light-theme .scr-share-login-panel {
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 24px 60px rgba(0, 0, 0, 0.2);
-}
-.scr-share-login-title { font-size: var(--fs-subhead); font-weight: 800; color: var(--text); text-align: center; }
-.scr-share-login-sub { font-size: var(--fs-caption); color: var(--muted); text-align: center; margin-bottom: 12px; }
+.scr-share-login-title { font-size: var(--fs-subhead); font-weight: 800; color: var(--text); text-align: center; text-shadow: 0 1px 6px rgba(255,255,255,0.7); }
+.scr-share-login-sub { font-size: var(--fs-caption); color: var(--muted); text-align: center; margin-bottom: 12px; text-shadow: 0 1px 5px rgba(255,255,255,0.7); }
 /* 봉투 레이어의 제목은 어두운 스크림 위에 떠서, 편지지 톤(짙은 갈색)이 아니라 흰 글자+
    그림자로 뒤집는다(편지지 카드 안 제목은 자기 규칙대로 짙은 갈색 그대로). */
 .scr-challenge-envelope-layer .scr-challenge-inbox-title {

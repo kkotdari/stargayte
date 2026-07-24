@@ -11,12 +11,13 @@ export default function ShareLoginGate() {
   // 않는다 — 잠그면 실드가 로그인 폼 입력 자체의 터치까지 막는다(인앱 배너에서 겪은 문제).
   return (
     <div className="scr-share-login-gate">
+      {/* 봉투 장면부터 흰 "너 나와~" 벽지가 깔린다(요청) — 편지지 공유 배경과 같은 타일. */}
+      <div className="scr-challenge-share-bg" aria-hidden="true" />
       {/* 정보 없는 봉투 그림만 — 궁금증만 남긴다. */}
       <div className="scr-share-login-envelope" aria-hidden="true">
         <img src="/images/items/envelope.png" alt="" className="scr-challenge-envelope-img" />
       </div>
-      <div className="scr-share-login-scrim" aria-hidden="true" />
-      {/* 라이팅 글라스 로그인 패널 */}
+      {/* 로그인 폼은 배경 거의 투명 + 살짝 블러만(요청) — 뒤 봉투/벽지가 비쳐 보인다. */}
       <div className="scr-share-login-panel" role="dialog" aria-label="로그인">
         <div className="scr-share-login-title">호출이 도착했어요</div>
         <div className="scr-share-login-sub">로그인하고 편지를 열어보세요 👀</div>
