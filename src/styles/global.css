@@ -2508,8 +2508,8 @@ html.scr-page-bg:not(.scr-light-theme) .scr-rank-screen-v2::before {
    하고(배경 투명 유지) 글자 가독성만 살짝 확보한다. */
 html.scr-page-bg.scr-light-theme .scr-main::before {
   background:
-    /* 화이트 스크림 강화(요청: "많이 강화") — 사진을 더 옅게 덮어 글자 가독성을 확보. */
-    linear-gradient(180deg, rgba(255,255,255,0.93) 0%, rgba(255,255,255,0.88) 45%, rgba(255,255,255,0.96) 100%),
+    /* 화이트 스크림 약화(요청) — 덮개를 옅게 해서 배경 사진(miss_korea)이 더 드러나게. */
+    linear-gradient(180deg, rgba(255,255,255,0.74) 0%, rgba(255,255,255,0.66) 45%, rgba(255,255,255,0.80) 100%),
     /* PC 넓은 화면에서 cover는 세로 인물 사진을 과하게 잘라낸다(지적) — 높이에 맞춰
        (auto 100%) 가운데 표시하고 좌우 여백은 흰 스크림+--void가 채운다. */
     var(--page-bg-image-light) center / auto 100% no-repeat,
@@ -2518,7 +2518,7 @@ html.scr-page-bg.scr-light-theme .scr-main::before {
 @media (max-width: 860px) {
   html.scr-page-bg.scr-light-theme .scr-main::before {
     background:
-      linear-gradient(180deg, rgba(255,255,255,0.93) 0%, rgba(255,255,255,0.88) 45%, rgba(255,255,255,0.96) 100%),
+      linear-gradient(180deg, rgba(255,255,255,0.74) 0%, rgba(255,255,255,0.66) 45%, rgba(255,255,255,0.80) 100%),
       var(--page-bg-image-light-mobile) center / cover no-repeat,
       var(--void);
   }
