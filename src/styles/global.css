@@ -2127,7 +2127,7 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 .scr-rank-avatar-btn.scr-rank-avatar-bronze::before {
   content: ""; position: absolute; z-index: -1;
   top: 50%; left: 50%; transform: translate(-50%, -50%);
-  width: 48px; height: 48px; border-radius: 50%;
+  width: 47.6px; height: 47.6px; border-radius: 50%;
 }
 /* 금/은/동 모두 살짝씩 더 밝게(요청) — 특히 어두운 양 끝을 들어올리고 밝은 구간도 조금 위로. */
 .scr-rank-avatar-btn.scr-rank-avatar-gold::before {
