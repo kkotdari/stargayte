@@ -7,7 +7,7 @@ import KakaoShareButton from "../components/common/KakaoShareButton";
 import { api } from "../api/client";
 import { useAppStore } from "../store/appStore";
 import { useLockBodyScroll } from "../utils/bodyScrollLock";
-import { formatChallengeSchedule } from "../utils/date";
+import { formatChallengeSchedule, challengeDateGroupLabel, challengeTimeLabel } from "../utils/date";
 import { playMailChime } from "../utils/sfx";
 import type { KakaoShareContent } from "../utils/kakaoShare";
 import type { Challenge } from "../types";
@@ -160,8 +160,8 @@ export default function ChallengeInboxModal({ challenges, onClose, closeLabel = 
       : formatChallengeSchedule(null);
   const respondedTitle = respondedAs === "rejected" ? "대결 거절" : "대결 수락!";
   const respondedDesc = respondedAs === "rejected"
-    ? "호출을 거절했어요. 카카오톡으로도 알려줄까요?"
-    : `${acceptedWhen}에 만나요. 카카오톡으로도 알려줄까요?`;
+    ? "호출을 거절했어요."
+    : `${acceptedWhen}에 만나요.`;
   const shareResponded = (): KakaoShareContent => {
     const caller = current.createdBy.nickname;
     const me = user?.nickname ?? "";
@@ -193,30 +193,20 @@ export default function ChallengeInboxModal({ challenges, onClose, closeLabel = 
           봉투가 사라지는 순간 그 자리에 애니메이션 없이 그냥 나타난다(요청: "편지지 확대
           페이드인 제거 그냥 나오기"). */}
       {stage === "letter" && (
-        <div className="scr-modal scr-modal-sm scr-challenge-inbox-modal">
-          {/* 두 사람의 아바타를 카드 좌상단(To.=지목당한 대상)·우하단(From.=호출자)에 원형
-              크롭+가장자리 페이드로 얹는다(요청). 절대 위치라 공간이 좁으면 본문(제목/내용)이
-              앞에서 겹쳐 가린다(아바타가 뒤). */}
-          {current.targets[0] && (
-            <div className="scr-challenge-corner scr-challenge-corner-to" aria-hidden="true">
-              <span className="scr-challenge-corner-tag">To.</span>
-              <Avatar
-                size={72}
-                className="scr-challenge-corner-av"
-                member={{ id: current.targets[0].memberId, nickname: current.targets[0].nickname, avatar: current.targets[0].avatar }}
-              />
-            </div>
-          )}
-          <div className="scr-challenge-corner scr-challenge-corner-from" aria-hidden="true">
-            <span className="scr-challenge-corner-tag">From.</span>
+        <div className="scr-modal scr-modal-sm scr-challenge-inbox-modal scr-challenge-letter">
+          {/* 보낸 사람(From.) — 좌상단, 받는 사람(To.) — 우하단. 라벨과 아바타는 겹치지 않게
+              나란히 두고(배경 칩 없음), 카드 모서리에 최소 여백을 둔다(요청). */}
+          <div className="scr-challenge-party scr-challenge-party-from" aria-hidden="true">
+            <span className="scr-challenge-party-tag">From.</span>
             <Avatar
-              size={72}
-              className="scr-challenge-corner-av"
+              size={44}
+              className="scr-challenge-party-av"
               member={{ id: current.createdBy.id, nickname: current.createdBy.nickname, avatar: current.createdBy.avatar }}
             />
           </div>
-          <div className="scr-challenge-inbox-title">{letterTitle}</div>
+          {/* 가운데 그룹: 제목·일자·시간·한마디(+팀행·일정입력·오류) — 세로 가운데 정렬. */}
           <div className="scr-modal-body scr-challenge-inbox-body">
+            <div className="scr-challenge-inbox-title">{letterTitle}</div>
             {isTeamMatch && (
               <>
                 <div className="scr-challenge-inbox-row scr-challenge-inbox-team-row">
@@ -229,11 +219,14 @@ export default function ChallengeInboxModal({ challenges, onClose, closeLabel = 
                 </div>
               </>
             )}
-            {/* 도전자가 남긴 한마디(선택)와 일시 — 라벨 없이 크게, 가운데 정렬(요청). */}
+            {/* 일자·시간을 각각 한 줄로, 그 아래 한마디 — 모두 가운데 정렬(요청). */}
+            <div className="scr-challenge-inbox-date">{challengeDateGroupLabel(current.scheduledAt)}</div>
+            {challengeTimeLabel(current.scheduledAt) && (
+              <div className="scr-challenge-inbox-time">{challengeTimeLabel(current.scheduledAt)}</div>
+            )}
             {current.message.trim() && (
               <p className="scr-challenge-inbox-message">{current.message}</p>
             )}
-            <div className="scr-challenge-inbox-when">{formatChallengeSchedule(current.scheduledAt)}</div>
 
             {/* 요청자가 시간을 안 정했으면(needsSchedule) 상대인 내가 승락하며 직접
                 정할 수 있다 — 다만 필수는 아니다(요청: "승락시에도 일시 미선택
@@ -261,41 +254,50 @@ export default function ChallengeInboxModal({ challenges, onClose, closeLabel = 
             <div className="scr-challenge-inbox-err-slot" aria-live="polite">
               {err && <span className="scr-challenge-inbox-err-text">{err}</span>}
             </div>
-
-            {/* 지목된 대상만 응답 버튼을 본다(요청). 대상이 아니면(공유 링크를 구경만 하는
-                사람) 읽기 전용이라, 마무리 버튼 하나만 둔다. */}
-            {canRespond ? (
-              <div className="scr-form-actions">
-                <button
-                  className="scr-btn scr-challenge-reject-btn" onClick={() => respond("rejected")}
-                  disabled={busy}
-                >
-                  {busy ? <Spinner /> : "거절"}
-                </button>
-                {/* 수락도 거절도 아직 — 아무 응답도 안 보내고 그냥 다음(또는 닫기)으로
-                    넘어간다(요청: "수락/거절 말고 고민중 버튼 추가(그냥 아무것도
-                    안하는거)"). 응답이 안 남으므로 다음 접속 때 이 도전장이 다시 뜬다. */}
-                <button
-                  type="button" className="scr-btn scr-btn-ghost" onClick={advance}
-                  disabled={busy}
-                >
-                  고민중
-                </button>
-                <button
-                  className="scr-btn scr-challenge-accept-btn" onClick={() => respond("accepted")}
-                  disabled={busy || !canAccept}
-                >
-                  {busy ? <><Spinner /> 처리 중...</> : "승락"}
-                </button>
-              </div>
-            ) : (
-              <div className="scr-form-actions">
-                <button type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid" onClick={advance}>
-                  {closeLabel}
-                </button>
-              </div>
-            )}
           </div>
+
+          {/* 받는 사람(To.) — 우하단, 버튼 바로 위(요청). */}
+          {current.targets[0] && (
+            <div className="scr-challenge-party scr-challenge-party-to" aria-hidden="true">
+              <span className="scr-challenge-party-tag">To.</span>
+              <Avatar
+                size={44}
+                className="scr-challenge-party-av"
+                member={{ id: current.targets[0].memberId, nickname: current.targets[0].nickname, avatar: current.targets[0].avatar }}
+              />
+            </div>
+          )}
+
+          {/* 버튼 — 맨 아래(To. 아바타 아래, 요청). 지목된 대상만 응답 버튼을 보고, 대상이
+              아니면(공유 링크 구경) 마무리 버튼 하나만. */}
+          {canRespond ? (
+            <div className="scr-form-actions scr-challenge-letter-actions">
+              <button
+                className="scr-btn scr-challenge-reject-btn" onClick={() => respond("rejected")}
+                disabled={busy}
+              >
+                {busy ? <Spinner /> : "거절"}
+              </button>
+              <button
+                type="button" className="scr-btn scr-btn-ghost" onClick={advance}
+                disabled={busy}
+              >
+                고민중
+              </button>
+              <button
+                className="scr-btn scr-challenge-accept-btn" onClick={() => respond("accepted")}
+                disabled={busy || !canAccept}
+              >
+                {busy ? <><Spinner /> 처리 중...</> : "승락"}
+              </button>
+            </div>
+          ) : (
+            <div className="scr-form-actions scr-challenge-letter-actions">
+              <button type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid" onClick={advance}>
+                {closeLabel}
+              </button>
+            </div>
+          )}
         </div>
       )}
 

@@ -156,11 +156,10 @@ export default function ChallengeFormModal({ onClose, onCreated, presetTargetIds
             <button className="scr-icon-btn" onClick={finish} aria-label="닫기"><X size={14} /></button>
           </div>
           <div className="scr-modal-body scr-challenge-sent">
-            <img src="/images/items/nawa2.jpg" alt="" className="scr-challenge-sent-hero" />
             <div className="scr-challenge-sent-title">
               {sentChallenge.targets.map((t) => t.nickname).join(", ")} 너 나와!
             </div>
-            <div className="scr-challenge-sent-desc">호출을 보냈어요. 카카오톡으로도 알려줄까요?</div>
+            <div className="scr-challenge-sent-desc">호출을 보냈어요.</div>
             <div className="scr-form-actions scr-challenge-sent-actions">
               <KakaoShareButton variant="full" content={() => shareCall(sentChallenge)} />
               <button className="scr-btn scr-btn-primary scr-btn-primary-solid" onClick={finish}>확인</button>

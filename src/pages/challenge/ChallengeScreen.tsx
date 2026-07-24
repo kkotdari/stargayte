@@ -363,9 +363,9 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
     : "대결 수락!";
   const sharePromptWhen = formatChallengeSchedule(sharePrompt?.updated.scheduledAt ?? null);
   const sharePromptDesc =
-    sharePrompt?.kind === "rejected" ? "호출을 거절했어요. 카카오톡으로도 알려줄까요?"
-    : sharePrompt?.kind === "revenge" ? "설욕전을 신청했어요. 카카오톡으로도 알려줄까요?"
-    : `${sharePromptWhen}에 만나요. 카카오톡으로도 알려줄까요?`;
+    sharePrompt?.kind === "rejected" ? "호출을 거절했어요."
+    : sharePrompt?.kind === "revenge" ? "설욕전을 신청했어요."
+    : `${sharePromptWhen}에 만나요.`;
   // 카카오 공유 내용 — 인박스 응답 공유와 같은 형식(대진/일시 + 폴백 텍스트 + 링크).
   const buildShareContent = (): KakaoShareContent => {
     const caller = challenge.createdBy.nickname;
@@ -767,7 +767,6 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
         <div className="scr-modal-overlay">
           <div className="scr-modal scr-modal-sm scr-challenge-inbox-modal">
             <div className="scr-modal-body scr-challenge-sent">
-              <img src="/images/items/nawa2.jpg" alt="" className="scr-challenge-sent-hero" />
               <div className="scr-challenge-sent-title">{sharePromptTitle}</div>
               <div className="scr-challenge-sent-desc">{sharePromptDesc}</div>
               <div className="scr-form-actions scr-challenge-sent-actions">

@@ -6378,12 +6378,10 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
   max-width: 460px;
   /* 편지지(아이보리) 테마 제거 — 기본 유리 모달(.scr-modal + ::before)을 그대로 써서
      각 테마의 라이팅 글라스를 입힌다(요청: "너나와 인박스 라이팅 테마 적용, 편지지 제거"). */
-  /* 최소 정사각형, 내용이 많으면 아래로 길어진다(요청) — 폭 기준 1:1이 기본 높이가 되고
-     콘텐츠가 넘치면 그만큼 늘어난다. */
-  aspect-ratio: 1 / 1;
-  /* 내용이 짧아 정사각형일 때 위쪽에 몰리지 않게 세로 가운데로 모은다. */
-  justify-content: center;
 }
+/* 편지지(letter)만 최소 정사각형, 내용이 많으면 아래로 길어진다(요청) — 응답 확인창 등
+   다른 인박스 팝업은 정사각을 강제하지 않는다. */
+.scr-challenge-inbox-modal.scr-challenge-letter { aspect-ratio: 1 / 1; }
 /* 편지봉투는 편지지 카드와 한 몸이 아니라(요청: "봉투랑 편지지는 별도 모달") 오버레이
    위에 겹치는 별도 레이어다 — 카드 배경/그림자 없이 봉투 사진 + 제목만 어두운 스크림
    위에 떠 있고, 편지지 카드(정상 흐름의 flex 자식)와 정확히 같은 중앙에 정렬된다. */
@@ -6507,30 +6505,22 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
 /* 편지지(letter)를 열었을 때의 "OO 너 나와!" 제목만 2스텝 키운다(요청) — subhead→title.
    봉투 단계 제목(.scr-challenge-envelope-layer 안)은 그대로 subhead. */
 .scr-challenge-inbox-modal .scr-challenge-inbox-title { font-size: var(--fs-headline); }
-/* 편지지 두 사람 아바타 — 좌상단 To.(대상)·우하단 From.(호출자). 원형 크롭 + 가장자리
-   페이드(옛 nawa2 히어로와 동일 효과)에 크기는 그 절반(150→72). 절대 위치·z-index:0으로
-   본문 뒤에 깔려, 공간이 좁으면 제목/내용이 앞에서 겹쳐 가린다(요청). 클릭은 통과. */
-.scr-challenge-corner { position: absolute; z-index: 0; pointer-events: none; line-height: 0; }
-.scr-challenge-corner-to { top: 8px; left: 8px; }
-.scr-challenge-corner-from { bottom: 8px; right: 8px; }
-/* 라벨은 아바타 기준 절대 위치 — To.는 왼쪽 상단, From.은 왼쪽 하단(요청). 원형 페이드
-   마스크라 아바타 모서리는 투명해 카드 배경 위에 얹혀 잘 읽힌다. 그래도 사진이 밝을 때를
-   대비해 옅은 그림자를 준다. */
-/* To./From. 라벨 — 사진 위에서도 또렷하게(요청: 사진에 가려 안 보임) 작은 칩 배경을 얹고,
-   아바타 바깥 모서리 쪽으로 살짝 빼서 사진과 안 겹치게 한다. */
-.scr-challenge-corner-tag {
-  position: absolute; font-size: var(--fs-micro); font-weight: 800; line-height: 1;
-  color: var(--text); background: var(--panel-raised);
-  padding: 2px 6px; border-radius: 999px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.28);
+/* 편지지 두 사람 — 보낸 사람(From.) 좌상단, 받는 사람(To.) 우하단(요청). 라벨과 아바타는
+   겹치지 않게 나란히(배경 칩 없음), 카드 모서리에서 최소 여백을 둔다. 절대 위치·z-index:0. */
+.scr-challenge-party {
+  z-index: 0; pointer-events: none;
+  display: flex; align-items: center; gap: 7px;
 }
-.scr-challenge-corner-to .scr-challenge-corner-tag { top: -5px; left: -5px; }
-.scr-challenge-corner-from .scr-challenge-corner-tag { bottom: -5px; right: -5px; }
-.scr-challenge-corner-av {
-  border-radius: 50% !important; object-fit: cover;
-  -webkit-mask-image: radial-gradient(circle at center, #000 54%, transparent 78%);
-  mask-image: radial-gradient(circle at center, #000 54%, transparent 78%);
-}
+/* From.은 좌상단 절대 위치, To.는 흐름 안(본문 아래·버튼 위)에서 오른쪽 정렬(요청: 버튼이
+   To. 아바타보다 아래). */
+.scr-challenge-party-from { position: absolute; top: 16px; left: 18px; }
+.scr-challenge-party-to { align-self: flex-end; margin: 0 4px 2px 0; }
+.scr-challenge-party-tag { font-size: var(--fs-caption); font-weight: 800; color: var(--dim); line-height: 1; }
+.scr-challenge-party-av { border-radius: 50% !important; object-fit: cover; }
+/* 편지지 본문(제목·일자·시간·한마디)을 세로 가운데로 채우고, To.·버튼을 아래로 민다. */
+.scr-challenge-letter .scr-challenge-inbox-body { flex: 1 1 auto; justify-content: center; }
+/* 버튼 줄 — 맨 아래(To. 아래). 위로 살짝 간격. */
+.scr-challenge-letter-actions { margin-top: 6px; }
 /* 본문(제목·내용)은 아바타보다 앞에 오게 relative + 양수 z-index로 올린다. */
 .scr-challenge-inbox-modal .scr-challenge-inbox-title,
 .scr-challenge-inbox-modal .scr-challenge-inbox-body { position: relative; z-index: 1; }
@@ -6540,7 +6530,7 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
 /* 정사각형 모달에서 내용이 위로 몰리지 않게 — 본문을 늘리지 않고(flex 0 1 auto) 모달의
    justify-content:center로 제목+본문 묶음을 세로 가운데에 둔다. 내용이 많아 넘치면 본문이
    줄며 스크롤된다(min-height:0·overflow-y:auto는 .scr-modal-body에서 상속). */
-.scr-challenge-inbox-body { text-align: left; width: 100%; box-sizing: border-box; gap: 18px; flex: 0 1 auto; }
+.scr-challenge-inbox-body { text-align: center; align-items: center; width: 100%; box-sizing: border-box; gap: 12px; flex: 0 1 auto; }
 /* 거절 사유 없이 거절을 누르면 뜨는 오류 자리 — 박스/테두리 없이 작은 글씨만 띄우고,
    자리도 그 글씨 한 줄(≈12px)만 미리 예약한다(요청: "예약공간을 12정도로 하고 그만한
    글씨만 띄우자(테두리 없이)" — 처음부터 큰 갭이 있는 것보다 낫다고). 오류가 없을 땐
@@ -6554,10 +6544,12 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
   margin: 0; font-size: var(--fs-body); font-style: italic;
   color: var(--text); text-align: center; line-height: 1.35; word-break: keep-all;
 }
-.scr-challenge-inbox-when {
+/* 일자·시간 — 각각 한 줄, 가운데 정렬. 둘은 붙여(작은 음수 gap 보정) 한 덩어리처럼 보이게. */
+.scr-challenge-inbox-date, .scr-challenge-inbox-time {
   margin: 0; font-size: var(--fs-body); font-weight: 700;
-  color: var(--text); text-align: center; line-height: 1.3;
+  color: var(--text); text-align: center; line-height: 1.35;
 }
+.scr-challenge-inbox-time { margin-top: -8px; }
 /* 값 span(종류/일시 오른쪽)은 클래스가 없어 색을 명시 안 하면 앱 루트의 테마 글자색(다크
    테마에선 흰색)을 그대로 물려받아 밝은 편지지 배경 위에서 거의 안 보였다(요청: "결과
    입력창 글자가 안보이는데 다크테마 색깔 문제인가?" — 스샷의 '일대일'/'7월 13일…' 값) —
