@@ -27,6 +27,7 @@ const PAGE_SIZE = 100;
 export default function MatchScreenV2() {
   const members = useAppStore((s) => s.members);
   const memberOf = useAppStore((s) => s.memberOf);
+  const user = useAppStore((s) => s.user);
 
   // 검색창은 엔터를 눌러야만 확정되는 값이라(SearchFilterBar 참고), search 자체가 이미
   // "적용된" 값이다 — 이미 불러온 전체 경기 안에서 클라이언트가 즉시 걸러낸다.
@@ -35,6 +36,8 @@ export default function MatchScreenV2() {
   // (요청). 셋은 AND로 함께 걸린다.
   const [matchNoQuery, setMatchNoQuery] = useState("");
   const [noteQuery, setNoteQuery] = useState("");
+  // "내가 메모 남긴 경기만" 체크박스(요청) — 켜면 로그인한 내가 메모(댓글)를 남긴 경기만 남긴다.
+  const [myNotesOnly, setMyNotesOnly] = useState(false);
   // 경기유형 필터(요청: 검색창 위에 전체/개인전/팀전 로우) — 이미 불러온 전체 목록 안에서
   // 클라이언트가 즉시 걸러낸다. "0101"=개인전(1:1), "0102"=팀전.
   const [typeFilter, setTypeFilter] = useState<"all" | "0101" | "0102">("all");
@@ -130,6 +133,8 @@ export default function MatchScreenV2() {
     ));
     // 경기유형 필터(전체/개인전/팀전)를 검색보다 먼저 적용한다.
     if (typeFilter !== "all") rows = rows.filter((r) => r.raw.matchType === typeFilter);
+    // "내가 메모 남긴 경기만"(요청) — 내 memberId가 이 경기 메모 작성자 중에 있으면 통과.
+    if (myNotesOnly && user) rows = rows.filter((r) => r.raw.notes.some((c) => c.author.memberId === user.id));
     if (!hasSearch) return rows;
     return rows.filter((r) => {
       const slots = [...r.team1, ...r.team2];
@@ -143,14 +148,14 @@ export default function MatchScreenV2() {
       return userOk && noOk && noteOk;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- resolveMember/slotMatchesTerm은 members 참조 함수라 매 렌더 새로 만들어져도 무방(값 자체는 members로 충분히 표현됨)
-  }, [matches, hasSearch, searchTerms, matchNoTerm, noteTerm, members, typeFilter]);
+  }, [matches, hasSearch, searchTerms, matchNoTerm, noteTerm, members, typeFilter, myNotesOnly, user]);
 
   const handleSaved = useCallback(async () => {
     reload();
   }, [reload]);
 
   // 유형 필터나 검색이 걸리면 목록이 걸러지므로 그 실제 개수를, 아니면 서버 total을 쓴다.
-  const hasFilter = hasSearch || typeFilter !== "all";
+  const hasFilter = hasSearch || typeFilter !== "all" || (myNotesOnly && !!user);
   const count = hasFilter ? listRows.length : (total ?? matches.length);
 
   return (
@@ -217,13 +222,28 @@ export default function MatchScreenV2() {
           inputMode="numeric"
           autoComplete="off"
         />
-        <input
-          className="scr-input scr-list-search-input scr-match-extra-field"
-          value={noteQuery}
-          onChange={(e) => setNoteQuery(e.target.value)}
-          placeholder="메모 내용"
-          autoComplete="off"
-        />
+        {/* 메모 슬롯 — 메모 내용 검색 인풋 + "내 메모" 체크박스를 한 칸에 나눠 담아, 전체
+            폭은 기존 메모 필드(경기번호 칸)와 같게 유지한다(요청). 체크박스는 로그인한
+            사용자만(내 메모 기준이라) 노출한다. */}
+        <div className="scr-match-extra-memo">
+          <input
+            className="scr-input scr-list-search-input scr-match-extra-field"
+            value={noteQuery}
+            onChange={(e) => setNoteQuery(e.target.value)}
+            placeholder="메모 내용"
+            autoComplete="off"
+          />
+          {user && (
+            <label className="scr-match-mynotes" title="내가 메모 남긴 경기만 보기">
+              <input
+                type="checkbox"
+                checked={myNotesOnly}
+                onChange={(e) => setMyNotesOnly(e.target.checked)}
+              />
+              <span>내 메모</span>
+            </label>
+          )}
+        </div>
       </div>
 
       {error && <div className="scr-err">{error}</div>}

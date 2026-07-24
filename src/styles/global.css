@@ -2910,6 +2910,15 @@ html.scr-page-bg.scr-light-theme .scr-rank-screen-v2::before { display: none; }
 }
 .scr-light-theme .scr-match-extra-search .scr-match-extra-field { background: rgba(0,0,0,0.06); }
 .scr-match-extra-search .scr-match-extra-field::placeholder { color: var(--muted); font-size: var(--fs-caption); }
+/* 메모 슬롯 — 메모 인풋 + "내 메모" 체크박스를 한 칸에 담고, 슬롯 전체 폭은 경기번호 칸과
+   동일하게 유지한다(요청: 두 요소를 합쳐 기존 메모 필드 폭 유지). 안에서 인풋이 남는 폭을
+   먹고(위 .scr-match-extra-field의 flex:1 1 0이 그대로 적용됨) 체크박스는 내용만큼만. */
+.scr-match-extra-search .scr-match-extra-memo { flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: 8px; }
+.scr-match-mynotes {
+  flex: 0 0 auto; display: inline-flex; align-items: center; gap: 4px; cursor: pointer;
+  font-size: var(--fs-caption); color: var(--muted); white-space: nowrap; user-select: none;
+}
+.scr-match-mynotes input { width: 15px; height: 15px; margin: 0; accent-color: var(--point); cursor: pointer; flex-shrink: 0; }
 /* 모바일에선 세 검색 필드 모두 높이를 20% 키운다(30 → 36px, 요청) — 경기 화면 전용
    스코프라 다른 화면(랭킹/전적통계 등)의 유저 검색창 높이는 그대로 둔다. */
 @media (max-width: 640px) {
