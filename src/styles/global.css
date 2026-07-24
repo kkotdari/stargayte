@@ -2141,7 +2141,7 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 .scr-rank-avatar-btn.scr-rank-avatar-bronze .scr-avatar { border-radius: 50% !important; }
 /* 링을 아바타 바깥에 덧대 전체가 커지는 대신, 프사를 안쪽으로 살짝 줄여(40→38px) 그 자리에
    테두리를 낸다(요청: "원 아바타 테두리를 1px 깎아서 전체 크기는 링 없는 아바타와 비슷하면서도
-   테두리를 주는"). 프사가 38px면 판(43px)과의 차이(2.5px)가 또렷한 링으로 보이고, 바깥지름은
+   테두리를 주는"). 프사가 38px면 판(42px)과의 차이(2px)가 또렷한 링으로 보이고, 바깥지름은
    아바타 칸(44px) 안에 머물러 다른 행과 정렬이 어긋나지 않는다. 사진이 보이는 영역만 조금 준다.
    모바일은 이미 프사가 38px(아래 미디어쿼리)라 그대로 적용된다. */
 .scr-rank-avatar-btn.scr-rank-avatar-gold .scr-avatar,
@@ -2154,9 +2154,9 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 .scr-rank-avatar-btn.scr-rank-avatar-bronze::before {
   content: ""; position: absolute; z-index: -1;
   top: 50%; left: 50%; transform: translate(-50%, -50%);
-  /* 판 43px. 프사를 38px로 줄였으므로 링 두께는 (43-38)/2 = 2.5px로 또렷해진다(요청: 얇아서
-     티가 안 나던 링 대신, 프사를 깎아 눈에 띄는 테두리). 바깥지름 43px는 44px 아바타 칸 안. */
-  width: 43px; height: 43px; border-radius: 50%;
+  /* 판 42px. 프사를 38px로 줄였으므로 링 두께는 (42-38)/2 = 2px(요청: 얇아서 티가 안 나던 링
+     대신, 프사를 깎아 눈에 띄는 테두리). 바깥지름 42px는 44px 아바타 칸 안. */
+  width: 42px; height: 42px; border-radius: 50%;
   /* 림 추가(요청): 링 바깥/안쪽에 얇은 어두운 테두리를 둘러 금속 링의 가장자리를 또렷하게.
      바깥은 배경과, 안쪽은 아바타와 경계를 지어 링으로 명확히 읽히게 한다. */
   box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.38), inset 0 0 0 0.5px rgba(0, 0, 0, 0.32);
