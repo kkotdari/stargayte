@@ -4356,7 +4356,11 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   80% { transform: translate(-50%, -50%) scale(0.97) rotate(-0.5deg); }
   100% { transform: translate(-50%, -50%) scale(1) rotate(0deg); }
 }
-.scr-admin-panel-modal::before {
+/* 선택자를 .scr-modal.scr-admin-panel-modal(0,2,1)로 둔다 — 라이트 테마의
+   `.scr-light-theme .scr-modal::before`(0,2,1, background:흰 유리)와 특이도가 같아지고 소스
+   순서상 이 규칙이 뒤라 이긴다. 예전엔 `.scr-admin-panel-modal::before`(0,1,1)이라 라이트
+   테마에서 금속판 배경 이미지가 흰 유리에 덮여 제어판이 하얗게 나왔다(지적). */
+.scr-modal.scr-admin-panel-modal::before {
   content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
   background-image: url("/images/bg/control_panel_bg.jpg");
   background-size: cover; background-position: center; background-repeat: no-repeat;
