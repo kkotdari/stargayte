@@ -6382,6 +6382,33 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
 .scr-challenge-share .scr-challenge-envelope-layer .scr-challenge-inbox-title {
   color: #111; text-shadow: none;
 }
+/* 공유 링크 로그인 관문 — 정보 없는 봉투 그림만 배경으로 깔고 그 위에 라이팅 글라스
+   로그인 패널을 얹는다(요청). */
+.scr-share-login-gate {
+  position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+  padding: calc(16px + var(--safe-top)) 16px calc(16px + env(safe-area-inset-bottom, 0px));
+}
+.scr-share-login-envelope {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: min(76vw, 290px); pointer-events: none;
+}
+.scr-share-login-envelope .scr-challenge-envelope-img { display: block; width: 100%; height: auto; border-radius: var(--radius); }
+.scr-share-login-scrim { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.4); }
+.scr-light-theme .scr-share-login-scrim { background: rgba(0, 0, 0, 0.28); }
+.scr-share-login-panel {
+  position: relative; z-index: 2; width: min(calc(100vw - 40px), 340px);
+  padding: 22px 20px; border-radius: var(--radius);
+  display: flex; flex-direction: column; gap: 4px;
+  background: rgba(16, 21, 26, 0.86);
+  -webkit-backdrop-filter: blur(18px) saturate(1.3); backdrop-filter: blur(18px) saturate(1.3);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 24px 60px rgba(0, 0, 0, 0.55);
+}
+.scr-light-theme .scr-share-login-panel {
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 24px 60px rgba(0, 0, 0, 0.2);
+}
+.scr-share-login-title { font-size: var(--fs-subhead); font-weight: 800; color: var(--text); text-align: center; }
+.scr-share-login-sub { font-size: var(--fs-caption); color: var(--muted); text-align: center; margin-bottom: 12px; }
 /* 봉투 레이어의 제목은 어두운 스크림 위에 떠서, 편지지 톤(짙은 갈색)이 아니라 흰 글자+
    그림자로 뒤집는다(편지지 카드 안 제목은 자기 규칙대로 짙은 갈색 그대로). */
 .scr-challenge-envelope-layer .scr-challenge-inbox-title {

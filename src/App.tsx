@@ -34,6 +34,7 @@ import RankingScreen from "./pages/v2/RankingScreen";
 import MatchScreen from "./pages/v2/MatchScreen";
 import StatsScreen from "./pages/v2/StatsScreen";
 import SharePage, { type ShareTarget } from "./pages/share/SharePage";
+import ShareLoginGate from "./pages/share/ShareLoginGate";
 
 import type { ScreenKey } from "./types";
 
@@ -181,6 +182,19 @@ export default function App() {
   }
 
   if (!user) {
+    // 공유된 "너 나와!" 링크를 로그인 없이 열면, 전체 로그인 화면 대신 봉투 그림만 깔고 그
+    // 위에 로그인 모달을 얹는다(요청). 로그인하면 user가 채워져 아래 shareTarget 분기로
+    // 넘어가 실제 봉투→편지지가 열린다. (경기 공유 등 그 외에는 기존 로그인 화면 그대로.)
+    if (shareTarget?.type === "challenge") {
+      return (
+        <ImageSettingContext.Provider value={imageSettings}>
+          <div className="scr-app scr-app-fallback-scroll" id="scr-app">
+            <InAppBrowserNotice />
+            <ShareLoginGate />
+          </div>
+        </ImageSettingContext.Provider>
+      );
+    }
     return (
       <ImageSettingContext.Provider value={imageSettings}>
         <div className="scr-app scr-app-fallback-scroll" id="scr-app">
