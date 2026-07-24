@@ -54,6 +54,20 @@ export default function MatchScreenV2() {
     return all;
   }, [members, searchTerms]);
 
+  // iOS Safari 스테일 페인트 회피 — 검색어(하이라이트 대상)가 바뀌었는데도 로스터의 이전
+  // 하이라이트 배경이 화면에 그대로 남는 문제(상태·클래스는 맞고, 화면 전환하면 리페인트되며
+  // 사라짐). 검색어가 바뀔 때마다 목록 조상의 opacity를 한 프레임 미세 변경해 서브트리
+  // 리페인트를 강제한다.
+  const listWrapRef = useRef<HTMLDivElement>(null);
+  const highlightKey = searchTerms.join("");
+  useEffect(() => {
+    const el = listWrapRef.current;
+    if (!el) return;
+    el.style.opacity = "0.999";
+    const id = requestAnimationFrame(() => { el.style.opacity = ""; });
+    return () => cancelAnimationFrame(id);
+  }, [highlightKey]);
+
   const replayInputRef = useRef<HTMLInputElement>(null);
   const [parsingReplays, setParsingReplays] = useState(false);
   const [replayDrafts, setReplayDrafts] = useState<ReplayDraft[] | null>(null);
@@ -223,7 +237,7 @@ export default function MatchScreenV2() {
 
       <span className="scr-list-count scr-match-list-count">{count}건</span>
 
-      <div className="scr-match-list-wrap">
+      <div className="scr-match-list-wrap" ref={listWrapRef}>
         <MatchList
           rows={listRows}
           memberOf={resolveMember}

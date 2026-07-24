@@ -471,7 +471,9 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
 .scr-datetime-input-wrap { position: relative; display: block; width: 100%; min-width: 0; }
 .scr-datetime-input-wrap > .scr-input { width: 100%; padding-right: 26px; }
 .scr-datetime-clear {
-  position: absolute; top: 50%; right: 6px; transform: translateY(-50%);
+  /* transform:translateY(-50%)는 서브픽셀 높이에서 반픽셀 어긋남이 생겨(지적) top/bottom:0 +
+     margin:auto로 정확히 세로 중앙에 둔다. */
+  position: absolute; top: 0; bottom: 0; right: 6px; margin: auto 0;
   display: grid; place-items: center; width: 18px; height: 18px; padding: 0; z-index: 1;
   border: none; border-radius: 50%; cursor: pointer;
   background: rgba(255, 255, 255, 0.16); color: var(--muted);

@@ -200,6 +200,18 @@ export default function RankingScreenV2() {
     return ids;
   }, [members, searchTerms]);
 
+  // iOS Safari 스테일 페인트 회피(MatchScreen과 동일) — 검색어가 바뀌면 목록 조상 opacity를
+  // 한 프레임 미세 변경해 이전 하이라이트 배경이 남지 않게 리페인트를 강제한다.
+  const tableRef = useRef<HTMLDivElement>(null);
+  const highlightKey = searchTerms.join("");
+  useEffect(() => {
+    const el = tableRef.current;
+    if (!el) return;
+    el.style.opacity = "0.999";
+    const id = requestAnimationFrame(() => { el.style.opacity = ""; });
+    return () => cancelAnimationFrame(id);
+  }, [highlightKey]);
+
   const period = useMemo(() => periodAnchorToRange(unit, anchor), [unit, anchor]);
 
   // 산정 방식 안내 — 항상 보이는 문단 대신, 눌러야 뜨는 툴팁으로(요청: "누르면 툴팁형태로
@@ -353,7 +365,7 @@ export default function RankingScreenV2() {
 
       {error && <div className="scr-err">{error}</div>}
 
-      <div className="scr-rank-table-panel-v2">
+      <div className="scr-rank-table-panel-v2" ref={tableRef}>
         {/* 필터/기간을 바꿔 새 데이터를 다시 불러오는 동안, 목록을 비우지 않고 이전
             목록 위에 흐림+스피너만 얹는다 — 목록을 비우면 그 순간 패널 높이가 줄었다가
             다시 늘어나면서 브라우저가 스크롤 위치를 top으로 당겨버렸다(요청: "필터바꾸면
