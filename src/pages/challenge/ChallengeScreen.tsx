@@ -1,9 +1,9 @@
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Pencil, MessageSquarePlus, X, Check } from "lucide-react";
+import { Pencil, MessageSquarePlus, X, Check, Calendar, Clock } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
 import { Spinner } from "../../components/common/Feedback";
-import OptionalDateTimeFields from "../../components/common/OptionalDateTimeFields";
+import OptionalDateTimeFields, { openPicker } from "../../components/common/OptionalDateTimeFields";
 import InlineCollapse from "../../components/common/InlineCollapse";
 import KakaoShareButton from "../../components/common/KakaoShareButton";
 import ChallengeFormModal from "../../modals/ChallengeFormModal";
@@ -907,6 +907,7 @@ function ChallengeTimeHeadEdit({
                   type="date" className="scr-input scr-challenge-time-edit-input"
                   value={dateStr}
                   min={DATE_INPUT_MIN} max={DATE_INPUT_MAX}
+                  onClick={openPicker}
                   onChange={(e) => {
                     const v = e.target.value;
                     setDateStr(v);
@@ -915,31 +916,39 @@ function ChallengeTimeHeadEdit({
                     if (!v) setTimeStr("");
                   }}
                 />
-                {/* 자리는 항상 예약(data-empty로 숨김만) — × 가 생기고 사라져도 폭이 안 변한다. */}
-                <button
-                  type="button" className="scr-datetime-clear" aria-label="날짜 지우기"
-                  data-empty={dateStr ? undefined : "1"} tabIndex={dateStr ? 0 : -1}
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => { setDateStr(""); setTimeStr(""); }}
-                >
-                  <X size={12} />
-                </button>
+                {/* 스왑(요청): 값 있으면 지우기 ×, 없으면 달력 아이콘 — 같은 오른쪽 자리. */}
+                {dateStr ? (
+                  <button
+                    type="button" className="scr-datetime-clear" aria-label="날짜 지우기"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => { setDateStr(""); setTimeStr(""); }}
+                  >
+                    <X size={12} />
+                  </button>
+                ) : (
+                  <span className="scr-datetime-picker-icon" aria-hidden="true"><Calendar size={15} /></span>
+                )}
               </span>
               <span className="scr-datetime-input-wrap scr-challenge-time-edit-cell">
                 <input
                   type="time" className="scr-input scr-challenge-time-edit-input"
                   value={timeStr}
                   onFocus={() => { if (dateStr && !timeStr) setTimeStr("21:00"); }}
+                  onClick={openPicker}
                   onChange={(e) => setTimeStr(e.target.value)} disabled={!dateStr}
                 />
-                <button
-                  type="button" className="scr-datetime-clear" aria-label="시간 지우기"
-                  data-empty={dateStr && timeStr ? undefined : "1"} tabIndex={dateStr && timeStr ? 0 : -1}
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => setTimeStr("")}
-                >
-                  <X size={12} />
-                </button>
+                {/* 스왑(요청): 값 있으면 지우기 ×, 없으면 시계 아이콘. 날짜 없으면(비활성) 아이콘만. */}
+                {dateStr && timeStr ? (
+                  <button
+                    type="button" className="scr-datetime-clear" aria-label="시간 지우기"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => setTimeStr("")}
+                  >
+                    <X size={12} />
+                  </button>
+                ) : (
+                  <span className="scr-datetime-picker-icon" aria-hidden="true"><Clock size={15} /></span>
+                )}
               </span>
               {/* 취소/확인을 기존 아이콘 버튼(scr-icon-btn) 스타일로, 크기만 이 행에 맞게
                   살짝 줄인다(요청). 확인은 체크에 포인트 색을 준다. */}

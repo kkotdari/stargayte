@@ -164,7 +164,9 @@ export default function DateField({
           onKeyDown={onKeyDown}
           onPaste={onPaste}
         />
-        {value && !disabled && (
+        {/* 스왑(요청): 값이 있으면 지우기 ×, 없으면 달력 버튼 — 같은 오른쪽 한 자리에서 바뀐다.
+            값이 있어도 인풋을 누르면(onFocus=openPop) 달력이 다시 열려서 달력 버튼이 없어도 된다. */}
+        {value && !disabled ? (
           <button
             type="button"
             className="scr-df-clear"
@@ -175,10 +177,11 @@ export default function DateField({
           >
             <X size={12} />
           </button>
+        ) : (
+          <button type="button" className="scr-df-btn" onClick={() => (open ? setOpen(false) : openPop())} disabled={disabled} aria-label="달력 열기">
+            <CalendarDays size={14} />
+          </button>
         )}
-        <button type="button" className="scr-df-btn" onClick={() => (open ? setOpen(false) : openPop())} disabled={disabled} aria-label="달력 열기">
-          <CalendarDays size={14} />
-        </button>
       </div>
 
       {open && createPortal(

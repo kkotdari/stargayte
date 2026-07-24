@@ -5,7 +5,7 @@ import { DATE_INPUT_MIN, DATE_INPUT_MAX } from "../../utils/date";
 // 네이티브 달력/시계 표시기를 CSS로 숨겼으므로, 데스크톱에서 입력칸을 눌렀을 때 피커가 열리게
 // showPicker를 직접 호출한다(모바일은 인풋 포커스만으로 네이티브 피커가 열려 이 호출이
 // 없어도/실패해도 무방하다 — 미지원·이미 열림은 조용히 무시).
-function openPicker(e: React.MouseEvent<HTMLInputElement>) {
+export function openPicker(e: React.MouseEvent<HTMLInputElement>) {
   const el = e.currentTarget as HTMLInputElement & { showPicker?: () => void };
   try { el.showPicker?.(); } catch { /* 미지원 또는 이미 열림 */ }
 }
@@ -54,23 +54,20 @@ export default function OptionalDateTimeFields({
                 if (!v) onTimeChange("");
               }}
             />
-            {/* 잠긴 칸엔 지우기 버튼을 두지 않는다(수정 불가). 편집 가능한 칸만 자리를 예약하고
-                (data-empty로 숨김만) 값이 있으면 ×로 다시 "미정"으로 되돌릴 수 있다(요청). */}
-            {!dateLocked && (
+            {/* 스왑(요청): 맨 오른쪽 한 자리에서 — 값이 없으면 달력 아이콘(장식용,
+                pointer-events:none이라 인풋을 눌러 피커를 연다), 값이 있으면 지우기 ×로 바뀐다.
+                잠긴 칸(수정 불가)은 아무것도 두지 않는다. */}
+            {!dateLocked && (dateStr ? (
               <button
                 type="button" className="scr-datetime-clear" aria-label="날짜 지우기"
-                data-empty={dateStr ? undefined : "1"} tabIndex={dateStr ? 0 : -1}
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDateChange(""); onTimeChange(""); }}
               >
                 <X size={12} />
               </button>
-            )}
-            {/* 달력 아이콘은 항상 맨 오른쪽(요청). 장식용이라 클릭이 인풋으로 통과하도록
-                pointer-events:none — 인풋을 누르면 피커가 열린다. 잠긴 칸엔 두지 않는다. */}
-            {!dateLocked && (
+            ) : (
               <span className="scr-datetime-picker-icon" aria-hidden="true"><Calendar size={15} /></span>
-            )}
+            ))}
           </span>
         </label>
       </div>
@@ -88,19 +85,17 @@ export default function OptionalDateTimeFields({
               onChange={timeLocked ? undefined : (e) => onTimeChange(e.target.value)}
               disabled={!timeLocked && !dateStr}
             />
-            {!timeLocked && (
+            {!timeLocked && (timeStr ? (
               <button
                 type="button" className="scr-datetime-clear" aria-label="시간 지우기"
-                data-empty={dateStr && timeStr ? undefined : "1"} tabIndex={dateStr && timeStr ? 0 : -1}
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); onTimeChange(""); }}
               >
                 <X size={12} />
               </button>
-            )}
-            {!timeLocked && (
+            ) : (
               <span className="scr-datetime-picker-icon" aria-hidden="true"><Clock size={15} /></span>
-            )}
+            ))}
           </span>
         </label>
       </div>
