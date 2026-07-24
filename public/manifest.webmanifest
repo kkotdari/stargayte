@@ -3,7 +3,7 @@
   "short_name": "스타게이트",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#060607",
+  "background_color": "#000000",
   "theme_color": "#060607",
   "icons": [
     { "src": "/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" },
