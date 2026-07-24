@@ -86,8 +86,8 @@ export default function RankRowV2({ row, tiedWithPrev = false, highlighted = fal
             </span>
             <RankDeltaBadge delta={rankDelta} />
           </div>
-          <button type="button" className="scr-rank-avatar-btn" onClick={openPhoto} aria-label={`${member.nickname} 사진 보기`}>
-            <Avatar member={member} size={40} className={medalAvatarClass} />
+          <button type="button" className={cx("scr-rank-avatar-btn", medalAvatarClass)} onClick={openPhoto} aria-label={`${member.nickname} 사진 보기`}>
+            <Avatar member={member} size={40} />
           </button>
           <div className="scr-rank-name-wrap">
             <span className="scr-rank-name">{member.nickname}</span>

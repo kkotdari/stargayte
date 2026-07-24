@@ -2109,17 +2109,27 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    밝아서 글자가 잘 안 보임") — 글자 윤곽이 또렷해진다. */
 /* 가운데 하이라이트를 순백(#fff) 대신 그 금속의 옅은 톤으로 낮춘다 — 가운데가 너무 하얘서
    글자가 안 읽히는 문제(요청). 밝되 순백은 아니게. */
-/* 1~3위 금/은/동 — 닉네임 효과 대신 아바타 테두리 링(요청). 레이아웃을 안 밀게 box-shadow
-   링으로 아바타 라운드를 감싼다. 좀 더 두껍게(≈3.5px)에 메탈 광택 느낌 — 안쪽 금속 본체 +
-   밝은 하이라이트 슬리버 + 바깥 어두운 림을 겹쳐 베벨된 금속 광택처럼 보이게 한다. */
-.scr-rank-avatar-gold {
-  box-shadow: 0 0 0 2px #f2c73f, 0 0 0 2.5px #fff4cb, 0 0 0 3.5px #7c5c12;
+/* 1~3위 금/은/동 — 닉네임 효과 대신 아바타 테두리 링(요청). 어두운 림/그림자 없이, 예전
+   닉네임에 쓰던 대각선 메탈 그라데이션 하이라이트(어두움→밝음→가장밝음→밝음→어두움)를
+   아바타 뒤 판(::before)에 깔아 라운드를 따라 링으로 보이게 한다. 아바타(40px)보다 살짝
+   큰 판을 가운데 두면 그 차이만큼이 그라데이션 링이 된다(레이아웃은 안 밀린다). */
+.scr-rank-avatar-btn.scr-rank-avatar-gold,
+.scr-rank-avatar-btn.scr-rank-avatar-silver,
+.scr-rank-avatar-btn.scr-rank-avatar-bronze { display: grid; place-items: center; }
+.scr-rank-avatar-btn.scr-rank-avatar-gold::before,
+.scr-rank-avatar-btn.scr-rank-avatar-silver::before,
+.scr-rank-avatar-btn.scr-rank-avatar-bronze::before {
+  content: ""; position: absolute; z-index: -1; inset: 0; margin: auto;
+  width: 47px; height: 47px; border-radius: 12px;
 }
-.scr-rank-avatar-silver {
-  box-shadow: 0 0 0 2px #c2cad4, 0 0 0 2.5px #ffffff, 0 0 0 3.5px #6b727c;
+.scr-rank-avatar-btn.scr-rank-avatar-gold::before {
+  background: linear-gradient(115deg, #9a6f08 0%, #ffd24d 40%, #fff0b8 50%, #ffd24d 60%, #9a6f08 100%);
 }
-.scr-rank-avatar-bronze {
-  box-shadow: 0 0 0 2px #c0824a, 0 0 0 2.5px #f0cfa6, 0 0 0 3.5px #5a3a20;
+.scr-rank-avatar-btn.scr-rank-avatar-silver::before {
+  background: linear-gradient(115deg, #7a7f88 0%, #c3c9d1 40%, #f1f4f8 50%, #c3c9d1 60%, #7a7f88 100%);
+}
+.scr-rank-avatar-btn.scr-rank-avatar-bronze::before {
+  background: linear-gradient(115deg, #6e4326 0%, #b98a5a 40%, #edc79c 50%, #b98a5a 60%, #6e4326 100%);
 }
 /* "경기수N위" 배지 — 알약 없이 글자만, 글자에 메탈 그라데이션(요청). 폰트 10px.
    다크 테마: 흰색 메탈 — 순백은 광택이 안 사니 살짝 회색(실버) 톤으로(요청). */
