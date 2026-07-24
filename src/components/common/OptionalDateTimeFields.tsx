@@ -28,7 +28,7 @@ export default function OptionalDateTimeFields({
     <div className="scr-datetime-cols">
       <div className="scr-datetime-col">
         <label className="scr-field scr-datetime-input">
-          <span className="scr-label">날짜</span>
+          <span className="scr-label">날짜 <span className="scr-label-optional">(선택)</span></span>
           <span className="scr-datetime-input-wrap">
             <input
               type="date" className={cls} value={dateStr}
@@ -57,7 +57,7 @@ export default function OptionalDateTimeFields({
       </div>
       <div className="scr-datetime-col">
         <label className="scr-field scr-datetime-input">
-          <span className="scr-label">시간</span>
+          <span className="scr-label">시간 <span className="scr-label-optional">(선택)</span></span>
           <span className="scr-datetime-input-wrap">
             <input
               type="time" className={cls} value={timeStr}
