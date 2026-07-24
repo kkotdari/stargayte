@@ -76,9 +76,9 @@ function rankingParamsFromUrl(): { mode?: RankMode; race?: BaseRace | "all"; uni
 export default function RankingScreenV2() {
   // 화면 전체 배경 사진(다크에서만 CSS가 적용) — fixed ::before가 iOS 안전영역에 갇히는
   // 한계를 피해 .scr-app 흐름 배경으로 얹어 상태바/내비바 뒤까지 채운다(실험).
-  // 다크는 ranking.jpg, 라이트는 miss_korea.png(요청). 라이트는 모바일 전용 크롭이 없어
+  // 다크는 rivaly.jpg, 라이트는 miss_korea.png(요청). 라이트는 모바일 전용 크롭이 없어
   // 데스크톱 이미지를 그대로 쓴다.
-  usePageBackground("/images/bg/ranking.jpg", "/images/bg/ranking_mobile.jpg", "/images/bg/miss_korea.png");
+  usePageBackground("/images/bg/rivaly.jpg", "/images/bg/rivaly_mobile.png", "/images/bg/miss_korea.png");
   const members = useAppStore((s) => s.members);
   const user = useAppStore((s) => s.user);
   const suggestions = useMemo(() => activeMemberSearchTerms(members), [members]);
