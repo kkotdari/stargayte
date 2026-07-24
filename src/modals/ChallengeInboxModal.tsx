@@ -311,7 +311,7 @@ export default function ChallengeInboxModal({ challenges, onClose, closeLabel = 
             <div className="scr-challenge-sent-title">{respondedTitle}</div>
             <div className="scr-challenge-sent-desc">{respondedDesc}</div>
             <div className="scr-form-actions scr-challenge-sent-actions">
-              <KakaoShareButton variant="full" content={shareResponded} />
+              <KakaoShareButton variant="full" iconOnly content={shareResponded} />
               <button type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid" onClick={advance}>확인</button>
             </div>
           </div>

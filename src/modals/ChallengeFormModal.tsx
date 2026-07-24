@@ -161,7 +161,7 @@ export default function ChallengeFormModal({ onClose, onCreated, presetTargetIds
             </div>
             <div className="scr-challenge-sent-desc">호출을 보냈어요.</div>
             <div className="scr-form-actions scr-challenge-sent-actions">
-              <KakaoShareButton variant="full" content={() => shareCall(sentChallenge)} />
+              <KakaoShareButton variant="full" iconOnly content={() => shareCall(sentChallenge)} />
               <button className="scr-btn scr-btn-primary scr-btn-primary-solid" onClick={finish}>확인</button>
             </div>
           </div>

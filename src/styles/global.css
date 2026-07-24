@@ -6717,6 +6717,11 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
 }
 .scr-kakao-share-btn:hover { filter: brightness(0.96); }
 .scr-kakao-share-btn svg { color: #3c1e1e; }
+/* 아이콘만(요청) — 라벨을 빼고 정사각에 가깝게. gap은 텍스트가 없어 무의미. */
+.scr-kakao-share-btn-icon { padding-left: 11px; padding-right: 11px; gap: 0; }
+/* 확인창(호출완료/거절/수락 등)은 폭을 내용에 맞춘다(요청) — 기본 모달의 넓은 폭 대신
+   가장 넓은 자식(안내문/버튼줄)만큼만. 화면을 넘지 않게 상한만 둔다. */
+.scr-modal:has(.scr-challenge-sent) { width: fit-content; max-width: min(calc(100vw - 32px), 360px); }
 /* 케밥 메뉴 안 카카오 항목 — 다른 항목과 같은 행 스타일(.scr-menu-pop-opt)에 아이콘만 얹는다. */
 .scr-kakao-menu-opt svg { flex-shrink: 0; }
 /* 호출/수락 완료 확인창 본문 — 가운데 정렬로 제목 + 안내 + 버튼. */

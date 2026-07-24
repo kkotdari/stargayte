@@ -26,6 +26,9 @@ interface KakaoShareButtonProps {
   className?: string;
   // 메뉴 항목/버튼에 보일 글자(기본 "카카오톡 공유"). 아이콘 변형은 무시한다.
   label?: string;
+  // full 변형에서 글자를 빼고 아이콘만 남긴다(요청: 확인창 공유 버튼 라벨 제거) — 노란
+  // 카카오 버튼 모양은 유지하되 컴팩트해진다. 상태(복사됨/만드는중)는 툴팁으로만 알린다.
+  iconOnly?: boolean;
   // 눌린 뒤 메뉴 등을 닫아야 하면(케밥 메뉴) 넘겨준다.
   onDone?: () => void;
 }
@@ -33,7 +36,7 @@ interface KakaoShareButtonProps {
 // 세 자리(랭킹 산정방식 줄 / 경기 케밥 메뉴 / 너 나와 확인창)에서 공통으로 쓰는 카카오
 // 공유 버튼. variant로 겉모양만 바꾼다. 폴백으로 링크가 복사되면 잠깐 "복사됨"을 알린다.
 export default function KakaoShareButton({
-  content, variant = "icon", className, label = "카카오톡 공유", onDone,
+  content, variant = "icon", className, label = "카카오톡 공유", iconOnly = false, onDone,
 }: KakaoShareButtonProps) {
   const [copied, setCopied] = useState(false);
   // 이미지 렌더링+업로드가 끝날 때까지 잠깐 걸릴 수 있어(랭킹 차트), 그동안 버튼을 다시
@@ -85,16 +88,18 @@ export default function KakaoShareButton({
     );
   }
 
-  // full — 확인창의 노란 카카오 버튼.
+  // full — 확인창의 노란 카카오 버튼. iconOnly면 아이콘만(라벨/상태문구는 툴팁으로).
   return (
     <button
       type="button"
-      className={cx("scr-btn scr-kakao-share-btn", className)}
+      className={cx("scr-btn scr-kakao-share-btn", iconOnly && "scr-kakao-share-btn-icon", className)}
       onClick={(e) => { e.stopPropagation(); void share(); }}
       disabled={busy}
+      aria-label={label}
+      title={copied ? "링크 복사됨" : busy ? "만드는 중..." : label}
     >
       <KakaoIcon size={16} />
-      {copied ? "링크 복사됨" : busy ? "만드는 중..." : label}
+      {!iconOnly && (copied ? "링크 복사됨" : busy ? "만드는 중..." : label)}
     </button>
   );
 }

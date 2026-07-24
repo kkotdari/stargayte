@@ -787,7 +787,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
               <div className="scr-challenge-sent-title">{sharePromptTitle}</div>
               <div className="scr-challenge-sent-desc">{sharePromptDesc}</div>
               <div className="scr-form-actions scr-challenge-sent-actions">
-                <KakaoShareButton variant="full" content={buildShareContent} />
+                <KakaoShareButton variant="full" iconOnly content={buildShareContent} />
                 <button type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid" onClick={dismissShare}>확인</button>
               </div>
             </div>
