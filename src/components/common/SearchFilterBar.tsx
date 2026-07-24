@@ -236,16 +236,19 @@ export default function SearchFilterBar({
           placeholder={chips.length === 0 ? searchPlaceholder : ""}
           autoComplete="off"
         />
-        {/* 커서 자리의 + 버튼 — "@" 없이 탭 한 번으로 유저 후보 드롭다운을 연다(모바일 편의). */}
-        <button
-          type="button"
-          className="scr-search-mention-add"
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={openMention}
-          aria-label="유저 추가"
-        >
-          <Plus size={15} />
-        </button>
+        {/* 커서 자리의 + 버튼 — "@" 없이 탭/클릭 한 번으로 유저 후보 드롭다운을 연다. 모바일
+            편의용이지만 PC에서도 항상 노출한다(요청). 후보 목록이 있을 때만 띄운다. */}
+        {suggestions && (
+          <button
+            type="button"
+            className="scr-search-mention-add"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={openMention}
+            aria-label="유저 추가"
+          >
+            <Plus size={15} />
+          </button>
+        )}
       </div>
       {suggestShown && createPortal(
         <div className="scr-pv-drop scr-scroll" ref={dropRef}>

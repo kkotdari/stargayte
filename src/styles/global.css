@@ -6449,10 +6449,15 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
 /* 편지지 두 사람 아바타 — 좌상단 To.(대상)·우하단 From.(호출자). 원형 크롭 + 가장자리
    페이드(옛 nawa2 히어로와 동일 효과)에 크기는 그 절반(150→72). 절대 위치·z-index:0으로
    본문 뒤에 깔려, 공간이 좁으면 제목/내용이 앞에서 겹쳐 가린다(요청). 클릭은 통과. */
-.scr-challenge-corner { position: absolute; z-index: 0; pointer-events: none; display: flex; flex-direction: column; align-items: center; gap: 1px; }
-.scr-challenge-corner-to { top: 8px; left: 10px; }
-.scr-challenge-corner-from { bottom: 10px; right: 10px; }
-.scr-challenge-corner-tag { font-size: var(--fs-caption); font-weight: 800; color: var(--dim); line-height: 1; }
+.scr-challenge-corner { position: absolute; z-index: 0; pointer-events: none; line-height: 0; }
+.scr-challenge-corner-to { top: 10px; left: 12px; }
+.scr-challenge-corner-from { bottom: 12px; right: 12px; }
+/* 라벨은 아바타 기준 절대 위치 — To.는 왼쪽 상단, From.은 왼쪽 하단(요청). 원형 페이드
+   마스크라 아바타 모서리는 투명해 카드 배경 위에 얹혀 잘 읽힌다. 그래도 사진이 밝을 때를
+   대비해 옅은 그림자를 준다. */
+.scr-challenge-corner-tag { position: absolute; font-size: var(--fs-caption); font-weight: 800; color: var(--text); line-height: 1; text-shadow: 0 1px 3px rgba(0,0,0,0.45); }
+.scr-challenge-corner-to .scr-challenge-corner-tag { top: 1px; left: 1px; }
+.scr-challenge-corner-from .scr-challenge-corner-tag { bottom: 1px; left: 1px; }
 .scr-challenge-corner-av {
   border-radius: 50% !important; object-fit: cover;
   -webkit-mask-image: radial-gradient(circle at center, #000 54%, transparent 78%);
