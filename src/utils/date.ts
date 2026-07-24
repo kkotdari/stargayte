@@ -11,21 +11,6 @@ export const MONTH_INPUT_MAX = "2100-12";
 
 export const pad = (n: number): string => String(n).padStart(2, "0");
 
-// 너 나와(도전장) 일정은 "날짜만 정하고 시간은 나중에 결정"하는 경우를 허용한다(요청:
-// "날짜만 지정하고 시간은 나중에 결정하는 경우도 많을거 같거든"). 시간을 비워두면 억지로
-// 채우지 않고, 자정(00:00)을 "시간 미정" 표식으로 써서 날짜만 저장한다 — 화면에선 시각
-// 대신 "시간 미정"으로 보여준다. (예전 "날짜+시간 항상 함께" 규칙은 이 요청으로 해제.)
-function isTimeUnset(d: Date): boolean {
-  return d.getHours() === 0 && d.getMinutes() === 0;
-}
-
-// dateStr("YYYY-MM-DD")/timeStr("HH:MM")로 저장용 ISO 문자열을 만든다. 날짜가 아예 없으면
-// null(일정 전체 미정). 날짜만 있고 시간이 비어 있으면 자정(=시간 미정)으로 채워 날짜만
-// 저장한다 — 별도 체크박스 없이 "시간 칸을 비워두면 곧 시간 미정"이 되게 하는 방식(요청).
-export function buildScheduledAt(dateStr: string, timeStr: string): string | null {
-  if (!dateStr) return null;
-  return new Date(`${dateStr}T${timeStr || "00:00"}`).toISOString();
-}
 
 export const fmt = (d: Date): string =>
   `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -177,15 +162,25 @@ export function dateWithDow(dateStr: string): string {
   return `${dateStr} (${DOW[new Date(y, m - 1, d).getDay()]})`;
 }
 
-// "너 나와!" 도전장의 일시 표시 — 날짜 없이 미정이면 "미정", 날짜만 있고 시간이 정확히
-// 자정(작성 폼에서 시간을 비우면 자정으로 저장된다)이면 시간은 "시간 미정"으로 보고
-// 날짜만 보여준다. 요일도 같이 보여준다(요청: "요일도 알려줘").
-// 너 나와 일시가 오늘인지(당일 경기는 포인트 컬러로 강조 표시하기 위함).
-export function isToday(scheduledAt: string | null): boolean {
-  if (!scheduledAt) return false;
-  const d = new Date(scheduledAt);
-  const now = new Date();
-  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+// "너 나와!" 도전장의 예정 일정 — 날짜/시간이 각각 독립적으로 비어 있을 수 있다(요청:
+// "시간은 null 가능", "날짜만 정하고 시간은 나중에"). scheduledDate/scheduledTime은 한국시간
+// 벽시계값 문자열("YYYY-MM-DD" / "HH:MM")이라 표시엔 파싱 없이 그대로 쓴다.
+export interface ScheduleLike {
+  scheduledDate: string | null;
+  scheduledTime: string | null;
+}
+
+// 응답 마감/지남 판정용 로컬(한국) 시각(ms). 시간 미정이면 그날 끝(23:59:59)으로 본다 —
+// 백엔드와 동일(요청: 날짜만 지정 시 그날이 지나면 자동 무응답 취소). 날짜가 없으면 null.
+export function scheduledInstantMs(s: ScheduleLike): number | null {
+  if (!s.scheduledDate) return null;
+  return new Date(`${s.scheduledDate}T${s.scheduledTime ?? "23:59:59"}`).getTime();
+}
+
+// 너 나와 일정이 오늘인지(당일 경기는 포인트 컬러로 강조). 날짜만 비교한다.
+export function isToday(s: ScheduleLike): boolean {
+  if (!s.scheduledDate) return false;
+  return s.scheduledDate === fmt(gameNow());
 }
 
 // 시간은 24시간제 HH:MM으로 표기한다(요청: "시간도 22:30 형식으로 복귀").
@@ -193,30 +188,32 @@ export function formatKoreanTime(d: Date): string {
   return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-export function formatChallengeSchedule(scheduledAt: string | null): string {
-  if (!scheduledAt) return "미정";
-  const d = new Date(scheduledAt);
-  // 자정(00:00)은 "시간 미정" 표식이다(날짜만 저장) — 날짜와 함께 "시간 미정"으로 표기한다.
-  if (isTimeUnset(d)) return `${dateWithDow(fmt(d))} 시간 미정`;
+export function formatChallengeSchedule(s: ScheduleLike): string {
+  if (!s.scheduledDate) return "미정";
+  const dateLabel = dateWithDow(s.scheduledDate);
+  return s.scheduledTime ? `${dateLabel} ${s.scheduledTime}` : `${dateLabel} 시간 미정`;
+}
+
+// 단일 일시(datetime ISO) 하나를 "YYYY-MM-DD (요일) HH:MM"으로 — 리그 대진표처럼 날짜+시간이
+// 항상 함께인 일정 표기에 쓴다(도전장처럼 날짜/시간이 따로 놀지 않는다). null이면 "미정".
+export function formatDateTime(iso: string | null): string {
+  if (!iso) return "미정";
+  const d = new Date(iso);
   return `${dateWithDow(fmt(d))} ${formatKoreanTime(d)}`;
 }
 
 // 도전장 화면을 경기결과 화면처럼 날짜별로 묶어 보여주면서(요청: "경기 화면처럼 날짜별로
 // 그룹핑"), 카드 하나하나엔 그 날짜 그룹 라벨과 중복되는 날짜를 다시 안 적고 시간만
 // 보여준다(요청: "각 카드엔 시간만 표시") — 그래서 날짜/시간 표시를 둘로 쪼갠다. 일정이
-// 아예 없는 도전장은 별도 그룹으로 모은다. 연도를 별도 줄로 빼지 않고 라벨 자체에
-// "YYYY-MM-DD (요일)" 형식으로 담는다(요청: "년도 따로 빼지 않고 날짜에 넣기").
-export function challengeDateGroupLabel(scheduledAt: string | null): string {
-  if (!scheduledAt) return "일정 미정";
-  return dateWithDow(fmt(new Date(scheduledAt)));
+// 아예 없는 도전장은 별도 그룹으로 모은다.
+export function challengeDateGroupLabel(s: ScheduleLike): string {
+  if (!s.scheduledDate) return "일정 미정";
+  return dateWithDow(s.scheduledDate);
 }
-// 일정 자체가 없으면(일정 미정) null, 있으면 시각을 준다. 자정(00:00)은 "시간 미정" 표식이라
-// 실제 시각 대신 "시간 미정"을 돌려준다(날짜만 저장한 경우).
-export function challengeTimeLabel(scheduledAt: string | null): string | null {
-  if (!scheduledAt) return null;
-  const d = new Date(scheduledAt);
-  if (isTimeUnset(d)) return "시간 미정";
-  return formatKoreanTime(d);
+// 날짜 자체가 없으면(일정 미정) null, 날짜가 있으면 시각(없으면 "시간 미정")을 준다.
+export function challengeTimeLabel(s: ScheduleLike): string | null {
+  if (!s.scheduledDate) return null;
+  return s.scheduledTime ?? "시간 미정";
 }
 
 // 두 날짜 사이를 달력 기준 "N개월 M일"로 — earlier <= later. 일수가 음수면 한 달을 빌려와
@@ -234,9 +231,11 @@ function calendarMonthsDays(earlier: Date, later: Date): { months: number; days:
 
 // 페이징 있는 카드(재신청/리벤지 이력)에서 지금 보는 페이지의 일시를 "얼마나 전/후 + 실제
 // 시각"으로 보여준다(요청: "1개월 23일 전 오후 7시 10분 이런식으로"). 하루 미만이면 "오늘".
-export function formatRelativeSchedule(scheduledAt: string | null): string {
-  if (!scheduledAt) return "일정 미정";
-  const d = new Date(scheduledAt);
+export function formatRelativeSchedule(s: ScheduleLike): string {
+  if (!s.scheduledDate) return "일정 미정";
+  const [y, mo, dd] = s.scheduledDate.split("-").map(Number);
+  const [hh, mi] = s.scheduledTime ? s.scheduledTime.split(":").map(Number) : [0, 0];
+  const d = new Date(y, mo - 1, dd, hh, mi);
   const now = gameNow();
   const past = d.getTime() <= now.getTime();
   const [earlier, later] = past ? [d, now] : [now, d];
@@ -245,8 +244,7 @@ export function formatRelativeSchedule(scheduledAt: string | null): string {
   if (months > 0) parts.push(`${months}개월`);
   if (days > 0) parts.push(`${days}일`);
   const when = parts.length > 0 ? `${parts.join(" ")} ${past ? "전" : "후"}` : "오늘";
-  // 자정(00:00)은 "시간 미정" 표식 — 실제 시각 대신 "시간 미정"으로 표기한다.
-  return `${when} ${isTimeUnset(d) ? "시간 미정" : formatKoreanTime(d)}`;
+  return `${when} ${s.scheduledTime ? formatKoreanTime(d) : "시간 미정"}`;
 }
 export const MONTHS_KR = [
   "1월", "2월", "3월", "4월", "5월", "6월",

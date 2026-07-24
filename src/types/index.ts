@@ -381,7 +381,11 @@ export interface ChallengeOwnMember {
 // 리벤지 체인에서 이 도전장보다 앞선(더 예전) 기록 한 건.
 export interface ChallengeHistoryEntry {
   id: number;
+  // 정렬/그룹핑/카운트다운용 파생 일시(UTC ISO) — 시간 미정이면 자정으로 채워져 온다.
   scheduledAt: string | null;
+  // 실제 저장값 — 날짜/시간 각각 독립. 시간 미정이면 scheduledTime = null(날짜만).
+  scheduledDate: string | null;
+  scheduledTime: string | null;
   status: ChallengeStatus;
   targets: ChallengeTarget[];
   createdAt: string;
@@ -394,7 +398,11 @@ export interface Challenge {
   matchType: ChallengeMatchType;
   // 도전자가 호출 때 남긴 한마디(선택) — 없으면 빈 문자열.
   message: string;
+  // 정렬/그룹핑/카운트다운용 파생 일시(UTC ISO) — 시간 미정이면 자정으로 채워져 온다.
   scheduledAt: string | null;
+  // 실제 저장값 — 날짜/시간 각각 독립. 시간 미정이면 scheduledTime = null(날짜만 지정).
+  scheduledDate: string | null;
+  scheduledTime: string | null;
   status: ChallengeStatus;
   createdBy: { id: string; nickname: string; avatar: string | null };
   targets: ChallengeTarget[];
@@ -414,7 +422,9 @@ export interface Challenge {
 }
 
 export interface ChallengeCreatePayload {
-  scheduledAt?: string | null;
+  // 날짜/시간 각각 선택 — 날짜만 정하고 시간은 미정(null)으로 둘 수 있다.
+  scheduledDate?: string | null;
+  scheduledTime?: string | null;
   // 호출 한마디(선택, 한글 50자).
   message?: string;
   targetMemberIds: string[];
@@ -424,9 +434,10 @@ export interface ChallengeCreatePayload {
   fromMatchRequest?: boolean;
 }
 
-// 리벤지(설욕전)을 신청할 때 — 시간은 생략할 수 있다. 한마디(선택)도 함께 보낼 수 있다.
+// 리벤지(설욕전)을 신청할 때 — 날짜/시간 모두 생략 가능. 한마디(선택)도 함께 보낼 수 있다.
 export interface ChallengeRevengePayload {
-  scheduledAt?: string | null;
+  scheduledDate?: string | null;
+  scheduledTime?: string | null;
   message?: string;
 }
 

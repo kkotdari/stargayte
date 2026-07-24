@@ -659,32 +659,38 @@ export const api = {
     });
   },
 
-  // 지목된 쪽의 응답 — 수락/거절/버림. scheduledAt은 요청자가 "시간 지정"을 끄고 보낸
-  // (시간 미정) 도전장을 승락할 때만 의미가 있다 — 이미 시간이 정해진 도전장에는 무시된다.
+  // 지목된 쪽의 응답 — 수락/거절/버림. 날짜/시간은 요청자가 일정을 안 정하고 보낸 도전장을
+  // 승락할 때만 의미가 있다(둘 다 선택) — 이미 날짜가 정해진 도전장에는 무시된다.
   async respondToChallenge(
-    id: number, response: "accepted" | "rejected" | "discarded", scheduledAt?: string, message?: string,
+    id: number, response: "accepted" | "rejected" | "discarded",
+    schedule?: { scheduledDate?: string | null; scheduledTime?: string | null }, message?: string,
   ): Promise<Challenge> {
     return request<Challenge>(`/api/challenges/${id}/respond`, {
       method: "POST",
-      body: JSON.stringify({ response, scheduledAt, message }),
+      body: JSON.stringify({ response, ...schedule, message }),
     });
   },
 
   // 성사(진행중)된 너 나와의 예정 일시를 바꾼다 — 참가자 또는 운영자만(요청: "너나와
-  // 목록에서 진행중인건은 날짜와 시간 수정이 가능하게").
-  async rescheduleChallenge(id: number, scheduledAt: string): Promise<Challenge> {
+  // 목록에서 진행중인건은 날짜와 시간 수정이 가능하게"). 날짜/시간 모두 선택(미정 가능).
+  async rescheduleChallenge(
+    id: number, scheduledDate: string | null, scheduledTime: string | null,
+  ): Promise<Challenge> {
     return request<Challenge>(`/api/challenges/${id}/schedule`, {
       method: "PATCH",
-      body: JSON.stringify({ scheduledAt }),
+      body: JSON.stringify({ scheduledDate, scheduledTime }),
     });
   },
 
-  // 확정된 너 나와의 결과(이긴 쪽)를 입력 — 참가자 누구든 먼저 입력하는 쪽이 인정되고,
-  // 예정 일시가 지난 뒤에만 가능하다. 이미 결과가 입력된 너 나와에는 다시 입력할 수 없다.
-  async enterChallengeResult(id: number, winnerSide: ChallengeResult): Promise<Challenge> {
+  // 확정된 너 나와의 결과(이긴 쪽)를 입력 — 참가자 누구든 먼저 입력하는 쪽이 인정된다.
+  // 결과 입력 시엔 실제 대결 날짜/시간을 무조건 함께 넣는다(요청). 이미 결과가 입력된
+  // 너 나와에는 다시 입력할 수 없다.
+  async enterChallengeResult(
+    id: number, winnerSide: ChallengeResult, scheduledDate: string, scheduledTime: string,
+  ): Promise<Challenge> {
     return request<Challenge>(`/api/challenges/${id}/result`, {
       method: "POST",
-      body: JSON.stringify({ winnerSide }),
+      body: JSON.stringify({ winnerSide, scheduledDate, scheduledTime }),
     });
   },
 

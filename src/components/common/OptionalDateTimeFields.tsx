@@ -44,6 +44,9 @@ export default function OptionalDateTimeFields({
           <span className="scr-label">시간</span>
           <input
             type="time" className={cls} value={timeStr}
+            // 시간을 정하려고 빈 칸을 누르면 21시로 시작한다(요청: "선택 UI를 눌렀을 때 값이
+            // 없으면 21시로 선택된 상태로 열림"). 안 누르면 빈 채로 남아 "시간 미정"이 된다.
+            onFocus={() => { if (dateStr && !timeStr) onTimeChange("21:00"); }}
             onChange={(e) => onTimeChange(e.target.value)}
             disabled={!dateStr}
           />

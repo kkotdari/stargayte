@@ -17,8 +17,9 @@ import { isAdminRole } from "../../constants/roles";
 import { cx } from "../../utils/format";
 import {
   challengeDateGroupLabel, challengeTimeLabel, formatChallengeSchedule, formatRelativeSchedule, isToday, pad,
-  DATE_INPUT_MIN, DATE_INPUT_MAX, buildScheduledAt,
+  DATE_INPUT_MIN, DATE_INPUT_MAX, scheduledInstantMs, gameNow,
 } from "../../utils/date";
+import type { ScheduleLike } from "../../utils/date";
 import { getScrollMetrics, getScrollRoot } from "../../utils/scrollRoot";
 import type { Challenge, ChallengeResult, ChallengeSide, ChallengeStatus, ChallengeTarget } from "../../types";
 
@@ -31,9 +32,11 @@ import type { Challenge, ChallengeResult, ChallengeSide, ChallengeStatus, Challe
 // 마감이다 — 그때까지 응답이 없으면 서버가 무응답 거절 처리한다. 여기선 남은 시간 문구만
 // 만든다(만료 판정은 서버 배치). 마감이 지나 잠깐 음수가 되면 "곧 마감"으로 대체한다.
 const EXPIRE_MS = 72 * 60 * 60 * 1000;
-function responseDeadlineLabel(createdAt: string, scheduledAt: string | null): string {
+function responseDeadlineLabel(createdAt: string, sched: ScheduleLike): string {
   const base = new Date(createdAt).getTime() + EXPIRE_MS;
-  const deadline = scheduledAt ? Math.min(base, new Date(scheduledAt).getTime()) : base;
+  // 예정 시각(시간 미정이면 그날 끝)이 72시간보다 먼저면 그게 마감이다 — 백엔드와 동일.
+  const scheduled = scheduledInstantMs(sched);
+  const deadline = scheduled !== null ? Math.min(base, scheduled) : base;
   const remain = deadline - Date.now();
   if (remain <= 0) return "응답 마감 임박";
   const days = Math.floor(remain / (24 * 60 * 60 * 1000));
@@ -72,10 +75,10 @@ interface ChallengeDateGroup {
 function groupChallengesByDate(list: Challenge[]): ChallengeDateGroup[] {
   const groups: ChallengeDateGroup[] = [];
   list.forEach((c) => {
-    const label = challengeDateGroupLabel(c.scheduledAt);
+    const label = challengeDateGroupLabel(c);
     const last = groups[groups.length - 1];
     if (last && last.label === label) last.items.push(c);
-    else groups.push({ label, isToday: isToday(c.scheduledAt), items: [c] });
+    else groups.push({ label, isToday: isToday(c), items: [c] });
   });
   return groups;
 }
@@ -95,10 +98,10 @@ interface ChallengeTimeGroup {
 function groupByTime(items: Challenge[]): ChallengeTimeGroup[] {
   const groups: ChallengeTimeGroup[] = [];
   items.forEach((c) => {
-    const key = c.scheduledAt ?? "none";
+    const key = c.scheduledDate ? `${c.scheduledDate}T${c.scheduledTime ?? ""}` : "none";
     const last = groups[groups.length - 1];
     if (last && last.key === key) last.items.push(c);
-    else groups.push({ key, timeLabel: challengeTimeLabel(c.scheduledAt), items: [c] });
+    else groups.push({ key, timeLabel: challengeTimeLabel(c), items: [c] });
   });
   return groups;
 }
@@ -151,6 +154,8 @@ function ChallengeSide({
 interface ChallengePage {
   id: number;
   scheduledAt: string | null;
+  scheduledDate: string | null;
+  scheduledTime: string | null;
   targets: ChallengeTarget[];
   status: ChallengeStatus;
   createdAt: string;
@@ -222,11 +227,12 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
   const pages: ChallengePage[] = useMemo(
     () => [
       ...challenge.history.map((h) => ({
-        id: h.id, scheduledAt: h.scheduledAt, targets: h.targets,
-        status: h.status, createdAt: h.createdAt, resultWinnerSide: h.resultWinnerSide,
+        id: h.id, scheduledAt: h.scheduledAt, scheduledDate: h.scheduledDate, scheduledTime: h.scheduledTime,
+        targets: h.targets, status: h.status, createdAt: h.createdAt, resultWinnerSide: h.resultWinnerSide,
       })),
       {
-        id: challenge.id, scheduledAt: challenge.scheduledAt, targets: challenge.targets,
+        id: challenge.id, scheduledAt: challenge.scheduledAt, scheduledDate: challenge.scheduledDate,
+        scheduledTime: challenge.scheduledTime, targets: challenge.targets,
         status: challenge.status, createdAt: challenge.createdAt, resultWinnerSide: challenge.resultWinnerSide,
       },
     ],
@@ -292,7 +298,15 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
   // 제거하고 처음부터 둘다 노출").
   const startScheduling = () => { setMode("schedule"); setDateStr(""); setTimeStr(""); };
   const startRevenge = () => { setMode("revenge"); setDateStr(""); setTimeStr(""); setRevengeMessage(""); setRevengeMsgOpen(false); };
-  const startResult = () => { setMode("result"); setErr(""); };
+  // 결과 입력을 열 때 날짜/시간을 미리 채운다 — 이미 예정 일시가 있으면 그걸로, 없으면
+  // 오늘 날짜 + 21시(요청: 시간 기본 21시)로 시작한다. 실제 값은 사용자가 확인/수정한다.
+  const startResult = () => {
+    const now = gameNow();
+    setDateStr(challenge.scheduledDate ?? `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`);
+    setTimeStr(challenge.scheduledTime ?? "21:00");
+    setMode("result");
+    setErr("");
+  };
   const closeMode = () => setMode("none");
 
   const acceptWithSchedule = async () => {
@@ -302,8 +316,8 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
       // 날짜를 정했으면 그 날짜로(시간을 비우면 "시간 미정"으로 저장), 날짜도 안 정하면
       // 일정 전체 미정으로 수락한다(요청: "시간 미정 수락 가능" — 실제 일시는 완료(결과
       // 입력) 시점에 서버가 채운다).
-      const scheduledAt = buildScheduledAt(dateStr, timeStr) ?? undefined;
-      const updated = await api.respondToChallenge(challenge.id, "accepted", scheduledAt, respondMessage.trim());
+      const schedule = { scheduledDate: dateStr || null, scheduledTime: dateStr && timeStr ? timeStr : null };
+      const updated = await api.respondToChallenge(challenge.id, "accepted", schedule, respondMessage.trim());
       closeMode();
       setSharePrompt({ kind: "accepted", updated });
     } catch (e) {
@@ -318,8 +332,11 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
     setErr("");
     setBusy(true);
     try {
-      const scheduledAt = buildScheduledAt(dateStr, timeStr) ?? undefined;
-      const updated = await api.requestRevenge(challenge.id, { scheduledAt, message: revengeMessage.trim() });
+      const updated = await api.requestRevenge(challenge.id, {
+        scheduledDate: dateStr || null,
+        scheduledTime: dateStr && timeStr ? timeStr : null,
+        message: revengeMessage.trim(),
+      });
       closeMode();
       setSharePrompt({ kind: "revenge", updated });
     } catch (e) {
@@ -330,10 +347,12 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
   };
 
   const submitResult = async (winnerSide: ChallengeResult) => {
+    // 결과 입력 시엔 날짜/시간이 무조건 필요하다(요청).
+    if (!dateStr || !timeStr) { setErr("실제 대결 날짜와 시간을 입력하세요."); return; }
     setErr("");
     setBusy(true);
     try {
-      const updated = await api.enterChallengeResult(challenge.id, winnerSide);
+      const updated = await api.enterChallengeResult(challenge.id, winnerSide, dateStr, timeStr);
       onResponded(updated);
       closeMode();
     } catch (e) {
@@ -361,7 +380,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
     sharePrompt?.kind === "rejected" ? "대결 거절"
     : sharePrompt?.kind === "revenge" ? "설욕전 신청!"
     : "대결 수락!";
-  const sharePromptWhen = formatChallengeSchedule(sharePrompt?.updated.scheduledAt ?? null);
+  const sharePromptWhen = formatChallengeSchedule(sharePrompt?.updated ?? { scheduledDate: null, scheduledTime: null });
   const sharePromptDesc =
     sharePrompt?.kind === "rejected" ? "호출을 거절했어요."
     : sharePrompt?.kind === "revenge" ? "설욕전을 신청했어요."
@@ -457,7 +476,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
                   해당하니 다른 페이지에는 자리를 예약할 필요가 없다(이 줄은 원래도 페이지마다
                   내용이 들쑥날쑥한 줄이라 굳이 안 맞춰도 된다). */}
               {shownLatest && challenge.status === "pending" && (
-                <span className="scr-challenge-countdown">{responseDeadlineLabel(challenge.createdAt, challenge.scheduledAt)}</span>
+                <span className="scr-challenge-countdown">{responseDeadlineLabel(challenge.createdAt, challenge)}</span>
               )}
               {/* "결과 보기" 버튼은 없앴다(요청) — 그 자리에 상태 배지를 둔다. 승패가 입력되면
                   "완료", 예정 일시가 지났는데 아직 결과가 없으면 "결과 입력 대기". 무승부는
@@ -570,7 +589,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
             onClick={() => {
               // 시간이 아직 안 정해진 도전장이면(요청자가 "상대가 정해도 된다"로 보낸 경우)
               // 인라인 폼을 열어 날짜/시간을 받는다. 이미 정해졌으면 바로 승락한다.
-              if (challenge.scheduledAt === null) startScheduling();
+              if (challenge.scheduledDate === null) startScheduling();
               else respond("accepted");
             }}
           >
@@ -654,8 +673,23 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
       <InlineCollapse open={mode === "result"}>
         <div className="scr-challenge-result-form">
           <p className="scr-challenge-inbox-message">
-            승리한 팀을 눌러주세요 — 먼저 입력하는 쪽이 그대로 인정돼요.
+            실제 대결 날짜·시간을 정하고, 승리한 팀을 눌러주세요 — 먼저 입력하는 쪽이 그대로 인정돼요.
           </p>
+          {/* 결과 입력 시엔 날짜/시간을 무조건 함께 넣는다(요청). 시간 칸은 비어 있을 때
+              누르면 21시로 열린다(onFocus). */}
+          <div className="scr-challenge-time-edit-row scr-challenge-result-when">
+            <input
+              type="date" className="scr-input scr-challenge-time-edit-input"
+              value={dateStr} min={DATE_INPUT_MIN} max={DATE_INPUT_MAX}
+              onChange={(e) => setDateStr(e.target.value)}
+            />
+            <input
+              type="time" className="scr-input scr-challenge-time-edit-input"
+              value={timeStr}
+              onFocus={() => { if (!timeStr) setTimeStr("21:00"); }}
+              onChange={(e) => setTimeStr(e.target.value)}
+            />
+          </div>
           {/* 구성원을 그대로 보여주고 팀 카드를 눌러 승리팀을 고른다(요청: "구성원이 노출되고
               승리팀을 고르는게 좋을듯"). */}
           <div className="scr-challenge-result-teams">
@@ -732,7 +766,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
           이런식으로"). 카드 시각을 목록 헤더로 옮긴 뒤라, 이력 페이지의 그때 일시를 여기서
           짚어준다. */}
       {pages.length > 1 && (
-        <div className="scr-challenge-page-when">{formatRelativeSchedule(activePage.scheduledAt)}</div>
+        <div className="scr-challenge-page-when">{formatRelativeSchedule(activePage)}</div>
       )}
 
       {/* 이전 기록 탐색 — 카드 "맨 하단"(버튼 로우보다 아래)에 [◀ 1/3 ▶] 한 줄로(요청:
@@ -834,26 +868,22 @@ function ChallengeTimeHeadEdit({
   const [err, setErr] = useState("");
 
   const startEdit = () => {
-    if (challenge.scheduledAt) {
-      const d = new Date(challenge.scheduledAt);
-      setDateStr(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`);
-      // 자정(00:00)은 "시간 미정" 표식이므로 시간 칸을 비워서 연다 — 그래야 그대로 저장해도
-      // 미정이 유지되고, 원하면 이때 시각을 새로 넣을 수 있다.
-      const unset = d.getHours() === 0 && d.getMinutes() === 0;
-      setTimeStr(unset ? "" : `${pad(d.getHours())}:${pad(d.getMinutes())}`);
-    }
+    // 저장된 날짜/시간을 그대로 열어 편집한다 — 시간 미정(날짜만)이면 시간 칸은 빈 채로 연다.
+    setDateStr(challenge.scheduledDate ?? "");
+    setTimeStr(challenge.scheduledTime ?? "");
     setErr("");
     setEditing(true);
   };
 
   const save = async () => {
-    if (!dateStr) { setErr("날짜를 선택하세요."); return; }
     setErr("");
     setBusy(true);
     try {
-      // 시간을 비우면 "시간 미정"(날짜만)으로 저장된다(요청). 날짜는 위에서 필수 확인.
-      const scheduledAt = buildScheduledAt(dateStr, timeStr)!;
-      const updated = await api.rescheduleChallenge(challenge.id, scheduledAt);
+      // 날짜/시간 모두 선택 — 날짜를 비우면 일정 전체 미정, 시간만 비우면 "시간 미정"(날짜만)
+      // 으로 저장된다(요청: "제약 없이 다 열어두기").
+      const updated = await api.rescheduleChallenge(
+        challenge.id, dateStr || null, dateStr && timeStr ? timeStr : null,
+      );
       onUpdated(updated);
       setEditing(false);
     } catch (e) {
@@ -903,7 +933,9 @@ function ChallengeTimeHeadEdit({
               />
               <input
                 type="time" className="scr-input scr-challenge-time-edit-input"
-                value={timeStr} onChange={(e) => setTimeStr(e.target.value)} disabled={!dateStr}
+                value={timeStr}
+                onFocus={() => { if (dateStr && !timeStr) setTimeStr("21:00"); }}
+                onChange={(e) => setTimeStr(e.target.value)} disabled={!dateStr}
               />
               <button type="button" className="scr-btn scr-btn-ghost scr-btn-sm" onClick={() => setEditing(false)} disabled={busy}>
                 취소

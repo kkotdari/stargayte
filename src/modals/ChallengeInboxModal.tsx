@@ -7,7 +7,7 @@ import KakaoShareButton from "../components/common/KakaoShareButton";
 import { api } from "../api/client";
 import { useAppStore } from "../store/appStore";
 import { useLockBodyScroll } from "../utils/bodyScrollLock";
-import { formatChallengeSchedule, challengeDateGroupLabel, challengeTimeLabel, buildScheduledAt } from "../utils/date";
+import { formatChallengeSchedule, challengeDateGroupLabel, challengeTimeLabel } from "../utils/date";
 import { playMailChime } from "../utils/sfx";
 import type { KakaoShareContent } from "../utils/kakaoShare";
 import type { Challenge } from "../types";
@@ -73,7 +73,7 @@ export default function ChallengeInboxModal({ challenges, onClose, closeLabel = 
 
   if (!current) { onClose(); return null; }
 
-  const needsSchedule = current.scheduledAt === null;
+  const needsSchedule = current.scheduledDate === null;
 
   // 지목된 대상(targets)만 응답 버튼을 볼 수 있다(요청: "대상만 거절/수락/고민중 버튼").
   // 인박스 팝업은 애초에 pending-for-me(나=대상)만 오므로 항상 true, 공유 화면에선 링크를
@@ -103,10 +103,10 @@ export default function ChallengeInboxModal({ challenges, onClose, closeLabel = 
     try {
       // 날짜를 골랐으면 그 날짜로 수락한다 — 시간을 비웠으면 "시간 미정"(날짜만)으로 저장된다.
       // 날짜도 안 골랐으면 일정 전체 미정으로 수락(실제 일시는 나중에 채운다).
-      const scheduledAt = response === "accepted" && needsSchedule
-        ? buildScheduledAt(dateStr, timeStr) ?? undefined
+      const schedule = response === "accepted" && needsSchedule
+        ? { scheduledDate: dateStr || null, scheduledTime: dateStr && timeStr ? timeStr : null }
         : undefined;
-      await api.respondToChallenge(current.id, response, scheduledAt);
+      await api.respondToChallenge(current.id, response, schedule);
       // 승락/거절 모두 확인창(카카오 공유)으로 넘어간다(요청).
       setRespondedAs(response);
       setStage("responded");
@@ -149,9 +149,9 @@ export default function ChallengeInboxModal({ challenges, onClose, closeLabel = 
   const letterTitle = ourTeam.length > 0 ? `${ourTeam.join(", ")} 너 나와!` : "너 나와!";
 
   // 응답 확인창 — 최종 확정된 일시(요청자가 안 정했으면 내가 방금 고른 값)로 공유 내용을 만든다.
-  const acceptedWhen = current.scheduledAt
-    ? formatChallengeSchedule(current.scheduledAt)
-    : formatChallengeSchedule(buildScheduledAt(dateStr, timeStr));
+  const acceptedWhen = current.scheduledDate
+    ? formatChallengeSchedule(current)
+    : formatChallengeSchedule({ scheduledDate: dateStr || null, scheduledTime: dateStr && timeStr ? timeStr : null });
   const respondedTitle = respondedAs === "rejected" ? "대결 거절" : "대결 수락!";
   const respondedDesc = respondedAs === "rejected"
     ? "호출을 거절했어요."
@@ -214,9 +214,9 @@ export default function ChallengeInboxModal({ challenges, onClose, closeLabel = 
               </>
             )}
             {/* 일자·시간을 각각 한 줄로, 그 아래 한마디 — 모두 가운데 정렬(요청). */}
-            <div className="scr-challenge-inbox-date">{challengeDateGroupLabel(current.scheduledAt)}</div>
-            {challengeTimeLabel(current.scheduledAt) && (
-              <div className="scr-challenge-inbox-time">{challengeTimeLabel(current.scheduledAt)}</div>
+            <div className="scr-challenge-inbox-date">{challengeDateGroupLabel(current)}</div>
+            {challengeTimeLabel(current) && (
+              <div className="scr-challenge-inbox-time">{challengeTimeLabel(current)}</div>
             )}
             {current.message.trim() && (
               <p className="scr-challenge-inbox-message">{current.message}</p>

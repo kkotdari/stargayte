@@ -5,7 +5,7 @@ import Avatar from "../../components/common/Avatar";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 import { api } from "../../api/client";
 import { cx } from "../../utils/format";
-import { formatChallengeSchedule } from "../../utils/date";
+import { formatDateTime } from "../../utils/date";
 import type { League, LeagueMatch, LeagueMatchSide, LeagueTeam } from "../../types";
 
 // 라운드 번호를 결승 기준 상대 이름으로.
@@ -426,7 +426,7 @@ export default function LeagueBracket({
                 <div className="scr-league-bracket-score">{match.setsWonA} : {match.setsWonB}</div>
               )}
               {match.scheduledAt && (
-                <div className="scr-league-bracket-when">{formatChallengeSchedule(match.scheduledAt)}</div>
+                <div className="scr-league-bracket-when">{formatDateTime(match.scheduledAt)}</div>
               )}
             </>
           ),

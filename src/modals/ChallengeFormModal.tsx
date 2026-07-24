@@ -10,7 +10,6 @@ import MemberPickBlock from "../components/common/MemberPickBlock";
 import { useAppStore } from "../store/appStore";
 import { api } from "../api/client";
 import { useLockBodyScroll } from "../utils/bodyScrollLock";
-import { buildScheduledAt } from "../utils/date";
 import type { KakaoShareContent } from "../utils/kakaoShare";
 import type { Challenge } from "../types";
 
@@ -101,13 +100,13 @@ export default function ChallengeFormModal({ onClose, onCreated, presetTargetIds
     setErr("");
     setBusy(true);
     try {
-      // 날짜를 아예 안 정하면(기본값) 상대방이 정하기로 한 것이므로 null(일정 미정).
-      // 날짜만 정하고 시간을 비우면 "시간 미정"(날짜만)으로 저장된다(요청).
-      const scheduledAt = buildScheduledAt(dateStr, timeStr);
+      // 날짜를 아예 안 정하면(기본값) 상대방이 정하기로 한 것이므로 미정. 날짜만 정하고
+      // 시간을 비우면 "시간 미정"(날짜만)으로 저장된다(요청).
       const challenge = await api.createChallenge({
         targetMemberIds: targetIds,
         ownTeamMemberIds: ownTeamIds,
-        scheduledAt,
+        scheduledDate: dateStr || null,
+        scheduledTime: dateStr && timeStr ? timeStr : null,
         message: message.trim(),
         fromMatchRequest,
       });
