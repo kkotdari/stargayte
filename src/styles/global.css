@@ -2432,14 +2432,14 @@ html.scr-page-bg:not(.scr-light-theme) .scr-rank-screen-v2::before {
    하고(배경 투명 유지) 글자 가독성만 살짝 확보한다. */
 html.scr-page-bg.scr-light-theme .scr-main::before {
   background:
-    linear-gradient(180deg, rgba(255,255,255,0.34) 0%, rgba(255,255,255,0.22) 45%, rgba(255,255,255,0.40) 100%),
+    linear-gradient(180deg, rgba(255,255,255,0.58) 0%, rgba(255,255,255,0.48) 45%, rgba(255,255,255,0.64) 100%),
     var(--page-bg-image-light) center / cover no-repeat,
     var(--void);
 }
 @media (max-width: 860px) {
   html.scr-page-bg.scr-light-theme .scr-main::before {
     background:
-      linear-gradient(180deg, rgba(255,255,255,0.34) 0%, rgba(255,255,255,0.22) 45%, rgba(255,255,255,0.40) 100%),
+      linear-gradient(180deg, rgba(255,255,255,0.58) 0%, rgba(255,255,255,0.48) 45%, rgba(255,255,255,0.64) 100%),
       var(--page-bg-image-light-mobile) center / cover no-repeat,
       var(--void);
   }
