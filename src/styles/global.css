@@ -469,7 +469,7 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
    입력칸엔 오른쪽 패딩을 넉넉히 줘서 값 텍스트가 × 밑으로 들어가지 않게 한다. 값이 없으면
    ×만 숨기고(자리·패딩은 유지) 레이아웃은 안 변한다. */
 .scr-datetime-input-wrap { position: relative; display: block; width: 100%; min-width: 0; }
-.scr-datetime-input-wrap > .scr-input { width: 100%; padding-right: 30px; }
+.scr-datetime-input-wrap > .scr-input { width: 100%; padding-right: 26px; }
 .scr-datetime-clear {
   position: absolute; top: 50%; right: 6px; transform: translateY(-50%);
   display: grid; place-items: center; width: 18px; height: 18px; padding: 0; z-index: 1;
@@ -5976,12 +5976,13 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 .scr-challenge-time-edit-cell { flex: 0 1 auto; min-width: 0; }
 .scr-challenge-time-edit-cell > .scr-challenge-time-edit-input { width: auto; max-width: 100%; }
 /* 취소/확인 — 기존 아이콘 버튼(.scr-icon-btn) 그대로 쓰되 이 좁은 행에 맞게 크기만 줄인다
-   (요청: "기존 아이콘 버튼 css 참고, 크기만 다르게"). */
-.scr-challenge-time-edit-btn.scr-icon-btn { width: 28px; height: 28px; }
-.scr-challenge-time-edit-btn.scr-icon-btn svg { display: block; }
+   (요청). 클래스명은 연필(수정) 버튼 .scr-challenge-time-edit-btn과 겹치지 않게 별도로 둔다
+   — 예전엔 겹쳐서 그 버튼의 margin:-4px가 같이 먹어 세로 정렬이 어긋났다(지적). */
+.scr-time-edit-action.scr-icon-btn { width: 28px; height: 28px; margin: 0; }
+.scr-time-edit-action.scr-icon-btn svg { display: block; }
 /* 확인은 체크에 포인트 색을 줘서 취소(중립)와 구분한다. */
-.scr-challenge-time-edit-confirm.scr-icon-btn { color: var(--point); }
-.scr-challenge-time-edit-confirm.scr-icon-btn:hover { color: var(--point); }
+.scr-time-edit-confirm.scr-icon-btn { color: var(--point); }
+.scr-time-edit-confirm.scr-icon-btn:hover { color: var(--point); }
 
 /* scroll-margin-top — NEXT 너 나와로 자동 스크롤(scrollIntoView block:"start")할 때 화면
    맨 위에 딱 붙지 않고 이만큼만 숨 쉴 여유를 남긴다(위의 다른 카드는 안 보인다). 날짜

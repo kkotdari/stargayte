@@ -961,13 +961,13 @@ function ChallengeTimeHeadEdit({
               {/* 취소/확인을 기존 아이콘 버튼(scr-icon-btn) 스타일로, 크기만 이 행에 맞게
                   살짝 줄인다(요청). 확인은 체크에 포인트 색을 준다. */}
               <button
-                type="button" className="scr-icon-btn scr-challenge-time-edit-btn"
+                type="button" className="scr-icon-btn scr-time-edit-action"
                 onClick={() => setEditing(false)} disabled={busy} aria-label="취소"
               >
                 <X size={16} />
               </button>
               <button
-                type="button" className="scr-icon-btn scr-challenge-time-edit-btn scr-challenge-time-edit-confirm"
+                type="button" className="scr-icon-btn scr-time-edit-action scr-time-edit-confirm"
                 onClick={save} disabled={busy} aria-label="확인"
               >
                 {busy ? <Spinner /> : <Check size={16} />}
