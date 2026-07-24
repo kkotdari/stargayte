@@ -226,13 +226,6 @@ export default function MatchScreenV2() {
             폭은 기존 메모 필드(경기번호 칸)와 같게 유지한다(요청). 체크박스는 로그인한
             사용자만(내 메모 기준이라) 노출한다. */}
         <div className="scr-match-extra-memo">
-          <input
-            className="scr-input scr-list-search-input scr-match-extra-field"
-            value={noteQuery}
-            onChange={(e) => setNoteQuery(e.target.value)}
-            placeholder="메모 내용"
-            autoComplete="off"
-          />
           {user && (
             <label className="scr-match-mynotes" title="내가 메모 남긴 경기만 보기">
               <input
@@ -240,9 +233,16 @@ export default function MatchScreenV2() {
                 checked={myNotesOnly}
                 onChange={(e) => setMyNotesOnly(e.target.checked)}
               />
-              <span>내 메모</span>
+              <span>내 메모 있음</span>
             </label>
           )}
+          <input
+            className="scr-input scr-list-search-input scr-match-extra-field"
+            value={noteQuery}
+            onChange={(e) => setNoteQuery(e.target.value)}
+            placeholder="메모 내용"
+            autoComplete="off"
+          />
         </div>
       </div>
 
