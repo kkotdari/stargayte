@@ -2127,17 +2127,19 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 .scr-rank-avatar-btn.scr-rank-avatar-bronze::before {
   content: ""; position: absolute; z-index: -1;
   top: 50%; left: 50%; transform: translate(-50%, -50%);
-  width: 47.6px; height: 47.6px; border-radius: 50%;
+  /* 링 두께 20% 감축(요청): 아바타 40px 기준 3.8px → 3.04px, 판 47.6 → 46.08px. */
+  width: 46.08px; height: 46.08px; border-radius: 50%;
 }
-/* 금/은/동 모두 살짝씩 더 밝게(요청) — 특히 어두운 양 끝을 들어올리고 밝은 구간도 조금 위로. */
+/* 금/은/동 — 금속 본체는 다시 살짝 어둡게, 하이라이트(중앙 밝은 띠)는 더 밝고 넓게 해서
+   대비를 강하게(요청). 밝은 정점을 44~56% 플래토로 넓히고 양 끝은 더 어둡게. */
 .scr-rank-avatar-btn.scr-rank-avatar-gold::before {
-  background: linear-gradient(115deg, #bd8912 0%, #ffdc68 40%, #fff8da 50%, #ffdc68 60%, #bd8912 100%);
+  background: linear-gradient(115deg, #7d5a0d 0%, #dcaf30 30%, #fff8dc 44%, #fff8dc 56%, #dcaf30 70%, #7d5a0d 100%);
 }
 .scr-rank-avatar-btn.scr-rank-avatar-silver::before {
-  background: linear-gradient(115deg, #969ba4 0%, #d5dae1 40%, #ffffff 50%, #d5dae1 60%, #969ba4 100%);
+  background: linear-gradient(115deg, #6a6f78 0%, #c2c9d2 30%, #ffffff 44%, #ffffff 56%, #c2c9d2 70%, #6a6f78 100%);
 }
 .scr-rank-avatar-btn.scr-rank-avatar-bronze::before {
-  background: linear-gradient(115deg, #8a5934 0%, #cf9d6d 40%, #f6dab4 50%, #cf9d6d 60%, #8a5934 100%);
+  background: linear-gradient(115deg, #6b4426 0%, #bd8a58 30%, #f7e2c6 44%, #f7e2c6 56%, #bd8a58 70%, #6b4426 100%);
 }
 /* "경기수N위" 배지 — 알약 없이 글자만, 글자에 메탈 그라데이션(요청). 폰트 10px.
    다크 테마: 흰색 메탈 — 순백은 광택이 안 사니 살짝 회색(실버) 톤으로(요청). */
@@ -6379,9 +6381,9 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
   /* 편지지(아이보리) 테마 제거 — 기본 유리 모달(.scr-modal + ::before)을 그대로 써서
      각 테마의 라이팅 글라스를 입힌다(요청: "너나와 인박스 라이팅 테마 적용, 편지지 제거"). */
 }
-/* 편지지(letter)만 최소 정사각형, 내용이 많으면 아래로 길어진다(요청) — 응답 확인창 등
-   다른 인박스 팝업은 정사각을 강제하지 않는다. */
-.scr-challenge-inbox-modal.scr-challenge-letter { aspect-ratio: 1 / 1; }
+/* 편지지(letter) — 정사각형 강제는 폐지(요청). 대신 위아래 패딩을 넉넉히 주고(위는 From.
+   아바타 아래에서 내용이 시작되게) 아래도 여유. 요소 간 줄간격은 본문 gap으로 크게 준다. */
+.scr-challenge-inbox-modal.scr-challenge-letter { padding-top: 62px; padding-bottom: 26px; }
 /* 편지봉투는 편지지 카드와 한 몸이 아니라(요청: "봉투랑 편지지는 별도 모달") 오버레이
    위에 겹치는 별도 레이어다 — 카드 배경/그림자 없이 봉투 사진 + 제목만 어두운 스크림
    위에 떠 있고, 편지지 카드(정상 흐름의 flex 자식)와 정확히 같은 중앙에 정렬된다. */
@@ -6514,13 +6516,13 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
 /* From.은 좌상단 절대 위치, To.는 흐름 안(본문 아래·버튼 위)에서 오른쪽 정렬(요청: 버튼이
    To. 아바타보다 아래). */
 .scr-challenge-party-from { position: absolute; top: 16px; left: 18px; }
-.scr-challenge-party-to { align-self: flex-end; margin: 0 4px 2px 0; }
+.scr-challenge-party-to { align-self: flex-end; margin: 10px 4px 0 0; }
 .scr-challenge-party-tag { font-size: var(--fs-caption); font-weight: 800; color: var(--dim); line-height: 1; }
 .scr-challenge-party-av { border-radius: 50% !important; object-fit: cover; }
-/* 편지지 본문(제목·일자·시간·한마디)을 세로 가운데로 채우고, To.·버튼을 아래로 민다. */
-.scr-challenge-letter .scr-challenge-inbox-body { flex: 1 1 auto; justify-content: center; }
-/* 버튼 줄 — 맨 아래(To. 아래). 위로 살짝 간격. */
-.scr-challenge-letter-actions { margin-top: 6px; }
+/* 편지지 본문(제목·일자·시간·한마디) — 요소 간 줄간격을 크게(요청). */
+.scr-challenge-letter .scr-challenge-inbox-body { flex: 0 1 auto; gap: 22px; }
+/* 버튼 줄 — 맨 아래(To. 아래). 위로 여유 간격. */
+.scr-challenge-letter-actions { margin-top: 14px; }
 /* 본문(제목·내용)은 아바타보다 앞에 오게 relative + 양수 z-index로 올린다. */
 .scr-challenge-inbox-modal .scr-challenge-inbox-title,
 .scr-challenge-inbox-modal .scr-challenge-inbox-body { position: relative; z-index: 1; }
@@ -6549,7 +6551,7 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
   margin: 0; font-size: var(--fs-body); font-weight: 700;
   color: var(--text); text-align: center; line-height: 1.35;
 }
-.scr-challenge-inbox-time { margin-top: -8px; }
+.scr-challenge-inbox-time { margin-top: -12px; }
 /* 값 span(종류/일시 오른쪽)은 클래스가 없어 색을 명시 안 하면 앱 루트의 테마 글자색(다크
    테마에선 흰색)을 그대로 물려받아 밝은 편지지 배경 위에서 거의 안 보였다(요청: "결과
    입력창 글자가 안보이는데 다크테마 색깔 문제인가?" — 스샷의 '일대일'/'7월 13일…' 값) —

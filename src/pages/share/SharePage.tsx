@@ -4,6 +4,7 @@ import MatchList, { type SearchListRow } from "../v2/MatchList";
 import ChallengeInboxModal from "../../modals/ChallengeInboxModal";
 import { api } from "../../api/client";
 import { useAppStore } from "../../store/appStore";
+import { useForceLightTheme } from "../../utils/theme";
 import type { Challenge, Match } from "../../types";
 
 // 카카오톡으로 공유된 링크(?sv=match|challenge&sid=…)가 여는, 그 한 장만 보이는 화면(요청:
@@ -14,6 +15,8 @@ export interface ShareTarget {
 }
 
 export default function SharePage({ target, onExit }: { target: ShareTarget; onExit: () => void }) {
+  // 카톡 공유 링크로 열린 화면(공유 인박스/편지지)은 라이트 테마 강제(요청).
+  useForceLightTheme();
   const memberOf = useAppStore((s) => s.memberOf);
   const [match, setMatch] = useState<Match | null>(null);
   const [challenge, setChallenge] = useState<Challenge | null>(null);

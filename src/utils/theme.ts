@@ -130,3 +130,19 @@ export function useLightTheme(): [boolean, Dispatch<SetStateAction<boolean>>] {
   useEffect(() => { applyLightTheme(on); }, [on]);
   return [on, setOn];
 }
+
+// 카카오톡 공유 링크로 들어온 화면(공유 인박스/편지지)에서만 라이트 테마를 강제한다(요청) —
+// localStorage(사용자 선택)는 건드리지 않고, 이 화면이 떠 있는 동안만 .scr-light-theme를
+// 얹었다가 벗는다. 이미 라이트였다면 아무 것도 안 하고(그대로), 다크였을 때만 잠시 라이트로.
+export function useForceLightTheme(): void {
+  useEffect(() => {
+    const root = document.documentElement;
+    if (root.classList.contains("scr-light-theme")) return;
+    root.classList.add("scr-light-theme");
+    applyThemeColor(true);
+    return () => {
+      root.classList.remove("scr-light-theme");
+      applyThemeColor(false);
+    };
+  }, []);
+}
