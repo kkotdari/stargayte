@@ -2120,7 +2120,7 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 .scr-rank-avatar-btn.scr-rank-avatar-silver::before,
 .scr-rank-avatar-btn.scr-rank-avatar-bronze::before {
   content: ""; position: absolute; z-index: -1; inset: 0; margin: auto;
-  width: 47px; height: 47px; border-radius: 12px;
+  width: 48px; height: 48px; border-radius: 12px;
 }
 .scr-rank-avatar-btn.scr-rank-avatar-gold::before {
   background: linear-gradient(115deg, #9a6f08 0%, #ffd24d 40%, #fff0b8 50%, #ffd24d 60%, #9a6f08 100%);
@@ -2428,7 +2428,7 @@ html.scr-page-bg:not(.scr-light-theme) .scr-rank-screen-v2::before {
    하고(배경 투명 유지) 글자 가독성만 살짝 확보한다. */
 html.scr-page-bg.scr-light-theme .scr-main::before {
   background:
-    linear-gradient(180deg, rgba(255,255,255,0.70) 0%, rgba(255,255,255,0.62) 45%, rgba(255,255,255,0.76) 100%),
+    linear-gradient(180deg, rgba(255,255,255,0.82) 0%, rgba(255,255,255,0.74) 45%, rgba(255,255,255,0.88) 100%),
     /* PC 넓은 화면에서 cover는 세로 인물 사진을 과하게 잘라낸다(지적) — 높이에 맞춰
        (auto 100%) 가운데 표시하고 좌우 여백은 흰 스크림+--void가 채운다. */
     var(--page-bg-image-light) center / auto 100% no-repeat,
@@ -2437,7 +2437,7 @@ html.scr-page-bg.scr-light-theme .scr-main::before {
 @media (max-width: 860px) {
   html.scr-page-bg.scr-light-theme .scr-main::before {
     background:
-      linear-gradient(180deg, rgba(255,255,255,0.70) 0%, rgba(255,255,255,0.62) 45%, rgba(255,255,255,0.76) 100%),
+      linear-gradient(180deg, rgba(255,255,255,0.82) 0%, rgba(255,255,255,0.74) 45%, rgba(255,255,255,0.88) 100%),
       var(--page-bg-image-light-mobile) center / cover no-repeat,
       var(--void);
   }
