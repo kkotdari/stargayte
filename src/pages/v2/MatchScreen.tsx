@@ -227,7 +227,7 @@ export default function MatchScreenV2() {
             사용자만(내 메모 기준이라) 노출한다. */}
         <div className="scr-match-extra-memo">
           {user && (
-            <label className="scr-match-mynotes" title="내가 메모 남긴 경기만 보기">
+            <label className="scr-checkbox-field scr-match-mynotes" title="내가 메모 남긴 경기만 보기">
               <input
                 type="checkbox"
                 checked={myNotesOnly}
