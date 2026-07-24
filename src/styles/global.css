@@ -3417,6 +3417,11 @@ html.scr-page-bg.scr-light-theme .scr-rank-screen-v2::before { display: none; }
    검정색으로 바뀌네"). 배지가 이제 하이라이트 배경 안에 제대로 들어오므로(위 padding)
    원래 색 그대로도 충분히 읽힌다. */
 .scr-mt-player .scr-race-badge-letter { flex-shrink: 0; }
+/* 팀1(왼쪽 팀)은 로스터가 오른쪽(중앙 쪽) 정렬이라, 컴퓨터/비회원 배지가 닉네임 오른쪽(중앙
+   쪽)에 붙으면 안 되고 바깥쪽(왼쪽)에 와야 한다(요청). 셀을 row-reverse로 뒤집어 배지를
+   닉네임 왼쪽으로 보낸다 — 팀2(오른쪽 팀)는 그대로 닉네임 오른쪽(바깥). 종족배지는
+   이름칸 내부에 절대배치라 이 뒤집기의 영향을 받지 않는다. */
+.scr-match-trow-grid .scr-match-trow-team:first-child .scr-mt-player { flex-direction: row-reverse; }
 /* 각 팀 아래 승/패 — 팀 칸과 같은 열에서 가운데 정렬(요청). 승은 연두, 패는 붉은 계열. */
 .scr-match-trow-outcome { font-size: var(--fs-subhead); font-weight: 800; text-align: center; min-width: 28px; padding: 0 4px; }
 /* 펼침 상세 스탯 표(요청) — 양 팀 전원의 닉네임/플레이어네임/종족/APM/커맨드/유효APM/
