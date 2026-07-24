@@ -216,6 +216,9 @@ export default function SearchFilterBar({
         <input
           ref={inputRef}
           className="scr-search-chip-input"
+          // 칩이 있으면 입력칸을 넓게 늘리지 않아(작게 유지) + 버튼이 마지막 칩/커서 바로
+          // 뒤에 붙는다. 칩이 없을 땐(플레이스홀더가 보여야 하니) 기본대로 넓게 채운다.
+          style={chips.length > 0 ? { flex: "0 1 48px", minWidth: 24 } : undefined}
           value={liveText}
           onChange={(e) => {
             const nextLive = e.target.value;

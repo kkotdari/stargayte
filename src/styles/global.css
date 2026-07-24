@@ -465,6 +465,20 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
 .scr-datetime-col { display: flex; flex-direction: column; gap: 5px; align-items: stretch; flex: 1 1 0; min-width: 0; }
 .scr-datetime-col .scr-datetime-input { width: 100%; }
 .scr-datetime-col .scr-datetime-input .scr-input { width: 100%; min-height: var(--field-h); padding: 9px 10px; }
+/* 입력칸 + 지우기(×) 버튼을 겹쳐 얹는 래퍼 — 값이 있을 때만 × 가 뜬다(요청: 이미 입력한
+   날짜/시간 삭제). × 는 오른쪽 안쪽에 작은 알약으로, 네이티브 달력/시계 아이콘 위에 겹친다
+   (모바일엔 그 아이콘이 없어 깔끔하고, 데스크톱에선 × 가 위에 올라와 그대로 눌린다). */
+.scr-datetime-input-wrap { position: relative; display: block; width: 100%; }
+.scr-datetime-clear {
+  position: absolute; top: 50%; right: 7px; transform: translateY(-50%);
+  display: grid; place-items: center; width: 18px; height: 18px; padding: 0;
+  border: none; border-radius: 50%; cursor: pointer; z-index: 1;
+  background: rgba(255, 255, 255, 0.14); color: var(--muted);
+  -webkit-tap-highlight-color: transparent;
+}
+.scr-datetime-clear:hover { color: var(--text); background: rgba(255, 255, 255, 0.24); }
+.scr-light-theme .scr-datetime-clear { background: rgba(0, 0, 0, 0.08); }
+.scr-light-theme .scr-datetime-clear:hover { background: rgba(0, 0, 0, 0.16); }
 /* 라벨은 어디서든(검색 필터·모달 폼 전부) 필드 위에 두고, 크기와 왼쪽 들여쓰기를
    하나로 통일한다 — 화면마다 라벨이 옆에 붙거나 크기가 제각각이면 산만해 보인다.
    line-height:1은 폰트 자체의 위아래 여백(줄간격)을 없애서, 코딩폰트를 쓰는 인풋과
@@ -2978,10 +2992,11 @@ html.scr-page-bg.scr-light-theme .scr-rank-screen-v2::before { display: none; }
 .scr-search-chip-box::-webkit-scrollbar { display: none; }
 .scr-search-chip-box:focus-within { border-color: var(--pipe-bright); }
 .scr-search-chip-box .scr-search-chip { flex-shrink: 0; }
-/* "@" 없이 유저 후보 드롭다운을 여는 + 버튼 — 커서 자리(오른쪽 끝)에 라이팅 알약으로.
-   가로 스크롤돼도 오른쪽에 붙어 항상 보이게 sticky. */
+/* "@" 없이 유저 후보 드롭다운을 여는 + 버튼 — 마지막 칩/커서 바로 뒤에 붙는다(요청:
+   "+ 버튼은 커서 바로 뒤여야"). 예전엔 오른쪽 끝에 sticky로 띄웠는데, 커서에서 멀어
+   보인다는 지적으로 흐름 그대로(입력칸 바로 다음)에 둔다. */
 .scr-search-mention-add {
-  flex-shrink: 0; position: sticky; right: 0; margin-left: auto;
+  flex-shrink: 0;
   display: inline-grid; place-items: center; width: 22px; height: 22px;
   border: none; border-radius: 50%; cursor: pointer;
   background: var(--lit-pill-bg); color: var(--lit-pill-text);
@@ -5940,6 +5955,10 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 .scr-challenge-time-edit-row .scr-btn { flex: 0 0 auto; }
 /* 결과 입력 폼의 날짜/시간 줄 — 인박스 행(라벨+내용) 안에서 남는 폭을 채운다. */
 .scr-challenge-result-when { flex: 1 1 auto; min-width: 0; }
+/* 일정 변경 인라인 행에서 입력칸 + 지우기(×)를 겹쳐 얹는 셀 — 예전엔 input이 직접 flex 자식
+   이었는데, × 를 얹으려고 span으로 감싸며 flex:1을 셀로 옮긴다. */
+.scr-challenge-time-edit-cell { flex: 1 1 0; min-width: 0; }
+.scr-challenge-time-edit-cell .scr-challenge-time-edit-input { width: 100%; flex: none; }
 
 /* scroll-margin-top — NEXT 너 나와로 자동 스크롤(scrollIntoView block:"start")할 때 화면
    맨 위에 딱 붙지 않고 이만큼만 숨 쉴 여유를 남긴다(위의 다른 카드는 안 보인다). 날짜

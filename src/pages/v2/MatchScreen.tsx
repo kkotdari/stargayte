@@ -228,6 +228,7 @@ export default function MatchScreenV2() {
           onDeleted={handleSaved}
           loading={loading}
           highlightMemberIds={matchedIds}
+          highlightTerms={searchTerms}
         />
         {loadingMore && <div className="scr-empty"><Spinner size={16} /></div>}
       </div>

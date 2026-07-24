@@ -1,6 +1,6 @@
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Pencil, MessageSquarePlus } from "lucide-react";
+import { Pencil, MessageSquarePlus, X } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
 import { Spinner } from "../../components/common/Feedback";
 import OptionalDateTimeFields from "../../components/common/OptionalDateTimeFields";
@@ -919,24 +919,46 @@ function ChallengeTimeHeadEdit({
             {/* 날짜/시간/취소/확인을 한 줄로(요청) — 큰 폼용 OptionalDateTimeFields 대신
                 이 자리 전용의 좁은 인라인 입력을 쓴다. */}
             <div className="scr-challenge-time-edit-row">
-              <input
-                type="date" className="scr-input scr-challenge-time-edit-input"
-                value={dateStr}
-                min={DATE_INPUT_MIN} max={DATE_INPUT_MAX}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  setDateStr(v);
-                  // 날짜를 지우면 시간도 비운다. 날짜를 골라도 시간은 자동으로 채우지 않는다 —
-                  // 시간 칸을 비워두면 그게 곧 "시간 미정"(날짜만)이다(요청).
-                  if (!v) setTimeStr("");
-                }}
-              />
-              <input
-                type="time" className="scr-input scr-challenge-time-edit-input"
-                value={timeStr}
-                onFocus={() => { if (dateStr && !timeStr) setTimeStr("21:00"); }}
-                onChange={(e) => setTimeStr(e.target.value)} disabled={!dateStr}
-              />
+              <span className="scr-datetime-input-wrap scr-challenge-time-edit-cell">
+                <input
+                  type="date" className="scr-input scr-challenge-time-edit-input"
+                  value={dateStr}
+                  min={DATE_INPUT_MIN} max={DATE_INPUT_MAX}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setDateStr(v);
+                    // 날짜를 지우면 시간도 비운다. 날짜를 골라도 시간은 자동으로 채우지 않는다 —
+                    // 시간 칸을 비워두면 그게 곧 "시간 미정"(날짜만)이다(요청).
+                    if (!v) setTimeStr("");
+                  }}
+                />
+                {dateStr && (
+                  <button
+                    type="button" className="scr-datetime-clear" aria-label="날짜 지우기"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => { setDateStr(""); setTimeStr(""); }}
+                  >
+                    <X size={12} />
+                  </button>
+                )}
+              </span>
+              <span className="scr-datetime-input-wrap scr-challenge-time-edit-cell">
+                <input
+                  type="time" className="scr-input scr-challenge-time-edit-input"
+                  value={timeStr}
+                  onFocus={() => { if (dateStr && !timeStr) setTimeStr("21:00"); }}
+                  onChange={(e) => setTimeStr(e.target.value)} disabled={!dateStr}
+                />
+                {dateStr && timeStr && (
+                  <button
+                    type="button" className="scr-datetime-clear" aria-label="시간 지우기"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => setTimeStr("")}
+                  >
+                    <X size={12} />
+                  </button>
+                )}
+              </span>
               <button type="button" className="scr-btn scr-btn-ghost scr-btn-sm" onClick={() => setEditing(false)} disabled={busy}>
                 취소
               </button>

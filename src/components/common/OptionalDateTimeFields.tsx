@@ -1,3 +1,4 @@
+import { X } from "lucide-react";
 import { DATE_INPUT_MIN, DATE_INPUT_MAX } from "../../utils/date";
 
 interface OptionalDateTimeFieldsProps {
@@ -20,36 +21,61 @@ export default function OptionalDateTimeFields({
 }: OptionalDateTimeFieldsProps) {
   const cls = `scr-input${invalid ? " scr-input-invalid" : ""}`;
 
-  // 날짜/시간을 각각 한 "칸"으로: 칸 안에 [라벨] 위, [입력] 아래로 쌓는다.
+  // 날짜/시간을 각각 한 "칸"으로: 칸 안에 [라벨] 위, [입력] 아래로 쌓는다. 값이 있으면
+  // 입력칸 위에 지우기(×) 버튼을 얹어 다시 "미정"으로 되돌릴 수 있게 한다(요청: "이미 입력한
+  // 시간/날짜 삭제 버튼 필요").
   return (
     <div className="scr-datetime-cols">
       <div className="scr-datetime-col">
         <label className="scr-field scr-datetime-input">
           <span className="scr-label">날짜</span>
-          <input
-            type="date" className={cls} value={dateStr}
-            min={DATE_INPUT_MIN} max={DATE_INPUT_MAX}
-            onChange={(e) => {
-              const v = e.target.value;
-              onDateChange(v);
-              // 날짜를 지우면 시간도 비운다. 날짜를 골라도 시간은 자동으로 채우지 않는다 —
-              // 시간 칸을 비워두면 그게 곧 "시간 미정"(날짜만 지정)이다(요청).
-              if (!v) onTimeChange("");
-            }}
-          />
+          <span className="scr-datetime-input-wrap">
+            <input
+              type="date" className={cls} value={dateStr}
+              min={DATE_INPUT_MIN} max={DATE_INPUT_MAX}
+              onChange={(e) => {
+                const v = e.target.value;
+                onDateChange(v);
+                // 날짜를 지우면 시간도 비운다. 날짜를 골라도 시간은 자동으로 채우지 않는다 —
+                // 시간 칸을 비워두면 그게 곧 "시간 미정"(날짜만 지정)이다(요청).
+                if (!v) onTimeChange("");
+              }}
+            />
+            {dateStr && (
+              <button
+                type="button" className="scr-datetime-clear" aria-label="날짜 지우기"
+                // 날짜를 지우면 시간도 함께 비운다(시간은 날짜 없이 의미가 없다).
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => { onDateChange(""); onTimeChange(""); }}
+              >
+                <X size={12} />
+              </button>
+            )}
+          </span>
         </label>
       </div>
       <div className="scr-datetime-col">
         <label className="scr-field scr-datetime-input">
           <span className="scr-label">시간</span>
-          <input
-            type="time" className={cls} value={timeStr}
-            // 시간을 정하려고 빈 칸을 누르면 21시로 시작한다(요청: "선택 UI를 눌렀을 때 값이
-            // 없으면 21시로 선택된 상태로 열림"). 안 누르면 빈 채로 남아 "시간 미정"이 된다.
-            onFocus={() => { if (dateStr && !timeStr) onTimeChange("21:00"); }}
-            onChange={(e) => onTimeChange(e.target.value)}
-            disabled={!dateStr}
-          />
+          <span className="scr-datetime-input-wrap">
+            <input
+              type="time" className={cls} value={timeStr}
+              // 시간을 정하려고 빈 칸을 누르면 21시로 시작한다(요청: "선택 UI를 눌렀을 때 값이
+              // 없으면 21시로 선택된 상태로 열림"). 안 누르면 빈 채로 남아 "시간 미정"이 된다.
+              onFocus={() => { if (dateStr && !timeStr) onTimeChange("21:00"); }}
+              onChange={(e) => onTimeChange(e.target.value)}
+              disabled={!dateStr}
+            />
+            {dateStr && timeStr && (
+              <button
+                type="button" className="scr-datetime-clear" aria-label="시간 지우기"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => onTimeChange("")}
+              >
+                <X size={12} />
+              </button>
+            )}
+          </span>
         </label>
       </div>
     </div>

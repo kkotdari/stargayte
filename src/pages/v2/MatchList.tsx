@@ -66,18 +66,22 @@ function matchShareContent(match: Match, memberOf: (id: string) => Member | unde
 // 테이블 카드 한 칸 — [프사][닉네임][종족 영문 한 글자 배지]. 컴퓨터/비회원은 아이콘 프사에
 // 원본 이름(없으면 순번 라벨)으로. 종족 배지는 요청대로 영문(circleLetter, 한글 아님).
 function PlayerCell({
-  slot, players, memberOf, highlighted,
+  slot, players, memberOf, highlighted, highlightTerms,
 }: {
   slot: MatchSlot; players: MatchSlot[]; memberOf: (id: string) => Member | undefined;
-  highlighted: boolean;
+  highlighted: boolean; highlightTerms?: string[];
 }) {
   const isComputer = isComputerSlot(slot.memberId);
   const isUnreg = isUnregisteredSlot(slot.memberId);
   const name = resolveSlotName(slot, players, memberOf);
+  // memberId 매칭(highlighted)에 더해, 표시 이름이 검색어를 포함해도 하이라이트한다 —
+  // 참가자 memberId가 검색된 회원 id와 어긋나는 경우(별칭/비회원 등)를 보완한다(요청).
+  const nameLc = name.toLowerCase();
+  const hl = highlighted || !!highlightTerms?.some((t) => nameLc.includes(t));
   // 닉네임을 눌러도 프로필 모달을 열지 않는다(요청) — 로우 어디를 눌러도 무조건 펼침/접힘만
   // 하도록 버튼/클릭 핸들러를 없애고 클릭이 로우로 그대로 올라가게 둔다.
   return (
-    <span className={cx("scr-mt-player", highlighted && "scr-mt-player-hl")}>
+    <span className={cx("scr-mt-player", hl && "scr-mt-player-hl")}>
       <span className="scr-team-name-wrap">
         <span className="scr-mt-name">{name}</span>
         <RaceBadge race={slot.race} size={13} circleLetter className="scr-team-name-race" />
@@ -132,6 +136,8 @@ interface MatchListProps {
   loading: boolean;
   // 유저 검색 중이면 그 회원(들)을 로스터에서 하이라이트 표시한다
   highlightMemberIds?: Set<string>;
+  // memberId 매칭에 더해 표시 이름을 검색어로도 매칭해 하이라이트한다(별칭/비회원 보완).
+  highlightTerms?: string[];
 }
 
 interface DateGroup {
@@ -251,10 +257,10 @@ function MatchActionsMenu({
 // 펼쳤을 때 카드 하단에 붙는 상세 스탯 표(요청) — 양 팀 전원을 한 표에 모아 유효커맨드
 // 높은 순으로 정렬한다. 리플레이 파싱값(apm/eapm/커맨드/유효커맨드)은 수기등록이면 없어서 '–'.
 function MatchStatsTable({
-  team1, team2, memberOf, highlightMemberIds,
+  team1, team2, memberOf, highlightMemberIds, highlightTerms,
 }: {
   team1: MatchSlot[]; team2: MatchSlot[]; memberOf: (id: string) => Member | undefined;
-  highlightMemberIds?: Set<string>;
+  highlightMemberIds?: Set<string>; highlightTerms?: string[];
 }) {
   const rows = [
     ...team1.map((s) => ({ s, players: team1 })),
@@ -292,8 +298,11 @@ function MatchStatsTable({
           </tr>
         </thead>
         <tbody>
-          {rows.map((r, i) => (
-            <tr key={i} className={cx(highlightMemberIds?.has(r.memberId) && "scr-mst-row-hl")}>
+          {rows.map((r, i) => {
+            const nameLc = r.nickname.toLowerCase();
+            const hl = highlightMemberIds?.has(r.memberId) || !!highlightTerms?.some((t) => nameLc.includes(t));
+            return (
+            <tr key={i} className={cx(hl && "scr-mst-row-hl")}>
               <td className="scr-mst-left">
                 <span className="scr-mst-name">
                   <RaceBadge race={r.race} size={14} circleLetter />
@@ -307,7 +316,8 @@ function MatchStatsTable({
               <td className="scr-mst-pair">{pair(r.eapm, r.apm)}</td>
               <td className="scr-mst-pair">{pair(r.ecmd, r.cmd)}</td>
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -315,7 +325,7 @@ function MatchStatsTable({
 }
 
 export default function MatchList({
-  rows, memberOf, onDeleted, loading, highlightMemberIds,
+  rows, memberOf, onDeleted, loading, highlightMemberIds, highlightTerms,
 }: MatchListProps) {
   const groups = groupByDate(rows);
   const user = useAppStore((s) => s.user);
@@ -413,10 +423,11 @@ export default function MatchList({
                 <div className="scr-match-trow-grid">
                   <div className="scr-match-trow-team">
                     <div className="scr-match-trow-roster scr-match-trow-roster-grid">
-                      {r.team1.map((s) => (
+                      {r.team1.map((s, i) => (
                         <PlayerCell
-                          key={s.memberId} slot={s} players={r.team1} memberOf={memberOf}
+                          key={`${s.memberId}-${i}`} slot={s} players={r.team1} memberOf={memberOf}
                           highlighted={!!highlightMemberIds?.has(s.memberId)}
+                          highlightTerms={highlightTerms}
                         />
                       ))}
                     </div>
@@ -424,10 +435,11 @@ export default function MatchList({
                   {outcomes}
                   <div className="scr-match-trow-team">
                     <div className="scr-match-trow-roster scr-match-trow-roster-grid">
-                      {r.team2.map((s) => (
+                      {r.team2.map((s, i) => (
                         <PlayerCell
-                          key={s.memberId} slot={s} players={r.team2} memberOf={memberOf}
+                          key={`${s.memberId}-${i}`} slot={s} players={r.team2} memberOf={memberOf}
                           highlighted={!!highlightMemberIds?.has(s.memberId)}
+                          highlightTerms={highlightTerms}
                         />
                       ))}
                     </div>
@@ -444,7 +456,7 @@ export default function MatchList({
                       <>
                         <MatchStatsTable
                           team1={r.team1} team2={r.team2} memberOf={memberOf}
-                          highlightMemberIds={highlightMemberIds}
+                          highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms}
                         />
                         {/* 최하단 — 왼쪽에 '경기번호' 라벨 + 번호(#없이) + 복사 버튼, 오른쪽에 등록자(요청). */}
                         <div className="scr-match-trow-footer">
