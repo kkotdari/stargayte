@@ -1,6 +1,14 @@
-import { X } from "lucide-react";
+import { X, Calendar, Clock } from "lucide-react";
 import { cx } from "../../utils/format";
 import { DATE_INPUT_MIN, DATE_INPUT_MAX } from "../../utils/date";
+
+// 네이티브 달력/시계 표시기를 CSS로 숨겼으므로, 데스크톱에서 입력칸을 눌렀을 때 피커가 열리게
+// showPicker를 직접 호출한다(모바일은 인풋 포커스만으로 네이티브 피커가 열려 이 호출이
+// 없어도/실패해도 무방하다 — 미지원·이미 열림은 조용히 무시).
+function openPicker(e: React.MouseEvent<HTMLInputElement>) {
+  const el = e.currentTarget as HTMLInputElement & { showPicker?: () => void };
+  try { el.showPicker?.(); } catch { /* 미지원 또는 이미 열림 */ }
+}
 
 interface OptionalDateTimeFieldsProps {
   dateStr: string;
@@ -37,6 +45,7 @@ export default function OptionalDateTimeFields({
               type="date" className={cx(cls, dateLocked && "scr-datetime-locked")} value={dateStr}
               min={DATE_INPUT_MIN} max={DATE_INPUT_MAX}
               readOnly={dateLocked} tabIndex={dateLocked ? -1 : undefined}
+              onClick={dateLocked ? undefined : openPicker}
               onChange={dateLocked ? undefined : (e) => {
                 const v = e.target.value;
                 onDateChange(v);
@@ -57,6 +66,11 @@ export default function OptionalDateTimeFields({
                 <X size={12} />
               </button>
             )}
+            {/* 달력 아이콘은 항상 맨 오른쪽(요청). 장식용이라 클릭이 인풋으로 통과하도록
+                pointer-events:none — 인풋을 누르면 피커가 열린다. 잠긴 칸엔 두지 않는다. */}
+            {!dateLocked && (
+              <span className="scr-datetime-picker-icon" aria-hidden="true"><Calendar size={15} /></span>
+            )}
           </span>
         </label>
       </div>
@@ -70,6 +84,7 @@ export default function OptionalDateTimeFields({
               // 시간을 정하려고 빈 칸을 누르면 21시로 시작한다(요청: "선택 UI를 눌렀을 때 값이
               // 없으면 21시로 선택된 상태로 열림"). 안 누르면 빈 채로 남아 "시간 미정"이 된다.
               onFocus={timeLocked ? undefined : () => { if (dateStr && !timeStr) onTimeChange("21:00"); }}
+              onClick={timeLocked ? undefined : openPicker}
               onChange={timeLocked ? undefined : (e) => onTimeChange(e.target.value)}
               disabled={!timeLocked && !dateStr}
             />
@@ -82,6 +97,9 @@ export default function OptionalDateTimeFields({
               >
                 <X size={12} />
               </button>
+            )}
+            {!timeLocked && (
+              <span className="scr-datetime-picker-icon" aria-hidden="true"><Clock size={15} /></span>
             )}
           </span>
         </label>

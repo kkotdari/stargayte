@@ -473,12 +473,24 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
    입력칸엔 오른쪽 패딩을 넉넉히 줘서 값 텍스트가 × 밑으로 들어가지 않게 한다. 값이 없으면
    ×만 숨기고(자리·패딩은 유지) 레이아웃은 안 변한다. */
 .scr-datetime-input-wrap { position: relative; display: block; width: 100%; min-width: 0; }
-.scr-datetime-input-wrap > .scr-input { width: 100%; padding-right: 26px; }
+/* 오른쪽에 [× ][달력/시계 아이콘]을 나란히 얹으므로 값이 그 밑으로 안 들어가게 패딩을 준다. */
+.scr-datetime-input-wrap > .scr-input { width: 100%; padding-right: 44px; }
+/* 네이티브 달력/시계 표시기는 숨기고(아래 우리 아이콘으로 대체) 위치를 직접 잡는다 — 요청:
+   "달력·시계 아이콘이 가장 오른쪽, ×는 그보다 왼쪽". 데스크톱은 인풋 클릭 시 showPicker로 연다. */
+.scr-datetime-input-wrap > .scr-input::-webkit-calendar-picker-indicator { display: none; }
+.scr-datetime-input-wrap > .scr-input::-webkit-inner-spin-button { display: none; }
+/* 우리 달력/시계 아이콘 — 맨 오른쪽. 장식용이라 클릭이 인풋으로 통과하게 pointer-events:none. */
+.scr-datetime-picker-icon {
+  position: absolute; top: 0; bottom: 0; right: 6px; margin: auto 0;
+  display: grid; place-items: center; width: 18px; height: 18px;
+  color: var(--muted); pointer-events: none;
+}
+.scr-datetime-picker-icon svg { display: block; }
 .scr-datetime-clear {
   /* transform:translateY(-50%)는 서브픽셀 높이에서 반픽셀 어긋남이 생겨(지적) top/bottom:0 +
-     margin:auto로 정확히 세로 중앙에 둔다. */
-  position: absolute; top: 0; bottom: 0; right: 6px; margin: auto 0;
-  display: grid; place-items: center; width: 18px; height: 18px; padding: 0; z-index: 1;
+     margin:auto로 정확히 세로 중앙에 둔다. ×는 아이콘 바로 왼쪽(right:25px)에 둔다(요청). */
+  position: absolute; top: 0; bottom: 0; right: 25px; margin: auto 0;
+  display: grid; place-items: center; width: 18px; height: 18px; padding: 0; z-index: 2;
   border: none; border-radius: 50%; cursor: pointer;
   background: rgba(255, 255, 255, 0.16); color: var(--muted);
   -webkit-tap-highlight-color: transparent;
