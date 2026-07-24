@@ -2185,9 +2185,9 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 .scr-rank-avatar-btn.scr-rank-avatar-bronze::before {
   content: ""; position: absolute; z-index: -1;
   top: 50%; left: 50%; transform: translate(-50%, -50%);
-  /* 판 42px. 프사를 38px로 줄였으므로 링 두께는 (42-38)/2 = 2px(요청: 얇아서 티가 안 나던 링
-     대신, 프사를 깎아 눈에 띄는 테두리). 바깥지름 42px는 44px 아바타 칸 안. */
-  width: 42px; height: 42px; border-radius: 50%;
+  /* 판 44px(요청: 메달링 패널 2px 키움 — 42→44). 프사 38px 유지라 링 두께 (44-38)/2 = 3px.
+     바깥지름 44px는 44px 아바타 칸에 딱 맞는다. */
+  width: 44px; height: 44px; border-radius: 50%;
   /* 림 추가(요청): 링 바깥/안쪽에 얇은 어두운 테두리를 둘러 금속 링의 가장자리를 또렷하게.
      바깥은 배경과, 안쪽은 아바타와 경계를 지어 링으로 명확히 읽히게 한다. */
   box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.38), inset 0 0 0 0.5px rgba(0, 0, 0, 0.32);
@@ -2420,13 +2420,13 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
      기존 32px에서 20% 키운다(요청: 랭킹 아바타 20% 증가 — 모바일). */
   .scr-rank-table-panel-v2 .scr-rank-avatar-btn .scr-avatar { width: 38px !important; height: 38px !important; }
   /* 금은동 링도 모바일 아바타(38px)에 비례해 축소(요청: "모바일은 비율적으로 같이 줄였어야지").
-     데스크톱은 프사 40→38, 판 42px. 모바일은 38/40 비율로 프사 38→36, 판 40px(링 두께 ~2px 유지). */
+     데스크톱은 프사 40→38, 판 44px. 모바일은 프사 38→36, 판 42px(요청: 메달링 패널 2px 키움 — 40→42). */
   .scr-rank-table-panel-v2 .scr-rank-avatar-btn.scr-rank-avatar-gold .scr-avatar,
   .scr-rank-table-panel-v2 .scr-rank-avatar-btn.scr-rank-avatar-silver .scr-avatar,
   .scr-rank-table-panel-v2 .scr-rank-avatar-btn.scr-rank-avatar-bronze .scr-avatar { width: 36px !important; height: 36px !important; }
   .scr-rank-table-panel-v2 .scr-rank-avatar-btn.scr-rank-avatar-gold::before,
   .scr-rank-table-panel-v2 .scr-rank-avatar-btn.scr-rank-avatar-silver::before,
-  .scr-rank-table-panel-v2 .scr-rank-avatar-btn.scr-rank-avatar-bronze::before { width: 40px; height: 40px; }
+  .scr-rank-table-panel-v2 .scr-rank-avatar-btn.scr-rank-avatar-bronze::before { width: 42px; height: 42px; }
 }
 
 /* ===== v2 랭킹 화면 배경 =====
