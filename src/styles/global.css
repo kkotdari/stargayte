@@ -461,10 +461,14 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
 /* 날짜/시간 입력은 호출하기 모달·인박스·리벤지 폼에서 크기·모양을 표준으로 통일(요청) —
    두 칸을 같은 폭으로 나눠(각 flex:1) 모달 폭을 채우고, 입력 자체도 표준 필드 크기
    (--field-h, padding 9/10)로. 예전의 축소판(--field-h-sm·auto 폭)은 걷어낸다. */
-.scr-datetime-cols { display: flex; gap: 10px; align-items: flex-start; }
-.scr-datetime-col { display: flex; flex-direction: column; gap: 5px; align-items: stretch; flex: 1 1 0; min-width: 0; }
-.scr-datetime-col .scr-datetime-input { width: 100%; }
-.scr-datetime-col .scr-datetime-input .scr-input { width: 100%; min-height: var(--field-h); padding: 9px 10px; }
+/* 두 칸은 grid의 minmax(0,1fr) 트랙으로 정확히 반씩 나눈다 — flex(1 1 0)로 하면 iOS 사파리에서
+   네이티브 date/time 입력이 자기 고유폭 밑으로 안 줄어들어 날짜칸이 오른쪽으로 넘쳐 시간칸을
+   덮는 문제가 생긴다(요청: "인풋창 레이아웃 겹침"). minmax(0,1fr) + 아래 input의 min-width:0으로
+   네이티브 입력이 트랙을 넘지 못하게 막는다. */
+.scr-datetime-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; align-items: start; }
+.scr-datetime-col { display: flex; flex-direction: column; gap: 5px; align-items: stretch; min-width: 0; }
+.scr-datetime-col .scr-datetime-input { width: 100%; min-width: 0; }
+.scr-datetime-col .scr-datetime-input .scr-input { width: 100%; min-width: 0; max-width: 100%; min-height: var(--field-h); padding: 9px 10px; }
 /* 지우기(×) 버튼을 입력칸 "내부" 오른쪽에 오버레이한다(요청: "x버튼을 인풋창 내부로 이동").
    입력칸엔 오른쪽 패딩을 넉넉히 줘서 값 텍스트가 × 밑으로 들어가지 않게 한다. 값이 없으면
    ×만 숨기고(자리·패딩은 유지) 레이아웃은 안 변한다. */
