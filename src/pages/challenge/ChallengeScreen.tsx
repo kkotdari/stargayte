@@ -958,19 +958,19 @@ function ChallengeTimeHeadEdit({
                   <X size={12} />
                 </button>
               </span>
-              {/* 취소/확인을 아이콘 버튼으로 줄여(요청) 날짜/시간 입력칸에 폭을 더 준다 —
-                  글자 버튼이 넓어 입력칸이 눌리고 지우기(×)가 옆 칸에 겹치던 문제. */}
+              {/* 취소/확인을 기존 아이콘 버튼(scr-icon-btn) 스타일로, 크기만 이 행에 맞게
+                  살짝 줄인다(요청). 확인은 체크에 포인트 색을 준다. */}
               <button
-                type="button" className="scr-btn scr-btn-ghost scr-btn-icon scr-challenge-time-edit-btn"
+                type="button" className="scr-icon-btn scr-challenge-time-edit-btn"
                 onClick={() => setEditing(false)} disabled={busy} aria-label="취소"
               >
-                <X size={15} />
+                <X size={16} />
               </button>
               <button
-                type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-icon scr-challenge-time-edit-btn"
+                type="button" className="scr-icon-btn scr-challenge-time-edit-btn scr-challenge-time-edit-confirm"
                 onClick={save} disabled={busy} aria-label="확인"
               >
-                {busy ? <Spinner /> : <Check size={15} />}
+                {busy ? <Spinner /> : <Check size={16} />}
               </button>
             </div>
             {err && <div className="scr-err">{err}</div>}

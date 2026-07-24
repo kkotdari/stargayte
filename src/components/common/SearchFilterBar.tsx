@@ -49,6 +49,9 @@ export default function SearchFilterBar({
   showCount = true,
 }: SearchFilterBarProps) {
   const [suggestOpen, setSuggestOpen] = useState(false);
+  // + 버튼으로 열었을 때 — "@" 없이 후보 전체를 띄우고, 입력하면 그 글자로 바로 거른다
+  // (요청: "+버튼 누르고 사람 선택해야 @가 입력되게" = 화면에 @를 노출하지 않는다).
+  const [mentionAll, setMentionAll] = useState(false);
   const [highlight, setHighlight] = useState(0);
   // 칩(완성된 검색어/경기번호)은 부모 state(searchValue 등)를 그대로 진실로 삼아 즉시
   // 반영한다(요청: "칩 추가/제거시 즉시 적용"). 지금 타이핑 중인, 아직 칩이 안 된 마지막
@@ -76,10 +79,13 @@ export default function SearchFilterBar({
   const matchedSuggestions = useMemo<MemberSearchSuggestion[]>(() => {
     if (!suggestions) return [];
     const raw = liveText.trim();
-    if (!raw.startsWith("@")) return [];
+    // 트리거는 두 가지: "@"로 시작해 타이핑하거나, + 버튼(mentionAll)으로 연 상태. 후자는
+    // "@" 없이 입력한 글자를 그대로 검색어로 쓴다.
+    const mentionTrigger = raw.startsWith("@");
+    if (!mentionAll && !mentionTrigger) return [];
     // 검색 필터와 같은 정규화(NFC/제로폭 정리)로 비교한다 — 겉보기 같은 한글이 바이트만
     // 달라 자동완성/중복 판정이 어긋나지 않게.
-    const q = normalizeSearchText(raw.slice(1));
+    const q = normalizeSearchText(mentionTrigger ? raw.slice(1) : raw);
     const chosen = new Set(chips.map((c) => normalizeSearchText(c)));
     const items: MemberSearchSuggestion[] = [];
     for (const s of suggestions) {
@@ -92,7 +98,7 @@ export default function SearchFilterBar({
       items.push(s);
     }
     return items;
-  }, [suggestions, liveText, chips]);
+  }, [suggestions, liveText, chips, mentionAll]);
 
   const suggestShown = suggestOpen && matchedSuggestions.length > 0;
 
@@ -127,21 +133,21 @@ export default function SearchFilterBar({
     if (el) el.scrollLeft = el.scrollWidth;
   }, [searchValue, liveText]);
 
-  // 모바일에서 "@"를 직접 치지 않고도 유저 후보 드롭다운을 열 수 있게 하는 + 버튼(요청).
-  // 커서 자리(입력칸 끝)에 두고, 누르면 "@"를 심어 전체 후보 목록을 띄우고 포커스한다.
+  // "@"를 직접 치지 않고도 유저 후보 드롭다운을 여는 + 버튼(요청). 예전엔 입력칸에 "@"를
+  // 심었는데, 어차피 사람을 고르면 바로 칩이 돼 "@"는 화면에 보일 일이 없어(요청) 이제
+  // 심지 않는다 — 대신 mentionAll 플래그로 전체 후보를 띄우고, 타이핑하면 그 글자로 거른다.
   const openMention = () => {
-    setLiveText("@");
+    setLiveText("");
+    setMentionAll(true);
     setSuggestOpen(true);
-    requestAnimationFrame(() => {
-      const el = inputRef.current;
-      if (el) { el.focus(); el.setSelectionRange(1, 1); }
-    });
+    requestAnimationFrame(() => inputRef.current?.focus());
   };
 
   // 후보(유저 이름)를 고르면 즉시 검색어 칩으로 적용하고 liveText를 비운다.
   const pick = (name: string) => {
     addChip(name);
     setLiveText("");
+    setMentionAll(false);
     setSuggestOpen(false);
     // 터치로 후보를 고르면(포커스가 안 빠지게 mousedown을 막아둬서) 인풋이 비워졌는데도
     // 모바일 키보드가 내부적으로 기억해둔 커서/조합 위치가 남아있는 경우가 있어, 값이
@@ -164,7 +170,7 @@ export default function SearchFilterBar({
     // 실행돼 그 사이 바뀐 후보까지 같이 들어가 버린다(실제로 지적받은 문제). keyCode 229는
     // IME 조합 중임을 나타내는 표준 신호라 이때는 무시한다.
     if (e.nativeEvent.isComposing || e.keyCode === 229) return;
-    if (e.key === "Escape") { setSuggestOpen(false); return; }
+    if (e.key === "Escape") { setSuggestOpen(false); setMentionAll(false); return; }
     if (e.key === "Backspace" && liveText === "" && chips.length > 0) {
       e.preventDefault(); removeChip(chips.length - 1); return;
     }
@@ -235,7 +241,7 @@ export default function SearchFilterBar({
             setSuggestOpen(true);
           }}
           onFocus={() => setSuggestOpen(true)}
-          onBlur={() => setSuggestOpen(false)}
+          onBlur={() => { setSuggestOpen(false); setMentionAll(false); }}
           onKeyDown={onSearchKeyDown}
           placeholder={chips.length === 0 ? searchPlaceholder : ""}
           autoComplete="off"

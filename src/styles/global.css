@@ -465,23 +465,22 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
 .scr-datetime-col { display: flex; flex-direction: column; gap: 5px; align-items: stretch; flex: 1 1 0; min-width: 0; }
 .scr-datetime-col .scr-datetime-input { width: 100%; }
 .scr-datetime-col .scr-datetime-input .scr-input { width: 100%; min-height: var(--field-h); padding: 9px 10px; }
-/* 입력칸 옆에 지우기(×) 버튼을 붙이는 래퍼 — 처음엔 입력칸 위에 절대배치로 겹쳤는데,
-   iOS 날짜/시간 입력의 가운데 정렬된 값 텍스트와 겹치는 문제가 있었다(실제로 지적받은
-   문제). 이제 × 는 입력칸 "밖" 오른쪽의 별도 flex 아이템이고, 값이 없어도 자리는 항상
-   예약해 둔다(visibility로만 토글) — × 가 나타나고 사라져도 폭/레이아웃이 안 변한다. */
-.scr-datetime-input-wrap { display: flex; align-items: center; gap: 4px; width: 100%; min-width: 0; }
-.scr-datetime-input-wrap > .scr-input { flex: 1 1 auto; min-width: 0; }
+/* 지우기(×) 버튼을 입력칸 "내부" 오른쪽에 오버레이한다(요청: "x버튼을 인풋창 내부로 이동").
+   입력칸엔 오른쪽 패딩을 넉넉히 줘서 값 텍스트가 × 밑으로 들어가지 않게 한다. 값이 없으면
+   ×만 숨기고(자리·패딩은 유지) 레이아웃은 안 변한다. */
+.scr-datetime-input-wrap { position: relative; display: block; width: 100%; min-width: 0; }
+.scr-datetime-input-wrap > .scr-input { width: 100%; padding-right: 30px; }
 .scr-datetime-clear {
-  flex: 0 0 auto; display: grid; place-items: center;
-  width: 18px; height: 18px; padding: 0;
+  position: absolute; top: 50%; right: 6px; transform: translateY(-50%);
+  display: grid; place-items: center; width: 18px; height: 18px; padding: 0; z-index: 1;
   border: none; border-radius: 50%; cursor: pointer;
-  background: rgba(255, 255, 255, 0.14); color: var(--muted);
+  background: rgba(255, 255, 255, 0.16); color: var(--muted);
   -webkit-tap-highlight-color: transparent;
 }
-.scr-datetime-clear[data-empty="1"] { visibility: hidden; pointer-events: none; }
-.scr-datetime-clear:hover { color: var(--text); background: rgba(255, 255, 255, 0.24); }
-.scr-light-theme .scr-datetime-clear { background: rgba(0, 0, 0, 0.08); }
-.scr-light-theme .scr-datetime-clear:hover { background: rgba(0, 0, 0, 0.16); }
+.scr-datetime-clear[data-empty="1"] { display: none; }
+.scr-datetime-clear:hover { color: var(--text); background: rgba(255, 255, 255, 0.26); }
+.scr-light-theme .scr-datetime-clear { background: rgba(0, 0, 0, 0.10); }
+.scr-light-theme .scr-datetime-clear:hover { background: rgba(0, 0, 0, 0.18); }
 .scr-datetime-clear svg { display: block; }
 /* 라벨은 어디서든(검색 필터·모달 폼 전부) 필드 위에 두고, 크기와 왼쪽 들여쓰기를
    하나로 통일한다 — 화면마다 라벨이 옆에 붙거나 크기가 제각각이면 산만해 보인다.
@@ -3040,10 +3039,13 @@ html.scr-page-bg.scr-light-theme .scr-rank-screen-v2::before { display: none; }
 .scr-search-chip-input {
   flex: 1 1 60px; min-width: 40px; background: transparent; border: none; outline: none;
   color: var(--text); font-family: var(--font-ui); font-size: var(--fs-subhead); padding: 2px 0; line-height: 1;
-  /* 입력칸을 오른쪽 정렬 — 커서/타이핑 글자가 오른쪽 끝에 오고, 그 바로 뒤(오른쪽 끝)에
-     + 버튼이 붙는다(요청: "인풋창 오른쪽 정렬"). placeholder도 함께 오른쪽으로 정렬된다. */
-  text-align: right;
+  /* 타이핑 글자는 평범하게 왼쪽 정렬. */
+  text-align: left;
 }
+/* placeholder만 오른쪽 정렬한다(요청: "인풋창 우측정렬이 아니라 플레이스홀더만") — 빈
+   상태에서 placeholder가 오른쪽 끝(그 뒤의 + 버튼 옆)에 오고, 입력을 시작하면 왼쪽 정렬로
+   돌아간다. */
+.scr-search-chip-input:placeholder-shown { text-align: right; }
 .scr-search-chip-input::placeholder { color: var(--dim); font-size: var(--fs-subhead); }
 /* v2는 더 이상 타이틀+필터바가 카드 위에 sticky로 쌓이는 패널 구조가 아니다(디자인
    컨셉 변경 — 타이틀/필터바는 툴바로 빠지고 컨텐츠 프레임 자체가 없어짐) — 날짜 줄은
@@ -5971,13 +5973,13 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
    이었는데, × 를 옆에 붙이려고 래퍼(scr-datetime-input-wrap, flex)로 감싸며 행에서의
    flex:1을 셀로 옮긴다. × 자리는 래퍼가 항상 예약해 폭이 안 변한다. */
 .scr-challenge-time-edit-cell { flex: 1 1 0; min-width: 0; }
-/* 취소/확인을 글자 대신 아이콘으로 — 정사각 컴팩트 버튼(요청). 입력칸 폭을 아끼려는 것이라
-   가로 패딩을 없애고 높이만큼의 정사각으로 고정한다. */
-.scr-challenge-time-edit-btn.scr-btn-icon {
-  flex: 0 0 auto; width: 30px; height: 30px; min-width: 0; padding: 0;
-  display: inline-grid; place-items: center;
-}
-.scr-challenge-time-edit-btn.scr-btn-icon svg { display: block; }
+/* 취소/확인 — 기존 아이콘 버튼(.scr-icon-btn) 그대로 쓰되 이 좁은 행에 맞게 크기만 줄인다
+   (요청: "기존 아이콘 버튼 css 참고, 크기만 다르게"). */
+.scr-challenge-time-edit-btn.scr-icon-btn { width: 28px; height: 28px; }
+.scr-challenge-time-edit-btn.scr-icon-btn svg { display: block; }
+/* 확인은 체크에 포인트 색을 줘서 취소(중립)와 구분한다. */
+.scr-challenge-time-edit-confirm.scr-icon-btn { color: var(--point); }
+.scr-challenge-time-edit-confirm.scr-icon-btn:hover { color: var(--point); }
 
 /* scroll-margin-top — NEXT 너 나와로 자동 스크롤(scrollIntoView block:"start")할 때 화면
    맨 위에 딱 붙지 않고 이만큼만 숨 쉴 여유를 남긴다(위의 다른 카드는 안 보인다). 날짜
