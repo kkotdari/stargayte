@@ -5975,7 +5975,10 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
    flex:1을 셀로 옮긴다. × 자리는 래퍼가 항상 예약해 폭이 안 변한다. */
 /* 입력칸은 행 폭을 꽉 채우지 않고 내용(값+지우기 여백) 크기에 맞춘다(요청: "너무 넓다").
    좁을 땐 줄어들 수 있게 shrink는 허용. */
-.scr-challenge-time-edit-cell { flex: 0 1 auto; min-width: 0; }
+/* ×는 래퍼(.scr-datetime-input-wrap) 오른쪽 기준으로 절대배치되므로, 래퍼가 입력칸보다
+   넓으면 ×가 입력칸 바깥으로 삐져나온다(지적: 값이 짧은 시간 입력일수록 더 벗어남). 래퍼를
+   입력칸 실제 폭(fit-content)에 딱 맞춰 ×가 항상 입력칸 오른쪽 안쪽에 오게 한다. */
+.scr-challenge-time-edit-cell { flex: 0 1 auto; min-width: 0; width: fit-content; max-width: 100%; }
 .scr-challenge-time-edit-cell > .scr-challenge-time-edit-input { width: auto; max-width: 100%; }
 /* 취소/확인 — 기존 아이콘 버튼(.scr-icon-btn) 그대로 쓰되 이 좁은 행에 맞게 크기만 줄인다
    (요청). 클래스명은 연필(수정) 버튼 .scr-challenge-time-edit-btn과 겹치지 않게 별도로 둔다
