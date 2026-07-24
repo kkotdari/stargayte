@@ -6378,6 +6378,11 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
   max-width: 460px;
   /* 편지지(아이보리) 테마 제거 — 기본 유리 모달(.scr-modal + ::before)을 그대로 써서
      각 테마의 라이팅 글라스를 입힌다(요청: "너나와 인박스 라이팅 테마 적용, 편지지 제거"). */
+  /* 최소 정사각형, 내용이 많으면 아래로 길어진다(요청) — 폭 기준 1:1이 기본 높이가 되고
+     콘텐츠가 넘치면 그만큼 늘어난다. */
+  aspect-ratio: 1 / 1;
+  /* 내용이 짧아 정사각형일 때 위쪽에 몰리지 않게 세로 가운데로 모은다. */
+  justify-content: center;
 }
 /* 편지봉투는 편지지 카드와 한 몸이 아니라(요청: "봉투랑 편지지는 별도 모달") 오버레이
    위에 겹치는 별도 레이어다 — 카드 배경/그림자 없이 봉투 사진 + 제목만 어두운 스크림
@@ -6501,19 +6506,26 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
 .scr-challenge-inbox-title { font-weight: 800; font-size: var(--fs-subhead); margin: 6px 0 10px; color: var(--text); }
 /* 편지지(letter)를 열었을 때의 "OO 너 나와!" 제목만 2스텝 키운다(요청) — subhead→title.
    봉투 단계 제목(.scr-challenge-envelope-layer 안)은 그대로 subhead. */
-.scr-challenge-inbox-modal .scr-challenge-inbox-title { font-size: var(--fs-title); }
+.scr-challenge-inbox-modal .scr-challenge-inbox-title { font-size: var(--fs-headline); }
 /* 편지지 두 사람 아바타 — 좌상단 To.(대상)·우하단 From.(호출자). 원형 크롭 + 가장자리
    페이드(옛 nawa2 히어로와 동일 효과)에 크기는 그 절반(150→72). 절대 위치·z-index:0으로
    본문 뒤에 깔려, 공간이 좁으면 제목/내용이 앞에서 겹쳐 가린다(요청). 클릭은 통과. */
 .scr-challenge-corner { position: absolute; z-index: 0; pointer-events: none; line-height: 0; }
-.scr-challenge-corner-to { top: 10px; left: 12px; }
-.scr-challenge-corner-from { bottom: 12px; right: 12px; }
+.scr-challenge-corner-to { top: 8px; left: 8px; }
+.scr-challenge-corner-from { bottom: 8px; right: 8px; }
 /* 라벨은 아바타 기준 절대 위치 — To.는 왼쪽 상단, From.은 왼쪽 하단(요청). 원형 페이드
    마스크라 아바타 모서리는 투명해 카드 배경 위에 얹혀 잘 읽힌다. 그래도 사진이 밝을 때를
    대비해 옅은 그림자를 준다. */
-.scr-challenge-corner-tag { position: absolute; font-size: var(--fs-caption); font-weight: 800; color: var(--text); line-height: 1; text-shadow: 0 1px 3px rgba(0,0,0,0.45); }
-.scr-challenge-corner-to .scr-challenge-corner-tag { top: 1px; left: 1px; }
-.scr-challenge-corner-from .scr-challenge-corner-tag { bottom: 1px; left: 1px; }
+/* To./From. 라벨 — 사진 위에서도 또렷하게(요청: 사진에 가려 안 보임) 작은 칩 배경을 얹고,
+   아바타 바깥 모서리 쪽으로 살짝 빼서 사진과 안 겹치게 한다. */
+.scr-challenge-corner-tag {
+  position: absolute; font-size: var(--fs-micro); font-weight: 800; line-height: 1;
+  color: var(--text); background: var(--panel-raised);
+  padding: 2px 6px; border-radius: 999px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.28);
+}
+.scr-challenge-corner-to .scr-challenge-corner-tag { top: -5px; left: -5px; }
+.scr-challenge-corner-from .scr-challenge-corner-tag { bottom: -5px; right: -5px; }
 .scr-challenge-corner-av {
   border-radius: 50% !important; object-fit: cover;
   -webkit-mask-image: radial-gradient(circle at center, #000 54%, transparent 78%);
@@ -6525,7 +6537,10 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
 /* 모달이 align-items:center라 그냥 두면 편지지 본문이 내용 폭만큼만 좁게 가운데 모여
    붙어 모달 폭을 못 채웠다(요청: "모달 안의 내용들을 넓히라고") — 본문을 full-width로
    펴서 행/입력칸이 모달 폭을 꽉 채우게 한다. 줄 사이 갭은 조금 넉넉하게(요청). */
-.scr-challenge-inbox-body { text-align: left; width: 100%; box-sizing: border-box; gap: 18px; }
+/* 정사각형 모달에서 내용이 위로 몰리지 않게 — 본문을 늘리지 않고(flex 0 1 auto) 모달의
+   justify-content:center로 제목+본문 묶음을 세로 가운데에 둔다. 내용이 많아 넘치면 본문이
+   줄며 스크롤된다(min-height:0·overflow-y:auto는 .scr-modal-body에서 상속). */
+.scr-challenge-inbox-body { text-align: left; width: 100%; box-sizing: border-box; gap: 18px; flex: 0 1 auto; }
 /* 거절 사유 없이 거절을 누르면 뜨는 오류 자리 — 박스/테두리 없이 작은 글씨만 띄우고,
    자리도 그 글씨 한 줄(≈12px)만 미리 예약한다(요청: "예약공간을 12정도로 하고 그만한
    글씨만 띄우자(테두리 없이)" — 처음부터 큰 갭이 있는 것보다 낫다고). 오류가 없을 땐
@@ -6536,11 +6551,11 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
    위계를 벌린다(요청). 세로 여백은 본문 gap(18px)에 맡기고 margin은 0. 한마디는 인용
    느낌의 이탤릭, 일시는 또렷한 굵기로. */
 .scr-challenge-inbox-message {
-  margin: 0; font-size: var(--fs-subhead); font-style: italic;
+  margin: 0; font-size: var(--fs-body); font-style: italic;
   color: var(--text); text-align: center; line-height: 1.35; word-break: keep-all;
 }
 .scr-challenge-inbox-when {
-  margin: 0; font-size: var(--fs-subhead); font-weight: 700;
+  margin: 0; font-size: var(--fs-body); font-weight: 700;
   color: var(--text); text-align: center; line-height: 1.3;
 }
 /* 값 span(종류/일시 오른쪽)은 클래스가 없어 색을 명시 안 하면 앱 루트의 테마 글자색(다크
