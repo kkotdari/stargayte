@@ -11,7 +11,7 @@ import { useBottomViewportInset } from "./hooks/useBottomViewportInset";
 import { useModalDragDismiss } from "./hooks/useModalDragDismiss";
 import { scrollRootTo } from "./utils/scrollRoot";
 import { resampleSafariChrome } from "./utils/theme";
-import { CHALLENGE_MIN_VERSION, homeScreenFor } from "./constants/menuVersions";
+import { homeScreenFor } from "./constants/menuVersions";
 
 import AuthScreen from "./pages/auth/AuthScreen";
 import Header from "./layout/Header";
@@ -72,7 +72,8 @@ export default function App() {
   const adminPanelOpen = useAppStore((s) => s.adminPanelOpen);
   const setAdminPanelOpen = useAppStore((s) => s.setAdminPanelOpen);
   const effectiveVersionNumber = versionNumber(appVersion);
-  const isChallengeEnabled = effectiveVersionNumber >= CHALLENGE_MIN_VERSION;
+  // 너 나와!는 이제 상시 고정 메뉴라 버전과 무관하게 항상 열려 있다(요청).
+  const isChallengeEnabled = true;
   const bootstrap = useAppStore((s) => s.bootstrap);
   // 부팅(스플래시)이 끝나 본 화면이 처음 그려진 직후, 사파리 엣지 렌더(주소창 알약 뒤
   // 콘텐츠 합성)를 다시 굴린다 — 초기 진입 시 위아래가 잘린 채 남던 문제(지적) 대응.

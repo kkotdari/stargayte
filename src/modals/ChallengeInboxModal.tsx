@@ -140,8 +140,9 @@ export default function ChallengeInboxModal({ challenges, onClose, closeLabel = 
   const isTeamMatch = current.matchType === "0102";
   const opposingTeam = [current.createdBy.nickname, ...current.ownMembers.map((m) => m.nickname)];
   const ourTeam = current.targets.map((t) => t.nickname);
-  // 편지봉투 위 문구와 편지지 제목을 다르게 둔다(요청).
-  const envelopeTitle = `${current.createdBy.nickname}님에게 호출당함`;
+  // 편지봉투 위 문구 — 누가 지목됐는지는 감추고 "누구님의 호출"만 보여 궁금증을 유발한다
+  // (요청). 지목 대상은 열어야(편지지) 드러난다.
+  const envelopeTitle = `${current.createdBy.nickname}님의 호출`;
   // 편지지 제목은 실제로 지목된 사람(들)의 닉네임을 써야 한다 — 지금 로그인해서 이
   // 편지를 보고 있는 사람(user)을 그대로 썼더니, 요청자 본인이 방금 보낸 카카오톡
   // 공유 카드를 열어보면 상대가 아니라 자기 자신의 닉네임이 "OO 너 나와!"로 뜨는

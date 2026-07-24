@@ -1,8 +1,9 @@
 import type { ScreenKey } from "../types";
 
-// "너 나와!" 게시판이 열리는 최소 버전 — 처음엔 3으로 잡지만, 그때그때(배포 일정에 따라)
-// 이 숫자만 바꾸면 된다.
-export const CHALLENGE_MIN_VERSION = 3;
+// "너 나와!" 게시판은 이제 상시 고정 메뉴다(요청) — 버전 게이트를 걷어내 다른 메뉴와 함께
+// 처음부터 노출된다. (예전엔 3 이상에서만 열렸고, 버전이 늦게 로드돼 메뉴에 뒤늦게
+// 끼어드는 깜빡임이 있었다.) 상수는 App의 접근 게이트 호환을 위해 1로 남긴다.
+export const CHALLENGE_MIN_VERSION = 1;
 
 export interface NavMenuItem {
   key: ScreenKey;
@@ -23,7 +24,7 @@ export interface NavMenuItem {
 // 편집하면 된다.
 export const NAV_MENU_ITEMS: NavMenuItem[] = [
   { key: "ranking", label: "랭킹" },
-  { key: "challenge", label: "너 나와!", minVersion: CHALLENGE_MIN_VERSION },
+  { key: "challenge", label: "너 나와!" },
   { key: "match", label: "기록실" },
   { key: "stats", label: "통계" },
 ];
