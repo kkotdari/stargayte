@@ -35,6 +35,14 @@ export default function OptionalDateTimeFields({
 }: OptionalDateTimeFieldsProps) {
   const cls = `scr-input${invalid ? " scr-input-invalid" : ""}`;
 
+  // 빈 시간 칸을 열면 21시로 시작한다(요청). 네이티브 시간 피커는 "열리는 순간"의 입력값을
+  // 스냅하므로, onFocus에서 React 상태만 21:00으로 바꿔선 갱신이 비동기라 늦어 현재시각으로
+  // 열린다 — pointerdown 시점에 DOM 값을 즉시 21:00으로 박고 상태도 함께 맞춰, 피커가 21시에
+  // 열리게 한다. 날짜가 없으면 시간은 의미 없으니 손대지 않는다.
+  const primeDefaultTime = (el: HTMLInputElement) => {
+    if (dateStr && !timeStr) { el.value = "21:00"; onTimeChange("21:00"); }
+  };
+
   return (
     <div className="scr-datetime-cols">
       <div className="scr-datetime-col">
@@ -78,9 +86,10 @@ export default function OptionalDateTimeFields({
             <input
               type="time" className={cx(cls, timeLocked && "scr-datetime-locked")} value={timeStr}
               readOnly={timeLocked} tabIndex={timeLocked ? -1 : undefined}
-              // 시간을 정하려고 빈 칸을 누르면 21시로 시작한다(요청: "선택 UI를 눌렀을 때 값이
-              // 없으면 21시로 선택된 상태로 열림"). 안 누르면 빈 채로 남아 "시간 미정"이 된다.
-              onFocus={timeLocked ? undefined : () => { if (dateStr && !timeStr) onTimeChange("21:00"); }}
+              // 빈 시간 칸을 누르면 21시로 시작(요청). pointerdown에서 미리 값을 박아야 네이티브
+              // 피커가 21시에 열린다. 안 누르면 빈 채로 남아 "시간 미정"이 된다.
+              onPointerDown={timeLocked ? undefined : (e) => primeDefaultTime(e.currentTarget)}
+              onFocus={timeLocked ? undefined : (e) => primeDefaultTime(e.currentTarget)}
               onClick={timeLocked ? undefined : openPicker}
               onChange={timeLocked ? undefined : (e) => onTimeChange(e.target.value)}
               disabled={!timeLocked && !dateStr}

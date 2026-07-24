@@ -933,7 +933,10 @@ function ChallengeTimeHeadEdit({
                 <input
                   type="time" className="scr-input scr-challenge-time-edit-input"
                   value={timeStr}
-                  onFocus={() => { if (dateStr && !timeStr) setTimeStr("21:00"); }}
+                  // 빈 시간 칸을 열면 21시로 시작 — 네이티브 피커가 21시에 열리게 pointerdown에서
+                  // DOM 값을 미리 박고 상태도 맞춘다(비동기 상태갱신만으론 현재시각으로 열림).
+                  onPointerDown={(e) => { if (dateStr && !timeStr) { e.currentTarget.value = "21:00"; setTimeStr("21:00"); } }}
+                  onFocus={(e) => { if (dateStr && !timeStr) { e.currentTarget.value = "21:00"; setTimeStr("21:00"); } }}
                   onClick={openPicker}
                   onChange={(e) => setTimeStr(e.target.value)} disabled={!dateStr}
                 />
