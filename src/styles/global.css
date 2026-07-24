@@ -2144,8 +2144,8 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 .scr-rank-avatar-btn.scr-rank-avatar-bronze::before {
   content: ""; position: absolute; z-index: -1;
   top: 50%; left: 50%; transform: translate(-50%, -50%);
-  /* 링 두께 축소(요청) — 판 45px(아바타 40px 기준 두께 2.5px)로 깔끔하게. */
-  width: 45px; height: 45px; border-radius: 50%;
+  /* 링 두께 추가 10% 감소(요청) — 두께 2.5px → 2.25px, 판 45 → 44.5px. */
+  width: 44.5px; height: 44.5px; border-radius: 50%;
   /* 림 추가(요청): 링 바깥/안쪽에 얇은 어두운 테두리를 둘러 금속 링의 가장자리를 또렷하게.
      바깥은 배경과, 안쪽은 아바타와 경계를 지어 링으로 명확히 읽히게 한다. */
   box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.38), inset 0 0 0 0.5px rgba(0, 0, 0, 0.32);
@@ -5970,7 +5970,10 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 /* 일정 변경 인라인 행에서 [입력칸 | ×] 한 쌍을 담는 셀 — 예전엔 input이 직접 flex 자식
    이었는데, × 를 옆에 붙이려고 래퍼(scr-datetime-input-wrap, flex)로 감싸며 행에서의
    flex:1을 셀로 옮긴다. × 자리는 래퍼가 항상 예약해 폭이 안 변한다. */
-.scr-challenge-time-edit-cell { flex: 1 1 0; min-width: 0; }
+/* 입력칸은 행 폭을 꽉 채우지 않고 내용(값+지우기 여백) 크기에 맞춘다(요청: "너무 넓다").
+   좁을 땐 줄어들 수 있게 shrink는 허용. */
+.scr-challenge-time-edit-cell { flex: 0 1 auto; min-width: 0; }
+.scr-challenge-time-edit-cell > .scr-challenge-time-edit-input { width: auto; max-width: 100%; }
 /* 취소/확인 — 기존 아이콘 버튼(.scr-icon-btn) 그대로 쓰되 이 좁은 행에 맞게 크기만 줄인다
    (요청: "기존 아이콘 버튼 css 참고, 크기만 다르게"). */
 .scr-challenge-time-edit-btn.scr-icon-btn { width: 28px; height: 28px; }
