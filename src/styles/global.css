@@ -7877,6 +7877,16 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-feed-match-body .scr-mt-name { font-size: var(--fs-body); }
 /* 접힘 상태 윗줄은 이제 케밥(절대배치)뿐이라 자리 예약이 필요 없다. */
 .scr-feed-match-body .scr-match-trow-topline { min-height: 0; }
+/* 로스터를 팀별로 한 줄로 잇는다(요청) — 세로 스택 대신 가로 flex, 공간이 모자라면
+   flex-wrap이 사람(플레이어 셀) 단위로만 줄바꿈한다. 팀1은 오른쪽(가운데 승패 쪽),
+   팀2는 왼쪽 정렬 유지. */
+.scr-feed-match-body .scr-match-trow-roster-grid {
+  flex-direction: row; flex-wrap: wrap; column-gap: 14px; row-gap: 4px;
+}
+.scr-feed-match-body .scr-match-trow-team:first-child .scr-match-trow-roster-grid { justify-content: flex-end; }
+.scr-feed-match-body .scr-match-trow-team:last-child .scr-match-trow-roster-grid { justify-content: flex-start; }
+/* 사람 셀 안(프사·이름·종족)은 중간에서 끊기지 않게 한 덩어리로. */
+.scr-feed-match-body .scr-mt-player { flex: 0 0 auto; }
 /* 펼침 때 스탯 표 위에 노출되는 맵·플레이시간(요청). */
 .scr-match-trow-map-expanded { display: flex; align-items: baseline; gap: 6px; padding: 2px 0 8px; justify-content: center; }
 .scr-feed-card-time { font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
