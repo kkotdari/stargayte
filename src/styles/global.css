@@ -1529,8 +1529,11 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
      "잠정 배지 너무 왼쪽이야 점수에 가깝게 이동"). */
   position: absolute; top: 50%; right: 100%; margin-right: 2px; transform: translateY(-50%);
   pointer-events: none;
-  display: inline-block; padding: 1px 4px;
-  font-size: var(--fs-11); font-weight: 700; line-height: 1.4; white-space: nowrap;
+  /* line-height 1로 조여 배지 글자의 세로 중심이 점수 텍스트의 세로 중심과 정확히 맞게
+     한다(요청) — top:50%+translateY(-50%)는 배지 박스 중심을 맞추는데, 큰 line-height는
+     그 박스 안에서 글자를 위/아래로 치우치게 해 미세하게 어긋났다. 폰트도 1스텝 축소(요청). */
+  display: inline-block; padding: 0 4px;
+  font-size: var(--fs-micro); font-weight: 700; line-height: 1; white-space: nowrap;
   /* 주황 톤 글자색(요청: "잠정 배지 폰트색 주황으로 변경"). */
   color: #e69a4a;
 }
@@ -2363,7 +2366,7 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
      같아 세로 정렬(줄맞춤)도 흔들리지 않는다. 화면이 max-width보다 좁으면(모바일) 100%로
      줄며 닉네임 1fr이 알아서 줄어 넘치지 않는다. 요소 최대폭은 max-width로 PC/모바일 각각
      설정(아래 미디어쿼리) — 현재 칸 크기(44/84/40, gap 14)는 그대로 유지. */
-  display: grid; grid-template-columns: 44px 84px 40px minmax(0, 200px);
+  display: grid; grid-template-columns: 44px 76px 40px minmax(0, 220px);
   justify-content: center; max-width: none; margin: 0;
   align-items: center; column-gap: 14px; width: 100%; min-width: 0;
   /* 좌 패딩을 우보다 ~25px 넓게(요청 보정) — 순위/점수가 왼쪽에 몰려 보이는 걸 완화. */
@@ -2377,7 +2380,7 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   /* PC에선 요소 묶음 최대폭만 키운다(닉네임 칸에 더 여유) — 나머지 넓은 카드 폭은 전부
      좌우 여백(margin:auto)으로 빠져 한가운데로 모인다(요청). */
   .scr-rank-table-panel-v2 .scr-rank-row-inner {
-    grid-template-columns: 44px 84px 40px minmax(0, 300px);
+    grid-template-columns: 44px 76px 40px minmax(0, 320px);
     padding: 0 24px 0 49px;
   }
 }
@@ -2438,7 +2441,7 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
        화면 가운데로 모으고, 좁으면 100% 안에서 알아서 줄어든다. */
     /* 점수 칸을 72px로 넓혀 오른쪽 정렬된 점수 왼쪽에 '잠정' 배지 자리를 확보한다 —
        좁을 때 배지가 순위 숫자와 겹치던 문제(지적) 해결. */
-    grid-template-columns: 35px 72px 40px minmax(0, 160px); column-gap: 8px;
+    grid-template-columns: 35px 66px 40px minmax(0, 180px); column-gap: 8px;
     /* 좌 패딩을 우보다 ~25px 넓게(요청 보정). 구분선(행 ::before)은 양 끝까지 그대로. */
     padding: 0 12px 0 37px;
   }
@@ -2660,6 +2663,10 @@ html.scr-page-bg.scr-light-theme .scr-rank-screen-v2::before { display: none; }
    바로 붙게 한다. */
 .scr-filter-inline-stack { display: flex; flex-direction: row; align-items: center; gap: 8px; width: 100%; margin-bottom: 14px; }
 .scr-filter-panel { flex: 0 0 auto; max-width: 100%; }
+/* 랭킹 필터 줄은 다른 화면 필터로우처럼 폭을 꽉 채우고 양 끝 정렬(space-between)로 둔다
+   (요청) — 상성 보기를 토글 옆으로 옮긴 뒤엔 기간(좌)/종족(우) 두 그룹만 남아 양쪽으로
+   벌어진다. */
+.scr-rank-screen-v2 .scr-filter-panel { width: 100%; justify-content: space-between; }
 .scr-search-filter-float { flex: 1 1 auto; min-width: 0; }
 
 /* ===== 필터창(FilterPanel) — 검색창과 같은 자리에 뜨는 반투명 글라스 패널 =====
