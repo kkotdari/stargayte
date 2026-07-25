@@ -353,7 +353,7 @@ export default function RankingScreenV2() {
       {methodTipOpen && createPortal(
         <ul className="scr-rank-method-tooltip" ref={methodTipRef}>
           <li>경기 결과로 실력 레이팅(<b>TrueSkill</b>)을 추정합니다.</li>
-          <li>강한 상대를 이길수록 크게 오르고, 경기가 적으면 점수 왼쪽에 <b className="scr-rank-method-tip-provisional">!</b> 표시와 함께 낮게(잠정) 잡힙니다.</li>
+          <li>강한 상대를 이길수록 크게 오르고, 경기가 적으면 점수를 <b className="scr-rank-method-tip-provisional">흐리게</b> 표시하며 낮게(잠정) 잡힙니다.</li>
           <li>팀전은 팀 승패를 개인 실력으로 분해하며, 개인전·팀전 레이팅은 따로 계산됩니다.</li>
           <li>종족 필터를 걸면 <b>그 종족으로 낸 경기</b>만의 레이팅으로 순위를 매깁니다.</li>
         </ul>,

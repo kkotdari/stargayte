@@ -1517,24 +1517,9 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    카드 배지가 주황으로 바뀌면서 맞춤(요청: "잠정 배지 폰트색 주황으로 변경", "툴팁의
    잠정도 색깔 오렌지로 맞춰서"). */
 .scr-rank-method-tip-provisional { color: #e69a4a !important; }
-/* 잠정 뱃지 — 표본이 적어 아직 덜 여문 레이팅. 점수 우상단에 절대위치로 겹쳐 붙어서
-   (요청: "필터의 라벨처럼 영역을 차지하지 않고 붙어있는 추가 요소로") 자기 칸을 따로
-   차지하지 않는다 — 레이아웃 흐름 밖이라 잠정 유무와 무관하게 다른 요소 위치가 안
-   흔들린다. */
-.scr-rank-provisional {
-  /* 배경 제거, 점수 왼쪽에 자연스럽게 세로 가운데 정렬, 여전히 자기 칸은 차지하지
-     않는다(요청: "잠정 배지를 점수 왼쪽에 자연스럽게 배치 세로 가운데 정렬 맞추고
-     지금처럼 영역은 차지 X") — right:100%로 점수 왼쪽 바깥에서 시작해 겹치지 않고,
-     top:50%+translateY(-50%)로 세로 중앙에 맞춘다. 간격은 점수에 더 가깝게(요청:
-     "잠정 배지 너무 왼쪽이야 점수에 가깝게 이동"). */
-  /* 잠정 표시 — 순위 숫자 바로 오른쪽에 인라인으로 붙는 동그라미 ! 아이콘(요청). 좌측
-     정렬이라 절대위치 없이 흐름 안에 둔다. 더 연하게(opacity 0.35). */
-  display: inline-flex; margin-left: 2px; color: #111; line-height: 1; opacity: 0.35;
-}
-/* 순위 숫자 + 잠정 아이콘을 한 줄로 두되 세로는 위쪽 정렬(요청). */
-.scr-rank-num-wrap { display: inline-flex; align-items: flex-start; }
-html:not(.scr-light-theme) .scr-rank-provisional { color: #f2f4f8; }
-.scr-rank-provisional svg { display: block; }
+/* 잠정(표본이 적어 아직 덜 여문 레이팅)은 별도 마크 없이 점수 텍스트 자체를 살짝
+   흐리게 표시한다(요청) — 순위/정렬은 그대로. */
+.scr-rank-stat-primary.scr-rank-stat-provisional { opacity: 0.45; }
 /* 기간 단위(월/년) 토글은 필터창의 공용 PillTabs를 그대로 쓴다(요청: "필터의 기간모듈로
    통합") — 전용 스타일은 더 이상 필요 없다. 좁은 화면에선 단위 토글이 자리를 차지하므로
    힌트는 접어 공간을 양보한다. */
@@ -2217,13 +2202,13 @@ html:not(.scr-light-theme) .scr-rank-provisional { color: #f2f4f8; }
 /* 금/동은 더 밝고 아름답게(요청) — 어두운 양 끝을 탁한 갈색에서 밝은 앤티크 골드/코퍼로
    올리고 중간·정점 하이라이트를 더 화사하게. 은은 그대로. */
 .scr-rank-avatar-btn.scr-rank-avatar-gold::before {
-  background: linear-gradient(115deg, #c08d1c 0%, #f6d566 28%, #fffbe8 45%, #fffbe8 55%, #f6d566 72%, #c08d1c 100%);
+  background: linear-gradient(115deg, #9c720f 0%, #e6bf48 28%, #fff8dd 45%, #fff8dd 55%, #e6bf48 72%, #9c720f 100%);
 }
 .scr-rank-avatar-btn.scr-rank-avatar-silver::before {
   background: linear-gradient(115deg, #6a6f78 0%, #c2c9d2 30%, #ffffff 44%, #ffffff 56%, #c2c9d2 70%, #6a6f78 100%);
 }
 .scr-rank-avatar-btn.scr-rank-avatar-bronze::before {
-  background: linear-gradient(115deg, #b06a34 0%, #eab079 28%, #fdf1e0 45%, #fdf1e0 55%, #eab079 72%, #b06a34 100%);
+  background: linear-gradient(115deg, #8c5530 0%, #d29c66 28%, #f9e9d0 45%, #f9e9d0 55%, #d29c66 72%, #8c5530 100%);
 }
 /* "경기수N위" 배지 — 알약 없이 글자만, 글자에 메탈 그라데이션(요청). 폰트 10px.
    다크 테마: 흰색 메탈 — 순백은 광택이 안 사니 살짝 회색(실버) 톤으로(요청). */

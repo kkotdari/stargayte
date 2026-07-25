@@ -1,6 +1,6 @@
 import { useState, type MouseEvent } from "react";
 import { createPortal } from "react-dom";
-import { Send, CircleAlert } from "lucide-react";
+import { Send } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
 import PhotoViewer from "../../components/common/PhotoViewer";
 import RankDeltaBadge from "./RankDeltaBadge";
@@ -81,17 +81,8 @@ export default function RankRowV2({ row, tiedWithPrev = false, highlighted = fal
                 같은 규칙 — 숫자만 덩그러니 놓이면 무슨 수인지 안 읽힌다. 순위 변동은 그와
                 별개로 사람마다 다를 수 있어 공동순위여도 매 행 각자 보여준다(요청: "랭킹에서
                 공동순위라도 순위변동은 각각 표시돼야함"). */}
-            {/* 좌측 정렬이라 복잡한 relative/absolute 없이, 순위 숫자 바로 오른쪽에 인라인으로
-                잠정 표시(!)를 둔다(요청) — 세로는 위쪽 정렬(align-items:flex-start). */}
-            <span className="scr-rank-num-wrap">
-              <span className="scr-rank-num">
-                {!tiedWithPrev && rank}
-              </span>
-              {provisional && !tiedWithPrev && (
-                <span className="scr-rank-provisional" title="경기 수가 적어 아직 확정되지 않은 잠정 점수예요" aria-label="잠정 점수">
-                  <CircleAlert size={10} />
-                </span>
-              )}
+            <span className="scr-rank-num">
+              {!tiedWithPrev && rank}
             </span>
             <RankDeltaBadge delta={rankDelta} />
           </div>
@@ -99,11 +90,14 @@ export default function RankRowV2({ row, tiedWithPrev = false, highlighted = fal
               카드와 같은 톤으로 — 사람단위 점수를 큼직하게. 이 점수가 순위(승자승 다음)를
               가르는 기준이라 숫자로 도드라지게 한다. */}
           <div className="scr-rank-record-wrap scr-rank-record-wrap-scoreonly">
-            {/* 잠정 표시는 이제 순위 숫자 옆으로 옮겼다(위 .scr-rank-num-wrap) — 점수는 순수
-                숫자만이라 오른쪽 정렬이 항상 일정하다. */}
+            {/* 잠정(경기 수가 적어 아직 덜 여문 레이팅)은 별도 마크 없이 점수 텍스트 자체를
+                살짝 흐리게(scr-rank-stat-provisional) 표시한다(요청). */}
             <span className="scr-rank-score-inline">
               {/* 카드엔 레이팅(보수추정 μ−3σ)만(세부는 상세에서). 음수면 자연히 - 가 붙는다. */}
-              <span className="scr-rank-stat-primary">
+              <span
+                className={cx("scr-rank-stat-primary", provisional && "scr-rank-stat-provisional")}
+                title={provisional ? "경기 수가 적어 아직 확정되지 않은 잠정 점수예요" : undefined}
+              >
                 {rankScore}<span className="scr-num-unit">점</span>
               </span>
             </span>
