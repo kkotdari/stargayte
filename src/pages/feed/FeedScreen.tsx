@@ -254,24 +254,44 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
   // 첫 게임이 맨 아래(앞 카드), 나중 게임일수록 위로 쌓인다 — 펼치면 위로 착착 나온다.
   const restDesc = useMemo(() => ordered.slice(1).reverse(), [ordered]);
 
+  // 펼침 영역이 앞 카드 "위"에 있어, 그대로 두면 앞 카드가 아래로 밀려 마치 아래로
+  // 펼쳐지는 것처럼 보인다(지적). 트랜지션 동안 늘어난 높이만큼 스크롤을 따라 내려
+  // 앞 카드를 화면에 고정한다 — 위로 자라나는 느낌이 된다(접을 때도 역으로 고정).
+  const restRef = useRef<HTMLDivElement>(null);
+  const toggleOpen = (next: boolean) => {
+    setOpen(next);
+    const el = restRef.current;
+    if (!el) return;
+    let last = el.getBoundingClientRect().height;
+    const start = performance.now();
+    const step = () => {
+      const h = el.getBoundingClientRect().height;
+      const d = h - last;
+      if (d !== 0) window.scrollBy(0, d);
+      last = h;
+      if (performance.now() - start < 450) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  };
+
   // 두 상태를 모두 마운트해 두고 CSS(grid-rows 0fr↔1fr, 높이/투명도)로 부드럽게 전환한다.
   return (
     <div className={cx("scr-feed-stack", open && "scr-feed-stack-opened")}>
       <button
         type="button" className="scr-feed-stack-peek"
-        onClick={() => setOpen(true)}
+        onClick={() => toggleOpen(true)}
         aria-hidden={open} tabIndex={open ? -1 : 0}
         aria-label={`게임결과 ${restDesc.length}건 더 펼치기`}
       >
         + {restDesc.length}건
       </button>
-      <div className="scr-feed-stack-rest" aria-hidden={!open}>
+      <div className="scr-feed-stack-rest" aria-hidden={!open} ref={restRef}>
         <div className="scr-feed-stack-rest-inner">
           <div className="scr-feed-stack-rest-list">
             {/* 줄이기 버튼 — 카드 밖, 맨 위(가장 나중 게임 카드 위). */}
             <button
               type="button" className="scr-feed-stack-collapse"
-              onClick={() => setOpen(false)} aria-label="줄이기"
+              onClick={() => toggleOpen(false)} aria-label="줄이기"
             >
               줄이기
             </button>
