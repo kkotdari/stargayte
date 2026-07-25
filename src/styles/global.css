@@ -7907,8 +7907,9 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   .scr-feed-stack-peek { margin-left: calc(-10px + 14px); margin-right: calc(-10px + 14px); }
 }
 .scr-feed-stack-open { position: relative; display: flex; flex-direction: column; gap: 20px; }
+/* 줄이기 — 카드 밖, 마지막 카드 바로 위 가운데 알약(흐름 배치). */
 .scr-feed-stack-collapse {
-  position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); z-index: 3;
+  align-self: center; margin: -6px 0;
   border: none; border-radius: 999px; padding: 6px 16px; cursor: pointer;
   font-family: inherit; font-size: var(--fs-micro); font-weight: 700; color: var(--text);
   background: rgba(var(--overlay-rgb), 0.35);

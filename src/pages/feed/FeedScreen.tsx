@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { createPortal } from "react-dom";
 import { CalendarPlus, MoreHorizontal, Plus, Send, Swords, Trophy, Upload, X } from "lucide-react";
 import { Spinner } from "../../components/common/Feedback";
@@ -260,15 +260,20 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel }: {
   }
   return (
     <div className="scr-feed-stack-open">
-      {ordered.map((it) => (
-        <MatchCard key={it.match.id} item={it} memberOf={memberOf} onDeleted={onDeleted} dateLabel={dateLabel} />
+      {ordered.map((it, i) => (
+        <Fragment key={it.match.id}>
+          {/* 줄이기 버튼은 카드 밖, 마지막 카드 바로 위에(요청). */}
+          {i === ordered.length - 1 && (
+            <button
+              type="button" className="scr-feed-stack-collapse"
+              onClick={() => setOpen(false)} aria-label="줄이기"
+            >
+              줄이기
+            </button>
+          )}
+          <MatchCard item={it} memberOf={memberOf} onDeleted={onDeleted} dateLabel={dateLabel} />
+        </Fragment>
       ))}
-      <button
-        type="button" className="scr-feed-stack-collapse"
-        onClick={() => setOpen(false)} aria-label="줄이기"
-      >
-        줄이기
-      </button>
     </div>
   );
 }
