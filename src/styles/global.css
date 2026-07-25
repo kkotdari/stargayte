@@ -4405,6 +4405,12 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
   background-image: url("/images/bg/control_panel_bg.jpg");
   background-size: cover; background-position: center; background-repeat: no-repeat;
+  /* 이 ::before는 기본 .scr-modal::before의 backdrop-filter(blur 14px)를 안 덮어 그대로
+     물려받는데, iOS 사파리는 자식(::before)에 backdrop-filter가 있으면 부모의 border-image
+     (구리 쇠테두리)를 아예 안 그린다(모달 요소에서 이미 끈 것과 같은 버그 — 지적: "제어판
+     구리 테두리가 라이트·다크 모두 투명하게 보임"). 배경이 불투명 금속판 이미지라 블러는
+     어차피 안 보이니 꺼서 테두리가 확실히 나오게 한다. */
+  backdrop-filter: none; -webkit-backdrop-filter: none;
   /* 금속판(배경)과 쇠테두리 사이 위·왼쪽에 안쪽 그림자를 드리워, 테두리가 판보다 도드라지고
      판은 그 안으로 살짝 파여 들어간 것처럼 보이게 한다(요청: 위 왼쪽 음영으로 입체감). 이
      그림자는 배경 이미지 레이어(::before, z-index:0) 위에 얹히고 실제 내용(z-index:1)보다는
@@ -4500,11 +4506,6 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   letter-spacing: 6px; padding: 16px 8px; min-height: 84px;
   width: 280px; max-width: 85%;
   -webkit-text-security: disc;
-  /* 제어판은 테마와 무관하게 항상 어두운 금속 판이다 — 라이트 테마 기본값(--input-bg:#fff,
-     --line:#000)을 쓰면 밝은 흰 상자가 튀고 얇은 테두리가 금속 위에서 묻혀 "테두리가
-     투명하게" 보였다(지적). 두 테마 모두 어두운 인셋 슬롯 + 밝은 금속빛 테두리로 고정한다. */
-  background: rgba(6, 6, 7, 0.86); color: #f2f4f8;
-  border-color: rgba(220, 224, 230, 0.45);
 }
 /* 퀴즈의 "입력" 버튼 — 평범한 흰색 둥근네모(기본 .scr-btn-primary 톤 그대로), 크게 키워
    카드 아래쪽 가운데에 둔다(닫기는 헤더의 공통 X 버튼이 담당하므로 따로 안 둔다). */
