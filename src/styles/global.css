@@ -2188,16 +2188,9 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   top: 50%; left: 50%; transform: translate(-50%, -50%);
   /* 판 46px(요청: PC 지름 2px 증가 — 44→46). 프사 38px 유지라 링 두께 (46-38)/2 = 4px. */
   width: 46px; height: 46px; border-radius: 50%;
-  /* 림 추가(요청): 링 바깥/안쪽에 얇은 어두운 테두리를 둘러 금속 링의 가장자리를 또렷하게.
-     바깥은 배경과, 안쪽은 아바타와 경계를 지어 링으로 명확히 읽히게 한다. */
-  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.38), inset 0 0 0 0.5px rgba(0, 0, 0, 0.32);
-}
-/* 라이트 테마는 밝은 배경 위라 링 가장 바깥의 어두운 rim(0.38)이 너무 도드라진다(지적) —
-   가장 바깥 경계만 은은하게 낮춘다(안쪽 rim은 아바타와의 경계라 그대로 둔다). */
-html.scr-light-theme .scr-rank-avatar-btn.scr-rank-avatar-gold::before,
-html.scr-light-theme .scr-rank-avatar-btn.scr-rank-avatar-silver::before,
-html.scr-light-theme .scr-rank-avatar-btn.scr-rank-avatar-bronze::before {
-  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.1), inset 0 0 0 0.5px rgba(0, 0, 0, 0.3);
+  /* 안쪽 rim만 남긴다(요청: 바깥 다크림은 테마 무관 제거) — 아바타와의 경계는 유지하되
+     배경과 맞닿는 가장 바깥 어두운 테두리는 없앤다. */
+  box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.32);
 }
 /* 금/은/동 — 금속 본체는 다시 살짝 어둡게, 하이라이트(중앙 밝은 띠)는 더 밝고 넓게 해서
    대비를 강하게(요청). 밝은 정점을 44~56% 플래토로 넓히고 양 끝은 더 어둡게. */
