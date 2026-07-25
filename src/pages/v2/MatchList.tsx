@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
-import { MoreHorizontal, Monitor, CircleHelp, Copy, Check } from "lucide-react";
+import { MoreHorizontal, Monitor, User, Copy, Check } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
 import RaceBadge from "../../components/common/RaceBadge";
 import { Spinner } from "../../components/common/Feedback";
@@ -87,17 +87,17 @@ function PlayerCell({
   // 하도록 버튼/클릭 핸들러를 없애고 클릭이 로우로 그대로 올라가게 둔다.
   return (
     <span className={cx("scr-mt-player", hl && "scr-mt-player-hl")}>
+      {/* 아바타 제거(요청) — 컴퓨터/비회원만 작은 아이콘으로 구분을 남긴다. 아이콘은
+          팀과 무관하게 항상 닉네임 왼쪽(요청), 비회원은 사람 아이콘. */}
+      {isComputer
+        ? <Monitor size={12} className="scr-chip-computer-icon" />
+        : isUnreg
+          ? <User size={12} className="scr-chip-computer-icon" />
+          : null}
       <span className="scr-team-name-wrap">
         <span className="scr-mt-name">{name}</span>
         <RaceBadge race={slot.race} size={13} circleLetter className="scr-team-name-race" />
       </span>
-      {/* 아바타 제거(요청) — 컴퓨터/비회원만 작은 아이콘으로 구분을 남긴다. 닉네임
-          왼쪽이 아니라 오른쪽에(요청). */}
-      {isComputer
-        ? <Monitor size={12} className="scr-chip-computer-icon" />
-        : isUnreg
-          ? <CircleHelp size={12} className="scr-chip-computer-icon" />
-          : null}
     </span>
   );
 }
@@ -118,19 +118,24 @@ function MatchupSide({
         const m = memberOf(s.memberId);
         const nameLc = normalizeSearchText(name);
         const hl = highlightMemberIds?.has(s.memberId) || !!highlightTerms?.some((t) => nameLc.includes(t));
+        const isComputer = isComputerSlot(s.memberId);
+        const isUnreg = isUnregisteredSlot(s.memberId);
         return (
           <div key={`${s.memberId}-${i}`} className="scr-challenge-side-block">
             <div className="scr-challenge-side-row">
               <span className={cx("scr-challenge-person", hl && "scr-challenge-person-hit")}>
-                <Avatar member={{ id: s.memberId, nickname: name, avatar: m?.avatar ?? null }} size={20} />
+                {/* 컴퓨터/비회원은 프사 자리에 아이콘 — 팀과 무관하게 항상 닉네임 왼쪽
+                    (요청). 비회원은 사람 아이콘. */}
+                {isComputer || isUnreg ? (
+                  <span className="scr-matchup-slot-icon" aria-hidden>
+                    {isComputer ? <Monitor size={14} /> : <User size={14} />}
+                  </span>
+                ) : (
+                  <Avatar member={{ id: s.memberId, nickname: name, avatar: m?.avatar ?? null }} size={20} />
+                )}
                 <span className="scr-challenge-person-name">{name}</span>
                 <RaceBadge race={s.race} size={13} circleLetter className="scr-team-name-race" />
               </span>
-              {isComputerSlot(s.memberId)
-                ? <Monitor size={12} className="scr-chip-computer-icon" />
-                : isUnregisteredSlot(s.memberId)
-                  ? <CircleHelp size={12} className="scr-chip-computer-icon" />
-                  : null}
             </div>
           </div>
         );

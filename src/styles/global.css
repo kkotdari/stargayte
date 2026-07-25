@@ -3482,13 +3482,10 @@ html.scr-page-bg.scr-light-theme .scr-rank-screen-v2::before { display: none; }
    맞물려 사실상 안 보였다(실제로 지적받은 문제 — "종족배지가 안보이고 하이라이트가
    종족까지 감싸지도 않음"). 오른쪽 여백을 배지가 튀어나온 만큼(8px) 더 넓혀 배지까지
    실제로 하이라이트 배경 안에 들어오게 한다. */
-.scr-mt-player-hl { background: var(--highlight-bg); border-radius: 4px; padding: 2px 12px 2px 4px; margin: -2px -12px -2px -4px; }
-/* 팀2(.scr-match-trow-team:last-child)는 배지가 반대로 왼쪽으로 튀어나온다(요청 위
-   .scr-team-name-race 규칙 참고: 팀2만 left:-8px로 뒤집힘) — 하이라이트도 그쪽 기준
-   왼쪽을 넓혀야 한다(실제로 지적받은 문제 — "팀 2에 있으면 왼쪽으로 넓혀야지"). */
-.scr-match-trow-team:last-child .scr-mt-player-hl {
-  padding: 2px 4px 2px 12px; margin: -2px -4px -2px -12px;
-}
+/* 종족 배지는 이제 팀 구분 없이 항상 닉네임 오른쪽이라, 하이라이트도 양 팀 모두 오른쪽을
+   넓힌다(요청: "팀 2가 종족배지 위치 바뀐걸 적용 못한듯" — 팀2 왼쪽 확장 규칙 삭제).
+   모서리는 각지게(요청: 래디우스 제거). */
+.scr-mt-player-hl { background: var(--highlight-bg); border-radius: 0; padding: 2px 12px 2px 9px; margin: -2px -12px -2px -9px; }
 .scr-mt-player-hl .scr-mt-name { font-weight: 800; color: var(--bar-text); }
 /* 종족 배지는 원래 종족 고유색(테란/프로토스/저그)을 그대로 유지한다 — 강제로 어두운
    단색(--bar-text)으로 바꾸면 종족 구분이 사라져 보였다(실제로 지적받은 문제 — "종족배지가
@@ -6363,27 +6360,25 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
   flex-shrink: 0; display: flex; align-items: center; gap: 4px;
   margin-left: 12px; margin-right: 12px;
 }
+/* 손 이모지/vs 모두 별도 보정 없이 줄(24px) 정중앙에 둔다(요청: "손 이모지랑 vs 위치가
+   왜 다르지 정중앙 맞춰서 배치" — 이전의 이모지 -3px 보정이 vs 텍스트와 어긋나 보이던 원인). */
 .scr-challenge-arrow {
   flex-shrink: 0; font-size: var(--fs-subhead); height: 24px; display: flex; align-items: center;
-  /* 이모지 글리프는 자기 폰트 박스 안에서 아래쪽에 잉크가 몰려 있어서, 세로 가운데 정렬만으로는
-     닉네임 줄보다 살짝 내려가 보인다(요청: "손이모지 위치가 닉네임 라인과 일치해야하는데
-     살짝 내려가 보임") — 그만큼 위로 보정한다. */
-  transform: translateY(-3px);
 }
 /* 승리 배지 — 매치업 위가 아니라 손 이모지 옆, 이긴 편이 있는 방향에 붙인다(요청: "승리
    배지는 손 이모지 옆에 표시(이긴쪽에)"). 응답 상태 알약(.scr-challenge-pill)만 알약
    모양을 유지하고, 이 배지는 둥근네모로(요청: "배지는 알약모양이 아닌 둥근네모 형태면
    좋겠어 — 응답 상태만 알약 모양 배지 유지"). */
-/* 승/무 배지는 응답상태 텍스트보다 더 또렷하게 — 색톤을 높이고(더 비비드한 핑크) 옅은
-   배경까지 깔아 "승"이 한눈에 들어오게 한다(요청: "승 배지 컬러톤 높여서 승이 더 잘 보이게"). */
+/* 승/무 배지 — 승리 테마색(--win, 초록)으로 통일한다(요청: "승리 배지 색 승리테마색
+   (초록)으로 변경"). */
 .scr-challenge-inline-win {
   flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;
   width: 20px; height: 20px; border-radius: 50%; box-sizing: border-box;
   /* 아래쪽 패딩으로 원 안 글자를 살짝 위로 올린다(요청: "글자를 원 안에서 살짝 위로") —
      한글 글리프가 flex 가운데정렬에선 살짝 아래로 앉아 보인다. */
   padding-bottom: 2px; line-height: 1;
-  font-size: var(--fs-caption); font-weight: 900; color: #ff4d97; white-space: nowrap;
-  border: 1px solid rgba(255, 77, 151, 0.75); background: transparent;
+  font-size: var(--fs-caption); font-weight: 900; color: var(--win); white-space: nowrap;
+  border: 1px solid var(--win); background: transparent;
 }
 /* 해당 안 되는 쪽(진 편/결과 없음)에도 같은 자리를 투명하게 남긴다 — 안 그러면 페이지를
    넘길 때 배지 유무에 따라 손 이모지가 좌우로 흔들린다(요청: "손이모지 양옆에도
@@ -6456,9 +6451,10 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
 .scr-challenge-avatar-badge-discarded { color: #9a97a3; }
 .scr-challenge-avatar-badge-pending { color: #cdaa54; }
 .scr-challenge-person { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+/* 좌우로 여유 있게, 모서리는 각지게(요청: "하이라이트 범위 좌우 좀 여유있게, 래디우스 제거"). */
 .scr-challenge-person-hit {
-  background: var(--highlight-bg); border-radius: 4px;
-  padding: 2px 4px; margin: -2px -4px;
+  background: var(--highlight-bg); border-radius: 0;
+  padding: 2px 9px; margin: -2px -9px;
 }
 .scr-challenge-person-hit .scr-challenge-person-name { color: var(--bar-text); font-weight: 800; }
 /* flex:1 1 auto로 남는 공간을 다 먹게 뒀더니, 응답 알약이 그 뒤로 밀려 줄 맨 끝에
@@ -7905,12 +7901,15 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 @media (prefers-reduced-motion: reduce) {
   .scr-feed-stack-peek, .scr-feed-stack-rest { transition: none; }
 }
-/* 겹친 뒷카드 윗단 — 앞 카드가 그날 첫 게임이므로 나중 게임들이 "위"로 삐져나온 모양(요청). */
+/* 겹친 뒷카드 윗단 — 앞 카드가 그날 첫 게임이므로 나중 게임들이 "위"로 삐져나온 모양(요청).
+   블러도 카드와 동일하게(요청: "스택된 상태의 뒷 카드에도 블러 똑같이"). */
 .scr-feed-stack-peek {
   display: block; margin: 0 4px -6px; margin-left: 14px; margin-right: 14px;
   padding: 8px 0 12px; border: none; border-radius: 14px 14px 0 0; cursor: pointer;
   font-family: inherit; font-size: var(--fs-micro); font-weight: 700; color: var(--dim);
   background: rgba(var(--overlay-rgb), 0.05);
+  backdrop-filter: blur(9px) saturate(1.2);
+  -webkit-backdrop-filter: blur(9px) saturate(1.2);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.06),
     inset 1px 0 0 rgba(255, 255, 255, 0.04),
@@ -7920,6 +7919,8 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 @media (hover: hover) { .scr-feed-stack-peek:hover { color: var(--text); background: rgba(var(--overlay-rgb), 0.08); } }
 .scr-light-theme .scr-feed-stack-peek {
   background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(10px) saturate(1.1);
+  -webkit-backdrop-filter: blur(10px) saturate(1.1);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 -2px 8px rgba(0, 0, 0, 0.08);
 }
 /* 줄이기 — 카드 밖, 맨 위 가운데 알약(흐름 배치). 음수 마진을 쓰면 클립(overflow:hidden)
@@ -7968,9 +7969,15 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    로스터에선 닉네임 바로 오른쪽 인라인으로 흐르게 한다(기준 래퍼가 없는 자리라
    절대배치를 그대로 두면 카드 밖으로 튄다). */
 .scr-feed-match-matchup .scr-team-name-race { position: static; margin-left: 1px; }
+/* 컴퓨터/비회원 슬롯 — 프사 자리를 그대로 차지하는 20px 아이콘 박스(닉네임 왼쪽, 팀 무관). */
+.scr-matchup-slot-icon {
+  flex-shrink: 0; width: 20px; height: 20px;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--dim);
+}
 .scr-challenge-arrow-vs {
   font-size: var(--fs-caption); font-weight: 800; font-style: italic; color: var(--muted);
-  letter-spacing: 0.02em; transform: none;
+  letter-spacing: 0.02em;
 }
 /* 결과 없는 미실시 — 배지 대신 매치업 아래 작은 정적 텍스트로만. */
 .scr-feed-match-notheld {
