@@ -80,7 +80,7 @@ export default function RankingScreenV2() {
   usePageBackground(
     "/images/bg/ranking_bg.jpg",
     "/images/bg/ranking_bg_mobile.png",
-    "/images/bg/ranking_bg_light.jpg",
+    "/images/bg/ranking_bg_light.png",
   );
   const members = useAppStore((s) => s.members);
   const user = useAppStore((s) => s.user);
