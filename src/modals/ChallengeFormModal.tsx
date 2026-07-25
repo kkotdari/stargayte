@@ -199,7 +199,7 @@ export default function ChallengeFormModal({ onClose, onCreated, presetTargetIds
               memberById={memberById}
               addLabel=""
               addAriaLabel="선수 추가"
-              addTone="blue"
+              addTone="ghost"
             />
           )}
 
@@ -213,7 +213,7 @@ export default function ChallengeFormModal({ onClose, onCreated, presetTargetIds
             memberById={memberById}
             addLabel=""
             addAriaLabel="상대 추가"
-            addTone="red"
+            addTone="lit"
             locked={lockTarget}
           />
 

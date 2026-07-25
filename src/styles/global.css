@@ -561,7 +561,7 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
      필터시트의 불투명 흰 배경(--panel-solid) 위에서 거의 안 보였다(실제로 지적받은
      문제: "모바일 필터시트 체크박스 선택이 잘 안보이는 오류"). --muted는 두 테마 모두
      --dim보다 진해서(다크 0.88/라이트 0.68) 선택 안 된 상태도 배경과 확실히 구분된다. */
-  border-radius: 0; border: 1.5px solid var(--muted); background: transparent;
+  border-radius: 2px; border: 1.5px solid var(--muted); background: transparent;
   position: relative; flex-shrink: 0; cursor: pointer; outline: none;
   transition: background-color .12s, border-color .12s;
 }
@@ -2922,7 +2922,8 @@ html.scr-page-bg.scr-light-theme .scr-rank-screen-v2::before { display: none; }
 /* 메모 슬롯 — 메모 인풋 + "내 메모" 체크박스를 한 칸에 담고, 슬롯 전체 폭은 경기번호 칸과
    동일하게 유지한다(요청: 두 요소를 합쳐 기존 메모 필드 폭 유지). 안에서 인풋이 남는 폭을
    먹고(위 .scr-match-extra-field의 flex:1 1 0이 그대로 적용됨) 체크박스는 내용만큼만. */
-.scr-match-extra-search .scr-match-extra-memo { flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: 8px; }
+/* 체크박스↔메모 인풋 사이 갭을 넓혀, 필드가 바뀐다는 걸 눈에 띄게 구분한다(요청). */
+.scr-match-extra-search .scr-match-extra-memo { flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: 14px; }
 /* 체크박스 자체 모양/글로우는 공용 .scr-checkbox-field가 담당하고, 여기선 메모 슬롯 안에서의
    배치(내용 크기만큼만, 줄바꿈 금지)와 caption 폰트만 얹는다. */
 .scr-match-mynotes { flex: 0 0 auto; font-size: var(--fs-caption); white-space: nowrap; }
@@ -5687,11 +5688,21 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
   color: var(--point);
 }
 .scr-challenge-add-target-inline:hover { background: rgba(var(--overlay-rgb), 0.08); }
-/* 동료=파랑, 상대=빨강으로 유치하고 알록달록하게(요청) — 꽉 찬 색 알약 + 흰 아이콘. */
-.scr-challenge-add-target-inline.scr-challenge-add-target-blue { background: #2f7bff; color: #fff; }
-.scr-challenge-add-target-inline.scr-challenge-add-target-blue:hover { background: #4a8dff; }
-.scr-challenge-add-target-inline.scr-challenge-add-target-red { background: #ff2e93; color: #fff; }
-.scr-challenge-add-target-inline.scr-challenge-add-target-red:hover { background: #ff54a8; }
+/* 상대 = 라이팅 테마색(탭바·드롭다운·알약과 같은 액티브 효과: 다크 흰색/라이트 블루 채움+글로우),
+   동료 = 기본 고스트(투명 배경 + 은은한 외곽선)(요청). 두 알약 크기가 어긋나지 않게 보더 박스 통일. */
+.scr-challenge-add-target-inline.scr-challenge-add-target-lit {
+  background: var(--lit-pill-bg); color: var(--lit-pill-text);
+  border: 1.5px solid transparent; box-shadow: var(--lit-pill-glow);
+}
+.scr-challenge-add-target-inline.scr-challenge-add-target-lit:hover {
+  box-shadow: 0 0 12px rgba(var(--lit-rgb), 0.25), 0 0 28px rgba(var(--lit-rgb), 0.13);
+}
+.scr-challenge-add-target-inline.scr-challenge-add-target-ghost {
+  background: transparent; color: var(--point); border: 1.5px solid rgba(var(--overlay-rgb), 0.28);
+}
+.scr-challenge-add-target-inline.scr-challenge-add-target-ghost:hover {
+  background: var(--lit-hover-bg); box-shadow: var(--lit-hover-glow);
+}
 /* 필수 항목 표시 — 활성화 시 신청 버튼과 같은 핑크로 통일해 "필수→핑크" 흐름을 만든다. */
 .scr-req-mark { color: #f684bb; font-weight: 700; margin-left: -2px; }
 /* 신청 버튼 — 상대(필수) 미지정이면 무채색으로 "꺼짐"을, 지정하면 핑크(.scr-challenge-accept-btn)

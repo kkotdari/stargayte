@@ -13,7 +13,7 @@ export default function MemberPickBlock({
 }: {
   label: string;
   // 추가 버튼 색 — 동료="blue", 상대="red"(요청: 유치하게 알록달록).
-  addTone?: "blue" | "red";
+  addTone?: "blue" | "red" | "lit" | "ghost";
   // 라벨 옆에 옅게 붙는 보조 설명(요청: "우리팀 추가 옆에 팀전일 때만 추가 라고 명시").
   hint?: string;
   // 필수 항목이면 라벨 옆에 *를 붙인다(요청: "필수인곳(상대)에만 * 표시").
