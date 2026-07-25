@@ -177,7 +177,7 @@ interface ChallengeCardProps {
   onResponded: (updated: Challenge) => void;
 }
 
-function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onResponded }: ChallengeCardProps) {
+export function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onResponded }: ChallengeCardProps) {
   const memberOf = useAppStore((s) => s.memberOf);
   const user = useAppStore((s) => s.user);
   const [busy, setBusy] = useState(false);
