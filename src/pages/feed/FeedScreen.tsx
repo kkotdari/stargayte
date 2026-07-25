@@ -8,16 +8,15 @@ import FeedComments from "./FeedComments";
 import ScrollNavTimeline from "../../components/common/ScrollNavTimeline";
 import ReplayReviewModal from "../../modals/ReplayReviewModal";
 import ChallengeFormModal from "../../modals/ChallengeFormModal";
-import RankRow from "../v2/RankRow";
 import RankingScreen from "../v2/RankingScreen";
-import { computeRankRows, MATCH_TYPE_OF, type RankMode, type RankRow as RankRowData } from "../v2/rank";
+import { computeRankRows, MATCH_TYPE_OF, type RankMode } from "../v2/rank";
 import { currentPeriodAnchor } from "../../utils/date";
 import { useAppStore } from "../../store/appStore";
 import { api } from "../../api/client";
 import { useCursorPagination } from "../../hooks/useCursorPagination";
 import { buildReplayDrafts, type ReplayDraft } from "../../utils/replayDraft";
 import { hasAppUpdatePreloadErrorOccurred } from "../../utils/appUpdate";
-import type { Challenge, Match, Member } from "../../types";
+import type { Challenge, Match, Member, RankShift, RankShiftEntry } from "../../types";
 
 const PAGE_SIZE = 100;
 const MAX_REPLAY_FILES = 20;
@@ -48,22 +47,30 @@ interface MatchItem {
   match: Match;
 }
 
-interface RankingFeedItem {
-  kind: "ranking";
+interface RankShiftFeedItem {
+  kind: "rankshift";
   time: number;
   withClock: boolean;
-  mode: RankMode;
-  rows: RankRowData[]; // TOP 1~5
+  shift: RankShift;
 }
 
-type FeedItem = ChallengeItem | MatchItem | RankingFeedItem;
+type FeedItem = ChallengeItem | MatchItem | RankShiftFeedItem;
 
-// 랭킹 공개 시각 — 매일 오전 8시. 아직 8시 전이면 어제 8시 발행분이 최신이다.
-function lastRankingPublishTime(): number {
-  const pub = new Date();
-  pub.setHours(8, 0, 0, 0);
-  if (Date.now() < pub.getTime()) pub.setDate(pub.getDate() - 1);
-  return pub.getTime();
+function rankShiftItem(shift: RankShift): RankShiftFeedItem {
+  return {
+    kind: "rankshift",
+    time: new Date(shift.createdAt).getTime(),
+    withClock: true,
+    shift,
+  };
+}
+
+// 변동 표기 — 신규 진입 / 상승(▲n) / 하락(▼n).
+function shiftLabel(e: RankShiftEntry): { text: string; cls: string } {
+  if (e.from == null) return { text: "신규", cls: "scr-feed-shift-new" };
+  const d = e.from - e.to;
+  if (d > 0) return { text: `▲${d}`, cls: "scr-feed-shift-up" };
+  return { text: `▼${-d}`, cls: "scr-feed-shift-down" };
 }
 
 function challengeItem(c: Challenge): ChallengeItem {
@@ -193,31 +200,60 @@ export default function FeedScreen() {
 
   const loading = challengesLoading || matchesLoading;
 
-  // 데일리 랭킹(개인전/팀전 TOP5) — 실제 배치 없이, 조회 시점 기준 "가장 최근 오전 8시"
-  // 발행분으로 타임라인에 아이템이 하나씩 생긴다. 데이터는 이번 달 랭킹.
-  const [rankingItems, setRankingItems] = useState<RankingFeedItem[]>([]);
+  // 랭킹 변동 이벤트 — 등록 시점에 계산해 서버에 저장해 둔 것을 그대로 읽는다(매번 재계산 안 함).
+  const [rankShifts, setRankShifts] = useState<RankShift[]>([]);
   useEffect(() => {
-    if (members.length === 0) return;
     let cancelled = false;
-    const publishedAt = lastRankingPublishTime();
-    const anchor = currentPeriodAnchor("month");
-    Promise.all((["solo", "team"] as RankMode[]).map(async (mode) => {
-      const rows = await computeRankRows(members, MATCH_TYPE_OF[mode], "all", "month", anchor);
-      return {
-        kind: "ranking" as const,
-        time: publishedAt,
-        withClock: true,
-        mode,
-        rows: rows.filter((r) => r.rank <= 5),
-      };
-    }))
-      .then((items) => { if (!cancelled) setRankingItems(items.filter((i) => i.rows.length > 0)); })
+    api.listRankShifts()
+      .then((items) => { if (!cancelled) setRankShifts(items); })
       .catch(() => {});
     return () => { cancelled = true; };
+  }, []);
+
+  // 경기 결과 등록 전 랭킹 스냅샷 — 저장 후 재계산과 비교해 변동분만 뽑는다.
+  const preRanksRef = useRef<Partial<Record<RankMode, Map<string, { rank: number; nickname: string }>>> | null>(null);
+
+  const computeRankMap = useCallback(async (mode: RankMode) => {
+    const rows = await computeRankRows(members, MATCH_TYPE_OF[mode], "all", "month", currentPeriodAnchor("month"));
+    return new Map(rows.map((r) => [r.member.id, { rank: r.rank, nickname: r.member.nickname }]));
   }, [members]);
 
-  // 실시간 랭킹 모달 — 기존 랭킹 화면을 그대로 띄운다.
+  const snapshotRanks = useCallback(async () => {
+    const out: NonNullable<typeof preRanksRef.current> = {};
+    for (const mode of ["solo", "team"] as RankMode[]) {
+      try { out[mode] = await computeRankMap(mode); } catch { /* 실패 시 그 유형 변동 카드 생략 */ }
+    }
+    preRanksRef.current = out;
+  }, [computeRankMap]);
+
+  // 실시간 랭킹(차트) 모달 — 기존 랭킹 화면을 그대로 띄운다.
   const [liveRankingOpen, setLiveRankingOpen] = useState(false);
+
+  // 저장 완료 — 경기 목록 갱신 + 등록 전/후 랭킹을 비교해 변동분을 서버에 저장하고 피드에 올린다.
+  const handleReplaysSaved = useCallback(async () => {
+    reload();
+    const pre = preRanksRef.current;
+    preRanksRef.current = null;
+    if (!pre) return;
+    for (const mode of ["solo", "team"] as RankMode[]) {
+      const before = pre[mode];
+      if (!before) continue;
+      try {
+        const after = await computeRankMap(mode);
+        const entries = [...after.entries()]
+          .filter(([id, cur]) => (before.get(id)?.rank ?? null) !== cur.rank)
+          .map(([id, cur]) => ({
+            memberId: id, nickname: cur.nickname,
+            from: before.get(id)?.rank ?? null, to: cur.rank,
+          }))
+          .sort((a, b) => a.to - b.to);
+        if (entries.length === 0) continue;
+        const saved = await api.createRankShift(MATCH_TYPE_OF[mode], entries);
+        setRankShifts((prev) => [saved, ...prev]);
+      } catch { /* 변동 저장 실패는 피드 갱신을 막지 않는다 */ }
+    }
+  }, [reload, computeRankMap]);
+
 
   const handleReplayFilesChosen = async (e: ChangeEvent<HTMLInputElement>) => {
     const chosen = Array.from(e.target.files ?? []);
@@ -230,6 +266,7 @@ export default function FeedScreen() {
     try {
       const [drafts] = await Promise.all([
         buildReplayDrafts(batch, members),
+        snapshotRanks(),
         new Promise((resolve) => setTimeout(resolve, 500)),
       ]);
       if (hasAppUpdatePreloadErrorOccurred()) return;
@@ -244,10 +281,10 @@ export default function FeedScreen() {
     const items: FeedItem[] = [
       ...challenges.map(challengeItem),
       ...matches.map(matchItem),
-      ...rankingItems,
+      ...rankShifts.map(rankShiftItem),
     ];
     return items.sort((a, b) => b.time - a.time);
-  }, [challenges, matches, rankingItems]);
+  }, [challenges, matches, rankShifts]);
 
   const dateLabelOf = (item: FeedItem) => {
     const d = new Date(item.time);
@@ -279,7 +316,7 @@ export default function FeedScreen() {
                 type="button" role="menuitem"
                 onClick={() => { setAddMenuOpen(false); replayInputRef.current?.click(); }}
               >
-                <Upload size={14} aria-hidden /> 리플레이 등록
+                <Upload size={14} aria-hidden /> 경기 결과 등록
               </button>
               <button
                 type="button" role="menuitem"
@@ -308,27 +345,31 @@ export default function FeedScreen() {
       ) : (
         <div className="scr-feed-list">
           {feed.map((item) => (
-            item.kind === "ranking" ? (
-              <div className="scr-feed-card" key={`r-${item.mode}-${item.time}`}>
+            item.kind === "rankshift" ? (
+              <div className="scr-feed-card" key={`rs-${item.shift.id}`}>
                 <div className="scr-feed-card-head" data-date-label={dateLabelOf(item)}>
                   <Trophy size={13} aria-hidden />
                   <span className="scr-feed-card-time">{formatEventTime(item.time, item.withClock)}</span>
-                  <span className="scr-feed-card-label">오늘의 랭킹 · {item.mode === "solo" ? "개인전" : "팀전"}</span>
+                  <span className="scr-feed-card-label">
+                    랭크 변동 발생 · {item.shift.matchType === "0101" ? "개인전" : "팀전"}
+                  </span>
                 </div>
-                <div className="scr-feed-rank-panel scr-rank-table-panel-v2">
-                  <div className="scr-rank-table">
-                    {item.rows.map((row, i) => (
-                      <RankRow
-                        key={row.member.id}
-                        row={row}
-                        tiedWithPrev={i > 0 && row.rank === item.rows[i - 1].rank}
-                      />
-                    ))}
-                  </div>
-                </div>
+                <ul className="scr-feed-shift-list">
+                  {item.shift.entries.map((e) => {
+                    const label = shiftLabel(e);
+                    return (
+                      <li key={`${e.memberId}-${e.to}`} className="scr-feed-shift-row">
+                        <span className="scr-feed-shift-rank">{e.to}위</span>
+                        <span className="scr-feed-shift-name">{e.nickname}</span>
+                        <span className={label.cls}>{label.text}</span>
+                        {e.from != null && <span className="scr-feed-shift-from">({e.from}위 → {e.to}위)</span>}
+                      </li>
+                    );
+                  })}
+                </ul>
                 <div className="scr-feed-rank-actions">
                   <button type="button" className="scr-btn scr-btn-sm" onClick={() => setLiveRankingOpen(true)}>
-                    실시간 랭킹 보기
+                    차트 보기
                   </button>
                 </div>
               </div>
@@ -371,7 +412,7 @@ export default function FeedScreen() {
           drafts={replayDrafts}
           truncated={replayTruncated}
           onClose={() => setReplayDrafts(null)}
-          onSaved={reload}
+          onSaved={handleReplaysSaved}
         />
       )}
 

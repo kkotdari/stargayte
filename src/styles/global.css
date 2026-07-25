@@ -7948,9 +7948,15 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   border: 1px solid var(--line-soft); border-radius: 999px; padding: 0 6px;
 }
 
-/* 피드 데일리 랭킹 카드 — 기존 랭킹 행(RankRow)을 그대로 앉히되 카드 폭에 맞춰 여백만 압축. */
-.scr-feed-rank-panel { padding: 4px 8px 0; }
-.scr-feed-rank-panel .scr-rank-row { padding: 8px 0; }
+/* 랭크 변동 발생 카드 — 변동 후 순위 오름차순 목록(상승 ▲/하락 ▼/신규). */
+.scr-feed-shift-list { list-style: none; margin: 0; padding: 8px 16px 4px; display: flex; flex-direction: column; gap: 6px; }
+.scr-feed-shift-row { display: flex; align-items: baseline; gap: 8px; font-size: var(--fs-caption); }
+.scr-feed-shift-rank { font-weight: 800; font-variant-numeric: tabular-nums; min-width: 34px; text-align: right; }
+.scr-feed-shift-name { font-weight: 600; }
+.scr-feed-shift-up { color: #7fd18b; font-weight: 700; }
+.scr-feed-shift-down { color: #e08a8a; font-weight: 700; }
+.scr-feed-shift-new { color: var(--point); font-weight: 700; }
+.scr-feed-shift-from { color: var(--dim); font-size: var(--fs-micro); }
 .scr-feed-rank-actions { display: flex; justify-content: center; padding: 6px 16px 14px; }
 
 /* 실시간 랭킹 모달 — 기존 랭킹 화면을 통째로 담는 넓은 모달. */
