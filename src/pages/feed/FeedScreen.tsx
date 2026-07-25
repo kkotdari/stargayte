@@ -243,38 +243,40 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel }: {
 }) {
   const [open, setOpen] = useState(false);
   const ordered = useMemo(() => [...stack.items].sort((a, b) => a.time - b.time), [stack.items]);
+  const rest = ordered.slice(1);
 
-  if (!open) {
-    return (
-      <div className="scr-feed-stack">
-        {/* 앞 카드가 그날 첫 게임이니, 겹쳐 있는 나중 게임들은 위쪽으로 삐져나온다. */}
-        <button
-          type="button" className="scr-feed-stack-peek"
-          onClick={() => setOpen(true)}
-          aria-label={`게임결과 ${ordered.length - 1}건 더 펼치기`}
-        >
-          + {ordered.length - 1}건
-        </button>
-        <MatchCard item={ordered[0]} memberOf={memberOf} onDeleted={onDeleted} dateLabel={dateLabel} />
-      </div>
-    );
-  }
+  // 두 상태를 모두 마운트해 두고 CSS(grid-rows 0fr↔1fr, 높이/투명도)로 부드럽게 전환한다.
   return (
-    <div className="scr-feed-stack-open">
-      {ordered.map((it, i) => (
-        <Fragment key={it.match.id}>
-          {/* 줄이기 버튼은 카드 밖, 마지막 카드 바로 위에(요청). */}
-          {i === ordered.length - 1 && (
-            <button
-              type="button" className="scr-feed-stack-collapse"
-              onClick={() => setOpen(false)} aria-label="줄이기"
-            >
-              줄이기
-            </button>
-          )}
-          <MatchCard item={it} memberOf={memberOf} onDeleted={onDeleted} dateLabel={dateLabel} />
-        </Fragment>
-      ))}
+    <div className={cx("scr-feed-stack", open && "scr-feed-stack-opened")}>
+      <button
+        type="button" className="scr-feed-stack-peek"
+        onClick={() => setOpen(true)}
+        aria-hidden={open} tabIndex={open ? -1 : 0}
+        aria-label={`게임결과 ${rest.length}건 더 펼치기`}
+      >
+        + {rest.length}건
+      </button>
+      <MatchCard item={ordered[0]} memberOf={memberOf} onDeleted={onDeleted} dateLabel={dateLabel} />
+      <div className="scr-feed-stack-rest" aria-hidden={!open}>
+        <div className="scr-feed-stack-rest-inner">
+          <div className="scr-feed-stack-rest-list">
+            {rest.map((it, i) => (
+              <Fragment key={it.match.id}>
+                {/* 줄이기 버튼은 카드 밖, 마지막 카드 바로 위에(요청). */}
+                {i === rest.length - 1 && (
+                  <button
+                    type="button" className="scr-feed-stack-collapse"
+                    onClick={() => setOpen(false)} aria-label="줄이기"
+                  >
+                    줄이기
+                  </button>
+                )}
+                <MatchCard item={it} memberOf={memberOf} onDeleted={onDeleted} dateLabel={dateLabel} />
+              </Fragment>
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

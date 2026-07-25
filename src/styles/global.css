@@ -7887,6 +7887,26 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    밑단("+N건"). 펼침: 전체 카드 + 마지막 카드 위 줄이기 알약. */
 .scr-feed-stack { display: flex; flex-direction: column; }
 .scr-feed-stack > .scr-feed-card { position: relative; z-index: 1; }
+/* 펼침/접힘 트랜지션 — 뒷단(peek)은 높이·투명도로 사라지고, 나머지 카드들은
+   grid-rows 0fr↔1fr로 아래에서 자라난다. */
+.scr-feed-stack-peek {
+  transition: opacity .2s ease, padding .28s cubic-bezier(0.32, 0.72, 0, 1), margin .28s cubic-bezier(0.32, 0.72, 0, 1), height .28s cubic-bezier(0.32, 0.72, 0, 1);
+  overflow: hidden; height: auto;
+}
+.scr-feed-stack-opened .scr-feed-stack-peek {
+  height: 0; padding-top: 0; padding-bottom: 0; margin-bottom: 0; opacity: 0; pointer-events: none;
+}
+.scr-feed-stack-rest {
+  display: grid; grid-template-rows: 0fr;
+  transition: grid-template-rows .32s cubic-bezier(0.32, 0.72, 0, 1), opacity .24s ease;
+  opacity: 0;
+}
+.scr-feed-stack-opened .scr-feed-stack-rest { grid-template-rows: 1fr; opacity: 1; }
+.scr-feed-stack-rest-inner { overflow: hidden; min-height: 0; }
+.scr-feed-stack-rest-list { display: flex; flex-direction: column; gap: 20px; padding-top: 20px; }
+@media (prefers-reduced-motion: reduce) {
+  .scr-feed-stack-peek, .scr-feed-stack-rest { transition: none; }
+}
 /* 겹친 뒷카드 윗단 — 앞 카드가 그날 첫 게임이므로 나중 게임들이 "위"로 삐져나온 모양(요청). */
 .scr-feed-stack-peek {
   display: block; margin: 0 4px -6px; margin-left: calc(-12px + 14px); margin-right: calc(-12px + 14px);
@@ -7907,7 +7927,6 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 @media (max-width: 640px) {
   .scr-feed-stack-peek { margin-left: calc(-10px + 14px); margin-right: calc(-10px + 14px); }
 }
-.scr-feed-stack-open { position: relative; display: flex; flex-direction: column; gap: 20px; }
 /* 줄이기 — 카드 밖, 마지막 카드 바로 위 가운데 알약(흐름 배치). */
 .scr-feed-stack-collapse {
   align-self: center; margin: -6px 0;
