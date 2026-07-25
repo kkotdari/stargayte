@@ -2904,7 +2904,7 @@ html.scr-page-bg.scr-light-theme .scr-rank-screen-v2::before { display: none; }
    톤은 유저 검색창과 같은 옅은 반투명. */
 /* 경기번호 필드 ↔ 메모 영역(체크박스로 시작)은 서로 다른 필드라 갭을 넓혀 또렷이 가른다(요청).
    메모 영역 안쪽(체크박스↔메모 인풋)은 같은 영역으로 보므로 그 내부 갭(8px)은 그대로 둔다. */
-.scr-match-extra-search { display: flex; gap: 16px; width: 100%; margin: -6px 0 14px; }
+.scr-match-extra-search { display: flex; gap: 24px; width: 100%; margin: -6px 0 14px; }
 /* 세 검색 필드(유저·경기번호·메모)를 크기·디자인·폰트까지 유저 검색창과 완전히 똑같이
    통일한다(요청). 값은 유저 검색창(.scr-search-filter-float .scr-list-search-input)과
    동일 — 옅은 반투명 배경, 각진 라운드(10px), caption 폰트. 폰트는 이제 모든 입력 필드
