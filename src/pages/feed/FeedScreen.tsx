@@ -2,6 +2,9 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type Chang
 import { createPortal } from "react-dom";
 import { CalendarPlus, MoreHorizontal, Plus, Send, Swords, Trophy, Upload, X } from "lucide-react";
 import { Spinner } from "../../components/common/Feedback";
+import SearchFilterBar from "../../components/common/SearchFilterBar";
+import PillTabs from "../../components/common/PillTabs";
+import FilterItem from "../../components/common/FilterItem";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 import KakaoShareButton from "../../components/common/KakaoShareButton";
 import MatchList, { type SearchListRow } from "../v2/MatchList";
@@ -15,13 +18,14 @@ import { computeRankRows, MATCH_TYPE_OF, type RankMode } from "../v2/rank";
 import { currentPeriodAnchor } from "../../utils/date";
 import { useAppStore } from "../../store/appStore";
 import { isAdminRole } from "../../constants/roles";
+import { activeMemberSearchTerms, memberMatchesTerm, normalizeSearchText, splitSearchTerms } from "../../utils/memberSearch";
 import { cx } from "../../utils/format";
 import { api } from "../../api/client";
 import { useCursorPagination } from "../../hooks/useCursorPagination";
 import { buildReplayDrafts, type ReplayDraft } from "../../utils/replayDraft";
 import { hasAppUpdatePreloadErrorOccurred } from "../../utils/appUpdate";
 import { usePageBackground } from "../../hooks/usePageBackground";
-import type { Challenge, Match, Member, RankShift, RankShiftEntry } from "../../types";
+import type { Challenge, Match, MatchSlot, Member, RankShift, RankShiftEntry } from "../../types";
 
 const PAGE_SIZE = 100;
 const MAX_REPLAY_FILES = 20;
@@ -207,11 +211,13 @@ function FeedCardComments({ targetType, targetId }: { targetType: "match" | "cha
 
 // 경기 카드 — 한 경기가 피드 카드 한 장. 기존 경기 로우(접힌 상태)를 카드 본문에 그대로
 // 앉히고(누르면 그 자리에서 펼쳐짐), 하단에 피드 댓글을 단다.
-function MatchCard({ item, memberOf, onDeleted, dateLabel }: {
+function MatchCard({ item, memberOf, onDeleted, dateLabel, highlightMemberIds, highlightTerms }: {
   item: MatchItem;
   memberOf: (id: string) => Member | undefined;
   onDeleted: () => void;
   dateLabel: string;
+  highlightMemberIds?: Set<string>;
+  highlightTerms?: string[];
 }) {
   const rows: SearchListRow[] = useMemo(() => {
     const m = item.match;
@@ -226,7 +232,7 @@ function MatchCard({ item, memberOf, onDeleted, dateLabel }: {
         <span className="scr-feed-card-time">{formatEventTime(item.time, item.withClock)}</span>
       </div>
       <div className="scr-feed-match-body">
-        <MatchList rows={rows} memberOf={memberOf} onDeleted={onDeleted} loading={false} />
+        <MatchList rows={rows} memberOf={memberOf} onDeleted={onDeleted} loading={false} highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms} />
       </div>
       <FeedCardComments targetType="match" targetId={item.match.id} />
     </div>
@@ -235,11 +241,13 @@ function MatchCard({ item, memberOf, onDeleted, dateLabel }: {
 
 // 겹침 스택 — 접힘: 그날 첫 게임 카드 + 그 아래로 살짝 겹쳐 보이는 뒷카드 밑단("+N건",
 // 누르면 펼침). 펼침: 시간순 전체 카드 + 마지막 카드 위 줄이기 버튼.
-function MatchStack({ stack, memberOf, onDeleted, dateLabel }: {
+function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds, highlightTerms }: {
   stack: MatchStackItem;
   memberOf: (id: string) => Member | undefined;
   onDeleted: () => void;
   dateLabel: string;
+  highlightMemberIds?: Set<string>;
+  highlightTerms?: string[];
 }) {
   const [open, setOpen] = useState(false);
   const ordered = useMemo(() => [...stack.items].sort((a, b) => a.time - b.time), [stack.items]);
@@ -256,7 +264,7 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel }: {
       >
         + {rest.length}건
       </button>
-      <MatchCard item={ordered[0]} memberOf={memberOf} onDeleted={onDeleted} dateLabel={dateLabel} />
+      <MatchCard item={ordered[0]} memberOf={memberOf} onDeleted={onDeleted} dateLabel={dateLabel} highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms} />
       <div className="scr-feed-stack-rest" aria-hidden={!open}>
         <div className="scr-feed-stack-rest-inner">
           <div className="scr-feed-stack-rest-list">
@@ -271,7 +279,7 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel }: {
                     줄이기
                   </button>
                 )}
-                <MatchCard item={it} memberOf={memberOf} onDeleted={onDeleted} dateLabel={dateLabel} />
+                <MatchCard item={it} memberOf={memberOf} onDeleted={onDeleted} dateLabel={dateLabel} highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms} />
               </Fragment>
             ))}
           </div>
@@ -282,6 +290,11 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel }: {
 }
 
 export default function FeedScreen() {
+  // 검색/필터(기록실과 동일 구성) — 유저 검색, 경기유형, 게임번호. 불러온 피드 안에서 즉시 필터.
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState<"all" | "0101" | "0102">("all");
+  const [matchNoQuery, setMatchNoQuery] = useState("");
+
   // 홈(피드) 배경 — 기존 랭킹 배경을 피드 이름으로 옮겨 그대로 쓴다(다크 우주/라이트 트로피).
   usePageBackground(
     "/images/bg/feed_bg.jpg",
@@ -455,21 +468,76 @@ export default function FeedScreen() {
     return feed.filter((item) => item.time >= oldest);
   }, [feed, hasMore, matches]);
 
+  const suggestions = useMemo(() => activeMemberSearchTerms(members), [members]);
+  const searchTerms = useMemo(() => splitSearchTerms(search), [search]);
+  const matchNoTerm = matchNoQuery.trim().toLowerCase();
+  const matchedIds = useMemo(() => {
+    if (searchTerms.length === 0) return undefined;
+    const all = new Set<string>();
+    members.forEach((m) => {
+      if (searchTerms.some((t) => memberMatchesTerm(m, t))) all.add(m.id);
+    });
+    return all;
+  }, [members, searchTerms]);
+
+  // 슬롯 하나가 검색어와 맞는지 — 회원이면 닉네임/배틀태그/게임아이디, 아니면 rawName.
+  const slotMatchesTerm = (slot: MatchSlot, term: string): boolean => {
+    const m = memberOf(slot.memberId);
+    if (m && memberMatchesTerm(m, term)) return true;
+    return !!slot.rawName && normalizeSearchText(slot.rawName).includes(term);
+  };
+  // 너 나와 참가자(도전자/아군/상대) 중 검색어와 맞는 사람이 있는지.
+  const challengeMatchesTerm = (c: Challenge, term: string): boolean => {
+    const names = [c.createdBy.nickname, ...c.ownMembers.map((m) => m.nickname), ...c.targets.map((t) => t.nickname)];
+    if (names.some((n) => normalizeSearchText(n).includes(term))) return true;
+    const ids = [c.createdBy.id, ...c.ownMembers.map((m) => m.memberId), ...c.targets.map((t) => t.memberId)];
+    return ids.some((id) => { const m = memberOf(id); return !!m && memberMatchesTerm(m, term); });
+  };
+
+  // 필터 적용 — 유형/게임번호/유저 검색을 아이템 종류별로 건다(너나와에도 유저 필터 적용).
+  const filteredFeed = useMemo<FeedItem[]>(() => {
+    return visibleFeed.filter((item) => {
+      if (typeFilter !== "all") {
+        const mt = item.kind === "match" ? item.match.matchType
+          : item.kind === "challenge" ? item.challenge.matchType
+          : item.shift.matchType;
+        if (mt !== typeFilter) return false;
+      }
+      if (matchNoTerm !== "") {
+        if (item.kind !== "match") return false;
+        if (!item.match.matchNo.toLowerCase().includes(matchNoTerm)) return false;
+      }
+      if (searchTerms.length > 0) {
+        if (item.kind === "match") {
+          const slots = [...item.match.team1, ...item.match.team2];
+          return searchTerms.every((term) => slots.some((slot) => slotMatchesTerm(slot, term)));
+        }
+        if (item.kind === "challenge") {
+          return searchTerms.every((term) => challengeMatchesTerm(item.challenge, term));
+        }
+        return searchTerms.every((term) =>
+          item.shift.entries.some((e) => normalizeSearchText(e.nickname).includes(term)));
+      }
+      return true;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- slotMatchesTerm/challengeMatchesTerm은 members로 충분히 표현됨
+  }, [visibleFeed, typeFilter, matchNoTerm, searchTerms, members]);
+
   // 같은 날 게임결과가 2개 이상 연속이면 겹침 스택으로 묶는다(요청).
   const displayFeed = useMemo<DisplayItem[]>(() => {
     const out: DisplayItem[] = [];
     let i = 0;
-    while (i < visibleFeed.length) {
-      const it = visibleFeed[i];
+    while (i < filteredFeed.length) {
+      const it = filteredFeed[i];
       if (it.kind === "match") {
         let j = i + 1;
         while (
-          j < visibleFeed.length
-          && visibleFeed[j].kind === "match"
-          && (visibleFeed[j] as MatchItem).match.date === it.match.date
+          j < filteredFeed.length
+          && filteredFeed[j].kind === "match"
+          && (filteredFeed[j] as MatchItem).match.date === it.match.date
         ) j++;
         if (j - i >= 2) {
-          out.push({ kind: "matchstack", time: it.time, date: it.match.date, items: visibleFeed.slice(i, j) as MatchItem[] });
+          out.push({ kind: "matchstack", time: it.time, date: it.match.date, items: filteredFeed.slice(i, j) as MatchItem[] });
           i = j;
           continue;
         }
@@ -478,7 +546,7 @@ export default function FeedScreen() {
       i++;
     }
     return out;
-  }, [visibleFeed]);
+  }, [filteredFeed]);
 
   const dateLabelOf = (item: { time: number }) => {
     const d = new Date(item.time);
@@ -529,6 +597,45 @@ export default function FeedScreen() {
           onChange={handleReplayFilesChosen}
         />
       </div>
+
+      {/* 경기유형 필터 — 기록실과 동일한 알약 로우. */}
+      <div className="scr-match-type-filter">
+        <FilterItem label="경기 유형">
+          <PillTabs
+            aria-label="경기유형 필터"
+            value={typeFilter}
+            onChange={setTypeFilter}
+            options={[
+              { value: "all", label: "전체" },
+              { value: "0101", label: "개인전" },
+              { value: "0102", label: "팀전" },
+            ]}
+          />
+        </FilterItem>
+      </div>
+
+      {/* 유저 검색 + 게임번호 — 기록실과 동일. 너나와/랭크변동에도 유저 필터가 걸린다. */}
+      <SearchFilterBar
+        count={displayFeed.length}
+        countLabel="건"
+        showCount={false}
+        searchValue={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="@유저 검색"
+        suggestions={suggestions}
+        trailing={
+          <div className="scr-match-extra-search">
+            <input
+              className="scr-input scr-list-search-input scr-match-extra-field"
+              value={matchNoQuery}
+              onChange={(e) => setMatchNoQuery(e.target.value)}
+              placeholder="게임번호"
+              inputMode="numeric"
+              autoComplete="off"
+            />
+          </div>
+        }
+      />
 
       {error && <div className="scr-err">{error}</div>}
 
@@ -590,6 +697,7 @@ export default function FeedScreen() {
                   <ChallengeCard
                     challenge={item.challenge}
                     myId={user?.id}
+                    highlightMemberIds={matchedIds}
                     onResponded={upsertChallenge}
                   />
                 </div>
@@ -602,6 +710,8 @@ export default function FeedScreen() {
                 memberOf={memberOf}
                 onDeleted={reload}
                 dateLabel={dateLabelOf(item)}
+                highlightMemberIds={matchedIds}
+                highlightTerms={searchTerms}
               />
             ) : (
               <MatchCard
@@ -610,6 +720,8 @@ export default function FeedScreen() {
                 memberOf={memberOf}
                 onDeleted={reload}
                 dateLabel={dateLabelOf(item)}
+                highlightMemberIds={matchedIds}
+                highlightTerms={searchTerms}
               />
             )
           ))}
