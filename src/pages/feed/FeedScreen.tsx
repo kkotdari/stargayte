@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { createPortal } from "react-dom";
 import { CalendarPlus, MoreHorizontal, Plus, Send, Swords, Trophy, Upload, X } from "lucide-react";
 import { Spinner } from "../../components/common/Feedback";
@@ -277,31 +277,45 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
   const restDesc = useMemo(() => ordered.slice(1).reverse(), [ordered]);
 
   // 펼침 영역이 앞 카드 "위"에 있어, 그대로 두면 앞 카드가 아래로 밀려 마치 아래로
-  // 펼쳐지는 것처럼 보인다(지적). 그래서 레이아웃은 트랜지션 없이 즉시 바꾸고, 앞 카드의
-  // 화면상 위치가 변한 만큼을 페인트 전에(useLayoutEffect) 스크롤 한 번으로 보정한다 —
-  // 앞 카드는 그 자리에 고정돼 보이고 카드들은 위로 나타난다. 이전엔 높이 트랜지션을
-  // rAF 루프로 매 프레임 따라가며 보정했는데, iOS 사파리는 스크롤 반영이 비동기라
-  // 보정-측정이 서로 어긋나며 크게 튀었다(지적: "엄청난 스크롤 튐"). 나타나는 카드들의
-  // "펼침 느낌"은 레이아웃과 무관한 transform 슬라이드 애니메이션(CSS)이 담당한다.
-  // 문서에 CSS scroll-behavior:smooth가 걸려 있어 보정은 반드시 instant로 이동시킨다.
+  // 펼쳐지는 것처럼 보인다(지적). 트랜지션 동안 앞 카드의 뷰포트 위치를 앵커로 잡고 매
+  // 프레임 스크롤이 따라간다 — 앞 카드는 고정돼 보이고 카드들이 위로 자라난다(접을 때도
+  // 역으로 고정). 주의 두 가지:
+  // 1) html에 overflow-anchor:none이 꼭 필요하다 — 최신 사파리/크롬의 네이티브 스크롤
+  //    앵커링이 같은 변화를 한 번 더 보정하면 서로 겹쳐 크게 튄다(실제 지적: 펼칠 때
+  //    깜빡·접을 때 훨씬 위로 이동).
+  // 2) 문서에 CSS scroll-behavior:smooth가 걸려 있어 보정은 반드시 instant로 이동시킨다.
+  // 사용자가 도중에 스크롤(휠/터치)을 시작하면 즉시 보정을 멈춰 조작과 싸우지 않는다.
   const frontRef = useRef<HTMLDivElement>(null);
-  const pendingAnchorRef = useRef<number | null>(null);
+  const stopAnchorRef = useRef<(() => void) | null>(null);
+  useEffect(() => () => stopAnchorRef.current?.(), []);
   const toggleOpen = (next: boolean) => {
-    pendingAnchorRef.current = frontRef.current?.getBoundingClientRect().top ?? null;
     setOpen(next);
-  };
-  useLayoutEffect(() => {
-    const anchor = pendingAnchorRef.current;
-    pendingAnchorRef.current = null;
-    if (anchor == null) return;
+    stopAnchorRef.current?.();
     const front = frontRef.current;
     if (!front) return;
-    const d = front.getBoundingClientRect().top - anchor;
-    if (d !== 0) window.scrollBy({ top: d, behavior: "instant" });
-  }, [open]);
+    const anchor = front.getBoundingClientRect().top;
+    const start = performance.now();
+    let raf = 0;
+    const cancel = () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("wheel", cancel);
+      window.removeEventListener("touchmove", cancel);
+      stopAnchorRef.current = null;
+    };
+    stopAnchorRef.current = cancel;
+    window.addEventListener("wheel", cancel, { passive: true });
+    window.addEventListener("touchmove", cancel, { passive: true });
+    const step = () => {
+      const d = front.getBoundingClientRect().top - anchor;
+      if (d !== 0) window.scrollBy({ top: d, behavior: "instant" });
+      if (performance.now() - start < 480) raf = requestAnimationFrame(step);
+      else cancel();
+    };
+    raf = requestAnimationFrame(step);
+  };
 
-  // 두 상태를 모두 마운트해 두고 CSS(grid-rows 0fr↔1fr)로 전환한다 — 높이는 즉시,
-  // 나타나는 카드들만 transform으로 미끄러져 들어온다.
+  // 두 상태(접힘/펼침)의 카드가 모두 항상 마운트돼 있고(요청: "실제로는 렌더링해놓고"),
+  // CSS 높이 클립(grid-rows 0fr↔1fr) 트랜지션으로만 보였다 안 보였다 한다.
   return (
     <div className={cx("scr-feed-stack", open && "scr-feed-stack-opened")}>
       <button

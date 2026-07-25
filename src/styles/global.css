@@ -260,6 +260,11 @@ html {
      무관함이 확인돼(지적) 원복. 진짜 원인은 위의 color-scheme 미선언이었다.
      scroll-behavior/scrollbar-gutter는 예전 #scroll-root에서 문서 스크롤 주체인 여기로. */
   overscroll-behavior-y: none; scroll-behavior: smooth; scrollbar-gutter: stable;
+  /* 브라우저 자체 스크롤 앵커링 끄기 — 피드 스택 개폐는 우리가 앞 카드를 앵커로 직접
+     스크롤을 보정하는데, 최신 사파리(iOS 18.2+)/크롬의 네이티브 앵커링이 같은 변화를
+     한 번 더 보정해 이중 보정이 된다(접을 때 훨씬 위로 튀던 원인). 스크롤 위치는 전부
+     앱이 관리하므로 문서 전체에서 끈다. */
+  overflow-anchor: none;
 }
 /* 라이트 테마는 라이트 페이지로 선언을 뒤집는다(위 color-scheme 주석 참고). */
 html.scr-light-theme { color-scheme: light; }
@@ -7878,28 +7883,28 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 /* 앞 카드(스크롤 앵커용 래퍼 포함)는 뒷단(peek) 위에 얹힌다. */
 .scr-feed-stack-front { position: relative; z-index: 1; }
 .scr-feed-stack-front > .scr-feed-card { position: relative; }
-/* 펼침/접힘 — 높이(레이아웃)는 트랜지션 없이 즉시 바꾼다. 높이를 애니메이션하면 그동안
-   앞 카드가 밀리는 걸 스크롤이 매 프레임 따라가야 하는데, iOS의 비동기 스크롤과 어긋나며
-   크게 튀었다(지적). 대신 스크롤 보정은 페인트 전 한 번(MatchStack 참고)으로 끝내고,
-   "펼침 느낌"은 나타나는 카드들의 transform 슬라이드(레이아웃 불변·블러 유지)가 담당한다. */
-.scr-feed-stack-opened .scr-feed-stack-peek { display: none; }
+/* 펼침/접힘 — 겹친 카드들은 늘 실제로 렌더링돼 있고(요청), 높이 클립(grid-rows 0fr↔1fr)
+   트랜지션으로 보였다 안 보였다 한다. 트랜지션 동안 앞 카드가 밀리는 건 MatchStack이
+   앞 카드 위치를 앵커로 매 프레임 스크롤 보정한다(위 html의 overflow-anchor:none과 한
+   쌍 — 네이티브 앵커링이 겹치면 이중 보정으로 튄다). 뒷단(peek)은 높이·투명도로 접힌다. */
+.scr-feed-stack-peek {
+  transition: opacity .2s ease, padding .28s cubic-bezier(0.32, 0.72, 0, 1), margin .28s cubic-bezier(0.32, 0.72, 0, 1), height .28s cubic-bezier(0.32, 0.72, 0, 1);
+  overflow: hidden; height: auto;
+}
+.scr-feed-stack-opened .scr-feed-stack-peek {
+  height: 0; padding-top: 0; padding-bottom: 0; margin-bottom: 0; opacity: 0; pointer-events: none;
+}
 /* 주의: 여기(조상)에 opacity를 걸면 안 된다 — opacity<1은 자체 합성 그룹을 만들어 그 안
    카드들의 backdrop-filter가 페이지 배경을 못 보게 된다(= 블러가 빠져 보이던 문제). */
-.scr-feed-stack-rest { display: grid; grid-template-rows: 0fr; }
+.scr-feed-stack-rest {
+  display: grid; grid-template-rows: 0fr;
+  transition: grid-template-rows .32s cubic-bezier(0.32, 0.72, 0, 1);
+}
 .scr-feed-stack-opened .scr-feed-stack-rest { grid-template-rows: 1fr; }
 .scr-feed-stack-rest-inner { overflow: hidden; min-height: 0; }
 .scr-feed-stack-rest-list { display: flex; flex-direction: column; gap: 14px; padding: 4px 0 20px; }
-/* 펼칠 때 카드들이 살짝 아래(자기 자리 기준)에서 제자리로 미끄러져 들어온다 — opacity
-   없이 transform만 써서 카드 자신의 backdrop 블러가 애니메이션 내내 유지된다. */
-.scr-feed-stack-opened .scr-feed-stack-rest-list > * {
-  animation: scr-feed-stack-in .3s cubic-bezier(0.32, 0.72, 0, 1) both;
-}
-@keyframes scr-feed-stack-in {
-  from { transform: translateY(14px); }
-  to { transform: none; }
-}
 @media (prefers-reduced-motion: reduce) {
-  .scr-feed-stack-opened .scr-feed-stack-rest-list > * { animation: none; }
+  .scr-feed-stack-peek, .scr-feed-stack-rest { transition: none; }
 }
 /* 겹친 뒷카드 윗단 — 앞 카드가 그날 첫 게임이므로 나중 게임들이 "위"로 삐져나온 모양(요청).
    블러도 카드와 동일하게(요청: "스택된 상태의 뒷 카드에도 블러 똑같이"). */
