@@ -2673,11 +2673,9 @@ html.scr-page-bg.scr-light-theme .scr-rank-screen-v2::before { display: none; }
    넉넉한 갭으로 벌린다(요청). 모바일(≤640)은 아래 미디어쿼리의 풀폭 space-between 유지. */
 @media (min-width: 641px) {
   .scr-rank-screen-v2 .scr-filter-panel {
-    /* 글로우 클립 회피용 padding+음수마진 트릭을 랭킹에선 걷어낸다(지적: 그 -16px 좌우
-       마진 때문에 콘텐츠가 컨테이너 폭을 다 못 쓰고 오른쪽으로 32px 밀린다). 대신
-       overflow:visible로 글로우가 안 잘리게 하면 padding 버퍼가 필요 없다. 그러면 패널이
-       컨테이너 폭에 정확히 맞고, justify-content:center가 기간/종족을 가운데로 모은다. */
-    width: 100%; margin: 0; padding: 0; overflow: visible;
+    /* 패널을 컨테이너 폭에 꽉 채우고(base가 이제 margin/padding 없이 딱 맞음),
+       justify-content:center로 기간/종족을 가운데로 모으고 둘 사이만 넉넉한 갭으로 벌린다. */
+    width: 100%;
     justify-content: center; column-gap: 44px;
   }
 }
@@ -2694,22 +2692,14 @@ html.scr-page-bg.scr-light-theme .scr-rank-screen-v2::before { display: none; }
      안의 요소(라벨/알약탭/월선택)는 이제 테마 배경 위에 놓이므로 아래에서 테마별 톤으로
      맞춘다(랭킹 서브행의 년월 토글과 같은 방식). */
   display: flex; flex-wrap: nowrap; align-items: center; gap: 4px 10px;
-  overflow-x: auto; overflow-y: auto;
+  /* overflow:visible — 예전엔 overflow:auto라 라벨(컨트롤 위)과 알약 글로우가 패널 경계에서
+     잘려, 그 자리를 padding으로 만들고 똑같은 음수 margin으로 상쇄하는 트릭을 썼다. 그런데
+     그 좌우 음수마진(-16px)이 콘텐츠를 컨테이너 폭보다 좁게/오른쪽으로 밀어(지적: "필터가
+     전체 너비를 못 씀") 문제였다. overflow를 visible로 두면 애초에 아무것도 안 잘리므로
+     padding 버퍼도 음수마진도 필요 없다 — 트릭을 통째로 걷어내고 패널을 컨테이너 폭에
+     정확히 맞춘다. (항목이 넘칠 만큼 많은 필터 화면은 현재 없다.) */
+  overflow: visible;
   background: none; border: none; box-shadow: none;
-  /* 라벨을 컨트롤 위(항목 박스 바깥)로 다시 띄운다(요청: "필터 위에 있어야하는데" —
-     안쪽에 겹치면 컨트롤 글자와 뒤섞여 보였다). overflow-x:auto인 채로는 overflow-y가
-     스펙상 auto로 같이 계산돼 박스 위로 넘친 만큼은 그냥 잘리므로, 그 자리를
-     padding-top으로 안쪽에 미리 마련해 잘리지 않게 한다 — 다만 그 padding만큼 패널이
-     커지면 아래(검색창 줄 등)가 밀려 내려가므로, 똑같은 값의 음수 margin-top으로
-     상쇄해 패널 바깥(부모 flex 행 기준)에서 본 높이/위치는 padding이 없을 때와 동일하게
-     유지한다 — 라벨을 위해 문서 흐름 전체가 밀리지 않는다. */
-  /* 같은 트릭을 상하좌우 모두에 — 알약/버튼의 라이팅 글로우가 패널의 overflow 클립
-     경계에서 사각형으로 잘려 보였다(지적: 평소·호버·클릭 모두). 글로우가 번질 여유를
-     padding으로 만들고 똑같은 크기의 음수 margin으로 상쇄해, 레이아웃상의 위치/높이는
-     padding이 없을 때와 완전히 동일하게 유지한다.
-     좌우 음수 마진(-16px)은 부모 .scr-main의 좌우 패딩(20px) 안쪽이라 페이지가 가로로
-     넘치지 않는다. */
-  padding: 18px 16px 16px; margin: -18px -16px -16px;
 }
 /* 패널이 사라져 라벨/알약이 화면 배경(테마색) 위에 바로 놓인다 — 예전의 밝은 글라스용
    어두운 고정 톤 대신 테마를 따르게 한다. 알약탭 트랙/비활성 글자, 월선택 입력, 라벨을
