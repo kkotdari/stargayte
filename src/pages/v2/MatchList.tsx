@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
-import { MoreVertical, Monitor, CircleHelp, Copy, Check } from "lucide-react";
+import { MoreHorizontal, Monitor, CircleHelp, Copy, Check } from "lucide-react";
 import RaceBadge from "../../components/common/RaceBadge";
 import { Spinner } from "../../components/common/Feedback";
 import { cleanMapName } from "../../utils/mapName";
@@ -232,7 +232,7 @@ function MatchActionsMenu({
         onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
         aria-label="더보기" aria-haspopup="menu" aria-expanded={open}
       >
-        <MoreVertical size={16} />
+        <MoreHorizontal size={16} />
       </button>
       {open && createPortal(
         <div className="scr-menu-pop-drop scr-match-menu-drop scr-scroll" ref={dropRef} role="menu">

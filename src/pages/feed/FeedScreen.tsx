@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { createPortal } from "react-dom";
-import { CalendarPlus, MessageCircle, MoreVertical, Plus, Send, Swords, Trophy, Upload, X } from "lucide-react";
+import { CalendarPlus, MessageCircle, MoreHorizontal, Plus, Send, Swords, Trophy, Upload, X } from "lucide-react";
 import { Spinner } from "../../components/common/Feedback";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 import KakaoShareButton from "../../components/common/KakaoShareButton";
@@ -28,13 +28,21 @@ const MAX_REPLAY_FILES = 20;
 // 피드 — 커뮤니티 활동(경기 결과, 너 나와! 일정)을 한 타임라인으로 보여주는 홈 화면.
 // 타임라인 기준: 너 나와!는 경기 예정 일시, 경기는 리플레이의 게임 시작 시각.
 
-const DOW = ["일", "월", "화", "수", "목", "금", "토"];
+const DOW_FULL = ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"];
 
+// 피드 시각 표기 — 일주일 내(전후)는 일자 대신 요일만("화요일 21:30"), 그 밖은
+// "M월 D일"(올해가 아니면 년도 포함). 요일 괄호 병기는 하지 않는다.
 function formatEventTime(ms: number, withClock: boolean): string {
   const d = new Date(ms);
-  const base = `${d.getMonth() + 1}월 ${d.getDate()}일 (${DOW[d.getDay()]})`;
-  if (!withClock) return base;
-  return `${base} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  const now = new Date();
+  const time = withClock
+    ? ` ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`
+    : "";
+  const dayStart = (x: Date) => { const c = new Date(x); c.setHours(0, 0, 0, 0); return c.getTime(); };
+  const diffDays = Math.round((dayStart(now) - dayStart(d)) / 86_400_000);
+  if (Math.abs(diffDays) < 7) return `${DOW_FULL[d.getDay()]}${time}`;
+  const year = d.getFullYear() !== now.getFullYear() ? `${d.getFullYear()}년 ` : "";
+  return `${year}${d.getMonth() + 1}월 ${d.getDate()}일${time}`;
 }
 
 interface ChallengeItem {
@@ -136,7 +144,7 @@ function ChallengeActionsMenu({ challenge, isAdmin, onDeleted }: {
         onClick={() => setOpen((v) => !v)}
         aria-label="더보기" aria-haspopup="menu" aria-expanded={open}
       >
-        <MoreVertical size={16} />
+        <MoreHorizontal size={16} />
       </button>
       {open && (
         <>

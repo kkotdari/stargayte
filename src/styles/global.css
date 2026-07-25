@@ -7869,9 +7869,13 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 /* 경기 케밥을 포스트 우상단으로(요청 — 이제 오른쪽에 타임라인이 없어 안전 공간 불필요).
    trow의 position:relative가 절대배치를 가로채지 않게 피드 안에서는 static으로. */
 .scr-feed-match-body .scr-match-trow { position: static; }
-.scr-feed-match-body .scr-match-trow-topmeta { position: absolute; top: 8px; right: 10px; z-index: 2; }
+/* 헤더(시각/라벨) 줄과 같은 라인에 오도록 — 헤더 padding-top 12px + caption 줄높이의
+   세로 중심에 버튼 중심을 맞춘다. */
+.scr-feed-match-body .scr-match-trow-topmeta { position: absolute; top: 18px; right: 12px; z-index: 2; }
+.scr-feed-match-body .scr-match-trow-topmeta .scr-match-kebab-btn,
+.scr-feed-chal-menu .scr-match-kebab-btn { width: 26px; height: 26px; min-height: 26px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
 /* 너 나와 케밥(피드 레벨)도 같은 자리 — 기존 우상단 '취소' 라벨과 겹치지 않게 라벨은 왼쪽으로. */
-.scr-feed-chal-menu { position: absolute; top: 8px; right: 10px; z-index: 3; }
+.scr-feed-chal-menu { position: absolute; top: 18px; right: 12px; z-index: 3; }
 .scr-feed-card .scr-challenge-cancel-tag { right: 48px; }
 /* 로스터 폰트를 너 나와 카드 닉네임(fs-body)과 통일(요청). */
 .scr-feed-match-body .scr-mt-name { font-size: var(--fs-body); }
