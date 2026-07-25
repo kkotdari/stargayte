@@ -7947,9 +7947,17 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   padding: 4px 0; font-family: inherit; font-size: var(--fs-micro); font-weight: 700;
 }
 @media (hover: hover) { .scr-feed-comments-toggle:hover { color: var(--text); } }
-/* 아이콘과 입력창이 한 줄 — 입력창이 남는 폭을 다 쓴다. */
-.scr-feed-comment-row { display: flex; align-items: center; gap: 8px; }
+/* 아이콘과 입력창이 한 줄 — 입력창이 남는 폭을 다 쓴다. 입력창이 열리고 닫혀도 줄 높이가
+   변하지 않게 컴포저 높이(30px + 여유)를 항상 예약한다(지적: 아이콘 클릭 시 레이아웃 흔들림). */
+.scr-feed-comment-row { display: flex; align-items: center; gap: 8px; min-height: 34px; }
 .scr-feed-comment-composer { flex: 1; min-width: 0; }
+/* 다크에서 댓글 입력창은 흰 필드로(요청) — 글자/플레이스홀더는 어두운 톤으로 뒤집는다. */
+html:not(.scr-light-theme) .scr-feed-comments .scr-mreq-editor {
+  background: rgba(255, 255, 255, 0.92);
+  --text: #16181c; --muted: rgba(22, 24, 28, 0.45);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 1px 4px rgba(0, 0, 0, 0.25);
+}
+html:not(.scr-light-theme) .scr-feed-comments .scr-mreq-editor .scr-mreq-live-input { color: #16181c; caret-color: #16181c; }
 
 /* + 등록 팝오버 메뉴 — 버튼 아래 라이팅 글라스 패널, 3항목(리플레이/너 나와!/일정). */
 .scr-feed-add-wrap { position: relative; }
