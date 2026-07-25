@@ -2455,14 +2455,14 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
     /* 점수 칸을 72px로 넓혀 오른쪽 정렬된 점수 왼쪽에 '잠정' 배지 자리를 확보한다 —
        좁을 때 배지가 순위 숫자와 겹치던 문제(지적) 해결. */
     /* 아바타+닉네임 한 칸(40 + 내부 gap 6 + 175). */
-    grid-template-columns: 40px 44px minmax(0, 221px); column-gap: 16px;
+    grid-template-columns: 36px 36px minmax(0, 221px); column-gap: 24px;
     /* 좌우 여백 거의 같게, 왼쪽만 살짝 더(요청) — PC와 같은 비율 방식(행 폭의 %). */
     padding-left: 2%;
   }
   /* 모바일 닉네임은 headline(24)(요청). */
   .scr-rank-table-panel-v2 .scr-rank-name { font-size: var(--fs-headline); }
   /* 모바일에선 아바타↔닉네임 내부 간격을 살짝 좁힌다(요청) — 묶음 안 gap 8→6px. */
-  .scr-rank-user { gap: 6px; }
+  .scr-rank-user { gap: 12px; }
   /* 아바타 칸(버튼) 폭은 모바일에선 기존 44px 유지 — 위 기본 규칙을 48px(요청: PC만 48)로
      올렸으므로 모바일은 여기서 되돌린다. */
   .scr-rank-table-panel-v2 .scr-rank-avatar-btn { width: 44px; }
