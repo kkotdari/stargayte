@@ -2358,7 +2358,8 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
      남는다는 피드백으로 60→48px. */
   /* 닉네임 칸(3번째, 1fr)에 폭을 더 몰아준다(요청: "닉네임 폭 할당 늘리기") — 순위/점수
      칸과 칸 간격을 조금씩 줄이고 닉네임 최소폭을 키운다. */
-  display: grid; grid-template-columns: 44px 40px minmax(248px, 1fr) 84px;
+  /* 칸 순서: 순위 → 점수 → 아바타 → 닉네임(요청: 랭크-점수-아바타&닉네임). */
+  display: grid; grid-template-columns: 44px 84px 40px minmax(248px, 1fr);
   justify-content: center; max-width: none; margin: 0;
   align-items: center; column-gap: 14px; width: 100%; min-width: 0;
   box-sizing: border-box;
@@ -2372,7 +2373,13 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    여전히 .scr-rank-table-panel-v2 .scr-rank-row + ::before가 양 끝까지 꽉 채운 채라
    내용만 안쪽으로 더 들어온다. 모바일(640px 이하)은 위 기본값(32px) 그대로 유지. */
 @media (min-width: 720px) {
-  .scr-rank-table-panel-v2 .scr-rank-row-inner { padding: 0 140px; }
+  /* PC에선 닉네임 칸을 1fr로 늘리지 않고 고정폭으로 둬서, 남는 폭이 양옆으로 빠지고
+     base의 justify-content:center가 순위·점수·아바타·닉네임 묶음을 카드 한가운데로 모은다
+     (요청: PC에서 각 요소를 가운데로 집중). 고정폭이라 행마다 폭이 같아 세로 정렬도 유지된다. */
+  .scr-rank-table-panel-v2 .scr-rank-row-inner {
+    grid-template-columns: 44px 84px 40px 300px;
+    padding: 0 24px;
+  }
 }
 .scr-rank-table-panel-v2 .scr-rank-name-wrap { min-width: 0; justify-content: flex-start; margin-left: 8px; }
 /* 프사와 이름이 이 행의 주인공이라 시원하게 키운다 — 나머지(순위/전적)는 곁들이다. */
@@ -2388,6 +2395,9 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    바꿔 그리드 트랙 폭 그대로를 차지하게 하고, 그 안에서 align-items:flex-end로 오른쪽
    정렬만 유지한다. */
 .scr-rank-record-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; justify-self: stretch; min-width: 0; }
+/* 점수 칸이 맨 오른쪽이 아니라 순위와 아바타 사이(가운데)로 옮겨졌으므로(요청 순서 변경)
+   칸 안에서 오른쪽 정렬 대신 가운데 정렬해 균형을 맞춘다. */
+.scr-rank-table-panel-v2 .scr-rank-record-wrap { align-items: center; }
 .scr-rank-record-v2 {
   font-size: var(--fs-body); color: var(--dim); white-space: nowrap;
   min-width: 0; overflow: hidden; text-overflow: ellipsis;
