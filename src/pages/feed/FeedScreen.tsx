@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { createPortal } from "react-dom";
 import { CalendarPlus, MoreHorizontal, Plus, Send, Swords, Trophy, Upload, X } from "lucide-react";
 import { Spinner } from "../../components/common/Feedback";
@@ -251,7 +251,8 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
 }) {
   const [open, setOpen] = useState(false);
   const ordered = useMemo(() => [...stack.items].sort((a, b) => a.time - b.time), [stack.items]);
-  const rest = ordered.slice(1);
+  // 첫 게임이 맨 아래(앞 카드), 나중 게임일수록 위로 쌓인다 — 펼치면 위로 착착 나온다.
+  const restDesc = useMemo(() => ordered.slice(1).reverse(), [ordered]);
 
   // 두 상태를 모두 마운트해 두고 CSS(grid-rows 0fr↔1fr, 높이/투명도)로 부드럽게 전환한다.
   return (
@@ -260,31 +261,27 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
         type="button" className="scr-feed-stack-peek"
         onClick={() => setOpen(true)}
         aria-hidden={open} tabIndex={open ? -1 : 0}
-        aria-label={`게임결과 ${rest.length}건 더 펼치기`}
+        aria-label={`게임결과 ${restDesc.length}건 더 펼치기`}
       >
-        + {rest.length}건
+        + {restDesc.length}건
       </button>
-      <MatchCard item={ordered[0]} memberOf={memberOf} onDeleted={onDeleted} dateLabel={dateLabel} highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms} />
       <div className="scr-feed-stack-rest" aria-hidden={!open}>
         <div className="scr-feed-stack-rest-inner">
           <div className="scr-feed-stack-rest-list">
-            {rest.map((it, i) => (
-              <Fragment key={it.match.id}>
-                {/* 줄이기 버튼은 카드 밖, 마지막 카드 바로 위에(요청). */}
-                {i === rest.length - 1 && (
-                  <button
-                    type="button" className="scr-feed-stack-collapse"
-                    onClick={() => setOpen(false)} aria-label="줄이기"
-                  >
-                    줄이기
-                  </button>
-                )}
-                <MatchCard item={it} memberOf={memberOf} onDeleted={onDeleted} dateLabel={dateLabel} highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms} />
-              </Fragment>
+            {/* 줄이기 버튼 — 카드 밖, 맨 위(가장 나중 게임 카드 위). */}
+            <button
+              type="button" className="scr-feed-stack-collapse"
+              onClick={() => setOpen(false)} aria-label="줄이기"
+            >
+              줄이기
+            </button>
+            {restDesc.map((it) => (
+              <MatchCard key={it.match.id} item={it} memberOf={memberOf} onDeleted={onDeleted} dateLabel={dateLabel} highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms} />
             ))}
           </div>
         </div>
       </div>
+      <MatchCard item={ordered[0]} memberOf={memberOf} onDeleted={onDeleted} dateLabel={dateLabel} highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms} />
     </div>
   );
 }
@@ -293,7 +290,6 @@ export default function FeedScreen() {
   // 검색/필터(기록실과 동일 구성) — 유저 검색, 경기유형, 게임번호. 불러온 피드 안에서 즉시 필터.
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<"all" | "0101" | "0102">("all");
-  const [matchNoQuery, setMatchNoQuery] = useState("");
 
   // 홈(피드) 배경 — 기존 랭킹 배경을 피드 이름으로 옮겨 그대로 쓴다(다크 우주/라이트 트로피).
   usePageBackground(
@@ -470,7 +466,6 @@ export default function FeedScreen() {
 
   const suggestions = useMemo(() => activeMemberSearchTerms(members), [members]);
   const searchTerms = useMemo(() => splitSearchTerms(search), [search]);
-  const matchNoTerm = matchNoQuery.trim().toLowerCase();
   const matchedIds = useMemo(() => {
     if (searchTerms.length === 0) return undefined;
     const all = new Set<string>();
@@ -503,10 +498,6 @@ export default function FeedScreen() {
           : item.shift.matchType;
         if (mt !== typeFilter) return false;
       }
-      if (matchNoTerm !== "") {
-        if (item.kind !== "match") return false;
-        if (!item.match.matchNo.toLowerCase().includes(matchNoTerm)) return false;
-      }
       if (searchTerms.length > 0) {
         if (item.kind === "match") {
           const slots = [...item.match.team1, ...item.match.team2];
@@ -521,7 +512,7 @@ export default function FeedScreen() {
       return true;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- slotMatchesTerm/challengeMatchesTerm은 members로 충분히 표현됨
-  }, [visibleFeed, typeFilter, matchNoTerm, searchTerms, members]);
+  }, [visibleFeed, typeFilter, searchTerms, members]);
 
   // 같은 날 게임결과가 2개 이상 연속이면 겹침 스택으로 묶는다(요청).
   const displayFeed = useMemo<DisplayItem[]>(() => {
@@ -623,18 +614,6 @@ export default function FeedScreen() {
         onSearchChange={setSearch}
         searchPlaceholder="@유저 검색"
         suggestions={suggestions}
-        trailing={
-          <div className="scr-match-extra-search">
-            <input
-              className="scr-input scr-list-search-input scr-match-extra-field"
-              value={matchNoQuery}
-              onChange={(e) => setMatchNoQuery(e.target.value)}
-              placeholder="게임번호"
-              inputMode="numeric"
-              autoComplete="off"
-            />
-          </div>
-        }
       />
 
       {error && <div className="scr-err">{error}</div>}

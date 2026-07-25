@@ -6143,8 +6143,7 @@ html.scr-snap-today { scroll-snap-type: y proximity; scroll-padding-top: calc(va
    position:fixed로 뷰포트 우측에 떠 있고, 스크롤하는 동안에만 opacity로 나타난다. 위쪽은
    헤더/툴바/검색줄, 아래쪽은 탭바를 비켜 배치한다. */
 .scr-scroll-timeline {
-  /* 피드 개편으로 왼쪽에 둔다(요청) — 오른쪽은 케밥/스크롤탑 몫. */
-  position: fixed; left: 2px; z-index: 40;
+  position: fixed; right: 2px; z-index: 40;
   /* 타이틀 아래 버튼 로우(등록/생성/도전장 쓰기 등)는 이제 sticky가 아니라 그냥 문서
      흐름 안에 있어 스크롤하면 같이 밀려 올라간다 — 더 이상 그 버튼 높이만큼 비워둘
      필요가 없다. 헤더 자리만 남겨두고 최대한 위로 올린다(요청: "타임라인 상단 페이지
@@ -6161,7 +6160,7 @@ html.scr-snap-today { scroll-snap-type: y proximity; scroll-padding-top: calc(va
    그만큼 오른쪽 가장자리에 더 붙여도 된다(요청: "스크롤 없는 만큼 모바일에서 타임라인을
    더 오른쪽으로 이동"). */
 @media (max-width: 860px) {
-  .scr-scroll-timeline { left: -1px; }
+  .scr-scroll-timeline { right: -1px; }
 }
 /* PC에서는 타임라인/맨위로 버튼을 화면 오른쪽 끝이 아니라 본문 컬럼 바로 옆에 둔다(요청)
    — 맨위로 버튼이 본문 오른쪽 살짝 옆(16px), 타임라인이 그 오른쪽(버튼 52px + 12px 뒤).
@@ -6175,8 +6174,7 @@ html.scr-snap-today { scroll-snap-type: y proximity; scroll-padding-top: calc(va
   }
   .scr-scroll-timeline {
     right: auto;
-    /* 본문 컬럼 왼쪽 살짝 옆 — 좁은 화면에선 왼쪽 가장자리로 클램프. */
-    left: max(calc(50% - var(--list-content-max) / 2 - 48px), 2px);
+    left: min(calc(50% + var(--list-content-max) / 2 + 80px), calc(100% - 34px));
   }
 }
 /* 모바일 헤더가 로고만 남고 낮아져(패딩 10px + 로고 24px ≈ 44px) 타임라인 상단도 그만큼
@@ -7854,6 +7852,14 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 /* ===== 피드 (v2) ===== */
 /* 이벤트 발생시간 + 내용 헤더를 가진 공통 피드 카드 — 너 나와!/경기 그룹이 같은 껍데기를 쓴다.
    재질은 앱 공통 라이팅 글라스(너 나와! 카드와 동일한 반투명+블러+반사광 톤). */
+/* 필터 로우(경기유형/검색)도 피드 아이템과 같은 좌우 폭으로(요청 — 좌우 패딩 과다 해소). */
+.scr-feed-screen .scr-match-type-filter,
+.scr-feed-screen .scr-filter-bar { margin-left: -12px; margin-right: -12px; }
+@media (max-width: 640px) {
+  .scr-feed-screen .scr-match-type-filter,
+  .scr-feed-screen .scr-filter-bar { margin-left: -10px; margin-right: -10px; }
+}
+
 /* 아이템 = 라이팅 글래스 패널(복귀, 요청 — 구분이 더 또렷하게). 폭은 화면을 거의 꽉
    채우고 좌우를 살짝만 남긴다(화면 패딩을 음수 마진으로 뚫고 6~8px만 남김). 아이템
    사이 세로 여백은 시원하게. */
@@ -7902,8 +7908,12 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   opacity: 0;
 }
 .scr-feed-stack-opened .scr-feed-stack-rest { grid-template-rows: 1fr; opacity: 1; }
-.scr-feed-stack-rest-inner { overflow: hidden; min-height: 0; }
-.scr-feed-stack-rest-list { display: flex; flex-direction: column; gap: 20px; padding-top: 20px; }
+/* 카드의 음수 좌우 마진(-12px)이 overflow:hidden에 잘리지 않게 폭을 넓혀 되돌린다. */
+.scr-feed-stack-rest-inner { overflow: hidden; min-height: 0; margin: 0 -12px; padding: 0 12px; }
+.scr-feed-stack-rest-list { display: flex; flex-direction: column; gap: 20px; padding-bottom: 20px; }
+@media (max-width: 640px) {
+  .scr-feed-stack-rest-inner { margin: 0 -10px; padding: 0 10px; }
+}
 @media (prefers-reduced-motion: reduce) {
   .scr-feed-stack-peek, .scr-feed-stack-rest { transition: none; }
 }
