@@ -2920,10 +2920,10 @@ html.scr-page-bg.scr-light-theme .scr-rank-screen-v2::before { display: none; }
 }
 .scr-light-theme .scr-match-extra-search .scr-match-extra-field { background: rgba(0,0,0,0.06); }
 .scr-match-extra-search .scr-match-extra-field::placeholder { color: var(--muted); font-size: var(--fs-caption); }
-/* 메모 슬롯 — 메모 인풋 + "내 메모" 체크박스를 한 칸에 담고, 슬롯 전체 폭은 경기번호 칸과
-   동일하게 유지한다(요청: 두 요소를 합쳐 기존 메모 필드 폭 유지). 안에서 인풋이 남는 폭을
-   먹고(위 .scr-match-extra-field의 flex:1 1 0이 그대로 적용됨) 체크박스는 내용만큼만. */
-.scr-match-extra-search .scr-match-extra-memo { flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: 8px; }
+/* 메모 슬롯 — 메모 인풋 + "내 메모" 체크박스를 한 칸에 담는다. 경기번호 칸은 그리 넓을 필요가
+   없어 행을 1:2로 나눠(경기번호 1/3, 메모 영역 2/3, 요청) 메모 영역이 더 넓게 차지한다.
+   안에서 인풋이 남는 폭을 먹고(위 .scr-match-extra-field의 flex:1 1 0) 체크박스는 내용만큼만. */
+.scr-match-extra-search .scr-match-extra-memo { flex: 2 1 0; min-width: 0; display: flex; align-items: center; gap: 8px; }
 /* 체크박스 자체 모양/글로우는 공용 .scr-checkbox-field가 담당하고, 여기선 메모 슬롯 안에서의
    배치(내용 크기만큼만, 줄바꿈 금지)와 caption 폰트만 얹는다. */
 .scr-match-mynotes { flex: 0 0 auto; font-size: var(--fs-caption); white-space: nowrap; }
