@@ -98,9 +98,9 @@ export default function RankRowV2({ row, tiedWithPrev = false, highlighted = fal
                 className={cx("scr-rank-stat-primary", provisional && "scr-rank-stat-provisional")}
                 title={provisional ? "경기 수가 적어 아직 확정되지 않은 잠정 점수예요" : undefined}
               >
-                {/* 정수여도 .0을 붙여(소수 첫째자리 고정) 여러 행의 소수점·자릿수를 세로로
-                    맞춘다(요청). tabular-nums와 함께 줄이 반듯하게 선다. */}
-                {rankScore.toFixed(1)}
+                {/* 서버가 점수를 10배 스케일로 산정하므로(요청) 화면엔 자연수로 반올림해
+                    보여준다 — 원래 소수 첫째자리 정보는 10배 스케일의 정수부에 살아 있다. */}
+                {Math.round(rankScore)}
               </span>
             </span>
           </div>

@@ -33,6 +33,7 @@
   --pc-fs-subhead: 20px;
   --pc-fs-headline: 24px;   /* subhead(20)와 title(28) 사이 — 랭크 숫자 등 */
   --pc-fs-title: 28px;
+  --pc-fs-title-2: 32px;    /* title(28)과 hero-1(36) 사이 — PC 랭크 숫자 등(요청) */
   --pc-fs-hero-1: 36px;
   --pc-fs-hero-2: 40px;
   --pc-fs-hero-3: 52px;
@@ -44,6 +45,7 @@
   --mobile-fs-subhead: 20px;
   --mobile-fs-headline: 24px;
   --mobile-fs-title: 28px;
+  --mobile-fs-title-2: 32px;
   --mobile-fs-hero-1: 36px;
   --mobile-fs-hero-2: 40px;
   --mobile-fs-hero-3: 52px;
@@ -55,6 +57,7 @@
   --fs-subhead: var(--pc-fs-subhead);
   --fs-headline: var(--pc-fs-headline);
   --fs-title: var(--pc-fs-title);
+  --fs-title-2: var(--pc-fs-title-2);
   --fs-hero-1: var(--pc-fs-hero-1);
   --fs-hero-2: var(--pc-fs-hero-2);
   --fs-hero-3: var(--pc-fs-hero-3);
@@ -2111,11 +2114,19 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    가로 행으로 바꾼다. */
 .scr-rank-badge { display: flex; flex-direction: row; align-items: center; gap: 5px; justify-self: start; }
 .scr-rank-num {
-  /* 랭크 숫자 1스텝 확대(요청): fs-headline→fs-title. 폰트는 기본 UI 폰트. */
-  font-family: inherit; font-size: var(--fs-title); font-weight: 700; font-style: italic; color: var(--text);
+  /* 랭크 숫자 — PC는 title 위 한 스텝(32px, 요청으로 새로 추가한 title-2), 모바일은
+     title(28) 유지(아래 미디어쿼리). 폰트는 기본 UI 폰트. */
+  font-family: inherit; font-size: var(--fs-title-2); font-weight: 700; font-style: italic; color: var(--text);
   font-variant-numeric: tabular-nums;
 }
-.scr-rank-delta { display: inline-flex; align-items: center; gap: 1px; font-size: var(--fs-11); font-weight: 700; font-style: italic; white-space: nowrap; }
+@media (max-width: 640px) {
+  .scr-rank-num { font-size: var(--fs-title); }
+}
+/* 순위변동 — PC caption(14), 모바일 11px(요청). 줄바꿈 금지. */
+.scr-rank-delta { display: inline-flex; align-items: center; gap: 1px; font-size: var(--fs-caption); font-weight: 700; font-style: italic; white-space: nowrap; }
+@media (max-width: 640px) {
+  .scr-rank-delta { font-size: var(--fs-11); }
+}
 .scr-rank-delta-up { color: var(--win); }
 .scr-rank-delta-down { color: var(--loss); }
 .scr-rank-delta-new { color: #f0c05a; }
@@ -2364,15 +2375,17 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   /* PC에선 요소 묶음 최대폭만 키운다(닉네임 칸에 더 여유) — 나머지 넓은 카드 폭은 전부
      좌우 여백(margin:auto)으로 빠져 한가운데로 모인다(요청). */
   .scr-rank-table-panel-v2 .scr-rank-row-inner {
-    grid-template-columns: 58px 70px 40px minmax(0, 316px);
+    /* 랭크 칸 58→72px — 숫자가 32px(title-2)로, 순위변동이 caption(14)으로 커진 폭을
+       흡수한다(요청). 닉네임 최대폭에서 그만큼 덜어낸다. */
+    grid-template-columns: 72px 70px 40px minmax(0, 302px);
     padding: 0 26px 0 34px;
   }
 }
 .scr-rank-table-panel-v2 .scr-rank-name-wrap { min-width: 0; justify-content: flex-start; margin-left: 8px; }
 /* 프사와 이름이 이 행의 주인공이라 시원하게 키운다 — 나머지(순위/전적)는 곁들이다. */
 .scr-rank-table-panel-v2 .scr-rank-name {
-  /* 닉네임 1스텝 확대(요청): fs-title→fs-hero-1. */
-  font-size: var(--fs-hero-1); font-weight: 700;
+  /* 닉네임 — PC title(28), 모바일 headline(24)(요청, 파일 끝 통일 섹션과 동기). */
+  font-size: var(--fs-title); font-weight: 700;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 /* 전적(v2)과 그 아래 최근 경기 한 줄을 함께 담는 칸 — 이 wrap 자체가 그리드 마지막
@@ -2393,9 +2406,6 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 /* 프사도 원형으로(Avatar.tsx는 인라인 style로 각진 래디우스를 계산해 넣으므로 스타일시트
    에서 override하려면 !important가 필요하다). */
 .scr-rank-table-panel-v2 .scr-avatar { border-radius: 50% !important; }
-/* 순위 변동(화살표+숫자) 배지 — 요청으로 1단계 더 축소(micro 12→fs-11 11). 줄바꿈은
-   base의 white-space:nowrap로 막는다(요청: 순위변동 줄바꿈 방지). */
-.scr-rank-table-panel-v2 .scr-rank-delta { font-size: var(--fs-11); }
 /* 승률(주 지표)만 남아서 그 자체로 크고 진하게 — 자기 칸 안에서 오른쪽 정렬. */
 .scr-rank-stat-primary { font-size: var(--fs-body); font-weight: 600; color: var(--text); }
 /* 공동순위(바로 위와 같은 순위)는 구분선만 없애는 게 아니라 그 사이 간격도 좁혀서
@@ -2432,8 +2442,8 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
     /* 좌우 여백 거의 같게, 왼쪽만 살짝 더(요청). 구분선(행 ::before)은 양 끝까지 그대로. */
     padding: 0 12px 0 18px;
   }
-  /* 모바일 닉네임은 자리가 좁아 한 스텝 낮춘다(요청: 모바일에선 원래대로 subhead). */
-  .scr-rank-table-panel-v2 .scr-rank-name { font-size: var(--fs-subhead); }
+  /* 모바일 닉네임은 headline(24)(요청). */
+  .scr-rank-table-panel-v2 .scr-rank-name { font-size: var(--fs-headline); }
   /* 모바일에선 아바타↔닉네임 간격을 줄인다(요청) — 이름 칸 앞 여백 8→2px(칸 사이
      column-gap 8px는 유지). */
   .scr-rank-table-panel-v2 .scr-rank-name-wrap { margin-left: 2px; }
@@ -2949,8 +2959,9 @@ html.scr-page-bg.scr-light-theme .scr-rank-screen-v2::before { display: none; }
   }
   /* 모바일: 유저/경기번호/메모 3줄. 인라인 스택은 공용 모바일 규칙(위 2913)이 이미 세로로
      쌓아 유저 / (경기번호+메모)로 2줄이 되고, 여기서 경기번호와 메모 영역까지 세로로 쪼개
-     총 3줄로 만든다. */
-  .scr-match-screen-v2 .scr-match-extra-search { flex-direction: column; align-items: stretch; gap: 10px; }
+     총 3줄로 만든다. 줄 간격은 인라인 스택의 세로 갭(16px)과 동일하게 — 다르면 유저↔경기번호
+     사이와 경기번호↔메모 사이 간격이 달라 보인다(지적). */
+  .scr-match-screen-v2 .scr-match-extra-search { flex-direction: column; align-items: stretch; gap: 16px; }
 }
 /* .scr-screen이 이미 형제간 gap을 넣어주므로 자체 마진은 두지 않는다. */
 /* 목록 위 소타이틀(요청: 경기 화면 "경기 목록"). */
@@ -5437,6 +5448,20 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 .scr-member-row-static { cursor: default; }
 @media (hover: hover) { .scr-member-row-static:hover { background: transparent; } }
 
+/* 펼침/접힘 트랜지션(요청) — 패널을 항상 렌더해 두고 grid-template-rows 0fr↔1fr로
+   높이를 부드럽게 애니메이션한다(max-height 추정값 방식과 달리 내용 높이에 정확히 맞는다).
+   안쪽(clip-inner)이 overflow:hidden+min-height:0으로 잘라내는 역할을 맡는다. */
+.scr-member-gameids-clip {
+  display: grid; grid-template-rows: 0fr;
+  transition: grid-template-rows .28s cubic-bezier(0.32, 0.72, 0, 1), opacity .22s ease;
+  opacity: 0;
+}
+.scr-member-gameids-clip-open { grid-template-rows: 1fr; opacity: 1; }
+.scr-member-gameids-clip-inner { overflow: hidden; min-height: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .scr-member-gameids-clip { transition: none; }
+}
+
 /* 펼침 패널 — 행 아래로 확장되는 게임아이디 목록(요청). 클러스터와 같은 폭으로 중앙. */
 .scr-member-gameids {
   width: min(420px, 100%); margin: 0 auto; padding: 2px 0 12px;
@@ -7043,10 +7068,10 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
 }
 .scr-stat-row-head { font-size: var(--fs-body); }
 .scr-rank-record-nums { font-size: var(--fs-caption); }
-/* 랭킹 닉네임 — PC는 크게(hero-1), 모바일은 자리가 좁아 한 스텝 낮춘다(subhead)(요청).
+/* 랭킹 닉네임 — PC title(28), 모바일 headline(24)(요청).
    이 통일 섹션이 파일 끝이라 앞선 규칙들을 덮으므로, 여기서 PC/모바일을 명시적으로 가른다. */
-@media (min-width: 641px) { .scr-rank-table-panel-v2 .scr-rank-name { font-size: var(--fs-hero-1); } }
-@media (max-width: 640px) { .scr-rank-table-panel-v2 .scr-rank-name { font-size: var(--fs-subhead); } }
+@media (min-width: 641px) { .scr-rank-table-panel-v2 .scr-rank-name { font-size: var(--fs-title); } }
+@media (max-width: 640px) { .scr-rank-table-panel-v2 .scr-rank-name { font-size: var(--fs-headline); } }
 .scr-rank-record-v2 { font-size: var(--fs-caption); }
 /* 필터/검색창 폰트를 전부 한 스텝씩 낮춘다(요청: "모든 필터와 검색창의 폰트들을
    1스텝씩 낮춰줘(라벨도)") — 라벨 caption(14)→micro(12), 필터 컨트롤(알약/달력/종족)
@@ -7098,6 +7123,7 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
     --fs-subhead: var(--mobile-fs-subhead);
     --fs-headline: var(--mobile-fs-headline);
     --fs-title: var(--mobile-fs-title);
+    --fs-title-2: var(--mobile-fs-title-2);
     --fs-hero-1: var(--mobile-fs-hero-1);
     --fs-hero-2: var(--mobile-fs-hero-2);
     --fs-hero-3: var(--mobile-fs-hero-3);

@@ -76,7 +76,14 @@ export default function MembersScreen() {
   const [detailFor, setDetailFor] = useState<Member | null>(null);
   const [page, setPage] = useState(1);
   const [creating, setCreating] = useState(false);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  // 여러 회원을 동시에 펼쳐둘 수 있다(요청: "다른 유저의 상세가 닫히지 않게") — 그래서
+  // 단일 id 대신 Set. 열고 닫는 트랜지션은 CSS(grid-template-rows 0fr↔1fr)가 맡는다.
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const toggleExpanded = (id: string) => setExpandedIds((prev) => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
   const isAdmin = !!currentUser && isAdminRole(currentUser.roles);
   const suggestions = useMemo(() => activeMemberSearchTerms(members), [members]);
 
@@ -109,7 +116,7 @@ export default function MembersScreen() {
   }, [members, filter, query]);
 
   // 필터가 바뀌면 결과 목록도 바뀌니 1페이지로 되돌린다
-  useEffect(() => { setPage(1); setExpandedId(null); }, [filter, query]);
+  useEffect(() => { setPage(1); setExpandedIds(new Set()); }, [filter, query]);
 
   const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
   const pageRows = rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -214,12 +221,12 @@ export default function MembersScreen() {
         <div className="scr-member-rows">
           {pageRows.map((m) => {
             const ids = idsByMember.get(m.id) ?? [];
-            const expanded = expandedId === m.id;
+            const expanded = expandedIds.has(m.id);
             return (
               <div key={m.id} className={cx("scr-member-row-wrap", expanded && "scr-member-row-wrap-open")}>
                 {/* 행 클릭 = 아래로 펼쳐 그 회원의 게임아이디 목록을 보여준다(요청) —
                     상세(승인/정지 등 관리)는 펼친 안의 "관리" 버튼으로. */}
-                <button type="button" className="scr-member-row" onClick={() => setExpandedId(expanded ? null : m.id)}>
+                <button type="button" className="scr-member-row" onClick={() => toggleExpanded(m.id)}>
                   <span className="scr-member-row-cluster">
                     <Avatar member={m} size={36} />
                     <div className="scr-member-row-main">
@@ -234,7 +241,10 @@ export default function MembersScreen() {
                   </span>
                 </button>
 
-                {expanded && (
+                {/* 펼침 패널 — 항상 렌더링해 두고 CSS grid-rows 0fr↔1fr로 높이를
+                    애니메이션한다(요청: 열고 닫을 때 트랜지션). */}
+                <div className={cx("scr-member-gameids-clip", expanded && "scr-member-gameids-clip-open")} aria-hidden={!expanded}>
+                  <div className="scr-member-gameids-clip-inner">
                   <div className="scr-member-gameids">
                     <div className="scr-member-gameids-head">
                       <span>게임아이디 {ids.length > 0 && <b>{ids.length}</b>}</span>
@@ -290,7 +300,8 @@ export default function MembersScreen() {
                       </div>
                     )}
                   </div>
-                )}
+                  </div>
+                </div>
               </div>
             );
           })}
