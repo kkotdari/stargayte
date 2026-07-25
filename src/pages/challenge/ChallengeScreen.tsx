@@ -128,7 +128,7 @@ function ChallengeSide({
           <div key={p.id} className="scr-challenge-side-block">
             <div className="scr-challenge-side-row">
               <span className={cx("scr-challenge-person", highlightMemberIds?.has(p.id) && "scr-challenge-person-hit")}>
-                <Avatar member={p} size={24} />
+                <Avatar member={p} size={20} />
                 <span className="scr-challenge-person-name">{p.nickname}</span>
               </span>
               {/* 응답 배지 — 수락/거절/대기 세 가지로만 구분한 작은 도장식 알약(요청:

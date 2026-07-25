@@ -7871,7 +7871,7 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    포스트 우상단 케밥 자리. */
 .scr-feed-card-head {
   display: flex; align-items: center; gap: 8px; padding: 12px 44px 2px 16px;
-  font-size: var(--fs-caption); color: var(--dim);
+  font-size: var(--fs-micro); color: var(--dim);
 }
 /* 경기 케밥을 포스트 우상단으로(요청 — 이제 오른쪽에 타임라인이 없어 안전 공간 불필요).
    trow의 position:relative가 절대배치를 가로채지 않게 피드 안에서는 static으로. */
@@ -7884,8 +7884,17 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 /* 너 나와 케밥(피드 레벨)도 같은 자리 — 기존 우상단 '취소' 라벨과 겹치지 않게 라벨은 왼쪽으로. */
 .scr-feed-chal-menu { position: absolute; top: 26px; right: 12px; z-index: 3; }
 .scr-feed-card .scr-challenge-cancel-tag { right: 48px; }
-/* 로스터 폰트를 너 나와 카드 닉네임(fs-body)과 통일(요청). */
-.scr-feed-match-body .scr-mt-name { font-size: var(--fs-body); }
+/* 아이템 내 폰트 전부 1스텝 축소(요청) — 로스터/닉네임 caption, 헤더 micro 등.
+   로스터와 너나와 닉네임은 같은 크기 유지(둘 다 caption). */
+.scr-feed-match-body .scr-mt-name { font-size: var(--fs-caption); }
+.scr-feed-card .scr-challenge-person-name { font-size: var(--fs-caption); }
+.scr-feed-card .scr-challenge-card-when { font-size: var(--fs-body); }
+.scr-feed-match-body .scr-match-trow-outcome { font-size: var(--fs-caption); }
+.scr-feed-match-body .scr-match-trow-map,
+.scr-feed-match-body .scr-match-trow-dur { font-size: var(--fs-micro); }
+.scr-feed-comments .scr-mreq-item-text { font-size: var(--fs-caption); }
+.scr-feed-comments .scr-mreq-item-author-name { font-size: var(--fs-micro); }
+.scr-feed-shift-row { font-size: var(--fs-micro); }
 /* 접힘 상태 윗줄은 이제 케밥(절대배치)뿐이라 자리 예약이 필요 없다. */
 .scr-feed-match-body .scr-match-trow-topline { min-height: 0; }
 /* 로스터를 팀별로 한 줄로 잇는다(요청) — 세로 스택 대신 가로 flex, 공간이 모자라면
@@ -7910,7 +7919,7 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-feed-card-body > .scr-challenge-card.scr-challenge-card-ended {
   border: none; background: transparent; box-shadow: none;
   backdrop-filter: none; -webkit-backdrop-filter: none; border-radius: 0;
-  padding-top: 6px; padding-bottom: 8px; gap: 6px;
+  padding-top: 11px; padding-bottom: 14px; gap: 7px;
 }
 /* 경기 로우도 동일 — 행 자신의 라이팅 글라스 패널(배경·블러·그림자·마진)을 벗기고
    내용만 피드 카드에 직접 얹는다. 날짜 헤더는 카드 헤더가 대신하므로 숨긴다. */
@@ -7920,7 +7929,7 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-light-theme .scr-feed-match-body .scr-match-list-panel-v2 .scr-match-trow {
   background: transparent; border: none; box-shadow: none;
   backdrop-filter: none; -webkit-backdrop-filter: none;
-  border-radius: 0; margin: 0; padding-top: 2px; padding-bottom: 4px;
+  border-radius: 0; margin: 0; padding-top: 5px; padding-bottom: 7px;
 }
 /* 카드 폭이 이미 좁으니 PC의 넓은 좌우 패딩(100px)도 카드 안에선 줄인다. */
 @media (min-width: 720px) {
@@ -7929,8 +7938,8 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 
 /* 카드 하단 공통 댓글 영역 — 토글을 누르면 목록/입력이 그 자리에서 펼쳐진다.
    구분선은 아이템 사이 하나로 충분하니(요청) 댓글 영역/댓글끼리의 선은 모두 없앤다. */
-.scr-feed-comments { padding: 0 16px 4px; }
-.scr-feed-comments .scr-match-notes { border-top: none; padding-top: 0; margin-top: 2px; }
+.scr-feed-comments { padding: 0 16px 7px; }
+.scr-feed-comments .scr-match-notes { border-top: none; padding-top: 0; margin-top: 5px; }
 .scr-feed-comments .scr-mreq-item + .scr-mreq-item { border-top: none; }
 .scr-feed-comments-toggle {
   display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0;
@@ -7979,15 +7988,15 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 }
 
 /* 랭크 변동 발생 카드 — 변동 후 순위 오름차순 목록(상승 ▲/하락 ▼/신규). */
-.scr-feed-shift-list { list-style: none; margin: 0; padding: 4px 16px 2px; display: flex; flex-direction: column; gap: 4px; }
-.scr-feed-shift-row { display: flex; align-items: baseline; gap: 8px; font-size: var(--fs-caption); }
+.scr-feed-shift-list { list-style: none; margin: 0; padding: 6px 16px 3px; display: flex; flex-direction: column; gap: 5px; }
+.scr-feed-shift-row { display: flex; align-items: baseline; gap: 8px; font-size: var(--fs-micro); }
 .scr-feed-shift-rank { font-weight: 800; font-variant-numeric: tabular-nums; min-width: 34px; text-align: right; }
 .scr-feed-shift-name { font-weight: 600; }
 .scr-feed-shift-up { color: #7fd18b; font-weight: 700; }
 .scr-feed-shift-down { color: #e08a8a; font-weight: 700; }
 .scr-feed-shift-new { color: var(--point); font-weight: 700; }
 .scr-feed-shift-from { color: var(--dim); font-size: var(--fs-micro); }
-.scr-feed-rank-actions { display: flex; justify-content: center; padding: 4px 16px 6px; }
+.scr-feed-rank-actions { display: flex; justify-content: center; padding: 5px 16px 10px; }
 
 /* 실시간 랭킹(차트) 오버레이 — 상성보기와 같은 전체 덮개. PC는 넓은 본체(900px)를
    가운데에, 모바일은 사실상 전체 화면. 오버레이 자신이 스크롤을 담당한다. */
