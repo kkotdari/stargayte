@@ -7850,11 +7850,27 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 }
 
 /* ===== 피드 (v2) ===== */
-/* 이벤트 발생시간 + 내용 헤더를 가진 공통 피드 카드 — 너 나와!/경기 그룹이 같은 껍데기를 쓴다. */
+/* 이벤트 발생시간 + 내용 헤더를 가진 공통 피드 카드 — 너 나와!/경기 그룹이 같은 껍데기를 쓴다.
+   재질은 앱 공통 라이팅 글라스(너 나와! 카드와 동일한 반투명+블러+반사광 톤). */
 .scr-feed-list { display: flex; flex-direction: column; gap: 14px; }
 .scr-feed-card {
-  border-radius: var(--radius); border: 1px solid var(--line-soft);
-  background: rgba(var(--overlay-rgb), 0.04); overflow: hidden;
+  border-radius: 14px; overflow: hidden;
+  background: rgba(var(--overlay-rgb), 0.07);
+  backdrop-filter: blur(9px) saturate(1.2);
+  -webkit-backdrop-filter: blur(9px) saturate(1.2);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.09),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.045),
+    0 2px 12px rgba(0, 0, 0, 0.16);
+}
+.scr-light-theme .scr-feed-card {
+  background: rgba(255, 255, 255, 0.62);
+  backdrop-filter: blur(10px) saturate(1.1);
+  -webkit-backdrop-filter: blur(10px) saturate(1.1);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.5),
+    0 1px 6px rgba(0, 0, 0, 0.08);
 }
 .scr-feed-card-head {
   display: flex; align-items: center; gap: 8px; padding: 10px 14px;
@@ -7890,4 +7906,40 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-feed-matches-detail { padding: 0 14px 12px; }
 @media (prefers-reduced-motion: reduce) {
   .scr-feed-detail-clip { transition: none; }
+}
+
+/* + 등록 팝오버 메뉴 — 버튼 아래 라이팅 글라스 패널, 3항목(리플레이/너 나와!/일정). */
+.scr-feed-add-wrap { position: relative; }
+.scr-feed-add-backdrop { position: fixed; inset: 0; z-index: 89; background: transparent; }
+.scr-feed-add-menu {
+  position: absolute; top: calc(100% + 6px); left: 50%; transform: translateX(-50%);
+  z-index: 90; min-width: 180px; padding: 6px;
+  display: flex; flex-direction: column; gap: 2px;
+  border-radius: 12px;
+  background: rgba(var(--overlay-rgb), 0.14);
+  backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 8px 24px rgba(0, 0, 0, 0.35);
+}
+.scr-light-theme .scr-feed-add-menu {
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.6),
+    0 8px 24px rgba(0, 0, 0, 0.14);
+}
+.scr-feed-add-menu > button {
+  display: flex; align-items: center; gap: 8px;
+  background: transparent; border: none; color: var(--text);
+  padding: 9px 12px; border-radius: 8px; cursor: pointer; text-align: left;
+  font-family: inherit; font-size: var(--fs-caption); font-weight: 600; white-space: nowrap;
+}
+@media (hover: hover) { .scr-feed-add-menu > button:not(:disabled):hover { background: rgba(var(--lit-rgb), 0.1); } }
+.scr-feed-add-menu > button:disabled { color: var(--dim); cursor: default; }
+.scr-feed-add-soon {
+  margin-left: auto; font-size: var(--fs-micro); font-weight: 700; color: var(--dim);
+  border: 1px solid var(--line-soft); border-radius: 999px; padding: 0 6px;
 }

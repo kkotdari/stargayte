@@ -1,15 +1,20 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { ChevronDown, Plus, Send, Swords } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import { CalendarPlus, ChevronDown, Plus, Send, Swords, Upload } from "lucide-react";
 import { Spinner } from "../../components/common/Feedback";
 import MatchList, { type SearchListRow } from "../v2/MatchList";
 import { ChallengeCard } from "../challenge/ChallengeScreen";
+import ReplayReviewModal from "../../modals/ReplayReviewModal";
+import ChallengeFormModal from "../../modals/ChallengeFormModal";
 import { useAppStore } from "../../store/appStore";
 import { api } from "../../api/client";
 import { useCursorPagination } from "../../hooks/useCursorPagination";
+import { buildReplayDrafts, type ReplayDraft } from "../../utils/replayDraft";
+import { hasAppUpdatePreloadErrorOccurred } from "../../utils/appUpdate";
 import { cx } from "../../utils/format";
 import type { Challenge, Match, Member } from "../../types";
 
 const PAGE_SIZE = 100;
+const MAX_REPLAY_FILES = 20;
 
 // 피드 — 커뮤니티 활동(경기 결과, 너 나와! 일정)을 한 타임라인으로 보여주는 홈 화면.
 // 타임라인 기준: 너 나와!는 경기 예정 일시, 경기는 리플레이의 게임 시작 시각.
@@ -133,6 +138,18 @@ export default function FeedScreen() {
   const user = useAppStore((s) => s.user);
   const memberOf = useAppStore((s) => s.memberOf);
 
+  // + 등록 메뉴(리플레이/너 나와!/일정) — 버튼 아래 작은 팝오버로 연다.
+  const [addMenuOpen, setAddMenuOpen] = useState(false);
+
+  // 리플레이 등록 — 파일 선택 → 분석(buildReplayDrafts) → 검토 모달.
+  const replayInputRef = useRef<HTMLInputElement>(null);
+  const [parsingReplays, setParsingReplays] = useState(false);
+  const [replayDrafts, setReplayDrafts] = useState<ReplayDraft[] | null>(null);
+  const [replayTruncated, setReplayTruncated] = useState(false);
+
+  // 너 나와! 등록 폼.
+  const [challengeFormOpen, setChallengeFormOpen] = useState(false);
+
   // 너 나와! 목록
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [challengesLoading, setChallengesLoading] = useState(true);
@@ -178,6 +195,27 @@ export default function FeedScreen() {
 
   const loading = challengesLoading || matchesLoading;
 
+  const members = useAppStore((s) => s.members);
+  const handleReplayFilesChosen = async (e: ChangeEvent<HTMLInputElement>) => {
+    const chosen = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    if (chosen.length === 0) return;
+    const truncated = chosen.length > MAX_REPLAY_FILES;
+    const batch = chosen.slice(0, MAX_REPLAY_FILES);
+    setReplayTruncated(truncated);
+    setParsingReplays(true);
+    try {
+      const [drafts] = await Promise.all([
+        buildReplayDrafts(batch, members),
+        new Promise((resolve) => setTimeout(resolve, 500)),
+      ]);
+      if (hasAppUpdatePreloadErrorOccurred()) return;
+      setReplayDrafts(drafts);
+    } finally {
+      setParsingReplays(false);
+    }
+  };
+
   // 너 나와!와 경기 그룹을 하나의 타임라인으로 — 최근 이벤트가 위.
   const feed = useMemo<FeedItem[]>(() => {
     const items: FeedItem[] = [
@@ -193,11 +231,43 @@ export default function FeedScreen() {
         <h1 className="scr-title scr-v2-toolbar-title">피드</h1>
       </div>
 
-      {/* 등록 진입점 — 리플레이/너 나와!/일정(추후). 실제 플로우는 다음 단계에서 연결. */}
-      <div className="scr-v2-primary-row">
-        <button type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm" aria-label="등록">
-          <Plus size={16} /> 등록
+      {/* 등록 진입점 — 리플레이 / 너 나와! / 일정(추후 개발). */}
+      <div className="scr-v2-primary-row scr-feed-add-wrap">
+        <button
+          type="button"
+          className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm"
+          onClick={() => setAddMenuOpen((v) => !v)}
+          aria-expanded={addMenuOpen}
+          aria-label="등록"
+        >
+          {parsingReplays ? <Spinner size={14} /> : <Plus size={16} />} 등록
         </button>
+        {addMenuOpen && (
+          <>
+            <div className="scr-feed-add-backdrop" onClick={() => setAddMenuOpen(false)} aria-hidden />
+            <div className="scr-feed-add-menu" role="menu">
+              <button
+                type="button" role="menuitem"
+                onClick={() => { setAddMenuOpen(false); replayInputRef.current?.click(); }}
+              >
+                <Upload size={14} aria-hidden /> 리플레이 등록
+              </button>
+              <button
+                type="button" role="menuitem"
+                onClick={() => { setAddMenuOpen(false); setChallengeFormOpen(true); }}
+              >
+                <Send size={14} aria-hidden /> 너 나와! 등록
+              </button>
+              <button type="button" role="menuitem" disabled title="추후 제공">
+                <CalendarPlus size={14} aria-hidden /> 일정 등록 <span className="scr-feed-add-soon">추후</span>
+              </button>
+            </div>
+          </>
+        )}
+        <input
+          ref={replayInputRef} type="file" accept=".rep" multiple hidden
+          onChange={handleReplayFilesChosen}
+        />
       </div>
 
       {error && <div className="scr-err">{error}</div>}
@@ -234,6 +304,22 @@ export default function FeedScreen() {
             )
           ))}
         </div>
+      )}
+
+      {replayDrafts && (
+        <ReplayReviewModal
+          drafts={replayDrafts}
+          truncated={replayTruncated}
+          onClose={() => setReplayDrafts(null)}
+          onSaved={reload}
+        />
+      )}
+
+      {challengeFormOpen && (
+        <ChallengeFormModal
+          onClose={() => setChallengeFormOpen(false)}
+          onCreated={(c) => { upsertChallenge(c); setChallengeFormOpen(false); }}
+        />
       )}
     </div>
   );
