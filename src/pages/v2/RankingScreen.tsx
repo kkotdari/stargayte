@@ -76,9 +76,8 @@ function rankingParamsFromUrl(): { mode?: RankMode; race?: BaseRace | "all"; uni
 export default function RankingScreenV2() {
   // 화면 전체 배경 사진(다크에서만 CSS가 적용) — fixed ::before가 iOS 안전영역에 갇히는
   // 한계를 피해 .scr-app 흐름 배경으로 얹어 상태바/내비바 뒤까지 채운다(실험).
-  // 다크는 rivaly.jpg, 라이트는 trophy.png(요청). 라이트는 모바일 전용 크롭이 없어
-  // 데스크톱 이미지를 그대로 쓴다.
-  usePageBackground("/images/bg/rivaly.jpg", "/images/bg/rivaly_mobile.png", "/images/bg/trophy.png");
+  // 다크만 배경 사진(rivaly)을 쓴다 — 라이트 테마 배경은 제거(요청)해 기본 앱 배경만 남긴다.
+  usePageBackground("/images/bg/rivaly.jpg", "/images/bg/rivaly_mobile.png");
   const members = useAppStore((s) => s.members);
   const user = useAppStore((s) => s.user);
   const suggestions = useMemo(() => activeMemberSearchTerms(members), [members]);

@@ -98,7 +98,7 @@ export default function RankRowV2({ row, tiedWithPrev = false, highlighted = fal
                 className={cx("scr-rank-stat-primary", provisional && "scr-rank-stat-provisional")}
                 title={provisional ? "경기 수가 적어 아직 확정되지 않은 잠정 점수예요" : undefined}
               >
-                {rankScore}<span className="scr-num-unit">점</span>
+                {rankScore}
               </span>
             </span>
           </div>
