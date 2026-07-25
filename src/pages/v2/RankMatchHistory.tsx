@@ -24,7 +24,9 @@ interface RankMatchHistoryProps {
 // 상대 미회원 등으로 레이팅 미반영) 병기하지 않는다.
 function deltaLabel(d: number | undefined): string | undefined {
   if (d === undefined) return undefined;
-  return `${d > 0 ? "+" : ""}${d}점`;
+  // 서버가 ×10 스케일로 내려주므로 카드 점수와 똑같이 자연수로 반올림해 보여준다(요청).
+  const n = Math.round(d);
+  return `${n > 0 ? "+" : ""}${n}점`;
 }
 
 interface HistoryRow {
