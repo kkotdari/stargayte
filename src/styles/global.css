@@ -7959,6 +7959,16 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-feed-shift-from { color: var(--dim); font-size: var(--fs-micro); }
 .scr-feed-rank-actions { display: flex; justify-content: center; padding: 6px 16px 14px; }
 
-/* 실시간 랭킹 모달 — 기존 랭킹 화면을 통째로 담는 넓은 모달. */
-.scr-feed-ranking-modal { max-width: 860px; }
-.scr-feed-ranking-modal-body { overflow-y: auto; min-height: 0; }
+/* 실시간 랭킹(차트) 오버레이 — 상성보기와 같은 전체 덮개. PC는 넓은 본체(900px)를
+   가운데에, 모바일은 사실상 전체 화면. 오버레이 자신이 스크롤을 담당한다. */
+.scr-feed-ranking-overlay { align-items: flex-start; }
+.scr-feed-ranking-overlay-body { width: min(900px, 100%); }
+.scr-feed-ranking-overlay-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 4px 2px 12px;
+}
+.scr-feed-ranking-overlay-title { font-size: var(--fs-subhead); font-weight: 800; }
+@media (max-width: 640px) {
+  .scr-feed-ranking-overlay { padding-left: 0; padding-right: 0; }
+  .scr-feed-ranking-overlay-body { width: 100%; padding: 0 12px; box-sizing: border-box; }
+}

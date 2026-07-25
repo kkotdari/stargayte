@@ -194,8 +194,19 @@ export default function FeedScreen() {
   );
   const { items: matches, loading: matchesLoading, loadingMore, hasMore, loadMore, reload } =
     useCursorPagination(fetchPage, []);
+
+  // 무한스크롤 — 목록 끝 센티널이 보이면 다음 페이지를 불러온다(전체 일괄 로드 대신).
+  const sentinelRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (hasMore && !matchesLoading && !loadingMore) loadMore();
+    const el = sentinelRef.current;
+    if (!el || !hasMore) return;
+    const io = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting) && hasMore && !matchesLoading && !loadingMore) {
+        loadMore();
+      }
+    }, { rootMargin: "600px 0px" });
+    io.observe(el);
+    return () => io.disconnect();
   }, [hasMore, matchesLoading, loadingMore, loadMore]);
 
   const loading = challengesLoading || matchesLoading;
@@ -286,6 +297,14 @@ export default function FeedScreen() {
     return items.sort((a, b) => b.time - a.time);
   }, [challenges, matches, rankShifts]);
 
+  // 경기가 아직 더 남아 있으면(hasMore), 이미 불러온 가장 오래된 경기보다 더 과거의
+  // 너나와/변동 카드는 보류한다 — 페이지가 이어질 때 시간순이 뒤섞여 보이지 않게.
+  const visibleFeed = useMemo(() => {
+    if (!hasMore || matches.length === 0) return feed;
+    const oldest = Math.min(...matches.map((m) => matchItem(m).time));
+    return feed.filter((item) => item.time >= oldest);
+  }, [feed, hasMore, matches]);
+
   const dateLabelOf = (item: FeedItem) => {
     const d = new Date(item.time);
     return `${d.getMonth() + 1}월 ${d.getDate()}일`;
@@ -340,11 +359,11 @@ export default function FeedScreen() {
 
       {loading ? (
         <div className="scr-empty"><Spinner size={18} /></div>
-      ) : feed.length === 0 ? (
+      ) : visibleFeed.length === 0 ? (
         <div className="scr-empty">아직 표시할 활동이 없어요.</div>
       ) : (
         <div className="scr-feed-list">
-          {feed.map((item) => (
+          {visibleFeed.map((item) => (
             item.kind === "rankshift" ? (
               <div className="scr-feed-card" key={`rs-${item.shift.id}`}>
                 <div className="scr-feed-card-head" data-date-label={dateLabelOf(item)}>
@@ -402,8 +421,12 @@ export default function FeedScreen() {
         </div>
       )}
 
-      {/* 우측 스크롤 타임라인 — 피드는 최신순(위=최근, 아래=과거). */}
-      {!loading && feed.length > 0 && (
+      {loadingMore && <div className="scr-empty"><Spinner size={16} /></div>}
+      <div ref={sentinelRef} aria-hidden />
+
+      {/* 우측 스크롤 타임라인 — 피드는 최신순(위=최근, 아래=과거). 무한스크롤과 함께 쓰면
+          타임라인은 "지금까지 불러온 범위"를 나타내고, 더 불러올수록 아래(과거)가 늘어난다. */}
+      {!loading && visibleFeed.length > 0 && (
         <ScrollNavTimeline headSelector=".scr-feed-card-head" topLabel="최근" bottomLabel="과거" />
       )}
 
@@ -423,19 +446,19 @@ export default function FeedScreen() {
         />
       )}
 
-      {/* 실시간 랭킹 — 기존 랭킹 화면을 모달로 그대로 띄운다(배경 사진만 끔). */}
+      {/* 실시간 랭킹(차트) — 상성보기와 같은 큰 오버레이(모바일 전체화면)로 기존 랭킹
+          화면을 그대로 띄운다(배경 사진만 끔). 시트 클래스(scr-rivalry-overlay-body)를
+          공유해 모바일 아래로-끌어-닫기도 그대로 동작한다. */}
       {liveRankingOpen && createPortal(
-        <div className="scr-modal-overlay">
-          <div className="scr-modal scr-feed-ranking-modal">
-            <div className="scr-modal-head">
-              <span>실시간 랭킹</span>
+        <div className="scr-rivalry-overlay scr-feed-ranking-overlay">
+          <div className="scr-rivalry-overlay-body scr-feed-ranking-overlay-body">
+            <div className="scr-feed-ranking-overlay-head">
+              <span className="scr-feed-ranking-overlay-title">실시간 랭킹</span>
               <button className="scr-icon-btn" onClick={() => setLiveRankingOpen(false)} aria-label="닫기">
                 <X size={14} />
               </button>
             </div>
-            <div className="scr-modal-body scr-feed-ranking-modal-body">
-              <RankingScreen embedded />
-            </div>
+            <RankingScreen embedded />
           </div>
         </div>,
         document.body,
