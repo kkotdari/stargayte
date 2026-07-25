@@ -233,7 +233,7 @@ export default function MatchScreenV2() {
                 checked={myNotesOnly}
                 onChange={(e) => setMyNotesOnly(e.target.checked)}
               />
-              <span>내 메모 있음</span>
+              <span>내 메모한 경기만</span>
             </label>
           )}
           <input
