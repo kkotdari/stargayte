@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { createPortal } from "react-dom";
-import { CalendarPlus, MessageCircle, Plus, Send, Swords, Trophy, Upload, X } from "lucide-react";
+import { CalendarPlus, MessageCircle, MoreVertical, Plus, Send, Swords, Trophy, Upload, X } from "lucide-react";
 import { Spinner } from "../../components/common/Feedback";
+import ConfirmDialog from "../../components/common/ConfirmDialog";
+import KakaoShareButton from "../../components/common/KakaoShareButton";
 import MatchList, { type SearchListRow } from "../v2/MatchList";
 import { ChallengeCard } from "../challenge/ChallengeScreen";
 import FeedComments from "./FeedComments";
@@ -12,6 +14,8 @@ import RankingScreen from "../v2/RankingScreen";
 import { computeRankRows, MATCH_TYPE_OF, type RankMode } from "../v2/rank";
 import { currentPeriodAnchor } from "../../utils/date";
 import { useAppStore } from "../../store/appStore";
+import { isAdminRole } from "../../constants/roles";
+import { cx } from "../../utils/format";
 import { api } from "../../api/client";
 import { useCursorPagination } from "../../hooks/useCursorPagination";
 import { buildReplayDrafts, type ReplayDraft } from "../../utils/replayDraft";
@@ -93,6 +97,77 @@ function matchItem(m: Match): MatchItem {
   };
 }
 
+// 너 나와 포스트 우상단 케밥 — 카카오 공유(전체) + 삭제(운영자만).
+function ChallengeActionsMenu({ challenge, isAdmin, onDeleted }: {
+  challenge: Challenge;
+  isAdmin: boolean;
+  onDeleted: (id: number) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const shareContent = () => {
+    const matchup = `${challenge.ownMembers.map((m) => m.nickname).join(", ")} vs ${challenge.targets.map((t) => t.nickname).join(", ")}`;
+    return {
+      title: "너 나와!",
+      description: matchup,
+      imageUrl: `${window.location.origin}/images/challenge/challenge_share_thumb.jpg`,
+      link: `${window.location.origin}/?sv=challenge&sid=${challenge.id}`,
+      fallbackText: `[스타게이트] 너 나와!\n${matchup}`,
+    };
+  };
+
+  const remove = async () => {
+    setBusy(true);
+    try {
+      await api.deleteChallenge(challenge.id);
+      onDeleted(challenge.id);
+    } finally {
+      setBusy(false);
+      setConfirmOpen(false);
+    }
+  };
+
+  return (
+    <div className="scr-feed-chal-menu">
+      <button
+        type="button" className="scr-match-memo-btn scr-match-kebab-btn"
+        onClick={() => setOpen((v) => !v)}
+        aria-label="더보기" aria-haspopup="menu" aria-expanded={open}
+      >
+        <MoreVertical size={16} />
+      </button>
+      {open && (
+        <>
+          <div className="scr-feed-add-backdrop" onClick={() => setOpen(false)} aria-hidden />
+          <div className="scr-menu-pop-drop scr-feed-chal-menu-drop" role="menu">
+            <KakaoShareButton variant="menu" content={shareContent} onDone={() => setOpen(false)} />
+            {isAdmin && (
+              <button
+                type="button" role="menuitem"
+                className={cx("scr-menu-pop-opt", "scr-match-menu-opt-danger")}
+                onClick={() => { setOpen(false); setConfirmOpen(true); }}
+              >
+                삭제
+              </button>
+            )}
+          </div>
+        </>
+      )}
+      {confirmOpen && (
+        <ConfirmDialog
+          title="너 나와! 삭제"
+          message="이 너 나와!를 완전히 삭제할까요? 되돌릴 수 없어요."
+          confirmLabel={busy ? "삭제 중..." : "삭제"}
+          onConfirm={() => void remove()}
+          onCancel={() => setConfirmOpen(false)}
+        />
+      )}
+    </div>
+  );
+}
+
 // 피드 카드 하단 공통 댓글 영역 — 달린 댓글은 항상 보여주고, 입력창은 아이콘을 눌러야 열린다.
 function FeedCardComments({ targetType, targetId }: { targetType: "match" | "challenge"; targetId: number }) {
   const [composerOpen, setComposerOpen] = useState(false);
@@ -140,6 +215,7 @@ function MatchCard({ item, memberOf, onDeleted, dateLabel }: {
 
 export default function FeedScreen() {
   const user = useAppStore((s) => s.user);
+  const isAdmin = !!user && isAdminRole(user.roles);
   const memberOf = useAppStore((s) => s.memberOf);
   const members = useAppStore((s) => s.members);
 
@@ -399,6 +475,11 @@ export default function FeedScreen() {
                   <span className="scr-feed-card-time">{formatEventTime(item.time, item.withClock)}</span>
                   <span className="scr-feed-card-label">너 나와!</span>
                 </div>
+                <ChallengeActionsMenu
+                  challenge={item.challenge}
+                  isAdmin={isAdmin}
+                  onDeleted={(id) => setChallenges((prev) => prev.filter((c) => c.id !== id))}
+                />
                 <div className="scr-feed-card-body">
                   <ChallengeCard
                     challenge={item.challenge}

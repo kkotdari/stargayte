@@ -471,6 +471,11 @@ export const api = {
   },
 
   // 피드 댓글 — 경기/너 나와! 등 어떤 피드 요소에나 같은 API로 단다.
+  // 너 나와! 완전 삭제 — 운영자 전용.
+  async deleteChallenge(id: number): Promise<void> {
+    await request<void>(`/api/challenges/${id}`, { method: "DELETE" });
+  },
+
   async listFeedComments(targetType: FeedTargetType, targetId: number): Promise<FeedComment[]> {
     return request<FeedComment[]>(`/api/feed/comments?targetType=${targetType}&targetId=${targetId}`);
   },
