@@ -16,9 +16,8 @@ import { api } from "../../api/client";
 import { cx } from "../../utils/format";
 import {
   challengeDateGroupLabel, challengeTimeLabel, formatChallengeSchedule, formatRelativeSchedule, isToday, pad,
-  DATE_INPUT_MIN, DATE_INPUT_MAX, scheduledInstantMs, gameNow,
+  DATE_INPUT_MIN, DATE_INPUT_MAX, gameNow,
 } from "../../utils/date";
-import type { ScheduleLike } from "../../utils/date";
 import { getScrollMetrics, getScrollRoot } from "../../utils/scrollRoot";
 import type { Challenge, ChallengeResult, ChallengeSide, ChallengeStatus, ChallengeTarget } from "../../types";
 
@@ -26,24 +25,6 @@ import type { Challenge, ChallengeResult, ChallengeSide, ChallengeStatus, Challe
 // 완료 done/폐기 discarded)로 확정해 내려준다. 예정 시간이 지나도 결과가 없으면 계속 성사
 // (confirmed)고, 거절·무응답·미실시·(레거시)취소는 모두 폐기(discarded)로 통합됐다. 프론트가
 // 파생 계산을 하지 않는다(서버가 내려준 status를 그대로 쓴다).
-
-// 응답 마감 = 요청일(createdAt) + 72시간(요청). 단, 예정 시각이 그보다 먼저면 예정 시각이
-// 마감이다 — 그때까지 응답이 없으면 서버가 무응답 거절 처리한다. 여기선 남은 시간 문구만
-// 만든다(만료 판정은 서버 배치). 마감이 지나 잠깐 음수가 되면 "곧 마감"으로 대체한다.
-const EXPIRE_MS = 72 * 60 * 60 * 1000;
-function responseDeadlineLabel(createdAt: string, sched: ScheduleLike): string {
-  const base = new Date(createdAt).getTime() + EXPIRE_MS;
-  // 예정 시각(시간 미정이면 그날 끝)이 72시간보다 먼저면 그게 마감이다 — 백엔드와 동일.
-  const scheduled = scheduledInstantMs(sched);
-  const deadline = scheduled !== null ? Math.min(base, scheduled) : base;
-  const remain = deadline - Date.now();
-  if (remain <= 0) return "응답 마감 임박";
-  const days = Math.floor(remain / (24 * 60 * 60 * 1000));
-  const hours = Math.floor((remain % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
-  const mins = Math.floor((remain % (60 * 60 * 1000)) / (60 * 1000));
-  if (days > 0) return `응답 마감 ${days}일 ${hours}시간 남음`;
-  return hours > 0 ? `응답 마감 ${hours}시간 남음` : `응답 마감 ${mins}분 남음`;
-}
 
 type PillTone = "pending" | "accepted" | "rejected" | "discarded";
 
@@ -408,28 +389,15 @@ export function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, o
   // 따라온다) 하나만 자연 높이로 렌더한다. pages가 줄어드는 드문 경우에도 안전하게 클램프.
   const shownIndex = Math.min(renderedIndex, pages.length - 1);
   const activePage = pages[shownIndex];
-  const shownLatest = shownIndex === pages.length - 1;
   const activeTargetInfos = activePage.targets.map((t) => ({ target: t }));
   // 체인은 이제 리벤지(revenge) 하나뿐 — 체인의 첫 페이지(원본)를 뺀 나머지 페이지가 곧
   // 리벤지 기록이다(reappliedFromId를 따로 안 봐도 페이지 순번으로 안다).
   const isRevengePage = shownIndex > 0;
 
-  // 결과 입력 대기 = 성사(수락)됐고 예정 일시가 지났는데 아직 결과가 안 들어온 상태(요청:
-  // "끝났으면 결과 입력 대기"). 완료 = 승패가 입력된 상태(요청: "결과보기 삭제하고 그자리에
-  // 상태 배지 완료"). 무승부/미실시는 각자 알약/텍스트로 따로 표시한다.
-  const isResultPending =
-    shownLatest && challenge.status === "confirmed" && resultInputOpen && challenge.resultWinnerSide === null;
-  const isDoneWin =
-    shownLatest && (challenge.resultWinnerSide === "creator" || challenge.resultWinnerSide === "target");
-
-  // 이 "맨 윗줄"에 실제로 보여줄 게 하나라도 있을 때만 줄을 그린다(전부 없으면 빈 줄이
-  // 남아 어색하다). 리벤지 라벨/무승부·완료·결과입력대기 배지/카운트다운/미실시 중 하나라도.
-  const whenHasContent =
-    isRevengePage
-    || activePage.resultWinnerSide === "draw"
-    || (shownLatest && challenge.status === "pending")
-    || (shownLatest && challenge.resultWinnerSide !== null)
-    || isResultPending;
+  // 상태 배지(무승부/완료/결과 입력 대기/미실시)와 카드 내 카운트다운은 전부 삭제됐다(요청:
+  // "종료 이런 배지 부분 완전 삭제" — 카운트다운은 피드 헤더행으로 이동). 이 맨 윗줄엔
+  // 리벤지 체인 라벨만 남는다.
+  const whenHasContent = isRevengePage;
 
   // 이미 종료된 너 나와!(완료/미실시 등 status=done·discarded)은 패널을 더 어둡게, 아직 진행
   // 중인(응답대기·성사) 너 나와는 더 밝게 해서 목록에서 한눈에 구분되게 한다(요청).
@@ -463,32 +431,6 @@ export function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, o
                   하나뿐이라, 원본(첫 페이지)을 뺀 모든 페이지가 리벤지다(isRevengePage). */}
               {isRevengePage && (
                 <span className="scr-challenge-chain-tag scr-challenge-chain-tag-revenge">리벤지</span>
-              )}
-              {/* 이긴 편은 매치업의 화살표 옆에 배지로 표시하니, 여기선 팀을 특정할 수 없는
-                  무승부만 알약으로 남긴다(요청: "도전자편 승 이런 건 제거"). 미실시는 아예
-                  매치가 안 열렸으니 결과보기 자리에 텍스트로만 남기고 이 알약은 없앤다
-                  (요청: "현재 시각 옆의 미실시 배지는 삭제"). */}
-              {activePage.resultWinnerSide === "draw" && (
-                <span className="scr-challenge-pill scr-challenge-pill-done">무승부</span>
-              )}
-              {/* 마감 카운트다운 — 별도 줄 대신 날짜가 있는 이 맨 윗줄에 끼운다(요청: "마감
-                  카운트다운은 날짜있는 맨 윗줄에 표시"). 응답대기중은 항상 최신 페이지에서만
-                  해당하니 다른 페이지에는 자리를 예약할 필요가 없다(이 줄은 원래도 페이지마다
-                  내용이 들쑥날쑥한 줄이라 굳이 안 맞춰도 된다). */}
-              {shownLatest && challenge.status === "pending" && (
-                <span className="scr-challenge-countdown">{responseDeadlineLabel(challenge.createdAt, challenge)}</span>
-              )}
-              {/* "결과 보기" 버튼은 없앴다(요청) — 그 자리에 상태 배지를 둔다. 승패가 입력되면
-                  "완료", 예정 일시가 지났는데 아직 결과가 없으면 "결과 입력 대기". 무승부는
-                  무승부 알약으로, 미실시는 "미실시" 텍스트로 각각 따로 표시한다. */}
-              {isResultPending && (
-                <span className="scr-challenge-pill scr-challenge-pill-wait">결과 입력 대기</span>
-              )}
-              {isDoneWin && (
-                <span className="scr-challenge-pill scr-challenge-pill-done">완료</span>
-              )}
-              {shownLatest && challenge.resultWinnerSide === "not_held" && (
-                <span className="scr-challenge-result-link scr-challenge-result-link-static">미실시</span>
               )}
             </div>
             )}
@@ -837,10 +779,12 @@ function compareChallenges(a: Challenge, b: Challenge): number {
 // 권한은 참가자 또는 운영자는 가능하게"). 같은 시각에 서로 다른 너 나와가 여럿 묶이면(드묾)
 // 어느 것을 수정할지 모호해지므로, 그 시각 그룹에 너 나와가 정확히 하나일 때만 연필을
 // 보여준다 — 호출부(groupByTime map)에서 tg.items.length===1일 때만 이 컴포넌트를 쓴다.
+// timeLabel을 null로 주면 시각 라벨 없이 연필(수정 진입)만 남는다 — 피드에선 헤더행이
+// 이미 시각을 보여주므로 중복 표기를 피해 연필만 그 옆에 얹는다(요청: "시간이 중복 표시").
 export function ChallengeTimeHeadEdit({
   challenge, timeLabel, myId, onUpdated,
 }: {
-  challenge: Challenge; timeLabel: string; myId: string | undefined;
+  challenge: Challenge; timeLabel: string | null; myId: string | undefined;
   onUpdated: (updated: Challenge) => void;
 }) {
   const isParticipant =
@@ -896,6 +840,9 @@ export function ChallengeTimeHeadEdit({
     ro.observe(inner);
     return () => ro.disconnect();
   }, [editing]);
+
+  // 라벨도 없고 수정 권한도 없으면 그릴 게 없다(피드의 연필 전용 모드에서 비참가자).
+  if (timeLabel === null && !canEdit) return null;
 
   return (
     <div
@@ -978,7 +925,7 @@ export function ChallengeTimeHeadEdit({
           </div>
         ) : (
           <div className="scr-challenge-time-head">
-            <span className="scr-challenge-time-head-label">{timeLabel}</span>
+            {timeLabel !== null && <span className="scr-challenge-time-head-label">{timeLabel}</span>}
             {canEdit && (
               <button
                 type="button" className="scr-challenge-time-edit-btn"

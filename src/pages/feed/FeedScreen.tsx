@@ -15,7 +15,7 @@ import ReplayReviewModal from "../../modals/ReplayReviewModal";
 import ChallengeFormModal from "../../modals/ChallengeFormModal";
 import RankingScreen from "../v2/RankingScreen";
 import { computeRankRows, MATCH_TYPE_OF, type RankMode } from "../v2/rank";
-import { currentPeriodAnchor } from "../../utils/date";
+import { currentPeriodAnchor, scheduledInstantMs } from "../../utils/date";
 import { useAppStore } from "../../store/appStore";
 import { isAdminRole } from "../../constants/roles";
 import { activeMemberSearchTerms, memberMatchesTerm, normalizeSearchText, splitSearchTerms } from "../../utils/memberSearch";
@@ -129,6 +129,28 @@ function matchItem(m: Match): MatchItem {
   };
 }
 
+// 응답 마감 = 요청일 + 72시간(예정 시각이 그보다 먼저면 예정 시각) — 백엔드와 동일 기준.
+// 헤더행의 날짜 옆에서 1초마다 실시간으로 줄어든다(요청: "응답마감까지 72:32:31" 형식).
+const CHALLENGE_EXPIRE_MS = 72 * 60 * 60 * 1000;
+function ChallengeCountdown({ challenge }: { challenge: Challenge }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  if (challenge.status !== "pending") return null;
+  const base = new Date(challenge.createdAt).getTime() + CHALLENGE_EXPIRE_MS;
+  const scheduled = scheduledInstantMs(challenge);
+  const deadline = scheduled !== null ? Math.min(base, scheduled) : base;
+  const remain = deadline - now;
+  if (remain <= 0) return null;
+  const total = Math.floor(remain / 1000);
+  const hh = String(Math.floor(total / 3600)).padStart(2, "0");
+  const mm = String(Math.floor((total % 3600) / 60)).padStart(2, "0");
+  const ss = String(total % 60).padStart(2, "0");
+  return <span className="scr-feed-chal-countdown">응답마감까지 {hh}:{mm}:{ss}</span>;
+}
+
 // 너 나와 포스트 우상단 케밥 — 카카오 공유(전체) + 삭제(운영자만).
 function ChallengeActionsMenu({ challenge, isAdmin, onDeleted }: {
   challenge: Challenge;
@@ -232,7 +254,7 @@ function MatchCard({ item, memberOf, onDeleted, dateLabel, highlightMemberIds, h
         <span className="scr-feed-card-time">{formatEventTime(item.time, item.withClock)}</span>
       </div>
       <div className="scr-feed-match-body">
-        <MatchList rows={rows} memberOf={memberOf} onDeleted={onDeleted} loading={false} highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms} />
+        <MatchList rows={rows} memberOf={memberOf} onDeleted={onDeleted} loading={false} matchup highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms} />
       </div>
       <FeedCardComments targetType="match" targetId={item.match.id} />
     </div>
@@ -255,21 +277,25 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
   const restDesc = useMemo(() => ordered.slice(1).reverse(), [ordered]);
 
   // 펼침 영역이 앞 카드 "위"에 있어, 그대로 두면 앞 카드가 아래로 밀려 마치 아래로
-  // 펼쳐지는 것처럼 보인다(지적). 트랜지션 동안 늘어난 높이만큼 스크롤을 따라 내려
-  // 앞 카드를 화면에 고정한다 — 위로 자라나는 느낌이 된다(접을 때도 역으로 고정).
-  const restRef = useRef<HTMLDivElement>(null);
+  // 펼쳐지는 것처럼 보인다(지적). 트랜지션 동안 앞 카드의 화면상 위치를 그대로 고정한다
+  // — 위 공간(펼침 목록·peek 버튼)이 커지고 줄어드는 만큼 스크롤이 매 프레임 따라가서,
+  // 카드들이 "위로" 자라나는 느낌이 된다(접을 때도 역으로 고정). 두 가지가 핵심:
+  // 1) rest 높이가 아니라 앞 카드 자체의 뷰포트 top을 앵커로 삼는다 — peek 버튼이
+  //    접히는 높이까지 전부 보정에 포함된다(rest만 보면 그만큼 어긋난다).
+  // 2) 문서에 CSS scroll-behavior:smooth가 걸려 있어 behavior:"instant"가 필수다 —
+  //    안 주면 프레임마다의 보정이 전부 네이티브 스무스 스크롤로 해석돼 서로 재시작만
+  //    반복하며 실제로는 거의 안 움직인다(= 여전히 아래로 펼쳐져 보이던 원인).
+  const frontRef = useRef<HTMLDivElement>(null);
   const toggleOpen = (next: boolean) => {
     setOpen(next);
-    const el = restRef.current;
-    if (!el) return;
-    let last = el.getBoundingClientRect().height;
+    const front = frontRef.current;
+    if (!front) return;
+    const anchor = front.getBoundingClientRect().top;
     const start = performance.now();
     const step = () => {
-      const h = el.getBoundingClientRect().height;
-      const d = h - last;
-      if (d !== 0) window.scrollBy(0, d);
-      last = h;
-      if (performance.now() - start < 450) requestAnimationFrame(step);
+      const d = front.getBoundingClientRect().top - anchor;
+      if (d !== 0) window.scrollBy({ top: d, behavior: "instant" });
+      if (performance.now() - start < 500) requestAnimationFrame(step);
     };
     requestAnimationFrame(step);
   };
@@ -285,7 +311,7 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       >
         + {restDesc.length}건
       </button>
-      <div className="scr-feed-stack-rest" aria-hidden={!open} ref={restRef}>
+      <div className="scr-feed-stack-rest" aria-hidden={!open}>
         <div className="scr-feed-stack-rest-inner">
           <div className="scr-feed-stack-rest-list">
             {/* 줄이기 버튼 — 카드 밖, 맨 위(가장 나중 게임 카드 위). */}
@@ -301,7 +327,9 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
           </div>
         </div>
       </div>
-      <MatchCard item={ordered[0]} memberOf={memberOf} onDeleted={onDeleted} dateLabel={dateLabel} highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms} />
+      <div ref={frontRef} className="scr-feed-stack-front">
+        <MatchCard item={ordered[0]} memberOf={memberOf} onDeleted={onDeleted} dateLabel={dateLabel} highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms} />
+      </div>
     </div>
   );
 }
@@ -679,18 +707,21 @@ export default function FeedScreen() {
                   <Send size={13} aria-hidden />
                   <span className="scr-feed-card-label">너 나와!</span>
                   <span className="scr-feed-card-time">{formatEventTime(item.time, item.withClock)}</span>
+                  {/* 응답 마감 실시간 카운트다운 — 날짜 옆, 헤더와 같은 폰트 크기(요청). */}
+                  <ChallengeCountdown challenge={item.challenge} />
+                  {/* 일시(시간) 수정 — 시각은 헤더가 이미 보여주므로 연필만 얹는다(중복 표기
+                      제거, 요청). 참가자만 연필이 보인다(컴포넌트가 판정). */}
+                  <ChallengeTimeHeadEdit
+                    challenge={item.challenge}
+                    timeLabel={null}
+                    myId={user?.id}
+                    onUpdated={upsertChallenge}
+                  />
                 </div>
                 <ChallengeActionsMenu
                   challenge={item.challenge}
                   isAdmin={isAdmin}
                   onDeleted={(id) => setChallenges((prev) => prev.filter((c) => c.id !== id))}
-                />
-                {/* 일시(시간) 수정 — 참가자만 연필이 보인다(컴포넌트가 판정). */}
-                <ChallengeTimeHeadEdit
-                  challenge={item.challenge}
-                  timeLabel={item.challenge.scheduledTime ?? "시간 미정"}
-                  myId={user?.id}
-                  onUpdated={upsertChallenge}
                 />
                 <div className="scr-feed-card-body">
                   <ChallengeCard

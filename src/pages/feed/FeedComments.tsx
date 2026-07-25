@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { CornerDownLeft, MessageCircle, X, Pencil, Trash2 } from "lucide-react";
+import { CornerDownLeft, MessageCirclePlus, X, Pencil, Trash2 } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
 import { Spinner } from "../../components/common/Feedback";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
@@ -282,8 +282,18 @@ function formatCommentTime(iso: string): string {
 // 입력의 CSS(scr-mreq-*)를 차용한다. 대댓글은 없다(요청). 로그인 회원만 작성할 수 있고
 // 작성자 본인/운영자만 수정·삭제할 수 있다(comment.canEdit).
 export default function FeedComments({ targetType, targetId }: { targetType: FeedTargetType; targetId: number }) {
-  // 작성 입력창은 댓글 아이콘을 눌렀을 때 아이콘 옆에서 열리고 닫힌다.
+  // 작성 입력창 — 가운데의 + 댓글 아이콘을 누르면 트랜지션으로 입력창으로 바뀌며 바로
+  // 포커스되고, 포커스를 잃으면 다시 아이콘으로 돌아간다(요청). 입력창은 늘 마운트해 두고
+  // CSS(max-width/opacity)로만 접었다 편다 — 닫혀도 쓰던 내용이 남는다.
   const [composerOpen, setComposerOpen] = useState(false);
+  const composerWrapRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!composerOpen) return;
+    const raf = requestAnimationFrame(() => {
+      composerWrapRef.current?.querySelector("input")?.focus();
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [composerOpen]);
   const user = useAppStore((s) => s.user);
   const members = useAppStore((s) => s.members);
   // 댓글은 이 컴포넌트가 로컬로 관리한다 — 마운트 시 대상의 댓글을 불러오고,
@@ -404,27 +414,34 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
       {err && <div className="scr-err scr-match-note-err">{err}</div>}
 
       {user && editingId === null && (
-        <div className="scr-feed-comment-row">
+        <div className={cx("scr-feed-comment-row", composerOpen && "scr-feed-comment-row-open")}>
           <button
             type="button" className="scr-feed-comments-toggle"
-            onClick={() => setComposerOpen((v) => !v)}
+            onClick={() => setComposerOpen(true)}
             aria-expanded={composerOpen} aria-label="댓글 쓰기" title="댓글 쓰기"
+            tabIndex={composerOpen ? -1 : 0}
           >
-            <MessageCircle size={14} aria-hidden />
+            <MessageCirclePlus size={15} aria-hidden />
           </button>
-          {composerOpen && (
-            <div className="scr-feed-comment-composer">
-              <NoteComposer
-                key={composerKey}
-                members={members}
-                initialParts={[]}
-                submitting={busy}
-                onSubmit={(text, ids) => void create(text, ids)}
-                placeholder="댓글 남기기 (@로 유저 태그)"
-                submitLabel={<CornerDownLeft size={14} />}
-              />
-            </div>
-          )}
+          <div
+            ref={composerWrapRef}
+            className="scr-feed-comment-composer"
+            // 포커스가 입력창/등록 버튼 밖으로 나가면 아이콘으로 되돌린다(요청). 멘션
+            // 드롭다운·지우기 버튼은 mousedown preventDefault라 블러 자체가 안 난다.
+            onBlur={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setComposerOpen(false);
+            }}
+          >
+            <NoteComposer
+              key={composerKey}
+              members={members}
+              initialParts={[]}
+              submitting={busy}
+              onSubmit={(text, ids) => void create(text, ids)}
+              placeholder="댓글 남기기 (@로 유저 태그)"
+              submitLabel={<CornerDownLeft size={14} />}
+            />
+          </div>
         </div>
       )}
 

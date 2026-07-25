@@ -7880,7 +7880,9 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 /* 겹침 스택(같은 날 게임결과 2건 이상) — 접힘: 첫 게임 카드 + 아래로 삐져나온 뒷카드
    밑단("+N건"). 펼침: 전체 카드 + 마지막 카드 위 줄이기 알약. */
 .scr-feed-stack { display: flex; flex-direction: column; }
-.scr-feed-stack > .scr-feed-card { position: relative; z-index: 1; }
+/* 앞 카드(스크롤 앵커용 래퍼 포함)는 뒷단(peek) 위에 얹힌다. */
+.scr-feed-stack-front { position: relative; z-index: 1; }
+.scr-feed-stack-front > .scr-feed-card { position: relative; }
 /* 펼침/접힘 트랜지션 — 뒷단(peek)은 높이·투명도로 사라지고, 나머지 카드들은
    grid-rows 0fr↔1fr로 아래에서 자라난다. */
 .scr-feed-stack-peek {
@@ -7890,12 +7892,14 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-feed-stack-opened .scr-feed-stack-peek {
   height: 0; padding-top: 0; padding-bottom: 0; margin-bottom: 0; opacity: 0; pointer-events: none;
 }
+/* 주의: 여기에 opacity 트랜지션을 걸면 안 된다 — 조상의 opacity<1은 자체 합성 그룹을
+   만들어 그 안 카드들의 backdrop-filter가 페이지 배경을 못 보게 된다(= 펼치는 동안
+   블러가 빠졌다가 다 펼쳐져야 적용되던 문제). 높이(grid-rows) 클립만으로 전환한다. */
 .scr-feed-stack-rest {
   display: grid; grid-template-rows: 0fr;
-  transition: grid-template-rows .32s cubic-bezier(0.32, 0.72, 0, 1), opacity .24s ease;
-  opacity: 0;
+  transition: grid-template-rows .32s cubic-bezier(0.32, 0.72, 0, 1);
 }
-.scr-feed-stack-opened .scr-feed-stack-rest { grid-template-rows: 1fr; opacity: 1; }
+.scr-feed-stack-opened .scr-feed-stack-rest { grid-template-rows: 1fr; }
 .scr-feed-stack-rest-inner { overflow: hidden; min-height: 0; }
 .scr-feed-stack-rest-list { display: flex; flex-direction: column; gap: 14px; padding: 4px 0 20px; }
 @media (prefers-reduced-motion: reduce) {
@@ -7948,10 +7952,8 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-feed-card .scr-challenge-cancel-tag { right: 48px; }
 /* 아이템 내 폰트 전부 1스텝 축소(요청) — 로스터/닉네임 caption, 헤더 micro 등.
    로스터와 너나와 닉네임은 같은 크기 유지(둘 다 caption). */
-.scr-feed-match-body .scr-mt-name { font-size: var(--fs-caption); }
 .scr-feed-card .scr-challenge-person-name { font-size: var(--fs-caption); }
 .scr-feed-card .scr-challenge-card-when { font-size: var(--fs-body); }
-.scr-feed-match-body .scr-match-trow-outcome { font-size: var(--fs-caption); }
 .scr-feed-match-body .scr-match-trow-map,
 .scr-feed-match-body .scr-match-trow-dur { font-size: var(--fs-micro); }
 .scr-feed-comments .scr-mreq-item-text { font-size: var(--fs-caption); }
@@ -7959,16 +7961,22 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-feed-shift-row { font-size: var(--fs-micro); }
 /* 접힘 상태 윗줄은 이제 케밥(절대배치)뿐이라 자리 예약이 필요 없다. */
 .scr-feed-match-body .scr-match-trow-topline { min-height: 0; }
-/* 로스터를 팀별로 한 줄로 잇는다(요청) — 세로 스택 대신 가로 flex, 공간이 모자라면
-   flex-wrap이 사람(플레이어 셀) 단위로만 줄바꿈한다. 팀1은 오른쪽(가운데 승패 쪽),
-   팀2는 왼쪽 정렬 유지. */
-.scr-feed-match-body .scr-match-trow-roster-grid {
-  flex-direction: row; flex-wrap: wrap; column-gap: 14px; row-gap: 4px;
+/* 게임결과 로스터 = 너 나와! 매치업과 같은 구조/CSS(요청: "너 나와의 css기준으로") —
+   각 팀 세로 나열 + 프사, 가운데는 손가락 이모지 대신 vs, 승/무 배지도 동일 방식. */
+.scr-feed-match-matchup { padding: 2px 4px 0; }
+/* 종족 배지 — 기록실의 절대배치(.scr-team-name-wrap 기준 right:-8px) 대신, 매치업
+   로스터에선 닉네임 바로 오른쪽 인라인으로 흐르게 한다(기준 래퍼가 없는 자리라
+   절대배치를 그대로 두면 카드 밖으로 튄다). */
+.scr-feed-match-matchup .scr-team-name-race { position: static; margin-left: 1px; }
+.scr-challenge-arrow-vs {
+  font-size: var(--fs-caption); font-weight: 800; font-style: italic; color: var(--muted);
+  letter-spacing: 0.02em; transform: none;
 }
-.scr-feed-match-body .scr-match-trow-team:first-child .scr-match-trow-roster-grid { justify-content: flex-end; }
-.scr-feed-match-body .scr-match-trow-team:last-child .scr-match-trow-roster-grid { justify-content: flex-start; }
-/* 사람 셀 안(프사·이름·종족)은 중간에서 끊기지 않게 한 덩어리로. */
-.scr-feed-match-body .scr-mt-player { flex: 0 0 auto; }
+/* 결과 없는 미실시 — 배지 대신 매치업 아래 작은 정적 텍스트로만. */
+.scr-feed-match-notheld {
+  text-align: center; padding: 2px 0 0;
+  font-size: var(--fs-micro); font-weight: 700; color: var(--dim);
+}
 /* 펼침 때 스탯 표 위에 노출되는 맵·플레이시간(요청). */
 .scr-match-trow-map-expanded { display: flex; align-items: baseline; gap: 6px; padding: 8px 0 8px; justify-content: center; }
 /* 라벨(무엇인지)이 앞, 시간이 바로 옆(요청) — 라벨이 주, 시간은 흐리게 보조. */
@@ -8013,14 +8021,36 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 /* 로스터와 리벤지 신청(액션 줄) 사이 갭 확대(요청). */
 .scr-feed-card .scr-challenge-card-actions { margin-top: 8px; }
 
-/* 피드 안 일시(시간 수정) 헤드 — 카드 본문과 같은 좌우 패딩으로 정렬. */
-.scr-feed-card .scr-challenge-time-head { padding: 2px 16px 0; }
-.scr-feed-card .scr-challenge-time-edit { padding: 2px 16px 0; }
+/* 일시 수정(연필)은 헤더행 안으로 — 시각은 헤더가 이미 보여주므로 라벨 없이 연필만
+   시각 옆에 얹는다(요청: 시간 중복 표기 제거). 수정 폼이 열리면 헤더행의 남은 폭을 쓴다. */
+.scr-feed-card-head .scr-challenge-time-head-wrap { flex: 1 1 auto; min-width: 0; }
+.scr-feed-card-head .scr-challenge-time-head { margin-bottom: 0; }
+.scr-feed-card-head .scr-challenge-time-edit-form { padding: 4px 6px; }
+/* 응답 마감 실시간 카운트다운 — 헤더행 폰트 크기를 그대로 상속(요청: 폰트 크기 맞추기). */
+.scr-feed-chal-countdown { font-weight: 600; color: var(--dim); font-variant-numeric: tabular-nums; white-space: nowrap; }
 
-/* 아이콘과 입력창이 한 줄 — 입력창이 남는 폭을 다 쓴다. 입력창이 열리고 닫혀도 줄 높이가
-   변하지 않게 컴포저 높이(30px + 여유)를 항상 예약한다(지적: 아이콘 클릭 시 레이아웃 흔들림). */
-.scr-feed-comment-row { display: flex; align-items: center; gap: 8px; min-height: 34px; }
-.scr-feed-comment-composer { flex: 1; min-width: 0; }
+/* 가운데의 + 댓글 아이콘 ↔ 입력창 전환(요청) — 아이콘을 누르면 입력창이 트랜지션으로
+   가로로 펼쳐지며 포커스되고, 포커스를 잃으면 다시 아이콘으로 줄어든다. 입력창은 늘
+   마운트된 채 max-width/opacity로만 접히고, 줄 높이(34px)는 항상 예약해 흔들림이 없다. */
+.scr-feed-comment-row { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 34px; }
+.scr-feed-comment-row-open { gap: 0; }
+/* width를 명시해야 0으로의 트랜지션이 걸린다(auto→0은 애니메이션 불가). */
+.scr-feed-comments-toggle { width: 24px; justify-content: center; transition: width .28s cubic-bezier(0.32, 0.72, 0, 1), opacity .18s ease; }
+.scr-feed-comment-row-open .scr-feed-comments-toggle {
+  width: 0; padding-left: 0; padding-right: 0; overflow: hidden; opacity: 0; pointer-events: none;
+}
+.scr-feed-comment-composer {
+  flex: 1; min-width: 0; max-width: 0; opacity: 0; visibility: hidden; overflow: hidden;
+  padding: 2px;
+  transition: max-width .28s cubic-bezier(0.32, 0.72, 0, 1), opacity .2s ease, visibility 0s linear .28s;
+}
+.scr-feed-comment-row-open .scr-feed-comment-composer {
+  max-width: 100%; opacity: 1; visibility: visible;
+  transition: max-width .28s cubic-bezier(0.32, 0.72, 0, 1), opacity .2s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .scr-feed-comments-toggle, .scr-feed-comment-composer { transition: none; }
+}
 /* 다크에서 댓글 입력창은 흰 필드로(요청) — 글자/플레이스홀더는 어두운 톤으로 뒤집는다. */
 html:not(.scr-light-theme) .scr-feed-comments .scr-mreq-editor {
   background: rgba(255, 255, 255, 0.92);

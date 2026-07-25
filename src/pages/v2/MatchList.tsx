@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
 import { MoreHorizontal, Monitor, CircleHelp, Copy, Check } from "lucide-react";
+import Avatar from "../../components/common/Avatar";
 import RaceBadge from "../../components/common/RaceBadge";
 import { Spinner } from "../../components/common/Feedback";
 import { cleanMapName } from "../../utils/mapName";
@@ -101,6 +102,43 @@ function PlayerCell({
   );
 }
 
+// 매치업 한 편(피드 전용) — 너 나와! 카드의 팀 로스터(scr-challenge-side)와 같은 CSS로
+// 세로 나열한다(요청: "게임결과의 팀로스터와 너 나와의 팀로스터를 맞출거야"). 프사를
+// 더하고, 종족 배지는 닉네임 오른쪽(기존 규칙 유지). 컴퓨터/비회원은 작은 아이콘으로 구분.
+function MatchupSide({
+  team, memberOf, highlightMemberIds, highlightTerms,
+}: {
+  team: MatchSlot[]; memberOf: (id: string) => Member | undefined;
+  highlightMemberIds?: Set<string>; highlightTerms?: string[];
+}) {
+  return (
+    <div className="scr-challenge-side">
+      {team.map((s, i) => {
+        const name = resolveSlotName(s, team, memberOf);
+        const m = memberOf(s.memberId);
+        const nameLc = normalizeSearchText(name);
+        const hl = highlightMemberIds?.has(s.memberId) || !!highlightTerms?.some((t) => nameLc.includes(t));
+        return (
+          <div key={`${s.memberId}-${i}`} className="scr-challenge-side-block">
+            <div className="scr-challenge-side-row">
+              <span className={cx("scr-challenge-person", hl && "scr-challenge-person-hit")}>
+                <Avatar member={{ id: s.memberId, nickname: name, avatar: m?.avatar ?? null }} size={20} />
+                <span className="scr-challenge-person-name">{name}</span>
+                <RaceBadge race={s.race} size={13} circleLetter className="scr-team-name-race" />
+              </span>
+              {isComputerSlot(s.memberId)
+                ? <Monitor size={12} className="scr-chip-computer-icon" />
+                : isUnregisteredSlot(s.memberId)
+                  ? <CircleHelp size={12} className="scr-chip-computer-icon" />
+                  : null}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // 경기번호 복사 버튼 — 누르면 클립보드에 복사하고 잠깐 체크 아이콘으로 바뀐다. 로우
 // 클릭(펼침/접힘)이 같이 발동하지 않게 클릭 전파를 막는다.
 function CopyButton({ text }: { text: string }) {
@@ -142,6 +180,8 @@ interface MatchListProps {
   highlightMemberIds?: Set<string>;
   // memberId 매칭에 더해 표시 이름을 검색어로도 매칭해 하이라이트한다(별칭/비회원 보완).
   highlightTerms?: string[];
+  // 피드 전용 — 로스터를 너 나와! 매치업 스타일(세로 나열 + 프사 + vs + 승/무 배지)로 그린다.
+  matchup?: boolean;
 }
 
 interface DateGroup {
@@ -329,7 +369,7 @@ function MatchStatsTable({
 }
 
 export default function MatchList({
-  rows, memberOf, onDeleted, loading, highlightMemberIds, highlightTerms,
+  rows, memberOf, onDeleted, loading, highlightMemberIds, highlightTerms, matchup,
 }: MatchListProps) {
   const groups = groupByDate(rows);
   const user = useAppStore((s) => s.user);
@@ -417,7 +457,34 @@ export default function MatchList({
                     />
                   </div>
                 </div>
-                {/* 팀1(2열) · 승/패 · 팀2(2열) — 접힘/펼침 공통으로 전원 표시(요청). */}
+                {/* 로스터 — 피드(matchup)는 너 나와! 매치업과 같은 구조(각 팀 세로 나열 +
+                    가운데 vs + 이긴 편 쪽 승/무 배지, 요청). 그 외 화면은 기존 그리드 유지. */}
+                {matchup ? (
+                  <>
+                    <div className="scr-challenge-matchup scr-feed-match-matchup">
+                      <MatchupSide
+                        team={r.team1} memberOf={memberOf}
+                        highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms}
+                      />
+                      {/* 승/무 배지 — 너 나와!와 동일하게 vs 양옆에 이긴 편 쪽만 보이고,
+                          해당 없는 쪽은 자리만 예약(투명)해 vs가 좌우로 안 흔들린다. */}
+                      <span className="scr-challenge-arrow-row">
+                        <span className={cx("scr-challenge-inline-win", o1 !== "win" && o1 !== "draw" && "scr-challenge-inline-win-hidden")}>
+                          {o1 === "draw" ? "무" : "승"}
+                        </span>
+                        <span className="scr-challenge-arrow scr-challenge-arrow-vs" aria-hidden="true">vs</span>
+                        <span className={cx("scr-challenge-inline-win", o2 !== "win" && o2 !== "draw" && "scr-challenge-inline-win-hidden")}>
+                          {o2 === "draw" ? "무" : "승"}
+                        </span>
+                      </span>
+                      <MatchupSide
+                        team={r.team2} memberOf={memberOf}
+                        highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms}
+                      />
+                    </div>
+                    {r.result === "not_held" && <div className="scr-feed-match-notheld">미실시</div>}
+                  </>
+                ) : (
                 <div className="scr-match-trow-grid">
                   <div className="scr-match-trow-team">
                     <div className="scr-match-trow-roster scr-match-trow-roster-grid">
@@ -443,6 +510,7 @@ export default function MatchList({
                     </div>
                   </div>
                 </div>
+                )}
                 {/* 펼침 상세 — grid-template-rows 0fr↔1fr로 높이를 부드럽게 애니메이션한다
                     (요청: 펼치거나 접을 때 트랜지션). 접힌 로우는 상세 내용을 아예 안 그린다. */}
                 <div
