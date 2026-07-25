@@ -247,7 +247,7 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel }: {
   if (!open) {
     return (
       <div className="scr-feed-stack">
-        <MatchCard item={ordered[0]} memberOf={memberOf} onDeleted={onDeleted} dateLabel={dateLabel} />
+        {/* 앞 카드가 그날 첫 게임이니, 겹쳐 있는 나중 게임들은 위쪽으로 삐져나온다. */}
         <button
           type="button" className="scr-feed-stack-peek"
           onClick={() => setOpen(true)}
@@ -255,6 +255,7 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel }: {
         >
           + {ordered.length - 1}건
         </button>
+        <MatchCard item={ordered[0]} memberOf={memberOf} onDeleted={onDeleted} dateLabel={dateLabel} />
       </div>
     );
   }
