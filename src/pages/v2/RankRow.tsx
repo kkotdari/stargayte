@@ -96,7 +96,9 @@ export default function RankRowV2({ row, tiedWithPrev = false, highlighted = fal
                 흔들리지 않는다. 점수 글자 폭만큼만 딱 맞는 인라인 래퍼를 하나 둬서 그 기준으로
                 붙인다. */}
             <span className="scr-rank-score-inline">
-              {provisional && <span className="scr-rank-provisional">잠정</span>}
+              {provisional && (
+                <span className="scr-rank-provisional" title="경기 수가 적어 아직 확정되지 않은 잠정 점수예요" aria-label="잠정 점수">!</span>
+              )}
               {/* 카드엔 레이팅(보수추정 μ−3σ)만(세부는 상세에서). 음수면 자연히 - 가 붙는다. */}
               <span className="scr-rank-stat-primary">
                 {rankScore}<span className="scr-num-unit">점</span>

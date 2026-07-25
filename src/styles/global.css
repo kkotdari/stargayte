@@ -1527,16 +1527,14 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
      지금처럼 영역은 차지 X") — right:100%로 점수 왼쪽 바깥에서 시작해 겹치지 않고,
      top:50%+translateY(-50%)로 세로 중앙에 맞춘다. 간격은 점수에 더 가깝게(요청:
      "잠정 배지 너무 왼쪽이야 점수에 가깝게 이동"). */
-  position: absolute; top: 50%; right: 100%; margin-right: 2px; transform: translateY(-50%);
-  pointer-events: none;
-  /* line-height 1로 조여 배지 글자의 세로 중심이 점수 텍스트의 세로 중심과 정확히 맞게
-     한다(요청) — top:50%+translateY(-50%)는 배지 박스 중심을 맞추는데, 큰 line-height는
-     그 박스 안에서 글자를 위/아래로 치우치게 해 미세하게 어긋났다. 폰트도 1스텝 축소(요청). */
-  display: inline-block; padding: 0 4px;
-  font-size: var(--fs-micro); font-weight: 700; line-height: 1; white-space: nowrap;
-  /* 주황 톤 글자색(요청: "잠정 배지 폰트색 주황으로 변경"). */
-  color: #e69a4a;
+  /* 잠정 표시를 '잠정' 텍스트 배지 대신 작은 검정 '!' 아이콘으로(요청) — 점수 왼쪽에
+     세로 가운데로 붙는다. line-height 1로 조여 점수 텍스트 세로 중심과 맞춘다. */
+  position: absolute; top: 50%; right: 100%; margin-right: 3px; transform: translateY(-50%);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: var(--fs-caption); font-weight: 900; line-height: 1; white-space: nowrap;
+  color: #111;
 }
+html:not(.scr-light-theme) .scr-rank-provisional { color: #f2f4f8; }
 /* 기간 단위(월/년) 토글은 필터창의 공용 PillTabs를 그대로 쓴다(요청: "필터의 기간모듈로
    통합") — 전용 스타일은 더 이상 필요 없다. 좁은 화면에선 단위 토글이 자리를 차지하므로
    힌트는 접어 공간을 양보한다. */
@@ -2366,7 +2364,7 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
      같아 세로 정렬(줄맞춤)도 흔들리지 않는다. 화면이 max-width보다 좁으면(모바일) 100%로
      줄며 닉네임 1fr이 알아서 줄어 넘치지 않는다. 요소 최대폭은 max-width로 PC/모바일 각각
      설정(아래 미디어쿼리) — 현재 칸 크기(44/84/40, gap 14)는 그대로 유지. */
-  display: grid; grid-template-columns: 44px 76px 40px minmax(0, 220px);
+  display: grid; grid-template-columns: 44px 60px 40px minmax(0, 240px);
   justify-content: center; max-width: none; margin: 0;
   align-items: center; column-gap: 14px; width: 100%; min-width: 0;
   /* 좌 패딩을 우보다 ~25px 넓게(요청 보정) — 순위/점수가 왼쪽에 몰려 보이는 걸 완화. */
@@ -2380,7 +2378,7 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   /* PC에선 요소 묶음 최대폭만 키운다(닉네임 칸에 더 여유) — 나머지 넓은 카드 폭은 전부
      좌우 여백(margin:auto)으로 빠져 한가운데로 모인다(요청). */
   .scr-rank-table-panel-v2 .scr-rank-row-inner {
-    grid-template-columns: 44px 76px 40px minmax(0, 320px);
+    grid-template-columns: 44px 60px 40px minmax(0, 340px);
     padding: 0 24px 0 49px;
   }
 }
@@ -2410,7 +2408,7 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 /* 순위 변동(화살표+숫자) 배지 — v1보다 v2만 크게(11px) 키운다. 요청으로 1단계 축소. */
 .scr-rank-table-panel-v2 .scr-rank-delta { font-size: var(--fs-micro); }
 /* 승률(주 지표)만 남아서 그 자체로 크고 진하게 — 자기 칸 안에서 오른쪽 정렬. */
-.scr-rank-stat-primary { font-size: var(--fs-caption); font-weight: 600; color: var(--text); }
+.scr-rank-stat-primary { font-size: var(--fs-body); font-weight: 600; color: var(--text); }
 /* 공동순위(바로 위와 같은 순위)는 구분선만 없애는 게 아니라 그 사이 간격도 좁혀서
    같은 그룹으로 보이게 한다. */
 .scr-rank-table-panel-v2 .scr-rank-row-tied { padding-top: 6px; }
@@ -2441,7 +2439,7 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
        화면 가운데로 모으고, 좁으면 100% 안에서 알아서 줄어든다. */
     /* 점수 칸을 72px로 넓혀 오른쪽 정렬된 점수 왼쪽에 '잠정' 배지 자리를 확보한다 —
        좁을 때 배지가 순위 숫자와 겹치던 문제(지적) 해결. */
-    grid-template-columns: 35px 66px 40px minmax(0, 180px); column-gap: 8px;
+    grid-template-columns: 35px 54px 40px minmax(0, 196px); column-gap: 8px;
     /* 좌 패딩을 우보다 ~25px 넓게(요청 보정). 구분선(행 ::before)은 양 끝까지 그대로. */
     padding: 0 12px 0 37px;
   }
@@ -2666,7 +2664,10 @@ html.scr-page-bg.scr-light-theme .scr-rank-screen-v2::before { display: none; }
 /* 랭킹 필터 줄은 다른 화면 필터로우처럼 폭을 꽉 채우고 양 끝 정렬(space-between)로 둔다
    (요청) — 상성 보기를 토글 옆으로 옮긴 뒤엔 기간(좌)/종족(우) 두 그룹만 남아 양쪽으로
    벌어진다. */
-.scr-rank-screen-v2 .scr-filter-panel { width: 100%; justify-content: space-between; }
+/* width:100%만 주면 패널의 좌우 음수 마진(-16px, 글로우 클립 회피용)만큼 콘텐츠가
+   오른쪽에서 32px 모자라 종족이 끝까지 안 간다(지적: "폭 전체를 활용하지 않음") —
+   음수 마진 합(32px)을 더해 콘텐츠가 컨테이너 양 끝에 딱 맞게 한다. */
+.scr-rank-screen-v2 .scr-filter-panel { width: calc(100% + 32px); justify-content: space-between; }
 .scr-search-filter-float { flex: 1 1 auto; min-width: 0; }
 
 /* ===== 필터창(FilterPanel) — 검색창과 같은 자리에 뜨는 반투명 글라스 패널 =====
@@ -7658,12 +7659,12 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
    높이(38px)를 필터 항목 높이(28px)로 줄이고 알약형으로. 개인전 + 종족 필터
    "전체"일 때만 렌더된다(RankingScreen). */
 .scr-rank-rivalry-btn {
-  /* 글자 두께는 다른 버튼과 같은 표준(600, .scr-btn 상속) — 예전 텍스트 버튼 시절의
-     800은 솔리드 알약이 되면서 과해 보여 제거(요청: "두께 정상적으로"). */
-  min-height: 0; height: 28px; padding: 0 12px;
-  font-size: var(--fs-caption); border-radius: 999px;
-  /* 라벨 달린 FilterItem들 사이에서 혼자 라벨이 없어 위로 떠 보이지 않게 가운데로. */
-  align-self: center;
+  /* 개인전/팀전 토글(스케일 0.8) 옆에 붙어 크기를 맞춘다(요청) — 토글의 실효 높이(28×0.8≈22),
+     폰트(caption×0.8≈micro), 좁은 패딩에 맞춰 통일하고 너비도 비례 축소. 토글이 translateY(-6px)
+     로 올라가 있어 같은 만큼 올려 세로도 맞춘다. 토글과 거리도 좁힌다(음수 margin-left). */
+  min-height: 0; height: 22px; padding: 0 8px;
+  font-size: var(--fs-micro); font-weight: 600; border-radius: 999px;
+  align-self: center; transform: translateY(-6px); margin-left: -14px;
 }
 /* (한때 여기서 글로우 블러를 줄여봤지만 오진이었다 — "사각형으로 잘려 보임"의 진짜
    원인은 필터 패널(overflow:auto)의 바닥 클리핑. .scr-filter-panel의 padding-bottom
