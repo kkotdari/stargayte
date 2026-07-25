@@ -2114,7 +2114,17 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    다른 곳에도 많이 쓰여서 구분되게 골드 톤을 따로 쓴다. */
 /* 순위변화(delta)를 숫자 아래가 아니라 오른쪽에 두고 세로 중앙 정렬(요청) — 세로 컬럼에서
    가로 행으로 바꾼다. */
-.scr-rank-badge { display: flex; flex-direction: row; align-items: center; gap: 5px; justify-self: start; }
+/* 순위 칸 — flex(내용폭)였을 땐 랭크 숫자 자릿수(1 vs 12)에 따라 순위변동 배지의 시작
+   x가 행마다 달라졌다(지적: "순위변동 컬럼 세로로 줄 맞게, 랭크 숫자 길이나 유무에
+   무관하게"). 숫자 칸을 고정폭 그리드 컬럼으로 떼어내 변동 배지가 항상 같은 x에서
+   시작하게 한다. 숫자는 자기 칸 안에서 오른쪽 정렬(자릿수 증가 시 왼쪽으로 자람 —
+   1의 자리끼리 세로로 맞는다). */
+.scr-rank-badge { display: grid; grid-template-columns: 40px auto; align-items: center; gap: 5px; justify-self: start; }
+.scr-rank-badge .scr-rank-num { justify-self: end; }
+.scr-rank-badge .scr-rank-delta { justify-self: start; }
+@media (max-width: 640px) {
+  .scr-rank-badge { grid-template-columns: 34px auto; }
+}
 .scr-rank-num {
   /* 랭크 숫자 — PC는 title 위 한 스텝(32px, 요청으로 새로 추가한 title-2), 모바일은
      title(28) 유지(아래 미디어쿼리). 폰트는 기본 UI 폰트. */
