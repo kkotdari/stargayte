@@ -2531,8 +2531,8 @@ html.scr-page-bg:not(.scr-light-theme) .scr-rank-screen-v2::before {
    하고(배경 투명 유지) 글자 가독성만 살짝 확보한다. */
 html.scr-page-bg.scr-light-theme .scr-main::before {
   background:
-    /* 화이트 스크림 약화(요청) — 덮개를 옅게 해서 배경 사진(miss_korea)이 더 드러나게. */
-    linear-gradient(180deg, rgba(255,255,255,0.74) 0%, rgba(255,255,255,0.66) 45%, rgba(255,255,255,0.80) 100%),
+    /* 화이트 스크림 더 약화(요청) — 배경 사진(tiara2)이 더 선명히 드러나게 한 단계 더 옅게. */
+    linear-gradient(180deg, rgba(255,255,255,0.54) 0%, rgba(255,255,255,0.44) 45%, rgba(255,255,255,0.62) 100%),
     /* PC 넓은 화면에서 cover는 세로 인물 사진을 과하게 잘라낸다(지적) — 높이에 맞춰
        (auto 100%) 가운데 표시하고 좌우 여백은 흰 스크림+--void가 채운다. */
     var(--page-bg-image-light) center / auto 100% no-repeat,
@@ -2541,7 +2541,7 @@ html.scr-page-bg.scr-light-theme .scr-main::before {
 @media (max-width: 860px) {
   html.scr-page-bg.scr-light-theme .scr-main::before {
     background:
-      linear-gradient(180deg, rgba(255,255,255,0.74) 0%, rgba(255,255,255,0.66) 45%, rgba(255,255,255,0.80) 100%),
+      linear-gradient(180deg, rgba(255,255,255,0.54) 0%, rgba(255,255,255,0.44) 45%, rgba(255,255,255,0.62) 100%),
       var(--page-bg-image-light-mobile) center / cover no-repeat,
       var(--void);
   }
@@ -4500,6 +4500,11 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   letter-spacing: 6px; padding: 16px 8px; min-height: 84px;
   width: 280px; max-width: 85%;
   -webkit-text-security: disc;
+  /* 제어판은 테마와 무관하게 항상 어두운 금속 판이다 — 라이트 테마 기본값(--input-bg:#fff,
+     --line:#000)을 쓰면 밝은 흰 상자가 튀고 얇은 테두리가 금속 위에서 묻혀 "테두리가
+     투명하게" 보였다(지적). 두 테마 모두 어두운 인셋 슬롯 + 밝은 금속빛 테두리로 고정한다. */
+  background: rgba(6, 6, 7, 0.86); color: #f2f4f8;
+  border-color: rgba(220, 224, 230, 0.45);
 }
 /* 퀴즈의 "입력" 버튼 — 평범한 흰색 둥근네모(기본 .scr-btn-primary 톤 그대로), 크게 키워
    카드 아래쪽 가운데에 둔다(닫기는 헤더의 공통 X 버튼이 담당하므로 따로 안 둔다). */

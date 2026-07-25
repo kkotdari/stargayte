@@ -59,14 +59,38 @@ export default function RivalryMap({
       ids.add(p.a);
       ids.add(p.b);
     });
-    // 원 위 배치는 닉네임순 고정 대신 무작위로 섞는다(요청: "그때그때 달라지게") —
-    // 데이터가 새로 로드될 때(화면 진입/기간·탭 변경)마다 셔플되고, 그 사이(유저
-    // 선택 등 상호작용)에는 useMemo가 지켜줘 자리가 안 흔들린다.
-    const nodes = [...ids];
-    for (let i = nodes.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [nodes[i], nodes[j]] = [nodes[j], nodes[i]];
-    }
+    // 원 위 배치를 무작위가 아니라 "관계성"으로 정한다(요청):
+    //  ① 총 경기수가 가장 많은 사람을 맨 위(12시, index 0)에 둔다.
+    //  ② 그 사람과 많이 붙은 상대일수록 원의 반대쪽(아래)에, 적게 붙었을수록 위쪽(양옆)에
+    //     둔다 — "많이 경기할수록 정 반대쪽".
+    // 원 배치는 아래에서 index 순서대로 등간격(0=위, N/2=아래)이라, nodes 배열의 "순서"만
+    // 정하면 된다. 무작위가 없어 같은 데이터면 항상 같은 그림이 나온다.
+    const idList = [...ids];
+    const totalGames = new Map<string, number>();
+    const bump = (id: string, g: number) => totalGames.set(id, (totalGames.get(id) ?? 0) + g);
+    edges.forEach((e) => { bump(e.from, e.games); bump(e.to, e.games); });
+    const g = (id: string) => totalGames.get(id) ?? 0;
+    // 앵커(맨 위) — 총 경기수 최다, 동률이면 id로 결정적 정렬.
+    const anchor = idList.reduce((best, id) =>
+      g(id) > g(best) || (g(id) === g(best) && id < best) ? id : best, idList[0]);
+    // 앵커와의 맞대결 경기수.
+    const vsAnchor = new Map<string, number>();
+    edges.forEach((e) => {
+      if (e.from === anchor) vsAnchor.set(e.to, (vsAnchor.get(e.to) ?? 0) + e.games);
+      else if (e.to === anchor) vsAnchor.set(e.from, (vsAnchor.get(e.from) ?? 0) + e.games);
+    });
+    const va = (id: string) => vsAnchor.get(id) ?? 0;
+    const N = idList.length;
+    // 나머지를 앵커와 많이 붙은 순(내림차순)으로 정렬 — 동률은 총경기수, 그다음 id로.
+    const others = idList.filter((id) => id !== anchor).sort((x, y) =>
+      va(y) - va(x) || g(y) - g(x) || (x < y ? -1 : 1));
+    // 채울 자리(1..N-1)를 "위(앵커)에서 먼 순"으로 정렬 — 가장 먼 아래 자리부터 채운다.
+    const slots = Array.from({ length: N - 1 }, (_, k) => k + 1)
+      .sort((a, b) => Math.min(b, N - b) - Math.min(a, N - a) || a - b);
+    // 많이 붙은 상대 → 먼 자리(반대쪽), 적게 붙은 상대 → 가까운 자리(앵커 양옆).
+    const nodes = new Array<string>(N);
+    nodes[0] = anchor;
+    others.forEach((id, i) => { nodes[slots[i]] = id; });
     return { nodes, edges };
   }, [pairs, memberOf]);
 
