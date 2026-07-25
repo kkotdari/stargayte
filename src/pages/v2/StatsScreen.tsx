@@ -6,6 +6,7 @@ import PillTabs from "../../components/common/PillTabs";
 import FilterItem from "../../components/common/FilterItem";
 import Select from "../../components/common/Select";
 import MemberStatRow from "../stats/MemberStatRow";
+import PointDetailModal from "./PointDetailModal";
 import InfoTip from "../../components/common/InfoTip";
 import { useAppStore } from "../../store/appStore";
 import { api } from "../../api/client";
@@ -13,7 +14,7 @@ import { activeMemberSearchTerms, memberMatchesQuery } from "../../utils/memberS
 import { monthInputToRange, currentMonthValue, MONTH_INPUT_MIN, MONTH_INPUT_MAX } from "../../utils/date";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import { cx } from "../../utils/format";
-import type { BaseRace, MemberStats, MemberStatsEntry } from "../../types";
+import type { BaseRace, MatchType, Member, MemberStats, MemberStatsEntry } from "../../types";
 
 // 종족 필터 — 검색창 예약어에서 필터창 드롭다운으로 옮겼다(요청).
 const RACE_SELECT_OPTS = [
@@ -35,7 +36,7 @@ const EMPTY_STATS: MemberStats = {
   avgApm: null, avgEapm: null, avgCmd: null, avgEcmd: null, avgBuild: null,
 };
 
-type StatSortKey = "name" | "rate" | "plays" | "build" | "eapm" | "ecmd";
+type StatSortKey = "name" | "points" | "rate" | "plays" | "build" | "eapm" | "ecmd";
 type StatSortDir = "desc" | "asc";
 interface StatSort { key: StatSortKey; dir: StatSortDir }
 
@@ -90,7 +91,20 @@ export default function StatsScreenV2() {
 
   const [search, setSearch] = useState("");
   const [race, setRace] = useState<BaseRace | "all">("all");
-  const [sort, setSort] = useState<StatSort | null>({ key: "plays", dir: "desc" });
+  // 게임 유형(개인전/팀전) — 라디오이고 "전체"는 없다. 피드의 랭크 변동 카드 "상세"로
+  // 들어왔으면 그 변동의 유형을 미리 걸고(연동, 요청), 일반 진입은 랜덤 기본값(요청).
+  const [matchType, setMatchType] = useState<MatchType>(() => {
+    const preset = useAppStore.getState().statsPresetMatchType;
+    if (preset) {
+      useAppStore.getState().setStatsPresetMatchType(null);
+      return preset;
+    }
+    return Math.random() < 0.5 ? "0101" : "0102";
+  });
+  // 기본 정렬은 포인트(랭크 점수) 내림차순 — 랭킹을 통계에 통합한 기본 모습(요청).
+  const [sort, setSort] = useState<StatSort | null>({ key: "points", dir: "desc" });
+  // 포인트를 누르면 그 회원의 포인트 상세(경기 이력)를 연다.
+  const [pointMember, setPointMember] = useState<Member | null>(null);
   const toggleSort = (key: StatSortKey) => setSort((prev) => nextSort(prev, key));
   // 기본값은 "이번 달" — 예전 usePeriodNav(..., "month")과 같은 초기 단위.
   const [periodUnit, setPeriodUnit] = useState<"all" | "month">("month");
@@ -110,10 +124,10 @@ export default function StatsScreenV2() {
 
   const queryKey = useMemo(
     () => ({
-      dateFrom: effectiveFrom, dateTo: effectiveTo,
+      dateFrom: effectiveFrom, dateTo: effectiveTo, matchType,
       memberIds: matchedMembers.map((m) => m.id).sort().join(","),
     }),
-    [effectiveFrom, effectiveTo, matchedMembers],
+    [effectiveFrom, effectiveTo, matchType, matchedMembers],
   );
   const queryKeySignature = useMemo(() => JSON.stringify(queryKey), [queryKey]);
   const debouncedSignature = useDebouncedValue(queryKeySignature, 300);
@@ -133,6 +147,7 @@ export default function StatsScreenV2() {
       memberIds,
       dateFrom: debouncedQuery.dateFrom,
       dateTo: debouncedQuery.dateTo,
+      matchType: debouncedQuery.matchType,
     }).then((res) => {
       if (cancelled) return;
       const map: Record<string, MemberStatsEntry> = {};
@@ -151,7 +166,9 @@ export default function StatsScreenV2() {
     const list = matchedMembers.map((m) => {
       const entry = statsByMember[m.id];
       const stats = race === "all" ? (entry?.overall ?? EMPTY_STATS) : (entry?.byRace[race] ?? EMPTY_STATS);
-      return { member: m, stats };
+      // 포인트(랭크 점수) — 이 기간·유형에서 순위 대상이 아니면(0경기 등) null → "-".
+      const points = entry?.rankScore != null ? Math.round(entry.rankScore) : null;
+      return { member: m, stats, points };
     });
 
     const sorted = [...list];
@@ -181,11 +198,21 @@ export default function StatsScreenV2() {
       if (bMissing) return -1;
       return 0;
     };
+    // 포인트 없는(순위 대상 아닌) 회원은 값 있는 회원 뒤로.
+    const noPointsLast = (a: (typeof list)[number], b: (typeof list)[number]) => {
+      if (a.points === null && b.points === null) return nicknameTiebreak(a, b);
+      if (a.points === null) return 1;
+      if (b.points === null) return -1;
+      return 0;
+    };
     if (!sort) {
       sorted.sort(nicknameTiebreak);
       return sorted;
     }
     const dirSign = sort.dir === "desc" ? -1 : 1;
+    if (sort.key === "points") {
+      sorted.sort((a, b) => noPointsLast(a, b) || dirSign * ((a.points ?? 0) - (b.points ?? 0)) || nicknameTiebreak(a, b));
+    }
     if (sort.key === "name") {
       sorted.sort((a, b) => dirSign * a.member.nickname.localeCompare(b.member.nickname));
     }
@@ -235,6 +262,18 @@ export default function StatsScreenV2() {
         suggestions={suggestions}
         filterPanel={
           <>
+            {/* 게임 유형 — 개인전/팀전 라디오("전체" 없음). 진입 기본값은 랜덤(요청). */}
+            <FilterItem label="게임 유형">
+              <PillTabs
+                aria-label="게임 유형"
+                value={matchType}
+                onChange={setMatchType}
+                options={[
+                  { value: "0101", label: "개인전" },
+                  { value: "0102", label: "팀전" },
+                ]}
+              />
+            </FilterItem>
             {/* 기간 단위 알약탭과 그에 딸린 달력은 원래 하나의 요소 — 종족 필터가
                 둘 사이에 끼어 그룹이 갈라지지 않도록 같은 FilterItem 안에 붙여 두고,
                 종족은 그 뒤(기간·달력 → 종족 순)에 배치한다. */}
@@ -289,6 +328,10 @@ export default function StatsScreenV2() {
                   네이티브 스크롤이 완벽히 동기화해서 그 흔들림 자체가 원천적으로 사라진다. */}
               <div className="scr-stat-row scr-stat-row-head">
                 <SortableHead label="유저" sortKey="name" sort={sort} onToggle={toggleSort} className="scr-stat-name-head" />
+                <SortableHead
+                  label="포인트" sortKey="points" sort={sort} onToggle={toggleSort}
+                  tooltip="랭크 포인트 — 이 기간·게임 유형의 경기들로 산정한 레이팅 점수. 숫자를 누르면 경기 이력(경기당 포인트 변화)이 열려요."
+                />
                 <SortableHead label="게임수" sortKey="plays" sort={sort} onToggle={toggleSort} />
                 <SortableHead label="승률" sortKey="rate" sort={sort} onToggle={toggleSort} />
                 <SortableHead
@@ -309,6 +352,8 @@ export default function StatsScreenV2() {
                   key={c.member.id}
                   member={c.member}
                   stats={c.stats}
+                  points={c.points}
+                  onPointsClick={() => setPointMember(c.member)}
                   belowMinPlays={c.stats.plays < MIN_PLAYS_FOR_STATS}
                   avatar={false}
                   compact
@@ -322,6 +367,17 @@ export default function StatsScreenV2() {
           </div>
         )}
       </div>
+
+      {/* 포인트 상세 — 그래프/소제목 없이 경기 이력만(요청, 예전 랭킹 상세 대체). */}
+      {pointMember && (
+        <PointDetailModal
+          member={pointMember}
+          matchType={matchType}
+          period={{ from: effectiveFrom, to: effectiveTo }}
+          race={race}
+          onClose={() => setPointMember(null)}
+        />
+      )}
     </div>
   );
 }

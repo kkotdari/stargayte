@@ -22,11 +22,17 @@ interface MemberStatRowProps {
   // 표본이 너무 적어(최소 게임수 미달) 승률/APM 등이 왜곡될 수 있는 회원은 게임수 칸만
   // 실제 값을 보여주고 나머지(전적/승률/APM/커맨드)는 "-"로 가린다.
   belowMinPlays?: boolean;
+  // 랭크 포인트(TrueSkill 보수추정, 표시 스케일) — undefined면 포인트 컬럼 자체를 안 그린다
+  // (통계 화면 전용, 요청: 랭킹을 통계에 통합). null이면 이 기간 순위 대상이 아니라 "-".
+  points?: number | null;
+  // 포인트를 누르면 포인트 상세(경기 이력)를 연다.
+  onPointsClick?: () => void;
 }
 
 // 전적통계 목록의 테이블 한 행.
 export default function MemberStatRow({
   member, stats, maxOverallPlays, maxBuild, maxEapm, maxEcmd, avatar = true, compact = false, belowMinPlays = false,
+  points, onPointsClick,
 }: MemberStatRowProps) {
   const openMemberProfile = useAppStore((s) => s.openMemberProfile);
   const [photoOpen, setPhotoOpen] = useState(false);
@@ -46,6 +52,20 @@ export default function MemberStatRow({
           <span className="scr-stat-tag-pill">{member.battletag}</span>
         </div>
       </div>
+      {points !== undefined && (
+        <div className="scr-stat-points-cell">
+          {points === null ? (
+            <span className="scr-stat-points-empty">-</span>
+          ) : (
+            <button
+              type="button" className="scr-stat-points-btn"
+              onClick={onPointsClick} aria-label={`${member.nickname} 포인트 상세`}
+            >
+              {points.toLocaleString()}
+            </button>
+          )}
+        </div>
+      )}
       <div className="scr-stat-plays-cell">
         <ValueBar value={stats.plays > 0 ? stats.plays : null} maxValue={maxOverallPlays} />
       </div>

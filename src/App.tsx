@@ -27,7 +27,6 @@ import ChallengeResultInboxModal from "./modals/ChallengeResultInboxModal";
 import MatchRequestInboxModal from "./modals/MatchRequestInboxModal";
 import AppUpdateNoticeModal from "./modals/AppUpdateNoticeModal";
 import FeedScreen from "./pages/feed/FeedScreen";
-import RankingScreen from "./pages/v2/RankingScreen";
 import MatchScreen from "./pages/v2/MatchScreen";
 import StatsScreen from "./pages/v2/StatsScreen";
 import SharePage, { type ShareTarget } from "./pages/share/SharePage";
@@ -35,7 +34,7 @@ import ShareLoginGate from "./pages/share/ShareLoginGate";
 
 import type { ScreenKey } from "./types";
 
-const SCREEN_KEYS: ScreenKey[] = ["feed", "ranking", "match", "challenge", "stats", "members", "leagues", "rivalry"];
+const SCREEN_KEYS: ScreenKey[] = ["feed", "match", "challenge", "stats", "members", "leagues", "rivalry"];
 
 // 새로고침해도 보던 화면 그대로 있도록 URL의 ?screen= 쿼리에 현재 화면을 기록해둔다 —
 // 사파리의 pull-to-refresh 등 브라우저 기본 새로고침은 앱 상태를 그대로 날려서 첫 화면으로
@@ -101,6 +100,16 @@ export default function App() {
   // 화면을 옮기면 항상 처음 상태로 — 이전 화면의 스크롤 위치/필터/검색 등은 기억하지
   // 않는다(요청: "페이지 상태 유지 기능 삭제 — 페이지 이동시 항상 초기상태로 로딩").
   const navigate = (next: ScreenKey) => setScreen(next);
+
+  // 화면 컴포넌트발 이동 요청(스토어) — 피드의 랭크 변동 카드 "상세" 버튼이 통계 탭으로
+  // 보낼 때 쓴다. 처리 후 비워 다음 요청을 받을 수 있게 한다.
+  const screenIntent = useAppStore((s) => s.screenIntent);
+  const clearScreenIntent = useAppStore((s) => s.clearScreenIntent);
+  useEffect(() => {
+    if (!screenIntent) return;
+    setScreen(screenIntent);
+    clearScreenIntent();
+  }, [screenIntent, clearScreenIntent]);
   // 공유 화면에서 "앱 열기" — URL의 공유 파라미터를 지우고 전체 앱(랭킹)으로 들어간다.
   const exitShare = () => {
     const params = new URLSearchParams(window.location.search);
@@ -109,7 +118,7 @@ export default function App() {
     const qs = params.toString();
     window.history.replaceState(null, "", `${window.location.pathname}${qs ? `?${qs}` : ""}${window.location.hash}`);
     setShareTarget(null);
-    setScreen("ranking");
+    setScreen("feed");
   };
   // 키보드가 뜨면(resizes-content라 뷰포트가 줄어들며) 브라우저가 포커스된 입력칸을
   // 보여주려고 스크롤을 올리는데, 키보드가 닫혀도 그 자리로 되돌아오지 않았다(실제로
@@ -207,7 +216,6 @@ export default function App() {
 
   const isAdmin = isAdminRole(user.roles);
   // 접근 권한이 없는 화면으로 들어온 경우(예: URL 직접 조작) 실제로 보여줄 화면 —
-  // 기존에 각 화면 분기에서 개별적으로 <RankingScreen />으로 대체하던 것과 동일한 동작이다.
   const resolvedScreen: ScreenKey =
     screen === "challenge" && !isChallengeEnabled ? "feed" :
     screen === "members" && !isAdmin ? "feed" :
@@ -219,7 +227,7 @@ export default function App() {
   // 헤더의 불투명 배경을 끄는 클래스를 앱 루트에 건다(CSS .scr-app-hasbg 참고).
   // 배경 있는 화면이 늘면 이 조건에 추가하면 된다.
   return (
-      <div className={"scr-app" + (resolvedScreen === "feed" || resolvedScreen === "ranking" ? " scr-app-hasbg" : "")} id="scr-app">
+      <div className={"scr-app" + (resolvedScreen === "feed" ? " scr-app-hasbg" : "")} id="scr-app">
         <div className="scr-bg-grid" />
         <span className="scr-rail scr-rail-left" aria-hidden="true" />
         <span className="scr-rail scr-rail-right" aria-hidden="true" />
@@ -251,7 +259,6 @@ export default function App() {
                 권한이 없는 화면(challenge/members 등)은 랭킹으로 대체되던
                 기존 동작과 같게, resolvedScreen으로 보여줄 화면만 고른다. */}
             {!booting && resolvedScreen === "feed" && <FeedScreen />}
-            {!booting && resolvedScreen === "ranking" && <RankingScreen />}
             {!booting && resolvedScreen === "match" && <MatchScreen />}
             {isChallengeEnabled && !booting && resolvedScreen === "challenge" && <ChallengeScreen />}
             {!booting && resolvedScreen === "stats" && <StatsScreen />}

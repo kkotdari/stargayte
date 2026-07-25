@@ -1848,11 +1848,11 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
      같이 참조해야 한다(요청: "아이폰 사파리 가로모드에서 통계의 내용들이 컬럼
      왼쪽으로 벗어나서 렌더링되는 버그"). */
   --scr-stat-col-w: 150px;
-  /* 데이터 5칸(게임수/승률/생산/유효APM/유효커맨드) — 생산 컬럼 추가로 4→5칸(구분선 4개).
-     최소 폭(150px)을 넘어 패널이 넓어지면(예: 1280px 셸) 다섯 데이터 칸이 남는 폭을 1fr로
-     균등 분배한다(요청). v2는 구분선을 각 칸 border-left로 그려 칸 폭이 어떻게 늘어나도
-     경계가 항상 맞으므로 1fr을 써도 base(그레이디언트 방식)의 어긋남 문제가 없다. */
-  grid-template-columns: var(--scr-stat-name-w) repeat(5, minmax(var(--scr-stat-col-w), 1fr));
+  /* 데이터 6칸(포인트/게임수/승률/생산/유효APM/유효커맨드) — 랭킹을 통계에 통합하면서
+     포인트 컬럼이 추가돼 5→6칸(요청). 포인트는 숫자 하나뿐이라 조금 좁게 잡는다.
+     v2는 구분선을 각 칸 border-left로 그려 칸 폭이 어떻게 늘어나도 경계가 항상 맞으므로
+     1fr을 써도 base(그레이디언트 방식)의 어긋남 문제가 없다. */
+  grid-template-columns: var(--scr-stat-name-w) minmax(96px, 0.6fr) repeat(5, minmax(var(--scr-stat-col-w), 1fr));
   /* 세로 구분선은 background-gradient(계산된 위치) 대신 각 칸의 border-left로 그린다
      (아래 nth-child 규칙) — gradient 방식은 "칸이 실제로 얼마나 넓게 렌더됐는지"를
      퍼센트/고정값으로 다시 계산해야 해서, 패널 폭이 좁아 칸이 min폭으로 넘칠 때(가로
@@ -1865,6 +1865,17 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    1|2(유저|게임수) 경계는 이름 칸(.scr-stat-name-cell/head)의 border-right가 그린다.
    box-sizing:border-box라 border가 칸 폭을 바꾸지 않아 트랙 정렬에도 영향이 없다. */
 .scr-stats-list-panel-v2 .scr-stat-row > *:nth-child(n+3) { border-left: 1px solid var(--line-soft); }
+/* 포인트 칸 — 숫자 하나를 가운데에, 누르면 포인트 상세(경기 이력)가 열리는 버튼으로. */
+.scr-stat-points-cell { justify-content: center; }
+.scr-stat-points-btn {
+  background: transparent; border: none; padding: 4px 6px; cursor: pointer;
+  font-family: inherit; font-size: var(--fs-subhead); font-weight: 800; color: var(--text);
+  font-variant-numeric: tabular-nums;
+  text-decoration: underline dotted; text-underline-offset: 4px; text-decoration-color: var(--dim);
+  -webkit-tap-highlight-color: transparent;
+}
+@media (hover: hover) { .scr-stat-points-btn:hover { color: var(--pipe-bright); } }
+.scr-stat-points-empty { color: var(--dim); }
 /* (구) 900px 이상에서 minmax(1fr)+width:100%로 남는 폭을 나눠 채우던 분기는 제거 —
    v2 통계 패널은 --list-content-max(800px)로 폭이 상한되는데 칸 합(이름 160 + 150×5 =
    910px)이 그보다 항상 커서 "남는 폭"이라는 게 존재하지 않았고, width:100%(=800px)만
@@ -1970,7 +1981,8 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   .scr-stats-list-panel-v2 .scr-stat-bar-rate { font-size: var(--fs-caption); }
   .scr-stats-list-panel-v2 .scr-stat-row {
     --scr-stat-col-w: 150px;
-    grid-template-columns: var(--scr-stat-name-w) repeat(5, var(--scr-stat-col-w));
+    /* 포인트 컬럼 포함 6칸(포인트는 숫자 하나라 조금 좁게). */
+    grid-template-columns: var(--scr-stat-name-w) 96px repeat(5, var(--scr-stat-col-w));
   }
 
   .scr-stat-row-head { font-size: var(--fs-body); }

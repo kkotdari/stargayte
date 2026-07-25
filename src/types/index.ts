@@ -147,18 +147,21 @@ export interface MatchNoteAuthor {
 
 // 경기 하나에 달린 댓글(메모) 한 건 — 게시판 댓글처럼 작성자와 본문(최대 50자)으로 이뤄지고
 // 본인/운영자만 수정·삭제할 수 있다(canEdit). 본문에 @닉네임으로 언급 가능.
-// 랭킹 변동 이벤트 — 경기 결과 등록 시점의 변동분을 서버에 저장해 두고 피드에 그대로 노출한다.
+// 랭크(포인트/순위) 변동 이벤트 — 서버가 경기 등록/삭제 때마다 스냅샷으로 계산·저장해 두고,
+// 실제 변동(shifts)이 있었던 것만 피드에 노출한다.
 export interface RankShiftEntry {
   memberId: string;
   nickname: string;
   from: number | null; // null = 순위권 밖에서 신규 진입
   to: number;
 }
-export interface RankShift {
+export interface RankSnapshot {
   id: number;
   matchType: MatchType;
+  reason: "register" | "delete" | "seed";
   createdAt: string;
-  entries: RankShiftEntry[];
+  matchIds: number[];
+  shifts: RankShiftEntry[];
 }
 
 // 피드 댓글 — 대상(targetType, targetId)이 경기든 너 나와!든 같은 API 하나로 달린다.
@@ -339,7 +342,8 @@ export interface MonthlyTeamRankingResponse {
 // 화면 라우팅 — 회원(게임아이디 연결 포함)은 운영자만, 나머지는 로그인한
 // 회원 누구나 접근 가능(역할 기준으로만 판단 — 예전에 있던 메뉴 권한 매트릭스는 역할이
 // 운영자/회원 둘로 단순화되면서 없앴다).
-export type ScreenKey = "feed" | "ranking" | "match" | "challenge" | "stats" | "members" | "leagues" | "rivalry";
+// "ranking"은 폐기 — 랭킹은 통계 화면(포인트 컬럼)에 통합됐다(요청).
+export type ScreenKey = "feed" | "match" | "challenge" | "stats" | "members" | "leagues" | "rivalry";
 
 // 랭킹/경기결과/전적통계 등 화면·메뉴 구성을 어느 버전 세트로 보여줄지 — 제어판에서 등록된
 // 버전 중 하나로 배포하면 앱 전체가 즉시 바뀐다(개인별 설정이 아니라 서버에 저장된 전역 값).

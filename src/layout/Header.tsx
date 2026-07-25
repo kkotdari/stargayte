@@ -219,7 +219,7 @@ export default function Header({
             버튼에 얹어서 평소 쓰는 사람에겐 그냥 홈 버튼일 뿐이라 눈에 띄지 않는다. */}
         <button
           type="button" className="scr-brand"
-          onClick={() => go("ranking")}
+          onClick={() => go("feed")}
           aria-label="홈으로"
         >
           {/* 부트스트랩이 끝나기 전엔 아무것도 안 보여준다(기본 텍스트 깜빡임 방지). 로고는

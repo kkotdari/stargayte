@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
-import { createPortal } from "react-dom";
-import { CalendarPlus, MoreHorizontal, Plus, Send, Swords, Trophy, Upload, X } from "lucide-react";
+import { CalendarPlus, MoreHorizontal, Plus, Send, Swords, Trophy, Upload } from "lucide-react";
 import { Spinner } from "../../components/common/Feedback";
 import SearchFilterBar from "../../components/common/SearchFilterBar";
 import PillTabs from "../../components/common/PillTabs";
@@ -13,9 +12,7 @@ import FeedComments from "./FeedComments";
 import ScrollNavTimeline from "../../components/common/ScrollNavTimeline";
 import ReplayReviewModal from "../../modals/ReplayReviewModal";
 import ChallengeFormModal from "../../modals/ChallengeFormModal";
-import RankingScreen from "../v2/RankingScreen";
-import { computeRankRows, MATCH_TYPE_OF, type RankMode } from "../v2/rank";
-import { currentPeriodAnchor, scheduledInstantMs } from "../../utils/date";
+import { scheduledInstantMs } from "../../utils/date";
 import { useAppStore } from "../../store/appStore";
 import { isAdminRole } from "../../constants/roles";
 import { activeMemberSearchTerms, memberMatchesTerm, normalizeSearchText, splitSearchTerms } from "../../utils/memberSearch";
@@ -25,7 +22,7 @@ import { useCursorPagination } from "../../hooks/useCursorPagination";
 import { buildReplayDrafts, type ReplayDraft } from "../../utils/replayDraft";
 import { hasAppUpdatePreloadErrorOccurred } from "../../utils/appUpdate";
 import { usePageBackground } from "../../hooks/usePageBackground";
-import type { Challenge, Match, MatchSlot, Member, RankShift, RankShiftEntry } from "../../types";
+import type { Challenge, Match, MatchSlot, MatchType, Member, RankSnapshot, RankShiftEntry } from "../../types";
 
 const PAGE_SIZE = 100;
 const MAX_REPLAY_FILES = 20;
@@ -77,7 +74,7 @@ interface RankShiftFeedItem {
   kind: "rankshift";
   time: number;
   withClock: boolean;
-  shift: RankShift;
+  shift: RankSnapshot;
 }
 
 type FeedItem = ChallengeItem | MatchItem | RankShiftFeedItem;
@@ -92,7 +89,7 @@ interface MatchStackItem {
 
 type DisplayItem = FeedItem | MatchStackItem;
 
-function rankShiftItem(shift: RankShift): RankShiftFeedItem {
+function rankShiftItem(shift: RankSnapshot): RankShiftFeedItem {
   return {
     kind: "rankshift",
     time: new Date(shift.createdAt).getTime(),
@@ -433,60 +430,33 @@ export default function FeedScreen() {
 
   const loading = challengesLoading || matchesLoading;
 
-  // 랭킹 변동 이벤트 — 등록 시점에 계산해 서버에 저장해 둔 것을 그대로 읽는다(매번 재계산 안 함).
-  const [rankShifts, setRankShifts] = useState<RankShift[]>([]);
-  useEffect(() => {
-    let cancelled = false;
-    api.listRankShifts()
-      .then((items) => { if (!cancelled) setRankShifts(items); })
+  // 랭크(포인트/순위) 변동 이벤트 — 서버가 경기 등록/삭제 때마다 계산·저장한 스냅샷을
+  // 그대로 읽는다(클라이언트는 더 이상 아무것도 계산하지 않는다).
+  const [rankShifts, setRankShifts] = useState<RankSnapshot[]>([]);
+  const reloadRankSnapshots = useCallback(() => {
+    api.listRankSnapshots()
+      .then(setRankShifts)
       .catch(() => {});
-    return () => { cancelled = true; };
   }, []);
+  useEffect(() => reloadRankSnapshots(), [reloadRankSnapshots]);
 
-  // 경기 결과 등록 전 랭킹 스냅샷 — 저장 후 재계산과 비교해 변동분만 뽑는다.
-  const preRanksRef = useRef<Partial<Record<RankMode, Map<string, { rank: number; nickname: string }>>> | null>(null);
-
-  const computeRankMap = useCallback(async (mode: RankMode) => {
-    const rows = await computeRankRows(members, MATCH_TYPE_OF[mode], "all", "month", currentPeriodAnchor("month"));
-    return new Map(rows.map((r) => [r.member.id, { rank: r.rank, nickname: r.member.nickname }]));
-  }, [members]);
-
-  const snapshotRanks = useCallback(async () => {
-    const out: NonNullable<typeof preRanksRef.current> = {};
-    for (const mode of ["solo", "team"] as RankMode[]) {
-      try { out[mode] = await computeRankMap(mode); } catch { /* 실패 시 그 유형 변동 카드 생략 */ }
-    }
-    preRanksRef.current = out;
-  }, [computeRankMap]);
-
-  // 실시간 랭킹(차트) 모달 — 기존 랭킹 화면을 그대로 띄운다.
-  const [liveRankingOpen, setLiveRankingOpen] = useState(false);
-
-  // 저장 완료 — 경기 목록 갱신 + 등록 전/후 랭킹을 비교해 변동분을 서버에 저장하고 피드에 올린다.
+  // 저장/삭제 완료 — 경기 목록과 함께 변동 이벤트도 갱신한다(서버가 이미 저장을 끝냈다).
   const handleReplaysSaved = useCallback(async () => {
     reload();
-    const pre = preRanksRef.current;
-    preRanksRef.current = null;
-    if (!pre) return;
-    for (const mode of ["solo", "team"] as RankMode[]) {
-      const before = pre[mode];
-      if (!before) continue;
-      try {
-        const after = await computeRankMap(mode);
-        const entries = [...after.entries()]
-          .filter(([id, cur]) => (before.get(id)?.rank ?? null) !== cur.rank)
-          .map(([id, cur]) => ({
-            memberId: id, nickname: cur.nickname,
-            from: before.get(id)?.rank ?? null, to: cur.rank,
-          }))
-          .sort((a, b) => a.to - b.to);
-        if (entries.length === 0) continue;
-        const saved = await api.createRankShift(MATCH_TYPE_OF[mode], entries);
-        setRankShifts((prev) => [saved, ...prev]);
-      } catch { /* 변동 저장 실패는 피드 갱신을 막지 않는다 */ }
-    }
-  }, [reload, computeRankMap]);
+    reloadRankSnapshots();
+  }, [reload, reloadRankSnapshots]);
+  const handleMatchDeleted = useCallback(() => {
+    reload();
+    reloadRankSnapshots();
+  }, [reload, reloadRankSnapshots]);
 
+  // 피드의 "상세" 버튼 — 통계 탭으로 이동하며 그 변동의 게임 유형을 필터로 미리 건다(요청).
+  const requestScreen = useAppStore((s) => s.requestScreen);
+  const setStatsPresetMatchType = useAppStore((s) => s.setStatsPresetMatchType);
+  const openStatsFor = (matchType: MatchType) => {
+    setStatsPresetMatchType(matchType);
+    requestScreen("stats");
+  };
 
   const handleReplayFilesChosen = async (e: ChangeEvent<HTMLInputElement>) => {
     const chosen = Array.from(e.target.files ?? []);
@@ -499,7 +469,6 @@ export default function FeedScreen() {
     try {
       const [drafts] = await Promise.all([
         buildReplayDrafts(batch, members),
-        snapshotRanks(),
         new Promise((resolve) => setTimeout(resolve, 500)),
       ]);
       if (hasAppUpdatePreloadErrorOccurred()) return;
@@ -570,7 +539,7 @@ export default function FeedScreen() {
           return searchTerms.every((term) => challengeMatchesTerm(item.challenge, term));
         }
         return searchTerms.every((term) =>
-          item.shift.entries.some((e) => normalizeSearchText(e.nickname).includes(term)));
+          item.shift.shifts.some((e) => normalizeSearchText(e.nickname).includes(term)));
       }
       return true;
     });
@@ -698,7 +667,7 @@ export default function FeedScreen() {
                   <span className="scr-feed-card-time">{formatEventTime(item.time, item.withClock)}</span>
                 </div>
                 <ul className="scr-feed-shift-list">
-                  {item.shift.entries.map((e) => {
+                  {item.shift.shifts.map((e) => {
                     const label = shiftLabel(e);
                     return (
                       <li key={`${e.memberId}-${e.to}`} className="scr-feed-shift-row">
@@ -711,8 +680,9 @@ export default function FeedScreen() {
                   })}
                 </ul>
                 <div className="scr-feed-rank-actions">
-                  <button type="button" className="scr-btn scr-btn-sm" onClick={() => setLiveRankingOpen(true)}>
-                    차트 보기
+                  {/* 상세 — 통계 탭으로 이동, 이 변동의 게임 유형을 필터로 미리 건다(요청). */}
+                  <button type="button" className="scr-btn scr-btn-sm" onClick={() => openStatsFor(item.shift.matchType)}>
+                    상세
                   </button>
                 </div>
               </div>
@@ -753,7 +723,7 @@ export default function FeedScreen() {
                 key={`ms-${item.date}-${item.time}`}
                 stack={item}
                 memberOf={memberOf}
-                onDeleted={reload}
+                onDeleted={handleMatchDeleted}
                 dateLabel={dateLabelOf(item)}
                 highlightMemberIds={matchedIds}
                 highlightTerms={searchTerms}
@@ -763,7 +733,7 @@ export default function FeedScreen() {
                 key={`m-${item.match.id}`}
                 item={item}
                 memberOf={memberOf}
-                onDeleted={reload}
+                onDeleted={handleMatchDeleted}
                 dateLabel={dateLabelOf(item)}
                 highlightMemberIds={matchedIds}
                 highlightTerms={searchTerms}
@@ -798,23 +768,6 @@ export default function FeedScreen() {
         />
       )}
 
-      {/* 실시간 랭킹(차트) — 상성보기와 같은 큰 오버레이(모바일 전체화면)로 기존 랭킹
-          화면을 그대로 띄운다(배경 사진만 끔). 시트 클래스(scr-rivalry-overlay-body)를
-          공유해 모바일 아래로-끌어-닫기도 그대로 동작한다. */}
-      {liveRankingOpen && createPortal(
-        <div className="scr-rivalry-overlay scr-feed-ranking-overlay">
-          <div className="scr-rivalry-overlay-body scr-feed-ranking-overlay-body">
-            <div className="scr-feed-ranking-overlay-head">
-              <span className="scr-feed-ranking-overlay-title">실시간 랭킹</span>
-              <button className="scr-icon-btn" onClick={() => setLiveRankingOpen(false)} aria-label="닫기">
-                <X size={14} />
-              </button>
-            </div>
-            <RankingScreen embedded />
-          </div>
-        </div>,
-        document.body,
-      )}
     </div>
   );
 }

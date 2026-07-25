@@ -3,7 +3,7 @@ import { api } from "../api/client";
 import { versionNumber } from "../utils/appVersion";
 import type {
   Member, Match, NewMatch, MemberCreatePayload, MemberStatus, MemberRole, AppVersion,
-  AppVersionInfo, Challenge, MatchRequestInboxItem,
+  AppVersionInfo, Challenge, MatchRequestInboxItem, MatchType, ScreenKey,
 } from "../types";
 
 // 버전이 바뀐 걸 감지했을 때 AppUpdateNoticeModal에 넘기는 정보 — 변경 내용 문구(notes)는
@@ -164,6 +164,17 @@ interface AppState {
   setNoticeEnabled: (enabled: boolean) => Promise<void>;
   // 특정 버전의 안내 내용을 서버에 저장하고, 로컬 appVersions의 그 버전 notes도 갱신한다.
   saveVersionNotes: (number: AppVersion, notes: string) => Promise<void>;
+
+  // ----- 화면 간 이동 요청 -----
+  // 피드의 랭크 변동 카드 "상세" 버튼처럼 화면 컴포넌트가 다른 탭으로 보내고 싶을 때 쓴다 —
+  // App이 구독해 실제 화면 전환을 수행하고 비운다.
+  screenIntent: ScreenKey | null;
+  requestScreen: (screen: ScreenKey) => void;
+  clearScreenIntent: () => void;
+  // 통계 화면이 열릴 때 미리 걸어둘 게임 유형 — 피드 변동 카드 내용과 맞춘다(요청).
+  // 소비(마운트) 시점에 비워져, 이후 일반 진입은 다시 랜덤 기본값을 쓴다.
+  statsPresetMatchType: MatchType | null;
+  setStatsPresetMatchType: (mt: MatchType | null) => void;
 
   // ----- 파생 셀렉터(헬퍼) -----
   memberOf: (id: string) => Member | undefined;
@@ -374,6 +385,12 @@ export const useAppStore = create<AppState>()((set, get) => ({
       ),
     });
   },
+
+  screenIntent: null,
+  requestScreen: (screen) => set({ screenIntent: screen }),
+  clearScreenIntent: () => set({ screenIntent: null }),
+  statsPresetMatchType: null,
+  setStatsPresetMatchType: (mt) => set({ statsPresetMatchType: mt }),
 
   memberOf: (id) => get().members.find((m) => m.id === id),
 }));
