@@ -3484,8 +3484,8 @@ html.scr-page-bg.scr-light-theme .scr-rank-screen-v2::before { display: none; }
    실제로 하이라이트 배경 안에 들어오게 한다. */
 /* 종족 배지는 이제 팀 구분 없이 항상 닉네임 오른쪽이라, 하이라이트도 양 팀 모두 오른쪽을
    넓힌다(요청: "팀 2가 종족배지 위치 바뀐걸 적용 못한듯" — 팀2 왼쪽 확장 규칙 삭제).
-   모서리는 각지게(요청: 래디우스 제거). */
-.scr-mt-player-hl { background: var(--highlight-bg); border-radius: 0; padding: 2px 12px 2px 9px; margin: -2px -12px -2px -9px; }
+   모서리는 각지게(래디우스 제거), 좌우 패딩은 원복(오른쪽 12px는 튀어나온 배지 커버용). */
+.scr-mt-player-hl { background: var(--highlight-bg); border-radius: 0; padding: 2px 12px 2px 4px; margin: -2px -12px -2px -4px; }
 .scr-mt-player-hl .scr-mt-name { font-weight: 800; color: var(--bar-text); }
 /* 종족 배지는 원래 종족 고유색(테란/프로토스/저그)을 그대로 유지한다 — 강제로 어두운
    단색(--bar-text)으로 바꾸면 종족 구분이 사라져 보였다(실제로 지적받은 문제 — "종족배지가
@@ -6380,6 +6380,8 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
   font-size: var(--fs-caption); font-weight: 900; color: var(--win); white-space: nowrap;
   border: 1px solid var(--win); background: transparent;
 }
+/* 무승부(무)는 승리색이 아니라 무승부 테마색(회색, .scr-draw와 동일 --muted)으로(요청). */
+.scr-challenge-inline-draw { color: var(--muted); border-color: var(--muted); }
 /* 해당 안 되는 쪽(진 편/결과 없음)에도 같은 자리를 투명하게 남긴다 — 안 그러면 페이지를
    넘길 때 배지 유무에 따라 손 이모지가 좌우로 흔들린다(요청: "손이모지 양옆에도
    승리/무승부 배지 넣을 공간 예약해야함"). */
@@ -6451,10 +6453,10 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
 .scr-challenge-avatar-badge-discarded { color: #9a97a3; }
 .scr-challenge-avatar-badge-pending { color: #cdaa54; }
 .scr-challenge-person { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
-/* 좌우로 여유 있게, 모서리는 각지게(요청: "하이라이트 범위 좌우 좀 여유있게, 래디우스 제거"). */
+/* 모서리는 각지게(래디우스 제거), 좌우 패딩은 원복(요청). */
 .scr-challenge-person-hit {
   background: var(--highlight-bg); border-radius: 0;
-  padding: 2px 9px; margin: -2px -9px;
+  padding: 2px 4px; margin: -2px -4px;
 }
 .scr-challenge-person-hit .scr-challenge-person-name { color: var(--bar-text); font-weight: 800; }
 /* flex:1 1 auto로 남는 공간을 다 먹게 뒀더니, 응답 알약이 그 뒤로 밀려 줄 맨 끝에
@@ -7879,27 +7881,28 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 /* 앞 카드(스크롤 앵커용 래퍼 포함)는 뒷단(peek) 위에 얹힌다. */
 .scr-feed-stack-front { position: relative; z-index: 1; }
 .scr-feed-stack-front > .scr-feed-card { position: relative; }
-/* 펼침/접힘 트랜지션 — 뒷단(peek)은 높이·투명도로 사라지고, 나머지 카드들은
-   grid-rows 0fr↔1fr로 아래에서 자라난다. */
-.scr-feed-stack-peek {
-  transition: opacity .2s ease, padding .28s cubic-bezier(0.32, 0.72, 0, 1), margin .28s cubic-bezier(0.32, 0.72, 0, 1), height .28s cubic-bezier(0.32, 0.72, 0, 1);
-  overflow: hidden; height: auto;
-}
-.scr-feed-stack-opened .scr-feed-stack-peek {
-  height: 0; padding-top: 0; padding-bottom: 0; margin-bottom: 0; opacity: 0; pointer-events: none;
-}
-/* 주의: 여기에 opacity 트랜지션을 걸면 안 된다 — 조상의 opacity<1은 자체 합성 그룹을
-   만들어 그 안 카드들의 backdrop-filter가 페이지 배경을 못 보게 된다(= 펼치는 동안
-   블러가 빠졌다가 다 펼쳐져야 적용되던 문제). 높이(grid-rows) 클립만으로 전환한다. */
-.scr-feed-stack-rest {
-  display: grid; grid-template-rows: 0fr;
-  transition: grid-template-rows .32s cubic-bezier(0.32, 0.72, 0, 1);
-}
+/* 펼침/접힘 — 높이(레이아웃)는 트랜지션 없이 즉시 바꾼다. 높이를 애니메이션하면 그동안
+   앞 카드가 밀리는 걸 스크롤이 매 프레임 따라가야 하는데, iOS의 비동기 스크롤과 어긋나며
+   크게 튀었다(지적). 대신 스크롤 보정은 페인트 전 한 번(MatchStack 참고)으로 끝내고,
+   "펼침 느낌"은 나타나는 카드들의 transform 슬라이드(레이아웃 불변·블러 유지)가 담당한다. */
+.scr-feed-stack-opened .scr-feed-stack-peek { display: none; }
+/* 주의: 여기(조상)에 opacity를 걸면 안 된다 — opacity<1은 자체 합성 그룹을 만들어 그 안
+   카드들의 backdrop-filter가 페이지 배경을 못 보게 된다(= 블러가 빠져 보이던 문제). */
+.scr-feed-stack-rest { display: grid; grid-template-rows: 0fr; }
 .scr-feed-stack-opened .scr-feed-stack-rest { grid-template-rows: 1fr; }
 .scr-feed-stack-rest-inner { overflow: hidden; min-height: 0; }
 .scr-feed-stack-rest-list { display: flex; flex-direction: column; gap: 14px; padding: 4px 0 20px; }
+/* 펼칠 때 카드들이 살짝 아래(자기 자리 기준)에서 제자리로 미끄러져 들어온다 — opacity
+   없이 transform만 써서 카드 자신의 backdrop 블러가 애니메이션 내내 유지된다. */
+.scr-feed-stack-opened .scr-feed-stack-rest-list > * {
+  animation: scr-feed-stack-in .3s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+@keyframes scr-feed-stack-in {
+  from { transform: translateY(14px); }
+  to { transform: none; }
+}
 @media (prefers-reduced-motion: reduce) {
-  .scr-feed-stack-peek, .scr-feed-stack-rest { transition: none; }
+  .scr-feed-stack-opened .scr-feed-stack-rest-list > * { animation: none; }
 }
 /* 겹친 뒷카드 윗단 — 앞 카드가 그날 첫 게임이므로 나중 게임들이 "위"로 삐져나온 모양(요청).
    블러도 카드와 동일하게(요청: "스택된 상태의 뒷 카드에도 블러 똑같이"). */
@@ -7965,6 +7968,9 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 /* 게임결과 로스터 = 너 나와! 매치업과 같은 구조/CSS(요청: "너 나와의 css기준으로") —
    각 팀 세로 나열 + 프사, 가운데는 손가락 이모지 대신 vs, 승/무 배지도 동일 방식. */
 .scr-feed-match-matchup { padding: 2px 4px 0; }
+/* 피드에선 양편 flex를 똑같이 둬서 가운데(손가락/vs) 묶음이 카드 가로 정중앙에 온다
+   (요청: "손가락, vs 세로 정렬" — 원본 화면의 비대칭 flex(0.85/1.15)가 중앙을 밀고 있었다). */
+.scr-feed-card .scr-challenge-matchup .scr-challenge-side { flex: 1 1 0; }
 /* 종족 배지 — 기록실의 절대배치(.scr-team-name-wrap 기준 right:-8px) 대신, 매치업
    로스터에선 닉네임 바로 오른쪽 인라인으로 흐르게 한다(기준 래퍼가 없는 자리라
    절대배치를 그대로 두면 카드 밖으로 튄다). */
@@ -8039,22 +8045,22 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 /* 가운데의 + 댓글 아이콘 ↔ 입력창 전환(요청) — 아이콘을 누르면 입력창이 트랜지션으로
    가로로 펼쳐지며 포커스되고, 포커스를 잃으면 다시 아이콘으로 줄어든다. 입력창은 늘
    마운트된 채 max-width/opacity로만 접히고, 줄 높이(34px)는 항상 예약해 흔들림이 없다. */
-.scr-feed-comment-row { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 34px; }
-.scr-feed-comment-row-open { gap: 0; }
+/* gap을 0으로 — 접혀 있어도 gap이 살아 있으면 아이콘이 그만큼 왼쪽으로 밀려 카드
+   정중앙에서 벗어난다(지적). 열리면 아이콘이 width 0으로 접히므로 gap 자체가 필요 없다. */
+.scr-feed-comment-row { display: flex; align-items: center; justify-content: center; gap: 0; min-height: 34px; }
 /* width를 명시해야 0으로의 트랜지션이 걸린다(auto→0은 애니메이션 불가). */
 .scr-feed-comments-toggle { width: 24px; justify-content: center; transition: width .28s cubic-bezier(0.32, 0.72, 0, 1), opacity .18s ease; }
 .scr-feed-comment-row-open .scr-feed-comments-toggle {
   width: 0; padding-left: 0; padding-right: 0; overflow: hidden; opacity: 0; pointer-events: none;
 }
+/* visibility는 쓰지 않는다 — 모바일(iOS)은 사용자 제스처 안에서 focus()가 불려야
+   키보드가 뜨는데, visibility:hidden 상태의 인풋은 포커스가 안 잡힌다. 접힘은
+   max-width 0 + overflow hidden만으로 충분하다(패딩도 접힘 땐 0). */
 .scr-feed-comment-composer {
-  flex: 1; min-width: 0; max-width: 0; opacity: 0; visibility: hidden; overflow: hidden;
-  padding: 2px;
-  transition: max-width .28s cubic-bezier(0.32, 0.72, 0, 1), opacity .2s ease, visibility 0s linear .28s;
+  flex: 1; min-width: 0; max-width: 0; opacity: 0; overflow: hidden; padding: 0;
+  transition: max-width .28s cubic-bezier(0.32, 0.72, 0, 1), opacity .2s ease, padding .28s cubic-bezier(0.32, 0.72, 0, 1);
 }
-.scr-feed-comment-row-open .scr-feed-comment-composer {
-  max-width: 100%; opacity: 1; visibility: visible;
-  transition: max-width .28s cubic-bezier(0.32, 0.72, 0, 1), opacity .2s ease;
-}
+.scr-feed-comment-row-open .scr-feed-comment-composer { max-width: 100%; opacity: 1; padding: 2px; }
 @media (prefers-reduced-motion: reduce) {
   .scr-feed-comments-toggle, .scr-feed-comment-composer { transition: none; }
 }

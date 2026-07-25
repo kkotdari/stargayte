@@ -287,13 +287,14 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
   // CSS(max-width/opacity)로만 접었다 편다 — 닫혀도 쓰던 내용이 남는다.
   const [composerOpen, setComposerOpen] = useState(false);
   const composerWrapRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!composerOpen) return;
-    const raf = requestAnimationFrame(() => {
-      composerWrapRef.current?.querySelector("input")?.focus();
-    });
-    return () => cancelAnimationFrame(raf);
-  }, [composerOpen]);
+  // 모바일(iOS)은 사용자 제스처(탭) 핸들러 "안에서" focus()가 불려야 키보드가 뜬다 —
+  // rAF/이펙트로 미루면 데스크톱에선 되지만 모바일에선 키보드가 안 올라온다(지적).
+  // 컴포저는 늘 마운트돼 있고(visibility 안 씀, max-width 0 접힘) 그 상태에서도 포커스가
+  // 잡히므로, 아이콘 탭 즉시 동기로 포커스하고 상태를 연다.
+  const openComposer = () => {
+    composerWrapRef.current?.querySelector("input")?.focus();
+    setComposerOpen(true);
+  };
   const user = useAppStore((s) => s.user);
   const members = useAppStore((s) => s.members);
   // 댓글은 이 컴포넌트가 로컬로 관리한다 — 마운트 시 대상의 댓글을 불러오고,
@@ -417,7 +418,7 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
         <div className={cx("scr-feed-comment-row", composerOpen && "scr-feed-comment-row-open")}>
           <button
             type="button" className="scr-feed-comments-toggle"
-            onClick={() => setComposerOpen(true)}
+            onClick={openComposer}
             aria-expanded={composerOpen} aria-label="댓글 쓰기" title="댓글 쓰기"
             tabIndex={composerOpen ? -1 : 0}
           >

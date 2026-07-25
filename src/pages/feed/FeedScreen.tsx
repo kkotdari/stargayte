@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { createPortal } from "react-dom";
 import { CalendarPlus, MoreHorizontal, Plus, Send, Swords, Trophy, Upload, X } from "lucide-react";
 import { Spinner } from "../../components/common/Feedback";
@@ -277,30 +277,31 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
   const restDesc = useMemo(() => ordered.slice(1).reverse(), [ordered]);
 
   // 펼침 영역이 앞 카드 "위"에 있어, 그대로 두면 앞 카드가 아래로 밀려 마치 아래로
-  // 펼쳐지는 것처럼 보인다(지적). 트랜지션 동안 앞 카드의 화면상 위치를 그대로 고정한다
-  // — 위 공간(펼침 목록·peek 버튼)이 커지고 줄어드는 만큼 스크롤이 매 프레임 따라가서,
-  // 카드들이 "위로" 자라나는 느낌이 된다(접을 때도 역으로 고정). 두 가지가 핵심:
-  // 1) rest 높이가 아니라 앞 카드 자체의 뷰포트 top을 앵커로 삼는다 — peek 버튼이
-  //    접히는 높이까지 전부 보정에 포함된다(rest만 보면 그만큼 어긋난다).
-  // 2) 문서에 CSS scroll-behavior:smooth가 걸려 있어 behavior:"instant"가 필수다 —
-  //    안 주면 프레임마다의 보정이 전부 네이티브 스무스 스크롤로 해석돼 서로 재시작만
-  //    반복하며 실제로는 거의 안 움직인다(= 여전히 아래로 펼쳐져 보이던 원인).
+  // 펼쳐지는 것처럼 보인다(지적). 그래서 레이아웃은 트랜지션 없이 즉시 바꾸고, 앞 카드의
+  // 화면상 위치가 변한 만큼을 페인트 전에(useLayoutEffect) 스크롤 한 번으로 보정한다 —
+  // 앞 카드는 그 자리에 고정돼 보이고 카드들은 위로 나타난다. 이전엔 높이 트랜지션을
+  // rAF 루프로 매 프레임 따라가며 보정했는데, iOS 사파리는 스크롤 반영이 비동기라
+  // 보정-측정이 서로 어긋나며 크게 튀었다(지적: "엄청난 스크롤 튐"). 나타나는 카드들의
+  // "펼침 느낌"은 레이아웃과 무관한 transform 슬라이드 애니메이션(CSS)이 담당한다.
+  // 문서에 CSS scroll-behavior:smooth가 걸려 있어 보정은 반드시 instant로 이동시킨다.
   const frontRef = useRef<HTMLDivElement>(null);
+  const pendingAnchorRef = useRef<number | null>(null);
   const toggleOpen = (next: boolean) => {
+    pendingAnchorRef.current = frontRef.current?.getBoundingClientRect().top ?? null;
     setOpen(next);
+  };
+  useLayoutEffect(() => {
+    const anchor = pendingAnchorRef.current;
+    pendingAnchorRef.current = null;
+    if (anchor == null) return;
     const front = frontRef.current;
     if (!front) return;
-    const anchor = front.getBoundingClientRect().top;
-    const start = performance.now();
-    const step = () => {
-      const d = front.getBoundingClientRect().top - anchor;
-      if (d !== 0) window.scrollBy({ top: d, behavior: "instant" });
-      if (performance.now() - start < 500) requestAnimationFrame(step);
-    };
-    requestAnimationFrame(step);
-  };
+    const d = front.getBoundingClientRect().top - anchor;
+    if (d !== 0) window.scrollBy({ top: d, behavior: "instant" });
+  }, [open]);
 
-  // 두 상태를 모두 마운트해 두고 CSS(grid-rows 0fr↔1fr, 높이/투명도)로 부드럽게 전환한다.
+  // 두 상태를 모두 마운트해 두고 CSS(grid-rows 0fr↔1fr)로 전환한다 — 높이는 즉시,
+  // 나타나는 카드들만 transform으로 미끄러져 들어온다.
   return (
     <div className={cx("scr-feed-stack", open && "scr-feed-stack-opened")}>
       <button

@@ -448,6 +448,7 @@ export function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, o
                 <span
                   className={cx(
                     "scr-challenge-inline-win",
+                    activePage.resultWinnerSide === "draw" && "scr-challenge-inline-draw",
                     activePage.resultWinnerSide !== "creator" && activePage.resultWinnerSide !== "draw"
                       && "scr-challenge-inline-win-hidden",
                   )}
@@ -458,6 +459,7 @@ export function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, o
                 <span
                   className={cx(
                     "scr-challenge-inline-win",
+                    activePage.resultWinnerSide === "draw" && "scr-challenge-inline-draw",
                     activePage.resultWinnerSide !== "target" && activePage.resultWinnerSide !== "draw"
                       && "scr-challenge-inline-win-hidden",
                   )}

@@ -474,11 +474,11 @@ export default function MatchList({
                       {/* 승/무 배지 — 너 나와!와 동일하게 vs 양옆에 이긴 편 쪽만 보이고,
                           해당 없는 쪽은 자리만 예약(투명)해 vs가 좌우로 안 흔들린다. */}
                       <span className="scr-challenge-arrow-row">
-                        <span className={cx("scr-challenge-inline-win", o1 !== "win" && o1 !== "draw" && "scr-challenge-inline-win-hidden")}>
+                        <span className={cx("scr-challenge-inline-win", o1 === "draw" && "scr-challenge-inline-draw", o1 !== "win" && o1 !== "draw" && "scr-challenge-inline-win-hidden")}>
                           {o1 === "draw" ? "무" : "승"}
                         </span>
                         <span className="scr-challenge-arrow scr-challenge-arrow-vs" aria-hidden="true">vs</span>
-                        <span className={cx("scr-challenge-inline-win", o2 !== "win" && o2 !== "draw" && "scr-challenge-inline-win-hidden")}>
+                        <span className={cx("scr-challenge-inline-win", o2 === "draw" && "scr-challenge-inline-draw", o2 !== "win" && o2 !== "draw" && "scr-challenge-inline-win-hidden")}>
                           {o2 === "draw" ? "무" : "승"}
                         </span>
                       </span>
