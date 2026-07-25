@@ -281,7 +281,11 @@ function formatCommentTime(iso: string): string {
 // 펼쳐진 경기 로우 하단의 댓글(메모) 영역 — 게시판 댓글 스타일. 목록·입력은 "너 나와!" 요청
 // 입력의 CSS(scr-mreq-*)를 차용한다. 대댓글은 없다(요청). 로그인 회원만 작성할 수 있고
 // 작성자 본인/운영자만 수정·삭제할 수 있다(comment.canEdit).
-export default function FeedComments({ targetType, targetId }: { targetType: FeedTargetType; targetId: number }) {
+export default function FeedComments({ targetType, targetId, showComposer = true }: {
+  targetType: FeedTargetType; targetId: number;
+  // 목록은 항상 보여주고, 작성 입력창은 아이콘을 눌렀을 때만 연다(피드 카드).
+  showComposer?: boolean;
+}) {
   const user = useAppStore((s) => s.user);
   const members = useAppStore((s) => s.members);
   // 댓글은 이 컴포넌트가 로컬로 관리한다 — 마운트 시 대상의 댓글을 불러오고,
@@ -401,7 +405,7 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
 
       {err && <div className="scr-err scr-match-note-err">{err}</div>}
 
-      {user && editingId === null && (
+      {user && editingId === null && showComposer && (
         <NoteComposer
           key={composerKey}
           members={members}

@@ -86,15 +86,19 @@ function matchItem(m: Match): MatchItem {
   };
 }
 
-// 피드 카드 하단 공통 댓글 영역 — 누르면 목록/입력이 펼쳐진다.
+// 피드 카드 하단 공통 댓글 영역 — 달린 댓글은 항상 보여주고, 입력창은 아이콘을 눌러야 열린다.
 function FeedCardComments({ targetType, targetId }: { targetType: "match" | "challenge"; targetId: number }) {
-  const [open, setOpen] = useState(false);
+  const [composerOpen, setComposerOpen] = useState(false);
   return (
     <div className="scr-feed-comments">
-      <button type="button" className="scr-feed-comments-toggle" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
-        <MessageCircle size={13} aria-hidden /> 댓글
+      <FeedComments targetType={targetType} targetId={targetId} showComposer={composerOpen} />
+      <button
+        type="button" className="scr-feed-comments-toggle"
+        onClick={() => setComposerOpen((v) => !v)}
+        aria-expanded={composerOpen} aria-label="댓글 쓰기" title="댓글 쓰기"
+      >
+        <MessageCircle size={14} aria-hidden />
       </button>
-      {open && <FeedComments targetType={targetType} targetId={targetId} />}
     </div>
   );
 }

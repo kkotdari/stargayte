@@ -7888,9 +7888,20 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   border: none; background: transparent; box-shadow: none;
   backdrop-filter: none; -webkit-backdrop-filter: none; border-radius: 0;
 }
-/* 경기 로우도 동일 — 목록 프레임/행 배경 없이 내용만. 날짜 헤더는 카드 헤더가 대신하므로 숨긴다. */
+/* 경기 로우도 동일 — 행 자신의 라이팅 글라스 패널(배경·블러·그림자·마진)을 벗기고
+   내용만 피드 카드에 직접 얹는다. 날짜 헤더는 카드 헤더가 대신하므로 숨긴다. */
 .scr-feed-match-body { padding: 0 8px; }
 .scr-feed-match-body .scr-match-date-head { display: none; }
+.scr-feed-match-body .scr-match-list-panel-v2 .scr-match-trow,
+.scr-light-theme .scr-feed-match-body .scr-match-list-panel-v2 .scr-match-trow {
+  background: transparent; border: none; box-shadow: none;
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+  border-radius: 0; margin: 0; padding-top: 8px; padding-bottom: 10px;
+}
+/* 카드 폭이 이미 좁으니 PC의 넓은 좌우 패딩(100px)도 카드 안에선 줄인다. */
+@media (min-width: 720px) {
+  .scr-feed-match-body .scr-match-list-panel-v2 .scr-match-trow { padding-left: 24px; padding-right: 24px; }
+}
 
 /* 카드 하단 공통 댓글 영역 — 토글을 누르면 목록/입력이 그 자리에서 펼쳐진다. */
 .scr-feed-comments { padding: 0 16px 10px; }
