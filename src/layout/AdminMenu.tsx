@@ -26,7 +26,7 @@ interface AdminItem {
   onSelect: () => void;
 }
 
-// 운영자 전용 화면(회원 화면/이미지 설정/유저연결)을 낱개 탭으로 늘어놓는 대신 "운영"
+// 운영자 전용 화면(회원 화면/유저연결)을 낱개 탭으로 늘어놓는 대신 "운영"
 // 드롭다운 하나로 묶는다 — 이 컴포넌트는 호출부(Header)가 이미 운영자에게만 렌더링하므로
 // 역할/권한 체크 없이 항상 전체 항목을 보여준다. 위치 계산은 커스텀 셀렉트(Select.tsx)와
 // 동일하게 attachPopover를 재사용 — 하단 탭바에 놓였을 때도 아래쪽 공간이 부족하면 자동으로
@@ -34,8 +34,6 @@ interface AdminItem {
 export default function AdminMenu({ screen, onNavigate, variant, onOpenChange }: AdminMenuProps) {
   const items: AdminItem[] = [
     { key: "members", label: "회원", isActive: screen === "members", onSelect: () => onNavigate("members") },
-    { key: "imageSettings", label: "이미지 설정", isActive: screen === "imageSettings", onSelect: () => onNavigate("imageSettings") },
-    { key: "gameId", label: "게임아이디", isActive: screen === "gameId", onSelect: () => onNavigate("gameId") },
     { key: "leagues", label: "리그", isActive: screen === "leagues", onSelect: () => onNavigate("leagues") },
     // 상성맵은 운영 메뉴에서 뺐다(요청) — 이제 랭킹 화면(개인전)의 "상성맵" 버튼이
     // 오버레이(RivalryOverlay)로 띄운다. 운영 전용 화면(RivalryScreen) 자체는 남아 있다.

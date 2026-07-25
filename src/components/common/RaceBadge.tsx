@@ -1,5 +1,4 @@
 import type { CSSProperties } from "react";
-import { useImageSettings } from "../../context/ImageSettingContext";
 import { RACE_INFO } from "../../constants/races";
 import { cx } from "../../utils/format";
 import type { Race } from "../../types";
@@ -25,9 +24,9 @@ interface RaceBadgeProps {
   className?: string;
 }
 
-// 종족 표시 — 운영자가 설정한 아이콘(텍스트/이모지 또는 이미지)을 그대로 렌더링
+// 종족 표시 — 영문 첫 글자(T/P/Z/R) 고정(이미지 설정으로 아이콘을 바꾸는 기능은 통째로
+// 제거됐다 — 요청: "이미지 설정 메뉴 완전 삭제").
 export default function RaceBadge({ race, size = 26, asText, plain, circleLetter, className }: RaceBadgeProps) {
-  const icons = useImageSettings();
   if (!race) return null;
   const color = plain ? "var(--text)" : RACE_INFO[race].color;
   if (circleLetter) {
@@ -53,19 +52,15 @@ export default function RaceBadge({ race, size = 26, asText, plain, circleLetter
       </span>
     );
   }
-  const icon = icons[race];
   const style: CSSProperties = {
     ["--rc" as string]: color,
     width: size,
     height: Math.round(size * 0.86),
     fontSize: Math.max(10, size * 0.5),
   };
-  const isImage = icon.type === "image" && !!icon.value;
   return (
-    <span className={cx("scr-race-badge", isImage && "scr-race-badge-imgtype")} style={style} title={race}>
-      {isImage
-        ? <span className="scr-race-badge-img" style={{ backgroundImage: `url(${icon.value})` }} />
-        : (icon.value || race[0])}
+    <span className="scr-race-badge" style={style} title={race}>
+      {RACE_LETTER[race]}
     </span>
   );
 }

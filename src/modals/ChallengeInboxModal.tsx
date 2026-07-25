@@ -170,7 +170,7 @@ export default function ChallengeInboxModal({ challenges, onClose, closeLabel = 
       return {
         title: "대결 거절",
         description: `${matchup}`,
-        imageUrl: `${window.location.origin}/images/items/nawa2.jpg`,
+        imageUrl: `${window.location.origin}/images/challenge/challenge_share_thumb.jpg`,
         link: `${window.location.origin}/?sv=challenge&sid=${current.id}`,
         fallbackText: `[스타게이트] ${me}님이 ${caller}님의 호출을 거절했어요.\n${matchup}`,
       };
@@ -178,7 +178,7 @@ export default function ChallengeInboxModal({ challenges, onClose, closeLabel = 
     return {
       title: "대결 수락!",
       description: `${matchup} · ${acceptedWhen}`,
-      imageUrl: `${window.location.origin}/images/items/nawa2.jpg`,
+      imageUrl: `${window.location.origin}/images/challenge/challenge_share_thumb.jpg`,
       link: `${window.location.origin}/?sv=challenge&sid=${current.id}`,
       fallbackText: `[스타게이트] ${me}님이 ${caller}님의 호출을 수락했어요!\n${matchup}\n일시: ${acceptedWhen}`,
     };
@@ -329,7 +329,7 @@ export default function ChallengeInboxModal({ challenges, onClose, closeLabel = 
           <div className="scr-challenge-envelope-inner">
             <div className="scr-challenge-inbox-title">{envelopeTitle}</div>
             <div className="scr-challenge-envelope scr-challenge-envelope-full scr-challenge-envelope-shake">
-              <img src="/images/items/envelope.png" alt="" className="scr-challenge-envelope-img" />
+              <img src="/images/challenge/challenge_envelope.png" alt="" className="scr-challenge-envelope-img" />
             </div>
             {/* 열기/버리기 — 흔들림이 끝나면(envReady) 페이드 인으로 나타난다. 단, 처음부터
                 이 자리를(높이를) 항상 차지하게 두어(조건부 렌더 대신 클래스 토글), 버튼이

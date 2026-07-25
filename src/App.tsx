@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useAppStore } from "./store/appStore";
 import { isAdminRole } from "./constants/roles";
-import { ImageSettingContext } from "./context/ImageSettingContext";
 import { Spinner } from "./components/common/Feedback";
 import ScrollTopButton from "./components/common/ScrollTopButton";
 import { api } from "./api/client";
@@ -19,9 +18,7 @@ import InstallBanner from "./components/common/InstallBanner";
 import InAppBrowserNotice from "./components/common/InAppBrowserNotice";
 import ChallengeScreen from "./pages/challenge/ChallengeScreen";
 import MembersScreen from "./pages/members/MembersScreen";
-import ImageSettingsScreen from "./pages/imageSettings/ImageSettingsScreen";
 import RivalryScreen from "./pages/rivalry/RivalryScreen";
-import GameIdScreen from "./pages/gameId/GameIdScreen";
 import LeagueScreen from "./pages/league/LeagueScreen";
 import ProfileModal from "./modals/ProfileModal";
 import MemberProfileModal from "./modals/MemberProfileModal";
@@ -38,7 +35,7 @@ import ShareLoginGate from "./pages/share/ShareLoginGate";
 
 import type { ScreenKey } from "./types";
 
-const SCREEN_KEYS: ScreenKey[] = ["ranking", "match", "challenge", "stats", "members", "imageSettings", "gameId", "leagues", "rivalry"];
+const SCREEN_KEYS: ScreenKey[] = ["ranking", "match", "challenge", "stats", "members", "leagues", "rivalry"];
 
 // 새로고침해도 보던 화면 그대로 있도록 URL의 ?screen= 쿼리에 현재 화면을 기록해둔다 —
 // 사파리의 pull-to-refresh 등 브라우저 기본 새로고침은 앱 상태를 그대로 날려서 첫 화면으로
@@ -68,7 +65,6 @@ export default function App() {
   const restoringSession = useAppStore((s) => s.restoringSession);
   const justLoggedIn = useAppStore((s) => s.justLoggedIn);
   const clearJustLoggedIn = useAppStore((s) => s.clearJustLoggedIn);
-  const imageSettings = useAppStore((s) => s.imageSettings);
   const appVersion = useAppStore((s) => s.appVersion);
   const adminPanelOpen = useAppStore((s) => s.adminPanelOpen);
   const setAdminPanelOpen = useAppStore((s) => s.setAdminPanelOpen);
@@ -175,9 +171,7 @@ export default function App() {
 
   if (restoringSession) {
     return (
-      <ImageSettingContext.Provider value={imageSettings}>
         <div className="scr-app scr-app-fallback-scroll" id="scr-app"><div className="scr-boot"><Spinner size={22} /> 세션 확인 중...</div></div>
-      </ImageSettingContext.Provider>
     );
   }
 
@@ -187,21 +181,17 @@ export default function App() {
     // 넘어가 실제 봉투→편지지가 열린다. (경기 공유 등 그 외에는 기존 로그인 화면 그대로.)
     if (shareTarget?.type === "challenge") {
       return (
-        <ImageSettingContext.Provider value={imageSettings}>
-          <div className="scr-app scr-app-fallback-scroll" id="scr-app">
+            <div className="scr-app scr-app-fallback-scroll" id="scr-app">
             <InAppBrowserNotice />
             <ShareLoginGate />
           </div>
-        </ImageSettingContext.Provider>
-      );
+        );
     }
     return (
-      <ImageSettingContext.Provider value={imageSettings}>
         <div className="scr-app scr-app-fallback-scroll" id="scr-app">
           <InAppBrowserNotice />
           <AuthScreen />
         </div>
-      </ImageSettingContext.Provider>
     );
   }
 
@@ -210,7 +200,6 @@ export default function App() {
   // 기초 데이터가 준비된 뒤에 그린다.
   if (shareTarget) {
     return (
-      <ImageSettingContext.Provider value={imageSettings}>
         <div className="scr-app scr-app-fallback-scroll" id="scr-app">
           <div className="scr-bg-grid" />
           <InAppBrowserNotice />
@@ -218,7 +207,6 @@ export default function App() {
             ? <div className="scr-boot"><Spinner size={22} /> 데이터 불러오는 중...</div>
             : <SharePage target={shareTarget} onExit={exitShare} />}
         </div>
-      </ImageSettingContext.Provider>
     );
   }
 
@@ -228,17 +216,14 @@ export default function App() {
   const resolvedScreen: ScreenKey =
     screen === "challenge" && !isChallengeEnabled ? "ranking" :
     screen === "members" && !isAdmin ? "ranking" :
-    screen === "imageSettings" && !isAdmin ? "ranking" :
-    screen === "gameId" && !isAdmin ? "ranking" :
     screen === "leagues" && !isAdmin ? "ranking" :
     screen === "rivalry" && !isAdmin ? "ranking" :
     screen;
 
+  // 배경 사진이 있는 화면(지금은 랭킹뿐)에서는 헤더까지 사진이 이어져 보이게 —
+  // 헤더의 불투명 배경을 끄는 클래스를 앱 루트에 건다(CSS .scr-app-hasbg 참고).
+  // 배경 있는 화면이 늘면 이 조건에 추가하면 된다.
   return (
-    <ImageSettingContext.Provider value={imageSettings}>
-      {/* 배경 사진이 있는 화면(지금은 랭킹뿐)에서는 헤더까지 사진이 이어져 보이게 —
-          헤더의 불투명 배경을 끄는 클래스를 앱 루트에 건다(CSS .scr-app-hasbg 참고).
-          배경 있는 화면이 늘면 이 조건에 추가하면 된다. */}
       <div className={"scr-app" + (resolvedScreen === "ranking" ? " scr-app-hasbg" : "")} id="scr-app">
         <div className="scr-bg-grid" />
         <span className="scr-rail scr-rail-left" aria-hidden="true" />
@@ -268,16 +253,14 @@ export default function App() {
             {/* 화면을 옮기면 이전 화면은 언마운트한다 — 필터/검색/스크롤 등 화면별 상태를
                 더 이상 기억하지 않고, 돌아올 때마다 항상 처음 상태로 새로 불러온다(요청:
                 "페이지 상태 유지 기능 삭제 — 페이지 이동시 항상 초기상태로 로딩"). 접근
-                권한이 없는 화면(challenge/members/imageSettings)은 랭킹으로 대체되던
+                권한이 없는 화면(challenge/members 등)은 랭킹으로 대체되던
                 기존 동작과 같게, resolvedScreen으로 보여줄 화면만 고른다. */}
             {!booting && resolvedScreen === "ranking" && <RankingScreen />}
             {!booting && resolvedScreen === "match" && <MatchScreen />}
             {isChallengeEnabled && !booting && resolvedScreen === "challenge" && <ChallengeScreen />}
             {!booting && resolvedScreen === "stats" && <StatsScreen />}
             {isAdmin && !booting && resolvedScreen === "members" && <MembersScreen />}
-            {isAdmin && !booting && resolvedScreen === "imageSettings" && <ImageSettingsScreen />}
             {/* 운영자 전용 메뉴로 변경(요청) — 회원/이미지 설정과 같은 기준으로 운영자만 접근. */}
-            {isAdmin && !booting && resolvedScreen === "gameId" && <GameIdScreen />}
             {/* 공식 리그 대진/결과 관리 — 다음 버전에서 열 예정, 지금은 운영자만(요청). */}
             {isAdmin && !booting && resolvedScreen === "leagues" && <LeagueScreen />}
             {/* 유저 상성 맵 — 운영 메뉴 전용(요청). */}
@@ -318,6 +301,5 @@ export default function App() {
 
         {!booting && <ScrollTopButton />}
       </div>
-    </ImageSettingContext.Provider>
   );
 }

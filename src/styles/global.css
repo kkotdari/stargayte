@@ -842,9 +842,8 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    --lit-pill-bg / --lit-pill-text 라이팅 토큰(테마별로 자동으로 대비되는 값)을 쓰므로 불필요하다. */
 .scr-light-theme .scr-err { background: rgba(0,0,0,0.05); border: 1px solid rgba(0,0,0,0.3); }
 .scr-light-theme .scr-success { background: rgba(0,0,0,0.05); border: 1px solid rgba(0,0,0,0.3); }
-/* 종족 폰트 아이콘도 관리자가 고른 색 대신 본문 글자와 같은 톤(검정)으로 */
-.scr-light-theme .scr-race-badge,
-.scr-light-theme .scr-race-icon-preview { color: var(--text); }
+/* 종족 폰트 아이콘도 종족색 대신 본문 글자와 같은 톤(검정)으로 */
+.scr-light-theme .scr-race-badge { color: var(--text); }
 
 /* ===== avatar ===== */
 /* border-radius는 Avatar.tsx가 size에 비례해 인라인으로 계산해 넣는다 — 아바타가
@@ -1051,8 +1050,6 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 /* 로고 버튼 안도 baseline 대신 center — baseline이면 이미지 로고가 자기 바닥 기준으로
    놓여 아바타/닉네임의 세로 중심선과 어긋났다(지적: "세로 중심이 수평선상에 놓이게"). */
 .scr-brand { display: flex; align-items: center; gap: 8px; background: transparent; border: none; padding: 0; cursor: pointer; font-family: inherit; }
-/* 관리자가 "이미지 설정"에서 홈 로고를 텍스트 대신 이미지로 바꿔둔 경우 — 텍스트 로고와
-   같은 자리에 비슷한 높이로 들어가도록 */
 /* PC 로고 확대(요청): 22→36px. 모바일은 아래 반응형 블록이 따로 정한다. */
 /* PC 헤더 로고 — 요청으로 약 10% 축소(36→32px). 모바일은 아래 미디어쿼리에서 24px
    유지, 로그인 화면 로고는 .scr-auth-logo 전용 크기라 영향 없다. 별(자식)은 이 높이에
@@ -1358,12 +1355,12 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    맞추는 만큼 그냥 가장 바깥쪽 부분에서 프레임을 주면 될거 같은데 왜 하나하나
    조정하는거야?" 요청대로) 그렇게 일일이 맞추다 보니 화면마다 미묘하게 어긋나는 지점이
    계속 나왔다(요청: "PC에서 랭킹 카드 폭이 800에 안맞춰져") — 화면 루트(전용 클래스로
-   범위를 좁힌다, 같은 .scr-screen을 쓰는 이미지 설정 화면 등은 영향받지 않는다) 자체를
+   범위를 좁힌다, 같은 .scr-screen을 쓰는 다른 운영 화면 등은 영향받지 않는다) 자체를
    프레임으로 좁혀서 그 안의 모든 자식(타이틀/버튼줄/검색창/힌트/목록)이 자동으로 같은
    폭을 물려받게 한다 — 이제 화면마다 안쪽 요소를 따로 맞출 필요가 없다. */
 @media (min-width: 641px) {
   .scr-rank-screen-v2, .scr-match-screen-v2, .scr-challenge-screen-v2,
-  .scr-members-screen-v2, .scr-usermap-screen-v2, .scr-stats-screen-v2 {
+  .scr-members-screen-v2, .scr-stats-screen-v2 {
     max-width: var(--list-content-max); margin-left: auto; margin-right: auto; width: 100%;
   }
 }
@@ -1485,7 +1482,9 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 .scr-rank-method-trigger {
   display: inline-flex; align-items: center; gap: 4px;
   background: transparent; border: none; cursor: pointer; padding: 2px 6px; border-radius: 999px;
-  font-size: var(--fs-caption); font-weight: 600; color: var(--muted);
+  /* 툴팁 트리거 링크 폰트 1스텝 축소(caption→micro), 색은 리플레이위치 트리거와 동일하게
+     연한 --dim으로(요청). */
+  font-size: var(--fs-micro); font-weight: 600; color: var(--dim);
   transition: background 0.12s ease, color 0.12s ease;
 }
 /* 활성(-active) 상태는 모든 기기에서 유지하고, :hover만 마우스 기기로 가둔다 — 터치
@@ -1964,7 +1963,6 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
     grid-template-columns: var(--scr-stat-name-w) repeat(5, var(--scr-stat-col-w));
   }
 
-  /* 게임아이디 그리드 헤더(scr-usermap-row-head)와 같은 크기로 맞춘다. */
   .scr-stat-row-head { font-size: var(--fs-body); }
   /* 헤더 확대(요청: 헤더 2스텝 확대) — 위의 .scr-stats-list-panel-v2 .scr-stat-row(클래스
      2개)가 한 클래스짜리 .scr-stat-row-head를 특이도로 이겨 헤더까지 행 폰트로 눌러버리
@@ -2117,7 +2115,7 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   font-family: inherit; font-size: var(--fs-title); font-weight: 700; font-style: italic; color: var(--text);
   font-variant-numeric: tabular-nums;
 }
-.scr-rank-delta { display: inline-flex; align-items: center; gap: 1px; font-size: var(--fs-micro); font-weight: 700; font-style: italic; }
+.scr-rank-delta { display: inline-flex; align-items: center; gap: 1px; font-size: var(--fs-11); font-weight: 700; font-style: italic; white-space: nowrap; }
 .scr-rank-delta-up { color: var(--win); }
 .scr-rank-delta-down { color: var(--loss); }
 .scr-rank-delta-new { color: #f0c05a; }
@@ -2395,8 +2393,9 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 /* 프사도 원형으로(Avatar.tsx는 인라인 style로 각진 래디우스를 계산해 넣으므로 스타일시트
    에서 override하려면 !important가 필요하다). */
 .scr-rank-table-panel-v2 .scr-avatar { border-radius: 50% !important; }
-/* 순위 변동(화살표+숫자) 배지 — v1보다 v2만 크게(11px) 키운다. 요청으로 1단계 축소. */
-.scr-rank-table-panel-v2 .scr-rank-delta { font-size: var(--fs-micro); }
+/* 순위 변동(화살표+숫자) 배지 — 요청으로 1단계 더 축소(micro 12→fs-11 11). 줄바꿈은
+   base의 white-space:nowrap로 막는다(요청: 순위변동 줄바꿈 방지). */
+.scr-rank-table-panel-v2 .scr-rank-delta { font-size: var(--fs-11); }
 /* 승률(주 지표)만 남아서 그 자체로 크고 진하게 — 자기 칸 안에서 오른쪽 정렬. */
 .scr-rank-stat-primary { font-size: var(--fs-body); font-weight: 600; color: var(--text); }
 /* 공동순위(바로 위와 같은 순위)는 구분선만 없애는 게 아니라 그 사이 간격도 좁혀서
@@ -2433,7 +2432,11 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
     /* 좌우 여백 거의 같게, 왼쪽만 살짝 더(요청). 구분선(행 ::before)은 양 끝까지 그대로. */
     padding: 0 12px 0 18px;
   }
-  .scr-rank-table-panel-v2 .scr-rank-name { font-size: var(--fs-headline); }
+  /* 모바일 닉네임은 자리가 좁아 한 스텝 낮춘다(요청: 모바일에선 원래대로 subhead). */
+  .scr-rank-table-panel-v2 .scr-rank-name { font-size: var(--fs-subhead); }
+  /* 모바일에선 아바타↔닉네임 간격을 줄인다(요청) — 이름 칸 앞 여백 8→2px(칸 사이
+     column-gap 8px는 유지). */
+  .scr-rank-table-panel-v2 .scr-rank-name-wrap { margin-left: 2px; }
   /* 아바타 칸(버튼) 폭은 모바일에선 기존 44px 유지 — 위 기본 규칙을 48px(요청: PC만 48)로
      올렸으므로 모바일은 여기서 되돌린다. */
   .scr-rank-table-panel-v2 .scr-rank-avatar-btn { width: 44px; }
@@ -2477,7 +2480,7 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
      고정 레이어 대신 전체화면 흐름/루트 레이어에 사진을 얹는 구조 변경이 필요.) */
   background-image:
     linear-gradient(180deg, rgba(3,3,6,0.78) 0%, rgba(3,3,6,0.67) 45%, rgba(3,3,6,0.83) 100%),
-    url("/images/bg/rivaly.jpg");
+    url("/images/bg/ranking_bg.jpg");
   background-size: cover; background-position: center; background-repeat: no-repeat;
 }
 /* 라이트 테마는 페이지 배경 사진을 아예 끈다(요청: "라이트 테마에서 페이지 배경 이미지들
@@ -2493,7 +2496,7 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   .scr-rank-screen-v2::before {
     background-image:
       linear-gradient(180deg, rgba(3,3,6,0.78) 0%, rgba(3,3,6,0.67) 45%, rgba(3,3,6,0.83) 100%),
-      url("/images/bg/rivaly_mobile.png");
+      url("/images/bg/ranking_bg_mobile.png");
   }
 }
 
@@ -2525,7 +2528,25 @@ html.scr-page-bg:not(.scr-light-theme) .scr-main::before {
 html.scr-page-bg:not(.scr-light-theme) .scr-rank-screen-v2::before {
   display: none;
 }
-/* 라이트 테마 랭킹 배경 사진은 제거(요청) — 기본 앱 배경만 남긴다. */
+/* 라이트 테마 랭킹 배경 — 트로피 이미지(ranking_bg_light.png, 투명 배경 3D 렌더)를
+   옅은 흰 스크림 위에 얹는다(요청: 라이트 랭킹 배경으로 트로피 사용, 화이트 스크림 감소).
+   다크와 같은 "공통 고정판(.scr-main::before)의 배경만 교체" 구조를 쓰되, 어두운 글씨가
+   읽히도록 밝은 톤 스크림을 얕게 깐다. --page-bg-image-light 토큰은 훅이 주입한다. */
+html.scr-page-bg.scr-light-theme .scr-main::before {
+  background:
+    linear-gradient(180deg, rgba(247,247,251,0.7) 0%, rgba(247,247,251,0.55) 45%, rgba(247,247,251,0.8) 100%),
+    var(--page-bg-image-light) center / cover no-repeat,
+    #f7f7fb;
+}
+@media (max-width: 860px) {
+  html.scr-page-bg.scr-light-theme .scr-main::before {
+    background:
+      linear-gradient(180deg, rgba(247,247,251,0.7) 0%, rgba(247,247,251,0.55) 45%, rgba(247,247,251,0.8) 100%),
+      var(--page-bg-image-light-mobile) center / cover no-repeat,
+      #f7f7fb;
+  }
+}
+/* 라이트에서도 프리마운트 폴백 레이어는 끈다 — 위 공통판이 사진을 든다. */
 html.scr-page-bg.scr-light-theme .scr-rank-screen-v2::before { display: none; }
 
 /* 개인(일대일) 랭킹 행의 검색 하이라이트 — 같은 반전색으로 프사와 닉네임을 함께 칠한다.
@@ -2545,20 +2566,13 @@ html.scr-page-bg.scr-light-theme .scr-rank-screen-v2::before { display: none; }
 .scr-donut { position: relative; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .scr-donut-label { position: absolute; font-size: var(--fs-body); font-weight: 700; color: var(--text); }
 
-/* ===== race badge / icon preview — 관리자가 설정한 종족 아이콘을 보여주는 심플한 사각 배지 ===== */
-.scr-race-badge, .scr-race-icon-preview {
+/* ===== race badge — 종족 첫 글자(T/P/Z/R) 사각 배지(아이콘 커스텀 기능은 제거됨) ===== */
+.scr-race-badge {
   position: relative; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
   color: var(--rc); border-radius: var(--radius-sm);
   font-weight: 700; overflow: hidden; white-space: nowrap;
+  background: rgba(var(--overlay-rgb),0.05);
 }
-.scr-race-badge { background: rgba(var(--overlay-rgb),0.05); }
-/* 이미지 설정 화면의 미리보기는 그 자체로 이미 카드(패널) 위에 떠 있어서, 뒤에 또
-   옅은 배경 틴트를 깔면 이중으로 배경이 겹쳐 보여 답답하다 — 배경 없이 아이콘만. */
-.scr-race-icon-preview { background: transparent; }
-/* 업로드한 이미지는 이미 완성된(대개 투명 배경 PNG) 아이콘이라, 텍스트/이모지용으로 깔아둔
-   옅은 배경 틴트가 그 뒤에 은은하게 비쳐서 오히려 어색해 보인다 — 이미지 타입일 땐 뺀다. */
-.scr-race-badge-imgtype { background: transparent; }
-.scr-race-badge-img { position: absolute; inset: 0; background-size: cover; background-position: center; }
 /* 풀네임 텍스트 모드 — 아이콘용 고정폭 배경 박스를 없애고, 그릴 폭은 호출부 그리드 칸이
    고정폭으로 잡아준다(그래야 종족마다 글자 수가 달라도 다음 요소 위치가 안 흔들린다).
    border-radius/overflow는 배경이 있을 때(아이콘 배지)만 의미가 있는 속성이라, 배경이
@@ -2632,20 +2646,15 @@ html.scr-page-bg.scr-light-theme .scr-rank-screen-v2::before { display: none; }
    바로 붙게 한다. */
 .scr-filter-inline-stack { display: flex; flex-direction: row; align-items: center; gap: 8px; width: 100%; margin-bottom: 14px; }
 .scr-filter-panel { flex: 0 0 auto; max-width: 100%; }
-/* 랭킹 필터 줄은 다른 화면 필터로우처럼 폭을 꽉 채우고 양 끝 정렬(space-between)로 둔다
-   (요청) — 상성 보기를 토글 옆으로 옮긴 뒤엔 기간(좌)/종족(우) 두 그룹만 남아 양쪽으로
-   벌어진다. */
-/* 랭킹 필터 줄(데스크톱): 패널은 화면 폭 전체를 차지하되(width calc(100%+32px) — 좌우
-   음수마진 -16px 보정으로 콘텐츠가 컨테이너 양 끝에 딱 맞음), 항목을 양 끝으로 벌리는
-   space-between 대신 justify-content:center로 기간/종족을 가운데로 모으고 둘 사이만
-   넉넉한 갭으로 벌린다(요청). 모바일(≤640)은 아래 미디어쿼리의 풀폭 space-between 유지. */
+/* PC 필터패널도 모바일과 같은 규칙(요청: "PC에서도 space-between 기본, 1개면 가운데") —
+   항목이 여럿이면 양 끝 정렬, 하나뿐이면 가운데. 패널이 검색창과 한 줄을 나눠 쓰는
+   화면(경기 등)에서는 패널이 내용폭(flex:0 0 auto)이라 나눌 여백이 없어 그대로고,
+   패널이 줄을 독차지하는 화면(랭킹 등 width:100%)에서만 실제로 벌어진다. */
 @media (min-width: 641px) {
-  .scr-rank-screen-v2 .scr-filter-panel {
-    /* 패널을 컨테이너 폭에 꽉 채우고(base가 이제 margin/padding 없이 딱 맞음),
-       justify-content:center로 기간/종족을 가운데로 모으고 둘 사이만 넉넉한 갭으로 벌린다. */
-    width: 100%;
-    justify-content: center; column-gap: 44px;
-  }
+  .scr-filter-panel { justify-content: space-between; }
+  .scr-filter-panel:has(> .scr-filter-item:only-child) { justify-content: center; }
+  /* 랭킹 필터 줄은 패널이 줄을 독차지 — 폭을 꽉 채워 위 space-between이 실제로 작동한다. */
+  .scr-rank-screen-v2 .scr-filter-panel { width: 100%; }
 }
 .scr-search-filter-float { flex: 1 1 auto; min-width: 0; }
 
@@ -4039,7 +4048,8 @@ html.scr-page-bg.scr-light-theme .scr-rank-screen-v2::before { display: none; }
    툴팁임을 한눈에 알 수 있게 한다(요청). 아이콘이 이미 그 역할을 하므로 밑줄은 뺀다.
    좁은 화면에서도 한 줄로 유지한다. */
 .scr-replay-loc-link {
-  font-size: var(--fs-caption); white-space: nowrap;
+  /* 툴팁 트리거 링크 폰트 1스텝 축소(요청) — caption(14)→micro(12). */
+  font-size: var(--fs-micro); white-space: nowrap;
 }
 /* 배경/블러/테두리/그림자는 "라이팅 유리 패널 공통"(파일 뒤) 한 벌이 담당 — 여기엔
    이 팝오버 고유의 기하/레이아웃만. */
@@ -5406,6 +5416,57 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 .scr-member-row-tag { font-size: var(--fs-body); color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* 회원 목록 배틀태그는 모노 대신 기본 폰트로(요청, PC·모바일 공통). */
 .scr-member-row-tag.scr-mono { font-family: inherit; }
+
+/* ── 회원+게임아이디 통합 목록(요청) ──
+   행 내용은 랭킹 카드처럼 가운데로 모은다 — 행(버튼)은 풀폭으로 두고(호버/클릭 영역),
+   안쪽 클러스터가 내용폭으로 화면 중앙에 앉는다. 닉네임 칸만 최대폭을 두고 나머지는
+   내용 크기. */
+.scr-member-row-cluster {
+  display: flex; align-items: center; gap: 10px;
+  margin: 0 auto; min-width: 0; max-width: 100%;
+  width: min(420px, 100%);
+}
+.scr-member-row-wrap { border-bottom: 1px solid var(--line-soft); }
+.scr-member-row-wrap:last-child { border-bottom: none; }
+/* wrap이 구분선을 대신 그리므로 행 자신의 선은 끈다(펼침 패널이 행과 구분선 사이에
+   끼어들 수 있게). */
+.scr-member-row-wrap .scr-member-row { border-bottom: none; }
+.scr-member-row-chevron { color: var(--dim); flex-shrink: 0; transition: transform .15s ease; }
+.scr-member-row-chevron-open { transform: rotate(180deg); }
+/* 정적(클릭 펼침 없는) 행 — 하단 비회원/컴퓨터 목록. 버튼이 아니라 커서/호버 없음. */
+.scr-member-row-static { cursor: default; }
+@media (hover: hover) { .scr-member-row-static:hover { background: transparent; } }
+
+/* 펼침 패널 — 행 아래로 확장되는 게임아이디 목록(요청). 클러스터와 같은 폭으로 중앙. */
+.scr-member-gameids {
+  width: min(420px, 100%); margin: 0 auto; padding: 2px 0 12px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.scr-member-gameids-head {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: var(--fs-caption); color: var(--muted);
+}
+.scr-member-gameids-head b { color: var(--text); font-weight: 700; margin-left: 2px; }
+.scr-member-manage-btn { min-height: 24px; padding: 2px 10px; font-size: var(--fs-micro); gap: 4px; }
+.scr-member-gameids-empty { font-size: var(--fs-caption); color: var(--dim); }
+.scr-member-gameid-item { display: flex; align-items: center; gap: 8px; }
+.scr-member-gameid-name { font-size: var(--fs-caption); color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.scr-member-gameid-unlink { flex-shrink: 0; }
+.scr-member-gameid-add { margin-top: 2px; }
+.scr-member-gameid-add-select { max-width: 220px; }
+.scr-member-gameid-kind-select { width: 88px; }
+/* 비회원 행의 편집 컨트롤 묶음 — 이름/배지 오른쪽에 바짝 붙인다. */
+.scr-member-row-mapctl { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+
+/* 하단 별도 목록(비회원/컴퓨터 플레이어) — 회원 목록과 같은 양식(요청) 위에 소제목만. */
+.scr-members-sublist { margin-top: 22px; }
+.scr-members-sublist-head {
+  display: flex; align-items: center; gap: 6px;
+  width: min(420px, 100%); margin: 0 auto 4px;
+  font-size: var(--fs-caption); font-weight: 700; color: var(--muted);
+}
+.scr-members-sublist-count { color: var(--dim); font-weight: 600; }
+/* 하단 목록의 정적 행도 wrap 없이 자체 구분선을 그대로 쓴다(.scr-member-row 기본). */
 /* 모바일에서 게임아이디(배틀태그)가 닉네임 옆에서 너무 도드라져 보인다는 요청으로
    25% 축소한다(요청: "모바일에서 게임아이디 컬럼 폰트 크기 25% 축소") — PC는 그대로. */
 @media (max-width: 640px) {
@@ -5461,12 +5522,6 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 .scr-detail-row dt { color: var(--dim); width: 64px; flex-shrink: 0; }
 .scr-detail-row dd { margin: 0; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* ===== 패널 여러 개를 세로로 묶어 보여줄 때 공용(이미지 설정, 메뉴 권한 관리 등) ===== */
-.scr-code-groups { display: flex; flex-direction: column; gap: 14px; }
-/* v2 — 카드형 테두리 대신 그룹 사이를 얇은 선 하나로만 나눈다. */
-.scr-admin-group-v2 { padding-bottom: 14px; border-bottom: 1px solid var(--line-soft); }
-.scr-admin-group-v2:last-child { border-bottom: none; padding-bottom: 0; }
-
 /* ===== 모바일 입력 글자 크기 통일 (파일 맨 끝에 둬서 위의 모든 개별 규칙을 확실히 이긴다) =====
    실제 input 글자 크기를 16px로 올리면 iOS 자동확대는 막히지만, 버튼 기반 커스텀 셀렉트
    (특히 .scr-chip-race/.scr-cselect-sm처럼 이미 더 구체적인 선택자로 작게 고정된 것들)까지
@@ -5487,77 +5542,25 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 
 /* 필터창 안에서 다른 항목(알약/월선택/정렬버튼, 모두 height:36px 고정)과 세로 크기를
    맞춘다(요청: "체크박스도 똑같이 높이 맞추고"). */
-.scr-usermap-kind-filter.scr-checkbox-group-row {
-  gap: 4px 12px; height: 36px; align-items: center; box-sizing: border-box;
-}
 /* 예전엔 필터창 배경이 밝은색이라 체크박스를 검정으로 고정했지만, 필터가 패널 없이 앱
    배경 위 인라인으로 바뀌면서(요청: "필터 글라스 패널 제거") 그 고정색이 다크 테마의
    어두운 배경 위에서 도리어 안 보였다 — 테마 변수(--muted/--text/--point)를 쓰는 기본
    체크박스 스타일 그대로 둬서 다크/라이트 모두 읽히게 한다. */
-.scr-usermap-table-v2 { display: flex; flex-direction: column; font-size: var(--fs-subhead); } /* 12.5px * 1.2 */
 
 /* 컴퓨터 아이디 목록 — 메인 매핑 목록과 분리된 단순 리스트(요청). 배틀태그가 없어 회원
    매핑 대상이 아니므로, 이름만 등록 최근순으로 나열한다. */
-.scr-usermap-computer { margin-top: 26px; }
-.scr-usermap-computer-head {
-  display: flex; align-items: center; gap: 6px;
-  font-size: var(--fs-body); font-weight: 800; color: var(--muted);
-  padding: 0 4px 8px; border-bottom: 1px solid var(--line-soft); margin-bottom: 6px;
-}
-.scr-usermap-computer-count {
-  font-size: var(--fs-caption); font-weight: 700; color: var(--dim);
-  background: rgba(var(--overlay-rgb), 0.08); border-radius: 999px; padding: 1px 7px;
-}
-.scr-usermap-computer-list { display: flex; flex-direction: column; }
-.scr-usermap-computer-item {
-  display: flex; align-items: center; justify-content: space-between; gap: 8px;
-  padding: 7px 4px; border-bottom: 1px solid var(--line-soft);
-}
-.scr-usermap-computer-item:last-child { border-bottom: none; }
-.scr-usermap-computer-name { font-size: var(--fs-body); color: var(--text); }
-.scr-usermap-row {
-  /* 게임아이디(첫 번째) 칸도 minmax가 아니라 고정폭으로 둔다 — 세로 구분선을 자식
-     요소의 border-right가 아니라(행마다 개별 렌더링되는 별개 그리드라 안티에일리싱
-     서브픽셀 차이로 행 경계에서 선이 끊겨 보인다) 다른 표(전적통계 등)와 같은 기법으로
-     이 행 자체의 background-image에 정확한 calc() 좌표로 그린다 — 고정폭이라야 그
-     좌표가 모든 행에서 항상 같다. 예전엔 복구/삭제 버튼 전용 세 번째(액션) 칸이 따로
-     있었는데, 휴지통이 게임아이디 옆(첫 칸)으로, 복구가 연결상태 칸(두 번째)으로
-     옮겨가면서 그 칸 자체가 필요 없어져 2칸 그리드가 됐다. */
-  display: grid; grid-template-columns: 180px 1fr;
-  align-items: center; row-gap: 6px;
-  padding: 14px 4px; border-bottom: 1px solid rgba(255, 255, 255, 0.32);
-  background-image: linear-gradient(rgba(255, 255, 255, 0.32), rgba(255, 255, 255, 0.32));
-  background-repeat: no-repeat;
-  background-size: 1px 100%;
-  background-position: 180px 0;
-}
-.scr-usermap-table-v2 .scr-usermap-row:last-child { border-bottom: none; }
 /* 요청: "게임아이디 그리드의 구분선을 흰색 계열로 변경" — 다크 테마 배경 위에서 옅은
    붉은기(기본 --divider-tint)보다 흰 선이 더 또렷하다(랭킹 v2 행 구분선과 같은 이유,
    위 .scr-rank-table-panel-v2 .scr-rank-row 참고). 라이트 테마는 흰 배경이라 흰 선이
    안 보이므로 원래 톤을 그대로 유지한다. */
-.scr-light-theme .scr-usermap-row {
-  border-bottom-color: rgba(var(--divider-tint), 0.35);
-  background-image: linear-gradient(rgba(var(--divider-tint), 0.35), rgba(var(--divider-tint), 0.35));
-}
 /* column-gap 대신 칸마다 안쪽 여백으로 구분선 좌우 간격을 준다(구분선 자체는 위
    background-image가 정확한 고정 좌표에 그린다 — gap을 쓰면 그 좌표 계산이 복잡해진다). */
-.scr-usermap-row > *:not(:last-child) { padding-right: 16px; }
-.scr-usermap-row > *:not(:first-child) { padding-left: 16px; }
 /* 헤더 행 — 디자인 랭귀지: (1) 그리드 헤더 행은 본문보다 굵고 크게, (2) 헤더 아래
    구분선은 행 사이 선보다 더 두껍고 진하게 — 헤더와 본문 사이 경계가 가장 또렷해야 한다. */
-.scr-usermap-row-head {
-  font-size: var(--fs-subhead); font-weight: 700; color: var(--text); /* 13.5px * 1.2 */
-  padding-top: 8px; padding-bottom: 8px; border-bottom: 2px solid rgba(255, 255, 255, 0.5);
-}
-.scr-light-theme .scr-usermap-row-head { border-bottom-color: rgba(var(--divider-tint), 0.5); }
 /* 게임아이디/연결상태 두 칸(과 그 헤더)을 모두 가운데 정렬한다. */
-.scr-usermap-row-head span { text-align: center; }
 /* 게임아이디 칸 — 아이디 문자열과 휴지통(완전삭제) 버튼을 한 줄에 가운데 정렬해서
    담는다. 아이디가 길면 버튼 자리를 남기고 이 안에서만 줄어들며(min-width:0)
    말줄임표로 잘린다. */
-.scr-usermap-raw-name-wrap { display: flex; align-items: center; justify-content: center; gap: 6px; min-width: 0; }
-.scr-usermap-raw-name { font-size: var(--fs-subhead); font-weight: 700; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; } /* 12.5px * 1.2 */
 /* 예전엔 이 칸의 자식(선택 버튼 세트 or 현재값 칩 + 취소 X 버튼)이 그냥 block으로
    쌓여서, 좁은 화면에서 버튼 세트 내부는 nowrap이라 넘치고 X 버튼은 다음 줄로 밀려
    삐져나온 것처럼 보였다 — 이 칸 자체를 flex-wrap으로 만들어 내용물이 항상 나란히,
@@ -5565,65 +5568,6 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 /* min-height를 편집 중 셀렉트 높이(--field-h-sm)에 맞춰 처음부터 확보해둔다 — 안 그러면
    평소엔 더 낮은 정보 칩만 있다가, 눌러서 편집 모드(셀렉트로 전환)로 들어가는 순간
    그 행만 커져 보였다(실제로 지적받은 문제). */
-.scr-usermap-row-mapping { display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap; min-width: 0; min-height: var(--field-h-sm); }
-/* 지금 매핑된 정보 — 클릭하면(정보가 틀렸을 때 고치도록) 선택 아이콘 세트로 바뀐다. */
-.scr-usermap-current {
-  display: flex; align-items: center; gap: 6px; min-width: 0;
-  background: transparent; border: none; padding: 4px 8px; font: inherit; color: var(--text);
-  cursor: pointer; text-align: left; border-radius: var(--radius-sm);
-}
-@media (hover: hover) { .scr-usermap-current:hover { background: rgba(var(--overlay-rgb), 0.05); } }
-.scr-usermap-current:disabled { cursor: not-allowed; opacity: 0.6; }
-/* 일반 회원(조회 전용) 행 — 버튼이 아니라 그냥 정보 칩이라 누를 수 있는 것처럼 보이면
-   안 된다(hover 배경도 없앤다). */
-.scr-usermap-current-readonly { cursor: default; }
-@media (hover: hover) { .scr-usermap-current-readonly:hover { background: transparent; } }
-.scr-usermap-unresolved-label { color: var(--dim); }
-.scr-usermap-member-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.scr-usermap-picker-icons { display: flex; align-items: center; gap: 6px; }
-/* 1스텝(회원/비회원/컴퓨터) 셀렉트 — 예전 버튼 3개 세트를 대신한다. 폭을 짧게 고정해
-   (.scr-cselect 기본값인 width:100%를 이겨야 해서 복합 셀렉터로 특이도를 올린다) 좁은
-   모바일 칸에서도 절대 줄바꿈되지 않게 한다. */
-.scr-cselect.scr-usermap-kind-select { width: 96px; flex-shrink: 0; }
-.scr-usermap-member-select { width: 220px; flex-shrink: 0; }
-/* 편집 취소(X) 버튼 — 매핑 칸(scr-usermap-row-mapping) 안, 선택 버튼 세트 옆에 붙는다. */
-.scr-usermap-cancel-btn { width: 26px; height: 26px; border: none; border-radius: 50%; background: transparent; color: var(--dim); flex-shrink: 0; }
-@media (hover: hover) { .scr-usermap-cancel-btn:hover { color: var(--text); background: rgba(var(--overlay-rgb), 0.08); } }
-/* 복구 버튼은 연결상태 칸(scr-usermap-row-mapping) 안에, 삭제(휴지통) 버튼은
-   게임아이디 칸(scr-usermap-raw-name-wrap) 안에 각각 놓인다 — 테두리 없이 동그랗게,
-   다른 곳의 기본 아이콘 버튼(맨 위로 이동 버튼 등)과 같은 반사광+그림자로 입체감만으로
-   경계를 드러낸다. 삭제(휴지통)만 .scr-icon-btn(사각, 테두리 있음)을 그대로 쓰면 복구
-   버튼과 크기/모양이 달라 보였다(실제로 지적받은 문제) — 같은 클래스를 공유해 완전히
-   통일한다. */
-.scr-usermap-restore-btn, .scr-usermap-delete-btn {
-  width: 30px; height: 30px; border: none; border-radius: 50%; background: var(--panel-raised);
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.10),
-    inset 0 -1px 0 rgba(255,255,255,0.04),
-    0 2px 6px rgba(0,0,0,0.16);
-}
-@media (hover: hover) { .scr-usermap-restore-btn:hover { color: var(--text); background: var(--panel); } }
-@media (hover: hover) { .scr-usermap-delete-btn:hover { color: var(--loss); background: var(--panel); } }
-.scr-usermap-row-err {
-  grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 8px;
-}
-.scr-usermap-err-dismiss {
-  border: none; background: transparent; color: inherit; opacity: 0.7; flex-shrink: 0; cursor: pointer;
-  display: inline-flex; align-items: center; padding: 2px;
-}
-@media (hover: hover) { .scr-usermap-err-dismiss:hover { opacity: 1; } }
-@media (max-width: 720px) {
-  /* 게임아이디 칸(첫 번째)도 auto 대신 고정폭을 줘서 행마다 어긋나지 않게 하고,
-     휴지통 버튼이 같은 칸에 있어도 아이디가 너무 짧게 잘리지 않도록 폭(160px)을
-     넉넉히 늘린다(실제로 더 넓혀달라고 지적받은 값 — 130px는 부족했다). */
-  .scr-usermap-row {
-    grid-template-columns: 160px minmax(0, 1fr); row-gap: 6px; padding: 12px 4px;
-    background-position: 160px 0;
-  }
-  .scr-usermap-member-select { width: 100%; }
-  .scr-usermap-restore-btn, .scr-usermap-delete-btn { width: 28px; height: 28px; }
-}
-
 /* ===== "너 나와!" 초대장 게시판 ===== */
 /* 호출("너 나와!") 작성 모달 — 예전엔 앱 테마와 무관하게 아이보리 편지지 톤으로
    고정했지만, 이제 각 테마의 기본 라이팅 글라스를 그대로 쓴다(요청: "호출하기 모달을
@@ -5649,8 +5593,9 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
    종족/버전 등 다른 select는 그대로 데이터폰트를 쓴다. */
 .scr-challenge-target-select .scr-cselect-opt,
 .scr-challenge-target-select .scr-cselect-trigger,
-.scr-usermap-member-select .scr-cselect-opt,
-.scr-usermap-member-select .scr-cselect-trigger { font-family: unset; }
+/* 회원 이름 셀렉트(통합 회원 화면의 아이디 연결/회원 선택)도 동일하게 기본 폰트. */
+.scr-member-gameid-add-select .scr-cselect-opt,
+.scr-member-gameid-add-select .scr-cselect-trigger { font-family: unset; }
 
 /* 작성 폼 — 상대 지목 슬롯 */
 .scr-challenge-target-slots { display: flex; flex-direction: column; gap: 8px; }
@@ -7057,9 +7002,6 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
   .scr-member-row-name { font-size: var(--fs-caption); }
   .scr-member-row-tag { font-size: var(--fs-micro); }
   /* 게임아이디 목록 텍스트 두 단계 축소 */
-  .scr-usermap-row { font-size: var(--fs-caption); }
-  .scr-usermap-row-head { font-size: var(--fs-caption); }
-  .scr-usermap-raw-name { font-size: var(--fs-caption); }
   /* (제거) 예전 "통계 컬럼 20% 확대(173/180px)" 규칙이 여기 있었다 — 소스상 더 뒤라
      위 480px 블록의 유저 칸 축소(97→73→60px)를 전부 덮어써 실제로는 하나도 적용되지
      않던 원인(지적된 버그: "안 줄어드는데?"). 축소 요청이 확대 요청을 대체했으므로 삭제. */
@@ -7101,7 +7043,10 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
 }
 .scr-stat-row-head { font-size: var(--fs-body); }
 .scr-rank-record-nums { font-size: var(--fs-caption); }
-.scr-rank-table-panel-v2 .scr-rank-name { font-size: var(--fs-headline); }
+/* 랭킹 닉네임 — PC는 크게(hero-1), 모바일은 자리가 좁아 한 스텝 낮춘다(subhead)(요청).
+   이 통일 섹션이 파일 끝이라 앞선 규칙들을 덮으므로, 여기서 PC/모바일을 명시적으로 가른다. */
+@media (min-width: 641px) { .scr-rank-table-panel-v2 .scr-rank-name { font-size: var(--fs-hero-1); } }
+@media (max-width: 640px) { .scr-rank-table-panel-v2 .scr-rank-name { font-size: var(--fs-subhead); } }
 .scr-rank-record-v2 { font-size: var(--fs-caption); }
 /* 필터/검색창 폰트를 전부 한 스텝씩 낮춘다(요청: "모든 필터와 검색창의 폰트들을
    1스텝씩 낮춰줘(라벨도)") — 라벨 caption(14)→micro(12), 필터 컨트롤(알약/달력/종족)
@@ -7133,9 +7078,6 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
 .scr-picker-cell { font-size: var(--fs-caption); }
 .scr-member-row-name { font-size: var(--fs-caption); }
 .scr-member-row-tag { font-size: var(--fs-micro); }
-.scr-usermap-row { font-size: var(--fs-caption); }
-.scr-usermap-row-head { font-size: var(--fs-caption); }
-.scr-usermap-raw-name { font-size: var(--fs-caption); }
 .scr-drawer-actions .scr-btn { font-size: var(--fs-body); }
 .scr-challenge-card-team .scr-challenge-person-name { font-size: var(--fs-micro); }
 .scr-team-outcome { font-size: var(--fs-body); }
@@ -7641,7 +7583,11 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
      로 올라가 있어 같은 만큼 올려 세로도 맞춘다. 토글과 거리도 좁힌다(음수 margin-left). */
   min-height: 0; height: 22px; padding: 0 8px;
   font-size: var(--fs-micro); font-weight: 600; border-radius: 999px;
-  align-self: center; transform: translateY(-6px); margin-left: -14px;
+  align-self: center; transform: translateY(-6px);
+  /* 좁은 폭에서 flex에 눌려 찌그러지거나 줄바꿈되지 않게 최소폭을 못박고(요청),
+     토글과의 시각적 갭을 더 좁힌다(요청) — 토글 scale(0.8)의 빈 레이아웃 폭을 음수
+     마진으로 더 깊게 상쇄(-14→-20px). */
+  min-width: max-content; flex-shrink: 0; white-space: nowrap; margin-left: -20px;
 }
 /* (한때 여기서 글로우 블러를 줄여봤지만 오진이었다 — "사각형으로 잘려 보임"의 진짜
    원인은 필터 패널(overflow:auto)의 바닥 클리핑. .scr-filter-panel의 padding-bottom

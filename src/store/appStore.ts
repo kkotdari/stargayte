@@ -1,9 +1,8 @@
 import { create } from "zustand";
 import { api } from "../api/client";
-import { DEFAULT_ICON_SLOTS } from "../constants/iconSlots";
 import { versionNumber } from "../utils/appVersion";
 import type {
-  Member, Match, NewMatch, MemberCreatePayload, ImageSettingMap, MemberStatus, MemberRole, AppVersion,
+  Member, Match, NewMatch, MemberCreatePayload, MemberStatus, MemberRole, AppVersion,
   AppVersionInfo, Challenge, MatchRequestInboxItem,
 } from "../types";
 
@@ -63,7 +62,6 @@ interface AppState {
   // ----- 상태 -----
   user: Member | null;
   members: Member[];
-  imageSettings: ImageSettingMap;
   // 경기결과/전적통계/랭킹 화면의 "이전" 버튼 비활성화 판단 기준 — 실제 결과가 있는 가장
   // 이른 경기 날짜. 과거 데이터를 나중에 더 채워 넣어도 하드코딩 없이 항상 최신 값을
   // 반영하도록 상수 대신 부트스트랩 때마다 서버에서 다시 조회한다. 아직 못 불러온 동안은
@@ -135,7 +133,6 @@ interface AppState {
   updateProfile: (patch: Partial<Omit<Member, "roles" | "status" | "createdAt">>) => Promise<void>;
   // 본인 전용: 비밀번호 변경 (현재 비밀번호 확인 필요)
   updatePassword: (currentPassword: string, newPassword: string) => Promise<void>;
-  updateImageSettings: (next: ImageSettingMap) => Promise<void>;
   withdraw: () => Promise<void>;
 
   // ----- 회원 화면(운영자 전용) -----
@@ -175,7 +172,6 @@ interface AppState {
 export const useAppStore = create<AppState>()((set, get) => ({
   user: null,
   members: [],
-  imageSettings: DEFAULT_ICON_SLOTS,
   earliestMatchDate: null,
   appVersion: "1",
   appVersions: [],
@@ -239,11 +235,10 @@ export const useAppStore = create<AppState>()((set, get) => ({
     set({ booting: true });
     try {
       const [
-        members, imageSettings, { activeVersion, noticeEnabled }, appVersions, earliestMatchDate,
+        members, { activeVersion, noticeEnabled }, appVersions, earliestMatchDate,
         { items: inboxChallenges }, { items: resultInboxChallenges }, { items: inboxMatchRequests },
       ] = await Promise.all([
         api.getMembers(),
-        api.getImageSettings(),
         api.getAppVersion(),
         api.getAppVersions(),
         api.getEarliestMatchDate(),
@@ -252,7 +247,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
         api.getMatchRequestInbox(),
       ]);
       set({
-        members, imageSettings, appVersion: activeVersion, appVersions, noticeEnabled, earliestMatchDate,
+        members, appVersion: activeVersion, appVersions, noticeEnabled, earliestMatchDate,
         inboxChallenges, resultInboxChallenges, inboxMatchRequests,
         updateNotice: computeUpdateNotice(activeVersion, noticeEnabled, appVersions),
       });
@@ -289,11 +284,6 @@ export const useAppStore = create<AppState>()((set, get) => ({
     const current = get().user;
     if (!current) return;
     await api.updateMemberPassword(current.id, currentPassword, newPassword);
-  },
-
-  updateImageSettings: async (next) => {
-    const updated = await api.updateImageSettings(next);
-    set({ imageSettings: updated });
   },
 
   withdraw: async () => {

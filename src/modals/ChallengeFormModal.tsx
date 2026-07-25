@@ -136,7 +136,7 @@ export default function ChallengeFormModal({ onClose, onCreated, presetTargetIds
     const avatar = user?.avatar;
     const imageUrl = avatar && /^https?:\/\//.test(avatar)
       ? avatar
-      : `${window.location.origin}/images/items/nawa2.jpg`;
+      : `${window.location.origin}/images/challenge/challenge_share_thumb.jpg`;
     return {
       title: `${caller ? `${caller}님` : "누군가"}의 호출`,
       description: "누가 호출됐을까요? 👀 탭해서 확인하기",

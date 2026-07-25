@@ -2,7 +2,7 @@
 // API 클라이언트 — stargayte-api 서버와 통신한다.
 // ============================================================
 import type {
-  Member, Match, MatchNote, NewMatch, SignupPayload, MemberCreatePayload, ImageSettingMap, MemberStatus, MemberRole,
+  Member, Match, MatchNote, NewMatch, SignupPayload, MemberCreatePayload, MemberStatus, MemberRole,
   ScreenKey, AppVersion, AppVersionStatus, AppVersionInfo,
   MatchSlot, MatchPage, MatchStatsResponse, MatchType, Race, TeamRankingResponse,
   MonthlyMatchStatsResponse, MonthlyTeamRankingResponse, RatingHistoryResponse, RivalryPair,
@@ -557,17 +557,6 @@ export const api = {
   // 본인 계정 탈퇴
   async withdraw(id: string): Promise<Member> {
     return request<Member>(`/api/members/${id}/withdraw`, { method: "POST" });
-  },
-
-  async getImageSettings(): Promise<ImageSettingMap> {
-    return request<ImageSettingMap>("/api/settings/image-settings");
-  },
-
-  async updateImageSettings(next: ImageSettingMap): Promise<ImageSettingMap> {
-    return request<ImageSettingMap>("/api/settings/image-settings", {
-      method: "PUT",
-      body: JSON.stringify(next),
-    });
   },
 
   // 화면을 전환할 때마다 호출 — 접속 기록에 "언제 어떤 화면을 봤는지" 남긴다.

@@ -24,37 +24,6 @@ export function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-// 로드된 이미지를 긴 변 기준 maxSide 이하로 고품질 축소한 data URL로 변환한다. 원본이 이미
-// maxSide보다 작으면 확대하지 않고 원본 data URL을 그대로 둔다.
-function resizeLoadedImage(
-  img: HTMLImageElement, dataUrl: string, maxSide: number, quality: number, mimeType: string,
-): string {
-  const scale = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
-  if (scale === 1) return dataUrl; // 이미 충분히 작으면 원본 그대로 (불필요한 재인코딩 방지)
+// (한때 여기 있던 resizeLoadedImage/resizeIconSlotImage는 "이미지 설정" 기능 제거와 함께
+// 사라졌다 — 아바타 크롭(AvatarCropModal)은 canvas에 직접 그려 자체 축소한다.)
 
-  const width = Math.round(img.naturalWidth * scale);
-  const height = Math.round(img.naturalHeight * scale);
-
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return dataUrl; // canvas를 못 쓰는 환경이면 원본 그대로 (기능 저하 없이 안전하게 폴백)
-
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = "high";
-  ctx.drawImage(img, 0, 0, width, height);
-  return canvas.toDataURL(mimeType, quality);
-}
-
-// 종족 아이콘/홈 로고 등 "이미지 설정" 화면의 슬롯 업로드 시 호출: 아바타보다 훨씬
-// 작게(뱃지 크기) 쓰이는 이미지라 최대 변을 더 작게 잡고, 투명 배경을 지원하는
-// 아이콘/이모지 이미지가 많아 알파 채널이 사라지는 JPEG 대신 PNG로 인코딩한다.
-export async function resizeIconSlotImage(file: File, maxSide = 128): Promise<string> {
-  const dataUrl = await readAsDataUrl(file);
-  // 애니메이션 GIF(예: 별 포인트가 도는 홈 로고)는 canvas 재인코딩을 거치면 첫 프레임만
-  // 남은 정지 PNG가 되므로 원본 그대로 저장한다. 크기 최적화는 업로드 전에 파일 쪽에서.
-  if (file.type === "image/gif") return dataUrl;
-  const img = await loadImage(dataUrl);
-  return resizeLoadedImage(img, dataUrl, maxSide, 1, "image/png");
-}

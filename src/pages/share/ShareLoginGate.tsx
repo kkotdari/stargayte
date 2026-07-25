@@ -18,7 +18,7 @@ export default function ShareLoginGate() {
       <div className="scr-challenge-share-bg" aria-hidden="true" />
       {/* 정보 없는 봉투 그림만 — 궁금증만 남긴다. */}
       <div className="scr-share-login-envelope" aria-hidden="true">
-        <img src="/images/items/envelope.png" alt="" className="scr-challenge-envelope-img" />
+        <img src="/images/challenge/challenge_envelope.png" alt="" className="scr-challenge-envelope-img" />
       </div>
       {/* 로그인 폼은 배경 거의 투명 + 살짝 블러만(요청) — 뒤 봉투/벽지가 비쳐 보인다. */}
       <div className="scr-share-login-panel" role="dialog" aria-label="로그인">

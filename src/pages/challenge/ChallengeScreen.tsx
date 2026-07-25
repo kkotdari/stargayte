@@ -392,7 +392,7 @@ function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onRespon
     const me = user?.nickname ?? "";
     const matchup = `${creatorSideMembers.map((m) => m.nickname).join(", ")} vs ${targetSideMembers.map((m) => m.nickname).join(", ")}`;
     const link = `${window.location.origin}/?sv=challenge&sid=${sharePrompt?.updated.id ?? challenge.id}`;
-    const imageUrl = `${window.location.origin}/images/items/nawa2.jpg`;
+    const imageUrl = `${window.location.origin}/images/challenge/challenge_share_thumb.jpg`;
     if (sharePrompt?.kind === "rejected") {
       return { title: "대결 거절", description: matchup, imageUrl, link,
         fallbackText: `[스타게이트] ${me}님이 ${caller}님의 호출을 거절했어요.\n${matchup}` };
@@ -1194,7 +1194,7 @@ export default function ChallengeScreen() {
           onClick={() => setFormOpen(true)}
           aria-label="너 나와! 신청"
         >
-          <img src="/images/items/nawa.jpg" alt="" className="scr-challenge-title-nawa" />
+          <img src="/images/challenge/challenge_title_deco.jpg" alt="" className="scr-challenge-title-nawa" />
           <span className="scr-challenge-nawa-label">호출하기</span>
         </button>
       </div>
