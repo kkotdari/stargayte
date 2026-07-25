@@ -11,12 +11,17 @@ import { useEffect } from "react";
 
 const SHEET_SELECTOR = ".scr-modal, .scr-rivalry-overlay-body";
 const OVERLAY_SELECTOR = ".scr-modal-overlay, .scr-rivalry-overlay";
-// 손가락 이동 대비 시트 이동 저항(1이면 1:1). 살짝 무겁게 끌리는 느낌.
-const DAMP = 0.6;
-// 이만큼(시트 실제 이동 px) 이상 내려가고 손을 떼면 닫는다.
-const CLOSE_THRESHOLD = 88;
-// 방향 판정 전 무시할 작은 흔들림(px).
-const DECIDE_AT = 5;
+// 손가락 이동 대비 시트 이동 저항(1이면 1:1). 손가락을 더 직접 따라오게 해서 반응이
+// 빠르게 느껴지도록 0.6→0.85로 올린다(요청: 반응 속도 증가).
+const DAMP = 0.85;
+// 이만큼(시트 실제 이동 px) 이상 내려가고 손을 떼면 닫는다 — 더 적게 끌어도 닫히게 축소.
+const CLOSE_THRESHOLD = 60;
+// 방향 판정 전 무시할 작은 흔들림(px) — 더 빨리 드래그로 확정되게 살짝 낮춘다.
+const DECIDE_AT = 4;
+// 빠른 플릭(아래로 튕기기) 닫기 — 거리가 문턱에 못 미쳐도 이 속도(px/ms) 이상으로
+// 아래로 던지면 닫는다(요청: 반응 속도 증가). 오발동 방지로 최소 이동량도 요구한다.
+const FLICK_VELOCITY = 0.5;
+const FLICK_MIN_SHIFT = 22;
 
 // 터치 지점에서 위로 올라가며 실제로 스크롤되는(overflow-y auto/scroll) 가장 가까운
 // 조상을 찾는다 — 이 컨테이너의 scrollTop이 0(최상단)일 때만 닫기 드래그로 본다.
@@ -56,11 +61,13 @@ export function useModalDragDismiss(): void {
     let startY = 0;
     let startX = 0;
     let lastY = 0; // 직전 프레임 Y — 가장자리 리바운드 방향 판정용
+    let lastT = 0; // 직전 프레임 타임스탬프(ms) — 플릭 속도 계산용
+    let velY = 0; // 최근 세로 속도(px/ms, +아래) — 마지막으로 실제 이동한 프레임 값 유지
     let startedAtTop = false; // 터치 시작 시 이미 최상단이었나(닫기 드래그 자격)
     let sheetShift = 0; // 시트 실제 이동량(저항 적용 후)
     let mode: "idle" | "undecided" | "drag" | "scroll" = "idle";
 
-    const reset = () => { sheet = null; scroller = null; mode = "idle"; sheetShift = 0; };
+    const reset = () => { sheet = null; scroller = null; mode = "idle"; sheetShift = 0; velY = 0; };
 
     const atTopNow = () => !scroller || scroller.scrollTop <= 0;
     const atBottomNow = () =>
@@ -76,6 +83,8 @@ export function useModalDragDismiss(): void {
       startY = e.touches[0].clientY;
       startX = e.touches[0].clientX;
       lastY = startY;
+      lastT = e.timeStamp;
+      velY = 0;
       startedAtTop = atTopNow();
       sheetShift = 0;
       mode = "undecided";
@@ -88,6 +97,10 @@ export function useModalDragDismiss(): void {
       const dx = e.touches[0].clientX - startX;
       const frameDy = y - lastY; // 이번 프레임의 순간 방향(+아래/−위)
       lastY = y;
+      // 세로 속도 갱신 — 실제 움직인 프레임에서만(손 뗄 때 0 이동으로 덮이지 않게).
+      const dt = e.timeStamp - lastT;
+      if (dt > 0 && frameDy !== 0) velY = 0.6 * velY + 0.4 * (frameDy / dt);
+      lastT = e.timeStamp;
 
       if (mode === "drag") {
         // 닫기 드래그 중 — 기본 동작(리바운드/스크롤)을 막고 우리가 시트를 끈다.
@@ -125,15 +138,17 @@ export function useModalDragDismiss(): void {
     const onEnd = () => {
       if (mode === "drag" && sheet) {
         const s = sheet;
-        if (sheetShift >= CLOSE_THRESHOLD) {
-          // 문턱 넘김 — 아래로 슬라이드아웃 후 실제 닫기. 닫힘이 굼떠 보인다는 지적으로
-          // 슬라이드아웃을 짧게(.13s) 당긴다.
-          s.style.transition = "translate .13s ease-in";
+        // 거리 문턱을 넘겼거나, 빠르게 아래로 튕겼으면(플릭) 닫는다 — 플릭이면 적게 끌어도
+        // 즉시 닫혀 반응이 빠르게 느껴진다(요청).
+        const flicked = velY >= FLICK_VELOCITY && sheetShift >= FLICK_MIN_SHIFT;
+        if (sheetShift >= CLOSE_THRESHOLD || flicked) {
+          // 아래로 슬라이드아웃 후 실제 닫기 — 닫힘 속도를 더 높인다(.13s→.09s, 요청).
+          s.style.transition = "translate .09s ease-in";
           s.style.translate = "0 110%";
-          window.setTimeout(() => { invokeClose(s); clearSheetStyles(s); }, 125);
+          window.setTimeout(() => { invokeClose(s); clearSheetStyles(s); }, 90);
         } else {
-          // 스냅백.
-          s.style.transition = "translate .2s cubic-bezier(0.32, 0.72, 0, 1)";
+          // 스냅백 — 좀 더 탄력 있게 짧게(.2s→.16s).
+          s.style.transition = "translate .16s cubic-bezier(0.32, 0.72, 0, 1)";
           s.style.translate = "0 0";
           const clear = () => { clearSheetStyles(s); s.removeEventListener("transitionend", clear); };
           s.addEventListener("transitionend", clear);
