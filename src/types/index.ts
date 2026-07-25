@@ -147,6 +147,20 @@ export interface MatchNoteAuthor {
 
 // 경기 하나에 달린 댓글(메모) 한 건 — 게시판 댓글처럼 작성자와 본문(최대 50자)으로 이뤄지고
 // 본인/운영자만 수정·삭제할 수 있다(canEdit). 본문에 @닉네임으로 언급 가능.
+// 피드 댓글 — 대상(targetType, targetId)이 경기든 너 나와!든 같은 API 하나로 달린다.
+export type FeedTargetType = "match" | "challenge";
+export interface FeedComment {
+  id: number;
+  targetType: FeedTargetType;
+  targetId: number;
+  text: string;
+  author: MatchNoteAuthor;
+  createdAt: string;
+  updatedAt: string;
+  canEdit: boolean;
+  mentions: MatchNoteMention[];
+}
+
 export interface MatchNote {
   id: number;
   matchId: number;

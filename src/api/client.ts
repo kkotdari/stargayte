@@ -2,7 +2,7 @@
 // API 클라이언트 — stargayte-api 서버와 통신한다.
 // ============================================================
 import type {
-  Member, Match, MatchNote, NewMatch, SignupPayload, MemberCreatePayload, MemberStatus, MemberRole,
+  Member, Match, MatchNote, FeedComment, FeedTargetType, NewMatch, SignupPayload, MemberCreatePayload, MemberStatus, MemberRole,
   ScreenKey, AppVersion, AppVersionStatus, AppVersionInfo,
   MatchSlot, MatchPage, MatchStatsResponse, MatchType, Race, TeamRankingResponse,
   MonthlyMatchStatsResponse, MonthlyTeamRankingResponse, RatingHistoryResponse, RivalryPair,
@@ -459,6 +459,30 @@ export const api = {
   // 경기 댓글(메모) — 게시판 댓글처럼 회원 누구나 한 줄(최대 50자)을 남기고 본인/운영자만
   // 수정·삭제한다. 본문에 @닉네임 언급 가능(targetMemberIds). 목록/상세 응답에 이미 comments가
   // 실려 오므로 별도 조회는 잘 안 쓰지만, 필요 시 이 경기 댓글만 다시 받아올 수도 있다.
+  // 피드 댓글 — 경기/너 나와! 등 어떤 피드 요소에나 같은 API로 단다.
+  async listFeedComments(targetType: FeedTargetType, targetId: number): Promise<FeedComment[]> {
+    return request<FeedComment[]>(`/api/feed/comments?targetType=${targetType}&targetId=${targetId}`);
+  },
+  async createFeedComment(
+    targetType: FeedTargetType, targetId: number, text: string, targetMemberIds: string[],
+  ): Promise<FeedComment> {
+    return request<FeedComment>("/api/feed/comments", {
+      method: "POST",
+      body: JSON.stringify({ targetType, targetId, text, targetMemberIds }),
+    });
+  },
+  async updateFeedComment(
+    commentId: number, text: string, targetMemberIds: string[],
+  ): Promise<FeedComment> {
+    return request<FeedComment>(`/api/feed/comments/${commentId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ text, targetMemberIds }),
+    });
+  },
+  async deleteFeedComment(commentId: number): Promise<void> {
+    await request<void>(`/api/feed/comments/${commentId}`, { method: "DELETE" });
+  },
+
   async listMatchNotes(matchId: number): Promise<MatchNote[]> {
     return request<MatchNote[]>(`/api/matches/${matchId}/notes`);
   },

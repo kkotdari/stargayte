@@ -15,7 +15,6 @@ import { attachPopover } from "../../utils/popover";
 import { dateWithDow } from "../../utils/date";
 import { normalizeSearchText } from "../../utils/memberSearch";
 import KakaoShareButton from "../../components/common/KakaoShareButton";
-import MatchNotes from "./MatchNotes";
 import type { KakaoShareContent } from "../../utils/kakaoShare";
 import type { Match, Member, MatchSlot, MatchResult } from "../../types";
 
@@ -472,8 +471,6 @@ export default function MatchList({
                           </span>
                           {r.raw.createdBy && <span className="scr-match-trow-by">등록: {r.raw.createdBy.nickname}</span>}
                         </div>
-                        {/* 댓글(메모) 영역 — 게시판 댓글 스타일. 로우 최하단에 붙는다(요청). */}
-                        <MatchNotes match={r.raw} />
                       </>
                     )}
                   </div>

@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
-import { CalendarPlus, ChevronDown, Plus, Send, Swords, Upload } from "lucide-react";
+import { CalendarPlus, MessageCircle, Plus, Send, Swords, Upload } from "lucide-react";
 import { Spinner } from "../../components/common/Feedback";
 import MatchList, { type SearchListRow } from "../v2/MatchList";
 import { ChallengeCard } from "../challenge/ChallengeScreen";
+import FeedComments from "./FeedComments";
+import ScrollNavTimeline from "../../components/common/ScrollNavTimeline";
 import ReplayReviewModal from "../../modals/ReplayReviewModal";
 import ChallengeFormModal from "../../modals/ChallengeFormModal";
 import { useAppStore } from "../../store/appStore";
@@ -10,7 +12,6 @@ import { api } from "../../api/client";
 import { useCursorPagination } from "../../hooks/useCursorPagination";
 import { buildReplayDrafts, type ReplayDraft } from "../../utils/replayDraft";
 import { hasAppUpdatePreloadErrorOccurred } from "../../utils/appUpdate";
-import { cx } from "../../utils/format";
 import type { Challenge, Match, Member } from "../../types";
 
 const PAGE_SIZE = 100;
@@ -35,15 +36,14 @@ interface ChallengeItem {
   challenge: Challenge;
 }
 
-interface MatchGroupItem {
-  kind: "matches";
+interface MatchItem {
+  kind: "match";
   time: number;
   withClock: boolean;
-  date: string; // YYYY-MM-DD — 같은 날의 경기들을 한 카드로 묶는 기준
-  matches: Match[];
+  match: Match;
 }
 
-type FeedItem = ChallengeItem | MatchGroupItem;
+type FeedItem = ChallengeItem | MatchItem;
 
 function challengeItem(c: Challenge): ChallengeItem {
   const iso = c.scheduledAt ?? c.createdAt;
@@ -55,81 +55,53 @@ function challengeItem(c: Challenge): ChallengeItem {
   };
 }
 
-// 같은 날짜의 경기들을 한 카드로 묶는다 — 카드 시각은 그날 가장 늦은 게임 시작 시각.
-function groupMatchesByDate(matches: Match[]): MatchGroupItem[] {
-  const byDate = new Map<string, Match[]>();
-  for (const m of matches) {
-    const list = byDate.get(m.date) ?? [];
-    list.push(m);
-    byDate.set(m.date, list);
-  }
-  return [...byDate.entries()].map(([date, list]) => {
-    const startTimes = list
-      .map((m) => (m.gameStartedAt ? new Date(m.gameStartedAt).getTime() : null))
-      .filter((t): t is number => t != null);
-    return {
-      kind: "matches",
-      date,
-      matches: list,
-      withClock: startTimes.length > 0,
-      time: startTimes.length > 0 ? Math.max(...startTimes) : new Date(`${date}T00:00:00`).getTime(),
-    };
-  });
+function matchItem(m: Match): MatchItem {
+  const started = m.gameStartedAt ? new Date(m.gameStartedAt).getTime() : null;
+  return {
+    kind: "match",
+    time: started ?? new Date(`${m.date}T00:00:00`).getTime(),
+    withClock: started != null,
+    match: m,
+  };
 }
 
-// 참가자 요약 — 회원 닉네임 우선, 아니면 리플레이 게임아이디. 중복 제거, 등장 순서 유지.
-function participantNames(matches: Match[], memberOf: (id: string) => Member | undefined): string[] {
-  const names: string[] = [];
-  const seen = new Set<string>();
-  for (const m of matches) {
-    for (const slot of [...m.team1, ...m.team2]) {
-      const name = memberOf(slot.memberId)?.nickname ?? slot.rawName ?? null;
-      if (!name || seen.has(name)) continue;
-      seen.add(name);
-      names.push(name);
-    }
-  }
-  return names;
+// 피드 카드 하단 공통 댓글 영역 — 누르면 목록/입력이 펼쳐진다.
+function FeedCardComments({ targetType, targetId }: { targetType: "match" | "challenge"; targetId: number }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="scr-feed-comments">
+      <button type="button" className="scr-feed-comments-toggle" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
+        <MessageCircle size={13} aria-hidden /> 댓글
+      </button>
+      {open && <FeedComments targetType={targetType} targetId={targetId} />}
+    </div>
+  );
 }
 
-function MatchGroupCard({ item, memberOf, onDeleted }: {
-  item: MatchGroupItem;
+// 경기 카드 — 한 경기가 피드 카드 한 장. 기존 경기 로우(접힌 상태)를 카드 본문에 그대로
+// 앉히고(누르면 그 자리에서 펼쳐짐), 하단에 피드 댓글을 단다.
+function MatchCard({ item, memberOf, onDeleted, dateLabel }: {
+  item: MatchItem;
   memberOf: (id: string) => Member | undefined;
   onDeleted: () => void;
+  dateLabel: string;
 }) {
-  // 요약(N건 + 참가자)만 보여주다가 누르면 상세 목록이 아래로 펼쳐진다.
-  const [open, setOpen] = useState(false);
-  const names = participantNames(item.matches, memberOf);
-  const rows: SearchListRow[] = useMemo(
-    () => item.matches.map((m) => ({
-      id: m.id, date: m.date, team1: m.team1, team2: m.team2, result: m.result, raw: m,
-    })),
-    [item.matches],
-  );
+  const rows: SearchListRow[] = useMemo(() => {
+    const m = item.match;
+    return [{ id: m.id, date: m.date, team1: m.team1, team2: m.team2, result: m.result, raw: m }];
+  }, [item.match]);
 
   return (
     <div className="scr-feed-card">
-      <div className="scr-feed-card-head">
+      <div className="scr-feed-card-head" data-date-label={dateLabel}>
         <Swords size={13} aria-hidden />
         <span className="scr-feed-card-time">{formatEventTime(item.time, item.withClock)}</span>
-        <span className="scr-feed-card-label">경기 {item.matches.length}건 등록</span>
+        <span className="scr-feed-card-label">경기</span>
       </div>
-      <button
-        type="button"
-        className="scr-feed-matches-summary"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-      >
-        <span className="scr-feed-matches-names">{names.join(" · ")}</span>
-        <ChevronDown size={14} className={cx("scr-feed-chevron", open && "scr-feed-chevron-open")} aria-hidden />
-      </button>
-      <div className={cx("scr-feed-detail-clip", open && "scr-feed-detail-clip-open")} aria-hidden={!open}>
-        <div className="scr-feed-detail-clip-inner">
-          <div className="scr-feed-matches-detail">
-            <MatchList rows={rows} memberOf={memberOf} onDeleted={onDeleted} loading={false} />
-          </div>
-        </div>
+      <div className="scr-feed-match-body">
+        <MatchList rows={rows} memberOf={memberOf} onDeleted={onDeleted} loading={false} />
       </div>
+      <FeedCardComments targetType="match" targetId={item.match.id} />
     </div>
   );
 }
@@ -216,14 +188,19 @@ export default function FeedScreen() {
     }
   };
 
-  // 너 나와!와 경기 그룹을 하나의 타임라인으로 — 최근 이벤트가 위.
+  // 너 나와!와 경기를 하나의 타임라인으로 — 최근 이벤트가 위.
   const feed = useMemo<FeedItem[]>(() => {
     const items: FeedItem[] = [
       ...challenges.map(challengeItem),
-      ...groupMatchesByDate(matches),
+      ...matches.map(matchItem),
     ];
     return items.sort((a, b) => b.time - a.time);
   }, [challenges, matches]);
+
+  const dateLabelOf = (item: FeedItem) => {
+    const d = new Date(item.time);
+    return `${d.getMonth() + 1}월 ${d.getDate()}일`;
+  };
 
   return (
     <div className="scr-screen scr-feed-screen">
@@ -281,7 +258,7 @@ export default function FeedScreen() {
           {feed.map((item) => (
             item.kind === "challenge" ? (
               <div className="scr-feed-card" key={`c-${item.challenge.id}`}>
-                <div className="scr-feed-card-head">
+                <div className="scr-feed-card-head" data-date-label={dateLabelOf(item)}>
                   <Send size={13} aria-hidden />
                   <span className="scr-feed-card-time">{formatEventTime(item.time, item.withClock)}</span>
                   <span className="scr-feed-card-label">너 나와!</span>
@@ -293,17 +270,24 @@ export default function FeedScreen() {
                     onResponded={upsertChallenge}
                   />
                 </div>
+                <FeedCardComments targetType="challenge" targetId={item.challenge.id} />
               </div>
             ) : (
-              <MatchGroupCard
-                key={`m-${item.date}`}
+              <MatchCard
+                key={`m-${item.match.id}`}
                 item={item}
                 memberOf={memberOf}
                 onDeleted={reload}
+                dateLabel={dateLabelOf(item)}
               />
             )
           ))}
         </div>
+      )}
+
+      {/* 우측 스크롤 타임라인 — 피드는 최신순(위=최근, 아래=과거). */}
+      {!loading && feed.length > 0 && (
+        <ScrollNavTimeline headSelector=".scr-feed-card-head" topLabel="최근" bottomLabel="과거" />
       )}
 
       {replayDrafts && (
