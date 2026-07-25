@@ -2361,13 +2361,19 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
      같아 세로 정렬(줄맞춤)도 흔들리지 않는다. 화면이 max-width보다 좁으면(모바일) 100%로
      줄며 닉네임 1fr이 알아서 줄어 넘치지 않는다. 요소 최대폭은 max-width로 PC/모바일 각각
      설정(아래 미디어쿼리) — 현재 칸 크기(44/84/40, gap 14)는 그대로 유지. */
-  display: grid; grid-template-columns: 60px 48px 40px minmax(0, 200px);
+  /* 아바타+닉네임은 이제 하나의 그리드 칸(.scr-rank-user)이다(요청) — column-gap을 아무리
+     키워도 아바타↔닉네임 사이는 안 벌어지고, 그 안쪽 간격은 .scr-rank-user의 gap으로만
+     조절한다. 칸 폭 = 아바타 40 + 내부 gap 8 + 닉네임 200. */
+  display: grid; grid-template-columns: 60px 48px minmax(0, 248px);
   justify-content: center; max-width: none; margin: 0;
   align-items: center; column-gap: 36px; width: 100%; min-width: 0;
   /* 좌우 여백은 거의 같게 두되 왼쪽만 살짝 더 준다(요청) — 클러스터가 살짝 오른쪽으로. */
   box-sizing: border-box; padding-left:72px;
 }
-.scr-rank-table-panel-v2 .scr-rank-name-wrap { min-width: 0; justify-content: flex-start; margin-left: 8px; }
+/* 아바타+닉네임 묶음 — 내부 간격은 여기 gap 하나로만 조절한다(요청). */
+.scr-rank-user { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.scr-rank-user .scr-rank-avatar-btn { flex-shrink: 0; }
+.scr-rank-table-panel-v2 .scr-rank-name-wrap { min-width: 0; justify-content: flex-start; }
 /* 프사와 이름이 이 행의 주인공이라 시원하게 키운다 — 나머지(순위/전적)는 곁들이다. */
 .scr-rank-table-panel-v2 .scr-rank-name {
   /* 닉네임 — PC title(28), 모바일 headline(24)(요청, 파일 끝 통일 섹션과 동기). */
@@ -2424,15 +2430,15 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
        화면 가운데로 모으고, 좁으면 100% 안에서 알아서 줄어든다. */
     /* 점수 칸을 72px로 넓혀 오른쪽 정렬된 점수 왼쪽에 '잠정' 배지 자리를 확보한다 —
        좁을 때 배지가 순위 숫자와 겹치던 문제(지적) 해결. */
-    grid-template-columns: 48px 60px 40px minmax(0, 175px); column-gap: 12px;
+    /* 아바타+닉네임 한 칸(40 + 내부 gap 6 + 175). */
+    grid-template-columns: 48px 60px minmax(0, 221px); column-gap: 12px;
     /* 좌우 여백 거의 같게, 왼쪽만 살짝 더(요청). 구분선(행 ::before)은 양 끝까지 그대로. */
     padding-left: 8px;
   }
   /* 모바일 닉네임은 headline(24)(요청). */
   .scr-rank-table-panel-v2 .scr-rank-name { font-size: var(--fs-headline); }
-  /* 모바일에선 아바타↔닉네임 간격을 줄인다(요청) — 이름 칸 앞 여백 8→2px(칸 사이
-     column-gap 8px는 유지). */
-  .scr-rank-table-panel-v2 .scr-rank-name-wrap { margin-left: 2px; }
+  /* 모바일에선 아바타↔닉네임 내부 간격을 살짝 좁힌다(요청) — 묶음 안 gap 8→6px. */
+  .scr-rank-user { gap: 6px; }
   /* 아바타 칸(버튼) 폭은 모바일에선 기존 44px 유지 — 위 기본 규칙을 48px(요청: PC만 48)로
      올렸으므로 모바일은 여기서 되돌린다. */
   .scr-rank-table-panel-v2 .scr-rank-avatar-btn { width: 44px; }

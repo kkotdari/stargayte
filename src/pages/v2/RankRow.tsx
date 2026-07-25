@@ -104,20 +104,24 @@ export default function RankRowV2({ row, tiedWithPrev = false, highlighted = fal
               </span>
             </span>
           </div>
-          <button type="button" className={cx("scr-rank-avatar-btn", medalAvatarClass)} onClick={openPhoto} aria-label={`${member.nickname} 사진 보기`}>
-            <Avatar member={member} size={40} />
-          </button>
-          <div className="scr-rank-name-wrap">
-            <span className="scr-rank-name">{member.nickname}</span>
-            {isGamesTop && <span className="scr-rank-games-badge">경기수TOP{gamesRank}</span>}
-            {onChallenge && (
-              <button
-                type="button" className="scr-rank-challenge-btn" onClick={challenge}
-                aria-label={`${member.nickname}에게 너 나와! 신청`}
-              >
-                <Send size={16} />
-              </button>
-            )}
+          {/* 아바타+닉네임은 하나의 요소(scr-rank-user)로 묶는다(요청) — 그리드 칸 사이
+              갭(column-gap)을 아무리 벌려도 이 안쪽 간격은 자체 gap으로만 조절된다. */}
+          <div className="scr-rank-user">
+            <button type="button" className={cx("scr-rank-avatar-btn", medalAvatarClass)} onClick={openPhoto} aria-label={`${member.nickname} 사진 보기`}>
+              <Avatar member={member} size={40} />
+            </button>
+            <div className="scr-rank-name-wrap">
+              <span className="scr-rank-name">{member.nickname}</span>
+              {isGamesTop && <span className="scr-rank-games-badge">경기수TOP{gamesRank}</span>}
+              {onChallenge && (
+                <button
+                  type="button" className="scr-rank-challenge-btn" onClick={challenge}
+                  aria-label={`${member.nickname}에게 너 나와! 신청`}
+                >
+                  <Send size={16} />
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
