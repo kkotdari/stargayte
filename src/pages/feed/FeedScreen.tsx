@@ -30,8 +30,9 @@ const MAX_REPLAY_FILES = 20;
 
 const DOW_FULL = ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"];
 
-// 피드 시각 표기 — 일주일 내(전후)는 일자 대신 요일만("화요일 21:30"), 그 밖은
-// "M월 D일"(올해가 아니면 년도 포함). 요일 괄호 병기는 하지 않는다.
+// 피드 시각 표기 — 다가오는 일정은 "오늘"/"이번주 토요일"/"다음주 화요일"(주 시작 = 월요일),
+// 지난 일주일 안은 일자 대신 요일만("화요일 21:30"), 그 밖은 "M월 D일"(올해가 아니면 년도
+// 포함). 요일 괄호 병기는 하지 않는다.
 function formatEventTime(ms: number, withClock: boolean): string {
   const d = new Date(ms);
   const now = new Date();
@@ -39,8 +40,16 @@ function formatEventTime(ms: number, withClock: boolean): string {
     ? ` ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`
     : "";
   const dayStart = (x: Date) => { const c = new Date(x); c.setHours(0, 0, 0, 0); return c.getTime(); };
-  const diffDays = Math.round((dayStart(now) - dayStart(d)) / 86_400_000);
-  if (Math.abs(diffDays) < 7) return `${DOW_FULL[d.getDay()]}${time}`;
+  const diffDays = Math.round((dayStart(d) - dayStart(now)) / 86_400_000);
+  if (diffDays === 0) return `오늘${time}`;
+  if (diffDays > 0) {
+    const weekStart = (x: Date) => dayStart(x) - ((x.getDay() + 6) % 7) * 86_400_000;
+    const weekDiff = Math.round((weekStart(d) - weekStart(now)) / (7 * 86_400_000));
+    if (weekDiff === 0) return `이번주 ${DOW_FULL[d.getDay()]}${time}`;
+    if (weekDiff === 1) return `다음주 ${DOW_FULL[d.getDay()]}${time}`;
+  } else if (diffDays > -7) {
+    return `${DOW_FULL[d.getDay()]}${time}`;
+  }
   const year = d.getFullYear() !== now.getFullYear() ? `${d.getFullYear()}년 ` : "";
   return `${year}${d.getMonth() + 1}월 ${d.getDate()}일${time}`;
 }
