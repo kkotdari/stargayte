@@ -2364,14 +2364,14 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   /* 아바타+닉네임은 이제 하나의 그리드 칸(.scr-rank-user)이다(요청) — column-gap을 아무리
      키워도 아바타↔닉네임 사이는 안 벌어지고, 그 안쪽 간격은 .scr-rank-user의 gap으로만
      조절한다. 칸 폭 = 아바타 40 + 내부 gap 8 + 닉네임 200. */
-  display: grid; grid-template-columns: 60px 48px minmax(0, 248px);
+  display: grid; grid-template-columns: 56px 48px minmax(0, 280px);
   justify-content: center; max-width: none; margin: 0;
-  align-items: center; column-gap: 36px; width: 100%; min-width: 0;
+  align-items: center; column-gap: 48px; width: 100%; min-width: 0;
   /* 좌우 여백은 거의 같게 두되 왼쪽만 살짝 더 준다(요청) — 클러스터가 살짝 오른쪽으로. */
-  box-sizing: border-box; padding-left:72px;
+  box-sizing: border-box; padding-left:48px;
 }
 /* 아바타+닉네임 묶음 — 내부 간격은 여기 gap 하나로만 조절한다(요청). */
-.scr-rank-user { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.scr-rank-user { display: flex; align-items: center; gap: 16px; min-width: 0; }
 .scr-rank-user .scr-rank-avatar-btn { flex-shrink: 0; }
 .scr-rank-table-panel-v2 .scr-rank-name-wrap { min-width: 0; justify-content: flex-start; }
 /* 프사와 이름이 이 행의 주인공이라 시원하게 키운다 — 나머지(순위/전적)는 곁들이다. */
@@ -2431,7 +2431,7 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
     /* 점수 칸을 72px로 넓혀 오른쪽 정렬된 점수 왼쪽에 '잠정' 배지 자리를 확보한다 —
        좁을 때 배지가 순위 숫자와 겹치던 문제(지적) 해결. */
     /* 아바타+닉네임 한 칸(40 + 내부 gap 6 + 175). */
-    grid-template-columns: 48px 60px minmax(0, 221px); column-gap: 12px;
+    grid-template-columns: 40px 44px minmax(0, 221px); column-gap: 16px;
     /* 좌우 여백 거의 같게, 왼쪽만 살짝 더(요청). 구분선(행 ::before)은 양 끝까지 그대로. */
     padding-left: 8px;
   }
