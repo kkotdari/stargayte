@@ -447,7 +447,7 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
   text-decoration: none !important;
 }
 .scr-auth-back-btn { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-caption); color: var(--muted); margin-bottom: 14px; text-decoration: none; }
-@media (hover: hover) { .scr-auth-back-btn:hover { color: var(--point); } }
+@media (hover: hover) { .scr-auth-back-btn:hover { color: var(--text); } }
 
 /* ===== forms ===== */
 .scr-form { display: flex; flex-direction: column; gap: 12px; }
@@ -542,7 +542,7 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
 .scr-hint-point { color: var(--point); } /* 기본 힌트보다 한 단계 더 큰 비율(7:6)을 그대로 유지 */
 /* 닉네임/아바타 등 회원 프로필 팝업을 여는 인라인 링크형 버튼 */
 .scr-link-btn { background: transparent; border: none; padding: 0; font: inherit; color: inherit; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
-@media (hover: hover) { .scr-link-btn:hover { color: var(--point); } }
+@media (hover: hover) { .scr-link-btn:hover { color: var(--text); } }
 .scr-checkbox-field { display: flex; align-items: center; gap: 4px; font-size: var(--fs-body); color: var(--muted); cursor: pointer; user-select: none; }
 /* 지금 모드/상황에서 쓸 수 없는 옵션은 아예 감추는 대신 흐리게 남겨둔다(요청: "못쓰는
    필터는 아예 안보이게 하지말고 그자리에서 비활성화") — 자리가 계속 유지돼야 다른 걸로
@@ -1817,7 +1817,7 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 }
 /* 마우스가 있는 기기에서만 hover 색을 준다 — 터치 기기는 탭 후에도 :hover가 남아
    닉네임이 포인트색으로 물든 채 유지되던 버그(지적). 다른 hover 규칙들과 같은 가드. */
-@media (hover: hover) { .scr-stat-name-btn:hover { color: var(--point); } }
+@media (hover: hover) { .scr-stat-name-btn:hover { color: var(--text); } }
 /* 배틀태그는 닉네임보다 작게, 데이터 느낌의 모노스페이스(scr-mono)로, 태그처럼 캡슐
    배경에 감싼다 — align-self:flex-start로 글자 길이만큼만 캡슐이 감싸지게 한다
    (부모 stack의 기본 stretch를 이 요소만 덮어씀). */
@@ -2009,8 +2009,8 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 }
 /* 포커스(키보드·탭 오픈)는 입력장치와 무관하게 유지하고, :hover만 마우스 기기로 가둔다
    — 터치에서 툴팁 아이콘 탭 후 포인트색이 남지 않게. */
-.scr-infotip:focus-visible { opacity: 1; color: var(--point); outline: none; }
-@media (hover: hover) { .scr-infotip:hover { opacity: 1; color: var(--point); outline: none; } }
+.scr-infotip:focus-visible { opacity: 1; color: var(--text); outline: none; }
+@media (hover: hover) { .scr-infotip:hover { opacity: 1; color: var(--text); outline: none; } }
 /* 배경/블러/테두리/그림자는 "라이팅 유리 패널 공통"(파일 뒤) 한 벌이 담당 — 여기엔
    이 툴팁 고유의 위치/크기/타이포만 둔다. */
 .scr-infotip-bubble {
@@ -2157,7 +2157,7 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 /* 터치 기기 sticky hover 방지 — 위 .scr-stat-name-btn과 같은 이유로 hover 가드. */
-@media (hover: hover) { .scr-rank-name:hover { color: var(--point); } }
+@media (hover: hover) { .scr-rank-name:hover { color: var(--text); } }
 /* 닉네임 옆 도전장 버튼 — "도전장 쓰기" 버튼과 같은 종이비행기 아이콘으로 통일(요청:
    "랭킹카드에 바로 그 상대로 도전장 띄우는 버튼 추가 닉네임 옆에", "랭킹 차트에도
    종이비행기 버튼으로 바꿔야지"). */
@@ -3201,7 +3201,7 @@ html.scr-page-bg.scr-light-theme .scr-rank-screen-v2::before { display: none; }
   display: inline-flex; align-items: center; justify-content: center;
   background: transparent; border: none; padding: 4px; margin: -4px; color: var(--dim); flex-shrink: 0; cursor: pointer;
 }
-@media (hover: hover) { .scr-match-memo-btn:hover { color: var(--point); } }
+@media (hover: hover) { .scr-match-memo-btn:hover { color: var(--text); } }
 /* PC 폭에서도 카드는 한 줄에 하나씩 — 카드 자체 폭은 넓어지니(위 헐렁해 보이는 문제)
    팀 칸 폭/간격만 좁혀서 내용을 수평으로 바짝 모은다("N경기" 태그와의 연결감은 정렬을
    맞추는 대신 태그 자체를 더 또렷하게 보이도록 색을 밝힌다, 아래 .scr-match-seq). */
@@ -3296,7 +3296,7 @@ html.scr-page-bg.scr-light-theme .scr-rank-screen-v2::before { display: none; }
   background: transparent; border: none; color: var(--dim); cursor: pointer;
   padding: 2px; border-radius: 4px; line-height: 0;
 }
-@media (hover: hover) { .scr-match-trow-no-copy:hover { color: var(--point); background: rgba(var(--overlay-rgb), 0.08); } }
+@media (hover: hover) { .scr-match-trow-no-copy:hover { color: var(--text); background: rgba(var(--overlay-rgb), 0.08); } }
 
 /* 펼침 로우 하단 댓글(메모) 영역 — 게시판 댓글 스타일. 목록·입력창은 "너 나와!"(scr-mreq-*)
    CSS를 그대로 차용한다(요청). 로우 자체가 클릭 토글이라 이 영역은 stopPropagation으로
@@ -3621,7 +3621,7 @@ html.scr-page-bg.scr-light-theme .scr-rank-screen-v2::before { display: none; }
 /* 아이디와 종족 텍스트가 같은 수평선에 오도록 둘 다 flex 중앙 정렬로 통일 (line-height 트릭 대신) */
 .scr-team-profile { display: flex; flex-direction: row; align-items: center; gap: 6px; min-width: 0; height: 22px; }
 .scr-team-profile-btn { background: transparent; border: none; padding: 0; font-family: inherit; color: inherit; cursor: pointer; text-align: left; }
-@media (hover: hover) { .scr-team-profile-btn:hover .scr-team-name { color: var(--point); } }
+@media (hover: hover) { .scr-team-profile-btn:hover .scr-team-name { color: var(--text); } }
 .scr-team-name { font-size: var(--fs-body); font-weight: 600; line-height: normal; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* 랭킹 상세 이력 전용(textRoster) — 프사 없이 "닉네임 + 종족 글자 배지(T/P/Z)"만, 배지는
    닉네임에 걸쳐서(컬럼으로 나란히가 아니라 겹쳐서) 보여준다(요청). 양 팀 모두 닉네임→
@@ -4297,7 +4297,7 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 /* 파일명은 데이터라 어디서 보여주든 고정폭 폰트로 통일한다 */
 .scr-attach-name-btn { display: inline-flex !important; align-items: center; gap: 4px; background: transparent; border: none; padding: 0; color: var(--text) !important; font-size: var(--fs-body); font-family: var(--font-mono); cursor: pointer; min-width: 0; overflow: hidden; }
 .scr-attach-name-btn span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-@media (hover: hover) { .scr-attach-name-btn:hover { color: var(--point) !important; } }
+@media (hover: hover) { .scr-attach-name-btn:hover { color: var(--text) !important; } }
 /* 알아보기 쉬운 리플레이 파일명(displayName)은 길어질 수 있어 화면에선 말줄임표로 줄인다
    (요청). 전체 이름은 title 툴팁으로 확인. 버튼/텍스트 양쪽 표시에 공통으로 쓴다. */
 .scr-attach-name-text { display: inline-block; max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
@@ -4335,7 +4335,7 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    높이만 살짝 늘린다. */
 .scr-team-stat-player-info { display: flex; flex-direction: column; min-width: 0; line-height: 1.35; }
 .scr-team-stat-player-tag { font-size: var(--fs-caption); color: var(--dim); }
-@media (hover: hover) { .scr-team-stat-player:hover { color: var(--point); } }
+@media (hover: hover) { .scr-team-stat-player:hover { color: var(--text); } }
 .scr-team-stat-race { display: flex; justify-content: center; }
 
 /* ===== admin panel (v1/v2 전환) ===== */
@@ -5598,7 +5598,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
     inset 0 -1px 0 rgba(255,255,255,0.04),
     0 2px 6px rgba(0,0,0,0.16);
 }
-@media (hover: hover) { .scr-usermap-restore-btn:hover { color: var(--point); background: var(--panel); } }
+@media (hover: hover) { .scr-usermap-restore-btn:hover { color: var(--text); background: var(--panel); } }
 @media (hover: hover) { .scr-usermap-delete-btn:hover { color: var(--loss); background: var(--panel); } }
 .scr-usermap-row-err {
   grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 8px;
@@ -5701,7 +5701,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
   border-radius: var(--radius-sm); padding: 8px 10px;
   font-family: inherit; font-size: var(--fs-body); font-weight: 600; color: var(--muted); cursor: pointer;
 }
-@media (hover: hover) { .scr-challenge-add-target:hover { color: var(--point); } }
+@media (hover: hover) { .scr-challenge-add-target:hover { color: var(--text); } }
 /* 타이틀 줄 — 라벨(왼쪽) + "선수 추가" 버튼(오른쪽)을 한 줄에 둔다(요청: "선수 추가 버튼을
    동료/상대 타이틀 옆에 인라인 배치"). 슬롯이 비어 있어도 추가 버튼이 별도 행을 안 만든다. */
 /* 추가 버튼을 오른쪽 끝이 아니라 "동료"/"상대" 글자 바로 옆에 붙인다(요청). */
@@ -6103,7 +6103,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 .scr-time-edit-action.scr-icon-btn svg { display: block; }
 /* 확인은 체크에 포인트 색을 줘서 취소(중립)와 구분한다. */
 .scr-time-edit-confirm.scr-icon-btn { color: var(--point); }
-@media (hover: hover) { .scr-time-edit-confirm.scr-icon-btn:hover { color: var(--point); } }
+@media (hover: hover) { .scr-time-edit-confirm.scr-icon-btn:hover { color: var(--text); } }
 
 /* scroll-margin-top — NEXT 너 나와로 자동 스크롤(scrollIntoView block:"start")할 때 화면
    맨 위에 딱 붙지 않고 이만큼만 숨 쉴 여유를 남긴다(위의 다른 카드는 안 보인다). 날짜
