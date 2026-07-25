@@ -13,7 +13,6 @@ import type { KakaoShareContent } from "../../utils/kakaoShare";
 import ScrollNavTimeline from "../../components/common/ScrollNavTimeline";
 import { useAppStore } from "../../store/appStore";
 import { api } from "../../api/client";
-import { isAdminRole } from "../../constants/roles";
 import { cx } from "../../utils/format";
 import {
   challengeDateGroupLabel, challengeTimeLabel, formatChallengeSchedule, formatRelativeSchedule, isToday, pad,
@@ -832,17 +831,18 @@ function compareChallenges(a: Challenge, b: Challenge): number {
 // 권한은 참가자 또는 운영자는 가능하게"). 같은 시각에 서로 다른 너 나와가 여럿 묶이면(드묾)
 // 어느 것을 수정할지 모호해지므로, 그 시각 그룹에 너 나와가 정확히 하나일 때만 연필을
 // 보여준다 — 호출부(groupByTime map)에서 tg.items.length===1일 때만 이 컴포넌트를 쓴다.
-function ChallengeTimeHeadEdit({
-  challenge, timeLabel, myId, isAdmin, onUpdated,
+export function ChallengeTimeHeadEdit({
+  challenge, timeLabel, myId, onUpdated,
 }: {
-  challenge: Challenge; timeLabel: string; myId: string | undefined; isAdmin: boolean;
+  challenge: Challenge; timeLabel: string; myId: string | undefined;
   onUpdated: (updated: Challenge) => void;
 }) {
   const isParticipant =
     challenge.createdBy.id === myId
     || challenge.ownMembers.some((m) => m.memberId === myId)
     || challenge.targets.some((t) => t.memberId === myId);
-  const canEdit = challenge.status === "confirmed" && (isParticipant || isAdmin);
+  // 일시 수정은 참가자만 — 운영자여도 참가자가 아니면 못 고친다(요청).
+  const canEdit = challenge.status === "confirmed" && isParticipant;
 
   const [editing, setEditing] = useState(false);
   const [dateStr, setDateStr] = useState("");
@@ -992,7 +992,6 @@ function ChallengeTimeHeadEdit({
 // 기간 필터 없이 전체 목록을 그대로 보여준다.
 export default function ChallengeScreen() {
   const user = useAppStore((s) => s.user);
-  const isAdmin = isAdminRole(user?.roles ?? []);
 
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1126,7 +1125,7 @@ export default function ChallengeScreen() {
                   tg.items.length === 1 ? (
                     <ChallengeTimeHeadEdit
                       challenge={tg.items[0]} timeLabel={tg.timeLabel}
-                      myId={user?.id} isAdmin={isAdmin} onUpdated={upsert}
+                      myId={user?.id} onUpdated={upsert}
                     />
                   ) : (
                     <div className="scr-challenge-time-head">

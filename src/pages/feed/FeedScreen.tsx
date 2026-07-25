@@ -5,7 +5,7 @@ import { Spinner } from "../../components/common/Feedback";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 import KakaoShareButton from "../../components/common/KakaoShareButton";
 import MatchList, { type SearchListRow } from "../v2/MatchList";
-import { ChallengeCard } from "../challenge/ChallengeScreen";
+import { ChallengeCard, ChallengeTimeHeadEdit } from "../challenge/ChallengeScreen";
 import FeedComments from "./FeedComments";
 import ScrollNavTimeline from "../../components/common/ScrollNavTimeline";
 import ReplayReviewModal from "../../modals/ReplayReviewModal";
@@ -488,6 +488,13 @@ export default function FeedScreen() {
                   challenge={item.challenge}
                   isAdmin={isAdmin}
                   onDeleted={(id) => setChallenges((prev) => prev.filter((c) => c.id !== id))}
+                />
+                {/* 일시(시간) 수정 — 참가자만 연필이 보인다(컴포넌트가 판정). */}
+                <ChallengeTimeHeadEdit
+                  challenge={item.challenge}
+                  timeLabel={item.challenge.scheduledTime ?? "시간 미정"}
+                  myId={user?.id}
+                  onUpdated={upsertChallenge}
                 />
                 <div className="scr-feed-card-body">
                   <ChallengeCard
