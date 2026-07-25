@@ -20,6 +20,7 @@ import { api } from "../../api/client";
 import { useCursorPagination } from "../../hooks/useCursorPagination";
 import { buildReplayDrafts, type ReplayDraft } from "../../utils/replayDraft";
 import { hasAppUpdatePreloadErrorOccurred } from "../../utils/appUpdate";
+import { usePageBackground } from "../../hooks/usePageBackground";
 import type { Challenge, Match, Member, RankShift, RankShiftEntry } from "../../types";
 
 const PAGE_SIZE = 100;
@@ -273,6 +274,12 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel }: {
 }
 
 export default function FeedScreen() {
+  // 홈(피드) 배경 — 기존 랭킹 배경을 피드 이름으로 옮겨 그대로 쓴다(다크 우주/라이트 트로피).
+  usePageBackground(
+    "/images/bg/feed_bg.jpg",
+    "/images/bg/feed_bg_mobile.png",
+    "/images/bg/feed_bg_light.png",
+  );
   const user = useAppStore((s) => s.user);
   const isAdmin = !!user && isAdminRole(user.roles);
   const memberOf = useAppStore((s) => s.memberOf);

@@ -612,16 +612,22 @@ export function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, o
       <InlineCollapse open={mode === "revenge"}>
         <div className="scr-challenge-time-change-form">
           <div className="scr-challenge-datetime">
-            <input
-              type="date" className="scr-input" value={dateStr}
-              min={DATE_INPUT_MIN} max={DATE_INPUT_MAX}
-              onChange={(e) => { setDateStr(e.target.value); if (!e.target.value) setTimeStr(""); }}
-            />
-            <input
-              type="time" className="scr-input" value={timeStr}
-              onChange={(e) => setTimeStr(e.target.value)}
-              disabled={!dateStr}
-            />
+            <label className="scr-challenge-dt-field">
+              <span className="scr-label">날짜</span>
+              <input
+                type="date" className="scr-input" value={dateStr}
+                min={DATE_INPUT_MIN} max={DATE_INPUT_MAX}
+                onChange={(e) => { setDateStr(e.target.value); if (!e.target.value) setTimeStr(""); }}
+              />
+            </label>
+            <label className="scr-challenge-dt-field">
+              <span className="scr-label">시간</span>
+              <input
+                type="time" className="scr-input" value={timeStr}
+                onChange={(e) => setTimeStr(e.target.value)}
+                disabled={!dateStr}
+              />
+            </label>
           </div>
           {/* 리벤지 한마디(선택) — 응답 한마디와 같은 아이콘 토글 + 트랜지션 입력창(요청). */}
           <button

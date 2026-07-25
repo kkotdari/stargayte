@@ -79,9 +79,9 @@ export default function RankingScreenV2({ embedded = false }: { embedded?: boole
   // 한계를 피해 .scr-app 흐름 배경으로 얹어 상태바/내비바 뒤까지 채운다(실험).
   // 다크는 우주 사진(ranking_bg), 라이트는 트로피 렌더(ranking_bg_light)를 배경으로 쓴다(요청).
   usePageBackground(
-    embedded ? null : "/images/bg/ranking_bg.jpg",
-    "/images/bg/ranking_bg_mobile.png",
-    embedded ? undefined : "/images/bg/ranking_bg_light.png",
+    embedded ? null : "/images/bg/feed_bg.jpg",
+    "/images/bg/feed_bg_mobile.png",
+    embedded ? undefined : "/images/bg/feed_bg_light.png",
   );
   const members = useAppStore((s) => s.members);
   const user = useAppStore((s) => s.user);

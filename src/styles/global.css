@@ -2521,7 +2521,7 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
      고정 레이어 대신 전체화면 흐름/루트 레이어에 사진을 얹는 구조 변경이 필요.) */
   background-image:
     linear-gradient(180deg, rgba(3,3,6,0.78) 0%, rgba(3,3,6,0.67) 45%, rgba(3,3,6,0.83) 100%),
-    url("/images/bg/ranking_bg.jpg");
+    url("/images/bg/feed_bg.jpg");
   background-size: cover; background-position: center; background-repeat: no-repeat;
 }
 /* 라이트 테마는 페이지 배경 사진을 아예 끈다(요청: "라이트 테마에서 페이지 배경 이미지들
@@ -2537,7 +2537,7 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   .scr-rank-screen-v2::before {
     background-image:
       linear-gradient(180deg, rgba(3,3,6,0.78) 0%, rgba(3,3,6,0.67) 45%, rgba(3,3,6,0.83) 100%),
-      url("/images/bg/ranking_bg_mobile.png");
+      url("/images/bg/feed_bg_mobile.png");
   }
 }
 
@@ -5790,6 +5790,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
   }
 }
 .scr-challenge-datetime { display: flex; gap: 8px; }
+.scr-challenge-dt-field { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
 .scr-challenge-datetime .scr-input { flex: 1; min-width: 0; }
 /* 목록 카드 */
 /* 날짜 그룹 사이 간격을 충분히 넓혀 구분선 없이도 그룹이 갈린다는 게 한눈에 보이게
@@ -7956,7 +7957,7 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 /* 사람 셀 안(프사·이름·종족)은 중간에서 끊기지 않게 한 덩어리로. */
 .scr-feed-match-body .scr-mt-player { flex: 0 0 auto; }
 /* 펼침 때 스탯 표 위에 노출되는 맵·플레이시간(요청). */
-.scr-match-trow-map-expanded { display: flex; align-items: baseline; gap: 6px; padding: 2px 0 8px; justify-content: center; }
+.scr-match-trow-map-expanded { display: flex; align-items: baseline; gap: 6px; padding: 8px 0 8px; justify-content: center; }
 /* 라벨(무엇인지)이 앞, 시간이 바로 옆(요청) — 라벨이 주, 시간은 흐리게 보조. */
 .scr-feed-card-time { font-weight: 600; color: var(--dim); font-variant-numeric: tabular-nums; }
 .scr-feed-card-label { font-weight: 700; color: var(--text); }
@@ -7996,6 +7997,9 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   padding: 4px 0; font-family: inherit; font-size: var(--fs-micro); font-weight: 700;
 }
 @media (hover: hover) { .scr-feed-comments-toggle:hover { color: var(--text); } }
+/* 로스터와 리벤지 신청(액션 줄) 사이 갭 확대(요청). */
+.scr-feed-card .scr-challenge-card-actions { margin-top: 8px; }
+
 /* 피드 안 일시(시간 수정) 헤드 — 카드 본문과 같은 좌우 패딩으로 정렬. */
 .scr-feed-card .scr-challenge-time-head { padding: 2px 16px 0; }
 .scr-feed-card .scr-challenge-time-edit { padding: 2px 16px 0; }
