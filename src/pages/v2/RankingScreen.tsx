@@ -73,14 +73,15 @@ function rankingParamsFromUrl(): { mode?: RankMode; race?: BaseRace | "all"; uni
 // 순위 계산(TrueSkill 레이팅)은 전부 서버가 끝내서 내려주고(./rank.ts), 화면은 그 순서대로
 // 그리며 순위 숫자만 붙인다. 개인전·팀전은 집계 대상 경기(1:1 / 팀경기)만 다르고 각각 별도
 // 레이팅으로 계산된다.
-export default function RankingScreenV2() {
+// embedded: 피드의 "실시간 랭킹 보기" 모달 안에서 렌더될 때 — 페이지 배경 사진을 얹지 않는다.
+export default function RankingScreenV2({ embedded = false }: { embedded?: boolean } = {}) {
   // 화면 전체 배경 사진(다크에서만 CSS가 적용) — fixed ::before가 iOS 안전영역에 갇히는
   // 한계를 피해 .scr-app 흐름 배경으로 얹어 상태바/내비바 뒤까지 채운다(실험).
   // 다크는 우주 사진(ranking_bg), 라이트는 트로피 렌더(ranking_bg_light)를 배경으로 쓴다(요청).
   usePageBackground(
-    "/images/bg/ranking_bg.jpg",
+    embedded ? null : "/images/bg/ranking_bg.jpg",
     "/images/bg/ranking_bg_mobile.png",
-    "/images/bg/ranking_bg_light.png",
+    embedded ? undefined : "/images/bg/ranking_bg_light.png",
   );
   const members = useAppStore((s) => s.members);
   const user = useAppStore((s) => s.user);

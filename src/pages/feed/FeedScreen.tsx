@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
-import { CalendarPlus, MessageCircle, Plus, Send, Swords, Upload } from "lucide-react";
+import { createPortal } from "react-dom";
+import { CalendarPlus, MessageCircle, Plus, Send, Swords, Trophy, Upload, X } from "lucide-react";
 import { Spinner } from "../../components/common/Feedback";
 import MatchList, { type SearchListRow } from "../v2/MatchList";
 import { ChallengeCard } from "../challenge/ChallengeScreen";
@@ -7,6 +8,10 @@ import FeedComments from "./FeedComments";
 import ScrollNavTimeline from "../../components/common/ScrollNavTimeline";
 import ReplayReviewModal from "../../modals/ReplayReviewModal";
 import ChallengeFormModal from "../../modals/ChallengeFormModal";
+import RankRow from "../v2/RankRow";
+import RankingScreen from "../v2/RankingScreen";
+import { computeRankRows, MATCH_TYPE_OF, type RankMode, type RankRow as RankRowData } from "../v2/rank";
+import { currentPeriodAnchor } from "../../utils/date";
 import { useAppStore } from "../../store/appStore";
 import { api } from "../../api/client";
 import { useCursorPagination } from "../../hooks/useCursorPagination";
@@ -43,7 +48,23 @@ interface MatchItem {
   match: Match;
 }
 
-type FeedItem = ChallengeItem | MatchItem;
+interface RankingFeedItem {
+  kind: "ranking";
+  time: number;
+  withClock: boolean;
+  mode: RankMode;
+  rows: RankRowData[]; // TOP 1~5
+}
+
+type FeedItem = ChallengeItem | MatchItem | RankingFeedItem;
+
+// 랭킹 공개 시각 — 매일 오전 8시. 아직 8시 전이면 어제 8시 발행분이 최신이다.
+function lastRankingPublishTime(): number {
+  const pub = new Date();
+  pub.setHours(8, 0, 0, 0);
+  if (Date.now() < pub.getTime()) pub.setDate(pub.getDate() - 1);
+  return pub.getTime();
+}
 
 function challengeItem(c: Challenge): ChallengeItem {
   const iso = c.scheduledAt ?? c.createdAt;
@@ -109,6 +130,7 @@ function MatchCard({ item, memberOf, onDeleted, dateLabel }: {
 export default function FeedScreen() {
   const user = useAppStore((s) => s.user);
   const memberOf = useAppStore((s) => s.memberOf);
+  const members = useAppStore((s) => s.members);
 
   // + 등록 메뉴(리플레이/너 나와!/일정) — 버튼 아래 작은 팝오버로 연다.
   const [addMenuOpen, setAddMenuOpen] = useState(false);
@@ -167,7 +189,32 @@ export default function FeedScreen() {
 
   const loading = challengesLoading || matchesLoading;
 
-  const members = useAppStore((s) => s.members);
+  // 데일리 랭킹(개인전/팀전 TOP5) — 실제 배치 없이, 조회 시점 기준 "가장 최근 오전 8시"
+  // 발행분으로 타임라인에 아이템이 하나씩 생긴다. 데이터는 이번 달 랭킹.
+  const [rankingItems, setRankingItems] = useState<RankingFeedItem[]>([]);
+  useEffect(() => {
+    if (members.length === 0) return;
+    let cancelled = false;
+    const publishedAt = lastRankingPublishTime();
+    const anchor = currentPeriodAnchor("month");
+    Promise.all((["solo", "team"] as RankMode[]).map(async (mode) => {
+      const rows = await computeRankRows(members, MATCH_TYPE_OF[mode], "all", "month", anchor);
+      return {
+        kind: "ranking" as const,
+        time: publishedAt,
+        withClock: true,
+        mode,
+        rows: rows.filter((r) => r.rank <= 5),
+      };
+    }))
+      .then((items) => { if (!cancelled) setRankingItems(items.filter((i) => i.rows.length > 0)); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [members]);
+
+  // 실시간 랭킹 모달 — 기존 랭킹 화면을 그대로 띄운다.
+  const [liveRankingOpen, setLiveRankingOpen] = useState(false);
+
   const handleReplayFilesChosen = async (e: ChangeEvent<HTMLInputElement>) => {
     const chosen = Array.from(e.target.files ?? []);
     e.target.value = "";
@@ -193,9 +240,10 @@ export default function FeedScreen() {
     const items: FeedItem[] = [
       ...challenges.map(challengeItem),
       ...matches.map(matchItem),
+      ...rankingItems,
     ];
     return items.sort((a, b) => b.time - a.time);
-  }, [challenges, matches]);
+  }, [challenges, matches, rankingItems]);
 
   const dateLabelOf = (item: FeedItem) => {
     const d = new Date(item.time);
@@ -256,7 +304,31 @@ export default function FeedScreen() {
       ) : (
         <div className="scr-feed-list">
           {feed.map((item) => (
-            item.kind === "challenge" ? (
+            item.kind === "ranking" ? (
+              <div className="scr-feed-card" key={`r-${item.mode}-${item.time}`}>
+                <div className="scr-feed-card-head" data-date-label={dateLabelOf(item)}>
+                  <Trophy size={13} aria-hidden />
+                  <span className="scr-feed-card-time">{formatEventTime(item.time, item.withClock)}</span>
+                  <span className="scr-feed-card-label">오늘의 랭킹 · {item.mode === "solo" ? "개인전" : "팀전"}</span>
+                </div>
+                <div className="scr-feed-rank-panel scr-rank-table-panel-v2">
+                  <div className="scr-rank-table">
+                    {item.rows.map((row, i) => (
+                      <RankRow
+                        key={row.member.id}
+                        row={row}
+                        tiedWithPrev={i > 0 && row.rank === item.rows[i - 1].rank}
+                      />
+                    ))}
+                  </div>
+                </div>
+                <div className="scr-feed-rank-actions">
+                  <button type="button" className="scr-btn scr-btn-sm" onClick={() => setLiveRankingOpen(true)}>
+                    실시간 랭킹 보기
+                  </button>
+                </div>
+              </div>
+            ) : item.kind === "challenge" ? (
               <div className="scr-feed-card" key={`c-${item.challenge.id}`}>
                 <div className="scr-feed-card-head" data-date-label={dateLabelOf(item)}>
                   <Send size={13} aria-hidden />
@@ -304,6 +376,24 @@ export default function FeedScreen() {
           onClose={() => setChallengeFormOpen(false)}
           onCreated={(c) => { upsertChallenge(c); setChallengeFormOpen(false); }}
         />
+      )}
+
+      {/* 실시간 랭킹 — 기존 랭킹 화면을 모달로 그대로 띄운다(배경 사진만 끔). */}
+      {liveRankingOpen && createPortal(
+        <div className="scr-modal-overlay">
+          <div className="scr-modal scr-feed-ranking-modal">
+            <div className="scr-modal-head">
+              <span>실시간 랭킹</span>
+              <button className="scr-icon-btn" onClick={() => setLiveRankingOpen(false)} aria-label="닫기">
+                <X size={14} />
+              </button>
+            </div>
+            <div className="scr-modal-body scr-feed-ranking-modal-body">
+              <RankingScreen embedded />
+            </div>
+          </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

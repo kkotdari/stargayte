@@ -7936,3 +7936,12 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   margin-left: auto; font-size: var(--fs-micro); font-weight: 700; color: var(--dim);
   border: 1px solid var(--line-soft); border-radius: 999px; padding: 0 6px;
 }
+
+/* 피드 데일리 랭킹 카드 — 기존 랭킹 행(RankRow)을 그대로 앉히되 카드 폭에 맞춰 여백만 압축. */
+.scr-feed-rank-panel { padding: 4px 8px 0; }
+.scr-feed-rank-panel .scr-rank-row { padding: 8px 0; }
+.scr-feed-rank-actions { display: flex; justify-content: center; padding: 6px 16px 14px; }
+
+/* 실시간 랭킹 모달 — 기존 랭킹 화면을 통째로 담는 넓은 모달. */
+.scr-feed-ranking-modal { max-width: 860px; }
+.scr-feed-ranking-modal-body { overflow-y: auto; min-height: 0; }
