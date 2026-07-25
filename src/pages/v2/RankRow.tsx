@@ -81,8 +81,17 @@ export default function RankRowV2({ row, tiedWithPrev = false, highlighted = fal
                 같은 규칙 — 숫자만 덩그러니 놓이면 무슨 수인지 안 읽힌다. 순위 변동은 그와
                 별개로 사람마다 다를 수 있어 공동순위여도 매 행 각자 보여준다(요청: "랭킹에서
                 공동순위라도 순위변동은 각각 표시돼야함"). */}
-            <span className="scr-rank-num">
-              {!tiedWithPrev && rank}
+            {/* 순위 숫자를 relative 래퍼로 감싸, 잠정 표시(!)를 숫자 오른쪽-아래 모서리에
+                절대위치로 붙인다(요청) — 흐름 밖이라 기존 정렬을 안 건드린다. */}
+            <span className="scr-rank-num-wrap">
+              <span className="scr-rank-num">
+                {!tiedWithPrev && rank}
+              </span>
+              {provisional && !tiedWithPrev && (
+                <span className="scr-rank-provisional" title="경기 수가 적어 아직 확정되지 않은 잠정 점수예요" aria-label="잠정 점수">
+                  <CircleAlert size={11} />
+                </span>
+              )}
             </span>
             <RankDeltaBadge delta={rankDelta} />
           </div>
@@ -90,22 +99,13 @@ export default function RankRowV2({ row, tiedWithPrev = false, highlighted = fal
               카드와 같은 톤으로 — 사람단위 점수를 큼직하게. 이 점수가 순위(승자승 다음)를
               가르는 기준이라 숫자로 도드라지게 한다. */}
           <div className="scr-rank-record-wrap scr-rank-record-wrap-scoreonly">
-            {/* 잠정 뱃지는 자기 칸을 따로 차지하지 않고(요청: "필터의 라벨처럼 영역을
-                차지하지 않고 붙어있는 추가 요소로") 점수에 절대위치로 겹쳐 붙는다 —
-                레이아웃 흐름에서 완전히 빠져 있어 잠정 유무와 무관하게 다른 요소 위치가
-                흔들리지 않는다. 점수 글자 폭만큼만 딱 맞는 인라인 래퍼를 하나 둬서 그 기준으로
-                붙인다. */}
+            {/* 잠정 표시는 이제 순위 숫자 옆으로 옮겼다(위 .scr-rank-num-wrap) — 점수는 순수
+                숫자만이라 오른쪽 정렬이 항상 일정하다. */}
             <span className="scr-rank-score-inline">
               {/* 카드엔 레이팅(보수추정 μ−3σ)만(세부는 상세에서). 음수면 자연히 - 가 붙는다. */}
               <span className="scr-rank-stat-primary">
                 {rankScore}<span className="scr-num-unit">점</span>
               </span>
-              {/* 잠정 표시 — 점수 오른쪽(점 옆)에 동그라미로 감싼 ! 아이콘(요청). */}
-              {provisional && (
-                <span className="scr-rank-provisional" title="경기 수가 적어 아직 확정되지 않은 잠정 점수예요" aria-label="잠정 점수">
-                  <CircleAlert size={12} />
-                </span>
-              )}
             </span>
           </div>
           <button type="button" className={cx("scr-rank-avatar-btn", medalAvatarClass)} onClick={openPhoto} aria-label={`${member.nickname} 사진 보기`}>

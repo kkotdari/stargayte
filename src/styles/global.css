@@ -1527,12 +1527,12 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
      지금처럼 영역은 차지 X") — right:100%로 점수 왼쪽 바깥에서 시작해 겹치지 않고,
      top:50%+translateY(-50%)로 세로 중앙에 맞춘다. 간격은 점수에 더 가깝게(요청:
      "잠정 배지 너무 왼쪽이야 점수에 가깝게 이동"). */
-  /* 잠정 표시 — 점수 오른쪽(점 옆) 동그라미 ! 아이콘. 절대위치(left:100%)로 점수 흐름 밖에
-     둬서 아이콘 유무와 무관하게 점수 숫자의 오른쪽 정렬이 안 깨지게 한다(지적). 세로 중앙.
-     아이콘은 좀 연하게(opacity)(요청). */
-  position: absolute; left: 100%; top: 50%; transform: translateY(-50%); margin-left: 3px;
+  /* 잠정 표시 — 순위 숫자 오른쪽-아래 모서리에 붙는 동그라미 ! 아이콘(요청). 숫자 래퍼
+     (.scr-rank-num-wrap) 기준 절대위치라 기존 정렬을 안 건드린다. 좀 연하게(opacity). */
+  position: absolute; left: 100%; bottom: -1px; margin-left: 1px;
   display: inline-flex; align-items: center; color: #111; line-height: 1; opacity: 0.5;
 }
+.scr-rank-num-wrap { position: relative; display: inline-flex; }
 html:not(.scr-light-theme) .scr-rank-provisional { color: #f2f4f8; }
 .scr-rank-provisional svg { display: block; }
 /* 기간 단위(월/년) 토글은 필터창의 공용 PillTabs를 그대로 쓴다(요청: "필터의 기간모듈로
@@ -2364,7 +2364,7 @@ html:not(.scr-light-theme) .scr-rank-provisional { color: #f2f4f8; }
      같아 세로 정렬(줄맞춤)도 흔들리지 않는다. 화면이 max-width보다 좁으면(모바일) 100%로
      줄며 닉네임 1fr이 알아서 줄어 넘치지 않는다. 요소 최대폭은 max-width로 PC/모바일 각각
      설정(아래 미디어쿼리) — 현재 칸 크기(44/84/40, gap 14)는 그대로 유지. */
-  display: grid; grid-template-columns: 44px 72px 40px minmax(0, 228px);
+  display: grid; grid-template-columns: 44px 70px 40px minmax(0, 230px);
   justify-content: center; max-width: none; margin: 0;
   align-items: center; column-gap: 14px; width: 100%; min-width: 0;
   /* 좌우 여백은 거의 같게 두되 왼쪽만 살짝 더 준다(요청) — 클러스터가 살짝 오른쪽으로. */
@@ -2378,7 +2378,7 @@ html:not(.scr-light-theme) .scr-rank-provisional { color: #f2f4f8; }
   /* PC에선 요소 묶음 최대폭만 키운다(닉네임 칸에 더 여유) — 나머지 넓은 카드 폭은 전부
      좌우 여백(margin:auto)으로 빠져 한가운데로 모인다(요청). */
   .scr-rank-table-panel-v2 .scr-rank-row-inner {
-    grid-template-columns: 44px 72px 40px minmax(0, 328px);
+    grid-template-columns: 44px 70px 40px minmax(0, 330px);
     padding: 0 26px 0 34px;
   }
 }
@@ -2398,7 +2398,7 @@ html:not(.scr-light-theme) .scr-rank-provisional { color: #f2f4f8; }
 .scr-rank-record-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; justify-self: stretch; min-width: 0; }
 /* 점수는 자기 칸 안에서 오른쪽 정렬(요청). 순위↔점수 간격은 좁히고(음수 margin-left)
    점수↔아바타 간격은 벌린다(margin-right)(요청). */
-.scr-rank-table-panel-v2 .scr-rank-record-wrap { align-items: flex-end; margin-left: -7px; margin-right: 24px; }
+.scr-rank-table-panel-v2 .scr-rank-record-wrap { align-items: flex-end; margin-left: -7px; margin-right: 16px; }
 .scr-rank-record-v2 {
   font-size: var(--fs-body); color: var(--dim); white-space: nowrap;
   min-width: 0; overflow: hidden; text-overflow: ellipsis;
@@ -2440,7 +2440,7 @@ html:not(.scr-light-theme) .scr-rank-provisional { color: #f2f4f8; }
        화면 가운데로 모으고, 좁으면 100% 안에서 알아서 줄어든다. */
     /* 점수 칸을 72px로 넓혀 오른쪽 정렬된 점수 왼쪽에 '잠정' 배지 자리를 확보한다 —
        좁을 때 배지가 순위 숫자와 겹치던 문제(지적) 해결. */
-    grid-template-columns: 35px 64px 40px minmax(0, 186px); column-gap: 8px;
+    grid-template-columns: 35px 62px 40px minmax(0, 188px); column-gap: 8px;
     /* 좌우 여백 거의 같게, 왼쪽만 살짝 더(요청). 구분선(행 ::before)은 양 끝까지 그대로. */
     padding: 0 12px 0 18px;
   }
@@ -2671,7 +2671,11 @@ html.scr-page-bg.scr-light-theme .scr-rank-screen-v2::before { display: none; }
    넉넉한 갭으로 벌린다(요청). 모바일(≤640)은 아래 미디어쿼리의 풀폭 space-between 유지. */
 @media (min-width: 641px) {
   .scr-rank-screen-v2 .scr-filter-panel {
-    width: calc(100% + 32px);
+    /* 글로우 클립 회피용 padding+음수마진 트릭을 랭킹에선 걷어낸다(지적: 그 -16px 좌우
+       마진 때문에 콘텐츠가 컨테이너 폭을 다 못 쓰고 오른쪽으로 32px 밀린다). 대신
+       overflow:visible로 글로우가 안 잘리게 하면 padding 버퍼가 필요 없다. 그러면 패널이
+       컨테이너 폭에 정확히 맞고, justify-content:center가 기간/종족을 가운데로 모은다. */
+    width: 100%; margin: 0; padding: 0; overflow: visible;
     justify-content: center; column-gap: 44px;
   }
 }
