@@ -4947,7 +4947,12 @@ body *::-webkit-scrollbar-corner { background: transparent; }
      나오는 애니메이션은 좀더 부드럽고 페이드아웃/인을 줘") 함께 사라지고 나타날 때
      한 세트처럼 보이게 한다. transform도 같이 걸어 아래로 슬라이드하며 빠져나가는
      느낌을 더한다(요청: "탭바는 슬라이드로 아래로 내려가고"). */
-  transition: opacity .22s ease-in-out, transform .28s ease-in-out, border-radius .28s ease-in-out;
+  /* bottom도 트랜지션 목록에 넣는다 — 축소(미니) 상태에서 탭을 누르면 스크롤이 맨 위로
+     가면서 iOS 사파리 주소창이 다시 펼쳐지고, 그 순간 --vv-bottom-inset이 0→수십 px로
+     한 번에 뛰어 bottom이 순간이동한다. 확대(scale) 트랜지션이 도는 도중에 세로 위치가
+     뚝 튀니 "중간에 튀는 느낌"으로 보였다(지적). bottom을 부드럽게 따라가게 하면 확대와
+     이동이 한 동작으로 합쳐진다. */
+  transition: opacity .22s ease-in-out, transform .28s ease-in-out, border-radius .28s ease-in-out, bottom .25s ease-out;
 }
 /* 유리 재질(반투명 배경 + 블러 + 반사광 선 + 그림자)은 탭바(fixed) 자신이 아니라 이
    absolute 자식 레이어에 그린다 — iOS 26 사파리는 화면 가장자리의 fixed/sticky 요소에
