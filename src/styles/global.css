@@ -2214,14 +2214,16 @@ html:not(.scr-light-theme) .scr-rank-provisional { color: #f2f4f8; }
 }
 /* 금/은/동 — 금속 본체는 다시 살짝 어둡게, 하이라이트(중앙 밝은 띠)는 더 밝고 넓게 해서
    대비를 강하게(요청). 밝은 정점을 44~56% 플래토로 넓히고 양 끝은 더 어둡게. */
+/* 금/동은 더 밝고 아름답게(요청) — 어두운 양 끝을 탁한 갈색에서 밝은 앤티크 골드/코퍼로
+   올리고 중간·정점 하이라이트를 더 화사하게. 은은 그대로. */
 .scr-rank-avatar-btn.scr-rank-avatar-gold::before {
-  background: linear-gradient(115deg, #7d5a0d 0%, #dcaf30 30%, #fff8dc 44%, #fff8dc 56%, #dcaf30 70%, #7d5a0d 100%);
+  background: linear-gradient(115deg, #c08d1c 0%, #f6d566 28%, #fffbe8 45%, #fffbe8 55%, #f6d566 72%, #c08d1c 100%);
 }
 .scr-rank-avatar-btn.scr-rank-avatar-silver::before {
   background: linear-gradient(115deg, #6a6f78 0%, #c2c9d2 30%, #ffffff 44%, #ffffff 56%, #c2c9d2 70%, #6a6f78 100%);
 }
 .scr-rank-avatar-btn.scr-rank-avatar-bronze::before {
-  background: linear-gradient(115deg, #6b4426 0%, #bd8a58 30%, #f7e2c6 44%, #f7e2c6 56%, #bd8a58 70%, #6b4426 100%);
+  background: linear-gradient(115deg, #b06a34 0%, #eab079 28%, #fdf1e0 45%, #fdf1e0 55%, #eab079 72%, #b06a34 100%);
 }
 /* "경기수N위" 배지 — 알약 없이 글자만, 글자에 메탈 그라데이션(요청). 폰트 10px.
    다크 테마: 흰색 메탈 — 순백은 광택이 안 사니 살짝 회색(실버) 톤으로(요청). */
