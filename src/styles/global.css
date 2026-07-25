@@ -2361,25 +2361,11 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
      같아 세로 정렬(줄맞춤)도 흔들리지 않는다. 화면이 max-width보다 좁으면(모바일) 100%로
      줄며 닉네임 1fr이 알아서 줄어 넘치지 않는다. 요소 최대폭은 max-width로 PC/모바일 각각
      설정(아래 미디어쿼리) — 현재 칸 크기(44/84/40, gap 14)는 그대로 유지. */
-  display: grid; grid-template-columns: 58px 70px 40px minmax(0, 216px);
+  display: grid; grid-template-columns: 60px 48px 40px minmax(0, 200px);
   justify-content: center; max-width: none; margin: 0;
-  align-items: center; column-gap: 14px; width: 100%; min-width: 0;
+  align-items: center; column-gap: 36px; width: 100%; min-width: 0;
   /* 좌우 여백은 거의 같게 두되 왼쪽만 살짝 더 준다(요청) — 클러스터가 살짝 오른쪽으로. */
-  box-sizing: border-box; padding: 0 18px 0 26px;
-}
-/* PC는 카드 폭이 넓어 여유가 있으니 내용 좌우 패딩을 더 넉넉하게(요청: "랭킹도 내용에만
-   좌우패딩 많이 주기 더 — PC만", 경기 목록과 같은 PC 전용 패딩 확장 패턴). 구분선은
-   여전히 .scr-rank-table-panel-v2 .scr-rank-row + ::before가 양 끝까지 꽉 채운 채라
-   내용만 안쪽으로 더 들어온다. 모바일(640px 이하)은 위 기본값(32px) 그대로 유지. */
-@media (min-width: 720px) {
-  /* PC에선 요소 묶음 최대폭만 키운다(닉네임 칸에 더 여유) — 나머지 넓은 카드 폭은 전부
-     좌우 여백(margin:auto)으로 빠져 한가운데로 모인다(요청). */
-  .scr-rank-table-panel-v2 .scr-rank-row-inner {
-    /* 랭크 칸 58→72px — 숫자가 32px(title-2)로, 순위변동이 caption(14)으로 커진 폭을
-       흡수한다(요청). 닉네임 최대폭에서 그만큼 덜어낸다. */
-    grid-template-columns: 72px 70px 40px minmax(0, 302px);
-    padding: 0 26px 0 34px;
-  }
+  box-sizing: border-box; padding-left:72px;
 }
 .scr-rank-table-panel-v2 .scr-rank-name-wrap { min-width: 0; justify-content: flex-start; margin-left: 8px; }
 /* 프사와 이름이 이 행의 주인공이라 시원하게 키운다 — 나머지(순위/전적)는 곁들이다. */
@@ -2398,7 +2384,7 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 .scr-rank-record-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; justify-self: stretch; min-width: 0; }
 /* 점수는 자기 칸 안에서 오른쪽 정렬(요청). 순위↔점수 간격은 좁히고(음수 margin-left)
    점수↔아바타 간격은 벌린다(margin-right)(요청). */
-.scr-rank-table-panel-v2 .scr-rank-record-wrap { align-items: flex-end; margin-left: -7px; margin-right: 16px; }
+.scr-rank-table-panel-v2 .scr-rank-record-wrap { align-items: flex-end; }
 .scr-rank-record-v2 {
   font-size: var(--fs-body); color: var(--dim); white-space: nowrap;
   min-width: 0; overflow: hidden; text-overflow: ellipsis;
@@ -2438,9 +2424,9 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
        화면 가운데로 모으고, 좁으면 100% 안에서 알아서 줄어든다. */
     /* 점수 칸을 72px로 넓혀 오른쪽 정렬된 점수 왼쪽에 '잠정' 배지 자리를 확보한다 —
        좁을 때 배지가 순위 숫자와 겹치던 문제(지적) 해결. */
-    grid-template-columns: 48px 62px 40px minmax(0, 175px); column-gap: 8px;
+    grid-template-columns: 48px 60px 40px minmax(0, 175px); column-gap: 12px;
     /* 좌우 여백 거의 같게, 왼쪽만 살짝 더(요청). 구분선(행 ::before)은 양 끝까지 그대로. */
-    padding: 0 12px 0 18px;
+    padding-left: 8px;
   }
   /* 모바일 닉네임은 headline(24)(요청). */
   .scr-rank-table-panel-v2 .scr-rank-name { font-size: var(--fs-headline); }
