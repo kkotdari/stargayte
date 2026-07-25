@@ -1527,14 +1527,13 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
      지금처럼 영역은 차지 X") — right:100%로 점수 왼쪽 바깥에서 시작해 겹치지 않고,
      top:50%+translateY(-50%)로 세로 중앙에 맞춘다. 간격은 점수에 더 가깝게(요청:
      "잠정 배지 너무 왼쪽이야 점수에 가깝게 이동"). */
-  /* 잠정 표시를 '잠정' 텍스트 배지 대신 작은 검정 '!' 아이콘으로(요청) — 점수 왼쪽에
-     세로 가운데로 붙는다. line-height 1로 조여 점수 텍스트 세로 중심과 맞춘다. */
-  position: absolute; top: 50%; right: 100%; margin-right: 3px; transform: translateY(-50%);
-  display: inline-flex; align-items: center; justify-content: center;
-  font-size: var(--fs-caption); font-weight: 900; line-height: 1; white-space: nowrap;
-  color: #111;
+  /* 잠정 표시 — 점수 오른쪽(점 옆)에 인라인으로 붙는 동그라미 ! 아이콘(요청). 절대위치가
+     아니라 흐름 안에 놓여 점 바로 옆에 상대 위치로 온다. 세로는 가운데 정렬. */
+  display: inline-flex; align-items: center; margin-left: 3px;
+  color: #111; line-height: 1;
 }
 html:not(.scr-light-theme) .scr-rank-provisional { color: #f2f4f8; }
+.scr-rank-provisional svg { display: block; }
 /* 기간 단위(월/년) 토글은 필터창의 공용 PillTabs를 그대로 쓴다(요청: "필터의 기간모듈로
    통합") — 전용 스타일은 더 이상 필요 없다. 좁은 화면에선 단위 토글이 자리를 차지하므로
    힌트는 접어 공간을 양보한다. */
@@ -2364,7 +2363,7 @@ html:not(.scr-light-theme) .scr-rank-provisional { color: #f2f4f8; }
      같아 세로 정렬(줄맞춤)도 흔들리지 않는다. 화면이 max-width보다 좁으면(모바일) 100%로
      줄며 닉네임 1fr이 알아서 줄어 넘치지 않는다. 요소 최대폭은 max-width로 PC/모바일 각각
      설정(아래 미디어쿼리) — 현재 칸 크기(44/84/40, gap 14)는 그대로 유지. */
-  display: grid; grid-template-columns: 44px 60px 40px minmax(0, 240px);
+  display: grid; grid-template-columns: 44px 72px 40px minmax(0, 228px);
   justify-content: center; max-width: none; margin: 0;
   align-items: center; column-gap: 14px; width: 100%; min-width: 0;
   /* 좌 패딩을 우보다 ~25px 넓게(요청 보정) — 순위/점수가 왼쪽에 몰려 보이는 걸 완화. */
@@ -2378,7 +2377,7 @@ html:not(.scr-light-theme) .scr-rank-provisional { color: #f2f4f8; }
   /* PC에선 요소 묶음 최대폭만 키운다(닉네임 칸에 더 여유) — 나머지 넓은 카드 폭은 전부
      좌우 여백(margin:auto)으로 빠져 한가운데로 모인다(요청). */
   .scr-rank-table-panel-v2 .scr-rank-row-inner {
-    grid-template-columns: 44px 60px 40px minmax(0, 340px);
+    grid-template-columns: 44px 72px 40px minmax(0, 328px);
     padding: 0 24px 0 49px;
   }
 }
@@ -2396,8 +2395,9 @@ html:not(.scr-light-theme) .scr-rank-provisional { color: #f2f4f8; }
    바꿔 그리드 트랙 폭 그대로를 차지하게 하고, 그 안에서 align-items:flex-end로 오른쪽
    정렬만 유지한다. */
 .scr-rank-record-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; justify-self: stretch; min-width: 0; }
-/* 점수는 자기 칸 안에서 오른쪽 정렬(요청). */
-.scr-rank-table-panel-v2 .scr-rank-record-wrap { align-items: flex-end; }
+/* 점수는 자기 칸 안에서 오른쪽 정렬(요청). 순위↔점수 간격은 좁히고(음수 margin-left)
+   점수↔아바타 간격은 벌린다(margin-right)(요청). */
+.scr-rank-table-panel-v2 .scr-rank-record-wrap { align-items: flex-end; margin-left: -7px; margin-right: 13px; }
 .scr-rank-record-v2 {
   font-size: var(--fs-body); color: var(--dim); white-space: nowrap;
   min-width: 0; overflow: hidden; text-overflow: ellipsis;
@@ -2439,7 +2439,7 @@ html:not(.scr-light-theme) .scr-rank-provisional { color: #f2f4f8; }
        화면 가운데로 모으고, 좁으면 100% 안에서 알아서 줄어든다. */
     /* 점수 칸을 72px로 넓혀 오른쪽 정렬된 점수 왼쪽에 '잠정' 배지 자리를 확보한다 —
        좁을 때 배지가 순위 숫자와 겹치던 문제(지적) 해결. */
-    grid-template-columns: 35px 54px 40px minmax(0, 196px); column-gap: 8px;
+    grid-template-columns: 35px 64px 40px minmax(0, 186px); column-gap: 8px;
     /* 좌 패딩을 우보다 ~25px 넓게(요청 보정). 구분선(행 ::before)은 양 끝까지 그대로. */
     padding: 0 12px 0 37px;
   }
@@ -2664,10 +2664,16 @@ html.scr-page-bg.scr-light-theme .scr-rank-screen-v2::before { display: none; }
 /* 랭킹 필터 줄은 다른 화면 필터로우처럼 폭을 꽉 채우고 양 끝 정렬(space-between)로 둔다
    (요청) — 상성 보기를 토글 옆으로 옮긴 뒤엔 기간(좌)/종족(우) 두 그룹만 남아 양쪽으로
    벌어진다. */
-/* width:100%만 주면 패널의 좌우 음수 마진(-16px, 글로우 클립 회피용)만큼 콘텐츠가
-   오른쪽에서 32px 모자라 종족이 끝까지 안 간다(지적: "폭 전체를 활용하지 않음") —
-   음수 마진 합(32px)을 더해 콘텐츠가 컨테이너 양 끝에 딱 맞게 한다. */
-.scr-rank-screen-v2 .scr-filter-panel { width: calc(100% + 32px); justify-content: space-between; }
+/* 랭킹 필터 줄(데스크톱): 패널은 화면 폭 전체를 차지하되(width calc(100%+32px) — 좌우
+   음수마진 -16px 보정으로 콘텐츠가 컨테이너 양 끝에 딱 맞음), 항목을 양 끝으로 벌리는
+   space-between 대신 justify-content:center로 기간/종족을 가운데로 모으고 둘 사이만
+   넉넉한 갭으로 벌린다(요청). 모바일(≤640)은 아래 미디어쿼리의 풀폭 space-between 유지. */
+@media (min-width: 641px) {
+  .scr-rank-screen-v2 .scr-filter-panel {
+    width: calc(100% + 32px);
+    justify-content: center; column-gap: 44px;
+  }
+}
 .scr-search-filter-float { flex: 1 1 auto; min-width: 0; }
 
 /* ===== 필터창(FilterPanel) — 검색창과 같은 자리에 뜨는 반투명 글라스 패널 =====
