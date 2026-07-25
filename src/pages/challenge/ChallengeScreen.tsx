@@ -555,24 +555,15 @@ export function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, o
           길고 부드럽게, 취소로 원복될 때도"). */}
       <InlineCollapse open={mode === "revenge"}>
         <div className="scr-challenge-time-change-form">
-          <div className="scr-challenge-datetime">
-            <label className="scr-challenge-dt-field">
-              <span className="scr-label">날짜</span>
-              <input
-                type="date" className="scr-input" value={dateStr}
-                min={DATE_INPUT_MIN} max={DATE_INPUT_MAX}
-                onChange={(e) => { setDateStr(e.target.value); if (!e.target.value) setTimeStr(""); }}
-              />
-            </label>
-            <label className="scr-challenge-dt-field">
-              <span className="scr-label">시간</span>
-              <input
-                type="time" className="scr-input" value={timeStr}
-                onChange={(e) => setTimeStr(e.target.value)}
-                disabled={!dateStr}
-              />
-            </label>
-          </div>
+          {/* 날짜/시간은 승락 폼과 같은 공용 컴포넌트로(요청: "인라인 응답에서 수정한거
+              참고해서 공통화") — 날 것의 네이티브 인풋을 그대로 쓰면 피드 카드 폭을 뚫고
+              나가는 등 스타일이 깨진다(지적). 라벨/지우기/기본 21시 동작도 함께 통일된다. */}
+          <OptionalDateTimeFields
+            dateStr={dateStr}
+            onDateChange={setDateStr}
+            timeStr={timeStr}
+            onTimeChange={setTimeStr}
+          />
           {/* 리벤지 한마디(선택) — 응답 한마디와 같은 아이콘 토글 + 트랜지션 입력창(요청). */}
           <button
             type="button"
