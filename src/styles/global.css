@@ -2531,8 +2531,8 @@ html.scr-page-bg:not(.scr-light-theme) .scr-rank-screen-v2::before {
    하고(배경 투명 유지) 글자 가독성만 살짝 확보한다. */
 html.scr-page-bg.scr-light-theme .scr-main::before {
   background:
-    /* 화이트 스크림 더 약화(요청) — 배경 사진(tiara2)이 더 선명히 드러나게 한 단계 더 옅게. */
-    linear-gradient(180deg, rgba(255,255,255,0.54) 0%, rgba(255,255,255,0.44) 45%, rgba(255,255,255,0.62) 100%),
+    /* 화이트 스크림 강화(요청) — tiara 배경을 한 단계 더 덮어 글자 가독성을 높인다. */
+    linear-gradient(180deg, rgba(255,255,255,0.82) 0%, rgba(255,255,255,0.74) 45%, rgba(255,255,255,0.88) 100%),
     /* PC 넓은 화면에서 cover는 세로 인물 사진을 과하게 잘라낸다(지적) — 높이에 맞춰
        (auto 100%) 가운데 표시하고 좌우 여백은 흰 스크림+--void가 채운다. */
     var(--page-bg-image-light) center / auto 100% no-repeat,
@@ -2541,7 +2541,7 @@ html.scr-page-bg.scr-light-theme .scr-main::before {
 @media (max-width: 860px) {
   html.scr-page-bg.scr-light-theme .scr-main::before {
     background:
-      linear-gradient(180deg, rgba(255,255,255,0.54) 0%, rgba(255,255,255,0.44) 45%, rgba(255,255,255,0.62) 100%),
+      linear-gradient(180deg, rgba(255,255,255,0.82) 0%, rgba(255,255,255,0.74) 45%, rgba(255,255,255,0.88) 100%),
       var(--page-bg-image-light-mobile) center / cover no-repeat,
       var(--void);
   }
@@ -4446,7 +4446,12 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   overflow: visible;
   border-color: transparent; border-image: none;
 }
-.scr-admin-panel-modal-locked::before {
+/* 선택자를 .scr-modal.scr-admin-panel-modal-locked::before(0,2,1)로 둔다 — 위
+   .scr-modal.scr-admin-panel-modal::before(0,2,1, 은색 판·inset:0)와 특이도가 같아지고
+   소스가 뒤라 이긴다. 예전엔 .scr-admin-panel-modal-locked::before(0,1,1)이라 그 은색
+   판 규칙에 통째로 덮여 잠금 상태의 부식된 구리 뚜껑(테두리)이 안 나오고 은색 판만
+   보였다(지적: "구리 테두리가 PC·모바일 모두 안 보임"). */
+.scr-modal.scr-admin-panel-modal-locked::before {
   inset: -12px;
   background-image: url("/images/bg/control_panel_border.jpg");
   /* 뚜껑판 특유의 살짝 어두운 비네트 — 열린 상태의 "파여 들어간 판" 그림자 대신. */
@@ -7778,7 +7783,7 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 /* PC에선 지도가 넓어진 만큼(560→760) 유저 칩도 키운다(요청). 칩은 인라인 스타일로
    폰트/아바타/패딩이 정해져 CSS로 각각 덮기 번거로워, 칩 전체를 transform scale로 키운다
    — 선택 칩 배율(×1.18)도 이 배수를 곱해 함께 커진다. */
-@media (min-width: 768px) { .scr-rivalry-wrap { --rivalry-chip-mult: 1.3; } }
+@media (min-width: 768px) { .scr-rivalry-wrap { --rivalry-chip-mult: 1.5; } }
 /* 범례 — 화살표/점선 견본 + 사용 힌트. */
 .scr-rivalry-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; justify-content: center; font-size: var(--fs-micro); color: var(--muted); }
 .scr-rivalry-legend-item { display: inline-flex; align-items: center; }

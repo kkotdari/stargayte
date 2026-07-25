@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Avatar from "../../components/common/Avatar";
 import { cx } from "../../utils/format";
 import type { Member, RivalryPair } from "../../types";
@@ -120,6 +120,18 @@ export default function RivalryMap({
   // 8명까지는 원래 크기, 그 뒤로 한 명당 3%씩, 최소 70%까지.
   const chipScale = Math.max(0.7, Math.min(1, 1 - Math.max(0, nodes.length - 8) * 0.03));
 
+  // PC(≥768px)에선 지도 정사각이 560→760px로 넓어져(CSS) SVG viewBox(0~100)가 통째로
+  // 1.36배 확대돼 화살표(촉/기둥)까지 커진다 — 칩은 키우되 화살표는 원래 픽셀 크기를
+  // 유지하도록(요청: "PC라고 특별히 키우지 않기") 화살표 치수만 560/760으로 되돌린다.
+  const [arrowScale, setArrowScale] = useState(1);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 768px)");
+    const update = () => setArrowScale(mq.matches ? 560 / 760 : 1);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+
   return (
     <div className="scr-rivalry">
       <div className="scr-rivalry-wrap" onClick={() => setSelected(null)}>
@@ -136,7 +148,9 @@ export default function RivalryMap({
             // 화살촉 — marker 대신 직접 그린다: 굵기에 비례하되(요청) 최소/최대를
             // 클램프해 얇은 선에서도 보이고 굵은 선에서도 과하지 않게. 길이 h, 밑변
             // 폭은 h의 0.9배.
-            const headLen = Math.min(3.6, Math.max(2.2, e.width * 3.4));
+            // 화살촉/기둥 두께는 arrowScale로 PC 확대를 되돌려 원래 픽셀 크기를 유지한다.
+            const aw = e.width * arrowScale;
+            const headLen = Math.min(3.6, Math.max(2.2, e.width * 3.4)) * arrowScale;
             const half = headLen * 0.45;
             // 양 끝 트림 — 예전엔 방향 불문 고정(9/11)이었는데, 칩이 가로로 긴 알약이라
             // 세로로 들어가는 화살표는 칩 가장자리보다 한참 앞에서 멈춰 촉이 허공에
@@ -158,7 +172,7 @@ export default function RivalryMap({
             let trimEnd = edgeRadius(ux, uy) + 0.7;
             // 바로 옆 칩처럼 가까우면 트림이 선을 다 먹어 화살촉만 남는다(지적된 버그)
             // — 촉 길이 + 여유만큼의 기둥은 반드시 남도록 트림을 비례 축소한다.
-            const minShaft = headLen + 1.6;
+            const minShaft = headLen + 1.6 * arrowScale;
             if (len - trimStart - trimEnd < minShaft) {
               const k = Math.max(0, Math.min(1, (len - minShaft) / (trimStart + trimEnd)));
               trimStart *= k;
@@ -174,8 +188,8 @@ export default function RivalryMap({
             // 우세 기둥은 시작이 얇고 화살촉 쪽으로 갈수록 두꺼워지는 사다리꼴(요청) —
             // <line>은 굵기가 균일해서 폴리곤으로 직접 그린다. 시작 폭은 끝 폭의 35%,
             // 끝은 촉 밑변에서 끊는다(꼭짓점까지 그리면 촉 옆으로 삐져나온다 — 지적).
-            const startHalf = (e.width * 0.35) / 2;
-            const endHalf = e.width / 2;
+            const startHalf = (aw * 0.35) / 2;
+            const endHalf = aw / 2;
             const shaftPoints = `${x1 - uy * startHalf},${y1 + ux * startHalf} ${bx - uy * endHalf},${by + ux * endHalf} ${bx + uy * endHalf},${by - ux * endHalf} ${x1 + uy * startHalf},${y1 - ux * startHalf}`;
             return (
               <g key={i} className={cx("scr-rivalry-edge", `scr-rivalry-edge-${e.kind}`, selected !== null && "scr-rivalry-edge-focus")}>
