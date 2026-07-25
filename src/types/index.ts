@@ -311,7 +311,7 @@ export interface MonthlyTeamRankingResponse {
 // 화면 라우팅 — 회원(게임아이디 연결 포함)은 운영자만, 나머지는 로그인한
 // 회원 누구나 접근 가능(역할 기준으로만 판단 — 예전에 있던 메뉴 권한 매트릭스는 역할이
 // 운영자/회원 둘로 단순화되면서 없앴다).
-export type ScreenKey = "ranking" | "match" | "challenge" | "stats" | "members" | "leagues" | "rivalry";
+export type ScreenKey = "feed" | "ranking" | "match" | "challenge" | "stats" | "members" | "leagues" | "rivalry";
 
 // 랭킹/경기결과/전적통계 등 화면·메뉴 구성을 어느 버전 세트로 보여줄지 — 제어판에서 등록된
 // 버전 중 하나로 배포하면 앱 전체가 즉시 바뀐다(개인별 설정이 아니라 서버에 저장된 전역 값).

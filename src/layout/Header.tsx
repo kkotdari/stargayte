@@ -16,8 +16,7 @@ import { useKeyboardInset } from "../hooks/useKeyboardInset";
 import { useAppStore } from "../store/appStore";
 import { isAdminRole } from "../constants/roles";
 import { useLightTheme } from "../utils/theme";
-import { versionNumber } from "../utils/appVersion";
-import { visibleNavMenuItems } from "../constants/menuVersions";
+import { NAV_MENU_ITEMS } from "../constants/menuVersions";
 import type { Member, ScreenKey } from "../types";
 
 interface HeaderProps {
@@ -36,8 +35,6 @@ export default function Header({
   // 않는다 — 설정 화면 자체는 다른 슬롯(종족 아이콘 등) 때문에 그대로 남는다.)
   const booting = useAppStore((s) => s.booting);
   const registerSecretTap = useAppStore((s) => s.registerSecretTap);
-  const appVersion = useAppStore((s) => s.appVersion);
-  const effectiveVersionNumber = versionNumber(appVersion);
   const isAdmin = isAdminRole(user.roles);
   const scrollHidden = useHideOnScrollDown(screen);
   // 키보드가 뜨면 탭바를 자동으로 숨긴다(요청: "키보드 활성화시 자동으로 탭바 숨기기") —
@@ -205,9 +202,8 @@ export default function Header({
     };
   }, [profileMenuOpen]);
 
-  // 버전에 따라 노출/순서가 바뀌는 공통 메뉴 — 구성은 constants/menuVersions.ts의
-  // 배열 하나로만 관리한다(버전이 늘어나며 메뉴가 바뀌면 그 배열만 고치면 된다).
-  const visibleItems = visibleNavMenuItems(effectiveVersionNumber);
+  // 공통 메뉴 — 구성은 constants/menuVersions.ts의 배열 하나로만 관리한다.
+  const visibleItems = NAV_MENU_ITEMS;
   const commonNavItems = (
     <>
       {visibleItems.map((item) => (
@@ -348,7 +344,6 @@ export default function Header({
       <MobileTabBar
         screen={screen}
         menuOpen={menuOpen}
-        effectiveVersionNumber={effectiveVersionNumber}
         hidden={tabBarHidden}
         mini={tabBarMini}
         onNavigate={go}

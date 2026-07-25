@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Menu as MenuIcon } from "lucide-react";
 import { cx } from "../utils/format";
-import { visibleNavMenuItems } from "../constants/menuVersions";
+import { NAV_MENU_ITEMS } from "../constants/menuVersions";
 import { smoothScrollRootToTop } from "../utils/scrollRoot";
 import { cancelKeyboardScrollRestore } from "../hooks/useRestoreScrollOnKeyboardClose";
 import type { ScreenKey } from "../types";
@@ -10,9 +10,6 @@ import type { ScreenKey } from "../types";
 interface MobileTabBarProps {
   screen: ScreenKey;
   menuOpen: boolean;
-  // 지금 실제로 보여줄 버전(미리보기 중이면 미리보기 버전) — 이 숫자로 메뉴 배열
-  // (constants/menuVersions.ts)을 걸러 노출 여부/순서를 정한다.
-  effectiveVersionNumber: number;
   hidden: boolean;
   // 아래로 스크롤 중 — 완전 숨김 대신 60% 축소(요청).
   mini: boolean;
@@ -119,9 +116,9 @@ function useActiveTabIndicator(navRef: { current: HTMLElement | null }, deps: un
   return indicator;
 }
 
-export default function MobileTabBar({ screen, menuOpen, effectiveVersionNumber, hidden, mini, onNavigate, onOpenMenu }: MobileTabBarProps) {
+export default function MobileTabBar({ screen, menuOpen, hidden, mini, onNavigate, onOpenMenu }: MobileTabBarProps) {
   const navRef = useRef<HTMLElement>(null);
-  const visibleItems = visibleNavMenuItems(effectiveVersionNumber);
+  const visibleItems = NAV_MENU_ITEMS;
 
   // 탭 동작을 click이 아니라 pointerdown 시점에 실행한다 — 검색창에 키보드가 뜬 채로
   // 탭을 누르면 blur → 키보드 닫힘 → 뷰포트 리사이즈로 탭바 자신이 움직여, 브라우저가
@@ -151,7 +148,7 @@ export default function MobileTabBar({ screen, menuOpen, effectiveVersionNumber,
     if (pointerHandledRef.current) { pointerHandledRef.current = false; return; }
     run();
   };
-  const indicator = useActiveTabIndicator(navRef, [screen, menuOpen, effectiveVersionNumber]);
+  const indicator = useActiveTabIndicator(navRef, [screen, menuOpen]);
 
   return createPortal(
     <nav

@@ -4,13 +4,12 @@ import { isAdminRole } from "./constants/roles";
 import { Spinner } from "./components/common/Feedback";
 import ScrollTopButton from "./components/common/ScrollTopButton";
 import { api } from "./api/client";
-import { versionNumber } from "./utils/appVersion";
 import { useRestoreScrollOnKeyboardClose } from "./hooks/useRestoreScrollOnKeyboardClose";
 import { useBottomViewportInset } from "./hooks/useBottomViewportInset";
 import { useModalDragDismiss } from "./hooks/useModalDragDismiss";
 import { scrollRootTo } from "./utils/scrollRoot";
 import { resampleSafariChrome } from "./utils/theme";
-import { homeScreenFor } from "./constants/menuVersions";
+import { HOME_SCREEN } from "./constants/menuVersions";
 
 import AuthScreen from "./pages/auth/AuthScreen";
 import Header from "./layout/Header";
@@ -27,6 +26,7 @@ import ChallengeInboxModal from "./modals/ChallengeInboxModal";
 import ChallengeResultInboxModal from "./modals/ChallengeResultInboxModal";
 import MatchRequestInboxModal from "./modals/MatchRequestInboxModal";
 import AppUpdateNoticeModal from "./modals/AppUpdateNoticeModal";
+import FeedScreen from "./pages/feed/FeedScreen";
 import RankingScreen from "./pages/v2/RankingScreen";
 import MatchScreen from "./pages/v2/MatchScreen";
 import StatsScreen from "./pages/v2/StatsScreen";
@@ -35,14 +35,14 @@ import ShareLoginGate from "./pages/share/ShareLoginGate";
 
 import type { ScreenKey } from "./types";
 
-const SCREEN_KEYS: ScreenKey[] = ["ranking", "match", "challenge", "stats", "members", "leagues", "rivalry"];
+const SCREEN_KEYS: ScreenKey[] = ["feed", "ranking", "match", "challenge", "stats", "members", "leagues", "rivalry"];
 
 // 새로고침해도 보던 화면 그대로 있도록 URL의 ?screen= 쿼리에 현재 화면을 기록해둔다 —
 // 사파리의 pull-to-refresh 등 브라우저 기본 새로고침은 앱 상태를 그대로 날려서 첫 화면으로
 // 돌아가 버리는데, URL만은 새로고침 후에도 그대로 유지되기 때문에 여기 저장해두는 것.
 function screenFromUrl(): ScreenKey {
   const s = new URLSearchParams(window.location.search).get("screen");
-  return (SCREEN_KEYS as string[]).includes(s ?? "") ? (s as ScreenKey) : "ranking";
+  return (SCREEN_KEYS as string[]).includes(s ?? "") ? (s as ScreenKey) : "feed";
 }
 
 // 카카오톡 공유 링크(?sv=match|challenge&sid=123) — 있으면 그 한 장만 보이는 공유 화면을 연다.
@@ -65,10 +65,8 @@ export default function App() {
   const restoringSession = useAppStore((s) => s.restoringSession);
   const justLoggedIn = useAppStore((s) => s.justLoggedIn);
   const clearJustLoggedIn = useAppStore((s) => s.clearJustLoggedIn);
-  const appVersion = useAppStore((s) => s.appVersion);
   const adminPanelOpen = useAppStore((s) => s.adminPanelOpen);
   const setAdminPanelOpen = useAppStore((s) => s.setAdminPanelOpen);
-  const effectiveVersionNumber = versionNumber(appVersion);
   // 너 나와!는 이제 상시 고정 메뉴라 버전과 무관하게 항상 열려 있다(요청).
   const isChallengeEnabled = true;
   const bootstrap = useAppStore((s) => s.bootstrap);
@@ -130,15 +128,12 @@ export default function App() {
     if (user) void bootstrap();
   }, [user?.id, bootstrap]);
 
-  // 로그인 폼으로 직접 로그인했으면(새로고침으로 세션이 복원된 게 아니라) 이전에 URL에
-  // 남아있던 화면과 무관하게 항상 홈 화면으로 보낸다 — 어떤 화면이 홈인지는 버전별 메뉴
-  // 배열(menuVersions.ts) 순서로 정해진다. booting이 끝날 때까지 기다린다 — 그 전엔
-  // appVersion이 아직 기본값(버전 1)이라 실제 버전을 알기 전에 잘못된 홈으로 보낼 수 있다.
+  // 로그인 폼으로 직접 로그인했으면(새로고침 세션 복원이 아니라) 항상 홈(피드)으로 보낸다.
   useEffect(() => {
     if (!justLoggedIn || booting) return;
-    setScreen(homeScreenFor(effectiveVersionNumber));
+    setScreen(HOME_SCREEN);
     clearJustLoggedIn();
-  }, [justLoggedIn, booting, effectiveVersionNumber, clearJustLoggedIn]);
+  }, [justLoggedIn, booting, clearJustLoggedIn]);
 
   // 화면(탭)을 이동할 때마다 목록을 최신 상태로 다시 불러온다 — 다른 사람이 그 사이
   // 등록/수정한 경기결과·회원 정보를 수동으로 새로고침 버튼을 눌러야만 보는 게 아니라
@@ -214,10 +209,10 @@ export default function App() {
   // 접근 권한이 없는 화면으로 들어온 경우(예: URL 직접 조작) 실제로 보여줄 화면 —
   // 기존에 각 화면 분기에서 개별적으로 <RankingScreen />으로 대체하던 것과 동일한 동작이다.
   const resolvedScreen: ScreenKey =
-    screen === "challenge" && !isChallengeEnabled ? "ranking" :
-    screen === "members" && !isAdmin ? "ranking" :
-    screen === "leagues" && !isAdmin ? "ranking" :
-    screen === "rivalry" && !isAdmin ? "ranking" :
+    screen === "challenge" && !isChallengeEnabled ? "feed" :
+    screen === "members" && !isAdmin ? "feed" :
+    screen === "leagues" && !isAdmin ? "feed" :
+    screen === "rivalry" && !isAdmin ? "feed" :
     screen;
 
   // 배경 사진이 있는 화면(지금은 랭킹뿐)에서는 헤더까지 사진이 이어져 보이게 —
@@ -255,6 +250,7 @@ export default function App() {
                 "페이지 상태 유지 기능 삭제 — 페이지 이동시 항상 초기상태로 로딩"). 접근
                 권한이 없는 화면(challenge/members 등)은 랭킹으로 대체되던
                 기존 동작과 같게, resolvedScreen으로 보여줄 화면만 고른다. */}
+            {!booting && resolvedScreen === "feed" && <FeedScreen />}
             {!booting && resolvedScreen === "ranking" && <RankingScreen />}
             {!booting && resolvedScreen === "match" && <MatchScreen />}
             {isChallengeEnabled && !booting && resolvedScreen === "challenge" && <ChallengeScreen />}
