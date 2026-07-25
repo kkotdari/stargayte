@@ -7897,7 +7897,7 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 }
 .scr-feed-stack-opened .scr-feed-stack-rest { grid-template-rows: 1fr; opacity: 1; }
 .scr-feed-stack-rest-inner { overflow: hidden; min-height: 0; }
-.scr-feed-stack-rest-list { display: flex; flex-direction: column; gap: 20px; padding-bottom: 20px; }
+.scr-feed-stack-rest-list { display: flex; flex-direction: column; gap: 14px; padding: 4px 0 20px; }
 @media (prefers-reduced-motion: reduce) {
   .scr-feed-stack-peek, .scr-feed-stack-rest { transition: none; }
 }
@@ -7918,9 +7918,10 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   background: rgba(255, 255, 255, 0.5);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 -2px 8px rgba(0, 0, 0, 0.08);
 }
-/* 줄이기 — 카드 밖, 마지막 카드 바로 위 가운데 알약(흐름 배치). */
+/* 줄이기 — 카드 밖, 맨 위 가운데 알약(흐름 배치). 음수 마진을 쓰면 클립(overflow:hidden)
+   위로 삐져나가 윗부분이 잘린다 — 리스트 상단 패딩으로 자리를 확보한다. */
 .scr-feed-stack-collapse {
-  align-self: center; margin: -6px 0;
+  align-self: center; margin: 0;
   border: none; border-radius: 999px; padding: 6px 16px; cursor: pointer;
   font-family: inherit; font-size: var(--fs-micro); font-weight: 700; color: var(--text);
   background: rgba(var(--overlay-rgb), 0.35);
