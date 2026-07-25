@@ -1527,12 +1527,12 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
      지금처럼 영역은 차지 X") — right:100%로 점수 왼쪽 바깥에서 시작해 겹치지 않고,
      top:50%+translateY(-50%)로 세로 중앙에 맞춘다. 간격은 점수에 더 가깝게(요청:
      "잠정 배지 너무 왼쪽이야 점수에 가깝게 이동"). */
-  /* 잠정 표시 — 순위 숫자 오른쪽-아래 모서리에 붙는 동그라미 ! 아이콘(요청). 숫자 래퍼
-     (.scr-rank-num-wrap) 기준 절대위치라 기존 정렬을 안 건드린다. 좀 연하게(opacity). */
-  position: absolute; left: 100%; bottom: -1px; margin-left: 1px;
-  display: inline-flex; align-items: center; color: #111; line-height: 1; opacity: 0.5;
+  /* 잠정 표시 — 순위 숫자 바로 오른쪽에 인라인으로 붙는 동그라미 ! 아이콘(요청). 좌측
+     정렬이라 절대위치 없이 흐름 안에 둔다. 더 연하게(opacity 0.35). */
+  display: inline-flex; margin-left: 2px; color: #111; line-height: 1; opacity: 0.35;
 }
-.scr-rank-num-wrap { position: relative; display: inline-flex; }
+/* 순위 숫자 + 잠정 아이콘을 한 줄로 두되 세로는 위쪽 정렬(요청). */
+.scr-rank-num-wrap { display: inline-flex; align-items: flex-start; }
 html:not(.scr-light-theme) .scr-rank-provisional { color: #f2f4f8; }
 .scr-rank-provisional svg { display: block; }
 /* 기간 단위(월/년) 토글은 필터창의 공용 PillTabs를 그대로 쓴다(요청: "필터의 기간모듈로

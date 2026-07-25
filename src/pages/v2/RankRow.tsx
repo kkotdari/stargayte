@@ -81,15 +81,15 @@ export default function RankRowV2({ row, tiedWithPrev = false, highlighted = fal
                 같은 규칙 — 숫자만 덩그러니 놓이면 무슨 수인지 안 읽힌다. 순위 변동은 그와
                 별개로 사람마다 다를 수 있어 공동순위여도 매 행 각자 보여준다(요청: "랭킹에서
                 공동순위라도 순위변동은 각각 표시돼야함"). */}
-            {/* 순위 숫자를 relative 래퍼로 감싸, 잠정 표시(!)를 숫자 오른쪽-아래 모서리에
-                절대위치로 붙인다(요청) — 흐름 밖이라 기존 정렬을 안 건드린다. */}
+            {/* 좌측 정렬이라 복잡한 relative/absolute 없이, 순위 숫자 바로 오른쪽에 인라인으로
+                잠정 표시(!)를 둔다(요청) — 세로는 위쪽 정렬(align-items:flex-start). */}
             <span className="scr-rank-num-wrap">
               <span className="scr-rank-num">
                 {!tiedWithPrev && rank}
               </span>
               {provisional && !tiedWithPrev && (
                 <span className="scr-rank-provisional" title="경기 수가 적어 아직 확정되지 않은 잠정 점수예요" aria-label="잠정 점수">
-                  <CircleAlert size={11} />
+                  <CircleAlert size={10} />
                 </span>
               )}
             </span>
