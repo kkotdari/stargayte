@@ -77,6 +77,16 @@ interface RankShiftFeedItem {
 
 type FeedItem = ChallengeItem | MatchItem | RankShiftFeedItem;
 
+// 같은 날의 게임결과가 피드에서 2개 이상 연속되면 겹침 스택 하나로 묶는다.
+interface MatchStackItem {
+  kind: "matchstack";
+  time: number;
+  date: string;
+  items: MatchItem[];
+}
+
+type DisplayItem = FeedItem | MatchStackItem;
+
 function rankShiftItem(shift: RankShift): RankShiftFeedItem {
   return {
     kind: "rankshift",
@@ -218,6 +228,46 @@ function MatchCard({ item, memberOf, onDeleted, dateLabel }: {
         <MatchList rows={rows} memberOf={memberOf} onDeleted={onDeleted} loading={false} />
       </div>
       <FeedCardComments targetType="match" targetId={item.match.id} />
+    </div>
+  );
+}
+
+// 겹침 스택 — 접힘: 그날 첫 게임 카드 + 그 아래로 살짝 겹쳐 보이는 뒷카드 밑단("+N건",
+// 누르면 펼침). 펼침: 시간순 전체 카드 + 마지막 카드 위 줄이기 버튼.
+function MatchStack({ stack, memberOf, onDeleted, dateLabel }: {
+  stack: MatchStackItem;
+  memberOf: (id: string) => Member | undefined;
+  onDeleted: () => void;
+  dateLabel: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const ordered = useMemo(() => [...stack.items].sort((a, b) => a.time - b.time), [stack.items]);
+
+  if (!open) {
+    return (
+      <div className="scr-feed-stack">
+        <MatchCard item={ordered[0]} memberOf={memberOf} onDeleted={onDeleted} dateLabel={dateLabel} />
+        <button
+          type="button" className="scr-feed-stack-peek"
+          onClick={() => setOpen(true)}
+          aria-label={`게임결과 ${ordered.length - 1}건 더 펼치기`}
+        >
+          + {ordered.length - 1}건
+        </button>
+      </div>
+    );
+  }
+  return (
+    <div className="scr-feed-stack-open">
+      {ordered.map((it) => (
+        <MatchCard key={it.match.id} item={it} memberOf={memberOf} onDeleted={onDeleted} dateLabel={dateLabel} />
+      ))}
+      <button
+        type="button" className="scr-feed-stack-collapse"
+        onClick={() => setOpen(false)} aria-label="줄이기"
+      >
+        줄이기
+      </button>
     </div>
   );
 }
@@ -390,7 +440,32 @@ export default function FeedScreen() {
     return feed.filter((item) => item.time >= oldest);
   }, [feed, hasMore, matches]);
 
-  const dateLabelOf = (item: FeedItem) => {
+  // 같은 날 게임결과가 2개 이상 연속이면 겹침 스택으로 묶는다(요청).
+  const displayFeed = useMemo<DisplayItem[]>(() => {
+    const out: DisplayItem[] = [];
+    let i = 0;
+    while (i < visibleFeed.length) {
+      const it = visibleFeed[i];
+      if (it.kind === "match") {
+        let j = i + 1;
+        while (
+          j < visibleFeed.length
+          && visibleFeed[j].kind === "match"
+          && (visibleFeed[j] as MatchItem).match.date === it.match.date
+        ) j++;
+        if (j - i >= 2) {
+          out.push({ kind: "matchstack", time: it.time, date: it.match.date, items: visibleFeed.slice(i, j) as MatchItem[] });
+          i = j;
+          continue;
+        }
+      }
+      out.push(it);
+      i++;
+    }
+    return out;
+  }, [visibleFeed]);
+
+  const dateLabelOf = (item: { time: number }) => {
     const d = new Date(item.time);
     return `${d.getMonth() + 1}월 ${d.getDate()}일`;
   };
@@ -444,11 +519,11 @@ export default function FeedScreen() {
 
       {loading ? (
         <div className="scr-empty"><Spinner size={18} /></div>
-      ) : visibleFeed.length === 0 ? (
+      ) : displayFeed.length === 0 ? (
         <div className="scr-empty">아직 표시할 활동이 없어요.</div>
       ) : (
         <div className="scr-feed-list">
-          {visibleFeed.map((item) => (
+          {displayFeed.map((item) => (
             item.kind === "rankshift" ? (
               <div className="scr-feed-card" key={`rs-${item.shift.id}`}>
                 <div className="scr-feed-card-head" data-date-label={dateLabelOf(item)}>
@@ -505,6 +580,14 @@ export default function FeedScreen() {
                 </div>
                 <FeedCardComments targetType="challenge" targetId={item.challenge.id} />
               </div>
+            ) : item.kind === "matchstack" ? (
+              <MatchStack
+                key={`ms-${item.date}-${item.time}`}
+                stack={item}
+                memberOf={memberOf}
+                onDeleted={reload}
+                dateLabel={dateLabelOf(item)}
+              />
             ) : (
               <MatchCard
                 key={`m-${item.match.id}`}
@@ -523,7 +606,7 @@ export default function FeedScreen() {
 
       {/* 우측 스크롤 타임라인 — 피드는 최신순(위=최근, 아래=과거). 무한스크롤과 함께 쓰면
           타임라인은 "지금까지 불러온 범위"를 나타내고, 더 불러올수록 아래(과거)가 늘어난다. */}
-      {!loading && visibleFeed.length > 0 && (
+      {!loading && displayFeed.length > 0 && (
         <ScrollNavTimeline headSelector=".scr-feed-card-head" topLabel="최근" bottomLabel="과거" />
       )}
 
