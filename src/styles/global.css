@@ -7908,8 +7908,9 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-feed-match-body .scr-mt-player { flex: 0 0 auto; }
 /* 펼침 때 스탯 표 위에 노출되는 맵·플레이시간(요청). */
 .scr-match-trow-map-expanded { display: flex; align-items: baseline; gap: 6px; padding: 2px 0 8px; justify-content: center; }
-.scr-feed-card-time { font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
-.scr-feed-card-label { margin-left: auto; font-weight: 600; }
+/* 라벨(무엇인지)이 앞, 시간이 바로 옆(요청) — 라벨이 주, 시간은 흐리게 보조. */
+.scr-feed-card-time { font-weight: 600; color: var(--dim); font-variant-numeric: tabular-nums; }
+.scr-feed-card-label { font-weight: 700; color: var(--text); }
 .scr-feed-card-body { padding: 0; }
 /* 카드 속 카드 금지(요청) — 안에 앉힌 너 나와! 카드/경기 로우는 자기 패널(배경·블러·그림자·
    라운딩)을 전부 벗고 내용만 피드 카드에 직접 얹힌다. 세로 여백도 압축(요청: 퍼져 보이지 않게). */

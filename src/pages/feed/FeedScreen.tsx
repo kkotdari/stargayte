@@ -211,8 +211,8 @@ function MatchCard({ item, memberOf, onDeleted, dateLabel }: {
     <div className="scr-feed-card">
       <div className="scr-feed-card-head" data-date-label={dateLabel}>
         <Swords size={13} aria-hidden />
-        <span className="scr-feed-card-time">{formatEventTime(item.time, item.withClock)}</span>
         <span className="scr-feed-card-label">게임결과</span>
+        <span className="scr-feed-card-time">{formatEventTime(item.time, item.withClock)}</span>
       </div>
       <div className="scr-feed-match-body">
         <MatchList rows={rows} memberOf={memberOf} onDeleted={onDeleted} loading={false} />
@@ -453,10 +453,10 @@ export default function FeedScreen() {
               <div className="scr-feed-card" key={`rs-${item.shift.id}`}>
                 <div className="scr-feed-card-head" data-date-label={dateLabelOf(item)}>
                   <Trophy size={13} aria-hidden />
-                  <span className="scr-feed-card-time">{formatEventTime(item.time, item.withClock)}</span>
                   <span className="scr-feed-card-label">
                     랭크 변동 발생 · {item.shift.matchType === "0101" ? "개인전" : "팀전"}
                   </span>
+                  <span className="scr-feed-card-time">{formatEventTime(item.time, item.withClock)}</span>
                 </div>
                 <ul className="scr-feed-shift-list">
                   {item.shift.entries.map((e) => {
@@ -481,8 +481,8 @@ export default function FeedScreen() {
               <div className="scr-feed-card" key={`c-${item.challenge.id}`}>
                 <div className="scr-feed-card-head" data-date-label={dateLabelOf(item)}>
                   <Send size={13} aria-hidden />
-                  <span className="scr-feed-card-time">{formatEventTime(item.time, item.withClock)}</span>
                   <span className="scr-feed-card-label">너 나와!</span>
+                  <span className="scr-feed-card-time">{formatEventTime(item.time, item.withClock)}</span>
                 </div>
                 <ChallengeActionsMenu
                   challenge={item.challenge}
