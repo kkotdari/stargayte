@@ -1318,7 +1318,7 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   background: transparent; color: var(--muted); cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease;
 }
-.scr-rank-month-btn:hover { background: rgba(255, 255, 255, 0.08); color: var(--text); }
+@media (hover: hover) { .scr-rank-month-btn:hover { background: rgba(255, 255, 255, 0.08); color: var(--text); } }
 /* 갈 수 없는 방향의 화살표는 숨기되(visibility) 자리는 그대로 둬서 월 라벨/타이틀이 좌우로
    밀리지 않게 한다(요청: "이전 다음이 있는 경우만 노출되지만 자리는 예약해서 레이아웃
    흔들림 없게"). */
@@ -1486,10 +1486,14 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   font-size: var(--fs-caption); font-weight: 600; color: var(--muted);
   transition: background 0.12s ease, color 0.12s ease;
 }
-.scr-rank-method-trigger:hover,
+/* 활성(-active) 상태는 모든 기기에서 유지하고, :hover만 마우스 기기로 가둔다 — 터치
+   기기에서 탭 후 hover 색이 남는 걸 막되 활성 표시는 그대로 보이게 분리한다. */
 .scr-rank-method-trigger-active { background: rgba(255, 255, 255, 0.08); color: var(--text); }
-.scr-light-theme .scr-rank-method-trigger:hover,
 .scr-light-theme .scr-rank-method-trigger-active { background: rgba(0, 0, 0, 0.06); }
+@media (hover: hover) {
+  .scr-rank-method-trigger:hover { background: rgba(255, 255, 255, 0.08); color: var(--text); }
+  .scr-light-theme .scr-rank-method-trigger:hover { background: rgba(0, 0, 0, 0.06); }
+}
 /* 트리거를 누르면 뜨는 툴팁 본문 — 다른 팝오버(.scr-pv-drop)와 같은 톤의 떠 있는 카드. */
 /* 배경/블러/테두리/그림자는 "라이팅 유리 패널 공통"(파일 뒤) 한 벌이 담당. 글자색은
    하드코딩 흰색 대신 테마 변수(--text)를 써서 두 테마에서 자동으로 맞는다. */
@@ -1809,7 +1813,9 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   color: var(--text); font-weight: 600; text-align: left; min-width: 0; font-size: var(--fs-subhead);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.scr-stat-name-btn:hover { color: var(--point); }
+/* 마우스가 있는 기기에서만 hover 색을 준다 — 터치 기기는 탭 후에도 :hover가 남아
+   닉네임이 포인트색으로 물든 채 유지되던 버그(지적). 다른 hover 규칙들과 같은 가드. */
+@media (hover: hover) { .scr-stat-name-btn:hover { color: var(--point); } }
 /* 배틀태그는 닉네임보다 작게, 데이터 느낌의 모노스페이스(scr-mono)로, 태그처럼 캡슐
    배경에 감싼다 — align-self:flex-start로 글자 길이만큼만 캡슐이 감싸지게 한다
    (부모 stack의 기본 stretch를 이 요소만 덮어씀). */
@@ -2020,7 +2026,7 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   background-color: var(--panel-solid); background-image: linear-gradient(var(--panel-raised), var(--panel-raised));
   border-right: 1px solid var(--line-soft);
 }
-.scr-stat-sort-btn:hover { color: var(--text); }
+@media (hover: hover) { .scr-stat-sort-btn:hover { color: var(--text); } }
 /* 정렬 활성 표시는 색(포인트색) 대신 기본 글자색을 더 굵게 — :hover도 같은 규칙을
    둬서, 클릭 직후 마우스가 그 자리에 그대로 있어도(호버 상태) 활성 표시가 그대로
    유지된다(안 그러면 순수 :hover 규칙이 이겨서 클릭해도 색이 안 바뀐 것처럼 보인다). */
@@ -2145,7 +2151,8 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   color: var(--text); font-weight: 700; font-size: var(--fs-subhead); text-align: left; min-width: 0;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.scr-rank-name:hover { color: var(--point); }
+/* 터치 기기 sticky hover 방지 — 위 .scr-stat-name-btn과 같은 이유로 hover 가드. */
+@media (hover: hover) { .scr-rank-name:hover { color: var(--point); } }
 /* 닉네임 옆 도전장 버튼 — "도전장 쓰기" 버튼과 같은 종이비행기 아이콘으로 통일(요청:
    "랭킹카드에 바로 그 상대로 도전장 띄우는 버튼 추가 닉네임 옆에", "랭킹 차트에도
    종이비행기 버튼으로 바꿔야지"). */
@@ -2159,7 +2166,7 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   border-radius: 50%; color: var(--muted); cursor: pointer; opacity: 0.75;
   transition: opacity .12s, background .12s, color .12s;
 }
-.scr-rank-challenge-btn:hover { opacity: 1; color: var(--text); background: rgba(var(--overlay-rgb), 0.08); }
+@media (hover: hover) { .scr-rank-challenge-btn:hover { opacity: 1; color: var(--text); background: rgba(var(--overlay-rgb), 0.08); } }
 /* 글로우 대신 1~3위 닉네임을 금/은/동 메탈 폰트색으로(요청: "글로우 제거 대신 1위
    닉네임은 금색 메탈 늒낌 2위는 은색 메탈 느낌 3위는 동색 메탈느낌", "폰트색
    말하는것") — 그라데이션 + background-clip:text로 살짝 광택 나는 느낌을 준다.
