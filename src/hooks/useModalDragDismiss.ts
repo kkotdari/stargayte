@@ -9,8 +9,8 @@ import { useEffect } from "react";
 // 핵심(요청): 끄는 동안 touchmove를 preventDefault해서 iOS 고무줄 리바운드/배경 스크롤을
 // 막는다 — 안 그러면 "최상단에서 아래로"가 닫기 제스처가 아니라 그냥 튕김으로 새어나간다.
 
-const SHEET_SELECTOR = ".scr-modal, .scr-rivalry-overlay-body";
-const OVERLAY_SELECTOR = ".scr-modal-overlay, .scr-rivalry-overlay";
+const SHEET_SELECTOR = ".scr-modal, .scr-rivalry-overlay-body, .scr-photo-frame";
+const OVERLAY_SELECTOR = ".scr-modal-overlay, .scr-rivalry-overlay, .scr-photo-overlay";
 // 손가락 이동 대비 시트 이동 저항(1이면 1:1). 손가락을 더 직접 따라오게 해서 반응이
 // 빠르게 느껴지도록 0.6→0.85로 올린다(요청: 반응 속도 증가).
 const DAMP = 0.85;
@@ -142,10 +142,28 @@ export function useModalDragDismiss(): void {
         // 즉시 닫혀 반응이 빠르게 느껴진다(요청).
         const flicked = velY >= FLICK_VELOCITY && sheetShift >= FLICK_MIN_SHIFT;
         if (sheetShift >= CLOSE_THRESHOLD || flicked) {
-          // 아래로 슬라이드아웃 후 실제 닫기 — 닫힘 속도를 더 높인다(.13s→.09s, 요청).
-          s.style.transition = "translate .09s ease-in";
-          s.style.translate = "0 110%";
-          window.setTimeout(() => { invokeClose(s); clearSheetStyles(s); }, 90);
+          // 화면 아래로 "가속하며" 완전히 떨어진 뒤 언마운트한다(요청: 자연스럽게 아래로,
+          // 가속 붙여서). ease-in 계열 cubic-bezier라 시작은 느리고 끝으로 갈수록 빨라져
+          // 중력처럼 떨어진다. 여기서 translate를 리셋하지 않는 게 핵심 — 예전엔 슬라이드가
+          // 끝나기 전에 clearSheetStyles가 translate를 지워 시트가 한 프레임 중앙으로
+          // 튀어 올랐다가(지적: "살짝 위로 올라왔다 사라짐") 언마운트됐다. 닫는 경우엔
+          // 시트가 통째로 사라지므로 남은 인라인 스타일 정리도 불필요하다.
+          s.style.transition = "translate .24s cubic-bezier(0.45, 0, 1, 1)";
+          s.style.translate = "0 120%";
+          // 슬라이드가 "완전히" 끝난 뒤에만 언마운트한다 — 고정 타임아웃으로 끊으면 키 큰
+          // 모달(프로필 등)에선 아직 화면에 걸쳐 있는데 잘려 "중간에 딱 멈추고 사라지는"
+          // 것처럼 보였다(지적). transitionend로 실제 완료를 기다리되, 시트 자신의 translate
+          // 트랜지션만 인정한다(자식 요소의 트랜지션 버블은 무시). 안 오면 타임아웃으로 보정.
+          let done = false;
+          const finish = (ev?: TransitionEvent) => {
+            if (ev && (ev.target !== s || ev.propertyName !== "translate")) return;
+            if (done) return;
+            done = true;
+            s.removeEventListener("transitionend", finish as EventListener);
+            invokeClose(s);
+          };
+          s.addEventListener("transitionend", finish as EventListener);
+          window.setTimeout(() => finish(), 320);
         } else {
           // 스냅백 — 좀 더 탄력 있게 짧게(.2s→.16s).
           s.style.transition = "translate .16s cubic-bezier(0.32, 0.72, 0, 1)";
