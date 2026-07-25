@@ -7857,7 +7857,7 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 /* 카드(패널) 디자인 폐기(요청) — 인스타그램 피드처럼 포스트가 헤어라인 구분선만 두고
    자연스럽게 이어진다. .scr-feed-card는 이제 '포스트 한 구획'의 이름일 뿐 패널이 아니다. */
 .scr-feed-list { display: flex; flex-direction: column; gap: 0; }
-.scr-feed-card { position: relative; padding: 14px 0 22px; }
+.scr-feed-card { position: relative; padding: 10px 0 10px; }
 /* 아이템 사이 구분선 — 아이템 구분이 흐리다는 지적으로 더 또렷하게(0.1→0.16), 그리고
    화면 좌우 패딩(.scr-main 20px/모바일 16px)을 음수 마진으로 뚫어 콘텐츠 영역 끝까지
    긋는다(PC는 콘텐츠 프레임 폭 전체). */
@@ -7878,11 +7878,11 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-feed-match-body .scr-match-trow { position: static; }
 /* 헤더(시각/라벨) 줄과 같은 라인에 오도록 — 헤더 padding-top 12px + caption 줄높이의
    세로 중심에 버튼 중심을 맞춘다. */
-.scr-feed-match-body .scr-match-trow-topmeta { position: absolute; top: 26px; right: 12px; z-index: 2; }
+.scr-feed-match-body .scr-match-trow-topmeta { position: absolute; top: 22px; right: 12px; z-index: 2; }
 .scr-feed-match-body .scr-match-trow-topmeta .scr-match-kebab-btn,
 .scr-feed-chal-menu .scr-match-kebab-btn { width: 26px; height: 26px; min-height: 26px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
 /* 너 나와 케밥(피드 레벨)도 같은 자리 — 기존 우상단 '취소' 라벨과 겹치지 않게 라벨은 왼쪽으로. */
-.scr-feed-chal-menu { position: absolute; top: 26px; right: 12px; z-index: 3; }
+.scr-feed-chal-menu { position: absolute; top: 22px; right: 12px; z-index: 3; }
 .scr-feed-card .scr-challenge-cancel-tag { right: 48px; }
 /* 아이템 내 폰트 전부 1스텝 축소(요청) — 로스터/닉네임 caption, 헤더 micro 등.
    로스터와 너나와 닉네임은 같은 크기 유지(둘 다 caption). */
@@ -7919,7 +7919,7 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-feed-card-body > .scr-challenge-card.scr-challenge-card-ended {
   border: none; background: transparent; box-shadow: none;
   backdrop-filter: none; -webkit-backdrop-filter: none; border-radius: 0;
-  padding-top: 11px; padding-bottom: 14px; gap: 7px;
+  padding-top: 14px; padding-bottom: 16px; gap: 8px;
 }
 /* 경기 로우도 동일 — 행 자신의 라이팅 글라스 패널(배경·블러·그림자·마진)을 벗기고
    내용만 피드 카드에 직접 얹는다. 날짜 헤더는 카드 헤더가 대신하므로 숨긴다. */
@@ -7929,7 +7929,7 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-light-theme .scr-feed-match-body .scr-match-list-panel-v2 .scr-match-trow {
   background: transparent; border: none; box-shadow: none;
   backdrop-filter: none; -webkit-backdrop-filter: none;
-  border-radius: 0; margin: 0; padding-top: 5px; padding-bottom: 7px;
+  border-radius: 0; margin: 0; padding-top: 7px; padding-bottom: 9px;
 }
 /* 카드 폭이 이미 좁으니 PC의 넓은 좌우 패딩(100px)도 카드 안에선 줄인다. */
 @media (min-width: 720px) {
@@ -7938,7 +7938,7 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 
 /* 카드 하단 공통 댓글 영역 — 토글을 누르면 목록/입력이 그 자리에서 펼쳐진다.
    구분선은 아이템 사이 하나로 충분하니(요청) 댓글 영역/댓글끼리의 선은 모두 없앤다. */
-.scr-feed-comments { padding: 0 16px 7px; }
+.scr-feed-comments { padding: 0 16px 2px; }
 .scr-feed-comments .scr-match-notes { border-top: none; padding-top: 0; margin-top: 5px; }
 .scr-feed-comments .scr-mreq-item + .scr-mreq-item { border-top: none; }
 .scr-feed-comments-toggle {
@@ -7996,7 +7996,7 @@ html:not(.scr-light-theme) .scr-feed-comments .scr-mreq-editor .scr-mreq-live-in
 }
 
 /* 랭크 변동 발생 카드 — 변동 후 순위 오름차순 목록(상승 ▲/하락 ▼/신규). */
-.scr-feed-shift-list { list-style: none; margin: 0; padding: 6px 16px 3px; display: flex; flex-direction: column; gap: 5px; }
+.scr-feed-shift-list { list-style: none; margin: 0; padding: 6px 16px 3px; display: flex; flex-direction: column; gap: 6px; }
 .scr-feed-shift-row { display: flex; align-items: baseline; gap: 8px; font-size: var(--fs-micro); }
 .scr-feed-shift-rank { font-weight: 800; font-variant-numeric: tabular-nums; min-width: 34px; text-align: right; }
 .scr-feed-shift-name { font-weight: 600; }
