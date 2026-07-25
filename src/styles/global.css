@@ -97,8 +97,9 @@
   /* 헤더/서랍의 구분선을 파이프(붉은 강조) 대신 중립 톤으로 쓸 때의 색(요청: "포인트가 아닌
      기본 컬러"). 어두운 테마는 옅은 흰색, 라이트는 옅은 검정. */
   --divider-soft: rgba(255, 255, 255, 0.32);
-  /* 표 안쪽 그리드 선(세로 구분선/행 경계) 전용 — 패널 배경과 구분되도록 --line보다 밝다. */
-  --line-soft: #443b3e;
+  /* 표 안쪽 그리드 선(세로 구분선/행 경계) 전용 — 패널 배경과 구분되도록 --line보다 밝다.
+     예전 붉은 갈색(#443b3e)은 이제 안 쓰는 팔레트(요청) — 흰 계열로 통일. */
+  --line-soft: rgba(255, 255, 255, 0.16);
 
   /* 텍스트: 한 가지 색(거의 흰색)만 사용 — 대부분 기본색 그대로, 꼭 필요한 곳만 살짝 낮춘 투명도 */
   --text: #f5f6f7;
@@ -124,8 +125,9 @@
   /* 통계 화면의 승률 도넛과 같은 계열의 파랑 — 순위 변동없음 표시, 주간랭킹 경기수 막대 등
      "정보성" 파랑이 필요한 곳에 공통으로 쓴다. 흰색을 섞어 파스텔 톤으로. */
   --info: #86bdf0;
-  /* 카드/랭킹 행 사이 구분선 톤 — 옅은 붉은기(0.35 알파로 은은하게) */
-  --divider-tint: 192, 122, 134;
+  /* 카드/랭킹 행 사이 구분선 톤 — 예전 옅은 붉은기(192,122,134)는 이제 안 쓰는
+     팔레트(요청) — 흰 계열로 통일(알파는 쓰는 곳마다 그대로). */
+  --divider-tint: 255, 255, 255;
   /* 주간랭킹 막대 채움색 — --point/--info를 그대로 쓰면 라이트 테마에서 그 둘이 검정으로
      바뀌어 막대 위 검정 글자가 안 보이게 된다. 막대 안에 항상 검정 글자를 얹을 수 있도록
      테마와 무관하게 밝은 색을 유지하는 전용 변수로 분리한다. */
@@ -2367,8 +2369,10 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   display: grid; grid-template-columns: 56px 48px minmax(0, 280px);
   justify-content: center; max-width: none; margin: 0;
   align-items: center; column-gap: 48px; width: 100%; min-width: 0;
-  /* 좌우 여백은 거의 같게 두되 왼쪽만 살짝 더 준다(요청) — 클러스터가 살짝 오른쪽으로. */
-  box-sizing: border-box; padding-left:48px;
+  /* 좌우 여백은 거의 같게 두되 왼쪽이 좀 더(요청). 고정 px 대신 행 폭의 %로 줘서
+     화면 폭이 달라지면 여백도 비율로 따라 커지고 작아진다(요청) — justify-content:center가
+     남은 공간을 반씩 나누므로, 왼쪽 패딩 p%만큼 클러스터가 p/2%씩 오른쪽으로 이동한다. */
+  box-sizing: border-box; padding-left: 5%;
 }
 /* 컬럼 헤더 로우(요청: "랭크 포인트 회원") — .scr-rank-row-inner를 같이 입어 그리드
    (칸 폭/갭/패딩)를 데이터 행과 완전히 공유한다. 여기선 글자 톤/간격만 얹는다.
@@ -2376,9 +2380,15 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 .scr-rank-head-row {
   font-size: var(--fs-caption); font-weight: 700; color: var(--dim);
   padding-top: 4px; padding-bottom: 8px;
-  border-bottom: 1px solid var(--line-soft);
+  /* 헤더 밑선은 데이터 행 구분선(흰 0.16, 0.5px)보다 살짝 굵고 또렷하게(요청) —
+     헤더임을 드러내는 위계. 라이트는 검정 계열로. */
+  border-bottom: 1.5px solid rgba(255, 255, 255, 0.28);
 }
+.scr-light-theme .scr-rank-head-row { border-bottom-color: rgba(0, 0, 0, 0.35); }
 .scr-rank-head-row .scr-rank-head-score { justify-self: end; }
+/* "회원" 라벨은 아바타 왼끝보다 살짝 오른쪽으로(요청) — 아바타·닉네임 묶음 위에서
+   더 자연스러운 위치. */
+.scr-rank-head-row > span:last-child { padding-left: 16px; }
 
 /* 아바타+닉네임 묶음 — 내부 간격은 여기 gap 하나로만 조절한다(요청). */
 .scr-rank-user { display: flex; align-items: center; gap: 16px; min-width: 0; }
@@ -2442,8 +2452,8 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
        좁을 때 배지가 순위 숫자와 겹치던 문제(지적) 해결. */
     /* 아바타+닉네임 한 칸(40 + 내부 gap 6 + 175). */
     grid-template-columns: 40px 44px minmax(0, 221px); column-gap: 16px;
-    /* 좌우 여백 거의 같게, 왼쪽만 살짝 더(요청). 구분선(행 ::before)은 양 끝까지 그대로. */
-    padding-left: 8px;
+    /* 좌우 여백 거의 같게, 왼쪽만 살짝 더(요청) — PC와 같은 비율 방식(행 폭의 %). */
+    padding-left: 2%;
   }
   /* 모바일 닉네임은 headline(24)(요청). */
   .scr-rank-table-panel-v2 .scr-rank-name { font-size: var(--fs-headline); }
@@ -5413,9 +5423,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 .scr-member-rows { display: flex; flex-direction: column; }
 .scr-member-row {
   display: flex; align-items: center; gap: 10px; width: 100%;
-  /* 구분선은 다크에서 흰 계열(랭킹 v2 행 구분선과 같은 톤) — 예전 --line-soft(붉은기)는
-     이제 안 쓰는 색(요청). 라이트는 아래 오버라이드에서 원래 톤(검정 계열)으로. */
-  background: transparent; border: none; border-bottom: 1px solid rgba(255,255,255,0.16); color: var(--text);
+  background: transparent; border: none; border-bottom: 1px solid var(--line-soft); color: var(--text);
   padding: 10px 4px; cursor: pointer; text-align: left; font-family: inherit;
   transition: background .12s;
 }
@@ -5441,9 +5449,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
   margin: 0 auto; min-width: 0; max-width: 100%;
   width: min(420px, 100%);
 }
-.scr-member-row-wrap { border-bottom: 1px solid rgba(255,255,255,0.16); }
-.scr-light-theme .scr-member-row,
-.scr-light-theme .scr-member-row-wrap { border-bottom-color: var(--line-soft); }
+.scr-member-row-wrap { border-bottom: 1px solid var(--line-soft); }
 .scr-member-row-wrap:last-child { border-bottom: none; }
 /* wrap이 구분선을 대신 그리므로 행 자신의 선은 끈다(펼침 패널이 행과 구분선 사이에
    끼어들 수 있게). */
