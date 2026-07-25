@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { createPortal } from "react-dom";
-import { CalendarPlus, MessageCircle, MoreHorizontal, Plus, Send, Swords, Trophy, Upload, X } from "lucide-react";
+import { CalendarPlus, MoreHorizontal, Plus, Send, Swords, Trophy, Upload, X } from "lucide-react";
 import { Spinner } from "../../components/common/Feedback";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 import KakaoShareButton from "../../components/common/KakaoShareButton";
@@ -185,19 +185,11 @@ function ChallengeActionsMenu({ challenge, isAdmin, onDeleted }: {
   );
 }
 
-// 피드 카드 하단 공통 댓글 영역 — 달린 댓글은 항상 보여주고, 입력창은 아이콘을 눌러야 열린다.
+// 피드 카드 하단 공통 댓글 영역 — 목록은 항상, 입력창은 아이콘 옆에서 열리고 닫힌다.
 function FeedCardComments({ targetType, targetId }: { targetType: "match" | "challenge"; targetId: number }) {
-  const [composerOpen, setComposerOpen] = useState(false);
   return (
     <div className="scr-feed-comments">
-      <FeedComments targetType={targetType} targetId={targetId} showComposer={composerOpen} />
-      <button
-        type="button" className="scr-feed-comments-toggle"
-        onClick={() => setComposerOpen((v) => !v)}
-        aria-expanded={composerOpen} aria-label="댓글 쓰기" title="댓글 쓰기"
-      >
-        <MessageCircle size={14} aria-hidden />
-      </button>
+      <FeedComments targetType={targetType} targetId={targetId} />
     </div>
   );
 }
