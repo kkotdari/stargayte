@@ -2313,12 +2313,12 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 .scr-rank-table-panel-v2 .scr-rank-row {
   /* 좌우 패딩은 행(구분선 포함)이 아니라 안쪽 콘텐츠에만 준다 — 구분선은 계속 양 끝까지
      꽉 채우고, 내용만 여백을 갖는다(요청: "구분선은 그대로 두고 내용만 양쪽 패딩"). */
-  padding: 10px 0;
+  padding: 16px 0;
 }
 /* PC는 로우 높이 약 20% 확대(요청) — 행 높이(아바타 40 + 위아래 패딩)가 60→72px가
    되도록 세로 패딩 10→16px. 모바일은 아래 미디어쿼리(12px)가 그대로 덮는다. */
 @media (min-width: 641px) {
-  .scr-rank-table-panel-v2 .scr-rank-row { padding: 16px 0; }
+  .scr-rank-table-panel-v2 .scr-rank-row { padding: 20px 0; }
 }
 /* 랭킹(v2) 구분선을 흰색 계열로 — 다크 테마 배경 위에서 옅은 붉은기(기본 --divider-tint)보다
    흰 선이 더 또렷하다.
@@ -2371,9 +2371,9 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   /* 아바타+닉네임은 이제 하나의 그리드 칸(.scr-rank-user)이다(요청) — column-gap을 아무리
      키워도 아바타↔닉네임 사이는 안 벌어지고, 그 안쪽 간격은 .scr-rank-user의 gap으로만
      조절한다. 칸 폭 = 아바타 40 + 내부 gap 8 + 닉네임 200. */
-  display: grid; grid-template-columns: 56px 48px minmax(0, 280px);
+  display: grid; grid-template-columns: 56px 48px minmax(0, 320px);
   justify-content: center; max-width: none; margin: 0;
-  align-items: center; column-gap: 48px; width: 100%; min-width: 0;
+  align-items: center; column-gap: 72px; width: 100%; min-width: 0;
   /* 좌우 여백은 거의 같게 두되 왼쪽이 좀 더(요청). 고정 px 대신 행 폭의 %로 줘서
      화면 폭이 달라지면 여백도 비율로 따라 커지고 작아진다(요청) — justify-content:center가
      남은 공간을 반씩 나누므로, 왼쪽 패딩 p%만큼 클러스터가 p/2%씩 오른쪽으로 이동한다. */
@@ -2437,7 +2437,7 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
      추가로 줄인다(요청: "모바일 - 랭킹 카드의 위아래 패딩을 줄여서 더 많이 나오게").
      행 높이를 조금 줄였다가(10→8px), 다시 8~10%만 키운다(요청) — 세로 패딩 8→10px. */
   /* 로우 높이 약 8% 증가(요청) — 세로 패딩 10→12px. */
-  .scr-rank-table-panel-v2 .scr-rank-row { padding: 12px 0; }
+  .scr-rank-table-panel-v2 .scr-rank-row { padding: 16px 0; }
   .scr-rank-table-panel-v2 .scr-rank-row-tied { padding-top: 6px; }
   /* 순위 숫자와 순위변동 사이 간격을 없애 배지 세로 높이를 줄인다(요청: "랭크와 순위변동
      사이가 줄어야") — 숫자 자체의 행간(line-height)도 1로 바짝 붙인다. */
@@ -2460,7 +2460,7 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
     /* 점수 칸을 72px로 넓혀 오른쪽 정렬된 점수 왼쪽에 '잠정' 배지 자리를 확보한다 —
        좁을 때 배지가 순위 숫자와 겹치던 문제(지적) 해결. */
     /* 아바타+닉네임 한 칸(40 + 내부 gap 6 + 175). */
-    grid-template-columns: 36px 36px minmax(0, 221px); column-gap: 24px;
+    grid-template-columns: 36px 44px minmax(0, 220px); column-gap: 16px;
     /* 좌우 여백 거의 같게, 왼쪽만 살짝 더(요청) — PC와 같은 비율 방식(행 폭의 %). */
     padding-left: 2%;
   }
