@@ -2370,6 +2370,16 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   /* 좌우 여백은 거의 같게 두되 왼쪽만 살짝 더 준다(요청) — 클러스터가 살짝 오른쪽으로. */
   box-sizing: border-box; padding-left:48px;
 }
+/* 컬럼 헤더 로우(요청: "랭크 포인트 회원") — .scr-rank-row-inner를 같이 입어 그리드
+   (칸 폭/갭/패딩)를 데이터 행과 완전히 공유한다. 여기선 글자 톤/간격만 얹는다.
+   포인트는 데이터(점수)와 같은 오른쪽 정렬, 랭크/회원은 왼쪽 정렬. */
+.scr-rank-head-row {
+  font-size: var(--fs-caption); font-weight: 700; color: var(--dim);
+  padding-top: 4px; padding-bottom: 8px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.scr-rank-head-row .scr-rank-head-score { justify-self: end; }
+
 /* 아바타+닉네임 묶음 — 내부 간격은 여기 gap 하나로만 조절한다(요청). */
 .scr-rank-user { display: flex; align-items: center; gap: 16px; min-width: 0; }
 .scr-rank-user .scr-rank-avatar-btn { flex-shrink: 0; }
@@ -5403,7 +5413,9 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 .scr-member-rows { display: flex; flex-direction: column; }
 .scr-member-row {
   display: flex; align-items: center; gap: 10px; width: 100%;
-  background: transparent; border: none; border-bottom: 1px solid var(--line-soft); color: var(--text);
+  /* 구분선은 다크에서 흰 계열(랭킹 v2 행 구분선과 같은 톤) — 예전 --line-soft(붉은기)는
+     이제 안 쓰는 색(요청). 라이트는 아래 오버라이드에서 원래 톤(검정 계열)으로. */
+  background: transparent; border: none; border-bottom: 1px solid rgba(255,255,255,0.16); color: var(--text);
   padding: 10px 4px; cursor: pointer; text-align: left; font-family: inherit;
   transition: background .12s;
 }
@@ -5429,7 +5441,9 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
   margin: 0 auto; min-width: 0; max-width: 100%;
   width: min(420px, 100%);
 }
-.scr-member-row-wrap { border-bottom: 1px solid var(--line-soft); }
+.scr-member-row-wrap { border-bottom: 1px solid rgba(255,255,255,0.16); }
+.scr-light-theme .scr-member-row,
+.scr-light-theme .scr-member-row-wrap { border-bottom-color: var(--line-soft); }
 .scr-member-row-wrap:last-child { border-bottom: none; }
 /* wrap이 구분선을 대신 그리므로 행 자신의 선은 끈다(펼침 패널이 행과 구분선 사이에
    끼어들 수 있게). */

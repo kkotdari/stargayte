@@ -372,6 +372,16 @@ export default function RankingScreenV2() {
             스피너 돌면서 스크롤탑되는듯"). rows.length>0인데 loading이면 "갱신 중"이고,
             rows.length===0인데 loading이면 첫 진입(보여줄 게 아예 없음)이라 스피너만. */}
         <div className={cx("scr-rank-table", loading && rows.length > 0 && "scr-rank-table-refreshing")}>
+          {/* 컬럼 헤더(요청: "랭크 포인트 회원") — 행과 똑같은 .scr-rank-row-inner 그리드를
+              그대로 입혀서 칸 폭/갭/패딩을 항상 데이터 행과 일치시킨다(그리드 값을 나중에
+              조절해도 자동으로 같이 맞음). */}
+          {visibleRows.length > 0 && (
+            <div className="scr-rank-row-inner scr-rank-head-row" aria-hidden="true">
+              <span>랭크</span>
+              <span className="scr-rank-head-score">포인트</span>
+              <span>회원</span>
+            </div>
+          )}
           {visibleRows.length === 0 ? (
             <div className="scr-empty">{loading ? <Spinner size={18} /> : "기록이 없어요"}</div>
           ) : (
