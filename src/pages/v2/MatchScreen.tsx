@@ -209,42 +209,43 @@ export default function MatchScreenV2() {
         onSearchChange={setSearch}
         searchPlaceholder="@유저 검색"
         suggestions={suggestions}
-      />
-
-      {/* 경기번호·메모 검색 — 유저 전용 공통 검색창과 별개인 이 화면 전용 필드. 라벨 없이
-          플레이스홀더로만 힌트를 주고(요청), 한 줄에 나란히(모바일도 한 줄) 둔다. */}
-      <div className="scr-match-extra-search">
-        <input
-          className="scr-input scr-list-search-input scr-match-extra-field"
-          value={matchNoQuery}
-          onChange={(e) => setMatchNoQuery(e.target.value)}
-          placeholder="경기번호"
-          inputMode="numeric"
-          autoComplete="off"
-        />
-        {/* 메모 슬롯 — 메모 내용 검색 인풋 + "내 메모" 체크박스를 한 칸에 나눠 담아, 전체
-            폭은 기존 메모 필드(경기번호 칸)와 같게 유지한다(요청). 체크박스는 로그인한
-            사용자만(내 메모 기준이라) 노출한다. */}
-        <div className="scr-match-extra-memo">
-          {user && (
-            <label className="scr-checkbox-field scr-match-mynotes" title="내가 메모 남긴 경기만 보기">
+        trailing={
+          /* 경기번호·메모 검색 — 유저 검색과 같은 인라인 줄에 얹는다(요청): PC에선 유저·경기
+             번호·메모가 한 줄, 모바일에선 셋이 각각 줄바꿈돼 3줄로 보인다. 라벨 없이
+             플레이스홀더로만 힌트를 준다. */
+          <div className="scr-match-extra-search">
+            <input
+              className="scr-input scr-list-search-input scr-match-extra-field"
+              value={matchNoQuery}
+              onChange={(e) => setMatchNoQuery(e.target.value)}
+              placeholder="경기번호"
+              inputMode="numeric"
+              autoComplete="off"
+            />
+            {/* 메모 슬롯 — 메모 내용 검색 인풋 + "내가 메모한 경기만" 체크박스를 한 칸에 나눠
+                담는다. 체크박스는 로그인한 사용자만(내 메모 기준이라) 노출한다. */}
+            <div className="scr-match-extra-memo">
+              {user && (
+                <label className="scr-checkbox-field scr-match-mynotes" title="내가 메모 남긴 경기만 보기">
+                  <input
+                    type="checkbox"
+                    checked={myNotesOnly}
+                    onChange={(e) => setMyNotesOnly(e.target.checked)}
+                  />
+                  <span>내가 메모한 경기만</span>
+                </label>
+              )}
               <input
-                type="checkbox"
-                checked={myNotesOnly}
-                onChange={(e) => setMyNotesOnly(e.target.checked)}
+                className="scr-input scr-list-search-input scr-match-extra-field"
+                value={noteQuery}
+                onChange={(e) => setNoteQuery(e.target.value)}
+                placeholder="메모 내용"
+                autoComplete="off"
               />
-              <span>내가 메모한 경기만</span>
-            </label>
-          )}
-          <input
-            className="scr-input scr-list-search-input scr-match-extra-field"
-            value={noteQuery}
-            onChange={(e) => setNoteQuery(e.target.value)}
-            placeholder="메모 내용"
-            autoComplete="off"
-          />
-        </div>
-      </div>
+            </div>
+          </div>
+        }
+      />
 
       {error && <div className="scr-err">{error}</div>}
 

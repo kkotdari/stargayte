@@ -18,6 +18,9 @@ interface SearchFilterBarProps {
   // 검색창 위에 얹히는 필터창 — 화면마다 다른 내용(PillTabs, 종족 셀렉트, 월 선택 등)을
   // 그대로 넘긴다. 없으면(랭킹 이외엔 항상 있음) 검색창만 뜬다.
   filterPanel?: ReactNode;
+  // 검색창 뒤에 같은 인라인 줄에 붙는 추가 필드(경기 화면의 경기번호/메모 검색) — PC에선
+  // 유저 검색과 한 줄에, 모바일에선 줄바꿈으로 아래에 놓이게 CSS가 처리한다(요청).
+  trailing?: ReactNode;
   // false면 검색창 자체를 안 그린다(요청: "랭킹/회원 검색창 제거") — 필터창 + 건수만 남는다.
   showSearch?: boolean;
   // false면 건수 표시를 이 바에서 안 그린다 — 경기 화면처럼 건수를 다른 자리(목록 바로
@@ -45,6 +48,7 @@ export default function SearchFilterBar({
   searchValue, onSearchChange, searchPlaceholder = "@로 유저 추가",
   suggestions,
   filterPanel,
+  trailing,
   showSearch = true,
   showCount = true,
 }: SearchFilterBarProps) {
@@ -290,6 +294,7 @@ export default function SearchFilterBar({
       <div className="scr-filter-inline-stack">
         {filterPanel && <div className="scr-filter-panel">{filterPanel}</div>}
         {showSearch && <div className="scr-search-filter-float">{searchItem}</div>}
+        {trailing}
       </div>
       {showCount && <span className="scr-list-count scr-filter-bar-count">{count}{countLabel}</span>}
     </div>

@@ -2930,18 +2930,20 @@ html.scr-page-bg.scr-light-theme .scr-rank-screen-v2::before { display: none; }
    (요청: "건수가 scr-filter-bar 쓰고 있고 마진 바텀 가진 문제 — 별도 클래스로 마진
    바텀 없이 목록에 착 붙게"). */
 .scr-filter-bar-count { align-self: flex-end; margin-top: 6px; margin-left: 0; margin-bottom: 0; position: relative; top: 1px; }
-/* 경기 화면 — 필터/검색창/조회 버튼을 PC에서도 항상 한 줄씩(세로로) 배치한다(요청:
-   "필터와 검색창 조회 버튼이 한줄씩 배치"). 다른 화면(랭킹/전적통계 등)은 PC에서
-   필터+검색이 한 줄에 나란한 기본 레이아웃을 그대로 쓴다. */
-.scr-match-screen-v2 .scr-filter-inline-stack { flex-direction: column; align-items: stretch; }
-.scr-match-screen-v2 .scr-filter-panel { width: 100%; }
-.scr-match-screen-v2 .scr-search-filter-float { width: 100%; }
+/* 경기 화면 — 유저 검색 + 경기번호 + 메모를 PC에선 한 줄에 나란히(base .scr-filter-inline-stack
+   이 row), 모바일에선 세로로 쌓아 유저/경기번호/메모 3줄로 보이게 한다(요청). PC 한 줄에서
+   유저:(경기번호+메모) = 1:2로 폭을 나눈다(경기번호+메모가 두 필드라 넓게). */
+.scr-match-screen-v2 .scr-search-filter-float { flex: 1 1 0; min-width: 0; }
+.scr-match-screen-v2 .scr-filter-inline-stack > .scr-match-extra-search { flex: 2 1 0; min-width: 0; }
 /* 경기번호·메모 검색 필드(경기 화면 전용) — 유저 검색창 바로 아래에 한 줄로 나란히 두고,
    모바일에서도 한 줄을 유지한다(요청). 라벨 없이 플레이스홀더로만 힌트를 준다(요청). 인풋
    톤은 유저 검색창과 같은 옅은 반투명. */
 /* 경기번호 필드 ↔ 메모 영역(체크박스로 시작)은 서로 다른 필드라 갭을 넓혀 또렷이 가른다(요청).
    메모 영역 안쪽(체크박스↔메모 인풋)은 같은 영역으로 보므로 그 내부 갭(8px)은 그대로 둔다. */
-.scr-match-extra-search { display: flex; gap: 24px; width: 100%; margin: -6px 0 14px; }
+/* 이제 유저 검색과 같은 인라인 줄(.scr-filter-inline-stack)의 flex 자식이라 자체 width/margin은
+   빼고 flex로만 폭을 잡는다(위 규칙). PC는 가로 한 줄(경기번호 | 메모), 모바일은 아래
+   미디어쿼리에서 세로로 쪼갠다. */
+.scr-match-extra-search { display: flex; gap: 24px; min-width: 0; }
 /* 세 검색 필드(유저·경기번호·메모)를 크기·디자인·폰트까지 유저 검색창과 완전히 똑같이
    통일한다(요청). 값은 유저 검색창(.scr-search-filter-float .scr-list-search-input)과
    동일 — 옅은 반투명 배경, 각진 라운드(10px), caption 폰트. 폰트는 이제 모든 입력 필드
@@ -2971,6 +2973,10 @@ html.scr-page-bg.scr-light-theme .scr-rank-screen-v2::before { display: none; }
   .scr-match-screen-v2 .scr-match-extra-search .scr-match-extra-field {
     height: 36px; min-height: 36px;
   }
+  /* 모바일: 유저/경기번호/메모 3줄. 인라인 스택은 공용 모바일 규칙(위 2913)이 이미 세로로
+     쌓아 유저 / (경기번호+메모)로 2줄이 되고, 여기서 경기번호와 메모 영역까지 세로로 쪼개
+     총 3줄로 만든다. */
+  .scr-match-screen-v2 .scr-match-extra-search { flex-direction: column; align-items: stretch; gap: 10px; }
 }
 /* .scr-screen이 이미 형제간 gap을 넣어주므로 자체 마진은 두지 않는다. */
 /* 목록 위 소타이틀(요청: 경기 화면 "경기 목록"). */
