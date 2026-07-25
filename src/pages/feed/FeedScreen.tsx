@@ -203,7 +203,7 @@ function MatchCard({ item, memberOf, onDeleted, dateLabel }: {
       <div className="scr-feed-card-head" data-date-label={dateLabel}>
         <Swords size={13} aria-hidden />
         <span className="scr-feed-card-time">{formatEventTime(item.time, item.withClock)}</span>
-        <span className="scr-feed-card-label">경기</span>
+        <span className="scr-feed-card-label">게임결과</span>
       </div>
       <div className="scr-feed-match-body">
         <MatchList rows={rows} memberOf={memberOf} onDeleted={onDeleted} loading={false} />
@@ -411,7 +411,7 @@ export default function FeedScreen() {
                 type="button" role="menuitem"
                 onClick={() => { setAddMenuOpen(false); replayInputRef.current?.click(); }}
               >
-                <Upload size={14} aria-hidden /> 경기 결과 등록
+                <Upload size={14} aria-hidden /> 게임결과 등록
               </button>
               <button
                 type="button" role="menuitem"

@@ -61,7 +61,7 @@ function matchShareContent(match: Match, memberOf: (id: string) => Member | unde
     title: `${t1} vs ${t2}`,
     description: `${resultLabel}${mapPart} · ${match.date}`,
     link: `${window.location.origin}/?sv=match&sid=${match.id}`,
-    fallbackText: `[스타게이트 경기결과]\n${t1} vs ${t2}\n결과: ${resultLabel}${mapPart}\n${match.date}`,
+    fallbackText: `[스타게이트 게임결과]\n${t1} vs ${t2}\n결과: ${resultLabel}${mapPart}\n${match.date}`,
   };
 }
 
@@ -109,8 +109,8 @@ function CopyButton({ text }: { text: string }) {
     <button
       type="button"
       className="scr-match-trow-no-copy"
-      aria-label="경기번호 복사"
-      title="경기번호 복사"
+      aria-label="게임번호 복사"
+      title="게임번호 복사"
       onClick={(e) => {
         e.stopPropagation();
         navigator.clipboard?.writeText(text)
@@ -383,7 +383,7 @@ export default function MatchList({
   return (
     <div className="scr-match-list-panel-v2">
       {rows.length === 0 && (
-        <div className="scr-empty">{loading ? <Spinner size={18} /> : "표시할 경기가 없어요."}</div>
+        <div className="scr-empty">{loading ? <Spinner size={18} /> : "표시할 게임결과가 없어요."}</div>
       )}
 
       <div className="scr-match-cards">
@@ -406,16 +406,10 @@ export default function MatchList({
                 onClick={() => toggleExpanded(r.id)} role="button" tabIndex={0}
                 aria-expanded={expanded}
               >
-                {/* 윗줄 — 맵·플레이시간과 케밥메뉴. 등록자는 접힘 땐 숨기고 펼침 때 최하단에
-                    표시한다(요청). 내용이 없어도 줄 높이를 예약해 카드마다 로스터 시작 위치가
-                    흔들리지 않게 한다. */}
+                {/* 윗줄 — 케밥메뉴만. 맵·플레이시간은 접힘 땐 숨기고 펼치면 스탯 표 위에
+                    노출한다(요청). */}
                 <div className="scr-match-trow-topline">
-                  <div className="scr-match-trow-map-line">
-                    {cleanMapName(r.raw.mapName) && <span className="scr-match-trow-map">{cleanMapName(r.raw.mapName)}</span>}
-                    {r.raw.durationSeconds != null && (
-                      <span className="scr-match-trow-dur">({Math.round(r.raw.durationSeconds / 60)}분)</span>
-                    )}
-                  </div>
+                  <div className="scr-match-trow-map-line" />
                   <div className="scr-match-trow-topmeta">
                     <MatchActionsMenu
                       match={r.raw} canDelete={canDelete} memberOf={memberOf}
@@ -458,6 +452,14 @@ export default function MatchList({
                   <div className="scr-match-trow-expand-inner">
                     {(expanded || renderedIds.has(r.id)) && (
                       <>
+                        {(cleanMapName(r.raw.mapName) || r.raw.durationSeconds != null) && (
+                          <div className="scr-match-trow-map-line scr-match-trow-map-expanded">
+                            {cleanMapName(r.raw.mapName) && <span className="scr-match-trow-map">{cleanMapName(r.raw.mapName)}</span>}
+                            {r.raw.durationSeconds != null && (
+                              <span className="scr-match-trow-dur">({Math.round(r.raw.durationSeconds / 60)}분)</span>
+                            )}
+                          </div>
+                        )}
                         <MatchStatsTable
                           team1={r.team1} team2={r.team2} memberOf={memberOf}
                           highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms}
@@ -465,7 +467,7 @@ export default function MatchList({
                         {/* 최하단 — 왼쪽에 '경기번호' 라벨 + 번호(#없이) + 복사 버튼, 오른쪽에 등록자(요청). */}
                         <div className="scr-match-trow-footer">
                           <span className="scr-match-trow-no">
-                            <span className="scr-match-trow-no-label">경기번호</span>
+                            <span className="scr-match-trow-no-label">게임번호</span>
                             <span className="scr-match-trow-no-val">{r.raw.matchNo}</span>
                             <CopyButton text={r.raw.matchNo} />
                           </span>
@@ -484,7 +486,7 @@ export default function MatchList({
 
       {deleteTarget && (
         <ConfirmDialog
-          title="경기결과를 삭제할까요?"
+          title="게임결과를 삭제할까요?"
           message="삭제하면 되돌릴 수 없어요."
           confirmLabel={deleting ? "삭제 중..." : "삭제"}
           cancelLabel="취소"

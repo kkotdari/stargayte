@@ -7875,6 +7875,10 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-feed-card .scr-challenge-cancel-tag { right: 48px; }
 /* 로스터 폰트를 너 나와 카드 닉네임(fs-body)과 통일(요청). */
 .scr-feed-match-body .scr-mt-name { font-size: var(--fs-body); }
+/* 접힘 상태 윗줄은 이제 케밥(절대배치)뿐이라 자리 예약이 필요 없다. */
+.scr-feed-match-body .scr-match-trow-topline { min-height: 0; }
+/* 펼침 때 스탯 표 위에 노출되는 맵·플레이시간(요청). */
+.scr-match-trow-map-expanded { display: flex; align-items: baseline; gap: 6px; padding: 2px 0 8px; justify-content: center; }
 .scr-feed-card-time { font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
 .scr-feed-card-label { margin-left: auto; font-weight: 600; }
 .scr-feed-card-body { padding: 0; }
