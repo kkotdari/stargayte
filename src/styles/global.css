@@ -2386,9 +2386,13 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 }
 .scr-light-theme .scr-rank-head-row { border-bottom-color: rgba(0, 0, 0, 0.35); }
 .scr-rank-head-row .scr-rank-head-score { justify-self: end; }
-/* "회원" 라벨은 아바타 왼끝보다 살짝 오른쪽으로(요청) — 아바타·닉네임 묶음 위에서
-   더 자연스러운 위치. */
-.scr-rank-head-row > span:last-child { padding-left: 16px; }
+/* "회원" 라벨은 많이 오른쪽으로(요청) — 아바타(48px)+내부 갭(16px)을 지나 닉네임
+   시작점 위에 얹는다. */
+.scr-rank-head-row > span:last-child { padding-left: 64px; }
+@media (max-width: 640px) {
+  /* 모바일은 아바타 44px + 갭 6px에 맞춰 닉네임 시작점으로. */
+  .scr-rank-head-row > span:last-child { padding-left: 50px; }
+}
 
 /* 아바타+닉네임 묶음 — 내부 간격은 여기 gap 하나로만 조절한다(요청). */
 .scr-rank-user { display: flex; align-items: center; gap: 16px; min-width: 0; }
