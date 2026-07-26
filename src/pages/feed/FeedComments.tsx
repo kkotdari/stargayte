@@ -14,18 +14,30 @@ import type { Member, FeedComment, FeedTargetType } from "../../types";
 // 요청 입력의 CSS(scr-mreq-*)를 그대로 차용한다(요청: "기본 입력 테마로 사용").
 const MESSAGE_MAX_LENGTH = 50;
 
-// 편집창은 "너 나와!" 요청 입력과 동일한 구조 — 확정된 평문/칩 조각은 실제 DOM으로 굳고,
-// 지금 타이핑 중인 마지막 조각만 진짜 <input> 하나가 담당한다(IME 유령글자/캐럿 밀림 없음).
-type MessagePart =
-  | { type: "text"; value: string }
-  | { type: "mention"; id: string; nickname: string };
+// 댓글 입력·수정은 평문 한 줄 입력이다(요청: "유저칩이 아니라 텍스트 @닉네임으로").
+// 칩 조각 DOM을 직접 다루던 방식은 백스페이스·캐럿·IME에서 버그가 잦아, 본문 문자열
+// 하나만 들고 "@닉네임"을 그냥 텍스트로 둔다. 저장 포맷("@닉네임" 마커)은 그대로다.
 
-// 확정 조각들 + 지금 타이핑 중인 조각을 합쳐 실제 저장되는 "@닉네임" 마커 문자열로 만든다.
-function partsToText(parts: MessagePart[], liveText: string): string {
-  return parts.map((p) => (p.type === "text" ? p.value : `@${p.nickname}`)).join("") + liveText;
+// 활성 회원 닉네임을 긴 것부터 매칭해 "@닉네임" 토큰의 memberId를 뽑는다(읽기용
+// renderInline과 동일한 규칙이라 표시/저장이 일치한다).
+function extractMentionIds(text: string, members: Member[]): string[] {
+  const active = members.filter((m) => m.status === "active" && m.nickname);
+  const sorted = active.slice().sort((a, b) => b.nickname.length - a.nickname.length);
+  if (sorted.length === 0) return [];
+  const byName = new Map(sorted.map((m) => [m.nickname, m.id]));
+  const esc = sorted.map((m) => m.nickname.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  const re = new RegExp(`@(${esc.join("|")})`, "g");
+  const ids = new Set<string>();
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    const id = byName.get(m[1]);
+    if (id) ids.add(id);
+  }
+  return Array.from(ids);
 }
 
-// 저장된 본문("@닉네임" 마커 포함)을 목록에서 인라인 유저 칩으로 렌더한다("너 나와!"와 동일).
+// 저장된 본문("@닉네임" 마커 포함)을 목록에서 렌더한다 — 언급은 칩이 아니라 굵은
+// "@닉네임" 텍스트로(요청). 입력창과 똑같이 보인다.
 function renderInline(text: string, mentions: { nickname: string }[]) {
   const names = mentions.map((t) => t.nickname).filter(Boolean);
   if (names.length === 0) return text;
@@ -39,39 +51,17 @@ function renderInline(text: string, mentions: { nickname: string }[]) {
   let m: RegExpExecArray | null;
   while ((m = re.exec(text)) !== null) {
     if (m.index > last) out.push(<span key={`t${last}`}>{text.slice(last, m.index)}</span>);
-    out.push(<span key={`c${m.index}`} className="scr-mreq-chip scr-mreq-chip-inline">{m[1]}</span>);
+    out.push(<span key={`c${m.index}`} className="scr-mreq-chip-inline">@{m[1]}</span>);
     last = m.index + m[0].length;
   }
   if (last < text.length) out.push(<span key={`t${last}`}>{text.slice(last)}</span>);
   return out;
 }
 
-// 수정 시작 시 기존 본문("@닉네임" 마커 + mentions)을 편집 조각(MessagePart[])으로 되돌린다.
-function textToParts(text: string, mentions: { memberId: string; nickname: string }[]): MessagePart[] {
-  const byName = new Map(mentions.map((m) => [m.nickname, m.memberId]));
-  const names = mentions.map((m) => m.nickname).filter(Boolean);
-  if (names.length === 0) return text ? [{ type: "text", value: text }] : [];
-  const esc = names
-    .slice()
-    .sort((a, b) => b.length - a.length)
-    .map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
-  const re = new RegExp(`@(${esc.join("|")})`, "g");
-  const parts: MessagePart[] = [];
-  let last = 0;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(text)) !== null) {
-    if (m.index > last) parts.push({ type: "text", value: text.slice(last, m.index) });
-    parts.push({ type: "mention", id: byName.get(m[1]) ?? "", nickname: m[1] });
-    last = m.index + m[0].length;
-  }
-  if (last < text.length) parts.push({ type: "text", value: text.slice(last) });
-  return parts;
-}
-
 // 댓글 입력/수정 공용 편집기 — "너 나와!" 요청 입력의 멘션 칩 편집기를 그대로 옮겼다.
 function NoteComposer({
   members,
-  initialParts,
+  initialText,
   submitting,
   onSubmit,
   onCancel,
@@ -79,33 +69,29 @@ function NoteComposer({
   submitLabel,
 }: {
   members: Member[];
-  initialParts: MessagePart[];
+  initialText: string;
   submitting: boolean;
   onSubmit: (text: string, memberIds: string[]) => void;
   onCancel?: () => void;
   placeholder: string;
   submitLabel: React.ReactNode;
 }) {
-  const [committedParts, setCommittedParts] = useState<MessagePart[]>(initialParts);
-  const [liveText, setLiveText] = useState("");
+  // 본문 문자열 하나만 든다(평문). "@닉네임"은 그냥 텍스트라 백스페이스/캐럿/IME가 일반
+  // 입력창처럼 정상 동작한다.
+  const [text, setText] = useState(initialText);
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [highlight, setHighlight] = useState(0);
-  const boxRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropRef = useRef<HTMLDivElement>(null);
 
-  const mentionedIds = useMemo(
-    () => new Set(committedParts.filter((p): p is Extract<MessagePart, { type: "mention" }> => p.type === "mention").map((p) => p.id)),
-    [committedParts],
-  );
   const candidates = useMemo(() => {
     const q = (mentionQuery ?? "").toLowerCase();
     return members
-      .filter((m) => m.status === "active" && !mentionedIds.has(m.id))
+      .filter((m) => m.status === "active")
       .filter((m) => !q || m.nickname.toLowerCase().includes(q) || m.id.toLowerCase().includes(q))
       .sort((a, b) => a.nickname.localeCompare(b.nickname, "ko"))
       .slice(0, 50);
-  }, [members, mentionQuery, mentionedIds]);
+  }, [members, mentionQuery]);
   const mentionShown = mentionQuery !== null && candidates.length > 0;
 
   useEffect(() => { setHighlight(0); }, [candidates]);
@@ -116,95 +102,73 @@ function NoteComposer({
     if (!mentionShown || !inputRef.current || !dropRef.current) return;
     return attachPopover(inputRef.current, dropRef.current, { matchAnchor: true });
   }, [mentionShown]);
-  useEffect(() => {
-    const el = boxRef.current;
-    if (el) el.scrollLeft = el.scrollWidth;
-  }, [committedParts, liveText]);
 
+  // 커서 바로 앞의 "@질의"(공백/@ 없는 부분)를 감지해 자동완성 드롭다운을 띄운다.
   const detectQuery = (value: string, cursor: number) => {
     const before = value.slice(0, cursor);
     const m = before.match(/@([^\s@]*)$/);
     setMentionQuery(m ? m[1] : null);
   };
-  const onLiveTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value;
-    if (partsToText(committedParts, raw).length > MESSAGE_MAX_LENGTH) return;
-    setLiveText(raw);
-    detectQuery(raw, e.target.selectionStart ?? raw.length);
+  const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = e.target.value;
+    if (v.length > MESSAGE_MAX_LENGTH) return;
+    setText(v);
+    detectQuery(v, e.target.selectionStart ?? v.length);
   };
-  const onLiveTextSelect = () => {
+  const onSelectCaret = () => {
     const el = inputRef.current;
-    if (!el) return;
-    detectQuery(el.value, el.selectionStart ?? el.value.length);
+    if (el) detectQuery(el.value, el.selectionStart ?? el.value.length);
   };
+  // 자동완성 선택 — 커서 앞 "@질의"를 "@닉네임 "(평문)으로 바꾼다.
   const insertMention = (member: Member) => {
-    const input = inputRef.current;
-    const cursor = input?.selectionStart ?? liveText.length;
-    const before = liveText.slice(0, cursor);
-    const after = liveText.slice(cursor);
+    const el = inputRef.current;
+    const cursor = el?.selectionStart ?? text.length;
+    const before = text.slice(0, cursor);
+    const after = text.slice(cursor);
     const m = before.match(/@([^\s@]*)$/);
-    const removeLen = m ? m[0].length : 0;
-    const beforeQuery = before.slice(0, before.length - removeLen);
-    const newParts: MessagePart[] = [...committedParts];
-    if (beforeQuery) newParts.push({ type: "text", value: beforeQuery });
-    newParts.push({ type: "mention", id: member.id, nickname: member.nickname });
-    if (partsToText(newParts, after).length > MESSAGE_MAX_LENGTH) return;
-    setCommittedParts(newParts);
-    setLiveText(after);
+    const start = m ? cursor - m[0].length : cursor;
+    const token = `@${member.nickname} `;
+    const next = text.slice(0, start) + token + after;
+    if (next.length > MESSAGE_MAX_LENGTH) return;
+    setText(next);
     setMentionQuery(null);
-    requestAnimationFrame(() => inputRef.current?.focus());
+    const pos = start + token.length;
+    requestAnimationFrame(() => {
+      const e = inputRef.current;
+      if (e) { e.focus(); e.setSelectionRange(pos, pos); }
+    });
   };
-  const onLiveTextKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.nativeEvent.isComposing || e.keyCode === 229) return;
     if (e.key === "Escape") {
       if (mentionShown) { setMentionQuery(null); return; }
       onCancel?.();
       return;
     }
-    if (e.key === "Backspace" && liveText === "" && committedParts.length > 0) {
-      e.preventDefault();
-      const last = committedParts[committedParts.length - 1];
-      if (last.type === "text") {
-        // 텍스트 조각(특히 수정 시작 시 통째로 굳는 기존 본문)은 한 번에 지우면 안 된다
-        // (버그: 수정창에서 백스페이스에 문장이 통째로 삭제). 입력창으로 되살리고 마지막
-        // 한 글자만 지워 이후 정상적으로 한 글자씩 지워지게 한다. 멘션 칩만 통째로 제거.
-        setCommittedParts((prev) => prev.slice(0, -1));
-        setLiveText(last.value.slice(0, -1));
-        requestAnimationFrame(() => {
-          const el = inputRef.current;
-          if (el) { el.focus(); const n = el.value.length; el.setSelectionRange(n, n); }
-        });
-        return;
-      }
-      setCommittedParts((prev) => prev.slice(0, -1));
-      return;
-    }
     if (!mentionShown) {
-      // 멘션 자동완성이 안 떠 있으면 엔터로 바로 제출한다(대댓글 없는 단순 댓글).
       if (e.key === "Enter") { e.preventDefault(); doSubmit(); }
       return;
     }
+    // 자동완성이 떠 있을 때만 방향키/엔터/탭이 항목 선택으로 쓰인다(스페이스는 그냥 입력).
     if (e.key === "ArrowDown") { e.preventDefault(); setHighlight((h) => (h + 1) % candidates.length); }
     else if (e.key === "ArrowUp") { e.preventDefault(); setHighlight((h) => (h - 1 + candidates.length) % candidates.length); }
-    else if (e.key === "Enter" || e.key === " " || e.key === "Tab") {
+    else if (e.key === "Enter" || e.key === "Tab") {
       e.preventDefault();
       insertMention(candidates[Math.min(highlight, candidates.length - 1)]);
     }
   };
 
   const doSubmit = () => {
-    const trimmed = partsToText(committedParts, liveText).trim();
+    const trimmed = text.trim();
     if (!trimmed || submitting) return;
-    const ids = Array.from(mentionedIds);
-    onSubmit(trimmed, ids);
+    onSubmit(trimmed, extractMentionIds(trimmed, members));
   };
 
-  const isEmpty = committedParts.length === 0 && liveText === "";
-  const canSubmit = partsToText(committedParts, liveText).trim().length > 0 && !submitting;
+  const isEmpty = text === "";
+  const canSubmit = text.trim().length > 0 && !submitting;
 
   const clear = () => {
-    setCommittedParts([]);
-    setLiveText("");
+    setText("");
     setMentionQuery(null);
     inputRef.current?.focus();
   };
@@ -213,7 +177,6 @@ function NoteComposer({
     <div className="scr-mreq-compose-row scr-match-note-compose-row">
       <div className="scr-mreq-input-wrap">
         <div
-          ref={boxRef}
           className="scr-input scr-mreq-editor"
           onClick={() => {
             const el = inputRef.current;
@@ -222,21 +185,14 @@ function NoteComposer({
             el.setSelectionRange(el.value.length, el.value.length);
           }}
         >
-          {committedParts.map((part, i) =>
-            part.type === "mention" ? (
-              <span key={i} className="scr-mreq-chip scr-mreq-chip-editor">{part.nickname}</span>
-            ) : (
-              <span key={i} className="scr-mreq-text-part">{part.value}</span>
-            ),
-          )}
           <input
             ref={inputRef}
             className="scr-mreq-live-input"
-            value={liveText}
-            onChange={onLiveTextChange}
-            onSelect={onLiveTextSelect}
-            onKeyDown={onLiveTextKeyDown}
-            placeholder={committedParts.length === 0 ? placeholder : ""}
+            value={text}
+            onChange={onChange}
+            onSelect={onSelectCaret}
+            onKeyDown={onKeyDown}
+            placeholder={placeholder}
             autoComplete="off"
           />
         </div>
@@ -410,7 +366,7 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
               {editingId === c.id ? (
                 <NoteComposer
                   members={members}
-                  initialParts={textToParts(c.text, c.mentions)}
+                  initialText={c.text}
                   submitting={busy}
                   onSubmit={(text, ids) => void update(c.id, text, ids)}
                   onCancel={() => setEditingId(null)}
@@ -449,7 +405,7 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
             <NoteComposer
               key={composerKey}
               members={members}
-              initialParts={[]}
+              initialText=""
               submitting={busy}
               onSubmit={(text, ids) => void create(text, ids)}
               placeholder="댓글 남기기 (@로 유저 태그)"
