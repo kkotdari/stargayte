@@ -46,10 +46,10 @@ export default function MemberStatRow({
           </button>
         )}
         <div className="scr-stat-name-stack">
+          {/* 배틀태그는 표시하지 않는다(요청) — 닉네임만. */}
           <button type="button" className="scr-stat-name-btn" onClick={() => openMemberProfile(member.id)}>
             {member.nickname}
           </button>
-          <span className="scr-stat-tag-pill">{member.battletag}</span>
         </div>
       </div>
       {points !== undefined && (
