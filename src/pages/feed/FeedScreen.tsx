@@ -318,6 +318,10 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
           const dy = bottom - el.getBoundingClientRect().bottom;
           if (dy <= 0) return;
           el.style.transform = `translateY(${dy}px)`;
+          // 비행 중엔 카드의 반투명+블러를 끄고 불투명 카드로(scr-feed-stack-flying) —
+          // 시작 순간 전 카드가 스택 자리에 겹쳐 있어, 반투명 블러 레이어 N장이 포개지면
+          // 시커먼 덩어리가 화면을 휙 지나가는 것처럼 보였다(지적). 착지 후 원복.
+          el.classList.add("scr-feed-stack-flying");
           const anim = el.animate(
             [{ transform: `translateY(${dy}px)` }, { transform: "translateY(0)" }],
             {
@@ -327,7 +331,10 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
               fill: "both",
             },
           );
-          const settle = () => { el.style.transform = ""; };
+          const settle = () => {
+            el.style.transform = "";
+            el.classList.remove("scr-feed-stack-flying");
+          };
           anim.onfinish = () => { settle(); anim.cancel(); };
           anim.oncancel = settle;
         });
@@ -336,6 +343,7 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
         children.forEach((el) => {
           el.getAnimations().forEach((a) => a.cancel());
           el.style.transform = "";
+          el.classList.remove("scr-feed-stack-flying");
         });
       }
     }

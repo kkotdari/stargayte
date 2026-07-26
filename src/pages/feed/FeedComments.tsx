@@ -369,7 +369,7 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
                 <div className="scr-mreq-item-author">
                   <Avatar
                     member={{ id: c.author.memberId, nickname: c.author.nickname, avatar: c.author.avatar }}
-                    size={16}
+                    size={13}
                     className="scr-mreq-item-author-avatar"
                   />
                   <span className="scr-mreq-item-author-name">{c.author.nickname}</span>
