@@ -313,6 +313,30 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
   };
   // 접기 페이드아웃(closeStack)이 진행 중인지 — 중복 클릭 방지.
   const closingRef = useRef(false);
+  // 펼치는 순간 "+N건" 바가 즉시 사라지면 누른 지점에 카드 페이드인까지 잠깐 구멍이
+  // 생겨 깜빡여 보인다(지적: "접을 땐 안 그런데 펼칠 땐 깜빡임" — 접기는 페이드아웃이
+  // 먼저라 이 구멍이 없다). 바의 고정 위치 복제본을 커밋 프레임부터 띄워 두고 카드
+  // 페이드인과 크로스페이드시켜 메운다. position:fixed라 스크롤 보정이 한 프레임 늦게
+  // 반영되는 경우(iOS)에도 눌렀던 화면 자리에 그대로 있다.
+  const peekGhostRef = useRef<HTMLElement | null>(null);
+  const openStack = () => {
+    const peek = stackRef.current?.querySelector<HTMLElement>(":scope > .scr-feed-stack-peek");
+    if (peek) {
+      const r = peek.getBoundingClientRect();
+      const ghost = peek.cloneNode(true) as HTMLElement;
+      ghost.setAttribute("aria-hidden", "true");
+      ghost.style.position = "fixed";
+      ghost.style.left = `${r.left}px`;
+      ghost.style.top = `${r.top}px`;
+      ghost.style.width = `${r.width}px`;
+      ghost.style.height = `${r.height}px`;
+      ghost.style.margin = "0";
+      ghost.style.zIndex = "5";
+      ghost.style.pointerEvents = "none";
+      peekGhostRef.current = ghost;
+    }
+    toggleOpen(true);
+  };
   useLayoutEffect(() => {
     cancelRevealRef.current?.();
     const before = pendingAnchorRef.current;
@@ -425,12 +449,18 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     };
 
     if (d <= 0 || reduced) {
+      peekGhostRef.current = null;
       cancelRevealRef.current = () => { cleanupRail(); cancelRevealRef.current = null; };
       return;
     }
 
     let cancelled = false;
     const anims: Animation[] = [];
+    // "+N건" 바 고스트 — 커밋 프레임부터(페인트 전에 붙여야 한 프레임도 구멍이 없다)
+    // 눌렀던 자리를 그대로 덮고, 아래 카드가 페이드인하는 동안 크로스페이드로 사라진다.
+    const ghost = peekGhostRef.current;
+    peekGhostRef.current = null;
+    if (ghost) document.body.appendChild(ghost);
     const cards = Array.from(list.children) as HTMLElement[];
     // 줄이기 라인(스택 루트에 붙는 오버레이)도 함께 페이드인 — 스택 전체를 두르는
     // 요소라 카드 스태거와 별개로 맨 마지막에 나타난다.
@@ -479,6 +509,16 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
         fadeIn(el, 40 + (n > 1 ? fromBottom / (n - 1) : 0) * slideDur * 0.55);
       });
       if (rail) fadeIn(rail, 40 + slideDur * 0.55 + 80);
+      // 고스트는 아래(맨 먼저 나타나는) 카드가 차오르는 동안 걷힌다 — 크로스페이드.
+      if (ghost) {
+        const ga = ghost.animate(
+          [{ opacity: 1 }, { opacity: 0 }],
+          { duration: 220, easing: "ease-out", delay: 40, fill: "both" },
+        );
+        ga.onfinish = () => ghost.remove();
+        ga.oncancel = () => ghost.remove();
+        anims.push(ga);
+      }
     };
     // 첫 페인트가 끝난 다음 프레임에 시작한다 — 레이아웃 변경+스크롤 보정이 실린 첫
     // 프레임은 무거워서(수백 ms까지도), animate()를 그 안에서 바로 걸면 시작 시각 기준으로
@@ -493,6 +533,7 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       cancelAnimationFrame(raf1);
       cancelAnimationFrame(raf2);
       anims.forEach((a) => { try { a.cancel(); } catch { /* 이미 끝남 */ } });
+      ghost?.remove();
       reveals.forEach((el) => { el.style.opacity = ""; });
       sliders.forEach((el) => { el.style.transform = ""; });
       cleanupRail();
@@ -539,7 +580,7 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     <div ref={stackRef} className={cx("scr-feed-stack", open && "scr-feed-stack-opened")}>
       <button
         type="button" className="scr-feed-stack-peek"
-        onClick={() => toggleOpen(true)}
+        onClick={openStack}
         aria-hidden={open} tabIndex={open ? -1 : 0}
         aria-label={`게임결과 ${restDesc.length}건 더 펼치기`}
       >
