@@ -7965,19 +7965,16 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-feed-stack-rail-dot-top { top: -3px; }
 .scr-feed-stack-rail-dot-bottom { bottom: -3px; }
 .scr-feed-stack-rail-label {
+  /* 알약 배경 없이 라인 위에 글자만(요청) — 라인이 글자 뒤로 비치지 않게 살짝 그림자만. */
   position: relative; writing-mode: vertical-rl; letter-spacing: 0.16em;
   font-family: inherit; font-size: var(--fs-micro); font-weight: 700; color: rgba(255, 255, 255, 0.85);
-  padding: 10px 3px; border-radius: 999px;
-  background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  padding: 8px 0;
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.45);
 }
 /* 라이트 테마 — 흰 배경 위 흰 라인은 안 보여 톤만 뒤집는다(라인은 어둡게, 라벨은 흰 알약). */
 .scr-light-theme .scr-feed-stack-rail::before { background: rgba(0, 0, 0, 0.22); }
 .scr-light-theme .scr-feed-stack-rail-dot { background: rgba(0, 0, 0, 0.35); }
-.scr-light-theme .scr-feed-stack-rail-label {
-  color: var(--text); background: rgba(255, 255, 255, 0.85);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
-}
+.scr-light-theme .scr-feed-stack-rail-label { color: var(--text); text-shadow: none; }
 /* 헤더 아래 구분선은 두지 않는다(요청) — 시각/라벨만 조용히 얹는다. 오른쪽 44px는
    포스트 우상단 케밥 자리. */
 .scr-feed-card-head {

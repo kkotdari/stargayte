@@ -198,11 +198,13 @@ export default function StatsScreenV2() {
       if (bMissing) return -1;
       return 0;
     };
-    // 포인트 없는(순위 대상 아닌) 회원은 값 있는 회원 뒤로.
+    // 포인트 정렬 보조 — 0점은 오름/내림 어느 방향이든 항상 맨 아래, 포인트 없는(순위
+    // 대상 아닌) 회원은 그보다도 아래(요청).
     const noPointsLast = (a: (typeof list)[number], b: (typeof list)[number]) => {
-      if (a.points === null && b.points === null) return nicknameTiebreak(a, b);
-      if (a.points === null) return 1;
-      if (b.points === null) return -1;
+      const tier = (p: number | null) => (p === null ? 2 : p === 0 ? 1 : 0);
+      const ta = tier(a.points), tb = tier(b.points);
+      if (ta !== tb) return ta - tb;
+      if (ta > 0) return nicknameTiebreak(a, b);
       return 0;
     };
     if (!sort) {
