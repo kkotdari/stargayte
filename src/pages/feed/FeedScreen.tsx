@@ -13,6 +13,7 @@ import ScrollNavTimeline from "../../components/common/ScrollNavTimeline";
 import ReplayReviewModal from "../../modals/ReplayReviewModal";
 import ChallengeFormModal from "../../modals/ChallengeFormModal";
 import { scheduledInstantMs } from "../../utils/date";
+import { suppressScrollHide } from "../../utils/scrollRoot";
 import { useAppStore } from "../../store/appStore";
 import { isAdminRole } from "../../constants/roles";
 import { activeMemberSearchTerms, memberMatchesTerm, normalizeSearchText, splitSearchTerms } from "../../utils/memberSearch";
@@ -274,10 +275,16 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
   const restDesc = useMemo(() => ordered.slice(1).reverse(), [ordered]);
 
   // 펼침 영역이 앞 카드 "위"에 있어, 그대로 두면 앞 카드가 아래로 밀려 마치 아래로
-  // 펼쳐지는 것처럼 보인다(지적). 스크롤 보정은 "페인트 전 딱 한 번"만 한다 — 레이아웃을
-  // 즉시 바꾸고(useLayoutEffect 시점) 앞 카드가 밀린 만큼 같은 프레임에 scrollBy로 되돌려,
-  // 화면에는 애초에 아무 움직임도 그려지지 않는다(매 프레임 보정 루프는 iOS의 비동기
-  // 스크롤 반영과 어긋나 크게 튀었다). html의 overflow-anchor:none은 계속 필요하다.
+  // 펼쳐지는 것처럼 보인다(지적). 시점 유지는 펼칠 때/접을 때 모두 "문서 아래에서부터의
+  // 높이" 기준이다(요청) — 문서 높이가 변한 만큼 스크롤을 같은 프레임(페인트 전)에 함께
+  // 옮기면 스택 아래 콘텐츠(앞 카드 포함)가 화면에서 전혀 안 움직인다. 접을 때 브라우저가
+  // 줄어든 문서에 맞춰 스크롤을 이미 클램프했을 수 있어(그 위에 상대 이동을 얹으면 이중
+  // 보정이 된다 — 예전 "접으면 훨씬 위로 가버리는" 문제의 원인) scrollBy가 아니라 절대
+  // 좌표 scrollTo로 잡는다. 클램프 상태(스크롤이 최대치를 넘은 순간)는 iOS에서 fixed
+  // 레이어(탭바/스크롤 타임라인)가 위로 밀려 보이는 글리치까지 만들므로, 미리 막는 게
+  // 중요하다(지적: "탭바가 사라졌어", "타임라인 위치가 올라감"). 매 프레임 보정 루프는
+  // iOS의 비동기 스크롤 반영과 어긋나 크게 튀었다 — 반드시 딱 한 번만. html의
+  // overflow-anchor:none은 계속 필요하다.
   //
   // 펼침 연출은 2단계(아이디어 제공: 사용자):
   // 1) 위쪽 콘텐츠(스택 위 아이템들·필터·헤더)가 필요한 높이만큼 트랜지션으로 밀려
@@ -285,29 +292,33 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
   //    transform만 되감는 것이라 스크롤·레이아웃 개입이 없다.
   // 2) 다 올라가면 그 빈 공간에 카드들이 페이드인한다.
   // (이전의 "카드들이 스택 자리에서 날아오르는" 방식은 겹침 구간이 지저분해 보였다 — 지적.)
-  //
-  // 접을 때는 보정도 연출도 없다 — 줄이기 버튼은 목록 맨 위라 앞 카드가 화면 밖(아래)인
-  // 경우가 많고, 스택 위쪽 문서 위치는 안 변해 접힌 목록이 누른 자리에 그대로 나타난다.
   const stackRef = useRef<HTMLDivElement>(null);
   const frontRef = useRef<HTMLDivElement>(null);
   const restListRef = useRef<HTMLDivElement>(null);
-  const pendingAnchorRef = useRef<number | null>(null);
+  const pendingAnchorRef = useRef<{ scrollY: number; docHeight: number } | null>(null);
   // 진행 중인 펼침 연출을 중단·원복하는 함수 — 접기/재펼침/언마운트 때 호출한다.
   const cancelRevealRef = useRef<(() => void) | null>(null);
   useEffect(() => () => cancelRevealRef.current?.(), []);
   const toggleOpen = (next: boolean) => {
-    pendingAnchorRef.current = next ? (frontRef.current?.getBoundingClientRect().top ?? null) : null;
+    pendingAnchorRef.current = {
+      scrollY: window.scrollY,
+      docHeight: document.documentElement.scrollHeight,
+    };
     setOpen(next);
   };
   useLayoutEffect(() => {
     cancelRevealRef.current?.();
-    const anchor = pendingAnchorRef.current;
+    const before = pendingAnchorRef.current;
     pendingAnchorRef.current = null;
     const front = frontRef.current;
-    if (anchor == null || !front) return;
-    const d = front.getBoundingClientRect().top - anchor;
+    if (!before || !front) return;
+    const d = document.documentElement.scrollHeight - before.docHeight;
+    // 이 프로그램 스크롤이 "아래로 스크롤"로 오인돼 탭바/헤더가 숨지 않게 잠깐 억제한다
+    // (펼치는 순간 탭바가 줄어드는 깜빡임 — 지적된 부자연스러움의 일부).
+    suppressScrollHide(800);
     // 문서에 CSS scroll-behavior:smooth가 걸려 있어 반드시 instant로 이동시킨다.
-    if (d !== 0) window.scrollBy({ top: d, behavior: "instant" });
+    const target = Math.max(0, before.scrollY + d);
+    if (target !== window.scrollY) window.scrollTo({ top: target, behavior: "instant" });
     const root = stackRef.current;
     const list = restListRef.current;
     if (!open || !root || !list) return;
@@ -368,20 +379,11 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     // 프레임에 적용하지 않아 깜빡인다(이전 지적과 동일한 함정).
     reveals.forEach((el) => { el.style.opacity = "0"; });
 
-    // 1단계 — 위 콘텐츠를 옛 위치(+d)에서 제자리로 밀어올린다. 애니메이션 동안 화면에
-    // 들어올 일 없는(최종 위치가 d만큼 내려가도 화면 위 밖인) 요소는 건너뛴다.
-    above.forEach((el) => {
-      if (el.getBoundingClientRect().bottom + d < -40) return;
-      el.style.transform = `translateY(${d}px)`;
-      const a = el.animate(
-        [{ transform: `translateY(${d}px)` }, { transform: "translateY(0)" }],
-        { duration: 300, easing, fill: "both" },
-      );
-      const settle = () => { el.style.transform = ""; };
-      a.onfinish = () => { settle(); a.cancel(); };
-      a.oncancel = settle;
-      anims.push(a);
-    });
+    // 1단계에서 밀어올릴 위 콘텐츠 — 애니메이션 동안 화면에 들어올 일 없는(최종 위치가
+    // d만큼 내려가도 화면 위 밖인) 요소는 건너뛴다. 시작 상태(+d = 옛 위치)만 지금 박아
+    // 두고, animate()는 아래에서 첫 페인트 뒤로 미룬다.
+    const sliders = above.filter((el) => el.getBoundingClientRect().bottom + d >= -40);
+    sliders.forEach((el) => { el.style.transform = `translateY(${d}px)`; });
 
     // 2단계 — 밀어올리기가 끝나면 빈 공간에 카드들을 페이드인(아래 카드부터 살짝 순차).
     const startFade = () => {
@@ -397,14 +399,37 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
         anims.push(a);
       });
     };
-    if (anims.length > 0) anims[0].finished.then(startFade).catch(() => {});
-    else startFade();
+    // 1단계 — 위 콘텐츠를 옛 위치(+d)에서 제자리로 밀어올린다.
+    const startSlide = () => {
+      if (cancelled) return;
+      sliders.forEach((el) => {
+        const a = el.animate(
+          [{ transform: `translateY(${d}px)` }, { transform: "translateY(0)" }],
+          { duration: 300, easing, fill: "both" },
+        );
+        const settle = () => { el.style.transform = ""; };
+        a.onfinish = () => { settle(); a.cancel(); };
+        a.oncancel = settle;
+        anims.push(a);
+      });
+      if (anims.length > 0) anims[0].finished.then(startFade).catch(() => {});
+      else startFade();
+    };
+    // 첫 페인트가 끝난 다음 프레임에 시작한다 — 레이아웃 변경+스크롤 보정이 실린 첫
+    // 프레임은 무거워서(수백 ms까지도), animate()를 그 안에서 바로 걸면 시작 시각 기준으로
+    // 이미 한참 진행된 지점부터 그려져 위 카드들이 중간부터 뚝 나타났다(지적: "쓰윽
+    // 올라가는 게 아니라 갑자기 공간이 생기면서 깜빡임"). 시작 상태는 위 인라인 스타일이
+    // 잡아두고 있어 첫 프레임은 아무것도 안 움직인 화면 그대로 보인다.
+    let raf2 = 0;
+    const raf1 = requestAnimationFrame(() => { raf2 = requestAnimationFrame(startSlide); });
 
     cancelRevealRef.current = () => {
       cancelled = true;
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
       anims.forEach((a) => { try { a.cancel(); } catch { /* 이미 끝남 */ } });
       reveals.forEach((el) => { el.style.opacity = ""; });
-      above.forEach((el) => { el.style.transform = ""; });
+      sliders.forEach((el) => { el.style.transform = ""; });
       cleanupRail();
       cancelRevealRef.current = null;
     };
