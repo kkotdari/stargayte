@@ -1,4 +1,5 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import { flushSync } from "react-dom";
 import { CalendarPlus, ClipboardList, MoreHorizontal, Phone, Plus, Trophy, Upload } from "lucide-react";
 import { Spinner } from "../../components/common/Feedback";
 import SearchFilterBar from "../../components/common/SearchFilterBar";
@@ -309,6 +310,24 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       scrollY: window.scrollY,
       docHeight: document.documentElement.scrollHeight,
     };
+    // 커밋(레이아웃+스크롤 보정)은 View Transition으로 감싼다 — 클립(0fr↔1fr)이
+    // 풀리고 잠기는 순간 사파리는 스택 카드들의 블러 레이어를 한꺼번에 만들거나
+    // 부수며 컴포지팅 트리를 재구성해 화면 전체를 재래스터한다(지적: "오직
+    // 사파리에서만" 전체 목록 재렌더링 깜빡임 — 크롬은 증분 처리라 안 보인다).
+    // View Transition은 이전 화면 스냅샷을 잡아두고 새 상태가 그려진 뒤 원자적으로
+    // 교체하므로, 전후 화면이 픽셀 단위로 같게 설계된 이 커밋에선 재래스터 순간이
+    // 통째로 스냅샷 뒤에 숨는다. 스냅샷 유지 시간은 CSS(::view-transition-old) 참고.
+    // flushSync: React 커밋(과 useLayoutEffect의 스크롤 보정)이 캡처 콜백 안에서
+    // 동기로 끝나야 "새 상태"가 올바르게 찍힌다.
+    const doc = document as Document & {
+      startViewTransition?: (cb: () => void) => unknown;
+    };
+    if (typeof doc.startViewTransition === "function") {
+      try {
+        doc.startViewTransition(() => { flushSync(() => setOpen(next)); });
+        return;
+      } catch { /* 폴백으로 진행 */ }
+    }
     setOpen(next);
   };
   // 접기 페이드아웃(closeStack)이 진행 중인지 — 중복 클릭 방지.
