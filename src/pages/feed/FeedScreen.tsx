@@ -595,7 +595,21 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     // 펼침 연출이 아직 진행 중이면 끊고(스타일 원복) 접기로 넘어간다.
     cancelRevealRef.current?.();
     closingRef.current = true;
-    const dist = rest.getBoundingClientRect().height;
+    // 내려가는 거리 = 펼친 카드 영역 높이 - 접힘 때 "+N건" 바가 도로 차지할 높이.
+    // 바 높이를 안 빼면 커밋 후 위 콘텐츠가 바 높이만큼 되올라가는 잔차 보정이 남아
+    // 접을 때 위 목록이 한 번 출렁였다(지적). 빼 두면 애니메이션이 정확히 접힌
+    // 레이아웃 위치에 내려앉아 잔차가 0이 된다(커밋 분기의 settle은 안전망으로만 남음).
+    // 바의 접힘 레이아웃 기여분 = border-box 높이 + 상하 마진(-6px 겹침 포함).
+    const peekEl = root.querySelector<HTMLElement>(
+      ":scope > .scr-feed-stack-peekwrap > .scr-feed-stack-peek",
+    );
+    let peekH = 0;
+    if (peekEl) {
+      const pcs = getComputedStyle(peekEl);
+      peekH = Math.max(0,
+        peekEl.offsetHeight + (parseFloat(pcs.marginTop) || 0) + (parseFloat(pcs.marginBottom) || 0));
+    }
+    const dist = Math.max(0, rest.getBoundingClientRect().height - peekH);
     const easing = "cubic-bezier(0.32, 0.72, 0, 1)";
     const dur = Math.min(560, 360 + Math.round(dist * 0.12));
     const vh = window.innerHeight;
