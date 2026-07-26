@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
-import { CalendarPlus, ClipboardList, MoreHorizontal, Plus, Send, Swords, Trophy, Upload } from "lucide-react";
+import { CalendarPlus, ClipboardList, MoreHorizontal, Phone, Plus, Trophy, Upload } from "lucide-react";
 import { Spinner } from "../../components/common/Feedback";
 import SearchFilterBar from "../../components/common/SearchFilterBar";
 import PillTabs from "../../components/common/PillTabs";
@@ -836,7 +836,7 @@ export default function FeedScreen() {
                 type="button" role="menuitem"
                 onClick={() => { setAddMenuOpen(false); setChallengeFormOpen(true); }}
               >
-                <Send size={14} aria-hidden /> 너 나와! 등록
+                <Phone size={14} aria-hidden /> 너 나와! 등록
               </button>
               <button type="button" role="menuitem" disabled title="추후 제공">
                 <CalendarPlus size={14} aria-hidden /> 일정 등록 <span className="scr-feed-add-soon">추후</span>
@@ -918,8 +918,8 @@ export default function FeedScreen() {
             ) : item.kind === "challenge" ? (
               <div className="scr-feed-card" key={`c-${item.challenge.id}`}>
                 <div className="scr-feed-card-head" data-date-label={dateLabelOf(item)}>
-                  {/* 너 나와!는 대결 신청이니 칼 아이콘으로(요청). */}
-                  <Swords size={13} aria-hidden />
+                  {/* 너 나와!는 "호출"이니 수화기 아이콘으로(요청) — 등록 메뉴·호출 버튼과 통일. */}
+                  <Phone size={13} aria-hidden />
                   <span className="scr-feed-card-label">너 나와!</span>
                   <span className="scr-feed-card-time">{formatEventTime(item.time, item.withClock)}</span>
                   {/* 응답 마감 실시간 카운트다운 — 날짜 옆, 헤더와 같은 폰트 크기(요청). */}

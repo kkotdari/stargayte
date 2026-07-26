@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
-import { X } from "lucide-react";
+import { Upload, X } from "lucide-react";
 import MemberMultiSelect from "../components/select/MemberMultiSelect";
 import { Spinner } from "../components/common/Feedback";
 import ConfirmDialog from "../components/common/ConfirmDialog";
@@ -389,7 +389,8 @@ export default function ReplayReviewModal({
           <div className="scr-form-actions">
             <button type="button" className="scr-btn scr-btn-ghost" onClick={requestClose}>취소</button>
             <button type="button" className="scr-btn scr-btn-primary" onClick={submitAll} disabled={busy}>
-              {busy ? <><Spinner /> 등록 중... ({submittedIndices.size}/{nonExcludedCount})</> : `등록 (${pendingIndices.length})`}
+              {/* 피드 "게임결과 등록" 메뉴와 같은 업로드 아이콘으로 통일(요청). */}
+              {busy ? <><Spinner /> 등록 중... ({submittedIndices.size}/{nonExcludedCount})</> : <><Upload size={14} /> 등록 ({pendingIndices.length})</>}
             </button>
           </div>
         </div>

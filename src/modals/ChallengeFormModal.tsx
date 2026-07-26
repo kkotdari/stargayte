@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { X, Send, MessageSquarePlus } from "lucide-react";
+import { X, Phone, MessageSquarePlus } from "lucide-react";
 import { cx } from "../utils/format";
 import Avatar from "../components/common/Avatar";
 import OptionalDateTimeFields from "../components/common/OptionalDateTimeFields";
@@ -252,7 +252,7 @@ export default function ChallengeFormModal({ onClose, onCreated, presetTargetIds
             {/* 상대(필수)를 지정하면 비활성→핑크로 또렷하게 활성화돼 바로 눈에 띈다(요청).
                 비활성 상태는 .scr-btn:disabled의 옅은 처리로 자연히 흐려진다. */}
             <button className="scr-btn scr-challenge-call-btn scr-challenge-submit-btn" onClick={submit} disabled={!canSubmit || busy}>
-              {busy ? <><Spinner /> 호출하는 중...</> : <><Send size={14} /> 호출</>}
+              {busy ? <><Spinner /> 호출하는 중...</> : <><Phone size={14} /> 호출</>}
             </button>
           </div>
         </div>
