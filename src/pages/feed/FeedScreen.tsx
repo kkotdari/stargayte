@@ -1130,9 +1130,10 @@ export default function FeedScreen() {
                 footer={
                   <>
                     <div className="scr-feed-rank-actions">
-                      {/* 상세 — 통계 탭으로 이동, 이 변동의 게임 유형을 필터로 미리 건다(요청). */}
-                      <button type="button" className="scr-btn scr-btn-sm" onClick={() => openStatsFor(item.shift.matchType)}>
-                        상세
+                      {/* 버튼 대신 텍스트 링크(요청) — 통계 탭으로 이동하며 그 변동의
+                          게임 유형을 필터로 미리 건다. */}
+                      <button type="button" className="scr-link-btn scr-feed-rank-link" onClick={() => openStatsFor(item.shift.matchType)}>
+                        실시간 랭크 확인
                       </button>
                     </div>
                     {/* 순위변동 알림에도 댓글(요청) — 경기/너나와 카드와 같은 공통 댓글 영역. */}

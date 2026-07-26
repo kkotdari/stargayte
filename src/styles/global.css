@@ -7967,7 +7967,11 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-feed-stack-rest { display: grid; grid-template-rows: 0fr; }
 .scr-feed-stack-opened .scr-feed-stack-rest { grid-template-rows: 1fr; }
 .scr-feed-stack-rest-inner { overflow: hidden; min-height: 0; }
-.scr-feed-stack-rest-list { display: flex; flex-direction: column; gap: 14px; padding: 4px 0 20px; }
+/* 펼친 카드 사이 갭은 피드 리스트의 카드 갭(.scr-feed-list gap:20px)과 똑같이 통일한다
+   (요청: "펼친 카드들 사이 갭이 원래 카드들 갭보다 작아 똑같이"). bottom 패딩(20px)도
+   같은 값이라 마지막 카드→앞 카드 간격까지 일관. rest 높이가 커지지만 펼침/접기 연출은
+   전부 rest.getBoundingClientRect()로 실측하므로 자동으로 맞는다(하드코딩 없음). */
+.scr-feed-stack-rest-list { display: flex; flex-direction: column; gap: 20px; padding: 4px 0 20px; }
 /* 펼침 연출은 JS(WAAPI, MatchStack 참고) — 1) 위 콘텐츠를 필요한 높이만큼 transform으로
    밀어올려 빈 공간을 만들고 2) 그 자리에 카드들을 페이드인(아이디어: 사용자). */
 /* 겹친 뒷카드 윗단 — 앞 카드가 그날 첫 게임이므로 나중 게임들이 "위"로 삐져나온 모양(요청).
@@ -8217,6 +8221,8 @@ html:not(.scr-light-theme) .scr-feed-comments .scr-mreq-editor .scr-mreq-live-in
 .scr-feed-shift-new { color: var(--point); font-weight: 700; }
 .scr-feed-shift-from { color: var(--dim); font-size: var(--fs-micro); }
 .scr-feed-rank-actions { display: flex; justify-content: center; padding: 5px 16px 10px; }
+/* "실시간 랭크 확인" 텍스트 링크(요청: 버튼 아님) — 은은하게, 호버 시 또렷하게. */
+.scr-feed-rank-link { color: var(--dim); font-size: var(--fs-caption); font-weight: 600; }
 
 /* 실시간 랭킹(차트) 오버레이 — 상성보기와 같은 전체 덮개. PC는 넓은 본체(900px)를
    가운데에, 모바일은 사실상 전체 화면. 오버레이 자신이 스크롤을 담당한다. */
