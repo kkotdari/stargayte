@@ -1052,27 +1052,51 @@ export default function FeedScreen() {
     return `${d.getMonth() + 1}월 ${d.getDate()}일`;
   };
 
+  // 피드 진입 시 오늘 날짜 아이템으로 스크롤(요청) — 없으면 가장 가까운 과거로. 피드는
+  // 최신순(내림차순)이라 위에서부터 첫 "오늘 이하" 아이템이 곧 오늘(있으면) 또는 그 바로
+  // 아래의 가장 가까운 과거다. 로딩이 끝나 목록이 처음 그려진 직후 딱 한 번만 한다.
+  const feedListRef = useRef<HTMLDivElement>(null);
+  const didInitialScrollRef = useRef(false);
+  useEffect(() => {
+    if (loading || didInitialScrollRef.current) return;
+    const list = feedListRef.current;
+    if (!list || displayFeed.length === 0) return;
+    didInitialScrollRef.current = true;
+    const dayStart = (ms: number) => { const d = new Date(ms); d.setHours(0, 0, 0, 0); return d.getTime(); };
+    const today = dayStart(Date.now());
+    let idx = displayFeed.findIndex((it) => dayStart(it.time) <= today);
+    if (idx < 0) idx = displayFeed.length - 1; // 전부 미래면 가장 가까운(맨 아래) 것으로
+    requestAnimationFrame(() => {
+      const el = list.children[idx] as HTMLElement | undefined;
+      if (!el) return;
+      const headerH = document.querySelector<HTMLElement>(".scr-header")?.getBoundingClientRect().height ?? 0;
+      const top = window.scrollY + el.getBoundingClientRect().top - headerH - 10;
+      if (top > 1) window.scrollTo({ top, behavior: "instant" });
+    });
+  }, [loading, displayFeed]);
+
   return (
     <div className="scr-screen scr-feed-screen">
       <div className="scr-v2-toolbar">
         <h1 className="scr-title scr-v2-toolbar-title">피드</h1>
       </div>
 
-      {/* 등록 진입점 — 리플레이 / 너 나와! / 일정(추후 개발). */}
-      <div className="scr-v2-primary-row scr-feed-add-wrap">
+      {/* 등록 진입점 — 리플레이 / 너 나와! / 일정(추후 개발). 탭바 좌상단에 플로팅하는
+          동그란 유리 + 버튼(요청). 메뉴는 버튼 위로 펼쳐진다. */}
+      <div className="scr-feed-add-fab-wrap scr-feed-add-wrap">
         <button
           type="button"
-          className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm"
+          className="scr-feed-add-fab"
           onClick={() => setAddMenuOpen((v) => !v)}
           aria-expanded={addMenuOpen}
           aria-label="등록"
         >
-          {parsingReplays ? <Spinner size={14} /> : <Plus size={16} />} 등록
+          {parsingReplays ? <Spinner size={18} /> : <Plus size={24} />}
         </button>
         {addMenuOpen && (
           <>
             <div className="scr-feed-add-backdrop" onClick={() => setAddMenuOpen(false)} aria-hidden />
-            <div className="scr-feed-add-menu" role="menu">
+            <div className="scr-feed-add-menu scr-feed-add-menu-up" role="menu">
               <button
                 type="button" role="menuitem"
                 onClick={() => { setAddMenuOpen(false); replayInputRef.current?.click(); }}
@@ -1131,7 +1155,7 @@ export default function FeedScreen() {
       ) : displayFeed.length === 0 ? (
         <div className="scr-empty">아직 표시할 활동이 없어요.</div>
       ) : (
-        <div className="scr-feed-list">
+        <div className="scr-feed-list" ref={feedListRef}>
           {displayFeed.map((item) => (
             item.kind === "rankshift" ? (
               <RankShiftCard
