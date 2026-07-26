@@ -42,7 +42,7 @@ export default function MemberStatRow({
       <div className="scr-stat-name-cell">
         {avatar && (
           <button type="button" className="scr-stat-avatar-btn" onClick={() => setPhotoOpen(true)} aria-label={`${member.nickname} 사진 보기`}>
-            <Avatar member={member} size={40} />
+            <Avatar member={member} size={32} />
           </button>
         )}
         <div className="scr-stat-name-stack">

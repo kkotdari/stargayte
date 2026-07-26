@@ -1887,7 +1887,22 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 /* 프사가 없으니(avatar=false) 닉네임/배틀태그를 칸 왼쪽에 붙일 이유가 없다 — 가운데
    정렬한다. */
 .scr-stats-list-panel-v2 .scr-stat-name-cell { justify-content: center; }
-.scr-stats-list-panel-v2 .scr-stat-name-stack { align-items: center; }
+/* 헤더행·유저열 배경 — 회색톤(--panel-raised) 대신 표 기본색으로(요청). 유저열은 sticky로
+   옆 칸 내용이 밑을 지나가므로, 불투명 회색 대신 반투명 기본색 + 강한 블러로 가린다(요청).
+   color-mix 미지원 브라우저는 앞 선언(불투명 기본색)으로 동작한다. */
+.scr-stats-list-panel-v2 .scr-stat-row-head { background-color: var(--panel-solid); }
+.scr-stats-list-panel-v2 .scr-stat-name-cell,
+.scr-stats-list-panel-v2 .scr-stat-name-head {
+  background-image: none;
+  background-color: var(--panel-solid);
+  background-color: color-mix(in srgb, var(--panel-solid) 70%, transparent);
+  backdrop-filter: blur(16px) saturate(1.1);
+  -webkit-backdrop-filter: blur(16px) saturate(1.1);
+}
+/* flex:none — 기본 규칙의 flex:1이 남은 폭을 스택이 다 차지해 프사만 왼쪽에 붙고
+   닉네임 혼자 가운데로 떨어졌다(가운데 정렬 요청과 어긋남) — 프사+닉네임을 한 덩어리로
+   칸 가운데에 모은다. */
+.scr-stats-list-panel-v2 .scr-stat-name-stack { align-items: center; flex: none; min-width: 0; }
 .scr-stats-list-panel-v2 .scr-stat-name-btn { text-align: center; }
 /* 프사는 동그란 크롭(요청). */
 .scr-stats-list-panel-v2 .scr-stat-avatar-btn .scr-avatar { border-radius: 50% !important; }
@@ -1967,13 +1982,14 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
      확대(micro→caption), 헤더는 두 스텝 확대(micro→body — 아래 head 규칙). */
   .scr-stats-list-panel-v2 .scr-stat-row { --scr-stat-name-w: 168px; font-size: var(--fs-caption); }
   .scr-stats-list-panel-v2 .scr-stat-name-cell {
-    flex-direction: row; align-items: center; justify-content: flex-start; gap: 7px;
+    flex-direction: row; align-items: center; justify-content: center; gap: 7px;
     padding-left: 7px; padding-right: 7px;
   }
-  /* 모바일 프사 — 기본(60px) 대신 32px로, 좁은 유저 칸에 [프사|닉네임 스택]이 들어가게. */
-  .scr-stats-list-panel-v2 .scr-stat-avatar-btn .scr-avatar { width: 32px !important; height: 32px !important; }
+  /* 모바일 프사 — 기본(60px) 대신 28px(1스텝 축소, 요청)로, 좁은 유저 칸에
+     [프사|닉네임]이 들어가게. */
+  .scr-stats-list-panel-v2 .scr-stat-avatar-btn .scr-avatar { width: 28px !important; height: 28px !important; }
   .scr-stats-list-panel-v2 .scr-stat-name-stack { min-width: 0; }
-  .scr-stats-list-panel-v2 .scr-stat-name-btn { text-align: left; }
+  .scr-stats-list-panel-v2 .scr-stat-name-btn { text-align: center; }
   .scr-stats-list-panel-v2 .scr-stat-name-head { padding-left: 7px; padding-right: 7px; }
   .scr-stats-list-panel-v2 .scr-stat-name-btn { text-align: center; font-size: var(--fs-body); }
   /* 데이터 값들은 행 폰트를 안 물려받는다 — 게임수/생산/유효APM/유효커맨드 숫자
@@ -2038,6 +2054,14 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
      이 돼, 가로 스크롤 시 옆 헤더가 비쳤다(요청) — 이름칸과 같은 불투명 조합으로 되돌린다. */
   background-color: var(--panel-solid); background-image: linear-gradient(var(--panel-raised), var(--panel-raised));
   border-right: 1px solid var(--line-soft);
+}
+/* v2 통계에서는 위 조합 선택자가 회색 그라디언트(--panel-raised)를 다시 얹어버려,
+   유저열/헤더를 기본색(--panel-solid)으로 바꾼 아래쪽 v2 규칙(특이도 0,2,0, 더 앞줄)을
+   이겼다 — 같은 조합에 스코프를 더해(0,3,0) 기본색+반투명 블러 조합으로 되돌린다. */
+.scr-stats-list-panel-v2 .scr-stat-name-head.scr-stat-sort-btn {
+  background-image: none;
+  background-color: var(--panel-solid);
+  background-color: color-mix(in srgb, var(--panel-solid) 70%, transparent);
 }
 @media (hover: hover) { .scr-stat-sort-btn:hover { color: var(--text); } }
 /* 정렬 활성 표시는 색(포인트색) 대신 기본 글자색을 더 굵게 — :hover도 같은 규칙을
