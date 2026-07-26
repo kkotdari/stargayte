@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { CalendarPlus, MoreHorizontal, Plus, Send, Swords, Trophy, Upload } from "lucide-react";
 import { Spinner } from "../../components/common/Feedback";
 import SearchFilterBar from "../../components/common/SearchFilterBar";
@@ -231,7 +231,11 @@ function FeedCardComments({ targetType, targetId }: { targetType: "match" | "cha
 
 // 경기 카드 — 한 경기가 피드 카드 한 장. 기존 경기 로우(접힌 상태)를 카드 본문에 그대로
 // 앉히고(누르면 그 자리에서 펼쳐짐), 하단에 피드 댓글을 단다.
-function MatchCard({ item, memberOf, onDeleted, dateLabel, highlightMemberIds, highlightTerms }: {
+// memo — 스택 개폐(setOpen)는 MatchStack만 다시 렌더하면 되는데, 그때마다 카드 전체
+// (경기 로우·댓글·아바타 이미지)까지 다시 렌더되면서 iOS에서 기존 카드들이 깜빡였다
+// (지적: "펼치기 접기 누를 때 기존 요소들도 다시 그리는 것 같아"). 개폐 때 카드 props는
+// 전부 같은 참조라 memo가 전부 걸러낸다.
+const MatchCard = memo(function MatchCard({ item, memberOf, onDeleted, dateLabel, highlightMemberIds, highlightTerms }: {
   item: MatchItem;
   memberOf: (id: string) => Member | undefined;
   onDeleted: () => void;
@@ -257,7 +261,7 @@ function MatchCard({ item, memberOf, onDeleted, dateLabel, highlightMemberIds, h
       <FeedCardComments targetType="match" targetId={item.match.id} />
     </div>
   );
-}
+});
 
 // 겹침 스택 — 접힘: 그날 첫 게임 카드 + 그 아래로 살짝 겹쳐 보이는 뒷카드 밑단("+N건",
 // 누르면 펼침). 펼침: 시간순 전체 카드 + 마지막 카드 위 줄이기 버튼.
@@ -306,6 +310,8 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     };
     setOpen(next);
   };
+  // 접기 페이드아웃(closeStack)이 진행 중인지 — 중복 클릭 방지.
+  const closingRef = useRef(false);
   useLayoutEffect(() => {
     cancelRevealRef.current?.();
     const before = pendingAnchorRef.current;
@@ -321,7 +327,77 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     if (target !== window.scrollY) window.scrollTo({ top: target, behavior: "instant" });
     const root = stackRef.current;
     const list = restListRef.current;
-    if (!open || !root || !list) return;
+    if (!root || !list) return;
+
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const easing = "cubic-bezier(0.32, 0.72, 0, 1)";
+    // 밀어올리기/내리기 시간 — 거리에 비례해 살짝 늘린다(지적: "너무 속도가 빠른 건지"
+    // 카드 이동이 윗부분에서만 잠깐 보인다). 이동량이 클수록 오래, 상한은 둔다.
+    const slideDur = Math.min(560, 360 + Math.round(Math.abs(d) * 0.12));
+
+    // 위쪽 콘텐츠 수집 — 스택 위 피드 아이템들 + 피드 목록 위 요소들(타이틀/필터/검색).
+    // 헤더는 문서 스크롤 최상단 콘텐츠라 스택을 펼칠 즈음엔 화면 밖이 대부분이지만,
+    // 근처에 있으면 같이 밀어 위화감을 없앤다.
+    const collectAbove = (): HTMLElement[] => {
+      const above: HTMLElement[] = [];
+      for (let el = root.previousElementSibling; el; el = el.previousElementSibling) {
+        above.push(el as HTMLElement);
+      }
+      const listParent = root.parentElement;
+      if (listParent) {
+        for (let el = listParent.previousElementSibling; el; el = el.previousElementSibling) {
+          above.push(el as HTMLElement);
+        }
+      }
+      const header = document.querySelector<HTMLElement>(".scr-header");
+      if (header) above.push(header);
+      return above;
+    };
+
+    if (!open) {
+      // ---- 접기 — 펼치기의 역재생(요청). 카드들은 접기 직전에 이미 페이드아웃됐고
+      // (closeStack), 여기서는 위 콘텐츠가 옛 위치(-removed = 위쪽)에서 제자리로 쓸려
+      // 내려온다. 페이드아웃이 남긴 인라인 opacity는 rest가 0fr로 클립된 지금 정리한다.
+      const rail = root.querySelector<HTMLElement>(":scope > .scr-feed-stack-rail");
+      Array.from(list.children).forEach((el) => { (el as HTMLElement).style.opacity = ""; });
+      if (rail) rail.style.opacity = "";
+      const removed = -d;
+      if (removed <= 0 || reduced) return;
+      let cancelled = false;
+      const anims: Animation[] = [];
+      const vh = window.innerHeight;
+      // 내려오는 경로가 화면을 전혀 안 지나는 요소는 건너뛴다(경로: rect-removed → rect).
+      const sliders = collectAbove().filter((el) => {
+        const r = el.getBoundingClientRect();
+        return r.bottom > -40 && r.top - removed < vh + 40;
+      });
+      sliders.forEach((el) => { el.style.transform = `translateY(${-removed}px)`; });
+      const startDrop = () => {
+        if (cancelled) return;
+        sliders.forEach((el) => {
+          const a = el.animate(
+            [{ transform: `translateY(${-removed}px)` }, { transform: "translateY(0)" }],
+            { duration: slideDur, easing, fill: "both" },
+          );
+          const settle = () => { el.style.transform = ""; };
+          a.onfinish = () => { settle(); a.cancel(); };
+          a.oncancel = settle;
+          anims.push(a);
+        });
+      };
+      // 펼치기와 같은 이유로 첫 페인트(접힘 레이아웃+스크롤 보정) 다음 프레임에 시작.
+      let raf2 = 0;
+      const raf1 = requestAnimationFrame(() => { raf2 = requestAnimationFrame(startDrop); });
+      cancelRevealRef.current = () => {
+        cancelled = true;
+        cancelAnimationFrame(raf1);
+        cancelAnimationFrame(raf2);
+        anims.forEach((a) => { try { a.cancel(); } catch { /* 이미 끝남 */ } });
+        sliders.forEach((el) => { el.style.transform = ""; });
+        cancelRevealRef.current = null;
+      };
+      return;
+    }
 
     // 줄이기 라인 배치 — 첫(맨 위) 카드의 세로 중심에서 시작해 마지막(앞) 카드의 세로
     // 중심에서 끝난다(요청). 카드 높이는 제각각이라 CSS만으론 못 잡아 실측해 인라인으로
@@ -347,73 +423,61 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       if (rail) { rail.style.top = ""; rail.style.height = ""; rail.style.bottom = ""; }
     };
 
-    if (d <= 0 || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    if (d <= 0 || reduced) {
       cancelRevealRef.current = () => { cleanupRail(); cancelRevealRef.current = null; };
       return;
     }
 
-    const easing = "cubic-bezier(0.32, 0.72, 0, 1)";
     let cancelled = false;
     const anims: Animation[] = [];
-    const reveals = Array.from(list.children) as HTMLElement[];
-    // 줄이기 라인(스택 루트에 붙는 오버레이)도 카드들과 함께 페이드인한다.
-    if (rail) reveals.push(rail);
-
-    // 위쪽 콘텐츠 수집 — 스택 위 피드 아이템들 + 피드 목록 위 요소들(타이틀/필터/검색).
-    // 헤더는 문서 스크롤 최상단 콘텐츠라 스택을 펼칠 즈음엔 화면 밖이 대부분이지만,
-    // 근처에 있으면 같이 밀어 위화감을 없앤다.
-    const above: HTMLElement[] = [];
-    for (let el = root.previousElementSibling; el; el = el.previousElementSibling) {
-      above.push(el as HTMLElement);
-    }
-    const listParent = root.parentElement;
-    if (listParent) {
-      for (let el = listParent.previousElementSibling; el; el = el.previousElementSibling) {
-        above.push(el as HTMLElement);
-      }
-    }
-    const header = document.querySelector<HTMLElement>(".scr-header");
-    if (header) above.push(header);
+    const cards = Array.from(list.children) as HTMLElement[];
+    // 줄이기 라인(스택 루트에 붙는 오버레이)도 함께 페이드인 — 스택 전체를 두르는
+    // 요소라 카드 스태거와 별개로 맨 마지막에 나타난다.
+    const reveals = rail ? [...cards, rail] : cards;
 
     // 시작 상태는 인라인 스타일로 "지금 당장" 박는다 — WAAPI fill에만 맡기면 iOS가 첫
     // 프레임에 적용하지 않아 깜빡인다(이전 지적과 동일한 함정).
     reveals.forEach((el) => { el.style.opacity = "0"; });
 
-    // 1단계에서 밀어올릴 위 콘텐츠 — 애니메이션 동안 화면에 들어올 일 없는(최종 위치가
-    // d만큼 내려가도 화면 위 밖인) 요소는 건너뛴다. 시작 상태(+d = 옛 위치)만 지금 박아
-    // 두고, animate()는 아래에서 첫 페인트 뒤로 미룬다.
-    const sliders = above.filter((el) => el.getBoundingClientRect().bottom + d >= -40);
+    // 밀어올릴 위 콘텐츠 — 애니메이션 동안 화면에 들어올 일 없는(최종 위치가 d만큼
+    // 내려가도 화면 위 밖인) 요소는 건너뛴다. 시작 상태(+d = 옛 위치)만 지금 박아 두고,
+    // animate()는 아래에서 첫 페인트 뒤로 미룬다.
+    const sliders = collectAbove().filter((el) => el.getBoundingClientRect().bottom + d >= -40);
     sliders.forEach((el) => { el.style.transform = `translateY(${d}px)`; });
 
-    // 2단계 — 밀어올리기가 끝나면 빈 공간에 카드들을 페이드인(아래 카드부터 살짝 순차).
-    const startFade = () => {
-      if (cancelled) return;
-      reveals.forEach((el, idx) => {
-        const a = el.animate(
-          [{ opacity: 0 }, { opacity: 1 }],
-          { duration: 240, easing: "ease-out", delay: (reveals.length - 1 - idx) * 30, fill: "both" },
-        );
-        const settle = () => { el.style.opacity = ""; };
-        a.onfinish = () => { settle(); a.cancel(); };
-        a.oncancel = settle;
-        anims.push(a);
-      });
+    const fadeIn = (el: HTMLElement, delay: number) => {
+      const a = el.animate(
+        [{ opacity: 0 }, { opacity: 1 }],
+        { duration: 260, easing: "ease-out", delay, fill: "both" },
+      );
+      const settle = () => { el.style.opacity = ""; };
+      a.onfinish = () => { settle(); a.cancel(); };
+      a.oncancel = settle;
+      anims.push(a);
     };
-    // 1단계 — 위 콘텐츠를 옛 위치(+d)에서 제자리로 밀어올린다.
-    const startSlide = () => {
+    const start = () => {
       if (cancelled) return;
+      // 위 콘텐츠를 옛 위치(+d)에서 제자리로 밀어올린다.
       sliders.forEach((el) => {
         const a = el.animate(
           [{ transform: `translateY(${d}px)` }, { transform: "translateY(0)" }],
-          { duration: 300, easing, fill: "both" },
+          { duration: slideDur, easing, fill: "both" },
         );
         const settle = () => { el.style.transform = ""; };
         a.onfinish = () => { settle(); a.cancel(); };
         a.oncancel = settle;
         anims.push(a);
       });
-      if (anims.length > 0) anims[0].finished.then(startFade).catch(() => {});
-      else startFade();
+      // 카드 페이드인은 슬라이드가 다 끝날 때까지 기다리지 않는다 — 빈 공간은 앞 카드
+      // 바로 위(아래쪽)부터 열리므로, 열리는 순서 그대로 아래 카드부터 슬라이드 진행에
+      // 맞춰 순차로 채운다(지적: 슬라이드가 끝날 때까지 아래가 통째로 빈 공백으로 남아
+      // "짠" 하고 나타나 보였다).
+      const n = cards.length;
+      cards.forEach((el, idx) => {
+        const fromBottom = n - 1 - idx;
+        fadeIn(el, 40 + (n > 1 ? fromBottom / (n - 1) : 0) * slideDur * 0.55);
+      });
+      if (rail) fadeIn(rail, 40 + slideDur * 0.55 + 80);
     };
     // 첫 페인트가 끝난 다음 프레임에 시작한다 — 레이아웃 변경+스크롤 보정이 실린 첫
     // 프레임은 무거워서(수백 ms까지도), animate()를 그 안에서 바로 걸면 시작 시각 기준으로
@@ -421,7 +485,7 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     // 올라가는 게 아니라 갑자기 공간이 생기면서 깜빡임"). 시작 상태는 위 인라인 스타일이
     // 잡아두고 있어 첫 프레임은 아무것도 안 움직인 화면 그대로 보인다.
     let raf2 = 0;
-    const raf1 = requestAnimationFrame(() => { raf2 = requestAnimationFrame(startSlide); });
+    const raf1 = requestAnimationFrame(() => { raf2 = requestAnimationFrame(start); });
 
     cancelRevealRef.current = () => {
       cancelled = true;
@@ -434,6 +498,39 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       cancelRevealRef.current = null;
     };
   }, [open]);
+
+  // 접기 — 펼치기의 역재생(요청): 먼저 카드들이 위에서부터 순차로 페이드아웃하고, 다
+  // 사라지면 실제 접힘(레이아웃+스크롤 보정) 후 위 콘텐츠가 제자리로 쓸려 내려온다
+  // (위 useLayoutEffect의 !open 분기).
+  const closeStack = () => {
+    if (closingRef.current) return;
+    const list = restListRef.current;
+    const rail = stackRef.current?.querySelector<HTMLElement>(":scope > .scr-feed-stack-rail");
+    if (!list || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      toggleOpen(false);
+      return;
+    }
+    // 펼침 연출이 아직 진행 중이면 끊고(스타일 원복) 접기 페이드로 넘어간다.
+    cancelRevealRef.current?.();
+    closingRef.current = true;
+    const cards = Array.from(list.children) as HTMLElement[];
+    // 라인은 누르는 즉시, 카드는 위(펼칠 때 마지막으로 나타난 쪽)부터 순차로 사라진다.
+    const targets = rail ? [rail, ...cards] : cards;
+    const anims = targets.map((el, i) => el.animate(
+      [{ opacity: 1 }, { opacity: 0 }],
+      { duration: 170, easing: "ease-in", delay: el === rail ? 0 : (i - (rail ? 1 : 0)) * 22, fill: "both" },
+    ));
+    const finish = () => {
+      if (!closingRef.current) return;
+      closingRef.current = false;
+      // 접힘 레이아웃이 그려질 때까지 숨김을 인라인으로 유지하고(위 !open 분기가 rest가
+      // 클립된 뒤 정리한다) 애니메이션 객체는 정리한다.
+      targets.forEach((el) => { el.style.opacity = "0"; });
+      anims.forEach((a) => { try { a.cancel(); } catch { /* 이미 끝남 */ } });
+      toggleOpen(false);
+    };
+    Promise.all(anims.map((a) => a.finished)).then(finish).catch(finish);
+  };
 
   // 두 상태(접힘/펼침)의 카드가 모두 항상 마운트돼 있고(요청: "실제로는 렌더링해놓고"),
   // 높이는 클립(grid-rows 0fr↔1fr)으로 즉시 바뀐다 — 트랜지션은 카드 transform이 담당.
@@ -463,7 +560,7 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
           세로 라인(요청: 들여쓰기 없이 카드 위에 배치, 첫 카드까지 포함). 누르면 접힌다. */}
       <button
         type="button" className="scr-feed-stack-rail"
-        onClick={() => toggleOpen(false)} aria-label="줄이기"
+        onClick={closeStack} aria-label="줄이기"
         tabIndex={open ? 0 : -1}
       >
         <span className="scr-feed-stack-rail-dot scr-feed-stack-rail-dot-top" aria-hidden />

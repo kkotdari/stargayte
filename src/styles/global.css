@@ -7971,7 +7971,9 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    세로 범위(첫 카드 중심 ~ 앞 카드 중심)와 양 끝 원은 JS가 실측해 잡는다(MatchStack). */
 .scr-feed-stack { position: relative; }
 .scr-feed-stack-rail {
-  position: absolute; left: 0; top: 4px; bottom: 0; width: 22px; z-index: 2;
+  /* 카드 왼쪽 가장자리보다 살짝 바깥으로(요청: "좀더 왼쪽으로") — 페이지 좌우 여백(20px)
+     안이라 잘리지 않는다. 라인(::before, left:10px)이 카드 모서리 바로 바깥(-2px)에 온다. */
+  position: absolute; left: -12px; top: 4px; bottom: 0; width: 22px; z-index: 2;
   display: none; align-items: center; justify-content: center;
   background: transparent; border: none; padding: 0; cursor: pointer;
   -webkit-tap-highlight-color: transparent;
