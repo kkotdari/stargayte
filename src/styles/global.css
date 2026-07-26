@@ -8065,6 +8065,11 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-feed-match-body .scr-match-trow-dur { font-size: var(--fs-micro); }
 .scr-feed-comments .scr-mreq-item-text { font-size: var(--fs-caption); }
 .scr-feed-comments .scr-mreq-item-author-name { font-size: var(--fs-micro); }
+/* 댓글 본문은 caption인데 @유저 칩은 기본이 body라 칩이 유독 커 보였다(지적: "댓글에서
+   태그한 유저칩 폰트가 너무 커"). 댓글 영역에서만 칩 글자를 본문(caption)과 통일하고,
+   그만큼 패딩·래디우스도 줄여 칩 크기를 함께 낮춘다(다른 곳의 칩은 본문이 body라 그대로).
+   목록(읽기용 인라인)과 입력창 칩 모두 적용. */
+.scr-feed-comments .scr-mreq-chip { font-size: var(--fs-caption); padding: 0 3px; border-radius: 6px; }
 .scr-feed-shift-row { font-size: var(--fs-micro); }
 /* 접힘 상태 윗줄은 이제 케밥(절대배치)뿐이라 자리 예약이 필요 없다. */
 .scr-feed-match-body .scr-match-trow-topline { min-height: 0; }
