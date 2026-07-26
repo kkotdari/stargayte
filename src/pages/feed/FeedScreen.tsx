@@ -41,6 +41,18 @@ const DOW_FULL = ["일요일", "월요일", "화요일", "수요일", "목요일
 function formatEventTime(ms: number, withClock: boolean): string {
   const d = new Date(ms);
   const now = new Date();
+  // 실제 시각이 있는(withClock) 최근 과거 이벤트는 상대 표기(요청): 1시간 이내면 "N분 전",
+  // 24시간 이내면 "N시간 전"(분 생략). 날짜만 있는 경기(withClock=false)는 자정 기준이라
+  // 상대표기가 어긋나므로 제외하고, 미래 일정(음수 diff)도 기존 절대 표기를 쓴다.
+  if (withClock) {
+    const diffMs = now.getTime() - ms;
+    if (diffMs >= 0 && diffMs < 24 * 60 * 60 * 1000) {
+      const mins = Math.floor(diffMs / 60000);
+      if (mins < 1) return "방금 전";
+      if (mins < 60) return `${mins}분 전`;
+      return `${Math.floor(diffMs / (60 * 60 * 1000))}시간 전`;
+    }
+  }
   const time = withClock
     ? ` ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`
     : "";
