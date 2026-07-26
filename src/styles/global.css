@@ -7947,7 +7947,8 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 /* 겹친 뒷카드 윗단 — 앞 카드가 그날 첫 게임이므로 나중 게임들이 "위"로 삐져나온 모양(요청).
    블러도 카드와 동일하게(요청: "스택된 상태의 뒷 카드에도 블러 똑같이"). */
 .scr-feed-stack-peek {
-  display: block; margin: 0 4px -6px; margin-left: 14px; margin-right: 14px;
+  /* 좌우 여백 14px → 5px — 뒷카드 폭을 앞 카드보다 아주 살짝만 좁게(요청). */
+  display: block; margin: 0 4px -6px; margin-left: 5px; margin-right: 5px;
   padding: 8px 0 12px; border: none; border-radius: 14px 14px 0 0; cursor: pointer;
   font-family: inherit; font-size: var(--fs-micro); font-weight: 700; color: var(--dim);
   background: rgba(var(--overlay-rgb), 0.05);
