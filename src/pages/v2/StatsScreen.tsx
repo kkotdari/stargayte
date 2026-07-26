@@ -262,10 +262,10 @@ export default function StatsScreenV2() {
         suggestions={suggestions}
         filterPanel={
           <>
-            {/* 로스터(개인전/팀전) 라디오 — "전체" 없음. 진입 기본값은 랜덤(요청). */}
-            <FilterItem label="로스터">
+            {/* 분류(개인전/팀전) 라디오 — "전체" 없음. 진입 기본값은 랜덤(요청). */}
+            <FilterItem label="분류">
               <PillTabs
-                aria-label="로스터"
+                aria-label="분류"
                 value={matchType}
                 onChange={setMatchType}
                 options={[
@@ -330,7 +330,7 @@ export default function StatsScreenV2() {
                 <SortableHead label="유저" sortKey="name" sort={sort} onToggle={toggleSort} className="scr-stat-name-head" />
                 <SortableHead
                   label="포인트" sortKey="points" sort={sort} onToggle={toggleSort}
-                  tooltip="랭크 포인트 — 이 기간·로스터의 경기들로 산정한 레이팅 점수. 숫자를 누르면 경기 이력(경기당 포인트 변화)이 열려요."
+                  tooltip="랭크 포인트 — 이 기간·분류의 경기들로 산정한 레이팅 점수. 숫자를 누르면 경기 이력(경기당 포인트 변화)이 열려요."
                 />
                 <SortableHead label="게임수" sortKey="plays" sort={sort} onToggle={toggleSort} />
                 <SortableHead label="승률" sortKey="rate" sort={sort} onToggle={toggleSort} />
