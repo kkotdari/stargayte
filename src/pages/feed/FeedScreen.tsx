@@ -1,6 +1,7 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { flushSync } from "react-dom";
-import { CalendarPlus, ClipboardList, MoreHorizontal, Phone, Plus, Trophy, Upload } from "lucide-react";
+import RankShiftCard, { RankShiftMenu } from "./RankShiftCard";
+import { CalendarPlus, ClipboardList, MoreHorizontal, Phone, Plus, Upload } from "lucide-react";
 import { Spinner } from "../../components/common/Feedback";
 import SearchFilterBar from "../../components/common/SearchFilterBar";
 import PillTabs from "../../components/common/PillTabs";
@@ -24,7 +25,7 @@ import { useCursorPagination } from "../../hooks/useCursorPagination";
 import { buildReplayDrafts, type ReplayDraft } from "../../utils/replayDraft";
 import { hasAppUpdatePreloadErrorOccurred } from "../../utils/appUpdate";
 import { usePageBackground } from "../../hooks/usePageBackground";
-import type { Challenge, FeedTargetType, Match, MatchSlot, MatchType, Member, RankSnapshot, RankShiftEntry } from "../../types";
+import type { Challenge, FeedTargetType, Match, MatchSlot, MatchType, Member, RankSnapshot } from "../../types";
 
 const PAGE_SIZE = 100;
 const MAX_REPLAY_FILES = 20;
@@ -100,12 +101,68 @@ function rankShiftItem(shift: RankSnapshot): RankShiftFeedItem {
   };
 }
 
-// 변동 표기 — 신규 진입 / 상승(▲n) / 하락(▼n).
-function shiftLabel(e: RankShiftEntry): { text: string; cls: string } {
-  if (e.from == null) return { text: "신규", cls: "scr-feed-shift-new" };
-  const d = e.from - e.to;
-  if (d > 0) return { text: `▲${d}`, cls: "scr-feed-shift-up" };
-  return { text: `▼${-d}`, cls: "scr-feed-shift-down" };
+// ---- 메인스레드(rAF) transform 구동 ----
+// WAAPI로 transform을 움직이면 컴포지터 가속 애니메이션이 되는데, iOS 사파리는 가속
+// 애니메이션 동안 그 서브트리의 backdrop-filter를 프레임마다 다시 샘플링하지 않아
+// 카드 블러가 풀렸다가 끝나야 돌아온다(지적: "애니메이션 중에 블러가 풀림"). 매
+// 프레임 스타일 커밋으로 움직이면 커밋마다 블러가 다시 샘플링돼 유지된다. WAAPI
+// Animation과 같은 겉모양(finished/cancel)이라 기존 정리 코드와 섞어 쓸 수 있다.
+function cubicBezier(x1: number, y1: number, x2: number, y2: number): (x: number) => number {
+  const cx = 3 * x1, bx = 3 * (x2 - x1) - cx, ax = 1 - cx - bx;
+  const cy = 3 * y1, by = 3 * (y2 - y1) - cy, ay = 1 - cy - by;
+  const sampleX = (t: number) => ((ax * t + bx) * t + cx) * t;
+  const sampleDX = (t: number) => (3 * ax * t + 2 * bx) * t + cx;
+  return (x: number) => {
+    if (x <= 0) return 0;
+    if (x >= 1) return 1;
+    let t = x;
+    for (let i = 0; i < 6; i++) {
+      const err = sampleX(t) - x;
+      if (Math.abs(err) < 1e-4) break;
+      const d = sampleDX(t);
+      if (Math.abs(d) < 1e-6) break;
+      t -= err / d;
+    }
+    t = Math.min(1, Math.max(0, t));
+    return ((ay * t + by) * t + cy) * t;
+  };
+}
+// 스택 연출 공용 이징(기존 cubic-bezier(0.32,0.72,0,1))과 CSS ease-in/ease-out 대응.
+const EASE_STACK = cubicBezier(0.32, 0.72, 0, 1);
+const EASE_IN = cubicBezier(0.42, 0, 1, 1);
+const EASE_OUT = cubicBezier(0, 0, 0.58, 1);
+
+interface DrivenAnim { finished: Promise<void>; cancel: () => void }
+
+function driveTransform(
+  el: HTMLElement, dur: number, ease: (t: number) => number, frame: (p: number) => string,
+): DrivenAnim {
+  let raf = 0;
+  let settled = false;
+  let doCancel = () => {};
+  const finished = new Promise<void>((resolve, reject) => {
+    doCancel = () => reject(new Error("cancelled"));
+    const t0 = performance.now();
+    el.style.transform = frame(0);
+    const tick = (now: number) => {
+      const p = Math.min(1, (now - t0) / dur);
+      el.style.transform = frame(ease(p));
+      if (p >= 1) { settled = true; resolve(); return; }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+  });
+  // 취소를 아무도 안 기다리는 사용처에서 미처리 거부 경고가 나지 않게 기본 소비.
+  finished.catch(() => {});
+  return {
+    finished,
+    cancel: () => {
+      if (settled) return;
+      settled = true;
+      cancelAnimationFrame(raf);
+      doCancel();
+    },
+  };
 }
 
 function challengeItem(c: Challenge): ChallengeItem {
@@ -380,7 +437,6 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     if (!root || !list) return;
 
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const easing = "cubic-bezier(0.32, 0.72, 0, 1)";
     // 밀어올리기/내리기 시간 — 거리에 비례해 살짝 늘린다(지적: "너무 속도가 빠른 건지"
     // 카드 이동이 윗부분에서만 잠깐 보인다). 이동량이 클수록 오래, 상한은 둔다.
     const slideDur = Math.min(560, 360 + Math.round(Math.abs(d) * 0.12));
@@ -404,7 +460,7 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       const settleEls = residual > 0.5 ? moved.els : [];
       if (residual <= 0.5) moved.els.forEach((el) => { el.style.transform = ""; });
       let cancelled = false;
-      const anims: Animation[] = [];
+      const anims: (Animation | DrivenAnim)[] = [];
       settleEls.forEach((el) => { el.style.transform = `translateY(${residual}px)`; });
       // "+N건" 바가 즉시 튀어나오면 그 자체가 깜빡임(지적) — 앞 카드 윗모서리에서
       // 자라나게 한다. opacity는 바의 블러를 껐다 켜서 또 깜빡이므로 스케일로만.
@@ -418,23 +474,15 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       const settleDown = () => {
         if (cancelled) return;
         settleEls.forEach((el) => {
-          const a = el.animate(
-            [{ transform: `translateY(${residual}px)` }, { transform: "translateY(0)" }],
-            { duration: 160, easing: "ease-out", fill: "both" },
-          );
-          const settle = () => { el.style.transform = ""; };
-          a.onfinish = () => { settle(); a.cancel(); };
-          a.oncancel = settle;
+          const a = driveTransform(el, 160, EASE_OUT, (p) => `translateY(${residual * (1 - p)}px)`);
+          void a.finished.then(() => { el.style.transform = ""; }).catch(() => {});
           anims.push(a);
         });
         if (peek) {
-          const pa = peek.animate(
-            [{ transform: "scaleY(0)" }, { transform: "scaleY(1)" }],
-            { duration: 160, easing: "ease-out", fill: "both" },
-          );
-          const settle = () => { peek.style.transform = ""; peek.style.transformOrigin = ""; };
-          pa.onfinish = () => { settle(); pa.cancel(); };
-          pa.oncancel = settle;
+          const pa = driveTransform(peek, 160, EASE_OUT, (p) => `scaleY(${p})`);
+          void pa.finished
+            .then(() => { peek.style.transform = ""; peek.style.transformOrigin = ""; })
+            .catch(() => {});
           anims.push(pa);
         }
       };
@@ -488,7 +536,7 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     }
 
     let cancelled = false;
-    const anims: Animation[] = [];
+    const anims: (Animation | DrivenAnim)[] = [];
     // "+N건" 바 — 언마운트·복제 없이 실물 그대로 쓴다(지적: 바가 생기고 없어질 때마다
     // 목록 전체가 재렌더링·깜빡임). 커밋 프레임엔 펼침 상태의 absolute 자리(접힘 때와
     // 같은 화면 위치)에서 scaleY(1)로 세워 눌렀던 자리를 그대로 덮고, 카드 기둥이 그
@@ -516,13 +564,8 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       // 열어주는 공간을 새 카드들이 앞 카드 뒤에서 나오며 그대로 채우므로 빈 공백 구간이
       // 없다. 카드엔 opacity를 안 쓰므로(위 대원칙) 블러 재합성 깜빡임도 없다.
       const rise = (el: HTMLElement, onDone?: () => void) => {
-        const a = el.animate(
-          [{ transform: `translateY(${d}px)` }, { transform: "translateY(0)" }],
-          { duration: slideDur, easing, fill: "both" },
-        );
-        const settle = () => { el.style.transform = ""; };
-        a.onfinish = () => { settle(); a.cancel(); onDone?.(); };
-        a.oncancel = settle;
+        const a = driveTransform(el, slideDur, EASE_STACK, (p) => `translateY(${d * (1 - p)}px)`);
+        void a.finished.then(() => { el.style.transform = ""; onDone?.(); }).catch(() => {});
         anims.push(a);
       };
       sliders.forEach((el) => rise(el));
@@ -546,13 +589,8 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       // 나오고 없어질 때 깜빡해") 스케일(transform)로만. 끝나면 인라인을 걷어 펼침
       // 클래스의 scaleY(0)이 이어받는다(같은 값이라 화면 변화 없음).
       if (peek) {
-        const pa = peek.animate(
-          [{ transform: "scaleY(1)" }, { transform: "scaleY(0)" }],
-          { duration: 180, easing: "ease-in", fill: "both" },
-        );
-        const settle = () => { peek.style.transform = ""; };
-        pa.onfinish = () => { settle(); pa.cancel(); };
-        pa.oncancel = settle;
+        const pa = driveTransform(peek, 180, EASE_IN, (p) => `scaleY(${1 - p})`);
+        void pa.finished.then(() => { peek.style.transform = ""; }).catch(() => {});
         anims.push(pa);
       }
     };
@@ -610,19 +648,15 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
         peekEl.offsetHeight + (parseFloat(pcs.marginTop) || 0) + (parseFloat(pcs.marginBottom) || 0));
     }
     const dist = Math.max(0, rest.getBoundingClientRect().height - peekH);
-    const easing = "cubic-bezier(0.32, 0.72, 0, 1)";
     const dur = Math.min(560, 360 + Math.round(dist * 0.12));
     const vh = window.innerHeight;
     const els = collectAbove().filter((el) => {
       const r = el.getBoundingClientRect();
       return r.top < vh + 40 && r.bottom + dist > -40;
     });
-    const anims: Animation[] = [];
+    const anims: (Animation | DrivenAnim)[] = [];
     const sink = (el: HTMLElement) => {
-      anims.push(el.animate(
-        [{ transform: "translateY(0)" }, { transform: `translateY(${dist}px)` }],
-        { duration: dur, easing, fill: "both" },
-      ));
+      anims.push(driveTransform(el, dur, EASE_STACK, (p) => `translateY(${dist * p}px)`));
     };
     els.forEach(sink);
     sink(list);
@@ -1014,36 +1048,25 @@ export default function FeedScreen() {
         <div className="scr-feed-list">
           {displayFeed.map((item) => (
             item.kind === "rankshift" ? (
-              <div className="scr-feed-card" key={`rs-${item.shift.id}`}>
-                <div className="scr-feed-card-head" data-date-label={dateLabelOf(item)}>
-                  <Trophy size={13} aria-hidden />
-                  <span className="scr-feed-card-label">
-                    랭크 변동 발생 · {item.shift.matchType === "0101" ? "개인전" : "팀전"}
-                  </span>
-                  <span className="scr-feed-card-time">{formatEventTime(item.time, item.withClock)}</span>
-                </div>
-                <ul className="scr-feed-shift-list">
-                  {item.shift.shifts.map((e) => {
-                    const label = shiftLabel(e);
-                    return (
-                      <li key={`${e.memberId}-${e.to}`} className="scr-feed-shift-row">
-                        <span className="scr-feed-shift-rank">{e.to}위</span>
-                        <span className="scr-feed-shift-name">{e.nickname}</span>
-                        <span className={label.cls}>{label.text}</span>
-                        {e.from != null && <span className="scr-feed-shift-from">({e.from}위 → {e.to}위)</span>}
-                      </li>
-                    );
-                  })}
-                </ul>
-                <div className="scr-feed-rank-actions">
-                  {/* 상세 — 통계 탭으로 이동, 이 변동의 게임 유형을 필터로 미리 건다(요청). */}
-                  <button type="button" className="scr-btn scr-btn-sm" onClick={() => openStatsFor(item.shift.matchType)}>
-                    상세
-                  </button>
-                </div>
-                {/* 순위변동 알림에도 댓글(요청) — 경기/너나와 카드와 같은 공통 댓글 영역. */}
-                <FeedCardComments targetType="rankshift" targetId={item.shift.id} />
-              </div>
+              <RankShiftCard
+                key={`rs-${item.shift.id}`}
+                shift={item.shift}
+                timeText={formatEventTime(item.time, item.withClock)}
+                dateLabel={dateLabelOf(item)}
+                actions={<RankShiftMenu shift={item.shift} />}
+                footer={
+                  <>
+                    <div className="scr-feed-rank-actions">
+                      {/* 상세 — 통계 탭으로 이동, 이 변동의 게임 유형을 필터로 미리 건다(요청). */}
+                      <button type="button" className="scr-btn scr-btn-sm" onClick={() => openStatsFor(item.shift.matchType)}>
+                        상세
+                      </button>
+                    </div>
+                    {/* 순위변동 알림에도 댓글(요청) — 경기/너나와 카드와 같은 공통 댓글 영역. */}
+                    <FeedCardComments targetType="rankshift" targetId={item.shift.id} />
+                  </>
+                }
+              />
             ) : item.kind === "challenge" ? (
               <div className="scr-feed-card" key={`c-${item.challenge.id}`}>
                 <div className="scr-feed-card-head" data-date-label={dateLabelOf(item)}>

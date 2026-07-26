@@ -5,12 +5,14 @@ import ChallengeInboxModal from "../../modals/ChallengeInboxModal";
 import { api } from "../../api/client";
 import { useAppStore } from "../../store/appStore";
 import { useForceLightTheme } from "../../utils/theme";
-import type { Challenge, Match } from "../../types";
+import RankShiftCard from "../feed/RankShiftCard";
+import type { Challenge, Match, RankSnapshot } from "../../types";
 
-// 카카오톡으로 공유된 링크(?sv=match|challenge&sid=…)가 여는, 그 한 장만 보이는 화면(요청:
-// "너나와/경기 공유시 해당 카드만 있는 화면"). 로그인 뒤에 뜨며, "스타게이트로"로 전체 앱에 들어간다.
+// 카카오톡으로 공유된 링크(?sv=match|challenge|rankshift&sid=…)가 여는, 그 한 장만 보이는
+// 화면(요청: "너나와/경기 공유시 해당 카드만 있는 화면" + "순위변동도 카톡공유 가능").
+// 로그인 뒤에 뜨며, "스타게이트로"로 전체 앱에 들어간다.
 export interface ShareTarget {
-  type: "match" | "challenge";
+  type: "match" | "challenge" | "rankshift";
   id: number;
 }
 
@@ -20,6 +22,7 @@ export default function SharePage({ target, onExit }: { target: ShareTarget; onE
   const memberOf = useAppStore((s) => s.memberOf);
   const [match, setMatch] = useState<Match | null>(null);
   const [challenge, setChallenge] = useState<Challenge | null>(null);
+  const [shift, setShift] = useState<RankSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
 
@@ -29,11 +32,20 @@ export default function SharePage({ target, onExit }: { target: ShareTarget; onE
     setErr("");
     setMatch(null);
     setChallenge(null);
+    setShift(null);
     void (async () => {
       try {
         if (target.type === "match") {
           const m = await api.getMatch(target.id);
           if (alive) setMatch(m);
+        } else if (target.type === "rankshift") {
+          // 단건 조회 엔드포인트가 없어 목록에서 골라낸다(너 나와와 같은 방식).
+          const snaps = await api.listRankSnapshots();
+          const s = snaps.find((it) => it.id === target.id) ?? null;
+          if (alive) {
+            setShift(s);
+            if (!s) setErr("공유된 순위변동을 찾을 수 없어요.");
+          }
         } else {
           // 단건 조회 엔드포인트가 없어 전체 목록에서 골라낸다(클럽 규모라 부담 없음).
           const { items } = await api.getChallenges();
@@ -89,6 +101,11 @@ export default function SharePage({ target, onExit }: { target: ShareTarget; onE
         ) : match ? (
           <div className="scr-share-match">
             <MatchList rows={rows} memberOf={memberOf} onDeleted={() => {}} loading={false} />
+          </div>
+        ) : shift ? (
+          // 순위변동 공유 — 피드와 같은 카드 한 장(읽기 전용, 케밥/상세/댓글 없이).
+          <div className="scr-feed-list">
+            <RankShiftCard shift={shift} timeText={shift.createdAt.slice(0, 10)} />
           </div>
         ) : null}
       </div>

@@ -44,12 +44,12 @@ function screenFromUrl(): ScreenKey {
   return (SCREEN_KEYS as string[]).includes(s ?? "") ? (s as ScreenKey) : "feed";
 }
 
-// 카카오톡 공유 링크(?sv=match|challenge&sid=123) — 있으면 그 한 장만 보이는 공유 화면을 연다.
+// 카카오톡 공유 링크(?sv=match|challenge|rankshift&sid=123) — 있으면 그 한 장만 보이는 공유 화면을 연다.
 function shareTargetFromUrl(): ShareTarget | null {
   const params = new URLSearchParams(window.location.search);
   const sv = params.get("sv");
   const id = Number(params.get("sid"));
-  if ((sv === "match" || sv === "challenge") && Number.isFinite(id) && id > 0) {
+  if ((sv === "match" || sv === "challenge" || sv === "rankshift") && Number.isFinite(id) && id > 0) {
     return { type: sv, id };
   }
   return null;
