@@ -227,7 +227,7 @@ export default function App() {
   // 헤더의 불투명 배경을 끄는 클래스를 앱 루트에 건다(CSS .scr-app-hasbg 참고).
   // 배경 있는 화면이 늘면 이 조건에 추가하면 된다.
   return (
-      <div className={"scr-app" + (resolvedScreen === "feed" ? " scr-app-hasbg" : "")} id="scr-app">
+      <div className={"scr-app" + (resolvedScreen === "feed" || resolvedScreen === "stats" ? " scr-app-hasbg" : "")} id="scr-app">
         <div className="scr-bg-grid" />
         <span className="scr-rail scr-rail-left" aria-hidden="true" />
         <span className="scr-rail scr-rail-right" aria-hidden="true" />

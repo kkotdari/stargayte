@@ -13,6 +13,7 @@ import { api } from "../../api/client";
 import { activeMemberSearchTerms, memberMatchesQuery } from "../../utils/memberSearch";
 import { monthInputToRange, currentMonthValue, MONTH_INPUT_MIN, MONTH_INPUT_MAX } from "../../utils/date";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
+import { usePageBackground } from "../../hooks/usePageBackground";
 import { cx } from "../../utils/format";
 import type { BaseRace, MatchType, Member, MemberStats, MemberStatsEntry } from "../../types";
 
@@ -87,6 +88,9 @@ function SortableHead({ label, sortKey, sort, onToggle, className, tooltip }: So
 // 그 종족 기준으로 바뀐다 — 랭킹의 종족 필터와 같은 방식(SearchFilterBar의
 // raceValue/onRaceChange).
 export default function StatsScreenV2() {
+  // 통계 배경 = 피드 배경(요청: "피드 배경을 통계 배경으로 사용"). 다크에서만 사진이
+  // 얹히고(usePageBackground/CSS 게이팅), 라이트에는 사진 없이 기본 배경.
+  usePageBackground("/images/bg/feed_bg.jpg", "/images/bg/feed_bg_mobile.png");
   const members = useAppStore((s) => s.members);
   const suggestions = useMemo(() => activeMemberSearchTerms(members), [members]);
 

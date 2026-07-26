@@ -2615,28 +2615,9 @@ html.scr-page-bg:not(.scr-light-theme) .scr-main::before {
 html.scr-page-bg:not(.scr-light-theme) .scr-rank-screen-v2::before {
   display: none;
 }
-/* 라이트 테마 랭킹 배경 — 트로피 이미지(ranking_bg_light.png, 투명 배경 3D 렌더)를
-   옅은 흰 스크림 위에 얹는다(요청: 라이트 랭킹 배경으로 트로피 사용, 화이트 스크림 감소).
-   다크와 같은 "공통 고정판(.scr-main::before)의 배경만 교체" 구조를 쓰되, 어두운 글씨가
-   읽히도록 밝은 톤 스크림을 얕게 깐다. --page-bg-image-light 토큰은 훅이 주입한다. */
-html.scr-page-bg.scr-light-theme .scr-main::before {
-  /* 트로피 이미지는 정사각(2048²) — cover는 넓은 PC 화면에서 폭 기준으로 확대·크롭해
-     너무 커 보인다(지적). 화면 높이에 맞추고(auto 100%) 남는 좌우는 바탕색으로 둔다. */
-  background:
-    linear-gradient(180deg, rgba(247,247,251,0.7) 0%, rgba(247,247,251,0.55) 45%, rgba(247,247,251,0.8) 100%),
-    var(--page-bg-image-light) center / auto 100% no-repeat,
-    #f7f7fb;
-}
-@media (max-width: 860px) {
-  html.scr-page-bg.scr-light-theme .scr-main::before {
-    background:
-      linear-gradient(180deg, rgba(247,247,251,0.7) 0%, rgba(247,247,251,0.55) 45%, rgba(247,247,251,0.8) 100%),
-      var(--page-bg-image-light-mobile) center / cover no-repeat,
-      #f7f7fb;
-  }
-}
-/* 라이트에서도 프리마운트 폴백 레이어는 끈다 — 위 공통판이 사진을 든다. */
-html.scr-page-bg.scr-light-theme .scr-rank-screen-v2::before { display: none; }
+/* 라이트 테마에는 페이지 배경 사진을 얹지 않는다(요청: "라이트 테마 피드의 배경은
+   제거"). 라이트에서 .scr-main::before는 기본판(위 .scr-main::before, --void=#fff)만
+   쓴다 — 훅이 lightUrl을 넘기지 않으므로 --page-bg-image-light도 없다. */
 
 /* 개인(일대일) 랭킹 행의 검색 하이라이트 — 같은 반전색으로 프사와 닉네임을 함께 칠한다.
    프사와 닉네임이 격자의 이웃 칸이라, 프사 칸의 배경을 칸 사이 간격(column-gap)만큼
@@ -8223,7 +8204,9 @@ html:not(.scr-light-theme) .scr-feed-comments .scr-mreq-editor .scr-mreq-live-in
 }
 
 /* 랭크 변동 발생 카드 — 변동 후 순위 오름차순 목록(상승 ▲/하락 ▼/신규). */
-.scr-feed-shift-list { list-style: none; margin: 0; padding: 6px 16px 3px; display: flex; flex-direction: column; gap: 6px; }
+/* 헤더(타이틀)와 변동 목록 사이가 유독 좁았다(지적: "랭크변동일때만 타이틀과 본문
+   사이가 좁아") — 상단 패딩을 키워 다른 카드(경기/너나와)와 비슷한 숨통을 준다. */
+.scr-feed-shift-list { list-style: none; margin: 0; padding: 14px 16px 3px; display: flex; flex-direction: column; gap: 6px; }
 /* 변동이 많으면 위에서 4개만 보이고 "…더보기"로 접힌다 — 리스트를 누르면 펼쳐진다(요청). */
 .scr-feed-shift-list-toggle { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .scr-feed-shift-more {

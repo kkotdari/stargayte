@@ -827,10 +827,11 @@ export default function FeedScreen() {
   const [typeFilter, setTypeFilter] = useState<"all" | "0101" | "0102">("all");
 
   // 홈(피드) 배경 — 기존 랭킹 배경을 피드 이름으로 옮겨 그대로 쓴다(다크 우주/라이트 트로피).
+  // 라이트 테마 피드는 사진 배경을 쓰지 않는다(요청) — 다크만 사진(feed_bg), 라이트는
+  // 기본 배경. lightUrl을 넘기지 않으면 라이트에서 페이지 배경 이미지가 얹히지 않는다.
   usePageBackground(
     "/images/bg/feed_bg.jpg",
     "/images/bg/feed_bg_mobile.png",
-    "/images/bg/feed_bg_light.png",
   );
   const user = useAppStore((s) => s.user);
   const isAdmin = !!user && isAdminRole(user.roles);
