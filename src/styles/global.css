@@ -1843,7 +1843,8 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    4칸(3개 경계) 기준으로 그레이디언트 레이어 자체를 base(.scr-stat-row, 5칸/4경계)와
    다르게 새로 선언한다. */
 .scr-stats-list-panel-v2 .scr-stat-row {
-  --scr-stat-name-w: 160px;
+  /* 유저 칸에 프사가 다시 들어와(요청) 40px 프사 + 닉네임/배틀태그 스택이 함께 앉을 폭. */
+  --scr-stat-name-w: 200px;
   /* 칸 폭도 변수로 뽑아둔다 — 구분선 위치 계산(아래 background-position)이 이 값을
      같이 참조해야 한다(요청: "아이폰 사파리 가로모드에서 통계의 내용들이 컬럼
      왼쪽으로 벗어나서 렌더링되는 버그"). */
@@ -1955,9 +1956,8 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   .scr-stat-name-btn { text-align: center; }
   .scr-stat-tag-pill { display: none; }
   .scr-stat-avatar-btn .scr-avatar { width: 60px !important; height: 60px !important; }
-  /* v2 통계는 프사가 아예 없다(MemberStatRow avatar=false) — 위 기본(프사 위/닉네임
-     아래 세로 배치, 배틀태그 숨김) 대신 이름 칸 전체를 데스크톱과 같은 닉네임/배틀태그
-     단순 세로 스택으로 그대로 두고, 폭만 프사가 없어진 만큼 좁혀도 되는 값으로 잡는다. */
+  /* v2 통계 — 유저 칸에 프사 복귀(요청). 모바일은 프사를 32px로 줄여 [프사|닉네임/배틀태그]
+     가로 배치가 좁은 칸에도 들어가게 한다(아래 폭/프사 크기 오버라이드). */
   /* 모바일 유저 칸 폭/글자 크기를 한 번 더 줄인다(요청: "유저 컬럼 폭 10프로 축소
      및 텍스트 크기 15프로 축소") — 폭은 108px의 90%, 글자는 각 기본값의 85%. */
   /* 유저 컬럼 폭 추가 축소(요청: 닉네임/배틀태그가 생각보다 공간을 안 씀): 97→73→60px.
@@ -1965,11 +1965,15 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
      이름은 기존 말줄임이 처리한다. */
   /* 모바일 최종 스펙(요청): 유저 칸 110px · 데이터 칸 150px · 데이터 셀은 한 스텝
      확대(micro→caption), 헤더는 두 스텝 확대(micro→body — 아래 head 규칙). */
-  .scr-stats-list-panel-v2 .scr-stat-row { --scr-stat-name-w: 110px; font-size: var(--fs-caption); }
+  .scr-stats-list-panel-v2 .scr-stat-row { --scr-stat-name-w: 140px; font-size: var(--fs-caption); }
   .scr-stats-list-panel-v2 .scr-stat-name-cell {
-    flex-direction: row; align-items: center; justify-content: center;
+    flex-direction: row; align-items: center; justify-content: flex-start; gap: 7px;
     padding-left: 7px; padding-right: 7px;
   }
+  /* 모바일 프사 — 기본(60px) 대신 32px로, 좁은 유저 칸에 [프사|닉네임 스택]이 들어가게. */
+  .scr-stats-list-panel-v2 .scr-stat-avatar-btn .scr-avatar { width: 32px !important; height: 32px !important; }
+  .scr-stats-list-panel-v2 .scr-stat-name-stack { min-width: 0; }
+  .scr-stats-list-panel-v2 .scr-stat-name-btn { text-align: left; }
   .scr-stats-list-panel-v2 .scr-stat-name-head { padding-left: 7px; padding-right: 7px; }
   .scr-stats-list-panel-v2 .scr-stat-name-btn { text-align: center; font-size: var(--fs-caption); }
   .scr-stats-list-panel-v2 .scr-stat-tag-pill { display: block; font-size: var(--fs-micro); }
@@ -6374,10 +6378,11 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
   flex-shrink: 0; display: flex; align-items: center; gap: 4px;
   margin-left: 12px; margin-right: 12px;
 }
-/* 손 이모지/vs 모두 별도 보정 없이 줄(24px) 정중앙에 둔다(요청: "손 이모지랑 vs 위치가
-   왜 다르지 정중앙 맞춰서 배치" — 이전의 이모지 -3px 보정이 vs 텍스트와 어긋나 보이던 원인). */
+/* 손 이모지/vs 모두 별도 보정 없이 첫 줄 정중앙에 둔다(요청). 박스 높이는 프사(20px)와
+   똑같이 — 24px로 두면 위 정렬(flex-start) 기준에서 중심이 프사보다 2px 내려가 살짝
+   아래로 치우쳐 보였다(지적: "손이모지랑 vs가 살짝 아래로 치우친 느낌"). */
 .scr-challenge-arrow {
-  flex-shrink: 0; font-size: var(--fs-subhead); height: 24px; display: flex; align-items: center;
+  flex-shrink: 0; font-size: var(--fs-subhead); height: 20px; display: flex; align-items: center;
 }
 /* 승리 배지 — 매치업 위가 아니라 손 이모지 옆, 이긴 편이 있는 방향에 붙인다(요청: "승리
    배지는 손 이모지 옆에 표시(이긴쪽에)"). 응답 상태 알약(.scr-challenge-pill)만 알약

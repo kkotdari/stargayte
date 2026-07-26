@@ -621,11 +621,11 @@ export default function FeedScreen() {
         />
       </div>
 
-      {/* 경기유형 필터 — 기록실과 동일한 알약 로우. */}
+      {/* 로스터(개인전/팀전) 필터 — 기록실과 같은 알약 로우, 라벨만 로스터로(요청). */}
       <div className="scr-match-type-filter">
-        <FilterItem label="경기 유형">
+        <FilterItem label="로스터">
           <PillTabs
-            aria-label="경기유형 필터"
+            aria-label="로스터 필터"
             value={typeFilter}
             onChange={setTypeFilter}
             options={[
