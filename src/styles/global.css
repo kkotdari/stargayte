@@ -7934,7 +7934,21 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    따라가야 하는데, iOS의 비동기 스크롤 반영과 어긋나며 크게 튀었다(지적) — 스크롤 보정은
    MatchStack이 페인트 전 한 번만 하고, "위로 착착" 펼쳐지는 느낌은 레이아웃과 무관한
    카드별 transform 슬라이드(아래 .scr-feed-stack-reveal)가 담당한다. */
-.scr-feed-stack-opened .scr-feed-stack-peek { display: none; }
+/* "+N건" 바는 절대 display 토글로 껐다 켜지 않는다 — 블러(backdrop-filter) 요소가
+   DOM에서 사라졌다 생기면 iOS가 컴포지팅 트리를 다시 세워 목록 전체가 재래스터되며
+   화면이 통째로 깜빡인다(지적: "+N건 카드가 생기고 없어질 때 전체 목록이 다 재렌더링").
+   항상 렌더된 채로 두고, 펼침 상태에선 높이 0 래퍼 안의 absolute로 자리만 잃게 한 뒤
+   transform(scaleY)으로만 접는다 — 요소·블러 레이어가 살아 있어 재구성이 없다. */
+/* flex 컬럼: 버튼(내용 폭으로 수축하는 요소)을 이전처럼 전체 폭으로 스트레치. */
+.scr-feed-stack-peekwrap { position: relative; display: flex; flex-direction: column; }
+.scr-feed-stack-opened .scr-feed-stack-peekwrap { height: 0; z-index: 2; }
+.scr-feed-stack-opened .scr-feed-stack-peek {
+  /* bottom 기준 absolute — 접힘 때와 같은 자리(앞 카드 윗모서리 위)에 겹친다.
+     margin(0 4px -6px)이 그대로 적용돼 접힘 레이아웃과 픽셀 단위로 일치한다. */
+  position: absolute; left: 0; right: 0; bottom: 0;
+  transform: scaleY(0); transform-origin: 50% 100%;
+  pointer-events: none;
+}
 /* 주의: 여기(조상)에 opacity를 걸면 안 된다 — opacity<1은 자체 합성 그룹을 만들어 그 안
    카드들의 backdrop-filter가 페이지 배경을 못 보게 된다(= 블러가 빠져 보이던 문제).
    같은 이유로 카드 등장 애니메이션도 opacity 없이 transform만 쓴다. */
@@ -7976,11 +7990,14 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   /* 카드 왼쪽 가장자리보다 살짝 바깥으로(요청: "좀더 왼쪽으로") — 페이지 좌우 여백(20px)
      안이라 잘리지 않는다. 라인이 카드 모서리 바로 바깥(-2px)에 온다. */
   position: absolute; left: -12px; top: 4px; bottom: 0; width: 22px; z-index: 2;
-  display: none; flex-direction: column; align-items: center; justify-content: center;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
   background: transparent; border: none; padding: 0; cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  /* display 토글 금지(peekwrap 주석 참고) — 접힘 상태에선 opacity 0으로만 숨긴다.
+     absolute라 자리도 안 차지하고, iOS 컴포지팅 트리 재구성을 유발하지 않는다. */
+  opacity: 0; pointer-events: none;
 }
-.scr-feed-stack-opened .scr-feed-stack-rail { display: flex; }
+.scr-feed-stack-opened .scr-feed-stack-rail { opacity: 1; pointer-events: auto; }
 /* 라인 — 은은하게(반투명, 요청). 글자("눌러서 다시 줄이기") 뒤로는 라인이 지나가지
    않게(요청) 위/아래 두 토막으로 나눈다 — 세로 flex의 양쪽 flex:1 아이템이라 가운데
    라벨을 비켜 위아래를 똑같이 채운다. */

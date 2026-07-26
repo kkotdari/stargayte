@@ -313,35 +313,6 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
   };
   // 접기 페이드아웃(closeStack)이 진행 중인지 — 중복 클릭 방지.
   const closingRef = useRef(false);
-  // 펼치는 순간 "+N건" 바가 즉시 사라지면 누른 지점에 카드 페이드인까지 잠깐 구멍이
-  // 생겨 깜빡여 보인다(지적: "접을 땐 안 그런데 펼칠 땐 깜빡임" — 접기는 페이드아웃이
-  // 먼저라 이 구멍이 없다). 바의 고정 위치 복제본을 커밋 프레임부터 띄워 두고 카드
-  // 페이드인과 크로스페이드시켜 메운다. position:fixed라 스크롤 보정이 한 프레임 늦게
-  // 반영되는 경우(iOS)에도 눌렀던 화면 자리에 그대로 있다.
-  const peekGhostRef = useRef<HTMLElement | null>(null);
-  const openStack = () => {
-    const peek = stackRef.current?.querySelector<HTMLElement>(":scope > .scr-feed-stack-peek");
-    if (peek) {
-      const r = peek.getBoundingClientRect();
-      const ghost = peek.cloneNode(true) as HTMLElement;
-      ghost.setAttribute("aria-hidden", "true");
-      ghost.style.position = "fixed";
-      ghost.style.left = `${r.left}px`;
-      ghost.style.top = `${r.top}px`;
-      ghost.style.width = `${r.width}px`;
-      ghost.style.height = `${r.height}px`;
-      ghost.style.margin = "0";
-      ghost.style.zIndex = "5";
-      ghost.style.pointerEvents = "none";
-      // 블러는 뗀다 — backdrop-filter를 단 요소가 커밋 프레임에 "새로" 생기면 iOS가
-      // 그 블러의 첫 래스터에서 한 프레임 번쩍인다(지적된 잔여 깜빡임의 유력 원인).
-      // 180ms 만에 접혀 사라지는 반투명 바라 블러 없이도 차이가 거의 안 보인다.
-      ghost.style.backdropFilter = "none";
-      ghost.style.setProperty("-webkit-backdrop-filter", "none");
-      peekGhostRef.current = ghost;
-    }
-    toggleOpen(true);
-  };
   // 위쪽 콘텐츠 수집 — 스택 위 피드 아이템들 + 피드 목록 위 요소들(타이틀/필터/검색).
   // 헤더는 문서 스크롤 최상단 콘텐츠라 스택을 펼칠 즈음엔 화면 밖이 대부분이지만,
   // 근처에 있으면 같이 밀어 위화감을 없앤다.
@@ -418,7 +389,9 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       settleEls.forEach((el) => { el.style.transform = `translateY(${residual}px)`; });
       // "+N건" 바가 즉시 튀어나오면 그 자체가 깜빡임(지적) — 앞 카드 윗모서리에서
       // 자라나게 한다. opacity는 바의 블러를 껐다 켜서 또 깜빡이므로 스케일로만.
-      const peek = root.querySelector<HTMLElement>(":scope > .scr-feed-stack-peek");
+      const peek = root.querySelector<HTMLElement>(
+        ":scope > .scr-feed-stack-peekwrap > .scr-feed-stack-peek",
+      );
       if (peek) {
         peek.style.transformOrigin = "50% 100%";
         peek.style.transform = "scaleY(0)";
@@ -491,25 +464,28 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     };
 
     if (d <= 0 || reduced) {
-      peekGhostRef.current = null;
       cancelRevealRef.current = () => { cleanupRail(); cancelRevealRef.current = null; };
       return;
     }
 
     let cancelled = false;
     const anims: Animation[] = [];
-    // "+N건" 바 고스트 — 커밋 프레임부터(페인트 전에 붙여야 한 프레임도 구멍이 없다)
-    // 눌렀던 자리를 그대로 덮고, 카드 기둥이 그 밑에서 올라오는 동안 짧게 걷힌다.
-    const ghost = peekGhostRef.current;
-    peekGhostRef.current = null;
-    if (ghost) document.body.appendChild(ghost);
+    // "+N건" 바 — 언마운트·복제 없이 실물 그대로 쓴다(지적: 바가 생기고 없어질 때마다
+    // 목록 전체가 재렌더링·깜빡임). 커밋 프레임엔 펼침 상태의 absolute 자리(접힘 때와
+    // 같은 화면 위치)에서 scaleY(1)로 세워 눌렀던 자리를 그대로 덮고, 카드 기둥이 그
+    // 밑에서 올라오는 동안 짧게 접혀 들어간다.
+    const peek = root.querySelector<HTMLElement>(
+      ":scope > .scr-feed-stack-peekwrap > .scr-feed-stack-peek",
+    );
 
     // 시작 상태는 인라인 스타일로 "지금 당장" 박는다 — WAAPI fill에만 맡기면 iOS가 첫
     // 프레임에 적용하지 않아 깜빡인다(이전 지적과 동일한 함정). 카드 기둥은 접힌 위치
-    // (+d, rest-inner 클립 밖)에, 위 콘텐츠는 옛 위치(+d)에, 라인은 투명으로.
+    // (+d, rest-inner 클립 밖)에, 위 콘텐츠는 옛 위치(+d)에, 라인은 투명으로, 바는
+    // 세운 채로(펼침 클래스의 scaleY(0)을 덮는다).
     railLocked = true;
     list.style.transform = `translateY(${d}px)`;
     if (rail) rail.style.opacity = "0";
+    if (peek) peek.style.transform = "scaleY(1)";
     // 애니메이션 동안 화면에 들어올 일 없는(최종 위치가 d만큼 내려가도 화면 위 밖인)
     // 위 콘텐츠는 건너뛴다.
     const sliders = collectAbove().filter((el) => el.getBoundingClientRect().bottom + d >= -40);
@@ -546,18 +522,19 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
         ra.oncancel = settle;
         anims.push(ra);
       }
-      // 고스트("+N건" 바)는 기둥이 뒤에서 올라오는 초반에 앞 카드 윗모서리로 접혀
-      // 들어간다 — opacity를 쓰면 바의 블러가 꺼지며 또 깜빡이므로(지적: "뒤에 스택된
-      // 카드가 나오고 없어질 때 깜빡해") 스케일(transform)로만 사라진다.
-      if (ghost) {
-        ghost.style.transformOrigin = "50% 100%";
-        const ga = ghost.animate(
+      // "+N건" 바는 기둥이 뒤에서 올라오는 초반에 앞 카드 윗모서리로 접혀 들어간다 —
+      // opacity를 쓰면 바의 블러가 꺼지며 또 깜빡이므로(지적: "뒤에 스택된 카드가
+      // 나오고 없어질 때 깜빡해") 스케일(transform)로만. 끝나면 인라인을 걷어 펼침
+      // 클래스의 scaleY(0)이 이어받는다(같은 값이라 화면 변화 없음).
+      if (peek) {
+        const pa = peek.animate(
           [{ transform: "scaleY(1)" }, { transform: "scaleY(0)" }],
           { duration: 180, easing: "ease-in", fill: "both" },
         );
-        ga.onfinish = () => ghost.remove();
-        ga.oncancel = () => ghost.remove();
-        anims.push(ga);
+        const settle = () => { peek.style.transform = ""; };
+        pa.onfinish = () => { settle(); pa.cancel(); };
+        pa.oncancel = settle;
+        anims.push(pa);
       }
     };
     // 첫 페인트가 끝난 다음 프레임에 시작한다 — 레이아웃 변경+스크롤 보정이 실린 첫
@@ -573,7 +550,7 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       cancelAnimationFrame(raf1);
       cancelAnimationFrame(raf2);
       anims.forEach((a) => { try { a.cancel(); } catch { /* 이미 끝남 */ } });
-      ghost?.remove();
+      if (peek) peek.style.transform = "";
       list.style.transform = "";
       if (rail) rail.style.opacity = "";
       sliders.forEach((el) => { el.style.transform = ""; });
@@ -650,14 +627,18 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
   // 높이는 클립(grid-rows 0fr↔1fr)으로 즉시 바뀐다 — 트랜지션은 카드 transform이 담당.
   return (
     <div ref={stackRef} className={cx("scr-feed-stack", open && "scr-feed-stack-opened")}>
-      <button
-        type="button" className="scr-feed-stack-peek"
-        onClick={openStack}
-        aria-hidden={open} tabIndex={open ? -1 : 0}
-        aria-label={`게임결과 ${restDesc.length}건 더 펼치기`}
-      >
-        + {restDesc.length}건
-      </button>
+      {/* 래퍼: 펼침 상태에서 바를 display 토글 없이(높이 0 + absolute) 자리만 잃게
+          하기 위한 기준 컨테이너 — global.css의 .scr-feed-stack-peekwrap 주석 참고. */}
+      <div className="scr-feed-stack-peekwrap">
+        <button
+          type="button" className="scr-feed-stack-peek"
+          onClick={() => toggleOpen(true)}
+          aria-hidden={open} tabIndex={open ? -1 : 0}
+          aria-label={`게임결과 ${restDesc.length}건 더 펼치기`}
+        >
+          + {restDesc.length}건
+        </button>
+      </div>
       <div className="scr-feed-stack-rest" aria-hidden={!open}>
         <div className="scr-feed-stack-rest-inner">
           <div className="scr-feed-stack-rest-list" ref={restListRef}>
@@ -675,7 +656,7 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       <button
         type="button" className="scr-feed-stack-rail"
         onClick={closeStack} aria-label="줄이기"
-        tabIndex={open ? 0 : -1}
+        aria-hidden={!open} tabIndex={open ? 0 : -1}
       >
         <span className="scr-feed-stack-rail-dot scr-feed-stack-rail-dot-top" aria-hidden />
         <span className="scr-feed-stack-rail-label">눌러서 다시 줄이기</span>
