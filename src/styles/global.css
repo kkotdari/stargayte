@@ -7937,16 +7937,17 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   -webkit-backdrop-filter: blur(10px) saturate(1.1);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 -2px 8px rgba(0, 0, 0, 0.08);
 }
-/* 줄이기 — 겹쳐 있던 카드들 왼쪽에 흰 세로 라인(요청). 라인 전체가 버튼이고, 라인 위에
-   "눌러서 다시 줄이기"를 세로쓰기로 얹는다. 펼쳐진 카드들은 라인 폭만큼 오른쪽으로
-   들여 앉는다(스택이었다는 표시도 됨). */
-.scr-feed-stack-rest-list { position: relative; padding-left: 22px; }
+/* 줄이기 — 스택(펼쳐진 카드들 + 앞 카드) 전체 왼쪽에 흰 세로 라인(요청). 카드는 들여쓰기
+   없이 원래 폭 그대로 두고 라인을 그 위(왼쪽 가장자리)에 겹쳐 올린다. 라인 전체가 버튼이고,
+   위에 "눌러서 다시 줄이기"를 세로쓰기로 얹는다. 펼쳤을 때만 보인다. */
+.scr-feed-stack { position: relative; }
 .scr-feed-stack-rail {
-  position: absolute; left: 0; top: 4px; bottom: 20px; width: 22px;
-  display: flex; align-items: center; justify-content: center;
+  position: absolute; left: 0; top: 4px; bottom: 0; width: 22px; z-index: 2;
+  display: none; align-items: center; justify-content: center;
   background: transparent; border: none; padding: 0; cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
+.scr-feed-stack-opened .scr-feed-stack-rail { display: flex; }
 .scr-feed-stack-rail::before {
   content: ""; position: absolute; left: 9px; top: 0; bottom: 0; width: 2px;
   border-radius: 1px; background: rgba(255, 255, 255, 0.75);

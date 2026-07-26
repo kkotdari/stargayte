@@ -317,6 +317,9 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     let cancelled = false;
     const anims: Animation[] = [];
     const reveals = Array.from(list.children) as HTMLElement[];
+    // 줄이기 라인(스택 루트에 붙는 오버레이)도 카드들과 함께 페이드인한다.
+    const rail = root.querySelector<HTMLElement>(":scope > .scr-feed-stack-rail");
+    if (rail) reveals.push(rail);
 
     // 위쪽 콘텐츠 수집 — 스택 위 피드 아이템들 + 피드 목록 위 요소들(타이틀/필터/검색).
     // 헤더는 문서 스크롤 최상단 콘텐츠라 스택을 펼칠 즈음엔 화면 밖이 대부분이지만,
@@ -394,14 +397,6 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       <div className="scr-feed-stack-rest" aria-hidden={!open}>
         <div className="scr-feed-stack-rest-inner">
           <div className="scr-feed-stack-rest-list" ref={restListRef}>
-            {/* 줄이기 — 버튼 대신 겹쳐 있던 카드들 왼쪽의 흰 세로 라인(요청). 누르면 접히고,
-                라인 위에 세로쓰기 안내가 붙는다. */}
-            <button
-              type="button" className="scr-feed-stack-rail"
-              onClick={() => toggleOpen(false)} aria-label="줄이기"
-            >
-              <span className="scr-feed-stack-rail-label">눌러서 다시 줄이기</span>
-            </button>
             {/* 펼침 애니메이션(위 useLayoutEffect의 WAAPI)이 카드 단위로 걸리도록 래핑. */}
             {restDesc.map((it) => (
               <div key={it.match.id} className="scr-feed-stack-reveal">
@@ -411,6 +406,15 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
           </div>
         </div>
       </div>
+      {/* 줄이기 — 버튼 대신 스택(펼쳐진 카드들 + 앞 카드) 전체 왼쪽에 겹쳐 올라가는 흰
+          세로 라인(요청: 들여쓰기 없이 카드 위에 배치, 첫 카드까지 포함). 누르면 접힌다. */}
+      <button
+        type="button" className="scr-feed-stack-rail"
+        onClick={() => toggleOpen(false)} aria-label="줄이기"
+        tabIndex={open ? 0 : -1}
+      >
+        <span className="scr-feed-stack-rail-label">눌러서 다시 줄이기</span>
+      </button>
       <div ref={frontRef} className="scr-feed-stack-front">
         <MatchCard item={ordered[0]} memberOf={memberOf} onDeleted={onDeleted} dateLabel={dateLabel} highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms} />
       </div>
