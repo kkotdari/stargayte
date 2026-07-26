@@ -7973,16 +7973,19 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-feed-stack { position: relative; }
 .scr-feed-stack-rail {
   /* 카드 왼쪽 가장자리보다 살짝 바깥으로(요청: "좀더 왼쪽으로") — 페이지 좌우 여백(20px)
-     안이라 잘리지 않는다. 라인(::before, left:10px)이 카드 모서리 바로 바깥(-2px)에 온다. */
+     안이라 잘리지 않는다. 라인이 카드 모서리 바로 바깥(-2px)에 온다. */
   position: absolute; left: -12px; top: 4px; bottom: 0; width: 22px; z-index: 2;
-  display: none; align-items: center; justify-content: center;
+  display: none; flex-direction: column; align-items: center; justify-content: center;
   background: transparent; border: none; padding: 0; cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
 .scr-feed-stack-opened .scr-feed-stack-rail { display: flex; }
-/* 라인 — 은은하게(반투명, 요청). */
-.scr-feed-stack-rail::before {
-  content: ""; position: absolute; left: 10px; top: 0; bottom: 0; width: 2px;
+/* 라인 — 은은하게(반투명, 요청). 글자("눌러서 다시 줄이기") 뒤로는 라인이 지나가지
+   않게(요청) 위/아래 두 토막으로 나눈다 — 세로 flex의 양쪽 flex:1 아이템이라 가운데
+   라벨을 비켜 위아래를 똑같이 채운다. */
+.scr-feed-stack-rail::before,
+.scr-feed-stack-rail::after {
+  content: ""; flex: 1; width: 2px;
   border-radius: 1px; background: rgba(255, 255, 255, 0.38);
 }
 /* 양 끝 작은 원(요청) — 라인과 같은 톤을 살짝만 진하게. */
@@ -7999,7 +8002,8 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   padding: 8px 0;
 }
 /* 라이트 테마 — 흰 배경 위 흰 라인은 안 보여 톤만 뒤집는다(라인은 어둡게, 라벨은 흰 알약). */
-.scr-light-theme .scr-feed-stack-rail::before { background: rgba(0, 0, 0, 0.22); }
+.scr-light-theme .scr-feed-stack-rail::before,
+.scr-light-theme .scr-feed-stack-rail::after { background: rgba(0, 0, 0, 0.22); }
 .scr-light-theme .scr-feed-stack-rail-dot { background: rgba(0, 0, 0, 0.35); }
 .scr-light-theme .scr-feed-stack-rail-label { color: rgba(0, 0, 0, 0.22); }
 /* 헤더 아래 구분선은 두지 않는다(요청) — 시각/라벨만 조용히 얹는다. 오른쪽 44px는
