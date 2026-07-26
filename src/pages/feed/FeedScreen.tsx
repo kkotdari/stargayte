@@ -24,7 +24,7 @@ import { useCursorPagination } from "../../hooks/useCursorPagination";
 import { buildReplayDrafts, type ReplayDraft } from "../../utils/replayDraft";
 import { hasAppUpdatePreloadErrorOccurred } from "../../utils/appUpdate";
 import { usePageBackground } from "../../hooks/usePageBackground";
-import type { Challenge, Match, MatchSlot, MatchType, Member, RankSnapshot, RankShiftEntry } from "../../types";
+import type { Challenge, FeedTargetType, Match, MatchSlot, MatchType, Member, RankSnapshot, RankShiftEntry } from "../../types";
 
 const PAGE_SIZE = 100;
 const MAX_REPLAY_FILES = 20;
@@ -222,7 +222,7 @@ function ChallengeActionsMenu({ challenge, isAdmin, onDeleted }: {
 }
 
 // 피드 카드 하단 공통 댓글 영역 — 목록은 항상, 입력창은 아이콘 옆에서 열리고 닫힌다.
-function FeedCardComments({ targetType, targetId }: { targetType: "match" | "challenge"; targetId: number }) {
+function FeedCardComments({ targetType, targetId }: { targetType: FeedTargetType; targetId: number }) {
   return (
     <div className="scr-feed-comments">
       <FeedComments targetType={targetType} targetId={targetId} />
@@ -1027,6 +1027,8 @@ export default function FeedScreen() {
                     상세
                   </button>
                 </div>
+                {/* 순위변동 알림에도 댓글(요청) — 경기/너나와 카드와 같은 공통 댓글 영역. */}
+                <FeedCardComments targetType="rankshift" targetId={item.shift.id} />
               </div>
             ) : item.kind === "challenge" ? (
               <div className="scr-feed-card" key={`c-${item.challenge.id}`}>

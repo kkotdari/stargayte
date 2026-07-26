@@ -164,8 +164,9 @@ export interface RankSnapshot {
   shifts: RankShiftEntry[];
 }
 
-// 피드 댓글 — 대상(targetType, targetId)이 경기든 너 나와!든 같은 API 하나로 달린다.
-export type FeedTargetType = "match" | "challenge";
+// 피드 댓글 — 대상(targetType, targetId)이 경기든 너 나와!든 순위변동 알림이든
+// 같은 API 하나로 달린다.
+export type FeedTargetType = "match" | "challenge" | "rankshift";
 export interface FeedComment {
   id: number;
   targetType: FeedTargetType;
