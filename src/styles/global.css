@@ -7913,18 +7913,8 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-feed-stack-opened .scr-feed-stack-rest { grid-template-rows: 1fr; }
 .scr-feed-stack-rest-inner { overflow: hidden; min-height: 0; }
 .scr-feed-stack-rest-list { display: flex; flex-direction: column; gap: 14px; padding: 4px 0 20px; }
-/* 펼칠 때 카드들이 스택 자리(아래)에서 자기 자리로 미끄러져 올라온다 — 딜레이는 JSX가
-   아래 카드부터 0ms, 위로 갈수록 늦게 준다(위로 착착). */
-.scr-feed-stack-opened .scr-feed-stack-reveal {
-  animation: scr-feed-stack-in .34s cubic-bezier(0.32, 0.72, 0, 1) both;
-}
-@keyframes scr-feed-stack-in {
-  from { transform: translateY(30px); }
-  to { transform: none; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .scr-feed-stack-opened .scr-feed-stack-reveal { animation: none; }
-}
+/* 펼침 트랜지션은 CSS 고정 거리 대신 JS(WAAPI)가 실측 거리로 건다 — MatchStack 참고.
+   (고정 30px 슬라이드는 높이가 즉시 열리는 것에 비해 미미해 "뚝 끊겨" 보였다.) */
 /* 겹친 뒷카드 윗단 — 앞 카드가 그날 첫 게임이므로 나중 게임들이 "위"로 삐져나온 모양(요청).
    블러도 카드와 동일하게(요청: "스택된 상태의 뒷 카드에도 블러 똑같이"). */
 .scr-feed-stack-peek {

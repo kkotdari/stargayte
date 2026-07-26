@@ -282,21 +282,47 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
   // "위로 착착" 펼쳐지는 느낌은 스크롤과 무관한 카드별 transform 슬라이드(CSS 애니메이션,
   // 아래 카드부터 순차)가 담당한다. html의 overflow-anchor:none은 계속 필요하다 — 네이티브
   // 스크롤 앵커링이 같은 변화를 한 번 더 보정하면 이중 보정으로 튄다.
+  // 보정 앵커는 "펼칠 때"만 앞 카드다. 접을 때는 보정하지 않는다 — 줄이기 버튼은 펼쳐진
+  // 목록 맨 위에 있어 누르는 순간 앞 카드가 화면 밖(아래)인 경우가 많은데, 그 카드를
+  // 앵커로 잡으면 스택 높이만큼 위로 스크롤해 엉뚱한 곳(스택 위)이 보였다(지적). 접힘은
+  // 스택 위쪽 문서 위치가 안 변하므로 그냥 두면 접힌 목록이 누른 자리에 그대로 나타난다.
   const frontRef = useRef<HTMLDivElement>(null);
+  const restListRef = useRef<HTMLDivElement>(null);
   const pendingAnchorRef = useRef<number | null>(null);
   const toggleOpen = (next: boolean) => {
-    pendingAnchorRef.current = frontRef.current?.getBoundingClientRect().top ?? null;
+    pendingAnchorRef.current = next ? (frontRef.current?.getBoundingClientRect().top ?? null) : null;
     setOpen(next);
   };
   useLayoutEffect(() => {
     const anchor = pendingAnchorRef.current;
     pendingAnchorRef.current = null;
-    if (anchor == null) return;
-    const front = frontRef.current;
-    if (!front) return;
-    const d = front.getBoundingClientRect().top - anchor;
-    // 문서에 CSS scroll-behavior:smooth가 걸려 있어 반드시 instant로 이동시킨다.
-    if (d !== 0) window.scrollBy({ top: d, behavior: "instant" });
+    if (anchor != null && frontRef.current) {
+      const d = frontRef.current.getBoundingClientRect().top - anchor;
+      // 문서에 CSS scroll-behavior:smooth가 걸려 있어 반드시 instant로 이동시킨다.
+      if (d !== 0) window.scrollBy({ top: d, behavior: "instant" });
+    }
+    // 펼침 트랜지션 — 카드들이 스택 자리(맨 아래)에서 각자 자기 위치까지 실측 거리만큼
+    // 미끄러져 올라온다(WAAPI, transform만이라 레이아웃·스크롤 불변 + 블러 유지). 아래
+    // 카드부터 순차 시작(위로 착착). CSS 고정 거리로는 "높이가 즉시 확 열리는" 느낌이라
+    // 뚝 끊겨 보였다(지적) — 실제 이동 거리를 줘야 펼쳐지는 트랜지션으로 보인다.
+    if (open && restListRef.current && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      const list = restListRef.current;
+      const bottom = list.getBoundingClientRect().bottom;
+      const children = Array.from(list.children) as HTMLElement[];
+      children.forEach((el, idx) => {
+        const dy = bottom - el.getBoundingClientRect().bottom;
+        if (dy <= 0) return;
+        el.animate(
+          [{ transform: `translateY(${dy}px)` }, { transform: "translateY(0)" }],
+          {
+            duration: 380,
+            easing: "cubic-bezier(0.32, 0.72, 0, 1)",
+            delay: (children.length - 1 - idx) * 40,
+            fill: "backwards",
+          },
+        );
+      });
+    }
   }, [open]);
 
   // 두 상태(접힘/펼침)의 카드가 모두 항상 마운트돼 있고(요청: "실제로는 렌더링해놓고"),
@@ -313,7 +339,7 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       </button>
       <div className="scr-feed-stack-rest" aria-hidden={!open}>
         <div className="scr-feed-stack-rest-inner">
-          <div className="scr-feed-stack-rest-list">
+          <div className="scr-feed-stack-rest-list" ref={restListRef}>
             {/* 줄이기 버튼 — 카드 밖, 맨 위(가장 나중 게임 카드 위). */}
             <button
               type="button" className="scr-feed-stack-collapse"
@@ -321,13 +347,9 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
             >
               줄이기
             </button>
-            {/* 아래(스택 자리) 카드부터 순서대로 위로 미끄러져 나온다 — 딜레이만 아래
-                카드가 0이 되게 역순으로 준다("위로 착착"). */}
-            {restDesc.map((it, i) => (
-              <div
-                key={it.match.id} className="scr-feed-stack-reveal"
-                style={{ animationDelay: `${(restDesc.length - 1 - i) * 45}ms` }}
-              >
+            {/* 펼침 애니메이션(위 useLayoutEffect의 WAAPI)이 카드 단위로 걸리도록 래핑. */}
+            {restDesc.map((it) => (
+              <div key={it.match.id} className="scr-feed-stack-reveal">
                 <MatchCard item={it} memberOf={memberOf} onDeleted={onDeleted} dateLabel={dateLabel} highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms} />
               </div>
             ))}
