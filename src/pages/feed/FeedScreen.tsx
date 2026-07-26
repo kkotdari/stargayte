@@ -169,6 +169,29 @@ function driveTransform(
   return driveStyle(dur, ease, (p) => { el.style.transform = frame(p); });
 }
 
+// ---- 블러 유지: '조상'이 아니라 블러 '잎'에 직접 transform ----
+// backdrop-filter 카드는 '조상'에 transform(또는 clip-path/opacity 등)이 걸리면 블러가
+// 끊긴다 — 그 조상이 자체 그룹 경계(backdrop root)가 되어 카드가 페이지 배경 대신
+// 투명한 그룹 내부를 샘플링하기 때문이다(코드 곳곳의 opacity 함정과 같은 원리, 크롬·
+// 사파리 공통 확인). 반면 '자기 자신'에 건 transform은 블러를 유지한다(자기 backdrop
+// root는 자식에만 영향, 자신의 블러엔 무관). 그래서 스택 이동은 래퍼(rest-list·
+// stack-front·matchstack)가 아니라 그 안 블러 잎(.scr-feed-card, .scr-feed-stack-peek)에
+// 직접 건다 — 래퍼는 배경이 없어 시각적으로 완전히 동일하고 블러만 살아남는다.
+const BLUR_LEAF_SEL = ".scr-feed-card, .scr-feed-stack-peek";
+function blurLeaves(el: HTMLElement): HTMLElement[] {
+  if (el.matches(BLUR_LEAF_SEL)) return [el];
+  const found = Array.from(el.querySelectorAll<HTMLElement>(BLUR_LEAF_SEL));
+  return found.length ? found : [el];
+}
+function setTransform(els: HTMLElement[], v: string): void {
+  for (const el of els) el.style.transform = v;
+}
+function driveTransformEls(
+  els: HTMLElement[], dur: number, ease: (t: number) => number, frame: (p: number) => string,
+): DrivenAnim {
+  return driveStyle(dur, ease, (p) => setTransform(els, frame(p)));
+}
+
 function challengeItem(c: Challenge): ChallengeItem {
   const iso = c.scheduledAt ?? c.createdAt;
   return {
@@ -469,12 +492,9 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       // 화면상 위치가 거의 그대로 이어진다. 다만 "+N건" 바가 다시 나타나는 만큼(≈바 높이)
       // 잔차가 남아, 그만큼만 짧게 눌러 내려앉힌다.
       const rail = root.querySelector<HTMLElement>(":scope > .scr-feed-stack-rail");
-      list.style.transform = "";
       if (rail) rail.style.opacity = "";
-      // 클램프 접기(위쪽에서 접기)에서 올라온 아래 무리와 카드 클립 창은 커밋 위치가
-      // 애니메이션 종점과 정확히 일치하므로 바로 걷는다(잔차 없음).
-      const restInner = root.querySelector<HTMLElement>(".scr-feed-stack-rest-inner");
-      if (restInner) restInner.style.clipPath = "";
+      // 클램프 접기(위쪽에서 접기)에서 올라온 아래 무리는 커밋 위치가 애니메이션 종점과
+      // 정확히 일치하므로 바로 걷는다(잔차 없음).
       const moved = closeMotionRef.current;
       closeMotionRef.current = null;
       moved?.belowEls.forEach((el) => { el.style.transform = ""; });
@@ -578,26 +598,30 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     // (+d, rest-inner 클립 밖)에, 위 콘텐츠는 옛 위치(+d)에, 라인은 투명으로, 바는
     // 세운 채로(펼침 클래스의 scaleY(0)을 덮는다).
     railLocked = true;
-    list.style.transform = `translateY(${d}px)`;
+    // 이동은 래퍼가 아니라 블러 잎에 직접(위 blurLeaves 주석). 카드 기둥(rest-list)의
+    // 잎 = 펼쳐질 카드들, 위 콘텐츠의 잎 = 각 피드 카드/바.
+    const listLeaves = blurLeaves(list);
+    setTransform(listLeaves, `translateY(${d}px)`);
     if (rail) rail.style.opacity = "0";
     if (peek) peek.style.transform = "scaleY(1)";
     // 애니메이션 동안 화면에 들어올 일 없는(최종 위치가 d만큼 내려가도 화면 위 밖인)
     // 위 콘텐츠는 건너뛴다.
     const sliders = collectAbove().filter((el) => el.getBoundingClientRect().bottom + d >= -40);
-    sliders.forEach((el) => { el.style.transform = `translateY(${d}px)`; });
+    const aboveLeaves = sliders.flatMap(blurLeaves);
+    setTransform(aboveLeaves, `translateY(${d}px)`);
 
     const start = () => {
       if (cancelled) return;
       // 위 콘텐츠와 카드 기둥이 옛(접힌) 위치에서 한 몸으로 밀려 올라온다 — 위 카드들이
       // 열어주는 공간을 새 카드들이 앞 카드 뒤에서 나오며 그대로 채우므로 빈 공백 구간이
       // 없다. 카드엔 opacity를 안 쓰므로(위 대원칙) 블러 재합성 깜빡임도 없다.
-      const rise = (el: HTMLElement, onDone?: () => void) => {
-        const a = driveTransform(el, slideDur, EASE_STACK, (p) => `translateY(${d * (1 - p)}px)`);
-        void a.finished.then(() => { el.style.transform = ""; onDone?.(); }).catch(() => {});
+      const rise = (els: HTMLElement[], onDone?: () => void) => {
+        const a = driveTransformEls(els, slideDur, EASE_STACK, (p) => `translateY(${d * (1 - p)}px)`);
+        void a.finished.then(() => { setTransform(els, ""); onDone?.(); }).catch(() => {});
         anims.push(a);
       };
-      sliders.forEach((el) => rise(el));
-      rise(list, () => {
+      rise(aboveLeaves);
+      rise(listLeaves, () => {
         railLocked = false;
         if (railDeferred) { railDeferred = false; positionRail(); }
       });
@@ -636,9 +660,9 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       cancelAnimationFrame(raf2);
       anims.forEach((a) => { try { a.cancel(); } catch { /* 이미 끝남 */ } });
       if (peek) peek.style.transform = "";
-      list.style.transform = "";
+      setTransform(listLeaves, "");
       if (rail) rail.style.opacity = "";
-      sliders.forEach((el) => { el.style.transform = ""; });
+      setTransform(aboveLeaves, "");
       cleanupRail();
       cancelRevealRef.current = null;
     };
@@ -686,33 +710,28 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     // 멈추며 위·아래 모두 이어진다. 여유가 충분하면 riseDist=0, 기존과 동일.
     const sinkDist = Math.min(dist, Math.max(0, window.scrollY));
     const riseDist = dist - sinkDist;
-    const els = collectAbove().filter((el) => {
+    // 이동은 래퍼가 아니라 블러 잎에 직접(위 blurLeaves 주석) — 조상 transform은 사파리
+    // ·크롬 공통으로 카드 블러를 끊는다(지적: "애니메이션 중 블러 꺼짐"). 위 무리·카드
+    // 기둥은 내려가고(sinkDist), 위쪽 클램프 때 부족분(riseDist)은 아래 무리가 올라온다.
+    const aboveLeaves = collectAbove().filter((el) => {
       const r = el.getBoundingClientRect();
       return r.top < vh + 40 && r.bottom + sinkDist > -40;
-    });
-    const belowEls = riseDist > 0.5
+    }).flatMap(blurLeaves);
+    const listLeaves = blurLeaves(list);
+    const belowLeaves = riseDist > 0.5
       ? collectBelow().filter((el) => {
           const r = el.getBoundingClientRect();
           return r.top - riseDist < vh + 40 && r.bottom > -40;
-        })
+        }).flatMap(blurLeaves)
       : [];
-    // 아래 무리가 올라오는 만큼 카드 클립 창(rest-inner)의 아랫변도 같이 올라와야
-    // 카드들이 앞 카드 윗모서리에서 정확히 사라진다 — clip-path는 레이아웃 불변이라
-    // 애니메이션해도 스크롤과 어긋나지 않는다.
-    const restInner = root.querySelector<HTMLElement>(".scr-feed-stack-rest-inner");
+    // 카드 클립은 rest-inner의 기존 overflow:hidden이 그대로 담당한다(clip-path는 조상에
+    // 걸리면 transform과 똑같이 블러를 끊어 쓰지 않는다 — 확인). 아래 무리가 올라와도
+    // 앞 카드(z-index 1)가 rest 위를 덮고, rest 카드는 overflow 밖으로 나가며 사라진다.
     const anims: (Animation | DrivenAnim)[] = [];
-    const sink = (el: HTMLElement) => {
-      anims.push(driveTransform(el, dur, EASE_STACK, (p) => `translateY(${sinkDist * p}px)`));
-    };
-    els.forEach(sink);
-    sink(list);
-    belowEls.forEach((el) => {
-      anims.push(driveTransform(el, dur, EASE_STACK, (p) => `translateY(${-riseDist * p}px)`));
-    });
-    if (riseDist > 0.5 && restInner) {
-      anims.push(driveStyle(dur, EASE_STACK, (p) => {
-        restInner.style.clipPath = `inset(0 0 ${riseDist * p}px 0)`;
-      }));
+    const sinkLeaves = [...aboveLeaves, ...listLeaves];
+    anims.push(driveTransformEls(sinkLeaves, dur, EASE_STACK, (p) => `translateY(${sinkDist * p}px)`));
+    if (belowLeaves.length) {
+      anims.push(driveTransformEls(belowLeaves, dur, EASE_STACK, (p) => `translateY(${-riseDist * p}px)`));
     }
     if (rail) {
       anims.push(rail.animate(
@@ -724,13 +743,11 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       if (!closingRef.current) return;
       closingRef.current = false;
       // 커밋 프레임이 이어받도록 종료 상태를 인라인으로 박고 애니메이션 객체는 정리한다.
-      els.forEach((el) => { el.style.transform = `translateY(${sinkDist}px)`; });
-      list.style.transform = `translateY(${sinkDist}px)`;
-      belowEls.forEach((el) => { el.style.transform = `translateY(${-riseDist}px)`; });
-      if (restInner && riseDist > 0.5) restInner.style.clipPath = `inset(0 0 ${riseDist}px 0)`;
+      setTransform(sinkLeaves, `translateY(${sinkDist}px)`);
+      setTransform(belowLeaves, `translateY(${-riseDist}px)`);
       if (rail) rail.style.opacity = "0";
       anims.forEach((a) => { try { a.cancel(); } catch { /* 이미 끝남 */ } });
-      closeMotionRef.current = { els, belowEls, dist: sinkDist };
+      closeMotionRef.current = { els: sinkLeaves, belowEls: belowLeaves, dist: sinkDist };
       cancelRevealRef.current = null;
       toggleOpen(false);
     };
@@ -738,10 +755,8 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     cancelRevealRef.current = () => {
       closingRef.current = false;
       anims.forEach((a) => { try { a.cancel(); } catch { /* 이미 끝남 */ } });
-      els.forEach((el) => { el.style.transform = ""; });
-      belowEls.forEach((el) => { el.style.transform = ""; });
-      if (restInner) restInner.style.clipPath = "";
-      list.style.transform = "";
+      setTransform(sinkLeaves, "");
+      setTransform(belowLeaves, "");
       if (rail) rail.style.opacity = "";
       cancelRevealRef.current = null;
     };
