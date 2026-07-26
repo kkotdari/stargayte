@@ -2990,6 +2990,11 @@ html.scr-page-bg.scr-light-theme .scr-rank-screen-v2::before { display: none; }
      폭 가득 찬 줄에 혼자 왼쪽으로 쏠려 보여서(지적됨) 이땐 가운데로 둔다. */
   .scr-filter-panel:has(> .scr-filter-item:only-child) { justify-content: center; }
   .scr-search-filter-float { width: 100%; }
+  /* 피드는 모바일에서도 유형+유저검색을 한 줄에(요청) — 세로 스택/폭 100% 규칙을 되돌려
+     유형(내용 폭)은 왼쪽, 유저검색은 남는 폭을 채운다. */
+  .scr-feed-screen .scr-filter-inline-stack { flex-direction: row; align-items: center; gap: 8px; }
+  .scr-feed-screen .scr-filter-panel { width: auto; justify-content: flex-start; }
+  .scr-feed-screen .scr-search-filter-float { width: auto; flex: 1 1 auto; min-width: 0; }
   .scr-filter-item-label { font-size: var(--fs-caption); }
   /* 모바일에서도 필터 요소(알약/달력/종족)를 base(PC)와 같은 크기 — 검색창 높이(34px)에 맞춘다
      (요청: "필터 내 요소 높이를 검색창과 일치, 모바일·PC 모두"). 예전엔 24px로 컴팩트하게

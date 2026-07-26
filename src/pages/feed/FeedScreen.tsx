@@ -1003,10 +1003,11 @@ export default function FeedScreen() {
   const filteredFeed = useMemo<FeedItem[]>(() => {
     return visibleFeed.filter((item) => {
       if (kindFilter !== "all") {
-        // 도전장은 시간 확정 여부로 너나와(call)/일정(schedule)을 가른다.
+        // 도전장(시간 확정이든 아니든)은 전부 너나와(call)로 본다(요청). 일정은 추후
+        // 별도 아이템이 생기면 채워진다.
         const kind = item.kind === "match" ? "match"
           : item.kind === "rankshift" ? "rankshift"
-          : item.challenge.scheduledTime != null ? "schedule" : "call";
+          : "call";
         if (kind !== kindFilter) return false;
       }
       if (searchTerms.length > 0) {
@@ -1124,27 +1125,8 @@ export default function FeedScreen() {
         />
       </div>
 
-      {/* 유형 필터(요청: 분류(개인전/팀전) 제거, 유형 드롭다운 추가) — 게임결과/너나와/
-          일정/랭크변동으로 거른다. */}
-      <div className="scr-match-type-filter">
-        <FilterItem label="유형">
-          <Select
-            value={kindFilter}
-            onChange={(v) => setKindFilter(v as typeof kindFilter)}
-            size="sm"
-            minDropWidth={120}
-            options={[
-              { value: "all", label: "전체" },
-              { value: "match", label: "게임결과" },
-              { value: "call", label: "너나와" },
-              { value: "schedule", label: "일정" },
-              { value: "rankshift", label: "랭크변동" },
-            ]}
-          />
-        </FilterItem>
-      </div>
-
-      {/* 유저 검색 + 게임번호 — 기록실과 동일. 너나와/랭크변동에도 유저 필터가 걸린다. */}
+      {/* 유형 드롭다운(요청: 분류 제거) + 유저 검색을 한 줄에(요청: 모바일도 한 줄) —
+          검색바의 filterPanel로 넘겨 같은 인라인 스택에 나란히 둔다. */}
       <SearchFilterBar
         count={displayFeed.length}
         countLabel="건"
@@ -1153,6 +1135,23 @@ export default function FeedScreen() {
         onSearchChange={setSearch}
         searchPlaceholder="유저 검색"
         suggestions={suggestions}
+        filterPanel={
+          <FilterItem label="유형">
+            <Select
+              value={kindFilter}
+              onChange={(v) => setKindFilter(v as typeof kindFilter)}
+              size="sm"
+              minDropWidth={120}
+              options={[
+                { value: "all", label: "전체" },
+                { value: "match", label: "게임결과" },
+                { value: "call", label: "너나와" },
+                { value: "schedule", label: "일정" },
+                { value: "rankshift", label: "랭크변동" },
+              ]}
+            />
+          </FilterItem>
+        }
       />
 
       {error && <div className="scr-err">{error}</div>}

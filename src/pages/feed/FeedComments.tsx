@@ -102,6 +102,24 @@ function NoteComposer({
     if (!mentionShown || !inputRef.current || !dropRef.current) return;
     return attachPopover(inputRef.current, dropRef.current, { matchAnchor: true });
   }, [mentionShown]);
+  // 드롭다운이 떠 있을 때 바깥을 스크롤하거나 터치/클릭하면 닫는다(요청). 입력칸·드롭다운
+  // 안에서의 상호작용은 유지한다. 스크롤은 어디서 나든(후보 위치가 어긋나므로) 닫는다.
+  useEffect(() => {
+    if (!mentionShown) return;
+    const closeOnOutside = (e: Event) => {
+      const t = e.target as Node | null;
+      if (inputRef.current?.contains(t) || dropRef.current?.contains(t)) return;
+      setMentionQuery(null);
+    };
+    const closeOnScroll = () => setMentionQuery(null);
+    document.addEventListener("pointerdown", closeOnOutside, true);
+    // 스크롤은 캡처 단계로 전역에서(어느 스크롤 컨테이너든) 잡는다.
+    window.addEventListener("scroll", closeOnScroll, true);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutside, true);
+      window.removeEventListener("scroll", closeOnScroll, true);
+    };
+  }, [mentionShown]);
 
   // 커서 바로 앞의 "@질의"(공백/@ 없는 부분)를 감지해 자동완성 드롭다운을 띄운다.
   const detectQuery = (value: string, cursor: number) => {
