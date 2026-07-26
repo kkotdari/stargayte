@@ -400,19 +400,27 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       if (rail) rail.style.opacity = "";
       const moved = closeMotionRef.current;
       closeMotionRef.current = null;
-      if (!moved) return;
-      // 잔차 = 애니메이션이 이동한 거리 - 문서가 실제로 줄어든 높이(= peek 재등장 높이).
-      const residual = moved.dist + d;
-      if (residual <= 0.5 || reduced) {
-        moved.els.forEach((el) => { el.style.transform = ""; });
+      if (!moved || reduced) {
+        moved?.els.forEach((el) => { el.style.transform = ""; });
         return;
       }
+      // 잔차 = 애니메이션이 이동한 거리 - 문서가 실제로 줄어든 높이(= peek 재등장 높이).
+      const residual = moved.dist + d;
+      const settleEls = residual > 0.5 ? moved.els : [];
+      if (residual <= 0.5) moved.els.forEach((el) => { el.style.transform = ""; });
       let cancelled = false;
       const anims: Animation[] = [];
-      moved.els.forEach((el) => { el.style.transform = `translateY(${residual}px)`; });
+      settleEls.forEach((el) => { el.style.transform = `translateY(${residual}px)`; });
+      // "+N건" 바가 즉시 튀어나오면 그 자체가 깜빡임(지적) — 앞 카드 윗모서리에서
+      // 자라나게 한다. opacity는 바의 블러를 껐다 켜서 또 깜빡이므로 스케일로만.
+      const peek = root.querySelector<HTMLElement>(":scope > .scr-feed-stack-peek");
+      if (peek) {
+        peek.style.transformOrigin = "50% 100%";
+        peek.style.transform = "scaleY(0)";
+      }
       const settleDown = () => {
         if (cancelled) return;
-        moved.els.forEach((el) => {
+        settleEls.forEach((el) => {
           const a = el.animate(
             [{ transform: `translateY(${residual}px)` }, { transform: "translateY(0)" }],
             { duration: 160, easing: "ease-out", fill: "both" },
@@ -422,6 +430,16 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
           a.oncancel = settle;
           anims.push(a);
         });
+        if (peek) {
+          const pa = peek.animate(
+            [{ transform: "scaleY(0)" }, { transform: "scaleY(1)" }],
+            { duration: 160, easing: "ease-out", fill: "both" },
+          );
+          const settle = () => { peek.style.transform = ""; peek.style.transformOrigin = ""; };
+          pa.onfinish = () => { settle(); pa.cancel(); };
+          pa.oncancel = settle;
+          anims.push(pa);
+        }
       };
       // 펼치기와 같은 이유로 첫 페인트(접힘 레이아웃+스크롤 보정) 다음 프레임에 시작.
       let raf2 = 0;
@@ -431,7 +449,8 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
         cancelAnimationFrame(raf1);
         cancelAnimationFrame(raf2);
         anims.forEach((a) => { try { a.cancel(); } catch { /* 이미 끝남 */ } });
-        moved.els.forEach((el) => { el.style.transform = ""; });
+        settleEls.forEach((el) => { el.style.transform = ""; });
+        if (peek) { peek.style.transform = ""; peek.style.transformOrigin = ""; }
         cancelRevealRef.current = null;
       };
       return;
@@ -522,11 +541,14 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
         ra.oncancel = settle;
         anims.push(ra);
       }
-      // 고스트는 기둥이 그 자리를 지나가는 초반에 짧게 걷힌다.
+      // 고스트("+N건" 바)는 기둥이 뒤에서 올라오는 초반에 앞 카드 윗모서리로 접혀
+      // 들어간다 — opacity를 쓰면 바의 블러가 꺼지며 또 깜빡이므로(지적: "뒤에 스택된
+      // 카드가 나오고 없어질 때 깜빡해") 스케일(transform)로만 사라진다.
       if (ghost) {
+        ghost.style.transformOrigin = "50% 100%";
         const ga = ghost.animate(
-          [{ opacity: 1 }, { opacity: 0 }],
-          { duration: 150, easing: "ease-out", fill: "both" },
+          [{ transform: "scaleY(1)" }, { transform: "scaleY(0)" }],
+          { duration: 180, easing: "ease-in", fill: "both" },
         );
         ga.onfinish = () => ghost.remove();
         ga.oncancel = () => ghost.remove();
