@@ -7913,17 +7913,8 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-feed-stack-opened .scr-feed-stack-rest { grid-template-rows: 1fr; }
 .scr-feed-stack-rest-inner { overflow: hidden; min-height: 0; }
 .scr-feed-stack-rest-list { display: flex; flex-direction: column; gap: 14px; padding: 4px 0 20px; }
-/* 펼침 트랜지션은 CSS 고정 거리 대신 JS(WAAPI)가 실측 거리로 건다 — MatchStack 참고.
-   (고정 30px 슬라이드는 높이가 즉시 열리는 것에 비해 미미해 "뚝 끊겨" 보였다.) */
-/* 비행 중(펼침 애니메이션 동안)의 카드/줄이기 버튼 — 시작 순간 전 카드가 스택 자리에
-   완전히 겹쳐 있어, 반투명+블러 레이어가 N장 포개지면 시커먼 덩어리가 휙 지나가는
-   것처럼 보였다(지적). 이동 중엔 불투명 패널로 바꾸고 착지 후(JS가 클래스 제거) 원래
-   글래스로 되돌린다. */
-.scr-feed-stack-flying .scr-feed-card,
-.scr-feed-stack-flying.scr-feed-stack-collapse {
-  backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
-  background: var(--panel-solid) !important;
-}
+/* 펼침 연출은 JS(WAAPI, MatchStack 참고) — 1) 위 콘텐츠를 필요한 높이만큼 transform으로
+   밀어올려 빈 공간을 만들고 2) 그 자리에 카드들을 페이드인(아이디어: 사용자). */
 /* 겹친 뒷카드 윗단 — 앞 카드가 그날 첫 게임이므로 나중 게임들이 "위"로 삐져나온 모양(요청).
    블러도 카드와 동일하게(요청: "스택된 상태의 뒷 카드에도 블러 똑같이"). */
 .scr-feed-stack-peek {

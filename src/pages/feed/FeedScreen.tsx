@@ -276,83 +276,113 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
   // 펼침 영역이 앞 카드 "위"에 있어, 그대로 두면 앞 카드가 아래로 밀려 마치 아래로
   // 펼쳐지는 것처럼 보인다(지적). 스크롤 보정은 "페인트 전 딱 한 번"만 한다 — 레이아웃을
   // 즉시 바꾸고(useLayoutEffect 시점) 앞 카드가 밀린 만큼 같은 프레임에 scrollBy로 되돌려,
-  // 화면에는 애초에 아무 움직임도 그려지지 않는다. 높이 트랜지션 + 매 프레임 보정 루프는
-  // iOS 사파리에서 스크롤 반영이 비동기라 보정과 측정이 서로 어긋나며 크게 튀었다(지적:
-  // "스크롤 튐이 더 심해졌어") — 프레임 단위 스크롤 개입 자체를 없애는 게 유일하게 안전하다.
-  // "위로 착착" 펼쳐지는 느낌은 스크롤과 무관한 카드별 transform 슬라이드(CSS 애니메이션,
-  // 아래 카드부터 순차)가 담당한다. html의 overflow-anchor:none은 계속 필요하다 — 네이티브
-  // 스크롤 앵커링이 같은 변화를 한 번 더 보정하면 이중 보정으로 튄다.
-  // 보정 앵커는 "펼칠 때"만 앞 카드다. 접을 때는 보정하지 않는다 — 줄이기 버튼은 펼쳐진
-  // 목록 맨 위에 있어 누르는 순간 앞 카드가 화면 밖(아래)인 경우가 많은데, 그 카드를
-  // 앵커로 잡으면 스택 높이만큼 위로 스크롤해 엉뚱한 곳(스택 위)이 보였다(지적). 접힘은
-  // 스택 위쪽 문서 위치가 안 변하므로 그냥 두면 접힌 목록이 누른 자리에 그대로 나타난다.
+  // 화면에는 애초에 아무 움직임도 그려지지 않는다(매 프레임 보정 루프는 iOS의 비동기
+  // 스크롤 반영과 어긋나 크게 튀었다). html의 overflow-anchor:none은 계속 필요하다.
+  //
+  // 펼침 연출은 2단계(아이디어 제공: 사용자):
+  // 1) 위쪽 콘텐츠(스택 위 아이템들·필터·헤더)가 필요한 높이만큼 트랜지션으로 밀려
+  //    올라가 빈 공간을 만들고 — 실제 레이아웃은 이미 끝났고, 옛 위치(+H)에서 제자리로
+  //    transform만 되감는 것이라 스크롤·레이아웃 개입이 없다.
+  // 2) 다 올라가면 그 빈 공간에 카드들이 페이드인한다.
+  // (이전의 "카드들이 스택 자리에서 날아오르는" 방식은 겹침 구간이 지저분해 보였다 — 지적.)
+  //
+  // 접을 때는 보정도 연출도 없다 — 줄이기 버튼은 목록 맨 위라 앞 카드가 화면 밖(아래)인
+  // 경우가 많고, 스택 위쪽 문서 위치는 안 변해 접힌 목록이 누른 자리에 그대로 나타난다.
+  const stackRef = useRef<HTMLDivElement>(null);
   const frontRef = useRef<HTMLDivElement>(null);
   const restListRef = useRef<HTMLDivElement>(null);
   const pendingAnchorRef = useRef<number | null>(null);
+  // 진행 중인 펼침 연출을 중단·원복하는 함수 — 접기/재펼침/언마운트 때 호출한다.
+  const cancelRevealRef = useRef<(() => void) | null>(null);
+  useEffect(() => () => cancelRevealRef.current?.(), []);
   const toggleOpen = (next: boolean) => {
     pendingAnchorRef.current = next ? (frontRef.current?.getBoundingClientRect().top ?? null) : null;
     setOpen(next);
   };
   useLayoutEffect(() => {
+    cancelRevealRef.current?.();
     const anchor = pendingAnchorRef.current;
     pendingAnchorRef.current = null;
-    if (anchor != null && frontRef.current) {
-      const d = frontRef.current.getBoundingClientRect().top - anchor;
-      // 문서에 CSS scroll-behavior:smooth가 걸려 있어 반드시 instant로 이동시킨다.
-      if (d !== 0) window.scrollBy({ top: d, behavior: "instant" });
-    }
-    // 펼침 트랜지션 — 카드들이 스택 자리(맨 아래)에서 각자 자기 위치까지 실측 거리만큼
-    // 미끄러져 올라온다(WAAPI, transform만이라 레이아웃·스크롤 불변 + 블러 유지). 아래
-    // 카드부터 순차 시작(위로 착착). CSS 고정 거리로는 "높이가 즉시 확 열리는" 느낌이라
-    // 뚝 끊겨 보였다(지적) — 실제 이동 거리를 줘야 펼쳐지는 트랜지션으로 보인다.
-    // 시작 위치(스택 자리)는 인라인 transform으로 "지금 당장" 박는다 — 순차 딜레이 동안의
-    // 시작 상태를 fill:backwards에만 맡기면 iOS 사파리가 첫 프레임에 적용하지 않는 경우가
-    // 있어, 카드/줄이기 버튼이 한순간 최종 위치에 보였다가 점프했다(지적: "펼칠 때 깜빡,
-    // 줄이기 버튼이 처음부터 보임"). 인라인 스타일은 페인트 전에 확실히 반영된다.
+    const front = frontRef.current;
+    if (anchor == null || !front) return;
+    const d = front.getBoundingClientRect().top - anchor;
+    // 문서에 CSS scroll-behavior:smooth가 걸려 있어 반드시 instant로 이동시킨다.
+    if (d !== 0) window.scrollBy({ top: d, behavior: "instant" });
+    const root = stackRef.current;
     const list = restListRef.current;
-    if (list) {
-      const children = Array.from(list.children) as HTMLElement[];
-      if (open && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-        const bottom = list.getBoundingClientRect().bottom;
-        children.forEach((el, idx) => {
-          const dy = bottom - el.getBoundingClientRect().bottom;
-          if (dy <= 0) return;
-          el.style.transform = `translateY(${dy}px)`;
-          // 비행 중엔 카드의 반투명+블러를 끄고 불투명 카드로(scr-feed-stack-flying) —
-          // 시작 순간 전 카드가 스택 자리에 겹쳐 있어, 반투명 블러 레이어 N장이 포개지면
-          // 시커먼 덩어리가 화면을 휙 지나가는 것처럼 보였다(지적). 착지 후 원복.
-          el.classList.add("scr-feed-stack-flying");
-          const anim = el.animate(
-            [{ transform: `translateY(${dy}px)` }, { transform: "translateY(0)" }],
-            {
-              duration: 380,
-              easing: "cubic-bezier(0.32, 0.72, 0, 1)",
-              delay: (children.length - 1 - idx) * 40,
-              fill: "both",
-            },
-          );
-          const settle = () => {
-            el.style.transform = "";
-            el.classList.remove("scr-feed-stack-flying");
-          };
-          anim.onfinish = () => { settle(); anim.cancel(); };
-          anim.oncancel = settle;
-        });
-      } else {
-        // 접힘/모션 최소화 — 진행 중이던 애니메이션과 남은 인라인 시작 위치를 정리한다.
-        children.forEach((el) => {
-          el.getAnimations().forEach((a) => a.cancel());
-          el.style.transform = "";
-          el.classList.remove("scr-feed-stack-flying");
-        });
+    if (!open || d <= 0 || !root || !list) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    const easing = "cubic-bezier(0.32, 0.72, 0, 1)";
+    let cancelled = false;
+    const anims: Animation[] = [];
+    const reveals = Array.from(list.children) as HTMLElement[];
+
+    // 위쪽 콘텐츠 수집 — 스택 위 피드 아이템들 + 피드 목록 위 요소들(타이틀/필터/검색).
+    // 헤더는 문서 스크롤 최상단 콘텐츠라 스택을 펼칠 즈음엔 화면 밖이 대부분이지만,
+    // 근처에 있으면 같이 밀어 위화감을 없앤다.
+    const above: HTMLElement[] = [];
+    for (let el = root.previousElementSibling; el; el = el.previousElementSibling) {
+      above.push(el as HTMLElement);
+    }
+    const listParent = root.parentElement;
+    if (listParent) {
+      for (let el = listParent.previousElementSibling; el; el = el.previousElementSibling) {
+        above.push(el as HTMLElement);
       }
     }
+    const header = document.querySelector<HTMLElement>(".scr-header");
+    if (header) above.push(header);
+
+    // 시작 상태는 인라인 스타일로 "지금 당장" 박는다 — WAAPI fill에만 맡기면 iOS가 첫
+    // 프레임에 적용하지 않아 깜빡인다(이전 지적과 동일한 함정).
+    reveals.forEach((el) => { el.style.opacity = "0"; });
+
+    // 1단계 — 위 콘텐츠를 옛 위치(+d)에서 제자리로 밀어올린다. 애니메이션 동안 화면에
+    // 들어올 일 없는(최종 위치가 d만큼 내려가도 화면 위 밖인) 요소는 건너뛴다.
+    above.forEach((el) => {
+      if (el.getBoundingClientRect().bottom + d < -40) return;
+      el.style.transform = `translateY(${d}px)`;
+      const a = el.animate(
+        [{ transform: `translateY(${d}px)` }, { transform: "translateY(0)" }],
+        { duration: 300, easing, fill: "both" },
+      );
+      const settle = () => { el.style.transform = ""; };
+      a.onfinish = () => { settle(); a.cancel(); };
+      a.oncancel = settle;
+      anims.push(a);
+    });
+
+    // 2단계 — 밀어올리기가 끝나면 빈 공간에 카드들을 페이드인(아래 카드부터 살짝 순차).
+    const startFade = () => {
+      if (cancelled) return;
+      reveals.forEach((el, idx) => {
+        const a = el.animate(
+          [{ opacity: 0 }, { opacity: 1 }],
+          { duration: 240, easing: "ease-out", delay: (reveals.length - 1 - idx) * 30, fill: "both" },
+        );
+        const settle = () => { el.style.opacity = ""; };
+        a.onfinish = () => { settle(); a.cancel(); };
+        a.oncancel = settle;
+        anims.push(a);
+      });
+    };
+    if (anims.length > 0) anims[0].finished.then(startFade).catch(() => {});
+    else startFade();
+
+    cancelRevealRef.current = () => {
+      cancelled = true;
+      anims.forEach((a) => { try { a.cancel(); } catch { /* 이미 끝남 */ } });
+      reveals.forEach((el) => { el.style.opacity = ""; });
+      above.forEach((el) => { el.style.transform = ""; });
+      cancelRevealRef.current = null;
+    };
   }, [open]);
 
   // 두 상태(접힘/펼침)의 카드가 모두 항상 마운트돼 있고(요청: "실제로는 렌더링해놓고"),
   // 높이는 클립(grid-rows 0fr↔1fr)으로 즉시 바뀐다 — 트랜지션은 카드 transform이 담당.
   return (
-    <div className={cx("scr-feed-stack", open && "scr-feed-stack-opened")}>
+    <div ref={stackRef} className={cx("scr-feed-stack", open && "scr-feed-stack-opened")}>
       <button
         type="button" className="scr-feed-stack-peek"
         onClick={() => toggleOpen(true)}
