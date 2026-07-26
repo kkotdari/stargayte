@@ -394,12 +394,13 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       <div className="scr-feed-stack-rest" aria-hidden={!open}>
         <div className="scr-feed-stack-rest-inner">
           <div className="scr-feed-stack-rest-list" ref={restListRef}>
-            {/* 줄이기 버튼 — 카드 밖, 맨 위(가장 나중 게임 카드 위). */}
+            {/* 줄이기 — 버튼 대신 겹쳐 있던 카드들 왼쪽의 흰 세로 라인(요청). 누르면 접히고,
+                라인 위에 세로쓰기 안내가 붙는다. */}
             <button
-              type="button" className="scr-feed-stack-collapse"
+              type="button" className="scr-feed-stack-rail"
               onClick={() => toggleOpen(false)} aria-label="줄이기"
             >
-              줄이기
+              <span className="scr-feed-stack-rail-label">눌러서 다시 줄이기</span>
             </button>
             {/* 펼침 애니메이션(위 useLayoutEffect의 WAAPI)이 카드 단위로 걸리도록 래핑. */}
             {restDesc.map((it) => (
