@@ -7900,28 +7900,30 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 /* 앞 카드(스크롤 앵커용 래퍼 포함)는 뒷단(peek) 위에 얹힌다. */
 .scr-feed-stack-front { position: relative; z-index: 1; }
 .scr-feed-stack-front > .scr-feed-card { position: relative; }
-/* 펼침/접힘 — 겹친 카드들은 늘 실제로 렌더링돼 있고(요청), 높이 클립(grid-rows 0fr↔1fr)
-   트랜지션으로 보였다 안 보였다 한다. 트랜지션 동안 앞 카드가 밀리는 건 MatchStack이
-   앞 카드 위치를 앵커로 매 프레임 스크롤 보정한다(위 html의 overflow-anchor:none과 한
-   쌍 — 네이티브 앵커링이 겹치면 이중 보정으로 튄다). 뒷단(peek)은 높이·투명도로 접힌다. */
-.scr-feed-stack-peek {
-  transition: opacity .2s ease, padding .28s cubic-bezier(0.32, 0.72, 0, 1), margin .28s cubic-bezier(0.32, 0.72, 0, 1), height .28s cubic-bezier(0.32, 0.72, 0, 1);
-  overflow: hidden; height: auto;
-}
-.scr-feed-stack-opened .scr-feed-stack-peek {
-  height: 0; padding-top: 0; padding-bottom: 0; margin-bottom: 0; opacity: 0; pointer-events: none;
-}
+/* 펼침/접힘 — 겹친 카드들은 늘 실제로 렌더링돼 있고(요청), 높이 클립(grid-rows 0fr↔1fr)은
+   트랜지션 없이 즉시 바뀐다. 높이를 애니메이션하면 그동안 앞 카드가 밀리는 걸 스크롤이
+   따라가야 하는데, iOS의 비동기 스크롤 반영과 어긋나며 크게 튀었다(지적) — 스크롤 보정은
+   MatchStack이 페인트 전 한 번만 하고, "위로 착착" 펼쳐지는 느낌은 레이아웃과 무관한
+   카드별 transform 슬라이드(아래 .scr-feed-stack-reveal)가 담당한다. */
+.scr-feed-stack-opened .scr-feed-stack-peek { display: none; }
 /* 주의: 여기(조상)에 opacity를 걸면 안 된다 — opacity<1은 자체 합성 그룹을 만들어 그 안
-   카드들의 backdrop-filter가 페이지 배경을 못 보게 된다(= 블러가 빠져 보이던 문제). */
-.scr-feed-stack-rest {
-  display: grid; grid-template-rows: 0fr;
-  transition: grid-template-rows .32s cubic-bezier(0.32, 0.72, 0, 1);
-}
+   카드들의 backdrop-filter가 페이지 배경을 못 보게 된다(= 블러가 빠져 보이던 문제).
+   같은 이유로 카드 등장 애니메이션도 opacity 없이 transform만 쓴다. */
+.scr-feed-stack-rest { display: grid; grid-template-rows: 0fr; }
 .scr-feed-stack-opened .scr-feed-stack-rest { grid-template-rows: 1fr; }
 .scr-feed-stack-rest-inner { overflow: hidden; min-height: 0; }
 .scr-feed-stack-rest-list { display: flex; flex-direction: column; gap: 14px; padding: 4px 0 20px; }
+/* 펼칠 때 카드들이 스택 자리(아래)에서 자기 자리로 미끄러져 올라온다 — 딜레이는 JSX가
+   아래 카드부터 0ms, 위로 갈수록 늦게 준다(위로 착착). */
+.scr-feed-stack-opened .scr-feed-stack-reveal {
+  animation: scr-feed-stack-in .34s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+@keyframes scr-feed-stack-in {
+  from { transform: translateY(30px); }
+  to { transform: none; }
+}
 @media (prefers-reduced-motion: reduce) {
-  .scr-feed-stack-peek, .scr-feed-stack-rest { transition: none; }
+  .scr-feed-stack-opened .scr-feed-stack-reveal { animation: none; }
 }
 /* 겹친 뒷카드 윗단 — 앞 카드가 그날 첫 게임이므로 나중 게임들이 "위"로 삐져나온 모양(요청).
    블러도 카드와 동일하게(요청: "스택된 상태의 뒷 카드에도 블러 똑같이"). */

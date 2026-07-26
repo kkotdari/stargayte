@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { CalendarPlus, MoreHorizontal, Plus, Send, Swords, Trophy, Upload } from "lucide-react";
 import { Spinner } from "../../components/common/Feedback";
 import SearchFilterBar from "../../components/common/SearchFilterBar";
@@ -274,45 +274,33 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
   const restDesc = useMemo(() => ordered.slice(1).reverse(), [ordered]);
 
   // 펼침 영역이 앞 카드 "위"에 있어, 그대로 두면 앞 카드가 아래로 밀려 마치 아래로
-  // 펼쳐지는 것처럼 보인다(지적). 트랜지션 동안 앞 카드의 뷰포트 위치를 앵커로 잡고 매
-  // 프레임 스크롤이 따라간다 — 앞 카드는 고정돼 보이고 카드들이 위로 자라난다(접을 때도
-  // 역으로 고정). 주의 두 가지:
-  // 1) html에 overflow-anchor:none이 꼭 필요하다 — 최신 사파리/크롬의 네이티브 스크롤
-  //    앵커링이 같은 변화를 한 번 더 보정하면 서로 겹쳐 크게 튄다(실제 지적: 펼칠 때
-  //    깜빡·접을 때 훨씬 위로 이동).
-  // 2) 문서에 CSS scroll-behavior:smooth가 걸려 있어 보정은 반드시 instant로 이동시킨다.
-  // 사용자가 도중에 스크롤(휠/터치)을 시작하면 즉시 보정을 멈춰 조작과 싸우지 않는다.
+  // 펼쳐지는 것처럼 보인다(지적). 스크롤 보정은 "페인트 전 딱 한 번"만 한다 — 레이아웃을
+  // 즉시 바꾸고(useLayoutEffect 시점) 앞 카드가 밀린 만큼 같은 프레임에 scrollBy로 되돌려,
+  // 화면에는 애초에 아무 움직임도 그려지지 않는다. 높이 트랜지션 + 매 프레임 보정 루프는
+  // iOS 사파리에서 스크롤 반영이 비동기라 보정과 측정이 서로 어긋나며 크게 튀었다(지적:
+  // "스크롤 튐이 더 심해졌어") — 프레임 단위 스크롤 개입 자체를 없애는 게 유일하게 안전하다.
+  // "위로 착착" 펼쳐지는 느낌은 스크롤과 무관한 카드별 transform 슬라이드(CSS 애니메이션,
+  // 아래 카드부터 순차)가 담당한다. html의 overflow-anchor:none은 계속 필요하다 — 네이티브
+  // 스크롤 앵커링이 같은 변화를 한 번 더 보정하면 이중 보정으로 튄다.
   const frontRef = useRef<HTMLDivElement>(null);
-  const stopAnchorRef = useRef<(() => void) | null>(null);
-  useEffect(() => () => stopAnchorRef.current?.(), []);
+  const pendingAnchorRef = useRef<number | null>(null);
   const toggleOpen = (next: boolean) => {
+    pendingAnchorRef.current = frontRef.current?.getBoundingClientRect().top ?? null;
     setOpen(next);
-    stopAnchorRef.current?.();
+  };
+  useLayoutEffect(() => {
+    const anchor = pendingAnchorRef.current;
+    pendingAnchorRef.current = null;
+    if (anchor == null) return;
     const front = frontRef.current;
     if (!front) return;
-    const anchor = front.getBoundingClientRect().top;
-    const start = performance.now();
-    let raf = 0;
-    const cancel = () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener("wheel", cancel);
-      window.removeEventListener("touchmove", cancel);
-      stopAnchorRef.current = null;
-    };
-    stopAnchorRef.current = cancel;
-    window.addEventListener("wheel", cancel, { passive: true });
-    window.addEventListener("touchmove", cancel, { passive: true });
-    const step = () => {
-      const d = front.getBoundingClientRect().top - anchor;
-      if (d !== 0) window.scrollBy({ top: d, behavior: "instant" });
-      if (performance.now() - start < 480) raf = requestAnimationFrame(step);
-      else cancel();
-    };
-    raf = requestAnimationFrame(step);
-  };
+    const d = front.getBoundingClientRect().top - anchor;
+    // 문서에 CSS scroll-behavior:smooth가 걸려 있어 반드시 instant로 이동시킨다.
+    if (d !== 0) window.scrollBy({ top: d, behavior: "instant" });
+  }, [open]);
 
   // 두 상태(접힘/펼침)의 카드가 모두 항상 마운트돼 있고(요청: "실제로는 렌더링해놓고"),
-  // CSS 높이 클립(grid-rows 0fr↔1fr) 트랜지션으로만 보였다 안 보였다 한다.
+  // 높이는 클립(grid-rows 0fr↔1fr)으로 즉시 바뀐다 — 트랜지션은 카드 transform이 담당.
   return (
     <div className={cx("scr-feed-stack", open && "scr-feed-stack-opened")}>
       <button
@@ -333,8 +321,15 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
             >
               줄이기
             </button>
-            {restDesc.map((it) => (
-              <MatchCard key={it.match.id} item={it} memberOf={memberOf} onDeleted={onDeleted} dateLabel={dateLabel} highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms} />
+            {/* 아래(스택 자리) 카드부터 순서대로 위로 미끄러져 나온다 — 딜레이만 아래
+                카드가 0이 되게 역순으로 준다("위로 착착"). */}
+            {restDesc.map((it, i) => (
+              <div
+                key={it.match.id} className="scr-feed-stack-reveal"
+                style={{ animationDelay: `${(restDesc.length - 1 - i) * 45}ms` }}
+              >
+                <MatchCard item={it} memberOf={memberOf} onDeleted={onDeleted} dateLabel={dateLabel} highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms} />
+              </div>
             ))}
           </div>
         </div>
