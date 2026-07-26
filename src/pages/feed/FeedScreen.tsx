@@ -134,19 +134,17 @@ const EASE_OUT = cubicBezier(0, 0, 0.58, 1);
 
 interface DrivenAnim { finished: Promise<void>; cancel: () => void }
 
-function driveTransform(
-  el: HTMLElement, dur: number, ease: (t: number) => number, frame: (p: number) => string,
-): DrivenAnim {
+function driveStyle(dur: number, ease: (t: number) => number, apply: (p: number) => void): DrivenAnim {
   let raf = 0;
   let settled = false;
   let doCancel = () => {};
   const finished = new Promise<void>((resolve, reject) => {
     doCancel = () => reject(new Error("cancelled"));
     const t0 = performance.now();
-    el.style.transform = frame(0);
+    apply(0);
     const tick = (now: number) => {
       const p = Math.min(1, (now - t0) / dur);
-      el.style.transform = frame(ease(p));
+      apply(ease(p));
       if (p >= 1) { settled = true; resolve(); return; }
       raf = requestAnimationFrame(tick);
     };
@@ -163,6 +161,12 @@ function driveTransform(
       doCancel();
     },
   };
+}
+
+function driveTransform(
+  el: HTMLElement, dur: number, ease: (t: number) => number, frame: (p: number) => string,
+): DrivenAnim {
+  return driveStyle(dur, ease, (p) => { el.style.transform = frame(p); });
 }
 
 function challengeItem(c: Challenge): ChallengeItem {
@@ -409,8 +413,26 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     if (header) above.push(header);
     return above;
   };
+  // 아래쪽 콘텐츠 수집 — 앞 카드 + 스택 뒤 피드 아이템들 + 피드 목록 뒤 요소들.
+  // 위쪽에서 접을 때(스크롤 여유 부족) 부족분만큼 이 무리가 올라와 채운다(아래 closeStack).
+  const collectBelow = (): HTMLElement[] => {
+    const root = stackRef.current;
+    if (!root) return [];
+    const below: HTMLElement[] = [];
+    if (frontRef.current) below.push(frontRef.current);
+    for (let el = root.nextElementSibling; el; el = el.nextElementSibling) {
+      below.push(el as HTMLElement);
+    }
+    const listParent = root.parentElement;
+    if (listParent) {
+      for (let el = listParent.nextElementSibling; el; el = el.nextElementSibling) {
+        below.push(el as HTMLElement);
+      }
+    }
+    return below;
+  };
   // 접기 애니메이션(closeStack)이 끝내놓은 인라인 상태 — 커밋(!open) 분기가 이어받아 정리한다.
-  const closeMotionRef = useRef<{ els: HTMLElement[]; dist: number } | null>(null);
+  const closeMotionRef = useRef<{ els: HTMLElement[]; belowEls: HTMLElement[]; dist: number } | null>(null);
 
   // ★ 이 연출의 대원칙: 카드에는 opacity 애니메이션을 절대 걸지 않는다 — opacity<1은
   // 자체 합성 그룹을 만들어 카드의 backdrop-filter가 꺼졌다가 1이 되는 순간 다시 켜지며
@@ -449,13 +471,19 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       const rail = root.querySelector<HTMLElement>(":scope > .scr-feed-stack-rail");
       list.style.transform = "";
       if (rail) rail.style.opacity = "";
+      // 클램프 접기(위쪽에서 접기)에서 올라온 아래 무리와 카드 클립 창은 커밋 위치가
+      // 애니메이션 종점과 정확히 일치하므로 바로 걷는다(잔차 없음).
+      const restInner = root.querySelector<HTMLElement>(".scr-feed-stack-rest-inner");
+      if (restInner) restInner.style.clipPath = "";
       const moved = closeMotionRef.current;
       closeMotionRef.current = null;
+      moved?.belowEls.forEach((el) => { el.style.transform = ""; });
       if (!moved || reduced) {
         moved?.els.forEach((el) => { el.style.transform = ""; });
         return;
       }
-      // 잔차 = 애니메이션이 이동한 거리 - 문서가 실제로 줄어든 높이(= peek 재등장 높이).
+      // 잔차 = 애니메이션이 이동한 거리 - 문서가 실제로 줄어든 높이. 정상 접기에선
+      // 0이고, 위쪽 클램프 접기에선 음수(아래 무리가 채운 몫)라 둘 다 즉시 정리된다.
       const residual = moved.dist + d;
       const settleEls = residual > 0.5 ? moved.els : [];
       if (residual <= 0.5) moved.els.forEach((el) => { el.style.transform = ""; });
@@ -650,16 +678,42 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     const dist = Math.max(0, rest.getBoundingClientRect().height - peekH);
     const dur = Math.min(560, 360 + Math.round(dist * 0.12));
     const vh = window.innerHeight;
+    // 접으면 문서가 dist만큼 줄어 커밋 때 스크롤도 그만큼 되돌아가야 하는데, 화면이
+    // 문서 상단 근처면 그만한 스크롤 여유가 없어 0에서 잘렸다 — 애니메이션은 전체
+    // 거리만큼 내려가 있어 상단에 공백이 생겼다가 커밋에 사라졌다(지적: "위쪽에서
+    // 접으면 상단이 내려오면서 공백"). 위 무리는 스크롤 여유만큼만 내려가고, 부족분은
+    // 아래 무리(앞 카드부터)가 올라와 채운다 — 커밋 때 정확히 맨 위(스크롤 0)에서
+    // 멈추며 위·아래 모두 이어진다. 여유가 충분하면 riseDist=0, 기존과 동일.
+    const sinkDist = Math.min(dist, Math.max(0, window.scrollY));
+    const riseDist = dist - sinkDist;
     const els = collectAbove().filter((el) => {
       const r = el.getBoundingClientRect();
-      return r.top < vh + 40 && r.bottom + dist > -40;
+      return r.top < vh + 40 && r.bottom + sinkDist > -40;
     });
+    const belowEls = riseDist > 0.5
+      ? collectBelow().filter((el) => {
+          const r = el.getBoundingClientRect();
+          return r.top - riseDist < vh + 40 && r.bottom > -40;
+        })
+      : [];
+    // 아래 무리가 올라오는 만큼 카드 클립 창(rest-inner)의 아랫변도 같이 올라와야
+    // 카드들이 앞 카드 윗모서리에서 정확히 사라진다 — clip-path는 레이아웃 불변이라
+    // 애니메이션해도 스크롤과 어긋나지 않는다.
+    const restInner = root.querySelector<HTMLElement>(".scr-feed-stack-rest-inner");
     const anims: (Animation | DrivenAnim)[] = [];
     const sink = (el: HTMLElement) => {
-      anims.push(driveTransform(el, dur, EASE_STACK, (p) => `translateY(${dist * p}px)`));
+      anims.push(driveTransform(el, dur, EASE_STACK, (p) => `translateY(${sinkDist * p}px)`));
     };
     els.forEach(sink);
     sink(list);
+    belowEls.forEach((el) => {
+      anims.push(driveTransform(el, dur, EASE_STACK, (p) => `translateY(${-riseDist * p}px)`));
+    });
+    if (riseDist > 0.5 && restInner) {
+      anims.push(driveStyle(dur, EASE_STACK, (p) => {
+        restInner.style.clipPath = `inset(0 0 ${riseDist * p}px 0)`;
+      }));
+    }
     if (rail) {
       anims.push(rail.animate(
         [{ opacity: 1 }, { opacity: 0 }],
@@ -670,11 +724,13 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       if (!closingRef.current) return;
       closingRef.current = false;
       // 커밋 프레임이 이어받도록 종료 상태를 인라인으로 박고 애니메이션 객체는 정리한다.
-      els.forEach((el) => { el.style.transform = `translateY(${dist}px)`; });
-      list.style.transform = `translateY(${dist}px)`;
+      els.forEach((el) => { el.style.transform = `translateY(${sinkDist}px)`; });
+      list.style.transform = `translateY(${sinkDist}px)`;
+      belowEls.forEach((el) => { el.style.transform = `translateY(${-riseDist}px)`; });
+      if (restInner && riseDist > 0.5) restInner.style.clipPath = `inset(0 0 ${riseDist}px 0)`;
       if (rail) rail.style.opacity = "0";
       anims.forEach((a) => { try { a.cancel(); } catch { /* 이미 끝남 */ } });
-      closeMotionRef.current = { els, dist };
+      closeMotionRef.current = { els, belowEls, dist: sinkDist };
       cancelRevealRef.current = null;
       toggleOpen(false);
     };
@@ -683,6 +739,8 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       closingRef.current = false;
       anims.forEach((a) => { try { a.cancel(); } catch { /* 이미 끝남 */ } });
       els.forEach((el) => { el.style.transform = ""; });
+      belowEls.forEach((el) => { el.style.transform = ""; });
+      if (restInner) restInner.style.clipPath = "";
       list.style.transform = "";
       if (rail) rail.style.opacity = "";
       cancelRevealRef.current = null;
