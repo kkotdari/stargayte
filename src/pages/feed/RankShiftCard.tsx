@@ -1,8 +1,12 @@
 import { useState } from "react";
 import { MoreHorizontal, Trophy } from "lucide-react";
 import KakaoShareButton from "../../components/common/KakaoShareButton";
+import { cx } from "../../utils/format";
 import type { KakaoShareContent } from "../../utils/kakaoShare";
 import type { RankShiftEntry, RankSnapshot } from "../../types";
+
+// 변동이 이보다 많으면 위에서 이 개수만 보이고 나머지는 "…더보기"로 접는다(요청).
+const SHIFT_COLLAPSE_AT = 4;
 
 // 랭크 변동 카드 — 피드와 카카오톡 공유 페이지(?sv=rankshift)가 같은 마크업을 쓰도록
 // 분리했다(요청: "순위변동 발생도 카톡공유 가능, 피드는 다 가능하게"). 헤더 오른쪽
@@ -69,6 +73,13 @@ export default function RankShiftCard({ shift, timeText, dateLabel, actions, foo
   actions?: React.ReactNode;
   footer?: React.ReactNode;
 }) {
+  // 변동이 4개 넘으면 위에서 4개만 보이고 나머지는 "…더보기"로 접는다. 리스트를 누르면
+  // 펼쳐지고 다시 누르면 접힌다(요청). 공유 페이지의 카드에도 그대로 적용된다.
+  const [expanded, setExpanded] = useState(false);
+  const total = shift.shifts.length;
+  const overflow = total > SHIFT_COLLAPSE_AT;
+  const rows = expanded || !overflow ? shift.shifts : shift.shifts.slice(0, SHIFT_COLLAPSE_AT);
+  const toggle = () => setExpanded((v) => !v);
   return (
     <div className="scr-feed-card">
       <div className="scr-feed-card-head" {...(dateLabel ? { "data-date-label": dateLabel } : {})}>
@@ -77,8 +88,21 @@ export default function RankShiftCard({ shift, timeText, dateLabel, actions, foo
         {timeText && <span className="scr-feed-card-time">{timeText}</span>}
       </div>
       {actions}
-      <ul className="scr-feed-shift-list">
-        {shift.shifts.map((e) => {
+      <ul
+        className={cx("scr-feed-shift-list", overflow && "scr-feed-shift-list-toggle")}
+        {...(overflow
+          ? {
+              onClick: toggle,
+              role: "button" as const,
+              tabIndex: 0,
+              "aria-expanded": expanded,
+              onKeyDown: (ev: React.KeyboardEvent) => {
+                if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); toggle(); }
+              },
+            }
+          : {})}
+      >
+        {rows.map((e) => {
           const label = shiftLabel(e);
           return (
             <li key={`${e.memberId}-${e.to}`} className="scr-feed-shift-row">
@@ -89,6 +113,11 @@ export default function RankShiftCard({ shift, timeText, dateLabel, actions, foo
             </li>
           );
         })}
+        {overflow && (
+          <li className="scr-feed-shift-more" aria-hidden>
+            {expanded ? "접기 ▲" : `⋯ 외 ${total - SHIFT_COLLAPSE_AT}명 더보기`}
+          </li>
+        )}
       </ul>
       {footer}
     </div>
