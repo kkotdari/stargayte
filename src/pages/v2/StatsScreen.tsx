@@ -265,20 +265,7 @@ export default function StatsScreenV2() {
         suggestions={suggestions}
         filterPanel={
           <>
-            {/* 필터 순서는 기간 → 분류 → 종족(요청). 기간 단위 알약탭과 그에 딸린 달력은
-                원래 하나의 요소 — 다른 필터가 둘 사이에 끼어 그룹이 갈라지지 않도록 같은
-                FilterItem 안에 붙여 둔다. */}
-            <FilterItem label="기간">
-              <PillTabs options={PERIOD_UNIT_OPTS} value={periodUnit} onChange={setPeriodUnit} aria-label="기간" />
-              {periodUnit === "month" && (
-                <input
-                  type="month" className="scr-filter-month-input"
-                  min={MONTH_INPUT_MIN} max={MONTH_INPUT_MAX}
-                  value={periodMonth} onChange={(e) => setPeriodMonth(e.target.value)}
-                  aria-label="조회할 월"
-                />
-              )}
-            </FilterItem>
+            {/* 필터 순서는 분류 → 종족 → 기간(요청). */}
             {/* 분류(개인전/팀전) 라디오 — "전체" 없음. 진입 기본값은 랜덤(요청). */}
             <FilterItem label="분류">
               <PillTabs
@@ -301,6 +288,19 @@ export default function StatsScreenV2() {
                 minDropWidth={110}
                 className="scr-filter-race-select"
               />
+            </FilterItem>
+            {/* 기간 단위 알약탭과 그에 딸린 달력은 원래 하나의 요소 — 다른 필터가 둘
+                사이에 끼어 그룹이 갈라지지 않도록 같은 FilterItem 안에 붙여 둔다. */}
+            <FilterItem label="기간">
+              <PillTabs options={PERIOD_UNIT_OPTS} value={periodUnit} onChange={setPeriodUnit} aria-label="기간" />
+              {periodUnit === "month" && (
+                <input
+                  type="month" className="scr-filter-month-input"
+                  min={MONTH_INPUT_MIN} max={MONTH_INPUT_MAX}
+                  value={periodMonth} onChange={(e) => setPeriodMonth(e.target.value)}
+                  aria-label="조회할 월"
+                />
+              )}
             </FilterItem>
           </>
         }
