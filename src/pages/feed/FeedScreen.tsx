@@ -333,6 +333,11 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       ghost.style.margin = "0";
       ghost.style.zIndex = "5";
       ghost.style.pointerEvents = "none";
+      // 블러는 뗀다 — backdrop-filter를 단 요소가 커밋 프레임에 "새로" 생기면 iOS가
+      // 그 블러의 첫 래스터에서 한 프레임 번쩍인다(지적된 잔여 깜빡임의 유력 원인).
+      // 180ms 만에 접혀 사라지는 반투명 바라 블러 없이도 차이가 거의 안 보인다.
+      ghost.style.backdropFilter = "none";
+      ghost.style.setProperty("-webkit-backdrop-filter", "none");
       peekGhostRef.current = ghost;
     }
     toggleOpen(true);
