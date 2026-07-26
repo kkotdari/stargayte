@@ -310,15 +310,42 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     if (d !== 0) window.scrollBy({ top: d, behavior: "instant" });
     const root = stackRef.current;
     const list = restListRef.current;
-    if (!open || d <= 0 || !root || !list) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (!open || !root || !list) return;
+
+    // 줄이기 라인 배치 — 첫(맨 위) 카드의 세로 중심에서 시작해 마지막(앞) 카드의 세로
+    // 중심에서 끝난다(요청). 카드 높이는 제각각이라 CSS만으론 못 잡아 실측해 인라인으로
+    // 박고, 열려 있는 동안 높이가 변하면(카드 펼침 등) ResizeObserver로 다시 잡는다.
+    const rail = root.querySelector<HTMLElement>(":scope > .scr-feed-stack-rail");
+    const positionRail = () => {
+      const firstCard = list.querySelector<HTMLElement>(".scr-feed-stack-reveal .scr-feed-card");
+      const frontCard = front.querySelector<HTMLElement>(".scr-feed-card");
+      if (!rail || !firstCard || !frontCard) return;
+      const rootTop = root.getBoundingClientRect().top;
+      const a = firstCard.getBoundingClientRect();
+      const b = frontCard.getBoundingClientRect();
+      const startY = a.top + a.height / 2 - rootTop;
+      rail.style.top = `${startY}px`;
+      rail.style.height = `${Math.max(0, b.top + b.height / 2 - rootTop - startY)}px`;
+      rail.style.bottom = "auto";
+    };
+    positionRail();
+    const railObserver = new ResizeObserver(positionRail);
+    railObserver.observe(root);
+    const cleanupRail = () => {
+      railObserver.disconnect();
+      if (rail) { rail.style.top = ""; rail.style.height = ""; rail.style.bottom = ""; }
+    };
+
+    if (d <= 0 || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      cancelRevealRef.current = () => { cleanupRail(); cancelRevealRef.current = null; };
+      return;
+    }
 
     const easing = "cubic-bezier(0.32, 0.72, 0, 1)";
     let cancelled = false;
     const anims: Animation[] = [];
     const reveals = Array.from(list.children) as HTMLElement[];
     // 줄이기 라인(스택 루트에 붙는 오버레이)도 카드들과 함께 페이드인한다.
-    const rail = root.querySelector<HTMLElement>(":scope > .scr-feed-stack-rail");
     if (rail) reveals.push(rail);
 
     // 위쪽 콘텐츠 수집 — 스택 위 피드 아이템들 + 피드 목록 위 요소들(타이틀/필터/검색).
@@ -378,6 +405,7 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       anims.forEach((a) => { try { a.cancel(); } catch { /* 이미 끝남 */ } });
       reveals.forEach((el) => { el.style.opacity = ""; });
       above.forEach((el) => { el.style.transform = ""; });
+      cleanupRail();
       cancelRevealRef.current = null;
     };
   }, [open]);
@@ -413,7 +441,9 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
         onClick={() => toggleOpen(false)} aria-label="줄이기"
         tabIndex={open ? 0 : -1}
       >
+        <span className="scr-feed-stack-rail-dot scr-feed-stack-rail-dot-top" aria-hidden />
         <span className="scr-feed-stack-rail-label">눌러서 다시 줄이기</span>
+        <span className="scr-feed-stack-rail-dot scr-feed-stack-rail-dot-bottom" aria-hidden />
       </button>
       <div ref={frontRef} className="scr-feed-stack-front">
         <MatchCard item={ordered[0]} memberOf={memberOf} onDeleted={onDeleted} dateLabel={dateLabel} highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms} />

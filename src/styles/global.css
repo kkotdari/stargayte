@@ -7937,9 +7937,10 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   -webkit-backdrop-filter: blur(10px) saturate(1.1);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 -2px 8px rgba(0, 0, 0, 0.08);
 }
-/* 줄이기 — 스택(펼쳐진 카드들 + 앞 카드) 전체 왼쪽에 흰 세로 라인(요청). 카드는 들여쓰기
-   없이 원래 폭 그대로 두고 라인을 그 위(왼쪽 가장자리)에 겹쳐 올린다. 라인 전체가 버튼이고,
-   위에 "눌러서 다시 줄이기"를 세로쓰기로 얹는다. 펼쳤을 때만 보인다. */
+/* 줄이기 — 스택(펼쳐진 카드들 + 앞 카드) 전체 왼쪽에 반투명 흰 세로 라인(요청). 카드는
+   들여쓰기 없이 원래 폭 그대로 두고 라인을 그 위(왼쪽 가장자리)에 겹쳐 올린다. 라인
+   전체가 버튼이고, 위에 "눌러서 다시 줄이기"를 세로쓰기로 얹는다. 펼쳤을 때만 보이며,
+   세로 범위(첫 카드 중심 ~ 앞 카드 중심)와 양 끝 원은 JS가 실측해 잡는다(MatchStack). */
 .scr-feed-stack { position: relative; }
 .scr-feed-stack-rail {
   position: absolute; left: 0; top: 4px; bottom: 0; width: 22px; z-index: 2;
@@ -7948,20 +7949,28 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   -webkit-tap-highlight-color: transparent;
 }
 .scr-feed-stack-opened .scr-feed-stack-rail { display: flex; }
+/* 라인 — 은은하게(반투명, 요청). */
 .scr-feed-stack-rail::before {
-  content: ""; position: absolute; left: 9px; top: 0; bottom: 0; width: 2px;
-  border-radius: 1px; background: rgba(255, 255, 255, 0.75);
-  box-shadow: 0 0 6px rgba(0, 0, 0, 0.25);
+  content: ""; position: absolute; left: 10px; top: 0; bottom: 0; width: 2px;
+  border-radius: 1px; background: rgba(255, 255, 255, 0.38);
 }
+/* 양 끝 작은 원(요청) — 라인과 같은 톤을 살짝만 진하게. */
+.scr-feed-stack-rail-dot {
+  position: absolute; left: 8px; width: 6px; height: 6px; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.55);
+}
+.scr-feed-stack-rail-dot-top { top: -3px; }
+.scr-feed-stack-rail-dot-bottom { bottom: -3px; }
 .scr-feed-stack-rail-label {
   position: relative; writing-mode: vertical-rl; letter-spacing: 0.16em;
-  font-family: inherit; font-size: var(--fs-micro); font-weight: 700; color: #fff;
+  font-family: inherit; font-size: var(--fs-micro); font-weight: 700; color: rgba(255, 255, 255, 0.85);
   padding: 10px 3px; border-radius: 999px;
-  background: rgba(0, 0, 0, 0.45);
+  background: rgba(0, 0, 0, 0.4);
   backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
 }
 /* 라이트 테마 — 흰 배경 위 흰 라인은 안 보여 톤만 뒤집는다(라인은 어둡게, 라벨은 흰 알약). */
-.scr-light-theme .scr-feed-stack-rail::before { background: rgba(0, 0, 0, 0.3); box-shadow: none; }
+.scr-light-theme .scr-feed-stack-rail::before { background: rgba(0, 0, 0, 0.22); }
+.scr-light-theme .scr-feed-stack-rail-dot { background: rgba(0, 0, 0, 0.35); }
 .scr-light-theme .scr-feed-stack-rail-label {
   color: var(--text); background: rgba(255, 255, 255, 0.85);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
