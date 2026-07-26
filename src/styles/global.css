@@ -8074,7 +8074,8 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   color: var(--text); font-weight: 700; font-size: var(--fs-caption);
   top: 0; margin: 0;
 }
-.scr-feed-comments .scr-mreq-chip-editor { font-size: var(--fs-caption); padding: 1px 5px; }
+/* 입력·수정창의 유저칩 — 좌우 패딩을 줄여 문장에 더 잘 섞이게(요청). */
+.scr-feed-comments .scr-mreq-chip-editor { font-size: var(--fs-caption); padding: 1px 3px; }
 .scr-feed-shift-row { font-size: var(--fs-caption); }
 /* 접힘 상태 윗줄은 이제 케밥(절대배치)뿐이라 자리 예약이 필요 없다. */
 .scr-feed-match-body .scr-match-trow-topline { min-height: 0; }

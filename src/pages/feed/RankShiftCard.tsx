@@ -113,9 +113,9 @@ export default function RankShiftCard({ shift, timeText, dateLabel, actions, foo
             </li>
           );
         })}
-        {overflow && (
+        {overflow && !expanded && (
           <li className="scr-feed-shift-more" aria-hidden>
-            {expanded ? "접기 ▲" : `⋯ 외 ${total - SHIFT_COLLAPSE_AT}명 더보기`}
+            ⋯ 외 {total - SHIFT_COLLAPSE_AT}건
           </li>
         )}
       </ul>

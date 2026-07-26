@@ -163,6 +163,19 @@ function NoteComposer({
     }
     if (e.key === "Backspace" && liveText === "" && committedParts.length > 0) {
       e.preventDefault();
+      const last = committedParts[committedParts.length - 1];
+      if (last.type === "text") {
+        // 텍스트 조각(특히 수정 시작 시 통째로 굳는 기존 본문)은 한 번에 지우면 안 된다
+        // (버그: 수정창에서 백스페이스에 문장이 통째로 삭제). 입력창으로 되살리고 마지막
+        // 한 글자만 지워 이후 정상적으로 한 글자씩 지워지게 한다. 멘션 칩만 통째로 제거.
+        setCommittedParts((prev) => prev.slice(0, -1));
+        setLiveText(last.value.slice(0, -1));
+        requestAnimationFrame(() => {
+          const el = inputRef.current;
+          if (el) { el.focus(); const n = el.value.length; el.setSelectionRange(n, n); }
+        });
+        return;
+      }
       setCommittedParts((prev) => prev.slice(0, -1));
       return;
     }
