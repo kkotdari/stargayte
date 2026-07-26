@@ -1144,7 +1144,7 @@ export default function FeedScreen() {
         showCount={false}
         searchValue={search}
         onSearchChange={setSearch}
-        searchPlaceholder="@유저 검색"
+        searchPlaceholder="유저 검색"
         suggestions={suggestions}
       />
 

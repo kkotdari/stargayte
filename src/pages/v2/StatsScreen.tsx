@@ -266,7 +266,7 @@ export default function StatsScreenV2() {
         countLabel="명"
         searchValue={search}
         onSearchChange={setSearch}
-        searchPlaceholder="@로 유저 추가"
+        searchPlaceholder="유저 검색"
         suggestions={suggestions}
         filterPanel={
           <>

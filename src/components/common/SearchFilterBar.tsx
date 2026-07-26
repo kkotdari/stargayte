@@ -45,7 +45,7 @@ function parseSearchChips(value: string): string[] {
 // 입력만 받는다(요청: "검색창에 유저 입력만") — 종족은 필터창의 드롭다운으로 옮겼다.
 export default function SearchFilterBar({
   count, countLabel,
-  searchValue, onSearchChange, searchPlaceholder = "@로 유저 추가",
+  searchValue, onSearchChange, searchPlaceholder = "유저 검색",
   suggestions,
   filterPanel,
   trailing,
@@ -83,13 +83,13 @@ export default function SearchFilterBar({
   const matchedSuggestions = useMemo<MemberSearchSuggestion[]>(() => {
     if (!suggestions) return [];
     const raw = liveText.trim();
-    // 트리거는 두 가지: "@"로 시작해 타이핑하거나, + 버튼(mentionAll)으로 연 상태. 후자는
-    // "@" 없이 입력한 글자를 그대로 검색어로 쓴다.
-    const mentionTrigger = raw.startsWith("@");
-    if (!mentionAll && !mentionTrigger) return [];
+    // 이제 "@" 없이 아무 글자나 입력하면 바로 후보를 띄운다(요청). 입력이 비어 있고
+    // + 버튼(mentionAll)도 아니면 안 띄운다. 예전 "@" 트리거 관행 호환으로 앞의 @는 벗겨
+    // 검색어로 쓴다.
+    if (!mentionAll && raw === "") return [];
     // 검색 필터와 같은 정규화(NFC/제로폭 정리)로 비교한다 — 겉보기 같은 한글이 바이트만
     // 달라 자동완성/중복 판정이 어긋나지 않게.
-    const q = normalizeSearchText(mentionTrigger ? raw.slice(1) : raw);
+    const q = normalizeSearchText(raw.startsWith("@") ? raw.slice(1) : raw);
     const chosen = new Set(chips.map((c) => normalizeSearchText(c)));
     const items: MemberSearchSuggestion[] = [];
     for (const s of suggestions) {

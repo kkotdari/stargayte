@@ -207,7 +207,7 @@ export default function MatchScreenV2() {
         showCount={false}
         searchValue={search}
         onSearchChange={setSearch}
-        searchPlaceholder="@유저 검색"
+        searchPlaceholder="유저 검색"
         suggestions={suggestions}
         trailing={
           /* 경기번호·메모 검색 — 유저 검색과 같은 인라인 줄에 얹는다(요청): PC에선 유저·경기

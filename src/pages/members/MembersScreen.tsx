@@ -205,7 +205,7 @@ export default function MembersScreen() {
         countLabel="명"
         searchValue={query}
         onSearchChange={setQuery}
-        searchPlaceholder="@로 유저 추가"
+        searchPlaceholder="유저 검색"
         suggestions={suggestions}
         showSearch={false}
         filterPanel={
