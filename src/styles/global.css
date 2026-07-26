@@ -2615,9 +2615,28 @@ html.scr-page-bg:not(.scr-light-theme) .scr-main::before {
 html.scr-page-bg:not(.scr-light-theme) .scr-rank-screen-v2::before {
   display: none;
 }
-/* 라이트 테마에는 페이지 배경 사진을 얹지 않는다(요청: "라이트 테마 피드의 배경은
-   제거"). 라이트에서 .scr-main::before는 기본판(위 .scr-main::before, --void=#fff)만
-   쓴다 — 훅이 lightUrl을 넘기지 않으므로 --page-bg-image-light도 없다. */
+/* 라이트 테마 배경 = 트로피 이미지(feed_bg_light) — 이제 라이트 "통계" 화면이 쓴다
+   (요청: 다크는 피드에만, 라이트는 통계에만 배경). 다크와 같은 "공통 고정판
+   (.scr-main::before)의 배경만 교체" 구조로, 어두운 글씨가 읽히도록 밝은 스크림을 얕게
+   깐다. --page-bg-image-light 토큰은 훅(StatsScreen)이 주입한다. 라이트 피드는 이
+   토큰을 주입하지 않으므로 기본판(흰색)만 쓴다 — 라이트 피드 배경 제거(요청). */
+html.scr-page-bg.scr-light-theme .scr-main::before {
+  /* 트로피 이미지는 정사각(2048²) — cover는 넓은 PC 화면에서 폭 기준으로 확대·크롭해
+     너무 커 보인다. 화면 높이에 맞추고(auto 100%) 남는 좌우는 바탕색으로 둔다. */
+  background:
+    linear-gradient(180deg, rgba(247,247,251,0.7) 0%, rgba(247,247,251,0.55) 45%, rgba(247,247,251,0.8) 100%),
+    var(--page-bg-image-light) center / auto 100% no-repeat,
+    #f7f7fb;
+}
+@media (max-width: 860px) {
+  html.scr-page-bg.scr-light-theme .scr-main::before {
+    background:
+      linear-gradient(180deg, rgba(247,247,251,0.7) 0%, rgba(247,247,251,0.55) 45%, rgba(247,247,251,0.8) 100%),
+      var(--page-bg-image-light-mobile) center / cover no-repeat,
+      #f7f7fb;
+  }
+}
+html.scr-page-bg.scr-light-theme .scr-rank-screen-v2::before { display: none; }
 
 /* 개인(일대일) 랭킹 행의 검색 하이라이트 — 같은 반전색으로 프사와 닉네임을 함께 칠한다.
    프사와 닉네임이 격자의 이웃 칸이라, 프사 칸의 배경을 칸 사이 간격(column-gap)만큼
