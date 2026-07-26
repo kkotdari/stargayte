@@ -4,7 +4,7 @@ import RankShiftCard, { RankShiftMenu } from "./RankShiftCard";
 import { CalendarPlus, ClipboardList, MoreHorizontal, Phone, Plus, Upload } from "lucide-react";
 import { Spinner } from "../../components/common/Feedback";
 import SearchFilterBar from "../../components/common/SearchFilterBar";
-import PillTabs from "../../components/common/PillTabs";
+import Select from "../../components/common/Select";
 import FilterItem from "../../components/common/FilterItem";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 import KakaoShareButton from "../../components/common/KakaoShareButton";
@@ -824,7 +824,9 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
 export default function FeedScreen() {
   // 검색/필터(기록실과 동일 구성) — 유저 검색, 경기유형, 게임번호. 불러온 피드 안에서 즉시 필터.
   const [search, setSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState<"all" | "0101" | "0102">("all");
+  // 피드 유형 필터(요청: 분류(개인전/팀전) 제거하고 유형 드롭다운 추가). 게임결과/너나와/
+  // 일정/랭크변동으로 거른다 — 너나와=시간 미확정 도전장, 일정=시간 확정 도전장.
+  const [kindFilter, setKindFilter] = useState<"all" | "match" | "call" | "schedule" | "rankshift">("all");
 
   // 홈(피드) 배경 — 기존 랭킹 배경을 피드 이름으로 옮겨 그대로 쓴다(다크 우주/라이트 트로피).
   // 라이트 테마 피드는 사진 배경을 쓰지 않는다(요청) — 다크만 사진(feed_bg), 라이트는
@@ -1000,11 +1002,12 @@ export default function FeedScreen() {
   // 필터 적용 — 유형/게임번호/유저 검색을 아이템 종류별로 건다(너나와에도 유저 필터 적용).
   const filteredFeed = useMemo<FeedItem[]>(() => {
     return visibleFeed.filter((item) => {
-      if (typeFilter !== "all") {
-        const mt = item.kind === "match" ? item.match.matchType
-          : item.kind === "challenge" ? item.challenge.matchType
-          : item.shift.matchType;
-        if (mt !== typeFilter) return false;
+      if (kindFilter !== "all") {
+        // 도전장은 시간 확정 여부로 너나와(call)/일정(schedule)을 가른다.
+        const kind = item.kind === "match" ? "match"
+          : item.kind === "rankshift" ? "rankshift"
+          : item.challenge.scheduledTime != null ? "schedule" : "call";
+        if (kind !== kindFilter) return false;
       }
       if (searchTerms.length > 0) {
         if (item.kind === "match") {
@@ -1020,7 +1023,7 @@ export default function FeedScreen() {
       return true;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- slotMatchesTerm/challengeMatchesTerm은 members로 충분히 표현됨
-  }, [visibleFeed, typeFilter, searchTerms, members]);
+  }, [visibleFeed, kindFilter, searchTerms, members]);
 
   // 같은 날 게임결과가 2개 이상 연속이면 겹침 스택으로 묶는다(요청).
   const displayFeed = useMemo<DisplayItem[]>(() => {
@@ -1121,17 +1124,21 @@ export default function FeedScreen() {
         />
       </div>
 
-      {/* 분류(개인전/팀전) 필터 — 기록실과 같은 알약 로우, 라벨만 분류로(요청). */}
+      {/* 유형 필터(요청: 분류(개인전/팀전) 제거, 유형 드롭다운 추가) — 게임결과/너나와/
+          일정/랭크변동으로 거른다. */}
       <div className="scr-match-type-filter">
-        <FilterItem label="분류">
-          <PillTabs
-            aria-label="분류 필터"
-            value={typeFilter}
-            onChange={setTypeFilter}
+        <FilterItem label="유형">
+          <Select
+            value={kindFilter}
+            onChange={(v) => setKindFilter(v as typeof kindFilter)}
+            size="sm"
+            minDropWidth={120}
             options={[
               { value: "all", label: "전체" },
-              { value: "0101", label: "개인전" },
-              { value: "0102", label: "팀전" },
+              { value: "match", label: "게임결과" },
+              { value: "call", label: "너나와" },
+              { value: "schedule", label: "일정" },
+              { value: "rankshift", label: "랭크변동" },
             ]}
           />
         </FilterItem>
