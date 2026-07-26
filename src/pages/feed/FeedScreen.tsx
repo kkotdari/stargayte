@@ -337,6 +337,36 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     }
     toggleOpen(true);
   };
+  // 위쪽 콘텐츠 수집 — 스택 위 피드 아이템들 + 피드 목록 위 요소들(타이틀/필터/검색).
+  // 헤더는 문서 스크롤 최상단 콘텐츠라 스택을 펼칠 즈음엔 화면 밖이 대부분이지만,
+  // 근처에 있으면 같이 밀어 위화감을 없앤다.
+  const collectAbove = (): HTMLElement[] => {
+    const root = stackRef.current;
+    if (!root) return [];
+    const above: HTMLElement[] = [];
+    for (let el = root.previousElementSibling; el; el = el.previousElementSibling) {
+      above.push(el as HTMLElement);
+    }
+    const listParent = root.parentElement;
+    if (listParent) {
+      for (let el = listParent.previousElementSibling; el; el = el.previousElementSibling) {
+        above.push(el as HTMLElement);
+      }
+    }
+    const header = document.querySelector<HTMLElement>(".scr-header");
+    if (header) above.push(header);
+    return above;
+  };
+  // 접기 애니메이션(closeStack)이 끝내놓은 인라인 상태 — 커밋(!open) 분기가 이어받아 정리한다.
+  const closeMotionRef = useRef<{ els: HTMLElement[]; dist: number } | null>(null);
+
+  // ★ 이 연출의 대원칙: 카드에는 opacity 애니메이션을 절대 걸지 않는다 — opacity<1은
+  // 자체 합성 그룹을 만들어 카드의 backdrop-filter가 꺼졌다가 1이 되는 순간 다시 켜지며
+  // 카드 전체가 다시 그려지는 깜빡임이 된다(지적: "카드를 재렌더링을 해" — global.css의
+  // .scr-feed-stack-rest 주석과 같은 함정). 카드 움직임은 전부 transform, opacity는
+  // 블러 없는 요소(줄이기 라인·고스트)에만 쓴다. 카드 기둥(rest-list)은 rest-inner의
+  // overflow:hidden이 클립해 주므로, 접힌 위치(+d)에서 통째로 밀어올리면 앞 카드 뒤에서
+  // 카드들이 순서대로 나오는 모양이 된다.
   useLayoutEffect(() => {
     cancelRevealRef.current?.();
     const before = pendingAnchorRef.current;
@@ -360,49 +390,32 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     // 카드 이동이 윗부분에서만 잠깐 보인다). 이동량이 클수록 오래, 상한은 둔다.
     const slideDur = Math.min(560, 360 + Math.round(Math.abs(d) * 0.12));
 
-    // 위쪽 콘텐츠 수집 — 스택 위 피드 아이템들 + 피드 목록 위 요소들(타이틀/필터/검색).
-    // 헤더는 문서 스크롤 최상단 콘텐츠라 스택을 펼칠 즈음엔 화면 밖이 대부분이지만,
-    // 근처에 있으면 같이 밀어 위화감을 없앤다.
-    const collectAbove = (): HTMLElement[] => {
-      const above: HTMLElement[] = [];
-      for (let el = root.previousElementSibling; el; el = el.previousElementSibling) {
-        above.push(el as HTMLElement);
-      }
-      const listParent = root.parentElement;
-      if (listParent) {
-        for (let el = listParent.previousElementSibling; el; el = el.previousElementSibling) {
-          above.push(el as HTMLElement);
-        }
-      }
-      const header = document.querySelector<HTMLElement>(".scr-header");
-      if (header) above.push(header);
-      return above;
-    };
-
     if (!open) {
-      // ---- 접기 — 펼치기의 역재생(요청). 카드들은 접기 직전에 이미 페이드아웃됐고
-      // (closeStack), 여기서는 위 콘텐츠가 옛 위치(-removed = 위쪽)에서 제자리로 쓸려
-      // 내려온다. 페이드아웃이 남긴 인라인 opacity는 rest가 0fr로 클립된 지금 정리한다.
+      // ---- 접기 커밋 — closeStack이 위 콘텐츠·카드 기둥을 이미 접힌 위치까지 움직여
+      // 놨다(인라인 transform). 스크롤 보정(위)이 같은 프레임에 실리므로 인라인을 걷어내면
+      // 화면상 위치가 거의 그대로 이어진다. 다만 "+N건" 바가 다시 나타나는 만큼(≈바 높이)
+      // 잔차가 남아, 그만큼만 짧게 눌러 내려앉힌다.
       const rail = root.querySelector<HTMLElement>(":scope > .scr-feed-stack-rail");
-      Array.from(list.children).forEach((el) => { (el as HTMLElement).style.opacity = ""; });
+      list.style.transform = "";
       if (rail) rail.style.opacity = "";
-      const removed = -d;
-      if (removed <= 0 || reduced) return;
+      const moved = closeMotionRef.current;
+      closeMotionRef.current = null;
+      if (!moved) return;
+      // 잔차 = 애니메이션이 이동한 거리 - 문서가 실제로 줄어든 높이(= peek 재등장 높이).
+      const residual = moved.dist + d;
+      if (residual <= 0.5 || reduced) {
+        moved.els.forEach((el) => { el.style.transform = ""; });
+        return;
+      }
       let cancelled = false;
       const anims: Animation[] = [];
-      const vh = window.innerHeight;
-      // 내려오는 경로가 화면을 전혀 안 지나는 요소는 건너뛴다(경로: rect-removed → rect).
-      const sliders = collectAbove().filter((el) => {
-        const r = el.getBoundingClientRect();
-        return r.bottom > -40 && r.top - removed < vh + 40;
-      });
-      sliders.forEach((el) => { el.style.transform = `translateY(${-removed}px)`; });
-      const startDrop = () => {
+      moved.els.forEach((el) => { el.style.transform = `translateY(${residual}px)`; });
+      const settleDown = () => {
         if (cancelled) return;
-        sliders.forEach((el) => {
+        moved.els.forEach((el) => {
           const a = el.animate(
-            [{ transform: `translateY(${-removed}px)` }, { transform: "translateY(0)" }],
-            { duration: slideDur, easing, fill: "both" },
+            [{ transform: `translateY(${residual}px)` }, { transform: "translateY(0)" }],
+            { duration: 160, easing: "ease-out", fill: "both" },
           );
           const settle = () => { el.style.transform = ""; };
           a.onfinish = () => { settle(); a.cancel(); };
@@ -412,13 +425,13 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       };
       // 펼치기와 같은 이유로 첫 페인트(접힘 레이아웃+스크롤 보정) 다음 프레임에 시작.
       let raf2 = 0;
-      const raf1 = requestAnimationFrame(() => { raf2 = requestAnimationFrame(startDrop); });
+      const raf1 = requestAnimationFrame(() => { raf2 = requestAnimationFrame(settleDown); });
       cancelRevealRef.current = () => {
         cancelled = true;
         cancelAnimationFrame(raf1);
         cancelAnimationFrame(raf2);
         anims.forEach((a) => { try { a.cancel(); } catch { /* 이미 끝남 */ } });
-        sliders.forEach((el) => { el.style.transform = ""; });
+        moved.els.forEach((el) => { el.style.transform = ""; });
         cancelRevealRef.current = null;
       };
       return;
@@ -427,8 +440,13 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     // 줄이기 라인 배치 — 첫(맨 위) 카드의 세로 중심에서 시작해 마지막(앞) 카드의 세로
     // 중심에서 끝난다(요청). 카드 높이는 제각각이라 CSS만으론 못 잡아 실측해 인라인으로
     // 박고, 열려 있는 동안 높이가 변하면(카드 펼침 등) ResizeObserver로 다시 잡는다.
+    // 카드 기둥이 transform으로 움직이는 동안엔 실측이 이동 중 좌표를 읽어버리므로
+    // 미뤄뒀다가 끝나고 다시 잡는다.
     const rail = root.querySelector<HTMLElement>(":scope > .scr-feed-stack-rail");
+    let railDeferred = false;
+    let railLocked = false;
     const positionRail = () => {
+      if (railLocked) { railDeferred = true; return; }
       const firstCard = list.querySelector<HTMLElement>(".scr-feed-stack-reveal .scr-feed-card");
       const frontCard = front.querySelector<HTMLElement>(".scr-feed-card");
       if (!rail || !firstCard || !frontCard) return;
@@ -457,63 +475,58 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     let cancelled = false;
     const anims: Animation[] = [];
     // "+N건" 바 고스트 — 커밋 프레임부터(페인트 전에 붙여야 한 프레임도 구멍이 없다)
-    // 눌렀던 자리를 그대로 덮고, 아래 카드가 페이드인하는 동안 크로스페이드로 사라진다.
+    // 눌렀던 자리를 그대로 덮고, 카드 기둥이 그 밑에서 올라오는 동안 짧게 걷힌다.
     const ghost = peekGhostRef.current;
     peekGhostRef.current = null;
     if (ghost) document.body.appendChild(ghost);
-    const cards = Array.from(list.children) as HTMLElement[];
-    // 줄이기 라인(스택 루트에 붙는 오버레이)도 함께 페이드인 — 스택 전체를 두르는
-    // 요소라 카드 스태거와 별개로 맨 마지막에 나타난다.
-    const reveals = rail ? [...cards, rail] : cards;
 
     // 시작 상태는 인라인 스타일로 "지금 당장" 박는다 — WAAPI fill에만 맡기면 iOS가 첫
-    // 프레임에 적용하지 않아 깜빡인다(이전 지적과 동일한 함정).
-    reveals.forEach((el) => { el.style.opacity = "0"; });
-
-    // 밀어올릴 위 콘텐츠 — 애니메이션 동안 화면에 들어올 일 없는(최종 위치가 d만큼
-    // 내려가도 화면 위 밖인) 요소는 건너뛴다. 시작 상태(+d = 옛 위치)만 지금 박아 두고,
-    // animate()는 아래에서 첫 페인트 뒤로 미룬다.
+    // 프레임에 적용하지 않아 깜빡인다(이전 지적과 동일한 함정). 카드 기둥은 접힌 위치
+    // (+d, rest-inner 클립 밖)에, 위 콘텐츠는 옛 위치(+d)에, 라인은 투명으로.
+    railLocked = true;
+    list.style.transform = `translateY(${d}px)`;
+    if (rail) rail.style.opacity = "0";
+    // 애니메이션 동안 화면에 들어올 일 없는(최종 위치가 d만큼 내려가도 화면 위 밖인)
+    // 위 콘텐츠는 건너뛴다.
     const sliders = collectAbove().filter((el) => el.getBoundingClientRect().bottom + d >= -40);
     sliders.forEach((el) => { el.style.transform = `translateY(${d}px)`; });
 
-    const fadeIn = (el: HTMLElement, delay: number) => {
-      const a = el.animate(
-        [{ opacity: 0 }, { opacity: 1 }],
-        { duration: 260, easing: "ease-out", delay, fill: "both" },
-      );
-      const settle = () => { el.style.opacity = ""; };
-      a.onfinish = () => { settle(); a.cancel(); };
-      a.oncancel = settle;
-      anims.push(a);
-    };
     const start = () => {
       if (cancelled) return;
-      // 위 콘텐츠를 옛 위치(+d)에서 제자리로 밀어올린다.
-      sliders.forEach((el) => {
+      // 위 콘텐츠와 카드 기둥이 옛(접힌) 위치에서 한 몸으로 밀려 올라온다 — 위 카드들이
+      // 열어주는 공간을 새 카드들이 앞 카드 뒤에서 나오며 그대로 채우므로 빈 공백 구간이
+      // 없다. 카드엔 opacity를 안 쓰므로(위 대원칙) 블러 재합성 깜빡임도 없다.
+      const rise = (el: HTMLElement, onDone?: () => void) => {
         const a = el.animate(
           [{ transform: `translateY(${d}px)` }, { transform: "translateY(0)" }],
           { duration: slideDur, easing, fill: "both" },
         );
         const settle = () => { el.style.transform = ""; };
-        a.onfinish = () => { settle(); a.cancel(); };
+        a.onfinish = () => { settle(); a.cancel(); onDone?.(); };
         a.oncancel = settle;
         anims.push(a);
+      };
+      sliders.forEach((el) => rise(el));
+      rise(list, () => {
+        railLocked = false;
+        if (railDeferred) { railDeferred = false; positionRail(); }
       });
-      // 카드 페이드인은 슬라이드가 다 끝날 때까지 기다리지 않는다 — 빈 공간은 앞 카드
-      // 바로 위(아래쪽)부터 열리므로, 열리는 순서 그대로 아래 카드부터 슬라이드 진행에
-      // 맞춰 순차로 채운다(지적: 슬라이드가 끝날 때까지 아래가 통째로 빈 공백으로 남아
-      // "짠" 하고 나타나 보였다).
-      const n = cards.length;
-      cards.forEach((el, idx) => {
-        const fromBottom = n - 1 - idx;
-        fadeIn(el, 40 + (n > 1 ? fromBottom / (n - 1) : 0) * slideDur * 0.55);
-      });
-      if (rail) fadeIn(rail, 40 + slideDur * 0.55 + 80);
-      // 고스트는 아래(맨 먼저 나타나는) 카드가 차오르는 동안 걷힌다 — 크로스페이드.
+      // 줄이기 라인은 자리가 잡히는 후반부에 나타난다(블러 없는 요소라 opacity 안전).
+      if (rail) {
+        const ra = rail.animate(
+          [{ opacity: 0 }, { opacity: 1 }],
+          { duration: 220, easing: "ease-out", delay: Math.round(slideDur * 0.55), fill: "both" },
+        );
+        const settle = () => { rail.style.opacity = ""; };
+        ra.onfinish = () => { settle(); ra.cancel(); };
+        ra.oncancel = settle;
+        anims.push(ra);
+      }
+      // 고스트는 기둥이 그 자리를 지나가는 초반에 짧게 걷힌다.
       if (ghost) {
         const ga = ghost.animate(
           [{ opacity: 1 }, { opacity: 0 }],
-          { duration: 220, easing: "ease-out", delay: 40, fill: "both" },
+          { duration: 150, easing: "ease-out", fill: "both" },
         );
         ga.onfinish = () => ghost.remove();
         ga.oncancel = () => ghost.remove();
@@ -534,44 +547,76 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       cancelAnimationFrame(raf2);
       anims.forEach((a) => { try { a.cancel(); } catch { /* 이미 끝남 */ } });
       ghost?.remove();
-      reveals.forEach((el) => { el.style.opacity = ""; });
+      list.style.transform = "";
+      if (rail) rail.style.opacity = "";
       sliders.forEach((el) => { el.style.transform = ""; });
       cleanupRail();
       cancelRevealRef.current = null;
     };
   }, [open]);
 
-  // 접기 — 펼치기의 역재생(요청): 먼저 카드들이 위에서부터 순차로 페이드아웃하고, 다
-  // 사라지면 실제 접힘(레이아웃+스크롤 보정) 후 위 콘텐츠가 제자리로 쓸려 내려온다
-  // (위 useLayoutEffect의 !open 분기).
+  // 접기 — 펼치기의 정확한 역재생(요청): 레이아웃은 그대로 둔 채 위 콘텐츠와 카드
+  // 기둥이 한 몸으로 접힌 위치까지 내려가고(기둥은 rest-inner 클립 밖으로 사라진다),
+  // 다 내려가면 실제 접힘(레이아웃+스크롤 보정)을 커밋한다(위 useLayoutEffect의 !open
+  // 분기가 인라인 상태를 이어받아 정리). 카드엔 opacity를 안 쓴다(위 대원칙).
   const closeStack = () => {
     if (closingRef.current) return;
+    const root = stackRef.current;
     const list = restListRef.current;
-    const rail = stackRef.current?.querySelector<HTMLElement>(":scope > .scr-feed-stack-rail");
-    if (!list || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    const rest = root?.querySelector<HTMLElement>(":scope > .scr-feed-stack-rest");
+    const rail = root?.querySelector<HTMLElement>(":scope > .scr-feed-stack-rail");
+    if (!root || !list || !rest || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       toggleOpen(false);
       return;
     }
-    // 펼침 연출이 아직 진행 중이면 끊고(스타일 원복) 접기 페이드로 넘어간다.
+    // 펼침 연출이 아직 진행 중이면 끊고(스타일 원복) 접기로 넘어간다.
     cancelRevealRef.current?.();
     closingRef.current = true;
-    const cards = Array.from(list.children) as HTMLElement[];
-    // 라인은 누르는 즉시, 카드는 위(펼칠 때 마지막으로 나타난 쪽)부터 순차로 사라진다.
-    const targets = rail ? [rail, ...cards] : cards;
-    const anims = targets.map((el, i) => el.animate(
-      [{ opacity: 1 }, { opacity: 0 }],
-      { duration: 170, easing: "ease-in", delay: el === rail ? 0 : (i - (rail ? 1 : 0)) * 22, fill: "both" },
-    ));
+    const dist = rest.getBoundingClientRect().height;
+    const easing = "cubic-bezier(0.32, 0.72, 0, 1)";
+    const dur = Math.min(560, 360 + Math.round(dist * 0.12));
+    const vh = window.innerHeight;
+    const els = collectAbove().filter((el) => {
+      const r = el.getBoundingClientRect();
+      return r.top < vh + 40 && r.bottom + dist > -40;
+    });
+    const anims: Animation[] = [];
+    const sink = (el: HTMLElement) => {
+      anims.push(el.animate(
+        [{ transform: "translateY(0)" }, { transform: `translateY(${dist}px)` }],
+        { duration: dur, easing, fill: "both" },
+      ));
+    };
+    els.forEach(sink);
+    sink(list);
+    if (rail) {
+      anims.push(rail.animate(
+        [{ opacity: 1 }, { opacity: 0 }],
+        { duration: 150, easing: "ease-in", fill: "both" },
+      ));
+    }
     const finish = () => {
       if (!closingRef.current) return;
       closingRef.current = false;
-      // 접힘 레이아웃이 그려질 때까지 숨김을 인라인으로 유지하고(위 !open 분기가 rest가
-      // 클립된 뒤 정리한다) 애니메이션 객체는 정리한다.
-      targets.forEach((el) => { el.style.opacity = "0"; });
+      // 커밋 프레임이 이어받도록 종료 상태를 인라인으로 박고 애니메이션 객체는 정리한다.
+      els.forEach((el) => { el.style.transform = `translateY(${dist}px)`; });
+      list.style.transform = `translateY(${dist}px)`;
+      if (rail) rail.style.opacity = "0";
       anims.forEach((a) => { try { a.cancel(); } catch { /* 이미 끝남 */ } });
+      closeMotionRef.current = { els, dist };
+      cancelRevealRef.current = null;
       toggleOpen(false);
     };
-    Promise.all(anims.map((a) => a.finished)).then(finish).catch(finish);
+    // 재펼침/언마운트 등으로 중단되면 전부 원복한다.
+    cancelRevealRef.current = () => {
+      closingRef.current = false;
+      anims.forEach((a) => { try { a.cancel(); } catch { /* 이미 끝남 */ } });
+      els.forEach((el) => { el.style.transform = ""; });
+      list.style.transform = "";
+      if (rail) rail.style.opacity = "";
+      cancelRevealRef.current = null;
+    };
+    Promise.all(anims.map((a) => a.finished)).then(finish).catch(() => {});
   };
 
   // 두 상태(접힘/펼침)의 카드가 모두 항상 마운트돼 있고(요청: "실제로는 렌더링해놓고"),
