@@ -7189,6 +7189,9 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
 .scr-filter-panel .scr-pill-tab-btn { font-size: var(--fs-caption); }
 .scr-filter-panel .scr-filter-month-input { font-size: var(--fs-caption); }
 .scr-filter-panel .scr-filter-race-select .scr-cselect-trigger { font-size: var(--fs-caption); }
+/* 피드 유형 드롭다운 — 트리거·옵션 텍스트를 1스텝 축소(요청). caption→micro. */
+.scr-feed-kind-select .scr-cselect-value,
+.scr-feed-kind-select .scr-cselect-opt-label { font-size: var(--fs-micro); }
 .scr-chip-name { font-size: var(--fs-body); }
 /* 헤더 닉네임 — 파일 끝의 이 무조건 규칙이 모바일 블록(640px)을 덮어 닉네임이 안
    줄어드는 제약이었어서 PC에서만 적용한다. PC 크기는 옆 '테마' 텍스트 버튼

@@ -1142,12 +1142,13 @@ export default function FeedScreen() {
               onChange={(v) => setKindFilter(v as typeof kindFilter)}
               size="sm"
               minDropWidth={120}
+              className="scr-feed-kind-select"
               options={[
                 { value: "all", label: "전체" },
                 { value: "match", label: "게임결과" },
-                { value: "call", label: "너나와" },
+                { value: "call", label: "너 나와!" },
                 { value: "schedule", label: "일정" },
-                { value: "rankshift", label: "랭크변동" },
+                { value: "rankshift", label: "랭크 변동" },
               ]}
             />
           </FilterItem>
