@@ -8073,11 +8073,15 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    아닌 굵게 표시로 변경"). 읽기용 인라인 칩만 배경·그림자·패딩을 걷어 본문과 같은
    caption 크기의 볼드로 흐르게 한다. 입력창(.scr-mreq-chip-editor)의 칩은 삭제·편집을
    위해 칩 형태를 유지하되 크기만 본문에 맞춘다. */
+/* 노출(읽기)되는 @멘션은 "@닉네임"을 포인트 컬러 굵게로 강조한다(요청). 입력창은
+   평문 그대로(색 없음) + @뒤 실시간 드롭다운만 — 이 규칙은 읽기용 인라인에만 적용. */
 .scr-feed-comments .scr-mreq-chip-inline {
   background: none; box-shadow: none; padding: 0; border-radius: 0;
-  color: var(--text); font-weight: 700; font-size: var(--fs-caption);
+  color: var(--point); font-weight: 700; font-size: var(--fs-caption);
   top: 0; margin: 0;
 }
+/* 라이트 테마의 --point는 검정(맥락별 용도)이라 멘션 강조로는 약하다 — 읽히는 앰버로. */
+html.scr-light-theme .scr-feed-comments .scr-mreq-chip-inline { color: #c07c1c; }
 /* 입력·수정창의 유저칩 — 좌우 패딩을 줄여 문장에 더 잘 섞이게(요청). */
 .scr-feed-comments .scr-mreq-chip-editor { font-size: var(--fs-caption); padding: 1px 3px; }
 .scr-feed-shift-row { font-size: var(--fs-caption); }
