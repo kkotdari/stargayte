@@ -71,10 +71,11 @@ function SortableHead({ label, sortKey, sort, onToggle, className, tooltip }: So
   return (
     <button type="button" className={cx("scr-stat-sort-btn", className, active && "scr-stat-sort-btn-active")} onClick={() => onToggle(sortKey)}>
       {label}
-      {tooltip && <InfoTip text={tooltip} label={label} />}
+      {/* 툴팁·정렬 아이콘은 1스텝 키운다(요청) — ⓘ 12→14, 화살표 13→15. */}
+      {tooltip && <InfoTip text={tooltip} label={label} size={14} />}
       {active
-        ? (sort?.dir === "asc" ? <ArrowUp size={13} /> : <ArrowDown size={13} />)
-        : <ArrowUpDown size={13} className="scr-stat-sort-icon-idle" />}
+        ? (sort?.dir === "asc" ? <ArrowUp size={15} /> : <ArrowDown size={15} />)
+        : <ArrowUpDown size={15} className="scr-stat-sort-icon-idle" />}
     </button>
   );
 }

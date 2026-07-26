@@ -12,7 +12,8 @@ import { swallowNextClick } from "../../utils/bodyScrollLock";
 // 레벨 클로저 하나로 해결한다: 새 툴팁이 열릴 때 직전 것을 직접 닫는다.
 let closeOpenTip: (() => void) | null = null;
 
-export default function InfoTip({ text, label }: { text: string; label?: string }) {
+// size — 트리거 아이콘(ⓘ) 크기. 통계 헤더처럼 크게 쓰고 싶은 자리만 넘긴다(기본 12).
+export default function InfoTip({ text, label, size = 12 }: { text: string; label?: string; size?: number }) {
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const ref = useRef<HTMLSpanElement>(null);
   const open = pos !== null;
@@ -63,7 +64,7 @@ export default function InfoTip({ text, label }: { text: string; label?: string 
       onClick={toggle}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") toggle(e); }}
     >
-      <Info size={12} />
+      <Info size={size} />
       {open && pos && createPortal(
         <span
           className="scr-infotip-bubble"
