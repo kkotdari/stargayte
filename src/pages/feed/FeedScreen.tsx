@@ -305,23 +305,39 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     // 미끄러져 올라온다(WAAPI, transform만이라 레이아웃·스크롤 불변 + 블러 유지). 아래
     // 카드부터 순차 시작(위로 착착). CSS 고정 거리로는 "높이가 즉시 확 열리는" 느낌이라
     // 뚝 끊겨 보였다(지적) — 실제 이동 거리를 줘야 펼쳐지는 트랜지션으로 보인다.
-    if (open && restListRef.current && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      const list = restListRef.current;
-      const bottom = list.getBoundingClientRect().bottom;
+    // 시작 위치(스택 자리)는 인라인 transform으로 "지금 당장" 박는다 — 순차 딜레이 동안의
+    // 시작 상태를 fill:backwards에만 맡기면 iOS 사파리가 첫 프레임에 적용하지 않는 경우가
+    // 있어, 카드/줄이기 버튼이 한순간 최종 위치에 보였다가 점프했다(지적: "펼칠 때 깜빡,
+    // 줄이기 버튼이 처음부터 보임"). 인라인 스타일은 페인트 전에 확실히 반영된다.
+    const list = restListRef.current;
+    if (list) {
       const children = Array.from(list.children) as HTMLElement[];
-      children.forEach((el, idx) => {
-        const dy = bottom - el.getBoundingClientRect().bottom;
-        if (dy <= 0) return;
-        el.animate(
-          [{ transform: `translateY(${dy}px)` }, { transform: "translateY(0)" }],
-          {
-            duration: 380,
-            easing: "cubic-bezier(0.32, 0.72, 0, 1)",
-            delay: (children.length - 1 - idx) * 40,
-            fill: "backwards",
-          },
-        );
-      });
+      if (open && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        const bottom = list.getBoundingClientRect().bottom;
+        children.forEach((el, idx) => {
+          const dy = bottom - el.getBoundingClientRect().bottom;
+          if (dy <= 0) return;
+          el.style.transform = `translateY(${dy}px)`;
+          const anim = el.animate(
+            [{ transform: `translateY(${dy}px)` }, { transform: "translateY(0)" }],
+            {
+              duration: 380,
+              easing: "cubic-bezier(0.32, 0.72, 0, 1)",
+              delay: (children.length - 1 - idx) * 40,
+              fill: "both",
+            },
+          );
+          const settle = () => { el.style.transform = ""; };
+          anim.onfinish = () => { settle(); anim.cancel(); };
+          anim.oncancel = settle;
+        });
+      } else {
+        // 접힘/모션 최소화 — 진행 중이던 애니메이션과 남은 인라인 시작 위치를 정리한다.
+        children.forEach((el) => {
+          el.getAnimations().forEach((a) => a.cancel());
+          el.style.transform = "";
+        });
+      }
     }
   }, [open]);
 
