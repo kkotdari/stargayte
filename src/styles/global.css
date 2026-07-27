@@ -7465,8 +7465,13 @@ html.scr-light-theme .scr-feed-add-fab {
     0 -6px 18px rgba(0, 0, 0, 0.42),
     0 -1px 0 rgba(255, 255, 255, 0.08);
 }
+/* 유리 패널은 시트 아래로 한참 더 내려 그린다(bottom: -50vh) — 키보드가 올라오면 iOS가
+   뷰포트를 다시 잡으면서 시트 밑단과 키보드 사이가 벌어져 그 틈으로 뒷페이지가 비쳤다
+   (지적). 그 틈이 얼마나 벌어질지는 OS가 정하고 우리는 알 수 없으니, 재서 맞추는 대신
+   패널을 넉넉히 늘려 어떤 틈이든 패널 재질로 덮는다. 키보드가 없을 땐 화면 밖이라
+   보이지 않는다. 시트에 overflow가 없어 이 확장이 잘리지 않는다. */
 .scr-comment-sheet::before {
-  content: ""; position: absolute; inset: 0; z-index: -1;
+  content: ""; position: absolute; inset: 0; bottom: -50vh; z-index: -1;
   background: rgba(16, 21, 26, 0.66);
   backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
 }
