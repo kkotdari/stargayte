@@ -7469,8 +7469,9 @@ html.scr-light-theme .scr-feed-add-fab {
   min-height: calc(50vh + var(--sheet-skirt)); min-height: calc(50dvh + var(--sheet-skirt));
   max-height: calc(68vh + var(--sheet-skirt)); max-height: calc(68dvh + var(--sheet-skirt));
   /* 윗모서리는 모달 기본(--radius: 12px)보다 크게 굴린다(요청) — 화면 폭을 꽉 채우는 시트라
-     같은 12px이면 거의 직선처럼 보인다. 아래는 화면 끝(그리고 치마)이라 각진 채로 둔다. */
-  border-radius: calc(var(--radius) * 1.75) calc(var(--radius) * 1.75) 0 0;
+     같은 12px이면 거의 직선처럼 보인다. 1.75배(21px)도 약하다는 지적에 2.5배(30px)로.
+     아래는 화면 끝(그리고 치마)이라 각진 채로 둔다. */
+  border-radius: calc(var(--radius) * 2.5) calc(var(--radius) * 2.5) 0 0;
   margin: 0; border-top: none;
   /* 바닥 안전 공간(요청) — 세 가지를 다 넘겨야 입력칸이 안 가린다:
      ① 사파리 접힌 주소창 알약(--vv-bottom-inset 실측, 탭바가 쓰는 값과 같다),
