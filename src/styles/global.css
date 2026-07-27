@@ -2094,16 +2094,22 @@ html:not(.scr-light-theme) .scr-stats-list-panel-v2 .scr-stat-name-cell, html:no
    스크롤되고 문서 전체 높이 기준으로 cover돼 과하게 확대된다.
    --page-bg-image/-mobile은 훅이 <html>에 인라인으로 넣는다. 지금은 다크만 적용
    (:not(.scr-light-theme)) — 다른 화면/라이트로 넓히려면 이 게이팅만 늘리면 된다. */
+/* 사진 위에 덮는 검정 스크림 — PC/모바일이 같은 값을 써야 해서 변수 하나로 둔다(따로
+   적어두면 한쪽만 고쳐져 어긋난다). 0.55/0.42/0.6에서 한 단계 더 진하게(요청) — 사진이
+   밝은 구간에서 표의 흰 글씨·옅은 막대가 묻혔다. */
+html.scr-page-bg:not(.scr-light-theme) {
+  --page-bg-scrim: linear-gradient(180deg, rgba(3,3,6,0.72) 0%, rgba(3,3,6,0.62) 45%, rgba(3,3,6,0.78) 100%);
+}
 html.scr-page-bg:not(.scr-light-theme) .scr-main::before {
   background:
-    linear-gradient(180deg, rgba(3,3,6,0.55) 0%, rgba(3,3,6,0.42) 45%, rgba(3,3,6,0.6) 100%),
+    var(--page-bg-scrim),
     var(--page-bg-image) center / cover no-repeat,
     var(--void);
 }
 @media (max-width: 860px) {
   html.scr-page-bg:not(.scr-light-theme) .scr-main::before {
     background:
-      linear-gradient(180deg, rgba(3,3,6,0.55) 0%, rgba(3,3,6,0.42) 45%, rgba(3,3,6,0.6) 100%),
+      var(--page-bg-scrim),
       var(--page-bg-image-mobile) center / cover no-repeat,
       var(--void);
   }
