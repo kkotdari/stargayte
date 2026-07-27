@@ -79,15 +79,12 @@
   --void: #000000;
   --panel: rgba(255, 255, 255, 0.04);      /* 패널 (반투명 유리) */
   --panel-solid: #101011;                  /* 불투명이 필요한 곳 */
-  /* 댓글 화면(전체화면 패널) 톤 — 원래는 피드 카드와 이 패널이 같은 색을 쓰라고 둔
-     토큰이다(요청: 카드와 톤 맞춰 연속성 주기). 카드가 유리(반투명+블러)로 돌아간 뒤로는
-     이 패널 쪽만 쓴다 — 패널은 불투명이어야 한다(반투명이면 뒷페이지가 그대로 비친다).
-     입력 중 캔버스(html/body/.scr-main::before)도 이 값으로 칠해 키보드 위 띠가 패널의
-     연장처럼 보이게 한다 — 세 군데가 어긋나면 안 되므로 한 곳에서 정한다.
-     값은 --panel-solid(#101011)에 흰색을 섞은 결과다 — 9%(#252526)는 순검정 배경 위에서
-     회색 판처럼 떠 보였고 4%(#1a1a1b)는 너무 가라앉아, 그 사이 6%로 잡는다(요청: 살짝
-     회색으로). 계산식 대신 값을 박은 건 패널이 이 색을 알파와 함께 써야 해서다. */
-  --comment-panel-bg: #ffffff;
+  /* 포스트(피드 포스트·댓글 화면·게임결과 모달)의 종이 색 — 반드시 불투명이다(반투명이면
+     전체화면 패널 뒤로 페이지가 그대로 비친다). 포스트가 좌우 여백 없이 화면을 꽉 채우므로
+     이 색이 페이지 배경과 조금은 달라야 포스트끼리 경계가 남는다 — 다크는 순검정 페이지
+     위의 아주 살짝 밝은 판. 입력 중 캔버스(html/body/.scr-main::before)도 이 값으로 칠해
+     키보드 위 띠가 패널의 연장처럼 보이게 하므로, 값은 한 곳에서만 정한다. */
+  --post-bg: #0d0d0e;
   --panel-raised: rgba(255, 255, 255, 0.12); /* 드롭다운/칩 등 */
   --input-bg: rgba(6, 6, 7, 0.86);         /* 입력 필드 */
   --header-bg: rgba(7, 7, 8, 0.74);        /* 헤더 전용 배경 — .scr-light-theme에서 재정의 */
@@ -667,7 +664,7 @@ html.scr-light-theme .scr-checkbox-field input[type="radio"]:not(:checked), html
   .scr-btn:hover { border-color: rgba(var(--lit-rgb), 0.55); box-shadow: var(--lit-hover-glow); }
 }
 /* 라이트 테마는 배경 자체가 밝아서 흰 테두리는 안 보인다 — 어두운 계열로 뒤집는다. */
-.scr-light-theme .scr-btn, .scr-post .scr-btn { border-color: rgba(0,0,0,0.28); }
+.scr-light-theme .scr-btn { border-color: rgba(0,0,0,0.28); }
 .scr-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 /* 크기는 .scr-btn-ghost와 동일하다. 안쪽에 얇은 어두운 테두리를 더해 밝은(흰색) 배경의
    경계를 또렷하게 잡는다. 글자색은 항상 어두운 고정색(--point-contrast 대신 직접 값 —
@@ -689,13 +686,13 @@ html.scr-light-theme .scr-checkbox-field input[type="radio"]:not(:checked), html
    라이팅색이어야 하는데 검정임. 검정 버튼은 완전 제거!"). 모달 안이든 밖이든, -solid
    클래스가 있든 없든 전부 라이팅 알약(하늘색 반투명 채움 + 윤곽 글로우 + 어두운 글자)
    한 벌로 통일한다 — 예전의 모달 전용 검정 반전 규칙도 함께 삭제. */
-.scr-light-theme .scr-btn-primary, .scr-post .scr-btn-primary {
+.scr-light-theme .scr-btn-primary {
   background: var(--lit-pill-bg); border-color: transparent; color: var(--text);
   box-shadow: var(--lit-pill-glow);
 }
 /* 평소에도 글로우를 켜둔 버튼이라 호버는 같은 빛을 한 단계 세게. */
 @media (hover: hover) {
-  .scr-light-theme .scr-btn-primary:hover, .scr-post .scr-btn-primary:hover {
+  .scr-light-theme .scr-btn-primary:hover {
     box-shadow: 0 0 12px rgba(var(--lit-rgb), 0.25), 0 0 28px rgba(var(--lit-rgb), 0.13);
   }
 }
@@ -768,13 +765,9 @@ html.scr-light-theme .scr-checkbox-field input[type="radio"]:not(:checked), html
    자체를 라이트 팔레트 값으로 바꾼다 — 필터는 조상에 걸리면 자손이 뭘 하든 최종 합성에
    그대로 덧씌워져서 프사(업로드된 프로필 사진)까지 무채색으로 바래버린다. 이미지(프사)나
    종족 배지처럼 변수를 안 쓰는 요소는 원래 색 그대로 남는다. */
-/* .scr-post — 피드 포스트/전체화면 모달은 다크 테마에서도 흰 종이다(요청). 색을 요소마다
-   따로 적는 대신 라이트 테마의 토큰 선언을 그대로 공유해, 그 안의 모든 자손이 라이트와
-   똑같은 색을 물려받게 한다(요청: "라이트테마와 css를 공유한다"). color-scheme까지 뒤집어
-   스크롤바·기본 폼 컨트롤도 밝은 쪽으로 그린다. */
-html.scr-light-theme, .scr-post {
+html.scr-light-theme {
   --void: #ffffff;
-  --comment-panel-bg: #ffffff;
+  --post-bg: #ffffff;
   --panel: rgba(255, 255, 255, 0.46);
   --panel-solid: #ffffff;
   --panel-raised: #f0f0f0;
@@ -832,7 +825,6 @@ html.scr-light-theme, .scr-post {
   --bar-draw: #c2c8d0;
   --bar-loss: #f2637a;
 }
-.scr-post { color-scheme: light; color: var(--text); }
 
 /* 어두운 배경을 전제로 한 헤더/스타필드 장식은 흰 배경에선 그대로 못 쓴다 — 헤더는
    패널과 같은 밝은 톤으로, 배경 그리드/별빛은 흰 배경 위에서 보일 이유가 없어 숨긴다. */
@@ -843,7 +835,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-light-theme .scr-err { background: rgba(0,0,0,0.05); border: 1px solid rgba(0,0,0,0.3); }
 .scr-light-theme .scr-success { background: rgba(0,0,0,0.05); border: 1px solid rgba(0,0,0,0.3); }
 /* 종족 폰트 아이콘도 종족색 대신 본문 글자와 같은 톤(검정)으로 */
-.scr-light-theme .scr-race-badge, .scr-post .scr-race-badge { color: var(--text); }
+.scr-light-theme .scr-race-badge { color: var(--text); }
 
 /* ===== avatar ===== */
 /* border-radius는 Avatar.tsx가 size에 비례해 인라인으로 계산해 넣는다 — 아바타가
@@ -5018,7 +5010,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 .scr-challenge-card-msg { display: flex; gap: 6px; align-items: baseline; font-size: var(--fs-caption); line-height: 1.4; }
 .scr-challenge-card-msg-who { flex: 0 0 auto; font-weight: 700; color: var(--dim); font-size: var(--fs-micro); }
 .scr-challenge-card-msg-text { color: var(--text); word-break: break-word; }
-.scr-light-theme .scr-challenge-submit-btn:disabled, .scr-post .scr-challenge-submit-btn:disabled { border-color: rgba(0, 0, 0, 0.14); }
+.scr-light-theme .scr-challenge-submit-btn:disabled { border-color: rgba(0, 0, 0, 0.14); }
 /* "호출" 버튼 — 활성화 시 각 테마의 라이팅 프라이머리(요청: 핑크 고유색 대신 공통
    라이팅 테마). 다크=거의 흰 알약, 라이트=하늘빛 알약 + 윤곽 글로우. 비활성은 위
    .scr-challenge-submit-btn:disabled의 무채색 처리를 그대로 받는다. */
@@ -5775,7 +5767,7 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
 .scr-challenge-reject-btn {
   background: transparent; border-color: rgba(255, 255, 255, 0.32); color: var(--text); text-shadow: none;
 }
-.scr-light-theme .scr-challenge-reject-btn, .scr-post .scr-challenge-reject-btn { border-color: rgba(0, 0, 0, 0.28); }
+.scr-light-theme .scr-challenge-reject-btn { border-color: rgba(0, 0, 0, 0.28); }
 @media (hover: hover) { .scr-challenge-reject-btn:hover { border-color: rgba(255, 255, 255, 0.5); } }
 @media (hover: hover) { .scr-light-theme .scr-challenge-reject-btn:hover { border-color: rgba(0, 0, 0, 0.45); } }
 
@@ -6169,11 +6161,11 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
    주면 배경과 거의 안 구분됐다(실제로 지적받은 문제 — "라이트 테마에서 요청 인풋창
    구분이 잘 안됨") — 옅은 회색조로 살짝 꺼진 느낌을 주고, 얇은 테두리 링을 더해 확실히
    구분되게 한다. */
-.scr-light-theme .scr-mreq-editor, .scr-post .scr-mreq-editor {
+.scr-light-theme .scr-mreq-editor {
   background: rgba(0, 0, 0, 0.045);
   box-shadow: inset 0 1px 2px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.08);
 }
-.scr-light-theme .scr-mreq-editor:focus-within, .scr-post .scr-mreq-editor:focus-within {
+.scr-light-theme .scr-mreq-editor:focus-within {
   box-shadow: inset 0 1px 2px rgba(0,0,0,0.06), 0 0 0 1px rgba(59,130,246,0.35);
 }
 /* 확정된 평문 조각 — 다시 편집은 안 되고 그냥 흘러가는 문장의 일부로 보인다. */
@@ -7063,7 +7055,7 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   /* 카드가 아니라 화면을 꽉 채우는 판이다(요청) — 좌우 여백도, 둥근 모서리도, 떠 있는
      그림자도 없다. 포스트끼리는 그 사이로 드러나는 페이지 배경이 나눈다. */
   border-radius: 0;
-  background: #ffffff;
+  background: var(--post-bg);
 }
 /* 피드 목록만 본문 좌우 패딩 바깥으로 빠져나가 화면 폭을 그대로 쓴다 — 툴바/필터 등
    나머지 형제는 원래 여백을 유지해야 하므로 .scr-main이 아니라 여기서 되민다. */
@@ -7110,13 +7102,18 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 @media (hover: hover) { .scr-feed-stack-toggle:hover { color: var(--text); } }
 
 /* 헤더부 — 포스트를 헤더/컨텐츠 둘로 가르는 경계선을 여기 아래에 긋는다(요청).
-   오른쪽 44px는 포스트 우상단 케밥 자리. */
+   오른쪽 44px는 포스트 우상단 케밥 자리.
+   포스트가 좌우 여백 없이 이어지다 보니 어디서 다음 글이 시작하는지 잘 안 읽혔다(지적)
+   — 제목을 과감히 키워(요청) 그 무게로 경계를 만든다. 시각은 제목에 딸린 보조라
+   baseline을 맞춰 한 줄로 흐르게 한다. */
 .scr-feed-card-head {
-  display: flex; align-items: center; gap: 8px;
-  padding: 13px 44px 13px var(--post-pad-x);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  display: flex; align-items: baseline; gap: 8px;
+  padding: 16px 44px 12px var(--post-pad-x);
+  border-bottom: 1px solid rgba(var(--overlay-rgb), 0.1);
   font-size: var(--fs-micro); color: var(--dim);
 }
+/* 아이콘은 baseline 정렬에서 글자 밑선에 걸려 어색하므로 살짝 올려 광학 중심을 맞춘다. */
+.scr-feed-card-head > svg { align-self: center; position: relative; top: 1px; flex-shrink: 0; }
 /* 경기 케밥을 포스트 우상단으로(요청 — 이제 오른쪽에 타임라인이 없어 안전 공간 불필요).
    trow의 position:relative가 절대배치를 가로채지 않게 피드 안에서는 static으로. */
 .scr-feed-match-body .scr-match-trow { position: static; }
@@ -7152,7 +7149,7 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   top: 0; margin: 0;
 }
 /* 라이트 테마의 --point는 검정(맥락별 용도)이라 멘션 강조로는 약하다 — 읽히는 앰버로. */
-.scr-feed-comments .scr-mreq-chip-inline { color: #c07c1c; }
+html.scr-light-theme .scr-feed-comments .scr-mreq-chip-inline { color: #c07c1c; }
 /* 입력·수정창의 유저칩 — 좌우 패딩을 줄여 문장에 더 잘 섞이게(요청). */
 .scr-feed-comments .scr-mreq-chip-editor { font-size: var(--fs-caption); padding: 1px 3px; }
 .scr-feed-shift-row { font-size: var(--fs-caption); }
@@ -7189,7 +7186,11 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-match-trow-map-expanded { display: flex; align-items: baseline; gap: 6px; padding: 8px 0 8px; justify-content: center; }
 /* 라벨(무엇인지)이 앞, 시간이 바로 옆(요청) — 라벨이 주, 시간은 흐리게 보조. */
 .scr-feed-card-time { font-weight: 600; color: var(--dim); font-variant-numeric: tabular-nums; }
-.scr-feed-card-label { font-weight: 700; color: var(--text); }
+/* 포스트 제목 — 피드에서 가장 큰 글자. 굵기·크기 모두 과감히 올린다(요청). */
+.scr-feed-card-label {
+  font-size: var(--fs-subhead); font-weight: 800; color: var(--text);
+  letter-spacing: -0.01em; line-height: 1.2;
+}
 .scr-feed-card-body { padding: 0; }
 /* 카드 속 카드 금지(요청) — 안에 앉힌 너 나와! 카드/경기 로우는 자기 패널(배경·블러·그림자·
    라운딩)을 전부 벗고 내용만 피드 카드에 직접 얹힌다. 세로 여백도 압축(요청: 퍼져 보이지 않게). */
@@ -7447,7 +7448,7 @@ html.scr-light-theme .scr-feed-add-fab {
   position: fixed; inset: 0;
   /* 반드시 불투명이다 — 반투명이면 뒷페이지가 그대로 비친다. 입력 중 캔버스를 같은
      색으로 칠할 때(아래 .scr-comment-typing) 값이 어긋나면 안 되므로 토큰 하나를 쓴다. */
-  background: var(--comment-panel-bg);
+  background: var(--post-bg);
   /* 탭바(55)보다 위, 모달(100)보다 아래 — 여기서 연 삭제 확인창이 이 화면에 가리지 않는다. */
   z-index: 90;
   display: flex; flex-direction: column;
@@ -7459,7 +7460,8 @@ html.scr-light-theme .scr-feed-add-fab {
      ① 사파리 접힌 주소창 알약(--vv-bottom-inset 실측, 탭바가 쓰는 값과 같다),
      ② 홈 인디케이터 안전영역(PWA/전체화면),
      ③ 둘 다 0인 기기(안드로이드 크롬·PC)에서도 화면 둥근 모서리를 피할 최소 여백. */
-  padding: var(--safe-top, 0px) 20px max(
+  --sheet-pad-x: 20px;
+  padding: var(--safe-top, 0px) var(--sheet-pad-x) max(
     calc(var(--vv-bottom-inset, 0px) + 10px),
     calc(env(safe-area-inset-bottom, 0px) + 10px),
     18px
@@ -7501,11 +7503,11 @@ html.scr-comment-typing .scr-main { visibility: visible; }
 html.scr-comment-typing .scr-main > * { visibility: hidden; }
 /* 배경 사진 규칙(html.scr-page-bg …)이 더 구체적이라 !important로 확실히 이긴다 —
    입력 중 한때뿐이고, 여기서 지면 그 띠에 사진이 그대로 드러난다. */
-html.scr-comment-typing .scr-main::before { background: var(--comment-panel-bg) !important; }
+html.scr-comment-typing .scr-main::before { background: var(--post-bg) !important; }
 /* 캔버스(문서 배경)까지 같은 색으로 칠한다 — 이걸 빼먹었더니 띠만 유독 까맸다(지적).
    .scr-main::before도 결국 position:fixed라, 키보드가 올라오면 패널과 똑같이 비주얼
    뷰포트로 다시 앉혀져 그 아래를 못 덮는다. 거기 남는 건 html의 배경(--void)이다. */
-html.scr-comment-typing, html.scr-comment-typing body { background: var(--comment-panel-bg); }
+html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-bg); }
 /* 목록이 이 아래로 스크롤해 들어가므로 경계선을 둔다 — 없으면 스크롤된 글이 제목 줄에
    그대로 붙어 어디까지가 헤더인지 안 보인다. */
 /* 윗모서리 곡선이 헤더 줄 높이까지 파고들므로 제목과 X를 위로 조금 더 내려 피한다. 좌우는
@@ -7572,6 +7574,11 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--commen
    댓글 화면과 같은 규칙을 함께 쓰고(위 .scr-comment-sheet, .scr-stack-modal), 안에는
    그날의 게임결과 포스트를 피드와 같은 간격으로 세로로 늘어놓는다. "간단히 보기"는 없고
    닫기(X)가 그 역할을 한다(요청). */
+/* 안에 든 것도 피드와 같은 '꽉 찬 포스트'라 시트 자체는 좌우 여백을 갖지 않는다 —
+   음수 마진으로 되밀면 목록 래퍼의 overflow-x가 그만큼 잘라낸다(케밥이 반쯤 잘렸다).
+   여백이 필요한 건 제목 줄뿐이라 거기서만 낸다. */
+.scr-stack-modal { --sheet-pad-x: 0px; }
+.scr-stack-modal-head { padding-left: 20px; padding-right: 20px; }
 .scr-stack-modal-list {
   display: flex; flex-direction: column; gap: var(--feed-card-gap);
   padding: var(--post-pad-y) 0 calc(var(--post-pad-y) * 2);

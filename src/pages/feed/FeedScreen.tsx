@@ -24,6 +24,7 @@ import { api } from "../../api/client";
 import { useCursorPagination } from "../../hooks/useCursorPagination";
 import { useEditableFocused } from "../../hooks/useEditableFocused";
 import { useLockBodyScroll } from "../../utils/bodyScrollLock";
+import { useSlideSheet } from "../../hooks/useSlideSheet";
 import { buildReplayDrafts, type ReplayDraft } from "../../utils/replayDraft";
 import { hasAppUpdatePreloadErrorOccurred } from "../../utils/appUpdate";
 import type { Challenge, FeedTargetType, Match, MatchSlot, MatchType, Member, RankSnapshot } from "../../types";
@@ -325,7 +326,10 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     return out;
   }, [stack.items, memberOf]);
 
-  const close = () => setOpen(false);
+  // 아래에서 올라오고 아래로 쓸어내려 닫는다(요청) — 댓글 화면과 같은 연출/제스처.
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const sheetBodyRef = useRef<HTMLDivElement>(null);
+  const { close } = useSlideSheet(open, () => setOpen(false), { sheet: sheetRef, body: sheetBodyRef });
   // 모달이 떠 있는 동안 배경(본문) 스크롤을 막는다 — 댓글 화면과 같은 방식.
   useLockBodyScroll(open);
   // 마지막 게임이 지워져 목록이 비면 모달을 닫는다(빈 화면만 남는다).
@@ -360,14 +364,14 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       {/* 전체화면 모달(요청) — 껍데기는 댓글 화면과 같은 규칙을 쓰고, 안에는 그날의 게임결과
           포스트를 피드와 같은 간격으로 늘어놓는다. 닫기(X)가 "간단히 보기"를 대신한다. */}
       {open && createPortal(
-        <div className="scr-stack-modal scr-post" role="dialog" aria-label={`${dateLabel} 게임결과`}>
+        <div ref={sheetRef} className="scr-stack-modal scr-post" role="dialog" aria-label={`${dateLabel} 게임결과`}>
           <div className="scr-stack-modal-head">
             <span className="scr-comment-sheet-title">{dateLabel} 게임결과 {stack.items.length}건</span>
             <button type="button" className="scr-icon-btn scr-stack-modal-close" onClick={close} aria-label="닫기">
               <X size={16} />
             </button>
           </div>
-          <div className="scr-stack-modal-body scr-scroll">
+          <div className="scr-stack-modal-body scr-scroll" ref={sheetBodyRef}>
             <div className="scr-stack-modal-list">
               {orderedDesc.map((it) => (
                 <MatchCard
