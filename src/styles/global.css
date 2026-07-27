@@ -7500,9 +7500,19 @@ html.scr-light-theme .scr-comment-sheet { background: #ffffff; }
    (요청: "키보드 있는 데까지 아래로 덮게"). 위 여백은 홈 인디케이터/사파리 주소창을
    피하려던 것인데, 그 자리를 이미 키보드가 덮고 있어 비워둘 이유가 없다 — 그대로 두면
    입력줄과 키보드 사이에 40px 넘는 빈 띠가 남는다.
-   연출은 넣지 않는다 — 키보드가 오르내리는 동안 값이 트랜지션되면 잔상처럼 끌린다
-   (탭바/FAB 숨김에서 같은 이유로 즉시 처리한다). */
-.scr-comment-sheet-typing { padding-bottom: calc(var(--sheet-skirt) + 8px); }
+   올라올 땐 즉시, 내려갈 땐 부드럽게 — 방향이 다른 이유:
+     · 올라올 때 값이 트랜지션되면 키보드가 올라오는 내내 여백이 따라 움직여 잔상처럼
+       끌린다(탭바/FAB 숨김을 즉시 처리하는 것과 같은 이유).
+     · 내려갈 땐 시트가 최종 자리에 먼저 툭 앉고 사파리 주소창이 뒤늦게 미끄러져 들어와
+       그 사이가 어색했다(지적). 여백을 주소창 애니메이션과 비슷한 길이로 풀어 두 움직임이
+       겹치게 한다.
+   트랜지션 선언을 기본 규칙에 두고 typing 쪽에서 끄면 방향이 갈린다 — 전환 후 상태의
+   transition 값이 쓰이므로, typing이 붙을 땐 none, 떨어질 땐 기본값이 적용된다. */
+.scr-comment-sheet { transition: padding-bottom 220ms cubic-bezier(0.32, 0.72, 0, 1); }
+.scr-comment-sheet-typing {
+  padding-bottom: calc(var(--sheet-skirt) + 8px);
+  transition: none;
+}
 /* 목록이 이 아래로 스크롤해 들어가므로 경계선을 둔다 — 없으면 스크롤된 글이 제목 줄에
    그대로 붙어 어디까지가 헤더인지 안 보인다. */
 .scr-comment-sheet-head {
