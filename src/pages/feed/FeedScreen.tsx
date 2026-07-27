@@ -33,6 +33,9 @@ const MAX_REPLAY_FILES = 20;
 // 먼저 사라지고 공간이 닫힌다.
 const CARD_FADE_MS = 170;
 const CARD_STAGGER_MS = 55;
+// 카드를 잇는 레일은 등장의 맨 끝, 퇴장의 맨 앞(요청) — 카드가 다 자리 잡은 뒤에 그 사이를
+// 잇고, 접을 땐 잇던 선부터 끊고 나서 카드가 사라진다.
+const RAIL_FADE_MS = 130;
 
 // 피드 — 커뮤니티 활동(경기 결과, 너 나와! 일정)을 한 타임라인으로 보여주는 홈 화면.
 // 타임라인 기준: 너 나와!는 경기 예정 일시, 경기는 리플레이의 게임 시작 시각.
@@ -357,25 +360,30 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     const list = restListRef.current;
     if (!root || !inner || !list) return;
 
-    // 레일(카드를 잇는 세로선)은 여기서 손대지 않는다 — 스택 전체를 덮는 CSS 규칙
+    // 레일(카드를 잇는 세로선)의 '위치'는 여기서 손대지 않는다 — 스택 전체를 덮는 CSS 규칙
     // (top:0/bottom:0)이라 높이가 변하면 알아서 따라온다. 예전엔 여기서 실측해 인라인
-    // top/height를 박았는데, 아래 cleanup이 그걸 지우는 순간 선이 사라졌다(global.css 참고).
+    // top/height를 박았는데, cleanup이 그걸 지우는 순간 선이 사라졌다(global.css 참고).
+    // 여기서 다루는 건 등장/퇴장 타이밍(opacity)뿐이다.
+    const rail = root.querySelector<HTMLElement>(":scope > .scr-feed-stack-rail");
 
     // 펼침/접힘에서 한 장씩 등장·퇴장시킬 카드 래퍼들.
     const cards = Array.from(
       list.querySelectorAll<HTMLElement>(":scope > .scr-feed-stack-reveal"),
     );
-    const cleanup = () => {
+    const clearInline = () => {
       inner.style.height = "";
       cards.forEach((c) => { c.style.opacity = ""; c.style.transform = ""; });
+      if (rail) rail.style.opacity = "";
+    };
+    const cleanup = () => {
+      clearInline();
       cancelRevealRef.current = null;
     };
 
     // 토글이 아니라 첫 렌더/리렌더면 연출 없이 상태만 맞춘다.
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (!wasToggled || reduced) {
-      inner.style.height = "";
-      cards.forEach((c) => { c.style.opacity = ""; c.style.transform = ""; });
+      clearInline();
       cancelRevealRef.current = () => cleanup();
       return;
     }
@@ -388,20 +396,36 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     // 시작 높이를 인라인으로 '지금 당장' 박는다 — WAAPI fill에만 맡기면 iOS가 첫 프레임에
     // 적용하지 않아 열린 상태가 한 번 스쳐 보인다(이 파일 곳곳에서 반복 확인된 함정).
     inner.style.height = open ? "0px" : `${full}px`;
-    // 카드도 마찬가지로 시작 상태를 먼저 박는다 — 펼칠 땐 투명하게 시작해야 공간이 열리는
-    // 동안 카드가 미리 비치지 않는다(지적: "접고 펼칠 때 카드가 미리 보여서").
-    if (open) cards.forEach((c) => { c.style.opacity = "0"; c.style.transform = "translateY(6px)"; });
+    // 카드·레일도 마찬가지로 시작 상태를 먼저 박는다 — 펼칠 땐 투명하게 시작해야 공간이
+    // 열리는 동안 미리 비치지 않는다(지적: "접고 펼칠 때 카드가 미리 보여서").
+    if (open) {
+      cards.forEach((c) => { c.style.opacity = "0"; c.style.transform = "translateY(6px)"; });
+      if (rail) rail.style.opacity = "0";
+    }
+
+    // 순서: (펼침) 공간 → 카드 하나씩 → 레일  /  (접힘) 레일 → 카드 하나씩 → 공간.
+    const cardsSpan = CARD_FADE_MS + Math.max(0, cards.length - 1) * CARD_STAGGER_MS;
+    const cardsStart = open ? dur : RAIL_FADE_MS;
 
     const anims: Animation[] = [];
     const a = inner.animate(
       [{ height: open ? "0px" : `${full}px` }, { height: open ? `${full}px` : "0px" }],
       {
         duration: dur, easing: "cubic-bezier(0.32, 0.72, 0, 1)", fill: "both",
-        // 접을 땐 카드가 먼저 사라지고 그 다음에 공간이 닫힌다.
-        delay: open ? 0 : CARD_FADE_MS + Math.max(0, cards.length - 1) * CARD_STAGGER_MS,
+        delay: open ? 0 : cardsStart + cardsSpan,
       },
     );
     anims.push(a);
+    if (rail) {
+      anims.push(rail.animate(
+        [{ opacity: open ? 0 : 1 }, { opacity: open ? 1 : 0 }],
+        {
+          duration: RAIL_FADE_MS, fill: "both",
+          easing: open ? "ease-out" : "ease-in",
+          delay: open ? cardsStart + cardsSpan : 0,
+        },
+      ));
+    }
     // 카드는 하나씩(요청) — 펼칠 땐 공간이 다 열린 뒤 위에서부터, 접을 땐 아래에서부터
     // 먼저 걷어낸다. 카드에 opacity를 걸어도 되는 이유: 피드 카드는 불투명 배경이라
     // backdrop-filter가 없다(있었다면 opacity<1 조상이 합성 그룹을 만들어 블러가 죽는다).
@@ -414,7 +438,7 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
         ],
         {
           duration: CARD_FADE_MS,
-          delay: (open ? dur : 0) + order * CARD_STAGGER_MS,
+          delay: cardsStart + order * CARD_STAGGER_MS,
           easing: open ? "cubic-bezier(0.22, 1, 0.36, 1)" : "ease-in",
           fill: "both",
         },

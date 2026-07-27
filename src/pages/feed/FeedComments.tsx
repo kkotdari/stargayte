@@ -354,6 +354,29 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
     }).catch(() => { /* openSheet가 취소함 */ });
   };
   useEffect(() => { if (!mobile) setSheetOpen(false); }, [mobile]);
+  // 시트가 떠 있는 동안 배경 페이지의 스크롤 위치를 고정한다.
+  //
+  // 입력칸에 포커스가 가면 iOS가 "가려진 입력칸을 드러내려고" 문서를 스스로 위로 굴린다.
+  // 우리 입력칸은 position:fixed 시트 안이라 사실 가려질 일이 없는데도 그렇고, 키보드를
+  // 내려도 그 스크롤은 되돌아오지 않아 열 때마다 배경이 조금씩 위로 밀렸다(지적).
+  // 그 자동 스크롤을 막을 방법은 없으니, 일어난 직후 원래 자리로 되돌린다. 실드
+  // (useLockBodyScroll)가 이미 사용자의 배경 스크롤을 막고 있으므로 여기서 고정해도
+  // 뺏는 동작이 없다. 시트 목록 자체의 스크롤은 요소 스크롤이라 window로 오지 않는다
+  // (캡처를 쓰지 않는 이유).
+  useEffect(() => {
+    if (!mobile || !sheetOpen) return;
+    const doc = document.scrollingElement ?? document.documentElement;
+    const pinned = doc.scrollTop;
+    let raf = 0;
+    const onScroll = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        if (Math.abs(doc.scrollTop - pinned) > 1) doc.scrollTop = pinned;
+      });
+    };
+    window.addEventListener("scroll", onScroll);
+    return () => { cancelAnimationFrame(raf); window.removeEventListener("scroll", onScroll); };
+  }, [mobile, sheetOpen]);
   // 시트가 떠 있는 동안 배경(본문)으로 가는 스크롤/클릭을 막고, 바깥 탭이면 닫는다.
   useLockBodyScroll(mobile && sheetOpen, closeSheet);
   // 열릴 때 아래에서 올라온다. 시작 위치를 인라인으로 먼저 박는다 — WAAPI fill에만 맡기면
