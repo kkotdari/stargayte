@@ -437,14 +437,17 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     }
 
     // ── 순서표 ──
+    // 펼침: 요약 사라짐 → 자리 열림 → (테두리 + "간단히 보기" + 카드) 동시
+    // 접힘: 그 셋이 동시에 사라짐 → 자리 닫힘 → 요약 나타남
+    // 셋을 따로 세우면(테두리 → 버튼 순서) 전체가 1초를 넘겨 굼떠 보였다(요청: 동시에).
+    // 카드끼리의 시차만 남긴다 — "한 장씩" 나오는 느낌은 그 시차가 만든다.
     const cardsSpan = CARD_FADE_MS + Math.max(0, cards.length - 1) * CARD_STAGGER_MS;
-    // 펼침: 요약 사라짐 → 자리 열림 → 카드 → 테두리 → 버튼
-    // 접힘: 버튼 → 테두리 → 카드 → 자리 닫힘 → 요약 나타남
-    const summaryAt = open ? 0 : BUTTON_FADE_MS + FRAME_FADE_MS + cardsSpan + dur;
-    const heightAt = open ? SUMMARY_FADE_MS : BUTTON_FADE_MS + FRAME_FADE_MS + cardsSpan;
-    const cardsAt = open ? heightAt + dur : BUTTON_FADE_MS + FRAME_FADE_MS;
-    const frameAt = open ? cardsAt + cardsSpan : BUTTON_FADE_MS;
-    const buttonAt = open ? frameAt + FRAME_FADE_MS : 0;
+    const revealAt = open ? SUMMARY_FADE_MS + dur : 0;
+    const heightAt = open ? SUMMARY_FADE_MS : cardsSpan;
+    const summaryAt = open ? 0 : cardsSpan + dur;
+    const cardsAt = revealAt;
+    const frameAt = revealAt;
+    const buttonAt = revealAt;
 
     const anims: Animation[] = [];
     // 두 래퍼 높이는 항상 같은 구간에 함께 움직인다 — 하나는 줄고 하나는 늘어 총 높이가
