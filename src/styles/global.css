@@ -6288,6 +6288,22 @@ html.scr-snap-today { scroll-snap-type: y proximity; scroll-padding-top: calc(va
   font-size: var(--fs-micro); font-weight: 800; color: var(--today-orange);
   white-space: nowrap;
 }
+/* 피드 타임라인의 "현재" 눈금(요청) — 미래↔과거 경계(피드 목록의 현재 구분선) 위치를
+   트랙에 찍는다. 너 나와의 "오늘" 눈금과 같은 모양·크기, 색만 포인트색으로 구분한다. */
+.scr-scroll-timeline-now {
+  position: absolute; left: 50%; transform: translate(-50%, -50%);
+  display: flex; align-items: center;
+}
+.scr-scroll-timeline-now::before {
+  content: ""; width: 16px; height: 2px; border-radius: 2px;
+  background: var(--point);
+}
+.scr-scroll-timeline-now::after {
+  content: "현재"; position: absolute; left: 50%; bottom: 100%; margin-bottom: 2px;
+  transform: translateX(-50%);
+  font-size: var(--fs-micro); font-weight: 800; color: var(--point);
+  white-space: nowrap;
+}
 /* 현재 상단에 핀된 날짜를 알약으로 — 트랙 왼쪽에 붙여 현재 위치를 "며칠"인지로 보여준다. */
 .scr-scroll-timeline-date {
   position: absolute; right: 100%; margin-right: 8px; transform: translateY(-50%);

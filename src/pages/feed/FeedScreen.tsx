@@ -1219,7 +1219,16 @@ export default function FeedScreen() {
       {/* 우측 스크롤 타임라인 — 피드는 최신순(위=최근, 아래=과거). 무한스크롤과 함께 쓰면
           타임라인은 "지금까지 불러온 범위"를 나타내고, 더 불러올수록 아래(과거)가 늘어난다. */}
       {!loading && displayFeed.length > 0 && (
-        <ScrollNavTimeline headSelector=".scr-feed-card-head" topLabel="최근" bottomLabel="과거" />
+        <ScrollNavTimeline
+          headSelector=".scr-feed-card-head"
+          topLabel="최근"
+          bottomLabel="과거"
+          /* 미래↔과거 경계("현재" 구분선) 눈금(요청) — 구분선이 없으면(전부 과거 등)
+             groupFraction이 null을 돌려줘 눈금도 안 그려진다. */
+          markers={[
+            { key: "now", className: "scr-scroll-timeline-now", groupSelector: "[data-now-marker]" },
+          ]}
+        />
       )}
 
       {replayDrafts && (
