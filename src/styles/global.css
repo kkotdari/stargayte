@@ -7023,8 +7023,11 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   /* 임시 땜빵 기간의 카드 재질(요청) — 블러 없이 "불투명" 배경. 반투명이면 겹침
      스택에서 뒤에 잘린 카드가 비쳐 보여 이상했다(지적). 예전 반투명 톤(오버레이 9%)과
      같은 밝기를 불투명으로 환산해 채운다(color-mix 미지원 브라우저는 앞 선언 폴백). */
+  /* 흰색 섞는 비율을 9% → 4%로 낮춘다(요청: 너무 회색톤, 좀 더 검정으로). 이 값은 원래
+     예전 반투명 톤(오버레이 9%)의 밝기를 불투명으로 옮겨온 것인데, 배경이 순검정이라
+     그대로 두니 카드만 회색 판처럼 떠 보였다. #252526 → #1a1a1b. */
   background-color: var(--panel-solid);
-  background-color: color-mix(in srgb, var(--panel-solid) 91%, white);
+  background-color: color-mix(in srgb, var(--panel-solid) 96%, white);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.09),
     inset 0 0 0 1px rgba(255, 255, 255, 0.045),
