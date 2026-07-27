@@ -7128,16 +7128,23 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    받는다 — 연출 중에는 JS가 인라인 height로 그 사이를 잇는다(FeedScreen).
    묶음 테두리(레일)는 두지 않는다 — 포스트가 좌우 여백 없이 화면을 꽉 채우게 되면서
    그 테두리를 그릴 자리 자체가 없어졌다. */
-.scr-feed-stack { display: flex; flex-direction: column; position: relative; }
-.scr-feed-stack-sum, .scr-feed-stack-rest { display: block; }
-.scr-feed-stack-sum-inner, .scr-feed-stack-rest-inner { overflow: hidden; min-height: 0; height: 0; }
-.scr-feed-stack-opened .scr-feed-stack-rest-inner { height: auto; }
-.scr-feed-stack:not(.scr-feed-stack-opened) .scr-feed-stack-sum-inner { height: auto; }
-.scr-feed-stack-rest-list { display: flex; flex-direction: column; gap: var(--feed-card-gap); }
+/* 카드는 한 장이다(요청) — 요약(참가자 명단)은 늘 보이고, 그 아래 목록 영역만 0 ↔ 실제
+   높이로 자란다. 겉보기로는 카드 안에 카드가 있는 모양이지만 실제로는 한 장 안에서
+   내용만 늘어난다. 연출 중에는 JS가 인라인 height로 그 사이를 잇는다(FeedScreen). */
+.scr-feed-stack-inner { min-height: 0; height: 0; overflow: hidden; }
+.scr-feed-stack-opened .scr-feed-stack-inner { height: auto; overflow: visible; }
+/* 목록은 위쪽 요약과 한 덩어리로 이어져야 하므로 포스트 사이 간격(--feed-card-gap)이
+   아니라 훨씬 좁은 간격을 쓴다 — 여기부터는 별개의 글이 아니라 같은 글의 문단이다. */
+.scr-feed-stack-list { display: flex; flex-direction: column; }
 .scr-feed-stack-reveal { position: relative; }
-/* 되돌아가는 버튼은 목록 맨 위, 포스트 바깥(페이지 배경) 위에 놓인다 — 요약의 "자세히
-   보기"가 있던 자리 근처라 길게 스크롤하지 않고 바로 접을 수 있다. */
-.scr-feed-stack-toggle-collapse { padding: 0 0 var(--post-pad-y); }
+/* 카드 안의 경기 한 건 — 포스트 껍데기(배경·블러)를 벗고 옅은 구분선만 남긴다.
+   꼬리 여백은 벗기면 안 된다: 댓글이 없을 때 "댓글" 버튼이 이 여백 안에 절대배치로
+   얹히기 때문에(.scr-match-notes-empty), 자리를 안 비워두면 요약 글자 위에 겹친다. */
+.scr-feed-stack-item { position: relative; padding-bottom: 26px; }
+.scr-feed-stack-reveal + .scr-feed-stack-reveal .scr-feed-stack-item {
+  border-top: 1px solid rgba(var(--overlay-rgb), 0.09);
+}
+.scr-feed-stack-item .scr-feed-card-head { padding-top: 14px; }
 /* 참가자 — 이름 길이가 달라도 열이 어긋나지 않게 균등 그리드를 쓴다(flex-wrap이면 이름
    길이만큼 칸이 달라져 줄이 안 맞는다). 한 줄에 세 명(요청). */
 .scr-feed-stack-sum-players {
@@ -7158,13 +7165,15 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   font-size: var(--fs-micro); font-weight: 800; color: var(--dim);
 }
 /* 제목이 줄어드는 쪽이 되도록 — 참여 인원은 항상 온전히 읽혀야 한다. */
-.scr-feed-stack-sum-card .scr-feed-card-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* 요약 포스트엔 우상단 케밥이 없어 헤더가 그 자리(44px)를 비워둘 이유가 없다. */
-.scr-feed-stack-sum-card .scr-feed-card-head { padding-right: var(--post-pad-x); }
+.scr-feed-stack > .scr-feed-card-head .scr-feed-card-label {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+/* 묶음 카드의 헤더엔 우상단 케밥이 없어 그 자리(44px)를 비워둘 이유가 없다. */
+.scr-feed-stack > .scr-feed-card-head { padding-right: var(--post-pad-x); }
 
-/* 요약 바디 전체가 펼침 버튼이다(요청) — "자세히 보기"는 그 안의 이름표일 뿐이라
-   자기 클릭 영역을 따로 갖지 않는다. */
+/* 요약 바디 전체가 펼침/접힘 토글이다(요청) — 명단 어디를 눌러도 열리고 닫힌다. */
 .scr-feed-stack-sum-body { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+/* 펼치기 ↔ 접기 — 같은 자리에서 글자만 바뀐다(요청). */
 .scr-feed-stack-toggle {
   display: block; width: 100%;
   padding: var(--post-pad-y) 0 0; border: none; background: none;
