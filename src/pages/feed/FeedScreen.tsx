@@ -382,8 +382,9 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     );
     const list = restListRef.current;
     const sumCard = sumInner?.firstElementChild as HTMLElement | null;
-    const btn = inner?.querySelector<HTMLElement>(":scope > .scr-feed-stack-toggle-collapse");
-    if (!root || !inner || !sumInner || !list || !sumCard || !btn) return;
+    const btn = root?.querySelector<HTMLElement>(":scope > .scr-feed-stack-toggle-collapse");
+    const frame = root?.querySelector<HTMLElement>(":scope > .scr-feed-stack-frame");
+    if (!root || !inner || !sumInner || !list || !sumCard || !btn || !frame) return;
 
     // 펼침/접힘에서 한 장씩 등장·퇴장시킬 카드 래퍼들.
     const cards = Array.from(
@@ -393,7 +394,7 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       inner.style.height = "";
       sumInner.style.height = "";
       sumCard.style.opacity = "";
-      list.style.borderColor = "";
+      frame.style.opacity = "";
       btn.style.opacity = "";
       cards.forEach((c) => { c.style.opacity = ""; c.style.transform = ""; });
     };
@@ -419,9 +420,7 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     // 높이 연출은 예전보다 짧게 — 이제 그 구간엔 빈 공간만 열리고 카드는 그 뒤에 나오므로
     // 오래 끌 이유가 없다.
     const dur = Math.min(360, 240 + Math.round(full * 0.07));
-    // 테두리 색은 CSS가 정한 값을 그대로 쓰고, 투명 ↔ 그 값으로만 오간다(요소 opacity를
-    // 쓰면 안쪽 카드까지 함께 흐려진다).
-    const frameColor = getComputedStyle(list).borderTopColor;
+
     // 시작 높이를 인라인으로 '지금 당장' 박는다 — WAAPI fill에만 맡기면 iOS가 첫 프레임에
     // 적용하지 않아 열린 상태가 한 번 스쳐 보인다(이 파일 곳곳에서 반복 확인된 함정).
     // 시작 상태를 인라인으로 먼저 박는다 — WAAPI fill에만 맡기면 iOS가 첫 프레임에 적용하지
@@ -430,24 +429,24 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     sumInner.style.height = open ? `${sumFull}px` : "0px";
     if (open) {
       cards.forEach((c) => { c.style.opacity = "0"; c.style.transform = "translateY(6px)"; });
-      list.style.borderColor = "transparent";
+      frame.style.opacity = "0";
       btn.style.opacity = "0";
     } else {
       sumCard.style.opacity = "0";
     }
 
-    // ── 순서표 ──
-    // 펼침: 요약 사라짐 → 자리 열림 → (테두리 + "간단히 보기" + 카드) 동시
-    // 접힘: 그 셋이 동시에 사라짐 → 자리 닫힘 → 요약 나타남
-    // 셋을 따로 세우면(테두리 → 버튼 순서) 전체가 1초를 넘겨 굼떠 보였다(요청: 동시에).
-    // 카드끼리의 시차만 남긴다 — "한 장씩" 나오는 느낌은 그 시차가 만든다.
+    // ── 순서표(요청) ──
+    // 펼침: (테두리 페이드인 + 요약 페이드아웃) → 테두리가 공간과 함께 확장 → (카드 + 버튼)
+    // 접힘: (카드 + 버튼 사라짐) → 공간·테두리 축소 → (테두리 페이드아웃 + 요약 페이드인)
+    // 테두리는 스택 전체를 감싸므로 높이 애니메이션에 그대로 얹혀 저절로 확장/축소된다 —
+    // 여기서 다루는 건 나타나고 사라지는 시점뿐이다.
     const cardsSpan = CARD_FADE_MS + Math.max(0, cards.length - 1) * CARD_STAGGER_MS;
-    const revealAt = open ? SUMMARY_FADE_MS + dur : 0;
-    const heightAt = open ? SUMMARY_FADE_MS : cardsSpan;
-    const summaryAt = open ? 0 : cardsSpan + dur;
-    const cardsAt = revealAt;
-    const frameAt = revealAt;
-    const buttonAt = revealAt;
+    const fadeSpan = Math.max(SUMMARY_FADE_MS, FRAME_FADE_MS);
+    const heightAt = open ? fadeSpan : cardsSpan;
+    const summaryAt = open ? 0 : heightAt + dur;
+    const frameAt = open ? 0 : heightAt + dur;
+    const cardsAt = open ? heightAt + dur : 0;
+    const buttonAt = cardsAt;
 
     const anims: Animation[] = [];
     // 두 래퍼 높이는 항상 같은 구간에 함께 움직인다 — 하나는 줄고 하나는 늘어 총 높이가
@@ -464,9 +463,9 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       [{ opacity: open ? 1 : 0 }, { opacity: open ? 0 : 1 }],
       { duration: SUMMARY_FADE_MS, fill: "both", easing: open ? "ease-in" : "ease-out", delay: summaryAt },
     ));
-    anims.push(list.animate(
-      [{ borderColor: open ? "transparent" : frameColor }, { borderColor: open ? frameColor : "transparent" }],
-      { duration: FRAME_FADE_MS, fill: "both", easing: "linear", delay: frameAt },
+    anims.push(frame.animate(
+      [{ opacity: open ? 0 : 1 }, { opacity: open ? 1 : 0 }],
+      { duration: FRAME_FADE_MS, fill: "both", easing: open ? "ease-out" : "ease-in", delay: frameAt },
     ));
     anims.push(btn.animate(
       [{ opacity: open ? 0 : 1 }, { opacity: open ? 1 : 0 }],
@@ -540,16 +539,20 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
           </div>
         </div>
       </div>
+      {/* 묶음 테두리 — 요약/목록 두 래퍼를 감싸는 스택 전체에 붙여, 높이가 변하면 그대로
+          따라 자란다(요청: 테두리가 먼저 뜨고 공간이 열리며 확장). 접힘 땐 요약 카드
+          크기, 펼침 땐 목록 크기가 된다. */}
+      <span className="scr-feed-stack-frame" aria-hidden />
+      {/* 되돌아가는 버튼은 테두리 바깥, 스택 위 여백에 얹는다(요청) — absolute라 스택
+          높이에 안 잡히고, 그래서 테두리가 이 버튼을 감싸지 않는다. */}
+      <button
+        type="button" className="scr-feed-stack-toggle scr-feed-stack-toggle-collapse"
+        onClick={() => toggleOpen(false)} tabIndex={open ? 0 : -1}
+      >
+        간단히 보기
+      </button>
       <div className="scr-feed-stack-rest" aria-hidden={!open}>
         <div className="scr-feed-stack-rest-inner">
-          {/* 되돌아가는 버튼은 묶음 테두리 바깥, 그 위에 둔다(요청). */}
-          <button
-            type="button" className="scr-feed-stack-toggle scr-feed-stack-toggle-collapse"
-            onClick={() => toggleOpen(false)} tabIndex={open ? 0 : -1}
-          >
-            간단히 보기
-          </button>
-          {/* 펼친 목록은 레일 대신 연한 테두리 하나로 묶는다(요청). */}
           <div className="scr-feed-stack-rest-list" ref={restListRef}>
             {/* 펼침 애니메이션(위 useLayoutEffect의 WAAPI)이 카드 단위로 걸리도록 래핑. */}
             {orderedDesc.map((it) => (
