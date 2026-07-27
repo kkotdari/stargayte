@@ -148,8 +148,9 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
     e.preventDefault();
     draggingRef.current = true;
     setVisible(true);
-    trackRef.current?.setPointerCapture?.(e.pointerId);
-    scrubTo(e.clientY);
+    // 손잡이를 잡은 순간엔 위치를 바꾸지 않는다 — 끌어야 움직인다(잡자마자 튀면
+    // 손가락 중심으로 점프해 버린다). 캡처는 손잡이 밖으로 끌어도 추적되게.
+    (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
   };
   const onPointerMove = (e: React.PointerEvent) => {
     if (draggingRef.current) scrubTo(e.clientY);
@@ -168,14 +169,10 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
       settling && "scr-scroll-timeline-settling",
     )}>
       <span className="scr-scroll-timeline-end">{topLabel}</span>
-      <div
-        ref={trackRef}
-        className="scr-scroll-timeline-track"
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={endDrag}
-        onPointerCancel={endDrag}
-      >
+      {/* 트랙은 지시용(pointer-events:none) — 조작은 아래 thumb에서만 받는다. 화면
+          가장자리에 붙은 이 띠가 터치를 가로채는 바람에 한 손 스크롤 중 엄지가 닿으면
+          페이지가 손가락 높이로 순간이동했다(계측으로 확인, global.css 주석 참고). */}
+      <div ref={trackRef} className="scr-scroll-timeline-track">
         {markers?.map((m) => (
           markerFractions[m.key] !== null && markerFractions[m.key] !== undefined && (
             <div key={m.key} className={m.className} style={{ top: `${(markerFractions[m.key] as number) * 100}%` }} />
@@ -186,7 +183,14 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
             {dateLabel}
           </div>
         )}
-        <div className="scr-scroll-timeline-thumb" style={{ top: `${fraction * 100}%` }} />
+        <div
+          className="scr-scroll-timeline-thumb"
+          style={{ top: `${fraction * 100}%` }}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={endDrag}
+          onPointerCancel={endDrag}
+        />
       </div>
       <span className="scr-scroll-timeline-end">{bottomLabel}</span>
       {debugOn && dbg && (

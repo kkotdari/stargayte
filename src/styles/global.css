@@ -6288,10 +6288,17 @@ html.scr-snap-today { scroll-snap-type: y proximity; scroll-padding-top: calc(va
   font-size: var(--fs-micro); font-weight: 800; color: var(--dim); letter-spacing: 0.06em;
   user-select: none;
 }
+/* 트랙은 '보여주기'만 하고 터치를 받지 않는다 — 이 타임라인은 화면 오른쪽 가장자리
+   (right:2px, 폭 32px)에 세로로 길게 붙어 있고 스크롤 중에만 pointer-events가 켜진다.
+   예전엔 트랙 전체가 touch-action:none으로 터치를 가로채고 pointerdown 즉시 그 지점으로
+   스크럽했는데, 한 손으로 스크롤할 때 엄지가 자연스럽게 이 띠에 닿아 페이지가 손가락
+   높이로 순간이동했다 — 실기기 계측에서 확인된 '튐'의 정체다(분모는 그대로인데 scrollY만
+   0 또는 max로 튀었다). 이제 터치는 트랙을 통과해 페이지를 정상 스크롤하고, 스크럽은
+   아래 thumb을 직접 잡았을 때만 동작한다. */
 .scr-scroll-timeline-track {
   position: relative; flex: 1; width: 32px;
   display: flex; justify-content: center;
-  touch-action: none; cursor: pointer;
+  pointer-events: none;
 }
 /* 세로 축선 — 위(과거)는 옅고 아래(미래)로 갈수록 포인트색이 진해져 방향을 은근히 전한다. */
 .scr-scroll-timeline-track::before {
@@ -6319,6 +6326,12 @@ html.scr-snap-today { scroll-snap-type: y proximity; scroll-padding-top: calc(va
   background: var(--timeline-blue); transform: translate(-50%, -50%);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--timeline-blue) 26%, transparent), 0 1px 4px rgba(0, 0, 0, 0.3);
   z-index: 1;
+  /* 스크럽 손잡이 — 여기만 터치를 받는다(위 트랙 주석). */
+  pointer-events: auto; touch-action: none; cursor: grab;
+}
+/* 12px 점은 손가락으로 잡기엔 작아 보이지 않는 여유 히트 영역을 덧댄다. */
+.scr-scroll-timeline-thumb::after {
+  content: ""; position: absolute; inset: -14px; border-radius: 50%;
 }
 /* "오늘" 눈금 — 트랙 위 오늘 위치에 짧은 가로선 + 라벨. 썸이 지나가며 여기서 딱 걸린다.
    라벨을 트랙 왼쪽으로 띄우던 이전 방식은 현재 위치 알약(.scr-scroll-timeline-date,
