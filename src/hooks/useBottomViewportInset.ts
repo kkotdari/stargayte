@@ -28,15 +28,10 @@ export function useBottomViewportInset() {
     };
     const update = () => {
       if (!vv) { root.style.setProperty("--vv-bottom-inset", "0px"); return; }
-      // 키보드가 떠 있는 동안엔 이 값을 '갱신하지 않는다' — 0으로 덮지도 않는다.
-      // 예전엔 0을 박았는데, 그러면 포커스가 풀리는 순간 시트/탭바의 아래 여백이 주소창
-      // 높이만큼 모자란 채로 시작했다가 주소창이 다 자리 잡은 뒤에야 한 번 더 올라갔다.
-      // 그게 "키보드 닫힐 때 주소창보다 모달이 먼저 내려간다"는 지적의 뿌리다 — 모달이
-      // 먼저 움직인 게 아니라, 모달이 주소창 자리를 비워두지 않은 채로 먼저 앉은 것이다.
-      // 마지막으로 잰 정상값을 그대로 유지하면 포커스가 풀리는 즉시 최종 위치에 앉고,
-      // 주소창은 그 아래로 미끄러져 들어온다. 키보드 뒤에 있는 동안엔 어차피 안 보이고,
-      // 하단 UI(탭바/FAB)는 그 구간에 각자 숨어 있다.
-      if (keyboardOpen()) return;
+      // (한때 "마지막 정상값 유지"로 바꿔봤다 — 키보드를 닫을 때 시트가 주소창 자리를
+      // 모자라게 잡는 줄 알고. 실제로는 자리 계산은 그 전에도 맞았고 타이밍만 어긋난
+      // 것이라(지적) 원래대로 되돌렸다. 타이밍은 시트 쪽 padding 트랜지션이 맡는다.)
+      if (keyboardOpen()) { root.style.setProperty("--vv-bottom-inset", "0px"); return; }
       // 레이아웃 뷰포트(innerHeight, 주소창 뒤까지 포함) − 실제 보이는 높이 − 위쪽으로 밀린 양.
       const raw = Math.round(window.innerHeight - vv.height - vv.offsetTop);
       // 주소창은 아무리 커도 ~80px이다. 그보다 큰 값은 주소창이 아니라 '아직 내려가는 중인
