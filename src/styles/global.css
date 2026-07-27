@@ -7939,18 +7939,11 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
     inset 0 0 0 1px rgba(255, 255, 255, 0.5),
     0 1px 6px rgba(0, 0, 0, 0.08);
 }
-/* 스택 커밋용 View Transition(FeedScreen toggleOpen) — 임시 땜빵으로 복원(요청).
-   기본 크로스페이드는 쓰지 않는다(커밋 전후 화면이 픽셀 단위로 같게 설계돼 보일 게
-   없다). 이전 화면 스냅샷(old)을 2~3프레임 들고 있다가 즉시 교체 — 그 사이 WebKit이
-   커밋 프레임(클립 토글 + 즉시 스크롤 보정)의 통짜 재래스터를 끝내므로 깜빡임이 화면에
-   안 나온다. 부작용: 스냅샷 구간(≈48ms) 동안 화면의 backdrop-filter(탭바·FAB)가 잠깐
-   투명해진다 — 피드 카드/peek의 블러는 제거했으므로(위 .scr-feed-card) 훼손 범위는
-   그 둘뿐. 근본 해결(즉시 스크롤 점프 제거) 전까지의 우회다.
-   (주의: 전역 규칙 — 다른 곳에서 View Transition을 새로 쓰면 이 즉시 교체가 적용된다.) */
-::view-transition-old(root) { animation: scr-vt-hold 48ms steps(1, end) both; }
-::view-transition-new(root) { animation: scr-vt-cover 48ms steps(1, end) both; }
-@keyframes scr-vt-hold { from { opacity: 1; } to { opacity: 1; } }
-@keyframes scr-vt-cover { from { opacity: 0; } to { opacity: 0; } }
+/* (스택 커밋용 View Transition 규칙은 최종 제거 — iOS 사파리에서 VT 스냅샷이 도는 동안
+   backdrop-filter가 일제히 투명해질 뿐 아니라, 엣지-투-엣지 합성이 끊겨 주소줄/상태바
+   뒤 컨텐츠가 잘리고 배경색 띠가 번쩍였다(지적). 스냅샷은 레이아웃 뷰포트에만 그려져
+   크롬 뒤 확장을 못 덮는다 — VT 자체가 깜빡임의 원인. 피드에서 blur를 전부 걷어낸
+   지금은 클립 토글이 재래스터 폭발을 일으키지 않아 VT 없이 맨 커밋으로 간다.) */
 
 /* 겹침 스택(같은 날 게임결과 2건 이상) — 접힘: 첫 게임 카드 + 아래로 삐져나온 뒷카드
    밑단("+N건"). 펼침: 전체 카드 + 마지막 카드 위 줄이기 알약. */

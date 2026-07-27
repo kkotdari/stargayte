@@ -1,5 +1,4 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
-import { flushSync } from "react-dom";
 import RankShiftCard, { RankShiftMenu } from "./RankShiftCard";
 import { CalendarPlus, ClipboardList, MoreHorizontal, Phone, Plus, Upload } from "lucide-react";
 import { Spinner } from "../../components/common/Feedback";
@@ -405,35 +404,20 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
   // 진행 중인 펼침 연출을 중단·원복하는 함수 — 접기/재펼침/언마운트 때 호출한다.
   const cancelRevealRef = useRef<(() => void) | null>(null);
   useEffect(() => () => cancelRevealRef.current?.(), []);
-  // ── 임시 땜빵(요청: "깜빡임 문제 해결 급한 땜빵") ──
-  // 커밋(클립 0fr↔1fr + 즉시 스크롤 보정) 프레임의 WebKit 통짜 재래스터 깜빡임을
-  // View Transition 스냅샷으로 도로 덮는다. VT는 도는 동안 페이지를 평평한 스냅샷으로
-  // 대체해 화면의 backdrop-filter가 일제히 투명해지는 부작용이 있는데(그래서 한 번
-  // 걷어냈다), 피드 배경 이미지를 제거하면서 카드/peek의 블러도 함께 제거했으므로
-  // (global.css .scr-feed-card 참고) 남는 훼손은 탭바·FAB 블러가 스냅샷 구간(≈48ms)
-  // 동안 잠깐 빠지는 것뿐 — 깜빡임보다 덜 거슬린다는 판단의 임시 우회다. 근본 해결
-  // (즉시 스크롤 점프 제거)은 별도 재설계로 추진 중.
-  const pendingVTRef = useRef<Promise<unknown> | null>(null);
+  // View Transition은 최종적으로 제거 — 두 번 시도했지만 iOS 사파리에서 VT 스냅샷이
+  // 도는 동안 (1) 화면의 backdrop-filter가 일제히 투명해졌고(1차 제거 사유), (2)
+  // 엣지-투-엣지 합성이 끊겨 주소줄/상태바 뒤 컨텐츠가 잘리고 배경색 띠가 번쩍였다
+  // (지적: "주소줄과 상태바가 잠깐 컨텐츠가 잘리고 배경색 띠로 바뀌어" — 스냅샷은
+  // 레이아웃 뷰포트에만 그려져 크롬 뒤 확장이 사라진다). 즉 VT 자체가 깜빡임을
+  // 만든다. VT의 원래 목적(클립 토글 때 블러 레이어 생성/파괴 재래스터 가리기)은
+  // 피드에서 backdrop-filter를 전부 걷어내면서(카드 불투명·탭바/FAB 무블러 반투명)
+  // 소멸했으므로 이제 맨 커밋으로 충분하다. 시작·종료 상태는 아래 useLayoutEffect가
+  // 페인트 전에 인라인으로 못박아 커밋 프레임에 위치 점프가 없다.
   const toggleOpen = (next: boolean) => {
     pendingAnchorRef.current = {
       scrollY: window.scrollY,
       docHeight: document.documentElement.scrollHeight,
     };
-    // flushSync: React 커밋(과 useLayoutEffect의 스크롤 보정)이 캡처 콜백 안에서
-    // 동기로 끝나야 "새 상태"가 올바르게 찍힌다.
-    const doc = document as Document & {
-      startViewTransition?: (cb: () => void) => { finished?: Promise<unknown> };
-    };
-    if (typeof doc.startViewTransition === "function") {
-      try {
-        const vt = doc.startViewTransition(() => { flushSync(() => setOpen(next)); });
-        // 펼침 rise는 VT 오버레이가 걷힌 뒤 시작(아래 useLayoutEffect) — 오버레이가
-        // 라이브 DOM을 애니메이션 도중 드러내며 재합성되는 걸 막는다.
-        pendingVTRef.current = vt?.finished ?? null;
-        return;
-      } catch { /* 폴백으로 진행 */ }
-    }
-    pendingVTRef.current = null;
     setOpen(next);
   };
   // 접기 페이드아웃(closeStack)이 진행 중인지 — 중복 클릭 방지.
@@ -646,17 +630,8 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     // 이미 한참 진행된 지점부터 그려져 위 카드들이 중간부터 뚝 나타났다(지적: "쓰윽
     // 올라가는 게 아니라 갑자기 공간이 생기면서 깜빡임"). 시작 상태는 위 인라인 스타일이
     // 잡아두고 있어 첫 프레임은 아무것도 안 움직인 화면 그대로 보인다.
-    // rise 시작 타이밍 — VT(임시 땜빵, toggleOpen 주석)가 있으면 오버레이가 완전히
-    // 걷힌 뒤(vt.finished) 시작한다. 오버레이가 rise 도중 라이브 DOM을 드러내면
-    // WebKit이 그 서브트리를 재합성하며 또 깜빡인다. VT 미지원이면 rAF 폴백.
-    const vtDone = pendingVTRef.current;
-    pendingVTRef.current = null;
     let raf1 = 0, raf2 = 0;
-    if (vtDone) {
-      void vtDone.then(() => { if (!cancelled) start(); }).catch(() => { if (!cancelled) start(); });
-    } else {
-      raf1 = requestAnimationFrame(() => { raf2 = requestAnimationFrame(start); });
-    }
+    raf1 = requestAnimationFrame(() => { raf2 = requestAnimationFrame(start); });
 
     cancelRevealRef.current = () => {
       cancelled = true;
