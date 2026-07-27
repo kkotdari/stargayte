@@ -24,6 +24,7 @@ import { cx } from "../../utils/format";
 import { api } from "../../api/client";
 import { useCursorPagination } from "../../hooks/useCursorPagination";
 import { useEditableFocused } from "../../hooks/useEditableFocused";
+import { usePageBackground } from "../../hooks/usePageBackground";
 import { buildReplayDrafts, type ReplayDraft } from "../../utils/replayDraft";
 import { hasAppUpdatePreloadErrorOccurred } from "../../utils/appUpdate";
 import type { Challenge, FeedTargetType, Match, MatchSlot, MatchType, Member, RankSnapshot } from "../../types";
@@ -535,6 +536,11 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
 }
 
 export default function FeedScreen() {
+  // 화면 배경 사진(요청: 포스트 구분감을 위해 복구, 양 테마 모두). 포스트는 채움이 완전
+  // 투명하고 블러만 있어서, 뒤에 사진이 있어야 그 블러가 일을 한다 — 포스트 안쪽은 흐릿한
+  // 사진, 포스트 사이는 또렷한 사진이 되어 경계가 저절로 생긴다. 사진은 통계와 같은 것을
+  // 쓴다(원래 피드 배경이던 파일이 통계로 옮겨가며 이름만 stats_bg*가 됐다).
+  usePageBackground("/images/bg/stats_bg.jpg", "/images/bg/stats_bg_mobile.png", "/images/bg/stats_bg_light.png");
   // 검색/필터(기록실과 동일 구성) — 유저 검색, 경기유형, 게임번호. 불러온 피드 안에서 즉시 필터.
   const [search, setSearch] = useState("");
   // 피드 유형 필터(요청: 분류(개인전/팀전) 제거하고 유형 드롭다운 추가). 게임결과/너나와/

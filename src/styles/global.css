@@ -2107,7 +2107,11 @@ html:not(.scr-light-theme) .scr-stats-list-panel-v2 .scr-stat-name-cell, html:no
    적어두면 한쪽만 고쳐져 어긋난다). 0.55/0.42/0.6에서 한 단계 더 진하게(요청) — 사진이
    밝은 구간에서 표의 흰 글씨·옅은 막대가 묻혔다. */
 html.scr-page-bg:not(.scr-light-theme) {
-  --page-bg-scrim: linear-gradient(180deg, rgba(3,3,6,0.72) 0%, rgba(3,3,6,0.62) 45%, rgba(3,3,6,0.78) 100%);
+  --page-bg-scrim: linear-gradient(180deg, rgba(3,3,6,0.86) 0%, rgba(3,3,6,0.78) 45%, rgba(3,3,6,0.9) 100%);
+}
+/* 라이트도 같은 문법 — 흰 스크림을 덮어 사진을 눌러 둔다. */
+html.scr-page-bg.scr-page-bg-light.scr-light-theme {
+  --page-bg-scrim: linear-gradient(180deg, rgba(252,252,254,0.88) 0%, rgba(252,252,254,0.8) 45%, rgba(252,252,254,0.92) 100%);
 }
 html.scr-page-bg:not(.scr-light-theme) .scr-main::before {
   background:
@@ -2123,10 +2127,15 @@ html.scr-page-bg:not(.scr-light-theme) .scr-main::before {
       var(--void);
   }
 }
-/* 라이트 테마에는 배경 사진을 쓰지 않는다(요청: "라이트 테마 통계 배경 제거") — 밝은
-   바탕에서는 사진이 표/글씨와 경쟁만 해서 읽기를 방해했다. 사진 배경은 다크 전용이다.
-   (StatsScreen도 라이트 이미지를 훅에 넘기지 않으므로 --page-bg-image-light 토큰 자체가
-   더 이상 세팅되지 않는다.) */
+/* 라이트 테마 배경은 훅에 라이트 이미지를 넘긴 화면에서만 켜진다(.scr-page-bg-light).
+   통계는 안 넘기므로 예전처럼 다크 전용이고, 피드는 넘기므로 양 테마 모두 깔린다
+   (요청: 포스트 구분감을 위해 피드 배경 복구). */
+html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
+  background:
+    var(--page-bg-scrim),
+    var(--page-bg-image-light) center / cover no-repeat,
+    var(--void);
+}
 
 /* ===== race badge — 종족 첫 글자(T/P/Z/R) 사각 배지(아이콘 커스텀 기능은 제거됨) ===== */
 .scr-race-badge {
