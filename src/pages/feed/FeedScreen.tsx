@@ -36,7 +36,6 @@ const MAX_REPLAY_FILES = 20;
 // 공간(높이)이 다 열린 뒤에 포스트가 한 장씩 등장한다(요청) — 접을 땐 그 반대다.
 const CARD_FADE_MS = 150;
 const CARD_STAGGER_MS = 45;
-const SUMMARY_FADE_MS = 120;
 const BUTTON_FADE_MS = 120;
 
 // 피드 — 커뮤니티 활동(경기 결과, 너 나와! 일정)을 한 타임라인으로 보여주는 홈 화면.
@@ -379,9 +378,8 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     const clearInline = () => {
       inner.style.height = "";
       sumInner.style.height = "";
-      sumCard.style.opacity = "";
       btn.style.opacity = "";
-      cards.forEach((c) => { c.style.opacity = ""; c.style.transform = ""; });
+      cards.forEach((c) => { c.style.transform = ""; });
     };
     const cleanup = () => { clearInline(); cancelRevealRef.current = null; };
 
@@ -406,18 +404,22 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     inner.style.height = open ? "0px" : `${full}px`;
     sumInner.style.height = open ? `${sumFull}px` : "0px";
     if (open) {
-      cards.forEach((c) => { c.style.opacity = "0"; c.style.transform = "translateY(6px)"; });
+      cards.forEach((c) => { c.style.transform = "translateY(8px)"; });
       btn.style.opacity = "0";
-    } else {
-      sumCard.style.opacity = "0";
     }
 
-    // ── 순서표(요청) ──
-    // 펼침: 요약 페이드아웃 → 공간이 열림 → (버튼 + 포스트 한 장씩)
-    // 접힘: (버튼 + 포스트 사라짐) → 공간이 닫힘 → 요약 페이드인
+    // ── 순서표 ──
+    // 펼침: 공간이 열림 → (버튼 + 포스트가 한 장씩 제자리로)
+    // 접힘: (버튼 + 포스트가 한 장씩 물러남) → 공간이 닫힘
+    //
+    // 예전엔 요약/포스트를 opacity로 페이드했는데, opacity<1인 조상은 스스로
+    // Backdrop Root가 되어 그 안의 backdrop-filter가 배경을 전혀 못 샘플링한다 — 배경
+    // 사진이 깔린 뒤로는 연출 내내 스태킹 포스트만 유리가 풀린 것처럼 보였다(지적).
+    // 그래서 포스트에는 opacity를 아예 안 건다. 나타나고 사라지는 건 래퍼의 높이(클립)가
+    // 맡고, 이동(translateY)만 얹어 한 장씩 들어오는 리듬을 남긴다.
+    // "간단히 보기"는 포스트가 아니라(유리 없음) 지금처럼 페이드해도 안전하다.
     const cardsSpan = CARD_FADE_MS + Math.max(0, cards.length - 1) * CARD_STAGGER_MS;
-    const heightAt = open ? SUMMARY_FADE_MS : cardsSpan;
-    const summaryAt = open ? 0 : heightAt + dur;
+    const heightAt = open ? 0 : cardsSpan;
     const cardsAt = open ? heightAt + dur : 0;
 
     const anims: Animation[] = [];
@@ -431,10 +433,6 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       [{ height: open ? `${sumFull}px` : "0px" }, { height: open ? "0px" : `${sumFull}px` }],
       { duration: dur, easing: "cubic-bezier(0.32, 0.72, 0, 1)", fill: "both", delay: heightAt },
     ));
-    anims.push(sumCard.animate(
-      [{ opacity: open ? 1 : 0 }, { opacity: open ? 0 : 1 }],
-      { duration: SUMMARY_FADE_MS, fill: "both", easing: open ? "ease-in" : "ease-out", delay: summaryAt },
-    ));
     anims.push(btn.animate(
       [{ opacity: open ? 0 : 1 }, { opacity: open ? 1 : 0 }],
       { duration: BUTTON_FADE_MS, fill: "both", easing: open ? "ease-out" : "ease-in", delay: cardsAt },
@@ -445,8 +443,8 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       const order = open ? i : cards.length - 1 - i;
       anims.push(c.animate(
         [
-          { opacity: open ? 0 : 1, transform: open ? "translateY(6px)" : "none" },
-          { opacity: open ? 1 : 0, transform: open ? "none" : "translateY(6px)" },
+          { transform: open ? "translateY(8px)" : "none" },
+          { transform: open ? "none" : "translateY(8px)" },
         ],
         {
           duration: CARD_FADE_MS,
@@ -479,15 +477,15 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
             <div className="scr-feed-card-head" data-date-label={dateLabel}>
               <div className="scr-feed-card-head-meta">
                 <span className="scr-feed-card-time">{dateLabel}</span>
-                <span className="scr-feed-stack-sum-count">{participants.length}명 참여</span>
               </div>
               <div className="scr-feed-card-head-title">
                 <ClipboardList size={16} aria-hidden />
-                {/* 묶음이면 라벨 자체가 몇 건인지 말해준다(요청) — 위 집계에 게임 수를 또
-                    적으면 중복이라, 거긴 참여 인원만 남긴다. 한 판이면 "1건"은 안 붙인다. */}
+                {/* 묶음이면 라벨 자체가 몇 건인지 말해준다(요청) — 참여 인원은 그 바로
+                    오른쪽에 붙인다(요청). 한 판이면 "1건"은 안 붙인다. */}
                 <span className="scr-feed-card-label">
                   게임결과{stack.items.length > 1 ? ` ${stack.items.length}건` : ""}
                 </span>
+                <span className="scr-feed-stack-sum-count">{participants.length}명 참여</span>
               </div>
             </div>
             {/* 바디 전체가 펼침 버튼이다(요청) — 명단 어디를 눌러도 열린다. button 안에는
