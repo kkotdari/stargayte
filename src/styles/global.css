@@ -7070,11 +7070,13 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-feed-stack:not(.scr-feed-stack-opened) .scr-feed-stack-sum-inner { height: auto; }
 
 /* ── 요약 카드 ── */
-.scr-feed-stack-sum-card { padding-bottom: 4px; }
+/* 헤더 아래·내용 아래 여백이 다른 카드보다 좁아 답답했다(지적) — 카드 기본 아래 여백
+   (10px)을 줄이던 재정의를 걷고, 명단 위 여백도 8→14px로 늘린다. */
+.scr-feed-stack-sum-card { padding-bottom: 10px; }
 /* 참가자 — 한 줄에 네 명 고정(요청). 이름 길이가 달라도 열이 어긋나지 않게 균등 4열
    그리드를 쓴다(flex-wrap이면 이름 길이만큼 칸이 달라져 줄이 안 맞는다). */
 .scr-feed-stack-sum-players {
-  list-style: none; margin: 0; padding: 8px 16px 0;
+  list-style: none; margin: 0; padding: 14px 16px 0;
   display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px 6px;
 }
 .scr-feed-stack-sum-player { display: flex; align-items: center; gap: 5px; min-width: 0; }
@@ -7096,7 +7098,7 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 /* ── 여닫는 텍스트 버튼 ── 요약 카드 아래("자세히 보기")와 목록 맨 위("간단히 보기")에
    같은 모양으로 둔다(요청). */
 .scr-feed-stack-toggle {
-  display: block; width: 100%; padding: 10px 0 8px; border: none; background: none;
+  display: block; width: 100%; padding: 14px 0 12px; border: none; background: none;
   font-family: inherit; font-size: var(--fs-micro); font-weight: 700; color: var(--dim);
   text-align: center; cursor: pointer; -webkit-tap-highlight-color: transparent;
 }
