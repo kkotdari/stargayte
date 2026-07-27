@@ -26,14 +26,24 @@ interface ScrollNavTimelineProps {
 export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel, markers }: ScrollNavTimelineProps) {
   const [visible, setVisible] = useState(false);
   const [scrollable, setScrollable] = useState(false);
-  const [fraction, setFraction] = useState(0);
+  // thumb/날짜 알약의 세로 위치(트랙 기준 정수 px). fraction과 따로 두는 이유: 값이 같은
+  // 프레임엔 setState가 리렌더를 건너뛰어(React가 동일 값이면 bail out) 알약 글자가 매
+  // 프레임 다시 그려지지 않는다.
+  const [posPx, setPosPx] = useState(0);
   const [markerFractions, setMarkerFractions] = useState<Record<string, number | null>>({});
   const [dateLabel, setDateLabel] = useState<string | null>(null);
-  // 트랙 높이 — thumb/날짜 알약을 %가 아니라 '정수 px'로 앉히기 위해 실측한다(아래 주석).
-  const [trackH, setTrackH] = useState(0);
   const trackRef = useRef<HTMLDivElement>(null);
+  // 트랙 높이 — 스크롤 중엔 안 변하므로 리사이즈 때만 갱신한다(매 프레임 실측하면
+  // 레이아웃을 강제로 계산하게 되고 값도 미세하게 흔들린다).
+  const trackHRef = useRef(0);
+  // 뷰포트 높이도 캐시한다 — iOS는 스크롤 중 주소창이 접히며 innerHeight/clientHeight가
+  // 계속 바뀌는데, 이걸 매 프레임 분모(max)에 쓰면 scrollTop이 같아도 비율이 출렁여
+  // thumb·알약이 덜덜 떨렸다(지적, 정수 px 반올림만으론 안 잡힌 진짜 원인).
+  const vhRef = useRef(0);
   const hideTimerRef = useRef<number | null>(null);
   const draggingRef = useRef(false);
+  // 스크럽 중에는 위치 트랜지션을 꺼야 손가락에 즉시 붙는다(아래 렌더 주석).
+  const [dragging, setDragging] = useState(false);
 
   // 지금 상단에 스티키로 핀된 날짜 헤더의 라벨 — 현재 위치를 "며칠"인지로 보여준다.
   // atBottom이면(더 스크롤할 여지가 없는 맨 끝) 마지막 헤더를 그냥 그대로 쓴다 — 마지막
@@ -68,17 +78,25 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
     return Math.min(1, Math.max(0, offset / max));
   };
 
+  // 뷰포트 높이 실측 — iOS 사파리는 아래로 스크롤하면 주소창/툴바가 접히며 실제 보이는
+  // 뷰포트가 커지는데 documentElement.clientHeight는 접히기 전(작은) 레이아웃 뷰포트를
+  // 반환할 때가 있어 max = scrollHeight - clientHeight가 실제보다 커진다 → 페이지 끝까지
+  // 내려도 scrollTop/max < 1이라 thumb이 바닥에 못 닿는다(지적된 문제). 접힌 상태를
+  // 반영하는 innerHeight와 더 큰 값을 쓴다. 단 이 값을 매 스크롤 프레임 다시 재면
+  // 주소창이 접히는 동안 분모가 계속 변해 위치가 출렁이므로, 리사이즈 때만 갱신한다.
+  const measureVh = () => {
+    const { clientHeight } = getScrollMetrics();
+    vhRef.current = Math.max(clientHeight, window.innerHeight || 0);
+  };
+
   const update = () => {
-    const { scrollTop, clientHeight, scrollHeight } = getScrollMetrics();
-    // iOS 사파리는 아래로 스크롤하면 주소창/툴바가 접히며 실제 보이는 뷰포트가 커지는데
-    // documentElement.clientHeight는 접히기 전(작은) 레이아웃 뷰포트를 반환할 때가 있어
-    // max = scrollHeight - clientHeight가 실제보다 커진다 → 페이지 끝까지 내려도
-    // scrollTop/max < 1이라 thumb이 바닥에 못 닿고 살짝 위에 머문다(지적된 문제).
-    // 접힌 상태를 반영하는 innerHeight와 더 큰 값을 써서 max를 실제 바닥에 맞춘다.
-    const vh = Math.max(clientHeight, window.innerHeight || 0);
-    const max = scrollHeight - vh;
+    const { scrollTop, scrollHeight } = getScrollMetrics();
+    if (vhRef.current <= 0) measureVh();
+    const max = scrollHeight - vhRef.current;
     setScrollable(max > 40);
-    setFraction(max > 0 ? Math.min(1, Math.max(0, scrollTop / max)) : 0);
+    const f = max > 0 ? Math.min(1, Math.max(0, scrollTop / max)) : 0;
+    // 정수 px로 반올림해 담는다 — 같은 픽셀이면 setState가 리렌더 자체를 건너뛴다.
+    setPosPx(Math.round(f * trackHRef.current));
     setDateLabel(currentDateLabel(max <= 0 || scrollTop >= max - 2));
     if (markers && markers.length > 0) {
       const next: Record<string, number | null> = {};
@@ -106,14 +124,27 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [headSelector]);
 
-  // 트랙 높이 추적 — 스크롤 중엔 안 바뀌므로 리사이즈 때만 갱신한다.
+  // 트랙 높이·뷰포트 높이 추적 — 둘 다 스크롤 중엔 안 변하므로 리사이즈 때만 갱신하고,
+  // 갱신 직후 한 번 위치를 다시 계산한다.
   useEffect(() => {
     const track = trackRef.current;
     if (!track) return;
-    const ro = new ResizeObserver(() => setTrackH(track.clientHeight));
+    const remeasure = () => {
+      trackHRef.current = track.clientHeight;
+      measureVh();
+      update();
+    };
+    const ro = new ResizeObserver(remeasure);
     ro.observe(track);
-    setTrackH(track.clientHeight);
-    return () => ro.disconnect();
+    remeasure();
+    window.addEventListener("resize", remeasure);
+    window.addEventListener("orientationchange", remeasure);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", remeasure);
+      window.removeEventListener("orientationchange", remeasure);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scrollable]);
 
   // 트랙 위 포인터 위치 → 스크롤 위치로 즉시 이동(스크럽).
@@ -130,6 +161,7 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
   const onPointerDown = (e: React.PointerEvent) => {
     e.preventDefault();
     draggingRef.current = true;
+    setDragging(true);
     setVisible(true);
     trackRef.current?.setPointerCapture?.(e.pointerId);
     scrubTo(e.clientY);
@@ -139,13 +171,18 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
   };
   const endDrag = () => {
     draggingRef.current = false;
+    setDragging(false);
     showThenScheduleHide();
   };
 
   if (!scrollable) return null;
 
   return (
-    <div className={cx("scr-scroll-timeline", visible && "scr-scroll-timeline-visible")}>
+    <div className={cx(
+      "scr-scroll-timeline",
+      visible && "scr-scroll-timeline-visible",
+      dragging && "scr-scroll-timeline-dragging",
+    )}>
       <span className="scr-scroll-timeline-end">{topLabel}</span>
       <div
         ref={trackRef}
@@ -162,20 +199,23 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
         ))}
         {/* thumb·날짜 알약은 top:%(레이아웃) 대신 정수 px transform(합성)으로 앉힌다 —
             %는 매 프레임 소수점 위치가 되어 알약 글자가 서브픽셀로 다시 래스터되며
-            덜덜 떨려 보였다(지적). 정수 px로 반올림하면 글자가 같은 픽셀 격자에 앉고,
-            transform이라 레이아웃도 안 건드린다. 가로 정렬(-50%)은 인라인 transform이
-            CSS transform을 통째로 덮으므로 여기서 같이 준다. */}
+            덜덜 떨렸다(지적). 위치값은 update()에서 이미 정수로 반올림해 두므로 같은
+            픽셀이면 리렌더 자체가 없다. 그래도 iOS는 루트 스크롤을 브라우저 프로세스가
+            비동기로 들고 있어 JS가 읽는 scrollTop이 프레임마다 미세하게 앞뒤로 흔들리는데,
+            CSS 트랜지션(짧은 linear)이 그 흔들림을 흡수해 부드럽게 따라가게 한다.
+            드래그(스크럽) 중엔 즉시 반응해야 하므로 트랜지션을 끈다.
+            가로 정렬(-50%)은 인라인 transform이 CSS transform을 통째로 덮으므로 같이 준다. */}
         {dateLabel && (
           <div
             className="scr-scroll-timeline-date"
-            style={{ transform: `translate3d(0, ${Math.round(fraction * trackH)}px, 0) translateY(-50%)` }}
+            style={{ transform: `translate3d(0, ${posPx}px, 0) translateY(-50%)` }}
           >
             {dateLabel}
           </div>
         )}
         <div
           className="scr-scroll-timeline-thumb"
-          style={{ transform: `translate3d(-50%, ${Math.round(fraction * trackH)}px, 0) translateY(-50%)` }}
+          style={{ transform: `translate3d(-50%, ${posPx}px, 0) translateY(-50%)` }}
         />
       </div>
       <span className="scr-scroll-timeline-end">{bottomLabel}</span>
