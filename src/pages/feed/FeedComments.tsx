@@ -258,6 +258,17 @@ function NoteComposer({
   );
 }
 
+// 시트를 화면 밖으로 완전히 내리는 데 필요한 이동량(px). translateY(100%)를 쓸 수 없는
+// 이유: 시트 박스는 화면 아래로 --sheet-skirt(60vh)만큼 더 내려 잡혀 있어(global.css) 그
+// 100%가 '보이는 높이'보다 훨씬 크다. 화면 바닥에서 시트 윗변까지의 거리가 곧 보이는
+// 높이라, 치마 크기를 몰라도 정확히 나온다.
+function hiddenOffset(el: HTMLElement): number {
+  return Math.max(0, window.innerHeight - el.getBoundingClientRect().top);
+}
+
+// 아래로 쓸어내려 닫을 때, 이만큼 내려가면 손을 떼는 순간 닫는다.
+const SWIPE_CLOSE_PX = 96;
+
 function formatCommentTime(iso: string): string {
   const d = new Date(iso);
   const mm = `${d.getMonth() + 1}`.padStart(2, "0");
@@ -328,7 +339,9 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
   // 닫기는 내려가는 연출이 끝난 뒤에 언마운트한다 — 바로 지우면 시트가 툭 사라진다(요청:
   // 여닫을 때 트랜지션). CSS 트랜지션이 아니라 WAAPI인 이유는, 요소가 사라지는 쪽은
   // 트랜지션이 걸릴 대상 자체가 없어져 끝을 기다릴 수 없기 때문.
-  const closeSheet = () => {
+  // fromY: 쓸어내리다 손을 뗀 위치(px)에서 이어서 내려간다 — 0에서 다시 시작하면 손을 뗀
+  // 순간 시트가 위로 튕겼다가 내려간다.
+  const closeSheetFrom = (fromY: number) => {
     const el = sheetRef.current;
     if (closingRef.current) return;
     if (!el || reducedMotion()) { setEditingId(null); setSheetOpen(false); return; }
@@ -336,9 +349,14 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
     // 연출을 먼저 걸고 그 다음에 포커스를 푼다 — blur()는 키보드를 내리며 리플로우를
     // 일으켜서, 먼저 부르면 첫 프레임이 그만큼 늦게 나가 손가락을 뗀 뒤 멈칫해 보인다.
     // 닫는 연출은 짧고 뒤로 갈수록 급하게(요청: 반응 빠르게, 가속 더) — easeInCubic.
+    const total = hiddenOffset(el);
     const a = el.animate(
-      [{ transform: "translateY(0)" }, { transform: "translateY(100%)" }],
-      { duration: 160, easing: "cubic-bezier(0.32, 0, 0.67, 0)", fill: "both" },
+      [{ transform: `translateY(${fromY}px)` }, { transform: `translateY(${total}px)` }],
+      {
+        // 이미 내려온 만큼은 시간도 줄인다 — 남은 거리를 늘 같은 속도로 마무리한다.
+        duration: Math.max(90, Math.round(160 * (1 - Math.min(1, fromY / Math.max(1, total))))),
+        easing: "cubic-bezier(0.32, 0, 0.67, 0)", fill: "both",
+      },
     );
     // 키보드도 시트와 함께 내려가야 한다 — 포커스를 남겨두면 시트만 사라지고 키보드가 뜬 채 남는다.
     (document.activeElement as HTMLElement | null)?.blur?.();
@@ -350,6 +368,8 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
       closingRef.current = false;
     }).catch(() => { /* openSheet가 취소함 */ });
   };
+  // 이벤트 핸들러에 그대로 넘겨도 인자가 섞이지 않도록 감싼다(onClick은 이벤트를 넘긴다).
+  const closeSheet = () => closeSheetFrom(0);
   useEffect(() => { if (!mobile) setSheetOpen(false); }, [mobile]);
   // 시트를 열 때 배경 페이지의 스크롤 위치를 적어 두고, 닫을 때 그 자리로 되돌린다.
   //
@@ -397,9 +417,10 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
   useLayoutEffect(() => {
     const el = sheetRef.current;
     if (!sheetOpen || !el || reducedMotion()) return;
-    el.style.transform = "translateY(100%)";
+    const dy = hiddenOffset(el);
+    el.style.transform = `translateY(${dy}px)`;
     const a = el.animate(
-      [{ transform: "translateY(100%)" }, { transform: "translateY(0)" }],
+      [{ transform: `translateY(${dy}px)` }, { transform: "translateY(0)" }],
       { duration: 280, easing: "cubic-bezier(0.32, 0.72, 0, 1)", fill: "both" },
     );
     void a.finished.then(() => {
@@ -408,6 +429,71 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
     }).catch(() => {});
     return () => { try { a.cancel(); } catch { /* 이미 끝남 */ } };
   }, [sheetOpen]);
+  // 아래로 쓸어내려 닫기(요청). 시트 어디를 잡아도 되지만, 목록이 위로 스크롤될 수 있는
+  // 상황이면 그쪽에 양보한다 — 목록이 맨 위에 있을 때만 시트가 따라 내려간다(바텀시트
+  // 공통 규칙). 터치 이벤트를 직접 듣는 이유는 사파리에서 preventDefault로 브라우저의
+  // 기본 스크롤/새로고침 제스처를 확실히 끊기 위해서다(ScrollNavTimeline과 같은 이유).
+  useEffect(() => {
+    const el = sheetRef.current;
+    if (!mobile || !sheetOpen || !el) return;
+    let startY = 0;
+    let dy = 0;
+    let tracking = false;
+    let dragging = false;
+    const onStart = (e: TouchEvent) => {
+      if (closingRef.current || e.touches.length !== 1) return;
+      startY = e.touches[0].clientY;
+      dy = 0;
+      tracking = true;
+      dragging = false;
+    };
+    const onMove = (e: TouchEvent) => {
+      if (!tracking) return;
+      const delta = e.touches[0].clientY - startY;
+      if (!dragging) {
+        if (Math.abs(delta) < 6) return;          // 아직 방향이 정해지지 않음
+        const body = sheetBodyRef.current;
+        const inBody = !!body && body.contains(e.target as Node | null);
+        // 위로 미는 중이거나, 목록 안에서 아직 위로 스크롤할 게 남았으면 드래그하지 않는다.
+        if (delta < 0 || (inBody && body!.scrollTop > 0)) { tracking = false; return; }
+        dragging = true;
+        startY = e.touches[0].clientY;            // 문턱만큼의 튐 제거
+        return;
+      }
+      dy = Math.max(0, delta);
+      if (e.cancelable) e.preventDefault();
+      el.style.transform = `translateY(${dy}px)`;
+    };
+    const onEnd = () => {
+      if (!tracking) return;
+      tracking = false;
+      if (!dragging) return;
+      const moved = dy;
+      dy = 0;
+      if (moved > SWIPE_CLOSE_PX) { closeSheetFrom(moved); return; }
+      // 문턱에 못 미치면 제자리로 되돌린다.
+      const back = el.animate(
+        [{ transform: `translateY(${moved}px)` }, { transform: "translateY(0)" }],
+        { duration: 190, easing: "cubic-bezier(0.32, 0.72, 0, 1)", fill: "both" },
+      );
+      void back.finished.then(() => {
+        try { back.cancel(); } catch { /* 이미 끝남 */ }
+        el.style.transform = "";
+      }).catch(() => {});
+    };
+    el.addEventListener("touchstart", onStart, { passive: true });
+    el.addEventListener("touchmove", onMove, { passive: false });
+    el.addEventListener("touchend", onEnd);
+    el.addEventListener("touchcancel", onEnd);
+    return () => {
+      el.removeEventListener("touchstart", onStart);
+      el.removeEventListener("touchmove", onMove);
+      el.removeEventListener("touchend", onEnd);
+      el.removeEventListener("touchcancel", onEnd);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mobile, sheetOpen]);
+
   // 목록은 오래된 순으로 쌓이므로(create가 뒤에 붙인다) 열자마자 맨 아래(최신)로 내린다.
   // 댓글이 늘어날 때도 방금 쓴 것이 보이게 같이 내린다.
   useLayoutEffect(() => {
