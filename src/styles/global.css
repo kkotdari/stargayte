@@ -2092,7 +2092,12 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 .scr-stats-list-panel-v2 .scr-stat-name-head.scr-stat-sort-btn {
   background-image: none;
   background-color: var(--panel-solid);
-  background-color: color-mix(in srgb, var(--panel-solid) 70%, transparent);
+  /* 값은 바디 유저칸(.scr-stat-name-cell)과 반드시 같게 유지 — 이 규칙이 특이도로
+     그쪽을 덮으므로, 한쪽만 고치면 헤더/바디 톤이 어긋난다(실제로 70/78로 어긋났다). */
+  background-color: color-mix(in srgb, var(--panel-solid) 78%, transparent);
+}
+.scr-light-theme .scr-stats-list-panel-v2 .scr-stat-name-head.scr-stat-sort-btn {
+  background-color: color-mix(in srgb, var(--panel-solid) 45%, transparent);
 }
 @media (hover: hover) { .scr-stat-sort-btn:hover { color: var(--text); } }
 /* 정렬 활성 표시는 색(포인트색) 대신 기본 글자색을 더 굵게 — :hover도 같은 규칙을
@@ -5029,27 +5034,31 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   /* 블러 제거(임시 땜빵, 요청) — View Transition 우회가 도는 48ms 동안 backdrop-filter
      요소가 일제히 투명해지는 게 눈에 띄어, 땜빵 기간엔 블러 없이 반투명만 쓴다. 블러가
      사라진 만큼 채움을 30→70%로 올려 뒤 콘텐츠 글자가 날것으로 비치지 않게 한다. */
-  background-color: color-mix(in srgb, var(--panel-solid) 70%, transparent);
+  /* 70→85% — 블러가 없어 배경에 묻힌다는 지적으로 한 번 더 보강. 림·그림자도 함께
+     강화해 패널 경계가 배경 위에 또렷이 서게 한다. */
+  background-color: color-mix(in srgb, var(--panel-solid) 85%, transparent);
   box-shadow:
-    inset 0 0 0 0.5px rgba(255, 255, 255, 0.18),  /* 유리 가장자리의 얇은 테 */
-    inset 0 1px 1px rgba(255, 255, 255, 0.22),    /* 위 림 반사(은은하게) */
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.28),  /* 유리 가장자리의 얇은 테(강화) */
+    inset 0 1px 1px rgba(255, 255, 255, 0.32),    /* 위 림 반사(강화) */
     /* 아래 림 — 더 두껍게 + 위로 은은히 번지는 그라데이션으로 입체감(요청: "다크
        아래쪽 밝은 라인 더 두껍고 그라데이션 처리"): 또렷한 1px 라인 위에 부드러운
        광이 한 겹 더 스며든다. */
-    inset 0 -1px 0 rgba(255, 255, 255, 0.28),     /* 아래 림(또렷한 라인) */
-    inset 0 -5px 7px -4px rgba(255, 255, 255, 0.2), /* 위로 번지는 광(그라데이션) */
-    /* 외부 그림자(요청) — 가까운 접촉 그림자 + 넓게 퍼지는 부양 그림자 두 겹. */
-    0 2px 6px rgba(0, 0, 0, 0.28),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.36),     /* 아래 림(또렷한 라인, 강화) */
+    inset 0 -5px 7px -4px rgba(255, 255, 255, 0.26), /* 위로 번지는 광(그라데이션) */
+    /* 외부 그림자(요청) — 가까운 접촉 그림자 + 넓게 퍼지는 부양 그림자 두 겹(강화). */
+    0 3px 8px rgba(0, 0, 0, 0.36),
     0 10px 28px -8px rgba(0, 0, 0, 0.4);
 }
-/* 라이트는 밝은 배경이라 림을 조금 더 또렷하게 잡아야 패널 경계가 산다. */
+/* 라이트는 밝은 배경이라 림을 조금 더 또렷하게 잡아야 패널 경계가 산다(강화 — 다크와
+   같은 이유로 배경에 묻힌다는 지적). 라이트에선 흰 림보다 어두운 경계선이 밝은 배경
+   위에서 패널을 세워주므로 아래·둘레 어둠을 함께 올린다. */
 html.scr-light-theme .scr-mobile-tabbar::before {
   box-shadow:
-    inset 0 0 0 0.5px rgba(255, 255, 255, 0.65),
-    inset 0 1px 1px rgba(255, 255, 255, 0.8),
-    inset 0 -1px 1px rgba(0, 0, 0, 0.12),
-    0 2px 6px rgba(0, 0, 0, 0.14),
-    0 10px 28px -8px rgba(0, 0, 0, 0.22);
+    inset 0 0 0 0.5px rgba(0, 0, 0, 0.1),
+    inset 0 1px 1px rgba(255, 255, 255, 0.95),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.18),
+    0 3px 8px rgba(0, 0, 0, 0.2),
+    0 10px 28px -8px rgba(0, 0, 0, 0.3);
 }
 /* 아래로 스크롤하면 숨긴다(요청: "모바일 아래로 스크롤시 탭바 숨김(단 끝까지 내리면
    탭바 보임)") — 이제 오버레이라 #scroll-root 크기와 무관하게 순수 시각 효과만
@@ -7951,7 +7960,24 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-feed-stack { display: flex; flex-direction: column; }
 /* 앞 카드(스크롤 앵커용 래퍼 포함)는 뒷단(peek) 위에 얹힌다. */
 .scr-feed-stack-front { position: relative; z-index: 1; }
-.scr-feed-stack-front > .scr-feed-card { position: relative; }
+/* 앞 카드가 뒤 카드(peek) 위로 그림자를 드리워 "겹쳐 있다"는 게 드러난다(요청: 겹침
+   구분은 두 카드 사이 그림자로). 색은 둘이 같으므로 이 경계 그림자가 유일한 단서다 —
+   위쪽으로는 번지지 않게 아래 방향(+y)으로만 준다. */
+.scr-feed-stack-front > .scr-feed-card {
+  position: relative;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.09),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.045),
+    0 6px 14px -4px rgba(0, 0, 0, 0.5),
+    0 2px 12px rgba(0, 0, 0, 0.16);
+}
+.scr-light-theme .scr-feed-stack-front > .scr-feed-card {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.5),
+    0 5px 12px -4px rgba(0, 0, 0, 0.22),
+    0 1px 6px rgba(0, 0, 0, 0.08);
+}
 /* 펼침/접힘 — 겹친 카드들은 늘 실제로 렌더링돼 있고(요청), 높이 클립(grid-rows 0fr↔1fr)은
    트랜지션 없이 즉시 바뀐다. 높이를 애니메이션하면 그동안 앞 카드가 밀리는 걸 스크롤이
    따라가야 하는데, iOS의 비동기 스크롤 반영과 어긋나며 크게 튀었다(지적) — 스크롤 보정은
@@ -8032,7 +8058,9 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    둘의 구분은 색 차이 대신 위로 지는 그림자가 담당한다(뒤 카드가 앞 카드 밑에 깔린 느낌). */
 .scr-light-theme .scr-feed-stack-peek {
   background: var(--panel-solid);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 -3px 12px rgba(0, 0, 0, 0.16);
+  /* 위로 뿌리는 외부 그림자는 뺐다 — 겹침 구분은 앞 카드가 이 바 위로 드리우는 그림자가
+     담당한다(.scr-feed-stack-front > .scr-feed-card). */
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
 }
 /* 줄이기 — 스택(펼쳐진 카드들 + 앞 카드) 전체 왼쪽에 반투명 흰 세로 라인(요청). 카드는
    들여쓰기 없이 원래 폭 그대로 두고 라인을 그 위(왼쪽 가장자리)에 겹쳐 올린다. 라인
@@ -8243,8 +8271,8 @@ html:not(.scr-light-theme) .scr-feed-comments .scr-mreq-editor .scr-mreq-live-in
   /* 투명도·블러를 탭바 패널(.scr-mobile-tabbar::before)과 동일하게(요청) — 거의 투명한
      채움 + 블러8·채도1.15 + 유리 테/림 반사 그림자. */
   /* 블러 제거(임시 땜빵 — 탭바 .scr-mobile-tabbar::before 주석 참고). 반투명 채움도
-     탭바와 같은 70%로. */
-  background-color: color-mix(in srgb, var(--panel-solid) 70%, transparent);
+     탭바와 같은 85%로. */
+  background-color: color-mix(in srgb, var(--panel-solid) 85%, transparent);
   /* 림/두께감은 탭바보다 약하게(지적: "FAB가 탭바에 비해 두께감과 림 효과가 과한데") —
      같은 그림자 값도 52px 원에선 좁은 곡면에 몰려 훨씬 도드라진다. 얇은 유리 테와
      은은한 위 림만 남기고, 아래 림·번지는 광 레이어는 뺐다. 외부 그림자도 부양감만
