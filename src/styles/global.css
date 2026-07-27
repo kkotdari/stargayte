@@ -5033,7 +5033,16 @@ body *::-webkit-scrollbar-corner { background: transparent; }
      16px은 좀 각져 보여 한 단계 더 둥글게(요청: "곡률 좀 더 둥글게"). */
   border-radius: 20px;
   box-sizing: border-box;
+  /* 주의: 이 overflow:hidden은 자식(::before 유리판)의 '바깥' 그림자를 통째로 잘라낸다.
+     그래서 외부 그림자를 ::before에 주면 값을 아무리 올려도 화면에 안 보였다(지적:
+     "탭바 하단 그림자가 아까부터 안 강해짐"). 요소 자신의 box-shadow는 자기 overflow에
+     안 잘리므로 부양/접촉 그림자는 아래처럼 이 요소가 직접 든다(유리 채움·림은 ::before).
+     iOS 26 사파리가 툴바로 오인하는 건 background-color/backdrop-filter가 직접 걸린
+     경우라, box-shadow만 두는 건 그 판정과 무관하다(::before 주석 참고). */
   overflow: hidden;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.42),
+    0 18px 40px -6px rgba(0, 0, 0, 0.62);
   /* 필터/검색창(.scr-filter-float-stack)과 같은 지속시간/이징으로 맞춰(요청: "숨기고
      나오는 애니메이션은 좀더 부드럽고 페이드아웃/인을 줘") 함께 사라지고 나타날 때
      한 세트처럼 보이게 한다. transform도 같이 걸어 아래로 슬라이드하며 빠져나가는
@@ -5073,18 +5082,21 @@ body *::-webkit-scrollbar-corner { background: transparent; }
      진해 보이지만, 폭이 넓은 패널에선 같은 그림자가 퍼져 거의 안 보인다(지적: "은은하긴
      한데 FAB에 비해 너무 흐리고 거의 안 보임"). 성격(또렷한 라인 없이 확산)은 그대로 두고
      농도·번짐만 올린다. */
+  /* 외부 그림자는 여기 두지 않는다 — 부모의 overflow:hidden에 잘린다(부모 주석 참고).
+     이 레이어는 유리 채움과 안쪽 림만 담당한다. */
   box-shadow:
     inset 0 0 0 0.5px rgba(255, 255, 255, 0.18),  /* 얇은 유리 테 */
-    inset 0 1px 0 rgba(255, 255, 255, 0.15),      /* 위 림 반사(은은하게) */
-    0 4px 12px rgba(0, 0, 0, 0.42),               /* 가까운 접촉 그림자 */
-    0 18px 40px -6px rgba(0, 0, 0, 0.62);         /* 넓게 퍼지는 부양 그림자 */
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);      /* 위 림 반사(은은하게) */
 }
 /* 라이트도 같은 문법 — 밝은 배경에선 흰 림이 안 보이므로 테만 살짝 어둡게 잡고,
    나머지는 다크와 같은 은은/확산 조합을 쓴다. */
 html.scr-light-theme .scr-mobile-tabbar::before {
   box-shadow:
     inset 0 0 0 0.5px rgba(0, 0, 0, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.75),
+    inset 0 1px 0 rgba(255, 255, 255, 0.75);
+}
+html.scr-light-theme .scr-mobile-tabbar {
+  box-shadow:
     0 4px 12px rgba(0, 0, 0, 0.22),
     0 18px 40px -6px rgba(0, 0, 0, 0.4);
 }
@@ -6237,15 +6249,7 @@ html.scr-snap-today { scroll-snap-type: y proximity; scroll-padding-top: calc(va
   top: calc(var(--safe-top) + 76px);
   bottom: calc(var(--mobile-footer-h) + env(safe-area-inset-bottom, 0px) + 16px);
   display: flex; flex-direction: column; align-items: center; gap: 6px;
-  /* top/bottom도 트랜지션 목록에 넣는다 — 사파리(viewport-fit=cover)에서 --safe-top은
-     주소창이 접히고 펴질 때마다 0↔47px로 한 번에 뒤집힌다(이 파일 .scr-header 주석에
-     이미 기록된 사실). 이 값을 top에 그대로 쓰는 이 컨테이너는 그때마다 통째로 위로
-     튀었다 제자리로 돌아왔다(지적: "타임라인이 맨 위로 막 튀었다가 제자리로"). 값이
-     뛰는 건 브라우저가 정하는 거라 막을 수 없으니, 탭바가 --vv-bottom-inset 문제를
-     푼 것과 같은 방식으로(위 .scr-mobile-tabbar 주석) 부드럽게 따라가게 한다 —
-     순간이동이 아니라 한 동작으로 읽힌다. */
-  opacity: 0; pointer-events: none;
-  transition: opacity 0.25s ease, top 0.25s ease-out, bottom 0.25s ease-out;
+  opacity: 0; pointer-events: none; transition: opacity 0.25s ease;
 }
 /* 모바일은 세로 스크롤바를 숨기므로(@media (max-width: 860px) 스크롤바 숨김 규칙)
    그만큼 오른쪽 가장자리에 더 붙여도 된다(요청: "스크롤 없는 만큼 모바일에서 타임라인을
@@ -6292,12 +6296,8 @@ html.scr-snap-today { scroll-snap-type: y proximity; scroll-padding-top: calc(va
     color-mix(in srgb, var(--timeline-blue) 78%, transparent)
   );
 }
-/* top:0 고정 + 세로 위치는 인라인 transform(정수 px)이 담당한다 — ScrollNavTimeline의
-   렌더 주석 참고(서브픽셀 재래스터로 덜덜 떨리던 문제).
-   짧은 linear 트랜지션은 iOS의 비동기 루트 스크롤 때문에 JS가 읽는 값이 프레임마다
-   앞뒤로 미세하게 흔들리는 걸 흡수한다 — 눈에 띄는 지연 없이 떨림만 걸러진다. */
 .scr-scroll-timeline-thumb {
-  position: absolute; left: 50%; top: 0; width: 12px; height: 12px; border-radius: 50%;
+  position: absolute; left: 50%; width: 12px; height: 12px; border-radius: 50%;
   background: var(--timeline-blue); transform: translate(-50%, -50%);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--timeline-blue) 26%, transparent), 0 1px 4px rgba(0, 0, 0, 0.3);
   z-index: 1;
@@ -6344,7 +6344,7 @@ html.scr-snap-today { scroll-snap-type: y proximity; scroll-padding-top: calc(va
 }
 /* 현재 상단에 핀된 날짜를 알약으로 — 트랙 왼쪽에 붙여 현재 위치를 "며칠"인지로 보여준다. */
 .scr-scroll-timeline-date {
-  position: absolute; right: 100%; top: 0; margin-right: 8px; transform: translateY(-50%);
+  position: absolute; right: 100%; margin-right: 8px; transform: translateY(-50%);
   white-space: nowrap; font-size: var(--fs-caption); font-weight: 700;
   /* 완전 불투명(--panel-solid)이던 알약을 반투명으로(요청: "타임라인 다크 라이트에서 탭
      투명도 높여줘") — --panel-solid가 테마별 색을 갖고 있어 다크/라이트 모두 한 규칙로 덮인다. */

@@ -26,16 +26,10 @@ interface ScrollNavTimelineProps {
 export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel, markers }: ScrollNavTimelineProps) {
   const [visible, setVisible] = useState(false);
   const [scrollable, setScrollable] = useState(false);
-  // thumb/날짜 알약의 세로 위치(트랙 기준 정수 px). fraction과 따로 두는 이유: 값이 같은
-  // 프레임엔 setState가 리렌더를 건너뛰어(React가 동일 값이면 bail out) 알약 글자가 매
-  // 프레임 다시 그려지지 않는다.
-  const [posPx, setPosPx] = useState(0);
+  const [fraction, setFraction] = useState(0);
   const [markerFractions, setMarkerFractions] = useState<Record<string, number | null>>({});
   const [dateLabel, setDateLabel] = useState<string | null>(null);
   const trackRef = useRef<HTMLDivElement>(null);
-  // 트랙 높이 — 스크롤 중엔 안 변하므로 리사이즈 때만 갱신한다(매 프레임 실측하면
-  // 레이아웃을 강제로 계산하게 되고 값도 미세하게 흔들린다).
-  const trackHRef = useRef(0);
   const hideTimerRef = useRef<number | null>(null);
   const draggingRef = useRef(false);
 
@@ -72,33 +66,17 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
     return Math.min(1, Math.max(0, offset / max));
   };
 
-  // 뷰포트 높이 — iOS 사파리는 아래로 스크롤하면 주소창/툴바가 접히며 실제 보이는
-  // 뷰포트가 커지는데 documentElement.clientHeight는 접히기 전(작은) 레이아웃 뷰포트를
-  // 반환할 때가 있어 max = scrollHeight - clientHeight가 실제보다 커진다 → 페이지 끝까지
-  // 내려도 scrollTop/max < 1이라 thumb이 바닥에 못 닿는다(지적된 문제). 접힌 상태를
-  // 반영하는 innerHeight와 더 큰 값을 쓴다.
-  // 한때 이 값을 캐시했다가(분모가 흔들리는 걸 막으려고) 캐시가 낡으면 max가 어긋나
-  // scrollable이 잠깐 false로 뒤집히며 트랙이 언마운트→재측정됐고, 그 틈에 위치가 0으로
-  // 계산돼 thumb이 맨 위로 튀었다 돌아왔다(지적). 캐시 대신 매번 재되, 아래 update()와
-  // scrubTo()가 '같은 함수'를 써서 척도가 절대 어긋나지 않게 한다.
-  const currentVh = (): number => {
-    const { clientHeight } = getScrollMetrics();
-    return Math.max(clientHeight, window.innerHeight || 0);
-  };
-
   const update = () => {
-    const { scrollTop, scrollHeight } = getScrollMetrics();
-    const max = scrollHeight - currentVh();
+    const { scrollTop, clientHeight, scrollHeight } = getScrollMetrics();
+    // iOS 사파리는 아래로 스크롤하면 주소창/툴바가 접히며 실제 보이는 뷰포트가 커지는데
+    // documentElement.clientHeight는 접히기 전(작은) 레이아웃 뷰포트를 반환할 때가 있어
+    // max = scrollHeight - clientHeight가 실제보다 커진다 → 페이지 끝까지 내려도
+    // scrollTop/max < 1이라 thumb이 바닥에 못 닿고 살짝 위에 머문다(지적된 문제).
+    // 접힌 상태를 반영하는 innerHeight와 더 큰 값을 써서 max를 실제 바닥에 맞춘다.
+    const vh = Math.max(clientHeight, window.innerHeight || 0);
+    const max = scrollHeight - vh;
     setScrollable(max > 40);
-    const f = max > 0 ? Math.min(1, Math.max(0, scrollTop / max)) : 0;
-    // 드래그(스크럽) 중에는 thumb 위치를 스크롤 읽기값으로 되돌리지 않는다 — 손가락이
-    // 위치의 주인이다. iOS는 루트 스크롤을 브라우저 프로세스가 비동기로 들고 있어, 방금
-    // 옮긴 스크롤을 곧바로 다시 읽으면 아직 예전 값이 온다. 그 값으로 thumb을 되돌리면
-    // 손가락 위치와 서로 밀치며 위아래로 요동쳤다(지적).
-    // 정수 px로 반올림해 담는다 — 같은 픽셀이면 setState가 리렌더 자체를 건너뛴다.
-    // 트랙을 아직 못 쟀으면(마운트 직후 등) 위치를 건드리지 않는다 — 0으로 써버리면
-    // thumb이 맨 위로 튄다.
-    if (!draggingRef.current && trackHRef.current > 0) setPosPx(Math.round(f * trackHRef.current));
+    setFraction(max > 0 ? Math.min(1, Math.max(0, scrollTop / max)) : 0);
     setDateLabel(currentDateLabel(max <= 0 || scrollTop >= max - 2));
     if (markers && markers.length > 0) {
       const next: Record<string, number | null> = {};
@@ -126,53 +104,15 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [headSelector]);
 
-  // 트랙 높이 추적 — 스크롤 중엔 안 변하므로 리사이즈/레이아웃 변화 때만 재고, 잰 직후
-  // 한 번 위치를 다시 계산한다.
-  useEffect(() => {
-    const track = trackRef.current;
-    if (!track) return;
-    const remeasure = () => {
-      trackHRef.current = track.clientHeight;
-      update();
-    };
-    const ro = new ResizeObserver(remeasure);
-    ro.observe(track);
-    remeasure();
-    window.addEventListener("resize", remeasure);
-    window.addEventListener("orientationchange", remeasure);
-    return () => {
-      ro.disconnect();
-      window.removeEventListener("resize", remeasure);
-      window.removeEventListener("orientationchange", remeasure);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scrollable]);
-
-  // 트랙 위 포인터 위치 → 스크롤 위치로 이동(스크럽).
-  // thumb은 스크롤 읽기값이 아니라 '손가락 위치'로 바로 옮긴다(update()의 드래그 가드와
-  // 한 쌍) — 옮긴 스크롤을 되읽어 위치를 정하면 iOS의 비동기 스크롤 지연 때문에 서로
-  // 밀치며 요동친다. 분모(vh)는 update()와 같은 currentVh()를 써야 손가락 위치와 thumb이
-  // 같은 척도 위에 놓인다(한때 한쪽만 캐시를 써서 둘이 어긋났다).
-  // 실제 스크롤은 프레임당 한 번으로 합친다 — pointermove마다 즉시 스크롤하면 화면
-  // 전체를 그 횟수만큼 다시 그리느라 깜빡였다(지적).
-  const pendingScrollRef = useRef<number | null>(null);
-  const scrubRafRef = useRef(0);
+  // 트랙 위 포인터 위치 → 스크롤 위치로 즉시 이동(스크럽).
   const scrubTo = (clientY: number) => {
     const track = trackRef.current;
     if (!track) return;
     const rect = track.getBoundingClientRect();
     const f = Math.min(1, Math.max(0, (clientY - rect.top) / rect.height));
-    if (trackHRef.current > 0) setPosPx(Math.round(f * trackHRef.current));
-    const { scrollHeight } = getScrollMetrics();
-    pendingScrollRef.current = f * Math.max(0, scrollHeight - currentVh());
-    if (!scrubRafRef.current) {
-      scrubRafRef.current = requestAnimationFrame(() => {
-        scrubRafRef.current = 0;
-        const top = pendingScrollRef.current;
-        pendingScrollRef.current = null;
-        if (top !== null) scrollRootTo({ top, behavior: "instant" as ScrollBehavior });
-      });
-    }
+    const { clientHeight, scrollHeight } = getScrollMetrics();
+    const vh = Math.max(clientHeight, window.innerHeight || 0);
+    scrollRootTo({ top: f * Math.max(0, scrollHeight - vh), behavior: "instant" as ScrollBehavior });
   };
 
   const onPointerDown = (e: React.PointerEvent) => {
@@ -187,16 +127,6 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
   };
   const endDrag = () => {
     draggingRef.current = false;
-    // 예약해 둔 마지막 스크롤을 흘리지 않고 즉시 반영한 뒤, 그때부터 thumb을 다시
-    // 스크롤 기준으로 되돌린다(드래그 가드 해제 후 update()가 이어받는다).
-    if (scrubRafRef.current) {
-      cancelAnimationFrame(scrubRafRef.current);
-      scrubRafRef.current = 0;
-    }
-    const top = pendingScrollRef.current;
-    pendingScrollRef.current = null;
-    if (top !== null) scrollRootTo({ top, behavior: "instant" as ScrollBehavior });
-    update();
     showThenScheduleHide();
   };
 
@@ -218,25 +148,12 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
             <div key={m.key} className={m.className} style={{ top: `${(markerFractions[m.key] as number) * 100}%` }} />
           )
         ))}
-        {/* thumb·날짜 알약은 top:%(레이아웃) 대신 정수 px transform(합성)으로 앉힌다 —
-            %는 매 프레임 소수점 위치가 되어 알약 글자가 서브픽셀로 다시 래스터되며
-            덜덜 떨렸다(지적). 위치값은 update()에서 이미 정수로 반올림해 두므로 같은
-            픽셀이면 리렌더 자체가 없다. (한때 흔들림을 더 뭉개려고 짧은 transition을
-            걸었다가 iOS에서 잔상이 남아 thumb이 두 개로 보였다 — 트랜지션·will-change는
-            쓰지 않는다.)
-            가로 정렬(-50%)은 인라인 transform이 CSS transform을 통째로 덮으므로 같이 준다. */}
         {dateLabel && (
-          <div
-            className="scr-scroll-timeline-date"
-            style={{ transform: `translate3d(0, ${posPx}px, 0) translateY(-50%)` }}
-          >
+          <div className="scr-scroll-timeline-date" style={{ top: `${fraction * 100}%` }}>
             {dateLabel}
           </div>
         )}
-        <div
-          className="scr-scroll-timeline-thumb"
-          style={{ transform: `translate3d(-50%, ${posPx}px, 0) translateY(-50%)` }}
-        />
+        <div className="scr-scroll-timeline-thumb" style={{ top: `${fraction * 100}%` }} />
       </div>
       <span className="scr-scroll-timeline-end">{bottomLabel}</span>
     </div>
