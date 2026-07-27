@@ -183,7 +183,11 @@ function driveStyle(dur: number, ease: (t: number) => number, apply: (p: number)
 // root는 자식에만 영향, 자신의 블러엔 무관). 그래서 스택 이동은 래퍼(rest-list·
 // stack-front·matchstack)가 아니라 그 안 블러 잎(.scr-feed-card)에
 // 직접 건다 — 래퍼는 배경이 없어 시각적으로 완전히 동일하고 블러만 살아남는다.
-const BLUR_LEAF_SEL = ".scr-feed-card";
+// 겹침 스택의 "+ N건 펼치기" 글자(peekwrap)도 함께 옮긴다 — 이 라벨은 absolute라 카드가
+// 아니어서, 여기 빠지면 아래 스택들의 카드만 보정 transform을 받고 라벨은 제자리에 남아
+// 위 카드 뒤로 밀려 사라진 것처럼 보였다(지적: "펼치기 버튼 감출 때 다른 펼치기 버튼도
+// 같이 감춰진다").
+const BLUR_LEAF_SEL = ".scr-feed-card, .scr-feed-stack-peekwrap";
 function blurLeaves(el: HTMLElement): HTMLElement[] {
   if (el.matches(BLUR_LEAF_SEL)) return [el];
   const found = Array.from(el.querySelectorAll<HTMLElement>(BLUR_LEAF_SEL));
