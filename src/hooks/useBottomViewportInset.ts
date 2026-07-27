@@ -27,18 +27,22 @@ export function useBottomViewportInset() {
       return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el.isContentEditable;
     };
     const update = () => {
-      let inset = 0;
-      if (vv && !keyboardOpen()) {
-        // 레이아웃 뷰포트(innerHeight, 주소창 뒤까지 포함) − 실제 보이는 높이 − 위쪽으로 밀린 양.
-        inset = window.innerHeight - vv.height - vv.offsetTop;
-      }
-      // 음수는 다시 0으로 막는다 — 툴바가 접힐 때 탭바가 따라 내려가라고 잠시 음수를
-      // 허용해봤지만, iOS가 레이아웃 뷰포트(innerHeight)도 함께 늘리는 경우 그 성장분과
-      // 이중으로 밀려 탭바 아래가 화면 밖으로 잘렸다(신고: "탭바 축소시 아래 잘리는 경우
-      // 발생"). 접힘 추적은 레이아웃 뷰포트 성장(bottom:0이 자동으로 따라감)에 맡긴다.
-      // 주소창은 아무리 커도 ~80px이라 그 이상은 무시한다(회전 중 등 과도기 이상치 방어).
-      inset = Math.min(120, Math.max(0, Math.round(inset)));
-      root.style.setProperty("--vv-bottom-inset", `${inset}px`);
+      if (!vv) { root.style.setProperty("--vv-bottom-inset", "0px"); return; }
+      if (keyboardOpen()) { root.style.setProperty("--vv-bottom-inset", "0px"); return; }
+      // 레이아웃 뷰포트(innerHeight, 주소창 뒤까지 포함) − 실제 보이는 높이 − 위쪽으로 밀린 양.
+      const raw = Math.round(window.innerHeight - vv.height - vv.offsetTop);
+      // 주소창은 아무리 커도 ~80px이다. 그보다 큰 값은 주소창이 아니라 '아직 내려가는 중인
+      // 키보드'라, 예전처럼 120px로 잘라서 쓰면 그 순간 하단 UI가 키보드 안쪽 120px 위로
+      // 튀어올랐다 — 포커스가 풀리는 순간(keyboardOpen()이 false로 뒤집히는 순간)엔 키보드가
+      // 아직 화면에 남아 있어서 반드시 이 구간을 지난다. 그래서 페이지가 주소창보다 먼저
+      // 내려앉는 역전이 보였다(지적). 이상치는 자르지 말고 통째로 무시하고, 값을 이전 상태로
+      // 둔 채 키보드가 다 내려가 정상 범위가 될 때 한 번에 반영한다.
+      if (raw > 120) return;
+      // 음수는 0으로 막는다 — 툴바가 접힐 때 탭바가 따라 내려가라고 잠시 음수를 허용해봤지만,
+      // iOS가 레이아웃 뷰포트(innerHeight)도 함께 늘리는 경우 그 성장분과 이중으로 밀려 탭바
+      // 아래가 화면 밖으로 잘렸다(신고: "탭바 축소시 아래 잘리는 경우 발생"). 접힘 추적은
+      // 레이아웃 뷰포트 성장(bottom:0이 자동으로 따라감)에 맡긴다.
+      root.style.setProperty("--vv-bottom-inset", `${Math.max(0, raw)}px`);
     };
     update();
     vv?.addEventListener("resize", update);
