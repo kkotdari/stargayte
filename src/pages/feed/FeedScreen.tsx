@@ -195,16 +195,11 @@ function blurLeaves(el: HTMLElement): HTMLElement[] {
 function setTransform(els: HTMLElement[], v: string): void {
   // 값이 있을 땐 translateZ(0)을 붙여 3D transform으로 만든다 — 잎이 애니메이션 내내 자기
   // 합성 레이어에 머문다(레이어 생성/파괴 반복 방지). 단 이것만으론 개폐 커밋 프레임의
-  // 통짜 번쩍임은 안 잡혔다(실기기 확인) — 원인은 레이어가 아니라 커밋 프레임의 즉시
-  // 스크롤 점프였고, 지금은 스크롤을 rAF로 나눠 옮긴다(MatchStack의 toggleOpen 위 주석).
+  // 통짜 번쩍임은 안 잡혔다(실기기 확인) — 원인은 레이어가 아니라 커밋 프레임에 한꺼번에
+  // 실리던 즉시 스크롤 점프였고, 지금은 스크롤을 rAF로 나눠 옮긴다(useLayoutEffect 주석).
   // 빈 값은 CSS의 translateZ(0) 베이스로 떨어지므로 그대로 ""로 둔다.
   const val = v ? `${v} translateZ(0)` : "";
   for (const el of els) el.style.transform = val;
-}
-function driveTransformEls(
-  els: HTMLElement[], dur: number, ease: (t: number) => number, frame: (p: number) => string,
-): DrivenAnim {
-  return driveStyle(dur, ease, (p) => setTransform(els, frame(p)));
 }
 
 function challengeItem(c: Challenge): ChallengeItem {
@@ -422,33 +417,13 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
   };
   // 접기 페이드아웃(closeStack)이 진행 중인지 — 중복 클릭 방지.
   const closingRef = useRef(false);
-  // 위쪽 콘텐츠 수집 — 스택 위 피드 아이템들 + 피드 목록 위 요소들(타이틀/필터/검색).
-  // 헤더는 문서 스크롤 최상단 콘텐츠라 스택을 펼칠 즈음엔 화면 밖이 대부분이지만,
-  // 근처에 있으면 같이 밀어 위화감을 없앤다.
-  // 스크롤 보정 슬라이드에 태워선 안 되는 요소 — position:fixed는 문서 스크롤과 무관하게
-  // 뷰포트에 고정된 크롬(등록 FAB 등)이라, 스크롤 델타만큼 translateY를 걸면 그만큼 내려갔다
-  // 올라오는 헛움직임이 된다(지적: "접고 펼 때 FAB가 아래로 내려갔다 올라와"). 이런 요소는
-  // 수집에서 제외한다(헤더는 position:relative라 실제로 스크롤돼 그대로 포함).
+  // 스크롤 보정에 태워선 안 되는 요소 — position:fixed는 문서 스크롤과 무관하게 뷰포트에
+  // 고정된 크롬(등록 FAB 등)이라, translateY를 걸면 그만큼 내려갔다 올라오는 헛움직임이
+  // 된다(지적: "접고 펼 때 FAB가 아래로 내려갔다 올라와").
   const isSlidable = (el: HTMLElement): boolean => getComputedStyle(el).position !== "fixed";
-  const collectAbove = (): HTMLElement[] => {
-    const root = stackRef.current;
-    if (!root) return [];
-    const above: HTMLElement[] = [];
-    for (let el = root.previousElementSibling; el; el = el.previousElementSibling) {
-      above.push(el as HTMLElement);
-    }
-    const listParent = root.parentElement;
-    if (listParent) {
-      for (let el = listParent.previousElementSibling; el; el = el.previousElementSibling) {
-        above.push(el as HTMLElement);
-      }
-    }
-    const header = document.querySelector<HTMLElement>(".scr-header");
-    if (header) above.push(header);
-    return above.filter(isSlidable);
-  };
   // 아래쪽 콘텐츠 수집 — 앞 카드 + 스택 뒤 피드 아이템들 + 피드 목록 뒤 요소들.
-  // 위쪽에서 접을 때(스크롤 여유 부족) 부족분만큼 이 무리가 올라와 채운다(아래 closeStack).
+  // 개폐 중 이 무리만 transform으로 붙든다(앞 카드 기준 시점유지). 스택 '위'쪽 콘텐츠는
+  // 수집하지 않는다 — 이동을 스크롤 자체가 만들어주므로 보정할 게 없다.
   const collectBelow = (): HTMLElement[] => {
     const root = stackRef.current;
     if (!root) return [];
@@ -484,10 +459,13 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     const d = document.documentElement.scrollHeight - before.docHeight;
     // 이 프로그램 스크롤이 "아래로 스크롤"로 오인돼 탭바/헤더가 숨지 않게 잠깐 억제한다
     // (펼치는 순간 탭바가 줄어드는 깜빡임 — 지적된 부자연스러움의 일부).
-    suppressScrollHide(800);
-    // 문서에 CSS scroll-behavior:smooth가 걸려 있어 반드시 instant로 이동시킨다.
-    const target = Math.max(0, before.scrollY + d);
-    if (target !== window.scrollY) window.scrollTo({ top: target, behavior: "instant" });
+    suppressScrollHide(1200);
+    // ★ 이 커밋 프레임에서는 스크롤을 절대 건드리지 않는다 — 문서 높이 ±d(수백 px)
+    // 변경과 즉시 스크롤 점프 d를 한 프레임에 같이 실으면, iOS는 루트 스크롤 위치를
+    // 브라우저 프로세스가 비동기로 들고 있어 둘이 한 프레임 어긋나 화면이 통째로
+    // 번쩍인다(지적: 펼치기 누르자마자 / 접힘 완료 직후 peek 나오기 직전 = 정확히 두
+    // 커밋 프레임). 대신 스크롤 이동은 아래 애니메이션이 프레임당 몇 px씩 나눠 옮긴다
+    // — 어긋날 큰 값 자체가 없어지므로 타이밍 운이 아니라 구조적으로 사라진다.
     const root = stackRef.current;
     const list = restListRef.current;
     if (!root || !list) return;
@@ -570,40 +548,43 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     // (+d, rest-inner 클립 밖)에, 위 콘텐츠는 옛 위치(+d)에, 라인은 투명으로, 바는
     // 세운 채로(펼침 클래스의 scaleY(0)을 덮는다).
     railLocked = true;
-    // 이동은 래퍼가 아니라 블러 잎에 직접(위 blurLeaves 주석). 카드 기둥(rest-list)의
-    // 잎 = 펼쳐질 카드들, 위 콘텐츠의 잎 = 각 피드 카드/바.
-    const listLeaves = blurLeaves(list);
-    setTransform(listLeaves, `translateY(${d}px)`);
+    // 스크롤을 안 옮겼으므로 이 프레임의 화면은 접힘 때와 픽셀 단위로 같아야 한다.
+    // 문서상으론 rest가 d만큼 열려 앞 카드·아래 콘텐츠가 d 내려갔으니, 그만큼 되올려
+    // 제자리에 붙든다(아래 기준 시점유지). 펼쳐질 카드들은 transform이 필요 없다 —
+    // 문서 순서상 앞 카드보다 위에 있고, 앞 카드/아래 콘텐츠가 나중에 그려져 그 위를
+    // 덮으므로 지금은 완전히 가려져 있다. 스크롤이 내려갈수록 카드가 앞 카드 뒤에서
+    // 미끄러져 나온다(= 예전의 rise 연출과 동일한 그림, 이동은 스크롤이 만든다).
+    const belowLeaves = collectBelow()
+      .filter((el) => el.getBoundingClientRect().top < window.innerHeight + d + 40)
+      .flatMap(blurLeaves);
+    setTransform(belowLeaves, `translateY(${-d}px)`);
     // 이동 중에만 클립 경계(앞 카드 윗모서리) 위를 그라디언트 페이드로 — 카드가 경계에서
     // 뚝 잘리며 나타나는 부자연스러움 완화(지적). CSS .scr-feed-stack-motion 참고.
     // 상시 걸면 정지 상태의 마지막 카드 밑단까지 흐려져 이동 중에만 붙였다 뗀다.
     root.classList.add("scr-feed-stack-motion");
     if (rail) rail.style.opacity = "0";
     if (peek) peek.style.transform = "scaleY(1)";
-    // 애니메이션 동안 화면에 들어올 일 없는(최종 위치가 d만큼 내려가도 화면 위 밖인)
-    // 위 콘텐츠는 건너뛴다.
-    const sliders = collectAbove().filter((el) => el.getBoundingClientRect().bottom + d >= -40);
-    const aboveLeaves = sliders.flatMap(blurLeaves);
-    setTransform(aboveLeaves, `translateY(${d}px)`);
+    const S0 = before.scrollY;
 
     const start = () => {
       if (cancelled) return;
-      // 위 콘텐츠와 카드 기둥이 옛(접힌) 위치에서 한 몸으로 밀려 올라온다 — 위 카드들이
-      // 열어주는 공간을 새 카드들이 앞 카드 뒤에서 나오며 그대로 채우므로 빈 공백 구간이
-      // 없다. 카드엔 opacity를 안 쓰므로(위 대원칙) 블러 재합성 깜빡임도 없다.
-      const rise = (els: HTMLElement[], onDone?: () => void) => {
-        const a = driveTransformEls(els, slideDur, EASE_STACK, (p) => `translateY(${d * (1 - p)}px)`);
-        void a.finished.then(() => { setTransform(els, ""); onDone?.(); }).catch(() => {});
-        anims.push(a);
-      };
-      rise(aboveLeaves);
-      rise(listLeaves, () => {
+      // 스크롤을 S0→S0+d로 나눠 옮기고, 같은 콜백에서 앞 카드·아래 콘텐츠의 보정
+      // transform을 그만큼 풀어준다(한 프레임 안에서 함께 적용돼 서로 정확히 상쇄).
+      //   앞 카드 화면위치 = docY+d - (S0+p·d) + (-(1-p)·d) = docY - S0  (p와 무관, 항상 고정)
+      // 위 콘텐츠는 transform이 아예 없어도 스크롤만으로 p·d만큼 올라간다.
+      const a = driveStyle(slideDur, EASE_STACK, (p) => {
+        window.scrollTo({ top: S0 + d * p, behavior: "instant" });
+        setTransform(belowLeaves, `translateY(${-d * (1 - p)}px)`);
+      });
+      void a.finished.then(() => {
+        setTransform(belowLeaves, "");
         railLocked = false;
         if (railDeferred) { railDeferred = false; positionRail(); }
         // 카드가 다 올라와 정지하면 페이드 마스크를 뗀다 — 정지 상태에선 마지막 카드
         // 밑단이 흐려 보이면 안 된다.
         root.classList.remove("scr-feed-stack-motion");
-      });
+      }).catch(() => {});
+      anims.push(a);
       // 줄이기 라인은 자리가 잡히는 후반부에 나타난다(블러 없는 요소라 opacity 안전).
       if (rail) {
         const ra = rail.animate(
@@ -639,9 +620,11 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       cancelAnimationFrame(raf2);
       anims.forEach((a) => { try { a.cancel(); } catch { /* 이미 끝남 */ } });
       if (peek) peek.style.transform = "";
-      setTransform(listLeaves, "");
+      // 중단되면 '펼침 완료' 상태로 확정한다 — 보정 transform을 걷는 것과 스크롤을
+      // 최종값으로 옮기는 건 서로 상쇄라, 앞 카드는 어느 시점에 끊겨도 제자리에 남는다.
+      setTransform(belowLeaves, "");
+      window.scrollTo({ top: S0 + d, behavior: "instant" });
       if (rail) rail.style.opacity = "";
-      setTransform(aboveLeaves, "");
       root.classList.remove("scr-feed-stack-motion");
       cleanupRail();
       cancelRevealRef.current = null;
@@ -685,37 +668,32 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     const dist = Math.max(0, rest.getBoundingClientRect().height - peekH);
     const dur = Math.min(560, 360 + Math.round(dist * 0.12));
     const vh = window.innerHeight;
-    // 접으면 문서가 dist만큼 줄어 커밋 때 스크롤도 그만큼 되돌아가야 하는데, 화면이
-    // 문서 상단 근처면 그만한 스크롤 여유가 없어 0에서 잘렸다 — 애니메이션은 전체
-    // 거리만큼 내려가 있어 상단에 공백이 생겼다가 커밋에 사라졌다(지적: "위쪽에서
-    // 접으면 상단이 내려오면서 공백"). 위 무리는 스크롤 여유만큼만 내려가고, 부족분은
-    // 아래 무리(앞 카드부터)가 올라와 채운다 — 커밋 때 정확히 맨 위(스크롤 0)에서
-    // 멈추며 위·아래 모두 이어진다. 여유가 충분하면 riseDist=0, 기존과 동일.
-    const sinkDist = Math.min(dist, Math.max(0, window.scrollY));
-    const riseDist = dist - sinkDist;
-    // 이동은 래퍼가 아니라 블러 잎에 직접(위 blurLeaves 주석) — 조상 transform은 사파리
-    // ·크롬 공통으로 카드 블러를 끊는다(지적: "애니메이션 중 블러 꺼짐"). 위 무리·카드
-    // 기둥은 내려가고(sinkDist), 위쪽 클램프 때 부족분(riseDist)은 아래 무리가 올라온다.
-    const aboveLeaves = collectAbove().filter((el) => {
-      const r = el.getBoundingClientRect();
-      return r.top < vh + 40 && r.bottom + sinkDist > -40;
-    }).flatMap(blurLeaves);
-    const listLeaves = blurLeaves(list);
-    const belowLeaves = riseDist > 0.5
-      ? collectBelow().filter((el) => {
-          const r = el.getBoundingClientRect();
-          return r.top - riseDist < vh + 40 && r.bottom > -40;
-        }).flatMap(blurLeaves)
-      : [];
-    // 카드 클립은 rest-inner의 기존 overflow:hidden이 그대로 담당한다(clip-path는 조상에
-    // 걸리면 transform과 똑같이 블러를 끊어 쓰지 않는다 — 확인). 아래 무리가 올라와도
-    // 앞 카드(z-index 1)가 rest 위를 덮고, rest 카드는 overflow 밖으로 나가며 사라진다.
+    suppressScrollHide(dur + 600);
+    // 펼치기의 정확한 역재생 — 스크롤을 S1→S1-A로 나눠 되돌리고(A는 문서 상단에 막히면
+    // 여유만큼만), 같은 콜백에서 앞 카드·아래 콘텐츠를 -dist·p만큼 내린다. 이 둘이
+    // 상쇄해 앞 카드는 애니메이션 내내 제자리, 위 콘텐츠는 스크롤만으로 내려온다.
+    // 커밋(레이아웃 1fr→0fr)은 애니메이션이 끝난 뒤 스크롤을 '건드리지 않고' 실행되므로
+    // 큰 스크롤 점프와 레이아웃 변경이 한 프레임에 겹치지 않는다(펼치기와 같은 원리).
+    const S1 = Math.max(0, window.scrollY);
+    const A = Math.min(dist, S1);
+    // 아래 무리 = 앞 카드 + 스택 뒤 콘텐츠. 위 무리·카드 기둥엔 transform이 필요 없다
+    // (스크롤이 그 이동을 만든다) — 예전의 sink/rise 이중 보정이 통째로 사라졌다.
+    const belowLeaves = collectBelow()
+      .filter((el) => el.getBoundingClientRect().top < vh + dist + 40)
+      .flatMap(blurLeaves);
+    // 카드 클립은 rest-inner의 기존 overflow:hidden이 담당한다. 앞 카드(z-index 1)가
+    // rest 위를 덮으므로, 스크롤이 되돌아갈수록 카드가 앞 카드 뒤로 미끄러져 들어간다.
     const anims: (Animation | DrivenAnim)[] = [];
-    const sinkLeaves = [...aboveLeaves, ...listLeaves];
-    anims.push(driveTransformEls(sinkLeaves, dur, EASE_STACK, (p) => `translateY(${sinkDist * p}px)`));
-    if (belowLeaves.length) {
-      anims.push(driveTransformEls(belowLeaves, dur, EASE_STACK, (p) => `translateY(${-riseDist * p}px)`));
-    }
+    anims.push(driveStyle(dur, EASE_STACK, (p) => {
+      window.scrollTo({ top: S1 - A * p, behavior: "instant" });
+      setTransform(belowLeaves, `translateY(${-dist * p}px)`);
+      // "+N건" 바는 후반부에 도로 자라나 커밋 전에 이미 제 모습을 갖춘다 — 커밋 프레임이
+      // 순수 레이아웃 교체(화면 변화 0)가 되게 해서 바가 튀어나오는 느낌을 없앤다.
+      if (peekEl) {
+        const g = Math.max(0, Math.min(1, (p - 0.6) / 0.4));
+        peekEl.style.transform = `scaleY(${g})`;
+      }
+    }));
     if (rail) {
       anims.push(rail.animate(
         [{ opacity: 1 }, { opacity: 0 }],
@@ -726,20 +704,22 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       if (!closingRef.current) return;
       closingRef.current = false;
       // 커밋 프레임이 이어받도록 종료 상태를 인라인으로 박고 애니메이션 객체는 정리한다.
-      setTransform(sinkLeaves, `translateY(${sinkDist}px)`);
-      setTransform(belowLeaves, `translateY(${-riseDist}px)`);
+      window.scrollTo({ top: S1 - A, behavior: "instant" });
+      setTransform(belowLeaves, `translateY(${-dist}px)`);
+      if (peekEl) peekEl.style.transform = "scaleY(1)";
       if (rail) rail.style.opacity = "0";
       anims.forEach((a) => { try { a.cancel(); } catch { /* 이미 끝남 */ } });
-      closeMotionRef.current = { els: sinkLeaves, belowEls: belowLeaves, dist: sinkDist };
+      closeMotionRef.current = { els: belowLeaves, belowEls: [], dist };
       cancelRevealRef.current = null;
       toggleOpen(false);
     };
-    // 재펼침/언마운트 등으로 중단되면 전부 원복한다.
+    // 재펼침/언마운트 등으로 중단되면 전부 원복한다(펼침 상태로 되돌린다).
     cancelRevealRef.current = () => {
       closingRef.current = false;
       anims.forEach((a) => { try { a.cancel(); } catch { /* 이미 끝남 */ } });
-      setTransform(sinkLeaves, "");
       setTransform(belowLeaves, "");
+      window.scrollTo({ top: S1, behavior: "instant" });
+      if (peekEl) peekEl.style.transform = "";
       if (rail) rail.style.opacity = "";
       root.classList.remove("scr-feed-stack-motion");
       cancelRevealRef.current = null;
