@@ -3,6 +3,8 @@ import { createPortal } from "react-dom";
 import { CornerDownLeft, MessageCirclePlus, X, Pencil, Trash2 } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
 import { Spinner } from "../../components/common/Feedback";
+import { useLockBodyScroll } from "../../utils/bodyScrollLock";
+import { useIsMobile } from "../../hooks/useIsMobile";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 import { useAppStore } from "../../store/appStore";
 import { api } from "../../api/client";
@@ -294,6 +296,24 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<FeedComment | null>(null);
+  // 모바일에서는 댓글을 카드 안에서 바로 쓰지 않고 바텀시트에서 읽고 쓴다(요청) — 카드에는
+  // 목록 미리보기(또는 댓글이 하나도 없을 때만 추가 아이콘)만 남고, 그걸 누르면 시트가 열린다.
+  // PC는 화면이 넓고 키보드가 본문을 가리지 않으니 기존의 인라인 방식 그대로다(요청: 모바일만).
+  const mobile = useIsMobile();
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const sheetBodyRef = useRef<HTMLDivElement>(null);
+  const openSheet = () => { setErr(null); setEditingId(null); setSheetOpen(true); };
+  const closeSheet = () => { setEditingId(null); setSheetOpen(false); };
+  useEffect(() => { if (!mobile) setSheetOpen(false); }, [mobile]);
+  // 시트가 떠 있는 동안 배경(본문)으로 가는 스크롤/클릭을 막고, 바깥 탭이면 닫는다.
+  useLockBodyScroll(mobile && sheetOpen, closeSheet);
+  // 목록은 오래된 순으로 쌓이므로(create가 뒤에 붙인다) 열자마자 맨 아래(최신)로 내린다.
+  // 댓글이 늘어날 때도 방금 쓴 것이 보이게 같이 내린다.
+  useLayoutEffect(() => {
+    if (!sheetOpen) return;
+    const el = sheetBodyRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [sheetOpen, notes.length]);
 
   // 부모가 목록을 다시 불러오면(경기 등록/삭제 등) 새 배열로 재동기화. 댓글 작성/수정/삭제는
   // 부모 리로드를 트리거하지 않아 이 효과가 로컬 편집을 덮어쓰지 않는다(같은 배열 참조 유지).
@@ -345,92 +365,159 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
     }
   };
 
+  // 댓글 한 줄. interactive=false는 카드 안 미리보기용 — 수정/삭제는 시트에서만 한다
+  // (미리보기에서 편집까지 되면 시트를 여는 탭과 버튼 탭이 같은 자리에서 겹친다).
+  const renderNote = (c: FeedComment, interactive: boolean) => (
+    <li key={c.id} className="scr-mreq-item scr-match-note-item">
+      <div className="scr-mreq-item-top">
+        <div className="scr-mreq-item-author">
+          <Avatar
+            member={{ id: c.author.memberId, nickname: c.author.nickname, avatar: c.author.avatar }}
+            size={13}
+            className="scr-mreq-item-author-avatar"
+          />
+          <span className="scr-mreq-item-author-name">{c.author.nickname}</span>
+          <span className="scr-match-note-time">{formatCommentTime(c.createdAt)}</span>
+        </div>
+        {interactive && c.canEdit && editingId !== c.id && (
+          <div className="scr-mreq-item-actions">
+            <button
+              type="button" className="scr-match-note-icon-btn"
+              onClick={() => { setErr(null); setEditingId(c.id); }}
+              aria-label="수정"
+            >
+              <Pencil size={13} />
+            </button>
+            <button
+              type="button" className="scr-match-note-icon-btn scr-match-note-icon-danger"
+              onClick={() => setDeleteTarget(c)}
+              aria-label="삭제"
+            >
+              <Trash2 size={13} />
+            </button>
+          </div>
+        )}
+      </div>
+      {interactive && editingId === c.id ? (
+        <NoteComposer
+          members={members}
+          initialText={c.text}
+          submitting={busy}
+          onSubmit={(text, ids) => void update(c.id, text, ids)}
+          onCancel={() => setEditingId(null)}
+          placeholder="메모 수정"
+          submitLabel={<CornerDownLeft size={14} />}
+        />
+      ) : (
+        <p className="scr-mreq-item-text scr-match-note-text">{renderInline(c.text, c.mentions)}</p>
+      )}
+    </li>
+  );
+
+  const composer = (
+    <NoteComposer
+      key={composerKey}
+      members={members}
+      initialText=""
+      submitting={busy}
+      onSubmit={(text, ids) => void create(text, ids)}
+      placeholder="댓글 남기기 (@로 유저 태그)"
+      submitLabel={<CornerDownLeft size={14} />}
+    />
+  );
+
   return (
     // 로우 전체가 클릭 토글이라, 댓글 영역에서의 클릭/입력은 로우 접힘을 막는다.
+    // 시트는 body 포털로 나가지만 리액트 이벤트는 이 트리를 따라 올라오므로 여기서 함께 막힌다.
     <div className="scr-match-notes" onClick={(e) => e.stopPropagation()}>
-      {notes.length > 0 && (
-        <ul className="scr-mreq-list scr-match-notes-list">
-          {notes.map((c) => (
-            <li key={c.id} className="scr-mreq-item scr-match-note-item">
-              <div className="scr-mreq-item-top">
-                <div className="scr-mreq-item-author">
-                  <Avatar
-                    member={{ id: c.author.memberId, nickname: c.author.nickname, avatar: c.author.avatar }}
-                    size={13}
-                    className="scr-mreq-item-author-avatar"
-                  />
-                  <span className="scr-mreq-item-author-name">{c.author.nickname}</span>
-                  <span className="scr-match-note-time">{formatCommentTime(c.createdAt)}</span>
-                </div>
-                {c.canEdit && editingId !== c.id && (
-                  <div className="scr-mreq-item-actions">
-                    <button
-                      type="button" className="scr-match-note-icon-btn"
-                      onClick={() => { setErr(null); setEditingId(c.id); }}
-                      aria-label="수정"
-                    >
-                      <Pencil size={13} />
-                    </button>
-                    <button
-                      type="button" className="scr-match-note-icon-btn scr-match-note-icon-danger"
-                      onClick={() => setDeleteTarget(c)}
-                      aria-label="삭제"
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  </div>
-                )}
+      {mobile ? (
+        <>
+          {notes.length > 0 ? (
+            // 댓글이 있으면 아이콘 대신 목록 자체가 시트를 여는 버튼이다(요청 1·2).
+            // button 안에는 목록을 넣을 수 없어(phrasing content만 허용) role로 대신한다.
+            <div
+              className="scr-match-notes-preview" role="button" tabIndex={0}
+              aria-label={`댓글 ${notes.length}개 보기`}
+              onClick={openSheet}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openSheet(); } }}
+            >
+              <ul className="scr-mreq-list scr-match-notes-list">
+                {notes.map((c) => renderNote(c, false))}
+              </ul>
+            </div>
+          ) : user ? (
+            <div className="scr-feed-comment-row">
+              <button
+                type="button" className="scr-feed-comments-toggle"
+                onClick={openSheet} aria-label="댓글 쓰기" title="댓글 쓰기"
+              >
+                <MessageCirclePlus size={15} aria-hidden />
+              </button>
+            </div>
+          ) : null}
+        </>
+      ) : (
+        <>
+          {notes.length > 0 && (
+            <ul className="scr-mreq-list scr-match-notes-list">
+              {notes.map((c) => renderNote(c, true))}
+            </ul>
+          )}
+
+          {err && <div className="scr-err scr-match-note-err">{err}</div>}
+
+          {user && editingId === null && (
+            <div className={cx("scr-feed-comment-row", composerOpen && "scr-feed-comment-row-open")}>
+              <button
+                type="button" className="scr-feed-comments-toggle"
+                onClick={openComposer}
+                aria-expanded={composerOpen} aria-label="댓글 쓰기" title="댓글 쓰기"
+                tabIndex={composerOpen ? -1 : 0}
+              >
+                <MessageCirclePlus size={15} aria-hidden />
+              </button>
+              <div
+                ref={composerWrapRef}
+                className="scr-feed-comment-composer"
+                // 포커스가 입력창/등록 버튼 밖으로 나가면 아이콘으로 되돌린다(요청). 멘션
+                // 드롭다운·지우기 버튼은 mousedown preventDefault라 블러 자체가 안 난다.
+                onBlur={(e) => {
+                  if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setComposerOpen(false);
+                }}
+              >
+                {composer}
               </div>
-              {editingId === c.id ? (
-                <NoteComposer
-                  members={members}
-                  initialText={c.text}
-                  submitting={busy}
-                  onSubmit={(text, ids) => void update(c.id, text, ids)}
-                  onCancel={() => setEditingId(null)}
-                  placeholder="메모 수정"
-                  submitLabel={<CornerDownLeft size={14} />}
-                />
-              ) : (
-                <p className="scr-mreq-item-text scr-match-note-text">{renderInline(c.text, c.mentions)}</p>
-              )}
-            </li>
-          ))}
-        </ul>
+            </div>
+          )}
+        </>
       )}
 
-      {err && <div className="scr-err scr-match-note-err">{err}</div>}
-
-      {user && editingId === null && (
-        <div className={cx("scr-feed-comment-row", composerOpen && "scr-feed-comment-row-open")}>
-          <button
-            type="button" className="scr-feed-comments-toggle"
-            onClick={openComposer}
-            aria-expanded={composerOpen} aria-label="댓글 쓰기" title="댓글 쓰기"
-            tabIndex={composerOpen ? -1 : 0}
-          >
-            <MessageCirclePlus size={15} aria-hidden />
-          </button>
-          <div
-            ref={composerWrapRef}
-            className="scr-feed-comment-composer"
-            // 포커스가 입력창/등록 버튼 밖으로 나가면 아이콘으로 되돌린다(요청). 멘션
-            // 드롭다운·지우기 버튼은 mousedown preventDefault라 블러 자체가 안 난다.
-            onBlur={(e) => {
-              if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setComposerOpen(false);
-            }}
-          >
-            <NoteComposer
-              key={composerKey}
-              members={members}
-              initialText=""
-              submitting={busy}
-              onSubmit={(text, ids) => void create(text, ids)}
-              placeholder="댓글 남기기 (@로 유저 태그)"
-              submitLabel={<CornerDownLeft size={14} />}
-            />
+      {/* 바텀시트(모바일) — 화면 아래에 붙는 모달 재질 패널(요청 2). 윗변은 직선이고,
+          높이는 댓글 목록만큼 자라다가 화면 절반 언저리에서 멈춘다(요청, CSS max-height).
+          목록은 오래된 순 그대로 두고 스크롤만 최신으로 내린다(요청 3), 입력창은 맨 아래(요청 4). */}
+      {mobile && sheetOpen && createPortal(
+        <div className="scr-comment-sheet scr-feed-comments scr-match-notes" role="dialog" aria-label="댓글">
+          <div className="scr-comment-sheet-head">
+            <span className="scr-comment-sheet-title">댓글 {notes.length}</span>
+            <button type="button" className="scr-icon-btn scr-comment-sheet-close" onClick={closeSheet} aria-label="닫기">
+              <X size={16} />
+            </button>
           </div>
-        </div>
+          <div className="scr-comment-sheet-body scr-scroll" ref={sheetBodyRef}>
+            {notes.length > 0 ? (
+              <ul className="scr-mreq-list scr-match-notes-list">
+                {notes.map((c) => renderNote(c, true))}
+              </ul>
+            ) : (
+              <p className="scr-comment-sheet-empty">아직 댓글이 없어요.</p>
+            )}
+          </div>
+          {err && <div className="scr-err scr-match-note-err">{err}</div>}
+          {user && editingId === null && (
+            <div className="scr-comment-sheet-compose">{composer}</div>
+          )}
+        </div>,
+        document.body,
       )}
 
       {deleteTarget && (

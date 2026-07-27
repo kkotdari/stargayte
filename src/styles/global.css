@@ -7419,3 +7419,69 @@ html.scr-light-theme .scr-feed-add-fab {
 @media (max-width: 860px) {
   .scr-feed-add-fab-wrap-hidden { visibility: hidden; pointer-events: none; }
 }
+
+/* ===== 댓글 바텀시트(모바일) =====
+   댓글을 카드 안에서 쓰면 입력칸이 화면 중간에 있어 키보드가 뜨는 순간 브라우저가 페이지를
+   제멋대로 밀어 올렸다 — 어디까지 밀지는 OS가 정하고 우리는 계산도 관측도 못 한다(조사).
+   입력칸을 화면 맨 아래에 고정해 두면 그 밀어 올림 자체가 필요 없어진다. 그래서 모바일에서는
+   목록·입력을 통째로 하단 시트로 옮긴다(요청).
+
+   재질은 모달과 같은 유리(.scr-modal::before와 같은 값) — 배경/블러는 ::before 자식에 둔다.
+   요소 자신에 background/backdrop-filter가 있으면 iOS 26 사파리가 사이트 툴바로 보고 접었던
+   크롬을 도로 펼치기 때문(모달·탭바·서랍과 같은 이유).
+
+   시트 루트에 .scr-feed-comments/.scr-match-notes를 함께 붙여, 카드 안에서 쓰던 목록·입력
+   스타일(폰트 한 스텝 축소, --field-h, 다크 흰 입력칸)을 포털 안에서도 그대로 상속받는다.
+   대신 그 두 클래스가 들고 오는 카드용 여백/구분선은 여기서 되돌린다. */
+.scr-comment-sheet {
+  position: fixed; left: 0; right: 0; bottom: 0;
+  /* 탭바(55)보다 위, 모달(100)보다 아래 — 시트 안에서 연 삭제 확인창이 시트에 가리지 않는다. */
+  z-index: 90;
+  display: flex; flex-direction: column;
+  /* 높이는 내용만큼 자라고(요청), 화면 절반 언저리에서 멈춘다(요청: "화면 반정도 높이"). */
+  max-height: 56vh; max-height: 56dvh;
+  /* 윗변은 직선(요청) — 아래는 화면 끝이라 어차피 각진다. */
+  border-radius: 0;
+  margin: 0; border-top: none;
+  padding: 0 16px calc(10px + env(safe-area-inset-bottom, 0px));
+  box-shadow:
+    0 -18px 50px rgba(0, 0, 0, 0.6),
+    0 -6px 18px rgba(0, 0, 0, 0.42),
+    0 -1px 0 rgba(255, 255, 255, 0.08);
+}
+.scr-comment-sheet::before {
+  content: ""; position: absolute; inset: 0; z-index: -1;
+  background: rgba(16, 21, 26, 0.66);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+}
+html.scr-light-theme .scr-comment-sheet {
+  box-shadow:
+    0 -18px 50px rgba(0, 0, 0, 0.3),
+    0 -6px 18px rgba(0, 0, 0, 0.16),
+    0 -1px 0 rgba(0, 0, 0, 0.08);
+}
+html.scr-light-theme .scr-comment-sheet::before { background: rgba(255, 255, 255, 0.72); }
+/* 목록이 이 아래로 스크롤해 들어가므로 경계선을 둔다 — 없으면 스크롤된 글이 제목 줄에
+   그대로 붙어 어디까지가 헤더인지 안 보인다. */
+.scr-comment-sheet-head {
+  display: flex; align-items: center; justify-content: space-between;
+  flex-shrink: 0; padding: 9px 0 7px;
+  border-bottom: 1px solid rgba(var(--overlay-rgb), 0.1);
+  font-size: var(--fs-caption); font-weight: 700; color: var(--text);
+}
+.scr-comment-sheet-close { width: 28px; height: 28px; border: none; background: transparent; border-radius: 50%; }
+.scr-comment-sheet-body {
+  flex: 0 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden;
+  /* 시트 안에서 끝까지 스크롤해도 제스처가 뒷 페이지로 새지 않게(실드와 한 세트). */
+  overscroll-behavior: contain; touch-action: pan-y;
+}
+.scr-comment-sheet-empty { margin: 14px 0; text-align: center; font-size: var(--fs-micro); color: var(--muted); }
+/* 입력칸은 목록과 분리돼 맨 아래에 고정(요청 4) — 목록이 길어져도 자리를 안 뺏긴다. */
+.scr-comment-sheet-compose {
+  flex-shrink: 0; padding-top: 8px; margin-top: 2px;
+  border-top: 1px solid rgba(var(--overlay-rgb), 0.1);
+}
+.scr-comment-sheet .scr-match-note-err { margin: 6px 0 0; }
+
+/* 카드 안 미리보기 — 여기서는 읽기만 하고, 누르면 시트가 열린다(요청 2). */
+.scr-match-notes-preview { cursor: pointer; -webkit-tap-highlight-color: transparent; }
