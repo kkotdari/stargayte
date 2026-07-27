@@ -4278,10 +4278,13 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   /* 중간 지점(요청 반복 조정) — 완전 플랫은 화면에 구멍 난 듯 어색했다("빵꾸난 거
      같고"). 두께감 연출(굴절 어둠·강한 접촉 그림자)은 뺀 채, 패널이 하나의 오브젝트로
      읽히게 하는 최소한의 림(얇은 유리 테 + 위 림 반사)과 은은한 그림자만 되살린다. */
-  /* 블러 제거(임시 땜빵, 요청) — View Transition 우회가 도는 48ms 동안 backdrop-filter
-     요소가 일제히 투명해지는 게 눈에 띄어, 땜빵 기간엔 블러 없이 반투명만 쓴다. 블러가
-     사라진 만큼 채움을 30→70%로 올려 뒤 콘텐츠 글자가 날것으로 비치지 않게 한다. */
-  background-color: color-mix(in srgb, var(--panel-solid) 85%, transparent);
+  /* 블러 복원 — 한때 뺐던 건 스택 여닫이의 View Transition 우회 때문이었다(그 48ms
+     스냅샷 동안 화면의 backdrop-filter가 일제히 투명해졌다). VT는 이제 아예 안 쓰므로
+     그 사유가 없어졌고, 이 패널 뒤로는 피드 카드가 지나가니 블러가 보여줄 것도 있다.
+     채움도 블러를 뺀 만큼 올려 뒀던 값(30→55→85%)에서 원래 30%로 되돌린다. */
+  background-color: color-mix(in srgb, var(--panel-solid) 30%, transparent);
+  backdrop-filter: blur(8px) saturate(1.15);
+  -webkit-backdrop-filter: blur(8px) saturate(1.15);
   /* 림·그림자는 FAB(.scr-feed-add-fab)와 같은 문법으로 통일한다(지적: "탭바 패널 효과가
      FAB에 비해 촌스럽다 — FAB처럼 은은하면서 퍼지는 림과 그림자로"). 또렷한 아래 라인
      (0.36)과 강한 접촉 그림자로 테두리를 그리던 방식을 버리고, 얇은 유리 테 + 은은한 위
@@ -7335,9 +7338,10 @@ html:not(.scr-light-theme) .scr-feed-comments .scr-mreq-editor .scr-mreq-live-in
   border: none; cursor: pointer; color: var(--text);
   /* 투명도·블러를 탭바 패널(.scr-mobile-tabbar::before)과 동일하게(요청) — 거의 투명한
      채움 + 블러8·채도1.15 + 유리 테/림 반사 그림자. */
-  /* 블러 제거(임시 땜빵 — 탭바 .scr-mobile-tabbar::before 주석 참고). 반투명 채움도
-     탭바와 같은 85%로. */
-  background-color: color-mix(in srgb, var(--panel-solid) 85%, transparent);
+  /* 블러 복원 — 탭바 .scr-mobile-tabbar::before 주석 참고. 채움도 탭바와 같은 30%로. */
+  background-color: color-mix(in srgb, var(--panel-solid) 30%, transparent);
+  backdrop-filter: blur(8px) saturate(1.15);
+  -webkit-backdrop-filter: blur(8px) saturate(1.15);
   /* 림/두께감은 탭바보다 약하게(지적: "FAB가 탭바에 비해 두께감과 림 효과가 과한데") —
      같은 그림자 값도 52px 원에선 좁은 곡면에 몰려 훨씬 도드라진다. 얇은 유리 테와
      은은한 위 림만 남기고, 아래 림·번지는 광 레이어는 뺐다. 외부 그림자도 부양감만
