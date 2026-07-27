@@ -908,7 +908,14 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
      기준)에선 100vw와 같아 좌우 16px 여백이 되고, 다른 모달 '안'에 인라인으로 뜬
      중첩 모달(컨펌 등)에선 부모 박스 폭으로 잡혀 부모(overflow:hidden) 밖으로 안 넘친다. */
   position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 100;
-  width: min(calc(100vw - 32px), 100%); max-width: 420px; padding: 13px 18px 0; max-height: 88vh; max-height: 88dvh;
+  /* 좌우 여백은 본문 카드보다 한 단계 더 준다 — 예전엔 100vw-32px라 모바일 본문
+     (.scr-main 좌우 패딩 16px)과 폭이 정확히 같아, 모달 가장자리가 뒤 카드 가장자리에
+     딱 겹쳐 층이 안 보였다(지적). 반대로 넓히는 건 답이 아니다: 카드가 이미 화면폭
+     -32px라 더 넓히면 전체화면 시트처럼 읽히고, 딤 대신 구분감을 맡은 그림자가 좌우로
+     퍼질 자리를 잃는다. 32px(=본문 패딩 16px의 두 배)씩 들여 뒤 카드가 양옆으로 16px씩
+     드러나게 하면, 그 어긋난 가장자리 자체가 '한 겹 위' 신호가 된다.
+     max-width가 420px이라 이 값은 폭 492px 미만(=모바일)에서만 실제로 걸린다. */
+  width: min(calc(100vw - 64px), 100%); max-width: 420px; padding: 13px 18px 0; max-height: 88vh; max-height: 88dvh;
   display: flex; flex-direction: column; overflow: hidden; border-radius: var(--radius);
   border: none;
   /* 배경/블러는 아래 ::before 자식 레이어로(탭바·서랍과 같은 이유 — iOS 26 사파리는
