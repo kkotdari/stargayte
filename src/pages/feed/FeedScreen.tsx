@@ -420,6 +420,11 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
   // 위쪽 콘텐츠 수집 — 스택 위 피드 아이템들 + 피드 목록 위 요소들(타이틀/필터/검색).
   // 헤더는 문서 스크롤 최상단 콘텐츠라 스택을 펼칠 즈음엔 화면 밖이 대부분이지만,
   // 근처에 있으면 같이 밀어 위화감을 없앤다.
+  // 스크롤 보정 슬라이드에 태워선 안 되는 요소 — position:fixed는 문서 스크롤과 무관하게
+  // 뷰포트에 고정된 크롬(등록 FAB 등)이라, 스크롤 델타만큼 translateY를 걸면 그만큼 내려갔다
+  // 올라오는 헛움직임이 된다(지적: "접고 펼 때 FAB가 아래로 내려갔다 올라와"). 이런 요소는
+  // 수집에서 제외한다(헤더는 position:relative라 실제로 스크롤돼 그대로 포함).
+  const isSlidable = (el: HTMLElement): boolean => getComputedStyle(el).position !== "fixed";
   const collectAbove = (): HTMLElement[] => {
     const root = stackRef.current;
     if (!root) return [];
@@ -435,7 +440,7 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     }
     const header = document.querySelector<HTMLElement>(".scr-header");
     if (header) above.push(header);
-    return above;
+    return above.filter(isSlidable);
   };
   // 아래쪽 콘텐츠 수집 — 앞 카드 + 스택 뒤 피드 아이템들 + 피드 목록 뒤 요소들.
   // 위쪽에서 접을 때(스크롤 여유 부족) 부족분만큼 이 무리가 올라와 채운다(아래 closeStack).
@@ -453,7 +458,7 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
         below.push(el as HTMLElement);
       }
     }
-    return below;
+    return below.filter(isSlidable);
   };
   // 접기 애니메이션(closeStack)이 끝내놓은 인라인 상태 — 커밋(!open) 분기가 이어받아 정리한다.
   const closeMotionRef = useRef<{ els: HTMLElement[]; belowEls: HTMLElement[]; dist: number } | null>(null);
