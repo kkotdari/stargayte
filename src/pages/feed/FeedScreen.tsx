@@ -508,8 +508,9 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       { duration: SUMMARY_FADE_MS, fill: "both", easing: open ? "ease-in" : "ease-out", delay: summaryAt },
     ));
     // 카드는 하나씩(요청) — 펼칠 땐 공간이 다 열린 뒤 위에서부터, 접을 땐 아래에서부터
-    // 먼저 걷어낸다. 카드에 opacity를 걸어도 되는 이유: 피드 카드는 불투명 배경이라
-    // backdrop-filter가 없다(있었다면 opacity<1 조상이 합성 그룹을 만들어 블러가 죽는다).
+    // 먼저 걷어낸다. 카드에는 backdrop-filter(유리)가 있고 opacity<1 조상은 합성 그룹을
+    // 만들어 그 구간 동안 블러가 배경을 못 샘플링한다 — 다만 피드 카드 뒤는 민무늬
+    // 테마색이라 흐리나 마나 같은 색이어서 이 페이드 중에도 티가 안 난다.
     cards.forEach((c, i) => {
       const order = open ? i : cards.length - 1 - i;
       anims.push(c.animate(

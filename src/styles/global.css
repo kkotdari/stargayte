@@ -79,12 +79,15 @@
   --void: #000000;
   --panel: rgba(255, 255, 255, 0.04);      /* 패널 (반투명 유리) */
   --panel-solid: #101011;                  /* 불투명이 필요한 곳 */
-  /* 피드 카드 톤 — 카드와 그 위에 뜨는 댓글 시트가 같은 색을 쓰도록 한 곳에서 정한다
-     (요청: 시트 패널을 카드와 톤 맞춰 연속성 주기).
+  /* 댓글 화면(전체화면 패널) 톤 — 원래는 피드 카드와 이 패널이 같은 색을 쓰라고 둔
+     토큰이다(요청: 카드와 톤 맞춰 연속성 주기). 카드가 유리(반투명+블러)로 돌아간 뒤로는
+     이 패널 쪽만 쓴다 — 패널은 불투명이어야 한다(반투명이면 뒷페이지가 그대로 비친다).
+     입력 중 캔버스(html/body/.scr-main::before)도 이 값으로 칠해 키보드 위 띠가 패널의
+     연장처럼 보이게 한다 — 세 군데가 어긋나면 안 되므로 한 곳에서 정한다.
      값은 --panel-solid(#101011)에 흰색을 섞은 결과다 — 9%(#252526)는 순검정 배경 위에서
      회색 판처럼 떠 보였고 4%(#1a1a1b)는 너무 가라앉아, 그 사이 6%로 잡는다(요청: 살짝
-     회색으로). 계산식 대신 값을 박은 건 시트 패널이 이 색을 알파와 함께 써야 해서다. */
-  --feed-card-bg: #1e1e1f;
+     회색으로). 계산식 대신 값을 박은 건 패널이 이 색을 알파와 함께 써야 해서다. */
+  --comment-panel-bg: #1e1e1f;
   --panel-raised: rgba(255, 255, 255, 0.12); /* 드롭다운/칩 등 */
   --input-bg: rgba(6, 6, 7, 0.86);         /* 입력 필드 */
   --header-bg: rgba(7, 7, 8, 0.74);        /* 헤더 전용 배경 — .scr-light-theme에서 재정의 */
@@ -767,7 +770,7 @@ html.scr-light-theme .scr-checkbox-field input[type="radio"]:not(:checked), html
    종족 배지처럼 변수를 안 쓰는 요소는 원래 색 그대로 남는다. */
 html.scr-light-theme {
   --void: #ffffff;
-  --feed-card-bg: #ffffff;
+  --comment-panel-bg: #ffffff;
   --panel: rgba(255, 255, 255, 0.46);
   --panel-solid: #ffffff;
   --panel-raised: #f0f0f0;
@@ -7039,12 +7042,17 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-feed-card {
   position: relative; padding: 10px 0 10px;
   border-radius: 14px;
-  /* 임시 땜빵 기간의 카드 재질(요청) — 블러 없이 "불투명" 배경. 반투명이면 겹침
-     스택에서 뒤에 잘린 카드가 비쳐 보여 이상했다(지적). 예전 반투명 톤(오버레이 9%)과
-     같은 밝기를 불투명으로 환산해 채운다(color-mix 미지원 브라우저는 앞 선언 폴백). */
-  /* 카드 톤은 --feed-card-bg 하나로 정한다 — 댓글 시트가 같은 색을 써야 카드에서 시트로
-     이어지는 느낌이 난다(요청). 값의 유래는 그 토큰 선언부 주석 참고. */
-  background-color: var(--feed-card-bg);
+  /* 라이팅 글래스 복원(요청) — 불투명으로 굳혔던 이유는 겹침 스택에서 반투명 카드 뒤로
+     잘린 카드가 비쳐 보이던 것인데, 스택이 요약 카드 + (형제로 놓인) 목록 구조로 바뀌어
+     카드끼리 겹치는 자리가 아예 없어졌다. 블러를 뺐던 다른 이유(피드에 배경 사진이 없어
+     흐릴 대상이 없다)는 남아 있지만, 그건 손해가 아니라 이득이 없다는 쪽이라 재질 일관성
+     (탭바·FAB·너나와 카드와 같은 유리)을 택한다.
+     스택 여닫이가 카드 래퍼에 opacity를 거는데, opacity<1 조상은 합성 그룹을 만들어 그
+     구간 동안 backdrop-filter가 배경을 못 샘플링한다 — 다만 여기 배경은 민무늬 테마색
+     이라 흐리나 마나 같은 색이어서 눈에 띄지 않는다. */
+  background: rgba(var(--overlay-rgb), 0.07);
+  backdrop-filter: blur(9px) saturate(1.2);
+  -webkit-backdrop-filter: blur(9px) saturate(1.2);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.09),
     inset 0 0 0 1px rgba(255, 255, 255, 0.045),
@@ -7054,7 +7062,9 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    8%로는 너무 옅어 카드가 안 읽혔다(지적). 바깥 헤어라인 한 줄로 윤곽을 확실히 잡고,
    드롭섀도는 넓고 진하게 깔아 카드가 페이지 위에 떠 보이게 한다. */
 .scr-light-theme .scr-feed-card {
-  background: var(--panel-solid);
+  background: rgba(255, 255, 255, 0.62);
+  backdrop-filter: blur(10px) saturate(1.1);
+  -webkit-backdrop-filter: blur(10px) saturate(1.1);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.85),
     0 0 0 1px rgba(0, 0, 0, 0.06),
@@ -7505,9 +7515,9 @@ html.scr-light-theme .scr-feed-add-fab {
      사이트 툴바로 보고 접었던 크롬을 도로 펼친다"는 회피책이다. 여기서는 뒷페이지가 비치는
      기능 문제가 더 크다고 보고 반대로 택했다.) */
   position: fixed; inset: 0;
-  /* 카드와 같은 토큰을 쓴다 — 카드에서 이 화면으로 이어지는 느낌이 나야 하고, 입력 중
-     캔버스를 같은 색으로 칠할 때(아래 .scr-comment-typing)도 값이 어긋나면 안 된다. */
-  background: var(--feed-card-bg);
+  /* 반드시 불투명이다 — 반투명이면 뒷페이지가 그대로 비친다. 입력 중 캔버스를 같은
+     색으로 칠할 때(아래 .scr-comment-typing) 값이 어긋나면 안 되므로 토큰 하나를 쓴다. */
+  background: var(--comment-panel-bg);
   /* 탭바(55)보다 위, 모달(100)보다 아래 — 여기서 연 삭제 확인창이 이 화면에 가리지 않는다. */
   z-index: 90;
   display: flex; flex-direction: column;
@@ -7561,11 +7571,11 @@ html.scr-comment-typing .scr-main { visibility: visible; }
 html.scr-comment-typing .scr-main > * { visibility: hidden; }
 /* 배경 사진 규칙(html.scr-page-bg …)이 더 구체적이라 !important로 확실히 이긴다 —
    입력 중 한때뿐이고, 여기서 지면 그 띠에 사진이 그대로 드러난다. */
-html.scr-comment-typing .scr-main::before { background: var(--feed-card-bg) !important; }
+html.scr-comment-typing .scr-main::before { background: var(--comment-panel-bg) !important; }
 /* 캔버스(문서 배경)까지 같은 색으로 칠한다 — 이걸 빼먹었더니 띠만 유독 까맸다(지적).
    .scr-main::before도 결국 position:fixed라, 키보드가 올라오면 패널과 똑같이 비주얼
    뷰포트로 다시 앉혀져 그 아래를 못 덮는다. 거기 남는 건 html의 배경(--void)이다. */
-html.scr-comment-typing, html.scr-comment-typing body { background: var(--feed-card-bg); }
+html.scr-comment-typing, html.scr-comment-typing body { background: var(--comment-panel-bg); }
 /* 목록이 이 아래로 스크롤해 들어가므로 경계선을 둔다 — 없으면 스크롤된 글이 제목 줄에
    그대로 붙어 어디까지가 헤더인지 안 보인다. */
 /* 윗모서리 곡선이 헤더 줄 높이까지 파고들므로 제목과 X를 위로 조금 더 내려 피한다. 좌우는
