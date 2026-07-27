@@ -7070,13 +7070,16 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-feed-stack:not(.scr-feed-stack-opened) .scr-feed-stack-sum-inner { height: auto; }
 
 /* ── 요약 카드 ── */
-/* 헤더 아래·내용 아래 여백이 다른 카드보다 좁아 답답했다(지적) — 카드 기본 아래 여백
-   (10px)을 줄이던 재정의를 걷고, 명단 위 여백도 8→14px로 늘린다. */
+/* 헤더 아래·내용 아래 여백이 다른 카드보다 좁아 답답했다(지적, 두 번) — 카드 기본 아래
+   여백(10px)을 줄이던 재정의를 걷고, 명단 위 여백은 실제 카드에 맞춰 잡는다.
+   게임결과/너나와 카드는 헤더(padding-bottom 2px) 다음에 로우가 오는데 그 로우가
+   margin-top 8px + padding-top 15px을 갖는다 — 합 25px. 여기서는 헤더 2px + 명단
+   23px으로 같은 25px을 만든다(8→14px로는 16px밖에 안 돼 여전히 좁았다). */
 .scr-feed-stack-sum-card { padding-bottom: 10px; }
 /* 참가자 — 한 줄에 네 명 고정(요청). 이름 길이가 달라도 열이 어긋나지 않게 균등 4열
    그리드를 쓴다(flex-wrap이면 이름 길이만큼 칸이 달라져 줄이 안 맞는다). */
 .scr-feed-stack-sum-players {
-  list-style: none; margin: 0; padding: 14px 16px 0;
+  list-style: none; margin: 0; padding: 23px 16px 0;
   display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px 6px;
 }
 .scr-feed-stack-sum-player { display: flex; align-items: center; gap: 5px; min-width: 0; }
@@ -7447,15 +7450,13 @@ html.scr-light-theme .scr-feed-add-fab {
      사이트 툴바로 보고 접었던 크롬을 도로 펼친다"는 회피책이다. 여기서는 뒷페이지가 비치는
      기능 문제가 더 크다고 보고 반대로 택했다 — 주소창이 다시 펼쳐지는 부작용이 보이면
      그때 다시 저울질한다.)
-     bottom은 --sheet-skirt만큼 더 내려 잡고 그만큼 아래 패딩으로 되민다 — 보이는 모양은
-     그대로면서 배경이 화면 밑단 너머까지 이어진다. 두 경우를 한 번에 덮으려는 것이다:
-       · 키보드가 없을 때 bottom:0은 '레이아웃 뷰포트' 바닥이라 사파리 반투명 툴바 뒤까지
-         내려가 그 띠를 덮는다(확인됨).
-       · 키보드가 올라오면 iOS가 fixed 요소를 '비주얼 뷰포트'(키보드 위)로 다시 앉히는데,
-         그러면 bottom:0이 액세서리 바 위가 돼 그 아래로 페이지가 드러난다(지적). 치마가
-         그 구간을 메운다. 앞서 치마가 안 먹었던 건 배경을 ::before/::after에 맡겼기
-         때문이고, 지금은 요소 자신이 칠하므로 잘리지 않는다. */
-  --sheet-skirt: 60vh;
+     bottom:0은 '레이아웃 뷰포트' 바닥이라 사파리 반투명 툴바 뒤까지 내려가 그 띠를 덮는다
+     — 키보드가 없을 때 뒷페이지가 안 비치는 것이 확인된 상태다. 이 상태를 기준으로 둔다.
+     --sheet-skirt는 그 아래로 더 뻗는 양인데, 기본은 0이다: 60vh로 크게 늘려봤더니
+     키보드가 없을 때까지 다시 비쳤다(지적: "치마는 완전 실패") — 화면 밖으로 크게 벗어난
+     fixed 박스는 iOS가 다르게 합성하는 듯하다. 아래 typing 규칙에서 '이미 비치고 있는'
+     키보드 구간에만 짧게(120px) 준다 — 잘 되는 경우는 건드리지 않는다. */
+  --sheet-skirt: 0px;
   position: fixed; left: 0; right: 0; bottom: calc(-1 * var(--sheet-skirt));
   background: #1e1e1f;
   /* 탭바(55)보다 위, 모달(100)보다 아래 — 시트 안에서 연 삭제 확인창이 시트에 가리지 않는다. */
@@ -7514,6 +7515,10 @@ html.scr-light-theme .scr-comment-sheet { background: #ffffff; }
    transition 값이 쓰이므로, typing이 붙을 땐 none, 떨어질 땐 기본값이 적용된다. */
 .scr-comment-sheet { transition: padding-bottom 220ms cubic-bezier(0.32, 0.72, 0, 1); }
 .scr-comment-sheet-typing {
+  /* 키보드가 올라오면 iOS가 fixed 요소를 '비주얼 뷰포트'(키보드 위)로 다시 앉혀서 bottom:0이
+     액세서리 바 위가 되고 그 아래로 페이지가 드러난다(지적). 그 띠(액세서리 바 + 주소창
+     알약)만 덮을 만큼만 아래로 뻗는다 — 화면 높이급으로 늘리면 오히려 전부 깨졌다. */
+  --sheet-skirt: 120px;
   padding-bottom: calc(var(--sheet-skirt) + 8px);
   transition: none;
 }
