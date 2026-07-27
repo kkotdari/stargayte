@@ -1892,13 +1892,15 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    불투명 --panel-solid를 덮는다. 값은 .scr-feed-card와 동일(다크/라이트 각각). */
 .scr-stats-list-panel-v2 .scr-stat-table {
   background-color: rgba(var(--overlay-rgb), 0.07);
-  backdrop-filter: blur(9px) saturate(1.2);
-  -webkit-backdrop-filter: blur(9px) saturate(1.2);
+  /* 블러 아주 약하게(요청) — 9px는 사진이 뭉개져 유리보다 젖빛 느낌이었다. 2px면 배경
+     사진의 형태가 살아 있는 채로 살짝만 부드러워진다. */
+  backdrop-filter: blur(2px) saturate(1.2);
+  -webkit-backdrop-filter: blur(2px) saturate(1.2);
 }
 .scr-light-theme .scr-stats-list-panel-v2 .scr-stat-table {
   background-color: rgba(255, 255, 255, 0.62);
-  backdrop-filter: blur(10px) saturate(1.1);
-  -webkit-backdrop-filter: blur(10px) saturate(1.1);
+  backdrop-filter: blur(2px) saturate(1.1);
+  -webkit-backdrop-filter: blur(2px) saturate(1.1);
 }
 /* 헤더행·유저열 배경 — 회색톤(--panel-raised) 대신 표 기본색으로(요청). 유저열은 sticky로
    옆 칸 내용이 밑을 지나가므로, 불투명 회색 대신 반투명 기본색 + 강한 블러로 가린다(요청).
