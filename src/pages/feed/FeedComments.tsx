@@ -273,9 +273,9 @@ function NoteComposer({
   );
 }
 
-// 시트를 화면 밖으로 완전히 내리는 데 필요한 이동량(px) — 화면 바닥에서 시트 윗변까지의
-// 거리다. translateY(100%)와 같은 값이지만 px로 재두면, 쓸어내리다 손을 뗀 위치에서
-// 이어서 내려가는 계산(closeSheetFrom)과 단위가 맞아 섞어 쓰기 좋다.
+// 댓글 화면을 화면 밖으로 완전히 내리는 데 필요한 이동량(px) — 화면 바닥에서 그 윗변까지의
+// 거리다(전체화면이므로 사실상 뷰포트 높이). translateY(100%)와 같은 값이지만 px로 재두면,
+// 쓸어내리다 손을 뗀 위치에서 이어서 내려가는 계산(closeSheetFrom)과 단위가 맞아 섞어 쓰기 좋다.
 function hiddenOffset(el: HTMLElement): number {
   return Math.max(0, window.innerHeight - el.getBoundingClientRect().top);
 }
@@ -321,7 +321,7 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<FeedComment | null>(null);
-  // 모바일에서는 댓글을 카드 안에서 바로 쓰지 않고 바텀시트에서 읽고 쓴다(요청) — 카드에는
+  // 모바일에서는 댓글을 카드 안에서 바로 쓰지 않고 전체화면에서 읽고 쓴다(요청) — 카드에는
   // 목록 미리보기(또는 댓글이 하나도 없을 때만 추가 아이콘)만 남고, 그걸 누르면 시트가 열린다.
   // PC는 화면이 넓고 키보드가 본문을 가리지 않으니 기존의 인라인 방식 그대로다(요청: 모바일만).
   const mobile = useIsMobile();
@@ -693,9 +693,10 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
         </>
       )}
 
-      {/* 바텀시트(모바일) — 화면 아래에 붙는 모달 재질 패널(요청 2). 윗변은 직선이고,
-          높이는 댓글 목록만큼 자라다가 화면 절반 언저리에서 멈춘다(요청, CSS max-height).
-          목록은 오래된 순 그대로 두고 스크롤만 최신으로 내린다(요청 3), 입력창은 맨 아래(요청 4). */}
+      {/* 댓글 화면(모바일) — 원래는 화면 절반짜리 바텀시트였는데, 키보드가 올라오면 시트
+          아래로 뒷페이지가 비치는 iOS 문제를 끝내 못 잡아 화면 전체를 덮는 방식으로 바꿨다
+          (요청). 아래에서 위로 올라오는 연출은 그대로다.
+          목록은 오래된 순 그대로 두고 스크롤만 최신으로 내린다(요청), 입력창은 맨 아래(요청). */}
       {mobile && sheetOpen && createPortal(
         <div
           ref={sheetRef}

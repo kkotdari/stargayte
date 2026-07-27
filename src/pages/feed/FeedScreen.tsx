@@ -515,17 +515,16 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
           <div className="scr-feed-card scr-feed-stack-sum-card">
             <div className="scr-feed-card-head" data-date-label={dateLabel}>
               <ClipboardList size={13} aria-hidden />
-              <span className="scr-feed-card-label">게임결과</span>
+              {/* 묶음이면 라벨 자체가 몇 건인지 말해준다(요청) — 오른쪽 집계에 게임 수를
+                  또 적으면 중복이라, 거긴 참여 인원만 남긴다. */}
+              <span className="scr-feed-card-label">게임결과 {stack.items.length}건</span>
               <span className="scr-feed-card-time">{dateLabel}</span>
-              {/* 집계는 헤더 오른쪽 끝에(요청) — 게임 수가 먼저, 인원이 뒤. */}
-              <span className="scr-feed-stack-sum-count">
-                {stack.items.length}게임 <span className="scr-feed-stack-sum-sep">/</span> {participants.length}명 참여
-              </span>
+              <span className="scr-feed-stack-sum-count">{participants.length}명 참여</span>
             </div>
             <ul className="scr-feed-stack-sum-players">
               {participants.map((p) => (
                 <li key={p.id} className="scr-feed-stack-sum-player">
-                  <Avatar member={{ id: p.id, nickname: p.name, avatar: memberOf(p.id)?.avatar ?? null }} size={18} />
+                  <Avatar member={{ id: p.id, nickname: p.name, avatar: memberOf(p.id)?.avatar ?? null }} size={20} />
                   <span className="scr-feed-stack-sum-name">{p.name}</span>
                 </li>
               ))}

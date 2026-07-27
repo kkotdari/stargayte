@@ -7076,16 +7076,18 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    2px = 16px). 한때 게임결과 카드(25px)에 맞췄다가, 그쪽이 오히려 혼자 큰 것이었다는
    지적을 받고 셋 다 16px로 통일했다. */
 .scr-feed-stack-sum-card { padding-bottom: 10px; }
-/* 참가자 — 한 줄에 네 명 고정(요청). 이름 길이가 달라도 열이 어긋나지 않게 균등 4열
-   그리드를 쓴다(flex-wrap이면 이름 길이만큼 칸이 달라져 줄이 안 맞는다). */
+/* 참가자 — 이름 길이가 달라도 열이 어긋나지 않게 균등 그리드를 쓴다(flex-wrap이면 이름
+   길이만큼 칸이 달라져 줄이 안 맞는다). 프사·닉네임을 게임결과/너나와 로스터와 같은
+   크기(20px + caption)로 키우면서 한 줄은 네 명 → 세 명으로 줄였다(요청) — 같은 폭에
+   네 칸이면 이름이 두 글자만 지나도 말줄임이 된다. */
 .scr-feed-stack-sum-players {
   list-style: none; margin: 0; padding: 14px 16px 0;
-  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px 6px;
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 6px;
 }
-.scr-feed-stack-sum-player { display: flex; align-items: center; gap: 5px; min-width: 0; }
+.scr-feed-stack-sum-player { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .scr-feed-stack-sum-player .scr-avatar { flex-shrink: 0; border-radius: 50% !important; }
 .scr-feed-stack-sum-name {
-  font-size: var(--fs-micro); font-weight: 600; color: var(--text);
+  font-size: var(--fs-caption); font-weight: 600; color: var(--text);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 /* 헤더 오른쪽 끝 집계(요청) — 시각 옆 남는 폭을 밀어 오른쪽에 붙인다. */
@@ -7142,11 +7144,11 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 /* 경기 케밥을 포스트 우상단으로(요청 — 이제 오른쪽에 타임라인이 없어 안전 공간 불필요).
    trow의 position:relative가 절대배치를 가로채지 않게 피드 안에서는 static으로. */
 .scr-feed-match-body .scr-match-trow { position: static; }
-/* 헤더 아래 여백을 다른 피드 카드와 맞춘다(지적: 게임결과만 크다) — 기록실 로우가 갖고
-   온 margin-top 8 + padding-top 15(합 23)에 헤더 padding-bottom 2를 더하면 25px인데,
-   랭크 변동(.scr-feed-shift-list padding-top 14)과 너나와는 16px이다. 피드 안에서만
-   0 + 14로 낮춰 셋을 같은 값으로 만든다. */
-.scr-feed-match-body .scr-match-list-panel-v2 .scr-match-trow { margin-top: 0; padding-top: 14px; }
+/* 피드에선 윗줄이 비어 있다 — 맵·플레이시간은 접힘 땐 숨기고(펼치면 스탯 표 위에 따로
+   나온다) 케밥은 절대배치라, 남는 건 아래 여백 14px뿐이었다. 그 14px이 헤더와 로스터
+   사이에 그대로 얹혀 게임결과만 유독 벌어져 보였다(지적) — 빈 줄이니 여백도 지운다.
+   실제 헤더 아래 간격은 아래 trow의 padding-top이 혼자 정한다. */
+.scr-feed-match-body .scr-match-trow-topline { margin-bottom: 0; }
 /* 헤더(시각/라벨) 줄과 같은 라인에 오도록 — 헤더 padding-top 12px + caption 줄높이의
    세로 중심에 버튼 중심을 맞춘다. */
 .scr-feed-match-body .scr-match-trow-topmeta { position: absolute; top: 22px; right: 12px; z-index: 2; }
@@ -7181,7 +7183,9 @@ html.scr-light-theme .scr-feed-comments .scr-mreq-chip-inline { color: #c07c1c; 
 .scr-feed-match-body .scr-match-trow-topline { min-height: 0; }
 /* 게임결과 로스터 = 너 나와! 매치업과 같은 구조/CSS(요청: "너 나와의 css기준으로") —
    각 팀 세로 나열 + 프사, 가운데는 손가락 이모지 대신 vs, 승/무 배지도 동일 방식. */
-.scr-feed-match-matchup { padding: 2px 4px 0; }
+/* 좌우 4px을 더 갖고 있어 로스터만 다른 카드보다 4px 안쪽에 섰다(지적: 카드마다 내부
+   여백이 다르다) — 좌우는 trow(8) + 본문(8) = 16px으로 충분하니 여기선 0으로 둔다. */
+.scr-feed-match-matchup { padding: 0; }
 /* 피드에선 양편 flex를 똑같이 둬서 가운데(손가락/vs) 묶음이 카드 가로 정중앙에 온다
    (요청: "손가락, vs 세로 정렬" — 원본 화면의 비대칭 flex(0.85/1.15)가 중앙을 밀고 있었다). */
 .scr-feed-card .scr-challenge-matchup .scr-challenge-side { flex: 1 1 0; }
@@ -7215,7 +7219,11 @@ html.scr-light-theme .scr-feed-comments .scr-mreq-chip-inline { color: #c07c1c; 
 .scr-feed-card-body > .scr-challenge-card, .scr-feed-card-body > .scr-challenge-card.scr-challenge-card-active, .scr-feed-card-body > .scr-challenge-card.scr-challenge-card-ended {
   border: none; background: transparent; box-shadow: none;
   backdrop-filter: none; -webkit-backdrop-filter: none; border-radius: 0;
-  padding-top: 14px; padding-bottom: 16px; gap: 8px;
+  /* 네 종류 카드 공통값 — 좌우 16, 헤더 아래 14, 본문 끝 12(요청: 내부 여백 통일).
+     좌우는 원래 24px이었다(카드가 혼자 쓰일 때 좌우 이동 버튼이 그 패딩에 앉는다) —
+     피드 안에선 그 버튼이 없어 그만큼 안쪽으로 들어가 보이기만 했다.
+     아래 12px은 리벤지 버튼과 댓글 사이가 너무 벌어진다는 지적(16→12)도 함께 해결한다. */
+  padding: 14px 16px 12px; gap: 8px;
 }
 /* 경기 로우도 동일 — 행 자신의 라이팅 글라스 패널(배경·블러·그림자·마진)을 벗기고
    내용만 피드 카드에 직접 얹는다. 날짜 헤더는 카드 헤더가 대신하므로 숨긴다. */
@@ -7224,7 +7232,9 @@ html.scr-light-theme .scr-feed-comments .scr-mreq-chip-inline { color: #c07c1c; 
 .scr-feed-match-body .scr-match-list-panel-v2 .scr-match-trow, .scr-light-theme .scr-feed-match-body .scr-match-list-panel-v2 .scr-match-trow {
   background: transparent; border: none; box-shadow: none;
   backdrop-filter: none; -webkit-backdrop-filter: none;
-  border-radius: 0; margin: 0; padding-top: 7px; padding-bottom: 9px;
+  /* 위아래 여백은 네 종류 카드 공통값(헤더 아래 14 / 본문 끝 12)에 맞춘다(요청: 카드
+     내부 여백 통일). 아래는 로스터가 자기 padding-bottom을 안 갖고 있어 여기서 전부 낸다. */
+  border-radius: 0; margin: 0; padding-top: 14px; padding-bottom: 12px;
 }
 /* 카드 폭이 이미 좁으니 PC의 넓은 좌우 패딩(100px)도 카드 안에선 줄인다. */
 @media (min-width: 720px) {
@@ -7362,7 +7372,8 @@ html.scr-light-theme .scr-feed-add-fab {
 /* 랭크 변동 발생 카드 — 변동 후 순위 오름차순 목록(상승 ▲/하락 ▼/신규). */
 /* 헤더(타이틀)와 변동 목록 사이가 유독 좁았다(지적: "랭크변동일때만 타이틀과 본문
    사이가 좁아") — 상단 패딩을 키워 다른 카드(경기/너나와)와 비슷한 숨통을 준다. */
-.scr-feed-shift-list { list-style: none; margin: 0; padding: 14px 16px 3px; display: flex; flex-direction: column; gap: 6px; }
+/* 네 종류 카드 공통값 — 좌우 16, 헤더 아래 14, 본문 끝 12(요청: 내부 여백 통일). */
+.scr-feed-shift-list { list-style: none; margin: 0; padding: 14px 16px 12px; display: flex; flex-direction: column; gap: 6px; }
 /* 변동이 많으면 위에서 4개만 보이고 "…더보기"로 접힌다 — 리스트를 누르면 펼쳐진다(요청). */
 .scr-feed-shift-list-toggle { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .scr-feed-shift-more {
@@ -7438,62 +7449,43 @@ html.scr-light-theme .scr-feed-add-fab {
   .scr-feed-add-fab-wrap-hidden { visibility: hidden; pointer-events: none; }
 }
 
-/* ===== 댓글 바텀시트(모바일) =====
+/* ===== 댓글 전체화면(모바일) =====
    댓글을 카드 안에서 쓰면 입력칸이 화면 중간에 있어 키보드가 뜨는 순간 브라우저가 페이지를
    제멋대로 밀어 올렸다 — 어디까지 밀지는 OS가 정하고 우리는 계산도 관측도 못 한다(조사).
    입력칸을 화면 맨 아래에 고정해 두면 그 밀어 올림 자체가 필요 없어진다. 그래서 모바일에서는
-   목록·입력을 통째로 하단 시트로 옮긴다(요청).
+   목록·입력을 통째로 별도 화면으로 옮긴다(요청).
 
-   재질은 모달과 같은 유리(.scr-modal::before와 같은 값) — 배경/블러는 ::before 자식에 둔다.
-   요소 자신에 background/backdrop-filter가 있으면 iOS 26 사파리가 사이트 툴바로 보고 접었던
-   크롬을 도로 펼치기 때문(모달·탭바·서랍과 같은 이유).
+   처음엔 화면 절반 높이의 바텀시트였는데, 키보드가 올라올 때 시트 아래로 뒷페이지가 비치는
+   문제를 끝내 못 잡았다(아래 주석) — 결국 시트를 버리고 화면 전체를 덮는 쪽으로 갔다(요청:
+   "키보드 실험은 실패야 방법은 댓글 모달창을 전체로 변경하는거야"). 위아래를 모두 뷰포트에
+   물리면(top:0/bottom:0) iOS가 이 fixed 요소를 어느 뷰포트에 앉히든 — 레이아웃이든 키보드
+   위 비주얼이든 — 그 뷰포트를 꽉 채우므로 '아래에 남는 띠' 자체가 생기지 않는다.
 
-   시트 루트에 .scr-feed-comments/.scr-match-notes를 함께 붙여, 카드 안에서 쓰던 목록·입력
+   루트에 .scr-feed-comments/.scr-match-notes를 함께 붙여, 카드 안에서 쓰던 목록·입력
    스타일(폰트 한 스텝 축소, --field-h, 다크 흰 입력칸)을 포털 안에서도 그대로 상속받는다.
    대신 그 두 클래스가 들고 오는 카드용 여백/구분선은 여기서 되돌린다. */
 .scr-comment-sheet {
-  /* 패널 배경은 이 요소 '자신'이 칠한다(아래 background) — 다섯 번을 고쳐도 시트 아래로
-     뒷페이지가 비친 문제의 최종 정리다. 그동안의 시도는 전부 배경을 다른 레이어에 맡겼고
-     (::before z-index:-1 → ::before를 아래로 늘리기 → ::after 치마 → 요소 박스를 화면 밖까지
-     늘리기), iOS 사파리는 position:fixed 요소를 자기 합성 레이어로 만들면서 그 레이어를
-     뷰포트에 맞춰 잘라 버려 어느 것도 확실히 그려지지 않았다. 요소 자신의 배경은 그 레이어
-     안이라 잘릴 여지가 없다.
+  /* 패널 배경은 이 요소 '자신'이 칠한다(아래 background) — 배경을 다른 레이어(::before
+     z-index:-1, ::after 치마 등)에 맡겼던 시도는 iOS 사파리가 position:fixed 요소를 자기
+     합성 레이어로 만들면서 뷰포트에 맞춰 잘라 버려 전부 실패했다. 요소 자신의 배경은 그
+     레이어 안이라 잘릴 여지가 없다.
      (모달/탭바가 배경을 ::before 자식에 두는 규칙은 "fixed 요소 자신에 배경이 있으면 iOS가
      사이트 툴바로 보고 접었던 크롬을 도로 펼친다"는 회피책이다. 여기서는 뒷페이지가 비치는
-     기능 문제가 더 크다고 보고 반대로 택했다 — 주소창이 다시 펼쳐지는 부작용이 보이면
-     그때 다시 저울질한다.)
-     bottom:0은 '레이아웃 뷰포트' 바닥이라 사파리 반투명 툴바 뒤까지 내려가 그 띠를 덮는다
-     — 키보드가 없을 때 뒷페이지가 안 비치는 것이 확인된 상태다.
-
-     키보드가 올라오면 iOS가 fixed 요소를 '비주얼 뷰포트'(키보드 위)로 다시 앉혀서, 그
-     아래 액세서리 바 구간으로 페이지가 드러난다. 박스를 아래로 늘려 덮으려는 시도는
-     60vh(키보드 없을 때까지 깨짐)와 120px(효과 없음) 둘 다 실패했다 — iOS가 fixed
-     레이어를 뷰포트에 맞춰 잘라내는 것으로 보이고, 우리 쪽에서 넘을 방법이 없다.
-     남은 확실한 수단은 시트가 열린 동안 페이지 콘텐츠를 통째로 감추는 것뿐인데(그러면
-     시트 위쪽도 빈 패널색이 된다) 그건 바텀시트가 아니게 되므로, 입력 중 잠깐 아래가
-     비치는 쪽을 택했다(요청: 현 상태 유지). */
-  position: fixed; left: 0; right: 0; bottom: 0;
+     기능 문제가 더 크다고 보고 반대로 택했다.) */
+  position: fixed; inset: 0;
   background: #1e1e1f;
-  /* 탭바(55)보다 위, 모달(100)보다 아래 — 시트 안에서 연 삭제 확인창이 시트에 가리지 않는다. */
+  /* 탭바(55)보다 위, 모달(100)보다 아래 — 여기서 연 삭제 확인창이 이 화면에 가리지 않는다. */
   z-index: 90;
   display: flex; flex-direction: column;
-  /* 높이는 내용만큼 자라고(요청), 화면 절반 언저리에서 멈춘다(요청: "화면 반정도 높이").
-     댓글이 한두 개뿐이어도 시트로 보이도록 최소 높이를 넉넉히 잡는다(요청) — 안 그러면
-     입력줄만 붙은 얇은 띠가 돼 "바텀시트가 열렸다"가 아니라 툴바가 하나 뜬 것처럼 보인다. */
-  min-height: 50vh; min-height: 50dvh;
-  max-height: 68vh; max-height: 68dvh;
-  /* 윗모서리는 모달 기본(--radius: 12px)보다 크게 굴린다(요청) — 화면 폭을 꽉 채우는 시트라
-     같은 12px이면 거의 직선처럼 보인다. 1.75배(21px)도 약하다는 지적에 2.5배(30px)로.
-     21px→30px→40px을 거쳐 32px로 확정(요청). 아래는 화면 끝(그리고 치마)이라 각진 채로 둔다. */
-  border-radius: 32px 32px 0 0;
+  /* 전체화면이라 모서리는 굴리지 않는다 — 화면 자체의 모서리를 따라간다. */
+  border-radius: 0;
   margin: 0; border-top: none;
-  /* 바닥 안전 공간(요청) — 세 가지를 다 넘겨야 입력칸이 안 가린다:
+  /* 위: 노치/상태바 안전영역(전체화면이라 헤더가 그 밑으로 들어간다).
+     아래: 세 가지를 다 넘겨야 입력칸이 안 가린다 —
      ① 사파리 접힌 주소창 알약(--vv-bottom-inset 실측, 탭바가 쓰는 값과 같다),
      ② 홈 인디케이터 안전영역(PWA/전체화면),
-     ③ 둘 다 0인 기기(안드로이드 크롬·PC)에서도 화면 둥근 모서리를 피할 최소 여백.
-     탭바처럼 안전영역을 절반만 반영하지 않는다 — 탭바는 가장자리에서 떨어져 뜬 알약이지만
-     이 시트는 바닥에 붙은 패널이라 인디케이터 위를 그대로 침범한다. */
-  padding: 0 20px max(
+     ③ 둘 다 0인 기기(안드로이드 크롬·PC)에서도 화면 둥근 모서리를 피할 최소 여백. */
+  padding: var(--safe-top, 0px) 20px max(
     calc(var(--vv-bottom-inset, 0px) + 10px),
     calc(env(safe-area-inset-bottom, 0px) + 10px),
     18px
@@ -7502,16 +7494,6 @@ html.scr-light-theme .scr-feed-add-fab {
      16px 글자를 넣으면 위아래가 꽉 낀다. 16px은 iOS가 포커스 시 화면을 확대하지 않는
      최소 크기이기도 하다(그 이하면 자동 줌이 걸려 레이아웃이 통째로 틀어진다). */
   --field-h: 40px;
-  box-shadow:
-    0 -18px 50px rgba(0, 0, 0, 0.6),
-    0 -6px 18px rgba(0, 0, 0, 0.42),
-    0 -1px 0 rgba(255, 255, 255, 0.08);
-}
-html.scr-light-theme .scr-comment-sheet {
-  box-shadow:
-    0 -18px 50px rgba(0, 0, 0, 0.3),
-    0 -6px 18px rgba(0, 0, 0, 0.16),
-    0 -1px 0 rgba(0, 0, 0, 0.08);
 }
 html.scr-light-theme .scr-comment-sheet { background: #ffffff; }
 /* 키보드가 올라온 동안(입력칸 포커스)엔 바닥 여백을 걷어 입력줄을 키보드에 딱 붙인다
@@ -7528,18 +7510,7 @@ html.scr-light-theme .scr-comment-sheet { background: #ffffff; }
    transition 값이 쓰이므로, typing이 붙을 땐 none, 떨어질 땐 기본값이 적용된다. */
 .scr-comment-sheet { transition: padding-bottom 220ms cubic-bezier(0.32, 0.72, 0, 1); }
 .scr-comment-sheet-typing {
-  /* 키보드 구간을 덮는 양 — 액세서리 바 + 접힌 주소창 알약을 합친 것보다 넉넉히. */
-  --kb-cover: 140px;
-  /* 아래로 늘리는 방법을 바꾼다(요청: 다시 시도). 예전엔 bottom을 음수로 줘 박스 자체를
-     뷰포트 밖에 눕혔는데, iOS가 fixed 레이어를 뷰포트에 맞춰 잘라 아무것도 안 그려졌다.
-     이번엔 박스는 뷰포트 안에 그대로 두고(bottom:0) 합성 단계의 transform으로만 아래로
-     민다 — 레이아웃상 밖으로 나간 박스가 아니라 '뷰포트 안 박스를 옮긴 것'이라 잘라내기
-     대상이 아니길 기대하는 것이다. 대신 내용이 함께 내려가므로 그만큼 아래 패딩으로
-     되밀고, 보이는 높이가 줄지 않게 최소/최대에도 더한다. */
-  transform: translateY(var(--kb-cover));
-  padding-bottom: calc(var(--kb-cover) + 8px);
-  min-height: calc(50vh + var(--kb-cover)); min-height: calc(50dvh + var(--kb-cover));
-  max-height: calc(68vh + var(--kb-cover)); max-height: calc(68dvh + var(--kb-cover));
+  padding-bottom: 8px;
   transition: none;
 }
 /* 목록이 이 아래로 스크롤해 들어가므로 경계선을 둔다 — 없으면 스크롤된 글이 제목 줄에
