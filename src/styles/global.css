@@ -7982,9 +7982,10 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    세로 범위(첫 카드 중심 ~ 앞 카드 중심)와 양 끝 원은 JS가 실측해 잡는다(MatchStack). */
 .scr-feed-stack { position: relative; }
 .scr-feed-stack-rail {
-  /* 카드 왼쪽 가장자리보다 살짝 바깥으로(요청: "좀더 왼쪽으로", 재요청: "조금만 더") —
-     -12→-16px. 페이지 좌우 여백(20px) 안이라 잘리지 않는다. */
-  position: absolute; left: -16px; top: 4px; bottom: 0; width: 22px; z-index: 2;
+  /* 카드 왼쪽 가장자리보다 살짝 바깥으로(요청 반복: "좀더 왼쪽으로" → "조금만 더" →
+     "살짝만 더") — -12→-16→-20px. 페이지 좌우 여백이 20px라 딱 그 경계까지 — 더 가면
+     잘리기 시작한다. */
+  position: absolute; left: -20px; top: 4px; bottom: 0; width: 22px; z-index: 2;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   background: transparent; border: none; padding: 0; cursor: pointer;
   -webkit-tap-highlight-color: transparent;
