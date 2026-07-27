@@ -1916,6 +1916,17 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   backdrop-filter: blur(16px) saturate(1.1);
   -webkit-backdrop-filter: blur(16px) saturate(1.1);
 }
+/* 라이트 — 유리 표(흰 62%) 위에 유저열이 다시 흰 70%+강블러를 얹으니 합성이 약 89%
+   흰색 = 사실상 불투명해 보였다(지적: "라이트에서만 유저열/헤더행이 완전 불투명").
+   다크는 같은 70%라도 어두운 색이라 티가 안 났던 것. 라이트만 덧칠을 확 낮춰(25%)
+   데이터 칸(62%)과 비슷한 투명감으로 — sticky 밑을 지나가는 막대는 낮아진 채움 대신
+   블러(8px)가 뭉개서 가린다. */
+.scr-light-theme .scr-stats-list-panel-v2 .scr-stat-name-cell,
+.scr-light-theme .scr-stats-list-panel-v2 .scr-stat-name-head {
+  background-color: color-mix(in srgb, var(--panel-solid) 25%, transparent);
+  backdrop-filter: blur(8px) saturate(1.05);
+  -webkit-backdrop-filter: blur(8px) saturate(1.05);
+}
 /* flex:none — 기본 규칙의 flex:1이 남은 폭을 스택이 다 차지해 프사만 왼쪽에 붙고
    닉네임 혼자 가운데로 떨어졌다(가운데 정렬 요청과 어긋남) — 프사+닉네임을 한 덩어리로
    칸 가운데에 모은다. */
