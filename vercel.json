@@ -1,7 +1,9 @@
 {
   "git": {
     "deploymentEnabled": {
+      "v2": false,
       "claude/stargayte-web-session-vtsbdc": false
     }
-  }
+  },
+  "ignoreCommand": "[ \"$VERCEL_GIT_COMMIT_REF\" != \"main\" ]"
 }
