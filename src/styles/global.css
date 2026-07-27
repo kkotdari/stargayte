@@ -8028,9 +8028,11 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 }
 /* hover도 불투명 유지(임시 땜빵) — 반투명(overlay 8%)으로 떨어지면 뒤 클립 카드가 비친다. */
 @media (hover: hover) { .scr-feed-stack-peek:hover { color: var(--text); background: color-mix(in srgb, var(--panel-solid) 90%, white); } }
+/* 색은 앞 카드와 완전히 동일하게(요청: "겹침 카드 색이 프론트카드와 다르네 똑같이") —
+   둘의 구분은 색 차이 대신 위로 지는 그림자가 담당한다(뒤 카드가 앞 카드 밑에 깔린 느낌). */
 .scr-light-theme .scr-feed-stack-peek {
-  background: color-mix(in srgb, var(--panel-solid) 96%, black);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 -2px 8px rgba(0, 0, 0, 0.08);
+  background: var(--panel-solid);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 -3px 12px rgba(0, 0, 0, 0.16);
 }
 /* 줄이기 — 스택(펼쳐진 카드들 + 앞 카드) 전체 왼쪽에 반투명 흰 세로 라인(요청). 카드는
    들여쓰기 없이 원래 폭 그대로 두고 라인을 그 위(왼쪽 가장자리)에 겹쳐 올린다. 라인
