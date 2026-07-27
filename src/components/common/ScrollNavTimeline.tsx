@@ -40,17 +40,6 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
   // 고쳐도 남아 있었다). 도약 자체는 의미상 맞으므로 없애지 않고, 그 순간에만 짧게
   // 미끄러지게 해서 눈에 튀지 않게 한다. 평상시 스크롤엔 트랜지션이 없어 지연이 없다.
   const [settling, setSettling] = useState(false);
-  // 임시 계측 — URL에 ?tldebug=1 을 붙였을 때만 화면 좌상단에 실측값을 띄운다. 튐이
-  // 일어나는 순간을 스크린샷으로 잡아 어떤 값이 뛰는지 확정하기 위한 것(실기기에서만
-  // 재현되는 문제라 추측 대신 값을 본다). 원인 확정 후 이 블록은 통째로 지운다.
-  const debugOn = typeof location !== "undefined" && location.search.includes("tldebug");
-  // 프로그램 스크롤 추적 — window.scrollTo를 감싸 마지막 호출의 목표값/시각/호출 위치를
-  // 남긴다. 튀는 순간 이 값이 최근이면 앱 코드가 옮긴 것이고, 비어 있으면 브라우저가
-  // 옮긴 것이다(둘을 가르는 게 핵심).
-  const traceRef = useRef<{ top: number; at: number; from: string } | null>(null);
-  const [dbg, setDbg] = useState<
-    { y: number; sh: number; ch: number; ih: number; f: number; se: number; bp: string; vv: number; n: number } | null
-  >(null);
   const lastScrollHeightRef = useRef(0);
   const settleTimerRef = useRef<number | null>(null);
 
@@ -106,20 +95,6 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
     setScrollable(max > 40);
     setFraction(max > 0 ? Math.min(1, Math.max(0, scrollTop / max)) : 0);
     setDateLabel(currentDateLabel(max <= 0 || scrollTop >= max - 2));
-    if (debugOn) {
-      const vvp = (window as unknown as { visualViewport?: { pageTop?: number } }).visualViewport;
-      setDbg({
-        y: Math.round(scrollTop), sh: Math.round(scrollHeight), ch: Math.round(clientHeight),
-        ih: Math.round(window.innerHeight || 0), f: max > 0 ? Math.min(1, Math.max(0, scrollTop / max)) : 0,
-        // scrollY와 다른 값들 — 어느 게 진짜 스크롤러인지, body가 잠겼는지(position:fixed)
-        // 가려낸다. sy(=y)만 튀고 se/vv는 멀쩡하면 body 잠금·다른 스크롤러가 범인이다.
-        se: Math.round(document.scrollingElement?.scrollTop ?? -1),
-        bp: getComputedStyle(document.body).position,
-        vv: Math.round(vvp?.pageTop ?? -1),
-        // 헤드 셀렉터로 잡히는 요소 수 — 피드는 카드마다 있어 수백 개가 될 수 있다.
-        n: document.querySelectorAll(headSelector).length,
-      });
-    }
     if (markers && markers.length > 0) {
       const next: Record<string, number | null> = {};
       for (const m of markers) next[m.key] = groupFraction(m.groupSelector, scrollTop, max);
@@ -134,25 +109,6 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
       if (!draggingRef.current) setVisible(false);
     }, 1100);
   };
-
-  useEffect(() => {
-    if (!debugOn) return;
-    const w = window as unknown as { scrollTo: typeof window.scrollTo; __tlPatched?: boolean };
-    if (w.__tlPatched) return;
-    w.__tlPatched = true;
-    const orig = w.scrollTo.bind(window);
-    w.scrollTo = ((...args: unknown[]) => {
-      const top = typeof args[0] === "object" && args[0] !== null
-        ? Number((args[0] as ScrollToOptions).top ?? -1)
-        : Number(args[1] ?? -1);
-      const line = (new Error().stack ?? "").split("\n").slice(2, 4)
-        .map((l) => (l.trim().replace(/^at\s+/, "").split("/").pop() ?? ""))
-        .join(" < ");
-      traceRef.current = { top: Math.round(top), at: performance.now(), from: line.slice(0, 46) };
-      return orig(...(args as Parameters<typeof window.scrollTo>));
-    }) as typeof window.scrollTo;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debugOn]);
 
   useEffect(() => {
     const onScroll = () => { update(); showThenScheduleHide(); };
@@ -226,19 +182,6 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
         />
       </div>
       <span className="scr-scroll-timeline-end">{bottomLabel}</span>
-      {debugOn && dbg && (
-        <div className="scr-scroll-timeline-debug">
-          y {dbg.y}<br />se {dbg.se}<br />vv {dbg.vv}<br />body {dbg.bp}<br />
-          sh {dbg.sh}<br />ch {dbg.ch} ih {dbg.ih}<br />
-          max {dbg.sh - Math.max(dbg.ch, dbg.ih)}<br />f {dbg.f.toFixed(3)}<br />heads {dbg.n}
-          {traceRef.current && (
-            <>
-              <br />&rarr;to {traceRef.current.top} ({Math.round(performance.now() - traceRef.current.at)}ms)
-              <br />{traceRef.current.from}
-            </>
-          )}
-        </div>
-      )}
     </div>
   );
 }

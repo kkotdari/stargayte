@@ -6309,13 +6309,6 @@ html.scr-snap-today { scroll-snap-type: y proximity; scroll-padding-top: calc(va
     color-mix(in srgb, var(--timeline-blue) 78%, transparent)
   );
 }
-/* 임시 계측 오버레이(?tldebug=1) — 원인 확정 후 이 규칙과 컴포넌트의 debug 블록을 함께 지운다. */
-.scr-scroll-timeline-debug {
-  position: fixed; left: 8px; top: calc(var(--safe-top) + 8px); z-index: 200;
-  padding: 6px 8px; border-radius: 8px; pointer-events: none;
-  background: rgba(0, 0, 0, 0.72); color: #fff;
-  font-family: ui-monospace, monospace; font-size: 11px; line-height: 1.35;
-}
 /* 무한스크롤로 문서가 길어진 직후에만 위치를 미끄러지게 한다(ScrollNavTimeline의 settling
    주석) — 평상시 스크롤엔 트랜지션이 없어 지연도, 잔상도 없다. transform이 아니라 top을
    옮기므로 예전처럼 합성 잔상(두 개로 보임)이 생기지 않는다. */
@@ -6326,12 +6319,20 @@ html.scr-snap-today { scroll-snap-type: y proximity; scroll-padding-top: calc(va
   background: var(--timeline-blue); transform: translate(-50%, -50%);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--timeline-blue) 26%, transparent), 0 1px 4px rgba(0, 0, 0, 0.3);
   z-index: 1;
-  /* 스크럽 손잡이 — 여기만 터치를 받는다(위 트랙 주석). */
-  pointer-events: auto; touch-action: none; cursor: grab;
+  /* 터치 기기에서는 아무 것도 받지 않는다 — 순수 표시용이다. 이 타임라인은 화면 오른쪽
+     가장자리에 있고 thumb은 '스크롤 위치를 따라' 움직이므로, 손가락으로 스크롤하는 바로
+     그 자리에 놓인다. 조작을 열어두면 스크롤하려던 터치가 스크럽으로 가로채여 페이지가
+     손가락 위치로 순간이동했다 — 실기기 추적에서 scrubTo가 매번 범인으로 찍혔다
+     (→to 815, →to 1193 … 손가락이 닿은 중간값). 트랙을 통과시키고 thumb만 남겨도,
+     히트 영역을 키운 만큼 오히려 더 자주 걸렸다. 마우스는 정확히 겨냥해 누르므로 그대로 둔다. */
+  pointer-events: none;
 }
-/* 12px 점은 손가락으로 잡기엔 작아 보이지 않는 여유 히트 영역을 덧댄다. */
-.scr-scroll-timeline-thumb::after {
-  content: ""; position: absolute; inset: -14px; border-radius: 50%;
+@media (hover: hover) and (pointer: fine) {
+  .scr-scroll-timeline-thumb { pointer-events: auto; touch-action: none; cursor: grab; }
+  /* 12px 점은 겨냥하기 작아 보이지 않는 여유 히트 영역을 덧댄다(마우스 전용). */
+  .scr-scroll-timeline-thumb::after {
+    content: ""; position: absolute; inset: -8px; border-radius: 50%;
+  }
 }
 /* "오늘" 눈금 — 트랙 위 오늘 위치에 짧은 가로선 + 라벨. 썸이 지나가며 여기서 딱 걸린다.
    라벨을 트랙 왼쪽으로 띄우던 이전 방식은 현재 위치 알약(.scr-scroll-timeline-date,
