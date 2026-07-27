@@ -72,6 +72,27 @@ const DEFENSE_BUILDINGS = new Set([
 // 드랍 수송선 — 있으면 견제 이야기를 붙일 만하다.
 const DROP_UNITS = new Set(["Dropship", "Shuttle"]);
 
+// 유닛이 경기에서 하는 '역할' — 같은 승리라도 무엇으로 이겼는지에 따라 다르게 읽히도록
+// (요청: 팀전이라도 잘한 사람이 있으면 그 사람 얘기를 많이 — "하이템플러 견제로 승기를 잡음").
+const UNIT_ROLE: Record<string, string> = {
+  "High Templar": "견제", "Dark Templar": "견제", Reaver: "견제", Mutalisk: "견제",
+  Vulture: "견제", Dropship: "드랍", Shuttle: "드랍", Lurker: "매복", Ghost: "저격",
+  Defiler: "마법", "Science Vessel": "마법", Arbiter: "마법", "Dark Archon": "마법", Queen: "마법",
+  Carrier: "공중 장악", Battlecruiser: "공중 장악", Guardian: "공중 장악",
+  Wraith: "공중 견제", Valkyrie: "제공권", Corsair: "제공권", Scourge: "제공권", Devourer: "제공권",
+  Ultralisk: "돌파", Archon: "돌파", Zealot: "돌파", Firebat: "돌파",
+  "Siege Tank (Tank Mode)": "자리 잡기", "Siege Tank (Siege Mode)": "자리 잡기",
+  Zergling: "물량", Hydralisk: "물량", Marine: "물량", Dragoon: "물량", Goliath: "물량",
+  Medic: "물량", Scout: "공중 견제", "Infested Terran": "자폭",
+};
+// 역할별 맺음말 — 뜻에 맞춰 갈라 두면 같은 문장이 반복되지 않는다.
+const ROLE_TAIL: Record<string, string> = {
+  견제: "승기를 잡음", "공중 견제": "승기를 잡음", 매복: "승기를 잡음", 저격: "승기를 잡음",
+  드랍: "흔들어 놓음", 마법: "판을 갈랐음", 자폭: "판을 갈랐음",
+  "공중 장악": "굳히기", 제공권: "굳히기", 돌파: "굳히기",
+  물량: "밀어붙임", "자리 잡기": "밀어붙임",
+};
+
 const TECH_KO: Record<string, string> = {
   "Psionic Storm": "스톰", "Stim Packs": "스팀팩", Lockdown: "락다운",
   "Spider Mines": "마인", "Lurker Aspect": "럴커", Burrowing: "버로우",
@@ -183,7 +204,9 @@ function sumCombat(p: ParsedReplayPlayer): number {
   return n;
 }
 
-/** 팀 안에서 혼자 절반 넘게 뽑았으면 그 사람 이름으로 문장을 연다(요청: 잘한 사람 표현). */
+/** 그 편에서 눈에 띄게 많이 뽑은 사람 — 팀전이라도 이 사람 얘기를 많이 하기 위한 기준
+ *  (요청). 2등보다 1.4배 넘게 앞서면 인정한다(예전엔 "혼자 절반 넘게"라 3인 이상 팀에서는
+ *  거의 안 잡혔다). 1:1은 당연히 그 사람이다. */
 function standout(side: Side): ParsedReplayPlayer | null {
   const ranked = side.players
     .map((p) => ({ p, n: sumCombat(p) }))
@@ -191,8 +214,41 @@ function standout(side: Side): ParsedReplayPlayer | null {
     .sort((a, b) => b.n - a.n);
   if (ranked.length === 0) return null;
   if (ranked.length === 1) return ranked[0].p;
-  const total = ranked.reduce((acc, x) => acc + x.n, 0);
-  return ranked[0].n > total * 0.5 ? ranked[0].p : null;
+  return ranked[0].n >= ranked[1].n * 1.4 ? ranked[0].p : null;
+}
+
+/** 한 사람이 뽑은 전투 유닛만 골라 많은 순으로 — 팀 합계가 아니라 '이 사람의 조합'이다. */
+function ownCombat(p: ParsedReplayPlayer): Map<string, number> {
+  const out = new Map<string, number>();
+  const s = p.signals;
+  if (!s) return out;
+  for (const [unit, n] of Object.entries(s.unitCounts)) {
+    if (NON_COMBAT_UNITS.has(unit)) continue;
+    if (!UNIT_KO[unit]) continue;
+    out.set(unit, n);
+  }
+  return out;
+}
+
+/** "○○의 하이템플러 견제로 승기를 잡음" — 그 사람을 특징짓는 유닛 하나를 골라 말한다.
+ *  팀 동료가 거의 안 뽑은 유닛일수록 그 사람의 몫이 뚜렷하므로 우선한다. */
+function heroClause(side: Side, hero: ParsedReplayPlayer, name: string): string | null {
+  const own = ownCombat(hero);
+  if (own.size === 0) return null;
+  const mates = side.players.filter((p) => p !== hero);
+  const scored = [...own.entries()]
+    .filter(([u]) => UNIT_ROLE[u])
+    .map(([unit, n]) => {
+      const byMates = mates.reduce((acc, m) => acc + (ownCombat(m).get(unit) ?? 0), 0);
+      // 혼자 뽑은 유닛에 가중치 — 팀에서 이 사람만 낸 카드가 곧 그 사람의 이야기다.
+      return { unit, score: n * (byMates === 0 ? 2 : 1) };
+    })
+    .sort((a, b) => b.score - a.score);
+  const top = scored[0];
+  if (!top) return null;
+  const role = UNIT_ROLE[top.unit];
+  const tail = ROLE_TAIL[role] ?? "승기를 잡음";
+  return `${name}의 ${ro(`${UNIT_KO[top.unit]} ${role}`)} ${tail}`;
 }
 
 /** 경기가 끝나기 한참 전에 커맨드가 끊긴 사람 — 그 시점에 졌거나 나간 것으로 읽는다. */
@@ -231,11 +287,16 @@ export function buildReplaySummary({ replay, displayName }: ReplaySummaryInput):
 
   const winner = buildSide(winnerPlayers);
   const loser = buildSide(loserPlayers);
-  const units = mainUnits(winner);
+
+  // 눈에 띄는 사람이 있으면 그 사람을 주어로 세우고 조합도 '그 사람의 것'으로 말한다
+  // (요청: 팀전이라도 잘한 사람 얘기를 많이). 없으면 편 전체로 말한다.
+  const star = standout(winner);
+  const units = star
+    ? mainUnits({ ...winner, combat: ownCombat(star) })
+    : mainUnits(winner);
   const phrase = unitPhrase(units);
   if (!phrase) return null; // 조합을 못 읽으면 문장의 알맹이가 없다
 
-  const star = standout(winner);
   const subject = star
     ? displayName(star.rawName)
     : winnerPlayers.map((p) => displayName(p.rawName)).join("·");
@@ -268,8 +329,14 @@ export function buildReplaySummary({ replay, displayName }: ReplaySummaryInput):
   else if (wentLate && lead.length === 0) body = `${who} 후반 ${phrase} 승리`;
   else body = `${who} ${phrase} 승리`;
 
-  // ── 덧붙임: 운영/견제/테크/탈락 중 눈에 띄는 것 한둘 ──
+  // ── 덧붙임: 활약/운영/견제/테크/탈락 중 눈에 띄는 것 한둘 ──
   const tails: string[] = [];
+
+  // 팀전이면 그 사람의 활약을 한 줄 더 말한다(요청) — 1:1은 이미 본문이 그 사람 얘기라 뺀다.
+  if (star && winnerPlayers.length > 1) {
+    const hero = heroClause(winner, star, displayName(star.rawName));
+    if (hero) tails.push(hero);
+  }
 
   // 확장 수 — 두 편 차이가 뚜렷할 때만 말한다(둘 다 3확장이면 이야깃거리가 아니다).
   const winExp = countIn(winner.buildings, EXPANSION_BUILDINGS);
