@@ -5646,9 +5646,8 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
    않도록 상대편에 폭을 조금 더 준다(요청: "상대쪽 공간이 더 넓어야됨(요소가 많으니)
    닉네임 최대한 나오게"). 처음엔 4:6까지 벌렸다가 이번엔 도전자편이 너무 좁아져(요청:
    "이제 모바일에서 도전자쪽이 너무 좁아") 격차를 완만하게 줄였다. */
-/* 유저 사이 세로 간격 6→9px(요청: 살짝씩 벌리기). 가운데 vs/손가락 묶음은 첫 줄에만
-   붙어 있어(flex-start) 이 값이 커져도 따라 내려가지 않는다 — 세로 정렬은 그대로다. */
-.scr-challenge-side { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 9px; }
+/* (유저 사이 세로 간격은 6px 그대로 — 한때 9px로 벌렸다가 원복 요청. 가로 간격만 벌린다.) */
+.scr-challenge-side { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
 /* 모바일은 상대편이 요소(응답 알약)가 더 많아 폭을 조금 더 준다 — PC는 아래 미디어
    쿼리에서 1:1 대칭으로 되돌린다(양쪽이 화살표를 가운데 두고 마주 보는 배치라 폭이
    같아야 화살표가 정확히 중앙에 온다). */
