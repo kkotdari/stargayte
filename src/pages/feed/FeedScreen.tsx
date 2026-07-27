@@ -547,6 +547,25 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     // (+d, rest-inner 클립 밖)에, 위 콘텐츠는 옛 위치(+d)에, 라인은 투명으로, 바는
     // 세운 채로(펼침 클래스의 scaleY(0)을 덮는다).
     railLocked = true;
+    // 열린 스택 영역을 "앞 카드가 실제로 렌더되는 윗모서리"까지만 보이게 자른다.
+    //
+    // 이 영역(rest-inner)은 문서상 [S, S+d]를 차지하는데, 연출 중 앞 카드는 translateY로
+    // 되올려져 S+d·p에 그려진다. 그 아래(S+d·p ~ S+d)는 아무도 안 덮는 노출 구간이다 —
+    // 아래 피드 카드들도 같이 되올려져 제자리를 지키지만 카드 사이 갭(20px)이 그대로 뚫려
+    // 있어, 그 틈으로 펼쳐지는 카드가 움직이는 게 다 비쳤다(지적: "다른 카드들 뒤로
+    // 접히거나 펼쳐지는 카드들이 보여, 애니메이션도 다 보여"). 앞 카드가 내려간 만큼만
+    // 열어주면 그 틈으로 보일 것 자체가 없어진다.
+    // clip-path는 페인트 단계만 건드린다 — 레이아웃도, 실측(offsetHeight)도, 스크롤 보정
+    // 계산도 손대지 않으므로 접힘 커밋과 어긋날 여지가 없다(한때 카드 기둥을 실측해
+    // translate로 밀어 올려봤다가 접을 때 레이아웃이 흔들려 되돌린 적이 있다).
+    const restInner = root.querySelector<HTMLElement>(
+      ":scope > .scr-feed-stack-rest > .scr-feed-stack-rest-inner",
+    );
+    const clipTo = (p: number) => {
+      if (restInner) restInner.style.clipPath = `inset(0 0 ${(1 - p) * 100}% 0)`;
+    };
+    const clipOff = () => { if (restInner) restInner.style.clipPath = ""; };
+    clipTo(0);
     // 스크롤을 안 옮겼으므로 이 프레임의 화면은 접힘 때와 픽셀 단위로 같아야 한다.
     // 문서상으론 rest가 d만큼 열려 앞 카드·아래 콘텐츠가 d 내려갔으니, 그만큼 되올려
     // 제자리에 붙든다(아래 기준 시점유지). 펼쳐질 카드들은 transform이 필요 없다 —
@@ -570,9 +589,11 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       const a = driveStyle(slideDur, EASE_STACK, (p) => {
         window.scrollTo({ top: S0 + d * p, behavior: "instant" });
         setTransform(belowLeaves, `translateY(${-d * (1 - p)}px)`);
+        clipTo(p);
       });
       void a.finished.then(() => {
         setTransform(belowLeaves, "");
+        clipOff();
         railLocked = false;
         if (railDeferred) { railDeferred = false; positionRail(); }
       }).catch(() => {});
@@ -608,6 +629,7 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
 
     cancelRevealRef.current = () => {
       cancelled = true;
+      clipOff();
       cancelAnimationFrame(raf1);
       cancelAnimationFrame(raf2);
       anims.forEach((a) => { try { a.cancel(); } catch { /* 이미 끝남 */ } });
@@ -639,6 +661,17 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     // 펼침 연출이 아직 진행 중이면 끊고(스타일 원복) 접기로 넘어간다.
     cancelRevealRef.current?.();
     closingRef.current = true;
+    // 펼침과 같은 클립을 역순으로 되감는다(위 useLayoutEffect의 clipTo 주석 참고) —
+    // 앞 카드가 되올라간 만큼만 열어둬야, 접히는 카드들이 아래 피드 카드 사이 갭으로
+    // 비치지 않는다.
+    const restInner = root.querySelector<HTMLElement>(
+      ":scope > .scr-feed-stack-rest > .scr-feed-stack-rest-inner",
+    );
+    const clipTo = (p: number) => {
+      if (restInner) restInner.style.clipPath = `inset(0 0 ${p * 100}% 0)`;
+    };
+    const clipOff = () => { if (restInner) restInner.style.clipPath = ""; };
+    clipTo(0);
     // 내려가는 거리 = 펼친 카드 영역 높이 - 접힘 때 "+N건" 바가 도로 차지할 높이.
     // 바 높이를 안 빼면 커밋 후 위 콘텐츠가 바 높이만큼 되올라가는 잔차 보정이 남아
     // 접을 때 위 목록이 한 번 출렁였다(지적). 빼 두면 애니메이션이 정확히 접힌
@@ -675,6 +708,7 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     anims.push(driveStyle(dur, EASE_STACK, (p) => {
       window.scrollTo({ top: S1 - A * p, behavior: "instant" });
       setTransform(belowLeaves, `translateY(${-dist * p}px)`);
+      clipTo(p);
       // "+N건" 바는 후반부에 도로 자라나 커밋 전에 이미 제 모습을 갖춘다 — 커밋 프레임이
       // 순수 레이아웃 교체(화면 변화 0)가 되게 해서 바가 튀어나오는 느낌을 없앤다.
       if (peekEl) {
@@ -691,6 +725,8 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     const finish = () => {
       if (!closingRef.current) return;
       closingRef.current = false;
+      // 커밋되면 rest가 0fr로 접히므로 클립은 걷어도 화면 변화가 없다.
+      clipOff();
       // 커밋 프레임이 이어받도록 종료 상태를 인라인으로 박고 애니메이션 객체는 정리한다.
       window.scrollTo({ top: S1 - A, behavior: "instant" });
       setTransform(belowLeaves, `translateY(${-dist}px)`);
@@ -704,6 +740,7 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     // 재펼침/언마운트 등으로 중단되면 전부 원복한다(펼침 상태로 되돌린다).
     cancelRevealRef.current = () => {
       closingRef.current = false;
+      clipOff();
       anims.forEach((a) => { try { a.cancel(); } catch { /* 이미 끝남 */ } });
       setTransform(belowLeaves, "");
       window.scrollTo({ top: S1, behavior: "instant" });
