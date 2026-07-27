@@ -140,7 +140,6 @@ function cubicBezier(x1: number, y1: number, x2: number, y2: number): (x: number
 }
 // 스택 연출 공용 이징(기존 cubic-bezier(0.32,0.72,0,1))과 CSS ease-in/ease-out 대응.
 const EASE_STACK = cubicBezier(0.32, 0.72, 0, 1);
-const EASE_IN = cubicBezier(0.42, 0, 1, 1);
 
 interface DrivenAnim { finished: Promise<void>; cancel: () => void }
 
@@ -171,12 +170,6 @@ function driveStyle(dur: number, ease: (t: number) => number, apply: (p: number)
       doCancel();
     },
   };
-}
-
-function driveTransform(
-  el: HTMLElement, dur: number, ease: (t: number) => number, frame: (p: number) => string,
-): DrivenAnim {
-  return driveStyle(dur, ease, (p) => { el.style.transform = frame(p); });
 }
 
 // ---- 블러 유지: '조상'이 아니라 블러 '잎'에 직접 transform ----
@@ -583,7 +576,11 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       .flatMap(blurLeaves);
     setTransform(belowLeaves, `translateY(${-d}px)`);
     if (rail) rail.style.opacity = "0";
-    if (peek) peek.style.transform = "scaleY(1)";
+    // "+N건" 바는 첫 프레임에 즉시 감춘다(요청) — 예전엔 눌린 자리를 그대로 덮으려고
+    // scaleY(1)로 세워두고 180ms에 걸쳐 접어 넣었는데, 그 바가 앞 카드 윗모서리에 걸쳐
+    // 있어서 그 동안 올라오는 카드들의 아랫부분을 잘라 먹었다(지적: "펼쳐지는 카드 아래가
+    // 잘린다"). 인라인을 비우면 펼침 클래스의 scaleY(0)이 곧바로 적용된다.
+    if (peek) peek.style.transform = "";
     const S0 = before.scrollY;
 
     const start = () => {
@@ -619,11 +616,7 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       // opacity를 쓰면 바의 블러가 꺼지며 또 깜빡이므로(지적: "뒤에 스택된 카드가
       // 나오고 없어질 때 깜빡해") 스케일(transform)로만. 끝나면 인라인을 걷어 펼침
       // 클래스의 scaleY(0)이 이어받는다(같은 값이라 화면 변화 없음).
-      if (peek) {
-        const pa = driveTransform(peek, 180, EASE_IN, (p) => `scaleY(${1 - p})`);
-        void pa.finished.then(() => { peek.style.transform = ""; }).catch(() => {});
-        anims.push(pa);
-      }
+
     };
     // 첫 페인트가 끝난 다음 프레임에 시작한다 — 레이아웃 변경+스크롤 보정이 실린 첫
     // 프레임은 무거워서(수백 ms까지도), animate()를 그 안에서 바로 걸면 시작 시각 기준으로
@@ -717,10 +710,8 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       clipTo(p);
       // "+N건" 바는 후반부에 도로 자라나 커밋 전에 이미 제 모습을 갖춘다 — 커밋 프레임이
       // 순수 레이아웃 교체(화면 변화 0)가 되게 해서 바가 튀어나오는 느낌을 없앤다.
-      if (peekEl) {
-        const g = Math.max(0, Math.min(1, (p - 0.6) / 0.4));
-        peekEl.style.transform = `scaleY(${g})`;
-      }
+      // 펼침의 반대 — 바는 연출 내내 접힌 채로 두고 끝에서 한 번에 세운다(아래 finish).
+      // 후반부에 서서히 자라게 했더니 그 바가 내려가는 카드들의 아랫부분을 미리 잘라 먹었다.
     }));
     if (rail) {
       anims.push(rail.animate(
