@@ -520,7 +520,6 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
                 {stack.items.length}게임 <span className="scr-feed-stack-sum-sep">/</span> {participants.length}명 참여
               </span>
             </div>
-            <div className="scr-feed-stack-sum-label">참가자</div>
             <ul className="scr-feed-stack-sum-players">
               {participants.map((p) => (
                 <li key={p.id} className="scr-feed-stack-sum-player">

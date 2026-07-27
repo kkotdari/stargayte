@@ -355,13 +355,35 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
   // 한때 스크롤이 날 때마다 곧바로 되돌려 봤는데 훨씬 나빴다(지적: "뒤 페이지와 모달이
   // 둘 다 올라갔다가 서서히 내려가 키보드 뒤로 사라진다") — iOS의 자동 스크롤은 한 번에
   // 끝나는 점프가 아니라 애니메이션이라, 매 프레임 되돌리면 그 애니메이션과 서로 밀며
-  // 화면 전체가 출렁인다. 진행 중엔 건드리지 않고, 시트를 닫을 때 한 번만 되돌린다.
+  // 화면 전체가 출렁인다. 그래서 '되돌리는 순간'을 딱 하나로 줄인다: 입력칸에서 포커스가
+  // 빠질 때(=키보드가 내려가기 시작할 때) 한 번만 원래 자리로 옮긴다(요청: 시트를 닫을
+  // 때까지 기다리지 말고 슬쩍 바로). 한 번의 점프라 밀고 당길 상대가 없다.
   const pinnedScrollRef = useRef(0);
   useEffect(() => {
     if (!mobile || !sheetOpen) return;
     const doc = document.scrollingElement ?? document.documentElement;
     pinnedScrollRef.current = doc.scrollTop;
-    return () => { doc.scrollTop = pinnedScrollRef.current; };
+    const restore = () => { doc.scrollTop = pinnedScrollRef.current; };
+    let raf = 0;
+    // focusout은 포커스가 옮겨가기 '전'에 와서 그 순간 activeElement는 아직 body다 —
+    // 입력칸에서 입력칸으로 넘어가는 경우(키보드가 그대로인 경우)까지 되돌리지 않도록
+    // 한 프레임 뒤에 정착한 포커스를 보고 판단한다(useEditableFocused와 같은 이유).
+    const onFocusOut = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const el = document.activeElement;
+        const tag = el instanceof HTMLElement ? el.tagName : "";
+        const stillTyping =
+          tag === "INPUT" || tag === "TEXTAREA" || (el instanceof HTMLElement && el.isContentEditable);
+        if (!stillTyping) restore();
+      });
+    };
+    document.addEventListener("focusout", onFocusOut);
+    return () => {
+      cancelAnimationFrame(raf);
+      document.removeEventListener("focusout", onFocusOut);
+      restore();
+    };
   }, [mobile, sheetOpen]);
   // 시트가 떠 있는 동안 배경(본문)으로 가는 스크롤/클릭을 막고, 바깥 탭이면 닫는다.
   useLockBodyScroll(mobile && sheetOpen, closeSheet);
