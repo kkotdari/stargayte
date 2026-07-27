@@ -7,6 +7,7 @@ import FilterItem from "../../components/common/FilterItem";
 import Select from "../../components/common/Select";
 import MemberStatRow from "../stats/MemberStatRow";
 import PointDetailModal from "./PointDetailModal";
+import RivalryOverlay from "../rivalry/RivalryOverlay";
 import InfoTip from "../../components/common/InfoTip";
 import { useAppStore } from "../../store/appStore";
 import { api } from "../../api/client";
@@ -114,6 +115,8 @@ export default function StatsScreenV2() {
   const [sort, setSort] = useState<StatSort | null>({ key: "points", dir: "desc" });
   // 포인트를 누르면 그 회원의 포인트 상세(경기 이력)를 연다.
   const [pointMember, setPointMember] = useState<Member | null>(null);
+  // 상성 관계 오버레이(타이틀 옆 "상성 보기" 버튼).
+  const [rivalryOpen, setRivalryOpen] = useState(false);
   const toggleSort = (key: StatSortKey) => setSort((prev) => nextSort(prev, key));
   // 기본값은 "이번 달" — 예전 usePeriodNav(..., "month")과 같은 초기 단위.
   const [periodUnit, setPeriodUnit] = useState<"all" | "month">("month");
@@ -261,7 +264,19 @@ export default function StatsScreenV2() {
   return (
     <div className="scr-screen scr-stats-screen-v2">
       <div className="scr-v2-toolbar">
-        <h1 className="scr-title scr-v2-toolbar-title">통계</h1>
+        <div className="scr-v2-toolbar-title-row">
+          <h1 className="scr-title scr-v2-toolbar-title">통계</h1>
+          {/* 상성 보기 — 랭킹 화면이 없어지면서 진입점이 끊겼던 상성 관계 오버레이를 통계
+              타이틀 옆에 다시 붙인다(요청). 기간은 이 화면의 현재 필터를 그대로 따른다
+              (오버레이 자체 필터 없음 — RivalryOverlay 주석 참고). */}
+          <button
+            type="button"
+            className="scr-stats-rivalry-btn"
+            onClick={() => setRivalryOpen(true)}
+          >
+            상성 보기
+          </button>
+        </div>
       </div>
 
       <SearchFilterBar
@@ -386,6 +401,15 @@ export default function StatsScreenV2() {
           period={{ from: effectiveFrom, to: effectiveTo }}
           race={race}
           onClose={() => setPointMember(null)}
+        />
+      )}
+
+      {/* 상성 관계 — 기간은 이 화면의 현재 필터를 그대로 쓴다(개인전 고정). */}
+      {rivalryOpen && (
+        <RivalryOverlay
+          from={effectiveFrom}
+          to={effectiveTo}
+          onClose={() => setRivalryOpen(false)}
         />
       )}
     </div>

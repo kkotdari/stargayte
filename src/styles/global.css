@@ -1336,6 +1336,24 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    놓이는 액션 버튼도 그대로 두면 타이틀보다 상대적으로 아래로 처져 보인다 — 같은 양만큼
    맞춰 올린다. */
 .scr-v2-toolbar-actions { grid-area: actions; display: flex; align-items: center; gap: 6px; transform: translateY(-6px); }
+/* 통계 "상성 보기" — 오른쪽 끝(actions)이 아니라 타이틀 바로 옆에 붙인다(요청). 타이틀과
+   같은 grid 영역에 얹고 justify-self:start로 왼쪽에 정렬한 뒤, 타이틀 글자 폭만큼은
+   비켜 앉도록 flex 대신 영역 공유 + margin-left로 띄운다 — 타이틀 크기가 테마/폭에 따라
+   달라져도 겹치지 않게 h1을 inline-block으로 두고 그 뒤에 흐르게 한다. */
+.scr-v2-toolbar-title-row { grid-area: title; display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.scr-v2-toolbar-title-row .scr-v2-toolbar-title { grid-area: auto; }
+.scr-stats-rivalry-btn {
+  flex: 0 0 auto; transform: translateY(-6px);
+  background: rgba(var(--overlay-rgb), 0.08); border: none; border-radius: 999px;
+  padding: 5px 12px; cursor: pointer;
+  font-family: inherit; font-size: var(--fs-micro); font-weight: 700; color: var(--dim);
+  -webkit-tap-highlight-color: transparent;
+}
+.scr-light-theme .scr-stats-rivalry-btn { background: rgba(0, 0, 0, 0.06); }
+@media (hover: hover) {
+  .scr-stats-rivalry-btn:hover { color: var(--text); background: rgba(var(--overlay-rgb), 0.14); }
+  .scr-light-theme .scr-stats-rivalry-btn:hover { background: rgba(0, 0, 0, 0.1); }
+}
 /* 주요 등록/생성 버튼(도전장 쓰기/경기 등록/회원 생성) — 타이틀 줄 오른쪽이 아니라
    그 아래 별도 줄에 가운데 정렬, 1.2배 확대(요청: "타이틀 로우 아래 줄로 이동 및
    가운데 정렬"). 세 화면이 전부 같은 CSS를 공유한다. */
@@ -2009,21 +2027,34 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   /* 유저 컬럼 폭 추가 축소(요청: 닉네임/배틀태그가 생각보다 공간을 안 씀): 97→73→60px.
      칸이 좁아진 만큼 안쪽 패딩도 10→7px로 줄여 실제 글자 공간을 확보하고, 넘치는
      이름은 기존 말줄임이 처리한다. */
-  /* 모바일 최종 스펙(요청): 유저 칸은 168px에서 20% 축소한 134px · 데이터 칸 150px ·
-     데이터 셀은 한 스텝 확대(micro→caption), 헤더는 두 스텝 확대(micro→body — 아래
-     head 규칙). */
-  .scr-stats-list-panel-v2 .scr-stat-row { --scr-stat-name-w: 134px; font-size: var(--fs-caption); }
+  /* 모바일 최종 스펙(요청): 데이터 칸 150px · 데이터 셀은 한 스텝 확대(micro→caption),
+     헤더는 두 스텝 확대(micro→body — 아래 head 규칙). 유저 칸은 168→134px(20% 축소)
+     이후 한 번 더 20% 축소해 107px(요청) — 좁아진 만큼 넘치는 닉네임은 말줄임표로
+     자른다(아래 name-btn/stack의 min-width:0 + ellipsis). */
+  .scr-stats-list-panel-v2 .scr-stat-row { --scr-stat-name-w: 107px; font-size: var(--fs-caption); }
   .scr-stats-list-panel-v2 .scr-stat-name-cell {
     flex-direction: row; align-items: center; justify-content: center; gap: 7px;
     padding-left: 7px; padding-right: 7px;
+    /* 칸이 좁아 프사+닉네임 덩어리가 칸을 넘칠 수 있다 — 넘침은 잘라내고 닉네임이
+       말줄임되게 한다(flex 자식이 줄어들 수 있도록 min-width:0). */
+    min-width: 0; overflow: hidden;
   }
   /* 모바일 프사 — 한 번 더 1스텝 축소(요청): 28px → 24px. 좁아진 유저 칸에
      [프사|닉네임]이 들어가게. */
   .scr-stats-list-panel-v2 .scr-stat-avatar-btn .scr-avatar { width: 24px !important; height: 24px !important; }
-  .scr-stats-list-panel-v2 .scr-stat-name-stack { min-width: 0; }
+  /* flex:1 1 auto + min-width:0 — 스택이 남는 폭만큼만 차지하고 부족하면 줄어들어야
+     안쪽 닉네임의 말줄임(ellipsis)이 실제로 작동한다(min-width가 auto면 내용 폭만큼
+     버텨서 칸을 넘어간다). */
+  .scr-stats-list-panel-v2 .scr-stat-name-stack { min-width: 0; flex: 1 1 auto; }
   .scr-stats-list-panel-v2 .scr-stat-name-head { padding-left: 7px; padding-right: 7px; }
-  /* 닉네임도 1스텝 축소(요청): body → caption. */
-  .scr-stats-list-panel-v2 .scr-stat-name-btn { text-align: center; font-size: var(--fs-caption); }
+  /* 닉네임도 1스텝 축소(요청): body → caption. 좁은 칸에서 넘치면 말줄임(base
+     .scr-stat-name-btn이 이미 overflow/ellipsis/nowrap을 갖고 있다 — 여기선 폭이
+     실제로 줄어들도록 max-width만 풀어준다). */
+  .scr-stats-list-panel-v2 .scr-stat-name-btn {
+    text-align: center; font-size: var(--fs-caption); max-width: 100%;
+  }
+  /* 배틀태그도 같은 이유로 칸 안에서만 — 넘치면 말줄임(base에 ellipsis가 이미 있다). */
+  .scr-stats-list-panel-v2 .scr-stat-tag-pill { max-width: 100%; }
   /* 데이터 값들은 행 폰트를 안 물려받는다 — 게임수/생산/유효APM/유효커맨드 숫자
      (.scr-value-bar-num)는 body, 승률 칸(.scr-stat-bar-top/-rate)은 caption으로 각자
      고정돼 있어서 행 단위 축소가 안 보였다(지적된 버그). 모바일 값(caption)으로 직접 지정. */
