@@ -1,5 +1,4 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { scrollIntoKeyboardView } from "../../utils/scrollIntoKeyboardView";
 import { createPortal } from "react-dom";
 import { CornerDownLeft, MessageCirclePlus, X, Pencil, Trash2 } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
@@ -192,10 +191,6 @@ function NoteComposer({
     inputRef.current?.focus();
   };
 
-  // 키보드 위 자리맞춤 취소 핸들 — 포커스가 옮겨가거나 언마운트되면 걷는다.
-  const cancelScrollFitRef = useRef<(() => void) | null>(null);
-  useEffect(() => () => cancelScrollFitRef.current?.(), []);
-
   return (
     <div className="scr-mreq-compose-row scr-match-note-compose-row">
       <div className="scr-mreq-input-wrap">
@@ -215,14 +210,6 @@ function NoteComposer({
             onChange={onChange}
             onSelect={onSelectCaret}
             onKeyDown={onKeyDown}
-            /* 키보드가 자리를 잡은 뒤 이 칸을 그 바로 위로 옮긴다 — 사파리는 가려질 때만
-               스크롤해서, 안 가려지면 어중간한 높이에 그대로 서 있고 가려져 있었으면 확
-               점프한다(utils/scrollIntoKeyboardView 주석). 정리는 blur에서. */
-            onFocus={(e) => {
-              cancelScrollFitRef.current?.();
-              cancelScrollFitRef.current = scrollIntoKeyboardView(e.currentTarget);
-            }}
-            onBlur={() => { cancelScrollFitRef.current?.(); cancelScrollFitRef.current = null; }}
             placeholder={placeholder}
             autoComplete="off"
           />
