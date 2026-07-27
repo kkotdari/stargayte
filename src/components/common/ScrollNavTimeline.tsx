@@ -44,7 +44,9 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
   // 일어나는 순간을 스크린샷으로 잡아 어떤 값이 뛰는지 확정하기 위한 것(실기기에서만
   // 재현되는 문제라 추측 대신 값을 본다). 원인 확정 후 이 블록은 통째로 지운다.
   const debugOn = typeof location !== "undefined" && location.search.includes("tldebug");
-  const [dbg, setDbg] = useState<{ y: number; sh: number; ch: number; ih: number; f: number } | null>(null);
+  const [dbg, setDbg] = useState<
+    { y: number; sh: number; ch: number; ih: number; f: number; se: number; bp: string; vv: number; n: number } | null
+  >(null);
   const lastScrollHeightRef = useRef(0);
   const settleTimerRef = useRef<number | null>(null);
 
@@ -101,9 +103,17 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
     setFraction(max > 0 ? Math.min(1, Math.max(0, scrollTop / max)) : 0);
     setDateLabel(currentDateLabel(max <= 0 || scrollTop >= max - 2));
     if (debugOn) {
+      const vvp = (window as unknown as { visualViewport?: { pageTop?: number } }).visualViewport;
       setDbg({
         y: Math.round(scrollTop), sh: Math.round(scrollHeight), ch: Math.round(clientHeight),
         ih: Math.round(window.innerHeight || 0), f: max > 0 ? Math.min(1, Math.max(0, scrollTop / max)) : 0,
+        // scrollY와 다른 값들 — 어느 게 진짜 스크롤러인지, body가 잠겼는지(position:fixed)
+        // 가려낸다. sy(=y)만 튀고 se/vv는 멀쩡하면 body 잠금·다른 스크롤러가 범인이다.
+        se: Math.round(document.scrollingElement?.scrollTop ?? -1),
+        bp: getComputedStyle(document.body).position,
+        vv: Math.round(vvp?.pageTop ?? -1),
+        // 헤드 셀렉터로 잡히는 요소 수 — 피드는 카드마다 있어 수백 개가 될 수 있다.
+        n: document.querySelectorAll(headSelector).length,
       });
     }
     if (markers && markers.length > 0) {
@@ -195,8 +205,9 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
       <span className="scr-scroll-timeline-end">{bottomLabel}</span>
       {debugOn && dbg && (
         <div className="scr-scroll-timeline-debug">
-          y {dbg.y}<br />sh {dbg.sh}<br />ch {dbg.ch}<br />ih {dbg.ih}<br />
-          max {dbg.sh - Math.max(dbg.ch, dbg.ih)}<br />f {dbg.f.toFixed(3)}
+          y {dbg.y}<br />se {dbg.se}<br />vv {dbg.vv}<br />body {dbg.bp}<br />
+          sh {dbg.sh}<br />ch {dbg.ch} ih {dbg.ih}<br />
+          max {dbg.sh - Math.max(dbg.ch, dbg.ih)}<br />f {dbg.f.toFixed(3)}<br />heads {dbg.n}
         </div>
       )}
     </div>
