@@ -565,8 +565,9 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       // 자르면 그 높이가 곧 라운딩 구간이라, 둥근 모서리에 파인 자리로 잘린 단면이
       // 그대로 비쳤다(지적). 반경만큼 더 열어두면 그 파인 자리는 뒤 카드가 채우고,
       // 실제 단면은 카드의 불투명한 몸통 뒤에서 잘린다.
-      const bottom = Math.max(0, (1 - p) * 100 - (CARD_RADIUS / Math.max(1, d)) * 100);
-      restInner.style.clipPath = `inset(0 0 ${bottom}% 0)`;
+      // px로 준다 — %는 요소 높이로 매 프레임 다시 나눠지며 경계가 서브픽셀에서 진동한다.
+      const bottom = Math.max(0, Math.round(d * (1 - p) - CARD_RADIUS));
+      restInner.style.clipPath = `inset(0 0 ${bottom}px 0)`;
     };
     const clipOff = () => { if (restInner) restInner.style.clipPath = ""; };
     clipTo(0);
@@ -668,8 +669,8 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     const clipTo = (p: number) => {
       if (!restInner) return;
       // 펼침과 같은 이유로 카드 반경만큼 덜 자른다(위 clipTo 주석).
-      const bottom = Math.max(0, p * 100 - (CARD_RADIUS / Math.max(1, dist)) * 100);
-      restInner.style.clipPath = `inset(0 0 ${bottom}% 0)`;
+      const bottom = Math.max(0, Math.round(dist * p - CARD_RADIUS));
+      restInner.style.clipPath = `inset(0 0 ${bottom}px 0)`;
     };
     const clipOff = () => { if (restInner) restInner.style.clipPath = ""; };
     clipTo(0);
@@ -697,10 +698,13 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     // rest 위를 덮으므로, 스크롤이 되돌아갈수록 카드가 앞 카드 뒤로 미끄러져 들어간다.
     const anims: (Animation | DrivenAnim)[] = [];
     anims.push(driveStyle(dur, EASE_STACK, (p) => {
-      window.scrollTo({ top: S1 - A * p, behavior: "instant" });
       // 끝점 -dist는 커밋에서 rest가 0fr로 접히며 빠지는 높이와 정확히 같아, 인라인
       // transform을 걷는 것과 서로 상쇄돼 커밋 프레임의 변화가 0이 된다.
-      setTransform(belowLeaves, `translateY(${-dist * p}px)`);
+      // 펼침과 같은 이유로 스크롤 반올림 오차를 transform에 되돌려 준다(위 주석 참고).
+      const want = S1 - A * p;
+      const s = Math.round(want);
+      window.scrollTo({ top: s, behavior: "instant" });
+      setTransform(belowLeaves, `translateY(${-dist * p + (want - s)}px)`);
       clipTo(p);
       // "+N건" 바는 후반부에 도로 자라나 커밋 전에 이미 제 모습을 갖춘다 — 커밋 프레임이
       // 순수 레이아웃 교체(화면 변화 0)가 되게 해서 바가 튀어나오는 느낌을 없앤다.
