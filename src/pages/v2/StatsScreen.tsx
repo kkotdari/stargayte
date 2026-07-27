@@ -271,7 +271,7 @@ export default function StatsScreenV2() {
               (오버레이 자체 필터 없음 — RivalryOverlay 주석 참고). */}
           <button
             type="button"
-            className="scr-stats-rivalry-btn"
+            className="scr-btn scr-btn-primary scr-rivalry-open-btn"
             onClick={() => setRivalryOpen(true)}
           >
             상성 보기

@@ -42,8 +42,6 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
   const vhRef = useRef(0);
   const hideTimerRef = useRef<number | null>(null);
   const draggingRef = useRef(false);
-  // 스크럽 중에는 위치 트랜지션을 꺼야 손가락에 즉시 붙는다(아래 렌더 주석).
-  const [dragging, setDragging] = useState(false);
 
   // 지금 상단에 스티키로 핀된 날짜 헤더의 라벨 — 현재 위치를 "며칠"인지로 보여준다.
   // atBottom이면(더 스크롤할 여지가 없는 맨 끝) 마지막 헤더를 그냥 그대로 쓴다 — 마지막
@@ -161,7 +159,6 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
   const onPointerDown = (e: React.PointerEvent) => {
     e.preventDefault();
     draggingRef.current = true;
-    setDragging(true);
     setVisible(true);
     trackRef.current?.setPointerCapture?.(e.pointerId);
     scrubTo(e.clientY);
@@ -171,18 +168,13 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
   };
   const endDrag = () => {
     draggingRef.current = false;
-    setDragging(false);
     showThenScheduleHide();
   };
 
   if (!scrollable) return null;
 
   return (
-    <div className={cx(
-      "scr-scroll-timeline",
-      visible && "scr-scroll-timeline-visible",
-      dragging && "scr-scroll-timeline-dragging",
-    )}>
+    <div className={cx("scr-scroll-timeline", visible && "scr-scroll-timeline-visible")}>
       <span className="scr-scroll-timeline-end">{topLabel}</span>
       <div
         ref={trackRef}
@@ -200,10 +192,9 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
         {/* thumb·날짜 알약은 top:%(레이아웃) 대신 정수 px transform(합성)으로 앉힌다 —
             %는 매 프레임 소수점 위치가 되어 알약 글자가 서브픽셀로 다시 래스터되며
             덜덜 떨렸다(지적). 위치값은 update()에서 이미 정수로 반올림해 두므로 같은
-            픽셀이면 리렌더 자체가 없다. 그래도 iOS는 루트 스크롤을 브라우저 프로세스가
-            비동기로 들고 있어 JS가 읽는 scrollTop이 프레임마다 미세하게 앞뒤로 흔들리는데,
-            CSS 트랜지션(짧은 linear)이 그 흔들림을 흡수해 부드럽게 따라가게 한다.
-            드래그(스크럽) 중엔 즉시 반응해야 하므로 트랜지션을 끈다.
+            픽셀이면 리렌더 자체가 없다. (한때 흔들림을 더 뭉개려고 짧은 transition을
+            걸었다가 iOS에서 잔상이 남아 thumb이 두 개로 보였다 — 트랜지션·will-change는
+            쓰지 않는다.)
             가로 정렬(-50%)은 인라인 transform이 CSS transform을 통째로 덮으므로 같이 준다. */}
         {dateLabel && (
           <div
