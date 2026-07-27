@@ -1890,14 +1890,19 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 /* v2 통계 그리드(표) 전체를 피드 카드와 같은 투명 유리로(요청: "통계 화면 그리드를
    투명 블러로") — 배경 사진(stats_bg)이 표 뒤로 비쳐 보이게 한다. base .scr-stat-table의
    불투명 --panel-solid를 덮는다. 값은 .scr-feed-card와 동일(다크/라이트 각각). */
-.scr-stats-list-panel-v2 .scr-stat-table {
+/* 유리를 '표'가 아니라 '데이터 칸'이 든다 — 표에 깔면 sticky 유저칸(자기 유리를 또
+   가진다) 밑에도 깔려 유리가 두 겹으로 합성돼, 유저칸만 유독 뿌옇고 불투명해 보였다
+   (지적: "스티키라 두번 불투명이 들어간다, 맨 앞만 강하게 하고 뒤는 투명하게").
+   유저칸을 뺀 칸들에만 유리를 주면 유저칸 뒤는 비어 있어 한 겹만 남는다. */
+.scr-stats-list-panel-v2 .scr-stat-table { background-color: transparent; }
+.scr-stats-list-panel-v2 .scr-stat-row > *:not(.scr-stat-name-cell):not(.scr-stat-name-head) {
   background-color: rgba(var(--overlay-rgb), 0.07);
   /* 블러 아주 약하게(요청) — 9px는 사진이 뭉개져 유리보다 젖빛 느낌이었다. 2px면 배경
      사진의 형태가 살아 있는 채로 살짝만 부드러워진다. */
   backdrop-filter: blur(2px) saturate(1.2);
   -webkit-backdrop-filter: blur(2px) saturate(1.2);
 }
-.scr-light-theme .scr-stats-list-panel-v2 .scr-stat-table {
+.scr-light-theme .scr-stats-list-panel-v2 .scr-stat-row > *:not(.scr-stat-name-cell):not(.scr-stat-name-head) {
   background-color: rgba(255, 255, 255, 0.62);
   backdrop-filter: blur(2px) saturate(1.1);
   -webkit-backdrop-filter: blur(2px) saturate(1.1);
@@ -1912,19 +1917,16 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 .scr-stats-list-panel-v2 .scr-stat-name-head {
   background-image: none;
   background-color: var(--panel-solid);
-  /* 70→78% — 가로 스크롤 때 밑을 지나는 열이 너무 적나라하게 비친다는 지적으로 보강. */
-  background-color: color-mix(in srgb, var(--panel-solid) 78%, transparent);
+  /* 이제 표 유리가 밑에 안 깔려 이 한 겹이 전부다(위 주석) — 가로 스크롤 때 밑을 지나는
+     열을 이 한 겹이 혼자 가려야 하므로 채움·블러를 그만큼 올린다. */
+  background-color: color-mix(in srgb, var(--panel-solid) 88%, transparent);
   backdrop-filter: blur(16px) saturate(1.1);
   -webkit-backdrop-filter: blur(16px) saturate(1.1);
 }
-/* 라이트 — 유리 표(흰 62%) 위에 유저열이 다시 흰 70%+강블러를 얹으니 합성이 약 89%
-   흰색 = 사실상 불투명해 보였다(지적: "라이트에서만 유저열/헤더행이 완전 불투명").
-   다크는 같은 70%라도 어두운 색이라 티가 안 났던 것. 라이트만 덧칠을 낮추되, 처음
-   시도(25%+blur8)는 가로 스크롤 때 지나가는 열이 너무 적나라하게 비쳤다(지적) —
-   45%+blur14로 절충: 배경 사진 투명감은 남기면서 밑을 지나는 막대·숫자는 뭉개진다. */
+/* 라이트도 같은 이유로 한 겹 기준 값 — 흰 배경이라 같은 %라도 더 투명해 보여 조금 더 준다. */
 .scr-light-theme .scr-stats-list-panel-v2 .scr-stat-name-cell,
 .scr-light-theme .scr-stats-list-panel-v2 .scr-stat-name-head {
-  background-color: color-mix(in srgb, var(--panel-solid) 45%, transparent);
+  background-color: color-mix(in srgb, var(--panel-solid) 82%, transparent);
   backdrop-filter: blur(14px) saturate(1.05);
   -webkit-backdrop-filter: blur(14px) saturate(1.05);
 }
@@ -2094,10 +2096,10 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   background-color: var(--panel-solid);
   /* 값은 바디 유저칸(.scr-stat-name-cell)과 반드시 같게 유지 — 이 규칙이 특이도로
      그쪽을 덮으므로, 한쪽만 고치면 헤더/바디 톤이 어긋난다(실제로 70/78로 어긋났다). */
-  background-color: color-mix(in srgb, var(--panel-solid) 78%, transparent);
+  background-color: color-mix(in srgb, var(--panel-solid) 88%, transparent);
 }
 .scr-light-theme .scr-stats-list-panel-v2 .scr-stat-name-head.scr-stat-sort-btn {
-  background-color: color-mix(in srgb, var(--panel-solid) 45%, transparent);
+  background-color: color-mix(in srgb, var(--panel-solid) 82%, transparent);
 }
 @media (hover: hover) { .scr-stat-sort-btn:hover { color: var(--text); } }
 /* 정렬 활성 표시는 색(포인트색) 대신 기본 글자색을 더 굵게 — :hover도 같은 규칙을
