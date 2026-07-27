@@ -7932,6 +7932,13 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
     inset 0 1px 0 rgba(255, 255, 255, 0.09),
     inset 0 0 0 1px rgba(255, 255, 255, 0.045),
     0 2px 12px rgba(0, 0, 0, 0.16);
+  /* 카드를 상시 자기 합성 레이어에 올려둔다(translateZ(0)은 자기 자신에 건 transform이라
+     backdrop-filter 블러를 끊지 않는다 — 조상 transform만 끊는다). 스택 접기 커밋 프레임에
+     JS가 인라인 transform을 "" 로 지우면 그 순간 카드 레이어가 내려앉았다 다시 올라가며
+     사파리가 목록 전체를 한 번에 재래스터했다(지적: "펼치고 접을 때 화면/목록 전체가 통짜로
+     번쩍"). 상시 승격해 두면 인라인이 지워져도 이 translateZ(0)로 떨어져 레이어가 유지되고,
+     펼침 클립(0fr→1fr)이 열려도 레이어가 이미 살아 있어 새로 만드는 재래스터 폭발이 없다. */
+  transform: translateZ(0);
 }
 .scr-light-theme .scr-feed-card {
   background: rgba(255, 255, 255, 0.62);
@@ -8001,6 +8008,10 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
     inset 1px 0 0 rgba(255, 255, 255, 0.04),
     inset -1px 0 0 rgba(255, 255, 255, 0.04),
     0 -2px 10px rgba(0, 0, 0, 0.14);
+  /* 카드와 같은 이유로 상시 레이어 승격 — 접힘 상태의 "+N건" 바가 커밋 프레임에 재래스터
+     폭발에 휩쓸리지 않게. 펼침 상태에선 .scr-feed-stack-opened 규칙의 scaleY(0)이 이 값을
+     덮는다(scaleY도 자기 transform이라 승격 유지). */
+  transform: translateZ(0);
 }
 @media (hover: hover) { .scr-feed-stack-peek:hover { color: var(--text); background: rgba(var(--overlay-rgb), 0.08); } }
 .scr-light-theme .scr-feed-stack-peek {

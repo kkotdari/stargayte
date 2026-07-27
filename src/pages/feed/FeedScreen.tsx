@@ -194,7 +194,12 @@ function blurLeaves(el: HTMLElement): HTMLElement[] {
   return found.length ? found : [el];
 }
 function setTransform(els: HTMLElement[], v: string): void {
-  for (const el of els) el.style.transform = v;
+  // 값이 있을 땐 translateZ(0)을 붙여 3D transform으로 만든다 — 잎이 애니메이션 내내 자기
+  // 합성 레이어에 머물러, 커밋 프레임에 레이어가 내려앉으며 목록 전체가 재래스터되는
+  // 사파리 깜빡임을 막는다(global.css .scr-feed-card 주석). 빈 값은 CSS의 translateZ(0)
+  // 베이스로 떨어지므로 그대로 ""로 둔다.
+  const val = v ? `${v} translateZ(0)` : "";
+  for (const el of els) el.style.transform = val;
 }
 function driveTransformEls(
   els: HTMLElement[], dur: number, ease: (t: number) => number, frame: (p: number) => string,
