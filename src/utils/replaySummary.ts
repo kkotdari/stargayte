@@ -1,4 +1,4 @@
-import { ga, neun, reul, ro, wa } from "./korean";
+import { ga, neun, ro, wa } from "./korean";
 import type { ParsedReplay, ParsedReplayPlayer, ReplayPlayerSignals } from "./replayParser";
 import { scanTactics } from "./replayTactics";
 
@@ -274,6 +274,14 @@ interface Beat {
   dedupeOn?: string;
 }
 
+// 승부를 가르는 테크만 이야기에 넣는다(요청: 중요한 이벤트만) — 버로우·환상처럼 있어도
+// 그만인 연구는 자리만 차지한다. 이름은 TECH_KO에 있는 것 중에서 고른다.
+const DECISIVE_TECHS = new Set([
+  "Psionic Storm", "Lurker Aspect", "Dark Swarm", "Recall", "Yamato Gun", "Irradiate",
+  "Lockdown", "Stasis Field", "Plague", "Mind Control", "Spider Mines", "Stim Packs",
+  "Cloaking", "Personnel Cloaking",
+]);
+
 /** 확장 건물의 한국어 이름 — "멀티를 5개까지"가 아니라 "5해처리까지"로 말한다(요청). */
 const EXPANSION_KO: Record<string, string> = {
   Hatchery: "해처리", Nexus: "넥서스", "Command Center": "커맨드",
@@ -415,36 +423,19 @@ function sideBeats(args: {
     }
   }
 
-  // ── 테크 — 누가 무엇을 연구했나. 사람마다 하나씩만. ──
+  // ── 테크 — 싸움을 뒤집는 것만. 사람마다 하나씩. ──
   for (const p of players) {
     const sg = p.signals;
     if (!sg) continue;
-    const t = sg.techNames.find((x) => TECH_KO[x]);
+    const t = sg.techNames.find((x) => DECISIVE_TECHS.has(x));
     if (!t) continue;
     beats.push({
       at: sg.firstTechFrame[t] ?? null,
-      weight: 4,
+      weight: 6,
       text: won
         ? `${ga(nameOf(p))} ${TECH_KO[t]}까지 꺼내 씀`
         : `${ga(nameOf(p))} ${TECH_KO[t]}까지 썼지만 흐름을 되돌리지 못함`,
     });
-  }
-
-  // ── 테크 전환 시점 — "첫 캐리어"처럼 판이 바뀌는 순간. 시간순 서술의 뼈대가 된다. ──
-  for (const p of players) {
-    const sg = p.signals;
-    if (!sg) continue;
-    const notable = Object.keys(sg.firstUnitFrame)
-      .filter((u) => UNIT_KO[u] && (LATE_TECH_UNITS.has(u) || SPECTACLE_UNITS[u]))
-      .sort((a, b) => sg.firstUnitFrame[a] - sg.firstUnitFrame[b]);
-    for (const u of notable.slice(0, 1)) {
-      const f = sg.firstUnitFrame[u];
-      if (f * SECONDS_PER_FRAME < 4 * 60) continue; // 너무 이르면 '전환'이 아니다
-      beats.push({
-        at: f, weight: 3, dedupeOn: UNIT_KO[u],
-        text: `${ga(nameOf(p))} ${minutes(f * SECONDS_PER_FRAME)}분에 첫 ${reul(UNIT_KO[u])} 뽑음`,
-      });
-    }
   }
 
   // ── 일꾼을 거의 안 뽑고 병력만 짜낸 올인 — 그 편에서 가장 극단적인 사람 이름으로 ──
@@ -554,9 +545,12 @@ export function buildReplaySummary({ replay, displayName }: ReplaySummaryInput):
   const head = lead.length > 0 ? `${lead[0]} ` : "";
 
   // ── 문장 수 ──
-  // 타임라인 나열이 아니라 한 문단짜리 이야기라(요청) 너무 길면 읽히지 않는다. 짧은 경기는
-  // 두어 문장, 긴 경기라도 일곱을 넘지 않게 3분→2문장에서 5분마다 하나씩만 늘린다(요청).
-  const budget = Math.max(2, Math.min(7, 2 + Math.floor((sec - 3 * 60) / (5 * 60))));
+  // 한 문단짜리 이야기라 길면 읽히지 않는다. 짧은 경기는 두어 문장, 길어도 다섯을 넘지
+  // 않게 3분→2문장에서 5분마다 하나씩만 늘린다(요청).
+  const budget = Math.max(2, Math.min(5, 2 + Math.floor((sec - 3 * 60) / (5 * 60))));
+  // 자리가 남아도 아무거나 채우지 않는다(요청: 승부에 중요한 이벤트만) — 이 무게 아래는
+  // "그래서 뭐" 소리가 나오는 사실들이라, 문단을 짧게 끝내는 편이 낫다.
+  const MIN_WEIGHT = 6;
 
   // 전술(9드론 저글링 러시·몰래 배럭·목동 저그…)은 그 경기에서만 있었던 일이라 가장 무겁게
   // 친다 — 자리가 모자라면 일반적인 이야기부터 버려진다.
@@ -586,6 +580,7 @@ export function buildReplaySummary({ replay, displayName }: ReplaySummaryInput):
   const chosen: Beat[] = [];
   for (const b of [...pool].sort((x, y) => y.weight - x.weight)) {
     if (chosen.length >= budget - 1) break;
+    if (b.weight < MIN_WEIGHT) break; // 무게순이라 하나 미달이면 뒤는 전부 미달이다
     if (b.dedupeOn && chosen.some((c) => c.text.includes(b.dedupeOn!))) continue;
     chosen.push(b);
   }
