@@ -7470,8 +7470,9 @@ html.scr-light-theme .scr-feed-add-fab {
   max-height: calc(68vh + var(--sheet-skirt)); max-height: calc(68dvh + var(--sheet-skirt));
   /* 윗모서리는 모달 기본(--radius: 12px)보다 크게 굴린다(요청) — 화면 폭을 꽉 채우는 시트라
      같은 12px이면 거의 직선처럼 보인다. 1.75배(21px)도 약하다는 지적에 2.5배(30px)로.
-     아래는 화면 끝(그리고 치마)이라 각진 채로 둔다. */
-  border-radius: calc(var(--radius) * 2.5) calc(var(--radius) * 2.5) 0 0;
+     1.75배(21px)→2.5배(30px)도 약하다 해서 40px로 확정한다(요청). 아래는 화면 끝(그리고
+     치마)이라 각진 채로 둔다. */
+  border-radius: 40px 40px 0 0;
   margin: 0; border-top: none;
   /* 바닥 안전 공간(요청) — 세 가지를 다 넘겨야 입력칸이 안 가린다:
      ① 사파리 접힌 주소창 알약(--vv-bottom-inset 실측, 탭바가 쓰는 값과 같다),
@@ -7519,9 +7520,12 @@ html.scr-light-theme .scr-comment-sheet { background: #ffffff; }
 }
 /* 목록이 이 아래로 스크롤해 들어가므로 경계선을 둔다 — 없으면 스크롤된 글이 제목 줄에
    그대로 붙어 어디까지가 헤더인지 안 보인다. */
+/* 윗모서리가 40px이면 그 곡선이 헤더 줄 높이까지 파고든다 — 제목과 X를 위·좌우로 조금 더
+   들여 곡선을 피한다(요청). y=14px 지점에서 곡선이 안쪽으로 들어오는 거리가 약 10px이라,
+   기본 좌우 여백 16px에 4px을 더한 20px이면 여유가 있다. */
 .scr-comment-sheet-head {
   display: flex; align-items: center; justify-content: space-between;
-  flex-shrink: 0; padding: 9px 0 7px;
+  flex-shrink: 0; padding: 14px 4px 8px;
   border-bottom: 1px solid rgba(var(--overlay-rgb), 0.1);
   font-size: var(--fs-caption); font-weight: 700; color: var(--text);
 }
@@ -7536,9 +7540,9 @@ html.scr-light-theme .scr-comment-sheet { background: #ffffff; }
 .scr-comment-sheet-empty { margin: 14px 0; text-align: center; font-size: var(--fs-micro); color: var(--muted); }
 /* 입력칸은 목록과 분리돼 맨 아래에 고정(요청 4) — 목록이 길어져도 자리를 안 뺏긴다.
    왼쪽엔 내 아바타를 동그랗게(요청) — 지금 누구 이름으로 쓰는지 보여준다. */
+/* 입력줄 위 구분선은 두지 않는다(요청) — 목록 끝과 입력줄 사이는 여백만으로 나눈다. */
 .scr-comment-sheet-compose {
-  flex-shrink: 0; padding-top: 8px; margin-top: 2px;
-  border-top: 1px solid rgba(var(--overlay-rgb), 0.1);
+  flex-shrink: 0; padding-top: 10px; margin-top: 2px;
   display: flex; align-items: center; gap: 8px;
 }
 .scr-comment-sheet-compose > .scr-avatar { flex-shrink: 0; border-radius: 50% !important; }
