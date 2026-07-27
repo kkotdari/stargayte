@@ -105,10 +105,11 @@ interface RankShiftFeedItem {
 
 type FeedItem = ChallengeItem | MatchItem | RankShiftFeedItem;
 
-// 같은 날의 게임결과가 피드에서 2개 이상 연속되면 겹침 스택 하나로 묶는다.
+// 같은 '세션'의 게임결과가 피드에서 2개 이상 연속되면 겹침 스택 하나로 묶는다.
 interface MatchStackItem {
   kind: "matchstack";
   time: number;
+  /** 세션 날짜(YYYY-MM-DD) — 달력 날짜가 아니라 sessionDateOf 기준이다. */
   date: string;
   items: MatchItem[];
 }
@@ -142,6 +143,27 @@ function matchItem(m: Match): MatchItem {
     withClock: started != null,
     match: m,
   };
+}
+
+// 게임 한 판이 아니라 "한 자리에서 이어 한 묶음"이 스택의 단위다. 그런데 밤에 시작한
+// 자리는 자정을 넘겨 이어지는 일이 흔해서, 달력 날짜로 끊으면 같은 자리가 두 스택으로
+// 쪼개진다(요청: 연속된 게임결과는 날짜가 달라도 하나로). 새벽 경기는 전날 밤의 연장으로
+// 보고 전날에 붙인다 — 경계는 오전 8시(요청).
+const SESSION_DAY_START_HOUR = 8;
+function sessionDateOf(it: MatchItem): string {
+  const d = new Date(it.time);
+  // 시각을 모르는 경기(날짜만 등록된 건)는 자정으로 잡혀 있다 — 그걸 새벽으로 읽고
+  // 전날로 밀면 안 되니, 시계가 있는 경기에만 이 보정을 건다.
+  if (it.withClock && d.getHours() < SESSION_DAY_START_HOUR) d.setDate(d.getDate() - 1);
+  const mm = `${d.getMonth() + 1}`.padStart(2, "0");
+  const dd = `${d.getDate()}`.padStart(2, "0");
+  return `${d.getFullYear()}-${mm}-${dd}`;
+}
+// 세션 날짜(YYYY-MM-DD) → 카드 헤더용 라벨. 스택은 자기 첫 아이템의 시각이 아니라
+// 세션 날짜로 이름표를 단다 — 새벽 2시 경기가 맨 위에 있다고 "오늘"로 적히면 안 된다.
+function sessionDateLabel(date: string): string {
+  const [, m, d] = date.split("-");
+  return `${Number(m)}월 ${Number(d)}일`;
 }
 
 // 응답 마감 = 요청일 + 72시간(예정 시각이 그보다 먼저면 예정 시각) — 백엔드와 동일 기준.
@@ -776,21 +798,23 @@ export default function FeedScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- slotMatchesTerm/challengeMatchesTerm은 members로 충분히 표현됨
   }, [visibleFeed, kindFilter, searchTerms, members]);
 
-  // 같은 날 게임결과가 2개 이상 연속이면 겹침 스택으로 묶는다(요청).
+  // 같은 세션(sessionDateOf — 새벽 경기는 전날에 붙는다)의 게임결과가 2개 이상 연속이면
+  // 겹침 스택으로 묶는다(요청).
   const displayFeed = useMemo<DisplayItem[]>(() => {
     const out: DisplayItem[] = [];
     let i = 0;
     while (i < filteredFeed.length) {
       const it = filteredFeed[i];
       if (it.kind === "match") {
+        const day = sessionDateOf(it);
         let j = i + 1;
         while (
           j < filteredFeed.length
           && filteredFeed[j].kind === "match"
-          && (filteredFeed[j] as MatchItem).match.date === it.match.date
+          && sessionDateOf(filteredFeed[j] as MatchItem) === day
         ) j++;
         if (j - i >= 2) {
-          out.push({ kind: "matchstack", time: it.time, date: it.match.date, items: filteredFeed.slice(i, j) as MatchItem[] });
+          out.push({ kind: "matchstack", time: it.time, date: day, items: filteredFeed.slice(i, j) as MatchItem[] });
           i = j;
           continue;
         }
@@ -1001,7 +1025,7 @@ export default function FeedScreen() {
                 stack={item}
                 memberOf={memberOf}
                 onDeleted={handleMatchDeleted}
-                dateLabel={dateLabelOf(item)}
+                dateLabel={sessionDateLabel(item.date)}
                 highlightMemberIds={matchedIds}
                 highlightTerms={searchTerms}
               />
