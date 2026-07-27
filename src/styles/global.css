@@ -7473,16 +7473,25 @@ html.scr-light-theme .scr-feed-add-fab {
     0 -6px 18px rgba(0, 0, 0, 0.42),
     0 -1px 0 rgba(255, 255, 255, 0.08);
 }
-/* 유리 패널은 시트 아래로 한참 더 내려 그린다(bottom: -50vh) — 키보드가 올라오면 iOS가
-   뷰포트를 다시 잡으면서 시트 밑단과 키보드 사이가 벌어져 그 틈으로 뒷페이지가 비쳤다
-   (지적). 그 틈이 얼마나 벌어질지는 OS가 정하고 우리는 알 수 없으니, 재서 맞추는 대신
-   패널을 넉넉히 늘려 어떤 틈이든 패널 재질로 덮는다. 키보드가 없을 땐 화면 밖이라
-   보이지 않는다. 시트에 overflow가 없어 이 확장이 잘리지 않는다. */
+/* 유리 패널 — 시트 박스 안에서만. 아래로 늘리는 일은 ::after가 맡는다. */
 .scr-comment-sheet::before {
-  content: ""; position: absolute; inset: 0; bottom: -50vh; z-index: -1;
+  content: ""; position: absolute; inset: 0; z-index: -1;
   background: rgba(16, 21, 26, 0.66);
   backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
 }
+/* 시트 아래 치마(skirt) — 키보드가 올라오면 iOS가 뷰포트를 다시 잡으면서 시트 밑단과
+   키보드 사이가 벌어지고, 그 틈으로 뒷페이지가 그대로 보였다(지적). 틈이 얼마나 벌어질지는
+   OS가 정하고 우리는 관측도 계산도 못 하니, 재서 맞추는 대신 패널을 아래로 넉넉히 늘려
+   어떤 틈이든 덮는다. 키보드가 없을 땐 화면 밖이라 보이지 않는다.
+   ::before를 늘리지 않고 별도 레이어로 뺀 이유: backdrop-filter는 '뒤에 그려진 것'을 받아
+   거르는데 뷰포트 밖에는 그 backdrop이 없어, 늘린 부분이 그려지지 않았다(그래서 앞선
+   시도가 먹지 않았다). 이 치마는 블러 없이 불투명하게 칠한다 — 어차피 키보드/브라우저 크롬
+   뒤라 유리 느낌을 살릴 이유도 없고, 불투명해야 확실히 가린다. */
+.scr-comment-sheet::after {
+  content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 60vh; z-index: -1;
+  background: #0f1418;
+}
+html.scr-light-theme .scr-comment-sheet::after { background: #f4f6f9; }
 html.scr-light-theme .scr-comment-sheet {
   box-shadow:
     0 -18px 50px rgba(0, 0, 0, 0.3),

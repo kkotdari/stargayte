@@ -28,6 +28,12 @@ import type { Challenge, FeedTargetType, Match, MatchSlot, MatchType, Member, Ra
 const PAGE_SIZE = 100;
 const MAX_REPLAY_FILES = 20;
 
+// 겹침 스택 펼침/접힘에서 카드 한 장이 나타나거나 사라지는 시간과, 카드 사이의 시차.
+// 공간(높이)이 다 열린 뒤에 카드가 한 장씩 등장한다(요청) — 그 반대로 접을 땐 카드가
+// 먼저 사라지고 공간이 닫힌다.
+const CARD_FADE_MS = 170;
+const CARD_STAGGER_MS = 55;
+
 // 피드 — 커뮤니티 활동(경기 결과, 너 나와! 일정)을 한 타임라인으로 보여주는 홈 화면.
 // 타임라인 기준: 너 나와!는 경기 예정 일시, 경기는 리플레이의 게임 시작 시각.
 
@@ -354,8 +360,14 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     // 레일(카드를 잇는 세로선)은 여기서 손대지 않는다 — 스택 전체를 덮는 CSS 규칙
     // (top:0/bottom:0)이라 높이가 변하면 알아서 따라온다. 예전엔 여기서 실측해 인라인
     // top/height를 박았는데, 아래 cleanup이 그걸 지우는 순간 선이 사라졌다(global.css 참고).
+
+    // 펼침/접힘에서 한 장씩 등장·퇴장시킬 카드 래퍼들.
+    const cards = Array.from(
+      list.querySelectorAll<HTMLElement>(":scope > .scr-feed-stack-reveal"),
+    );
     const cleanup = () => {
       inner.style.height = "";
+      cards.forEach((c) => { c.style.opacity = ""; c.style.transform = ""; });
       cancelRevealRef.current = null;
     };
 
@@ -363,23 +375,51 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (!wasToggled || reduced) {
       inner.style.height = "";
+      cards.forEach((c) => { c.style.opacity = ""; c.style.transform = ""; });
       cancelRevealRef.current = () => cleanup();
       return;
     }
 
     // 열린 높이 — 접힘 상태에선 래퍼가 0이므로 안쪽 기둥(rest-list)에서 잰다.
     const full = list.getBoundingClientRect().height;
-    const dur = Math.min(560, 360 + Math.round(full * 0.12));
+    // 높이 연출은 예전보다 짧게 — 이제 그 구간엔 빈 공간만 열리고 카드는 그 뒤에 나오므로
+    // 오래 끌 이유가 없다.
+    const dur = Math.min(420, 260 + Math.round(full * 0.08));
     // 시작 높이를 인라인으로 '지금 당장' 박는다 — WAAPI fill에만 맡기면 iOS가 첫 프레임에
     // 적용하지 않아 열린 상태가 한 번 스쳐 보인다(이 파일 곳곳에서 반복 확인된 함정).
     inner.style.height = open ? "0px" : `${full}px`;
+    // 카드도 마찬가지로 시작 상태를 먼저 박는다 — 펼칠 땐 투명하게 시작해야 공간이 열리는
+    // 동안 카드가 미리 비치지 않는다(지적: "접고 펼칠 때 카드가 미리 보여서").
+    if (open) cards.forEach((c) => { c.style.opacity = "0"; c.style.transform = "translateY(6px)"; });
 
     const anims: Animation[] = [];
     const a = inner.animate(
       [{ height: open ? "0px" : `${full}px` }, { height: open ? `${full}px` : "0px" }],
-      { duration: dur, easing: "cubic-bezier(0.32, 0.72, 0, 1)", fill: "both" },
+      {
+        duration: dur, easing: "cubic-bezier(0.32, 0.72, 0, 1)", fill: "both",
+        // 접을 땐 카드가 먼저 사라지고 그 다음에 공간이 닫힌다.
+        delay: open ? 0 : CARD_FADE_MS + Math.max(0, cards.length - 1) * CARD_STAGGER_MS,
+      },
     );
     anims.push(a);
+    // 카드는 하나씩(요청) — 펼칠 땐 공간이 다 열린 뒤 위에서부터, 접을 땐 아래에서부터
+    // 먼저 걷어낸다. 카드에 opacity를 걸어도 되는 이유: 피드 카드는 불투명 배경이라
+    // backdrop-filter가 없다(있었다면 opacity<1 조상이 합성 그룹을 만들어 블러가 죽는다).
+    cards.forEach((c, i) => {
+      const order = open ? i : cards.length - 1 - i;
+      anims.push(c.animate(
+        [
+          { opacity: open ? 0 : 1, transform: open ? "translateY(6px)" : "none" },
+          { opacity: open ? 1 : 0, transform: open ? "none" : "translateY(6px)" },
+        ],
+        {
+          duration: CARD_FADE_MS,
+          delay: (open ? dur : 0) + order * CARD_STAGGER_MS,
+          easing: open ? "cubic-bezier(0.22, 1, 0.36, 1)" : "ease-in",
+          fill: "both",
+        },
+      ));
+    });
     void Promise.all(anims.map((x) => x.finished)).then(() => {
       anims.forEach((x) => { try { x.cancel(); } catch { /* 이미 끝남 */ } });
       // 펼침 완료 뒤엔 auto로 돌려놔야 댓글이 늘거나 카드가 펼쳐질 때 높이가 따라간다.
