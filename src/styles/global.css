@@ -1887,10 +1887,25 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 /* 프사가 없으니(avatar=false) 닉네임/배틀태그를 칸 왼쪽에 붙일 이유가 없다 — 가운데
    정렬한다. */
 .scr-stats-list-panel-v2 .scr-stat-name-cell { justify-content: center; }
+/* v2 통계 그리드(표) 전체를 피드 카드와 같은 투명 유리로(요청: "통계 화면 그리드를
+   투명 블러로") — 배경 사진(stats_bg)이 표 뒤로 비쳐 보이게 한다. base .scr-stat-table의
+   불투명 --panel-solid를 덮는다. 값은 .scr-feed-card와 동일(다크/라이트 각각). */
+.scr-stats-list-panel-v2 .scr-stat-table {
+  background-color: rgba(var(--overlay-rgb), 0.07);
+  backdrop-filter: blur(9px) saturate(1.2);
+  -webkit-backdrop-filter: blur(9px) saturate(1.2);
+}
+.scr-light-theme .scr-stats-list-panel-v2 .scr-stat-table {
+  background-color: rgba(255, 255, 255, 0.62);
+  backdrop-filter: blur(10px) saturate(1.1);
+  -webkit-backdrop-filter: blur(10px) saturate(1.1);
+}
 /* 헤더행·유저열 배경 — 회색톤(--panel-raised) 대신 표 기본색으로(요청). 유저열은 sticky로
    옆 칸 내용이 밑을 지나가므로, 불투명 회색 대신 반투명 기본색 + 강한 블러로 가린다(요청).
    color-mix 미지원 브라우저는 앞 선언(불투명 기본색)으로 동작한다. */
-.scr-stats-list-panel-v2 .scr-stat-row-head { background-color: var(--panel-solid); }
+/* 헤더 행은 표가 유리가 되면서 따로 칠할 배경이 없다 — 표 유리를 그대로 비추게 투명.
+   (불투명 띠로 남기면 유리 표 위에 회색 지붕만 얹힌 모양이 됐다.) */
+.scr-stats-list-panel-v2 .scr-stat-row-head { background-color: transparent; }
 .scr-stats-list-panel-v2 .scr-stat-name-cell,
 .scr-stats-list-panel-v2 .scr-stat-name-head {
   background-image: none;
