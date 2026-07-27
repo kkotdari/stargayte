@@ -178,9 +178,9 @@ function driveStyle(dur: number, ease: (t: number) => number, apply: (p: number)
 // 투명한 그룹 내부를 샘플링하기 때문이다(코드 곳곳의 opacity 함정과 같은 원리, 크롬·
 // 사파리 공통 확인). 반면 '자기 자신'에 건 transform은 블러를 유지한다(자기 backdrop
 // root는 자식에만 영향, 자신의 블러엔 무관). 그래서 스택 이동은 래퍼(rest-list·
-// stack-front·matchstack)가 아니라 그 안 블러 잎(.scr-feed-card, .scr-feed-stack-peek)에
+// stack-front·matchstack)가 아니라 그 안 블러 잎(.scr-feed-card)에
 // 직접 건다 — 래퍼는 배경이 없어 시각적으로 완전히 동일하고 블러만 살아남는다.
-const BLUR_LEAF_SEL = ".scr-feed-card, .scr-feed-stack-peek";
+const BLUR_LEAF_SEL = ".scr-feed-card";
 function blurLeaves(el: HTMLElement): HTMLElement[] {
   if (el.matches(BLUR_LEAF_SEL)) return [el];
   const found = Array.from(el.querySelectorAll<HTMLElement>(BLUR_LEAF_SEL));
@@ -484,15 +484,6 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       closeMotionRef.current = null;
       moved?.belowEls.forEach((el) => { el.style.transform = ""; });
       moved?.els.forEach((el) => { el.style.transform = ""; });
-      const peek = root.querySelector<HTMLElement>(
-        ":scope > .scr-feed-stack-peekwrap > .scr-feed-stack-peek",
-      );
-      if (peek) {
-        peek.style.transform = ""; peek.style.transformOrigin = "";
-        // closeStack이 자리를 미리 잡으려고 걸어둔 인라인 — 접힘 클래스가 없는 상태의
-        // 기본값(static + 보임)과 같으므로 걷어도 화면이 안 움직인다.
-        peek.style.position = ""; peek.style.visibility = "";
-      }
       // 접힘이 확정된(rest가 0fr) 이 프레임에서 비로소 클립을 푼다 — 이제 열려 있는 높이
       // 자체가 0이라 풀어도 드러날 게 없다(closeStack의 clipTo 주석 참고).
       const restInner = root.querySelector<HTMLElement>(
@@ -542,10 +533,6 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     // 목록 전체가 재렌더링·깜빡임). 커밋 프레임엔 펼침 상태의 absolute 자리(접힘 때와
     // 같은 화면 위치)에서 scaleY(1)로 세워 눌렀던 자리를 그대로 덮고, 카드 기둥이 그
     // 밑에서 올라오는 동안 짧게 접혀 들어간다.
-    const peek = root.querySelector<HTMLElement>(
-      ":scope > .scr-feed-stack-peekwrap > .scr-feed-stack-peek",
-    );
-
     // 시작 상태는 인라인 스타일로 "지금 당장" 박는다 — WAAPI fill에만 맡기면 iOS가 첫
     // 프레임에 적용하지 않아 깜빡인다(이전 지적과 동일한 함정). 카드 기둥은 접힌 위치
     // (+d, rest-inner 클립 밖)에, 위 콘텐츠는 옛 위치(+d)에, 라인은 투명으로, 바는
@@ -581,11 +568,6 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       .flatMap(blurLeaves);
     setTransform(belowLeaves, `translateY(${-d}px)`);
     if (rail) rail.style.opacity = "0";
-    // "+N건" 바는 첫 프레임에 즉시 감춘다(요청) — 예전엔 눌린 자리를 그대로 덮으려고
-    // scaleY(1)로 세워두고 180ms에 걸쳐 접어 넣었는데, 그 바가 앞 카드 윗모서리에 걸쳐
-    // 있어서 그 동안 올라오는 카드들의 아랫부분을 잘라 먹었다(지적: "펼쳐지는 카드 아래가
-    // 잘린다"). 인라인을 비우면 펼침 클래스의 scaleY(0)이 곧바로 적용된다.
-    if (peek) peek.style.transform = "";
     const S0 = before.scrollY;
 
     const start = () => {
@@ -637,7 +619,6 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       cancelAnimationFrame(raf1);
       cancelAnimationFrame(raf2);
       anims.forEach((a) => { try { a.cancel(); } catch { /* 이미 끝남 */ } });
-      if (peek) peek.style.transform = "";
       // 중단되면 '펼침 완료' 상태로 확정한다 — 보정 transform을 걷는 것과 스크롤을
       // 최종값으로 옮기는 건 서로 상쇄라, 앞 카드는 어느 시점에 끊겨도 제자리에 남는다.
       setTransform(belowLeaves, "");
@@ -676,32 +657,11 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     };
     const clipOff = () => { if (restInner) restInner.style.clipPath = ""; };
     clipTo(0);
-    // 내려가는 거리 = 펼친 카드 영역 높이 - 접힘 때 "+N건" 바가 도로 차지할 높이.
-    // 바 높이를 안 빼면 커밋 후 위 콘텐츠가 바 높이만큼 되올라가는 잔차 보정이 남아
-    // 접을 때 위 목록이 한 번 출렁였다(지적). 빼 두면 애니메이션이 정확히 접힌
-    // 레이아웃 위치에 내려앉아 잔차가 0이 된다(커밋 분기의 settle은 안전망으로만 남음).
-    // 바의 접힘 레이아웃 기여분 = border-box 높이 + 상하 마진(-6px 겹침 포함).
-    const peekEl = root.querySelector<HTMLElement>(
-      ":scope > .scr-feed-stack-peekwrap > .scr-feed-stack-peek",
-    );
-    let peekH = 0;
-    if (peekEl) {
-      const pcs = getComputedStyle(peekEl);
-      peekH = Math.max(0,
-        peekEl.offsetHeight + (parseFloat(pcs.marginTop) || 0) + (parseFloat(pcs.marginBottom) || 0));
-    }
-    // "+N건" 바 자리를 '지금 당장' 진짜 레이아웃으로 확보한다(요청: "바로 높이를 확보해
-    // 놓고 애니메이션 끝나고 일순간에 생성"). 예전엔 아래 dist에서 바 높이를 빼는 식으로
-    // 자리만 계산상 비워뒀는데, 그러면 그 자리는 커밋 프레임에 가서야 실제 높이가 되므로
-    // 그 순간 레이아웃이 한 번 움직였다. 펼침 상태의 absolute를 풀어 static으로 되돌리면
-    // 높이가 즉시 생기고, 보이기만 visibility로 막아둔다 — 커밋 때 바뀔 게 남지 않는다.
-    if (peekEl) {
-      peekEl.style.position = "static";
-      peekEl.style.visibility = "hidden";
-      peekEl.style.transform = "none";
-    }
-    const restH = rest.getBoundingClientRect().height;
-    const dist = Math.max(0, restH - peekH);
+    // 내려가는 거리 = 펼친 카드 영역 높이 그대로. 접힘/펼침 레이아웃 차이가 이제 이것
+    // 하나뿐이다 — 예전엔 "+N건" 바가 접힘 때 실제 높이를 차지해서 그만큼을 빼고 다시
+    // 자리를 잡아주는 보정이 줄줄이 붙었는데, 그 바를 카드에서 글자로 바꾸면서
+    // (absolute라 높이 0) 보정할 것이 통째로 사라졌다.
+    const dist = rest.getBoundingClientRect().height;
     const dur = Math.min(560, 360 + Math.round(dist * 0.12));
     const vh = window.innerHeight;
     suppressScrollHide(dur + 600);
@@ -722,10 +682,9 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     const anims: (Animation | DrivenAnim)[] = [];
     anims.push(driveStyle(dur, EASE_STACK, (p) => {
       window.scrollTo({ top: S1 - A * p, behavior: "instant" });
-      // 위에서 바 높이(peekH)만큼 레이아웃이 즉시 늘었으므로, 시작점을 그만큼 되올린 -peekH로
-      // 잡아 화면상 위치를 그대로 잇는다. 끝점은 -restH — 커밋에서 rest가 0fr로 접히며
-      // 빠지는 높이와 정확히 같아, 인라인 transform을 걷는 것과 서로 상쇄돼 변화가 0이 된다.
-      setTransform(belowLeaves, `translateY(${-(peekH + dist * p)}px)`);
+      // 끝점 -dist는 커밋에서 rest가 0fr로 접히며 빠지는 높이와 정확히 같아, 인라인
+      // transform을 걷는 것과 서로 상쇄돼 커밋 프레임의 변화가 0이 된다.
+      setTransform(belowLeaves, `translateY(${-dist * p}px)`);
       clipTo(p);
       // "+N건" 바는 후반부에 도로 자라나 커밋 전에 이미 제 모습을 갖춘다 — 커밋 프레임이
       // 순수 레이아웃 교체(화면 변화 0)가 되게 해서 바가 튀어나오는 느낌을 없앤다.
@@ -748,9 +707,7 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       clipTo(1);
       // 커밋 프레임이 이어받도록 종료 상태를 인라인으로 박고 애니메이션 객체는 정리한다.
       window.scrollTo({ top: S1 - A, behavior: "instant" });
-      setTransform(belowLeaves, `translateY(${-(peekH + dist)}px)`);
-      // 자리는 시작부터 잡혀 있었고 여기서 보이기만 한 번에 켠다(요청).
-      if (peekEl) peekEl.style.visibility = "";
+      setTransform(belowLeaves, `translateY(${-dist}px)`);
       if (rail) rail.style.opacity = "0";
       anims.forEach((a) => { try { a.cancel(); } catch { /* 이미 끝남 */ } });
       closeMotionRef.current = { els: belowLeaves, belowEls: [], dist };
@@ -761,11 +718,9 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     cancelRevealRef.current = () => {
       closingRef.current = false;
       clipOff();
-      if (peekEl) { peekEl.style.position = ""; peekEl.style.visibility = ""; }
       anims.forEach((a) => { try { a.cancel(); } catch { /* 이미 끝남 */ } });
       setTransform(belowLeaves, "");
       window.scrollTo({ top: S1, behavior: "instant" });
-      if (peekEl) peekEl.style.transform = "";
       if (rail) rail.style.opacity = "";
       cancelRevealRef.current = null;
     };
@@ -785,7 +740,7 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
           aria-hidden={open} tabIndex={open ? -1 : 0}
           aria-label={`게임결과 ${restDesc.length}건 더 펼치기`}
         >
-          + {restDesc.length}건
+          + {restDesc.length}건 펼치기
         </button>
       </div>
       <div className="scr-feed-stack-rest" aria-hidden={!open}>

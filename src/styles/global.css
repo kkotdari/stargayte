@@ -7052,16 +7052,23 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    항상 렌더된 채로 두고, 펼침 상태에선 높이 0 래퍼 안의 absolute로 자리만 잃게 한 뒤
    transform(scaleY)으로만 접는다 — 요소·블러 레이어가 살아 있어 재구성이 없다. */
 /* flex 컬럼: 버튼(내용 폭으로 수축하는 요소)을 이전처럼 전체 폭으로 스트레치. */
-.scr-feed-stack-peekwrap { position: relative; display: flex; flex-direction: column; }
-.scr-feed-stack-opened .scr-feed-stack-peekwrap { height: 0; z-index: 2; }
-.scr-feed-stack-opened .scr-feed-stack-peek {
-  /* bottom 기준 absolute — 접힘 때와 같은 자리(앞 카드 윗모서리 위)에 겹친다.
-     margin(0 4px -6px)이 그대로 적용돼 접힘 레이아웃과 픽셀 단위로 일치한다. */
-  position: absolute; left: 0; right: 0; bottom: 0;
-  transform: scaleY(0); transform-origin: 50% 100%;
-  pointer-events: none;
+/* 접힘 상태의 펼치기 유도 — 예전엔 앞 카드 윗모서리에 겹치는 '뒷카드 밑단' 바(불투명
+   배경 + 라운딩 + 그림자)였다. 그 바가 레이아웃에 실제 높이를 만드는 바람에 펼침/접힘
+   연출이 그 높이를 계속 보정해야 했고(이동거리에서 빼기 → 커밋 프레임에 높이가 생김),
+   연출 중엔 그 자리를 지나는 카드의 아랫부분을 잘라 먹었다. 그래서 카드 컨셉 자체를
+   버리고 글자만 남긴다(요청) — 피드 카드 사이 여백(.scr-feed-list gap 20px)에 absolute로
+   얹으므로 레이아웃에 높이를 1px도 더하지 않는다. 접힘/펼침 레이아웃 차이는 이제
+   '겹친 카드 영역 높이' 하나뿐이라 보정할 것이 없다. */
+.scr-feed-stack-peekwrap { position: absolute; left: 0; right: 0; bottom: 100%; }
+.scr-feed-stack-peek {
+  display: block; width: 100%; padding: 0 0 4px; border: none; background: none;
+  font-family: inherit; font-size: var(--fs-micro); font-weight: 700; color: var(--dim);
+  text-align: center; cursor: pointer; -webkit-tap-highlight-color: transparent;
 }
-/* 주의: 여기(조상)에 opacity를 걸면 안 된다 — opacity<1은 자체 합성 그룹을 만들어 그 안
+@media (hover: hover) { .scr-feed-stack-peek:hover { color: var(--text); } }
+/* 펼쳐지면 사라진다 — 그때는 왼쪽 '줄이기' 라인이 접기 진입점을 맡는다. */
+.scr-feed-stack-opened .scr-feed-stack-peekwrap { display: none; }
+/* 주의: 조상에 opacity를 걸면 안 된다 — opacity<1은 자체 합성 그룹을 만들어 그 안
    카드들의 backdrop-filter가 페이지 배경을 못 보게 된다(= 블러가 빠져 보이던 문제).
    같은 이유로 카드 등장 애니메이션도 opacity 없이 transform만 쓴다. */
 .scr-feed-stack-rest { display: grid; grid-template-rows: 0fr; }
@@ -7077,36 +7084,6 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-feed-stack-rest-list { display: flex; flex-direction: column; gap: 20px; padding: 4px 0 20px; }
 /* 펼침 연출은 JS(WAAPI, MatchStack 참고) — 1) 위 콘텐츠를 필요한 높이만큼 transform으로
    밀어올려 빈 공간을 만들고 2) 그 자리에 카드들을 페이드인(아이디어: 사용자). */
-/* 겹친 뒷카드 윗단 — 앞 카드가 그날 첫 게임이므로 나중 게임들이 "위"로 삐져나온 모양(요청).
-   블러도 카드와 동일하게(요청: "스택된 상태의 뒷 카드에도 블러 똑같이"). */
-.scr-feed-stack-peek {
-  /* 좌우 여백 14px → 5px → 4px — 뒷카드 폭을 앞 카드보다 아주 살짝만 좁게(요청). */
-  display: block; margin: 0 4px -6px; margin-left: 4px; margin-right: 4px;
-  padding: 8px 0 12px; border: none; border-radius: 14px 14px 0 0; cursor: pointer;
-  font-family: inherit; font-size: var(--fs-micro); font-weight: 700; color: var(--dim);
-  /* 겹침 뒷카드 밑단도 카드와 같은 불투명(임시 땜빵 — .scr-feed-card 주석 참고).
-     반투명이면 뒤에 클립된 카드가 비쳐 보였다(지적). 카드보다 살짝 어두운 톤. */
-  background-color: var(--panel-solid);
-  background-color: color-mix(in srgb, var(--panel-solid) 93%, white);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    inset 1px 0 0 rgba(255, 255, 255, 0.04),
-    inset -1px 0 0 rgba(255, 255, 255, 0.04),
-    0 -2px 10px rgba(0, 0, 0, 0.14);
-}
-/* hover도 불투명 유지(임시 땜빵) — 반투명(overlay 8%)으로 떨어지면 뒤 클립 카드가 비친다. */
-@media (hover: hover) { .scr-feed-stack-peek:hover { color: var(--text); background: color-mix(in srgb, var(--panel-solid) 90%, white); } }
-/* 색은 앞 카드와 완전히 동일하게(요청: "겹침 카드 색이 프론트카드와 다르네 똑같이") —
-   둘의 구분은 색 차이 대신 위로 지는 그림자가 담당한다(뒤 카드가 앞 카드 밑에 깔린 느낌). */
-.scr-light-theme .scr-feed-stack-peek {
-  background: var(--panel-solid);
-  /* 앞 카드가 드리우는 그림자만으로 충분하다고 보고 이 바의 외부 그림자를 뺐었는데,
-     라이트에선 바탕도 카드도 흰색이라 그것만으론 겹쳐 있다는 게 안 읽혔다(지적).
-     다크와 같은 방향(위로)으로 옅게 되살린다. */
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.7),
-    0 -2px 8px rgba(0, 0, 0, 0.1);
-}
 /* 줄이기 — 스택(펼쳐진 카드들 + 앞 카드) 전체 왼쪽에 반투명 흰 세로 라인(요청). 카드는
    들여쓰기 없이 원래 폭 그대로 두고 라인을 그 위(왼쪽 가장자리)에 겹쳐 올린다. 라인
    전체가 버튼이고, 위에 "눌러서 다시 줄이기"를 세로쓰기로 얹는다. 펼쳤을 때만 보이며,
