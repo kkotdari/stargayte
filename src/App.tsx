@@ -4,7 +4,6 @@ import { isAdminRole } from "./constants/roles";
 import { Spinner } from "./components/common/Feedback";
 import ScrollTopButton from "./components/common/ScrollTopButton";
 import { api } from "./api/client";
-import { useRestoreScrollOnKeyboardClose } from "./hooks/useRestoreScrollOnKeyboardClose";
 import { useBottomViewportInset } from "./hooks/useBottomViewportInset";
 import { useModalDragDismiss } from "./hooks/useModalDragDismiss";
 import { scrollRootTo } from "./utils/scrollRoot";
@@ -120,10 +119,11 @@ export default function App() {
     setShareTarget(null);
     setScreen("feed");
   };
-  // 키보드가 뜨면(resizes-content라 뷰포트가 줄어들며) 브라우저가 포커스된 입력칸을
-  // 보여주려고 스크롤을 올리는데, 키보드가 닫혀도 그 자리로 되돌아오지 않았다(실제로
-  // 지적받은 문제 — "키보드 내려가면 다시 안 돌아와").
-  useRestoreScrollOnKeyboardClose();
+  // (키보드가 닫힐 때 스크롤을 되돌리던 훅은 제거했다 — 그 훅은 뷰포트가 키보드만큼
+  //  줄어드는 interactive-widget=resizes-content를 전제로 만들었는데, iOS 사파리는 그
+  //  설정을 지원하지 않아 전제가 성립하지 않는다. 사파리는 키보드를 덮어씌우고 닫힐 때
+  //  스크롤도 스스로 되돌리므로, 우리 복원이 그 위에 겹쳐 서로 싸웠다 — 지적: "키보드를
+  //  숨겼을 때 어쩔 땐 내려가고 어쩔 땐 그대로고 랜덤이다".)
   // 하단 탭바를 iOS 사파리 주소창 바로 위에 붙이는 보정값(--vv-bottom-inset)을 갱신한다.
   useBottomViewportInset();
 

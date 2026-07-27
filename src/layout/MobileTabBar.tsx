@@ -4,7 +4,6 @@ import { Menu as MenuIcon } from "lucide-react";
 import { cx } from "../utils/format";
 import { NAV_MENU_ITEMS } from "../constants/menuVersions";
 import { smoothScrollRootToTop } from "../utils/scrollRoot";
-import { cancelKeyboardScrollRestore } from "../hooks/useRestoreScrollOnKeyboardClose";
 import type { ScreenKey } from "../types";
 
 interface MobileTabBarProps {
@@ -127,11 +126,9 @@ export default function MobileTabBar({ screen, menuOpen, hidden, mini, onNavigat
   // 그 어떤 레이아웃 변화보다 먼저 발생하므로 첫 탭에 항상 동작한다. 같은 탭이면 맨
   // 위로 — 네이티브 smooth(iOS 관성 스크롤과 겹치면 무시됨, "바로 안됨" 문제)도
   // instant(순간이동이라 어지러움, 요청: "스크롤탑시 좀 부드럽게 올라가기")도 아닌,
-  // rAF로 직접 굴리는 짧은 감속 애니메이션을 쓴다(smoothScrollRootToTop). 어느 쪽이든
-  // 실행 전에 키보드 닫힘 복원(useRestoreScrollOnKeyboardClose)을 취소한다 — 안 그러면
-  // 150ms 뒤 복원이 방금 옮긴 스크롤을 이전 위치로 도로 되돌려버린다.
+  // rAF로 직접 굴리는 짧은 감속 애니메이션을 쓴다(smoothScrollRootToTop).
+  // (키보드 닫힘 복원을 취소하던 호출은 그 훅과 함께 제거했다 — App.tsx 주석 참고.)
   const activate = (key: ScreenKey) => {
-    cancelKeyboardScrollRestore();
     if (screen === key) smoothScrollRootToTop();
     else onNavigate(key);
   };
