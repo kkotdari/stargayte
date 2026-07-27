@@ -2964,6 +2964,15 @@ html.scr-page-bg.scr-light-theme .scr-main::before {
   .scr-feed-screen .scr-filter-inline-stack { flex-direction: row; align-items: center; gap: 8px; }
   .scr-feed-screen .scr-filter-panel { width: auto; justify-content: flex-start; }
   .scr-feed-screen .scr-search-filter-float { width: auto; flex: 1 1 auto; min-width: 0; }
+  /* 통계 — 필터 3개(분류/종족/기간)를 모바일에서도 한 줄에(요청). wrap을 끄고, 좁은
+     폭에 들어가도록 항목 축소를 허용(base의 flex-shrink:0 해제)하고 컨트롤을 한 단계
+     컴팩트하게(폰트 micro, 달력 최소폭 축소) 줄인다. 라벨은 컨트롤 위 절대배치라
+     한 줄 높이에 영향 없다. */
+  .scr-stats-screen-v2 .scr-filter-panel { flex-wrap: nowrap; gap: 26px 6px; }
+  .scr-stats-screen-v2 .scr-filter-panel > .scr-filter-item { flex-shrink: 1; min-width: 0; }
+  .scr-stats-screen-v2 .scr-filter-panel .scr-pill-tab-btn { font-size: var(--fs-micro); padding-left: 8px; padding-right: 8px; }
+  .scr-stats-screen-v2 .scr-filter-panel .scr-filter-race-select .scr-cselect-trigger { font-size: var(--fs-micro); padding: 0 6px; }
+  .scr-stats-screen-v2 .scr-filter-panel .scr-filter-month-input { font-size: var(--fs-micro); min-width: 0; width: 92px; padding: 0 6px; flex: 0 1 auto; }
   .scr-filter-item-label { font-size: var(--fs-caption); }
   /* 모바일에서도 필터 요소(알약/달력/종족)를 base(PC)와 같은 크기 — 검색창 높이(34px)에 맞춘다
      (요청: "필터 내 요소 높이를 검색창과 일치, 모바일·PC 모두"). 예전엔 24px로 컴팩트하게
@@ -7158,9 +7167,8 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
 .scr-filter-panel .scr-pill-tab-btn { font-size: var(--fs-caption); }
 .scr-filter-panel .scr-filter-month-input { font-size: var(--fs-caption); }
 .scr-filter-panel .scr-filter-race-select .scr-cselect-trigger { font-size: var(--fs-caption); }
-/* 피드 유형 드롭다운 — 트리거·옵션 텍스트를 1스텝 축소(요청). caption→micro. */
-.scr-feed-kind-select .scr-cselect-value,
-.scr-feed-kind-select .scr-cselect-opt-label { font-size: var(--fs-micro); }
+/* (피드 유형 드롭다운 전용 축소 규칙은 제거 — 통계 종족 필터(.scr-filter-race-select)와
+   같은 클래스를 쓰도록 통일해(요청) 크기·톤이 저절로 같아졌다.) */
 .scr-chip-name { font-size: var(--fs-body); }
 /* 헤더 닉네임 — 파일 끝의 이 무조건 규칙이 모바일 블록(640px)을 덮어 닉네임이 안
    줄어드는 제약이었어서 PC에서만 적용한다. PC 크기는 옆 '테마' 텍스트 버튼
