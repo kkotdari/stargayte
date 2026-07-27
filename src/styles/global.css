@@ -7066,11 +7066,22 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 /* 목록 안에 끼는 포스트가 아닌 요소("현재" 구분선)는 원래 좌우 여백을 되찾는다. */
 .scr-feed-list > .scr-feed-now-divider { margin-left: var(--main-pad-x); margin-right: var(--main-pad-x); }
 
-/* ── 게임결과 요약 포스트 ──
-   같은 세션의 게임결과는 요약 포스트 한 장으로 낸다 — 참가자 전원과 "자세히 보기"뿐이고,
-   개별 게임 카드는 그 자리에서 펼치지 않고 전체화면 모달로 연다(요청). 그래서 예전의
-   접힘/펼침 래퍼·높이 애니메이션·묶음 테두리·"간단히 보기"는 전부 없앴다 — 모달 닫기가
-   그 역할을 대신한다. */
+/* ── 게임결과 묶음(요약 ↔ 목록) ──
+   접힘은 참가자 전원을 담은 요약 포스트, 펼침은 그 자리에 들어서는 게임결과 포스트 목록
+   이다(요청). 두 모습 모두 항상 마운트돼 있고 각자의 래퍼 높이(0 ↔ 실제)로 자리를 주고
+   받는다 — 연출 중에는 JS가 인라인 height로 그 사이를 잇는다(FeedScreen).
+   묶음 테두리(레일)는 두지 않는다 — 포스트가 좌우 여백 없이 화면을 꽉 채우게 되면서
+   그 테두리를 그릴 자리 자체가 없어졌다. */
+.scr-feed-stack { display: flex; flex-direction: column; position: relative; }
+.scr-feed-stack-sum, .scr-feed-stack-rest { display: block; }
+.scr-feed-stack-sum-inner, .scr-feed-stack-rest-inner { overflow: hidden; min-height: 0; height: 0; }
+.scr-feed-stack-opened .scr-feed-stack-rest-inner { height: auto; }
+.scr-feed-stack:not(.scr-feed-stack-opened) .scr-feed-stack-sum-inner { height: auto; }
+.scr-feed-stack-rest-list { display: flex; flex-direction: column; gap: var(--feed-card-gap); }
+.scr-feed-stack-reveal { position: relative; }
+/* 되돌아가는 버튼은 목록 맨 위, 포스트 바깥(페이지 배경) 위에 놓인다 — 요약의 "자세히
+   보기"가 있던 자리 근처라 길게 스크롤하지 않고 바로 접을 수 있다. */
+.scr-feed-stack-toggle-collapse { padding: 0 0 var(--post-pad-y); }
 /* 참가자 — 이름 길이가 달라도 열이 어긋나지 않게 균등 그리드를 쓴다(flex-wrap이면 이름
    길이만큼 칸이 달라져 줄이 안 맞는다). 한 줄에 세 명(요청). */
 .scr-feed-stack-sum-players {
@@ -7437,7 +7448,7 @@ html.scr-light-theme .scr-feed-add-fab {
    루트에 .scr-feed-comments/.scr-match-notes를 함께 붙여, 카드 안에서 쓰던 목록·입력
    스타일(폰트 한 스텝 축소, --field-h, 다크 흰 입력칸)을 포털 안에서도 그대로 상속받는다.
    대신 그 두 클래스가 들고 오는 카드용 여백/구분선은 여기서 되돌린다. */
-.scr-comment-sheet, .scr-stack-modal {
+.scr-comment-sheet {
   /* 패널 배경은 이 요소 '자신'이 칠한다(아래 background) — 배경을 다른 레이어(::before
      z-index:-1, ::after 치마 등)에 맡겼던 시도는 iOS 사파리가 position:fixed 요소를 자기
      합성 레이어로 만들면서 뷰포트에 맞춰 잘라 버려 전부 실패했다. 요소 자신의 배경은 그
@@ -7460,8 +7471,7 @@ html.scr-light-theme .scr-feed-add-fab {
      ① 사파리 접힌 주소창 알약(--vv-bottom-inset 실측, 탭바가 쓰는 값과 같다),
      ② 홈 인디케이터 안전영역(PWA/전체화면),
      ③ 둘 다 0인 기기(안드로이드 크롬·PC)에서도 화면 둥근 모서리를 피할 최소 여백. */
-  --sheet-pad-x: 20px;
-  padding: var(--safe-top, 0px) var(--sheet-pad-x) max(
+  padding: var(--safe-top, 0px) 20px max(
     calc(var(--vv-bottom-inset, 0px) + 10px),
     calc(env(safe-area-inset-bottom, 0px) + 10px),
     18px
@@ -7483,7 +7493,7 @@ html.scr-light-theme .scr-feed-add-fab {
        겹치게 한다.
    트랜지션 선언을 기본 규칙에 두고 typing 쪽에서 끄면 방향이 갈린다 — 전환 후 상태의
    transition 값이 쓰이므로, typing이 붙을 땐 none, 떨어질 땐 기본값이 적용된다. */
-.scr-comment-sheet, .scr-stack-modal { transition: padding-bottom 220ms cubic-bezier(0.32, 0.72, 0, 1); }
+.scr-comment-sheet { transition: padding-bottom 220ms cubic-bezier(0.32, 0.72, 0, 1); }
 .scr-comment-sheet-typing {
   padding-bottom: 8px;
   transition: none;
@@ -7514,7 +7524,7 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
    헤더만 들이지 않고 시트 전체 여백을 16→20px로 올렸다(요청: 아래 댓글 목록도 같이 맞춰야
    예쁘다) — 반지름 32px 기준 y=14px 지점에서 곡선이 안쪽으로 들어오는 거리가 약 7px이라
    20px이면 넉넉하다. */
-.scr-comment-sheet-head, .scr-stack-modal-head {
+.scr-comment-sheet-head {
   display: flex; align-items: center; justify-content: space-between;
   flex-shrink: 0; padding: 14px 0 8px;
   border-bottom: 1px solid rgba(var(--overlay-rgb), 0.1);
@@ -7523,13 +7533,13 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
 /* 아이콘(16px)이 28px 버튼 안에 가운데 있어, 버튼 오른쪽 끝을 여백선에 맞추면 아이콘은
    그보다 6px 더 안쪽에 놓여 제목보다 들어가 보인다(지적). 그 6px만큼 버튼을 바깥으로
    밀어 '아이콘'이 제목과 같은 선에 서게 한다 — 탭 영역은 28px 그대로다. */
-.scr-comment-sheet-close, .scr-stack-modal-close {
+.scr-comment-sheet-close {
   width: 28px; height: 28px; border: none; background: transparent; border-radius: 50%;
   margin-right: -6px;
 }
 /* 최소 높이로 생긴 남는 공간은 목록이 먹는다(flex:1) — 입력줄은 늘 바닥에 붙고, 댓글이
    적으면 목록 위쪽부터 채워지며 아래가 빈다. */
-.scr-comment-sheet-body, .scr-stack-modal-body {
+.scr-comment-sheet-body {
   flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden;
   /* 시트 안에서 끝까지 스크롤해도 제스처가 뒷 페이지로 새지 않게(실드와 한 세트). */
   overscroll-behavior: contain; touch-action: pan-y;
@@ -7568,18 +7578,3 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
 
 /* 카드 안 미리보기 — 여기서는 읽기만 하고, 누르면 시트가 열린다(요청 2). */
 .scr-match-notes-preview { cursor: pointer; -webkit-tap-highlight-color: transparent; }
-
-/* ── 게임결과 전체화면 모달 ──
-   요약 포스트의 "자세히 보기"는 그 자리에서 펼치는 대신 이 모달을 연다(요청). 껍데기는
-   댓글 화면과 같은 규칙을 함께 쓰고(위 .scr-comment-sheet, .scr-stack-modal), 안에는
-   그날의 게임결과 포스트를 피드와 같은 간격으로 세로로 늘어놓는다. "간단히 보기"는 없고
-   닫기(X)가 그 역할을 한다(요청). */
-/* 안에 든 것도 피드와 같은 '꽉 찬 포스트'라 시트 자체는 좌우 여백을 갖지 않는다 —
-   음수 마진으로 되밀면 목록 래퍼의 overflow-x가 그만큼 잘라낸다(케밥이 반쯤 잘렸다).
-   여백이 필요한 건 제목 줄뿐이라 거기서만 낸다. */
-.scr-stack-modal { --sheet-pad-x: 0px; }
-.scr-stack-modal-head { padding-left: 20px; padding-right: 20px; }
-.scr-stack-modal-list {
-  display: flex; flex-direction: column; gap: var(--feed-card-gap);
-  padding: var(--post-pad-y) 0 calc(var(--post-pad-y) * 2);
-}
