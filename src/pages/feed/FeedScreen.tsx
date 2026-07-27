@@ -487,7 +487,12 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       const peek = root.querySelector<HTMLElement>(
         ":scope > .scr-feed-stack-peekwrap > .scr-feed-stack-peek",
       );
-      if (peek) { peek.style.transform = ""; peek.style.transformOrigin = ""; }
+      if (peek) {
+        peek.style.transform = ""; peek.style.transformOrigin = "";
+        // closeStack이 자리를 미리 잡으려고 걸어둔 인라인 — 접힘 클래스가 없는 상태의
+        // 기본값(static + 보임)과 같으므로 걷어도 화면이 안 움직인다.
+        peek.style.position = ""; peek.style.visibility = "";
+      }
       // 접힘이 확정된(rest가 0fr) 이 프레임에서 비로소 클립을 푼다 — 이제 열려 있는 높이
       // 자체가 0이라 풀어도 드러날 게 없다(closeStack의 clipTo 주석 참고).
       const restInner = root.querySelector<HTMLElement>(
@@ -685,7 +690,18 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       peekH = Math.max(0,
         peekEl.offsetHeight + (parseFloat(pcs.marginTop) || 0) + (parseFloat(pcs.marginBottom) || 0));
     }
-    const dist = Math.max(0, rest.getBoundingClientRect().height - peekH);
+    // "+N건" 바 자리를 '지금 당장' 진짜 레이아웃으로 확보한다(요청: "바로 높이를 확보해
+    // 놓고 애니메이션 끝나고 일순간에 생성"). 예전엔 아래 dist에서 바 높이를 빼는 식으로
+    // 자리만 계산상 비워뒀는데, 그러면 그 자리는 커밋 프레임에 가서야 실제 높이가 되므로
+    // 그 순간 레이아웃이 한 번 움직였다. 펼침 상태의 absolute를 풀어 static으로 되돌리면
+    // 높이가 즉시 생기고, 보이기만 visibility로 막아둔다 — 커밋 때 바뀔 게 남지 않는다.
+    if (peekEl) {
+      peekEl.style.position = "static";
+      peekEl.style.visibility = "hidden";
+      peekEl.style.transform = "none";
+    }
+    const restH = rest.getBoundingClientRect().height;
+    const dist = Math.max(0, restH - peekH);
     const dur = Math.min(560, 360 + Math.round(dist * 0.12));
     const vh = window.innerHeight;
     suppressScrollHide(dur + 600);
@@ -706,7 +722,10 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     const anims: (Animation | DrivenAnim)[] = [];
     anims.push(driveStyle(dur, EASE_STACK, (p) => {
       window.scrollTo({ top: S1 - A * p, behavior: "instant" });
-      setTransform(belowLeaves, `translateY(${-dist * p}px)`);
+      // 위에서 바 높이(peekH)만큼 레이아웃이 즉시 늘었으므로, 시작점을 그만큼 되올린 -peekH로
+      // 잡아 화면상 위치를 그대로 잇는다. 끝점은 -restH — 커밋에서 rest가 0fr로 접히며
+      // 빠지는 높이와 정확히 같아, 인라인 transform을 걷는 것과 서로 상쇄돼 변화가 0이 된다.
+      setTransform(belowLeaves, `translateY(${-(peekH + dist * p)}px)`);
       clipTo(p);
       // "+N건" 바는 후반부에 도로 자라나 커밋 전에 이미 제 모습을 갖춘다 — 커밋 프레임이
       // 순수 레이아웃 교체(화면 변화 0)가 되게 해서 바가 튀어나오는 느낌을 없앤다.
@@ -729,8 +748,9 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       clipTo(1);
       // 커밋 프레임이 이어받도록 종료 상태를 인라인으로 박고 애니메이션 객체는 정리한다.
       window.scrollTo({ top: S1 - A, behavior: "instant" });
-      setTransform(belowLeaves, `translateY(${-dist}px)`);
-      if (peekEl) peekEl.style.transform = "scaleY(1)";
+      setTransform(belowLeaves, `translateY(${-(peekH + dist)}px)`);
+      // 자리는 시작부터 잡혀 있었고 여기서 보이기만 한 번에 켠다(요청).
+      if (peekEl) peekEl.style.visibility = "";
       if (rail) rail.style.opacity = "0";
       anims.forEach((a) => { try { a.cancel(); } catch { /* 이미 끝남 */ } });
       closeMotionRef.current = { els: belowLeaves, belowEls: [], dist };
@@ -741,6 +761,7 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     cancelRevealRef.current = () => {
       closingRef.current = false;
       clipOff();
+      if (peekEl) { peekEl.style.position = ""; peekEl.style.visibility = ""; }
       anims.forEach((a) => { try { a.cancel(); } catch { /* 이미 끝남 */ } });
       setTransform(belowLeaves, "");
       window.scrollTo({ top: S1, behavior: "instant" });
