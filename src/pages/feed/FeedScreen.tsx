@@ -21,6 +21,7 @@ import { activeMemberSearchTerms, memberMatchesTerm, normalizeSearchText, splitS
 import { cx } from "../../utils/format";
 import { api } from "../../api/client";
 import { useCursorPagination } from "../../hooks/useCursorPagination";
+import { useKeyboardInset } from "../../hooks/useKeyboardInset";
 import { buildReplayDrafts, type ReplayDraft } from "../../utils/replayDraft";
 import { hasAppUpdatePreloadErrorOccurred } from "../../utils/appUpdate";
 import type { Challenge, FeedTargetType, Match, MatchSlot, MatchType, Member, RankSnapshot } from "../../types";
@@ -775,6 +776,12 @@ export default function FeedScreen() {
 
   // + 등록 메뉴(리플레이/너 나와!/일정) — 버튼 아래 작은 팝오버로 연다.
   const [addMenuOpen, setAddMenuOpen] = useState(false);
+  // 키보드가 뜨면 등록 FAB을 숨긴다(탭바와 같은 신호). 열려 있던 메뉴도 같이 닫는다 —
+  // 버튼은 사라졌는데 메뉴만 공중에 남아 있으면 안 된다.
+  const keyboardInset = useKeyboardInset();
+  useEffect(() => {
+    if (keyboardInset > 0) setAddMenuOpen(false);
+  }, [keyboardInset]);
 
   // 리플레이 등록 — 파일 선택 → 분석(buildReplayDrafts) → 검토 모달.
   const replayInputRef = useRef<HTMLInputElement>(null);
@@ -1031,8 +1038,16 @@ export default function FeedScreen() {
       </div>
 
       {/* 등록 진입점 — 리플레이 / 너 나와! / 일정(추후 개발). 탭바 좌상단에 플로팅하는
-          동그란 유리 + 버튼(요청). 메뉴는 버튼 위로 펼쳐진다. */}
-      <div className="scr-feed-add-fab-wrap scr-feed-add-wrap">
+          동그란 유리 + 버튼(요청). 메뉴는 버튼 위로 펼쳐진다.
+          키보드가 뜨면 탭바와 함께 숨는다(지적: "댓글쓰기에서 +FAB 때문에 입력창이 과도하게
+          올라가는 버그") — 이 버튼의 bottom은 '탭바 높이 + 12px 위'로 잡혀 있는데, 정작
+          탭바는 키보드가 뜨면 숨어버려서 빈 자리에 홀로 떠 있게 된다. 게다가
+          interactive-widget=resizes-content라 그 자리가 곧 키보드 바로 위 = 브라우저가
+          포커스된 댓글 입력칸을 밀어올리는 자리라, 입력칸과 정면으로 겹쳤다. */}
+      <div className={cx(
+        "scr-feed-add-fab-wrap scr-feed-add-wrap",
+        keyboardInset > 0 && "scr-feed-add-fab-wrap-hidden",
+      )}>
         <button
           type="button"
           className="scr-feed-add-fab"
