@@ -58,7 +58,10 @@ export default function LoginForm() {
       </label>
       {err && <div className="scr-err">{err}</div>}
       <button type="submit" className="scr-btn scr-btn-primary scr-btn-primary-solid scr-auth-submit" disabled={busy}>
-        {busy ? <Spinner /> : "로그인"}
+        {/* 스피너만 갈아끼우면 버튼이 줄어든다(지적) — 버튼 높이는 min-height가 아니라 글자
+            줄 높이가 정하는데, 14px 아이콘만 남으면 그 줄이 사라져 min-height까지 내려앉는다.
+            글자를 같이 두면 줄 높이가 그대로라 크기가 안 변한다. */}
+        {busy ? <><Spinner /> 로그인 중</> : "로그인"}
       </button>
     </form>
   );

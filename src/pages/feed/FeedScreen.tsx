@@ -202,6 +202,34 @@ function setTransform(els: HTMLElement[], v: string): void {
   for (const el of els) el.style.transform = val;
 }
 
+// "현재" 구분선에서 스크롤이 딱 걸리게(요청) — 너나와의 "오늘" 스냅과 같은 방식이다.
+// 스냅 타깃이 이 구분선 하나뿐이라 proximity로 그 근처에서만 멈추고 나머지는 자유 스크롤.
+// 진입 자동 스크롤이 구분선을 화면 세로 가운데에 놓으므로 정렬도 center로 맞춰, 스냅이
+// 자동 스크롤을 다른 자리로 끌고 가지 않게 한다. 목록이 한 화면을 넉넉히 넘을 때만 켠다.
+//
+// 스택 펼침/접힘 동안엔 꺼둔다 — 그 연출은 매 프레임 window.scrollTo로 화면을 옮기는데,
+// 스냅이 켜져 있으면 브라우저가 프레임마다 구분선 쪽으로 되당겨 연출이 걸린다. 되돌리는
+// 건 타이머 하나에 맡긴다(연출 경로가 여러 갈래라 짝 맞춰 해제하다 빠뜨리면 스냅이 영영
+// 꺼진 채로 남는다 — 타이머는 어느 경로로 끝나든 스스로 회복한다).
+let snapTimer: number | null = null;
+function applyNowSnap(): void {
+  const root = document.documentElement;
+  if (snapTimer) return; // 아직 연출 중
+  const on = !!document.querySelector("[data-now-marker]")
+    && root.scrollHeight - root.clientHeight > root.clientHeight;
+  root.classList.toggle("scr-snap-now", on);
+}
+function suspendNowSnap(ms = 700): void {
+  document.documentElement.classList.remove("scr-snap-now");
+  if (snapTimer) window.clearTimeout(snapTimer);
+  snapTimer = window.setTimeout(() => { snapTimer = null; applyNowSnap(); }, ms);
+}
+function clearNowSnap(): void {
+  if (snapTimer) window.clearTimeout(snapTimer);
+  snapTimer = null;
+  document.documentElement.classList.remove("scr-snap-now");
+}
+
 function challengeItem(c: Challenge): ChallengeItem {
   const iso = c.scheduledAt ?? c.createdAt;
   return {
@@ -409,6 +437,7 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
   // 소멸했으므로 이제 맨 커밋으로 충분하다. 시작·종료 상태는 아래 useLayoutEffect가
   // 페인트 전에 인라인으로 못박아 커밋 프레임에 위치 점프가 없다.
   const toggleOpen = (next: boolean) => {
+    suspendNowSnap();
     pendingAnchorRef.current = {
       scrollY: window.scrollY,
       docHeight: document.documentElement.scrollHeight,
@@ -627,6 +656,8 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
   // 분기가 인라인 상태를 이어받아 정리). 카드엔 opacity를 안 쓴다(위 대원칙).
   const closeStack = () => {
     if (closingRef.current) return;
+    // 접기는 연출이 먼저고 toggleOpen(false)이 나중이라 여기서도 미리 꺼둔다.
+    suspendNowSnap();
     const root = stackRef.current;
     const list = restListRef.current;
     const rest = root?.querySelector<HTMLElement>(":scope > .scr-feed-stack-rest");
@@ -1023,6 +1054,16 @@ export default function FeedScreen() {
       if (top > 1) window.scrollTo({ top, behavior: "instant" });
     });
   }, [loading, displayFeed, nowIndex]);
+
+  // "현재" 스냅 on/off — 구분선이 있고 목록이 한 화면을 넉넉히 넘을 때만. 무한스크롤로
+  // 길이가 계속 바뀌고 카드도 접혔다 펴지므로 한 번 재고 마는 게 아니라 크기 변화를 계속
+  // 다시 판단한다(너나와의 오늘 스냅과 같은 방식).
+  useEffect(() => {
+    applyNowSnap();
+    const ro = new ResizeObserver(() => applyNowSnap());
+    ro.observe(document.body);
+    return () => { ro.disconnect(); clearNowSnap(); };
+  }, [showNowDivider]);
 
   return (
     <div className="scr-screen scr-feed-screen">
