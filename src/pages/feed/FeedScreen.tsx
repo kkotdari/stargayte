@@ -499,7 +499,9 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
                 </li>
               ))}
             </ul>
-            <div className="scr-feed-stack-sum-count">{stack.items.length}게임</div>
+            <div className="scr-feed-stack-sum-count">
+              {participants.length}명 참여 <span className="scr-feed-stack-sum-sep">/</span> {stack.items.length}게임
+            </div>
             <button
               type="button" className="scr-feed-stack-toggle"
               onClick={() => toggleOpen(true)} tabIndex={open ? -1 : 0}

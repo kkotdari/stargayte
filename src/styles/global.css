@@ -7090,6 +7090,8 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   padding: 10px 16px 0; text-align: center;
   font-size: var(--fs-caption); font-weight: 800; color: var(--dim);
 }
+/* 두 값을 나누는 구분자만 한 톤 흐리게 — 숫자가 먼저 읽히게 한다. */
+.scr-feed-stack-sum-sep { color: var(--muted); font-weight: 600; margin: 0 2px; }
 
 /* ── 여닫는 텍스트 버튼 ── 요약 카드 아래("자세히 보기")와 목록 맨 위("간단히 보기")에
    같은 모양으로 둔다(요청). */
