@@ -403,8 +403,11 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       return;
     }
 
-    // 두 상태의 실제 높이 — 접힌 쪽 래퍼는 0이므로 안쪽 기둥에서 잰다.
-    const full = list.getBoundingClientRect().height;
+    // 두 상태의 실제 높이 — 접힌 쪽 래퍼는 height 0이라 자기 박스로는 못 재고, 대신
+    // scrollHeight(잘린 내용의 전체 높이)로 잰다. 펼친 상태(height auto)에서도 같은 값이라
+    // 양방향에 그대로 쓴다. 목록 위 "간단히 보기" 버튼까지 포함돼야 해서 rest-list가 아니라
+    // 래퍼에서 잰다(버튼이 테두리 바깥으로 나가면서 목록 높이에서 빠졌다).
+    const full = inner.scrollHeight;
     const sumFull = sumCard.getBoundingClientRect().height;
     // 높이 연출은 예전보다 짧게 — 이제 그 구간엔 빈 공간만 열리고 카드는 그 뒤에 나오므로
     // 오래 끌 이유가 없다.
@@ -513,14 +516,15 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       </div>
       <div className="scr-feed-stack-rest" aria-hidden={!open}>
         <div className="scr-feed-stack-rest-inner">
+          {/* 되돌아가는 버튼은 묶음 테두리 바깥, 그 위에 둔다(요청). */}
+          <button
+            type="button" className="scr-feed-stack-toggle scr-feed-stack-toggle-collapse"
+            onClick={() => toggleOpen(false)} tabIndex={open ? 0 : -1}
+          >
+            간단히 보기
+          </button>
           {/* 펼친 목록은 레일 대신 연한 테두리 하나로 묶는다(요청). */}
           <div className="scr-feed-stack-rest-list" ref={restListRef}>
-            <button
-              type="button" className="scr-feed-stack-toggle scr-feed-stack-toggle-collapse"
-              onClick={() => toggleOpen(false)} tabIndex={open ? 0 : -1}
-            >
-              간단히 보기
-            </button>
             {/* 펼침 애니메이션(위 useLayoutEffect의 WAAPI)이 카드 단위로 걸리도록 래핑. */}
             {orderedDesc.map((it) => (
               <div key={it.match.id} className="scr-feed-stack-reveal">

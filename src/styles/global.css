@@ -7103,22 +7103,20 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   text-align: center; cursor: pointer; -webkit-tap-highlight-color: transparent;
 }
 @media (hover: hover) { .scr-feed-stack-toggle:hover { color: var(--text); } }
-/* 목록 맨 위 버튼은 카드 갭(36px)까지 통째로 받으면 첫 카드와 너무 멀어진다 — 갭만큼
-   음수 마진으로 빼고 자기 패딩(10px)만 간격으로 남긴다. */
-.scr-feed-stack-toggle-collapse {
-  padding: 4px 0 10px; margin-bottom: calc(-1 * var(--feed-card-gap));
-}
+/* 묶음 테두리 바깥(위)에 앉는 버튼 — 안쪽 목록의 flex gap을 받지 않으므로 자기 패딩만
+   간격으로 쓴다. */
+.scr-feed-stack-toggle-collapse { padding: 0 0 8px; }
 
 /* ── 펼친 목록 ── 레일(가운데 세로선) 대신 연한 테두리 하나로 묶는다(요청).
-   카드는 목록 밖 카드와 같은 폭을 그대로 쓰고, 테두리가 그 바깥으로 좌우 4px·위아래 2px
-   떨어져 감싼다(요청). 그만큼(좌우 4px + 테두리 1px = 5px) 묶음 전체를 좌우로 넓혀야
-   하므로 바깥 래퍼에 음수 마진을 준다 — 안쪽 래퍼는 높이 연출 때문에 overflow:hidden이라
-   거기에 음수 마진을 걸면 좌우가 잘린다. 반지름도 카드(14px)에서 5px 벌린 19px로 맞춰
-   동심원이 되게 한다. */
+   카드는 목록 밖 카드와 같은 폭을 그대로 쓰고, 테두리가 그 바깥으로 사방 4px 떨어져
+   감싼다(요청). 그만큼(여백 4px + 테두리 1px = 5px) 묶음 전체를 좌우로 넓혀야 하므로
+   바깥 래퍼에 음수 마진을 준다 — 안쪽 래퍼는 높이 연출 때문에 overflow:hidden이라 거기에
+   음수 마진을 걸면 좌우가 잘린다. 반지름도 카드(14px)에서 5px 벌린 19px로 맞춰 동심원이
+   되게 한다. */
 .scr-feed-stack-rest { margin-left: -5px; margin-right: -5px; }
 .scr-feed-stack-rest-list {
   display: flex; flex-direction: column;
-  gap: var(--feed-card-gap); padding: 2px 4px;
+  gap: var(--feed-card-gap); padding: 4px;
   border: 1px solid rgba(var(--overlay-rgb), 0.12); border-radius: 19px;
 }
 /* 목록 안 카드는 테두리 안쪽에 들어앉으므로 자체 그림자를 줄여 이중 테두리처럼 보이지
