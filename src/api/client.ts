@@ -12,6 +12,7 @@ import type {
   League, LeagueListItem, LeagueCreatePayload, LeagueUpdatePayload, LeagueTeam,
   LeagueMatch, LeagueMatchSide, LeagueMatchResultPayload,
 } from "../types";
+import type { ReplaySummaryData } from "../utils/replaySummaryData";
 
 // undefined/""/"all"(필터 미지정 관례) 값은 아예 뺀 쿼리스트링을 만든다 — 서버는 파라미터가
 // 없으면 그 조건을 걸지 않는 것으로 해석한다.
@@ -386,7 +387,7 @@ export const api = {
     result: "team1" | "team2" | "draw" | null;
     mapName: string | null;
     durationSeconds: number | null;
-    summary: string | null;
+    summaryData: ReplaySummaryData | null;
     players: {
       playerName: string;
       race: string | null;

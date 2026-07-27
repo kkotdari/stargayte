@@ -15,6 +15,7 @@ import { cx } from "../../utils/format";
 import { attachPopover } from "../../utils/popover";
 import { dateWithDow } from "../../utils/date";
 import { normalizeSearchText } from "../../utils/memberSearch";
+import { renderReplaySummary } from "../../utils/replaySummaryText";
 import KakaoShareButton from "../../components/common/KakaoShareButton";
 import type { KakaoShareContent } from "../../utils/kakaoShare";
 import type { Match, Member, MatchSlot, MatchResult } from "../../types";
@@ -39,6 +40,19 @@ export function resolveSlotName(slot: MatchSlot, players: MatchSlot[], memberOf:
     : isUnreg
       ? (slot.rawName || unregisteredSlotLabel(players, slot.memberId))
       : (m?.nickname ?? slot.memberId);
+}
+
+// 리플레이 전황 요약 — 저장된 건 문장이 아니라 '무슨 일이 있었나'라서, 볼 때마다 지금의
+// 회원 연결로 이름을 다시 풀어 문장을 만든다(요청). 그래서 누가 닉네임을 바꾸거나 비회원
+// 게임 아이디가 회원으로 연결되면 이미 등록된 경기의 요약도 바로 따라온다.
+// 구조화 이전에 등록된 경기는 그때 굳은 문장(raw.summary)을 그대로 보여준다.
+function summaryTextOf(r: SearchListRow, memberOf: (id: string) => Member | undefined): string | null {
+  const slots = [...r.team1, ...r.team2];
+  const nameByRaw = new Map<string, string>();
+  slots.forEach((slot) => {
+    if (slot.rawName) nameByRaw.set(slot.rawName, resolveSlotName(slot, slots, memberOf));
+  });
+  return renderReplaySummary(r.raw.summaryData, (raw) => nameByRaw.get(raw) ?? raw) ?? r.raw.summary;
 }
 
 // 접힌 상태 요약 줄에 쓰는 "누구 외 N명" — 팀원이 하나뿐이면 그 이름만.
@@ -519,8 +533,8 @@ export default function MatchList({
                 {/* 리플레이에서 규칙으로 뽑은 전황 요약(요청: 팀 로스터 아래에 배치) — 맵/시간과
                     달리 접힌 상태에서도 보인다. 이 줄이 카드의 '읽을거리'라 펼치기 전에 눈에
                     들어와야 한다. */}
-                {r.raw.summary && (
-                  <div className="scr-match-trow-summary">{r.raw.summary}</div>
+                {summaryTextOf(r, memberOf) && (
+                  <div className="scr-match-trow-summary">{summaryTextOf(r, memberOf)}</div>
                 )}
                 {/* 펼침 상세 — grid-template-rows 0fr↔1fr로 높이를 부드럽게 애니메이션한다
                     (요청: 펼치거나 접을 때 트랜지션). 접힌 로우는 상세 내용을 아예 안 그린다. */}

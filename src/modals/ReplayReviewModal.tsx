@@ -12,7 +12,20 @@ import { api } from "../api/client";
 import { newComputerSlotId } from "../constants/computerSlot";
 import { newUnregisteredSlotId } from "../constants/unregisteredSlot";
 import { useDefaultRaceResolver } from "../hooks/useDefaultRaceResolver";
+import { renderReplaySummary } from "../utils/replaySummaryText";
 import type { MatchSlot, MatchResult, NewMatch, Race, Member } from "../types";
+
+// 요약 미리보기 — 이 드래프트에서 그 게임 아이디가 회원으로 연결돼 있으면 닉네임을, 아니면
+// 원본 이름을 그대로 쓴다. 저장되는 건 원본 이름이라, 나중에 연결이 바뀌면 그때의 연결로
+// 다시 읽힌다(그래서 여기 보이는 이름과 등록 뒤 이름이 다를 수 있다 — 의도한 동작이다).
+function summaryTextOf(d: ReplayDraft, members: Member[]): string | null {
+  const nickByRaw = new Map<string, string>();
+  [...d.team1, ...d.team2].forEach((slot) => {
+    const m = members.find((x) => x.id === slot.memberId);
+    if (slot.rawName && m) nickByRaw.set(slot.rawName, m.nickname);
+  });
+  return renderReplaySummary(d.summaryData, (raw) => nickByRaw.get(raw) ?? raw);
+}
 
 interface ReplayReviewModalProps {
   // 분석은 이 모달을 열기 전에 이미 끝나 있다(부모가 buildReplayDrafts로 미리 만들어 전달).
@@ -226,7 +239,7 @@ export default function ReplayReviewModal({
           date: d.date, team1: d.team1, team2: d.team2, result: d.result as MatchResult, matchType: d.matchType,
           replay: d.replay,
           mapName: d.mapName || null, gameStartedAt: d.gameStartedAt, durationSeconds: d.durationSeconds,
-          summary: d.summary,
+          summaryData: d.summaryData, summary: null,
         };
         await addMatch(payload);
         setSubmittedIndices((prev) => new Set(prev).add(i));
@@ -297,10 +310,13 @@ export default function ReplayReviewModal({
                       )}
                     </div>
 
-                    {/* 리플레이에서 규칙으로 뽑은 경기 요약(replaySummary.ts) — 등록 전에
-                        문장이 말이 되는지 여기서 눈으로 확인한다. 재료가 모자라 못 만들면
-                        아예 안 보인다. */}
-                    {d.summary && <div className="scr-replay-summary-preview">{d.summary}</div>}
+                    {/* 리플레이에서 규칙으로 뽑은 경기 요약 — 등록 전에 문장이 말이 되는지
+                        여기서 눈으로 확인한다. 저장되는 건 문장이 아니라 데이터라, 여기서
+                        보이는 것도 그 데이터를 지금 문구로 옮긴 결과다. 재료가 모자라
+                        못 만들면 아예 안 보인다. */}
+                    {summaryTextOf(d, members) && (
+                      <div className="scr-replay-summary-preview">{summaryTextOf(d, members)}</div>
+                    )}
 
                     {d.parseError && <div className="scr-err">{d.parseError}</div>}
 

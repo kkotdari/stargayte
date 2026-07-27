@@ -1,8 +1,18 @@
-import { ga, neun, ro, wa } from "./korean";
 import type { ParsedReplay, ParsedReplayPlayer, ReplayPlayerSignals } from "./replayParser";
 import { scanTactics } from "./replayTactics";
+import { REPLAY_SUMMARY_VERSION, type ReplaySummaryBeat, type ReplaySummaryData } from "./replaySummaryData";
+import {
+  DEFENSE_KO, EXPANSION_KO, SPECTACLE_UNITS, UNIT_KO, UNIT_ROLE, renderReplaySummary,
+} from "./replaySummaryText";
 
-// 리플레이에서 뽑은 재료로 경기 요약 문장을 만든다(요청).
+// 리플레이에서 뽑은 재료로 경기 요약을 만든다(요청).
+//
+// 만드는 건 완성된 문장이 아니라 '무슨 일이 있었나'의 목록이다(ReplaySummaryData) — 문구와
+// 이름은 볼 때 replaySummaryText.ts가 붙인다. 그래야 닉네임이 바뀌거나 표현을 고쳐도 이미
+// 등록된 경기가 옛말을 계속 보여주지 않는다(요청). 여기가 하는 일은 "무엇을 말할지"를
+// 고르는 것까지고, "어떻게 말할지"는 전부 저쪽 몫이다.
+//
+// 아래 원칙은 그대로다.
 //
 // "APM 210 vs 150" 같은 지표 나열이 아니라 전황을 말하는 문장이어야 하고(요청), 경기마다
 // 다른 이야기가 나오도록 최대한 다양하고 풍부해야 한다(요청):
@@ -30,33 +40,7 @@ const NON_COMBAT_UNITS = new Set([
   "Interceptor", "Scarab", "Spider Mine", "Scanner Sweep",
 ]);
 
-// screp 영문명 → 한국어 통용 표기. 여기 없는 유닛은 문장에 쓰지 않는다 — 영문명을 그대로
-// 노출하면 어색하고, UMS 맵의 영웅 유닛까지 새어 나온다.
-const UNIT_KO: Record<string, string> = {
-  Marine: "마린", Firebat: "파이어뱃", Medic: "메딕", Ghost: "고스트",
-  Vulture: "벌처", Goliath: "골리앗",
-  "Siege Tank (Tank Mode)": "탱크", "Siege Tank (Siege Mode)": "탱크",
-  Wraith: "레이스", Dropship: "드랍십", "Science Vessel": "사이언스베슬",
-  Battlecruiser: "배틀크루저", Valkyrie: "발키리", "Nuclear Missile": "핵",
-  Zealot: "질럿", Dragoon: "드라군", "High Templar": "하이템플러",
-  "Dark Templar": "다크템플러", Archon: "아콘", "Dark Archon": "다크아콘",
-  Reaver: "리버", Shuttle: "셔틀", Observer: "옵저버", Scout: "스카웃",
-  Corsair: "커세어", Carrier: "캐리어", Arbiter: "아비터",
-  Zergling: "저글링", Hydralisk: "히드라", Lurker: "러커", Ultralisk: "울트라",
-  Mutalisk: "뮤탈", Scourge: "스커지", Guardian: "가디언", Devourer: "디바우러",
-  Queen: "퀸", Defiler: "디파일러", "Infested Terran": "감염된 테란",
-};
 
-// 등장만으로도 이야깃거리가 되는 '한 방' 유닛 — 있으면 문장 맨 앞에 세운다.
-const SPECTACLE_UNITS: Record<string, string> = {
-  "Nuclear Missile": "핵까지 등장한",
-  Battlecruiser: "배틀크루저가 뜬",
-  Carrier: "캐리어가 뜬",
-  Guardian: "가디언이 뜬",
-  Ultralisk: "울트라가 나온",
-  Arbiter: "아비터까지 간",
-  "Dark Archon": "다크아콘이 나온",
-};
 
 // 후반 테크로 볼 유닛 / 초반 러시로 볼 유닛.
 const LATE_TECH_UNITS = new Set([
@@ -72,17 +56,6 @@ const EXPANSION_BUILDINGS = new Set(["Nexus", "Hatchery", "Command Center"]);
 
 // 유닛이 경기에서 하는 '역할' — 같은 승리라도 무엇으로 이겼는지에 따라 다르게 읽히도록
 // (요청: 팀전이라도 잘한 사람이 있으면 그 사람 얘기를 많이 — "하이템플러 견제로 승기를 잡음").
-const UNIT_ROLE: Record<string, string> = {
-  "High Templar": "견제", "Dark Templar": "견제", Reaver: "견제", Mutalisk: "견제",
-  Vulture: "견제", Dropship: "드랍", Shuttle: "드랍", Lurker: "매복", Ghost: "저격",
-  Defiler: "마법", "Science Vessel": "마법", Arbiter: "마법", "Dark Archon": "마법", Queen: "마법",
-  Carrier: "공중 장악", Battlecruiser: "공중 장악", Guardian: "공중 장악",
-  Wraith: "공중 견제", Valkyrie: "제공권", Corsair: "제공권", Scourge: "제공권", Devourer: "제공권",
-  Ultralisk: "돌파", Archon: "돌파", Zealot: "돌파", Firebat: "돌파",
-  "Siege Tank (Tank Mode)": "자리 잡기", "Siege Tank (Siege Mode)": "자리 잡기",
-  Zergling: "물량", Hydralisk: "물량", Marine: "물량", Dragoon: "물량", Goliath: "물량",
-  Medic: "물량", Scout: "공중 견제", "Infested Terran": "자폭",
-};
 // 활약을 고를 때 역할에 매기는 가중치. 질럿 40기와 하이템플러 25기 중 이야깃거리는 뒤쪽인데
 // (요청 예시: "하이템플러 견제로 승기를 잡음") 개수만 보면 앞쪽이 이긴다 — 기본 병력은 낮추고
 // 판을 가르는 역할은 올려서, '많이 뽑은 유닛'이 아니라 '그 사람다운 유닛'이 뽑히게 한다.
@@ -91,21 +64,7 @@ const ROLE_WEIGHT: Record<string, number> = {
   "공중 장악": 1.5, 제공권: 1.3, 돌파: 1, "자리 잡기": 0.7, 물량: 0.5,
 };
 // 역할별 맺음말 — 뜻에 맞춰 갈라 두면 같은 문장이 반복되지 않는다.
-const ROLE_TAIL: Record<string, string> = {
-  견제: "승기를 잡음", "공중 견제": "승기를 잡음", 매복: "승기를 잡음", 저격: "승기를 잡음",
-  드랍: "흔들어 놓음", 마법: "판을 갈랐음", 자폭: "판을 갈랐음",
-  "공중 장악": "굳히기", 제공권: "굳히기", 돌파: "굳히기",
-  물량: "밀어붙임", "자리 잡기": "밀어붙임",
-};
 
-const TECH_KO: Record<string, string> = {
-  "Psionic Storm": "스톰", "Stim Packs": "스팀팩", Lockdown: "락다운",
-  "Spider Mines": "마인", "Lurker Aspect": "럴커", Burrowing: "버로우",
-  Irradiate: "이레디에이트", "Yamato Gun": "야마토", Recall: "리콜",
-  "Stasis Field": "스테이시스", Consume: "컨슘", "Dark Swarm": "다크스웜",
-  Plague: "플레이그", Hallucination: "환상", "Mind Control": "마인드컨트롤",
-  Cloaking: "클로킹", "Personnel Cloaking": "클로킹",
-};
 
 // 국면 경계(초). 클럽 경기 길이 분포에 맞춘 어림값이다.
 const EARLY_GAME_SEC = 7 * 60;
@@ -114,12 +73,6 @@ const EPIC_GAME_SEC = 30 * 60;
 
 // 마지막 커맨드가 경기 끝보다 이만큼(비율) 앞서면 "일찍 무너졌다"로 본다.
 const EARLY_OUT_RATIO = 0.7;
-
-export interface ReplaySummaryInput {
-  replay: ParsedReplay;
-  /** 리플레이 원본 이름 → 화면에 쓸 이름(회원 닉네임). 매칭이 안 됐으면 원본 이름 그대로. */
-  displayName: (rawName: string) => string;
-}
 
 interface Side {
   players: ParsedReplayPlayer[];
@@ -153,7 +106,7 @@ function buildSide(players: ParsedReplayPlayer[]): Side {
     for (const [b, n] of Object.entries(s.buildingCounts)) {
       buildings.set(b, (buildings.get(b) ?? 0) + n);
     }
-    for (const t of s.techNames) if (TECH_KO[t]) techs.add(t);
+    for (const t of s.techNames) if (DECISIVE_TECHS.has(t)) techs.add(t);
     s.cmdCountByThird.forEach((n, i) => { thirds[i] += n; });
   }
   return { players, combat, buildings, workers, thirds, techs };
@@ -212,14 +165,13 @@ function ownCombat(p: ParsedReplayPlayer): Map<string, number> {
   return out;
 }
 
-/** "○○의 하이템플러 견제로 승기를 잡음" — 그 사람을 특징짓는 유닛 하나를 골라 말한다.
+/** "○○의 하이템플러 견제로 승기를 잡음"에 쓸 유닛 하나 — 그 사람을 특징짓는 카드를 고른다.
  *  팀 동료가 거의 안 뽑은 유닛일수록 그 사람의 몫이 뚜렷하므로 우선한다.
  *  avoid는 본문이 이미 말한 유닛 — "저글링으로 역전, 저글링 물량으로 밀어붙임"처럼 같은
  *  단어를 두 번 쓰지 않기 위해 뺀다. 다 빼서 남는 게 없으면 그냥 원래대로 고른다. */
-function heroClause(
+function heroUnitOf(
   side: Side,
   hero: ParsedReplayPlayer,
-  name: string,
   avoid: string[] = []
 ): string | null {
   const own = ownCombat(hero);
@@ -234,11 +186,7 @@ function heroClause(
       return { unit, score: n * (byMates === 0 ? 2 : 1) * (ROLE_WEIGHT[UNIT_ROLE[unit]] ?? 1) };
     })
     .sort((a, b) => b.score - a.score);
-  const top = scored[0];
-  if (!top) return null;
-  const role = UNIT_ROLE[top.unit];
-  const tail = ROLE_TAIL[role] ?? "승기를 잡음";
-  return `${name}의 ${ro(`${UNIT_KO[top.unit]} ${role}`)} ${tail}`;
+  return scored[0]?.unit ?? null;
 }
 
 /** 경기가 끝나기 한참 전에 커맨드가 끊긴 사람 — 그 시점에 졌거나 나간 것으로 읽는다. */
@@ -252,26 +200,19 @@ function earlyOuts(players: ParsedReplayPlayer[], totalFrames: number | null): P
   });
 }
 
-function unitPhrase(units: string[]): string {
-  const ko = units.map((u) => UNIT_KO[u]).filter(Boolean);
-  if (ko.length === 0) return "";
-  if (ko.length === 1) return ro(ko[0]);
-  return `${wa(ko[0])} ${ko[1]} 조합으로`;
+/** 이름을 아는 유닛만 남긴다 — 하나도 없으면 조합을 말할 수 없다. */
+function nameableUnits(units: string[]): string[] {
+  return units.filter((u) => UNIT_KO[u]);
 }
 
 function minutes(sec: number): number {
   return Math.round(sec / 60);
 }
 
-/** 요약을 이루는 한 줄. 시점(at)이 있으면 "N분 · …"으로 앞에 분을 붙이고 시간순으로 놓는다.
- *  weight는 자리가 모자랄 때 무엇부터 버릴지의 기준 — 고를 때는 무게순, 놓을 때는 시간순이다. */
-interface Beat {
-  at: number | null;
+/** 고르는 동안의 후보 한 줄 = 저장될 beat + 고를 때만 쓰는 무게.
+ *  고를 때는 무게순(재미있는 것부터), 이야기로 늘어놓을 때는 시간순이다. */
+interface Beat extends ReplaySummaryBeat {
   weight: number;
-  text: string;
-  /** 이 말이 이미 다른 줄에 나왔으면 이 줄은 버린다 — "아비터 리콜로 파고듦" 바로 옆에
-   *  "첫 아비터를 뽑음"이 붙는 식의 겹침을 막는다. 무게가 큰 줄이 먼저 자리를 잡는다. */
-  dedupeOn?: string;
 }
 
 // 승부를 가르는 테크만 이야기에 넣는다(요청: 중요한 이벤트만) — 버로우·환상처럼 있어도
@@ -283,15 +224,8 @@ const DECISIVE_TECHS = new Set([
 ]);
 
 /** 확장 건물의 한국어 이름 — "멀티를 5개까지"가 아니라 "5해처리까지"로 말한다(요청). */
-const EXPANSION_KO: Record<string, string> = {
-  Hatchery: "해처리", Nexus: "넥서스", "Command Center": "커맨드",
-};
 
 /** 방어 건물의 한국어 이름 — "질럿과 성큰으로 막아섰지만 실패"처럼 유닛과 함께 말한다(요청). */
-const DEFENSE_KO: Record<string, string> = {
-  "Sunken Colony": "성큰", "Spore Colony": "스포어",
-  Bunker: "벙커", "Missile Turret": "터렛", "Photon Cannon": "포토",
-};
 
 /** 한 사람이 그 종류 건물을 몇 채 지었나. */
 function buildingsOf(p: ParsedReplayPlayer, names: Set<string>): number {
@@ -338,7 +272,6 @@ function sideBeats(args: {
   side: Side;
   other: Side;
   players: ParsedReplayPlayer[];
-  displayName: (rawName: string) => string;
   /** 이 편이 이겼나 — 같은 사실도 이긴 쪽이면 "굳힘", 진 쪽이면 "역부족"으로 맺는다. */
   won: boolean;
   sec: number;
@@ -346,34 +279,37 @@ function sideBeats(args: {
   /** (진 편만) 초반 주도권을 잡았었나 — 커맨드 점유율 기준. */
   pressedEarly: boolean;
 }): Beat[] {
-  const { side, other, players, displayName, won, sec, totalFrames, pressedEarly } = args;
+  const { side, other, players, won, sec, totalFrames, pressedEarly } = args;
   const beats: Beat[] = [];
   if (players.length === 0) return beats;
-  const nameOf = (p: ParsedReplayPlayer) => displayName(p.rawName);
+  const who = (p: ParsedReplayPlayer) => [p.rawName];
 
   // ── 진 편의 머리 문장: 무엇으로 맞섰고 왜 안 됐나 ──
   // 시점은 그 편이 손을 놓은 때로 둔다 — 한 순간의 사건이 아니라 결말이라 맨 뒤에 놓여야 한다.
   if (!won) {
     const star = standout(side);
-    const name = star ? nameOf(star) : players.map(nameOf).join("·");
-    const units = star ? mainUnits({ ...side, combat: ownCombat(star) }) : mainUnits(side);
-    const phrase = unitPhrase(units);
+    const units = nameableUnits(
+      star ? mainUnits({ ...side, combat: ownCombat(star) }) : mainUnits(side)
+    );
     const lastFrames = players
       .map((p) => p.signals?.lastCmdFrame ?? null)
       .filter((f): f is number => f !== null);
     const at = lastFrames.length > 0 ? Math.max(...lastFrames) : totalFrames;
     const spectacle = spectacleOf(side);
-    let text: string | null = null;
-    if (spectacle) text = `${neun(name)} ${UNIT_KO[spectacle]}까지 꺼냈지만 판을 뒤집지 못함`;
-    else if (pressedEarly && phrase) text = `${neun(name)} 초반을 잡고 흔들었지만 ${phrase} 굳히지 못함`;
-    else if (phrase) {
-      text = units.some((u) => LATE_TECH_UNITS.has(u))
-        ? `${neun(name)} ${phrase} 후반을 노렸지만 역부족`
-        : `${neun(name)} ${phrase} 맞섰지만 역부족`;
+    let p: Record<string, string | number | boolean | string[]> | null = null;
+    if (spectacle) p = { mode: "spectacle", unit: spectacle };
+    else if (pressedEarly && units.length > 0) p = { mode: "pressed", units };
+    else if (units.length > 0) {
+      p = { mode: units.some((u) => LATE_TECH_UNITS.has(u)) ? "late" : "plain", units };
     } else if (sec > 0 && sec < EARLY_GAME_SEC) {
-      text = `${neun(name)} 제대로 싸워보지 못하고 무너짐`;
+      p = { mode: "nothing" };
     }
-    if (text) beats.push({ at, weight: 12, text });
+    if (p) {
+      beats.push({
+        k: "stand", won, at, weight: 12, p,
+        who: star ? who(star) : players.map((x) => x.rawName),
+      });
+    }
   }
 
   // ── 유닛 + 방어 건물로 막아선 그림(요청: "질럿과 성큰으로 방어했지만 실패") ──
@@ -387,13 +323,10 @@ function sideBeats(args: {
     if (!def) continue;
     const unit = [...ownCombat(p).entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
     if (!unit) continue;
-    const with_ = `${wa(UNIT_KO[unit])} ${DEFENSE_KO[def[0]]}`;
     beats.push({
+      k: "defense", won, who: who(p), weight: 7,
       at: sg.firstBuildingFrame[def[0]] ?? null,
-      weight: 7,
-      text: won
-        ? `${ga(nameOf(p))} ${ro(with_)} 막아냄`
-        : `${ga(nameOf(p))} ${ro(with_)} 막아섰지만 실패`,
+      p: { unit, def: def[0] },
     });
   }
 
@@ -411,13 +344,10 @@ function sideBeats(args: {
         .sort((a, b) => b[1] - a[1])[0]?.[0];
       if (kind) {
         const frames = buildFramesOf(top.p, EXPANSION_BUILDINGS);
-        const label = `${top.n}${EXPANSION_KO[kind]}`;
         beats.push({
+          k: "expand", won, who: who(top.p), weight: 6,
           at: frames[2] ?? frames[frames.length - 1] ?? null,
-          weight: 6,
-          text: won
-            ? `${ga(nameOf(top.p))} ${label}까지 늘려 판을 벌림`
-            : `${ga(nameOf(top.p))} ${label}까지 늘렸지만 병력에서 밀림`,
+          p: { n: top.n, kind },
         });
       }
     }
@@ -430,11 +360,9 @@ function sideBeats(args: {
     const t = sg.techNames.find((x) => DECISIVE_TECHS.has(x));
     if (!t) continue;
     beats.push({
+      k: "tech", won, who: who(p), weight: 6,
       at: sg.firstTechFrame[t] ?? null,
-      weight: 6,
-      text: won
-        ? `${ga(nameOf(p))} ${TECH_KO[t]}까지 꺼내 씀`
-        : `${ga(nameOf(p))} ${TECH_KO[t]}까지 썼지만 흐름을 되돌리지 못함`,
+      p: { tech: t },
     });
   }
 
@@ -450,22 +378,16 @@ function sideBeats(args: {
       })
       .sort((a, b) => b.ratio - a.ratio)[0];
     if (top) {
-      beats.push({
-        at: null,
-        weight: 6,
-        text: `${ga(nameOf(top.p))} 일꾼을 거의 안 뽑고 병력만 짜낸 올인`,
-      });
+      beats.push({ k: "allin", won, who: who(top.p), at: null, weight: 6 });
     }
   }
 
   // ── 먼저 끊긴 사람(요청: 일찍 죽은 사람) — 끊긴 시점이 곧 그 줄의 시각이다 ──
   for (const p of earlyOuts(players, totalFrames)) {
     beats.push({
+      k: "fallen", won, who: who(p), weight: 9,
       at: p.signals?.lastCmdFrame ?? null,
-      weight: 9,
-      text: players.length > 1
-        ? `${ga(nameOf(p))} 먼저 무너지며 전열이 갈림`
-        : `${ga(nameOf(p))} 일찍 손을 놓음`,
+      p: { team: players.length > 1 },
     });
   }
 
@@ -473,9 +395,10 @@ function sideBeats(args: {
 }
 
 /**
- * 경기 요약 문장. 재료가 모자라면(커맨드 스트림 없음/승자 미확정/유닛 이름 못 읽음) null.
+ * 경기 요약. 재료가 모자라면(커맨드 스트림 없음/승자 미확정/유닛 이름 못 읽음) null.
+ * 돌려주는 건 문장이 아니라 저장할 데이터다 — 문장은 renderReplaySummary가 만든다.
  */
-export function buildReplaySummary({ replay, displayName }: ReplaySummaryInput): string | null {
+export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | null {
   if (!replay.winnerSide) return null;
   const sec = replay.durationSeconds ?? 0;
   const totalFrames = sec > 0 ? Math.round(sec / SECONDS_PER_FRAME) : null;
@@ -490,15 +413,11 @@ export function buildReplaySummary({ replay, displayName }: ReplaySummaryInput):
   // 눈에 띄는 사람이 있으면 그 사람을 주어로 세우고 조합도 '그 사람의 것'으로 말한다
   // (요청: 팀전이라도 잘한 사람 얘기를 많이). 없으면 편 전체로 말한다.
   const star = standout(winner);
-  const units = star
-    ? mainUnits({ ...winner, combat: ownCombat(star) })
-    : mainUnits(winner);
-  const phrase = unitPhrase(units);
-  if (!phrase) return null; // 조합을 못 읽으면 문장의 알맹이가 없다
-
-  const subject = star
-    ? displayName(star.rawName)
-    : winnerPlayers.map((p) => displayName(p.rawName)).join("·");
+  const units = nameableUnits(
+    star ? mainUnits({ ...winner, combat: ownCombat(star) }) : mainUnits(winner)
+  );
+  if (units.length === 0) return null; // 조합을 못 읽으면 이야기의 알맹이가 없다
+  const subject = star ? [star.rawName] : winnerPlayers.map((p) => p.rawName);
 
   // ── 국면과 흐름 ──
   const wentLate = units.some((u) => LATE_TECH_UNITS.has(u)) || sec >= LATE_GAME_SEC;
@@ -508,41 +427,21 @@ export function buildReplaySummary({ replay, displayName }: ReplaySummaryInput):
   const earlyShare = earlyTotal > 0 ? winner.thirds[0] / earlyTotal : null;
   const lateShare = lateTotal > 0 ? winner.thirds[2] / lateTotal : null;
   const pressedEarly = earlyShare !== null && earlyTotal >= 40 && earlyShare < 0.42;
-  const comeback =
-    pressedEarly && lateShare !== null && lateTotal >= 40 && lateShare > 0.55;
+  const comeback = pressedEarly && lateShare !== null && lateTotal >= 40 && lateShare > 0.55;
 
-  // ── 머리말: 드문 사건이 있으면 그걸 먼저 말한다(경기마다 다른 문장이 나오도록) ──
-  // 주력으로 이미 말할 유닛은 머리말에서 뺀다 — 안 그러면 "캐리어가 뜬 조조가 캐리어로 승리"
-  // 처럼 같은 말을 두 번 한다.
-  const lead: string[] = [];
+  // ── 맺음말 머리 — 드문 사건이 있으면 그걸 앞세운다(경기마다 다른 문장이 나오도록).
+  // 주력으로 이미 말할 유닛은 여기서 뺀다 — 안 그러면 "캐리어가 뜬 …캐리어로 승리"가 된다.
   const spectacle = [...winner.combat.keys()].find(
     (u) => SPECTACLE_UNITS[u] && (winner.combat.get(u) ?? 0) > 0 && !units.includes(u)
   );
-  if (sec >= EPIC_GAME_SEC) lead.push(`${minutes(sec)}분 혈투 끝에`);
-  else if (spectacle) lead.push(SPECTACLE_UNITS[spectacle]);
-  else if (wasRush && sec > 0) lead.push(`${minutes(sec)}분 만에`);
+  const lead =
+    sec >= EPIC_GAME_SEC ? "epic" : spectacle ? "spectacle" : wasRush && sec > 0 ? "rush" : "";
+  const mode = wasRush ? "rush" : comeback ? "comeback" : wentLate && !lead ? "late" : "plain";
 
-  // ── 맺음말 본문 ──
-  // 앞선 문장들이 이미 그 조합을 말했으면 조합은 빼고 결과만 말한다 — 두 문장짜리 요약에서
-  // "저글링 러시로 몰아침. 저글링으로 승리"처럼 같은 단어가 붙어 나오는 걸 막는다.
-  const who = ga(subject);
-  const bodyOf = (withPhrase: boolean): string => {
-    const p = withPhrase ? `${phrase} ` : "";
-    // 조합을 빼면 "초반 승리"처럼 앙상해지므로, 그럴 땐 수식도 같이 정리한다.
-    if (wasRush) return withPhrase ? `${who} 초반 ${p}승리` : `${who} 승리`;
-    if (comeback) return `${who} 초반 열세이다가 ${wentLate ? "후반에 " : ""}${p}역전`;
-    if (wentLate && lead.length === 0) return `${who} 후반 ${p}승리`;
-    return withPhrase ? `${who} ${p}승리` : `${who} 그대로 승리`;
-  };
-
-  // 팀전이면 그 사람의 활약을 본문에 한 마디 덧붙인다(요청) — 1:1은 이미 본문이 그 사람
-  // 얘기라 뺀다. 이건 첫 문장 안의 쉼표 절이고, 아래 문장들과는 별개다.
-  const hero =
-    star && winnerPlayers.length > 1
-      ? heroClause(winner, star, displayName(star.rawName), units)
-      : null;
-
-  const head = lead.length > 0 ? `${lead[0]} ` : "";
+  // 팀전이면 그 사람의 활약을 맺음말에 한 마디 덧붙인다(요청) — 1:1은 이미 맺음말이 그 사람
+  // 얘기라 뺀다.
+  const heroUnit =
+    star && winnerPlayers.length > 1 ? heroUnitOf(winner, star, units) : null;
 
   // ── 문장 수 ──
   // 한 문단짜리 이야기라 길면 읽히지 않는다. 짧은 경기는 두어 문장, 길어도 다섯을 넘지
@@ -558,18 +457,17 @@ export function buildReplaySummary({ replay, displayName }: ReplaySummaryInput):
     scanTactics({
       sidePlayers: won ? winnerPlayers : loserPlayers,
       foePlayers: won ? loserPlayers : winnerPlayers,
-      displayName,
-    }).map((t) => ({ at: t.at, weight: t.weight + 10, text: won ? t.won : t.lost }));
+    }).map((t) => ({ k: t.key, won, who: [t.who], at: t.at, p: t.p, weight: t.weight + 10 }));
 
   const pool: Beat[] = [
     ...tacticBeats(true),
     ...tacticBeats(false),
     ...sideBeats({
-      side: winner, other: loser, players: winnerPlayers, displayName,
+      side: winner, other: loser, players: winnerPlayers,
       won: true, sec, totalFrames, pressedEarly: false,
     }),
     ...sideBeats({
-      side: loser, other: winner, players: loserPlayers, displayName,
+      side: loser, other: winner, players: loserPlayers,
       won: false, sec, totalFrames, pressedEarly,
     }),
   ];
@@ -581,17 +479,33 @@ export function buildReplaySummary({ replay, displayName }: ReplaySummaryInput):
   for (const b of [...pool].sort((x, y) => y.weight - x.weight)) {
     if (chosen.length >= budget - 1) break;
     if (b.weight < MIN_WEIGHT) break; // 무게순이라 하나 미달이면 뒤는 전부 미달이다
-    if (b.dedupeOn && chosen.some((c) => c.text.includes(b.dedupeOn!))) continue;
     chosen.push(b);
   }
   chosen.sort((a, b) => (a.at ?? Infinity) - (b.at ?? Infinity));
 
   // 결과는 이야기의 맺음말로 맨 뒤에 붙인다 — 앞에 먼저 요약을 놓으면 뒤의 이야기가
   // 이미 아는 결말의 부연이 되어버린다(요청: 맨 처음의 전체 요약은 빼기).
-  const told = chosen.map((b) => b.text).join(" ");
-  const koUnits = units.map((u) => UNIT_KO[u]).filter(Boolean);
-  const alreadySaid = koUnits.length > 0 && koUnits.every((k) => told.includes(k));
-  const ending = [head + bodyOf(!alreadySaid), ...(hero ? [hero] : [])].join(", ");
+  // 앞선 문장들이 이미 그 조합을 말했으면 조합은 빼고 결과만 말한다. 판단은 실제로 만들어질
+  // 문장을 보고 한다 — beat의 재료만 봐서는 "9드론 저글링 러시"가 저글링을 이미 말했다는 걸
+  // 알 수 없고, 전술마다 어떤 유닛을 언급하는지 목록을 따로 들고 있으면 문구를 고칠 때마다
+  // 같이 고쳐야 한다. 이름은 결과에 안 쓰이므로 아무 값이나 넘겨도 된다.
+  const told = renderReplaySummary(
+    { v: REPLAY_SUMMARY_VERSION, beats: chosen.map(({ weight: _w, ...b }) => b) },
+    (raw) => raw
+  ) ?? "";
+  const alreadySaid = units.every((u) => told.includes(UNIT_KO[u]));
+  const ending: Beat = {
+    k: "result", won: true, who: subject, at: Number.POSITIVE_INFINITY, weight: 1000,
+    p: {
+      mode, lead, wentLate,
+      leadMin: minutes(sec),
+      ...(spectacle ? { leadUnit: spectacle } : {}),
+      ...(alreadySaid ? {} : { units }),
+      ...(heroUnit ? { heroUnit } : {}),
+    },
+    ...(heroUnit && star ? { who2: [star.rawName] } : {}),
+  };
 
-  return [...chosen.map((b) => b.text), ending].join(". ");
+  const beats = [...chosen, ending].map(({ weight: _w, ...b }) => b);
+  return { v: REPLAY_SUMMARY_VERSION, beats };
 }

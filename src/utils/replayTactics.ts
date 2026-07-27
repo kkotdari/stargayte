@@ -1,5 +1,4 @@
 import type { BuildPos, ParsedReplayPlayer, ReplayPlayerSignals } from "./replayParser";
-import { ga, reul } from "./korean";
 
 // 리플레이 커맨드 스트림에서 '전술'을 짚어낸다(요청: 9드론 저글링 러시 / 투게이트 질럿 /
 // 초반 포토 러시 / 몰래 배럭 / 목동 저그 / 바이오닉 / 발키리 오버로드 사냥 / 아비터 리콜 /
@@ -16,16 +15,19 @@ import { ga, reul } from "./korean";
 
 const SECONDS_PER_FRAME = 0.042;
 
-/** 짚어낸 전술 하나. 이긴 편/진 편 문장을 함께 들고 있다가 호출부가 골라 쓴다. */
+/** 짚어낸 전술 하나. 문구는 여기 없다 — 저장은 키와 재료로만 하고(replaySummaryData.ts의
+ *  이유 참고) 문장은 replaySummaryText.ts가 만든다. */
 export interface Tactic {
-  /** 같은 전술이 여러 사람에게서 나와도 한 번만 말하기 위한 키. */
+  /** 같은 전술이 여러 사람에게서 나와도 한 번만 말하기 위한 키 = 문장 틀 키. */
   key: string;
   /** 이야깃거리로서의 무게 — 큰 것부터 말한다. */
   weight: number;
   /** 그 전술이 드러난 프레임 — 요약을 시간순으로 늘어놓을 때 쓴다. 못 잡으면 null. */
   at: number | null;
-  won: string;
-  lost: string;
+  /** 이 전술을 쓴 사람의 리플레이 원본 게임 아이디. */
+  who: string;
+  /** 문장 틀에 꽂히는 값(드론 수·게이트 수 등). 없으면 생략. */
+  p?: Record<string, string | number | boolean>;
 }
 
 /** 건물을 지은 자리가 내 본진인지, 가운데인지, 상대 쪽인지. */
@@ -86,7 +88,8 @@ function zoneResolver(
 }
 
 interface Ctx {
-  name: string;
+  /** 리플레이 원본 게임 아이디 — 문장에 쓸 이름은 볼 때 다시 푼다. */
+  rawName: string;
   s: ReplayPlayerSignals;
   race: string;
   foeRaces: string[];
@@ -102,14 +105,14 @@ function earliestFrame(builds: BuildPos[]): number | null {
 }
 
 function detectFor(c: Ctx): Tactic[] {
-  const { name, s, race, foeRaces, zone } = c;
+  const { rawName, s, race, foeRaces, zone } = c;
   const out: Tactic[] = [];
   const u = (n: string) => s.unitCounts[n] ?? 0;
   const firstU = (n: string): number | null => s.firstUnitFrame[n] ?? null;
   const firstB = (n: string): number | null => s.firstBuildingFrame[n] ?? null;
   const hasTech = (n: string) => s.techNames.includes(n);
   const tanks = u("Siege Tank (Tank Mode)") + u("Siege Tank (Siege Mode)");
-  const who = ga(name);
+  const who = rawName;
   /** 그 구역에 지은 건물들(좌표를 못 읽으면 항상 빈 배열). */
   const inZone = (z: Zone, unit?: string, beforeSec?: number): BuildPos[] => {
     if (!zone) return [];
@@ -132,8 +135,7 @@ function detectFor(c: Ctx): Tactic[] {
       if (drones >= 7 && drones <= 14) {
         out.push({
           key: "zling-rush", weight: 10, at: ling,
-          won: `${who} ${drones}드론 저글링 러시로 초반부터 몰아침`,
-          lost: `${who} ${drones}드론 저글링 러시를 갔지만 막힘`,
+          who, p: { drones },
         });
       }
     }
@@ -142,28 +144,24 @@ function detectFor(c: Ctx): Tactic[] {
     if (u("Zergling") >= 12 && u("Ultralisk") >= 3 && swarm) {
       out.push({
         key: "moka", weight: 11, at: firstU("Ultralisk"),
-        won: `${who} 저글링·울트라에 다크스웜을 얹은 목동 저그로 밀어붙임`,
-        lost: `${who} 목동 저그로 버텨봤지만 무너짐`,
+        who,
       });
     } else if (hasTech("Dark Swarm")) {
       out.push({
         key: "swarm", weight: 6, at: s.firstTechFrame["Dark Swarm"] ?? null,
-        won: `${who} 다크스웜으로 진영을 덮고 들어감`,
-        lost: `${who} 다크스웜까지 깔았지만 역부족`,
+        who,
       });
     }
     if (u("Devourer") >= 3 && u("Mutalisk") >= 6) {
       out.push({
         key: "devourer", weight: 9, at: firstU("Devourer"),
-        won: `${who} 디바우러와 뮤탈을 섞어 하늘을 잡음`,
-        lost: `${who} 디바우러 뮤탈로 공중을 노렸지만 통하지 않음`,
+        who,
       });
     }
     if (u("Lurker") >= 5) {
       out.push({
         key: "lurker", weight: 7, at: firstU("Lurker"),
-        won: `${who} 러커로 길목을 조여 숨통을 끊음`,
-        lost: `${who} 러커로 조여봤지만 풀림`,
+        who,
       });
     }
   }
@@ -174,30 +172,24 @@ function detectFor(c: Ctx): Tactic[] {
       const withTank = tanks >= 4;
       out.push({
         key: "bionic", weight: 10, at: firstU("Medic"),
-        won: withTank
-          ? `${who} 마린·메딕에 탱크까지 붙인 바이오닉 한 방으로 밀고 나감`
-          : `${who} 마린·메딕 바이오닉으로 조여 들어감`,
-        lost: `${who} 바이오닉으로 몰아쳤지만 뚫지 못함`,
+        who, p: { tank: withTank },
       });
     } else if (tanks >= 6 && u("Vulture") + u("Goliath") >= 8 && u("Marine") < 10) {
       out.push({
         key: "mech", weight: 9, at: firstU("Siege Tank (Tank Mode)") ?? firstU("Goliath"),
-        won: `${who} 탱크와 골리앗을 앞세운 메카닉으로 한 걸음씩 밀고 나감`,
-        lost: `${who} 메카닉으로 자리를 잡았지만 무너짐`,
+        who,
       });
     }
     if (u("Valkyrie") >= 3 && foeRaces.includes("저그")) {
       out.push({
         key: "valkyrie", weight: 8, at: firstU("Valkyrie"),
-        won: `${who} 발키리를 띄워 오버로드 사냥에 나섬`,
-        lost: `${who} 발키리로 하늘을 노렸지만 소용없었음`,
+        who,
       });
     }
     if (u("Dropship") >= 2) {
       out.push({
         key: "dropship", weight: 7, at: firstU("Dropship"),
-        won: `${who} 드랍십을 계속 돌려 뒤를 흔듦`,
-        lost: `${who} 드랍십으로 흔들어봤지만 판을 못 바꿈`,
+        who,
       });
     }
     // 몰래 배럭 — 본진에서 한참 떨어진 자리에 초반 배럭.
@@ -205,8 +197,7 @@ function detectFor(c: Ctx): Tactic[] {
     if (sneaky.length > 0) {
       out.push({
         key: "sneak-rax", weight: 11, at: sneaky[0].frame,
-        won: `${who} 본진에서 한참 떨어진 자리에 몰래 배럭을 올려 허를 찌름`,
-        lost: `${who} 몰래 배럭을 시도했지만 들킴`,
+        who,
       });
     }
   }
@@ -218,11 +209,9 @@ function detectFor(c: Ctx): Tactic[] {
     if (zealot !== null && sec(zealot) < 260 && u("Zealot") >= 6) {
       const gates = (s.buildingFrames["Gateway"] ?? []).filter((f) => f < zealot).length;
       if (gates >= 2) {
-        const label = gates === 2 ? "투게이트" : `${gates}게이트`;
         out.push({
           key: "zealot-rush", weight: 10, at: zealot,
-          won: `${who} ${label} 질럿 러시로 초반을 잡음`,
-          lost: `${who} ${label} 질럿 러시를 갔지만 막힘`,
+          who, p: { gates },
         });
       }
     }
@@ -237,28 +226,24 @@ function detectFor(c: Ctx): Tactic[] {
     if (cannonRush) {
       out.push({
         key: "cannon-rush", weight: 11, at: cannon,
-        won: `${who} 초반 포토 러시로 시작부터 흔들어 놓음`,
-        lost: `${who} 초반 포토 러시를 갔다가 도로 손해만 봄`,
+        who,
       });
     }
     if (u("Arbiter") >= 1 && hasTech("Recall")) {
       out.push({
         key: "recall", weight: 10, at: firstU("Arbiter"),
-        won: `${who} 아비터 리콜로 뒤를 통째로 파고듦`,
-        lost: `${who} 아비터 리콜까지 꺼냈지만 판을 못 뒤집음`,
+        who,
       });
     }
     if (u("Shuttle") >= 2 && u("Reaver") >= 3) {
       out.push({
         key: "shuttle-reaver", weight: 9, at: firstU("Reaver"),
-        won: `${who} 셔틀 리버로 쉴 새 없이 찔러 넣음`,
-        lost: `${who} 셔틀 리버로 찔러봤지만 막힘`,
+        who,
       });
     } else if (u("Shuttle") >= 2) {
       out.push({
         key: "shuttle", weight: 6, at: firstU("Shuttle"),
-        won: `${who} 셔틀을 돌려 뒤를 흔듦`,
-        lost: `${who} 셔틀로 흔들어봤지만 판을 못 바꿈`,
+        who,
       });
     }
   }
@@ -268,16 +253,14 @@ function detectFor(c: Ctx): Tactic[] {
   if (midCannons.length >= 2) {
     out.push({
       key: "center-photon", weight: 9, at: earliestFrame(midCannons),
-      won: `${who} 센터에 포토를 박아 길을 끊음`,
-      lost: `${who} 센터에 포토를 박았지만 지켜내지 못함`,
+      who,
     });
   } else {
     const mid = inZone("mid");
     if (mid.length >= 3) {
       out.push({
         key: "center", weight: 7, at: earliestFrame(mid),
-        won: `${who} 센터에 건물을 늘려 판을 넓힘`,
-        lost: `${reul(name)} 센터로 밀고 나갔지만 되레 본진이 비었음`,
+        who,
       });
     }
   }
@@ -288,18 +271,17 @@ function detectFor(c: Ctx): Tactic[] {
 export interface TacticScanInput {
   sidePlayers: ParsedReplayPlayer[];
   foePlayers: ParsedReplayPlayer[];
-  displayName: (rawName: string) => string;
 }
 
 /** 한 편의 전술 목록 — 무게 큰 것부터, 같은 전술은 한 번만. */
-export function scanTactics({ sidePlayers, foePlayers, displayName }: TacticScanInput): Tactic[] {
+export function scanTactics({ sidePlayers, foePlayers }: TacticScanInput): Tactic[] {
   const foeRaces = [...new Set(foePlayers.map((p) => p.race).filter(Boolean))];
   const all: Tactic[] = [];
   for (const p of sidePlayers) {
     if (!p.signals) continue;
     all.push(
       ...detectFor({
-        name: displayName(p.rawName),
+        rawName: p.rawName,
         s: p.signals,
         race: p.race,
         foeRaces,
