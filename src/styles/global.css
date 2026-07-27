@@ -7022,8 +7022,10 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 /* "현재"(now) 구분선 — 미래(위)와 오늘/과거(아래) 카드 사이에 위치 안내(요청). 포인트
    색 얇은 라인 + 가운데 "현재" 라벨. */
 .scr-feed-now-divider { display: flex; align-items: center; gap: 10px; margin: -2px 2px; }
+/* 양쪽 끝이 흐려지는 그라데이션을 쓰다가 균일한 단색 선으로 바꿨다(요청) — 가운데만
+   진하고 끝이 사라지는 선은 라벨 주변만 강조돼 "선"이 아니라 번짐처럼 보였다. */
 .scr-feed-now-divider::before, .scr-feed-now-divider::after {
-  content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, var(--point), transparent);
+  content: ""; flex: 1; height: 1px; background: var(--point);
   opacity: 0.7;
 }
 .scr-feed-now-divider span {
