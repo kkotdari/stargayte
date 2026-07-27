@@ -1,13 +1,14 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import RankShiftCard, { RankShiftMenu } from "./RankShiftCard";
 import { CalendarPlus, ClipboardList, MoreHorizontal, Phone, Plus, Upload } from "lucide-react";
+import Avatar from "../../components/common/Avatar";
 import { Spinner } from "../../components/common/Feedback";
 import SearchFilterBar from "../../components/common/SearchFilterBar";
 import Select from "../../components/common/Select";
 import FilterItem from "../../components/common/FilterItem";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 import KakaoShareButton from "../../components/common/KakaoShareButton";
-import MatchList, { type SearchListRow } from "../v2/MatchList";
+import MatchList, { resolveSlotName, type SearchListRow } from "../v2/MatchList";
 import { ChallengeCard, ChallengeTimeHeadEdit } from "../challenge/ChallengeScreen";
 import FeedComments from "./FeedComments";
 import ScrollNavTimeline from "../../components/common/ScrollNavTimeline";
@@ -33,9 +34,8 @@ const MAX_REPLAY_FILES = 20;
 // 먼저 사라지고 공간이 닫힌다.
 const CARD_FADE_MS = 170;
 const CARD_STAGGER_MS = 55;
-// 카드를 잇는 레일은 등장의 맨 끝, 퇴장의 맨 앞(요청) — 카드가 다 자리 잡은 뒤에 그 사이를
-// 잇고, 접을 땐 잇던 선부터 끊고 나서 카드가 사라진다.
-const RAIL_FADE_MS = 130;
+// 요약 카드가 자리를 내주고/되찾는 데 쓰는 페이드.
+const SUMMARY_FADE_MS = 150;
 
 // 피드 — 커뮤니티 활동(경기 결과, 너 나와! 일정)을 한 타임라인으로 보여주는 홈 화면.
 // 타임라인 기준: 너 나와!는 경기 예정 일시, 경기는 리플레이의 게임 시작 시각.
@@ -288,9 +288,25 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
   highlightTerms?: string[];
 }) {
   const [open, setOpen] = useState(false);
-  const ordered = useMemo(() => [...stack.items].sort((a, b) => a.time - b.time), [stack.items]);
-  // 첫 게임이 맨 아래(앞 카드), 나중 게임일수록 위로 쌓인다 — 펼치면 위로 착착 나온다.
-  const restDesc = useMemo(() => ordered.slice(1).reverse(), [ordered]);
+  // 최신 게임이 위로 오게 — 펼친 목록은 피드와 같은 시간 순서(최신 → 과거)를 따른다.
+  const orderedDesc = useMemo(() => [...stack.items].sort((a, b) => b.time - a.time), [stack.items]);
+  // 요약 카드에 나열할 참가자 — 이 스택의 모든 게임에 나온 사람을 중복 없이 모은다(요청).
+  // 등장 순서(첫 게임 1팀부터)를 그대로 쓴다: 정렬 기준을 따로 두면 게임마다 순서가
+  // 흔들려 "같은 날 같은 멤버"라는 인상이 깨진다.
+  const participants = useMemo(() => {
+    const seen = new Set<string>();
+    const out: { id: string; name: string }[] = [];
+    for (const it of [...stack.items].sort((a, b) => a.time - b.time)) {
+      for (const team of [it.match.team1, it.match.team2]) {
+        for (const slot of team) {
+          if (seen.has(slot.memberId)) continue;
+          seen.add(slot.memberId);
+          out.push({ id: slot.memberId, name: resolveSlotName(slot, team, memberOf) });
+        }
+      }
+    }
+    return out;
+  }, [stack.items, memberOf]);
 
   // 펼침 영역이 앞 카드 "위"에 있어, 그대로 두면 앞 카드가 아래로 밀려 마치 아래로
   // 펼쳐지는 것처럼 보인다(지적). 시점 유지는 펼칠 때/접을 때 모두 "문서 아래에서부터의
@@ -357,14 +373,12 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     const inner = root?.querySelector<HTMLElement>(
       ":scope > .scr-feed-stack-rest > .scr-feed-stack-rest-inner",
     );
+    const sumInner = root?.querySelector<HTMLElement>(
+      ":scope > .scr-feed-stack-sum > .scr-feed-stack-sum-inner",
+    );
     const list = restListRef.current;
-    if (!root || !inner || !list) return;
-
-    // 레일(카드를 잇는 세로선)의 '위치'는 여기서 손대지 않는다 — 스택 전체를 덮는 CSS 규칙
-    // (top:0/bottom:0)이라 높이가 변하면 알아서 따라온다. 예전엔 여기서 실측해 인라인
-    // top/height를 박았는데, cleanup이 그걸 지우는 순간 선이 사라졌다(global.css 참고).
-    // 여기서 다루는 건 등장/퇴장 타이밍(opacity)뿐이다.
-    const rail = root.querySelector<HTMLElement>(":scope > .scr-feed-stack-rail");
+    const sumCard = sumInner?.firstElementChild as HTMLElement | null;
+    if (!root || !inner || !sumInner || !list || !sumCard) return;
 
     // 펼침/접힘에서 한 장씩 등장·퇴장시킬 카드 래퍼들.
     const cards = Array.from(
@@ -372,8 +386,9 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     );
     const clearInline = () => {
       inner.style.height = "";
+      sumInner.style.height = "";
+      sumCard.style.opacity = "";
       cards.forEach((c) => { c.style.opacity = ""; c.style.transform = ""; });
-      if (rail) rail.style.opacity = "";
     };
     const cleanup = () => {
       clearInline();
@@ -388,44 +403,46 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       return;
     }
 
-    // 열린 높이 — 접힘 상태에선 래퍼가 0이므로 안쪽 기둥(rest-list)에서 잰다.
+    // 두 상태의 실제 높이 — 접힌 쪽 래퍼는 0이므로 안쪽 기둥에서 잰다.
     const full = list.getBoundingClientRect().height;
+    const sumFull = sumCard.getBoundingClientRect().height;
     // 높이 연출은 예전보다 짧게 — 이제 그 구간엔 빈 공간만 열리고 카드는 그 뒤에 나오므로
     // 오래 끌 이유가 없다.
     const dur = Math.min(420, 260 + Math.round(full * 0.08));
     // 시작 높이를 인라인으로 '지금 당장' 박는다 — WAAPI fill에만 맡기면 iOS가 첫 프레임에
     // 적용하지 않아 열린 상태가 한 번 스쳐 보인다(이 파일 곳곳에서 반복 확인된 함정).
     inner.style.height = open ? "0px" : `${full}px`;
-    // 카드·레일도 마찬가지로 시작 상태를 먼저 박는다 — 펼칠 땐 투명하게 시작해야 공간이
-    // 열리는 동안 미리 비치지 않는다(지적: "접고 펼칠 때 카드가 미리 보여서").
-    if (open) {
-      cards.forEach((c) => { c.style.opacity = "0"; c.style.transform = "translateY(6px)"; });
-      if (rail) rail.style.opacity = "0";
-    }
+    sumInner.style.height = open ? `${sumFull}px` : "0px";
+    // 카드·요약도 시작 상태를 먼저 박는다 — 펼칠 땐 투명하게 시작해야 공간이 열리는 동안
+    // 미리 비치지 않는다(지적: "접고 펼칠 때 카드가 미리 보여서").
+    if (open) cards.forEach((c) => { c.style.opacity = "0"; c.style.transform = "translateY(6px)"; });
+    else sumCard.style.opacity = "0";
 
-    // 순서: (펼침) 공간 → 카드 하나씩 → 레일  /  (접힘) 레일 → 카드 하나씩 → 공간.
+    // 순서: (펼침) 요약이 접히며 자리 → 카드 하나씩  /  (접힘) 카드 하나씩 → 자리가 요약으로.
     const cardsSpan = CARD_FADE_MS + Math.max(0, cards.length - 1) * CARD_STAGGER_MS;
-    const cardsStart = open ? dur : RAIL_FADE_MS;
+    const cardsStart = open ? dur : 0;
 
     const anims: Animation[] = [];
-    const a = inner.animate(
+    // 두 래퍼 높이는 항상 같은 구간에 함께 움직인다 — 하나는 줄고 하나는 늘어 총 높이가
+    // 매끄럽게 이어진다(따로 돌리면 중간에 스택이 접혔다 펴지는 것처럼 튄다).
+    const heightDelay = open ? 0 : cardsStart + cardsSpan;
+    anims.push(inner.animate(
       [{ height: open ? "0px" : `${full}px` }, { height: open ? `${full}px` : "0px" }],
+      { duration: dur, easing: "cubic-bezier(0.32, 0.72, 0, 1)", fill: "both", delay: heightDelay },
+    ));
+    anims.push(sumInner.animate(
+      [{ height: open ? `${sumFull}px` : "0px" }, { height: open ? "0px" : `${sumFull}px` }],
+      { duration: dur, easing: "cubic-bezier(0.32, 0.72, 0, 1)", fill: "both", delay: heightDelay },
+    ));
+    // 요약 카드는 자리가 다 만들어진 뒤에 나타난다(펼칠 땐 자리가 사라지기 전에 먼저 지운다).
+    anims.push(sumCard.animate(
+      [{ opacity: open ? 1 : 0 }, { opacity: open ? 0 : 1 }],
       {
-        duration: dur, easing: "cubic-bezier(0.32, 0.72, 0, 1)", fill: "both",
-        delay: open ? 0 : cardsStart + cardsSpan,
+        duration: SUMMARY_FADE_MS, fill: "both",
+        easing: open ? "ease-in" : "ease-out",
+        delay: open ? 0 : heightDelay + dur,
       },
-    );
-    anims.push(a);
-    if (rail) {
-      anims.push(rail.animate(
-        [{ opacity: open ? 0 : 1 }, { opacity: open ? 1 : 0 }],
-        {
-          duration: RAIL_FADE_MS, fill: "both",
-          easing: open ? "ease-out" : "ease-in",
-          delay: open ? cardsStart + cardsSpan : 0,
-        },
-      ));
-    }
+    ));
     // 카드는 하나씩(요청) — 펼칠 땐 공간이 다 열린 뒤 위에서부터, 접을 땐 아래에서부터
     // 먼저 걷어낸다. 카드에 opacity를 걸어도 되는 이유: 피드 카드는 불투명 배경이라
     // backdrop-filter가 없다(있었다면 opacity<1 조상이 합성 그룹을 만들어 블러가 죽는다).
@@ -458,39 +475,57 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  // 두 상태(접힘/펼침)의 카드가 모두 항상 마운트돼 있고(요청: "실제로는 렌더링해놓고"),
-  // 높이는 래퍼(rest-inner) 하나로만 여닫는다(위 useLayoutEffect 주석).
+  // 접힘/펼침 두 모습이 모두 항상 마운트돼 있고, 각자의 래퍼 높이(0 ↔ 실제)로 자리를
+  // 주고받는다(위 useLayoutEffect 주석). 접힘은 개별 게임 카드가 아니라 '요약 카드'다
+  // (요청: 앞 카드가 첫 게임이 아니라 요약 정보).
   return (
     <div ref={stackRef} className={cx("scr-feed-stack", open && "scr-feed-stack-opened")}>
-      {/* 여닫는 진입점 — 접힘/펼침 모두 같은 자리(맨 위 카드 위 여백)에 글자로 둔다(요청).
-          absolute라 레이아웃에 높이를 더하지 않는다(global.css의 peekwrap 주석). */}
-      <div className="scr-feed-stack-peekwrap">
-        <button
-          type="button" className="scr-feed-stack-peek"
-          onClick={() => toggleOpen(!open)}
-          aria-label={open ? `게임결과 ${restDesc.length}건 접기` : `게임결과 ${restDesc.length}건 더 펼치기`}
-        >
-          {open ? `${restDesc.length}건 접기` : `+ ${restDesc.length}건 펼치기`}
-        </button>
+      {/* 요약 카드 — 이 날 게임에 나온 사람 전원(한 줄에 네 명)과 게임 수, 그리고 목록으로
+          넘어가는 텍스트 버튼. */}
+      <div className="scr-feed-stack-sum" aria-hidden={open}>
+        <div className="scr-feed-stack-sum-inner">
+          <div className="scr-feed-card scr-feed-stack-sum-card">
+            <div className="scr-feed-card-head" data-date-label={dateLabel}>
+              <ClipboardList size={13} aria-hidden />
+              <span className="scr-feed-card-label">게임결과</span>
+              <span className="scr-feed-card-time">{dateLabel}</span>
+            </div>
+            <ul className="scr-feed-stack-sum-players">
+              {participants.map((p) => (
+                <li key={p.id} className="scr-feed-stack-sum-player">
+                  <Avatar member={{ id: p.id, nickname: p.name, avatar: memberOf(p.id)?.avatar ?? null }} size={18} />
+                  <span className="scr-feed-stack-sum-name">{p.name}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="scr-feed-stack-sum-count">{stack.items.length}게임</div>
+            <button
+              type="button" className="scr-feed-stack-toggle"
+              onClick={() => toggleOpen(true)} tabIndex={open ? -1 : 0}
+            >
+              자세히 보기
+            </button>
+          </div>
+        </div>
       </div>
       <div className="scr-feed-stack-rest" aria-hidden={!open}>
         <div className="scr-feed-stack-rest-inner">
+          {/* 펼친 목록은 레일 대신 연한 테두리 하나로 묶는다(요청). */}
           <div className="scr-feed-stack-rest-list" ref={restListRef}>
+            <button
+              type="button" className="scr-feed-stack-toggle scr-feed-stack-toggle-collapse"
+              onClick={() => toggleOpen(false)} tabIndex={open ? 0 : -1}
+            >
+              간단히 보기
+            </button>
             {/* 펼침 애니메이션(위 useLayoutEffect의 WAAPI)이 카드 단위로 걸리도록 래핑. */}
-            {restDesc.map((it) => (
+            {orderedDesc.map((it) => (
               <div key={it.match.id} className="scr-feed-stack-reveal">
                 <MatchCard item={it} memberOf={memberOf} onDeleted={onDeleted} dateLabel={dateLabel} highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms} />
               </div>
             ))}
           </div>
         </div>
-      </div>
-      {/* 카드들을 잇는 레일 — 가로 정가운데를 지나는 세로선을 카드 '뒤'에 깐다(요청:
-          기차처럼 이어지는 느낌). 카드가 불투명해 실제로 보이는 건 카드 사이 갭뿐이고,
-          그 토막들이 이어져 한 줄로 읽힌다. 위치·표시 여부는 전부 CSS가 잡는다. */}
-      <div className="scr-feed-stack-rail" aria-hidden />
-      <div className="scr-feed-stack-front">
-        <MatchCard item={ordered[0]} memberOf={memberOf} onDeleted={onDeleted} dateLabel={dateLabel} highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms} />
       </div>
     </div>
   );

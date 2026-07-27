@@ -30,7 +30,7 @@ const OUTCOME_CLASS: Record<Outcome, string> = { win: "scr-win", loss: "scr-loss
 
 // 컴퓨터/비회원 여부에 따라 표시 이름을 정한다 — PlayerCell(펼친 로스터)과 접힌 상태의
 // 팀 요약("누구 외 N명")이 같은 이름 규칙을 쓰도록 공용으로 뺐다.
-function resolveSlotName(slot: MatchSlot, players: MatchSlot[], memberOf: (id: string) => Member | undefined): string {
+export function resolveSlotName(slot: MatchSlot, players: MatchSlot[], memberOf: (id: string) => Member | undefined): string {
   const isComputer = isComputerSlot(slot.memberId);
   const isUnreg = isUnregisteredSlot(slot.memberId);
   const m = isComputer || isUnreg ? undefined : memberOf(slot.memberId);

@@ -7056,90 +7056,60 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    크롬 뒤 확장을 못 덮는다 — VT 자체가 깜빡임의 원인. 피드에서 blur를 전부 걷어낸
    지금은 클립 토글이 재래스터 폭발을 일으키지 않아 VT 없이 맨 커밋으로 간다.) */
 
-/* 겹침 스택(같은 날 게임결과 2건 이상) — 접힘: 첫 게임 카드 + 아래로 삐져나온 뒷카드
-   밑단("+N건"). 펼침: 전체 카드 + 마지막 카드 위 줄이기 알약. */
-.scr-feed-stack { display: flex; flex-direction: column; }
-/* (앞 카드에 걸던 전용 그림자는 제거 — 스택 카드만 그림자가 진해 일반 카드와 달라
-   보인다는 지적. 그 그림자는 앞 카드가 '뒷카드 밑단' 위에 겹쳐 있던 시절, 겹침을 드러낼
-   유일한 단서였다. 지금은 평범한 아코디언이라 겹치는 카드 자체가 없어 쓸 데가 없다.
-   스택 안이든 밖이든 카드는 .scr-feed-card 하나로 똑같이 보인다.) */
-/* 펼침/접힘 — 겹친 카드들은 늘 실제로 렌더링돼 있고(요청), 높이 클립(grid-rows 0fr↔1fr)은
-   트랜지션 없이 즉시 바뀐다. 높이를 애니메이션하면 그동안 앞 카드가 밀리는 걸 스크롤이
-   따라가야 하는데, iOS의 비동기 스크롤 반영과 어긋나며 크게 튀었다(지적) — 스크롤 보정은
-   MatchStack이 페인트 전 한 번만 하고, "위로 착착" 펼쳐지는 느낌은 레이아웃과 무관한
-   카드별 transform 슬라이드(아래 .scr-feed-stack-reveal)가 담당한다. */
-/* "+N건" 바는 절대 display 토글로 껐다 켜지 않는다 — 블러(backdrop-filter) 요소가
-   DOM에서 사라졌다 생기면 iOS가 컴포지팅 트리를 다시 세워 목록 전체가 재래스터되며
-   화면이 통째로 깜빡인다(지적: "+N건 카드가 생기고 없어질 때 전체 목록이 다 재렌더링").
-   항상 렌더된 채로 두고, 펼침 상태에선 높이 0 래퍼 안의 absolute로 자리만 잃게 한 뒤
-   transform(scaleY)으로만 접는다 — 요소·블러 레이어가 살아 있어 재구성이 없다. */
-/* flex 컬럼: 버튼(내용 폭으로 수축하는 요소)을 이전처럼 전체 폭으로 스트레치. */
-/* 접힘 상태의 펼치기 유도 — 예전엔 앞 카드 윗모서리에 겹치는 '뒷카드 밑단' 바(불투명
-   배경 + 라운딩 + 그림자)였다. 그 바가 레이아웃에 실제 높이를 만드는 바람에 펼침/접힘
-   연출이 그 높이를 계속 보정해야 했고(이동거리에서 빼기 → 커밋 프레임에 높이가 생김),
-   연출 중엔 그 자리를 지나는 카드의 아랫부분을 잘라 먹었다. 그래서 카드 컨셉 자체를
-   버리고 글자만 남긴다(요청) — 피드 카드 사이 여백(.scr-feed-list gap 20px)에 absolute로
-   얹으므로 레이아웃에 높이를 1px도 더하지 않는다. 접힘/펼침 레이아웃 차이는 이제
-   '겹친 카드 영역 높이' 하나뿐이라 보정할 것이 없다. */
-.scr-feed-stack-peekwrap { position: absolute; left: 0; right: 0; bottom: 100%; }
-.scr-feed-stack-peek {
-  display: block; width: 100%; padding: 0 0 4px; border: none; background: none;
+/* 겹침 스택(같은 날 게임결과 2건 이상) — 접힘은 개별 게임이 아니라 '요약 카드'다(요청:
+   앞 카드가 첫 게임이 아니라 요약 정보). 펼치면 그 자리가 게임 카드 목록으로 바뀐다.
+   두 모습 모두 항상 마운트돼 있고, 각자의 래퍼 높이(0 ↔ 실제)로 자리를 주고받는다. */
+.scr-feed-stack { display: flex; flex-direction: column; position: relative; }
+/* 접힘/펼침 래퍼 — 안쪽이 overflow:hidden이라 높이 0이면 통째로 잘린다. 연출 중에는
+   JS가 인라인 height로 그 사이를 잇는다(FeedScreen). */
+.scr-feed-stack-sum, .scr-feed-stack-rest { display: block; }
+.scr-feed-stack-sum-inner, .scr-feed-stack-rest-inner { overflow: hidden; min-height: 0; height: 0; }
+.scr-feed-stack-opened .scr-feed-stack-rest-inner { height: auto; }
+.scr-feed-stack:not(.scr-feed-stack-opened) .scr-feed-stack-sum-inner { height: auto; }
+
+/* ── 요약 카드 ── */
+.scr-feed-stack-sum-card { padding-bottom: 4px; }
+/* 참가자 — 한 줄에 네 명 고정(요청). 이름 길이가 달라도 열이 어긋나지 않게 균등 4열
+   그리드를 쓴다(flex-wrap이면 이름 길이만큼 칸이 달라져 줄이 안 맞는다). */
+.scr-feed-stack-sum-players {
+  list-style: none; margin: 0; padding: 6px 16px 0;
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px 6px;
+}
+.scr-feed-stack-sum-player { display: flex; align-items: center; gap: 5px; min-width: 0; }
+.scr-feed-stack-sum-player .scr-avatar { flex-shrink: 0; border-radius: 50% !important; }
+.scr-feed-stack-sum-name {
+  font-size: var(--fs-micro); font-weight: 600; color: var(--text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.scr-feed-stack-sum-count {
+  padding: 10px 16px 0; text-align: center;
+  font-size: var(--fs-caption); font-weight: 800; color: var(--dim);
+}
+
+/* ── 여닫는 텍스트 버튼 ── 요약 카드 아래("자세히 보기")와 목록 맨 위("간단히 보기")에
+   같은 모양으로 둔다(요청). */
+.scr-feed-stack-toggle {
+  display: block; width: 100%; padding: 10px 0 8px; border: none; background: none;
   font-family: inherit; font-size: var(--fs-micro); font-weight: 700; color: var(--dim);
   text-align: center; cursor: pointer; -webkit-tap-highlight-color: transparent;
 }
-@media (hover: hover) { .scr-feed-stack-peek:hover { color: var(--text); } }
-/* 펼친 뒤에도 같은 자리에 남아 이번엔 '접기'가 된다(요청: 접기 버튼을 맨 위 카드 위에).
-   레일은 순수 장식이 됐고, 여닫는 진입점은 이 글자 하나로 통일된다. */
-/* 주의: 조상에 opacity를 걸면 안 된다 — opacity<1은 자체 합성 그룹을 만들어 그 안
-   카드들의 backdrop-filter가 페이지 배경을 못 보게 된다(= 블러가 빠져 보이던 문제).
-   같은 이유로 카드 등장 애니메이션도 opacity 없이 transform만 쓴다. */
-/* 높이는 래퍼(rest-inner) 하나로만 여닫는다 — 예전의 grid 0fr↔1fr 클립 트릭은 '즉시'
-   바뀌는 게 목적이었고(높이를 애니메이션하면 앞 카드가 밀리는 걸 스크롤이 따라가야
-   했으므로), 이제 앞 카드가 밀려 내려가는 평범한 아코디언이라 그럴 이유가 없다. */
-.scr-feed-stack-rest { display: block; }
-/* (클립 경계 그라디언트 페이드는 제거 — 카드가 앞 카드 윗모서리에서 뚝 잘리는 걸
-   부드럽게 하려 했지만 오히려 이상해 보인다는 지적. 지금은 앞 카드가 그냥 카드 경계로
-   덮는다.) */
-/* 접힘 기본은 높이 0, 펼침은 auto. 연출 중에는 JS가 인라인 height로 그 사이를 잇는다. */
-.scr-feed-stack-rest-inner { overflow: hidden; min-height: 0; height: 0; }
-.scr-feed-stack-opened .scr-feed-stack-rest-inner { height: auto; }
-/* 펼친 카드 사이 갭은 피드 리스트의 카드 갭과 같은 변수를 쓴다(요청: "펼친 카드들 사이
-   갭이 원래 카드들 갭보다 작아 똑같이"). 아래 패딩도 같은 값이라 마지막 카드→앞 카드
-   간격까지 일관. 위 패딩은 0이어야 한다 — 스택의 맨 위가 곧 첫 카드의 윗변이라야
-   레일(.scr-feed-stack-rail)이 top:0으로 첫 카드에 정확히 물린다. */
+@media (hover: hover) { .scr-feed-stack-toggle:hover { color: var(--text); } }
+/* 목록 맨 위 버튼은 카드 갭(36px)까지 통째로 받으면 첫 카드와 너무 멀어진다 — 갭만큼
+   음수 마진으로 빼고 자기 패딩(10px)만 간격으로 남긴다. */
+.scr-feed-stack-toggle-collapse {
+  padding: 4px 0 10px; margin-bottom: calc(-1 * var(--feed-card-gap));
+}
+
+/* ── 펼친 목록 ── 레일(가운데 세로선) 대신 연한 테두리 하나로 묶는다(요청). */
 .scr-feed-stack-rest-list {
   display: flex; flex-direction: column;
-  gap: var(--feed-card-gap); padding: 0 0 var(--feed-card-gap);
+  gap: var(--feed-card-gap); padding: 6px 8px calc(var(--feed-card-gap) / 2);
+  border: 1px solid rgba(var(--overlay-rgb), 0.12); border-radius: 16px;
 }
-/* 펼침 연출은 JS(WAAPI, MatchStack 참고) — 1) 위 콘텐츠를 필요한 높이만큼 transform으로
-   밀어올려 빈 공간을 만들고 2) 그 자리에 카드들을 페이드인(아이디어: 사용자). */
-.scr-feed-stack { position: relative; }
-/* 겹친 카드를 잇는 레일 — 카드들 '뒤'로, 가로 정가운데를 지나는 세로선(요청: 기차처럼
-   이어지는 느낌). 카드가 불투명하므로 실제로 보이는 건 카드와 카드 사이 갭뿐이고, 그
-   토막들이 이어져 한 줄로 읽힌다. 순수 장식이라 눌리지도, 자리를 차지하지도 않는다.
-
-   위치는 CSS만으로 잡는다(top:0/bottom:0 = 스택 전체). 예전엔 JS가 "첫 카드 중심 ~ 앞
-   카드 중심"을 실측해 인라인 top/height로 박았는데 지적받은 세 증상이 전부 거기서 나왔다:
-     · 펼침 연출이 끝나면 cleanup이 인라인 top/height를 지웠고 CSS엔 세로 값이 아예 없어서
-       높이 0 — 점 두 개만 남고 선이 사라졌다(선 안 보임).
-     · ResizeObserver가 연출 도중 다시 재면 그 순간의 어중간한 높이로 굳었다(위치).
-   스택의 위끝은 곧 첫 카드의 윗변, 아래끝은 앞 카드의 밑변이라 top:0/bottom:0이면 양 끝이
-   그 두 카드 뒤에 자연히 숨는다 — 잴 것이 없다. 접혀 있을 때는 스택 높이가 앞 카드
-   하나뿐이라 통째로 가려지므로 여닫이 토글조차 필요 없다.
-
-   z-index:0 — 카드들은 아래 규칙에서 1을 받는다. 예전엔 레일에 z-index를 안 줬는데,
-   position:absolute인 레일이 '위치 지정 안 된' 뒷카드들보다 나중에 칠해져 카드 위에
-   그려졌다(지적: 카드 앞에 보임). */
-.scr-feed-stack-rail {
-  position: absolute; left: 50%; transform: translateX(-50%);
-  top: 0; bottom: 0; z-index: 0;
-  width: 2px; pointer-events: none;
-  background: rgba(255, 255, 255, 0.38); border-radius: 1px;
-}
-/* 카드는 전부 레일 위로 — 이게 있어야 레일이 카드 사이 갭에서만 보인다. */
-.scr-feed-stack-front, .scr-feed-stack-reveal { position: relative; z-index: 1; }
-/* 라이트 테마 — 흰 배경 위 흰 선은 안 보여 톤만 뒤집는다. */
-.scr-light-theme .scr-feed-stack-rail { background: rgba(0, 0, 0, 0.18); }
+/* 목록 안 카드는 테두리 안쪽에 들어앉으므로 자체 그림자를 줄여 이중 테두리처럼 보이지
+   않게 한다 — 묶여 있다는 신호는 바깥 테두리 하나면 충분하다. */
+.scr-feed-stack-rest-list .scr-feed-card { box-shadow: none; }
+.scr-feed-stack-reveal { position: relative; z-index: 1; }
 /* 헤더 아래 구분선은 두지 않는다(요청) — 시각/라벨만 조용히 얹는다. 오른쪽 44px는
    포스트 우상단 케밥 자리. */
 .scr-feed-card-head {
