@@ -93,8 +93,12 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
     const max = scrollHeight - vhRef.current;
     setScrollable(max > 40);
     const f = max > 0 ? Math.min(1, Math.max(0, scrollTop / max)) : 0;
+    // 드래그(스크럽) 중에는 thumb 위치를 스크롤 읽기값으로 되돌리지 않는다 — 손가락이
+    // 위치의 주인이다. iOS는 루트 스크롤을 브라우저 프로세스가 비동기로 들고 있어, 방금
+    // 옮긴 스크롤을 곧바로 다시 읽으면 아직 예전 값이 온다. 그 값으로 thumb을 되돌리면
+    // 손가락 위치와 서로 밀치며 위아래로 요동쳤다(지적).
     // 정수 px로 반올림해 담는다 — 같은 픽셀이면 setState가 리렌더 자체를 건너뛴다.
-    setPosPx(Math.round(f * trackHRef.current));
+    if (!draggingRef.current) setPosPx(Math.round(f * trackHRef.current));
     setDateLabel(currentDateLabel(max <= 0 || scrollTop >= max - 2));
     if (markers && markers.length > 0) {
       const next: Record<string, number | null> = {};
@@ -145,15 +149,32 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scrollable]);
 
-  // 트랙 위 포인터 위치 → 스크롤 위치로 즉시 이동(스크럽).
+  // 트랙 위 포인터 위치 → 스크롤 위치로 이동(스크럽).
+  // thumb은 스크롤 읽기값이 아니라 '손가락 위치'로 바로 옮긴다(update()의 드래그 가드와
+  // 한 쌍) — 옮긴 스크롤을 되읽어 위치를 정하면 iOS의 비동기 스크롤 지연 때문에 서로
+  // 밀치며 요동친다. 분모(vh)도 update()와 같은 캐시값을 써야 손가락 위치와 thumb이
+  // 같은 척도 위에 놓인다(한때 여기만 매번 새로 재서 둘이 어긋났다).
+  // 실제 스크롤은 프레임당 한 번으로 합친다 — pointermove마다 즉시 스크롤하면 화면
+  // 전체를 그 횟수만큼 다시 그리느라 깜빡였다(지적).
+  const pendingScrollRef = useRef<number | null>(null);
+  const scrubRafRef = useRef(0);
   const scrubTo = (clientY: number) => {
     const track = trackRef.current;
     if (!track) return;
     const rect = track.getBoundingClientRect();
     const f = Math.min(1, Math.max(0, (clientY - rect.top) / rect.height));
-    const { clientHeight, scrollHeight } = getScrollMetrics();
-    const vh = Math.max(clientHeight, window.innerHeight || 0);
-    scrollRootTo({ top: f * Math.max(0, scrollHeight - vh), behavior: "instant" as ScrollBehavior });
+    setPosPx(Math.round(f * trackHRef.current));
+    if (vhRef.current <= 0) measureVh();
+    const { scrollHeight } = getScrollMetrics();
+    pendingScrollRef.current = f * Math.max(0, scrollHeight - vhRef.current);
+    if (!scrubRafRef.current) {
+      scrubRafRef.current = requestAnimationFrame(() => {
+        scrubRafRef.current = 0;
+        const top = pendingScrollRef.current;
+        pendingScrollRef.current = null;
+        if (top !== null) scrollRootTo({ top, behavior: "instant" as ScrollBehavior });
+      });
+    }
   };
 
   const onPointerDown = (e: React.PointerEvent) => {
@@ -168,6 +189,16 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
   };
   const endDrag = () => {
     draggingRef.current = false;
+    // 예약해 둔 마지막 스크롤을 흘리지 않고 즉시 반영한 뒤, 그때부터 thumb을 다시
+    // 스크롤 기준으로 되돌린다(드래그 가드 해제 후 update()가 이어받는다).
+    if (scrubRafRef.current) {
+      cancelAnimationFrame(scrubRafRef.current);
+      scrubRafRef.current = 0;
+    }
+    const top = pendingScrollRef.current;
+    pendingScrollRef.current = null;
+    if (top !== null) scrollRootTo({ top, behavior: "instant" as ScrollBehavior });
+    update();
     showThenScheduleHide();
   };
 
