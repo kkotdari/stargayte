@@ -40,6 +40,11 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
   // 고쳐도 남아 있었다). 도약 자체는 의미상 맞으므로 없애지 않고, 그 순간에만 짧게
   // 미끄러지게 해서 눈에 튀지 않게 한다. 평상시 스크롤엔 트랜지션이 없어 지연이 없다.
   const [settling, setSettling] = useState(false);
+  // 임시 계측 — URL에 ?tldebug=1 을 붙였을 때만 화면 좌상단에 실측값을 띄운다. 튐이
+  // 일어나는 순간을 스크린샷으로 잡아 어떤 값이 뛰는지 확정하기 위한 것(실기기에서만
+  // 재현되는 문제라 추측 대신 값을 본다). 원인 확정 후 이 블록은 통째로 지운다.
+  const debugOn = typeof location !== "undefined" && location.search.includes("tldebug");
+  const [dbg, setDbg] = useState<{ y: number; sh: number; ch: number; ih: number; f: number } | null>(null);
   const lastScrollHeightRef = useRef(0);
   const settleTimerRef = useRef<number | null>(null);
 
@@ -95,6 +100,12 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
     setScrollable(max > 40);
     setFraction(max > 0 ? Math.min(1, Math.max(0, scrollTop / max)) : 0);
     setDateLabel(currentDateLabel(max <= 0 || scrollTop >= max - 2));
+    if (debugOn) {
+      setDbg({
+        y: Math.round(scrollTop), sh: Math.round(scrollHeight), ch: Math.round(clientHeight),
+        ih: Math.round(window.innerHeight || 0), f: max > 0 ? Math.min(1, Math.max(0, scrollTop / max)) : 0,
+      });
+    }
     if (markers && markers.length > 0) {
       const next: Record<string, number | null> = {};
       for (const m of markers) next[m.key] = groupFraction(m.groupSelector, scrollTop, max);
@@ -178,6 +189,12 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
         <div className="scr-scroll-timeline-thumb" style={{ top: `${fraction * 100}%` }} />
       </div>
       <span className="scr-scroll-timeline-end">{bottomLabel}</span>
+      {debugOn && dbg && (
+        <div className="scr-scroll-timeline-debug">
+          y {dbg.y}<br />sh {dbg.sh}<br />ch {dbg.ch}<br />ih {dbg.ih}<br />
+          max {dbg.sh - Math.max(dbg.ch, dbg.ih)}<br />f {dbg.f.toFixed(3)}
+        </div>
+      )}
     </div>
   );
 }

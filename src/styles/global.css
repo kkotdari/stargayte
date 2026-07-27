@@ -6302,6 +6302,13 @@ html.scr-snap-today { scroll-snap-type: y proximity; scroll-padding-top: calc(va
     color-mix(in srgb, var(--timeline-blue) 78%, transparent)
   );
 }
+/* 임시 계측 오버레이(?tldebug=1) — 원인 확정 후 이 규칙과 컴포넌트의 debug 블록을 함께 지운다. */
+.scr-scroll-timeline-debug {
+  position: fixed; left: 8px; top: calc(var(--safe-top) + 8px); z-index: 200;
+  padding: 6px 8px; border-radius: 8px; pointer-events: none;
+  background: rgba(0, 0, 0, 0.72); color: #fff;
+  font-family: ui-monospace, monospace; font-size: 11px; line-height: 1.35;
+}
 /* 무한스크롤로 문서가 길어진 직후에만 위치를 미끄러지게 한다(ScrollNavTimeline의 settling
    주석) — 평상시 스크롤엔 트랜지션이 없어 지연도, 잔상도 없다. transform이 아니라 top을
    옮기므로 예전처럼 합성 잔상(두 개로 보임)이 생기지 않는다. */
