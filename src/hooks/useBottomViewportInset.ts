@@ -10,18 +10,33 @@ export function useBottomViewportInset() {
   useEffect(() => {
     const vv = window.visualViewport;
     const root = document.documentElement;
+    // 키보드가 떠 있는 동안엔 이 보정을 아예 쓰지 않는다.
+    //
+    // 이 값은 "주소창이 가리는 높이"를 재려는 것인데, 그 계산(innerHeight - vv.height)은
+    // 키보드가 뜨면 키보드 높이(~300px)를 그대로 집어삼킨다. iOS 사파리는
+    // interactive-widget=resizes-content를 지원하지 않아 키보드가 레이아웃 뷰포트를 줄이지
+    // 않고 그냥 덮기 때문이다(그래서 innerHeight는 그대로다). 예전엔 그 이상치를 120px로
+    // 자르기만 했는데, 그러면 탭바/등록 FAB이 문서 바닥이 아니라 '키보드 안쪽 120px 위'로
+    // 떠올라, 포커스된 입력칸이 놓이는 바로 그 띠를 차지했다(지적: "입력창 위치가 키보드
+    // 바로 위가 아니라 위에 남아"). 키보드가 떴을 땐 0으로 두어 하단 UI를 문서 바닥
+    // (=키보드 뒤)에 그대로 두고, 그 UI들은 각자 keyboardInset 신호로 숨는다.
+    const keyboardOpen = (): boolean => {
+      const el = document.activeElement as HTMLElement | null;
+      if (!el) return false;
+      const tag = el.tagName;
+      return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el.isContentEditable;
+    };
     const update = () => {
       let inset = 0;
-      if (vv) {
+      if (vv && !keyboardOpen()) {
         // 레이아웃 뷰포트(innerHeight, 주소창 뒤까지 포함) − 실제 보이는 높이 − 위쪽으로 밀린 양.
-        // interactive-widget=resizes-content라 키보드는 양쪽에서 함께 빠져 주소창 몫만 남는다.
         inset = window.innerHeight - vv.height - vv.offsetTop;
       }
       // 음수는 다시 0으로 막는다 — 툴바가 접힐 때 탭바가 따라 내려가라고 잠시 음수를
       // 허용해봤지만, iOS가 레이아웃 뷰포트(innerHeight)도 함께 늘리는 경우 그 성장분과
       // 이중으로 밀려 탭바 아래가 화면 밖으로 잘렸다(신고: "탭바 축소시 아래 잘리는 경우
       // 발생"). 접힘 추적은 레이아웃 뷰포트 성장(bottom:0이 자동으로 따라감)에 맡긴다.
-      // 주소창은 아무리 커도 ~80px이라 그 이상(키보드 등 이상치)은 무시한다.
+      // 주소창은 아무리 커도 ~80px이라 그 이상은 무시한다(회전 중 등 과도기 이상치 방어).
       inset = Math.min(120, Math.max(0, Math.round(inset)));
       root.style.setProperty("--vv-bottom-inset", `${inset}px`);
     };
@@ -30,11 +45,17 @@ export function useBottomViewportInset() {
     vv?.addEventListener("scroll", update);
     window.addEventListener("resize", update);
     window.addEventListener("orientationchange", update);
+    // 포커스 이동만으로도 위 keyboardOpen() 판정이 뒤집힌다 — 뷰포트 리사이즈가 따라오지
+    // 않는 경우(입력칸 사이 이동 등)에도 값이 즉시 맞도록 함께 듣는다.
+    document.addEventListener("focusin", update);
+    document.addEventListener("focusout", update);
     return () => {
       vv?.removeEventListener("resize", update);
       vv?.removeEventListener("scroll", update);
       window.removeEventListener("resize", update);
       window.removeEventListener("orientationchange", update);
+      document.removeEventListener("focusin", update);
+      document.removeEventListener("focusout", update);
     };
   }, []);
 }

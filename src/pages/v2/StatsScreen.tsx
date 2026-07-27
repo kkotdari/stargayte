@@ -89,13 +89,9 @@ function SortableHead({ label, sortKey, sort, onToggle, className, tooltip }: So
 // 그 종족 기준으로 바뀐다 — 랭킹의 종족 필터와 같은 방식(SearchFilterBar의
 // raceValue/onRaceChange).
 export default function StatsScreenV2() {
-  // 사진 배경은 이제 통계 화면 전용(요청: 다크 피드 배경도 제거하고 라이트처럼 통계로
-  // 이동). 다크 = 우주(stats_bg, 옛 feed_bg에서 개명), 라이트 = 트로피(stats_bg_light).
-  usePageBackground(
-    "/images/bg/stats_bg.jpg",
-    "/images/bg/stats_bg_mobile.png",
-    "/images/bg/stats_bg_light.png",
-  );
+  // 사진 배경은 통계 화면 전용이고, 이제 다크에서만 쓴다(요청: "라이트 테마 통계 배경
+  // 제거") — 밝은 바탕에서는 사진이 표/글씨와 경쟁만 해서 읽기를 방해했다.
+  usePageBackground("/images/bg/stats_bg.jpg", "/images/bg/stats_bg_mobile.png");
   const members = useAppStore((s) => s.members);
   const suggestions = useMemo(() => activeMemberSearchTerms(members), [members]);
 

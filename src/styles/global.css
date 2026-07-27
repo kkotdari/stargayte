@@ -2104,27 +2104,10 @@ html.scr-page-bg:not(.scr-light-theme) .scr-main::before {
       var(--void);
   }
 }
-/* 라이트 테마 배경 = 트로피 이미지(stats_bg_light) — 라이트 "통계" 화면이 쓴다.
-   다크와 같은 "공통 고정판(.scr-main::before)의 배경만 교체" 구조다. 예전엔 어두운 글씨가
-   읽히라고 밝은 스크림을 한 겹 깔았는데 사진 색이 다 뜨는 문제로 걷어냈다(요청: "라이트
-   통계 배경 스크림 완전제거하고 원본 색으로") — 본문 가독성은 표 자체의 흰 유리
-   (.scr-stats-list-panel-v2 .scr-stat-table)가 맡는다. --page-bg-image-light 토큰은 훅(StatsScreen)이
-   주입한다. 피드는 이제 어느 테마에서도 훅을 안 부르므로(요청: 다크 피드 배경도 제거,
-   사진 배경은 통계 전용) 기본판만 쓴다. */
-html.scr-page-bg.scr-light-theme .scr-main::before {
-  /* 트로피 이미지는 정사각(2048²) — cover는 넓은 PC 화면에서 폭 기준으로 확대·크롭해
-     너무 커 보인다. 화면 높이에 맞추고(auto 100%) 남는 좌우는 바탕색으로 둔다. */
-  background:
-    var(--page-bg-image-light) center / auto 100% no-repeat,
-    #f7f7fb;
-}
-@media (max-width: 860px) {
-  html.scr-page-bg.scr-light-theme .scr-main::before {
-    background:
-        var(--page-bg-image-light-mobile) center / cover no-repeat,
-      #f7f7fb;
-  }
-}
+/* 라이트 테마에는 배경 사진을 쓰지 않는다(요청: "라이트 테마 통계 배경 제거") — 밝은
+   바탕에서는 사진이 표/글씨와 경쟁만 해서 읽기를 방해했다. 사진 배경은 다크 전용이다.
+   (StatsScreen도 라이트 이미지를 훅에 넘기지 않으므로 --page-bg-image-light 토큰 자체가
+   더 이상 세팅되지 않는다.) */
 
 /* ===== race badge — 종족 첫 글자(T/P/Z/R) 사각 배지(아이콘 커스텀 기능은 제거됨) ===== */
 .scr-race-badge {
@@ -4304,8 +4287,13 @@ html.scr-light-theme .scr-mobile-tabbar {
 /* 아래로 스크롤하면 숨긴다(요청: "모바일 아래로 스크롤시 탭바 숨김(단 끝까지 내리면
    탭바 보임)") — 이제 오버레이라 #scroll-root 크기와 무관하게 순수 시각 효과만
    바뀐다. */
+/* 키보드가 뜰 때의 숨김은 연출 없이 즉시(요청) — 이 클래스는 키보드 신호에만 붙는다
+   (스크롤로 내려갈 때의 축소는 -mini가 따로 담당). 페이드/슬라이드로 숨기면 키보드가
+   오르내리는 동안 값이 여러 번 갱신되며 그 트랜지션을 반복해 타서 잔상처럼 보였다
+   (지적: "탭바도 고스트가 남았다") — visibility는 중간 프레임 자체를 만들지 않는다.
+   transition:none으로 .scr-mobile-tabbar의 트랜지션 목록도 이 상태에선 끊는다. */
 .scr-mobile-tabbar-hidden {
-  opacity: 0; transform: translateY(24px); pointer-events: none;
+  visibility: hidden; pointer-events: none; transition: none;
 }
 /* 아래로 스크롤 중에는 완전히 숨기는 대신 80%로 축소한다(요청: 60%→80%) — 바닥 중앙을
    기준으로 줄어들어 자리(하단)는 유지하고, 계속 누를 수 있게 pointer-events는 살려둔다.
