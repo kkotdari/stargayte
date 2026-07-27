@@ -7445,9 +7445,16 @@ html.scr-light-theme .scr-feed-add-fab {
      사이트 툴바로 보고 접었던 크롬을 도로 펼친다"는 회피책이다. 여기서는 뒷페이지가 비치는
      기능 문제가 더 크다고 보고 반대로 택했다 — 주소창이 다시 펼쳐지는 부작용이 보이면
      그때 다시 저울질한다.)
-     bottom:0은 '레이아웃 뷰포트' 바닥이라 사파리 하단 툴바 뒤까지 내려간다 — 툴바가
-     반투명이라 그 뒤로 페이지가 비치던 띠(지적)가 이걸로 덮인다. */
-  position: fixed; left: 0; right: 0; bottom: 0;
+     bottom은 --sheet-skirt만큼 더 내려 잡고 그만큼 아래 패딩으로 되민다 — 보이는 모양은
+     그대로면서 배경이 화면 밑단 너머까지 이어진다. 두 경우를 한 번에 덮으려는 것이다:
+       · 키보드가 없을 때 bottom:0은 '레이아웃 뷰포트' 바닥이라 사파리 반투명 툴바 뒤까지
+         내려가 그 띠를 덮는다(확인됨).
+       · 키보드가 올라오면 iOS가 fixed 요소를 '비주얼 뷰포트'(키보드 위)로 다시 앉히는데,
+         그러면 bottom:0이 액세서리 바 위가 돼 그 아래로 페이지가 드러난다(지적). 치마가
+         그 구간을 메운다. 앞서 치마가 안 먹었던 건 배경을 ::before/::after에 맡겼기
+         때문이고, 지금은 요소 자신이 칠하므로 잘리지 않는다. */
+  --sheet-skirt: 60vh;
+  position: fixed; left: 0; right: 0; bottom: calc(-1 * var(--sheet-skirt));
   background: #1e1e1f;
   /* 탭바(55)보다 위, 모달(100)보다 아래 — 시트 안에서 연 삭제 확인창이 시트에 가리지 않는다. */
   z-index: 90;
@@ -7455,8 +7462,10 @@ html.scr-light-theme .scr-feed-add-fab {
   /* 높이는 내용만큼 자라고(요청), 화면 절반 언저리에서 멈춘다(요청: "화면 반정도 높이").
      댓글이 한두 개뿐이어도 시트로 보이도록 최소 높이를 넉넉히 잡는다(요청) — 안 그러면
      입력줄만 붙은 얇은 띠가 돼 "바텀시트가 열렸다"가 아니라 툴바가 하나 뜬 것처럼 보인다. */
-  min-height: 50vh; min-height: 50dvh;
-  max-height: 68vh; max-height: 68dvh;
+  /* 치마는 화면 밖이라 '보이는 높이'에 포함되면 안 된다 — 최소/최대에 그만큼 더해 준다
+     (box-sizing: border-box라 패딩이 높이에 포함된다). */
+  min-height: calc(50vh + var(--sheet-skirt)); min-height: calc(50dvh + var(--sheet-skirt));
+  max-height: calc(68vh + var(--sheet-skirt)); max-height: calc(68dvh + var(--sheet-skirt));
   /* 윗변은 직선(요청) — 아래는 화면 끝이라 어차피 각진다. */
   border-radius: 0;
   margin: 0; border-top: none;
@@ -7466,11 +7475,11 @@ html.scr-light-theme .scr-feed-add-fab {
      ③ 둘 다 0인 기기(안드로이드 크롬·PC)에서도 화면 둥근 모서리를 피할 최소 여백.
      탭바처럼 안전영역을 절반만 반영하지 않는다 — 탭바는 가장자리에서 떨어져 뜬 알약이지만
      이 시트는 바닥에 붙은 패널이라 인디케이터 위를 그대로 침범한다. */
-  padding: 0 16px max(
+  padding: 0 16px calc(var(--sheet-skirt) + max(
     calc(var(--vv-bottom-inset, 0px) + 10px),
     calc(env(safe-area-inset-bottom, 0px) + 10px),
     18px
-  );
+  ));
   /* 입력칸 글자를 16px로 키우면서(요청) 필드 높이도 같이 올린다 — 카드 안에서 쓰던 30px에
      16px 글자를 넣으면 위아래가 꽉 낀다. 16px은 iOS가 포커스 시 화면을 확대하지 않는
      최소 크기이기도 하다(그 이하면 자동 줌이 걸려 레이아웃이 통째로 틀어진다). */

@@ -5,7 +5,6 @@ import Avatar from "../../components/common/Avatar";
 import { Spinner } from "../../components/common/Feedback";
 import { useLockBodyScroll } from "../../utils/bodyScrollLock";
 import { useIsMobile } from "../../hooks/useIsMobile";
-import { useEditableFocused } from "../../hooks/useEditableFocused";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 import { useAppStore } from "../../store/appStore";
 import { api } from "../../api/client";
@@ -307,7 +306,12 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
   // 입력칸에 포커스가 있으면(=키보드가 올라오면) 시트 바닥 여백을 걷어 키보드에 딱 붙인다
   // (요청: "키보드 있는 데까지 아래로 덮게"). 그 여백은 홈 인디케이터/주소창을 피하려던
   // 것인데, 키보드가 올라온 동안엔 그 자리를 키보드가 이미 덮고 있어 비워둘 이유가 없다.
-  const typing = useEditableFocused();
+  //
+  // 전역 훅(useEditableFocused)이 아니라 시트 안 포커스만 본다. 그 훅은 '끄는 쪽'을 뷰포트가
+  // 회복될 때까지(최대 700ms) 미루는데, 그러면 키보드가 다 내려간 뒤에야 여백이 돌아와
+  // 주소창보다 시트가 늦게 자리를 잡는다(지적: "주소창과 모달창 내려가는 순서 역전").
+  // 여기선 포커스가 빠지는 즉시 되돌려 키보드·주소창과 같은 타이밍에 움직이게 한다.
+  const [typing, setTyping] = useState(false);
   const closingRef = useRef(false);
   const closeAnimRef = useRef<Animation | null>(null);
   const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -318,6 +322,7 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
     closeAnimRef.current = null;
     closingRef.current = false;
     if (sheetRef.current) sheetRef.current.style.transform = "";
+    setTyping(false);
     setErr(null); setEditingId(null); setSheetOpen(true);
   };
   // 닫기는 내려가는 연출이 끝난 뒤에 언마운트한다 — 바로 지우면 시트가 툭 사라진다(요청:
@@ -596,6 +601,8 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
           ref={sheetRef}
           className={cx("scr-comment-sheet scr-feed-comments scr-match-notes", typing && "scr-comment-sheet-typing")}
           role="dialog" aria-label="댓글"
+          onFocus={() => setTyping(true)}
+          onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setTyping(false); }}
         >
           <div className="scr-comment-sheet-head">
             <span className="scr-comment-sheet-title">댓글 {notes.length}</span>
