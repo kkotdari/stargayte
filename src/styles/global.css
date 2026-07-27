@@ -6326,14 +6326,16 @@ html.scr-snap-today { scroll-snap-type: y proximity; scroll-padding-top: calc(va
      이동량'이라(ScrollNavTimeline의 scrubBy 주석) 어디를 잡아도 첫 프레임에 순간이동하지 않는다. */
   pointer-events: auto; touch-action: none; cursor: grab;
 }
-/* 12px 점은 그냥은 겨냥하기 작아 보이지 않는 여유 히트 영역을 덧댄다. 손가락 쪽을 더 넉넉히
-   준다 — 예전엔 잘못 잡히는 게 곧 순간이동이라 터치에선 아예 막아뒀지만, 이제 스크럽이
-   이동량 기준이라 스치듯 잡혀도 손가락 방향으로 따라올 뿐 튀지 않는다. */
+/* 12px 점은 손가락으로 겨냥하기엔 너무 작다 — 보이지 않는 여유 히트 영역을 덧대되, 트랙을
+   따라 위아래로 길쭉한 알약(32×68)으로 준다. 예전엔 트랙 전체가 잡혔지만 그때는 잡는 순간
+   손가락 위치로 순간이동했다(그게 '튐'이었다). 지금은 이동량 기준이라 순간이동은 없지만,
+   트랙 전체를 다시 열면 스크롤하려던 가장자리 터치가 스크럽으로 잡혀 화면이 트랙 길이 대비
+   비율로 빠르게 흘러간다 — 그래서 '점 근처'까지만 연다. 마우스는 정확히 겨냥하므로 작게. */
 .scr-scroll-timeline-thumb::after {
-  content: ""; position: absolute; inset: -12px; border-radius: 50%;
+  content: ""; position: absolute; inset: -28px -10px; border-radius: 999px;
 }
 @media (hover: hover) and (pointer: fine) {
-  .scr-scroll-timeline-thumb::after { inset: -8px; }
+  .scr-scroll-timeline-thumb::after { inset: -8px; border-radius: 50%; }
 }
 /* "오늘" 눈금 — 트랙 위 오늘 위치에 짧은 가로선 + 라벨. 썸이 지나가며 여기서 딱 걸린다.
    라벨을 트랙 왼쪽으로 띄우던 이전 방식은 현재 위치 알약(.scr-scroll-timeline-date,
