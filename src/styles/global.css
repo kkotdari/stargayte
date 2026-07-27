@@ -7440,25 +7440,28 @@ html.scr-light-theme .scr-feed-add-fab {
    스타일(폰트 한 스텝 축소, --field-h, 다크 흰 입력칸)을 포털 안에서도 그대로 상속받는다.
    대신 그 두 클래스가 들고 오는 카드용 여백/구분선은 여기서 되돌린다. */
 .scr-comment-sheet {
-  /* 시트 박스를 화면 아래로 --sheet-skirt만큼 더 내려 잡고, 그만큼 아래 패딩으로 되민다
-     — 보이는 모양은 그대로면서 패널(::before, inset:0)이 화면 밑단 너머까지 칠해진다.
-     키보드가 올라오면 iOS가 뷰포트를 다시 잡으면서 시트 밑단과 키보드 사이가 벌어지고
-     그 틈으로 뒷페이지가 그대로 보였는데(지적, 두 번), 앞선 두 시도(::before를 아래로
-     늘리기 → backdrop-filter 때문에 안 그려짐, ::after를 top:100%에 깔기 → 여전히 비침)가
-     모두 "요소 밖"을 칠하려 한 것이 문제였다. iOS는 position:fixed 요소를 자기 레이어로
-     합성하면서 그 바깥을 그려주지 않는다. 요소 자신을 키우면 칠할 곳이 요소 안이 된다. */
-  --sheet-skirt: 60vh;
-  position: fixed; left: 0; right: 0; bottom: calc(-1 * var(--sheet-skirt));
+  /* 패널 배경은 이 요소 '자신'이 칠한다(아래 background) — 다섯 번을 고쳐도 시트 아래로
+     뒷페이지가 비친 문제의 최종 정리다. 그동안의 시도는 전부 배경을 다른 레이어에 맡겼고
+     (::before z-index:-1 → ::before를 아래로 늘리기 → ::after 치마 → 요소 박스를 화면 밖까지
+     늘리기), iOS 사파리는 position:fixed 요소를 자기 합성 레이어로 만들면서 그 레이어를
+     뷰포트에 맞춰 잘라 버려 어느 것도 확실히 그려지지 않았다. 요소 자신의 배경은 그 레이어
+     안이라 잘릴 여지가 없다.
+     (모달/탭바가 배경을 ::before 자식에 두는 규칙은 "fixed 요소 자신에 배경이 있으면 iOS가
+     사이트 툴바로 보고 접었던 크롬을 도로 펼친다"는 회피책이다. 여기서는 뒷페이지가 비치는
+     기능 문제가 더 크다고 보고 반대로 택했다 — 주소창이 다시 펼쳐지는 부작용이 보이면
+     그때 다시 저울질한다.)
+     bottom:0은 '레이아웃 뷰포트' 바닥이라 사파리 하단 툴바 뒤까지 내려간다 — 툴바가
+     반투명이라 그 뒤로 페이지가 비치던 띠(지적)가 이걸로 덮인다. */
+  position: fixed; left: 0; right: 0; bottom: 0;
+  background: #1e1e1f;
   /* 탭바(55)보다 위, 모달(100)보다 아래 — 시트 안에서 연 삭제 확인창이 시트에 가리지 않는다. */
   z-index: 90;
   display: flex; flex-direction: column;
   /* 높이는 내용만큼 자라고(요청), 화면 절반 언저리에서 멈춘다(요청: "화면 반정도 높이").
      댓글이 한두 개뿐이어도 시트로 보이도록 최소 높이를 넉넉히 잡는다(요청) — 안 그러면
      입력줄만 붙은 얇은 띠가 돼 "바텀시트가 열렸다"가 아니라 툴바가 하나 뜬 것처럼 보인다. */
-  /* 아래 치마(--sheet-skirt)는 화면 밖이라 '보이는 높이'에 포함되면 안 된다 — 최소/최대에
-     그만큼 더해 준다(box-sizing: border-box라 패딩이 높이에 포함된다). */
-  min-height: calc(50vh + var(--sheet-skirt)); min-height: calc(50dvh + var(--sheet-skirt));
-  max-height: calc(68vh + var(--sheet-skirt)); max-height: calc(68dvh + var(--sheet-skirt));
+  min-height: 50vh; min-height: 50dvh;
+  max-height: 68vh; max-height: 68dvh;
   /* 윗변은 직선(요청) — 아래는 화면 끝이라 어차피 각진다. */
   border-radius: 0;
   margin: 0; border-top: none;
@@ -7468,11 +7471,11 @@ html.scr-light-theme .scr-feed-add-fab {
      ③ 둘 다 0인 기기(안드로이드 크롬·PC)에서도 화면 둥근 모서리를 피할 최소 여백.
      탭바처럼 안전영역을 절반만 반영하지 않는다 — 탭바는 가장자리에서 떨어져 뜬 알약이지만
      이 시트는 바닥에 붙은 패널이라 인디케이터 위를 그대로 침범한다. */
-  padding: 0 16px calc(var(--sheet-skirt) + max(
+  padding: 0 16px max(
     calc(var(--vv-bottom-inset, 0px) + 10px),
     calc(env(safe-area-inset-bottom, 0px) + 10px),
     18px
-  ));
+  );
   /* 입력칸 글자를 16px로 키우면서(요청) 필드 높이도 같이 올린다 — 카드 안에서 쓰던 30px에
      16px 글자를 넣으면 위아래가 꽉 낀다. 16px은 iOS가 포커스 시 화면을 확대하지 않는
      최소 크기이기도 하다(그 이하면 자동 줌이 걸려 레이아웃이 통째로 틀어진다). */
@@ -7482,28 +7485,13 @@ html.scr-light-theme .scr-feed-add-fab {
     0 -6px 18px rgba(0, 0, 0, 0.42),
     0 -1px 0 rgba(255, 255, 255, 0.08);
 }
-/* 패널 — 시트 박스 안에서만(아래로 늘리는 일은 ::after가 맡는다).
-   블러는 쓰지 않고 카드와 같은 톤(--feed-card-bg)을 옅게 비치는 정도로만 깐다(요청:
-   "블러 없이 반투명, 카드와 톤 맞춰 연속성"). 유리(블러 14px)였을 땐 시트만 재질이 달라
-   카드에서 시트로 넘어가는 느낌이 끊겼고, iOS에서 backdrop-filter는 합성 비용도 크다.
-   color-mix를 모르는 브라우저를 위해 같은 값의 rgba를 앞 선언으로 둔다. */
-.scr-comment-sheet::before {
-  content: ""; position: absolute; inset: 0; z-index: 0;
-  background: rgba(30, 30, 31, 0.96);
-  background: color-mix(in srgb, var(--feed-card-bg) 96%, transparent);
-}
-/* 패널이 z-index:0이 됐으니 내용은 그 위로 올린다. 예전엔 패널을 z-index:-1로 깔았는데,
-   iOS는 position:fixed 요소를 자기 레이어로 합성하면서 음수 z-index 자식을 그 레이어
-   밖(= 페이지 배경 쪽)으로 밀어내, 패널이 통째로 안 그려지거나 잘렸다 — 시트가 반투명하게
-   비치고 아래 치마도 안 먹던 원인(지적: "키보드 열기 전에도 이미 뒤가 비친다"). */
-.scr-comment-sheet > * { position: relative; z-index: 1; }
 html.scr-light-theme .scr-comment-sheet {
   box-shadow:
     0 -18px 50px rgba(0, 0, 0, 0.3),
     0 -6px 18px rgba(0, 0, 0, 0.16),
     0 -1px 0 rgba(0, 0, 0, 0.08);
 }
-html.scr-light-theme .scr-comment-sheet::before { background: rgba(255, 255, 255, 0.96); }
+html.scr-light-theme .scr-comment-sheet { background: #ffffff; }
 /* 키보드가 올라온 동안(입력칸 포커스)엔 바닥 여백을 걷어 입력줄을 키보드에 딱 붙인다
    (요청: "키보드 있는 데까지 아래로 덮게"). 위 여백은 홈 인디케이터/사파리 주소창을
    피하려던 것인데, 그 자리를 이미 키보드가 덮고 있어 비워둘 이유가 없다 — 그대로 두면
