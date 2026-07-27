@@ -6319,19 +6319,21 @@ html.scr-snap-today { scroll-snap-type: y proximity; scroll-padding-top: calc(va
   background: var(--timeline-blue); transform: translate(-50%, -50%);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--timeline-blue) 26%, transparent), 0 1px 4px rgba(0, 0, 0, 0.3);
   z-index: 1;
-  /* 조작은 이 손잡이에서만 받는다(트랙은 위 규칙대로 통과). touch-action:none이라 손잡이를
-     잡은 손가락은 페이지를 함께 밀지 않는다 — 네이티브 관성 스크롤과 스크럽이 같이 걸리면
-     둘이 서로 밀어 요동친다. 스크럽 자체는 '잡은 지점 기준 이동량'이라(ScrollNavTimeline의
-     scrubBy 주석) 어디를 잡아도 첫 프레임에 순간이동하지 않는다. */
-  touch-action: none; cursor: grab;
+  /* 조작은 이 손잡이에서만 받는다 — 트랙은 위 규칙대로 통과시키므로, 여기서 auto로 되살려야
+     한다(pointer-events는 상속된다: 트랙의 none을 그대로 물려받으면 마우스에서도 안 잡힌다).
+     touch-action:none이라 손잡이를 잡은 손가락은 페이지를 함께 밀지 않는다 — 네이티브 관성
+     스크롤과 스크럽이 같이 걸리면 둘이 서로 밀어 요동친다. 스크럽 자체는 '잡은 지점 기준
+     이동량'이라(ScrollNavTimeline의 scrubBy 주석) 어디를 잡아도 첫 프레임에 순간이동하지 않는다. */
+  pointer-events: auto; touch-action: none; cursor: grab;
+}
+/* 12px 점은 그냥은 겨냥하기 작아 보이지 않는 여유 히트 영역을 덧댄다. 손가락 쪽을 더 넉넉히
+   준다 — 예전엔 잘못 잡히는 게 곧 순간이동이라 터치에선 아예 막아뒀지만, 이제 스크럽이
+   이동량 기준이라 스치듯 잡혀도 손가락 방향으로 따라올 뿐 튀지 않는다. */
+.scr-scroll-timeline-thumb::after {
+  content: ""; position: absolute; inset: -12px; border-radius: 50%;
 }
 @media (hover: hover) and (pointer: fine) {
-  /* 12px 점은 마우스로 겨냥하기 작아 보이지 않는 여유 히트 영역을 덧댄다. 터치에는 안
-     덧댄다 — 이 손잡이는 손가락이 스크롤하는 화면 오른쪽 가장자리에 놓이므로, 히트
-     영역을 키우면 스크롤하려던 터치가 스크럽으로 잡히는 일이 늘어난다. */
-  .scr-scroll-timeline-thumb::after {
-    content: ""; position: absolute; inset: -8px; border-radius: 50%;
-  }
+  .scr-scroll-timeline-thumb::after { inset: -8px; }
 }
 /* "오늘" 눈금 — 트랙 위 오늘 위치에 짧은 가로선 + 라벨. 썸이 지나가며 여기서 딱 걸린다.
    라벨을 트랙 왼쪽으로 띄우던 이전 방식은 현재 위치 알약(.scr-scroll-timeline-date,
