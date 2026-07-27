@@ -79,6 +79,9 @@
   --void: #000000;
   --panel: rgba(255, 255, 255, 0.04);      /* 패널 (반투명 유리) */
   --panel-solid: #101011;                  /* 불투명이 필요한 곳 */
+  /* 피드 카드 톤 — 카드와 그 위에 뜨는 댓글 시트가 같은 색을 쓰도록 한 곳에서 정한다
+     (요청: 시트 패널을 카드와 톤 맞춰 연속성 주기). */
+  --feed-card-bg: #1a1a1b;
   --panel-raised: rgba(255, 255, 255, 0.12); /* 드롭다운/칩 등 */
   --input-bg: rgba(6, 6, 7, 0.86);         /* 입력 필드 */
   --header-bg: rgba(7, 7, 8, 0.74);        /* 헤더 전용 배경 — .scr-light-theme에서 재정의 */
@@ -761,6 +764,7 @@ html.scr-light-theme .scr-checkbox-field input[type="radio"]:not(:checked), html
    종족 배지처럼 변수를 안 쓰는 요소는 원래 색 그대로 남는다. */
 html.scr-light-theme {
   --void: #ffffff;
+  --feed-card-bg: #ffffff;
   --panel: rgba(255, 255, 255, 0.46);
   --panel-solid: #ffffff;
   --panel-raised: #f0f0f0;
@@ -7031,11 +7035,10 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   /* 임시 땜빵 기간의 카드 재질(요청) — 블러 없이 "불투명" 배경. 반투명이면 겹침
      스택에서 뒤에 잘린 카드가 비쳐 보여 이상했다(지적). 예전 반투명 톤(오버레이 9%)과
      같은 밝기를 불투명으로 환산해 채운다(color-mix 미지원 브라우저는 앞 선언 폴백). */
-  /* 흰색 섞는 비율을 9% → 4%로 낮춘다(요청: 너무 회색톤, 좀 더 검정으로). 이 값은 원래
-     예전 반투명 톤(오버레이 9%)의 밝기를 불투명으로 옮겨온 것인데, 배경이 순검정이라
-     그대로 두니 카드만 회색 판처럼 떠 보였다. #252526 → #1a1a1b. */
-  background-color: var(--panel-solid);
-  background-color: color-mix(in srgb, var(--panel-solid) 96%, white);
+  /* 카드 톤은 --feed-card-bg 하나로 정한다 — 댓글 시트가 같은 색을 써야 카드에서 시트로
+     이어지는 느낌이 난다(요청). 다크 #1a1a1b: 한때 흰색 9%를 섞어 #252526이었는데 배경이
+     순검정이라 카드만 회색 판처럼 떠 보였다(지적). */
+  background-color: var(--feed-card-bg);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.09),
     inset 0 0 0 1px rgba(255, 255, 255, 0.045),
@@ -7459,8 +7462,10 @@ html.scr-light-theme .scr-feed-add-fab {
   /* 높이는 내용만큼 자라고(요청), 화면 절반 언저리에서 멈춘다(요청: "화면 반정도 높이").
      댓글이 한두 개뿐이어도 시트로 보이도록 최소 높이를 넉넉히 잡는다(요청) — 안 그러면
      입력줄만 붙은 얇은 띠가 돼 "바텀시트가 열렸다"가 아니라 툴바가 하나 뜬 것처럼 보인다. */
-  min-height: 40vh; min-height: 40dvh;
-  max-height: 56vh; max-height: 56dvh;
+  min-height: 50vh; min-height: 50dvh;
+  /* 최소가 화면 절반이 됐으니(요청) 상한도 그만큼 올린다 — 56%면 자랄 여지가 6%뿐이라
+     "목록에 맞춰 늘어난다"는 원래 요구가 사실상 없어진다. */
+  max-height: 68vh; max-height: 68dvh;
   /* 윗변은 직선(요청) — 아래는 화면 끝이라 어차피 각진다. */
   border-radius: 0;
   margin: 0; border-top: none;
@@ -7484,32 +7489,35 @@ html.scr-light-theme .scr-feed-add-fab {
     0 -6px 18px rgba(0, 0, 0, 0.42),
     0 -1px 0 rgba(255, 255, 255, 0.08);
 }
-/* 유리 패널 — 시트 박스 안에서만. 아래로 늘리는 일은 ::after가 맡는다. */
+/* 패널 — 시트 박스 안에서만(아래로 늘리는 일은 ::after가 맡는다).
+   블러는 쓰지 않고 카드와 같은 톤(--feed-card-bg)을 옅게 비치는 정도로만 깐다(요청:
+   "블러 없이 반투명, 카드와 톤 맞춰 연속성"). 유리(블러 14px)였을 땐 시트만 재질이 달라
+   카드에서 시트로 넘어가는 느낌이 끊겼고, iOS에서 backdrop-filter는 합성 비용도 크다.
+   color-mix를 모르는 브라우저를 위해 같은 값의 rgba를 앞 선언으로 둔다. */
 .scr-comment-sheet::before {
   content: ""; position: absolute; inset: 0; z-index: -1;
-  background: rgba(16, 21, 26, 0.66);
-  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  background: rgba(26, 26, 27, 0.92);
+  background: color-mix(in srgb, var(--feed-card-bg) 92%, transparent);
 }
 /* 시트 아래 치마(skirt) — 키보드가 올라오면 iOS가 뷰포트를 다시 잡으면서 시트 밑단과
    키보드 사이가 벌어지고, 그 틈으로 뒷페이지가 그대로 보였다(지적). 틈이 얼마나 벌어질지는
    OS가 정하고 우리는 관측도 계산도 못 하니, 재서 맞추는 대신 패널을 아래로 넉넉히 늘려
    어떤 틈이든 덮는다. 키보드가 없을 땐 화면 밖이라 보이지 않는다.
-   ::before를 늘리지 않고 별도 레이어로 뺀 이유: backdrop-filter는 '뒤에 그려진 것'을 받아
-   거르는데 뷰포트 밖에는 그 backdrop이 없어, 늘린 부분이 그려지지 않았다(그래서 앞선
-   시도가 먹지 않았다). 이 치마는 블러 없이 불투명하게 칠한다 — 어차피 키보드/브라우저 크롬
-   뒤라 유리 느낌을 살릴 이유도 없고, 불투명해야 확실히 가린다. */
+   치마는 반투명이 아니라 불투명하게 칠한다 — 가리는 게 목적이고, 어차피 키보드/브라우저
+   크롬 뒤라 비쳐 보일 것도 없다. (::before를 늘려서 덮으려던 앞선 시도가 먹지 않았던 건
+   그때 그 레이어에 backdrop-filter가 걸려 있었기 때문이다: backdrop-filter는 '뒤에 그려진
+   것'을 받아 거르는데 뷰포트 밖엔 그 backdrop이 없어 늘린 부분이 아예 안 그려졌다.) */
 .scr-comment-sheet::after {
   content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 60vh; z-index: -1;
-  background: #0f1418;
+  background: var(--feed-card-bg);
 }
-html.scr-light-theme .scr-comment-sheet::after { background: #f4f6f9; }
 html.scr-light-theme .scr-comment-sheet {
   box-shadow:
     0 -18px 50px rgba(0, 0, 0, 0.3),
     0 -6px 18px rgba(0, 0, 0, 0.16),
     0 -1px 0 rgba(0, 0, 0, 0.08);
 }
-html.scr-light-theme .scr-comment-sheet::before { background: rgba(255, 255, 255, 0.72); }
+html.scr-light-theme .scr-comment-sheet::before { background: rgba(255, 255, 255, 0.92); }
 /* 키보드가 올라온 동안(입력칸 포커스)엔 바닥 여백을 걷어 입력줄을 키보드에 딱 붙인다
    (요청: "키보드 있는 데까지 아래로 덮게"). 위 여백은 홈 인디케이터/사파리 주소창을
    피하려던 것인데, 그 자리를 이미 키보드가 덮고 있어 비워둘 이유가 없다 — 그대로 두면
