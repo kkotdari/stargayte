@@ -81,7 +81,7 @@ export default function RankShiftCard({ shift, timeText, dateLabel, actions, foo
   const rows = expanded || !overflow ? shift.shifts : shift.shifts.slice(0, SHIFT_COLLAPSE_AT);
   const toggle = () => setExpanded((v) => !v);
   return (
-    <div className="scr-feed-card">
+    <div className="scr-feed-card scr-post">
       <div className="scr-feed-card-head" {...(dateLabel ? { "data-date-label": dateLabel } : {})}>
         <Trophy size={13} aria-hidden />
         <span className="scr-feed-card-label">랭크 변동 발생 · {rankShiftTypeLabel(shift)}</span>

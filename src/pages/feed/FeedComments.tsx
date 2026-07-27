@@ -711,7 +711,7 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
       {mobile && sheetOpen && createPortal(
         <div
           ref={sheetRef}
-          className={cx("scr-comment-sheet scr-feed-comments scr-match-notes", typing && "scr-comment-sheet-typing")}
+          className={cx("scr-comment-sheet scr-post scr-feed-comments scr-match-notes", typing && "scr-comment-sheet-typing")}
           role="dialog" aria-label="댓글"
           onFocus={() => setTyping(true)}
           onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setTyping(false); }}
