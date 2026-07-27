@@ -7069,8 +7069,8 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   text-align: center; cursor: pointer; -webkit-tap-highlight-color: transparent;
 }
 @media (hover: hover) { .scr-feed-stack-peek:hover { color: var(--text); } }
-/* 펼쳐지면 사라진다 — 그때는 왼쪽 '줄이기' 라인이 접기 진입점을 맡는다. */
-.scr-feed-stack-opened .scr-feed-stack-peekwrap { display: none; }
+/* 펼친 뒤에도 같은 자리에 남아 이번엔 '접기'가 된다(요청: 접기 버튼을 맨 위 카드 위에).
+   레일은 순수 장식이 됐고, 여닫는 진입점은 이 글자 하나로 통일된다. */
 /* 주의: 조상에 opacity를 걸면 안 된다 — opacity<1은 자체 합성 그룹을 만들어 그 안
    카드들의 backdrop-filter가 페이지 배경을 못 보게 된다(= 블러가 빠져 보이던 문제).
    같은 이유로 카드 등장 애니메이션도 opacity 없이 transform만 쓴다. */
@@ -7096,43 +7096,30 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    전체가 버튼이고, 위에 "눌러서 다시 줄이기"를 세로쓰기로 얹는다. 펼쳤을 때만 보이며,
    세로 범위(첫 카드 중심 ~ 앞 카드 중심)와 양 끝 원은 JS가 실측해 잡는다(MatchStack). */
 .scr-feed-stack { position: relative; }
+/* 겹친 카드를 잇는 레일 — 카드들 '뒤'로, 가로 정가운데를 지나는 세로선(요청: 기차처럼
+   이어지는 느낌). 카드가 불투명하므로 실제로 보이는 건 카드와 카드 사이 갭뿐이고, 그
+   토막들이 이어져 한 줄로 읽힌다. 예전엔 카드 왼쪽 바깥에 붙은 세로선 '버튼'이었는데,
+   접기 진입점을 맨 위 카드 위 글자로 옮기면서(peek과 같은 자리) 이 레일은 순수 장식이
+   됐다 — 눌리지도, 자리를 차지하지도 않는다.
+   z-index를 주지 않아 카드(z-index 1인 front 포함)보다 뒤에 깔린다. */
 .scr-feed-stack-rail {
-  /* 카드 왼쪽 가장자리보다 살짝 바깥으로(요청 반복: "좀더 왼쪽으로" → "조금만 더" →
-     "살짝만 더") — -12→-16→-20px. 페이지 좌우 여백이 20px라 딱 그 경계까지 — 더 가면
-     잘리기 시작한다. */
-  position: absolute; left: -20px; top: 4px; bottom: 0; width: 22px; z-index: 2;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  background: transparent; border: none; padding: 0; cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  /* display 토글 금지(peekwrap 주석 참고) — 접힘 상태에선 opacity 0으로만 숨긴다.
-     absolute라 자리도 안 차지하고, iOS 컴포지팅 트리 재구성을 유발하지 않는다. */
-  opacity: 0; pointer-events: none;
+  position: absolute; left: 50%; transform: translateX(-50%);
+  width: 2px; pointer-events: none;
+  background: rgba(255, 255, 255, 0.38); border-radius: 1px;
+  opacity: 0;
 }
-.scr-feed-stack-opened .scr-feed-stack-rail { opacity: 1; pointer-events: auto; }
-/* 라인 — 은은하게(반투명, 요청). 글자("눌러서 다시 줄이기") 뒤로는 라인이 지나가지
-   않게(요청) 위/아래 두 토막으로 나눈다 — 세로 flex의 양쪽 flex:1 아이템이라 가운데
-   라벨을 비켜 위아래를 똑같이 채운다. */
-.scr-feed-stack-rail::before, .scr-feed-stack-rail::after {
-  content: ""; flex: 1; width: 2px;
-  border-radius: 1px; background: rgba(255, 255, 255, 0.38);
-}
-/* 양 끝 작은 원(요청) — 라인과 같은 톤을 살짝만 진하게. */
+.scr-feed-stack-opened .scr-feed-stack-rail { opacity: 1; }
+/* 양 끝 작은 원 — 선과 같은 톤을 살짝만 진하게. */
 .scr-feed-stack-rail-dot {
-  position: absolute; left: 8px; width: 6px; height: 6px; border-radius: 50%;
+  position: absolute; left: 50%; transform: translateX(-50%);
+  width: 6px; height: 6px; border-radius: 50%;
   background: rgba(255, 255, 255, 0.55);
 }
 .scr-feed-stack-rail-dot-top { top: -3px; }
 .scr-feed-stack-rail-dot-bottom { bottom: -3px; }
-.scr-feed-stack-rail-label {
-  /* 알약 배경 없이 라인 위에 글자만 — 글자도 라인과 같은 반투명 톤(요청)으로 은은하게. */
-  position: relative; writing-mode: vertical-rl; letter-spacing: 0.16em;
-  font-family: inherit; font-size: var(--fs-micro); font-weight: 700; color: rgba(255, 255, 255, 0.38);
-  padding: 8px 0;
-}
-/* 라이트 테마 — 흰 배경 위 흰 라인은 안 보여 톤만 뒤집는다(라인은 어둡게, 라벨은 흰 알약). */
-.scr-light-theme .scr-feed-stack-rail::before, .scr-light-theme .scr-feed-stack-rail::after { background: rgba(0, 0, 0, 0.22); }
+/* 라이트 테마 — 흰 배경 위 흰 선은 안 보여 톤만 뒤집는다. */
+.scr-light-theme .scr-feed-stack-rail { background: rgba(0, 0, 0, 0.22); }
 .scr-light-theme .scr-feed-stack-rail-dot { background: rgba(0, 0, 0, 0.35); }
-.scr-light-theme .scr-feed-stack-rail-label { color: rgba(0, 0, 0, 0.22); }
 /* 헤더 아래 구분선은 두지 않는다(요청) — 시각/라벨만 조용히 얹는다. 오른쪽 44px는
    포스트 우상단 케밥 자리. */
 .scr-feed-card-head {

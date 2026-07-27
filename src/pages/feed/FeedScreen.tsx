@@ -423,23 +423,19 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  // 접기 — 상태만 바꾸면 위 useLayoutEffect가 높이 애니메이션을 역방향으로 돌린다.
-  const closeStack = () => toggleOpen(false);
-
   // 두 상태(접힘/펼침)의 카드가 모두 항상 마운트돼 있고(요청: "실제로는 렌더링해놓고"),
-  // 높이는 클립(grid-rows 0fr↔1fr)으로 즉시 바뀐다 — 트랜지션은 카드 transform이 담당.
+  // 높이는 래퍼(rest-inner) 하나로만 여닫는다(위 useLayoutEffect 주석).
   return (
     <div ref={stackRef} className={cx("scr-feed-stack", open && "scr-feed-stack-opened")}>
-      {/* 래퍼: 펼침 상태에서 바를 display 토글 없이(높이 0 + absolute) 자리만 잃게
-          하기 위한 기준 컨테이너 — global.css의 .scr-feed-stack-peekwrap 주석 참고. */}
+      {/* 여닫는 진입점 — 접힘/펼침 모두 같은 자리(맨 위 카드 위 여백)에 글자로 둔다(요청).
+          absolute라 레이아웃에 높이를 더하지 않는다(global.css의 peekwrap 주석). */}
       <div className="scr-feed-stack-peekwrap">
         <button
           type="button" className="scr-feed-stack-peek"
-          onClick={() => toggleOpen(true)}
-          aria-hidden={open} tabIndex={open ? -1 : 0}
-          aria-label={`게임결과 ${restDesc.length}건 더 펼치기`}
+          onClick={() => toggleOpen(!open)}
+          aria-label={open ? `게임결과 ${restDesc.length}건 접기` : `게임결과 ${restDesc.length}건 더 펼치기`}
         >
-          + {restDesc.length}건 펼치기
+          {open ? `${restDesc.length}건 접기` : `+ ${restDesc.length}건 펼치기`}
         </button>
       </div>
       <div className="scr-feed-stack-rest" aria-hidden={!open}>
@@ -454,17 +450,13 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
           </div>
         </div>
       </div>
-      {/* 줄이기 — 버튼 대신 스택(펼쳐진 카드들 + 앞 카드) 전체 왼쪽에 겹쳐 올라가는 흰
-          세로 라인(요청: 들여쓰기 없이 카드 위에 배치, 첫 카드까지 포함). 누르면 접힌다. */}
-      <button
-        type="button" className="scr-feed-stack-rail"
-        onClick={closeStack} aria-label="줄이기"
-        aria-hidden={!open} tabIndex={open ? 0 : -1}
-      >
-        <span className="scr-feed-stack-rail-dot scr-feed-stack-rail-dot-top" aria-hidden />
-        <span className="scr-feed-stack-rail-label">눌러서 다시 줄이기</span>
-        <span className="scr-feed-stack-rail-dot scr-feed-stack-rail-dot-bottom" aria-hidden />
-      </button>
+      {/* 카드들을 잇는 레일 — 가로 정가운데를 지나는 세로선을 카드 '뒤'에 깐다(요청:
+          기차처럼 이어지는 느낌). 카드가 불투명해 실제로 보이는 건 카드 사이 갭뿐이고,
+          그 토막들이 이어져 한 줄로 읽힌다. 순수 장식이라 누를 수 없다. */}
+      <div className="scr-feed-stack-rail" aria-hidden>
+        <span className="scr-feed-stack-rail-dot scr-feed-stack-rail-dot-top" />
+        <span className="scr-feed-stack-rail-dot scr-feed-stack-rail-dot-bottom" />
+      </div>
       <div ref={frontRef} className="scr-feed-stack-front">
         <MatchCard item={ordered[0]} memberOf={memberOf} onDeleted={onDeleted} dateLabel={dateLabel} highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms} />
       </div>
