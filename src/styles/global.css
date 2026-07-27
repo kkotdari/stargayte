@@ -6241,7 +6241,15 @@ html.scr-snap-today { scroll-snap-type: y proximity; scroll-padding-top: calc(va
   top: calc(var(--safe-top) + 76px);
   bottom: calc(var(--mobile-footer-h) + env(safe-area-inset-bottom, 0px) + 16px);
   display: flex; flex-direction: column; align-items: center; gap: 6px;
-  opacity: 0; pointer-events: none; transition: opacity 0.25s ease;
+  /* top/bottom도 트랜지션 목록에 넣는다 — 사파리(viewport-fit=cover)에서 --safe-top은
+     주소창이 접히고 펴질 때마다 0↔47px로 한 번에 뒤집힌다(이 파일 .scr-header 주석에
+     이미 기록된 사실). 이 값을 top에 그대로 쓰는 이 컨테이너는 그때마다 통째로 위로
+     튀었다 제자리로 돌아왔다(지적: "타임라인이 맨 위로 막 튀었다가 제자리로"). 값이
+     뛰는 건 브라우저가 정하는 거라 막을 수 없으니, 탭바가 --vv-bottom-inset 문제를
+     푼 것과 같은 방식으로(위 .scr-mobile-tabbar 주석) 부드럽게 따라가게 한다 —
+     순간이동이 아니라 한 동작으로 읽힌다. */
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.25s ease, top 0.25s ease-out, bottom 0.25s ease-out;
 }
 /* 모바일은 세로 스크롤바를 숨기므로(@media (max-width: 860px) 스크롤바 숨김 규칙)
    그만큼 오른쪽 가장자리에 더 붙여도 된다(요청: "스크롤 없는 만큼 모바일에서 타임라인을
