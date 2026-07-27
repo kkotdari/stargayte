@@ -28,6 +28,8 @@ export interface ReplaySummaryBeat {
   who: string[];
   /** 부차 행위자(팀에서 특히 활약한 사람 등). 없으면 생략. */
   who2?: string[];
+  /** 당한 쪽 — "관우의 저글링 성큰을 뚫음"처럼 상대를 지목하는 문장에서만. */
+  whom?: string[];
   /** 일어난 프레임 — 이야기를 시간순으로 늘어놓는 데만 쓴다. */
   at?: number | null;
   /** 틀에 꽂히는 값들. 유닛/건물/테크는 screp 영문 키, 나머지는 숫자/불리언. */

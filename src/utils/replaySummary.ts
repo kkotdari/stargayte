@@ -457,9 +457,36 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     scanTactics({
       sidePlayers: won ? winnerPlayers : loserPlayers,
       foePlayers: won ? loserPlayers : winnerPlayers,
-    }).map((t) => ({ k: t.key, won, who: [t.who], at: t.at, p: t.p, weight: t.weight + 10 }));
+      mapWidth: replay.mapWidth, mapHeight: replay.mapHeight,
+    }).map((t) => ({
+      k: t.key, won, who: [t.who], at: t.at, p: t.p, weight: t.weight + 10,
+      ...(t.whom ? { whom: [t.whom] } : {}),
+    }));
+
+  // "유비의 바이오닉 한 방으로 관우의 저글링 성큰을 뚫음" — 이긴 편의 주력이 진 편의 누구를
+  // 어떻게 뚫었는지 한 문장에 담는다(요청). 양쪽을 따로 말하는 것보다 훨씬 경기처럼 읽힌다.
+  const breached = (() => {
+    for (const p of loserPlayers) {
+      const sg = p.signals;
+      if (!sg) continue;
+      const def = Object.entries(sg.buildingCounts)
+        .filter(([k, n]) => DEFENSE_KO[k] && n >= 3)
+        .filter(([k]) => !(k === "Photon Cannon" && cannonIsRush(p)))
+        .sort((a, b) => b[1] - a[1])[0];
+      if (!def) continue;
+      const unit = [...ownCombat(p).entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+      if (!unit) continue;
+      return {
+        k: "breakthrough", won: true, who: subject, whom: [p.rawName], weight: 14,
+        at: sg.firstBuildingFrame[def[0]] ?? null,
+        p: { units, unit, def: def[0] },
+      } as Beat;
+    }
+    return null;
+  })();
 
   const pool: Beat[] = [
+    ...(breached ? [breached] : []),
     ...tacticBeats(true),
     ...tacticBeats(false),
     ...sideBeats({
@@ -469,7 +496,7 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     ...sideBeats({
       side: loser, other: winner, players: loserPlayers,
       won: false, sec, totalFrames, pressedEarly,
-    }),
+    }).filter((b) => !(breached && b.k === "defense")),
   ];
 
   // 고를 때는 무게순(재미있는 것부터), 이야기로 늘어놓을 때는 시간순 — 순서를 이 둘로 나눠야

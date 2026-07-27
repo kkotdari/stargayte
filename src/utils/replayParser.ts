@@ -74,6 +74,8 @@ export interface ReplayPlayerSignals {
   upgradeNames: string[];
   /** 테크별 첫 연구 프레임 — 요약을 시간순으로 늘어놓을 때 이 시점을 쓴다. */
   firstTechFrame: Record<string, number>;
+  /** 이 사람이 친 채팅(앞쪽 일부). GG 선언처럼 승부를 말해주는 게 여기 있다. */
+  chats: { frame: number | null; text: string }[];
   /** 첫 커맨드 프레임 — 없으면 null(커맨드를 하나도 안 낸 사람). */
   firstCmdFrame: number | null;
   /** 마지막 커맨드 프레임. 경기 끝보다 한참 이르면 그 시점에 졌거나 나간 것으로 읽는다. */
@@ -86,6 +88,9 @@ export interface ParsedReplay {
   fileName: string;
   date: string; // YYYY-MM-DD (리플레이 시작 시각의 로컬 날짜)
   mapName: string;
+  /** 맵 크기(타일) — 시작 지점의 시계 방향(9시/12시…)을 계산할 때만 쓴다. 없으면 null. */
+  mapWidth: number | null;
+  mapHeight: number | null;
   gameStartedAt: string | null; // ISO 8601, 리플레이의 실제 시작 시각
   durationSeconds: number | null;
   // 확정 근거(Observer 플래그/슬롯 타입/3번째 이후 팀 번호)로 걸러낸 관전자만 뺀다 —
@@ -172,6 +177,8 @@ interface ScrepCmd {
   Upgrade?: { Name?: string } | string;
   /** 건설 커맨드의 좌표. screp 버전에 따라 대문자/소문자 키라 둘 다 받는다. */
   Pos?: { X?: number; Y?: number; x?: number; y?: number } | null;
+  /** 채팅 커맨드의 본문(Type.Name === "Chat"). */
+  Message?: string;
 }
 
 interface ScrepResult {
@@ -180,6 +187,9 @@ interface ScrepResult {
     Map: string;
     Frames: number;
     Players: ScrepPlayer[];
+    /** 맵 크기(타일). 시작 지점이 몇 시 방향인지 계산하는 데 쓴다 — 없으면 방향을 말하지 않는다. */
+    MapWidth?: number;
+    MapHeight?: number;
   };
   Computed: {
     WinnerTeam: number;
@@ -210,13 +220,16 @@ const BUILD_CMD_NAMES = new Set<string>(["Build", "Building Morph", "Hatch"]);
 // 스무 남짓이면 충분하고, 긴 경기의 뒷부분까지 다 들고 있을 이유가 없다.
 const EARLY_FRAMES_CAP = 24;
 const BUILD_POS_CAP = 80;
+// 채팅은 요약 재료로만 쓰므로 앞부분만 있으면 된다(GG는 대개 끝에 나오지만, 한 사람이
+// 수십 줄을 치는 경우까지 전부 들고 있을 이유는 없다).
+const CHAT_CAP = 40;
 
 function emptySignals(): ReplayPlayerSignals {
   return {
     unitCounts: {}, firstUnitFrame: {},
     buildingCounts: {}, firstBuildingFrame: {},
     unitFrames: {}, buildingFrames: {}, buildPositions: [],
-    techNames: [], upgradeNames: [], firstTechFrame: {},
+    techNames: [], upgradeNames: [], firstTechFrame: {}, chats: [],
     firstCmdFrame: null, lastCmdFrame: null, cmdCountByThird: [0, 0, 0],
   };
 }
@@ -282,6 +295,9 @@ function collectSignals(cmds: ScrepCmd[], totalFrames: number | null): Map<numbe
           s.buildPositions.push({ unit: b, frame, x: pos.x, y: pos.y });
         }
       }
+    }
+    if (cmdName === "Chat" && typeof c.Message === "string" && c.Message.trim()) {
+      if (s.chats.length < CHAT_CAP) s.chats.push({ frame, text: c.Message.trim() });
     }
     const tech = nameOf(c.Tech);
     if (tech) {
@@ -412,6 +428,8 @@ export async function parseReplayFile(file: File): Promise<ParsedReplay> {
     fileName: file.name,
     date,
     mapName: res.Header.Map ?? "",
+    mapWidth: typeof res.Header.MapWidth === "number" ? res.Header.MapWidth : null,
+    mapHeight: typeof res.Header.MapHeight === "number" ? res.Header.MapHeight : null,
     gameStartedAt,
     durationSeconds,
     players,

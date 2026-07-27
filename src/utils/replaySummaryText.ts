@@ -92,6 +92,8 @@ interface Ctx {
   /** 이름들을 이미 합쳐 놓은 것("조조" 또는 "조조·유비"). */
   who: string;
   who2: string;
+  /** 당한 쪽 — 없으면 빈 문자열이고, 그때는 대상을 뺀 표현을 쓴다. */
+  whom: string;
   won: boolean;
   p: Record<string, unknown>;
   /** 여러 표현 중 하나를 고른다 — 같은 경기는 늘 같은 것이 나온다(아래 variantSeed 참고). */
@@ -118,6 +120,18 @@ function variantSeed(b: ReplaySummaryBeat): number {
 
 type Tpl = (c: Ctx) => string | null;
 
+/** "9시 조조에게 " — 러시 대상과 그 시작 지점 방향을 앞에 붙인다(요청). 못 짚으면 빈 문자열. */
+function targetPhrase(c: Ctx): string {
+  if (!c.whom) return "";
+  const clock = num(c.p.clock);
+  return `${clock ? `${clock}시 ` : ""}${c.whom}에게 `;
+}
+
+/** "관우의 " — 견제로 당한 쪽을 소유격으로. 대상을 못 짚으면 빈 문자열(문장은 그대로 성립). */
+function victimPhrase(c: Ctx): string {
+  return c.whom ? `${c.whom}의 ` : "";
+}
+
 /** 이긴 쪽/진 쪽 표현이 짝을 이루는 흔한 꼴 — 각각 여러 개를 두고 하나를 고른다. */
 const pair = (won: string[], lost: string[]): Tpl => (c) =>
   `${ga(c.who)} ${c.pick(c.won ? won : lost)}`;
@@ -127,20 +141,21 @@ const TEMPLATES: Record<string, Tpl> = {
   "zling-rush": (c) => {
     const n = num(c.p.drones);
     const build = n > 0 ? `${n}드론 저글링 러시` : "초반 저글링 러시";
-    return `${ga(c.who)} ${c.pick(
+    const at = targetPhrase(c);
+    return `${ga(c.who)} ${at}${c.pick(
       c.won
-        ? [`${build}로 초반부터 몰아침`, `${build}로 시작하자마자 밀어붙임`, `${build} 한 방에 끝냄`]
-        : [`${build}를 갔지만 막힘`, `${build}로 몰아쳤지만 통하지 않음`, `${build}를 갔다가 되레 굳어버림`]
+        ? [`${build}를 가 본진을 초토화`, `${build}로 초반부터 몰아침`, `${build} 한 방에 끝냄`]
+        : [`${build}를 갔지만 막힘`, `${build}로 몰아쳤지만 통하지 않음`, `${build} 가려다가 망함`]
     )}`;
   },
   moka: pair(
     ["저글링·울트라에 다크스웜을 얹은 목동 저그로 밀어붙임", "목동 저그 한 방을 굴려 밀고 나감",
      "다크스웜 아래로 저글링·울트라를 쏟아부음"],
-    ["목동 저그로 버텨봤지만 무너짐", "목동 저그까지 갔지만 역부족", "울트라를 모았지만 흐름을 못 돌림"]
+    ["목동 저그로 버텨봤지만 무너짐", "목동 저그까지 갔지만 역부족", "울트라까지 모았는데 허무하게 당함"]
   ),
   swarm: pair(
     ["다크스웜으로 진영을 덮고 들어감", "다크스웜 아래로 병력을 밀어 넣음", "다크스웜으로 총알을 지우고 붙음"],
-    ["다크스웜까지 깔았지만 역부족", "다크스웜을 깔아봤지만 소용없었음"]
+    ["다크스웜까지 깔았지만 역부족", "다크스웜을 깔아봤지만 소용없었음", "다크스웜 밑에서 같이 녹음"]
   ),
   devourer: pair(
     ["디바우러와 뮤탈을 섞어 하늘을 잡음", "뮤탈에 디바우러를 붙여 공중을 굳힘", "디바우러를 섞어 제공권을 가져감"],
@@ -160,45 +175,88 @@ const TEMPLATES: Record<string, Tpl> = {
     )}`,
   mech: pair(
     ["탱크와 골리앗을 앞세운 메카닉으로 한 걸음씩 밀고 나감", "메카닉으로 자리를 잡고 조금씩 전진함"],
-    ["메카닉으로 자리를 잡았지만 무너짐", "메카닉을 굴렸지만 밀림"]
+    ["메카닉으로 자리를 잡았지만 무너짐", "메카닉을 굴렸지만 밀림", "야심차게 조였다가 되레 뚫림"]
   ),
   valkyrie: pair(
     ["발키리를 띄워 오버로드 사냥에 나섬", "발키리로 오버로드부터 걷어냄"],
-    ["발키리로 하늘을 노렸지만 소용없었음", "발키리를 띄웠지만 늦었음"]
+    ["발키리로 하늘을 노렸지만 소용없었음", "발키리를 띄웠지만 늦었음", "발키리 모으다가 지상에서 망함"]
   ),
-  dropship: pair(
-    ["드랍십을 계속 돌려 뒤를 흔듦", "드랍십으로 본진을 쉴 새 없이 두드림"],
-    ["드랍십으로 흔들어봤지만 판을 못 바꿈", "드랍 견제를 돌렸지만 번번이 걷힘"]
-  ),
-  "sneak-rax": pair(
-    ["본진에서 한참 떨어진 자리에 몰래 배럭을 올려 허를 찌름", "몰래 배럭으로 허를 찌름"],
-    ["몰래 배럭을 시도했지만 들킴", "몰래 배럭을 올렸다가 일찍 들통남"]
-  ),
+  dropship: (c) => {
+    const of = victimPhrase(c);
+    return `${ga(c.who)} ${c.pick(
+      c.won
+        ? [`드랍십을 계속 돌려 ${of}뒤를 흔듦`, `드랍십으로 ${of}본진을 쉴 새 없이 두드림`]
+        : ["드랍십으로 흔들어봤지만 판을 못 바꿈", "드랍 견제를 돌렸지만 번번이 걷힘"]
+    )}`;
+  },
+  "sneak-rax": (c) => {
+    const at = targetPhrase(c);
+    return `${ga(c.who)} ${at}${c.pick(
+      c.won
+        ? ["몰래 배럭을 올려 허를 찌름", "몰래 배럭으로 뒤통수를 침"]
+        : ["몰래 배럭을 시도했지만 들킴", "몰래 배럭 야심차게 올렸다가 허무하게 들통남"]
+    )}`;
+  },
   "zealot-rush": (c) => {
     const g = num(c.p.gates, 2);
     const label = g === 2 ? "투게이트" : `${g}게이트`;
-    return `${ga(c.who)} ${c.pick(
+    const at = targetPhrase(c);
+    return `${ga(c.who)} ${at}${c.pick(
       c.won
-        ? [`${label} 질럿 러시로 초반을 잡음`, `${label}에서 질럿을 쏟아부어 초반을 가져감`]
-        : [`${label} 질럿 러시를 갔지만 막힘`, `${label} 질럿 러시로 밀었지만 걷힘`]
+        ? [`${label} 질럿 러시를 가 본진을 초토화`, `${label} 질럿 러시로 초반을 잡음`,
+           `${label}에서 질럿을 쏟아부어 초반을 가져감`]
+        : [`${label} 질럿 러시를 갔지만 막힘`, `${label} 질럿 러시로 밀었지만 걷힘`,
+           `야심찬 ${label} 질럿 러시가 헛발질로 끝남`]
     )}`;
   },
-  "cannon-rush": pair(
-    ["초반 포토 러시로 시작부터 흔들어 놓음", "포토 러시로 상대 앞마당을 헤집음"],
-    ["초반 포토 러시를 갔다가 도로 손해만 봄", "포토 러시로 찔렀다가 되레 뒤처짐"]
-  ),
+  "cannon-rush": (c) => {
+    const at = targetPhrase(c);
+    return `${ga(c.who)} ${at}${c.pick(
+      c.won
+        ? ["초반 포토 러시를 가 시작부터 흔들어 놓음", "포토 러시로 앞마당을 헤집음"]
+        : ["초반 포토 러시를 갔다가 도로 손해만 봄", "야심차게 포토 러시를 갔다가 망함"]
+    )}`;
+  },
   recall: pair(
     ["아비터 리콜로 뒤를 통째로 파고듦", "리콜로 본진 한복판에 병력을 떨굼"],
-    ["아비터 리콜까지 꺼냈지만 판을 못 뒤집음", "리콜을 썼지만 되돌리기엔 늦었음"]
+    ["아비터 리콜까지 꺼냈지만 판을 못 뒤집음", "리콜을 썼지만 되돌리기엔 늦었음", "리콜 한 번 써보고 허무하게 끝남"]
   ),
-  "shuttle-reaver": pair(
-    ["셔틀 리버로 쉴 새 없이 찔러 넣음", "셔틀에 리버를 태워 계속 헤집음"],
-    ["셔틀 리버로 찔러봤지만 막힘", "리버로 헤집었지만 번번이 잡힘"]
-  ),
-  shuttle: pair(
-    ["셔틀을 돌려 뒤를 흔듦", "셔틀 견제로 시선을 뺏음"],
-    ["셔틀로 흔들어봤지만 판을 못 바꿈", "셔틀 견제를 돌렸지만 안 통함"]
-  ),
+  // 리버 드랍 — 셔틀에 리버를 태워 일꾼을 지지는 그림(요청).
+  "shuttle-reaver": (c) => {
+    const of = victimPhrase(c);
+    return `${ga(c.who)} ${c.pick(
+      c.won
+        ? [`리버 드랍으로 ${of}일꾼을 쓸어담음`, `리버 드랍으로 ${of}본진을 쉴 새 없이 헤집음`]
+        : ["리버 드랍을 돌렸지만 번번이 잡힘", "리버 드랍 야심차게 갔다가 셔틀만 헌납함"]
+    )}`;
+  },
+  // 하이템플러 드랍 — 스톰 한 방에 일꾼이 녹는다(요청).
+  "templar-drop": (c) => {
+    const of = victimPhrase(c);
+    return `${ga(c.who)} ${c.pick(
+      c.won
+        ? [`하이템플러 드랍으로 ${of}일꾼을 지져버림`, `템플러를 태워 ${of}일꾼을 스톰으로 지짐`]
+        : ["하이템플러 드랍을 갔지만 막힘", "템플러 드랍 갔다가 스톰도 못 쓰고 잡힘"]
+    )}`;
+  },
+  // 러커/히드라 드랍 — 저그는 오버로드 수송 업그레이드가 곧 드랍 의도다(요청).
+  "zerg-drop": (c) => {
+    const kind = c.p.lurker ? "러커 드랍" : "히드라 드랍";
+    const of = victimPhrase(c);
+    return `${ga(c.who)} ${c.pick(
+      c.won
+        ? [`${kind}으로 ${of}뒤를 헤집음`, `오버로드에 태운 ${kind}으로 ${of}일꾼을 잡음`]
+        : [`${kind}을 갔지만 막힘`, `${kind} 갔다가 오버로드만 터짐`]
+    )}`;
+  },
+  shuttle: (c) => {
+    const of = victimPhrase(c);
+    return `${ga(c.who)} ${c.pick(
+      c.won
+        ? [`셔틀을 돌려 ${of}뒤를 흔듦`, `셔틀 견제로 ${of}시선을 뺏음`]
+        : ["셔틀로 흔들어봤지만 판을 못 바꿈", "셔틀 견제를 돌렸지만 안 통함"]
+    )}`;
+  },
   "center-photon": pair(
     ["센터에 포토를 박아 길을 끊음", "센터를 포토로 걸어 잠금"],
     ["센터에 포토를 박았지만 지켜내지 못함", "센터 포토를 박았다가 도로 뽑힘"]
@@ -219,7 +277,7 @@ const TEMPLATES: Record<string, Tpl> = {
       return `${neun(c.who)} ${c.pick([`${u}까지 꺼냈지만 판을 뒤집지 못함`, `${u}까지 갔지만 늦었음`])}`;
     }
     if (mode === "nothing") {
-      return `${neun(c.who)} ${c.pick(["제대로 싸워보지 못하고 무너짐", "손 쓸 새도 없이 무너짐"])}`;
+      return `${neun(c.who)} ${c.pick(["제대로 싸워보지 못하고 무너짐", "손 쓸 새도 없이 무너짐", "허무하게 당함"])}`;
     }
     if (!phrase) return null;
     if (mode === "pressed") {
@@ -260,8 +318,9 @@ const TEMPLATES: Record<string, Tpl> = {
     if (!t) return null;
     return `${ga(c.who)} ${c.pick(
       c.won
-        ? [`${t}까지 꺼내 씀`, `${ro(t)} 싸움을 유리하게 끌고 감`]
-        : [`${t}까지 썼지만 흐름을 되돌리지 못함`, `${reul(t)} 꺼냈지만 늦었음`]
+        ? [`${t}까지 꺼내 씀`, `${ro(t)} 싸움을 유리하게 끌고 감`,
+           ...(str(c.p.tech) === "Psionic Storm" ? ["스톰으로 상대 병력을 지져버림"] : [])]
+        : [`${t}까지 썼지만 흐름을 되돌리지 못함`, `${reul(t)} 꺼냈지만 늦었음`, `${ro(t)} 뭘 해보기도 전에 끝남`]
     )}`;
   },
   allin: (c) =>
@@ -270,8 +329,20 @@ const TEMPLATES: Record<string, Tpl> = {
     `${ga(c.who)} ${c.pick(
       c.p.team
         ? ["먼저 무너지며 전열이 갈림", "먼저 정리되며 한 명이 빠짐"]
-        : ["일찍 손을 놓음", "일찍 무너짐"]
+        : ["일찍 손을 놓음", "일찍 무너짐", "허무하게 먼저 정리됨"]
     )}`,
+
+  // 채팅에서 잡은 항복 선언(요청) — 승부가 어디서 끝났는지 말해주는 유일한 '사람의 말'이다.
+  gg: (c) => `${ga(c.who)} ${c.pick(["GG를 침", "GG 치고 나감", "일찌감치 GG"])}`,
+
+  // "유비의 바이오닉 한 방으로 관우의 저글링 성큰을 뚫음"(요청) — 양쪽을 한 문장에 담는다.
+  breakthrough: (c) => {
+    const push = unitPhrase(list(c.p.units));
+    const unit = UNIT_KO[str(c.p.unit)];
+    const def = DEFENSE_KO[str(c.p.def)];
+    if (!push || !unit || !def || !c.whom) return null;
+    return `${c.who}의 ${push} ${c.whom}의 ${unit} ${reul(def)} ${c.pick(["뚫음", "밀어버림", "걷어냄"])}`;
+  },
 
   // ── 맺음말 ──
   result: (c) => {
@@ -343,6 +414,7 @@ export function renderReplaySummary(
     const text = tpl({
       who,
       who2: joinNames((b.who2 ?? []).map(resolveName)),
+      whom: joinNames((b.whom ?? []).map(resolveName)),
       won: !!b.won,
       p: b.p ?? {},
       pick: (opts) => opts[seed % opts.length],
