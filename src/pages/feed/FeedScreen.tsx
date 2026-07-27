@@ -21,6 +21,7 @@ import { activeMemberSearchTerms, memberMatchesTerm, normalizeSearchText, splitS
 import { cx } from "../../utils/format";
 import { api } from "../../api/client";
 import { useCursorPagination } from "../../hooks/useCursorPagination";
+import { useKeyboardInset } from "../../hooks/useKeyboardInset";
 import { buildReplayDrafts, type ReplayDraft } from "../../utils/replayDraft";
 import { hasAppUpdatePreloadErrorOccurred } from "../../utils/appUpdate";
 import type { Challenge, FeedTargetType, Match, MatchSlot, MatchType, Member, RankSnapshot } from "../../types";
@@ -792,6 +793,17 @@ export default function FeedScreen() {
 
   // + 등록 메뉴(리플레이/너 나와!/일정) — 버튼 아래 작은 팝오버로 연다.
   const [addMenuOpen, setAddMenuOpen] = useState(false);
+  // 키보드가 뜨면 등록 FAB을 숨긴다 — 이 버튼의 bottom이 '탭바 높이 위'인데 정작 탭바는
+  // 키보드가 뜨면 숨어서, 버튼만 빈 자리에 남아 댓글 입력칸 위를 가린다.
+  // 연출은 넣지 않는다: 한 번 opacity+translateY 트랜지션으로 숨겨봤더니 키보드가 오르내리는
+  // 동안 값이 여러 번 갱신되며 버튼이 깜빡여 잔상처럼 보였다(지적: "탭바 숨길 때 고스트처럼
+  // 나타나는 게 생겼다"). visibility만 끄면 합성 그룹도, 중간 프레임도 생기지 않는다.
+  const keyboardInset = useKeyboardInset();
+  const fabHidden = keyboardInset > 0;
+  useEffect(() => {
+    // 버튼이 사라졌는데 메뉴만 공중에 남으면 안 된다.
+    if (fabHidden) setAddMenuOpen(false);
+  }, [fabHidden]);
 
   // 리플레이 등록 — 파일 선택 → 분석(buildReplayDrafts) → 검토 모달.
   const replayInputRef = useRef<HTMLInputElement>(null);
@@ -1049,7 +1061,10 @@ export default function FeedScreen() {
 
       {/* 등록 진입점 — 리플레이 / 너 나와! / 일정(추후 개발). 탭바 좌상단에 플로팅하는
           동그란 유리 + 버튼(요청). 메뉴는 버튼 위로 펼쳐진다. */}
-      <div className="scr-feed-add-fab-wrap scr-feed-add-wrap">
+      <div
+        className="scr-feed-add-fab-wrap scr-feed-add-wrap"
+        style={fabHidden ? { visibility: "hidden" } : undefined}
+      >
         <button
           type="button"
           className="scr-feed-add-fab"
