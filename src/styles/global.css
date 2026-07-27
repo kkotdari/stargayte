@@ -7529,7 +7529,13 @@ html.scr-light-theme .scr-comment-sheet { background: #ffffff; }
   border-bottom: 1px solid rgba(var(--overlay-rgb), 0.1);
   font-size: var(--fs-caption); font-weight: 700; color: var(--text);
 }
-.scr-comment-sheet-close { width: 28px; height: 28px; border: none; background: transparent; border-radius: 50%; }
+/* 아이콘(16px)이 28px 버튼 안에 가운데 있어, 버튼 오른쪽 끝을 여백선에 맞추면 아이콘은
+   그보다 6px 더 안쪽에 놓여 제목보다 들어가 보인다(지적). 그 6px만큼 버튼을 바깥으로
+   밀어 '아이콘'이 제목과 같은 선에 서게 한다 — 탭 영역은 28px 그대로다. */
+.scr-comment-sheet-close {
+  width: 28px; height: 28px; border: none; background: transparent; border-radius: 50%;
+  margin-right: -6px;
+}
 /* 최소 높이로 생긴 남는 공간은 목록이 먹는다(flex:1) — 입력줄은 늘 바닥에 붙고, 댓글이
    적으면 목록 위쪽부터 채워지며 아래가 빈다. */
 .scr-comment-sheet-body {
