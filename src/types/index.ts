@@ -214,9 +214,6 @@ export interface Match {
   // (replaySummaryData.ts 참고), 닉네임이나 표현이 나중에 바뀌어도 보는 시점의 값으로 읽힌다.
   // 사람이 쓴 글이 아니라 파생 데이터라 리플레이를 다시 올리면 덮어쓴다. 재료가 모자라면 null.
   summaryData: ReplaySummaryData | null;
-  // 구조화 이전에 등록된 경기가 들고 있는 옛 요약 문장 — 새로 만들지는 않고, summaryData가
-  // 없을 때 그대로 보여주기만 한다(닉네임 변경은 따라오지 않는다).
-  summary: string | null;
   // 이 경기에 달린 댓글(메모) — 목록 응답에 함께 실려 온다(오래된 순). 검색창에서 댓글
   // 내용으로도 필터하고, 펼침 시 하단 댓글 영역에 렌더한다.
   notes: MatchNote[];

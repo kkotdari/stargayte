@@ -288,7 +288,7 @@ export default function ReplayBatchButton() {
             matchType: filled.matchType, replay: filled.replay,
             mapName: filled.mapName || null, gameStartedAt: filled.gameStartedAt,
             durationSeconds: filled.durationSeconds,
-            summaryData: filled.summaryData, summary: null,
+            summaryData: filled.summaryData,
           };
           try {
             await addMatch(payload);
