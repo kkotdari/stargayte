@@ -1764,8 +1764,10 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    됐다(지적). 색을 바꾸는 게 아니라 알파를 낮춰야 한다: 같은 색 그대로 78%면 뒤 배경이
    비쳐 유리처럼 읽히면서도, 밑을 지나가는 데이터 칸은 여전히 가려진다(칸 자체가 표
    유리 위의 옅은 막대·숫자라 이 정도면 안 비친다). */
+/* 78% → 68%: 여전히 어둡다는 지적이 이어져 알파를 한 단계 더 낮춘다(요청: 좀만 더 투명).
+   밑을 지나는 데이터 칸은 표 유리 위의 옅은 막대·숫자라 이 정도까지는 비치지 않는다. */
 html:not(.scr-light-theme) .scr-stats-list-panel-v2 .scr-stat-name-cell, html:not(.scr-light-theme) .scr-stats-list-panel-v2 .scr-stat-name-head {
-  background-color: color-mix(in srgb, var(--panel-solid) 78%, transparent);
+  background-color: color-mix(in srgb, var(--panel-solid) 68%, transparent);
 }
 /* 라이트도 같은 이유로 알파를 낮춘다(요청) — 흰 배경이라 같은 %라도 더 투명해 보이므로
    다크(78%)보다 조금만 더 준다. */
