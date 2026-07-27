@@ -538,8 +538,11 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
             <div className="scr-feed-card-head" data-date-label={dateLabel}>
               <ClipboardList size={13} aria-hidden />
               {/* 묶음이면 라벨 자체가 몇 건인지 말해준다(요청) — 오른쪽 집계에 게임 수를
-                  또 적으면 중복이라, 거긴 참여 인원만 남긴다. */}
-              <span className="scr-feed-card-label">게임결과 {stack.items.length}건</span>
+                  또 적으면 중복이라, 거긴 참여 인원만 남긴다. 한 판이면 "1건"은 굳이
+                  붙이지 않는다(그 자체로 한 판이라는 뜻이 아니라 군더더기로 읽힌다). */}
+              <span className="scr-feed-card-label">
+                게임결과{stack.items.length > 1 ? ` ${stack.items.length}건` : ""}
+              </span>
               <span className="scr-feed-card-time">{dateLabel}</span>
               <span className="scr-feed-stack-sum-count">{participants.length}명 참여</span>
             </div>
@@ -813,11 +816,12 @@ export default function FeedScreen() {
           && filteredFeed[j].kind === "match"
           && sessionDateOf(filteredFeed[j] as MatchItem) === day
         ) j++;
-        if (j - i >= 2) {
-          out.push({ kind: "matchstack", time: it.time, date: day, items: filteredFeed.slice(i, j) as MatchItem[] });
-          i = j;
-          continue;
-        }
+        // 한 판짜리도 요약 카드로 낸다(요청) — 게임결과는 판 수와 상관없이 늘 "누가
+        // 있었는지"부터 보여주고, 자세히 보기로 카드를 편다. 예전엔 2판 이상만 묶어서
+        // 한 판일 때만 카드가 통째로 펼쳐진 채 나와 생김새가 갈렸다.
+        out.push({ kind: "matchstack", time: it.time, date: day, items: filteredFeed.slice(i, j) as MatchItem[] });
+        i = j;
+        continue;
       }
       out.push(it);
       i++;
@@ -1021,7 +1025,9 @@ export default function FeedScreen() {
               </div>
             ) : item.kind === "matchstack" ? (
               <MatchStack
-                key={`ms-${item.date}-${item.time}`}
+                // 같은 세션이라도 중간에 다른 종류 카드가 끼면 스택이 둘로 갈린다 —
+                // 날짜+시각만으로는 그 둘이 같은 키가 될 수 있어 첫 경기 id로 못박는다.
+                key={`ms-${item.items[0].match.id}`}
                 stack={item}
                 memberOf={memberOf}
                 onDeleted={handleMatchDeleted}
