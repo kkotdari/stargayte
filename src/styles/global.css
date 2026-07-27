@@ -1937,14 +1937,14 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
      대신 채움을 거의 불투명하게 올려 밑을 지나는 열을 확실히 가린다. */
   background-color: color-mix(in srgb, var(--panel-solid) 94%, transparent);
 }
-/* 다크는 --panel-solid가 거의 검정(#101011)이라, 유리로 배경이 비치는 표 본체 옆에서
-   유저열만 시커먼 띠로 도드라졌다(지적) — 흰색을 조금 섞어 표와 비슷한 밝기대로 올린다.
-   가리는 힘(94%)은 그대로라 밑을 지나가는 데이터 칸은 여전히 안 비친다. */
+/* 다크는 --panel-solid가 거의 검정(#101011)이라 94%로 깔면 유저열만 시커먼 띠가 된다
+   (지적) — 흰색을 섞어 밝기를 올려봤더니 이번엔 배경과 무관한 회색 스크림이 씌워진 꼴이
+   됐다(지적). 색을 바꾸는 게 아니라 알파를 낮춰야 한다: 같은 색 그대로 78%면 뒤 배경이
+   비쳐 유리처럼 읽히면서도, 밑을 지나가는 데이터 칸은 여전히 가려진다(칸 자체가 표
+   유리 위의 옅은 막대·숫자라 이 정도면 안 비친다). */
 html:not(.scr-light-theme) .scr-stats-list-panel-v2 .scr-stat-name-cell,
 html:not(.scr-light-theme) .scr-stats-list-panel-v2 .scr-stat-name-head {
-  background-color: color-mix(
-    in srgb, color-mix(in srgb, var(--panel-solid) 86%, white) 94%, transparent
-  );
+  background-color: color-mix(in srgb, var(--panel-solid) 78%, transparent);
 }
 /* 라이트도 같은 방식 — 흰 배경이라 같은 %라도 더 투명해 보여 조금 더 준다. */
 .scr-light-theme .scr-stats-list-panel-v2 .scr-stat-name-cell,
@@ -2034,7 +2034,9 @@ html:not(.scr-light-theme) .scr-stats-list-panel-v2 .scr-stat-name-head {
      헤더는 두 스텝 확대(micro→body — 아래 head 규칙). 유저 칸은 168→134px(20% 축소)
      이후 한 번 더 20% 축소해 107px(요청) — 좁아진 만큼 넘치는 닉네임은 말줄임표로
      자른다(아래 name-btn/stack의 min-width:0 + ellipsis). */
-  .scr-stats-list-panel-v2 .scr-stat-row { --scr-stat-name-w: 107px; font-size: var(--fs-caption); }
+  /* 107 → 118px(요청: 10% 확대) — 프사 24px + 갭/패딩을 빼면 닉네임에 남는 폭이 얼마
+     안 돼 말줄임이 너무 일찍 걸렸다. */
+  .scr-stats-list-panel-v2 .scr-stat-row { --scr-stat-name-w: 118px; font-size: var(--fs-caption); }
   .scr-stats-list-panel-v2 .scr-stat-name-cell {
     flex-direction: row; align-items: center; justify-content: center; gap: 7px;
     padding-left: 7px; padding-right: 7px;
@@ -2045,10 +2047,11 @@ html:not(.scr-light-theme) .scr-stats-list-panel-v2 .scr-stat-name-head {
   /* 모바일 프사 — 한 번 더 1스텝 축소(요청): 28px → 24px. 좁아진 유저 칸에
      [프사|닉네임]이 들어가게. */
   .scr-stats-list-panel-v2 .scr-stat-avatar-btn .scr-avatar { width: 24px !important; height: 24px !important; }
-  /* flex:1 1 auto + min-width:0 — 스택이 남는 폭만큼만 차지하고 부족하면 줄어들어야
-     안쪽 닉네임의 말줄임(ellipsis)이 실제로 작동한다(min-width가 auto면 내용 폭만큼
-     버텨서 칸을 넘어간다). */
-  .scr-stats-list-panel-v2 .scr-stat-name-stack { min-width: 0; flex: 1 1 auto; }
+  /* flex: 0 1 auto + min-width:0 — 줄어들 수는 있어야(안쪽 닉네임의 말줄임이 실제로
+     작동하려면 min-width가 0이어야 한다) 하지만 늘어나선 안 된다. 한때 1 1 auto를 줬더니
+     스택이 남는 폭을 다 먹어 프사만 왼쪽 끝으로 밀리고 닉네임 혼자 가운데로 떨어졌다
+     (지적: "왜 아바타와 닉네임이 따로 배치됐어") — 프사+닉네임은 한 덩어리로 칸 가운데다. */
+  .scr-stats-list-panel-v2 .scr-stat-name-stack { min-width: 0; flex: 0 1 auto; }
   .scr-stats-list-panel-v2 .scr-stat-name-head { padding-left: 7px; padding-right: 7px; }
   /* 닉네임도 1스텝 축소(요청): body → caption. 좁은 칸에서 넘치면 말줄임(base
      .scr-stat-name-btn이 이미 overflow/ellipsis/nowrap을 갖고 있다 — 여기선 폭이
