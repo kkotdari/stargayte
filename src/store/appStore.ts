@@ -7,11 +7,12 @@ import type {
 } from "../types";
 
 // 버전이 바뀐 걸 감지했을 때 AppUpdateNoticeModal에 넘기는 정보 — 변경 내용 문구(notes)는
-// 이제 버전별로 서버(app_versions.notes)에 있으므로, 활성 버전의 내용을 줄 단위로 담아 넘긴다.
+// 버전별로 서버(app_versions.notes)에 있고, 관리자가 입력한 원문 그대로 넘긴다(줄 단위로
+// 쪼개지 않는다 — 모달이 pre-wrap으로 그대로 렌더한다).
 export interface UpdateNotice {
   prevVersion: string;
   activeVersion: string;
-  notes: string[];
+  notes: string;
 }
 
 // 숨겨진 제어판 트리거 — 탭 타임스탬프는 리렌더를 일으킬 이유가 없는 순수 내부 상태라
@@ -27,9 +28,11 @@ let secretTapTimestamps: number[] = [];
 // 부르는 refreshAll()에서는 부르지 않는다 — "최초 접속시"만 알리면 되고, 세션 중간에
 // 다른 운영자가 배포해도 그때마다 알림이 뜨면 오히려 방해가 된다.
 const APP_VERSION_SEEN_KEY = "scr_last_seen_app_version";
-// 버전 안내 내용(한 덩어리 문자열)을 줄 단위 항목으로 쪼갠다 — 앞뒤 공백/빈 줄은 버린다.
-export function parseNoticeLines(notes: string | undefined | null): string[] {
-  return (notes ?? "").split("\n").map((s) => s.trim()).filter(Boolean);
+// 버전 안내 내용이 '보여줄 게 있는지'만 판단한다 — 내용 자체는 원문 그대로 쓰므로
+// 쪼개거나 다듬지 않는다(예전 parseNoticeLines는 불릿 목록용이었는데, 엔터마다 구분자가
+// 붙고 빈 줄이 사라져 자유도가 떨어진다는 지적으로 없앴다).
+export function hasNoticeContent(notes: string | undefined | null): boolean {
+  return (notes ?? "").trim().length > 0;
 }
 // 버전이 바뀌었으면(그리고 그 바뀐 이후 첫 접속이면) AppUpdateNoticeModal에 보여줄 정보를
 // 돌려주고, 저장된 값은 항상 최신으로 갱신한다 — window.alert 한 줄 대신 실제 변경 내용을
@@ -47,8 +50,8 @@ function computeUpdateNotice(
     if (!noticeEnabled) return null;
     if (!prev || prev === activeVersion) return null;
     const entry = appVersions.find((v) => versionNumber(v.number) === versionNumber(activeVersion));
-    const notes = parseNoticeLines(entry?.notes);
-    if (notes.length === 0) return null;
+    const notes = entry?.notes ?? "";
+    if (!hasNoticeContent(notes)) return null;
     return { prevVersion: prev, activeVersion, notes };
   } catch {
     // localStorage 접근 실패(프라이빗 모드 등)는 조용히 무시한다 — 알림 기능 하나 때문에

@@ -5,7 +5,7 @@ import { Spinner } from "../components/common/Feedback";
 import Select from "../components/common/Select";
 import ConfirmDialog from "../components/common/ConfirmDialog";
 import AppUpdateNoticeModal from "./AppUpdateNoticeModal";
-import { useAppStore, parseNoticeLines } from "../store/appStore";
+import { useAppStore, hasNoticeContent } from "../store/appStore";
 import { useLockBodyScroll } from "../utils/bodyScrollLock";
 import { versionNumber } from "../utils/appVersion";
 
@@ -191,7 +191,7 @@ export default function VersionManageModal({ onClose }: VersionManageModalProps)
               type="button"
               className="scr-btn scr-btn-ghost"
               onClick={() => setPreviewing(true)}
-              disabled={parseNoticeLines(draft).length === 0}
+              disabled={!hasNoticeContent(draft)}
             >
               미리보기
             </button>
@@ -222,7 +222,7 @@ export default function VersionManageModal({ onClose }: VersionManageModalProps)
       )}
 
       {previewing && (
-        <AppUpdateNoticeModal notes={parseNoticeLines(draft)} onClose={() => setPreviewing(false)} />
+        <AppUpdateNoticeModal notes={draft} onClose={() => setPreviewing(false)} />
       )}
     </div>,
     document.body,

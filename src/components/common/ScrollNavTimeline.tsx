@@ -36,10 +36,6 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
   // 트랙 높이 — 스크롤 중엔 안 변하므로 리사이즈 때만 갱신한다(매 프레임 실측하면
   // 레이아웃을 강제로 계산하게 되고 값도 미세하게 흔들린다).
   const trackHRef = useRef(0);
-  // 뷰포트 높이도 캐시한다 — iOS는 스크롤 중 주소창이 접히며 innerHeight/clientHeight가
-  // 계속 바뀌는데, 이걸 매 프레임 분모(max)에 쓰면 scrollTop이 같아도 비율이 출렁여
-  // thumb·알약이 덜덜 떨렸다(지적, 정수 px 반올림만으론 안 잡힌 진짜 원인).
-  const vhRef = useRef(0);
   const hideTimerRef = useRef<number | null>(null);
   const draggingRef = useRef(false);
 
@@ -76,21 +72,23 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
     return Math.min(1, Math.max(0, offset / max));
   };
 
-  // 뷰포트 높이 실측 — iOS 사파리는 아래로 스크롤하면 주소창/툴바가 접히며 실제 보이는
+  // 뷰포트 높이 — iOS 사파리는 아래로 스크롤하면 주소창/툴바가 접히며 실제 보이는
   // 뷰포트가 커지는데 documentElement.clientHeight는 접히기 전(작은) 레이아웃 뷰포트를
   // 반환할 때가 있어 max = scrollHeight - clientHeight가 실제보다 커진다 → 페이지 끝까지
   // 내려도 scrollTop/max < 1이라 thumb이 바닥에 못 닿는다(지적된 문제). 접힌 상태를
-  // 반영하는 innerHeight와 더 큰 값을 쓴다. 단 이 값을 매 스크롤 프레임 다시 재면
-  // 주소창이 접히는 동안 분모가 계속 변해 위치가 출렁이므로, 리사이즈 때만 갱신한다.
-  const measureVh = () => {
+  // 반영하는 innerHeight와 더 큰 값을 쓴다.
+  // 한때 이 값을 캐시했다가(분모가 흔들리는 걸 막으려고) 캐시가 낡으면 max가 어긋나
+  // scrollable이 잠깐 false로 뒤집히며 트랙이 언마운트→재측정됐고, 그 틈에 위치가 0으로
+  // 계산돼 thumb이 맨 위로 튀었다 돌아왔다(지적). 캐시 대신 매번 재되, 아래 update()와
+  // scrubTo()가 '같은 함수'를 써서 척도가 절대 어긋나지 않게 한다.
+  const currentVh = (): number => {
     const { clientHeight } = getScrollMetrics();
-    vhRef.current = Math.max(clientHeight, window.innerHeight || 0);
+    return Math.max(clientHeight, window.innerHeight || 0);
   };
 
   const update = () => {
     const { scrollTop, scrollHeight } = getScrollMetrics();
-    if (vhRef.current <= 0) measureVh();
-    const max = scrollHeight - vhRef.current;
+    const max = scrollHeight - currentVh();
     setScrollable(max > 40);
     const f = max > 0 ? Math.min(1, Math.max(0, scrollTop / max)) : 0;
     // 드래그(스크럽) 중에는 thumb 위치를 스크롤 읽기값으로 되돌리지 않는다 — 손가락이
@@ -98,7 +96,9 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
     // 옮긴 스크롤을 곧바로 다시 읽으면 아직 예전 값이 온다. 그 값으로 thumb을 되돌리면
     // 손가락 위치와 서로 밀치며 위아래로 요동쳤다(지적).
     // 정수 px로 반올림해 담는다 — 같은 픽셀이면 setState가 리렌더 자체를 건너뛴다.
-    if (!draggingRef.current) setPosPx(Math.round(f * trackHRef.current));
+    // 트랙을 아직 못 쟀으면(마운트 직후 등) 위치를 건드리지 않는다 — 0으로 써버리면
+    // thumb이 맨 위로 튄다.
+    if (!draggingRef.current && trackHRef.current > 0) setPosPx(Math.round(f * trackHRef.current));
     setDateLabel(currentDateLabel(max <= 0 || scrollTop >= max - 2));
     if (markers && markers.length > 0) {
       const next: Record<string, number | null> = {};
@@ -126,14 +126,13 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [headSelector]);
 
-  // 트랙 높이·뷰포트 높이 추적 — 둘 다 스크롤 중엔 안 변하므로 리사이즈 때만 갱신하고,
-  // 갱신 직후 한 번 위치를 다시 계산한다.
+  // 트랙 높이 추적 — 스크롤 중엔 안 변하므로 리사이즈/레이아웃 변화 때만 재고, 잰 직후
+  // 한 번 위치를 다시 계산한다.
   useEffect(() => {
     const track = trackRef.current;
     if (!track) return;
     const remeasure = () => {
       trackHRef.current = track.clientHeight;
-      measureVh();
       update();
     };
     const ro = new ResizeObserver(remeasure);
@@ -152,8 +151,8 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
   // 트랙 위 포인터 위치 → 스크롤 위치로 이동(스크럽).
   // thumb은 스크롤 읽기값이 아니라 '손가락 위치'로 바로 옮긴다(update()의 드래그 가드와
   // 한 쌍) — 옮긴 스크롤을 되읽어 위치를 정하면 iOS의 비동기 스크롤 지연 때문에 서로
-  // 밀치며 요동친다. 분모(vh)도 update()와 같은 캐시값을 써야 손가락 위치와 thumb이
-  // 같은 척도 위에 놓인다(한때 여기만 매번 새로 재서 둘이 어긋났다).
+  // 밀치며 요동친다. 분모(vh)는 update()와 같은 currentVh()를 써야 손가락 위치와 thumb이
+  // 같은 척도 위에 놓인다(한때 한쪽만 캐시를 써서 둘이 어긋났다).
   // 실제 스크롤은 프레임당 한 번으로 합친다 — pointermove마다 즉시 스크롤하면 화면
   // 전체를 그 횟수만큼 다시 그리느라 깜빡였다(지적).
   const pendingScrollRef = useRef<number | null>(null);
@@ -163,10 +162,9 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
     if (!track) return;
     const rect = track.getBoundingClientRect();
     const f = Math.min(1, Math.max(0, (clientY - rect.top) / rect.height));
-    setPosPx(Math.round(f * trackHRef.current));
-    if (vhRef.current <= 0) measureVh();
+    if (trackHRef.current > 0) setPosPx(Math.round(f * trackHRef.current));
     const { scrollHeight } = getScrollMetrics();
-    pendingScrollRef.current = f * Math.max(0, scrollHeight - vhRef.current);
+    pendingScrollRef.current = f * Math.max(0, scrollHeight - currentVh());
     if (!scrubRafRef.current) {
       scrubRafRef.current = requestAnimationFrame(() => {
         scrubRafRef.current = 0;

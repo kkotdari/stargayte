@@ -4872,8 +4872,12 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 /* ===== 앱 업데이트 안내 모달 ===== */
 .scr-update-notice-icon { color: var(--point); vertical-align: -2px; margin-right: 4px; }
 .scr-update-notice-title { font-weight: 700; margin: 0 0 6px; }
-.scr-update-notice-list { margin: 0 0 4px; padding-left: 20px; color: var(--muted); }
-.scr-update-notice-list li { padding: 3px 0; }
+/* 관리자가 입력한 원문 그대로 — 줄바꿈·빈 줄·들여쓰기를 보존한다(요청: 엔터마다 동그라미
+   구분자가 붙던 불릿 목록 폐기, 자유도 확보). 아주 긴 단어/URL은 칸을 넘지 않게 감싼다. */
+.scr-update-notice-body {
+  margin: 0 0 4px; color: var(--muted);
+  white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.6;
+}
 
 /* ===== 버전 안내 설정 모달 ===== */
 /* 제어판(PC 560px, 배경 이미지/최소높이로 큼직한 정사각형)보다 확실히 작고 가벼운 설정
