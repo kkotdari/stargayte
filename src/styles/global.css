@@ -5040,10 +5040,13 @@ body *::-webkit-scrollbar-corner { background: transparent; }
      iOS 26 사파리가 툴바로 오인하는 건 background-color/backdrop-filter가 직접 걸린
      경우라, box-shadow만 두는 건 그 판정과 무관하다(::before 주석 참고). */
   overflow: hidden;
-  /* 값은 실제로 화면에 반영되므로(위 overflow 주석) 은은한 수준으로 잡는다. */
+  /* 아래로 뻗는 양을 탭바와 화면 바닥 사이 틈 안에 들어오게 좁힌다 — 이 섬은 바닥에서
+     6px + 안전영역만 띄워져 있어서, 넓게 퍼지는 그림자는 뷰포트 밖으로 나가 하단에서
+     뚝 잘려 보였다(지적). 잘리는 경계는 뷰포트라 CSS로 없앨 수 없으므로, 번짐과 y
+     오프셋을 줄여 그림자가 애초에 화면 안에서 끝나게 한다(아래로 뻗는 총량 ≈ 7px). */
   box-shadow:
-    0 2px 8px rgba(0, 0, 0, 0.2),
-    0 10px 24px -8px rgba(0, 0, 0, 0.3);
+    0 1px 5px rgba(0, 0, 0, 0.18),
+    0 6px 14px -6px rgba(0, 0, 0, 0.26);
   /* 필터/검색창(.scr-filter-float-stack)과 같은 지속시간/이징으로 맞춰(요청: "숨기고
      나오는 애니메이션은 좀더 부드럽고 페이드아웃/인을 줘") 함께 사라지고 나타날 때
      한 세트처럼 보이게 한다. transform도 같이 걸어 아래로 슬라이드하며 빠져나가는
@@ -5098,8 +5101,8 @@ html.scr-light-theme .scr-mobile-tabbar::before {
 }
 html.scr-light-theme .scr-mobile-tabbar {
   box-shadow:
-    0 2px 8px rgba(0, 0, 0, 0.1),
-    0 10px 24px -8px rgba(0, 0, 0, 0.18);
+    0 1px 5px rgba(0, 0, 0, 0.09),
+    0 6px 14px -6px rgba(0, 0, 0, 0.16);
 }
 /* 아래로 스크롤하면 숨긴다(요청: "모바일 아래로 스크롤시 탭바 숨김(단 끝까지 내리면
    탭바 보임)") — 이제 오버레이라 #scroll-root 크기와 무관하게 순수 시각 효과만
