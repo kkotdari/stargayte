@@ -1937,6 +1937,15 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
      대신 채움을 거의 불투명하게 올려 밑을 지나는 열을 확실히 가린다. */
   background-color: color-mix(in srgb, var(--panel-solid) 94%, transparent);
 }
+/* 다크는 --panel-solid가 거의 검정(#101011)이라, 유리로 배경이 비치는 표 본체 옆에서
+   유저열만 시커먼 띠로 도드라졌다(지적) — 흰색을 조금 섞어 표와 비슷한 밝기대로 올린다.
+   가리는 힘(94%)은 그대로라 밑을 지나가는 데이터 칸은 여전히 안 비친다. */
+html:not(.scr-light-theme) .scr-stats-list-panel-v2 .scr-stat-name-cell,
+html:not(.scr-light-theme) .scr-stats-list-panel-v2 .scr-stat-name-head {
+  background-color: color-mix(
+    in srgb, color-mix(in srgb, var(--panel-solid) 86%, white) 94%, transparent
+  );
+}
 /* 라이트도 같은 방식 — 흰 배경이라 같은 %라도 더 투명해 보여 조금 더 준다. */
 .scr-light-theme .scr-stats-list-panel-v2 .scr-stat-name-cell,
 .scr-light-theme .scr-stats-list-panel-v2 .scr-stat-name-head {
@@ -2054,7 +2063,9 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   .scr-stats-list-panel-v2 .scr-stat-bar-top { font-size: var(--fs-caption); }
   .scr-stats-list-panel-v2 .scr-stat-bar-rate { font-size: var(--fs-caption); }
   .scr-stats-list-panel-v2 .scr-stat-row {
-    --scr-stat-col-w: 150px;
+    /* 데이터 칸 폭 축소(요청): 150 → 120px. 칸 안은 막대+숫자뿐이라 150px은 남는 여백이
+       컸고, 6칸이라 그 여백이 가로 스크롤 길이로 그대로 쌓였다(6×30 = 180px 단축). */
+    --scr-stat-col-w: 120px;
     /* 포인트 컬럼 포함 6칸 균등폭(요청). */
     grid-template-columns: var(--scr-stat-name-w) repeat(6, var(--scr-stat-col-w));
   }

@@ -98,6 +98,13 @@ export interface MainRaceParams {
 
 export const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:8000";
 
+// 이 화면이 운영 빌드인지 개발 서버인지 — 모든 요청에 X-Client-Env로 실어 보낸다.
+// 접속 기록을 남길지 말지를 백엔드가 이 값으로 판단한다(요청: "운영이라고 한 건 백엔드가
+// 아니라 프론트"). 백엔드의 ENVIRONMENT로 걸면 정작 막아야 할 경우 — 로컬 프론트가 운영
+// 백엔드를 바라보고 개발하는 경우 — 를 못 막고, 반대로 로컬 백엔드에서만 막힌다.
+// import.meta.env.PROD는 vite build면 true, vite dev 서버면 false다.
+const CLIENT_ENV = import.meta.env.PROD ? "production" : "development";
+
 interface AuthResponse {
   user: Member;
 }
@@ -166,6 +173,7 @@ const NO_REFRESH_RETRY_PATHS = ["/api/auth/login", "/api/auth/signup", "/api/aut
 async function request<T>(path: string, options: RequestInit = {}, retryOn401 = true): Promise<T> {
   const headers = new Headers(options.headers);
   headers.set("Content-Type", "application/json");
+  headers.set("X-Client-Env", CLIENT_ENV);
   if (accessToken) headers.set("Authorization", `Bearer ${accessToken}`);
 
   const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
