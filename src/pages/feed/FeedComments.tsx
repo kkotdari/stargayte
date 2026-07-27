@@ -516,7 +516,7 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
           {user && editingId === null && (
             // 입력칸 왼쪽에 내 아바타(요청) — 지금 누구 이름으로 쓰는지 보여준다.
             <div className="scr-comment-sheet-compose">
-              <Avatar member={user} size={26} />
+              <Avatar member={user} size={34} />
               {composer}
             </div>
           )}

@@ -7445,7 +7445,21 @@ html.scr-light-theme .scr-feed-add-fab {
   /* 윗변은 직선(요청) — 아래는 화면 끝이라 어차피 각진다. */
   border-radius: 0;
   margin: 0; border-top: none;
-  padding: 0 16px calc(10px + env(safe-area-inset-bottom, 0px));
+  /* 바닥 안전 공간(요청) — 세 가지를 다 넘겨야 입력칸이 안 가린다:
+     ① 사파리 접힌 주소창 알약(--vv-bottom-inset 실측, 탭바가 쓰는 값과 같다),
+     ② 홈 인디케이터 안전영역(PWA/전체화면),
+     ③ 둘 다 0인 기기(안드로이드 크롬·PC)에서도 화면 둥근 모서리를 피할 최소 여백.
+     탭바처럼 안전영역을 절반만 반영하지 않는다 — 탭바는 가장자리에서 떨어져 뜬 알약이지만
+     이 시트는 바닥에 붙은 패널이라 인디케이터 위를 그대로 침범한다. */
+  padding: 0 16px max(
+    calc(var(--vv-bottom-inset, 0px) + 10px),
+    calc(env(safe-area-inset-bottom, 0px) + 10px),
+    18px
+  );
+  /* 입력칸 글자를 16px로 키우면서(요청) 필드 높이도 같이 올린다 — 카드 안에서 쓰던 30px에
+     16px 글자를 넣으면 위아래가 꽉 낀다. 16px은 iOS가 포커스 시 화면을 확대하지 않는
+     최소 크기이기도 하다(그 이하면 자동 줌이 걸려 레이아웃이 통째로 틀어진다). */
+  --field-h: 40px;
   box-shadow:
     0 -18px 50px rgba(0, 0, 0, 0.6),
     0 -6px 18px rgba(0, 0, 0, 0.42),
@@ -7488,6 +7502,15 @@ html.scr-light-theme .scr-comment-sheet::before { background: rgba(255, 255, 255
 .scr-comment-sheet-compose > .scr-avatar { flex-shrink: 0; border-radius: 50% !important; }
 /* 컴포저(입력칸+등록 버튼)가 남은 폭을 다 쓰게 — 기본은 자기 내용만큼만 차지한다. */
 .scr-comment-sheet-compose > .scr-mreq-compose-row { flex: 1 1 auto; min-width: 0; margin-top: 0; }
+/* 글자 16px(요청). 카드 안 목록은 작은 폰트 그대로 두고 입력칸만 키운다. */
+.scr-comment-sheet-compose .scr-mreq-live-input { font-size: 16px; }
+/* 등록 버튼도 필드와 같은 40px 정사각으로 — .scr-match-notes가 30px로 못박아 둔 값을
+   덮는다(특이도 동일, 소스가 뒤라 이긴다). 아이콘도 한 단계 키운다. */
+.scr-comment-sheet-compose .scr-mreq-submit-btn {
+  flex-basis: 40px; width: 40px; height: 40px;
+  min-width: 40px; min-height: 40px; max-width: 40px; max-height: 40px;
+}
+.scr-comment-sheet-compose .scr-mreq-submit-btn svg { width: 17px; height: 17px; }
 .scr-comment-sheet .scr-match-note-err { margin: 6px 0 0; }
 
 /* 카드 안 미리보기 — 여기서는 읽기만 하고, 누르면 시트가 열린다(요청 2). */
