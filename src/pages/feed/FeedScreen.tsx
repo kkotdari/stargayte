@@ -195,9 +195,10 @@ function blurLeaves(el: HTMLElement): HTMLElement[] {
 }
 function setTransform(els: HTMLElement[], v: string): void {
   // 값이 있을 땐 translateZ(0)을 붙여 3D transform으로 만든다 — 잎이 애니메이션 내내 자기
-  // 합성 레이어에 머물러, 커밋 프레임에 레이어가 내려앉으며 목록 전체가 재래스터되는
-  // 사파리 깜빡임을 막는다(global.css .scr-feed-card 주석). 빈 값은 CSS의 translateZ(0)
-  // 베이스로 떨어지므로 그대로 ""로 둔다.
+  // 합성 레이어에 머문다(레이어 생성/파괴 반복 방지). 단 이것만으론 개폐 커밋 프레임의
+  // 통짜 번쩍임은 안 잡혔다(실기기 확인) — 원인은 레이어가 아니라 커밋 프레임의 즉시
+  // 스크롤 점프였고, 지금은 스크롤을 rAF로 나눠 옮긴다(MatchStack의 toggleOpen 위 주석).
+  // 빈 값은 CSS의 translateZ(0) 베이스로 떨어지므로 그대로 ""로 둔다.
   const val = v ? `${v} translateZ(0)` : "";
   for (const el of els) el.style.transform = val;
 }
