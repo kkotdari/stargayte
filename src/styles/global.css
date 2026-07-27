@@ -7983,7 +7983,27 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    같은 이유로 카드 등장 애니메이션도 opacity 없이 transform만 쓴다. */
 .scr-feed-stack-rest { display: grid; grid-template-rows: 0fr; }
 .scr-feed-stack-opened .scr-feed-stack-rest { grid-template-rows: 1fr; }
-.scr-feed-stack-rest-inner { overflow: hidden; min-height: 0; }
+/* 펼침/접힘 이동 중 클립 경계(앞 카드 윗모서리) 페이드 — 카드가 경계에서 뚝 잘리며
+   나타나고 사라지는 게 부자연스럽다는 지적. 경계 위 --stack-fade 높이만큼 그라디언트
+   마스크로 스르륵 처리한다. 이동 중에만 JS(.scr-feed-stack-motion)가 켠다 — 상시 켜면
+   정지 상태의 마지막 카드 밑단까지 흐려진다. 켜고 끄는 것도 뚝 바뀌지 않게(요청)
+   @property로 등록한 변수를 트랜지션해 페이드 높이 자체가 0↔56px로 부드럽게 자라고
+   줄어든다(미지원 브라우저는 트랜지션 없이 즉시 — 시각 저하만 소폭).
+   주의: mask는 조상에 걸리면 자손 backdrop-filter를 끊는다 — 지금은 카드 블러가 없어
+   (임시 땜빵) 안전. 카드 블러를 되살리면 이 방식은 재검토해야 한다. */
+@property --stack-fade {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+.scr-feed-stack-rest-inner {
+  overflow: hidden; min-height: 0;
+  --stack-fade: 0px;
+  -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - var(--stack-fade)), transparent 100%);
+  mask-image: linear-gradient(180deg, #000 calc(100% - var(--stack-fade)), transparent 100%);
+  transition: --stack-fade .24s ease;
+}
+.scr-feed-stack-motion .scr-feed-stack-rest-inner { --stack-fade: 56px; }
 /* 펼친 카드 사이 갭은 피드 리스트의 카드 갭(.scr-feed-list gap:20px)과 똑같이 통일한다
    (요청: "펼친 카드들 사이 갭이 원래 카드들 갭보다 작아 똑같이"). bottom 패딩(20px)도
    같은 값이라 마지막 카드→앞 카드 간격까지 일관. rest 높이가 커지지만 펼침/접기 연출은
