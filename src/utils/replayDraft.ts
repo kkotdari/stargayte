@@ -1,6 +1,7 @@
 import { todayStr } from "./date";
 import { parseReplayFile, ReplayParseError } from "./replayParser";
 import { matchReplayPlayerToMember } from "./replayMemberMatch";
+import { buildReplaySummary } from "./replaySummary";
 import { api } from "../api/client";
 import { isComputerSlot, newComputerSlotId } from "../constants/computerSlot";
 import { newUnregisteredSlotId } from "../constants/unregisteredSlot";
@@ -40,6 +41,9 @@ export interface ReplayDraft {
   // screp이 이 리플레이의 팀을 두 편으로 못 나눠서(일부 UMS 맵의 알려진 한계) team1에
   // 전원이 몰리고 team2가 비어있는 상태 — 자동 등록에 맡기지 않고 사람이 직접 편을 갈라야 한다.
   teamSplitUncertain: boolean;
+  // 리플레이에서 규칙으로 뽑아낸 경기 요약 문장(replaySummary.ts). 재료가 모자라면 null —
+  // 그땐 요약 없이 등록한다(틀린 문장보다 없는 편이 낫다).
+  summary: string | null;
   parseError: string | null;
   // 자동(중복/컴퓨터) 또는 수동으로 이 리플레이를 전체 등록 대상에서 뺀 상태 — 배열에서
   // 지우지 않고 계속 화면에 보여주면서 토글만 한다(전체 등록 시에만 건너뛴다).
@@ -111,6 +115,18 @@ async function buildDraft(file: File, members: Member[]): Promise<ReplayDraft> {
     const t1 = assign(parsed.team1);
     const t2 = assign(parsed.team2);
 
+    // 요약 문장은 회원 매칭이 끝난 뒤에 만든다 — 문장에 리플레이 원본 아이디가 아니라
+    // 우리 쪽 닉네임이 나와야 읽힌다. 매칭이 안 된 사람은 원본 이름 그대로 쓴다.
+    const nickByRawName = new Map<string, string>();
+    [...t1.rows, ...t2.rows].forEach((r) => {
+      const m = members.find((x) => x.id === r.memberId);
+      if (r.rawName && m) nickByRawName.set(r.rawName, m.nickname);
+    });
+    const summary = buildReplaySummary({
+      replay: parsed,
+      displayName: (raw) => nickByRawName.get(raw) ?? raw,
+    });
+
     return {
       fileName: file.name,
       mapName: parsed.mapName,
@@ -128,6 +144,7 @@ async function buildDraft(file: File, members: Member[]): Promise<ReplayDraft> {
       winnerSide: parsed.winnerSide,
       guessedObservers: parsed.guessedObservers,
       teamSplitUncertain: parsed.teamSplitUncertain,
+      summary,
       parseError: null,
       excluded: false,
       excludeReason: null,
@@ -150,6 +167,7 @@ async function buildDraft(file: File, members: Member[]): Promise<ReplayDraft> {
       winnerSide: null,
       guessedObservers: [],
       teamSplitUncertain: false,
+      summary: null,
       parseError: e instanceof ReplayParseError ? e.message : "리플레이를 분석하지 못했어요. 직접 입력해 주세요.",
       excluded: false,
       excludeReason: null,

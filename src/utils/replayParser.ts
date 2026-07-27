@@ -36,6 +36,31 @@ export interface ParsedReplayPlayer {
   // 리플레이 슬롯 타입이 "Computer"(AI)인 참가자 — 배틀태그가 있을 리 없으니 회원 매칭을
   // 아예 시도하지 않고 컴퓨터 슬롯으로 바로 채운다.
   isComputer: boolean;
+  // 경기 요약 문장(replaySummary.ts)을 만들기 위한 원재료. 커맨드 스트림을 못 읽었으면 null.
+  signals: ReplayPlayerSignals | null;
+}
+
+// 한 사람의 커맨드 스트림에서 뽑은 '전황' 재료. 숫자 지표(APM 등)와 달리 여기 값들은
+// 문장을 만들기 위한 것이라, 정확한 수치보다 "무엇을 주로 뽑았고 언제까지 살아있었나"가
+// 중요하다. 커맨드는 '명령'이지 '완성'이 아니라는 한계는 buildCount와 같다(위 주석 참고).
+export interface ReplayPlayerSignals {
+  /** 훈련·변태 커맨드로 센 유닛별 생산 커맨드 수(screp 영문명 그대로, 일꾼·보급 포함). */
+  unitCounts: Record<string, number>;
+  /** 유닛별 첫 생산 프레임 — "9분에 첫 캐리어" 같은 타이밍 이야기를 만들 때 쓴다. */
+  firstUnitFrame: Record<string, number>;
+  /** 건설·건물변태 커맨드로 센 건물별 수(확장 수, 테크 건물, 방어 건물 판정). */
+  buildingCounts: Record<string, number>;
+  /** 건물별 첫 건설 프레임 — 확장 타이밍/테크 타이밍용. */
+  firstBuildingFrame: Record<string, number>;
+  /** 연구한 테크(스톰/럴커 등)와 업그레이드 이름 — 순서대로. */
+  techNames: string[];
+  upgradeNames: string[];
+  /** 첫 커맨드 프레임 — 없으면 null(커맨드를 하나도 안 낸 사람). */
+  firstCmdFrame: number | null;
+  /** 마지막 커맨드 프레임. 경기 끝보다 한참 이르면 그 시점에 졌거나 나간 것으로 읽는다. */
+  lastCmdFrame: number | null;
+  /** 경기를 3등분한 구간별 커맨드 수 — "초반 열세였다가 후반에 역전" 같은 흐름 판정용. */
+  cmdCountByThird: [number, number, number];
 }
 
 export interface ParsedReplay {
@@ -118,6 +143,14 @@ interface ScrepPlayerDesc {
 interface ScrepCmd {
   PlayerID: number;
   Type?: { Name?: string };
+  /** 커맨드가 난 프레임 — 타이밍(러시/역전/탈락 시점) 판정에 쓴다. */
+  Frame?: number;
+  /** 훈련·건설 커맨드의 대상 유닛/건물. screp은 종족 접두어 없는 영문명을 준다
+   *  ("Zergling", "High Templar", "Siege Tank (Tank Mode)" 등). */
+  Unit?: { Name?: string } | string;
+  /** 연구 커맨드의 대상 — Tech는 "Psionic Storm" 같은 이름, Upgrade는 업그레이드 이름. */
+  Tech?: { Name?: string } | string;
+  Upgrade?: { Name?: string } | string;
 }
 
 interface ScrepResult {
@@ -146,6 +179,68 @@ const PRODUCTION_CMD_NAMES = new Set<string>([
   "Building Morph", // 저그 건물 변태(해처리→레어, 크립콜로니→성큰 등)
   "Hatch",          // 저그 부화 관련 커맨드
 ]);
+
+// 유닛을 '뽑는' 커맨드 / 건물을 '짓는' 커맨드 — 둘을 갈라 세야 조합 이야기(유닛)와
+// 운영 이야기(확장·테크·방어건물)를 따로 할 수 있다.
+const UNIT_TRAIN_CMD_NAMES = new Set<string>(["Train", "Train Fighter", "Unit Morph"]);
+const BUILD_CMD_NAMES = new Set<string>(["Build", "Building Morph", "Hatch"]);
+
+function emptySignals(): ReplayPlayerSignals {
+  return {
+    unitCounts: {}, firstUnitFrame: {},
+    buildingCounts: {}, firstBuildingFrame: {},
+    techNames: [], upgradeNames: [],
+    firstCmdFrame: null, lastCmdFrame: null, cmdCountByThird: [0, 0, 0],
+  };
+}
+
+// screp은 Unit/Tech/Upgrade를 {Name} 객체로 주지만, 버전에 따라 문자열일 수도 있어 둘 다 받는다.
+function nameOf(v: { Name?: string } | string | undefined): string | null {
+  if (!v) return null;
+  return (typeof v === "string" ? v : v.Name) ?? null;
+}
+
+// 커맨드 스트림 한 번 훑기로 사람별 요약 재료를 모은다.
+function collectSignals(cmds: ScrepCmd[], totalFrames: number | null): Map<number, ReplayPlayerSignals> {
+  const out = new Map<number, ReplayPlayerSignals>();
+  const at = (id: number) => {
+    let s = out.get(id);
+    if (!s) { s = emptySignals(); out.set(id, s); }
+    return s;
+  };
+  for (const c of cmds) {
+    const s = at(c.PlayerID);
+    const frame = typeof c.Frame === "number" ? c.Frame : null;
+    if (frame !== null) {
+      if (s.firstCmdFrame === null || frame < s.firstCmdFrame) s.firstCmdFrame = frame;
+      if (s.lastCmdFrame === null || frame > s.lastCmdFrame) s.lastCmdFrame = frame;
+      if (totalFrames) {
+        // 0/1/2 = 초반/중반/후반. 마지막 프레임이 정확히 총 프레임이면 인덱스가 3이 되므로 자른다.
+        const third = Math.min(2, Math.floor((frame / totalFrames) * 3));
+        s.cmdCountByThird[third] += 1;
+      }
+    }
+    const cmdName = c.Type?.Name;
+    if (cmdName && UNIT_TRAIN_CMD_NAMES.has(cmdName)) {
+      const unit = nameOf(c.Unit);
+      if (unit) {
+        s.unitCounts[unit] = (s.unitCounts[unit] ?? 0) + 1;
+        if (frame !== null && s.firstUnitFrame[unit] === undefined) s.firstUnitFrame[unit] = frame;
+      }
+    } else if (cmdName && BUILD_CMD_NAMES.has(cmdName)) {
+      const b = nameOf(c.Unit);
+      if (b) {
+        s.buildingCounts[b] = (s.buildingCounts[b] ?? 0) + 1;
+        if (frame !== null && s.firstBuildingFrame[b] === undefined) s.firstBuildingFrame[b] = frame;
+      }
+    }
+    const tech = nameOf(c.Tech);
+    if (tech) s.techNames.push(tech);
+    const upgrade = nameOf(c.Upgrade);
+    if (upgrade) s.upgradeNames.push(upgrade);
+  }
+  return out;
+}
 
 export async function parseReplayFile(file: File): Promise<ParsedReplay> {
   const buf = new Uint8Array(await file.arrayBuffer());
@@ -180,6 +275,15 @@ export async function parseReplayFile(file: File): Promise<ParsedReplay> {
   const buildCountOf = (playerId: number): number | null =>
     buildCountByPlayerId ? buildCountByPlayerId.get(playerId) ?? 0 : null;
 
+  // 요약 문장 재료 — 위 생산 커맨드 집계와 같은 스트림을 한 번 더 훑지 않도록 여기서 함께
+  // 모은다. 구간(3등분) 기준은 헤더의 총 프레임이다.
+  const totalFrames = typeof res.Header.Frames === "number" && res.Header.Frames > 0
+    ? res.Header.Frames
+    : null;
+  const signalsByPlayerId = cmds ? collectSignals(cmds, totalFrames) : null;
+  const signalsOf = (playerId: number): ReplayPlayerSignals | null =>
+    signalsByPlayerId ? signalsByPlayerId.get(playerId) ?? emptySignals() : null;
+
   // 확실한 관전자(Observer 플래그/슬롯 타입)는 여기서 걸러낸다. 조작량만으로 의심되는
   // 사람(guessedObservers)은 확정 근거가 아니므로 걸러내지 않고 로스터에 그대로 남겨
   // 검토 화면에서 사람이 눈으로 확인하게 한다(아래 참고).
@@ -197,6 +301,7 @@ export async function parseReplayFile(file: File): Promise<ParsedReplay> {
         effectiveCmdCount: desc?.EffectiveCmdCount ?? null,
         buildCount: buildCountOf(p.ID),
         isComputer: p.Type?.Name === "Computer",
+        signals: signalsOf(p.ID),
       };
     });
 

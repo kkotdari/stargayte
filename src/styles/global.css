@@ -7633,3 +7633,10 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
 
 /* 카드 안 미리보기 — 여기서는 읽기만 하고, 누르면 시트가 열린다(요청 2). */
 .scr-match-notes-preview { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+
+/* 리플레이 검토 화면의 경기 요약 미리보기 — 등록 전에 문장을 눈으로 확인하는 자리다. */
+.scr-replay-summary-preview {
+  margin: 6px 0 2px; padding: 7px 10px; border-radius: 8px;
+  background: rgba(var(--overlay-rgb), 0.06);
+  font-size: var(--fs-caption); font-weight: 600; color: var(--text); line-height: 1.5;
+}

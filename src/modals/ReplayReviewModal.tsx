@@ -296,6 +296,11 @@ export default function ReplayReviewModal({
                       )}
                     </div>
 
+                    {/* 리플레이에서 규칙으로 뽑은 경기 요약(replaySummary.ts) — 등록 전에
+                        문장이 말이 되는지 여기서 눈으로 확인한다. 재료가 모자라 못 만들면
+                        아예 안 보인다. */}
+                    {d.summary && <div className="scr-replay-summary-preview">{d.summary}</div>}
+
                     {d.parseError && <div className="scr-err">{d.parseError}</div>}
 
                     {/* 일부 UMS 맵(슈퍼빨무 등)은 관전 슬롯이 섞이면 screp이 실제 참가자
