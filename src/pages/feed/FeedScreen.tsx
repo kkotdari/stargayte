@@ -32,10 +32,14 @@ const MAX_REPLAY_FILES = 20;
 // 겹침 스택 펼침/접힘에서 카드 한 장이 나타나거나 사라지는 시간과, 카드 사이의 시차.
 // 공간(높이)이 다 열린 뒤에 카드가 한 장씩 등장한다(요청) — 그 반대로 접을 땐 카드가
 // 먼저 사라지고 공간이 닫힌다.
-const CARD_FADE_MS = 170;
-const CARD_STAGGER_MS = 55;
-// 요약 카드가 자리를 내주고/되찾는 데 쓰는 페이드.
-const SUMMARY_FADE_MS = 150;
+const CARD_FADE_MS = 150;
+const CARD_STAGGER_MS = 45;
+// 여닫이는 정해진 순서대로 한 단계씩 진행한다(요청):
+//   펼침  요약 사라짐 → 자리 열림 + 카드 한 장씩 → 테두리 → "간단히 보기"
+//   접힘  "간단히 보기" → 테두리 → 카드 한 장씩 + 자리 닫힘 → 요약 나타남
+const SUMMARY_FADE_MS = 120;
+const FRAME_FADE_MS = 120;
+const BUTTON_FADE_MS = 120;
 
 // 피드 — 커뮤니티 활동(경기 결과, 너 나와! 일정)을 한 타임라인으로 보여주는 홈 화면.
 // 타임라인 기준: 너 나와!는 경기 예정 일시, 경기는 리플레이의 게임 시작 시각.
@@ -378,7 +382,8 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     );
     const list = restListRef.current;
     const sumCard = sumInner?.firstElementChild as HTMLElement | null;
-    if (!root || !inner || !sumInner || !list || !sumCard) return;
+    const btn = inner?.querySelector<HTMLElement>(":scope > .scr-feed-stack-toggle-collapse");
+    if (!root || !inner || !sumInner || !list || !sumCard || !btn) return;
 
     // 펼침/접힘에서 한 장씩 등장·퇴장시킬 카드 래퍼들.
     const cards = Array.from(
@@ -388,6 +393,8 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       inner.style.height = "";
       sumInner.style.height = "";
       sumCard.style.opacity = "";
+      list.style.borderColor = "";
+      btn.style.opacity = "";
       cards.forEach((c) => { c.style.opacity = ""; c.style.transform = ""; });
     };
     const cleanup = () => {
@@ -411,40 +418,56 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     const sumFull = sumCard.getBoundingClientRect().height;
     // 높이 연출은 예전보다 짧게 — 이제 그 구간엔 빈 공간만 열리고 카드는 그 뒤에 나오므로
     // 오래 끌 이유가 없다.
-    const dur = Math.min(420, 260 + Math.round(full * 0.08));
+    const dur = Math.min(360, 240 + Math.round(full * 0.07));
+    // 테두리 색은 CSS가 정한 값을 그대로 쓰고, 투명 ↔ 그 값으로만 오간다(요소 opacity를
+    // 쓰면 안쪽 카드까지 함께 흐려진다).
+    const frameColor = getComputedStyle(list).borderTopColor;
     // 시작 높이를 인라인으로 '지금 당장' 박는다 — WAAPI fill에만 맡기면 iOS가 첫 프레임에
     // 적용하지 않아 열린 상태가 한 번 스쳐 보인다(이 파일 곳곳에서 반복 확인된 함정).
+    // 시작 상태를 인라인으로 먼저 박는다 — WAAPI fill에만 맡기면 iOS가 첫 프레임에 적용하지
+    // 않아 끝 상태가 한 번 스쳐 보인다(이 파일 곳곳에서 반복 확인된 함정).
     inner.style.height = open ? "0px" : `${full}px`;
     sumInner.style.height = open ? `${sumFull}px` : "0px";
-    // 카드·요약도 시작 상태를 먼저 박는다 — 펼칠 땐 투명하게 시작해야 공간이 열리는 동안
-    // 미리 비치지 않는다(지적: "접고 펼칠 때 카드가 미리 보여서").
-    if (open) cards.forEach((c) => { c.style.opacity = "0"; c.style.transform = "translateY(6px)"; });
-    else sumCard.style.opacity = "0";
+    if (open) {
+      cards.forEach((c) => { c.style.opacity = "0"; c.style.transform = "translateY(6px)"; });
+      list.style.borderColor = "transparent";
+      btn.style.opacity = "0";
+    } else {
+      sumCard.style.opacity = "0";
+    }
 
-    // 순서: (펼침) 요약이 접히며 자리 → 카드 하나씩  /  (접힘) 카드 하나씩 → 자리가 요약으로.
+    // ── 순서표 ──
     const cardsSpan = CARD_FADE_MS + Math.max(0, cards.length - 1) * CARD_STAGGER_MS;
-    const cardsStart = open ? dur : 0;
+    // 펼침: 요약 사라짐 → 자리 열림 → 카드 → 테두리 → 버튼
+    // 접힘: 버튼 → 테두리 → 카드 → 자리 닫힘 → 요약 나타남
+    const summaryAt = open ? 0 : BUTTON_FADE_MS + FRAME_FADE_MS + cardsSpan + dur;
+    const heightAt = open ? SUMMARY_FADE_MS : BUTTON_FADE_MS + FRAME_FADE_MS + cardsSpan;
+    const cardsAt = open ? heightAt + dur : BUTTON_FADE_MS + FRAME_FADE_MS;
+    const frameAt = open ? cardsAt + cardsSpan : BUTTON_FADE_MS;
+    const buttonAt = open ? frameAt + FRAME_FADE_MS : 0;
 
     const anims: Animation[] = [];
     // 두 래퍼 높이는 항상 같은 구간에 함께 움직인다 — 하나는 줄고 하나는 늘어 총 높이가
     // 매끄럽게 이어진다(따로 돌리면 중간에 스택이 접혔다 펴지는 것처럼 튄다).
-    const heightDelay = open ? 0 : cardsStart + cardsSpan;
     anims.push(inner.animate(
       [{ height: open ? "0px" : `${full}px` }, { height: open ? `${full}px` : "0px" }],
-      { duration: dur, easing: "cubic-bezier(0.32, 0.72, 0, 1)", fill: "both", delay: heightDelay },
+      { duration: dur, easing: "cubic-bezier(0.32, 0.72, 0, 1)", fill: "both", delay: heightAt },
     ));
     anims.push(sumInner.animate(
       [{ height: open ? `${sumFull}px` : "0px" }, { height: open ? "0px" : `${sumFull}px` }],
-      { duration: dur, easing: "cubic-bezier(0.32, 0.72, 0, 1)", fill: "both", delay: heightDelay },
+      { duration: dur, easing: "cubic-bezier(0.32, 0.72, 0, 1)", fill: "both", delay: heightAt },
     ));
-    // 요약 카드는 자리가 다 만들어진 뒤에 나타난다(펼칠 땐 자리가 사라지기 전에 먼저 지운다).
     anims.push(sumCard.animate(
       [{ opacity: open ? 1 : 0 }, { opacity: open ? 0 : 1 }],
-      {
-        duration: SUMMARY_FADE_MS, fill: "both",
-        easing: open ? "ease-in" : "ease-out",
-        delay: open ? 0 : heightDelay + dur,
-      },
+      { duration: SUMMARY_FADE_MS, fill: "both", easing: open ? "ease-in" : "ease-out", delay: summaryAt },
+    ));
+    anims.push(list.animate(
+      [{ borderColor: open ? "transparent" : frameColor }, { borderColor: open ? frameColor : "transparent" }],
+      { duration: FRAME_FADE_MS, fill: "both", easing: "linear", delay: frameAt },
+    ));
+    anims.push(btn.animate(
+      [{ opacity: open ? 0 : 1 }, { opacity: open ? 1 : 0 }],
+      { duration: BUTTON_FADE_MS, fill: "both", easing: open ? "ease-out" : "ease-in", delay: buttonAt },
     ));
     // 카드는 하나씩(요청) — 펼칠 땐 공간이 다 열린 뒤 위에서부터, 접을 땐 아래에서부터
     // 먼저 걷어낸다. 카드에 opacity를 걸어도 되는 이유: 피드 카드는 불투명 배경이라
@@ -458,7 +481,7 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
         ],
         {
           duration: CARD_FADE_MS,
-          delay: cardsStart + order * CARD_STAGGER_MS,
+          delay: cardsAt + order * CARD_STAGGER_MS,
           easing: open ? "cubic-bezier(0.22, 1, 0.36, 1)" : "ease-in",
           fill: "both",
         },
@@ -492,6 +515,10 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
               <ClipboardList size={13} aria-hidden />
               <span className="scr-feed-card-label">게임결과</span>
               <span className="scr-feed-card-time">{dateLabel}</span>
+              {/* 집계는 헤더 오른쪽 끝에(요청) — 게임 수가 먼저, 인원이 뒤. */}
+              <span className="scr-feed-stack-sum-count">
+                {stack.items.length}게임 <span className="scr-feed-stack-sum-sep">/</span> {participants.length}명 참여
+              </span>
             </div>
             <div className="scr-feed-stack-sum-label">참가자</div>
             <ul className="scr-feed-stack-sum-players">
@@ -502,9 +529,6 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
                 </li>
               ))}
             </ul>
-            <div className="scr-feed-stack-sum-count">
-              {participants.length}명 참여 <span className="scr-feed-stack-sum-sep">/</span> {stack.items.length}게임
-            </div>
             <button
               type="button" className="scr-feed-stack-toggle"
               onClick={() => toggleOpen(true)} tabIndex={open ? -1 : 0}

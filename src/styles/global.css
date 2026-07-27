@@ -7088,10 +7088,13 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   font-size: var(--fs-micro); font-weight: 600; color: var(--text);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+/* 헤더 오른쪽 끝 집계(요청) — 시각 옆 남는 폭을 밀어 오른쪽에 붙인다. */
 .scr-feed-stack-sum-count {
-  padding: 10px 16px 0; text-align: center;
-  font-size: var(--fs-caption); font-weight: 800; color: var(--dim);
+  margin-left: auto; white-space: nowrap;
+  font-size: var(--fs-micro); font-weight: 800; color: var(--dim);
 }
+/* 요약 카드엔 우상단 케밥이 없어 헤더가 그 자리(44px)를 비워둘 이유가 없다. */
+.scr-feed-stack-sum-card .scr-feed-card-head { padding-right: 16px; }
 /* 두 값을 나누는 구분자만 한 톤 흐리게 — 숫자가 먼저 읽히게 한다. */
 .scr-feed-stack-sum-sep { color: var(--muted); font-weight: 600; margin: 0 2px; }
 
