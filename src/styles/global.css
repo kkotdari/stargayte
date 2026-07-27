@@ -6300,6 +6300,11 @@ html.scr-snap-today { scroll-snap-type: y proximity; scroll-padding-top: calc(va
     color-mix(in srgb, var(--timeline-blue) 78%, transparent)
   );
 }
+/* 무한스크롤로 문서가 길어진 직후에만 위치를 미끄러지게 한다(ScrollNavTimeline의 settling
+   주석) — 평상시 스크롤엔 트랜지션이 없어 지연도, 잔상도 없다. transform이 아니라 top을
+   옮기므로 예전처럼 합성 잔상(두 개로 보임)이 생기지 않는다. */
+.scr-scroll-timeline-settling .scr-scroll-timeline-thumb,
+.scr-scroll-timeline-settling .scr-scroll-timeline-date { transition: top .3s ease-out; }
 .scr-scroll-timeline-thumb {
   position: absolute; left: 50%; width: 12px; height: 12px; border-radius: 50%;
   background: var(--timeline-blue); transform: translate(-50%, -50%);

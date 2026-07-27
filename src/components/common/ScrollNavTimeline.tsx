@@ -32,6 +32,16 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
   const trackRef = useRef<HTMLDivElement>(null);
   const hideTimerRef = useRef<number | null>(null);
   const draggingRef = useRef(false);
+  // 무한스크롤로 문서가 길어진 직후인지 — 그때만 thumb/날짜 알약을 애니메이션으로 옮긴다.
+  // 피드는 바닥에 닿을 때마다 한 페이지(100건)를 이어붙이는데, thumb 위치는
+  // scrollTop/(문서높이-뷰포트)라 그 순간 분모가 확 커지며 위치가 뚝 떨어진다 —
+  // 스크롤은 그대로인데 thumb만 위로 도약했다가 계속 스크롤하면 되돌아오는 게 "튐"의
+  // 정체다(측정 방식 문제가 아니라 무한스크롤 구조 자체의 성질이라, 계산부를 아무리
+  // 고쳐도 남아 있었다). 도약 자체는 의미상 맞으므로 없애지 않고, 그 순간에만 짧게
+  // 미끄러지게 해서 눈에 튀지 않게 한다. 평상시 스크롤엔 트랜지션이 없어 지연이 없다.
+  const [settling, setSettling] = useState(false);
+  const lastScrollHeightRef = useRef(0);
+  const settleTimerRef = useRef<number | null>(null);
 
   // 지금 상단에 스티키로 핀된 날짜 헤더의 라벨 — 현재 위치를 "며칠"인지로 보여준다.
   // atBottom이면(더 스크롤할 여지가 없는 맨 끝) 마지막 헤더를 그냥 그대로 쓴다 — 마지막
@@ -68,6 +78,13 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
 
   const update = () => {
     const { scrollTop, clientHeight, scrollHeight } = getScrollMetrics();
+    // 문서 길이가 바뀌었으면(=페이지가 이어붙었으면) 잠깐 애니메이션 모드로 둔다.
+    if (lastScrollHeightRef.current && scrollHeight !== lastScrollHeightRef.current) {
+      setSettling(true);
+      if (settleTimerRef.current) window.clearTimeout(settleTimerRef.current);
+      settleTimerRef.current = window.setTimeout(() => setSettling(false), 340);
+    }
+    lastScrollHeightRef.current = scrollHeight;
     // iOS 사파리는 아래로 스크롤하면 주소창/툴바가 접히며 실제 보이는 뷰포트가 커지는데
     // documentElement.clientHeight는 접히기 전(작은) 레이아웃 뷰포트를 반환할 때가 있어
     // max = scrollHeight - clientHeight가 실제보다 커진다 → 페이지 끝까지 내려도
@@ -100,6 +117,7 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
     return () => {
       off();
       if (hideTimerRef.current) window.clearTimeout(hideTimerRef.current);
+      if (settleTimerRef.current) window.clearTimeout(settleTimerRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [headSelector]);
@@ -133,7 +151,11 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
   if (!scrollable) return null;
 
   return (
-    <div className={cx("scr-scroll-timeline", visible && "scr-scroll-timeline-visible")}>
+    <div className={cx(
+      "scr-scroll-timeline",
+      visible && "scr-scroll-timeline-visible",
+      settling && "scr-scroll-timeline-settling",
+    )}>
       <span className="scr-scroll-timeline-end">{topLabel}</span>
       <div
         ref={trackRef}
