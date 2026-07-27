@@ -5,6 +5,7 @@ import Avatar from "../../components/common/Avatar";
 import { Spinner } from "../../components/common/Feedback";
 import { useLockBodyScroll } from "../../utils/bodyScrollLock";
 import { useIsMobile } from "../../hooks/useIsMobile";
+import { useEditableFocused } from "../../hooks/useEditableFocused";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 import { useAppStore } from "../../store/appStore";
 import { api } from "../../api/client";
@@ -301,12 +302,65 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
   // PC는 화면이 넓고 키보드가 본문을 가리지 않으니 기존의 인라인 방식 그대로다(요청: 모바일만).
   const mobile = useIsMobile();
   const [sheetOpen, setSheetOpen] = useState(false);
+  const sheetRef = useRef<HTMLDivElement>(null);
   const sheetBodyRef = useRef<HTMLDivElement>(null);
-  const openSheet = () => { setErr(null); setEditingId(null); setSheetOpen(true); };
-  const closeSheet = () => { setEditingId(null); setSheetOpen(false); };
+  // 입력칸에 포커스가 있으면(=키보드가 올라오면) 시트 바닥 여백을 걷어 키보드에 딱 붙인다
+  // (요청: "키보드 있는 데까지 아래로 덮게"). 그 여백은 홈 인디케이터/주소창을 피하려던
+  // 것인데, 키보드가 올라온 동안엔 그 자리를 키보드가 이미 덮고 있어 비워둘 이유가 없다.
+  const typing = useEditableFocused();
+  const closingRef = useRef(false);
+  const closeAnimRef = useRef<Animation | null>(null);
+  const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const openSheet = () => {
+    // 내려가는 중에 다시 열면 그 연출을 걷어낸다 — 안 그러면 '열린' 상태로 미끄러져 사라진 뒤
+    // 뒤늦게 도착한 close의 완료 콜백이 시트를 언마운트해 버린다.
+    closeAnimRef.current?.cancel();
+    closeAnimRef.current = null;
+    closingRef.current = false;
+    if (sheetRef.current) sheetRef.current.style.transform = "";
+    setErr(null); setEditingId(null); setSheetOpen(true);
+  };
+  // 닫기는 내려가는 연출이 끝난 뒤에 언마운트한다 — 바로 지우면 시트가 툭 사라진다(요청:
+  // 여닫을 때 트랜지션). CSS 트랜지션이 아니라 WAAPI인 이유는, 요소가 사라지는 쪽은
+  // 트랜지션이 걸릴 대상 자체가 없어져 끝을 기다릴 수 없기 때문.
+  const closeSheet = () => {
+    const el = sheetRef.current;
+    if (closingRef.current) return;
+    if (!el || reducedMotion()) { setEditingId(null); setSheetOpen(false); return; }
+    closingRef.current = true;
+    // 키보드도 시트와 함께 내려가야 한다 — 포커스를 남겨두면 시트만 사라지고 키보드가 뜬 채 남는다.
+    (document.activeElement as HTMLElement | null)?.blur?.();
+    const a = el.animate(
+      [{ transform: "translateY(0)" }, { transform: "translateY(100%)" }],
+      { duration: 220, easing: "cubic-bezier(0.4, 0, 1, 1)", fill: "both" },
+    );
+    closeAnimRef.current = a;
+    void a.finished.then(() => {
+      closeAnimRef.current = null;
+      setEditingId(null);
+      setSheetOpen(false);
+      closingRef.current = false;
+    }).catch(() => { /* openSheet가 취소함 */ });
+  };
   useEffect(() => { if (!mobile) setSheetOpen(false); }, [mobile]);
   // 시트가 떠 있는 동안 배경(본문)으로 가는 스크롤/클릭을 막고, 바깥 탭이면 닫는다.
   useLockBodyScroll(mobile && sheetOpen, closeSheet);
+  // 열릴 때 아래에서 올라온다. 시작 위치를 인라인으로 먼저 박는다 — WAAPI fill에만 맡기면
+  // iOS가 첫 프레임에 적용하지 않아 열린 자리가 한 번 스쳐 보인다(FeedScreen에서도 같은 함정).
+  useLayoutEffect(() => {
+    const el = sheetRef.current;
+    if (!sheetOpen || !el || reducedMotion()) return;
+    el.style.transform = "translateY(100%)";
+    const a = el.animate(
+      [{ transform: "translateY(100%)" }, { transform: "translateY(0)" }],
+      { duration: 280, easing: "cubic-bezier(0.32, 0.72, 0, 1)", fill: "both" },
+    );
+    void a.finished.then(() => {
+      try { a.cancel(); } catch { /* 이미 끝남 */ }
+      el.style.transform = "";
+    }).catch(() => {});
+    return () => { try { a.cancel(); } catch { /* 이미 끝남 */ } };
+  }, [sheetOpen]);
   // 목록은 오래된 순으로 쌓이므로(create가 뒤에 붙인다) 열자마자 맨 아래(최신)로 내린다.
   // 댓글이 늘어날 때도 방금 쓴 것이 보이게 같이 내린다.
   useLayoutEffect(() => {
@@ -496,7 +550,11 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
           높이는 댓글 목록만큼 자라다가 화면 절반 언저리에서 멈춘다(요청, CSS max-height).
           목록은 오래된 순 그대로 두고 스크롤만 최신으로 내린다(요청 3), 입력창은 맨 아래(요청 4). */}
       {mobile && sheetOpen && createPortal(
-        <div className="scr-comment-sheet scr-feed-comments scr-match-notes" role="dialog" aria-label="댓글">
+        <div
+          ref={sheetRef}
+          className={cx("scr-comment-sheet scr-feed-comments scr-match-notes", typing && "scr-comment-sheet-typing")}
+          role="dialog" aria-label="댓글"
+        >
           <div className="scr-comment-sheet-head">
             <span className="scr-comment-sheet-title">댓글 {notes.length}</span>
             <button type="button" className="scr-icon-btn scr-comment-sheet-close" onClick={closeSheet} aria-label="닫기">

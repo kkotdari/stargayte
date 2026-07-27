@@ -7437,7 +7437,10 @@ html.scr-light-theme .scr-feed-add-fab {
   /* 탭바(55)보다 위, 모달(100)보다 아래 — 시트 안에서 연 삭제 확인창이 시트에 가리지 않는다. */
   z-index: 90;
   display: flex; flex-direction: column;
-  /* 높이는 내용만큼 자라고(요청), 화면 절반 언저리에서 멈춘다(요청: "화면 반정도 높이"). */
+  /* 높이는 내용만큼 자라고(요청), 화면 절반 언저리에서 멈춘다(요청: "화면 반정도 높이").
+     댓글이 한두 개뿐이어도 시트로 보이도록 최소 높이를 넉넉히 잡는다(요청) — 안 그러면
+     입력줄만 붙은 얇은 띠가 돼 "바텀시트가 열렸다"가 아니라 툴바가 하나 뜬 것처럼 보인다. */
+  min-height: 40vh; min-height: 40dvh;
   max-height: 56vh; max-height: 56dvh;
   /* 윗변은 직선(요청) — 아래는 화면 끝이라 어차피 각진다. */
   border-radius: 0;
@@ -7474,6 +7477,13 @@ html.scr-light-theme .scr-comment-sheet {
     0 -1px 0 rgba(0, 0, 0, 0.08);
 }
 html.scr-light-theme .scr-comment-sheet::before { background: rgba(255, 255, 255, 0.72); }
+/* 키보드가 올라온 동안(입력칸 포커스)엔 바닥 여백을 걷어 입력줄을 키보드에 딱 붙인다
+   (요청: "키보드 있는 데까지 아래로 덮게"). 위 여백은 홈 인디케이터/사파리 주소창을
+   피하려던 것인데, 그 자리를 이미 키보드가 덮고 있어 비워둘 이유가 없다 — 그대로 두면
+   입력줄과 키보드 사이에 40px 넘는 빈 띠가 남는다.
+   연출은 넣지 않는다 — 키보드가 오르내리는 동안 값이 트랜지션되면 잔상처럼 끌린다
+   (탭바/FAB 숨김에서 같은 이유로 즉시 처리한다). */
+.scr-comment-sheet-typing { padding-bottom: 8px; }
 /* 목록이 이 아래로 스크롤해 들어가므로 경계선을 둔다 — 없으면 스크롤된 글이 제목 줄에
    그대로 붙어 어디까지가 헤더인지 안 보인다. */
 .scr-comment-sheet-head {
@@ -7483,8 +7493,10 @@ html.scr-light-theme .scr-comment-sheet::before { background: rgba(255, 255, 255
   font-size: var(--fs-caption); font-weight: 700; color: var(--text);
 }
 .scr-comment-sheet-close { width: 28px; height: 28px; border: none; background: transparent; border-radius: 50%; }
+/* 최소 높이로 생긴 남는 공간은 목록이 먹는다(flex:1) — 입력줄은 늘 바닥에 붙고, 댓글이
+   적으면 목록 위쪽부터 채워지며 아래가 빈다. */
 .scr-comment-sheet-body {
-  flex: 0 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden;
+  flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden;
   /* 시트 안에서 끝까지 스크롤해도 제스처가 뒷 페이지로 새지 않게(실드와 한 세트). */
   overscroll-behavior: contain; touch-action: pan-y;
 }
