@@ -259,6 +259,14 @@ function NoteComposer({
   );
 }
 
+// 시트를 화면 밖으로 완전히 내리는 데 필요한 이동량(px). translateY(100%)를 쓸 수 없는
+// 이유: 시트 박스는 화면 아래로 --sheet-skirt(60vh)만큼 더 내려 잡혀 있어(global.css) 그
+// 100%가 '보이는 높이'보다 훨씬 크다. 화면 바닥에서 시트 윗변까지의 거리가 곧 보이는
+// 높이라, 치마 크기를 몰라도 정확히 나온다.
+function hiddenOffset(el: HTMLElement): number {
+  return Math.max(0, window.innerHeight - el.getBoundingClientRect().top);
+}
+
 function formatCommentTime(iso: string): string {
   const d = new Date(iso);
   const mm = `${d.getMonth() + 1}`.padStart(2, "0");
@@ -332,7 +340,7 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
     // 일으켜서, 먼저 부르면 첫 프레임이 그만큼 늦게 나가 손가락을 뗀 뒤 멈칫해 보인다.
     // 닫는 연출은 짧고 뒤로 갈수록 급하게(요청: 반응 빠르게, 가속 더) — easeInCubic.
     const a = el.animate(
-      [{ transform: "translateY(0)" }, { transform: "translateY(100%)" }],
+      [{ transform: "translateY(0)" }, { transform: `translateY(${hiddenOffset(el)}px)` }],
       { duration: 160, easing: "cubic-bezier(0.32, 0, 0.67, 0)", fill: "both" },
     );
     // 키보드도 시트와 함께 내려가야 한다 — 포커스를 남겨두면 시트만 사라지고 키보드가 뜬 채 남는다.
@@ -353,9 +361,10 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
   useLayoutEffect(() => {
     const el = sheetRef.current;
     if (!sheetOpen || !el || reducedMotion()) return;
-    el.style.transform = "translateY(100%)";
+    const dy = hiddenOffset(el);
+    el.style.transform = `translateY(${dy}px)`;
     const a = el.animate(
-      [{ transform: "translateY(100%)" }, { transform: "translateY(0)" }],
+      [{ transform: `translateY(${dy}px)` }, { transform: "translateY(0)" }],
       { duration: 280, easing: "cubic-bezier(0.32, 0.72, 0, 1)", fill: "both" },
     );
     void a.finished.then(() => {
