@@ -7307,13 +7307,6 @@ html:not(.scr-light-theme) .scr-feed-comments .scr-mreq-editor .scr-mreq-live-in
 .scr-feed-add-fab-wrap {
   position: fixed; z-index: 56; left: 20px;
   bottom: calc(var(--scr-float-bottom) + var(--mobile-footer-h) + 12px);
-  transition: opacity .18s ease, transform .18s ease;
-}
-/* 키보드가 뜨는 동안 숨김 — 탭바(.scr-mobile-tabbar-hidden)와 같은 연출/같은 신호로
-   맞춘다. 이 버튼의 bottom이 '탭바 높이 위'라, 탭바만 숨고 이 버튼이 남으면 빈 자리에
-   홀로 뜨는 데다 그 자리가 곧 포커스된 입력칸이 밀려 올라오는 자리다(FeedScreen 주석). */
-.scr-feed-add-fab-wrap-hidden {
-  opacity: 0; transform: translateY(24px); pointer-events: none;
 }
 .scr-feed-add-fab {
   width: 52px; height: 52px; border-radius: 50%;
