@@ -12,7 +12,7 @@ import { attachPopover } from "../utils/popover";
 import { useIsNarrow } from "../utils/useIsNarrow";
 import { useHideOnScrollDown } from "../hooks/useHideOnScrollDown";
 import { swallowNextClick } from "../utils/bodyScrollLock";
-import { useKeyboardInset } from "../hooks/useKeyboardInset";
+import { useEditableFocused } from "../hooks/useEditableFocused";
 import { useAppStore } from "../store/appStore";
 import { isAdminRole } from "../constants/roles";
 import { useLightTheme } from "../utils/theme";
@@ -39,10 +39,12 @@ export default function Header({
   const scrollHidden = useHideOnScrollDown(screen);
   // 키보드가 뜨면 탭바를 자동으로 숨긴다(요청: "키보드 활성화시 자동으로 탭바 숨기기") —
   // 스크롤 방향과 무관한 별도 신호라 OR로 합친다(둘 중 하나라도 숨김 조건이면 숨김).
-  const keyboardInset = useKeyboardInset();
+  // 키보드 높이를 재는 대신 '입력칸에 포커스가 갔는가'로 판단한다 — 실측은 디바운스·문턱
+  // 때문에 키보드가 이미 올라오는 중에야 걸려서, 그 사이 탭바가 잔상처럼 끌렸다(지적).
+  const editing = useEditableFocused();
   // 아래로 스크롤 = 완전 숨김이 아니라 60% 축소(요청) — 완전 숨김은 키보드가 떠 있을 때만.
-  const tabBarHidden = keyboardInset > 0;
-  const tabBarMini = scrollHidden && keyboardInset === 0;
+  const tabBarHidden = editing;
+  const tabBarMini = scrollHidden && !editing;
 
   // 라이트 테마 — 흰 배경 + 검은 글씨 기조로 바꾸는 토글(발표/인쇄 등에서 색상 없이 보고
   // 싶을 때). 로그인 화면(AuthScreen)에도 같은 토글이 따로 있어 로그인 전에도 켤 수

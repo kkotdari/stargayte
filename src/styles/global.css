@@ -7440,3 +7440,11 @@ html.scr-light-theme .scr-feed-add-fab {
   .scr-photo-large { width: auto; max-width: 100%; max-height: 100%; }
   .scr-photo-close { top: calc(10px + var(--safe-top)); right: 12px; }
 }
+
+/* 등록 FAB 숨김 — 입력칸에 포커스가 갔을 때(=모바일 키보드가 뜰 때) 붙는다. 탭바가 뜨는
+   폭(860px 이하)에서만 실제로 숨긴다: PC에도 이 버튼이 뜨지만 거기선 키보드가 화면을
+   가리지 않으므로 검색창에 포커스했다고 사라지면 안 된다. 연출은 넣지 않는다 —
+   페이드/슬라이드로 숨기면 키보드가 오르내리는 동안 잔상처럼 보였다(지적). */
+@media (max-width: 860px) {
+  .scr-feed-add-fab-wrap-hidden { visibility: hidden; pointer-events: none; }
+}

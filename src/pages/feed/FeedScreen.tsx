@@ -21,7 +21,7 @@ import { activeMemberSearchTerms, memberMatchesTerm, normalizeSearchText, splitS
 import { cx } from "../../utils/format";
 import { api } from "../../api/client";
 import { useCursorPagination } from "../../hooks/useCursorPagination";
-import { useKeyboardInset } from "../../hooks/useKeyboardInset";
+import { useEditableFocused } from "../../hooks/useEditableFocused";
 import { buildReplayDrafts, type ReplayDraft } from "../../utils/replayDraft";
 import { hasAppUpdatePreloadErrorOccurred } from "../../utils/appUpdate";
 import type { Challenge, FeedTargetType, Match, MatchSlot, MatchType, Member, RankSnapshot } from "../../types";
@@ -495,6 +495,12 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
         ":scope > .scr-feed-stack-peekwrap > .scr-feed-stack-peek",
       );
       if (peek) { peek.style.transform = ""; peek.style.transformOrigin = ""; }
+      // 접힘이 확정된(rest가 0fr) 이 프레임에서 비로소 클립을 푼다 — 이제 열려 있는 높이
+      // 자체가 0이라 풀어도 드러날 게 없다(closeStack의 clipTo 주석 참고).
+      const restInner = root.querySelector<HTMLElement>(
+        ":scope > .scr-feed-stack-rest > .scr-feed-stack-rest-inner",
+      );
+      if (restInner) restInner.style.clipPath = "";
       return;
     }
 
@@ -725,8 +731,11 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     const finish = () => {
       if (!closingRef.current) return;
       closingRef.current = false;
-      // 커밋되면 rest가 0fr로 접히므로 클립은 걷어도 화면 변화가 없다.
-      clipOff();
+      // 클립은 여기서 걷지 않는다 — 걷으면 rest가 아직 열려 있는 상태(0fr 커밋 전)에서 한
+      // 프레임 동안 통째로 드러나, 아래 피드 카드 사이 갭으로 스택 카드가 비치며 깜빡였다
+      // (지적: "애니메이션이 끝나는 시점에 뒤에 스택 카드들이 비쳐 보이고 깜빡임").
+      // 완전히 닫힌 값으로 확정해 두고, 실제 해제는 접힘이 커밋된 뒤(!open 분기)에 한다.
+      clipTo(1);
       // 커밋 프레임이 이어받도록 종료 상태를 인라인으로 박고 애니메이션 객체는 정리한다.
       window.scrollTo({ top: S1 - A, behavior: "instant" });
       setTransform(belowLeaves, `translateY(${-dist}px)`);
@@ -818,8 +827,7 @@ export default function FeedScreen() {
   // 연출은 넣지 않는다: 한 번 opacity+translateY 트랜지션으로 숨겨봤더니 키보드가 오르내리는
   // 동안 값이 여러 번 갱신되며 버튼이 깜빡여 잔상처럼 보였다(지적: "탭바 숨길 때 고스트처럼
   // 나타나는 게 생겼다"). visibility만 끄면 합성 그룹도, 중간 프레임도 생기지 않는다.
-  const keyboardInset = useKeyboardInset();
-  const fabHidden = keyboardInset > 0;
+  const fabHidden = useEditableFocused();
   useEffect(() => {
     // 버튼이 사라졌는데 메뉴만 공중에 남으면 안 된다.
     if (fabHidden) setAddMenuOpen(false);
@@ -1081,10 +1089,13 @@ export default function FeedScreen() {
 
       {/* 등록 진입점 — 리플레이 / 너 나와! / 일정(추후 개발). 탭바 좌상단에 플로팅하는
           동그란 유리 + 버튼(요청). 메뉴는 버튼 위로 펼쳐진다. */}
-      <div
-        className="scr-feed-add-fab-wrap scr-feed-add-wrap"
-        style={fabHidden ? { visibility: "hidden" } : undefined}
-      >
+      {/* 숨김 클래스는 항상 붙이되 실제 적용은 CSS가 모바일 폭에서만 한다 — 이 버튼은
+          PC에서도 뜨는데, 거기선 키보드가 화면을 가리지 않으므로 검색창에 포커스했다고
+          사라지면 안 된다. */}
+      <div className={cx(
+        "scr-feed-add-fab-wrap scr-feed-add-wrap",
+        fabHidden && "scr-feed-add-fab-wrap-hidden",
+      )}>
         <button
           type="button"
           className="scr-feed-add-fab"
