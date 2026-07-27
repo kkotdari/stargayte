@@ -216,7 +216,9 @@ function NoteComposer({
             autoComplete="off"
           />
         </div>
-        {!isEmpty && (
+        {/* 수정 중(onCancel 있음)이면 내용이 비어도 취소 버튼을 남긴다 — 예전엔 !isEmpty
+            조건이라, 수정하다 글자를 다 지우면 되돌아갈 길이 사라졌다(지적). */}
+        {(!isEmpty || onCancel) && (
           <button
             type="button"
             className="scr-mreq-clear-btn"
@@ -717,7 +719,10 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
         document.body,
       )}
 
-      {deleteTarget && (
+      {/* 삭제 확인창은 body로 올린다 — 이 컴포넌트는 .scr-app 안에 있고 그 조상이 z-index를
+          가진 쌓임맥락을 만들어, 안에서 z-index를 아무리 올려도 body 직속인 시트(z-index 90)
+          위로 못 올라간다(지적: 컨펌창이 모달 뒤에 뜬다). */}
+      {deleteTarget && createPortal(
         <ConfirmDialog
           title="메모를 삭제할까요?"
           message="삭제하면 되돌릴 수 없어요."
@@ -725,7 +730,8 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
           cancelLabel="취소"
           onConfirm={() => void remove(deleteTarget.id)}
           onCancel={() => setDeleteTarget(null)}
-        />
+        />,
+        document.body,
       )}
     </div>
   );

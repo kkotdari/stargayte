@@ -7549,6 +7549,11 @@ html.scr-light-theme .scr-comment-sheet { background: #ffffff; }
   overscroll-behavior: contain; touch-action: pan-y;
 }
 .scr-comment-sheet-empty { margin: 14px 0; text-align: center; font-size: var(--fs-micro); color: var(--muted); }
+/* 수정/삭제 아이콘도 닫기(X)와 같은 이유로 여백선보다 안쪽에 앉는다 — 아이콘(13px)이
+   패딩 3px짜리 버튼 안에 있고, 댓글 항목(.scr-mreq-item)이 좌우 2px을 더 갖기 때문이다.
+   합 5px만큼 묶음을 바깥으로 밀어 아이콘을 헤더의 X와 같은 선에 세운다(지적: 닫기 버튼보다
+   오른쪽 여백이 커 보인다). */
+.scr-comment-sheet .scr-mreq-item-actions { margin-right: -5px; }
 /* 입력칸은 목록과 분리돼 맨 아래에 고정(요청 4) — 목록이 길어져도 자리를 안 뺏긴다.
    왼쪽엔 내 아바타를 동그랗게(요청) — 지금 누구 이름으로 쓰는지 보여준다. */
 /* 입력줄 위 구분선은 두지 않는다(요청) — 목록 끝과 입력줄 사이는 여백만으로 나눈다. */
