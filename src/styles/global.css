@@ -6258,11 +6258,13 @@ html.scr-snap-today { scroll-snap-type: y proximity; scroll-padding-top: calc(va
     color-mix(in srgb, var(--timeline-blue) 78%, transparent)
   );
 }
+/* top:0 고정 + 세로 위치는 인라인 transform(정수 px)이 담당한다 — ScrollNavTimeline의
+   렌더 주석 참고(서브픽셀 재래스터로 덜덜 떨리던 문제). */
 .scr-scroll-timeline-thumb {
-  position: absolute; left: 50%; width: 12px; height: 12px; border-radius: 50%;
+  position: absolute; left: 50%; top: 0; width: 12px; height: 12px; border-radius: 50%;
   background: var(--timeline-blue); transform: translate(-50%, -50%);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--timeline-blue) 26%, transparent), 0 1px 4px rgba(0, 0, 0, 0.3);
-  z-index: 1;
+  z-index: 1; will-change: transform;
 }
 /* "오늘" 눈금 — 트랙 위 오늘 위치에 짧은 가로선 + 라벨. 썸이 지나가며 여기서 딱 걸린다.
    라벨을 트랙 왼쪽으로 띄우던 이전 방식은 현재 위치 알약(.scr-scroll-timeline-date,
@@ -6306,7 +6308,8 @@ html.scr-snap-today { scroll-snap-type: y proximity; scroll-padding-top: calc(va
 }
 /* 현재 상단에 핀된 날짜를 알약으로 — 트랙 왼쪽에 붙여 현재 위치를 "며칠"인지로 보여준다. */
 .scr-scroll-timeline-date {
-  position: absolute; right: 100%; margin-right: 8px; transform: translateY(-50%);
+  position: absolute; right: 100%; top: 0; margin-right: 8px; transform: translateY(-50%);
+  will-change: transform;
   white-space: nowrap; font-size: var(--fs-caption); font-weight: 700;
   /* 완전 불투명(--panel-solid)이던 알약을 반투명으로(요청: "타임라인 다크 라이트에서 탭
      투명도 높여줘") — --panel-solid가 테마별 색을 갖고 있어 다크/라이트 모두 한 규칙로 덮인다. */
@@ -8021,27 +8024,10 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    같은 이유로 카드 등장 애니메이션도 opacity 없이 transform만 쓴다. */
 .scr-feed-stack-rest { display: grid; grid-template-rows: 0fr; }
 .scr-feed-stack-opened .scr-feed-stack-rest { grid-template-rows: 1fr; }
-/* 펼침/접힘 이동 중 클립 경계(앞 카드 윗모서리) 페이드 — 카드가 경계에서 뚝 잘리며
-   나타나고 사라지는 게 부자연스럽다는 지적. 경계 위 --stack-fade 높이만큼 그라디언트
-   마스크로 스르륵 처리한다. 이동 중에만 JS(.scr-feed-stack-motion)가 켠다 — 상시 켜면
-   정지 상태의 마지막 카드 밑단까지 흐려진다. 켜고 끄는 것도 뚝 바뀌지 않게(요청)
-   @property로 등록한 변수를 트랜지션해 페이드 높이 자체가 0↔56px로 부드럽게 자라고
-   줄어든다(미지원 브라우저는 트랜지션 없이 즉시 — 시각 저하만 소폭).
-   주의: mask는 조상에 걸리면 자손 backdrop-filter를 끊는다 — 지금은 카드 블러가 없어
-   (임시 땜빵) 안전. 카드 블러를 되살리면 이 방식은 재검토해야 한다. */
-@property --stack-fade {
-  syntax: "<length>";
-  inherits: false;
-  initial-value: 0px;
-}
-.scr-feed-stack-rest-inner {
-  overflow: hidden; min-height: 0;
-  --stack-fade: 0px;
-  -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - var(--stack-fade)), transparent 100%);
-  mask-image: linear-gradient(180deg, #000 calc(100% - var(--stack-fade)), transparent 100%);
-  transition: --stack-fade .24s ease;
-}
-.scr-feed-stack-motion .scr-feed-stack-rest-inner { --stack-fade: 56px; }
+/* (클립 경계 그라디언트 페이드는 제거 — 카드가 앞 카드 윗모서리에서 뚝 잘리는 걸
+   부드럽게 하려 했지만 오히려 이상해 보인다는 지적. 지금은 앞 카드가 그냥 카드 경계로
+   덮는다.) */
+.scr-feed-stack-rest-inner { overflow: hidden; min-height: 0; }
 /* 펼친 카드 사이 갭은 피드 리스트의 카드 갭(.scr-feed-list gap:20px)과 똑같이 통일한다
    (요청: "펼친 카드들 사이 갭이 원래 카드들 갭보다 작아 똑같이"). bottom 패딩(20px)도
    같은 값이라 마지막 카드→앞 카드 간격까지 일관. rest 높이가 커지지만 펼침/접기 연출은

@@ -29,6 +29,8 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
   const [fraction, setFraction] = useState(0);
   const [markerFractions, setMarkerFractions] = useState<Record<string, number | null>>({});
   const [dateLabel, setDateLabel] = useState<string | null>(null);
+  // 트랙 높이 — thumb/날짜 알약을 %가 아니라 '정수 px'로 앉히기 위해 실측한다(아래 주석).
+  const [trackH, setTrackH] = useState(0);
   const trackRef = useRef<HTMLDivElement>(null);
   const hideTimerRef = useRef<number | null>(null);
   const draggingRef = useRef(false);
@@ -104,6 +106,16 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [headSelector]);
 
+  // 트랙 높이 추적 — 스크롤 중엔 안 바뀌므로 리사이즈 때만 갱신한다.
+  useEffect(() => {
+    const track = trackRef.current;
+    if (!track) return;
+    const ro = new ResizeObserver(() => setTrackH(track.clientHeight));
+    ro.observe(track);
+    setTrackH(track.clientHeight);
+    return () => ro.disconnect();
+  }, [scrollable]);
+
   // 트랙 위 포인터 위치 → 스크롤 위치로 즉시 이동(스크럽).
   const scrubTo = (clientY: number) => {
     const track = trackRef.current;
@@ -148,12 +160,23 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
             <div key={m.key} className={m.className} style={{ top: `${(markerFractions[m.key] as number) * 100}%` }} />
           )
         ))}
+        {/* thumb·날짜 알약은 top:%(레이아웃) 대신 정수 px transform(합성)으로 앉힌다 —
+            %는 매 프레임 소수점 위치가 되어 알약 글자가 서브픽셀로 다시 래스터되며
+            덜덜 떨려 보였다(지적). 정수 px로 반올림하면 글자가 같은 픽셀 격자에 앉고,
+            transform이라 레이아웃도 안 건드린다. 가로 정렬(-50%)은 인라인 transform이
+            CSS transform을 통째로 덮으므로 여기서 같이 준다. */}
         {dateLabel && (
-          <div className="scr-scroll-timeline-date" style={{ top: `${fraction * 100}%` }}>
+          <div
+            className="scr-scroll-timeline-date"
+            style={{ transform: `translate3d(0, ${Math.round(fraction * trackH)}px, 0) translateY(-50%)` }}
+          >
             {dateLabel}
           </div>
         )}
-        <div className="scr-scroll-timeline-thumb" style={{ top: `${fraction * 100}%` }} />
+        <div
+          className="scr-scroll-timeline-thumb"
+          style={{ transform: `translate3d(-50%, ${Math.round(fraction * trackH)}px, 0) translateY(-50%)` }}
+        />
       </div>
       <span className="scr-scroll-timeline-end">{bottomLabel}</span>
     </div>

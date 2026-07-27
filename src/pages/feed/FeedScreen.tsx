@@ -494,8 +494,6 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
         ":scope > .scr-feed-stack-peekwrap > .scr-feed-stack-peek",
       );
       if (peek) { peek.style.transform = ""; peek.style.transformOrigin = ""; }
-      // 접기 이동(closeStack)이 켠 페이드 마스크 해제 — 접힌 뒤엔 클립이 다 가려 필요 없다.
-      root.classList.remove("scr-feed-stack-motion");
       return;
     }
 
@@ -558,10 +556,6 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       .filter((el) => el.getBoundingClientRect().top < window.innerHeight + d + 40)
       .flatMap(blurLeaves);
     setTransform(belowLeaves, `translateY(${-d}px)`);
-    // 이동 중에만 클립 경계(앞 카드 윗모서리) 위를 그라디언트 페이드로 — 카드가 경계에서
-    // 뚝 잘리며 나타나는 부자연스러움 완화(지적). CSS .scr-feed-stack-motion 참고.
-    // 상시 걸면 정지 상태의 마지막 카드 밑단까지 흐려져 이동 중에만 붙였다 뗀다.
-    root.classList.add("scr-feed-stack-motion");
     if (rail) rail.style.opacity = "0";
     if (peek) peek.style.transform = "scaleY(1)";
     const S0 = before.scrollY;
@@ -580,9 +574,6 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
         setTransform(belowLeaves, "");
         railLocked = false;
         if (railDeferred) { railDeferred = false; positionRail(); }
-        // 카드가 다 올라와 정지하면 페이드 마스크를 뗀다 — 정지 상태에선 마지막 카드
-        // 밑단이 흐려 보이면 안 된다.
-        root.classList.remove("scr-feed-stack-motion");
       }).catch(() => {});
       anims.push(a);
       // 줄이기 라인은 자리가 잡히는 후반부에 나타난다(블러 없는 요소라 opacity 안전).
@@ -625,7 +616,6 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       setTransform(belowLeaves, "");
       window.scrollTo({ top: S0 + d, behavior: "instant" });
       if (rail) rail.style.opacity = "";
-      root.classList.remove("scr-feed-stack-motion");
       cleanupRail();
       cancelRevealRef.current = null;
     };
@@ -648,9 +638,6 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     // 펼침 연출이 아직 진행 중이면 끊고(스타일 원복) 접기로 넘어간다.
     cancelRevealRef.current?.();
     closingRef.current = true;
-    // 내려가는 카드가 클립 경계(앞 카드 윗모서리)에서 뚝 잘리지 않게 이동 중 페이드
-    // 마스크를 켠다(지적 — CSS .scr-feed-stack-motion). 커밋 분기(!open)가 해제한다.
-    root.classList.add("scr-feed-stack-motion");
     // 내려가는 거리 = 펼친 카드 영역 높이 - 접힘 때 "+N건" 바가 도로 차지할 높이.
     // 바 높이를 안 빼면 커밋 후 위 콘텐츠가 바 높이만큼 되올라가는 잔차 보정이 남아
     // 접을 때 위 목록이 한 번 출렁였다(지적). 빼 두면 애니메이션이 정확히 접힌
@@ -721,7 +708,6 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       window.scrollTo({ top: S1, behavior: "instant" });
       if (peekEl) peekEl.style.transform = "";
       if (rail) rail.style.opacity = "";
-      root.classList.remove("scr-feed-stack-motion");
       cancelRevealRef.current = null;
     };
     Promise.all(anims.map((a) => a.finished)).then(finish).catch(() => {});
