@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { CornerDownLeft, MessageCirclePlus, X, Pencil, Trash2 } from "lucide-react";
+import { CornerDownLeft, X, Pencil, Trash2 } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
 import { Spinner } from "../../components/common/Feedback";
 import { useLockBodyScroll } from "../../utils/bodyScrollLock";
@@ -666,9 +666,9 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
             <div className="scr-feed-comment-row">
               <button
                 type="button" className="scr-feed-comments-toggle"
-                onClick={openSheet} aria-label="댓글 쓰기" title="댓글 쓰기"
+                onClick={openSheet} title="댓글 쓰기"
               >
-                <MessageCirclePlus size={15} aria-hidden />
+                댓글
               </button>
             </div>
           ) : null}
@@ -688,10 +688,10 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
               <button
                 type="button" className="scr-feed-comments-toggle"
                 onClick={openComposer}
-                aria-expanded={composerOpen} aria-label="댓글 쓰기" title="댓글 쓰기"
+                aria-expanded={composerOpen} title="댓글 쓰기"
                 tabIndex={composerOpen ? -1 : 0}
               >
-                <MessageCirclePlus size={15} aria-hidden />
+                댓글
               </button>
               <div
                 ref={composerWrapRef}
