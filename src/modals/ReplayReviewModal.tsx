@@ -386,13 +386,13 @@ export default function ReplayReviewModal({
 
           {err && <div className="scr-err">{err}</div>}
 
-          <div className="scr-form-actions">
-            <button type="button" className="scr-btn scr-btn-ghost" onClick={requestClose}>취소</button>
-            <button type="button" className="scr-btn scr-btn-primary" onClick={submitAll} disabled={busy}>
-              {/* 피드 "게임결과 등록" 메뉴와 같은 업로드 아이콘으로 통일(요청). */}
-              {busy ? <><Spinner /> 등록 중... ({submittedIndices.size}/{nonExcludedCount})</> : <><Upload size={14} /> 등록 ({pendingIndices.length})</>}
-            </button>
-          </div>
+        </div>
+        <div className="scr-form-actions">
+          <button type="button" className="scr-btn scr-btn-ghost" onClick={requestClose}>취소</button>
+          <button type="button" className="scr-btn scr-btn-primary" onClick={submitAll} disabled={busy}>
+            {/* 피드 "게임결과 등록" 메뉴와 같은 업로드 아이콘으로 통일(요청). */}
+            {busy ? <><Spinner /> 등록 중... ({submittedIndices.size}/{nonExcludedCount})</> : <><Upload size={14} /> 등록 ({pendingIndices.length})</>}
+          </button>
         </div>
       </div>
 

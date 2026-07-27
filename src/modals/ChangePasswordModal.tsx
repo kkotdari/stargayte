@@ -93,12 +93,12 @@ export default function ChangePasswordModal({ onClose }: ChangePasswordModalProp
 
           {err && <div className="scr-err">{err}</div>}
 
-          <div className="scr-form-actions">
-            <button className="scr-btn scr-btn-ghost" onClick={onClose}>취소</button>
-            <button className="scr-btn scr-btn-primary" onClick={save} disabled={busy}>
-              {busy ? <><Spinner /> 변경 중...</> : "변경"}
-            </button>
-          </div>
+        </div>
+        <div className="scr-form-actions">
+          <button className="scr-btn scr-btn-ghost" onClick={onClose}>취소</button>
+          <button className="scr-btn scr-btn-primary" onClick={save} disabled={busy}>
+            {busy ? <><Spinner /> 변경 중...</> : "변경"}
+          </button>
         </div>
       </div>
     </div>

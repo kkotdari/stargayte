@@ -179,17 +179,17 @@ export default function MemberDetailModal({ member, onClose }: MemberDetailModal
 
           {err && <div className="scr-err">{err}</div>}
 
-          <div className="scr-form-actions">
-            <button className="scr-btn scr-btn-ghost" onClick={onClose}>닫기</button>
-            <button
-              type="button"
-              className="scr-btn scr-btn-primary"
-              onClick={saveAll}
-              disabled={savingPermissions || !anyChanged}
-            >
-              {savingPermissions ? <Spinner /> : "저장"}
-            </button>
-          </div>
+        </div>
+        <div className="scr-form-actions">
+          <button className="scr-btn scr-btn-ghost" onClick={onClose}>닫기</button>
+          <button
+            type="button"
+            className="scr-btn scr-btn-primary"
+            onClick={saveAll}
+            disabled={savingPermissions || !anyChanged}
+          >
+            {savingPermissions ? <Spinner /> : "저장"}
+          </button>
         </div>
       </div>
 

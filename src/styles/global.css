@@ -893,10 +893,12 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    배경 입력 차단·바깥 클릭 닫기 → document 실드(utils/bodyScrollLock.ts),
    딤 → 원래부터 .scr-modal의 box-shadow 스프레드. 마크업(23곳)은 그대로 둔다. */
 .scr-modal-overlay { display: contents; }
-/* 모달 전체가 아니라 body만 스크롤되는 flex column. 액션 버튼(scr-form-actions)은 더 이상
-   별도로 고정된 푸터가 아니라 본문의 마지막 요소라 내용과 함께 스크롤된다 — 화면이 작아
-   버튼이 안 보이면 스크롤해서 내려가면 된다. 항상 떠 있는 별도 푸터 바가 내용이 짧은
-   모달에서도 공간을 차지하는 것을 막기 위한 선택. */
+/* 모달 전체가 아니라 body만 스크롤되는 flex column. 액션 버튼(scr-form-actions)은 body의
+   형제라, 본문이 아무리 길어도 늘 패널 맨 아래에 있다(요청). 한때는 본문의 마지막 요소로
+   같이 스크롤시켰는데 — 내용이 짧은 모달에서 푸터가 공간을 차지하는 걸 피하려던 선택이었다 —
+   내용이 길면 "확인/취소가 어디 있지" 하고 스크롤을 내려봐야 했다. body가 flex:1로 남는
+   높이를 다 먹으므로 짧은 모달에서도 버튼이 뜬 자리에 남지 않는다(모달 자체가 내용만큼만
+   커진다). 푸터는 자기 배경을 갖지 않아 유리가 그대로 비친다 — 플로팅 바가 아니다. */
 /* max-height는 vh 다음에 dvh로 덮어써서(모바일 브라우저 주소창 등으로 실제 보이는 높이가
    vh보다 작을 때) 모달이 화면 밖으로 넘쳐 위쪽이 잘리는 일이 없게 한다 — .scr-shell과 동일한 패턴. */
 /* 테두리 글로우 대신 다른 팝업(필터창/메뉴 드롭다운)과 같은 반투명 글라스 톤 — 테두리
@@ -3441,12 +3443,20 @@ html.scr-page-bg:not(.scr-light-theme) .scr-main::before {
 @keyframes scr-chip-resolve-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 .scr-chip-resolve-input { margin-bottom: 4px; }
 
-/* 더 이상 모달 하단에 고정된 푸터가 아니라 본문(scr-modal-body)의 마지막 요소다. 위쪽은
-   부모의 gap이 이미 앞 요소와 띄워주고, 아래쪽 여백은 여기서 직접 준다 — ConfirmDialog처럼
-   scr-modal-body 없이 scr-modal 바로 아래 오는 경우도 있어서, 모달 쪽이 아니라 항상 이
-   컴포넌트 스스로 여백을 책임져야 어느 쪽이든 모서리에 붙지 않는다. 버튼은 본문 안의
-   다른 컨트롤들보다 시각적으로 크게 튀지 않도록 작게 쓴다. */
+/* 아래쪽 여백은 이 컴포넌트가 스스로 책임진다 — ConfirmDialog처럼 scr-modal-body 없이
+   scr-modal 바로 아래 오는 경우, 카드 안에 인라인으로 오는 경우가 섞여 있어서 모달 쪽에
+   맡기면 어느 한쪽이 모서리에 붙는다. 버튼은 본문 안의 다른 컨트롤들보다 시각적으로 크게
+   튀지 않도록 작게 쓴다. */
 .scr-form-actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; padding-bottom: 18px; }
+/* 모달 바로 아래 오는 액션 줄은 본문(.scr-modal-body)이 아니라 패널의 마지막 요소다 —
+   본문만 스크롤되고 버튼은 내용 길이와 상관없이 늘 패널 맨 아래에 있다(요청).
+   플로팅 바가 아니라 패널의 일부라, 자기 배경도 그림자도 테두리도 갖지 않는다(요청:
+   "플로팅이나 탭바 느낌이 아닌 자연스러운 하단 요소") — 모달 유리가 그대로 비친다.
+   위쪽 여백은 본문의 flex gap이 아니라 여기서 직접 준다(본문 밖으로 나왔으므로).
+   본문 뒤에 오는 경우만 겨냥한다(~ 결합자) — 확인창(ConfirmDialog)처럼 본문 없이 제목·
+   메시지 바로 뒤에 오는 액션 줄은 이미 메시지의 margin이 띄워주고 있어 여기서 또 띄우면
+   과해진다. */
+.scr-modal > .scr-modal-body ~ .scr-form-actions { flex-shrink: 0; padding-top: 14px; }
 
 /* v2 "등록하기" 버튼과 컨펌/얼럿/모달 등 액션 버튼류가 전부 같은 크기를 쓰도록 공통
    클래스 하나로 묶는다 — 따로 값을 베껴 쓰면 나중에 한쪽만 바뀌기 쉽다.
@@ -5966,7 +5976,9 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
 /* 편지지 본문(제목·일자·시간·한마디) — 요소 간 줄간격을 크게(요청). */
 .scr-challenge-letter .scr-challenge-inbox-body { flex: 0 1 auto; gap: 22px; }
 /* 버튼 줄 — 맨 아래(To. 아래). 위로 여유 간격. */
-.scr-challenge-letter-actions { margin-top: 14px; }
+/* 위쪽 간격은 이제 .scr-modal > .scr-form-actions의 padding-top이 준다(예전엔 이 줄만
+   본문 밖 형제라 스스로 띄웠다) — 그대로 두면 두 번 띄워진다. */
+.scr-challenge-letter-actions { margin-top: 0; }
 /* 본문(제목·내용)은 아바타보다 앞에 오게 relative + 양수 z-index로 올린다. */
 .scr-challenge-inbox-modal .scr-challenge-inbox-title, .scr-challenge-inbox-modal .scr-challenge-inbox-body { position: relative; z-index: 1; }
 /* 모달이 align-items:center라 그냥 두면 편지지 본문이 내용 폭만큼만 좁게 가운데 모여

@@ -121,12 +121,12 @@ export default function CreateMemberModal({ onClose }: CreateMemberModalProps) {
 
           {err && <div className="scr-err">{err}</div>}
 
-          <div className="scr-form-actions">
-            <button type="button" className="scr-btn scr-btn-ghost" onClick={onClose}>취소</button>
-            <button type="button" className="scr-btn scr-btn-primary" onClick={submit} disabled={busy}>
-              {busy ? <><Spinner /> 생성 중...</> : "생성"}
-            </button>
-          </div>
+        </div>
+        <div className="scr-form-actions">
+          <button type="button" className="scr-btn scr-btn-ghost" onClick={onClose}>취소</button>
+          <button type="button" className="scr-btn scr-btn-primary" onClick={submit} disabled={busy}>
+            {busy ? <><Spinner /> 생성 중...</> : "생성"}
+          </button>
         </div>
       </div>
 

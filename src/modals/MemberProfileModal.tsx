@@ -46,9 +46,9 @@ export default function MemberProfileModal({ member, onClose }: MemberProfileMod
             {member.insta && <div className="scr-detail-row"><dt>인스타</dt><dd>{member.insta}</dd></div>}
           </dl>
 
-          <div className="scr-form-actions">
-            <button type="button" className="scr-btn scr-btn-ghost" onClick={onClose}>닫기</button>
-          </div>
+        </div>
+        <div className="scr-form-actions">
+          <button type="button" className="scr-btn scr-btn-ghost" onClick={onClose}>닫기</button>
         </div>
       </div>
 

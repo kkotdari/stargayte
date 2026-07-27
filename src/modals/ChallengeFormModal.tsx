@@ -247,14 +247,14 @@ export default function ChallengeFormModal({ onClose, onCreated, presetTargetIds
 
           {err && <div className="scr-err">{err}</div>}
 
-          <div className="scr-form-actions">
-            <button className="scr-btn scr-btn-ghost" onClick={onClose}>취소</button>
-            {/* 상대(필수)를 지정하면 비활성→핑크로 또렷하게 활성화돼 바로 눈에 띈다(요청).
-                비활성 상태는 .scr-btn:disabled의 옅은 처리로 자연히 흐려진다. */}
-            <button className="scr-btn scr-challenge-call-btn scr-challenge-submit-btn" onClick={submit} disabled={!canSubmit || busy}>
-              {busy ? <><Spinner /> 호출하는 중...</> : <><Phone size={14} /> 호출</>}
-            </button>
-          </div>
+        </div>
+        <div className="scr-form-actions">
+          <button className="scr-btn scr-btn-ghost" onClick={onClose}>취소</button>
+          {/* 상대(필수)를 지정하면 비활성→핑크로 또렷하게 활성화돼 바로 눈에 띈다(요청).
+              비활성 상태는 .scr-btn:disabled의 옅은 처리로 자연히 흐려진다. */}
+          <button className="scr-btn scr-challenge-call-btn scr-challenge-submit-btn" onClick={submit} disabled={!canSubmit || busy}>
+            {busy ? <><Spinner /> 호출하는 중...</> : <><Phone size={14} /> 호출</>}
+          </button>
         </div>
       </div>
     </div>,

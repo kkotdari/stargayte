@@ -163,12 +163,12 @@ export default function ProfileModal({ onClose }: ProfileModalProps) {
             </button>
           </div>
 
-          <div className="scr-form-actions">
-            <button className="scr-btn scr-btn-ghost" onClick={requestClose}>취소</button>
-            <button className="scr-btn scr-btn-primary" onClick={save} disabled={busy}>
-              {busy ? <><Spinner /> 저장 중...</> : "저장"}
-            </button>
-          </div>
+        </div>
+        <div className="scr-form-actions">
+          <button className="scr-btn scr-btn-ghost" onClick={requestClose}>취소</button>
+          <button className="scr-btn scr-btn-primary" onClick={save} disabled={busy}>
+            {busy ? <><Spinner /> 저장 중...</> : "저장"}
+          </button>
         </div>
       </div>
 

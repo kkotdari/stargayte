@@ -31,9 +31,9 @@ export default function AppUpdateNoticeModal({ notes, onClose }: AppUpdateNotice
           <p className="scr-update-notice-title">업데이트 내용</p>
           <div className="scr-update-notice-body">{notes}</div>
 
-          <div className="scr-form-actions">
-            <button type="button" className="scr-btn scr-btn-primary" onClick={onClose}>확인</button>
-          </div>
+        </div>
+        <div className="scr-form-actions">
+          <button type="button" className="scr-btn scr-btn-primary" onClick={onClose}>확인</button>
         </div>
       </div>
     </div>,
