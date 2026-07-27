@@ -328,12 +328,15 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
     if (closingRef.current) return;
     if (!el || reducedMotion()) { setEditingId(null); setSheetOpen(false); return; }
     closingRef.current = true;
-    // 키보드도 시트와 함께 내려가야 한다 — 포커스를 남겨두면 시트만 사라지고 키보드가 뜬 채 남는다.
-    (document.activeElement as HTMLElement | null)?.blur?.();
+    // 연출을 먼저 걸고 그 다음에 포커스를 푼다 — blur()는 키보드를 내리며 리플로우를
+    // 일으켜서, 먼저 부르면 첫 프레임이 그만큼 늦게 나가 손가락을 뗀 뒤 멈칫해 보인다.
+    // 닫는 연출은 짧고 뒤로 갈수록 급하게(요청: 반응 빠르게, 가속 더) — easeInCubic.
     const a = el.animate(
       [{ transform: "translateY(0)" }, { transform: "translateY(100%)" }],
-      { duration: 220, easing: "cubic-bezier(0.4, 0, 1, 1)", fill: "both" },
+      { duration: 160, easing: "cubic-bezier(0.32, 0, 0.67, 0)", fill: "both" },
     );
+    // 키보드도 시트와 함께 내려가야 한다 — 포커스를 남겨두면 시트만 사라지고 키보드가 뜬 채 남는다.
+    (document.activeElement as HTMLElement | null)?.blur?.();
     closeAnimRef.current = a;
     void a.finished.then(() => {
       closeAnimRef.current = null;
