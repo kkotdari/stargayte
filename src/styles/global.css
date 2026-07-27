@@ -7223,6 +7223,10 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    맞춘다. 시각이 제목 윗줄로 올라가면서 제목 줄이 그만큼 내려왔다(요청). 헤더 패딩이나
    줄 구성을 건드리면 이 값도 같이 봐야 한다. */
 .scr-feed-match-body .scr-match-trow-topmeta { position: absolute; top: 33px; right: 10px; z-index: 2; }
+/* 묶음 카드 안의 경기는 헤더가 시각 한 줄뿐이라(제목을 반복하지 않는다), 케밥도 그 줄에
+   맞춰 올라와야 한다 — 33px은 시각+제목 두 줄짜리 포스트 헤더에 맞춘 값이다(요청:
+   시간하고 케밥 나오고 바로 내용). */
+.scr-feed-stack-item .scr-match-trow-topmeta { top: 8px; }
 .scr-feed-match-body .scr-match-trow-topmeta .scr-match-kebab-btn, .scr-feed-chal-menu .scr-match-kebab-btn { width: 26px; height: 26px; min-height: 26px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
 /* 너 나와 케밥(피드 레벨)도 같은 자리 — 기존 우상단 '취소' 라벨과 겹치지 않게 라벨은 왼쪽으로. */
 .scr-feed-chal-menu { position: absolute; top: 33px; right: 10px; z-index: 3; }
