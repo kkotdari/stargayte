@@ -7046,16 +7046,20 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 :root {
   /* 포스트 안쪽 여백 — 좌우/세로를 한 곳에서 정해 헤더·컨텐츠·댓글이 같이 쓴다. */
   --post-pad-x: 16px;
-  --post-pad-y: 18px;
+  --post-pad-y: 24px;
 }
 .scr-feed-card {
   position: relative;
   /* 세로 패딩은 헤더부·컨텐츠부가 각자 낸다 — 포스트 자신은 종이 한 장일 뿐이다. */
   padding: 0;
   /* 카드가 아니라 화면을 꽉 채우는 판이다(요청) — 좌우 여백도, 둥근 모서리도, 떠 있는
-     그림자도 없다. 포스트끼리는 그 사이로 드러나는 페이지 배경이 나눈다. */
+     그림자도 없다. 포스트끼리는 그 사이의 빈 자리가 나눈다.
+     채움은 완전 투명이고 유리 효과(블러)만 남긴다(요청) — 반투명 채움조차 없으므로
+     포스트는 색이 아니라 제목의 무게와 여백으로만 읽힌다. */
   border-radius: 0;
-  background: var(--post-bg);
+  background: transparent;
+  backdrop-filter: blur(9px) saturate(1.2);
+  -webkit-backdrop-filter: blur(9px) saturate(1.2);
 }
 /* 피드 목록만 본문 좌우 패딩 바깥으로 빠져나가 화면 폭을 그대로 쓴다 — 툴바/필터 등
    나머지 형제는 원래 여백을 유지해야 하므로 .scr-main이 아니라 여기서 되민다. */
@@ -7103,7 +7107,9 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 /* 요약 포스트엔 우상단 케밥이 없어 헤더가 그 자리(44px)를 비워둘 이유가 없다. */
 .scr-feed-stack-sum-card .scr-feed-card-head { padding-right: var(--post-pad-x); }
 
-/* 모달을 여는 텍스트 버튼 — 다시 포스트 컨텐츠 안으로 들어왔다(요청). */
+/* 요약 바디 전체가 펼침 버튼이다(요청) — "자세히 보기"는 그 안의 이름표일 뿐이라
+   자기 클릭 영역을 따로 갖지 않는다. */
+.scr-feed-stack-sum-body { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .scr-feed-stack-toggle {
   display: block; width: 100%;
   padding: var(--post-pad-y) 0; border: none; background: none;
@@ -7118,13 +7124,15 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    — 제목을 과감히 키워(요청) 그 무게로 경계를 만든다. 시각은 제목에 딸린 보조라
    baseline을 맞춰 한 줄로 흐르게 한다. */
 .scr-feed-card-head {
-  display: flex; align-items: baseline; gap: 8px;
-  padding: 16px 44px 12px var(--post-pad-x);
-  border-bottom: 1px solid rgba(var(--overlay-rgb), 0.1);
+  display: flex; flex-direction: column; align-items: stretch; gap: 3px;
+  padding: 16px 44px 0 var(--post-pad-x);
   font-size: var(--fs-micro); color: var(--dim);
 }
-/* 아이콘은 baseline 정렬에서 글자 밑선에 걸려 어색하므로 살짝 올려 광학 중심을 맞춘다. */
-.scr-feed-card-head > svg { align-self: center; position: relative; top: 1px; flex-shrink: 0; }
+/* 윗줄 — 시각(그리고 그와 한 묶음인 마감 카운트다운·일시 수정, 요약의 참여 인원). */
+.scr-feed-card-head-meta { display: flex; align-items: center; gap: 8px; min-width: 0; }
+/* 아랫줄 — 아이콘 + 제목. 오른쪽 44px(헤더 패딩)은 케밥 자리라 비워둔다. */
+.scr-feed-card-head-title { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.scr-feed-card-head-title > svg { flex-shrink: 0; }
 /* 경기 케밥을 포스트 우상단으로(요청 — 이제 오른쪽에 타임라인이 없어 안전 공간 불필요).
    trow의 position:relative가 절대배치를 가로채지 않게 피드 안에서는 static으로. */
 .scr-feed-match-body .scr-match-trow { position: static; }
@@ -7133,13 +7141,13 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    사이에 그대로 얹혀 게임결과만 유독 벌어져 보였다(지적) — 빈 줄이니 여백도 지운다.
    실제 헤더 아래 간격은 아래 trow의 padding-top이 혼자 정한다. */
 .scr-feed-match-body .scr-match-trow-topline { margin-bottom: 0; }
-/* 헤더부 안, 라벨과 같은 라인에 — 26px 버튼의 중심을 라벨 중심(포스트 위에서 21.5px)에
-   맞춘다. 포스트가 헤더/컨텐츠로 나뉜 뒤로는 이 값이 헤더 높이에 매여 있으니, 헤더
-   패딩을 건드리면 여기도 같이 봐야 한다. */
-.scr-feed-match-body .scr-match-trow-topmeta { position: absolute; top: 9px; right: 10px; z-index: 2; }
+/* 헤더의 '제목 줄'과 같은 라인에 — 26px 버튼의 중심을 제목 줄 중심(포스트 위에서 45.6px)에
+   맞춘다. 시각이 제목 윗줄로 올라가면서 제목 줄이 그만큼 내려왔다(요청). 헤더 패딩이나
+   줄 구성을 건드리면 이 값도 같이 봐야 한다. */
+.scr-feed-match-body .scr-match-trow-topmeta { position: absolute; top: 33px; right: 10px; z-index: 2; }
 .scr-feed-match-body .scr-match-trow-topmeta .scr-match-kebab-btn, .scr-feed-chal-menu .scr-match-kebab-btn { width: 26px; height: 26px; min-height: 26px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
 /* 너 나와 케밥(피드 레벨)도 같은 자리 — 기존 우상단 '취소' 라벨과 겹치지 않게 라벨은 왼쪽으로. */
-.scr-feed-chal-menu { position: absolute; top: 9px; right: 10px; z-index: 3; }
+.scr-feed-chal-menu { position: absolute; top: 33px; right: 10px; z-index: 3; }
 .scr-feed-card .scr-challenge-cancel-tag { right: 48px; }
 /* 아이템 내 폰트 전부 1스텝 축소(요청) — 로스터/닉네임 caption, 헤더 micro 등.
    로스터와 너나와 닉네임은 같은 크기 유지(둘 다 caption). */
@@ -7199,7 +7207,7 @@ html.scr-light-theme .scr-feed-comments .scr-mreq-chip-inline { color: #c07c1c; 
 .scr-feed-card-time { font-weight: 600; color: var(--dim); font-variant-numeric: tabular-nums; }
 /* 포스트 제목 — 피드에서 가장 큰 글자. 굵기·크기 모두 과감히 올린다(요청). */
 .scr-feed-card-label {
-  font-size: var(--fs-subhead); font-weight: 800; color: var(--text);
+  font-size: var(--fs-body); font-weight: 800; color: var(--text);
   letter-spacing: -0.01em; line-height: 1.2;
 }
 .scr-feed-card-body { padding: 0; }
@@ -7231,9 +7239,21 @@ html.scr-light-theme .scr-feed-comments .scr-mreq-chip-inline { color: #c07c1c; 
 
 /* 카드 하단 공통 댓글 영역 — 토글을 누르면 목록/입력이 그 자리에서 펼쳐진다.
    구분선은 아이템 사이 하나로 충분하니(요청) 댓글 영역/댓글끼리의 선은 모두 없앤다. */
-/* 컨텐츠부의 꼬리 — 포스트에 자체 아래 패딩이 없으므로 바닥 여백도 여기서 낸다. */
-.scr-feed-comments { padding: 0 var(--post-pad-x) var(--post-pad-y); }
-.scr-feed-comments .scr-match-notes { border-top: none; padding-top: 0; margin-top: 10px; }
+/* 컨텐츠부의 꼬리 — 포스트에 자체 아래 패딩이 없으므로 바닥 여백도 여기서 낸다.
+   여백을 바깥(.scr-feed-comments)이 아니라 안쪽(.scr-match-notes)이 내는 이유는, 댓글이
+   하나도 없을 때 그 여백까지 통째로 걷어야 하기 때문이다(아래 -empty). */
+.scr-feed-comments { padding: 0; }
+.scr-feed-comments > .scr-match-notes {
+  border-top: none; padding: 10px var(--post-pad-x) var(--post-pad-y); margin-top: 0;
+}
+/* 댓글이 없는 포스트가 훨씬 많다(지적) — 그럴 땐 "댓글 쓰기" 아이콘이 한 줄을 통째로
+   차지하지 않고, 바디 아래 여백의 왼쪽 구석에 얹혀만 있는다(요청). 기준은 포스트
+   (.scr-feed-card, position:relative). */
+.scr-feed-comments > .scr-match-notes-empty { padding: 0; }
+.scr-feed-comments > .scr-match-notes-empty .scr-feed-comment-row {
+  position: absolute; left: calc(var(--post-pad-x) - 5px); bottom: 3px;
+  min-height: 0; justify-content: flex-start; z-index: 2;
+}
 .scr-feed-comments .scr-mreq-item + .scr-mreq-item { border-top: none; }
 .scr-feed-comments-toggle {
   display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0;

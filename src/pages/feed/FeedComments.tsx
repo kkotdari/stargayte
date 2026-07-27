@@ -641,7 +641,12 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
   return (
     // 로우 전체가 클릭 토글이라, 댓글 영역에서의 클릭/입력은 로우 접힘을 막는다.
     // 시트는 body 포털로 나가지만 리액트 이벤트는 이 트리를 따라 올라오므로 여기서 함께 막힌다.
-    <div className="scr-match-notes" onClick={(e) => e.stopPropagation()}>
+    <div
+      // 댓글이 하나도 없으면 "댓글 쓰기" 아이콘이 줄을 차지하지 않고 포스트 바디 아래
+      // 여백 왼쪽 구석에 얹힌다(요청) — 자리는 CSS(.scr-match-notes-empty)가 잡는다.
+      className={cx("scr-match-notes", notes.length === 0 && "scr-match-notes-empty")}
+      onClick={(e) => e.stopPropagation()}
+    >
       {mobile ? (
         <>
           {notes.length > 0 ? (

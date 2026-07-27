@@ -83,9 +83,13 @@ export default function RankShiftCard({ shift, timeText, dateLabel, actions, foo
   return (
     <div className="scr-feed-card scr-post">
       <div className="scr-feed-card-head" {...(dateLabel ? { "data-date-label": dateLabel } : {})}>
-        <Trophy size={13} aria-hidden />
-        <span className="scr-feed-card-label">랭크 변동 발생 · {rankShiftTypeLabel(shift)}</span>
-        {timeText && <span className="scr-feed-card-time">{timeText}</span>}
+        <div className="scr-feed-card-head-meta">
+          {timeText && <span className="scr-feed-card-time">{timeText}</span>}
+        </div>
+        <div className="scr-feed-card-head-title">
+          <Trophy size={16} aria-hidden />
+          <span className="scr-feed-card-label">랭크 변동 발생 · {rankShiftTypeLabel(shift)}</span>
+        </div>
       </div>
       {actions}
       <ul

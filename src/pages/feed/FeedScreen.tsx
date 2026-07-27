@@ -9,6 +9,8 @@ import FilterItem from "../../components/common/FilterItem";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 import KakaoShareButton from "../../components/common/KakaoShareButton";
 import MatchList, { resolveSlotName, type SearchListRow } from "../v2/MatchList";
+import { isComputerSlot } from "../../constants/computerSlot";
+import { isUnregisteredSlot } from "../../constants/unregisteredSlot";
 import { ChallengeCard, ChallengeTimeHeadEdit } from "../challenge/ChallengeScreen";
 import FeedComments from "./FeedComments";
 import ScrollNavTimeline from "../../components/common/ScrollNavTimeline";
@@ -285,10 +287,14 @@ const MatchCard = memo(function MatchCard({ item, memberOf, onDeleted, dateLabel
   return (
     <div className="scr-feed-card scr-post">
       <div className="scr-feed-card-head" data-date-label={dateLabel}>
-        {/* 게임결과는 결과지 느낌의 아이콘으로(요청) — 칼은 너 나와!가 쓴다. */}
-        <ClipboardList size={13} aria-hidden />
-        <span className="scr-feed-card-label">게임결과</span>
-        <span className="scr-feed-card-time">{formatEventTime(item.time, item.withClock)}</span>
+        <div className="scr-feed-card-head-meta">
+          <span className="scr-feed-card-time">{formatEventTime(item.time, item.withClock)}</span>
+        </div>
+        <div className="scr-feed-card-head-title">
+          {/* 게임결과는 결과지 느낌의 아이콘으로(요청) — 칼은 너 나와!가 쓴다. */}
+          <ClipboardList size={16} aria-hidden />
+          <span className="scr-feed-card-label">게임결과</span>
+        </div>
       </div>
       <div className="scr-feed-match-body">
         <MatchList rows={rows} memberOf={memberOf} onDeleted={onDeleted} loading={false} matchup highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms} />
@@ -321,6 +327,9 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     for (const it of [...stack.items].sort((a, b) => a.time - b.time)) {
       for (const team of [it.match.team1, it.match.team2]) {
         for (const slot of team) {
+          // 컴퓨터·비회원은 "누가 있었나"를 말하는 명단이 아니다(요청) — 빼고 센다.
+          // 참여 인원 집계도 이 목록 길이를 쓰므로 함께 맞는다.
+          if (isComputerSlot(slot.memberId) || isUnregisteredSlot(slot.memberId)) continue;
           if (seen.has(slot.memberId)) continue;
           seen.add(slot.memberId);
           out.push({ id: slot.memberId, name: resolveSlotName(slot, team, memberOf) });
@@ -467,29 +476,37 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
         <div className="scr-feed-stack-sum-inner">
           <div className="scr-feed-card scr-post scr-feed-stack-sum-card">
             <div className="scr-feed-card-head" data-date-label={dateLabel}>
-              <ClipboardList size={13} aria-hidden />
-              {/* 묶음이면 라벨 자체가 몇 건인지 말해준다(요청) — 오른쪽 집계에 게임 수를 또
-                  적으면 중복이라, 거긴 참여 인원만 남긴다. 한 판이면 "1건"은 안 붙인다. */}
-              <span className="scr-feed-card-label">
-                게임결과{stack.items.length > 1 ? ` ${stack.items.length}건` : ""}
-              </span>
-              <span className="scr-feed-card-time">{dateLabel}</span>
-              <span className="scr-feed-stack-sum-count">{participants.length}명 참여</span>
+              <div className="scr-feed-card-head-meta">
+                <span className="scr-feed-card-time">{dateLabel}</span>
+                <span className="scr-feed-stack-sum-count">{participants.length}명 참여</span>
+              </div>
+              <div className="scr-feed-card-head-title">
+                <ClipboardList size={16} aria-hidden />
+                {/* 묶음이면 라벨 자체가 몇 건인지 말해준다(요청) — 위 집계에 게임 수를 또
+                    적으면 중복이라, 거긴 참여 인원만 남긴다. 한 판이면 "1건"은 안 붙인다. */}
+                <span className="scr-feed-card-label">
+                  게임결과{stack.items.length > 1 ? ` ${stack.items.length}건` : ""}
+                </span>
+              </div>
             </div>
-            <ul className="scr-feed-stack-sum-players">
-              {participants.map((p) => (
-                <li key={p.id} className="scr-feed-stack-sum-player">
-                  <Avatar member={{ id: p.id, nickname: p.name, avatar: memberOf(p.id)?.avatar ?? null }} size={20} />
-                  <span className="scr-feed-stack-sum-name">{p.name}</span>
-                </li>
-              ))}
-            </ul>
-            <button
-              type="button" className="scr-feed-stack-toggle"
-              onClick={() => toggleOpen(true)} tabIndex={open ? -1 : 0}
+            {/* 바디 전체가 펼침 버튼이다(요청) — 명단 어디를 눌러도 열린다. button 안에는
+                목록을 넣을 수 없어(phrasing content만 허용) role로 대신한다. */}
+            <div
+              className="scr-feed-stack-sum-body" role="button" tabIndex={open ? -1 : 0}
+              aria-label="게임결과 자세히 보기"
+              onClick={() => toggleOpen(true)}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleOpen(true); } }}
             >
-              자세히 보기
-            </button>
+              <ul className="scr-feed-stack-sum-players">
+                {participants.map((p) => (
+                  <li key={p.id} className="scr-feed-stack-sum-player">
+                    <Avatar member={{ id: p.id, nickname: p.name, avatar: memberOf(p.id)?.avatar ?? null }} size={20} />
+                    <span className="scr-feed-stack-sum-name">{p.name}</span>
+                  </li>
+                ))}
+              </ul>
+              <span className="scr-feed-stack-toggle">자세히 보기</span>
+            </div>
           </div>
         </div>
       </div>
@@ -919,20 +936,25 @@ export default function FeedScreen() {
             ) : item.kind === "challenge" ? (
               <div className="scr-feed-card scr-post" key={`c-${item.challenge.id}`}>
                 <div className="scr-feed-card-head" data-date-label={dateLabelOf(item)}>
-                  {/* 너 나와!는 "호출"이니 수화기 아이콘으로(요청) — 등록 메뉴·호출 버튼과 통일. */}
-                  <Phone size={13} aria-hidden />
-                  <span className="scr-feed-card-label">너 나와!</span>
-                  <span className="scr-feed-card-time">{formatEventTime(item.time, item.withClock)}</span>
-                  {/* 응답 마감 실시간 카운트다운 — 날짜 옆, 헤더와 같은 폰트 크기(요청). */}
-                  <ChallengeCountdown challenge={item.challenge} />
-                  {/* 일시(시간) 수정 — 시각은 헤더가 이미 보여주므로 연필만 얹는다(중복 표기
-                      제거, 요청). 참가자만 연필이 보인다(컴포넌트가 판정). */}
-                  <ChallengeTimeHeadEdit
-                    challenge={item.challenge}
-                    timeLabel={null}
-                    myId={user?.id}
-                    onUpdated={upsertChallenge}
-                  />
+                  {/* 시각·마감·일시수정은 전부 '언제'에 대한 것이라 제목 윗줄에 함께 둔다(요청). */}
+                  <div className="scr-feed-card-head-meta">
+                    <span className="scr-feed-card-time">{formatEventTime(item.time, item.withClock)}</span>
+                    {/* 응답 마감 실시간 카운트다운 — 날짜 옆, 헤더와 같은 폰트 크기(요청). */}
+                    <ChallengeCountdown challenge={item.challenge} />
+                    {/* 일시(시간) 수정 — 시각은 헤더가 이미 보여주므로 연필만 얹는다(중복 표기
+                        제거, 요청). 참가자만 연필이 보인다(컴포넌트가 판정). */}
+                    <ChallengeTimeHeadEdit
+                      challenge={item.challenge}
+                      timeLabel={null}
+                      myId={user?.id}
+                      onUpdated={upsertChallenge}
+                    />
+                  </div>
+                  <div className="scr-feed-card-head-title">
+                    {/* 너 나와!는 "호출"이니 수화기 아이콘으로(요청) — 등록 메뉴·호출 버튼과 통일. */}
+                    <Phone size={16} aria-hidden />
+                    <span className="scr-feed-card-label">너 나와!</span>
+                  </div>
                 </div>
                 <ChallengeActionsMenu
                   challenge={item.challenge}
