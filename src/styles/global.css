@@ -1028,7 +1028,9 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    예전엔 flex-end + 요소별 개별 translateY 보정으로 로고의 베이스라인에 맞췄었는데,
    프사/메뉴글자 크기를 키우고 나니(1.5배) 그 보정값들이 더 이상 안 맞아 서로 어긋나
    보였다. 모바일 헤더(아래 반응형 규칙)도 같은 이유로 이미 center를 쓰고 있어 통일. */
-.scr-header-inner { max-width: var(--content-max); margin: 0 auto; display: flex; align-items: center; gap: 20px; padding: 14px 24px; flex-wrap: wrap; }
+/* 좌우 패딩은 본문(.scr-main의 --main-pad-x)과 같은 20px — 24px이던 시절엔 헤더 글자가
+   본문보다 4px 안쪽에서 시작해, 폭이 같은데도 본문만 넓어 보였다(지적). */
+.scr-header-inner { max-width: var(--content-max); margin: 0 auto; display: flex; align-items: center; gap: 20px; padding: 14px 20px; flex-wrap: wrap; }
 /* 로고 버튼 안도 baseline 대신 center — baseline이면 이미지 로고가 자기 바닥 기준으로
    놓여 아바타/닉네임의 세로 중심선과 어긋났다(지적: "세로 중심이 수평선상에 놓이게"). */
 .scr-brand { display: flex; align-items: center; gap: 8px; background: transparent; border: none; padding: 0; cursor: pointer; font-family: inherit; }
@@ -7070,9 +7072,12 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 :root {
   /* 포스트 안쪽 여백 — 한 곳에서 정해 헤더·컨텐츠·댓글이 같이 쓴다.
      좌우는 헤더보다 바디를 살짝 넓게 잡는다(요청) — 제목이 조금 더 바깥에서 시작해
-     글의 시작점이 되고, 그 아래 내용은 한 칸 들여쓴 것처럼 읽힌다. */
-  --post-pad-x: 16px;
-  --post-pad-bx: 20px;
+     글의 시작점이 되고, 그 아래 내용은 한 칸 들여쓴 것처럼 읽힌다.
+     포스트는 좌우 꽉 차는 전면판이라 이 값이 곧 화면 가장자리로부터의 들여쓰기다 —
+     그래서 제목 줄은 페이지 헤더/필터부와 같은 20px에 맞춘다(지적: PC에서 셋의 좌우
+     패딩이 달라 본문만 넓어 보임). 모바일은 아래 720px 블록에서 16/20으로 되돌린다. */
+  --post-pad-x: 20px;
+  --post-pad-bx: 24px;
   /* 제목 줄 뒤에 깔리는 음영의 색(요청) — 다크는 오렌지, 라이트는 블루. 알파를 섞어야
      해서 색상값이 아니라 RGB 성분으로 둔다. */
   /* 검은 배경 위에 알파로 얹히다 보니 어두운 오렌지는 갈색처럼 죽어 보였다 —
@@ -7083,6 +7088,12 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
      컨텐츠가 아니라 포스트 자신이 낸다: 마지막 블록이 무엇이든(본문/링크 줄/댓글)
      꼬리 여백은 늘 한 번만 붙어야 한다. */
   --post-pad-b: 38px;
+}
+/* 모바일은 본문 좌우 여백(--main-pad-x)이 16px로 줄어드니 포스트 들여쓰기도 같이 줄인다.
+   이 블록은 위 :root와 특이도가 같아서, 반드시 뒤에 와야 이긴다(720px 쪽 모바일 블록에
+   넣으면 소스상 앞이라 무시된다). */
+@media (max-width: 720px) {
+  :root { --post-pad-x: 16px; --post-pad-bx: 20px; }
 }
 .scr-feed-card {
   position: relative;
