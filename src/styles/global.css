@@ -1912,20 +1912,21 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 .scr-stats-list-panel-v2 .scr-stat-name-head {
   background-image: none;
   background-color: var(--panel-solid);
-  background-color: color-mix(in srgb, var(--panel-solid) 70%, transparent);
+  /* 70→78% — 가로 스크롤 때 밑을 지나는 열이 너무 적나라하게 비친다는 지적으로 보강. */
+  background-color: color-mix(in srgb, var(--panel-solid) 78%, transparent);
   backdrop-filter: blur(16px) saturate(1.1);
   -webkit-backdrop-filter: blur(16px) saturate(1.1);
 }
 /* 라이트 — 유리 표(흰 62%) 위에 유저열이 다시 흰 70%+강블러를 얹으니 합성이 약 89%
    흰색 = 사실상 불투명해 보였다(지적: "라이트에서만 유저열/헤더행이 완전 불투명").
-   다크는 같은 70%라도 어두운 색이라 티가 안 났던 것. 라이트만 덧칠을 확 낮춰(25%)
-   데이터 칸(62%)과 비슷한 투명감으로 — sticky 밑을 지나가는 막대는 낮아진 채움 대신
-   블러(8px)가 뭉개서 가린다. */
+   다크는 같은 70%라도 어두운 색이라 티가 안 났던 것. 라이트만 덧칠을 낮추되, 처음
+   시도(25%+blur8)는 가로 스크롤 때 지나가는 열이 너무 적나라하게 비쳤다(지적) —
+   45%+blur14로 절충: 배경 사진 투명감은 남기면서 밑을 지나는 막대·숫자는 뭉개진다. */
 .scr-light-theme .scr-stats-list-panel-v2 .scr-stat-name-cell,
 .scr-light-theme .scr-stats-list-panel-v2 .scr-stat-name-head {
-  background-color: color-mix(in srgb, var(--panel-solid) 25%, transparent);
-  backdrop-filter: blur(8px) saturate(1.05);
-  -webkit-backdrop-filter: blur(8px) saturate(1.05);
+  background-color: color-mix(in srgb, var(--panel-solid) 45%, transparent);
+  backdrop-filter: blur(14px) saturate(1.05);
+  -webkit-backdrop-filter: blur(14px) saturate(1.05);
 }
 /* flex:none — 기본 규칙의 flex:1이 남은 폭을 스택이 다 차지해 프사만 왼쪽에 붙고
    닉네임 혼자 가운데로 떨어졌다(가운데 정렬 요청과 어긋남) — 프사+닉네임을 한 덩어리로
