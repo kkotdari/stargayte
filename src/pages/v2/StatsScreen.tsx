@@ -294,7 +294,7 @@ export default function StatsScreenV2() {
                 onChange={(v) => setRace(v as BaseRace | "all")}
                 size="sm"
                 minDropWidth={110}
-                className="scr-filter-race-select"
+                className="scr-filter-select"
               />
             </FilterItem>
             {/* 기간 단위 알약탭과 그에 딸린 달력은 원래 하나의 요소 — 다른 필터가 둘

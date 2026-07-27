@@ -1102,14 +1102,14 @@ export default function FeedScreen() {
         suggestions={suggestions}
         filterPanel={
           <FilterItem label="유형">
-            {/* 통계의 종족 필터와 같은 클래스로 스타일 통일(요청) — 전용 클래스/폰트
-                오버라이드를 걷어냈다. */}
+            {/* 필터 패널 표준 드롭다운(.scr-filter-select, global.css) — 통계 종족
+                필터와 공유하는 공통 스타일(요청: 화면별 클래스 대신 표준화). */}
             <Select
               value={kindFilter}
               onChange={(v) => setKindFilter(v as typeof kindFilter)}
               size="sm"
               minDropWidth={120}
-              className="scr-filter-race-select"
+              className="scr-filter-select"
               options={[
                 { value: "all", label: "전체" },
                 { value: "match", label: "게임결과" },

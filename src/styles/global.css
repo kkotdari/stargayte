@@ -2756,15 +2756,16 @@ html.scr-page-bg.scr-light-theme .scr-main::before {
    보였다(요청: "필터랑 검색 폰트 줄이면서 갭이나 높이 같은거도 같이 줄여야") — 높이
    32→28px, 안쪽 좌우 패딩도 10→8px로 같이 줄인다. */
 /* (알약탭 배경/높이/글자톤은 컴팩트 알약탭 공통 규칙으로 통합 — .scr-pill-tabs 정의부 참고.) */
-/* 필터창의 종족 셀렉트 — 알약탭(.scr-pill-tabs)과 같은 톤/높이로 통일한다(요청: "크기 및
-   디자인 다른 요소들과 맞추기"). 테두리는 빼고 같은 반투명 글라스 배경. */
-.scr-filter-panel .scr-filter-race-select .scr-cselect-trigger {
+/* 필터창의 표준 드롭다운(.scr-filter-select) — 어느 화면이든 필터 패널 안 Select는 이
+   클래스 하나를 쓴다(요청: 화면별 클래스명 대신 표준화 — 통계 종족, 피드 유형이 공유).
+   알약탭(.scr-pill-tabs)과 같은 톤/높이, 테두리는 빼고 같은 반투명 글라스 배경. */
+.scr-filter-panel .scr-filter-select .scr-cselect-trigger {
   min-height: 28px; height: 28px; padding: 0 8px; font-size: var(--fs-body);
   background: rgba(255,255,255,0.08); border-color: transparent;
 }
-.scr-light-theme .scr-filter-panel .scr-filter-race-select .scr-cselect-trigger { background: rgba(0,0,0,0.06); }
-@media (hover: hover) { .scr-filter-panel .scr-filter-race-select .scr-cselect-trigger:hover { border-color: transparent; background: rgba(255,255,255,0.12); } }
-@media (hover: hover) { .scr-light-theme .scr-filter-panel .scr-filter-race-select .scr-cselect-trigger:hover { background: rgba(0,0,0,0.1); } }
+.scr-light-theme .scr-filter-panel .scr-filter-select .scr-cselect-trigger { background: rgba(0,0,0,0.06); }
+@media (hover: hover) { .scr-filter-panel .scr-filter-select .scr-cselect-trigger:hover { border-color: transparent; background: rgba(255,255,255,0.12); } }
+@media (hover: hover) { .scr-light-theme .scr-filter-panel .scr-filter-select .scr-cselect-trigger:hover { background: rgba(0,0,0,0.1); } }
 .scr-filter-panel .scr-pill-tab-btn { font-size: var(--fs-body); }
 .scr-filter-panel .scr-filter-month-input {
   background: rgba(255,255,255,0.08); color: var(--text); color-scheme: dark;
@@ -2971,7 +2972,7 @@ html.scr-page-bg.scr-light-theme .scr-main::before {
   .scr-stats-screen-v2 .scr-filter-panel { flex-wrap: nowrap; gap: 26px 6px; }
   .scr-stats-screen-v2 .scr-filter-panel > .scr-filter-item { flex-shrink: 1; min-width: 0; }
   .scr-stats-screen-v2 .scr-filter-panel .scr-pill-tab-btn { font-size: var(--fs-micro); padding-left: 8px; padding-right: 8px; }
-  .scr-stats-screen-v2 .scr-filter-panel .scr-filter-race-select .scr-cselect-trigger { font-size: var(--fs-micro); padding: 0 6px; }
+  .scr-stats-screen-v2 .scr-filter-panel .scr-filter-select .scr-cselect-trigger { font-size: var(--fs-micro); padding: 0 6px; }
   .scr-stats-screen-v2 .scr-filter-panel .scr-filter-month-input { font-size: var(--fs-micro); min-width: 0; width: 92px; padding: 0 6px; flex: 0 1 auto; }
   .scr-filter-item-label { font-size: var(--fs-caption); }
   /* 모바일에서도 필터 요소(알약/달력/종족)를 base(PC)와 같은 크기 — 검색창 높이(34px)에 맞춘다
@@ -7166,8 +7167,8 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
 .scr-filter-item-label { font-size: var(--fs-11); }
 .scr-filter-panel .scr-pill-tab-btn { font-size: var(--fs-caption); }
 .scr-filter-panel .scr-filter-month-input { font-size: var(--fs-caption); }
-.scr-filter-panel .scr-filter-race-select .scr-cselect-trigger { font-size: var(--fs-caption); }
-/* (피드 유형 드롭다운 전용 축소 규칙은 제거 — 통계 종족 필터(.scr-filter-race-select)와
+.scr-filter-panel .scr-filter-select .scr-cselect-trigger { font-size: var(--fs-caption); }
+/* (피드 유형 드롭다운 전용 축소 규칙은 제거 — 통계 종족 필터(.scr-filter-select)와
    같은 클래스를 쓰도록 통일해(요청) 크기·톤이 저절로 같아졌다.) */
 .scr-chip-name { font-size: var(--fs-body); }
 /* 헤더 닉네임 — 파일 끝의 이 무조건 규칙이 모바일 블록(640px)을 덮어 닉네임이 안
