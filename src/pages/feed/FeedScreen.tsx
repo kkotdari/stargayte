@@ -415,14 +415,11 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     const cards = Array.from(
       list.querySelectorAll<HTMLElement>(":scope > .scr-feed-stack-reveal"),
     );
-    // 래퍼의 위아래 여백(카드 그림자 자리)은 '다 펼쳐진' 상태에서만 유효하다 — 높이를
-    // 줄이는 동안에는 그 여백이 잘려 있어야 할 카드 윗부분을 그대로 드러낸다(CSS 주석).
-    const shadowGutter = [inner, sumInner];
+    // 다 펼쳐진 쪽은 CSS가 클립을 풀어 둔다(카드 그림자가 잘리지 않게, CSS 주석 참고) —
+    // 높이가 움직이는 동안에는 다시 잘라야 하므로 연출 구간에만 인라인으로 되돌린다.
+    const wrappers = [inner, sumInner];
     const clearInline = () => {
-      shadowGutter.forEach((el) => {
-        el.style.paddingTop = ""; el.style.paddingBottom = "";
-        el.style.marginTop = ""; el.style.marginBottom = "";
-      });
+      wrappers.forEach((el) => { el.style.overflow = ""; });
       inner.style.height = "";
       sumInner.style.height = "";
       sumCard.style.opacity = "";
@@ -448,12 +445,7 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     // scrollHeight(잘린 내용의 전체 높이)로 잰다. 펼친 상태(height auto)에서도 같은 값이라
     // 양방향에 그대로 쓴다. 목록 위 "간단히 보기" 버튼까지 포함돼야 해서 rest-list가 아니라
     // 래퍼에서 잰다(버튼이 테두리 바깥으로 나가면서 목록 높이에서 빠졌다).
-    // 재기 전에 위아래 여백부터 걷는다 — 그래야 scrollHeight가 여백 없이 '내용만큼'이고,
-    // 연출 내내 잘린 카드가 그 여백으로 새어 나오지 않는다(위 clearInline 주석).
-    shadowGutter.forEach((el) => {
-      el.style.paddingTop = "0px"; el.style.paddingBottom = "0px";
-      el.style.marginTop = "0px"; el.style.marginBottom = "0px";
-    });
+    wrappers.forEach((el) => { el.style.overflow = "hidden"; });
     const full = inner.scrollHeight;
     const sumFull = sumCard.getBoundingClientRect().height;
     // 높이 연출은 예전보다 짧게 — 이제 그 구간엔 빈 공간만 열리고 카드는 그 뒤에 나오므로
