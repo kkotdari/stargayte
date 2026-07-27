@@ -766,6 +766,7 @@ html.scr-light-theme .scr-checkbox-field input[type="radio"]:not(:checked), html
    그대로 덧씌워져서 프사(업로드된 프로필 사진)까지 무채색으로 바래버린다. 이미지(프사)나
    종족 배지처럼 변수를 안 쓰는 요소는 원래 색 그대로 남는다. */
 html.scr-light-theme {
+  --post-title-tint: 59, 130, 246;
   --void: #ffffff;
   --post-bg: #ffffff;
   --panel: rgba(255, 255, 255, 0.46);
@@ -7067,6 +7068,9 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
      글의 시작점이 되고, 그 아래 내용은 한 칸 들여쓴 것처럼 읽힌다. */
   --post-pad-x: 16px;
   --post-pad-bx: 20px;
+  /* 제목 줄 뒤에 깔리는 음영의 색(요청) — 다크는 오렌지, 라이트는 블루. 알파를 섞어야
+     해서 색상값이 아니라 RGB 성분으로 둔다. */
+  --post-title-tint: 255, 138, 61;
   --post-pad-y: 24px;
   /* 포스트 꼬리 여백 — 댓글이 없을 때 "댓글 쓰기" 아이콘이 이 안에 얹힌다(요청).
      컨텐츠가 아니라 포스트 자신이 낸다: 마지막 블록이 무엇이든(본문/링크 줄/댓글)
@@ -7159,8 +7163,22 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 }
 /* 윗줄 — 시각(그리고 그와 한 묶음인 마감 카운트다운·일시 수정, 요약의 참여 인원). */
 .scr-feed-card-head-meta { display: flex; align-items: center; gap: 8px; min-width: 0; }
-/* 아랫줄 — 아이콘 + 제목. 오른쪽 44px(헤더 패딩)은 케밥 자리라 비워둔다. */
-.scr-feed-card-head-title { display: flex; align-items: center; gap: 7px; min-width: 0; }
+/* 아랫줄 — 아이콘 + 제목. 오른쪽 44px(헤더 패딩)은 케밥 자리라 비워둔다.
+   뒤로 오른쪽으로 갈수록 옅어지는 음영을 깐다(요청) — 포스트가 좌우 여백 없이 이어지는
+   구조라 제목 줄에 색이 한 겹 있으면 글의 시작점이 훨씬 또렷해진다. 포스트가 화면을 꽉
+   채우므로 음영도 왼쪽 화면 끝에서 시작해야 자연스럽다: 헤더의 좌우 패딩만큼 음수 마진으로
+   빠져나갔다가 같은 값의 패딩으로 글자를 제자리에 돌려놓는다. */
+.scr-feed-card-head-title {
+  display: flex; align-items: center; gap: 7px; min-width: 0;
+  margin: 0 -44px 0 calc(-1 * var(--post-pad-x));
+  padding: 4px 44px 4px var(--post-pad-x);
+  background: linear-gradient(
+    90deg,
+    rgba(var(--post-title-tint), 0.22) 0%,
+    rgba(var(--post-title-tint), 0.09) 38%,
+    rgba(var(--post-title-tint), 0) 72%
+  );
+}
 .scr-feed-card-head-title > svg { flex-shrink: 0; }
 /* 경기 케밥을 포스트 우상단으로(요청 — 이제 오른쪽에 타임라인이 없어 안전 공간 불필요).
    trow의 position:relative가 절대배치를 가로채지 않게 피드 안에서는 static으로. */
