@@ -72,6 +72,8 @@ export interface ReplayPlayerSignals {
   /** 연구한 테크(스톰/럴커 등)와 업그레이드 이름 — 순서대로. */
   techNames: string[];
   upgradeNames: string[];
+  /** 테크별 첫 연구 프레임 — 요약을 시간순으로 늘어놓을 때 이 시점을 쓴다. */
+  firstTechFrame: Record<string, number>;
   /** 첫 커맨드 프레임 — 없으면 null(커맨드를 하나도 안 낸 사람). */
   firstCmdFrame: number | null;
   /** 마지막 커맨드 프레임. 경기 끝보다 한참 이르면 그 시점에 졌거나 나간 것으로 읽는다. */
@@ -214,7 +216,7 @@ function emptySignals(): ReplayPlayerSignals {
     unitCounts: {}, firstUnitFrame: {},
     buildingCounts: {}, firstBuildingFrame: {},
     unitFrames: {}, buildingFrames: {}, buildPositions: [],
-    techNames: [], upgradeNames: [],
+    techNames: [], upgradeNames: [], firstTechFrame: {},
     firstCmdFrame: null, lastCmdFrame: null, cmdCountByThird: [0, 0, 0],
   };
 }
@@ -282,7 +284,10 @@ function collectSignals(cmds: ScrepCmd[], totalFrames: number | null): Map<numbe
       }
     }
     const tech = nameOf(c.Tech);
-    if (tech) s.techNames.push(tech);
+    if (tech) {
+      s.techNames.push(tech);
+      if (frame !== null && s.firstTechFrame[tech] === undefined) s.firstTechFrame[tech] = frame;
+    }
     const upgrade = nameOf(c.Upgrade);
     if (upgrade) s.upgradeNames.push(upgrade);
   }

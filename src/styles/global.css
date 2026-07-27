@@ -7268,13 +7268,15 @@ html.scr-light-theme .scr-feed-comments .scr-mreq-chip-inline { color: #c07c1c; 
 }
 /* 펼침 때 스탯 표 위에 노출되는 맵·플레이시간(요청). */
 .scr-match-trow-map-expanded { display: flex; align-items: baseline; gap: 6px; padding: 8px 0 8px; justify-content: center; }
-/* 리플레이 전황 요약 — 로스터 바로 아래, 접힌 상태에서도 보이는 한 덩어리 글(요청).
-   여러 문장이 이어질 수 있어 가운데 정렬 대신 왼쪽 정렬로 두고 줄간격을 넉넉히 준다. */
+/* 리플레이 전황 요약 — 로스터 바로 아래, 접힌 상태에서도 보이는 경기 이야기(요청).
+   시각을 앞세운 연대기가 아니라 한 문단짜리 글이라(요청) 줄바꿈 없이 그냥 흐른다. */
 .scr-match-trow-summary {
   margin: 10px 0 0; padding: 9px 12px; border-radius: 10px;
   background: rgba(var(--overlay-rgb), 0.06);
-  font-size: var(--fs-caption); font-weight: 600; line-height: 1.55;
+  font-size: var(--fs-caption); font-weight: 500; line-height: 1.6;
   color: var(--text); word-break: keep-all;
+  /* 로우가 가운데 정렬이라(맵/시간 줄과 같은 부모) 여러 줄 글은 왼쪽으로 못박는다. */
+  text-align: left;
 }
 /* 라벨(무엇인지)이 앞, 시간이 바로 옆(요청) — 라벨이 주, 시간은 흐리게 보조. */
 .scr-feed-card-time { font-weight: 600; color: var(--dim); font-variant-numeric: tabular-nums; }
@@ -7694,5 +7696,6 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
 .scr-replay-summary-preview {
   margin: 6px 0 2px; padding: 7px 10px; border-radius: 8px;
   background: rgba(var(--overlay-rgb), 0.06);
-  font-size: var(--fs-caption); font-weight: 600; color: var(--text); line-height: 1.5;
+  font-size: var(--fs-caption); font-weight: 500; color: var(--text); line-height: 1.6;
+  text-align: left;
 }
