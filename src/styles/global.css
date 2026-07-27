@@ -7150,11 +7150,12 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    실제 헤더 아래 간격은 아래 trow의 padding-top이 혼자 정한다. */
 .scr-feed-match-body .scr-match-trow-topline { margin-bottom: 0; }
 /* 헤더(시각/라벨) 줄과 같은 라인에 오도록 — 헤더 padding-top 12px + caption 줄높이의
-   세로 중심에 버튼 중심을 맞춘다. */
-.scr-feed-match-body .scr-match-trow-topmeta { position: absolute; top: 22px; right: 12px; z-index: 2; }
+   세로 중심에 버튼 중심을 맞춘다. 22px일 땐 버튼(26px)의 중심이 라벨 중심보다 4.5px
+   아래에 있어 혼자 처져 보였다(지적) — 그만큼 올려 두 중심을 맞춘다. */
+.scr-feed-match-body .scr-match-trow-topmeta { position: absolute; top: 18px; right: 12px; z-index: 2; }
 .scr-feed-match-body .scr-match-trow-topmeta .scr-match-kebab-btn, .scr-feed-chal-menu .scr-match-kebab-btn { width: 26px; height: 26px; min-height: 26px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
 /* 너 나와 케밥(피드 레벨)도 같은 자리 — 기존 우상단 '취소' 라벨과 겹치지 않게 라벨은 왼쪽으로. */
-.scr-feed-chal-menu { position: absolute; top: 22px; right: 12px; z-index: 3; }
+.scr-feed-chal-menu { position: absolute; top: 18px; right: 12px; z-index: 3; }
 .scr-feed-card .scr-challenge-cancel-tag { right: 48px; }
 /* 아이템 내 폰트 전부 1스텝 축소(요청) — 로스터/닉네임 caption, 헤더 micro 등.
    로스터와 너나와 닉네임은 같은 크기 유지(둘 다 caption). */
