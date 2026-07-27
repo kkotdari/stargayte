@@ -1,4 +1,6 @@
+import { ga, neun, ro, wa } from "./korean";
 import type { ParsedReplay, ParsedReplayPlayer, ReplayPlayerSignals } from "./replayParser";
+import { scanTactics } from "./replayTactics";
 
 // 리플레이에서 뽑은 재료로 경기 요약 문장을 만든다(요청).
 //
@@ -137,34 +139,6 @@ interface Side {
   techs: Set<string>;
 }
 
-// ── 한글 조사 ──
-// 앞 글자의 받침 유무로 갈린다. (한글 음절 코드 = 0xAC00 + (초성*21 + 중성)*28 + 종성)
-function jongseong(word: string): number | null {
-  const ch = word.charCodeAt(word.length - 1);
-  if (Number.isNaN(ch) || ch < 0xac00 || ch > 0xd7a3) return null; // 한글이 아니면 판단 불가
-  return (ch - 0xac00) % 28;
-}
-/** ~로 / ~으로 (받침이 없거나 ㄹ이면 "로"). */
-function ro(w: string): string {
-  const j = jongseong(w);
-  return j === null || j === 0 || j === 8 ? `${w}로` : `${w}으로`;
-}
-/** ~와 / ~과 */
-function wa(w: string): string {
-  const j = jongseong(w);
-  return j === null || j === 0 ? `${w}와` : `${w}과`;
-}
-/** ~가 / ~이 */
-function ga(w: string): string {
-  const j = jongseong(w);
-  return j === null || j === 0 ? `${w}가` : `${w}이`;
-}
-/** ~는 / ~은 */
-function neun(w: string): string {
-  const j = jongseong(w);
-  return j === null || j === 0 ? `${w}는` : `${w}은`;
-}
-
 function buildSide(players: ParsedReplayPlayer[]): Side {
   const combat = new Map<string, number>();
   const buildings = new Map<string, number>();
@@ -243,13 +217,21 @@ function ownCombat(p: ParsedReplayPlayer): Map<string, number> {
 }
 
 /** "○○의 하이템플러 견제로 승기를 잡음" — 그 사람을 특징짓는 유닛 하나를 골라 말한다.
- *  팀 동료가 거의 안 뽑은 유닛일수록 그 사람의 몫이 뚜렷하므로 우선한다. */
-function heroClause(side: Side, hero: ParsedReplayPlayer, name: string): string | null {
+ *  팀 동료가 거의 안 뽑은 유닛일수록 그 사람의 몫이 뚜렷하므로 우선한다.
+ *  avoid는 본문이 이미 말한 유닛 — "저글링으로 역전, 저글링 물량으로 밀어붙임"처럼 같은
+ *  단어를 두 번 쓰지 않기 위해 뺀다. 다 빼서 남는 게 없으면 그냥 원래대로 고른다. */
+function heroClause(
+  side: Side,
+  hero: ParsedReplayPlayer,
+  name: string,
+  avoid: string[] = []
+): string | null {
   const own = ownCombat(hero);
   if (own.size === 0) return null;
   const mates = side.players.filter((p) => p !== hero);
-  const scored = [...own.entries()]
-    .filter(([u]) => UNIT_ROLE[u])
+  const pool = [...own.entries()].filter(([u]) => UNIT_ROLE[u]);
+  const fresh = pool.filter(([u]) => !avoid.includes(u));
+  const scored = (fresh.length > 0 ? fresh : pool)
     .map(([unit, n]) => {
       const byMates = mates.reduce((acc, m) => acc + (ownCombat(m).get(unit) ?? 0), 0);
       // 혼자 뽑은 유닛에 가중치 — 팀에서 이 사람만 낸 카드가 곧 그 사람의 이야기다.
@@ -428,23 +410,45 @@ export function buildReplaySummary({ replay, displayName }: ReplaySummaryInput):
   // 팀전이면 그 사람의 활약을 본문에 한 마디 덧붙인다(요청) — 1:1은 이미 본문이 그 사람
   // 얘기라 뺀다. 이건 첫 문장 안의 쉼표 절이고, 아래 문장들과는 별개다.
   const hero =
-    star && winnerPlayers.length > 1 ? heroClause(winner, star, displayName(star.rawName)) : null;
+    star && winnerPlayers.length > 1
+      ? heroClause(winner, star, displayName(star.rawName), units)
+      : null;
 
   const head = lead.length > 0 ? `${lead[0]} ` : "";
   const opening = [head + body, ...(hero ? [hero] : [])].join(", ");
 
   // ── 문장 수 ──
   // 짧은 경기는 할 얘기도 짧다. 반대로 30분 넘는 혈투를 한 줄로 줄이면 아무 말도 안 한 것과
-  // 같아서, 경기가 길수록 문장을 늘린다(요청: "한 문장이 아니어도, 3~4문장까지").
-  const budget = sec >= EPIC_GAME_SEC ? 4 : sec >= LATE_GAME_SEC ? 3 : 2;
+  // 같다. 전술까지 짚어내면서 할 얘기가 늘어서 한 단계씩 더 늘렸다(요청: "문장 재밌어서
+  // 조금씩 문장수 늘려줘도 될듯").
+  const budget = sec >= 25 * 60 ? 5 : sec >= 12 * 60 ? 4 : 3;
 
-  const lose = loserStory({
+  // 전술(9드론 저글링 러시·몰래 배럭·목동 저그…)이 짚이면 그게 그 경기에서만 있었던 일이라
+  // 가장 재미있다 — 양쪽 이야기 맨 앞에 세운다(요청).
+  const winTactics = scanTactics({
+    sidePlayers: winnerPlayers, foePlayers: loserPlayers, displayName,
+  }).map((t) => t.won);
+  const loseTactics = scanTactics({
+    sidePlayers: loserPlayers, foePlayers: winnerPlayers, displayName,
+  }).map((t) => t.lost);
+
+  // 진 편은 "무엇으로 맞섰나"를 먼저 말해야 뒤의 전술이 그 위에 얹힌다 — 그래서 첫 문장만
+  // 앞에 두고 전술을 그다음에 끼운다. 이긴 편은 본문이 이미 조합을 말했으니 전술이 맨 앞.
+  const loseBase = loserStory({
     loser, winner, loserPlayers, displayName, sec, totalFrames, pressedEarly,
   });
-  const win = winnerStory({ winner, loser, sec });
+  const lose = [...loseBase.slice(0, 1), ...loseTactics, ...loseBase.slice(1)];
+  const win = [...winTactics, ...winnerStory({ winner, loser, sec })];
 
-  // 진 편 → 이긴 편 → 진 편… 순으로 번갈아 붙인다. 한쪽 얘기만 이어지면 중계가 아니라
-  // 승자 소개가 되어버린다(요청: 패배팀 전황도 넣기).
-  const rest = [lose[0], win[0], lose[1], win[1], lose[2]].filter((s): s is string => Boolean(s));
+  // 이긴 편의 첫 이야기(대개 전술)를 먼저 놓고, 그다음부터 진 편 ↔ 이긴 편을 번갈아 붙인다.
+  // 이긴 쪽 전술을 맨 앞에 두는 이유는 그게 '어떻게 이겼나'의 답이라서다 — 5분짜리 러시
+  // 경기에서 이게 뒤로 밀리면 정작 그 경기의 전부가 잘려나간다. 그 뒤로는 한쪽 얘기만
+  // 이어지지 않게 번갈아 간다(요청: 패배팀 전황도 넣기).
+  const rest: string[] = [];
+  if (win[0]) rest.push(win[0]);
+  for (let i = 0; i < Math.max(lose.length, win.length - 1); i += 1) {
+    if (lose[i]) rest.push(lose[i]);
+    if (win[i + 1]) rest.push(win[i + 1]);
+  }
   return [opening, ...rest.slice(0, budget - 1)].join(". ");
 }

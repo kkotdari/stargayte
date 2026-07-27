@@ -40,6 +40,15 @@ export interface ParsedReplayPlayer {
   signals: ReplayPlayerSignals | null;
 }
 
+/** 건물 한 채를 어디에 언제 지었나. 좌표 단위는 screp이 주는 그대로(맵마다 다름) — 우리는
+ *  절대값이 아니라 "내 본진에서 얼마나 멀리"라는 상대 거리로만 쓰므로 단위를 몰라도 된다. */
+export interface BuildPos {
+  unit: string;
+  frame: number | null;
+  x: number;
+  y: number;
+}
+
 // 한 사람의 커맨드 스트림에서 뽑은 '전황' 재료. 숫자 지표(APM 등)와 달리 여기 값들은
 // 문장을 만들기 위한 것이라, 정확한 수치보다 "무엇을 주로 뽑았고 언제까지 살아있었나"가
 // 중요하다. 커맨드는 '명령'이지 '완성'이 아니라는 한계는 buildCount와 같다(위 주석 참고).
@@ -52,6 +61,14 @@ export interface ReplayPlayerSignals {
   buildingCounts: Record<string, number>;
   /** 건물별 첫 건설 프레임 — 확장 타이밍/테크 타이밍용. */
   firstBuildingFrame: Record<string, number>;
+  /** 유닛/건물별 생산 프레임 목록(앞쪽 EARLY_FRAMES_CAP개까지). 첫 프레임만으로는 "스포닝풀
+   *  전에 드론을 몇 기 뽑았나"(9드론/12드론) 같은 순서 이야기를 만들 수 없어서 따로 둔다.
+   *  뒤쪽은 필요 없으니 잘라서 메모리를 아낀다. */
+  unitFrames: Record<string, number[]>;
+  buildingFrames: Record<string, number[]>;
+  /** 건물을 지은 좌표 — 몰래 배럭/센터 포토처럼 '어디에' 지었는지가 곧 전술인 것들을
+   *  판정한다. screp이 Pos를 안 내려주는 버전이면 빈 배열로 남고, 그 전술들은 그냥 안 나온다. */
+  buildPositions: BuildPos[];
   /** 연구한 테크(스톰/럴커 등)와 업그레이드 이름 — 순서대로. */
   techNames: string[];
   upgradeNames: string[];
@@ -151,6 +168,8 @@ interface ScrepCmd {
   /** 연구 커맨드의 대상 — Tech는 "Psionic Storm" 같은 이름, Upgrade는 업그레이드 이름. */
   Tech?: { Name?: string } | string;
   Upgrade?: { Name?: string } | string;
+  /** 건설 커맨드의 좌표. screp 버전에 따라 대문자/소문자 키라 둘 다 받는다. */
+  Pos?: { X?: number; Y?: number; x?: number; y?: number } | null;
 }
 
 interface ScrepResult {
@@ -185,10 +204,16 @@ const PRODUCTION_CMD_NAMES = new Set<string>([
 const UNIT_TRAIN_CMD_NAMES = new Set<string>(["Train", "Train Fighter", "Unit Morph"]);
 const BUILD_CMD_NAMES = new Set<string>(["Build", "Building Morph", "Hatch"]);
 
+// 순서 판정에 쓰는 앞부분만 남긴다 — 9드론/투게이트 같은 이야기는 다 초반 이야기라
+// 스무 남짓이면 충분하고, 긴 경기의 뒷부분까지 다 들고 있을 이유가 없다.
+const EARLY_FRAMES_CAP = 24;
+const BUILD_POS_CAP = 80;
+
 function emptySignals(): ReplayPlayerSignals {
   return {
     unitCounts: {}, firstUnitFrame: {},
     buildingCounts: {}, firstBuildingFrame: {},
+    unitFrames: {}, buildingFrames: {}, buildPositions: [],
     techNames: [], upgradeNames: [],
     firstCmdFrame: null, lastCmdFrame: null, cmdCountByThird: [0, 0, 0],
   };
@@ -198,6 +223,18 @@ function emptySignals(): ReplayPlayerSignals {
 function nameOf(v: { Name?: string } | string | undefined): string | null {
   if (!v) return null;
   return (typeof v === "string" ? v : v.Name) ?? null;
+}
+
+function posOf(v: ScrepCmd["Pos"]): { x: number; y: number } | null {
+  if (!v) return null;
+  const x = typeof v.X === "number" ? v.X : v.x;
+  const y = typeof v.Y === "number" ? v.Y : v.y;
+  return typeof x === "number" && typeof y === "number" ? { x, y } : null;
+}
+
+function pushCapped(bag: Record<string, number[]>, key: string, frame: number): void {
+  const arr = bag[key] ?? (bag[key] = []);
+  if (arr.length < EARLY_FRAMES_CAP) arr.push(frame);
 }
 
 // 커맨드 스트림 한 번 훑기로 사람별 요약 재료를 모은다.
@@ -225,13 +262,23 @@ function collectSignals(cmds: ScrepCmd[], totalFrames: number | null): Map<numbe
       const unit = nameOf(c.Unit);
       if (unit) {
         s.unitCounts[unit] = (s.unitCounts[unit] ?? 0) + 1;
-        if (frame !== null && s.firstUnitFrame[unit] === undefined) s.firstUnitFrame[unit] = frame;
+        if (frame !== null) {
+          if (s.firstUnitFrame[unit] === undefined) s.firstUnitFrame[unit] = frame;
+          pushCapped(s.unitFrames, unit, frame);
+        }
       }
     } else if (cmdName && BUILD_CMD_NAMES.has(cmdName)) {
       const b = nameOf(c.Unit);
       if (b) {
         s.buildingCounts[b] = (s.buildingCounts[b] ?? 0) + 1;
-        if (frame !== null && s.firstBuildingFrame[b] === undefined) s.firstBuildingFrame[b] = frame;
+        if (frame !== null) {
+          if (s.firstBuildingFrame[b] === undefined) s.firstBuildingFrame[b] = frame;
+          pushCapped(s.buildingFrames, b, frame);
+        }
+        const pos = posOf(c.Pos);
+        if (pos && s.buildPositions.length < BUILD_POS_CAP) {
+          s.buildPositions.push({ unit: b, frame, x: pos.x, y: pos.y });
+        }
       }
     }
     const tech = nameOf(c.Tech);
