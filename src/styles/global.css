@@ -1906,25 +1906,24 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 /* v2 통계 그리드(표) 전체를 피드 카드와 같은 투명 유리로(요청: "통계 화면 그리드를
    투명 블러로") — 배경 사진(stats_bg)이 표 뒤로 비쳐 보이게 한다. base .scr-stat-table의
    불투명 --panel-solid를 덮는다. 값은 .scr-feed-card와 동일(다크/라이트 각각). */
-/* 유리를 '표'가 아니라 '데이터 칸'이 든다 — 표에 깔면 sticky 유저칸(자기 유리를 또
-   가진다) 밑에도 깔려 유리가 두 겹으로 합성돼, 유저칸만 유독 뿌옇고 불투명해 보였다
-   (지적: "스티키라 두번 불투명이 들어간다, 맨 앞만 강하게 하고 뒤는 투명하게").
-   유저칸을 뺀 칸들에만 유리를 주면 유저칸 뒤는 비어 있어 한 겹만 남는다. */
-.scr-stats-list-panel-v2 .scr-stat-table { background-color: transparent; }
-.scr-stats-list-panel-v2 .scr-stat-row > *:not(.scr-stat-name-cell):not(.scr-stat-name-head) {
+/* 유리(backdrop-filter)는 '표' 하나만 든다 — 한때 sticky 유저칸과 이중 합성되는 걸 피하려고
+   데이터 칸마다 따로 줬는데(지적: "두 번 불투명"), 그러면 blur 요소가 셀 수만큼 생겨
+   스크롤이 눈에 띄게 끊겼다(지적: "통계 스크롤이 부드럽지 않음"). 이중 합성은 아래에서
+   유저칸이 '자기 블러 없이 거의 불투명한 채움'만 쓰게 해서 푼다 — 그러면 화면 전체에
+   blur는 표 한 겹뿐이고, 유저칸 밑의 표 유리는 채움에 가려 보이지 않는다. */
+.scr-stats-list-panel-v2 .scr-stat-table {
   background-color: rgba(var(--overlay-rgb), 0.07);
   /* 블러 아주 약하게(요청) — 9px는 사진이 뭉개져 유리보다 젖빛 느낌이었다. 2px면 배경
      사진의 형태가 살아 있는 채로 살짝만 부드러워진다. */
   backdrop-filter: blur(2px) saturate(1.2);
   -webkit-backdrop-filter: blur(2px) saturate(1.2);
 }
-.scr-light-theme .scr-stats-list-panel-v2 .scr-stat-row > *:not(.scr-stat-name-cell):not(.scr-stat-name-head) {
+.scr-light-theme .scr-stats-list-panel-v2 .scr-stat-table {
   background-color: rgba(255, 255, 255, 0.62);
   backdrop-filter: blur(2px) saturate(1.1);
   -webkit-backdrop-filter: blur(2px) saturate(1.1);
 }
-/* 헤더행·유저열 배경 — 회색톤(--panel-raised) 대신 표 기본색으로(요청). 유저열은 sticky로
-   옆 칸 내용이 밑을 지나가므로, 불투명 회색 대신 반투명 기본색 + 강한 블러로 가린다(요청).
+/* 헤더행·유저열 배경 — 회색톤(--panel-raised) 대신 표 기본색으로(요청).
    color-mix 미지원 브라우저는 앞 선언(불투명 기본색)으로 동작한다. */
 /* 헤더 행은 표가 유리가 되면서 따로 칠할 배경이 없다 — 표 유리를 그대로 비추게 투명.
    (불투명 띠로 남기면 유리 표 위에 회색 지붕만 얹힌 모양이 됐다.) */
@@ -1933,18 +1932,15 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 .scr-stats-list-panel-v2 .scr-stat-name-head {
   background-image: none;
   background-color: var(--panel-solid);
-  /* 이제 표 유리가 밑에 안 깔려 이 한 겹이 전부다(위 주석) — 가로 스크롤 때 밑을 지나는
-     열을 이 한 겹이 혼자 가려야 하므로 채움·블러를 그만큼 올린다. */
-  background-color: color-mix(in srgb, var(--panel-solid) 88%, transparent);
-  backdrop-filter: blur(16px) saturate(1.1);
-  -webkit-backdrop-filter: blur(16px) saturate(1.1);
+  /* 자기 blur는 두지 않는다(위 .scr-stat-table 주석) — 표 유리 위에 blur를 한 겹 더
+     얹으면 이중 합성으로 유저칸만 뿌옇게 뜨고, sticky라 스크롤 내내 다시 계산돼 무겁다.
+     대신 채움을 거의 불투명하게 올려 밑을 지나는 열을 확실히 가린다. */
+  background-color: color-mix(in srgb, var(--panel-solid) 94%, transparent);
 }
-/* 라이트도 같은 이유로 한 겹 기준 값 — 흰 배경이라 같은 %라도 더 투명해 보여 조금 더 준다. */
+/* 라이트도 같은 방식 — 흰 배경이라 같은 %라도 더 투명해 보여 조금 더 준다. */
 .scr-light-theme .scr-stats-list-panel-v2 .scr-stat-name-cell,
 .scr-light-theme .scr-stats-list-panel-v2 .scr-stat-name-head {
-  background-color: color-mix(in srgb, var(--panel-solid) 82%, transparent);
-  backdrop-filter: blur(14px) saturate(1.05);
-  -webkit-backdrop-filter: blur(14px) saturate(1.05);
+  background-color: color-mix(in srgb, var(--panel-solid) 92%, transparent);
 }
 /* flex:none — 기본 규칙의 flex:1이 남은 폭을 스택이 다 차지해 프사만 왼쪽에 붙고
    닉네임 혼자 가운데로 떨어졌다(가운데 정렬 요청과 어긋남) — 프사+닉네임을 한 덩어리로
@@ -2123,10 +2119,10 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   background-color: var(--panel-solid);
   /* 값은 바디 유저칸(.scr-stat-name-cell)과 반드시 같게 유지 — 이 규칙이 특이도로
      그쪽을 덮으므로, 한쪽만 고치면 헤더/바디 톤이 어긋난다(실제로 70/78로 어긋났다). */
-  background-color: color-mix(in srgb, var(--panel-solid) 88%, transparent);
+  background-color: color-mix(in srgb, var(--panel-solid) 94%, transparent);
 }
 .scr-light-theme .scr-stats-list-panel-v2 .scr-stat-name-head.scr-stat-sort-btn {
-  background-color: color-mix(in srgb, var(--panel-solid) 82%, transparent);
+  background-color: color-mix(in srgb, var(--panel-solid) 92%, transparent);
 }
 @media (hover: hover) { .scr-stat-sort-btn:hover { color: var(--text); } }
 /* 정렬 활성 표시는 색(포인트색) 대신 기본 글자색을 더 굵게 — :hover도 같은 규칙을
@@ -5080,8 +5076,8 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   box-shadow:
     inset 0 0 0 0.5px rgba(255, 255, 255, 0.18),  /* 얇은 유리 테 */
     inset 0 1px 0 rgba(255, 255, 255, 0.15),      /* 위 림 반사(은은하게) */
-    0 3px 10px rgba(0, 0, 0, 0.32),               /* 가까운 접촉 그림자 */
-    0 14px 34px -8px rgba(0, 0, 0, 0.5);          /* 넓게 퍼지는 부양 그림자 */
+    0 4px 12px rgba(0, 0, 0, 0.42),               /* 가까운 접촉 그림자 */
+    0 18px 40px -6px rgba(0, 0, 0, 0.62);         /* 넓게 퍼지는 부양 그림자 */
 }
 /* 라이트도 같은 문법 — 밝은 배경에선 흰 림이 안 보이므로 테만 살짝 어둡게 잡고,
    나머지는 다크와 같은 은은/확산 조합을 쓴다. */
@@ -5089,8 +5085,8 @@ html.scr-light-theme .scr-mobile-tabbar::before {
   box-shadow:
     inset 0 0 0 0.5px rgba(0, 0, 0, 0.08),
     inset 0 1px 0 rgba(255, 255, 255, 0.75),
-    0 3px 10px rgba(0, 0, 0, 0.16),
-    0 14px 34px -8px rgba(0, 0, 0, 0.3);
+    0 4px 12px rgba(0, 0, 0, 0.22),
+    0 18px 40px -6px rgba(0, 0, 0, 0.4);
 }
 /* 아래로 스크롤하면 숨긴다(요청: "모바일 아래로 스크롤시 탭바 숨김(단 끝까지 내리면
    탭바 보임)") — 이제 오버레이라 #scroll-root 크기와 무관하게 순수 시각 효과만
