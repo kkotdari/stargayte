@@ -6319,23 +6319,19 @@ html.scr-snap-today { scroll-snap-type: y proximity; scroll-padding-top: calc(va
   background: var(--timeline-blue); transform: translate(-50%, -50%);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--timeline-blue) 26%, transparent), 0 1px 4px rgba(0, 0, 0, 0.3);
   z-index: 1;
-  /* 조작은 이 손잡이에서만 받는다 — 트랙은 위 규칙대로 통과시키므로, 여기서 auto로 되살려야
-     한다(pointer-events는 상속된다: 트랙의 none을 그대로 물려받으면 마우스에서도 안 잡힌다).
-     touch-action:none이라 손잡이를 잡은 손가락은 페이지를 함께 밀지 않는다 — 네이티브 관성
-     스크롤과 스크럽이 같이 걸리면 둘이 서로 밀어 요동친다. 스크럽 자체는 '잡은 지점 기준
-     이동량'이라(ScrollNavTimeline의 scrubBy 주석) 어디를 잡아도 첫 프레임에 순간이동하지 않는다. */
-  pointer-events: auto; touch-action: none; cursor: grab;
-}
-/* 12px 점은 손가락으로 겨냥하기엔 너무 작다 — 보이지 않는 여유 히트 영역을 덧대되, 트랙을
-   따라 위아래로 길쭉한 알약(32×68)으로 준다. 예전엔 트랙 전체가 잡혔지만 그때는 잡는 순간
-   손가락 위치로 순간이동했다(그게 '튐'이었다). 지금은 이동량 기준이라 순간이동은 없지만,
-   트랙 전체를 다시 열면 스크롤하려던 가장자리 터치가 스크럽으로 잡혀 화면이 트랙 길이 대비
-   비율로 빠르게 흘러간다 — 그래서 '점 근처'까지만 연다. 마우스는 정확히 겨냥하므로 작게. */
-.scr-scroll-timeline-thumb::after {
-  content: ""; position: absolute; inset: -28px -10px; border-radius: 999px;
+  /* 터치는 CSS 히트테스트를 안 쓴다 — ScrollNavTimeline이 문서 레벨 터치 리스너에서 좌표로
+     직접 판정한다(그 주석 참고). 그래서 여기선 아무 것도 안 열어둔다: 손잡이가 터치를 받으면
+     오히려 좌표 판정과 두 경로가 겹친다. */
+  pointer-events: none;
 }
 @media (hover: hover) and (pointer: fine) {
-  .scr-scroll-timeline-thumb::after { inset: -8px; border-radius: 50%; }
+  /* 마우스는 CSS로 그대로 잡는다 — 정확히 겨냥해 누르므로 문제가 없었던 경로다.
+     touch-action:none은 트랙패드 관성 스크롤이 드래그와 겹치지 않게. */
+  .scr-scroll-timeline-thumb { pointer-events: auto; touch-action: none; cursor: grab; }
+  /* 12px 점은 겨냥하기 작아 보이지 않는 여유 히트 영역을 덧댄다. */
+  .scr-scroll-timeline-thumb::after {
+    content: ""; position: absolute; inset: -8px; border-radius: 50%;
+  }
 }
 /* "오늘" 눈금 — 트랙 위 오늘 위치에 짧은 가로선 + 라벨. 썸이 지나가며 여기서 딱 걸린다.
    라벨을 트랙 왼쪽으로 띄우던 이전 방식은 현재 위치 알약(.scr-scroll-timeline-date,
