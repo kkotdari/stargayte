@@ -122,12 +122,41 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [headSelector]);
 
-  // 트랙 위 포인터 위치 → 스크롤 위치로 즉시 이동(스크럽).
-  const scrubTo = (clientY: number) => {
+  // 지금 스크롤 위치를 0~1로 — update()와 같은 척도를 쓴다(드래그 시작점 기준값).
+  const currentFraction = (): number => {
+    const { scrollTop, clientHeight, scrollHeight } = getScrollMetrics();
+    const vh = Math.max(clientHeight, window.innerHeight || 0);
+    const max = scrollHeight - vh;
+    return max > 0 ? Math.min(1, Math.max(0, scrollTop / max)) : 0;
+  };
+
+  // 스크럽은 손가락의 '절대 위치'가 아니라 '잡은 뒤 움직인 거리'로 계산한다.
+  //
+  // 예전엔 f = (clientY - 트랙top) / 트랙높이로 손가락이 닿은 지점 자체를 위치로 삼았다.
+  // 너 나와/경기 목록에선 문서가 몇 화면 높이라 손가락이 손잡이 중심에서 몇 px 어긋나도
+  // 스크롤은 수십 px만 움직여 티가 안 났다. 피드는 한 번에 100건씩 이어붙여 문서가 수만
+  // px이라, 같은 몇 px 오차가 트랙 높이(≈600px) 대비 비율로 증폭돼 수백~수천 px 점프가
+  // 된다 — 이게 "피드로 도입하면서 안 되기 시작한" 튐의 정체다(마우스는 12px 점을 정확히
+  // 겨냥해 눌러 오차가 1px 수준이라 늘 멀쩡해 보였고, 손가락은 접촉면 중심이 보고돼
+  // 잡자마자 어긋난다). 시작 지점을 기준으로 삼으면 어디를 잡든 첫 프레임에 안 튄다.
+  const dragRef = useRef<{ startY: number; startFraction: number; active: boolean } | null>(null);
+  // 스크롤하려던 손가락이 손잡이를 스치고 지나간 것과 진짜 드래그를 가른다 — 이만큼
+  // 움직이기 전엔 스크롤을 건드리지 않고, 넘어서는 순간 그 지점을 새 기준으로 삼아
+  // (문턱만큼의 점프 없이) 이어서 따라간다.
+  const DRAG_DEADZONE = 4;
+
+  const scrubBy = (clientY: number) => {
     const track = trackRef.current;
-    if (!track) return;
+    const d = dragRef.current;
+    if (!track || !d) return;
+    if (!d.active) {
+      if (Math.abs(clientY - d.startY) < DRAG_DEADZONE) return;
+      d.active = true;
+      d.startY = clientY;
+    }
     const rect = track.getBoundingClientRect();
-    const f = Math.min(1, Math.max(0, (clientY - rect.top) / rect.height));
+    if (rect.height <= 0) return;
+    const f = Math.min(1, Math.max(0, d.startFraction + (clientY - d.startY) / rect.height));
     const { clientHeight, scrollHeight } = getScrollMetrics();
     const vh = Math.max(clientHeight, window.innerHeight || 0);
     scrollRootTo({ top: f * Math.max(0, scrollHeight - vh), behavior: "instant" as ScrollBehavior });
@@ -136,16 +165,18 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
   const onPointerDown = (e: React.PointerEvent) => {
     e.preventDefault();
     draggingRef.current = true;
+    dragRef.current = { startY: e.clientY, startFraction: currentFraction(), active: false };
     setVisible(true);
-    // 손잡이를 잡은 순간엔 위치를 바꾸지 않는다 — 끌어야 움직인다(잡자마자 튀면
-    // 손가락 중심으로 점프해 버린다). 캡처는 손잡이 밖으로 끌어도 추적되게.
+    // 손잡이를 잡은 순간엔 위치를 바꾸지 않는다 — 끌어야 움직인다. 캡처는 손잡이 밖으로
+    // 끌어도 추적되게.
     (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
   };
   const onPointerMove = (e: React.PointerEvent) => {
-    if (draggingRef.current) scrubTo(e.clientY);
+    if (draggingRef.current) scrubBy(e.clientY);
   };
   const endDrag = () => {
     draggingRef.current = false;
+    dragRef.current = null;
     showThenScheduleHide();
   };
 
