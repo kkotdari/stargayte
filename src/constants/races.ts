@@ -11,6 +11,4 @@ export const RACE_INFO: Record<Race, RaceMeta> = {
   "랜덤": { color: "var(--point)" },
 };
 
-export const RACE_OPTIONS = Object.keys(RACE_INFO) as Race[];
-
 export const BASE_RACES: BaseRace[] = ["테란", "프로토스", "저그"];

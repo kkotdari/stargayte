@@ -66,11 +66,6 @@ export function isScrollHideSuppressed(): boolean {
   return performance.now() < suppressHideUntil;
 }
 
-export function addScrollListener(listener: () => void, root: ScrollRoot = getScrollRoot()): () => void {
-  root.addEventListener("scroll", listener, { passive: true });
-  return () => root.removeEventListener("scroll", listener);
-}
-
 // rAF로 프레임당 한 번만 실행되게 묶은 스크롤 구독 — 모바일에서 스크롤 이벤트는 한 프레임에도
 // 여러 번 쏟아지는데, 그때마다 리스너가 getScrollMetrics()로 scrollHeight/clientHeight를 읽으면
 // (강제 리플로우) 스크롤 도중 메인 스레드가 밀려 탭바/필터·검색창 숨김·노출 반응이 눈에 띄게

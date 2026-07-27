@@ -521,25 +521,6 @@ export type PeriodPreset = "all" | "today" | "week" | "month" | "year" | "custom
 // 경기결과/통계 공용 검색 필터 상태 (정렬은 화면마다 의미가 달라 각 화면이 별도로 관리).
 // race는 회원 프로필의 "주종족"이 아니라 실제 경기결과에서 가장 많이 플레이한 종족
 // 기준 필터다 (computeMainPlayedRace 참고).
-export interface MatchFilterState {
-  nickname: string;
-  tag: string;
-  // 경기 고유번호(matchNo)로 정확히 하나만 찾을 때 — 채워지면 다른 필터는 무시하고
-  // 그 경기 하나만 조회한다.
-  matchNo: string;
-  race: Race | "all";
-  matchType: MatchType | "all";
-  // periodPreset이 "custom"일 때만 의미가 있다 — 그 외엔 화면에 보이지 않고 값도 안 쓰인다
-  // (직접입력으로 다시 돌아왔을 때 이전에 입력해둔 값을 그대로 복원하기 위해 남겨만 둔다).
-  from: string;
-  to: string;
-  periodPreset: PeriodPreset;
-  // 유저 검색에 띄어쓰기로 여러 명을 적었을 때, 켜져 있으면 그 인원 전부가 같은 경기에 있었던
-  // 경우만 보여준다(AND). 꺼져 있으면(기본) 그중 한 명이라도 있으면 보여준다(OR).
-  // 경기결과 화면 전용 — 통계 화면은 회원 한 명 단위 필터라 이 조건이 적용되지 않는다.
-  matchAllUsers: boolean;
-}
-
 // ===== 리그(League/Tournament) — 운영자 전용, 단일 엘리미네이션 대진표 =====
 
 export type LeagueMode = "team" | "individual";

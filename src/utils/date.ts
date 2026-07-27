@@ -63,26 +63,6 @@ export function monthInputToRange(value: string): { from: string; to: string } {
 // 오늘이 속한 달의 <input type="month"> 기본값("YYYY-MM").
 export const currentMonthValue = (): string => todayStr().slice(0, 7);
 
-// 월별 화면(랭킹·경기)이 기본으로 보여줄 달 — "그레이스 기간"이 붙는다(요청: "그레이스기간
-// 적용 매월 1일 20시까지는 전월 표시"). 새 달로 넘어가도 1일 20시 전까지는 아직 지난달을
-// 그대로 보여준다 — 달이 바뀌자마자 새 달(경기 0건)로 갈아치우면 전월 최종 순위/기록을
-// 확인할 틈도 없이 빈 표가 되기 때문이다. 1일 20시부터 비로소 이번 달로 넘어간다.
-// (그 외 날짜엔 항상 이번 달. 시각은 기기 로컬 시간 = 한국 사용자 기준 KST.)
-export function graceMonthValue(): string {
-  const now = gameNow();
-  if (now.getDate() === 1 && now.getHours() < 20) return shiftMonthValue(currentMonthValue(), -1);
-  return currentMonthValue();
-}
-
-// 경기 화면의 "일" 단위 기본 조회일 — graceMonthValue와 같은 원칙으로, 자정 넘어 정오
-// 전까지는 아직 전날 경기를 등록/조회하는 흐름이 자연스러워 전날을 기본으로 보여준다
-// (요청: "경기 기록 조회 필터 기본 조건 일로 하고 정오까지는 전날로 조회"). 정오부터는
-// 오늘로 넘어간다.
-export function graceDayValue(): string {
-  const now = gameNow();
-  if (now.getHours() < 12) return fmt(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1));
-  return todayStr();
-}
 
 // "YYYY-MM"을 delta개월만큼 앞/뒤로 옮긴다(음수=과거) — 랭킹 화면의 전월 대비 순위변동/
 // 최근 5개월 순위변동 모달이 함께 쓴다.
@@ -90,12 +70,6 @@ export function shiftMonthValue(month: string, delta: number): string {
   const [y, m] = month.split("-").map(Number);
   const d = new Date(y, m - 1 + delta, 1);
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
-}
-
-// 최근 n개월("YYYY-MM")을 과거→최근 순으로 — 최근 5개월 순위변동 차트가 왼쪽부터
-// 시간순으로 그려지도록 이 순서 그대로 쓴다.
-export function recentMonthValues(n: number, from: string = currentMonthValue()): string[] {
-  return Array.from({ length: n }, (_, i) => shiftMonthValue(from, -(n - 1 - i)));
 }
 
 // 월요일 시작 기준 이번 주의 시작(월)/끝(일) 날짜 문자열.
@@ -139,18 +113,6 @@ export function periodPresetRange(
   return { from: monthStart(y, m), to: monthEnd(y, m) };
 }
 
-// 목록 타이틀 아래(랭킹 화면처럼)에 보여줄 "지금 적용 중인 기간"을 사람이 읽을 문구로 만든다.
-// 랭킹 화면과 같은 원칙으로 "오늘"/"이번달" 같은 프리셋 이름은 안 붙이고 실제 날짜(범위)만
-// 보여준다 — offset으로 과거로 이동했을 때 "오늘 (2026-07-05)"처럼 모순된 문구가 되는 걸 방지.
-export function periodPresetLabel(preset: PeriodPreset, from: string, to: string, offset = 0): string {
-  const { from: f, to: t } = periodPresetRange(preset, from, to, offset);
-  if (preset === "year") return f.slice(0, 4);
-  if (preset === "month") return f.slice(0, 7);
-  if (!f && !t) return "전체 기간";
-  if (f === t) return f;
-  if (f && t) return `${f} ~ ${t}`;
-  return f ? `${f} ~` : `~ ${t}`;
-}
 
 export const DOW = ["일", "월", "화", "수", "목", "금", "토"] as const;
 
@@ -250,46 +212,3 @@ export const MONTHS_KR = [
   "1월", "2월", "3월", "4월", "5월", "6월",
   "7월", "8월", "9월", "10월", "11월", "12월",
 ] as const;
-
-// 랭킹 집계 기간의 단위 — 월("YYYY-MM")이나 연("YYYY") 하나로 좁혀 순위를 매긴다(요청:
-// "필터 기간 년/월, 화살표 하나로 그 단위만큼 이동"). anchor 문자열은 월이면 "YYYY-MM",
-// 연이면 "YYYY"다. 아래 헬퍼들은 이 anchor를 실제 조회 범위(from~to)·표시 라벨·이동으로
-// 바꿔준다 — 화면(RankingScreen)은 이 헬퍼들만 쓰고 달/연을 직접 계산하지 않는다.
-export type PeriodUnit = "month" | "year";
-
-// 그 단위의 "현재"(월은 그레이스 보정 이번 달, 연은 올해) anchor.
-export function currentPeriodAnchor(unit: PeriodUnit): string {
-  return unit === "year" ? String(gameNow().getFullYear()) : graceMonthValue();
-}
-
-// anchor를 그 단위 delta개(음수=과거)만큼 앞뒤로 옮긴다.
-export function shiftPeriodAnchor(unit: PeriodUnit, anchor: string, delta: number): string {
-  if (unit === "year") return String(Number(anchor) + delta);
-  return shiftMonthValue(anchor, delta);
-}
-
-// anchor를 실제 조회 범위(그 달/그 해의 첫날~마지막날)로 바꾼다.
-export function periodAnchorToRange(unit: PeriodUnit, anchor: string): { from: string; to: string } {
-  if (unit === "year") {
-    const y = Number(anchor);
-    return { from: fmt(new Date(y, 0, 1)), to: fmt(new Date(y, 11, 31)) };
-  }
-  return monthInputToRange(anchor);
-}
-
-// 타이틀 옆에 보여줄 라벨 — 월은 "7월"(그해 안이라 달만), 연은 "2026년".
-export function periodAnchorLabel(unit: PeriodUnit, anchor: string): string {
-  if (unit === "year") return `${anchor}년`;
-  return MONTHS_KR[Number(anchor.slice(5, 7)) - 1];
-}
-
-// 순위변동 그래프의 x축(과거→최근)용 짧은 라벨 — 월은 "7월", 연은 "26"(자리 절약).
-export function periodAxisLabel(unit: PeriodUnit, anchor: string): string {
-  if (unit === "year") return anchor.slice(2);
-  return MONTHS_KR[Number(anchor.slice(5, 7)) - 1];
-}
-
-// 최근 n개 기간(과거→최근 순) — 순위변동 그래프가 왼쪽부터 시간순으로 그려지도록.
-export function recentPeriodAnchors(unit: PeriodUnit, n: number, upto: string): string[] {
-  return Array.from({ length: n }, (_, i) => shiftPeriodAnchor(unit, upto, -(n - 1 - i)));
-}
