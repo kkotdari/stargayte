@@ -266,10 +266,18 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
             <button
               key={m.key} type="button" className={m.className}
               style={{ top: `${(markerFractions[m.key] as number) * 100}%` }}
-              // 눈금을 누르면 그 지점으로 바로 이동한다(요청) — 눈금이 가리키는 대상
-              // (groupSelector)이 곧 목적지라, 별도 좌표 계산 없이 그 요소로 스크롤한다.
+              // 눈금을 누르면 그 지점으로 이동한다(요청). 목적지는 눈금이 이미 알고 있는
+              // 값(markerFractions)을 그대로 쓴다 — scrollIntoView로 옮겼더니 화면 '가운데'에
+              // 두려고 반 화면만큼 더 위로 갔고, 위쪽 여유가 없으면 0으로 잘려 맨 위로
+              // 튀었다(지적: 눌러도 현재가 아니라 맨 위로 감). 눈금 위치는 "그 요소가 화면
+              // 맨 위에 오는 스크롤 값"이라, 같은 척도로 옮겨야 다이얼이 눈금에 정확히 앉는다.
               onClick={() => {
-                document.querySelector(m.groupSelector)?.scrollIntoView({ block: "center", behavior: "smooth" });
+                const f = markerFractions[m.key];
+                if (f === null || f === undefined) return;
+                const { clientHeight, scrollHeight } = getScrollMetrics();
+                const vh = Math.max(clientHeight, window.innerHeight || 0);
+                scrollRootTo({ top: f * Math.max(0, scrollHeight - vh), behavior: "smooth" });
+                setVisible(true);
               }}
               aria-label={`${m.key} 위치로 이동`}
             />
