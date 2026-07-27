@@ -1036,8 +1036,10 @@ export default function FeedScreen() {
       const idx = nowIndex >= 0 ? nowIndex : displayFeed.length - 1;
       const el = marker ?? (list.children[idx] as HTMLElement | undefined);
       if (!el) return;
-      const headerH = document.querySelector<HTMLElement>(".scr-header")?.getBoundingClientRect().height ?? 0;
-      const top = window.scrollY + el.getBoundingClientRect().top - headerH - 10;
+      // "현재" 구분선이 화면 세로 가운데쯤 오게(요청 — 이전엔 헤더 바로 아래에 붙어
+      // 미래 카드가 안 보였다). 가운데 오프셋만큼 위 미래 카드들이 함께 보인다.
+      const r = el.getBoundingClientRect();
+      const top = window.scrollY + r.top + r.height / 2 - window.innerHeight / 2;
       if (top > 1) window.scrollTo({ top, behavior: "instant" });
     });
   }, [loading, displayFeed, nowIndex]);
