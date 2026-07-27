@@ -7516,6 +7516,23 @@ html.scr-light-theme .scr-comment-sheet { background: #ffffff; }
   padding-bottom: 8px;
   transition: none;
 }
+/* 전체화면으로 바꿔도 키보드가 올라오면 그 아래로 뒷페이지가 드러났다(지적, 재발) —
+   iOS가 fixed 요소를 비주얼 뷰포트에 다시 앉히면서 액세서리 바·주소창이 차지하는 띠가
+   패널 밖에 남기 때문이다. 그 띠를 패널로 덮으려는 시도는 여섯 번 다 실패했다(위 주석:
+   음수 bottom, ::before 늘리기, ::after 치마, 박스 확장, transform 밀기, inset:0).
+   덮을 수 없으면 '드러날 것'을 없앤다 — 입력 중에는 뒷페이지를 통째로 감추고, 크롬 뒤까지
+   확장 합성되는 유일한 레이어(.scr-main::before, 100lvh 고정판)를 패널과 같은 색으로
+   칠한다. 그러면 그 띠는 패널의 연장처럼 보인다.
+   visibility로 감춘다 — display:none이면 문서가 접혀 스크롤 위치가 날아간다.
+   .scr-main만 다시 보이게 두는 건 순전히 그 ::before를 살리기 위해서고, 자기 자식들은
+   바로 아래에서 다시 감춘다(.scr-main 자신은 배경이 없어 아무것도 그리지 않는다). */
+html.scr-comment-typing .scr-app { visibility: hidden; }
+html.scr-comment-typing .scr-main { visibility: visible; }
+html.scr-comment-typing .scr-main > * { visibility: hidden; }
+/* 배경 사진 규칙(html.scr-page-bg …)이 더 구체적이라 !important로 확실히 이긴다 —
+   입력 중 한때뿐이고, 여기서 지면 그 띠에 사진이 그대로 드러난다. */
+html.scr-comment-typing .scr-main::before { background: #1e1e1f !important; }
+html.scr-light-theme.scr-comment-typing .scr-main::before { background: #ffffff !important; }
 /* 목록이 이 아래로 스크롤해 들어가므로 경계선을 둔다 — 없으면 스크롤된 글이 제목 줄에
    그대로 붙어 어디까지가 헤더인지 안 보인다. */
 /* 윗모서리 곡선이 헤더 줄 높이까지 파고들므로 제목과 X를 위로 조금 더 내려 피한다. 좌우는

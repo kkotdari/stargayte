@@ -424,6 +424,17 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
       restore();
     };
   }, [mobile, sheetOpen]);
+  // 입력 중에는 뒷페이지를 통째로 감춘다(전역 클래스 — CSS의 .scr-comment-typing 주석
+  // 참고). 키보드가 올라오면 iOS가 이 패널을 비주얼 뷰포트에 다시 앉혀 아래에 띠가
+  // 남는데, 여섯 번을 시도해도 그 띠를 패널로 덮을 수 없었다 — 덮는 대신 드러날 것을
+  // 없앤다. 여닫는 연출 중에는(typing이 false) 뒷페이지가 그대로 보여야 자연스러우므로
+  // '열려 있는 동안'이 아니라 '입력 중'에만 건다.
+  useEffect(() => {
+    if (!(mobile && sheetOpen && typing)) return;
+    const root = document.documentElement;
+    root.classList.add("scr-comment-typing");
+    return () => root.classList.remove("scr-comment-typing");
+  }, [mobile, sheetOpen, typing]);
   // 시트가 떠 있는 동안 배경(본문)으로 가는 스크롤/클릭을 막고, 바깥 탭이면 닫는다.
   useLockBodyScroll(mobile && sheetOpen, closeSheet);
   // 열릴 때 아래에서 올라온다. 시작 위치를 인라인으로 먼저 박는다 — WAAPI fill에만 맡기면
