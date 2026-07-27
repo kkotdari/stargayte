@@ -223,11 +223,11 @@ export default function App() {
     screen === "rivalry" && !isAdmin ? "feed" :
     screen;
 
-  // 배경 사진이 있는 화면(지금은 랭킹뿐)에서는 헤더까지 사진이 이어져 보이게 —
-  // 헤더의 불투명 배경을 끄는 클래스를 앱 루트에 건다(CSS .scr-app-hasbg 참고).
-  // 배경 있는 화면이 늘면 이 조건에 추가하면 된다.
+  // 배경 사진이 있는 화면(지금은 통계뿐 — 피드 배경은 제거)에서는 헤더까지 사진이
+  // 이어져 보이게 — 헤더의 불투명 배경을 끄는 클래스를 앱 루트에 건다(CSS
+  // .scr-app-hasbg 참고). 배경 있는 화면이 늘면 이 조건에 추가하면 된다.
   return (
-      <div className={"scr-app" + (resolvedScreen === "feed" || resolvedScreen === "stats" ? " scr-app-hasbg" : "")} id="scr-app">
+      <div className={"scr-app" + (resolvedScreen === "stats" ? " scr-app-hasbg" : "")} id="scr-app">
         <div className="scr-bg-grid" />
         <span className="scr-rail scr-rail-left" aria-hidden="true" />
         <span className="scr-rail scr-rail-right" aria-hidden="true" />

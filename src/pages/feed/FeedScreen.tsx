@@ -23,7 +23,6 @@ import { api } from "../../api/client";
 import { useCursorPagination } from "../../hooks/useCursorPagination";
 import { buildReplayDrafts, type ReplayDraft } from "../../utils/replayDraft";
 import { hasAppUpdatePreloadErrorOccurred } from "../../utils/appUpdate";
-import { usePageBackground } from "../../hooks/usePageBackground";
 import type { Challenge, FeedTargetType, Match, MatchSlot, MatchType, Member, RankSnapshot } from "../../types";
 
 const PAGE_SIZE = 100;
@@ -787,13 +786,8 @@ export default function FeedScreen() {
   // 일정/랭크변동으로 거른다 — 너나와=시간 미확정 도전장, 일정=시간 확정 도전장.
   const [kindFilter, setKindFilter] = useState<"all" | "match" | "call" | "schedule" | "rankshift">("all");
 
-  // 홈(피드) 배경 — 기존 랭킹 배경을 피드 이름으로 옮겨 그대로 쓴다(다크 우주/라이트 트로피).
-  // 라이트 테마 피드는 사진 배경을 쓰지 않는다(요청) — 다크만 사진(feed_bg), 라이트는
-  // 기본 배경. lightUrl을 넘기지 않으면 라이트에서 페이지 배경 이미지가 얹히지 않는다.
-  usePageBackground(
-    "/images/bg/feed_bg.jpg",
-    "/images/bg/feed_bg_mobile.png",
-  );
+  // 피드는 다크/라이트 모두 사진 배경 없음(요청: 다크 피드 배경도 제거, 사진 배경은
+  // 통계 화면으로 이동 — StatsScreen의 usePageBackground 참고).
   const user = useAppStore((s) => s.user);
   const isAdmin = !!user && isAdminRole(user.roles);
   const memberOf = useAppStore((s) => s.memberOf);
