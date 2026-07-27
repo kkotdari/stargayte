@@ -548,14 +548,14 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     railLocked = true;
     // ★ 연출 중에는 window.scrollTo를 한 번도 부르지 않는다.
     //
-    // 예전엔 스크롤을 S0→S0+d로 나눠 옮기면서 아래 콘텐츠의 보정 transform을 그만큼
+    // 예전엔 스크롤을 여러 프레임에 나눠 옮기면서 아래 콘텐츠의 보정 transform을 그만큼
     // 풀어 서로 상쇄시켰다. 그런데 iOS 사파리는 스크롤을 컴포지터에서 비동기로 처리해
     // 스타일(transform)과 같은 프레임에 착지한다는 보장이 없다 — 어긋난 만큼이 매 프레임
     // 잔떨림으로 보였다(지적: 크롬에선 멀쩡하고 iOS에서만 떨린다 = 정확히 이 구조에서만
     // 나오는 증상. 정수 반올림을 맞춰봐도 그대로였다).
     //
     // 그래서 스크롤은 이 커밋 프레임에 딱 한 번, 같은 프레임의 보정과 함께 옮긴다:
-    //   스크롤 S0 → S0+d, 위 콘텐츠 +d, 겹친 카드 영역은 클립으로 완전히 가림
+    //   스크롤 +d, 위 콘텐츠 +d, 겹친 카드 영역은 클립으로 완전히 가림
     // 이러면 앞 카드와 그 아래는 transform 없이도 화면상 제자리 그대로다(문서에서 d
     // 내려간 만큼 스크롤도 d 내려갔으므로). 접힘 화면과 픽셀 단위로 같다.
     // 이후 애니메이션은 '위 콘텐츠 transform'과 '클립' 둘만 움직인다 — 둘 다 순수
@@ -579,8 +579,11 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     clipTo(0);
     setTransform(aboveLeaves, `translateY(${d}px)`);
     if (rail) rail.style.opacity = "0";
-    const S0 = before.scrollY;
-    window.scrollTo({ top: S0 + d, behavior: "instant" });
+    // 지금 이 순간의 스크롤에서 d만큼 '상대'로 옮긴다 — 절대값(클릭 시점에 저장해 둔
+    // before.scrollY)을 쓰면 그 사이 관성 스크롤이 굴러간 만큼 어긋난 자리로 점프해,
+    // 커밋 프레임에 한 번 번쩍였다(지적: "펼치기 시작과 접기 끝에 깜빡임"). before는
+    // 문서 높이 차(d)를 구하는 데만 쓰고, 스크롤 기준은 항상 지금 값으로 읽는다.
+    window.scrollTo({ top: window.scrollY + d, behavior: "instant" });
 
     const start = () => {
       if (cancelled) return;
