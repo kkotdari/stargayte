@@ -7411,3 +7411,45 @@ html.scr-light-theme .scr-feed-add-fab {
   position: absolute; top: calc(100% + 4px); right: 0; z-index: 95;
   display: flex; flex-direction: column; min-width: 140px;
 }
+
+/* ===== 모바일 전면(full-screen) 모달·사진뷰어 =====
+   모달 폭이 본문 카드와 비슷해 층이 잘 안 보인다는 지적이 이어져, 모바일에서는 아예
+   상성 보기 오버레이처럼 화면을 꽉 채우는 방식으로 바꾼다(요청) — 폭을 미세 조정해
+   구분감을 만드는 대신, 배경을 통째로 덮어 "지금은 이 화면"이 되게 하는 쪽이 확실하다.
+
+   이 블록은 파일 맨 끝에 둔다: .scr-modal-sm(360px)/.scr-modal-match(640px)/
+   .scr-modal-rank-detail 처럼 개별 모달이 폭·높이를 덮어쓰는 규칙들이 위쪽에 흩어져
+   있어서, 같은 특이도로는 소스 순서로만 이길 수 있다. 클래스를 두 번 적은 것도 같은
+   이유다(.scr-notice-settings-modal.scr-modal-sm 같은 0,2,0 규칙과 맞추기 위함).
+
+   확인창(.scr-modal-confirm)은 제외한다 — 전면 모달 위에 또 전면이 겹치면 무엇을
+   확인하는 중인지 맥락이 통째로 가려진다. 작은 가운데 정렬 그대로 위에 뜬다. */
+@media (max-width: 640px) {
+  .scr-modal.scr-modal:not(.scr-modal-confirm) {
+    inset: 0; transform: none;
+    width: auto; max-width: none; height: auto; max-height: none;
+    border-radius: 0;
+    /* 노치/홈 인디케이터를 피해 안쪽 여백을 준다(상성 오버레이와 같은 방식). */
+    padding: calc(10px + var(--safe-top)) 16px calc(12px + env(safe-area-inset-bottom, 0px));
+    /* 화면을 다 덮으므로 그림자를 드리울 바깥이 없다 — 구분감은 이제 전면 자체가 맡는다. */
+    box-shadow: none;
+  }
+  .scr-modal:not(.scr-modal-confirm)::before { border-radius: 0; }
+
+  /* 사진뷰어도 같은 방식(요청) — 액자를 화면 전체로 펴고, 사진은 그 안에서 비율을
+     유지한 채 가운데 맞춤. 유리 톤은 상성 오버레이와 같은 값으로 통일한다. */
+  .scr-photo-frame {
+    inset: 0; transform: none;
+    width: auto; max-width: none;
+    display: flex; align-items: center; justify-content: center;
+    padding: calc(12px + var(--safe-top)) 12px calc(12px + env(safe-area-inset-bottom, 0px));
+    background: rgba(4, 6, 10, 0.62);
+    -webkit-backdrop-filter: blur(7px); backdrop-filter: blur(7px);
+    box-shadow: none;
+  }
+  html.scr-light-theme .scr-photo-frame { background: rgba(244, 246, 250, 0.62); }
+  /* 기본값은 width:100% + max-height:70vh(작은 액자에 맞추는 값)라, 전면에서는 폭이 아니라
+     '남은 공간에 들어가는 것'이 기준이 되게 뒤집는다. */
+  .scr-photo-large { width: auto; max-width: 100%; max-height: 100%; }
+  .scr-photo-close { top: calc(10px + var(--safe-top)); right: 12px; }
+}
