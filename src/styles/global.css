@@ -6239,13 +6239,6 @@ html.scr-snap-today { scroll-snap-type: y proximity; scroll-padding-top: calc(va
    제외한다. */
 .scr-snap-today .scr-challenge-date-group[data-today="1"] { scroll-snap-align: start; }
 
-/* 피드의 "현재" 구분선도 같은 방식으로 딱 걸리게(요청) — 다만 정렬은 center다. 피드는
-   진입 자동 스크롤이 이 구분선을 화면 세로 가운데에 놓으므로(FeedScreen), start로 두면
-   스냅이 그 자리를 화면 맨 위로 끌어올려 진입 화면이 달라진다. 켜고 끄는 판단과 스택
-   연출 중 일시 해제는 FeedScreen의 applyNowSnap/suspendNowSnap 주석 참고. */
-html.scr-snap-now { scroll-snap-type: y proximity; }
-.scr-snap-now [data-now-marker] { scroll-snap-align: center; }
-
 /* 우측 네비게이션 타임라인(요청: "위가 과거 아래가 미래, 현재 위치 표시, 스크롤 시에만
    보임"). 목록이 과거(위)→미래(아래) 순이라 스크롤 위치(0~1)를 그대로 세로 축에 매핑한다.
    position:fixed로 뷰포트 우측에 떠 있고, 스크롤하는 동안에만 opacity로 나타난다. 위쪽은
