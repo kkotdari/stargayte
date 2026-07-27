@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { useLockBodyScroll } from "../../utils/bodyScrollLock";
 
@@ -20,7 +21,13 @@ export default function PhotoViewer({ src, alt, onClose }: PhotoViewerProps) {
   // 잃었다 — 모달들과 같은 입력 실드로 배경 스크롤/클릭을 막는다. 바깥 탭으로는 안
   // 닫는 기존 원칙 유지(onOutside 없음, X로만 닫힘).
   useLockBodyScroll();
-  return (
+  // body 포털 — position:fixed는 조상에 transform/filter/backdrop-filter가 있으면 뷰포트가
+  // 아니라 '그 조상'을 기준으로 자리를 잡는다. 통계표(.scr-stat-table)가 유리 재질이라
+  // backdrop-filter를 갖고 있어서, 그 안 아바타로 이 뷰어를 열면 화면 중앙이 아니라 표
+  // 안쪽 기준으로 뜨고 모바일 유저 칸의 overflow:hidden에 잘렸다(지적: "통계에서 아바타
+  // 누르면 사진뷰어 레이아웃 깨짐"). body로 올리면 어느 화면에서 열든 기준이 뷰포트다.
+  // (클릭 버블링은 포털과 무관하게 리액트 트리를 따라가므로 아래 stopPropagation은 유지.)
+  return createPortal(
     <div className="scr-photo-overlay">
       <div className="scr-photo-frame">
         <button
@@ -31,6 +38,7 @@ export default function PhotoViewer({ src, alt, onClose }: PhotoViewerProps) {
         </button>
         <img src={src} alt={alt} className="scr-photo-large" />
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

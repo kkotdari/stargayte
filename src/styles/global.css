@@ -256,6 +256,17 @@ html {
      주소창과 안 맞아서, JS(useBottomViewportInset)가 visualViewport로 실측해 이 변수를 채운다.
      PWA·데스크톱·JS 미실행에선 0이라 탭바는 bottom:0. */
   --vv-bottom-inset: 0px;
+  /* 바닥에 떠 있는 것들(탭바·등록 FAB)이 화면 아래에서 얼마나 떠야 하는지 — 한 곳에서만
+     정하고 둘이 같이 쓴다(따로 적어두면 한쪽만 고쳐져 어긋난다).
+     사파리에선 주소창 실측치(--vv-bottom-inset)가, 주소창이 없는 PWA에선 홈 인디케이터
+     안전영역이 기준이 된다. 그런데 안전영역을 그대로 쓰면(약 34px) PWA에서만 탭바가 화면
+     한참 위에 떠서 아래 여백이 과했다(지적) — 이 바는 이미 가장자리에서 떨어져 떠 있는
+     플로팅 요소라 안전영역을 통째로 비울 이유가 없다. 절반만 반영해 인디케이터는 안 겹치되
+     여백은 사파리와 비슷하게 맞춘다. */
+  --scr-float-bottom: max(
+    calc(var(--vv-bottom-inset, 0px) + 6px),
+    calc(env(safe-area-inset-bottom, 0px) * 0.45 + 6px)
+  );
   /* 러버밴드는 CSS로 막는다(Safari 16+) — 한때 다크 검은 띠의 원인으로 의심해 빼봤지만
      무관함이 확인돼(지적) 원복. 진짜 원인은 위의 color-scheme 미선언이었다.
      scroll-behavior/scrollbar-gutter는 예전 #scroll-root에서 문서 스크롤 주체인 여기로. */
@@ -874,7 +885,11 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-photo-frame {
   position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 110;
   max-width: min(420px, calc(100vw - 48px));
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55), 0 4px 14px rgba(0, 0, 0, 0.35);
+  /* 모달과 같은 이유(딤 없음) — 같은 세기로 맞춘다. */
+  box-shadow:
+    0 24px 70px rgba(0, 0, 0, 0.72),
+    0 8px 24px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.07);
 }
 .scr-photo-large { display: block; width: 100%; max-height: 70vh; object-fit: contain; }
 /* 닫기 버튼은 다른 화면의 동그란 버튼(테두리 대신 그림자로 띄우는 톤 — 아바타 편집
@@ -937,10 +952,15 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
      접었던 크롬을 도로 펼친다. 지적: "모달창 팝업 등에서 위아래 화면 안나옴 여전").
      딤(9999px 스프레드)과 바깥 그림자는 요소에 남긴다 — 자식으로 옮기면 overflow:hidden에
      잘려 아예 안 그려진다(요소 자신의 그림자는 자기 overflow에 안 잘린다). */
-  /* 딤(9999px 스프레드) 제거 실험 — 화면 전체를 칠하는 이 그림자가 크롬 재펼침의
-     마지막 용의자다(유리 ::before 분리로도 여전해서, 지적: "진짜 딤이 문제인가").
-     구분감은 더 크고 진한 부양 그림자로 보완한다. 딤이 원인이 아니면 되살릴 것. */
-  box-shadow: 0 12px 40px rgba(0,0,0,0.55), 0 4px 14px rgba(0,0,0,0.35);
+  /* 딤(9999px 스프레드)은 제거한 상태다 — 화면 전체를 칠하는 그 그림자가 iOS 크롬
+     재펼침의 원인이었다. 대신 구분감은 전적으로 이 부양 그림자가 맡는데, 처음 값
+     (0 12px 40px / 0.55)은 딤을 대신하기엔 약해 배경 페이지와 잘 안 구분됐다(지적) —
+     범위를 넓히고 진하게 올린 뒤, 가장자리 한 줄(0 0 0 1px)로 윤곽을 또렷하게 만든다.
+     스프레드는 여전히 0이라 화면 전체를 칠하지 않는다(크롬 재펼침 회피 조건 유지). */
+  box-shadow:
+    0 24px 70px rgba(0,0,0,0.72),
+    0 8px 24px rgba(0,0,0,0.5),
+    0 0 0 1px rgba(255,255,255,0.07);
 }
 /* 유리 재질(반투명 배경 + 블러 + 위쪽 반사광) — transform이 있어 자체 스택 컨텍스트라
    z-index:-1이 내용물 뒤, 모달 밖으로는 안 나간다. */
@@ -963,7 +983,10 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-admin-panel-modal-locked::before { content: none; }
 .scr-light-theme .scr-modal {
   border: none;
-  box-shadow: 0 12px 40px rgba(0,0,0,0.28), 0 4px 14px rgba(0,0,0,0.16);
+  box-shadow:
+    0 24px 70px rgba(0,0,0,0.34),
+    0 8px 24px rgba(0,0,0,0.2),
+    0 0 0 1px rgba(0,0,0,0.08);
 }
 .scr-light-theme .scr-modal::before {
   background: rgba(255,255,255,0.72);
@@ -5039,7 +5062,7 @@ body *::-webkit-scrollbar-corner { background: transparent; }
      (--vp-bottom-gap 차감 시도는 철회 — black-translucent PWA에서 레이아웃 뷰포트 아래
      영역은 실제로 렌더되지 않아, 내린 만큼 탭바 하단이 잘렸다(지적). 탭바는 레이아웃
      뷰포트 바닥 기준으로 둔다.) */
-  bottom: max(calc(var(--vv-bottom-inset, 0px) + 6px), calc(env(safe-area-inset-bottom, 0px) + 6px));
+  bottom: var(--scr-float-bottom);
   /* 섬은 안전영역을 품지 않으므로 높이는 콘텐츠 몫만. */
   height: var(--mobile-footer-h);
   /* 상하 패딩 14→16px(요청: +2) — 좌우는 4px 유지. */
@@ -8340,7 +8363,7 @@ html:not(.scr-light-theme) .scr-feed-comments .scr-mreq-editor .scr-mreq-live-in
    같은 bottom 기준(vv-inset/안전영역) 위에 탭바 높이+간격만큼 올려 얹는다. */
 .scr-feed-add-fab-wrap {
   position: fixed; z-index: 56; left: 20px;
-  bottom: calc(max(var(--vv-bottom-inset, 0px) + 6px, env(safe-area-inset-bottom, 0px) + 6px) + var(--mobile-footer-h) + 12px);
+  bottom: calc(var(--scr-float-bottom) + var(--mobile-footer-h) + 12px);
 }
 .scr-feed-add-fab {
   width: 52px; height: 52px; border-radius: 50%;
