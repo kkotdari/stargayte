@@ -44,6 +44,10 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
   // 일어나는 순간을 스크린샷으로 잡아 어떤 값이 뛰는지 확정하기 위한 것(실기기에서만
   // 재현되는 문제라 추측 대신 값을 본다). 원인 확정 후 이 블록은 통째로 지운다.
   const debugOn = typeof location !== "undefined" && location.search.includes("tldebug");
+  // 프로그램 스크롤 추적 — window.scrollTo를 감싸 마지막 호출의 목표값/시각/호출 위치를
+  // 남긴다. 튀는 순간 이 값이 최근이면 앱 코드가 옮긴 것이고, 비어 있으면 브라우저가
+  // 옮긴 것이다(둘을 가르는 게 핵심).
+  const traceRef = useRef<{ top: number; at: number; from: string } | null>(null);
   const [dbg, setDbg] = useState<
     { y: number; sh: number; ch: number; ih: number; f: number; se: number; bp: string; vv: number; n: number } | null
   >(null);
@@ -132,6 +136,25 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
   };
 
   useEffect(() => {
+    if (!debugOn) return;
+    const w = window as unknown as { scrollTo: typeof window.scrollTo; __tlPatched?: boolean };
+    if (w.__tlPatched) return;
+    w.__tlPatched = true;
+    const orig = w.scrollTo.bind(window);
+    w.scrollTo = ((...args: unknown[]) => {
+      const top = typeof args[0] === "object" && args[0] !== null
+        ? Number((args[0] as ScrollToOptions).top ?? -1)
+        : Number(args[1] ?? -1);
+      const line = (new Error().stack ?? "").split("\n").slice(2, 4)
+        .map((l) => (l.trim().replace(/^at\s+/, "").split("/").pop() ?? ""))
+        .join(" < ");
+      traceRef.current = { top: Math.round(top), at: performance.now(), from: line.slice(0, 46) };
+      return orig(...(args as Parameters<typeof window.scrollTo>));
+    }) as typeof window.scrollTo;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debugOn]);
+
+  useEffect(() => {
     const onScroll = () => { update(); showThenScheduleHide(); };
     const off = addRafScrollListener(onScroll);
     update();
@@ -208,6 +231,12 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
           y {dbg.y}<br />se {dbg.se}<br />vv {dbg.vv}<br />body {dbg.bp}<br />
           sh {dbg.sh}<br />ch {dbg.ch} ih {dbg.ih}<br />
           max {dbg.sh - Math.max(dbg.ch, dbg.ih)}<br />f {dbg.f.toFixed(3)}<br />heads {dbg.n}
+          {traceRef.current && (
+            <>
+              <br />&rarr;to {traceRef.current.top} ({Math.round(performance.now() - traceRef.current.at)}ms)
+              <br />{traceRef.current.from}
+            </>
+          )}
         </div>
       )}
     </div>

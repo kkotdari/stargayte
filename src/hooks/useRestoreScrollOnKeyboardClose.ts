@@ -24,6 +24,19 @@ export function cancelKeyboardScrollRestore(): void {
   cancelPendingRestore?.();
 }
 
+// 키보드는 '편집 가능한 요소에 포커스가 있을 때'만 뜬다 — 이 확인이 없으면 iOS 사파리가
+// 스크롤 중 주소창을 접었다 펴는 것까지 키보드로 오인한다. 접히는 동안 innerHeight와
+// visualViewport.height가 서로 다른 타이밍에 갱신돼 그 틈에 gap이 문턱을 넘고, 곧 닫힘으로
+// 판정돼 저장해둔 위치로 스크롤을 되돌려버렸다 — 스크롤만 하고 있는데 화면이 맨 위(저장값
+// 0)나 엉뚱한 중간 지점으로 튀던 원인(실기기 계측으로 확정: y·scrollingElement·
+// visualViewport가 모두 0이고 body는 잠기지 않은 상태 = 진짜로 스크롤이 옮겨졌다).
+function isEditableFocused(): boolean {
+  const el = document.activeElement as HTMLElement | null;
+  if (!el) return false;
+  const tag = el.tagName;
+  return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el.isContentEditable;
+}
+
 export function useRestoreScrollOnKeyboardClose(): void {
   useEffect(() => {
     const vv = window.visualViewport;
@@ -33,7 +46,7 @@ export function useRestoreScrollOnKeyboardClose(): void {
     let settleTimer: ReturnType<typeof setTimeout> | null = null;
     const onResize = () => {
       const gap = window.innerHeight - vv.height - vv.offsetTop;
-      if (gap > KEYBOARD_GAP_THRESHOLD) {
+      if (gap > KEYBOARD_GAP_THRESHOLD && isEditableFocused()) {
         if (!keyboardOpen) {
           keyboardOpen = true;
           savedScrollY = getScrollTop();
