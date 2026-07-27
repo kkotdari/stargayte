@@ -7072,14 +7072,14 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 /* ── 요약 카드 ── */
 /* 헤더 아래·내용 아래 여백이 다른 카드보다 좁아 답답했다(지적, 두 번) — 카드 기본 아래
    여백(10px)을 줄이던 재정의를 걷고, 명단 위 여백은 실제 카드에 맞춰 잡는다.
-   게임결과/너나와 카드는 헤더(padding-bottom 2px) 다음에 로우가 오는데 그 로우가
-   margin-top 8px + padding-top 15px을 갖는다 — 합 25px. 여기서는 헤더 2px + 명단
-   23px으로 같은 25px을 만든다(8→14px로는 16px밖에 안 돼 여전히 좁았다). */
+   기준은 랭크 변동 카드다(.scr-feed-shift-list의 padding-top 14px + 헤더 padding-bottom
+   2px = 16px). 한때 게임결과 카드(25px)에 맞췄다가, 그쪽이 오히려 혼자 큰 것이었다는
+   지적을 받고 셋 다 16px로 통일했다. */
 .scr-feed-stack-sum-card { padding-bottom: 10px; }
 /* 참가자 — 한 줄에 네 명 고정(요청). 이름 길이가 달라도 열이 어긋나지 않게 균등 4열
    그리드를 쓴다(flex-wrap이면 이름 길이만큼 칸이 달라져 줄이 안 맞는다). */
 .scr-feed-stack-sum-players {
-  list-style: none; margin: 0; padding: 23px 16px 0;
+  list-style: none; margin: 0; padding: 14px 16px 0;
   display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px 6px;
 }
 .scr-feed-stack-sum-player { display: flex; align-items: center; gap: 5px; min-width: 0; }
@@ -7135,6 +7135,11 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 /* 경기 케밥을 포스트 우상단으로(요청 — 이제 오른쪽에 타임라인이 없어 안전 공간 불필요).
    trow의 position:relative가 절대배치를 가로채지 않게 피드 안에서는 static으로. */
 .scr-feed-match-body .scr-match-trow { position: static; }
+/* 헤더 아래 여백을 다른 피드 카드와 맞춘다(지적: 게임결과만 크다) — 기록실 로우가 갖고
+   온 margin-top 8 + padding-top 15(합 23)에 헤더 padding-bottom 2를 더하면 25px인데,
+   랭크 변동(.scr-feed-shift-list padding-top 14)과 너나와는 16px이다. 피드 안에서만
+   0 + 14로 낮춰 셋을 같은 값으로 만든다. */
+.scr-feed-match-body .scr-match-list-panel-v2 .scr-match-trow { margin-top: 0; padding-top: 14px; }
 /* 헤더(시각/라벨) 줄과 같은 라인에 오도록 — 헤더 padding-top 12px + caption 줄높이의
    세로 중심에 버튼 중심을 맞춘다. */
 .scr-feed-match-body .scr-match-trow-topmeta { position: absolute; top: 22px; right: 12px; z-index: 2; }
@@ -7554,6 +7559,11 @@ html.scr-light-theme .scr-comment-sheet { background: #ffffff; }
    합 5px만큼 묶음을 바깥으로 밀어 아이콘을 헤더의 X와 같은 선에 세운다(지적: 닫기 버튼보다
    오른쪽 여백이 커 보인다). */
 .scr-comment-sheet .scr-mreq-item-actions { margin-right: -5px; }
+/* 수정 취소 버튼 — 등록(프라이머리 솔리드) 옆에 같은 크기로, 톤만 조용하게. */
+.scr-mreq-cancel-btn {
+  background: rgba(var(--overlay-rgb), 0.1); border: none; color: var(--dim); box-shadow: none;
+}
+@media (hover: hover) { .scr-mreq-cancel-btn:hover { color: var(--text); background: rgba(var(--overlay-rgb), 0.16); } }
 /* 입력칸은 목록과 분리돼 맨 아래에 고정(요청 4) — 목록이 길어져도 자리를 안 뺏긴다.
    왼쪽엔 내 아바타를 동그랗게(요청) — 지금 누구 이름으로 쓰는지 보여준다. */
 /* 입력줄 위 구분선은 두지 않는다(요청) — 목록 끝과 입력줄 사이는 여백만으로 나눈다. */

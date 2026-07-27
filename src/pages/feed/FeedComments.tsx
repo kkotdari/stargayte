@@ -216,15 +216,15 @@ function NoteComposer({
             autoComplete="off"
           />
         </div>
-        {/* 수정 중(onCancel 있음)이면 내용이 비어도 취소 버튼을 남긴다 — 예전엔 !isEmpty
-            조건이라, 수정하다 글자를 다 지우면 되돌아갈 길이 사라졌다(지적). */}
-        {(!isEmpty || onCancel) && (
+        {/* 인풋 안 X는 항상 '지우기'다 — 수정 중일 땐 취소가 아래 별도 버튼으로 나가 있어
+            여기까지 취소를 겸하면 같은 아이콘이 서로 다른 일을 하게 된다. */}
+        {!isEmpty && (
           <button
             type="button"
             className="scr-mreq-clear-btn"
             onMouseDown={(e) => e.preventDefault()}
-            onClick={onCancel ?? clear}
-            aria-label={onCancel ? "취소" : "지우기"}
+            onClick={clear}
+            aria-label="지우기"
           >
             <X size={14} />
           </button>
@@ -247,6 +247,19 @@ function NoteComposer({
           document.body,
         )}
       </div>
+      {/* 수정 모드에는 확인(↵) 옆에 취소를 따로 둔다(요청) — 인풋 안 지우기(X)만으로는
+          "수정을 그만둔다"가 드러나지 않는다. */}
+      {onCancel && (
+        <button
+          type="button"
+          className="scr-btn scr-mreq-submit-btn scr-mreq-cancel-btn"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={onCancel}
+          aria-label="수정 취소"
+        >
+          <X size={14} />
+        </button>
+      )}
       <button
         type="button"
         className="scr-btn scr-btn-primary scr-btn-primary-solid scr-mreq-submit-btn"
