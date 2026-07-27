@@ -5471,21 +5471,29 @@ html.scr-snap-today { scroll-snap-type: y proximity; scroll-padding-top: calc(va
 .scr-scroll-timeline-now {
   position: absolute; left: 50%; transform: translate(-50%, -50%);
   display: flex; align-items: center;
+  /* 누르면 그 지점으로 이동한다(요청) — 트랙이 pointer-events:none이라 여기서만 다시 연다.
+     기본 버튼 모양은 걷고, 2px 선은 겨냥하기 작으니 보이지 않는 여유 히트 영역을 덧댄다. */
+  padding: 10px 6px; border: none; background: none; cursor: pointer;
+  pointer-events: auto; -webkit-tap-highlight-color: transparent;
 }
 .scr-scroll-timeline-now::before {
   content: ""; width: 16px; height: 2px; border-radius: 2px;
   background: var(--point);
 }
 .scr-scroll-timeline-now::after {
-  content: "현재"; position: absolute; left: 50%; bottom: 100%; margin-bottom: 2px;
+  /* 히트 영역을 padding으로 넓혔으므로(위) 라벨은 그만큼 되내려 선 바로 위에 붙인다. */
+  content: "현재"; position: absolute; left: 50%; bottom: 100%; margin-bottom: -8px;
   transform: translateX(-50%);
   font-size: var(--fs-micro); font-weight: 800; color: var(--point);
   white-space: nowrap;
 }
-/* 현재 상단에 핀된 날짜를 알약으로 — 트랙 왼쪽에 붙여 현재 위치를 "며칠"인지로 보여준다. */
+/* 현재 상단에 핀된 날짜를 알약으로 — 다이얼(썸) 바로 위에 얹는다(요청).
+   트랙 왼쪽에 붙이던 예전 자리는 "현재" 눈금 라벨과 세로로 부딪혔고, 가운데 정렬하면
+   화면 오른쪽 밖으로 넘쳤다 — 오른쪽 끝을 트랙에 맞춰(right:0) 왼쪽으로만 자라게 해
+   어떤 길이여도 잘리지 않는다. 세로로는 썸 반지름(6px)만큼 더 띄운다. */
 .scr-scroll-timeline-date {
-  position: absolute; right: 100%; margin-right: 8px; transform: translateY(-50%);
-  white-space: nowrap; font-size: var(--fs-caption); font-weight: 700;
+  position: absolute; right: 6px; transform: translateY(calc(-100% - 12px));
+  white-space: nowrap; font-size: var(--fs-11); font-weight: 700;
   /* 완전 불투명(--panel-solid)이던 알약을 반투명으로(요청: "타임라인 다크 라이트에서 탭
      투명도 높여줘") — --panel-solid가 테마별 색을 갖고 있어 다크/라이트 모두 한 규칙로 덮인다. */
   color: var(--text); background: color-mix(in srgb, var(--panel-solid) 55%, transparent);
@@ -6348,7 +6356,7 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
   /* 타임라인 폰트 한 단계 축소(날짜 알약 14→12, 끝/오늘 라벨 12→11) */
   .scr-scroll-timeline-end { font-size: var(--fs-11); }
   .scr-scroll-timeline-today::after { font-size: var(--fs-11); }
-  .scr-scroll-timeline-date { font-size: var(--fs-micro); }
+  .scr-scroll-timeline-date { font-size: var(--fs-11); }
   /* 도전장 보내기 힌트 두 단계 축소(20→14) */
   .scr-challenge-form-modal .scr-hint { font-size: var(--fs-caption); }
 }
@@ -6394,7 +6402,8 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
 .scr-match-trow-outcome { font-size: var(--fs-body); }
 .scr-scroll-timeline-end { font-size: var(--fs-11); }
 .scr-scroll-timeline-today::after { font-size: var(--fs-11); }
-.scr-scroll-timeline-date { font-size: var(--fs-micro); }
+/* 한 스텝 더 축소(요청) — 다이얼 위로 올라가면서 더 작아도 읽힌다. */
+.scr-scroll-timeline-date { font-size: var(--fs-11); }
 .scr-challenge-form-modal .scr-hint { font-size: var(--fs-caption); }
 
 /* ═══ 모바일 폭에서 활성 스케일을 모바일 세트로 스위칭. 지금은 PC/모바일 값이 같아
@@ -7047,6 +7056,8 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   /* 포스트 안쪽 여백 — 좌우/세로를 한 곳에서 정해 헤더·컨텐츠·댓글이 같이 쓴다. */
   --post-pad-x: 16px;
   --post-pad-y: 24px;
+  /* 아래는 위보다 넉넉히 — 댓글이 없을 때 "댓글 쓰기" 아이콘이 이 여백 안에 얹힌다(요청). */
+  --post-pad-b: 38px;
 }
 .scr-feed-card {
   position: relative;
@@ -7112,7 +7123,7 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-feed-stack-sum-body { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .scr-feed-stack-toggle {
   display: block; width: 100%;
-  padding: var(--post-pad-y) 0; border: none; background: none;
+  padding: var(--post-pad-y) 0 var(--post-pad-b); border: none; background: none;
   font-family: inherit; font-size: var(--fs-micro); font-weight: 700; color: var(--dim);
   text-align: center; cursor: pointer; -webkit-tap-highlight-color: transparent;
 }
@@ -7219,7 +7230,7 @@ html.scr-light-theme .scr-feed-comments .scr-mreq-chip-inline { color: #c07c1c; 
   /* 컨텐츠부 공통 여백 — 네 종류 포스트가 같은 토큰을 쓴다. 좌우는 원래 24px이었다
      (카드가 혼자 쓰일 때 좌우 이동 버튼이 그 패딩에 앉는다) — 피드 안에선 그 버튼이
      없어 그만큼 안쪽으로 들어가 보이기만 했다. */
-  padding: var(--post-pad-y) var(--post-pad-x); gap: 10px;
+  padding: var(--post-pad-y) var(--post-pad-x) var(--post-pad-b); gap: 10px;
 }
 /* 경기 로우도 동일 — 행 자신의 라이팅 글라스 패널(배경·블러·그림자·마진)을 벗기고
    내용만 피드 카드에 직접 얹는다. 날짜 헤더는 카드 헤더가 대신하므로 숨긴다. */
@@ -7230,7 +7241,7 @@ html.scr-light-theme .scr-feed-comments .scr-mreq-chip-inline { color: #c07c1c; 
   background: transparent; border: none; box-shadow: none;
   backdrop-filter: none; -webkit-backdrop-filter: none;
   /* 위아래는 컨텐츠부 공통 여백 — 로스터가 자기 padding을 안 갖고 있어 여기서 전부 낸다. */
-  border-radius: 0; margin: 0; padding-top: var(--post-pad-y); padding-bottom: var(--post-pad-y);
+  border-radius: 0; margin: 0; padding-top: var(--post-pad-y); padding-bottom: var(--post-pad-b);
 }
 /* 카드 폭이 이미 좁으니 PC의 넓은 좌우 패딩(100px)도 카드 안에선 줄인다. */
 @media (min-width: 720px) {
@@ -7244,7 +7255,7 @@ html.scr-light-theme .scr-feed-comments .scr-mreq-chip-inline { color: #c07c1c; 
    하나도 없을 때 그 여백까지 통째로 걷어야 하기 때문이다(아래 -empty). */
 .scr-feed-comments { padding: 0; }
 .scr-feed-comments > .scr-match-notes {
-  border-top: none; padding: 10px var(--post-pad-x) var(--post-pad-y); margin-top: 0;
+  border-top: none; padding: 10px var(--post-pad-x) var(--post-pad-b); margin-top: 0;
 }
 /* 댓글이 없는 포스트가 훨씬 많다(지적) — 그럴 땐 "댓글 쓰기" 아이콘이 한 줄을 통째로
    차지하지 않고, 바디 아래 여백의 왼쪽 구석에 얹혀만 있는다(요청). 기준은 포스트
@@ -7377,7 +7388,7 @@ html.scr-light-theme .scr-feed-add-fab {
 /* 헤더(타이틀)와 변동 목록 사이가 유독 좁았다(지적: "랭크변동일때만 타이틀과 본문
    사이가 좁아") — 상단 패딩을 키워 다른 카드(경기/너나와)와 비슷한 숨통을 준다. */
 /* 컨텐츠부 공통 여백 — 네 종류 포스트가 같은 토큰을 쓴다(요청: 내부 여백 통일). */
-.scr-feed-shift-list { list-style: none; margin: 0; padding: var(--post-pad-y) var(--post-pad-x); display: flex; flex-direction: column; gap: 8px; }
+.scr-feed-shift-list { list-style: none; margin: 0; padding: var(--post-pad-y) var(--post-pad-x) var(--post-pad-b); display: flex; flex-direction: column; gap: 8px; }
 /* 변동이 많으면 위에서 4개만 보이고 "…더보기"로 접힌다 — 리스트를 누르면 펼쳐진다(요청). */
 .scr-feed-shift-list-toggle { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .scr-feed-shift-more {

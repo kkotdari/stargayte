@@ -263,11 +263,22 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
       <div ref={trackRef} className="scr-scroll-timeline-track">
         {markers?.map((m) => (
           markerFractions[m.key] !== null && markerFractions[m.key] !== undefined && (
-            <div key={m.key} className={m.className} style={{ top: `${(markerFractions[m.key] as number) * 100}%` }} />
+            <button
+              key={m.key} type="button" className={m.className}
+              style={{ top: `${(markerFractions[m.key] as number) * 100}%` }}
+              // 눈금을 누르면 그 지점으로 바로 이동한다(요청) — 눈금이 가리키는 대상
+              // (groupSelector)이 곧 목적지라, 별도 좌표 계산 없이 그 요소로 스크롤한다.
+              onClick={() => {
+                document.querySelector(m.groupSelector)?.scrollIntoView({ block: "center", behavior: "smooth" });
+              }}
+              aria-label={`${m.key} 위치로 이동`}
+            />
           )
         ))}
         {dateLabel && (
-          <div className="scr-scroll-timeline-date" style={{ top: `${fraction * 100}%` }}>
+          // 알약은 다이얼 '위'에 얹힌다(요청). 트랙 맨 위에서는 화면 밖으로 나가므로
+          // 최소 높이를 잡아 잘리지 않게 한다 — CSS max()는 %와 px을 섞을 수 있다.
+          <div className="scr-scroll-timeline-date" style={{ top: `max(30px, ${fraction * 100}%)` }}>
             {dateLabel}
           </div>
         )}
