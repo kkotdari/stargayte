@@ -273,10 +273,9 @@ function NoteComposer({
   );
 }
 
-// 시트를 화면 밖으로 완전히 내리는 데 필요한 이동량(px). translateY(100%)를 쓸 수 없는
-// 이유: 시트 박스는 화면 아래로 --sheet-skirt(60vh)만큼 더 내려 잡혀 있어(global.css) 그
-// 100%가 '보이는 높이'보다 훨씬 크다. 화면 바닥에서 시트 윗변까지의 거리가 곧 보이는
-// 높이라, 치마 크기를 몰라도 정확히 나온다.
+// 시트를 화면 밖으로 완전히 내리는 데 필요한 이동량(px) — 화면 바닥에서 시트 윗변까지의
+// 거리다. translateY(100%)와 같은 값이지만 px로 재두면, 쓸어내리다 손을 뗀 위치에서
+// 이어서 내려가는 계산(closeSheetFrom)과 단위가 맞아 섞어 쓰기 좋다.
 function hiddenOffset(el: HTMLElement): number {
   return Math.max(0, window.innerHeight - el.getBoundingClientRect().top);
 }

@@ -7456,13 +7456,16 @@ html.scr-light-theme .scr-feed-add-fab {
      기능 문제가 더 크다고 보고 반대로 택했다 — 주소창이 다시 펼쳐지는 부작용이 보이면
      그때 다시 저울질한다.)
      bottom:0은 '레이아웃 뷰포트' 바닥이라 사파리 반투명 툴바 뒤까지 내려가 그 띠를 덮는다
-     — 키보드가 없을 때 뒷페이지가 안 비치는 것이 확인된 상태다. 이 상태를 기준으로 둔다.
-     --sheet-skirt는 그 아래로 더 뻗는 양인데, 기본은 0이다: 60vh로 크게 늘려봤더니
-     키보드가 없을 때까지 다시 비쳤다(지적: "치마는 완전 실패") — 화면 밖으로 크게 벗어난
-     fixed 박스는 iOS가 다르게 합성하는 듯하다. 아래 typing 규칙에서 '이미 비치고 있는'
-     키보드 구간에만 짧게(120px) 준다 — 잘 되는 경우는 건드리지 않는다. */
-  --sheet-skirt: 0px;
-  position: fixed; left: 0; right: 0; bottom: calc(-1 * var(--sheet-skirt));
+     — 키보드가 없을 때 뒷페이지가 안 비치는 것이 확인된 상태다.
+
+     키보드가 올라오면 iOS가 fixed 요소를 '비주얼 뷰포트'(키보드 위)로 다시 앉혀서, 그
+     아래 액세서리 바 구간으로 페이지가 드러난다. 박스를 아래로 늘려 덮으려는 시도는
+     60vh(키보드 없을 때까지 깨짐)와 120px(효과 없음) 둘 다 실패했다 — iOS가 fixed
+     레이어를 뷰포트에 맞춰 잘라내는 것으로 보이고, 우리 쪽에서 넘을 방법이 없다.
+     남은 확실한 수단은 시트가 열린 동안 페이지 콘텐츠를 통째로 감추는 것뿐인데(그러면
+     시트 위쪽도 빈 패널색이 된다) 그건 바텀시트가 아니게 되므로, 입력 중 잠깐 아래가
+     비치는 쪽을 택했다(요청: 현 상태 유지). */
+  position: fixed; left: 0; right: 0; bottom: 0;
   background: #1e1e1f;
   /* 탭바(55)보다 위, 모달(100)보다 아래 — 시트 안에서 연 삭제 확인창이 시트에 가리지 않는다. */
   z-index: 90;
@@ -7470,10 +7473,8 @@ html.scr-light-theme .scr-feed-add-fab {
   /* 높이는 내용만큼 자라고(요청), 화면 절반 언저리에서 멈춘다(요청: "화면 반정도 높이").
      댓글이 한두 개뿐이어도 시트로 보이도록 최소 높이를 넉넉히 잡는다(요청) — 안 그러면
      입력줄만 붙은 얇은 띠가 돼 "바텀시트가 열렸다"가 아니라 툴바가 하나 뜬 것처럼 보인다. */
-  /* 치마는 화면 밖이라 '보이는 높이'에 포함되면 안 된다 — 최소/최대에 그만큼 더해 준다
-     (box-sizing: border-box라 패딩이 높이에 포함된다). */
-  min-height: calc(50vh + var(--sheet-skirt)); min-height: calc(50dvh + var(--sheet-skirt));
-  max-height: calc(68vh + var(--sheet-skirt)); max-height: calc(68dvh + var(--sheet-skirt));
+  min-height: 50vh; min-height: 50dvh;
+  max-height: 68vh; max-height: 68dvh;
   /* 윗모서리는 모달 기본(--radius: 12px)보다 크게 굴린다(요청) — 화면 폭을 꽉 채우는 시트라
      같은 12px이면 거의 직선처럼 보인다. 1.75배(21px)도 약하다는 지적에 2.5배(30px)로.
      21px→30px→40px을 거쳐 32px로 확정(요청). 아래는 화면 끝(그리고 치마)이라 각진 채로 둔다. */
@@ -7485,11 +7486,11 @@ html.scr-light-theme .scr-feed-add-fab {
      ③ 둘 다 0인 기기(안드로이드 크롬·PC)에서도 화면 둥근 모서리를 피할 최소 여백.
      탭바처럼 안전영역을 절반만 반영하지 않는다 — 탭바는 가장자리에서 떨어져 뜬 알약이지만
      이 시트는 바닥에 붙은 패널이라 인디케이터 위를 그대로 침범한다. */
-  padding: 0 20px calc(var(--sheet-skirt) + max(
+  padding: 0 20px max(
     calc(var(--vv-bottom-inset, 0px) + 10px),
     calc(env(safe-area-inset-bottom, 0px) + 10px),
     18px
-  ));
+  );
   /* 입력칸 글자를 16px로 키우면서(요청) 필드 높이도 같이 올린다 — 카드 안에서 쓰던 30px에
      16px 글자를 넣으면 위아래가 꽉 낀다. 16px은 iOS가 포커스 시 화면을 확대하지 않는
      최소 크기이기도 하다(그 이하면 자동 줌이 걸려 레이아웃이 통째로 틀어진다). */
@@ -7520,11 +7521,7 @@ html.scr-light-theme .scr-comment-sheet { background: #ffffff; }
    transition 값이 쓰이므로, typing이 붙을 땐 none, 떨어질 땐 기본값이 적용된다. */
 .scr-comment-sheet { transition: padding-bottom 220ms cubic-bezier(0.32, 0.72, 0, 1); }
 .scr-comment-sheet-typing {
-  /* 키보드가 올라오면 iOS가 fixed 요소를 '비주얼 뷰포트'(키보드 위)로 다시 앉혀서 bottom:0이
-     액세서리 바 위가 되고 그 아래로 페이지가 드러난다(지적). 그 띠(액세서리 바 + 주소창
-     알약)만 덮을 만큼만 아래로 뻗는다 — 화면 높이급으로 늘리면 오히려 전부 깨졌다. */
-  --sheet-skirt: 120px;
-  padding-bottom: calc(var(--sheet-skirt) + 8px);
+  padding-bottom: 8px;
   transition: none;
 }
 /* 목록이 이 아래로 스크롤해 들어가므로 경계선을 둔다 — 없으면 스크롤된 글이 제목 줄에
