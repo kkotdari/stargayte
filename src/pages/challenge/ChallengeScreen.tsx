@@ -321,7 +321,7 @@ export function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, o
       closeMode();
       setSharePrompt({ kind: "revenge", updated });
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "리벤지를 신청하지 못했어요.");
+      setErr(e instanceof Error ? e.message : "설욕전을 신청하지 못했어요.");
     } finally {
       setBusy(false);
     }
@@ -379,7 +379,7 @@ export function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, o
     }
     if (sharePrompt?.kind === "revenge") {
       return { title: "설욕전 신청!", description: matchup, imageUrl, link,
-        fallbackText: `[스타게이트] ${me}님이 설욕전(리벤지)을 신청했어요!\n${matchup}` };
+        fallbackText: `[스타게이트] ${me}님이 설욕전을 신청했어요!\n${matchup}` };
     }
     return { title: "대결 수락!", description: `${matchup} · ${sharePromptWhen}`, imageUrl, link,
       fallbackText: `[스타게이트] ${me}님이 ${caller}님의 호출을 수락했어요!\n${matchup}\n일시: ${sharePromptWhen}` };
@@ -430,7 +430,7 @@ export function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, o
               {/* 체인 라벨 — 이 페이지가 리벤지(설욕전) 기록이면 표시한다. 체인은 이제 리벤지
                   하나뿐이라, 원본(첫 페이지)을 뺀 모든 페이지가 리벤지다(isRevengePage). */}
               {isRevengePage && (
-                <span className="scr-challenge-chain-tag scr-challenge-chain-tag-revenge">리벤지</span>
+                <span className="scr-challenge-chain-tag scr-challenge-chain-tag-revenge">설욕전</span>
               )}
             </div>
             )}
@@ -587,7 +587,7 @@ export function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, o
           <div className="scr-challenge-card-actions">
             <button className="scr-btn scr-btn-ghost scr-btn-sm" onClick={closeMode} disabled={busy}>취소</button>
             <button className="scr-btn scr-challenge-accept-btn scr-btn-sm" onClick={submitRevenge} disabled={busy}>
-              {busy ? <Spinner /> : "리벤지 신청"}
+              {busy ? <Spinner /> : "설욕전 신청"}
             </button>
           </div>
         </div>
@@ -677,7 +677,7 @@ export function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, o
             )}
             {canRevenge && (
               <button className="scr-btn scr-challenge-accept-btn scr-btn-sm" onClick={startRevenge} disabled={busy}>
-                리벤지 신청
+                설욕전 신청
               </button>
             )}
           </div>

@@ -405,8 +405,11 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     const list = restListRef.current;
     const sumCard = sumInner?.firstElementChild as HTMLElement | null;
     const btn = root?.querySelector<HTMLElement>(":scope > .scr-feed-stack-toggle-collapse");
+    // "자세히 보기"는 요약 카드가 아니라 스택 위 같은 자리에 얹혀 있으므로(요청) 따로 다룬다 —
+    // 요약과 한 몸처럼 보여야 해서 페이드 시점도 요약 카드와 같은 구간에 맞춘다.
+    const expandBtn = root?.querySelector<HTMLElement>(":scope > .scr-feed-stack-toggle-expand");
     const frame = root?.querySelector<HTMLElement>(":scope > .scr-feed-stack-frame");
-    if (!root || !inner || !sumInner || !list || !sumCard || !btn || !frame) return;
+    if (!root || !inner || !sumInner || !list || !sumCard || !btn || !expandBtn || !frame) return;
 
     // 펼침/접힘에서 한 장씩 등장·퇴장시킬 카드 래퍼들.
     const cards = Array.from(
@@ -425,6 +428,7 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       sumCard.style.opacity = "";
       frame.style.opacity = "";
       btn.style.opacity = "";
+      expandBtn.style.opacity = "";
       cards.forEach((c) => { c.style.opacity = ""; c.style.transform = ""; });
     };
     const cleanup = () => {
@@ -468,6 +472,7 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       btn.style.opacity = "0";
     } else {
       sumCard.style.opacity = "0";
+      expandBtn.style.opacity = "0";
     }
 
     // ── 순서표(요청) ──
@@ -505,6 +510,10 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     anims.push(btn.animate(
       [{ opacity: open ? 0 : 1 }, { opacity: open ? 1 : 0 }],
       { duration: BUTTON_FADE_MS, fill: "both", easing: open ? "ease-out" : "ease-in", delay: buttonAt },
+    ));
+    anims.push(expandBtn.animate(
+      [{ opacity: open ? 1 : 0 }, { opacity: open ? 0 : 1 }],
+      { duration: SUMMARY_FADE_MS, fill: "both", easing: open ? "ease-in" : "ease-out", delay: summaryAt },
     ));
     // 카드는 하나씩(요청) — 펼칠 땐 공간이 다 열린 뒤 위에서부터, 접을 땐 아래에서부터
     // 먼저 걷어낸다. 카드에 opacity를 걸어도 되는 이유: 피드 카드는 불투명 배경이라
@@ -567,12 +576,6 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
                 </li>
               ))}
             </ul>
-            <button
-              type="button" className="scr-feed-stack-toggle"
-              onClick={() => toggleOpen(true)} tabIndex={open ? -1 : 0}
-            >
-              자세히 보기
-            </button>
           </div>
         </div>
       </div>
@@ -580,13 +583,20 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
           따라 자란다(요청: 테두리가 먼저 뜨고 공간이 열리며 확장). 접힘 땐 요약 카드
           크기, 펼침 땐 목록 크기가 된다. */}
       <span className="scr-feed-stack-frame" aria-hidden />
-      {/* 되돌아가는 버튼은 테두리 바깥, 스택 위 여백에 얹는다(요청) — absolute라 스택
-          높이에 안 잡히고, 그래서 테두리가 이 버튼을 감싸지 않는다. */}
+      {/* 여닫는 두 버튼은 테두리 바깥, 스택 위 여백의 같은 자리에 겹쳐 얹는다(요청:
+          자세히 보기를 간단히 보기 자리로) — absolute라 스택 높이에 안 잡히고, 그래서
+          테두리가 이 버튼들을 감싸지 않는다. 한 번에 하나만 보인다. */}
       <button
         type="button" className="scr-feed-stack-toggle scr-feed-stack-toggle-collapse"
         onClick={() => toggleOpen(false)} tabIndex={open ? 0 : -1}
       >
         간단히 보기
+      </button>
+      <button
+        type="button" className="scr-feed-stack-toggle scr-feed-stack-toggle-expand"
+        onClick={() => toggleOpen(true)} tabIndex={open ? -1 : 0}
+      >
+        자세히 보기
       </button>
       <div className="scr-feed-stack-rest" aria-hidden={!open}>
         <div className="scr-feed-stack-rest-inner">

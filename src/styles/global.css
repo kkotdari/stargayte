@@ -7102,7 +7102,9 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    크기(20px + caption)로 키우면서 한 줄은 네 명 → 세 명으로 줄였다(요청) — 같은 폭에
    네 칸이면 이름이 두 글자만 지나도 말줄임이 된다. */
 .scr-feed-stack-sum-players {
-  list-style: none; margin: 0; padding: 14px 16px 0;
+  /* 아래 여백은 다른 카드 본문과 같은 12px — "자세히 보기"가 카드 밖(스택 위)으로 나가면서
+     그 버튼이 내던 아래 여백이 사라졌다. */
+  list-style: none; margin: 0; padding: 14px 16px 12px;
   display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 6px;
 }
 .scr-feed-stack-sum-player { display: flex; align-items: center; gap: 6px; min-width: 0; }
@@ -7129,13 +7131,15 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   text-align: center; cursor: pointer; -webkit-tap-highlight-color: transparent;
 }
 @media (hover: hover) { .scr-feed-stack-toggle:hover { color: var(--text); } }
-/* 되돌아가기 버튼 — 테두리 바깥, 스택 위 여백에 절대배치로 얹는다(요청). 레이아웃에
-   높이를 더하지 않아야 테두리(스택 전체를 감싼다)가 이 버튼까지 감싸지 않는다. */
-.scr-feed-stack-toggle-collapse {
+/* 여닫는 두 버튼 — 테두리 바깥, 스택 위 여백의 같은 자리에 절대배치로 겹친다(요청:
+   "자세히 보기"를 "간단히 보기" 자리로). 레이아웃에 높이를 더하지 않아야 테두리(스택
+   전체를 감싼다)가 이 버튼들까지 감싸지 않는다. 상태에 따라 한 번에 하나만 보인다. */
+.scr-feed-stack-toggle-collapse, .scr-feed-stack-toggle-expand {
   position: absolute; left: 0; right: 0; bottom: 100%; z-index: 1;
   padding: 0 0 6px; opacity: 0; pointer-events: none;
 }
 .scr-feed-stack-opened .scr-feed-stack-toggle-collapse { opacity: 1; pointer-events: auto; }
+.scr-feed-stack:not(.scr-feed-stack-opened) .scr-feed-stack-toggle-expand { opacity: 1; pointer-events: auto; }
 
 /* ── 묶음 테두리 ── 레일(가운데 세로선) 대신 연한 테두리 하나로 묶는다(요청).
    목록이 아니라 스택 전체(요약 래퍼 + 목록 래퍼)에 절대배치로 얹는다 — 그래야 높이가
