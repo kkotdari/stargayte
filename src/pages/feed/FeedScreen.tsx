@@ -142,7 +142,6 @@ function cubicBezier(x1: number, y1: number, x2: number, y2: number): (x: number
 // 스택 연출 공용 이징(기존 cubic-bezier(0.32,0.72,0,1))과 CSS ease-in/ease-out 대응.
 const EASE_STACK = cubicBezier(0.32, 0.72, 0, 1);
 const EASE_IN = cubicBezier(0.42, 0, 1, 1);
-const EASE_OUT = cubicBezier(0, 0, 0.58, 1);
 
 interface DrivenAnim { finished: Promise<void>; cancel: () => void }
 
@@ -401,6 +400,9 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
   // 진행 중인 펼침 연출을 중단·원복하는 함수 — 접기/재펼침/언마운트 때 호출한다.
   const cancelRevealRef = useRef<(() => void) | null>(null);
   useEffect(() => () => cancelRevealRef.current?.(), []);
+  // toggleOpen이 시작한 View Transition의 완료 프로미스 — 펼침 rise가 시작 타이밍을
+  // 여기에 맞춰 VT 오버레이가 걷힌 뒤 돌게 한다(없으면 rAF 폴백).
+  const pendingVTRef = useRef<Promise<unknown> | null>(null);
   const toggleOpen = (next: boolean) => {
     pendingAnchorRef.current = {
       scrollY: window.scrollY,
@@ -416,14 +418,18 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     // flushSync: React 커밋(과 useLayoutEffect의 스크롤 보정)이 캡처 콜백 안에서
     // 동기로 끝나야 "새 상태"가 올바르게 찍힌다.
     const doc = document as Document & {
-      startViewTransition?: (cb: () => void) => unknown;
+      startViewTransition?: (cb: () => void) => { finished?: Promise<unknown> };
     };
     if (typeof doc.startViewTransition === "function") {
       try {
-        doc.startViewTransition(() => { flushSync(() => setOpen(next)); });
+        const vt = doc.startViewTransition(() => { flushSync(() => setOpen(next)); });
+        // 펼침 rise는 이 VT 오버레이가 완전히 걷힌 뒤 시작한다(아래 useLayoutEffect) —
+        // VT가 라이브 DOM을 애니메이션 도중에 드러내며 사파리가 재합성하는 걸 막는다.
+        pendingVTRef.current = vt?.finished ?? null;
         return;
       } catch { /* 폴백으로 진행 */ }
     }
+    pendingVTRef.current = null;
     setOpen(next);
   };
   // 접기 페이드아웃(closeStack)이 진행 중인지 — 중복 클릭 방지.
@@ -503,61 +509,24 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       // 놨다(인라인 transform). 스크롤 보정(위)이 같은 프레임에 실리므로 인라인을 걷어내면
       // 화면상 위치가 거의 그대로 이어진다. 다만 "+N건" 바가 다시 나타나는 만큼(≈바 높이)
       // 잔차가 남아, 그만큼만 짧게 눌러 내려앉힌다.
+      // 접기 커밋은 이 분기가 View Transition(toggleOpen)의 flushSync 안에서 동기로 도는
+      // 프레임이다. 예전엔 여기서 peek를 scaleY(0)→(1)로, 잔차를 translateY로 "후속
+      // 애니메이션"으로 풀었는데, 그 애니메이션이 VT 오버레이가 걷힌 뒤 라이브 DOM에서
+      // 돌아가며 사파리가 그 서브트리를 다시 합성 → 블러가 그 구간만 풀렸다(지적: "다
+      // 줄어들고부터 +N건 패널로 바뀌기 전까지 딱 블러가 풀려"). 그래서 후속 애니메이션을
+      // 없애고 최종 상태(잔차 0·peek 완전 노출)로 이 프레임에 원자적으로 확정한다 — VT가
+      // sunk→collapsed 스냅샷 전환을 덮으므로 라이브 DOM은 처음부터 정적이라 재합성 창이
+      // 없다. peek가 자라나던 연출은 VT 스냅샷 교체가 대신한다.
       const rail = root.querySelector<HTMLElement>(":scope > .scr-feed-stack-rail");
       if (rail) rail.style.opacity = "";
-      // 클램프 접기(위쪽에서 접기)에서 올라온 아래 무리는 커밋 위치가 애니메이션 종점과
-      // 정확히 일치하므로 바로 걷는다(잔차 없음).
       const moved = closeMotionRef.current;
       closeMotionRef.current = null;
       moved?.belowEls.forEach((el) => { el.style.transform = ""; });
-      if (!moved || reduced) {
-        moved?.els.forEach((el) => { el.style.transform = ""; });
-        return;
-      }
-      // 잔차 = 애니메이션이 이동한 거리 - 문서가 실제로 줄어든 높이. 정상 접기에선
-      // 0이고, 위쪽 클램프 접기에선 음수(아래 무리가 채운 몫)라 둘 다 즉시 정리된다.
-      const residual = moved.dist + d;
-      const settleEls = residual > 0.5 ? moved.els : [];
-      if (residual <= 0.5) moved.els.forEach((el) => { el.style.transform = ""; });
-      let cancelled = false;
-      const anims: (Animation | DrivenAnim)[] = [];
-      settleEls.forEach((el) => { el.style.transform = `translateY(${residual}px)`; });
-      // "+N건" 바가 즉시 튀어나오면 그 자체가 깜빡임(지적) — 앞 카드 윗모서리에서
-      // 자라나게 한다. opacity는 바의 블러를 껐다 켜서 또 깜빡이므로 스케일로만.
+      moved?.els.forEach((el) => { el.style.transform = ""; });
       const peek = root.querySelector<HTMLElement>(
         ":scope > .scr-feed-stack-peekwrap > .scr-feed-stack-peek",
       );
-      if (peek) {
-        peek.style.transformOrigin = "50% 100%";
-        peek.style.transform = "scaleY(0)";
-      }
-      const settleDown = () => {
-        if (cancelled) return;
-        settleEls.forEach((el) => {
-          const a = driveTransform(el, 160, EASE_OUT, (p) => `translateY(${residual * (1 - p)}px)`);
-          void a.finished.then(() => { el.style.transform = ""; }).catch(() => {});
-          anims.push(a);
-        });
-        if (peek) {
-          const pa = driveTransform(peek, 160, EASE_OUT, (p) => `scaleY(${p})`);
-          void pa.finished
-            .then(() => { peek.style.transform = ""; peek.style.transformOrigin = ""; })
-            .catch(() => {});
-          anims.push(pa);
-        }
-      };
-      // 펼치기와 같은 이유로 첫 페인트(접힘 레이아웃+스크롤 보정) 다음 프레임에 시작.
-      let raf2 = 0;
-      const raf1 = requestAnimationFrame(() => { raf2 = requestAnimationFrame(settleDown); });
-      cancelRevealRef.current = () => {
-        cancelled = true;
-        cancelAnimationFrame(raf1);
-        cancelAnimationFrame(raf2);
-        anims.forEach((a) => { try { a.cancel(); } catch { /* 이미 끝남 */ } });
-        settleEls.forEach((el) => { el.style.transform = ""; });
-        if (peek) { peek.style.transform = ""; peek.style.transformOrigin = ""; }
-        cancelRevealRef.current = null;
-      };
+      if (peek) { peek.style.transform = ""; peek.style.transformOrigin = ""; }
       return;
     }
 
@@ -663,8 +632,19 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     // 이미 한참 진행된 지점부터 그려져 위 카드들이 중간부터 뚝 나타났다(지적: "쓰윽
     // 올라가는 게 아니라 갑자기 공간이 생기면서 깜빡임"). 시작 상태는 위 인라인 스타일이
     // 잡아두고 있어 첫 프레임은 아무것도 안 움직인 화면 그대로 보인다.
-    let raf2 = 0;
-    const raf1 = requestAnimationFrame(() => { raf2 = requestAnimationFrame(start); });
+    // rise 시작 타이밍(요청: 펼치기도 접기와 "같은 방식"으로 재렌더 방지) — View
+    // Transition이 있으면 그 오버레이가 완전히 걷힌 뒤(vt.finished) 시작한다. 오버레이가
+    // 라이브 DOM을 rise 도중에 드러내면 사파리가 그 서브트리를 재합성하며 블러가 잠깐
+    // 풀렸다(지적: 접기와 같은 커밋 구간 문제). 오버레이가 걷힌 정적 프레임(카드 +d)에서
+    // 시작하면 rise 내내 잎 self-transform이라 블러가 유지된다. VT 미지원이면 rAF 폴백.
+    const vtDone = pendingVTRef.current;
+    pendingVTRef.current = null;
+    let raf1 = 0, raf2 = 0;
+    if (vtDone) {
+      void vtDone.then(() => { if (!cancelled) start(); }).catch(() => { if (!cancelled) start(); });
+    } else {
+      raf1 = requestAnimationFrame(() => { raf2 = requestAnimationFrame(start); });
+    }
 
     cancelRevealRef.current = () => {
       cancelled = true;
@@ -1059,6 +1039,16 @@ export default function FeedScreen() {
   // 피드 진입 시 오늘 날짜 아이템으로 스크롤(요청) — 없으면 가장 가까운 과거로. 피드는
   // 최신순(내림차순)이라 위에서부터 첫 "오늘 이하" 아이템이 곧 오늘(있으면) 또는 그 바로
   // 아래의 가장 가까운 과거다. 로딩이 끝나 목록이 처음 그려진 직후 딱 한 번만 한다.
+  // "현재"(now) 경계 = 미래(위)와 오늘/과거(아래)가 갈리는 지점 = 위에서부터 첫 "오늘
+  // 이하" 아이템. 그 위에 미래 아이템이 있을 때만(idx>0) 카드 사이에 "현재" 구분선을
+  // 넣는다(요청). 진입 자동 스크롤도 이 지점으로 맞춘다.
+  const nowIndex = useMemo(() => {
+    const dayStart = (ms: number) => { const d = new Date(ms); d.setHours(0, 0, 0, 0); return d.getTime(); };
+    const today = dayStart(Date.now());
+    return displayFeed.findIndex((it) => dayStart(it.time) <= today);
+  }, [displayFeed]);
+  const showNowDivider = nowIndex > 0;
+
   const feedListRef = useRef<HTMLDivElement>(null);
   const didInitialScrollRef = useRef(false);
   useEffect(() => {
@@ -1066,18 +1056,18 @@ export default function FeedScreen() {
     const list = feedListRef.current;
     if (!list || displayFeed.length === 0) return;
     didInitialScrollRef.current = true;
-    const dayStart = (ms: number) => { const d = new Date(ms); d.setHours(0, 0, 0, 0); return d.getTime(); };
-    const today = dayStart(Date.now());
-    let idx = displayFeed.findIndex((it) => dayStart(it.time) <= today);
-    if (idx < 0) idx = displayFeed.length - 1; // 전부 미래면 가장 가까운(맨 아래) 것으로
     requestAnimationFrame(() => {
-      const el = list.children[idx] as HTMLElement | undefined;
+      // "현재" 구분선이 있으면 그 위에, 없으면 첫 오늘/과거 카드에 맞춘다. 구분선이 없을
+      // 땐 DOM 자식 인덱스가 displayFeed 인덱스와 일치한다(구분선 미삽입).
+      const marker = list.querySelector<HTMLElement>("[data-now-marker]");
+      const idx = nowIndex >= 0 ? nowIndex : displayFeed.length - 1;
+      const el = marker ?? (list.children[idx] as HTMLElement | undefined);
       if (!el) return;
       const headerH = document.querySelector<HTMLElement>(".scr-header")?.getBoundingClientRect().height ?? 0;
       const top = window.scrollY + el.getBoundingClientRect().top - headerH - 10;
       if (top > 1) window.scrollTo({ top, behavior: "instant" });
     });
-  }, [loading, displayFeed]);
+  }, [loading, displayFeed, nowIndex]);
 
   return (
     <div className="scr-screen scr-feed-screen">
@@ -1163,7 +1153,14 @@ export default function FeedScreen() {
         <div className="scr-empty">아직 표시할 활동이 없어요.</div>
       ) : (
         <div className="scr-feed-list" ref={feedListRef}>
-          {displayFeed.map((item) => (
+          {displayFeed.flatMap((item, i) => {
+            // 미래↔과거 경계(nowIndex)에 "현재" 구분선을 카드 사이에 끼운다(요청).
+            const divider = showNowDivider && i === nowIndex ? (
+              <div key="now-divider" className="scr-feed-now-divider" data-now-marker>
+                <span>현재</span>
+              </div>
+            ) : null;
+            const card = (
             item.kind === "rankshift" ? (
               <RankShiftCard
                 key={`rs-${item.shift.id}`}
@@ -1239,7 +1236,9 @@ export default function FeedScreen() {
                 highlightTerms={searchTerms}
               />
             )
-          ))}
+            );
+            return divider ? [divider, card] : [card];
+          })}
         </div>
       )}
 

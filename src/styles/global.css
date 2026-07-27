@@ -1292,10 +1292,6 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
      화면의 타이틀 줄 높이를 똑같이 맞춘다. 위 padding-bottom과 짝을 맞춰 함께 키운다. */
   min-height: calc(var(--field-h-sm) + 28px);
 }
-/* 피드는 툴바에 액션 버튼이 없다(등록은 FAB로 나감) — 다른 화면의 버튼 한 줄 예약
-   높이(min-height)와 큰 아래 패딩이 그대로 남으면 타이틀↔필터 사이가 유독 크게
-   벌어진다(지적). 피드에서만 그 예약을 없애고 아래 패딩을 줄인다. */
-.scr-feed-screen .scr-v2-toolbar { min-height: 0; padding-bottom: 4px; }
 /* 액션 버튼과 나란히 있을 때 세로 중앙정렬만으로는 타이틀 글자가 살짝 처져 보여서,
    그 기준선을 조금 위로 올린다. */
 .scr-v2-toolbar-title { grid-area: title; margin: 0; align-self: center; transform: translateY(-6px); }
@@ -7914,6 +7910,17 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    채우고 좌우를 살짝만 남긴다(화면 패딩을 음수 마진으로 뚫고 6~8px만 남김). 아이템
    사이 세로 여백은 시원하게. */
 .scr-feed-list { display: flex; flex-direction: column; gap: 20px; }
+/* "현재"(now) 구분선 — 미래(위)와 오늘/과거(아래) 카드 사이에 위치 안내(요청). 포인트
+   색 얇은 라인 + 가운데 "현재" 라벨. */
+.scr-feed-now-divider { display: flex; align-items: center; gap: 10px; margin: -2px 2px; }
+.scr-feed-now-divider::before, .scr-feed-now-divider::after {
+  content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, var(--point), transparent);
+  opacity: 0.7;
+}
+.scr-feed-now-divider span {
+  font-size: var(--fs-micro); font-weight: 800; color: var(--point);
+  letter-spacing: 0.06em; white-space: nowrap;
+}
 /* 카드 좌우는 타이틀/필터부와 같은 폭(요청) — 별도 확장 없음. */
 .scr-feed-card {
   position: relative; padding: 10px 0 10px;
