@@ -1946,10 +1946,11 @@ html:not(.scr-light-theme) .scr-stats-list-panel-v2 .scr-stat-name-cell,
 html:not(.scr-light-theme) .scr-stats-list-panel-v2 .scr-stat-name-head {
   background-color: color-mix(in srgb, var(--panel-solid) 78%, transparent);
 }
-/* 라이트도 같은 방식 — 흰 배경이라 같은 %라도 더 투명해 보여 조금 더 준다. */
+/* 라이트도 같은 이유로 알파를 낮춘다(요청) — 흰 배경이라 같은 %라도 더 투명해 보이므로
+   다크(78%)보다 조금만 더 준다. */
 .scr-light-theme .scr-stats-list-panel-v2 .scr-stat-name-cell,
 .scr-light-theme .scr-stats-list-panel-v2 .scr-stat-name-head {
-  background-color: color-mix(in srgb, var(--panel-solid) 92%, transparent);
+  background-color: color-mix(in srgb, var(--panel-solid) 80%, transparent);
 }
 /* flex:none — 기본 규칙의 flex:1이 남은 폭을 스택이 다 차지해 프사만 왼쪽에 붙고
    닉네임 혼자 가운데로 떨어졌다(가운데 정렬 요청과 어긋남) — 프사+닉네임을 한 덩어리로
