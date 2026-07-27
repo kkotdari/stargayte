@@ -302,7 +302,6 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
   // 2) 다 올라가면 그 빈 공간에 카드들이 페이드인한다.
   // (이전의 "카드들이 스택 자리에서 날아오르는" 방식은 겹침 구간이 지저분해 보였다 — 지적.)
   const stackRef = useRef<HTMLDivElement>(null);
-  const frontRef = useRef<HTMLDivElement>(null);
   const restListRef = useRef<HTMLDivElement>(null);
   const pendingAnchorRef = useRef<{ scrollY: number; docHeight: number } | null>(null);
   // 진행 중인 펼침 연출을 중단·원복하는 함수 — 접기/재펼침/언마운트 때 호출한다.
@@ -349,31 +348,14 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     const inner = root?.querySelector<HTMLElement>(
       ":scope > .scr-feed-stack-rest > .scr-feed-stack-rest-inner",
     );
-    const front = frontRef.current;
     const list = restListRef.current;
-    if (!root || !inner || !front || !list) return;
+    if (!root || !inner || !list) return;
 
-    // 줄이기 라인은 첫 카드 중심 ~ 앞 카드 중심을 잇는다 — 높이가 변하는 내내 다시 잰다.
-    const rail = root.querySelector<HTMLElement>(":scope > .scr-feed-stack-rail");
-    const positionRail = () => {
-      const firstCard = list.querySelector<HTMLElement>(".scr-feed-stack-reveal .scr-feed-card");
-      const frontCard = front.querySelector<HTMLElement>(".scr-feed-card");
-      if (!rail || !firstCard || !frontCard) return;
-      const rootTop = root.getBoundingClientRect().top;
-      const a = firstCard.getBoundingClientRect();
-      const b = frontCard.getBoundingClientRect();
-      const startY = a.top + a.height / 2 - rootTop;
-      rail.style.top = `${startY}px`;
-      rail.style.height = `${Math.max(0, b.top + b.height / 2 - rootTop - startY)}px`;
-      rail.style.bottom = "auto";
-    };
-    positionRail();
-    const railObserver = new ResizeObserver(positionRail);
-    railObserver.observe(root);
+    // 레일(카드를 잇는 세로선)은 여기서 손대지 않는다 — 스택 전체를 덮는 CSS 규칙
+    // (top:0/bottom:0)이라 높이가 변하면 알아서 따라온다. 예전엔 여기서 실측해 인라인
+    // top/height를 박았는데, 아래 cleanup이 그걸 지우는 순간 선이 사라졌다(global.css 참고).
     const cleanup = () => {
-      railObserver.disconnect();
       inner.style.height = "";
-      if (rail) { rail.style.top = ""; rail.style.height = ""; rail.style.bottom = ""; }
       cancelRevealRef.current = null;
     };
 
@@ -391,7 +373,6 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     // 시작 높이를 인라인으로 '지금 당장' 박는다 — WAAPI fill에만 맡기면 iOS가 첫 프레임에
     // 적용하지 않아 열린 상태가 한 번 스쳐 보인다(이 파일 곳곳에서 반복 확인된 함정).
     inner.style.height = open ? "0px" : `${full}px`;
-    if (rail) rail.style.opacity = open ? "0" : "1";
 
     const anims: Animation[] = [];
     const a = inner.animate(
@@ -399,27 +380,17 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       { duration: dur, easing: "cubic-bezier(0.32, 0.72, 0, 1)", fill: "both" },
     );
     anims.push(a);
-    if (rail) {
-      anims.push(rail.animate(
-        [{ opacity: open ? 0 : 1 }, { opacity: open ? 1 : 0 }],
-        { duration: open ? 220 : 150, easing: open ? "ease-out" : "ease-in",
-          delay: open ? Math.round(dur * 0.55) : 0, fill: "both" },
-      ));
-    }
     void Promise.all(anims.map((x) => x.finished)).then(() => {
       anims.forEach((x) => { try { x.cancel(); } catch { /* 이미 끝남 */ } });
       // 펼침 완료 뒤엔 auto로 돌려놔야 댓글이 늘거나 카드가 펼쳐질 때 높이가 따라간다.
       inner.style.height = "";
-      if (rail) rail.style.opacity = "";
       cleanup();
     }).catch(() => {});
 
     cancelRevealRef.current = () => {
       anims.forEach((x) => { try { x.cancel(); } catch { /* 이미 끝남 */ } });
-      if (rail) rail.style.opacity = "";
       cleanup();
     };
-    return () => { railObserver.disconnect(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
@@ -452,12 +423,9 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       </div>
       {/* 카드들을 잇는 레일 — 가로 정가운데를 지나는 세로선을 카드 '뒤'에 깐다(요청:
           기차처럼 이어지는 느낌). 카드가 불투명해 실제로 보이는 건 카드 사이 갭뿐이고,
-          그 토막들이 이어져 한 줄로 읽힌다. 순수 장식이라 누를 수 없다. */}
-      <div className="scr-feed-stack-rail" aria-hidden>
-        <span className="scr-feed-stack-rail-dot scr-feed-stack-rail-dot-top" />
-        <span className="scr-feed-stack-rail-dot scr-feed-stack-rail-dot-bottom" />
-      </div>
-      <div ref={frontRef} className="scr-feed-stack-front">
+          그 토막들이 이어져 한 줄로 읽힌다. 위치·표시 여부는 전부 CSS가 잡는다. */}
+      <div className="scr-feed-stack-rail" aria-hidden />
+      <div className="scr-feed-stack-front">
         <MatchCard item={ordered[0]} memberOf={memberOf} onDeleted={onDeleted} dateLabel={dateLabel} highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms} />
       </div>
     </div>
