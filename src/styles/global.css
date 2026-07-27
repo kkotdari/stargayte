@@ -7907,34 +7907,37 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-feed-card {
   position: relative; padding: 10px 0 10px;
   border-radius: 14px;
-  background: rgba(var(--overlay-rgb), 0.07);
-  backdrop-filter: blur(9px) saturate(1.2);
-  -webkit-backdrop-filter: blur(9px) saturate(1.2);
+  /* 블러 제거(임시 땜빵) — 피드 배경 이미지를 없애 카드 뒤가 민무늬 테마 배경뿐이라
+     backdrop-filter가 보여줄 게 없다. 블러를 빼면 View Transition 우회(FeedScreen
+     toggleOpen)가 카드 블러를 훼손할 일도 없다. 반투명 채움만 살짝 올려 유리 느낌 유지. */
+  background: rgba(var(--overlay-rgb), 0.09);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.09),
     inset 0 0 0 1px rgba(255, 255, 255, 0.045),
     0 2px 12px rgba(0, 0, 0, 0.16);
-  /* 카드를 상시 자기 합성 레이어에 올려둔다(translateZ(0)은 자기 자신에 건 transform이라
-     backdrop-filter 블러를 끊지 않는다 — 조상 transform만 끊는다). 스택 접기 커밋 프레임에
-     JS가 인라인 transform을 "" 로 지우면 그 순간 카드 레이어가 내려앉았다 다시 올라가며
-     사파리가 목록 전체를 한 번에 재래스터했다(지적: "펼치고 접을 때 화면/목록 전체가 통짜로
-     번쩍"). 상시 승격해 두면 인라인이 지워져도 이 translateZ(0)로 떨어져 레이어가 유지되고,
-     펼침 클립(0fr→1fr)이 열려도 레이어가 이미 살아 있어 새로 만드는 재래스터 폭발이 없다. */
+  /* 카드를 상시 자기 합성 레이어에 올려둔다 — 스택 접기 커밋 프레임에 JS가 인라인
+     transform을 "" 로 지울 때 레이어가 내려앉으며 목록 전체가 재래스터되는 걸 줄인다. */
   transform: translateZ(0);
 }
 .scr-light-theme .scr-feed-card {
-  background: rgba(255, 255, 255, 0.62);
-  backdrop-filter: blur(10px) saturate(1.1);
-  -webkit-backdrop-filter: blur(10px) saturate(1.1);
+  background: rgba(255, 255, 255, 0.8);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.85),
     inset 0 0 0 1px rgba(255, 255, 255, 0.5),
     0 1px 6px rgba(0, 0, 0, 0.08);
 }
-/* (스택 커밋용 View Transition 규칙은 제거했다 — VT가 도는 동안 사파리가 라이브
-   페이지를 평평한 스냅샷으로 대체해 화면의 모든 backdrop-filter(탭바·등록 FAB·스택
-   peek)가 그 구간 내내 배경을 잃고 투명해졌다. FeedScreen은 이제 VT 없이 잎
-   self-transform 애니메이션 + 페인트 전 인라인 상태 고정으로만 접기/펼치기를 처리한다.) */
+/* 스택 커밋용 View Transition(FeedScreen toggleOpen) — 임시 땜빵으로 복원(요청).
+   기본 크로스페이드는 쓰지 않는다(커밋 전후 화면이 픽셀 단위로 같게 설계돼 보일 게
+   없다). 이전 화면 스냅샷(old)을 2~3프레임 들고 있다가 즉시 교체 — 그 사이 WebKit이
+   커밋 프레임(클립 토글 + 즉시 스크롤 보정)의 통짜 재래스터를 끝내므로 깜빡임이 화면에
+   안 나온다. 부작용: 스냅샷 구간(≈48ms) 동안 화면의 backdrop-filter(탭바·FAB)가 잠깐
+   투명해진다 — 피드 카드/peek의 블러는 제거했으므로(위 .scr-feed-card) 훼손 범위는
+   그 둘뿐. 근본 해결(즉시 스크롤 점프 제거) 전까지의 우회다.
+   (주의: 전역 규칙 — 다른 곳에서 View Transition을 새로 쓰면 이 즉시 교체가 적용된다.) */
+::view-transition-old(root) { animation: scr-vt-hold 48ms steps(1, end) both; }
+::view-transition-new(root) { animation: scr-vt-cover 48ms steps(1, end) both; }
+@keyframes scr-vt-hold { from { opacity: 1; } to { opacity: 1; } }
+@keyframes scr-vt-cover { from { opacity: 0; } to { opacity: 0; } }
 
 /* 겹침 스택(같은 날 게임결과 2건 이상) — 접힘: 첫 게임 카드 + 아래로 삐져나온 뒷카드
    밑단("+N건"). 펼침: 전체 카드 + 마지막 카드 위 줄이기 알약. */
@@ -7982,9 +7985,8 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   display: block; margin: 0 4px -6px; margin-left: 4px; margin-right: 4px;
   padding: 8px 0 12px; border: none; border-radius: 14px 14px 0 0; cursor: pointer;
   font-family: inherit; font-size: var(--fs-micro); font-weight: 700; color: var(--dim);
-  background: rgba(var(--overlay-rgb), 0.05);
-  backdrop-filter: blur(9px) saturate(1.2);
-  -webkit-backdrop-filter: blur(9px) saturate(1.2);
+  /* 블러 제거(임시 땜빵 — .scr-feed-card 주석 참고). 채움 살짝 보강. */
+  background: rgba(var(--overlay-rgb), 0.07);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.06),
     inset 1px 0 0 rgba(255, 255, 255, 0.04),
@@ -7997,9 +7999,7 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 }
 @media (hover: hover) { .scr-feed-stack-peek:hover { color: var(--text); background: rgba(var(--overlay-rgb), 0.08); } }
 .scr-light-theme .scr-feed-stack-peek {
-  background: rgba(255, 255, 255, 0.5);
-  backdrop-filter: blur(10px) saturate(1.1);
-  -webkit-backdrop-filter: blur(10px) saturate(1.1);
+  background: rgba(255, 255, 255, 0.7);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 -2px 8px rgba(0, 0, 0, 0.08);
 }
 /* 줄이기 — 스택(펼쳐진 카드들 + 앞 카드) 전체 왼쪽에 반투명 흰 세로 라인(요청). 카드는
