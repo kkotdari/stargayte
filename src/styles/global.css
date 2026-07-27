@@ -5592,9 +5592,13 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
    맞춰 그 안에서만 세로 가운데로 둔다. 모바일은 원래(균일 gap 12px)와 같은 간격을
    그대로 좌우 margin으로 유지한다 — 비대칭 간격은 PC 전용이다(요청: "pc만이야
    모바일은 아니야"). */
+/* 가운데 묶음(승 배지 — vs/손가락 — 승 배지) 안팎 간격을 조금씩 벌린다(요청: 살짝씩).
+   세로 정렬은 영향받지 않는다 — 이 행은 부모(.scr-challenge-matchup)의 align-items:
+   flex-start로 첫 줄에 붙고, 안의 세 요소는 전부 높이 20px(프사와 같은 값)이라 가로
+   간격만 바뀐다. */
 .scr-challenge-arrow-row {
-  flex-shrink: 0; display: flex; align-items: center; gap: 4px;
-  margin-left: 12px; margin-right: 12px;
+  flex-shrink: 0; display: flex; align-items: center; gap: 7px;
+  margin-left: 14px; margin-right: 14px;
 }
 /* 손 이모지/vs 모두 별도 보정 없이 첫 줄 정중앙에 둔다(요청). 박스 높이는 프사(20px)와
    똑같이 — 24px로 두면 위 정렬(flex-start) 기준에서 중심이 프사보다 2px 내려가 살짝
@@ -5638,7 +5642,9 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
    않도록 상대편에 폭을 조금 더 준다(요청: "상대쪽 공간이 더 넓어야됨(요소가 많으니)
    닉네임 최대한 나오게"). 처음엔 4:6까지 벌렸다가 이번엔 도전자편이 너무 좁아져(요청:
    "이제 모바일에서 도전자쪽이 너무 좁아") 격차를 완만하게 줄였다. */
-.scr-challenge-side { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+/* 유저 사이 세로 간격 6→9px(요청: 살짝씩 벌리기). 가운데 vs/손가락 묶음은 첫 줄에만
+   붙어 있어(flex-start) 이 값이 커져도 따라 내려가지 않는다 — 세로 정렬은 그대로다. */
+.scr-challenge-side { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 9px; }
 /* 모바일은 상대편이 요소(응답 알약)가 더 많아 폭을 조금 더 준다 — PC는 아래 미디어
    쿼리에서 1:1 대칭으로 되돌린다(양쪽이 화살표를 가운데 두고 마주 보는 배치라 폭이
    같아야 화살표가 정확히 중앙에 온다). */
@@ -6318,7 +6324,9 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
      동시에 가운데 화살표 묶음의 좌우 여백을 12→6px로 줄여 그 절약분을 양쪽 로스터가 나눠
      가져 상대 닉네임 폭도 함께 넓힌다. */
   .scr-challenge-matchup .scr-challenge-side:not(.scr-challenge-side-target) { flex: 0.85 1 0; }
-  .scr-challenge-matchup .scr-challenge-arrow-row { margin-left: 5px; margin-right: 5px; gap: 3px; }
+  /* 5px/3px → 8px/6px(요청: 살짝씩 벌리기). 원래 12px에서 5px까지 줄였던 건 도전자
+     닉네임 폭을 확보하려던 것인데, 3px씩만 돌려줘도 그때 아낀 폭의 절반 이상은 남는다. */
+  .scr-challenge-matchup .scr-challenge-arrow-row { margin-left: 8px; margin-right: 8px; gap: 6px; }
   /* 경기 이력 팀전 카드: 양 팀 덩어리는 기본(base)의 균등폭(flex:1 1 0)을 그대로 쓴다 —
      한때 내용폭(flex:0 1 auto)으로 바꿨더니 팀1(짧은 닉네임)쪽 영역이 팀2보다 눈에 띄게
      좁아졌다(신고). 균등폭이면 팀1/팀2가 같은 폭을 가져 좌우가 대칭이 된다. */
