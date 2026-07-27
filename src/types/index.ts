@@ -208,6 +208,9 @@ export interface Match {
   mapName: string | null;
   gameStartedAt: string | null; // ISO 8601 (리플레이 실제 시작 시각 — date와 별개)
   durationSeconds: number | null;
+  // 리플레이 커맨드 스트림에서 규칙으로 만든 전황 요약(replaySummary.ts). 사람이 쓴 글이
+  // 아니라 파생 데이터라 리플레이를 다시 올리면 덮어쓴다. 재료가 모자라면 null.
+  summary: string | null;
   // 이 경기에 달린 댓글(메모) — 목록 응답에 함께 실려 온다(오래된 순). 검색창에서 댓글
   // 내용으로도 필터하고, 펼침 시 하단 댓글 영역에 렌더한다.
   notes: MatchNote[];

@@ -287,7 +287,7 @@ export default function ReplayBatchButton() {
             date: filled.date, team1: filled.team1, team2: filled.team2, result: filled.result as MatchResult,
             matchType: filled.matchType, replay: filled.replay,
             mapName: filled.mapName || null, gameStartedAt: filled.gameStartedAt,
-            durationSeconds: filled.durationSeconds,
+            durationSeconds: filled.durationSeconds, summary: filled.summary,
           };
           try {
             await addMatch(payload);

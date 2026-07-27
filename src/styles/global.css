@@ -61,13 +61,13 @@
   --fs-hero-1: var(--pc-fs-hero-1);
   --fs-hero-2: var(--pc-fs-hero-2);
   --fs-hero-3: var(--pc-fs-hero-3);
-  /* PC 셸 폭 — 헤더부터 본문까지 모두 이 값을 쓴다(요청: 1024로 축소 제한). */
-  --content-max: 1024px;
+  /* PC 셸 폭 — 헤더부터 본문까지 모두 이 값을 쓴다(요청: 1280 → 1024 → 860으로 축소 제한). */
+  --content-max: 860px;
   /* PC에서 화면마다 리스트/카드 콘텐츠 폭이 제각각이던 걸(랭킹 560px 고정 그리드,
      너나와 800px, 나머지는 무제한으로 --content-max까지 늘어남) 하나로 통일한다
      (요청: "PC에서 모든 화면의 컨텐츠부분 폭을 동일하게 수정할거야 추천 px
      제시해줘" → "800px로 적용" → 이후 "800 제한을 1280까지 풀어줘"로 셸 폭과 동일화). */
-  --list-content-max: 1024px;
+  --list-content-max: 860px;
 
   /* 배경: 반투명 유리 패널 — 예전엔 미세하게 붉은기가 도는 톤(#2b2427 계열)이었는데,
      이제 붉은 톤을 앱 전체에서 걷어내는 방향으로 정해서(요청: "기존 따뜻한 갈색 테마의
@@ -7251,6 +7251,14 @@ html.scr-light-theme .scr-feed-comments .scr-mreq-chip-inline { color: #c07c1c; 
 }
 /* 펼침 때 스탯 표 위에 노출되는 맵·플레이시간(요청). */
 .scr-match-trow-map-expanded { display: flex; align-items: baseline; gap: 6px; padding: 8px 0 8px; justify-content: center; }
+/* 리플레이 전황 요약 — 로스터 바로 아래, 접힌 상태에서도 보이는 한 덩어리 글(요청).
+   여러 문장이 이어질 수 있어 가운데 정렬 대신 왼쪽 정렬로 두고 줄간격을 넉넉히 준다. */
+.scr-match-trow-summary {
+  margin: 10px 0 0; padding: 9px 12px; border-radius: 10px;
+  background: rgba(var(--overlay-rgb), 0.06);
+  font-size: var(--fs-caption); font-weight: 600; line-height: 1.55;
+  color: var(--text); word-break: keep-all;
+}
 /* 라벨(무엇인지)이 앞, 시간이 바로 옆(요청) — 라벨이 주, 시간은 흐리게 보조. */
 .scr-feed-card-time { font-weight: 600; color: var(--dim); font-variant-numeric: tabular-nums; }
 /* 포스트 제목 — 피드에서 가장 큰 글자. 굵기·크기 모두 과감히 올린다(요청). */

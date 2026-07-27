@@ -386,6 +386,7 @@ export const api = {
     result: "team1" | "team2" | "draw" | null;
     mapName: string | null;
     durationSeconds: number | null;
+    summary: string | null;
     players: {
       playerName: string;
       race: string | null;

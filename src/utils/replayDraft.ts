@@ -307,6 +307,9 @@ function draftToMergePayload(d: ReplayDraft, gameStartedAt: string) {
     result: d.winnerSide,
     mapName: d.mapName || null,
     durationSeconds: d.durationSeconds,
+    // 요약은 파싱해야만 나오는 값이라, 예전에 등록해 요약이 비어 있는 경기도 리플레이를
+    // 다시 올리면 이 경로로 채워진다(요청: 배치 업로드에서 갱신).
+    summary: d.summary,
     players: [...fromSlots, ...fromUnmatched].filter((p) => p.playerName),
   };
 }

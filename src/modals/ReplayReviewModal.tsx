@@ -226,6 +226,7 @@ export default function ReplayReviewModal({
           date: d.date, team1: d.team1, team2: d.team2, result: d.result as MatchResult, matchType: d.matchType,
           replay: d.replay,
           mapName: d.mapName || null, gameStartedAt: d.gameStartedAt, durationSeconds: d.durationSeconds,
+          summary: d.summary,
         };
         await addMatch(payload);
         setSubmittedIndices((prev) => new Set(prev).add(i));

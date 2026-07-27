@@ -516,6 +516,12 @@ export default function MatchList({
                   </div>
                 </div>
                 )}
+                {/* 리플레이에서 규칙으로 뽑은 전황 요약(요청: 팀 로스터 아래에 배치) — 맵/시간과
+                    달리 접힌 상태에서도 보인다. 이 줄이 카드의 '읽을거리'라 펼치기 전에 눈에
+                    들어와야 한다. */}
+                {r.raw.summary && (
+                  <div className="scr-match-trow-summary">{r.raw.summary}</div>
+                )}
                 {/* 펼침 상세 — grid-template-rows 0fr↔1fr로 높이를 부드럽게 애니메이션한다
                     (요청: 펼치거나 접을 때 트랜지션). 접힌 로우는 상세 내용을 아예 안 그린다. */}
                 <div

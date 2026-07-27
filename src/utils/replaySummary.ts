@@ -85,6 +85,13 @@ const UNIT_ROLE: Record<string, string> = {
   Zergling: "물량", Hydralisk: "물량", Marine: "물량", Dragoon: "물량", Goliath: "물량",
   Medic: "물량", Scout: "공중 견제", "Infested Terran": "자폭",
 };
+// 활약을 고를 때 역할에 매기는 가중치. 질럿 40기와 하이템플러 25기 중 이야깃거리는 뒤쪽인데
+// (요청 예시: "하이템플러 견제로 승기를 잡음") 개수만 보면 앞쪽이 이긴다 — 기본 병력은 낮추고
+// 판을 가르는 역할은 올려서, '많이 뽑은 유닛'이 아니라 '그 사람다운 유닛'이 뽑히게 한다.
+const ROLE_WEIGHT: Record<string, number> = {
+  견제: 2, 마법: 2, 매복: 1.8, 저격: 1.8, "공중 견제": 1.8, 드랍: 1.6, 자폭: 1.6,
+  "공중 장악": 1.5, 제공권: 1.3, 돌파: 1, "자리 잡기": 0.7, 물량: 0.5,
+};
 // 역할별 맺음말 — 뜻에 맞춰 갈라 두면 같은 문장이 반복되지 않는다.
 const ROLE_TAIL: Record<string, string> = {
   견제: "승기를 잡음", "공중 견제": "승기를 잡음", 매복: "승기를 잡음", 저격: "승기를 잡음",
@@ -151,6 +158,11 @@ function wa(w: string): string {
 function ga(w: string): string {
   const j = jongseong(w);
   return j === null || j === 0 ? `${w}가` : `${w}이`;
+}
+/** ~는 / ~은 */
+function neun(w: string): string {
+  const j = jongseong(w);
+  return j === null || j === 0 ? `${w}는` : `${w}은`;
 }
 
 function buildSide(players: ParsedReplayPlayer[]): Side {
@@ -241,7 +253,7 @@ function heroClause(side: Side, hero: ParsedReplayPlayer, name: string): string 
     .map(([unit, n]) => {
       const byMates = mates.reduce((acc, m) => acc + (ownCombat(m).get(unit) ?? 0), 0);
       // 혼자 뽑은 유닛에 가중치 — 팀에서 이 사람만 낸 카드가 곧 그 사람의 이야기다.
-      return { unit, score: n * (byMates === 0 ? 2 : 1) };
+      return { unit, score: n * (byMates === 0 ? 2 : 1) * (ROLE_WEIGHT[UNIT_ROLE[unit]] ?? 1) };
     })
     .sort((a, b) => b.score - a.score);
   const top = scored[0];
@@ -271,6 +283,88 @@ function unitPhrase(units: string[]): string {
 
 function minutes(sec: number): number {
   return Math.round(sec / 60);
+}
+
+/** 그 편에서 가장 많이 뽑은 '한 방' 유닛(없으면 undefined). */
+function spectacleOf(side: Side): string | undefined {
+  return [...side.combat.entries()]
+    .filter(([u, n]) => SPECTACLE_UNITS[u] && n > 0)
+    .sort((a, b) => b[1] - a[1])[0]?.[0];
+}
+
+/** 진 편의 전황(요청: 승리팀만이 아니라 패배팀 얘기도 넣기). 중요한 순으로 문장을 돌려준다.
+ *  진 쪽도 이긴 쪽과 같은 재료(주력 조합·확장·방어·테크·먼저 끊긴 사람)를 쓰되, 결말이
+ *  정해져 있으므로 "…했지만 …" 꼴로 맺어 읽는 사람이 흐름을 따라가게 한다. */
+function loserStory(args: {
+  loser: Side;
+  winner: Side;
+  loserPlayers: ParsedReplayPlayer[];
+  displayName: (rawName: string) => string;
+  sec: number;
+  totalFrames: number | null;
+  /** 진 편이 초반 주도권을 잡았었나(커맨드 점유율 기준). */
+  pressedEarly: boolean;
+}): string[] {
+  const { loser, winner, loserPlayers, displayName, sec, totalFrames, pressedEarly } = args;
+  if (loserPlayers.length === 0) return [];
+
+  const star = standout(loser);
+  const name = star
+    ? displayName(star.rawName)
+    : loserPlayers.map((p) => displayName(p.rawName)).join("·");
+  const units = star ? mainUnits({ ...loser, combat: ownCombat(star) }) : mainUnits(loser);
+  const phrase = unitPhrase(units);
+  const out: string[] = [];
+
+  // 첫 문장 — 무엇으로 맞섰고 왜 안 됐나.
+  const spectacle = spectacleOf(loser);
+  if (spectacle) out.push(`${neun(name)} ${UNIT_KO[spectacle]}까지 꺼냈지만 판을 뒤집지 못함`);
+  else if (pressedEarly && phrase) out.push(`${neun(name)} 초반을 잡고 흔들었지만 ${phrase} 굳히지 못함`);
+  else if (phrase) {
+    out.push(units.some((u) => LATE_TECH_UNITS.has(u))
+      ? `${neun(name)} ${phrase} 후반을 노렸지만 역부족`
+      : `${neun(name)} ${phrase} 맞섰지만 역부족`);
+  } else if (sec > 0 && sec < EARLY_GAME_SEC) {
+    out.push(`${neun(name)} 제대로 싸워보지 못하고 무너짐`);
+  }
+
+  // 뒤따를 문장 후보들.
+  const fallen = earlyOuts(loserPlayers, totalFrames);
+  if (fallen.length > 0) {
+    const who = ga(fallen.map((p) => displayName(p.rawName)).join("·"));
+    out.push(loserPlayers.length > 1 ? `${who} 일찍 무너지며 전열이 갈림` : `${who} 일찍 손을 놓음`);
+  }
+  if (countIn(loser.buildings, DEFENSE_BUILDINGS) >= 6) {
+    out.push("방어 건물을 늘려 버텼지만 결국 뚫림");
+  }
+  const loseExp = countIn(loser.buildings, EXPANSION_BUILDINGS);
+  if (loseExp >= countIn(winner.buildings, EXPANSION_BUILDINGS) + 2 && loseExp >= 3) {
+    out.push(`${loseExp}멀티까지 벌렸지만 병력에서 밀림`);
+  }
+  const tech = [...loser.techs][0];
+  if (tech) out.push(`${TECH_KO[tech]}까지 썼지만 흐름을 되돌리지 못함`);
+  return out;
+}
+
+/** 이긴 편의 곁가지 — 본문(누가 무엇으로 이겼나) 다음에 덧붙일 이야기들. */
+function winnerStory(args: { winner: Side; loser: Side; sec: number }): string[] {
+  const { winner, loser, sec } = args;
+  const out: string[] = [];
+
+  const winExp = countIn(winner.buildings, EXPANSION_BUILDINGS);
+  if (winExp >= countIn(loser.buildings, EXPANSION_BUILDINGS) + 2 && winExp >= 3) {
+    out.push(`${winExp}멀티까지 늘린 운영으로 격차를 벌림`);
+  }
+  if (countIn(winner.combat, DROP_UNITS) >= 2) out.push("드랍 견제로 상대 본진을 계속 흔듦");
+
+  // 일꾼을 거의 안 뽑고 병력만 짜낸 올인.
+  const combatTotal = [...winner.combat.values()].reduce((a, b) => a + b, 0);
+  if (winner.workers > 0 && combatTotal > winner.workers * 4 && sec < LATE_GAME_SEC) {
+    out.push("일꾼을 거의 안 뽑고 병력만 짜낸 올인이었음");
+  }
+  const tech = [...winner.techs][0];
+  if (tech) out.push(`${TECH_KO[tech]}까지 꺼내 쓰며 굳힘`);
+  return out;
 }
 
 /**
@@ -308,15 +402,17 @@ export function buildReplaySummary({ replay, displayName }: ReplaySummaryInput):
   const lateTotal = winner.thirds[2] + loser.thirds[2];
   const earlyShare = earlyTotal > 0 ? winner.thirds[0] / earlyTotal : null;
   const lateShare = lateTotal > 0 ? winner.thirds[2] / lateTotal : null;
+  const pressedEarly = earlyShare !== null && earlyTotal >= 40 && earlyShare < 0.42;
   const comeback =
-    earlyShare !== null && lateShare !== null &&
-    earlyTotal >= 40 && lateTotal >= 40 && earlyShare < 0.42 && lateShare > 0.55;
+    pressedEarly && lateShare !== null && lateTotal >= 40 && lateShare > 0.55;
 
   // ── 머리말: 드문 사건이 있으면 그걸 먼저 말한다(경기마다 다른 문장이 나오도록) ──
+  // 주력으로 이미 말할 유닛은 머리말에서 뺀다 — 안 그러면 "캐리어가 뜬 조조가 캐리어로 승리"
+  // 처럼 같은 말을 두 번 한다.
   const lead: string[] = [];
-  const spectacle = units
-    .concat([...winner.combat.keys()])
-    .find((u) => SPECTACLE_UNITS[u] && (winner.combat.get(u) ?? 0) > 0);
+  const spectacle = [...winner.combat.keys()].find(
+    (u) => SPECTACLE_UNITS[u] && (winner.combat.get(u) ?? 0) > 0 && !units.includes(u)
+  );
   if (sec >= EPIC_GAME_SEC) lead.push(`${minutes(sec)}분 혈투 끝에`);
   else if (spectacle) lead.push(SPECTACLE_UNITS[spectacle]);
   else if (wasRush && sec > 0) lead.push(`${minutes(sec)}분 만에`);
@@ -329,40 +425,26 @@ export function buildReplaySummary({ replay, displayName }: ReplaySummaryInput):
   else if (wentLate && lead.length === 0) body = `${who} 후반 ${phrase} 승리`;
   else body = `${who} ${phrase} 승리`;
 
-  // ── 덧붙임: 활약/운영/견제/테크/탈락 중 눈에 띄는 것 한둘 ──
-  const tails: string[] = [];
-
-  // 팀전이면 그 사람의 활약을 한 줄 더 말한다(요청) — 1:1은 이미 본문이 그 사람 얘기라 뺀다.
-  if (star && winnerPlayers.length > 1) {
-    const hero = heroClause(winner, star, displayName(star.rawName));
-    if (hero) tails.push(hero);
-  }
-
-  // 확장 수 — 두 편 차이가 뚜렷할 때만 말한다(둘 다 3확장이면 이야깃거리가 아니다).
-  const winExp = countIn(winner.buildings, EXPANSION_BUILDINGS);
-  const loseExp = countIn(loser.buildings, EXPANSION_BUILDINGS);
-  if (winExp >= loseExp + 2 && winExp >= 3) tails.push(`${winExp}멀티까지 늘린 운영`);
-  else if (loseExp >= winExp + 2 && sec > 0 && sec < LATE_GAME_SEC) tails.push("한 방에 무너진 확장");
-
-  // 웅크린 그림 / 견제 / 테크.
-  if (countIn(loser.buildings, DEFENSE_BUILDINGS) >= 6) tails.push("상대는 방어 건물로 버팀");
-  if (countIn(winner.combat, DROP_UNITS) >= 2) tails.push("드랍 견제도 곁들임");
-  const tech = [...winner.techs][0];
-  if (tech && tails.length < 2) tails.push(`${TECH_KO[tech]}까지 씀`);
-
-  // 일꾼을 거의 안 뽑고 병력만 짜낸 올인.
-  const winCombatTotal = [...winner.combat.values()].reduce((a, b) => a + b, 0);
-  if (winner.workers > 0 && winCombatTotal > winner.workers * 4 && sec < LATE_GAME_SEC) {
-    tails.push("일꾼을 거의 안 뽑은 올인");
-  }
-
-  // 진 편에서 먼저 끊긴 사람(요청: 일찍 죽은 사람 표현) — 팀전에서만 의미가 있다.
-  const fallen = earlyOuts(loserPlayers, totalFrames);
-  if (fallen.length > 0 && loserPlayers.length > 1) {
-    tails.push(`${ga(fallen.map((p) => displayName(p.rawName)).join("·"))} 일찍 무너짐`);
-  }
+  // 팀전이면 그 사람의 활약을 본문에 한 마디 덧붙인다(요청) — 1:1은 이미 본문이 그 사람
+  // 얘기라 뺀다. 이건 첫 문장 안의 쉼표 절이고, 아래 문장들과는 별개다.
+  const hero =
+    star && winnerPlayers.length > 1 ? heroClause(winner, star, displayName(star.rawName)) : null;
 
   const head = lead.length > 0 ? `${lead[0]} ` : "";
-  // 덧붙임은 최대 두 개까지 — 더 붙이면 문장이 아니라 목록이 된다.
-  return [head + body, ...tails.slice(0, 2)].join(", ");
+  const opening = [head + body, ...(hero ? [hero] : [])].join(", ");
+
+  // ── 문장 수 ──
+  // 짧은 경기는 할 얘기도 짧다. 반대로 30분 넘는 혈투를 한 줄로 줄이면 아무 말도 안 한 것과
+  // 같아서, 경기가 길수록 문장을 늘린다(요청: "한 문장이 아니어도, 3~4문장까지").
+  const budget = sec >= EPIC_GAME_SEC ? 4 : sec >= LATE_GAME_SEC ? 3 : 2;
+
+  const lose = loserStory({
+    loser, winner, loserPlayers, displayName, sec, totalFrames, pressedEarly,
+  });
+  const win = winnerStory({ winner, loser, sec });
+
+  // 진 편 → 이긴 편 → 진 편… 순으로 번갈아 붙인다. 한쪽 얘기만 이어지면 중계가 아니라
+  // 승자 소개가 되어버린다(요청: 패배팀 전황도 넣기).
+  const rest = [lose[0], win[0], lose[1], win[1], lose[2]].filter((s): s is string => Boolean(s));
+  return [opening, ...rest.slice(0, budget - 1)].join(". ");
 }
