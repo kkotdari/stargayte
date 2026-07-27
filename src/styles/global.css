@@ -7502,10 +7502,15 @@ html.scr-light-theme .scr-feed-add-fab {
    카드에서 시트로 넘어가는 느낌이 끊겼고, iOS에서 backdrop-filter는 합성 비용도 크다.
    color-mix를 모르는 브라우저를 위해 같은 값의 rgba를 앞 선언으로 둔다. */
 .scr-comment-sheet::before {
-  content: ""; position: absolute; inset: 0; z-index: -1;
+  content: ""; position: absolute; inset: 0; z-index: 0;
   background: rgba(26, 26, 27, 0.92);
   background: color-mix(in srgb, var(--feed-card-bg) 92%, transparent);
 }
+/* 패널이 z-index:0이 됐으니 내용은 그 위로 올린다. 예전엔 패널을 z-index:-1로 깔았는데,
+   iOS는 position:fixed 요소를 자기 레이어로 합성하면서 음수 z-index 자식을 그 레이어
+   밖(= 페이지 배경 쪽)으로 밀어내, 패널이 통째로 안 그려지거나 잘렸다 — 시트가 반투명하게
+   비치고 아래 치마도 안 먹던 원인(지적: "키보드 열기 전에도 이미 뒤가 비친다"). */
+.scr-comment-sheet > * { position: relative; z-index: 1; }
 html.scr-light-theme .scr-comment-sheet {
   box-shadow:
     0 -18px 50px rgba(0, 0, 0, 0.3),
