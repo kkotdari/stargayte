@@ -514,7 +514,11 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
           </div>
           {err && <div className="scr-err scr-match-note-err">{err}</div>}
           {user && editingId === null && (
-            <div className="scr-comment-sheet-compose">{composer}</div>
+            // 입력칸 왼쪽에 내 아바타(요청) — 지금 누구 이름으로 쓰는지 보여준다.
+            <div className="scr-comment-sheet-compose">
+              <Avatar member={user} size={26} />
+              {composer}
+            </div>
           )}
         </div>,
         document.body,
