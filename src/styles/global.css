@@ -7521,7 +7521,18 @@ html.scr-light-theme .scr-comment-sheet { background: #ffffff; }
    transition 값이 쓰이므로, typing이 붙을 땐 none, 떨어질 땐 기본값이 적용된다. */
 .scr-comment-sheet { transition: padding-bottom 220ms cubic-bezier(0.32, 0.72, 0, 1); }
 .scr-comment-sheet-typing {
-  padding-bottom: 8px;
+  /* 키보드 구간을 덮는 양 — 액세서리 바 + 접힌 주소창 알약을 합친 것보다 넉넉히. */
+  --kb-cover: 140px;
+  /* 아래로 늘리는 방법을 바꾼다(요청: 다시 시도). 예전엔 bottom을 음수로 줘 박스 자체를
+     뷰포트 밖에 눕혔는데, iOS가 fixed 레이어를 뷰포트에 맞춰 잘라 아무것도 안 그려졌다.
+     이번엔 박스는 뷰포트 안에 그대로 두고(bottom:0) 합성 단계의 transform으로만 아래로
+     민다 — 레이아웃상 밖으로 나간 박스가 아니라 '뷰포트 안 박스를 옮긴 것'이라 잘라내기
+     대상이 아니길 기대하는 것이다. 대신 내용이 함께 내려가므로 그만큼 아래 패딩으로
+     되밀고, 보이는 높이가 줄지 않게 최소/최대에도 더한다. */
+  transform: translateY(var(--kb-cover));
+  padding-bottom: calc(var(--kb-cover) + 8px);
+  min-height: calc(50vh + var(--kb-cover)); min-height: calc(50dvh + var(--kb-cover));
+  max-height: calc(68vh + var(--kb-cover)); max-height: calc(68dvh + var(--kb-cover));
   transition: none;
 }
 /* 목록이 이 아래로 스크롤해 들어가므로 경계선을 둔다 — 없으면 스크롤된 글이 제목 줄에
