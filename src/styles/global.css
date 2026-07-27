@@ -6976,7 +6976,10 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 /* 아이템 = 라이팅 글래스 패널(복귀, 요청 — 구분이 더 또렷하게). 폭은 화면을 거의 꽉
    채우고 좌우를 살짝만 남긴다(화면 패딩을 음수 마진으로 뚫고 6~8px만 남김). 아이템
    사이 세로 여백은 시원하게. */
-.scr-feed-list { display: flex; flex-direction: column; gap: 20px; }
+/* 카드 사이 갭 20 → 28px — 이 여백에 접힘 상태의 "+ N건 펼치기" 글자가 absolute로 얹힌다.
+   20px에선 글자가 위아래 카드 한가운데에 떠서 어느 카드 것인지 모호했다(지적) — 넓히면
+   글자 위로 여백이 더 남아 바로 아래 카드에 붙은 것으로 읽힌다. */
+.scr-feed-list { display: flex; flex-direction: column; gap: 28px; }
 /* "현재"(now) 구분선 — 미래(위)와 오늘/과거(아래) 카드 사이에 위치 안내(요청). 포인트
    색 얇은 라인 + 가운데 "현재" 라벨. */
 .scr-feed-now-divider { display: flex; align-items: center; gap: 10px; margin: -2px 2px; }
@@ -7081,7 +7084,7 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    (요청: "펼친 카드들 사이 갭이 원래 카드들 갭보다 작아 똑같이"). bottom 패딩(20px)도
    같은 값이라 마지막 카드→앞 카드 간격까지 일관. rest 높이가 커지지만 펼침/접기 연출은
    전부 rest.getBoundingClientRect()로 실측하므로 자동으로 맞는다(하드코딩 없음). */
-.scr-feed-stack-rest-list { display: flex; flex-direction: column; gap: 20px; padding: 4px 0 20px; }
+.scr-feed-stack-rest-list { display: flex; flex-direction: column; gap: 28px; padding: 4px 0 28px; }
 /* 펼침 연출은 JS(WAAPI, MatchStack 참고) — 1) 위 콘텐츠를 필요한 높이만큼 transform으로
    밀어올려 빈 공간을 만들고 2) 그 자리에 카드들을 페이드인(아이디어: 사용자). */
 /* 줄이기 — 스택(펼쳐진 카드들 + 앞 카드) 전체 왼쪽에 반투명 흰 세로 라인(요청). 카드는

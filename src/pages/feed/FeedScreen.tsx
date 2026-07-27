@@ -140,6 +140,9 @@ function cubicBezier(x1: number, y1: number, x2: number, y2: number): (x: number
 }
 // 스택 연출 공용 이징(기존 cubic-bezier(0.32,0.72,0,1))과 CSS ease-in/ease-out 대응.
 const EASE_STACK = cubicBezier(0.32, 0.72, 0, 1);
+// 피드 카드 라운딩(.scr-feed-card border-radius)과 같은 값 — 겹친 카드를 자르는 선을
+// 이만큼 아래로 내려, 둥근 모서리에 파인 자리로 단면이 비치지 않게 한다.
+const CARD_RADIUS = 14;
 
 interface DrivenAnim { finished: Promise<void>; cancel: () => void }
 
@@ -553,7 +556,13 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       ":scope > .scr-feed-stack-rest > .scr-feed-stack-rest-inner",
     );
     const clipTo = (p: number) => {
-      if (restInner) restInner.style.clipPath = `inset(0 0 ${(1 - p) * 100}% 0)`;
+      if (!restInner) return;
+      // 자르는 선을 앞 카드 윗모서리보다 카드 반경만큼 아래로 내린다 — 딱 윗모서리에서
+      // 자르면 그 높이가 곧 라운딩 구간이라, 둥근 모서리에 파인 자리로 잘린 단면이
+      // 그대로 비쳤다(지적). 반경만큼 더 열어두면 그 파인 자리는 뒤 카드가 채우고,
+      // 실제 단면은 카드의 불투명한 몸통 뒤에서 잘린다.
+      const bottom = Math.max(0, (1 - p) * 100 - (CARD_RADIUS / Math.max(1, d)) * 100);
+      restInner.style.clipPath = `inset(0 0 ${bottom}% 0)`;
     };
     const clipOff = () => { if (restInner) restInner.style.clipPath = ""; };
     clipTo(0);
@@ -653,7 +662,10 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       ":scope > .scr-feed-stack-rest > .scr-feed-stack-rest-inner",
     );
     const clipTo = (p: number) => {
-      if (restInner) restInner.style.clipPath = `inset(0 0 ${p * 100}% 0)`;
+      if (!restInner) return;
+      // 펼침과 같은 이유로 카드 반경만큼 덜 자른다(위 clipTo 주석).
+      const bottom = Math.max(0, p * 100 - (CARD_RADIUS / Math.max(1, dist)) * 100);
+      restInner.style.clipPath = `inset(0 0 ${bottom}% 0)`;
     };
     const clipOff = () => { if (restInner) restInner.style.clipPath = ""; };
     clipTo(0);
