@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import Avatar from "../../components/common/Avatar";
 import { cx } from "../../utils/format";
 import type { Member, RivalryPair } from "../../types";
-import { useAppStore } from "../../store/appStore";
 
 // 상성 판정 기준 — 1전이라도 있으면 다 그린다(요청: "1전이라도 다 표현"). 표본 크기는
 // 선 굵기(우세 강도)가 아니라 보여주는 범위의 문제로 두지 않고 전부 노출한다.
@@ -271,21 +270,17 @@ export default function RivalryMap({
 // 로딩/로드 상태의 본체 높이를 "정확히" 같게 만든다(오버레이가 세로 가운데 정렬이라
 // 높이가 조금이라도 달라지면 타이틀이 위/아래로 튄다 — 지적). 높이를 px로 어림해
 // 예약하던 방식은 화면 폭에 따라 범례가 줄바꿈되면 어긋나서 폐기.
+// (제어판 트리거는 여기 없다) 한때 이 범례의 "누르면" 글자를 여러 번 눌러야 열리는
+// 숨은 트리거였는데, 운영 메뉴의 하위 항목으로 옮겼다(요청) — 어차피 관리 기능은 운영자만
+// 쓰므로 숨겨 둘 이유가 없고, 찾아 누르는 수고만 남았다.
 export function RivalryLegend() {
-  // 숨겨진 제어판 트리거(요청) — 범례 설명의 "누르면" 글자를 짧은 시간 안에 여러 번
-  // 눌러야만 열린다. 예전엔 헤더 로고의 별이었는데, 어느 화면에서나 눈에 띄는 자리라
-  // 실수로 열리기 쉬웠다. 이 글자는 겉보기에 그냥 설명 문장의 일부라(밑줄도, 커서
-  // 변화도 없다) 알고 있는 사람만 찾아 누른다.
-  const registerSecretTap = useAppStore((s) => s.registerSecretTap);
   return (
     <div className="scr-rivalry-legend">
       {/* 우세/열세는 색이 아니라 화살표 방향으로만 구분한다(요청) — 어느 모드든 초록 하나. */}
       <span className="scr-rivalry-legend-item"><span className="scr-rivalry-legend-arrow" /> 우세→열세</span>
       <span className="scr-rivalry-legend-item"><span className="scr-rivalry-legend-even" /> 대등</span>
       <span className="scr-rivalry-legend-note">
-        선이 굵을수록 상성이 뚜렷 · 유저를{" "}
-        <span className="scr-rivalry-legend-secret" onClick={registerSecretTap}>누르면</span>{" "}
-        그 유저의 상성만 표시
+        선이 굵을수록 상성이 뚜렷 · 유저를 누르면 그 유저의 상성만 표시
       </span>
     </div>
   );

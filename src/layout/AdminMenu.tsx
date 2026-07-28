@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { ChevronDown } from "lucide-react";
 import { cx } from "../utils/format";
 import { attachPopover } from "../utils/popover";
+import { useAppStore } from "../store/appStore";
 import type { ScreenKey } from "../types";
 
 interface AdminMenuProps {
@@ -32,11 +33,15 @@ interface AdminItem {
 // 동일하게 attachPopover를 재사용 — 하단 탭바에 놓였을 때도 아래쪽 공간이 부족하면 자동으로
 // 위로 뒤집어 열린다.
 export default function AdminMenu({ screen, onNavigate, variant, onOpenChange }: AdminMenuProps) {
+  const setAdminPanelOpen = useAppStore((s) => s.setAdminPanelOpen);
   const items: AdminItem[] = [
     { key: "members", label: "회원", isActive: screen === "members", onSelect: () => onNavigate("members") },
     { key: "leagues", label: "리그", isActive: screen === "leagues", onSelect: () => onNavigate("leagues") },
     // 상성맵은 운영 메뉴에서 뺐다(요청) — 이제 랭킹 화면(개인전)의 "상성맵" 버튼이
     // 오버레이(RivalryOverlay)로 띄운다. 운영 전용 화면(RivalryScreen) 자체는 남아 있다.
+    // 제어판은 반대로 여기로 들어왔다(요청) — 예전엔 상성 범례의 "누르면" 글자를 연타해야
+    // 열리는 숨은 트리거였다. 화면 전환이 아니라 모달이라 isActive는 늘 false다.
+    { key: "admin-panel", label: "제어판", isActive: false, onSelect: () => setAdminPanelOpen(true) },
   ];
   const activeInAdmin = items.some((i) => i.isActive);
   const [open, setOpen] = useState(false);
