@@ -293,12 +293,11 @@ const TEMPLATES: Record<string, Tpl> = {
     const at = targetPhrase(c);
     return `${ga(c.who)} ${at}${done(c, c.pick([
       "포토러쉬를 함", "초반 포토러쉬를 함", "빠른 포토러쉬를 시도함",
-      "예상치 못한 포토러쉬를 함", "과감한 포토러쉬를 함",
+      "예상치 못한 포토러쉬를 함",
     ]))}`;
   },
   recall: act([
     "아비터를 띄우고 리콜까지 씀", "리콜로 병력을 뒤로 넘김", "과감한 아비터 리콜을 씀",
-    "예상치 못한 리콜로 병력을 넘김",
   ]),
   // 리버 드랍 — 셔틀에 리버를 태워 일꾼을 지지는 그림(요청).
   "shuttle-reaver": (c) => {
@@ -470,7 +469,7 @@ const TEMPLATES: Record<string, Tpl> = {
     }
     return `${ga(c.who)} ${at}${done(c, c.pick([
       "몰래 배럭을 올림", "몰래 배럭을 시도함", "이른 시간에 몰래 배럭을 올림",
-      "예상치 못한 몰래 배럭을 올림", "야심찬 몰래 배럭을 올림",
+      "예상치 못한 몰래 배럭을 올림",
     ]))}`;
   },
   // 성큰러쉬 — 내 기지가 아닌 곳에 초반부터 성큰을 박는 올인(요청). 해처리는 펴지 않는다.
@@ -478,7 +477,7 @@ const TEMPLATES: Record<string, Tpl> = {
     const at = targetPhrase(c);
     return `${ga(c.who)} ${at}${done(c, c.pick([
       "성큰러쉬를 함", "초반 성큰러쉬를 함", "빠른 성큰러쉬를 시도함",
-      "예상치 못한 성큰러쉬를 함", "과감한 성큰러쉬를 함",
+      "예상치 못한 성큰러쉬를 함",
     ]))}`;
   },
   // 센터 포토 — 가운데를 포토로 걸어 잠그는 그림(요청).
@@ -690,13 +689,20 @@ export function renderReplaySummary(
     const tpl = TEMPLATES[b?.k];
     if (!tpl) continue;
     // 양쪽이 같은 짓을 했으면 한 문장으로 묶는다(요청) — 모든 전술 틀이 `${ga(who)} ${동작}`
-    // 꼴이라, 이름을 '와/과'로 잇고 동작 앞에 '서로'만 붙이면 어느 틀이든 그대로 읽힌다.
+    // 꼴이라, 이름을 '와/과'로 잇고 동작 앞에 한마디만 붙이면 어느 틀이든 그대로 읽힌다.
+    // '서로'는 정말 서로를 향했을 때만 쓴다(지적). 대상을 모르는 경우는 '양 팀'으로 말한다.
     const mutual = b.p?.mutual === true;
-    const who = mutual
-      ? joinPair((b.who ?? []).map(resolveName))
-      : joinNames((b.who ?? []).map(resolveName));
-    if (!who) continue;
+    const both = b.p?.both === true;
+    const names = (b.who ?? []).map(resolveName);
     const seed = variantSeed(b);
+    let who = mutual || both ? joinPair(names) : joinNames(names);
+    let lead = "";
+    if (mutual) lead = "서로 ";
+    else if (both) {
+      if (seed % 2 === 0) who = `양 팀의 ${who}`;
+      else lead = "모두 ";
+    }
+    if (!who) continue;
     let firstPick = true;
     const text = tpl({
       who,
@@ -707,9 +713,9 @@ export function renderReplaySummary(
       p: b.p ?? {},
       pick: (opts) => {
         const t = opts[seed % opts.length];
-        if (!mutual || !firstPick) return t;
+        if (!lead || !firstPick) return t;
         firstPick = false;
-        return `서로 ${t}`;
+        return `${lead}${t}`;
       },
     });
     if (text) out.push(text);

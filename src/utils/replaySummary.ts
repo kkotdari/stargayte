@@ -270,13 +270,17 @@ function mergeMutual(list: Beat[]): Beat[] {
     }
     const ats = [w.at, l.at].filter((x): x is number => x !== null && x !== undefined);
     const { whom: _whom, who2: _who2, ...rest } = w;
+    // '서로'는 정말 서로에게 한 것일 때만 쓴다(지적) — 자리로 상대를 짚어 낸 전술(포토러쉬·
+    // 성큰러쉬·몰래 배럭)은 양쪽 다 대상이 확실하므로 '서로'가 맞지만, 질럿 러시처럼
+    // 유닛 수로만 잡은 건 누구를 향했는지 모른다. 그런 건 '양 팀' 쪽으로 말한다.
+    const eachOther = (w.whom?.length ?? 0) > 0 && (l.whom?.length ?? 0) > 0;
     out.push({
       ...rest,
       who: [...w.who, ...l.who],
       at: ats.length > 0 ? Math.min(...ats) : null,
       // 양쪽이 같은 수를 뒀다는 것 자체가 이야깃거리라 조금 무겁게 친다.
       weight: Math.max(w.weight, l.weight) + 2,
-      p: { ...(w.p ?? {}), mutual: true },
+      p: { ...(w.p ?? {}), ...(eachOther ? { mutual: true } : { both: true }) },
     });
   }
   return out;
