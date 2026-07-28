@@ -2,6 +2,7 @@ import { useState } from "react";
 import { MoreHorizontal, Trophy } from "lucide-react";
 import KakaoShareButton from "../../components/common/KakaoShareButton";
 import { cx } from "../../utils/format";
+import { normalizeSearchText } from "../../utils/memberSearch";
 import type { KakaoShareContent } from "../../utils/kakaoShare";
 import type { RankShiftEntry, RankSnapshot } from "../../types";
 
@@ -66,12 +67,17 @@ export function RankShiftMenu({ shift }: { shift: RankSnapshot }) {
   );
 }
 
-export default function RankShiftCard({ shift, timeText, dateLabel, actions, footer }: {
+export default function RankShiftCard({
+  shift, timeText, dateLabel, actions, footer, highlightMemberIds, highlightTerms,
+}: {
   shift: RankSnapshot;
   timeText?: string;
   dateLabel?: string;
   actions?: React.ReactNode;
   footer?: React.ReactNode;
+  // 피드 검색어에 걸린 사람 — 순위변동 줄에도 로스터와 같은 하이라이트를 준다(지적).
+  highlightMemberIds?: Set<string>;
+  highlightTerms?: string[];
 }) {
   // 변동이 4개 넘으면 위에서 4개만 보이고 나머지는 "…더보기"로 접는다. 리스트를 누르면
   // 펼쳐지고 다시 누르면 접힌다(요청). 공유 페이지의 카드에도 그대로 적용된다.
@@ -109,7 +115,13 @@ export default function RankShiftCard({ shift, timeText, dateLabel, actions, foo
         {rows.map((e) => {
           const label = shiftLabel(e);
           return (
-            <li key={`${e.memberId}-${e.to}`} className="scr-feed-shift-row">
+            <li
+              key={`${e.memberId}-${e.to}`}
+              className={cx("scr-feed-shift-row",
+                (highlightMemberIds?.has(e.memberId)
+                  || highlightTerms?.some((t) => normalizeSearchText(e.nickname).includes(t)))
+                  && "scr-feed-shift-row-hl")}
+            >
               <span className="scr-feed-shift-rank">{e.to}위</span>
               <span className="scr-feed-shift-name">{e.nickname}</span>
               <span className={label.cls}>{label.text}</span>

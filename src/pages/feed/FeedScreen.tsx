@@ -442,13 +442,30 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       >
         <ul className="scr-feed-stack-sum-players">
           {participants.map((p) => (
-            <li key={p.id} className="scr-feed-stack-sum-player">
+            <li
+              key={p.id}
+              className={cx(
+                "scr-feed-stack-sum-player",
+                (highlightMemberIds?.has(p.id)
+                  || highlightTerms?.some((t) => normalizeSearchText(p.name).includes(t)))
+                  && "scr-feed-stack-sum-player-hl",
+              )}
+            >
               <Avatar member={{ id: p.id, nickname: p.name, avatar: memberOf(p.id)?.avatar ?? null }} size={20} />
               <span className="scr-feed-stack-sum-name">{p.name}</span>
             </li>
           ))}
         </ul>
       </div>
+
+      {/* 펼쳤을 때는 여기(원래 펼치기가 있던 자리)에도 접기를 둔다(요청) — 목록이 길면
+          맨 아래 접기까지 스크롤해 내려가야 한다. */}
+      <button
+        type="button" className="scr-feed-stack-toggle scr-feed-stack-toggle-top"
+        onClick={() => toggleOpen(false)} tabIndex={open ? 0 : -1} aria-expanded={open}
+      >
+        접기
+      </button>
 
       {/* 펼치면 이 자리가 목록 높이만큼 벌어지고 카드가 하나씩 나타난다(요청). */}
       <div className="scr-feed-stack-inner" aria-hidden={!open}>
@@ -865,6 +882,8 @@ export default function FeedScreen() {
                 timeText={formatEventTime(item.time, item.withClock)}
                 dateLabel={dateLabelOf(item)}
                 actions={<RankShiftMenu shift={item.shift} />}
+                highlightMemberIds={matchedIds}
+                highlightTerms={searchTerms}
                 footer={
                   <>
                     <div className="scr-feed-rank-actions">
