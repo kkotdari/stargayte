@@ -229,7 +229,7 @@ function victimPhrase(c: Ctx): string {
 // "그대로 태움" 같은 수식은 전부 걷어냈다(지적).
 const LOST_TAILS = [
   "경기는 내줌", "승부는 상대 쪽으로 넘어감", "판을 가져오지는 못함",
-  "흐름은 상대에게 넘어감", "역부족이었음",
+  "흐름은 상대에게 넘어감", "역부족이었음", "경기는 기움",
 ];
 // 도박수(초반 올인)가 안 됐을 때만 쓰는 맺음 — 성공 여부를 단정하지 않는 선에서
 // "실패함" "큰 피해는 못 줌"까지만 말한다(지적: 독이 됐다·발목을 잡았다는 지나치다).
@@ -304,35 +304,37 @@ const TEMPLATES: Record<string, Tpl> = {
   "raid-damage": (c) => {
     const label = tacticLabel(str(c.p.k), c.p);
     if (!label) return null;
-    const whom = c.whom ? `${c.whom}의 ` : "상대 ";
+    const of = c.whom ? `${c.whom}의 ` : "상대 ";
+    const foe = c.whom || "상대";
+    // "Rex가 리버 드랍 한 방에"가 아니라 "Rex의 리버 드랍 한 방에"라야 읽힌다(지적) —
+    // 그런 꼴은 주어까지 문장 안에서 만든다.
+    const mine = `${c.who}의 ${label}`;
     // 초반 올인에 초반부터 무너진 그림(요청) — 몇 분 만이었는지가 곧 이야기다.
     if (c.p.early && !c.p.out) {
-      const foe = c.whom || "상대";
       const m = num(c.p.hitMin);
       const when = m > 0 ? `${m}분 만에 ` : "";
-      return `${ga(c.who)} ${done(c, c.pick([
-        `${ro(label)} ${ga(foe)} ${when}주저앉음`,
-        `${label} 한 방에 ${ga(foe)} ${when}무너짐`,
-        `${ro(label)} ${when}${reul(foe)} 반쯤 지워버림`,
-      ]))}`;
+      return done(c, c.pick([
+        `${ga(c.who)} ${ro(label)} ${when}${of}기지를 반쯤 파괴함`,
+        `${mine} 한 방에 ${when}${ga(foe)} 무너짐`,
+        `${ga(c.who)} ${ro(label)} ${when}${reul(foe)} 몰아붙임`,
+      ]));
     }
     // 그 창 안에 실제로 탈락했으면(Leave Game) 짐작이 아니라 사실이다 — 그렇게 말한다.
     if (c.p.out) {
-      const foe = c.whom || "상대";
       const min = num(c.p.outMin);
       const when = min > 0 ? `${min}분경 ` : "";
-      return `${ga(c.who)} ${done(c, c.pick([
-        `${ro(label)} ${when}${reul(foe)} 엘리미네이트`,
-        `${ro(label)} ${when}${reul(foe)} 그대로 지워버림`,
-        `${label} 한 방에 ${when}${ga(foe)} 탈락`,
-      ]))}`;
+      return done(c, c.pick([
+        `${ga(c.who)} ${ro(label)} ${when}${reul(foe)} 엘리미네이트`,
+        `${mine}에 ${when}${ga(foe)} 탈락`,
+        `${ga(c.who)} ${ro(label)} ${when}${reul(foe)} 판에서 지움`,
+      ]));
     }
-    return `${ga(c.who)} ${done(c, c.pick([
-      `${ro(label)} ${whom}본진을 파괴함`,
-      `${ro(label)} ${whom}생산을 끊어놓음`,
-      `${label} 한 방에 ${whom}기지가 주저앉음`,
-      `${ro(label)} ${whom}살림을 통째로 흔듦`,
-    ]))}`;
+    return done(c, c.pick([
+      `${ga(c.who)} ${ro(label)} ${of}본진을 파괴함`,
+      `${ga(c.who)} ${ro(label)} ${of}생산을 끊어놓음`,
+      `${mine} 한 방에 ${of}기지가 파괴됨`,
+      `${ga(c.who)} ${ro(label)} ${of}살림을 통째로 흔듦`,
+    ]));
   },
 
   // ── 전술(replayTactics) ──
@@ -699,11 +701,14 @@ const TEMPLATES: Record<string, Tpl> = {
   // 그 뒤에 제 살림이 무너진 것까지 이어야 이야기가 된다.
   "rush-backfire": (c) => {
     const label = tacticLabel(str(c.p.k), c.p) || "초반 러쉬";
+    // 러쉬가 막힌 뒤에 오는 건 '살림이 무너짐'이 아니라 테크·발전에서의 손해다(지적).
     return `${ga(c.who)} ${c.pick([
-      `${reul(label)} 갔다가 막히고 그대로 주저앉음`,
-      `${label}가 막힌 뒤 역으로 무너짐`,
-      `${label} 실패하고 되레 제 살림이 무너짐`,
-      `${reul(label)} 올인으로 갔다가 막히고 끝남`,
+      `${reul(label)} 갔으나 막힘`,
+      `${label} 실패함`,
+      `${reul(label)} 갔다가 막혀 테크에서 손해를 봄`,
+      `${label}가 막힌 뒤 발전이 늦어짐`,
+      `${reul(label)} 갔다가 막혀 그 사이 상대만 테크를 탐`,
+      `${label} 실패로 한동안 발전을 못함`,
     ])}`;
   },
 
