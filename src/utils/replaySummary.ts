@@ -678,6 +678,25 @@ function cannonIsRush(p: ParsedReplayPlayer): boolean {
   return forge !== undefined && (gate === undefined || forge < gate);
 }
 
+/** 그 사람이 그 시점까지 지어 둔 방어 건물 — 무엇을 몇 개(요청: 무너질 때 방어 타워가
+ *  모자랐는지도 봐서 특징이 있으면 넣기).
+ *
+ *  리플레이에는 그게 그때까지 남아 있었는지도, 막아냈는지도 없다 — 지었다는 사실뿐이다.
+ *  그래서 '충분했나'를 판정하지 않고 '몇 개를 지어 뒀나'까지만 돌려주고, 모자랐다는
+ *  느낌은 그 수 자체가 말하게 둔다. 아무것도 안 지었으면 n=0(그 자체가 사실이다).
+ *  포토 러시로 간 캐논은 방어가 아니므로 세지 않는다. */
+function defenseBefore(p: ParsedReplayPlayer, frame: number | null): { def: string; n: number } {
+  const sg = p.signals;
+  if (!sg) return { def: "", n: 0 };
+  const cut = frame ?? Infinity;
+  const ranked = Object.keys(DEFENSE_KO)
+    .filter((b) => !(b === "Photon Cannon" && cannonIsRush(p)))
+    .map((b) => ({ def: b, n: (sg.buildingFrames[b] ?? []).filter((f) => f <= cut).length }))
+    .filter((x) => x.n > 0)
+    .sort((a, b) => b.n - a.n);
+  return ranked[0] ?? { def: "", n: 0 };
+}
+
 /** 그 편에서 가장 많이 뽑은 '한 방' 유닛(없으면 undefined). */
 function spectacleOf(side: Side): string | undefined {
   return [...side.combat.entries()]
@@ -986,11 +1005,18 @@ function sideBeats(args: {
     // 승자에게 붙는 우스운 문장이 나왔다. 리플레이에 탈락이 그대로 적혀 있으면(팀전에서
     // 팀원 하나가 실제로 지워진 경우) 그건 사실이므로 이긴 편이라도 말한다.
     if (won && eliminatedFrame(p) === null) continue;
+    const fell = fellFrame(p, totalFrames);
+    // 무너질 때 방어 건물이 어땠는지도 함께(요청) — "포토 2개뿐인 채로 지워짐"처럼
+    // 그 수 자체가 그림이 된다. 막아냈는지는 리플레이에 없으니 지어 둔 데까지만 싣는다.
+    const guard = defenseBefore(p, fell);
     beats.push({
       k: "fallen", won, who: who(p), weight: 9,
-      at: fellFrame(p, totalFrames),
+      at: fell,
       // 리플레이에 탈락이 그대로 적혀 있으면 짐작이 아니라 사실로 말한다(요청).
-      p: { team: players.length > 1, ...(eliminatedFrame(p) !== null ? { out: true } : {}) },
+      p: {
+        team: players.length > 1, def: guard.def, defN: guard.n,
+        ...(eliminatedFrame(p) !== null ? { out: true } : {}),
+      },
     });
   }
 
@@ -1458,7 +1484,18 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
       side: loser, other: winner, players: loserPlayers,
       won: false, sec, totalFrames, pressedEarly,
     }).filter((b) => !(breached && b.k === "defense")),
-  ].filter((b) => !(b.k === "fallen" && b.who.some((w) => pickedOff.has(w))));
+  ]
+    .filter((b) => !(b.k === "fallen" && b.who.some((w) => pickedOff.has(w))))
+    // 돌파 문장이 이미 "조조의 저글링 성큰 5개를 밀어버렸다"고 말했으면, 같은 사람의
+    // 무너짐에 "성큰 5개와 함께 버텼지만"을 또 붙이지 않는다 — 같은 방어 건물이 한
+    // 요약에 두 번 나온다. 문장은 남기고 그 대목만 덜어 낸다.
+    .map((b) => {
+      if (b.k !== "fallen" || !breached) return b;
+      if (breached.p?.def !== b.p?.def) return b;
+      if (!b.who.some((w) => (breached.whom ?? []).includes(w))) return b;
+      const { def: _def, defN: _defN, ...rest } = b.p ?? {};
+      return { ...b, p: rest };
+    });
 
   // 전술·돌파·합공처럼 '그 경기에서만 있었던 일'이 자리보다 많으면 그만큼 더 쓴다
   // (요청: 할 얘기가 많은 경기는 좀 더 써도 됨). 일반적인 사실로 늘리지는 않는다.
