@@ -350,9 +350,11 @@ const TEMPLATES: Record<string, Tpl> = {
   "zling-rush": (c) => {
     const n = num(c.p.drones);
     const build = n > 0 ? `${n}드론 저글링 러시` : "초반 저글링 러시";
+    // 올인 표현은 '러시'를 갈아 끼운다 — "…저글링 러시 올인러시"가 되면 말이 겹친다.
+    const allin = build.replace(/러시$/, "올인러시");
     const at = targetPhrase(c);
     return `${ga(c.who)} ${at}${done(c, c.pick([
-      `${build}를 함`, `빠른 ${build}를 함`, `과감한 ${build} 올인러시를 함`,
+      `${build}를 함`, `빠른 ${build}를 함`, `과감한 ${allin}를 함`,
       // 깎아내리는 말은 졌거나, 이겼더라도 한 종류만 주야장천 뽑았을 때만(지적).
       ...(c.won && !c.p.solo ? [] : [`무지성 ${build}를 함`]),
       ...(c.won ? [] : [`무리하게 ${build}를 함`]),
