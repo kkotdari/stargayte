@@ -1,6 +1,6 @@
 import type { ParsedReplay, ParsedReplayPlayer, ReplayPlayerSignals } from "./replayParser";
 import { scanTactics } from "./replayTactics";
-import { fellFrame } from "./replayFell";
+import { fellFrame, productionDips } from "./replayFell";
 import { REPLAY_SUMMARY_VERSION, type ReplaySummaryBeat, type ReplaySummaryData } from "./replaySummaryData";
 import {
   DEFENSE_KO, EXPANSION_KO, PRODUCTION_KO, SPECTACLE_UNITS, SUPPORT_UNITS, UNIT_KO, UNIT_ROLE,
@@ -91,6 +91,15 @@ const GANG_RUSH_SEC = 9 * 60;
 // 그 시점까지 이만큼은 뽑았어야 '달려든 사람'으로 센다 — 뒤에서 확장만 하고 있던 사람까지
 // 합공에 넣으면 숫자가 거짓말이 된다.
 const GANG_MIN_UNITS = 8;
+
+// 러시·드랍을 간 뒤 이 안에 상대 생산이 끊기면 그 수의 결과로 본다.
+const DAMAGE_WINDOW_SEC = 3 * 60;
+// '들이친 수'만 피해와 이어 붙인다 — 센터 장악·시야·방어처럼 때리는 수가 아닌 것은 뺀다.
+const RAID_KEYS = new Set([
+  "zling-rush", "zealot-rush", "cannon-rush", "sunken-rush", "sneak-rax",
+  "shuttle-reaver", "templar-drop", "zerg-drop", "dropship", "shuttle",
+  "nydus", "recall", "bionic", "mech", "moka",
+]);
 
 interface Side {
   players: ParsedReplayPlayer[];
@@ -656,15 +665,41 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
 
   // 전술(9드론 저글링 러시·몰래 배럭·목동 저그…)은 그 경기에서만 있었던 일이라 가장 무겁게
   // 친다 — 자리가 모자라면 일반적인 이야기부터 버려진다.
-  const tacticBeats = (won: boolean): Beat[] =>
-    scanTactics({
-      sidePlayers: won ? winnerPlayers : loserPlayers,
-      foePlayers: won ? loserPlayers : winnerPlayers,
-    }).map((t) => ({
-      k: t.key, won, who: [t.who], at: t.at, p: t.p, weight: t.weight + 10,
-      ...(t.whom ? { whom: [t.whom] } : {}),
-      ...(t.who2 ? { who2: [t.who2] } : {}),
-    }));
+  // 러시·드랍을 간 그 타이밍에 상대 쪽 누군가의 생산이 뚝 끊겼다면, 그건 그 수가 통했다는
+  // 뜻이다(요청) — "3게이트 질럿 러쉬로 조조의 본진을 파괴함"처럼 한 문장으로 잇는다.
+  // 대상이 이미 확실한 전술(자리로 짚은 것)은 그 사람만 보고, 아니면 상대 전원을 훑는다.
+  const damageFrom = (t: { key: string; at: number | null; whom?: string }, foes: ParsedReplayPlayer[]) => {
+    if (t.at === null || !RAID_KEYS.has(t.key)) return null;
+    const window = t.at + DAMAGE_WINDOW_SEC / SECONDS_PER_FRAME;
+    const targets = t.whom ? foes.filter((p) => p.rawName === t.whom) : foes;
+    let best: { raw: string; at: number } | null = null;
+    for (const p of targets) {
+      for (const d of productionDips(p, totalFrames)) {
+        if (d < t.at || d > window) continue;
+        if (!best || d < best.at) best = { raw: p.rawName, at: d };
+      }
+    }
+    return best;
+  };
+
+  const tacticBeats = (won: boolean): Beat[] => {
+    const foes = won ? loserPlayers : winnerPlayers;
+    return scanTactics({ sidePlayers: won ? winnerPlayers : loserPlayers, foePlayers: foes })
+      .map((t) => {
+        const hit = damageFrom(t, foes);
+        if (hit) {
+          return {
+            k: "raid-damage", won, who: [t.who], at: t.at, weight: t.weight + 14,
+            whom: [hit.raw], p: { ...(t.p ?? {}), k: t.key },
+          } as Beat;
+        }
+        return {
+          k: t.key, won, who: [t.who], at: t.at, p: t.p, weight: t.weight + 10,
+          ...(t.whom ? { whom: [t.whom] } : {}),
+          ...(t.who2 ? { who2: [t.who2] } : {}),
+        } as Beat;
+      });
+  };
 
   // "유비의 바이오닉 한 방으로 관우의 저글링 성큰을 뚫음" — 이긴 편의 주력이 진 편의 누구를
   // 어떻게 뚫었는지 한 문장에 담는다(요청). 양쪽을 따로 말하는 것보다 훨씬 경기처럼 읽힌다.

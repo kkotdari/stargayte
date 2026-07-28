@@ -267,7 +267,49 @@ const done = (c: Ctx, action: string, risky = false): string => {
 /** 한 일만 말하는 흔한 꼴 — 이긴 쪽/진 쪽 모두 같은 표현을 쓰고, 진 쪽에만 결과를 덧붙인다. */
 const act = (actions: string[]): Tpl => (c) => `${ga(c.who)} ${done(c, c.pick(actions))}`;
 
+/** 전술을 문장 안에서 부를 이름 — "3게이트 질럿 러쉬로 …"처럼 다른 문장에 끼워 넣을 때 쓴다.
+ *  여기 없는 키는 '들이친 수'가 아니라는 뜻이라, 피해 문장 자체가 만들어지지 않는다. */
+function tacticLabel(k: string, p: Record<string, unknown>): string {
+  switch (k) {
+    case "zling-rush": {
+      const n = num(p.drones);
+      return n > 0 ? `${n}드론 저글링 러쉬` : "초반 저글링 러쉬";
+    }
+    case "zealot-rush": {
+      const g = num(p.gates, 2);
+      return `${g === 2 ? "투게이트" : `${g}게이트`} 질럿 러쉬`;
+    }
+    case "cannon-rush": return "포토러쉬";
+    case "sunken-rush": return "성큰러쉬";
+    case "sneak-rax": return p.firebat ? "몰래 배럭 파이어뱃 러쉬" : "몰래 배럭";
+    case "shuttle-reaver": return "리버 드랍";
+    case "templar-drop": return "하이템플러 드랍";
+    case "zerg-drop": return p.lurker ? "러커 드랍" : "히드라 드랍";
+    case "dropship": return "드랍십 견제";
+    case "shuttle": return "셔틀 견제";
+    case "nydus": return "커널";
+    case "recall": return "아비터 리콜";
+    case "bionic": return "바이오닉 한 방";
+    case "mech": return "메카닉 진출";
+    case "moka": return "목동 저그";
+    default: return "";
+  }
+}
+
 const TEMPLATES: Record<string, Tpl> = {
+  // 들이친 수와 그 결과를 한 문장으로(요청) — 그 타이밍에 상대 생산이 끊긴 게 근거다.
+  "raid-damage": (c) => {
+    const label = tacticLabel(str(c.p.k), c.p);
+    if (!label) return null;
+    const whom = c.whom ? `${c.whom}의 ` : "상대 ";
+    return `${ga(c.who)} ${done(c, c.pick([
+      `${ro(label)} ${whom}본진을 파괴함`,
+      `${ro(label)} ${whom}생산을 끊어놓음`,
+      `${label} 한 방에 ${whom}기지가 주저앉음`,
+      `${ro(label)} ${whom}살림을 통째로 흔듦`,
+    ]))}`;
+  },
+
   // ── 전술(replayTactics) ──
   "zling-rush": (c) => {
     const n = num(c.p.drones);
@@ -275,8 +317,9 @@ const TEMPLATES: Record<string, Tpl> = {
     const at = targetPhrase(c);
     return `${ga(c.who)} ${at}${done(c, c.pick([
       `${build}를 함`, `빠른 ${build}를 함`, `과감한 ${build} 올인을 감`,
-      // 깎아내리는 말은 진 쪽에서만 — 이겨 놓고 "무지성"이라 하면 말이 안 된다.
-      ...(c.won ? [] : [`무지성 ${build}를 함`, `무리하게 ${build}를 함`]),
+      // 깎아내리는 말은 졌거나, 이겼더라도 한 종류만 주야장천 뽑았을 때만(지적).
+      ...(c.won && !c.p.solo ? [] : [`무지성 ${build}를 함`]),
+      ...(c.won ? [] : [`무리하게 ${build}를 함`]),
     ]), true)}`;
   },
   moka: act([
@@ -325,7 +368,8 @@ const TEMPLATES: Record<string, Tpl> = {
     const at = targetPhrase(c);
     return `${ga(c.who)} ${at}${done(c, c.pick([
       `${label} 질럿 러쉬를 함`, `빠른 ${label} 질럿 러쉬를 함`, `과감한 ${label} 질럿 올인 러쉬를 함`,
-      ...(c.won ? [] : [`무지성 ${label} 질럿 러쉬를 함`, `무리하게 ${label} 질럿 러쉬를 함`]),
+      ...(c.won && !c.p.solo ? [] : [`무지성 ${label} 질럿 러쉬를 함`]),
+      ...(c.won ? [] : [`무리하게 ${label} 질럿 러쉬를 함`]),
     ]), true)}`;
   },
   "cannon-rush": (c) => {
@@ -455,7 +499,7 @@ const TEMPLATES: Record<string, Tpl> = {
     if (!t) return null;
     return `${ga(c.who)} ${done(c, c.pick([
       `${t} 등의 고급 기술을 사용해 전투에 임함`, `${t}까지 꺼내 씀`, `${reul(t)} 확보해 씀`,
-    ]))}`;
+    ]), true)}`;
   },
   allin: (c) =>
     `${ga(c.who)} ${c.pick(["일꾼을 거의 안 뽑고 병력만 짜낸 올인", "일꾼을 접고 병력만 뽑은 올인"])}`,

@@ -35,6 +35,30 @@ function windows(p: ParsedReplayPlayer, totalFrames: number): number[] {
   return buckets;
 }
 
+// 직전 수준의 이만큼 아래로 떨어지면 '한 대 크게 맞았다'로 본다.
+const DIP_RATIO = 0.35;
+// 그 전에 이만큼은 뽑고 있었어야 비교가 된다 — 원래 두어 기씩 뽑던 구간의 등락은 소음이다.
+const DIP_MIN_LEVEL = 5;
+
+/** 생산이 갑자기 꺾인 지점들(프레임). 회복 여부는 보지 않는다 — 다시 일어섰더라도 그때
+ *  크게 맞은 건 맞다. 러시·드랍 타이밍과 겹치면 그 피해를 그 수의 결과로 읽는다(요청). */
+export function productionDips(
+  p: ParsedReplayPlayer,
+  totalFrames: number | null
+): number[] {
+  if (!totalFrames) return [];
+  const b = windows(p, totalFrames);
+  if (b.length < 3) return [];
+  const per = WINDOW_SEC / SECONDS_PER_FRAME;
+  const out: number[] = [];
+  for (let i = 1; i < b.length; i += 1) {
+    const before = Math.max(b[i - 1], i >= 2 ? b[i - 2] : 0);
+    if (before < DIP_MIN_LEVEL) continue;
+    if (b[i] <= before * DIP_RATIO) out.push(Math.round(i * per));
+  }
+  return out;
+}
+
 /** 생산이 꺾여 끝내 회복하지 못한 시점(프레임). 그런 지점이 없으면 null. */
 export function productionCollapse(
   p: ParsedReplayPlayer,

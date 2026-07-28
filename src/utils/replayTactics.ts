@@ -91,6 +91,11 @@ const FRONT_COS = 0.5;
 // 몰래 배럭에 딸려 나오면 그 자체가 러시의 증거가 되는 파이어뱃 수 — 방어용으로는 이만큼
 // 뽑지 않는다.
 const FIREBAT_RUSH_MIN = 6;
+// '한 종류만 뽑았나'를 셀 때 제외할 것들 — 일꾼·보급·소모품은 조합이 아니다.
+const SOLO_EXCLUDE = new Set([
+  "SCV", "Probe", "Drone", "Overlord", "Larva", "Egg",
+  "Interceptor", "Scarab", "Spider Mine", "Scanner Sweep",
+]);
 // 셋방살이는 '나중에 들어온 쪽'이다 — 집주인보다 이만큼은 늦게 그 자리에 지었어야 한다.
 // 이 조건이 없으면 같은 자리를 공유한 두 아군이 서로를 셋방살이로 지목한다.
 const LODGING_LATE_SEC = 3 * 60;
@@ -240,6 +245,11 @@ function detectFor(c: Ctx): Tactic[] {
   const who = rawName;
   // 당한 쪽 — 1:1에서만 확실하다. 못 짚으면 그 부분만 빠지고 문장은 그대로 나온다.
   const target = soleFoe ? { whom: soleFoe } : {};
+  // 한 종류만 주야장천 뽑았나 — 그러면 이겼더라도 '무지성'이라 부를 수 있다(지적).
+  const army = Object.entries(s.unitCounts).filter(([u]) => !SOLO_EXCLUDE.has(u));
+  const armyTotal = army.reduce((acc, [, n]) => acc + n, 0);
+  const topArmy = army.map(([, n]) => n).sort((a, b) => b - a)[0] ?? 0;
+  const solo = armyTotal >= 12 && topArmy / armyTotal >= 0.8;
   /** 드랍은 수송선을 뽑은 것만으로는 알 수 없다 — 실제로 내린 커맨드가 있어야 드랍이다. */
   const dropped = s.unloadCount >= 2;
   /** 그 구역에 지은 건물들(좌표를 못 읽으면 항상 빈 배열). */
@@ -283,7 +293,7 @@ function detectFor(c: Ctx): Tactic[] {
       if (drones >= 7 && drones <= 14) {
         out.push({
           key: "zling-rush", ...target, weight: 12, at: ling,
-          who, p: { drones },
+          who, p: { drones, solo },
         });
       }
     }
@@ -413,7 +423,7 @@ function detectFor(c: Ctx): Tactic[] {
       if (gates >= 2) {
         out.push({
           key: "zealot-rush", ...target, weight: 12, at: zealot,
-          who, p: { gates },
+          who, p: { gates, solo },
         });
       }
     }
