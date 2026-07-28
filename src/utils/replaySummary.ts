@@ -111,6 +111,12 @@ const HARASS_KEYS = new Set([
 
 // 러시·드랍을 간 뒤 이 안에 상대 생산이 끊기면 그 수의 결과로 본다.
 const DAMAGE_WINDOW_SEC = 3 * 60;
+// 초반 올인이 막히고 역으로 무너졌는지 볼 시간 창.
+const BACKFIRE_SEC = 5 * 60;
+// 역풍으로 읽을 수들 — 실패하면 그대로 손해가 되는 초반 올인만.
+const BACKFIRE_KEYS = new Set([
+  "zling-rush", "zealot-rush", "cannon-rush", "sunken-rush", "sneak-rax",
+]);
 // '들이친 수'만 피해와 이어 붙인다 — 센터 장악·시야·방어처럼 때리는 수가 아닌 것은 뺀다.
 const RAID_KEYS = new Set([
   "zling-rush", "zealot-rush", "cannon-rush", "sunken-rush", "sneak-rax",
@@ -774,10 +780,27 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   const workersHunted = (from: number, foes: ParsedReplayPlayer[]) =>
     rebuiltAfter(from, foes, [...WORKER_UNITS], WORKER_REBUILD_MIN, WORKER_SURGE_RATIO);
 
+  // 초반 올인을 갔는데 정작 제 생산이 무너졌다면, 그건 막히고 역으로 당한 것이다(요청).
+  // 진 경기에서만 본다 — 이긴 쪽의 등락까지 '역풍'이라 부르면 말이 안 된다.
+  const backfired = (t: { key: string; at: number | null }, self: ParsedReplayPlayer | undefined) => {
+    if (!self || t.at === null || !BACKFIRE_KEYS.has(t.key)) return false;
+    const window = t.at + BACKFIRE_SEC / SECONDS_PER_FRAME;
+    const gone = eliminatedFrame(self);
+    if (gone !== null && gone >= t.at && gone <= window) return true;
+    return productionDips(self, totalFrames).some((d) => d >= t.at! && d <= window);
+  };
+
   const tacticBeats = (won: boolean): Beat[] => {
     const foes = won ? loserPlayers : winnerPlayers;
-    return scanTactics({ sidePlayers: won ? winnerPlayers : loserPlayers, foePlayers: foes })
+    const mine = won ? winnerPlayers : loserPlayers;
+    return scanTactics({ sidePlayers: mine, foePlayers: foes })
       .map((t) => {
+        if (!won && backfired(t, mine.find((p) => p.rawName === t.who))) {
+          return {
+            k: "rush-backfire", won, who: [t.who], at: t.at,
+            weight: t.weight + 12, p: { ...(t.p ?? {}), k: t.key },
+          } as Beat;
+        }
         if (t.at !== null && HARASS_KEYS.has(t.key)) {
           const prey = workersHunted(t.at, foes);
           if (prey) {
@@ -850,6 +873,8 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
       // 탈락을 이미 이름으로 말한 문장이 있으면 "먼저 지워짐"을 또 붙이지 않는다.
       .filter((b) => b.k === "side-tank" || (b.k === "raid-damage" && b.p?.out === true))
       .flatMap((b) => b.whom ?? [])
+      // 역풍 문장은 "그대로 주저앉음"까지 이미 말했다 — 그 사람의 몰락을 두 번 말하지 않는다.
+      .concat(tactics.filter((b) => b.k === "rush-backfire").flatMap((b) => b.who))
   );
 
   const gangBeats: Beat[] = [

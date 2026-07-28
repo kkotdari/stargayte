@@ -684,6 +684,18 @@ const TEMPLATES: Record<string, Tpl> = {
     ]))}`;
   },
 
+  // 초반 올인이 막히고 역으로 무너진 경우(요청) — 러쉬가 실패한 것만 말하는 것보다,
+  // 그 뒤에 제 살림이 무너진 것까지 이어야 이야기가 된다.
+  "rush-backfire": (c) => {
+    const label = tacticLabel(str(c.p.k), c.p) || "초반 러쉬";
+    return `${ga(c.who)} ${c.pick([
+      `${reul(label)} 갔다가 막히고 그대로 주저앉음`,
+      `${label}가 막힌 뒤 역으로 무너짐`,
+      `${label} 실패하고 되레 제 살림이 무너짐`,
+      `${reul(label)} 올인으로 갔다가 막히고 끝남`,
+    ])}`;
+  },
+
   // 대규모 뮤탈(요청) — 몇 부대까지 모았는지가 곧 그림이다.
   muta: (c) => {
     const q = num(c.p.squads, 3);
