@@ -3706,8 +3706,11 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 }
 html.scr-light-theme .scr-admin-sheet::before { background: rgba(244, 246, 250, 0.62); }
 .scr-admin-sheet-body { width: min(420px, 100%); }
+/* 타이틀과 닫기 버튼을 상성 보기 모달처럼 여유 있게(요청) — 위아래로 숨통을 주고
+   본문과의 간격도 벌린다. */
 .scr-admin-sheet-head {
-  display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 4px 2px 0; margin-bottom: 16px;
 }
 .scr-admin-sheet-title { font-size: var(--fs-subhead); font-weight: 800; }
 .scr-admin-sheet-close {
@@ -3718,7 +3721,8 @@ html.scr-light-theme .scr-admin-sheet::before { background: rgba(244, 246, 250, 
 /* 내용은 세로로 쌓는다 — 예전 .scr-modal-body가 하던 역할(간격·정렬·최소높이)만 옮겼다.
    스크롤은 시트 자신이 맡으므로 여기에 overflow를 두지 않는다. */
 .scr-admin-sheet-content {
-  display: flex; flex-direction: column; gap: 14px;
+  /* 앞으로 붙을 요소가 많다(요청) — 세로 간격을 넉넉히 잡아 둔다. */
+  display: flex; flex-direction: column; gap: 20px;
   /* 잠금 화면과 관리 화면의 크기가 크게 달라 보이지 않을 만큼만 자리를 예약한다. */
   min-height: 300px;
 }
@@ -3745,8 +3749,9 @@ html.scr-light-theme .scr-admin-sheet::before { background: rgba(244, 246, 250, 
 .scr-admin-panel-member-note { text-align: center; color: var(--muted); font-size: var(--fs-body); }
 /* 버튼은 가로로 두 개씩. */
 .scr-admin-panel-grid {
-  display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
-  width: 100%; max-width: 320px; margin: 0 auto;
+  /* 가로세로 갭 확대(요청). 그만큼 두 칸이 좁아지지 않게 폭 상한도 함께 올린다. */
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px;
+  width: 100%; max-width: 360px; margin: 0 auto;
 }
 /* 그리드 칸의 버튼은 칸을 꽉 채우고 두 줄 라벨도 가운데로 떨어지게 한다. */
 .scr-admin-panel-grid .scr-btn { width: 100%; padding-left: 8px; padding-right: 8px; text-align: center; }
@@ -3763,22 +3768,27 @@ html.scr-light-theme .scr-admin-sheet::before { background: rgba(244, 246, 250, 
 .scr-admin-panel-batch-menu, .scr-admin-panel-batch-counts, .scr-admin-panel-batch .scr-err {
   grid-column: 1 / -1;
 }
-.scr-admin-panel-batch-menu { margin-top: 2px; }
+.scr-admin-panel-batch-menu { margin-top: 6px; }
 /* "결과 보기" 재오픈 버튼 — 그리드 칸으로 두면 나타났다 사라질 때마다 그 아래(경기관리
    섹션 등) 버튼들이 들썩였다(실제로 지적받은 문제 — "결과보기 생기면 레이아웃이
    흔들리잖아"). 그리드 흐름에서 완전히 빼고 카드(.scr-modal-body, position:relative)
    모서리에 고정해 다른 요소에 전혀 영향을 주지 않게 한다. */
-/* 배치등록 버튼 바로 옆 예약 칸 — 항상 그리드 셀 하나를 차지해 자리를 비워둔다(요청).
-   비어 있어도 옆 배치등록 버튼이 행 높이를 잡아주므로 결과 보기가 나타나도 안 흔들린다. */
-.scr-admin-panel-results-slot { display: flex; align-items: center; justify-content: center; min-width: 0; }
+/* (삭제) 결과 보기 예약 칸 — 결과 보기를 배치등록 타이틀 줄로 올리면서 없앴다(요청). */
 .scr-admin-panel-results-reopen {
   /* 리포트 아이콘 + 알약 버튼. 제어판 안의 버튼은 전부 라이팅 프라이머리 색으로
-     통일한다(요청) — .scr-btn을 안 쓰는 이 알약도 같은 채움/글자색/글로우를 직접 쓴다. */
-  display: inline-flex; align-items: center; justify-content: center; gap: 5px; max-width: 100%;
-  padding: 8px 12px; border: 1px solid transparent; border-radius: 999px;
+     통일한다(요청) — .scr-btn을 안 쓰는 이 알약도 같은 채움/글자색/글로우를 직접 쓴다.
+     이제 배치등록 타이틀 줄 안에 들어가므로(요청) 그 줄 높이를 넘지 않게 작게 잡는다 —
+     제목(body)과 스위치(26px) 사이에 끼어도 줄 높이가 안 늘어난다. */
+  display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+  margin-left: auto; flex: none; min-width: 0;
+  padding: 4px 10px; border: 1px solid transparent; border-radius: 999px;
   background: var(--lit-pill-bg); color: var(--lit-pill-text);
-  font-size: var(--fs-caption); font-weight: 700; cursor: pointer;
+  font-size: var(--fs-micro); font-weight: 700; line-height: 1.4; cursor: pointer;
   box-shadow: var(--lit-pill-glow); white-space: nowrap;
+}
+/* 도는 중의 '중단'도 같은 줄에 들어간다 — 스위치 자리를 대신하므로 그만큼 작게. */
+.scr-admin-panel-batch-stop {
+  flex: none; min-height: 0; padding: 5px 12px; font-size: var(--fs-micro); border-radius: 999px;
 }
 @media (hover: hover) {
   .scr-admin-panel-results-reopen:hover {
@@ -3830,8 +3840,7 @@ html.scr-light-theme .scr-admin-sheet::before { background: rgba(244, 246, 250, 
 }
 /* 배치등록 확인창("리플레이 N개를 분석해 자동 등록할까요?") — 제목/본문 텍스트 2스텝
    축소(요청): 제목 subhead→caption, 본문 body→micro. */
-.scr-admin-panel-batch-confirm .scr-confirm-head { font-size: var(--fs-caption); }
-.scr-admin-panel-batch-confirm .scr-confirm-msg { font-size: var(--fs-micro); }
+/* (삭제) 배치 확인창 — 브라우저 폴더 업로드 확인이 이미 앞에 있어 확인이 두 번이었다(지적). */
 .scr-admin-panel-batch-log-line {
   display: flex; flex-wrap: wrap; gap: 0 8px; color: rgba(255,255,255,0.55);
   border-bottom: 1px dotted rgba(255,255,255,0.08); padding: 1px 0;
@@ -3857,7 +3866,7 @@ html.scr-light-theme .scr-admin-sheet::before { background: rgba(244, 246, 250, 
   .scr-admin-panel-password-input { font-size: var(--fs-title); padding: 10px 8px; min-height: 52px; letter-spacing: 3px; }
   .scr-admin-panel-quiz-submit-btn { font-size: var(--fs-body); padding: 10px; margin-top: 10px; }
   .scr-admin-panel-section-title { font-size: var(--fs-caption); }
-  .scr-admin-panel-grid { gap: 8px; margin-top: 8px; }
+  .scr-admin-panel-grid { gap: 12px; margin-top: 10px; }
   .scr-admin-panel-grid .scr-btn { font-size: var(--fs-caption); padding: 8px 4px; }
 }
 
@@ -5995,8 +6004,16 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
   .scr-stats-list-panel-v2 .scr-stat-bar-count-below { font-size: var(--fs-9); }
 
   .scr-stats-list-panel-v2 .scr-stat-row {
-    --scr-stat-name-w: 176px;
-    --scr-stat-col-w: 107px;
+    /* 유저 칸 축소(요청) 176 → 148px. 프사 32 + 갭 8 + 좌우 패딩 24를 빼면 닉네임에
+       84px이 남는다(12px 글자로 일곱 자쯤) — 넘치면 기존 말줄임이 처리한다. */
+    --scr-stat-name-w: 148px;
+    --scr-stat-col-w: 112px;
+    /* 헤더 행과 데이터 행은 각각 별개의 그리드 컨테이너다. 트랙을 minmax(_,1fr)로 두면
+       width:max-content인 이 행들이 '자기 내용이 원하는 폭'으로 따로 계산돼, 라벨+ⓘ+정렬
+       아이콘이 든 헤더 행만 넓어진다 — 실측 873px vs 820px, 오른쪽으로 갈수록 최대 45px씩
+       어긋났다(지적된 사진). 두 행 합이 정확히 셸 폭(820 = 148 + 112×6)이 되는 고정 트랙을
+       쓰면 내용과 무관하게 항상 같은 폭이라 이 문제 자체가 없어진다. */
+    grid-template-columns: var(--scr-stat-name-w) repeat(6, var(--scr-stat-col-w));
     /* 값은 "내용이 전부 있는 행"(승률 막대 + 승/전 줄까지)의 실측 높이 — 아래 헤더
        행만 예외로 푼다. */
     min-height: 70px;
@@ -6009,9 +6026,15 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
   .scr-stats-list-panel-v2 .scr-stat-name-cell,
   .scr-stats-list-panel-v2 .scr-stat-name-head { padding-left: 12px; padding-right: 12px; }
   .scr-stats-list-panel-v2 .scr-stat-ecmd-cell { padding-right: 12px; }
-  .scr-stats-list-panel-v2 .scr-stat-sort-btn { gap: 6px; }
-  /* 컬럼명이 좁아진 칸에서 두 줄로 접히면 헤더만 높아지고 구분선 정렬이 흐트러진다. */
-  .scr-stats-list-panel-v2 .scr-stat-row-head > * { white-space: nowrap; }
+  .scr-stats-list-panel-v2 .scr-stat-sort-btn { gap: 4px; }
+  /* 글자를 3스텝 줄인 만큼 ⓘ·정렬 화살표도 같이 줄인다(JSX의 size=14보다 CSS가 우선) —
+     안 줄이면 아이콘 둘이 칸 폭의 4분의 1을 먹어 컬럼명이 밀린다. */
+  .scr-stats-list-panel-v2 .scr-stat-sort-btn svg { width: 12px; height: 12px; }
+  /* 컬럼명이 좁아진 칸에서 두 줄로 접히면 헤더만 높아지고 구분선 정렬이 흐트러진다.
+     혹시 라벨이 더 길어져도 칸을 밀지 않고 잘리도록 min-width:0 + 말줄임을 함께 둔다. */
+  .scr-stats-list-panel-v2 .scr-stat-row-head > * {
+    white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+  }
 }
 .scr-stat-row-head { font-size: var(--fs-body); }
 

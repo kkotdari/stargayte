@@ -3,7 +3,6 @@ import { createPortal } from "react-dom";
 import { X, ClipboardList } from "lucide-react";
 import { Spinner } from "./Feedback";
 import { useLockBodyScroll } from "../../utils/bodyScrollLock";
-import ConfirmDialog from "./ConfirmDialog";
 import ReplayReviewModal from "../../modals/ReplayReviewModal";
 import { useAppStore } from "../../store/appStore";
 import { cx } from "../../utils/format";
@@ -121,8 +120,6 @@ export default function ReplayBatchButton() {
   // 결과 모달의 배경 입력 차단 + 바깥 탭 닫기 — 예전엔 오버레이 클릭이 담당했지만
   // 오버레이는 display:contents라 더 이상 박스/클릭이 없다(bodyScrollLock 실드 참고).
   useLockBodyScroll(resultsOpen, () => setResultsOpen(false));
-  // 폴더를 고른 뒤 실제 등록 실행 전 확인창 대상 — 확인 전까지는 실행하지 않는다.
-  const [pendingFiles, setPendingFiles] = useState<File[] | null>(null);
 
   // 중단 요청과 고른 옵션들은 렌더와 무관하게 실행 중인 루프가 즉시 읽어야 해서 ref로 둔다.
   const abortRef = useRef(false);
@@ -165,14 +162,15 @@ export default function ReplayBatchButton() {
   const start = (mode: BatchMode) => {
     modeRef.current = mode;
     excludeComputerRef.current = excludeComputer;
-    setMenuOpen(false);
+    // 스위치는 켜 둔 채로 둔다(지적: "실제 등록 진행중 배치등록이 꺼지는 현상") — 예전엔
+    // 모드를 고르는 순간 꺼버려서, 폴더 선택창이 뜨기도 전에 스위치가 내려가고 등록이
+    // 끝난 뒤에도 꺼진 채였다. 연달아 한 번 더 돌리려면 매번 다시 켜야 했다.
     openPicker();
   };
 
-  // 폴더 선택까지만 처리하고, 실제 등록 실행은 확인창을 거친 뒤(executeBatch)에만
-  // 시작한다 — 관리자 기능은 전부 실행 전 확인이 있어야 한다(요청: "관리자 버튼들은
-  // 다 컨펌창 있어야돼(단순 조회는 제외)"). 이 배치는 경기 기록을 실제로 만드는
-  // 쓰기 작업이라 대상이다.
+  // 폴더/파일을 고르면 바로 시작한다. 예전엔 여기서 커스텀 확인창을 한 번 더 띄웠는데,
+  // 브라우저가 폴더 업로드를 물어보는 창이 이미 앞에 있어서 확인이 두 번이었다(지적).
+  // 파일을 직접 고른 것 자체가 실행 의사라 그 확인창은 없앴다.
   const runBatch = (fileList: FileList | null) => {
     // input.files는 살아있는(live) FileList라, 값을 비우면 이미 잡아둔 이 참조의 내용까지
     // 같이 비워질 수 있다 — 반드시 배열로 먼저 복사해두고 그다음에 input을 비운다(같은
@@ -192,11 +190,10 @@ export default function ReplayBatchButton() {
       setProgress(EMPTY_PROGRESS);
       return;
     }
-    setPendingFiles(files);
+    void executeBatch(files);
   };
 
   const executeBatch = async (files: File[]) => {
-    setPendingFiles(null);
     setStarted(true);
     setResultsOpen(true);
 
@@ -324,17 +321,29 @@ export default function ReplayBatchButton() {
       {/* 배치등록은 버튼이 아니라 스위치다(요청) — 켜야만 아래 세부 버튼이 살아난다.
           실수로 폴더 선택창이 뜨는 일을 한 단계 막아 주는 잠금이기도 하다.
           배치가 도는 중에는 같은 자리가 '중단' 버튼이 된다. */}
-      {running ? (
-        <button
-          type="button"
-          className="scr-btn scr-btn-primary"
-          onClick={() => { abortRef.current = true; }}
-        >
-          <Spinner /> 중단
-        </button>
-      ) : (
-        <div className="scr-notice-toggle-row scr-admin-panel-batch-toggle">
-          <span className="scr-notice-toggle-title">배치등록</span>
+      {/* 한 줄에 [배치등록] [결과 보기] [스위치 / 중단] — 결과 보기를 타이틀 옆으로
+          올렸다(요청). 예전엔 세부 버튼 아래 별도 칸에 있어서 눈에 잘 안 띄었고, 도는
+          중에는 이 줄이 통째로 '중단' 버튼으로 바뀌어 타이틀까지 사라졌다. */}
+      <div className="scr-notice-toggle-row scr-admin-panel-batch-toggle">
+        <span className="scr-notice-toggle-title">배치등록</span>
+        {started && total > 0 && !resultsOpen && (
+          <button
+            type="button"
+            className="scr-admin-panel-results-reopen"
+            onClick={() => setResultsOpen(true)}
+          >
+            <ClipboardList size={12} /> 결과 {processed}/{total}
+          </button>
+        )}
+        {running ? (
+          <button
+            type="button"
+            className="scr-btn scr-btn-primary scr-admin-panel-batch-stop"
+            onClick={() => { abortRef.current = true; }}
+          >
+            <Spinner /> 중단
+          </button>
+        ) : (
           <button
             type="button"
             role="switch"
@@ -344,8 +353,8 @@ export default function ReplayBatchButton() {
           >
             <span className="scr-notice-switch-knob" />
           </button>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* 세부 버튼은 처음부터 자리에 있고, 스위치를 켜야 눌린다(요청) — 나타났다 사라지면
           그때마다 아래 내용이 들썩인다. 무엇을 담글지 고르는 즉시 폴더 선택창이 뜨므로,
@@ -382,21 +391,6 @@ export default function ReplayBatchButton() {
       {pickedNote && total === 0 && <div className="scr-admin-panel-batch-counts">{pickedNote}</div>}
 
       {err && <div className="scr-err">{err}</div>}
-
-      {/* 배치등록 버튼 바로 옆 칸을 항상 비워 예약해두고(그리드 셀 하나), 진행 중/완료됐는데
-          결과 창을 닫아둔 경우에만 그 자리에 "결과 보기"를 렌더한다(요청) — 자리 자체는 늘
-          있으므로 나타났다 사라져도 다른 버튼이 들썩이지 않는다. */}
-      <div className="scr-admin-panel-results-slot">
-        {started && total > 0 && !resultsOpen && (
-          <button
-            type="button"
-            className="scr-admin-panel-results-reopen"
-            onClick={() => setResultsOpen(true)}
-          >
-            <ClipboardList size={13} /> 결과 보기 ({processed}/{total})
-          </button>
-        )}
-      </div>
 
       {/* 진행률/로그를 별도 창(모달)으로 — 제어판 모달 본문 안에 그대로 쌓지 않는다(요청:
           "배치 등록시 별도 창에 결과 나오게 해줘 모달 내에 스크린 만들필요 없이"). 배치가
@@ -450,17 +444,6 @@ export default function ReplayBatchButton() {
           </div>
         </div>,
         document.body,
-      )}
-
-      {pendingFiles && (
-        <ConfirmDialog
-          title={`리플레이 ${pendingFiles.length}개를 분석해 자동 등록할까요?`}
-          message="분석 결과에 따라 경기 기록이 실제로 만들어집니다."
-          className="scr-admin-panel-batch-confirm"
-          confirmLabel="등록 시작"
-          onConfirm={() => void executeBatch(pendingFiles)}
-          onCancel={() => setPendingFiles(null)}
-        />
       )}
 
       {reviewOpen && (
