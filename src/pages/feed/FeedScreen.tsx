@@ -25,6 +25,7 @@ import { api } from "../../api/client";
 import { useCursorPagination } from "../../hooks/useCursorPagination";
 import { useEditableFocused } from "../../hooks/useEditableFocused";
 import { usePageBackground } from "../../hooks/usePageBackground";
+import { getScrollTop, scrollRootTo } from "../../utils/scrollRoot";
 import { buildReplayDrafts, type ReplayDraft } from "../../utils/replayDraft";
 import { hasAppUpdatePreloadErrorOccurred } from "../../utils/appUpdate";
 import type { Challenge, FeedTargetType, Match, MatchSlot, MatchType, Member, RankSnapshot } from "../../types";
@@ -34,6 +35,8 @@ const MAX_REPLAY_FILES = 20;
 
 // 묶음 펼침/접힘에서 포스트 한 장이 나타나거나 사라지는 시간과, 포스트 사이의 시차.
 // 공간(높이)이 다 열린 뒤에 포스트가 한 장씩 등장한다(요청) — 접을 땐 그 반대다.
+// 아래쪽 접기로 닫을 때 접힌 카드를 화면 맨 위에서 이만큼 띄워 놓는다.
+const STACK_COLLAPSE_MARGIN = 12;
 const CARD_FADE_MS = 150;
 const CARD_STAGGER_MS = 45;
 
@@ -357,6 +360,20 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
   useEffect(() => () => cancelRevealRef.current?.(), []);
   const toggleOpen = (next: boolean) => { toggledRef.current = true; setOpen(next); };
 
+  // 아래쪽 접기로 닫을 때는 접힌 카드로 스크롤해 준다(요청) — 그 버튼은 목록 맨 끝에 있어서,
+  // 그냥 접으면 보고 있던 자리가 통째로 사라지고 한참 아래의 다른 포스트를 보게 된다.
+  // 접혀도 카드의 '윗머리' 위치는 그대로이므로(줄어드는 건 아래쪽 높이뿐) 접기 전 좌표로
+  // 스크롤해도 정확하다. 헤더가 위를 덮고 있으니 그 높이만큼 띄운다.
+  const collapseAndReveal = () => {
+    const card = stackRef.current;
+    toggleOpen(false);
+    if (!card) return;
+    // 헤더는 position:relative라 같이 스크롤돼 올라간다 — 그 높이를 빼면 오히려 카드
+    // 위쪽으로 한참 더 올라가버린다. 화면 맨 위에 딱 붙지만 않게 조금만 띄운다.
+    const top = getScrollTop() + card.getBoundingClientRect().top - STACK_COLLAPSE_MARGIN;
+    scrollRootTo({ top: Math.max(0, top), behavior: "smooth" });
+  };
+
   useLayoutEffect(() => {
     const wasToggled = toggledRef.current;
     toggledRef.current = false;
@@ -487,7 +504,7 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       {/* 펼침이 끝나면 같은 자리에서 접기로 바뀐다(요청). */}
       <button
         type="button" className="scr-feed-stack-toggle"
-        onClick={() => toggleOpen(!open)} aria-expanded={open}
+        onClick={() => (open ? collapseAndReveal() : toggleOpen(true))} aria-expanded={open}
       >
         {open ? "접기" : "펼치기"}
       </button>
