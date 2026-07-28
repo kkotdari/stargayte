@@ -163,7 +163,7 @@ function teamPhrase(c: Ctx): string {
     const many = g.names.length > 1;
     const ko = g.units.map((u) => UNIT_KO[u]).filter(Boolean).slice(0, many ? 3 : 2);
     if (ko.length === 0) return null;
-    return { who: g.names.join(", "), what: many ? `${ko.join(" ")} 조합` : ko.join(" ") };
+    return { who: g.names.join("·"), what: many ? `${ko.join(" ")} 조합` : ko.join(" ") };
   }).filter((x): x is { who: string; what: string } => x !== null);
   if (made.length === 0) return "";
   // 조합만 늘어놓고 끝내면 누가 이겼는지가 빠진다(지적) — 팀 번호로 주어를 세우거나,
@@ -173,12 +173,10 @@ function teamPhrase(c: Ctx): string {
   if (parts.length === 1) return `${ro(parts[0])} ${subject}`.trimEnd();
   const head = parts.slice(0, -1).join(", ");
   const listed = `${ro(`${wa(head)} ${parts[parts.length - 1]}`)} ${subject}`.trimEnd();
-  // "제롬, Rex가 질럿 조합을 태섭이 마린 메딕 조합으로 몰아붙여"(요청) — 앞 무리는
-  // 목적격으로, 마지막 무리만 도구격으로 받아 한 호흡에 읽히게 한다.
-  const acting = [
-    ...made.slice(0, -1).map((g) => `${ga(g.who)} ${reul(g.what)}`),
-    `${ga(made[made.length - 1].who)} ${ro(made[made.length - 1].what)} 몰아붙여`,
-  ].join(" ");
+  // "제롬·Rex가 질럿 조합으로, 태섭이 마린 메딕 조합으로 몰아붙여"(요청) — 무리마다
+  // 격을 달리하면 셋 이상일 때 문장이 무너진다(지적: ~을 ~을 ~으로가 된다). 모두 같은
+  // 도구격으로 늘어놓고 마지막에 서술어 하나만 받는다.
+  const acting = `${made.map((g) => `${ga(g.who)} ${ro(g.what)}`).join(", ")} 몰아붙여`;
   return c.pick([listed, acting]);
 }
 
@@ -1308,10 +1306,10 @@ const TEMPLATES: Record<string, Tpl> = {
     const what = kind === "hatch" ? "해처리" : kind === "nexus" ? "투넥서스" : "투커맨드";
     return `${ga(c.who)} ${done(c, c.pick(
       kind === "hatch"
-        ? [`스포닝풀도 없이 해처리를 먼저 늘림`, `병력보다 해처리를 먼저 늘림`,
-           `초반부터 해처리를 늘려 자원을 먼저 챙김`]
-        : [`병력 건물도 없이 ${reul(what)} 먼저 올림`, `병력보다 ${reul(what)} 먼저 가져감`,
-           `초반부터 ${ro(what)} 자원을 먼저 챙김`],
+        ? [`병력보다 해처리를 먼저 늘림`, `초반부터 해처리를 늘려 자원을 먼저 챙김`,
+           `해처리를 먼저 올려 자원을 앞세움`]
+        : [`병력보다 ${reul(what)} 먼저 가져감`, `초반부터 ${ro(what)} 자원을 먼저 챙김`,
+           `${reul(what)} 먼저 올려 자원을 앞세움`],
     ))}`;
   },
 
@@ -1521,6 +1519,11 @@ export function renderReplaySummary(
     // 시간이 어긋날 일이 없으므로 '가까운 것'으로 친다.
     const closeEnough = gapSec === null || gapSec <= JOIN_MAX_SEC;
     const sameTide = tide !== 0 && tide === prevTide;
+    // 앞뒤가 같은 종류의 일이면(양쪽이 서로 견제를 주고받은 것처럼) 시간이 좀 벌어져도
+    // 한 문장으로 묶는 편이 낫다(요청) — 같은 이야기를 두 문장으로 끊어 놓고 "그렇지만"을
+    // 붙이면 오히려 겉돈다. 다만 십수 분 떨어진 일까지 묶지는 않는다.
+    const sameKind = !!prev && prev.k === b.k
+      && (gapSec === null || gapSec <= STANDOFF_SEC);
     // 거의 같은 때에 벌어진 서로 다른 사람의 일은 한 문장으로 잇는 편이 자연스럽다
     // (요청: "브래드는 ~했고 정구는 ~했음"). 같은 사람 이야기면 주어가 겹쳐 어색해 뺀다.
     const sharesWho = (b.who ?? []).some((w) => (prev?.who ?? []).includes(w));
@@ -1597,7 +1600,7 @@ export function renderReplaySummary(
         // 앞 문장이 이미 이음말로 시작하거나 반전을 품고 있으면 또 잇지 않는다 —
         // "그러나 …했지만 …"처럼 접속이 두 번 겹친다(지적).
         const linked = new RegExp(`^(?:${[...CONTRAST_LINKS].join("|")}) `).test(line);
-        if (closeEnough && chainCount === 0 && line !== "" && !linked && !/지만|으나/.test(line) && toBut(line)) flipJoin = true;
+        if ((closeEnough || sameKind) && chainCount === 0 && line !== "" && !linked && !/지만|으나|다가/.test(line) && toBut(line)) flipJoin = true;
         else {
           // "다른 쪽에서는"은 판이 갈라져 딴 데서 벌어진 일일 때만 맞는 말이다(지적) —
           // 같은 두 사람이 서로 주고받은 이야기면 "반대로 / 역으로 / 그와 동시에"가 맞다.
@@ -1687,10 +1690,11 @@ export function renderReplaySummary(
     // "그러나 …했지만 모자랐음"처럼 문장 자체가 이미 반전을 품고 있으면 앞의 이음말은
     // 군더더기다(지적) — 만들어진 문장을 보고 판단해 아예 붙이지 않는다.
     if (
-      ((linkWord === "그러나" || linkWord === "하지만") && /지만|으나/.test(text))
-      // 같은 전황이 이어지는 자리인데 문장 안에 반전이 들어 있으면, 앞의 이음말은 빼는
-      // 편이 자연스럽다(지적) — "한편 …했으나 …"는 접속이 서로 어긋난다.
-      || (sameTide && linkWord !== "" && /지만|으나/.test(text))
+      linkWord !== ""
+      // 문장 안에 이미 이어 주는 어미가 있으면 앞의 이음말은 군더더기다(지적: 중복되는
+      // 접속사가 너무 많다) — 대비를 뜻하는 말이든 같은 전황을 잇는 말이든 마찬가지다.
+      && (CONTRAST_LINKS.has(linkWord) || sameTide)
+      && /지만|으나|다가/.test(text)
     ) {
       linkWord = "";
       teamTag = "";
@@ -1712,8 +1716,13 @@ export function renderReplaySummary(
     // 맺음말 앞에도 이음말을 둔다(요청) — 앞 전황을 그대로 받아 끝나면 "결국/그대로",
     // 뒤집으며 끝나면 "하지만/그러나". 시간·흐름을 이미 말하는 머리말("32분 혈투 끝에",
     // "단 5분 만에")이 붙었거나 본문이 이미 그 말로 시작하면 겹치므로 건너뛴다.
+    // 앞 문장이 이미 "…경기를 뒤집기엔 역부족"처럼 진 편의 결말을 말해 버렸으면, 그 뒤에
+    // 오는 맺음말은 반전이 아니라 그 흐름의 마무리다(지적) — "하지만"이 아니라 "결국/그대로".
+    const alreadyConceded =
+      out.length > 0
+      && [...LOST_TAILS, ...RISKY_TAILS].some((t) => out[out.length - 1].endsWith(t));
     if (b.k === "result" && prev && !flipToEndCandidate && !/결국|그대로|하지만|그러나/.test(text)) {
-      if (prevTide < 0) {
+      if (prevTide < 0 && !alreadyConceded) {
         // 앞 전황과 반대로 끝나는 결말에는 반드시 반전을 짚는다(지적) — 시간 머리말이
         // 붙어 있어도 그 앞에 놓는다("하지만 32분 혈투 끝에 …").
         text = `${link(["하지만", "그러나"])} ${text}`;
@@ -1727,7 +1736,10 @@ export function renderReplaySummary(
     const victimName = victim ? resolveName(victim) : "";
     const cutIn =
       !!victim && closeEnough && chainCount < MAX_CHAIN && out.length > 0 && lastWho.includes(victim)
-      && !(b.who ?? []).includes(victim) && text.includes(`${ga(victimName)} `);
+      && !(b.who ?? []).includes(victim) && text.includes(`${ga(victimName)} `)
+      // 한 문장에 이어 주는 어미가 두 번 들어가면 숨이 찬다(지적: 중복되는 접속사가
+      // 너무 많다) — 앞마디가 이미 '-지만/-으나/-다가'를 품고 있으면 여기서 끊는다.
+      && !/지만|으나|다가/.test(prevLine);
     // 반대로 앞 문장에서 당한 사람이 이번엔 무언가를 했다면 "하지만 다시 …"가 된다(지적).
     const actor = (b.who ?? []).length === 1 ? (b.who ?? [])[0] : "";
     // 이음말이 이미 앞에 붙었을 수도 있어(그러나/한편…) 그 자리까지 함께 걷어낸다.
@@ -1787,7 +1799,12 @@ export function renderReplaySummary(
       const head = reversal
         ? (toBut(prevLine) ? `${toBut(prevLine)} 반대로` : null)
         : toWhile(prevLine);
-      if (head) out[out.length - 1] = `${head} ${text.replace(`${ga(victimName)} `, "")}`;
+      // 앞마디가 이미 '-다가'로 이어 주므로 뒤 문장 머리의 이음말은 뗀다(지적:
+      // "…실패하다가 게다가 …"처럼 접속사가 두 번 나온다).
+      const tail = text
+        .replace(new RegExp(`^${LINK_HEAD()} `), "")
+        .replace(`${ga(victimName)} `, "");
+      if (head) out[out.length - 1] = `${head} ${tail}`;
       else out.push(text);
       chainCount = head ? chainCount + 1 : 0;
       lastSubject = subject;
