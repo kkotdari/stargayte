@@ -681,13 +681,23 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     (raw) => raw
   ) ?? "";
   const alreadySaid = units.every((u) => told.includes(UNIT_KO[u]));
+  // 같은 사람이 같은 유닛으로 한 일을 앞에서 이미 말했다면, 맺음말은 그걸 이어받는다(요청)
+  // — 따로 노는 두 문장 대신 "…로 공격 감행. 계속해서 마린을 뽑아 승리"로 읽히게.
+  const cont = chosen.some((b) => {
+    if (!b.who.some((w) => subject.includes(w))) return false;
+    const one = renderReplaySummary(
+      { v: REPLAY_SUMMARY_VERSION, beats: [strip(b)] }, (raw) => raw
+    ) ?? "";
+    return units.some((u) => UNIT_KO[u] && one.includes(UNIT_KO[u]));
+  });
   const ending: Beat = {
     k: "result", won: true, who: subject, at: Number.POSITIVE_INFINITY, weight: 1000,
     p: {
       mode, lead, wentLate,
       leadMin: minutes(sec),
       ...(spectacle ? { leadUnit: spectacle } : {}),
-      ...(alreadySaid ? {} : { units }),
+      // 이어받는 문장은 유닛을 다시 말해야 말이 이어진다 — 그때는 중복이 아니라 연결이다.
+      ...(cont ? { units, cont: true } : alreadySaid ? {} : { units }),
       ...(heroUnit ? { heroUnit } : {}),
     },
     ...(heroUnit && star ? { who2: [star.rawName] } : {}),

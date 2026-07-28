@@ -460,7 +460,9 @@ const TEMPLATES: Record<string, Tpl> = {
   // ── 맺음말 ──
   result: (c) => {
     const phrase = c.p.units ? unitPhrase(list(c.p.units)) : "";
-    const p = phrase ? `${phrase} ` : "";
+    // 앞 문장에서 같은 사람이 같은 유닛으로 한 일을 말했으면 여기서 이어받는다(요청).
+    const cont = c.p.cont ? c.pick(["계속해서 ", "그대로 이어서 "]) : "";
+    const p = phrase ? `${cont}${phrase} ` : cont;
     const mode = str(c.p.mode);
     const lead = str(c.p.lead);
     const min = num(c.p.leadMin);
