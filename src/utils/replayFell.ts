@@ -80,6 +80,32 @@ export function productionCollapse(
   return Math.round(start * per);
 }
 
+// 꺾였다가 이만큼까지 올라오면 '다시 일어섰다'로 본다.
+// 한창때의 절반까지 올라오면 다시 일어선 것으로 본다 — 본진을 잃고 되살아난 생산이
+// 전성기만큼 나오기는 어렵다.
+const REVIVE_RATIO = 0.5;
+
+/** 크게 꺾였다가 다시 일어선 시점(프레임). 그런 일이 없으면 null.
+ *  부활은 그 자체가 이야기라 따로 잡는다(요청) — 무너진 것만 말하고 끝내면 절반만 말한 것이다. */
+export function revivalFrame(
+  p: ParsedReplayPlayer,
+  totalFrames: number | null
+): number | null {
+  if (!totalFrames) return null;
+  const b = windows(p, totalFrames);
+  if (b.length < 4) return null;
+  const per = WINDOW_SEC / SECONDS_PER_FRAME;
+  for (let i = 1; i < b.length - 1; i += 1) {
+    const before = Math.max(b[i - 1], i >= 2 ? b[i - 2] : 0);
+    if (before < DIP_MIN_LEVEL) continue;
+    if (b[i] > before * DIP_RATIO) continue;      // 여기서 꺾이지 않았다
+    for (let j = i + 1; j < b.length; j += 1) {
+      if (b[j] >= before * REVIVE_RATIO) return Math.round(j * per);
+    }
+  }
+  return null;
+}
+
 /** 리플레이에 '졌다'고 적힌 사유들 — 이겨서/무승부로 끝난 퇴장과 갈라야 한다. */
 const LOST_REASONS = new Set(["Defeat", "Quit", "Dropped"]);
 

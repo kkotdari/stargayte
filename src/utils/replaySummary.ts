@@ -1,6 +1,6 @@
 import type { ParsedReplay, ParsedReplayPlayer, ReplayPlayerSignals } from "./replayParser";
 import { scanTactics } from "./replayTactics";
-import { eliminatedFrame, fellFrame, productionDips } from "./replayFell";
+import { eliminatedFrame, fellFrame, productionDips, revivalFrame } from "./replayFell";
 import { REPLAY_SUMMARY_VERSION, type ReplaySummaryBeat, type ReplaySummaryData } from "./replaySummaryData";
 import {
   DEFENSE_KO, EXPANSION_KO, PRODUCTION_KO, SPECTACLE_UNITS, SUPPORT_UNITS, UNIT_KO, UNIT_ROLE,
@@ -96,6 +96,18 @@ const GANG_MIN_UNITS = 8;
 const STANDOFF_MIN_SEC = 15 * 60;
 // 양쪽이 낸 것의 비율이 이 안이면 '비등비등했다'로 본다.
 const STANDOFF_RATIO = 1.25;
+
+// 발키리가 뜬 뒤 오버로드를 이만큼은 다시 뽑았어야 '잡히고 있었다'고 말할 수 있다.
+const OVERLORD_REBUILD_MIN = 4;
+// 그리고 뽑는 속도가 그 전보다 이 배수는 빨라져야 한다 — 인구수 때문에 느는 것과 가른다.
+const OVERLORD_SURGE_RATIO = 1.6;
+// 일꾼도 같은 원리다 — 잡히지 않으면 한창때 지나 새로 뽑을 일이 별로 없다.
+const WORKER_REBUILD_MIN = 6;
+const WORKER_SURGE_RATIO = 1.5;
+// 견제로 읽을 수 있는 수들 — 드랍과 뮤탈. 일꾼을 노리는 그림이 뚜렷한 것만 본다.
+const HARASS_KEYS = new Set([
+  "shuttle-reaver", "templar-drop", "zerg-drop", "dropship", "shuttle", "muta",
+]);
 
 // 러시·드랍을 간 뒤 이 안에 상대 생산이 끊기면 그 수의 결과로 본다.
 const DAMAGE_WINDOW_SEC = 3 * 60;
@@ -424,6 +436,17 @@ function sideBeats(args: {
   if (players.length === 0) return beats;
   const who = (p: ParsedReplayPlayer) => [p.rawName];
 
+  // ── 부활(요청) ── 크게 무너졌다가 다시 살림을 세운 사람. 무너진 것만 말하고 끝내면
+  // 이야기의 절반만 말한 셈이라, 이건 따로 무겁게 친다.
+  for (const p of players) {
+    if (!p.signals) continue;
+    // 끝내 못 일어선 사람은 부활이 아니다 — fellFrame이 그 사람의 마지막을 이미 말한다.
+    if (eliminatedFrame(p) !== null) continue;
+    const back = revivalFrame(p, totalFrames);
+    if (back === null) continue;
+    beats.push({ k: "revival", won, who: who(p), at: back, weight: 13 });
+  }
+
   // ── 시야(요청) ── 오버로드·옵저버를 여기저기 뿌려 두면 그 자체가 전황을 읽는 플레이다.
   // 다만 오버로드는 인구수 때문에도 뽑히므로 수만으로는 근거가 못 된다 — 속업(뿌리려고
   // 하는 투자)까지 있어야 인정한다. 옵저버는 보통 한둘이라 수가 곧 의도다.
@@ -727,10 +750,51 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     return best;
   };
 
+  // 발키리를 띄운 뒤 상대 오버로드 생산이 치솟았다면 그건 오버로드가 잡히고 있었다는
+  // 뜻이다(요청) — 죽지 않으면 다시 뽑을 일이 없다. 뽑은 '수'가 아니라 '속도'로 견준다.
+  const rebuiltAfter = (
+    from: number, foes: ParsedReplayPlayer[], units: string[], minCount: number, ratio: number,
+  ): string | null => {
+    if (!totalFrames || from >= totalFrames) return null;
+    for (const z of foes) {
+      const frames = units.flatMap((u) => z.signals?.unitFrames[u] ?? []);
+      if (frames.length === 0) continue;
+      const after = frames.filter((x) => x >= from).length;
+      if (after < minCount) continue;
+      const before = frames.filter((x) => x < from).length;
+      const beforeRate = before / Math.max(1, from);
+      const afterRate = after / Math.max(1, totalFrames - from);
+      if (afterRate >= beforeRate * ratio) return z.rawName;
+    }
+    return null;
+  };
+  const overlordHunted = (from: number, foes: ParsedReplayPlayer[]) =>
+    rebuiltAfter(from, foes, ["Overlord"], OVERLORD_REBUILD_MIN, OVERLORD_SURGE_RATIO);
+  // 드랍·뮤탈 뒤에 상대가 일꾼을 다시 잔뜩 뽑았다면 그 일꾼들이 잡히고 있었다는 뜻이다(요청).
+  const workersHunted = (from: number, foes: ParsedReplayPlayer[]) =>
+    rebuiltAfter(from, foes, [...WORKER_UNITS], WORKER_REBUILD_MIN, WORKER_SURGE_RATIO);
+
   const tacticBeats = (won: boolean): Beat[] => {
     const foes = won ? loserPlayers : winnerPlayers;
     return scanTactics({ sidePlayers: won ? winnerPlayers : loserPlayers, foePlayers: foes })
       .map((t) => {
+        if (t.at !== null && HARASS_KEYS.has(t.key)) {
+          const prey = workersHunted(t.at, foes);
+          if (prey) {
+            return {
+              k: "harass-workers", won, who: [t.who], whom: [prey], at: t.at,
+              weight: t.weight + 14, p: { k: t.key },
+            } as Beat;
+          }
+        }
+        if (t.key === "valkyrie" && t.at !== null) {
+          const prey = overlordHunted(t.at, foes);
+          if (prey) {
+            return {
+              k: "valk-hunt", won, who: [t.who], whom: [prey], at: t.at, weight: t.weight + 14,
+            } as Beat;
+          }
+        }
         const hit = damageFrom(t, foes);
         if (hit) {
           return {

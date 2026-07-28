@@ -91,6 +91,8 @@ const FRONT_COS = 0.5;
 // 몰래 배럭에 딸려 나오면 그 자체가 러시의 증거가 되는 파이어뱃 수 — 방어용으로는 이만큼
 // 뽑지 않는다.
 const FIREBAT_RUSH_MIN = 6;
+// '대규모 뮤탈'로 볼 수 — 한 부대 12기 기준 세 부대(지적: 3~4부대).
+const MUTA_MASS_MIN = 36;
 // '한 종류만 뽑았나'를 셀 때 제외할 것들 — 일꾼·보급·소모품은 조합이 아니다.
 const SOLO_EXCLUDE = new Set([
   "SCV", "Probe", "Drone", "Overlord", "Larva", "Egg",
@@ -118,9 +120,11 @@ interface Geo {
   enemyAt: (b: BuildPos) => string | null;
   /** 내 본진 안이면서 상대 쪽으로 나가 있는 자리인가 = 진출로(입구) 쪽. */
   front: (b: BuildPos) => boolean;
-  /** 내 건물 덩어리 자체가 아군 기지 안에 들어앉아 있으면 그 아군(지적: 내 기지에 건물이
-   *  거의 없고 아군 기지에 있는 게 셋방살이다). 아니면 null. */
+  /** 내 살림이 아군 기지에 얹혀 있으면 그 아군(지적: 내 기지에 건물이 거의 없고 아군
+   *  기지에 있는 게 셋방살이다). 아니면 null. */
   lodgingHost: string | null;
+  /** 그중에서도 '시작 자리를 두고 옮겨온' 경우 — 본진을 잃은 그림이라 문장이 달라진다. */
+  lodgingLost: boolean;
 }
 
 function geoOf(
@@ -185,9 +189,12 @@ function geoOf(
     return (v.x * dir.x + v.y * dir.y) / len > FRONT_COS;
   };
 
-  // 셋방살이 — 내 본진(메도이드)이 아군 기지 안에 들어가 있는가. 내 건물 대부분이 거기
-  // 있으니 메도이드가 거기 앉는다. '기지 안'의 크기는 그 아군 자신의 건물 분포로 잰다.
-  const lodgingHost = (() => {
+  // 셋방살이 — 두 갈래로 잡는다(요청: 이 이야기가 더 자주 나왔으면).
+  //   ① 내 건물 덩어리 자체가 아군 기지 안에 앉아 있다(메도이드가 거기 있다).
+  //   ② 시작 자리는 따로 있었는데, 나중에 아군 기지로 살림을 옮겼다 — 본진을 잃은 그림이다.
+  // ②가 실제로 훨씬 흔하다. ①만 보면 원래 자리에 건물이 많이 남은 경우를 놓친다.
+  const lodging = (() => {
+    const myPts = me.signals?.buildPositions ?? [];
     /** 그 자리 근처에 이 사람이 처음 지은 시각 — 누가 집주인인지 가른다. */
     const firstNear = (p: ParsedReplayPlayer, at: { x: number; y: number }, r: number) => {
       const fs = (p.signals?.buildPositions ?? [])
@@ -195,24 +202,40 @@ function geoOf(
         .map((b) => b.frame as number);
       return fs.length > 0 ? Math.min(...fs) : null;
     };
-    let best: { raw: string; d: number } | null = null;
+    // 시작 자리 = 가장 이른 건물 몇 채의 메도이드. 지금의 본진(메도이드)과 다를 수 있다.
+    const early = [...myPts].sort((a, b) => (a.frame ?? 0) - (b.frame ?? 0)).slice(0, 5);
+    const start = medoid(early) ?? home;
+    const mySpread = spreadOf(me) ?? 0;
+
+    let best: { raw: string; lost: boolean; d: number } | null = null;
     for (const a of allies) {
       const h = homeOf(a);
       const spread = spreadOf(a);
       if (!h || spread === null || !(spread > 0)) continue;
-      const d = dist(home, h);
-      if (!(d <= spread && d < base * HOME_RADIUS)) continue;
+      if (dist(home, h) >= base * HOME_RADIUS) continue; // 아예 딴 동네면 볼 것 없다
       // 늦게 들어온 쪽이 셋방이다. 집주인은 처음부터 거기 있었다.
       const mine = firstNear(me, h, spread);
       const theirs = firstNear(a, h, spread);
-      if (mine === null || theirs === null) continue;
-      if (sec(mine - theirs) < LODGING_LATE_SEC) continue;
-      if (!best || d < best.d) best = { raw: a.rawName, d };
-    }
-    return best?.raw ?? null;
-  })();
+      if (mine === null || theirs === null || sec(mine - theirs) < LODGING_LATE_SEC) continue;
 
-  return { zone, allyAt, enemyAt, front, lodgingHost };
+      const inside = dist(home, h) <= spread;
+      // ② 시작 자리는 딴 곳이었는데 그 뒤로 여기에 세 채 넘게 지었고, 원래 자리에는
+      //    거의 돌아가지 않았다 — 옮겨온 것이다.
+      const mineThere = myPts.filter((b) => dist(b, h) <= spread);
+      const backHome = myPts.filter(
+        (b) => (b.frame ?? 0) > mine && mySpread > 0 && dist(b, start) <= mySpread
+      );
+      const moved = dist(start, h) > spread && mineThere.length >= 3 && backHome.length <= 1;
+      if (!inside && !moved) continue;
+      const d = dist(home, h);
+      if (!best || d < best.d) best = { raw: a.rawName, lost: moved, d };
+    }
+    return best;
+  })();
+  const lodgingHost = lodging?.raw ?? null;
+  const lodgingLost = lodging?.lost ?? false;
+
+  return { zone, allyAt, enemyAt, front, lodgingHost, lodgingLost };
 }
 
 interface Ctx {
@@ -346,6 +369,22 @@ function detectFor(c: Ctx): Tactic[] {
         key: "sunken-rush", ...foeAt(sunkenRush), weight: 13, at: firstOf(sunkenRush), who,
       });
     }
+    // 뮤탈 대규모 — 한두 부대로는 '대규모'가 아니다(지적: 3~4부대). 한 부대 12기 기준으로
+    // 세 부대부터 본다. 견제의 대명사라 상대 일꾼 생산이 치솟았는지와 짝지어 볼 수 있다(요청).
+    const mutas = u("Mutalisk");
+    if (mutas >= MUTA_MASS_MIN) {
+      out.push({
+        key: "muta", weight: 9, at: firstU("Mutalisk"), who,
+        p: { squads: Math.floor(mutas / 12) },
+      });
+    }
+    // 가디언 — 뮤탈을 변태시켜 지상을 두들기는 그림. 나오는 것 자체가 드물어 이야깃거리다(요청).
+    if (u("Guardian") >= 4) {
+      out.push({
+        key: "guardian", weight: 10, at: firstU("Guardian"), who,
+        p: { n: u("Guardian") },
+      });
+    }
     if (u("Lurker") >= 5) {
       out.push({
         key: "lurker", weight: 7, at: firstU("Lurker"),
@@ -366,6 +405,13 @@ function detectFor(c: Ctx): Tactic[] {
       out.push({
         key: "mech", weight: 9, at: firstU("Siege Tank (Tank Mode)") ?? firstU("Goliath"),
         who,
+      });
+    }
+    // 배틀크루저 — 띄우는 것 자체가 사건이고, 띄우고도 지는 경기가 많아 이야기가 된다(요청).
+    if (u("Battlecruiser") >= 3) {
+      out.push({
+        key: "bc", weight: 11, at: firstU("Battlecruiser"), who,
+        p: { n: u("Battlecruiser") },
       });
     }
     if (u("Valkyrie") >= 3 && foeRaces.includes("저그")) {
@@ -495,6 +541,7 @@ function detectFor(c: Ctx): Tactic[] {
     out.push({
       key: "lodging", weight: 9, who, who2: geo.lodgingHost,
       at: firstOf(s.buildPositions),
+      ...(geo.lodgingLost ? { p: { lost: true } } : {}),
     });
   }
 
