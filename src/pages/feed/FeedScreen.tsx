@@ -637,9 +637,16 @@ export default function FeedScreen() {
   };
 
   const handleReplayFilesChosen = async (e: ChangeEvent<HTMLInputElement>) => {
-    const chosen = Array.from(e.target.files ?? []);
+    const picked = Array.from(e.target.files ?? []);
     e.target.value = "";
-    if (chosen.length === 0) return;
+    if (picked.length === 0) return;
+    // accept를 넓게 열어 뒀으므로(모바일 파일 앱이 .rep을 잠그지 않게, input 주석 참고)
+    // 실제로 리플레이인 것만 여기서 고른다.
+    const chosen = picked.filter((f) => f.name.toLowerCase().endsWith(".rep"));
+    if (chosen.length === 0) {
+      setError("리플레이(.rep) 파일이 아니에요 — .rep 파일을 골라 주세요.");
+      return;
+    }
     const truncated = chosen.length > MAX_REPLAY_FILES;
     const batch = chosen.slice(0, MAX_REPLAY_FILES);
     setReplayTruncated(truncated);
@@ -840,8 +847,13 @@ export default function FeedScreen() {
             </div>
           </>
         )}
+        {/* accept에 확장자만 두면 모바일(iOS 파일 앱)에서 .rep이 알려진 형식이 아니라
+            모든 파일이 회색으로 잠겨 아무것도 못 고른다 — 그러면 검토 화면까지 갈 일이
+            없다(지적: 모바일에서도 파일 고르면 검토 화면이 떠야 함). 배치 등록 입력칸과
+            같은 값을 써서 임의 바이너리도 고를 수 있게 열어 두고, .rep만 걸러 내는 건
+            아래 handleReplayFilesChosen이 한다. */}
         <input
-          ref={replayInputRef} type="file" accept=".rep" multiple hidden
+          ref={replayInputRef} type="file" accept=".rep,application/octet-stream" multiple hidden
           onChange={handleReplayFilesChosen}
         />
       </div>

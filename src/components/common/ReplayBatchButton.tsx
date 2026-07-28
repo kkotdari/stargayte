@@ -6,7 +6,7 @@ import { useLockBodyScroll } from "../../utils/bodyScrollLock";
 import ReplayReviewModal from "../../modals/ReplayReviewModal";
 import { useAppStore } from "../../store/appStore";
 import { cx } from "../../utils/format";
-import { buildReplayDrafts, hasComputerSlot, resolveUnmatchedAsUnregistered, validateReplayDraft } from "../../utils/replayDraft";
+import { buildReplayDrafts, hasComputerSlot, resolveUnmatchedAsUnregistered, shortMatchHint, validateReplayDraft } from "../../utils/replayDraft";
 import type { ReplayDraft } from "../../utils/replayDraft";
 import type { MatchResult, NewMatch } from "../../types";
 
@@ -74,10 +74,6 @@ function formatWhen(gameStartedAt: string | null, date: string): string {
 
 // 로그 한 줄에 필요한 부가 정보 — 분석 자체가 실패한 드래프트(parseError)는 팀 구성을
 // 알 수 없으니 "-"로 둔다.
-// 이보다 짧은 경기는 자동 등록하지 않고 검토로 보낸다(요청) — 실제로 붙은 판이라기보다
-// 시작하자마자 나갔거나 켰다 끈 판일 때가 많다.
-const SHORT_MATCH_SEC = 2 * 60;
-
 function draftMeta(d: ReplayDraft): { when: string; teamSize: string; suspected: boolean } {
   if (d.parseError) return { when: "-", teamSize: "-", suspected: false };
   return {
@@ -280,14 +276,10 @@ export default function ReplayBatchButton() {
           }
 
           // 2분도 안 되는 경기는 제대로 붙은 판이 아닐 가능성이 크다(요청) — 시작하자마자
-          // 나갔거나, 맵을 확인하려고 켰다 끈 것이다. 자동 등록하지 않고 사람 눈을 한 번
-          // 거치게 한다(검토 화면에서 그대로 등록할 수도 있다).
-          if (draft.durationSeconds !== null && draft.durationSeconds < SHORT_MATCH_SEC) {
-            const mm = Math.floor(draft.durationSeconds / 60);
-            const ss = draft.durationSeconds % 60;
-            fail(draft, `${mm}분 ${ss}초짜리 짧은 경기예요 — 확인이 필요해요.`);
-            continue;
-          }
+          // 나갔거나, 맵을 확인하려고 켰다 끈 것이다. 여기서 버리지 않고 검토 화면으로
+          // 넘긴다 — 거기서 같은 이유를 힌트로 다시 보여주고, 사람이 등록/제외를 정한다.
+          const shortHint = shortMatchHint(draft);
+          if (shortHint) { fail(draft, shortHint); continue; }
 
           const filled = resolveUnmatchedAsUnregistered(draft);
           const problem = validateReplayDraft(filled);
@@ -411,7 +403,7 @@ export default function ReplayBatchButton() {
           시작되면 자동으로 뜨고, X로 닫아도 배치 자체는 백그라운드에서 계속 진행된다. */}
       {resultsOpen && started && total > 0 && createPortal(
         <div className="scr-modal-overlay" onClick={() => setResultsOpen(false)}>
-          <div className="scr-modal scr-modal-sm" onClick={(e) => e.stopPropagation()}>
+          <div className="scr-modal scr-modal-sm scr-admin-panel-batch-modal" onClick={(e) => e.stopPropagation()}>
             <div className="scr-modal-head">
               <span>배치 등록 결과</span>
               <button className="scr-icon-btn" onClick={() => setResultsOpen(false)} aria-label="닫기"><X size={14} /></button>

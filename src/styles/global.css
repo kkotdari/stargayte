@@ -3838,6 +3838,14 @@ html.scr-light-theme .scr-admin-sheet::before { background: rgba(244, 246, 250, 
    둔다 — 코딩폰트로 상태/일시/몇 대 몇인지/관전자 의심 여부/파일명/사유를 한 줄에 나란히
    보여줘 정보량을 늘린다. 어차피 PC 전용 기능이라(아래 min-width:720px 미만에서 버튼
    자체가 숨겨진다) 꾸밈은 최소화한다. */
+/* 배치 결과 창 — 로그가 주인공이라 창에 높이를 정해 주고 남는 세로를 로그가 다 가져간다.
+   로그 높이를 280px로 묶어 뒀더니 화면이 넉넉한 모바일에서도 창이 손바닥만 하게 떴다
+   (지적: 세로가 너무 짧다, 모달 공간을 충분히 쓸 것). 모달의 max-height(88dvh)가 상한이라
+   화면이 작으면 알아서 줄고, PC에서는 720px에서 멈춘다. */
+.scr-admin-panel-batch-modal { height: min(88dvh, 720px); }
+.scr-admin-panel-batch-modal .scr-admin-panel-batch-log {
+  flex: 1 1 auto; max-height: none; min-height: 120px;
+}
 .scr-admin-panel-batch-log {
   margin-top: 10px; max-height: min(42vh, 280px); overflow-y: auto;
   /* 터미널 배경을 더 불투명하게(요청: 0.5→0.8) — 뒤 콘크리트 무늬가 덜 비쳐 로그가 또렷. */
@@ -7496,4 +7504,12 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
   background: rgba(var(--overlay-rgb), 0.06);
   font-size: var(--fs-caption); font-weight: 500; color: var(--text); line-height: 1.6;
   text-align: left;
+}
+/* 2분도 안 되는 경기라는 알림 — 오류가 아니라 '한 번 보고 정하라'는 말이라 빨강이 아닌
+   포인트 색으로(요청: 바로 제외하지 말고 검토 화면에 힌트로). */
+.scr-replay-short-note {
+  margin: 6px 0 2px; padding: 7px 10px; border-radius: 8px;
+  background: color-mix(in srgb, var(--point) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--point) 34%, transparent);
+  font-size: var(--fs-caption); color: var(--text); line-height: 1.6; text-align: left;
 }

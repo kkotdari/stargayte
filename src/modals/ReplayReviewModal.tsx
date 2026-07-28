@@ -5,7 +5,7 @@ import MemberMultiSelect from "../components/select/MemberMultiSelect";
 import { Spinner } from "../components/common/Feedback";
 import ConfirmDialog from "../components/common/ConfirmDialog";
 import { cx } from "../utils/format";
-import { hasComputerSlot, validateReplayDraft, resolveUnmatchedAsUnregistered, type ReplayDraft, type UnmatchedPlayer } from "../utils/replayDraft";
+import { hasComputerSlot, shortMatchHint, validateReplayDraft, resolveUnmatchedAsUnregistered, type ReplayDraft, type UnmatchedPlayer } from "../utils/replayDraft";
 import { useAppStore } from "../store/appStore";
 import { useLockBodyScroll } from "../utils/bodyScrollLock";
 import { api } from "../api/client";
@@ -319,6 +319,12 @@ export default function ReplayReviewModal({
                     )}
 
                     {d.parseError && <div className="scr-err">{d.parseError}</div>}
+
+                    {/* 2분도 안 되는 경기 — 자동으로 빼지 않고 여기서 알려만 준다(요청).
+                        진짜 짧게 끝난 판일 수도 있어서, 등록할지 제외할지는 사람이 정한다. */}
+                    {shortMatchHint(d) && (
+                      <div className="scr-replay-short-note">{shortMatchHint(d)}</div>
+                    )}
 
                     {/* 일부 UMS 맵(슈퍼빨무 등)은 관전 슬롯이 섞이면 screp이 실제 참가자
                         전원에게 같은 팀 번호를 매겨버려 자동으로 편을 못 나눈다 — 아래

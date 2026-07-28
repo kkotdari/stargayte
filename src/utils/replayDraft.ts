@@ -193,6 +193,22 @@ export function hasComputerSlot(d: ReplayDraft): boolean {
   return [...d.team1, ...d.team2].some((s) => isComputerSlot(s.memberId));
 }
 
+// 이보다 짧은 경기는 제대로 붙은 판이 아닐 가능성이 크다(요청) — 시작하자마자 나갔거나
+// 맵만 확인하려고 켰다 끈 것이라, 승패도 무승부로 남는 일이 많다.
+export const SHORT_MATCH_SEC = 2 * 60;
+
+/** 짧은 경기라 사람 눈을 한 번 거쳐야 하는 리플레이인가 — 맞으면 검토 화면에 띄울 한 줄.
+ *
+ *  자동으로 빼 버리지 않는다(요청: 바로 제외가 아니라 검토 화면에 노출하고 힌트 문구 추가).
+ *  진짜 짧게 끝난 판일 수도 있어서, 등록할지 말지는 사람이 정한다. */
+export function shortMatchHint(d: ReplayDraft): string | null {
+  if (d.durationSeconds === null || d.durationSeconds >= SHORT_MATCH_SEC) return null;
+  const mm = Math.floor(d.durationSeconds / 60);
+  const ss = d.durationSeconds % 60;
+  return `${mm}분 ${ss}초짜리 짧은 경기예요 — 시작하자마자 나갔거나 맵만 확인한 판일 수 있어요.`
+    + " 진짜 경기가 맞는지 보고 등록하거나 제외해 주세요.";
+}
+
 export function validateReplayDraft(d: ReplayDraft): string | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(d.date)) return "날짜를 올바르게 입력해 주세요.";
   // 리플레이가 승자를 못 가려낸 경기 — 아무거나 넣으면 조용히 틀린 기록이 남는다.
