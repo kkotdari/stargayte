@@ -7332,6 +7332,30 @@ html.scr-light-theme .scr-feed-comments .scr-mreq-chip-inline { color: #c07c1c; 
   margin-inline: calc(8px - var(--feed-trow-pad-x, 8px));
 }
 
+/* 요약 문장 안의 이름에 팀 색을 입힌다(요청: 1팀 청색, 2팀 붉은색) — 누가 어느 편인지
+   문장만 읽고도 갈리게 하기 위한 것이다. 배경 없이 글자색과 굵기만 쓴다: 문단 한가운데라
+   알약이나 배경을 깔면 글이 끊겨 읽힌다. */
+.scr-sum-team1, .scr-sum-team2 { font-weight: 700; }
+.scr-sum-team1 { color: #7cb0f7; }
+.scr-sum-team2 { color: #f08a8a; }
+.scr-light-theme .scr-sum-team1 { color: #1d4ed8; }
+.scr-light-theme .scr-sum-team2 { color: #dc2626; }
+/* 포스트(.scr-post)는 다크에서도 흰 종이라 라이트 쪽 색을 쓴다. */
+.scr-post .scr-sum-team1 { color: #1d4ed8; }
+.scr-post .scr-sum-team2 { color: #dc2626; }
+
+/* 요약 문장 안의 이름에 팀 색을 입힌다(요청: 1팀 청색, 2팀 붉은색) — 누가 어느 편인지
+   문장만 읽고도 갈리게 하기 위한 것이다. 이름 ↔ 팀은 카드가 이미 가진 로스터로 잇는다.
+   배경 없이 글자색과 굵기만 쓴다: 문단 한가운데라 알약이나 배경을 깔면 글이 끊겨 읽힌다. */
+.scr-sum-team1, .scr-sum-team2 { font-weight: 700; }
+.scr-sum-team1 { color: #7cb0f7; }
+.scr-sum-team2 { color: #f08a8a; }
+.scr-light-theme .scr-sum-team1 { color: #1d4ed8; }
+.scr-light-theme .scr-sum-team2 { color: #dc2626; }
+/* 포스트(.scr-post)는 다크 테마에서도 흰 종이라 라이트 쪽 색을 쓴다. */
+.scr-post .scr-sum-team1 { color: #1d4ed8; }
+.scr-post .scr-sum-team2 { color: #dc2626; }
+
 /* 라벨(무엇인지)이 앞, 시간이 바로 옆(요청) — 라벨이 주, 시간은 흐리게 보조. */
 .scr-feed-card-time { font-weight: 600; color: var(--dim); font-variant-numeric: tabular-nums; }
 /* 포스트 제목 — 피드에서 가장 큰 글자. 굵기·크기 모두 과감히 올린다(요청). */

@@ -1080,3 +1080,46 @@ export function renderReplaySummary(
   }
   return out.length > 0 ? out.join(". ") : null;
 }
+
+/** 문장을 이름 조각과 나머지로 잘라 놓은 것 — 이름에 팀 색을 입히기 위한 것이다(요청).
+ *  문장은 틀 안에서 이름을 끼워 만들기 때문에, 다 만든 뒤 이름을 찾아 자르는 편이
+ *  틀마다 색을 신경 쓰는 것보다 훨씬 단순하고 빠짐없다. */
+export interface SummaryPart {
+  text: string;
+  /** 1팀 / 2팀. 이름이 아닌 조각은 없다. */
+  team?: 1 | 2;
+}
+
+/**
+ * 요약을 팀 색이 입혀진 조각들로 만든다. teamOf는 '지금 보여줄 이름' → 팀 번호.
+ * 이름을 못 찾거나 팀을 모르면 그냥 글자 조각으로 남는다(색만 없을 뿐 문장은 그대로다).
+ */
+export function renderReplaySummaryParts(
+  data: ReplaySummaryData | unknown,
+  resolveName: (rawName: string) => string,
+  teamOf: (name: string) => 1 | 2 | undefined,
+): SummaryPart[] | null {
+  const text = renderReplaySummary(data, resolveName);
+  if (!text) return null;
+  // 긴 이름부터 찾는다 — 짧은 이름이 긴 이름의 일부인 경우("정구"와 "정구2")를 위해서다.
+  const names = [...new Set(
+    (isReplaySummaryData(data) ? data.beats : [])
+      .flatMap((b) => [...(b.who ?? []), ...(b.who2 ?? []), ...(b.whom ?? [])])
+      .map(resolveName)
+      .filter(Boolean),
+  )].sort((a, b) => b.length - a.length);
+  if (names.length === 0) return [{ text }];
+
+  const parts: SummaryPart[] = [];
+  let buf = "";
+  for (let i = 0; i < text.length; ) {
+    const hit = names.find((n) => text.startsWith(n, i));
+    const team = hit ? teamOf(hit) : undefined;
+    if (!hit || !team) { buf += text[i]; i += 1; continue; }
+    if (buf) { parts.push({ text: buf }); buf = ""; }
+    parts.push({ text: hit, team });
+    i += hit.length;
+  }
+  if (buf) parts.push({ text: buf });
+  return parts;
+}
