@@ -7017,6 +7017,16 @@ html.scr-light-theme .scr-feed-comments .scr-mreq-chip-inline { color: #c07c1c; 
   position: fixed; z-index: 56; left: 20px;
   bottom: calc(var(--scr-float-bottom) + var(--mobile-footer-h) + 12px);
 }
+/* 넓은 화면에서는 화면 왼쪽 끝이 아니라 본문 칸 바로 옆에 둔다(요청) — 본문은 가운데
+   860px로 모여 있는데 버튼만 저 멀리 구석에 있으면 한 화면으로 안 읽힌다. 본문 왼쪽
+   바깥으로 버튼 폭(52) + 간격(16)만큼 나간 자리다.
+   조건은 '그 자리가 실제로 나올 때'로 잡는다: 한쪽 여백이 화면 끝 여백(20) + 버튼(52) +
+   간격(16) = 88px는 돼야 하므로 860 + 176 = 1036px, 세로 스크롤바 몫까지 보면 1060px부터.
+   그보다 좁으면 예전처럼 화면 왼쪽에 띄운다 — 어설프게 옮기면 채움이 생긴 포스트 판 위로
+   버튼이 올라앉는다. */
+@media (min-width: 1060px) {
+  .scr-feed-add-fab-wrap { left: calc(50% - var(--content-max) / 2 - 68px); }
+}
 .scr-feed-add-fab {
   width: 52px; height: 52px; border-radius: 50%;
   display: inline-flex; align-items: center; justify-content: center;

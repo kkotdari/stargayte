@@ -136,8 +136,11 @@ const OVERLORD_REBUILD_MIN = 4;
 // 그리고 뽑는 속도가 그 전보다 이 배수는 빨라져야 한다 — 인구수 때문에 느는 것과 가른다.
 const OVERLORD_SURGE_RATIO = 1.6;
 // 일꾼도 같은 원리다 — 잡히지 않으면 한창때 지나 새로 뽑을 일이 별로 없다.
-const WORKER_REBUILD_MIN = 6;
-const WORKER_SURGE_RATIO = 1.5;
+// 다만 일꾼은 오버로드보다 여유 있게 본다(지적) — 얻어맞은 직후에는 돈이 없어 바로
+// 못 채우는 일이 흔하다. 그래서 수도 속도도 문턱을 낮춘다(아래 rebuiltAfter에서 '다시
+// 뽑기 시작한 시점'부터 속도를 재는 것과 한 벌이다).
+const WORKER_REBUILD_MIN = 4;
+const WORKER_SURGE_RATIO = 1.25;
 // 일꾼을 몰아 뽑은 구간이 이만큼(분) 넘게 이어졌으면 '내내 시달렸다'로 본다.
 const HARASS_LONG_MIN = 6;
 // 견제로 읽을 수 있는 수들 — 드랍과 뮤탈. 일꾼을 노리는 그림이 뚜렷한 것만 본다.
@@ -205,6 +208,41 @@ function buildSide(players: ParsedReplayPlayer[]): Side {
   return { players, combat, buildings, workers, thirds, techs };
 }
 
+// 그 경기를 끝낸 조합은 '많이 뽑은 것'이 아니라 '마지막까지 쓴 것'이다(요청). 캐리어·
+// 골리앗처럼 잘 안 죽는 유닛은 뽑은 수 자체가 적어서, 초반에 쏟아낸 저글링·질럿에게 늘
+// 밀린다 — 정작 그 경기의 그림은 후반의 그 조합인데도.
+//
+// 그래서 순위는 '경기 뒤쪽 구간에 뽑은 수'로 매긴다. 그 구간에 아무것도 안 뽑았다면
+// 마지막으로 뽑던 것들을 그대로 굴렸다는 뜻이므로(지적), 창을 뒤에서부터 넓혀 가며
+// 실제로 생산이 있었던 구간을 찾는다. 끝까지 못 찾으면(생산 기록이 거의 없으면) 빈 맵을
+// 돌려주고 호출부가 원래대로 전체 생산량으로 매긴다.
+const LATE_WINDOWS = [0.65, 0.4, 0];
+// 이만큼은 뽑혔어야 그 구간을 '조합이 드러난 구간'이라 할 수 있다.
+const LATE_MIN_UNITS = 4;
+
+function lateCombat(players: ParsedReplayPlayer[], end: number | null): Map<string, number> {
+  if (!end || end <= 0) return new Map();
+  for (const share of LATE_WINDOWS) {
+    const from = end * share;
+    const out = new Map<string, number>();
+    let total = 0;
+    for (const p of players) {
+      const s = p.signals;
+      if (!s) continue;
+      for (const [unit, frames] of Object.entries(s.unitFrames)) {
+        if (NON_COMBAT_UNITS.has(unit) || WORKER_UNITS.has(unit)) continue;
+        if (!UNIT_KO[unit]) continue;
+        const n = frames.filter((x) => x >= from).length;
+        if (n <= 0) continue;
+        out.set(unit, (out.get(unit) ?? 0) + n);
+        total += n;
+      }
+    }
+    if (total >= LATE_MIN_UNITS) return out;
+  }
+  return new Map();
+}
+
 function countIn(map: Map<string, number>, names: Set<string>): number {
   let n = 0;
   for (const [k, v] of map) if (names.has(k)) n += v;
@@ -214,8 +252,10 @@ function countIn(map: Map<string, number>, names: Set<string>): number {
 /** 그 편의 주력 — 가장 많이 뽑은 전투 유닛 최대 두 종류(2위가 1위에 한참 못 미치면 하나만).
  *  앞자리는 스스로 싸움을 끝낼 수 있는 유닛에 준다 — 메딕·퀸 같은 보조 유닛이 수만 많다고
  *  "메딕으로 이김"이 되면 곤란하다(지적). 그런 유닛은 뒷자리로 밀려 조합으로 읽힌다. */
-function mainUnits(side: Side): string[] {
-  const ranked = [...side.combat.entries()].sort((a, b) => b[1] - a[1]);
+function mainUnits(combat: Map<string, number>, late?: Map<string, number>): string[] {
+  // 순위는 경기 뒤쪽 구간의 생산량으로 매긴다(위 lateCombat 참고) — 못 구했으면 전체 수로.
+  const rank = late && late.size > 0 ? late : combat;
+  const ranked = [...rank.entries()].sort((a, b) => b[1] - a[1]);
   if (ranked.length === 0) return [];
   const lead = ranked.find(([u]) => !SUPPORT_UNITS.has(u)) ?? ranked[0];
   const second = ranked.find((x) => x !== lead);
@@ -656,7 +696,7 @@ function sideBeats(args: {
     const star = standout(side);
     if (star && star.race) {
       const own = ownCombat(star);
-      const units = nameableUnits(mainUnits({ ...side, combat: own }));
+      const units = nameableUnits(mainUnits(own, lateCombat([star], totalFrames)));
       const table = PRO_LIKE[star.race] ?? [];
       // 그 그림이라 부를 만큼 실제로 뽑았을 때만 빗댄다 — 두어 기 나온 유닛까지 세면
       // 거의 모든 경기에 비유가 붙어 특별할 게 없어진다.
@@ -681,7 +721,9 @@ function sideBeats(args: {
   if (!won) {
     const star = standout(side);
     const units = nameableUnits(
-      star ? mainUnits({ ...side, combat: ownCombat(star) }) : mainUnits(side)
+      star
+        ? mainUnits(ownCombat(star), lateCombat([star], totalFrames))
+        : mainUnits(side.combat, lateCombat(players, totalFrames))
     );
     const lastFrames = players
       .map((p) => p.signals?.lastCmdFrame ?? null)
@@ -862,7 +904,9 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   // (요청: 팀전이라도 잘한 사람 얘기를 많이). 없으면 편 전체로 말한다.
   const star = standout(winner);
   const units = nameableUnits(
-    star ? mainUnits({ ...winner, combat: ownCombat(star) }) : mainUnits(winner)
+    star
+      ? mainUnits(ownCombat(star), lateCombat([star], totalFrames))
+      : mainUnits(winner.combat, lateCombat(winnerPlayers, totalFrames))
   );
   if (units.length === 0) return null; // 조합을 못 읽으면 이야기의 알맹이가 없다
   const subject = star ? [star.rawName] : winnerPlayers.map((p) => p.rawName);
@@ -960,11 +1004,16 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     for (const z of foes) {
       const frames = units.flatMap((u) => z.signals?.unitFrames[u] ?? []);
       if (frames.length === 0) continue;
-      const after = frames.filter((x) => x >= from).length;
+      const afterFrames = frames.filter((x) => x >= from);
+      const after = afterFrames.length;
       if (after < minCount) continue;
       const before = frames.filter((x) => x < from).length;
       const beforeRate = before / Math.max(1, from);
-      const afterRate = after / Math.max(1, totalFrames - from);
+      // 맞자마자 바로 못 뽑는 일이 흔하다 — 돈이 없어서다(지적). 그 죽은 시간까지 분모에
+      // 넣으면, 실제로는 허겁지겁 채워 넣은 경기도 '안 뽑았다'로 읽힌다. 다시 뽑기
+      // 시작한 시점부터 속도를 잰다.
+      const resume = Math.min(...afterFrames);
+      const afterRate = after / Math.max(1, totalFrames - resume);
       if (afterRate >= beforeRate * ratio) return z.rawName;
     }
     return null;
