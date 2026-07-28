@@ -2,7 +2,7 @@
 // API 클라이언트 — stargayte-api 서버와 통신한다.
 // ============================================================
 import type {
-  Member, Match, MatchNote, FeedComment, FeedTargetType, RankSnapshot, NewMatch, SignupPayload, MemberCreatePayload, MemberStatus, MemberRole,
+  Member, Match, FeedComment, FeedTargetType, RankSnapshot, NewMatch, SignupPayload, MemberCreatePayload, MemberStatus, MemberRole,
   ScreenKey, AppVersion, AppVersionStatus, AppVersionInfo,
   MatchSlot, MatchPage, MatchStatsResponse, MatchType, Race, TeamRankingResponse,
   MonthlyMatchStatsResponse, MonthlyTeamRankingResponse, RatingHistoryResponse, RivalryPair,
@@ -504,28 +504,6 @@ export const api = {
     await request<void>(`/api/feed/comments/${commentId}`, { method: "DELETE" });
   },
 
-  async listMatchNotes(matchId: number): Promise<MatchNote[]> {
-    return request<MatchNote[]>(`/api/matches/${matchId}/notes`);
-  },
-  async createMatchNote(
-    matchId: number, text: string, targetMemberIds: string[],
-  ): Promise<MatchNote> {
-    return request<MatchNote>(`/api/matches/${matchId}/notes`, {
-      method: "POST",
-      body: JSON.stringify({ text, targetMemberIds }),
-    });
-  },
-  async updateMatchNote(
-    matchId: number, noteId: number, text: string, targetMemberIds: string[],
-  ): Promise<MatchNote> {
-    return request<MatchNote>(`/api/matches/${matchId}/notes/${noteId}`, {
-      method: "PATCH",
-      body: JSON.stringify({ text, targetMemberIds }),
-    });
-  },
-  async deleteMatchNote(matchId: number, noteId: number): Promise<void> {
-    await request<void>(`/api/matches/${matchId}/notes/${noteId}`, { method: "DELETE" });
-  },
 
   // 인증 헤더가 필요해 <a href> 로 바로 못 받으므로 blob 으로 받아 저장한다.
   async downloadReplay(matchId: number): Promise<Blob> {

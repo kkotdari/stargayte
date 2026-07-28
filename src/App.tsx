@@ -14,9 +14,7 @@ import AuthScreen from "./pages/auth/AuthScreen";
 import Header from "./layout/Header";
 import InstallBanner from "./components/common/InstallBanner";
 import InAppBrowserNotice from "./components/common/InAppBrowserNotice";
-import ChallengeScreen from "./pages/challenge/ChallengeScreen";
 import MembersScreen from "./pages/members/MembersScreen";
-import RivalryScreen from "./pages/rivalry/RivalryScreen";
 import LeagueScreen from "./pages/league/LeagueScreen";
 import ProfileModal from "./modals/ProfileModal";
 import MemberProfileModal from "./modals/MemberProfileModal";
@@ -26,14 +24,13 @@ import ChallengeResultInboxModal from "./modals/ChallengeResultInboxModal";
 import MatchRequestInboxModal from "./modals/MatchRequestInboxModal";
 import AppUpdateNoticeModal from "./modals/AppUpdateNoticeModal";
 import FeedScreen from "./pages/feed/FeedScreen";
-import MatchScreen from "./pages/v2/MatchScreen";
 import StatsScreen from "./pages/v2/StatsScreen";
 import SharePage, { type ShareTarget } from "./pages/share/SharePage";
 import ShareLoginGate from "./pages/share/ShareLoginGate";
 
 import type { ScreenKey } from "./types";
 
-const SCREEN_KEYS: ScreenKey[] = ["feed", "match", "challenge", "stats", "members", "leagues", "rivalry"];
+const SCREEN_KEYS: ScreenKey[] = ["feed", "stats", "members", "leagues"];
 
 // 새로고침해도 보던 화면 그대로 있도록 URL의 ?screen= 쿼리에 현재 화면을 기록해둔다 —
 // 사파리의 pull-to-refresh 등 브라우저 기본 새로고침은 앱 상태를 그대로 날려서 첫 화면으로
@@ -65,8 +62,6 @@ export default function App() {
   const clearJustLoggedIn = useAppStore((s) => s.clearJustLoggedIn);
   const adminPanelOpen = useAppStore((s) => s.adminPanelOpen);
   const setAdminPanelOpen = useAppStore((s) => s.setAdminPanelOpen);
-  // 너 나와!는 이제 상시 고정 메뉴라 버전과 무관하게 항상 열려 있다(요청).
-  const isChallengeEnabled = true;
   const bootstrap = useAppStore((s) => s.bootstrap);
   // 부팅(스플래시)이 끝나 본 화면이 처음 그려진 직후, 사파리 엣지 렌더(주소창 알약 뒤
   // 콘텐츠 합성)를 다시 굴린다 — 초기 진입 시 위아래가 잘린 채 남던 문제(지적) 대응.
@@ -217,10 +212,8 @@ export default function App() {
   const isAdmin = isAdminRole(user.roles);
   // 접근 권한이 없는 화면으로 들어온 경우(예: URL 직접 조작) 실제로 보여줄 화면 —
   const resolvedScreen: ScreenKey =
-    screen === "challenge" && !isChallengeEnabled ? "feed" :
     screen === "members" && !isAdmin ? "feed" :
     screen === "leagues" && !isAdmin ? "feed" :
-    screen === "rivalry" && !isAdmin ? "feed" :
     screen;
 
   // 배경 사진이 있는 화면(지금은 통계뿐 — 피드 배경은 제거)에서는 헤더까지 사진이
@@ -259,15 +252,11 @@ export default function App() {
                 권한이 없는 화면(challenge/members 등)은 랭킹으로 대체되던
                 기존 동작과 같게, resolvedScreen으로 보여줄 화면만 고른다. */}
             {!booting && resolvedScreen === "feed" && <FeedScreen />}
-            {!booting && resolvedScreen === "match" && <MatchScreen />}
-            {isChallengeEnabled && !booting && resolvedScreen === "challenge" && <ChallengeScreen />}
             {!booting && resolvedScreen === "stats" && <StatsScreen />}
             {isAdmin && !booting && resolvedScreen === "members" && <MembersScreen />}
             {/* 운영자 전용 메뉴로 변경(요청) — 회원/이미지 설정과 같은 기준으로 운영자만 접근. */}
             {/* 공식 리그 대진/결과 관리 — 다음 버전에서 열 예정, 지금은 운영자만(요청). */}
             {isAdmin && !booting && resolvedScreen === "leagues" && <LeagueScreen />}
-            {/* 유저 상성 맵 — 운영 메뉴 전용(요청). */}
-            {isAdmin && !booting && resolvedScreen === "rivalry" && <RivalryScreen />}
           </main>
         </div>
 

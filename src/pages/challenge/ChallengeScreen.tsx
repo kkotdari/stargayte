@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Pencil, MessageSquarePlus, X, Check, Calendar, Clock } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
@@ -6,19 +6,14 @@ import { Spinner } from "../../components/common/Feedback";
 import OptionalDateTimeFields, { openPicker } from "../../components/common/OptionalDateTimeFields";
 import InlineCollapse from "../../components/common/InlineCollapse";
 import KakaoShareButton from "../../components/common/KakaoShareButton";
-import ChallengeFormModal from "../../modals/ChallengeFormModal";
 import type { KakaoShareContent } from "../../utils/kakaoShare";
-// "보고싶은 너 나와!" 코너는 지금 숨김(요청) — 다시 켤 때 import와 렌더 주석을 함께 해제한다.
-// import MatchRequestCorner from "./MatchRequestCorner";
-import ScrollNavTimeline from "../../components/common/ScrollNavTimeline";
 import { useAppStore } from "../../store/appStore";
 import { api } from "../../api/client";
 import { cx } from "../../utils/format";
 import {
-  challengeDateGroupLabel, challengeTimeLabel, formatChallengeSchedule, formatRelativeSchedule, isToday, pad,
+  formatChallengeSchedule, formatRelativeSchedule, pad,
   DATE_INPUT_MIN, DATE_INPUT_MAX, gameNow,
 } from "../../utils/date";
-import { getScrollMetrics, getScrollRoot } from "../../utils/scrollRoot";
 import type { Challenge, ChallengeResult, ChallengeSide, ChallengeStatus, ChallengeTarget } from "../../types";
 
 // 화면 표시 상태는 서버 status를 그대로 쓴다 — 서버가 4개(응답대기 pending/성사 confirmed/
@@ -39,52 +34,9 @@ function targetPillInfo(t: ChallengeTarget): { tone: PillTone } {
   return { tone: "pending" };
 }
 
-interface ChallengeDateGroup {
-  label: string;
-  isToday: boolean;
-  items: Challenge[];
-}
 
-// 경기결과 화면처럼 날짜별로 묶어 보여준다(요청: "경기 화면처럼 날짜별로 그룹핑") —
-// 넘어오는 목록은 이미 정렬돼 있어서 같은 날짜 라벨이 연속으로 나올 때만 묶으면 된다.
-// "일정 미정"(scheduledAt 없음)은 이제 응답 대기중인 건에만 남는다 — 시간 없이 보냈다
-// 거절/무응답으로 끝나는 순간 서버가 예정 일시를 요청일시+1일로 확정하기 때문이다
-// (요청: "일정미정은 응답대기중일때만 가능한거야", "거절하는 순간 scheduled_at도 업데이트").
-// 날짜 라벨 자체에 연도가 포함돼(challengeDateGroupLabel) 별도 연도 줄은 더 이상 없다
-// (요청: "년도 따로 빼지 않고 날짜에 넣기").
-function groupChallengesByDate(list: Challenge[]): ChallengeDateGroup[] {
-  const groups: ChallengeDateGroup[] = [];
-  list.forEach((c) => {
-    const label = challengeDateGroupLabel(c);
-    const last = groups[groups.length - 1];
-    if (last && last.label === label) last.items.push(c);
-    else groups.push({ label, isToday: isToday(c), items: [c] });
-  });
-  return groups;
-}
 
-interface ChallengeTimeGroup {
-  // 그룹 식별자 — 같은 예정 시각(scheduledAt)끼리 묶는다. 일정 미정은 "none".
-  key: string;
-  // 그 시각의 라벨("오후 7시 10분") — 일정 미정이면 null이라 시간 헤더를 안 그린다.
-  timeLabel: string | null;
-  items: Challenge[];
-}
 
-// 한 날짜 그룹 안에서 다시 예정 시각별로 묶는다(요청: "시간도 그루핑해서 제일 위 카드 위에
-// 한번만 표시") — 카드마다 시간을 반복해 찍는 대신, 같은 시각 카드들 맨 위에 시간을 한 번만
-// 보여주려는 것. 목록이 이미 scheduledAt 순으로 정렬돼 있어 같은 시각은 연속이라, 라벨이
-// 연달아 같을 때만 묶으면 된다.
-function groupByTime(items: Challenge[]): ChallengeTimeGroup[] {
-  const groups: ChallengeTimeGroup[] = [];
-  items.forEach((c) => {
-    const key = c.scheduledDate ? `${c.scheduledDate}T${c.scheduledTime ?? ""}` : "none";
-    const last = groups[groups.length - 1];
-    if (last && last.key === key) last.items.push(c);
-    else groups.push({ key, timeLabel: challengeTimeLabel(c), items: [c] });
-  });
-  return groups;
-}
 
 type SideMember = { id: string; nickname: string; avatar: string | null };
 
@@ -744,27 +696,7 @@ export function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, o
 // 하나로 합쳐 보여주고, 이 체크박스를 켜면 성사된(confirmed) 너 나와만 남긴다.
 
 
-// 폐기(휴지통)된 건 — 본 목록에서는 감추고 "휴지통" 모달에만 보여준다. 서버가 거절·무응답·
-// 미실시·(레거시)취소를 모두 status="discarded"로 확정해 내려주므로 그것만 보면 된다.
-function isDiscarded(c: Challenge): boolean {
-  return c.status === "discarded";
-}
 
-// 순수 날짜(예정 일시) 오름차순(과거→미래) 한 줄로 정렬한다. 예정 일시가 없는 건(=아직
-// 응답 대기중인 일정 미정)은 날짜로 자리를 정할 수 없어 맨 뒤에 둔다(요청: "일정 미정인
-// 건들은 목록 맨 마지막에 있어야 돼(항상 보임)") — "종료된" 섹션 접힘 여부는 이제 정렬
-// 순서가 아니라 실제 상태(status==="done")로만 가른다(아래 endedList/activeList 참고).
-// 우측 타임라인의 스크롤 스냅은 "오늘" 그룹만 스냅 타깃이라(global.css의 .scr-snap-today)
-// 미정 그룹 위치가 바뀌어도 영향 없다. 일시가 같거나 둘 다 미정이면 최근 생성 순으로 가른다.
-function compareChallenges(a: Challenge, b: Challenge): number {
-  const aNull = !a.scheduledAt;
-  const bNull = !b.scheduledAt;
-  if (aNull && bNull) return a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0;
-  if (aNull) return 1;
-  if (bNull) return -1;
-  if (a.scheduledAt !== b.scheduledAt) return a.scheduledAt! > b.scheduledAt! ? 1 : -1;
-  return a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0;
-}
 
 // 시각 헤더(scr-challenge-time-head)는 같은 시각의 카드들 맨 위에 한 번만 뜨는데, 진행중
 // (성사)인 너 나와는 그 시각 옆에 연필 아이콘으로 일시를 바로 수정할 수 있다(요청: "너나와
@@ -930,279 +862,6 @@ export function ChallengeTimeHeadEdit({
           </div>
         )}
       </div>
-    </div>
-  );
-}
-
-// 도전장("너 나와!") 게시판 — 경기결과/예약 시스템과는 독립적인 별도 게시판이라, 화면 자체도
-// 기간 필터 없이 전체 목록을 그대로 보여준다.
-export default function ChallengeScreen() {
-  const user = useAppStore((s) => s.user);
-
-  const [challenges, setChallenges] = useState<Challenge[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [formOpen, setFormOpen] = useState(false);
-
-  // 카운트다운(응답 마감)과 완료/무응답취소 같은 시간 기반 파생 상태를 1분마다 다시 그린다 —
-  // 카드들은 렌더 시점의 Date.now()로 계산하므로 부모가 다시 그려지면 자연히 갱신된다.
-  const [, setTick] = useState(0);
-  useEffect(() => {
-    const t = setInterval(() => setTick((n) => n + 1), 60_000);
-    return () => clearInterval(t);
-  }, []);
-
-  const load = useCallback(() => {
-    setLoading(true);
-    setError("");
-    api.getChallenges()
-      .then((res) => setChallenges(res.items))
-      .catch((e) => setError(e instanceof Error ? e.message : "목록을 불러오지 못했어요."))
-      .finally(() => setLoading(false));
-  }, []);
-  useEffect(load, [load]);
-
-  // 결과 입력 팝업(앱 부팅 시 뜨는 전역 팝업, ChallengeResultInboxModal)은 이 화면이 이미
-  // 떠 있는 동안에도 열릴 수 있는데, 거기서 결과를 입력해도 이 화면이 이미 불러와 둔
-  // 목록엔 반영이 안 된다 — 신고: "결과 입력 팝업창에서 입력했는데 너 나와 페이지에
-  // 아직도 결과입력 버튼이 보이는 경우가 있다고(새로고침 문제일까?)". 팝업 큐가 (하나
-  // 이상 있다가) 비워지는 순간을 "닫혔다/다 처리했다"로 보고 조용히 다시 불러온다 —
-  // load()처럼 로딩 스피너로 갈아치우면 스크롤 위치가 튀니 목록만 바꿔치기한다.
-  const resultInboxChallenges = useAppStore((s) => s.resultInboxChallenges);
-  const prevResultInboxLenRef = useRef(resultInboxChallenges.length);
-  useEffect(() => {
-    const prevLen = prevResultInboxLenRef.current;
-    prevResultInboxLenRef.current = resultInboxChallenges.length;
-    if (prevLen > 0 && resultInboxChallenges.length === 0) {
-      api.getChallenges().then((res) => setChallenges(res.items)).catch(() => {});
-    }
-  }, [resultInboxChallenges]);
-
-  // 재신청/설욕전은 같은 행을 고쳐 쓰지 않고 새 id로 새 도전장을 만든다 — 그 응답(updated)의
-  // reappliedFromId가 채워져 있으면, 목록에서 그 원래 도전장은 지우고 새 도전장으로 바꿔
-  // 끼운다. 다른 액션(승락/거절/취소/결과입력/연기 등)은 reappliedFromId가 없으니 이 필터는
-  // 그냥 아무 일도 안 한다.
-  const upsert = (updated: Challenge) => {
-    setChallenges((prev) => {
-      // 취소된 도전장도 이제 목록에 남는다(요청: "취소된 도전장도 노출") — 제거하지 않고
-      // 그 자리에서 상태만 갱신한다.
-      const withoutSuperseded = updated.reappliedFromId != null
-        ? prev.filter((c) => c.id !== updated.reappliedFromId)
-        : prev;
-      const exists = withoutSuperseded.some((c) => c.id === updated.id);
-      return exists
-        ? withoutSuperseded.map((c) => (c.id === updated.id ? updated : c))
-        : [updated, ...withoutSuperseded];
-    });
-  };
-
-  // 너 나와! 목록은 필터/검색 없이 항상 전체를 조회한다(요청: "검색창도 제거", "무조건 전체").
-  // "기록" 메뉴는 폐지하고 완료된 너 나와도 같은 목록에 합친다(요청: "기록 메뉴 제거 및 원래
-  // 목록에 통합. 결과적으로 너 나와! 목록은 1개만 존재") — 폐기(휴지통)된 건만 뺀다.
-  const unifiedList = useMemo(
-    () => challenges.filter((c) => !isDiscarded(c)).sort(compareChallenges),
-    [challenges],
-  );
-
-  // "종료된"은 정렬 순서가 아니라 실제 상태로만 가른다 — 결과가 입력된(승/무/미실시*)
-  // status==="done" 건만 접어 넣는다(*미실시는 서버가 discarded로 확정해 내려오므로
-  // 여기엔 안 잡힌다, isDiscarded로 이미 걸러짐). 응답대기(미정 포함)·성사(예정)는 상태와
-  // 무관하게 항상 보이는 목록에 남는다(요청: "종료된 너 나와에는 실제 완료된 애들만 들어가
-  // 있고 일정 미정인 건들은 목록 맨 마지막에 있어야 돼(항상 보임)").
-  const endedList = useMemo(() => unifiedList.filter((c) => c.status === "done"), [unifiedList]);
-  const activeList = useMemo(() => unifiedList.filter((c) => c.status !== "done"), [unifiedList]);
-
-  // "종료된 너 나와! 보기" 토글 — 누르면 접혀 있던 앞부분이 지금 보이는 목록 위로 나타난다.
-  // 콘텐츠가 뷰포트 위쪽에 삽입되면 브라우저가 스크롤 위치(px)를 그대로 유지해 화면에 보이던
-  // 내용이 아래로 밀려 보인다(요청: "스크롤이 튀지 않게 조심") — 토글 직전 스크롤 높이를
-  // 기억해뒀다가, 다음 렌더 직후(레이아웃 반영 후) 늘어난/줄어든 높이만큼 스크롤 위치를 같이
-  // 옮겨서 화면에 보이던 내용이 그 자리에 그대로 있는 것처럼 보이게 한다.
-  const [showEnded, setShowEnded] = useState(false);
-  const prevScrollHeightRef = useRef<number | null>(null);
-  // 오늘 그룹 스크롤 스냅 활성화 판단에 콘텐츠 높이를 재려고 화면 컨테이너를 참조한다.
-  const screenRef = useRef<HTMLDivElement>(null);
-  const toggleShowEnded = () => {
-    prevScrollHeightRef.current = getScrollMetrics().scrollHeight;
-    setShowEnded((v) => !v);
-  };
-  useLayoutEffect(() => {
-    const prevHeight = prevScrollHeightRef.current;
-    if (prevHeight == null) return;
-    prevScrollHeightRef.current = null;
-    const delta = getScrollMetrics().scrollHeight - prevHeight;
-    if (delta === 0) return;
-    const root = getScrollRoot();
-    if (root instanceof Window) {
-      window.scrollTo({ top: window.scrollY + delta, behavior: "instant" as ScrollBehavior });
-      return;
-    }
-    // #scroll-root엔 CSS scroll-behavior:smooth + scroll-snap(proximity)이 걸려 있어, 위치
-    // 보정 뒤 스냅이 스무스하게 재정렬되며 "부드럽게 미끄러지는" 이동으로 보였다(요청:
-    // "순간이동했으면 좋겠어"). 보정하는 짧은 동안 인라인으로 scroll-behavior:auto를 씌워
-    // 보정과 그에 뒤따르는 스냅 재정렬까지 전부 즉시(순간이동)로 끝내고, 두 프레임 뒤에
-    // 원래 스무스 동작으로 되돌린다.
-    root.style.scrollBehavior = "auto";
-    root.scrollTop += delta;
-    requestAnimationFrame(() => requestAnimationFrame(() => { root.style.scrollBehavior = ""; }));
-  }, [showEnded]);
-
-  // 활성(응답대기·성사) 목록은 늘 보이고(activeList/endedList는 위에서 status로 이미
-  // 갈랐다), 종료된 건 펼치기 전엔 감춘다. 펼치면 토글 버튼 '위'로 나타난다(요청: "버튼
-  // 상단에 과거 목록이 펼쳐지고") — 버튼이 종료/활성 사이의 구분선 역할을 한다.
-  const renderChallengeList = (items: typeof unifiedList) => (
-    <div className="scr-challenge-list">
-      {groupChallengesByDate(items).map((g) => (
-        <Fragment key={g.label}>
-          <div
-            className="scr-challenge-date-group"
-            data-today={g.isToday ? "1" : undefined}
-          >
-            <div className="scr-challenge-date-head" data-date-label={g.label}>
-              {g.isToday && <span className="scr-challenge-card-today-tag">오늘</span>}
-              {g.label}
-            </div>
-            {/* 날짜 안에서 다시 시각별로 묶어, 같은 시각 카드들 맨 위에 시간을 한 번만
-                보여준다(요청). NEXT 배지는 폐지됐다(요청: "NEXT 배지 제거"). */}
-            {groupByTime(g.items).map((tg) => (
-              <div key={tg.key} className="scr-challenge-time-group">
-                {tg.timeLabel && (
-                  // 시각 그룹에 너 나와가 정확히 하나일 때만 연필(일시 수정)을 보여준다
-                  // (ChallengeTimeHeadEdit 주석 참고 — 여럿이면 어느 걸 고칠지 모호해서).
-                  tg.items.length === 1 ? (
-                    <ChallengeTimeHeadEdit
-                      challenge={tg.items[0]} timeLabel={tg.timeLabel}
-                      myId={user?.id} onUpdated={upsert}
-                    />
-                  ) : (
-                    <div className="scr-challenge-time-head">
-                      <span className="scr-challenge-time-head-label">{tg.timeLabel}</span>
-                    </div>
-                  )
-                )}
-                {tg.items.map((c) => (
-                  <div key={c.id} className="scr-challenge-card-slot">
-                    <ChallengeCard
-                      challenge={c}
-                      myId={user?.id}
-                      onResponded={upsert}
-                    />
-                  </div>
-                ))}
-              </div>
-            ))}
-          </div>
-        </Fragment>
-      ))}
-    </div>
-  );
-
-  // 오늘 그룹 스크롤 스냅 — 목록이 짧을 땐 오늘로 끌어당기는 스냅이 오히려 걸리적거려서
-  // (요청: "페이지 길이가 특정 길이 이상일 때만 활성화"), 스크롤할 거리가 한 화면분을
-  // 넘게 넉넉할 때만 켠다. 데이터가 늦게 로드되거나 종료목록을 펼쳐 길이가 수시로 바뀔 수
-  // 있어, 한 번 재고 마는 게 아니라 ResizeObserver로 콘텐츠/뷰포트 크기 변화를 계속 다시
-  // 판단한다.
-  useEffect(() => {
-    // 문서 스크롤 전환 — 스냅 클래스/판정 기준이 #scroll-root에서 문서(html)로 옮겨졌다.
-    const root = document.documentElement;
-    const content = screenRef.current;
-    if (!content) return;
-    const apply = () => {
-      const overflow = root.scrollHeight - root.clientHeight;
-      root.classList.toggle("scr-snap-today", overflow > root.clientHeight);
-    };
-    apply();
-    const ro = new ResizeObserver(apply);
-    ro.observe(content);
-    ro.observe(document.body);
-    return () => {
-      ro.disconnect();
-      root.classList.remove("scr-snap-today");
-    };
-  }, []);
-
-  const emptyLabel = "도전장이 없어요";
-
-  return (
-    <div className="scr-screen scr-challenge-screen-v2" ref={screenRef}>
-      {/* "기록" 메뉴는 폐지됐다(요청) — 목록이 하나뿐이라 타이틀 툴바엔 더 이상 액션이
-          없다. 너 나와! 신청 버튼은 타이틀 줄 아래 별도 줄에 가운데 정렬, 1.2배 확대(요청). */}
-      <div className="scr-v2-toolbar">
-        <h1 className="scr-title scr-v2-toolbar-title">너 나와!</h1>
-      </div>
-
-      {/* nawa 자체가 버튼(요청) — 이미지 위에 흰 글씨 "호출하기" 라벨을 얹고, 눌리는 입체감을
-          준다. 별도의 텍스트 버튼은 없앴다. */}
-      <div className="scr-v2-primary-row scr-challenge-primary-row">
-        <button
-          type="button"
-          className="scr-challenge-nawa-btn"
-          onClick={() => setFormOpen(true)}
-          aria-label="너 나와! 신청"
-        >
-          <img src="/images/challenge/challenge_title_deco.jpg" alt="" className="scr-challenge-title-nawa" />
-          <span className="scr-challenge-nawa-label">호출하기</span>
-        </button>
-      </div>
-
-      {/* 최상단 너 나와! 신청 코너("보고싶은 너 나와!") — 지금은 숨김(요청). 다시 켜려면 아래
-          주석을 해제한다. */}
-      {/* <MatchRequestCorner /> */}
-
-      {/* 목록 중타이틀 — 요청 코너와 실제 도전장 목록을 구분한다. */}
-      <h2 className="scr-challenge-list-heading">너 나와! 목록</h2>
-
-      {error && <div className="scr-err">{error}</div>}
-
-      {loading ? (
-        <div className="scr-empty"><Spinner size={18} /></div>
-      ) : (
-        <>
-          {/* 종료된(과거) 너 나와는 펼쳤을 때만, 토글 버튼 '위'에 나타난다(요청). */}
-          {showEnded && endedList.length > 0 && (
-            <section className="scr-challenge-section scr-challenge-section-ended">
-              {renderChallengeList(endedList)}
-            </section>
-          )}
-
-          {/* 과거에 끝난 너 나와는 기본적으로 접혀 있고, 이 버튼이 종료/활성 목록 사이의
-              구분선이 된다(요청) — 누르면 그 위로 펼쳐진다. 접을 게 없으면(끝난 건 0개)
-              버튼 자체를 안 보여준다. */}
-          {endedList.length > 0 && (
-            <button type="button" className="scr-challenge-toggle-ended-link" onClick={toggleShowEnded}>
-              {showEnded ? "종료된 너 나와! 접기" : "종료된 너 나와! 펼치기"}
-            </button>
-          )}
-
-          <section className="scr-challenge-section">
-            {activeList.length === 0 ? (
-              <div className="scr-empty">{emptyLabel}</div>
-            ) : (
-              renderChallengeList(activeList)
-            )}
-          </section>
-        </>
-      )}
-
-      {/* 우측 네비게이션 타임라인 — 스크롤 시에만 뜨고, 스스로 스크롤 불가 상태면 안 뜬다.
-          너 나와는 과거(위)→미래(아래) 순이고, "오늘" 그룹에만 눈금을 찍는다(요청:
-          "타임라인에 미정은 표시 X"). */}
-      {!loading && (
-        <ScrollNavTimeline
-          headSelector=".scr-challenge-date-head"
-          topLabel="과거"
-          bottomLabel="미래"
-          markers={[
-            { key: "today", className: "scr-scroll-timeline-today", groupSelector: '.scr-challenge-date-group[data-today="1"]' },
-          ]}
-        />
-      )}
-
-      {formOpen && (
-        <ChallengeFormModal
-          onClose={() => setFormOpen(false)}
-          onCreated={(c) => setChallenges((prev) => [c, ...prev])}
-        />
-      )}
     </div>
   );
 }

@@ -1233,7 +1233,6 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    가로만 clip한다 — overflow:hidden과 달리 clip은 스크롤 컨테이너를 만들지 않으므로
    날짜 헤더의 세로 sticky나 오른쪽 고정(fixed) 타임라인엔 영향이 없고, overflow-y도
    visible로 그대로 둔다(표 내부의 자체 가로 스크롤도 그대로 동작). */
-.scr-match-screen-v2 { overflow-x: clip; }
 .scr-title { font-weight: 800; font-size: var(--fs-title); letter-spacing: 0.01em; margin: 0; color: var(--text); }
 
 /* v2(개발중) 디자인 컨셉 — 카드형 "컨텐츠 프레임"(테두리+반투명 배경 패널) 없이, 타이틀 +
@@ -1304,7 +1303,6 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    (기본 여백 12px + 18px = 30px). */
 .scr-members-screen-v2 .scr-v2-primary-row { margin-bottom: 30px; }
 /* 경기 등록 화면 — 등록 버튼 아래에 리플레이 위치 안내 링크를 세로로 쌓는다(요청). */
-.scr-v2-primary-row-col { flex-direction: column; align-items: center; gap: 6px; }
 .scr-v2-primary-row .scr-btn {
   /* 도전장 쓰기/등록/회원 생성 등 대표 버튼 — 예전 1.2배 확대에서 20% 축소(요청). */
   font-size: var(--fs-body); /* 20px * 0.8 */
@@ -1322,7 +1320,7 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    프레임으로 좁혀서 그 안의 모든 자식(타이틀/버튼줄/검색창/힌트/목록)이 자동으로 같은
    폭을 물려받게 한다 — 이제 화면마다 안쪽 요소를 따로 맞출 필요가 없다. */
 @media (min-width: 641px) {
-  .scr-match-screen-v2, .scr-challenge-screen-v2, .scr-members-screen-v2, .scr-stats-screen-v2 {
+  .scr-members-screen-v2, .scr-stats-screen-v2 {
     max-width: var(--list-content-max); margin-left: auto; margin-right: auto; width: 100%;
   }
 }
@@ -2184,7 +2182,6 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
   .scr-list-count { display: none; }
 }
 /* 경기 화면 — 건수를 필터 바가 아니라 조회 버튼 아래, 목록 바로 위에 직접 그린다(요청). */
-.scr-match-list-count { align-self: flex-end; }
 
 /* 경기결과 목록 — 랭킹 목록과 같은 반투명 글래스 고정을 타이틀 줄+날짜 줄에도 적용한다.
    패널 기본 패딩(20px)을 걷어내 타이틀/날짜 줄이 패널 폭 전체를 채운 채 sticky로 쌓이게
@@ -2386,22 +2383,11 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
    있던 동일 정의 3벌 통합): 높이 28px + 테마별 옅은 트랙 틴트 + 테마 인지 글자톤.
    기본 알약탭은 밝은 유리 필터 패널 안을 전제로 한 어두운 하드코딩 글자라, 맨 화면에
    놓이는 이 컨텍스트들은 다크에서 글자가 안 보였다(지적 이력) — --muted/--text로 뒤집는다. */
-.scr-filter-panel .scr-pill-tabs, .scr-match-type-filter .scr-pill-tabs, .scr-rivalry-period .scr-pill-tabs { height: 28px; background: rgba(255, 255, 255, 0.08); }
-.scr-light-theme .scr-filter-panel .scr-pill-tabs, .scr-light-theme .scr-match-type-filter .scr-pill-tabs, .scr-light-theme .scr-rivalry-period .scr-pill-tabs { background: rgba(0, 0, 0, 0.06); }
-.scr-filter-panel .scr-pill-tab-btn:not(.scr-pill-tab-btn-active), .scr-match-type-filter .scr-pill-tab-btn:not(.scr-pill-tab-btn-active), .scr-rivalry-period .scr-pill-tab-btn:not(.scr-pill-tab-btn-active) { color: var(--muted); }
+.scr-filter-panel .scr-pill-tabs { height: 28px; background: rgba(255, 255, 255, 0.08); }
+.scr-light-theme .scr-filter-panel .scr-pill-tabs { background: rgba(0, 0, 0, 0.06); }
+.scr-filter-panel .scr-pill-tab-btn:not(.scr-pill-tab-btn-active) { color: var(--muted); }
 @media (hover: hover) {
-  .scr-filter-panel .scr-pill-tab-btn:hover:not(.scr-pill-tab-btn-active), .scr-match-type-filter .scr-pill-tab-btn:hover:not(.scr-pill-tab-btn-active), .scr-rivalry-period .scr-pill-tab-btn:hover:not(.scr-pill-tab-btn-active) { color: var(--text); }
-}
-/* 기록실 경기유형 필터 로우 — 검색창 바로 위. 공통 필터 라벨(.scr-filter-item-label)은
-   position:absolute; bottom:100%로 항목 "바로 위"에 얹히므로, 필터창(.scr-filter-panel)
-   처럼 위쪽에 라벨 얹힐 공간(padding-top)을 반드시 마련해야 라벨이 알약 바로 위에 온다
-   (안 그러면 위 제목과 겹쳐 엉뚱한 곳에 떠 보인다 — 지적). 라벨은 항목(.scr-filter-item)
-   기준 left:2px라, 항목을 내용폭으로 두고 컨테이너에서 정렬하면 라벨이 알약 좌측과
-   맞는다. PC는 좌측 정렬, 필터가 하나뿐이라 모바일은 가운데 정렬(요청). */
-.scr-match-type-filter { display: flex; padding-top: 16px; margin-bottom: 10px; }
-.scr-match-type-filter .scr-filter-item { flex: 0 0 auto; }
-@media (max-width: 860px) {
-  .scr-match-type-filter { justify-content: center; }
+  .scr-filter-panel .scr-pill-tab-btn:hover:not(.scr-pill-tab-btn-active) { color: var(--text); }
 }
 
 /* 기간필터(월) — OS 기본 달력을 그대로 쓴다(요청: "os기본 기능으로 연결"). 필터창과
@@ -2483,11 +2469,6 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
    (요청: "건수가 scr-filter-bar 쓰고 있고 마진 바텀 가진 문제 — 별도 클래스로 마진
    바텀 없이 목록에 착 붙게"). */
 .scr-filter-bar-count { align-self: flex-end; margin-top: 6px; margin-left: 0; margin-bottom: 0; position: relative; top: 1px; }
-/* 경기 화면 — 유저 검색 + 경기번호 + 메모를 PC에선 한 줄에 나란히(base .scr-filter-inline-stack
-   이 row), 모바일에선 세로로 쌓아 유저/경기번호/메모 3줄로 보이게 한다(요청). PC 한 줄에서
-   유저:(경기번호+메모) = 1:2로 폭을 나눈다(경기번호+메모가 두 필드라 넓게). */
-.scr-match-screen-v2 .scr-search-filter-float { flex: 1 1 0; min-width: 0; }
-.scr-match-screen-v2 .scr-filter-inline-stack > .scr-match-extra-search { flex: 2 1 0; min-width: 0; }
 /* 경기번호·메모 검색 필드(경기 화면 전용) — 유저 검색창 바로 아래에 한 줄로 나란히 두고,
    모바일에서도 한 줄을 유지한다(요청). 라벨 없이 플레이스홀더로만 힌트를 준다(요청). 인풋
    톤은 유저 검색창과 같은 옅은 반투명. */
@@ -2496,45 +2477,16 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
 /* 이제 유저 검색과 같은 인라인 줄(.scr-filter-inline-stack)의 flex 자식이라 자체 width/margin은
    빼고 flex로만 폭을 잡는다(위 규칙). PC는 가로 한 줄(경기번호 | 메모), 모바일은 아래
    미디어쿼리에서 세로로 쪼갠다. */
-.scr-match-extra-search { display: flex; gap: 24px; min-width: 0; }
-/* 세 검색 필드(유저·경기번호·메모)를 크기·디자인·폰트까지 유저 검색창과 완전히 똑같이
-   통일한다(요청). 값은 유저 검색창(.scr-search-filter-float .scr-list-search-input)과
-   동일 — 옅은 반투명 배경, 각진 라운드(10px), caption 폰트. 폰트는 이제 모든 입력 필드
-   공통의 기본 UI 폰트(--font-ui, .scr-input 전역 규칙)를 그대로 물려받는다.
-   선택자 특이도를 .scr-list-search-input 공용 규칙(0,1,0)보다 한 단계 높여(부모 클래스
-   동반, 0,2,0) 그 흰 배경/subhead 폰트/radius-sm/데이터폰트 규칙에 덮이지 않게 한다. */
-.scr-match-extra-search .scr-match-extra-field {
-  flex: 1 1 0; width: auto; min-width: 0; box-sizing: border-box;
-  height: 30px; min-height: 30px;
-  background: rgba(255,255,255,0.08); border: none; border-radius: 10px; box-shadow: none;
-  padding: 0 12px; color: var(--text);
-  font-family: var(--font-ui); font-size: var(--fs-caption);
-}
-.scr-light-theme .scr-match-extra-search .scr-match-extra-field { background: rgba(0,0,0,0.06); }
-.scr-match-extra-search .scr-match-extra-field::placeholder { color: var(--muted); font-size: var(--fs-caption); }
 /* 메모 슬롯 — 메모 인풋 + "내 메모" 체크박스를 한 칸에 담는다. 경기번호 칸은 그리 넓을 필요가
    없어 행을 1:2로 나눠(경기번호 1/3, 메모 영역 2/3, 요청) 메모 영역이 더 넓게 차지한다.
    안에서 인풋이 남는 폭을 먹고(위 .scr-match-extra-field의 flex:1 1 0) 체크박스는 내용만큼만. */
-.scr-match-extra-search .scr-match-extra-memo { flex: 2 1 0; min-width: 0; display: flex; align-items: center; gap: 8px; }
 /* 체크박스 자체 모양/글로우는 공용 .scr-checkbox-field가 담당하고, 여기선 메모 슬롯 안에서의
    배치(내용 크기만큼만, 줄바꿈 금지)와 caption 폰트만 얹는다. */
-.scr-match-mynotes { flex: 0 0 auto; font-size: var(--fs-caption); white-space: nowrap; }
 /* 모바일에선 세 검색 필드 모두 높이를 20% 키운다(30 → 36px, 요청) — 경기 화면 전용
    스코프라 다른 화면(랭킹/전적통계 등)의 유저 검색창 높이는 그대로 둔다. */
-@media (max-width: 640px) {
-  .scr-match-screen-v2 .scr-search-filter-float .scr-list-search-input, .scr-match-screen-v2 .scr-match-extra-search .scr-match-extra-field {
-    height: 36px; min-height: 36px;
-  }
-  /* 모바일: 유저/경기번호/메모 3줄. 인라인 스택은 공용 모바일 규칙(위 2913)이 이미 세로로
-     쌓아 유저 / (경기번호+메모)로 2줄이 되고, 여기서 경기번호와 메모 영역까지 세로로 쪼개
-     총 3줄로 만든다. 줄 간격은 인라인 스택의 세로 갭(16px)과 동일하게 — 다르면 유저↔경기번호
-     사이와 경기번호↔메모 사이 간격이 달라 보인다(지적). */
-  .scr-match-screen-v2 .scr-match-extra-search { flex-direction: column; align-items: stretch; gap: 16px; }
-}
 /* .scr-screen이 이미 형제간 gap을 넣어주므로 자체 마진은 두지 않는다. */
 /* 목록 위 소타이틀(요청: 경기 화면 "경기 목록"). */
 /* 소타이틀 아래 갭 12px(요청: PC·모바일 공통). */
-.scr-v2-subheading { margin: 0 0 12px; font-size: var(--fs-subhead); font-weight: 800; color: var(--text); letter-spacing: 0.02em; }
 /* 좁은 폭에서는 가장 긴 값("26년 1월 1일(월)", 15자 고정폭)이 칸을 넘긴다 — 접히지 않게
    nowrap을 걸어둔 만큼, 대신 글자를 줄여 한 줄 안에 들어오게 한다. 고정폭 폰트라 글자 수 ×
    글자 폭으로 딱 떨어진다(12.5px면 15자가 약 112px). */
@@ -2880,8 +2832,7 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
    개별로 한 스텝 낮춘다. */
 .scr-match-notes { --field-h: 30px; }
 .scr-match-notes .scr-mreq-item-author-name { font-size: var(--fs-micro); }
-.scr-match-notes .scr-mreq-text-part, .scr-match-notes .scr-mreq-live-input { font-size: var(--fs-caption); }
-.scr-match-notes .scr-mreq-chip-editor { font-size: var(--fs-micro); }
+.scr-match-notes .scr-mreq-live-input { font-size: var(--fs-caption); }
 .scr-match-notes .scr-mreq-submit-btn {
   flex-basis: 30px; width: 30px; height: 30px;
   min-width: 30px; min-height: 30px; max-width: 30px; max-height: 30px;
@@ -3084,12 +3035,7 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
    min-width:0으로 눌러 폭을 화면에 맞추면, 넘치는 표는 자기 래퍼(overflow-x:auto)에서만
    가로 스크롤되고 페이지엔 스크롤이 안 생긴다(요청). 위 .scr-match-screen-v2의 clip은
    그래도 새는 극단적 경우를 위한 안전망. */
-.scr-match-list-wrap { position: relative; min-width: 0; }
 .scr-match-list-panel-v2, .scr-match-cards { min-width: 0; }
-.scr-match-list-overlay {
-  position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center;
-  background: rgba(3,3,4,0.74);
-}
 
 /* 카드형: 타이틀(메타)은 위에, 본문(팀1 vs 팀2)은 대칭으로 가로 배치 */
 /* .scr-stat-grid와 동일한 이유로 스크롤 앵커링을 꺼서, 검색 필터 실시간 반영으로 카드
@@ -3527,27 +3473,9 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
 .scr-replay-mapping-result-btns .scr-result-btn { min-width: 72px; }
 
 /* 테두리 없이, hover 시 색만 바뀐다. */
-.scr-replay-loc-trigger {
-  display: inline-flex; align-items: center; justify-content: center; gap: 4px; flex-shrink: 0;
-  background: transparent; border: none; color: var(--dim); cursor: pointer; padding: 2px 4px;
-}
-@media (hover: hover) { .scr-replay-loc-trigger:hover { color: var(--text); } }
 /* 등록하기 버튼 왼쪽의 "리플레이는 어디에 있나요" 툴팁 트리거 — 정보 아이콘 + 문구로
    툴팁임을 한눈에 알 수 있게 한다(요청). 아이콘이 이미 그 역할을 하므로 밑줄은 뺀다.
    좁은 화면에서도 한 줄로 유지한다. */
-.scr-replay-loc-link {
-  /* 툴팁 트리거 링크 폰트 1스텝 축소(요청) — caption(14)→micro(12). */
-  font-size: var(--fs-micro); white-space: nowrap;
-}
-/* 배경/블러/테두리/그림자는 "라이팅 유리 패널 공통"(파일 뒤) 한 벌이 담당 — 여기엔
-   이 팝오버 고유의 기하/레이아웃만. */
-.scr-replay-loc-pop {
-  z-index: 210; border-radius: var(--radius-sm);
-  padding: 10px 12px; display: flex; flex-direction: column; gap: 8px;
-}
-.scr-replay-loc-row { display: flex; flex-direction: column; gap: 2px; font-size: var(--fs-caption); }
-.scr-replay-loc-os { font-weight: 700; color: var(--text); }
-.scr-replay-loc-row .scr-mono { font-size: var(--fs-caption); color: var(--muted); word-break: break-all; }
 
 /* ===== responsive ===== */
 /* 데스크톱은 공간이 넉넉하니 프로필 사진/닉네임을 좀 더 키운다 — 작게 나오면 오히려
@@ -3967,7 +3895,7 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 @media (hover: hover) { .scr-admin-panel-phys-btn:hover { filter: brightness(0.97); } }
 /* 누르는 순간은 즉시 반응(트랜지션 0) — 뗄 때만 위 트랜지션으로 부드럽게 복귀한다
    (요청: 눌림 반응이 느려 보임). 배치 원형/호출하기 버튼도 동일 원칙. */
-.scr-admin-panel-phys-btn:active, .scr-admin-panel-batch-mode:active, .scr-challenge-nawa-btn:active { transition-duration: 0s; }
+.scr-admin-panel-phys-btn:active, .scr-admin-panel-batch-mode:active { transition-duration: 0s; }
 /* 눌리면 바닥면 두께(0 3px 0)만큼 실제로 내려앉게 — 눌린 느낌의 핵심. */
 .scr-admin-panel-phys-btn:active {
   transform: translateY(3px);
@@ -5047,25 +4975,18 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 /* 목록 카드 */
 /* 날짜 그룹 사이 간격을 충분히 넓혀 구분선 없이도 그룹이 갈린다는 게 한눈에 보이게
    한다(요청: "scr-challenge-list 갭을 충분히 증가시키기" — 꺽쇠 장식을 뺀 대신). */
-.scr-challenge-list { display: flex; flex-direction: column; gap: 32px; margin-top: 16px; }
 /* 다가오는/종료된 구획(요청: "다가오는/종료된 목록 분리 및 정렬") — 섹션 제목 하나 +
    그 아래 같은 형태의 카드 목록. */
-.scr-challenge-section { margin-top: 22px; }
 /* 너 나와 화면의 유일한 섹션은 위 .scr-screen의 gap이 이미 소제목/토글링크와 간격을 주므로
    추가 margin이 겹치면 상단 여백이 과했다(신고: "진행중목록 소제목 아래 공간 남는거
    제거") — .scr-screen의 형제간 gap(PC 10px)에서 음수 margin으로 상쇄한다. 예전엔
    ":first-of-type"으로 걸었는데, 그 위 너 나와! 신청 코너(MatchRequestCorner)도 자기
    루트가 <section>이라 이 섹션이 실제로는 두 번째 section이 되어 그 셀렉터가 전혀
    먹지 않고 있었다(그래서 여백이 과하게 남았다) — 화면 클래스로 직접 스코프한다. */
-.scr-challenge-screen-v2 .scr-challenge-section { margin-top: -5px; }
 /* 너나와: "너 나와! 목록" 중타이틀. 예전엔 위쪽 "보고싶은 너 나와!" 코너와 크게 떨어뜨리려고
    margin-top:54px를 뒀는데, 그 코너를 숨기면서 그 자리가 빈 공백으로 남았다(신고: "숨긴
    보고싶은 너 나와! 영역 때문에 공백") — 코너가 없으니 위 여백을 줄인다(버튼 줄의 nawa가
    아래로 넘치는 만큼만 남긴다). 크기는 다른 소제목(.scr-v2-subheading, 16px)과 맞춘다. */
-.scr-challenge-list-heading {
-  margin: 26px 0 0; font-size: var(--fs-subhead); font-weight: 800; color: var(--text);
-  letter-spacing: 0.02em;
-}
 /* "너 나와!" 제목 옆 nawa 이미지 — 타이틀 로우 레이아웃엔 관여하지 않고 그 위에 절대위치로
    그냥 얹는 장식(요청: "레이아웃은 그대로 두고 그림을 붙이는 것, 약간 오른쪽에 치우쳐서").
    툴바(.scr-v2-toolbar, position:relative)를 기준으로 살짝 오른쪽에 배치하고, 세로로는 툴바
@@ -5073,58 +4994,11 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 /* nawa 자체가 버튼(요청) — 예전의 타원 마스크(붕 뜬 그림 느낌) 대신, 축소된 둥근네모
    버튼 프레임 안에 사진을 꽉 채워 진짜 버튼처럼 보이게 한다(요청: 크기 축소 + 버튼
    모양 + 테두리/입체효과 강화). 눌리면 통째로 내려앉는다. */
-.scr-challenge-primary-row { position: relative; }
 /* 제어판 물리 버튼(.scr-admin-panel-phys-btn)과 같은 셰이딩 언어로(요청 — 붉은 옆면
    대각선 명암은 어색하다는 피드백으로 폐기): 또렷한 회색 테두리 + 위 반사광 + 아래
    눌린 홈 + 바닥면(하드 섀도) + 뜬 그림자. 면은 그대로 nawa.jpg 사진. */
-.scr-challenge-nawa-btn {
-  position: relative; display: inline-flex; align-items: center; justify-content: center;
-  /* 모양은 원에 가까운 타원(요청) — 높이를 키워(72→96) 가로세로 비를 좁히고
-     border-radius:50%로 타원을 만든다. */
-  width: 122px; height: 96px; padding: 0; cursor: pointer;
-  border-radius: 50%; overflow: hidden;
-  border: 2px solid #7a7a7a;
-  background: transparent;
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.95),        /* 위 반사광 */
-    inset 0 -4px 3px -2px rgba(0,0,0,0.35),      /* 아래 눌린 홈 */
-    0 3px 0 #6b6b6b,                             /* 바닥면 */
-    0 5px 7px rgba(0,0,0,0.35);                  /* 뜬 그림자 */
-  transition: transform .08s ease, box-shadow .08s ease, filter .08s ease;
-  -webkit-tap-highlight-color: transparent;
-}
-@media (hover: hover) { .scr-challenge-nawa-btn:hover { filter: brightness(0.97); } }
-.scr-challenge-title-nawa {
-  position: absolute; inset: 0; width: 100%; height: 100%;
-  object-fit: cover; pointer-events: none; z-index: 0;
-}
 /* 사진 위 글린트(요청) — 좌상단 스펙큘러 점 + 위쪽 옅은 광택 시트로 유리 덮개 느낌. */
-.scr-challenge-nawa-btn::before {
-  content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none;
-  background:
-    radial-gradient(26px 14px at 24% 22%, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.18) 50%, rgba(255,255,255,0) 75%),
-    linear-gradient(180deg, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0) 45%);
-}
 /* 누르면 제어판 버튼과 같은 방식으로 내려앉는다. */
-.scr-challenge-nawa-btn:active {
-  transform: translateY(2px);
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.95),
-    inset 0 -3px 3px -2px rgba(0,0,0,0.35),
-    0 1px 0 #6b6b6b,
-    0 2px 3px rgba(0,0,0,0.3);
-}
-/* nawa 중앙 "호출하기" — 흰 글씨 + 그림자로 사진 위에서도 또렷하게. 버튼이 작아진 만큼
-   폰트도 한 스텝 내린다(subhead→caption). */
-.scr-challenge-nawa-label {
-  position: relative; z-index: 2; pointer-events: none;
-  /* 텍스트 2스텝 확대(요청): caption → body → subhead. */
-  color: #fff; font-weight: 900; font-size: var(--fs-subhead); letter-spacing: 0.02em;
-  /* 글자를 더 두껍게(요청) — 최대 웨이트(900)에 얇은 스트로크를 더해 실제 획 두께를 키운다. */
-  -webkit-text-stroke: 0.4px #fff;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.8), 0 0 8px rgba(0,0,0,0.55);
-}
-.scr-challenge-screen-v2 .scr-filter-bar { margin-top: 0; margin-bottom: 0; }
 /* 다크 테마에서 카드끼리 배경과 구분이 잘 안 돼서(요청: "다크모드에서 너 나와 카드
    구분이 잘 안됨 글라스테마로") 운영 드롭다운과 같은 반투명 글라스 톤으로. 라이트
    테마는 원래의 불투명 패널을 그대로 유지(아래 .scr-light-theme 오버라이드). */
@@ -5249,39 +5123,21 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
    맞춰야 한다. */
 /* "오늘" 배지 — 양 테마 모두 오렌지로 통일(요청: 라이트에선 검정이었던 걸 오렌지로).
    배경이 항상 오렌지라 글자는 테마 무관 어두운색으로 고정해 또렷하게. */
-.scr-challenge-card-today-tag {
-  display: inline-block; font-size: var(--fs-caption); font-weight: 800; line-height: 1; color: #241802;
-  background: var(--today-orange); border-radius: 4.8px; padding: 3.6px 7.2px; margin-right: 5px; vertical-align: middle;
-}
 /* 경기결과 화면처럼 날짜별로 묶는다(요청: "경기 화면처럼 날짜별로 그룹핑") — 날짜는
    여기 헤더에서만 보여주고, 카드 안에는 시간만 남긴다(요청: "각 카드엔 시간만 표시").
    꺽쇠 장식은 시도해봤다가 뺐다(요청: "꺽쇠는 제거") — 그룹 사이는 부모(.scr-challenge-list)의
    넉넉한 gap만으로 구분한다. */
-.scr-challenge-date-group { display: flex; flex-direction: column; gap: 12px; }
 
 /* "종료된 너 나와! 보기" 토글 — 텍스트 링크. 다가오는 매치 이전(과거에 끝난 너 나와)을 접어
    숨겼다가 눌러서 펼친다(요청). */
-.scr-challenge-toggle-ended-link {
-  align-self: center; background: transparent; border: none; padding: 12px 0; cursor: pointer;
-  font-family: inherit; font-size: var(--fs-body); font-weight: 700; color: var(--muted);
-  text-decoration: underline; text-underline-offset: 2px; margin: 10px 0;
-}
-@media (hover: hover) { .scr-challenge-toggle-ended-link:hover { color: var(--text); } }
 /* 경기 목록의 날짜 줄(.scr-match-date-head)과 같은 이유로 스티키 — 헤더가 스크롤 영역
    밖의 flex 형제로 항상 떠 있고 목록은 그 아래 스크롤 컨테이너에서 시작하므로 top:0으로
    충분하다(요청: "너 나와! 목록도 경기 목록처럼 날짜로 그루핑 하니까 스티키 플로팅
    처리 필요"). */
-.scr-challenge-date-head {
-  /* 구분선 없이 텍스트만 — 글자색은 타이틀과 같은 흰색으로(요청). 폰트는 축소(요청).
-     "오늘"/"NEXT" 배지는 날짜 옆에 인라인으로 나란히. */
-  display: flex; align-items: center; gap: 6px;
-  font-size: var(--fs-body); font-weight: 700; color: var(--text); letter-spacing: 0.02em;
-}
 
 /* 날짜 그룹 안의 시각별 소그룹 — 같은 예정 시각 카드들을 묶고, 그 맨 위에 시간을 한 번만
    보여준다(요청: "카드 시간 표시 삭제, 대신 시간 그루핑해서 제일 위 카드 위에 한번만 표시").
    카드끼리 간격은 날짜 그룹과 동일(12px). */
-.scr-challenge-time-group { display: flex; flex-direction: column; gap: 12px; }
 /* 시간 헤더 — 날짜 헤더보다 한 단계 작고 옅게. 들여쓰기는 없앤다(요청) — 폰트도 축소. */
 .scr-challenge-time-head {
   display: flex; align-items: center; gap: 6px;
@@ -5353,14 +5209,12 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
    맨 위에 딱 붙지 않고 이만큼만 숨 쉴 여유를 남긴다(위의 다른 카드는 안 보인다). 날짜
    헤더가 스티키라 스크롤이 끝난 뒤에도 그 헤더가 카드 위에 계속 떠 있으므로, 헤더
    높이만큼 여유를 더 크게 잡는다. */
-.scr-challenge-card-slot { display: flex; flex-direction: column; min-width: 0; scroll-margin-top: calc(var(--safe-top) + 44px); }
 
 /* "오늘"에서 스크롤이 딱 걸리게(요청: "타임라인에 오늘 표시하고 지나가다 딱 걸리게") —
    오늘 그룹 하나만 스냅 타깃이라, proximity로 그 근처에서만 딱 멈추고 나머지는 자유
    스크롤. scroll-padding-top으로 상단 안전영역/헤더만큼 비켜 걸리게 한다. 이 화면(scr-snap-today
    클래스)에서만 켠다. (JS 기반 임계값 방식도 시도해봤으나 "이전 느낌이 더 좋다"는 피드백으로
    되돌림.) */
-html.scr-snap-today { scroll-snap-type: y proximity; scroll-padding-top: calc(var(--safe-top) + 10px); }
 /* proximity + 기본 stop(normal) — 오늘 근처에서 멈추면 딱 걸리되, 빠른 플링이나 진입 시
    NEXT로의 자동 스크롤이 오늘에 강제로 멈춰 끊기지 않게 한다(scroll-snap-stop:always는
    그 프로그램 스크롤까지 가로채 위험). "미정" 그룹은 보통 목록 맨 위(과거 쪽 끝)에 있어서,
@@ -5368,7 +5222,6 @@ html.scr-snap-today { scroll-snap-type: y proximity; scroll-padding-top: calc(va
    되돌아갔다(실제로 지적받은 문제 — "위로 올라가고 싶어도 미정 스냅에 걸려서 되돌아가는
    버그") — 스냅 타깃에서 뺀다. 눈금(타임라인)/뱃지는 그대로 두고 스크롤 정지 동작에서만
    제외한다. */
-.scr-snap-today .scr-challenge-date-group[data-today="1"] { scroll-snap-align: start; }
 
 /* 우측 네비게이션 타임라인(요청: "위가 과거 아래가 미래, 현재 위치 표시, 스크롤 시에만
    보임"). 목록이 과거(위)→미래(아래) 순이라 스크롤 위치(0~1)를 그대로 세로 축에 매핑한다.
@@ -5473,20 +5326,6 @@ html.scr-snap-today { scroll-snap-type: y proximity; scroll-padding-top: calc(va
    "스냅이 바가 아니라 글자에 걸리는 문제") — 컨테이너의 플로우 콘텐츠는 선(::before)
    하나만 남기고, 라벨은 그 위에 절대 위치로 얹어서 컨테이너 중앙(=스크롤 위치)은 항상
    선 기준으로 유지한다. */
-.scr-scroll-timeline-today {
-  position: absolute; left: 50%; transform: translate(-50%, -50%);
-  display: flex; align-items: center;
-}
-.scr-scroll-timeline-today::before {
-  content: ""; width: 16px; height: 2px; border-radius: 2px;
-  background: var(--today-orange);
-}
-.scr-scroll-timeline-today::after {
-  content: "오늘"; position: absolute; left: 50%; bottom: 100%; margin-bottom: 2px;
-  transform: translateX(-50%);
-  font-size: var(--fs-micro); font-weight: 800; color: var(--today-orange);
-  white-space: nowrap;
-}
 /* 피드 타임라인의 "현재" 눈금(요청) — 미래↔과거 경계(피드 목록의 현재 구분선) 위치를
    트랙에 찍는다. 너 나와의 "오늘" 눈금과 같은 모양·크기, 색만 포인트색으로 구분한다. */
 .scr-scroll-timeline-now {
@@ -6119,29 +5958,7 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
 /* 화이트보드 테마는 폐지(요청) — 아래 도전장 목록 카드(.scr-challenge-card)와 같은 유리
    패널 톤으로 맞춰 화면 전체의 일관성을 준다. 토큰 재정의 없이 기본 테마 색을 그대로 써서
    자식(제목/칩/버튼/입력)이 목록 카드와 동일하게 보인다. */
-.scr-mreq-corner {
-  position: relative;
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(9px) saturate(1.2);
-  -webkit-backdrop-filter: blur(9px) saturate(1.2);
-  border-radius: 14px;
-  padding: 13px 15px; display: flex; flex-direction: column; gap: 10px;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.09),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.045),
-    0 2px 12px rgba(0, 0, 0, 0.16);
-}
 /* 라이트 테마 — 목록 카드(.scr-light-theme .scr-challenge-card)와 동일한 불투명 유리 톤. */
-.scr-light-theme .scr-mreq-corner {
-  background: rgba(255, 255, 255, 0.62);
-  backdrop-filter: blur(10px) saturate(1.1);
-  -webkit-backdrop-filter: blur(10px) saturate(1.1);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.85),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.5),
-    0 0 0 1px rgba(59, 130, 246, 0.18),
-    0 1px 6px rgba(0, 0, 0, 0.08);
-}
 .scr-mreq-compose { display: flex; flex-direction: column; gap: 8px; }
 /* 인풋과 확인 버튼을 한 줄에 나란히, 높이도 서로 맞춘다(요청: "지우기 확인을 인풋과
    같은 라인에 배치하고 높이도 일치시킴") — align-items 기본값(stretch)이 두 자식을
@@ -6198,7 +6015,6 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
   box-shadow: inset 0 1px 2px rgba(0,0,0,0.06), 0 0 0 1px rgba(59,130,246,0.35);
 }
 /* 확정된 평문 조각 — 다시 편집은 안 되고 그냥 흘러가는 문장의 일부로 보인다. */
-.scr-mreq-text-part { flex-shrink: 0; white-space: pre; color: var(--text); font-size: var(--fs-body); }
 /* 지금 타이핑 중인 마지막 조각 — 칩들 옆에 이어지는 진짜 인풋(검색창의
    .scr-search-chip-input과 동일 패턴). 테두리/배경은 바깥 박스가 이미 그려주니 여긴
    완전히 투명하게. */
@@ -6270,8 +6086,6 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
    동일한 되돌리기 동작). */
 /* x 버튼이 없어져서(요청: "요청하기 입력에서는 유저칩에 x 버튼 제거") 좌우 패딩을
    다시 대칭으로. */
-.scr-mreq-chip-editor { flex-shrink: 0; padding: 1px 6px; }
-.scr-mreq-empty { font-size: var(--fs-body); color: var(--dim); padding: 6px 2px; text-align: center; }
 .scr-mreq-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 /* 요청자+버튼 줄, 메시지 줄 — 세로로 두 단(요청: "요청자와 버튼로우가 한줄에 배치"). */
 .scr-mreq-item {
@@ -6290,46 +6104,12 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
 /* 추천(엄지척) 버튼 — 눌렀으면 포인트색으로 채운다. */
 /* 알약 테두리/배경 없이 아이콘+숫자만(요청: "추천버튼 알약 테두리및 배경 제거") —
    눌렀는지는 색으로만 구분한다. */
-.scr-mreq-rec-btn {
-  display: inline-flex; align-items: center; gap: 4px; padding: 4px 6px;
-  background: transparent; border: none;
-  color: var(--muted); font-size: var(--fs-caption); font-weight: 700; cursor: pointer;
-  font-variant-numeric: tabular-nums; transition: color .12s;
-}
-@media (hover: hover) { .scr-mreq-rec-btn:hover { color: var(--text); } }
-.scr-mreq-rec-btn-on { color: var(--point); }
 /* 누가 추천했는지 PC 마우스오버 팝오버(요청) — 마우스가 실제로 되는 입력장치에서만
    켠다(터치 화면은 탭 후 :hover가 고착돼 계속 떠 있는 문제가 있어, 다른 곳의
    scr-period-sort-btn 등과 같은 원칙으로 원천 차단). */
-.scr-mreq-rec-wrap { position: relative; display: inline-flex; }
-.scr-mreq-rec-pop {
-  position: absolute; left: 50%; bottom: calc(100% + 6px); transform: translateX(-50%) translateY(4px);
-  z-index: 20; min-width: 96px; max-width: 220px; max-height: 200px; overflow-y: auto;
-  background: var(--panel-solid); border: 1px solid var(--line); border-radius: var(--radius-sm);
-  box-shadow: 0 6px 18px rgba(0,0,0,0.28); padding: 6px; display: flex; flex-direction: column; gap: 4px;
-  opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .12s, transform .12s;
-}
-@media (hover: hover) and (pointer: fine) {
-  .scr-mreq-rec-wrap:hover .scr-mreq-rec-pop {
-    opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0);
-  }
-}
-.scr-mreq-rec-pop-row { display: flex; align-items: center; gap: 6px; }
-.scr-mreq-rec-pop-row span { font-size: var(--fs-caption); color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* "성사됨"은 항목마다 상시 노출하기엔 무거운 액션이라 케밥(⋮) 메뉴 안으로(요청).
    버튼/드롭다운 자체는 경기 목록 케밥과 톤을 맞춰 .scr-match-memo-btn·.scr-menu-pop-drop을
    그대로 재사용한다. */
-.scr-mreq-kebab { display: inline-flex; flex-shrink: 0; }
-.scr-mreq-kebab-btn { padding: 4px; margin: 0; }
-.scr-mreq-kebab-drop { min-width: 96px; }
-.scr-mreq-pager { display: flex; align-items: center; justify-content: center; gap: 12px; padding-top: 4px; }
-.scr-mreq-pager-btn {
-  background: transparent; border: 1px solid var(--line); border-radius: var(--radius-sm);
-  color: var(--muted); font-size: var(--fs-caption); font-weight: 600; padding: 4px 12px; cursor: pointer;
-}
-.scr-mreq-pager-btn:disabled { opacity: 0.4; cursor: default; }
-@media (hover: hover) { .scr-mreq-pager-btn:not(:disabled):hover { color: var(--text); border-color: var(--pipe-bright); } }
-.scr-mreq-pager-info { font-size: var(--fs-caption); color: var(--dim); font-variant-numeric: tabular-nums; }
 /* ===== 너 나와! 신청 언급 알림 인박스 팝업 ===== */
 .scr-mreq-inbox-lead { margin: 0 0 10px; font-size: var(--fs-body); font-weight: 700; color: var(--text); }
 .scr-mreq-inbox-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
@@ -6376,7 +6156,6 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
   .scr-match-trow-outcome { font-size: var(--fs-body); }
   /* 타임라인 폰트 한 단계 축소(날짜 알약 14→12, 끝/오늘 라벨 12→11) */
   .scr-scroll-timeline-end { font-size: var(--fs-11); }
-  .scr-scroll-timeline-today::after { font-size: var(--fs-11); }
   .scr-scroll-timeline-date { font-size: var(--fs-11); }
   /* 도전장 보내기 힌트 두 단계 축소(20→14) */
   .scr-challenge-form-modal .scr-hint { font-size: var(--fs-caption); }
@@ -6422,7 +6201,6 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
 .scr-team-outcome { font-size: var(--fs-body); }
 .scr-match-trow-outcome { font-size: var(--fs-body); }
 .scr-scroll-timeline-end { font-size: var(--fs-11); }
-.scr-scroll-timeline-today::after { font-size: var(--fs-11); }
 /* 한 스텝 더 축소(요청) — 다이얼 위로 올라가면서 더 작아도 읽힌다. */
 .scr-scroll-timeline-date { font-size: var(--fs-11); }
 .scr-challenge-form-modal .scr-hint { font-size: var(--fs-caption); }
@@ -6466,7 +6244,7 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
    radius/padding/레이아웃만 더한다. 새 팝오버가 생기면 이 선택자 목록에만 추가하면 된다.
    블러+채도를 세게 줘서, 반투명해도 글자가 또렷하게 읽히면서 뒤 콘텐츠가 유리처럼
    은은히 비친다(라이팅 테마의 핵심). */
-.scr-select-drop, .scr-cselect-drop, .scr-pv-drop, .scr-menu-pop-drop, .scr-infotip-bubble, .scr-replay-loc-pop {
+.scr-select-drop, .scr-cselect-drop, .scr-pv-drop, .scr-menu-pop-drop, .scr-infotip-bubble {
   border: none;
   background: var(--dd-panel-bg);
   -webkit-backdrop-filter: blur(18px) saturate(1.3);
@@ -6481,13 +6259,13 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
    단계 더 투명한 --tip-panel-bg로 덮고 — 투명해진 만큼 블러를 조금 더 줘 글자 가독성을
    지킨다(다크·라이트 공통). 새 툴팁/안내 팝오버는 이 목록에만 추가하면 같은 표준을
    그대로 물려받는다. 드롭다운(선택 메뉴)은 가독성 우선이라 여기서 제외한다. */
-.scr-infotip-bubble, .scr-replay-loc-pop {
+.scr-infotip-bubble {
   background: var(--tip-panel-bg);
   -webkit-backdrop-filter: blur(22px) saturate(1.35);
   backdrop-filter: blur(22px) saturate(1.35);
 }
 /* 라이트는 밝은 배경이라 위쪽 반사광을 또렷하게, 그림자는 옅게. */
-.scr-light-theme .scr-select-drop, .scr-light-theme .scr-cselect-drop, .scr-light-theme .scr-pv-drop, .scr-light-theme .scr-menu-pop-drop, .scr-light-theme .scr-infotip-bubble, .scr-light-theme .scr-replay-loc-pop {
+.scr-light-theme .scr-select-drop, .scr-light-theme .scr-cselect-drop, .scr-light-theme .scr-pv-drop, .scr-light-theme .scr-menu-pop-drop, .scr-light-theme .scr-infotip-bubble {
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,0.7),
     0 6px 18px rgba(0,0,0,0.12);
@@ -6918,33 +6696,8 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 /* 개인전/팀전 탭(요청: 루페 스타일) — 하단 탭바의 물방울(.scr-mobile-tab-indicator)을
    그대로 재사용하고, 위치만 이 탭줄 기준으로 다시 잡는다: 두 탭이 정확히 반반이라
    JS 실측 없이 폭 50% + translateX(0%/100%)로 슬라이드한다. */
-.scr-rivalry-tabs {
-  position: relative; display: flex; width: 210px; margin: 2px auto 6px;
-}
-.scr-rivalry-tab-indicator {
-  /* 재사용하는 원본이 left:0 + transition(transform/width 등)을 이미 갖고 있다 —
-     여기선 크기만 이 탭줄에 맞춘다(세로는 탭바처럼 버튼보다 살짝 크게). */
-  top: -3px; bottom: -3px; width: 50%; height: auto;
-}
 /* 기간 필터 줄(전체/월 알약탭 + 달력) — 지도 위 가운데 정렬. */
-.scr-rivalry-period { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 6px; }
-/* (알약탭 배경/높이/글자톤은 컴팩트 알약탭 공통 규칙으로 통합 — .scr-pill-tabs 정의부 참고.) */
-.scr-rivalry-period .scr-pill-tab-btn { font-size: var(--fs-caption); }
-.scr-rivalry-period .scr-filter-month-input {
-  background: rgba(255,255,255,0.08); color: var(--text); color-scheme: dark;
-  height: 28px; font-size: var(--fs-caption); min-width: 108px; border-radius: 10px; padding: 0 8px;
-}
-.scr-light-theme .scr-rivalry-period .scr-filter-month-input {
-  background: rgba(0,0,0,0.06); color: var(--text); color-scheme: light;
-}
-.scr-rivalry-tab {
-  flex: 1; position: relative; z-index: 1;
-  background: transparent; border: none; cursor: pointer; text-align: center;
-  padding: 7px 0; color: var(--muted); font-family: inherit; font-size: var(--fs-caption);
-  -webkit-tap-highlight-color: transparent;
-}
 /* 활성 탭 — 하단 탭바와 같은 규칙: 밝은 글로우 위 검정 글자 + 폰트 1스텝 확대. */
-.scr-rivalry-tab-active { color: #10151a; font-weight: 700; font-size: var(--fs-body); }
 /* 정사각 캔버스 — 칩은 %, 선은 같은 0~100 좌표계의 SVG(viewBox)로 그려 서로 정확히 겹친다. */
 .scr-rivalry-wrap { position: relative; width: 100%; max-width: 560px; margin: 0 auto; aspect-ratio: 1; }
 /* PC에선 셸이 넓어졌으니(1280px) 상성 정사각도 더 크게 — 로딩 플레이스홀더와 값을 맞춰
@@ -7277,7 +7030,6 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 /* 라이트 테마의 --point는 검정(맥락별 용도)이라 멘션 강조로는 약하다 — 읽히는 앰버로. */
 html.scr-light-theme .scr-feed-comments .scr-mreq-chip-inline { color: #c07c1c; }
 /* 입력·수정창의 유저칩 — 좌우 패딩을 줄여 문장에 더 잘 섞이게(요청). */
-.scr-feed-comments .scr-mreq-chip-editor { font-size: var(--fs-caption); padding: 1px 3px; }
 .scr-feed-shift-row { font-size: var(--fs-caption); }
 /* 접힘 상태 윗줄은 이제 케밥(절대배치)뿐이라 자리 예약이 필요 없다. */
 .scr-feed-match-body .scr-match-trow-topline { min-height: 0; }

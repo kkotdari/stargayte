@@ -136,12 +136,12 @@ export interface MatchAuthor {
 }
 
 // 경기 댓글(메모)에 언급(@)된 회원 — 렌더 시 인라인 칩으로 표시한다.
-export interface MatchNoteMention {
+export interface FeedCommentMention {
   memberId: string;
   nickname: string;
 }
 
-export interface MatchNoteAuthor {
+export interface FeedCommentAuthor {
   memberId: string;
   nickname: string;
   avatar: string | null;
@@ -174,23 +174,13 @@ export interface FeedComment {
   targetType: FeedTargetType;
   targetId: number;
   text: string;
-  author: MatchNoteAuthor;
+  author: FeedCommentAuthor;
   createdAt: string;
   updatedAt: string;
   canEdit: boolean;
-  mentions: MatchNoteMention[];
+  mentions: FeedCommentMention[];
 }
 
-export interface MatchNote {
-  id: number;
-  matchId: number;
-  text: string;
-  author: MatchNoteAuthor;
-  createdAt: string;
-  updatedAt: string;
-  canEdit: boolean;
-  mentions: MatchNoteMention[];
-}
 
 // 저장된 경기
 export interface Match {
@@ -214,14 +204,11 @@ export interface Match {
   // (replaySummaryData.ts 참고), 닉네임이나 표현이 나중에 바뀌어도 보는 시점의 값으로 읽힌다.
   // 사람이 쓴 글이 아니라 파생 데이터라 리플레이를 다시 올리면 덮어쓴다. 재료가 모자라면 null.
   summaryData: ReplaySummaryData | null;
-  // 이 경기에 달린 댓글(메모) — 목록 응답에 함께 실려 온다(오래된 순). 검색창에서 댓글
-  // 내용으로도 필터하고, 펼침 시 하단 댓글 영역에 렌더한다.
-  notes: MatchNote[];
 }
 
 // 경기 생성/수정 요청 (id, 작성자는 서버가 채움). 리플레이는 업로드 payload(id 없음)로 보낸다.
 // 댓글은 별도 API로 관리하므로 경기 저장 payload에는 넣지 않는다.
-export type NewMatch = Omit<Match, "id" | "matchNo" | "createdBy" | "replay" | "notes"> & {
+export type NewMatch = Omit<Match, "id" | "matchNo" | "createdBy" | "replay"> & {
   replay: ReplayUpload | null;
 };
 
@@ -350,7 +337,9 @@ export interface MonthlyTeamRankingResponse {
 // 회원 누구나 접근 가능(역할 기준으로만 판단 — 예전에 있던 메뉴 권한 매트릭스는 역할이
 // 운영자/회원 둘로 단순화되면서 없앴다).
 // "ranking"은 폐기 — 랭킹은 통계 화면(포인트 컬럼)에 통합됐다(요청).
-export type ScreenKey = "feed" | "match" | "challenge" | "stats" | "members" | "leagues" | "rivalry";
+// 실제로 갈 수 있는 화면만 남긴다 — 기록실("match")·너 나와! 전용 화면("challenge")·
+// 상성맵 화면("rivalry")은 메뉴에서 빠진 뒤 어디서도 이동하지 않아 함께 걷어냈다(요청).
+export type ScreenKey = "feed" | "stats" | "members" | "leagues";
 
 // 랭킹/경기결과/전적통계 등 화면·메뉴 구성을 어느 버전 세트로 보여줄지 — 제어판에서 등록된
 // 버전 중 하나로 배포하면 앱 전체가 즉시 바뀐다(개인별 설정이 아니라 서버에 저장된 전역 값).
