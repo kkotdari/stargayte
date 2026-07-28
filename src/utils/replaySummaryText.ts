@@ -1173,6 +1173,16 @@ const TEMPLATES: Record<string, Tpl> = {
   scatter: (c) => {
     const spots = num(c.p.spots);
     if (spots <= 0) return null;
+    // 양쪽이 다 그랬으면 한 문장으로 말한다(mergeScatter) — 서로 도망 다닌 한 장면이라
+    // 두 문장으로 나누면 후반이 자리를 둘이나 먹는다.
+    if (c.p.bothSides === true) {
+      const both = c.duel ? "둘 다" : "양 팀 모두";
+      return `${both} ${c.pick([
+        `한자리에 못 있고 ${spots}군데 넘게 건물을 벌려 지으며 버팀`,
+        `자리를 내주고 옮겨 가며 ${spots}군데 넘게 살림을 새로 차림`,
+        `맵 곳곳 ${spots}군데 넘게 건물을 흩어 놓음`,
+      ])}`;
+    }
     return `${ga(c.who)} ${done(c, c.pick([
       // 어미는 CONNECTIVE 표에 있는 것만 쓴다(버팀·놓음·지음) — 표에 없으면 평서형으로
       // 안 바뀌어 "…살림을 흩음." 처럼 명사형이 그대로 남는다(실제로 그렇게 나왔다).

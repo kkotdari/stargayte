@@ -553,6 +553,34 @@ function mergeDuelRush(list: Beat[]): Beat[] {
 
 /** 양쪽이 같은 짓을 했으면 한 문장으로 묶는다(요청: "누구와 누구가 서로 ~함").
  *  재료가 다르면 묶지 않는다 — 9드론과 12드론을 한 숫자로 말하면 한쪽이 거짓이 된다. */
+/** 양쪽이 똑같이 '맵 곳곳에 흩어 지었다'면 한 문장으로 묶는다. mergeMutual은 p가 완전히
+ *  같을 때만 묶는데 흩어진 군데 수는 사람마다 달라서 안 묶였고, 그 바람에 후반 비트 두 개가
+ *  자리를 둘이나 먹었다(지적: "후반이 너무 강해져서 초중반 내용이 사라졌다"). 애초에
+ *  서로 도망 다닌 한 장면이라 한 문장이 맞다. */
+function mergeScatter(list: Beat[]): Beat[] {
+  const scatters = list.filter((b) => b.k === "scatter");
+  if (scatters.length < 2) return list;
+  const w = scatters.find((b) => b.won);
+  const l = scatters.find((b) => !b.won);
+  if (!w || !l) return list;
+  const ats = [w.at, l.at].filter((x): x is number => x !== null && x !== undefined);
+  const merged: Beat = {
+    ...w,
+    who: [...w.who, ...l.who],
+    at: ats.length > 0 ? Math.min(...ats) : null,
+    weight: Math.max(w.weight, l.weight),
+    p: {
+      ...(w.p ?? {}),
+      // 한 문장으로 말할 땐 '몇 군데'가 사람마다 다르니 적은 쪽을 기준으로 말한다.
+      spots: Math.min(Number(w.p?.spots ?? 0), Number(l.p?.spots ?? 0)),
+      // 'mutual'은 렌더러가 문장 앞에 "서로 "를 붙이는 신호로 이미 쓰고 있다 — 여기서
+      // 쓰면 "둘 다 서로 …"가 된다. 다른 이름으로 둔다.
+      bothSides: true,
+    },
+  };
+  return [...list.filter((b) => b.k !== "scatter"), merged];
+}
+
 function mergeMutual(list: Beat[]): Beat[] {
   const byKey = new Map<string, Beat[]>();
   for (const b of list) {
@@ -1423,7 +1451,7 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     ...(breached ? [breached] : []),
     ...mergeSameFate(greedyBeats, "greedy-punished"),
     ...gangBeats,
-    ...mergeMutual(tactics),
+    ...mergeScatter(mergeMutual(tactics)),
     ...sideBeats({
       side: winner, other: loser, players: winnerPlayers,
       won: true, sec, totalFrames, pressedEarly: false,
@@ -1452,15 +1480,40 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   // 77기를 뽑은 편의 조합이 계속 안 나온 게 이 자리 싸움 때문이었다.
   const loserStand = pool.find((b) => b.k === "stand" && !b.won);
   if (loserStand) chosen.push(loserStand);
-  for (const b of [...pool].sort((x, y) => y.weight - x.weight)) {
-    if (b === loserStand) continue;
-    if (chosen.length >= budget - 1) break;
-    if (b.weight < MIN_WEIGHT) break; // 무게순이라 하나 미달이면 뒤는 전부 미달이다
+
+  // 한 국면이 자리를 다 먹지 않게 초/중/후로 나눠 상한을 둔다(지적: "후반이 너무 강해져서
+  // 초중반 내용은 사라져버렸어"). 후반 비트들이 대체로 무겁다 보니(주력 조합·물량·흩어
+  // 짓기) 무게순으로만 고르면 뒷이야기만 남고 빌드·러시 같은 앞이야기가 통째로 빠졌다.
+  // 시점을 못 잡은 문장은 맺음말 앞에 붙으므로 후반으로 친다.
+  const phaseOf = (b: Beat): 0 | 1 | 2 => {
+    if (!totalFrames || b.at === null || b.at === undefined) return 2;
+    const r = b.at / totalFrames;
+    return r < 1 / 3 ? 0 : r < 2 / 3 ? 1 : 2;
+  };
+  const slots = budget - 1;
+  // 한 국면이 절반을 넘지 않게 — 자리가 여섯이면 국면당 셋까지다.
+  const perPhaseMax = Math.max(1, Math.ceil(slots / 2));
+  const taken: [number, number, number] = [0, 0, 0];
+  if (loserStand) taken[phaseOf(loserStand)] += 1;
+
+  const ranked = [...pool].sort((x, y) => y.weight - x.weight);
+  const consider = (b: Beat, capped: boolean): boolean => {
+    if (b === loserStand || chosen.includes(b)) return false;
+    if (chosen.length >= slots) return false;
+    if (b.weight < MIN_WEIGHT) return false;
+    if (capped && taken[phaseOf(b)] >= perPhaseMax) return false;
     if (b.dedupeOn && chosen.some((x) => renderReplaySummary(
       { v: REPLAY_SUMMARY_VERSION, beats: [strip(x)] }, (raw) => raw,
-    )?.includes(b.dedupeOn!))) continue;
+    )?.includes(b.dedupeOn!))) return false;
     chosen.push(b);
-  }
+    taken[phaseOf(b)] += 1;
+    return true;
+  };
+  // 1차: 국면 상한을 지키며 무게순으로 채운다.
+  for (const b of ranked) consider(b, true);
+  // 2차: 그래도 자리가 남으면(한쪽 국면에만 이야기가 몰린 경기) 상한을 풀고 마저 채운다 —
+  // 균형을 맞추자고 쓸 수 있는 이야기를 버리지는 않는다.
+  for (const b of ranked) consider(b, false);
   // 이야기의 뼈대는 시간이다(지적) — 편끼리 묶는다고 시간을 넘나들면 앞뒤가 뒤집혀 읽힌다.
   // 그래서 먼저 시간순으로 세우고, 같은 편 이야기를 붙이는 건 '거의 같은 때'에 벌어진
   // 일들 안에서만 한다. 시점을 못 잡은 문장(올인처럼 한 순간이 아닌 것)은 맺음말 앞으로 밀린다.
