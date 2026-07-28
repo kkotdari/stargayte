@@ -1551,14 +1551,20 @@ export function renderReplaySummary(
         // 이야기다(지적) — 그런 둘은 이음말로 갈라 놓지 말고 한 문장으로 잇는다.
         || ((prev.whom ?? []).length > 0 && (b.whom ?? []).length > 0))
       && (gapSec === null || gapSec <= STANDOFF_SEC);
-    /** 앞 문장을 '-지만'으로 바꿔 이번 문장을 이어 붙일 수 있나. */
-    const canFlipJoin = (): boolean => {
+    /** 앞 문장에 이번 문장을 이어 붙일 수 있나 — 앞 문장이 이미 이음말로 시작하거나
+     *  제 안에 이어 주는 어미를 품고 있으면 안 된다(접속이 두 번 겹친다). */
+    const canJoin = (): boolean => {
       const line = out.length > 0 ? out[out.length - 1] : "";
       if (line === "" || chainCount !== 0) return false;
       if (new RegExp(`^${LINK_HEAD()} `).test(line)) return false;
-      if (/지만|으나|다가/.test(line)) return false;
-      return !!toBut(line);
+      return !/지만|으나|다가/.test(line);
     };
+    /** 앞 문장을 '-지만'으로 바꿔 이번 문장을 이어 붙일 수 있나. */
+    const canFlipJoin = (): boolean => canJoin() && !!toBut(out[out.length - 1]);
+    /** 대등한 두 이야기를 '-고'로 이어 붙일 수 있나(요청) — 앞 문장이 그 사람을 주어로
+     *  세우고 시작해야 뒷마디가 제자리를 찾는다. */
+    const canAndJoin = (): boolean =>
+      canJoin() && !!toAnd(out[out.length - 1]) && prevLedBy(lastBaseWho);
     // 거의 같은 때에 벌어진 서로 다른 사람의 일은 한 문장으로 잇는 편이 자연스럽다
     // (요청: "브래드는 ~했고 정구는 ~했음"). 같은 사람 이야기면 주어가 겹쳐 어색해 뺀다.
     const sharesWho = (b.who ?? []).some((w) => (prev?.who ?? []).includes(w));
@@ -1613,8 +1619,10 @@ export function renderReplaySummary(
           teamTag = teamTagFor();
         }
       } else if (sameTide) {
-        // 같은 편 이야기가 거의 같은 때에 겹쳤을 뿐이라, 동시성만 짚는다.
-        linkWord = link(["그와 동시에", "한편"]);
+        // 대등한 두 이야기는 "…했고 …했다"로 바로 잇는다(요청). 못 이을 때만 동시성을
+        // 짚는 말을 앞에 단다.
+        if (canAndJoin()) joinPrev = true;
+        else linkWord = link(["그와 동시에", "한편"]);
       }
     // 시간이 많이 벌어진 자리는 반드시 짚는다 — 안 짚으면 바로 이어진 일로 읽힌다(요청).
     } else if (
@@ -1624,8 +1632,7 @@ export function renderReplaySummary(
       // 전황이 갈리지 않았고 같은 편 이야기면 잇는다 — 총 생산량처럼 어느 순간을 짚지
       // 않는 문장(tide 0)도 같은 편의 우세를 말하는 것이라 여기에 들어온다.
       linkable && !flipped && !crossTeam && !!prev!.won === !!b.won
-      && !sharesWho && closeEnough && chainCount === 0
-      && seed % 2 === 0 && out.length > 0 && !!toAnd(out[out.length - 1])
+      && !sharesWho && closeEnough && (sameTide || seed % 2 === 0) && canAndJoin()
     ) {
       joinPrev = true;
     } else if (linkable && gapSec !== null && (flipped || gapSec > STANDOFF_SEC || seed % 3 === 0)) {
