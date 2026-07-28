@@ -362,6 +362,40 @@ function mergeRaids(list: Beat[]): Beat[] {
   return [...list.filter((b) => !raids.includes(b)), ...merged];
 }
 
+/** 같은 수를 비슷한 때에 서로 갔는데 한쪽만 통했다면, 그건 두 문장이 아니라 한 문장이다
+ *  (지적: 파괴됐는데 그 다음에 러시를 갔다니 이상하다) — "제롬과 군범이 3게이트 질럿
+ *  러쉬를 갔는데 제롬은 막히고 군범은 제롬의 기지를 반파함". */
+function mergeDuelRush(list: Beat[]): Beat[] {
+  const raids = list.filter(
+    (b) => b.k === "raid-damage" && b.p?.k && (b.whom?.length ?? 0) > 0 && !b.p?.ks,
+  );
+  const backs = list.filter((b) => b.k === "rush-backfire");
+  if (raids.length === 0 || backs.length === 0) return list;
+  const used = new Set<Beat>();
+  const merged: Beat[] = [];
+  for (const r of raids) {
+    const victim = r.whom?.[0];
+    const key = String(r.p?.k ?? "");
+    const bk = backs.find(
+      (x) =>
+        !used.has(x) && x.who[0] === victim && String(x.p?.k ?? "") === key
+        // 같은 이름의 수여야 한 문장으로 묶을 수 있다 — 3게이트와 4게이트는 다른 수다.
+        && tacticParam(key, x.p) === tacticParam(key, r.p)
+        && Math.abs((x.at ?? 0) - (r.at ?? 0)) * SECONDS_PER_FRAME <= RAID_MERGE_SEC,
+    );
+    if (!bk) continue;
+    used.add(bk);
+    used.add(r);
+    merged.push({
+      ...r, k: "duel-rush",
+      weight: Math.max(r.weight, bk.weight) + 2,
+      at: Math.min(r.at ?? 0, bk.at ?? 0),
+    });
+  }
+  if (merged.length === 0) return list;
+  return [...list.filter((b) => !used.has(b)), ...merged];
+}
+
 /** 양쪽이 같은 짓을 했으면 한 문장으로 묶는다(요청: "누구와 누구가 서로 ~함").
  *  재료가 다르면 묶지 않는다 — 9드론과 12드론을 한 숫자로 말하면 한쪽이 거짓이 된다. */
 function mergeMutual(list: Beat[]): Beat[] {
@@ -919,10 +953,10 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     return null;
   })();
 
-  const tactics = mergeRaids(mergeGg(
+  const tactics = mergeDuelRush(mergeRaids(mergeGg(
     [...tacticBeats(true), ...tacticBeats(false)],
     (won) => (won ? winnerPlayers.length : loserPlayers.length),
-  ));
+  )));
   // 탱크 방어 문장이 "조조를 밀어냄"까지 말했으면 "조조가 먼저 정리됨"을 또 붙이지 않는다.
   // 여기서만 이름으로 거른다 — 렌더된 문장을 훑는 일반 dedupe는 이름이 우연히 겹치는
   // 다른 문장까지 지워버린다.

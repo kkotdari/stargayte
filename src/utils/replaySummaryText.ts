@@ -59,6 +59,16 @@ export const PRODUCTION_KO: Record<string, string> = {
   "Robotics Facility": "로보", Hatchery: "해처리",
 };
 
+/** 문장에 쓸 만한 건물 이름 — 여기 없는 건물은 그냥 '건물'이라고만 말한다. */
+export const BUILDING_KO: Record<string, string> = {
+  ...DEFENSE_KO, ...PRODUCTION_KO,
+  Pylon: "파일런", "Supply Depot": "서플라이", "Creep Colony": "크립 콜로니",
+  Forge: "포지", Academy: "아카데미", Armory: "아머리", Observatory: "옵저버토리",
+  "Nydus Canal": "커널", "Engineering Bay": "엔지니어링 베이", Refinery: "리파이너리",
+  Assimilator: "어시밀레이터", Extractor: "익스트랙터", Nexus: "넥서스",
+  "Command Center": "커맨드", Hatchery: "해처리",
+};
+
 export const EXPANSION_KO: Record<string, string> = {
   Hatchery: "해처리", Nexus: "넥서스", "Command Center": "커맨드",
 };
@@ -356,13 +366,15 @@ const TEMPLATES: Record<string, Tpl> = {
     // "Rex가 리버 드랍 한 방에"가 아니라 "Rex의 리버 드랍 한 방에"라야 읽힌다(지적) —
     // 그런 꼴은 주어까지 문장 안에서 만든다.
     const mine = `${c.who}의 ${label}`;
+    // 이름에 이미 '한 방'이 들어 있으면 또 붙이지 않는다(지적: "바이오닉 한 방 한 방에").
+    const blow = label.endsWith("한 방") ? `${mine}에` : `${mine} 한 방에`;
     // 초반 올인에 초반부터 무너진 그림(요청) — 몇 분 만이었는지가 곧 이야기다.
     if (c.p.early && !c.p.out) {
       const m = num(c.p.hitMin);
       const when = m > 0 ? `${m}분 만에 ` : "";
       return done(c, c.pick([
         `${ro(mine)} ${when}${of}기지를 반쯤 파괴함`,
-        `${mine} 한 방에 ${when}${ga(foe)} 무너짐`,
+        `${blow} ${when}${ga(foe)} 무너짐`,
         `${ro(mine)} ${when}${reul(foe)} 몰아붙임`,
       ]));
     }
@@ -372,7 +384,7 @@ const TEMPLATES: Record<string, Tpl> = {
       const when = min > 0 ? `${min}분경 ` : "";
       return done(c, c.pick([
         `${ro(mine)} ${when}${reul(foe)} 엘리미네이트`,
-        `${mine}에 ${when}${ga(foe)} 탈락`,
+        `${blow} ${when}${ga(foe)} 탈락`,
         `${ro(mine)} ${when}${reul(foe)} 판에서 지움`,
       ]));
     }
@@ -381,7 +393,7 @@ const TEMPLATES: Record<string, Tpl> = {
     return done(c, c.pick([
       `${ro(mine)} ${of}본진을 파괴함`,
       `${ro(mine)} ${of}생산이 막힘`,
-      `${mine}에 ${of}기지가 파괴됨`,
+      `${blow} ${of}기지가 파괴됨`,
       `${ro(mine)} ${of}살림을 통째로 흔듦`,
     ]));
   },
@@ -667,7 +679,15 @@ const TEMPLATES: Record<string, Tpl> = {
     ))}`;
   },
   // 센터 장악 — 가운데에 건물을 늘려 판을 넓힌 그림(요청).
-  center: act(["센터에 건물을 늘림", "센터까지 건물을 폄"]),
+  center: (c) => {
+    const n = num(c.p.n);
+    const b = BUILDING_KO[str(c.p.b)];
+    const what = b ? `${b}${n > 1 ? ` ${n}개` : ""}` : `건물 ${n || 3}채`;
+    return `${ga(c.who)} ${done(c, c.pick([
+      `센터까지 ${reul(what)} 지음`,
+      `센터에 ${reul(what)} 지어 자리를 잡음`,
+    ]))}`;
+  },
 
   // 탱크 방어(흔히 옆탱 — 요청: 문장에서는 '탱크 방어'로) — 두 갈래다. 아군 기지에
   // 팩토리를 올려 그쪽을 받쳐주는 것과, 내 기지에서 뽑은 탱크로 바로 옆에 붙은 상대를
@@ -746,6 +766,22 @@ const TEMPLATES: Record<string, Tpl> = {
       `뮤탈을 가디언으로 변태시켜 밀고 들어감`,
       `가디언을 띄워 자리를 하나씩 걷어냄`,
     ]))}`;
+  },
+
+  // 같은 수를 서로 갔는데 한쪽만 통한 경우(지적) — 두 문장으로 나누면 앞뒤가 뒤집혀 읽힌다.
+  "duel-rush": (c) => {
+    const label = tacticLabel(str(c.p.k), c.p);
+    if (!label) return null;
+    const foe = c.whom || "상대";
+    const m = num(c.p.outMin) || num(c.p.hitMin);
+    const when = m > 0 ? `${m}분 만에 ` : "";
+    const head = `${wa(foe)} ${ga(c.who)} ${reul(label)} 갔는데`;
+    if (c.p.out) {
+      return `${head}, ${neun(foe)} 막히고 ${ga(c.who)} ${when}${reul(foe)} 엘리미네이트`;
+    }
+    return `${head}, ${neun(foe)} 막히고 ${ga(c.who)} ${when}${foe}의 기지를 ${c.pick([
+      "반쯤 파괴함", "크게 부숨",
+    ])}`;
   },
 
   // 초반 올인이 막히고 역으로 무너진 경우(요청) — 러쉬가 실패한 것만 말하는 것보다,

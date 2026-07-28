@@ -518,7 +518,14 @@ function detectFor(c: Ctx): Tactic[] {
   } else {
     const mid = inZone("mid");
     if (mid.length >= 3) {
-      out.push({ key: "center", weight: 8, at: firstOf(mid), who });
+      // 무슨 건물을 지었는지까지 말한다(지적: 무슨 건물인지 모르겠음) — 가장 많이 세운 것 하나.
+      const byKind = new Map<string, number>();
+      for (const b of mid) byKind.set(b.unit, (byKind.get(b.unit) ?? 0) + 1);
+      const top = [...byKind.entries()].sort((a, b) => b[1] - a[1])[0];
+      out.push({
+        key: "center", weight: 8, at: firstOf(mid), who,
+        p: { n: mid.length, ...(top ? { b: top[0] } : {}) },
+      });
     }
   }
 
