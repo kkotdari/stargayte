@@ -784,8 +784,8 @@ html.scr-light-theme .scr-checkbox-field input[type="radio"]:not(:checked), html
 html.scr-light-theme {
   --post-title-tint: 59, 130, 246;
   /* 흰 배경 위에서는 같은 알파도 훨씬 진하게 읽혀서, 다크만큼 올리지 않는다.
-     날짜 줄까지 덮으면서 띠 면적이 커졌으므로 한 번 더 연하게 낮춘다(요청). */
-  --post-title-a1: 0.13;
+     0.13까지 내렸더니 띠가 있는지 없는지 모를 만큼 흐렸다(요청: 더 선명하게). */
+  --post-title-a1: 0.2;
   --void: #ffffff;
   --post-bg: #ffffff;
   --panel: rgba(255, 255, 255, 0.46);
@@ -6890,9 +6890,15 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    없는데 띠만 남으면 그냥 얼룩이다. */
 .scr-feed-card-head:has(.scr-feed-card-head-title)::before {
   content: ""; position: absolute; z-index: -1;
-  /* 위로는 날짜 줄 조금 위까지만 — 카드 맨 위까지 올리면 포스트 경계와 띠가 붙어버린다. */
-  inset: 9px 0 0 0;
+  /* 머리 영역 전체를 덮는다 — 날짜 줄 위의 빈 자리까지(요청). 날짜 조금 위에서 끊었더니
+     그 위 여백만 띠 밖에 남아 머리가 두 층으로 갈려 보였다. 포스트 판의 위 경계가 곧
+     띠의 위 경계다. */
+  inset: 0;
   background: rgba(var(--post-title-tint), var(--post-title-a1));
+  /* 띠가 판 맨 위까지 올라오면서 포스트의 둥근 모서리(6px) 밖으로 삐져나온다 — 위 두
+     모서리만 같은 값으로 깎는다(포스트에 overflow:hidden을 걸면 안쪽 절대배치들이 다
+     잘린다). */
+  border-radius: 6px 6px 0 0;
 }
 /* 윗줄 — 시각(그리고 그와 한 묶음인 마감 카운트다운·일시 수정, 요약의 참여 인원). */
 .scr-feed-card-head-meta { display: flex; align-items: center; gap: 8px; min-width: 0; }
@@ -6905,7 +6911,9 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    구별이 잘 안 됐다. 완전 불투명이던 걸 살짝 비쳐 보이게 낮춘다(요청).
    날짜 줄까지 띠 위로 올라왔으므로 그 줄의 글자색도 함께 뒤집는다. */
 html:not(.scr-light-theme) .scr-feed-card-head:has(.scr-feed-card-head-title)::before {
-  background: rgba(255, 255, 255, 0.82);
+  /* 뒤가 살짝 비치되 띠 자체는 또렷해야 한다(요청: 더 불투명하고 선명하게) — 0.82는
+     배경 그림이 비쳐 띠가 흐릿했다. */
+  background: rgba(255, 255, 255, 0.94);
 }
 html:not(.scr-light-theme) .scr-feed-card-head:has(.scr-feed-card-head-title) {
   color: #10151a;
