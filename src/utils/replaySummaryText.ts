@@ -878,11 +878,11 @@ const TEMPLATES: Record<string, Tpl> = {
     const def = DEFENSE_KO[str(c.p.def)];
     const n = num(c.p.defN);
     const guard =
-      !("defN" in c.p) ? ""
-        : n === 0 ? `${c.pick(["방어 건물 하나 없이", "방어 건물 없이"])} `
-          : !def ? ""
-            : n <= 2 ? `${c.pick([`${def} ${n}개뿐인 채로`, `${reul(def)} ${n}개밖에 못 두고`])} `
-              : `${c.pick([`${def} ${n}개와 함께 버텼지만`, `${def} ${n}개를 세워 두고도`])} `;
+      !("defN" in c.p) || !def ? ""
+        // 하나도 안 지었으면 그것도 사실이다(요청) — 무엇이 없었는지까지 짚어야 뜻이 산다.
+        : n === 0 ? `${c.pick([`${def} 하나 없이`, `${def} 없이`, `${def} 한 개도 없이`])} `
+          : n <= 2 ? `${c.pick([`${def} ${n}개뿐인 채로`, `${reul(def)} ${n}개밖에 못 두고`])} `
+            : `${c.pick([`${def} ${n}개와 함께 버텼지만`, `${def} ${n}개를 세워 두고도`])} `;
     return `${ga(c.who)} ${guard}${c.pick(
       c.p.out
         ? c.p.team

@@ -678,23 +678,58 @@ function cannonIsRush(p: ParsedReplayPlayer): boolean {
   return forge !== undefined && (gate === undefined || forge < gate);
 }
 
+/** 하늘로 다니는 전투 유닛 — 무엇이 쳐들어왔느냐에 따라 맞는 방어 건물이 갈린다.
+ *  수송선(드랍십·셔틀·오버로드)은 싸우러 오는 게 아니라 빼 둔다. */
+const AIR_UNITS = new Set([
+  "Wraith", "Battlecruiser", "Valkyrie", "Science Vessel",
+  "Mutalisk", "Guardian", "Devourer", "Scourge", "Queen",
+  "Scout", "Corsair", "Carrier", "Arbiter",
+]);
+/** 종족별로 지상을 막는 건물 / 공중을 막는 건물. 터렛·스포어는 공중 전용이라 질럿이
+ *  들이칠 때 "터렛 2개뿐이었다"고 말하면 틀린 말이 된다(지적) — 그럴 땐 벙커를 봐야 한다.
+ *  포토는 지상·공중을 다 때리므로 양쪽에 들어간다. */
+const GROUND_DEF: Record<string, string> = {
+  테란: "Bunker", 저그: "Sunken Colony", 프로토스: "Photon Cannon",
+};
+const AIR_DEF: Record<string, string> = {
+  테란: "Missile Turret", 저그: "Spore Colony", 프로토스: "Photon Cannon",
+};
+
+/** 상대 병력이 주로 하늘에 있었나 — 방어 건물 이야기를 지상 기준으로 할지 공중 기준으로
+ *  할지 가른다. 어중간하면 지상으로 본다(대부분의 경기가 그렇다). */
+function airThreat(foes: ParsedReplayPlayer[]): boolean {
+  let air = 0;
+  let ground = 0;
+  for (const f of foes) {
+    for (const [unit, n] of Object.entries(f.signals?.unitCounts ?? {})) {
+      if (NON_COMBAT_UNITS.has(unit) || WORKER_UNITS.has(unit)) continue;
+      const s = n * supplyOf(unit);
+      if (AIR_UNITS.has(unit)) air += s; else ground += s;
+    }
+  }
+  return air > ground;
+}
+
 /** 그 사람이 그 시점까지 지어 둔 방어 건물 — 무엇을 몇 개(요청: 무너질 때 방어 타워가
  *  모자랐는지도 봐서 특징이 있으면 넣기).
  *
+ *  '무엇을'은 그 사람 종족이 쳐들어온 것을 막는 건물이다 — 질럿이 들이쳤는데 터렛 개수를
+ *  세면 아무 뜻이 없다(지적). 그래서 상대 병력이 지상이면 벙커·성큰·포토를, 공중이면
+ *  터렛·스포어·포토를 센다. 하나도 안 지었으면 n=0으로 돌려 "벙커 하나 없이"까지 말할 수
+ *  있게 한다(요청).
+ *
  *  리플레이에는 그게 그때까지 남아 있었는지도, 막아냈는지도 없다 — 지었다는 사실뿐이다.
  *  그래서 '충분했나'를 판정하지 않고 '몇 개를 지어 뒀나'까지만 돌려주고, 모자랐다는
- *  느낌은 그 수 자체가 말하게 둔다. 아무것도 안 지었으면 n=0(그 자체가 사실이다).
- *  포토 러시로 간 캐논은 방어가 아니므로 세지 않는다. */
-function defenseBefore(p: ParsedReplayPlayer, frame: number | null): { def: string; n: number } {
+ *  느낌은 그 수 자체가 말하게 둔다. 포토 러시로 간 캐논은 방어가 아니므로 세지 않는다. */
+function defenseBefore(
+  p: ParsedReplayPlayer, frame: number | null, foes: ParsedReplayPlayer[],
+): { def: string; n: number } {
   const sg = p.signals;
-  if (!sg) return { def: "", n: 0 };
+  const key = (airThreat(foes) ? AIR_DEF : GROUND_DEF)[p.race ?? ""] ?? "";
+  if (!sg || !key) return { def: "", n: 0 };
+  if (key === "Photon Cannon" && cannonIsRush(p)) return { def: key, n: 0 };
   const cut = frame ?? Infinity;
-  const ranked = Object.keys(DEFENSE_KO)
-    .filter((b) => !(b === "Photon Cannon" && cannonIsRush(p)))
-    .map((b) => ({ def: b, n: (sg.buildingFrames[b] ?? []).filter((f) => f <= cut).length }))
-    .filter((x) => x.n > 0)
-    .sort((a, b) => b.n - a.n);
-  return ranked[0] ?? { def: "", n: 0 };
+  return { def: key, n: (sg.buildingFrames[key] ?? []).filter((f) => f <= cut).length };
 }
 
 /** 그 편에서 가장 많이 뽑은 '한 방' 유닛(없으면 undefined). */
@@ -1008,7 +1043,7 @@ function sideBeats(args: {
     const fell = fellFrame(p, totalFrames);
     // 무너질 때 방어 건물이 어땠는지도 함께(요청) — "포토 2개뿐인 채로 지워짐"처럼
     // 그 수 자체가 그림이 된다. 막아냈는지는 리플레이에 없으니 지어 둔 데까지만 싣는다.
-    const guard = defenseBefore(p, fell);
+    const guard = defenseBefore(p, fell, other.players);
     beats.push({
       k: "fallen", won, who: who(p), weight: 9,
       at: fell,
@@ -1246,10 +1281,12 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     for (const p of loserPlayers) {
       const sg = p.signals;
       if (!sg) continue;
+      // "질럿으로 터렛을 뚫었다"는 말이 안 된다(지적) — 터렛·스포어는 공중 전용이다.
+      // 들이친 병력이 지상이면 벙커·성큰·포토만, 공중이면 터렛·스포어·포토만 본다.
+      const wallKey = (airThreat(winnerPlayers) ? AIR_DEF : GROUND_DEF)[p.race ?? ""] ?? "";
       const def = Object.entries(sg.buildingCounts)
-        .filter(([k, n]) => DEFENSE_KO[k] && n >= DEFENSE_MIN)
-        .filter(([k]) => !(k === "Photon Cannon" && cannonIsRush(p)))
-        .sort((a, b) => b[1] - a[1])[0];
+        .filter(([k, n]) => k === wallKey && n >= DEFENSE_MIN)
+        .filter(([k]) => !(k === "Photon Cannon" && cannonIsRush(p)))[0];
       if (!def) continue;
       const unit = [...ownCombat(p).entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
       if (!unit) continue;
