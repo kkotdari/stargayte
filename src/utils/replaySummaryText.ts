@@ -256,6 +256,8 @@ const JOIN_MAX_SEC = 3 * 60;
  *  시간이 좀 벌어져도 뒤의 일과 곧바로 이어진다. */
 const CAUSE_SEC = 90;
 // 대비를 뜻하는 이음말 — 이 뒤에는 주어를 주제격("Rex는")으로 세운다(지적).
+/** 곧이곧대로 뒤집는 말들 — 잇달아 쓰면 같은 말을 반복하는 꼴이 된다(지적). */
+const ADVERSATIVE = new Set(["하지만", "그러나", "그렇지만"]);
 const CONTRAST_LINKS = new Set(["한편", "그와 동시에", "반면", "그러나", "하지만", "그렇지만", "이에 질세라", "다른 쪽에서는", "반대로", "역으로"]);
 // 시간 순서를 짚는 이음말 — 위 대비 이음말과 함께 문장 앞머리를 알아보는 데 쓴다.
 const SEQUENCE_LINKS = ["이어서", "곧이어", "그 직후", "잠시 후", "한참 후", "소강상태 후", "그 후", "한동안의 대치 후", "그 기세로", "여세를 몰아", "그 기세를 이어간", "여기에", "게다가", "설상가상으로", "그리고"];
@@ -307,7 +309,7 @@ function victimPhrase(c: Ctx): string {
 const LOST_TAILS = [
   // 이 꼬리는 이제 끝 무렵 문장에만 붙는다 — "기울기 시작함"처럼 앞을 내다보는 말은 뺐다.
   "흐름은 상대에게 넘어감", "끝내 뒤집지는 못함", "소득은 크지 않았음",
-  "효과가 적었음", "경기를 뒤집기엔 역부족",
+  "전황을 뒤집지 못함", "역부족이었음", "경기를 뒤집기엔 역부족",
 ];
 // 도박수(초반 올인)가 안 됐을 때만 쓰는 맺음 — 성공 여부를 단정하지 않는 선에서
 // "실패함" "큰 피해는 못 줌"까지만 말한다(지적: 독이 됐다·발목을 잡았다는 지나치다).
@@ -379,14 +381,14 @@ function toWhile(action: string): string | null {
 /** "…해처리를 먼저 늘림" → "…해처리를 먼저 늘린 뒤". 앞의 수가 뒤의 수로 이어질 때
  *  둘을 한 문장으로 엮는다(요청: 째기가 무게감 있는 액션과 이어지면 같이 엮어서).
  *  받침이 없는 어간에는 'ㄴ'을 얹고, 있는 어간('뽑')에는 '-은'을 붙인다. */
-function toAfter(action: string): string | null {
+function toAfter(action: string, word: "뒤" | "후" = "뒤"): string | null {
   const stem = stemOf(action);
   if (stem === null) return null;
   const last = stem.charCodeAt(stem.length - 1);
   if (last < 0xac00 || last > 0xd7a3) return null;
   const j = (last - 0xac00) % 28;
-  if (j === 0) return `${stem.slice(0, -1)}${String.fromCharCode(last + 4)} 뒤`;
-  return `${stem}은 뒤`;
+  if (j === 0) return `${stem.slice(0, -1)}${String.fromCharCode(last + 4)} ${word}`;
+  return `${stem}은 ${word}`;
 }
 
 /** "…뽑음" → "…뽑았으며". '-고'가 두 번 이어지면 지겨워서 두 번째 마디에 쓴다. */
@@ -1313,10 +1315,10 @@ const TEMPLATES: Record<string, Tpl> = {
     const what = kind === "hatch" ? "해처리" : kind === "nexus" ? "투넥서스" : "투커맨드";
     return `${ga(c.who)} ${done(c, c.pick(
       kind === "hatch"
-        ? [`병력보다 해처리를 먼저 늘림`, `초반부터 해처리를 늘려 자원을 먼저 챙김`,
-           `해처리를 먼저 올려 자원을 앞세움`]
-        : [`병력보다 ${reul(what)} 먼저 가져감`, `초반부터 ${ro(what)} 자원을 먼저 챙김`,
-           `${reul(what)} 먼저 올려 자원을 앞세움`],
+        ? [`해처리를 먼저 늘리는 전략을 시도함`, `초반부터 해처리를 늘려 자원을 앞세움`,
+           `해처리를 먼저 올려 자원을 챙기는 전략을 씀`]
+        : [`${reul(what)} 먼저 올리는 전략을 시도함`, `초반부터 ${ro(what)} 자원을 앞세움`,
+           `${reul(what)} 먼저 가져가 자원을 챙기는 전략을 씀`],
     ))}`;
   },
 
@@ -1500,8 +1502,13 @@ export function renderReplaySummary(
     const prevLedBy = (name: string): boolean =>
       name !== "" && (prevBody.startsWith(`${ga(name)} `) || prevBody.startsWith(`${neun(name)} `));
     const link = (opts: string[]): string => {
-      let t = opts[seed % opts.length];
-      if (t === lastLink) t = opts[(seed + 1) % opts.length];
+      // 한 요약 안에서 "하지만 … 그러나 … 그렇지만"이 잇달아 나오면 겉돈다(지적) —
+      // 앞에서 역접을 썼으면 이번엔 "반면 / 한편"처럼 다른 결의 말로 넘긴다.
+      const pool = ADVERSATIVE.has(lastLink) && opts.some((o) => !ADVERSATIVE.has(o))
+        ? opts.filter((o) => !ADVERSATIVE.has(o))
+        : opts;
+      let t = pool[seed % pool.length];
+      if (t === lastLink && pool.length > 1) t = pool[(seed + 1) % pool.length];
       lastLink = t;
       return t;
     };
@@ -1811,7 +1818,9 @@ export function renderReplaySummary(
         prev?.k === "greedy-build" || (gapSec !== null && gapSec <= CAUSE_SEC);
       const head = reversal
         ? (toBut(prevLine) ? `${toBut(prevLine)} 반대로` : null)
-        : tightCause ? toWhile(prevLine) : null;
+        // '-다가'는 하던 일이 그 일로 끊겼다는 강한 말이라 아껴 쓴다(요청) — 웬만하면
+        // '-ㄴ 후'로 받고, 정말 그 수 때문에 끊긴 자리에서만 '-다가'를 쓴다.
+        : tightCause ? (seed % 5 === 0 ? toWhile(prevLine) : toAfter(prevLine, "후")) : null;
       // 앞마디가 이미 '-다가'로 이어 주므로 뒤 문장 머리의 이음말은 뗀다(지적:
       // "…실패하다가 게다가 …"처럼 접속사가 두 번 나온다).
       const tail = text
