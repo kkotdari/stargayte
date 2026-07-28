@@ -2138,13 +2138,9 @@ html.scr-page-bg:not(.scr-light-theme) .scr-main::before {
   /* 모바일 배경은 모바일용 사진을 넘긴 화면에서만 깔린다(.scr-page-bg-mobile) — 안 넘기면
      사진 없이 바탕색만 둔다(요청: 다크 피드는 모바일에서만 배경 제거). 통계는 넘기므로
      예전 그대로다. */
-  /* 사진을 뺀 자리는 기본 배경판(.scr-main::before)과 같은 값으로 되돌린다 — 위 데스크톱
-     규칙에 미디어 쿼리가 없어서 여기서 명시적으로 덮어야 한다. */
-  html.scr-page-bg:not(.scr-light-theme) .scr-main::before {
-    background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0) 18%, rgba(255, 255, 255, 0) 82%, rgba(255, 255, 255, 0.02) 100%),
-      var(--void);
-  }
+  /* 사진을 뺀 자리는 그라데이션 없는 단일 검정이다(지적) — 위 데스크톱 규칙에 미디어
+     쿼리가 없어서 여기서 명시적으로 덮어야 한다. */
+  html.scr-page-bg:not(.scr-light-theme) .scr-main::before { background: var(--void); }
   html.scr-page-bg.scr-page-bg-mobile:not(.scr-light-theme) .scr-main::before {
     background:
       var(--page-bg-scrim),
