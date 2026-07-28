@@ -2159,18 +2159,31 @@ export function renderReplaySummaryParts(
       .map(resolveName)
       .filter(Boolean),
   )].sort((a, b) => b.length - a.length);
-  if (names.length === 0) return [{ text }];
 
   const parts: SummaryPart[] = [];
   let buf = "";
+  const flush = () => { if (buf) { parts.push({ text: buf }); buf = ""; } };
   for (let i = 0; i < text.length; ) {
     const hit = names.find((n) => text.startsWith(n, i));
     const team = hit ? teamOf(hit) : undefined;
-    if (!hit || !team) { buf += text[i]; i += 1; continue; }
-    if (buf) { parts.push({ text: buf }); buf = ""; }
-    parts.push({ text: hit, team });
-    i += hit.length;
+    if (hit && team) {
+      flush();
+      parts.push({ text: hit, team });
+      i += hit.length;
+      continue;
+    }
+    // "1팀 / 2팀"도 그 팀을 가리키는 말이라 이름과 같은 색을 입힌다(요청) — 팀전 문장은
+    // "1팀의 홍탑", "2팀이 승리"처럼 이 말로 편을 가르는데, 정작 그 대목만 흑백이었다.
+    const d = text.charAt(i);
+    if ((d === "1" || d === "2") && text.startsWith("팀", i + 1)) {
+      flush();
+      parts.push({ text: `${d}팀`, team: d === "1" ? 1 : 2 });
+      i += 2;
+      continue;
+    }
+    buf += text[i];
+    i += 1;
   }
-  if (buf) parts.push({ text: buf });
+  flush();
   return parts;
 }
