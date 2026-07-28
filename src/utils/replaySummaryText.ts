@@ -362,13 +362,20 @@ function toBut(action: string): string | null {
 /** 문장 첫머리의 주어에 '도'를 붙인다 — "제롬이 " → "제롬도 ". 전황이 뒤집히면서
  *  주체까지 다른 팀으로 넘어갈 때, 앞말을 받아 "…했지만 제롬도 …했다"로 읽히게 한다(요청). */
 function toAlsoSubject(sentence: string): string {
-  return sentence.replace(/^([^\s]+?)(?:가|이|는|은)(\s)/, (_m, name: string, sp: string) => `${name}도${sp}`);
+  return sentence.replace(
+    /^(\d+팀의 )?([^\s]+?)(?:가|이|는|은)(\s)/,
+    (_m, team: string | undefined, name: string, sp: string) => `${team ?? ""}${name}도${sp}`,
+  );
 }
 
 /** 문장 첫머리의 주격("브래드가")을 주제격("브래드는")으로 바꾼다 — 두 사람의 일을 한
  *  문장에 나란히 놓을 때는 "브래드는 …했고 정구는 …했음"이라야 대비가 읽힌다(요청). */
 function toTopic(sentence: string): string {
-  return sentence.replace(/^([^\s]+?)(?:가|이)(\s)/, (_m, name: string, sp: string) => `${neun(name)}${sp}`);
+  // 앞에 "1팀의 "처럼 팀 표시가 붙어 있어도 그 뒤의 이름을 주제격으로 바꾼다(요청).
+  return sentence.replace(
+    /^(\d+팀의 )?([^\s]+?)(?:가|이)(\s)/,
+    (_m, team: string | undefined, name: string, sp: string) => `${team ?? ""}${neun(name)}${sp}`,
+  );
 }
 
 /** 한 일 + (진 편이면) 결과 한 마디. 이어 붙일 수 있으면 "…뚫었으나 경기는 내줌"으로,
@@ -586,7 +593,7 @@ const TEMPLATES: Record<string, Tpl> = {
     const at = targetPhrase(c);
     return `${ga(c.who)} ${at}${done(c, c.pick([
       `${build}를 함`, `빠른 ${build}를 함`, `과감한 ${allin}를 함`,
-      `${build}라는 날빌을 꺼냄`, `날카로운 빌드로 ${reul(build)} 감행함`,
+      `${build}라는 날빌을 꺼냄`, `날카로운 ${reul(build)} 감행함`,
       // 깎아내리는 말은 졌거나, 이겼더라도 한 종류만 주야장천 뽑았을 때만(지적).
       ...(c.won && !c.p.solo ? [] : [`무지성 ${build}를 함`]),
       ...(c.won ? [] : [`무리하게 ${build}를 함`]),
@@ -649,7 +656,7 @@ const TEMPLATES: Record<string, Tpl> = {
     return `${ga(c.who)} ${at}${done(c, c.pick([
       "포토러시를 함", "초반 포토러시를 함", "빠른 포토러시를 시도함",
       "예상치 못한 포토러시를 함",
-      "포토러시라는 날빌을 꺼냄", "날카로운 빌드로 포토러시를 감행함",
+      "포토러시라는 날빌을 꺼냄", "날카로운 포토러시를 감행함",
     ]), true)}`;
   },
   recall: act([
@@ -842,7 +849,7 @@ const TEMPLATES: Record<string, Tpl> = {
     return `${ga(c.who)} ${at}${done(c, c.pick([
       "몰래 배럭을 올림", "몰래 배럭을 시도함", "이른 시간에 몰래 배럭을 올림",
       "예상치 못한 몰래 배럭을 올림",
-      "몰래 배럭이라는 날빌로 허를 찌름", "날카로운 빌드로 몰래 배럭을 준비함",
+      "몰래 배럭이라는 날빌로 허를 찌름", "날카로운 몰래 배럭으로 허를 찌름",
     ]), true)}`;
   },
   // 성큰러시 — 내 기지가 아닌 곳에 초반부터 성큰을 박는 올인(요청). 해처리는 펴지 않는다.
@@ -852,7 +859,7 @@ const TEMPLATES: Record<string, Tpl> = {
       "성큰러시를 함", "초반 성큰러시를 함", "빠른 성큰러시를 시도함",
       "예상치 못한 성큰러시를 함",
       // 상대의 허점을 노린 수는 '날빌'이라 부른다(요청).
-      "성큰러시라는 날빌을 꺼냄", "날카로운 빌드로 허를 찌름", "성큰러시로 허를 찌름",
+      "성큰러시라는 날빌을 꺼냄", "날카로운 성큰러시로 허를 찌름",
     ]), true)}`;
   },
   // 센터 포토 — 가운데를 포토로 걸어 잠그는 그림(요청).
@@ -1148,7 +1155,6 @@ const TEMPLATES: Record<string, Tpl> = {
     return `${ga(c.who)} ${at}${done(c, c.pick([
       `${ro(`패스트 ${unit}`)} 승부를 걸음`,
       `패스트 ${unit}라는 날빌로 허를 찌름`,
-      `날카로운 빌드로 패스트 ${unit}를 감행함`,
       `${when}${unit}를 뽑아 상대가 준비하기 전에 들이댐`,
       `${unit} 타이밍을 크게 당김`,
     ]))}`;
@@ -1691,7 +1697,9 @@ export function renderReplaySummary(
     // 전황이 뒤집히면서 주체까지 다른 팀이면 "…했지만 제롬도 …했다"가 자연스럽다(요청).
     const alsoSubject = flipped && crossTeam;
     // 팀이 갈린 반전에는 앞말을 받는 연결어를 한마디 넣어도 좋다(요청).
-    const alsoLead = alsoSubject ? `${["", "이에 질세라 ", "다른 쪽에서는 "][seed % 3]}` : "";
+    const alsoLead = alsoSubject
+      ? ["", "이에 질세라 ", "다른 쪽에서는 ", myTeam ? `${myTeam}팀의 ` : ""][seed % 4]
+      : "";
     if (chained && sameSubject) out[out.length - 1] = `${chained}, ${text.slice(subject.length + 1)}`;
     else if (chained && (flipToEnd || flipJoin)) {
       out[out.length - 1] = `${chained} ${alsoLead}${alsoSubject ? toAlsoSubject(text) : text}`;
