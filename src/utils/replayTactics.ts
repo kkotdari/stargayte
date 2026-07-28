@@ -83,7 +83,10 @@ function spreadOf(p: ParsedReplayPlayer): number | null {
 const MIN_BUILDINGS_FOR_HOME = 4;
 // 내 본진 ↔ 가장 가까운 상대 본진 거리를 1로 뒀을 때의 경계.
 const HOME_RADIUS = 0.33;
-const ENEMY_RADIUS = 0.35;
+/* 상대 '본진'이라 부를 수 있는 반경. 0.35는 상대 앞마당·입구까지 품어서, 그쪽에 지은
+   방어 건물을 러시로 오판할 여지가 있었다(지적: 무조건 상대 본진에 가까울 때만).
+   본진 덩어리에 붙은 자리만 남도록 좁힌다. */
+const ENEMY_RADIUS = 0.22;
 // 본진 중심에서 이만큼은 나가 있어야 '앞'이다 — 안쪽에 박은 건 그냥 본진 건물이다.
 const FRONT_MIN = 0.1;
 // 상대 쪽으로 60도 안쪽(cos 0.5)이어야 진출로 쪽이라고 본다.
@@ -159,10 +162,6 @@ interface Geo {
   enemyAt: (b: BuildPos) => string | null;
   /** 내 본진 안이면서 상대 쪽으로 나가 있는 자리인가 = 진출로(입구) 쪽. */
   front: (b: BuildPos) => boolean;
-  /** 상대 쪽으로 절반 넘게 넘어간 자리인가 — 내 앞마당·입구에 지은 건물을 러시로
-   *  오판하지 않기 위한 기준이다(지적: 자기 입구에 지은 성큰·포토를 러시로 봄).
-   *  구역만 보면 내 본진 반경(HOME_RADIUS) 바로 바깥이 전부 'mid'라 내 입구가 걸린다. */
-  pushed: (b: BuildPos) => boolean;
   /** 내 살림이 아군 기지에 얹혀 있으면 그 아군(지적: 내 기지에 건물이 거의 없고 아군
    *  기지에 있는 게 셋방살이다). 아니면 null. */
   lodgingHost: string | null;
@@ -221,10 +220,6 @@ function geoOf(
     return "mid";
   };
 
-  // 그 자리가 누구 쪽에 가까운가 — 내 쪽이면 아무리 본진 밖이어도 러시가 아니다.
-  const pushed = (b: BuildPos): boolean =>
-    Math.min(...foeHomes.map((h) => dist(b, h))) <= dist(b, home);
-
   // 리플레이에는 지형이 없다 — 램프가 어디인지는 알 방법이 없다. 대신 확실한 건
   // 방향이다: 내 본진 안이되 상대 쪽으로 나가 있는 자리는 진출로 쪽이다. 뒤나 옆에
   // 박은 건물은 걸리지 않는다.
@@ -282,7 +277,7 @@ function geoOf(
   const lodgingHost = lodging?.raw ?? null;
   const lodgingLost = lodging?.lost ?? false;
 
-  return { zone, allyAt, enemyAt, front, pushed, lodgingHost, lodgingLost };
+  return { zone, allyAt, enemyAt, front, lodgingHost, lodgingLost };
 }
 
 interface Ctx {
@@ -323,8 +318,6 @@ function detectFor(c: Ctx): Tactic[] {
   /** 드랍은 수송선을 뽑은 것만으로는 알 수 없다 — 실제로 내린 커맨드가 있어야 드랍이다. */
   const dropped = s.unloadCount >= 2;
   /** 그 구역에 지은 건물들(좌표를 못 읽으면 항상 빈 배열). */
-  /** 그 자리가 상대 쪽으로 절반 넘게 넘어갔나 — 좌표를 못 읽으면 아무것도 러시가 아니다. */
-  const pushed = (b: BuildPos): boolean => (geo ? geo.pushed(b) : false);
   const inZone = (z: Zone, unit?: string, beforeSec?: number): BuildPos[] => {
     if (!geo) return [];
     return s.buildPositions.filter(
@@ -469,16 +462,16 @@ function detectFor(c: Ctx): Tactic[] {
         who,
       });
     }
-    // 성큰러시(요청) — 내 기지가 아닌 곳에 초반에 성큰을 짓는 것. 상대 코앞이든 가운데든
-    // '내 본진 밖'이면 다 해당한다. 같은 건물이라도 어디에 지었나가 전부라서, 자리를 봐야만
-    // 방어용 성큰과 갈린다. 해처리는 보지 않는다(지적: 보통 해처리를 안 펴고 바로 성큰을
-    // 짓는다) — 크립콜로니/성큰 자체의 자리만 본다.
-    // 'mid'는 내 본진 반경 바로 바깥부터라 내 앞마당·입구가 통째로 들어온다 — 자기 입구에
-    // 편 해처리·성큰이 러시로 잡히던 이유다(지적). 상대 쪽으로 절반은 넘어간 자리만 센다.
-    const sunkenRush = (["Creep Colony", "Sunken Colony"] as const).flatMap((b) => [
-      ...inZone("enemy", b, SUNKEN_RUSH_SEC),
-      ...inZone("mid", b, SUNKEN_RUSH_SEC).filter(pushed),
-    ]);
+    // 성큰러시(요청) — 초반에 상대 본진 코앞에 성큰을 박는 것. 해처리는 보지 않는다
+    // (지적: 보통 해처리를 안 펴고 바로 성큰을 짓는다) — 크립콜로니/성큰 자체의 자리만 본다.
+    //
+    // 한때 '내 본진 밖'이면 다 러시로 봤는데, 그러면 내 앞마당·입구·멀티에 편 방어 성큰이
+    // 죄다 러시가 됐다(지적, 두 번). '상대 쪽으로 절반 넘게 넘어갔나'로 바꿔도 마찬가지다 —
+    // 맵에 따라 내 앞마당이나 빨무 입구, 멀티가 내 본진보다 상대 본진에 가까울 수 있는데,
+    // 그렇다고 거기가 상대 진영인 건 아니기 때문이다(지적). 그래서 기준은 하나로 못박는다:
+    // 상대 '본진'에 붙어 있을 때만 러시다.
+    const sunkenRush = (["Creep Colony", "Sunken Colony"] as const)
+      .flatMap((b) => inZone("enemy", b, SUNKEN_RUSH_SEC));
     if (sunkenRush.length > 0) {
       out.push({
         key: "sunken-rush", ...foeAt(sunkenRush), weight: SNEAK_WEIGHT, at: firstOf(sunkenRush), who,
@@ -615,8 +608,8 @@ function detectFor(c: Ctx): Tactic[] {
     // 방어 포토가 죄다 러시로 잡혀 지나치게 자주 나왔다. 포지를 게이트보다 먼저 올린 것도
     // 근거가 아니다 — 그건 빠른 포지일 뿐이고 그 포토를 제 본진에 지었으면 방어다.
     const cannon = firstB("Photon Cannon");
-    // 포토도 마찬가지로 자리를 두 번 본다 — 상대 진영 안이면서 내 쪽이 아닌 자리만(지적).
-    const forward = inZone("enemy", "Photon Cannon", 360).filter(pushed);
+    // 포토도 같은 기준 — 상대 본진에 붙은 것만(지적: 내 앞마당·입구에 지은 포토를 러시로 봄).
+    const forward = inZone("enemy", "Photon Cannon", 360);
     const cannonRush = cannon !== null && sec(cannon) < 330 && forward.length > 0;
     if (cannonRush) {
       out.push({

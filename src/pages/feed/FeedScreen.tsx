@@ -421,16 +421,9 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
       ));
     });
 
-    Promise.all(anims.map((a) => a.finished)).then(() => {
-      cleanup();
-      // 펼치고 나면 목록 맨 아래(그날 가장 이른 경기)로 스크롤한다(요청) — 펼치기 버튼은
-      // 카드 위쪽에 있어서, 그냥 열면 새로 생긴 목록이 화면 밖에 그대로 남는다.
-      if (!open) return;
-      const last = cards[cards.length - 1];
-      if (!last) return;
-      const top = getScrollTop() + last.getBoundingClientRect().top - STACK_COLLAPSE_MARGIN;
-      scrollRootTo({ top: Math.max(0, top), behavior: "smooth" });
-    }).catch(() => {});
+    // 펼친 뒤 목록 맨 아래로 스크롤하던 것은 걷어냈다(요청) — 펼치기를 누른 자리에
+    // 그대로 있는 편이 낫다. 접기는 아래(collapseAndReveal)에서 여전히 되돌려 준다.
+    Promise.all(anims.map((a) => a.finished)).then(cleanup).catch(() => {});
     cancelRevealRef.current = () => {
       anims.forEach((x) => { try { x.cancel(); } catch { /* 이미 끝남 */ } });
       cleanup();
