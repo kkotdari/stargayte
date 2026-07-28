@@ -1,5 +1,5 @@
 import type { ParsedReplay, ParsedReplayPlayer, ReplayPlayerSignals } from "./replayParser";
-import { biggestBurst, scanTactics } from "./replayTactics";
+import { scanTactics } from "./replayTactics";
 import {
   eliminatedFrame, fellFrame, productionDips, revivalFrame, surgeSpanMin,
 } from "./replayFell";
@@ -813,8 +813,13 @@ function sideBeats(args: {
     }
   }
 
-  // ── 진 편의 머리 문장: 무엇으로 맞섰고 왜 안 됐나 ──
-  // 시점은 그 편이 손을 놓은 때로 둔다 — 한 순간의 사건이 아니라 결말이라 맨 뒤에 놓여야 한다.
+  // ── 진 편의 맺음 문장: 무엇으로 맞섰고 왜 안 됐나 ──
+  // 이건 한 순간에 벌어진 사건이 아니라 그 편 이야기의 결말이다. 그래서 시점을 두지 않고
+  // (at: null) 늘 맨 뒤, 맺음말 바로 앞에 놓는다 — 아래 고르기에서 따로 챙긴다.
+  //
+  // 한때는 '대표 유닛을 가장 크게 몰아 뽑은 때'를 시점으로 삼았는데, 그 대표 유닛이 질럿·
+  // 마린 같은 초반 물량이면 몰아 뽑은 구간도 앞쪽이라 "역부족" 같은 결론이 요약 맨 앞으로
+  // 튀어 올랐다(지적: "패배팀의 결론이 맨 처음에 나온다"). 결말은 시간축 위의 점이 아니다.
   if (!won) {
     const star = standout(side);
     const units = nameableUnits(
@@ -822,26 +827,18 @@ function sideBeats(args: {
         ? mainUnits(ownCombat(star), armyBySupply([star]))
         : mainUnits(side.combat, armyBySupply(players))
     );
-    // 시점은 '그 조합을 실제로 모은 때' — 대표 유닛을 가장 크게 몰아 뽑은 묶음의 시작이다.
-    // 예전엔 그 편의 마지막 커맨드(= 사실상 경기 끝)를 썼는데, 그건 시점이 아니라 자리
-    // 표시였다. 시점 없는 문장들이 맺음말 앞으로 밀리면서 이 문장만 앞으로 튀어 올라
-    // "골리앗이 너무 초반에 나온다"는 지적이 나왔다 — 실제 골리앗 물량은 23~30분이었다.
-    const lead = units[0];
-    const leadFrames = lead
-      ? players.flatMap((p) => p.signals?.unitFrames[lead] ?? [])
-      : [];
-    const burst = biggestBurst(leadFrames);
-    const lastFrames = players
-      .map((p) => p.signals?.lastCmdFrame ?? null)
-      .filter((f): f is number => f !== null);
-    const at = burst
-      ? burst.from
-      : lastFrames.length > 0 ? Math.max(...lastFrames) : totalFrames;
     const spectacle = spectacleOf(side);
     let p: Record<string, string | number | boolean | string[]> | null = null;
+    // 고급 유닛 이야기는 그걸 실제로 뽑은 사람의 몫이다 — 팀 전체를 주어로 세우면
+    // "A·B·C·D는 배틀크루저까지 꺼냈지만"처럼 주어가 흐릿해진다(지적).
+    let owner: ParsedReplayPlayer | null = star;
     // 몇 기까지 뽑았는지도 함께 — "캐리어를 한 부대 뽑았으나 망함"처럼 규모가 곧 그림이다(요청).
-    if (spectacle) p = { mode: "spectacle", unit: spectacle, n: side.combat.get(spectacle) ?? 0 };
-    else if (pressedEarly && units.length > 0) p = { mode: "pressed", units };
+    if (spectacle) {
+      p = { mode: "spectacle", unit: spectacle, n: side.combat.get(spectacle) ?? 0 };
+      owner = players
+        .map((x) => ({ x, n: x.signals?.unitCounts[spectacle] ?? 0 }))
+        .sort((a, b) => b.n - a.n)[0]?.x ?? star;
+    } else if (pressedEarly && units.length > 0) p = { mode: "pressed", units };
     else if (units.length > 0) {
       p = { mode: units.some((u) => LATE_TECH_UNITS.has(u)) ? "late" : "plain", units };
     } else if (sec > 0 && sec < EARLY_GAME_SEC) {
@@ -853,8 +850,9 @@ function sideBeats(args: {
         // 진 편이 무엇으로 맞섰나는 결과 문장의 짝이다 — 자리가 모자랄 때 부수적인
         // 사실(센터 건물 등)에 밀려 통째로 빠지면, 이긴 쪽 조합만 남아 경기가 한쪽
         // 이야기가 된다(실제로 골리앗 77기를 뽑은 편의 조합이 계속 안 나왔다).
-        k: "stand", won, at, weight: 16, p: { ...p, team: players.length > 1 },
-        who: star ? who(star) : players.map((x) => x.rawName),
+        k: "stand", won, at: null, weight: 16,
+        p: { ...p, team: players.length > 1 },
+        who: owner ? who(owner) : players.map((x) => x.rawName),
       });
     }
   }
@@ -1517,7 +1515,11 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   // 이야기의 뼈대는 시간이다(지적) — 편끼리 묶는다고 시간을 넘나들면 앞뒤가 뒤집혀 읽힌다.
   // 그래서 먼저 시간순으로 세우고, 같은 편 이야기를 붙이는 건 '거의 같은 때'에 벌어진
   // 일들 안에서만 한다. 시점을 못 잡은 문장(올인처럼 한 순간이 아닌 것)은 맺음말 앞으로 밀린다.
-  chosen.sort((a, b) => (a.at ?? Infinity) - (b.at ?? Infinity));
+  // 진 편의 맺음(stand)은 그중에서도 맨 뒤다 — 결론을 다른 사건들 사이에 끼워 넣으면
+  // "역부족", "판을 뒤집지 못함" 같은 말이 초반 이야기보다 먼저 나온다(지적).
+  const tailRank = (b: Beat): number =>
+    (b === loserStand ? 2 : b.at === null || b.at === undefined ? 1 : 0);
+  chosen.sort((a, b) => tailRank(a) - tailRank(b) || (a.at ?? Infinity) - (b.at ?? Infinity));
   // 같은 편 두 문장 사이에 다른 편 문장 하나가 끼었는데 셋이 다 비슷한 때라면, 그건
   // 시간이 아니라 편이 갈라 놓은 것이라 붙여 준다. 창을 넘어가면 손대지 않는다.
   for (let i = 1; i + 1 < chosen.length; i += 1) {

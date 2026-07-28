@@ -1664,8 +1664,20 @@ export function renderReplaySummary(
       b.k === "result" && out.length > 0 && chainCount === 0
       && !/지만|으나|다가/.test(prevLine)
       && !!(prevTide < 0 ? toBut(prevLine) : toAnd(prevLine));
+    // 앞 문장과 이번 문장의 주체가 서로 다른 팀인가 — 팀 표시와 '도' 붙이기, 그리고
+    // 반전으로 이을지 말지에 함께 쓴다.
+    const myTeam = teamOf?.(names[0] ?? "");
+    const prevTeam = teamOf?.(((prev?.who ?? []).map(resolveName))[0] ?? "");
+    const crossTeam = !!myTeam && !!prevTeam && myTeam !== prevTeam;
+    const sameTeam = !!myTeam && !!prevTeam && myTeam === prevTeam;
     // 전황이 실제로 반대편으로 넘어갔나 / 같은 편으로 이어지나.
-    const flipped = tide !== 0 && prevTide !== 0 && tide !== prevTide;
+    //
+    // 주인공이 같은 편인데 전황만 갈렸다면, 진짜 반전은 '제 수가 역풍을 맞은' 문장
+    // (rush-backfire·greedy-punished 등)이 끼었을 때뿐이다. 그게 아니면 반전이 아닌데도
+    // "하지만"이 붙어 같은 편끼리 대립하는 것처럼 읽힌다(지적).
+    const backfire = AGAINST_ACTOR.has(b.k) || (!!prev && AGAINST_ACTOR.has(prev.k));
+    const flipped = tide !== 0 && prevTide !== 0 && tide !== prevTide
+      && !(sameTeam && !backfire);
     // 두 일이 한 문장에 들어갈 만큼 가까운 때에 일어났나 — 시간이 벌어졌으면 무슨 관계든
     // 문장을 나눈다(지적). 시점을 모르는 문장(맺음말 등)은 이 조건에서 뺀다.
     // 시점을 모르는 문장(경기 전체를 두고 하는 말 — 총 생산량 등)은 앞말에 붙여도
@@ -1706,11 +1718,7 @@ export function renderReplaySummary(
     // 문장 앞에 붙인 이음말 — 만들어진 문장과 겹치면 도로 떼어낸다(아래 참고).
     let linkWord = "";
     // 팀전에서 흐름이 어느 편으로 넘어갔는지 짚는 말(요청: "하지만 1팀에서는 …") —
-    // 앞 문장과 다른 팀일 때만 붙인다.
-    // 앞 문장과 이번 문장의 주체가 서로 다른 팀인가 — 팀 표시와 '도' 붙이기에 함께 쓴다.
-    const myTeam = teamOf?.(names[0] ?? "");
-    const prevTeam = teamOf?.(((prev?.who ?? []).map(resolveName))[0] ?? "");
-    const crossTeam = !!myTeam && !!prevTeam && myTeam !== prevTeam;
+    // 앞 문장과 다른 팀일 때만 붙인다(crossTeam은 위에서 구해 둔다).
     // 앞 문장에서 맞은 쪽이 이번엔 때리는 쪽인가 — 같은 두 사람이 주고받은 이야기다.
     const headToHead =
       (b.who ?? []).some((w) => (prev?.whom ?? []).includes(w))
@@ -1727,6 +1735,9 @@ export function renderReplaySummary(
       // 아무것도 붙이지 않는다.
     } else if (
       prev && b.k !== "result"
+      // 진 편의 맺음("…까지 꺼냈지만 판을 뒤집지 못함")은 기세를 이어받은 다음 수가 아니라
+      // 결말이다 — "그 기세로"를 달면 앞말과 앞뒤가 안 맞는다(지적).
+      && b.k !== "stand"
       && (prev.k === "raid-damage" || prev.k === "gang-rush")
       && sameTide
       && sharesWho
