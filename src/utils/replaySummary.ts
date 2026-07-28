@@ -94,16 +94,15 @@ const GANG_RUSH_SEC = 9 * 60;
 // 합공에 넣으면 숫자가 거짓말이 된다.
 const GANG_MIN_UNITS = 8;
 
-// '째기'는 첫 병력이 늦은 것만으로는 부족하다(지적) — 그 시간 동안 병력은 거의 안 뽑고
-// 건물만 잔뜩 올렸을 때가 진짜 째기다. 세 가지를 함께 본다.
-// (1) 언제까지를 '초반'으로 볼 것인가 — 7분은 너무 늦다는 지적에 따라 앞당겼다.
-const GREEDY_SEC = 4 * 60;
-// (2) 그때까지 뽑은 병력이 이보다 적어야 한다.
-const GREEDY_EARLY_UNITS = 3;
-// (3) 그 사이에 올린 건물이 이만큼은 돼야 '건물만 지었다'고 말할 수 있다.
-const GREEDY_EARLY_BUILDINGS = 6;
+// '째기'는 시계로 재는 것이 아니라 무엇을 먼저 뽑았느냐로 갈린다(지적: 일꾼 뽑는 속도
+// 대비 병력 뽑는 속도를 비교). 초반 구간에서 일꾼이 병력보다 이만큼 앞서면 째기로 본다.
+const GREEDY_RATIO = 3;
+// 견줄 만큼은 뽑았어야 한다 — 서너 기 차이는 아무 뜻도 아니다.
+const GREEDY_MIN_WORKERS = 12;
+// 어디까지를 '초반'으로 볼 것인가 — 경기 길이에 대비해 잡는다.
+const GREEDY_WINDOW_RATIO = 0.3;
 // 그래도 경기 앞쪽 이야기여야 한다 — 후반 이야기를 째기라 부르면 말이 안 된다.
-const GREEDY_MAX_RATIO = 0.5;
+const GREEDY_MAX_SEC = 8 * 60;
 // 경기 전체로 이만큼은 뽑아야 견줄 거리가 된다(관전 슬롯·즉시 탈락 제외).
 const GREEDY_MIN_UNITS = 6;
 // 째기 구간 뒤 이 안에 생산이 꺾였으면 째다가 얻어맞은 것이다.
@@ -1053,16 +1052,15 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
           .filter(([u]) => !NON_COMBAT_UNITS.has(u))
           .flatMap(([, f]) => f);
         if (combat.length < GREEDY_MIN_UNITS) continue;
-        const bar = GREEDY_SEC / SECONDS_PER_FRAME;
-        // 그때까지 병력은 거의 없고 건물만 잔뜩 — 이 둘이 함께여야 째기다(지적).
-        if (combat.filter((f) => f <= bar).length > GREEDY_EARLY_UNITS) continue;
-        const built = Object.values(sg.buildingFrames)
-          .flat()
+        // 초반 구간에서 일꾼과 병력을 나란히 센다 — 절대 수가 아니라 둘의 비가 째기다(지적).
+        const bar = Math.min(totalFrames * GREEDY_WINDOW_RATIO, GREEDY_MAX_SEC / SECONDS_PER_FRAME);
+        const drones = [...WORKER_UNITS]
+          .flatMap((u) => sg.unitFrames[u] ?? [])
           .filter((f) => f <= bar).length;
-        if (built < GREEDY_EARLY_BUILDINGS) continue;
-        const first = Math.max(bar, Math.min(...combat));
-        // 경기가 짧으면 늦은 게 아니라 그냥 그 경기가 그랬던 것이다.
-        if (first > totalFrames * GREEDY_MAX_RATIO) continue;
+        if (drones < GREEDY_MIN_WORKERS) continue;
+        const troops = combat.filter((f) => f <= bar).length;
+        if (drones < Math.max(1, troops) * GREEDY_RATIO) continue;
+        const first = bar;
         const hurtBy = (() => {
           const window = first + GREEDY_PUNISH_SEC / SECONDS_PER_FRAME;
           const hit = productionDips(p, totalFrames).some((d) => d >= first && d <= window)

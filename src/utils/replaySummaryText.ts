@@ -1017,7 +1017,7 @@ const TEMPLATES: Record<string, Tpl> = {
     const foe = c.whom ? `${c.whom}의 ` : "상대의 ";
     return `${ga(c.who)} ${done(c, c.pick([
       `초반에 무리하게 째다가 ${foe}공격에 무너짐`,
-      `${when}병력 없이 건물만 올리다 ${foe}공격에 무너짐`,
+      `${when}병력보다 일꾼을 먼저 채우다 ${foe}공격에 무너짐`,
       `째기를 시도하다 ${foe}공격에 그대로 무너짐`,
     ]))}`;
   },
@@ -1027,8 +1027,8 @@ const TEMPLATES: Record<string, Tpl> = {
     const when = m > 0 ? `${m}분까지 ` : "";
     return `${ga(c.who)} ${done(c, c.pick([
       `성공적으로 째서 ${unit} 물량이 폭발함`,
-      `${when}자원을 먼저 챙긴 뒤 ${reul(unit)} 쏟아냄`,
-      `병력을 미루고 건물부터 올린 끝에 ${unit} 물량으로 밀어붙임`,
+      `${when}일꾼부터 채운 뒤 ${reul(unit)} 쏟아냄`,
+      `병력을 미루고 자원을 벌어 둔 끝에 ${unit} 물량으로 밀어붙임`,
     ]))}`;
   },
 
@@ -1278,9 +1278,10 @@ export function renderReplaySummary(
       ? new RegExp(`^(?:(?:${[...CONTRAST_LINKS, ...SEQUENCE_LINKS].join("|")}) )?${escapeRe(resolveName(actor))}(?:가|이|는|은) `)
       : null;
     // 맺음말은 이미 결말이라 "다시 일어섬"을 얹을 자리가 아니다.
+    // 문장이 이미 "…했지만 역부족"처럼 반전을 품고 있으면 "하지만"을 또 얹지 않는다(지적).
     const backUp =
       !!actor && !cutIn && b.k !== "result" && chainCount === 0 && lastWhom.includes(actor)
-      && !!backHead && backHead.test(text);
+      && !!backHead && backHead.test(text) && !/지만|으나/.test(text);
     // 앞 문장과 주어가 같으면 주어를 두 번 부르지 않는다(지적: 주어가 반복될 경우 합침).
     // "Rex가 …이기고, …" 꼴로 앞 문장에 이어 붙이고 뒤 문장에서는 주어를 뗀다.
     // 같은 사람 이야기가 연달아 나오면 문장을 갈라 놓지 말고 하나로 잇는다(지적: 같은
