@@ -612,7 +612,9 @@ function detectFor(c: Ctx): Tactic[] {
     }
     if (u("Arbiter") >= 1 && hasTech("Recall")) {
       out.push({
-        key: "recall", weight: 10, at: firstU("Arbiter"),
+        // 아비터 리콜은 전황을 통째로 뒤집는 수다(요청) — 다른 견제와 같은 무게로 두면
+        // 정작 판이 뒤집힌 대목이 요약에서 빠진다.
+        key: "recall", weight: 15, at: firstU("Arbiter"),
         who,
       });
     }
