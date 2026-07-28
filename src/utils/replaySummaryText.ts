@@ -218,7 +218,7 @@ const TEMPLATES: Record<string, Tpl> = {
   "cannon-rush": (c) => {
     const at = targetPhrase(c);
     return `${ga(c.who)} ${at}${c.pick([
-      "초반 포토러쉬를 감", "빠른 포토러쉬를 시도함", "일찌감치 포토를 박기 시작함",
+      "포토러쉬를 함", "초반 포토러쉬를 함", "빠른 포토러쉬를 시도함",
     ])}${tail(c)}`;
   },
   recall: act([
@@ -376,13 +376,19 @@ const TEMPLATES: Record<string, Tpl> = {
   "sunken-rush": (c) => {
     const at = targetPhrase(c);
     return `${ga(c.who)} ${at}${c.pick([
-      "성큰러쉬를 감", "빠른 성큰러쉬를 시도함", "일찌감치 성큰을 박기 시작함",
+      "성큰러쉬를 함", "초반 성큰러쉬를 함", "빠른 성큰러쉬를 시도함",
     ])}${tail(c)}`;
   },
   // 센터 포토 — 가운데를 포토로 걸어 잠그는 그림(요청).
-  "center-photon": act([
-    "센터에 포토를 박음", "센터를 포토로 걸어 잠금",
-  ]),
+  // 센터 포토 — 수가 많으면 '도배', 적으면 그냥 깔았다는 데까지만.
+  "center-photon": (c) => {
+    const n = num(c.p.n, 2);
+    return `${ga(c.who)} ${c.pick(
+      n >= 4
+        ? ["센터에 포토를 도배함", `센터에 포토를 ${n}개나 지음`]
+        : ["센터에 포토를 깜", "센터에 포토를 지음", "센터를 포토로 걸어 잠금"]
+    )}${tail(c)}`;
+  },
   // 센터 장악 — 가운데에 건물을 늘려 판을 넓힌 그림(요청).
   center: act(["센터에 건물을 늘림", "센터까지 건물을 폄"]),
 

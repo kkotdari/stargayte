@@ -458,7 +458,7 @@ function detectFor(c: Ctx): Tactic[] {
   // ── 종족 공통(자리 기반) ── 어느 종족이든 '가운데를 먹었나'는 자리로만 알 수 있다.
   const midCannons = inZone("mid", "Photon Cannon");
   if (midCannons.length >= 2) {
-    out.push({ key: "center-photon", ...target, weight: 10, at: firstOf(midCannons), who });
+    out.push({ key: "center-photon", ...target, weight: 10, at: firstOf(midCannons), who, p: { n: midCannons.length } });
   } else {
     const mid = inZone("mid");
     if (mid.length >= 3) {
