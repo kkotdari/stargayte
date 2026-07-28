@@ -1545,8 +1545,20 @@ export function renderReplaySummary(
     // 앞뒤가 같은 종류의 일이면(양쪽이 서로 견제를 주고받은 것처럼) 시간이 좀 벌어져도
     // 한 문장으로 묶는 편이 낫다(요청) — 같은 이야기를 두 문장으로 끊어 놓고 "그렇지만"을
     // 붙이면 오히려 겉돈다. 다만 십수 분 떨어진 일까지 묶지는 않는다.
-    const sameKind = !!prev && prev.k === b.k
+    const sameKind = !!prev
+      && (prev.k === b.k
+        // 같은 틀이 아니어도 '누가 누구에게 무엇을 했다'는 같은 결의 문장이면 비슷한
+        // 이야기다(지적) — 그런 둘은 이음말로 갈라 놓지 말고 한 문장으로 잇는다.
+        || ((prev.whom ?? []).length > 0 && (b.whom ?? []).length > 0))
       && (gapSec === null || gapSec <= STANDOFF_SEC);
+    /** 앞 문장을 '-지만'으로 바꿔 이번 문장을 이어 붙일 수 있나. */
+    const canFlipJoin = (): boolean => {
+      const line = out.length > 0 ? out[out.length - 1] : "";
+      if (line === "" || chainCount !== 0) return false;
+      if (new RegExp(`^${LINK_HEAD()} `).test(line)) return false;
+      if (/지만|으나|다가/.test(line)) return false;
+      return !!toBut(line);
+    };
     // 거의 같은 때에 벌어진 서로 다른 사람의 일은 한 문장으로 잇는 편이 자연스럽다
     // (요청: "브래드는 ~했고 정구는 ~했음"). 같은 사람 이야기면 주어가 겹쳐 어색해 뺀다.
     const sharesWho = (b.who ?? []).some((w) => (prev?.who ?? []).includes(w));
@@ -1593,9 +1605,13 @@ export function renderReplaySummary(
     } else if (linkable && gapSec !== null && gapSec <= SAME_TIME_SEC) {
       if (!sharesWho && seed % 2 === 0) joinPrev = true;
       else if (flipped) {
-        // 전황이 갈린 자리는 대비를 뜻하는 말로 잇는다(요청: 반면 / 하지만 / 그러나).
-        linkWord = link(["반면", "하지만", "그러나"]);
-        teamTag = teamTagFor();
+        // 비슷한 두 문장은 "하지만 …"으로 갈라 놓지 말고 "…했지만 …했다"로 바로
+        // 잇는다(지적). 못 이을 때만 대비를 뜻하는 말을 앞에 단다.
+        if (canFlipJoin()) flipJoin = true;
+        else {
+          linkWord = link(["반면", "하지만", "그러나"]);
+          teamTag = teamTagFor();
+        }
       } else if (sameTide) {
         // 같은 편 이야기가 거의 같은 때에 겹쳤을 뿐이라, 동시성만 짚는다.
         linkWord = link(["그와 동시에", "한편"]);
@@ -1619,11 +1635,9 @@ export function renderReplaySummary(
         // 이음말을 앞에 다는 것보다 "…파괴됐지만 …파괴함"처럼 한 문장으로 잇는 편이
         // 반전이 또렷하다(지적). 앞 문장을 '-지만'으로 못 바꾸거나 이미 반전을 품고
         // 있으면 그때만 이음말을 쓴다.
-        const line = out.length > 0 ? out[out.length - 1] : "";
         // 앞 문장이 이미 이음말로 시작하거나 반전을 품고 있으면 또 잇지 않는다 —
         // "그러나 …했지만 …"처럼 접속이 두 번 겹친다(지적).
-        const linked = new RegExp(`^(?:${[...CONTRAST_LINKS].join("|")}) `).test(line);
-        if ((closeEnough || sameKind) && chainCount === 0 && line !== "" && !linked && !/지만|으나|다가/.test(line) && toBut(line)) flipJoin = true;
+        if ((closeEnough || sameKind) && canFlipJoin()) flipJoin = true;
         else {
           // "다른 쪽에서는"은 판이 갈라져 딴 데서 벌어진 일일 때만 맞는 말이다(지적) —
           // 같은 두 사람이 서로 주고받은 이야기면 "반대로 / 역으로 / 그와 동시에"가 맞다.
