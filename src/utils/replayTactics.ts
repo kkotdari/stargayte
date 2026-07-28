@@ -18,6 +18,8 @@ const SECONDS_PER_FRAME = 0.042;
 // 성큰러시로 볼 시간 창 — 이보다 늦게 본진 밖에 박는 성큰은 러시가 아니라 조이기·확장
 // 방어에 가깝다.
 const SUNKEN_RUSH_SEC = 7 * 60;
+// 포토러시로 볼 시간 창 — 이보다 늦게 상대 본진에 박는 포토는 러시가 아니라 조이기다.
+const CANNON_RUSH_SEC = 6 * 60;
 
 /** 짚어낸 전술 하나. 문구는 여기 없다 — 저장은 키와 재료로만 하고(replaySummaryData.ts의
  *  이유 참고) 문장은 replaySummaryText.ts가 만든다. */
@@ -196,6 +198,24 @@ function homeOf(p: ParsedReplayPlayer): { x: number; y: number } | null {
   return pts.length >= MIN_BUILDINGS_FOR_HOME ? medoid(pts) : null;
 }
 
+/** 시작 본진 — 가장 이른 건물 몇 채의 메도이드.
+ *
+ *  구역을 가르는 기준은 반드시 이쪽이어야 한다. 경기 전체의 메도이드를 쓰면 멀티를 늘리거나
+ *  자리를 옮겨 다닌 사람의 '본진'이 경기가 끝날 때쯤의 무게중심으로 끌려간다 — 실제
+ *  리플레이에서 시작 본진이 (111,111)인데 전체 메도이드는 (95,89)로 27만큼 밀렸고, 그
+ *  바람에 그 본진 코앞에 박은 건물이 '상대 진영'에서 벗어나 성큰러시·포토러시가 통째로
+ *  안 잡혔다(지적: 굉장히 중요한데 빠지는 느낌). 기지 크기를 재는 spreadOf는 지금처럼
+ *  전체 메도이드를 쓴다 — 그건 '얼마나 퍼져 있나'라서 뜻이 다르다. */
+const HOME_EARLY_BUILDINGS = 8;
+function startHomeOf(p: ParsedReplayPlayer): { x: number; y: number } | null {
+  const pts = p.signals?.buildPositions ?? [];
+  if (pts.length < MIN_BUILDINGS_FOR_HOME) return null;
+  const early = [...pts]
+    .sort((a, b) => (a.frame ?? 0) - (b.frame ?? 0))
+    .slice(0, HOME_EARLY_BUILDINGS);
+  return medoid(early);
+}
+
 /** 자리로 알 수 있는 것들을 한 벌로 묶은 것. 좌표를 못 읽었거나 본진을 못 정하면 통째로
  *  null이고, 자리 기반 전술은 그냥 안 나온다(요청: 불확실한 건 빼기). */
 interface Geo {
@@ -223,12 +243,14 @@ function geoOf(
   allies: ParsedReplayPlayer[],
   foes: ParsedReplayPlayer[]
 ): Geo | null {
-  const home = homeOf(me);
+  // 구역은 전부 '시작 본진'을 기준으로 가른다(위 startHomeOf 참고) — 경기 전체의 무게중심을
+  // 쓰면 멀티를 늘리거나 자리를 옮긴 사람의 본진이 통째로 밀려 러시가 안 잡힌다.
+  const home = startHomeOf(me);
   if (!home) return null;
-  const foeHomes = foes.map(homeOf).filter((h): h is { x: number; y: number } => h !== null);
+  const foeHomes = foes.map(startHomeOf).filter((h): h is { x: number; y: number } => h !== null);
   if (foeHomes.length === 0) return null;
   const allyHomes = allies
-    .map((a) => ({ raw: a.rawName, h: homeOf(a) }))
+    .map((a) => ({ raw: a.rawName, h: startHomeOf(a) }))
     .filter((a): a is { raw: string; h: { x: number; y: number } } => a.h !== null);
   // 기준 거리는 '가장 가까운 상대까지' — 팀전에서 멀리 있는 상대까지 재면 구역이 다 뭉개진다.
   const base = Math.min(...foeHomes.map((h) => dist(home, h)));
@@ -238,7 +260,7 @@ function geoOf(
   const dir = { x: (near.x - home.x) / base, y: (near.y - home.y) / base };
 
   const foeHomeOf = foes
-    .map((f) => ({ raw: f.rawName, h: homeOf(f) }))
+    .map((f) => ({ raw: f.rawName, h: startHomeOf(f) }))
     .filter((f): f is { raw: string; h: { x: number; y: number } } => f.h !== null);
 
   const enemyAt = (b: BuildPos): string | null => {
@@ -687,13 +709,16 @@ function detectFor(c: Ctx): Tactic[] {
     // 초반 포토러시 — 상대 본진에 박은 포토만 해당한다(지적). 가운데까지 세면 앞마당·길목
     // 방어 포토가 죄다 러시로 잡혀 지나치게 자주 나왔다. 포지를 게이트보다 먼저 올린 것도
     // 근거가 아니다 — 그건 빠른 포지일 뿐이고 그 포토를 제 본진에 지었으면 방어다.
-    const cannon = firstB("Photon Cannon");
     // 포토도 같은 기준 — 상대 본진에 붙은 것만(지적: 내 앞마당·입구에 지은 포토를 러시로 봄).
-    const forward = inZone("enemy", "Photon Cannon", 360);
-    const cannonRush = cannon !== null && sec(cannon) < 330 && forward.length > 0;
-    if (cannonRush) {
+    //
+    // 때를 재는 건 '상대 본진에 박은 그 포토'다. 예전엔 아무 데나 지은 첫 포토의 시각을
+    // 봤는데, 그러면 제 본진에 방어 포토를 먼저 깔았다가 나중에 러시를 간 경기가 통째로
+    // 빠지고(첫 포토는 이르지만 러시는 아니었다) 반대로 6분에 간 진짜 포토러시도 5분 30초
+    // 문턱에 걸려 빠졌다(지적). inZone이 이미 6분 안쪽만 넘겨주므로 그걸 그대로 쓴다.
+    const forward = inZone("enemy", "Photon Cannon", CANNON_RUSH_SEC);
+    if (forward.length > 0) {
       out.push({
-        key: "cannon-rush", ...foeAt(forward), weight: SNEAK_WEIGHT, at: cannon,
+        key: "cannon-rush", ...foeAt(forward), weight: SNEAK_WEIGHT, at: firstOf(forward),
         who,
       });
     }
@@ -817,10 +842,11 @@ function neighborOf(
   endFrame: number
 ): { raw: string; fellAt: number } | null {
   if (foes.length < 2) return null; // 1:1엔 '옆'이 없다
-  const home = homeOf(me);
+  // 누가 '내 옆'인지는 시작 자리가 정한다 — 경기 중에 옮겨 다닌 자취까지 섞으면 흐려진다.
+  const home = startHomeOf(me);
   if (!home) return null;
   const ranked = foes
-    .map((f) => ({ f, h: homeOf(f) }))
+    .map((f) => ({ f, h: startHomeOf(f) }))
     .filter((x): x is { f: ParsedReplayPlayer; h: { x: number; y: number } } => x.h !== null)
     .map((x) => ({ f: x.f, d: dist(home, x.h) }))
     .sort((a, b) => a.d - b.d);

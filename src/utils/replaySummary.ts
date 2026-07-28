@@ -1546,11 +1546,18 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   // "자리가 모자라 재미없는 걸 남기는" 일도, "중요한 게 뜬금없는 자리에 오는" 일도 없다.
   // 시점을 못 잡은 문장(올인처럼 한 순간이 아닌 것)은 맺음말 바로 앞으로 밀린다.
   const chosen: Beat[] = [];
+  const slots = budget - 1;
   // 진 편이 무엇으로 맞섰나(stand)는 결과 문장의 짝이라 자리를 하나 미리 잡아 둔다.
   // 무게 경쟁에 맡겼더니 부수적인 사실들(입구 포토·센터 건물 등)에 밀려 통째로 빠지고,
   // 그러면 이긴 쪽 조합만 남아 경기가 한쪽 이야기가 됐다 — 실제 리플레이에서 골리앗
   // 77기를 뽑은 편의 조합이 계속 안 나온 게 이 자리 싸움 때문이었다.
-  const loserStand = pool.find((b) => b.k === "stand" && !b.won);
+  //
+  // 다만 자리가 하나뿐인 경기(짧은 경기·일방적인 경기)에서는 예약을 하지 않는다. 그러면
+  // 그 하나를 이 문장이 통째로 먹어서, 정작 승부를 낸 성큰러시·포토러시가 무게로는 훨씬
+  // 앞서는데도 빠져 버린다(지적: "성큰러시 포토러시 굉장히 중요한데 빠지는 느낌") —
+  // 7분짜리 성큰러시 경기가 실제로 "브래드는 마린으로 싸웠지만 모자랐다"만 남았다.
+  // 자리가 하나면 그냥 무게로 겨루게 두는 편이 맞다.
+  const loserStand = slots >= 2 ? pool.find((b) => b.k === "stand" && !b.won) : undefined;
   if (loserStand) chosen.push(loserStand);
 
   // 한 국면이 자리를 다 먹지 않게 초/중/후로 나눠 상한을 둔다(지적: "후반이 너무 강해져서
@@ -1562,7 +1569,6 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     const r = b.at / totalFrames;
     return r < 1 / 3 ? 0 : r < 2 / 3 ? 1 : 2;
   };
-  const slots = budget - 1;
   // 한 국면이 절반을 넘지 않게 — 자리가 여섯이면 국면당 셋까지다.
   const perPhaseMax = Math.max(1, Math.ceil(slots / 2));
   const taken: [number, number, number] = [0, 0, 0];
