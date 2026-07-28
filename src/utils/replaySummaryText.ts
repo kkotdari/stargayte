@@ -63,6 +63,14 @@ export const EXPANSION_KO: Record<string, string> = {
   Hatchery: "해처리", Nexus: "넥서스", "Command Center": "커맨드",
 };
 
+/** 혼자서는 경기를 끝내지 못하는 보조 유닛(지적) — 이 유닛만으로 "메딕 물량으로 이김"
+ *  같은 문장이 나오면 곤란하다. 주력을 고를 때 뒤로 밀고, 문장에서는 늘 무엇과의 조합인지
+ *  함께 말한다. */
+export const SUPPORT_UNITS = new Set([
+  "Medic", "Queen", "Defiler", "Science Vessel", "Observer", "Shuttle", "Dropship",
+  "Arbiter", "Dark Archon", "Overlord",
+]);
+
 /** 유닛이 경기에서 하는 '역할' — 같은 승리라도 무엇으로 이겼는지에 따라 다르게 읽히도록. */
 export const UNIT_ROLE: Record<string, string> = {
   "High Templar": "견제", "Dark Templar": "견제", Reaver: "견제", Mutalisk: "견제",
@@ -88,9 +96,16 @@ const ROLE_TAIL: Record<string, string> = {
 
 /** "질럿으로" / "질럿과 하이템플러 조합으로" — 조합을 못 읽으면 빈 문자열. */
 export function unitPhrase(units: string[]): string {
-  const ko = units.map((u) => UNIT_KO[u]).filter(Boolean);
+  // 보조 유닛은 뒤로 — "메딕과 마린 조합"이 아니라 "마린과 메딕 조합"이라야 읽힌다(지적).
+  const sorted = [...units].sort(
+    (a, b) => Number(SUPPORT_UNITS.has(a)) - Number(SUPPORT_UNITS.has(b))
+  );
+  const ko = sorted.map((u) => UNIT_KO[u]).filter(Boolean);
   if (ko.length === 0) return "";
-  if (ko.length === 1) return ro(ko[0]);
+  // 보조 유닛 하나뿐이면 그것만으로 이겼다고 할 수 없다 — '~도 썼다'까지만 말한다(지적).
+  if (ko.length === 1) {
+    return SUPPORT_UNITS.has(sorted[0]) ? `${ko[0]}도 섞어` : ro(ko[0]);
+  }
   return `${wa(ko[0])} ${ko[1]} 조합으로`;
 }
 

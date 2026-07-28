@@ -3,7 +3,7 @@ import { scanTactics } from "./replayTactics";
 import { fellFrame } from "./replayFell";
 import { REPLAY_SUMMARY_VERSION, type ReplaySummaryBeat, type ReplaySummaryData } from "./replaySummaryData";
 import {
-  DEFENSE_KO, EXPANSION_KO, PRODUCTION_KO, SPECTACLE_UNITS, UNIT_KO, UNIT_ROLE,
+  DEFENSE_KO, EXPANSION_KO, PRODUCTION_KO, SPECTACLE_UNITS, SUPPORT_UNITS, UNIT_KO, UNIT_ROLE,
   renderReplaySummary,
 } from "./replaySummaryText";
 
@@ -135,13 +135,16 @@ function countIn(map: Map<string, number>, names: Set<string>): number {
   return n;
 }
 
-/** 그 편의 주력 — 가장 많이 뽑은 전투 유닛 최대 두 종류(2위가 1위에 한참 못 미치면 하나만). */
+/** 그 편의 주력 — 가장 많이 뽑은 전투 유닛 최대 두 종류(2위가 1위에 한참 못 미치면 하나만).
+ *  앞자리는 스스로 싸움을 끝낼 수 있는 유닛에 준다 — 메딕·퀸 같은 보조 유닛이 수만 많다고
+ *  "메딕으로 이김"이 되면 곤란하다(지적). 그런 유닛은 뒷자리로 밀려 조합으로 읽힌다. */
 function mainUnits(side: Side): string[] {
   const ranked = [...side.combat.entries()].sort((a, b) => b[1] - a[1]);
   if (ranked.length === 0) return [];
-  const [top, second] = ranked;
-  const out = [top[0]];
-  if (second && second[1] >= top[1] * 0.35) out.push(second[0]);
+  const lead = ranked.find(([u]) => !SUPPORT_UNITS.has(u)) ?? ranked[0];
+  const second = ranked.find((x) => x !== lead);
+  const out = [lead[0]];
+  if (second && second[1] >= lead[1] * 0.35) out.push(second[0]);
   return out;
 }
 
@@ -194,7 +197,8 @@ function heroUnitOf(
   const own = ownCombat(hero);
   if (own.size === 0) return null;
   const mates = side.players.filter((p) => p !== hero);
-  const pool = [...own.entries()].filter(([u]) => UNIT_ROLE[u]);
+  // 보조 유닛은 그 사람의 '한 방'이 될 수 없다(지적) — 남는 게 없으면 이 문장은 통째로 뺀다.
+  const pool = [...own.entries()].filter(([u]) => UNIT_ROLE[u] && !SUPPORT_UNITS.has(u));
   const fresh = pool.filter(([u]) => !avoid.includes(u));
   const scored = (fresh.length > 0 ? fresh : pool)
     .map(([unit, n]) => {
