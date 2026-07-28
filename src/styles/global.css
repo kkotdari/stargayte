@@ -6640,12 +6640,17 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   padding: 0 0 var(--post-pad-b);
   /* 카드가 아니라 화면을 꽉 채우는 판이다(요청) — 좌우 여백도, 둥근 모서리도, 떠 있는
      그림자도 없다. 포스트끼리는 그 사이의 빈 자리가 나눈다.
-     채움은 완전 투명이고 유리 효과(블러)만 남긴다(요청) — 반투명 채움조차 없으므로
-     포스트는 색이 아니라 제목의 무게와 여백으로만 읽힌다. */
+     유리 톤은 통계 그리드 패널과 같은 값으로 맞춘다(요청) — 채움을 아주 옅게 한 겹 깔고
+     블러는 2px만. 9px는 뒤 사진이 뭉개져 유리보다 젖빛에 가까웠다. */
   border-radius: 0;
-  background: transparent;
-  backdrop-filter: blur(9px) saturate(1.2);
-  -webkit-backdrop-filter: blur(9px) saturate(1.2);
+  background-color: rgba(var(--overlay-rgb), 0.07);
+  backdrop-filter: blur(2px) saturate(1.2);
+  -webkit-backdrop-filter: blur(2px) saturate(1.2);
+}
+.scr-light-theme .scr-feed-card {
+  background-color: rgba(255, 255, 255, 0.62);
+  backdrop-filter: blur(2px) saturate(1.1);
+  -webkit-backdrop-filter: blur(2px) saturate(1.1);
 }
 /* 피드 목록만 본문 좌우 패딩 바깥으로 빠져나가 화면 폭을 그대로 쓴다 — 툴바/필터 등
    나머지 형제는 원래 여백을 유지해야 하므로 .scr-main이 아니라 여기서 되민다. */
