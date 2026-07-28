@@ -258,6 +258,9 @@ const NEUTRAL_BEATS = new Set([
 const AGAINST_ACTOR = new Set([
   "rush-backfire", "greedy-punished", "fallen", "lodging", "lift-off", "gg",
 ]);
+// 문장 앞에 붙는 이음말을 알아보는 조각 — 고정된 말들에 더해 "8분 뒤"처럼 그때그때
+// 만들어지는 시간 표현도 함께 본다(요청: 시간이 많이 벌어지면 몇 분 후라고 적기).
+const LINK_HEAD = () => `(?:${[...CONTRAST_LINKS, ...SEQUENCE_LINKS].join("|")}|\\d+분 (?:뒤|후))`;
 // 한 문장에 이어 붙일 수 있는 마디 수 — 이보다 길어지면 읽다가 숨이 찬다.
 const MAX_CHAIN = 2;
 // 진 편 문장에 결과 한 마디를 다는 건 '끝 무렵에 벌어진 일'에만 한다(지적) — 초중반의
@@ -1396,7 +1399,7 @@ export function renderReplaySummary(
     const prevLine = out.length > 0 ? out[out.length - 1] : "";
     // 같은 이음말이 연달아 나오면 어색하다(지적) — 앞에서 쓴 것이 걸리면 다음 것으로 민다.
     const prevBody = prevLine.replace(
-      new RegExp(`^(?:${[...CONTRAST_LINKS, ...SEQUENCE_LINKS].join("|")}) `), "",
+      new RegExp(`^${LINK_HEAD()} `), "",
     );
     // 앞 문장이 그 사람을 주어로 세우고 시작했나 — "…의 무엇에 누구의 기지가 파괴됨"처럼
     // 소유격으로 시작한 문장에는 다음 마디를 이어 붙일 수 없다(지적).
@@ -1450,6 +1453,8 @@ export function renderReplaySummary(
       && (prev.k === "raid-damage" || prev.k === "gang-rush")
       && sameTide
       && sharesWho
+      // "그 기세로"는 바로 이어졌을 때만 쓸 수 있다 — 몇 분 뒤 일에 붙이면 거짓이 된다.
+      && closeEnough
     ) {
       // 앞 문장과 주어가 같으면 이음말을 붙이는 대신 한 문장으로 잇는다(지적: 같은 이름이
       // 두 번 나오지 않게) — 이음말을 붙이면 문장이 그 말로 시작해 이어 붙일 수 없다.
@@ -1467,7 +1472,8 @@ export function renderReplaySummary(
         linkWord = link(["그와 동시에", "한편"]);
         who = `${linkWord} ${who}`;
       }
-    } else if (linkable && gapSec !== null && (flipped || seed % 3 === 0)) {
+    // 시간이 많이 벌어진 자리는 반드시 짚는다 — 안 짚으면 바로 이어진 일로 읽힌다(요청).
+    } else if (linkable && gapSec !== null && (flipped || gapSec > STANDOFF_SEC || seed % 3 === 0)) {
       // 전황이 한 편에서 다른 편으로 넘어가는 자리는 늘 짚어 준다(요청) — 읽는 사람이
       // 흐름이 바뀌었다는 걸 알아야 한다. 같은 편 이야기가 이어질 때만 드문드문 붙인다.
       if (flipped) {
@@ -1484,8 +1490,9 @@ export function renderReplaySummary(
           teamTag = teamTagFor();
         }
       } else if (gapSec > STANDOFF_SEC) {
-        // 한참 뜸했다면 그 사이는 대치였다고 말할 만하다.
-        linkWord = link(["한동안의 대치 후", "그 후"]);
+        // 한참 뜸했으면 "그 후"보다 몇 분 뒤인지 적는 편이 정확하다(요청).
+        const n = Math.round(gapSec / 60);
+        linkWord = link([`${n}분 뒤`, `${n}분 후`]);
       } else if (sameTide) {
         // 같은 편이 계속 유리한 흐름이면 '쌓인다'는 말로 잇는다(요청) — 순서만 짚는
         // "이어서"보다 전황이 한쪽으로 기운다는 게 드러난다.
@@ -1591,7 +1598,7 @@ export function renderReplaySummary(
     // 이음말이 이미 앞에 붙었을 수도 있어(그러나/한편…) 그 자리까지 함께 걷어낸다.
     const backHead = actor
       // 선택 그룹을 한 겹 더 씌운다 — 안 그러면 뒤의 공백이 마지막 후보에만 붙는다.
-      ? new RegExp(`^(?:(?:${[...CONTRAST_LINKS, ...SEQUENCE_LINKS].join("|")}) )?${escapeRe(resolveName(actor))}(?:가|이|는|은) `)
+      ? new RegExp(`^(?:${LINK_HEAD()} )?${escapeRe(resolveName(actor))}(?:가|이|는|은) `)
       : null;
     // 맺음말은 이미 결말이라 "다시 일어섬"을 얹을 자리가 아니다.
     // 문장이 이미 "…했지만 역부족"처럼 반전을 품고 있으면 "하지만"을 또 얹지 않는다(지적).
@@ -1655,7 +1662,7 @@ export function renderReplaySummary(
     // 남으면 한 문장에 접속사가 두 번 나온다(지적).
     if (chained) {
       text = text.replace(
-        new RegExp(`^(?:${[...CONTRAST_LINKS, ...SEQUENCE_LINKS].join("|")}) `), "",
+        new RegExp(`^${LINK_HEAD()} `), "",
       );
     }
     if (chained && sameSubject) out[out.length - 1] = `${chained}, ${text.slice(subject.length + 1)}`;
