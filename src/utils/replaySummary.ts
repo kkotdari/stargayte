@@ -374,6 +374,24 @@ function sideBeats(args: {
   if (players.length === 0) return beats;
   const who = (p: ParsedReplayPlayer) => [p.rawName];
 
+  // ── 시야(요청) ── 오버로드·옵저버를 여기저기 뿌려 두면 그 자체가 전황을 읽는 플레이다.
+  // 다만 오버로드는 인구수 때문에도 뽑히므로 수만으로는 근거가 못 된다 — 속업(뿌리려고
+  // 하는 투자)까지 있어야 인정한다. 옵저버는 보통 한둘이라 수가 곧 의도다.
+  for (const p of players) {
+    const sg = p.signals;
+    if (!sg) continue;
+    const obs = sg.unitCounts["Observer"] ?? 0;
+    const ovl = sg.unitCounts["Overlord"] ?? 0;
+    const spread = sg.upgradeNames.includes("Pneumatized Carapace");
+    const unit = obs >= 4 ? "Observer" : spread && ovl >= 8 ? "Overlord" : null;
+    if (!unit) continue;
+    beats.push({
+      k: "vision", won, who: who(p), weight: 6,
+      at: sg.firstUnitFrame[unit] ?? null,
+      p: { unit },
+    });
+  }
+
   // ── 안 보이는 유닛에 대한 대비(요청) ── 상대가 러커·다크를 뽑았는데 이쪽에 탐지 수단이
   // 하나도 없었다면, 그건 왜 밀렸는지의 큰 부분이다. 저그는 오버로드가 곧 탐지기라 뺀다.
   // 탐지 여부는 '탐지기를 만들었나'가 아니라 '만들 건물조차 없었나'로 본다 — 스캔은

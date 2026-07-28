@@ -543,6 +543,17 @@ const TEMPLATES: Record<string, Tpl> = {
     ]))}`;
   },
 
+  // 시야(요청) — 오버로드·옵저버를 뿌려 판을 읽는 플레이.
+  vision: (c) => {
+    const u = UNIT_KO[str(c.p.unit)];
+    if (!u) return null;
+    return `${ga(c.who)} ${done(c, c.pick([
+      `${reul(u)} 곳곳에 뿌려 전황을 파악함`,
+      `${reul(u)} 여기저기 띄워 상대의 움직임을 읽음`,
+      `${u} 시야로 판을 넓게 봄`,
+    ]))}`;
+  },
+
   // 안 보이는 유닛에 대한 대비 부족(요청) — 무엇을 못 갖췄는지는 종족마다 다르다.
   "no-detect": (c) => {
     const u = UNIT_KO[str(c.p.unit)];
