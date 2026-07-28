@@ -1016,6 +1016,7 @@ const TEMPLATES: Record<string, Tpl> = {
     const when = m > 0 ? `${m}분까지 ` : "";
     const foe = c.whom ? `${c.whom}의 ` : "상대의 ";
     return `${ga(c.who)} ${done(c, c.pick([
+      `너무 째다가 ${foe}공격에 무너짐`,
       `초반에 무리하게 째다가 ${foe}공격에 무너짐`,
       `${when}병력보다 일꾼을 먼저 채우다 ${foe}공격에 무너짐`,
       `째기를 시도하다 ${foe}공격에 그대로 무너짐`,
@@ -1025,11 +1026,15 @@ const TEMPLATES: Record<string, Tpl> = {
     const unit = UNIT_KO[str(c.p.unit)] ?? "병력";
     const m = num(c.p.min);
     const when = m > 0 ? `${m}분까지 ` : "";
-    return `${ga(c.who)} ${done(c, c.pick([
-      `성공적으로 째서 ${unit} 물량이 폭발함`,
-      `${when}일꾼부터 채운 뒤 ${reul(unit)} 쏟아냄`,
-      `병력을 미루고 자원을 벌어 둔 끝에 ${unit} 물량으로 밀어붙임`,
-    ]))}`;
+    // 마지막 꼴은 주어를 문장 안에서 만든다 — 다른 곳에서 싸움이 나는 동안 조용히 컸다는
+    // 그림이라(요청) 앞머리가 '그 사이'로 시작해야 읽힌다.
+    return done(c, c.pick([
+      `${ga(c.who)} 잘 째서 ${unit} 물량이 폭발함`,
+      `${ga(c.who)} 성공적으로 째서 ${unit} 물량이 폭발함`,
+      `${ga(c.who)} ${when}일꾼부터 채운 뒤 ${reul(unit)} 쏟아냄`,
+      `${ga(c.who)} 마음껏 째고 나서 ${unit} 물량으로 밀어붙임`,
+      `그 사이 잘 짼 ${ga(c.who)} 성장해서 ${unit} 물량을 뽑아냄`,
+    ]));
   },
 
   // ── 맺음말 ──
