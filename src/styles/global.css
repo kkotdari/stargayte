@@ -7463,13 +7463,14 @@ html.scr-light-theme .scr-feed-comments .scr-mreq-chip-inline { color: #c07c1c; 
   transition: max-width .28s cubic-bezier(0.32, 0.72, 0, 1), opacity .2s ease, padding .28s cubic-bezier(0.32, 0.72, 0, 1);
 }
 .scr-feed-comment-row-open .scr-feed-comment-composer { max-width: 100%; opacity: 1; padding: 2px; }
-/* 입력창이 펼쳐지면 포스트 꼬리 여백을 늘린다(요청) — 접혀 있을 땐 "댓글" 글자 한 줄이지만
-   펼치면 입력칸(--field-h)과 등록 버튼이 들어와 그 자리로는 좁다. 댓글이 하나도 없는
-   포스트는 이 줄이 아예 꼬리 여백 안에 얹혀 있어(아래 -empty) 특히 빠듯하다.
-   조상 선택이라 :has()를 쓴다 — 열림 상태는 자손(.scr-feed-comment-row-open)에만 있다. */
+/* 입력창이 펼쳐지면 포스트 꼬리 여백을 조금 늘린다(요청) — 접혀 있을 땐 "댓글" 글자 한
+   줄이지만 펼치면 입력칸과 등록 버튼이 들어와 그 자리로는 빠듯하다.
+   조상 선택이라 :has()를 쓴다 — 열림 상태는 자손(.scr-feed-comment-row-open)에만 있다.
+   한때 --field-h(38px)만큼 통째로 늘렸는데, 그러면 아래 포스트가 눈에 띄게 밀려 내려간다
+   (지적). 실측하면 줄은 4px 커지고 바닥 여백이 3px 내려갈 뿐이라 8px이면 충분하다. */
 .scr-feed-card { transition: padding-bottom .28s cubic-bezier(0.32, 0.72, 0, 1); }
 .scr-feed-card:has(.scr-feed-comment-row-open) {
-  padding-bottom: calc(var(--post-pad-b) + var(--field-h) - 6px);
+  padding-bottom: calc(var(--post-pad-b) + 8px);
 }
 
 @media (prefers-reduced-motion: reduce) { .scr-feed-card { transition: none; } }
