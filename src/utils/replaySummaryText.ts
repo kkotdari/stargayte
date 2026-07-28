@@ -511,7 +511,7 @@ const TEMPLATES: Record<string, Tpl> = {
           `${all}에 ${when}${ga(foe)} 버티지 못함`,
           c.p.out
             ? `${ro(all)} ${when}${ga(foe)} 탈락`
-            : `${ro(all)} ${of}기지가 ${when || "빠르게 "}파괴됨`,
+            : `${ro(all)} ${of}생산이 ${when || "빠르게 "}끊김`,
         ]));
       }
     }
@@ -531,8 +531,8 @@ const TEMPLATES: Record<string, Tpl> = {
       const m = num(c.p.hitMin);
       const when = m > 0 ? `${m}분 만에 ` : "";
       return done(c, c.pick([
-        `${ro(by)} ${when}${of}기지를 반쯤 파괴함`,
-        `${blow} ${when}${ga(foe)} 무너짐`,
+        `${ro(by)} ${when}${of}일꾼에 큰 피해를 줌`,
+        `${blow} ${when}${ga(foe)} 휘청임`,
         `${ro(by)} ${when}${reul(foe)} 몰아붙임`,
       ]));
     }
@@ -549,10 +549,10 @@ const TEMPLATES: Record<string, Tpl> = {
     // 그 사람이 한 행동을 말하는 문장은 주격으로(위 by 참고), 상대 쪽 일이 주어인
     // 문장('생산이 막힘')만 소유격으로 둔다.
     return done(c, c.pick([
-      `${ro(by)} ${of}본진을 파괴함`,
+      `${ro(by)} ${of}생산에 큰 피해를 줌`,
       `${ro(mine)} ${of}생산이 막힘`,
-      `${blow} ${of}기지가 파괴됨`,
-      `${ro(by)} ${of}본진을 크게 압박함`,
+      `${blow} ${of}생산이 뚝 끊김`,
+      `${ro(by)} ${of}살림을 크게 흔듦`,
     ]));
   },
 
@@ -945,8 +945,8 @@ const TEMPLATES: Record<string, Tpl> = {
     if (c.p.out) {
       return `${head}, ${neun(foe)} 막히고 ${ga(c.who)} ${when}${reul(foe)} 엘리시킴`;
     }
-    return `${head}, ${neun(foe)} 막히고 ${ga(c.who)} ${when}${foe}의 기지를 ${c.pick([
-      "반쯤 파괴함", "크게 부숨",
+    return `${head}, ${neun(foe)} 막히고 ${ga(c.who)} ${when}${foe}의 ${c.pick([
+      "생산에 큰 피해를 줌", "살림을 크게 흔듦",
     ])}`;
   },
 
@@ -1413,6 +1413,11 @@ export function renderReplaySummary(
     // 0은 어느 쪽도 아니라는 뜻이라, 그런 문장 앞뒤는 반전으로 잇지 않는다.
     const tide = tideOf(b);
     const prevTide = prev ? tideOf(prev) : 0;
+    // 맺음말을 앞 문장에 '-지만'으로 이어 붙일 참인가 — 그러면 이음말은 필요 없다.
+    const flipToEndCandidate =
+      b.k === "result" && out.length > 0 && chainCount === 0 && prevTide < 0
+      && !!prev && (prev.whom ?? []).some((w) => (b.who ?? []).includes(w))
+      && !/지만|으나/.test(out[out.length - 1]);
     // 전황이 실제로 반대편으로 넘어갔나 / 같은 편으로 이어지나.
     const flipped = tide !== 0 && prevTide !== 0 && tide !== prevTide;
     const sameTide = tide !== 0 && tide === prevTide;
@@ -1555,6 +1560,18 @@ export function renderReplaySummary(
     if (flipJoin && /지만|으나/.test(text)) {
       // 이음말도 붙이지 않는다 — 문장이 이미 제 안에 반전을 품고 있어 그걸로 충분하다.
       flipJoin = false;
+    }
+    // 맺음말 앞에도 이음말을 둔다(요청) — 앞 전황을 그대로 받아 끝나면 "결국/그대로",
+    // 뒤집으며 끝나면 "하지만/그러나". 시간·흐름을 이미 말하는 머리말("32분 혈투 끝에",
+    // "단 5분 만에")이 붙었거나 본문이 이미 그 말로 시작하면 겹치므로 건너뛴다.
+    if (b.k === "result" && prev && !flipToEndCandidate && !/^(결국|그대로|하지만|그러나)/.test(text)) {
+      if (prevTide < 0) {
+        // 앞 전황과 반대로 끝나는 결말에는 반드시 반전을 짚는다(지적) — 시간 머리말이
+        // 붙어 있어도 그 앞에 놓는다("하지만 32분 혈투 끝에 …").
+        text = `${link(["하지만", "그러나"])} ${text}`;
+      } else if (!/^(단 |\d)/.test(text)) {
+        text = `${link(["결국", "그대로"])} ${text}`;
+      }
     }
     // 앞 문장에서 무언가를 하던 사람이 이번 문장에서 당하는 쪽이면, 그건 "하다가 당함"이
     // 한 이야기다(지적) — 이름을 두 번 부르지 말고 "…도배하다가 …한 방에 무너짐"으로 잇는다.
