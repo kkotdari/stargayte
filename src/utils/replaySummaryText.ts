@@ -1824,9 +1824,9 @@ export function renderReplaySummary(
         prev?.k === "greedy-build" || (gapSec !== null && gapSec <= CAUSE_SEC);
       const head = reversal
         ? (toBut(prevLine) ? `${toBut(prevLine)} 반대로` : null)
-        // '-다가'는 하던 일이 그 일로 끊겼다는 강한 말이라 아껴 쓴다(요청) — 웬만하면
-        // '-ㄴ 후'로 받고, 정말 그 수 때문에 끊긴 자리에서만 '-다가'를 쓴다.
-        : tightCause ? (seed % 5 === 0 ? toWhile(prevLine) : toAfter(prevLine, "후")) : null;
+        // 여기는 하던 일이 상대의 수에 끊긴 자리다 — '-다가'가 맞는 몇 안 되는 자리라
+        // (지적) 그대로 쓴다. 아껴 쓰는 것은 tightCause로 자리를 좁혀서 한다.
+        : tightCause ? toWhile(prevLine) : null;
       // 앞마디가 이미 '-다가'로 이어 주므로 뒤 문장 머리의 이음말은 뗀다(지적:
       // "…실패하다가 게다가 …"처럼 접속사가 두 번 나온다).
       const tail = text
