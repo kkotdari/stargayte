@@ -512,19 +512,16 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
 }
 
 export default function FeedScreen() {
-  // 화면 배경 사진(요청: 포스트 구분감을 위해 복구, 양 테마 모두). 포스트는 채움이 완전
-  // 투명하고 블러만 있어서, 뒤에 사진이 있어야 그 블러가 일을 한다 — 포스트 안쪽은 흐릿한
-  // 사진, 포스트 사이는 또렷한 사진이 되어 경계가 저절로 생긴다. 사진은 통계와 같은 것을
-  // 쓴다(원래 피드 배경이던 파일이 통계로 옮겨가며 이름만 stats_bg*가 됐다).
-  usePageBackground("/images/bg/stats_bg.jpg", "/images/bg/stats_bg_mobile.png", "/images/bg/stats_bg_light.png");
+  // 화면 배경 사진 — 이제 PC 다크에서만 깐다(요청: 라이트는 통째로, 다크는 모바일만 제거).
+  // 그래서 모바일용·라이트용 사진은 넘기지 않는다(usePageBackground 주석 참고).
+  // 사진은 통계와 같은 것을 쓴다(원래 피드 배경이던 파일이 통계로 옮겨가며 이름만 stats_bg*가 됐다).
+  usePageBackground("/images/bg/stats_bg.jpg");
   // 검색/필터(기록실과 동일 구성) — 유저 검색, 경기유형, 게임번호. 불러온 피드 안에서 즉시 필터.
   const [search, setSearch] = useState("");
   // 피드 유형 필터(요청: 분류(개인전/팀전) 제거하고 유형 드롭다운 추가). 게임결과/너나와/
   // 일정/랭크변동으로 거른다 — 너나와=시간 미확정 도전장, 일정=시간 확정 도전장.
   const [kindFilter, setKindFilter] = useState<"all" | "match" | "call" | "schedule" | "rankshift">("all");
 
-  // 피드는 다크/라이트 모두 사진 배경 없음(요청: 다크 피드 배경도 제거, 사진 배경은
-  // 통계 화면으로 이동 — StatsScreen의 usePageBackground 참고).
   const user = useAppStore((s) => s.user);
   const isAdmin = !!user && isAdminRole(user.roles);
   const memberOf = useAppStore((s) => s.memberOf);
