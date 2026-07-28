@@ -112,8 +112,16 @@ export function unitPhrase(units: string[]): string {
 /** "유비의 마린, 관우의 저글링으로" / "유비·관우의 마린으로" / "2인 팀의 마린 몰아치기로".
  *  팀 승리를 한 사람 몫으로 돌리지 않기 위한 것이다(요청). 재료가 모자라면 빈 문자열. */
 function teamPhrase(c: Ctx): string {
-  const units = list(c.p.teamUnits);
   const names = c.whoList;
+  // 다들 고만고만하게 뽑았으면 누구의 무엇이라고 갈라 말할 것이 없다(지적).
+  if (c.p.teamEven === true && names.length >= 2) {
+    return c.pick([
+      `${names.join("·")} 팀이 결국 전투에서`,
+      `${names.length}인 팀이 힘을 모아`,
+      `${names.join("·")} 팀이 함께 밀어붙여`,
+    ]);
+  }
+  const units = list(c.p.teamUnits);
   if (units.length < 2 || names.length !== units.length) return "";
   const pairs = names
     .map((n, i) => ({ n, u: UNIT_KO[units[i]] }))
@@ -200,8 +208,11 @@ function victimPhrase(c: Ctx): string {
 // "그대로 태움" 같은 수식은 전부 걷어냈다(지적).
 const LOST_TAILS = [
   "경기는 내줌", "승부는 상대 쪽으로 넘어감", "판을 가져오지는 못함",
-  "흐름은 상대에게 넘어감", "오히려 독이 됨", "되레 발목을 잡음", "역부족이었음",
+  "흐름은 상대에게 넘어감", "역부족이었음",
 ];
+// 도박수(초반 올인)가 안 됐을 때만 쓰는 맺음 — 성공 여부를 단정하지 않는 선에서
+// "실패함" "큰 피해는 못 줌"까지만 말한다(지적: 독이 됐다·발목을 잡았다는 지나치다).
+const RISKY_TAILS = ["실패함", "큰 피해는 못 줌"];
 
 // 진 편 문장은 "…뚫음, 경기는 내줌"처럼 끊어 붙이는 것보다 "…뚫었으나 경기는 내줌"으로
 // 이어야 자연스럽다(지적). 한 일은 전부 명사형('-ㅁ')으로 써 두었으므로, 그 끝만 과거
@@ -225,9 +236,9 @@ function toConnective(action: string): string | null {
 
 /** 한 일 + (진 편이면) 결과 한 마디. 이어 붙일 수 있으면 "…뚫었으나 경기는 내줌"으로,
  *  못 이으면 쉼표로 둔다. */
-const done = (c: Ctx, action: string): string => {
+const done = (c: Ctx, action: string, risky = false): string => {
   if (c.won) return action;
-  const t = c.pick(LOST_TAILS);
+  const t = c.pick(risky ? [...LOST_TAILS, ...RISKY_TAILS] : LOST_TAILS);
   const joined = toConnective(action);
   return joined ? `${joined} ${t}` : `${action}, ${t}`;
 };
@@ -243,7 +254,7 @@ const TEMPLATES: Record<string, Tpl> = {
     const at = targetPhrase(c);
     return `${ga(c.who)} ${at}${done(c, c.pick([
       `${build}를 감`, `빠른 ${build}를 시도함`, `과감한 ${build}를 감`, `${build}를 준비함`,
-    ]))}`;
+    ]), true)}`;
   },
   moka: act([
     "저글링·울트라에 다크스웜을 얹은 목동 저그로 감", "울트라까지 모아 목동 저그를 운용함",
@@ -287,14 +298,14 @@ const TEMPLATES: Record<string, Tpl> = {
     return `${ga(c.who)} ${at}${done(c, c.pick([
       `${label} 질럿 러시를 감`, `빠른 ${label} 질럿 러시를 시도함`, `과감한 ${label} 질럿 러시를 감`,
       `${label}에서 질럿을 모아 나감`,
-    ]))}`;
+    ]), true)}`;
   },
   "cannon-rush": (c) => {
     const at = targetPhrase(c);
     return `${ga(c.who)} ${at}${done(c, c.pick([
       "포토러쉬를 함", "초반 포토러쉬를 함", "빠른 포토러쉬를 시도함",
       "예상치 못한 포토러쉬를 함",
-    ]))}`;
+    ]), true)}`;
   },
   recall: act([
     "아비터를 띄우고 리콜까지 씀", "리콜로 병력을 뒤로 넘김", "과감한 아비터 리콜을 씀",
@@ -465,12 +476,12 @@ const TEMPLATES: Record<string, Tpl> = {
     if (c.p.firebat) {
       return `${ga(c.who)} ${at}${done(c, c.pick([
         "몰래 배럭 파이어뱃 러쉬를 감", "몰래 배럭에서 파이어뱃을 모아 나감",
-      ]))}`;
+      ]), true)}`;
     }
     return `${ga(c.who)} ${at}${done(c, c.pick([
       "몰래 배럭을 올림", "몰래 배럭을 시도함", "이른 시간에 몰래 배럭을 올림",
       "예상치 못한 몰래 배럭을 올림",
-    ]))}`;
+    ]), true)}`;
   },
   // 성큰러쉬 — 내 기지가 아닌 곳에 초반부터 성큰을 박는 올인(요청). 해처리는 펴지 않는다.
   "sunken-rush": (c) => {
@@ -478,7 +489,7 @@ const TEMPLATES: Record<string, Tpl> = {
     return `${ga(c.who)} ${at}${done(c, c.pick([
       "성큰러쉬를 함", "초반 성큰러쉬를 함", "빠른 성큰러쉬를 시도함",
       "예상치 못한 성큰러쉬를 함",
-    ]))}`;
+    ]), true)}`;
   },
   // 센터 포토 — 가운데를 포토로 걸어 잠그는 그림(요청).
   // 센터 포토 — 수가 많으면 '도배', 적으면 그냥 깔았다는 데까지만.
@@ -609,10 +620,9 @@ const TEMPLATES: Record<string, Tpl> = {
     let head = "";
     if (lead === "epic") head = `${c.pick([`${min}분 혈투 끝에`, `${min}분을 끌고 간 끝에`])} `;
     else if (lead === "rush") head = `${c.pick([`${min}분 만에`, `단 ${min}분 만에`])} `;
-    else if (lead === "spectacle") {
-      const sp = SPECTACLE_UNITS[str(c.p.leadUnit)];
-      if (sp) head = `${sp} `;
-    }
+    // 드문 유닛은 "캐리어가 뜬"처럼 주인 없이 말하지 않는다(지적) — 누구의 캐리어인지
+    // 밝히고, 그 문장이 곧 맺음말이 된다. 아래 팀 문장 다음에서 처리한다.
+    const spectacle = lead === "spectacle" ? UNIT_KO[str(c.p.leadUnit)] : "";
     // 팀전에서 특히 활약한 사람 한 마디 — 그 사람을 특징짓는 유닛과 역할로 말한다.
     // 팀 전체로 말할 때는 생산이 압도적이었던 사람만 따로 적는다(요청).
     const heroUnit = UNIT_KO[str(c.p.heroUnit)];
@@ -638,6 +648,14 @@ const TEMPLATES: Record<string, Tpl> = {
       const t = mode === "late" ? c.pick(["후반 ", "길게 끌어 "]) : "";
       const body2 = head + `${t}${team} ${c.pick(["승리", "이김"])}`;
       return [body2, ...(hero ? [hero] : [])].join(", ");
+    }
+    if (spectacle) {
+      const b2 = `${c.who}의 ${c.pick([
+        `${spectacle}까지 나온 끝에 승리`,
+        `${reul(spectacle)} 앞세워 승리`,
+        `${spectacle} 한 방으로 승부를 냄`,
+      ])}`;
+      return [b2, ...(hero ? [hero] : [])].join(", ");
     }
     // 조합을 빼면 "초반 승리"처럼 앙상해지므로, 그럴 땐 수식도 같이 정리한다.
     let body: string;

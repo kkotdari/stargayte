@@ -758,28 +758,40 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   });
   // 팀전 승리를 한 사람의 공으로 돌리지 않는다(요청) — 이긴 편 각자가 무엇으로 싸웠는지를
   // 함께 적어, "유비의 마린, 관우의 저글링으로 승리"처럼 팀 전체로 읽히게 한다.
-  const teamMembers = winnerPlayers.length > 1
+  const teamRanked = winnerPlayers.length > 1
     ? winnerPlayers
         .map((p) => ({
           raw: p.rawName,
+          n: sumCombat(p),
           unit: [...ownCombat(p).entries()]
             .filter(([u]) => !SUPPORT_UNITS.has(u))
             .sort((a, b) => b[1] - a[1])[0]?.[0],
         }))
-        .filter((x): x is { raw: string; unit: string } => !!x.unit)
+        .filter((x): x is { raw: string; n: number; unit: string } => !!x.unit)
+        .sort((a, b) => b.n - a.n)
     : [];
-  const useTeam = teamMembers.length === winnerPlayers.length && teamMembers.length > 1;
+  // 전원의 유닛을 늘어놓으면 문장이 길어지기만 한다(지적) — 많이 뽑은 두 사람까지만 적고,
+  // 셋 이상이 고만고만하면 아예 유닛을 빼고 "팀이 결국 전투에서 승리"로 줄인다.
+  const teamAll = teamRanked.length === winnerPlayers.length && teamRanked.length > 1;
+  const teamEven = teamAll && teamRanked.length >= 3
+    && teamRanked[teamRanked.length - 1].n >= teamRanked[0].n * 0.7;
+  const teamMembers = teamEven ? [] : teamRanked.slice(0, 2);
+  const useTeam = teamAll;
 
   const ending: Beat = {
     k: "result", won: true, at: Number.POSITIVE_INFINITY, weight: 1000,
-    who: useTeam ? teamMembers.map((x) => x.raw) : subject,
+    who: !useTeam ? subject
+      : teamEven ? teamRanked.map((x) => x.raw)
+      : teamMembers.map((x) => x.raw),
     p: {
       mode, lead, wentLate,
       leadMin: minutes(sec),
       ...(spectacle ? { leadUnit: spectacle } : {}),
       // 이어받는 문장은 유닛을 다시 말해야 말이 이어진다 — 그때는 중복이 아니라 연결이다.
       ...(cont ? { units, cont: true } : alreadySaid ? {} : { units }),
-      ...(useTeam ? { teamUnits: teamMembers.map((x) => x.unit) } : {}),
+      ...(useTeam
+        ? (teamEven ? { teamEven: true } : { teamUnits: teamMembers.map((x) => x.unit) })
+        : {}),
       // 팀 전체로 말할 땐 한 사람의 활약을 따로 덧붙이지 않는다 — 공이 두 번 갈린다.
       // 다만 생산이 압도적이었던 사람만은 예외다(요청).
       ...(useTeam
