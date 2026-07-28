@@ -232,14 +232,12 @@ const SECONDS_PER_FRAME = 0.042;
 // 이 안에 벌어진 양쪽 일은 '같은 때'로 보고 이어 주는 말을 붙인다.
 // 스타는 호흡이 빨라 1분만 지나도 다른 국면이다(지적) — 창을 더 좁혔다.
 const SAME_TIME_SEC = 45;
-// 이만큼 안에 이어진 일은 "이어서/곧이어", 그보다 벌어지면 "그 후"(요청).
-const SOON_SEC = 2 * 60;
 // 이만큼이나 벌어졌으면 그 사이는 정말로 대치였다고 말해도 된다(요청: "한동안의 대치 후").
 const STANDOFF_SEC = 5 * 60;
 // 대비를 뜻하는 이음말 — 이 뒤에는 주어를 주제격("Rex는")으로 세운다(지적).
 const CONTRAST_LINKS = new Set(["한편", "그와 동시에", "반면", "그러나", "하지만", "그렇지만"]);
 // 시간 순서를 짚는 이음말 — 위 대비 이음말과 함께 문장 앞머리를 알아보는 데 쓴다.
-const SEQUENCE_LINKS = ["이어서", "곧이어", "잠시 후", "그 후", "한동안의 대치 후", "그 기세로", "여세를 몰아", "그 기세를 이어간"];
+const SEQUENCE_LINKS = ["이어서", "곧이어", "잠시 후", "그 후", "한동안의 대치 후", "그 기세로", "여세를 몰아", "그 기세를 이어간", "여기에", "게다가", "설상가상으로"];
 // 정규식에 이름을 그대로 넣기 전에 특수문자를 막는다 — 닉네임에 무엇이 들어올지 모른다.
 const escapeRe = (v: string): string => v.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 // 한 문장에 이어 붙일 수 있는 마디 수 — 이보다 길어지면 읽다가 숨이 찬다.
@@ -443,16 +441,25 @@ const TEMPLATES: Record<string, Tpl> = {
           })),
         }))
         .filter((x) => x.label);
+      // "패스트 리버와 리버 드랍"처럼 같은 유닛을 두 번 부르는 짝은 하나로 합친다(지적) —
+      // 빠르게 뽑아 곧바로 드랍을 간 것이니 "패스트 리버 드랍"이 그 경기의 실제 그림이다.
+      for (const x of each) {
+        const m = /^패스트 (.+)$/.exec(x.label);
+        if (!m) continue;
+        const drop = each.find((y) => y !== x && y.n === x.n && y.label === `${m[1]} 드랍`);
+        if (drop) { x.label = `패스트 ${m[1]} 드랍`; drop.label = ""; }
+      }
+      const merged = each.filter((x) => x.label);
       // 같은 수를 여러 명이 가는 일이 흔하다(지적) — 그때 "A의 3게이트 질럿 러시와 B의
       // 3게이트 질럿 러시"는 같은 말을 두 번 하는 것이라, 이름만 묶어 한 번만 말한다.
       const byLabel: { label: string; names: string[] }[] = [];
-      for (const x of each) {
+      for (const x of merged) {
         const g = byLabel.find((y) => y.label === x.label);
         if (g) g.names.push(x.n); else byLabel.push({ label: x.label, names: [x.n] });
       }
       // 다 같은 사람이 여러 수를 간 것이면 이름을 한 번만 부른다 — "Rex의 패스트 리버와
       // 리버 드랍"이라야 읽히지, "Rex의 …와 Rex의 …"는 같은 말을 두 번 하는 것이다(지적).
-      const oneName = new Set(each.map((x) => x.n)).size === 1 ? each[0].n : "";
+      const oneName = new Set(merged.map((x) => x.n)).size === 1 ? merged[0].n : "";
       const parts = oneName
         ? [`${oneName}의 ${byLabel.map((g) => g.label).reduce((a, l) => (a ? `${wa(a)} ${l}` : l), "")}`]
         : byLabel.map((g) => `${joinNames(g.names)}의 ${g.label}`);
@@ -1393,16 +1400,18 @@ export function renderReplaySummary(
         if (chainCount === 0 && line !== "" && !linked && !/지만|으나/.test(line) && toBut(line)) flipJoin = true;
         else {
           linkWord = link(["하지만", "그러나", "그렇지만"]);
-          // 팀전이면 어느 편으로 넘어갔는지까지 말해 주는 편이 읽힌다(요청: "하지만 2팀에서는").
+          // 팀전이면 어느 편으로 넘어갔는지까지 말해 준다(요청: "하지만 1팀의 누가 …").
           const t = teamOf?.(names[0] ?? "");
           const pt = teamOf?.(((prev?.who ?? []).map(resolveName))[0] ?? "");
-          if (t && pt && t !== pt) teamTag = `${t}팀에서는 `;
+          if (t && pt && t !== pt) teamTag = `${t}팀의 `;
         }
-      } else if (gapSec <= SOON_SEC) {
-        // 시간이 벌어진 다음 일은 순서를 짚어 준다(요청) — 얼마나 벌어졌느냐로 말을 고른다.
-        linkWord = link(["이어서", "곧이어", "잠시 후"]);
+      } else if (gapSec > STANDOFF_SEC) {
+        // 한참 뜸했다면 그 사이는 대치였다고 말할 만하다.
+        linkWord = link(["한동안의 대치 후", "그 후"]);
       } else {
-        linkWord = gapSec > STANDOFF_SEC ? link(["한동안의 대치 후", "그 후"]) : "그 후";
+        // 같은 편이 계속 유리한 흐름이면 '쌓인다'는 말로 잇는다(요청) — 순서만 짚는
+        // "이어서"보다 전황이 한쪽으로 기운다는 게 드러난다.
+        linkWord = link(["여기에", "게다가", "설상가상으로", "이어서", "곧이어"]);
       }
       // 한 문장으로 이을 때(flipJoin)는 이음말이 없다 — 그때 붙이면 공백만 남는다.
       if (linkWord) who = `${linkWord} ${teamTag}${who}`;
@@ -1439,7 +1448,7 @@ export function renderReplaySummary(
     // 주어가 그 사람이어야 한다. 틀에 그런 꼴이 있으면 그것을 고른다(지적: 당한 것도
     // 같은 사람을 주어로 이어 달라).
     const wantCut = (b.whom ?? []).length === 1
-      && chainCount === 0 && out.length > 0 && lastWho.includes((b.whom ?? [])[0])
+      && chainCount < MAX_CHAIN && out.length > 0 && lastWho.includes((b.whom ?? [])[0])
       && !(b.who ?? []).includes((b.whom ?? [])[0]);
     if (wantCut) {
       const mark = `${ga(resolveName((b.whom ?? [])[0]))} `;
@@ -1474,7 +1483,7 @@ export function renderReplaySummary(
     const victim = (b.whom ?? []).length === 1 ? (b.whom ?? [])[0] : "";
     const victimName = victim ? resolveName(victim) : "";
     const cutIn =
-      !!victim && chainCount === 0 && out.length > 0 && lastWho.includes(victim)
+      !!victim && chainCount < MAX_CHAIN && out.length > 0 && lastWho.includes(victim)
       && !(b.who ?? []).includes(victim) && text.includes(`${ga(victimName)} `);
     // 반대로 앞 문장에서 당한 사람이 이번엔 무언가를 했다면 "하지만 다시 …"가 된다(지적).
     const actor = (b.who ?? []).length === 1 ? (b.who ?? [])[0] : "";
@@ -1486,7 +1495,7 @@ export function renderReplaySummary(
     // 맺음말은 이미 결말이라 "다시 일어섬"을 얹을 자리가 아니다.
     // 문장이 이미 "…했지만 역부족"처럼 반전을 품고 있으면 "하지만"을 또 얹지 않는다(지적).
     const backUp =
-      !!actor && !cutIn && b.k !== "result" && chainCount === 0 && lastWhom.includes(actor)
+      !!actor && !cutIn && b.k !== "result" && chainCount < MAX_CHAIN && lastWhom.includes(actor)
       && !!backHead && backHead.test(text) && !/지만|으나/.test(text);
     // 앞 문장과 주어가 같으면 주어를 두 번 부르지 않는다(지적: 주어가 반복될 경우 합침).
     // "Rex가 …이기고, …" 꼴로 앞 문장에 이어 붙이고 뒤 문장에서는 주어를 뗀다.
