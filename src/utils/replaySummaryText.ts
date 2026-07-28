@@ -468,6 +468,15 @@ const TEMPLATES: Record<string, Tpl> = {
         const all = parts.length >= 2 ? `${wa(head)} ${parts[parts.length - 1]}` : parts[0];
         const m = num(c.p.outMin) || num(c.p.hitMin);
         const when = m > 0 ? `${m}분 만에 ` : "";
+        // 누구 기지인지 모르면 "상대 기지가 파괴됨"은 말하지 않는 편이 낫다(지적) —
+        // 확인된 건 무슨 수를 갔다는 것뿐이니 거기까지만 말한다.
+        if (!c.whom) {
+          const labels = byLabel.map((g) => g.label);
+          const only = oneName
+            ? `${ga(oneName)} ${reul(labels.reduce((a, l) => (a ? `${wa(a)} ${l}` : l), ""))} 감행함`
+            : `${ga(joinNames(c.whoList))} ${reul(labels[0])} 감행함`;
+          return done(c, only);
+        }
         return done(c, c.pick([
           `${all}에 ${ga(foe)} ${when}${c.p.out ? "탈락" : "무너짐"}`,
           `${all}에 ${when}${ga(foe)} 버티지 못함`,
@@ -477,6 +486,8 @@ const TEMPLATES: Record<string, Tpl> = {
         ]));
       }
     }
+    // 당한 사람을 못 짚었으면 피해까지 말하지 않는다(지적) — 무슨 수를 갔다는 것만 말한다.
+    if (!c.whom) return `${ga(c.who)} ${done(c, `${reul(label)} 감행함`)}`;
     // "Rex가 리버 드랍 한 방에"가 아니라 "Rex의 리버 드랍 한 방에"라야 읽힌다(지적) —
     // 그런 꼴은 주어까지 문장 안에서 만든다.
     const mine = `${c.who}의 ${label}`;
