@@ -242,7 +242,7 @@ const STANDOFF_SEC = 5 * 60;
 // 대비를 뜻하는 이음말 — 이 뒤에는 주어를 주제격("Rex는")으로 세운다(지적).
 const CONTRAST_LINKS = new Set(["한편", "그와 동시에", "반면", "그러나", "하지만", "그렇지만"]);
 // 시간 순서를 짚는 이음말 — 위 대비 이음말과 함께 문장 앞머리를 알아보는 데 쓴다.
-const SEQUENCE_LINKS = ["이어서", "곧이어", "잠시 후", "그 후", "한동안의 대치 후", "그 기세로", "여세를 몰아", "그 기세를 이어간", "여기에", "게다가", "설상가상으로"];
+const SEQUENCE_LINKS = ["이어서", "곧이어", "잠시 후", "그 후", "한동안의 대치 후", "그 기세로", "여세를 몰아", "그 기세를 이어간", "여기에", "게다가", "설상가상으로", "그리고"];
 // 정규식에 이름을 그대로 넣기 전에 특수문자를 막는다 — 닉네임에 무엇이 들어올지 모른다.
 const escapeRe = (v: string): string => v.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 // 어느 편에도 기울지 않는 문장들 — 대치·소모전·손 빠르기·총 생산량처럼 '그 순간 누가
@@ -1426,6 +1426,14 @@ export function renderReplaySummary(
     let teamTag = "";
     // 문장 앞에 붙인 이음말 — 만들어진 문장과 겹치면 도로 떼어낸다(아래 참고).
     let linkWord = "";
+    // 팀전에서 흐름이 어느 편으로 넘어갔는지 짚는 말(요청: "하지만 1팀에서는 …") —
+    // 앞 문장과 다른 팀일 때만 붙인다.
+    const teamTagFor = (): string => {
+      const t = teamOf?.(names[0] ?? "");
+      const pt = teamOf?.(((prev?.who ?? []).map(resolveName))[0] ?? "");
+      if (!t || !pt || t === pt) return "";
+      return seed % 2 === 0 ? `${t}팀의 ` : `${t}팀에서는 `;
+    };
     if (
       prev && b.k !== "result"
       && (prev.k === "raid-damage" || prev.k === "gang-rush")
@@ -1440,8 +1448,12 @@ export function renderReplaySummary(
     } else if (linkable && gapSec !== null && gapSec <= SAME_TIME_SEC) {
       if (!sharesWho && seed % 2 === 0) joinPrev = true;
       else if (flipped) {
-        // 비슷한 때에 반대편에서 벌어진 일은 "한편/그와 동시에"로 이어야 자연스럽다(요청).
-        linkWord = link(["한편", "그와 동시에", "반면"]);
+        // 전황이 갈린 자리는 대비를 뜻하는 말로 잇는다(요청: 반면 / 하지만 / 그러나).
+        linkWord = link(["반면", "하지만", "그러나"]);
+        who = `${linkWord} ${teamTagFor()}${who}`;
+      } else if (sameTide) {
+        // 같은 편 이야기가 거의 같은 때에 겹쳤을 뿐이라, 동시성만 짚는다.
+        linkWord = link(["그와 동시에", "한편"]);
         who = `${linkWord} ${who}`;
       }
     } else if (linkable && gapSec !== null && (flipped || seed % 3 === 0)) {
@@ -1457,11 +1469,8 @@ export function renderReplaySummary(
         const linked = new RegExp(`^(?:${[...CONTRAST_LINKS].join("|")}) `).test(line);
         if (chainCount === 0 && line !== "" && !linked && !/지만|으나/.test(line) && toBut(line)) flipJoin = true;
         else {
-          linkWord = link(["하지만", "그러나", "그렇지만"]);
-          // 팀전이면 어느 편으로 넘어갔는지까지 말해 준다(요청: "하지만 1팀의 누가 …").
-          const t = teamOf?.(names[0] ?? "");
-          const pt = teamOf?.(((prev?.who ?? []).map(resolveName))[0] ?? "");
-          if (t && pt && t !== pt) teamTag = `${t}팀의 `;
+          linkWord = link(["하지만", "그러나", "그렇지만", "반면"]);
+          teamTag = teamTagFor();
         }
       } else if (gapSec > STANDOFF_SEC) {
         // 한참 뜸했다면 그 사이는 대치였다고 말할 만하다.
@@ -1469,7 +1478,7 @@ export function renderReplaySummary(
       } else if (sameTide) {
         // 같은 편이 계속 유리한 흐름이면 '쌓인다'는 말로 잇는다(요청) — 순서만 짚는
         // "이어서"보다 전황이 한쪽으로 기운다는 게 드러난다.
-        linkWord = link(["여기에", "게다가", "설상가상으로", "이어서", "곧이어"]);
+        linkWord = link(["여기에", "게다가", "설상가상으로", "그리고", "한편"]);
       } else {
         // 어느 쪽으로도 안 기운 문장(대치·소모전·생산량)은 순서만 짚는다 — 여기에
         // "설상가상"이나 "하지만"을 붙이면 없는 전황을 지어내는 셈이다(지적).
