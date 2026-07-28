@@ -72,3 +72,9 @@ export function reul(w: string): string {
   const j = jongseong(w);
   return j === null || j === 0 ? `${w}를` : `${w}을`;
 }
+
+/** ~라는 / ~이라는 */
+export function ira(w: string): string {
+  const j = jongseong(w);
+  return j === null || j === 0 ? `${w}라는` : `${w}이라는`;
+}

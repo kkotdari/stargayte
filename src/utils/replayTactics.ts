@@ -97,6 +97,10 @@ const MUTA_MASS_MIN = 36;
 // 저글링 러시라 부르려면 초반에 이만큼은 뽑았어야 한다 — 성큰러시에 딸린 두어 기와 가른다.
 const ZLING_RUSH_MIN = 6;
 
+// 병력 건물보다 자원을 먼저 늘린 것이 '초반'이라 할 수 있는 한계 — 이보다 늦으면
+// 그냥 확장한 것이지 째기가 아니다.
+const GREEDY_BUILD_SEC = 6 * 60;
+
 // 아군 기지에 이만큼은 깔아 줘야 '받쳐줬다'고 말할 수 있다 — 한 개는 지나가다 지은 것일 수 있다.
 const ALLY_CANNON_MIN = 2;
 
@@ -339,6 +343,30 @@ function detectFor(c: Ctx): Tactic[] {
     const f = b.map((x) => x.frame).filter((x): x is number => x !== null);
     return f.length > 0 ? Math.min(...f) : null;
   };
+
+  // 병력 건물부터 올리지 않고 자원부터 늘리는 것도 '째기'다(요청) — 저그는 스포닝풀 없이
+  // 해처리 셋, 프로토스·테란은 게이트/배럭 없이 투넥서스·투커맨드가 그 신호다. 순서 자체가
+  // 증거라 유닛 수를 세는 것보다 확실하다.
+  {
+    // 병력 건물이 아예 안 보이는 기록은 '늦게 지었다'가 아니라 '기록이 없다'로 봐야 한다 —
+    // 그걸 째기로 세면 커맨드만 늘린 판이 죄다 째기가 된다. 병력 건물이 실제로 있는
+    // 기록에서만, 그것보다 자원 건물이 먼저 올라갔을 때를 본다.
+    const later = (b: string) => firstB(b) ?? Infinity;
+    const military = race === "저그" ? "Spawning Pool" : race === "프로토스" ? "Gateway" : "Barracks";
+    const hatches = (s.buildingFrames["Hatchery"] ?? []).filter((f) => f < later(military));
+    const greedy =
+      firstB(military) === null ? null
+      : race === "저그" ? (hatches.length >= 2 ? hatches[1] : null)
+      : race === "프로토스" ? (later("Nexus") < later("Gateway") ? firstB("Nexus") : null)
+      : race === "테란" ? (later("Command Center") < later("Barracks") ? firstB("Command Center") : null)
+      : null;
+    if (greedy !== null && sec(greedy) < GREEDY_BUILD_SEC) {
+      out.push({
+        key: "greedy-build", weight: 12, at: greedy, who,
+        p: { kind: race === "저그" ? "hatch" : race === "프로토스" ? "nexus" : "command" },
+      });
+    }
+  }
 
   // ── 종족을 가리지 않는 것들 ──
   // '패스트 OO' — 그 유닛이 나오는 보통 타이밍보다 확실히 이르면 그 자체가 전략이다(요청).
