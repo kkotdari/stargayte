@@ -113,7 +113,7 @@ export default function ReplayBatchButton() {
   const [reviewOpen, setReviewOpen] = useState(false);
   // 진행률/로그를 제어판 모달 안에 그대로 쌓지 않고 별도의 창(모달)으로 띄운다(요청:
   // "배치 등록시 별도 창에 결과 나오게, 모달 내에 스크린 만들 필요 없이") — 로그가
-  // 길어질수록 제어판 모달의 본문(.scr-admin-panel-modal .scr-modal-body)이 늘어나면서
+  // 길어질수록 제어판 모달의 본문(.scr-admin-sheet-content)이 늘어나면서
   // 그 위에 겹치는 CSS 버그(translateY로 인한 닫기 버튼 클릭 안 됨)까지 있었어서, 아예
   // 분리하는 쪽이 근본적으로 더 안전하다. 배치가 시작되면 자동으로 뜨고, 닫아도(X) 배치
   // 자체는 계속 진행된다 — 다시 보고 싶으면 트리거 버튼 옆에 뜨는 "결과 보기"로 재오픈.
@@ -327,7 +327,7 @@ export default function ReplayBatchButton() {
       {running ? (
         <button
           type="button"
-          className="scr-btn"
+          className="scr-btn scr-btn-primary"
           onClick={() => { abortRef.current = true; }}
         >
           <Spinner /> 중단
@@ -366,7 +366,7 @@ export default function ReplayBatchButton() {
               <button
                 key={o.value}
                 type="button"
-                className="scr-btn scr-admin-panel-batch-mode"
+                className="scr-btn scr-btn-primary scr-admin-panel-batch-mode"
                 disabled={!menuOpen}
                 onClick={() => start(o.value)}
               >
@@ -420,7 +420,7 @@ export default function ReplayBatchButton() {
               {/* 배치가 자동으로 처리하지 못한 것들(승자 미판별, 종족 미인식 등)은 사람이 직접
                   채워야 한다 — 다 끝난 뒤 그 리플레이만 모아 검토 화면으로 넘긴다. */}
               {finished && manualDrafts.length > 0 && (
-                <button type="button" className="scr-btn scr-admin-panel-batch-review" onClick={() => setReviewOpen(true)}>
+                <button type="button" className="scr-btn scr-btn-primary scr-admin-panel-batch-review" onClick={() => setReviewOpen(true)}>
                   실패한 {manualDrafts.length}개 직접 등록
                 </button>
               )}

@@ -216,17 +216,36 @@ function buildSide(players: ParsedReplayPlayer[]): Side {
 // "캐리어 골리앗 싸움이 메인인데 그걸 못잡네(안 죽고 오래 유지해서 그런듯)",
 // "오랜 시간을 유지한(다른 걸 안 뽑은) 유닛들에 대한 기록이 안 남는 게 이상하다".
 //
-// 그래서 시간으로 잰다. 경기를 30초 눈금으로 자르고 눈금마다 '지금 굴리는 조합'을 정한다:
-//   ① 최근 HOLD_SEC 안에 뽑은 유닛 = 지금 굴리는 것
-//   ② 그 창이 통째로 비면(아무것도 안 뽑음) 직전 눈금의 조합을 그대로 이어받는다 —
-//      다른 걸 안 뽑았다는 건 그때 그 병력을 계속 쓰고 있었다는 뜻이다(요청).
-// 점수는 '중후반(경기 절반 이후) 눈금 중 그 유닛이 조합에 들어 있던 눈금 수' = 유지 시간.
+// 그래서 '얼마나 오래 그 병력을 들고 있었나'를 잰다 — 수가 아니라 시간이다. 경기를 30초
+// 눈금으로 자르고, 눈금마다 유닛별로 "지금 이 병력을 갖고 있나"를 판정해 중후반 눈금 수를
+// 센다. 갖고 있다고 보는 조건은 유닛 성격에 따라 다르다:
+//   ① 잘 안 죽는 유닛(캐리어·골리앗·탱크·울트라…)은 한 번 갖추면 경기 끝까지 갖고 있다.
+//      더 안 뽑는 건 없어져서가 아니라 안 죽어서다.
+//   ② 소모성 유닛(질럿·저글링·마린…)은 계속 죽으니 계속 뽑아야 한다 — 마지막 생산 뒤
+//      GRACE_SEC이 지나면 더는 그 병력이 없다고 본다.
+// 바로 이 비대칭이 핵심이다. 예전 판은 '아무 유닛도 안 뽑은 구간'에서만 직전 조합을
+// 이어받아서, 질럿을 끝까지 몇 기씩 흘려 뽑으면 캐리어가 5분 만에 조합에서 빠졌다
+// (지적: "캐리어 한 부대 골리앗 두 부대 정도 뽑아서 정말 오래오래 썼는데 안 잡혀").
+// 수로 재는 판도 만들어 봤지만(보유량 × 시간) 초반 물량의 봉우리가 워낙 커서 다시
+// 질럿이 이겼다 — 사용자가 말한 기준은 처음부터 '수'가 아니라 '오래'였다.
 const LATE_HALF = 0.5;
-// 이 안에 뽑은 게 있으면 아직 그 조합을 굴리는 중이다. 한 부대를 모으는 데 걸리는 시간
-// 정도 — 더 짧게 잡으면 생산 텀이 조금만 벌어져도 조합이 끊긴 것으로 읽힌다.
-const HOLD_SEC = 5 * 60;
+// 소모성 유닛을 마지막으로 뽑은 뒤 이만큼 지나면 그 병력은 이제 없다고 본다.
+const GRACE_SEC = 5 * 60;
 // 시간 눈금. 30초면 32분 경기가 64칸이라 유지 시간 차이가 충분히 드러난다.
 const BUCKET_SEC = 30;
+// 안 죽는 유닛이라도 이 수는 넘어야 '그 병력을 굴렸다'고 말할 수 있다 — 한 기짜리
+// 리버·아비터가 경기 내내 주력으로 잡히면 곤란하다.
+const DURABLE_MIN = 2;
+
+/** 잘 안 죽고 남는 유닛 — 뽑기를 멈춰도 그 병력이 그대로 유지된다고 본다. 고테크·고비용
+ *  이거나 사거리·기동으로 살아남는 것들. 여기 없는 유닛(질럿·저글링·마린·벌처·뮤탈…)은
+ *  소모성으로 보고 위 GRACE_SEC을 적용한다. */
+const DURABLE_UNITS = new Set([
+  "Siege Tank (Tank Mode)", "Siege Tank (Siege Mode)", "Goliath", "Science Vessel",
+  "Battlecruiser", "Valkyrie", "Wraith",
+  "Carrier", "Arbiter", "Reaver", "Scout", "Corsair", "Archon", "Dark Archon",
+  "Ultralisk", "Guardian", "Devourer", "Defiler", "Queen", "Lurker",
+]);
 
 function lateArmy(players: ParsedReplayPlayer[], end: number | null): Map<string, number> {
   if (!end || end <= 0) return new Map();
@@ -245,34 +264,38 @@ function lateArmy(players: ParsedReplayPlayer[], end: number | null): Map<string
   }
   if (frames.size === 0) return new Map();
 
+  for (const fs of frames.values()) fs.sort((a, b) => a - b);
   const per = BUCKET_SEC / SECONDS_PER_FRAME;
-  const hold = HOLD_SEC / SECONDS_PER_FRAME;
+  const grace = GRACE_SEC / SECONDS_PER_FRAME;
   const buckets = Math.max(1, Math.ceil(end / per));
   const lateFrom = Math.floor((end * LATE_HALF) / per);
-  const held = new Map<string, number>();   // 중후반 유지 눈금 수
-  const made = new Map<string, number>();   // 중후반 생산 수 — 동점일 때만 쓴다
-  let carried: string[] = [];
+  const held = new Map<string, number>();
+  // 눈금마다 "그 시점까지의 마지막 생산"이 필요하다 — 전체 마지막 생산으로 재면, 끝자락에
+  // 몇 기 흘려 뽑은 것만으로 그 유닛이 중후반 내내 있었던 걸로 잡힌다(실제로 그래서
+  // 질럿이 캐리어를 눌렀다). 프레임이 정렬돼 있으니 포인터로 훑는다.
+  const ptr = new Map<string, number>();
+  const seen = new Map<string, number>();
   for (let i = 0; i < buckets; i += 1) {
     const to = (i + 1) * per;
-    const live: string[] = [];
     for (const [unit, fs] of frames) {
-      if (fs.some((f) => f <= to && f > to - hold)) live.push(unit);
+      let k = ptr.get(unit) ?? 0;
+      while (k < fs.length && fs[k] <= to) { seen.set(unit, fs[k]); k += 1; }
+      ptr.set(unit, k);
+      const at = seen.get(unit);
+      if (at === undefined) continue; // 아직 한 기도 안 나옴
+      const durable = DURABLE_UNITS.has(unit) && fs.length >= DURABLE_MIN;
+      // 안 죽는 유닛은 한 번 갖추면 끝까지, 소모성은 마지막 생산 + 유예까지.
+      if (!durable && to - at > grace) continue;
+      if (i < lateFrom) continue;
+      held.set(unit, (held.get(unit) ?? 0) + 1);
     }
-    // 아무것도 안 뽑은 구간은 직전 조합을 그대로 이어받는다(위 ②).
-    const army = live.length > 0 ? live : carried;
-    carried = army;
-    if (i < lateFrom) continue;
-    for (const unit of army) held.set(unit, (held.get(unit) ?? 0) + 1);
   }
-  if (held.size === 0) return new Map();
-  const from = end * LATE_HALF;
-  for (const unit of held.keys()) {
-    made.set(unit, (frames.get(unit) ?? []).filter((f) => f >= from).length);
-  }
-  // 유지 시간이 같으면 그 구간에 더 많이 뽑은 쪽을 앞에 둔다 — 호출부(mainUnits)의 정렬은
-  // 안정 정렬이라 값이 같으면 이 삽입 순서가 그대로 유지된다.
+  // 유지 시간이 같으면 더 많이 뽑은 쪽을 앞에 둔다 — 호출부(mainUnits)의 정렬은 안정
+  // 정렬이라 값이 같으면 이 삽입 순서가 그대로 유지된다.
   return new Map(
-    [...held.entries()].sort((a, b) => b[1] - a[1] || (made.get(b[0]) ?? 0) - (made.get(a[0]) ?? 0)),
+    [...held.entries()].sort(
+      (a, b) => b[1] - a[1] || (frames.get(b[0])?.length ?? 0) - (frames.get(a[0])?.length ?? 0),
+    ),
   );
 }
 

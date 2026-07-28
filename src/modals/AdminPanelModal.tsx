@@ -164,17 +164,20 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
     // 눌러 닫히면 다시 로고를 여러 번 눌러 찾아 들어와야 해서 번거롭다. 닫기는 모달
     // 헤더의 공통 X 버튼 하나로만(취소/닫기 같은 별도 버튼을 body에 두지 않는다).
     <div className="scr-modal-overlay">
-      <div
-        className="scr-modal scr-modal-sm scr-admin-panel-modal"
-      >
-        <div className="scr-modal-head">
-          <span>숨겨진 제어판</span>
-          <button className="scr-icon-btn" onClick={onClose} aria-label="닫기"><X size={14} /></button>
+      {/* 카드형 모달이 아니라 상성맵과 같은 시트다(요청) — 딤+블러 위에 내용만 얹으므로
+          모바일에서는 전체화면이 된다. 바깥을 눌러도 안 닫는 원칙은 그대로(위 주석). */}
+      <div className="scr-admin-sheet">
+        <div className="scr-admin-sheet-body">
+        <div className="scr-admin-sheet-head">
+          <span className="scr-admin-sheet-title">숨겨진 제어판</span>
+          <button type="button" className="scr-admin-sheet-close" onClick={onClose} aria-label="닫기">
+            <X size={20} />
+          </button>
         </div>
 
         {/* 잠긴(비밀번호) 화면은 내용이 짧아 가운데 정렬로, 풀린 뒤(관리 화면)는 위에서부터
             쌓아 배치등록으로 메뉴가 펼쳐져도 위 내용이 안 밀리게 한다(요청: 공간 예약). */}
-        <div className={cx("scr-modal-body", !unlocked && "scr-admin-panel-body-locked")}>
+        <div className={cx("scr-admin-sheet-content", !unlocked && "scr-admin-panel-body-locked")}>
           {!unlocked ? (
             <>
               {/* 입력창 위 큰 자물쇠 — 무엇을 묻는지 문구 없이도 '잠금 해제' 맥락을 준다(요청). */}
@@ -219,14 +222,14 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
                     {/* 현재 버전 설정 — 등록된 버전 중에서 골라 활성 버전을 바꾼다(모두에게
                         즉시 반영·안내 팝업 재노출이라 확인창을 거친다). */}
                     <button
-                      type="button" className="scr-btn"
+                      type="button" className="scr-btn scr-btn-primary"
                       onClick={openVersionPicker} disabled={busy}
                     >
                       {busy ? <Spinner /> : "현재 버전 설정"}
                     </button>
                     {/* 버전 관리 — 버전 추가/삭제 + 버전별 안내 내용 편집 모달. */}
                     <button
-                      type="button" className="scr-btn"
+                      type="button" className="scr-btn scr-btn-primary"
                       onClick={() => setVersionManageOpen(true)}
                     >
                       버전 관리
@@ -269,7 +272,7 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
                     {/* 모든 경기기록 삭제 — 되돌릴 수 없는 작업이지만 버튼 색으로 겁주지는
                         않는다(요청). window.prompt로 "삭제"를 직접 입력해야 실행된다. */}
                     <button
-                      type="button" className="scr-btn"
+                      type="button" className="scr-btn scr-btn-primary"
                       onClick={deleteAllMatches} disabled={busy}
                     >
                       {busy ? <Spinner /> : "배치삭제"}
@@ -277,7 +280,7 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
                     {/* 등록된 리플레이 전체를 zip으로 백업 다운로드(운영자) — 읽기 전용이라
                         확인창 없이 바로 받는다. */}
                     <button
-                      type="button" className="scr-btn"
+                      type="button" className="scr-btn scr-btn-primary"
                       onClick={downloadReplays} disabled={downloading}
                     >
                       {downloading ? <Spinner /> : "배치다운로드"}
@@ -291,6 +294,7 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
               )}
             </>
           )}
+        </div>
         </div>
       </div>
 

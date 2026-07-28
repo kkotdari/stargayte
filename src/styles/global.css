@@ -3683,26 +3683,52 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    (요청: 일반 모달로). 이제 이 모달은 기본 .scr-modal의 크기·배경·여백·글자색을 그대로
    물려받고, 여기서는 배치(그리드·소제목)와 위험한 버튼의 붉은 톤만 따로 정한다. */
 
-/* 다만 유리(backdrop-filter)만은 이 모달에서 끈다 — 모바일에서는 모달이 전체화면 fixed로
-   뜨는데, 거기에 backdrop-filter가 걸리면 iOS 사파리가 접었던 주소창을 도로 펼친다
-   (지적: 제어판을 열었다 닫으면 화면이 밀려 올라감). 예전 금속판 시절에도 같은 이유로
-   이 모달만 backdrop-filter를 꺼 두었는데, 일반 모달로 바꾸면서 그 예외까지 함께
-   사라졌던 것이다. 배경은 여전히 요소가 아니라 ::before(자식)에 둔다 — 요소 자신에
-   배경을 주는 것도 같은 재펼침의 원인이다(.scr-modal 주석 참고). */
-.scr-modal.scr-admin-panel-modal::before {
-  background: var(--panel-solid);
-  backdrop-filter: none; -webkit-backdrop-filter: none;
+/* 이제는 카드형 모달이 아니라 상성맵과 같은 '시트'다(요청: "제어판 모달 상성맵 모달
+   스타일로 카피(모바일 전체화면)") — 화면 전체를 덮는 딤+블러 위에 패널 없이 내용만
+   얹는 구조라, 모바일에서는 자연스럽게 전체화면이 된다.
+   다만 배경/블러는 fixed 요소 '자신'이 아니라 ::before 자식에 둔다. iOS 26 사파리는
+   fixed 요소에 background나 backdrop-filter가 있으면 사이트의 시트/툴바로 보고 접었던
+   주소창을 도로 펼치는데, 예전에 이 모달에서 정확히 그 회귀를 지적받았다("제어판을
+   열었다 닫으면 화면이 밀려 올라감"). 보이는 모습은 상성맵 오버레이와 같다.
+   z-index가 있어 이 요소가 쌓임 맥락을 만들므로 ::before의 z-index:-1은 내용 뒤·페이지
+   앞에 정확히 놓인다(.scr-modal::before와 같은 원리). */
+.scr-admin-sheet {
+  position: fixed; inset: 0; z-index: 100;
+  display: flex; align-items: safe center; justify-content: center;
+  padding: calc(12px + var(--safe-top)) 12px calc(12px + env(safe-area-inset-bottom, 0px));
+  /* 리바운드/배경 스크롤 전파 둘 다 차단(상성맵과 동일). */
+  overflow-y: auto; overscroll-behavior: none;
+}
+.scr-admin-sheet::before {
+  content: ""; position: absolute; inset: 0; z-index: -1;
+  background: rgba(4, 6, 10, 0.62);
+  -webkit-backdrop-filter: blur(7px); backdrop-filter: blur(7px);
+}
+html.scr-light-theme .scr-admin-sheet::before { background: rgba(244, 246, 250, 0.62); }
+.scr-admin-sheet-body { width: min(420px, 100%); }
+.scr-admin-sheet-head {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;
+}
+.scr-admin-sheet-title { font-size: var(--fs-subhead); font-weight: 800; }
+.scr-admin-sheet-close {
+  background: transparent; border: none; cursor: pointer; color: var(--muted);
+  padding: 6px; display: inline-flex; -webkit-tap-highlight-color: transparent;
+}
+@media (hover: hover) { .scr-admin-sheet-close:hover { color: var(--text); } }
+/* 내용은 세로로 쌓는다 — 예전 .scr-modal-body가 하던 역할(간격·정렬·최소높이)만 옮겼다.
+   스크롤은 시트 자신이 맡으므로 여기에 overflow를 두지 않는다. */
+.scr-admin-sheet-content {
+  display: flex; flex-direction: column; gap: 14px;
+  /* 잠금 화면과 관리 화면의 크기가 크게 달라 보이지 않을 만큼만 자리를 예약한다. */
+  min-height: 300px;
 }
 
 /* 암호 입력 위 큰 자물쇠 이모지 — 무엇을 묻는지 문구 없이도 맥락을 준다. */
 .scr-admin-panel-lock { font-size: var(--fs-hero-3); line-height: 1; text-align: center; margin: 2px 0 6px; }
 /* 잠긴(비밀번호) 화면은 내용이 짧아 가운데로 모으고, 풀린 뒤 관리 화면은 위에서부터 쌓는다. */
-.scr-admin-panel-modal .scr-modal-body { justify-content: flex-start; }
-.scr-admin-panel-modal .scr-modal-body.scr-admin-panel-body-locked { justify-content: center; }
-.scr-admin-panel-modal .scr-field { align-items: center; }
-/* 잠금 화면과 관리 화면의 카드 크기가 크게 달라 보이지 않을 만큼만 자리를 예약한다 —
-   예전의 510px는 금속판 배경을 채우기 위한 값이라 일반 모달에는 과하다. */
-.scr-admin-panel-modal .scr-modal-body { min-height: 300px; }
+.scr-admin-sheet-content { justify-content: flex-start; }
+.scr-admin-sheet-content.scr-admin-panel-body-locked { justify-content: center; }
+.scr-admin-sheet-content .scr-field { align-items: center; }
 /* 라벨 없는 숫자 PIN 입력칸 하나 — 자간을 넉넉히 둬 PIN 느낌을 준다. */
 .scr-admin-panel-password-input {
   font-size: var(--fs-hero-3); font-family: var(--font-ui); text-align: center;
@@ -3746,15 +3772,18 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    비어 있어도 옆 배치등록 버튼이 행 높이를 잡아주므로 결과 보기가 나타나도 안 흔들린다. */
 .scr-admin-panel-results-slot { display: flex; align-items: center; justify-content: center; min-width: 0; }
 .scr-admin-panel-results-reopen {
-  /* 리포트 아이콘 + 알약 버튼 — 일반 모달 배경 위라 테마 변수를 그대로 쓴다. */
+  /* 리포트 아이콘 + 알약 버튼. 제어판 안의 버튼은 전부 라이팅 프라이머리 색으로
+     통일한다(요청) — .scr-btn을 안 쓰는 이 알약도 같은 채움/글자색/글로우를 직접 쓴다. */
   display: inline-flex; align-items: center; justify-content: center; gap: 5px; max-width: 100%;
-  padding: 8px 12px; border: 1px solid var(--line); border-radius: 999px;
-  background: var(--panel-raised); color: var(--text);
+  padding: 8px 12px; border: 1px solid transparent; border-radius: 999px;
+  background: var(--lit-pill-bg); color: var(--lit-pill-text);
   font-size: var(--fs-caption); font-weight: 700; cursor: pointer;
-  box-shadow: none; white-space: nowrap;
+  box-shadow: var(--lit-pill-glow); white-space: nowrap;
 }
 @media (hover: hover) {
-  .scr-admin-panel-results-reopen:hover { border-color: rgba(var(--lit-rgb), 0.55); box-shadow: var(--lit-hover-glow); }
+  .scr-admin-panel-results-reopen:hover {
+    box-shadow: 0 0 12px rgba(var(--lit-rgb), 0.25), 0 0 28px rgba(var(--lit-rgb), 0.13);
+  }
 }
 /* 배치 결과 모달 — 로그/카운트가 본문 맨 아래에 딱 붙어 답답해 보이던 문제(요청): 아래 여백을 준다. */
 .scr-admin-panel-batch-modal-body { padding-bottom: 16px; }
