@@ -94,13 +94,19 @@ const GANG_RUSH_SEC = 9 * 60;
 // 합공에 넣으면 숫자가 거짓말이 된다.
 const GANG_MIN_UNITS = 8;
 
-// 병력을 이때까지도 안 뽑고 있었으면 '쨌다'고 본다(요청).
-const GREEDY_SEC = 7 * 60;
-// 그래도 경기 앞쪽이어야 째기다 — 후반에 첫 병력이 나오는 건 그냥 그런 경기다.
+// '째기'는 첫 병력이 늦은 것만으로는 부족하다(지적) — 그 시간 동안 병력은 거의 안 뽑고
+// 건물만 잔뜩 올렸을 때가 진짜 째기다. 세 가지를 함께 본다.
+// (1) 언제까지를 '초반'으로 볼 것인가 — 7분은 너무 늦다는 지적에 따라 앞당겼다.
+const GREEDY_SEC = 4 * 60;
+// (2) 그때까지 뽑은 병력이 이보다 적어야 한다.
+const GREEDY_EARLY_UNITS = 3;
+// (3) 그 사이에 올린 건물이 이만큼은 돼야 '건물만 지었다'고 말할 수 있다.
+const GREEDY_EARLY_BUILDINGS = 6;
+// 그래도 경기 앞쪽 이야기여야 한다 — 후반 이야기를 째기라 부르면 말이 안 된다.
 const GREEDY_MAX_RATIO = 0.5;
-// 이만큼은 뽑아야 '늦게 시작했다'고 말할 거리가 된다(관전 슬롯·즉시 탈락 제외).
+// 경기 전체로 이만큼은 뽑아야 견줄 거리가 된다(관전 슬롯·즉시 탈락 제외).
 const GREEDY_MIN_UNITS = 6;
-// 첫 병력 뒤 이 안에 생산이 꺾였으면 째다가 얻어맞은 것이다.
+// 째기 구간 뒤 이 안에 생산이 꺾였으면 째다가 얻어맞은 것이다.
 const GREEDY_PUNISH_SEC = 4 * 60;
 // 째고 나서 이만큼 뽑아냈으면 '물량이 폭발했다'고 말할 만하다.
 const GREEDY_PAYOFF_UNITS = 30;
@@ -1047,8 +1053,14 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
           .filter(([u]) => !NON_COMBAT_UNITS.has(u))
           .flatMap(([, f]) => f);
         if (combat.length < GREEDY_MIN_UNITS) continue;
-        const first = Math.min(...combat);
-        if (first < GREEDY_SEC / SECONDS_PER_FRAME) continue;
+        const bar = GREEDY_SEC / SECONDS_PER_FRAME;
+        // 그때까지 병력은 거의 없고 건물만 잔뜩 — 이 둘이 함께여야 째기다(지적).
+        if (combat.filter((f) => f <= bar).length > GREEDY_EARLY_UNITS) continue;
+        const built = Object.values(sg.buildingFrames)
+          .flat()
+          .filter((f) => f <= bar).length;
+        if (built < GREEDY_EARLY_BUILDINGS) continue;
+        const first = Math.max(bar, Math.min(...combat));
         // 경기가 짧으면 늦은 게 아니라 그냥 그 경기가 그랬던 것이다.
         if (first > totalFrames * GREEDY_MAX_RATIO) continue;
         const hurtBy = (() => {

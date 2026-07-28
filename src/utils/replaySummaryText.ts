@@ -235,6 +235,10 @@ const SOON_SEC = 5 * 60;
 const STANDOFF_SEC = 8 * 60;
 // 대비를 뜻하는 이음말 — 이 뒤에는 주어를 주제격("Rex는")으로 세운다(지적).
 const CONTRAST_LINKS = new Set(["한편", "그와 동시에", "반면", "그러나", "하지만"]);
+// 시간 순서를 짚는 이음말 — 위 대비 이음말과 함께 문장 앞머리를 알아보는 데 쓴다.
+const SEQUENCE_LINKS = ["이어서", "곧이어", "잠시 후", "그 후", "한동안의 대치 후", "그 기세로", "여세를 몰아"];
+// 정규식에 이름을 그대로 넣기 전에 특수문자를 막는다 — 닉네임에 무엇이 들어올지 모른다.
+const escapeRe = (v: string): string => v.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 // 한 문장에 이어 붙일 수 있는 마디 수 — 이보다 길어지면 읽다가 숨이 찬다.
 const MAX_CHAIN = 2;
 // 진 편 문장에 결과 한 마디를 다는 건 '끝 무렵에 벌어진 일'에만 한다(지적) — 초중반의
@@ -312,6 +316,13 @@ function toConnective(action: string): string | null {
 function toAnd(action: string): string | null {
   const c = toConnective(action);
   return c && c.endsWith("으나") ? `${c.slice(0, -2)}고` : null;
+}
+
+/** "…도배함" → "…도배했다가". 하던 일이 도중에 끊긴 그림을 한 문장으로 만든다(요청:
+ *  "포토를 도배하다가 …한 방에 무너짐"). */
+function toWhile(action: string): string | null {
+  const c = toConnective(action);
+  return c && c.endsWith("으나") ? `${c.slice(0, -2)}다가` : null;
 }
 
 /** "…뽑음" → "…뽑았으며". '-고'가 두 번 이어지면 지겨워서 두 번째 마디에 쓴다. */
@@ -1006,8 +1017,8 @@ const TEMPLATES: Record<string, Tpl> = {
     const foe = c.whom ? `${c.whom}의 ` : "상대의 ";
     return `${ga(c.who)} ${done(c, c.pick([
       `초반에 무리하게 째다가 ${foe}공격에 무너짐`,
-      `${when}병력 없이 째다가 ${foe}공격에 무너짐`,
-      `배를 불리려다 ${foe}공격에 그대로 무너짐`,
+      `${when}병력 없이 건물만 올리다 ${foe}공격에 무너짐`,
+      `째기를 시도하다 ${foe}공격에 그대로 무너짐`,
     ]))}`;
   },
   "greedy-paid": (c) => {
@@ -1017,7 +1028,7 @@ const TEMPLATES: Record<string, Tpl> = {
     return `${ga(c.who)} ${done(c, c.pick([
       `성공적으로 째서 ${unit} 물량이 폭발함`,
       `${when}자원을 먼저 챙긴 뒤 ${reul(unit)} 쏟아냄`,
-      `병력을 미루고 배를 불린 끝에 ${unit} 물량으로 밀어붙임`,
+      `병력을 미루고 건물부터 올린 끝에 ${unit} 물량으로 밀어붙임`,
     ]))}`;
   },
 
@@ -1147,6 +1158,10 @@ export function renderReplaySummary(
   let lastLink = "";
   // 바로 앞 문장의 주어 — 같은 주어가 이어지면 한 문장으로 합친다(지적).
   let lastSubject = "";
+  // 앞 문장에서 무언가를 한 사람 / 당한 사람 — 같은 사람이 역할을 바꿔 다시 나오면
+  // 이름을 또 부르지 않고 이야기로 잇는다(지적).
+  let lastWho: string[] = [];
+  let lastWhom: string[] = [];
   // 지금 문장에 몇 마디를 이어 붙였나 — 끝없이 길어지지 않게 센다.
   let chainCount: number = 0;
   const beats = data.beats as ReplaySummaryBeat[];
@@ -1248,6 +1263,24 @@ export function renderReplaySummary(
     }
     const subject = ga(baseWho);
     const prevLine = out.length > 0 ? out[out.length - 1] : "";
+    // 앞 문장에서 무언가를 하던 사람이 이번 문장에서 당하는 쪽이면, 그건 "하다가 당함"이
+    // 한 이야기다(지적) — 이름을 두 번 부르지 말고 "…도배하다가 …한 방에 무너짐"으로 잇는다.
+    const victim = (b.whom ?? []).length === 1 ? (b.whom ?? [])[0] : "";
+    const victimName = victim ? resolveName(victim) : "";
+    const cutIn =
+      !!victim && chainCount === 0 && out.length > 0 && lastWho.includes(victim)
+      && !(b.who ?? []).includes(victim) && text.includes(`${ga(victimName)} `);
+    // 반대로 앞 문장에서 당한 사람이 이번엔 무언가를 했다면 "하지만 다시 …"가 된다(지적).
+    const actor = (b.who ?? []).length === 1 ? (b.who ?? [])[0] : "";
+    // 이음말이 이미 앞에 붙었을 수도 있어(그러나/한편…) 그 자리까지 함께 걷어낸다.
+    const backHead = actor
+      // 선택 그룹을 한 겹 더 씌운다 — 안 그러면 뒤의 공백이 마지막 후보에만 붙는다.
+      ? new RegExp(`^(?:(?:${[...CONTRAST_LINKS, ...SEQUENCE_LINKS].join("|")}) )?${escapeRe(resolveName(actor))}(?:가|이|는|은) `)
+      : null;
+    // 맺음말은 이미 결말이라 "다시 일어섬"을 얹을 자리가 아니다.
+    const backUp =
+      !!actor && !cutIn && b.k !== "result" && chainCount === 0 && lastWhom.includes(actor)
+      && !!backHead && backHead.test(text);
     // 앞 문장과 주어가 같으면 주어를 두 번 부르지 않는다(지적: 주어가 반복될 경우 합침).
     // "Rex가 …이기고, …" 꼴로 앞 문장에 이어 붙이고 뒤 문장에서는 주어를 뗀다.
     // 같은 사람 이야기가 연달아 나오면 문장을 갈라 놓지 말고 하나로 잇는다(지적: 같은
@@ -1270,12 +1303,30 @@ export function renderReplaySummary(
         : joinPrev && out.length > 0 && chainCount === 0
           ? toAnd(toTopic(prevLine))
           : null;
+    if (backUp && backHead) {
+      // 이름은 남긴다 — 앞 문장의 주어는 때린 쪽이라, 이름을 빼면 그 사람이 한 일로 읽힌다.
+      lastLink = "하지만";
+      text = text.replace(backHead, `하지만 ${neun(resolveName(actor))} 다시 `);
+    }
+    if (cutIn) {
+      const head = toWhile(prevLine);
+      if (head) out[out.length - 1] = `${head} ${text.replace(`${ga(victimName)} `, "")}`;
+      else out.push(text);
+      chainCount = head ? chainCount + 1 : 0;
+      lastSubject = subject;
+      lastWho = b.who ?? [];
+      lastWhom = b.whom ?? [];
+      prev = b;
+      continue;
+    }
     if (chained && sameSubject) out[out.length - 1] = `${chained}, ${text.slice(subject.length + 1)}`;
     else if (chained && flipToEnd) out[out.length - 1] = `${chained} ${text}`;
     else if (chained) out[out.length - 1] = `${chained} ${toTopic(text)}`;
     else out.push(text);
     chainCount = chained ? chainCount + 1 : 0;
     lastSubject = subject;
+    lastWho = b.who ?? [];
+    lastWhom = b.whom ?? [];
     prev = b;
   }
   return out.length > 0 ? out.join(". ") : null;
