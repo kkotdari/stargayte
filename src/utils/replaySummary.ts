@@ -127,6 +127,8 @@ const HARASS_LONG_MIN = 6;
 // 견제로 읽을 수 있는 수들 — 드랍과 뮤탈. 일꾼을 노리는 그림이 뚜렷한 것만 본다.
 const HARASS_KEYS = new Set([
   "shuttle-reaver", "templar-drop", "zerg-drop", "dropship", "shuttle", "muta",
+  // 클로킹 레이스와 이레디에이트는 일꾼을 지우는 대표적인 수다(요청).
+  "cloak-wraith", "irradiate",
 ]);
 
 // 러시·드랍을 간 뒤 이 안에 상대 생산이 끊기면 그 수의 결과로 본다.
@@ -143,6 +145,8 @@ const RAID_KEYS = new Set([
   "zling-rush", "zealot-rush", "cannon-rush", "sunken-rush", "sneak-rax",
   "shuttle-reaver", "templar-drop", "zerg-drop", "dropship", "shuttle",
   "nydus", "recall", "bionic", "mech", "moka",
+  // 빠른 테크·클로킹 레이스도 들이치는 수다 — 그 타이밍에 상대가 꺾였으면 그게 결과다(요청).
+  "fast-tech", "cloak-wraith",
 ]);
 
 interface Side {

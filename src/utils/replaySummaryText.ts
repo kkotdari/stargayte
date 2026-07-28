@@ -389,6 +389,12 @@ function tacticLabel(k: string, p: Record<string, unknown>): string {
     case "mech": return "메카닉 진출";
     case "moka": return "목동 저그";
     case "muta": return "뮤탈 견제";
+    case "fast-tech": {
+      const unit = UNIT_KO[str(p.unit)] ?? "";
+      return unit ? `패스트 ${unit}` : "";
+    }
+    case "cloak-wraith": return "클로킹 레이스";
+    case "irradiate": return "이레디에이트";
     case "guardian": return "가디언";
     case "bc": return "배틀크루저";
     default: return "";
@@ -1037,6 +1043,70 @@ const TEMPLATES: Record<string, Tpl> = {
     ]));
   },
 
+  // 패스트 OO(요청) — 보통 나오는 때보다 이르게 뽑아 상대가 준비하기 전에 들이대는 수.
+  "fast-tech": (c) => {
+    const unit = UNIT_KO[str(c.p.unit)] ?? "";
+    if (!unit) return null;
+    const m = num(c.p.min);
+    const when = m > 0 ? `${m}분 만에 ` : "";
+    const at = targetPhrase(c);
+    return `${ga(c.who)} ${at}${done(c, c.pick([
+      `패스트 ${unit}로 승부를 걸음`,
+      `${when}${unit}를 뽑아 상대가 준비하기 전에 들이댐`,
+      `${unit} 타이밍을 크게 당김`,
+    ]))}`;
+  },
+  // 파워 OO(요청) — 한 유닛만 압도적으로 뽑아 그 물량으로 밀어붙이는 그림.
+  "power-unit": (c) => {
+    const unit = UNIT_KO[str(c.p.unit)] ?? "";
+    if (!unit) return null;
+    const n = num(c.p.n);
+    return `${ga(c.who)} ${done(c, c.pick([
+      `파워 ${unit}로 밀어붙임`,
+      `${unit}만 ${n}기를 뽑아 물량으로 찍어누름`,
+      `${unit} 물량 하나로 판을 끌고 감`,
+    ]))}`;
+  },
+  // 클로킹 레이스(요청) — 보이지 않는 병력이라 대공이 없으면 그대로 뚫린다.
+  "cloak-wraith": (c) => {
+    const n = num(c.p.n);
+    const at = targetPhrase(c);
+    return `${ga(c.who)} ${at}${done(c, c.pick([
+      `클로킹 레이스로 하늘을 잡음`,
+      `레이스 ${n}기에 클로킹까지 올려 흔듦`,
+      `보이지 않는 레이스로 휘저음`,
+    ]))}`;
+  },
+  // 이레디에이트(요청) — 베슬 한 기가 일꾼 줄을 통째로 지운다.
+  irradiate: (c) => {
+    const of = c.whom ? `${c.whom}의 ` : "상대 ";
+    return `${ga(c.who)} ${done(c, c.pick([
+      `사이언스 베슬 이레디에이트로 ${of}일꾼을 지움`,
+      `이레디에이트로 ${of}일꾼 줄을 녹임`,
+      `베슬을 띄워 이레디에이트로 ${of}살림을 갉아먹음`,
+    ]))}`;
+  },
+  // 인페스티드 테란(요청) — 퀸이 커맨드센터를 감염시켜야만 나오는, 경기당 한 번 볼까 말까
+  // 한 사건이다. 당한 쪽 입장에서는 그 자체가 이야기라 그렇게 말한다.
+  infested: (c) => {
+    const of = c.whom ? `${c.whom}의 ` : "상대 ";
+    // 가운뎃 꼴은 주어가 '기지'라 바깥 주어를 붙이면 주어가 둘이 된다 — 통째로 만든다.
+    return done(c, c.pick([
+      `${ga(c.who)} 퀸으로 ${of}기지를 감염시켜 인페스티드 테란까지 뽑아냄`,
+      `${c.who}의 퀸에 ${of}기지가 감염되는 사태가 벌어짐`,
+      `${ga(c.who)} 인페스티드 테란을 뽑아내며 ${of}수치를 안김`,
+    ]));
+  },
+  // 마인드 컨트롤(요청) — 뺏은 일꾼으로 남의 종족을 통째로 굴리는 그림.
+  "mind-control": (c) => {
+    const race = str(c.p.race) || "다른 종족";
+    return `${ga(c.who)} ${done(c, c.pick([
+      `마인드 컨트롤로 ${race} 유닛까지 뽑아 씀`,
+      `일꾼을 뺏어 ${race}까지 함께 굴림`,
+      `마인드 컨트롤로 ${race} 살림을 통째로 가져옴`,
+    ]))}`;
+  },
+
   // ── 맺음말 ──
   result: (c) => {
     const phrase = c.p.units ? unitPhrase(list(c.p.units)) : "";
@@ -1067,9 +1137,15 @@ const TEMPLATES: Record<string, Tpl> = {
               `압도적인 ${heroUnit} 생산으로 앞장섬`,
               `혼자 ${reul(heroUnit)} 쏟아내며 팀을 이끔`,
               `${heroUnit} 물량을 압도적으로 뽑아냄`,
+              ...(SUPPORT_UNITS.has(str(c.p.heroUnit)) ? [] : [`${heroUnit} 물량으로 경기를 캐리함`]),
             ])}`
           : `${c.who2 === c.who ? "" : `${c.who2}의 `}${ro(`${heroUnit} ${role}`)} ${c.pick([
-              ROLE_TAIL[role] ?? "승기를 잡음", "팀의 승리를 이끔", "팀을 강력하게 보조함",
+              ROLE_TAIL[role] ?? "승기를 잡음", "팀의 승리를 이끔",
+              // 혼자 경기를 끝내지 못하는 보조유닛에는 '캐리'를 쓰지 않는다(지적) —
+              // 그쪽은 '보조함'이 맞는 말이다.
+              ...(SUPPORT_UNITS.has(str(c.p.heroUnit))
+                ? ["팀을 강력하게 보조함"]
+                : ["경기를 캐리함", "승리를 캐리함"]),
             ])}`
         : null;
     // 앞말과 같은 사람이면 이름을 두 번 부르지 않는다(지적) — 대신 "…이기고, …"로 잇는다.

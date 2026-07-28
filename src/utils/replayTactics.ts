@@ -93,6 +93,30 @@ const FRONT_COS = 0.5;
 const FIREBAT_RUSH_MIN = 6;
 // '대규모 뮤탈'로 볼 수 — 한 부대 12기 기준 세 부대(지적: 3~4부대).
 const MUTA_MASS_MIN = 36;
+
+// '패스트 OO' — 이 시각보다 이르게 첫 기가 나오면 빠른 것이다(요청). 초 단위.
+const FAST_UNITS: [string, number][] = [
+  ["Dark Templar", 8 * 60], ["Reaver", 9 * 60], ["Lurker", 7 * 60],
+  ["Dragoon", 5 * 60], ["Vulture", 4 * 60], ["Mutalisk", 7 * 60],
+];
+// 한 기만 뽑고 만 것은 '전략'이 아니라 사고다 — 최소한 이만큼은 이어 뽑아야 한다.
+const FAST_MIN_UNITS = 3;
+// '파워 OO' — 이만큼 뽑고, 그게 병력의 이 비율을 넘으면 그 유닛 하나로 간 것이다(요청).
+const POWER_UNITS: [string, number][] = [
+  ["Dragoon", 30], ["Hydralisk", 40], ["Zealot", 40], ["Marine", 50],
+  ["Vulture", 30], ["Zergling", 60],
+];
+const POWER_SHARE = 0.6;
+// 클로킹 레이스 — 이만큼은 띄워야 '레이스 전략'이다.
+const WRAITH_MIN = 4;
+// 이레디에이트 — 베슬 한 기는 지나가다 뽑은 것일 수 있다.
+const VESSEL_MIN = 2;
+// 일꾼은 종족을 그대로 드러낸다 — 제 종족이 아닌 일꾼을 뽑았다면 뺏어 온 것이다(요청).
+const WORKER_OF = new Map<string, string>([
+  ["Probe", "프로토스"], ["Drone", "저그"], ["SCV", "테란"],
+]);
+// 한두 기는 오차일 수 있다 — 실제로 그 종족을 굴렸다고 하려면 이만큼은 뽑아야 한다.
+const MIND_WORKER_MIN = 3;
 // '한 종류만 뽑았나'를 셀 때 제외할 것들 — 일꾼·보급·소모품은 조합이 아니다.
 const SOLO_EXCLUDE = new Set([
   "SCV", "Probe", "Drone", "Overlord", "Larva", "Egg",
@@ -305,6 +329,35 @@ function detectFor(c: Ctx): Tactic[] {
     return f.length > 0 ? Math.min(...f) : null;
   };
 
+  // ── 종족을 가리지 않는 것들 ──
+  // '패스트 OO' — 그 유닛이 나오는 보통 타이밍보다 확실히 이르면 그 자체가 전략이다(요청).
+  for (const [unit, bySec] of FAST_UNITS) {
+    const f = firstU(unit);
+    if (f !== null && sec(f) <= bySec && u(unit) >= FAST_MIN_UNITS) {
+      out.push({ key: "fast-tech", ...target, weight: 12, at: f, who, p: { unit, min: Math.max(1, Math.round(sec(f) / 60)) } });
+      break; // 하나만 — 여러 개를 다 말하면 '빠른 무엇'이 흐려진다
+    }
+  }
+  // 마인드 컨트롤(다크 아콘)로 아군의 일꾼을 뺏어 그 종족 건물까지 올리는 전략(요청) —
+  // 제 종족이 아닌 일꾼을 뽑았다는 것이 그 증거다. 다른 방법으로는 나올 수 없는 커맨드다.
+  const foreign = ([...WORKER_OF] as [string, string][])
+    .filter(([w, r]) => r !== race && u(w) >= MIND_WORKER_MIN)
+    .map(([, r]) => r);
+  if (foreign.length > 0) {
+    out.push({
+      key: "mind-control", weight: 16,
+      at: firstU([...WORKER_OF].find(([, r]) => r === foreign[0])?.[0] ?? "") ?? null,
+      who, p: { race: foreign[0] },
+    });
+  }
+  // '파워 OO' — 한 유닛을 압도적으로 뽑아 그 물량으로 밀어붙이는 그림(요청).
+  for (const [unit, min] of POWER_UNITS) {
+    if (u(unit) >= min && armyTotal > 0 && u(unit) / armyTotal >= POWER_SHARE) {
+      out.push({ key: "power-unit", weight: 11, at: firstU(unit), who, p: { unit, n: u(unit) } });
+      break;
+    }
+  }
+
   // ── 저그 ──
   if (race === "저그") {
     // N드론 저글링 러시 — 스포닝풀을 짓기 전에 드론을 몇 기 뽑았나가 곧 빌드 이름이다
@@ -385,6 +438,14 @@ function detectFor(c: Ctx): Tactic[] {
         p: { n: u("Guardian") },
       });
     }
+    // 인페스티드 테란(요청) — 퀸으로 상대 커맨드센터를 감염시켜야만 나온다. 경기에 한 번
+    // 나올까 말까 한 사건이라, 나왔다는 것 자체가 그날의 이야기다.
+    if (u("Infested Terran") >= 1) {
+      out.push({
+        key: "infested", ...target, weight: 16,
+        at: firstU("Infested Terran"), who, p: { n: u("Infested Terran") },
+      });
+    }
     if (u("Lurker") >= 5) {
       out.push({
         key: "lurker", weight: 7, at: firstU("Lurker"),
@@ -458,6 +519,21 @@ function detectFor(c: Ctx): Tactic[] {
         who,
       });
     }
+  }
+
+  // 클로킹 레이스(요청) — 레이스만으로는 정찰일 수 있고, 클로킹까지 올려야 전략이다.
+  if (race === "테란" && u("Wraith") >= WRAITH_MIN && s.upgradeNames.includes("Cloaking Field")) {
+    out.push({
+      key: "cloak-wraith", ...target, weight: 12,
+      at: firstU("Wraith"), who, p: { n: u("Wraith") },
+    });
+  }
+  // 이레디에이트로 일꾼 지우기(요청) — 베슬을 띄우고 이레디를 올렸다는 것 자체가 그 그림이다.
+  if (race === "테란" && hasTech("Irradiate") && u("Science Vessel") >= VESSEL_MIN) {
+    out.push({
+      key: "irradiate", ...target, weight: 12,
+      at: s.firstTechFrame["Irradiate"] ?? firstU("Science Vessel"), who,
+    });
   }
 
   // ── 프로토스 ──
