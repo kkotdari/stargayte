@@ -318,6 +318,50 @@ function mergeGg(list: Beat[], sideSize: (won: boolean) => number): Beat[] {
   return [...list.filter((b) => b.k !== "gg"), ...merged];
 }
 
+/** 문장에서 전술 이름을 만들 때 필요한 값 하나 — 여러 사람의 수를 한 문장에 묶을 때
+ *  각자의 드론 수·게이트 수를 잃지 않기 위해 나란히 실어 보낸다. */
+function tacticParam(key: string, p: Record<string, unknown> | undefined): string {
+  if (!p) return "";
+  if (key === "zling-rush") return String(p.drones ?? "");
+  if (key === "zealot-rush") return String(p.gates ?? "");
+  if (key === "sneak-rax") return p.firebat ? "firebat" : "";
+  if (key === "zerg-drop") return p.lurker ? "lurker" : "";
+  return "";
+}
+
+// 같은 사람이 이 안에서 여러 번 얻어맞았으면 한 순간으로 본다.
+const RAID_MERGE_SEC = 3 * 60;
+
+/** 한 사람이 여러 수에 잇달아 무너진 걸 두 문장으로 말하지 않는다(지적) — "Rex의 9드론
+ *  저글링 러쉬와 제롬의 4게이트 질럿 러쉬에 군범이 2분 만에 무너짐"으로 묶는다. */
+function mergeRaids(list: Beat[]): Beat[] {
+  const raids = list.filter((b) => b.k === "raid-damage" && (b.whom?.length ?? 0) > 0);
+  if (raids.length <= 1) return list;
+  const groups: Beat[][] = [];
+  for (const b of [...raids].sort((x, y) => (x.at ?? 0) - (y.at ?? 0))) {
+    const g = groups.find((x) =>
+      x[0].whom?.[0] === b.whom?.[0]
+      && Math.abs((x[0].at ?? 0) - (b.at ?? 0)) * SECONDS_PER_FRAME <= RAID_MERGE_SEC);
+    if (g) g.push(b); else groups.push([b]);
+  }
+  const merged = groups.map((g) => {
+    if (g.length === 1) return g[0];
+    const ats = g.map((b) => b.at).filter((x): x is number => x !== null && x !== undefined);
+    return {
+      ...g[0],
+      who: g.flatMap((b) => b.who),
+      at: ats.length > 0 ? Math.min(...ats) : null,
+      weight: Math.max(...g.map((b) => b.weight)) + 2,
+      p: {
+        ...(g[0].p ?? {}),
+        ks: g.map((b) => String(b.p?.k ?? "")),
+        vs: g.map((b) => tacticParam(String(b.p?.k ?? ""), b.p)),
+      },
+    } as Beat;
+  });
+  return [...list.filter((b) => !raids.includes(b)), ...merged];
+}
+
 /** 양쪽이 같은 짓을 했으면 한 문장으로 묶는다(요청: "누구와 누구가 서로 ~함").
  *  재료가 다르면 묶지 않는다 — 9드론과 12드론을 한 숫자로 말하면 한쪽이 거짓이 된다. */
 function mergeMutual(list: Beat[]): Beat[] {
@@ -875,10 +919,10 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     return null;
   })();
 
-  const tactics = mergeGg(
+  const tactics = mergeRaids(mergeGg(
     [...tacticBeats(true), ...tacticBeats(false)],
     (won) => (won ? winnerPlayers.length : loserPlayers.length),
-  );
+  ));
   // 탱크 방어 문장이 "조조를 밀어냄"까지 말했으면 "조조가 먼저 정리됨"을 또 붙이지 않는다.
   // 여기서만 이름으로 거른다 — 렌더된 문장을 훑는 일반 dedupe는 이름이 우연히 겹치는
   // 다른 문장까지 지워버린다.

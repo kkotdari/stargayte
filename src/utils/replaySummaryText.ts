@@ -315,6 +315,31 @@ const TEMPLATES: Record<string, Tpl> = {
     if (!label) return null;
     const of = c.whom ? `${c.whom}의 ` : "상대 ";
     const foe = c.whom || "상대";
+    // 한 사람이 여러 수에 잇달아 무너졌으면 한 문장으로 묶는다(지적: 같은 이야기가 두 번
+    // 나옴). "Rex의 9드론 저글링 러쉬와 제롬의 4게이트 질럿 러쉬에 군범이 2분 만에 무너짐".
+    const ks = list(c.p.ks);
+    if (ks.length >= 2 && c.whoList.length === ks.length) {
+      const vs = list(c.p.vs);
+      const parts = c.whoList
+        .map((n, i) => {
+          const one = tacticLabel(ks[i], {
+            drones: Number(vs[i]) || 0, gates: Number(vs[i]) || 0,
+            firebat: vs[i] === "firebat", lurker: vs[i] === "lurker",
+          });
+          return one ? `${n}의 ${one}` : "";
+        })
+        .filter(Boolean);
+      if (parts.length >= 2) {
+        const head = parts.slice(0, -1).join(", ");
+        const all = `${wa(head)} ${parts[parts.length - 1]}`;
+        const m = num(c.p.outMin) || num(c.p.hitMin);
+        const when = m > 0 ? `${m}분 만에 ` : "";
+        return done(c, c.pick([
+          `${all}에 ${ga(foe)} ${when}${c.p.out ? "탈락" : "무너짐"}`,
+          `${all}에 ${when}${ga(foe)} 버티지 못함`,
+        ]));
+      }
+    }
     // "Rex가 리버 드랍 한 방에"가 아니라 "Rex의 리버 드랍 한 방에"라야 읽힌다(지적) —
     // 그런 꼴은 주어까지 문장 안에서 만든다.
     const mine = `${c.who}의 ${label}`;
