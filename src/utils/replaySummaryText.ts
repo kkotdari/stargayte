@@ -305,6 +305,17 @@ const TEMPLATES: Record<string, Tpl> = {
     const label = tacticLabel(str(c.p.k), c.p);
     if (!label) return null;
     const whom = c.whom ? `${c.whom}의 ` : "상대 ";
+    // 초반 올인에 초반부터 무너진 그림(요청) — 몇 분 만이었는지가 곧 이야기다.
+    if (c.p.early && !c.p.out) {
+      const foe = c.whom || "상대";
+      const m = num(c.p.hitMin);
+      const when = m > 0 ? `${m}분 만에 ` : "";
+      return `${ga(c.who)} ${done(c, c.pick([
+        `${ro(label)} ${ga(foe)} ${when}주저앉음`,
+        `${label} 한 방에 ${ga(foe)} ${when}무너짐`,
+        `${ro(label)} ${when}${reul(foe)} 반쯤 지워버림`,
+      ]))}`;
+    }
     // 그 창 안에 실제로 탈락했으면(Leave Game) 짐작이 아니라 사실이다 — 그렇게 말한다.
     if (c.p.out) {
       const foe = c.whom || "상대";
@@ -715,6 +726,20 @@ const TEMPLATES: Record<string, Tpl> = {
       `${ro(label)} ${foe}일꾼을 잡아냄`,
       `${ro(label)} ${foe}일꾼 줄을 계속 끊음`,
       `${foe}일꾼이 ${label}에 계속 잡혀 다시 뽑기 바쁨`,
+    ]))}`;
+  },
+
+  // 끈질긴 일꾼 견제(요청) — 한 번 크게 맞은 게 아니라 내내 시달린 그림. 상대가 일꾼을
+  // 몰아 뽑은 구간이 몇 분이나 이어졌는지가 그 근거다.
+  "harass-long": (c) => {
+    const label = tacticLabel(str(c.p.k), c.p) || "견제";
+    const foe = c.whom ? `${c.whom}의 ` : "상대 ";
+    const m = num(c.p.min);
+    const span = m > 0 ? `${m}분 내내 ` : "";
+    return `${ga(c.who)} ${done(c, c.pick([
+      `${span}${ro(label)} ${foe}일꾼을 끈질기게 괴롭힘`,
+      `${ro(label)} ${foe}일꾼 줄을 ${span}끊어댐`,
+      `${foe}일꾼이 ${span}${label}에 시달려 다시 뽑기만 반복함`,
     ]))}`;
   },
 

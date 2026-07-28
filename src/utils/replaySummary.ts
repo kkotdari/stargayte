@@ -1,6 +1,8 @@
 import type { ParsedReplay, ParsedReplayPlayer, ReplayPlayerSignals } from "./replayParser";
 import { scanTactics } from "./replayTactics";
-import { eliminatedFrame, fellFrame, productionDips, revivalFrame } from "./replayFell";
+import {
+  eliminatedFrame, fellFrame, productionDips, revivalFrame, surgeSpanMin,
+} from "./replayFell";
 import { REPLAY_SUMMARY_VERSION, type ReplaySummaryBeat, type ReplaySummaryData } from "./replaySummaryData";
 import {
   DEFENSE_KO, EXPANSION_KO, PRODUCTION_KO, SPECTACLE_UNITS, SUPPORT_UNITS, UNIT_KO, UNIT_ROLE,
@@ -104,6 +106,8 @@ const OVERLORD_SURGE_RATIO = 1.6;
 // 일꾼도 같은 원리다 — 잡히지 않으면 한창때 지나 새로 뽑을 일이 별로 없다.
 const WORKER_REBUILD_MIN = 6;
 const WORKER_SURGE_RATIO = 1.5;
+// 일꾼을 몰아 뽑은 구간이 이만큼(분) 넘게 이어졌으면 '내내 시달렸다'로 본다.
+const HARASS_LONG_MIN = 6;
 // 견제로 읽을 수 있는 수들 — 드랍과 뮤탈. 일꾼을 노리는 그림이 뚜렷한 것만 본다.
 const HARASS_KEYS = new Set([
   "shuttle-reaver", "templar-drop", "zerg-drop", "dropship", "shuttle", "muta",
@@ -804,9 +808,15 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
         if (t.at !== null && HARASS_KEYS.has(t.key)) {
           const prey = workersHunted(t.at, foes);
           if (prey) {
+            // 한 번 크게 맞은 것과 내내 시달린 것은 다른 이야기다(요청) — 일꾼을 몰아 뽑은
+            // 구간이 길게 이어졌으면 '끈질긴 견제'로 말한다.
+            const victim = foes.find((f) => f.rawName === prey);
+            const span = victim ? surgeSpanMin(victim, [...WORKER_UNITS], totalFrames) : null;
+            const long = !!span && span.to - span.from >= HARASS_LONG_MIN;
             return {
-              k: "harass-workers", won, who: [t.who], whom: [prey], at: t.at,
-              weight: t.weight + 14, p: { k: t.key },
+              k: long ? "harass-long" : "harass-workers", won, who: [t.who], whom: [prey],
+              at: t.at, weight: t.weight + (long ? 16 : 14),
+              p: { k: t.key, ...(long && span ? { min: span.to - span.from } : {}) },
             } as Beat;
           }
         }
@@ -828,6 +838,10 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
               ...(t.p ?? {}), k: t.key,
               // 탈락은 몇 분경이었는지까지 말한다(요청) — 서사의 시점이 되는 순간이다.
               ...(hit.out ? { out: true, outMin: minutes(hit.at * SECONDS_PER_FRAME) } : {}),
+              // 초반 올인에 초반부터 무너진 건 그 자체로 다른 그림이다(요청).
+              ...(BACKFIRE_KEYS.has(t.key) && hit.at * SECONDS_PER_FRAME < GANG_RUSH_SEC
+                ? { early: true, hitMin: minutes(hit.at * SECONDS_PER_FRAME) }
+                : {}),
             },
           } as Beat;
         }
@@ -871,7 +885,8 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   const pickedOff = new Set(
     tactics
       // 탈락을 이미 이름으로 말한 문장이 있으면 "먼저 지워짐"을 또 붙이지 않는다.
-      .filter((b) => b.k === "side-tank" || (b.k === "raid-damage" && b.p?.out === true))
+      // 들이친 수가 이미 그 사람의 몰락을 말했으면 "먼저 정리됨"을 또 붙이지 않는다.
+      .filter((b) => b.k === "side-tank" || b.k === "raid-damage")
       .flatMap((b) => b.whom ?? [])
       // 역풍 문장은 "그대로 주저앉음"까지 이미 말했다 — 그 사람의 몰락을 두 번 말하지 않는다.
       .concat(tactics.filter((b) => b.k === "rush-backfire").flatMap((b) => b.who))

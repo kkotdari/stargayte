@@ -106,6 +106,37 @@ export function revivalFrame(
   return null;
 }
 
+// 한 창에서 제 평소보다 이만큼 많이 뽑았으면 '그때 잃어서 다시 뽑았다'로 본다.
+const SURGE_RATIO = 1.5;
+
+/** 그 유닛을 평소보다 몰아 뽑은 구간이 얼마나 길게 이어졌나(분). 일꾼에 쓰면 '얼마나
+ *  오래 견제당했나'가 된다(요청) — 한 번 크게 맞은 것과 내내 시달린 것은 다른 이야기다. */
+export function surgeSpanMin(
+  p: ParsedReplayPlayer,
+  units: string[],
+  totalFrames: number | null
+): { from: number; to: number; windows: number } | null {
+  if (!totalFrames) return null;
+  const per = WINDOW_SEC / SECONDS_PER_FRAME;
+  const n = Math.max(1, Math.ceil(totalFrames / per));
+  const b = new Array<number>(n).fill(0);
+  const s = p.signals;
+  if (!s) return null;
+  for (const u of units) {
+    for (const f of s.unitFrames[u] ?? []) {
+      const i = Math.floor(f / per);
+      if (i >= 0 && i < n) b[i] += 1;
+    }
+  }
+  const live = b.filter((x) => x > 0).sort((x, y) => x - y);
+  if (live.length < 4) return null;
+  const median = live[Math.floor(live.length / 2)];
+  const bar = Math.max(2, median * SURGE_RATIO);
+  const hit = b.map((x, i) => (x >= bar ? i : -1)).filter((i) => i >= 0);
+  if (hit.length < 4) return null;
+  return { from: hit[0], to: hit[hit.length - 1], windows: hit.length };
+}
+
 /** 리플레이에 '졌다'고 적힌 사유들 — 이겨서/무승부로 끝난 퇴장과 갈라야 한다. */
 const LOST_REASONS = new Set(["Defeat", "Quit", "Dropped"]);
 
