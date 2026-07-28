@@ -83,7 +83,9 @@ export const SUPPORT_UNITS = new Set([
 
 /** 유닛이 경기에서 하는 '역할' — 같은 승리라도 무엇으로 이겼는지에 따라 다르게 읽히도록. */
 export const UNIT_ROLE: Record<string, string> = {
-  "High Templar": "견제", "Dark Templar": "견제", Reaver: "견제", Mutalisk: "견제",
+  // 하이템플러는 "견제"가 아니라 "마법"이다(지적) — 스톰을 일꾼에 썼는지 병력에
+  // 썼는지 알 수 없으니 견제라고 못 박지 않는다.
+  "High Templar": "마법", "Dark Templar": "견제", Reaver: "견제", Mutalisk: "견제",
   Vulture: "견제", Dropship: "드랍", Shuttle: "드랍", Lurker: "매복", Ghost: "저격",
   Defiler: "마법", "Science Vessel": "마법", Arbiter: "마법", "Dark Archon": "마법", Queen: "마법",
   Carrier: "공중 장악", Battlecruiser: "공중 장악", Guardian: "공중 장악",
@@ -486,7 +488,6 @@ function tacticLabel(k: string, p: Record<string, unknown>): string {
       return unit ? `패스트 ${unit}` : "";
     }
     case "cloak-wraith": return "클로킹 레이스";
-    case "irradiate": return "이레디에이트";
     case "guardian": return "가디언";
     case "bc": return "배틀크루저";
     default: return "";
@@ -736,19 +737,25 @@ const TEMPLATES: Record<string, Tpl> = {
     "아비터를 띄워 리콜로 승부를 걸음",
   ]),
   // 리버 드랍 — 셔틀에 리버를 태워 일꾼을 지지는 그림(요청).
+  // 리버 드랍도 '떨궜다'까지만 말한다 — 스캐럽이 일꾼 줄에 떨어졌는지 병력에 떨어졌는지는
+  // 리플레이에 안 남는다(하이템플러 드랍과 같은 이유). 일꾼을 잡았다는 말은 상대가 그 뒤에
+  // 일꾼을 몰아 뽑았을 때(harass-workers 비트)만 쓴다 — 거긴 근거가 따로 있다.
+  // 예전 문구의 "…의 진영에 일꾼을 잡아냄"은 조사도 틀렸다(에 + 목적어).
   "shuttle-reaver": (c) => {
     const of = victimPhrase(c);
     return `${ga(c.who)} ${done(c, c.pick([
-      `${of}리버 드랍을 감행함`, `리버 드랍으로 ${of}일꾼을 잡아냄`,
-      `셔틀에 리버를 태워 ${of}자원 줄을 끊음`,
+      `${of}리버 드랍을 감행함`, `셔틀에 리버를 태워 ${of}스캐럽을 떨굼`,
+      `리버 드랍으로 ${of}파고듦`,
     ]))}`;
   },
-  // 하이템플러 드랍 — 스톰 한 방에 일꾼이 녹는다(요청).
+  // 하이템플러 드랍 — 셔틀에 템플러를 태워 떨궜다는 것까지만 말한다. 그 스톰이 일꾼
+  // 줄에 떨어졌는지 한복판 병력에 떨어졌는지는 리플레이에 안 남는다(지적) — 예전에는
+  // "일꾼을 섬멸함", "자원 줄을 끊음"까지 말했는데 그건 근거가 없는 묘사였다.
   "templar-drop": (c) => {
     const of = victimPhrase(c);
     return `${ga(c.who)} ${done(c, c.pick([
-      `${of}하이템플러 드랍을 감행함`, `${of}스톰으로 자원 줄을 끊음`,
-      `템플러 드랍으로 ${of}일꾼을 섬멸함`, `${of}스톰을 뿌려 자원 수급을 방해함`,
+      `${of}하이템플러 드랍을 감행함`, `셔틀에 템플러를 태워 ${of}떨굼`,
+      `템플러 드랍으로 ${of}스톰을 뿌림`,
     ]))}`;
   },
   // 러커/히드라 드랍 — 저그는 오버로드 수송 업그레이드가 곧 드랍 의도다(요청).
@@ -1276,15 +1283,6 @@ const TEMPLATES: Record<string, Tpl> = {
       `클로킹 레이스로 하늘을 잡음`,
       `레이스 ${n}기에 클로킹까지 올려 흔듦`,
       `보이지 않는 레이스로 휘저음`,
-    ]))}`;
-  },
-  // 이레디에이트(요청) — 베슬 한 기가 일꾼 줄을 통째로 지운다.
-  irradiate: (c) => {
-    const of = c.whom ? `${c.whom}의 ` : "상대 ";
-    return `${ga(c.who)} ${done(c, c.pick([
-      `사이언스 베슬 이레디에이트로 ${of}일꾼을 견제함`,
-      `이레디에이트로 ${of}일꾼을 압박함`,
-      `베슬을 띄워 이레디에이트로 ${of}일꾼을 계속 압박함`,
     ]))}`;
   },
   // 인페스티드 테란(요청) — 퀸이 커맨드센터를 감염시켜야만 나오는, 경기당 한 번 볼까 말까

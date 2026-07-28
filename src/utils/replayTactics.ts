@@ -137,8 +137,6 @@ const POWER_UNITS: [string, number][] = [
 const POWER_SHARE = 0.6;
 // 클로킹 레이스 — 이만큼은 띄워야 '레이스 전략'이다.
 const WRAITH_MIN = 4;
-// 이레디에이트 — 베슬 한 기는 지나가다 뽑은 것일 수 있다.
-const VESSEL_MIN = 2;
 // 일꾼은 종족을 그대로 드러낸다 — 제 종족이 아닌 일꾼을 뽑았다면 뺏어 온 것이다(요청).
 const WORKER_OF = new Map<string, string>([
   ["Probe", "프로토스"], ["Drone", "저그"], ["SCV", "테란"],
@@ -598,13 +596,11 @@ function detectFor(c: Ctx): Tactic[] {
       at: firstU("Wraith"), who, p: { n: u("Wraith") },
     });
   }
-  // 이레디에이트로 일꾼 지우기(요청) — 베슬을 띄우고 이레디를 올렸다는 것 자체가 그 그림이다.
-  if (race === "테란" && hasTech("Irradiate") && u("Science Vessel") >= VESSEL_MIN) {
-    out.push({
-      key: "irradiate", ...target, weight: 12,
-      at: s.firstTechFrame["Irradiate"] ?? firstU("Science Vessel"), who,
-    });
-  }
+  // (삭제) 이레디에이트로 일꾼을 지웠다는 이야기 — 근거가 "이레디를 올리고 베슬을 몇 기
+  // 뽑았다"뿐이었다. 그건 그 마법을 무엇에 썼는지는 하나도 말해 주지 않는다. 이레디는
+  // 러커·뮤탈·디파일러에게 훨씬 자주 쓰이고, 커맨드 스트림에는 대상이 안 남는다
+  // (지적: "하이템플러나 사베가 일꾼 견제에 쓰였는지 그냥 전투·방어에 쓰였는지 구분하기
+  // 힘들면 그런 자세한 묘사는 제거해줘"). 남길 만한 사실이 없어 통째로 뺀다.
 
   // ── 프로토스 ──
   if (race === "프로토스") {

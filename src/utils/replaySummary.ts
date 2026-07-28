@@ -150,10 +150,13 @@ const WORKER_SURGE_RATIO = 1.25;
 // 일꾼을 몰아 뽑은 구간이 이만큼(분) 넘게 이어졌으면 '내내 시달렸다'로 본다.
 const HARASS_LONG_MIN = 6;
 // 견제로 읽을 수 있는 수들 — 드랍과 뮤탈. 일꾼을 노리는 그림이 뚜렷한 것만 본다.
+// 하이템플러 드랍(templar-drop)과 이레디에이트는 뺐다(지적) — 스톰도 이레디도 한복판
+// 전투에서 훨씬 자주 쓰이는데 커맨드 스트림에는 그 마법을 '무엇에' 썼는지가 안 남는다.
+// 일꾼을 노렸다고 단정할 수 없으니 일꾼 견제 문장으로는 안 쓴다.
 const HARASS_KEYS = new Set([
-  "shuttle-reaver", "templar-drop", "zerg-drop", "dropship", "shuttle", "muta",
-  // 클로킹 레이스와 이레디에이트는 일꾼을 지우는 대표적인 수다(요청).
-  "cloak-wraith", "irradiate",
+  "shuttle-reaver", "zerg-drop", "dropship", "shuttle", "muta",
+  // 클로킹 레이스는 일꾼을 지우는 대표적인 수다(요청).
+  "cloak-wraith",
 ]);
 
 // 러시·드랍을 간 뒤 이 안에 상대 생산이 끊기면 그 수의 결과로 본다.
