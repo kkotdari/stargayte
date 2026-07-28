@@ -61,9 +61,11 @@ export interface ReplayPlayerSignals {
   buildingCounts: Record<string, number>;
   /** 건물별 첫 건설 프레임 — 확장 타이밍/테크 타이밍용. */
   firstBuildingFrame: Record<string, number>;
-  /** 유닛/건물별 생산 프레임 목록(앞쪽 EARLY_FRAMES_CAP개까지). 첫 프레임만으로는 "스포닝풀
-   *  전에 드론을 몇 기 뽑았나"(9드론/12드론) 같은 순서 이야기를 만들 수 없어서 따로 둔다.
-   *  뒤쪽은 필요 없으니 잘라서 메모리를 아낀다. */
+  /** 유닛/건물별 생산 프레임 목록(경기 전체, 자르지 않는다). 첫 프레임만으로는 "스포닝풀
+   *  전에 드론을 몇 기 뽑았나"(9드론/12드론) 같은 순서 이야기를 만들 수 없어서 따로 두는데,
+   *  지금은 그보다 훨씬 넓게 쓰인다 — 이 목록이 곧 그 사람의 '생산 타임라인'이라,
+   *  무너진 시점(fellFrame)·생산 급감(productionDips)·후반 주력(lateCombat)이 전부
+   *  여기서 나온다. 앞쪽만 남기면 그 셋이 통째로 오판한다(pushFrame 위 주석 참고). */
   unitFrames: Record<string, number[]>;
   buildingFrames: Record<string, number[]>;
   /** 건물을 지은 좌표 — 몰래 배럭/센터 포토처럼 '어디에' 지었는지가 곧 전술인 것들을
@@ -225,9 +227,16 @@ const PRODUCTION_CMD_NAMES = new Set<string>([
 const UNIT_TRAIN_CMD_NAMES = new Set<string>(["Train", "Train Fighter", "Unit Morph"]);
 const BUILD_CMD_NAMES = new Set<string>(["Build", "Building Morph", "Hatch"]);
 
-// 순서 판정에 쓰는 앞부분만 남긴다 — 9드론/투게이트 같은 이야기는 다 초반 이야기라
-// 스무 남짓이면 충분하고, 긴 경기의 뒷부분까지 다 들고 있을 이유가 없다.
-const EARLY_FRAMES_CAP = 24;
+// (삭제) 예전엔 유닛/건물 생산 프레임을 종류별 앞쪽 24개까지만 남겼다 — "9드론이냐
+// 12드론이냐" 같은 초반 순서만 보던 시절의 최적화였다. 그 뒤로 요약 엔진이 이 목록을
+// '경기 내내의 생산 타임라인'으로 쓰기 시작하면서(무너진 시점 fellFrame, 생산 급감
+// productionDips, 후반 주력 lateCombat) 이 상한이 곧 오판의 원인이 됐다: 마린을 6분 만에
+// 24기 뽑고 그 뒤로도 계속 뽑은 사람은, 기록상 7분부터 생산이 0이라 "7분에 무너졌다"
+// "그때 크게 맞았다"로 읽혔다. 실제로 지적받은 두 증상이 모두 여기서 나왔다 —
+// 파이어뱃 러시가 성공했는데 "실패함"으로 뒤집히던 것(러시 직후 상한에 걸린 제 생산이
+// 급감으로 보여 rush-backfire 판정), 후반 캐리어·골리앗이 주력에서 빠지던 것.
+// 이제 전부 담는다 — 커맨드 스트림은 어차피 한 번 훑고 버리는 값이라(요약만 저장된다)
+// 긴 경기라도 숫자 수천 개 수준이다.
 const BUILD_POS_CAP = 80;
 // 채팅은 요약 재료로만 쓰므로 앞부분만 있으면 된다(GG는 대개 끝에 나오지만, 한 사람이
 // 수십 줄을 치는 경우까지 전부 들고 있을 이유는 없다).
@@ -258,9 +267,8 @@ function posOf(v: ScrepCmd["Pos"]): { x: number; y: number } | null {
   return typeof x === "number" && typeof y === "number" ? { x, y } : null;
 }
 
-function pushCapped(bag: Record<string, number[]>, key: string, frame: number): void {
-  const arr = bag[key] ?? (bag[key] = []);
-  if (arr.length < EARLY_FRAMES_CAP) arr.push(frame);
+function pushFrame(bag: Record<string, number[]>, key: string, frame: number): void {
+  (bag[key] ?? (bag[key] = [])).push(frame);
 }
 
 // 커맨드 스트림 한 번 훑기로 사람별 요약 재료를 모은다.
@@ -290,7 +298,7 @@ function collectSignals(cmds: ScrepCmd[], totalFrames: number | null): Map<numbe
         s.unitCounts[unit] = (s.unitCounts[unit] ?? 0) + 1;
         if (frame !== null) {
           if (s.firstUnitFrame[unit] === undefined) s.firstUnitFrame[unit] = frame;
-          pushCapped(s.unitFrames, unit, frame);
+          pushFrame(s.unitFrames, unit, frame);
         }
       }
     } else if (cmdName && BUILD_CMD_NAMES.has(cmdName)) {
@@ -299,7 +307,7 @@ function collectSignals(cmds: ScrepCmd[], totalFrames: number | null): Map<numbe
         s.buildingCounts[b] = (s.buildingCounts[b] ?? 0) + 1;
         if (frame !== null) {
           if (s.firstBuildingFrame[b] === undefined) s.firstBuildingFrame[b] = frame;
-          pushCapped(s.buildingFrames, b, frame);
+          pushFrame(s.buildingFrames, b, frame);
         }
         const pos = posOf(c.Pos);
         if (pos && s.buildPositions.length < BUILD_POS_CAP) {

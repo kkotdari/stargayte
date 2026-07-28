@@ -216,29 +216,57 @@ function buildSide(players: ParsedReplayPlayer[]): Side {
 // 마지막으로 뽑던 것들을 그대로 굴렸다는 뜻이므로(지적), 창을 뒤에서부터 넓혀 가며
 // 실제로 생산이 있었던 구간을 찾는다. 끝까지 못 찾으면(생산 기록이 거의 없으면) 빈 맵을
 // 돌려주고 호출부가 원래대로 전체 생산량으로 매긴다.
-const LATE_WINDOWS = [0.65, 0.4, 0];
+// 뒷구간의 시작점 — 여기부터 뽑은 것을 '후반 생산'으로 본다. 뒷구간에 아무것도 안 뽑았으면
+// 마지막으로 뽑던 것들을 그대로 굴렸다는 뜻이라(지적), 시작점을 앞으로 당겨 가며 실제로
+// 생산이 있었던 구간을 찾는다. 0이면 그냥 경기 전체다.
+const LATE_FROMS = [0.5, 0.3, 0];
 // 이만큼은 뽑혔어야 그 구간을 '조합이 드러난 구간'이라 할 수 있다.
-const LATE_MIN_UNITS = 4;
+const LATE_MIN_UNITS = 3;
+// 그 유닛 생산의 이만큼 이상이 뒷구간에 몰려 있어야 '후반에 꺼낸 카드'다. 뒷구간 수만
+// 세면, 경기 내내 뽑는 질럿·드라군이 끝자락에 몇 기 더 나온 것만으로도 캐리어를 이긴다
+// (지적: "캐리어 골리앗 싸움이 메인인데 그걸 못잡네 — 안 죽고 오래 유지해서 그런듯").
+const LATE_SHARE_MIN = 0.55;
+// 다만 후반 카드가 뒷구간 생산의 이 정도는 차지해야 그 경기의 그림이라 할 수 있다 —
+// 질럿을 40기 뽑는 내내 리버 2기를 끼워 넣은 것까지 "리버로 이겼다"가 되면 곤란하다.
+const LATE_DOMINANCE_MIN = 0.3;
 
 function lateCombat(players: ParsedReplayPlayer[], end: number | null): Map<string, number> {
   if (!end || end <= 0) return new Map();
-  for (const share of LATE_WINDOWS) {
+  for (const share of LATE_FROMS) {
     const from = end * share;
-    const out = new Map<string, number>();
-    let total = 0;
+    // 유닛별로 (뒷구간 생산 수, 전체 생산 수)를 함께 모은다 — 비율 판정에 둘 다 필요하다.
+    const tally = new Map<string, { late: number; all: number }>();
     for (const p of players) {
       const s = p.signals;
       if (!s) continue;
       for (const [unit, frames] of Object.entries(s.unitFrames)) {
         if (NON_COMBAT_UNITS.has(unit) || WORKER_UNITS.has(unit)) continue;
         if (!UNIT_KO[unit]) continue;
-        const n = frames.filter((x) => x >= from).length;
-        if (n <= 0) continue;
-        out.set(unit, (out.get(unit) ?? 0) + n);
-        total += n;
+        const cur = tally.get(unit) ?? { late: 0, all: 0 };
+        cur.late += frames.filter((x) => x >= from).length;
+        cur.all += frames.length;
+        tally.set(unit, cur);
       }
     }
-    if (total >= LATE_MIN_UNITS) return out;
+    const lateAll = new Map<string, number>();
+    let lateTotal = 0;
+    for (const [u, v] of tally) {
+      if (v.late <= 0) continue;
+      lateAll.set(u, v.late);
+      lateTotal += v.late;
+    }
+    if (lateTotal < LATE_MIN_UNITS) continue;
+    // 후반에 새로 꺼낸 카드들만 추린다.
+    const fresh = new Map<string, number>();
+    let freshTotal = 0;
+    for (const [u, v] of tally) {
+      if (v.late <= 0 || v.all <= 0) continue;
+      if (v.late / v.all < LATE_SHARE_MIN) continue;
+      fresh.set(u, v.late);
+      freshTotal += v.late;
+    }
+    if (freshTotal >= LATE_MIN_UNITS && freshTotal >= lateTotal * LATE_DOMINANCE_MIN) return fresh;
+    return lateAll;
   }
   return new Map();
 }
@@ -1039,7 +1067,12 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     const mine = won ? winnerPlayers : loserPlayers;
     return scanTactics({ sidePlayers: mine, foePlayers: foes })
       .map((t) => {
-        if (!won && backfired(t, mine.find((p) => p.rawName === t.who))) {
+        // 그 수가 실제로 상대에게 통했는지를 먼저 본다(지적: "파뱃 러시도 성공했는데
+        // 실패했다고 나오고"). 예전엔 역풍 판정이 앞서 있어서, 러시가 상대 생산을 끊었어도
+        // 러시를 간 쪽이 진 경기면 제 생산 등락만 보고 "실패함"으로 뒤집혔다. 상대가 실제로
+        // 맞았다면 그건 성공한 수이고, 그 뒤에 졌다는 건 결과 문장이 따로 말한다.
+        const hit = damageFrom(t, foes);
+        if (!won && !hit && backfired(t, mine.find((p) => p.rawName === t.who))) {
           return {
             k: "rush-backfire", won, who: [t.who], at: t.at,
             // "그 사이 상대만 테크를 탐" 같은 말은 상대가 하나뿐일 때만 성립한다(지적) —
@@ -1070,7 +1103,6 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
             } as Beat;
           }
         }
-        const hit = damageFrom(t, foes);
         if (hit) {
           return {
             k: "raid-damage", won, who: [t.who], at: t.at,
