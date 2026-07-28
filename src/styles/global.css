@@ -6842,14 +6842,17 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 }
 .scr-feed-stack-toggle-caret { flex-shrink: 0; }
 @media (hover: hover) { .scr-feed-stack-toggle:hover { color: var(--text); } }
-/* 펼쳤을 때 요약(원래 포스트)과 그 아래 목록의 경계 — 요약 아래로 그림자를 드리워
-   두 층이 겹쳐 있다는 걸 보여 준다(요청). 목록 위로 그려져야 해서 z-index를 올린다. */
+/* 펼쳤을 때 요약(원래 포스트)과 그 아래 목록의 경계 — 요약 아래로만 그림자를 드리워
+   두 층이 겹쳐 있다는 걸 보여 준다(요청). 목록 위로 그려져야 해서 z-index를 올린다.
+   옆으로는 번지면 안 되고 세기도 약해야 한다(요청) — 음수 spread를 blur와 같은 값으로
+   줘서 그림자 사각형을 좌우로 그만큼 좁힌 다음 아래로만 내린다. 그러면 가로로는 원본
+   박스 안쪽에 머물러 옆면에 아무것도 안 생기고, 아래쪽에만 얇게 깔린다. */
 .scr-feed-stack-opened > .scr-feed-stack-sum-body {
   position: relative; z-index: 2;
-  box-shadow: 0 14px 20px -8px rgba(0, 0, 0, 0.65), 0 1px 0 rgba(var(--overlay-rgb), 0.14);
+  box-shadow: 0 6px 8px -6px rgba(0, 0, 0, 0.34), 0 1px 0 rgba(var(--overlay-rgb), 0.12);
 }
 .scr-light-theme .scr-feed-stack-opened > .scr-feed-stack-sum-body {
-  box-shadow: 0 14px 20px -8px rgba(0, 0, 0, 0.28), 0 1px 0 rgba(0, 0, 0, 0.1);
+  box-shadow: 0 6px 8px -6px rgba(0, 0, 0, 0.16), 0 1px 0 rgba(0, 0, 0, 0.08);
 }
 
 /* 헤더부 — 포스트를 헤더/컨텐츠 둘로 가르는 경계선을 여기 아래에 긋는다(요청).

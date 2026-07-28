@@ -74,6 +74,10 @@ function formatWhen(gameStartedAt: string | null, date: string): string {
 
 // 로그 한 줄에 필요한 부가 정보 — 분석 자체가 실패한 드래프트(parseError)는 팀 구성을
 // 알 수 없으니 "-"로 둔다.
+// 이보다 짧은 경기는 자동 등록하지 않고 검토로 보낸다(요청) — 실제로 붙은 판이라기보다
+// 시작하자마자 나갔거나 켰다 끈 판일 때가 많다.
+const SHORT_MATCH_SEC = 2 * 60;
+
 function draftMeta(d: ReplayDraft): { when: string; teamSize: string; suspected: boolean } {
   if (d.parseError) return { when: "-", teamSize: "-", suspected: false };
   return {
@@ -272,6 +276,16 @@ export default function ReplayBatchButton() {
           // 한 번 거치게 한다.
           if (draft.guessedObservers.length > 0) {
             fail(draft, `관전자로 의심되는 사람이 있어요 (${draft.guessedObservers.join(", ")}) — 확인이 필요해요.`);
+            continue;
+          }
+
+          // 2분도 안 되는 경기는 제대로 붙은 판이 아닐 가능성이 크다(요청) — 시작하자마자
+          // 나갔거나, 맵을 확인하려고 켰다 끈 것이다. 자동 등록하지 않고 사람 눈을 한 번
+          // 거치게 한다(검토 화면에서 그대로 등록할 수도 있다).
+          if (draft.durationSeconds !== null && draft.durationSeconds < SHORT_MATCH_SEC) {
+            const mm = Math.floor(draft.durationSeconds / 60);
+            const ss = draft.durationSeconds % 60;
+            fail(draft, `${mm}분 ${ss}초짜리 짧은 경기예요 — 확인이 필요해요.`);
             continue;
           }
 
