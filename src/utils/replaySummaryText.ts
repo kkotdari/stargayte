@@ -1174,8 +1174,10 @@ const TEMPLATES: Record<string, Tpl> = {
     const spots = num(c.p.spots);
     if (spots <= 0) return null;
     return `${ga(c.who)} ${done(c, c.pick([
+      // 어미는 CONNECTIVE 표에 있는 것만 쓴다(버팀·놓음·지음) — 표에 없으면 평서형으로
+      // 안 바뀌어 "…살림을 흩음." 처럼 명사형이 그대로 남는다(실제로 그렇게 나왔다).
       `맵 곳곳 ${spots}군데에 건물을 벌려 지으며 버팀`,
-      `한자리에 머무르지 않고 판 전체 ${spots}군데로 살림을 흩음`,
+      `한자리에 머무르지 않고 판 전체 ${spots}군데에 살림을 벌려 놓음`,
       `자리를 옮겨 가며 ${spots}군데에 건물을 새로 지음`,
     ]))}`;
   },
@@ -1283,6 +1285,17 @@ const TEMPLATES: Record<string, Tpl> = {
     if (!unit) return null;
     const n = num(c.p.n);
     // 이 수는 그 순간의 병력이 아니라 경기 내내 뽑은 총량이다 — 그렇게 말해야 정확하다(지적).
+    // 다만 한 번에 몰아 뽑은 게 아니라 나눠 뽑았으면(burst < n) 총량만 말하면 안 된다
+    // (지적: "연속적으로 뽑은 게 아니라 나눠져서 뽑은 거라 따로 계산돼야 함"). 그 문장이
+    // 놓이는 자리도 가장 큰 묶음의 시점이므로, 문장도 그 묶음을 말해야 앞뒤가 맞는다.
+    const burst = num(c.p.burst);
+    if (burst > 0) {
+      return `${ga(c.who)} ${done(c, c.pick([
+        `${reul(unit)} 한 번에 ${burst}기까지 몰아 뽑음`,
+        `이 대목에서만 ${reul(unit)} ${burst}기 뽑음`,
+        `나눠 뽑던 ${reul(unit)} 여기서만 ${burst}기 더 뽑음`,
+      ]))}`;
+    }
     return `${ga(c.who)} ${done(c, c.pick([
       `${ro(`파워 ${unit}`)} 밀어붙임`,
       `${unit}만 경기 내내 총 ${n}기를 뽑아 물량으로 승부함`,

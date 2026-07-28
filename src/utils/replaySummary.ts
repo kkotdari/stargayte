@@ -1,5 +1,5 @@
 import type { ParsedReplay, ParsedReplayPlayer, ReplayPlayerSignals } from "./replayParser";
-import { scanTactics } from "./replayTactics";
+import { biggestBurst, scanTactics } from "./replayTactics";
 import {
   eliminatedFrame, fellFrame, productionDips, revivalFrame, surgeSpanMin,
 } from "./replayFell";
@@ -794,10 +794,21 @@ function sideBeats(args: {
         ? mainUnits(ownCombat(star), armyBySupply([star]))
         : mainUnits(side.combat, armyBySupply(players))
     );
+    // 시점은 '그 조합을 실제로 모은 때' — 대표 유닛을 가장 크게 몰아 뽑은 묶음의 시작이다.
+    // 예전엔 그 편의 마지막 커맨드(= 사실상 경기 끝)를 썼는데, 그건 시점이 아니라 자리
+    // 표시였다. 시점 없는 문장들이 맺음말 앞으로 밀리면서 이 문장만 앞으로 튀어 올라
+    // "골리앗이 너무 초반에 나온다"는 지적이 나왔다 — 실제 골리앗 물량은 23~30분이었다.
+    const lead = units[0];
+    const leadFrames = lead
+      ? players.flatMap((p) => p.signals?.unitFrames[lead] ?? [])
+      : [];
+    const burst = biggestBurst(leadFrames);
     const lastFrames = players
       .map((p) => p.signals?.lastCmdFrame ?? null)
       .filter((f): f is number => f !== null);
-    const at = lastFrames.length > 0 ? Math.max(...lastFrames) : totalFrames;
+    const at = burst
+      ? burst.from
+      : lastFrames.length > 0 ? Math.max(...lastFrames) : totalFrames;
     const spectacle = spectacleOf(side);
     let p: Record<string, string | number | boolean | string[]> | null = null;
     // 몇 기까지 뽑았는지도 함께 — "캐리어를 한 부대 뽑았으나 망함"처럼 규모가 곧 그림이다(요청).

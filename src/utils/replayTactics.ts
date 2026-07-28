@@ -55,6 +55,33 @@ export interface Tactic {
  *  이야기를 만드는 규칙들은 unknown을 아예 집어내지 않으므로, 그런 자리는 언급되지 않는다. */
 type Zone = "home" | "ally" | "mid" | "enemy" | "unknown";
 
+/** 생산 프레임들을 '한 번에 몰아 뽑은 묶음'으로 자른다 — 생산 사이가 BURST_GAP_SEC 넘게
+ *  벌어지면 다른 묶음이다. 총량만 세면 나눠 뽑은 것도 한 덩어리가 돼, 그 이야기를 놓을
+ *  시점이 사라진다(지적: "연속적으로 뽑은 게 아니라 나눠져서 뽑은 거라 따로 계산돼야 함.
+ *  합쳐서 계산하니 맨 뒤에 들어가서 타임라인적으로도 안 맞음"). 실제로 이 지적이 나온
+ *  경기는 질럿 125기가 22·27·35·41기 네 묶음으로 나뉘어 있었고, 가장 큰 묶음은 38분경이었다. */
+const BURST_GAP_SEC = 3 * 60;
+
+export function burstsOf(frames: number[]): { from: number; to: number; n: number }[] {
+  if (frames.length === 0) return [];
+  const sorted = [...frames].sort((a, b) => a - b);
+  const gap = BURST_GAP_SEC / SECONDS_PER_FRAME;
+  const out: { from: number; to: number; n: number }[] = [{ from: sorted[0], to: sorted[0], n: 1 }];
+  for (let i = 1; i < sorted.length; i += 1) {
+    const cur = out[out.length - 1];
+    if (sorted[i] - sorted[i - 1] > gap) out.push({ from: sorted[i], to: sorted[i], n: 1 });
+    else { cur.to = sorted[i]; cur.n += 1; }
+  }
+  return out;
+}
+
+/** 그중 가장 큰 묶음 — '언제 그 물량이 쏟아졌나'의 답이다. */
+export function biggestBurst(frames: number[]): { from: number; to: number; n: number } | null {
+  const bs = burstsOf(frames);
+  if (bs.length === 0) return null;
+  return bs.reduce((a, b) => (b.n > a.n ? b : a));
+}
+
 function dist(a: { x: number; y: number }, b: { x: number; y: number }): number {
   return Math.hypot(a.x - b.x, a.y - b.y);
 }
@@ -188,7 +215,7 @@ interface Geo {
   /** 건물이 판 전체에 얼마나 흩어져 있나 — 자리를 내주고 도망 다니며 새로 짓기를 반복하면
    *  본진 언저리가 아니라 맵 곳곳에 군집이 생긴다. clusters는 서로 떨어진 건물 무리의 수,
    *  far는 본진에서 SCATTER_FAR 배 넘게 나가 지은 건물 수. */
-  spread: { clusters: number; far: number };
+  spread: { clusters: number; far: number; at: number | null };
 }
 
 function geoOf(
@@ -310,9 +337,17 @@ function geoOf(
   for (const b of mine) {
     if (!seeds.some((c) => dist(c, b) < base * SCATTER_RADIUS)) seeds.push(b);
   }
+  // 시점은 '본진을 벗어나 지은 건물들의 중간 때' — 첫 채로 잡으면 지나가다 하나 지은 것에
+  // 끌려 앞으로 당겨지고, 시점을 아예 안 두면 맺음말 앞으로 밀려 타임라인이 어긋난다(지적).
+  const far = mine.filter((b) => dist(b, home) > base * SCATTER_FAR);
+  const farFrames = far
+    .map((b) => b.frame)
+    .filter((f): f is number => f !== null)
+    .sort((x, y) => x - y);
   const spread = {
     clusters: seeds.length,
-    far: mine.filter((b) => dist(b, home) > base * SCATTER_FAR).length,
+    far: far.length,
+    at: farFrames.length > 0 ? farFrames[Math.floor(farFrames.length / 2)] : null,
   };
 
   return { zone, allyAt, enemyAt, front, lodgingHost, lodgingLost, spread };
@@ -433,9 +468,18 @@ function detectFor(c: Ctx): Tactic[] {
   // '파워 OO' — 한 유닛을 압도적으로 뽑아 그 물량으로 밀어붙이는 그림(요청).
   for (const [unit, min] of POWER_UNITS) {
     if (u(unit) >= min && armyTotal > 0 && u(unit) / armyTotal >= POWER_SHARE) {
-      // 시점을 두지 않는다 — 경기 내내의 총량 이야기라 첫 기가 나온 때에 놓으면 앞으로
-      // 당겨져 '초반에 파워 질럿'처럼 읽힌다(지적). 시점 없는 문장은 맺음말 앞에 붙는다.
-      out.push({ key: "power-unit", weight: 11, at: null, who, p: { unit, n: u(unit) } });
+      // 시점은 '가장 크게 몰아 뽑은 묶음'에 건다. 예전엔 총량 이야기라며 시점을 안 뒀는데,
+      // 시점 없는 문장은 맺음말 바로 앞으로 밀려서 정작 그 물량이 쏟아진 때와 한참 어긋난
+      // 자리에 놓였다(지적). 나눠 뽑았으면 그중 가장 큰 묶음이 곧 그 이야기의 시점이다.
+      const burst = biggestBurst(s.unitFrames[unit] ?? []);
+      out.push({
+        key: "power-unit", weight: 11, at: burst ? burst.from : null, who,
+        p: {
+          unit, n: u(unit),
+          // 한 묶음에 다 뽑았으면 굳이 나눠 말하지 않는다 — 총량 문장 그대로다.
+          ...(burst && burst.n < u(unit) ? { burst: burst.n, min: Math.round((burst.from * SECONDS_PER_FRAME) / 60) } : {}),
+        },
+      });
       break;
     }
   }
@@ -698,7 +742,7 @@ function detectFor(c: Ctx): Tactic[] {
     geo && geo.spread.clusters >= SCATTER_CLUSTERS_MIN && geo.spread.far >= SCATTER_FAR_MIN
   ) {
     out.push({
-      key: "scatter", weight: 14, at: null, who,
+      key: "scatter", weight: 14, who, at: geo.spread.at,
       p: { spots: geo.spread.clusters, far: geo.spread.far },
     });
   }
