@@ -146,7 +146,9 @@ function teamPhrase(c: Ctx): string {
   // 함께 쓴 조합을 앞세워 말한다.
   if (groups.length === 1 && names.length >= 4) {
     const ko = groups[0].units.map((u) => UNIT_KO[u]).filter(Boolean).slice(0, 3);
-    const team = `${names.length}인 팀`;
+    // "4인 팀"은 쓰지 않는 말이다(지적) — 로스터에 있는 그대로 "1팀/2팀"이라 부른다.
+    // 팀 번호를 모르면(옛 데이터·1:1) 이름을 늘어놓는 쪽으로 물러선다.
+    const team = c.team ? `${c.team}팀` : names.join("·");
     if (ko.length === 0) return c.pick([`${team}이 힘을 모아`, `${names.join("·")} 팀이 함께 밀어붙여`]);
     const combo = ko.length >= 2 ? `${ko.join(" ")} 조합` : ko[0];
     return c.pick([
@@ -202,6 +204,9 @@ interface Ctx {
   end: number | null;
   /** 진 편 문장 중 마지막인가 — 부정적인 맺음은 경기당 한 번만 쓴다(지적). */
   lastLost: boolean;
+  /** 이 사람들이 속한 팀 번호 — 팀 전체를 부를 때 "1팀"이라 말하기 위한 것이다(지적:
+   *  "4인 팀"은 이상한 말). 팀을 모르면 0이고, 그때는 이름을 늘어놓는다. */
+  team: 0 | 1 | 2;
   p: Record<string, unknown>;
   /** 여러 표현 중 하나를 고른다 — 같은 경기는 늘 같은 것이 나온다(아래 variantSeed 참고). */
   pick: (opts: string[]) => string;
@@ -512,7 +517,7 @@ const TEMPLATES: Record<string, Tpl> = {
       const min = num(c.p.outMin);
       const when = min > 0 ? `${min}분경 ` : "";
       return done(c, c.pick([
-        `${ro(by)} ${when}${reul(foe)} 엘리미네이트`,
+        `${ro(by)} ${when}${reul(foe)} 엘리시킴`,
         `${blow} ${when}${ga(foe)} 탈락`,
         `${ro(by)} ${when}${reul(foe)} 판에서 지움`,
       ]));
@@ -731,8 +736,8 @@ const TEMPLATES: Record<string, Tpl> = {
     `${ga(c.who)} ${c.pick(
       c.p.out
         ? c.p.team
-          ? ["먼저 엘리미네이트 당함", "제일 먼저 탈락하며 한 명이 빠짐", "먼저 지워짐"]
-          : ["엘리미네이트 당함", "탈락함"]
+          ? ["먼저 엘리당함", "제일 먼저 탈락하며 한 명이 빠짐", "먼저 지워짐"]
+          : ["엘리당함", "탈락함"]
         : c.p.team
           ? ["먼저 무너지며 전열이 갈림", "먼저 정리되며 한 명이 빠짐"]
           : ["일찍 손을 놓음", "일찍 무너짐", "허무하게 먼저 정리됨"]
@@ -914,7 +919,7 @@ const TEMPLATES: Record<string, Tpl> = {
     const when = m > 0 ? `${m}분 만에 ` : "";
     const head = `${wa(foe)} ${ga(c.who)} ${reul(label)} 갔는데`;
     if (c.p.out) {
-      return `${head}, ${neun(foe)} 막히고 ${ga(c.who)} ${when}${reul(foe)} 엘리미네이트`;
+      return `${head}, ${neun(foe)} 막히고 ${ga(c.who)} ${when}${reul(foe)} 엘리시킴`;
     }
     return `${head}, ${neun(foe)} 막히고 ${ga(c.who)} ${when}${foe}의 기지를 ${c.pick([
       "반쯤 파괴함", "크게 부숨",
@@ -1456,6 +1461,7 @@ export function renderReplaySummary(
         at: typeof b.at === "number" ? b.at : null,
         end: typeof data.end === "number" && data.end > 0 ? data.end : null,
         lastLost: i === lastLostIdx,
+        team: teamOf?.(names[0] ?? "") ?? 0,
         p: b.p ?? {},
         pick: (opts) => {
           const t = opts[(seed + offset) % opts.length];

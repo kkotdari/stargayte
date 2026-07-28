@@ -146,6 +146,8 @@ const HARASS_KEYS = new Set([
 
 // 러시·드랍을 간 뒤 이 안에 상대 생산이 끊기면 그 수의 결과로 본다.
 const DAMAGE_WINDOW_SEC = 3 * 60;
+// 탈락을 그 수의 결과로 묶는 창 — 이보다 벌어지면 인과가 아니라 우연에 가깝다(지적).
+const ELIM_WINDOW_SEC = 90;
 // 초반 올인이 막히고 역으로 무너졌는지 볼 시간 창.
 const BACKFIRE_SEC = 5 * 60;
 // 역풍으로 읽을 수들 — 실패하면 그대로 손해가 되는 초반 올인만.
@@ -868,12 +870,16 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   const damageFrom = (t: { key: string; at: number | null; whom?: string }, foes: ParsedReplayPlayer[]) => {
     if (t.at === null || !RAID_KEYS.has(t.key)) return null;
     const window = t.at + DAMAGE_WINDOW_SEC / SECONDS_PER_FRAME;
+    // 탈락은 창을 더 좁게 본다(지적: 상관도가 높은 것만 인과로 묶기) — 어떤 수를 간 지
+    // 3분 뒤의 탈락까지 그 수의 결과라 부르면, 사실은 상관없는 일을 엮게 된다. 곧바로
+    // 이어진 탈락만 그 수 때문이라고 말한다.
+    const outWindow = t.at + ELIM_WINDOW_SEC / SECONDS_PER_FRAME;
     const targets = t.whom ? foes.filter((p) => p.rawName === t.whom) : foes;
     let best: { raw: string; at: number; out: boolean } | null = null;
     for (const p of targets) {
       // 그 창 안에 실제로 탈락했으면 그게 가장 확실한 결과다 — 생산 급감보다 앞세운다.
       const gone = eliminatedFrame(p);
-      if (gone !== null && gone >= t.at && gone <= window) {
+      if (gone !== null && gone >= t.at && gone <= outWindow) {
         if (!best || !best.out || gone < best.at) best = { raw: p.rawName, at: gone, out: true };
         continue;
       }
