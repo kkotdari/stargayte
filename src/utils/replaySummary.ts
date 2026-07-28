@@ -137,6 +137,22 @@ const HOLD_QUIET_SHARE = 0.25;
 // 양쪽이 낸 것의 비율이 이 안이면 '비등비등했다'로 본다.
 const STANDOFF_RATIO = 1.25;
 
+// ── 중반부터 끝까지 끌고 간 유닛(long-run) ──
+// 한 유닛을 오래도록 계속 뽑았다는 건 그걸로 경기를 끌고 갔다는 뜻이다(요청: 중반부터
+// 후반까지 운용한 걸로 보이면 그 유닛이 요약에 두 번 나와도 된다). 살아남았는지는
+// 리플레이에 없으니 '언제부터 언제까지 계속 뽑았나'까지만 말한다.
+//
+// 첫 기와 마지막 기가 이만큼은 벌어져야 '끌고 갔다'가 성립한다.
+const LONG_RUN_MIN_SEC = 15 * 60;
+// 그 사람 전투 인구의 이만큼은 돼야 주력이다 — 곁들여 뽑은 것까지 세면 아무 경기에나 붙는다.
+const LONG_RUN_SHARE = 0.25;
+// 몇 기는 뽑았어야 한다. 오래 뽑았어도 다섯 기면 '끌고 갔다'가 아니다.
+const LONG_RUN_MIN_N = 12;
+// 시작이 초반을 지나야 '중반부터'다 — 1분부터 뽑은 기본 유닛은 여기 해당하지 않는다.
+const LONG_RUN_START = 0.3;
+// 그리고 끝까지 이어져야 한다.
+const LONG_RUN_END = 0.85;
+
 // 발키리가 뜬 뒤 오버로드를 이만큼은 다시 뽑았어야 '잡히고 있었다'고 말할 수 있다.
 const OVERLORD_REBUILD_MIN = 4;
 // 그리고 뽑는 속도가 그 전보다 이 배수는 빨라져야 한다 — 인구수 때문에 느는 것과 가른다.
@@ -986,6 +1002,43 @@ function sideBeats(args: {
       .sort((a, b) => b.ratio - a.ratio)[0];
     if (top) {
       beats.push({ k: "allin", won, who: who(top.p), at: null, weight: 6 });
+    }
+  }
+
+  // ── 중반부터 끝까지 끌고 간 유닛 ──
+  // 한 유닛을 오래도록 계속 뽑았다는 건 그걸로 경기를 끌고 갔다는 뜻이다(요청). 그 유닛이
+  // 맺음말이나 진 편 문장에 또 나와도 괜찮다 — 중반부터 후반까지 운용한 그림이면 두 번
+  // 나오는 게 맞다. 다만 말하는 건 '언제부터 언제까지 계속 뽑았나'까지다: 살아남았는지는
+  // 리플레이에 없다.
+  for (const p of players) {
+    const sg = p.signals;
+    if (!sg || !totalFrames) continue;
+    const supply = sumSupply(p);
+    if (supply <= 0) continue;
+    let best: { unit: string; from: number; to: number; n: number } | null = null;
+    for (const [unit, n] of ownCombat(p)) {
+      if (n < LONG_RUN_MIN_N || !UNIT_KO[unit]) continue;
+      if ((n * supplyOf(unit)) / supply < LONG_RUN_SHARE) continue;
+      const fs = sg.unitFrames[unit] ?? [];
+      if (fs.length < 2) continue;
+      const from = Math.min(...fs);
+      const to = Math.max(...fs);
+      if ((to - from) * SECONDS_PER_FRAME < LONG_RUN_MIN_SEC) continue;
+      if (from / totalFrames < LONG_RUN_START) continue;
+      if (to / totalFrames < LONG_RUN_END) continue;
+      if (!best || to - from > best.to - best.from) best = { unit, from, to, n };
+    }
+    if (best) {
+      beats.push({
+        // 전술 비트들이 tacticBeats에서 +10을 받으므로 그 사이에서 겨룰 만한 무게로 둔다 —
+        // 13으로 뒀더니 45분짜리 경기에서 늘 밀려 한 번도 안 나왔다.
+        k: "long-run", won, who: who(p), at: best.from, weight: 20,
+        p: {
+          unit: best.unit, n: best.n,
+          from: minutes(best.from * SECONDS_PER_FRAME),
+          to: minutes(best.to * SECONDS_PER_FRAME),
+        },
+      });
     }
   }
 

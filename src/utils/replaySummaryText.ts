@@ -542,6 +542,9 @@ function toPlain(sentence: string): string {
  *  않는 문장은 0이라, 그 앞뒤를 "하지만"으로 잇는 건 없는 반전을 지어내는 셈이 된다. */
 function tideOf(b: ReplaySummaryBeat): -1 | 0 | 1 {
   if (NEUTRAL_BEATS.has(b.k)) return 0;
+  // 양쪽이 똑같이 한 일(서로 흩어 지었다 / 서로 몰래 배럭)은 어느 편으로도 기울지 않는다.
+  // 그런데 beat에는 한쪽의 won만 남아서, 그대로 쓰면 그 앞뒤가 "하지만"으로 이어졌다.
+  if (b.p?.bothSides === true || b.p?.mutual === true) return 0;
   const mine = b.won ? 1 : -1;
   return (AGAINST_ACTOR.has(b.k) ? -mine : mine) as -1 | 1;
 }
@@ -897,6 +900,22 @@ const TEMPLATES: Record<string, Tpl> = {
 
   // 일꾼 생산 격차 — 커맨드로 센 '뽑은 수'다(살아남은 수가 아니다). 그래도 한쪽이 한참
   // 적게 뽑았다면 그만큼 경제가 눌렸다는 뜻이라, 승부의 밑바탕을 말해준다(요청).
+  // 중반부터 끝까지 한 유닛을 계속 뽑은 것(요청) — 그걸로 경기를 끌고 갔다는 뜻이다.
+  // 그 유닛이 맺음말이나 진 편 문장에 또 나와도 괜찮다(요청). 다만 여기서 말하는 건
+  // 언제부터 언제까지 계속 뽑았나까지다 — 그게 살아남아 싸웠는지는 리플레이에 없다.
+  "long-run": (c) => {
+    const unit = UNIT_KO[str(c.p.unit)];
+    if (!unit) return null;
+    const from = num(c.p.from);
+    const to = num(c.p.to);
+    const n = num(c.p.n);
+    return `${ga(c.who)} ${done(c, c.pick([
+      `${from}분부터 ${to}분까지 ${reul(unit)} 놓지 않고 뽑으며 끌고 감`,
+      `${from}분부터 경기 끝까지 ${unit} 생산을 이어가 ${n}기를 뽑음`,
+      `중반부터 끝까지 ${reul(unit)} 계속 찍어 내 ${n}기를 모음`,
+    ]))}`;
+  },
+
   "worker-gap": (c) => {
     const n = num(c.p.n);
     const foe = num(c.p.foe);
