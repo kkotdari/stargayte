@@ -176,6 +176,9 @@ const POWER_UNITS: [string, number][] = [
 const POWER_SHARE = 0.6;
 // 클로킹 레이스 — 이만큼은 띄워야 '레이스 전략'이다.
 const WRAITH_MIN = 4;
+// 캐리어 — 한두 기 띄워 보고 접은 것과 실제로 캐리어를 굴린 것을 가른다. 인터셉터까지
+// 채워야 쓸모가 생기는 유닛이라 배틀크루저(3기)보다 조금 넉넉히 잡는다.
+const CARRIER_MIN = 4;
 // 일꾼은 종족을 그대로 드러낸다 — 제 종족이 아닌 일꾼을 뽑았다면 뺏어 온 것이다(요청).
 const WORKER_OF = new Map<string, string>([
   ["Probe", "프로토스"], ["Drone", "저그"], ["SCV", "테란"],
@@ -728,6 +731,21 @@ function detectFor(c: Ctx): Tactic[] {
         // 정작 판이 뒤집힌 대목이 요약에서 빠진다.
         key: "recall", weight: 15, at: firstU("Arbiter"),
         who,
+      });
+    }
+    // 캐리어 — 저그의 목동(울트라), 테란의 배틀크루저와 같은 자리인데 프로토스만 비어
+    // 있었다(지적: "중반 캐리어에 대한 내용이 없는듯"). 실제 리플레이에서 12분대에
+    // 캐리어를 32기까지 모은 경기인데 요약 본문에 그 대목이 통째로 없었다 — 질럿을 125기
+    // 뽑은 탓에 '파워 유닛'은 질럿이 가져갔고, 캐리어는 맺음말의 조합에만 이름이 남았다.
+    //
+    // 물량 유닛과 달리 캐리어는 몇 기냐보다 '언제 띄웠고 몇 기까지 모았나'가 이야기다.
+    // 시점은 가장 크게 몰아 뽑은 묶음의 시작으로 둔다 — 첫 기로 잡으면 한 기 띄워 보고
+    // 접은 경기와 구별이 안 된다.
+    if (u("Carrier") >= CARRIER_MIN) {
+      const burst = biggestBurst(s.unitFrames["Carrier"] ?? []);
+      out.push({
+        key: "carrier", weight: 13, at: burst ? burst.from : firstU("Carrier"),
+        who, p: { n: u("Carrier") },
       });
     }
     if (dropped && u("Shuttle") >= 2 && u("Reaver") >= 3) {

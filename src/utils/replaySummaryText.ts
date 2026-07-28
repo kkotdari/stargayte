@@ -493,6 +493,7 @@ function tacticLabel(k: string, p: Record<string, unknown>): string {
     case "cloak-wraith": return "클로킹 레이스";
     case "guardian": return "가디언";
     case "bc": return "배틀크루저";
+    case "carrier": return "캐리어";
     default: return "";
   }
 }
@@ -1048,6 +1049,20 @@ const TEMPLATES: Record<string, Tpl> = {
       `배틀크루저 ${n}기를 띄움`,
       `끝내 배틀크루저까지 올림`,
       `배틀크루저 ${n}기를 모아 하늘로 밀고 나감`,
+    ]), true)}`;
+  },
+
+  // 캐리어(요청) — 배틀크루저·목동과 같은 자리. 몇 기까지 모았는지가 곧 그림이라, 한
+  // 부대를 넘겼으면 그렇게 부른다.
+  carrier: (c) => {
+    const n = num(c.p.n, 4);
+    return `${ga(c.who)} ${done(c, c.pick([
+      `캐리어를 ${n}기 띄움`,
+      `캐리어 ${n}기를 모아 하늘을 장악함`,
+      `캐리어 ${n}기로 승부를 걺`,
+      // 수가 적을 때만 '끝내 올렸다'로 말한다 — 서른 기 넘게 모은 경기에서 수를 빼면
+      // 정작 그 경기의 그림이 사라진다.
+      ...(n < 8 ? ["끝내 캐리어까지 올림"] : []),
     ]), true)}`;
   },
 
