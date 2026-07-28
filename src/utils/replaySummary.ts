@@ -2,7 +2,8 @@ import type { ParsedReplay, ParsedReplayPlayer, ReplayPlayerSignals } from "./re
 import { scanTactics } from "./replayTactics";
 import { REPLAY_SUMMARY_VERSION, type ReplaySummaryBeat, type ReplaySummaryData } from "./replaySummaryData";
 import {
-  DEFENSE_KO, EXPANSION_KO, SPECTACLE_UNITS, UNIT_KO, UNIT_ROLE, renderReplaySummary,
+  DEFENSE_KO, EXPANSION_KO, PRODUCTION_KO, SPECTACLE_UNITS, UNIT_KO, UNIT_ROLE,
+  renderReplaySummary,
 } from "./replaySummaryText";
 
 // 리플레이에서 뽑은 재료로 경기 요약을 만든다(요청).
@@ -70,6 +71,11 @@ const ROLE_WEIGHT: Record<string, number> = {
 const EARLY_GAME_SEC = 7 * 60;
 const LATE_GAME_SEC = 18 * 60;
 const EPIC_GAME_SEC = 30 * 60;
+
+// 한쪽이 이 배율 넘게 일꾼을 더 뽑았으면 경제가 벌어진 것으로 본다.
+const WORKER_GAP_RATIO = 1.6;
+// 건물을 이만큼 띄웠으면 한두 채 옮긴 게 아니라 자리를 내주고 도망다닌 것이다.
+const LIFT_OFF_MIN = 3;
 
 // 마지막 커맨드가 경기 끝보다 이만큼(비율) 앞서면 "일찍 무너졌다"로 본다.
 const EARLY_OUT_RATIO = 0.7;
@@ -213,6 +219,9 @@ function minutes(sec: number): number {
  *  고를 때는 무게순(재미있는 것부터), 이야기로 늘어놓을 때는 시간순이다. */
 interface Beat extends ReplaySummaryBeat {
   weight: number;
+  /** 이 말이 이미 다른 줄에 나왔으면 이 줄은 버린다 — "7해처리까지 늘려" 옆에 "해처리를
+   *  7개까지 늘려"가 또 붙는 걸 막는다. 고를 때만 쓰고 저장하지는 않는다. */
+  dedupeOn?: string;
 }
 
 // 승부를 가르는 테크만 이야기에 넣는다(요청: 중요한 이벤트만) — 버로우·환상처럼 있어도
@@ -224,6 +233,11 @@ const DECISIVE_TECHS = new Set([
 ]);
 
 /** 확장 건물의 한국어 이름 — "멀티를 5개까지"가 아니라 "5해처리까지"로 말한다(요청). */
+
+/** 고를 때만 쓰는 것들(무게·중복 판정)을 떼고 저장할 형태만 남긴다. */
+function strip({ weight: _w, dedupeOn: _d, ...b }: Beat): ReplaySummaryBeat {
+  return b;
+}
 
 /** 방어 건물의 한국어 이름 — "질럿과 성큰으로 막아섰지만 실패"처럼 유닛과 함께 말한다(요청). */
 
@@ -345,7 +359,7 @@ function sideBeats(args: {
       if (kind) {
         const frames = buildFramesOf(top.p, EXPANSION_BUILDINGS);
         beats.push({
-          k: "expand", won, who: who(top.p), weight: 6,
+          k: "expand", won, who: who(top.p), weight: 8,
           at: frames[2] ?? frames[frames.length - 1] ?? null,
           p: { n: top.n, kind },
         });
@@ -380,6 +394,48 @@ function sideBeats(args: {
     if (top) {
       beats.push({ k: "allin", won, who: who(top.p), at: null, weight: 6 });
     }
+  }
+
+  // ── 경제·규모 격차 — 승부의 밑바탕을 말해준다(요청). 편 단위 사실이라 그 편 전원의
+  // 이름으로 말한다. 커맨드로 센 '뽑은 수'지 '살아남은 수'가 아니라는 한계는 그대로다.
+  const everyone = players.map((p) => p.rawName);
+  // 밀린 쪽에서만 말한다 — 양쪽이 다 말하면 같은 사실이 두 문장으로 나온다.
+  if (side.workers >= 12 && other.workers >= side.workers * WORKER_GAP_RATIO) {
+    beats.push({
+      k: "worker-gap", won, who: everyone, at: null, weight: 8,
+      p: { n: side.workers, foe: other.workers },
+    });
+  }
+  // 생산 건물 규모 — 그 편이 가장 많이 늘린 종류 하나로 견준다.
+  const prodTop = [...side.buildings.entries()]
+    .filter(([k]) => PRODUCTION_KO[k])
+    .sort((a, b) => b[1] - a[1])[0];
+  if (prodTop && prodTop[1] >= 3) {
+    const foeSame = other.buildings.get(prodTop[0]) ?? 0;
+    const foeTop = Math.max(
+      foeSame,
+      ...[...other.buildings.entries()].filter(([k]) => PRODUCTION_KO[k]).map(([, n]) => n),
+      0,
+    );
+    // 상대도 생산 건물을 세고 있어야 견줄 수 있다 — 종족이 달라 종류가 아예 없으면
+    // "0개에 머문 상대"가 되어 사실과 다르게 읽힌다.
+    if (foeTop >= 2 && (prodTop[1] >= foeTop + 3 || foeTop >= prodTop[1] + 3)) {
+      beats.push({
+        k: "prod-gap", won, who: everyone, at: null, weight: 6,
+        dedupeOn: PRODUCTION_KO[prodTop[0]],
+        p: { kind: prodTop[0], n: prodTop[1], foe: foeTop },
+      });
+    }
+  }
+  // 건물을 띄운 사람(테란) — 자리를 다 내줬다는 뜻이라 그 자체가 전황이다(요청).
+  for (const p of players) {
+    const n = p.signals?.liftOffCount ?? 0;
+    if (n < LIFT_OFF_MIN) continue;
+    beats.push({
+      k: "lift-off", won, who: [p.rawName], weight: 9,
+      at: p.signals?.firstLiftOffFrame ?? null,
+      p: { n },
+    });
   }
 
   // ── 먼저 끊긴 사람(요청: 일찍 죽은 사람) — 끊긴 시점이 곧 그 줄의 시각이다 ──
@@ -505,6 +561,9 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   for (const b of [...pool].sort((x, y) => y.weight - x.weight)) {
     if (chosen.length >= budget - 1) break;
     if (b.weight < MIN_WEIGHT) break; // 무게순이라 하나 미달이면 뒤는 전부 미달이다
+    if (b.dedupeOn && chosen.some((x) => renderReplaySummary(
+      { v: REPLAY_SUMMARY_VERSION, beats: [strip(x)] }, (raw) => raw,
+    )?.includes(b.dedupeOn!))) continue;
     chosen.push(b);
   }
   chosen.sort((a, b) => (a.at ?? Infinity) - (b.at ?? Infinity));
@@ -516,7 +575,7 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   // 알 수 없고, 전술마다 어떤 유닛을 언급하는지 목록을 따로 들고 있으면 문구를 고칠 때마다
   // 같이 고쳐야 한다. 이름은 결과에 안 쓰이므로 아무 값이나 넘겨도 된다.
   const told = renderReplaySummary(
-    { v: REPLAY_SUMMARY_VERSION, beats: chosen.map(({ weight: _w, ...b }) => b) },
+    { v: REPLAY_SUMMARY_VERSION, beats: chosen.map(strip) },
     (raw) => raw
   ) ?? "";
   const alreadySaid = units.every((u) => told.includes(UNIT_KO[u]));
@@ -532,6 +591,5 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     ...(heroUnit && star ? { who2: [star.rawName] } : {}),
   };
 
-  const beats = [...chosen, ending].map(({ weight: _w, ...b }) => b);
-  return { v: REPLAY_SUMMARY_VERSION, beats };
+  return { v: REPLAY_SUMMARY_VERSION, beats: [...chosen, ending].map(strip) };
 }

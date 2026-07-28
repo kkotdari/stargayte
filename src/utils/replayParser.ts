@@ -80,6 +80,10 @@ export interface ReplayPlayerSignals {
    *  셔틀·드랍십을 뽑았다는 것만으로는 드랍을 갔는지 알 수 없다(정찰·병력 수송일 수도 있다). */
   unloadCount: number;
   firstUnloadFrame: number | null;
+  /** 건물을 띄운 커맨드 수(테란) — 여러 채를 띄웠다면 자리를 다 내주고 도망다녔다는 뜻이라,
+   *  커맨드만으로 확인되는 몇 안 되는 '불리했다'는 증거다. */
+  liftOffCount: number;
+  firstLiftOffFrame: number | null;
   /** 첫 커맨드 프레임 — 없으면 null(커맨드를 하나도 안 낸 사람). */
   firstCmdFrame: number | null;
   /** 마지막 커맨드 프레임. 경기 끝보다 한참 이르면 그 시점에 졌거나 나간 것으로 읽는다. */
@@ -228,7 +232,7 @@ function emptySignals(): ReplayPlayerSignals {
     buildingCounts: {}, firstBuildingFrame: {},
     unitFrames: {}, buildingFrames: {}, buildPositions: [],
     techNames: [], upgradeNames: [], firstTechFrame: {}, chats: [],
-    unloadCount: 0, firstUnloadFrame: null,
+    unloadCount: 0, firstUnloadFrame: null, liftOffCount: 0, firstLiftOffFrame: null,
     firstCmdFrame: null, lastCmdFrame: null, cmdCountByThird: [0, 0, 0],
   };
 }
@@ -298,6 +302,10 @@ function collectSignals(cmds: ScrepCmd[], totalFrames: number | null): Map<numbe
     if (cmdName === "Unload" || cmdName === "Unload All") {
       s.unloadCount += 1;
       if (frame !== null && s.firstUnloadFrame === null) s.firstUnloadFrame = frame;
+    }
+    if (cmdName === "Lift Off") {
+      s.liftOffCount += 1;
+      if (frame !== null && s.firstLiftOffFrame === null) s.firstLiftOffFrame = frame;
     }
     if (cmdName === "Chat" && typeof c.Message === "string" && c.Message.trim()) {
       if (s.chats.length < CHAT_CAP) s.chats.push({ frame, text: c.Message.trim() });

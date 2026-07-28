@@ -53,6 +53,12 @@ export const DEFENSE_KO: Record<string, string> = {
 };
 
 /** 확장 건물 — "멀티 5개"가 아니라 "5해처리"로 말한다. */
+/** 생산 건물 — 몇 개까지 늘렸나로 규모 차이를 말한다(요청: 팩토리/게이트웨이/해처리 비교). */
+export const PRODUCTION_KO: Record<string, string> = {
+  Gateway: "게이트", Factory: "팩토리", Barracks: "배럭", Starport: "스타포트",
+  "Robotics Facility": "로보", Hatchery: "해처리",
+};
+
 export const EXPANSION_KO: Record<string, string> = {
   Hatchery: "해처리", Nexus: "넥서스", "Command Center": "커맨드",
 };
@@ -313,6 +319,46 @@ const TEMPLATES: Record<string, Tpl> = {
         ? ["먼저 무너지며 전열이 갈림", "먼저 정리되며 한 명이 빠짐"]
         : ["일찍 손을 놓음", "일찍 무너짐", "허무하게 먼저 정리됨"]
     )}`,
+
+  // 일꾼 생산 격차 — 커맨드로 센 '뽑은 수'다(살아남은 수가 아니다). 그래도 한쪽이 한참
+  // 적게 뽑았다면 그만큼 경제가 눌렸다는 뜻이라, 승부의 밑바탕을 말해준다(요청).
+  "worker-gap": (c) => {
+    const n = num(c.p.n);
+    const foe = num(c.p.foe);
+    if (n <= 0 || foe <= 0) return null;
+    return `${ga(c.who)} ${c.pick(
+      c.won
+        ? [`일꾼을 ${n}기까지 굴리며 ${foe}기에 그친 상대를 경제로 눌렀음`,
+           `일꾼 ${n}기 대 ${foe}기로 경제에서 앞섰음`]
+        : [`일꾼을 ${n}기밖에 못 뽑아 ${foe}기를 굴린 상대에게 경제로 밀렸음`,
+           `일꾼 ${n}기 대 ${foe}기, 경제부터 벌어졌음`]
+    )}`;
+  },
+
+  // 생산 건물 규모 — 게이트 8개와 3개는 뽑는 속도가 다르다(요청).
+  "prod-gap": (c) => {
+    const kind = PRODUCTION_KO[str(c.p.kind)];
+    const n = num(c.p.n);
+    const foe = num(c.p.foe);
+    if (!kind || n <= 0) return null;
+    return `${ga(c.who)} ${c.pick(
+      c.won
+        ? [`${kind}를 ${n}개까지 늘려 ${foe}개에 머문 상대보다 훨씬 빨리 찍어냄`,
+           `${kind} ${n}개로 생산량 자체가 달랐음`]
+        : [`${kind}를 ${n}개에서 못 늘려 ${foe}개를 돌린 상대에게 물량으로 밀렸음`,
+           `${kind} ${n}개로는 상대의 ${foe}개를 못 따라갔음`]
+    )}`;
+  },
+
+  // 건물을 띄웠다 — 자리를 다 내주고 도망다녔다는 뜻이다(요청: 상당히 불리한 지표).
+  "lift-off": (c) => {
+    const n = num(c.p.n);
+    return `${ga(c.who)} ${c.pick(
+      c.won
+        ? [`건물을 ${n}채나 띄우고 버티다 끝내 살아남음`, `건물을 띄워가며 버텨냄`]
+        : [`건물을 ${n}채나 띄우고 쫓겨다님`, `자리를 다 내주고 건물만 띄우다 끝남`]
+    )}`;
+  },
 
   // 커널(나이더스 커널) — 뚫어 놓고 병력을 실어 나르는 플레이(요청). 건물 하나로 확실하다.
   nydus: (c) => {
