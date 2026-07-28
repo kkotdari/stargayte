@@ -394,8 +394,8 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     // 다시 펼쳐지는 것처럼 보이면 안 된다.
     if (!wasToggled) { cleanup(); return; }
 
-    // 목록만이 아니라 접히는 영역 전체를 잰다 — 안에 위쪽 접기 버튼도 들어 있다.
-    // scrollHeight는 height가 0으로 눌려 있어도 내용 높이를 그대로 준다.
+    // 접히는 영역 전체를 잰다 — scrollHeight는 height가 0으로 눌려 있어도 내용 높이를
+    // 그대로 준다.
     const target = inner.scrollHeight;
     const cards = [...list.querySelectorAll<HTMLElement>(":scope > .scr-feed-stack-reveal")];
     // 접힘 → 펼침은 위에서부터, 펼침 → 접힘은 아래에서부터 사라진다.
@@ -479,18 +479,11 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
         </ul>
       </div>
 
-      {/* 펼치면 이 자리가 목록 높이만큼 벌어지고 카드가 하나씩 나타난다(요청). */}
+      {/* 펼치면 이 자리가 목록 높이만큼 벌어지고 카드가 하나씩 나타난다(요청).
+          예전에는 이 안 맨 위에도 '접기'가 하나 더 있었다(펼치기가 있던 자리) — 같은 일을
+          하는 버튼이 위아래로 둘이라 오히려 헷갈려서 없앴다(요청). 접기는 목록 끝의
+          버튼 하나가 맡는다. */}
       <div className="scr-feed-stack-inner" aria-hidden={!open}>
-        {/* 위쪽 접기(요청: 원래 펼치기가 있던 자리) — 반드시 이 접히는 영역 '안'에 있어야
-            한다. 밖에 두고 display로 껐더니, 접기 애니메이션이 시작되기도 전에 이 버튼이
-            사라지면서 아래 목록이 그 높이만큼 툭 위로 뛰었다(지적). 안에 있으면 높이
-            애니메이션에 함께 실려 그런 도약이 없다. */}
-        <button
-          type="button" className="scr-feed-stack-toggle scr-feed-stack-toggle-top"
-          onClick={() => toggleOpen(false)} tabIndex={open ? 0 : -1} aria-expanded={open}
-        >
-          접기
-        </button>
         <div className="scr-feed-stack-list" ref={listRef}>
           {orderedDesc.map((it) => (
             <div key={it.match.id} className="scr-feed-stack-reveal">
@@ -503,12 +496,16 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
         </div>
       </div>
 
-      {/* 펼침이 끝나면 같은 자리에서 접기로 바뀐다(요청). */}
+      {/* 펼치기 ▽ / 접기 △ — 글자만으로는 어느 쪽으로 움직이는지 한눈에 안 들어와
+          방향을 그대로 그린 삼각형을 옆에 붙인다(요청). */}
       <button
         type="button" className="scr-feed-stack-toggle"
         onClick={() => (open ? collapseAndReveal() : toggleOpen(true))} aria-expanded={open}
       >
         {open ? "접기" : "펼치기"}
+        <svg className="scr-feed-stack-toggle-caret" width="9" height="6" viewBox="0 0 9 6" aria-hidden>
+          <path d={open ? "M4.5 0 9 6H0z" : "M4.5 6 0 0h9z"} fill="currentColor" />
+        </svg>
       </button>
     </div>
   );

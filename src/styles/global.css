@@ -6642,7 +6642,8 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
      그림자도 없다. 포스트끼리는 그 사이의 빈 자리가 나눈다.
      유리 톤은 통계 그리드 패널과 같은 값으로 맞춘다(요청) — 채움을 아주 옅게 한 겹 깔고
      블러는 2px만. 9px는 뒤 사진이 뭉개져 유리보다 젖빛에 가까웠다. */
-  border-radius: 0;
+  /* 모서리는 아주 살짝만 둥글게(요청) — 판이라는 느낌은 남기되 카드처럼 떠 보이지 않게. */
+  border-radius: 6px;
   background-color: rgba(var(--overlay-rgb), 0.07);
   backdrop-filter: blur(2px) saturate(1.2);
   -webkit-backdrop-filter: blur(2px) saturate(1.2);
@@ -6718,17 +6719,26 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 
 /* 요약 바디 전체가 펼침/접힘 토글이다(요청) — 명단 어디를 눌러도 열리고 닫힌다. */
 .scr-feed-stack-sum-body { cursor: pointer; -webkit-tap-highlight-color: transparent; }
-/* 펼치기 ↔ 접기 — 같은 자리에서 글자만 바뀐다(요청). */
+/* 펼치기 ↔ 접기 — 같은 자리에서 글자와 삼각형 방향만 바뀐다(요청). 예전에는 펼치면
+   원래 펼치기가 있던 자리에도 접기가 하나 더 생겼는데, 같은 일을 하는 버튼이 위아래로
+   둘이라 오히려 헷갈려서 없앴다(요청). */
 .scr-feed-stack-toggle {
-  display: block; width: 100%;
+  display: flex; align-items: center; justify-content: center; gap: 5px; width: 100%;
   padding: var(--post-pad-y) 0 0; border: none; background: none;
   font-family: inherit; font-size: var(--fs-micro); font-weight: 700; color: var(--dim);
-  text-align: center; cursor: pointer; -webkit-tap-highlight-color: transparent;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
 }
-/* 위쪽 접기는 접히는 영역(.scr-feed-stack-inner) 안에 있어서 따로 숨길 필요가 없다 —
-   접히면 그 영역째 height 0이 된다. 목록과의 간격만 살짝 준다. */
-.scr-feed-stack-toggle-top { padding-bottom: 4px; }
+.scr-feed-stack-toggle-caret { flex-shrink: 0; }
 @media (hover: hover) { .scr-feed-stack-toggle:hover { color: var(--text); } }
+/* 펼쳤을 때 요약(원래 포스트)과 그 아래 목록의 경계 — 요약 아래로 그림자를 드리워
+   두 층이 겹쳐 있다는 걸 보여 준다(요청). 목록 위로 그려져야 해서 z-index를 올린다. */
+.scr-feed-stack-opened > .scr-feed-stack-sum-body {
+  position: relative; z-index: 2;
+  box-shadow: 0 14px 20px -8px rgba(0, 0, 0, 0.65), 0 1px 0 rgba(var(--overlay-rgb), 0.14);
+}
+.scr-light-theme .scr-feed-stack-opened > .scr-feed-stack-sum-body {
+  box-shadow: 0 14px 20px -8px rgba(0, 0, 0, 0.28), 0 1px 0 rgba(0, 0, 0, 0.1);
+}
 
 /* 헤더부 — 포스트를 헤더/컨텐츠 둘로 가르는 경계선을 여기 아래에 긋는다(요청).
    오른쪽 44px는 포스트 우상단 케밥 자리.
