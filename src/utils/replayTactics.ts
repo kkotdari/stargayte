@@ -200,8 +200,8 @@ function detectFor(c: Ctx): Tactic[] {
     }
     // 성큰 러쉬(요청) — 내 기지가 아닌 곳에 초반에 성큰을 짓는 것. 상대 코앞이든 가운데든
     // '내 본진 밖'이면 다 해당한다. 같은 건물이라도 어디에 지었나가 전부라서, 자리를 봐야만
-    // 방어용 성큰과 갈린다. 해처리는 크립을 깔려고 따라 나가는 수단이라 함께 세되, 판정의
-    // 중심은 어디까지나 본진 밖의 성큰(크립콜로니 포함)이다.
+    // 방어용 성큰과 갈린다. 해처리는 보지 않는다(지적: 보통 해처리를 안 펴고 바로 성큰을
+    // 짓는다) — 크립콜로니/성큰 자체의 자리만 본다.
     const sunkenRush = (["Creep Colony", "Sunken Colony"] as const).flatMap((b) => [
       ...inZone("enemy", b, SUNKEN_RUSH_SEC), ...inZone("mid", b, SUNKEN_RUSH_SEC),
     ]);
