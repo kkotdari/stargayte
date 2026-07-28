@@ -1179,6 +1179,17 @@ const TEMPLATES: Record<string, Tpl> = {
     ]);
   },
 
+  // 아군 기지에 포토를 깔아 주는 것 — 제 이득이 아니라 팀을 위한 수라 따로 말한다(요청).
+  "ally-cannon": (c) => {
+    const n = num(c.p.n);
+    const host = c.who2 ? `${c.who2}의 ` : "아군 ";
+    return `${ga(c.who)} ${done(c, c.pick([
+      `${host}기지에 포토 ${n}개를 깔아 줌`,
+      `${host}기지를 포토로 받쳐줌`,
+      `${host}기지에 포토를 지어 방어를 도움`,
+    ]))}`;
+  },
+
   // ── 맺음말 ──
   result: (c) => {
     const phrase = c.p.units ? unitPhrase(list(c.p.units)) : "";

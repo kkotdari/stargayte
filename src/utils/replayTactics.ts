@@ -97,6 +97,9 @@ const MUTA_MASS_MIN = 36;
 // 저글링 러시라 부르려면 초반에 이만큼은 뽑았어야 한다 — 성큰러시에 딸린 두어 기와 가른다.
 const ZLING_RUSH_MIN = 6;
 
+// 아군 기지에 이만큼은 깔아 줘야 '받쳐줬다'고 말할 수 있다 — 한 개는 지나가다 지은 것일 수 있다.
+const ALLY_CANNON_MIN = 2;
+
 // 성큰러시·포토러시·몰래 배럭은 '자리를 보고서야 알 수 있는' 기습이라, 그 경기에서만
 // 있었던 일 중에서도 특히 이야깃거리다(요청: 무게감을 올려 달라). 자리가 모자랄 때
 // 일반적인 사실보다 먼저 남도록 무게를 따로 잡아 둔다.
@@ -606,6 +609,16 @@ function detectFor(c: Ctx): Tactic[] {
   }
 
   // ── 종족 공통(자리 기반) ── 어느 종족이든 '가운데를 먹었나'는 자리로만 알 수 있다.
+  // 아군 기지에 포토를 깔아 주는 것도 팀을 위한 좋은 수다(요청) — 제 앞마당이 아니라
+  // 남의 기지에 지었다는 게 자리로 드러나므로, 방어용 포토와 헷갈릴 일이 없다.
+  const allyCannons = inZone("ally", "Photon Cannon");
+  if (allyCannons.length >= ALLY_CANNON_MIN) {
+    const helped = geo?.allyAt(allyCannons[0]) ?? null;
+    out.push({
+      key: "ally-cannon", weight: 11, at: firstOf(allyCannons), who,
+      ...(helped ? { who2: helped } : {}), p: { n: allyCannons.length },
+    });
+  }
   const midCannons = inZone("mid", "Photon Cannon");
   if (midCannons.length >= 2) {
     out.push({ key: "center-photon", ...target, weight: 10, at: firstOf(midCannons), who, p: { n: midCannons.length } });
