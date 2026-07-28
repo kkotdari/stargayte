@@ -417,15 +417,12 @@ function detectFor(c: Ctx): Tactic[] {
         });
       }
     }
-    // 초반 포토러쉬 — 게이트웨이보다 포지를 먼저 올린 건 커맨드 순서만으로 확실한
-    // 캐논러시 신호다(정상 빌드는 게이트가 먼저다). 자리는 안 본다(요청: 불확실한 건 빼기).
+    // 초반 포토러쉬 — 판단의 근거는 '어디에 박았나' 하나뿐이다. 포지를 게이트보다 먼저
+    // 올린 건 빠른 포지일 뿐이고, 그렇게 나온 포토를 본진에 지었으면 그건 방어지 러쉬가
+    // 아니다(지적). 그래서 상대 쪽이든 가운데든 제 진영 밖에 박은 포토만 본다.
     const cannon = firstB("Photon Cannon");
-    const forge = firstB("Forge");
-    const gate = firstB("Gateway");
-    const forgeFirst = forge !== null && (gate === null || forge < gate);
-    // 상대/가운데 쪽에 박은 포토도 캐논러시의 확실한 근거다 — 방어용 포토는 본진에 짓는다.
     const forward = [...inZone("enemy", "Photon Cannon", 360), ...inZone("mid", "Photon Cannon", 360)];
-    const cannonRush = cannon !== null && sec(cannon) < 330 && (forgeFirst || forward.length > 0);
+    const cannonRush = cannon !== null && sec(cannon) < 330 && forward.length > 0;
     if (cannonRush) {
       out.push({
         key: "cannon-rush", ...foeAt(forward), weight: 11, at: cannon,
