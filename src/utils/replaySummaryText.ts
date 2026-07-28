@@ -134,9 +134,13 @@ function teamPhrase(c: Ctx): string {
       `${pairs.length}인 팀의 ${uniq[0]} 몰아치기로`,
     ]);
   }
+  // "관우의 저글링, 유비의 드라군으로"는 뜻은 맞아도 길다(지적) — 이름과 유닛을 각각
+  // 묶거나 '의'를 덜어 짧게 쓴다.
   const last = pairs[pairs.length - 1];
-  const head = pairs.slice(0, -1).map((x) => `${x.n}의 ${x.u}`).join(", ");
-  return `${head}, ${last.n}의 ${ro(last.u)}`;
+  return c.pick([
+    `${pairs.map((x) => x.n).join("·")}의 ${ro(pairs.map((x) => x.u).join("·"))}`,
+    `${pairs.slice(0, -1).map((x) => `${x.n} ${x.u}`).join(", ")}, ${last.n} ${ro(last.u)}`,
+  ]);
 }
 
 /** 이어받는 맺음말의 앞머리 — "결국 마린과 메딕 조합으로 " / "계속된 마린 공격으로 ". */
