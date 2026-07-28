@@ -1,4 +1,4 @@
-import type { BuildPos, ParsedReplayPlayer, ReplayPlayerSignals } from "./replayParser";
+import type { ParsedReplayPlayer, ReplayPlayerSignals } from "./replayParser";
 
 // 리플레이 커맨드 스트림에서 '전술'을 짚어낸다(요청: 9드론 저글링 러시 / 투게이트 질럿 /
 // 초반 포토 러시 / 몰래 배럭 / 목동 저그 / 바이오닉 / 발키리 오버로드 사냥 / 아비터 리콜 /
@@ -32,62 +32,10 @@ export interface Tactic {
   p?: Record<string, string | number | boolean>;
 }
 
-/** 건물을 지은 자리가 내 본진인지, 가운데인지, 상대 쪽인지. */
-type Zone = "home" | "mid" | "enemy";
 
-function dist(a: { x: number; y: number }, b: { x: number; y: number }): number {
-  return Math.hypot(a.x - b.x, a.y - b.y);
-}
 
-/** 점들의 메도이드(다른 점들까지의 거리 합이 가장 작은 점) = 그 사람의 본진.
- *  평균이 아니라 메도이드를 쓰는 이유는, 몰래 배럭·앞마당 포토처럼 멀리 나간 건물 한두
- *  채가 평균을 통째로 끌고 가버리기 때문이다. 건물 대부분은 본진에 몰려 있으므로
- *  메도이드는 그 덩어리 안에 남는다. */
-function medoid(pts: { x: number; y: number }[]): { x: number; y: number } | null {
-  if (pts.length === 0) return null;
-  let best = pts[0];
-  let bestSum = Infinity;
-  for (const a of pts) {
-    let sum = 0;
-    for (const b of pts) sum += dist(a, b);
-    if (sum < bestSum) { bestSum = sum; best = a; }
-  }
-  return best;
-}
 
-// 본진을 믿고 쓰려면 건물이 이만큼은 있어야 한다 — 두 채뿐이면 어느 쪽이 본진인지 모른다.
-const MIN_BUILDINGS_FOR_HOME = 4;
-// 내 본진 ↔ 가장 가까운 상대 본진 거리를 1로 뒀을 때의 경계.
-const HOME_RADIUS = 0.33;
-const ENEMY_RADIUS = 0.35;
 
-/** 이 사람의 건물 좌표를 구역으로 바꿔 주는 함수. 좌표를 못 읽었거나(screp이 Pos를 안 줌)
- *  본진을 못 정하면 null — 자리 기반 전술(몰래 배럭·센터 포토)은 그냥 안 나온다. */
-function zoneResolver(
-  me: ParsedReplayPlayer,
-  foes: ParsedReplayPlayer[]
-): ((b: BuildPos) => Zone) | null {
-  const mine = me.signals?.buildPositions ?? [];
-  if (mine.length < MIN_BUILDINGS_FOR_HOME) return null;
-  const home = medoid(mine);
-  if (!home) return null;
-  const foeHomes = foes
-    .map((f) => {
-      const pts = f.signals?.buildPositions ?? [];
-      return pts.length >= MIN_BUILDINGS_FOR_HOME ? medoid(pts) : null;
-    })
-    .filter((h): h is { x: number; y: number } => h !== null);
-  if (foeHomes.length === 0) return null;
-  // 기준 거리는 '가장 가까운 상대까지' — 팀전에서 멀리 있는 상대까지 재면 구역이 다 뭉개진다.
-  const base = Math.min(...foeHomes.map((h) => dist(home, h)));
-  if (!(base > 0)) return null;
-  return (b) => {
-    const toFoe = Math.min(...foeHomes.map((h) => dist(b, h)));
-    if (toFoe < base * ENEMY_RADIUS) return "enemy";
-    if (dist(b, home) < base * HOME_RADIUS) return "home";
-    return "mid";
-  };
-}
 
 interface Ctx {
   /** 리플레이 원본 게임 아이디 — 문장에 쓸 이름은 볼 때 다시 푼다. */
@@ -95,52 +43,16 @@ interface Ctx {
   s: ReplayPlayerSignals;
   race: string;
   foeRaces: string[];
-  zone: ((b: BuildPos) => Zone) | null;
-  /** 가장 가까운 상대(러시를 간 대상)와 그 사람의 시작 지점 방향(9시/12시…). */
-  nearestFoe: string | null;
-  foeClock: number | null;
+  /** 1:1이면 상대 한 사람 — 팀전은 누가 당했는지 커맨드만으로 알 수 없어 null이다.
+   *  당한 쪽을 말할 땐 반드시 한 쪽도 함께 말한다(요청). */
+  soleFoe: string | null;
 }
 
 const sec = (frame: number) => frame * SECONDS_PER_FRAME;
 
-// 시작 지점이 몇 시 방향인가(요청: "9시 조조에게…"). 좌표 단위가 타일인지 픽셀인지는
-// screp 버전에 따라 다를 수 있어서, 맵 크기와 실제 관측 최대값을 견줘 스케일을 정한다.
-// 어느 쪽으로도 맵 안에 안 들어오면 방향을 말하지 않는다(틀린 방향보다 없는 편이 낫다).
-function tileScaleOf(all: BuildPos[], mapWidth: number, mapHeight: number): number | null {
-  if (all.length === 0 || mapWidth <= 0 || mapHeight <= 0) return null;
-  const mx = Math.max(...all.map((b) => b.x));
-  const my = Math.max(...all.map((b) => b.y));
-  if (mx <= mapWidth && my <= mapHeight) return 1;         // 타일 단위
-  if (mx <= mapWidth * 32 && my <= mapHeight * 32) return 32; // 픽셀 단위(1타일=32px)
-  return null;
-}
-
-// 맵 중앙에서 너무 가까우면 방향이 의미가 없다(중앙 근처는 몇 시라고 말할 수 없다).
-const MIN_CLOCK_RADIUS = 0.15;
-
-function clockOf(
-  pos: { x: number; y: number },
-  mapWidth: number,
-  mapHeight: number,
-  scale: number
-): number | null {
-  const fx = pos.x / scale / mapWidth - 0.5;
-  const fy = pos.y / scale / mapHeight - 0.5;
-  if (Math.hypot(fx, fy) < MIN_CLOCK_RADIUS) return null;
-  // 화면 좌표는 아래로 갈수록 y가 커지므로 12시는 -y 쪽이다.
-  const turns = Math.atan2(fx, -fy) / (Math.PI * 2);
-  const h = Math.round(((turns % 1) + 1) % 1 * 12);
-  return h === 0 ? 12 : h;
-}
-
-/** 건물 묶음에서 가장 이른 프레임 — 그 전술이 드러난 시점으로 쓴다. */
-function earliestFrame(builds: BuildPos[]): number | null {
-  const frames = builds.map((b) => b.frame).filter((f): f is number => f !== null);
-  return frames.length > 0 ? Math.min(...frames) : null;
-}
 
 function detectFor(c: Ctx): Tactic[] {
-  const { rawName, s, race, foeRaces, zone, nearestFoe, foeClock } = c;
+  const { rawName, s, race, foeRaces, soleFoe } = c;
   const out: Tactic[] = [];
   const u = (n: string) => s.unitCounts[n] ?? 0;
   const firstU = (n: string): number | null => s.firstUnitFrame[n] ?? null;
@@ -148,20 +60,10 @@ function detectFor(c: Ctx): Tactic[] {
   const hasTech = (n: string) => s.techNames.includes(n);
   const tanks = u("Siege Tank (Tank Mode)") + u("Siege Tank (Siege Mode)");
   const who = rawName;
-  // 대상이 있는 러시(요청: "9시 조조에게 3게이트 질럿러시") — 상대나 방향을 못 짚으면
-  // 그 부분만 빠지고 문장은 그대로 나온다.
-  const target = nearestFoe ? { whom: nearestFoe } : {};
-  const clockP: Record<string, number> = foeClock ? { clock: foeClock } : {};
-  /** 그 구역에 지은 건물들(좌표를 못 읽으면 항상 빈 배열). */
-  const inZone = (z: Zone, unit?: string, beforeSec?: number): BuildPos[] => {
-    if (!zone) return [];
-    return s.buildPositions.filter(
-      (p) =>
-        (unit === undefined || p.unit === unit) &&
-        (beforeSec === undefined || (p.frame !== null && sec(p.frame) < beforeSec)) &&
-        zone(p) === z
-    );
-  };
+  // 당한 쪽 — 1:1에서만 확실하다. 못 짚으면 그 부분만 빠지고 문장은 그대로 나온다.
+  const target = soleFoe ? { whom: soleFoe } : {};
+  /** 드랍은 수송선을 뽑은 것만으로는 알 수 없다 — 실제로 내린 커맨드가 있어야 드랍이다. */
+  const dropped = s.unloadCount >= 2;
 
   // ── 저그 ──
   if (race === "저그") {
@@ -174,7 +76,7 @@ function detectFor(c: Ctx): Tactic[] {
       if (drones >= 7 && drones <= 14) {
         out.push({
           key: "zling-rush", ...target, weight: 12, at: ling,
-          who, p: { drones, ...clockP },
+          who, p: { drones },
         });
       }
     }
@@ -198,11 +100,21 @@ function detectFor(c: Ctx): Tactic[] {
       });
     }
     // 러커/히드라 드랍(요청) — 저그는 오버로드에 태워야 하므로 수송 업그레이드가 곧 신호다.
-    if (s.upgradeNames.includes("Ventral Sacs") && (u("Lurker") >= 3 || u("Hydralisk") >= 8)) {
+    if (dropped && s.upgradeNames.includes("Ventral Sacs") && (u("Lurker") >= 3 || u("Hydralisk") >= 8)) {
       out.push({
         key: "zerg-drop", ...target, weight: 11,
-        at: firstU("Lurker") ?? firstU("Hydralisk"),
+        at: s.firstUnloadFrame,
         who, p: { lurker: u("Lurker") >= 3 },
+      });
+    }
+    // 커널(나이더스 커널) — 뚫어 놓으면 병력이 순식간에 건너간다(요청). 건물 건설 커맨드
+    // 하나로 확실히 잡히고, 애초에 자주 나오지 않아 나오면 그 자체가 이야깃거리다.
+    const nydus = s.buildingCounts["Nydus Canal"] ?? 0;
+    if (nydus >= 1) {
+      out.push({
+        key: "nydus", ...target, weight: 12,
+        at: s.firstBuildingFrame["Nydus Canal"] ?? null,
+        who,
       });
     }
     if (u("Lurker") >= 5) {
@@ -233,17 +145,9 @@ function detectFor(c: Ctx): Tactic[] {
         who,
       });
     }
-    if (u("Dropship") >= 2) {
+    if (dropped && u("Dropship") >= 2) {
       out.push({
-        key: "dropship", ...target, weight: 7, at: firstU("Dropship"),
-        who,
-      });
-    }
-    // 몰래 배럭 — 본진에서 한참 떨어진 자리에 초반 배럭.
-    const sneaky = [...inZone("enemy", "Barracks", 300), ...inZone("mid", "Barracks", 300)];
-    if (sneaky.length > 0) {
-      out.push({
-        key: "sneak-rax", ...target, weight: 11, at: sneaky[0].frame, p: clockP,
+        key: "dropship", ...target, weight: 7, at: s.firstUnloadFrame,
         who,
       });
     }
@@ -258,21 +162,20 @@ function detectFor(c: Ctx): Tactic[] {
       if (gates >= 2) {
         out.push({
           key: "zealot-rush", ...target, weight: 12, at: zealot,
-          who, p: { gates, ...clockP },
+          who, p: { gates },
         });
       }
     }
-    // 초반 포토 러시 — 게이트보다 포지를 먼저 올렸거나(정석 캐논러시 신호), 상대/가운데
-    // 쪽에 포토를 박았을 때. 그냥 이른 포토는 대개 방어라서 둘 중 하나는 있어야 한다.
+    // 초반 포토 러시 — 게이트웨이보다 포지를 먼저 올린 건 커맨드 순서만으로 확실한
+    // 캐논러시 신호다(정상 빌드는 게이트가 먼저다). 자리는 안 본다(요청: 불확실한 건 빼기).
     const cannon = firstB("Photon Cannon");
     const forge = firstB("Forge");
     const gate = firstB("Gateway");
     const forgeFirst = forge !== null && (gate === null || forge < gate);
-    const forward = [...inZone("enemy", "Photon Cannon", 360), ...inZone("mid", "Photon Cannon", 360)];
-    const cannonRush = cannon !== null && sec(cannon) < 330 && (forgeFirst || forward.length > 0);
+    const cannonRush = cannon !== null && sec(cannon) < 330 && forgeFirst;
     if (cannonRush) {
       out.push({
-        key: "cannon-rush", ...target, weight: 11, at: cannon, p: clockP,
+        key: "cannon-rush", ...target, weight: 11, at: cannon,
         who,
       });
     }
@@ -282,21 +185,21 @@ function detectFor(c: Ctx): Tactic[] {
         who,
       });
     }
-    if (u("Shuttle") >= 2 && u("Reaver") >= 3) {
+    if (dropped && u("Shuttle") >= 2 && u("Reaver") >= 3) {
       out.push({
-        key: "shuttle-reaver", ...target, weight: 11, at: firstU("Reaver"),
+        key: "shuttle-reaver", ...target, weight: 11, at: s.firstUnloadFrame,
         who,
       });
-    } else if (u("Shuttle") >= 2 && u("High Templar") >= 4) {
+    } else if (dropped && u("Shuttle") >= 2 && u("High Templar") >= 4) {
       // 하이템플러 드랍(요청) — 셔틀에 템플러를 태워 일꾼을 지지는 그림. 리버 드랍과
       // 같은 셔틀 플레이지만 결과가 전혀 달라서 따로 말한다.
       out.push({
-        key: "templar-drop", ...target, weight: 11, at: firstU("High Templar"),
+        key: "templar-drop", ...target, weight: 11, at: s.firstUnloadFrame,
         who,
       });
-    } else if (u("Shuttle") >= 2) {
+    } else if (dropped && u("Shuttle") >= 2) {
       out.push({
-        key: "shuttle", ...target, weight: 6, at: firstU("Shuttle"),
+        key: "shuttle", ...target, weight: 6, at: s.firstUnloadFrame,
         who,
       });
     }
@@ -309,70 +212,26 @@ function detectFor(c: Ctx): Tactic[] {
     out.push({ key: "gg", weight: 6, at: gg.frame, who });
   }
 
-  // ── 종족 공통(자리 기반) ──
-  const midCannons = inZone("mid", "Photon Cannon");
-  if (midCannons.length >= 2) {
-    out.push({
-      key: "center-photon", weight: 9, at: earliestFrame(midCannons),
-      who,
-    });
-  } else {
-    const mid = inZone("mid");
-    if (mid.length >= 3) {
-      out.push({
-        key: "center", weight: 7, at: earliestFrame(mid),
-        who,
-      });
-    }
-  }
-
   return out;
 }
 
 export interface TacticScanInput {
   sidePlayers: ParsedReplayPlayer[];
   foePlayers: ParsedReplayPlayer[];
-  /** 맵 크기(타일) — 있으면 러시 대상의 시작 지점 방향(9시/12시…)까지 말한다. */
-  mapWidth?: number | null;
-  mapHeight?: number | null;
-}
-
-function homeOf(p: ParsedReplayPlayer): { x: number; y: number } | null {
-  const pts = p.signals?.buildPositions ?? [];
-  return pts.length >= MIN_BUILDINGS_FOR_HOME ? medoid(pts) : null;
 }
 
 /** 한 편의 전술 목록 — 무게 큰 것부터, 같은 전술은 한 번만. */
-export function scanTactics({
-  sidePlayers, foePlayers, mapWidth, mapHeight,
-}: TacticScanInput): Tactic[] {
+export function scanTactics({ sidePlayers, foePlayers }: TacticScanInput): Tactic[] {
   const foeRaces = [...new Set(foePlayers.map((p) => p.race).filter(Boolean))];
-  const allPositions = [...sidePlayers, ...foePlayers].flatMap((p) => p.signals?.buildPositions ?? []);
-  const scale = mapWidth && mapHeight ? tileScaleOf(allPositions, mapWidth, mapHeight) : null;
-  const foeHomes = foePlayers
-    .map((f) => ({ f, home: homeOf(f) }))
-    .filter((x): x is { f: ParsedReplayPlayer; home: { x: number; y: number } } => x.home !== null);
+  // 당한 쪽은 1:1에서만 확실하다 — 팀전에서 누구를 때렸는지는 커맨드만으로 알 수 없어서
+  // 아예 말하지 않는다(요청: 불확실한 건 빼기).
+  const soleFoe = foePlayers.length === 1 ? foePlayers[0].rawName : null;
 
   const all: Tactic[] = [];
   for (const p of sidePlayers) {
     if (!p.signals) continue;
-    // 러시를 간 대상 = 내 본진에서 가장 가까운 상대. 1:1이면 당연히 그 사람이다.
-    const home = homeOf(p);
-    const near = home && foeHomes.length > 0
-      ? foeHomes.reduce((a, b) => (dist(home, a.home) <= dist(home, b.home) ? a : b))
-      : foeHomes.length === 1 ? foeHomes[0] : null;
     all.push(
-      ...detectFor({
-        rawName: p.rawName,
-        s: p.signals,
-        race: p.race,
-        foeRaces,
-        zone: zoneResolver(p, foePlayers),
-        nearestFoe: near?.f.rawName ?? null,
-        foeClock: near && scale && mapWidth && mapHeight
-          ? clockOf(near.home, mapWidth, mapHeight, scale)
-          : null,
-      })
+      ...detectFor({ rawName: p.rawName, s: p.signals, race: p.race, foeRaces, soleFoe })
     );
   }
   const seen = new Set<string>();

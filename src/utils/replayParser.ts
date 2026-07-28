@@ -76,6 +76,10 @@ export interface ReplayPlayerSignals {
   firstTechFrame: Record<string, number>;
   /** 이 사람이 친 채팅(앞쪽 일부). GG 선언처럼 승부를 말해주는 게 여기 있다. */
   chats: { frame: number | null; text: string }[];
+  /** 수송선에서 유닛을 내린 커맨드 수와 첫 시점 — 드랍이 '실제로 있었나'의 유일한 증거다.
+   *  셔틀·드랍십을 뽑았다는 것만으로는 드랍을 갔는지 알 수 없다(정찰·병력 수송일 수도 있다). */
+  unloadCount: number;
+  firstUnloadFrame: number | null;
   /** 첫 커맨드 프레임 — 없으면 null(커맨드를 하나도 안 낸 사람). */
   firstCmdFrame: number | null;
   /** 마지막 커맨드 프레임. 경기 끝보다 한참 이르면 그 시점에 졌거나 나간 것으로 읽는다. */
@@ -88,9 +92,6 @@ export interface ParsedReplay {
   fileName: string;
   date: string; // YYYY-MM-DD (리플레이 시작 시각의 로컬 날짜)
   mapName: string;
-  /** 맵 크기(타일) — 시작 지점의 시계 방향(9시/12시…)을 계산할 때만 쓴다. 없으면 null. */
-  mapWidth: number | null;
-  mapHeight: number | null;
   gameStartedAt: string | null; // ISO 8601, 리플레이의 실제 시작 시각
   durationSeconds: number | null;
   // 확정 근거(Observer 플래그/슬롯 타입/3번째 이후 팀 번호)로 걸러낸 관전자만 뺀다 —
@@ -187,9 +188,6 @@ interface ScrepResult {
     Map: string;
     Frames: number;
     Players: ScrepPlayer[];
-    /** 맵 크기(타일). 시작 지점이 몇 시 방향인지 계산하는 데 쓴다 — 없으면 방향을 말하지 않는다. */
-    MapWidth?: number;
-    MapHeight?: number;
   };
   Computed: {
     WinnerTeam: number;
@@ -230,6 +228,7 @@ function emptySignals(): ReplayPlayerSignals {
     buildingCounts: {}, firstBuildingFrame: {},
     unitFrames: {}, buildingFrames: {}, buildPositions: [],
     techNames: [], upgradeNames: [], firstTechFrame: {}, chats: [],
+    unloadCount: 0, firstUnloadFrame: null,
     firstCmdFrame: null, lastCmdFrame: null, cmdCountByThird: [0, 0, 0],
   };
 }
@@ -295,6 +294,10 @@ function collectSignals(cmds: ScrepCmd[], totalFrames: number | null): Map<numbe
           s.buildPositions.push({ unit: b, frame, x: pos.x, y: pos.y });
         }
       }
+    }
+    if (cmdName === "Unload" || cmdName === "Unload All") {
+      s.unloadCount += 1;
+      if (frame !== null && s.firstUnloadFrame === null) s.firstUnloadFrame = frame;
     }
     if (cmdName === "Chat" && typeof c.Message === "string" && c.Message.trim()) {
       if (s.chats.length < CHAT_CAP) s.chats.push({ frame, text: c.Message.trim() });
@@ -428,8 +431,6 @@ export async function parseReplayFile(file: File): Promise<ParsedReplay> {
     fileName: file.name,
     date,
     mapName: res.Header.Map ?? "",
-    mapWidth: typeof res.Header.MapWidth === "number" ? res.Header.MapWidth : null,
-    mapHeight: typeof res.Header.MapHeight === "number" ? res.Header.MapHeight : null,
     gameStartedAt,
     durationSeconds,
     players,

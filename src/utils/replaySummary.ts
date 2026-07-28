@@ -457,7 +457,6 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     scanTactics({
       sidePlayers: won ? winnerPlayers : loserPlayers,
       foePlayers: won ? loserPlayers : winnerPlayers,
-      mapWidth: replay.mapWidth, mapHeight: replay.mapHeight,
     }).map((t) => ({
       k: t.key, won, who: [t.who], at: t.at, p: t.p, weight: t.weight + 10,
       ...(t.whom ? { whom: [t.whom] } : {}),
