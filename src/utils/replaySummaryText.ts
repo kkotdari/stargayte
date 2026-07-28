@@ -323,7 +323,7 @@ const CONNECTIVE: [string, string][] = [
   ["듦", "들었으나"], ["걺", "걸었으나"], ["봄", "봤으나"], ["폄", "폈으나"], ["삶", "살았으나"],
   ["바쁨", "바빴으나"], ["찌름", "찔렀으나"], ["덮음", "덮었으나"], ["붙음", "붙었으나"],
   ["읽음", "읽었으나"],
-  ["깜", "깠으나"], ["감", "갔으나"], ["끔", "끌었으나"], ["쨈", "쨌으나"],
+  ["깜", "깠으나"], ["감", "갔으나"], ["끔", "끌었으나"],
   ["버팀", "버텼으나"], ["않음", "않았으나"], ["짐", "졌으나"],
 ];
 
@@ -341,11 +341,21 @@ function toAnd(action: string): string | null {
   return c && c.endsWith("으나") ? `${c.slice(0, -2)}고` : null;
 }
 
-/** "…도배함" → "…도배했다가". 하던 일이 도중에 끊긴 그림을 한 문장으로 만든다(요청:
- *  "포토를 도배하다가 …한 방에 무너짐"). */
+/** "…도배함" → "…도배하다가". 하던 일이 도중에 끊긴 그림을 한 문장으로 만든다(요청:
+ *  "해처리를 먼저 늘리다가 …"). 여기만은 과거형('늘렸다가')이 아니라 현재형이라야 한다 —
+ *  과거형은 '늘렸다가 도로 물렸다'로 읽혀 원인·결과가 아니라 번복이 된다(지적).
+ *
+ *  명사형('-ㅁ')에서 어간을 되찾는 방법은 받침 ㅁ을 떼는 것이다: 늘림→늘리, 도배함→도배하,
+ *  흔듦→흔들(ㄻ에서 ㅁ만 떼면 ㄹ이 남는다). '음'이 한 글자로 붙은 꼴은 그 글자를 통째로
+ *  뗀다: 뽑음→뽑. */
 function toWhile(action: string): string | null {
-  const c = toConnective(action);
-  return c && c.endsWith("으나") ? `${c.slice(0, -2)}다가` : null;
+  if (action.endsWith("음")) return `${action.slice(0, -1)}다가`;
+  const last = action.charCodeAt(action.length - 1);
+  if (last < 0xac00 || last > 0xd7a3) return null;
+  const j = (last - 0xac00) % 28;
+  if (j === 16) return `${action.slice(0, -1)}${String.fromCharCode(last - 16)}다가`;
+  if (j === 10) return `${action.slice(0, -1)}${String.fromCharCode(last - 2)}다가`;
+  return null;
 }
 
 /** "…뽑음" → "…뽑았으며". '-고'가 두 번 이어지면 지겨워서 두 번째 마디에 쓴다. */
@@ -478,7 +488,7 @@ function toPlain(sentence: string): string {
  *  어느 쪽도 아니라는 뜻이다.
  *
  *  beat의 won은 '그 일을 한 사람이 어느 편인가'일 뿐이라 그대로 쓰면 안 된다 — 제 러시가
- *  역풍을 맞았거나(rush-backfire) 째다가 얻어맞은(greedy-punished) 문장은 한 사람의 일이지만
+ *  역풍을 맞았거나(rush-backfire) 자원부터 챙기다 얻어맞은(greedy-punished) 문장은 한 사람의 일이지만
  *  국면은 상대 쪽으로 기운 것이다. 반대로 대치·소모전·손 빠르기처럼 어느 편에도 기울지
  *  않는 문장은 0이라, 그 앞뒤를 "하지만"으로 잇는 건 없는 반전을 지어내는 셈이 된다. */
 function tideOf(b: ReplaySummaryBeat): -1 | 0 | 1 {
@@ -1133,17 +1143,18 @@ const TEMPLATES: Record<string, Tpl> = {
     return `${c.who}의 ${push} ${c.whom}의 ${reul(wall)} ${c.pick(["뚫음", "밀어버림", "걷어냄"])}`;
   },
 
-  // 병력을 늦게까지 안 뽑고 자원부터 챙긴 것 — '째기'(요청). 얻어맞았으면 그 이야기가 되고,
-  // 무사히 넘겼으면 그 뒤의 물량이 이야기가 된다.
+  // 병력을 늦게까지 안 뽑고 자원부터 챙긴 것. 얻어맞았으면 그 이야기가 되고, 무사히
+  // 넘겼으면 그 뒤의 물량이 이야기가 된다. '째다'라는 말은 쓰지 않는다(요청) — 무엇을
+  // 먼저 했는지 그대로 말하는 편이 읽는 사람에게 더 분명하다.
   "greedy-punished": (c) => {
     const m = num(c.p.min);
     const when = m > 0 ? `${m}분까지 ` : "";
     const foe = c.whom ? `${c.whom}의 ` : "상대의 ";
     return `${ga(c.who)} ${done(c, c.pick([
-      `무리하게 째기를 시도하다가 ${foe}공격에 노출됨`,
-      `초반에 째기를 시도하다가 ${foe}공격에 무너짐`,
+      `무리하게 자원부터 챙기다가 ${foe}공격에 노출됨`,
+      `초반에 병력을 미루다가 ${foe}공격에 무너짐`,
       `${when}병력보다 일꾼을 먼저 채우다 ${foe}공격에 노출됨`,
-      `째기를 시도하다 ${foe}공격에 그대로 무너짐`,
+      `병력을 너무 늦추다 ${foe}공격에 그대로 무너짐`,
     ]))}`;
   },
   "greedy-paid": (c) => {
@@ -1153,11 +1164,11 @@ const TEMPLATES: Record<string, Tpl> = {
     // 마지막 꼴은 주어를 문장 안에서 만든다 — 다른 곳에서 싸움이 나는 동안 조용히 컸다는
     // 그림이라(요청) 앞머리가 '그 사이'로 시작해야 읽힌다.
     return done(c, c.pick([
-      `${ga(c.who)} 잘 째서 ${unit} 물량이 폭발함`,
-      `${ga(c.who)} 성공적으로 째서 ${unit} 물량이 폭발함`,
+      `${ga(c.who)} 자원을 먼저 챙긴 덕에 ${unit} 물량이 폭발함`,
+      `${ga(c.who)} 초반을 무사히 넘기고 ${unit} 물량이 폭발함`,
       `${ga(c.who)} ${when}일꾼부터 채운 뒤 ${reul(unit)} 쏟아냄`,
-      `${ga(c.who)} 마음껏 째고 나서 ${unit} 물량으로 밀어붙임`,
-      `그 사이 잘 짼 ${ga(c.who)} 성장해서 ${unit} 물량을 뽑아냄`,
+      `${ga(c.who)} 자원을 넉넉히 벌어 ${unit} 물량으로 밀어붙임`,
+      `그 사이 조용히 몸집을 불린 ${ga(c.who)} ${unit} 물량을 뽑아냄`,
     ]));
   },
 
@@ -1269,8 +1280,10 @@ const TEMPLATES: Record<string, Tpl> = {
     const what = kind === "hatch" ? "해처리" : kind === "nexus" ? "투넥서스" : "투커맨드";
     return `${ga(c.who)} ${done(c, c.pick(
       kind === "hatch"
-        ? [`초반 해처리 째기를 시도함`, `스포닝풀도 없이 ${what}를 늘리며 쨈`, `해처리부터 늘리며 과감하게 쨈`]
-        : [`초반 ${what} 째기를 시도함`, `병력 건물도 없이 ${what}로 쨈`, `${what}를 먼저 올리며 과감하게 쨈`],
+        ? [`스포닝풀도 없이 해처리를 먼저 늘림`, `병력보다 해처리를 먼저 늘림`,
+           `초반부터 해처리를 늘려 자원을 먼저 챙김`]
+        : [`병력 건물도 없이 ${reul(what)} 먼저 올림`, `병력보다 ${reul(what)} 먼저 가져감`,
+           `초반부터 ${ro(what)} 자원을 먼저 챙김`],
     ))}`;
   },
 
@@ -1620,6 +1633,14 @@ export function renderReplaySummary(
           const t = render(o);
           if (t && t.includes(mark)) { text = t; break; }
         }
+      }
+      // 그런 꼴이 아예 없는 틀이면 만들어 준다 — "Rex가 군범에게 초반 성큰러시를 함"은
+      // "군범이 Rex의 초반 성큰러시에 그대로 노출됨"과 같은 말이고, 이렇게 놓아야 앞
+      // 문장에 "…늘리다가"로 이어 붙일 수 있다(요청: 원인·결과는 '-다가'로).
+      // 피해를 단정하지 않는다 — 리플레이에 남은 건 '그 수를 맞았다'는 것뿐이다(지적).
+      if (text && !text.includes(mark)) {
+        const m = /^(\S+?)(?:가|이) (\S+?)에게 (.+?)(?:를|을) (?:함|시도함|감행함)$/.exec(text);
+        if (m) text = `${mark}${m[1]}의 ${m[3]}에 그대로 노출됨`;
       }
     }
     if (!text) continue;
