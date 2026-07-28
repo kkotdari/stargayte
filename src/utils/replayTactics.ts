@@ -94,6 +94,9 @@ const FIREBAT_RUSH_MIN = 6;
 // '대규모 뮤탈'로 볼 수 — 한 부대 12기 기준 세 부대(지적: 3~4부대).
 const MUTA_MASS_MIN = 36;
 
+// 저글링 러시라 부르려면 초반에 이만큼은 뽑았어야 한다 — 성큰러시에 딸린 두어 기와 가른다.
+const ZLING_RUSH_MIN = 6;
+
 // 성큰러시·포토러시·몰래 배럭은 '자리를 보고서야 알 수 있는' 기습이라, 그 경기에서만
 // 있었던 일 중에서도 특히 이야깃거리다(요청: 무게감을 올려 달라). 자리가 모자랄 때
 // 일반적인 사실보다 먼저 남도록 무게를 따로 잡아 둔다.
@@ -371,7 +374,15 @@ function detectFor(c: Ctx): Tactic[] {
     // (시작 드론 4기 + 그때까지 뽑은 수). 풀도 저글링도 충분히 일러야 '러시'다.
     const pool = firstB("Spawning Pool");
     const ling = firstU("Zergling");
-    if (pool !== null && ling !== null && sec(pool) < 210 && sec(ling) < 300) {
+    // 저글링을 이만큼은 뽑아야 '러시'다 — 두어 기는 정찰·수비지 러시가 아니다(지적:
+    // 성큰러시를 9드론 저글링 러시로 오인함). 성큰러시도 풀을 일찍 올리고 저글링을
+    // 조금 뽑기 때문에, 수를 보지 않으면 그대로 저글링 러시로 읽힌다.
+    // 뽑은 총량으로 센다 — unitFrames는 앞쪽만 담아 두는 목록이라 상한에 걸리면 수가
+    // 어긋나지만, unitCounts는 커맨드를 다 세므로 이런 판정에 안전하다.
+    if (
+      pool !== null && ling !== null && sec(pool) < 210 && sec(ling) < 300
+      && u("Zergling") >= ZLING_RUSH_MIN
+    ) {
       const drones = 4 + (s.unitFrames["Drone"] ?? []).filter((f) => f < pool).length;
       if (drones >= 7 && drones <= 14) {
         out.push({
@@ -644,6 +655,11 @@ function detectFor(c: Ctx): Tactic[] {
     out.push({ key: "gg", weight: 6, at: gg.frame, who });
   }
 
+  // 성큰러시와 저글링 러시는 다른 빌드다 — 자리로 확인된 성큰러시가 있으면 그게 진짜
+  // 이야기이고, 같은 사람의 저글링 러시 판정은 그 빌드에 딸려 온 것이라 지운다(지적).
+  if (out.some((t) => t.key === "sunken-rush")) {
+    return out.filter((t) => t.key !== "zling-rush");
+  }
   return out;
 }
 
