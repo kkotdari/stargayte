@@ -651,6 +651,18 @@ const TEMPLATES: Record<string, Tpl> = {
     ]))}`;
   },
 
+  // 팽팽한 대치(요청) — 주어가 없는 문장이다. 양쪽 얘기라 누구를 앞세울 수 없다.
+  standoff: (c) => {
+    const m = num(c.p.min);
+    if (m <= 0) return null;
+    return c.pick([
+      `${m}분 동안 팽팽하게 대치함`,
+      `양 팀이 ${m}분 가까이 팽팽하게 맞섬`,
+      `${m}분 내내 승부가 기울지 않음`,
+      `${m}분을 서로 밀고 밀리며 버팀`,
+    ]);
+  },
+
   // 시야(요청) — 오버로드·옵저버를 뿌려 판을 읽는 플레이.
   vision: (c) => {
     const u = UNIT_KO[str(c.p.unit)];

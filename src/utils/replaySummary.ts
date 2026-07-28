@@ -92,6 +92,11 @@ const GANG_RUSH_SEC = 9 * 60;
 // 합공에 넣으면 숫자가 거짓말이 된다.
 const GANG_MIN_UNITS = 8;
 
+// 팽팽한 대치로 볼 최소 길이 — 이보다 짧으면 그냥 한쪽이 밀어붙인 경기다.
+const STANDOFF_MIN_SEC = 15 * 60;
+// 양쪽이 낸 것의 비율이 이 안이면 '비등비등했다'로 본다.
+const STANDOFF_RATIO = 1.25;
+
 // 러시·드랍을 간 뒤 이 안에 상대 생산이 끊기면 그 수의 결과로 본다.
 const DAMAGE_WINDOW_SEC = 3 * 60;
 // '들이친 수'만 피해와 이어 붙인다 — 센터 장악·시야·방어처럼 때리는 수가 아닌 것은 뺀다.
@@ -796,7 +801,33 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     } as Beat;
   });
 
+  // 오래 갔는데 어느 쪽도 먼저 무너지지 않았고 낸 것도 비슷했다면, 그 자체가 전황이다
+  // (요청: "몇 분 동안 팽팽하게 대치함"). 커맨드 총량과 병력 생산량 둘 다 비슷해야 한다 —
+  // 하나만 보면 한쪽이 일꾼만 잔뜩 뽑은 경기도 팽팽한 것으로 읽힌다.
+  const standoff = (() => {
+    if (sec < STANDOFF_MIN_SEC || !totalFrames) return null;
+    if (earlyOuts(winnerPlayers, totalFrames).length > 0) return null;
+    if (earlyOuts(loserPlayers, totalFrames).length > 0) return null;
+    const close = (a: number, b: number) =>
+      a > 0 && b > 0 && Math.max(a, b) / Math.min(a, b) <= STANDOFF_RATIO;
+    const cmds = (x: Side) => x.thirds[0] + x.thirds[1] + x.thirds[2];
+    // 병력 '수'는 종족을 건너 견줄 수 없다(저글링은 두 마리씩, 마린은 싸다) — 손이 얼마나
+    // 바빴나(커맨드 총량)로 견준다.
+    if (!close(cmds(winner), cmds(loser))) return null;
+    // 그리고 중간에 어느 쪽도 크게 무너지지 않아야 팽팽한 것이다 — 한쪽 생산이 뚝 끊긴
+    // 경기는 길었을 뿐 팽팽하지 않았다. 처음과 끝의 등락은 원래 있는 것이라 뺀다.
+    const mid = [totalFrames * 0.2, totalFrames * 0.85] as const;
+    const broken = [...winnerPlayers, ...loserPlayers].some((p) =>
+      productionDips(p, totalFrames).some((d) => d >= mid[0] && d <= mid[1]));
+    if (broken) return null;
+    return {
+      k: "standoff", won: true, who: winnerPlayers.map((p) => p.rawName),
+      at: Math.round(totalFrames / 2), weight: 11, p: { min: minutes(sec) },
+    } as Beat;
+  })();
+
   const pool: Beat[] = [
+    ...(standoff ? [standoff] : []),
     ...(breached ? [breached] : []),
     ...gangBeats,
     ...mergeMutual(tactics),
