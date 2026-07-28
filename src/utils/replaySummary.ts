@@ -550,10 +550,17 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     return null;
   })();
 
+  const tactics = [...tacticBeats(true), ...tacticBeats(false)];
+  // 탱크 방어 문장이 "조조를 밀어냄"까지 말했으면 "조조가 먼저 정리됨"을 또 붙이지 않는다.
+  // 여기서만 이름으로 거른다 — 렌더된 문장을 훑는 일반 dedupe는 이름이 우연히 겹치는
+  // 다른 문장까지 지워버린다.
+  const pickedOff = new Set(
+    tactics.filter((b) => b.k === "side-tank").flatMap((b) => b.whom ?? [])
+  );
+
   const pool: Beat[] = [
     ...(breached ? [breached] : []),
-    ...tacticBeats(true),
-    ...tacticBeats(false),
+    ...tactics,
     ...sideBeats({
       side: winner, other: loser, players: winnerPlayers,
       won: true, sec, totalFrames, pressedEarly: false,
@@ -562,7 +569,7 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
       side: loser, other: winner, players: loserPlayers,
       won: false, sec, totalFrames, pressedEarly,
     }).filter((b) => !(breached && b.k === "defense")),
-  ];
+  ].filter((b) => !(b.k === "fallen" && b.who.some((w) => pickedOff.has(w))));
 
   // 고를 때는 무게순(재미있는 것부터), 이야기로 늘어놓을 때는 시간순 — 순서를 이 둘로 나눠야
   // "자리가 모자라 재미없는 걸 남기는" 일도, "중요한 게 뜬금없는 자리에 오는" 일도 없다.

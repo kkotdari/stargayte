@@ -159,13 +159,16 @@ interface Ctx {
   /** 1:1이면 상대 한 사람 — 팀전은 누가 당했는지 커맨드만으로 알 수 없어 null이다.
    *  당한 쪽을 말할 땐 반드시 한 쪽도 함께 말한다(요청). */
   soleFoe: string | null;
+  /** 팀전에서 '내 옆에 붙은' 상대 — 나머지 상대보다 뚜렷하게 가까운 한 사람이 먼저
+   *  나가떨어졌을 때만 값이 있다. 탱크 방어의 근거다. */
+  neighbor: { raw: string; fellAt: number } | null;
 }
 
 const sec = (frame: number) => frame * SECONDS_PER_FRAME;
 
 
 function detectFor(c: Ctx): Tactic[] {
-  const { rawName, s, race, foeRaces, soleFoe, geo } = c;
+  const { rawName, s, race, foeRaces, soleFoe, geo, neighbor } = c;
   const out: Tactic[] = [];
   const u = (n: string) => s.unitCounts[n] ?? 0;
   const firstU = (n: string): number | null => s.firstUnitFrame[n] ?? null;
@@ -293,14 +296,22 @@ function detectFor(c: Ctx): Tactic[] {
     if (sneaky.length > 0) {
       out.push({ key: "sneak-rax", ...target, weight: 12, at: firstOf(sneaky), who });
     }
-    // 옆탱(요청) — 아군 기지에 팩토리를 올리고 탱크를 뽑으면 그건 내 병력이 아니라
-    // 그 아군의 수비다. 자리를 안 보면 그냥 팩토리라서, 아군 본진을 따로 갈라 둔 게 여기서 산다.
+    // 탱크 방어(흔히 옆탱, 요청) — 두 갈래다. 아군 기지에 팩토리를 올려 그쪽을 받쳐주는 것도 옆탱이고,
+    // 내 기지에서 뽑은 탱크로 바로 옆에 붙은 상대를 잡아내는 것도 옆탱이다(지적).
     const sideFactory = inZone("ally", "Factory");
+    const firstTank = firstU("Siege Tank (Tank Mode)") ?? firstU("Siege Tank (Siege Mode)");
     if (sideFactory.length > 0 && tanks >= 3) {
       const helped = geo?.allyAt(sideFactory[0]) ?? null;
       out.push({
         key: "side-tank", weight: 11, at: firstOf(sideFactory), who,
-        ...(helped ? { who2: helped } : {}),
+        ...(helped ? { who2: helped } : {}), p: { at: "ally" },
+      });
+    } else if (neighbor && tanks >= 3 && firstTank !== null && neighbor.fellAt > firstTank) {
+      // 탱크가 실제로 무엇을 잡았는지는 리플레이에 없다. 확실한 건 '옆에 붙은 상대가
+      // 내 탱크가 나온 뒤에 먼저 판에서 사라졌다'는 것이고, 딱 그만큼만 말한다.
+      out.push({
+        key: "side-tank", weight: 12, at: firstTank, who,
+        whom: neighbor.raw, p: { at: "home" },
       });
     }
     if (dropped && u("Dropship") >= 2) {
@@ -399,6 +410,34 @@ function detectFor(c: Ctx): Tactic[] {
   return out;
 }
 
+// '옆'이라고 부르려면 나머지 상대보다 이만큼은 가까워야 한다 — 셋 다 비슷한 거리면
+// 누가 옆인지 말할 수 없다.
+const NEIGHBOR_MARGIN = 1.3;
+// 판이 끝나기 이만큼 전에 손을 놓았다면 먼저 정리된 것이다.
+const FELL_EARLY_SEC = 2 * 60;
+
+/** 팀전에서 내 옆에 붙은 상대가 먼저 나가떨어졌는가. 탱크 방어의 유일한 확실한 근거다 —
+ *  탱크가 무엇을 잡았는지는 리플레이에 없고, '누가 가까웠고 누가 먼저 사라졌나'는 있다. */
+function neighborOf(
+  me: ParsedReplayPlayer,
+  foes: ParsedReplayPlayer[],
+  endFrame: number
+): { raw: string; fellAt: number } | null {
+  if (foes.length < 2) return null; // 1:1엔 '옆'이 없다
+  const home = homeOf(me);
+  if (!home) return null;
+  const ranked = foes
+    .map((f) => ({ f, h: homeOf(f) }))
+    .filter((x): x is { f: ParsedReplayPlayer; h: { x: number; y: number } } => x.h !== null)
+    .map((x) => ({ f: x.f, d: dist(home, x.h) }))
+    .sort((a, b) => a.d - b.d);
+  if (ranked.length < 2) return null;
+  if (!(ranked[1].d >= ranked[0].d * NEIGHBOR_MARGIN)) return null;
+  const last = ranked[0].f.signals?.lastCmdFrame ?? null;
+  if (last === null || sec(endFrame - last) < FELL_EARLY_SEC) return null;
+  return { raw: ranked[0].f.rawName, fellAt: last };
+}
+
 export interface TacticScanInput {
   sidePlayers: ParsedReplayPlayer[];
   foePlayers: ParsedReplayPlayer[];
@@ -410,6 +449,12 @@ export function scanTactics({ sidePlayers, foePlayers }: TacticScanInput): Tacti
   // 당한 쪽은 1:1에서만 확실하다 — 팀전에서 누구를 때렸는지는 커맨드만으로 알 수 없어서
   // 아예 말하지 않는다(요청: 불확실한 건 빼기).
   const soleFoe = foePlayers.length === 1 ? foePlayers[0].rawName : null;
+  // 판이 끝난 시점 — 마지막까지 손을 놀린 사람의 마지막 커맨드. 여기서 한참 앞서 손을 놓은
+  // 사람은 그 전에 죽었거나 나간 것이다.
+  const endFrame = Math.max(
+    0,
+    ...[...sidePlayers, ...foePlayers].map((p) => p.signals?.lastCmdFrame ?? 0)
+  );
 
   const all: Tactic[] = [];
   for (const p of sidePlayers) {
@@ -418,6 +463,7 @@ export function scanTactics({ sidePlayers, foePlayers }: TacticScanInput): Tacti
       ...detectFor({
         rawName: p.rawName, s: p.signals, race: p.race, foeRaces, soleFoe,
         geo: geoOf(p, sidePlayers.filter((x) => x !== p), foePlayers),
+        neighbor: neighborOf(p, foePlayers, endFrame),
       })
     );
   }
