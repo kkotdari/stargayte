@@ -377,7 +377,9 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     // 다시 펼쳐지는 것처럼 보이면 안 된다.
     if (!wasToggled) { cleanup(); return; }
 
-    const target = list.offsetHeight;
+    // 목록만이 아니라 접히는 영역 전체를 잰다 — 안에 위쪽 접기 버튼도 들어 있다.
+    // scrollHeight는 height가 0으로 눌려 있어도 내용 높이를 그대로 준다.
+    const target = inner.scrollHeight;
     const cards = [...list.querySelectorAll<HTMLElement>(":scope > .scr-feed-stack-reveal")];
     // 접힘 → 펼침은 위에서부터, 펼침 → 접힘은 아래에서부터 사라진다.
     const orderOf = (i: number) => (open ? i : cards.length - 1 - i);
@@ -458,17 +460,18 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
         </ul>
       </div>
 
-      {/* 펼쳤을 때는 여기(원래 펼치기가 있던 자리)에도 접기를 둔다(요청) — 목록이 길면
-          맨 아래 접기까지 스크롤해 내려가야 한다. */}
-      <button
-        type="button" className="scr-feed-stack-toggle scr-feed-stack-toggle-top"
-        onClick={() => toggleOpen(false)} tabIndex={open ? 0 : -1} aria-expanded={open}
-      >
-        접기
-      </button>
-
       {/* 펼치면 이 자리가 목록 높이만큼 벌어지고 카드가 하나씩 나타난다(요청). */}
       <div className="scr-feed-stack-inner" aria-hidden={!open}>
+        {/* 위쪽 접기(요청: 원래 펼치기가 있던 자리) — 반드시 이 접히는 영역 '안'에 있어야
+            한다. 밖에 두고 display로 껐더니, 접기 애니메이션이 시작되기도 전에 이 버튼이
+            사라지면서 아래 목록이 그 높이만큼 툭 위로 뛰었다(지적). 안에 있으면 높이
+            애니메이션에 함께 실려 그런 도약이 없다. */}
+        <button
+          type="button" className="scr-feed-stack-toggle scr-feed-stack-toggle-top"
+          onClick={() => toggleOpen(false)} tabIndex={open ? 0 : -1} aria-expanded={open}
+        >
+          접기
+        </button>
         <div className="scr-feed-stack-list" ref={listRef}>
           {orderedDesc.map((it) => (
             <div key={it.match.id} className="scr-feed-stack-reveal">

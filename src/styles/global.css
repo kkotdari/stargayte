@@ -7191,11 +7191,9 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   font-family: inherit; font-size: var(--fs-micro); font-weight: 700; color: var(--dim);
   text-align: center; cursor: pointer; -webkit-tap-highlight-color: transparent;
 }
-/* 펼쳤을 때는 목록 맨 위(원래 펼치기가 있던 자리)에도 접기를 둔다(요청) — 목록이 길면
-   맨 아래 접기까지 내려가야 해서 불편하다. 반드시 위 .scr-feed-stack-toggle 뒤에 와야
-   한다: 특이도가 같아서 앞에 두면 display:block에 덮여 접힘 상태에서도 보인다. */
-.scr-feed-stack-toggle-top { display: none; }
-.scr-feed-stack-opened .scr-feed-stack-toggle-top { display: block; }
+/* 위쪽 접기는 접히는 영역(.scr-feed-stack-inner) 안에 있어서 따로 숨길 필요가 없다 —
+   접히면 그 영역째 height 0이 된다. 목록과의 간격만 살짝 준다. */
+.scr-feed-stack-toggle-top { padding-bottom: 4px; }
 @media (hover: hover) { .scr-feed-stack-toggle:hover { color: var(--text); } }
 
 /* 헤더부 — 포스트를 헤더/컨텐츠 둘로 가르는 경계선을 여기 아래에 긋는다(요청).
