@@ -3733,7 +3733,6 @@ html.scr-light-theme .scr-admin-sheet::before { background: rgba(244, 246, 250, 
 }
 
 /* 암호 입력 위 큰 자물쇠 이모지 — 무엇을 묻는지 문구 없이도 맥락을 준다. */
-.scr-admin-panel-lock { font-size: var(--fs-hero-3); line-height: 1; text-align: center; margin: 2px 0 6px; }
 /* 잠긴(비밀번호) 화면은 내용이 짧아 가운데로 모으고, 풀린 뒤 관리 화면은 위에서부터 쌓는다. */
 .scr-admin-sheet-content { justify-content: flex-start; }
 .scr-admin-sheet-content.scr-admin-panel-body-locked { justify-content: center; }
@@ -3750,6 +3749,9 @@ html.scr-light-theme .scr-admin-sheet::before { background: rgba(244, 246, 250, 
 .scr-admin-panel-section-title {
   width: 100%; text-align: center; font-size: var(--fs-body); font-weight: 700; color: var(--text);
 }
+/* 소제목 영역끼리는 더 벌린다(요청) — 컨텐츠 사이 간격(gap)만으로는 어디까지가 한 묶음인지
+   안 읽힌다. 첫 소제목에는 붙이지 않는다(헤더 바로 아래라 이미 떠 있다). */
+.scr-admin-panel-section-title:not(:first-child) { margin-top: 16px; }
 .scr-admin-panel-section-title-dim { font-weight: 500; color: var(--muted); }
 .scr-admin-panel-member-note { text-align: center; color: var(--muted); font-size: var(--fs-body); }
 /* 버튼은 가로로 두 개씩. */

@@ -38,14 +38,17 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
   const setNoticeEnabled = useAppStore((s) => s.setNoticeEnabled);
   const [password, setPassword] = useState("");
   const [unlocked, setUnlocked] = useState(false);
-  // PC에서만 열자마자 비밀번호 칸에 포커스를 준다(요청) — 마우스(fine pointer)가 있는
-  // 기기에서만. 모바일/터치에선 모달이 뜨자마자 키보드가 튀어나오는 걸 막으려 포커스를
-  // 주지 않는다(이 코드베이스 전반의 원칙).
+  // 열자마자 비밀번호 칸에 포커스를 준다(요청: 모바일에서도) — 이 모달은 비밀번호를
+  // 넣는 것 말고 할 일이 없어서, 키보드가 바로 뜨는 편이 낫다. 다른 화면에서 모바일
+  // 자동 포커스를 피하는 원칙의 예외다.
+  //
+  // iOS 사파리는 사용자 제스처가 끝난 뒤의 focus()로는 키보드를 안 올려 주는 일이 있어,
+  // 다음 프레임에 한 번 더 시도한다(포털이 붙은 직후라 첫 시도가 헛돌 수 있다).
   const passwordRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
-    if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
-      passwordRef.current?.focus();
-    }
+    passwordRef.current?.focus();
+    const t = requestAnimationFrame(() => passwordRef.current?.focus());
+    return () => cancelAnimationFrame(t);
   }, []);
   const [checking, setChecking] = useState(false);
   const [err, setErr] = useState("");
@@ -190,7 +193,7 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
       <div className="scr-admin-sheet">
         <div className="scr-admin-sheet-body">
         <div className="scr-admin-sheet-head">
-          <span className="scr-admin-sheet-title">숨겨진 제어판</span>
+          <span className="scr-admin-sheet-title">제어판</span>
           <button type="button" className="scr-admin-sheet-close" onClick={onClose} aria-label="닫기">
             <X size={20} />
           </button>
@@ -201,8 +204,6 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
         <div className={cx("scr-admin-sheet-content", !unlocked && "scr-admin-panel-body-locked")}>
           {!unlocked ? (
             <>
-              {/* 입력창 위 큰 자물쇠 — 무엇을 묻는지 문구 없이도 '잠금 해제' 맥락을 준다(요청). */}
-              <div className="scr-admin-panel-lock" aria-hidden>🔒</div>
               <label className="scr-field">
                 {/* 무엇을 묻는지조차 힌트를 주지 않는다 — 라벨/문구 없이 숫자 비밀번호
                     입력칸 하나만 보여준다. 숫자 전용이라 모바일에서도 숫자 키패드가
@@ -310,6 +311,12 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
                         칸에 "결과 보기"를 예약해두려고 마지막에 둔다(그 칸이 항상 비어 있어야
                         결과 보기가 나타나도 레이아웃이 안 흔들린다). */}
                     <ReplayBatchButton />
+                  </div>
+
+                  {/* 랭킹 관리 — 순위 스냅샷 쪽 일은 경기관리와 성격이 달라 소제목을 따로
+                      뒀다(요청). 앞으로 재집계 수동 실행 같은 게 여기 붙는다. */}
+                  <div className="scr-admin-panel-section-title">랭킹 관리</div>
+                  <div className="scr-admin-panel-grid">
                     {/* 순위 기준선 적재 — 지금 데이터로 스냅샷을 남긴다(1회용). 되돌릴 수는
                         없지만 파괴적이지도 않아서(덮어쓰기) 확인창만 한 번 거친다. */}
                     <button
