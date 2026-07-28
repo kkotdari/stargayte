@@ -7523,6 +7523,10 @@ html.scr-light-theme .scr-feed-add-fab {
 .scr-feed-shift-up { color: #7fd18b; font-weight: 700; }
 .scr-feed-shift-down { color: #e08a8a; font-weight: 700; }
 .scr-feed-shift-new { color: var(--point); font-weight: 700; }
+/* 라이트에서는 이 색이 흰 배경에 묻혀 거의 안 읽혔다(지적) — 어두우면서 채도는 높은 쪽으로
+   갈아 끼운다. 다크의 파스텔 톤은 검은 배경에서만 성립한다. */
+.scr-light-theme .scr-feed-shift-up { color: #0f8a3d; }
+.scr-light-theme .scr-feed-shift-down { color: #cc2222; }
 .scr-feed-shift-from { color: var(--dim); font-size: var(--fs-micro); }
 /* "실시간 랭크 확인" 줄 — 위 여백은 목록이 아니라 여기서만 낸다(목록이 --post-pad-b를
    내던 시절엔 "외 N건" 줄이 없는 카드에서 이 링크가 한참 아래로 떨어져 보였다, 지적).

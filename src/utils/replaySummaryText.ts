@@ -109,9 +109,50 @@ export function unitPhrase(units: string[]): string {
   return `${wa(ko[0])} ${ko[1]} 조합으로`;
 }
 
+/** "유비의 마린, 관우의 저글링으로" / "유비·관우의 마린으로" / "2인 팀의 마린 몰아치기로".
+ *  팀 승리를 한 사람 몫으로 돌리지 않기 위한 것이다(요청). 재료가 모자라면 빈 문자열. */
+function teamPhrase(c: Ctx): string {
+  const units = list(c.p.teamUnits);
+  const names = c.whoList;
+  if (units.length < 2 || names.length !== units.length) return "";
+  const pairs = names
+    .map((n, i) => ({ n, u: UNIT_KO[units[i]] }))
+    .filter((x): x is { n: string; u: string } => !!x.u);
+  if (pairs.length !== names.length) return "";
+  const uniq = [...new Set(pairs.map((x) => x.u))];
+  if (uniq.length === 1) {
+    return c.pick([
+      `${pairs.map((x) => x.n).join("·")}의 ${ro(uniq[0])}`,
+      `${pairs.length}인 팀의 ${uniq[0]} 몰아치기로`,
+    ]);
+  }
+  const last = pairs[pairs.length - 1];
+  const head = pairs.slice(0, -1).map((x) => `${x.n}의 ${x.u}`).join(", ");
+  return `${head}, ${last.n}의 ${ro(last.u)}`;
+}
+
+/** 이어받는 맺음말의 앞머리 — "결국 마린과 메딕 조합으로 " / "계속된 마린 공격으로 ". */
+function contPhrase(units: string[], pick: (o: string[]) => string): string {
+  const sorted = [...units].sort(
+    (a, b) => Number(SUPPORT_UNITS.has(a)) - Number(SUPPORT_UNITS.has(b))
+  );
+  const ko = sorted.map((u) => UNIT_KO[u]).filter(Boolean);
+  if (ko.length === 0) return "";
+  if (ko.length === 1) {
+    return pick([`계속된 ${ko[0]} 공격으로 `, `결국 ${ro(ko[0])} `, `${ko[0]}을 계속 뽑아 `]);
+  }
+  return pick([
+    `결국 ${wa(ko[0])} ${ko[1]} 조합으로 `,
+    `계속된 ${ko[0]} 공격으로 `,
+    `${reul(ko[0])} 계속 뽑아 ${ko[1]}과 함께 `,
+  ]);
+}
+
 interface Ctx {
   /** 이름들을 이미 합쳐 놓은 것("조조" 또는 "조조·유비"). */
   who: string;
+  /** 합치기 전의 이름들 — 팀 승리를 "유비의 마린, 관우의 저글링"으로 말할 때 쓴다. */
+  whoList: string[];
   who2: string;
   /** 당한 쪽 — 없으면 빈 문자열이고, 그때는 대상을 뺀 표현을 쓴다. */
   whom: string;
@@ -230,7 +271,7 @@ const TEMPLATES: Record<string, Tpl> = {
     "탱크와 골리앗 병력을 이끌고 진출함",
   ]),
   valkyrie: act([
-    "발키리를 띄워 오버로드를 노림", "발키리를 모아 제공권을 노림",
+    "발키리를 뽑아 오버로드를 사냥함", "발키리를 모아 제공권 싸움에 나섬",
     "예상치 못한 발키리로 하늘을 노림",
   ]),
   dropship: (c) => {
@@ -263,14 +304,16 @@ const TEMPLATES: Record<string, Tpl> = {
   "shuttle-reaver": (c) => {
     const of = victimPhrase(c);
     return `${ga(c.who)} ${done(c, c.pick([
-      `${of}리버 드랍을 감행함`, `리버 드랍으로 ${of}피해를 줌`, `셔틀에 리버를 태워 ${of}떨굼`,
+      `${of}리버 드랍을 감행함`, `리버 드랍으로 ${of}일꾼을 잡아냄`,
+      `셔틀에 리버를 태워 ${of}자원 줄을 끊음`,
     ]))}`;
   },
   // 하이템플러 드랍 — 스톰 한 방에 일꾼이 녹는다(요청).
   "templar-drop": (c) => {
     const of = victimPhrase(c);
     return `${ga(c.who)} ${done(c, c.pick([
-      `${of}하이템플러 드랍을 감행함`, `템플러 드랍으로 ${of}스톰을 뿌림`, `${of}하이템플러를 떨궈 피해를 줌`,
+      `${of}하이템플러 드랍을 감행함`, `${of}스톰으로 자원 줄을 끊음`,
+      `템플러 드랍으로 ${of}일꾼을 섬멸함`, `${of}스톰을 뿌려 자원 수급을 방해함`,
     ]))}`;
   },
   // 러커/히드라 드랍 — 저그는 오버로드 수송 업그레이드가 곧 드랍 의도다(요청).
@@ -331,13 +374,15 @@ const TEMPLATES: Record<string, Tpl> = {
     if (heavy) {
       return `${ga(c.who)} ${done(c, c.pick([
         `본진에 ${reul(def)} 도배해서 방어함`,
-        `본진을 ${def} ${n}개로 도배함`,
-        `${def} ${n}개를 깔고 ${ro(unit)} 웅크림`,
+        `${def} ${n}개를 지어서 본진을 도배함`,
+        `${def} ${n}개를 지어 놓고 ${ro(unit)} 웅크림`,
       ]))}`;
     }
-    return `${ga(c.who)} ${ro(`${wa(unit)} ${def}`)} ${done(c, c.pick(
-      ["수비를 갖춤", "방어 라인을 세움", "막아섬"]
-    ))}`;
+    return `${ga(c.who)} ${done(c, c.pick([
+      `${def} ${n}개를 지어서 ${ro(unit)} 방어함`,
+      `${reul(def)} 지어서 방어 라인을 세움`,
+      `${ro(`${wa(unit)} ${def}`)} 막아섬`,
+    ]))}`;
   },
   expand: (c) => {
     const kind = EXPANSION_KO[str(c.p.kind)];
@@ -353,7 +398,9 @@ const TEMPLATES: Record<string, Tpl> = {
       ]))}`;
     }
     return `${ga(c.who)} ${done(c, c.pick([
-      `${label}까지 늘림`, `${label}까지 돌림`, `${label}까지 벌림`,
+      `${reul(kind)} ${n}개까지 늘려 자원을 벌림`,
+      `${label}까지 늘려 판을 넓힘`,
+      `${label}까지 돌림`,
     ]))}`;
   },
   tech: (c) => {
@@ -440,8 +487,8 @@ const TEMPLATES: Record<string, Tpl> = {
     const n = num(c.p.n, 2);
     return `${ga(c.who)} ${done(c, c.pick(
       n >= 6
-        ? ["센터에 포토를 도배함", `센터에 포토를 ${n}개나 지음`]
-        : ["센터에 포토를 깜", "센터에 포토를 지음", "센터를 포토로 걸어 잠금"]
+        ? [`포토 ${n}개를 지어서 센터를 장악함`, "센터에 포토를 도배함"]
+        : [`포토 ${n}개를 지어서 센터를 걸어 잠금`, "센터에 포토를 지어 길을 끊음"]
     ))}`;
   },
   // 센터 장악 — 가운데에 건물을 늘려 판을 넓힌 그림(요청).
@@ -472,8 +519,9 @@ const TEMPLATES: Record<string, Tpl> = {
     if (!def) return null;
     const n = num(c.p.n, 2);
     return `${ga(c.who)} ${done(c, c.pick([
-      `입구 쪽에 ${def}를 ${n}개 세움`, `본진 앞을 ${def} ${n}개로 막아 세움`,
-      `${def} ${n}개를 진출로 쪽에 붙임`,
+      `입구 쪽에 ${def} ${n}개를 지어서 방어함`,
+      `본진 앞을 ${def} ${n}개로 막아 세움`,
+      `진출로 쪽에 ${def} ${n}개를 지어 길을 좁힘`,
     ]))}`;
   },
 
@@ -539,12 +587,13 @@ const TEMPLATES: Record<string, Tpl> = {
   result: (c) => {
     const phrase = c.p.units ? unitPhrase(list(c.p.units)) : "";
     const mode = str(c.p.mode);
-    // 앞 문장에서 같은 사람이 같은 유닛으로 한 일을 말했으면 여기서 이어받는다(요청).
-    // 초반에 끝난 경기는 빼둔다 — "초반 계속해서"는 말이 겹친다.
-    // 이어받기는 밋밋한 맺음말에서만 쓴다 — 초반·후반·역전은 저마다 시간과 흐름을 이미
-    // 말하고 있어서, 거기에 "그대로 이어서"를 얹으면 말이 겹치거나 앞뒤가 어긋난다.
-    const cont = c.p.cont && mode === "plain" ? c.pick(["계속해서 ", "그대로 이어서 "]) : "";
-    const p = phrase ? `${cont}${phrase} ` : cont;
+    // 앞 문장이 이미 같은 사람·같은 유닛을 말했으면 맺음말은 그걸 이어받는다(요청).
+    // "계속해서 마린과 메딕 조합으로"는 어색해서, 이어받을 때는 아예 다른 꼴로 쓴다 —
+    // "결국 마린과 메딕 조합으로" "계속된 마린 공격으로". 초반·후반·역전은 저마다 시간과
+    // 흐름을 이미 말하고 있어 이어받기를 얹지 않는다.
+    const units = list(c.p.units);
+    const cont = c.p.cont && mode === "plain";
+    const p = cont ? contPhrase(units, c.pick) : phrase ? `${phrase} ` : "";
     const lead = str(c.p.lead);
     const min = num(c.p.leadMin);
     let head = "";
@@ -555,6 +604,13 @@ const TEMPLATES: Record<string, Tpl> = {
       if (sp) head = `${sp} `;
     }
     const who = ga(c.who);
+    // 팀전 승리는 한 사람의 공이 아니다(요청) — 각자가 무엇으로 싸웠는지를 나란히 말한다.
+    // 흐름을 이미 말하는 초반 승리·역전에는 얹지 않는다(문장이 길어지고 앞뒤가 어긋난다).
+    const team = teamPhrase(c);
+    if (team && (mode === "plain" || mode === "late")) {
+      const t = mode === "late" ? c.pick(["후반 ", "길게 끌어 "]) : "";
+      return head + `${t}${team} ${c.pick(["승리", "이김"])}`;
+    }
     // 조합을 빼면 "초반 승리"처럼 앙상해지므로, 그럴 땐 수식도 같이 정리한다.
     let body: string;
     if (mode === "rush") {
@@ -624,6 +680,7 @@ export function renderReplaySummary(
     let firstPick = true;
     const text = tpl({
       who,
+      whoList: (b.who ?? []).map(resolveName).filter(Boolean),
       who2: joinNames((b.who2 ?? []).map(resolveName)),
       whom: joinNames((b.whom ?? []).map(resolveName)),
       won: !!b.won,

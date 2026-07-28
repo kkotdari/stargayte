@@ -722,17 +722,34 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     ) ?? "";
     return units.some((u) => UNIT_KO[u] && one.includes(UNIT_KO[u]));
   });
+  // 팀전 승리를 한 사람의 공으로 돌리지 않는다(요청) — 이긴 편 각자가 무엇으로 싸웠는지를
+  // 함께 적어, "유비의 마린, 관우의 저글링으로 승리"처럼 팀 전체로 읽히게 한다.
+  const teamMembers = winnerPlayers.length > 1
+    ? winnerPlayers
+        .map((p) => ({
+          raw: p.rawName,
+          unit: [...ownCombat(p).entries()]
+            .filter(([u]) => !SUPPORT_UNITS.has(u))
+            .sort((a, b) => b[1] - a[1])[0]?.[0],
+        }))
+        .filter((x): x is { raw: string; unit: string } => !!x.unit)
+    : [];
+  const useTeam = teamMembers.length === winnerPlayers.length && teamMembers.length > 1;
+
   const ending: Beat = {
-    k: "result", won: true, who: subject, at: Number.POSITIVE_INFINITY, weight: 1000,
+    k: "result", won: true, at: Number.POSITIVE_INFINITY, weight: 1000,
+    who: useTeam ? teamMembers.map((x) => x.raw) : subject,
     p: {
       mode, lead, wentLate,
       leadMin: minutes(sec),
       ...(spectacle ? { leadUnit: spectacle } : {}),
       // 이어받는 문장은 유닛을 다시 말해야 말이 이어진다 — 그때는 중복이 아니라 연결이다.
       ...(cont ? { units, cont: true } : alreadySaid ? {} : { units }),
-      ...(heroUnit ? { heroUnit } : {}),
+      ...(useTeam ? { teamUnits: teamMembers.map((x) => x.unit) } : {}),
+      // 팀 전체로 말할 땐 한 사람의 활약을 따로 덧붙이지 않는다 — 공이 두 번 갈린다.
+      ...(heroUnit && !useTeam ? { heroUnit } : {}),
     },
-    ...(heroUnit && star ? { who2: [star.rawName] } : {}),
+    ...(heroUnit && star && !useTeam ? { who2: [star.rawName] } : {}),
   };
 
   return { v: REPLAY_SUMMARY_VERSION, beats: [...chosen, ending].map(strip) };
