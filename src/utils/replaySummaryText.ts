@@ -1500,6 +1500,12 @@ export function renderReplaySummary(
     if (linkWord && CONTRAST_LINKS.has(linkWord)) {
       text = `${linkWord} ${toTopic(text.slice(linkWord.length + 1))}`;
     }
+    // 한 문장에 반전이 두 번 들어가면 어색하다(지적: "…무너졌지만 …갔으나 막힘").
+    // 이어 붙일 문장이 이미 반전을 품고 있으면 잇지 않고 끊은 뒤, 이음말만 앞에 붙인다.
+    if (flipJoin && /지만|으나/.test(text)) {
+      // 이음말도 붙이지 않는다 — 문장이 이미 제 안에 반전을 품고 있어 그걸로 충분하다.
+      flipJoin = false;
+    }
     // 앞 문장에서 무언가를 하던 사람이 이번 문장에서 당하는 쪽이면, 그건 "하다가 당함"이
     // 한 이야기다(지적) — 이름을 두 번 부르지 말고 "…도배하다가 …한 방에 무너짐"으로 잇는다.
     const victim = (b.whom ?? []).length === 1 ? (b.whom ?? [])[0] : "";
