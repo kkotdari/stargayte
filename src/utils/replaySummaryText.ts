@@ -159,7 +159,7 @@ function victimPhrase(c: Ctx): string {
 // "그대로 태움" 같은 수식은 전부 걷어냈다(지적).
 const LOST_TAILS = [
   "그러나 경기는 내줌", "결국 승부는 상대 쪽으로 넘어감", "그러나 판을 가져오지는 못함",
-  "결국 흐름은 상대에게 넘어감",
+  "결국 흐름은 상대에게 넘어감", "오히려 독이 됨", "되레 발목을 잡음",
 ];
 const tail = (c: Ctx): string => (c.won ? "" : `, ${c.pick(LOST_TAILS)}`);
 
@@ -315,7 +315,7 @@ const TEMPLATES: Record<string, Tpl> = {
     const label = `${n}${kind}`;
     const unit = UNIT_KO[str(c.p.unit)];
     // 확장을 크게 벌렸으면 그게 곧 생산량이다 — 무엇을 뽑았는지까지 붙여 말한다(요청).
-    if (unit && n >= 5) {
+    if (unit && n >= 6) {
       return `${ga(c.who)} ${c.pick([
         `${reul(kind)} ${n}개까지 늘려서 ${reul(unit)} 폭발적으로 생산함`,
         `${label}까지 늘려 ${reul(unit)} 쏟아냄`,
@@ -408,7 +408,7 @@ const TEMPLATES: Record<string, Tpl> = {
   "center-photon": (c) => {
     const n = num(c.p.n, 2);
     return `${ga(c.who)} ${c.pick(
-      n >= 4
+      n >= 6
         ? ["센터에 포토를 도배함", `센터에 포토를 ${n}개나 지음`]
         : ["센터에 포토를 깜", "센터에 포토를 지음", "센터를 포토로 걸어 잠금"]
     )}${tail(c)}`;

@@ -79,8 +79,9 @@ const WORKER_GAP_RATIO = 1.6;
 const LIFT_OFF_MIN = 3;
 // 방어 건물을 한 종류라도 이만큼 지었으면 '막을 준비'로 본다.
 const DEFENSE_MIN = 3;
-// 여기부터는 준비가 아니라 아예 웅크린 것이다 — 그 자체가 전황이라 더 무겁게 친다(요청).
-const TURTLE_MIN = 6;
+// 여기부터는 준비가 아니라 아예 '도배'다 — 그 자체가 전황이라 더 무겁게 친다(요청).
+// 여섯 채로는 도배라고 하기 민망해서 기준을 올렸다(지적).
+const TURTLE_MIN = 10;
 
 // 마지막 커맨드가 경기 끝보다 이만큼(비율) 앞서면 "일찍 무너졌다"로 본다.
 const EARLY_OUT_RATIO = 0.7;
@@ -493,7 +494,8 @@ function sideBeats(args: {
   const prodTop = [...side.buildings.entries()]
     .filter(([k]) => PRODUCTION_KO[k])
     .sort((a, b) => b[1] - a[1])[0];
-  if (prodTop && prodTop[1] >= 3) {
+  // 생산 건물은 서너 채로 "생산량 자체가 달랐다"고 하기엔 약하다(지적) — 규모도 격차도 올렸다.
+  if (prodTop && prodTop[1] >= 5) {
     const foeSame = other.buildings.get(prodTop[0]) ?? 0;
     const foeTop = Math.max(
       foeSame,
@@ -502,7 +504,7 @@ function sideBeats(args: {
     );
     // 상대도 생산 건물을 세고 있어야 견줄 수 있다 — 종족이 달라 종류가 아예 없으면
     // "0개에 머문 상대"가 되어 사실과 다르게 읽힌다.
-    if (foeTop >= 2 && (prodTop[1] >= foeTop + 3 || foeTop >= prodTop[1] + 3)) {
+    if (foeTop >= 2 && (prodTop[1] >= foeTop + 4 || foeTop >= prodTop[1] + 4)) {
       beats.push({
         k: "prod-gap", won, who: everyone, at: null, weight: 6,
         dedupeOn: PRODUCTION_KO[prodTop[0]],
