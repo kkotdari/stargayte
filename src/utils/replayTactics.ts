@@ -417,11 +417,11 @@ function detectFor(c: Ctx): Tactic[] {
         });
       }
     }
-    // 초반 포토러쉬 — 판단의 근거는 '어디에 박았나' 하나뿐이다. 포지를 게이트보다 먼저
-    // 올린 건 빠른 포지일 뿐이고, 그렇게 나온 포토를 본진에 지었으면 그건 방어지 러쉬가
-    // 아니다(지적). 그래서 상대 쪽이든 가운데든 제 진영 밖에 박은 포토만 본다.
+    // 초반 포토러쉬 — 상대 본진에 박은 포토만 해당한다(지적). 가운데까지 세면 앞마당·길목
+    // 방어 포토가 죄다 러쉬로 잡혀 지나치게 자주 나왔다. 포지를 게이트보다 먼저 올린 것도
+    // 근거가 아니다 — 그건 빠른 포지일 뿐이고 그 포토를 제 본진에 지었으면 방어다.
     const cannon = firstB("Photon Cannon");
-    const forward = [...inZone("enemy", "Photon Cannon", 360), ...inZone("mid", "Photon Cannon", 360)];
+    const forward = inZone("enemy", "Photon Cannon", 360);
     const cannonRush = cannon !== null && sec(cannon) < 330 && forward.length > 0;
     if (cannonRush) {
       out.push({

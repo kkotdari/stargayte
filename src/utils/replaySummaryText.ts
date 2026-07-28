@@ -157,7 +157,10 @@ function victimPhrase(c: Ctx): string {
 // 됐는지는 리플레이에 없다. 그래서 전술 문장은 한 일만 말하고, 결과를 말해야 할 때는
 // 확실한 사실 하나 — 그 경기를 누가 가져갔나 — 만 붙인다. "본진을 초토화" "앞마당을 헤집음"
 // "그대로 태움" 같은 수식은 전부 걷어냈다(지적).
-const LOST_TAILS = ["경기는 내줌", "승부는 넘어감", "판은 가져오지 못함", "결과는 패배", "경기는 상대 쪽으로"];
+const LOST_TAILS = [
+  "그러나 경기는 내줌", "결국 승부는 상대 쪽으로 넘어감", "그러나 판을 가져오지는 못함",
+  "결국 흐름은 상대에게 넘어감",
+];
 const tail = (c: Ctx): string => (c.won ? "" : `, ${c.pick(LOST_TAILS)}`);
 
 /** 한 일만 말하는 흔한 꼴 — 이긴 쪽/진 쪽 모두 같은 표현을 쓰고, 진 쪽에만 결과를 덧붙인다. */
@@ -201,7 +204,7 @@ const TEMPLATES: Record<string, Tpl> = {
   dropship: (c) => {
     const of = victimPhrase(c);
     return `${ga(c.who)} ${c.pick([
-      `드랍십을 계속 돌려 ${of}병력을 내림`, `${of}드랍십을 여러 번 들이밀음`,
+      `드랍십을 계속 돌려 ${of}병력을 떨굼`, `드랍 견제로 ${of}피해를 줌`,
     ])}${tail(c)}`;
   },
   "zealot-rush": (c) => {
@@ -225,14 +228,14 @@ const TEMPLATES: Record<string, Tpl> = {
   "shuttle-reaver": (c) => {
     const of = victimPhrase(c);
     return `${ga(c.who)} ${c.pick([
-      `${of}리버를 내림`, `리버 드랍을 ${of}여러 번 들이밀음`, `셔틀에 리버를 태워 ${of}드랍을 시도함`,
+      `${of}리버 드랍을 감행함`, `리버 드랍으로 ${of}피해를 줌`, `셔틀에 리버를 태워 ${of}떨굼`,
     ])}${tail(c)}`;
   },
   // 하이템플러 드랍 — 스톰 한 방에 일꾼이 녹는다(요청).
   "templar-drop": (c) => {
     const of = victimPhrase(c);
     return `${ga(c.who)} ${c.pick([
-      `${of}하이템플러를 내림`, `템플러 드랍을 ${of}시도함`, `셔틀에 하이템플러를 태워 ${of}드랍을 감`,
+      `${of}하이템플러 드랍을 감행함`, `템플러 드랍으로 ${of}스톰을 뿌림`, `${of}하이템플러를 떨궈 피해를 줌`,
     ])}${tail(c)}`;
   },
   // 러커/히드라 드랍 — 저그는 오버로드 수송 업그레이드가 곧 드랍 의도다(요청).
@@ -240,13 +243,13 @@ const TEMPLATES: Record<string, Tpl> = {
     const kind = c.p.lurker ? "러커 드랍" : "히드라 드랍";
     const of = victimPhrase(c);
     return `${ga(c.who)} ${c.pick([
-      `오버로드에 태운 ${kind}을 ${of}감`, `${of}${kind}을 감행함`,
+      `오버로드에 태운 ${kind}을 ${of}감행함`, `${kind}으로 ${of}피해를 줌`,
     ])}${tail(c)}`;
   },
   shuttle: (c) => {
     const of = victimPhrase(c);
     return `${ga(c.who)} ${c.pick([
-      `셔틀을 돌려 ${of}병력을 내림`, `${of}셔틀 견제를 여러 번 들이밀음`,
+      `${of}셔틀 드랍을 감행함`, `셔틀 견제로 ${of}피해를 줌`,
     ])}${tail(c)}`;
   },
   // ── 전황(replaySummary) ──
