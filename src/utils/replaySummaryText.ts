@@ -361,9 +361,9 @@ const TEMPLATES: Record<string, Tpl> = {
       const m = num(c.p.hitMin);
       const when = m > 0 ? `${m}분 만에 ` : "";
       return done(c, c.pick([
-        `${ga(c.who)} ${ro(label)} ${when}${of}기지를 반쯤 파괴함`,
+        `${ro(mine)} ${when}${of}기지를 반쯤 파괴함`,
         `${mine} 한 방에 ${when}${ga(foe)} 무너짐`,
-        `${ga(c.who)} ${ro(label)} ${when}${reul(foe)} 몰아붙임`,
+        `${ro(mine)} ${when}${reul(foe)} 몰아붙임`,
       ]));
     }
     // 그 창 안에 실제로 탈락했으면(Leave Game) 짐작이 아니라 사실이다 — 그렇게 말한다.
@@ -371,16 +371,18 @@ const TEMPLATES: Record<string, Tpl> = {
       const min = num(c.p.outMin);
       const when = min > 0 ? `${min}분경 ` : "";
       return done(c, c.pick([
-        `${ga(c.who)} ${ro(label)} ${when}${reul(foe)} 엘리미네이트`,
+        `${ro(mine)} ${when}${reul(foe)} 엘리미네이트`,
         `${mine}에 ${when}${ga(foe)} 탈락`,
-        `${ga(c.who)} ${ro(label)} ${when}${reul(foe)} 판에서 지움`,
+        `${ro(mine)} ${when}${reul(foe)} 판에서 지움`,
       ]));
     }
+    // "정구가 바이오닉 한 방으로"보다 "정구의 바이오닉 한 방으로"가 자연스럽다(지적) —
+    // 들이친 수를 앞세우는 문장이라 주어도 소유격으로 둔다.
     return done(c, c.pick([
-      `${ga(c.who)} ${ro(label)} ${of}본진을 파괴함`,
-      `${ga(c.who)} ${ro(label)} ${of}생산이 막힘`,
-      `${mine} 한 방에 ${of}기지가 파괴됨`,
-      `${ga(c.who)} ${ro(label)} ${of}살림을 통째로 흔듦`,
+      `${ro(mine)} ${of}본진을 파괴함`,
+      `${ro(mine)} ${of}생산이 막힘`,
+      `${mine}에 ${of}기지가 파괴됨`,
+      `${ro(mine)} ${of}살림을 통째로 흔듦`,
     ]));
   },
 

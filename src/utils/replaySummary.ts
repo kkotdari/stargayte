@@ -1006,7 +1006,24 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     )?.includes(b.dedupeOn!))) continue;
     chosen.push(b);
   }
-  chosen.sort((a, b) => (a.at ?? Infinity) - (b.at ?? Infinity));
+  // 시간순으로만 늘어놓으면 두 편의 이야기가 한 줄씩 번갈아 나와 서사가 끊긴다(지적) —
+  // 같은 편 이야기끼리 묶고, 먼저 판을 잡은 편을 앞에 둔다. 묶음 안에서는 시간순이라
+  // "한 편이 몰아쳤다 → 다른 편이 뒤집었다 → 그래서 이겼다"로 읽힌다.
+  const midAt = (won: boolean) => {
+    const ats = chosen
+      .filter((b) => b.won === won)
+      .map((b) => b.at)
+      .filter((x): x is number => x !== null && x !== undefined && Number.isFinite(x))
+      .sort((x, y) => x - y);
+    return ats.length > 0 ? ats[Math.floor(ats.length / 2)] : Infinity;
+  };
+  const winnerFirst = midAt(true) <= midAt(false);
+  chosen.sort((a, b) => {
+    const ga = a.won === winnerFirst ? 0 : 1;
+    const gb = b.won === winnerFirst ? 0 : 1;
+    if (ga !== gb) return ga - gb;
+    return (a.at ?? Infinity) - (b.at ?? Infinity);
+  });
 
   // 결과는 이야기의 맺음말로 맨 뒤에 붙인다 — 앞에 먼저 요약을 놓으면 뒤의 이야기가
   // 이미 아는 결말의 부연이 되어버린다(요청: 맨 처음의 전체 요약은 빼기).
