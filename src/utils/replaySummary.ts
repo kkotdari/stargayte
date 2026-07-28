@@ -347,6 +347,8 @@ function tacticParam(key: string, p: Record<string, unknown> | undefined): strin
   if (key === "zealot-rush") return String(p.gates ?? "");
   if (key === "sneak-rax") return p.firebat ? "firebat" : "";
   if (key === "zerg-drop") return p.lurker ? "lurker" : "";
+  // 패스트 OO는 무슨 유닛이었나가 곧 이름이다 — 묶어 말할 때도 그 값을 함께 넘긴다.
+  if (key === "fast-tech") return String(p.unit ?? "");
   return "";
 }
 

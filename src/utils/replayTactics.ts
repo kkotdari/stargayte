@@ -353,7 +353,9 @@ function detectFor(c: Ctx): Tactic[] {
   // '파워 OO' — 한 유닛을 압도적으로 뽑아 그 물량으로 밀어붙이는 그림(요청).
   for (const [unit, min] of POWER_UNITS) {
     if (u(unit) >= min && armyTotal > 0 && u(unit) / armyTotal >= POWER_SHARE) {
-      out.push({ key: "power-unit", weight: 11, at: firstU(unit), who, p: { unit, n: u(unit) } });
+      // 시점을 두지 않는다 — 경기 내내의 총량 이야기라 첫 기가 나온 때에 놓으면 앞으로
+      // 당겨져 '초반에 파워 질럿'처럼 읽힌다(지적). 시점 없는 문장은 맺음말 앞에 붙는다.
+      out.push({ key: "power-unit", weight: 11, at: null, who, p: { unit, n: u(unit) } });
       break;
     }
   }

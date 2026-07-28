@@ -236,7 +236,7 @@ const STANDOFF_SEC = 8 * 60;
 // 대비를 뜻하는 이음말 — 이 뒤에는 주어를 주제격("Rex는")으로 세운다(지적).
 const CONTRAST_LINKS = new Set(["한편", "그와 동시에", "반면", "그러나", "하지만"]);
 // 시간 순서를 짚는 이음말 — 위 대비 이음말과 함께 문장 앞머리를 알아보는 데 쓴다.
-const SEQUENCE_LINKS = ["이어서", "곧이어", "잠시 후", "그 후", "한동안의 대치 후", "그 기세로", "여세를 몰아"];
+const SEQUENCE_LINKS = ["이어서", "곧이어", "잠시 후", "그 후", "한동안의 대치 후", "그 기세로", "여세를 몰아", "그 기세를 이어간"];
 // 정규식에 이름을 그대로 넣기 전에 특수문자를 막는다 — 닉네임에 무엇이 들어올지 모른다.
 const escapeRe = (v: string): string => v.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 // 한 문장에 이어 붙일 수 있는 마디 수 — 이보다 길어지면 읽다가 숨이 찬다.
@@ -423,7 +423,7 @@ const TEMPLATES: Record<string, Tpl> = {
           // 값이 없으면 아예 넘기지 않는다 — 0을 넘기면 "0게이트 질럿 러시"가 나온다.
           label: listForm(tacticLabel(ks[i], {
             ...(Number(vs[i]) > 0 ? { drones: Number(vs[i]), gates: Number(vs[i]) } : {}),
-            firebat: vs[i] === "firebat", lurker: vs[i] === "lurker",
+            firebat: vs[i] === "firebat", lurker: vs[i] === "lurker", unit: vs[i],
           })),
         }))
         .filter((x) => x.label);
@@ -434,7 +434,12 @@ const TEMPLATES: Record<string, Tpl> = {
         const g = byLabel.find((y) => y.label === x.label);
         if (g) g.names.push(x.n); else byLabel.push({ label: x.label, names: [x.n] });
       }
-      const parts = byLabel.map((g) => `${joinNames(g.names)}의 ${g.label}`);
+      // 다 같은 사람이 여러 수를 간 것이면 이름을 한 번만 부른다 — "Rex의 패스트 리버와
+      // 리버 드랍"이라야 읽히지, "Rex의 …와 Rex의 …"는 같은 말을 두 번 하는 것이다(지적).
+      const oneName = new Set(each.map((x) => x.n)).size === 1 ? each[0].n : "";
+      const parts = oneName
+        ? [`${oneName}의 ${byLabel.map((g) => g.label).reduce((a, l) => (a ? `${wa(a)} ${l}` : l), "")}`]
+        : byLabel.map((g) => `${joinNames(g.names)}의 ${g.label}`);
       if (each.length >= 2 && parts.length >= 1) {
         const head = parts.slice(0, -1).join(", ");
         const all = parts.length >= 2 ? `${wa(head)} ${parts[parts.length - 1]}` : parts[0];
@@ -1051,7 +1056,7 @@ const TEMPLATES: Record<string, Tpl> = {
     const when = m > 0 ? `${m}분 만에 ` : "";
     const at = targetPhrase(c);
     return `${ga(c.who)} ${at}${done(c, c.pick([
-      `패스트 ${unit}로 승부를 걸음`,
+      `${ro(`패스트 ${unit}`)} 승부를 걸음`,
       `${when}${unit}를 뽑아 상대가 준비하기 전에 들이댐`,
       `${unit} 타이밍을 크게 당김`,
     ]))}`;
@@ -1061,9 +1066,10 @@ const TEMPLATES: Record<string, Tpl> = {
     const unit = UNIT_KO[str(c.p.unit)] ?? "";
     if (!unit) return null;
     const n = num(c.p.n);
+    // 이 수는 그 순간의 병력이 아니라 경기 내내 뽑은 총량이다 — 그렇게 말해야 정확하다(지적).
     return `${ga(c.who)} ${done(c, c.pick([
-      `파워 ${unit}로 밀어붙임`,
-      `${unit}만 ${n}기를 뽑아 물량으로 찍어누름`,
+      `${ro(`파워 ${unit}`)} 밀어붙임`,
+      `${unit}만 경기 내내 총 ${n}기를 뽑아 물량으로 찍어누름`,
       `${unit} 물량 하나로 판을 끌고 감`,
     ]))}`;
   },
@@ -1212,7 +1218,9 @@ export function hasSummaryTemplate(key: string): boolean {
   return key in TEMPLATES;
 }
 
-const joinNames = (names: string[]): string => names.filter(Boolean).join("·");
+// 같은 이름이 두 번 들어오면(한 사람의 여러 수를 묶었을 때) "Rex·Rex"가 된다(지적) — 접는다.
+const joinNames = (names: string[]): string =>
+  [...new Set(names.filter(Boolean))].join("·");
 
 /** "조조와 유비" — 양쪽이 같은 짓을 했을 때는 가운뎃점이 아니라 '와/과'로 잇는다(요청). */
 const joinPair = (names: string[]): string => {
@@ -1239,6 +1247,9 @@ export function renderReplaySummary(
   let lastLink = "";
   // 바로 앞 문장의 주어 — 같은 주어가 이어지면 한 문장으로 합친다(지적).
   let lastSubject = "";
+  // 그 주어의 이름(조사 없이) — 앞 문장이 "…가"로 시작했든 "…는"으로 시작했든 알아보려면
+  // 이름 자체가 필요하다.
+  let lastBaseWho = "";
   // 앞 문장에서 무언가를 한 사람 / 당한 사람 — 같은 사람이 역할을 바꿔 다시 나오면
   // 이름을 또 부르지 않고 이야기로 잇는다(지적).
   let lastWho: string[] = [];
@@ -1282,7 +1293,7 @@ export function renderReplaySummary(
       && !!prev.won === !!b.won
       && sharesWho
     ) {
-      who = `${link(["그 기세로", "여세를 몰아"])} ${who}`;
+      who = `${link(["그 기세로", "여세를 몰아", "그 기세를 이어간"])} ${who}`;
     } else if (linkable && gapSec !== null && gapSec <= SAME_TIME_SEC) {
       if (!sharesWho && seed % 2 === 0) joinPrev = true;
       else if (!!prev!.won !== !!b.won) {
@@ -1310,23 +1321,41 @@ export function renderReplaySummary(
       else lead = "모두 ";
     }
     if (!who) continue;
-    let firstPick = true;
-    let text = tpl({
-      who,
-      whoList: (b.who ?? []).map(resolveName).filter(Boolean),
-      who2: joinNames((b.who2 ?? []).map(resolveName)),
-      whom: joinNames((b.whom ?? []).map(resolveName)),
-      won: !!b.won,
-      at: typeof b.at === "number" ? b.at : null,
-      end: typeof data.end === "number" && data.end > 0 ? data.end : null,
-      p: b.p ?? {},
-      pick: (opts) => {
-        const t = opts[seed % opts.length];
-        if (!lead || !firstPick) return t;
-        firstPick = false;
-        return `${lead}${t}`;
-      },
-    });
+    const render = (offset: number): string | null => {
+      let firstPick = true;
+      return tpl({
+        who,
+        whoList: (b.who ?? []).map(resolveName).filter(Boolean),
+        who2: joinNames((b.who2 ?? []).map(resolveName)),
+        whom: joinNames((b.whom ?? []).map(resolveName)),
+        won: !!b.won,
+        at: typeof b.at === "number" ? b.at : null,
+        end: typeof data.end === "number" && data.end > 0 ? data.end : null,
+        p: b.p ?? {},
+        pick: (opts) => {
+          const t = opts[(seed + offset) % opts.length];
+          if (!lead || !firstPick) return t;
+          firstPick = false;
+          return `${lead}${t}`;
+        },
+      });
+    };
+    let text = render(0);
+    // 앞 문장의 주인공이 이번엔 당하는 쪽이면 두 문장을 잇고 싶다 — 그러려면 이 문장의
+    // 주어가 그 사람이어야 한다. 틀에 그런 꼴이 있으면 그것을 고른다(지적: 당한 것도
+    // 같은 사람을 주어로 이어 달라).
+    const wantCut = (b.whom ?? []).length === 1
+      && chainCount === 0 && out.length > 0 && lastWho.includes((b.whom ?? [])[0])
+      && !(b.who ?? []).includes((b.whom ?? [])[0]);
+    if (wantCut) {
+      const mark = `${ga(resolveName((b.whom ?? [])[0]))} `;
+      if (!text || !text.includes(mark)) {
+        for (let o = 1; o <= 3; o += 1) {
+          const t = render(o);
+          if (t && t.includes(mark)) { text = t; break; }
+        }
+      }
+    }
     if (!text) continue;
     // "그러나 …했지만 모자랐음"처럼 문장 자체가 이미 반전을 품고 있으면 앞의 이음말은
     // 군더더기다(지적) — 만들어진 문장을 보고 판단해 도로 떼어낸다.
@@ -1367,9 +1396,19 @@ export function renderReplaySummary(
     // "Rex가 …이기고, …" 꼴로 앞 문장에 이어 붙이고 뒤 문장에서는 주어를 뗀다.
     // 같은 사람 이야기가 연달아 나오면 문장을 갈라 놓지 말고 하나로 잇는다(지적: 같은
     // 이름이 반복되면 이상하다) — 다만 세 마디까지만, 더 이으면 한 문장이 숨차진다.
+    // 앞 문장이 실제로 그 주어로 시작해야 이어 붙일 수 있다 — "…태섭의 기지가 파괴됨"에
+    // 이어 붙이면 주어를 뗀 뒷마디가 '기지가 한 일'로 읽힌다(지적).
+    const prevBody = prevLine.replace(
+      new RegExp(`^(?:${[...CONTRAST_LINKS, ...SEQUENCE_LINKS].join("|")}) `), "",
+    );
+    // 앞 문장이 그 사람을 주어로 세우고 시작했나 — "…의 무엇에 누구의 기지가 파괴됨"처럼
+    // 소유격으로 시작한 문장에는 다음 마디를 이어 붙일 수 없다(지적).
+    const prevLedBy = (name: string): boolean =>
+      name !== "" && (prevBody.startsWith(`${ga(name)} `) || prevBody.startsWith(`${neun(name)} `));
     const sameSubject: boolean =
       chainCount < MAX_CHAIN && out.length > 0 && baseWho !== ""
-      && lastSubject === subject && text.startsWith(`${subject} `);
+      && lastSubject === subject && text.startsWith(`${subject} `)
+      && prevLedBy(lastBaseWho);
     // 맺음말은 앞의 전황을 뒤집으며 끝나는 일이 많다(요청) — "…파괴됐지만 …이김"으로 잇는다.
     // 다만 '이긴 쪽이 그 직전에 얻어맞은' 문장에만 붙인다: 아무 문장에나 이으면 앞뒤가
     // 뒤집혀 읽히고(지적), 이미 반전을 품은 문장이면 '지만'이 두 번 나온다.
@@ -1379,10 +1418,12 @@ export function renderReplaySummary(
       b.k === "result" && out.length > 0 && chainCount === 0 && hitTheWinner
       && !/지만|으나/.test(out[out.length - 1]);
     const chained: string | null = sameSubject
-      ? (chainCount === 0 ? toAnd(prevLine) : toAlso(prevLine))
+      // 이어 붙일 마디가 이미 '-고'를 품고 있으면(맺음말+활약 한 마디처럼) 앞마디는
+      // '-으며'로 바꾼다 — 안 그러면 한 문장에 "…고, …고,"가 연달아 나온다(지적).
+      ? (chainCount === 0 && !/고, /.test(text) ? toAnd(prevLine) : toAlso(prevLine))
       : flipToEnd
         ? toBut(prevLine)
-        : joinPrev && out.length > 0 && chainCount === 0
+        : joinPrev && out.length > 0 && chainCount === 0 && prevLedBy(lastBaseWho)
           ? toAnd(toTopic(prevLine))
           : null;
     if (backUp && backHead) {
@@ -1391,11 +1432,17 @@ export function renderReplaySummary(
       text = text.replace(backHead, `하지만 ${neun(resolveName(actor))} 다시 `);
     }
     if (cutIn) {
-      const head = toWhile(prevLine);
+      // 앞 문장이 '누군가를 상대로 성공한 일'이었다면 뒤집힌 것이라 "…했지만 반대로"가
+      // 맞고(지적), 그냥 하던 일이었다면 "…하다가"가 맞다.
+      const reversal = (prev?.whom ?? []).length > 0;
+      const head = reversal
+        ? (toBut(prevLine) ? `${toBut(prevLine)} 반대로` : null)
+        : toWhile(prevLine);
       if (head) out[out.length - 1] = `${head} ${text.replace(`${ga(victimName)} `, "")}`;
       else out.push(text);
       chainCount = head ? chainCount + 1 : 0;
       lastSubject = subject;
+      lastBaseWho = baseWho;
       lastWho = b.who ?? [];
       lastWhom = b.whom ?? [];
       prev = b;
@@ -1407,6 +1454,7 @@ export function renderReplaySummary(
     else out.push(text);
     chainCount = chained ? chainCount + 1 : 0;
     lastSubject = subject;
+    lastBaseWho = baseWho;
     lastWho = b.who ?? [];
     lastWhom = b.whom ?? [];
     prev = b;
