@@ -514,6 +514,7 @@ const TEMPLATES: Record<string, Tpl> = {
     const at = targetPhrase(c);
     return `${ga(c.who)} ${at}${done(c, c.pick([
       `${build}를 함`, `빠른 ${build}를 함`, `과감한 ${allin}를 함`,
+      `${build}라는 날빌을 꺼냄`, `날카로운 ${build}로 허를 찌름`,
       // 깎아내리는 말은 졌거나, 이겼더라도 한 종류만 주야장천 뽑았을 때만(지적).
       ...(c.won && !c.p.solo ? [] : [`무지성 ${build}를 함`]),
       ...(c.won ? [] : [`무리하게 ${build}를 함`]),
@@ -576,6 +577,7 @@ const TEMPLATES: Record<string, Tpl> = {
     return `${ga(c.who)} ${at}${done(c, c.pick([
       "포토러시를 함", "초반 포토러시를 함", "빠른 포토러시를 시도함",
       "예상치 못한 포토러시를 함",
+      "포토러시라는 날빌을 꺼냄", "날카로운 포토러시로 허를 찌름",
     ]), true)}`;
   },
   recall: act([
@@ -761,12 +763,14 @@ const TEMPLATES: Record<string, Tpl> = {
     if (c.p.firebat) {
       return `${ga(c.who)} ${at}${done(c, c.pick([
         "몰래 배럭 파이어뱃 러시를 함",
+        "몰래 배럭 파이어뱃이라는 날빌을 꺼냄",
         ...(c.won ? [] : ["무리하게 몰래 배럭 파이어뱃 러시를 함"]),
       ]), true)}`;
     }
     return `${ga(c.who)} ${at}${done(c, c.pick([
       "몰래 배럭을 올림", "몰래 배럭을 시도함", "이른 시간에 몰래 배럭을 올림",
       "예상치 못한 몰래 배럭을 올림",
+      "몰래 배럭이라는 날빌로 허를 찌름", "날카로운 몰래 배럭을 준비함",
     ]), true)}`;
   },
   // 성큰러시 — 내 기지가 아닌 곳에 초반부터 성큰을 박는 올인(요청). 해처리는 펴지 않는다.
@@ -775,6 +779,8 @@ const TEMPLATES: Record<string, Tpl> = {
     return `${ga(c.who)} ${at}${done(c, c.pick([
       "성큰러시를 함", "초반 성큰러시를 함", "빠른 성큰러시를 시도함",
       "예상치 못한 성큰러시를 함",
+      // 상대의 허점을 노린 수는 '날빌'이라 부른다(요청).
+      "성큰러시라는 날빌을 꺼냄", "날카로운 성큰러시로 허를 찌름",
     ]), true)}`;
   },
   // 센터 포토 — 가운데를 포토로 걸어 잠그는 그림(요청).
@@ -1069,6 +1075,7 @@ const TEMPLATES: Record<string, Tpl> = {
     const at = targetPhrase(c);
     return `${ga(c.who)} ${at}${done(c, c.pick([
       `${ro(`패스트 ${unit}`)} 승부를 걸음`,
+      `패스트 ${unit}라는 날빌로 허를 찌름`,
       `${when}${unit}를 뽑아 상대가 준비하기 전에 들이댐`,
       `${unit} 타이밍을 크게 당김`,
     ]))}`;
