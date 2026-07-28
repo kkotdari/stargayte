@@ -110,6 +110,10 @@ const GREEDY_PUNISH_SEC = 4 * 60;
 // 째고 나서 이만큼 뽑아냈으면 '물량이 폭발했다'고 말할 만하다.
 const GREEDY_PAYOFF_UNITS = 30;
 
+// 하이라이트(무게 14 이상인 사실)가 이만큼 쌓인 경기만 열 문장까지 쓴다(요청) — 그냥
+// 길기만 한 경기가 아니라 정말로 볼 게 많았던 경기에만 열어 준다.
+const HIGHLIGHT_RICH = 8;
+
 // 손이 빨랐다고 말하려면 그 경기 평균 자체가 이 정도는 돼야 한다 — 다 같이 느린 경기에서
 // 제일 빠른 사람을 두고 '특출나다'고 할 수는 없다.
 const HANDS_MIN_AVG = 90;
@@ -1167,10 +1171,15 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     }).filter((b) => !(breached && b.k === "defense")),
   ].filter((b) => !(b.k === "fallen" && b.who.some((w) => pickedOff.has(w))));
 
-  // 전술·돌파·합공처럼 '그 경기에서만 있었던 일'이 자리보다 많으면 두 줄까지 더 쓴다
+  // 전술·돌파·합공처럼 '그 경기에서만 있었던 일'이 자리보다 많으면 그만큼 더 쓴다
   // (요청: 할 얘기가 많은 경기는 좀 더 써도 됨). 일반적인 사실로 늘리지는 않는다.
+  //
+  // 열 문장까지 열어 두되, 그건 하이라이트가 정말 많은 경기에만 해당한다(요청) — 그래서
+  // 늘어나는 폭을 '무거운 사실이 몇 개나 더 있나'에 그대로 매단다. 여덟 문장을 넘기려면
+  // 무거운 사실이 그만큼(HIGHLIGHT_RICH개 이상) 쌓여 있어야 한다.
   const notable = pool.filter((b) => b.weight >= 14).length;
-  const budget = Math.min(7, baseBudget + Math.max(0, Math.min(2, notable - baseBudget)));
+  const cap = notable >= HIGHLIGHT_RICH ? 10 : 7;
+  const budget = Math.min(cap, baseBudget + Math.max(0, notable - baseBudget));
 
   // 고를 때는 무게순(재미있는 것부터), 이야기로 늘어놓을 때는 시간순 — 순서를 이 둘로 나눠야
   // "자리가 모자라 재미없는 걸 남기는" 일도, "중요한 게 뜬금없는 자리에 오는" 일도 없다.
