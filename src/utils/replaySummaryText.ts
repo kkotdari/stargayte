@@ -250,6 +250,11 @@ const STANDOFF_SEC = 5 * 60;
 // 두 일을 한 문장으로 합칠 수 있는 최대 시간 차(지적: 시간 차이가 제일 우선) — 이보다
 // 벌어지면 인과가 아무리 그럴듯해도 각각 제 문장으로 둔다.
 const JOIN_MAX_SEC = 3 * 60;
+/** '-다가'로 이을 수 있는 사이 — 이 어미는 하던 일이 그 일 때문에 끊겼다는 뜻이라,
+ *  정말 밀접한 인과관계가 아니면 쓰면 안 된다(지적). 몇 분 떨어진 두 일을 이걸로 묶으면
+ *  없는 인과를 지어내는 셈이다. 다만 '자원부터 먼저 챙겼다'처럼 한동안 이어지는 상태는
+ *  시간이 좀 벌어져도 뒤의 일과 곧바로 이어진다. */
+const CAUSE_SEC = 90;
 // 대비를 뜻하는 이음말 — 이 뒤에는 주어를 주제격("Rex는")으로 세운다(지적).
 const CONTRAST_LINKS = new Set(["한편", "그와 동시에", "반면", "그러나", "하지만", "그렇지만", "이에 질세라", "다른 쪽에서는", "반대로", "역으로"]);
 // 시간 순서를 짚는 이음말 — 위 대비 이음말과 함께 문장 앞머리를 알아보는 데 쓴다.
@@ -1796,9 +1801,11 @@ export function renderReplaySummary(
       // 앞 문장이 '누군가를 상대로 성공한 일'이었다면 뒤집힌 것이라 "…했지만 반대로"가
       // 맞고(지적), 그냥 하던 일이었다면 "…하다가"가 맞다.
       const reversal = (prev?.whom ?? []).length > 0;
+      const tightCause =
+        prev?.k === "greedy-build" || (gapSec !== null && gapSec <= CAUSE_SEC);
       const head = reversal
         ? (toBut(prevLine) ? `${toBut(prevLine)} 반대로` : null)
-        : toWhile(prevLine);
+        : tightCause ? toWhile(prevLine) : null;
       // 앞마디가 이미 '-다가'로 이어 주므로 뒤 문장 머리의 이음말은 뗀다(지적:
       // "…실패하다가 게다가 …"처럼 접속사가 두 번 나온다).
       const tail = text
@@ -1847,7 +1854,17 @@ export function renderReplaySummary(
     lastWhom = b.whom ?? [];
     prev = b;
   }
-  return out.length > 0 ? out.map(toPlain).join(". ") : null;
+  // 마지막 그물 — 문장이 이미 '-지만/-으나/-다가/-고/-며'로 이어졌으면 그 뒤에 이음말이
+  // 또 오면 안 된다(지적: 접속사가 세 번이나 나온다). 어느 경로로 붙었든 여기서 걷어낸다.
+  // "…했지만 반대로 …"는 한 덩어리라 그것만 남긴다.
+  const LINK = `(?:${[...CONTRAST_LINKS, ...SEQUENCE_LINKS].join("|")}|\\d+분 (?:뒤|후))`;
+  // '-다가' 뒤에는 이음말이 아예 오면 안 된다(지적, 두 번째).
+  const afterWhile = new RegExp(`(다가) ${LINK} `, "g");
+  // 나머지 어미 뒤에는 한 마디까지만 — 두 번째부터 걷어낸다("…했지만 반대로 하지만 …").
+  const twoLinks = new RegExp(`(지만|으나|았고|었고|였고|으며|하고|하며) (${LINK} )${LINK} `, "g");
+  return out.length > 0
+    ? out.map((l) => toPlain(l.replace(afterWhile, "$1 ").replace(twoLinks, "$1 $2"))).join(". ")
+    : null;
 }
 
 /** 문장을 이름 조각과 나머지로 잘라 놓은 것 — 이름에 팀 색을 입히기 위한 것이다(요청).
