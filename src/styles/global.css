@@ -6795,13 +6795,25 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-feed-stack > .scr-feed-card-head { --post-head-pad-r: var(--post-pad-x); }
 
 /* 요약 바디 전체가 펼침/접힘 토글이다(요청) — 명단 어디를 눌러도 열리고 닫힌다. */
-.scr-feed-stack-sum-body { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+/* 아래 여백은 펼침/접힘과 무관하게 '항상' 같아야 한다. 한때 펼쳤을 때만 줬는데(그림자가
+   명단에 바짝 붙는 걸 고치려고), 그러면 접는 순간 이 요약 블록의 높이가 그만큼 줄어
+   아래 내용이 위로 딸려 올라갔다(지적: "이게 있다 없다 그러니까 접을때 위로 당겨짐이
+   발생해"). 접힘 애니메이션은 이 블록 높이가 고정이라는 전제로 아래 기준점을 잡는다.
+   대신 그만큼 아래 토글 버튼의 위 패딩을 줄여, 접힌 모습의 간격은 예전 그대로 24px다
+   (14 + 10). 펼쳤을 때는 이 14px이 곧 명단과 그림자 사이의 숨통이 된다. */
+.scr-feed-stack-sum-body {
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+  padding-bottom: 14px;
+}
 /* 펼치기 ↔ 접기 — 같은 자리에서 글자와 삼각형 방향만 바뀐다(요청). 예전에는 펼치면
    원래 펼치기가 있던 자리에도 접기가 하나 더 생겼는데, 같은 일을 하는 버튼이 위아래로
    둘이라 오히려 헷갈려서 없앴다(요청). */
 .scr-feed-stack-toggle {
   display: flex; align-items: center; justify-content: center; gap: 5px; width: 100%;
-  padding: var(--post-pad-y) 0 0; border: none; background: none;
+  /* 위 여백 24 → 10px. 나머지 14px은 요약 바디가 자기 padding-bottom으로 갖고 있다
+     (위 .scr-feed-stack-sum-body 주석 — 접었다 폈다 할 때 높이가 안 변해야 한다).
+     접힌 모습에서 명단↔펼치기 간격은 14 + 10 = 24px로 예전과 같다. */
+  padding: 10px 0 0; border: none; background: none;
   font-family: inherit; font-size: var(--fs-micro); font-weight: 700; color: var(--dim);
   cursor: pointer; -webkit-tap-highlight-color: transparent;
 }
@@ -6812,10 +6824,6 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-feed-stack-opened > .scr-feed-stack-sum-body {
   position: relative; z-index: 2;
   box-shadow: 0 14px 20px -8px rgba(0, 0, 0, 0.65), 0 1px 0 rgba(var(--overlay-rgb), 0.14);
-  /* 명단 바로 밑에서 그림자가 시작돼 답답했다(지적: "요약 쪽 아래 여백이 너무 없네
-     바로 드롭그림자가 나와서 이상해") — 접혀 있을 때는 아래 펼치기 버튼이 이 여백을
-     대신하므로, 펼친 상태에만 준다. 위쪽 패딩과 같은 값이라 위아래가 대칭이 된다. */
-  padding-bottom: var(--post-pad-y);
 }
 .scr-light-theme .scr-feed-stack-opened > .scr-feed-stack-sum-body {
   box-shadow: 0 14px 20px -8px rgba(0, 0, 0, 0.28), 0 1px 0 rgba(0, 0, 0, 0.1);
