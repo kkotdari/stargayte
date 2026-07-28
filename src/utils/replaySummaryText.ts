@@ -1625,7 +1625,9 @@ export function renderReplaySummary(
       : flipToEnd || flipJoin
         ? toBut(prevLine)
         : joinPrev && out.length > 0 && chainCount === 0 && prevLedBy(lastBaseWho)
-          ? toAnd(toTopic(prevLine))
+          // 전황이 갈린 두 일을 '-고'로 이으면 나란히 일어난 것처럼 읽힌다(지적) —
+          // 반대되는 정황은 '-지만'으로 이어야 대비가 산다.
+          ? (flipped ? toBut(toTopic(prevLine)) : toAnd(toTopic(prevLine)))
           : null;
     if (backUp && backHead) {
       // 이름은 남긴다 — 앞 문장의 주어는 때린 쪽이라, 이름을 빼면 그 사람이 한 일로 읽힌다.
