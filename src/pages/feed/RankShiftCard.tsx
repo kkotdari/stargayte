@@ -31,10 +31,10 @@ export function rankShiftShareContent(shift: RankSnapshot): KakaoShareContent {
     .map((e) => `${e.to}위 ${e.nickname} ${shiftLabel(e).text}`)
     .join(" · ");
   return {
-    title: `랭크 변동 발생 · ${rankShiftTypeLabel(shift)}`,
+    title: `${rankShiftTypeLabel(shift)} 랭크 변동 발생`,
     description: summary,
     link: `${window.location.origin}/?sv=rankshift&sid=${shift.id}`,
-    fallbackText: `[스타게이트] 랭크 변동 발생 · ${rankShiftTypeLabel(shift)}\n${summary}`,
+    fallbackText: `[스타게이트] ${rankShiftTypeLabel(shift)} 랭크 변동 발생\n${summary}`,
   };
 }
 
@@ -94,7 +94,7 @@ export default function RankShiftCard({
         </div>
         <div className="scr-feed-card-head-title">
           <Trophy size={16} aria-hidden />
-          <span className="scr-feed-card-label">랭크 변동 발생 · {rankShiftTypeLabel(shift)}</span>
+          <span className="scr-feed-card-label">{rankShiftTypeLabel(shift)} 랭크 변동 발생</span>
         </div>
       </div>
       {actions}
