@@ -118,6 +118,9 @@ const LONG_GAME_SEC = 30 * 60;
 const HANDS_MIN_AVG = 90;
 // 그리고 평균의 이만큼을 넘어야 '특출나게'다.
 const HANDS_RATIO = 1.5;
+// 이만큼 나오면 남과 견줄 것도 없이 그 자체가 이야깃거리다(요청: 300 이상이면 컨트롤
+// 이야기를 넣자) — 다른 사람들이 다 같이 빨랐더라도 이건 따로 말해 준다.
+const HANDS_ELITE = 300;
 // 소모전 — 이만큼은 길어야 하고,
 const ATTRITION_MIN_SEC = 12 * 60;
 // 양쪽이 분당 이만큼씩 병력을 쏟아부었으면 한 방 싸움이 아니라 소모전이다(요청).
@@ -1047,13 +1050,18 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     const vals = all.map(rate).filter((v) => v > 0);
     if (vals.length < 2) return null;
     const avg = vals.reduce((a, v) => a + v, 0) / vals.length;
-    if (avg < HANDS_MIN_AVG) return null;
     const best = all.slice().sort((a, b) => rate(b) - rate(a))[0];
-    if (!best || rate(best) < avg * HANDS_RATIO) return null;
+    if (!best) return null;
+    const elite = rate(best) >= HANDS_ELITE;
+    if (!elite && (avg < HANDS_MIN_AVG || rate(best) < avg * HANDS_RATIO)) return null;
     return {
       k: "fast-hands", won: winnerPlayers.includes(best), who: [best.rawName],
-      at: null, weight: 12,
-      p: { apm: Math.round(rate(best)), eff: best.eapm !== null && best.eapm !== undefined },
+      at: null, weight: elite ? 13 : 12,
+      p: {
+        apm: Math.round(rate(best)),
+        eff: best.eapm !== null && best.eapm !== undefined,
+        ...(elite ? { elite: true } : {}),
+      },
     } as Beat;
   })();
 

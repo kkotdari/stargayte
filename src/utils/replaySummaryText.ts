@@ -1281,7 +1281,13 @@ const TEMPLATES: Record<string, Tpl> = {
     const n = num(c.p.apm);
     const label = c.p.eff ? "유효 APM" : "APM";
     if (n <= 0) return null;
-    return `${ga(c.who)} ${done(c, c.pick([
+    // 손이 유난히 빨랐던 경기는 숫자만 적기보다 그 손이 무엇을 했는지까지 말해 준다(요청).
+    return `${ga(c.who)} ${done(c, c.pick(c.p.elite ? [
+      `${label} ${numReul(n)} 찍으며 멋진 컨트롤을 보여줌`,
+      `${label} ${numRo(n)} 놀라운 컨트롤을 보여줌`,
+      `${label} ${numReul(n)} 찍으며 손끝으로 판을 흔듦`,
+      `${label} ${numRo(n)} 혼자 다른 속도로 경기를 하며 컨트롤에서 차이를 냄`,
+    ] : [
       `${label} ${numRo(n)} 손이 가장 빨랐고 컨트롤에서 차이를 냄`,
       `${label} ${numReul(n)} 찍으며 생산과 컨트롤을 쉬지 않음`,
       `${label} ${numRo(n)} 혼자 다른 속도로 경기를 함`,
