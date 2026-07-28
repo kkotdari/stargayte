@@ -783,8 +783,9 @@ html.scr-light-theme .scr-checkbox-field input[type="radio"]:not(:checked), html
    종족 배지처럼 변수를 안 쓰는 요소는 원래 색 그대로 남는다. */
 html.scr-light-theme {
   --post-title-tint: 59, 130, 246;
-  /* 흰 배경 위에서는 같은 알파도 훨씬 진하게 읽혀서, 다크만큼 올리지 않는다. */
-  --post-title-a1: 0.22;
+  /* 흰 배경 위에서는 같은 알파도 훨씬 진하게 읽혀서, 다크만큼 올리지 않는다.
+     날짜 줄까지 덮으면서 띠 면적이 커졌으므로 한 번 더 연하게 낮춘다(요청). */
+  --post-title-a1: 0.13;
   --void: #ffffff;
   --post-bg: #ffffff;
   --panel: rgba(255, 255, 255, 0.46);
@@ -6871,38 +6872,49 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    baseline을 맞춰 한 줄로 흐르게 한다. */
 .scr-feed-card-head {
   display: flex; flex-direction: column; align-items: stretch; gap: 3px;
-  padding: 16px var(--post-head-pad-r) 0 var(--post-pad-x);
+  padding: 16px var(--post-head-pad-r) 5px var(--post-pad-x);
   font-size: var(--fs-micro); color: var(--dim);
+  /* 음영 띠를 자식 뒤(z-index:-1)에 깔되 포스트 배경까지 뚫고 내려가지는 않게 —
+     isolation이 이 헤더를 새 쌓임 맥락으로 만들어 음수 z-index를 여기 안에 가둔다. */
+  position: relative; isolation: isolate;
+}
+/* 제목 줄 뒤에 깔리는 음영(요청) — 포스트가 좌우 여백 없이 이어지는 구조라, 머리에 색이
+   한 겹 있으면 글의 시작점이 훨씬 또렷해진다.
+   띠는 날짜 줄까지 함께 덮는다(요청) — 시각은 제목에 딸린 보조라 같은 판 위에 있어야
+   한 덩어리로 읽힌다. 예전엔 제목 줄에만 배경을 깔아 날짜만 띠 밖에 떠 있었다.
+   음영은 포스트 판의 좌우 끝까지 간다 — 헤더는 이미 판 폭을 다 쓰므로, 절대배치로
+   left/right를 0에 붙이면 좌우 패딩 바깥까지 그대로 채워진다.
+   제목 없이 시각만 있는 머리(묶음 안쪽 게임결과)에는 띠를 깔지 않는다 — 덮을 제목이
+   없는데 띠만 남으면 그냥 얼룩이다. */
+.scr-feed-card-head:has(.scr-feed-card-head-title)::before {
+  content: ""; position: absolute; z-index: -1;
+  /* 위로는 날짜 줄 조금 위까지만 — 카드 맨 위까지 올리면 포스트 경계와 띠가 붙어버린다. */
+  inset: 9px 0 0 0;
+  background: rgba(var(--post-title-tint), var(--post-title-a1));
 }
 /* 윗줄 — 시각(그리고 그와 한 묶음인 마감 카운트다운·일시 수정, 요약의 참여 인원). */
 .scr-feed-card-head-meta { display: flex; align-items: center; gap: 8px; min-width: 0; }
-/* 아랫줄 — 아이콘 + 제목. 오른쪽 44px(헤더 패딩)은 케밥 자리라 비워둔다.
-   뒤로 오른쪽으로 갈수록 옅어지는 음영을 깐다(요청) — 포스트가 좌우 여백 없이 이어지는
-   구조라 제목 줄에 색이 한 겹 있으면 글의 시작점이 훨씬 또렷해진다. 포스트가 화면을 꽉
-   채우므로 음영도 왼쪽 화면 끝에서 시작해야 자연스럽다: 헤더의 좌우 패딩만큼 음수 마진으로
-   빠져나갔다가 같은 값의 패딩으로 글자를 제자리에 돌려놓는다. */
+/* 아랫줄 — 아이콘 + 제목. 오른쪽 44px(헤더 패딩)은 케밥 자리라 비워둔다. */
 .scr-feed-card-head-title {
   display: flex; align-items: center; gap: 7px; min-width: 0;
-  /* 음영은 포스트 판의 좌우 끝까지 간다 — 포스트가 본문 여백 안으로 들어오면서 판의
-     끝이 곧 페이지 타이틀("피드")과 같은 자리가 됐다. 헤더의 좌우 패딩만큼 음수 마진으로
-     빠져나갔다가 같은 값의 패딩으로 글자를 제자리에 돌려놓는다 — 띠는 판 끝까지, 글자는
-     그대로. */
-  margin: 0 calc(-1 * var(--post-head-pad-r)) 0 calc(-1 * var(--post-pad-x));
-  padding: 4px var(--post-head-pad-r) 4px var(--post-pad-x);
-  /* 예전에는 오른쪽으로 갈수록 사라지는 그라데이션이었는데, 카드 폭을 그대로 채우는
-     쪽으로 바꿨다(요청) — 띠가 어디서 끝나는지 애매하지 않고, 글자가 띠 밖으로 나가
-     읽히지 않을 걱정도 없어진다. */
-  background: rgba(var(--post-title-tint), var(--post-title-a1));
 }
 .scr-feed-card-head-title > svg { flex-shrink: 0; }
 /* 다크 테마에서는 띠를 흰색으로 하고 그 위 글자를 뒤집는다(요청) — 검정 띠는 바탕과
-   구별이 잘 안 됐다. 참여 인원(--dim)까지 함께 뒤집어야 한 줄이 따로 놀지 않는다. */
-html:not(.scr-light-theme) .scr-feed-card-head-title {
-  background: rgba(255, 255, 255, 0.92);
+   구별이 잘 안 됐다. 완전 불투명이던 걸 살짝 비쳐 보이게 낮춘다(요청).
+   날짜 줄까지 띠 위로 올라왔으므로 그 줄의 글자색도 함께 뒤집는다. */
+html:not(.scr-light-theme) .scr-feed-card-head:has(.scr-feed-card-head-title)::before {
+  background: rgba(255, 255, 255, 0.82);
+}
+html:not(.scr-light-theme) .scr-feed-card-head:has(.scr-feed-card-head-title) {
   color: #10151a;
 }
-html:not(.scr-light-theme) .scr-feed-card-head-title .scr-feed-card-label { color: #10151a; }
-html:not(.scr-light-theme) .scr-feed-card-head-title .scr-feed-stack-sum-count {
+html:not(.scr-light-theme) .scr-feed-card-head:has(.scr-feed-card-head-title) .scr-feed-card-label {
+  color: #10151a;
+}
+html:not(.scr-light-theme) .scr-feed-card-head:has(.scr-feed-card-head-title) .scr-feed-stack-sum-count,
+html:not(.scr-light-theme) .scr-feed-card-head:has(.scr-feed-card-head-title) .scr-feed-card-time,
+html:not(.scr-light-theme) .scr-feed-card-head:has(.scr-feed-card-head-title) .scr-feed-chal-countdown,
+html:not(.scr-light-theme) .scr-feed-card-head:has(.scr-feed-card-head-title) .scr-challenge-time-edit-btn {
   color: rgba(16, 21, 26, 0.62);
 }
 /* 경기 케밥을 포스트 우상단으로(요청 — 이제 오른쪽에 타임라인이 없어 안전 공간 불필요).
@@ -7246,6 +7258,9 @@ html.scr-light-theme .scr-feed-add-fab {
 .scr-light-theme .scr-feed-shift-up { color: #16a34a; }
 .scr-light-theme .scr-feed-shift-down { color: #e11d48; }
 .scr-feed-shift-from { color: var(--dim); font-size: var(--fs-micro); }
+/* 포인트 변동(요청: "+100p") — 순위 변동과 같은 상승/하락 색을 쓰되 한 톤 작게 둔다.
+   순위가 먼저 읽히고 포인트가 그 근거로 따라 읽히는 순서가 맞다. */
+.scr-feed-shift-pts { font-size: var(--fs-micro); font-variant-numeric: tabular-nums; }
 /* "실시간 랭크 확인" 줄 — 위 여백은 목록이 아니라 여기서만 낸다(목록이 --post-pad-b를
    내던 시절엔 "외 N건" 줄이 없는 카드에서 이 링크가 한참 아래로 떨어져 보였다, 지적).
    아래는 포스트 꼬리 여백(--post-pad-b)이 이어받는다 — 댓글이 없어도 바닥이 안 붙는다. */

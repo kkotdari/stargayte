@@ -156,6 +156,9 @@ export interface RankShiftEntry {
   nickname: string;
   from: number | null; // null = 순위권 밖에서 신규 진입
   to: number;
+  // 포인트 변동(요청) — 이 필드가 생기기 전에 쌓인 스냅샷에는 없다. 둘 다 있을 때만 쓴다.
+  fromPoints?: number | null;
+  toPoints?: number | null;
 }
 export interface RankSnapshot {
   id: number;

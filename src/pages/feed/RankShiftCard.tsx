@@ -21,6 +21,19 @@ export function shiftLabel(e: RankShiftEntry): { text: string; cls: string } {
   return { text: `▼${-d}`, cls: "scr-feed-shift-down" };
 }
 
+// 포인트 증감 표기(요청: "+100p" 이렇게) — 몇 계단 올랐는지만으로는 그게 한 판 차이인지
+// 몰아친 결과인지 알 수가 없다. 이 필드가 생기기 전 스냅샷에는 포인트가 없으므로,
+// 둘 다 있고 실제로 달라졌을 때만 내놓는다.
+export function pointLabel(e: RankShiftEntry): { text: string; cls: string } | null {
+  if (e.fromPoints == null || e.toPoints == null) return null;
+  const d = Math.round(e.toPoints) - Math.round(e.fromPoints);
+  if (d === 0) return null;
+  return {
+    text: `${d > 0 ? "+" : "−"}${Math.abs(d)}p`,
+    cls: d > 0 ? "scr-feed-shift-up" : "scr-feed-shift-down",
+  };
+}
+
 export function rankShiftTypeLabel(shift: RankSnapshot): string {
   return shift.matchType === "0101" ? "개인전" : "팀전";
 }
@@ -114,6 +127,7 @@ export default function RankShiftCard({
       >
         {rows.map((e) => {
           const label = shiftLabel(e);
+          const pts = pointLabel(e);
           return (
             <li
               key={`${e.memberId}-${e.to}`}
@@ -124,6 +138,9 @@ export default function RankShiftCard({
             >
               <span className="scr-feed-shift-name">{e.nickname}</span>
               <span className={label.cls}>{label.text}</span>
+              {/* 순위 변동 바로 옆에 포인트 변동(요청) — 같은 색 규칙을 쓰되 한 톤 작게 둬서
+                  순위가 먼저 읽히고 포인트가 그 근거로 따라 읽히게 한다. */}
+              {pts && <span className={cx("scr-feed-shift-pts", pts.cls)}>{pts.text}</span>}
               {e.from != null && <span className="scr-feed-shift-from">({e.from}위 → {e.to}위)</span>}
             </li>
           );
