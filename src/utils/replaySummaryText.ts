@@ -187,6 +187,8 @@ interface Ctx {
   whom: string;
   won: boolean;
   p: Record<string, unknown>;
+  /** 진 편의 마지막 문장인가 — 그때만 "경기는 내줌" 같은 결말을 말할 수 있다. */
+  last: boolean;
   /** 여러 표현 중 하나를 고른다 — 같은 경기는 늘 같은 것이 나온다(아래 variantSeed 참고). */
   pick: (opts: string[]) => string;
 }
@@ -227,9 +229,15 @@ function victimPhrase(c: Ctx): string {
 // 됐는지는 리플레이에 없다. 그래서 전술 문장은 한 일만 말하고, 결과를 말해야 할 때는
 // 확실한 사실 하나 — 그 경기를 누가 가져갔나 — 만 붙인다. "본진을 초토화" "앞마당을 헤집음"
 // "그대로 태움" 같은 수식은 전부 걷어냈다(지적).
-const LOST_TAILS = [
+// "경기는 내줌"은 경기가 끝났다는 말이라 문단 중간에 나오면 어색하다(지적) — 진 편의
+// 마지막 문장에서만 쓰고, 중간에는 그때까지의 흐름만 말한다.
+const END_TAILS = [
   "경기는 내줌", "승부는 상대 쪽으로 넘어감", "판을 가져오지는 못함",
-  "흐름은 상대에게 넘어감", "역부족이었음", "경기는 기움",
+  "역부족이었음", "경기는 기움", "끝내 승부를 못 뒤집음",
+];
+const MID_TAILS = [
+  "흐름은 상대에게 넘어감", "판이 조금씩 기울기 시작함", "소득은 크지 않았음",
+  "재미를 보지 못함", "그만큼을 되찾지는 못함",
 ];
 // 도박수(초반 올인)가 안 됐을 때만 쓰는 맺음 — 성공 여부를 단정하지 않는 선에서
 // "실패함" "큰 피해는 못 줌"까지만 말한다(지적: 독이 됐다·발목을 잡았다는 지나치다).
@@ -240,7 +248,7 @@ const RISKY_TAILS = ["실패함", "큰 피해는 못 줌", "결국 망함", "소
 // 연결형으로 바꾼다. 불규칙이 많아 규칙으로 만들지 않고 실제로 쓰는 끝만 적어 둔다 —
 // 표에 없는 끝이 나오면 이어 붙이지 않고 쉼표로 두어, 틀린 말이 나오는 일은 없다.
 const CONNECTIVE: [string, string][] = [
-  ["막아섬", "막아섰으나"], ["나름", "날랐으나"], ["잡음", "잡았으나"], ["뚫음", "뚫었으나"],
+  ["막아섬", "막아섰으나"], ["막힘", "막혔으나"], ["나름", "날랐으나"], ["잡음", "잡았으나"], ["뚫음", "뚫었으나"],
   ["지음", "지었으나"], ["뽑음", "뽑았으나"], ["잠금", "잠갔으나"], ["얹혀삶", "얹혀살았으나"],
   ["감행함", "감행했으나"], ["함", "했으나"], ["줌", "줬으나"], ["씀", "썼으나"],
   ["섬", "섰으나"], ["춤", "췄으나"], ["굼", "궜으나"], ["김", "겼으나"],
@@ -259,7 +267,8 @@ function toConnective(action: string): string | null {
  *  못 이으면 쉼표로 둔다. */
 const done = (c: Ctx, action: string, risky = false): string => {
   if (c.won) return action;
-  const t = c.pick(risky ? [...LOST_TAILS, ...RISKY_TAILS] : LOST_TAILS);
+  const base = c.last ? END_TAILS : MID_TAILS;
+  const t = c.pick(risky ? [...base, ...RISKY_TAILS] : base);
   const joined = toConnective(action);
   return joined ? `${joined} ${t}` : `${action}, ${t}`;
 };
@@ -331,7 +340,7 @@ const TEMPLATES: Record<string, Tpl> = {
     }
     return done(c, c.pick([
       `${ga(c.who)} ${ro(label)} ${of}본진을 파괴함`,
-      `${ga(c.who)} ${ro(label)} ${of}생산을 끊어놓음`,
+      `${ga(c.who)} ${ro(label)} ${of}생산이 막힘`,
       `${mine} 한 방에 ${of}기지가 파괴됨`,
       `${ga(c.who)} ${ro(label)} ${of}살림을 통째로 흔듦`,
     ]));
@@ -343,7 +352,7 @@ const TEMPLATES: Record<string, Tpl> = {
     const build = n > 0 ? `${n}드론 저글링 러시` : "초반 저글링 러시";
     const at = targetPhrase(c);
     return `${ga(c.who)} ${at}${done(c, c.pick([
-      `${build}를 함`, `빠른 ${build}를 함`, `과감한 ${build} 올인을 감`,
+      `${build}를 함`, `빠른 ${build}를 함`, `과감한 ${build} 올인러시를 함`,
       // 깎아내리는 말은 졌거나, 이겼더라도 한 종류만 주야장천 뽑았을 때만(지적).
       ...(c.won && !c.p.solo ? [] : [`무지성 ${build}를 함`]),
       ...(c.won ? [] : [`무리하게 ${build}를 함`]),
@@ -942,7 +951,12 @@ export function renderReplaySummary(
   // 앞 문장과 인과로 이어지는 자리를 표시해 둔다(요청: 서사·인과가 있어야 재밌다).
   // 크게 한 방 먹인 바로 다음에 같은 사람이 또 무언가를 했다면 그건 '그 기세로' 한 것이다.
   let prev: ReplaySummaryBeat | null = null;
-  for (const b of data.beats as ReplaySummaryBeat[]) {
+  const beats = data.beats as ReplaySummaryBeat[];
+  // 진 편의 마지막 문장 자리 — 결말은 거기서만 말한다(맺음말 result는 이긴 편 몫이다).
+  let lastLost = -1;
+  beats.forEach((b, i) => { if (!b.won && b.k !== "result") lastLost = i; });
+  for (let i = 0; i < beats.length; i += 1) {
+    const b = beats[i];
     const tpl = TEMPLATES[b?.k];
     if (!tpl) continue;
     // 양쪽이 같은 짓을 했으면 한 문장으로 묶는다(요청) — 모든 전술 틀이 `${ga(who)} ${동작}`
@@ -975,6 +989,7 @@ export function renderReplaySummary(
       who2: joinNames((b.who2 ?? []).map(resolveName)),
       whom: joinNames((b.whom ?? []).map(resolveName)),
       won: !!b.won,
+      last: i === lastLost,
       p: b.p ?? {},
       pick: (opts) => {
         const t = opts[seed % opts.length];
