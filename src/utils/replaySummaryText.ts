@@ -158,13 +158,41 @@ function victimPhrase(c: Ctx): string {
 // 확실한 사실 하나 — 그 경기를 누가 가져갔나 — 만 붙인다. "본진을 초토화" "앞마당을 헤집음"
 // "그대로 태움" 같은 수식은 전부 걷어냈다(지적).
 const LOST_TAILS = [
-  "그러나 경기는 내줌", "결국 승부는 상대 쪽으로 넘어감", "그러나 판을 가져오지는 못함",
-  "결국 흐름은 상대에게 넘어감", "오히려 독이 됨", "되레 발목을 잡음",
+  "경기는 내줌", "승부는 상대 쪽으로 넘어감", "판을 가져오지는 못함",
+  "흐름은 상대에게 넘어감", "오히려 독이 됨", "되레 발목을 잡음", "역부족이었음",
 ];
-const tail = (c: Ctx): string => (c.won ? "" : `, ${c.pick(LOST_TAILS)}`);
+
+// 진 편 문장은 "…뚫음, 경기는 내줌"처럼 끊어 붙이는 것보다 "…뚫었으나 경기는 내줌"으로
+// 이어야 자연스럽다(지적). 한 일은 전부 명사형('-ㅁ')으로 써 두었으므로, 그 끝만 과거
+// 연결형으로 바꾼다. 불규칙이 많아 규칙으로 만들지 않고 실제로 쓰는 끝만 적어 둔다 —
+// 표에 없는 끝이 나오면 이어 붙이지 않고 쉼표로 두어, 틀린 말이 나오는 일은 없다.
+const CONNECTIVE: [string, string][] = [
+  ["막아섬", "막아섰으나"], ["나름", "날랐으나"], ["잡음", "잡았으나"], ["뚫음", "뚫었으나"],
+  ["지음", "지었으나"], ["뽑음", "뽑았으나"], ["잠금", "잠갔으나"], ["얹혀삶", "얹혀살았으나"],
+  ["감행함", "감행했으나"], ["함", "했으나"], ["줌", "줬으나"], ["씀", "썼으나"],
+  ["섬", "섰으나"], ["춤", "췄으나"], ["굼", "궜으나"], ["김", "겼으나"],
+  ["움", "웠으나"], ["림", "렸으나"], ["됨", "됐으나"], ["옴", "왔으나"],
+  ["깜", "깠으나"], ["감", "갔으나"],
+];
+
+function toConnective(action: string): string | null {
+  for (const [from, to] of CONNECTIVE) {
+    if (action.endsWith(from)) return `${action.slice(0, -from.length)}${to}`;
+  }
+  return null;
+}
+
+/** 한 일 + (진 편이면) 결과 한 마디. 이어 붙일 수 있으면 "…뚫었으나 경기는 내줌"으로,
+ *  못 이으면 쉼표로 둔다. */
+const done = (c: Ctx, action: string): string => {
+  if (c.won) return action;
+  const t = c.pick(LOST_TAILS);
+  const joined = toConnective(action);
+  return joined ? `${joined} ${t}` : `${action}, ${t}`;
+};
 
 /** 한 일만 말하는 흔한 꼴 — 이긴 쪽/진 쪽 모두 같은 표현을 쓰고, 진 쪽에만 결과를 덧붙인다. */
-const act = (actions: string[]): Tpl => (c) => `${ga(c.who)} ${c.pick(actions)}${tail(c)}`;
+const act = (actions: string[]): Tpl => (c) => `${ga(c.who)} ${done(c, c.pick(actions))}`;
 
 const TEMPLATES: Record<string, Tpl> = {
   // ── 전술(replayTactics) ──
@@ -172,13 +200,13 @@ const TEMPLATES: Record<string, Tpl> = {
     const n = num(c.p.drones);
     const build = n > 0 ? `${n}드론 저글링 러시` : "초반 저글링 러시";
     const at = targetPhrase(c);
-    return `${ga(c.who)} ${at}${c.pick([
+    return `${ga(c.who)} ${at}${done(c, c.pick([
       `${build}를 감`, `빠른 ${build}를 시도함`, `과감한 ${build}를 감`, `${build}를 준비함`,
-    ])}${tail(c)}`;
+    ]))}`;
   },
   moka: act([
     "저글링·울트라에 다크스웜을 얹은 목동 저그로 감", "울트라까지 모아 목동 저그를 운용함",
-    "예상치 못한 목동 저그를 꺼냄",
+    "예상치 못한 목동 저그를 꺼냄", "저글링·울트라 병력을 이끌고 진출함",
     "다크스웜 아래로 저글링·울트라를 모음",
   ]),
   swarm: act([
@@ -191,13 +219,15 @@ const TEMPLATES: Record<string, Tpl> = {
     "러커로 길목을 조임", "러커를 심어 길을 막음", "러커 조이기로 나감",
   ]),
   bionic: (c) =>
-    `${ga(c.who)} ${c.pick(
+    `${ga(c.who)} ${done(c, c.pick(
       c.p.tank
         ? ["마린·메딕에 탱크까지 붙인 바이오닉으로 감", "탱크를 붙인 바이오닉으로 공격함"]
-        : ["마린·메딕 바이오닉으로 감", "마린·메딕을 모아 바이오닉을 운용함"]
-    )}${tail(c)}`,
+        : ["마린·메딕 바이오닉으로 감", "마린·메딕을 모아 바이오닉을 운용함",
+           "마린·메딕 병력을 이끌고 진출함"]
+    ))}`,
   mech: act([
     "탱크와 골리앗을 앞세운 메카닉으로 감", "메카닉으로 자리를 잡고 나감", "메카닉을 운용함",
+    "탱크와 골리앗 병력을 이끌고 진출함",
   ]),
   valkyrie: act([
     "발키리를 띄워 오버로드를 노림", "발키리를 모아 제공권을 노림",
@@ -205,25 +235,25 @@ const TEMPLATES: Record<string, Tpl> = {
   ]),
   dropship: (c) => {
     const of = victimPhrase(c);
-    return `${ga(c.who)} ${c.pick([
+    return `${ga(c.who)} ${done(c, c.pick([
       `드랍십을 계속 돌려 ${of}병력을 떨굼`, `드랍 견제로 ${of}피해를 줌`,
-    ])}${tail(c)}`;
+    ]))}`;
   },
   "zealot-rush": (c) => {
     const g = num(c.p.gates, 2);
     const label = g === 2 ? "투게이트" : `${g}게이트`;
     const at = targetPhrase(c);
-    return `${ga(c.who)} ${at}${c.pick([
+    return `${ga(c.who)} ${at}${done(c, c.pick([
       `${label} 질럿 러시를 감`, `빠른 ${label} 질럿 러시를 시도함`, `과감한 ${label} 질럿 러시를 감`,
       `${label}에서 질럿을 모아 나감`,
-    ])}${tail(c)}`;
+    ]))}`;
   },
   "cannon-rush": (c) => {
     const at = targetPhrase(c);
-    return `${ga(c.who)} ${at}${c.pick([
+    return `${ga(c.who)} ${at}${done(c, c.pick([
       "포토러쉬를 함", "초반 포토러쉬를 함", "빠른 포토러쉬를 시도함",
       "예상치 못한 포토러쉬를 함", "과감한 포토러쉬를 함",
-    ])}${tail(c)}`;
+    ]))}`;
   },
   recall: act([
     "아비터를 띄우고 리콜까지 씀", "리콜로 병력을 뒤로 넘김", "과감한 아비터 리콜을 씀",
@@ -232,30 +262,30 @@ const TEMPLATES: Record<string, Tpl> = {
   // 리버 드랍 — 셔틀에 리버를 태워 일꾼을 지지는 그림(요청).
   "shuttle-reaver": (c) => {
     const of = victimPhrase(c);
-    return `${ga(c.who)} ${c.pick([
+    return `${ga(c.who)} ${done(c, c.pick([
       `${of}리버 드랍을 감행함`, `리버 드랍으로 ${of}피해를 줌`, `셔틀에 리버를 태워 ${of}떨굼`,
-    ])}${tail(c)}`;
+    ]))}`;
   },
   // 하이템플러 드랍 — 스톰 한 방에 일꾼이 녹는다(요청).
   "templar-drop": (c) => {
     const of = victimPhrase(c);
-    return `${ga(c.who)} ${c.pick([
+    return `${ga(c.who)} ${done(c, c.pick([
       `${of}하이템플러 드랍을 감행함`, `템플러 드랍으로 ${of}스톰을 뿌림`, `${of}하이템플러를 떨궈 피해를 줌`,
-    ])}${tail(c)}`;
+    ]))}`;
   },
   // 러커/히드라 드랍 — 저그는 오버로드 수송 업그레이드가 곧 드랍 의도다(요청).
   "zerg-drop": (c) => {
     const kind = c.p.lurker ? "러커 드랍" : "히드라 드랍";
     const of = victimPhrase(c);
-    return `${ga(c.who)} ${c.pick([
+    return `${ga(c.who)} ${done(c, c.pick([
       `오버로드에 태운 ${kind}을 ${of}감행함`, `${kind}으로 ${of}피해를 줌`,
-    ])}${tail(c)}`;
+    ]))}`;
   },
   shuttle: (c) => {
     const of = victimPhrase(c);
-    return `${ga(c.who)} ${c.pick([
+    return `${ga(c.who)} ${done(c, c.pick([
       `${of}셔틀 드랍을 감행함`, `셔틀 견제로 ${of}피해를 줌`,
-    ])}${tail(c)}`;
+    ]))}`;
   },
   // ── 전황(replaySummary) ──
   // 진 편의 머리 문장 — 무엇으로 맞섰고 왜 안 됐나.
@@ -286,6 +316,7 @@ const TEMPLATES: Record<string, Tpl> = {
     }
     return `${neun(c.who)} ${c.pick([
       `${phrase} 맞섰지만 역부족`, `${phrase} 버텼지만 모자랐음`, `${phrase} 받아쳤지만 밀림`,
+      ...(c.p.team ? [`${phrase} 팀원과 함께 막아섰으나 역부족`, `팀원이 도와줬으나 ${phrase} 막지 못함`] : []),
     ])}`;
   },
   defense: (c) => {
@@ -298,15 +329,15 @@ const TEMPLATES: Record<string, Tpl> = {
     // 지어 놓은 건 확실하지만 그게 막아냈는지는 리플레이에 없다(지적) — 갖춘 데까지만 말한다.
     // 수가 많으면 그 자체가 그림이라 '도배'로 말한다(요청).
     if (heavy) {
-      return `${ga(c.who)} ${c.pick([
+      return `${ga(c.who)} ${done(c, c.pick([
         `본진에 ${reul(def)} 도배해서 방어함`,
         `본진을 ${def} ${n}개로 도배함`,
         `${def} ${n}개를 깔고 ${ro(unit)} 웅크림`,
-      ])}${tail(c)}`;
+      ]))}`;
     }
-    return `${ga(c.who)} ${ro(`${wa(unit)} ${def}`)} ${c.pick(
+    return `${ga(c.who)} ${ro(`${wa(unit)} ${def}`)} ${done(c, c.pick(
       ["수비를 갖춤", "방어 라인을 세움", "막아섬"]
-    )}${tail(c)}`;
+    ))}`;
   },
   expand: (c) => {
     const kind = EXPANSION_KO[str(c.p.kind)];
@@ -316,21 +347,21 @@ const TEMPLATES: Record<string, Tpl> = {
     const unit = UNIT_KO[str(c.p.unit)];
     // 확장을 크게 벌렸으면 그게 곧 생산량이다 — 무엇을 뽑았는지까지 붙여 말한다(요청).
     if (unit && n >= 6) {
-      return `${ga(c.who)} ${c.pick([
+      return `${ga(c.who)} ${done(c, c.pick([
         `${reul(kind)} ${n}개까지 늘려서 ${reul(unit)} 폭발적으로 생산함`,
         `${label}까지 늘려 ${reul(unit)} 쏟아냄`,
-      ])}${tail(c)}`;
+      ]))}`;
     }
-    return `${ga(c.who)} ${c.pick([
+    return `${ga(c.who)} ${done(c, c.pick([
       `${label}까지 늘림`, `${label}까지 돌림`, `${label}까지 벌림`,
-    ])}${tail(c)}`;
+    ]))}`;
   },
   tech: (c) => {
     const t = TECH_KO[str(c.p.tech)];
     if (!t) return null;
-    return `${ga(c.who)} ${c.pick([
+    return `${ga(c.who)} ${done(c, c.pick([
       `${t} 등의 고급 기술을 사용해 전투에 임함`, `${t}까지 꺼내 씀`, `${reul(t)} 확보해 씀`,
-    ])}${tail(c)}`;
+    ]))}`;
   },
   allin: (c) =>
     `${ga(c.who)} ${c.pick(["일꾼을 거의 안 뽑고 병력만 짜낸 올인", "일꾼을 접고 병력만 뽑은 올인"])}`,
@@ -386,32 +417,32 @@ const TEMPLATES: Record<string, Tpl> = {
     const at = targetPhrase(c);
     // 파이어뱃까지 나왔으면 그건 정찰용 몰래 배럭이 아니라 러시다(요청).
     if (c.p.firebat) {
-      return `${ga(c.who)} ${at}${c.pick([
+      return `${ga(c.who)} ${at}${done(c, c.pick([
         "몰래 배럭 파이어뱃 러쉬를 감", "몰래 배럭에서 파이어뱃을 모아 나감",
-      ])}${tail(c)}`;
+      ]))}`;
     }
-    return `${ga(c.who)} ${at}${c.pick([
+    return `${ga(c.who)} ${at}${done(c, c.pick([
       "몰래 배럭을 올림", "몰래 배럭을 시도함", "이른 시간에 몰래 배럭을 올림",
       "예상치 못한 몰래 배럭을 올림", "야심찬 몰래 배럭을 올림",
-    ])}${tail(c)}`;
+    ]))}`;
   },
   // 성큰러쉬 — 내 기지가 아닌 곳에 초반부터 성큰을 박는 올인(요청). 해처리는 펴지 않는다.
   "sunken-rush": (c) => {
     const at = targetPhrase(c);
-    return `${ga(c.who)} ${at}${c.pick([
+    return `${ga(c.who)} ${at}${done(c, c.pick([
       "성큰러쉬를 함", "초반 성큰러쉬를 함", "빠른 성큰러쉬를 시도함",
       "예상치 못한 성큰러쉬를 함", "과감한 성큰러쉬를 함",
-    ])}${tail(c)}`;
+    ]))}`;
   },
   // 센터 포토 — 가운데를 포토로 걸어 잠그는 그림(요청).
   // 센터 포토 — 수가 많으면 '도배', 적으면 그냥 깔았다는 데까지만.
   "center-photon": (c) => {
     const n = num(c.p.n, 2);
-    return `${ga(c.who)} ${c.pick(
+    return `${ga(c.who)} ${done(c, c.pick(
       n >= 6
         ? ["센터에 포토를 도배함", `센터에 포토를 ${n}개나 지음`]
         : ["센터에 포토를 깜", "센터에 포토를 지음", "센터를 포토로 걸어 잠금"]
-    )}${tail(c)}`;
+    ))}`;
   },
   // 센터 장악 — 가운데에 건물을 늘려 판을 넓힌 그림(요청).
   center: act(["센터에 건물을 늘림", "센터까지 건물을 폄"]),
@@ -430,9 +461,9 @@ const TEMPLATES: Record<string, Tpl> = {
       )}`;
     }
     const at = c.who2 ? `${c.who2}의 기지에 ` : "아군 기지에 ";
-    return `${ga(c.who)} ${at}${c.pick([
+    return `${ga(c.who)} ${at}${done(c, c.pick([
       "팩토리를 올려 탱크 방어를 받쳐줌", "팩토리를 펴고 탱크를 뽑음",
-    ])}${tail(c)}`;
+    ]))}`;
   },
   // 입구 방어(요청) — 리플레이에 지형이 없어 램프 자체는 알 수 없다. '본진 안이면서 상대
   // 쪽으로 나가 있는 자리'까지가 확실한 근거라, 문장도 딱 그만큼만 말한다.
@@ -440,28 +471,40 @@ const TEMPLATES: Record<string, Tpl> = {
     const def = DEFENSE_KO[str(c.p.b)];
     if (!def) return null;
     const n = num(c.p.n, 2);
-    return `${ga(c.who)} ${c.pick([
+    return `${ga(c.who)} ${done(c, c.pick([
       `입구 쪽에 ${def}를 ${n}개 세움`, `본진 앞을 ${def} ${n}개로 막아 세움`,
       `${def} ${n}개를 진출로 쪽에 붙임`,
-    ])}${tail(c)}`;
+    ]))}`;
   },
 
   // 커널(나이더스 커널) — 뚫어 놓고 병력을 실어 나르는 플레이(요청). 건물 하나로 확실하다.
   nydus: (c) => {
     const at = targetPhrase(c);
-    return `${ga(c.who)} ${c.pick([
+    return `${ga(c.who)} ${done(c, c.pick([
       `커널을 뚫어 ${at}병력을 실어 나름`, `${at}커널을 뚫음`,
       `예상치 못한 커널을 뚫어 ${at}병력을 넘김`,
-    ])}${tail(c)}`;
+    ]))}`;
   },
 
   // 셋방살이(요청) — 제 기지에는 건물이 거의 없고 아군 기지에 살림을 차린 것.
   lodging: (c) => {
     const host = c.who2 ? `${c.who2}의 기지에 ` : "아군 기지에 ";
-    return `${ga(c.who)} ${host}${c.pick([
+    return `${ga(c.who)} ${host}${done(c, c.pick([
       "살림을 차리고 셋방살이를 함", "눌러앉아 셋방살이를 함", "건물을 옮겨 얹혀삶",
       "과감하게 살림을 차리고 셋방살이를 함",
-    ])}${tail(c)}`;
+    ]))}`;
+  },
+
+  // 안 보이는 유닛에 대한 대비 부족(요청) — 무엇을 못 갖췄는지는 종족마다 다르다.
+  "no-detect": (c) => {
+    const u = UNIT_KO[str(c.p.unit)];
+    if (!u) return null;
+    const none = str(c.p.race) === "테란" ? "스캔도 사이언스베슬도" : "옵저버도";
+    return `${ga(c.who)} ${c.pick([
+      `${none} 없이 ${reul(u)} 상대함`,
+      `${reul(u)} 잡을 탐지 수단을 갖추지 못함`,
+      `탐지 없이 ${reul(u)} 맞이함`,
+    ])}`;
   },
 
   // 합공(요청: 초반에 누가 죽은 것 같으면 몇 명이 러시했는지 유추) — 이름을 다 부르므로
@@ -534,7 +577,9 @@ const TEMPLATES: Record<string, Tpl> = {
     const role = UNIT_ROLE[str(c.p.heroUnit)];
     const hero =
       c.who2 && heroUnit && role
-        ? `${c.who2}의 ${ro(`${heroUnit} ${role}`)} ${ROLE_TAIL[role] ?? "승기를 잡음"}`
+        ? `${c.who2}의 ${ro(`${heroUnit} ${role}`)} ${c.pick([
+            ROLE_TAIL[role] ?? "승기를 잡음", "팀의 승리를 이끔", "팀을 강력하게 보조함",
+          ])}`
         : null;
     return [head + body, ...(hero ? [hero] : [])].join(", ");
   },

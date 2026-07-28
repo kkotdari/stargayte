@@ -374,6 +374,32 @@ function sideBeats(args: {
   if (players.length === 0) return beats;
   const who = (p: ParsedReplayPlayer) => [p.rawName];
 
+  // ── 안 보이는 유닛에 대한 대비(요청) ── 상대가 러커·다크를 뽑았는데 이쪽에 탐지 수단이
+  // 하나도 없었다면, 그건 왜 밀렸는지의 큰 부분이다. 저그는 오버로드가 곧 탐지기라 뺀다.
+  // 탐지 여부는 '탐지기를 만들었나'가 아니라 '만들 건물조차 없었나'로 본다 — 스캔은
+  // 커맨드에 남지 않아서, 아카데미·옵저버토리가 없으면 확실히 없었다고 말할 수 있다.
+  if (!won) {
+    const lurker = other.combat.get("Lurker") ?? 0;
+    const dt = other.combat.get("Dark Templar") ?? 0;
+    if (lurker + dt >= 2) {
+      for (const p of players) {
+        const sg = p.signals;
+        if (!sg || p.race === "저그") continue;
+        const has = p.race === "테란"
+          ? (sg.buildingCounts["Academy"] ?? 0) + (sg.unitCounts["Science Vessel"] ?? 0)
+            + (sg.buildingCounts["Missile Turret"] ?? 0)
+          : (sg.unitCounts["Observer"] ?? 0) + (sg.buildingCounts["Observatory"] ?? 0)
+            + (sg.buildingCounts["Photon Cannon"] ?? 0);
+        if (has > 0) continue;
+        beats.push({
+          k: "no-detect", won, who: who(p), at: null, weight: 9,
+          p: { unit: lurker >= dt ? "Lurker" : "Dark Templar", race: p.race },
+        });
+        break; // 한 명만 말한다
+      }
+    }
+  }
+
   // ── 진 편의 머리 문장: 무엇으로 맞섰고 왜 안 됐나 ──
   // 시점은 그 편이 손을 놓은 때로 둔다 — 한 순간의 사건이 아니라 결말이라 맨 뒤에 놓여야 한다.
   if (!won) {
@@ -396,7 +422,8 @@ function sideBeats(args: {
     }
     if (p) {
       beats.push({
-        k: "stand", won, at, weight: 12, p,
+        // 팀전이면 혼자 버틴 게 아니다 — 문장도 "팀원이 도와줬으나"로 갈린다(요청).
+        k: "stand", won, at, weight: 12, p: { ...p, team: players.length > 1 },
         who: star ? who(star) : players.map((x) => x.rawName),
       });
     }
