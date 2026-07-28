@@ -7322,8 +7322,15 @@ html.scr-light-theme .scr-feed-comments .scr-mreq-chip-inline { color: #c07c1c; 
 }
 /* 피드 포스트에서는 이 상자 바로 아래에 댓글 줄이 온다(댓글이 없으면 절대배치로 꼬리
    여백에 얹힌다) — 그대로 두면 요약 상자와 댓글이 맞붙어 답답하다(지적). 아래 여백을
-   따로 줘서 둘 사이에 숨 쉴 자리를 만든다. */
-.scr-feed-card .scr-match-trow-summary { margin-bottom: 14px; }
+   따로 줘서 둘 사이에 숨 쉴 자리를 만든다.
+   좌우는 경기 로우의 패딩을 되물려 댓글 줄과 같은 자리(--post-pad-bx)에서 시작하게
+   한다(지적) — 로우 안에 있다 보니 혼자 더 안쪽에서 시작해 어긋나 보였다. */
+.scr-feed-card .scr-match-trow-summary {
+  /* 위는 로스터와, 아래는 댓글 줄과의 간격 — 둘 다 답답했다(지적). */
+  margin-top: 22px;
+  margin-bottom: 26px;
+  margin-inline: calc(8px - var(--feed-trow-pad-x, 8px));
+}
 
 /* 라벨(무엇인지)이 앞, 시간이 바로 옆(요청) — 라벨이 주, 시간은 흐리게 보조. */
 .scr-feed-card-time { font-weight: 600; color: var(--dim); font-variant-numeric: tabular-nums; }
@@ -7346,7 +7353,9 @@ html.scr-light-theme .scr-feed-comments .scr-mreq-chip-inline { color: #c07c1c; 
 /* 경기 로우도 동일 — 행 자신의 라이팅 글라스 패널(배경·블러·그림자·마진)을 벗기고
    내용만 피드 카드에 직접 얹는다. 날짜 헤더는 카드 헤더가 대신하므로 숨긴다. */
 /* trow가 자체 좌우 8px을 갖고 있어, 합이 --post-pad-bx가 되도록 나머지만 여기서 낸다. */
-.scr-feed-match-body { padding: 0 calc(var(--post-pad-bx) - 8px); }
+/* 경기 로우의 좌우 패딩을 변수로 둔다 — 요약 상자가 이 값을 되물려 카드의 다른 요소(댓글
+   줄)와 같은 자리에서 시작하게 하기 위해서다(지적: 시작 부분을 맞춰야 함). */
+.scr-feed-match-body { --feed-trow-pad-x: 8px; padding: 0 calc(var(--post-pad-bx) - 8px); }
 .scr-feed-match-body .scr-match-date-head { display: none; }
 .scr-feed-match-body .scr-match-list-panel-v2 .scr-match-trow, .scr-light-theme .scr-feed-match-body .scr-match-list-panel-v2 .scr-match-trow {
   background: transparent; border: none; box-shadow: none;
@@ -7356,7 +7365,10 @@ html.scr-light-theme .scr-feed-comments .scr-mreq-chip-inline { color: #c07c1c; 
 }
 /* 카드 폭이 이미 좁으니 PC의 넓은 좌우 패딩(100px)도 카드 안에선 줄인다. */
 @media (min-width: 720px) {
-  .scr-feed-match-body .scr-match-list-panel-v2 .scr-match-trow { padding-left: 24px; padding-right: 24px; }
+  .scr-feed-match-body { --feed-trow-pad-x: 24px; }
+  .scr-feed-match-body .scr-match-list-panel-v2 .scr-match-trow {
+    padding-left: var(--feed-trow-pad-x); padding-right: var(--feed-trow-pad-x);
+  }
 }
 
 /* 카드 하단 공통 댓글 영역 — 토글을 누르면 목록/입력이 그 자리에서 펼쳐진다.
@@ -7372,8 +7384,9 @@ html.scr-light-theme .scr-feed-comments .scr-mreq-chip-inline { color: #c07c1c; 
    차지하지 않고, 바디 아래 여백의 왼쪽 구석에 얹혀만 있는다(요청). 기준은 포스트
    (.scr-feed-card, position:relative). */
 .scr-feed-comments > .scr-match-notes-empty { padding: 0; }
+/* 왼쪽 끝은 요약 상자와 같은 자리(--post-pad-bx)에 맞춘다(지적: 시작 부분 정렬). */
 .scr-feed-comments > .scr-match-notes-empty .scr-feed-comment-row {
-  position: absolute; left: calc(var(--post-pad-bx) - 5px); bottom: 3px;
+  position: absolute; left: var(--post-pad-bx); bottom: 3px;
   min-height: 0; justify-content: flex-start; z-index: 2;
 }
 /* 다만 펼쳐지면 얘기가 다르다 — 절대배치라 폭이 내용만큼만 잡혀서, 입력칸이 flex:1이어도
