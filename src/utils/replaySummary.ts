@@ -128,6 +128,12 @@ const ATTRITION_PER_MIN = 14;
 
 // 팽팽한 대치로 볼 최소 길이 — 이보다 짧으면 그냥 한쪽이 밀어붙인 경기다.
 const STANDOFF_MIN_SEC = 15 * 60;
+// 서로 병력을 거의 안 보탠 채 오래 버틴 구간(late-hold) 기준.
+// 이 정도는 긴 경기여야 '한참 버텼다'는 말이 성립한다.
+const HOLD_MIN_SEC = 20 * 60;
+// 그렇게 멎은 뒤 이만큼은 이어져야, 그리고 경기의 이 비율은 돼야 한 줄 쓸 만하다.
+const HOLD_QUIET_SEC = 8 * 60;
+const HOLD_QUIET_SHARE = 0.25;
 // 양쪽이 낸 것의 비율이 이 안이면 '비등비등했다'로 본다.
 const STANDOFF_RATIO = 1.25;
 
@@ -216,87 +222,91 @@ function buildSide(players: ParsedReplayPlayer[]): Side {
 // "캐리어 골리앗 싸움이 메인인데 그걸 못잡네(안 죽고 오래 유지해서 그런듯)",
 // "오랜 시간을 유지한(다른 걸 안 뽑은) 유닛들에 대한 기록이 안 남는 게 이상하다".
 //
-// 그래서 '얼마나 오래 그 병력을 들고 있었나'를 잰다 — 수가 아니라 시간이다. 경기를 30초
-// 눈금으로 자르고, 눈금마다 유닛별로 "지금 이 병력을 갖고 있나"를 판정해 중후반 눈금 수를
-// 센다. 갖고 있다고 보는 조건은 유닛 성격에 따라 다르다:
-//   ① 잘 안 죽는 유닛(캐리어·골리앗·탱크·울트라…)은 한 번 갖추면 경기 끝까지 갖고 있다.
-//      더 안 뽑는 건 없어져서가 아니라 안 죽어서다.
-//   ② 소모성 유닛(질럿·저글링·마린…)은 계속 죽으니 계속 뽑아야 한다 — 마지막 생산 뒤
-//      GRACE_SEC이 지나면 더는 그 병력이 없다고 본다.
-// 바로 이 비대칭이 핵심이다. 예전 판은 '아무 유닛도 안 뽑은 구간'에서만 직전 조합을
-// 이어받아서, 질럿을 끝까지 몇 기씩 흘려 뽑으면 캐리어가 5분 만에 조합에서 빠졌다
-// (지적: "캐리어 한 부대 골리앗 두 부대 정도 뽑아서 정말 오래오래 썼는데 안 잡혀").
-// 수로 재는 판도 만들어 봤지만(보유량 × 시간) 초반 물량의 봉우리가 워낙 커서 다시
-// 질럿이 이겼다 — 사용자가 말한 기준은 처음부터 '수'가 아니라 '오래'였다.
-const LATE_HALF = 0.5;
-// 소모성 유닛을 마지막으로 뽑은 뒤 이만큼 지나면 그 병력은 이제 없다고 본다.
-const GRACE_SEC = 5 * 60;
-// 시간 눈금. 30초면 32분 경기가 64칸이라 유지 시간 차이가 충분히 드러난다.
-const BUCKET_SEC = 30;
-// 안 죽는 유닛이라도 이 수는 넘어야 '그 병력을 굴렸다'고 말할 수 있다 — 한 기짜리
-// 리버·아비터가 경기 내내 주력으로 잡히면 곤란하다.
-const DURABLE_MIN = 2;
+// 한때 '특정 유닛은 한 번 뽑으면 끝까지 남는다'로 풀어 봤지만 폐기했다(지적: 너무 위험한
+// 가정). 우리가 읽는 건 커맨드 스트림뿐이고 거기엔 유닛의 생사가 아예 안 적혀 있다 —
+// 어떤 병력이 살아남아 굴러다녔는지는 알 수 없다. 알 수 있는 건 '언제 무엇을 얼마나
+// 뽑았나'뿐이므로, 거기서 벗어나는 말은 하지 않는다.
+//
+// 두 가지를 바꾼다.
+//
+// ① '수' 대신 '규모'. 캐리어 한 기와 저글링 한 기를 같은 1로 세니까 잘 안 죽어 적게 뽑는
+//    유닛이 늘 밀렸다 — 인구수로 환산하면 캐리어 12기(72)가 질럿 4기(8)보다 크다는 게
+//    가정 없이 바로 나온다.
+// ② 구간을 '경기 시계'가 아니라 '생산이 멎은 지점'에 건다. 45분 경기의 20분경에 조합을
+//    갖추고 그 뒤로 안 뽑았다면, 경기 후반부(22분 이후)를 아무리 봐도 거기엔 끝자락에
+//    흘려 뽑은 질럿 몇 기밖에 없다(실제로 그래서 캐리어가 계속 밀렸다). 그 편이 병력의
+//    대부분을 채운 시점(settledFrame)을 찾아, 그 직전 한 판을 '마지막으로 갖춘 조합'으로
+//    본다.
+// 구간에 잡히는 게 너무 적으면 창을 넓혀 가며 다시 찾는다.
+const LATE_PHASES_SEC = [5 * 60, 10 * 60, Infinity];
+// 이만큼(인구수)은 뽑혔어야 그 구간을 '조합이 드러난 구간'이라 할 수 있다.
+const LATE_MIN_SUPPLY = 6;
+// 총 병력 규모의 이만큼을 채운 시점 = 그 뒤로는 거의 안 보탰다.
+const SETTLED_SHARE = 0.85;
 
-/** 잘 안 죽고 남는 유닛 — 뽑기를 멈춰도 그 병력이 그대로 유지된다고 본다. 고테크·고비용
- *  이거나 사거리·기동으로 살아남는 것들. 여기 없는 유닛(질럿·저글링·마린·벌처·뮤탈…)은
- *  소모성으로 보고 위 GRACE_SEC을 적용한다. */
-const DURABLE_UNITS = new Set([
-  "Siege Tank (Tank Mode)", "Siege Tank (Siege Mode)", "Goliath", "Science Vessel",
-  "Battlecruiser", "Valkyrie", "Wraith",
-  "Carrier", "Arbiter", "Reaver", "Scout", "Corsair", "Archon", "Dark Archon",
-  "Ultralisk", "Guardian", "Devourer", "Defiler", "Queen", "Lurker",
-]);
-
-function lateArmy(players: ParsedReplayPlayer[], end: number | null): Map<string, number> {
-  if (!end || end <= 0) return new Map();
-  // 유닛별 생산 프레임을 한 줄로 모은다(팀전이면 그 편 전원 합산).
-  const frames = new Map<string, number[]>();
+/** 그 편이 총 병력 규모(인구수)의 SETTLED_SHARE를 채운 프레임 — '조합을 다 갖춘 시점'. */
+function settledFrame(players: ParsedReplayPlayer[]): number | null {
+  const made: { at: number; w: number }[] = [];
   for (const p of players) {
     const s = p.signals;
     if (!s) continue;
     for (const [unit, fs] of Object.entries(s.unitFrames)) {
       if (NON_COMBAT_UNITS.has(unit) || WORKER_UNITS.has(unit)) continue;
       if (!UNIT_KO[unit]) continue;
-      const cur = frames.get(unit);
-      if (cur) cur.push(...fs);
-      else frames.set(unit, [...fs]);
+      for (const f of fs) made.push({ at: f, w: supplyOf(unit) });
     }
   }
-  if (frames.size === 0) return new Map();
+  if (made.length === 0) return null;
+  made.sort((a, b) => a.at - b.at);
+  const total = made.reduce((n, m) => n + m.w, 0);
+  if (total <= 0) return null;
+  let acc = 0;
+  for (const m of made) {
+    acc += m.w;
+    if (acc >= total * SETTLED_SHARE) return m.at;
+  }
+  return made[made.length - 1].at;
+}
 
-  for (const fs of frames.values()) fs.sort((a, b) => a - b);
-  const per = BUCKET_SEC / SECONDS_PER_FRAME;
-  const grace = GRACE_SEC / SECONDS_PER_FRAME;
-  const buckets = Math.max(1, Math.ceil(end / per));
-  const lateFrom = Math.floor((end * LATE_HALF) / per);
-  const held = new Map<string, number>();
-  // 눈금마다 "그 시점까지의 마지막 생산"이 필요하다 — 전체 마지막 생산으로 재면, 끝자락에
-  // 몇 기 흘려 뽑은 것만으로 그 유닛이 중후반 내내 있었던 걸로 잡힌다(실제로 그래서
-  // 질럿이 캐리어를 눌렀다). 프레임이 정렬돼 있으니 포인터로 훑는다.
-  const ptr = new Map<string, number>();
-  const seen = new Map<string, number>();
-  for (let i = 0; i < buckets; i += 1) {
-    const to = (i + 1) * per;
-    for (const [unit, fs] of frames) {
-      let k = ptr.get(unit) ?? 0;
-      while (k < fs.length && fs[k] <= to) { seen.set(unit, fs[k]); k += 1; }
-      ptr.set(unit, k);
-      const at = seen.get(unit);
-      if (at === undefined) continue; // 아직 한 기도 안 나옴
-      const durable = DURABLE_UNITS.has(unit) && fs.length >= DURABLE_MIN;
-      // 안 죽는 유닛은 한 번 갖추면 끝까지, 소모성은 마지막 생산 + 유예까지.
-      if (!durable && to - at > grace) continue;
-      if (i < lateFrom) continue;
-      held.set(unit, (held.get(unit) ?? 0) + 1);
+/** 커맨드 한 번이 만드는 인구수 — 저글링·스커지는 한 번에 두 기라 합쳐서 센다.
+ *  여기 없는 유닛은 2로 본다(대부분의 일반 전투 유닛). */
+const UNIT_SUPPLY: Record<string, number> = {
+  Marine: 1, Firebat: 1, Medic: 1, Ghost: 1,
+  Vulture: 2, Goliath: 2, "Siege Tank (Tank Mode)": 2, "Siege Tank (Siege Mode)": 2,
+  Wraith: 2, "Science Vessel": 2, Valkyrie: 3, Battlecruiser: 6,
+  Zealot: 2, Dragoon: 2, "High Templar": 2, "Dark Templar": 2,
+  Archon: 4, "Dark Archon": 4, Reaver: 4, Scout: 3, Corsair: 2, Carrier: 6, Arbiter: 4,
+  Zergling: 1, Scourge: 1, Hydralisk: 1, Lurker: 2, Mutalisk: 2,
+  Guardian: 2, Devourer: 2, Ultralisk: 4, Queen: 2, Defiler: 2, "Infested Terran": 2,
+};
+const supplyOf = (unit: string): number => UNIT_SUPPLY[unit] ?? 2;
+
+function lateArmy(players: ParsedReplayPlayer[], end: number | null): Map<string, number> {
+  if (!end || end <= 0) return new Map();
+  const settled = settledFrame(players);
+  if (settled === null) return new Map();
+  for (const phase of LATE_PHASES_SEC) {
+    // 조합을 다 갖춘 시점에서 한 판 거슬러 올라간 구간. 그 뒤(트리클 생산)도 병력이긴
+    // 하므로 끝까지 함께 센다 — 어차피 규모가 작아 순위를 뒤집지 못한다.
+    const from = phase === Infinity ? 0 : Math.max(0, settled - phase / SECONDS_PER_FRAME);
+    const out = new Map<string, number>();
+    let total = 0;
+    for (const p of players) {
+      const s = p.signals;
+      if (!s) continue;
+      for (const [unit, fs] of Object.entries(s.unitFrames)) {
+        if (NON_COMBAT_UNITS.has(unit) || WORKER_UNITS.has(unit)) continue;
+        if (!UNIT_KO[unit]) continue;
+        const n = fs.filter((f) => f >= from).length;
+        if (n <= 0) continue;
+        const w = n * supplyOf(unit);
+        out.set(unit, (out.get(unit) ?? 0) + w);
+        total += w;
+      }
     }
+    if (total >= LATE_MIN_SUPPLY) return out;
   }
-  // 유지 시간이 같으면 더 많이 뽑은 쪽을 앞에 둔다 — 호출부(mainUnits)의 정렬은 안정
-  // 정렬이라 값이 같으면 이 삽입 순서가 그대로 유지된다.
-  return new Map(
-    [...held.entries()].sort(
-      (a, b) => b[1] - a[1] || (frames.get(b[0])?.length ?? 0) - (frames.get(a[0])?.length ?? 0),
-    ),
-  );
+  return new Map();
 }
 
 function countIn(map: Map<string, number>, names: Set<string>): number {
@@ -1277,6 +1287,36 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     } as Beat;
   })();
 
+  // "45분 중 절반을 캐리어와 골리앗이 서로 노려보며 버텼는데 그게 전혀 안 나온다"(지적).
+  // 뽑은 수가 적어 주력 조합 싸움에서도 밀리니 어디에도 안 남았다 — 그 자체를 한 줄로
+  // 말해 준다.
+  //
+  // 다만 "그 병력이 살아서 굴러다녔다"고는 말할 수 없다. 커맨드 스트림에는 유닛의 생사가
+  // 안 적혀 있어서 무엇이 남아 있었는지는 알 방법이 없다(지적). 그래서 확인되는 사실만
+  // 쓴다 — ① 양쪽 다 어느 시점 이후로 병력을 거의 안 보탰고, ② 그러고도 경기가 한참
+  // 이어졌으며, ③ 그 직전에 각자 마지막으로 갖춘 게 무엇이었나.
+  const lateHold = (() => {
+    if (!totalFrames || sec < HOLD_MIN_SEC) return null;
+    // '조합을 다 갖춘 시점' — lateArmy와 같은 기준을 쓴다.
+    const a = settledFrame(winnerPlayers);
+    const b = settledFrame(loserPlayers);
+    if (a === null || b === null) return null;
+    // 둘 다 멎은 뒤부터가 '서로 보태지 않고 버틴' 구간이다.
+    const from = Math.max(a, b);
+    const quietSec = (totalFrames - from) * SECONDS_PER_FRAME;
+    if (quietSec < HOLD_QUIET_SEC || quietSec < sec * HOLD_QUIET_SHARE) return null;
+    // 각자 마지막으로 갖춘 조합의 대표 유닛 하나씩.
+    const mine = nameableUnits(mainUnits(winner.combat, lateArmy(winnerPlayers, totalFrames)))[0];
+    const theirs = nameableUnits(mainUnits(loser.combat, lateArmy(loserPlayers, totalFrames)))[0];
+    if (!mine || !theirs || mine === theirs) return null;
+    return {
+      k: "late-hold", won: true, at: from, weight: 15,
+      who: winnerPlayers.map((p) => p.rawName),
+      whom: loserPlayers.map((p) => p.rawName),
+      p: { min: minutes(quietSec), mine, theirs, duel: duel === true },
+    } as Beat;
+  })();
+
   // 병력을 늦게까지 안 뽑고 자원만 먼저 챙긴 것 — '째기'(요청). 결과가 갈리는 만큼
   // 두 갈래로 말한다: 그 사이에 얻어맞았으면 "무리하게 째다가 …의 공격에 무너짐",
   // 무사히 넘겼으면 "성공적으로 째서 … 물량이 폭발함".
@@ -1361,6 +1401,7 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
 
   const pool: Beat[] = [
     ...(standoff ? [standoff] : []),
+    ...(lateHold ? [lateHold] : []),
     ...(handsBeat ? [handsBeat] : []),
     ...(attritionBeat ? [attritionBeat] : []),
     ...(breached ? [breached] : []),

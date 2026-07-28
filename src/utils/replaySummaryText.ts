@@ -1137,6 +1137,26 @@ const TEMPLATES: Record<string, Tpl> = {
     ]);
   },
 
+  // 양쪽 다 병력을 거의 보태지 않은 채 한참 이어진 구간(요청: "45분 중 절반을 캐리어와
+  // 골리앗이 서로 노려보며 버텼는데 그게 전혀 안 나온다"). 뽑은 수가 적어 주력 조합
+  // 싸움에서 밀리는 조합이라도 이 한 줄로는 남는다.
+  //
+  // 문장에 "그 병력이 살아 있었다"는 뜻이 새어 들어가지 않게 조심한다 — 리플레이에는
+  // 유닛의 생사가 안 적혀 있어서 무엇이 남아 있었는지는 알 수 없다(지적). '갖춰 놓고
+  // 더 보태지 않았다'까지만 말한다.
+  "late-hold": (c) => {
+    const m = num(c.p.min);
+    const mine = UNIT_KO[str(c.p.mine)] ?? "";
+    const theirs = UNIT_KO[str(c.p.theirs)] ?? "";
+    if (m <= 0 || !mine || !theirs) return null;
+    const both = c.p.duel === true ? "둘 다" : "양쪽 다";
+    return c.pick([
+      `${both} ${reul(mine)} ${wa(theirs)} 갖춰 놓은 뒤로는 병력을 더 보태지 않은 채 ${m}분을 버팀`,
+      `${ro(`${mine} 대 ${theirs}`)} 자리를 잡은 뒤 ${both} 생산을 접다시피 하고 ${m}분을 끌었음`,
+      `${m}분 동안 ${both} 병력을 거의 안 보탠 채 ${mine} 대 ${theirs} 구도로 버팀`,
+    ]);
+  },
+
   // 시야(요청) — 오버로드·옵저버를 뿌려 판을 읽는 플레이.
   vision: (c) => {
     const u = UNIT_KO[str(c.p.unit)];
