@@ -6775,6 +6775,23 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   );
 }
 .scr-feed-card-head-title > svg { flex-shrink: 0; }
+/* 다크 테마에서는 띠를 흰색으로 하고 그 위 글자를 뒤집는다(요청) — 검정 띠는 바탕과
+   구별이 잘 안 됐다. 제목이 놓이는 앞구간(0~210px)은 알파를 그대로 유지하고 그 뒤에서만
+   사라지게 한다 — 글자가 띠 밖으로 나가면 어두운 글자가 어두운 바탕에 얹혀 안 보인다.
+   참여 인원(--dim)까지 함께 뒤집어야 한 줄이 따로 놀지 않는다. */
+html:not(.scr-light-theme) .scr-feed-card-head-title {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.92) 0,
+    rgba(255, 255, 255, 0.92) 210px,
+    rgba(255, 255, 255, 0) 360px
+  );
+  color: #10151a;
+}
+html:not(.scr-light-theme) .scr-feed-card-head-title .scr-feed-card-label { color: #10151a; }
+html:not(.scr-light-theme) .scr-feed-card-head-title .scr-feed-stack-sum-count {
+  color: rgba(16, 21, 26, 0.62);
+}
 /* 경기 케밥을 포스트 우상단으로(요청 — 이제 오른쪽에 타임라인이 없어 안전 공간 불필요).
    trow의 position:relative가 절대배치를 가로채지 않게 피드 안에서는 static으로. */
 .scr-feed-match-body .scr-match-trow { position: static; }
