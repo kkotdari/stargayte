@@ -1,4 +1,4 @@
-import type { ParsedReplayPlayer, ReplayPlayerSignals } from "./replayParser";
+import type { BuildPos, ParsedReplayPlayer, ReplayPlayerSignals } from "./replayParser";
 
 // 리플레이 커맨드 스트림에서 '전술'을 짚어낸다(요청: 9드론 저글링 러시 / 투게이트 질럿 /
 // 초반 포토 러시 / 몰래 배럭 / 목동 저그 / 바이오닉 / 발키리 오버로드 사냥 / 아비터 리콜 /
@@ -37,12 +37,71 @@ export interface Tactic {
 
 
 
+/** 건물을 지은 자리가 내 본진인지, 가운데인지, 상대 쪽인지. */
+type Zone = "home" | "mid" | "enemy";
+
+function dist(a: { x: number; y: number }, b: { x: number; y: number }): number {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+/** 점들의 메도이드(다른 점들까지의 거리 합이 가장 작은 점) = 그 사람의 본진.
+ *  평균이 아니라 메도이드를 쓰는 이유는, 몰래 배럭·앞마당 포토처럼 멀리 나간 건물 한두
+ *  채가 평균을 통째로 끌고 가버리기 때문이다. 건물 대부분은 본진에 몰려 있으므로
+ *  메도이드는 그 덩어리 안에 남는다. */
+function medoid(pts: { x: number; y: number }[]): { x: number; y: number } | null {
+  if (pts.length === 0) return null;
+  let best = pts[0];
+  let bestSum = Infinity;
+  for (const a of pts) {
+    let sum = 0;
+    for (const b of pts) sum += dist(a, b);
+    if (sum < bestSum) { bestSum = sum; best = a; }
+  }
+  return best;
+}
+
+// 본진을 믿고 쓰려면 건물이 이만큼은 있어야 한다 — 두 채뿐이면 어느 쪽이 본진인지 모른다.
+const MIN_BUILDINGS_FOR_HOME = 4;
+// 내 본진 ↔ 가장 가까운 상대 본진 거리를 1로 뒀을 때의 경계.
+const HOME_RADIUS = 0.33;
+const ENEMY_RADIUS = 0.35;
+
+/** 이 사람의 건물 좌표를 구역으로 바꿔 주는 함수. 좌표를 못 읽었거나(screp이 Pos를 안 줌)
+ *  본진을 못 정하면 null — 자리 기반 전술(몰래 배럭·센터 포토)은 그냥 안 나온다. */
+function zoneResolver(
+  me: ParsedReplayPlayer,
+  foes: ParsedReplayPlayer[]
+): ((b: BuildPos) => Zone) | null {
+  const mine = me.signals?.buildPositions ?? [];
+  if (mine.length < MIN_BUILDINGS_FOR_HOME) return null;
+  const home = medoid(mine);
+  if (!home) return null;
+  const foeHomes = foes
+    .map((f) => {
+      const pts = f.signals?.buildPositions ?? [];
+      return pts.length >= MIN_BUILDINGS_FOR_HOME ? medoid(pts) : null;
+    })
+    .filter((h): h is { x: number; y: number } => h !== null);
+  if (foeHomes.length === 0) return null;
+  // 기준 거리는 '가장 가까운 상대까지' — 팀전에서 멀리 있는 상대까지 재면 구역이 다 뭉개진다.
+  const base = Math.min(...foeHomes.map((h) => dist(home, h)));
+  if (!(base > 0)) return null;
+  return (b) => {
+    const toFoe = Math.min(...foeHomes.map((h) => dist(b, h)));
+    if (toFoe < base * ENEMY_RADIUS) return "enemy";
+    if (dist(b, home) < base * HOME_RADIUS) return "home";
+    return "mid";
+  };
+}
+
 interface Ctx {
   /** 리플레이 원본 게임 아이디 — 문장에 쓸 이름은 볼 때 다시 푼다. */
   rawName: string;
   s: ReplayPlayerSignals;
   race: string;
   foeRaces: string[];
+  /** 이 사람이 지은 건물의 자리를 구역으로 바꿔 준다. 좌표를 못 읽으면 null. */
+  zone: ((b: BuildPos) => Zone) | null;
   /** 1:1이면 상대 한 사람 — 팀전은 누가 당했는지 커맨드만으로 알 수 없어 null이다.
    *  당한 쪽을 말할 땐 반드시 한 쪽도 함께 말한다(요청). */
   soleFoe: string | null;
@@ -52,7 +111,7 @@ const sec = (frame: number) => frame * SECONDS_PER_FRAME;
 
 
 function detectFor(c: Ctx): Tactic[] {
-  const { rawName, s, race, foeRaces, soleFoe } = c;
+  const { rawName, s, race, foeRaces, soleFoe, zone } = c;
   const out: Tactic[] = [];
   const u = (n: string) => s.unitCounts[n] ?? 0;
   const firstU = (n: string): number | null => s.firstUnitFrame[n] ?? null;
@@ -64,6 +123,21 @@ function detectFor(c: Ctx): Tactic[] {
   const target = soleFoe ? { whom: soleFoe } : {};
   /** 드랍은 수송선을 뽑은 것만으로는 알 수 없다 — 실제로 내린 커맨드가 있어야 드랍이다. */
   const dropped = s.unloadCount >= 2;
+  /** 그 구역에 지은 건물들(좌표를 못 읽으면 항상 빈 배열). */
+  const inZone = (z: Zone, unit?: string, beforeSec?: number): BuildPos[] => {
+    if (!zone) return [];
+    return s.buildPositions.filter(
+      (p) =>
+        (unit === undefined || p.unit === unit) &&
+        (beforeSec === undefined || (p.frame !== null && sec(p.frame) < beforeSec)) &&
+        zone(p) === z
+    );
+  };
+  /** 건물 묶음에서 가장 이른 프레임 — 그 전술이 드러난 시점. */
+  const firstOf = (b: BuildPos[]): number | null => {
+    const f = b.map((x) => x.frame).filter((x): x is number => x !== null);
+    return f.length > 0 ? Math.min(...f) : null;
+  };
 
   // ── 저그 ──
   if (race === "저그") {
@@ -117,6 +191,17 @@ function detectFor(c: Ctx): Tactic[] {
         who,
       });
     }
+    // 성큰 러쉬(요청) — 상대 코앞에 해처리를 펴고 크립을 깔아 성큰을 박는 초반 올인.
+    // 같은 건물이라도 '어디에' 지었나가 전부라서, 자리를 봐야만 방어용 성큰과 갈린다.
+    const sunkenRush = [
+      ...inZone("enemy", "Hatchery", 420), ...inZone("enemy", "Creep Colony", 420),
+      ...inZone("enemy", "Sunken Colony", 420),
+    ];
+    if (sunkenRush.length > 0) {
+      out.push({
+        key: "sunken-rush", ...target, weight: 13, at: firstOf(sunkenRush), who,
+      });
+    }
     if (u("Lurker") >= 5) {
       out.push({
         key: "lurker", weight: 7, at: firstU("Lurker"),
@@ -145,6 +230,11 @@ function detectFor(c: Ctx): Tactic[] {
         who,
       });
     }
+    // 몰래 배럭 — 본진에서 한참 떨어진 자리에 올린 초반 배럭. 자리를 안 보면 그냥 배럭이다.
+    const sneaky = [...inZone("enemy", "Barracks", 300), ...inZone("mid", "Barracks", 300)];
+    if (sneaky.length > 0) {
+      out.push({ key: "sneak-rax", ...target, weight: 12, at: firstOf(sneaky), who });
+    }
     if (dropped && u("Dropship") >= 2) {
       out.push({
         key: "dropship", ...target, weight: 7, at: s.firstUnloadFrame,
@@ -172,7 +262,9 @@ function detectFor(c: Ctx): Tactic[] {
     const forge = firstB("Forge");
     const gate = firstB("Gateway");
     const forgeFirst = forge !== null && (gate === null || forge < gate);
-    const cannonRush = cannon !== null && sec(cannon) < 330 && forgeFirst;
+    // 상대/가운데 쪽에 박은 포토도 캐논러시의 확실한 근거다 — 방어용 포토는 본진에 짓는다.
+    const forward = [...inZone("enemy", "Photon Cannon", 360), ...inZone("mid", "Photon Cannon", 360)];
+    const cannonRush = cannon !== null && sec(cannon) < 330 && (forgeFirst || forward.length > 0);
     if (cannonRush) {
       out.push({
         key: "cannon-rush", ...target, weight: 11, at: cannon,
@@ -205,6 +297,17 @@ function detectFor(c: Ctx): Tactic[] {
     }
   }
 
+  // ── 종족 공통(자리 기반) ── 어느 종족이든 '가운데를 먹었나'는 자리로만 알 수 있다.
+  const midCannons = inZone("mid", "Photon Cannon");
+  if (midCannons.length >= 2) {
+    out.push({ key: "center-photon", ...target, weight: 10, at: firstOf(midCannons), who });
+  } else {
+    const mid = inZone("mid");
+    if (mid.length >= 3) {
+      out.push({ key: "center", weight: 8, at: firstOf(mid), who });
+    }
+  }
+
   // ── 채팅(요청) ── GG 선언은 승부가 어디서 끝났는지 알려주는 유일한 '사람의 말'이다.
   // 오타·장난까지 잡으려 들면 오탐이 늘어서, 통용되는 항복 표현만 좁게 본다.
   const gg = s.chats.find((c) => /^\s*(g{2,}|ㅈ{2,}|지지|잘{1,2}했|잘하시네)/i.test(c.text));
@@ -231,7 +334,10 @@ export function scanTactics({ sidePlayers, foePlayers }: TacticScanInput): Tacti
   for (const p of sidePlayers) {
     if (!p.signals) continue;
     all.push(
-      ...detectFor({ rawName: p.rawName, s: p.signals, race: p.race, foeRaces, soleFoe })
+      ...detectFor({
+        rawName: p.rawName, s: p.signals, race: p.race, foeRaces, soleFoe,
+        zone: zoneResolver(p, foePlayers),
+      })
     );
   }
   const seen = new Set<string>();
