@@ -7348,9 +7348,9 @@ html.scr-light-theme .scr-feed-comments .scr-mreq-chip-inline { color: #c07c1c; 
 .scr-sum-team2 { color: #fac9ce; }
 .scr-light-theme .scr-sum-team1 { color: #1d4ed8; }
 .scr-light-theme .scr-sum-team2 { color: #dc2626; }
-/* 포스트(.scr-post)는 다크에서도 흰 종이라 라이트 쪽 색을 쓴다. */
-.scr-post .scr-sum-team1 { color: #1d4ed8; }
-.scr-post .scr-sum-team2 { color: #dc2626; }
+/* 한때 "포스트는 다크에서도 흰 종이"라고 보고 .scr-post에 라이트 색을 박아 뒀는데,
+   지금 포스트는 다크에서 검은 카드다(측정: 카드 글자색 rgb(245,246,247)) — 그 규칙이
+   늘 이겨서 다크에서 팀 색이 아예 안 먹혔다(지적). 테마로만 가른다. */
 
 
 /* 라벨(무엇인지)이 앞, 시간이 바로 옆(요청) — 라벨이 주, 시간은 흐리게 보조. */
