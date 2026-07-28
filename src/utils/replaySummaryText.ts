@@ -170,7 +170,7 @@ const TEMPLATES: Record<string, Tpl> = {
     const build = n > 0 ? `${n}드론 저글링 러시` : "초반 저글링 러시";
     const at = targetPhrase(c);
     return `${ga(c.who)} ${at}${c.pick([
-      `${build}를 감`, `빠른 ${build}를 감`, `${build}로 일찌감치 달림`,
+      `${build}를 감`, `빠른 ${build}를 시도함`, `${build}를 준비함`,
     ])}${tail(c)}`;
   },
   moka: act([
@@ -209,13 +209,13 @@ const TEMPLATES: Record<string, Tpl> = {
     const label = g === 2 ? "투게이트" : `${g}게이트`;
     const at = targetPhrase(c);
     return `${ga(c.who)} ${at}${c.pick([
-      `${label} 질럿 러시를 감`, `빠른 ${label} 질럿 러시를 감`, `${label}에서 질럿을 모아 달림`,
+      `${label} 질럿 러시를 감`, `빠른 ${label} 질럿 러시를 시도함`, `${label}에서 질럿을 모아 나감`,
     ])}${tail(c)}`;
   },
   "cannon-rush": (c) => {
     const at = targetPhrase(c);
     return `${ga(c.who)} ${at}${c.pick([
-      "초반 포토러쉬를 감", "빠른 포토러쉬를 감", "일찌감치 포토러쉬를 감",
+      "초반 포토러쉬를 감", "빠른 포토러쉬를 시도함", "일찌감치 포토를 박기 시작함",
     ])}${tail(c)}`;
   },
   recall: act([
@@ -225,14 +225,14 @@ const TEMPLATES: Record<string, Tpl> = {
   "shuttle-reaver": (c) => {
     const of = victimPhrase(c);
     return `${ga(c.who)} ${c.pick([
-      `${of}리버를 내림`, `리버 드랍을 ${of}여러 번 들이밀음`, `셔틀에 리버를 태워 ${of}드랍을 감`,
+      `${of}리버를 내림`, `리버 드랍을 ${of}여러 번 들이밀음`, `셔틀에 리버를 태워 ${of}드랍을 시도함`,
     ])}${tail(c)}`;
   },
   // 하이템플러 드랍 — 스톰 한 방에 일꾼이 녹는다(요청).
   "templar-drop": (c) => {
     const of = victimPhrase(c);
     return `${ga(c.who)} ${c.pick([
-      `${of}하이템플러를 내림`, `템플러 드랍을 ${of}감`, `셔틀에 하이템플러를 태워 ${of}드랍을 감`,
+      `${of}하이템플러를 내림`, `템플러 드랍을 ${of}시도함`, `셔틀에 하이템플러를 태워 ${of}드랍을 감`,
     ])}${tail(c)}`;
   },
   // 러커/히드라 드랍 — 저그는 오버로드 수송 업그레이드가 곧 드랍 의도다(요청).
@@ -362,18 +362,18 @@ const TEMPLATES: Record<string, Tpl> = {
     // 파이어뱃까지 나왔으면 그건 정찰용 몰래 배럭이 아니라 러시다(요청).
     if (c.p.firebat) {
       return `${ga(c.who)} ${at}${c.pick([
-        "몰래 배럭 파이어뱃 러쉬를 감", "몰래 배럭에서 파이어뱃을 뽑아 달림",
+        "몰래 배럭 파이어뱃 러쉬를 감", "몰래 배럭에서 파이어뱃을 모아 나감",
       ])}${tail(c)}`;
     }
     return `${ga(c.who)} ${at}${c.pick([
-      "몰래 배럭을 올림", "몰래 배럭을 감", "빠른 몰래 배럭을 올림",
+      "몰래 배럭을 올림", "몰래 배럭을 시도함", "이른 시간에 몰래 배럭을 올림",
     ])}${tail(c)}`;
   },
   // 성큰러쉬 — 내 기지가 아닌 곳에 초반부터 성큰을 박는 올인(요청). 해처리는 펴지 않는다.
   "sunken-rush": (c) => {
     const at = targetPhrase(c);
     return `${ga(c.who)} ${at}${c.pick([
-      "성큰러쉬를 감", "빠른 성큰러쉬를 감", "일찌감치 성큰러쉬를 감",
+      "성큰러쉬를 감", "빠른 성큰러쉬를 시도함", "일찌감치 성큰을 박기 시작함",
     ])}${tail(c)}`;
   },
   // 센터 포토 — 가운데를 포토로 걸어 잠그는 그림(요청).
@@ -437,9 +437,9 @@ const TEMPLATES: Record<string, Tpl> = {
     const whom = c.whom ? `${reul(c.whom)} ` : "";
     return `${ga(c.who)} ${cnt} ${c.pick(
       c.won
-        ? [`초반부터 몰아쳐 ${whom}먼저 무너뜨림`, `달려들어 ${whom}일찌감치 정리함`,
+        ? [`초반부터 몰아쳐 ${whom}먼저 무너뜨림`, `함께 붙어 ${whom}일찌감치 정리함`,
            `초반에 달라붙어 ${whom}그대로 지워버림`]
-        : [`초반부터 몰아쳐 ${whom}잡았지만 판을 뒤집지 못함`, `달려들어 ${whom}먼저 끊고도 끝내 밀림`]
+        : [`초반부터 몰아쳐 ${whom}잡았지만 판을 뒤집지 못함`, `함께 붙어 ${whom}먼저 끊고도 끝내 밀림`]
     )}`;
   },
 
@@ -460,10 +460,11 @@ const TEMPLATES: Record<string, Tpl> = {
   // ── 맺음말 ──
   result: (c) => {
     const phrase = c.p.units ? unitPhrase(list(c.p.units)) : "";
-    // 앞 문장에서 같은 사람이 같은 유닛으로 한 일을 말했으면 여기서 이어받는다(요청).
-    const cont = c.p.cont ? c.pick(["계속해서 ", "그대로 이어서 "]) : "";
-    const p = phrase ? `${cont}${phrase} ` : cont;
     const mode = str(c.p.mode);
+    // 앞 문장에서 같은 사람이 같은 유닛으로 한 일을 말했으면 여기서 이어받는다(요청).
+    // 초반에 끝난 경기는 빼둔다 — "초반 계속해서"는 말이 겹친다.
+    const cont = c.p.cont && mode !== "rush" ? c.pick(["계속해서 ", "그대로 이어서 "]) : "";
+    const p = phrase ? `${cont}${phrase} ` : cont;
     const lead = str(c.p.lead);
     const min = num(c.p.leadMin);
     let head = "";
