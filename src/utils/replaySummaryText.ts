@@ -419,22 +419,33 @@ function toBut(action: string): string | null {
   return c && c.endsWith("으나") ? `${c.slice(0, -2)}지만` : null;
 }
 
+/** 문장 첫머리의 "(1팀의 )이름+조사 "를 잡는 정규식.
+ *
+ *  이름을 정규식으로 추측하지 않고 그대로 박아 넣는 게 핵심이다. 예전엔 '공백 아닌 덩어리
+ *  + 조사 + 공백'으로 찾았는데, 띄어쓰기가 있는 닉네임은 그 한가운데가 걸렸다 — 실제로
+ *  "홍탑(최고가 되고"가 "홍탑(최고는 되고"로 이름 자체가 망가졌고(지적), 이름이 깨지면
+ *  뒤에서 이름을 찾아 팀 색을 입히는 일까지 통째로 실패했다. */
+const subjectHead = (name: string, particles: string): RegExp =>
+  new RegExp(`^(\\d+팀의 )?${escapeRe(name)}(?:${particles})(\\s)`);
+
 /** 문장 첫머리의 주어에 '도'를 붙인다 — "제롬이 " → "제롬도 ". 전황이 뒤집히면서
  *  주체까지 다른 팀으로 넘어갈 때, 앞말을 받아 "…했지만 제롬도 …했다"로 읽히게 한다(요청). */
-function toAlsoSubject(sentence: string): string {
+function toAlsoSubject(sentence: string, name: string): string {
+  if (!name) return sentence;
   return sentence.replace(
-    /^(\d+팀의 )?([^\s]+?)(?:가|이|는|은)(\s)/,
-    (_m, team: string | undefined, name: string, sp: string) => `${team ?? ""}${name}도${sp}`,
+    subjectHead(name, "가|이|는|은"),
+    (_m, team: string | undefined, sp: string) => `${team ?? ""}${name}도${sp}`,
   );
 }
 
 /** 문장 첫머리의 주격("브래드가")을 주제격("브래드는")으로 바꾼다 — 두 사람의 일을 한
  *  문장에 나란히 놓을 때는 "브래드는 …했고 정구는 …했음"이라야 대비가 읽힌다(요청). */
-function toTopic(sentence: string): string {
+function toTopic(sentence: string, name: string): string {
+  if (!name) return sentence;
   // 앞에 "1팀의 "처럼 팀 표시가 붙어 있어도 그 뒤의 이름을 주제격으로 바꾼다(요청).
   return sentence.replace(
-    /^(\d+팀의 )?([^\s]+?)(?:가|이)(\s)/,
-    (_m, team: string | undefined, name: string, sp: string) => `${team ?? ""}${neun(name)}${sp}`,
+    subjectHead(name, "가|이"),
+    (_m, team: string | undefined, sp: string) => `${team ?? ""}${neun(name)}${sp}`,
   );
 }
 
@@ -1959,9 +1970,9 @@ export function renderReplaySummary(
     }
     if (linkWord) {
       // 대비를 뜻하는 이음말 뒤의 주어는 주제격이라야 읽힌다(지적: "반면 Rex는 …").
-      const body = CONTRAST_LINKS.has(linkWord) ? toTopic(text) : text;
+      const body = CONTRAST_LINKS.has(linkWord) ? toTopic(text, baseWho) : text;
       // "2팀의 netan의 …"은 '의'가 겹쳐 어색하다(지적) — 뒤 이름이 소유격이면 "2팀 netan의".
-      const tag = teamTag && /^[^\s]+의\s/.test(body) ? teamTag.replace("팀의 ", "팀 ") : teamTag;
+      const tag = teamTag && body.startsWith(`${baseWho}의 `) ? teamTag.replace("팀의 ", "팀 ") : teamTag;
       text = `${linkWord} ${tag}${body}`;
     }
     // 한 문장에 반전이 두 번 들어가면 어색하다(지적: "…무너졌지만 …갔으나 막힘").
@@ -2049,7 +2060,7 @@ export function renderReplaySummary(
         : joinPrev && out.length > 0 && chainCount === 0 && prevLedBy(lastBaseWho)
           // 전황이 갈린 두 일을 '-고'로 이으면 나란히 일어난 것처럼 읽힌다(지적) —
           // 반대되는 정황은 '-지만'으로 이어야 대비가 산다.
-          ? (flipped ? toBut(toTopic(prevLine)) : toAnd(toTopic(prevLine)))
+          ? (flipped ? toBut(toTopic(prevLine, lastBaseWho)) : toAnd(toTopic(prevLine, lastBaseWho)))
           : null;
     if (backUp && backHead) {
       // 이름은 남긴다 — 앞 문장의 주어는 때린 쪽이라, 이름을 빼면 그 사람이 한 일로 읽힌다.
@@ -2107,9 +2118,9 @@ export function renderReplaySummary(
       out[out.length - 1] = afterCause ? `${chained} ${body}` : `${chained}, ${body}`;
     }
     else if (chained && (endHead || flipJoin)) {
-      out[out.length - 1] = `${chained} ${alsoLead}${alsoSubject ? toAlsoSubject(text) : text}`;
+      out[out.length - 1] = `${chained} ${alsoLead}${alsoSubject ? toAlsoSubject(text, baseWho) : text}`;
     } else if (chained) {
-      out[out.length - 1] = `${chained} ${alsoLead}${alsoSubject ? toAlsoSubject(text) : toTopic(text)}`;
+      out[out.length - 1] = `${chained} ${alsoLead}${alsoSubject ? toAlsoSubject(text, baseWho) : toTopic(text, baseWho)}`;
     }
     else out.push(text);
     chainCount = chained ? chainCount + 1 : 0;

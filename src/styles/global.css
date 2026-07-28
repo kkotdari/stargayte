@@ -5136,9 +5136,10 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
   /* 마우스는 CSS로 그대로 잡는다 — 정확히 겨냥해 누르므로 문제가 없었던 경로다.
      touch-action:none은 트랙패드 관성 스크롤이 드래그와 겹치지 않게. */
   .scr-scroll-timeline-thumb { pointer-events: auto; touch-action: none; cursor: grab; }
-  /* 12px 점은 겨냥하기 작아 보이지 않는 여유 히트 영역을 덧댄다. */
+  /* 12px 점은 겨냥하기 작아 보이지 않는 여유 히트 영역을 덧댄다(요청: 좀 더 크게 —
+     터치 쪽 여유(TOUCH_PAD)를 키운 것과 같은 결). */
   .scr-scroll-timeline-thumb::after {
-    content: ""; position: absolute; inset: -8px; border-radius: 50%;
+    content: ""; position: absolute; inset: -14px; border-radius: 50%;
   }
 }
 /* "오늘" 눈금 — 트랙 위 오늘 위치에 짧은 가로선 + 라벨. 썸이 지나가며 여기서 딱 걸린다.
