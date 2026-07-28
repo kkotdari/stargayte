@@ -94,6 +94,17 @@ const GANG_RUSH_SEC = 9 * 60;
 // 합공에 넣으면 숫자가 거짓말이 된다.
 const GANG_MIN_UNITS = 8;
 
+// 병력을 이때까지도 안 뽑고 있었으면 '쨌다'고 본다(요청).
+const GREEDY_SEC = 7 * 60;
+// 그래도 경기 앞쪽이어야 째기다 — 후반에 첫 병력이 나오는 건 그냥 그런 경기다.
+const GREEDY_MAX_RATIO = 0.5;
+// 이만큼은 뽑아야 '늦게 시작했다'고 말할 거리가 된다(관전 슬롯·즉시 탈락 제외).
+const GREEDY_MIN_UNITS = 6;
+// 첫 병력 뒤 이 안에 생산이 꺾였으면 째다가 얻어맞은 것이다.
+const GREEDY_PUNISH_SEC = 4 * 60;
+// 째고 나서 이만큼 뽑아냈으면 '물량이 폭발했다'고 말할 만하다.
+const GREEDY_PAYOFF_UNITS = 30;
+
 // 팽팽한 대치로 볼 최소 길이 — 이보다 짧으면 그냥 한쪽이 밀어붙인 경기다.
 const STANDOFF_MIN_SEC = 15 * 60;
 // 양쪽이 낸 것의 비율이 이 안이면 '비등비등했다'로 본다.
@@ -118,8 +129,9 @@ const DAMAGE_WINDOW_SEC = 3 * 60;
 // 초반 올인이 막히고 역으로 무너졌는지 볼 시간 창.
 const BACKFIRE_SEC = 5 * 60;
 // 역풍으로 읽을 수들 — 실패하면 그대로 손해가 되는 초반 올인만.
+// 질럿 러시는 정석이라 실패해도 '도박이 어긋난 것'이 아니다(지적) — 여기서 뺀다.
 const BACKFIRE_KEYS = new Set([
-  "zling-rush", "zealot-rush", "cannon-rush", "sunken-rush", "sneak-rax",
+  "zling-rush", "cannon-rush", "sunken-rush", "sneak-rax",
 ]);
 // '들이친 수'만 피해와 이어 붙인다 — 센터 장악·시야·방어처럼 때리는 수가 아닌 것은 뺀다.
 const RAID_KEYS = new Set([
@@ -336,7 +348,7 @@ const RAID_MERGE_SEC = 3 * 60;
 const CLUSTER_SEC = 2 * 60;
 
 /** 한 사람이 여러 수에 잇달아 무너진 걸 두 문장으로 말하지 않는다(지적) — "Rex의 9드론
- *  저글링 러쉬와 제롬의 4게이트 질럿 러쉬에 군범이 2분 만에 무너짐"으로 묶는다. */
+ *  저글링 러시와 제롬의 4게이트 질럿 러시에 군범이 2분 만에 무너짐"으로 묶는다. */
 function mergeRaids(list: Beat[]): Beat[] {
   const raids = list.filter((b) => b.k === "raid-damage" && (b.whom?.length ?? 0) > 0);
   if (raids.length <= 1) return list;
@@ -367,7 +379,7 @@ function mergeRaids(list: Beat[]): Beat[] {
 
 /** 같은 수를 비슷한 때에 서로 갔는데 한쪽만 통했다면, 그건 두 문장이 아니라 한 문장이다
  *  (지적: 파괴됐는데 그 다음에 러시를 갔다니 이상하다) — "제롬과 군범이 3게이트 질럿
- *  러쉬를 갔는데 제롬은 막히고 군범은 제롬의 기지를 반파함". */
+ *  러시를 갔는데 제롬은 막히고 군범은 제롬의 기지를 반파함". */
 function mergeDuelRush(list: Beat[]): Beat[] {
   const raids = list.filter(
     (b) => b.k === "raid-damage" && b.p?.k && (b.whom?.length ?? 0) > 0 && !b.p?.ks,
@@ -419,8 +431,8 @@ function mergeMutual(list: Beat[]): Beat[] {
     }
     const ats = [w.at, l.at].filter((x): x is number => x !== null && x !== undefined);
     const { whom: _whom, who2: _who2, ...rest } = w;
-    // '서로'는 정말 서로에게 한 것일 때만 쓴다(지적) — 자리로 상대를 짚어 낸 전술(포토러쉬·
-    // 성큰러쉬·몰래 배럭)은 양쪽 다 대상이 확실하므로 '서로'가 맞지만, 질럿 러시처럼
+    // '서로'는 정말 서로에게 한 것일 때만 쓴다(지적) — 자리로 상대를 짚어 낸 전술(포토러시·
+    // 성큰러시·몰래 배럭)은 양쪽 다 대상이 확실하므로 '서로'가 맞지만, 질럿 러시처럼
     // 유닛 수로만 잡은 건 누구를 향했는지 모른다. 그런 건 '양 팀' 쪽으로 말한다.
     const eachOther = (w.whom?.length ?? 0) > 0 && (l.whom?.length ?? 0) > 0;
     out.push({
@@ -782,6 +794,10 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   const lateShare = lateTotal > 0 ? winner.thirds[2] / lateTotal : null;
   const pressedEarly = earlyShare !== null && earlyTotal >= 40 && earlyShare < 0.42;
   const comeback = pressedEarly && lateShare !== null && lateTotal >= 40 && lateShare > 0.55;
+  // 전반과 후반의 전황이 아예 뒤바뀐 경기는 그 자체가 이야기다(요청: 역전승을 강조).
+  const bigSwing =
+    comeback && earlyShare !== null && lateShare !== null
+    && earlyShare < 0.35 && lateShare > 0.62;
 
   // ── 맺음말 머리 — 드문 사건이 있으면 그걸 앞세운다(경기마다 다른 문장이 나오도록).
   // 주력으로 이미 말할 유닛은 여기서 뺀다 — 안 그러면 "캐리어가 뜬 …캐리어로 승리"가 된다.
@@ -821,7 +837,7 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   // 전술(9드론 저글링 러시·몰래 배럭·목동 저그…)은 그 경기에서만 있었던 일이라 가장 무겁게
   // 친다 — 자리가 모자라면 일반적인 이야기부터 버려진다.
   // 러시·드랍을 간 그 타이밍에 상대 쪽 누군가의 생산이 뚝 끊겼다면, 그건 그 수가 통했다는
-  // 뜻이다(요청) — "3게이트 질럿 러쉬로 조조의 본진을 파괴함"처럼 한 문장으로 잇는다.
+  // 뜻이다(요청) — "3게이트 질럿 러시로 조조의 본진을 파괴함"처럼 한 문장으로 잇는다.
   // 대상이 이미 확실한 전술(자리로 짚은 것)은 그 사람만 보고, 아니면 상대 전원을 훑는다.
   const damageFrom = (t: { key: string; at: number | null; whom?: string }, foes: ParsedReplayPlayer[]) => {
     if (t.at === null || !RAID_KEYS.has(t.key)) return null;
@@ -1015,9 +1031,67 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     } as Beat;
   })();
 
+  // 병력을 늦게까지 안 뽑고 자원만 먼저 챙긴 것 — '째기'(요청). 결과가 갈리는 만큼
+  // 두 갈래로 말한다: 그 사이에 얻어맞았으면 "무리하게 째다가 …의 공격에 무너짐",
+  // 무사히 넘겼으면 "성공적으로 째서 … 물량이 폭발함".
+  const greedyBeats: Beat[] = (() => {
+    if (!totalFrames) return [];
+    const out: Beat[] = [];
+    for (const won of [true, false]) {
+      const mine = won ? winnerPlayers : loserPlayers;
+      const foes = won ? loserPlayers : winnerPlayers;
+      for (const p of mine) {
+        const sg = p.signals;
+        if (!sg) continue;
+        const combat = Object.entries(sg.unitFrames)
+          .filter(([u]) => !NON_COMBAT_UNITS.has(u))
+          .flatMap(([, f]) => f);
+        if (combat.length < GREEDY_MIN_UNITS) continue;
+        const first = Math.min(...combat);
+        if (first < GREEDY_SEC / SECONDS_PER_FRAME) continue;
+        // 경기가 짧으면 늦은 게 아니라 그냥 그 경기가 그랬던 것이다.
+        if (first > totalFrames * GREEDY_MAX_RATIO) continue;
+        const hurtBy = (() => {
+          const window = first + GREEDY_PUNISH_SEC / SECONDS_PER_FRAME;
+          const hit = productionDips(p, totalFrames).some((d) => d >= first && d <= window)
+            || (fellFrame(p, totalFrames) ?? Infinity) <= window;
+          if (!hit) return null;
+          // 때린 사람은 그 무렵 병력을 뽑고 있던 상대 중 가장 많이 뽑은 쪽으로 짚는다.
+          let best: { raw: string; n: number } | null = null;
+          for (const z of foes) {
+            const n = Object.entries(z.signals?.unitFrames ?? {})
+              .filter(([u]) => !NON_COMBAT_UNITS.has(u))
+              .flatMap(([, f]) => f)
+              .filter((x) => x <= window).length;
+            if (n > 0 && (!best || n > best.n)) best = { raw: z.rawName, n };
+          }
+          return best?.raw ?? null;
+        })();
+        // 무엇이 폭발했나 — 째고 나서 가장 많이 뽑은 병력 한 종류.
+        const top = Object.entries(sg.unitFrames)
+          .filter(([u]) => !NON_COMBAT_UNITS.has(u))
+          .map(([u, f]) => [u, f.length] as const)
+          .sort((a, b) => b[1] - a[1])[0];
+        if (hurtBy) {
+          out.push({
+            k: "greedy-punished", won, who: [p.rawName], whom: [hurtBy],
+            at: first, weight: 15, p: { min: minutes(first * SECONDS_PER_FRAME) },
+          } as Beat);
+        } else if (top && top[1] >= GREEDY_PAYOFF_UNITS) {
+          out.push({
+            k: "greedy-paid", won, who: [p.rawName],
+            at: first, weight: 13, p: { unit: top[0], min: minutes(first * SECONDS_PER_FRAME) },
+          } as Beat);
+        }
+      }
+    }
+    return out;
+  })();
+
   const pool: Beat[] = [
     ...(standoff ? [standoff] : []),
     ...(breached ? [breached] : []),
+    ...greedyBeats,
     ...gangBeats,
     ...mergeMutual(tactics),
     ...sideBeats({
@@ -1130,7 +1204,7 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     // 이긴 편 전원을 담아 두고, 몇 명까지 말할지는 문장 쪽에서 정한다.
     who: useTeam ? teamRanked.map((x) => x.raw) : subject,
     p: {
-      mode, lead, wentLate,
+      mode, lead, wentLate, ...(bigSwing ? { swing: true } : {}),
       leadMin: minutes(sec),
       ...(spectacle ? { leadUnit: spectacle } : {}),
       // 이어받는 문장은 유닛을 다시 말해야 말이 이어진다 — 그때는 중복이 아니라 연결이다.

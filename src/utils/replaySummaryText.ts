@@ -229,6 +229,14 @@ type Tpl = (c: Ctx) => string | null;
 const SECONDS_PER_FRAME = 0.042;
 // 이 안에 벌어진 양쪽 일은 '같은 때'로 보고 이어 주는 말을 붙인다.
 const SAME_TIME_SEC = 2 * 60;
+// 이만큼 안에 이어진 일은 "이어서/곧이어", 그보다 벌어지면 "그 후"(요청).
+const SOON_SEC = 5 * 60;
+// 이만큼이나 벌어졌으면 그 사이는 정말로 대치였다고 말해도 된다(요청: "한동안의 대치 후").
+const STANDOFF_SEC = 8 * 60;
+// 대비를 뜻하는 이음말 — 이 뒤에는 주어를 주제격("Rex는")으로 세운다(지적).
+const CONTRAST_LINKS = new Set(["한편", "그와 동시에", "반면", "그러나", "하지만"]);
+// 한 문장에 이어 붙일 수 있는 마디 수 — 이보다 길어지면 읽다가 숨이 찬다.
+const MAX_CHAIN = 2;
 // 진 편 문장에 결과 한 마디를 다는 건 '끝 무렵에 벌어진 일'에만 한다(지적) — 초중반의
 // 한 수를 곧바로 경기 결과와 이어 붙이면 인과가 과장된다. 끝나기 전 몇 분 동안의 일이라야
 // 결과에 영향을 줬다고 말할 수 있다.
@@ -299,6 +307,31 @@ function toConnective(action: string): string | null {
   return null;
 }
 
+/** "…뽑음" → "…뽑았고". 위 표가 '-았/었으나'까지 만들어 주므로 끝만 '-고'로 바꾼다.
+ *  비슷한 때에 벌어진 두 일을 한 문장으로 잇는 데 쓴다(요청: "~했고, ~했음"). */
+function toAnd(action: string): string | null {
+  const c = toConnective(action);
+  return c && c.endsWith("으나") ? `${c.slice(0, -2)}고` : null;
+}
+
+/** "…뽑음" → "…뽑았으며". '-고'가 두 번 이어지면 지겨워서 두 번째 마디에 쓴다. */
+function toAlso(action: string): string | null {
+  const c = toConnective(action);
+  return c && c.endsWith("으나") ? `${c.slice(0, -2)}으며` : null;
+}
+
+/** "…파괴됨" → "…파괴됐지만". 앞의 전황을 뒤집으며 맺을 때 쓴다(요청). */
+function toBut(action: string): string | null {
+  const c = toConnective(action);
+  return c && c.endsWith("으나") ? `${c.slice(0, -2)}지만` : null;
+}
+
+/** 문장 첫머리의 주격("브래드가")을 주제격("브래드는")으로 바꾼다 — 두 사람의 일을 한
+ *  문장에 나란히 놓을 때는 "브래드는 …했고 정구는 …했음"이라야 대비가 읽힌다(요청). */
+function toTopic(sentence: string): string {
+  return sentence.replace(/^([^\s]+?)(?:가|이)(\s)/, (_m, name: string, sp: string) => `${neun(name)}${sp}`);
+}
+
 /** 한 일 + (진 편이면) 결과 한 마디. 이어 붙일 수 있으면 "…뚫었으나 경기는 내줌"으로,
  *  못 이으면 쉼표로 둔다. */
 const done = (c: Ctx, action: string, risky = false): string => {
@@ -319,21 +352,21 @@ const done = (c: Ctx, action: string, risky = false): string => {
 /** 한 일만 말하는 흔한 꼴 — 이긴 쪽/진 쪽 모두 같은 표현을 쓰고, 진 쪽에만 결과를 덧붙인다. */
 const act = (actions: string[]): Tpl => (c) => `${ga(c.who)} ${done(c, c.pick(actions))}`;
 
-/** 전술을 문장 안에서 부를 이름 — "3게이트 질럿 러쉬로 …"처럼 다른 문장에 끼워 넣을 때 쓴다.
+/** 전술을 문장 안에서 부를 이름 — "3게이트 질럿 러시로 …"처럼 다른 문장에 끼워 넣을 때 쓴다.
  *  여기 없는 키는 '들이친 수'가 아니라는 뜻이라, 피해 문장 자체가 만들어지지 않는다. */
 function tacticLabel(k: string, p: Record<string, unknown>): string {
   switch (k) {
     case "zling-rush": {
       const n = num(p.drones);
-      return n > 0 ? `${n}드론 저글링 러쉬` : "초반 저글링 러쉬";
+      return n > 0 ? `${n}드론 저글링 러시` : "초반 저글링 러시";
     }
     case "zealot-rush": {
       const g = num(p.gates, 2);
-      return `${g === 2 ? "투게이트" : `${g}게이트`} 질럿 러쉬`;
+      return `${g === 2 ? "투게이트" : `${g}게이트`} 질럿 러시`;
     }
-    case "cannon-rush": return "포토러쉬";
-    case "sunken-rush": return "성큰러쉬";
-    case "sneak-rax": return p.firebat ? "몰래 배럭 파이어뱃 러쉬" : "몰래 배럭";
+    case "cannon-rush": return "포토러시";
+    case "sunken-rush": return "성큰러시";
+    case "sneak-rax": return p.firebat ? "몰래 배럭 파이어뱃 러시" : "몰래 배럭";
     case "shuttle-reaver": return "리버 드랍";
     case "templar-drop": return "하이템플러 드랍";
     case "zerg-drop": return p.lurker ? "러커 드랍" : "히드라 드랍";
@@ -351,7 +384,7 @@ function tacticLabel(k: string, p: Record<string, unknown>): string {
   }
 }
 
-/** 여럿을 늘어놓을 때 쓰는 꼴 — "A의 바이오닉 한 방과 B의 3게이트 질럿 러쉬"는 어색하다.
+/** 여럿을 늘어놓을 때 쓰는 꼴 — "A의 바이오닉 한 방과 B의 3게이트 질럿 러시"는 어색하다.
  *  목록 안에서는 '한 방'을 떼고 병력으로 부른다(요청: 누구의 바이오닉 병력으로). */
 const listForm = (label: string): string => label.replace(/ 한 방$/, " 병력");
 
@@ -363,22 +396,22 @@ const TEMPLATES: Record<string, Tpl> = {
     const of = c.whom ? `${c.whom}의 ` : "상대 ";
     const foe = c.whom || "상대";
     // 한 사람이 여러 수에 잇달아 무너졌으면 한 문장으로 묶는다(지적: 같은 이야기가 두 번
-    // 나옴). "Rex의 9드론 저글링 러쉬와 제롬의 4게이트 질럿 러쉬에 군범이 2분 만에 무너짐".
+    // 나옴). "Rex의 9드론 저글링 러시와 제롬의 4게이트 질럿 러시에 군범이 2분 만에 무너짐".
     const ks = list(c.p.ks);
     if (ks.length >= 2 && c.whoList.length === ks.length) {
       const vs = list(c.p.vs);
       const each = c.whoList
         .map((n, i) => ({
           n,
-          // 값이 없으면 아예 넘기지 않는다 — 0을 넘기면 "0게이트 질럿 러쉬"가 나온다.
+          // 값이 없으면 아예 넘기지 않는다 — 0을 넘기면 "0게이트 질럿 러시"가 나온다.
           label: listForm(tacticLabel(ks[i], {
             ...(Number(vs[i]) > 0 ? { drones: Number(vs[i]), gates: Number(vs[i]) } : {}),
             firebat: vs[i] === "firebat", lurker: vs[i] === "lurker",
           })),
         }))
         .filter((x) => x.label);
-      // 같은 수를 여러 명이 가는 일이 흔하다(지적) — 그때 "A의 3게이트 질럿 러쉬와 B의
-      // 3게이트 질럿 러쉬"는 같은 말을 두 번 하는 것이라, 이름만 묶어 한 번만 말한다.
+      // 같은 수를 여러 명이 가는 일이 흔하다(지적) — 그때 "A의 3게이트 질럿 러시와 B의
+      // 3게이트 질럿 러시"는 같은 말을 두 번 하는 것이라, 이름만 묶어 한 번만 말한다.
       const byLabel: { label: string; names: string[] }[] = [];
       for (const x of each) {
         const g = byLabel.find((y) => y.label === x.label);
@@ -404,14 +437,18 @@ const TEMPLATES: Record<string, Tpl> = {
     const mine = `${c.who}의 ${label}`;
     // 이름에 이미 '한 방'이 들어 있으면 또 붙이지 않는다(지적: "바이오닉 한 방 한 방에").
     const blow = label.endsWith("한 방") ? `${mine}에` : `${mine} 한 방에`;
+    // "정구의 바이오닉 한 방으로"는 자연스럽지만 "렉스의 9드론 저글링 러시로 상대를
+    // 몰아붙임"은 어색하다(지적) — 뒤에 그 사람이 한 행동이 오는 문장은 주격으로 세운다.
+    // '한 방'처럼 이름 자체가 사건인 것만 소유격을 유지한다.
+    const by = label.endsWith("한 방") ? mine : `${ga(c.who)} ${label}`;
     // 초반 올인에 초반부터 무너진 그림(요청) — 몇 분 만이었는지가 곧 이야기다.
     if (c.p.early && !c.p.out) {
       const m = num(c.p.hitMin);
       const when = m > 0 ? `${m}분 만에 ` : "";
       return done(c, c.pick([
-        `${ro(mine)} ${when}${of}기지를 반쯤 파괴함`,
+        `${ro(by)} ${when}${of}기지를 반쯤 파괴함`,
         `${blow} ${when}${ga(foe)} 무너짐`,
-        `${ro(mine)} ${when}${reul(foe)} 몰아붙임`,
+        `${ro(by)} ${when}${reul(foe)} 몰아붙임`,
       ]));
     }
     // 그 창 안에 실제로 탈락했으면(Leave Game) 짐작이 아니라 사실이다 — 그렇게 말한다.
@@ -419,18 +456,18 @@ const TEMPLATES: Record<string, Tpl> = {
       const min = num(c.p.outMin);
       const when = min > 0 ? `${min}분경 ` : "";
       return done(c, c.pick([
-        `${ro(mine)} ${when}${reul(foe)} 엘리미네이트`,
+        `${ro(by)} ${when}${reul(foe)} 엘리미네이트`,
         `${blow} ${when}${ga(foe)} 탈락`,
-        `${ro(mine)} ${when}${reul(foe)} 판에서 지움`,
+        `${ro(by)} ${when}${reul(foe)} 판에서 지움`,
       ]));
     }
-    // "정구가 바이오닉 한 방으로"보다 "정구의 바이오닉 한 방으로"가 자연스럽다(지적) —
-    // 들이친 수를 앞세우는 문장이라 주어도 소유격으로 둔다.
+    // 그 사람이 한 행동을 말하는 문장은 주격으로(위 by 참고), 상대 쪽 일이 주어인
+    // 문장('생산이 막힘')만 소유격으로 둔다.
     return done(c, c.pick([
-      `${ro(mine)} ${of}본진을 파괴함`,
+      `${ro(by)} ${of}본진을 파괴함`,
       `${ro(mine)} ${of}생산이 막힘`,
       `${blow} ${of}기지가 파괴됨`,
-      `${ro(mine)} ${of}살림을 통째로 흔듦`,
+      `${ro(by)} ${of}살림을 통째로 흔듦`,
     ]));
   },
 
@@ -492,17 +529,19 @@ const TEMPLATES: Record<string, Tpl> = {
     const g = num(c.p.gates, 2);
     const label = g === 2 ? "투게이트" : `${g}게이트`;
     const at = targetPhrase(c);
+    // 질럿 러시는 도박이 아니라 정석이다(지적) — 실패했다고 "결국 망함"으로 맺지 않는다.
+    // 한 유닛만 뽑고 달린 경우에만 '무지성'을 붙인다.
     return `${ga(c.who)} ${at}${done(c, c.pick([
-      `${label} 질럿 러쉬를 함`, `빠른 ${label} 질럿 러쉬를 함`, `과감한 ${label} 질럿 올인 러쉬를 함`,
-      ...(c.won && !c.p.solo ? [] : [`무지성 ${label} 질럿 러쉬를 함`]),
-      ...(c.won ? [] : [`무리하게 ${label} 질럿 러쉬를 함`]),
-    ]), true)}`;
+      `${label} 질럿 러시를 함`, `빠른 ${label} 질럿 러시를 함`,
+      ...(g >= 3 ? [`${label} 질럿 올인 러시를 함`] : []),
+      ...(c.p.solo ? [`무지성 ${label} 질럿 러시를 함`] : []),
+    ]))}`;
   },
   "cannon-rush": (c) => {
     const at = targetPhrase(c);
     return `${ga(c.who)} ${at}${done(c, c.pick([
-      "포토러쉬를 함", "초반 포토러쉬를 함", "빠른 포토러쉬를 시도함",
-      "예상치 못한 포토러쉬를 함",
+      "포토러시를 함", "초반 포토러시를 함", "빠른 포토러시를 시도함",
+      "예상치 못한 포토러시를 함",
     ]), true)}`;
   },
   recall: act([
@@ -687,8 +726,8 @@ const TEMPLATES: Record<string, Tpl> = {
     // 파이어뱃까지 나왔으면 그건 정찰용 몰래 배럭이 아니라 러시다(요청).
     if (c.p.firebat) {
       return `${ga(c.who)} ${at}${done(c, c.pick([
-        "몰래 배럭 파이어뱃 러쉬를 함",
-        ...(c.won ? [] : ["무리하게 몰래 배럭 파이어뱃 러쉬를 함"]),
+        "몰래 배럭 파이어뱃 러시를 함",
+        ...(c.won ? [] : ["무리하게 몰래 배럭 파이어뱃 러시를 함"]),
       ]), true)}`;
     }
     return `${ga(c.who)} ${at}${done(c, c.pick([
@@ -696,12 +735,12 @@ const TEMPLATES: Record<string, Tpl> = {
       "예상치 못한 몰래 배럭을 올림",
     ]), true)}`;
   },
-  // 성큰러쉬 — 내 기지가 아닌 곳에 초반부터 성큰을 박는 올인(요청). 해처리는 펴지 않는다.
+  // 성큰러시 — 내 기지가 아닌 곳에 초반부터 성큰을 박는 올인(요청). 해처리는 펴지 않는다.
   "sunken-rush": (c) => {
     const at = targetPhrase(c);
     return `${ga(c.who)} ${at}${done(c, c.pick([
-      "성큰러쉬를 함", "초반 성큰러쉬를 함", "빠른 성큰러쉬를 시도함",
-      "예상치 못한 성큰러쉬를 함",
+      "성큰러시를 함", "초반 성큰러시를 함", "빠른 성큰러시를 시도함",
+      "예상치 못한 성큰러시를 함",
     ]), true)}`;
   },
   // 센터 포토 — 가운데를 포토로 걸어 잠그는 그림(요청).
@@ -820,11 +859,11 @@ const TEMPLATES: Record<string, Tpl> = {
     ])}`;
   },
 
-  // 초반 올인이 막히고 역으로 무너진 경우(요청) — 러쉬가 실패한 것만 말하는 것보다,
+  // 초반 올인이 막히고 역으로 무너진 경우(요청) — 러시가 실패한 것만 말하는 것보다,
   // 그 뒤에 제 살림이 무너진 것까지 이어야 이야기가 된다.
   "rush-backfire": (c) => {
-    const label = tacticLabel(str(c.p.k), c.p) || "초반 러쉬";
-    // 러쉬가 막힌 뒤에 오는 건 '살림이 무너짐'이 아니라 테크·발전에서의 손해다(지적).
+    const label = tacticLabel(str(c.p.k), c.p) || "초반 러시";
+    // 러시가 막힌 뒤에 오는 건 '살림이 무너짐'이 아니라 테크·발전에서의 손해다(지적).
     const opts = [
       `${reul(label)} 갔으나 막힘`,
       `${label} 실패함`,
@@ -959,6 +998,29 @@ const TEMPLATES: Record<string, Tpl> = {
     return `${c.who}의 ${push} ${c.whom}의 ${reul(wall)} ${c.pick(["뚫음", "밀어버림", "걷어냄"])}`;
   },
 
+  // 병력을 늦게까지 안 뽑고 자원부터 챙긴 것 — '째기'(요청). 얻어맞았으면 그 이야기가 되고,
+  // 무사히 넘겼으면 그 뒤의 물량이 이야기가 된다.
+  "greedy-punished": (c) => {
+    const m = num(c.p.min);
+    const when = m > 0 ? `${m}분까지 ` : "";
+    const foe = c.whom ? `${c.whom}의 ` : "상대의 ";
+    return `${ga(c.who)} ${done(c, c.pick([
+      `초반에 무리하게 째다가 ${foe}공격에 무너짐`,
+      `${when}병력 없이 째다가 ${foe}공격에 무너짐`,
+      `배를 불리려다 ${foe}공격에 그대로 무너짐`,
+    ]))}`;
+  },
+  "greedy-paid": (c) => {
+    const unit = UNIT_KO[str(c.p.unit)] ?? "병력";
+    const m = num(c.p.min);
+    const when = m > 0 ? `${m}분까지 ` : "";
+    return `${ga(c.who)} ${done(c, c.pick([
+      `성공적으로 째서 ${unit} 물량이 폭발함`,
+      `${when}자원을 먼저 챙긴 뒤 ${reul(unit)} 쏟아냄`,
+      `병력을 미루고 배를 불린 끝에 ${unit} 물량으로 밀어붙임`,
+    ]))}`;
+  },
+
   // ── 맺음말 ──
   result: (c) => {
     const phrase = c.p.units ? unitPhrase(list(c.p.units)) : "";
@@ -990,10 +1052,17 @@ const TEMPLATES: Record<string, Tpl> = {
               `혼자 ${reul(heroUnit)} 쏟아내며 팀을 이끔`,
               `${heroUnit} 물량을 압도적으로 뽑아냄`,
             ])}`
-          : `${c.who2}의 ${ro(`${heroUnit} ${role}`)} ${c.pick([
+          : `${c.who2 === c.who ? "" : `${c.who2}의 `}${ro(`${heroUnit} ${role}`)} ${c.pick([
               ROLE_TAIL[role] ?? "승기를 잡음", "팀의 승리를 이끔", "팀을 강력하게 보조함",
             ])}`
         : null;
+    // 앞말과 같은 사람이면 이름을 두 번 부르지 않는다(지적) — 대신 "…이기고, …"로 잇는다.
+    const sameHero = !!hero && c.who2 === c.who;
+    const withHero = (main: string): string => {
+      if (!hero) return main;
+      const chained = sameHero ? toAnd(main) : null;
+      return `${chained ?? main}, ${hero}`;
+    };
 
     const who = ga(c.who);
     // 팀전 승리는 한 사람의 공이 아니다(요청) — 각자가 무엇으로 싸웠는지를 나란히 말한다.
@@ -1002,7 +1071,7 @@ const TEMPLATES: Record<string, Tpl> = {
     if (team && (mode === "plain" || mode === "late")) {
       const t = mode === "late" ? c.pick(["후반 ", "길게 끌어 "]) : "";
       const body2 = head + `${t}${team} ${c.pick(["승리", "이김"])}`;
-      return [body2, ...(hero ? [hero] : [])].join(", ");
+      return withHero(body2);
     }
     if (spectacle) {
       const b2 = `${c.who}의 ${c.pick([
@@ -1010,7 +1079,7 @@ const TEMPLATES: Record<string, Tpl> = {
         `${reul(spectacle)} 앞세워 승리`,
         `${spectacle} 한 방으로 승부를 냄`,
       ])}`;
-      return [b2, ...(hero ? [hero] : [])].join(", ");
+      return withHero(b2);
     }
     // 조합을 빼면 "초반 승리"처럼 앙상해지므로, 그럴 땐 수식도 같이 정리한다.
     let body: string;
@@ -1020,7 +1089,14 @@ const TEMPLATES: Record<string, Tpl> = {
         : `${who} ${c.pick(["승리", "그대로 끝냄"])}`;
     } else if (mode === "comeback") {
       const late = c.p.wentLate ? "후반에 " : "";
-      body = `${who} ${c.pick([`초반 열세이다가 ${late}${p}역전`, `밀리다가 ${late}${p}뒤집음`])}`;
+      // 전반과 후반이 아예 뒤집힌 경기는 그냥 '역전'이 아니라 대역전이다(요청).
+      body = c.p.swing
+        ? `${who} ${c.pick([
+            `초반을 완전히 내주고도 ${late}${p}대역전`,
+            `전반을 내주고 ${late}${p}판을 통째로 뒤집음`,
+            `일방적으로 밀리다가 ${late}${p}극적으로 역전`,
+          ])}`
+        : `${who} ${c.pick([`초반 열세이다가 ${late}${p}역전`, `밀리다가 ${late}${p}뒤집음`])}`;
     } else if (mode === "late") {
       body = `${who} ${c.pick([`후반 ${p}승리`, `길게 끌어 ${p}승리`])}`;
     } else {
@@ -1035,7 +1111,7 @@ const TEMPLATES: Record<string, Tpl> = {
         : `${who} ${c.pick(["그대로 승리", "그대로 가져감"])}`;
     }
 
-    return [head + body, ...(hero ? [hero] : [])].join(", ");
+    return withHero(head + body);
   },
 };
 
@@ -1067,6 +1143,12 @@ export function renderReplaySummary(
   // 앞 문장과 인과로 이어지는 자리를 표시해 둔다(요청: 서사·인과가 있어야 재밌다).
   // 크게 한 방 먹인 바로 다음에 같은 사람이 또 무언가를 했다면 그건 '그 기세로' 한 것이다.
   let prev: ReplaySummaryBeat | null = null;
+  // 바로 앞 문장에 쓴 이음말 — 같은 말이 연달아 나오면 어색하다(지적). 다음 것으로 민다.
+  let lastLink = "";
+  // 바로 앞 문장의 주어 — 같은 주어가 이어지면 한 문장으로 합친다(지적).
+  let lastSubject = "";
+  // 지금 문장에 몇 마디를 이어 붙였나 — 끝없이 길어지지 않게 센다.
+  let chainCount: number = 0;
   const beats = data.beats as ReplaySummaryBeat[];
   for (let i = 0; i < beats.length; i += 1) {
     const b = beats[i];
@@ -1080,21 +1162,50 @@ export function renderReplaySummary(
     const names = (b.who ?? []).map(resolveName);
     const seed = variantSeed(b);
     let who = mutual || both ? joinPair(names) : joinNames(names);
+    const baseWho = who;
+    // 같은 이음말이 연달아 나오면 어색하다(지적) — 앞에서 쓴 것이 걸리면 다음 것으로 민다.
+    const link = (opts: string[]): string => {
+      let t = opts[seed % opts.length];
+      if (t === lastLink) t = opts[(seed + 1) % opts.length];
+      lastLink = t;
+      return t;
+    };
+    const gapSec = prev && typeof prev.at === "number" && typeof b.at === "number"
+      ? Math.abs(prev.at - b.at) * SECONDS_PER_FRAME
+      : null;
+    const linkable = !!prev && b.k !== "result" && prev.k !== "result";
+    // 거의 같은 때에 벌어진 서로 다른 사람의 일은 한 문장으로 잇는 편이 자연스럽다
+    // (요청: "브래드는 ~했고 정구는 ~했음"). 같은 사람 이야기면 주어가 겹쳐 어색해 뺀다.
+    const sharesWho = (b.who ?? []).some((w) => (prev?.who ?? []).includes(w));
+    let joinPrev = false;
+    // 문장 앞에 붙인 이음말 — 만들어진 문장과 겹치면 도로 떼어낸다(아래 참고).
+    let linkWord = "";
     if (
       prev && b.k !== "result"
       && (prev.k === "raid-damage" || prev.k === "gang-rush")
       && !!prev.won === !!b.won
-      && (b.who ?? []).some((w) => (prev?.who ?? []).includes(w))
+      && sharesWho
     ) {
-      who = `${seed % 2 === 0 ? "그 기세로" : "여세를 몰아"} ${who}`;
-    } else if (
-      // 비슷한 때에 반대편에서 벌어진 일은 "한편/그와 동시에"로 이어야 자연스럽다(요청).
-      prev && b.k !== "result" && prev.k !== "result"
-      && !!prev.won !== !!b.won
-      && typeof prev.at === "number" && typeof b.at === "number"
-      && Math.abs(prev.at - b.at) * SECONDS_PER_FRAME <= SAME_TIME_SEC
-    ) {
-      who = `${["한편", "그와 동시에", "반면"][seed % 3]} ${who}`;
+      who = `${link(["그 기세로", "여세를 몰아"])} ${who}`;
+    } else if (linkable && gapSec !== null && gapSec <= SAME_TIME_SEC) {
+      if (!sharesWho && seed % 2 === 0) joinPrev = true;
+      else if (!!prev!.won !== !!b.won) {
+        // 비슷한 때에 반대편에서 벌어진 일은 "한편/그와 동시에"로 이어야 자연스럽다(요청).
+        linkWord = link(["한편", "그와 동시에", "반면"]);
+        who = `${linkWord} ${who}`;
+      }
+    } else if (linkable && gapSec !== null && seed % 3 === 0) {
+      // 이음말은 드문드문이라야 눈에 띈다 — 문장마다 붙이면 그게 더 지겹다.
+      // 앞 문장과 전황이 뒤바뀌면 그 반전을 말로 짚어 준다(요청).
+      if (!!prev!.won !== !!b.won) {
+        linkWord = link(["그러나", "하지만"]);
+      } else if (gapSec <= SOON_SEC) {
+        // 시간이 벌어진 다음 일은 순서를 짚어 준다(요청) — 얼마나 벌어졌느냐로 말을 고른다.
+        linkWord = link(["이어서", "곧이어", "잠시 후"]);
+      } else {
+        linkWord = gapSec > STANDOFF_SEC ? link(["한동안의 대치 후", "그 후"]) : "그 후";
+      }
+      who = `${linkWord} ${who}`;
     }
     let lead = "";
     if (mutual) lead = "서로 ";
@@ -1104,7 +1215,7 @@ export function renderReplaySummary(
     }
     if (!who) continue;
     let firstPick = true;
-    const text = tpl({
+    let text = tpl({
       who,
       whoList: (b.who ?? []).map(resolveName).filter(Boolean),
       who2: joinNames((b.who2 ?? []).map(resolveName)),
@@ -1120,7 +1231,52 @@ export function renderReplaySummary(
         return `${lead}${t}`;
       },
     });
-    if (text) { out.push(text); prev = b; }
+    if (!text) continue;
+    // "그러나 …했지만 모자랐음"처럼 문장 자체가 이미 반전을 품고 있으면 앞의 이음말은
+    // 군더더기다(지적) — 만들어진 문장을 보고 판단해 도로 떼어낸다.
+    if (
+      (linkWord === "그러나" || linkWord === "하지만")
+      && /지만|으나/.test(text.slice(linkWord.length))
+    ) {
+      text = text.slice(linkWord.length + 1);
+      linkWord = "";
+      lastLink = "";
+    }
+    // 대비를 뜻하는 이음말 뒤의 주어는 주제격이라야 읽힌다(지적: "반면 Rex는 …").
+    if (linkWord && CONTRAST_LINKS.has(linkWord)) {
+      text = `${linkWord} ${toTopic(text.slice(linkWord.length + 1))}`;
+    }
+    const subject = ga(baseWho);
+    const prevLine = out.length > 0 ? out[out.length - 1] : "";
+    // 앞 문장과 주어가 같으면 주어를 두 번 부르지 않는다(지적: 주어가 반복될 경우 합침).
+    // "Rex가 …이기고, …" 꼴로 앞 문장에 이어 붙이고 뒤 문장에서는 주어를 뗀다.
+    // 같은 사람 이야기가 연달아 나오면 문장을 갈라 놓지 말고 하나로 잇는다(지적: 같은
+    // 이름이 반복되면 이상하다) — 다만 세 마디까지만, 더 이으면 한 문장이 숨차진다.
+    const sameSubject: boolean =
+      chainCount < MAX_CHAIN && out.length > 0 && baseWho !== ""
+      && lastSubject === subject && text.startsWith(`${subject} `);
+    // 맺음말은 앞의 전황을 뒤집으며 끝나는 일이 많다(요청) — "…파괴됐지만 …이김"으로 잇는다.
+    // 다만 '이긴 쪽이 그 직전에 얻어맞은' 문장에만 붙인다: 아무 문장에나 이으면 앞뒤가
+    // 뒤집혀 읽히고(지적), 이미 반전을 품은 문장이면 '지만'이 두 번 나온다.
+    const hitTheWinner =
+      !!prev && (prev.whom ?? []).some((w) => (b.who ?? []).includes(w));
+    const flipToEnd: boolean =
+      b.k === "result" && out.length > 0 && chainCount === 0 && hitTheWinner
+      && !/지만|으나/.test(out[out.length - 1]);
+    const chained: string | null = sameSubject
+      ? (chainCount === 0 ? toAnd(prevLine) : toAlso(prevLine))
+      : flipToEnd
+        ? toBut(prevLine)
+        : joinPrev && out.length > 0 && chainCount === 0
+          ? toAnd(toTopic(prevLine))
+          : null;
+    if (chained && sameSubject) out[out.length - 1] = `${chained}, ${text.slice(subject.length + 1)}`;
+    else if (chained && flipToEnd) out[out.length - 1] = `${chained} ${text}`;
+    else if (chained) out[out.length - 1] = `${chained} ${toTopic(text)}`;
+    else out.push(text);
+    chainCount = chained ? chainCount + 1 : 0;
+    lastSubject = subject;
+    prev = b;
   }
   return out.length > 0 ? out.join(". ") : null;
 }
