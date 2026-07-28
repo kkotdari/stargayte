@@ -243,7 +243,7 @@ const STANDOFF_SEC = 5 * 60;
 // 벌어지면 인과가 아무리 그럴듯해도 각각 제 문장으로 둔다.
 const JOIN_MAX_SEC = 3 * 60;
 // 대비를 뜻하는 이음말 — 이 뒤에는 주어를 주제격("Rex는")으로 세운다(지적).
-const CONTRAST_LINKS = new Set(["한편", "그와 동시에", "반면", "그러나", "하지만", "그렇지만"]);
+const CONTRAST_LINKS = new Set(["한편", "그와 동시에", "반면", "그러나", "하지만", "그렇지만", "이에 질세라", "다른 쪽에서는"]);
 // 시간 순서를 짚는 이음말 — 위 대비 이음말과 함께 문장 앞머리를 알아보는 데 쓴다.
 const SEQUENCE_LINKS = ["이어서", "곧이어", "그 직후", "잠시 후", "한참 후", "소강상태 후", "그 후", "한동안의 대치 후", "그 기세로", "여세를 몰아", "그 기세를 이어간", "여기에", "게다가", "설상가상으로", "그리고"];
 // 정규식에 이름을 그대로 넣기 전에 특수문자를 막는다 — 닉네임에 무엇이 들어올지 모른다.
@@ -359,6 +359,12 @@ function toBut(action: string): string | null {
   return c && c.endsWith("으나") ? `${c.slice(0, -2)}지만` : null;
 }
 
+/** 문장 첫머리의 주어에 '도'를 붙인다 — "제롬이 " → "제롬도 ". 전황이 뒤집히면서
+ *  주체까지 다른 팀으로 넘어갈 때, 앞말을 받아 "…했지만 제롬도 …했다"로 읽히게 한다(요청). */
+function toAlsoSubject(sentence: string): string {
+  return sentence.replace(/^([^\s]+?)(?:가|이|는|은)(\s)/, (_m, name: string, sp: string) => `${name}도${sp}`);
+}
+
 /** 문장 첫머리의 주격("브래드가")을 주제격("브래드는")으로 바꾼다 — 두 사람의 일을 한
  *  문장에 나란히 놓을 때는 "브래드는 …했고 정구는 …했음"이라야 대비가 읽힌다(요청). */
 function toTopic(sentence: string): string {
@@ -435,6 +441,15 @@ function numBatchim(n: number): boolean {
 /** 숫자 뒤의 목적격/도구격 조사. */
 const numReul = (n: number): string => `${n}${numBatchim(n) ? "을" : "를"}`;
 const numRo = (n: number): string => `${n}${numBatchim(n) ? "으로" : "로"}`;
+
+/** 문장 끝의 명사형('-ㅁ')을 평서형('-다')으로 바꾼다(지적: ~함 체를 ~했다 체로).
+ *  "…뚫음" → "…뚫었다", "…모자랐음" → "…모자랐다". 다만 "…견제", "…승리", "…역부족"처럼
+ *  명사로 끝나는 문장은 그 자체가 한 단어라 손대지 않는다 — 표에 없는 끝은 그대로 둔다. */
+function toPlain(sentence: string): string {
+  if (/(았|었|였)음$/.test(sentence)) return `${sentence.slice(0, -1)}다`;
+  const c = toConnective(sentence);
+  return c && c.endsWith("으나") ? `${c.slice(0, -2)}다` : sentence;
+}
 
 /** 그 문장이 어느 편에 유리한 국면인가 — 다음 문장을 어떻게 이을지 정하는 기준이다(요청:
  *  전황이 굉장히 중요하다). +1은 이긴 편 쪽으로, -1은 진 편 쪽으로 기운 국면이고, 0은
@@ -571,7 +586,7 @@ const TEMPLATES: Record<string, Tpl> = {
     const at = targetPhrase(c);
     return `${ga(c.who)} ${at}${done(c, c.pick([
       `${build}를 함`, `빠른 ${build}를 함`, `과감한 ${allin}를 함`,
-      `${build}라는 날빌을 꺼냄`, `날카로운 ${build}로 허를 찌름`,
+      `${build}라는 날빌을 꺼냄`, `날카로운 빌드로 ${reul(build)} 감행함`,
       // 깎아내리는 말은 졌거나, 이겼더라도 한 종류만 주야장천 뽑았을 때만(지적).
       ...(c.won && !c.p.solo ? [] : [`무지성 ${build}를 함`]),
       ...(c.won ? [] : [`무리하게 ${build}를 함`]),
@@ -634,7 +649,7 @@ const TEMPLATES: Record<string, Tpl> = {
     return `${ga(c.who)} ${at}${done(c, c.pick([
       "포토러시를 함", "초반 포토러시를 함", "빠른 포토러시를 시도함",
       "예상치 못한 포토러시를 함",
-      "포토러시라는 날빌을 꺼냄", "날카로운 포토러시로 허를 찌름",
+      "포토러시라는 날빌을 꺼냄", "날카로운 빌드로 포토러시를 감행함",
     ]), true)}`;
   },
   recall: act([
@@ -827,7 +842,7 @@ const TEMPLATES: Record<string, Tpl> = {
     return `${ga(c.who)} ${at}${done(c, c.pick([
       "몰래 배럭을 올림", "몰래 배럭을 시도함", "이른 시간에 몰래 배럭을 올림",
       "예상치 못한 몰래 배럭을 올림",
-      "몰래 배럭이라는 날빌로 허를 찌름", "날카로운 몰래 배럭을 준비함",
+      "몰래 배럭이라는 날빌로 허를 찌름", "날카로운 빌드로 몰래 배럭을 준비함",
     ]), true)}`;
   },
   // 성큰러시 — 내 기지가 아닌 곳에 초반부터 성큰을 박는 올인(요청). 해처리는 펴지 않는다.
@@ -837,7 +852,7 @@ const TEMPLATES: Record<string, Tpl> = {
       "성큰러시를 함", "초반 성큰러시를 함", "빠른 성큰러시를 시도함",
       "예상치 못한 성큰러시를 함",
       // 상대의 허점을 노린 수는 '날빌'이라 부른다(요청).
-      "성큰러시라는 날빌을 꺼냄", "날카로운 성큰러시로 허를 찌름",
+      "성큰러시라는 날빌을 꺼냄", "날카로운 빌드로 허를 찌름", "성큰러시로 허를 찌름",
     ]), true)}`;
   },
   // 센터 포토 — 가운데를 포토로 걸어 잠그는 그림(요청).
@@ -1133,6 +1148,7 @@ const TEMPLATES: Record<string, Tpl> = {
     return `${ga(c.who)} ${at}${done(c, c.pick([
       `${ro(`패스트 ${unit}`)} 승부를 걸음`,
       `패스트 ${unit}라는 날빌로 허를 찌름`,
+      `날카로운 빌드로 패스트 ${unit}를 감행함`,
       `${when}${unit}를 뽑아 상대가 준비하기 전에 들이댐`,
       `${unit} 타이밍을 크게 당김`,
     ]))}`;
@@ -1442,12 +1458,12 @@ export function renderReplaySummary(
     let linkWord = "";
     // 팀전에서 흐름이 어느 편으로 넘어갔는지 짚는 말(요청: "하지만 1팀에서는 …") —
     // 앞 문장과 다른 팀일 때만 붙인다.
-    const teamTagFor = (): string => {
-      const t = teamOf?.(names[0] ?? "");
-      const pt = teamOf?.(((prev?.who ?? []).map(resolveName))[0] ?? "");
-      if (!t || !pt || t === pt) return "";
-      return seed % 2 === 0 ? `${t}팀의 ` : `${t}팀에서는 `;
-    };
+    // 앞 문장과 이번 문장의 주체가 서로 다른 팀인가 — 팀 표시와 '도' 붙이기에 함께 쓴다.
+    const myTeam = teamOf?.(names[0] ?? "");
+    const prevTeam = teamOf?.(((prev?.who ?? []).map(resolveName))[0] ?? "");
+    const crossTeam = !!myTeam && !!prevTeam && myTeam !== prevTeam;
+    // "1팀에서는"은 어색하다(지적) — "1팀의 누구는" 꼴로만 쓴다.
+    const teamTagFor = (): string => (crossTeam ? `${myTeam}팀의 ` : "");
     if (
       prev && b.k !== "result"
       && (prev.k === "raid-damage" || prev.k === "gang-rush")
@@ -1486,7 +1502,9 @@ export function renderReplaySummary(
         const linked = new RegExp(`^(?:${[...CONTRAST_LINKS].join("|")}) `).test(line);
         if (closeEnough && chainCount === 0 && line !== "" && !linked && !/지만|으나/.test(line) && toBut(line)) flipJoin = true;
         else {
-          linkWord = link(["하지만", "그러나", "그렇지만", "반면"]);
+          linkWord = link(crossTeam
+            ? ["하지만", "그러나", "그렇지만", "반면", "이에 질세라", "다른 쪽에서는"]
+            : ["하지만", "그러나", "그렇지만", "반면"]);
           teamTag = teamTagFor();
         }
       } else {
@@ -1582,7 +1600,7 @@ export function renderReplaySummary(
     // 맺음말 앞에도 이음말을 둔다(요청) — 앞 전황을 그대로 받아 끝나면 "결국/그대로",
     // 뒤집으며 끝나면 "하지만/그러나". 시간·흐름을 이미 말하는 머리말("32분 혈투 끝에",
     // "단 5분 만에")이 붙었거나 본문이 이미 그 말로 시작하면 겹치므로 건너뛴다.
-    if (b.k === "result" && prev && !flipToEndCandidate && !/^(결국|그대로|하지만|그러나)/.test(text)) {
+    if (b.k === "result" && prev && !flipToEndCandidate && !/결국|그대로|하지만|그러나/.test(text)) {
       if (prevTide < 0) {
         // 앞 전황과 반대로 끝나는 결말에는 반드시 반전을 짚는다(지적) — 시간 머리말이
         // 붙어 있어도 그 앞에 놓는다("하지만 32분 혈투 끝에 …").
@@ -1670,9 +1688,16 @@ export function renderReplaySummary(
         new RegExp(`^${LINK_HEAD()} `), "",
       );
     }
+    // 전황이 뒤집히면서 주체까지 다른 팀이면 "…했지만 제롬도 …했다"가 자연스럽다(요청).
+    const alsoSubject = flipped && crossTeam;
+    // 팀이 갈린 반전에는 앞말을 받는 연결어를 한마디 넣어도 좋다(요청).
+    const alsoLead = alsoSubject ? `${["", "이에 질세라 ", "다른 쪽에서는 "][seed % 3]}` : "";
     if (chained && sameSubject) out[out.length - 1] = `${chained}, ${text.slice(subject.length + 1)}`;
-    else if (chained && (flipToEnd || flipJoin)) out[out.length - 1] = `${chained} ${text}`;
-    else if (chained) out[out.length - 1] = `${chained} ${toTopic(text)}`;
+    else if (chained && (flipToEnd || flipJoin)) {
+      out[out.length - 1] = `${chained} ${alsoLead}${alsoSubject ? toAlsoSubject(text) : text}`;
+    } else if (chained) {
+      out[out.length - 1] = `${chained} ${alsoLead}${alsoSubject ? toAlsoSubject(text) : toTopic(text)}`;
+    }
     else out.push(text);
     chainCount = chained ? chainCount + 1 : 0;
     lastSubject = subject;
@@ -1681,7 +1706,7 @@ export function renderReplaySummary(
     lastWhom = b.whom ?? [];
     prev = b;
   }
-  return out.length > 0 ? out.join(". ") : null;
+  return out.length > 0 ? out.map(toPlain).join(". ") : null;
 }
 
 /** 문장을 이름 조각과 나머지로 잘라 놓은 것 — 이름에 팀 색을 입히기 위한 것이다(요청).
