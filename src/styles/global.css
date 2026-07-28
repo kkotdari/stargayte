@@ -1215,11 +1215,12 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    슬롯(z-index:-1, .scr-main의 쌓임맥락 안)에 테마색 배경판 + 아주 옅은 그라데이션(완전
    단색은 샘플러가 '빈 화면'으로 볼 가능성 차단)을 깐다. 랭킹의 사진 ::before는 DOM이 더
    깊어 이 판 위에 그려지므로 그대로 이긴다. */
+/* 배경은 그라데이션 없는 단일 색이다(지적) — 위아래에 흰색 2%를 얹어 두었더니 다크에서
+   화면 끝이 미묘하게 떠 보였다. 라이트도 같은 값으로 통일한다(흰 위의 흰색이라 원래
+   보이지도 않던 층이다). */
 .scr-main::before {
   content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0) 18%, rgba(255, 255, 255, 0) 82%, rgba(255, 255, 255, 0.02) 100%),
-    var(--void);
+  background: var(--void);
 }
 /* 사파리(브라우저 탭)에서만 — 스크롤로 주소창/툴바가 접히면 뷰포트 높이가 변하는데,
    inset:0 고정 레이어는 거기 맞춰 리사이즈되고 background-size:cover가 다시 크롭돼
