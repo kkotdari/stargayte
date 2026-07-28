@@ -1397,6 +1397,8 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     v: REPLAY_SUMMARY_VERSION,
     // '초반'을 재려면 경기가 얼마나 길었는지를 알아야 한다(지적).
     ...(totalFrames ? { end: totalFrames } : {}),
+    // 개인전에서는 팀 용어를 쓰지 않는다(요청).
+    ...(duel ? { duel: true } : {}),
     beats: [...chosen, ending].map(strip),
   };
 }

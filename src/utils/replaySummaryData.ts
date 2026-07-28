@@ -38,6 +38,9 @@ export interface ReplaySummaryBeat {
 
 export interface ReplaySummaryData {
   v: number;
+  /** 일대일이었나 — 개인전에서는 "1팀이", "양 팀이" 같은 팀 용어를 쓰지 않는다(요청).
+   *  옛 데이터에는 없어 생략 가능하고, 없으면 예전처럼 팀 용어를 쓴다. */
+  duel?: boolean;
   /** 경기 전체 길이(프레임). '초반'은 절대 시간이 아니라 경기 길이에 대비해 봐야 한다(지적) —
    *  40분 경기의 8분과 9분 경기의 8분은 전혀 다른 자리다. 옛 데이터에는 없어 생략 가능하다. */
   end?: number;

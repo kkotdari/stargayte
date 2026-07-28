@@ -212,6 +212,8 @@ interface Ctx {
   end: number | null;
   /** 진 편 문장 중 마지막인가 — 부정적인 맺음은 경기당 한 번만 쓴다(지적). */
   lastLost: boolean;
+  /** 일대일인가 — 개인전에서는 "1팀이", "양 팀이" 같은 팀 용어를 쓰지 않는다(요청). */
+  duel: boolean;
   /** 이 사람들이 속한 팀 번호 — 팀 전체를 부를 때 "1팀"이라 말하기 위한 것이다(지적:
    *  "4인 팀"은 이상한 말). 팀을 모르면 0이고, 그때는 이름을 늘어놓는다. */
   team: 0 | 1 | 2;
@@ -258,6 +260,15 @@ const CAUSE_SEC = 90;
 // 대비를 뜻하는 이음말 — 이 뒤에는 주어를 주제격("Rex는")으로 세운다(지적).
 /** 곧이곧대로 뒤집는 말들 — 잇달아 쓰면 같은 말을 반복하는 꼴이 된다(지적). */
 const ADVERSATIVE = new Set(["하지만", "그러나", "그렇지만"]);
+/** 이음말을 '결'로 묶는다 — 낱말이 달라도 같은 결이면 연달아 쓰지 않는다(지적:
+ *  "6분 후 … 9분 뒤"처럼 시간 표현이 이어지면 같은 말이 두 번 나온 것으로 들린다). */
+const CONTRAST_FAMILY = new Set([...ADVERSATIVE, "반면", "반대로", "역으로"]);
+function linkFamily(t: string): string {
+  if (t === "") return "";
+  if (CONTRAST_FAMILY.has(t)) return "역접";
+  if (/^\d+분 (뒤|후)$/.test(t) || t === "소강상태 후" || t === "한참 후" || t === "잠시 후") return "시간";
+  return t;
+}
 const CONTRAST_LINKS = new Set(["한편", "그와 동시에", "반면", "그러나", "하지만", "그렇지만", "이에 질세라", "다른 쪽에서는", "반대로", "역으로"]);
 // 시간 순서를 짚는 이음말 — 위 대비 이음말과 함께 문장 앞머리를 알아보는 데 쓴다.
 const SEQUENCE_LINKS = ["이어서", "곧이어", "그 직후", "잠시 후", "한참 후", "소강상태 후", "그 후", "한동안의 대치 후", "그 기세로", "여세를 몰아", "그 기세를 이어간", "여기에", "게다가", "설상가상으로", "그리고"];
@@ -1118,7 +1129,7 @@ const TEMPLATES: Record<string, Tpl> = {
     if (m <= 0) return null;
     return c.pick([
       `${m}분 동안 팽팽하게 대치함`,
-      `양 팀이 ${m}분 가까이 팽팽하게 맞섬`,
+      `${c.duel ? "둘이" : "양 팀이"} ${m}분 가까이 팽팽하게 맞섬`,
       `${m}분 내내 승부가 기울지 않음`,
       `${m}분을 서로 밀고 밀리며 버팀`,
     ]);
@@ -1164,7 +1175,7 @@ const TEMPLATES: Record<string, Tpl> = {
   // 채팅에서 잡은 항복 선언(요청) — 승부가 어디서 끝났는지 말해주는 유일한 '사람의 말'이다.
   gg: (c) =>
     c.p.all
-      ? `${c.whoList.join("·")} 팀이 ${c.pick(["결국 GG 선언", "결국 GG를 치고 물러남"])}`
+      ? `${c.whoList.join("·")}${c.duel ? "가" : " 팀이"} ${c.pick(["결국 GG 선언", "결국 GG를 치고 물러남"])}`
       : `${ga(c.who)} ${c.pick(["결국 GG 선언", "GG를 침", "GG 치고 나감", "일찌감치 GG"])}`,
 
   // "유비의 바이오닉 한 방으로 관우의 저글링 성큰을 뚫음"(요청) — 양쪽을 한 문장에 담는다.
@@ -1298,7 +1309,7 @@ const TEMPLATES: Record<string, Tpl> = {
     const n = num(c.p.n);
     const m = num(c.p.min);
     return c.pick([
-      `양 팀이 ${m}분 동안 병력 ${n}기를 쏟아부은 소모전이었음`,
+      `${c.duel ? "둘이" : "양 팀이"} ${m}분 동안 병력 ${n}기를 쏟아부은 소모전이었음`,
       `쉼 없이 병력이 갈려 나간 소모전으로 흘러감`,
       `${m}분 내내 병력을 계속 부딪친 소모전이 이어짐`,
     ]);
@@ -1495,12 +1506,22 @@ export function renderReplaySummary(
   teamOf?: (name: string) => 1 | 2 | undefined,
 ): string | null {
   if (!isReplaySummaryData(data)) return null;
+  // 개인전에서는 팀 용어("1팀의 …", "양 팀이 …")를 아예 쓰지 않는다(요청).
+  const duel = data.duel === true;
   const out: string[] = [];
   // 앞 문장과 인과로 이어지는 자리를 표시해 둔다(요청: 서사·인과가 있어야 재밌다).
   // 크게 한 방 먹인 바로 다음에 같은 사람이 또 무언가를 했다면 그건 '그 기세로' 한 것이다.
   let prev: ReplaySummaryBeat | null = null;
   // 바로 앞 문장에 쓴 이음말 — 같은 말이 연달아 나오면 어색하다(지적). 다음 것으로 민다.
   let lastLink = "";
+  // 문단의 리듬(요청: 접속사 없이 뚝뚝 끊기는 것도, 남발하는 것도 이상하다).
+  //   linkRun  = 이음말로 시작한 문장이 잇달아 몇 개인가
+  //   plainRun = 잇지도 않고 이음말도 없이 그냥 놓인 문장이 잇달아 몇 개인가
+  // 둘 다 셋을 넘지 않게 잡아 준다 — 위는 덜어 내고, 아래는 채워 넣는다.
+  let linkRun = 0;
+  let plainRun = 0;
+  // 바로 앞 문장이 쓴 이음말의 '결' — 같은 결이 두 문장 잇달아 열리면 두 번째는 덜어 낸다.
+  let lastLinkFamily = "";
   // 바로 앞 문장의 주어 — 같은 주어가 이어지면 한 문장으로 합친다(지적).
   let lastSubject = "";
   // 그 주어의 이름(조사 없이) — 앞 문장이 "…가"로 시작했든 "…는"으로 시작했든 알아보려면
@@ -1543,16 +1564,26 @@ export function renderReplaySummary(
     const prevLedBy = (name: string): boolean =>
       name !== "" && (prevBody.startsWith(`${ga(name)} `) || prevBody.startsWith(`${neun(name)} `));
     const link = (opts: string[]): string => {
-      // 한 요약 안에서 "하지만 … 그러나 … 그렇지만"이 잇달아 나오면 겉돈다(지적) —
-      // 앞에서 역접을 썼으면 이번엔 "반면 / 한편"처럼 다른 결의 말로 넘긴다.
-      const pool = ADVERSATIVE.has(lastLink) && opts.some((o) => !ADVERSATIVE.has(o))
-        ? opts.filter((o) => !ADVERSATIVE.has(o))
-        : opts;
-      let t = pool[seed % pool.length];
-      if (t === lastLink && pool.length > 1) t = pool[(seed + 1) % pool.length];
+      // 같은 '결'의 이음말이 잇달아 나오면 겉돈다(지적: 접속사 남발) — "하지만 … 그러나"도,
+      // "6분 후 … 9분 뒤"도 읽는 사람에겐 같은 말이 두 번 나온 것으로 들린다. 낱말이
+      // 아니라 결(역접/시간/그 밖)로 묶어 앞에서 쓴 결을 피한다.
+      const bad = linkFamily(lastLink);
+      const pool = opts.filter((o) => linkFamily(o) !== bad);
+      // 후보가 전부 같은 결이면(반전 자리처럼 역접 말고는 쓸 게 없는 경우) 결을 피할 수는
+      // 없다 — 그때라도 바로 앞과 같은 낱말만은 피한다.
+      const use = pool.length > 0 ? pool : opts;
+      let t = use[seed % use.length];
+      if (t === lastLink && use.length > 1) t = use[(seed + 1) % use.length];
       lastLink = t;
       return t;
     };
+    /** 시간이 얼마나 벌어졌는지에 맞는 이음말 후보(요청: 곧이어 / 잠시 후 / N분 뒤 / 한참 후). */
+    const byTime = (g: number): string[] =>
+      g <= 60 ? ["곧이어", "그 직후"]
+      : g <= 3 * 60 ? ["잠시 후", "이어서", "곧이어"]
+      : g <= STANDOFF_SEC ? ["잠시 후", `${Math.round(g / 60)}분 뒤`]
+      : g <= 10 * 60 ? [`${Math.round(g / 60)}분 뒤`, `${Math.round(g / 60)}분 후`, "소강상태 후"]
+      : [`${Math.round(g / 60)}분 뒤`, "한참 후", "소강상태 후"];
     const gapSec = prev && typeof prev.at === "number" && typeof b.at === "number"
       ? Math.abs(prev.at - b.at) * SECONDS_PER_FRAME
       : null;
@@ -1621,7 +1652,7 @@ export function renderReplaySummary(
       (b.who ?? []).some((w) => (prev?.whom ?? []).includes(w))
       || (b.whom ?? []).some((w) => (prev?.who ?? []).includes(w));
     // "1팀에서는"은 어색하다(지적) — "1팀의 누구는" 꼴로만 쓴다.
-    const teamTagFor = (): string => (crossTeam ? `${myTeam}팀의 ` : "");
+    const teamTagFor = (): string => (!duel && crossTeam ? `${myTeam}팀의 ` : "");
     // 같은 사람이 주인공인 이야기가 잇달아 나오면 문장을 나누지 말고 한 문장으로 잇는다
     // (요청: 세 문장까지는 합치기). 이음말을 앞에 붙이면 문장이 그 말로 시작해 이어 붙일
     // 수 없으므로, 이을 참이면 이음말 고르기 자체를 건너뛴다 — 아래 sameSubject가 받는다.
@@ -1694,26 +1725,40 @@ export function renderReplaySummary(
         // 얼마나 벌어졌느냐에 따라 말이 달라야 한다(요청: 곧이어 / 그 직후 / 잠시 후 /
         // 소강상태 후 / 한참 후 / 몇 분 후). 붙어 일어난 일에 "한참 후"를 쓰거나 십수 분
         // 뒤 일에 "곧이어"를 쓰면 그 자체가 틀린 말이 된다.
-        const n = Math.round(gapSec / 60);
-        const byTime =
-          gapSec <= 60 ? ["곧이어", "그 직후"]
-          : gapSec <= 3 * 60 ? ["잠시 후", "이어서", "곧이어"]
-          : gapSec <= STANDOFF_SEC ? ["잠시 후", `${n}분 뒤`]
-          : gapSec <= 10 * 60 ? [`${n}분 뒤`, `${n}분 후`, "소강상태 후"]
-          : [`${n}분 뒤`, "한참 후", "소강상태 후"];
         // 같은 편이 몰아치는 흐름이고 사이가 짧으면 '쌓인다'는 말도 함께 후보에 둔다.
         linkWord = link(
           sameTide && gapSec <= 3 * 60
-            ? ["여기에", "게다가", "설상가상으로", "그리고", ...byTime]
-            : byTime,
+            ? ["여기에", "게다가", "설상가상으로", "그리고", ...byTime(gapSec)]
+            : byTime(gapSec),
         );
       }
+    }
+    // ── 리듬 보정(요청) ──
+    // 위: 이음말이 두 번 잇달았으면 세 번째는 덜어 낸다. 다만 전황이 실제로 뒤집히는
+    // 자리는 예외다 — 그건 꾸밈이 아니라 뜻이라 빼면 앞뒤가 거꾸로 읽힌다.
+    if (linkWord && linkRun >= 2 && !flipped) { linkWord = ""; teamTag = ""; }
+    // 같은 결이 잇달아 나오는 것도 남발이다(지적: "6분 후 … 9분 뒤", "한참 후 … 소강상태
+    // 후"). 반전을 짚는 자리만 예외로 둔다 — 거기서 빼면 뜻이 달라진다.
+    if (linkWord && !flipped && lastLinkFamily !== "" && linkFamily(linkWord) === lastLinkFamily) {
+      linkWord = "";
+      teamTag = "";
+    }
+    // 아래: 아무 말 없이 두 문장이 지나갔는데 이번에도 그냥 놓일 참이면 한 마디 넣는다.
+    // 이을 관계가 있는데 표시만 안 된 것이라, 여기서 채워야 문단이 뚝뚝 끊기지 않는다.
+    if (!linkWord && !joinPrev && !flipJoin && linkable && plainRun >= 2 && b.k !== "result") {
+      // 시점을 모르는 문장(총 생산량처럼 경기 전체를 두고 하는 말)에는 시간 표현을 쓸 수
+      // 없다 — 그때는 흐름만 짚는 말로 잇는다.
+      const pool = gapSec === null
+        ? (sameTide ? ["여기에", "그리고", "한편"] : ["한편", "그리고"])
+        : (sameTide ? ["여기에", "그리고", "한편", ...byTime(gapSec)] : byTime(gapSec));
+      linkWord = link(pool);
     }
     let lead = "";
     if (mutual) lead = "서로 ";
     else if (both) {
-      if (seed % 2 === 0) who = `양 팀의 ${who}`;
-      else lead = "모두 ";
+      // 개인전에는 '팀'이 없다(요청) — "양 팀의"를 빼고 '둘 다'로 말한다.
+      if (seed % 2 === 0 && !duel) who = `양 팀의 ${who}`;
+      else lead = duel ? "둘 다 " : "모두 ";
     }
     if (!who) continue;
     const render = (offset: number): string | null => {
@@ -1727,7 +1772,8 @@ export function renderReplaySummary(
         at: typeof b.at === "number" ? b.at : null,
         end: typeof data.end === "number" && data.end > 0 ? data.end : null,
         lastLost: i === lastLostIdx,
-        team: teamOf?.(names[0] ?? "") ?? 0,
+        duel,
+        team: duel ? 0 : (teamOf?.(names[0] ?? "") ?? 0),
         p: b.p ?? {},
         pick: (opts) => {
           const t = opts[(seed + offset) % opts.length];
@@ -1894,6 +1940,9 @@ export function renderReplaySummary(
       if (head) out[out.length - 1] = `${head} ${tail}`;
       else out.push(text);
       chainCount = head ? chainCount + 1 : 0;
+      // 이어 붙였으면 이음말도 아니고 그냥 놓인 것도 아니다 — 둘 다 초기화한다.
+      if (head) { linkRun = 0; plainRun = 0; } else { linkRun = 0; plainRun += 1; }
+      lastLinkFamily = "";
       lastSubject = subject;
       lastBaseWho = baseWho;
       lastWho = b.who ?? [];
@@ -1914,8 +1963,8 @@ export function renderReplaySummary(
     // 팀이 갈린 반전에는 앞말을 받는 연결어를 한마디 넣어도 좋다(요청).
     const alsoLead = alsoSubject && b.k !== "result"
       ? (headToHead
-        ? ["", "반대로 ", "역으로 ", myTeam ? `${myTeam}팀의 ` : ""][seed % 4]
-        : ["", "이에 질세라 ", "다른 쪽에서는 ", myTeam ? `${myTeam}팀의 ` : ""][seed % 4])
+        ? ["", "반대로 ", "역으로 ", !duel && myTeam ? `${myTeam}팀의 ` : ""][seed % 4]
+        : ["", "이에 질세라 ", "다른 쪽에서는 ", !duel && myTeam ? `${myTeam}팀의 ` : ""][seed % 4])
       : "";
     // "…늘린 뒤"는 그 자체가 이어 주는 말이라 쉼표를 두지 않는다.
     if (chained && sameSubject) {
@@ -1929,6 +1978,14 @@ export function renderReplaySummary(
     }
     else out.push(text);
     chainCount = chained ? chainCount + 1 : 0;
+    // 리듬 셈 — 이어 붙였으면 둘 다 0, 이음말로 열었으면 linkRun만 쌓고, 아무 표시도
+    // 없이 그냥 놓였으면 plainRun을 쌓는다. 맺음말은 문단의 끝이라 세지 않는다.
+    if (b.k !== "result") {
+      if (chained) { linkRun = 0; plainRun = 0; }
+      else if (linkWord) { linkRun += 1; plainRun = 0; }
+      else { linkRun = 0; plainRun += 1; }
+      lastLinkFamily = !chained && linkWord ? linkFamily(linkWord) : "";
+    }
     lastSubject = subject;
     lastBaseWho = baseWho;
     lastWho = b.who ?? [];
