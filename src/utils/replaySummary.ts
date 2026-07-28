@@ -251,6 +251,36 @@ function gangRush(
   return out;
 }
 
+/** 양쪽이 같은 짓을 했으면 한 문장으로 묶는다(요청: "누구와 누구가 서로 ~함").
+ *  재료가 다르면 묶지 않는다 — 9드론과 12드론을 한 숫자로 말하면 한쪽이 거짓이 된다. */
+function mergeMutual(list: Beat[]): Beat[] {
+  const byKey = new Map<string, Beat[]>();
+  for (const b of list) {
+    const g = byKey.get(b.k);
+    if (g) g.push(b); else byKey.set(b.k, [b]);
+  }
+  const out: Beat[] = [];
+  for (const group of byKey.values()) {
+    const w = group.find((b) => b.won);
+    const l = group.find((b) => !b.won);
+    if (!w || !l || JSON.stringify(w.p ?? {}) !== JSON.stringify(l.p ?? {})) {
+      out.push(...group);
+      continue;
+    }
+    const ats = [w.at, l.at].filter((x): x is number => x !== null && x !== undefined);
+    const { whom: _whom, who2: _who2, ...rest } = w;
+    out.push({
+      ...rest,
+      who: [...w.who, ...l.who],
+      at: ats.length > 0 ? Math.min(...ats) : null,
+      // 양쪽이 같은 수를 뒀다는 것 자체가 이야깃거리라 조금 무겁게 친다.
+      weight: Math.max(w.weight, l.weight) + 2,
+      p: { ...(w.p ?? {}), mutual: true },
+    });
+  }
+  return out;
+}
+
 /** 이름을 아는 유닛만 남긴다 — 하나도 없으면 조합을 말할 수 없다. */
 function nameableUnits(units: string[]): string[] {
   return units.filter((u) => UNIT_KO[u]);
@@ -615,7 +645,7 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   const pool: Beat[] = [
     ...(breached ? [breached] : []),
     ...gangBeats,
-    ...tactics,
+    ...mergeMutual(tactics),
     ...sideBeats({
       side: winner, other: loser, players: winnerPlayers,
       won: true, sec, totalFrames, pressedEarly: false,

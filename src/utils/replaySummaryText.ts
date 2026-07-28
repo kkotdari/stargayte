@@ -170,7 +170,7 @@ const TEMPLATES: Record<string, Tpl> = {
     const build = n > 0 ? `${n}드론 저글링 러시` : "초반 저글링 러시";
     const at = targetPhrase(c);
     return `${ga(c.who)} ${at}${c.pick([
-      `${build}를 감`, `${build}로 일찌감치 달림`, `작정하고 ${build}를 감`,
+      `${build}를 감`, `빠른 ${build}를 감`, `${build}로 일찌감치 달림`,
     ])}${tail(c)}`;
   },
   moka: act([
@@ -209,13 +209,13 @@ const TEMPLATES: Record<string, Tpl> = {
     const label = g === 2 ? "투게이트" : `${g}게이트`;
     const at = targetPhrase(c);
     return `${ga(c.who)} ${at}${c.pick([
-      `${label} 질럿 러시를 감`, `${label}에서 질럿을 모아 달림`, `작정하고 ${label} 질럿 러시를 감`,
+      `${label} 질럿 러시를 감`, `빠른 ${label} 질럿 러시를 감`, `${label}에서 질럿을 모아 달림`,
     ])}${tail(c)}`;
   },
   "cannon-rush": (c) => {
     const at = targetPhrase(c);
     return `${ga(c.who)} ${at}${c.pick([
-      "초반 포토러쉬를 감", "제 진영 밖에 포토를 박는 포토러쉬를 감", "야심차게 포토러쉬를 감",
+      "초반 포토러쉬를 감", "빠른 포토러쉬를 감", "일찌감치 포토러쉬를 감",
     ])}${tail(c)}`;
   },
   recall: act([
@@ -366,14 +366,14 @@ const TEMPLATES: Record<string, Tpl> = {
       ])}${tail(c)}`;
     }
     return `${ga(c.who)} ${at}${c.pick([
-      "제 진영 밖에 몰래 배럭을 올림", "몰래 배럭을 감", "야심차게 몰래 배럭을 올림",
+      "몰래 배럭을 올림", "몰래 배럭을 감", "빠른 몰래 배럭을 올림",
     ])}${tail(c)}`;
   },
   // 성큰러쉬 — 내 기지가 아닌 곳에 초반부터 성큰을 박는 올인(요청). 해처리는 펴지 않는다.
   "sunken-rush": (c) => {
     const at = targetPhrase(c);
     return `${ga(c.who)} ${at}${c.pick([
-      "성큰러쉬를 감", "제 기지 밖에 성큰을 박는 성큰러쉬를 감", "야심차게 성큰러쉬를 감",
+      "성큰러쉬를 감", "빠른 성큰러쉬를 감", "일찌감치 성큰러쉬를 감",
     ])}${tail(c)}`;
   },
   // 센터 포토 — 가운데를 포토로 걸어 잠그는 그림(요청).
@@ -507,6 +507,13 @@ export function hasSummaryTemplate(key: string): boolean {
 
 const joinNames = (names: string[]): string => names.filter(Boolean).join("·");
 
+/** "조조와 유비" — 양쪽이 같은 짓을 했을 때는 가운뎃점이 아니라 '와/과'로 잇는다(요청). */
+const joinPair = (names: string[]): string => {
+  const n = names.filter(Boolean);
+  if (n.length < 2) return joinNames(n);
+  return `${wa(n.slice(0, -1).join("·"))} ${n[n.length - 1]}`;
+};
+
 /**
  * 저장된 요약을 한 문단으로 옮긴다. resolveName은 리플레이 원본 게임 아이디를 지금 보여줄
  * 이름으로 바꾸는 함수 — 회원이면 현재 닉네임, 아니면 그 이름 그대로.
@@ -521,16 +528,27 @@ export function renderReplaySummary(
   for (const b of data.beats as ReplaySummaryBeat[]) {
     const tpl = TEMPLATES[b?.k];
     if (!tpl) continue;
-    const who = joinNames((b.who ?? []).map(resolveName));
+    // 양쪽이 같은 짓을 했으면 한 문장으로 묶는다(요청) — 모든 전술 틀이 `${ga(who)} ${동작}`
+    // 꼴이라, 이름을 '와/과'로 잇고 동작 앞에 '서로'만 붙이면 어느 틀이든 그대로 읽힌다.
+    const mutual = b.p?.mutual === true;
+    const who = mutual
+      ? joinPair((b.who ?? []).map(resolveName))
+      : joinNames((b.who ?? []).map(resolveName));
     if (!who) continue;
     const seed = variantSeed(b);
+    let firstPick = true;
     const text = tpl({
       who,
       who2: joinNames((b.who2 ?? []).map(resolveName)),
       whom: joinNames((b.whom ?? []).map(resolveName)),
       won: !!b.won,
       p: b.p ?? {},
-      pick: (opts) => opts[seed % opts.length],
+      pick: (opts) => {
+        const t = opts[seed % opts.length];
+        if (!mutual || !firstPick) return t;
+        firstPick = false;
+        return `서로 ${t}`;
+      },
     });
     if (text) out.push(text);
   }
