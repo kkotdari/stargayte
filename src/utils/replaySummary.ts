@@ -1,6 +1,6 @@
 import type { ParsedReplay, ParsedReplayPlayer, ReplayPlayerSignals } from "./replayParser";
 import { scanTactics } from "./replayTactics";
-import { fellFrame, productionDips } from "./replayFell";
+import { eliminatedFrame, fellFrame, productionDips } from "./replayFell";
 import { REPLAY_SUMMARY_VERSION, type ReplaySummaryBeat, type ReplaySummaryData } from "./replaySummaryData";
 import {
   DEFENSE_KO, EXPANSION_KO, PRODUCTION_KO, SPECTACLE_UNITS, SUPPORT_UNITS, UNIT_KO, UNIT_ROLE,
@@ -261,6 +261,36 @@ function gangRush(
   return out;
 }
 
+// 이 안에 친 gg는 같은 순간의 것으로 본다.
+const GG_MERGE_SEC = 90;
+
+/** 비슷한 때에 친 gg는 한 문장으로 묶는다(요청) — 팀원이 잇달아 치면 같은 말이 여러 줄이
+ *  된다. 편이 다르면 묶지 않는다(그건 서로 다른 순간이다). */
+function mergeGg(list: Beat[], sideSize: (won: boolean) => number): Beat[] {
+  const gg = list.filter((b) => b.k === "gg");
+  if (gg.length <= 1) return list;
+  const groups: Beat[][] = [];
+  for (const b of [...gg].sort((x, y) => (x.at ?? 0) - (y.at ?? 0))) {
+    const g = groups.find((x) =>
+      x[0].won === b.won
+      && Math.abs((x[0].at ?? 0) - (b.at ?? 0)) * SECONDS_PER_FRAME <= GG_MERGE_SEC);
+    if (g) g.push(b); else groups.push([b]);
+  }
+  const merged = groups.map((g) => {
+    const who = [...new Set(g.flatMap((b) => b.who))];
+    const ats = g.map((b) => b.at).filter((x): x is number => x !== null && x !== undefined);
+    return {
+      ...g[0], who, at: ats.length > 0 ? Math.min(...ats) : null,
+      // 그 편 전원이 쳤으면 "○○ 팀이 결국 GG 선언"으로 말한다.
+      p: {
+        ...(g[0].p ?? {}),
+        ...(who.length >= 2 && who.length === sideSize(g[0].won) ? { all: true } : {}),
+      },
+    } as Beat;
+  });
+  return [...list.filter((b) => b.k !== "gg"), ...merged];
+}
+
 /** 양쪽이 같은 짓을 했으면 한 문장으로 묶는다(요청: "누구와 누구가 서로 ~함").
  *  재료가 다르면 묶지 않는다 — 9드론과 12드론을 한 숫자로 말하면 한쪽이 거짓이 된다. */
 function mergeMutual(list: Beat[]): Beat[] {
@@ -271,6 +301,8 @@ function mergeMutual(list: Beat[]): Beat[] {
   }
   const out: Beat[] = [];
   for (const group of byKey.values()) {
+    // gg는 양쪽이 쳤다고 '서로 한 일'이 아니다 — 각자의 순간이라 따로 둔다.
+    if (group[0]?.k === "gg") { out.push(...group); continue; }
     const w = group.find((b) => b.won);
     const l = group.find((b) => !b.won);
     if (!w || !l || JSON.stringify(w.p ?? {}) !== JSON.stringify(l.p ?? {})) {
@@ -587,7 +619,8 @@ function sideBeats(args: {
     beats.push({
       k: "fallen", won, who: who(p), weight: 9,
       at: fellFrame(p, totalFrames),
-      p: { team: players.length > 1 },
+      // 리플레이에 탈락이 그대로 적혀 있으면 짐작이 아니라 사실로 말한다(요청).
+      p: { team: players.length > 1, ...(eliminatedFrame(p) !== null ? { out: true } : {}) },
     });
   }
 
@@ -672,11 +705,17 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     if (t.at === null || !RAID_KEYS.has(t.key)) return null;
     const window = t.at + DAMAGE_WINDOW_SEC / SECONDS_PER_FRAME;
     const targets = t.whom ? foes.filter((p) => p.rawName === t.whom) : foes;
-    let best: { raw: string; at: number } | null = null;
+    let best: { raw: string; at: number; out: boolean } | null = null;
     for (const p of targets) {
+      // 그 창 안에 실제로 탈락했으면 그게 가장 확실한 결과다 — 생산 급감보다 앞세운다.
+      const gone = eliminatedFrame(p);
+      if (gone !== null && gone >= t.at && gone <= window) {
+        if (!best || !best.out || gone < best.at) best = { raw: p.rawName, at: gone, out: true };
+        continue;
+      }
       for (const d of productionDips(p, totalFrames)) {
         if (d < t.at || d > window) continue;
-        if (!best || d < best.at) best = { raw: p.rawName, at: d };
+        if (!best || (!best.out && d < best.at)) best = { raw: p.rawName, at: d, out: false };
       }
     }
     return best;
@@ -689,8 +728,14 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
         const hit = damageFrom(t, foes);
         if (hit) {
           return {
-            k: "raid-damage", won, who: [t.who], at: t.at, weight: t.weight + 14,
-            whom: [hit.raw], p: { ...(t.p ?? {}), k: t.key },
+            k: "raid-damage", won, who: [t.who], at: t.at,
+            weight: t.weight + (hit.out ? 16 : 14),
+            whom: [hit.raw],
+            p: {
+              ...(t.p ?? {}), k: t.key,
+              // 탈락은 몇 분경이었는지까지 말한다(요청) — 서사의 시점이 되는 순간이다.
+              ...(hit.out ? { out: true, outMin: minutes(hit.at * SECONDS_PER_FRAME) } : {}),
+            },
           } as Beat;
         }
         return {
@@ -723,12 +768,18 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     return null;
   })();
 
-  const tactics = [...tacticBeats(true), ...tacticBeats(false)];
+  const tactics = mergeGg(
+    [...tacticBeats(true), ...tacticBeats(false)],
+    (won) => (won ? winnerPlayers.length : loserPlayers.length),
+  );
   // 탱크 방어 문장이 "조조를 밀어냄"까지 말했으면 "조조가 먼저 정리됨"을 또 붙이지 않는다.
   // 여기서만 이름으로 거른다 — 렌더된 문장을 훑는 일반 dedupe는 이름이 우연히 겹치는
   // 다른 문장까지 지워버린다.
   const pickedOff = new Set(
-    tactics.filter((b) => b.k === "side-tank").flatMap((b) => b.whom ?? [])
+    tactics
+      // 탈락을 이미 이름으로 말한 문장이 있으면 "먼저 지워짐"을 또 붙이지 않는다.
+      .filter((b) => b.k === "side-tank" || (b.k === "raid-damage" && b.p?.out === true))
+      .flatMap((b) => b.whom ?? [])
   );
 
   const gangBeats: Beat[] = [
@@ -822,6 +873,8 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
       ...(spectacle ? { leadUnit: spectacle } : {}),
       // 이어받는 문장은 유닛을 다시 말해야 말이 이어진다 — 그때는 중복이 아니라 연결이다.
       ...(cont ? { units, cont: true } : alreadySaid ? {} : { units }),
+      // 주력을 몇 기나 뽑았나 — "질럿을 세 부대 뽑아 승리"처럼 규모로도 말한다(요청).
+      ...(units[0] ? { unitN: winner.combat.get(units[0]) ?? 0 } : {}),
       ...(useTeam
         ? {
             teamUnits: teamRanked.map((x) => x.unit),

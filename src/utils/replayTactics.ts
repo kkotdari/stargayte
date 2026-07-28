@@ -500,7 +500,9 @@ function detectFor(c: Ctx): Tactic[] {
 
   // ── 채팅(요청) ── GG 선언은 승부가 어디서 끝났는지 알려주는 유일한 '사람의 말'이다.
   // 오타·장난까지 잡으려 들면 오탐이 늘어서, 통용되는 항복 표현만 좁게 본다.
-  const gg = s.chats.find((c) => /^\s*(g{2,}|ㅈ{2,}|지지|잘{1,2}했|잘하시네)/i.test(c.text));
+  // gg / ㅈㅈ / ww — 셋 다 같은 말이다(지적). ww는 한글 자판에서 ㅈㅈ을 영문 상태로 친 것이고,
+  // ㅈㅈ은 그 반대다. ㅎㅎ은 웃음이라 넣지 않는다.
+  const gg = s.chats.find((c) => /^\s*(g{2,}|w{2,}|ㅈ{2,}|지지|잘{1,2}했|잘하시네)/i.test(c.text));
   if (gg) {
     out.push({ key: "gg", weight: 6, at: gg.frame, who });
   }
@@ -568,5 +570,9 @@ export function scanTactics({ sidePlayers, foePlayers }: TacticScanInput): Tacti
   const seen = new Set<string>();
   return all
     .sort((a, b) => b.weight - a.weight)
-    .filter((t) => (seen.has(t.key) ? false : (seen.add(t.key), true)));
+    // gg는 사람마다 남긴다 — 팀원이 잇달아 친 걸 한 문장으로 묶으려면 전부 필요하다(요청).
+    .filter((t) => {
+      const key = t.key === "gg" ? `gg|${t.who}` : t.key;
+      return seen.has(key) ? false : (seen.add(key), true);
+    });
 }

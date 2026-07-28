@@ -84,6 +84,11 @@ export interface ReplayPlayerSignals {
    *  커맨드만으로 확인되는 몇 안 되는 '불리했다'는 증거다. */
   liftOffCount: number;
   firstLiftOffFrame: number | null;
+  /** 판을 떠난 프레임과 그 사유(screp "Leave Game" 커맨드). 리플레이에서 '탈락'을 추측이
+   *  아니라 사실로 알 수 있는 유일한 기록이다 — 생산이 끊긴 걸 보고 짐작할 필요가 없다. */
+  leaveFrame: number | null;
+  /** screp의 Reason 이름: Quit / Defeat / Victory / Finished / Draw / Dropped 등. */
+  leaveReason: string | null;
   /** 첫 커맨드 프레임 — 없으면 null(커맨드를 하나도 안 낸 사람). */
   firstCmdFrame: number | null;
   /** 마지막 커맨드 프레임. 경기 끝보다 한참 이르면 그 시점에 졌거나 나간 것으로 읽는다. */
@@ -184,6 +189,8 @@ interface ScrepCmd {
   Pos?: { X?: number; Y?: number; x?: number; y?: number } | null;
   /** 채팅 커맨드의 본문(Type.Name === "Chat"). */
   Message?: string;
+  /** "Leave Game" 커맨드의 사유(Quit / Defeat / Dropped …). 버전에 따라 열거형 객체다. */
+  Reason?: { Name?: string } | string;
 }
 
 interface ScrepResult {
@@ -233,6 +240,7 @@ function emptySignals(): ReplayPlayerSignals {
     unitFrames: {}, buildingFrames: {}, buildPositions: [],
     techNames: [], upgradeNames: [], firstTechFrame: {}, chats: [],
     unloadCount: 0, firstUnloadFrame: null, liftOffCount: 0, firstLiftOffFrame: null,
+    leaveFrame: null, leaveReason: null,
     firstCmdFrame: null, lastCmdFrame: null, cmdCountByThird: [0, 0, 0],
   };
 }
@@ -306,6 +314,10 @@ function collectSignals(cmds: ScrepCmd[], totalFrames: number | null): Map<numbe
     if (cmdName === "Lift Off") {
       s.liftOffCount += 1;
       if (frame !== null && s.firstLiftOffFrame === null) s.firstLiftOffFrame = frame;
+    } else if (cmdName === "Leave Game") {
+      // 여러 번 찍히면 마지막 것이 실제로 떠난 시점이다.
+      s.leaveFrame = frame;
+      s.leaveReason = nameOf(c.Reason);
     }
     if (cmdName === "Chat" && typeof c.Message === "string" && c.Message.trim()) {
       if (s.chats.length < CHAT_CAP) s.chats.push({ frame, text: c.Message.trim() });

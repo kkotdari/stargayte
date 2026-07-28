@@ -80,11 +80,28 @@ export function productionCollapse(
   return Math.round(start * per);
 }
 
-/** 그 사람이 사라진 시점 — 생산이 꺾인 지점을 먼저 보고, 못 잡으면 마지막 커맨드. */
+/** 리플레이에 '졌다'고 적힌 사유들 — 이겨서/무승부로 끝난 퇴장과 갈라야 한다. */
+const LOST_REASONS = new Set(["Defeat", "Quit", "Dropped"]);
+
+/** 판에서 실제로 탈락한 시점 — screp의 "Leave Game" 기록이 있으면 그게 사실이다.
+ *  추측(생산 붕괴)과 달리 이건 리플레이에 그대로 적혀 있다. 없으면 null. */
+export function eliminatedFrame(p: ParsedReplayPlayer): number | null {
+  const s = p.signals;
+  // 옛 데이터에는 이 필드가 아예 없다 — undefined도 함께 걸러야 한다.
+  if (!s || s.leaveFrame == null) return null;
+  // 사유를 못 읽는 버전도 있다 — 그때는 퇴장 자체를 탈락으로 본다.
+  if (s.leaveReason && !LOST_REASONS.has(s.leaveReason)) return null;
+  return s.leaveFrame;
+}
+
+/** 그 사람이 사라진 시점 — 리플레이에 적힌 탈락이 먼저고, 없으면 생산이 꺾인 지점,
+ *  그것도 없으면 마지막 커맨드. */
 export function fellFrame(
   p: ParsedReplayPlayer,
   totalFrames: number | null
 ): number | null {
+  const left = eliminatedFrame(p);
+  if (left !== null) return left;
   const last = p.signals?.lastCmdFrame ?? null;
   const collapse = productionCollapse(p, totalFrames);
   if (collapse === null) return last;

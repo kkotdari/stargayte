@@ -302,6 +302,17 @@ const TEMPLATES: Record<string, Tpl> = {
     const label = tacticLabel(str(c.p.k), c.p);
     if (!label) return null;
     const whom = c.whom ? `${c.whom}의 ` : "상대 ";
+    // 그 창 안에 실제로 탈락했으면(Leave Game) 짐작이 아니라 사실이다 — 그렇게 말한다.
+    if (c.p.out) {
+      const foe = c.whom || "상대";
+      const min = num(c.p.outMin);
+      const when = min > 0 ? `${min}분경 ` : "";
+      return `${ga(c.who)} ${done(c, c.pick([
+        `${ro(label)} ${when}${reul(foe)} 엘리미네이트`,
+        `${ro(label)} ${when}${reul(foe)} 그대로 지워버림`,
+        `${label} 한 방에 ${when}${ga(foe)} 탈락`,
+      ]))}`;
+    }
     return `${ga(c.who)} ${done(c, c.pick([
       `${ro(label)} ${whom}본진을 파괴함`,
       `${ro(label)} ${whom}생산을 끊어놓음`,
@@ -503,11 +514,16 @@ const TEMPLATES: Record<string, Tpl> = {
   },
   allin: (c) =>
     `${ga(c.who)} ${c.pick(["일꾼을 거의 안 뽑고 병력만 짜낸 올인", "일꾼을 접고 병력만 뽑은 올인"])}`,
+  // 탈락이 리플레이에 그대로 적혀 있으면(Leave Game) 짐작 없이 단정해 말한다(요청).
   fallen: (c) =>
     `${ga(c.who)} ${c.pick(
-      c.p.team
-        ? ["먼저 무너지며 전열이 갈림", "먼저 정리되며 한 명이 빠짐"]
-        : ["일찍 손을 놓음", "일찍 무너짐", "허무하게 먼저 정리됨"]
+      c.p.out
+        ? c.p.team
+          ? ["먼저 엘리미네이트 당함", "제일 먼저 탈락하며 한 명이 빠짐", "먼저 지워짐"]
+          : ["엘리미네이트 당함", "탈락함"]
+        : c.p.team
+          ? ["먼저 무너지며 전열이 갈림", "먼저 정리되며 한 명이 빠짐"]
+          : ["일찍 손을 놓음", "일찍 무너짐", "허무하게 먼저 정리됨"]
     )}`,
 
   // 일꾼 생산 격차 — 커맨드로 센 '뽑은 수'다(살아남은 수가 아니다). 그래도 한쪽이 한참
@@ -673,7 +689,10 @@ const TEMPLATES: Record<string, Tpl> = {
   },
 
   // 채팅에서 잡은 항복 선언(요청) — 승부가 어디서 끝났는지 말해주는 유일한 '사람의 말'이다.
-  gg: (c) => `${ga(c.who)} ${c.pick(["GG를 침", "GG 치고 나감", "일찌감치 GG"])}`,
+  gg: (c) =>
+    c.p.all
+      ? `${c.whoList.join("·")} 팀이 ${c.pick(["결국 GG 선언", "결국 GG를 치고 물러남"])}`
+      : `${ga(c.who)} ${c.pick(["결국 GG 선언", "GG를 침", "GG 치고 나감", "일찌감치 GG"])}`,
 
   // "유비의 바이오닉 한 방으로 관우의 저글링 성큰을 뚫음"(요청) — 양쪽을 한 문장에 담는다.
   breakthrough: (c) => {
@@ -751,8 +770,14 @@ const TEMPLATES: Record<string, Tpl> = {
     } else if (mode === "late") {
       body = `${who} ${c.pick([`후반 ${p}승리`, `길게 끌어 ${p}승리`])}`;
     } else {
+      // 주력을 부대 단위로 뽑았으면 그 규모 자체가 그림이다(요청) — 12기를 한 부대로 센다.
+      const leadKo = UNIT_KO[list(c.p.units)[0] ?? ""] ?? "";
+      const squads = Math.floor(num(c.p.unitN) / 12);
+      const bulk = leadKo && squads >= 2 && !cont
+        ? [`${leadKo} ${squads}부대를 뽑아 승리`, `${leadKo}만 ${squads}부대 넘게 생산해 이김`]
+        : [];
       body = phrase
-        ? `${who} ${c.pick([`${p}승리`, `${p}이김`])}`
+        ? `${who} ${c.pick([`${p}승리`, `${p}이김`, ...bulk])}`
         : `${who} ${c.pick(["그대로 승리", "그대로 가져감"])}`;
     }
 
@@ -785,6 +810,9 @@ export function renderReplaySummary(
 ): string | null {
   if (!isReplaySummaryData(data)) return null;
   const out: string[] = [];
+  // 앞 문장과 인과로 이어지는 자리를 표시해 둔다(요청: 서사·인과가 있어야 재밌다).
+  // 크게 한 방 먹인 바로 다음에 같은 사람이 또 무언가를 했다면 그건 '그 기세로' 한 것이다.
+  let prev: ReplaySummaryBeat | null = null;
   for (const b of data.beats as ReplaySummaryBeat[]) {
     const tpl = TEMPLATES[b?.k];
     if (!tpl) continue;
@@ -796,6 +824,14 @@ export function renderReplaySummary(
     const names = (b.who ?? []).map(resolveName);
     const seed = variantSeed(b);
     let who = mutual || both ? joinPair(names) : joinNames(names);
+    if (
+      prev && b.k !== "result"
+      && (prev.k === "raid-damage" || prev.k === "gang-rush")
+      && !!prev.won === !!b.won
+      && (b.who ?? []).some((w) => (prev?.who ?? []).includes(w))
+    ) {
+      who = `${seed % 2 === 0 ? "그 기세로" : "여세를 몰아"} ${who}`;
+    }
     let lead = "";
     if (mutual) lead = "서로 ";
     else if (both) {
@@ -818,7 +854,7 @@ export function renderReplaySummary(
         return `${lead}${t}`;
       },
     });
-    if (text) out.push(text);
+    if (text) { out.push(text); prev = b; }
   }
   return out.length > 0 ? out.join(". ") : null;
 }
