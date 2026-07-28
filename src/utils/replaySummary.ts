@@ -148,6 +148,9 @@ const LONG_RUN_MIN_SEC = 15 * 60;
 const LONG_RUN_SHARE = 0.25;
 // 몇 기는 뽑았어야 한다. 오래 뽑았어도 다섯 기면 '끌고 갔다'가 아니다.
 const LONG_RUN_MIN_N = 12;
+// 무너지기 이 안쪽에서야 방어 건물 첫 채를 올렸으면 '부랴부랴 지은 것'이다(요청).
+// 진작부터 지어 둔 사람은 첫 채가 한참 앞이라 여기 안 걸린다.
+const PANIC_DEF_SEC = 2 * 60;
 // 시작이 초반을 지나야 '중반부터'다 — 1분부터 뽑은 기본 유닛은 여기 해당하지 않는다.
 const LONG_RUN_START = 0.3;
 // 그리고 끝까지 이어져야 한다.
@@ -739,13 +742,19 @@ function airThreat(foes: ParsedReplayPlayer[]): boolean {
  *  느낌은 그 수 자체가 말하게 둔다. 포토 러시로 간 캐논은 방어가 아니므로 세지 않는다. */
 function defenseBefore(
   p: ParsedReplayPlayer, frame: number | null, foes: ParsedReplayPlayer[],
-): { def: string; n: number } {
+): { def: string; n: number; from: number | null } {
   const sg = p.signals;
   const key = (airThreat(foes) ? AIR_DEF : GROUND_DEF)[p.race ?? ""] ?? "";
-  if (!sg || !key) return { def: "", n: 0 };
-  if (key === "Photon Cannon" && cannonIsRush(p)) return { def: key, n: 0 };
+  if (!sg || !key) return { def: "", n: 0, from: null };
+  if (key === "Photon Cannon" && cannonIsRush(p)) return { def: key, n: 0, from: null };
   const cut = frame ?? Infinity;
-  return { def: key, n: (sg.buildingFrames[key] ?? []).filter((f) => f <= cut).length };
+  const frames = (sg.buildingFrames[key] ?? []).filter((f) => f <= cut);
+  return {
+    def: key,
+    n: frames.length,
+    // 첫 채를 올린 때 — 무너지기 직전에야 손을 댔는지 가리는 근거다(아래 PANIC_DEF_SEC).
+    from: frames.length > 0 ? Math.min(...frames) : null,
+  };
 }
 
 /** 그 편에서 가장 많이 뽑은 '한 방' 유닛(없으면 undefined). */
@@ -1097,12 +1106,18 @@ function sideBeats(args: {
     // 무너질 때 방어 건물이 어땠는지도 함께(요청) — "포토 2개뿐인 채로 지워짐"처럼
     // 그 수 자체가 그림이 된다. 막아냈는지는 리플레이에 없으니 지어 둔 데까지만 싣는다.
     const guard = defenseBefore(p, fell, other.players);
+    // 방어 건물에 손을 댄 게 무너지기 직전이었나(요청: 멸망·큰 타격 직전에 지었으면
+    // "부랴부랴 지었지만 늦었다"). 첫 채가 언제였는지로 본다 — 진작부터 지어 둔 사람은
+    // 첫 채가 한참 앞이라 여기 안 걸린다.
+    const panic = guard.n > 0 && fell !== null && guard.from !== null
+      && (fell - guard.from) * SECONDS_PER_FRAME <= PANIC_DEF_SEC;
     beats.push({
       k: "fallen", won, who: who(p), weight: 9,
       at: fell,
       // 리플레이에 탈락이 그대로 적혀 있으면 짐작이 아니라 사실로 말한다(요청).
       p: {
         team: players.length > 1, def: guard.def, defN: guard.n,
+        ...(panic ? { panic: true } : {}),
         ...(eliminatedFrame(p) !== null ? { out: true } : {}),
       },
     });
