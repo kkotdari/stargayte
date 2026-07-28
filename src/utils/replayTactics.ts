@@ -15,6 +15,10 @@ import type { BuildPos, ParsedReplayPlayer, ReplayPlayerSignals } from "./replay
 
 const SECONDS_PER_FRAME = 0.042;
 
+// 성큰 러쉬로 볼 시간 창 — 이보다 늦게 본진 밖에 박는 성큰은 러쉬가 아니라 조이기·확장
+// 방어에 가깝다.
+const SUNKEN_RUSH_SEC = 7 * 60;
+
 /** 짚어낸 전술 하나. 문구는 여기 없다 — 저장은 키와 재료로만 하고(replaySummaryData.ts의
  *  이유 참고) 문장은 replaySummaryText.ts가 만든다. */
 export interface Tactic {
@@ -68,28 +72,31 @@ const ENEMY_RADIUS = 0.35;
 
 /** 이 사람의 건물 좌표를 구역으로 바꿔 주는 함수. 좌표를 못 읽었거나(screp이 Pos를 안 줌)
  *  본진을 못 정하면 null — 자리 기반 전술(몰래 배럭·센터 포토)은 그냥 안 나온다. */
+function homeOf(p: ParsedReplayPlayer): { x: number; y: number } | null {
+  const pts = p.signals?.buildPositions ?? [];
+  return pts.length >= MIN_BUILDINGS_FOR_HOME ? medoid(pts) : null;
+}
+
 function zoneResolver(
   me: ParsedReplayPlayer,
+  allies: ParsedReplayPlayer[],
   foes: ParsedReplayPlayer[]
 ): ((b: BuildPos) => Zone) | null {
-  const mine = me.signals?.buildPositions ?? [];
-  if (mine.length < MIN_BUILDINGS_FOR_HOME) return null;
-  const home = medoid(mine);
+  const home = homeOf(me);
   if (!home) return null;
-  const foeHomes = foes
-    .map((f) => {
-      const pts = f.signals?.buildPositions ?? [];
-      return pts.length >= MIN_BUILDINGS_FOR_HOME ? medoid(pts) : null;
-    })
-    .filter((h): h is { x: number; y: number } => h !== null);
+  const foeHomes = foes.map(homeOf).filter((h): h is { x: number; y: number } => h !== null);
   if (foeHomes.length === 0) return null;
+  // 아군 본진도 '집'으로 친다(지적: 팀전에서는 다른 저그의 크립 콜로니 위에도 지을 수 있다).
+  // 내 본진만 집으로 보면 아군 진영에 세운 방어 건물이 죄다 '본진 밖'으로 잡혀 러쉬가 된다.
+  const friendly = [home, ...allies.map(homeOf).filter((h): h is { x: number; y: number } => h !== null)];
   // 기준 거리는 '가장 가까운 상대까지' — 팀전에서 멀리 있는 상대까지 재면 구역이 다 뭉개진다.
   const base = Math.min(...foeHomes.map((h) => dist(home, h)));
   if (!(base > 0)) return null;
   return (b) => {
     const toFoe = Math.min(...foeHomes.map((h) => dist(b, h)));
     if (toFoe < base * ENEMY_RADIUS) return "enemy";
-    if (dist(b, home) < base * HOME_RADIUS) return "home";
+    const toFriend = Math.min(...friendly.map((h) => dist(b, h)));
+    if (toFriend < base * HOME_RADIUS) return "home";
     return "mid";
   };
 }
@@ -191,12 +198,13 @@ function detectFor(c: Ctx): Tactic[] {
         who,
       });
     }
-    // 성큰 러쉬(요청) — 상대 코앞에 해처리를 펴고 크립을 깔아 성큰을 박는 초반 올인.
-    // 같은 건물이라도 '어디에' 지었나가 전부라서, 자리를 봐야만 방어용 성큰과 갈린다.
-    const sunkenRush = [
-      ...inZone("enemy", "Hatchery", 420), ...inZone("enemy", "Creep Colony", 420),
-      ...inZone("enemy", "Sunken Colony", 420),
-    ];
+    // 성큰 러쉬(요청) — 내 기지가 아닌 곳에 초반에 성큰을 짓는 것. 상대 코앞이든 가운데든
+    // '내 본진 밖'이면 다 해당한다. 같은 건물이라도 어디에 지었나가 전부라서, 자리를 봐야만
+    // 방어용 성큰과 갈린다. 해처리는 크립을 깔려고 따라 나가는 수단이라 함께 세되, 판정의
+    // 중심은 어디까지나 본진 밖의 성큰(크립콜로니 포함)이다.
+    const sunkenRush = (["Creep Colony", "Sunken Colony"] as const).flatMap((b) => [
+      ...inZone("enemy", b, SUNKEN_RUSH_SEC), ...inZone("mid", b, SUNKEN_RUSH_SEC),
+    ]);
     if (sunkenRush.length > 0) {
       out.push({
         key: "sunken-rush", ...target, weight: 13, at: firstOf(sunkenRush), who,
@@ -336,7 +344,7 @@ export function scanTactics({ sidePlayers, foePlayers }: TacticScanInput): Tacti
     all.push(
       ...detectFor({
         rawName: p.rawName, s: p.signals, race: p.race, foeRaces, soleFoe,
-        zone: zoneResolver(p, foePlayers),
+        zone: zoneResolver(p, sidePlayers.filter((x) => x !== p), foePlayers),
       })
     );
   }
