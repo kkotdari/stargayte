@@ -245,6 +245,16 @@ const CONTRAST_LINKS = new Set(["한편", "그와 동시에", "반면", "그러�
 const SEQUENCE_LINKS = ["이어서", "곧이어", "잠시 후", "그 후", "한동안의 대치 후", "그 기세로", "여세를 몰아", "그 기세를 이어간", "여기에", "게다가", "설상가상으로"];
 // 정규식에 이름을 그대로 넣기 전에 특수문자를 막는다 — 닉네임에 무엇이 들어올지 모른다.
 const escapeRe = (v: string): string => v.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+// 어느 편에도 기울지 않는 문장들 — 대치·소모전·손 빠르기·총 생산량처럼 '그 순간 누가
+// 유리한가'를 말하지 않는 것들이다.
+const NEUTRAL_BEATS = new Set([
+  "standoff", "attrition", "fast-hands", "power-unit", "expand", "prod-gap", "worker-gap",
+  "tech", "vision", "no-detect", "revival",
+]);
+// 한 사람의 일이지만 국면은 상대 쪽으로 기우는 문장들 — 제 수가 역풍을 맞았거나 당한 것.
+const AGAINST_ACTOR = new Set([
+  "rush-backfire", "greedy-punished", "fallen", "lodging", "lift-off", "gg",
+]);
 // 한 문장에 이어 붙일 수 있는 마디 수 — 이보다 길어지면 읽다가 숨이 찬다.
 const MAX_CHAIN = 2;
 // 진 편 문장에 결과 한 마디를 다는 건 '끝 무렵에 벌어진 일'에만 한다(지적) — 초중반의
@@ -419,6 +429,20 @@ function numBatchim(n: number): boolean {
 /** 숫자 뒤의 목적격/도구격 조사. */
 const numReul = (n: number): string => `${n}${numBatchim(n) ? "을" : "를"}`;
 const numRo = (n: number): string => `${n}${numBatchim(n) ? "으로" : "로"}`;
+
+/** 그 문장이 어느 편에 유리한 국면인가 — 다음 문장을 어떻게 이을지 정하는 기준이다(요청:
+ *  전황이 굉장히 중요하다). +1은 이긴 편 쪽으로, -1은 진 편 쪽으로 기운 국면이고, 0은
+ *  어느 쪽도 아니라는 뜻이다.
+ *
+ *  beat의 won은 '그 일을 한 사람이 어느 편인가'일 뿐이라 그대로 쓰면 안 된다 — 제 러시가
+ *  역풍을 맞았거나(rush-backfire) 째다가 얻어맞은(greedy-punished) 문장은 한 사람의 일이지만
+ *  국면은 상대 쪽으로 기운 것이다. 반대로 대치·소모전·손 빠르기처럼 어느 편에도 기울지
+ *  않는 문장은 0이라, 그 앞뒤를 "하지만"으로 잇는 건 없는 반전을 지어내는 셈이 된다. */
+function tideOf(b: ReplaySummaryBeat): -1 | 0 | 1 {
+  if (NEUTRAL_BEATS.has(b.k)) return 0;
+  const mine = b.won ? 1 : -1;
+  return (AGAINST_ACTOR.has(b.k) ? -mine : mine) as -1 | 1;
+}
 
 /** 여럿을 늘어놓을 때 쓰는 꼴 — "A의 바이오닉 한 방과 B의 3게이트 질럿 러시"는 어색하다.
  *  목록 안에서는 '한 방'을 떼고 병력으로 부른다(요청: 누구의 바이오닉 병력으로). */
@@ -1385,6 +1409,13 @@ export function renderReplaySummary(
       ? Math.abs(prev.at - b.at) * SECONDS_PER_FRAME
       : null;
     const linkable = !!prev && b.k !== "result" && prev.k !== "result";
+    // 이 문장과 앞 문장이 각각 어느 편으로 기운 국면인가(요청: 전황이 굉장히 중요하다).
+    // 0은 어느 쪽도 아니라는 뜻이라, 그런 문장 앞뒤는 반전으로 잇지 않는다.
+    const tide = tideOf(b);
+    const prevTide = prev ? tideOf(prev) : 0;
+    // 전황이 실제로 반대편으로 넘어갔나 / 같은 편으로 이어지나.
+    const flipped = tide !== 0 && prevTide !== 0 && tide !== prevTide;
+    const sameTide = tide !== 0 && tide === prevTide;
     // 거의 같은 때에 벌어진 서로 다른 사람의 일은 한 문장으로 잇는 편이 자연스럽다
     // (요청: "브래드는 ~했고 정구는 ~했음"). 같은 사람 이야기면 주어가 겹쳐 어색해 뺀다.
     const sharesWho = (b.who ?? []).some((w) => (prev?.who ?? []).includes(w));
@@ -1398,7 +1429,7 @@ export function renderReplaySummary(
     if (
       prev && b.k !== "result"
       && (prev.k === "raid-damage" || prev.k === "gang-rush")
-      && !!prev.won === !!b.won
+      && sameTide
       && sharesWho
     ) {
       // 앞 문장과 주어가 같으면 이음말을 붙이는 대신 한 문장으로 잇는다(지적: 같은 이름이
@@ -1408,15 +1439,15 @@ export function renderReplaySummary(
       }
     } else if (linkable && gapSec !== null && gapSec <= SAME_TIME_SEC) {
       if (!sharesWho && seed % 2 === 0) joinPrev = true;
-      else if (!!prev!.won !== !!b.won) {
+      else if (flipped) {
         // 비슷한 때에 반대편에서 벌어진 일은 "한편/그와 동시에"로 이어야 자연스럽다(요청).
         linkWord = link(["한편", "그와 동시에", "반면"]);
         who = `${linkWord} ${who}`;
       }
-    } else if (linkable && gapSec !== null && (!!prev!.won !== !!b.won || seed % 3 === 0)) {
+    } else if (linkable && gapSec !== null && (flipped || seed % 3 === 0)) {
       // 전황이 한 편에서 다른 편으로 넘어가는 자리는 늘 짚어 준다(요청) — 읽는 사람이
       // 흐름이 바뀌었다는 걸 알아야 한다. 같은 편 이야기가 이어질 때만 드문드문 붙인다.
-      if (!!prev!.won !== !!b.won) {
+      if (flipped) {
         // 이음말을 앞에 다는 것보다 "…파괴됐지만 …파괴함"처럼 한 문장으로 잇는 편이
         // 반전이 또렷하다(지적). 앞 문장을 '-지만'으로 못 바꾸거나 이미 반전을 품고
         // 있으면 그때만 이음말을 쓴다.
@@ -1435,10 +1466,14 @@ export function renderReplaySummary(
       } else if (gapSec > STANDOFF_SEC) {
         // 한참 뜸했다면 그 사이는 대치였다고 말할 만하다.
         linkWord = link(["한동안의 대치 후", "그 후"]);
-      } else {
+      } else if (sameTide) {
         // 같은 편이 계속 유리한 흐름이면 '쌓인다'는 말로 잇는다(요청) — 순서만 짚는
         // "이어서"보다 전황이 한쪽으로 기운다는 게 드러난다.
         linkWord = link(["여기에", "게다가", "설상가상으로", "이어서", "곧이어"]);
+      } else {
+        // 어느 쪽으로도 안 기운 문장(대치·소모전·생산량)은 순서만 짚는다 — 여기에
+        // "설상가상"이나 "하지만"을 붙이면 없는 전황을 지어내는 셈이다(지적).
+        linkWord = link(["이어서", "곧이어", "잠시 후"]);
       }
       // 한 문장으로 이을 때(flipJoin)는 이음말이 없다 — 그때 붙이면 공백만 남는다.
       if (linkWord) who = `${linkWord} ${teamTag}${who}`;
@@ -1528,9 +1563,11 @@ export function renderReplaySummary(
       : null;
     // 맺음말은 이미 결말이라 "다시 일어섬"을 얹을 자리가 아니다.
     // 문장이 이미 "…했지만 역부족"처럼 반전을 품고 있으면 "하지만"을 또 얹지 않는다(지적).
+    // 전황이 실제로 그 사람 쪽으로 돌아섰을 때만 "다시 일어섰다"고 말한다(요청: 전황을
+    // 보고 이어야 한다) — 제 수가 또 막힌 문장에 "하지만 다시"를 붙이면 거꾸로 읽힌다.
     const backUp =
       !!actor && !cutIn && b.k !== "result" && chainCount < MAX_CHAIN && lastWhom.includes(actor)
-      && !!backHead && backHead.test(text) && !/지만|으나/.test(text);
+      && flipped && !!backHead && backHead.test(text) && !/지만|으나/.test(text);
     // 앞 문장과 주어가 같으면 주어를 두 번 부르지 않는다(지적: 주어가 반복될 경우 합침).
     // "Rex가 …이기고, …" 꼴로 앞 문장에 이어 붙이고 뒤 문장에서는 주어를 뗀다.
     // 같은 사람 이야기가 연달아 나오면 문장을 갈라 놓지 말고 하나로 잇는다(지적: 같은
@@ -1547,7 +1584,7 @@ export function renderReplaySummary(
     const hitTheWinner =
       !!prev && (prev.whom ?? []).some((w) => (b.who ?? []).includes(w));
     const flipToEnd: boolean =
-      b.k === "result" && out.length > 0 && chainCount === 0 && hitTheWinner
+      b.k === "result" && out.length > 0 && chainCount === 0 && hitTheWinner && prevTide < 0
       && !/지만|으나/.test(out[out.length - 1]);
     const chained: string | null = sameSubject
       // 이어 붙일 마디가 이미 '-고'를 품고 있으면(맺음말+활약 한 마디처럼) 앞마디는
