@@ -307,7 +307,7 @@ function victimPhrase(c: Ctx): string {
 const LOST_TAILS = [
   // 이 꼬리는 이제 끝 무렵 문장에만 붙는다 — "기울기 시작함"처럼 앞을 내다보는 말은 뺐다.
   "흐름은 상대에게 넘어감", "끝내 뒤집지는 못함", "소득은 크지 않았음",
-  "그만큼을 되찾지는 못함", "경기를 뒤집기엔 역부족",
+  "효과가 적었음", "경기를 뒤집기엔 역부족",
 ];
 // 도박수(초반 올인)가 안 됐을 때만 쓰는 맺음 — 성공 여부를 단정하지 않는 선에서
 // "실패함" "큰 피해는 못 줌"까지만 말한다(지적: 독이 됐다·발목을 잡았다는 지나치다).
@@ -1388,8 +1388,8 @@ const TEMPLATES: Record<string, Tpl> = {
     let body: string;
     if (mode === "rush") {
       body = phrase
-        ? `${who} ${c.pick([`초반 ${p}승리`, `초반 ${p}그대로 끝냄`])}`
-        : `${who} ${c.pick(["승리", "그대로 끝냄"])}`;
+        ? `${who} ${c.pick([`초반 ${p}승리`, `초반 ${p}그대로 끝냄`, `초반 ${p}승리를 결정지음`])}`
+        : `${who} ${c.pick(["승리", "그대로 끝냄", "그대로 승리를 결정지음"])}`;
     } else if (mode === "comeback") {
       const late = c.p.wentLate ? "후반에 " : "";
       // 전반과 후반이 아예 뒤집힌 경기는 그냥 '역전'이 아니라 대역전이다(요청).
@@ -1410,7 +1410,7 @@ const TEMPLATES: Record<string, Tpl> = {
         ? [`${leadKo} ${squads}부대를 뽑아 승리`, `${leadKo}만 ${squads}부대 넘게 생산해 이김`]
         : [];
       body = phrase
-        ? `${who} ${c.pick([`${p}승리`, `${p}이김`, ...bulk])}`
+        ? `${who} ${c.pick([`${p}승리`, `${p}이김`, `${p}승리를 결정지음`, ...bulk])}`
         : `${who} ${c.pick(["그대로 승리", "그대로 가져감"])}`;
     }
 
@@ -1511,11 +1511,14 @@ export function renderReplaySummary(
     // 0은 어느 쪽도 아니라는 뜻이라, 그런 문장 앞뒤는 반전으로 잇지 않는다.
     const tide = tideOf(b);
     const prevTide = prev ? tideOf(prev) : 0;
-    // 맺음말을 앞 문장에 '-지만'으로 이어 붙일 참인가 — 그러면 이음말은 필요 없다.
-    const flipToEndCandidate =
-      b.k === "result" && out.length > 0 && chainCount === 0 && prevTide < 0
-      && !!prev && (prev.whom ?? []).some((w) => (b.who ?? []).includes(w))
-      && !/지만|으나/.test(out[out.length - 1]);
+    // 맺음말은 앞 문장에 이어 붙이는 편이 자연스럽다(요청: "…했고 결국 이겼다",
+    // "…했지만 결국 이겼다"). 앞 전황이 진 편 쪽이면 '-지만'으로 뒤집으며 받고, 같은
+    // 편 쪽이면 '-고'로 그대로 받는다. 앞 문장이 이미 이어 주는 어미를 품고 있으면
+    // 접속이 두 번 겹치므로 그때만 끊는다.
+    const endJoinCandidate =
+      b.k === "result" && out.length > 0 && chainCount === 0
+      && !/지만|으나|다가/.test(prevLine)
+      && !!(prevTide < 0 ? toBut(prevLine) : toAnd(prevLine));
     // 전황이 실제로 반대편으로 넘어갔나 / 같은 편으로 이어지나.
     const flipped = tide !== 0 && prevTide !== 0 && tide !== prevTide;
     // 두 일이 한 문장에 들어갈 만큼 가까운 때에 일어났나 — 시간이 벌어졌으면 무슨 관계든
@@ -1726,8 +1729,12 @@ export function renderReplaySummary(
     const alreadyConceded =
       out.length > 0
       && [...LOST_TAILS, ...RISKY_TAILS].some((t) => out[out.length - 1].endsWith(t));
-    if (b.k === "result" && prev && !flipToEndCandidate && !/결국|그대로|하지만|그러나/.test(text)) {
-      if (prevTide < 0 && !alreadyConceded) {
+    // 맺음말에 활약 한 마디가 붙어 이미 '-고'를 품고 있으면 또 잇지 않는다 — 한 문장에
+    // 같은 어미가 세 번 나온다(지적: 중복되는 접속사).
+    const endJoin = endJoinCandidate && !/고, |으며, /.test(text);
+    if (b.k === "result" && prev && !/결국|그대로|하지만|그러나/.test(text)) {
+      // 이어 붙일 참이면 '-지만'이 이미 반전을 짚으므로, 머리말은 "결국/그대로"로 받는다.
+      if (prevTide < 0 && !alreadyConceded && !endJoin) {
         // 앞 전황과 반대로 끝나는 결말에는 반드시 반전을 짚는다(지적) — 시간 머리말이
         // 붙어 있어도 그 앞에 놓는다("하지만 32분 혈투 끝에 …").
         text = `${link(["하지만", "그러나"])} ${text}`;
@@ -1769,14 +1776,10 @@ export function renderReplaySummary(
       closeEnough && chainCount < MAX_CHAIN && out.length > 0 && baseWho !== ""
       && lastSubject === subject && text.startsWith(`${subject} `)
       && prevLedBy(lastBaseWho);
-    // 맺음말은 앞의 전황을 뒤집으며 끝나는 일이 많다(요청) — "…파괴됐지만 …이김"으로 잇는다.
-    // 다만 '이긴 쪽이 그 직전에 얻어맞은' 문장에만 붙인다: 아무 문장에나 이으면 앞뒤가
-    // 뒤집혀 읽히고(지적), 이미 반전을 품은 문장이면 '지만'이 두 번 나온다.
-    const hitTheWinner =
-      !!prev && (prev.whom ?? []).some((w) => (b.who ?? []).includes(w));
-    const flipToEnd: boolean =
-      b.k === "result" && out.length > 0 && chainCount === 0 && hitTheWinner && prevTide < 0
-      && !/지만|으나/.test(out[out.length - 1]);
+    // 맺음말을 앞 문장에 이어 붙일 때 쓸 앞마디(위 endJoinCandidate 참고).
+    const endHead: string | null = endJoin
+      ? (prevTide < 0 ? toBut(prevLine) : toAnd(prevLine))
+      : null;
     // 앞이 '자원부터 먼저 챙긴' 이야기면 뒤의 수는 그 결과다(요청: 째기가 무게감 있는
     // 액션과 이어지면 같이 엮어서) — 나란히 벌어진 일을 뜻하는 '-고'가 아니라 '-ㄴ 뒤'로
     // 이어야 원인과 결과로 읽힌다. 잘 풀렸든 아니든 이어지는 건 마찬가지다(요청).
@@ -1785,7 +1788,8 @@ export function renderReplaySummary(
       // 이어 붙일 마디가 이미 '-고'를 품고 있으면(맺음말+활약 한 마디처럼) 앞마디는
       // '-으며'로 바꾼다 — 안 그러면 한 문장에 "…고, …고,"가 연달아 나온다(지적).
       ? (afterCause ?? (chainCount === 0 && !/고, /.test(text) ? toAnd(prevLine) : toAlso(prevLine)))
-      : flipToEnd || flipJoin
+      : endHead ? endHead
+      : flipJoin
         ? toBut(prevLine)
         : joinPrev && out.length > 0 && chainCount === 0 && prevLedBy(lastBaseWho)
           // 전황이 갈린 두 일을 '-고'로 이으면 나란히 일어난 것처럼 읽힌다(지적) —
@@ -1829,9 +1833,10 @@ export function renderReplaySummary(
       );
     }
     // 전황이 뒤집히면서 주체까지 다른 팀이면 "…했지만 제롬도 …했다"가 자연스럽다(요청).
-    const alsoSubject = flipped && crossTeam;
+    // 맺음말에는 '도'를 붙이지 않는다 — 결말은 곁들이는 말이 아니다.
+    const alsoSubject = flipped && crossTeam && b.k !== "result";
     // 팀이 갈린 반전에는 앞말을 받는 연결어를 한마디 넣어도 좋다(요청).
-    const alsoLead = alsoSubject
+    const alsoLead = alsoSubject && b.k !== "result"
       ? (headToHead
         ? ["", "반대로 ", "역으로 ", myTeam ? `${myTeam}팀의 ` : ""][seed % 4]
         : ["", "이에 질세라 ", "다른 쪽에서는 ", myTeam ? `${myTeam}팀의 ` : ""][seed % 4])
@@ -1841,7 +1846,7 @@ export function renderReplaySummary(
       const body = text.slice(subject.length + 1);
       out[out.length - 1] = afterCause ? `${chained} ${body}` : `${chained}, ${body}`;
     }
-    else if (chained && (flipToEnd || flipJoin)) {
+    else if (chained && (endHead || flipJoin)) {
       out[out.length - 1] = `${chained} ${alsoLead}${alsoSubject ? toAlsoSubject(text) : text}`;
     } else if (chained) {
       out[out.length - 1] = `${chained} ${alsoLead}${alsoSubject ? toAlsoSubject(text) : toTopic(text)}`;
