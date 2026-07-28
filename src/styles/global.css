@@ -2811,7 +2811,11 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
   /* 경기번호(왼쪽)·등록자(오른쪽)를 표 좌우 끝에 바짝 붙이지 않고 좌우 여백을 좀 준다(요청). */
   /* 스탯 표와 푸터 사이 갭 확대(10→16px, 요청). */
-  margin-top: 16px; padding: 8px 6px 0; border-top: 1px solid rgba(var(--overlay-rgb), 0.08);
+  /* 아래 여백은 댓글 입력줄이 얹히는 자리만큼 비워 둬야 한다(지적: 게임결과 카드 확장 시
+     댓글창 겹침 — 게임번호 아래 패딩 필요). 펼치면 이 줄이 카드의 마지막 내용이 되면서
+     그 절대배치 자리로 들어가 버린다. */
+  margin-top: 16px; padding: 8px 6px var(--post-comment-dock-h);
+  border-top: 1px solid rgba(var(--overlay-rgb), 0.08);
   font-size: var(--fs-caption);
 }
 .scr-match-trow-no { display: inline-flex; align-items: center; gap: 6px; color: var(--dim); font-variant-numeric: tabular-nums; flex-shrink: 0; }
@@ -6722,6 +6726,11 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   --post-title-tint: 0, 0, 0;
   --post-title-a1: 0.9;
   --post-pad-y: 24px;
+  /* 댓글이 없을 때 입력줄이 카드 맨 아래에 절대배치로 얹히는 자리(.scr-match-notes-empty).
+     그 높이만큼 카드가 꼬리 여백을 비워 둬야 아래 내용과 안 겹친다 — 비워 두는 쪽
+     (.scr-feed-stack-item)과 그 자리로 들어가는 쪽(.scr-match-trow-footer)이 같은 값을
+     써야 해서 변수로 뽑았다. 값이 어긋나면 그대로 겹침이 된다(실제로 그랬다). */
+  --post-comment-dock-h: 26px;
   /* 포스트 꼬리 여백 — 댓글이 없을 때 "댓글 쓰기" 아이콘이 이 안에 얹힌다(요청).
      컨텐츠가 아니라 포스트 자신이 낸다: 마지막 블록이 무엇이든(본문/링크 줄/댓글)
      꼬리 여백은 늘 한 번만 붙어야 한다. */
@@ -6776,7 +6785,7 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 /* 카드 안의 경기 한 건 — 포스트 껍데기(배경·블러)를 벗고 옅은 구분선만 남긴다.
    꼬리 여백은 벗기면 안 된다: 댓글이 없을 때 "댓글" 버튼이 이 여백 안에 절대배치로
    얹히기 때문에(.scr-match-notes-empty), 자리를 안 비워두면 요약 글자 위에 겹친다. */
-.scr-feed-stack-item { position: relative; padding-bottom: 26px; }
+.scr-feed-stack-item { position: relative; padding-bottom: var(--post-comment-dock-h); }
 .scr-feed-stack-reveal + .scr-feed-stack-reveal .scr-feed-stack-item {
   border-top: 1px solid rgba(var(--overlay-rgb), 0.09);
 }
