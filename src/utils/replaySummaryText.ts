@@ -159,17 +159,27 @@ function teamPhrase(c: Ctx): string {
   }
   // 많이 뽑은 쪽부터 세 무리까지 말한다 — 그 이상은 문장만 길어진다.
   const shown = groups.slice(0, 3);
-  const parts = shown.map((g) => {
+  const made = shown.map((g) => {
     const many = g.names.length > 1;
     const ko = g.units.map((u) => UNIT_KO[u]).filter(Boolean).slice(0, many ? 3 : 2);
-    if (ko.length === 0) return "";
-    const who = g.names.join(", ");
-    return many ? `${who}의 ${ko.join(" ")} 조합` : `${who}의 ${ko.join(" ")}`;
-  }).filter(Boolean);
-  if (parts.length === 0) return "";
-  if (parts.length === 1) return ro(parts[0]);
+    if (ko.length === 0) return null;
+    return { who: g.names.join(", "), what: many ? `${ko.join(" ")} 조합` : ko.join(" ") };
+  }).filter((x): x is { who: string; what: string } => x !== null);
+  if (made.length === 0) return "";
+  // 조합만 늘어놓고 끝내면 누가 이겼는지가 빠진다(지적) — 팀 번호로 주어를 세우거나,
+  // 아예 사람을 주격으로 놓고 "누가 무엇으로 몰아붙여"로 말한다.
+  const subject = c.team ? `${c.team}팀이 ` : "";
+  const parts = made.map((g) => `${g.who}의 ${g.what}`);
+  if (parts.length === 1) return `${ro(parts[0])} ${subject}`.trimEnd();
   const head = parts.slice(0, -1).join(", ");
-  return ro(`${wa(head)} ${parts[parts.length - 1]}`);
+  const listed = `${ro(`${wa(head)} ${parts[parts.length - 1]}`)} ${subject}`.trimEnd();
+  // "제롬, Rex가 질럿 조합을 태섭이 마린 메딕 조합으로 몰아붙여"(요청) — 앞 무리는
+  // 목적격으로, 마지막 무리만 도구격으로 받아 한 호흡에 읽히게 한다.
+  const acting = [
+    ...made.slice(0, -1).map((g) => `${ga(g.who)} ${reul(g.what)}`),
+    `${ga(made[made.length - 1].who)} ${ro(made[made.length - 1].what)} 몰아붙여`,
+  ].join(" ");
+  return c.pick([listed, acting]);
 }
 
 /** 이어받는 맺음말의 앞머리 — "결국 마린과 메딕 조합으로 " / "계속된 마린 공격으로 ". */
@@ -243,7 +253,7 @@ const STANDOFF_SEC = 5 * 60;
 // 벌어지면 인과가 아무리 그럴듯해도 각각 제 문장으로 둔다.
 const JOIN_MAX_SEC = 3 * 60;
 // 대비를 뜻하는 이음말 — 이 뒤에는 주어를 주제격("Rex는")으로 세운다(지적).
-const CONTRAST_LINKS = new Set(["한편", "그와 동시에", "반면", "그러나", "하지만", "그렇지만", "이에 질세라", "다른 쪽에서는"]);
+const CONTRAST_LINKS = new Set(["한편", "그와 동시에", "반면", "그러나", "하지만", "그렇지만", "이에 질세라", "다른 쪽에서는", "반대로", "역으로"]);
 // 시간 순서를 짚는 이음말 — 위 대비 이음말과 함께 문장 앞머리를 알아보는 데 쓴다.
 const SEQUENCE_LINKS = ["이어서", "곧이어", "그 직후", "잠시 후", "한참 후", "소강상태 후", "그 후", "한동안의 대치 후", "그 기세로", "여세를 몰아", "그 기세를 이어간", "여기에", "게다가", "설상가상으로", "그리고"];
 // 정규식에 이름을 그대로 넣기 전에 특수문자를 막는다 — 닉네임에 무엇이 들어올지 모른다.
@@ -348,14 +358,32 @@ function toAnd(action: string): string | null {
  *  명사형('-ㅁ')에서 어간을 되찾는 방법은 받침 ㅁ을 떼는 것이다: 늘림→늘리, 도배함→도배하,
  *  흔듦→흔들(ㄻ에서 ㅁ만 떼면 ㄹ이 남는다). '음'이 한 글자로 붙은 꼴은 그 글자를 통째로
  *  뗀다: 뽑음→뽑. */
-function toWhile(action: string): string | null {
-  if (action.endsWith("음")) return `${action.slice(0, -1)}다가`;
+function stemOf(action: string): string | null {
+  if (action.endsWith("음")) return action.slice(0, -1);
   const last = action.charCodeAt(action.length - 1);
   if (last < 0xac00 || last > 0xd7a3) return null;
   const j = (last - 0xac00) % 28;
-  if (j === 16) return `${action.slice(0, -1)}${String.fromCharCode(last - 16)}다가`;
-  if (j === 10) return `${action.slice(0, -1)}${String.fromCharCode(last - 2)}다가`;
+  if (j === 16) return `${action.slice(0, -1)}${String.fromCharCode(last - 16)}`;
+  if (j === 10) return `${action.slice(0, -1)}${String.fromCharCode(last - 2)}`;
   return null;
+}
+
+function toWhile(action: string): string | null {
+  const stem = stemOf(action);
+  return stem === null ? null : `${stem}다가`;
+}
+
+/** "…해처리를 먼저 늘림" → "…해처리를 먼저 늘린 뒤". 앞의 수가 뒤의 수로 이어질 때
+ *  둘을 한 문장으로 엮는다(요청: 째기가 무게감 있는 액션과 이어지면 같이 엮어서).
+ *  받침이 없는 어간에는 'ㄴ'을 얹고, 있는 어간('뽑')에는 '-은'을 붙인다. */
+function toAfter(action: string): string | null {
+  const stem = stemOf(action);
+  if (stem === null) return null;
+  const last = stem.charCodeAt(stem.length - 1);
+  if (last < 0xac00 || last > 0xd7a3) return null;
+  const j = (last - 0xac00) % 28;
+  if (j === 0) return `${stem.slice(0, -1)}${String.fromCharCode(last + 4)} 뒤`;
+  return `${stem}은 뒤`;
 }
 
 /** "…뽑음" → "…뽑았으며". '-고'가 두 번 이어지면 지겨워서 두 번째 마디에 쓴다. */
@@ -1509,6 +1537,10 @@ export function renderReplaySummary(
     const myTeam = teamOf?.(names[0] ?? "");
     const prevTeam = teamOf?.(((prev?.who ?? []).map(resolveName))[0] ?? "");
     const crossTeam = !!myTeam && !!prevTeam && myTeam !== prevTeam;
+    // 앞 문장에서 맞은 쪽이 이번엔 때리는 쪽인가 — 같은 두 사람이 주고받은 이야기다.
+    const headToHead =
+      (b.who ?? []).some((w) => (prev?.whom ?? []).includes(w))
+      || (b.whom ?? []).some((w) => (prev?.who ?? []).includes(w));
     // "1팀에서는"은 어색하다(지적) — "1팀의 누구는" 꼴로만 쓴다.
     const teamTagFor = (): string => (crossTeam ? `${myTeam}팀의 ` : "");
     // 같은 사람이 주인공인 이야기가 잇달아 나오면 문장을 나누지 말고 한 문장으로 잇는다
@@ -1567,8 +1599,12 @@ export function renderReplaySummary(
         const linked = new RegExp(`^(?:${[...CONTRAST_LINKS].join("|")}) `).test(line);
         if (closeEnough && chainCount === 0 && line !== "" && !linked && !/지만|으나/.test(line) && toBut(line)) flipJoin = true;
         else {
+          // "다른 쪽에서는"은 판이 갈라져 딴 데서 벌어진 일일 때만 맞는 말이다(지적) —
+          // 같은 두 사람이 서로 주고받은 이야기면 "반대로 / 역으로 / 그와 동시에"가 맞다.
           linkWord = link(crossTeam
-            ? ["하지만", "그러나", "그렇지만", "반면", "이에 질세라", "다른 쪽에서는"]
+            ? (headToHead
+              ? ["하지만", "그러나", "그렇지만", "반대로", "역으로", "그와 동시에"]
+              : ["하지만", "그러나", "그렇지만", "반면", "이에 질세라", "다른 쪽에서는"])
             : ["하지만", "그러나", "그렇지만", "반면"]);
           teamTag = teamTagFor();
         }
@@ -1724,10 +1760,14 @@ export function renderReplaySummary(
     const flipToEnd: boolean =
       b.k === "result" && out.length > 0 && chainCount === 0 && hitTheWinner && prevTide < 0
       && !/지만|으나/.test(out[out.length - 1]);
+    // 앞이 '자원부터 먼저 챙긴' 이야기면 뒤의 수는 그 결과다(요청: 째기가 무게감 있는
+    // 액션과 이어지면 같이 엮어서) — 나란히 벌어진 일을 뜻하는 '-고'가 아니라 '-ㄴ 뒤'로
+    // 이어야 원인과 결과로 읽힌다. 잘 풀렸든 아니든 이어지는 건 마찬가지다(요청).
+    const afterCause = sameSubject && prev?.k === "greedy-build" ? toAfter(prevLine) : null;
     const chained: string | null = sameSubject
       // 이어 붙일 마디가 이미 '-고'를 품고 있으면(맺음말+활약 한 마디처럼) 앞마디는
       // '-으며'로 바꾼다 — 안 그러면 한 문장에 "…고, …고,"가 연달아 나온다(지적).
-      ? (chainCount === 0 && !/고, /.test(text) ? toAnd(prevLine) : toAlso(prevLine))
+      ? (afterCause ?? (chainCount === 0 && !/고, /.test(text) ? toAnd(prevLine) : toAlso(prevLine)))
       : flipToEnd || flipJoin
         ? toBut(prevLine)
         : joinPrev && out.length > 0 && chainCount === 0 && prevLedBy(lastBaseWho)
@@ -1768,9 +1808,15 @@ export function renderReplaySummary(
     const alsoSubject = flipped && crossTeam;
     // 팀이 갈린 반전에는 앞말을 받는 연결어를 한마디 넣어도 좋다(요청).
     const alsoLead = alsoSubject
-      ? ["", "이에 질세라 ", "다른 쪽에서는 ", myTeam ? `${myTeam}팀의 ` : ""][seed % 4]
+      ? (headToHead
+        ? ["", "반대로 ", "역으로 ", myTeam ? `${myTeam}팀의 ` : ""][seed % 4]
+        : ["", "이에 질세라 ", "다른 쪽에서는 ", myTeam ? `${myTeam}팀의 ` : ""][seed % 4])
       : "";
-    if (chained && sameSubject) out[out.length - 1] = `${chained}, ${text.slice(subject.length + 1)}`;
+    // "…늘린 뒤"는 그 자체가 이어 주는 말이라 쉼표를 두지 않는다.
+    if (chained && sameSubject) {
+      const body = text.slice(subject.length + 1);
+      out[out.length - 1] = afterCause ? `${chained} ${body}` : `${chained}, ${body}`;
+    }
     else if (chained && (flipToEnd || flipJoin)) {
       out[out.length - 1] = `${chained} ${alsoLead}${alsoSubject ? toAlsoSubject(text) : text}`;
     } else if (chained) {
