@@ -1155,5 +1155,10 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
       : (heroUnit && star ? { who2: [star.rawName] } : {})),
   };
 
-  return { v: REPLAY_SUMMARY_VERSION, beats: [...chosen, ending].map(strip) };
+  return {
+    v: REPLAY_SUMMARY_VERSION,
+    // '초반'을 재려면 경기가 얼마나 길었는지를 알아야 한다(지적).
+    ...(totalFrames ? { end: totalFrames } : {}),
+    beats: [...chosen, ending].map(strip),
+  };
 }

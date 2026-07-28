@@ -198,6 +198,8 @@ interface Ctx {
   won: boolean;
   /** 일어난 프레임 — 초반 일은 결과를 덧붙이지 않고 그때 일만 말한다(지적). */
   at: number | null;
+  /** 경기 전체 길이(프레임). '초반'을 경기 길이에 대비해 재는 데만 쓴다. */
+  end: number | null;
   p: Record<string, unknown>;
   /** 여러 표현 중 하나를 고른다 — 같은 경기는 늘 같은 것이 나온다(아래 variantSeed 참고). */
   pick: (opts: string[]) => string;
@@ -227,8 +229,14 @@ type Tpl = (c: Ctx) => string | null;
 const SECONDS_PER_FRAME = 0.042;
 // 이 안에 벌어진 양쪽 일은 '같은 때'로 보고 이어 주는 말을 붙인다.
 const SAME_TIME_SEC = 2 * 60;
-// 여기까지는 '초반' — 아직 판이 기울기 전이라 진 편 문장에도 결과를 달지 않는다(지적).
-const EARLY_SEC = 8 * 60;
+// 진 편 문장에 결과 한 마디를 다는 건 '끝 무렵에 벌어진 일'에만 한다(지적) — 초중반의
+// 한 수를 곧바로 경기 결과와 이어 붙이면 인과가 과장된다. 끝나기 전 몇 분 동안의 일이라야
+// 결과에 영향을 줬다고 말할 수 있다.
+// 절대 시간이 아니라 경기 길이에 대비해 잰다(지적) — 40분 경기의 8분과 9분 경기의 8분은
+// 전혀 다른 자리다. 길이를 모르는 옛 데이터만 절대 시간으로 대신한다.
+const LATE_SEC = 5 * 60;
+const LATE_RATIO = 0.2;
+const EARLY_SEC_FALLBACK = 8 * 60;
 
 /** "조조에게 " — 당한 쪽을 앞에 붙인다. 1:1이 아니면 누가 당했는지 알 수 없어 빈 문자열이고,
  *  그때는 대상을 뺀 표현으로 문장이 그대로 성립한다(요청: 당한 쪽을 말하면 한 쪽도 함께). */
@@ -250,7 +258,8 @@ function victimPhrase(c: Ctx): string {
 // 마지막 문장도 맺음말 앞이라 결국 도중이다 — 결말은 맺음말 한 문장이 전담하고, 그 앞은
 // 전부 그때까지의 흐름만 말한다.
 const LOST_TAILS = [
-  "흐름은 상대에게 넘어감", "판이 조금씩 기울기 시작함", "소득은 크지 않았음",
+  // 이 꼬리는 이제 끝 무렵 문장에만 붙는다 — "기울기 시작함"처럼 앞을 내다보는 말은 뺐다.
+  "흐름은 상대에게 넘어감", "끝내 뒤집지는 못함", "소득은 크지 않았음",
   "재미를 보지 못함", "그만큼을 되찾지는 못함", "역부족이었음",
 ];
 // 도박수(초반 올인)가 안 됐을 때만 쓰는 맺음 — 성공 여부를 단정하지 않는 선에서
@@ -294,9 +303,14 @@ function toConnective(action: string): string | null {
  *  못 이으면 쉼표로 둔다. */
 const done = (c: Ctx, action: string, risky = false): string => {
   if (c.won) return action;
-  // 진 편이라고 문장마다 "…했으나 재미를 보지 못함"으로 맺을 필요는 없다(지적). 초반 일은
-  // 아직 판이 기울기 전이라, 그때 있었던 일만 말하는 편이 읽기에도 낫다.
-  if (c.at !== null && c.at * SECONDS_PER_FRAME <= EARLY_SEC) return action;
+  // 진 편이라고 문장마다 "…했으나 재미를 보지 못함"으로 맺을 필요는 없다(지적).
+  // 끝 무렵의 일만 결과와 이어 붙이고, 그 앞의 일은 그때 있었던 일만 말한다.
+  if (c.at !== null) {
+    const late = c.end !== null
+      ? c.end - c.at <= Math.max(LATE_SEC / SECONDS_PER_FRAME, c.end * LATE_RATIO)
+      : c.at > EARLY_SEC_FALLBACK / SECONDS_PER_FRAME;
+    if (!late) return action;
+  }
   const t = c.pick(risky ? [...LOST_TAILS, ...RISKY_TAILS] : LOST_TAILS);
   const joined = toConnective(action);
   return joined ? `${joined} ${t}` : `${action}, ${t}`;
@@ -337,6 +351,10 @@ function tacticLabel(k: string, p: Record<string, unknown>): string {
   }
 }
 
+/** 여럿을 늘어놓을 때 쓰는 꼴 — "A의 바이오닉 한 방과 B의 3게이트 질럿 러쉬"는 어색하다.
+ *  목록 안에서는 '한 방'을 떼고 병력으로 부른다(요청: 누구의 바이오닉 병력으로). */
+const listForm = (label: string): string => label.replace(/ 한 방$/, " 병력");
+
 const TEMPLATES: Record<string, Tpl> = {
   // 들이친 수와 그 결과를 한 문장으로(요청) — 그 타이밍에 상대 생산이 끊긴 게 근거다.
   "raid-damage": (c) => {
@@ -349,23 +367,35 @@ const TEMPLATES: Record<string, Tpl> = {
     const ks = list(c.p.ks);
     if (ks.length >= 2 && c.whoList.length === ks.length) {
       const vs = list(c.p.vs);
-      const parts = c.whoList
-        .map((n, i) => {
-          const one = tacticLabel(ks[i], {
-            drones: Number(vs[i]) || 0, gates: Number(vs[i]) || 0,
+      const each = c.whoList
+        .map((n, i) => ({
+          n,
+          // 값이 없으면 아예 넘기지 않는다 — 0을 넘기면 "0게이트 질럿 러쉬"가 나온다.
+          label: listForm(tacticLabel(ks[i], {
+            ...(Number(vs[i]) > 0 ? { drones: Number(vs[i]), gates: Number(vs[i]) } : {}),
             firebat: vs[i] === "firebat", lurker: vs[i] === "lurker",
-          });
-          return one ? `${n}의 ${one}` : "";
-        })
-        .filter(Boolean);
-      if (parts.length >= 2) {
+          })),
+        }))
+        .filter((x) => x.label);
+      // 같은 수를 여러 명이 가는 일이 흔하다(지적) — 그때 "A의 3게이트 질럿 러쉬와 B의
+      // 3게이트 질럿 러쉬"는 같은 말을 두 번 하는 것이라, 이름만 묶어 한 번만 말한다.
+      const byLabel: { label: string; names: string[] }[] = [];
+      for (const x of each) {
+        const g = byLabel.find((y) => y.label === x.label);
+        if (g) g.names.push(x.n); else byLabel.push({ label: x.label, names: [x.n] });
+      }
+      const parts = byLabel.map((g) => `${joinNames(g.names)}의 ${g.label}`);
+      if (each.length >= 2 && parts.length >= 1) {
         const head = parts.slice(0, -1).join(", ");
-        const all = `${wa(head)} ${parts[parts.length - 1]}`;
+        const all = parts.length >= 2 ? `${wa(head)} ${parts[parts.length - 1]}` : parts[0];
         const m = num(c.p.outMin) || num(c.p.hitMin);
         const when = m > 0 ? `${m}분 만에 ` : "";
         return done(c, c.pick([
           `${all}에 ${ga(foe)} ${when}${c.p.out ? "탈락" : "무너짐"}`,
           `${all}에 ${when}${ga(foe)} 버티지 못함`,
+          c.p.out
+            ? `${ro(all)} ${when}${ga(foe)} 탈락`
+            : `${ro(all)} ${of}기지가 ${when || "빠르게 "}파괴됨`,
         ]));
       }
     }
@@ -1081,6 +1111,7 @@ export function renderReplaySummary(
       whom: joinNames((b.whom ?? []).map(resolveName)),
       won: !!b.won,
       at: typeof b.at === "number" ? b.at : null,
+      end: typeof data.end === "number" && data.end > 0 ? data.end : null,
       p: b.p ?? {},
       pick: (opts) => {
         const t = opts[seed % opts.length];

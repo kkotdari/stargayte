@@ -38,6 +38,9 @@ export interface ReplaySummaryBeat {
 
 export interface ReplaySummaryData {
   v: number;
+  /** 경기 전체 길이(프레임). '초반'은 절대 시간이 아니라 경기 길이에 대비해 봐야 한다(지적) —
+   *  40분 경기의 8분과 9분 경기의 8분은 전혀 다른 자리다. 옛 데이터에는 없어 생략 가능하다. */
+  end?: number;
   beats: ReplaySummaryBeat[];
 }
 

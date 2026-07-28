@@ -554,8 +554,18 @@ export default function MatchList({
                   </div>
                 </div>
                 )}
-                {/* 리플레이에서 규칙으로 뽑은 전황 요약(요청: 팀 로스터 아래에 배치) — 맵/시간과
-                    달리 접힌 상태에서도 보인다. 이 줄이 카드의 '읽을거리'라 펼치기 전에 눈에
+                {/* 맵·플레이시간 — 요약을 읽기 전에 먼저 보는 정보라 요약 바로 위에 두고,
+                    접힌 상태에서도 보인다(요청). */}
+                {(cleanMapName(r.raw.mapName) || r.raw.durationSeconds != null) && (
+                  <div className="scr-match-trow-map-line scr-match-trow-map-meta">
+                    {cleanMapName(r.raw.mapName) && <span className="scr-match-trow-map">{cleanMapName(r.raw.mapName)}</span>}
+                    {r.raw.durationSeconds != null && (
+                      <span className="scr-match-trow-dur">({Math.round(r.raw.durationSeconds / 60)}분)</span>
+                    )}
+                  </div>
+                )}
+                {/* 리플레이에서 규칙으로 뽑은 전황 요약(요청: 팀 로스터 아래에 배치) — 접힌
+                    상태에서도 보인다. 이 줄이 카드의 '읽을거리'라 펼치기 전에 눈에
                     들어와야 한다. */}
                 {(() => {
                   const parts = summaryPartsOf(r, memberOf);
@@ -572,14 +582,6 @@ export default function MatchList({
                   <div className="scr-match-trow-expand-inner">
                     {(expanded || renderedIds.has(r.id)) && (
                       <>
-                        {(cleanMapName(r.raw.mapName) || r.raw.durationSeconds != null) && (
-                          <div className="scr-match-trow-map-line scr-match-trow-map-expanded">
-                            {cleanMapName(r.raw.mapName) && <span className="scr-match-trow-map">{cleanMapName(r.raw.mapName)}</span>}
-                            {r.raw.durationSeconds != null && (
-                              <span className="scr-match-trow-dur">({Math.round(r.raw.durationSeconds / 60)}분)</span>
-                            )}
-                          </div>
-                        )}
                         <MatchStatsTable
                           team1={r.team1} team2={r.team2} memberOf={memberOf}
                           highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms}
