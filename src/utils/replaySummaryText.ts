@@ -196,9 +196,9 @@ interface Ctx {
   /** 당한 쪽 — 없으면 빈 문자열이고, 그때는 대상을 뺀 표현을 쓴다. */
   whom: string;
   won: boolean;
+  /** 일어난 프레임 — 초반 일은 결과를 덧붙이지 않고 그때 일만 말한다(지적). */
+  at: number | null;
   p: Record<string, unknown>;
-  /** 진 편의 마지막 문장인가 — 그때만 "경기는 내줌" 같은 결말을 말할 수 있다. */
-  last: boolean;
   /** 여러 표현 중 하나를 고른다 — 같은 경기는 늘 같은 것이 나온다(아래 variantSeed 참고). */
   pick: (opts: string[]) => string;
 }
@@ -223,6 +223,13 @@ function variantSeed(b: ReplaySummaryBeat): number {
 
 type Tpl = (c: Ctx) => string | null;
 
+// 1 프레임 = 0.042초(replayParser와 같은 상수).
+const SECONDS_PER_FRAME = 0.042;
+// 이 안에 벌어진 양쪽 일은 '같은 때'로 보고 이어 주는 말을 붙인다.
+const SAME_TIME_SEC = 2 * 60;
+// 여기까지는 '초반' — 아직 판이 기울기 전이라 진 편 문장에도 결과를 달지 않는다(지적).
+const EARLY_SEC = 8 * 60;
+
 /** "조조에게 " — 당한 쪽을 앞에 붙인다. 1:1이 아니면 누가 당했는지 알 수 없어 빈 문자열이고,
  *  그때는 대상을 뺀 표현으로 문장이 그대로 성립한다(요청: 당한 쪽을 말하면 한 쪽도 함께). */
 function targetPhrase(c: Ctx): string {
@@ -239,15 +246,12 @@ function victimPhrase(c: Ctx): string {
 // 됐는지는 리플레이에 없다. 그래서 전술 문장은 한 일만 말하고, 결과를 말해야 할 때는
 // 확실한 사실 하나 — 그 경기를 누가 가져갔나 — 만 붙인다. "본진을 초토화" "앞마당을 헤집음"
 // "그대로 태움" 같은 수식은 전부 걷어냈다(지적).
-// "경기는 내줌"은 경기가 끝났다는 말이라 문단 중간에 나오면 어색하다(지적) — 진 편의
-// 마지막 문장에서만 쓰고, 중간에는 그때까지의 흐름만 말한다.
-const END_TAILS = [
-  "경기는 내줌", "승부는 상대 쪽으로 넘어감", "판을 가져오지는 못함",
-  "역부족이었음", "경기는 기움", "끝내 승부를 못 뒤집음",
-];
-const MID_TAILS = [
+// "경기는 내줌"은 경기가 끝났다는 말이라 이야기 도중에 나오면 어색하다(지적). 진 편의
+// 마지막 문장도 맺음말 앞이라 결국 도중이다 — 결말은 맺음말 한 문장이 전담하고, 그 앞은
+// 전부 그때까지의 흐름만 말한다.
+const LOST_TAILS = [
   "흐름은 상대에게 넘어감", "판이 조금씩 기울기 시작함", "소득은 크지 않았음",
-  "재미를 보지 못함", "그만큼을 되찾지는 못함",
+  "재미를 보지 못함", "그만큼을 되찾지는 못함", "역부족이었음",
 ];
 // 도박수(초반 올인)가 안 됐을 때만 쓰는 맺음 — 성공 여부를 단정하지 않는 선에서
 // "실패함" "큰 피해는 못 줌"까지만 말한다(지적: 독이 됐다·발목을 잡았다는 지나치다).
@@ -290,8 +294,10 @@ function toConnective(action: string): string | null {
  *  못 이으면 쉼표로 둔다. */
 const done = (c: Ctx, action: string, risky = false): string => {
   if (c.won) return action;
-  const base = c.last ? END_TAILS : MID_TAILS;
-  const t = c.pick(risky ? [...base, ...RISKY_TAILS] : base);
+  // 진 편이라고 문장마다 "…했으나 재미를 보지 못함"으로 맺을 필요는 없다(지적). 초반 일은
+  // 아직 판이 기울기 전이라, 그때 있었던 일만 말하는 편이 읽기에도 낫다.
+  if (c.at !== null && c.at * SECONDS_PER_FRAME <= EARLY_SEC) return action;
+  const t = c.pick(risky ? [...LOST_TAILS, ...RISKY_TAILS] : LOST_TAILS);
   const joined = toConnective(action);
   return joined ? `${joined} ${t}` : `${action}, ${t}`;
 };
@@ -789,14 +795,16 @@ const TEMPLATES: Record<string, Tpl> = {
   "rush-backfire": (c) => {
     const label = tacticLabel(str(c.p.k), c.p) || "초반 러쉬";
     // 러쉬가 막힌 뒤에 오는 건 '살림이 무너짐'이 아니라 테크·발전에서의 손해다(지적).
-    return `${ga(c.who)} ${c.pick([
+    const opts = [
       `${reul(label)} 갔으나 막힘`,
       `${label} 실패함`,
       `${reul(label)} 갔다가 막혀 테크에서 손해를 봄`,
       `${label}가 막힌 뒤 발전이 늦어짐`,
-      `${reul(label)} 갔다가 막혀 그 사이 상대만 테크를 탐`,
       `${label} 실패로 한동안 발전을 못함`,
-    ])}`;
+    ];
+    // '상대만 테크를 탐'은 상대가 한 사람일 때만 말이 된다(지적) — 팀전에서는 빼 둔다.
+    if (c.p.duel === true) opts.push(`${reul(label)} 갔다가 막혀 그 사이 상대만 테크를 탐`);
+    return `${ga(c.who)} ${c.pick(opts)}`;
   },
 
   // 대규모 뮤탈(요청) — 몇 부대까지 모았는지가 곧 그림이다.
@@ -1030,9 +1038,6 @@ export function renderReplaySummary(
   // 크게 한 방 먹인 바로 다음에 같은 사람이 또 무언가를 했다면 그건 '그 기세로' 한 것이다.
   let prev: ReplaySummaryBeat | null = null;
   const beats = data.beats as ReplaySummaryBeat[];
-  // 진 편의 마지막 문장 자리 — 결말은 거기서만 말한다(맺음말 result는 이긴 편 몫이다).
-  let lastLost = -1;
-  beats.forEach((b, i) => { if (!b.won && b.k !== "result") lastLost = i; });
   for (let i = 0; i < beats.length; i += 1) {
     const b = beats[i];
     const tpl = TEMPLATES[b?.k];
@@ -1052,6 +1057,14 @@ export function renderReplaySummary(
       && (b.who ?? []).some((w) => (prev?.who ?? []).includes(w))
     ) {
       who = `${seed % 2 === 0 ? "그 기세로" : "여세를 몰아"} ${who}`;
+    } else if (
+      // 비슷한 때에 반대편에서 벌어진 일은 "한편/그와 동시에"로 이어야 자연스럽다(요청).
+      prev && b.k !== "result" && prev.k !== "result"
+      && !!prev.won !== !!b.won
+      && typeof prev.at === "number" && typeof b.at === "number"
+      && Math.abs(prev.at - b.at) * SECONDS_PER_FRAME <= SAME_TIME_SEC
+    ) {
+      who = `${["한편", "그와 동시에", "반면"][seed % 3]} ${who}`;
     }
     let lead = "";
     if (mutual) lead = "서로 ";
@@ -1067,7 +1080,7 @@ export function renderReplaySummary(
       who2: joinNames((b.who2 ?? []).map(resolveName)),
       whom: joinNames((b.whom ?? []).map(resolveName)),
       won: !!b.won,
-      last: i === lastLost,
+      at: typeof b.at === "number" ? b.at : null,
       p: b.p ?? {},
       pick: (opts) => {
         const t = opts[seed % opts.length];

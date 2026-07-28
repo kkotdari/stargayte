@@ -332,6 +332,9 @@ function tacticParam(key: string, p: Record<string, unknown> | undefined): strin
 // 같은 사람이 이 안에서 여러 번 얻어맞았으면 한 순간으로 본다.
 const RAID_MERGE_SEC = 3 * 60;
 
+// 같은 편 이야기를 붙여 읽어도 될 만큼 '거의 같은 때'로 보는 간격. 이걸 넘으면 시간이 먼저다(지적).
+const CLUSTER_SEC = 2 * 60;
+
 /** 한 사람이 여러 수에 잇달아 무너진 걸 두 문장으로 말하지 않는다(지적) — "Rex의 9드론
  *  저글링 러쉬와 제롬의 4게이트 질럿 러쉬에 군범이 2분 만에 무너짐"으로 묶는다. */
 function mergeRaids(list: Beat[]): Beat[] {
@@ -755,6 +758,8 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   const winnerPlayers = replay.winnerSide === "team1" ? replay.team1 : replay.team2;
   const loserPlayers = replay.winnerSide === "team1" ? replay.team2 : replay.team1;
   if (winnerPlayers.length === 0) return null;
+  /** 일대일인가 — '상대'가 한 사람뿐일 때만 쓸 수 있는 표현들이 있다(지적). */
+  const duel = winnerPlayers.length === 1 && loserPlayers.length === 1;
 
   const winner = buildSide(winnerPlayers);
   const loser = buildSide(loserPlayers);
@@ -880,7 +885,9 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
         if (!won && backfired(t, mine.find((p) => p.rawName === t.who))) {
           return {
             k: "rush-backfire", won, who: [t.who], at: t.at,
-            weight: t.weight + 12, p: { ...(t.p ?? {}), k: t.key },
+            // "그 사이 상대만 테크를 탐" 같은 말은 상대가 하나뿐일 때만 성립한다(지적) —
+            // 팀전에서는 누구를 가리키는지가 흐려지므로 일대일에서만 쓰게 표시해 둔다.
+            weight: t.weight + 12, p: { ...(t.p ?? {}), k: t.key, ...(duel ? { duel: true } : {}) },
           } as Beat;
         }
         if (t.at !== null && HARASS_KEYS.has(t.key)) {
@@ -1040,24 +1047,43 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     )?.includes(b.dedupeOn!))) continue;
     chosen.push(b);
   }
-  // 시간순으로만 늘어놓으면 두 편의 이야기가 한 줄씩 번갈아 나와 서사가 끊긴다(지적) —
-  // 같은 편 이야기끼리 묶고, 먼저 판을 잡은 편을 앞에 둔다. 묶음 안에서는 시간순이라
-  // "한 편이 몰아쳤다 → 다른 편이 뒤집었다 → 그래서 이겼다"로 읽힌다.
-  const midAt = (won: boolean) => {
-    const ats = chosen
-      .filter((b) => b.won === won)
-      .map((b) => b.at)
-      .filter((x): x is number => x !== null && x !== undefined && Number.isFinite(x))
-      .sort((x, y) => x - y);
-    return ats.length > 0 ? ats[Math.floor(ats.length / 2)] : Infinity;
-  };
-  const winnerFirst = midAt(true) <= midAt(false);
-  chosen.sort((a, b) => {
-    const ga = a.won === winnerFirst ? 0 : 1;
-    const gb = b.won === winnerFirst ? 0 : 1;
-    if (ga !== gb) return ga - gb;
-    return (a.at ?? Infinity) - (b.at ?? Infinity);
-  });
+  // 이야기의 뼈대는 시간이다(지적) — 편끼리 묶는다고 시간을 넘나들면 앞뒤가 뒤집혀 읽힌다.
+  // 그래서 먼저 시간순으로 세우고, 같은 편 이야기를 붙이는 건 '거의 같은 때'에 벌어진
+  // 일들 안에서만 한다. 시점을 못 잡은 문장(올인처럼 한 순간이 아닌 것)은 맺음말 앞으로 밀린다.
+  chosen.sort((a, b) => (a.at ?? Infinity) - (b.at ?? Infinity));
+  // 같은 편 두 문장 사이에 다른 편 문장 하나가 끼었는데 셋이 다 비슷한 때라면, 그건
+  // 시간이 아니라 편이 갈라 놓은 것이라 붙여 준다. 창을 넘어가면 손대지 않는다.
+  for (let i = 1; i + 1 < chosen.length; i += 1) {
+    const before = chosen[i - 1];
+    const cut = chosen[i];
+    const after = chosen[i + 1];
+    if (before.won === cut.won || before.won !== after.won) continue;
+    if (typeof before.at !== "number" || typeof after.at !== "number") continue;
+    if (Math.abs(after.at - before.at) * SECONDS_PER_FRAME > CLUSTER_SEC) continue;
+    chosen[i] = after;
+    chosen[i + 1] = cut;
+  }
+  // 같은 편끼리 묶다 보면 "무너짐"이 그 사람의 "3게이트를 감"보다 앞에 오는 일이 생긴다 —
+  // 무너진 사람이 그 뒤에 무언가를 갔다는 말은 될 수 없다(지적). 비슷한 때(3분 안)에
+  // 벌어진 일들 사이에서만, 당한 문장을 그 사람의 제 문장 뒤로 민다. 시간이 멀면 건드리지
+  // 않는다 — 그건 정말로 무너지고 한참 뒤의 이야기라 순서가 맞다.
+  for (let pass = 0; pass < chosen.length; pass += 1) {
+    let moved = false;
+    for (let i = 0; i < chosen.length - 1; i += 1) {
+      const hit = chosen[i];
+      const act = chosen[i + 1];
+      const victims = hit.whom ?? [];
+      if (victims.length === 0) continue;
+      if (!(act.who ?? []).some((w) => victims.includes(w))) continue;
+      if ((act.whom ?? []).some((w) => (hit.who ?? []).includes(w))) continue; // 맞받아친 것
+      if (typeof hit.at !== "number" || typeof act.at !== "number") continue;
+      if (Math.abs(hit.at - act.at) * SECONDS_PER_FRAME > RAID_MERGE_SEC) continue;
+      chosen[i] = act;
+      chosen[i + 1] = hit;
+      moved = true;
+    }
+    if (!moved) break;
+  }
 
   // 결과는 이야기의 맺음말로 맨 뒤에 붙인다 — 앞에 먼저 요약을 놓으면 뒤의 이야기가
   // 이미 아는 결말의 부연이 되어버린다(요청: 맨 처음의 전체 요약은 빼기).
