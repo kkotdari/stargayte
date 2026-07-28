@@ -110,9 +110,8 @@ const GREEDY_PUNISH_SEC = 4 * 60;
 // 째고 나서 이만큼 뽑아냈으면 '물량이 폭발했다'고 말할 만하다.
 const GREEDY_PAYOFF_UNITS = 30;
 
-// 하이라이트(무게 14 이상인 사실)가 이만큼 쌓인 경기만 열 문장까지 쓴다(요청) — 그냥
-// 길기만 한 경기가 아니라 정말로 볼 게 많았던 경기에만 열어 준다.
-const HIGHLIGHT_RICH = 8;
+// 이만큼 길어진 경기는 문장을 두 줄 더 쓴다(요청) — 국면 자체가 더 많다.
+const LONG_GAME_SEC = 30 * 60;
 
 // 손이 빨랐다고 말하려면 그 경기 평균 자체가 이 정도는 돼야 한다 — 다 같이 느린 경기에서
 // 제일 빠른 사람을 두고 '특출나다'고 할 수는 없다.
@@ -368,11 +367,11 @@ function tacticParam(key: string, p: Record<string, unknown> | undefined): strin
 
 // 같은 사람이 이 안에서 여러 번 얻어맞았으면 한 순간으로 본다.
 // 스타는 호흡이 빠른 게임이라 창을 넉넉히 잡으면 서로 먼 일이 한 순간으로 묶인다(지적).
-const RAID_MERGE_SEC = 2 * 60;
+const RAID_MERGE_SEC = 90;
 
 // 같은 편 이야기를 붙여 읽어도 될 만큼 '거의 같은 때'로 보는 간격. 이걸 넘으면 시간이 먼저다(지적).
-// 1분이면 스타에서는 국면이 한 번 바뀌는 시간이라, 이보다 넓게 묶으면 순서가 어긋난다(지적).
-const CLUSTER_SEC = 60;
+// 더 촘촘히 나눠 달라는 지적에 따라 40초까지 좁혔다 — 이 안의 일만 '같은 때'로 본다.
+const CLUSTER_SEC = 40;
 
 /** 한 사람이 여러 수에 잇달아 무너진 걸 두 문장으로 말하지 않는다(지적) — "Rex의 9드론
  *  저글링 러시와 제롬의 4게이트 질럿 러시에 군범이 2분 만에 무너짐"으로 묶는다. */
@@ -856,7 +855,7 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   // 한 문단짜리 이야기라 길면 읽히지 않는다. 짧은 경기는 두어 문장, 길이에 따라 다섯까지
   // 3분→2문장에서 5분마다 하나씩 늘린다(요청). 다만 할 얘기가 많은 경기는 더 써도 된다
   // (요청) — 아래에서 무거운 사실 수를 보고 일곱까지 늘린다.
-  const baseBudget = Math.max(2, Math.min(5, 2 + Math.floor((sec - 3 * 60) / (5 * 60))));
+  const baseBudget = Math.max(2, Math.min(sec >= LONG_GAME_SEC ? 7 : 5, 2 + Math.floor((sec - 3 * 60) / (5 * 60))));
   // 자리가 남아도 아무거나 채우지 않는다(요청: 승부에 중요한 이벤트만) — 이 무게 아래는
   // "그래서 뭐" 소리가 나오는 사실들이라, 문단을 짧게 끝내는 편이 낫다.
   const MIN_WEIGHT = 6;
@@ -1094,6 +1093,26 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   // 병력을 늦게까지 안 뽑고 자원만 먼저 챙긴 것 — '째기'(요청). 결과가 갈리는 만큼
   // 두 갈래로 말한다: 그 사이에 얻어맞았으면 "무리하게 째다가 …의 공격에 무너짐",
   // 무사히 넘겼으면 "성공적으로 째서 … 물량이 폭발함".
+  // 같은 사람에게 같은 식으로 당한 사람이 여럿이면 한 문장으로 묶는다(지적: "태섭과 제롬이
+  // 무리하게 째기를 시도하다가 정구의 공격에 노출됨") — 같은 말을 사람 수만큼 반복할 이유가 없다.
+  const mergeSameFate = (list: Beat[], key: string): Beat[] => {
+    const same = list.filter((b) => b.k === key && (b.whom?.length ?? 0) > 0);
+    if (same.length <= 1) return list;
+    const groups = new Map<string, Beat[]>();
+    for (const b of same) {
+      const k = `${b.won ? 1 : 0}|${(b.whom ?? []).join(",")}`;
+      const g = groups.get(k);
+      if (g) g.push(b); else groups.set(k, [b]);
+    }
+    const merged = [...groups.values()].map((g) => (g.length === 1 ? g[0] : {
+      ...g[0],
+      who: [...new Set(g.flatMap((b) => b.who))],
+      at: Math.min(...g.map((b) => b.at ?? Infinity)),
+      weight: Math.max(...g.map((b) => b.weight)) + 1,
+    } as Beat));
+    return [...list.filter((b) => !same.includes(b)), ...merged];
+  };
+
   const greedyBeats: Beat[] = (() => {
     if (!totalFrames) return [];
     const out: Beat[] = [];
@@ -1158,7 +1177,7 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     ...(handsBeat ? [handsBeat] : []),
     ...(attritionBeat ? [attritionBeat] : []),
     ...(breached ? [breached] : []),
-    ...greedyBeats,
+    ...mergeSameFate(greedyBeats, "greedy-punished"),
     ...gangBeats,
     ...mergeMutual(tactics),
     ...sideBeats({
@@ -1174,12 +1193,9 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   // 전술·돌파·합공처럼 '그 경기에서만 있었던 일'이 자리보다 많으면 그만큼 더 쓴다
   // (요청: 할 얘기가 많은 경기는 좀 더 써도 됨). 일반적인 사실로 늘리지는 않는다.
   //
-  // 열 문장까지 열어 두되, 그건 하이라이트가 정말 많은 경기에만 해당한다(요청) — 그래서
-  // 늘어나는 폭을 '무거운 사실이 몇 개나 더 있나'에 그대로 매단다. 여덟 문장을 넘기려면
-  // 무거운 사실이 그만큼(HIGHLIGHT_RICH개 이상) 쌓여 있어야 한다.
-  const notable = pool.filter((b) => b.weight >= 14).length;
-  const cap = notable >= HIGHLIGHT_RICH ? 10 : 7;
-  const budget = Math.min(cap, baseBudget + Math.max(0, notable - baseBudget));
+  // 한때 열 문장까지 열어 봤는데 오히려 읽기 어려웠다(지적) — 다섯으로 되돌린다.
+  // 다만 30분을 넘긴 경기는 그만큼 국면이 많아 일곱까지 허용한다(요청 — 위 baseBudget).
+  const budget = baseBudget;
 
   // 고를 때는 무게순(재미있는 것부터), 이야기로 늘어놓을 때는 시간순 — 순서를 이 둘로 나눠야
   // "자리가 모자라 재미없는 걸 남기는" 일도, "중요한 게 뜬금없는 자리에 오는" 일도 없다.

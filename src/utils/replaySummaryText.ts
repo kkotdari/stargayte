@@ -200,6 +200,8 @@ interface Ctx {
   at: number | null;
   /** 경기 전체 길이(프레임). '초반'을 경기 길이에 대비해 재는 데만 쓴다. */
   end: number | null;
+  /** 진 편 문장 중 마지막인가 — 부정적인 맺음은 경기당 한 번만 쓴다(지적). */
+  lastLost: boolean;
   p: Record<string, unknown>;
   /** 여러 표현 중 하나를 고른다 — 같은 경기는 늘 같은 것이 나온다(아래 variantSeed 참고). */
   pick: (opts: string[]) => string;
@@ -228,14 +230,14 @@ type Tpl = (c: Ctx) => string | null;
 // 1 프레임 = 0.042초(replayParser와 같은 상수).
 const SECONDS_PER_FRAME = 0.042;
 // 이 안에 벌어진 양쪽 일은 '같은 때'로 보고 이어 주는 말을 붙인다.
-// 스타는 호흡이 빨라 2분이면 이미 다른 국면이다(지적) — 창을 좁게 잡는다.
-const SAME_TIME_SEC = 75;
+// 스타는 호흡이 빨라 1분만 지나도 다른 국면이다(지적) — 창을 더 좁혔다.
+const SAME_TIME_SEC = 45;
 // 이만큼 안에 이어진 일은 "이어서/곧이어", 그보다 벌어지면 "그 후"(요청).
-const SOON_SEC = 3 * 60;
+const SOON_SEC = 2 * 60;
 // 이만큼이나 벌어졌으면 그 사이는 정말로 대치였다고 말해도 된다(요청: "한동안의 대치 후").
-const STANDOFF_SEC = 6 * 60;
+const STANDOFF_SEC = 5 * 60;
 // 대비를 뜻하는 이음말 — 이 뒤에는 주어를 주제격("Rex는")으로 세운다(지적).
-const CONTRAST_LINKS = new Set(["한편", "그와 동시에", "반면", "그러나", "하지만", "여기서"]);
+const CONTRAST_LINKS = new Set(["한편", "그와 동시에", "반면", "그러나", "하지만", "그렇지만"]);
 // 시간 순서를 짚는 이음말 — 위 대비 이음말과 함께 문장 앞머리를 알아보는 데 쓴다.
 const SEQUENCE_LINKS = ["이어서", "곧이어", "잠시 후", "그 후", "한동안의 대치 후", "그 기세로", "여세를 몰아", "그 기세를 이어간"];
 // 정규식에 이름을 그대로 넣기 전에 특수문자를 막는다 — 닉네임에 무엇이 들어올지 모른다.
@@ -273,11 +275,11 @@ function victimPhrase(c: Ctx): string {
 const LOST_TAILS = [
   // 이 꼬리는 이제 끝 무렵 문장에만 붙는다 — "기울기 시작함"처럼 앞을 내다보는 말은 뺐다.
   "흐름은 상대에게 넘어감", "끝내 뒤집지는 못함", "소득은 크지 않았음",
-  "재미를 보지 못함", "그만큼을 되찾지는 못함", "경기를 뒤집기엔 역부족이었음",
+  "그만큼을 되찾지는 못함", "경기를 뒤집기엔 역부족",
 ];
 // 도박수(초반 올인)가 안 됐을 때만 쓰는 맺음 — 성공 여부를 단정하지 않는 선에서
 // "실패함" "큰 피해는 못 줌"까지만 말한다(지적: 독이 됐다·발목을 잡았다는 지나치다).
-const RISKY_TAILS = ["실패함", "큰 피해는 못 줌", "결국 망함", "소용없었음", "재미를 못 봄"];
+const RISKY_TAILS = ["실패함", "큰 피해는 못 줌", "결국 망함", "소용없었음"];
 
 // 진 편 문장은 "…뚫음, 경기는 내줌"처럼 끊어 붙이는 것보다 "…뚫었으나 경기는 내줌"으로
 // 이어야 자연스럽다(지적). 한 일은 전부 명사형('-ㅁ')으로 써 두었으므로, 그 끝만 과거
@@ -348,8 +350,10 @@ function toTopic(sentence: string): string {
  *  못 이으면 쉼표로 둔다. */
 const done = (c: Ctx, action: string, risky = false): string => {
   if (c.won) return action;
-  // 진 편이라고 문장마다 "…했으나 재미를 보지 못함"으로 맺을 필요는 없다(지적).
-  // 끝 무렵의 일만 결과와 이어 붙이고, 그 앞의 일은 그때 있었던 일만 말한다.
+  // "…했으나 역부족" 같은 부정적인 맺음은 경기당 딱 한 번, 진 편의 마지막 문장에만 붙인다
+  // (지적) — 문장마다 붙으면 같은 말이 반복돼 읽는 맛이 없다.
+  if (!c.lastLost) return action;
+  // 그 한 번도 끝 무렵의 일이라야 한다 — 초중반의 한 수를 곧바로 결과와 잇지 않는다.
   if (c.at !== null) {
     const late = c.end !== null
       ? c.end - c.at <= Math.max(LATE_SEC / SECONDS_PER_FRAME, c.end * LATE_RATIO)
@@ -501,7 +505,7 @@ const TEMPLATES: Record<string, Tpl> = {
       `${ro(by)} ${of}본진을 파괴함`,
       `${ro(mine)} ${of}생산이 막힘`,
       `${blow} ${of}기지가 파괴됨`,
-      `${ro(by)} ${of}살림을 통째로 흔듦`,
+      `${ro(by)} ${of}본진을 크게 압박함`,
     ]));
   },
 
@@ -626,7 +630,7 @@ const TEMPLATES: Record<string, Tpl> = {
       const n = num(c.p.n);
       const amount = n >= 12 ? "한 부대" : n >= 4 ? `${n}기` : "";
       return `${neun(c.who)} ${c.pick([
-        ...(amount ? [`${reul(u)} ${amount} 뽑았으나 망함`, `${reul(u)} ${amount}나 뽑고도 재미를 못 봄`] : []),
+        ...(amount ? [`${reul(u)} ${amount} 뽑았으나 망함`, `${reul(u)} ${amount}나 뽑고도 소용없었음`] : []),
         `${u} 등의 고급 유닛을 사용해 전투에 임했으나 판을 뒤집지 못함`,
         `${u}까지 꺼냈지만 판을 뒤집지 못함`,
         `${u}까지 갔지만 늦었음`,
@@ -863,7 +867,7 @@ const TEMPLATES: Record<string, Tpl> = {
   },
 
   // 배틀크루저(요청) — 띄우는 것 자체가 사건인데, 띄우고도 지는 경기가 많아 이야기가 된다.
-  // 그래서 진 쪽에는 도박수와 같은 맺음(망함·재미를 못 봄)을 붙인다.
+  // 그래서 진 쪽에는 도박수와 같은 맺음(망함·소용없었음)을 붙인다.
   bc: (c) => {
     const n = num(c.p.n, 3);
     return `${ga(c.who)} ${done(c, c.pick([
@@ -1045,9 +1049,9 @@ const TEMPLATES: Record<string, Tpl> = {
     const when = m > 0 ? `${m}분까지 ` : "";
     const foe = c.whom ? `${c.whom}의 ` : "상대의 ";
     return `${ga(c.who)} ${done(c, c.pick([
-      `너무 째다가 ${foe}공격에 무너짐`,
-      `초반에 무리하게 째다가 ${foe}공격에 무너짐`,
-      `${when}병력보다 일꾼을 먼저 채우다 ${foe}공격에 무너짐`,
+      `무리하게 째기를 시도하다가 ${foe}공격에 노출됨`,
+      `초반에 째기를 시도하다가 ${foe}공격에 무너짐`,
+      `${when}병력보다 일꾼을 먼저 채우다 ${foe}공격에 노출됨`,
       `째기를 시도하다 ${foe}공격에 그대로 무너짐`,
     ]))}`;
   },
@@ -1108,9 +1112,9 @@ const TEMPLATES: Record<string, Tpl> = {
   irradiate: (c) => {
     const of = c.whom ? `${c.whom}의 ` : "상대 ";
     return `${ga(c.who)} ${done(c, c.pick([
-      `사이언스 베슬 이레디에이트로 ${of}일꾼을 지움`,
-      `이레디에이트로 ${of}일꾼 줄을 녹임`,
-      `베슬을 띄워 이레디에이트로 ${of}살림을 갉아먹음`,
+      `사이언스 베슬 이레디에이트로 ${of}일꾼을 견제함`,
+      `이레디에이트로 ${of}일꾼을 압박함`,
+      `베슬을 띄워 이레디에이트로 ${of}일꾼을 계속 압박함`,
     ]))}`;
   },
   // 인페스티드 테란(요청) — 퀸이 커맨드센터를 감염시켜야만 나오는, 경기당 한 번 볼까 말까
@@ -1254,7 +1258,11 @@ const TEMPLATES: Record<string, Tpl> = {
         : `${who} ${c.pick(["그대로 승리", "그대로 가져감"])}`;
     }
 
-    return withHero(head + body);
+    // 맺음말은 "결국 …"으로 열어도 좋다(요청) — 앞의 흐름을 받아 마무리한다는 신호가 된다.
+    // 이미 시간·흐름을 말하는 머리말(혈투 끝에 / 몇 분 만에)이 붙었으면 겹치므로 뺀다.
+    // 이어받기 문구(contPhrase)가 이미 "결국"을 품고 있으면 또 붙이지 않는다.
+    const close = head || body.includes("결국") ? head + body : c.pick(["", "결국 "]) + body;
+    return withHero(close);
   },
 };
 
@@ -1304,6 +1312,12 @@ export function renderReplaySummary(
   // 지금 문장에 몇 마디를 이어 붙였나 — 끝없이 길어지지 않게 센다.
   let chainCount: number = 0;
   const beats = data.beats as ReplaySummaryBeat[];
+  // 부정적인 맺음을 붙일 단 한 자리 — 진 편 문장 중 마지막 것(맺음말은 제외).
+  let lastLostIdx = -1;
+  for (let i = 0; i < beats.length; i += 1) {
+    const b = beats[i];
+    if (b && b.k !== "result" && !b.won && TEMPLATES[b.k]) lastLostIdx = i;
+  }
   for (let i = 0; i < beats.length; i += 1) {
     const b = beats[i];
     const tpl = TEMPLATES[b?.k];
@@ -1317,7 +1331,16 @@ export function renderReplaySummary(
     const seed = variantSeed(b);
     let who = mutual || both ? joinPair(names) : joinNames(names);
     const baseWho = who;
+    const subject = ga(baseWho);
+    const prevLine = out.length > 0 ? out[out.length - 1] : "";
     // 같은 이음말이 연달아 나오면 어색하다(지적) — 앞에서 쓴 것이 걸리면 다음 것으로 민다.
+    const prevBody = prevLine.replace(
+      new RegExp(`^(?:${[...CONTRAST_LINKS, ...SEQUENCE_LINKS].join("|")}) `), "",
+    );
+    // 앞 문장이 그 사람을 주어로 세우고 시작했나 — "…의 무엇에 누구의 기지가 파괴됨"처럼
+    // 소유격으로 시작한 문장에는 다음 마디를 이어 붙일 수 없다(지적).
+    const prevLedBy = (name: string): boolean =>
+      name !== "" && (prevBody.startsWith(`${ga(name)} `) || prevBody.startsWith(`${neun(name)} `));
     const link = (opts: string[]): string => {
       let t = opts[seed % opts.length];
       if (t === lastLink) t = opts[(seed + 1) % opts.length];
@@ -1344,7 +1367,11 @@ export function renderReplaySummary(
       && !!prev.won === !!b.won
       && sharesWho
     ) {
-      who = `${link(["그 기세로", "여세를 몰아", "그 기세를 이어간"])} ${who}`;
+      // 앞 문장과 주어가 같으면 이음말을 붙이는 대신 한 문장으로 잇는다(지적: 같은 이름이
+      // 두 번 나오지 않게) — 이음말을 붙이면 문장이 그 말로 시작해 이어 붙일 수 없다.
+      if (!(lastSubject === subject && prevLedBy(lastBaseWho) && chainCount < MAX_CHAIN)) {
+        who = `${link(["그 기세로", "여세를 몰아", "그 기세를 이어간"])} ${who}`;
+      }
     } else if (linkable && gapSec !== null && gapSec <= SAME_TIME_SEC) {
       if (!sharesWho && seed % 2 === 0) joinPrev = true;
       else if (!!prev!.won !== !!b.won) {
@@ -1360,9 +1387,12 @@ export function renderReplaySummary(
         // 반전이 또렷하다(지적). 앞 문장을 '-지만'으로 못 바꾸거나 이미 반전을 품고
         // 있으면 그때만 이음말을 쓴다.
         const line = out.length > 0 ? out[out.length - 1] : "";
-        if (chainCount === 0 && line !== "" && !/지만|으나/.test(line) && toBut(line)) flipJoin = true;
+        // 앞 문장이 이미 이음말로 시작하거나 반전을 품고 있으면 또 잇지 않는다 —
+        // "그러나 …했지만 …"처럼 접속이 두 번 겹친다(지적).
+        const linked = new RegExp(`^(?:${[...CONTRAST_LINKS].join("|")}) `).test(line);
+        if (chainCount === 0 && line !== "" && !linked && !/지만|으나/.test(line) && toBut(line)) flipJoin = true;
         else {
-          linkWord = link(["그러나", "하지만", "여기서"]);
+          linkWord = link(["하지만", "그러나", "그렇지만"]);
           // 팀전이면 어느 편으로 넘어갔는지까지 말해 주는 편이 읽힌다(요청: "하지만 2팀에서는").
           const t = teamOf?.(names[0] ?? "");
           const pt = teamOf?.(((prev?.who ?? []).map(resolveName))[0] ?? "");
@@ -1394,6 +1424,7 @@ export function renderReplaySummary(
         won: !!b.won,
         at: typeof b.at === "number" ? b.at : null,
         end: typeof data.end === "number" && data.end > 0 ? data.end : null,
+        lastLost: i === lastLostIdx,
         p: b.p ?? {},
         pick: (opts) => {
           const t = opts[(seed + offset) % opts.length];
@@ -1438,8 +1469,6 @@ export function renderReplaySummary(
     if (linkWord && CONTRAST_LINKS.has(linkWord)) {
       text = `${linkWord} ${toTopic(text.slice(linkWord.length + 1))}`;
     }
-    const subject = ga(baseWho);
-    const prevLine = out.length > 0 ? out[out.length - 1] : "";
     // 앞 문장에서 무언가를 하던 사람이 이번 문장에서 당하는 쪽이면, 그건 "하다가 당함"이
     // 한 이야기다(지적) — 이름을 두 번 부르지 말고 "…도배하다가 …한 방에 무너짐"으로 잇는다.
     const victim = (b.whom ?? []).length === 1 ? (b.whom ?? [])[0] : "";
@@ -1465,13 +1494,6 @@ export function renderReplaySummary(
     // 이름이 반복되면 이상하다) — 다만 세 마디까지만, 더 이으면 한 문장이 숨차진다.
     // 앞 문장이 실제로 그 주어로 시작해야 이어 붙일 수 있다 — "…태섭의 기지가 파괴됨"에
     // 이어 붙이면 주어를 뗀 뒷마디가 '기지가 한 일'로 읽힌다(지적).
-    const prevBody = prevLine.replace(
-      new RegExp(`^(?:${[...CONTRAST_LINKS, ...SEQUENCE_LINKS].join("|")}) `), "",
-    );
-    // 앞 문장이 그 사람을 주어로 세우고 시작했나 — "…의 무엇에 누구의 기지가 파괴됨"처럼
-    // 소유격으로 시작한 문장에는 다음 마디를 이어 붙일 수 없다(지적).
-    const prevLedBy = (name: string): boolean =>
-      name !== "" && (prevBody.startsWith(`${ga(name)} `) || prevBody.startsWith(`${neun(name)} `));
     const sameSubject: boolean =
       chainCount < MAX_CHAIN && out.length > 0 && baseWho !== ""
       && lastSubject === subject && text.startsWith(`${subject} `)
