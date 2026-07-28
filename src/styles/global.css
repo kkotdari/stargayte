@@ -3669,6 +3669,17 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    (요청: 일반 모달로). 이제 이 모달은 기본 .scr-modal의 크기·배경·여백·글자색을 그대로
    물려받고, 여기서는 배치(그리드·소제목)와 위험한 버튼의 붉은 톤만 따로 정한다. */
 
+/* 다만 유리(backdrop-filter)만은 이 모달에서 끈다 — 모바일에서는 모달이 전체화면 fixed로
+   뜨는데, 거기에 backdrop-filter가 걸리면 iOS 사파리가 접었던 주소창을 도로 펼친다
+   (지적: 제어판을 열었다 닫으면 화면이 밀려 올라감). 예전 금속판 시절에도 같은 이유로
+   이 모달만 backdrop-filter를 꺼 두었는데, 일반 모달로 바꾸면서 그 예외까지 함께
+   사라졌던 것이다. 배경은 여전히 요소가 아니라 ::before(자식)에 둔다 — 요소 자신에
+   배경을 주는 것도 같은 재펼침의 원인이다(.scr-modal 주석 참고). */
+.scr-modal.scr-admin-panel-modal::before {
+  background: var(--panel-solid);
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+
 /* 되돌릴 수 없거나 모두에게 즉시 반영되는 기능만 붉은 버튼으로(요청: 버튼 색만 필요한
    곳에 붉은색). 나머지는 전부 기본 .scr-btn / .scr-btn-primary 그대로. */
 .scr-btn-danger {
