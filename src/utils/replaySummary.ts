@@ -348,6 +348,8 @@ function sideBeats(args: {
       k: "defense", won, who: who(p), weight: total >= TURTLE_MIN ? 10 : 7,
       at: sg.firstBuildingFrame[def[0]] ?? null,
       p: { unit, def: def[0], n: def[1], total },
+      // 입구 방어(front-defense)가 이미 같은 건물을 말했으면 두 번 말하지 않는다.
+      dedupeOn: DEFENSE_KO[def[0]],
     });
   }
 
@@ -523,6 +525,7 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     }).map((t) => ({
       k: t.key, won, who: [t.who], at: t.at, p: t.p, weight: t.weight + 10,
       ...(t.whom ? { whom: [t.whom] } : {}),
+      ...(t.who2 ? { who2: [t.who2] } : {}),
     }));
 
   // "유비의 바이오닉 한 방으로 관우의 저글링 성큰을 뚫음" — 이긴 편의 주력이 진 편의 누구를

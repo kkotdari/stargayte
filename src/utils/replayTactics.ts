@@ -32,6 +32,8 @@ export interface Tactic {
   who: string;
   /** 당한 쪽 — "9시 조조에게 3게이트 질럿러시"처럼 대상이 있는 전술만(요청). */
   whom?: string;
+  /** 덕을 본 아군 — 옆탱처럼 '누구 기지에서 했나'가 곧 전술의 뜻인 경우만. */
+  who2?: string;
   /** 문장 틀에 꽂히는 값(드론 수·게이트 수 등). 없으면 생략. */
   p?: Record<string, string | number | boolean>;
 }
@@ -41,8 +43,11 @@ export interface Tactic {
 
 
 
-/** 건물을 지은 자리가 내 본진인지, 가운데인지, 상대 쪽인지. */
-type Zone = "home" | "mid" | "enemy";
+/** 건물을 지은 자리가 내 본진인지, 아군 본진인지, 가운데인지, 상대 쪽인지.
+ *  아군 본진을 내 본진과 갈라 두는 이유는 둘이 정반대 뜻이기 때문이다 — 성큰 러쉬는
+ *  아군 기지를 빼야 하고(지적: 다른 저그의 크립 콜로니 위에도 짓는다), 옆탱은 아군
+ *  기지여야만 옆탱이다. */
+type Zone = "home" | "ally" | "mid" | "enemy";
 
 function dist(a: { x: number; y: number }, b: { x: number; y: number }): number {
   return Math.hypot(a.x - b.x, a.y - b.y);
@@ -69,6 +74,10 @@ const MIN_BUILDINGS_FOR_HOME = 4;
 // 내 본진 ↔ 가장 가까운 상대 본진 거리를 1로 뒀을 때의 경계.
 const HOME_RADIUS = 0.33;
 const ENEMY_RADIUS = 0.35;
+// 본진 중심에서 이만큼은 나가 있어야 '앞'이다 — 안쪽에 박은 건 그냥 본진 건물이다.
+const FRONT_MIN = 0.1;
+// 상대 쪽으로 60도 안쪽(cos 0.5)이어야 진출로 쪽이라고 본다.
+const FRONT_COS = 0.5;
 
 /** 이 사람의 건물 좌표를 구역으로 바꿔 주는 함수. 좌표를 못 읽었거나(screp이 Pos를 안 줌)
  *  본진을 못 정하면 null — 자리 기반 전술(몰래 배럭·센터 포토)은 그냥 안 나온다. */
@@ -77,28 +86,66 @@ function homeOf(p: ParsedReplayPlayer): { x: number; y: number } | null {
   return pts.length >= MIN_BUILDINGS_FOR_HOME ? medoid(pts) : null;
 }
 
-function zoneResolver(
+/** 자리로 알 수 있는 것들을 한 벌로 묶은 것. 좌표를 못 읽었거나 본진을 못 정하면 통째로
+ *  null이고, 자리 기반 전술은 그냥 안 나온다(요청: 불확실한 건 빼기). */
+interface Geo {
+  zone: (b: BuildPos) => Zone;
+  /** 이 자리가 어느 아군의 본진인가 — 옆탱처럼 '누구를 도왔나'를 말해야 하는 경우. */
+  allyAt: (b: BuildPos) => string | null;
+  /** 내 본진 안이면서 상대 쪽으로 나가 있는 자리인가 = 진출로(입구) 쪽. */
+  front: (b: BuildPos) => boolean;
+}
+
+function geoOf(
   me: ParsedReplayPlayer,
   allies: ParsedReplayPlayer[],
   foes: ParsedReplayPlayer[]
-): ((b: BuildPos) => Zone) | null {
+): Geo | null {
   const home = homeOf(me);
   if (!home) return null;
   const foeHomes = foes.map(homeOf).filter((h): h is { x: number; y: number } => h !== null);
   if (foeHomes.length === 0) return null;
-  // 아군 본진도 '집'으로 친다(지적: 팀전에서는 다른 저그의 크립 콜로니 위에도 지을 수 있다).
-  // 내 본진만 집으로 보면 아군 진영에 세운 방어 건물이 죄다 '본진 밖'으로 잡혀 러쉬가 된다.
-  const friendly = [home, ...allies.map(homeOf).filter((h): h is { x: number; y: number } => h !== null)];
+  const allyHomes = allies
+    .map((a) => ({ raw: a.rawName, h: homeOf(a) }))
+    .filter((a): a is { raw: string; h: { x: number; y: number } } => a.h !== null);
   // 기준 거리는 '가장 가까운 상대까지' — 팀전에서 멀리 있는 상대까지 재면 구역이 다 뭉개진다.
   const base = Math.min(...foeHomes.map((h) => dist(home, h)));
   if (!(base > 0)) return null;
-  return (b) => {
+  // 앞쪽을 재는 기준 방향 = 가장 가까운 상대 본진 쪽.
+  const near = foeHomes.reduce((a, b) => (dist(home, b) < dist(home, a) ? b : a));
+  const dir = { x: (near.x - home.x) / base, y: (near.y - home.y) / base };
+
+  const allyAt = (b: BuildPos): string | null => {
+    let best: { raw: string; d: number } | null = null;
+    for (const a of allyHomes) {
+      const d = dist(b, a.h);
+      if (d < base * HOME_RADIUS && (!best || d < best.d)) best = { raw: a.raw, d };
+    }
+    return best?.raw ?? null;
+  };
+
+  const zone = (b: BuildPos): Zone => {
     const toFoe = Math.min(...foeHomes.map((h) => dist(b, h)));
     if (toFoe < base * ENEMY_RADIUS) return "enemy";
-    const toFriend = Math.min(...friendly.map((h) => dist(b, h)));
-    if (toFriend < base * HOME_RADIUS) return "home";
+    if (dist(b, home) < base * HOME_RADIUS) return "home";
+    // 아군 본진도 '남의 기지가 아닌 곳'이다(지적: 다른 저그의 크립 콜로니 위에도 짓는다).
+    // 내 본진과 갈라 두어야 성큰 러쉬에서 빼고 옆탱에서만 쓸 수 있다.
+    if (allyAt(b) !== null) return "ally";
     return "mid";
   };
+
+  // 리플레이에는 지형이 없다 — 램프가 어디인지는 알 방법이 없다. 대신 확실한 건
+  // 방향이다: 내 본진 안이되 상대 쪽으로 나가 있는 자리는 진출로 쪽이다. 뒤나 옆에
+  // 박은 건물은 걸리지 않는다.
+  const front = (b: BuildPos): boolean => {
+    const v = { x: b.x - home.x, y: b.y - home.y };
+    const len = Math.hypot(v.x, v.y);
+    if (len < base * FRONT_MIN) return false;      // 본진 한복판이면 앞이 아니다
+    if (len > base * HOME_RADIUS) return false;    // 너무 멀면 그건 본진 밖이다
+    return (v.x * dir.x + v.y * dir.y) / len > FRONT_COS;
+  };
+
+  return { zone, allyAt, front };
 }
 
 interface Ctx {
@@ -107,8 +154,8 @@ interface Ctx {
   s: ReplayPlayerSignals;
   race: string;
   foeRaces: string[];
-  /** 이 사람이 지은 건물의 자리를 구역으로 바꿔 준다. 좌표를 못 읽으면 null. */
-  zone: ((b: BuildPos) => Zone) | null;
+  /** 이 사람이 지은 건물의 자리로 알 수 있는 것들. 좌표를 못 읽으면 null. */
+  geo: Geo | null;
   /** 1:1이면 상대 한 사람 — 팀전은 누가 당했는지 커맨드만으로 알 수 없어 null이다.
    *  당한 쪽을 말할 땐 반드시 한 쪽도 함께 말한다(요청). */
   soleFoe: string | null;
@@ -118,7 +165,7 @@ const sec = (frame: number) => frame * SECONDS_PER_FRAME;
 
 
 function detectFor(c: Ctx): Tactic[] {
-  const { rawName, s, race, foeRaces, soleFoe, zone } = c;
+  const { rawName, s, race, foeRaces, soleFoe, geo } = c;
   const out: Tactic[] = [];
   const u = (n: string) => s.unitCounts[n] ?? 0;
   const firstU = (n: string): number | null => s.firstUnitFrame[n] ?? null;
@@ -132,14 +179,17 @@ function detectFor(c: Ctx): Tactic[] {
   const dropped = s.unloadCount >= 2;
   /** 그 구역에 지은 건물들(좌표를 못 읽으면 항상 빈 배열). */
   const inZone = (z: Zone, unit?: string, beforeSec?: number): BuildPos[] => {
-    if (!zone) return [];
+    if (!geo) return [];
     return s.buildPositions.filter(
       (p) =>
         (unit === undefined || p.unit === unit) &&
         (beforeSec === undefined || (p.frame !== null && sec(p.frame) < beforeSec)) &&
-        zone(p) === z
+        geo.zone(p) === z
     );
   };
+  /** 내 본진 앞(진출로 쪽)에 세운 것들 — 지형이 없으니 '상대 쪽으로 나가 있나'로 본다. */
+  const atFront = (unit: string): BuildPos[] =>
+    geo ? inZone("home", unit).filter(geo.front) : [];
   /** 건물 묶음에서 가장 이른 프레임 — 그 전술이 드러난 시점. */
   const firstOf = (b: BuildPos[]): number | null => {
     const f = b.map((x) => x.frame).filter((x): x is number => x !== null);
@@ -243,6 +293,16 @@ function detectFor(c: Ctx): Tactic[] {
     if (sneaky.length > 0) {
       out.push({ key: "sneak-rax", ...target, weight: 12, at: firstOf(sneaky), who });
     }
+    // 옆탱(요청) — 아군 기지에 팩토리를 올리고 탱크를 뽑으면 그건 내 병력이 아니라
+    // 그 아군의 수비다. 자리를 안 보면 그냥 팩토리라서, 아군 본진을 따로 갈라 둔 게 여기서 산다.
+    const sideFactory = inZone("ally", "Factory");
+    if (sideFactory.length > 0 && tanks >= 3) {
+      const helped = geo?.allyAt(sideFactory[0]) ?? null;
+      out.push({
+        key: "side-tank", weight: 11, at: firstOf(sideFactory), who,
+        ...(helped ? { who2: helped } : {}),
+      });
+    }
     if (dropped && u("Dropship") >= 2) {
       out.push({
         key: "dropship", ...target, weight: 7, at: s.firstUnloadFrame,
@@ -316,6 +376,19 @@ function detectFor(c: Ctx): Tactic[] {
     }
   }
 
+  // ── 입구 방어(요청) ── 리플레이에 지형이 없어 램프 자체는 알 수 없다. 대신 '내 본진
+  // 안이면서 상대 쪽으로 나가 있는 자리'는 진출로 쪽이고, 거기 박은 방어 건물은 뒤나 옆에
+  // 세운 것과 뜻이 다르다. 한 채는 우연일 수 있어 두 채부터 말한다.
+  const frontDef = (["Bunker", "Photon Cannon", "Sunken Colony"] as const).map((b) => ({
+    b, at: atFront(b),
+  })).filter((x) => x.at.length >= 2).sort((a, b) => b.at.length - a.at.length)[0];
+  if (frontDef) {
+    out.push({
+      key: "front-defense", weight: 8, at: firstOf(frontDef.at), who,
+      p: { b: frontDef.b, n: frontDef.at.length },
+    });
+  }
+
   // ── 채팅(요청) ── GG 선언은 승부가 어디서 끝났는지 알려주는 유일한 '사람의 말'이다.
   // 오타·장난까지 잡으려 들면 오탐이 늘어서, 통용되는 항복 표현만 좁게 본다.
   const gg = s.chats.find((c) => /^\s*(g{2,}|ㅈ{2,}|지지|잘{1,2}했|잘하시네)/i.test(c.text));
@@ -344,7 +417,7 @@ export function scanTactics({ sidePlayers, foePlayers }: TacticScanInput): Tacti
     all.push(
       ...detectFor({
         rawName: p.rawName, s: p.signals, race: p.race, foeRaces, soleFoe,
-        zone: zoneResolver(p, sidePlayers.filter((x) => x !== p), foePlayers),
+        geo: geoOf(p, sidePlayers.filter((x) => x !== p), foePlayers),
       })
     );
   }
