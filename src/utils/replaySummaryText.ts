@@ -239,6 +239,9 @@ const SECONDS_PER_FRAME = 0.042;
 const SAME_TIME_SEC = 45;
 // 이만큼이나 벌어졌으면 그 사이는 정말로 대치였다고 말해도 된다(요청: "한동안의 대치 후").
 const STANDOFF_SEC = 5 * 60;
+// 두 일을 한 문장으로 합칠 수 있는 최대 시간 차(지적: 시간 차이가 제일 우선) — 이보다
+// 벌어지면 인과가 아무리 그럴듯해도 각각 제 문장으로 둔다.
+const JOIN_MAX_SEC = 3 * 60;
 // 대비를 뜻하는 이음말 — 이 뒤에는 주어를 주제격("Rex는")으로 세운다(지적).
 const CONTRAST_LINKS = new Set(["한편", "그와 동시에", "반면", "그러나", "하지만", "그렇지만"]);
 // 시간 순서를 짚는 이음말 — 위 대비 이음말과 함께 문장 앞머리를 알아보는 데 쓴다.
@@ -1420,6 +1423,9 @@ export function renderReplaySummary(
       && !/지만|으나/.test(out[out.length - 1]);
     // 전황이 실제로 반대편으로 넘어갔나 / 같은 편으로 이어지나.
     const flipped = tide !== 0 && prevTide !== 0 && tide !== prevTide;
+    // 두 일이 한 문장에 들어갈 만큼 가까운 때에 일어났나 — 시간이 벌어졌으면 무슨 관계든
+    // 문장을 나눈다(지적). 시점을 모르는 문장(맺음말 등)은 이 조건에서 뺀다.
+    const closeEnough = gapSec !== null && gapSec <= JOIN_MAX_SEC;
     const sameTide = tide !== 0 && tide === prevTide;
     // 거의 같은 때에 벌어진 서로 다른 사람의 일은 한 문장으로 잇는 편이 자연스럽다
     // (요청: "브래드는 ~했고 정구는 ~했음"). 같은 사람 이야기면 주어가 겹쳐 어색해 뺀다.
@@ -1472,7 +1478,7 @@ export function renderReplaySummary(
         // 앞 문장이 이미 이음말로 시작하거나 반전을 품고 있으면 또 잇지 않는다 —
         // "그러나 …했지만 …"처럼 접속이 두 번 겹친다(지적).
         const linked = new RegExp(`^(?:${[...CONTRAST_LINKS].join("|")}) `).test(line);
-        if (chainCount === 0 && line !== "" && !linked && !/지만|으나/.test(line) && toBut(line)) flipJoin = true;
+        if (closeEnough && chainCount === 0 && line !== "" && !linked && !/지만|으나/.test(line) && toBut(line)) flipJoin = true;
         else {
           linkWord = link(["하지만", "그러나", "그렇지만", "반면"]);
           teamTag = teamTagFor();
@@ -1525,7 +1531,7 @@ export function renderReplaySummary(
     // 주어가 그 사람이어야 한다. 틀에 그런 꼴이 있으면 그것을 고른다(지적: 당한 것도
     // 같은 사람을 주어로 이어 달라).
     const wantCut = (b.whom ?? []).length === 1
-      && chainCount < MAX_CHAIN && out.length > 0 && lastWho.includes((b.whom ?? [])[0])
+      && closeEnough && chainCount < MAX_CHAIN && out.length > 0 && lastWho.includes((b.whom ?? [])[0])
       && !(b.who ?? []).includes((b.whom ?? [])[0]);
     if (wantCut) {
       const mark = `${ga(resolveName((b.whom ?? [])[0]))} `;
@@ -1578,7 +1584,7 @@ export function renderReplaySummary(
     const victim = (b.whom ?? []).length === 1 ? (b.whom ?? [])[0] : "";
     const victimName = victim ? resolveName(victim) : "";
     const cutIn =
-      !!victim && chainCount < MAX_CHAIN && out.length > 0 && lastWho.includes(victim)
+      !!victim && closeEnough && chainCount < MAX_CHAIN && out.length > 0 && lastWho.includes(victim)
       && !(b.who ?? []).includes(victim) && text.includes(`${ga(victimName)} `);
     // 반대로 앞 문장에서 당한 사람이 이번엔 무언가를 했다면 "하지만 다시 …"가 된다(지적).
     const actor = (b.who ?? []).length === 1 ? (b.who ?? [])[0] : "";
@@ -1592,7 +1598,7 @@ export function renderReplaySummary(
     // 전황이 실제로 그 사람 쪽으로 돌아섰을 때만 "다시 일어섰다"고 말한다(요청: 전황을
     // 보고 이어야 한다) — 제 수가 또 막힌 문장에 "하지만 다시"를 붙이면 거꾸로 읽힌다.
     const backUp =
-      !!actor && !cutIn && b.k !== "result" && chainCount < MAX_CHAIN && lastWhom.includes(actor)
+      !!actor && !cutIn && closeEnough && b.k !== "result" && chainCount < MAX_CHAIN && lastWhom.includes(actor)
       && flipped && !!backHead && backHead.test(text) && !/지만|으나/.test(text);
     // 앞 문장과 주어가 같으면 주어를 두 번 부르지 않는다(지적: 주어가 반복될 경우 합침).
     // "Rex가 …이기고, …" 꼴로 앞 문장에 이어 붙이고 뒤 문장에서는 주어를 뗀다.
@@ -1601,7 +1607,7 @@ export function renderReplaySummary(
     // 앞 문장이 실제로 그 주어로 시작해야 이어 붙일 수 있다 — "…태섭의 기지가 파괴됨"에
     // 이어 붙이면 주어를 뗀 뒷마디가 '기지가 한 일'로 읽힌다(지적).
     const sameSubject: boolean =
-      chainCount < MAX_CHAIN && out.length > 0 && baseWho !== ""
+      closeEnough && chainCount < MAX_CHAIN && out.length > 0 && baseWho !== ""
       && lastSubject === subject && text.startsWith(`${subject} `)
       && prevLedBy(lastBaseWho);
     // 맺음말은 앞의 전황을 뒤집으며 끝나는 일이 많다(요청) — "…파괴됐지만 …이김"으로 잇는다.
