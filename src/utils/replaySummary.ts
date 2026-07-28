@@ -76,6 +76,10 @@ const EPIC_GAME_SEC = 30 * 60;
 const WORKER_GAP_RATIO = 1.6;
 // 건물을 이만큼 띄웠으면 한두 채 옮긴 게 아니라 자리를 내주고 도망다닌 것이다.
 const LIFT_OFF_MIN = 3;
+// 방어 건물을 한 종류라도 이만큼 지었으면 '막을 준비'로 본다.
+const DEFENSE_MIN = 3;
+// 여기부터는 준비가 아니라 아예 웅크린 것이다 — 그 자체가 전황이라 더 무겁게 친다(요청).
+const TURTLE_MIN = 6;
 
 // 마지막 커맨드가 경기 끝보다 이만큼(비율) 앞서면 "일찍 무너졌다"로 본다.
 const EARLY_OUT_RATIO = 0.7;
@@ -330,17 +334,20 @@ function sideBeats(args: {
   for (const p of players) {
     const sg = p.signals;
     if (!sg) continue;
-    const def = Object.entries(sg.buildingCounts)
-      .filter(([k, n]) => DEFENSE_KO[k] && n >= 3)
-      .filter(([k]) => !(k === "Photon Cannon" && cannonIsRush(p)))
-      .sort((a, b) => b[1] - a[1])[0];
+    const usable = Object.entries(sg.buildingCounts)
+      .filter(([k]) => DEFENSE_KO[k])
+      .filter(([k]) => !(k === "Photon Cannon" && cannonIsRush(p)));
+    const def = usable.filter(([, n]) => n >= DEFENSE_MIN).sort((a, b) => b[1] - a[1])[0];
     if (!def) continue;
     const unit = [...ownCombat(p).entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
     if (!unit) continue;
+    // 방어 건물 총합이 일정 수준을 넘으면 '막을 준비'가 아니라 웅크린 것이라, 그 자체가
+    // 이야깃거리다(요청) — 문장에 개수를 싣고 무게도 올린다.
+    const total = usable.reduce((acc, [, n]) => acc + n, 0);
     beats.push({
-      k: "defense", won, who: who(p), weight: 7,
+      k: "defense", won, who: who(p), weight: total >= TURTLE_MIN ? 10 : 7,
       at: sg.firstBuildingFrame[def[0]] ?? null,
-      p: { unit, def: def[0] },
+      p: { unit, def: def[0], n: def[1], total },
     });
   }
 
@@ -525,7 +532,7 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
       const sg = p.signals;
       if (!sg) continue;
       const def = Object.entries(sg.buildingCounts)
-        .filter(([k, n]) => DEFENSE_KO[k] && n >= 3)
+        .filter(([k, n]) => DEFENSE_KO[k] && n >= DEFENSE_MIN)
         .filter(([k]) => !(k === "Photon Cannon" && cannonIsRush(p)))
         .sort((a, b) => b[1] - a[1])[0];
       if (!def) continue;
@@ -534,7 +541,7 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
       return {
         k: "breakthrough", won: true, who: subject, whom: [p.rawName], weight: 14,
         at: sg.firstBuildingFrame[def[0]] ?? null,
-        p: { units, unit, def: def[0] },
+        p: { units, unit, def: def[0], n: def[1] },
       } as Beat;
     }
     return null;

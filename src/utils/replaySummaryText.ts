@@ -285,9 +285,16 @@ const TEMPLATES: Record<string, Tpl> = {
     const unit = UNIT_KO[str(c.p.unit)];
     const def = DEFENSE_KO[str(c.p.def)];
     if (!unit || !def) return null;
-    const withWhat = ro(`${wa(unit)} ${def}`);
+    const n = num(c.p.n);
+    // 방어 건물이 많으면 개수 자체가 전황이다(요청) — 그럴 땐 몇 개까지 박았는지 말한다.
+    const heavy = num(c.p.total) >= 6;
+    const withWhat = heavy
+      ? `${def} ${n}개까지 박고 ${ro(unit)}`
+      : ro(`${wa(unit)} ${def}`);
     return `${ga(c.who)} ${withWhat} ${c.pick(
-      c.won ? ["막아냄", "버텨냄", "걸어 잠금"] : ["막아섰지만 실패", "버텼지만 뚫림", "막아봤지만 무너짐"]
+      c.won
+        ? heavy ? ["웅크려 끝내 지켜냄", "버텨냄"] : ["막아냄", "버텨냄", "걸어 잠금"]
+        : heavy ? ["웅크렸지만 결국 뚫림", "걸어 잠갔지만 무너짐"] : ["막아섰지만 실패", "버텼지만 뚫림", "막아봤지만 무너짐"]
     )}`;
   },
   expand: (c) => {
@@ -379,7 +386,9 @@ const TEMPLATES: Record<string, Tpl> = {
     const unit = UNIT_KO[str(c.p.unit)];
     const def = DEFENSE_KO[str(c.p.def)];
     if (!push || !unit || !def || !c.whom) return null;
-    return `${c.who}의 ${push} ${c.whom}의 ${unit} ${reul(def)} ${c.pick(["뚫음", "밀어버림", "걷어냄"])}`;
+    const n = num(c.p.n);
+    const wall = n >= 5 ? `${unit} ${def} ${n}개` : `${unit} ${def}`;
+    return `${c.who}의 ${push} ${c.whom}의 ${reul(wall)} ${c.pick(["뚫음", "밀어버림", "걷어냄"])}`;
   },
 
   // ── 맺음말 ──
