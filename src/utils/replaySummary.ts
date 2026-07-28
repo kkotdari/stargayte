@@ -629,6 +629,18 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   const heroUnit =
     star && winnerPlayers.length > 1 ? heroUnitOf(winner, star, units) : null;
 
+  // 팀 전체로 말하더라도, 한 사람의 생산이 압도적이었다면 그 공은 따로 적는다(요청).
+  // standout(1.4배)보다 훨씬 엄하게 본다 — '조금 더 뽑았다'와 '혼자 다 뽑았다'는 다르다.
+  const dominant = (() => {
+    if (winnerPlayers.length < 2) return null;
+    const ranked = winnerPlayers
+      .map((p) => ({ p, n: sumCombat(p) }))
+      .sort((a, b) => b.n - a.n);
+    if (ranked.length < 2 || ranked[0].n <= 0) return null;
+    return ranked[0].n >= ranked[1].n * 2 ? ranked[0].p : null;
+  })();
+  const domUnit = dominant ? heroUnitOf(winner, dominant, units) : null;
+
   // ── 문장 수 ──
   // 한 문단짜리 이야기라 길면 읽히지 않는다. 짧은 경기는 두어 문장, 길어도 다섯을 넘지
   // 않게 3분→2문장에서 5분마다 하나씩만 늘린다(요청).
@@ -765,9 +777,14 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
       ...(cont ? { units, cont: true } : alreadySaid ? {} : { units }),
       ...(useTeam ? { teamUnits: teamMembers.map((x) => x.unit) } : {}),
       // 팀 전체로 말할 땐 한 사람의 활약을 따로 덧붙이지 않는다 — 공이 두 번 갈린다.
-      ...(heroUnit && !useTeam ? { heroUnit } : {}),
+      // 다만 생산이 압도적이었던 사람만은 예외다(요청).
+      ...(useTeam
+        ? (domUnit ? { heroUnit: domUnit, heroMode: "dominant" } : {})
+        : (heroUnit ? { heroUnit } : {})),
     },
-    ...(heroUnit && star && !useTeam ? { who2: [star.rawName] } : {}),
+    ...(useTeam
+      ? (domUnit && dominant ? { who2: [dominant.rawName] } : {})
+      : (heroUnit && star ? { who2: [star.rawName] } : {})),
   };
 
   return { v: REPLAY_SUMMARY_VERSION, beats: [...chosen, ending].map(strip) };

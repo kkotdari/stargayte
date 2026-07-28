@@ -614,13 +614,31 @@ const TEMPLATES: Record<string, Tpl> = {
       const sp = SPECTACLE_UNITS[str(c.p.leadUnit)];
       if (sp) head = `${sp} `;
     }
+    // 팀전에서 특히 활약한 사람 한 마디 — 그 사람을 특징짓는 유닛과 역할로 말한다.
+    // 팀 전체로 말할 때는 생산이 압도적이었던 사람만 따로 적는다(요청).
+    const heroUnit = UNIT_KO[str(c.p.heroUnit)];
+    const role = UNIT_ROLE[str(c.p.heroUnit)];
+    const hero =
+      c.who2 && heroUnit && role
+        ? str(c.p.heroMode) === "dominant"
+          ? `${ga(c.who2)} ${c.pick([
+              `압도적인 ${heroUnit} 생산으로 앞장섬`,
+              `혼자 ${reul(heroUnit)} 쏟아내며 팀을 이끔`,
+              `${heroUnit} 물량을 압도적으로 뽑아냄`,
+            ])}`
+          : `${c.who2}의 ${ro(`${heroUnit} ${role}`)} ${c.pick([
+              ROLE_TAIL[role] ?? "승기를 잡음", "팀의 승리를 이끔", "팀을 강력하게 보조함",
+            ])}`
+        : null;
+
     const who = ga(c.who);
     // 팀전 승리는 한 사람의 공이 아니다(요청) — 각자가 무엇으로 싸웠는지를 나란히 말한다.
     // 흐름을 이미 말하는 초반 승리·역전에는 얹지 않는다(문장이 길어지고 앞뒤가 어긋난다).
     const team = teamPhrase(c);
     if (team && (mode === "plain" || mode === "late")) {
       const t = mode === "late" ? c.pick(["후반 ", "길게 끌어 "]) : "";
-      return head + `${t}${team} ${c.pick(["승리", "이김"])}`;
+      const body2 = head + `${t}${team} ${c.pick(["승리", "이김"])}`;
+      return [body2, ...(hero ? [hero] : [])].join(", ");
     }
     // 조합을 빼면 "초반 승리"처럼 앙상해지므로, 그럴 땐 수식도 같이 정리한다.
     let body: string;
@@ -639,15 +657,6 @@ const TEMPLATES: Record<string, Tpl> = {
         : `${who} ${c.pick(["그대로 승리", "그대로 가져감"])}`;
     }
 
-    // 팀전에서 특히 활약한 사람 한 마디 — 그 사람을 특징짓는 유닛과 역할로 말한다.
-    const heroUnit = UNIT_KO[str(c.p.heroUnit)];
-    const role = UNIT_ROLE[str(c.p.heroUnit)];
-    const hero =
-      c.who2 && heroUnit && role
-        ? `${c.who2}의 ${ro(`${heroUnit} ${role}`)} ${c.pick([
-            ROLE_TAIL[role] ?? "승기를 잡음", "팀의 승리를 이끔", "팀을 강력하게 보조함",
-          ])}`
-        : null;
     return [head + body, ...(hero ? [hero] : [])].join(", ");
   },
 };
