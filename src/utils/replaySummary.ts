@@ -760,29 +760,26 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   // 함께 적어, "유비의 마린, 관우의 저글링으로 승리"처럼 팀 전체로 읽히게 한다.
   const teamRanked = winnerPlayers.length > 1
     ? winnerPlayers
-        .map((p) => ({
-          raw: p.rawName,
-          n: sumCombat(p),
-          unit: [...ownCombat(p).entries()]
-            .filter(([u]) => !SUPPORT_UNITS.has(u))
-            .sort((a, b) => b[1] - a[1])[0]?.[0],
-        }))
-        .filter((x): x is { raw: string; n: number; unit: string } => !!x.unit)
+        .map((p) => {
+          const own = [...ownCombat(p).entries()].sort((a, b) => b[1] - a[1]);
+          // 대표 유닛은 스스로 싸움을 끝낼 수 있는 것으로, 조합에는 메딕·디파일러 같은
+          // 보조 유닛도 넣는다 — "마린 메딕 조합"이 그 사람의 그림이다(요청).
+          const unit = own.filter(([u]) => !SUPPORT_UNITS.has(u))[0]?.[0];
+          const comp = own.slice(0, 3).map(([u]) => u);
+          return { raw: p.rawName, n: sumCombat(p), unit, comp };
+        })
+        .filter((x): x is { raw: string; n: number; unit: string; comp: string[] } => !!x.unit)
         .sort((a, b) => b.n - a.n)
     : [];
-  // 전원의 유닛을 늘어놓으면 문장이 길어지기만 한다(지적) — 많이 뽑은 두 사람까지만 적고,
-  // 셋 이상이 고만고만하면 아예 유닛을 빼고 "팀이 결국 전투에서 승리"로 줄인다.
-  const teamAll = teamRanked.length === winnerPlayers.length && teamRanked.length > 1;
-  const teamEven = teamAll && teamRanked.length >= 3
-    && teamRanked[teamRanked.length - 1].n >= teamRanked[0].n * 0.7;
-  const teamMembers = teamEven ? [] : teamRanked.slice(0, 2);
-  const useTeam = teamAll;
+  // 전원의 유닛을 늘어놓으면 문장이 길어지기만 한다(지적) — 대신 같은 주력을 쓴 사람끼리
+  // 묶어 말한다(요청). 누구를 묶고 몇 무리까지 말할지는 문장 쪽이 정하므로, 여기서는
+  // 이긴 편 전원의 대표 유닛과 조합을 그대로 넘긴다.
+  const useTeam = teamRanked.length === winnerPlayers.length && teamRanked.length > 1;
 
   const ending: Beat = {
     k: "result", won: true, at: Number.POSITIVE_INFINITY, weight: 1000,
-    who: !useTeam ? subject
-      : teamEven ? teamRanked.map((x) => x.raw)
-      : teamMembers.map((x) => x.raw),
+    // 이긴 편 전원을 담아 두고, 몇 명까지 말할지는 문장 쪽에서 정한다.
+    who: useTeam ? teamRanked.map((x) => x.raw) : subject,
     p: {
       mode, lead, wentLate,
       leadMin: minutes(sec),
@@ -790,7 +787,11 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
       // 이어받는 문장은 유닛을 다시 말해야 말이 이어진다 — 그때는 중복이 아니라 연결이다.
       ...(cont ? { units, cont: true } : alreadySaid ? {} : { units }),
       ...(useTeam
-        ? (teamEven ? { teamEven: true } : { teamUnits: teamMembers.map((x) => x.unit) })
+        ? {
+            teamUnits: teamRanked.map((x) => x.unit),
+            // 같은 유닛을 주력으로 쓴 사람끼리 묶어 말할 때 쓰는 각자의 조합(요청).
+            teamComp: teamRanked.map((x) => x.comp.join("|")),
+          }
         : {}),
       // 팀 전체로 말할 땐 한 사람의 활약을 따로 덧붙이지 않는다 — 공이 두 번 갈린다.
       // 다만 생산이 압도적이었던 사람만은 예외다(요청).

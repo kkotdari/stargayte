@@ -113,34 +113,44 @@ export function unitPhrase(units: string[]): string {
  *  팀 승리를 한 사람 몫으로 돌리지 않기 위한 것이다(요청). 재료가 모자라면 빈 문자열. */
 function teamPhrase(c: Ctx): string {
   const names = c.whoList;
-  // 다들 고만고만하게 뽑았으면 누구의 무엇이라고 갈라 말할 것이 없다(지적).
-  if (c.p.teamEven === true && names.length >= 2) {
+  const leads = list(c.p.teamUnits);
+  const comps = list(c.p.teamComp).map((x) => x.split("|"));
+  if (leads.length < 2 || names.length !== leads.length) return "";
+
+  // 주력이 같은 사람끼리 묶는다(요청) — 같은 그림으로 싸운 사람을 따로 늘어놓으면
+  // 문장만 길어지고, 묶으면 "정구, 브래드의 마린 메딕 조합"처럼 한 덩어리로 읽힌다.
+  const groups: { key: string; names: string[]; units: string[] }[] = [];
+  names.forEach((n, i) => {
+    const g = groups.find((x) => x.key === leads[i]);
+    const own = comps[i] ?? [leads[i]];
+    if (g) {
+      g.names.push(n);
+      for (const u of own) if (!g.units.includes(u)) g.units.push(u);
+    } else {
+      groups.push({ key: leads[i], names: [n], units: [...own] });
+    }
+  });
+
+  // 다들 같은 그림으로 싸웠고 사람도 많으면, 이름을 다 부르는 대신 팀으로 뭉뚱그린다.
+  if (groups.length === 1 && names.length >= 4) {
     return c.pick([
-      `${names.join("·")} 팀이 결국 전투에서`,
       `${names.length}인 팀이 힘을 모아`,
       `${names.join("·")} 팀이 함께 밀어붙여`,
     ]);
   }
-  const units = list(c.p.teamUnits);
-  if (units.length < 2 || names.length !== units.length) return "";
-  const pairs = names
-    .map((n, i) => ({ n, u: UNIT_KO[units[i]] }))
-    .filter((x): x is { n: string; u: string } => !!x.u);
-  if (pairs.length !== names.length) return "";
-  const uniq = [...new Set(pairs.map((x) => x.u))];
-  if (uniq.length === 1) {
-    return c.pick([
-      `${pairs.map((x) => x.n).join("·")}의 ${ro(uniq[0])}`,
-      `${pairs.length}인 팀의 ${uniq[0]} 몰아치기로`,
-    ]);
-  }
-  // "관우의 저글링, 유비의 드라군으로"는 뜻은 맞아도 길다(지적) — 이름과 유닛을 각각
-  // 묶거나 '의'를 덜어 짧게 쓴다.
-  const last = pairs[pairs.length - 1];
-  return c.pick([
-    `${pairs.map((x) => x.n).join("·")}의 ${ro(pairs.map((x) => x.u).join("·"))}`,
-    `${pairs.slice(0, -1).map((x) => `${x.n} ${x.u}`).join(", ")}, ${last.n} ${ro(last.u)}`,
-  ]);
+  // 세 무리를 넘어가면 그것대로 길다 — 많이 뽑은 쪽부터 두 무리까지만 말한다.
+  const shown = groups.slice(0, groups.length > 3 ? 2 : 3);
+  const parts = shown.map((g) => {
+    const many = g.names.length > 1;
+    const ko = g.units.map((u) => UNIT_KO[u]).filter(Boolean).slice(0, many ? 3 : 2);
+    if (ko.length === 0) return "";
+    const who = g.names.join(", ");
+    return many ? `${who}의 ${ko.join(" ")} 조합` : `${who}의 ${ko.join(" ")}`;
+  }).filter(Boolean);
+  if (parts.length === 0) return "";
+  if (parts.length === 1) return ro(parts[0]);
+  const head = parts.slice(0, -1).join(", ");
+  return ro(`${wa(head)} ${parts[parts.length - 1]}`);
 }
 
 /** 이어받는 맺음말의 앞머리 — "결국 마린과 메딕 조합으로 " / "계속된 마린 공격으로 ". */
