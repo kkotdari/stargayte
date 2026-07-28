@@ -147,10 +147,20 @@ export default function MobileTabBar({ screen, menuOpen, hidden, mini, onNavigat
   };
   const indicator = useActiveTabIndicator(navRef, [screen, menuOpen]);
 
+  // 탭바가 축소되면 바닥에서 그 높이의 20%만큼 자리가 빈다. 같은 bottom을 기준으로 떠
+  // 있는 다른 것들(피드의 등록 FAB)도 그만큼 같이 내려와야 한 덩어리로 움직인다(요청).
+  // 그 요소들은 이 컴포넌트 바깥(다른 화면)에 있어서, 상태를 문서 루트의 클래스로 내보내
+  // CSS가 알아서 따라오게 한다.
+  const shrunk = !hidden && mini;
+  useEffect(() => {
+    document.documentElement.classList.toggle("scr-tabbar-mini", shrunk);
+    return () => document.documentElement.classList.remove("scr-tabbar-mini");
+  }, [shrunk]);
+
   return createPortal(
     <nav
       ref={navRef}
-      className={cx("scr-mobile-tabbar", hidden && "scr-mobile-tabbar-hidden", !hidden && mini && "scr-mobile-tabbar-mini")}
+      className={cx("scr-mobile-tabbar", hidden && "scr-mobile-tabbar-hidden", shrunk && "scr-mobile-tabbar-mini")}
       aria-label="하단 메뉴"
     >
       {indicator && (

@@ -7156,6 +7156,15 @@ html.scr-light-theme .scr-feed-comments .scr-mreq-chip-inline { color: #c07c1c; 
 .scr-feed-add-fab-wrap {
   position: fixed; z-index: 56; left: 20px;
   bottom: calc(var(--scr-float-bottom) + var(--mobile-footer-h) + 12px);
+  /* 탭바가 축소될 때 함께 내려간다 — 탭바의 transform과 같은 곡선·길이로 맞춰야 둘이
+     한 덩어리로 움직인다(탭바는 .28s ease-in-out). */
+  transition: bottom .28s ease-in-out;
+}
+/* 탭바가 0.8로 줄면 바닥 기준으로 그 높이의 20%만큼 자리가 빈다(축소 기준점이 50% 100%
+   라 아래는 그대로고 위가 내려온다). FAB만 제자리에 있으면 탭바와의 간격이 그만큼 벌어져
+   따로 떠 보이므로(지적), 같은 비율로 함께 내려 12px 간격을 지킨다. */
+html.scr-tabbar-mini .scr-feed-add-fab-wrap {
+  bottom: calc(var(--scr-float-bottom) + var(--mobile-footer-h) * 0.8 + 12px);
 }
 /* 넓은 화면에서는 화면 왼쪽 끝이 아니라 본문 칸 바로 옆에 둔다(요청) — 본문은 가운데
    860px로 모여 있는데 버튼만 저 멀리 구석에 있으면 한 화면으로 안 읽힌다. 본문 왼쪽
