@@ -88,6 +88,9 @@ const ENEMY_RADIUS = 0.35;
 const FRONT_MIN = 0.1;
 // 상대 쪽으로 60도 안쪽(cos 0.5)이어야 진출로 쪽이라고 본다.
 const FRONT_COS = 0.5;
+// 몰래 배럭에 딸려 나오면 그 자체가 러시의 증거가 되는 파이어뱃 수 — 방어용으로는 이만큼
+// 뽑지 않는다.
+const FIREBAT_RUSH_MIN = 6;
 // 셋방살이는 '나중에 들어온 쪽'이다 — 집주인보다 이만큼은 늦게 그 자리에 지었어야 한다.
 // 이 조건이 없으면 같은 자리를 공유한 두 아군이 서로를 셋방살이로 지목한다.
 const LODGING_LATE_SEC = 3 * 60;
@@ -362,9 +365,18 @@ function detectFor(c: Ctx): Tactic[] {
       });
     }
     // 몰래 배럭 — 본진에서 한참 떨어진 자리에 올린 초반 배럭. 자리를 안 보면 그냥 배럭이다.
-    const sneaky = [...inZone("enemy", "Barracks", 300), ...inZone("mid", "Barracks", 300)];
+    // 자리만으로는 애매한 구석이 있다(지적) — 상대 진영으로 보이는 자리는 그것만으로 확실하지만,
+    // 가운데에 올린 배럭은 앞마당 방어일 수도 있다. 그래서 가운데 배럭은 파이어뱃까지 나왔을
+    // 때만 인정하고, 그 조합은 아예 '몰래 배럭 파이어뱃 러쉬'로 부른다(요청).
+    const firebats = u("Firebat");
+    const rushFirebat = firebats >= FIREBAT_RUSH_MIN;
+    const atFoe = inZone("enemy", "Barracks", 300);
+    const sneaky = [...atFoe, ...(rushFirebat ? inZone("mid", "Barracks", 300) : [])];
     if (sneaky.length > 0) {
-      out.push({ key: "sneak-rax", ...foeAt(sneaky), weight: 12, at: firstOf(sneaky), who });
+      out.push({
+        key: "sneak-rax", ...foeAt(sneaky), weight: rushFirebat ? 13 : 12,
+        at: firstOf(sneaky), who, p: { firebat: rushFirebat },
+      });
     }
     // 탱크 방어(흔히 옆탱, 요청) — 두 갈래다. 아군 기지에 팩토리를 올려 그쪽을 받쳐주는 것도 옆탱이고,
     // 내 기지에서 뽑은 탱크로 바로 옆에 붙은 상대를 잡아내는 것도 옆탱이다(지적).

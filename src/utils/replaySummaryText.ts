@@ -370,6 +370,14 @@ const TEMPLATES: Record<string, Tpl> = {
   // 몰래 배럭 — 본진에서 한참 떨어진 자리에 올린 초반 배럭(요청).
   "sneak-rax": (c) => {
     const at = targetPhrase(c);
+    // 파이어뱃까지 나왔으면 그건 정찰용 몰래 배럭이 아니라 러시다(요청).
+    if (c.p.firebat) {
+      return `${ga(c.who)} ${at}${c.pick(
+        c.won
+          ? ["몰래 배럭 파이어뱃 러쉬로 일꾼을 지짐", "몰래 배럭에서 파이어뱃을 뽑아 그대로 태움"]
+          : ["몰래 배럭 파이어뱃 러쉬를 갔지만 막힘", "몰래 배럭 파이어뱃 러쉬 야심차게 갔다가 망함"]
+      )}`;
+    }
     return `${ga(c.who)} ${at}${c.pick(
       c.won
         ? ["몰래 배럭을 올려 허를 찌름", "몰래 배럭으로 뒤통수를 침"]

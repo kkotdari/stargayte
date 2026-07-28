@@ -7219,11 +7219,12 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    빠져나갔다가 같은 값의 패딩으로 글자를 제자리에 돌려놓는다. */
 .scr-feed-card-head-title {
   display: flex; align-items: center; gap: 7px; min-width: 0;
-  /* 음영은 글자가 아니라 포스트 폭에 맞춘다(요청: 패딩까지가 아니라 페이지 폭까지).
-     헤더의 좌우 패딩만큼 음수 마진으로 빠져나갔다가 같은 값의 패딩으로 글자를 제자리에
-     돌려놓는다 — 띠는 카드 끝에서 끝까지, 글자는 그대로. */
-  margin: 0 calc(-1 * var(--post-head-pad-r)) 0 calc(-1 * var(--post-pad-x));
-  padding: 4px var(--post-head-pad-r) 4px var(--post-pad-x);
+  /* 음영의 좌우 끝은 페이지 메인 타이틀("피드")과 같은 자리에서 잘린다(요청) — 포스트는
+     본문 좌우 여백 바깥까지 빠져나와 있으므로, 카드 끝이 아니라 --main-pad-x만큼 안쪽이
+     그 자리다. 헤더 패딩과의 차이만큼만 음수 마진으로 나갔다가 같은 값의 패딩으로 글자를
+     제자리에 돌려놓는다 — 띠는 타이틀 줄에 맞고, 글자는 그대로. */
+  margin: 0 calc(var(--main-pad-x) - var(--post-head-pad-r)) 0 calc(var(--main-pad-x) - var(--post-pad-x));
+  padding: 4px calc(var(--post-head-pad-r) - var(--main-pad-x)) 4px calc(var(--post-pad-x) - var(--main-pad-x));
   /* 페이드 지점도 %가 아니라 px로 못박는다 — %면 카드가 넓어질수록 띠도 같이 늘어난다.
      모바일(390px)에서 38%/72%가 만들던 길이(≈148/281px)와 비슷하게 맞춘 값이다. */
   background: linear-gradient(
