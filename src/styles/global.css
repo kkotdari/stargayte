@@ -7079,8 +7079,8 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
      포스트는 좌우 꽉 차는 전면판이라 이 값이 곧 화면 가장자리로부터의 들여쓰기다 —
      그래서 제목 줄은 페이지 헤더/필터부와 같은 20px에 맞춘다(지적: PC에서 셋의 좌우
      패딩이 달라 본문만 넓어 보임). 모바일은 아래 720px 블록에서 16/20으로 되돌린다. */
-  --post-pad-x: 20px;
-  --post-pad-bx: 24px;
+  --post-pad-x: 24px;
+  --post-pad-bx: 28px;
   /* 제목 줄 뒤에 깔리는 음영의 색(요청). 알파를 섞어야 해서 색상값이 아니라 RGB 성분으로
      둔다. 다크는 오렌지 → 푸른색으로 바꿨고, 다시 타임라인 레일과 같은 톤으로 맞췄다
      (요청: 레일 색처럼 좀 더 밝고 선명하게) — 레일이 쓰는 --timeline-blue(#3b82f6)와 같은
@@ -7099,7 +7099,7 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    이 블록은 위 :root와 특이도가 같아서, 반드시 뒤에 와야 이긴다(720px 쪽 모바일 블록에
    넣으면 소스상 앞이라 무시된다). */
 @media (max-width: 720px) {
-  :root { --post-pad-x: 16px; --post-pad-bx: 20px; }
+  :root { --post-pad-x: 20px; --post-pad-bx: 24px; }
 }
 .scr-feed-card {
   position: relative;
@@ -7508,11 +7508,9 @@ html.scr-light-theme .scr-feed-add-fab {
 .scr-feed-shift-more {
   display: flex; align-items: center; gap: 6px; margin-top: 2px;
   color: var(--dim); font-size: var(--fs-caption); font-weight: 600;
-  padding-left: 42px; /* 순위(min-width 34px)+gap 만큼 들여 내용과 좌측 정렬 */
 }
 @media (hover: hover) { .scr-feed-shift-list-toggle:hover .scr-feed-shift-more { color: var(--text); } }
 .scr-feed-shift-row { display: flex; align-items: baseline; gap: 8px; font-size: var(--fs-caption); }
-.scr-feed-shift-rank { font-weight: 800; font-variant-numeric: tabular-nums; min-width: 34px; text-align: right; }
 .scr-feed-shift-row-hl { background: var(--highlight-bg); }
 .scr-feed-shift-row-hl .scr-feed-shift-name { color: var(--bar-text); }
 .scr-feed-shift-name { font-weight: 600; }

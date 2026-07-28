@@ -122,7 +122,6 @@ export default function RankShiftCard({
                   || highlightTerms?.some((t) => normalizeSearchText(e.nickname).includes(t)))
                   && "scr-feed-shift-row-hl")}
             >
-              <span className="scr-feed-shift-rank">{e.to}위</span>
               <span className="scr-feed-shift-name">{e.nickname}</span>
               <span className={label.cls}>{label.text}</span>
               {e.from != null && <span className="scr-feed-shift-from">({e.from}위 → {e.to}위)</span>}
