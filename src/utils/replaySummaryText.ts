@@ -704,10 +704,13 @@ const TEMPLATES: Record<string, Tpl> = {
     "발키리를 뽑아 오버로드를 사냥함", "발키리를 모아 제공권 싸움에 나섬",
     "예상치 못한 발키리로 하늘을 노림", "발키리를 띄워 하늘을 정리하려 함",
   ]),
+  // 드랍이 있었다는 것까지만 — "피해를 줌"은 확인된 게 아니다(지적: 드랍으로 피해를 줌도
+  // 가정이니 고쳐 달라). 실제로 상대가 흔들렸으면 그건 raid-damage/harass-workers가
+  // 생산 급감·일꾼 재생산이라는 별도 근거를 갖고 따로 말한다.
   dropship: (c) => {
     const of = victimPhrase(c);
     return `${ga(c.who)} ${done(c, c.pick([
-      `드랍십을 계속 돌려 ${of}병력을 떨굼`, `드랍 견제로 ${of}피해를 줌`,
+      `드랍십을 계속 돌려 ${of}병력을 떨굼`, `드랍십으로 ${of}거듭 파고듦`,
     ]))}`;
   },
   "zealot-rush": (c) => {
@@ -763,13 +766,13 @@ const TEMPLATES: Record<string, Tpl> = {
     const kind = c.p.lurker ? "러커 드랍" : "히드라 드랍";
     const of = victimPhrase(c);
     return `${ga(c.who)} ${done(c, c.pick([
-      `오버로드에 태운 ${kind}을 ${of}감행함`, `${kind}으로 ${of}피해를 줌`,
+      `오버로드에 태운 ${kind}을 ${of}감행함`, `${kind}으로 ${of}파고듦`,
     ]))}`;
   },
   shuttle: (c) => {
     const of = victimPhrase(c);
     return `${ga(c.who)} ${done(c, c.pick([
-      `${of}셔틀 드랍을 감행함`, `셔틀 견제로 ${of}피해를 줌`,
+      `${of}셔틀 드랍을 감행함`, `셔틀을 돌려 ${of}거듭 떨굼`,
     ]))}`;
   },
   // ── 전황(replaySummary) ──

@@ -345,12 +345,27 @@ function sumCombat(p: ParsedReplayPlayer): number {
   return n;
 }
 
+/** 그 사람이 뽑은 병력의 규모(인구수 합) — '몇 기'가 아니라 '얼마나 큰 병력'이다.
+ *  팀전에서 '이 편의 주인공'을 고를 때 수로 세면, 질럿 60기를 뽑은 사람이 캐리어 12기 +
+ *  드라군을 뽑은 사람을 언제나 이긴다. 그러면 주인공의 조합만 문장에 나가므로 캐리어는
+ *  아예 언급될 기회가 없다(지적: 캐리어 이야기가 계속 안 나온다). */
+function sumSupply(p: ParsedReplayPlayer): number {
+  const s = p.signals;
+  if (!s) return 0;
+  let n = 0;
+  for (const [unit, c] of Object.entries(s.unitCounts)) {
+    if (NON_COMBAT_UNITS.has(unit) || WORKER_UNITS.has(unit)) continue;
+    n += c * supplyOf(unit);
+  }
+  return n;
+}
+
 /** 그 편에서 눈에 띄게 많이 뽑은 사람 — 팀전이라도 이 사람 얘기를 많이 하기 위한 기준
  *  (요청). 2등보다 1.4배 넘게 앞서면 인정한다(예전엔 "혼자 절반 넘게"라 3인 이상 팀에서는
  *  거의 안 잡혔다). 1:1은 당연히 그 사람이다. */
 function standout(side: Side): ParsedReplayPlayer | null {
   const ranked = side.players
-    .map((p) => ({ p, n: sumCombat(p) }))
+    .map((p) => ({ p, n: sumSupply(p) }))
     .filter((x) => x.n > 0)
     .sort((a, b) => b.n - a.n);
   if (ranked.length === 0) return null;
@@ -1026,7 +1041,7 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   const dominant = (() => {
     if (winnerPlayers.length < 2) return null;
     const ranked = winnerPlayers
-      .map((p) => ({ p, n: sumCombat(p) }))
+      .map((p) => ({ p, n: sumSupply(p) }))
       .sort((a, b) => b.n - a.n);
     if (ranked.length < 2 || ranked[0].n <= 0) return null;
     return ranked[0].n >= ranked[1].n * 2 ? ranked[0].p : null;
