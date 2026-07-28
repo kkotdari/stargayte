@@ -173,11 +173,12 @@ const TEMPLATES: Record<string, Tpl> = {
     const build = n > 0 ? `${n}드론 저글링 러시` : "초반 저글링 러시";
     const at = targetPhrase(c);
     return `${ga(c.who)} ${at}${c.pick([
-      `${build}를 감`, `빠른 ${build}를 시도함`, `${build}를 준비함`,
+      `${build}를 감`, `빠른 ${build}를 시도함`, `과감한 ${build}를 감`, `${build}를 준비함`,
     ])}${tail(c)}`;
   },
   moka: act([
     "저글링·울트라에 다크스웜을 얹은 목동 저그로 감", "울트라까지 모아 목동 저그를 운용함",
+    "예상치 못한 목동 저그를 꺼냄",
     "다크스웜 아래로 저글링·울트라를 모음",
   ]),
   swarm: act([
@@ -200,6 +201,7 @@ const TEMPLATES: Record<string, Tpl> = {
   ]),
   valkyrie: act([
     "발키리를 띄워 오버로드를 노림", "발키리를 모아 제공권을 노림",
+    "예상치 못한 발키리로 하늘을 노림",
   ]),
   dropship: (c) => {
     const of = victimPhrase(c);
@@ -212,17 +214,20 @@ const TEMPLATES: Record<string, Tpl> = {
     const label = g === 2 ? "투게이트" : `${g}게이트`;
     const at = targetPhrase(c);
     return `${ga(c.who)} ${at}${c.pick([
-      `${label} 질럿 러시를 감`, `빠른 ${label} 질럿 러시를 시도함`, `${label}에서 질럿을 모아 나감`,
+      `${label} 질럿 러시를 감`, `빠른 ${label} 질럿 러시를 시도함`, `과감한 ${label} 질럿 러시를 감`,
+      `${label}에서 질럿을 모아 나감`,
     ])}${tail(c)}`;
   },
   "cannon-rush": (c) => {
     const at = targetPhrase(c);
     return `${ga(c.who)} ${at}${c.pick([
       "포토러쉬를 함", "초반 포토러쉬를 함", "빠른 포토러쉬를 시도함",
+      "예상치 못한 포토러쉬를 함", "과감한 포토러쉬를 함",
     ])}${tail(c)}`;
   },
   recall: act([
-    "아비터를 띄우고 리콜까지 씀", "리콜로 병력을 뒤로 넘김", "아비터 리콜을 꺼냄",
+    "아비터를 띄우고 리콜까지 씀", "리콜로 병력을 뒤로 넘김", "과감한 아비터 리콜을 씀",
+    "예상치 못한 리콜로 병력을 넘김",
   ]),
   // 리버 드랍 — 셔틀에 리버를 태워 일꾼을 지지는 그림(요청).
   "shuttle-reaver": (c) => {
@@ -260,7 +265,11 @@ const TEMPLATES: Record<string, Tpl> = {
     if (mode === "spectacle") {
       const u = UNIT_KO[str(c.p.unit)];
       if (!u) return null;
-      return `${neun(c.who)} ${c.pick([`${u}까지 꺼냈지만 판을 뒤집지 못함`, `${u}까지 갔지만 늦었음`])}`;
+      return `${neun(c.who)} ${c.pick([
+        `${u} 등의 고급 유닛을 사용해 전투에 임했으나 판을 뒤집지 못함`,
+        `${u}까지 꺼냈지만 판을 뒤집지 못함`,
+        `${u}까지 갔지만 늦었음`,
+      ])}`;
     }
     if (mode === "nothing") {
       return `${neun(c.who)} ${c.pick(["제대로 싸워보지 못하고 무너짐", "손 쓸 새도 없이 무너짐", "허무하게 당함"])}`;
@@ -286,12 +295,17 @@ const TEMPLATES: Record<string, Tpl> = {
     const n = num(c.p.n);
     // 방어 건물이 많으면 개수 자체가 전황이다(요청) — 그럴 땐 몇 개까지 박았는지 말한다.
     const heavy = num(c.p.total) >= 6;
-    const withWhat = heavy
-      ? `${def} ${n}개까지 박고 ${ro(unit)}`
-      : ro(`${wa(unit)} ${def}`);
     // 지어 놓은 건 확실하지만 그게 막아냈는지는 리플레이에 없다(지적) — 갖춘 데까지만 말한다.
-    return `${ga(c.who)} ${withWhat} ${c.pick(
-      heavy ? ["웅크림", "걸어 잠금"] : ["수비를 갖춤", "방어 라인을 세움", "막아섬"]
+    // 수가 많으면 그 자체가 그림이라 '도배'로 말한다(요청).
+    if (heavy) {
+      return `${ga(c.who)} ${c.pick([
+        `본진에 ${reul(def)} 도배해서 방어함`,
+        `본진을 ${def} ${n}개로 도배함`,
+        `${def} ${n}개를 깔고 ${ro(unit)} 웅크림`,
+      ])}${tail(c)}`;
+    }
+    return `${ga(c.who)} ${ro(`${wa(unit)} ${def}`)} ${c.pick(
+      ["수비를 갖춤", "방어 라인을 세움", "막아섬"]
     )}${tail(c)}`;
   },
   expand: (c) => {
@@ -299,6 +313,14 @@ const TEMPLATES: Record<string, Tpl> = {
     const n = num(c.p.n);
     if (!kind || n <= 0) return null;
     const label = `${n}${kind}`;
+    const unit = UNIT_KO[str(c.p.unit)];
+    // 확장을 크게 벌렸으면 그게 곧 생산량이다 — 무엇을 뽑았는지까지 붙여 말한다(요청).
+    if (unit && n >= 5) {
+      return `${ga(c.who)} ${c.pick([
+        `${reul(kind)} ${n}개까지 늘려서 ${reul(unit)} 폭발적으로 생산함`,
+        `${label}까지 늘려 ${reul(unit)} 쏟아냄`,
+      ])}${tail(c)}`;
+    }
     return `${ga(c.who)} ${c.pick([
       `${label}까지 늘림`, `${label}까지 돌림`, `${label}까지 벌림`,
     ])}${tail(c)}`;
@@ -307,7 +329,7 @@ const TEMPLATES: Record<string, Tpl> = {
     const t = TECH_KO[str(c.p.tech)];
     if (!t) return null;
     return `${ga(c.who)} ${c.pick([
-      `${t}까지 꺼내 씀`, `${reul(t)} 확보함`, `${reul(t)} 올려 씀`,
+      `${t} 등의 고급 기술을 사용해 전투에 임함`, `${t}까지 꺼내 씀`, `${reul(t)} 확보해 씀`,
     ])}${tail(c)}`;
   },
   allin: (c) =>
@@ -370,6 +392,7 @@ const TEMPLATES: Record<string, Tpl> = {
     }
     return `${ga(c.who)} ${at}${c.pick([
       "몰래 배럭을 올림", "몰래 배럭을 시도함", "이른 시간에 몰래 배럭을 올림",
+      "예상치 못한 몰래 배럭을 올림", "야심찬 몰래 배럭을 올림",
     ])}${tail(c)}`;
   },
   // 성큰러쉬 — 내 기지가 아닌 곳에 초반부터 성큰을 박는 올인(요청). 해처리는 펴지 않는다.
@@ -377,6 +400,7 @@ const TEMPLATES: Record<string, Tpl> = {
     const at = targetPhrase(c);
     return `${ga(c.who)} ${at}${c.pick([
       "성큰러쉬를 함", "초반 성큰러쉬를 함", "빠른 성큰러쉬를 시도함",
+      "예상치 못한 성큰러쉬를 함", "과감한 성큰러쉬를 함",
     ])}${tail(c)}`;
   },
   // 센터 포토 — 가운데를 포토로 걸어 잠그는 그림(요청).
@@ -427,6 +451,7 @@ const TEMPLATES: Record<string, Tpl> = {
     const at = targetPhrase(c);
     return `${ga(c.who)} ${c.pick([
       `커널을 뚫어 ${at}병력을 실어 나름`, `${at}커널을 뚫음`,
+      `예상치 못한 커널을 뚫어 ${at}병력을 넘김`,
     ])}${tail(c)}`;
   },
 
@@ -435,6 +460,7 @@ const TEMPLATES: Record<string, Tpl> = {
     const host = c.who2 ? `${c.who2}의 기지에 ` : "아군 기지에 ";
     return `${ga(c.who)} ${host}${c.pick([
       "살림을 차리고 셋방살이를 함", "눌러앉아 셋방살이를 함", "건물을 옮겨 얹혀삶",
+      "과감하게 살림을 차리고 셋방살이를 함",
     ])}${tail(c)}`;
   },
 
@@ -472,7 +498,9 @@ const TEMPLATES: Record<string, Tpl> = {
     const mode = str(c.p.mode);
     // 앞 문장에서 같은 사람이 같은 유닛으로 한 일을 말했으면 여기서 이어받는다(요청).
     // 초반에 끝난 경기는 빼둔다 — "초반 계속해서"는 말이 겹친다.
-    const cont = c.p.cont && mode !== "rush" ? c.pick(["계속해서 ", "그대로 이어서 "]) : "";
+    // 이어받기는 밋밋한 맺음말에서만 쓴다 — 초반·후반·역전은 저마다 시간과 흐름을 이미
+    // 말하고 있어서, 거기에 "그대로 이어서"를 얹으면 말이 겹치거나 앞뒤가 어긋난다.
+    const cont = c.p.cont && mode === "plain" ? c.pick(["계속해서 ", "그대로 이어서 "]) : "";
     const p = phrase ? `${cont}${phrase} ` : cont;
     const lead = str(c.p.lead);
     const min = num(c.p.leadMin);

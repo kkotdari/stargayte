@@ -438,10 +438,13 @@ function sideBeats(args: {
         .sort((a, b) => b[1] - a[1])[0]?.[0];
       if (kind) {
         const frames = buildFramesOf(top.p, EXPANSION_BUILDINGS);
+        // 확장을 몇 개까지 늘렸나에 더해 그걸로 무엇을 뽑았나까지 말한다(요청) —
+        // 확장은 그 자체가 목적이 아니라 생산량으로 이어지는 수다.
+        const unit = [...ownCombat(top.p).entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
         beats.push({
           k: "expand", won, who: who(top.p), weight: 8,
           at: frames[2] ?? frames[frames.length - 1] ?? null,
-          p: { n: top.n, kind },
+          p: { n: top.n, kind, ...(unit ? { unit } : {}) },
         });
       }
     }
