@@ -94,6 +94,11 @@ const FIREBAT_RUSH_MIN = 6;
 // '대규모 뮤탈'로 볼 수 — 한 부대 12기 기준 세 부대(지적: 3~4부대).
 const MUTA_MASS_MIN = 36;
 
+// 성큰러시·포토러시·몰래 배럭은 '자리를 보고서야 알 수 있는' 기습이라, 그 경기에서만
+// 있었던 일 중에서도 특히 이야깃거리다(요청: 무게감을 올려 달라). 자리가 모자랄 때
+// 일반적인 사실보다 먼저 남도록 무게를 따로 잡아 둔다.
+const SNEAK_WEIGHT = 16;
+
 // '패스트 OO' — 이 시각보다 이르게 첫 기가 나오면 빠른 것이다(요청). 초 단위.
 const FAST_UNITS: [string, number][] = [
   ["Dark Templar", 8 * 60], ["Reaver", 9 * 60], ["Lurker", 7 * 60],
@@ -421,7 +426,7 @@ function detectFor(c: Ctx): Tactic[] {
     ]);
     if (sunkenRush.length > 0) {
       out.push({
-        key: "sunken-rush", ...foeAt(sunkenRush), weight: 13, at: firstOf(sunkenRush), who,
+        key: "sunken-rush", ...foeAt(sunkenRush), weight: SNEAK_WEIGHT, at: firstOf(sunkenRush), who,
       });
     }
     // 뮤탈 대규모 — 한두 부대로는 '대규모'가 아니다(지적: 3~4부대). 한 부대 12기 기준으로
@@ -493,7 +498,7 @@ function detectFor(c: Ctx): Tactic[] {
     const sneaky = [...atFoe, ...(rushFirebat ? inZone("mid", "Barracks", 300) : [])];
     if (sneaky.length > 0) {
       out.push({
-        key: "sneak-rax", ...foeAt(sneaky), weight: rushFirebat ? 13 : 12,
+        key: "sneak-rax", ...foeAt(sneaky), weight: rushFirebat ? SNEAK_WEIGHT + 1 : SNEAK_WEIGHT,
         at: firstOf(sneaky), who, p: { firebat: rushFirebat },
       });
     }
@@ -559,7 +564,7 @@ function detectFor(c: Ctx): Tactic[] {
     const cannonRush = cannon !== null && sec(cannon) < 330 && forward.length > 0;
     if (cannonRush) {
       out.push({
-        key: "cannon-rush", ...foeAt(forward), weight: 11, at: cannon,
+        key: "cannon-rush", ...foeAt(forward), weight: SNEAK_WEIGHT, at: cannon,
         who,
       });
     }

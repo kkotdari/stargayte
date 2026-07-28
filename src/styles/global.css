@@ -7342,9 +7342,10 @@ html.scr-light-theme .scr-feed-comments .scr-mreq-chip-inline { color: #c07c1c; 
    알약이나 배경을 깔면 글이 끊겨 읽힌다. */
 .scr-sum-team1, .scr-sum-team2 { font-weight: 700; }
 /* 다크에서는 배경이 거의 검정이라 채도 높은 색이 오히려 가라앉아 안 보인다(지적) —
-   흰색을 섞어 밝기를 올린다. 색상(파랑/빨강)은 그대로라 팀 구분은 유지된다. */
-.scr-sum-team1 { color: #c7e2ff; }
-.scr-sum-team2 { color: #ffbcbc; }
+   흰색을 섞어 밝기를 올리고 채도를 낮춘 파스텔로 간다(요청). 색상(파랑/붉은빛)은
+   그대로라 팀 구분은 유지된다. */
+.scr-sum-team1 { color: #cbdefa; }
+.scr-sum-team2 { color: #fac9ce; }
 .scr-light-theme .scr-sum-team1 { color: #1d4ed8; }
 .scr-light-theme .scr-sum-team2 { color: #dc2626; }
 /* 포스트(.scr-post)는 다크에서도 흰 종이라 라이트 쪽 색을 쓴다. */

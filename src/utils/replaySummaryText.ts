@@ -273,7 +273,7 @@ function victimPhrase(c: Ctx): string {
 const LOST_TAILS = [
   // 이 꼬리는 이제 끝 무렵 문장에만 붙는다 — "기울기 시작함"처럼 앞을 내다보는 말은 뺐다.
   "흐름은 상대에게 넘어감", "끝내 뒤집지는 못함", "소득은 크지 않았음",
-  "재미를 보지 못함", "그만큼을 되찾지는 못함", "역부족이었음",
+  "재미를 보지 못함", "그만큼을 되찾지는 못함", "경기를 뒤집기엔 역부족이었음",
 ];
 // 도박수(초반 올인)가 안 됐을 때만 쓰는 맺음 — 성공 여부를 단정하지 않는 선에서
 // "실패함" "큰 피해는 못 줌"까지만 말한다(지적: 독이 됐다·발목을 잡았다는 지나치다).
@@ -1274,7 +1274,9 @@ const joinPair = (names: string[]): string => {
  */
 export function renderReplaySummary(
   data: ReplaySummaryData | unknown,
-  resolveName: (rawName: string) => string
+  resolveName: (rawName: string) => string,
+  /** 이름 → 팀 번호. 없으면 팀을 짚는 말("2팀에서는")을 쓰지 않는다. */
+  teamOf?: (name: string) => 1 | 2 | undefined,
 ): string | null {
   if (!isReplaySummaryData(data)) return null;
   const out: string[] = [];
@@ -1323,6 +1325,10 @@ export function renderReplaySummary(
     // (요청: "브래드는 ~했고 정구는 ~했음"). 같은 사람 이야기면 주어가 겹쳐 어색해 뺀다.
     const sharesWho = (b.who ?? []).some((w) => (prev?.who ?? []).includes(w));
     let joinPrev = false;
+    // 전황이 뒤집히는 자리를 한 문장으로 이을 것인가(아래 참고).
+    let flipJoin = false;
+    // "2팀에서는" — 팀전에서 흐름이 어느 편으로 넘어갔는지 짚는 말(요청).
+    let teamTag = "";
     // 문장 앞에 붙인 이음말 — 만들어진 문장과 겹치면 도로 떼어낸다(아래 참고).
     let linkWord = "";
     if (
@@ -1343,14 +1349,26 @@ export function renderReplaySummary(
       // 전황이 한 편에서 다른 편으로 넘어가는 자리는 늘 짚어 준다(요청) — 읽는 사람이
       // 흐름이 바뀌었다는 걸 알아야 한다. 같은 편 이야기가 이어질 때만 드문드문 붙인다.
       if (!!prev!.won !== !!b.won) {
-        linkWord = link(["그러나", "하지만", "여기서"]);
+        // 이음말을 앞에 다는 것보다 "…파괴됐지만 …파괴함"처럼 한 문장으로 잇는 편이
+        // 반전이 또렷하다(지적). 앞 문장을 '-지만'으로 못 바꾸거나 이미 반전을 품고
+        // 있으면 그때만 이음말을 쓴다.
+        const line = out.length > 0 ? out[out.length - 1] : "";
+        if (chainCount === 0 && line !== "" && !/지만|으나/.test(line) && toBut(line)) flipJoin = true;
+        else {
+          linkWord = link(["그러나", "하지만", "여기서"]);
+          // 팀전이면 어느 편으로 넘어갔는지까지 말해 주는 편이 읽힌다(요청: "하지만 2팀에서는").
+          const t = teamOf?.(names[0] ?? "");
+          const pt = teamOf?.(((prev?.who ?? []).map(resolveName))[0] ?? "");
+          if (t && pt && t !== pt) teamTag = `${t}팀에서는 `;
+        }
       } else if (gapSec <= SOON_SEC) {
         // 시간이 벌어진 다음 일은 순서를 짚어 준다(요청) — 얼마나 벌어졌느냐로 말을 고른다.
         linkWord = link(["이어서", "곧이어", "잠시 후"]);
       } else {
         linkWord = gapSec > STANDOFF_SEC ? link(["한동안의 대치 후", "그 후"]) : "그 후";
       }
-      who = `${linkWord} ${who}`;
+      // 한 문장으로 이을 때(flipJoin)는 이음말이 없다 — 그때 붙이면 공백만 남는다.
+      if (linkWord) who = `${linkWord} ${teamTag}${who}`;
     }
     let lead = "";
     if (mutual) lead = "서로 ";
@@ -1463,7 +1481,7 @@ export function renderReplaySummary(
       // 이어 붙일 마디가 이미 '-고'를 품고 있으면(맺음말+활약 한 마디처럼) 앞마디는
       // '-으며'로 바꾼다 — 안 그러면 한 문장에 "…고, …고,"가 연달아 나온다(지적).
       ? (chainCount === 0 && !/고, /.test(text) ? toAnd(prevLine) : toAlso(prevLine))
-      : flipToEnd
+      : flipToEnd || flipJoin
         ? toBut(prevLine)
         : joinPrev && out.length > 0 && chainCount === 0 && prevLedBy(lastBaseWho)
           ? toAnd(toTopic(prevLine))
@@ -1498,7 +1516,7 @@ export function renderReplaySummary(
       );
     }
     if (chained && sameSubject) out[out.length - 1] = `${chained}, ${text.slice(subject.length + 1)}`;
-    else if (chained && flipToEnd) out[out.length - 1] = `${chained} ${text}`;
+    else if (chained && (flipToEnd || flipJoin)) out[out.length - 1] = `${chained} ${text}`;
     else if (chained) out[out.length - 1] = `${chained} ${toTopic(text)}`;
     else out.push(text);
     chainCount = chained ? chainCount + 1 : 0;
@@ -1529,7 +1547,7 @@ export function renderReplaySummaryParts(
   resolveName: (rawName: string) => string,
   teamOf: (name: string) => 1 | 2 | undefined,
 ): SummaryPart[] | null {
-  const text = renderReplaySummary(data, resolveName);
+  const text = renderReplaySummary(data, resolveName, teamOf);
   if (!text) return null;
   // 긴 이름부터 찾는다 — 짧은 이름이 긴 이름의 일부인 경우("정구"와 "정구2")를 위해서다.
   const names = [...new Set(
