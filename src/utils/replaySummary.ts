@@ -208,67 +208,72 @@ function buildSide(players: ParsedReplayPlayer[]): Side {
   return { players, combat, buildings, workers, thirds, techs };
 }
 
-// 그 경기를 끝낸 조합은 '많이 뽑은 것'이 아니라 '마지막까지 쓴 것'이다(요청). 캐리어·
-// 골리앗처럼 잘 안 죽는 유닛은 뽑은 수 자체가 적어서, 초반에 쏟아낸 저글링·질럿에게 늘
-// 밀린다 — 정작 그 경기의 그림은 후반의 그 조합인데도.
+// 중후반의 주력은 '몇 기 뽑았나'가 아니라 '얼마나 오래 그걸로 굴렸나'다(요청).
 //
-// 그래서 순위는 '경기 뒤쪽 구간에 뽑은 수'로 매긴다. 그 구간에 아무것도 안 뽑았다면
-// 마지막으로 뽑던 것들을 그대로 굴렸다는 뜻이므로(지적), 창을 뒤에서부터 넓혀 가며
-// 실제로 생산이 있었던 구간을 찾는다. 끝까지 못 찾으면(생산 기록이 거의 없으면) 빈 맵을
-// 돌려주고 호출부가 원래대로 전체 생산량으로 매긴다.
-// 뒷구간의 시작점 — 여기부터 뽑은 것을 '후반 생산'으로 본다. 뒷구간에 아무것도 안 뽑았으면
-// 마지막으로 뽑던 것들을 그대로 굴렸다는 뜻이라(지적), 시작점을 앞으로 당겨 가며 실제로
-// 생산이 있었던 구간을 찾는다. 0이면 그냥 경기 전체다.
-const LATE_FROMS = [0.5, 0.3, 0];
-// 이만큼은 뽑혔어야 그 구간을 '조합이 드러난 구간'이라 할 수 있다.
-const LATE_MIN_UNITS = 3;
-// 그 유닛 생산의 이만큼 이상이 뒷구간에 몰려 있어야 '후반에 꺼낸 카드'다. 뒷구간 수만
-// 세면, 경기 내내 뽑는 질럿·드라군이 끝자락에 몇 기 더 나온 것만으로도 캐리어를 이긴다
-// (지적: "캐리어 골리앗 싸움이 메인인데 그걸 못잡네 — 안 죽고 오래 유지해서 그런듯").
-const LATE_SHARE_MIN = 0.55;
-// 다만 후반 카드가 뒷구간 생산의 이 정도는 차지해야 그 경기의 그림이라 할 수 있다 —
-// 질럿을 40기 뽑는 내내 리버 2기를 끼워 넣은 것까지 "리버로 이겼다"가 되면 곤란하다.
-const LATE_DOMINANCE_MIN = 0.3;
+// 캐리어·골리앗처럼 잘 안 죽는 유닛은 한 번 갖춰 놓고 경기 끝까지 쓴다 — 그래서 뽑은
+// 수가 적다. 반대로 질럿·저글링은 계속 죽으니까 계속 뽑는다. 수로 재는 한(뒷구간만
+// 세든, 비율을 따지든) 잘 안 죽는 유닛은 언제나 진다. 실제로 두 번 지적받았다:
+// "캐리어 골리앗 싸움이 메인인데 그걸 못잡네(안 죽고 오래 유지해서 그런듯)",
+// "오랜 시간을 유지한(다른 걸 안 뽑은) 유닛들에 대한 기록이 안 남는 게 이상하다".
+//
+// 그래서 시간으로 잰다. 경기를 30초 눈금으로 자르고 눈금마다 '지금 굴리는 조합'을 정한다:
+//   ① 최근 HOLD_SEC 안에 뽑은 유닛 = 지금 굴리는 것
+//   ② 그 창이 통째로 비면(아무것도 안 뽑음) 직전 눈금의 조합을 그대로 이어받는다 —
+//      다른 걸 안 뽑았다는 건 그때 그 병력을 계속 쓰고 있었다는 뜻이다(요청).
+// 점수는 '중후반(경기 절반 이후) 눈금 중 그 유닛이 조합에 들어 있던 눈금 수' = 유지 시간.
+const LATE_HALF = 0.5;
+// 이 안에 뽑은 게 있으면 아직 그 조합을 굴리는 중이다. 한 부대를 모으는 데 걸리는 시간
+// 정도 — 더 짧게 잡으면 생산 텀이 조금만 벌어져도 조합이 끊긴 것으로 읽힌다.
+const HOLD_SEC = 5 * 60;
+// 시간 눈금. 30초면 32분 경기가 64칸이라 유지 시간 차이가 충분히 드러난다.
+const BUCKET_SEC = 30;
 
-function lateCombat(players: ParsedReplayPlayer[], end: number | null): Map<string, number> {
+function lateArmy(players: ParsedReplayPlayer[], end: number | null): Map<string, number> {
   if (!end || end <= 0) return new Map();
-  for (const share of LATE_FROMS) {
-    const from = end * share;
-    // 유닛별로 (뒷구간 생산 수, 전체 생산 수)를 함께 모은다 — 비율 판정에 둘 다 필요하다.
-    const tally = new Map<string, { late: number; all: number }>();
-    for (const p of players) {
-      const s = p.signals;
-      if (!s) continue;
-      for (const [unit, frames] of Object.entries(s.unitFrames)) {
-        if (NON_COMBAT_UNITS.has(unit) || WORKER_UNITS.has(unit)) continue;
-        if (!UNIT_KO[unit]) continue;
-        const cur = tally.get(unit) ?? { late: 0, all: 0 };
-        cur.late += frames.filter((x) => x >= from).length;
-        cur.all += frames.length;
-        tally.set(unit, cur);
-      }
+  // 유닛별 생산 프레임을 한 줄로 모은다(팀전이면 그 편 전원 합산).
+  const frames = new Map<string, number[]>();
+  for (const p of players) {
+    const s = p.signals;
+    if (!s) continue;
+    for (const [unit, fs] of Object.entries(s.unitFrames)) {
+      if (NON_COMBAT_UNITS.has(unit) || WORKER_UNITS.has(unit)) continue;
+      if (!UNIT_KO[unit]) continue;
+      const cur = frames.get(unit);
+      if (cur) cur.push(...fs);
+      else frames.set(unit, [...fs]);
     }
-    const lateAll = new Map<string, number>();
-    let lateTotal = 0;
-    for (const [u, v] of tally) {
-      if (v.late <= 0) continue;
-      lateAll.set(u, v.late);
-      lateTotal += v.late;
-    }
-    if (lateTotal < LATE_MIN_UNITS) continue;
-    // 후반에 새로 꺼낸 카드들만 추린다.
-    const fresh = new Map<string, number>();
-    let freshTotal = 0;
-    for (const [u, v] of tally) {
-      if (v.late <= 0 || v.all <= 0) continue;
-      if (v.late / v.all < LATE_SHARE_MIN) continue;
-      fresh.set(u, v.late);
-      freshTotal += v.late;
-    }
-    if (freshTotal >= LATE_MIN_UNITS && freshTotal >= lateTotal * LATE_DOMINANCE_MIN) return fresh;
-    return lateAll;
   }
-  return new Map();
+  if (frames.size === 0) return new Map();
+
+  const per = BUCKET_SEC / SECONDS_PER_FRAME;
+  const hold = HOLD_SEC / SECONDS_PER_FRAME;
+  const buckets = Math.max(1, Math.ceil(end / per));
+  const lateFrom = Math.floor((end * LATE_HALF) / per);
+  const held = new Map<string, number>();   // 중후반 유지 눈금 수
+  const made = new Map<string, number>();   // 중후반 생산 수 — 동점일 때만 쓴다
+  let carried: string[] = [];
+  for (let i = 0; i < buckets; i += 1) {
+    const to = (i + 1) * per;
+    const live: string[] = [];
+    for (const [unit, fs] of frames) {
+      if (fs.some((f) => f <= to && f > to - hold)) live.push(unit);
+    }
+    // 아무것도 안 뽑은 구간은 직전 조합을 그대로 이어받는다(위 ②).
+    const army = live.length > 0 ? live : carried;
+    carried = army;
+    if (i < lateFrom) continue;
+    for (const unit of army) held.set(unit, (held.get(unit) ?? 0) + 1);
+  }
+  if (held.size === 0) return new Map();
+  const from = end * LATE_HALF;
+  for (const unit of held.keys()) {
+    made.set(unit, (frames.get(unit) ?? []).filter((f) => f >= from).length);
+  }
+  // 유지 시간이 같으면 그 구간에 더 많이 뽑은 쪽을 앞에 둔다 — 호출부(mainUnits)의 정렬은
+  // 안정 정렬이라 값이 같으면 이 삽입 순서가 그대로 유지된다.
+  return new Map(
+    [...held.entries()].sort((a, b) => b[1] - a[1] || (made.get(b[0]) ?? 0) - (made.get(a[0]) ?? 0)),
+  );
 }
 
 function countIn(map: Map<string, number>, names: Set<string>): number {
@@ -281,7 +286,8 @@ function countIn(map: Map<string, number>, names: Set<string>): number {
  *  앞자리는 스스로 싸움을 끝낼 수 있는 유닛에 준다 — 메딕·퀸 같은 보조 유닛이 수만 많다고
  *  "메딕으로 이김"이 되면 곤란하다(지적). 그런 유닛은 뒷자리로 밀려 조합으로 읽힌다. */
 function mainUnits(combat: Map<string, number>, late?: Map<string, number>): string[] {
-  // 순위는 경기 뒤쪽 구간의 생산량으로 매긴다(위 lateCombat 참고) — 못 구했으면 전체 수로.
+  // 순위는 중후반에 그 유닛을 얼마나 오래 굴렸는지로 매긴다(위 lateArmy 참고) —
+  // 못 구했으면(생산 기록이 아예 없으면) 원래대로 전체 생산 수로.
   const rank = late && late.size > 0 ? late : combat;
   const ranked = [...rank.entries()].sort((a, b) => b[1] - a[1]);
   if (ranked.length === 0) return [];
@@ -724,7 +730,7 @@ function sideBeats(args: {
     const star = standout(side);
     if (star && star.race) {
       const own = ownCombat(star);
-      const units = nameableUnits(mainUnits(own, lateCombat([star], totalFrames)));
+      const units = nameableUnits(mainUnits(own, lateArmy([star], totalFrames)));
       const table = PRO_LIKE[star.race] ?? [];
       // 그 그림이라 부를 만큼 실제로 뽑았을 때만 빗댄다 — 두어 기 나온 유닛까지 세면
       // 거의 모든 경기에 비유가 붙어 특별할 게 없어진다.
@@ -750,8 +756,8 @@ function sideBeats(args: {
     const star = standout(side);
     const units = nameableUnits(
       star
-        ? mainUnits(ownCombat(star), lateCombat([star], totalFrames))
-        : mainUnits(side.combat, lateCombat(players, totalFrames))
+        ? mainUnits(ownCombat(star), lateArmy([star], totalFrames))
+        : mainUnits(side.combat, lateArmy(players, totalFrames))
     );
     const lastFrames = players
       .map((p) => p.signals?.lastCmdFrame ?? null)
@@ -899,6 +905,12 @@ function sideBeats(args: {
 
   // ── 먼저 끊긴 사람(요청: 일찍 죽은 사람) — 끊긴 시점이 곧 그 줄의 시각이다 ──
   for (const p of earlyOuts(players, totalFrames)) {
+    // 이긴 편에는 짐작으로 붙이지 않는다 — earlyOuts의 근거는 '생산이 꺾였다'인데,
+    // 이긴 쪽이 생산을 멈추는 건 무너져서가 아니라 이미 갖춘 병력으로 끝냈기 때문이다
+    // (캐리어를 모아 놓고 더 안 뽑는 경기가 정확히 이렇다). 그래서 "일찍 무너졌다"가
+    // 승자에게 붙는 우스운 문장이 나왔다. 리플레이에 탈락이 그대로 적혀 있으면(팀전에서
+    // 팀원 하나가 실제로 지워진 경우) 그건 사실이므로 이긴 편이라도 말한다.
+    if (won && eliminatedFrame(p) === null) continue;
     beats.push({
       k: "fallen", won, who: who(p), weight: 9,
       at: fellFrame(p, totalFrames),
@@ -933,8 +945,8 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   const star = standout(winner);
   const units = nameableUnits(
     star
-      ? mainUnits(ownCombat(star), lateCombat([star], totalFrames))
-      : mainUnits(winner.combat, lateCombat(winnerPlayers, totalFrames))
+      ? mainUnits(ownCombat(star), lateArmy([star], totalFrames))
+      : mainUnits(winner.combat, lateArmy(winnerPlayers, totalFrames))
   );
   if (units.length === 0) return null; // 조합을 못 읽으면 이야기의 알맹이가 없다
   const subject = star ? [star.rawName] : winnerPlayers.map((p) => p.rawName);

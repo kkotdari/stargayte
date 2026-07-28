@@ -6733,6 +6733,10 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-feed-stack-opened > .scr-feed-stack-sum-body {
   position: relative; z-index: 2;
   box-shadow: 0 14px 20px -8px rgba(0, 0, 0, 0.65), 0 1px 0 rgba(var(--overlay-rgb), 0.14);
+  /* 명단 바로 밑에서 그림자가 시작돼 답답했다(지적: "요약 쪽 아래 여백이 너무 없네
+     바로 드롭그림자가 나와서 이상해") — 접혀 있을 때는 아래 펼치기 버튼이 이 여백을
+     대신하므로, 펼친 상태에만 준다. 위쪽 패딩과 같은 값이라 위아래가 대칭이 된다. */
+  padding-bottom: var(--post-pad-y);
 }
 .scr-light-theme .scr-feed-stack-opened > .scr-feed-stack-sum-body {
   box-shadow: 0 14px 20px -8px rgba(0, 0, 0, 0.28), 0 1px 0 rgba(0, 0, 0, 0.1);
