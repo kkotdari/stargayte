@@ -689,9 +689,10 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   const domUnit = dominant ? heroUnitOf(winner, dominant, units) : null;
 
   // ── 문장 수 ──
-  // 한 문단짜리 이야기라 길면 읽히지 않는다. 짧은 경기는 두어 문장, 길어도 다섯을 넘지
-  // 않게 3분→2문장에서 5분마다 하나씩만 늘린다(요청).
-  const budget = Math.max(2, Math.min(5, 2 + Math.floor((sec - 3 * 60) / (5 * 60))));
+  // 한 문단짜리 이야기라 길면 읽히지 않는다. 짧은 경기는 두어 문장, 길이에 따라 다섯까지
+  // 3분→2문장에서 5분마다 하나씩 늘린다(요청). 다만 할 얘기가 많은 경기는 더 써도 된다
+  // (요청) — 아래에서 무거운 사실 수를 보고 일곱까지 늘린다.
+  const baseBudget = Math.max(2, Math.min(5, 2 + Math.floor((sec - 3 * 60) / (5 * 60))));
   // 자리가 남아도 아무거나 채우지 않는다(요청: 승부에 중요한 이벤트만) — 이 무게 아래는
   // "그래서 뭐" 소리가 나오는 사실들이라, 문단을 짧게 끝내는 편이 낫다.
   const MIN_WEIGHT = 6;
@@ -808,6 +809,11 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
       won: false, sec, totalFrames, pressedEarly,
     }).filter((b) => !(breached && b.k === "defense")),
   ].filter((b) => !(b.k === "fallen" && b.who.some((w) => pickedOff.has(w))));
+
+  // 전술·돌파·합공처럼 '그 경기에서만 있었던 일'이 자리보다 많으면 두 줄까지 더 쓴다
+  // (요청: 할 얘기가 많은 경기는 좀 더 써도 됨). 일반적인 사실로 늘리지는 않는다.
+  const notable = pool.filter((b) => b.weight >= 14).length;
+  const budget = Math.min(7, baseBudget + Math.max(0, Math.min(2, notable - baseBudget)));
 
   // 고를 때는 무게순(재미있는 것부터), 이야기로 늘어놓을 때는 시간순 — 순서를 이 둘로 나눠야
   // "자리가 모자라 재미없는 걸 남기는" 일도, "중요한 게 뜬금없는 자리에 오는" 일도 없다.
