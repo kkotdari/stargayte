@@ -7341,27 +7341,16 @@ html.scr-light-theme .scr-feed-comments .scr-mreq-chip-inline { color: #c07c1c; 
    문장만 읽고도 갈리게 하기 위한 것이다. 배경 없이 글자색과 굵기만 쓴다: 문단 한가운데라
    알약이나 배경을 깔면 글이 끊겨 읽힌다. */
 .scr-sum-team1, .scr-sum-team2 { font-weight: 700; }
-/* 다크에서 1팀 파랑이 잘 안 보인다(지적) — 배경이 거의 검정이라 한 단계 더 밝게. */
-.scr-sum-team1 { color: #9ecdff; }
-.scr-sum-team2 { color: #f08a8a; }
+/* 다크에서는 배경이 거의 검정이라 채도 높은 색이 오히려 가라앉아 안 보인다(지적) —
+   흰색을 섞어 밝기를 올린다. 색상(파랑/빨강)은 그대로라 팀 구분은 유지된다. */
+.scr-sum-team1 { color: #c7e2ff; }
+.scr-sum-team2 { color: #ffbcbc; }
 .scr-light-theme .scr-sum-team1 { color: #1d4ed8; }
 .scr-light-theme .scr-sum-team2 { color: #dc2626; }
 /* 포스트(.scr-post)는 다크에서도 흰 종이라 라이트 쪽 색을 쓴다. */
 .scr-post .scr-sum-team1 { color: #1d4ed8; }
 .scr-post .scr-sum-team2 { color: #dc2626; }
 
-/* 요약 문장 안의 이름에 팀 색을 입힌다(요청: 1팀 청색, 2팀 붉은색) — 누가 어느 편인지
-   문장만 읽고도 갈리게 하기 위한 것이다. 이름 ↔ 팀은 카드가 이미 가진 로스터로 잇는다.
-   배경 없이 글자색과 굵기만 쓴다: 문단 한가운데라 알약이나 배경을 깔면 글이 끊겨 읽힌다. */
-.scr-sum-team1, .scr-sum-team2 { font-weight: 700; }
-/* 다크에서 1팀 파랑이 잘 안 보인다(지적) — 배경이 거의 검정이라 한 단계 더 밝게. */
-.scr-sum-team1 { color: #9ecdff; }
-.scr-sum-team2 { color: #f08a8a; }
-.scr-light-theme .scr-sum-team1 { color: #1d4ed8; }
-.scr-light-theme .scr-sum-team2 { color: #dc2626; }
-/* 포스트(.scr-post)는 다크 테마에서도 흰 종이라 라이트 쪽 색을 쓴다. */
-.scr-post .scr-sum-team1 { color: #1d4ed8; }
-.scr-post .scr-sum-team2 { color: #dc2626; }
 
 /* 라벨(무엇인지)이 앞, 시간이 바로 옆(요청) — 라벨이 주, 시간은 흐리게 보조. */
 .scr-feed-card-time { font-weight: 600; color: var(--dim); font-variant-numeric: tabular-nums; }

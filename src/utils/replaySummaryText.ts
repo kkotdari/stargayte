@@ -228,13 +228,14 @@ type Tpl = (c: Ctx) => string | null;
 // 1 프레임 = 0.042초(replayParser와 같은 상수).
 const SECONDS_PER_FRAME = 0.042;
 // 이 안에 벌어진 양쪽 일은 '같은 때'로 보고 이어 주는 말을 붙인다.
-const SAME_TIME_SEC = 2 * 60;
+// 스타는 호흡이 빨라 2분이면 이미 다른 국면이다(지적) — 창을 좁게 잡는다.
+const SAME_TIME_SEC = 75;
 // 이만큼 안에 이어진 일은 "이어서/곧이어", 그보다 벌어지면 "그 후"(요청).
-const SOON_SEC = 5 * 60;
+const SOON_SEC = 3 * 60;
 // 이만큼이나 벌어졌으면 그 사이는 정말로 대치였다고 말해도 된다(요청: "한동안의 대치 후").
-const STANDOFF_SEC = 8 * 60;
+const STANDOFF_SEC = 6 * 60;
 // 대비를 뜻하는 이음말 — 이 뒤에는 주어를 주제격("Rex는")으로 세운다(지적).
-const CONTRAST_LINKS = new Set(["한편", "그와 동시에", "반면", "그러나", "하지만"]);
+const CONTRAST_LINKS = new Set(["한편", "그와 동시에", "반면", "그러나", "하지만", "여기서"]);
 // 시간 순서를 짚는 이음말 — 위 대비 이음말과 함께 문장 앞머리를 알아보는 데 쓴다.
 const SEQUENCE_LINKS = ["이어서", "곧이어", "잠시 후", "그 후", "한동안의 대치 후", "그 기세로", "여세를 몰아", "그 기세를 이어간"];
 // 정규식에 이름을 그대로 넣기 전에 특수문자를 막는다 — 닉네임에 무엇이 들어올지 모른다.
@@ -284,7 +285,7 @@ const RISKY_TAILS = ["실패함", "큰 피해는 못 줌", "결국 망함", "소
 // 표에 없는 끝이 나오면 이어 붙이지 않고 쉼표로 두어, 틀린 말이 나오는 일은 없다.
 const CONNECTIVE: [string, string][] = [
   // 긴 것부터 — 먼저 걸리는 것이 이긴다("밀어붙임"이 "임"보다 앞에 있어야 한다).
-  ["막아섬", "막아섰으나"], ["얹혀삶", "얹혀살았으나"], ["붙어삶", "붙어살았으나"],
+  ["승부를 걸음", "승부를 걸었으나"], ["막아섬", "막아섰으나"], ["얹혀삶", "얹혀살았으나"], ["붙어삶", "붙어살았으나"],
   ["되살아남", "되살아났으나"], ["물러남", "물러났으나"], ["끝남", "끝났으나"],
   ["밀어붙임", "밀어붙였으나"], ["파고듦", "파고들었으나"], ["흔듦", "흔들었으나"],
   ["감행함", "감행했으나"], ["뒤집음", "뒤집었으나"], ["헤집음", "헤집었으나"],
@@ -401,6 +402,17 @@ function tacticLabel(k: string, p: Record<string, unknown>): string {
   }
 }
 
+/** 숫자를 우리말로 읽었을 때 받침이 있나 — "320(삼백이십)을", "42(사십이)를"처럼 조사가
+ *  달라진다. 마지막 자리가 0이면 십/백/천 단위가 끝소리가 되고, 그 셋은 모두 받침이 있다. */
+function numBatchim(n: number): boolean {
+  const d = Math.abs(Math.trunc(n)) % 10;
+  if (d !== 0) return d === 1 || d === 3 || d === 6 || d === 7 || d === 8;
+  return Math.abs(Math.trunc(n)) !== 0; // 십·백·천·만은 모두 받침으로 끝난다
+}
+/** 숫자 뒤의 목적격/도구격 조사. */
+const numReul = (n: number): string => `${n}${numBatchim(n) ? "을" : "를"}`;
+const numRo = (n: number): string => `${n}${numBatchim(n) ? "으로" : "로"}`;
+
 /** 여럿을 늘어놓을 때 쓰는 꼴 — "A의 바이오닉 한 방과 B의 3게이트 질럿 러시"는 어색하다.
  *  목록 안에서는 '한 방'을 떼고 병력으로 부른다(요청: 누구의 바이오닉 병력으로). */
 const listForm = (label: string): string => label.replace(/ 한 방$/, " 병력");
@@ -459,10 +471,10 @@ const TEMPLATES: Record<string, Tpl> = {
     const mine = `${c.who}의 ${label}`;
     // 이름에 이미 '한 방'이 들어 있으면 또 붙이지 않는다(지적: "바이오닉 한 방 한 방에").
     const blow = label.endsWith("한 방") ? `${mine}에` : `${mine} 한 방에`;
-    // "정구의 바이오닉 한 방으로"는 자연스럽지만 "렉스의 9드론 저글링 러시로 상대를
-    // 몰아붙임"은 어색하다(지적) — 뒤에 그 사람이 한 행동이 오는 문장은 주격으로 세운다.
-    // '한 방'처럼 이름 자체가 사건인 것만 소유격을 유지한다.
-    const by = label.endsWith("한 방") ? mine : `${ga(c.who)} ${label}`;
+    // 뒤에 그 사람이 한 행동이 오는 문장('…로 무엇을 파괴함')은 주격으로 세운다(지적:
+    // "조조의 바이오닉 한 방으로 …파괴함"이 아니라 "조조는 바이오닉 한 방으로 …파괴함").
+    // 소유격은 당한 쪽이 주어인 '-에' 꼴(아래 blow)에만 남긴다.
+    const by = `${ga(c.who)} ${label}`;
     // 초반 올인에 초반부터 무너진 그림(요청) — 몇 분 만이었는지가 곧 이야기다.
     if (c.p.early && !c.p.out) {
       const m = num(c.p.hitMin);
@@ -1069,7 +1081,9 @@ const TEMPLATES: Record<string, Tpl> = {
     // 이 수는 그 순간의 병력이 아니라 경기 내내 뽑은 총량이다 — 그렇게 말해야 정확하다(지적).
     return `${ga(c.who)} ${done(c, c.pick([
       `${ro(`파워 ${unit}`)} 밀어붙임`,
-      `${unit}만 경기 내내 총 ${n}기를 뽑아 물량으로 찍어누름`,
+      `${unit}만 경기 내내 총 ${n}기를 뽑아 물량으로 승부함`,
+      `${reul(unit)} 총 ${n}기나 뽑아내며 물량으로 몰아침`,
+      `경기 내내 ${unit} 물량을 많이 뽑아냄`,
       `${unit} 물량 하나로 판을 끌고 감`,
     ]))}`;
   },
@@ -1111,6 +1125,29 @@ const TEMPLATES: Record<string, Tpl> = {
       `일꾼을 뺏어 ${race}까지 함께 굴림`,
       `마인드 컨트롤로 ${race} 살림을 통째로 가져옴`,
     ]))}`;
+  },
+
+  // 손이 유난히 빨랐던 사람(요청) — 숫자만 던지지 않고 그 숫자가 무엇으로 나타났는지까지
+  // 말한다. 컨트롤과 생산, 둘 다 손에서 나온다.
+  "fast-hands": (c) => {
+    const n = num(c.p.apm);
+    const label = c.p.eff ? "유효 APM" : "APM";
+    if (n <= 0) return null;
+    return `${ga(c.who)} ${done(c, c.pick([
+      `${label} ${numRo(n)} 손이 가장 빨랐고 컨트롤에서 차이를 냄`,
+      `${label} ${numReul(n)} 찍으며 생산과 컨트롤을 쉬지 않음`,
+      `${label} ${numRo(n)} 혼자 다른 속도로 경기를 함`,
+    ]))}`;
+  },
+  // 양쪽이 병력을 계속 쏟아부은 경기(요청) — 한 방 싸움이 아니라 소모전이었다는 말이다.
+  attrition: (c) => {
+    const n = num(c.p.n);
+    const m = num(c.p.min);
+    return c.pick([
+      `양 팀이 ${m}분 동안 병력 ${n}기를 쏟아부은 소모전이었음`,
+      `쉼 없이 병력이 갈려 나간 소모전으로 흘러감`,
+      `${m}분 내내 병력을 계속 부딪친 소모전이 이어짐`,
+    ]);
   },
 
   // ── 맺음말 ──
@@ -1167,7 +1204,8 @@ const TEMPLATES: Record<string, Tpl> = {
     // 흐름을 이미 말하는 초반 승리·역전에는 얹지 않는다(문장이 길어지고 앞뒤가 어긋난다).
     const team = teamPhrase(c);
     if (team && (mode === "plain" || mode === "late")) {
-      const t = mode === "late" ? c.pick(["후반 ", "길게 끌어 "]) : "";
+      // "길게 끌어"는 쓰지 않는다(지적) — 장기전이었다는 말로 바꾼다.
+      const t = mode === "late" ? c.pick(["후반 ", "장기전 끝에 ", "긴 대치 끝에 "]) : "";
       const body2 = head + `${t}${team} ${c.pick(["승리", "이김"])}`;
       return withHero(body2);
     }
@@ -1196,7 +1234,7 @@ const TEMPLATES: Record<string, Tpl> = {
           ])}`
         : `${who} ${c.pick([`초반 열세이다가 ${late}${p}역전`, `밀리다가 ${late}${p}뒤집음`])}`;
     } else if (mode === "late") {
-      body = `${who} ${c.pick([`후반 ${p}승리`, `길게 끌어 ${p}승리`])}`;
+      body = `${who} ${c.pick([`후반 ${p}승리`, `장기전 끝에 ${p}승리`, `긴 대치 끝에 ${p}승리`])}`;
     } else {
       // 주력을 부대 단위로 뽑았으면 그 규모 자체가 그림이다(요청) — 12기를 한 부대로 센다.
       const leadKo = UNIT_KO[list(c.p.units)[0] ?? ""] ?? "";
@@ -1301,11 +1339,11 @@ export function renderReplaySummary(
         linkWord = link(["한편", "그와 동시에", "반면"]);
         who = `${linkWord} ${who}`;
       }
-    } else if (linkable && gapSec !== null && seed % 3 === 0) {
-      // 이음말은 드문드문이라야 눈에 띈다 — 문장마다 붙이면 그게 더 지겹다.
-      // 앞 문장과 전황이 뒤바뀌면 그 반전을 말로 짚어 준다(요청).
+    } else if (linkable && gapSec !== null && (!!prev!.won !== !!b.won || seed % 3 === 0)) {
+      // 전황이 한 편에서 다른 편으로 넘어가는 자리는 늘 짚어 준다(요청) — 읽는 사람이
+      // 흐름이 바뀌었다는 걸 알아야 한다. 같은 편 이야기가 이어질 때만 드문드문 붙인다.
       if (!!prev!.won !== !!b.won) {
-        linkWord = link(["그러나", "하지만"]);
+        linkWord = link(["그러나", "하지만", "여기서"]);
       } else if (gapSec <= SOON_SEC) {
         // 시간이 벌어진 다음 일은 순서를 짚어 준다(요청) — 얼마나 벌어졌느냐로 말을 고른다.
         linkWord = link(["이어서", "곧이어", "잠시 후"]);
@@ -1357,6 +1395,10 @@ export function renderReplaySummary(
       }
     }
     if (!text) continue;
+    // "서로"·"모두"는 주어 뒤에 와야 한다 — 틀이 주어를 문장 안에서 만드는 꼴(“정구와
+    // 크리스의 3게이트 질럿 러시 한 방에 …”)에서는 이 말이 맨 앞으로 밀려 나와 어색하다
+    // (지적: 서로는 없어야 됨). 문장 첫머리에 붙었으면 그냥 뗀다.
+    if (lead && text.startsWith(lead)) text = text.slice(lead.length);
     // "그러나 …했지만 모자랐음"처럼 문장 자체가 이미 반전을 품고 있으면 앞의 이음말은
     // 군더더기다(지적) — 만들어진 문장을 보고 판단해 도로 떼어낸다.
     if (
@@ -1447,6 +1489,13 @@ export function renderReplaySummary(
       lastWhom = b.whom ?? [];
       prev = b;
       continue;
+    }
+    // 앞 문장에 이어 붙일 때는 뒤 문장 머리의 이음말을 뗀다 — 문장 한가운데에 "하지만"이
+    // 남으면 한 문장에 접속사가 두 번 나온다(지적).
+    if (chained) {
+      text = text.replace(
+        new RegExp(`^(?:${[...CONTRAST_LINKS, ...SEQUENCE_LINKS].join("|")}) `), "",
+      );
     }
     if (chained && sameSubject) out[out.length - 1] = `${chained}, ${text.slice(subject.length + 1)}`;
     else if (chained && flipToEnd) out[out.length - 1] = `${chained} ${text}`;

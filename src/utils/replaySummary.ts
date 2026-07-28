@@ -110,6 +110,16 @@ const GREEDY_PUNISH_SEC = 4 * 60;
 // 째고 나서 이만큼 뽑아냈으면 '물량이 폭발했다'고 말할 만하다.
 const GREEDY_PAYOFF_UNITS = 30;
 
+// 손이 빨랐다고 말하려면 그 경기 평균 자체가 이 정도는 돼야 한다 — 다 같이 느린 경기에서
+// 제일 빠른 사람을 두고 '특출나다'고 할 수는 없다.
+const HANDS_MIN_AVG = 90;
+// 그리고 평균의 이만큼을 넘어야 '특출나게'다.
+const HANDS_RATIO = 1.5;
+// 소모전 — 이만큼은 길어야 하고,
+const ATTRITION_MIN_SEC = 12 * 60;
+// 양쪽이 분당 이만큼씩 병력을 쏟아부었으면 한 방 싸움이 아니라 소모전이다(요청).
+const ATTRITION_PER_MIN = 14;
+
 // 팽팽한 대치로 볼 최소 길이 — 이보다 짧으면 그냥 한쪽이 밀어붙인 경기다.
 const STANDOFF_MIN_SEC = 15 * 60;
 // 양쪽이 낸 것의 비율이 이 안이면 '비등비등했다'로 본다.
@@ -353,10 +363,12 @@ function tacticParam(key: string, p: Record<string, unknown> | undefined): strin
 }
 
 // 같은 사람이 이 안에서 여러 번 얻어맞았으면 한 순간으로 본다.
-const RAID_MERGE_SEC = 3 * 60;
+// 스타는 호흡이 빠른 게임이라 창을 넉넉히 잡으면 서로 먼 일이 한 순간으로 묶인다(지적).
+const RAID_MERGE_SEC = 2 * 60;
 
 // 같은 편 이야기를 붙여 읽어도 될 만큼 '거의 같은 때'로 보는 간격. 이걸 넘으면 시간이 먼저다(지적).
-const CLUSTER_SEC = 2 * 60;
+// 1분이면 스타에서는 국면이 한 번 바뀌는 시간이라, 이보다 넓게 묶으면 순서가 어긋난다(지적).
+const CLUSTER_SEC = 60;
 
 /** 한 사람이 여러 수에 잇달아 무너진 걸 두 문장으로 말하지 않는다(지적) — "Rex의 9드론
  *  저글링 러시와 제롬의 4게이트 질럿 러시에 군범이 2분 만에 무너짐"으로 묶는다. */
@@ -1017,6 +1029,39 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     } as Beat;
   });
 
+  // 손이 유난히 빨랐던 사람(요청) — APM/유효 APM이 그 경기 평균을 크게 웃돌면 그건
+  // 컨트롤과 생산으로 나타난 것이다. 유효 APM을 앞세운다: 그냥 APM은 같은 명령을 여러 번
+  // 눌러도 올라가서 '빠른 손'을 과장한다.
+  const handsBeat: Beat | null = (() => {
+    const all = [...winnerPlayers, ...loserPlayers];
+    const rate = (x: ParsedReplayPlayer) => x.eapm ?? x.apm ?? 0;
+    const vals = all.map(rate).filter((v) => v > 0);
+    if (vals.length < 2) return null;
+    const avg = vals.reduce((a, v) => a + v, 0) / vals.length;
+    if (avg < HANDS_MIN_AVG) return null;
+    const best = all.slice().sort((a, b) => rate(b) - rate(a))[0];
+    if (!best || rate(best) < avg * HANDS_RATIO) return null;
+    return {
+      k: "fast-hands", won: winnerPlayers.includes(best), who: [best.rawName],
+      at: null, weight: 12,
+      p: { apm: Math.round(rate(best)), eff: best.eapm !== null && best.eapm !== undefined },
+    } as Beat;
+  })();
+
+  // 양쪽이 병력을 쉬지 않고 쏟아부은 경기 — 그건 한 방 싸움이 아니라 소모전이다(요청).
+  const attritionBeat: Beat | null = (() => {
+    if (sec < ATTRITION_MIN_SEC) return null;
+    const troops = [...winnerPlayers, ...loserPlayers].reduce((acc, x) => acc + Object.entries(
+      x.signals?.unitCounts ?? {},
+    ).filter(([k]) => !NON_COMBAT_UNITS.has(k)).reduce((a, [, n]) => a + n, 0), 0);
+    // 분당 몇 기를 뽑았나로 본다 — 총량만 보면 긴 경기는 전부 소모전이 된다.
+    if (troops / (sec / 60) < ATTRITION_PER_MIN) return null;
+    return {
+      k: "attrition", won: true, who: winnerPlayers.map((x) => x.rawName),
+      at: null, weight: 10, p: { n: troops, min: minutes(sec) },
+    } as Beat;
+  })();
+
   // 오래 갔는데 어느 쪽도 먼저 무너지지 않았고 낸 것도 비슷했다면, 그 자체가 전황이다
   // (요청: "몇 분 동안 팽팽하게 대치함"). 커맨드 총량과 병력 생산량 둘 다 비슷해야 한다 —
   // 하나만 보면 한쪽이 일꾼만 잔뜩 뽑은 경기도 팽팽한 것으로 읽힌다.
@@ -1106,6 +1151,8 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
 
   const pool: Beat[] = [
     ...(standoff ? [standoff] : []),
+    ...(handsBeat ? [handsBeat] : []),
+    ...(attritionBeat ? [attritionBeat] : []),
     ...(breached ? [breached] : []),
     ...greedyBeats,
     ...gangBeats,
