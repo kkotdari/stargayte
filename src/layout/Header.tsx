@@ -34,7 +34,6 @@ export default function Header({
   // (헤더 로고는 이제 정적 자산 + 회전 별(BrandLogo)이라 이미지 설정(home_logo)을 읽지
   // 않는다 — 설정 화면 자체는 다른 슬롯(종족 아이콘 등) 때문에 그대로 남는다.)
   const booting = useAppStore((s) => s.booting);
-  const registerSecretTap = useAppStore((s) => s.registerSecretTap);
   const isAdmin = isAdminRole(user.roles);
   const scrollHidden = useHideOnScrollDown(screen);
   // 키보드가 뜨면 탭바를 자동으로 숨긴다(요청: "키보드 활성화시 자동으로 탭바 숨기기") —
@@ -228,7 +227,7 @@ export default function Header({
               이제 정적 자산(별 도는 BrandLogo)이 기본 — 관리자 이미지 설정(home_logo)은
               더 이상 헤더 로고에 쓰지 않는다(요청: 별 제거 로고 + 회전 별 심볼 조합). */}
           {!booting && (
-            <BrandLogo light={lightTheme} onStarTap={registerSecretTap} />
+            <BrandLogo light={lightTheme} />
           )}
           <span className="scr-brand-text"></span>
         </button>

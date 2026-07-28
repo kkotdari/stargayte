@@ -38,8 +38,6 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
   const setNoticeEnabled = useAppStore((s) => s.setNoticeEnabled);
   const [password, setPassword] = useState("");
   const [unlocked, setUnlocked] = useState(false);
-  // 잠금 해제 직후 한 번만 재생하는 사자후(흔들림) 연출 — 애니메이션이 끝나면 클래스를 뗀다.
-  const [roar, setRoar] = useState(false);
   // PC에서만 열자마자 비밀번호 칸에 포커스를 준다(요청) — 마우스(fine pointer)가 있는
   // 기기에서만. 모바일/터치에선 모달이 뜨자마자 키보드가 튀어나오는 걸 막으려 포커스를
   // 주지 않는다(이 코드베이스 전반의 원칙).
@@ -105,9 +103,7 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
     try {
       const ok = await api.verifyAdminPanelPassword(password);
       if (ok) {
-        // 뚜껑(잠금 화면)이 열리는 순간 사자후(강한 흔들림+섬광) 연출을 한 번 준다(요청).
         setUnlocked(true);
-        setRoar(true);
       } else {
         setErr("비밀번호가 올바르지 않아요.");
       }
@@ -169,12 +165,7 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
     // 헤더의 공통 X 버튼 하나로만(취소/닫기 같은 별도 버튼을 body에 두지 않는다).
     <div className="scr-modal-overlay">
       <div
-        className={cx(
-          "scr-modal scr-modal-sm scr-admin-panel-modal",
-          !unlocked && "scr-admin-panel-modal-locked",
-          roar && "scr-admin-panel-roar",
-        )}
-        onAnimationEnd={(e) => { if (e.animationName === "scr-admin-panel-lid-fade") setRoar(false); }}
+        className="scr-modal scr-modal-sm scr-admin-panel-modal"
       >
         <div className="scr-modal-head">
           <span>숨겨진 제어판</span>
@@ -228,14 +219,14 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
                     {/* 현재 버전 설정 — 등록된 버전 중에서 골라 활성 버전을 바꾼다(모두에게
                         즉시 반영·안내 팝업 재노출이라 -danger 톤 + 확인창). */}
                     <button
-                      type="button" className="scr-admin-panel-phys-btn scr-admin-panel-phys-btn-danger"
+                      type="button" className="scr-btn scr-btn-danger"
                       onClick={openVersionPicker} disabled={busy}
                     >
                       {busy ? <Spinner /> : "현재 버전 설정"}
                     </button>
                     {/* 버전 관리 — 버전 추가/삭제 + 버전별 안내 내용 편집 모달. */}
                     <button
-                      type="button" className="scr-admin-panel-phys-btn"
+                      type="button" className="scr-btn"
                       onClick={() => setVersionManageOpen(true)}
                     >
                       버전 관리
@@ -279,7 +270,7 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
                     {/* 모든 경기기록 삭제 — 되돌릴 수 없는 파괴적 작업이라 빨간 버튼으로.
                         (window.prompt로 "삭제" 직접 입력하는 확인창이 이미 있다.) */}
                     <button
-                      type="button" className="scr-admin-panel-phys-btn scr-admin-panel-phys-btn-danger"
+                      type="button" className="scr-btn scr-btn-danger"
                       onClick={deleteAllMatches} disabled={busy}
                     >
                       {busy ? <Spinner /> : "배치삭제"}
@@ -287,7 +278,7 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
                     {/* 등록된 리플레이 전체를 zip으로 백업 다운로드(운영자) — 읽기 전용이라
                         확인창 없이 바로 받는다. */}
                     <button
-                      type="button" className="scr-admin-panel-phys-btn"
+                      type="button" className="scr-btn"
                       onClick={downloadReplays} disabled={downloading}
                     >
                       {downloading ? <Spinner /> : "배치다운로드"}

@@ -954,10 +954,6 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
     inset 0 1px 0 rgba(255,255,255,0.12),
     inset 0 -1px 0 rgba(255,255,255,0.04);
 }
-/* 요소 자신에 배경을 직접 정의하는 특수 모달들(편지지/스캔/제어판)은 기본 유리 레이어를
-   끈다 — ::before(z:-1)가 요소 자신의 배경보다 위에 그려져 그 배경을 덮어버리기 때문.
-   이들은 배경이 요소에 있어 크롬 펼침 회피 대상에서도 빠진다(운영·특수 화면이라 감수). */
-.scr-admin-panel-modal::before, .scr-admin-panel-modal-locked::before { content: none; }
 .scr-light-theme .scr-modal {
   border: none;
   box-shadow:
@@ -1055,7 +1051,6 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 /* 별만 비밀 제어판 트리거(요청) — 기본은 장식(포인터 무시)이지만 헤더에선 탭을 받는다.
    기본 규칙(.scr-brand-logo-star의 pointer-events:none)이 소스상 뒤에 있어 단일 클래스로는
    밀렸다(버그 — 트리거 불발). 클래스 둘을 겹쳐 특이도로 확실히 이긴다. */
-.scr-brand-logo-star.scr-brand-logo-star-tappable { pointer-events: auto; cursor: pointer; }
 .scr-brand-logo-star {
   /* 세로 기준(요청): "별의 양팔이 T와 R 윗부분과 높이 일치"(양팔 꼭짓점 = 심볼 높이의
      37.0%, 캡 톱 = 워드마크 y42/327). 크기는 운영 로고 실측 비율(지적: "미묘하게 달라")
@@ -3668,262 +3663,62 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 /* 인게임 아이디 편집(최대 3칸) — 입력칸은 항상 꽉 채우고, 삭제(x) 버튼은 그 안쪽
    오른쪽에 겹쳐 배치한다(첨부파일 행처럼 버튼을 옆에 따로 두지 않는다). */
 
-/* ===== admin panel (v1/v2 전환) ===== */
-/* "몰래 찾아 연" 느낌의 배경 이미지 — cover로 카드 크기에 맞춰 꽉 채운다(은색 브러시드
-   금속판 텍스처(control_panel_bg.jpg)를 어느 비율로 잘라도 무늬 있는 금속판이라 자연스럽다).
-   카드를 정사각형(aspect-ratio 1:1)으로 고정해뒀던 예전 방식은 내용(배치 등록 로그 등)이
-   늘어나면 카드 자체가 늘 스크롤됐다(실제로 지적받은 문제) — 내용 높이에 맞춰 자라도록
-   비율 고정을 없앤다(기본 .scr-modal의 max-height:88vh가 상한 역할을 그대로 한다). */
-/* 선택자를 .scr-modal.scr-admin-panel-modal(특이도 0,2,0)로 둔다 — 라이트 테마의
-   `.scr-light-theme .scr-modal { border:none }`(같은 0,2,0)와 겹치는데, 이 규칙이 뒤에
-   와서 소스 순서로 이긴다. 예전엔 `.scr-admin-panel-modal`(0,1,0)이라 라이트 테마에서
-   쇠테두리·홈 그림자가 통째로 border:none/기본 그림자에 덮여 사라졌다(실제로 지적받은
-   문제 — "모바일(=라이트 테마)에서 쇠테두리가 안 나옴"). */
-.scr-modal.scr-admin-panel-modal {
-  /* 오버레이(flex 센터) 시절엔 relative였지만, 이제 모달은 스스로 fixed로 화면 중앙에
-     떠야 한다(오버레이는 display:contents) — relative로 두면 문서 흐름에 박혀 화면 밖으로
-     사라진다(지적: "제어판이 아예 안 보여"). fixed도 ::before/자식 absolute의 기준 박스
-     역할은 동일하다. */
-  position: fixed;
-  /* 기본 모달의 반사광 느낌 대신, 숨겨진 기능다운 낡은 금속 액자 느낌을 준다 —
-     border-image로 비스듬한 명암 그라데이션을 둘러 우툴두툴한 금속처럼 보이게 하고,
-     안쪽에 어두운 홈(inset shadow)을 하나 더 줘서 판이 파여 들어간 깊이감을 더한다.
-     border-image는 border-radius를 무시하고 항상 각진 사각으로 그려지는데, 기본 모달의
-     border-radius(위 .scr-modal)가 남아 있으면 overflow:hidden에 잘리는 배경 이미지
-     (아래 ::before)만 둥글게 잘려서 각진 테두리와 어긋나 모서리에 빈 틈(웨지)이 생긴다 —
-     0으로 없애 테두리와 배경 모두 각지게 맞춘다. */
-  /* 낡은 쇠 느낌 — 예전엔 합성 그라데이션으로 흉내 냈지만, 이제 실제 부식된 금속 텍스처
-     사진(control_panel_border.jpg)을 border-image로 둘러 진짜 금속 액자처럼 보이게 한다.
-     텍스처를 8분할(모서리 4 + 변 4)로 잘라 변은 round로 이어 붙인다 — slice 값은 텍스처의
-     자연스러운 결이 변에 반복돼도 티가 덜 나는 정도로 잡는다. */
-  border: 12px solid;
-  border-image: url("/images/bg/control_panel_border.jpg") 80 round;
-  border-radius: 0;
-  /* 안쪽 어두운 홈(inset)을 더 깊게 겹쳐 판이 두껍게 파여 들어간 입체감을 강화한다. */
-  /* 딤(9999px 스프레드) 제거(요청: "제어판 딤처리 제거" — 다른 모달들과 같은 크롬
-     재펼침 실험) — 대신 바깥 그림자를 더 진하게. */
-  box-shadow:
-    inset 0 0 0 2px rgba(0,0,0,0.65),
-    inset 0 3px 7px rgba(0,0,0,0.6),
-    inset 0 0 16px rgba(0,0,0,0.45),
-    0 14px 44px rgba(0,0,0,0.6);
-  /* 배경은 이미 불투명한 금속 텍스처 이미지(::before, cover)가 덮으므로 기본 모달의
-     backdrop-filter는 눈에 보이지도 않는데, iOS 사파리에선 backdrop-filter와 border-image를
-     한 요소에 같이 주면 border-image가 아예 안 그려지는 버그가 있다 — 여기선 불필요하니 꺼서
-     쇠테두리가 모바일에서도 확실히 나오게 한다. */
-  backdrop-filter: none; -webkit-backdrop-filter: none;
-  /* 숨겨진 기능을 찾아 연 순간이니 살짝 과장된 "두둥" 등장감을 준다(요청: "영혼이
-     팍 퍼지는" 느낌) — 작게 시작해 정상 크기보다 살짝 넘치게 커졌다가 제자리로
-     안착하는 바운스. */
-  animation: scr-admin-panel-pop .5s cubic-bezier(.34, 1.56, .64, 1);
+/* ===== admin panel (숨겨진 제어판) ===== */
+/* 예전에는 부식된 쇠테두리 + 금속판 배경 사진 + 물리 버튼 + 뚜껑 페이드로 "몰래 찾아 연"
+   장치를 흉내 냈는데, 다른 화면과 결이 너무 달라 손볼 때마다 특이도·테마 예외가 늘었다
+   (요청: 일반 모달로). 이제 이 모달은 기본 .scr-modal의 크기·배경·여백·글자색을 그대로
+   물려받고, 여기서는 배치(그리드·소제목)와 위험한 버튼의 붉은 톤만 따로 정한다. */
+
+/* 되돌릴 수 없거나 모두에게 즉시 반영되는 기능만 붉은 버튼으로(요청: 버튼 색만 필요한
+   곳에 붉은색). 나머지는 전부 기본 .scr-btn / .scr-btn-primary 그대로. */
+.scr-btn-danger {
+  /* --loss(패배 표시색)는 분홍에 가까워 "위험"으로 안 읽힌다 — 되돌릴 수 없는 동작에는
+     테마와 무관하게 또렷한 붉은색을 쓴다. */
+  background: #d64545; border-color: #d64545; color: #fff; text-shadow: none;
 }
-/* 키프레임의 transform이 기본 센터링(translate(-50%,-50%), .scr-modal fixed)을 통째로
-   대체하므로 translate를 매 프레임에 함께 싣는다 — 빼먹으면 애니메이션 동안 좌상단
-   앵커가 화면 중앙에 걸려 구석에서 커지다가 끝나는 순간 가운데로 튄다(지적: "제어판은
-   왜 구석에서 나왔다가 가운데로 이동하지?"). */
-@keyframes scr-admin-panel-pop {
-  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.35) rotate(-4deg); }
-  60% { opacity: 1; transform: translate(-50%, -50%) scale(1.06) rotate(1deg); }
-  80% { transform: translate(-50%, -50%) scale(0.97) rotate(-0.5deg); }
-  100% { transform: translate(-50%, -50%) scale(1) rotate(0deg); }
+@media (hover: hover) {
+  .scr-btn-danger:hover {
+    background: #c23a3a; border-color: #c23a3a;
+    box-shadow: 0 0 12px rgba(214, 69, 69, 0.35), 0 0 26px rgba(214, 69, 69, 0.18);
+  }
 }
-/* 선택자를 .scr-modal.scr-admin-panel-modal(0,2,1)로 둔다 — 라이트 테마의
-   `.scr-light-theme .scr-modal::before`(0,2,1, background:흰 유리)와 특이도가 같아지고 소스
-   순서상 이 규칙이 뒤라 이긴다. 예전엔 `.scr-admin-panel-modal::before`(0,1,1)이라 라이트
-   테마에서 금속판 배경 이미지가 흰 유리에 덮여 제어판이 하얗게 나왔다(지적). */
-.scr-modal.scr-admin-panel-modal::before {
-  content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
-  background-image: url("/images/bg/control_panel_bg.jpg");
-  background-size: cover; background-position: center; background-repeat: no-repeat;
-  /* 이 ::before는 기본 .scr-modal::before의 backdrop-filter(blur 14px)를 안 덮어 그대로
-     물려받는데, iOS 사파리는 자식(::before)에 backdrop-filter가 있으면 부모의 border-image
-     (구리 쇠테두리)를 아예 안 그린다(모달 요소에서 이미 끈 것과 같은 버그 — 지적: "제어판
-     구리 테두리가 라이트·다크 모두 투명하게 보임"). 배경이 불투명 금속판 이미지라 블러는
-     어차피 안 보이니 꺼서 테두리가 확실히 나오게 한다. */
-  backdrop-filter: none; -webkit-backdrop-filter: none;
-  /* 금속판(배경)과 쇠테두리 사이 위·왼쪽에 안쪽 그림자를 드리워, 테두리가 판보다 도드라지고
-     판은 그 안으로 살짝 파여 들어간 것처럼 보이게 한다(요청: 위 왼쪽 음영으로 입체감). 이
-     그림자는 배경 이미지 레이어(::before, z-index:0) 위에 얹히고 실제 내용(z-index:1)보다는
-     아래라, 글자/버튼은 가리지 않고 판만 어두워진다. 아래·오른쪽은 밝게 둬서 광원이
-     위·왼쪽에 있는 듯한 방향감을 준다. */
-  box-shadow:
-    inset 11px 11px 22px -6px rgba(0,0,0,0.55),
-    inset 5px 5px 6px -3px rgba(0,0,0,0.4);
-}
-.scr-admin-panel-modal > * { position: relative; z-index: 1; }
-/* 배경(제어판 사진)이 어둡고 무늬가 많은 금속 텍스처라 기본 아이콘 버튼 색(--muted, 옅은
-   회색)만으로는 닫기(X) 버튼이 배경에 묻혀 눈에 잘 안 띈다 — 항상 흰 아이콘 + 어두운
-   원형 배경으로 대비를 확실히 준다(테마와 무관하게 고정). */
-.scr-admin-panel-modal .scr-modal-head .scr-icon-btn {
-  color: #fff; background: rgba(0,0,0,0.45); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.25);
-}
-@media (hover: hover) { .scr-admin-panel-modal .scr-modal-head .scr-icon-btn:hover { background: rgba(0,0,0,0.65); color: #fff; } }
-/* 이 모달 안의 글자는 테마(라이트/다크)와 무관하게 고정한다 — 배경이 제어판 금속판 사진
-   (테마와 무관한 고정 이미지)이라, var(--text) 등 테마 변수를 쓰면 테마에 따라 뒤집힌다.
-   배경이 밝은 은색 금속판이라 어두운 글자로 두고, 밝은 하이라이트(위쪽 반사) 위에서도
-   또렷하게 보이도록 위쪽에 옅은 흰 그림자를 줘 금속판에 새긴(engraved) 느낌을 낸다.
-   흰 배경 버튼(미리보기/배포 등) 위의 어두운 글자는 각자 고정값(#10151a)이라 영향 없다. */
-.scr-admin-panel-modal .scr-modal-head { color: #1a1e24; text-shadow: 0 1px 0 rgba(255,255,255,0.4); }
-/* 암호 입력 위 큰 자물쇠 이모지(요청) — 금속판 배경 위에서도 또렷하게 크게, 가운데. */
-.scr-admin-panel-lock { font-size: var(--fs-hero-3); line-height: 1; text-align: center; margin: 4px 0 14px; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.35)); }
-/* ── 잠금(비밀번호) 상태 = 뚜껑이 덮인 제어판(요청) ──
-   처음 들어오면 밝은 금속판(bg) 대신 부식된 쇠 텍스처(border 이미지)가 테두리 구분 없이
-   전체를 꽉 채워 "아직 안 열린 뚜껑"처럼 보인다. 쇠테두리 border-image는 끄고(같은
-   텍스처가 중앙 채움과 이음새 없이 이어지도록) 그 12px 영역까지 ::before(inset:-12px)가
-   덮는다 — .scr-modal의 overflow:hidden이 ::before를 패딩 박스로 잘라버리므로 잠금
-   상태에선 visible로 푼다(라운드도 0이라 잘라낼 모서리도 없다). */
-.scr-modal.scr-admin-panel-modal-locked {
-  overflow: visible;
-  border-color: transparent; border-image: none;
-}
-/* 선택자를 .scr-modal.scr-admin-panel-modal-locked::before(0,2,1)로 둔다 — 위
-   .scr-modal.scr-admin-panel-modal::before(0,2,1, 은색 판·inset:0)와 특이도가 같아지고
-   소스가 뒤라 이긴다. 예전엔 .scr-admin-panel-modal-locked::before(0,1,1)이라 그 은색
-   판 규칙에 통째로 덮여 잠금 상태의 부식된 구리 뚜껑(테두리)이 안 나오고 은색 판만
-   보였다(지적: "구리 테두리가 PC·모바일 모두 안 보임"). */
-.scr-modal.scr-admin-panel-modal-locked::before {
-  inset: -12px;
-  background-image: url("/images/bg/control_panel_border.jpg");
-  /* 뚜껑판 특유의 살짝 어두운 비네트 — 열린 상태의 "파여 들어간 판" 그림자 대신. */
-  box-shadow: inset 0 0 46px rgba(0,0,0,0.55), inset 0 0 0 2px rgba(0,0,0,0.5);
-}
-/* 어두운 쇠 뚜껑 위라 글자는 흰색으로(요청). */
-.scr-admin-panel-modal-locked .scr-modal-head { color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.7); }
-/* 잠금 해제 연출 — 사자후(확대/흔들림)는 뺐다(요청). 쇠 뚜껑(::after, 테두리 영역까지
-   덮던 그 텍스처)이 제자리에서 그냥 페이드 아웃되며 아래 열린 제어판이 드러난다.
-   ::after가 12px 테두리 영역(inset:-12px)까지 덮으므로 재생 중엔 overflow를 풀어
-   잘리지 않게 한다(이 모달은 라운드 0이라 부작용 없음). 클래스는 JS(onAnimationEnd)가 뗀다. */
-.scr-modal.scr-admin-panel-roar { overflow: visible; }
-.scr-admin-panel-roar::after {
-  content: ""; position: absolute; inset: -12px; z-index: 3; pointer-events: none;
-  background-image: url("/images/bg/control_panel_border.jpg");
-  background-size: cover; background-position: center; background-repeat: no-repeat;
-  box-shadow: inset 0 0 46px rgba(0,0,0,0.55), inset 0 0 0 2px rgba(0,0,0,0.5);
-  animation: scr-admin-panel-lid-fade .55s ease-out both;
-}
-@keyframes scr-admin-panel-lid-fade {
-  0% { opacity: 1; }
-  100% { opacity: 0; }
-}
-/* PC에서는 좁은 모달(360px)이 유난히 작아 보인다 — 카드 자체를 키운다(비율은 위에서
-   이미 1:1로 고정했으니 여기선 최대폭만). */
-@media (min-width: 720px) {
-  .scr-admin-panel-modal.scr-modal-sm { max-width: 560px; }
-}
-/* 배경 이미지 위 빈 공간에 파묻히지 않도록 내용을 카드 세로 가운데로 모은다. 예전엔
-   transform:translateY(-8%)로 정확한 중앙보다 살짝 위로 당겼는데, .scr-admin-panel-modal
-   > *가 모든 직계 자식(.scr-modal-head 포함)에 같은 z-index(1)를 주고 있어서, 내용이
-   길어질수록(배치 등록 로그 등) 그 -8%가 큰 픽셀값이 되어 body가 head(닫기 X 버튼
-   포함) 위로 올라가 덮어버렸다(실제로 지적받은 문제 — "배치 등록/모두 다운로드 등
-   하면 제어판 X 닫기 버튼이 안눌림"). transform 없이 justify-content만으로 중앙 정렬
-   하면 flex가 정상적인 문서 흐름 안에서 공간을 배분하므로 절대 형제 위로 겹치지 않는다. */
-/* 관리 화면은 위에서부터 쌓는다(flex-start) — 아래 min-height로 미리 넉넉히 자리를
-   예약해두면, 배치등록으로 옵션 메뉴가 펼쳐져도 예약된 아래 여백 안에서 나타나 위 내용이
-   밀리지 않고 모달 세로도 안 늘어난다(요청). 잠긴 비밀번호 화면만 아래 규칙으로 가운데. */
+.scr-light-theme .scr-btn-danger { border-color: #d64545; color: #fff; }
+
+/* 암호 입력 위 큰 자물쇠 이모지 — 무엇을 묻는지 문구 없이도 맥락을 준다. */
+.scr-admin-panel-lock { font-size: var(--fs-hero-3); line-height: 1; text-align: center; margin: 2px 0 6px; }
+/* 잠긴(비밀번호) 화면은 내용이 짧아 가운데로 모으고, 풀린 뒤 관리 화면은 위에서부터 쌓는다. */
 .scr-admin-panel-modal .scr-modal-body { justify-content: flex-start; }
 .scr-admin-panel-modal .scr-modal-body.scr-admin-panel-body-locked { justify-content: center; }
-/* 입력칸을 담는 필드를 중앙 정렬로 — 입력칸이 폭을 좁게 고정하므로(기본 .scr-field는
-   stretch라 그냥 두면 폭이 좁아져도 여전히 왼쪽 정렬로 보인다). */
 .scr-admin-panel-modal .scr-field { align-items: center; }
-/* 비밀번호 입력 전(잠긴) 상태는 입력칸+버튼뿐이라 내용이 짧아서, 다 풀린 뒤(버전
-   전환/배포 버튼 등)보다 카드가 훨씬 납작해 보였다(실제로 지적받은 문제 — "제어판과
-   똑같은 크기로") — 최소 높이를 걸어 두 상태의 카드 크기가 비슷하게 느껴지게 한다. */
-/* 배치 메뉴(원형 대상 버튼 58px)가 펼쳐진 상태의 실측 높이(509px)까지 미리 예약 —
-   배치등록을 눌러도 모달 세로가 안 늘어난다(요청, 원형 버튼으로 키우면서 재계산). */
-.scr-admin-panel-modal .scr-modal-body { min-height: 510px; }
-/* 어떤 라벨도 없이 숫자 PIN 입력칸 하나만 보여준다 — type="password"라 실제로는 점으로
-   가려지지만, 자간을 넉넉히 둬서 PIN 입력칸 느낌을 준다. 가로 폭은 숫자 몇 자리만 들어갈
-   정도로 좁게 잡는다(기본 100%는 정사각형 카드에서 유난히 넓어 보인다). 점(마스킹 글자)이
-   작고 얇아 보인다는 피드백 — -webkit-text-security로 크고 두꺼운 원(disc)을 직접
-   지정한다(브라우저 기본 마스킹 글자보다 크기를 더 확실하게 키울 수 있다). */
+/* 잠금 화면과 관리 화면의 카드 크기가 크게 달라 보이지 않을 만큼만 자리를 예약한다 —
+   예전의 510px는 금속판 배경을 채우기 위한 값이라 일반 모달에는 과하다. */
+.scr-admin-panel-modal .scr-modal-body { min-height: 300px; }
+/* 라벨 없는 숫자 PIN 입력칸 하나 — 자간을 넉넉히 둬 PIN 느낌을 준다. */
 .scr-admin-panel-password-input {
-  font-size: var(--fs-hero-2); font-family: var(--font-ui); text-align: center;
-  letter-spacing: 6px; padding: 16px 8px; min-height: 84px;
-  width: 280px; max-width: 85%;
+  font-size: var(--fs-hero-3); font-family: var(--font-ui); text-align: center;
+  letter-spacing: 6px; padding: 10px 8px; min-height: var(--field-h);
+  width: 220px; max-width: 85%;
   -webkit-text-security: disc;
 }
-/* 퀴즈의 "입력" 버튼 — 평범한 흰색 둥근네모(기본 .scr-btn-primary 톤 그대로), 크게 키워
-   카드 아래쪽 가운데에 둔다(닫기는 헤더의 공통 X 버튼이 담당하므로 따로 안 둔다). */
-.scr-admin-panel-quiz-submit-btn {
-  width: 100%; max-width: 260px; margin: 18px auto 0; font-size: var(--fs-subhead); font-weight: 800;
-  padding: 16px; border-radius: var(--radius);
-}
-/* 소제목(요청: "제어판 구성 소제목: 버전관리(현재버전 : N) / 경기관리") — 큰 버전
-   숫자 배지 대신, 각 그리드 위에 이 한 줄로 섹션을 나눈다. */
+.scr-admin-panel-quiz-submit-btn { width: 100%; max-width: 220px; margin: 4px auto 0; }
+/* 소제목 — 버전관리 / 경기관리 두 묶음을 가른다. */
 .scr-admin-panel-section-title {
-  width: 100%; text-align: center; font-size: var(--fs-body); font-weight: 800; color: #1a1e24;
-  text-shadow: 0 1px 0 rgba(255,255,255,0.4); margin-top: 4px;
+  width: 100%; text-align: center; font-size: var(--fs-body); font-weight: 700; color: var(--text);
 }
-.scr-admin-panel-section-title-dim { font-weight: 600; color: rgba(26,30,36,0.7); text-shadow: none; }
-/* 제어판다운 투박한 입체(엠보스) 사각 버튼 그리드로 통일한다(요청: "좀더 제어판같은
-   투박한 입체 사각 버튼으로 만들어줘 흰색에 검은 글씨, 아주 위험한 건 빨간 버튼").
-   처음엔 3열이었다가, 버튼이 너무 좁아 보인다는 이유로 2열로 줄이고 폭을 넓혔다(요청:
-   "가로로 두개씩 배치(버튼 폭 늘리기)"). */
+.scr-admin-panel-section-title-dim { font-weight: 500; color: var(--muted); }
+.scr-admin-panel-member-note { text-align: center; color: var(--muted); font-size: var(--fs-body); }
+/* 버튼은 가로로 두 개씩. */
 .scr-admin-panel-grid {
   display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
-  width: 100%; max-width: 320px; margin: 10px auto 0;
+  width: 100%; max-width: 320px; margin: 0 auto;
 }
-/* 미리볼 버전 스테퍼를 grid 칸 안(버전보기 버튼 옆)에 붙였더니 그 줄만 다른 버튼들보다
-   키가 커졌다(실제로 지적받은 문제 — "버전 선택때문에 그 줄만 높이가 높아졌어") —
-   grid에서 완전히 빼고, "버전보기"를 누르면 뜨는 별도 팝업(.scr-admin-panel-version-popup)
-   안으로 옮긴다. 이제 "버전보기"는 다른 버튼들과 똑같은 순수 .scr-admin-panel-phys-btn. */
-.scr-admin-panel-version-popup .scr-modal-body {
-  align-items: center; gap: 16px; padding: 0 0 28px;
-}
-/* 등록된 버전 중에서 드롭다운으로 고른다(미리보기/배포 공용 팝업) — 현재 버전은 후보에서
-   빠져 있고, 고른 뒤 아래 확인 버튼으로 실행한다. 드롭다운·버튼 폭을 같게 맞춘다. */
+/* 그리드 칸의 버튼은 칸을 꽉 채우고 두 줄 라벨도 가운데로 떨어지게 한다. */
+.scr-admin-panel-grid .scr-btn { width: 100%; padding-left: 8px; padding-right: 8px; text-align: center; }
+/* 현재 버전 고르기 팝업 — 드롭다운과 확인 버튼 폭을 같게 맞춘다. */
+.scr-admin-panel-version-popup .scr-modal-body { align-items: center; gap: 16px; }
 .scr-cselect.scr-version-pick-select { width: 220px; max-width: 100%; }
 .scr-version-pick-confirm { width: 220px; max-width: 100%; }
 .scr-version-pick-empty { color: var(--muted); font-size: var(--fs-body); text-align: center; padding: 8px 0 4px; }
-.scr-admin-panel-phys-btn {
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
-  min-height: 58px; padding: 8px 4px; box-sizing: border-box;
-  font-family: inherit; font-size: var(--fs-caption); font-weight: 800; line-height: 1.25; text-align: center;
-  color: #10151a; text-shadow: none;
-  background: linear-gradient(180deg, #ffffff 0%, #d7d7d7 100%);
-  border: 2px solid #7a7a7a; border-radius: 8px;
-  /* 위쪽 반사광 + 아래쪽 눌린 홈(inset) + 바닥면(하드 섀도) + 뜬 그림자로 눌러보고 싶은
-     물리 버튼 입체감을 낸다. */
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.95),
-    inset 0 -4px 3px -2px rgba(0,0,0,0.2),
-    0 3px 0 #6b6b6b,
-    0 5px 7px rgba(0,0,0,0.35);
-  cursor: pointer;
-  transition: transform .08s ease, box-shadow .08s ease, filter .08s ease;
-}
-@media (hover: hover) { .scr-admin-panel-phys-btn:hover { filter: brightness(0.97); } }
-/* 누르는 순간은 즉시 반응(트랜지션 0) — 뗄 때만 위 트랜지션으로 부드럽게 복귀한다
-   (요청: 눌림 반응이 느려 보임). 배치 원형/호출하기 버튼도 동일 원칙. */
-.scr-admin-panel-phys-btn:active, .scr-admin-panel-batch-mode:active { transition-duration: 0s; }
-/* 눌리면 바닥면 두께(0 3px 0)만큼 실제로 내려앉게 — 눌린 느낌의 핵심. */
-.scr-admin-panel-phys-btn:active {
-  transform: translateY(3px);
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.95),
-    inset 0 -2px 2px -1px rgba(0,0,0,0.15),
-    0 0 0 #6b6b6b,
-    0 1px 2px rgba(0,0,0,0.3);
-}
-.scr-admin-panel-phys-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; filter: none; }
-/* 아주 위험한(되돌릴 수 없는) 기능만 빨간 버튼으로 — "모든 경기기록 삭제". */
-.scr-admin-panel-phys-btn-danger {
-  color: #fff;
-  background: linear-gradient(180deg, #e8574d 0%, #a7302b 100%);
-  border-color: #5c1512;
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.4),
-    inset 0 -4px 3px -2px rgba(0,0,0,0.3),
-    0 3px 0 #4a1210,
-    0 5px 7px rgba(0,0,0,0.4);
-}
-.scr-admin-panel-phys-btn-danger:active {
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.4),
-    inset 0 -2px 2px -1px rgba(0,0,0,0.25),
-    0 0 0 #4a1210,
-    0 1px 2px rgba(0,0,0,0.3);
-}
 /* 배치 등록 버튼(ReplayBatchButton)은 자체 상태(모드 메뉴/결과 보기 링크/에러)를 가진
    컴포넌트라 grid 안에서도 레이아웃에 끼어들지 않게 display:contents로 투명화한다 —
    실제 트리거 버튼만 grid 칸을 차지하고, 메뉴/부가 정보는 아래에서 grid-column:1/-1로
@@ -3941,31 +3736,21 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    비어 있어도 옆 배치등록 버튼이 행 높이를 잡아주므로 결과 보기가 나타나도 안 흔들린다. */
 .scr-admin-panel-results-slot { display: flex; align-items: center; justify-content: center; min-width: 0; }
 .scr-admin-panel-results-reopen {
-  /* 리포트 아이콘 + 회색톤 알약 버튼(요청) — 배치 모드 버튼과 같은 알약 형태로 맞추되
-     흰 버튼과 구분되게 반투명 회색으로. */
+  /* 리포트 아이콘 + 알약 버튼 — 일반 모달 배경 위라 테마 변수를 그대로 쓴다. */
   display: inline-flex; align-items: center; justify-content: center; gap: 5px; max-width: 100%;
-  padding: 8px 12px; border: none; border-radius: 999px;
-  /* 제어판은 밝은 콘크리트 배경(테마 무관)이라 흰 글자는 안 읽혔다(지적됨) — 검은
-     글자 + 반투명 흰 알약으로 고정한다. */
-  background: rgba(255, 255, 255, 0.55); color: #10151a;
+  padding: 8px 12px; border: 1px solid var(--line); border-radius: 999px;
+  background: var(--panel-raised); color: var(--text);
   font-size: var(--fs-caption); font-weight: 700; cursor: pointer;
-  box-shadow: none; text-shadow: none; white-space: nowrap;
+  box-shadow: none; white-space: nowrap;
 }
-@media (hover: hover) { .scr-admin-panel-results-reopen:hover { background: rgba(255, 255, 255, 0.75); color: #000; } }
+@media (hover: hover) {
+  .scr-admin-panel-results-reopen:hover { border-color: rgba(var(--lit-rgb), 0.55); box-shadow: var(--lit-hover-glow); }
+}
 /* 배치 결과 모달 — 로그/카운트가 본문 맨 아래에 딱 붙어 답답해 보이던 문제(요청): 아래 여백을 준다. */
 .scr-admin-panel-batch-modal-body { padding-bottom: 16px; }
 /* 카운트 요약("등록 X · 중복 Y ...") 데이터 텍스트를 2스텝 작게(요청). */
 .scr-admin-panel-batch-counts { font-size: var(--fs-11); }
-/* 제어판은 밝은 콘크리트 배경이라 테마와 무관하게 어두운 글씨/체크박스로 통일한다(요청:
-   컴퓨터 낀 경기 제외 체크박스·텍스트가 다크/라이트 모두 안 보임 → 검은 글씨로). */
-.scr-admin-panel-batch-option { justify-content: center; color: #1a1e24; font-size: var(--fs-caption); margin-bottom: 8px; }
-.scr-admin-panel-modal .scr-admin-panel-batch-option input:not([type="radio"]) {
-  border-color: rgba(26,30,36,0.6); background: rgba(255,255,255,0.6);
-}
-.scr-admin-panel-modal .scr-admin-panel-batch-option input:not([type="radio"]):checked {
-  background: #1a1e24; border-color: #1a1e24;
-}
-.scr-admin-panel-modal .scr-admin-panel-batch-option input:not([type="radio"]):checked::after { background-color: #fff; }
+.scr-admin-panel-batch-option { justify-content: center; color: var(--text); font-size: var(--fs-caption); margin-bottom: 8px; }
 /* 대상 버튼(일대일만/팀전만/전체) — 셋 다 같은 지름의 완전한 원형으로 통일(요청: 알약이
    아니라 진짜 원). 지름은 가장 긴 라벨("일대일만" 4자 × micro 12px ≈ 48px)이 한 줄로
    들어가는 크기. 텍스트는 caption→micro로 1스텝 축소(요청). */
@@ -3974,35 +3759,12 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   flex: 0 0 auto; width: 58px; height: 58px; min-height: 0; padding: 0;
   display: inline-flex; align-items: center; justify-content: center;
   font-size: var(--fs-micro); font-weight: 700; border-radius: 50%;
-  color: #10151a; text-shadow: none;
-  /* 다른 제어판 버튼(.scr-admin-panel-phys-btn)과 같은 물리 버튼 입체감(요청: 입체감 강화)
-     — 위 반사광 + 아래 눌린 홈 + 바닥면(하드 섀도) + 뜬 그림자. */
-  background: linear-gradient(180deg, #ffffff 0%, #d7d7d7 100%);
-  border: 2px solid #7a7a7a;
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.95),
-    inset 0 -4px 3px -2px rgba(0,0,0,0.22),
-    0 3px 0 #6b6b6b,
-    0 5px 7px rgba(0,0,0,0.35);
-  transition: transform .08s ease, box-shadow .08s ease, filter .08s ease;
-}
-@media (hover: hover) { .scr-admin-panel-batch-mode:hover { filter: brightness(0.97); } }
-.scr-admin-panel-batch-mode:active {
-  transform: translateY(2px);
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.95),
-    inset 0 -3px 3px -2px rgba(0,0,0,0.22),
-    0 1px 0 #6b6b6b,
-    0 2px 3px rgba(0,0,0,0.3);
 }
 /* 배치가 못 처리한 리플레이를 검토 화면으로 넘기는 버튼 — 배치 버튼과 같은 톤이되, 할 일이
    남아있다는 신호라 테두리만 조금 더 또렷하게 준다. */
 .scr-admin-panel-batch-review {
   width: 100%; margin-top: 8px; font-size: var(--fs-caption); font-weight: 700; padding: 8px; border-radius: 999px;
-  background: transparent; color: #fff; text-shadow: none; box-shadow: none;
-  border: 1px solid rgba(255,255,255,0.75);
 }
-@media (hover: hover) { .scr-admin-panel-batch-review:hover { background: rgba(255,255,255,0.14); } }
 
 /* ===== 배치 로그: 터미널 로그처럼 =====
    예전엔 카드 아래로 뽑혀 나오는 영수증 용지(포털+절대배치, 프린터가 뽑아내는 연출)였는데,
@@ -4047,7 +3809,7 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   .scr-admin-panel-quiz-submit-btn { font-size: var(--fs-body); padding: 10px; margin-top: 10px; }
   .scr-admin-panel-section-title { font-size: var(--fs-caption); }
   .scr-admin-panel-grid { gap: 8px; margin-top: 8px; }
-  .scr-admin-panel-phys-btn { font-size: var(--fs-caption); min-height: 50px; padding: 6px 3px; }
+  .scr-admin-panel-grid .scr-btn { font-size: var(--fs-caption); padding: 8px 4px; }
 }
 
 /* ===== confirm dialog ===== */
@@ -4136,8 +3898,6 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    (토글 제목/설명, 안내문)은 기본이 var(--text)/var(--muted)라 다크 테마에선 흰/옅은
    회색으로 나와 밝은 금속판 위에서 묻혔다(신고: "다크 테마에서 일부 글자 하얗게").
    섹션 제목과 같은 새김(engraved) 톤의 고정 어두운 색으로 덮어쓴다. */
-.scr-admin-panel-modal .scr-notice-toggle-title { color: #1a1e24; text-shadow: 0 1px 0 rgba(255,255,255,0.4); }
-.scr-admin-panel-modal .scr-notice-toggle-desc, .scr-admin-panel-modal .scr-admin-panel-member-note { color: rgba(26,30,36,0.72); }
 
 /* 배경과 안 섞이게 하는 역할은 .scr-modal의 그라데이션 테두리(다크)/반사광+그림자
    (라이트)가 그대로 맡는다 — 얼럿창도 다른 모달과 같은 테두리를 쓴다. */
@@ -4994,11 +4754,11 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 /* nawa 자체가 버튼(요청) — 예전의 타원 마스크(붕 뜬 그림 느낌) 대신, 축소된 둥근네모
    버튼 프레임 안에 사진을 꽉 채워 진짜 버튼처럼 보이게 한다(요청: 크기 축소 + 버튼
    모양 + 테두리/입체효과 강화). 눌리면 통째로 내려앉는다. */
-/* 제어판 물리 버튼(.scr-admin-panel-phys-btn)과 같은 셰이딩 언어로(요청 — 붉은 옆면
-   대각선 명암은 어색하다는 피드백으로 폐기): 또렷한 회색 테두리 + 위 반사광 + 아래
-   눌린 홈 + 바닥면(하드 섀도) + 뜬 그림자. 면은 그대로 nawa.jpg 사진. */
+/* 또렷한 회색 테두리 + 위 반사광 + 아래 눌린 홈 + 바닥면(하드 섀도) + 뜬 그림자로
+   물리 버튼 입체감을 낸다(붉은 옆면 대각선 명암은 어색하다는 피드백으로 폐기).
+   면은 그대로 nawa.jpg 사진. */
 /* 사진 위 글린트(요청) — 좌상단 스펙큘러 점 + 위쪽 옅은 광택 시트로 유리 덮개 느낌. */
-/* 누르면 제어판 버튼과 같은 방식으로 내려앉는다. */
+/* 누르면 바닥면 두께만큼 실제로 내려앉는다. */
 /* 다크 테마에서 카드끼리 배경과 구분이 잘 안 돼서(요청: "다크모드에서 너 나와 카드
    구분이 잘 안됨 글라스테마로") 운영 드롭다운과 같은 반투명 글라스 톤으로. 라이트
    테마는 원래의 불투명 패널을 그대로 유지(아래 .scr-light-theme 오버라이드). */
@@ -6190,7 +5950,7 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
 .scr-admin-panel-password-input { font-size: var(--fs-title); }
 .scr-admin-panel-quiz-submit-btn { font-size: var(--fs-body); }
 .scr-admin-panel-section-title { font-size: var(--fs-caption); }
-.scr-admin-panel-phys-btn { font-size: var(--fs-caption); }
+.scr-admin-panel-grid .scr-btn { font-size: var(--fs-caption); }
 .scr-member-row-tag { font-size: var(--fs-caption); }
 .scr-label { font-size: var(--fs-caption); }
 
@@ -6771,6 +6531,9 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 }
 .scr-rivalry-legend-even { display: inline-block; width: 16px; height: 0; border-top: 2px solid rgba(var(--overlay-rgb), 0.5); margin-right: 5px; }
 .scr-rivalry-legend-note { width: 100%; text-align: center; color: var(--dim); }
+/* 숨겨진 제어판 트리거(요청) — 겉보기엔 설명 문장의 일부라야 하므로 색·밑줄·커서를
+   그대로 두고, 손가락으로 여러 번 누르기 쉽도록 눌리는 자리만 살짝 넓힌다. */
+.scr-rivalry-legend-secret { padding: 2px 1px; margin: -2px -1px; -webkit-tap-highlight-color: transparent; }
 
 /* ===================================================================
    라이팅 테마 — 클릭 요소 공통 터치(press) 피드백(요청: "모든 클릭되는 요소에
