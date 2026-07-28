@@ -435,7 +435,8 @@ function sideBeats(args: {
     const at = lastFrames.length > 0 ? Math.max(...lastFrames) : totalFrames;
     const spectacle = spectacleOf(side);
     let p: Record<string, string | number | boolean | string[]> | null = null;
-    if (spectacle) p = { mode: "spectacle", unit: spectacle };
+    // 몇 기까지 뽑았는지도 함께 — "캐리어를 한 부대 뽑았으나 망함"처럼 규모가 곧 그림이다(요청).
+    if (spectacle) p = { mode: "spectacle", unit: spectacle, n: side.combat.get(spectacle) ?? 0 };
     else if (pressedEarly && units.length > 0) p = { mode: "pressed", units };
     else if (units.length > 0) {
       p = { mode: units.some((u) => LATE_TECH_UNITS.has(u)) ? "late" : "plain", units };
