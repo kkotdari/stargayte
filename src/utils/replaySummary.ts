@@ -230,24 +230,50 @@ function buildSide(players: ParsedReplayPlayer[]): Side {
 // 어떤 병력이 살아남아 굴러다녔는지는 알 수 없다. 알 수 있는 건 '언제 무엇을 얼마나
 // 뽑았나'뿐이므로, 거기서 벗어나는 말은 하지 않는다.
 //
-// 두 가지를 바꾼다.
+// 주력 조합은 '몇 기'가 아니라 '병력을 어디에 얼마나 부었나'로 정한다 — 인구수 합이다.
 //
-// ① '수' 대신 '규모'. 캐리어 한 기와 저글링 한 기를 같은 1로 세니까 잘 안 죽어 적게 뽑는
-//    유닛이 늘 밀렸다 — 인구수로 환산하면 캐리어 12기(72)가 질럿 4기(8)보다 크다는 게
-//    가정 없이 바로 나온다.
-// ② 구간을 '경기 시계'가 아니라 '생산이 멎은 지점'에 건다. 45분 경기의 20분경에 조합을
-//    갖추고 그 뒤로 안 뽑았다면, 경기 후반부(22분 이후)를 아무리 봐도 거기엔 끝자락에
-//    흘려 뽑은 질럿 몇 기밖에 없다(실제로 그래서 캐리어가 계속 밀렸다). 그 편이 병력의
-//    대부분을 채운 시점(settledFrame)을 찾아, 그 직전 한 판을 '마지막으로 갖춘 조합'으로
-//    본다.
-// 구간에 잡히는 게 너무 적으면 창을 넓혀 가며 다시 찾는다.
-const LATE_PHASES_SEC = [5 * 60, 10 * 60, Infinity];
-// 이만큼(인구수)은 뽑혔어야 그 구간을 '조합이 드러난 구간'이라 할 수 있다.
-const LATE_MIN_SUPPLY = 6;
-// 총 병력 규모의 이만큼을 채운 시점 = 그 뒤로는 거의 안 보탰다.
+// 캐리어 한 기와 저글링 한 기를 같은 1로 세면 잘 안 죽어 적게 뽑는 유닛이 늘 밀린다.
+// 인구수로 환산하면 그 왜곡이 가정 없이 사라진다(캐리어 1기 = 6, 질럿 1기 = 2).
+//
+// 구간(뒷부분만 세기)은 폐기했다. 실제 리플레이로 확인한 결과 그게 오히려 원인이었다 —
+// 45분 경기에서 캐리어 32기를 12:56~15:27에 몰아 뽑고 그 뒤로는 질럿만 계속 뽑은 경기가
+// 있었는데, 어떤 창을 잡아도 캐리어는 창 밖이라 통째로 사라졌다(지적: 캐리어 이야기가
+// 계속 안 나온다). 경기 전체로 세면 질럿 125기(250) 대 캐리어 32기(192)라 둘 다 조합에
+// 남는다 — "질럿과 캐리어 조합". 상대도 벌처 89기(178) 대 골리앗 77기(154)로 둘 다 남는다.
+// 창을 두면 '언제 뽑았나'가 '무엇으로 싸웠나'를 이기는데, 우리가 말하려는 건 후자다.
+
+/** 커맨드 한 번이 만드는 인구수 — 저글링·스커지는 한 번에 두 기라 합쳐서 센다.
+ *  여기 없는 유닛은 2로 본다(대부분의 일반 전투 유닛). */
+const UNIT_SUPPLY: Record<string, number> = {
+  Marine: 1, Firebat: 1, Medic: 1, Ghost: 1,
+  Vulture: 2, Goliath: 2, "Siege Tank (Tank Mode)": 2, "Siege Tank (Siege Mode)": 2,
+  Wraith: 2, "Science Vessel": 2, Valkyrie: 3, Battlecruiser: 6,
+  Zealot: 2, Dragoon: 2, "High Templar": 2, "Dark Templar": 2,
+  Archon: 4, "Dark Archon": 4, Reaver: 4, Scout: 3, Corsair: 2, Carrier: 6, Arbiter: 4,
+  Zergling: 1, Scourge: 1, Hydralisk: 1, Lurker: 2, Mutalisk: 2,
+  Guardian: 2, Devourer: 2, Ultralisk: 4, Queen: 2, Defiler: 2, "Infested Terran": 2,
+};
+const supplyOf = (unit: string): number => UNIT_SUPPLY[unit] ?? 2;
+
+/** 그 편이 병력에 부은 인구수 — 유닛명 → 인구수 합. 주력 조합의 순위 기준이다. */
+function armyBySupply(players: ParsedReplayPlayer[]): Map<string, number> {
+  const out = new Map<string, number>();
+  for (const p of players) {
+    const s = p.signals;
+    if (!s) continue;
+    for (const [unit, n] of Object.entries(s.unitCounts)) {
+      if (NON_COMBAT_UNITS.has(unit) || WORKER_UNITS.has(unit)) continue;
+      if (!UNIT_KO[unit]) continue;
+      out.set(unit, (out.get(unit) ?? 0) + n * supplyOf(unit));
+    }
+  }
+  return out;
+}
+
+/** 그 편이 총 병력 규모(인구수)의 이만큼을 채운 프레임 — '조합을 다 갖춘 시점'.
+ *  late-hold(양쪽 다 더는 병력을 안 보탠 구간)에서만 쓴다. */
 const SETTLED_SHARE = 0.85;
 
-/** 그 편이 총 병력 규모(인구수)의 SETTLED_SHARE를 채운 프레임 — '조합을 다 갖춘 시점'. */
 function settledFrame(players: ParsedReplayPlayer[]): number | null {
   const made: { at: number; w: number }[] = [];
   for (const p of players) {
@@ -271,47 +297,6 @@ function settledFrame(players: ParsedReplayPlayer[]): number | null {
   return made[made.length - 1].at;
 }
 
-/** 커맨드 한 번이 만드는 인구수 — 저글링·스커지는 한 번에 두 기라 합쳐서 센다.
- *  여기 없는 유닛은 2로 본다(대부분의 일반 전투 유닛). */
-const UNIT_SUPPLY: Record<string, number> = {
-  Marine: 1, Firebat: 1, Medic: 1, Ghost: 1,
-  Vulture: 2, Goliath: 2, "Siege Tank (Tank Mode)": 2, "Siege Tank (Siege Mode)": 2,
-  Wraith: 2, "Science Vessel": 2, Valkyrie: 3, Battlecruiser: 6,
-  Zealot: 2, Dragoon: 2, "High Templar": 2, "Dark Templar": 2,
-  Archon: 4, "Dark Archon": 4, Reaver: 4, Scout: 3, Corsair: 2, Carrier: 6, Arbiter: 4,
-  Zergling: 1, Scourge: 1, Hydralisk: 1, Lurker: 2, Mutalisk: 2,
-  Guardian: 2, Devourer: 2, Ultralisk: 4, Queen: 2, Defiler: 2, "Infested Terran": 2,
-};
-const supplyOf = (unit: string): number => UNIT_SUPPLY[unit] ?? 2;
-
-function lateArmy(players: ParsedReplayPlayer[], end: number | null): Map<string, number> {
-  if (!end || end <= 0) return new Map();
-  const settled = settledFrame(players);
-  if (settled === null) return new Map();
-  for (const phase of LATE_PHASES_SEC) {
-    // 조합을 다 갖춘 시점에서 한 판 거슬러 올라간 구간. 그 뒤(트리클 생산)도 병력이긴
-    // 하므로 끝까지 함께 센다 — 어차피 규모가 작아 순위를 뒤집지 못한다.
-    const from = phase === Infinity ? 0 : Math.max(0, settled - phase / SECONDS_PER_FRAME);
-    const out = new Map<string, number>();
-    let total = 0;
-    for (const p of players) {
-      const s = p.signals;
-      if (!s) continue;
-      for (const [unit, fs] of Object.entries(s.unitFrames)) {
-        if (NON_COMBAT_UNITS.has(unit) || WORKER_UNITS.has(unit)) continue;
-        if (!UNIT_KO[unit]) continue;
-        const n = fs.filter((f) => f >= from).length;
-        if (n <= 0) continue;
-        const w = n * supplyOf(unit);
-        out.set(unit, (out.get(unit) ?? 0) + w);
-        total += w;
-      }
-    }
-    if (total >= LATE_MIN_SUPPLY) return out;
-  }
-  return new Map();
-}
-
 function countIn(map: Map<string, number>, names: Set<string>): number {
   let n = 0;
   for (const [k, v] of map) if (names.has(k)) n += v;
@@ -322,8 +307,7 @@ function countIn(map: Map<string, number>, names: Set<string>): number {
  *  앞자리는 스스로 싸움을 끝낼 수 있는 유닛에 준다 — 메딕·퀸 같은 보조 유닛이 수만 많다고
  *  "메딕으로 이김"이 되면 곤란하다(지적). 그런 유닛은 뒷자리로 밀려 조합으로 읽힌다. */
 function mainUnits(combat: Map<string, number>, late?: Map<string, number>): string[] {
-  // 순위는 중후반에 그 유닛을 얼마나 오래 굴렸는지로 매긴다(위 lateArmy 참고) —
-  // 못 구했으면(생산 기록이 아예 없으면) 원래대로 전체 생산 수로.
+  // 순위는 '그 유닛에 부은 인구수'로 매긴다(위 armyBySupply 참고) — 못 구했으면 전체 수로.
   const rank = late && late.size > 0 ? late : combat;
   const ranked = [...rank.entries()].sort((a, b) => b[1] - a[1]);
   if (ranked.length === 0) return [];
@@ -781,7 +765,7 @@ function sideBeats(args: {
     const star = standout(side);
     if (star && star.race) {
       const own = ownCombat(star);
-      const units = nameableUnits(mainUnits(own, lateArmy([star], totalFrames)));
+      const units = nameableUnits(mainUnits(own, armyBySupply([star])));
       const table = PRO_LIKE[star.race] ?? [];
       // 그 그림이라 부를 만큼 실제로 뽑았을 때만 빗댄다 — 두어 기 나온 유닛까지 세면
       // 거의 모든 경기에 비유가 붙어 특별할 게 없어진다.
@@ -807,8 +791,8 @@ function sideBeats(args: {
     const star = standout(side);
     const units = nameableUnits(
       star
-        ? mainUnits(ownCombat(star), lateArmy([star], totalFrames))
-        : mainUnits(side.combat, lateArmy(players, totalFrames))
+        ? mainUnits(ownCombat(star), armyBySupply([star]))
+        : mainUnits(side.combat, armyBySupply(players))
     );
     const lastFrames = players
       .map((p) => p.signals?.lastCmdFrame ?? null)
@@ -827,7 +811,10 @@ function sideBeats(args: {
     if (p) {
       beats.push({
         // 팀전이면 혼자 버틴 게 아니다 — 문장도 "팀원이 도와줬으나"로 갈린다(요청).
-        k: "stand", won, at, weight: 12, p: { ...p, team: players.length > 1 },
+        // 진 편이 무엇으로 맞섰나는 결과 문장의 짝이다 — 자리가 모자랄 때 부수적인
+        // 사실(센터 건물 등)에 밀려 통째로 빠지면, 이긴 쪽 조합만 남아 경기가 한쪽
+        // 이야기가 된다(실제로 골리앗 77기를 뽑은 편의 조합이 계속 안 나왔다).
+        k: "stand", won, at, weight: 16, p: { ...p, team: players.length > 1 },
         who: star ? who(star) : players.map((x) => x.rawName),
       });
     }
@@ -996,8 +983,8 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   const star = standout(winner);
   const units = nameableUnits(
     star
-      ? mainUnits(ownCombat(star), lateArmy([star], totalFrames))
-      : mainUnits(winner.combat, lateArmy(winnerPlayers, totalFrames))
+      ? mainUnits(ownCombat(star), armyBySupply([star]))
+      : mainUnits(winner.combat, armyBySupply(winnerPlayers))
   );
   if (units.length === 0) return null; // 조합을 못 읽으면 이야기의 알맹이가 없다
   const subject = star ? [star.rawName] : winnerPlayers.map((p) => p.rawName);
@@ -1324,8 +1311,8 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     const quietSec = (totalFrames - from) * SECONDS_PER_FRAME;
     if (quietSec < HOLD_QUIET_SEC || quietSec < sec * HOLD_QUIET_SHARE) return null;
     // 각자 마지막으로 갖춘 조합의 대표 유닛 하나씩.
-    const mine = nameableUnits(mainUnits(winner.combat, lateArmy(winnerPlayers, totalFrames)))[0];
-    const theirs = nameableUnits(mainUnits(loser.combat, lateArmy(loserPlayers, totalFrames)))[0];
+    const mine = nameableUnits(mainUnits(winner.combat, armyBySupply(winnerPlayers)))[0];
+    const theirs = nameableUnits(mainUnits(loser.combat, armyBySupply(loserPlayers)))[0];
     if (!mine || !theirs || mine === theirs) return null;
     return {
       k: "late-hold", won: true, at: from, weight: 15,
@@ -1448,7 +1435,14 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   // "자리가 모자라 재미없는 걸 남기는" 일도, "중요한 게 뜬금없는 자리에 오는" 일도 없다.
   // 시점을 못 잡은 문장(올인처럼 한 순간이 아닌 것)은 맺음말 바로 앞으로 밀린다.
   const chosen: Beat[] = [];
+  // 진 편이 무엇으로 맞섰나(stand)는 결과 문장의 짝이라 자리를 하나 미리 잡아 둔다.
+  // 무게 경쟁에 맡겼더니 부수적인 사실들(입구 포토·센터 건물 등)에 밀려 통째로 빠지고,
+  // 그러면 이긴 쪽 조합만 남아 경기가 한쪽 이야기가 됐다 — 실제 리플레이에서 골리앗
+  // 77기를 뽑은 편의 조합이 계속 안 나온 게 이 자리 싸움 때문이었다.
+  const loserStand = pool.find((b) => b.k === "stand" && !b.won);
+  if (loserStand) chosen.push(loserStand);
   for (const b of [...pool].sort((x, y) => y.weight - x.weight)) {
+    if (b === loserStand) continue;
     if (chosen.length >= budget - 1) break;
     if (b.weight < MIN_WEIGHT) break; // 무게순이라 하나 미달이면 뒤는 전부 미달이다
     if (b.dedupeOn && chosen.some((x) => renderReplaySummary(

@@ -237,7 +237,10 @@ const BUILD_CMD_NAMES = new Set<string>(["Build", "Building Morph", "Hatch"]);
 // 급감으로 보여 rush-backfire 판정), 후반 캐리어·골리앗이 주력에서 빠지던 것.
 // 이제 전부 담는다 — 커맨드 스트림은 어차피 한 번 훑고 버리는 값이라(요약만 저장된다)
 // 긴 경기라도 숫자 수천 개 수준이다.
-const BUILD_POS_CAP = 80;
+// (삭제) 건물 좌표도 앞쪽 80개까지만 담고 있었다 — 유닛 프레임 상한과 똑같은 함정이다.
+// 빠른무한처럼 건물을 수백 채 짓는 경기는 80개면 초반 본진 언저리밖에 안 남아서, '맵
+// 곳곳에 퍼져 지으며 버텼다' 같은 이야기가 통째로 안 보인다(실제 리플레이에서 확인:
+// 펄론 77 + 게이트 27 + 캐논 26 …인데 좌표는 80개에서 끊겨 있었다).
 // 채팅은 요약 재료로만 쓰므로 앞부분만 있으면 된다(GG는 대개 끝에 나오지만, 한 사람이
 // 수십 줄을 치는 경우까지 전부 들고 있을 이유는 없다).
 const CHAT_CAP = 40;
@@ -310,7 +313,7 @@ function collectSignals(cmds: ScrepCmd[], totalFrames: number | null): Map<numbe
           pushFrame(s.buildingFrames, b, frame);
         }
         const pos = posOf(c.Pos);
-        if (pos && s.buildPositions.length < BUILD_POS_CAP) {
+        if (pos) {
           s.buildPositions.push({ unit: b, frame, x: pos.x, y: pos.y });
         }
       }

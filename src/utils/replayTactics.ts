@@ -97,6 +97,16 @@ const ENEMY_RADIUS = 0.22;
    좌표계라 0.22면 중점에서 양쪽으로 22%). 예전엔 본진·아군기지·상대기지가 아닌 자리를
    전부 센터로 떨어뜨려서 앞마당이나 구석 멀티에 지은 것까지 "센터"가 됐다(지적). */
 const MID_RADIUS = 0.22;
+/* 맵 곳곳에 건물을 흩뿌리며 버틴 그림(요청: "둘은 계속해서 맵 구석구석에 건물을 지으며
+   도망다니며 버텼어. 이런것도 추출해서 스토리화해줘"). 빠른무한처럼 자원이 무한한 판에서
+   서로 자리를 내주고 도망 다니며 새로 짓기를 반복하면 본진 언저리가 아니라 판 전체에
+   군집이 생긴다. 실측(Super빠른무한 45분 경기): 두 사람 다 군집 17~18개, 본진에서 본진↔본진
+   거리의 0.7배 넘게 나가 지은 건물이 73~80채였다. 보통 경기는 본진·앞마당·삼룡이 정도라
+   군집이 서넛을 안 넘으므로 8을 기준으로 잡으면 오탐이 사실상 없다. */
+const SCATTER_RADIUS = 0.2;   // 이 안쪽이면 같은 군집
+const SCATTER_FAR = 0.7;      // 본진에서 이만큼 넘게 나가면 '멀리 나가 지은 것'
+const SCATTER_CLUSTERS_MIN = 8;
+const SCATTER_FAR_MIN = 20;
 // 본진 중심에서 이만큼은 나가 있어야 '앞'이다 — 안쪽에 박은 건 그냥 본진 건물이다.
 const FRONT_MIN = 0.1;
 // 상대 쪽으로 60도 안쪽(cos 0.5)이어야 진출로 쪽이라고 본다.
@@ -175,6 +185,10 @@ interface Geo {
   lodgingHost: string | null;
   /** 그중에서도 '시작 자리를 두고 옮겨온' 경우 — 본진을 잃은 그림이라 문장이 달라진다. */
   lodgingLost: boolean;
+  /** 건물이 판 전체에 얼마나 흩어져 있나 — 자리를 내주고 도망 다니며 새로 짓기를 반복하면
+   *  본진 언저리가 아니라 맵 곳곳에 군집이 생긴다. clusters는 서로 떨어진 건물 무리의 수,
+   *  far는 본진에서 SCATTER_FAR 배 넘게 나가 지은 건물 수. */
+  spread: { clusters: number; far: number };
 }
 
 function geoOf(
@@ -290,7 +304,18 @@ function geoOf(
   const lodgingHost = lodging?.raw ?? null;
   const lodgingLost = lodging?.lost ?? false;
 
-  return { zone, allyAt, enemyAt, front, lodgingHost, lodgingLost };
+  // 건물 분포 — 군집 수는 '그리디 군집화'로 센다(서로 SCATTER_RADIUS 안쪽이면 같은 무리).
+  const mine = me.signals?.buildPositions ?? [];
+  const seeds: BuildPos[] = [];
+  for (const b of mine) {
+    if (!seeds.some((c) => dist(c, b) < base * SCATTER_RADIUS)) seeds.push(b);
+  }
+  const spread = {
+    clusters: seeds.length,
+    far: mine.filter((b) => dist(b, home) > base * SCATTER_FAR).length,
+  };
+
+  return { zone, allyAt, enemyAt, front, lodgingHost, lodgingLost, spread };
 }
 
 interface Ctx {
@@ -665,6 +690,16 @@ function detectFor(c: Ctx): Tactic[] {
     out.push({
       key: "ally-cannon", weight: 11, at: firstOf(allyCannons), who,
       ...(helped ? { who2: helped } : {}), p: { n: allyCannons.length },
+    });
+  }
+  // 판 전체에 건물을 흩뿌리며 버틴 그림(요청) — 자리를 내주고 도망 다니며 새로 짓기를
+  // 반복한 경기다. 아래 센터 건물 이야기보다 이쪽이 훨씬 큰 그림이라 무게를 더 준다.
+  if (
+    geo && geo.spread.clusters >= SCATTER_CLUSTERS_MIN && geo.spread.far >= SCATTER_FAR_MIN
+  ) {
+    out.push({
+      key: "scatter", weight: 14, at: null, who,
+      p: { spots: geo.spread.clusters, far: geo.spread.far },
     });
   }
   const midCannons = inZone("mid", "Photon Cannon");

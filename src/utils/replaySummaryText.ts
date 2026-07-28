@@ -1167,6 +1167,19 @@ const TEMPLATES: Record<string, Tpl> = {
     ]);
   },
 
+  // 맵 곳곳에 건물을 흩뿌리며 버틴 경기(요청: "둘은 계속해서 맵 구석구석에 건물을 지으며
+  // 도망다니며 버텼어"). 근거는 건물 좌표뿐이라 '어디에 얼마나 벌려 지었나'까지만 말한다 —
+  // 도망 다녔는지 밀려난 건지는 좌표로 알 수 없으므로 단정하지 않는다.
+  scatter: (c) => {
+    const spots = num(c.p.spots);
+    if (spots <= 0) return null;
+    return `${ga(c.who)} ${done(c, c.pick([
+      `맵 곳곳 ${spots}군데에 건물을 벌려 지으며 버팀`,
+      `한자리에 머무르지 않고 판 전체 ${spots}군데로 살림을 흩음`,
+      `자리를 옮겨 가며 ${spots}군데에 건물을 새로 지음`,
+    ]))}`;
+  },
+
   // 시야(요청) — 오버로드·옵저버를 뿌려 판을 읽는 플레이.
   vision: (c) => {
     const u = UNIT_KO[str(c.p.unit)];
@@ -1384,7 +1397,9 @@ const TEMPLATES: Record<string, Tpl> = {
     // "결국 마린과 메딕 조합으로" "계속된 마린 공격으로". 초반·후반·역전은 저마다 시간과
     // 흐름을 이미 말하고 있어 이어받기를 얹지 않는다.
     const units = list(c.p.units);
-    const cont = c.p.cont && mode === "plain";
+    // 조합이 둘이면 이어받기 문구("계속된 질럿 공격으로")를 안 쓴다 — 한 유닛만 부르는
+    // 꼴이라 나머지 하나가 문장에서 사라진다(지적: 캐리어가 안 나온다).
+    const cont = c.p.cont && mode === "plain" && units.length < 2;
     const p = cont ? contPhrase(units, c.pick) : phrase ? `${phrase} ` : "";
     const lead = str(c.p.lead);
     const min = num(c.p.leadMin);
@@ -1485,7 +1500,8 @@ const TEMPLATES: Record<string, Tpl> = {
       // 주력을 부대 단위로 뽑았으면 그 규모 자체가 그림이다(요청) — 12기를 한 부대로 센다.
       const leadKo = UNIT_KO[list(c.p.units)[0] ?? ""] ?? "";
       const squads = Math.floor(num(c.p.unitN) / 12);
-      const bulk = leadKo && squads >= 2 && !cont
+      // 조합이 둘이면 '질럿만 10부대' 식으로 한 유닛만 부르지 않는다(위 cont와 같은 이유).
+      const bulk = leadKo && squads >= 2 && !cont && units.length < 2
         ? [`${leadKo} ${squads}부대를 뽑아 승리`, `${leadKo}만 ${squads}부대 넘게 생산해 이김`]
         : [];
       body = phrase
