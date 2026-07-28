@@ -466,6 +466,12 @@ export const api = {
     return request<{ deleted: number }>("/api/matches/all", { method: "DELETE" });
   },
 
+  // 순위 기준선 다시 깔기(운영자) — 지금 데이터로 개인전/팀전 스냅샷을 새로 만든다.
+  // 변동 없이 저장돼 피드 목록에는 안 뜨고, 다음 자정 재집계가 이걸 기준으로 비교한다.
+  async reseedRankSnapshots(): Promise<Record<string, number>> {
+    return request<Record<string, number>>("/api/feed/rank-snapshots/seed", { method: "POST" });
+  },
+
   // 경기 댓글(메모) — 게시판 댓글처럼 회원 누구나 한 줄(최대 50자)을 남기고 본인/운영자만
   // 수정·삭제한다. 본문에 @닉네임 언급 가능(targetMemberIds). 목록/상세 응답에 이미 comments가
   // 실려 오므로 별도 조회는 잘 안 쓰지만, 필요 시 이 경기 댓글만 다시 받아올 수도 있다.

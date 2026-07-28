@@ -54,6 +54,9 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
   const [versionManageOpen, setVersionManageOpen] = useState(false);
   const [togglingNotice, setTogglingNotice] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  // 순위 기준선 다시 깔기 — 눌러 놓고 결과를 바로 알려준다(운영자 1회용).
+  const [seeding, setSeeding] = useState(false);
+  const [confirmSeed, setConfirmSeed] = useState(false);
 
   // 등록된 리플레이(.rep) 전체를 날짜별 폴더 zip으로 받는다 — 인증 헤더가 필요해 blob으로
   // 받아 클라이언트에서 임시 링크로 저장 트리거한다.
@@ -92,6 +95,24 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
       setErr(e instanceof Error ? e.message : "삭제하지 못했어요.");
     } finally {
       setBusy(false);
+    }
+  };
+
+  // 순위 기준선 적재 — 지금 순위표를 스냅샷으로 남겨 다음 자정 재집계의 비교 대상으로
+  // 삼는다. 변동 없이 저장돼 피드에는 안 뜨고, 여러 번 눌러도 이번 달 기준선을 덮어쓸
+  // 뿐 행이 쌓이지 않는다.
+  const reseedRanks = async () => {
+    setSeeding(true);
+    setErr("");
+    try {
+      const counts = await api.reseedRankSnapshots();
+      window.alert(
+        `순위 기준선을 새로 깔았어요.\n개인전 ${counts["0101"] ?? 0}명 · 팀전 ${counts["0102"] ?? 0}명`,
+      );
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "기준선을 만들지 못했어요.");
+    } finally {
+      setSeeding(false);
     }
   };
 
@@ -289,6 +310,14 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
                         칸에 "결과 보기"를 예약해두려고 마지막에 둔다(그 칸이 항상 비어 있어야
                         결과 보기가 나타나도 레이아웃이 안 흔들린다). */}
                     <ReplayBatchButton />
+                    {/* 순위 기준선 적재 — 지금 데이터로 스냅샷을 남긴다(1회용). 되돌릴 수는
+                        없지만 파괴적이지도 않아서(덮어쓰기) 확인창만 한 번 거친다. */}
+                    <button
+                      type="button" className="scr-btn scr-btn-primary"
+                      onClick={() => setConfirmSeed(true)} disabled={seeding}
+                    >
+                      {seeding ? <Spinner /> : "순위 기준선"}
+                    </button>
                   </div>
                 </>
               )}
@@ -309,6 +338,16 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
             void setVersion(next);
           }}
           onCancel={() => setConfirmSetVersion(null)}
+        />
+      )}
+
+      {confirmSeed && (
+        <ConfirmDialog
+          title="지금 순위표를 기준선으로 저장할까요?"
+          message="개인전·팀전 순위표를 그대로 스냅샷으로 남깁니다. 피드에는 안 뜨고, 다음 자정 재집계가 이 기준선과 비교해 변동을 만듭니다."
+          confirmLabel="기준선 저장"
+          onConfirm={() => { setConfirmSeed(false); void reseedRanks(); }}
+          onCancel={() => setConfirmSeed(false)}
         />
       )}
 
