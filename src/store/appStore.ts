@@ -15,12 +15,6 @@ export interface UpdateNotice {
   notes: string;
 }
 
-// 숨겨진 제어판 트리거 — 탭 타임스탬프는 리렌더를 일으킬 이유가 없는 순수 내부 상태라
-// store 상태(set)가 아니라 모듈 스코프 변수로 둔다.
-const SECRET_TAP_COUNT = 3;
-const SECRET_TAP_WINDOW_MS = 2000;
-let secretTapTimestamps: number[] = [];
-
 // 운영자가 제어판에서 버전을 배포(+1)/롤백(-1)하면, 그 뒤 처음 접속하는 모든 회원에게 한 번만
 // 버전이 바뀌었다는 걸 알려준다 — 브라우저에 마지막으로 본 버전을 저장해뒀다가, 부트스트랩
 // (앱을 새로 열 때 한 번) 시점에 지금 버전과 다르면 알려주고 새 값으로 갱신한다. 처음
@@ -78,12 +72,10 @@ interface AppState {
   appVersions: AppVersionInfo[];
   // 버전 안내(업데이트 안내 모달) 전역 표시 여부 — 관리자가 제어판에서 끄면 false.
   noticeEnabled: boolean;
-  // 숨겨진 제어판 — 메인 로고를 짧은 시간 안에 여러 번 누르면 열린다. 트리거 위치가
-  // 화면(컴포넌트) 트리 어디든(헤더의 로고 버튼) 아무 데서나 registerSecretTap()만
-  // 부르면 되도록 스토어에 둔다.
+  // 제어판 모달 열림 — 예전엔 로고/범례를 연타하는 숨은 트리거(registerSecretTap)로 열었는데,
+  // 운영 메뉴의 하위 항목으로 옮기면서 그 연타 판정은 통째로 없앴다(AdminMenu).
   adminPanelOpen: boolean;
   setAdminPanelOpen: (open: boolean) => void;
-  registerSecretTap: () => void;
   booting: boolean;
   // 새로고침 직후 저장된 토큰으로 로그인 상태 복원을 시도하는 동안 true
   restoringSession: boolean;
@@ -192,14 +184,6 @@ export const useAppStore = create<AppState>()((set, get) => ({
   noticeEnabled: true,
   adminPanelOpen: false,
   setAdminPanelOpen: (open) => set({ adminPanelOpen: open }),
-  registerSecretTap: () => {
-    const now = Date.now();
-    secretTapTimestamps = [...secretTapTimestamps, now].filter((t) => now - t <= SECRET_TAP_WINDOW_MS);
-    if (secretTapTimestamps.length >= SECRET_TAP_COUNT) {
-      secretTapTimestamps = [];
-      set({ adminPanelOpen: true });
-    }
-  },
   // 세션 복원(restoreSession)이 user를 채우고 나면 bootstrap() 이펙트가 실행되기 전까지
   // 한 프레임 정도 짧은 틈이 있는데, booting이 기본 false면 그 틈에 화면이 빈 members/matches로
   // 잠깐 마운트됐다가(예: 주간랭킹 화면이 엉뚱한 순간의 데이터로 한 번 그려짐) 다시 스피너로
