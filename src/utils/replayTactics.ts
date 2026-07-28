@@ -1,7 +1,7 @@
 import type { BuildPos, ParsedReplayPlayer, ReplayPlayerSignals } from "./replayParser";
 
 // 리플레이 커맨드 스트림에서 '전술'을 짚어낸다(요청: 9드론 저글링 러시 / 투게이트 질럿 /
-// 초반 포토 러시 / 몰래 배럭 / 목동 저그 / 바이오닉 / 발키리 오버로드 사냥 / 아비터 리콜 /
+// 초반 포토러쉬 / 몰래 배럭 / 목동 저그 / 바이오닉 / 발키리 오버로드 사냥 / 아비터 리콜 /
 // 성큰·벙커·포토 방어 / 드랍 플레이 / 센터 장악 …).
 //
 // 조합 이름("히드라와 뮤탈")만으로는 경기가 다 비슷하게 읽히는데, 전술은 그 경기에서만
@@ -15,7 +15,7 @@ import type { BuildPos, ParsedReplayPlayer, ReplayPlayerSignals } from "./replay
 
 const SECONDS_PER_FRAME = 0.042;
 
-// 성큰 러쉬로 볼 시간 창 — 이보다 늦게 본진 밖에 박는 성큰은 러쉬가 아니라 조이기·확장
+// 성큰러쉬로 볼 시간 창 — 이보다 늦게 본진 밖에 박는 성큰은 러쉬가 아니라 조이기·확장
 // 방어에 가깝다.
 const SUNKEN_RUSH_SEC = 7 * 60;
 
@@ -44,7 +44,7 @@ export interface Tactic {
 
 
 /** 건물을 지은 자리가 내 본진인지, 아군 본진인지, 가운데인지, 상대 쪽인지.
- *  아군 본진을 내 본진과 갈라 두는 이유는 둘이 정반대 뜻이기 때문이다 — 성큰 러쉬는
+ *  아군 본진을 내 본진과 갈라 두는 이유는 둘이 정반대 뜻이기 때문이다 — 성큰러쉬는
  *  아군 기지를 빼야 하고(지적: 다른 저그의 크립 콜로니 위에도 짓는다), 옆탱은 아군
  *  기지여야만 옆탱이다. */
 type Zone = "home" | "ally" | "mid" | "enemy";
@@ -69,6 +69,16 @@ function medoid(pts: { x: number; y: number }[]): { x: number; y: number } | nul
   return best;
 }
 
+/** 그 사람 건물들이 본진에서 흩어진 정도(중앙값) = 그 기지의 크기. 지도 단위를 몰라도
+ *  되도록 절대값이 아니라 그 사람 자신의 건물 분포로 잰다. */
+function spreadOf(p: ParsedReplayPlayer): number | null {
+  const pts = p.signals?.buildPositions ?? [];
+  const h = homeOf(p);
+  if (!h || pts.length < MIN_BUILDINGS_FOR_HOME) return null;
+  const ds = pts.map((b) => dist(b, h)).sort((a, b) => a - b);
+  return ds[Math.floor(ds.length / 2)];
+}
+
 // 본진을 믿고 쓰려면 건물이 이만큼은 있어야 한다 — 두 채뿐이면 어느 쪽이 본진인지 모른다.
 const MIN_BUILDINGS_FOR_HOME = 4;
 // 내 본진 ↔ 가장 가까운 상대 본진 거리를 1로 뒀을 때의 경계.
@@ -78,6 +88,9 @@ const ENEMY_RADIUS = 0.35;
 const FRONT_MIN = 0.1;
 // 상대 쪽으로 60도 안쪽(cos 0.5)이어야 진출로 쪽이라고 본다.
 const FRONT_COS = 0.5;
+// 셋방살이는 '나중에 들어온 쪽'이다 — 집주인보다 이만큼은 늦게 그 자리에 지었어야 한다.
+// 이 조건이 없으면 같은 자리를 공유한 두 아군이 서로를 셋방살이로 지목한다.
+const LODGING_LATE_SEC = 3 * 60;
 
 /** 이 사람의 건물 좌표를 구역으로 바꿔 주는 함수. 좌표를 못 읽었거나(screp이 Pos를 안 줌)
  *  본진을 못 정하면 null — 자리 기반 전술(몰래 배럭·센터 포토)은 그냥 안 나온다. */
@@ -92,8 +105,14 @@ interface Geo {
   zone: (b: BuildPos) => Zone;
   /** 이 자리가 어느 아군의 본진인가 — 옆탱처럼 '누구를 도왔나'를 말해야 하는 경우. */
   allyAt: (b: BuildPos) => string | null;
+  /** 이 자리가 어느 상대의 진영인가 — 성큰러쉬·포토러쉬처럼 '누구한테 갔나'가 곧
+   *  전술의 내용인 경우. 팀전에서도 자리로는 확실히 짚힌다(요청). */
+  enemyAt: (b: BuildPos) => string | null;
   /** 내 본진 안이면서 상대 쪽으로 나가 있는 자리인가 = 진출로(입구) 쪽. */
   front: (b: BuildPos) => boolean;
+  /** 내 건물 덩어리 자체가 아군 기지 안에 들어앉아 있으면 그 아군(지적: 내 기지에 건물이
+   *  거의 없고 아군 기지에 있는 게 셋방살이다). 아니면 null. */
+  lodgingHost: string | null;
 }
 
 function geoOf(
@@ -115,6 +134,19 @@ function geoOf(
   const near = foeHomes.reduce((a, b) => (dist(home, b) < dist(home, a) ? b : a));
   const dir = { x: (near.x - home.x) / base, y: (near.y - home.y) / base };
 
+  const foeHomeOf = foes
+    .map((f) => ({ raw: f.rawName, h: homeOf(f) }))
+    .filter((f): f is { raw: string; h: { x: number; y: number } } => f.h !== null);
+
+  const enemyAt = (b: BuildPos): string | null => {
+    let best: { raw: string; d: number } | null = null;
+    for (const f of foeHomeOf) {
+      const d = dist(b, f.h);
+      if (d < base * ENEMY_RADIUS && (!best || d < best.d)) best = { raw: f.raw, d };
+    }
+    return best?.raw ?? null;
+  };
+
   const allyAt = (b: BuildPos): string | null => {
     let best: { raw: string; d: number } | null = null;
     for (const a of allyHomes) {
@@ -129,7 +161,7 @@ function geoOf(
     if (toFoe < base * ENEMY_RADIUS) return "enemy";
     if (dist(b, home) < base * HOME_RADIUS) return "home";
     // 아군 본진도 '남의 기지가 아닌 곳'이다(지적: 다른 저그의 크립 콜로니 위에도 짓는다).
-    // 내 본진과 갈라 두어야 성큰 러쉬에서 빼고 옆탱에서만 쓸 수 있다.
+    // 내 본진과 갈라 두어야 성큰러쉬에서 빼고 옆탱에서만 쓸 수 있다.
     if (allyAt(b) !== null) return "ally";
     return "mid";
   };
@@ -145,7 +177,34 @@ function geoOf(
     return (v.x * dir.x + v.y * dir.y) / len > FRONT_COS;
   };
 
-  return { zone, allyAt, front };
+  // 셋방살이 — 내 본진(메도이드)이 아군 기지 안에 들어가 있는가. 내 건물 대부분이 거기
+  // 있으니 메도이드가 거기 앉는다. '기지 안'의 크기는 그 아군 자신의 건물 분포로 잰다.
+  const lodgingHost = (() => {
+    /** 그 자리 근처에 이 사람이 처음 지은 시각 — 누가 집주인인지 가른다. */
+    const firstNear = (p: ParsedReplayPlayer, at: { x: number; y: number }, r: number) => {
+      const fs = (p.signals?.buildPositions ?? [])
+        .filter((b) => dist(b, at) <= r && b.frame !== null)
+        .map((b) => b.frame as number);
+      return fs.length > 0 ? Math.min(...fs) : null;
+    };
+    let best: { raw: string; d: number } | null = null;
+    for (const a of allies) {
+      const h = homeOf(a);
+      const spread = spreadOf(a);
+      if (!h || spread === null || !(spread > 0)) continue;
+      const d = dist(home, h);
+      if (!(d <= spread && d < base * HOME_RADIUS)) continue;
+      // 늦게 들어온 쪽이 셋방이다. 집주인은 처음부터 거기 있었다.
+      const mine = firstNear(me, h, spread);
+      const theirs = firstNear(a, h, spread);
+      if (mine === null || theirs === null) continue;
+      if (sec(mine - theirs) < LODGING_LATE_SEC) continue;
+      if (!best || d < best.d) best = { raw: a.rawName, d };
+    }
+    return best?.raw ?? null;
+  })();
+
+  return { zone, allyAt, enemyAt, front, lodgingHost };
 }
 
 interface Ctx {
@@ -193,6 +252,17 @@ function detectFor(c: Ctx): Tactic[] {
   /** 내 본진 앞(진출로 쪽)에 세운 것들 — 지형이 없으니 '상대 쪽으로 나가 있나'로 본다. */
   const atFront = (unit: string): BuildPos[] =>
     geo ? inZone("home", unit).filter(geo.front) : [];
+  /** 그 건물들이 들어선 진영의 주인 — 팀전에서도 '누구한테 갔나'를 자리로 짚는다(요청).
+   *  가운데에 박은 것뿐이면 주인이 없어 null이고, 그때는 1:1일 때만 상대를 말한다. */
+  const foeAt = (b: BuildPos[]): { whom: string } | typeof target => {
+    if (geo) {
+      for (const x of b) {
+        const f = geo.enemyAt(x);
+        if (f) return { whom: f };
+      }
+    }
+    return target;
+  };
   /** 건물 묶음에서 가장 이른 프레임 — 그 전술이 드러난 시점. */
   const firstOf = (b: BuildPos[]): number | null => {
     const f = b.map((x) => x.frame).filter((x): x is number => x !== null);
@@ -251,7 +321,7 @@ function detectFor(c: Ctx): Tactic[] {
         who,
       });
     }
-    // 성큰 러쉬(요청) — 내 기지가 아닌 곳에 초반에 성큰을 짓는 것. 상대 코앞이든 가운데든
+    // 성큰러쉬(요청) — 내 기지가 아닌 곳에 초반에 성큰을 짓는 것. 상대 코앞이든 가운데든
     // '내 본진 밖'이면 다 해당한다. 같은 건물이라도 어디에 지었나가 전부라서, 자리를 봐야만
     // 방어용 성큰과 갈린다. 해처리는 보지 않는다(지적: 보통 해처리를 안 펴고 바로 성큰을
     // 짓는다) — 크립콜로니/성큰 자체의 자리만 본다.
@@ -260,7 +330,7 @@ function detectFor(c: Ctx): Tactic[] {
     ]);
     if (sunkenRush.length > 0) {
       out.push({
-        key: "sunken-rush", ...target, weight: 13, at: firstOf(sunkenRush), who,
+        key: "sunken-rush", ...foeAt(sunkenRush), weight: 13, at: firstOf(sunkenRush), who,
       });
     }
     if (u("Lurker") >= 5) {
@@ -294,7 +364,7 @@ function detectFor(c: Ctx): Tactic[] {
     // 몰래 배럭 — 본진에서 한참 떨어진 자리에 올린 초반 배럭. 자리를 안 보면 그냥 배럭이다.
     const sneaky = [...inZone("enemy", "Barracks", 300), ...inZone("mid", "Barracks", 300)];
     if (sneaky.length > 0) {
-      out.push({ key: "sneak-rax", ...target, weight: 12, at: firstOf(sneaky), who });
+      out.push({ key: "sneak-rax", ...foeAt(sneaky), weight: 12, at: firstOf(sneaky), who });
     }
     // 탱크 방어(흔히 옆탱, 요청) — 두 갈래다. 아군 기지에 팩토리를 올려 그쪽을 받쳐주는 것도 옆탱이고,
     // 내 기지에서 뽑은 탱크로 바로 옆에 붙은 상대를 잡아내는 것도 옆탱이다(지적).
@@ -335,7 +405,7 @@ function detectFor(c: Ctx): Tactic[] {
         });
       }
     }
-    // 초반 포토 러시 — 게이트웨이보다 포지를 먼저 올린 건 커맨드 순서만으로 확실한
+    // 초반 포토러쉬 — 게이트웨이보다 포지를 먼저 올린 건 커맨드 순서만으로 확실한
     // 캐논러시 신호다(정상 빌드는 게이트가 먼저다). 자리는 안 본다(요청: 불확실한 건 빼기).
     const cannon = firstB("Photon Cannon");
     const forge = firstB("Forge");
@@ -346,7 +416,7 @@ function detectFor(c: Ctx): Tactic[] {
     const cannonRush = cannon !== null && sec(cannon) < 330 && (forgeFirst || forward.length > 0);
     if (cannonRush) {
       out.push({
-        key: "cannon-rush", ...target, weight: 11, at: cannon,
+        key: "cannon-rush", ...foeAt(forward), weight: 11, at: cannon,
         who,
       });
     }
@@ -397,6 +467,15 @@ function detectFor(c: Ctx): Tactic[] {
     out.push({
       key: "front-defense", weight: 8, at: firstOf(frontDef.at), who,
       p: { b: frontDef.b, n: frontDef.at.length },
+    });
+  }
+
+  // ── 셋방살이(요청) ── 내 기지에는 건물이 거의 없고 아군 기지에 얹혀 있는 것(지적).
+  // 건물 하나가 아군 쪽에 있는 걸로는 부족하다 — 내 건물 덩어리 자체가 거기 앉아야 한다.
+  if (geo?.lodgingHost) {
+    out.push({
+      key: "lodging", weight: 9, who, who2: geo.lodgingHost,
+      at: firstOf(s.buildPositions),
     });
   }
 

@@ -7081,6 +7081,9 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
      패딩이 달라 본문만 넓어 보임). 모바일은 아래 720px 블록에서 16/20으로 되돌린다. */
   --post-pad-x: 24px;
   --post-pad-bx: 28px;
+  /* 헤더 오른쪽에 비워 두는 케밥 자리. 변수로 둔 건 제목 줄의 음영이 이 값만큼 오른쪽
+     끝까지 빠져나가야 하기 때문이다 — 묶음 카드처럼 케밥이 없는 헤더는 이 값을 줄인다. */
+  --post-head-pad-r: 44px;
   /* 제목 줄 뒤에 깔리는 음영의 색(요청). 알파를 섞어야 해서 색상값이 아니라 RGB 성분으로
      둔다. 다크는 오렌지 → 푸른색으로 바꿨고, 다시 타임라인 레일과 같은 톤으로 맞췄다
      (요청: 레일 색처럼 좀 더 밝고 선명하게) — 레일이 쓰는 --timeline-blue(#3b82f6)와 같은
@@ -7179,8 +7182,9 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-feed-stack > .scr-feed-card-head .scr-feed-card-label {
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-/* 묶음 카드의 헤더엔 우상단 케밥이 없어 그 자리(44px)를 비워둘 이유가 없다. */
-.scr-feed-stack > .scr-feed-card-head { padding-right: var(--post-pad-x); }
+/* 묶음 카드의 헤더엔 우상단 케밥이 없어 그 자리(44px)를 비워둘 이유가 없다.
+   패딩이 아니라 변수를 낮춰야 제목 줄 음영의 음수 마진도 같이 따라온다. */
+.scr-feed-stack > .scr-feed-card-head { --post-head-pad-r: var(--post-pad-x); }
 
 /* 요약 바디 전체가 펼침/접힘 토글이다(요청) — 명단 어디를 눌러도 열리고 닫힌다. */
 .scr-feed-stack-sum-body { cursor: pointer; -webkit-tap-highlight-color: transparent; }
@@ -7203,7 +7207,7 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    baseline을 맞춰 한 줄로 흐르게 한다. */
 .scr-feed-card-head {
   display: flex; flex-direction: column; align-items: stretch; gap: 3px;
-  padding: 16px 44px 0 var(--post-pad-x);
+  padding: 16px var(--post-head-pad-r) 0 var(--post-pad-x);
   font-size: var(--fs-micro); color: var(--dim);
 }
 /* 윗줄 — 시각(그리고 그와 한 묶음인 마감 카운트다운·일시 수정, 요약의 참여 인원). */
@@ -7215,10 +7219,11 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    빠져나갔다가 같은 값의 패딩으로 글자를 제자리에 돌려놓는다. */
 .scr-feed-card-head-title {
   display: flex; align-items: center; gap: 7px; min-width: 0;
-  /* 음영은 제목 글자와 줄을 맞춘다(지적: PC에서 음영만 쭉 삐져나감) — 예전엔 음수 마진으로
-     포스트 좌우 끝까지 끌어냈는데, 화면이 넓어지면 글자는 그대로인 채 띠만 길어져 따로 놀았다. */
-  margin: 0;
-  padding: 4px 0;
+  /* 음영은 글자가 아니라 포스트 폭에 맞춘다(요청: 패딩까지가 아니라 페이지 폭까지).
+     헤더의 좌우 패딩만큼 음수 마진으로 빠져나갔다가 같은 값의 패딩으로 글자를 제자리에
+     돌려놓는다 — 띠는 카드 끝에서 끝까지, 글자는 그대로. */
+  margin: 0 calc(-1 * var(--post-head-pad-r)) 0 calc(-1 * var(--post-pad-x));
+  padding: 4px var(--post-head-pad-r) 4px var(--post-pad-x);
   /* 페이드 지점도 %가 아니라 px로 못박는다 — %면 카드가 넓어질수록 띠도 같이 늘어난다.
      모바일(390px)에서 38%/72%가 만들던 길이(≈148/281px)와 비슷하게 맞춘 값이다. */
   background: linear-gradient(

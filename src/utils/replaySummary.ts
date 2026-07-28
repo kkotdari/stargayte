@@ -1,5 +1,6 @@
 import type { ParsedReplay, ParsedReplayPlayer, ReplayPlayerSignals } from "./replayParser";
 import { scanTactics } from "./replayTactics";
+import { fellFrame } from "./replayFell";
 import { REPLAY_SUMMARY_VERSION, type ReplaySummaryBeat, type ReplaySummaryData } from "./replaySummaryData";
 import {
   DEFENSE_KO, EXPANSION_KO, PRODUCTION_KO, SPECTACLE_UNITS, UNIT_KO, UNIT_ROLE,
@@ -83,6 +84,12 @@ const TURTLE_MIN = 6;
 
 // 마지막 커맨드가 경기 끝보다 이만큼(비율) 앞서면 "일찍 무너졌다"로 본다.
 const EARLY_OUT_RATIO = 0.7;
+
+// 합공으로 볼 시간 창 — 이보다 늦게 끊긴 건 초반 러시가 아니라 그냥 진 것이다.
+const GANG_RUSH_SEC = 9 * 60;
+// 그 시점까지 이만큼은 뽑았어야 '달려든 사람'으로 센다 — 뒤에서 확장만 하고 있던 사람까지
+// 합공에 넣으면 숫자가 거짓말이 된다.
+const GANG_MIN_UNITS = 8;
 
 interface Side {
   players: ParsedReplayPlayer[];
@@ -203,11 +210,41 @@ function heroUnitOf(
 function earlyOuts(players: ParsedReplayPlayer[], totalFrames: number | null): ParsedReplayPlayer[] {
   if (!totalFrames) return [];
   return players.filter((p) => {
-    const s = p.signals;
-    if (!s || s.lastCmdFrame === null) return false;
     if (sumCombat(p) === 0) return false; // 아무것도 안 한 슬롯은 "무너진" 게 아니다
-    return s.lastCmdFrame < totalFrames * EARLY_OUT_RATIO;
+    const fell = fellFrame(p, totalFrames);
+    return fell !== null && fell < totalFrames * EARLY_OUT_RATIO;
   });
+}
+
+/** 그 프레임까지 뽑은 전투 유닛 수 — 훈련 커맨드의 시각으로 센다. */
+function combatBefore(p: ParsedReplayPlayer, frame: number): number {
+  const s = p.signals;
+  if (!s) return 0;
+  let n = 0;
+  for (const [unit, frames] of Object.entries(s.unitFrames)) {
+    if (NON_COMBAT_UNITS.has(unit)) continue;
+    n += frames.filter((f) => f < frame).length;
+  }
+  return n;
+}
+
+/** "몇 명이 몰아쳤나"(요청) — 리플레이에 인구수가 없어 '죽었다'를 직접 볼 수는 없다.
+ *  대신 커맨드가 끊긴 시점이 그 사람이 판에서 사라진 시점이고, 그때까지 병력을 낸 상대가
+ *  몇 명인지는 셀 수 있다. 초반에 한 사람이 먼저 정리됐고 달려든 상대가 둘 이상일 때만
+ *  말한다 — 한 명이면 그건 이미 전술 문장이 하고 있는 얘기다. */
+function gangRush(
+  victims: ParsedReplayPlayer[],
+  attackers: ParsedReplayPlayer[],
+  totalFrames: number | null
+): { victim: ParsedReplayPlayer; by: ParsedReplayPlayer[] }[] {
+  const out: { victim: ParsedReplayPlayer; by: ParsedReplayPlayer[] }[] = [];
+  for (const v of victims) {
+    const fell = fellFrame(v, totalFrames);
+    if (fell === null || fell * SECONDS_PER_FRAME > GANG_RUSH_SEC) continue;
+    const by = attackers.filter((a) => combatBefore(a, fell) >= GANG_MIN_UNITS);
+    if (by.length >= 2) out.push({ victim: v, by });
+  }
+  return out;
 }
 
 /** 이름을 아는 유닛만 남긴다 — 하나도 없으면 조합을 말할 수 없다. */
@@ -451,7 +488,7 @@ function sideBeats(args: {
   for (const p of earlyOuts(players, totalFrames)) {
     beats.push({
       k: "fallen", won, who: who(p), weight: 9,
-      at: p.signals?.lastCmdFrame ?? null,
+      at: fellFrame(p, totalFrames),
       p: { team: players.length > 1 },
     });
   }
@@ -558,8 +595,22 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     tactics.filter((b) => b.k === "side-tank").flatMap((b) => b.whom ?? [])
   );
 
+  const gangBeats: Beat[] = [
+    ...gangRush(earlyOuts(loserPlayers, totalFrames), winnerPlayers, totalFrames)
+      .map((g) => ({ g, won: true })),
+    ...gangRush(earlyOuts(winnerPlayers, totalFrames), loserPlayers, totalFrames)
+      .map((g) => ({ g, won: false })),
+  ].map(({ g, won }) => {
+    pickedOff.add(g.victim.rawName);
+    return {
+      k: "gang-rush", won, who: g.by.map((p) => p.rawName), whom: [g.victim.rawName],
+      at: fellFrame(g.victim, totalFrames), weight: 13, p: { n: g.by.length },
+    } as Beat;
+  });
+
   const pool: Beat[] = [
     ...(breached ? [breached] : []),
+    ...gangBeats,
     ...tactics,
     ...sideBeats({
       side: winner, other: loser, players: winnerPlayers,
