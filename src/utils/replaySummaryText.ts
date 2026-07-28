@@ -138,8 +138,8 @@ function teamPhrase(c: Ctx): string {
       `${names.join("·")} 팀이 함께 밀어붙여`,
     ]);
   }
-  // 세 무리를 넘어가면 그것대로 길다 — 많이 뽑은 쪽부터 두 무리까지만 말한다.
-  const shown = groups.slice(0, groups.length > 3 ? 2 : 3);
+  // 많이 뽑은 쪽부터 세 무리까지 말한다 — 그 이상은 문장만 길어진다.
+  const shown = groups.slice(0, 3);
   const parts = shown.map((g) => {
     const many = g.names.length > 1;
     const ko = g.units.map((u) => UNIT_KO[u]).filter(Boolean).slice(0, many ? 3 : 2);
