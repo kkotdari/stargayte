@@ -217,9 +217,9 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
                 <>
                   <div className="scr-admin-panel-grid">
                     {/* 현재 버전 설정 — 등록된 버전 중에서 골라 활성 버전을 바꾼다(모두에게
-                        즉시 반영·안내 팝업 재노출이라 -danger 톤 + 확인창). */}
+                        즉시 반영·안내 팝업 재노출이라 확인창을 거친다). */}
                     <button
-                      type="button" className="scr-btn scr-btn-danger"
+                      type="button" className="scr-btn"
                       onClick={openVersionPicker} disabled={busy}
                     >
                       {busy ? <Spinner /> : "현재 버전 설정"}
@@ -261,16 +261,15 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
               {isAdmin && (
                 <>
                   {err && <div className="scr-err">{err}</div>}
-                  {/* 경기관리 — 되돌릴 수 없거나 모두에게 즉시 반영되는 기능만 빨간 톤
-                      (-danger). 단순 조회(다운로드)를 뺀 나머지는 전부 실행 전 확인창을
+                  {/* 경기관리 — 단순 조회(다운로드)를 뺀 나머지는 전부 실행 전 확인창을
                       거친다(요청: "관리자 버튼들은 다 컨펌창 있어야돼(단순 조회는
                       제외)"). */}
                   <div className="scr-admin-panel-section-title">경기관리</div>
                   <div className="scr-admin-panel-grid">
-                    {/* 모든 경기기록 삭제 — 되돌릴 수 없는 파괴적 작업이라 빨간 버튼으로.
-                        (window.prompt로 "삭제" 직접 입력하는 확인창이 이미 있다.) */}
+                    {/* 모든 경기기록 삭제 — 되돌릴 수 없는 작업이지만 버튼 색으로 겁주지는
+                        않는다(요청). window.prompt로 "삭제"를 직접 입력해야 실행된다. */}
                     <button
-                      type="button" className="scr-btn scr-btn-danger"
+                      type="button" className="scr-btn"
                       onClick={deleteAllMatches} disabled={busy}
                     >
                       {busy ? <Spinner /> : "배치삭제"}

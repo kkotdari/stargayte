@@ -321,29 +321,55 @@ export default function ReplayBatchButton() {
         hidden
         onChange={(e) => runBatch(e.target.files)}
       />
-      <button
-        type="button"
-        className="scr-btn"
-        onClick={() => (running ? (abortRef.current = true) : setMenuOpen((v) => !v))}
-      >
-        {running ? <><Spinner /> 중단</> : "배치등록"}
-      </button>
+      {/* 배치등록은 버튼이 아니라 스위치다(요청) — 켜야만 아래 세부 버튼이 살아난다.
+          실수로 폴더 선택창이 뜨는 일을 한 단계 막아 주는 잠금이기도 하다.
+          배치가 도는 중에는 같은 자리가 '중단' 버튼이 된다. */}
+      {running ? (
+        <button
+          type="button"
+          className="scr-btn"
+          onClick={() => { abortRef.current = true; }}
+        >
+          <Spinner /> 중단
+        </button>
+      ) : (
+        <div className="scr-notice-toggle-row scr-admin-panel-batch-toggle">
+          <span className="scr-notice-toggle-title">배치등록</span>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={menuOpen}
+            className={cx("scr-notice-switch", menuOpen && "scr-notice-switch-on")}
+            onClick={() => setMenuOpen((v) => !v)}
+          >
+            <span className="scr-notice-switch-knob" />
+          </button>
+        </div>
+      )}
 
-      {/* 무엇을 담글지 먼저 고른다 — 대상 버튼을 고르는 즉시 폴더 선택창이 뜨므로, 함께 걸
-          옵션(컴퓨터 제외)은 반드시 그 버튼들보다 위에 있어야 한다. */}
-      {menuOpen && !running && (
-        <div className="scr-admin-panel-batch-menu">
+      {/* 세부 버튼은 처음부터 자리에 있고, 스위치를 켜야 눌린다(요청) — 나타났다 사라지면
+          그때마다 아래 내용이 들썩인다. 무엇을 담글지 고르는 즉시 폴더 선택창이 뜨므로,
+          함께 걸 옵션(컴퓨터 제외)은 반드시 그 버튼들보다 위에 있어야 한다. */}
+      {!running && (
+        <div className={cx("scr-admin-panel-batch-menu", !menuOpen && "scr-admin-panel-batch-menu-off")}>
           <label className="scr-checkbox-field scr-admin-panel-batch-option">
             <input
               type="checkbox"
               checked={excludeComputer}
+              disabled={!menuOpen}
               onChange={(e) => setExcludeComputer(e.target.checked)}
             />
             컴퓨터 낀 경기 제외
           </label>
           <div className="scr-admin-panel-batch-modes">
             {MODE_OPTIONS.map((o) => (
-              <button key={o.value} type="button" className="scr-btn scr-admin-panel-batch-mode" onClick={() => start(o.value)}>
+              <button
+                key={o.value}
+                type="button"
+                className="scr-btn scr-admin-panel-batch-mode"
+                disabled={!menuOpen}
+                onClick={() => start(o.value)}
+              >
                 {o.label}
               </button>
             ))}
