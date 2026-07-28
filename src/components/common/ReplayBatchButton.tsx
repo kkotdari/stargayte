@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { X, ClipboardList } from "lucide-react";
 import { Spinner } from "./Feedback";
+import ConfirmDialog from "./ConfirmDialog";
 import { useLockBodyScroll } from "../../utils/bodyScrollLock";
 import ReplayReviewModal from "../../modals/ReplayReviewModal";
 import { useAppStore } from "../../store/appStore";
@@ -127,6 +128,12 @@ export default function ReplayBatchButton() {
   const excludeComputerRef = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const logRef = useRef<HTMLDivElement>(null);
+  // 방금 연 선택창이 '폴더' 모드였나 — 폴더 업로드는 브라우저가 "N개 파일을 업로드합니다,
+  // 이 사이트를 신뢰하는 경우에만…"을 스스로 물어본다. 파일 여러 개를 고르는 모바일에는
+  // 그 확인이 없어서 고르는 즉시 등록이 시작됐다(지적) — 그때만 우리 확인창을 세운다.
+  const dirModeRef = useRef(true);
+  // 확인을 기다리는 파일들(모바일 전용). null이면 확인창이 닫혀 있다.
+  const [pendingFiles, setPendingFiles] = useState<File[] | null>(null);
 
   // 데스크톱은 <input webkitdirectory>로 폴더 하위 전체를 재귀적으로 훑고(폴더 순회 구현
   // 불필요), 모바일은 폴더 선택 자체가 없어 .rep 파일 여러 개를 직접 고르게 한다(요청:
@@ -140,6 +147,7 @@ export default function ReplayBatchButton() {
     const el = inputRef.current;
     if (!el) return;
     const mobile = window.matchMedia("(max-width: 480px)").matches;
+    dirModeRef.current = !mobile;
     if (mobile) {
       el.removeAttribute("webkitdirectory");
       el.removeAttribute("directory");
@@ -168,9 +176,10 @@ export default function ReplayBatchButton() {
     openPicker();
   };
 
-  // 폴더/파일을 고르면 바로 시작한다. 예전엔 여기서 커스텀 확인창을 한 번 더 띄웠는데,
-  // 브라우저가 폴더 업로드를 물어보는 창이 이미 앞에 있어서 확인이 두 번이었다(지적).
-  // 파일을 직접 고른 것 자체가 실행 의사라 그 확인창은 없앴다.
+  // 폴더를 고르면 바로 시작한다 — 브라우저가 폴더 업로드를 물어보는 창이 이미 앞에 있어서
+  // 우리 확인창까지 세우면 확인이 두 번이 된다(지적). 다만 그 창은 폴더 업로드에만 뜨는
+  // 것이라, 파일을 직접 고르는 모바일에서는 아무 확인 없이 등록이 시작됐다(지적) —
+  // 그쪽에서만 우리 확인창을 한 번 세운다.
   const runBatch = (fileList: FileList | null) => {
     // input.files는 살아있는(live) FileList라, 값을 비우면 이미 잡아둔 이 참조의 내용까지
     // 같이 비워질 수 있다 — 반드시 배열로 먼저 복사해두고 그다음에 input을 비운다(같은
@@ -190,6 +199,7 @@ export default function ReplayBatchButton() {
       setProgress(EMPTY_PROGRESS);
       return;
     }
+    if (!dirModeRef.current) { setPendingFiles(files); return; }
     void executeBatch(files);
   };
 
@@ -450,6 +460,17 @@ export default function ReplayBatchButton() {
           </div>
         </div>,
         document.body,
+      )}
+
+      {pendingFiles && (
+        <ConfirmDialog
+          title={`리플레이 ${pendingFiles.length}개를 등록할까요?`}
+          message="고른 리플레이를 하나씩 분석해 자동으로 등록합니다. 이미 등록된 경기는 건너뛰고, 자동으로 처리하지 못한 것은 끝난 뒤 직접 등록할 수 있어요."
+          confirmLabel="등록"
+          className="scr-admin-panel-batch-confirm"
+          onConfirm={() => { const f = pendingFiles; setPendingFiles(null); void executeBatch(f); }}
+          onCancel={() => setPendingFiles(null)}
+        />
       )}
 
       {reviewOpen && (

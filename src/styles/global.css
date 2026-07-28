@@ -3859,9 +3859,12 @@ html.scr-light-theme .scr-admin-sheet::before { background: rgba(244, 246, 250, 
   /* 터미널 로그 텍스트 2스텝 축소(요청): caption(14) → 11px. */
   padding: 8px 10px; font-family: var(--font-mono); font-size: var(--fs-11); line-height: 1.6; text-align: left;
 }
-/* 배치등록 확인창("리플레이 N개를 분석해 자동 등록할까요?") — 제목/본문 텍스트 2스텝
-   축소(요청): 제목 subhead→caption, 본문 body→micro. */
-/* (삭제) 배치 확인창 — 브라우저 폴더 업로드 확인이 이미 앞에 있어 확인이 두 번이었다(지적). */
+/* 배치등록 확인창("리플레이 N개를 등록할까요?") — 제목/본문 텍스트 2스텝 축소(요청):
+   제목 subhead→caption, 본문 body→micro.
+   PC에서는 안 뜬다(폴더 업로드는 브라우저가 스스로 물어봐서 확인이 두 번이 된다) —
+   파일을 직접 고르는 모바일에만 세운다. */
+.scr-admin-panel-batch-confirm .scr-confirm-head { font-size: var(--fs-caption); }
+.scr-admin-panel-batch-confirm .scr-confirm-msg { font-size: var(--fs-micro); }
 .scr-admin-panel-batch-log-line {
   display: flex; flex-wrap: wrap; gap: 0 8px; color: rgba(255,255,255,0.55);
   border-bottom: 1px dotted rgba(255,255,255,0.08); padding: 1px 0;
