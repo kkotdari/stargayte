@@ -554,6 +554,31 @@ function spectacleOf(side: Side): string | undefined {
  *  모든 줄은 반드시 누가 한 일인지 이름을 달고 나온다(요청) — 예전엔 편 단위 사실을 주어
  *  없이 말해서("5멀티까지 늘린 운영") 여러 줄이 붙으면 누구 얘기인지 알 수 없었다. 편 전체의
  *  사실도 그 편에서 그걸 가장 많이 한 사람에게 붙여 이름을 만든다. */
+// 잘한 사람의 그림을 2000년대 초반 프로게이머에 빗대 한 마디 붙인다(요청: 여자 선수를
+// 우선으로). 확실히 확인할 수 있는 여자 선수는 서지수뿐이라 나머지 자리는 그 시절 그
+// 스타일의 대명사였던 선수로 채웠다 — 이름을 바꾸고 싶으면 이 표만 고치면 된다.
+//
+// 고르는 기준은 '그 사람이 실제로 많이 뽑은 유닛'이다. 위에서부터 먼저 맞는 것을 쓴다.
+// 그 유닛들을 이만큼(두 부대)은 뽑았어야 '그 선수의 그림'이라 부를 수 있다.
+const PRO_LIKE_MIN = 24;
+const PRO_LIKE: Record<string, { pro: string; style: string; units: string[] }[]> = {
+  테란: [
+    { pro: "서지수", style: "바이오닉 운영", units: ["Marine", "Medic", "Firebat"] },
+    { pro: "임요환", style: "드랍십 견제", units: ["Dropship", "Wraith"] },
+    { pro: "이윤열", style: "메카닉 물량", units: ["Siege Tank (Tank Mode)", "Vulture", "Goliath"] },
+  ],
+  저그: [
+    { pro: "홍진호", style: "폭풍 저글링", units: ["Zergling"] },
+    { pro: "박성준", style: "공격적인 저그", units: ["Hydralisk", "Mutalisk"] },
+    { pro: "조용호", style: "운영형 목동 저그", units: ["Ultralisk", "Defiler", "Lurker"] },
+  ],
+  프로토스: [
+    { pro: "강민", style: "아비터 운영", units: ["Arbiter", "High Templar", "Corsair"] },
+    { pro: "김동수", style: "다크템플러 전략", units: ["Dark Templar", "Reaver"] },
+    { pro: "박정석", style: "물량 프로토스", units: ["Zealot", "Dragoon"] },
+  ],
+};
+
 function sideBeats(args: {
   side: Side;
   other: Side;
@@ -621,6 +646,32 @@ function sideBeats(args: {
           p: { unit: lurker >= dt ? "Lurker" : "Dark Templar", race: p.race },
         });
         break; // 한 명만 말한다
+      }
+    }
+  }
+
+  // ── 잘한 사람의 그림을 옛 프로게이머에 빗대기(요청) ──
+  // 진 편까지 빗대면 한 요약에 비유가 두 번 나와 겉돈다 — 이긴 편의 잘한 사람만 말한다.
+  if (won) {
+    const star = standout(side);
+    if (star && star.race) {
+      const own = ownCombat(star);
+      const units = nameableUnits(mainUnits({ ...side, combat: own }));
+      const table = PRO_LIKE[star.race] ?? [];
+      // 그 그림이라 부를 만큼 실제로 뽑았을 때만 빗댄다 — 두어 기 나온 유닛까지 세면
+      // 거의 모든 경기에 비유가 붙어 특별할 게 없어진다.
+      const hit = table.find((row) =>
+        units.some((u) => row.units.includes(u))
+        && row.units.reduce((n, u) => n + (own.get(u) ?? 0), 0) >= PRO_LIKE_MIN);
+      if (hit) {
+        // 1:1이면 누구를 상대로 그랬는지까지 말할 수 있다(요청 예시) — 팀전은 상대가
+        // 여럿이라 지목하지 않는다.
+        const foe = other.players.length === 1 ? other.players[0].rawName : null;
+        beats.push({
+          k: "pro-like", won, at: null, weight: 7,
+          who: [star.rawName], ...(foe ? { whom: [foe] } : {}),
+          p: { pro: hit.pro, style: hit.style },
+        });
       }
     }
   }
@@ -829,6 +880,12 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   const bigSwing =
     comeback && earlyShare !== null && lateShare !== null
     && earlyShare < 0.35 && lateShare > 0.62;
+  // 처음부터 끝까지 한쪽이 판을 쥐고 있던 경기(요청: 경기력 차이가 심하면 요약은 짧게,
+  // 결론에서 일방적이었다고 말하기). 전·후반 손놀림 점유가 둘 다 확실히 기울었을 때만
+  // 그렇게 부른다 — 한 구간만 보면 그냥 한 번 몰아친 경기와 구별이 안 된다.
+  const oneSided =
+    earlyShare !== null && lateShare !== null && earlyTotal >= 40 && lateTotal >= 40
+    && earlyShare > 0.62 && lateShare > 0.62;
 
   // ── 맺음말 머리 — 드문 사건이 있으면 그걸 앞세운다(경기마다 다른 문장이 나오도록).
   // 주력으로 이미 말할 유닛은 여기서 뺀다 — 안 그러면 "캐리어가 뜬 …캐리어로 승리"가 된다.
@@ -1209,7 +1266,8 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   //
   // 한때 열 문장까지 열어 봤는데 오히려 읽기 어려웠다(지적) — 다섯으로 되돌린다.
   // 다만 30분을 넘긴 경기는 그만큼 국면이 많아 일곱까지 허용한다(요청 — 위 baseBudget).
-  const budget = baseBudget;
+  // 일방적인 경기는 늘어놓을 국면 자체가 없다(요청) — 자리를 줄여 짧게 끝낸다.
+  const budget = oneSided ? Math.min(baseBudget, 3) : baseBudget;
 
   // 고를 때는 무게순(재미있는 것부터), 이야기로 늘어놓을 때는 시간순 — 순서를 이 둘로 나눠야
   // "자리가 모자라 재미없는 걸 남기는" 일도, "중요한 게 뜬금없는 자리에 오는" 일도 없다.
@@ -1307,6 +1365,7 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     who: useTeam ? teamRanked.map((x) => x.raw) : subject,
     p: {
       mode, lead, wentLate, ...(bigSwing ? { swing: true } : {}),
+      ...(oneSided ? { oneSided: true } : {}),
       leadMin: minutes(sec),
       ...(spectacle ? { leadUnit: spectacle } : {}),
       // 이어받는 문장은 유닛을 다시 말해야 말이 이어진다 — 그때는 중복이 아니라 연결이다.
@@ -1329,6 +1388,9 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     ...(useTeam
       ? (domUnit && dominant ? { who2: [dominant.rawName] } : {})
       : (heroUnit && star ? { who2: [star.rawName] } : {})),
+    // 역전패한 경기는 진 편 입장에서 맺어도 좋다(요청: "결국 2팀은 초반 승기를 잡았지만
+    // 1팀의 …에 버티지 못하고 GG"). 그러려면 진 편이 누구인지 문장 쪽이 알아야 한다.
+    ...(mode === "comeback" ? { whom: loserPlayers.map((p) => p.rawName) } : {}),
   };
 
   return {

@@ -1,4 +1,4 @@
-import { ga, ira, neun, reul, ro, wa } from "./korean";
+import { ga, ira, neun, reul, ro, wa, yeoss } from "./korean";
 import { isReplaySummaryData, type ReplaySummaryBeat, type ReplaySummaryData } from "./replaySummaryData";
 
 // 저장된 요약 데이터(replaySummaryData.ts)를 사람이 읽는 문단으로 옮긴다.
@@ -1328,6 +1328,19 @@ const TEMPLATES: Record<string, Tpl> = {
     ))}`;
   },
 
+  // 잘한 사람의 그림을 옛 프로게이머에 빗대는 한 마디(요청).
+  "pro-like": (c) => {
+    const pro = str(c.p.pro);
+    const style = str(c.p.style);
+    if (!pro || !style) return null;
+    const at = c.whom ? `${reul(c.whom)} 상대로 ` : "";
+    return `${ga(c.who)} ${at}${done(c, c.pick([
+      `마치 ${pro}같은 ${reul(style)} 보여줌`,
+      `${reul(pro)} 떠올리게 하는 ${reul(style)} 선보임`,
+      `${pro} 못지않은 ${yeoss(style)}`,
+    ]))}`;
+  },
+
   // ── 맺음말 ──
   result: (c) => {
     const phrase = c.p.units ? unitPhrase(list(c.p.units)) : "";
@@ -1379,6 +1392,28 @@ const TEMPLATES: Record<string, Tpl> = {
     const who = ga(c.who);
     // 팀전 승리는 한 사람의 공이 아니다(요청) — 각자가 무엇으로 싸웠는지를 나란히 말한다.
     // 흐름을 이미 말하는 초반 승리·역전에는 얹지 않는다(문장이 길어지고 앞뒤가 어긋난다).
+    // 경기력 차이가 심했으면 결론에서 그렇게 말한다(요청) — 국면을 늘어놓는 대신 한 줄로.
+    if (c.p.oneSided) {
+      const meLabel = c.team ? `${c.team}팀` : c.who;
+      return withHero(head + c.pick([
+        `${ga(meLabel)} 압도한 경기였음`,
+        `${p}${ga(meLabel)} 완승, 일방적인 경기였음`,
+        `처음부터 끝까지 ${ga(meLabel)} 끌고 간 일방적인 경기였음`,
+      ]));
+    }
+    // 역전패한 경기는 진 편 입장에서 맺어도 좋다(요청) — 초반을 쥐고 있던 쪽의 이야기라
+    // 그쪽을 주어로 세우는 편이 경기의 아쉬움이 더 살아난다.
+    if (mode === "comeback" && c.whom) {
+      const foeTeam = c.team === 1 ? 2 : c.team === 2 ? 1 : 0;
+      const foeLabel = foeTeam ? `${foeTeam}팀` : c.whom;
+      const meLabel = c.team ? `${c.team}팀` : c.who;
+      const by = phrase ? `${meLabel}의 ${phrase.replace(/으?로$/, "")}에 ` : `${meLabel}의 뒷심에 `;
+      return withHero(c.pick([
+        `${neun(foeLabel)} 초반 승기를 잡았지만 ${by}버티지 못하고 GG`,
+        `${neun(foeLabel)} 앞서가다 ${by}무너지며 아쉽게 패함`,
+        `${neun(foeLabel)} 다 잡았던 경기를 ${by}내주고 말았음`,
+      ]));
+    }
     const team = teamPhrase(c);
     if (team && (mode === "plain" || mode === "late")) {
       // "길게 끌어"는 쓰지 않는다(지적) — 장기전이었다는 말로 바꾼다.
@@ -1767,8 +1802,11 @@ export function renderReplaySummary(
       && [...LOST_TAILS, ...RISKY_TAILS].some((t) => out[out.length - 1].endsWith(t));
     // 맺음말에 활약 한 마디가 붙어 이미 '-고'를 품고 있으면 또 잇지 않는다 — 한 문장에
     // 같은 어미가 세 번 나온다(지적: 중복되는 접속사).
-    const endJoin = endJoinCandidate && !/고, |으며, /.test(text);
-    if (b.k === "result" && prev && !/결국|그대로|하지만|그러나/.test(text)) {
+    // 맺음말 자신이 이미 이어 주는 어미를 품고 있으면(역전패를 진 편 입장에서 말하는
+    // "…잡았지만 …GG" 같은 꼴) 앞 문장에 또 잇지도, 이음말을 앞에 달지도 않는다.
+    const endSelfLinked = /지만|으나|다가/.test(text);
+    const endJoin = endJoinCandidate && !/고, |으며, /.test(text) && !endSelfLinked;
+    if (b.k === "result" && prev && !endSelfLinked && !/결국|그대로|하지만|그러나/.test(text)) {
       // 이어 붙일 참이면 '-지만'이 이미 반전을 짚으므로, 머리말은 "결국/그대로"로 받는다.
       if (prevTide < 0 && !alreadyConceded && !endJoin) {
         // 앞 전황과 반대로 끝나는 결말에는 반드시 반전을 짚는다(지적) — 시간 머리말이

@@ -73,6 +73,12 @@ export function reul(w: string): string {
   return j === null || j === 0 ? `${w}를` : `${w}을`;
 }
 
+/** ~였다 / ~이었다 의 명사형 앞자리 — "물량 프로토스였음" / "메카닉 물량이었음". */
+export function yeoss(w: string): string {
+  const j = jongseong(w);
+  return j === null || j === 0 ? `${w}였음` : `${w}이었음`;
+}
+
 /** ~라는 / ~이라는 */
 export function ira(w: string): string {
   const j = jongseong(w);
