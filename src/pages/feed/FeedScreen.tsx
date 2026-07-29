@@ -472,24 +472,29 @@ export function MatchStack({
   // 최신 게임이 위로 오게 — 펼친 목록은 피드와 같은 시간 순서(최신 → 과거)를 따른다.
   const orderedDesc = useMemo(() => [...stack.items].sort((a, b) => b.time - a.time), [stack.items]);
   // 요약에 나열할 참가자 — 이 세션의 모든 게임에 나온 사람을 중복 없이 모은다(요청).
-  // 등장 순서(첫 게임 1팀부터)를 그대로 쓴다: 정렬 기준을 따로 두면 게임마다 순서가
-  // 흔들려 "같은 날 같은 멤버"라는 인상이 깨진다.
+  // 순서는 이 묶음 안에서의 게임수 많은 순 → 승리 많은 순 → 닉네임순(요청). 한때는
+  // 등장 순서를 그대로 썼는데, 그러면 그날 제일 많이 친 사람이 명단 끝에 가 있기도 했다.
+  // 3열 그리드가 행 우선으로 채우므로(grid-auto-flow: row) 읽는 순서도 1 2 3 / 4 5 6이다.
   const participants = useMemo(() => {
-    const seen = new Set<string>();
-    const out: { id: string; name: string }[] = [];
+    const acc = new Map<string, { id: string; name: string; plays: number; wins: number }>();
     for (const it of [...stack.items].sort((a, b) => a.time - b.time)) {
-      for (const team of [it.match.team1, it.match.team2]) {
-        for (const slot of team) {
+      const m = it.match;
+      for (const side of ["team1", "team2"] as const) {
+        for (const slot of m[side]) {
           // 컴퓨터·비회원은 "누가 있었나"를 말하는 명단이 아니다(요청) — 빼고 센다.
           // 참여 인원 집계도 이 목록 길이를 쓰므로 함께 맞는다.
           if (isComputerSlot(slot.memberId) || isUnregisteredSlot(slot.memberId)) continue;
-          if (seen.has(slot.memberId)) continue;
-          seen.add(slot.memberId);
-          out.push({ id: slot.memberId, name: resolveSlotName(slot, team, memberOf) });
+          const cur = acc.get(slot.memberId)
+            ?? { id: slot.memberId, name: resolveSlotName(slot, m[side], memberOf), plays: 0, wins: 0 };
+          cur.plays += 1;
+          if (m.result === side) cur.wins += 1;
+          acc.set(slot.memberId, cur);
         }
       }
     }
-    return out;
+    return [...acc.values()].sort((a, b) => (
+      b.plays - a.plays || b.wins - a.wins || a.name.localeCompare(b.name, "ko")
+    ));
   }, [stack.items, memberOf]);
 
   // 카카오톡 공유 내용(요청: 게임요약을 통째로 공유). 링크는 세션 날짜로 이 묶음을
