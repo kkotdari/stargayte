@@ -501,7 +501,9 @@ function tacticLabel(k: string, p: Record<string, unknown>): string {
     case "shuttle": return "셔틀 견제";
     case "nydus": return "커널";
     case "recall": return "아비터 리콜";
-    case "bionic": return "바이오닉 한 방";
+    // '한 방'은 올인 러시에나 어울리는 말이다(지적) — 바이오닉은 모아서 밀고 나가는
+    // 병력이라 그렇게 부르지 않는다.
+    case "bionic": return "바이오닉 병력";
     case "mech": return "메카닉 진출";
     case "moka": return "목동 저그";
     case "muta": return "뮤탈 견제";
@@ -569,7 +571,8 @@ function tideOf(b: ReplaySummaryBeat): -1 | 0 | 1 {
 }
 
 /** 여럿을 늘어놓을 때 쓰는 꼴 — "A의 바이오닉 한 방과 B의 3게이트 질럿 러시"는 어색하다.
- *  목록 안에서는 '한 방'을 떼고 병력으로 부른다(요청: 누구의 바이오닉 병력으로). */
+ *  목록 안에서는 '한 방'을 떼고 병력으로 부른다(요청: 누구의 바이오닉 병력으로).
+ *  지금은 이름 자체에 '한 방'이 거의 안 붙지만(위 tacticLabel 주석), 남은 것들을 위해 둔다. */
 const listForm = (label: string): string => label.replace(/ 한 방$/, " 병력");
 
 const TEMPLATES: Record<string, Tpl> = {
@@ -656,8 +659,9 @@ const TEMPLATES: Record<string, Tpl> = {
     // "Rex가 리버 드랍 한 방에"가 아니라 "Rex의 리버 드랍 한 방에"라야 읽힌다(지적) —
     // 그런 꼴은 주어까지 문장 안에서 만든다.
     const mine = `${c.who}의 ${label}`;
-    // 이름에 이미 '한 방'이 들어 있으면 또 붙이지 않는다(지적: "바이오닉 한 방 한 방에").
-    const blow = label.endsWith("한 방") ? `${mine}에` : `${mine} 한 방에`;
+    // '한 방'은 올인 러시에만 붙인다(지적) — 드랍·견제·운영에 붙이면 한 번에 끝낸 것처럼
+    // 읽힌다. 러시로 끝나는 이름(3게이트 질럿 러시 등)만 그 말을 달고, 나머지는 그냥 '-에'.
+    const blow = /러시$/.test(label) ? `${mine} 한 방에` : `${mine}에`;
     // 뒤에 그 사람이 한 행동이 오는 문장('…로 무엇을 파괴함')은 주격으로 세운다(지적:
     // "조조의 바이오닉 한 방으로 …파괴함"이 아니라 "조조는 바이오닉 한 방으로 …파괴함").
     // 소유격은 당한 쪽이 주어인 '-에' 꼴(아래 blow)에만 남긴다.
@@ -1640,7 +1644,7 @@ const TEMPLATES: Record<string, Tpl> = {
       const b2 = `${c.who}의 ${c.pick([
         `${spectacle}까지 나온 끝에 승리`,
         `${reul(spectacle)} 앞세워 승리`,
-        `${spectacle} 한 방으로 승부를 냄`,
+        `${reul(spectacle)} 꺼내 승부를 냄`,
       ])}`;
       return withHero(b2);
     }

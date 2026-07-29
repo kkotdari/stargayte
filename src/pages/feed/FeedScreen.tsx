@@ -552,16 +552,14 @@ function MatchStack({
         </div>
       </div>
 
-      {/* 펼치기 ▽ / 접기 △ — 글자만으로는 어느 쪽으로 움직이는지 한눈에 안 들어와
-          방향을 그대로 그린 삼각형을 옆에 붙인다(요청). */}
+      {/* 이 버튼은 이제 누르는 곳이라기보다 '어디를 눌러야 하는지' 알려 주는 안내문이다
+          (요청) — 포스트 어디를 눌러도 펼침/접힘이 되므로, 방향 삼각형 대신 그 사실을
+          글자로 말한다. 버튼으로 남겨 두는 건 키보드로도 여전히 여닫을 수 있게 하려는 것. */}
       <button
         type="button" className="scr-feed-stack-toggle"
         onClick={() => (open ? collapseAndReveal() : toggleOpen(true))} aria-expanded={open}
       >
-        {open ? "접기" : "펼치기"}
-        <svg className="scr-feed-stack-toggle-caret" width="9" height="6" viewBox="0 0 9 6" aria-hidden>
-          <path d={open ? "M4.5 0 9 6H0z" : "M4.5 6 0 0h9z"} fill="currentColor" />
-        </svg>
+        {open ? "포스트를 눌러 접으세요" : "포스트를 눌러 펼치세요"}
       </button>
     </div>
   );

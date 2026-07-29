@@ -2992,54 +2992,9 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
 .scr-match-trow-grid .scr-match-trow-team:first-child .scr-mt-player { flex-direction: row-reverse; }
 /* 각 팀 아래 승/패 — 팀 칸과 같은 열에서 가운데 정렬(요청). 승은 연두, 패는 붉은 계열. */
 .scr-match-trow-outcome { font-size: var(--fs-subhead); font-weight: 800; text-align: center; min-width: 28px; padding: 0 4px; }
-/* 펼침 상세 스탯 표(요청) — 양 팀 전원의 닉네임/플레이어네임/종족/APM/커맨드/유효APM/
-   유효커맨드. 유효커맨드 높은 순 정렬. 좁은 폭에선 가로 스크롤. */
-/* 펼친 로우의 스탯표는 가로로만 스크롤한다 — 세로는 넘칠 내용이 없으니 hidden으로 못박아
-   두 축이 동시에 스크롤되는(대각선 드래그 시 표가 가로로 밀리면서 페이지도 세로로 같이
-   움직이는) 현상을 막는다(요청). touch-action:pan-x로 이 표 위에서의 세로 스와이프는 이
-   표가 아니라 페이지가 처리하게 넘기고, overscroll-behavior-x:contain으로 가로 끝까지
-   스크롤해도 그 스크롤이 페이지로 체이닝되지 않게 한다. */
-.scr-match-stats-table-wrap {
-  /* 좌우 마진으로 아래 경기번호/등록자 줄(.scr-match-trow-footer 좌우 패딩)과 좌우를 맞춘다
-     (요청). 마진이라 표의 가로 스크롤 영역이 이 안쪽에서만 움직여 양쪽 여백이 유지된다.
-     여백은 둘 다 줄였다(14→6px, 요청). */
-  /* 로스터와 스탯 표 사이 갭 확대(12→18px, 요청). */
-  margin: 18px 6px 0; overflow-x: auto; overflow-y: hidden;
-  /* pan-x만 주면 세로 제스처 자체가 무시돼 표 위에서 페이지 세로 스크롤이 아예 안 됐다
-     (지적된 버그) — pan-y도 허용해 세로 드래그는 페이지가 받게 한다. 대각선 동시
-     스크롤은 브라우저의 제스처 축 고정(axis lock)이 자연스럽게 막아준다. */
-  overscroll-behavior-x: contain; touch-action: pan-x pan-y;
-}
-.scr-match-stats-table { width: 100%; border-collapse: collapse; font-size: var(--fs-caption); font-variant-numeric: tabular-nums; }
-.scr-match-stats-table th {
-  color: var(--muted); font-weight: 700; text-align: right; white-space: nowrap;
-  padding: 5px 9px; border-bottom: 1px solid var(--line-soft);
-}
-.scr-match-stats-table td { color: var(--text); text-align: right; white-space: nowrap; padding: 5px 9px; }
-.scr-match-stats-table .scr-mst-left { text-align: left; }
-/* 헤더 행 텍스트는 전부 가운데 정렬(요청) — 데이터 칸(우측/좌측 정렬)과 별개로 제목만
-   가운데로. 유저(.scr-mst-left) 헤더까지 포함해 덮으려 특이도를 맞춘다(thead .scr-mst-left). */
-.scr-match-stats-table thead th, .scr-match-stats-table thead th.scr-mst-left { text-align: center; }
+/* 예전엔 여기 사람별 총합 스탯 표(.scr-match-stats-table*)와, 그걸 띄우는 전체화면
+   시트(시간축 그래프 포함)가 있었다 — 통째로 걷어냈다(요청: 기능 삭제). */
 
-.scr-match-stats-table tbody tr + tr td { border-top: 1px solid rgba(var(--overlay-rgb), 0.06); }
-
-/* APM·커맨드 '유효/전체' 한 칸 — 볼드/색 구분 없이 전부 일반 글씨로 통일(요청).
-   슬래시 간격만 남긴다. */
-.scr-match-stats-table .scr-mst-pair { white-space: nowrap; }
-.scr-match-stats-table .scr-mst-pair .scr-mst-sep { margin: 0 2px; }
-/* 닉네임 칸: 종족 배지 + 닉네임을 한 줄로(요청 — 종족을 닉네임에 붙임). */
-.scr-match-stats-table .scr-mst-name { display: inline-flex; align-items: center; gap: 6px; }
-.scr-match-stats-table .scr-mst-nick { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* 모바일 — 유저 칸 최대폭을 한글 4자 정도로 제한(요청): 배지 14 + 갭 6 + 4자(caption
-   14px × 4 = 56) ≈ 78px. 넘치는 닉네임은 위 .scr-mst-nick이 말줄임 처리한다. */
-@media (max-width: 640px) {
-  .scr-match-stats-table .scr-mst-name { max-width: 78px; }
-}
-/* '생산' — 예전엔 볼드+포인트색 강조였지만 다른 수치들과 같은 일반 글씨로 통일(요청). */
-/* 유저 검색 중이면 그 회원 행을 스탯표에서도 강조(요청) — 로스터 하이라이트와 같은 색을
-   옅게 깐 행 배경 + 닉네임 볼드. */
-.scr-match-stats-table tr.scr-mst-row-hl { background: color-mix(in srgb, var(--highlight-bg) 32%, transparent); }
-.scr-match-stats-table tr.scr-mst-row-hl .scr-mst-name { font-weight: 800; }
 /* 로우 자체는 더 이상 클릭 대상이 아니다 — 펼칠 것이 없어졌다(요청). 그래서 커서/호버
    틴트도 함께 걷어냈다. 피드 묶음 안에서는 로우를 눌러도 '묶음 접기'로 동작하는데,
    그건 묶음 쪽(.scr-feed-stack-list)이 받는다. */
@@ -3846,7 +3801,12 @@ html.scr-light-theme .scr-admin-sheet::before { background: rgba(244, 246, 250, 
 /* 본문은 스크롤하지 않는다 — 스크롤은 목록이 혼자 맡아야 진행률이 위에 남는다.
    스크롤을 안 하는데 스크롤바 자리(scrollbar-gutter:stable)만 예약돼 오른쪽이 그만큼
    비어 있었다(지적) — 목록이 쓰게 돌려준다. */
-.scr-admin-panel-batch-modal .scr-modal-body { overflow: hidden; scrollbar-gutter: auto; }
+.scr-admin-panel-batch-modal .scr-modal-body {
+  overflow: hidden; scrollbar-gutter: auto;
+  /* 오른쪽 여백을 줄여 균형을 맞춘다(지적) — 목록 자신이 스크롤바 자리로 4px을 이미 비워
+     두고 있어서, 본문 기본 여백(18px)을 그대로 두면 오른쪽만 그만큼 더 넓어 보인다. */
+  padding-right: 12px;
+}
 .scr-admin-panel-batch-modal .scr-admin-panel-batch-log {
   flex: 1 1 auto; max-height: none; min-height: 120px;
 }
@@ -6574,7 +6534,7 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
    원인은 필터 패널(overflow:auto)의 바닥 클리핑. .scr-filter-panel의 padding-bottom
    +음수 margin 트릭으로 해결했고 글로우는 표준 알약 글로우 그대로 쓴다.) */
 /* 반투명 오버레이 — 뒤의 랭킹이 비쳐 보이는 딤+블러 위에 맵만 띄운다(자체 패널 없음). */
-.scr-rivalry-overlay, .scr-match-stats-overlay {
+.scr-rivalry-overlay {
   position: fixed; inset: 0; z-index: 100;
   /* 맵+범례를 세로 가운데에 둔다(요청). 예전엔 로딩(정사각)→로드(정사각+범례)로 본체가
      커지며 가운데가 다시 잡혀 타이틀이 튀어 올랐는데(지적), 로딩 자리에서 범례 높이만큼
@@ -6589,25 +6549,11 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
   background: rgba(4, 6, 10, 0.62);
   -webkit-backdrop-filter: blur(7px); backdrop-filter: blur(7px);
 }
-html.scr-light-theme .scr-rivalry-overlay,
-html.scr-light-theme .scr-match-stats-overlay { background: rgba(244, 246, 250, 0.62); }
+html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62); }
 .scr-rivalry-overlay-body { width: min(560px, 100%); }
 /* PC에선 상성 오버레이(랭킹 화면에서 열리는 상성맵)도 셸 확장에 맞춰 더 크게 — 안쪽
    정사각(.scr-rivalry-wrap)이 760까지 커질 수 있게 부모 폭 상한을 같이 올린다(요청). */
 @media (min-width: 768px) { .scr-rivalry-overlay-body { width: min(760px, 100%); } }
-/* 스탯 시트 — 껍데기(딤/블러/가운데 정렬/닫기)는 상성과 공유하고, 안쪽만 표에 맞춘다.
-   표는 세로로 길지 않으니 폭을 더 벌릴 이유가 없다: 상성보다 좁게 둔다. */
-.scr-match-stats-overlay .scr-rivalry-overlay-body { width: min(560px, 100%); }
-/* 시트 안에서는 표가 곧 내용이라 좌우 마진을 걷고 시트 폭을 다 쓴다(카드 안에 깔릴 때
-   쓰던 6px 마진은 그때의 좌우 정렬용이었다). 게임번호 줄과 표 사이만 띄운다. */
-.scr-match-stats-overlay .scr-match-stats-table-wrap { margin: 12px 0 0; }
-.scr-match-stats-overlay .scr-match-trow-meta { color: var(--dim); }
-/* 스탯 보기 — 케밥과 같은 아이콘 버튼 톤(밑줄·글자 없이, 요청). */
-.scr-match-stats-btn {
-  background: transparent; border: none; color: var(--dim); cursor: pointer;
-  padding: 0; line-height: 0; -webkit-tap-highlight-color: transparent;
-}
-@media (hover: hover) { .scr-match-stats-btn:hover { color: var(--text); } }
 .scr-rivalry-overlay-head {
   display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;
 }
@@ -6945,7 +6891,6 @@ html.scr-light-theme .scr-match-stats-overlay { background: rgba(244, 246, 250, 
   font-family: inherit; font-size: var(--fs-micro); font-weight: 700; color: var(--dim);
   cursor: pointer; -webkit-tap-highlight-color: transparent;
 }
-.scr-feed-stack-toggle-caret { flex-shrink: 0; }
 @media (hover: hover) { .scr-feed-stack-toggle:hover { color: var(--text); } }
 /* 예전에는 펼쳤을 때 요약과 목록의 경계에 그림자를 드리워 두 층이 겹쳐 있다는 걸
    보여 줬다. 이제 펼치면 요약 자체가 접히므로(요청) 나눌 두 층이 없어 걷어냈다. */

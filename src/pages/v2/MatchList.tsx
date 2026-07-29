@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
-import { MoreHorizontal, Monitor, User, Copy, Check, BarChart3, X } from "lucide-react";
+import { MoreHorizontal, Monitor, User, Copy, Check } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
 import RaceBadge from "../../components/common/RaceBadge";
 import { Spinner } from "../../components/common/Feedback";
@@ -15,7 +15,6 @@ import { cx } from "../../utils/format";
 import { attachPopover } from "../../utils/popover";
 import { dateWithDow } from "../../utils/date";
 import { normalizeSearchText } from "../../utils/memberSearch";
-import { useLockBodyScroll } from "../../utils/bodyScrollLock";
 import { renderReplaySummaryParts, type SummaryPart } from "../../utils/replaySummaryText";
 import KakaoShareButton from "../../components/common/KakaoShareButton";
 import type { KakaoShareContent } from "../../utils/kakaoShare";
@@ -347,111 +346,8 @@ function MatchActionsMenu({
   );
 }
 
-// 상세 스탯 표(요청) — 양 팀 전원을 한 표에 모아 생산 높은 순으로 정렬한다.
-// 리플레이 파싱값(apm/eapm/커맨드/유효커맨드)은 수기등록이면 없어서 '–'.
-// 예전에는 카드를 펼치면 그 안에 깔렸는데, 이제 전체화면 시트로 띄운다(요청).
-function MatchStatsTable({
-  team1, team2, memberOf, highlightMemberIds, highlightTerms,
-}: {
-  team1: MatchSlot[]; team2: MatchSlot[]; memberOf: (id: string) => Member | undefined;
-  highlightMemberIds?: Set<string>; highlightTerms?: string[];
-}) {
-  const rows = [
-    ...team1.map((s) => ({ s, players: team1 })),
-    ...team2.map((s) => ({ s, players: team2 })),
-  ]
-    .map(({ s, players }) => ({
-      memberId: s.memberId,
-      nickname: resolveSlotName(s, players, memberOf),
-      race: s.race,
-      apm: s.apm, cmd: s.cmdCount, eapm: s.eapm, ecmd: s.effectiveCmdCount, build: s.buildCount,
-    }))
-    // 생산(build) 높은 순 — 값이 없으면(수기등록) 맨 아래로(요청).
-    .sort((a, b) => (b.build ?? -1) - (a.build ?? -1));
-  const n = (v: number | null) => (v == null ? "–" : v.toLocaleString());
-  // APM·커맨드는 '유효/전체' 한 칸에 합쳐 보여준다(요청) — 유효값은 강조, 전체값은 흐리게.
-  // 둘 다 없으면(수기등록) '–' 하나만.
-  const pair = (eff: number | null, tot: number | null) => {
-    if (eff == null && tot == null) return <>–</>;
-    return (
-      <>
-        <span className="scr-mst-eff">{n(eff)}</span>
-        <span className="scr-mst-sep">/</span>
-        <span className="scr-mst-tot">{n(tot)}</span>
-      </>
-    );
-  };
-  return (
-    <div className="scr-match-stats-table-wrap scr-scroll">
-      <table className="scr-match-stats-table">
-        <thead>
-          <tr>
-            {/* 유저(종족은 닉네임에 배지로 붙임)·생산은 그대로, APM·커맨드는 유효/전체 형식(요청). */}
-            <th className="scr-mst-left">유저</th>
-            <th>생산</th><th>APM</th><th>커맨드</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r, i) => {
-            const nameLc = normalizeSearchText(r.nickname);
-            const hl = highlightMemberIds?.has(r.memberId) || !!highlightTerms?.some((t) => nameLc.includes(t));
-            return (
-            <tr key={i} className={cx(hl && "scr-mst-row-hl")}>
-              <td className="scr-mst-left">
-                <span className="scr-mst-name">
-                  <RaceBadge race={r.race} size={14} circleLetter />
-                  {/* 닉네임만 감싸는 스팬 — 모바일에서 유저 칸 최대폭(한글 4자 정도)을
-                      제한할 때 넘치는 글자를 말줄임 처리하기 위함(flex 컨테이너의 맨글자
-                      텍스트는 ellipsis가 안 걸린다). */}
-                  <span className="scr-mst-nick">{r.nickname}</span>
-                </span>
-              </td>
-              <td className="scr-mst-build">{n(r.build)}</td>
-              <td className="scr-mst-pair">{pair(r.eapm, r.apm)}</td>
-              <td className="scr-mst-pair">{pair(r.ecmd, r.cmd)}</td>
-            </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-/** 스탯 표를 띄우는 전체화면 시트(요청: 상성처럼) — 카드 안에서 펼치던 걸 밖으로 뺐다.
- *  상성 오버레이(.scr-rivalry-overlay)와 같은 껍데기를 쓴다: 딤+블러 위에 내용만 얹고
- *  닫기는 우상단 X로만 한다(빈 공간 탭으로 닫으면 표를 옆으로 스크롤하다 닫혀버린다).
- *  머리에는 어느 경기인지 알 수 있게 게임번호와 등록자를 함께 둔다. */
-function MatchStatsOverlay({ row, memberOf, highlightMemberIds, highlightTerms, onClose }: {
-  row: SearchListRow;
-  memberOf: (id: string) => Member | undefined;
-  highlightMemberIds?: Set<string>;
-  highlightTerms?: string[];
-  onClose: () => void;
-}) {
-  useLockBodyScroll();
-  return createPortal(
-    // 리액트 포털은 DOM이 아니라 리액트 트리를 따라 이벤트를 올린다 — 이 시트는 body에
-    // 그려지지만 이벤트는 여전히 경기 로우를 거쳐 올라간다. 그래서 시트 아무 데나 누르면
-    // 뒤에 있는 묶음 목록의 '접기'가 같이 눌렸다(지적). 여기서 끊는다.
-    <div className="scr-rivalry-overlay scr-match-stats-overlay" onClick={(e) => e.stopPropagation()}>
-      <div className="scr-rivalry-overlay-body">
-        <div className="scr-rivalry-overlay-head">
-          <span className="scr-rivalry-overlay-title">경기 스탯</span>
-          <button type="button" className="scr-rivalry-overlay-close" onClick={onClose} aria-label="닫기">
-            <X size={20} />
-          </button>
-        </div>
-        <MatchMetaLine row={row} />
-        <MatchStatsTable
-          team1={row.team1} team2={row.team2} memberOf={memberOf}
-          highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms}
-        />
-      </div>
-    </div>,
-    document.body,
-  );
-}
+// 예전엔 여기 사람별 총합 스탯 표와, 그걸 띄우는 전체화면 시트(시간축 그래프 포함)가
+// 있었다 — 통째로 걷어냈다(요청: 기능 삭제).
 
 /** 게임번호 + 등록자 — 예전엔 펼침 맨 아래에만 있었는데, 이제 카드 위쪽에 늘 보인다(요청).
  *  스탯 시트 머리에도 같은 줄을 써서 "지금 보는 게 어느 경기인가"가 두 곳에서 같게 읽힌다. */
@@ -479,10 +375,8 @@ export default function MatchList({
   const canDelete = !!user && isAdminRole(user.roles);
   const [deleteTarget, setDeleteTarget] = useState<Match | null>(null);
   const [deleting, setDeleting] = useState(false);
-  // 카드 안에서 펼치던 상세(스탯 표)는 전체화면 시트로 나갔다(요청) — 그래서 로우 자체의
-  // 펼침/접힘이 통째로 없어졌고, 지금 어느 경기의 스탯을 보고 있는지만 들고 있으면 된다.
-  // 게임번호·등록자는 펼쳐야 보이던 걸 늘 보이는 자리로 올렸다(요청).
-  const [statsRow, setStatsRow] = useState<SearchListRow | null>(null);
+  // 카드 안에서 펼치던 상세(스탯 표)는 없앴다(요청) — 그래서 로우 자체의 펼침/접힘도
+  // 통째로 사라졌다. 게임번호·등록자는 펼쳐야 보이던 걸 늘 보이는 자리로 올렸다(요청).
 
   const confirmDelete = async () => {
     if (!deleteTarget) return;
@@ -522,15 +416,6 @@ export default function MatchList({
                 <div className="scr-match-trow-topline">
                   <MatchMetaLine row={r} />
                   <div className="scr-match-trow-topmeta">
-                    {/* 스탯 보기 — 글자 링크가 아니라 아이콘 하나로(요청). 로스터 우상단
-                        케밥 왼쪽에 붙어 같은 줄을 쓴다. */}
-                    <button
-                      type="button" className="scr-match-kebab-btn scr-match-stats-btn"
-                      onClick={(e) => { e.stopPropagation(); setStatsRow(r); }}
-                      aria-label="경기 스탯 보기"
-                    >
-                      <BarChart3 size={16} />
-                    </button>
                     <MatchActionsMenu
                       match={r.raw} canDelete={canDelete} memberOf={memberOf}
                       onDelete={setDeleteTarget}
@@ -616,14 +501,6 @@ export default function MatchList({
           </div>
         ))}
       </div>
-
-      {statsRow && (
-        <MatchStatsOverlay
-          row={statsRow} memberOf={memberOf}
-          highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms}
-          onClose={() => setStatsRow(null)}
-        />
-      )}
 
       {/* 확인창도 이 컴포넌트 안(=묶음 목록 안)에서 그려진다 — 클릭이 목록으로 올라가면
           지울지 묻는 중에 목록이 접힌다. 감싸서 끊는다. */}
