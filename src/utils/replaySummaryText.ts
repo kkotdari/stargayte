@@ -580,17 +580,26 @@ const TEMPLATES: Record<string, Tpl> = {
   "raid-damage": (c) => {
     const label = tacticLabel(str(c.p.k), c.p);
     if (!label) return null;
-    // 당한 쪽이 그때 방어 건물을 거의 안 갖고 있었으면 이름 앞에 그 사실을 붙인다(지적:
-    // 포토를 안 지었다가 당했는데 그 내용이 안 나온다). 문장 하나를 더 쓰지 않고 이름을
-    // 꾸미는 쪽을 택했다 — 같은 순간을 두 문장이 나눠 말하면 읽는 맛이 떨어진다.
-    // 이 필드가 없던 시절의 요약은 이 대목을 그냥 건너뛴다.
+    // 당한 쪽이 그때 방어 건물을 거의 안 갖고 있었으면 그 사실을 함께 말한다(지적:
+    // 포토를 안 지었다가 당했는데 그 내용이 안 나온다). 이 필드가 없던 시절의 요약은
+    // 이 대목을 그냥 건너뛴다.
+    // 한때는 이름을 꾸몄는데("포토 2개뿐이던 Sohee_Min이") 두 가지가 걸렸다(지적):
+    //  ① "포토 2개뿐인 상태에서 …에 당했다"가 훨씬 자연스럽다.
+    //  ② 앞 문장에 이어 붙이며 주어("Sohee_Min이 ")를 지우는 자리(아래 cutIn)에서 꾸밈말만
+    //     남아 "포토 2개뿐이던 버티지 못했다"가 됐다.
+    // 그래서 이름에서 떼어 문장 앞마디로 세운다.
     const vdef = DEFENSE_KO[str(c.p.vdef)];
-    const thin = !vdef || !("vdefN" in c.p) ? ""
+    const thinAt = !vdef || !("vdefN" in c.p) ? ""
       : num(c.p.vdefN) === 0
-        ? `${vdef} 하나 없던 `
-        : `${vdef} ${num(c.p.vdefN)}개뿐이던 `;
-    const of = c.whom ? `${thin}${c.whom}의 ` : "상대 ";
-    const foe = c.whom ? `${thin}${c.whom}` : "상대";
+        ? `${vdef} 하나 없는 상태에서 `
+        : `${vdef} ${num(c.p.vdefN)}개뿐인 상태에서 `;
+    const of = c.whom ? `${c.whom}의 ` : "상대 ";
+    const foe = c.whom ? c.whom : "상대";
+    /** 이 앞마디는 '당한 쪽이 주어인' 문장에만 붙일 수 있다 — 때린 쪽이 주어인 문장
+     *  ("A가 바이오닉으로 …") 앞에 놓으면 포토가 없던 쪽이 A로 읽힌다. 그래서 앞마디가
+     *  있을 때는 당한 쪽이 주어인 꼴만 고르고, 없을 때만 두 꼴을 섞어 고른다. */
+    const say = (victimLed: string[], actorLed: string[] = []) =>
+      done(c, c.pick(thinAt ? victimLed.map((s) => `${thinAt}${s}`) : [...victimLed, ...actorLed]));
     // 이 수를 낸 사람 말고도 같이 덮친 사람이 있었으면 이름을 함께 부른다(지적: 한 사람한테만
     // 당한 게 아니다). 자리(이동·공격 명령이 그 사람 진영에 몰렸나)로 짚은 사람들이다.
     const also = num(c.p.gang) >= 2 && c.who2 ? `${c.who2}까지 달려들어 ` : "";
@@ -645,13 +654,22 @@ const TEMPLATES: Record<string, Tpl> = {
             : `${ga(joinNames(c.whoList))} ${reul(labels[0])} 감행함`;
           return done(c, only);
         }
-        return done(c, c.pick([
-          `${all}에 ${ga(foe)} ${when}${c.p.out ? "탈락" : "무너짐"}`,
-          `${all}에 ${when}${ga(foe)} 버티지 못함`,
-          c.p.out
-            ? `${ro(all)} ${when}${ga(foe)} 탈락`
-            : `${ro(all)} ${of}생산이 ${when || "빠르게 "}끊김`,
-        ]));
+        // 실제로 탈락한 게 아니면 '무너짐/버티지 못함'은 과하다(지적: 무너진 정도는
+        // 아니고 타격을 받은 정도였다) — 확인된 건 그 무렵 생산이 꺾였다는 것뿐이라
+        // 거기까지만 말한다. 실제로 이 자리에서 얻어맞고도 45분 뒤에 이긴 경기가 있었다.
+        return c.p.out
+          ? say(
+            [`${all}에 ${ga(foe)} ${when}탈락`, `${all}에 ${when}${ga(foe)} 버티지 못함`],
+            [`${ro(all)} ${when}${ga(foe)} 탈락`],
+          )
+          : say(
+            [
+              `${all}에 ${ga(foe)} ${when}큰 타격을 입음`,
+              `${all}에 ${when}${ga(foe)} 크게 흔들림`,
+              `${all}에 ${of}생산이 ${when || "빠르게 "}끊김`,
+            ],
+            [`${ro(all)} ${of}생산이 ${when || "빠르게 "}끊김`],
+          );
       }
     }
     // 당한 사람을 못 짚었으면 피해까지 말하지 않는다(지적) — 무슨 수를 갔다는 것만 말한다.
@@ -671,41 +689,38 @@ const TEMPLATES: Record<string, Tpl> = {
     if (also) {
       const m = num(c.p.outMin) || num(c.p.hitMin);
       const when = m > 0 ? `${m}분 만에 ` : "";
-      return done(c, c.pick(
-        c.p.out
-          ? [`${blow} ${also}${when}${ga(foe)} 탈락`, `${blow} ${also}${when}${reul(foe)} 판에서 지움`]
-          : [`${blow} ${also}${of}생산이 뚝 끊김`, `${blow} ${also}${when}${ga(foe)} 버티지 못함`]
-      ));
+      return c.p.out
+        ? say(
+          [`${blow} ${also}${when}${ga(foe)} 탈락`],
+          [`${blow} ${also}${when}${reul(foe)} 판에서 지움`],
+        )
+        // 탈락이 아니면 '버티지 못함'까지 가지 않는다(위 ks 갈래와 같은 이유).
+        : say([`${blow} ${also}${of}생산이 뚝 끊김`, `${blow} ${also}${when}${ga(foe)} 크게 흔들림`]);
     }
     // 초반 올인에 초반부터 무너진 그림(요청) — 몇 분 만이었는지가 곧 이야기다.
     if (c.p.early && !c.p.out) {
       const m = num(c.p.hitMin);
       const when = m > 0 ? `${m}분 만에 ` : "";
-      return done(c, c.pick([
-        `${ro(by)} ${when}${of}일꾼에 큰 피해를 줌`,
-        `${blow} ${when}${ga(foe)} 휘청임`,
-        `${blow} ${when}${ga(foe)} 빈사 상태가 됨`,
-        `${ro(by)} ${when}${reul(foe)} 몰아붙임`,
-      ]));
+      return say(
+        [`${blow} ${when}${ga(foe)} 휘청임`, `${blow} ${when}${ga(foe)} 빈사 상태가 됨`],
+        [`${ro(by)} ${when}${of}일꾼에 큰 피해를 줌`, `${ro(by)} ${when}${reul(foe)} 몰아붙임`],
+      );
     }
     // 그 창 안에 실제로 탈락했으면(Leave Game) 짐작이 아니라 사실이다 — 그렇게 말한다.
     if (c.p.out) {
       const min = num(c.p.outMin);
       const when = min > 0 ? `${min}분경 ` : "";
-      return done(c, c.pick([
-        `${ro(by)} ${when}${reul(foe)} 엘리시킴`,
-        `${blow} ${when}${ga(foe)} 탈락`,
-        `${ro(by)} ${when}${reul(foe)} 판에서 지움`,
-      ]));
+      return say(
+        [`${blow} ${when}${ga(foe)} 탈락`],
+        [`${ro(by)} ${when}${reul(foe)} 엘리시킴`, `${ro(by)} ${when}${reul(foe)} 판에서 지움`],
+      );
     }
     // 그 사람이 한 행동을 말하는 문장은 주격으로(위 by 참고), 상대 쪽 일이 주어인
     // 문장('생산이 막힘')만 소유격으로 둔다.
-    return done(c, c.pick([
-      `${ro(by)} ${of}생산에 큰 피해를 줌`,
-      `${ro(mine)} ${of}생산이 막힘`,
-      `${blow} ${of}생산이 뚝 끊김`,
-      `${ro(by)} ${of}살림을 크게 흔듦`,
-    ]));
+    return say(
+      [`${ro(mine)} ${of}생산이 막힘`, `${blow} ${of}생산이 뚝 끊김`],
+      [`${ro(by)} ${of}생산에 큰 피해를 줌`, `${ro(by)} ${of}살림을 크게 흔듦`],
+    );
   },
 
   // ── 전술(replayTactics) ──

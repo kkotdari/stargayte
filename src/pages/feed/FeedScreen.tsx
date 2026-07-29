@@ -337,10 +337,20 @@ function MatchStack({
   defaultOpen?: boolean;
 }) {
   const [open, setOpen] = useState(defaultOpen);
+  // 아래 안내문("포스트를 눌러 …")이 지금 무슨 글자여야 하는가 — open을 그대로 쓰지 않고
+  // 한 박자 늦춘다(요청: 연출 동안에는 글자를 안 보여주기). open을 그대로 쓰면 누르는
+  // 순간 글자가 먼저 바뀌어, 카드는 아직 움직이는 중인데 안내문만 '이미 다 됐다'고 말한다.
+  // 글자는 아래 연출의 페이드 아웃이 끝난 뒤(=안 보이는 사이)에 바꾼다.
+  const [labelOpen, setLabelOpen] = useState(defaultOpen);
+  const toggleRef = useRef<HTMLButtonElement>(null);
+  const labelTimerRef = useRef<number | null>(null);
   // 접기가 끝난 뒤 잠깐 테두리를 밝혀 어느 카드가 접힌 건지 짚어 준다(요청).
   const [flash, setFlash] = useState(false);
   const flashTimerRef = useRef<number | null>(null);
-  useEffect(() => () => { if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current); }, []);
+  useEffect(() => () => {
+    if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current);
+    if (labelTimerRef.current) window.clearTimeout(labelTimerRef.current);
+  }, []);
   // 필터를 걸거나 풀면 그에 맞춰 다시 맞춘다(요청) — 걸러진 결과를 요약 뒤에 숨겨 두면
   // 이 카드가 왜 남았는지가 안 보인다. toggledRef를 건드리지 않으므로 연출 없이 상태만 바뀐다.
   useEffect(() => { setOpen(defaultOpen); }, [defaultOpen]);
@@ -440,10 +450,16 @@ function MatchStack({
       inner.style.opacity = "";
     };
     const cleanup = () => { clearInline(); cancelRevealRef.current = null; };
+    // 안내문 글자 바꾸기 예약 — 연출이 중간에 끊기면(재토글/언마운트) 지금 상태로 맞춘다.
+    const settleLabel = () => {
+      if (labelTimerRef.current) window.clearTimeout(labelTimerRef.current);
+      labelTimerRef.current = null;
+      setLabelOpen(open);
+    };
 
     // 첫 렌더나 리렌더는 연출 없이 상태만 맞춘다 — 스크롤하다 리렌더될 때마다 카드가
     // 다시 펼쳐지는 것처럼 보이면 안 된다. 기다릴 연출이 없으니 예약도 바로 실행한다.
-    if (!wasToggled) { cleanup(); heightRef.current = null; runAfterCollapse(); return; }
+    if (!wasToggled) { cleanup(); settleLabel(); heightRef.current = null; runAfterCollapse(); return; }
 
     // 세 마디로 나눠 순서대로 간다(요청): 나가는 쪽이 사라지고 → 높이가 옮겨 가고 →
     // 들어오는 쪽이 한 번에 나타난다. 예전엔 셋을 동시에 굴리며 카드도 하나씩 어긋나게
@@ -487,15 +503,36 @@ function MatchStack({
       },
     ));
 
+    // 아래 안내문은 연출이 도는 동안 감춘다(요청) — 앞뒤로만 잠깐 보이고 가운데(높이가
+    // 옮겨 가는 구간)에는 없다. 페이드 아웃/인을 따로 두 개 걸면 뒤에 건 쪽이 delay
+    // 구간까지 backwards fill로 이겨 버려서(둘 다 opacity를 건드린다) 시작하자마자 툭
+    // 사라진다 — 한 애니메이션 안에 네 지점을 offset으로 찍어 한 번에 굴린다.
+    const total = SWAP_FADE_MS * 2 + (moves ? SWAP_HEIGHT_MS : 0);
+    if (toggleRef.current) {
+      anims.push(toggleRef.current.animate(
+        [
+          { opacity: 1, offset: 0 },
+          { opacity: 0, offset: SWAP_FADE_MS / total },
+          { opacity: 0, offset: (total - SWAP_FADE_MS) / total },
+          { opacity: 1, offset: 1 },
+        ],
+        { duration: total, fill: "both", easing: "linear" },
+      ));
+    }
+    // 글자 자체는 안 보이는 사이에 바꾼다(위 labelOpen 주석).
+    if (labelTimerRef.current) window.clearTimeout(labelTimerRef.current);
+    labelTimerRef.current = window.setTimeout(() => setLabelOpen(open), SWAP_FADE_MS);
+
     // 펼친 뒤 목록 맨 아래로 스크롤하던 것은 걷어냈다(요청) — 펼치기를 누른 자리에
     // 그대로 있는 편이 낫다. 접기는 collapseAndReveal이 예약해 둔 스크롤이 되돌려 주는데,
     // 그 실행은 연출이 끝난 지금이다(요청: 접을 때 애니메이션이 끝나고 스크롤 이동).
     Promise.all(anims.map((a) => a.finished))
-      .then(() => { cleanup(); runAfterCollapse(); })
+      .then(() => { cleanup(); settleLabel(); runAfterCollapse(); })
       .catch(() => {});
     cancelRevealRef.current = () => {
       anims.forEach((x) => { try { x.cancel(); } catch { /* 이미 끝남 */ } });
       cleanup();
+      settleLabel();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -590,10 +627,11 @@ function MatchStack({
           (요청) — 포스트 어디를 눌러도 펼침/접힘이 되므로, 방향 삼각형 대신 그 사실을
           글자로 말한다. 버튼으로 남겨 두는 건 키보드로도 여전히 여닫을 수 있게 하려는 것. */}
       <button
+        ref={toggleRef}
         type="button" className="scr-feed-stack-toggle"
         onClick={() => (open ? collapseAndReveal() : toggleOpen(true))} aria-expanded={open}
       >
-        {open ? "포스트를 눌러 접으세요" : "포스트를 눌러 펼치세요"}
+        {labelOpen ? "포스트를 눌러 접으세요" : "포스트를 눌러 펼치세요"}
       </button>
     </div>
   );
