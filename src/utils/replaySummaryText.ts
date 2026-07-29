@@ -303,6 +303,10 @@ const escapeRe = (v: string): string => v.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 const NEUTRAL_BEATS = new Set([
   "standoff", "attrition", "fast-hands", "power-unit", "expand", "prod-gap", "worker-gap",
   "tech", "vision", "no-detect", "revival",
+  // 째기(greedy-build)도 여기다 — 자원을 먼저 챙긴 것은 공격이 아니라 준비라서, 그 뒤에
+  // 상대의 러시가 오면 "하지만"이 아니라 "~했고"로 이어야 맞다(지적: 째기는 공격이 아니라
+  // 하지만이 붙는 게 어색하다). 째기가 실제로 응징당한 경우는 greedy-punished가 따로 말한다.
+  "greedy-build",
 ]);
 // 한 사람의 일이지만 국면은 상대 쪽으로 기우는 문장들 — 제 수가 역풍을 맞았거나 당한 것.
 // 진 편의 맺음(stand)도 여기다: "…로 맞섰지만 역부족"은 그 사람 이야기이면서 국면은
@@ -1665,16 +1669,16 @@ const TEMPLATES: Record<string, Tpl> = {
   },
 
   // 병력 건물 없이 자원부터 늘린 것 — 순서가 곧 증거다(요청).
+  // 이걸 부르는 말은 "째기"다(요청: 째기 표현 복구) — 한때 "먼저 올리는 전략"으로 풀어 썼는데,
+  // 이 판에서 쓰는 말이 따로 있는데 굳이 설명체로 바꿔 부를 이유가 없다.
   "greedy-build": (c) => {
     const kind = str(c.p.kind);
     const what = kind === "hatch" ? "해처리" : kind === "nexus" ? "투넥서스" : "투커맨드";
-    return `${ga(c.who)} ${done(c, c.pick(
-      kind === "hatch"
-        ? [`해처리를 먼저 늘리는 전략을 시도함`, `초반부터 해처리를 늘려 자원을 앞세움`,
-           `해처리를 먼저 올려 자원을 챙기는 전략을 씀`]
-        : [`${reul(what)} 먼저 올리는 전략을 시도함`, `초반부터 ${ro(what)} 자원을 앞세움`,
-           `${reul(what)} 먼저 가져가 자원을 챙기는 전략을 씀`],
-    ))}`;
+    return `${ga(c.who)} ${done(c, c.pick([
+      `${ro(what)} 째기를 시도함`,
+      `초반부터 ${ro(what)} 자원을 앞세움`,
+      `${ro(what)} 째고 자원부터 챔`,
+    ]))}`;
   },
 
   // 잘한 사람의 그림을 옛 프로게이머에 빗대는 한 마디(요청).
@@ -2052,6 +2056,13 @@ export function renderReplaySummary(
         if (canAndJoin()) joinPrev = true;
         else linkWord = link(["그와 동시에", "한편"]);
       }
+    // 째기(greedy-build) 다음은 늘 나란히 잇는다 — 째기는 공격이 아니라 준비이고 한동안
+    // 이어지는 상태라, 그 뒤에 상대의 수가 와도 반전이 아니다(지적: "째기는 공격은 아니라
+    // 하지만이 붙는게 어색해"). 위 SAME_TIME_SEC(45초)로는 못 잡는다 — 실제 리플레이에서
+    // 째기와 상대의 11드론 러시가 2분 남짓 떨어져 있었다. 못 이을 때만 동시성을 짚는 말로 받는다.
+    } else if (linkable && prev!.k === "greedy-build" && closeEnough) {
+      if (canAndJoin()) joinPrev = true;
+      else { linkWord = link(["그와 동시에", "한편"]); teamTag = teamTagFor(); }
     // 시간이 많이 벌어진 자리는 반드시 짚는다 — 안 짚으면 바로 이어진 일로 읽힌다(요청).
     } else if (
       // 같은 편이 몰아치는 내용이 이어지면 문장을 나누지 말고 "…했고 …했다"로 잇는다(요청)

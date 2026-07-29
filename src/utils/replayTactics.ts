@@ -680,12 +680,26 @@ function detectFor(c: Ctx): Tactic[] {
     }
     // 커널(나이더스 커널) — 뚫어 놓으면 병력이 순식간에 건너간다(요청). 건물 건설 커맨드
     // 하나로 확실히 잡히고, 애초에 자주 나오지 않아 나오면 그 자체가 이야깃거리다.
-    const nydus = s.buildingCounts["Nydus Canal"] ?? 0;
-    if (nydus >= 1) {
+    //
+    // 다만 커널은 그 자체로 때리는 수가 아니라 문이다 — '누구를 때렸다'로 쓰려면 그 문이
+    // 실제로 상대 진영에 뚫려 있어야 한다(지적: "정구는 저그고 수달은 프로토스인데 커널로
+    // 피해?"). 실측한 리플레이에서 커널 6개가 전부 제 본진 언저리(본진↔본진 거리의
+    // 0.17~0.25배)에 있고 상대 본진과는 0.77배 넘게 떨어져 있었는데도, 그 상대의 생산이
+    // 꺾인 것을 커널 탓으로 적었다. 자리를 근거로 쓸 수 있을 때만 상대를 짚고, 그때만
+    // 피해의 원인으로 쓴다(intoFoe — replaySummary의 damageFrom이 본다).
+    const nydusSpots = s.buildPositions.filter((b) => b.unit === "Nydus Canal");
+    if (nydusSpots.length >= 1) {
+      const into = foeAt(nydusSpots);
+      const intoFoe = "whom" in into && !!into.whom && geo !== null
+        && nydusSpots.some((b) => geo.enemyAt(b) !== null);
+      // 상대 진영에 뚫은 것을 근거로 쓸 때는 시점도 그 커널의 것이어야 한다 — 첫 커널이
+      // 제 본진 쪽이면 시점과 근거가 서로 다른 커널을 가리킨다(실측: 첫 커널 14.2분은 아무
+      // 진영도 아니고, 상대 진영에 들어간 것은 16.1분이었다).
+      const intoSpots = geo ? nydusSpots.filter((b) => geo.enemyAt(b) !== null) : [];
       out.push({
-        key: "nydus", ...target, weight: 12,
-        at: s.firstBuildingFrame["Nydus Canal"] ?? null,
-        who,
+        key: "nydus", ...(intoFoe ? into : target), weight: 12,
+        at: (intoFoe ? firstOf(intoSpots) : null) ?? s.firstBuildingFrame["Nydus Canal"] ?? null,
+        who, p: { intoFoe },
       });
     }
     // 성큰러시(요청) — 초반에 상대 본진 코앞에 성큰을 박는 것. 해처리는 보지 않는다

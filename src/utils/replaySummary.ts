@@ -1280,6 +1280,12 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   if (!replay.winnerSide) return null;
   const sec = replay.durationSeconds ?? 0;
   const totalFrames = sec > 0 ? Math.round(sec / SECONDS_PER_FRAME) : null;
+  // 자리(명령 좌표)를 읽을 수 있는 판인가 — screp 버전에 따라 Pos를 안 내려주면 통째로
+  // 비어 있다. 그때는 자리 근거를 요구할 수 없으므로 대상 지목의 자리 검사를 건너뛴다
+  // (아래 reachedBase 주석 참고). 하나라도 좌표가 있으면 그 판은 자리를 읽을 수 있다.
+  const hasOrderPositions = replay.players.some(
+    (p: ParsedReplayPlayer) => (p.signals?.orderPositions?.length ?? 0) > 0,
+  );
 
   const winnerPlayers = replay.winnerSide === "team1" ? replay.team1 : replay.team2;
   const loserPlayers = replay.winnerSide === "team1" ? replay.team2 : replay.team1;
@@ -1361,8 +1367,30 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   // 러시·드랍을 간 그 타이밍에 상대 쪽 누군가의 생산이 뚝 끊겼다면, 그건 그 수가 통했다는
   // 뜻이다(요청) — "3게이트 질럿 러시로 조조의 본진을 파괴함"처럼 한 문장으로 잇는다.
   // 대상이 이미 확실한 전술(자리로 짚은 것)은 그 사람만 보고, 아니면 상대 전원을 훑는다.
-  const damageFrom = (t: { key: string; at: number | null; whom?: string }, foes: ParsedReplayPlayer[]) => {
+  /** 그 사람이 저 사람 진영까지 실제로 갔나 — 명령 좌표로만 판정한다(요청: "타겟 지칭시
+   *  반드시 명령 위치에 기반해야함"). 예전엔 '그 뒤에 일꾼을 다시 몰아 뽑았나'처럼 생산
+   *  등락만 보고 대상을 지목했는데, 그러면 팀전에서 마침 그때 일꾼을 채운 사람이 엉뚱하게
+   *  피해자로 적힌다(실측한 리플레이에서는 세 상대 모두 조건을 만족해, 셋 중 누가 뽑혀도
+   *  근거가 없었다). pushersOn이 그 사람 본진 반경에 찍힌 명령 수로 가른다. */
+  const reachedBase = (
+    attacker: string, victimName: string, from: number,
+    side: ParsedReplayPlayer[], foes: ParsedReplayPlayer[],
+  ): boolean => {
+    const me = side.find((p) => p.rawName === attacker);
+    const victim = foes.find((p) => p.rawName === victimName);
+    if (!me || !victim) return false;
+    return pushersOn(victim, [me], from, totalFrames || Infinity).length > 0;
+  };
+
+  const damageFrom = (
+    t: { key: string; at: number | null; whom?: string; who?: string; p?: Record<string, unknown> },
+    foes: ParsedReplayPlayer[],
+    side?: ParsedReplayPlayer[],
+  ) => {
     if (t.at === null || !RAID_KEYS.has(t.key)) return null;
+    // 커널은 그 자체로 때리는 수가 아니라 문이다 — 상대 진영에 뚫린 것이 자리로 확인될
+    // 때만 피해의 원인으로 쓴다(replayTactics의 nydus 주석 참고).
+    if (t.key === "nydus" && !t.p?.intoFoe) return null;
     const window = t.at + DAMAGE_WINDOW_SEC / SECONDS_PER_FRAME;
     // 탈락은 창을 더 좁게 본다(지적: 상관도가 높은 것만 인과로 묶기) — 어떤 수를 간 지
     // 3분 뒤의 탈락까지 그 수의 결과라 부르면, 사실은 상관없는 일을 엮게 된다. 곧바로
@@ -1381,6 +1409,12 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
         if (d < t.at || d > window) continue;
         if (!best || (!best.out && d < best.at)) best = { raw: p.rawName, at: d, out: false };
       }
+    }
+    // 대상을 짚어 말하려면 그 사람 진영까지 실제로 갔다는 자리 근거가 있어야 한다(요청).
+    // 자리를 못 읽는 판(screp이 Pos를 안 주는 경우)에서는 이 검사가 늘 false가 되므로,
+    // 좌표가 아예 없을 때만 예전처럼 생산 등락을 그대로 믿는다.
+    if (best && side && t.who && hasOrderPositions) {
+      if (!reachedBase(t.who, best.raw, t.at, side, foes)) return null;
     }
     return best;
   };
@@ -1437,7 +1471,7 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
         // 실패했다고 나오고"). 예전엔 역풍 판정이 앞서 있어서, 러시가 상대 생산을 끊었어도
         // 러시를 간 쪽이 진 경기면 제 생산 등락만 보고 "실패함"으로 뒤집혔다. 상대가 실제로
         // 맞았다면 그건 성공한 수이고, 그 뒤에 졌다는 건 결과 문장이 따로 말한다.
-        const hit = damageFrom(t, foes);
+        const hit = damageFrom(t, foes, mine);
         if (!won && !hit && backfired(t, mine.find((p) => p.rawName === t.who))) {
           return {
             k: "rush-backfire", won, who: [t.who], at: t.at,
@@ -1448,7 +1482,9 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
         }
         if (t.at !== null && HARASS_KEYS.has(t.key)) {
           const prey = workersHunted(t.at, foes);
-          if (prey) {
+          // 일꾼을 다시 몰아 뽑았다는 것만으로는 '누가 당했나'를 못 정한다 — 그 사람
+          // 진영까지 실제로 갔다는 자리 근거를 함께 요구한다(요청).
+          if (prey && (!hasOrderPositions || reachedBase(t.who, prey, t.at, mine, foes))) {
             // 한 번 크게 맞은 것과 내내 시달린 것은 다른 이야기다(요청) — 일꾼을 몰아 뽑은
             // 구간이 길게 이어졌으면 '끈질긴 견제'로 말한다.
             const victim = foes.find((f) => f.rawName === prey);
