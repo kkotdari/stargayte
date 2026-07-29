@@ -111,23 +111,14 @@ export default function SharePage({ target, onExit }: { target: ShareTarget; onE
     if (challenge) return <ChallengeInboxModal challenges={[challenge]} onClose={onExit} closeLabel="스타게이트로" shareBackdrop />;
     return (
       <div className="scr-share-page">
-        <div className="scr-share-head">
-          <span className="scr-share-brand">스타게이트</span>
-          <button type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid" onClick={onExit}>스타게이트로</button>
-        </div>
         <div className="scr-share-body"><div className="scr-err">{err || "찾을 수 없어요."}</div></div>
+        <ShareFoot onExit={onExit} />
       </div>
     );
   }
 
   return (
     <div className="scr-share-page">
-      <div className="scr-share-head">
-        <span className="scr-share-brand">스타게이트</span>
-        <button type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid" onClick={onExit}>
-          스타게이트로
-        </button>
-      </div>
       <div className="scr-share-body">
         {loading ? (
           <div className="scr-empty"><Spinner size={18} /></div>
@@ -159,6 +150,23 @@ export default function SharePage({ target, onExit }: { target: ShareTarget; onE
           </div>
         ) : null}
       </div>
+      <ShareFoot onExit={onExit} />
+    </div>
+  );
+}
+
+// 브랜드 + "스타게이트로" — 예전엔 페이지 맨 위에 있었는데 아래로 내렸다(요청). 인앱
+// 브라우저(카톡)로 열면 화면 위쪽은 이미 주소창·닫기 버튼이 차지하고 있어서 그 바로 아래에
+// 또 브랜드 줄이 얹히면 머리가 두 겹이 되고, 공유된 카드를 보러 온 사람에게 "앱으로 가기"는
+// 다 본 다음의 일이다.
+// .scr-share-page가 flex 컬럼이고 본문이 flex:1이라, 마크업 순서만 바꾸면 바닥에 붙는다.
+function ShareFoot({ onExit }: { onExit: () => void }) {
+  return (
+    <div className="scr-share-foot">
+      <span className="scr-share-brand">스타게이트</span>
+      <button type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid" onClick={onExit}>
+        스타게이트로
+      </button>
     </div>
   );
 }

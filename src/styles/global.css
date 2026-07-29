@@ -5423,6 +5423,14 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
    버튼 아래 여백은 padding-bottom이다 → 둘을 같은 값(26px)으로 맞춘다. padding-top은
    본문(제목)이 From 뱃지 아래에서 시작하도록 넉넉히(뱃지 높이+여유) 준다. */
 .scr-challenge-inbox-modal.scr-challenge-letter { padding-top: 78px; padding-bottom: 26px; }
+/* 초대장 내용은 카드 안에서 세로 가운데로(요청: "너나와 초대장 열었을때 가운데로 오게").
+   모바일에서는 모달이 화면을 꽉 채우는데(파일 끝 전면 모달 블록) 편지지 내용은 제 높이만큼만
+   차지해서, 위쪽 3할에 몰리고 아래가 텅 비어 있었다(실측: 844px 화면에서 내용이 340px까지).
+   justify-content만으로는 안 된다 — .scr-modal-body가 flex:1 1 auto라 남는 자리를 혼자
+   빨아들여서 가운데로 밀릴 여백 자체가 안 생긴다. 그래서 이 모달에서만 안 자라게 바꾼다
+   (넘칠 때는 flex-shrink가 남아 있어 예전처럼 그 안에서 스크롤된다). */
+.scr-challenge-inbox-modal { justify-content: center; }
+.scr-challenge-inbox-modal > .scr-modal-body { flex: 0 1 auto; }
 /* 편지봉투는 편지지 카드와 한 몸이 아니라(요청: "봉투랑 편지지는 별도 모달") 오버레이
    위에 겹치는 별도 레이어다 — 카드 배경/그림자 없이 봉투 사진 + 제목만 어두운 스크림
    위에 떠 있고, 편지지 카드(정상 흐름의 flex 자식)와 정확히 같은 중앙에 정렬된다. */
@@ -5588,6 +5596,15 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
    To. 아바타보다 아래). */
 .scr-challenge-party-from { position: absolute; top: 26px; left: 20px; }
 .scr-challenge-party-to { align-self: flex-end; margin: 10px 4px 0 0; }
+/* 모바일에서는 편지지가 화면을 꽉 채우므로(파일 끝 전면 모달 블록) '편지지의 좌상단'이 곧
+   화면 좌상단이다 — 내용을 세로 가운데로 옮긴 뒤(요청)에는 From.만 저 위 구석에 홀로
+   남아 내용과 끊겨 보였다. 여기서는 흐름에 넣어 내용과 함께 움직이게 한다: From. 위,
+   To. 아래로 읽는 순서(요청: From. 좌상단 / To. 우하단)는 그대로다. */
+@media (max-width: 640px) {
+  .scr-challenge-letter .scr-challenge-party-from {
+    position: static; align-self: flex-start; margin-bottom: 6px;
+  }
+}
 .scr-challenge-party-tag { font-size: var(--fs-caption); font-weight: 800; color: var(--dim); line-height: 1; }
 .scr-challenge-party-av { border-radius: 50% !important; object-fit: cover; }
 /* 편지지 본문(제목·일자·시간·한마디) — 요소 간 줄간격을 크게(요청). */
@@ -5677,18 +5694,19 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
    본문을 세로 가운데에 두려면(요청) 이 높이가 반드시 확정돼 있어야 한다. dvh는 모바일
    브라우저 툴바가 접혔다 펴져도 실제 보이는 높이를 따라간다. */
 .scr-share-page { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
-.scr-share-head {
+/* 브랜드 + "스타게이트로" 줄 — 페이지 맨 위에서 맨 아래로 내렸다(요청. SharePage의
+   ShareFoot 주석 참고). 위에 있을 때 필요했던 노치 여백(--safe-top)은 이제 필요 없고,
+   대신 아래쪽 홈 인디케이터를 피한다. */
+.scr-share-foot {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  /* 상단 안전영역은 앱의 다른 화면과 같은 --safe-top으로 잰다 — env()만 쓰면 사파리가
-     그 값을 0으로 보고하는 순간(그 대비로 부트 스크립트가 --safe-area-top을 실측해
-     넣어 둔다) 이 화면만 노치 밑으로 안 내려간다. 공유 화면도 묶음을 펼치면 피드와
-     똑같이 위로 스크롤하므로(MatchStack), 그 스크롤이 쓰는 기준과 같아야 한다. */
-  padding: calc(12px + var(--safe-top)) 16px 12px;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
 }
 .scr-share-brand { font-weight: 800; letter-spacing: 0.02em; color: var(--text); }
 .scr-share-body {
   flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
-  gap: 12px; padding: 12px 16px calc(24px + env(safe-area-inset-bottom, 0px)); width: 100%;
+  /* 위 노치 여백은 이제 본문이 직접 낸다 — 예전엔 머리(.scr-share-head)가 위에 있어서
+     그쪽이 냈다. 아래 홈 인디케이터는 그 아래 .scr-share-foot이 피하므로 여기선 안 잰다. */
+  gap: 12px; padding: calc(12px + var(--safe-top)) 16px 24px; width: 100%;
 }
 /* 본문은 세로 flex + align-items:center라, 자식이 스스로 폭을 안 잡으면 내용만큼만
    좁아진다. 예전엔 경기 한 장을 감싸던 래퍼에만 width:100%를 줬는데, 그래서 묶음
