@@ -45,9 +45,6 @@ interface SelectProps {
   // 일정해서 레이아웃이 움직이지 않게"). 내용은 왼쪽에 붙으므로 남는 자리는 낱말 뒤
   // 여백으로만 보인다.
   fixedWidth?: boolean;
-  // fixedWidth의 기준 라벨을 직접 준다 — 기본은 자기 옵션들이라 드롭다운마다 폭이 제각각인데,
-  // 여러 드롭다운에 같은 목록을 넘기면 모두 같은 폭이 된다(요청: "세 드롭다운 크기 통일").
-  widthLabels?: string[];
 }
 
 /*
@@ -62,7 +59,7 @@ interface SelectProps {
 */
 export default function Select({
   value, options, onChange, placeholder = "선택", className, size = "md", minDropWidth, disabled = false,
-  defaultOpen = false, onOpenChange, fixedWidth = false, widthLabels,
+  defaultOpen = false, onOpenChange, fixedWidth = false,
 }: SelectProps) {
   const [open, setOpen] = useState(defaultOpen && !disabled);
   const onOpenChangeRef = useRef(onOpenChange);
@@ -162,9 +159,9 @@ export default function Select({
           써서 글꼴·패딩·화살표까지 똑같이 재도록 한다(따로 재현하면 어긋난다). */}
       {fixedWidth && (
         <span className="scr-cselect-sizer" aria-hidden="true">
-          {(widthLabels ?? options.map((o) => o.label)).map((label, i) => (
-            <span key={`${label}-${i}`} className="scr-cselect-trigger">
-              <span className="scr-cselect-value">{label}</span>
+          {options.map((o) => (
+            <span key={o.value} className="scr-cselect-trigger">
+              <span className="scr-cselect-value">{o.label}</span>
               <ChevronDown size={14} className="scr-cselect-caret" />
             </span>
           ))}

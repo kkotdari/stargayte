@@ -149,14 +149,6 @@ export default function StatsScreenV2() {
     return opts;
   }, [firstMonth]);
 
-  // 문장 속 세 드롭다운이 모두 같은 폭이 되도록(요청: "세 드롭다운 크기 통일해서 균형감
-  // 있게") 폭 계산의 기준 라벨을 하나로 합쳐 셋에 똑같이 넘긴다 — 셋 다 "가장 긴 낱말"
-  // 기준이라 저절로 같은 크기가 되고, 나중에 옵션이 늘어도 알아서 따라간다.
-  const sentenceWidths = useMemo(
-    () => [...periodOpts, ...TYPE_SELECT_OPTS, ...RACE_SELECT_OPTS].map((o) => o.label),
-    [periodOpts],
-  );
-
   const { from: effectiveFrom, to: effectiveTo } = useMemo(
     () => (periodMonth ? monthInputToRange(periodMonth) : { from: "", to: "" }),
     [periodMonth],
@@ -404,14 +396,16 @@ export default function StatsScreenV2() {
         // 문장으로 옮겼다. 제목이 곧 지금 걸린 조건이라 따로 읽을 필터 UI가 없다.
         heading={
           <div className="scr-grid-title">
-            {/* 셋 다 같은 기준 라벨(sentenceWidths)로 폭을 재서 크기가 통일된다(요청). */}
+            {/* 각 칸은 제 목록에서 가장 긴 낱말에 맞춰 폭이 잡힌다(요청) — 셋을 같은 폭으로
+                맞춰 봤더니 짧은 낱말 칸에 빈자리만 커졌다. 고른 값이 바뀌어도 그 칸 폭은
+                그대로라, 레이아웃이 흔들리지 않는다는 성질은 그대로다. */}
             <Select
-              fixedWidth widthLabels={sentenceWidths}
+              fixedWidth
               className="scr-sentence-select" value={period} options={periodOpts}
               onChange={setPeriod} minDropWidth={150}
             />
             <Select
-              fixedWidth widthLabels={sentenceWidths}
+              fixedWidth
               className="scr-sentence-select" value={matchType} options={TYPE_SELECT_OPTS}
               onChange={(v) => setMatchType(v as MatchType)} minDropWidth={120}
             />
@@ -419,7 +413,7 @@ export default function StatsScreenV2() {
                 외따로 떨어지지 않게 한다. */}
             <span className="scr-grid-title-tail">
               <Select
-                fixedWidth widthLabels={sentenceWidths}
+                fixedWidth
                 className="scr-sentence-select" value={race} options={RACE_SELECT_OPTS}
                 onChange={(v) => setRace(v as BaseRace | "all")} minDropWidth={130}
               />
