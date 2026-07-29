@@ -1362,11 +1362,17 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 /* 인앱 브라우저(카톡 등) 안내 배너 — 화면 상단에 고정. 로그인이 유지되는 기본 브라우저로
    열도록 권한다. 헤더/탭바보다 위(z-index)에 둔다. */
 .scr-inapp-notice {
-  position: fixed; z-index: 120; left: 50%; transform: translateX(-50%);
+  /* 가로 가운데는 left:50%+transform이 아니라 left/right:0 + margin-inline:auto로 잡는다.
+     전자로는 닫기(×)가 배너 밖으로 삐져나갔다(신고: 공유 랜딩에서 × 삐져나감). 폭이 auto인
+     고정 요소는 '내용에 맞춘 폭'을 정할 때 쓸 수 있는 자리를 left부터 재는데, left가 50%면
+     그 자리가 화면의 오른쪽 절반뿐이다 — 390px 화면에서 배너가 195px로 잘리고, 안에 든
+     버튼+×(241px)가 그만큼 넘쳐 ×가 46px 밖으로 나갔다(실측). left/right를 0으로 두면
+     자리를 화면 전체로 재므로 내용이 그대로 들어간다. */
+  position: fixed; z-index: 120; left: 0; right: 0; margin-inline: auto;
   top: calc(var(--safe-area-top, 0px) + 8px);
   /* 설명 문구를 없앤 뒤로 버튼만 남아, 배너가 폭을 꽉 채우면 버튼이 과하게 넓어 보였다
      (지적: "버튼 폭이 너무 넓음"). 내용(버튼+닫기)만큼만 폭을 잡아 아담하게. */
-  width: auto; max-width: min(520px, calc(100vw - 16px));
+  width: fit-content; max-width: min(520px, calc(100vw - 16px));
   display: flex; flex-direction: column; gap: 8px;
   padding: 11px 12px; border-radius: 14px;
   background: var(--panel-solid); color: var(--text);
