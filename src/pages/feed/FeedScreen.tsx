@@ -226,14 +226,19 @@ function ChallengeActionsMenu({ challenge, isAdmin, onDeleted }: {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
+  // 지목된 상대는 절대 미리보기에 내지 않는다(요청: "누구한테 보냈는지는 꼭 숨겨달라") —
+  // 누가 불렸는지는 링크를 열어 편지지에서 확인하는 것이 이 기능의 재미다. 여기만 대진을
+  // 그대로 description에 넣어 카톡 카드에 "vs Rex"가 찍혔다(신고). 호출을 보낼 때 뜨는
+  // 확인창(ChallengeFormModal의 shareCall)과 같은 문구로 맞춘다.
+  // 응답(수락/거절) 공유는 그대로 대진을 보여준다 — 그건 불린 사람이 스스로 알리는 것이다.
   const shareContent = () => {
-    const matchup = `${challenge.ownMembers.map((m) => m.nickname).join(", ")} vs ${challenge.targets.map((t) => t.nickname).join(", ")}`;
+    const caller = challenge.createdBy.nickname;
     return {
-      title: "너 나와!",
-      description: matchup,
+      title: `${caller ? `${caller}님` : "누군가"}의 호출`,
+      description: "누가 호출됐을까요? 👀 탭해서 확인하기",
       ...shareThumb("challengeCall"),
       link: `${window.location.origin}/?sv=challenge&sid=${challenge.id}`,
-      fallbackText: `[스타게이트] 너 나와!\n${matchup}`,
+      fallbackText: `[스타게이트] ${caller ? `${caller}님` : "누군가"}의 호출이 도착했어요! 열어서 확인해보세요.`,
     };
   };
 
