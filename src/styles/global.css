@@ -3171,7 +3171,11 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
   background: var(--highlight-bg); border-radius: 4px;
   padding: 2px 4px; margin: -2px -4px;
 }
-.scr-team-player-highlight .scr-team-name { font-weight: 800; color: var(--bar-text); }
+/* 글자 굵기는 건드리지 않는다(지적: 하이라이트된 이름에만 말줄임표가 생긴다) — 600을
+   800으로 올리면 같은 글자가 더 넓어져서, 안 잘리던 닉네임이 하이라이트된 순간에만
+   잘린다. 눈에 띄게 하는 일은 배경색이 이미 충분히 하고 있다. 요약 명단 쪽
+   (.scr-feed-stack-sum-player-hl)은 같은 이유로 진작 굵기를 뺐는데 이쪽이 남아 있었다. */
+.scr-team-player-highlight .scr-team-name { color: var(--bar-text); }
 /* 승/패 표시는 이 표에서 가장 먼저 눈에 들어와야 하는 값이라 닉네임(13px)보다 뚜렷하게 크게 둔다. */
 .scr-team-outcome { flex-shrink: 0; text-align: center; font-size: var(--fs-subhead); font-weight: 800; min-width: 14px; position: relative; }
 /* 이긴 팀 표시는 패(빨강 계열)와 대비되게 연두색(--win)을 쓴다 — 승만 기본 글자색이면
@@ -3867,6 +3871,15 @@ html.scr-light-theme .scr-admin-sheet::before { background: rgba(244, 246, 250, 
 .scr-admin-panel-batch-log {
   margin-top: 10px; max-height: min(42vh, 280px); overflow-y: auto;
   padding: 0 4px 0 0; font-size: var(--fs-11); line-height: 1.6; text-align: left;
+}
+/* PC에서는 폭 자체를 넓힌다(지적: 목록 옆 오른쪽이 남는다) — .scr-modal-sm(360px)은
+   참가자 여덟 명이 다 들어간 파일명 한 줄이 세 줄로 접히는 폭이라, 화면은 한참 남는데
+   목록만 비좁았다. 좌우 여백(18px)은 폼·문단과 같은 값을 그대로 둔다 — 좁아 보인 건
+   여백이 아니라 폭이었다.
+   .scr-modal-sm과 특이도를 맞춰야 이긴다(.scr-modal 동반으로 0,2,0).
+   모바일은 전면 모달이라 이미 좌우 10px씩만 두고 꽉 차 있다(실측) — 손대지 않는다. */
+@media (min-width: 768px) {
+  .scr-modal.scr-admin-panel-batch-modal { max-width: 560px; }
 }
 /* 배치등록 확인창("리플레이 N개를 등록할까요?") — 제목/본문 텍스트 2스텝 축소(요청):
    제목 subhead→caption, 본문 body→micro.
