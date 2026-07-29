@@ -346,10 +346,16 @@ export const GameResultCard = memo(function GameResultCard({ item, memberOf, onD
           )}
         </div>
       </div>
-      <div className="scr-feed-game-result-body">
-        <GameResultCardBody rows={rows} memberOf={memberOf} onDeleted={onDeleted} highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms} />
+      {/* 유리 패널(반투명·블러·위아래 림)은 머리를 빼고 여기만 덮는다(요청: "패널
+          블러/반투명, 위아래 림은 바디에만 적용 헤더는 떠 있는 느낌") — 머리 뒤에는
+          아무 채움도 없어서 제목이 배경 위에 그대로 떠 보인다. 케밥은 절대배치라 이
+          래퍼 밖에 둔다(기준면은 포스트 판이어야 한다). */}
+      <div className="scr-post-panel">
+        <div className="scr-feed-game-result-body">
+          <GameResultCardBody rows={rows} memberOf={memberOf} onDeleted={onDeleted} highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms} />
+        </div>
+        <FeedCardComments targetType="gameResult" targetId={item.gameResult.id} />
       </div>
-      <FeedCardComments targetType="gameResult" targetId={item.gameResult.id} />
     </div>
   );
 });
@@ -715,6 +721,9 @@ export function GameResultPost({
           쪽의 높이다 — 둘의 높이를 서로 맞춰 주는 계산이 필요 없다(요청).
           명단 어디를 눌러도 펼쳐진다. button 안에는 목록을 넣을 수 없어(phrasing content만
           허용) role로 대신한다. */}
+      {/* 유리 패널은 바디만 덮는다(GameResultCard의 같은 래퍼 주석 참고) — 요약/목록과
+          그 아래 안내 토글이 한 판이고, 머리는 그 위에 떠 있다. */}
+      <div className="scr-post-panel">
       <div className="scr-feed-post-stack-swap" ref={swapRef}>
       <div className="scr-feed-post-stack-sum" ref={sumRef} aria-hidden={open}>
         <div
@@ -781,6 +790,7 @@ export function GameResultPost({
       >
         {labelOpen ? "포스트 눌러서 요약보기" : "포스트 눌러서 펼치기"}
       </button>
+      </div>
     </div>
   );
 }
@@ -1298,15 +1308,18 @@ export default function FeedScreen() {
                   isAdmin={isAdmin}
                   onDeleted={(id) => setChallenges((prev) => prev.filter((c) => c.id !== id))}
                 />
-                <div className="scr-feed-card-body">
-                  <ChallengeCard
-                    challenge={item.challenge}
-                    myId={user?.id}
-                    highlightMemberIds={matchedIds}
-                    onResponded={upsertChallenge}
-                  />
+                {/* 유리 패널은 바디만 덮는다(GameResultCard의 같은 래퍼 주석 참고). */}
+                <div className="scr-post-panel">
+                  <div className="scr-feed-card-body">
+                    <ChallengeCard
+                      challenge={item.challenge}
+                      myId={user?.id}
+                      highlightMemberIds={matchedIds}
+                      onResponded={upsertChallenge}
+                    />
+                  </div>
+                  <FeedCardComments targetType="challenge" targetId={item.challenge.id} />
                 </div>
-                <FeedCardComments targetType="challenge" targetId={item.challenge.id} />
               </div>
             ) : item.kind === "gameResultPost" ? (
               <GameResultPost

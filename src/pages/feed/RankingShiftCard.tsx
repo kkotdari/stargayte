@@ -125,6 +125,9 @@ export default function RankingShiftCard({
         </div>
       </div>
       {actions}
+      {/* 유리 패널(반투명·블러·위아래 림)은 머리를 빼고 여기만 덮는다(요청: 머리는 떠 있는
+          느낌) — FeedScreen의 같은 래퍼와 한 규칙이다. actions(케밥)는 절대배치라 밖에 둔다. */}
+      <div className="scr-post-panel">
       <ul
         className={cx("scr-feed-shift-list", overflow && "scr-feed-shift-list-toggle")}
         {...(overflow
@@ -165,6 +168,7 @@ export default function RankingShiftCard({
         )}
       </ul>
       {footer}
+      </div>
     </div>
   );
 }

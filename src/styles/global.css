@@ -6681,34 +6681,60 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 @media (max-width: 720px) {
   :root { --post-pad-x: 20px; --post-pad-bx: 24px; --post-head-pad-l: 8px; }
 }
+/* 포스트 = 머리(떠 있음) + 유리 패널(바디). 판 자신은 자리만 잡고 아무것도 그리지 않는다
+   (요청: "패널 블러/반투명, 위아래 림은 바디에만 적용 헤더는 떠 있는 느낌") — 채움·블러·
+   림은 전부 아래 .scr-post-panel이 맡는다. */
 .scr-feed-card {
   position: relative;
-  /* 위쪽 세로 패딩은 헤더부·컨텐츠부가 각자 내고, 꼬리 여백만 포스트가 낸다
-     (--post-pad-b 주석 참고). */
-  padding: 0 var(--post-bleed) var(--post-pad-b);
-  /* 판을 본문 좌우 패딩 밖으로 빼내 본문폭을 끝까지 쓴다(요청). 빼낸 만큼을 위 패딩으로
-     되돌려 받으므로 안쪽 내용은 제자리에 있고, 절대배치(케밥 등)도 마찬가지다 — 절대배치의
-     기준은 이 판의 '패딩 박스'라, 패딩이 늘면 기준면도 같이 안으로 들어온다. */
+  /* 판을 본문 좌우 패딩 밖으로 빼내 본문폭을 끝까지 쓴다(요청) — 빼낸 만큼은 판이 안쪽으로
+     되돌려 받아 내용을 제자리에 붙잡는다.
+     되돌려 받는 수단은 패딩이 아니라 '투명 테두리'다. 절대배치(케밥·취소 라벨·경기 케밥)의
+     기준면은 패딩 '박스'인데 그 박스에는 패딩이 들어 있어서, 패딩으로 되돌리면 기준면이
+     여전히 화면 끝이라 케밥이 그만큼 밖으로 밀린다(실측: 오른쪽 끝이 364 → 380px). 테두리는
+     패딩 박스 밖이라, 이렇게 두면 기준면이 예전 판의 자리에 그대로 남아 안에 걸린 right
+     값들을 한 줄도 안 고쳐도 된다.
+     세로로는 아무것도 내지 않는다: 머리는 자기 패딩으로, 꼬리 여백은 유리 패널이 낸다 —
+     꼬리 여백에는 댓글 입력줄이 절대배치로 앉으므로(.scr-feed-notes-empty) 그 자리까지
+     유리가 덮어야 한다. */
+  border-inline: var(--post-bleed) solid transparent;
   margin-inline: calc(-1 * var(--post-bleed));
-  /* 카드가 아니라 화면을 꽉 채우는 판이다(요청) — 좌우 여백도, 둥근 모서리도, 떠 있는
-     그림자도 없다. 포스트끼리는 그 사이의 빈 자리가 나눈다.
-     유리 톤은 통계 그리드 패널과 같은 값으로 맞춘다(요청) — 채움을 아주 옅게 한 겹 깔고
-     블러는 2px만. 9px는 뒤 사진이 뭉개져 유리보다 젖빛에 가까웠다. */
-  /* 모서리는 아주 살짝만 둥글게(요청) — 판이라는 느낌은 남기되 카드처럼 떠 보이지 않게. */
-  border-radius: 6px;
+}
+/* 유리 패널 — 머리를 뺀 바디만 덮는다. 판이 좌우 화면 끝까지 가므로 좌우로는 테두리도
+   그림자도 두지 않는다(요청: 좌우 그림자 제거) — 화면 밖으로 이어지는 면에 선을 그으면
+   판이 잘린 것처럼 읽힌다. 위아래만 림 한 줄로 경계를 만든다.
+   유리 톤은 통계 그리드 패널과 같은 값으로 맞춘다(요청) — 채움을 아주 옅게 한 겹 깔고
+   블러는 2px만. 9px는 뒤 사진이 뭉개져 유리보다 젖빛에 가까웠다. */
+.scr-feed-card > .scr-post-panel {
+  /* 판이 안쪽으로 되돌려 둔 몫(--post-bleed, 판의 투명 테두리)까지 덮어 본문폭을 끝까지 쓴다
+     — 음수 마진은 부모의 테두리 영역을 넘어가므로 유리가 판의 좌우 끝에 닿는다. 되돌려
+     받는 수단은 여기서도 패딩이 아니라 투명 테두리다: backdrop-filter가 걸린 요소는 그
+     자체로 자손 절대배치의 기준면이 되는데, 패딩으로 되돌리면 기준면이 화면 끝에 남아
+     댓글 입력줄(.scr-feed-notes-empty의 left)이 16px 왼쪽으로 밀린다(실측: 40 → 24px). */
+  margin-inline: calc(-1 * var(--post-bleed));
+  border-inline: var(--post-bleed) solid transparent;
+  padding-bottom: var(--post-pad-b);
   background-color: rgba(var(--overlay-rgb), 0.07);
   backdrop-filter: blur(2px) saturate(1.2);
   -webkit-backdrop-filter: blur(2px) saturate(1.2);
+  /* 위아래 림만 한 줄씩 — 판이 좌우 화면 끝까지 가므로 좌우에는 테두리도 그림자도 두지
+     않는다(요청: 좌우 그림자 제거). 화면 밖으로 이어지는 면에 선을 그으면 판이 잘린 것처럼
+     읽힌다.
+     inset 그림자가 아니라 배경 그라디언트로 그리는 이유: inset은 패딩 박스 안에만 그려져
+     위 투명 테두리만큼 좌우가 짧아진다. 배경은 기본이 border-box 클립이라 테두리 밑까지
+     칠해져 림이 판의 좌우 끝까지 이어진다. 채움(background-color)도 같은 이유로 전면폭이다. */
+  background-image:
+    linear-gradient(to bottom, rgba(var(--overlay-rgb), 0.1) 1px, transparent 1px),
+    linear-gradient(to top, rgba(var(--overlay-rgb), 0.1) 1px, transparent 1px);
 }
-.scr-light-theme .scr-feed-card {
+.scr-light-theme .scr-feed-card > .scr-post-panel {
   background-color: rgba(255, 255, 255, 0.62);
   backdrop-filter: blur(2px) saturate(1.1);
   -webkit-backdrop-filter: blur(2px) saturate(1.1);
-  /* 라이트에서는 흰 판이 흰 배경에 묻혀 카드 경계가 안 보인다(지적). 테두리 대신
-     box-shadow로 얇은 림(퍼짐 0, 1px) + 아주 옅은 그림자 한 겹만 얹는다 — 레이아웃을
-     1px도 안 밀고(테두리와 달리 박스 크기에 안 들어간다), 무게도 거의 안 는다.
-     다크는 배경이 어두워 판의 밝은 채움만으로 이미 구분돼 그대로 둔다. */
-  box-shadow: 0 0 0 1px rgba(16, 21, 26, 0.07), 0 1px 3px rgba(16, 21, 26, 0.05);
+  /* 라이트에서는 흰 판이 흰 배경에 묻혀 경계가 안 보인다(지적) — 위아래 림을 조금 더
+     진하게 잡는다. 좌우는 다크와 같은 이유로 비운다. */
+  background-image:
+    linear-gradient(to bottom, rgba(16, 21, 26, 0.08) 1px, transparent 1px),
+    linear-gradient(to top, rgba(16, 21, 26, 0.08) 1px, transparent 1px);
 }
 /* 예전에는 피드 목록만 본문 좌우 패딩 바깥으로 빼내 화면 폭을 그대로 썼다 — 포스트가
    채움 없는 투명판이라 판의 경계가 안 보였기 때문이다. 이제 포스트에 유리 채움이 들어와
