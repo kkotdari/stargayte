@@ -95,6 +95,8 @@ interface ChallengeItem {
   kind: "challenge";
   time: number;
   withClock: boolean;
+  /** 피드에서 꽂히는 자리 — 표시용 time과 다르다(challengeSortMs 주석 참고). */
+  sortTime: number;
   challenge: Challenge;
 }
 
@@ -125,6 +127,11 @@ export interface MatchStackItem {
 
 type DisplayItem = FeedItem | MatchStackItem;
 
+/** 피드에서 이 항목이 꽂히는 자리(ms) — 너 나와만 표시용 시각과 다르다(challengeSortMs). */
+function sortMsOf(it: FeedItem): number {
+  return it.kind === "challenge" ? it.sortTime : it.time;
+}
+
 function rankShiftItem(shift: RankSnapshot): RankShiftFeedItem {
   return {
     kind: "rankshift",
@@ -139,9 +146,40 @@ function challengeItem(c: Challenge): ChallengeItem {
   return {
     kind: "challenge",
     time: new Date(iso).getTime(),
-    withClock: c.scheduledTime != null,
+    // 시각 개념이 없어졌다(요청: 너 나와는 날짜만) — 헤더는 늘 날짜만 적는다.
+    withClock: false,
+    sortTime: challengeSortMs(c),
     challenge: c,
   };
+}
+
+/** 아직 안 끝난(응답대기·성사) 너 나와인가 — 피드에서 "현재" 선보다 위(=앞으로 있을 일)에
+ *  놓이는 것은 이것뿐이다. 경기결과·순위변동은 전부 이미 벌어진 일이다. */
+export function isUpcomingChallenge(it: { kind: string; challenge?: Challenge }): boolean {
+  return it.kind === "challenge"
+    && (it.challenge!.status === "pending" || it.challenge!.status === "confirmed");
+}
+
+// 너 나와가 피드 어디에 꽂히나 — 표시용 시각(time)과 따로 계산한다.
+//
+//  · 아직 안 끝난 것(응답대기·성사)은 "현재" 선 바로 위에 둔다(지적: 아직 안 열린 너 나와가
+//    현재보다 아래로 내려가면 안 된다). 약속한 날이 이미 지났어도 마찬가지다 — 결과가
+//    안 들어온 이상 그건 여전히 남은 일이다. 예정일이 더 먼 것일수록 위로 간다.
+//  · 끝난 것(완료·폐기)은 그날 경기들 아래로 내린다(요청: "전날 경기 목록과 당일 경기목록
+//    사이"). 세션 날짜의 시작(오전 8시 — sessionDateOf의 경계와 같은 값)에 앉히면 그날
+//    경기들(8시 이후)보다 아래, 전날 것들보다 위가 된다.
+function challengeSortMs(c: Challenge): number {
+  const base = new Date(c.scheduledAt ?? c.createdAt).getTime();
+  if (c.status === "pending" || c.status === "confirmed") {
+    // 그날 끝(23:59:59)을 기준으로 잡아 같은 날 경기들보다 위에 서게 하고, 이미 지난
+    // 약속이면 "지금 바로 위"까지 끌어올린다.
+    const endOfDay = c.scheduledDate
+      ? new Date(`${c.scheduledDate}T23:59:59`).getTime()
+      : base;
+    return Math.max(endOfDay, Date.now() + 1);
+  }
+  if (!c.scheduledDate) return base;
+  return new Date(`${c.scheduledDate}T00:00:00`).getTime() + SESSION_DAY_START_HOUR * 3600_000;
 }
 
 export function matchItem(m: Match): MatchItem {
@@ -880,7 +918,9 @@ export default function FeedScreen() {
       ...matches.map(matchItem),
       ...rankShifts.map(rankShiftItem),
     ];
-    return items.sort((a, b) => b.time - a.time);
+    // 정렬 기준은 time이 아니라 sortTime이다 — 너 나와만 표시용 시각과 꽂히는 자리가
+    // 다르다(위 challengeSortMs). 나머지는 sortTime이 없어 time을 그대로 쓴다.
+    return items.sort((a, b) => sortMsOf(b) - sortMsOf(a));
   }, [challenges, matches, rankShifts]);
 
   // 경기가 아직 더 남아 있으면(hasMore), 이미 불러온 가장 오래된 경기보다 더 과거의
@@ -986,11 +1026,14 @@ export default function FeedScreen() {
   // "현재"(now) 경계 = 미래(위)와 오늘/과거(아래)가 갈리는 지점 = 위에서부터 첫 "오늘
   // 이하" 아이템. 그 위에 미래 아이템이 있을 때만(idx>0) 카드 사이에 "현재" 구분선을
   // 넣는다(요청). 진입 자동 스크롤도 이 지점으로 맞춘다.
-  const nowIndex = useMemo(() => {
-    const dayStart = (ms: number) => { const d = new Date(ms); d.setHours(0, 0, 0, 0); return d.getTime(); };
-    const today = dayStart(Date.now());
-    return displayFeed.findIndex((it) => dayStart(it.time) <= today);
-  }, [displayFeed]);
+  // "현재" 선은 아직 안 끝난 너 나와 바로 아래에 둔다(지적: 당일에 잡혔지만 아직 안 한
+  // 너 나와가 현재선 아래로 내려가면 안 된다). 예전엔 날짜로 갈랐는데, 오늘 잡힌 너 나와는
+  // 날짜가 '오늘'이라 이미 끝난 오늘 경기들과 같은 편으로 묶여 버렸다. 선 위쪽은 "앞으로
+  // 있을 일", 아래쪽은 "이미 벌어진 일"이라는 뜻으로 통일한다.
+  const nowIndex = useMemo(
+    () => displayFeed.findIndex((it) => !isUpcomingChallenge(it)),
+    [displayFeed],
+  );
   const showNowDivider = nowIndex > 0;
 
   const feedListRef = useRef<HTMLDivElement>(null);

@@ -405,9 +405,11 @@ export interface ChallengeHistoryEntry {
   id: number;
   // 정렬/그룹핑/카운트다운용 파생 일시(UTC ISO) — 시간 미정이면 자정으로 채워져 온다.
   scheduledAt: string | null;
-  // 실제 저장값 — 날짜/시간 각각 독립. 시간 미정이면 scheduledTime = null(날짜만).
+  // 실제 저장값 — 날짜 하나뿐이다(시각 필드는 없앴다).
   scheduledDate: string | null;
-  scheduledTime: string | null;
+  // 약속 시간을 사람 말로 적어 둔 것 — "그날 봐서", "아무도 몰래" 같은 자유 텍스트(요청).
+  // 안 적었으면 빈 문자열. 정렬/마감 계산에는 쓰지 않는다(그건 scheduledDate만 본다).
+  scheduledTimeNote: string;
   status: ChallengeStatus;
   targets: ChallengeTarget[];
   createdAt: string;
@@ -422,9 +424,10 @@ export interface Challenge {
   message: string;
   // 정렬/그룹핑/카운트다운용 파생 일시(UTC ISO) — 시간 미정이면 자정으로 채워져 온다.
   scheduledAt: string | null;
-  // 실제 저장값 — 날짜/시간 각각 독립. 시간 미정이면 scheduledTime = null(날짜만 지정).
+  // 실제 저장값 — 날짜 하나뿐이다(시각 필드는 없앴다).
   scheduledDate: string | null;
-  scheduledTime: string | null;
+  // 약속 시간을 사람 말로 적어 둔 것(위 ChallengeHistoryEntry 주석 참고).
+  scheduledTimeNote: string;
   status: ChallengeStatus;
   createdBy: { id: string; nickname: string; avatar: string | null };
   targets: ChallengeTarget[];
@@ -444,9 +447,10 @@ export interface Challenge {
 }
 
 export interface ChallengeCreatePayload {
-  // 날짜/시간 각각 선택 — 날짜만 정하고 시간은 미정(null)으로 둘 수 있다.
+  // 날짜만 정한다(시각 필드는 없앴다) — 날짜도 안 정하면 일정 미정.
   scheduledDate?: string | null;
-  scheduledTime?: string | null;
+  // "언제"를 사람 말로(선택, 30자). 날짜가 없으면 서버가 버린다.
+  scheduledTimeNote?: string;
   // 호출 한마디(선택, 한글 50자).
   message?: string;
   targetMemberIds: string[];
@@ -456,10 +460,10 @@ export interface ChallengeCreatePayload {
   fromMatchRequest?: boolean;
 }
 
-// 리벤지(설욕전)을 신청할 때 — 날짜/시간 모두 생략 가능. 한마디(선택)도 함께 보낼 수 있다.
+// 리벤지(설욕전)을 신청할 때 — 날짜/"언제" 모두 생략 가능. 한마디(선택)도 함께 보낼 수 있다.
 export interface ChallengeRevengePayload {
   scheduledDate?: string | null;
-  scheduledTime?: string | null;
+  scheduledTimeNote?: string;
   message?: string;
 }
 

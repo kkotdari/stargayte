@@ -47,13 +47,11 @@ export default function ChallengeFormModal({ onClose, onCreated, presetTargetIds
   const [targetIds, setTargetIds] = useState<string[]>(preset);
   const [ownTeamIds, setOwnTeamIds] = useState<string[]>([]);
 
-  // 날짜/시간 둘 다 처음부터 보여준다(요청: "날짜 선택, 시간 선택 체크박스 제거하고
-  // 처음부터 둘다 노출하되 라벨에 선택 붙어있으니 괜춘") — 둘 다 필수는 아니고, 날짜
-  // 없이 시간만 있는 조합은 UI상 애초에 나올 수 없다(시간 입력이 날짜를 고른 뒤에만
-  // 활성화된다). 날짜만 정하고 시간은 안 정하면(=상대가 시간을 정해도 됨) 제출 시
-  // 기본 시간(22:00)으로 채운다.
+  // 정하는 것은 날짜뿐이다(요청: 시간 필드 삭제). 시각을 못 박는 대신 "언제"를 한마디처럼
+  // 적을 수 있고, 그 칸은 "언제 추가하기"를 눌러야 나온다(OptionalDateTimeFields 참고).
+  // 둘 다 필수는 아니다 — 날짜도 안 정하면 상대가 정하기로 한 것이다.
   const [dateStr, setDateStr] = useState("");
-  const [timeStr, setTimeStr] = useState("");
+  const [noteStr, setNoteStr] = useState("");
   // 호출 한마디(선택) — 아이콘 버튼을 눌러야 입력창이 트랜지션으로 열린다(요청).
   const [message, setMessage] = useState("");
   const [messageOpen, setMessageOpen] = useState(false);
@@ -101,12 +99,12 @@ export default function ChallengeFormModal({ onClose, onCreated, presetTargetIds
     setBusy(true);
     try {
       // 날짜를 아예 안 정하면(기본값) 상대방이 정하기로 한 것이므로 미정. 날짜만 정하고
-      // 시간을 비우면 "시간 미정"(날짜만)으로 저장된다(요청).
+      // "언제"를 비우면 그냥 그날로만 정한 것이다.
       const challenge = await api.createChallenge({
         targetMemberIds: targetIds,
         ownTeamMemberIds: ownTeamIds,
         scheduledDate: dateStr || null,
-        scheduledTime: dateStr && timeStr ? timeStr : null,
+        scheduledTimeNote: dateStr ? noteStr.trim() : "",
         message: message.trim(),
         fromMatchRequest,
       });
@@ -219,7 +217,7 @@ export default function ChallengeFormModal({ onClose, onCreated, presetTargetIds
 
           <OptionalDateTimeFields
             dateStr={dateStr} onDateChange={setDateStr}
-            timeStr={timeStr} onTimeChange={setTimeStr}
+            noteStr={noteStr} onNoteChange={setNoteStr}
           />
 
           {/* 호출 한마디(선택) — 아이콘 버튼을 누르면 입력창이 높이 트랜지션으로 열린다(요청). */}

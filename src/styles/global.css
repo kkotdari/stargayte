@@ -485,6 +485,15 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
 .scr-datetime-col { display: flex; flex-direction: column; gap: 5px; align-items: stretch; min-width: 0; }
 .scr-datetime-col .scr-datetime-input { width: 100%; min-width: 0; }
 .scr-datetime-col .scr-datetime-input .scr-input { width: 100%; min-width: 0; max-width: 100%; min-height: var(--field-h); padding: 9px 10px; }
+/* "언제 추가하기" — 시각 대신 사람 말로 적는 칸(요청)은 처음부터 펼쳐 두지 않는다.
+   대부분은 날짜만 정하고 말기 때문이다. 날짜 칸과 같은 줄, 같은 높이로 앉아야 두 칸이
+   나란히 보이므로 라벨 줄 높이만큼 위를 비워 준다(날짜 칸의 .scr-label 자리). */
+.scr-datetime-note-add {
+  width: 100%; min-height: var(--field-h);
+  margin-top: calc(var(--fs-caption) * 1.4 + 5px);
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  font-size: var(--fs-caption); white-space: nowrap;
+}
 /* 지우기(×) 버튼을 입력칸 "내부" 오른쪽에 오버레이한다(요청: "x버튼을 인풋창 내부로 이동").
    입력칸엔 오른쪽 패딩을 넉넉히 줘서 값 텍스트가 × 밑으로 들어가지 않게 한다. 값이 없으면
    ×만 숨기고(자리·패딩은 유지) 레이아웃은 안 변한다. */
@@ -5750,6 +5759,14 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
   color: var(--text); text-align: center; line-height: 1.35;
 }
 .scr-challenge-inbox-time { margin-top: -12px; }
+/* 약속한 "언제"(자유 텍스트) — 로스터 바로 위에 글로만 보여준다(요청: 인풋창이 아니라
+   텍스트로). 날짜는 이미 헤더/날짜 그룹이 말하고 있으므로 여기선 그 한마디만 얹는다.
+   길게 적어도 카드 폭을 뚫지 않게 줄바꿈을 허용한다. */
+.scr-challenge-when-note {
+  margin: 0 0 10px; text-align: center;
+  font-size: var(--fs-caption); color: var(--muted);
+  overflow-wrap: anywhere; line-height: 1.4;
+}
 /* 값 span(종류/일시 오른쪽)은 클래스가 없어 색을 명시 안 하면 앱 루트의 테마 글자색(다크
    테마에선 흰색)을 그대로 물려받아 밝은 편지지 배경 위에서 거의 안 보였다(요청: "결과
    입력창 글자가 안보이는데 다크테마 색깔 문제인가?" — 스샷의 '일대일'/'7월 13일…' 값) —

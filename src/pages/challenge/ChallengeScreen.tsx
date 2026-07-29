@@ -1,9 +1,11 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Pencil, MessageSquarePlus, X, Check, Calendar, Clock } from "lucide-react";
+import { Pencil, MessageSquarePlus, X, Check, Calendar } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
 import { Spinner } from "../../components/common/Feedback";
-import OptionalDateTimeFields, { openPicker } from "../../components/common/OptionalDateTimeFields";
+import OptionalDateTimeFields, {
+  openPicker, TIME_NOTE_MAX, TIME_NOTE_PLACEHOLDER,
+} from "../../components/common/OptionalDateTimeFields";
 import InlineCollapse from "../../components/common/InlineCollapse";
 import KakaoShareButton from "../../components/common/KakaoShareButton";
 import type { KakaoShareContent } from "../../utils/kakaoShare";
@@ -87,7 +89,7 @@ interface ChallengePage {
   id: number;
   scheduledAt: string | null;
   scheduledDate: string | null;
-  scheduledTime: string | null;
+  scheduledTimeNote: string;
   targets: ChallengeTarget[];
   status: ChallengeStatus;
   createdAt: string;
@@ -159,12 +161,13 @@ export function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, o
   const pages: ChallengePage[] = useMemo(
     () => [
       ...challenge.history.map((h) => ({
-        id: h.id, scheduledAt: h.scheduledAt, scheduledDate: h.scheduledDate, scheduledTime: h.scheduledTime,
+        id: h.id, scheduledAt: h.scheduledAt, scheduledDate: h.scheduledDate,
+        scheduledTimeNote: h.scheduledTimeNote,
         targets: h.targets, status: h.status, createdAt: h.createdAt, resultWinnerSide: h.resultWinnerSide,
       })),
       {
         id: challenge.id, scheduledAt: challenge.scheduledAt, scheduledDate: challenge.scheduledDate,
-        scheduledTime: challenge.scheduledTime, targets: challenge.targets,
+        scheduledTimeNote: challenge.scheduledTimeNote, targets: challenge.targets,
         status: challenge.status, createdAt: challenge.createdAt, resultWinnerSide: challenge.resultWinnerSide,
       },
     ],
@@ -201,11 +204,11 @@ export function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, o
 
   const [mode, setMode] = useState<CardMode>("none");
   const [dateStr, setDateStr] = useState("");
-  const [timeStr, setTimeStr] = useState("");
-  // 요청자가 이미 정해서 온 날짜/시간은 응답자가 못 바꾸게 잠근다(요청: "이미 입력되어 온 값은
-  // 수정불가"). 날짜만 온 도전장은 날짜는 잠긴 채 시간만 추가할 수 있다(요청).
+  const [noteStr, setNoteStr] = useState("");
+  // 요청자가 이미 정해서 온 값은 응답자가 못 바꾸게 잠근다(요청: "이미 입력되어 온 값은
+  // 수정불가"). 날짜만 온 도전장은 날짜는 잠긴 채 "언제"만 덧붙일 수 있다(요청).
   const dateLocked = challenge.scheduledDate !== null;
-  const timeLocked = challenge.scheduledTime !== null;
+  const noteLocked = challenge.scheduledTimeNote.trim() !== "";
   // 응답 한마디(선택) — 아이콘 버튼을 눌러야 입력창이 트랜지션으로 열린다(요청).
   const [respondMessage, setRespondMessage] = useState("");
   const [respondMsgOpen, setRespondMsgOpen] = useState(false);
@@ -229,13 +232,12 @@ export function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, o
     }
   };
 
-  const startRevenge = () => { setMode("revenge"); setDateStr(""); setTimeStr(""); setRevengeMessage(""); setRevengeMsgOpen(false); };
-  // 결과 입력을 열 때 날짜/시간을 미리 채운다 — 이미 예정 일시가 있으면 그걸로, 없으면
-  // 오늘 날짜 + 21시(요청: 시간 기본 21시)로 시작한다. 실제 값은 사용자가 확인/수정한다.
+  const startRevenge = () => { setMode("revenge"); setDateStr(""); setNoteStr(""); setRevengeMessage(""); setRevengeMsgOpen(false); };
+  // 결과 입력을 열 때 날짜를 미리 채운다 — 이미 예정 날짜가 있으면 그걸로, 없으면 오늘로
+  // 시작한다(시각은 더 이상 다루지 않는다). 실제 값은 사용자가 확인/수정한다.
   const startResult = () => {
     const now = gameNow();
     setDateStr(challenge.scheduledDate ?? `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`);
-    setTimeStr(challenge.scheduledTime ?? "21:00");
     setMode("result");
     setErr("");
   };
@@ -245,11 +247,11 @@ export function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, o
     setErr("");
     setBusy(true);
     try {
-      // 확정 일정 = 이미 정해져 온 값(잠김)이 있으면 그걸, 없으면 응답자가 입력한 값. 날짜가
-      // 없으면 시간도 버린다(시간만은 불가). 날짜만 있고 시간을 비우면 "시간 미정"으로 수락된다.
+      // 확정 일정 = 이미 정해져 온 값(잠김)이 있으면 그걸, 없으면 응답자가 입력한 값.
+      // 날짜가 없으면 "언제"도 버린다 — 가리킬 날이 없다.
       const finalDate = challenge.scheduledDate ?? (dateStr || null);
-      const finalTime = challenge.scheduledTime ?? (finalDate ? (timeStr || null) : null);
-      const schedule = { scheduledDate: finalDate, scheduledTime: finalTime };
+      const note = challenge.scheduledTimeNote.trim() || (finalDate ? noteStr.trim() : "");
+      const schedule = { scheduledDate: finalDate, scheduledTimeNote: note };
       const updated = await api.respondToChallenge(challenge.id, "accepted", schedule, respondMessage.trim());
       closeMode();
       setSharePrompt({ kind: "accepted", updated });
@@ -260,14 +262,14 @@ export function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, o
     }
   };
 
-  // 리벤지(설욕전) 신청 — 시간은 비워서 보낼 수 있다(승리한 쪽이 수락하며 시간을 정함).
+  // 리벤지(설욕전) 신청 — 날짜는 비워서 보낼 수 있다(승리한 쪽이 수락하며 정함).
   const submitRevenge = async () => {
     setErr("");
     setBusy(true);
     try {
       const updated = await api.requestRevenge(challenge.id, {
         scheduledDate: dateStr || null,
-        scheduledTime: dateStr && timeStr ? timeStr : null,
+        scheduledTimeNote: dateStr ? noteStr.trim() : "",
         message: revengeMessage.trim(),
       });
       closeMode();
@@ -280,12 +282,12 @@ export function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, o
   };
 
   const submitResult = async (winnerSide: ChallengeResult) => {
-    // 결과 입력 시엔 날짜/시간이 무조건 필요하다(요청).
-    if (!dateStr || !timeStr) { setErr("실제 대결 날짜와 시간을 입력하세요."); return; }
+    // 결과 입력 시엔 날짜가 무조건 필요하다(요청. 시각은 더 이상 다루지 않는다).
+    if (!dateStr) { setErr("실제 대결 날짜를 입력하세요."); return; }
     setErr("");
     setBusy(true);
     try {
-      const updated = await api.enterChallengeResult(challenge.id, winnerSide, dateStr, timeStr);
+      const updated = await api.enterChallengeResult(challenge.id, winnerSide, dateStr);
       onResponded(updated);
       closeMode();
     } catch (e) {
@@ -313,7 +315,7 @@ export function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, o
     sharePrompt?.kind === "rejected" ? "대결 거절"
     : sharePrompt?.kind === "revenge" ? "설욕전 신청!"
     : "대결 수락!";
-  const sharePromptWhen = formatChallengeSchedule(sharePrompt?.updated ?? { scheduledDate: null, scheduledTime: null });
+  const sharePromptWhen = formatChallengeSchedule(sharePrompt?.updated ?? { scheduledDate: null });
   const sharePromptDesc =
     sharePrompt?.kind === "rejected" ? "호출을 거절했어요."
     : sharePrompt?.kind === "revenge" ? "설욕전을 신청했어요."
@@ -387,6 +389,13 @@ export function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, o
             </div>
             )}
 
+            {/* 약속한 "언제" — 로스터 바로 위에 그냥 글로 보여준다(요청: 인풋창이 아니라
+                텍스트로). 안 적었으면 줄 자체를 안 만든다. 최신 페이지만 이 값을 갖는다
+                (체인 앞 기록은 페이지 데이터에 담아 온 값을 쓴다). */}
+            {activePage.scheduledTimeNote.trim() && (
+              <div className="scr-challenge-when-note">{activePage.scheduledTimeNote}</div>
+            )}
+
             <div className="scr-challenge-matchup">
               <ChallengeSide people={creatorSideMembers} highlightMemberIds={highlightMemberIds} />
               {/* 승/무 배지 — 이긴 편 쪽으로(손 이모지 기준 이긴 편이 있는 방향에) 붙인다
@@ -453,16 +462,16 @@ export function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, o
       {!readOnly && canRespond && (
         <InlineCollapse open={mode === "none"}>
         <div className={cx("scr-challenge-respond", !isLatestPage && "scr-challenge-card-actions-reserve")}>
-          {/* 날짜/시간을 항상 입력칸 형태로 보여준다(요청: "텍스트가 아니라 인풋창 그대로").
+          {/* 날짜·"언제"를 입력칸 형태로 보여준다(요청: "텍스트가 아니라 인풋창 그대로").
               이미 정해져 온 값은 잠긴(수정불가) 입력칸으로, 비어 있는 쪽은 지금 채울 수 있다 —
-              날짜만 온 도전장은 시간만 추가 가능(요청). */}
+              날짜만 온 도전장은 "언제"만 덧붙일 수 있다(요청). */}
           <OptionalDateTimeFields
             dateStr={dateLocked ? challenge.scheduledDate! : dateStr}
             onDateChange={setDateStr}
-            timeStr={timeLocked ? challenge.scheduledTime! : timeStr}
-            onTimeChange={setTimeStr}
+            noteStr={noteLocked ? challenge.scheduledTimeNote : noteStr}
+            onNoteChange={setNoteStr}
             dateLocked={dateLocked}
-            timeLocked={timeLocked}
+            noteLocked={noteLocked}
           />
           {/* 응답 한마디(선택) — 아이콘 버튼을 누르면 입력창이 트랜지션으로 열린다(요청). */}
           <button
@@ -507,14 +516,14 @@ export function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, o
           길고 부드럽게, 취소로 원복될 때도"). */}
       <InlineCollapse open={mode === "revenge"}>
         <div className="scr-challenge-time-change-form">
-          {/* 날짜/시간은 승락 폼과 같은 공용 컴포넌트로(요청: "인라인 응답에서 수정한거
+          {/* 날짜·"언제"는 승락 폼과 같은 공용 컴포넌트로(요청: "인라인 응답에서 수정한거
               참고해서 공통화") — 날 것의 네이티브 인풋을 그대로 쓰면 피드 카드 폭을 뚫고
-              나가는 등 스타일이 깨진다(지적). 라벨/지우기/기본 21시 동작도 함께 통일된다. */}
+              나가는 등 스타일이 깨진다(지적). 라벨/지우기 동작도 함께 통일된다. */}
           <OptionalDateTimeFields
             dateStr={dateStr}
             onDateChange={setDateStr}
-            timeStr={timeStr}
-            onTimeChange={setTimeStr}
+            noteStr={noteStr}
+            onNoteChange={setNoteStr}
           />
           {/* 리벤지 한마디(선택) — 응답 한마디와 같은 아이콘 토글 + 트랜지션 입력창(요청). */}
           <button
@@ -557,12 +566,6 @@ export function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, o
               type="date" className="scr-input scr-challenge-time-edit-input"
               value={dateStr} min={DATE_INPUT_MIN} max={DATE_INPUT_MAX}
               onChange={(e) => setDateStr(e.target.value)}
-            />
-            <input
-              type="time" className="scr-input scr-challenge-time-edit-input"
-              value={timeStr}
-              onFocus={() => { if (!timeStr) setTimeStr("21:00"); }}
-              onChange={(e) => setTimeStr(e.target.value)}
             />
           </div>
           {/* 구성원을 그대로 보여주고 팀 카드를 눌러 승리팀을 고른다(요청: "구성원이 노출되고
@@ -721,14 +724,14 @@ export function ChallengeTimeHeadEdit({
 
   const [editing, setEditing] = useState(false);
   const [dateStr, setDateStr] = useState("");
-  const [timeStr, setTimeStr] = useState("");
+  const [noteStr, setNoteStr] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
 
   const startEdit = () => {
-    // 저장된 날짜/시간을 그대로 열어 편집한다 — 시간 미정(날짜만)이면 시간 칸은 빈 채로 연다.
+    // 저장된 날짜와 "언제"를 그대로 열어 편집한다 — 안 적혀 있으면 빈 칸으로 연다.
     setDateStr(challenge.scheduledDate ?? "");
-    setTimeStr(challenge.scheduledTime ?? "");
+    setNoteStr(challenge.scheduledTimeNote);
     setErr("");
     setEditing(true);
   };
@@ -737,10 +740,9 @@ export function ChallengeTimeHeadEdit({
     setErr("");
     setBusy(true);
     try {
-      // 날짜/시간 모두 선택 — 날짜를 비우면 일정 전체 미정, 시간만 비우면 "시간 미정"(날짜만)
-      // 으로 저장된다(요청: "제약 없이 다 열어두기").
+      // 날짜/"언제" 모두 선택 — 날짜를 비우면 일정 전체 미정이 된다(요청: "제약 없이 다 열어두기").
       const updated = await api.rescheduleChallenge(
-        challenge.id, dateStr || null, dateStr && timeStr ? timeStr : null,
+        challenge.id, dateStr || null, dateStr ? noteStr.trim() : "",
       );
       onUpdated(updated);
       setEditing(false);
@@ -789,9 +791,8 @@ export function ChallengeTimeHeadEdit({
                   onChange={(e) => {
                     const v = e.target.value;
                     setDateStr(v);
-                    // 날짜를 지우면 시간도 비운다. 날짜를 골라도 시간은 자동으로 채우지 않는다 —
-                    // 시간 칸을 비워두면 그게 곧 "시간 미정"(날짜만)이다(요청).
-                    if (!v) setTimeStr("");
+                    // 날짜를 지우면 "언제"도 비운다 — 가리킬 날이 없다.
+                    if (!v) setNoteStr("");
                   }}
                 />
                 {/* 스왑(요청): 값 있으면 지우기 ×, 없으면 달력 아이콘 — 같은 오른쪽 자리. */}
@@ -799,7 +800,7 @@ export function ChallengeTimeHeadEdit({
                   <button
                     type="button" className="scr-datetime-clear" aria-label="날짜 지우기"
                     onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => { setDateStr(""); setTimeStr(""); }}
+                    onClick={() => { setDateStr(""); setNoteStr(""); }}
                   >
                     <X size={12} />
                   </button>
@@ -807,28 +808,21 @@ export function ChallengeTimeHeadEdit({
                   <span className="scr-datetime-picker-icon" aria-hidden="true"><Calendar size={15} /></span>
                 )}
               </span>
+              {/* "언제"(자유 텍스트) — 시각 대신 사람 말로 적는 자리(요청). */}
               <span className="scr-datetime-input-wrap scr-challenge-time-edit-cell">
                 <input
-                  type="time" className="scr-input scr-challenge-time-edit-input"
-                  value={timeStr}
-                  // 빈 시간 칸을 열면 21시로 시작 — 네이티브 피커가 21시에 열리게 pointerdown에서
-                  // DOM 값을 미리 박고 상태도 맞춘다(비동기 상태갱신만으론 현재시각으로 열림).
-                  onPointerDown={(e) => { if (dateStr && !timeStr) { e.currentTarget.value = "21:00"; setTimeStr("21:00"); } }}
-                  onFocus={(e) => { if (dateStr && !timeStr) { e.currentTarget.value = "21:00"; setTimeStr("21:00"); } }}
-                  onClick={openPicker}
-                  onChange={(e) => setTimeStr(e.target.value)} disabled={!dateStr}
+                  type="text" className="scr-input scr-challenge-time-edit-input"
+                  value={noteStr} placeholder={TIME_NOTE_PLACEHOLDER} maxLength={TIME_NOTE_MAX}
+                  onChange={(e) => setNoteStr(e.target.value)} disabled={!dateStr}
                 />
-                {/* 스왑(요청): 값 있으면 지우기 ×, 없으면 시계 아이콘. 날짜 없으면(비활성) 아이콘만. */}
-                {dateStr && timeStr ? (
+                {dateStr && noteStr && (
                   <button
-                    type="button" className="scr-datetime-clear" aria-label="시간 지우기"
+                    type="button" className="scr-datetime-clear" aria-label="언제 지우기"
                     onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => setTimeStr("")}
+                    onClick={() => setNoteStr("")}
                   >
                     <X size={12} />
                   </button>
-                ) : (
-                  <span className="scr-datetime-picker-icon" aria-hidden="true"><Clock size={15} /></span>
                 )}
               </span>
               {/* 취소/확인을 기존 아이콘 버튼(scr-icon-btn) 스타일로, 크기만 이 행에 맞게

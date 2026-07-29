@@ -28,16 +28,14 @@ export default function ChallengeResultInboxModal({ challenges, onClose }: Chall
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
 
-  // 결과 입력 시엔 실제 대결 날짜/시간을 무조건 함께 넣는다(요청). 큐에서 항목이 바뀔 때마다
-  // 이미 정해진 일시가 있으면 그걸로, 없으면 오늘 + 21시로 미리 채운다.
+  // 결과 입력 시엔 실제 대결 날짜를 무조건 함께 넣는다(요청. 시각은 다루지 않는다). 큐에서
+  // 항목이 바뀔 때마다 이미 정해진 날짜가 있으면 그걸로, 없으면 오늘로 미리 채운다.
   const [dateStr, setDateStr] = useState("");
-  const [timeStr, setTimeStr] = useState("");
   const current = challenges[idx];
   useEffect(() => {
     if (!current) return;
     const now = gameNow();
     setDateStr(current.scheduledDate ?? `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`);
-    setTimeStr(current.scheduledTime ?? "21:00");
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 큐 항목(idx)이 바뀔 때만 다시 채운다
   }, [idx]);
   if (!current) { onClose(); return null; }
@@ -49,11 +47,11 @@ export default function ChallengeResultInboxModal({ challenges, onClose }: Chall
   };
 
   const submit = async (winnerSide: ChallengeResult) => {
-    if (!dateStr || !timeStr) { setErr("실제 대결 날짜와 시간을 입력하세요."); return; }
+    if (!dateStr) { setErr("실제 대결 날짜를 입력하세요."); return; }
     setErr("");
     setBusy(true);
     try {
-      await api.enterChallengeResult(current.id, winnerSide, dateStr, timeStr);
+      await api.enterChallengeResult(current.id, winnerSide, dateStr);
       advance();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "결과를 입력하지 못했어요.");
@@ -82,18 +80,12 @@ export default function ChallengeResultInboxModal({ challenges, onClose }: Chall
           </div>
           {/* 실제 대결 날짜/시간을 무조건 입력한다(요청). 시간 칸은 빈 채로 누르면 21시로 열린다. */}
           <div className="scr-challenge-inbox-row">
-            <span className="scr-label">일시</span>
+            <span className="scr-label">날짜</span>
             <div className="scr-challenge-time-edit-row scr-challenge-result-when">
               <input
                 type="date" className="scr-input scr-challenge-time-edit-input"
                 value={dateStr} min={DATE_INPUT_MIN} max={DATE_INPUT_MAX}
                 onChange={(e) => setDateStr(e.target.value)}
-              />
-              <input
-                type="time" className="scr-input scr-challenge-time-edit-input"
-                value={timeStr}
-                onFocus={() => { if (!timeStr) setTimeStr("21:00"); }}
-                onChange={(e) => setTimeStr(e.target.value)}
               />
             </div>
           </div>
