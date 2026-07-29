@@ -840,15 +840,13 @@ export default function FeedScreen() {
     return () => clearInterval(t);
   }, []);
 
-  // 응답/결과입력/리벤지 등 카드 액션의 결과를 목록에 반영한다.
+  // 응답/결과입력 등 카드 액션의 결과를 목록에 반영한다.
   const upsertChallenge = (updated: Challenge) => {
-    setChallenges((prev) => {
-      const base = updated.reappliedFromId != null
-        ? prev.filter((c) => c.id !== updated.reappliedFromId)
-        : prev;
-      const exists = base.some((c) => c.id === updated.id);
-      return exists ? base.map((c) => (c.id === updated.id ? updated : c)) : [updated, ...base];
-    });
+    setChallenges((prev) => (
+      prev.some((c) => c.id === updated.id)
+        ? prev.map((c) => (c.id === updated.id ? updated : c))
+        : [updated, ...prev]
+    ));
   };
 
   // 경기 전체 — 최신순 커서 페이지를 끝까지 이어붙여 한 번에 다 불러온다.

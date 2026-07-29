@@ -7,7 +7,7 @@ import type {
   GameResultSlot, GameResultPage, GameResultStatsResponse, GameType, Race, TeamRankingResponse,
   MonthlyGameResultStatsResponse, MonthlyTeamRankingResponse, RatingHistoryResponse, RivalryPair,
   ReplayNameClassificationEntry, ReplayNameKind, ReplayNameMappingEntry, ReplayNameMappingKind,
-  Challenge, ChallengeCreatePayload, ChallengeRevengePayload, ChallengeResult,
+  Challenge, ChallengeCreatePayload, ChallengeResult,
   MatchRequest, MatchRequestCreatePayload, MatchRequestListResponse, MatchRequestInboxItem,
   League, LeagueListItem, LeagueCreatePayload, LeagueUpdatePayload, LeagueTeam,
   LeagueMatch, LeagueMatchSide, LeagueMatchResultPayload,
@@ -717,15 +717,6 @@ export const api = {
     return request<Challenge>(`/api/challenges/${id}/result`, {
       method: "POST",
       body: JSON.stringify({ winnerSide, scheduledDate }),
-    });
-  },
-
-  // 완료된 너 나와에서 패배한 쪽이 같은 대진으로 리벤지(설욕전)을 신청 — 패배한 편이 새
-  // 도전장의 요청자, 승리한 편이 새 지목 대상이 된다(체인으로 이어진다).
-  async requestRevenge(id: number, payload: ChallengeRevengePayload = {}): Promise<Challenge> {
-    return request<Challenge>(`/api/challenges/${id}/revenge`, {
-      method: "POST",
-      body: JSON.stringify(payload),
     });
   },
 

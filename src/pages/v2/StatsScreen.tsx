@@ -286,13 +286,14 @@ export default function StatsScreenV2() {
       if (bMissing) return -1;
       return 0;
     };
-    // 포인트 정렬 보조 — 0점은 오름/내림 어느 방향이든 항상 맨 아래, 포인트 없는(순위
-    // 대상 아닌) 회원은 그보다도 아래(요청).
+    // 포인트 정렬 보조 — 포인트가 없는(순위 대상이 아닌) 회원만 항상 맨 아래로 보낸다.
+    // 0점을 따로 맨 아래로 내리던 보정은 없앴다(요청): 포인트가 승점이던 시절에는 0이
+    // "아직 없음"과 같은 뜻이었지만, 지금은 레이팅이라 음수도 나온다 — 그때 0만 -14보다
+    // 아래로 가면 목록 순서와 옆의 순위 뱃지가 서로 어긋나 보인다.
     const noPointsLast = (a: (typeof list)[number], b: (typeof list)[number]) => {
-      const tier = (p: number | null) => (p === null ? 2 : p === 0 ? 1 : 0);
-      const ta = tier(a.points), tb = tier(b.points);
+      const ta = a.points === null ? 1 : 0, tb = b.points === null ? 1 : 0;
       if (ta !== tb) return ta - tb;
-      if (ta > 0) return nicknameTiebreak(a, b);
+      if (ta === 1) return nicknameTiebreak(a, b);
       return 0;
     };
     if (!sort) {

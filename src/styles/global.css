@@ -477,23 +477,17 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
 /* 날짜/시간 입력은 호출하기 모달·인박스·리벤지 폼에서 크기·모양을 표준으로 통일(요청) —
    두 칸을 같은 폭으로 나눠(각 flex:1) 모달 폭을 채우고, 입력 자체도 표준 필드 크기
    (--field-h, padding 9/10)로. 예전의 축소판(--field-h-sm·auto 폭)은 걷어낸다. */
-/* 두 칸은 grid의 minmax(0,1fr) 트랙으로 정확히 반씩 나눈다 — flex(1 1 0)로 하면 iOS 사파리에서
-   네이티브 date/time 입력이 자기 고유폭 밑으로 안 줄어들어 날짜칸이 오른쪽으로 넘쳐 시간칸을
-   덮는 문제가 생긴다(요청: "인풋창 레이아웃 겹침"). minmax(0,1fr) + 아래 input의 min-width:0으로
-   네이티브 입력이 트랙을 넘지 못하게 막는다. */
-.scr-datetime-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; align-items: start; }
-.scr-datetime-col { display: flex; flex-direction: column; gap: 5px; align-items: stretch; min-width: 0; }
-.scr-datetime-col .scr-datetime-input { width: 100%; min-width: 0; }
-.scr-datetime-col .scr-datetime-input .scr-input { width: 100%; min-width: 0; max-width: 100%; min-height: var(--field-h); padding: 9px 10px; }
-/* "언제 추가하기" — 시각 대신 사람 말로 적는 칸(요청)은 처음부터 펼쳐 두지 않는다.
-   대부분은 날짜만 정하고 말기 때문이다. 날짜 칸과 같은 줄, 같은 높이로 앉아야 두 칸이
-   나란히 보이므로 라벨 줄 높이만큼 위를 비워 준다(날짜 칸의 .scr-label 자리). */
-.scr-datetime-note-add {
-  width: 100%; min-height: var(--field-h);
-  margin-top: calc(var(--fs-caption) * 1.4 + 5px);
-  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-  font-size: var(--fs-caption); white-space: nowrap;
-}
+/* 날짜와 "언제"는 세로로 한 줄씩 쌓는다(요청). 예전엔 반반 두 칸이었는데, 그러면 "언제"가
+   안 열린 동안 오른쪽 반 칸을 큼직한 버튼 하나가 차지해 폼이 어수선했다(지적).
+   min-width:0은 그대로 필요하다 — iOS 사파리의 네이티브 date 입력이 자기 고유폭 밑으로
+   안 줄어들어 폼 밖으로 넘치는 문제(요청: "인풋창 레이아웃 겹침")를 아래 input의
+   min-width:0과 함께 막는다. */
+.scr-datetime-stack { display: flex; flex-direction: column; gap: 10px; align-items: stretch; min-width: 0; }
+.scr-datetime-stack .scr-datetime-input { width: 100%; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.scr-datetime-stack .scr-datetime-input .scr-input { width: 100%; min-width: 0; max-width: 100%; min-height: var(--field-h); padding: 9px 10px; }
+/* "언제" — 신청 메시지 버튼과 같은 아이콘+라벨 알약이다(요청). 생김새는
+   .scr-challenge-msg-toggle이 전부 맡고, 여기서는 자리만 잡는다. */
+.scr-datetime-note-add { align-self: flex-start; }
 /* 지우기(×) 버튼을 입력칸 "내부" 오른쪽에 오버레이한다(요청: "x버튼을 인풋창 내부로 이동").
    입력칸엔 오른쪽 패딩을 넉넉히 줘서 값 텍스트가 × 밑으로 들어가지 않게 한다. 값이 없으면
    ×만 숨기고(자리·패딩은 유지) 레이아웃은 안 변한다. */
@@ -4942,7 +4936,6 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 /* 경기종류보다 앞, 굵게(요청: "경기유형 앞에 일시를 먼저 표시 진하게"). 고정폭
    숫자 폰트(.scr-mono)라 옆의 배지/일반 텍스트와 광학적 중심이 미묘하게 달라
    위로 떠 보였다 — 살짝 아래로 내린다(요청: "데이터 폰트라 살짝 아래로 배치"). */
-.scr-challenge-card-when { font-size: var(--fs-subhead); font-weight: 700; color: var(--text); position: relative; top: 1px; }
 /* 당일 경기는 색 대신 시간 앞에 작은 "오늘" 태그로 표시(요청: "오늘자 경기 색표시
    원복하고 대신 시간 앞에 오늘 이라는 작은 태그 달아주기"). */
 /* line-height를 명시하지 않으면 기본값(1.4~)이 이 배지를 더 크게 만들어서 line-height:1을
@@ -5194,24 +5187,9 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 2px 8px rgba(0, 0, 0, 0.22);
 }
 
-/* 재신청/리벤지로 이어진 기록임을 알리는 라벨 — 재신청은 옅은 톤, 리벤지는 눈에 띄게
-   포인트색으로 구분한다. 라벨에 공백이 있어("n번째 재신청") 좁은 카드에서 줄바꿈되지
-   않게 nowrap. */
-.scr-challenge-chain-tag {
-  display: inline-block; font-size: var(--fs-caption); font-weight: 800; border-radius: 4px;
-  padding: 1px 5px; margin-right: 5px; vertical-align: middle; white-space: nowrap;
-}
-.scr-challenge-chain-tag-revenge { color: var(--point-contrast); background: var(--point); }
 
-/* 요청: "최대한 높이는 컴팩트하게" → "너 나와카드 기본 하단 여백 늘리고" — 페이징 버튼이
-   없는(대다수) 카드의 기본 여백은 다시 넉넉하게(6px→10px), 대신 페이징 버튼이 실제로
-   뜨는 카드는 그 줄 자신의 음수 마진(.scr-challenge-page-nav-row-active)으로 따로
-   당긴다. */
-/* 이전/다음 버튼(절대배치)의 기준 — .scr-challenge-pages가 아니라 여기(카드 패딩까지
-   포함해 자르지 않는 박스)에 둬야 높이 모핑용 overflow:hidden에 버튼이 잘리지 않는다.
-   아래 .scr-challenge-page-nav 참고. */
+/* 카드 본문 — 체인(페이지) 개념이 사라져 이 안엔 도전장 하나만 그린다. */
 .scr-challenge-card-body { position: relative; display: flex; flex-direction: column; gap: 10px; }
-.scr-challenge-card-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
 /* 매치업 — 도전자편/상대편을 나란히 두고 그 사이에 손가락을 하나만 둔다. 양쪽 다
    align-items:center인 이 flex 행 안에서 자연히 위아래 가운데로 온다(요청: "손가락
    이모티콘을 좀더 도전자와 상대 가운데 느낌에 배치") — 팀전이라 어느 한쪽이 세로로
@@ -5230,65 +5208,6 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
    빈 여백만 넓게 벌어져 보였다(요청: "너나와 카드 pc에서 컨텐츠가 너무 양쪽으로
    벌어져있어.. 도전자랑 상대랑 정보 가운데로 좀더 가까이 배치해줘") — 카드 폭과는
    별개로 매치업 내용 자체를 좁게 다시 캡(560px)해서 카드 가운데로 모은다. */
-/* 페이징(다시 신청/리벤지 체인) 카드 — 활성 페이지만 자연 높이로 렌더하고, 페이지를 넘길
-   때 컨테이너 높이를 이전→새 높이로 부드럽게 모핑한다(요청: "높이는 달라져도 되는데 모핑
-   모션을 넣어서 하나의 체인임을 알게" → "지금보다 더 애니메이션이 눈에 띄게 패널이
-   모핑되게 해줘" — duration을 늘리고 살짝 오버슈트가 있는 이징으로 바꿔 모핑이 더
-   또렷하게 보이게 한다). height는 JS(useLayoutEffect)가 실측값을 인라인으로 박고, 여기
-   transition이 그 변화를 애니메이션한다. 전환 중 큰 쪽이 잠깐 삐져나오지 않게
-   overflow:hidden. 이전/다음 버튼은 더 이상 이 박스 안에 없다(위 .scr-challenge-
-   card-body 참고) — 예전엔 overflow-x:visible로 버튼만 안 잘리게 해보려 했지만, 스펙상
-   overflow-y가 hidden이면 visible이 auto로 재계산돼 실제로는 계속 잘렸고(신고: "이동
-   화살표 잘려서 잘 안보이는 문제" → "페이지 있는 카드가 좌우 이동버튼이 안보임"), 그
-   auto 스크롤 트랙이 메시지 아래 얇은 선으로 보이기까지 했다(신고: "한줄메시지 아래에
-   이상한 줄이 보여") — 버튼을 아예 이 박스 밖으로 빼는 것으로 근본 해결. */
-.scr-challenge-pages { overflow: hidden; transition: height 0.42s cubic-bezier(0.34, 1.56, 0.64, 1); }
-/* 내용은 페이드 없이 즉시 교체 — 높이 모핑만 애니메이션한다(요청: "페이지 이동시 현재
-   내용물 페이드아웃 제거하고 바로 사라지게 변경. 페이드인은 유지" → "페이드 인도
-   삭제"). */
-.scr-challenge-page { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
-@media (prefers-reduced-motion: reduce) {
-  .scr-challenge-pages { transition: none; }
-}
-/* 이전/다음 버튼은 매치업/날짜 줄과 같은 "내용" 취급이 아니라, 카드 자신의 좌우
-   패딩(여백) 안에 얹히는 컨트롤이다(요청: "이동버튼은 scr-challenge-card 좌우에
-   패딩공간에 배치하고 나머지 내부는 모두 컨텐츠용으로 사용"). 그래서 페이지 전환마다
-   내용이 통째로 바뀌는 .scr-challenge-page 안이 아니라, 그 부모(.scr-challenge-pages,
-   위에서 position:relative 지정)의 형제로 딱 한 번만 존재한다(요청: "이동 버튼은
-   scr-challenge-page 안에 있으면 안돼") — 페이지가 바뀌어도 버튼 자체는 다시 그려지지
-   않고 그 자리에 그대로 남는다. absolute + 음수 left/right로 카드 패딩 쪽까지 밀어
-   낸다 — 카드 패딩 자체는 이력 유무와 상관없이 항상 같고(위 .scr-challenge-card
-   참고), 버튼만 필요할 때만 보인다(아래 .scr-challenge-page-nav-hidden). */
-/* 18px 버튼에 18px 패딩(좌우 2px 여유 계산)은 실제로는 여유가 음수라 버튼이 패딩
-   밖(컨텐츠 쪽)으로 2px 넘쳐 나갔었다 — 그래서 잘 안 보이던 것(신고: "이동버튼이
-   너무너무 작고 조금 보여"). 카드 패딩을 24px로 다시 늘리고 버튼도 20px로 키워
-   좌우 2px씩 정확히 남게 재계산. 화살표 아이콘(얇은 선)도 작을 땐 존재감이 없어서,
-   CSS 삼각형(테두리 트릭)으로 꽉 찬 채워진 화살표를 그린다(요청: "채워진 삼각형
-   모양으로 좌우에 잘 보이게"). 배경도 옅게 넣어 카드 위에서 더 도드라지게 한다. */
-/* 카드 하단 페이지 네비 바 — [◀ 1/3 ▶] 가운데 정렬 한 줄(요청: "좌우 이동 버튼을 하단으로,
-   1/3 이렇게 페이지 표시"). */
-/* 페이징 있는 카드의 "지금 보는 페이지 일시"를 페이지네이션 바로 위에 상대표기로(요청:
-   "1개월 23일 전 오후 7시 10분"). 옅고 작게, 가운데. */
-.scr-challenge-page-when {
-  text-align: center; font-size: var(--fs-caption); font-weight: 600; color: var(--dim);
-  margin-top: 4px;
-}
-.scr-challenge-page-nav-bar {
-  display: flex; align-items: center; justify-content: center; gap: 10px;
-}
-.scr-challenge-page-count {
-  font-size: var(--fs-caption); font-weight: 600; color: var(--dim);
-  font-variant-numeric: tabular-nums; min-width: 2.6em; text-align: center;
-}
-.scr-challenge-page-nav {
-  display: flex; align-items: center; justify-content: center;
-  width: 20px; height: 20px; border-radius: 50%;
-  background: transparent; border: none; color: var(--dim); cursor: pointer;
-}
-@media (hover: hover) { .scr-challenge-page-nav:hover { color: var(--text); } }
-.scr-challenge-page-nav::before { content: ""; width: 0; height: 0; }
-.scr-challenge-page-nav-prev::before { border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-right: 7px solid currentColor; margin-right: 1px; }
-.scr-challenge-page-nav-next::before { border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 7px solid currentColor; margin-left: 1px; }
 .scr-challenge-matchup { display: flex; align-items: flex-start; width: 100%; }
 @media (min-width: 641px) {
   .scr-challenge-matchup { max-width: 560px; margin: 0 auto; }
@@ -5330,17 +5249,11 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
 }
 /* 무승부(무)는 승리색이 아니라 무승부 테마색(회색, .scr-draw와 동일 --muted)으로(요청). */
 .scr-challenge-inline-draw { color: var(--muted); border-color: var(--muted); }
-/* 해당 안 되는 쪽(진 편/결과 없음)에도 같은 자리를 투명하게 남긴다 — 안 그러면 페이지를
-   넘길 때 배지 유무에 따라 손 이모지가 좌우로 흔들린다(요청: "손이모지 양옆에도
+/* 해당 안 되는 쪽(진 편/결과 없음)에도 같은 자리를 투명하게 남긴다 — 안 그러면 결과
+   유무에 따라 손 이모지가 좌우로 흔들린다(요청: "손이모지 양옆에도
    승리/무승부 배지 넣을 공간 예약해야함"). */
 .scr-challenge-inline-win-hidden { visibility: hidden; }
 
-@media (hover: hover) { .scr-challenge-page-nav:hover { color: var(--text); background: rgba(var(--overlay-rgb), 0.1); } }
-/* 첫/마지막 페이지 또는 이력이 아예 없는 카드 — 회색 비활성화가 아니라 자리만 남기고
-   안 보이게 한다(요청: "버튼 무조건 표시하고 비활성화가 아니라 필요없을땐
-   안나와야해(페이지 없을때나 맨앞/맨뒤 페이지 등)"). 절대배치라 안 보여도 다른 요소
-   레이아웃엔 애초에 영향이 없다. */
-.scr-challenge-page-nav-hidden { visibility: hidden; }
 
 /* 도전자편/상대편 한 칸 — 인원이 하나든(1:1) 여럿이든(팀전) 항상 세로로 쌓는다(요청:
    "각팀을 세로로 배치"). */
@@ -5423,7 +5336,6 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
    같은 버튼을 자리만 남기고 투명하게(visibility:hidden) 그려 높이를 그대로 예약한다(요청:
    "버튼 로우가 있는 페이지가 하나라도 있으면 전체 페이지 높이에 버튼 로우 영역 추가해 동일
    유지"). */
-.scr-challenge-card-actions-reserve { visibility: hidden; pointer-events: none; }
 .scr-challenge-inbox-body .scr-form-actions { justify-content: center; }
 /* 승락/거절 버튼 — 모양은 재신청/취소/연기(.scr-btn-ghost) 버튼과 똑같이(둥근네모).
    승락은 파스텔톤의 러블리한 분홍 그라데이션(요청) — 위는 옅고 아래로 갈수록 조금 진해져
@@ -6868,8 +6780,9 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    길이만큼 칸이 달라져 줄이 안 맞는다). 한 줄에 세 명(요청). */
 .scr-feed-post-stack-sum-players {
   list-style: none; margin: 0;
-  /* 위 여백은 세미타이틀 줄이 가져갔다 — 명단은 그 줄에 딸린 내용이라 바짝 붙인다. */
-  padding: 10px var(--post-pad-bx) 0;
+  /* 세미타이틀 줄("요약 정보")과 명단 사이 — 10 → 18px(지적: 너무 가깝다). 딸린 내용이라
+     바짝 붙였었는데, 아바타가 있는 줄이라 그 정도로는 두 덩이가 한 줄처럼 뭉쳐 보였다. */
+  padding: 18px var(--post-pad-bx) 0;
   display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 6px;
 }
 .scr-feed-post-stack-sum-player { display: flex; align-items: center; gap: 6px; min-width: 0; }
@@ -7074,7 +6987,6 @@ html:not(.scr-light-theme) .scr-feed-card-head:has(.scr-feed-card-head-title) .s
 /* 아이템 내 폰트 전부 1스텝 축소(요청) — 로스터/닉네임 caption, 헤더 micro 등.
    로스터와 너나와 닉네임은 같은 크기 유지(둘 다 caption). */
 .scr-feed-card .scr-challenge-person-name { font-size: var(--fs-caption); }
-.scr-feed-card .scr-challenge-card-when { font-size: var(--fs-body); }
 .scr-feed-game-result-body .scr-game-result-trow-map, .scr-feed-game-result-body .scr-game-result-trow-dur { font-size: var(--fs-micro); }
 .scr-feed-comments .scr-mreq-item-text { font-size: var(--fs-caption); }
 .scr-feed-comments .scr-mreq-item-author-name { font-size: var(--fs-micro); }
@@ -7216,16 +7128,21 @@ html.scr-light-theme .scr-feed-comments .scr-mreq-chip-inline { color: #c07c1c; 
    하나도 없을 때 그 여백까지 통째로 걷어야 하기 때문이다(아래 -empty). */
 /* 댓글은 경기 로우 밖(포스트 직계)이라 로우의 gap이 닿지 않는다 — 같은 값을 여기서 낸다
    (요청: 사이사이 줄간격 동일). */
-.scr-feed-comments { padding: var(--post-row-gap) 0 0; }
+/* 위 여백은 바깥이 아니라 안쪽(.scr-feed-notes)이 낸다 — 댓글이 하나도 없을 때는 입력줄이
+   꼬리 여백에 절대배치로 얹혀 흐름에 없으므로, 바깥이 내면 아무도 안 쓰는 24px이 그대로
+   죽은 자리로 남는다(지적: 버튼 밑부터 댓글까지 갭이 너무 크다). */
+.scr-feed-comments { padding: 0; }
 .scr-feed-comments > .scr-feed-notes {
-  border-top: none; padding: 0 var(--post-pad-bx); margin-top: 0;
+  border-top: none; padding: var(--post-row-gap) var(--post-pad-bx) 0; margin-top: 0;
 }
 /* 댓글이 없는 포스트가 훨씬 많다(지적) — 그럴 땐 "댓글 쓰기" 아이콘이 한 줄을 통째로
    차지하지 않고, 바디 아래 여백의 왼쪽 구석에 얹혀만 있는다(요청). 기준은 포스트
    (.scr-feed-card, position:relative). */
 /* 댓글이 없는 포스트의 입력줄은 꼬리 여백에 절대배치로 얹히므로 자기 여백을 안 낸다 —
    대신 위쪽 간격은 .scr-feed-comments가 낸다(아래). */
-.scr-feed-comments > .scr-feed-notes-empty { padding: 0; }
+/* 댓글이 없으면 입력줄이 꼬리 여백 안에 절대배치로 앉으므로 여기서 자리를 잡아 줄 필요가
+   없다 — 위쪽만 조금(8px) 띄워 바로 위 내용과 딱 붙지 않게 한다. */
+.scr-feed-comments > .scr-feed-notes-empty { padding: 8px 0 0; }
 /* 왼쪽 끝은 요약 상자와 같은 자리(--post-pad-bx)에 맞춘다(지적: 시작 부분 정렬). */
 .scr-feed-comments > .scr-feed-notes-empty .scr-feed-comment-row {
   /* bottom은 --post-pad-b와 짝이다 — 꼬리 여백 안에서 글자 위아래가 비슷해 보이는 자리. */

@@ -400,23 +400,6 @@ export interface ChallengeOwnMember {
   avatar: string | null;
 }
 
-// 리벤지 체인에서 이 도전장보다 앞선(더 예전) 기록 한 건.
-export interface ChallengeHistoryEntry {
-  id: number;
-  // 정렬/그룹핑/카운트다운용 파생 일시(UTC ISO) — 시간 미정이면 자정으로 채워져 온다.
-  scheduledAt: string | null;
-  // 실제 저장값 — 날짜 하나뿐이다(시각 필드는 없앴다).
-  scheduledDate: string | null;
-  // 약속 시간을 사람 말로 적어 둔 것 — "그날 봐서", "아무도 몰래" 같은 자유 텍스트(요청).
-  // 안 적었으면 빈 문자열. 정렬/마감 계산에는 쓰지 않는다(그건 scheduledDate만 본다).
-  scheduledTimeNote: string;
-  status: ChallengeStatus;
-  targets: ChallengeTarget[];
-  createdAt: string;
-  // 확정 너 나와의 결과 — 아직 아무도 입력하지 않았으면 null.
-  resultWinnerSide: ChallengeResult | null;
-}
-
 export interface Challenge {
   id: number;
   matchType: ChallengeMatchType;
@@ -426,7 +409,8 @@ export interface Challenge {
   scheduledAt: string | null;
   // 실제 저장값 — 날짜 하나뿐이다(시각 필드는 없앴다).
   scheduledDate: string | null;
-  // 약속 시간을 사람 말로 적어 둔 것(위 ChallengeHistoryEntry 주석 참고).
+  // 약속 시간을 사람 말로 적어 둔 것 — "그날 봐서", "아무도 몰래" 같은 자유 텍스트(요청).
+  // 안 적었으면 빈 문자열. 정렬/마감 계산에는 쓰지 않는다(그건 scheduledDate만 본다).
   scheduledTimeNote: string;
   status: ChallengeStatus;
   createdBy: { id: string; nickname: string; avatar: string | null };
@@ -435,13 +419,8 @@ export interface Challenge {
   createdAt: string;
   // 폐기(휴지통)된 시각(ISO) — 폐기 상태가 아니면 null. 휴지통을 "최근 버려진 순"으로 정렬한다.
   discardedAt: string | null;
-  // 리벤지(설욕전)로 만들어졌으면 원래 도전장의 id, 아니면 null. 값이 있으면 곧 리벤지다.
-  reappliedFromId: number | null;
   // 확정 너 나와의 결과 — 아직 아무도 입력하지 않았으면 null.
   resultWinnerSide: ChallengeResult | null;
-  // 이 도전장보다 앞선 체인 기록(오래된 순) — 목록 화면 카드에서 좌우로 슬라이드해
-  // 보여준다. 리벤지 이력이 없으면 빈 배열.
-  history: ChallengeHistoryEntry[];
   // "너 나와! 신청 들어주기"로 만들어졌으면 true — 카드에 "요청너 나와" 배지를 붙인다.
   fromMatchRequest: boolean;
 }
@@ -449,7 +428,7 @@ export interface Challenge {
 export interface ChallengeCreatePayload {
   // 날짜만 정한다(시각 필드는 없앴다) — 날짜도 안 정하면 일정 미정.
   scheduledDate?: string | null;
-  // "언제"를 사람 말로(선택, 30자). 날짜가 없으면 서버가 버린다.
+  // "언제"를 사람 말로(선택, 30자). 날짜와 상관없이 따로 적을 수 있다.
   scheduledTimeNote?: string;
   // 호출 한마디(선택, 한글 50자).
   message?: string;
@@ -458,13 +437,6 @@ export interface ChallengeCreatePayload {
   ownTeamMemberIds?: string[];
   // "너 나와! 신청 들어주기"로 여는 도전장이면 true.
   fromMatchRequest?: boolean;
-}
-
-// 리벤지(설욕전)을 신청할 때 — 날짜/"언제" 모두 생략 가능. 한마디(선택)도 함께 보낼 수 있다.
-export interface ChallengeRevengePayload {
-  scheduledDate?: string | null;
-  scheduledTimeNote?: string;
-  message?: string;
 }
 
 // ===== 너 나와! 신청 코너 ("너 나와!" 최상단) =====
