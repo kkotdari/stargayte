@@ -31,9 +31,6 @@ const TYPE_SELECT_OPTS: SelectOption[] = [
 ];
 // 기간 드롭다운에서 "전체 기간"을 가리키는 값 — 나머지 값은 전부 "YYYY-MM"이다.
 const PERIOD_ALL = "all";
-// 초기화가 되돌릴 분류 — 진입 기본값은 랜덤(아래 matchType 주석)이라 되돌릴 "원래 값"이
-// 따로 없어서, 초기화만큼은 늘 같은 값이 나오도록 개인전으로 못 박는다.
-const DEFAULT_MATCH_TYPE: MatchType = "0101";
 // 기간 드롭다운이 늘어놓을 월의 상한 — 첫 경기 조회가 이상한 값을 주더라도 목록이
 // 무한정 길어지지 않게 막는 안전장치일 뿐, 정상 상황에서는 걸리지 않는다.
 const MAX_PERIOD_MONTHS = 240;
@@ -46,7 +43,7 @@ const EMPTY_STATS: MemberStats = {
   avgApm: null, avgEapm: null, avgCmd: null, avgEcmd: null, avgBuild: null,
 };
 
-type StatSortKey = "name" | "points" | "rate" | "plays" | "build" | "eapm" | "ecmd";
+type StatSortKey = "name" | "points" | "rate" | "plays" | "build" | "apm" | "cmd";
 type StatSortDir = "desc" | "asc";
 interface StatSort { key: StatSortKey; dir: StatSortDir }
 
@@ -157,13 +154,12 @@ export default function StatsScreenV2() {
     [periodMonth],
   );
 
-  // 문장 끝 초기화 버튼(요청) — 세 낱말을 한 번에 되돌린다. 분류는 진입 기본값이 랜덤이라
-  // 되돌릴 "원래 값"이 없으므로 개인전으로 고정한다(눌렀는데 팀전이 나오면 초기화로 안 읽힌다).
-  const isDefaultFilter =
-    period === currentMonthValue() && matchType === DEFAULT_MATCH_TYPE && race === "all";
+  // 문장 끝 초기화 버튼(요청) — 기간과 종족만 되돌리고 분류(개인전/팀전)는 지금 보고 있는
+  // 것을 그대로 둔다(요청). 분류는 "전체"가 없는 라디오라 되돌릴 중립값 자체가 없고,
+  // 개인전을 보다가 초기화를 눌렀는데 팀전으로 튀면 보던 화면을 잃는다.
+  const isDefaultFilter = period === currentMonthValue() && race === "all";
   const resetFilters = () => {
     setPeriod(currentMonthValue());
-    setMatchType(DEFAULT_MATCH_TYPE);
     setRace("all");
   };
 
@@ -275,7 +271,7 @@ export default function StatsScreenV2() {
       if (bBelow) return -1;
       return 0;
     };
-    const noAvgLast = (a: (typeof list)[number], b: (typeof list)[number], key: "avgEapm" | "avgEcmd" | "avgBuild") => {
+    const noAvgLast = (a: (typeof list)[number], b: (typeof list)[number], key: "avgApm" | "avgCmd" | "avgBuild") => {
       const aMissing = a.stats.plays < MIN_PLAYS_FOR_STATS || a.stats[key] === null;
       const bMissing = b.stats.plays < MIN_PLAYS_FOR_STATS || b.stats[key] === null;
       if (aMissing && bMissing) return nicknameTiebreak(a, b);
@@ -312,11 +308,11 @@ export default function StatsScreenV2() {
     if (sort.key === "build") {
       sorted.sort((a, b) => noAvgLast(a, b, "avgBuild") || dirSign * ((a.stats.avgBuild ?? 0) - (b.stats.avgBuild ?? 0)) || nicknameTiebreak(a, b));
     }
-    if (sort.key === "eapm") {
-      sorted.sort((a, b) => noAvgLast(a, b, "avgEapm") || dirSign * ((a.stats.avgEapm ?? 0) - (b.stats.avgEapm ?? 0)) || nicknameTiebreak(a, b));
+    if (sort.key === "apm") {
+      sorted.sort((a, b) => noAvgLast(a, b, "avgApm") || dirSign * ((a.stats.avgApm ?? 0) - (b.stats.avgApm ?? 0)) || nicknameTiebreak(a, b));
     }
-    if (sort.key === "ecmd") {
-      sorted.sort((a, b) => noAvgLast(a, b, "avgEcmd") || dirSign * ((a.stats.avgEcmd ?? 0) - (b.stats.avgEcmd ?? 0)) || nicknameTiebreak(a, b));
+    if (sort.key === "cmd") {
+      sorted.sort((a, b) => noAvgLast(a, b, "avgCmd") || dirSign * ((a.stats.avgCmd ?? 0) - (b.stats.avgCmd ?? 0)) || nicknameTiebreak(a, b));
     }
     return sorted;
   }, [matchedMembers, statsByMember, sort, race]);
@@ -364,11 +360,11 @@ export default function StatsScreenV2() {
   const maxBuild = useMemo(
     () => Math.max(1, ...cards.map((c) => c.stats.avgBuild ?? 0)), [cards],
   );
-  const maxEapm = useMemo(
-    () => Math.max(1, ...cards.map((c) => c.stats.avgEapm ?? 0)), [cards],
+  const maxApm = useMemo(
+    () => Math.max(1, ...cards.map((c) => c.stats.avgApm ?? 0)), [cards],
   );
-  const maxEcmd = useMemo(
-    () => Math.max(1, ...cards.map((c) => c.stats.avgEcmd ?? 0)), [cards],
+  const maxCmd = useMemo(
+    () => Math.max(1, ...cards.map((c) => c.stats.avgCmd ?? 0)), [cards],
   );
 
   return (
@@ -401,19 +397,19 @@ export default function StatsScreenV2() {
         heading={
           <div className="scr-grid-title">
             <Select
-              className="scr-sentence-select" value={period} options={periodOpts}
+              fixedWidth className="scr-sentence-select" value={period} options={periodOpts}
               onChange={setPeriod} minDropWidth={150}
             />
             <Select
-              className="scr-sentence-select" value={matchType} options={TYPE_SELECT_OPTS}
+              fixedWidth className="scr-sentence-select" value={matchType} options={TYPE_SELECT_OPTS}
               onChange={(v) => setMatchType(v as MatchType)} minDropWidth={120}
             />
             <Select
-              className="scr-sentence-select" value={race} options={RACE_SELECT_OPTS}
+              fixedWidth className="scr-sentence-select" value={race} options={RACE_SELECT_OPTS}
               onChange={(v) => setRace(v as BaseRace | "all")} minDropWidth={130}
             />
             <span className="scr-grid-title-tail">스탯표</span>
-            {/* 초기화(요청) — 문장 끝에 붙여 세 낱말을 한 번에 기본값으로 되돌린다.
+            {/* 초기화(요청) — 문장 끝에 붙여 기간·종족을 한 번에 되돌린다(분류는 유지).
                 이미 기본값이면 누를 게 없으니 흐리게 죽여 둔다. 검색어(유저)는 이 문장
                 밖의 별개 필터라 건드리지 않는다 — 칩마다 제 ×가 있다. */}
             <button
@@ -463,12 +459,12 @@ export default function StatsScreenV2() {
                   tooltip="경기당 평균 '생산'(유닛 훈련+건물 건설+저그 변태 커맨드 수) — 유닛·건물을 얼마나 뽑고 지었나의 어림 지표."
                 />
                 <SortableHead
-                  label="유효APM" sortKey="eapm" sort={sort} onToggle={toggleSort}
-                  tooltip="분당 유효 조작 수(EAPM) — 리플레이에서 실제 게임에 영향을 준 명령만 센 APM. 화면 이동·중복 클릭 같은 불필요한 입력은 빠져 순수 조작량에 가깝다."
+                  label="APM" sortKey="apm" sort={sort} onToggle={toggleSort}
+                  tooltip="분당 조작 수(Actions Per Minute) — 리플레이에 기록된 명령을 분 단위로 나눈 값. 화면 이동이나 중복 클릭도 그대로 세므로 실제 손이 얼마나 바빴는지에 가깝다."
                 />
                 <SortableHead
-                  label="유효커맨드" sortKey="ecmd" sort={sort} onToggle={toggleSort}
-                  tooltip="경기당 평균 유효 명령 수 — 리플레이에서 실제 게임에 영향을 준 명령만 센다."
+                  label="커맨드" sortKey="cmd" sort={sort} onToggle={toggleSort}
+                  tooltip="경기당 평균 명령 수 — 리플레이에 기록된 명령을 전부 센 값(한 경기에서 몇 번이나 입력했나)."
                 />
               </div>
               {cards.map((c) => (
@@ -484,8 +480,8 @@ export default function StatsScreenV2() {
                   compact
                   maxOverallPlays={maxOverallPlays}
                   maxBuild={maxBuild}
-                  maxEapm={maxEapm}
-                  maxEcmd={maxEcmd}
+                  maxApm={maxApm}
+                  maxCmd={maxCmd}
                 />
               ))}
             </div>

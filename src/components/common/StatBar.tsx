@@ -42,8 +42,16 @@ export default function StatBar({ label, plays, wins, draws, losses, winRate, co
           </div>
         )}
       </div>
-      {compact && plays > 0 && (
-        <div className="scr-stat-bar-count-below">{wins}/{plays}</div>
+      {/* "승/전" 줄은 경기가 없어도 자리를 비워 둔 채 항상 그린다(요청: "데이터 안 나오는
+          로우와 나오는 로우 높이가 달라서 흔들림"). 예전엔 이 줄을 아예 안 그려서 경기가
+          없는 행만 한 줄 낮았고, 그 차이를 행 min-height로 덮고 있었다 — 글자 크기가
+          커지면(iOS 텍스트 크기 조절 등) 내용 있는 행이 그 최소높이를 넘어서면서 다시
+          어긋난다. 자리를 늘 잡아 두면 애초에 어긋날 일이 없다. */}
+      {compact && (
+        <div className="scr-stat-bar-count-below" aria-hidden={plays === 0 || undefined}>
+          {/* 그냥 공백은 접혀서 줄 높이가 안 생기므로 안 접히는 공백(U+00A0)으로 자리만 남긴다. */}
+          {plays > 0 ? `${wins}/${plays}` : " "}
+        </div>
       )}
     </div>
   );
