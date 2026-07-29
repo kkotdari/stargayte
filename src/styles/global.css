@@ -6986,7 +6986,7 @@ html:not(.scr-light-theme) .scr-feed-card-head:has(.scr-feed-card-head-title) .s
    두고 gap 하나로 몰아준다 — 각자 margin/padding으로 벌리던 걸 전부 0으로 되돌린다.
    케밥은 절대배치라 flex 항목이 아니고, 댓글은 이 로우 밖(포스트 직계)이라 같은 값을
    따로 물려준다(아래 .scr-feed-comments). */
-.scr-feed-card { --post-row-gap: 18px; }
+.scr-feed-card { --post-row-gap: 24px; }
 .scr-feed-match-body .scr-match-trow {
   position: static;
   display: flex; flex-direction: column; gap: var(--post-row-gap);
@@ -7132,8 +7132,10 @@ html.scr-light-theme .scr-feed-comments .scr-mreq-chip-inline { color: #c07c1c; 
 /* trow가 자체 좌우 8px을 갖고 있어, 합이 --post-pad-bx가 되도록 나머지만 여기서 낸다. */
 /* 경기 로우의 좌우 패딩을 변수로 둔다 — 요약 상자가 이 값을 되물려 카드의 다른 요소(댓글
    줄)와 같은 자리에서 시작하게 하기 위해서다(지적: 시작 부분을 맞춰야 함). */
-/* 머리띠와 첫 줄(시간/케밥) 사이도 같은 값으로(요청). */
-.scr-feed-match-body { --feed-trow-pad-x: 8px; padding: var(--post-row-gap) calc(var(--post-pad-bx) - 8px) 0; }
+/* 머리띠 바로 아래(게임번호 줄)만 예외로 좁게 둔다(지적: 시간/케밥 줄과 게임번호 줄
+   사이가 너무 크다) — 게임번호·등록자는 머리에 딸린 꼬리표에 가깝고, 머리띠가 이미
+   제 아래 여백으로 한 번 끊어 주고 있어 여기까지 본문 간격을 주면 떠 보인다. */
+.scr-feed-match-body { --feed-trow-pad-x: 8px; padding: 8px calc(var(--post-pad-bx) - 8px) 0; }
 .scr-feed-match-body .scr-match-date-head { display: none; }
 .scr-feed-match-body .scr-match-list-panel-v2 .scr-match-trow, .scr-light-theme .scr-feed-match-body .scr-match-list-panel-v2 .scr-match-trow {
   background: transparent; border: none; box-shadow: none;
