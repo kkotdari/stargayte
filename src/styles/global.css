@@ -1475,8 +1475,6 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 /* 패 글자는 다시 붉은 포인트로(요청: "패 글자와 패 점수에 붉은 포인트"). 이력·경기목록 공통. */
 .scr-match-list-panel-v2 .scr-team-outcome.scr-loss { color: var(--loss); }
 /* 경기 목록 테이블의 승/패에도 포인트 색(요청: "승패 포인트 색 넣기"). */
-.scr-match-trow-outcome.scr-win { color: var(--win); }
-.scr-match-trow-outcome.scr-loss { color: var(--loss); }
 
 /* ===== 전적통계 — 다른 목록 패널(경기결과 등)과 같은 프레임(scr-list-panel)에 담는다 =====
    프사(이름 칸)/전체전적/전체승률/종족별(테란·프로토스·저그) 전적·승률/APM/커맨드까지 모든 화면 폭에서 같은 칼럼을 보여준다(원본 커맨드수는 의미 없어 뺐다).
@@ -2984,58 +2982,10 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
 /* 삭제 항목만 위험 톤 — 기본 붉은 글자, hover 시 옅은 붉은 배경(공용 드롭다운 hover 흰배경 대신). */
 .scr-match-menu-drop .scr-match-menu-opt-danger { color: var(--loss); }
 @media (hover: hover) { .scr-match-menu-drop .scr-match-menu-opt-danger:hover { color: var(--loss); background: rgba(220, 70, 70, 0.14); } }
-/* 팀 2열 + 승/패는 그 사이(가운데 칸)에(요청: "승패 글자 위치를 예전처럼 두 팀 사이로
-   변경", 이어서 "승패는 세로가 아니라 가로로 배치" — 위아래로 쌓지 않고 승/패를 한
-   묶음(.scr-match-trow-outcomes)으로 나란히 놓는다). 컬럼 구분선은 두지 않는다(요청). */
-.scr-match-trow-grid { display: grid; grid-template-columns: 1fr auto 1fr; column-gap: 16px; align-items: center; }
-.scr-match-trow-outcomes { display: flex; align-items: center; gap: 6px; }
-/* 예전엔 두 로스터를 카드 폭 고정(1fr) 칸의 왼쪽 끝에 붙여 "카드를 넘어" 왼쪽 기준선을
-   맞췄는데(모든 카드 통일), 카드마다 이름 길이가 달라 부자연스러웠다(신고: "모든 카드를
-   통일하지 말고, 각 팀 로스터는 로스터 너비에 맞게"). 이제 승패는 가운데(auto 칸)에 고정한
-   채(1fr auto 1fr이라 모든 카드에서 같은 위치), 각 로스터는 자기 내용폭 그대로 승패 쪽으로
-   붙인다 — 팀1은 오른쪽 정렬(승패 왼쪽에 바짝), 팀2는 왼쪽 정렬(승패 오른쪽에 바짝).
-   접힌 요약줄(.scr-match-trow-summary-team의 text-align 좌/우)과 같은 원리. PC·모바일 공통. */
-.scr-match-trow-team { display: flex; min-width: 0; }
-.scr-match-trow-grid .scr-match-trow-team:first-child { justify-content: flex-end; }
-.scr-match-trow-grid .scr-match-trow-team:last-child { justify-content: flex-start; }
-/* 로스터 안의 각 이름도 승패 쪽 모서리에 맞춰 정렬한다 — 팀1은 오른쪽 끝, 팀2는 왼쪽 끝. */
-.scr-match-trow-grid .scr-match-trow-team:first-child .scr-match-trow-roster { align-items: flex-end; }
-.scr-match-trow-grid .scr-match-trow-team:last-child .scr-match-trow-roster { align-items: flex-start; }
-.scr-match-trow-roster { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-/* 팀 로스터를 예전처럼 팀별 세로 정렬(요청) — 2열 그리드 대신 각 팀 선수를 세로로 쌓는다.
-   가로 정렬(팀1 오른쪽/팀2 왼쪽)은 위 .scr-match-trow-roster의 align-items가 담당한다. */
-.scr-match-trow-roster-grid { display: flex; flex-direction: column; gap: 4px; }
-.scr-mt-player {
-  display: flex; align-items: center; gap: 8px; min-width: 0;
-  background: transparent; border: none; padding: 0; font: inherit; color: inherit;
-  text-align: left; cursor: pointer;
-}
-/* 닉네임은 더 이상 개별 클릭(프로필 열기) 대상이 아니라(요청 — 터치 시 무조건 펼침/접힘),
-   클릭 가능함을 암시하던 호버 색 변화를 뺀다. 로우 전체가 클릭 대상이다. */
-.scr-mt-name { font-size: var(--fs-caption); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-/* 종족 배지(.scr-team-name-race)는 이름칸(.scr-team-name-wrap) 기준 right:-8px로 그
-   칸 바깥까지 튀어나와 있다 — 하이라이트 배경을 이름칸까지만 맞추면(기존 4px) 배지가
-   그 배경 밖(원래 어두운 배경)에 걸쳐 남아, 아까 강제한 어두운 글자색(--bar-text)과
-   맞물려 사실상 안 보였다(실제로 지적받은 문제 — "종족배지가 안보이고 하이라이트가
-   종족까지 감싸지도 않음"). 오른쪽 여백을 배지가 튀어나온 만큼(8px) 더 넓혀 배지까지
-   실제로 하이라이트 배경 안에 들어오게 한다. */
-/* 종족 배지는 이제 팀 구분 없이 항상 닉네임 오른쪽이라, 하이라이트도 양 팀 모두 오른쪽을
-   넓힌다(요청: "팀 2가 종족배지 위치 바뀐걸 적용 못한듯" — 팀2 왼쪽 확장 규칙 삭제).
-   모서리는 각지게(래디우스 제거), 좌우 패딩은 원복(오른쪽 12px는 튀어나온 배지 커버용). */
-.scr-mt-player-hl { background: var(--highlight-bg); border-radius: 0; padding: 2px 12px 2px 4px; margin: -2px -12px -2px -4px; }
-.scr-mt-player-hl .scr-mt-name { color: var(--bar-text); }
-/* 종족 배지는 원래 종족 고유색(테란/프로토스/저그)을 그대로 유지한다 — 강제로 어두운
-   단색(--bar-text)으로 바꾸면 종족 구분이 사라져 보였다(실제로 지적받은 문제 — "종족배지가
-   검정색으로 바뀌네"). 배지가 이제 하이라이트 배경 안에 제대로 들어오므로(위 padding)
-   원래 색 그대로도 충분히 읽힌다. */
-.scr-mt-player .scr-race-badge-letter { flex-shrink: 0; }
-/* 팀1(왼쪽 팀)은 로스터가 오른쪽(중앙 쪽) 정렬이라, 컴퓨터/비회원 배지가 닉네임 오른쪽(중앙
-   쪽)에 붙으면 안 되고 바깥쪽(왼쪽)에 와야 한다(요청). 셀을 row-reverse로 뒤집어 배지를
-   닉네임 왼쪽으로 보낸다 — 팀2(오른쪽 팀)는 그대로 닉네임 오른쪽(바깥). 종족배지는
-   이름칸 내부에 절대배치라 이 뒤집기의 영향을 받지 않는다. */
-.scr-match-trow-grid .scr-match-trow-team:first-child .scr-mt-player { flex-direction: row-reverse; }
-/* 각 팀 아래 승/패 — 팀 칸과 같은 열에서 가운데 정렬(요청). 승은 연두, 패는 붉은 계열. */
-.scr-match-trow-outcome { font-size: var(--fs-subhead); font-weight: 800; text-align: center; min-width: 28px; padding: 0 4px; }
+/* 목록 화면용 2열 그리드 로스터(.scr-match-trow-grid/-team/-roster, .scr-mt-*)는
+   걷어냈다 — 그걸 쓰던 마지막 화면(카톡 단일 경기 공유)이 피드 카드를 그대로 쓰게
+   바뀌면서 그리는 곳이 없어졌다(요청: 잘못 쓰이지 않게 제거). 지금 로스터는 너 나와!와
+   같은 매치업 한 벌(.scr-challenge-matchup)뿐이다. */
 /* 예전엔 여기 사람별 총합 스탯 표(.scr-match-stats-table*)와, 그걸 띄우는 전체화면
    시트(시간축 그래프 포함)가 있었다 — 통째로 걷어냈다(요청: 기능 삭제). */
 
@@ -5832,7 +5782,11 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
 .scr-share-page { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
 .scr-share-head {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 12px;
+  /* 상단 안전영역은 앱의 다른 화면과 같은 --safe-top으로 잰다 — env()만 쓰면 사파리가
+     그 값을 0으로 보고하는 순간(그 대비로 부트 스크립트가 --safe-area-top을 실측해
+     넣어 둔다) 이 화면만 노치 밑으로 안 내려간다. 공유 화면도 묶음을 펼치면 피드와
+     똑같이 위로 스크롤하므로(MatchStack), 그 스크롤이 쓰는 기준과 같아야 한다. */
+  padding: calc(12px + var(--safe-top)) 16px 12px;
 }
 .scr-share-brand { font-weight: 800; letter-spacing: 0.02em; color: var(--text); }
 .scr-share-body {
@@ -6049,7 +6003,6 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
   /* 이력(경기이력) 승·패 글자는 한 단계 축소(20→16) 유지. */
   .scr-team-outcome { font-size: var(--fs-body); }
   /* 경기목록 승·패 글자는 body(16) 유지 — 닉네임(caption 14)보다 한 단계 위. */
-  .scr-match-trow-outcome { font-size: var(--fs-body); }
   /* 타임라인 폰트 한 단계 축소(날짜 알약 14→12, 끝/오늘 라벨 12→11) */
   .scr-scroll-timeline-end { font-size: var(--fs-11); }
   .scr-scroll-timeline-date { font-size: var(--fs-11); }
@@ -6147,7 +6100,6 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
 .scr-drawer-actions .scr-btn { font-size: var(--fs-body); }
 .scr-challenge-card-team .scr-challenge-person-name { font-size: var(--fs-micro); }
 .scr-team-outcome { font-size: var(--fs-body); }
-.scr-match-trow-outcome { font-size: var(--fs-body); }
 .scr-scroll-timeline-end { font-size: var(--fs-11); }
 /* 한 스텝 더 축소(요청) — 다이얼 위로 올라가면서 더 작아도 읽힌다. */
 .scr-scroll-timeline-date { font-size: var(--fs-11); }
@@ -7240,7 +7192,6 @@ html.scr-light-theme .scr-feed-comments .scr-mreq-chip-inline { color: #c07c1c; 
 /* 머리띠 아래 간격은 아래 .scr-match-trow의 padding-top 하나가 낸다 — 여기서도 내면
    두 값이 더해져 그 자리만 유독 벌어진다(지적: 거기만 12쯤 더 큼). */
 .scr-feed-match-body { --feed-trow-pad-x: 8px; padding: 0 calc(var(--post-pad-bx) - 8px); }
-.scr-feed-match-body .scr-match-date-head { display: none; }
 .scr-feed-match-body .scr-match-list-panel-v2 .scr-match-trow, .scr-light-theme .scr-feed-match-body .scr-match-list-panel-v2 .scr-match-trow {
   background: transparent; border: none; box-shadow: none;
   backdrop-filter: none; -webkit-backdrop-filter: none;

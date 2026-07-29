@@ -390,7 +390,7 @@ export const MatchCard = memo(function MatchCard({ item, memberOf, onDeleted, da
         )}
       </div>
       <div className="scr-feed-match-body">
-        <MatchList rows={rows} memberOf={memberOf} onDeleted={onDeleted} loading={false} matchup highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms} />
+        <MatchList rows={rows} memberOf={memberOf} onDeleted={onDeleted} highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms} />
       </div>
       <FeedCardComments targetType="match" targetId={item.match.id} />
     </div>

@@ -3,7 +3,6 @@ import { createPortal } from "react-dom";
 import { MoreHorizontal, Monitor, User } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
 import RaceBadge from "../../components/common/RaceBadge";
-import { Spinner } from "../../components/common/Feedback";
 import { cleanMapName } from "../../utils/mapName";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 import { api } from "../../api/client";
@@ -13,7 +12,6 @@ import { isComputerSlot, computerSlotLabel } from "../../constants/computerSlot"
 import { isUnregisteredSlot, unregisteredSlotLabel } from "../../constants/unregisteredSlot";
 import { cx } from "../../utils/format";
 import { attachPopover } from "../../utils/popover";
-import { dateWithDow } from "../../utils/date";
 import { normalizeSearchText } from "../../utils/memberSearch";
 import { renderReplaySummaryParts, type SummaryPart } from "../../utils/replaySummaryText";
 import KakaoShareButton from "../../components/common/KakaoShareButton";
@@ -26,8 +24,6 @@ function outcomeFor(side: "team1" | "team2", result: MatchResult): Outcome {
   if (result === "not_held") return "notHeld";
   return side === result ? "win" : "loss";
 }
-const OUTCOME_LABEL: Record<Outcome, string> = { win: "승", loss: "패", draw: "무", notHeld: "미실시" };
-const OUTCOME_CLASS: Record<Outcome, string> = { win: "scr-win", loss: "scr-loss", draw: "scr-draw", notHeld: "scr-draw" };
 
 // 컴퓨터/비회원 여부에 따라 표시 이름을 정한다 — PlayerCell(펼친 로스터)과 접힌 상태의
 // 팀 요약("누구 외 N명")이 같은 이름 규칙을 쓰도록 공용으로 뺐다.
@@ -104,42 +100,6 @@ function matchShareContent(match: Match, memberOf: (id: string) => Member | unde
   };
 }
 
-// 테이블 카드 한 칸 — [프사][닉네임][종족 영문 한 글자 배지]. 컴퓨터/비회원은 아이콘 프사에
-// 원본 이름(없으면 순번 라벨)으로. 종족 배지는 요청대로 영문(circleLetter, 한글 아님).
-function PlayerCell({
-  slot, players, memberOf, highlighted, highlightTerms,
-}: {
-  slot: MatchSlot; players: MatchSlot[]; memberOf: (id: string) => Member | undefined;
-  highlighted: boolean; highlightTerms?: string[];
-}) {
-  const isComputer = isComputerSlot(slot.memberId);
-  const isUnreg = isUnregisteredSlot(slot.memberId);
-  const name = resolveSlotName(slot, players, memberOf);
-  // memberId 매칭(highlighted)에 더해, 표시 이름이 검색어를 포함해도 하이라이트한다 —
-  // 참가자 memberId가 검색된 회원 id와 어긋나는 경우(별칭/비회원 등)를 보완한다(요청).
-  // 비교는 검색 필터와 같은 정규화(NFC/제로폭 정리)를 거친다 — 겉보기 동일한 한글이
-  // 바이트만 달라(NFD) 하이라이트만 빠지던 문제를 막는다.
-  const nameLc = normalizeSearchText(name);
-  const hl = highlighted || !!highlightTerms?.some((t) => nameLc.includes(t));
-  // 닉네임을 눌러도 프로필 모달을 열지 않는다(요청) — 로우 어디를 눌러도 무조건 펼침/접힘만
-  // 하도록 버튼/클릭 핸들러를 없애고 클릭이 로우로 그대로 올라가게 둔다.
-  return (
-    <span className={cx("scr-mt-player", hl && "scr-mt-player-hl")}>
-      {/* 아바타 제거(요청) — 컴퓨터/비회원만 작은 아이콘으로 구분을 남긴다. 아이콘은
-          팀과 무관하게 항상 닉네임 왼쪽(요청), 비회원은 사람 아이콘. */}
-      {isComputer
-        ? <Monitor size={12} className="scr-chip-computer-icon" />
-        : isUnreg
-          ? <User size={12} className="scr-chip-computer-icon" />
-          : null}
-      <span className="scr-team-name-wrap">
-        <span className="scr-mt-name">{name}</span>
-        <RaceBadge race={slot.race} size={13} circleLetter className="scr-team-name-race" />
-      </span>
-    </span>
-  );
-}
-
 // 매치업 한 편(피드 전용) — 너 나와! 카드의 팀 로스터(scr-challenge-side)와 같은 CSS로
 // 세로 나열한다(요청: "게임결과의 팀로스터와 너 나와의 팀로스터를 맞출거야"). 프사를
 // 더하고, 종족 배지는 닉네임 오른쪽(기존 규칙 유지). 컴퓨터/비회원은 작은 아이콘으로 구분.
@@ -196,42 +156,10 @@ interface MatchListProps {
   memberOf: (id: string) => Member | undefined;
   // 삭제 성공 후 목록을 새로고침하기 위한 콜백(호출부가 이미 쓰는 reload를 그대로 넘겨준다).
   onDeleted: () => void;
-  loading: boolean;
   // 유저 검색 중이면 그 회원(들)을 로스터에서 하이라이트 표시한다
   highlightMemberIds?: Set<string>;
   // memberId 매칭에 더해 표시 이름을 검색어로도 매칭해 하이라이트한다(별칭/비회원 보완).
   highlightTerms?: string[];
-  // 피드 전용 — 로스터를 너 나와! 매치업 스타일(세로 나열 + 프사 + vs + 승/무 배지)로 그린다.
-  matchup?: boolean;
-}
-
-interface DateGroup {
-  date: string;
-  items: { row: SearchListRow; gameNo: number }[];
-}
-
-// 원래 MatchList와 카드 렌더링 로직은 동일하고, 목록 상단만 공용 ListTopHead로 바꿨다
-// (경기결과/전적통계/랭킹 세 화면이 같은 상단 모듈을 쓴다).
-function compareByPlayOrder(a: SearchListRow, b: SearchListRow): number {
-  const at = a.raw.gameStartedAt ? new Date(a.raw.gameStartedAt).getTime() : null;
-  const bt = b.raw.gameStartedAt ? new Date(b.raw.gameStartedAt).getTime() : null;
-  if (at !== null && bt !== null) return at - bt;
-  return a.id - b.id;
-}
-
-function groupByDate(rows: SearchListRow[]): DateGroup[] {
-  const raw: { date: string; items: SearchListRow[] }[] = [];
-  rows.forEach((row) => {
-    const last = raw[raw.length - 1];
-    if (last && last.date === row.date) last.items.push(row);
-    else raw.push({ date: row.date, items: [row] });
-  });
-  return raw.map((g) => {
-    const gameNoOf = new Map(
-      [...g.items].sort(compareByPlayOrder).map((r, idx) => [r.id, idx + 1]),
-    );
-    return { date: g.date, items: g.items.map((row) => ({ row, gameNo: gameNoOf.get(row.id)! })) };
-  });
 }
 
 // 첨부된 리플레이 파일을 목록에서 바로 내려받는다 — 경기상세(MatchDetailModal)/수정
@@ -330,10 +258,14 @@ function MatchActionsMenu({
 // 예전엔 여기 사람별 총합 스탯 표와, 그걸 띄우는 전체화면 시트(시간축 그래프 포함)가
 // 있었다 — 통째로 걷어냈다(요청: 기능 삭제).
 
+// 피드 카드(MatchCard)의 본문 — 경기 한 장의 로스터·요약·케밥을 그린다. 이름은 목록이지만
+// 이제 '목록 화면'은 없다: 예전에 이걸 날것으로 쓰던 카톡 단일 경기 공유도 피드 카드를
+// 그대로 쓰게 바뀌어(요청), 부르는 곳은 MatchCard 하나뿐이다. 그래서 날짜 그룹 머리글·
+// 로딩 스피너·비-매치업 로스터처럼 '목록'이던 시절의 갈래는 다 걷어냈다(요청: 잘못
+// 쓰이지 않게) — 다시 목록으로 쓰려면 그때 필요한 것만 되살리는 편이 낫다.
 export default function MatchList({
-  rows, memberOf, onDeleted, loading, highlightMemberIds, highlightTerms, matchup,
+  rows, memberOf, onDeleted, highlightMemberIds, highlightTerms,
 }: MatchListProps) {
-  const groups = groupByDate(rows);
   const user = useAppStore((s) => s.user);
   const deleteMatchAction = useAppStore((s) => s.deleteMatch);
   // 삭제는 운영자만 — 카드의 메모(연필)와 달리 실제 경기 기록 자체를 지우는 동작이라
@@ -358,23 +290,10 @@ export default function MatchList({
 
   return (
     <div className="scr-match-list-panel-v2">
-      {rows.length === 0 && (
-        <div className="scr-empty">{loading ? <Spinner size={18} /> : "표시할 게임결과가 없어요."}</div>
-      )}
-
       <div className="scr-match-cards">
-        {groups.map((g) => (
-          <div key={g.date} className="scr-match-date-group">
-            <div className="scr-match-date-head" data-date-label={dateWithDow(g.date)}>{dateWithDow(g.date)}</div>
-            {g.items.map(({ row: r }) => {
+        {rows.map((r) => {
               const o1 = outcomeFor("team1", r.result);
               const o2 = outcomeFor("team2", r.result);
-              const outcomes = (
-                <div className="scr-match-trow-outcomes">
-                  <span className={cx("scr-match-trow-outcome", OUTCOME_CLASS[o1])}>{OUTCOME_LABEL[o1]}</span>
-                  <span className={cx("scr-match-trow-outcome", OUTCOME_CLASS[o2])}>{OUTCOME_LABEL[o2]}</span>
-                </div>
-              );
               return (
               <div key={r.id} className="scr-match-trow">
                 {/* 윗줄 — 이제 오른쪽 위 케밥메뉴만 남는다. 게임번호는 감췄고(요청),
@@ -387,60 +306,31 @@ export default function MatchList({
                     />
                   </div>
                 </div>
-                {/* 로스터 — 피드(matchup)는 너 나와! 매치업과 같은 구조(각 팀 세로 나열 +
-                    가운데 vs + 이긴 편 쪽 승/무 배지, 요청). 그 외 화면은 기존 그리드 유지. */}
-                {matchup ? (
-                  <>
-                    <div className="scr-challenge-matchup scr-feed-match-matchup">
-                      <MatchupSide
-                        team={r.team1} memberOf={memberOf}
-                        highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms}
-                      />
-                      {/* 승/무 배지 — 너 나와!와 동일하게 vs 양옆에 이긴 편 쪽만 보이고,
-                          해당 없는 쪽은 자리만 예약(투명)해 vs가 좌우로 안 흔들린다. */}
-                      <span className="scr-challenge-arrow-row">
-                        <span className={cx("scr-challenge-inline-win", o1 === "draw" && "scr-challenge-inline-draw", o1 !== "win" && o1 !== "draw" && "scr-challenge-inline-win-hidden")}>
-                          {o1 === "draw" ? "무" : "승"}
-                        </span>
-                        <span className="scr-challenge-arrow scr-challenge-arrow-vs" aria-hidden="true">vs</span>
-                        <span className={cx("scr-challenge-inline-win", o2 === "draw" && "scr-challenge-inline-draw", o2 !== "win" && o2 !== "draw" && "scr-challenge-inline-win-hidden")}>
-                          {o2 === "draw" ? "무" : "승"}
-                        </span>
-                      </span>
-                      <MatchupSide
-                        team={r.team2} memberOf={memberOf}
-                        highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms}
-                      />
-                    </div>
-                    {r.result === "not_held" && <div className="scr-feed-match-notheld">미실시</div>}
-                  </>
-                ) : (
-                <div className="scr-match-trow-grid">
-                  <div className="scr-match-trow-team">
-                    <div className="scr-match-trow-roster scr-match-trow-roster-grid">
-                      {r.team1.map((s, i) => (
-                        <PlayerCell
-                          key={`${s.memberId}-${i}`} slot={s} players={r.team1} memberOf={memberOf}
-                          highlighted={!!highlightMemberIds?.has(s.memberId)}
-                          highlightTerms={highlightTerms}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                  {outcomes}
-                  <div className="scr-match-trow-team">
-                    <div className="scr-match-trow-roster scr-match-trow-roster-grid">
-                      {r.team2.map((s, i) => (
-                        <PlayerCell
-                          key={`${s.memberId}-${i}`} slot={s} players={r.team2} memberOf={memberOf}
-                          highlighted={!!highlightMemberIds?.has(s.memberId)}
-                          highlightTerms={highlightTerms}
-                        />
-                      ))}
-                    </div>
-                  </div>
+                {/* 로스터 — 너 나와! 매치업과 같은 구조(각 팀 세로 나열 + 가운데 vs +
+                    이긴 편 쪽 승/무 배지, 요청). 예전엔 목록 화면용 그리드 로스터가 따로
+                    있었는데, 그걸 쓰던 화면이 없어져 걷어냈다. */}
+                <div className="scr-challenge-matchup scr-feed-match-matchup">
+                  <MatchupSide
+                    team={r.team1} memberOf={memberOf}
+                    highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms}
+                  />
+                  {/* 승/무 배지 — 너 나와!와 동일하게 vs 양옆에 이긴 편 쪽만 보이고,
+                      해당 없는 쪽은 자리만 예약(투명)해 vs가 좌우로 안 흔들린다. */}
+                  <span className="scr-challenge-arrow-row">
+                    <span className={cx("scr-challenge-inline-win", o1 === "draw" && "scr-challenge-inline-draw", o1 !== "win" && o1 !== "draw" && "scr-challenge-inline-win-hidden")}>
+                      {o1 === "draw" ? "무" : "승"}
+                    </span>
+                    <span className="scr-challenge-arrow scr-challenge-arrow-vs" aria-hidden="true">vs</span>
+                    <span className={cx("scr-challenge-inline-win", o2 === "draw" && "scr-challenge-inline-draw", o2 !== "win" && o2 !== "draw" && "scr-challenge-inline-win-hidden")}>
+                      {o2 === "draw" ? "무" : "승"}
+                    </span>
+                  </span>
+                  <MatchupSide
+                    team={r.team2} memberOf={memberOf}
+                    highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms}
+                  />
                 </div>
-                )}
+                {r.result === "not_held" && <div className="scr-feed-match-notheld">미실시</div>}
                 {/* 맵·플레이시간 — 요약을 읽기 전에 먼저 보는 정보라 요약 바로 위에 두고,
                     접힌 상태에서도 보인다(요청). */}
                 {(cleanMapName(r.raw.mapName) || r.raw.durationSeconds != null) && (
@@ -462,9 +352,7 @@ export default function MatchList({
                 })()}
               </div>
               );
-            })}
-          </div>
-        ))}
+        })}
       </div>
 
       {/* 확인창도 이 컴포넌트 안(=묶음 목록 안)에서 그려진다 — 클릭이 목록으로 올라가면
