@@ -6,13 +6,13 @@ import { normalizeSearchText } from "../../utils/memberSearch";
 import { useAppStore } from "../../store/appStore";
 import { isComputerSlot, computerSlotLabel } from "../../constants/computerSlot";
 import { isUnregisteredSlot, unregisteredSlotLabel } from "../../constants/unregisteredSlot";
-import type { Member, MatchSlot, MatchResult } from "../../types";
+import type { Member, GameResultSlot, GameOutcome } from "../../types";
 
-interface MatchTeamsProps {
-  team1: MatchSlot[];
-  team2: MatchSlot[];
+interface GameResultTeamsProps {
+  team1: GameResultSlot[];
+  team2: GameResultSlot[];
   memberOf: (id: string) => Member | undefined;
-  result: MatchResult;
+  result: GameOutcome;
   // 유저 검색 중이면 그 회원(들)을 로스터에서 하이라이트 표시한다
   highlightMemberIds?: Set<string>;
   // 위 memberId 매칭에 더해, 검색어(소문자, 공백 포함 가능)로 로스터 표시 이름을 직접
@@ -46,7 +46,7 @@ interface MatchTeamsProps {
 
 type Outcome = "win" | "loss" | "draw" | "notHeld";
 
-function outcomeFor(side: "team1" | "team2", result: MatchResult): Outcome {
+function outcomeFor(side: "team1" | "team2", result: GameOutcome): Outcome {
   if (result === "draw") return "draw";
   if (result === "not_held") return "notHeld";
   return side === result ? "win" : "loss";
@@ -57,7 +57,7 @@ const OUTCOME_CLASS: Record<Outcome, string> = { win: "scr-win", loss: "scr-loss
 
 // 획득 점수 문자열의 부호로 승/패 색을 정한다(요청: "점수에도 포인트 색 적용") — 양수(+)는
 // 승 색(초록), 음수(-)는 패 색(빨강). 0/빈값은 색을 안 준다. 랭킹 상세의 팀전 이력
-// (RankMatchHistory)도 같은 규칙으로 레이팅 Δ에 색을 입히려고 내보낸다.
+// (PointDetailHistory)도 같은 규칙으로 레이팅 Δ에 색을 입히려고 내보낸다.
 export function pointToneClass(v: unknown): string {
   if (v === null || v === undefined) return "";
   const s = String(v).trim();
@@ -71,13 +71,13 @@ export function pointToneClass(v: unknown): string {
 
 interface TeamRosterProps {
   side: "team1" | "team2";
-  players: MatchSlot[];
+  players: GameResultSlot[];
   memberOf: (id: string) => Member | undefined;
   outcome: Outcome;
   highlightMemberIds?: Set<string>;
   highlightTerms?: string[];
   disableProfileLink?: boolean;
-  // true면 이 컴포넌트는 승/무/패 표시를 그리지 않는다 — MatchTeams가 VS 옆에 따로 그린다.
+  // true면 이 컴포넌트는 승/무/패 표시를 그리지 않는다 — GameResultTeams가 VS 옆에 따로 그린다.
   stackedOutcome?: boolean;
   compact?: boolean;
   // 회원 id → 그 회원 옆에 붙일 작은 라벨(랭킹 상세 팀전 이력의 "이 상대에게 얻은 점수").
@@ -173,10 +173,10 @@ function TeamRoster({ side, players, memberOf, outcome, highlightMemberIds, high
 // 경기 하나의 팀1 vs 팀2 표시. 검색 기준(누구를 찾았는지)과 무관하게 팀1은 항상 왼쪽,
 // 팀2는 항상 오른쪽에 고정된다. VS는 승/무/패 표시를 제외한 명단 영역만의 수직 중앙에 온다
 // (stackedOutcome이면 대신 VS 위아래에 승/무/패가 붙는다).
-export default function MatchTeams({
+export default function GameResultTeams({
   team1, team2, memberOf, result, highlightMemberIds, highlightTerms, disableProfileLink, stackedOutcome, compact, opponentOnly,
   outcomeNote, pointsByMember, textRoster, bothTeamsTail,
-}: MatchTeamsProps) {
+}: GameResultTeamsProps) {
   const outcome1 = outcomeFor("team1", result);
   const outcome2 = outcomeFor("team2", result);
   // 팀전 이력 — "우리 로스터 VS 상대 로스터" 뒤 오른쪽에 [승/패] 그리고 그 다음(더 오른쪽)에
@@ -186,27 +186,27 @@ export default function MatchTeams({
   if (bothTeamsTail) {
     // "VS" 대신 "[우리 팀]로 [상대 팀]에 승/패"로 문장처럼 표현한다(요청). 로스터는 고정폭
     // (양 팀 flex 균등)이라 카드마다 '로/에/승패' 세로줄이 일치한다.
-    // "우리팀 로스터 + 팀으로"와 "상대팀 로스터 + 팀에게 승/패"를 각각 한 덩어리(.scr-match-team-side)로
+    // "우리팀 로스터 + 팀으로"와 "상대팀 로스터 + 팀에게 승/패"를 각각 한 덩어리(.scr-game-result-team-side)로
     // 묶고, 두 덩어리 사이에 갭을 둔다(요청: "팀1로스터와 팀으로, 팀2로스터와 팀에게 승이 한
     // 덩어리처럼 모이고 그 사이에 갭"). 점수는 오른쪽 끝 컬럼에 각 상대 구성원과 나란히.
     return (
-      <div className="scr-match-row scr-match-row-result-only scr-match-row-team-tail">
-        <div className="scr-match-team-side scr-match-team-side-ours">
+      <div className="scr-game-result-row scr-game-result-row-result-only scr-game-result-row-team-tail">
+        <div className="scr-game-result-team-side scr-game-result-team-side-ours">
           <TeamRoster
             side="team1" players={team1} memberOf={memberOf} outcome={outcome1}
             highlightMemberIds={highlightMemberIds} disableProfileLink={disableProfileLink}
             stackedOutcome compact={compact} textRoster={textRoster}
           />
-          <span className="scr-match-conn">팀으로</span>
+          <span className="scr-game-result-conn">팀으로</span>
         </div>
-        <div className="scr-match-team-side scr-match-team-side-theirs">
+        <div className="scr-game-result-team-side scr-game-result-team-side-theirs">
           <TeamRoster
             side="team2" players={team2} memberOf={memberOf} outcome={outcome2}
             highlightMemberIds={highlightMemberIds} disableProfileLink={disableProfileLink}
             stackedOutcome compact={compact} textRoster={textRoster}
           />
-          <span className="scr-match-result-tail">
-            <span className="scr-match-conn">팀에게</span>
+          <span className="scr-game-result-result-tail">
+            <span className="scr-game-result-conn">팀에게</span>
             <span className={cx("scr-team-outcome", "scr-team-outcome-result", OUTCOME_CLASS[outcome1])}>{OUTCOME_LABEL[outcome1]}</span>
           </span>
         </div>
@@ -223,27 +223,27 @@ export default function MatchTeams({
   // 홈팀(주인공) 없이 "[상대]에 승/패 + 점수"만 — 결과 위주로 훑는 랭킹 상세 이력용(요청: VS 제거).
   if (opponentOnly) {
     return (
-      <div className="scr-match-row scr-match-row-result-only">
+      <div className="scr-game-result-row scr-game-result-row-result-only">
         <TeamRoster
           side="team2" players={team2} memberOf={memberOf} outcome={outcome2}
           highlightMemberIds={highlightMemberIds} disableProfileLink={disableProfileLink}
           stackedOutcome compact={compact} textRoster={textRoster}
         />
-        <span className="scr-match-result-tail">
-          <span className="scr-match-conn">에게</span>
+        <span className="scr-game-result-result-tail">
+          <span className="scr-game-result-conn">에게</span>
           <span className={cx("scr-team-outcome", "scr-team-outcome-result", OUTCOME_CLASS[outcome1])}>{OUTCOME_LABEL[outcome1]}</span>
         </span>
         {/* 이 경기에서 얻은 점수(요청) — 팀전과 마찬가지로 카드 오른쪽 끝에 정렬한다(요청:
             "개인전이든 팀전이든 획득점수 컬럼은 카드 우측에 정렬"). 부호에 따라 승/패 색. */}
-        {outcomeNote && <span className={cx("scr-match-result-points", pointToneClass(outcomeNote))}>{outcomeNote}</span>}
+        {outcomeNote && <span className={cx("scr-game-result-result-points", pointToneClass(outcomeNote))}>{outcomeNote}</span>}
       </div>
     );
   }
   return (
-    <div className="scr-match-row">
+    <div className="scr-game-result-row">
       <TeamRoster side="team1" players={team1} memberOf={memberOf} outcome={outcome1} highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms} disableProfileLink={disableProfileLink} stackedOutcome={stackedOutcome} compact={compact} pointsByMember={pointsByMember} textRoster={textRoster} />
       {stackedOutcome ? (
-        <div className="scr-match-vs-col">
+        <div className="scr-game-result-vs-col">
           <span className={cx("scr-team-outcome", "scr-team-outcome-stacked", OUTCOME_CLASS[outcome1])}>{OUTCOME_LABEL[outcome1]}</span>
           <span className="scr-list-vs">VS</span>
           <span className={cx("scr-team-outcome", "scr-team-outcome-stacked", OUTCOME_CLASS[outcome2])}>{OUTCOME_LABEL[outcome2]}</span>

@@ -5,7 +5,7 @@
 // 중단됐지만(→ screp-ts) 그건 Go 바이너리를 Node에서 실행하는 CLI 래퍼라 브라우저에서 못
 // 쓴다 — 그래서 이 앱은 계속 screp-js를 쓴다.
 import { fmt } from "./date";
-import type { Race, MatchType } from "../types";
+import type { Race, GameType } from "../types";
 
 const RACE_NAME_MAP: Record<string, Race> = {
   Terran: "테란",
@@ -122,7 +122,7 @@ export interface ParsedReplay {
   // guessedObservers에 든 사람은 team1/team2 인원수 계산(1:1 vs 팀전)에서는 빠지지만,
   // 실제 team1/team2 배열에는 그대로 남아있다 — 검토 화면에서 노란 글로우로 표시된 채
   // 로스터에 보이고, 진짜 관전자면 사람이 직접 빼야 한다.
-  matchType: MatchType;
+  matchType: GameType;
   // screp이 "마지막까지 남은 가장 큰 팀"으로 추정한 승자. 리플레이엔 승자가 직접 저장되지
   // 않아 추정치일 뿐이라, null이면 자동 판별에 실패했다는 뜻 — 반드시 사용자 확인이 필요하다.
   winnerSide: "team1" | "team2" | null;
@@ -466,7 +466,7 @@ export async function parseReplayFile(file: File): Promise<ParsedReplay> {
   // 다시 "팀전"으로 잘못 분류된다(이 로직 전체가 원래 막으려던 문제).
   const confirmedTeam1 = team1.filter((p) => !guessedObserverSet.has(p.rawName));
   const confirmedTeam2 = team2.filter((p) => !guessedObserverSet.has(p.rawName));
-  const matchType: MatchType = confirmedTeam1.length === 1 && confirmedTeam2.length === 1 ? "0101" : "0102";
+  const matchType: GameType = confirmedTeam1.length === 1 && confirmedTeam2.length === 1 ? "0101" : "0102";
 
   const winnerTeamRaw = res.Computed?.WinnerTeam ?? 0;
   const winnerSide: "team1" | "team2" | null =

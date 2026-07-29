@@ -1247,7 +1247,7 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   }
 }
 .scr-screen { display: flex; flex-direction: column; gap: 10px; }
-/* 기록실(경기 목록)은 펼친 로우의 넓은 스탯표가 내부(.scr-match-stats-table-wrap의
+/* 기록실(경기 목록)은 펼친 로우의 넓은 스탯표가 내부(.scr-game-result-stats-table-wrap의
    overflow-x:auto)에서만 가로 스크롤돼야 하고 페이지 자체엔 가로 스크롤이 생기면 안 된다
    (요청). 로우 내부 어딘가에서 넘치는 폭이 페이지로 새는 경우를 대비해 화면 루트에서
    가로만 clip한다 — overflow:hidden과 달리 clip은 스크롤 컨테이너를 만들지 않으므로
@@ -1469,11 +1469,11 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 .scr-loss { color: var(--text); font-weight: 600; }
 .scr-draw { color: var(--muted); font-weight: 600; }
 /* 경기 목록·랭킹 상세 이력에서는 이긴 팀의 "승"을 녹색 포인트색으로 도드라지게 한다(요청:
-   "승패 줄다 표시하되 승에 녹색 포인트 컬러"). 목록 패널 안(.scr-match-list-panel-v2)으로만
+   "승패 줄다 표시하되 승에 녹색 포인트 컬러"). 목록 패널 안(.scr-game-result-list-panel-v2)으로만
    좁혀, 경기 상세 팝업 등 다른 곳의 승/패 톤은 건드리지 않는다. */
-.scr-match-list-panel-v2 .scr-team-outcome.scr-win { color: var(--win); }
+.scr-game-result-list-panel-v2 .scr-team-outcome.scr-win { color: var(--win); }
 /* 패 글자는 다시 붉은 포인트로(요청: "패 글자와 패 점수에 붉은 포인트"). 이력·경기목록 공통. */
-.scr-match-list-panel-v2 .scr-team-outcome.scr-loss { color: var(--loss); }
+.scr-game-result-list-panel-v2 .scr-team-outcome.scr-loss { color: var(--loss); }
 /* 경기 목록 테이블의 승/패에도 포인트 색(요청: "승패 포인트 색 넣기"). */
 
 /* ===== 전적통계 — 다른 목록 패널(경기결과 등)과 같은 프레임(scr-list-panel)에 담는다 =====
@@ -2236,10 +2236,10 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
 
 /* 경기결과 목록 — 랭킹 목록과 같은 반투명 글래스 고정을 타이틀 줄+날짜 줄에도 적용한다.
    패널 기본 패딩(20px)을 걷어내 타이틀/날짜 줄이 패널 폭 전체를 채운 채 sticky로 쌓이게
-   하고, 좌우 여백은 카드 쪽(.scr-match-cards)에서 다시 준다. */
-.scr-match-list-panel { padding: 0; }
+   하고, 좌우 여백은 카드 쪽(.scr-game-result-cards)에서 다시 준다. */
+.scr-game-result-list-panel { padding: 0; }
 
-.scr-match-list-panel > .scr-empty { padding: 20px; }
+.scr-game-result-list-panel > .scr-empty { padding: 20px; }
 /* ===== FilterBar(v2) — 경기결과/전적통계/랭킹 공용 필터 바 =====
    타이틀 툴바(.scr-v2-toolbar)와는 분리된 별도 블록으로 그 아래에 온다(요청: "타이틀바와
    분리하기"). 검색창(+ 있으면 그 옆 필터창)과 건수(.scr-list-count)만 담는 세로 flex
@@ -2570,7 +2570,7 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
    미디어쿼리에서 세로로 쪼갠다. */
 /* 메모 슬롯 — 메모 인풋 + "내 메모" 체크박스를 한 칸에 담는다. 경기번호 칸은 그리 넓을 필요가
    없어 행을 1:2로 나눠(경기번호 1/3, 메모 영역 2/3, 요청) 메모 영역이 더 넓게 차지한다.
-   안에서 인풋이 남는 폭을 먹고(위 .scr-match-extra-field의 flex:1 1 0) 체크박스는 내용만큼만. */
+   안에서 인풋이 남는 폭을 먹고(위 .scr-game-result-extra-field의 flex:1 1 0) 체크박스는 내용만큼만. */
 /* 체크박스 자체 모양/글로우는 공용 .scr-checkbox-field가 담당하고, 여기선 메모 슬롯 안에서의
    배치(내용 크기만큼만, 줄바꿈 금지)와 caption 폰트만 얹는다. */
 /* 모바일에선 세 검색 필드 모두 높이를 20% 키운다(30 → 36px, 요청) — 경기 화면 전용
@@ -2753,25 +2753,25 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
    스크롤하면 헤더가 밀려 올라가 이 날짜 줄이 뷰포트 맨 위에 직접 닿는다 —
    black-translucent 몰입 모드에선 그 지점이 노치 밑이므로, 안전영역만큼(--safe-top)
    내려서 핀되게 한다(PC/비-노치에선 --safe-top이 0이라 그대로 top:0). */
-.scr-match-list-panel-v2 .scr-match-date-head { top: var(--safe-top); }
-.scr-match-list-panel-v2 .scr-match-cards { padding: 0; }
+.scr-game-result-list-panel-v2 .scr-game-result-date-head { top: var(--safe-top); }
+.scr-game-result-list-panel-v2 .scr-game-result-cards { padding: 0; }
 /* 날짜 줄 바로 아래 첫 경기가 거의 붙어 보였다(요청: "날짜 로우 하단에 충분한 갭
    주기") — 아래쪽에만 여백을 준다. */
-.scr-match-list-panel-v2 .scr-match-date-head { margin: 0 0 14px; }
+.scr-game-result-list-panel-v2 .scr-game-result-date-head { margin: 0 0 14px; }
 /* 기본 규칙의 왼쪽 여백은 카드 자신의 좌우 여백(8px)보다 훨씬 넓어 날짜 글자가 카드
    내용보다 눈에 띄게 더 들어가 보였다 — v2는 sticky 패널 보정이 더 이상 필요 없어(위
    주석 참고) 카드와 맞춰 줄인다. 꺽쇠(┌)가 앞에 그려지는 만큼만 남긴다. */
-/* 카드 내용(.scr-match-trow)만큼 들여써봤는데(요청: "날짜도 카드 내용들과 똑같은 만큼
+/* 카드 내용(.scr-game-result-trow)만큼 들여써봤는데(요청: "날짜도 카드 내용들과 똑같은 만큼
    들여쓰기") 곧이어 "날짜로우는 들여쓰기 감소" → "들여쓰기 제거"로 되돌아갔다 — 날짜
    줄은 항상 8px 고정, PC 전용 들여쓰기는 두지 않는다. */
-.scr-match-list-panel-v2 .scr-match-date-head { padding-left: 8px; }
+.scr-game-result-list-panel-v2 .scr-game-result-date-head { padding-left: 8px; }
 /* 날짜가 바뀌는 경계에 전용 굵은 선을 따로 그었었는데(요청: "날짜 바뀔때도 구분선
    넣어주되") 곧이어 "날짜 변경선은 삭제. 대신 해당 일자의 마지막(최초) 경기까지 모두
    구분선을 주면 됨"으로 방향이 바뀌었다 — 날짜 줄 자체엔 선을 긋지 않고, 그 대신
    새 날짜 그룹의 첫 경기 위에도 같은 날짜 안 경기끼리 쓰는 것과 똑같은 짧은 선(아래
-   .scr-match-trow + ::before와 동일 스타일)을 그어, 목록 전체가 경기 단위로만 일관되게
+   .scr-game-result-trow + ::before와 동일 스타일)을 그어, 목록 전체가 경기 단위로만 일관되게
    구분되게 한다. 날짜 줄 위아래 여백(간격)은 그대로 유지한다. */
-.scr-match-list-panel-v2 .scr-match-date-group + .scr-match-date-group .scr-match-date-head {
+.scr-game-result-list-panel-v2 .scr-game-result-date-group + .scr-game-result-date-group .scr-game-result-date-head {
   margin-top: 20px;
   padding-top: 12px;
 }
@@ -2780,46 +2780,46 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
    패딩은 넉넉한 쪽(PC)만 늘리고 모바일은 컴팩트한 값을 유지한다 — 아래 min-width:720px
    블록에서 PC만 다시 늘린다. 위아래를 같게 통일한다(요청: "위아래 패딩 불일치 아래패딩을
    줄여서 통일" — 예전엔 아래(14px)가 위(7px)보다 두 배 가까이 컸다). */
-.scr-match-list-panel-v2 .scr-match-card { padding: 7px 8px; }
+.scr-game-result-list-panel-v2 .scr-game-result-card { padding: 7px 8px; }
 /* 프사를 20% 키우면서(18px -> 22px) 그 늘어난 비율만큼 로스터 행 사이 간격도 같이
    늘려서 카드 전체 높이가 그만큼 여유 있어 보이게 한다. */
-.scr-match-list-panel-v2 .scr-team-roster { gap: 7px; padding: 4px 6px; }
-.scr-match-list-panel-v2 .scr-team-profile { gap: 10px; }
+.scr-game-result-list-panel-v2 .scr-team-roster { gap: 7px; padding: 4px 6px; }
+.scr-game-result-list-panel-v2 .scr-team-profile { gap: 10px; }
 /* 프사를 원형으로(Avatar.tsx는 인라인 style로 각진 래디우스를 계산해 넣으므로 스타일시트
    에서 override하려면 !important가 필요하다). */
-.scr-match-list-panel-v2 .scr-avatar { border-radius: 50% !important; }
+.scr-game-result-list-panel-v2 .scr-avatar { border-radius: 50% !important; }
 /* 간격/호버만으로는 경기별 구분이 잘 안 되어 구분선을 다시 그린다. 예전엔 PC에서
    날짜 그룹이 2열 그리드였어서(오른쪽 칸도 "왼쪽 칸 바로 다음"으로 매치돼 줄 중간에
-   선이 뜨는 문제) 인접 형제 선택자 대신 :nth-child(n+2 of .scr-match-card)로 형제 중
+   선이 뜨는 문제) 인접 형제 선택자 대신 :nth-child(n+2 of .scr-game-result-card)로 형제 중
    카드만 순번을 셌는데, 그 2열 그리드 자체가 카드 리디자인 때 없어져 지금은 항상
    1열이다 — 더 이상 필요 없는 그 선택자가 오히려 (엔진에 따라) 안 먹힐 수 있어 원래의
    단순한 인접 형제 선택자로 되돌린다(같은 날짜 그룹 안 두 번째 카드부터 위에 선). */
-.scr-match-list-panel-v2 .scr-match-card + .scr-match-card::before {
+.scr-game-result-list-panel-v2 .scr-game-result-card + .scr-game-result-card::before {
   content: ""; position: absolute; top: 0; left: 8px; right: 8px; height: 1px;
   /* 경기 목록·랭킹 상세 이력의 카드 구분선 — 붉은기 대신 흰색 계열로(요청). 랭킹 v2 행
      구분선과 같은 원칙: 다크는 흰 선이 배경 위에서 또렷하고, 라이트는 흰 선이 안 보여
      원래 톤(검정 계열, --divider-tint=0,0,0)을 그대로 쓴다. */
   background: rgba(255, 255, 255, 0.32);
 }
-.scr-light-theme .scr-match-list-panel-v2 .scr-match-card + .scr-match-card::before {
+.scr-light-theme .scr-game-result-list-panel-v2 .scr-game-result-card + .scr-game-result-card::before {
   background: rgba(var(--divider-tint), 0.35);
 }
 
-.scr-match-memo-btn {
+.scr-feed-post-menu-btn {
   display: inline-flex; align-items: center; justify-content: center;
   background: transparent; border: none; padding: 4px; margin: -4px; color: var(--dim); flex-shrink: 0; cursor: pointer;
 }
-@media (hover: hover) { .scr-match-memo-btn:hover { color: var(--text); } }
+@media (hover: hover) { .scr-feed-post-menu-btn:hover { color: var(--text); } }
 /* PC 폭에서도 카드는 한 줄에 하나씩 — 카드 자체 폭은 넓어지니(위 헐렁해 보이는 문제)
    팀 칸 폭/간격만 좁혀서 내용을 수평으로 바짝 모은다("N경기" 태그와의 연결감은 정렬을
-   맞추는 대신 태그 자체를 더 또렷하게 보이도록 색을 밝힌다, 아래 .scr-match-seq). */
+   맞추는 대신 태그 자체를 더 또렷하게 보이도록 색을 밝힌다, 아래 .scr-game-result-seq). */
 @media (min-width: 720px) {
-  .scr-match-list-panel-v2 .scr-match-row {
+  .scr-game-result-list-panel-v2 .scr-game-result-row {
     grid-template-columns: 148px auto 148px; gap: 4px 10px;
   }
   /* PC는 카드 자체가 넓어 여유가 있으니 위아래 패딩을 더 넉넉하게(모바일은 위 기본값
      그대로 컴팩트하게 유지). */
-  .scr-match-list-panel-v2 .scr-match-card { padding: 13px 8px; }
+  .scr-game-result-list-panel-v2 .scr-game-result-card { padding: 13px 8px; }
 }
 /* 리플레이 분석 중에는 목록 화면은 그대로 두고(가려지거나 사라지지 않고), 그 위에
    모달과 똑같은 방식(fixed, 전체 화면)으로 딤 처리 + 스피너를 띄운다 — 목록 영역에만
@@ -2830,7 +2830,7 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
    blur로 유리감을 주고, 로우 사이는 세로 여백으로 나눈다(별도 구분선 없음). */
 /* 너 나와!(.scr-challenge-card) 패널과 동일한 투명 글라스 + 반사광(inset 하이라이트)과
    그림자(요청 — 글로우가 아니라 반사광). 라이트 테마는 파란 글로우는 빼고 흰 반사광만 둔다. */
-.scr-match-list-panel-v2 .scr-match-trow {
+.scr-game-result-list-panel-v2 .scr-game-result-trow {
   padding: 15px 8px; position: relative;
   margin: 8px 0; border-radius: 12px;
   background: rgba(var(--overlay-rgb), 0.07);
@@ -2841,7 +2841,7 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
     inset 0 0 0 1px rgba(255, 255, 255, 0.045),
     0 2px 12px rgba(0, 0, 0, 0.16);
 }
-.scr-light-theme .scr-match-list-panel-v2 .scr-match-trow {
+.scr-light-theme .scr-game-result-list-panel-v2 .scr-game-result-trow {
   background: rgba(255, 255, 255, 0.62);
   backdrop-filter: blur(10px) saturate(1.1);
   -webkit-backdrop-filter: blur(10px) saturate(1.1);
@@ -2858,7 +2858,7 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
    폭(8px 인셋) 그대로 유지한다(요청: "구분선은 원래 폭대로 표시해야지") — absolute
    위치라 이 행의 패딩이 아무리 커져도 그대로 padding box 기준 8px에 머문다. */
 @media (min-width: 720px) {
-  .scr-match-list-panel-v2 .scr-match-trow { padding-left: 100px; padding-right: 100px; }
+  .scr-game-result-list-panel-v2 .scr-game-result-trow { padding-left: 100px; padding-right: 100px; }
 }
 /* 맵 이름 줄 — 머리줄 아래 별도 줄(요청: 맵이름이 길어서). 플레이시간을 그 옆에 나란히. */
 /* 내용(맵/시간)이 둘 다 없어도 항상 그려서 높이를 예약한다(위 MatchList.tsx 참고) —
@@ -2871,26 +2871,26 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
 /* 맵 줄과 로스터 사이 갭 확대(9→14px, 요청). */
 /* 이제 이 줄은 왼쪽에 게임번호·등록자(늘 보인다, 요청)를 담고, 오른쪽은 절대배치된
    스탯/케밥 자리라 흐름에 없다 — 예전의 [1fr][가운데][1fr] 3열 짜기는 필요 없어졌다. */
-.scr-match-trow-topline {
+.scr-game-result-trow-topline {
   /* 이제 이 줄에 흐름으로 놓이는 건 아무것도 없다(게임번호는 감췄고 등록자는 카드 머리로
      옮겼다) — 절대배치된 케밥의 자리를 비워 두는 높이 확보용 줄로만 남는다. */
   display: flex; align-items: center; column-gap: 10px; margin-bottom: 14px; min-height: 20px;
 }
 /* 맵이름·경기시간은 그 줄의 가운데(위 그리드 가운데 칸)에 모은다(요청). */
-.scr-match-trow-map-line { display: flex; align-items: baseline; justify-content: center; gap: 8px; font-size: var(--fs-caption); min-width: 0; }
+.scr-game-result-trow-map-line { display: flex; align-items: baseline; justify-content: center; gap: 8px; font-size: var(--fs-caption); min-width: 0; }
 /* 맵 이름은 잘라내지 않고 전부 보여준다(요청) — 길면 말줄임 대신 줄바꿈으로 다 노출한다. */
-.scr-match-trow-map { color: var(--muted); min-width: 0; white-space: normal; overflow-wrap: anywhere; text-align: center; }
+.scr-game-result-trow-map { color: var(--muted); min-width: 0; white-space: normal; overflow-wrap: anywhere; text-align: center; }
 /* 맵 이름 옆 플레이시간 — 라벨 없이 "23분"(요청). 흐린 색으로 살짝 뒤에. */
-.scr-match-trow-dur { color: var(--dim); flex-shrink: 0; font-variant-numeric: tabular-nums; }
+.scr-game-result-trow-dur { color: var(--dim); flex-shrink: 0; font-variant-numeric: tabular-nums; }
 /* 윗줄 오른쪽 — 케밥. PC는 로우 좌우 패딩(720px↑에서 100px)이 커서 그리드 흐름에 두면
-   케밥이 카드 오른쪽 끝에서 100px이나 안쪽에 놓였다 — 카드(.scr-match-trow, position:relative)
+   케밥이 카드 오른쪽 끝에서 100px이나 안쪽에 놓였다 — 카드(.scr-game-result-trow, position:relative)
    기준 절대배치로 빼서 패딩과 무관하게 카드 오른쪽 끝 가까이 둔다(요청: PC 케밥 오른쪽).
    절대배치라 윗줄 그리드에서 빠지고, 남은 맵/시간은 그대로 가운데에 온다. */
-.scr-match-trow-topmeta { position: absolute; top: 12px; right: 12px; z-index: 2; display: flex; align-items: center; gap: 8px; font-size: var(--fs-caption); }
+.scr-game-result-trow-topmeta { position: absolute; top: 12px; right: 12px; z-index: 2; display: flex; align-items: center; gap: 8px; font-size: var(--fs-caption); }
 /* 모바일에선 오른쪽 가장자리의 스크롤 타임라인(32px 터치존)과 겹치지 않게 살짝만 왼쪽으로
    — 예전(margin 22px)엔 너무 왼쪽으로 갔다는 피드백으로 조금 더 오른쪽에 붙인다(요청). */
 @media (max-width: 860px) {
-  .scr-match-trow-topmeta { right: 20px; }
+  .scr-game-result-trow-topmeta { right: 20px; }
 }
 /* 게임번호는 화면에서 감췄다(요청) — 값 자체는 데이터에 그대로 있고, 보여주는 자리만
    없앴다. 등록자는 카드 머리의 시각 옆(.scr-feed-card-by)으로 옮겼다. */
@@ -2898,42 +2898,42 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
 /* 펼침 로우 하단 댓글(메모) 영역 — 게시판 댓글 스타일. 목록·입력창은 "너 나와!"(scr-mreq-*)
    CSS를 그대로 차용한다(요청). 로우 자체가 클릭 토글이라 이 영역은 stopPropagation으로
    접힘을 막는다. */
-.scr-match-notes { margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(var(--overlay-rgb), 0.08); }
+.scr-feed-notes { margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(var(--overlay-rgb), 0.08); }
 
-.scr-match-notes-list { margin-bottom: 8px; }
+.scr-feed-notes-list { margin-bottom: 8px; }
 /* 각 댓글은 상하 여백만(구분선은 옅게) — scr-mreq-item의 카드 톤 대신 콤팩트하게. */
-.scr-match-note-item { padding: 7px 0; }
-.scr-match-note-item + .scr-match-note-item { border-top: 1px solid rgba(var(--overlay-rgb), 0.06); }
-.scr-match-note-item .scr-mreq-item-top { margin-bottom: 3px; }
-.scr-match-note-time { font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; flex-shrink: 0; }
-.scr-match-note-text { font-size: var(--fs-micro); }
+.scr-feed-note-item { padding: 7px 0; }
+.scr-feed-note-item + .scr-feed-note-item { border-top: 1px solid rgba(var(--overlay-rgb), 0.06); }
+.scr-feed-note-item .scr-mreq-item-top { margin-bottom: 3px; }
+.scr-feed-note-time { font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; flex-shrink: 0; }
+.scr-feed-note-text { font-size: var(--fs-micro); }
 /* 메모 영역 전체를 한 스텝 작게(요청) — 목록 텍스트·입력창·버튼 폰트/크기를 함께 줄인다.
    입력 편집기(scr-mreq-*)는 --field-h를 지역 재정의해 높이만 줄이고, 폰트/칩/버튼은 아래에서
    개별로 한 스텝 낮춘다. */
-.scr-match-notes { --field-h: 30px; }
-.scr-match-notes .scr-mreq-item-author-name { font-size: var(--fs-micro); }
-.scr-match-notes .scr-mreq-live-input { font-size: var(--fs-caption); }
-.scr-match-notes .scr-mreq-submit-btn {
+.scr-feed-notes { --field-h: 30px; }
+.scr-feed-notes .scr-mreq-item-author-name { font-size: var(--fs-micro); }
+.scr-feed-notes .scr-mreq-live-input { font-size: var(--fs-caption); }
+.scr-feed-notes .scr-mreq-submit-btn {
   flex-basis: 30px; width: 30px; height: 30px;
   min-width: 30px; min-height: 30px; max-width: 30px; max-height: 30px;
-  /* 이 버튼은 펼침 영역(.scr-match-trow-expand-inner { overflow:hidden })의 맨 아래에
+  /* 이 버튼은 펼침 영역(.scr-game-result-trow-expand-inner { overflow:hidden })의 맨 아래에
      붙어 있어, 프라이머리솔리드의 바깥 알약 글로우(box-shadow)가 하단 클립 경계에서
      싹둑 잘려 "베이스라인에서 단절"돼 보였다(지적) — 편집칸(.scr-mreq-editor)과 같은
      원칙으로 글로우를 inset(안쪽)으로 담아 절대 잘리지 않게 한다. */
   box-shadow: inset 0 0 9px rgba(var(--lit-rgb), 0.4);
 }
 @media (hover: hover) {
-  .scr-match-notes .scr-mreq-submit-btn:hover { box-shadow: inset 0 0 12px rgba(var(--lit-rgb), 0.55); }
+  .scr-feed-notes .scr-mreq-submit-btn:hover { box-shadow: inset 0 0 12px rgba(var(--lit-rgb), 0.55); }
 }
 /* 메모 입력칸 — 너나와의 불투명 흰 박스 대신, 로우 글라스 패널에 녹아드는 반투명 유리로
    (요청: 튀지 않게 최대한 — 반투명 + 아주 옅은 반사광/그림자). --overlay-rgb가 테마별로
    흑/백이라 배경도 자동으로 테마에 맞는 옅은 틴트가 된다. 흰 박스용으로 지역 재정의된
    --text/--muted는 테마 글자색으로 되돌린다. */
 /* 메모 입력칸의 반사광/포커스 링은 전부 inset으로만 그린다 — 이 입력칸은 펼침 영역
-   (.scr-match-trow-expand-inner { overflow:hidden })의 맨 아래·좌우 끝에 붙어 있어서,
+   (.scr-game-result-trow-expand-inner { overflow:hidden })의 맨 아래·좌우 끝에 붙어 있어서,
    바깥으로 뻗는 box-shadow(드롭섀도/아웃라인 링)를 쓰면 그 효과가 overflow에 잘려 보였다
    (요청: 포커싱 효과가 잘림). inset은 박스 안쪽에만 그려져 절대 잘리지 않는다. */
-.scr-match-notes .scr-mreq-editor {
+.scr-feed-notes .scr-mreq-editor {
   background: rgba(var(--overlay-rgb), 0.06);
   --text: #e7edf2; --muted: rgba(231, 237, 242, 0.5);
   box-shadow:
@@ -2942,13 +2942,13 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
 }
 /* 포커스에도 테두리(1px 링)를 두르지 않는다(요청: 테두리 제거, 그림자와 림으로) —
    윗면 림을 한 단계 밝히고 아래 그림자를 깊게 해서 "눌린 칸"으로 읽히게만 한다. */
-.scr-match-notes .scr-mreq-editor:focus-within {
+.scr-feed-notes .scr-mreq-editor:focus-within {
   background: rgba(var(--overlay-rgb), 0.1);
   box-shadow:
     inset 0 1px 0 rgba(var(--overlay-rgb), 0.22),    /* 윗면 림 */
     inset 0 -4px 10px rgba(0, 0, 0, 0.12);           /* 아래로 깊어지는 그림자 */
 }
-.scr-light-theme .scr-match-notes .scr-mreq-editor {
+.scr-light-theme .scr-feed-notes .scr-mreq-editor {
   /* 다크용 inset 그림자(어두운 윗림 + 아래 그늘)를 그대로 물려받아 흰 배경에서 유독
      어둡고 그림자가 심했다(지적) — 라이트는 흰 필드에 얇은 테두리 하나로 끝낸다. */
   background: rgba(255, 255, 255, 0.92);
@@ -2960,50 +2960,50 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
    소스상 더 뒤라 이겨버려, 라이트에서만 바깥 링이 되살아나 펼침영역 overflow에 아래가
    잘렸다(지적된 버그 — "특히 아래부분 특히 라이트"). 특이도를 한 단계 높인 이 규칙으로
    라이트에서도 inset만 쓰게 못박는다. */
-.scr-light-theme .scr-match-notes .scr-mreq-editor:focus-within {
+.scr-light-theme .scr-feed-notes .scr-mreq-editor:focus-within {
   background: #fff;
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18);
 }
-.scr-match-note-icon-btn {
+.scr-feed-note-icon-btn {
   display: inline-flex; align-items: center; justify-content: center;
   background: transparent; border: none; color: var(--muted); cursor: pointer;
   padding: 3px; border-radius: 4px; line-height: 0;
 }
-@media (hover: hover) { .scr-match-note-icon-btn:hover { color: var(--text); background: rgba(var(--overlay-rgb), 0.08); } }
-@media (hover: hover) { .scr-match-note-icon-danger:hover { color: var(--loss); background: rgba(220, 70, 70, 0.14); } }
-.scr-match-note-err { margin: 4px 0 8px; }
+@media (hover: hover) { .scr-feed-note-icon-btn:hover { color: var(--text); background: rgba(var(--overlay-rgb), 0.08); } }
+@media (hover: hover) { .scr-feed-note-icon-danger:hover { color: var(--loss); background: rgba(220, 70, 70, 0.14); } }
+.scr-feed-note-err { margin: 4px 0 8px; }
 /* 입력 줄 — "너 나와!"의 compose-row를 그대로 쓰되(인풋+제출 버튼 한 줄), 상단 여백만 살짝. */
-.scr-match-note-compose-row { margin-top: 2px; }
+.scr-feed-note-compose-row { margin-top: 2px; }
 /* 예전엔 여기 '펼침 상세'(0fr↔1fr 높이 애니메이션)가 있었다 — 스탯 표가 전체화면 시트로
    나가면서 펼칠 내용 자체가 없어져 통째로 걷어냈다(요청). */
 /* 세로점세개(⋮) 메뉴 트리거 — 등록자 오른쪽 끝에. 아이콘 버튼 톤은 기존 메모 버튼과 공유. */
-.scr-match-menu { display: inline-flex; flex-shrink: 0; }
-.scr-match-menu-drop { min-width: 128px; }
+.scr-feed-post-menu { display: inline-flex; flex-shrink: 0; }
+.scr-feed-post-menu-drop { min-width: 128px; }
 /* 삭제 항목만 위험 톤 — 기본 붉은 글자, hover 시 옅은 붉은 배경(공용 드롭다운 hover 흰배경 대신). */
-.scr-match-menu-drop .scr-match-menu-opt-danger { color: var(--loss); }
-@media (hover: hover) { .scr-match-menu-drop .scr-match-menu-opt-danger:hover { color: var(--loss); background: rgba(220, 70, 70, 0.14); } }
-/* 목록 화면용 2열 그리드 로스터(.scr-match-trow-grid/-team/-roster, .scr-mt-*)는
+.scr-feed-post-menu-drop .scr-feed-post-menu-opt-danger { color: var(--loss); }
+@media (hover: hover) { .scr-feed-post-menu-drop .scr-feed-post-menu-opt-danger:hover { color: var(--loss); background: rgba(220, 70, 70, 0.14); } }
+/* 목록 화면용 2열 그리드 로스터(.scr-game-result-trow-grid/-team/-roster, .scr-mt-*)는
    걷어냈다 — 그걸 쓰던 마지막 화면(카톡 단일 경기 공유)이 피드 카드를 그대로 쓰게
    바뀌면서 그리는 곳이 없어졌다(요청: 잘못 쓰이지 않게 제거). 지금 로스터는 너 나와!와
    같은 매치업 한 벌(.scr-challenge-matchup)뿐이다. */
-/* 예전엔 여기 사람별 총합 스탯 표(.scr-match-stats-table*)와, 그걸 띄우는 전체화면
+/* 예전엔 여기 사람별 총합 스탯 표(.scr-game-result-stats-table*)와, 그걸 띄우는 전체화면
    시트(시간축 그래프 포함)가 있었다 — 통째로 걷어냈다(요청: 기능 삭제). */
 
 /* 로우 자체는 더 이상 클릭 대상이 아니다 — 펼칠 것이 없어졌다(요청). 그래서 커서/호버
    틴트도 함께 걷어냈다. 피드 묶음 안에서는 로우를 눌러도 '묶음 접기'로 동작하는데,
-   그건 묶음 쪽(.scr-feed-stack-list)이 받는다. */
+   그건 묶음 쪽(.scr-feed-post-stack-list)이 받는다. */
 
 /* .scr-screen이 flex column이라 그 직계 자식(이 래퍼)은 기본 min-width:auto로 자기
    min-content(가장 넓은 자손 = 펼친 스탯표) 폭까지 늘어나 화면을 가로로 밀 수 있다 —
    min-width:0으로 눌러 폭을 화면에 맞추면, 넘치는 표는 자기 래퍼(overflow-x:auto)에서만
-   가로 스크롤되고 페이지엔 스크롤이 안 생긴다(요청). 위 .scr-match-screen-v2의 clip은
+   가로 스크롤되고 페이지엔 스크롤이 안 생긴다(요청). 위 .scr-game-result-screen-v2의 clip은
    그래도 새는 극단적 경우를 위한 안전망. */
-.scr-match-list-panel-v2, .scr-match-cards { min-width: 0; }
+.scr-game-result-list-panel-v2, .scr-game-result-cards { min-width: 0; }
 
 /* 카드형: 타이틀(메타)은 위에, 본문(팀1 vs 팀2)은 대칭으로 가로 배치 */
 /* .scr-stat-grid와 동일한 이유로 스크롤 앵커링을 꺼서, 검색 필터 실시간 반영으로 카드
    수가 바뀌어도 화면 위치가 갑자기 튀지 않게 한다. */
-.scr-match-cards { display: flex; flex-direction: column; overflow-anchor: none; padding: 0 20px 20px; }
+.scr-game-result-cards { display: flex; flex-direction: column; overflow-anchor: none; padding: 0 20px 20px; }
 /* 날짜 줄도 타이틀과 같은 글래스로 고정한다(타이틀 높이 46px 바로 아래에 쌓인다). 카드
    쪽 좌우 padding을 이 줄만 음수 마진으로 무효화하고 자기 padding으로 다시 폭 전체를
    채운다 — 스크롤 중 날짜가 바뀌면 새 sticky 줄이 그 자리를 그대로 이어받아 전환이
@@ -3014,16 +3014,16 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
    날짜 위 구분선만). 날짜 줄은 날짜마다 하나뿐이라 이 위쪽 선이 '날짜 바뀔 때 한 번'만 뜬다. */
 /* 꺽쇠 장식은 시도해봤다가 뺐다(요청: "꺽쇠는 제거") — 구분선 없이 텍스트만, 글자색은
    타이틀과 같은 흰색으로(요청). */
-.scr-match-date-head {
+.scr-game-result-date-head {
   margin: 0; padding: 0 8px;
   font-size: var(--fs-caption); color: var(--text);
 }
 /* 위아래 패딩을 같게 통일한다(요청: "위아래 패딩 불일치 아래패딩을 줄여서 통일" — 예전엔
    아래가 위보다 두 배 가까이 컸다). */
-.scr-match-card { position: relative; padding: 6px 8px; }
+.scr-game-result-card { position: relative; padding: 6px 8px; }
 /* 같은 날짜 안에서 경기끼리는 붉은 톤의 얇은 선으로 구분. border-top 대신 절대배치 선을 쓰는
    이유: 카드 자체에 border-radius가 있어서 border-top을 쓰면 양 끝이 둥글게 휘어 보인다. */
-.scr-match-card + .scr-match-card::before {
+.scr-game-result-card + .scr-game-result-card::before {
   content: "";
   position: absolute;
   top: 0; left: 8px; right: 8px;
@@ -3037,14 +3037,14 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
    고정 강조색이 더 잘 보인다). */
 /* 너 나와!(.scr-challenge-date-head)와 모양·크기를 통일하고, 폰트는 더 축소한다(요청).
    글자색은 타이틀과 같은 흰색으로. */
-.scr-match-list-panel-v2 .scr-match-date-head {
+.scr-game-result-list-panel-v2 .scr-game-result-date-head {
   font-size: var(--fs-body);
   font-weight: 700; color: var(--text); letter-spacing: 0.02em;
 }
 /* 랭킹 상세 이력(compact)의 날짜 줄은 더 작게 — 카드 머리글을 뺀 가벼운 목록이라 날짜도
    과하지 않게 줄인다(요청: "날짜 글자 축소"). 또 스티키 바(패널색 배경+구분선)를 없애
    주변(모달 본문)과 같은 배경으로 둔다(요청: "날짜부분 배경 다르게 하지말고 똑같게"). */
-.scr-match-list-panel-v2 .scr-match-date-head-compact {
+.scr-game-result-list-panel-v2 .scr-game-result-date-head-compact {
   font-size: var(--fs-caption);
   padding: 9px 8px 7px;
   /* 랭킹 상세 이력은 날짜 위 구분선 없이 주변(모달 본문)과 같은 톤으로 둔다(요청). */
@@ -3057,7 +3057,7 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
   걸리도록 해서 승/무/패 표시를 제외한 명단 영역만의 수직 중앙에 오게 하고, 승/무/패 표시는
   양 팀 모두 2행에 고정돼 있어 팀 인원수가 달라도 항상 같은 높이에서 수평이 맞는다.
 */
-.scr-match-row {
+.scr-game-result-row {
   display: grid;
   /* 팀 컬럼을 고정폭으로 둬야 카드마다 인원수/이름 길이가 달라도 아바타·VS가 목록 전체에서
      세로로 줄이 맞는다 (auto면 카드별로 그리드가 따로 계산돼 카드마다 폭이 달라진다). */
@@ -3109,7 +3109,7 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
 /* 글자 굵기는 건드리지 않는다(지적: 하이라이트된 이름에만 말줄임표가 생긴다) — 600을
    800으로 올리면 같은 글자가 더 넓어져서, 안 잘리던 닉네임이 하이라이트된 순간에만
    잘린다. 눈에 띄게 하는 일은 배경색이 이미 충분히 하고 있다. 요약 명단 쪽
-   (.scr-feed-stack-sum-player-hl)은 같은 이유로 진작 굵기를 뺐는데 이쪽이 남아 있었다. */
+   (.scr-feed-post-stack-sum-player-hl)은 같은 이유로 진작 굵기를 뺐는데 이쪽이 남아 있었다. */
 .scr-team-player-highlight .scr-team-name { color: var(--bar-text); }
 /* 승/패 표시는 이 표에서 가장 먼저 눈에 들어와야 하는 값이라 닉네임(13px)보다 뚜렷하게 크게 둔다. */
 .scr-team-outcome { flex-shrink: 0; text-align: center; font-size: var(--fs-subhead); font-weight: 800; min-width: 14px; position: relative; }
@@ -3119,60 +3119,60 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
 /* v2 결과 카드 전용(stackedOutcome) — 승/무/패를 로스터 바깥쪽이 아니라 VS 위아래에
    붙여서 "VS" 칸 하나 안에 [팀1 결과 / VS / 팀2 결과] 세 줄로 쌓는다. VS 자체는 위
    .scr-list-vs 스타일 그대로 재사용하고, 이 칸 전체를 grid-area:vs로 옮긴다. */
-.scr-match-vs-col { grid-area: vs; display: flex; flex-direction: row; align-items: center; gap: 6px; }
-.scr-match-vs-col .scr-list-vs { grid-area: auto; }
+.scr-game-result-vs-col { grid-area: vs; display: flex; flex-direction: row; align-items: center; gap: 6px; }
+.scr-game-result-vs-col .scr-list-vs { grid-area: auto; }
 .scr-team-outcome-stacked { font-size: var(--fs-caption); min-width: 0; }
 /* 랭킹 상세 이력 — 홈팀(주인공)을 빼고 "VS 상대 팀구성 ......... 승/패"만 한 줄로(요청:
    "아예 홈팀을 빼고 vs 팀구성 승패 ... 진짜 결과만"). 3열 그리드 대신 단순 플렉스로 바꾼다:
    VS(왼쪽) → 상대 로스터(가운데, 남는 폭 차지) → 승/패(오른쪽 끝). */
-.scr-match-list-panel-v2 .scr-match-row-result-only {
+.scr-game-result-list-panel-v2 .scr-game-result-row-result-only {
   display: flex; align-items: center; justify-content: flex-start; gap: 12px;
 }
-.scr-match-list-panel-v2 .scr-match-row-result-only .scr-team-block { flex: 1; min-width: 0; }
+.scr-game-result-list-panel-v2 .scr-game-result-row-result-only .scr-team-block { flex: 1; min-width: 0; }
 /* 개인전 이력은 상대 로스터가 남는 폭을 다 먹지 않게(flex-grow 0) 해서, "에게·승/패·점수"가
    화면 오른쪽 끝이 아니라 닉네임 바로 뒤에 붙는다(요청: "에게를 닉네임 쪽으로 붙이고
    승패도 왼쪽으로"). 정렬(justify-content: flex-start)이 이미 왼쪽 정렬이라 나머지 여백은
    오른쪽에 남는다. */
-.scr-match-list-panel-v2 .scr-match-row-result-only:not(.scr-match-row-team-tail) .scr-team-block { flex: 0 1 auto; }
-.scr-match-list-panel-v2 .scr-match-row-result-only .scr-team-outcome-result { flex-shrink: 0; }
+.scr-game-result-list-panel-v2 .scr-game-result-row-result-only:not(.scr-game-result-row-team-tail) .scr-team-block { flex: 0 1 auto; }
+.scr-game-result-list-panel-v2 .scr-game-result-row-result-only .scr-team-outcome-result { flex-shrink: 0; }
 /* 오른쪽 끝 결과 묶음 — 개인전 이력(opponentOnly)은 "에 · 승/패 · +점수"를 세로로 쌓지
    않고 한 줄에 가로로 나란히 둔다(요청: "에 승 +1이 세로가 아니라 가로로 별도 컬럼으로
    배치"). 각 조각을 고정폭 칸으로 둬서 카드마다 연결어/승패/점수 세로줄이 일치한다. */
-.scr-match-list-panel-v2 .scr-match-row-result-only .scr-match-result-tail {
+.scr-game-result-list-panel-v2 .scr-game-result-row-result-only .scr-game-result-result-tail {
   flex-shrink: 0; display: inline-flex; align-items: center;
 }
-.scr-match-list-panel-v2 .scr-match-row-result-only:not(.scr-match-row-team-tail) {
+.scr-game-result-list-panel-v2 .scr-game-result-row-result-only:not(.scr-game-result-row-team-tail) {
   gap: 8px;
 }
-.scr-match-list-panel-v2 .scr-match-row-result-only:not(.scr-match-row-team-tail) .scr-match-result-tail {
+.scr-game-result-list-panel-v2 .scr-game-result-row-result-only:not(.scr-game-result-row-team-tail) .scr-game-result-result-tail {
   flex-direction: row; gap: 8px;
 }
 /* 개인전: 승/패 글자 칸과 점수 칸을 고정폭·정렬 고정으로 둬 카드 간 세로줄이 맞는다. */
-.scr-match-list-panel-v2 .scr-match-row-result-only:not(.scr-match-row-team-tail) .scr-match-result-tail .scr-team-outcome-result {
+.scr-game-result-list-panel-v2 .scr-game-result-row-result-only:not(.scr-game-result-row-team-tail) .scr-game-result-result-tail .scr-team-outcome-result {
   min-width: 18px; text-align: center;
 }
 /* 획득 점수는 결과 묶음(에게 승) 밖으로 빼서 카드 오른쪽 끝에 붙인다(요청: "개인전이든
    팀전이든 획득점수 컬럼은 카드 우측 정렬") — 팀전 점수 컬럼과 같은 오른쪽 정렬. */
-.scr-match-list-panel-v2 .scr-match-row-result-only:not(.scr-match-row-team-tail) .scr-match-result-points {
+.scr-game-result-list-panel-v2 .scr-game-result-row-result-only:not(.scr-game-result-row-team-tail) .scr-game-result-result-points {
   margin-left: auto; min-width: 28px; text-align: right; flex-shrink: 0;
 }
 /* 팀전 이력의 결과 묶음(팀에게 · 승/패)도 개인전처럼 한 줄에 가로로 나란히 둔다(요청:
    "팀에게 승 다른 칼럼으로 수평으로 배치"). */
-.scr-match-list-panel-v2 .scr-match-row-team-tail .scr-match-result-tail {
+.scr-game-result-list-panel-v2 .scr-game-result-row-team-tail .scr-game-result-result-tail {
   flex-direction: row; align-items: center; gap: 6px;
 }
-.scr-match-result-points { font-size: var(--fs-caption); color: var(--muted); font-variant-numeric: tabular-nums; }
+.scr-game-result-result-points { font-size: var(--fs-caption); color: var(--muted); font-variant-numeric: tabular-nums; }
 /* 획득 점수도 부호에 따라 승/패 색을 입힌다(요청: "점수에도 포인트 색 적용"). 개인전 꼬리
    점수와 팀전 개별 점수 컬럼 공통. */
-.scr-match-list-panel-v2 .scr-match-result-points.scr-win, .scr-match-list-panel-v2 .scr-team-points-row.scr-win { color: var(--win); }
-.scr-match-list-panel-v2 .scr-match-result-points.scr-loss, .scr-match-list-panel-v2 .scr-team-points-row.scr-loss { color: var(--loss); }
+.scr-game-result-list-panel-v2 .scr-game-result-result-points.scr-win, .scr-game-result-list-panel-v2 .scr-team-points-row.scr-win { color: var(--win); }
+.scr-game-result-list-panel-v2 .scr-game-result-result-points.scr-loss, .scr-game-result-list-panel-v2 .scr-team-points-row.scr-loss { color: var(--loss); }
 /* 팀전 이력 — 우리 로스터 VS 상대 로스터를 왼쪽에 붙이고, 오른쪽에 [승/패] → [개별 점수
    컬럼] 순으로 고정한다(요청: "승패는 상대팀 우측에 고정", "승패 다음에 오른쪽에 개별 점수").
    승/패+점수 묶음은 margin-left:auto로 오른쪽 끝으로 민다. 양 팀 모두 아바타→닉네임 순으로
    통일(요청: "홈팀쪽도 아바타 닉네임 순") — 팀1의 기본 뒤집기를 되돌리고 종족 배지도 같은
    코너(우하)에 둔다. */
 /* "우리팀 로스터+팀으로"(왼쪽 덩어리)와 "상대팀 로스터+팀에게 승/패"(오른쪽 덩어리)를 각각
-   하나의 그룹(.scr-match-team-side)으로 묶고, 두 그룹을 균등폭(flex:1)으로 둔 뒤 사이에 갭을
+   하나의 그룹(.scr-game-result-team-side)으로 묶고, 두 그룹을 균등폭(flex:1)으로 둔 뒤 사이에 갭을
    준다(요청: "두 덩어리처럼 모이고 그 사이에 갭", "팀으로와 상대팀 로스터 사이 공간"). 각
    그룹 안에서 로스터는 내용폭(flex:0 1 auto)이라 연결어/결과가 로스터 바로 뒤에 붙는다. */
 /* 우리팀 쪽을 내용폭(flex:0 1 auto)으로 바꾸면서 예전에 반반(flex:1 1 0) 분배가 만들던
@@ -3182,22 +3182,22 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
    (360px)을 넘겨버렸다 — 그 원인을 고친 뒤 40px로 확정했다가(요청: "팀으로/팀에게 옆에
    똑같이 40px 갭" — "옆"은 각각 오른쪽: 팀으로→상대 로스터, 팀에게→승패), 다시 32px로
    축소한다(요청). */
-.scr-match-list-panel-v2 .scr-match-row-team-tail { gap: 32px; min-width: 0; }
-.scr-match-list-panel-v2 .scr-match-team-side {
+.scr-game-result-list-panel-v2 .scr-game-result-row-team-tail { gap: 32px; min-width: 0; }
+.scr-game-result-list-panel-v2 .scr-game-result-team-side {
   display: flex; align-items: center; gap: 6px; min-width: 0;
 }
 /* "팀에게" 오른쪽(승/패 쪽) 간격도 "팀으로" 쪽과 같은 32px로 맞춘다(요청: "왼쪽말고
    오른쪽"이라 로스터↔팀에게 사이(왼쪽, 6px 유지)가 아니라 팀에게↔승패 사이(오른쪽)만
    넓힌다). */
-.scr-match-list-panel-v2 .scr-match-row-team-tail .scr-match-result-tail { gap: 32px; }
+.scr-game-result-list-panel-v2 .scr-game-result-row-team-tail .scr-game-result-result-tail { gap: 32px; }
 /* 개별 점수 컬럼(.scr-team-points-col)이 없는 카드(요청 기능 자체가 없어진 뒤)에서는
    두 덩어리를 반반(flex:1 1 0)으로 나누면 우리팀 쪽 남는 여백만큼 상대팀 로스터가 오른쪽
    으로 밀려나 카드 경계 밖으로 승/패가 넘치는 문제가 있었다(실제로 지적받은 문제 —
    "팀2 로스터를 좀더 왼쪽으로 옮기고 승 패가 바운더리를 벗어나지 않게") — 우리팀 쪽은
    내용 크기만큼만 차지하고, 상대팀 쪽만 남는 폭을 먹되 그 안의 로스터/승패는 왼쪽부터
    붙어서 늘어나지 않는다. */
-.scr-match-list-panel-v2 .scr-match-team-side-ours { flex: 0 1 auto; }
-.scr-match-list-panel-v2 .scr-match-team-side-theirs { flex: 1 1 auto; min-width: 0; }
+.scr-game-result-list-panel-v2 .scr-game-result-team-side-ours { flex: 0 1 auto; }
+.scr-game-result-list-panel-v2 .scr-game-result-team-side-theirs { flex: 1 1 auto; min-width: 0; }
 /* 블록→로스터→선수행→프로필까지는 flex:1 1 auto + min-width:0으로 뚫어서, 남는 폭이
    그쪽으로 배분되고 폭이 부족하면 줄어들 수 있게 한다(요청: "남는 공간을 닉네임에
    가변적으로 배분", "각팀 닉네임 칸을 폭에 맞춰서 줄여"). 다만 이름칸(.scr-team-name-wrap)
@@ -3206,19 +3206,19 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
    늘어나면(flex:1) 배지가 실제 글자에서 떨어져 보였다(실제로 지적받은 문제 — "닉네임하고
    종족배지가 분리됐어") — growth는 한 단계 위(profile)에서 멈추고, 이름칸은 항상 내용
    크기 그대로 유지해 배지가 늘 글자에 붙어 있게 한다. */
-.scr-match-list-panel-v2 .scr-match-team-side .scr-team-block { flex: 1 1 auto; min-width: 0; }
-.scr-match-row-team-tail .scr-team-roster { min-width: 0; }
-.scr-match-row-team-tail .scr-team-profile { flex: 1 1 auto; min-width: 0; }
-.scr-match-row-team-tail .scr-team-name-wrap { flex: 0 1 auto; min-width: 0; }
-.scr-match-list-panel-v2 .scr-match-row-team-tail .scr-match-result-tail { flex-shrink: 0; }
+.scr-game-result-list-panel-v2 .scr-game-result-team-side .scr-team-block { flex: 1 1 auto; min-width: 0; }
+.scr-game-result-row-team-tail .scr-team-roster { min-width: 0; }
+.scr-game-result-row-team-tail .scr-team-profile { flex: 1 1 auto; min-width: 0; }
+.scr-game-result-row-team-tail .scr-team-name-wrap { flex: 0 1 auto; min-width: 0; }
+.scr-game-result-list-panel-v2 .scr-game-result-row-team-tail .scr-game-result-result-tail { flex-shrink: 0; }
 /* "로"/"에" 연결어 — VS 대신(요청). 얇고 옅게, 세로 가운데. */
-.scr-match-conn { flex-shrink: 0; align-self: center; color: var(--muted); font-size: var(--fs-caption); padding: 0 1px; }
-.scr-match-row-team-tail .scr-team-roster-team1 .scr-team-profile { flex-direction: row; }
-.scr-match-row-team-tail .scr-team-avatar-race-team1 { left: auto; right: -6px; }
+.scr-game-result-conn { flex-shrink: 0; align-self: center; color: var(--muted); font-size: var(--fs-caption); padding: 0 1px; }
+.scr-game-result-row-team-tail .scr-team-roster-team1 .scr-team-profile { flex-direction: row; }
+.scr-game-result-row-team-tail .scr-team-avatar-race-team1 { left: auto; right: -6px; }
 /* 승/패 오른쪽 개별 점수 컬럼 — 상대(team2) 각 행과 세로로 나란히(로스터 gap 4px·행 높이
    22px에 맞춘다). 컴퓨터/비회원처럼 점수가 없는 행은 빈 칸으로 둬 정렬을 유지한다. */
-.scr-match-row-team-tail .scr-team-points-col { display: flex; flex-direction: column; gap: 4px; padding: 4px 0; flex-shrink: 0; align-items: flex-end; min-width: 26px; }
-.scr-match-row-team-tail .scr-team-points-row { height: 22px; display: flex; align-items: center; font-size: var(--fs-caption); color: var(--muted); font-variant-numeric: tabular-nums; }
+.scr-game-result-row-team-tail .scr-team-points-col { display: flex; flex-direction: column; gap: 4px; padding: 4px 0; flex-shrink: 0; align-items: flex-end; min-width: 26px; }
+.scr-game-result-row-team-tail .scr-team-points-row { height: 22px; display: flex; align-items: center; font-size: var(--fs-caption); color: var(--muted); font-variant-numeric: tabular-nums; }
 /* 팀전 이력 카드 — 우리팀 대 상대팀을 그대로 보여주고, 그 경기에서 얻은 점수는 카드 아래
    오른쪽에 작게 병기한다(개인전은 승패 옆에 붙지만 팀전은 양 팀을 다 보여줘 자리가 없다). */
 .scr-rank-history-points-line {
@@ -3230,7 +3230,7 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
 /* 맨 밑줄 오른쪽 — '원점수 합 × 배율 = 최종 점수' 계산(요청). 최종만 강조한다. */
 .scr-rank-history-calc { margin-left: auto; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .scr-rank-history-calc strong { font-weight: 700; color: var(--text); }
-/* 팀 레이팅 점수도 개인 랭킹 이력(.scr-match-result-points)과 같은 규칙으로 승/패 색을
+/* 팀 레이팅 점수도 개인 랭킹 이력(.scr-game-result-result-points)과 같은 규칙으로 승/패 색을
    입힌다(요청: "팀 레이팅 점수에서 점수부분을 개인랭킹처럼 승패 색깔 적용") — 양수는
    승 색, 음수는 패 색. */
 .scr-rank-history-calc strong.scr-win { color: var(--win); }
@@ -3521,7 +3521,7 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
   
 
   /* 좁은 화면에서도 팀1/팀2가 좌우로 배치되도록, 쌓는 대신 여백만 더 촘촘하게 */
-  .scr-match-row { grid-template-columns: 122px auto 122px; gap: 4px 10px; }
+  .scr-game-result-row { grid-template-columns: 122px auto 122px; gap: 4px 10px; }
   .scr-team-name { font-size: var(--fs-caption); }
 }
 
@@ -3599,13 +3599,13 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 /* 영역(그래프↔이력) 구분선과 경기 사이 구분선을 심플한 흰색(라이트=검정회색)으로 통일한다(요청). */
 .scr-rank-detail-history { margin-top: 14px; border-top: 1px solid rgba(255, 255, 255, 0.28); padding-top: 12px; }
 .scr-light-theme .scr-rank-detail-history { border-top-color: rgba(0, 0, 0, 0.2); }
-.scr-rank-detail-history .scr-match-card + .scr-match-card::before { background: rgba(255, 255, 255, 0.28); }
-.scr-light-theme .scr-rank-detail-history .scr-match-card + .scr-match-card::before { background: rgba(0, 0, 0, 0.2); }
+.scr-rank-detail-history .scr-game-result-card + .scr-game-result-card::before { background: rgba(255, 255, 255, 0.28); }
+.scr-light-theme .scr-rank-detail-history .scr-game-result-card + .scr-game-result-card::before { background: rgba(0, 0, 0, 0.2); }
 /* 경기 이력 카드 내용(맨 앞 로스터)이 날짜 줄보다 안으로 들여쓰기돼 보이던 걸 없앤다 —
    로스터 자체의 왼쪽 안쪽 여백(6px)을 0으로 줄여 날짜와 같은 x에서 시작하게 한다(요청:
    "경기이력 카드 들여쓰기 없애기", "팀랭킹 이력에도 들여쓰기 없어야"). 개인전은 맨 앞이
-   상대 로스터(.scr-team-block), 팀전은 우리 로스터가 .scr-match-team-side-ours 안에 있다. */
-.scr-rank-detail-history .scr-match-row-result-only:not(.scr-match-row-team-tail) > .scr-team-block:first-child .scr-team-roster, .scr-rank-detail-history .scr-match-row-team-tail .scr-match-team-side-ours .scr-team-roster { padding-left: 0; }
+   상대 로스터(.scr-team-block), 팀전은 우리 로스터가 .scr-game-result-team-side-ours 안에 있다. */
+.scr-rank-detail-history .scr-game-result-row-result-only:not(.scr-game-result-row-team-tail) > .scr-team-block:first-child .scr-team-roster, .scr-rank-detail-history .scr-game-result-row-team-tail .scr-game-result-team-side-ours .scr-team-roster { padding-left: 0; }
 
 /* 팀 로스터 줄간격을 줄인다(요청) — 경기 목록 카드보다 여기(랭킹 상세 이력)는 더 촘촘하게.
    더불어 로스터 왼쪽 안쪽 여백(6px)을 팀1·팀2·개인전 모두 0으로 없앤다(요청: "이력 목록
@@ -3617,7 +3617,7 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    한다(요청). 로스터보다 긴 닉네임은 말줄임된다. 팀전 카드(팀1/팀2 로스터)와 개인전 카드
    (상대 로스터) 모두에 적용. --hist-roster-w만 바꾸면 폭 조절. */
 .scr-rank-detail-history { --hist-roster-w: 104px; }
-/* 팀전 이력(.scr-match-row-team-tail)은 로스터가 두 벌이라 개인전과 같은 고정폭(104px)을
+/* 팀전 이력(.scr-game-result-row-team-tail)은 로스터가 두 벌이라 개인전과 같은 고정폭(104px)을
    그대로 쓰면 (104px × 2) + 연결어 + 갭들이 이 모달 폭(360px)에 물리적으로 안 들어가
    카드 밖으로 넘쳤다(실제로 지적받은 문제) — 개인전은 그대로 104px, 팀전만 더 좁은 전용
    값(78px)을 쓴다. 처음엔 가변폭(flex:1 1 auto)으로 바꿔 폭 문제 자체는 해결했지만, 그러면
@@ -3625,10 +3625,10 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    x에 오게 됐다(실제로 지적받은 문제 — "카드에서 팀으로 팀에게는 항상 같은 위치(가로
    기준)에 보이게 통일") — 개인전과 같은 이유로 다시 고정폭으로 되돌리되, 두 벌이 들어가야
    하니 더 좁은 값을 쓴다. */
-.scr-rank-detail-history .scr-match-list-panel-v2 .scr-match-row-result-only:not(.scr-match-row-team-tail) .scr-team-block {
+.scr-rank-detail-history .scr-game-result-list-panel-v2 .scr-game-result-row-result-only:not(.scr-game-result-row-team-tail) .scr-team-block {
   flex: 0 0 var(--hist-roster-w); width: var(--hist-roster-w); min-width: 0;
 }
-.scr-rank-detail-history .scr-match-list-panel-v2 .scr-match-row-team-tail .scr-team-block {
+.scr-rank-detail-history .scr-game-result-list-panel-v2 .scr-game-result-row-team-tail .scr-team-block {
   flex: 0 0 78px; width: 78px; min-width: 0;
 }
 
@@ -4956,7 +4956,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 
 /* "종료된 너 나와! 보기" 토글 — 텍스트 링크. 다가오는 매치 이전(과거에 끝난 너 나와)을 접어
    숨겼다가 눌러서 펼친다(요청). */
-/* 경기 목록의 날짜 줄(.scr-match-date-head)과 같은 이유로 스티키 — 헤더가 스크롤 영역
+/* 경기 목록의 날짜 줄(.scr-game-result-date-head)과 같은 이유로 스티키 — 헤더가 스크롤 영역
    밖의 flex 형제로 항상 떠 있고 목록은 그 아래 스크롤 컨테이너에서 시작하므로 top:0으로
    충분하다(요청: "너 나와! 목록도 경기 목록처럼 날짜로 그루핑 하니까 스티키 플로팅
    처리 필요"). */
@@ -5958,7 +5958,7 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
    켠다(터치 화면은 탭 후 :hover가 고착돼 계속 떠 있는 문제가 있어, 다른 곳의
    scr-period-sort-btn 등과 같은 원칙으로 원천 차단). */
 /* "성사됨"은 항목마다 상시 노출하기엔 무거운 액션이라 케밥(⋮) 메뉴 안으로(요청).
-   버튼/드롭다운 자체는 경기 목록 케밥과 톤을 맞춰 .scr-match-memo-btn·.scr-menu-pop-drop을
+   버튼/드롭다운 자체는 경기 목록 케밥과 톤을 맞춰 .scr-feed-post-menu-btn·.scr-menu-pop-drop을
    그대로 재사용한다. */
 /* ===== 너 나와! 신청 언급 알림 인박스 팝업 ===== */
 .scr-mreq-inbox-lead { margin: 0 0 10px; font-size: var(--fs-body); font-weight: 700; color: var(--text); }
@@ -5985,7 +5985,7 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
   .scr-challenge-card-team .scr-challenge-person-name { font-size: var(--fs-micro); }
   /* 경기 이력 팀2 로스터(와 뒤따르는 '팀에게')를 왼쪽으로 8px 이동(요청, 모바일). 모든 카드가
      같은 값이라 연결어 위치 통일은 유지된다. */
-  .scr-rank-detail-history .scr-match-row-team-tail .scr-team-block-team2 { margin-left: -8px; }
+  .scr-rank-detail-history .scr-game-result-row-team-tail .scr-team-block-team2 { margin-left: -8px; }
   /* 너나와 카드: 상대 로스터를 왼쪽으로 당기던 방식(-28px)은 상대쪽 승/무 배지 자리를 먹어
      손가락↔닉네임 사이 공간이 사라졌다(신고). 대신 도전자(팀1) 칸을 좁혀 화살표·배지·손가락을
      왼쪽으로 옮기고, 상대(팀2)쪽에 도전자와 같은 폭의 승/무 배지 자리를 확보한다(요청). */
@@ -6432,7 +6432,7 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
   -webkit-backdrop-filter: blur(8px) saturate(1.15);
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.10), inset 0 0 0 1px rgba(255,255,255,0.06);
 }
-/* 라이트도 다른 라이트 유리 패널(.scr-light-theme .scr-match-trow 등)과 같은 반투명 유리로
+/* 라이트도 다른 라이트 유리 패널(.scr-light-theme .scr-game-result-trow 등)과 같은 반투명 유리로
    — backdrop blur를 명시해 확실히 유리 효과가 나게 한다(요청: 라이트에서 개인전 선수 패널
    글래스 효과). */
 .scr-light-theme .scr-league-bracket-team-card-individual {
@@ -6761,9 +6761,9 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   --post-title-tint: 0, 0, 0;
   --post-title-a1: 0.9;
   --post-pad-y: 24px;
-  /* 댓글이 없을 때 입력줄이 카드 맨 아래에 절대배치로 얹히는 자리(.scr-match-notes-empty).
+  /* 댓글이 없을 때 입력줄이 카드 맨 아래에 절대배치로 얹히는 자리(.scr-feed-notes-empty).
      그 높이만큼 카드가 꼬리 여백을 비워 둬야 아래 내용과 안 겹친다 — 비워 두는 쪽
-     (.scr-feed-stack-item)과 그 자리로 들어가는 쪽(.scr-match-trow-footer)이 같은 값을
+     (.scr-feed-post-stack-item)과 그 자리로 들어가는 쪽(.scr-game-result-trow-footer)이 같은 값을
      써야 해서 변수로 뽑았다. 값이 어긋나면 그대로 겹침이 된다(실제로 그랬다). */
   --post-comment-dock-h: 26px;
   /* 포스트 꼬리 여백 — 댓글이 없을 때 "댓글 쓰기" 아이콘이 이 안에 얹힌다(요청).
@@ -6821,84 +6821,84 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 /* 요약과 목록이 자리를 주고받는 껍데기(요청) — 높이는 오직 여기서만 움직인다.
    비활성 쪽을 절대배치로 흐름에서 빼므로, 껍데기의 자연 높이가 곧 지금 보이는 쪽의
    높이다. 예전처럼 둘의 높이를 서로 맞춰 줄 필요가 없다(요청: 그 로직 제거). */
-.scr-feed-stack-swap { position: relative; overflow: hidden; }
-.scr-feed-stack-swap > * { min-width: 0; }
+.scr-feed-post-stack-swap { position: relative; overflow: hidden; }
+.scr-feed-post-stack-swap > * { min-width: 0; }
 /* 접힘: 요약이 흐름을 잡고, 목록은 같은 자리에 겹쳐 투명하게 대기한다. */
-.scr-feed-stack-inner {
+.scr-feed-post-stack-inner {
   position: absolute; top: 0; left: 0; right: 0;
   opacity: 0; pointer-events: none;
 }
-.scr-feed-stack-swap > .scr-feed-stack-sum { position: relative; opacity: 1; }
+.scr-feed-post-stack-swap > .scr-feed-post-stack-sum { position: relative; opacity: 1; }
 /* 펼침: 정확히 반대. */
-.scr-feed-stack-opened .scr-feed-stack-inner {
+.scr-feed-post-stack-opened .scr-feed-post-stack-inner {
   position: relative; opacity: 1; pointer-events: auto;
 }
-.scr-feed-stack-opened .scr-feed-stack-swap > .scr-feed-stack-sum {
+.scr-feed-post-stack-opened .scr-feed-post-stack-swap > .scr-feed-post-stack-sum {
   position: absolute; top: 0; left: 0; right: 0; opacity: 0; pointer-events: none;
 }
 /* 목록은 위쪽 요약과 한 덩어리로 이어져야 하므로 포스트 사이 간격(--feed-card-gap)이
    아니라 훨씬 좁은 간격을 쓴다 — 여기부터는 별개의 글이 아니라 같은 글의 문단이다. */
-.scr-feed-stack-list { display: flex; flex-direction: column; }
+.scr-feed-post-stack-list { display: flex; flex-direction: column; }
 /* 펼쳐진 목록은 어디를 눌러도 접힌다(요청) — 커서도 그렇게 말해 줘야 한다(지적: 펼쳤을 때
    포인터로 안 바뀜). 접혀 있을 때는 그 클릭이 아무 일도 안 하므로 커서도 그대로 둔다.
    댓글 영역은 예외다: 거기 클릭은 바깥으로 안 올라가고(입력하러 누르는 자리다) 커서도
    글자 입력 커서여야 한다. */
-.scr-feed-stack-opened .scr-feed-stack-list { cursor: pointer; }
-.scr-feed-stack-opened .scr-feed-stack-list .scr-feed-comments { cursor: auto; }
-.scr-feed-stack-reveal { position: relative; }
+.scr-feed-post-stack-opened .scr-feed-post-stack-list { cursor: pointer; }
+.scr-feed-post-stack-opened .scr-feed-post-stack-list .scr-feed-comments { cursor: auto; }
+.scr-feed-post-stack-reveal { position: relative; }
 /* 카드 안의 경기 한 건 — 포스트 껍데기(배경·블러)를 벗고 옅은 구분선만 남긴다.
    꼬리 여백은 벗기면 안 된다: 댓글이 없을 때 "댓글" 버튼이 이 여백 안에 절대배치로
-   얹히기 때문에(.scr-match-notes-empty), 자리를 안 비워두면 요약 글자 위에 겹친다. */
-.scr-feed-stack-item { position: relative; padding-bottom: var(--post-comment-dock-h); }
-.scr-feed-stack-reveal + .scr-feed-stack-reveal .scr-feed-stack-item {
+   얹히기 때문에(.scr-feed-notes-empty), 자리를 안 비워두면 요약 글자 위에 겹친다. */
+.scr-feed-post-stack-item { position: relative; padding-bottom: var(--post-comment-dock-h); }
+.scr-feed-post-stack-reveal + .scr-feed-post-stack-reveal .scr-feed-post-stack-item {
   border-top: 1px solid rgba(var(--overlay-rgb), 0.09);
 }
-.scr-feed-stack-item .scr-feed-card-head { padding-top: 14px; }
+.scr-feed-post-stack-item .scr-feed-card-head { padding-top: 14px; }
 /* 요약 명단과 첫 경기 사이는 붙어 보이면 안 된다(지적: 그 사이는 갭이 좀 있어야 할 듯) —
    경기끼리는 구분선이 갈라주지만 첫 경기 위에는 선이 없어서 명단에 그대로 이어 붙었다. */
-.scr-feed-stack-list > .scr-feed-stack-reveal:first-child .scr-feed-stack-item {
+.scr-feed-post-stack-list > .scr-feed-post-stack-reveal:first-child .scr-feed-post-stack-item {
   padding-top: 18px;
 }
-/* 그 18px은 케밥의 기준면(.scr-feed-stack-item)까지 같이 밀어내므로, 첫 경기의 케밥만
+/* 그 18px은 케밥의 기준면(.scr-feed-post-stack-item)까지 같이 밀어내므로, 첫 경기의 케밥만
    그만큼 시각 줄보다 위로 떠 있었다 — 같은 값을 더해 도로 맞춘다(아래 top: 8px 참고). */
-.scr-feed-stack-list > .scr-feed-stack-reveal:first-child .scr-match-trow-topmeta {
+.scr-feed-post-stack-list > .scr-feed-post-stack-reveal:first-child .scr-game-result-trow-topmeta {
   top: 26px;
 }
 /* 참가자 — 이름 길이가 달라도 열이 어긋나지 않게 균등 그리드를 쓴다(flex-wrap이면 이름
    길이만큼 칸이 달라져 줄이 안 맞는다). 한 줄에 세 명(요청). */
-.scr-feed-stack-sum-players {
+.scr-feed-post-stack-sum-players {
   list-style: none; margin: 0;
   /* 위 여백은 세미타이틀 줄이 가져갔다 — 명단은 그 줄에 딸린 내용이라 바짝 붙인다. */
   padding: 10px var(--post-pad-bx) 0;
   display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 6px;
 }
-.scr-feed-stack-sum-player { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.scr-feed-post-stack-sum-player { display: flex; align-items: center; gap: 6px; min-width: 0; }
 /* 검색어에 걸린 사람은 요약 명단에서도 표시한다(지적) — 로스터와 같은 규칙(배경+글자색,
    굵기는 그대로: 굵히면 폭이 늘어 없던 말줄임표가 생긴다). */
-.scr-feed-stack-sum-player-hl { background: var(--highlight-bg); padding: 2px 4px; margin: -2px -4px; }
-.scr-feed-stack-sum-player-hl .scr-feed-stack-sum-name { color: var(--bar-text); }
-.scr-feed-stack-sum-player .scr-avatar { flex-shrink: 0; border-radius: 50% !important; }
-.scr-feed-stack-sum-name {
+.scr-feed-post-stack-sum-player-hl { background: var(--highlight-bg); padding: 2px 4px; margin: -2px -4px; }
+.scr-feed-post-stack-sum-player-hl .scr-feed-post-stack-sum-name { color: var(--bar-text); }
+.scr-feed-post-stack-sum-player .scr-avatar { flex-shrink: 0; border-radius: 50% !important; }
+.scr-feed-post-stack-sum-name {
   font-size: var(--fs-caption); font-weight: 600; color: var(--text);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 /* 요약의 세미타이틀 줄(요청) — 왼쪽에 "요약 정보", 오른쪽에 참가자 수. 포스트 제목은
    "이게 무슨 글인가"만 말하고, 그 아래 요약이 제 머리를 따로 갖는 구조다. */
-.scr-feed-stack-sum-head {
+.scr-feed-post-stack-sum-head {
   display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
   padding: 14px var(--post-pad-bx) 0;
 }
-.scr-feed-stack-sum-title {
+.scr-feed-post-stack-sum-title {
   font-size: var(--fs-micro); font-weight: 800; color: var(--muted);
   min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 /* 참가자 수 — 자리가 모자라면 세미타이틀이 먼저 줄고(그쪽이 min-width:0) 이 값은 남는다. */
-.scr-feed-stack-sum-count {
+.scr-feed-post-stack-sum-count {
   white-space: nowrap; flex-shrink: 0;
   font-size: var(--fs-micro); font-weight: 800; color: var(--dim);
 }
 /* 제목이 길어도 헤더가 두 줄로 터지지 않게 — 넘치면 말줄임표로. */
-.scr-feed-stack > .scr-feed-card-head .scr-feed-card-label {
+.scr-feed-post-stack > .scr-feed-card-head .scr-feed-card-label {
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 /* 묶음 카드의 헤더 우상단에도 다른 포스트와 똑같이 케밥이 앉는다(요청: 게임요약 통째로
@@ -6906,7 +6906,7 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    않게 한다 — 패딩이 아니라 변수를 바꿔야 제목 줄 음영의 음수 마진도 같이 따라온다.
    케밥 자체의 자리와 드롭다운은 너 나와/순위변동 카드와 같은 규칙(.scr-feed-chal-menu)을
    그대로 쓴다. */
-.scr-feed-stack > .scr-feed-card-head { --post-head-pad-r: 44px; }
+.scr-feed-post-stack > .scr-feed-card-head { --post-head-pad-r: 44px; }
 
 /* 요약 바디 전체가 펼침/접힘 토글이다(요청) — 명단 어디를 눌러도 열리고 닫힌다. */
 /* 아래 여백은 펼침/접힘과 무관하게 '항상' 같아야 한다. 한때 펼쳤을 때만 줬는데(그림자가
@@ -6915,10 +6915,10 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    발생해"). 접힘 애니메이션은 이 블록 높이가 고정이라는 전제로 아래 기준점을 잡는다.
    대신 그만큼 아래 토글 버튼의 위 패딩을 줄여, 접힌 모습의 간격은 예전 그대로 24px다
    (14 + 10). 펼쳤을 때는 이 14px이 곧 명단과 그림자 사이의 숨통이 된다. */
-.scr-feed-stack-sum-body {
+.scr-feed-post-stack-sum-body {
   cursor: pointer; -webkit-tap-highlight-color: transparent;
   /* 접힘 상태에서 명단과 안내글 사이 간격이 곧 이 값이다 — 펼치면 이 블록이 절대배치로
-     빠지므로 흐름에 관여하지 않는다(위 .scr-feed-stack-toggle 주석 참고).
+     빠지므로 흐름에 관여하지 않는다(위 .scr-feed-post-stack-toggle 주석 참고).
      2 → 14px(요청: 요약과 아래 버튼 사이에 여유를). 아래 버튼이 자기 위 패딩 10px을
      따로 갖고 있으니 접힌 모습의 실제 간격은 24px이 된다. 버튼 쪽이 아니라 이쪽을 키우는
      이유는, 버튼 패딩은 두 상태 모두 흐름에 남아 있어 건드리면 누르는 순간 카드가
@@ -6928,14 +6928,14 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 /* 묶음 카드에는 댓글이 없다 — 댓글은 안쪽 경기 카드마다 따로 붙는다. 그런데 포스트 공통
    꼬리 여백(--post-pad-b: 46px)은 "댓글 입력줄이 그 안에 얹힌다"는 전제로 잡은 값이라,
    여기서는 쓸 데 없이 아래만 휑했다(지적: 펴기 전 아래 여백이 너무 크다). */
-.scr-feed-stack { --post-pad-b: 20px; }
+.scr-feed-post-stack { --post-pad-b: 20px; }
 /* 펼치기 ↔ 접기 — 같은 자리에서 글자와 삼각형 방향만 바뀐다(요청). 예전에는 펼치면
    원래 펼치기가 있던 자리에도 접기가 하나 더 생겼는데, 같은 일을 하는 버튼이 위아래로
    둘이라 오히려 헷갈려서 없앴다(요청). */
-.scr-feed-stack-toggle {
+.scr-feed-post-stack-toggle {
   display: flex; align-items: center; justify-content: center; gap: 5px; width: 100%;
   /* 위 여백 24 → 10px. 나머지 14px은 요약 바디가 자기 padding-bottom으로 갖고 있다
-     (위 .scr-feed-stack-sum-body 주석 — 접었다 폈다 할 때 높이가 안 변해야 한다).
+     (위 .scr-feed-post-stack-sum-body 주석 — 접었다 폈다 할 때 높이가 안 변해야 한다).
      접힌 모습에서 명단↔펼치기 간격은 14 + 10 = 24px로 예전과 같다. */
   padding: 10px 0 0; border: none; background: none;
   font-family: inherit; font-size: var(--fs-micro); font-weight: 700; color: var(--dim);
@@ -6954,9 +6954,9 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   0%, 55% { box-shadow: 0 0 0 1.5px var(--point), 0 0 16px 2px rgba(var(--overlay-rgb), 0.35); }
   100% { box-shadow: 0 0 0 1.5px transparent, 0 0 16px 2px transparent; }
 }
-.scr-feed-stack-flash { animation: scr-stack-collapsed-flash 2s ease-out; }
-@media (prefers-reduced-motion: reduce) { .scr-feed-stack-flash { animation: none; } }
-@media (hover: hover) { .scr-feed-stack-toggle:hover { color: var(--text); } }
+.scr-feed-post-stack-flash { animation: scr-stack-collapsed-flash 2s ease-out; }
+@media (prefers-reduced-motion: reduce) { .scr-feed-post-stack-flash { animation: none; } }
+@media (hover: hover) { .scr-feed-post-stack-toggle:hover { color: var(--text); } }
 /* 예전에는 펼쳤을 때 요약과 목록의 경계에 그림자를 드리워 두 층이 겹쳐 있다는 걸
    보여 줬다. 이제 펼치면 요약 자체가 접히므로(요청) 나눌 두 층이 없어 걷어냈다. */
 
@@ -7040,11 +7040,11 @@ html:not(.scr-light-theme) .scr-feed-card-head:has(.scr-feed-card-head-title) .s
    케밥은 절대배치라 flex 항목이 아니고, 댓글은 이 로우 밖(포스트 직계)이라 같은 값을
    따로 물려준다(아래 .scr-feed-comments). */
 .scr-feed-card { --post-row-gap: 24px; }
-.scr-feed-match-body .scr-match-trow {
+.scr-feed-game-result-body .scr-game-result-trow {
   position: static;
   display: flex; flex-direction: column; gap: var(--post-row-gap);
 }
-.scr-feed-match-body .scr-match-trow > * { margin: 0; }
+.scr-feed-game-result-body .scr-game-result-trow > * { margin: 0; }
 /* 한때 이 줄이 비어 있어(맵·시간은 아래로, 케밥은 절대배치) 아래 여백 14px만 남았고,
    그게 헤더와 로스터 사이에 얹혀 게임결과만 유독 벌어져 보였다(지적) — 그래서 여백을
    지웠었다. 이제는 게임번호·등록자가 늘 여기 있으므로(요청) 빈 줄이 아니다. 로스터와
@@ -7053,21 +7053,21 @@ html:not(.scr-light-theme) .scr-feed-card-head:has(.scr-feed-card-head-title) .s
    않는다 — 오른쪽을 비워 둘 이유가 없다. */
 /* 아래 갭은 넉넉히, 위는 살짝만(요청) — 게임번호 줄은 머리띠에 딸린 꼬리표에 가깝고,
    그 아래 로스터부터가 본문이라 경계는 아래쪽에 둬야 읽힌다. */
-.scr-feed-match-body .scr-match-trow-topline { padding-right: 0; }
+.scr-feed-game-result-body .scr-game-result-trow-topline { padding-right: 0; }
 /* 헤더의 '제목 줄' 언저리에 — 제목 줄 중심(포스트 위에서 33.6px)에 정확히 맞추면
    top이 21px인데, 거기서 6px 올린 자리를 쓴다(--post-kebab-top 주석 참고).
    이 값은 헤더 패딩에 딸린 값이라 변수 하나로 묶어 뒀다 — 머리 여백을 줄이면서(4px)
    케밥이 제목보다 12px 아래로 처졌던 적이 있다(지적). 헤더 패딩이나 줄 구성을
    건드리면 여기도 같이 다시 재야 한다. */
-.scr-feed-match-body .scr-match-trow-topmeta {
+.scr-feed-game-result-body .scr-game-result-trow-topmeta {
   position: absolute; top: var(--post-kebab-top); right: 10px; z-index: 2;
 }
 /* 묶음 카드 안의 경기는 헤더가 시각 한 줄뿐이라(제목을 반복하지 않는다), 케밥도 그 줄에
    맞춰 올라와야 한다 — --post-kebab-top은 시각+제목 두 줄짜리 포스트 헤더에 맞춘 값이다
    (요청: 시간하고 케밥 나오고 바로 내용). 이쪽 머리는 padding-top이 14px로 따로 고정돼
-   있어(위 .scr-feed-stack-item .scr-feed-card-head) 그 값과 함께 봐야 한다. */
-.scr-feed-stack-item .scr-match-trow-topmeta { top: 8px; }
-.scr-feed-match-body .scr-match-trow-topmeta .scr-match-kebab-btn, .scr-feed-chal-menu .scr-match-kebab-btn { width: 26px; height: 26px; min-height: 26px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
+   있어(위 .scr-feed-post-stack-item .scr-feed-card-head) 그 값과 함께 봐야 한다. */
+.scr-feed-post-stack-item .scr-game-result-trow-topmeta { top: 8px; }
+.scr-feed-game-result-body .scr-game-result-trow-topmeta .scr-feed-kebab-btn, .scr-feed-chal-menu .scr-feed-kebab-btn { width: 26px; height: 26px; min-height: 26px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
 /* 너 나와 케밥(피드 레벨)도 같은 자리 — 기존 우상단 '취소' 라벨과 겹치지 않게 라벨은 왼쪽으로. */
 .scr-feed-chal-menu { position: absolute; top: var(--post-kebab-top); right: 10px; z-index: 3; }
 .scr-feed-card .scr-challenge-cancel-tag { right: 48px; }
@@ -7075,7 +7075,7 @@ html:not(.scr-light-theme) .scr-feed-card-head:has(.scr-feed-card-head-title) .s
    로스터와 너나와 닉네임은 같은 크기 유지(둘 다 caption). */
 .scr-feed-card .scr-challenge-person-name { font-size: var(--fs-caption); }
 .scr-feed-card .scr-challenge-card-when { font-size: var(--fs-body); }
-.scr-feed-match-body .scr-match-trow-map, .scr-feed-match-body .scr-match-trow-dur { font-size: var(--fs-micro); }
+.scr-feed-game-result-body .scr-game-result-trow-map, .scr-feed-game-result-body .scr-game-result-trow-dur { font-size: var(--fs-micro); }
 .scr-feed-comments .scr-mreq-item-text { font-size: var(--fs-caption); }
 .scr-feed-comments .scr-mreq-item-author-name { font-size: var(--fs-micro); }
 /* 댓글에 표시되는 @유저 멘션은 칩(알약 배경)이 아니라 그냥 굵은 텍스트로(요청: "유저칩이
@@ -7094,19 +7094,19 @@ html.scr-light-theme .scr-feed-comments .scr-mreq-chip-inline { color: #c07c1c; 
 /* 입력·수정창의 유저칩 — 좌우 패딩을 줄여 문장에 더 잘 섞이게(요청). */
 .scr-feed-shift-row { font-size: var(--fs-caption); }
 /* 윗줄 높이는 게임번호 줄이 스스로 정한다 — 예약은 필요 없다. */
-.scr-feed-match-body .scr-match-trow-topline { min-height: 0; }
+.scr-feed-game-result-body .scr-game-result-trow-topline { min-height: 0; }
 /* 게임결과 로스터 = 너 나와! 매치업과 같은 구조/CSS(요청: "너 나와의 css기준으로") —
    각 팀 세로 나열 + 프사, 가운데는 손가락 이모지 대신 vs, 승/무 배지도 동일 방식. */
 /* 좌우 4px을 더 갖고 있어 로스터만 다른 카드보다 4px 안쪽에 섰다(지적: 카드마다 내부
    여백이 다르다) — 좌우는 trow(8) + 본문(8) = 16px으로 충분하니 여기선 0으로 둔다. */
-.scr-feed-match-matchup { padding: 0; }
+.scr-feed-game-result-matchup { padding: 0; }
 /* 피드에선 양편 flex를 똑같이 둬서 가운데(손가락/vs) 묶음이 카드 가로 정중앙에 온다
    (요청: "손가락, vs 세로 정렬" — 원본 화면의 비대칭 flex(0.85/1.15)가 중앙을 밀고 있었다). */
 .scr-feed-card .scr-challenge-matchup .scr-challenge-side { flex: 1 1 0; }
 /* 종족 배지 — 기록실의 절대배치(.scr-team-name-wrap 기준 right:-8px) 대신, 매치업
    로스터에선 닉네임 바로 오른쪽 인라인으로 흐르게 한다(기준 래퍼가 없는 자리라
    절대배치를 그대로 두면 카드 밖으로 튄다). */
-.scr-feed-match-matchup .scr-team-name-race { position: static; margin-left: 1px; }
+.scr-feed-game-result-matchup .scr-team-name-race { position: static; margin-left: 1px; }
 /* 컴퓨터/비회원 슬롯 — 프사 자리를 그대로 차지하는 20px 아이콘 박스(닉네임 왼쪽, 팀 무관). */
 .scr-matchup-slot-icon {
   flex-shrink: 0; width: 20px; height: 20px;
@@ -7118,16 +7118,16 @@ html.scr-light-theme .scr-feed-comments .scr-mreq-chip-inline { color: #c07c1c; 
   letter-spacing: 0.02em;
 }
 /* 결과 없는 미실시 — 배지 대신 매치업 아래 작은 정적 텍스트로만. */
-.scr-feed-match-notheld {
+.scr-feed-game-result-notheld {
   text-align: center; padding: 2px 0 0;
   font-size: var(--fs-micro); font-weight: 700; color: var(--dim);
 }
 /* 맵·플레이시간 — 요약 바로 위, 접힘/펼침 상관없이 늘 보인다(요청). 요약을 읽기 전에
    '어느 맵에서 몇 분짜리 경기였나'를 먼저 알아야 이야기가 읽힌다. */
-.scr-match-trow-map-meta { display: flex; align-items: baseline; gap: 6px; padding: 0; justify-content: center; }
+.scr-game-result-trow-map-meta { display: flex; align-items: baseline; gap: 6px; padding: 0; justify-content: center; }
 /* 리플레이 전황 요약 — 로스터 바로 아래, 접힌 상태에서도 보이는 경기 이야기(요청).
    시각을 앞세운 연대기가 아니라 한 문단짜리 글이라(요청) 줄바꿈 없이 그냥 흐른다. */
-.scr-match-trow-summary {
+.scr-game-result-trow-summary {
   margin: 10px 0 0; padding: 9px 12px; border-radius: 10px;
   background: rgba(var(--overlay-rgb), 0.06);
   font-size: var(--fs-caption); font-weight: 500; line-height: 1.6;
@@ -7140,7 +7140,7 @@ html.scr-light-theme .scr-feed-comments .scr-mreq-chip-inline { color: #c07c1c; 
    따로 줘서 둘 사이에 숨 쉴 자리를 만든다.
    좌우는 경기 로우의 패딩을 되물려 댓글 줄과 같은 자리(--post-pad-bx)에서 시작하게
    한다(지적) — 로우 안에 있다 보니 혼자 더 안쪽에서 시작해 어긋나 보였다. */
-.scr-feed-card .scr-match-trow-summary {
+.scr-feed-card .scr-game-result-trow-summary {
   /* 위아래 간격은 이제 로우의 gap 하나가 정한다(요청: 세로 갭 통일) — 좌우만 남긴다. */
   margin-block: 0;
   margin-inline: calc(8px - var(--feed-trow-pad-x, 8px));
@@ -7189,10 +7189,10 @@ html.scr-light-theme .scr-feed-comments .scr-mreq-chip-inline { color: #c07c1c; 
 /* trow가 자체 좌우 8px을 갖고 있어, 합이 --post-pad-bx가 되도록 나머지만 여기서 낸다. */
 /* 경기 로우의 좌우 패딩을 변수로 둔다 — 요약 상자가 이 값을 되물려 카드의 다른 요소(댓글
    줄)와 같은 자리에서 시작하게 하기 위해서다(지적: 시작 부분을 맞춰야 함). */
-/* 머리띠 아래 간격은 아래 .scr-match-trow의 padding-top 하나가 낸다 — 여기서도 내면
+/* 머리띠 아래 간격은 아래 .scr-game-result-trow의 padding-top 하나가 낸다 — 여기서도 내면
    두 값이 더해져 그 자리만 유독 벌어진다(지적: 거기만 12쯤 더 큼). */
-.scr-feed-match-body { --feed-trow-pad-x: 8px; padding: 0 calc(var(--post-pad-bx) - 8px); }
-.scr-feed-match-body .scr-match-list-panel-v2 .scr-match-trow, .scr-light-theme .scr-feed-match-body .scr-match-list-panel-v2 .scr-match-trow {
+.scr-feed-game-result-body { --feed-trow-pad-x: 8px; padding: 0 calc(var(--post-pad-bx) - 8px); }
+.scr-feed-game-result-body .scr-game-result-list-panel-v2 .scr-game-result-trow, .scr-light-theme .scr-feed-game-result-body .scr-game-result-list-panel-v2 .scr-game-result-trow {
   background: transparent; border: none; box-shadow: none;
   backdrop-filter: none; -webkit-backdrop-filter: none;
   /* 머리띠 ↔ 게임번호 줄 간격 — 본문 간격보다 4px만 크게(요청). 머리띠가 제 아래 여백으로
@@ -7203,8 +7203,8 @@ html.scr-light-theme .scr-feed-comments .scr-mreq-chip-inline { color: #c07c1c; 
 }
 /* 카드 폭이 이미 좁으니 PC의 넓은 좌우 패딩(100px)도 카드 안에선 줄인다. */
 @media (min-width: 720px) {
-  .scr-feed-match-body { --feed-trow-pad-x: 24px; }
-  .scr-feed-match-body .scr-match-list-panel-v2 .scr-match-trow {
+  .scr-feed-game-result-body { --feed-trow-pad-x: 24px; }
+  .scr-feed-game-result-body .scr-game-result-list-panel-v2 .scr-game-result-trow {
     padding-left: var(--feed-trow-pad-x); padding-right: var(--feed-trow-pad-x);
   }
 }
@@ -7212,12 +7212,12 @@ html.scr-light-theme .scr-feed-comments .scr-mreq-chip-inline { color: #c07c1c; 
 /* 카드 하단 공통 댓글 영역 — 토글을 누르면 목록/입력이 그 자리에서 펼쳐진다.
    구분선은 아이템 사이 하나로 충분하니(요청) 댓글 영역/댓글끼리의 선은 모두 없앤다. */
 /* 컨텐츠부의 꼬리 — 포스트에 자체 아래 패딩이 없으므로 바닥 여백도 여기서 낸다.
-   여백을 바깥(.scr-feed-comments)이 아니라 안쪽(.scr-match-notes)이 내는 이유는, 댓글이
+   여백을 바깥(.scr-feed-comments)이 아니라 안쪽(.scr-feed-notes)이 내는 이유는, 댓글이
    하나도 없을 때 그 여백까지 통째로 걷어야 하기 때문이다(아래 -empty). */
 /* 댓글은 경기 로우 밖(포스트 직계)이라 로우의 gap이 닿지 않는다 — 같은 값을 여기서 낸다
    (요청: 사이사이 줄간격 동일). */
 .scr-feed-comments { padding: var(--post-row-gap) 0 0; }
-.scr-feed-comments > .scr-match-notes {
+.scr-feed-comments > .scr-feed-notes {
   border-top: none; padding: 0 var(--post-pad-bx); margin-top: 0;
 }
 /* 댓글이 없는 포스트가 훨씬 많다(지적) — 그럴 땐 "댓글 쓰기" 아이콘이 한 줄을 통째로
@@ -7225,16 +7225,16 @@ html.scr-light-theme .scr-feed-comments .scr-mreq-chip-inline { color: #c07c1c; 
    (.scr-feed-card, position:relative). */
 /* 댓글이 없는 포스트의 입력줄은 꼬리 여백에 절대배치로 얹히므로 자기 여백을 안 낸다 —
    대신 위쪽 간격은 .scr-feed-comments가 낸다(아래). */
-.scr-feed-comments > .scr-match-notes-empty { padding: 0; }
+.scr-feed-comments > .scr-feed-notes-empty { padding: 0; }
 /* 왼쪽 끝은 요약 상자와 같은 자리(--post-pad-bx)에 맞춘다(지적: 시작 부분 정렬). */
-.scr-feed-comments > .scr-match-notes-empty .scr-feed-comment-row {
+.scr-feed-comments > .scr-feed-notes-empty .scr-feed-comment-row {
   /* bottom은 --post-pad-b와 짝이다 — 꼬리 여백 안에서 글자 위아래가 비슷해 보이는 자리. */
   position: absolute; left: var(--post-pad-bx); bottom: 10px;
   min-height: 0; justify-content: flex-start; z-index: 2;
 }
 /* 다만 펼쳐지면 얘기가 다르다 — 절대배치라 폭이 내용만큼만 잡혀서, 입력칸이 flex:1이어도
    늘어날 자리가 없다. 열릴 때만 오른쪽 끝까지 붙여 한 줄을 다 쓰게 한다. */
-.scr-feed-comments > .scr-match-notes-empty .scr-feed-comment-row-open {
+.scr-feed-comments > .scr-feed-notes-empty .scr-feed-comment-row-open {
   right: var(--post-pad-bx); bottom: 13px;
 }
 .scr-feed-comments .scr-mreq-item + .scr-mreq-item { border-top: none; }
@@ -7497,7 +7497,7 @@ html.scr-light-theme .scr-feed-add-fab {
    물리면(top:0/bottom:0) iOS가 이 fixed 요소를 어느 뷰포트에 앉히든 — 레이아웃이든 키보드
    위 비주얼이든 — 그 뷰포트를 꽉 채우므로 '아래에 남는 띠' 자체가 생기지 않는다.
 
-   루트에 .scr-feed-comments/.scr-match-notes를 함께 붙여, 카드 안에서 쓰던 목록·입력
+   루트에 .scr-feed-comments/.scr-feed-notes를 함께 붙여, 카드 안에서 쓰던 목록·입력
    스타일(폰트 한 스텝 축소, --field-h, 다크 흰 입력칸)을 포털 안에서도 그대로 상속받는다.
    대신 그 두 클래스가 들고 오는 카드용 여백/구분선은 여기서 되돌린다. */
 .scr-comment-sheet {
@@ -7619,17 +7619,17 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
 .scr-comment-sheet-compose > .scr-mreq-compose-row { flex: 1 1 auto; min-width: 0; margin-top: 0; }
 /* 글자 16px(요청). 카드 안 목록은 작은 폰트 그대로 두고 입력칸만 키운다. */
 .scr-comment-sheet-compose .scr-mreq-live-input { font-size: 16px; }
-/* 등록 버튼도 필드와 같은 40px 정사각으로 — .scr-match-notes가 30px로 못박아 둔 값을
+/* 등록 버튼도 필드와 같은 40px 정사각으로 — .scr-feed-notes가 30px로 못박아 둔 값을
    덮는다(특이도 동일, 소스가 뒤라 이긴다). 아이콘도 한 단계 키운다. */
 .scr-comment-sheet-compose .scr-mreq-submit-btn {
   flex-basis: 40px; width: 40px; height: 40px;
   min-width: 40px; min-height: 40px; max-width: 40px; max-height: 40px;
 }
 .scr-comment-sheet-compose .scr-mreq-submit-btn svg { width: 17px; height: 17px; }
-.scr-comment-sheet .scr-match-note-err { margin: 6px 0 0; }
+.scr-comment-sheet .scr-feed-note-err { margin: 6px 0 0; }
 
 /* 카드 안 미리보기 — 여기서는 읽기만 하고, 누르면 시트가 열린다(요청 2). */
-.scr-match-notes-preview { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.scr-feed-notes-preview { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 
 /* 리플레이 검토 화면의 경기 요약 미리보기 — 등록 전에 문장을 눈으로 확인하는 자리다. */
 .scr-replay-summary-preview {

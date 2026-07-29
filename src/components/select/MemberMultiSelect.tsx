@@ -8,7 +8,7 @@ import { cx } from "../../utils/format";
 import { attachPopover } from "../../utils/popover";
 import { isComputerSlot, newComputerSlotId, computerSlotLabel } from "../../constants/computerSlot";
 import { isUnregisteredSlot, unregisteredSlotLabel } from "../../constants/unregisteredSlot";
-import type { Member, MatchSlot, Race } from "../../types";
+import type { Member, GameResultSlot, Race } from "../../types";
 
 // 경기 참가자의 종족은 "랜덤"을 고를 수 없다 — 실제 종족(테란/프로토스/저그)만 저장한다.
 // 모바일에서는 좁은 칩 안에 넣어야 해서 종족명 첫 글자(테/프/저)만 보여준다.
@@ -27,8 +27,8 @@ interface MemberMultiSelectProps {
   members: Member[];
   // 검색해서 새로 추가할 수 있는 후보 목록 (예: 활성 회원만). 생략하면 members 를 그대로 사용
   addableMembers?: Member[];
-  rows: MatchSlot[];
-  setRows: (rows: MatchSlot[]) => void;
+  rows: GameResultSlot[];
+  setRows: (rows: GameResultSlot[]) => void;
   resolveDefaultRace: (memberId: string) => Race | "";
   // 리플레이 일괄 등록 전용 — 배틀태그로 못 찾은 선수를 별도 섹션이 아니라 이 로스터 안에
   // 빨간 테두리 칩으로 바로 보여주고, 칩에서 회원 검색 드롭다운(참가자 추가와 동일한 컴포넌트)을
@@ -70,7 +70,7 @@ interface MemberMultiSelectProps {
   // 리플레이 일괄 등록 전용 — screp이 팀을 못 나눠(teamSplitUncertain) 전원이 이 팀에
   // 몰려있을 때만 켠다. 각 칩에 "다른 팀으로 이동" 버튼을 보여주고, 누르면 이 슬롯을
   // 통째로 반대 팀으로 옮긴다(mappingMode라도 이 버튼만은 예외로 활성화된다).
-  onMoveToOtherTeam?: (row: MatchSlot) => void;
+  onMoveToOtherTeam?: (row: GameResultSlot) => void;
   // 위와 같은 이유로 미매칭(아직 회원 연결 안 된) 선수도 팀을 옮길 수 있어야 한다 —
   // 안 그러면 매칭 전에는 못 옮기고 매칭 후에야 옮길 수 있어 번거롭다.
   onMoveUnresolvedToOtherTeam?: (rawName: string) => void;
@@ -338,7 +338,7 @@ function MappedTypeIcons({ isComputer, isUnregistered }: { isComputer: boolean; 
 }
 
 interface ReassignableChipProps {
-  row: MatchSlot;
+  row: GameResultSlot;
   name: string;
   member: Member | undefined;
   isComputer: boolean;
@@ -577,7 +577,7 @@ export default function MemberMultiSelect({
           // 누군지 알 수 있는 유일한 단서라, "비회원"/"컴퓨터 1" 같은 순번 라벨보다 먼저 쓴다
           // (실제로 지적받은 문제: 검토 화면에서 전부 "비회원"으로만 보여 누가 누군지 알 수 없었다).
           // 수기등록 슬롯은 rawName이 없으니 예전처럼 순번 라벨로 대체된다. 경기결과 카드
-          // (MatchTeams)가 이미 같은 규칙으로 그린다.
+          // (GameResultTeams)가 이미 같은 규칙으로 그린다.
           const name = isComputer
             ? (mappingMode || reassignable ? (row.race || "컴퓨터") : (row.rawName || computerSlotLabel(rows, row.memberId)))
             : isUnregistered

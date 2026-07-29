@@ -9,7 +9,7 @@ import { useAppStore } from "../../store/appStore";
 import { cx } from "../../utils/format";
 import { buildReplayDrafts, hasComputerSlot, resolveUnmatchedAsUnregistered, shortMatchHint, validateReplayDraft } from "../../utils/replayDraft";
 import type { ReplayDraft } from "../../utils/replayDraft";
-import type { MatchResult, NewMatch } from "../../types";
+import type { GameOutcome, NewGameResult } from "../../types";
 
 // 한 번에 분석·등록하는 파일 묶음 크기 — 리플레이 하나당 첨부파일을 통째로 data URL로
 // 들고 있어서(등록 payload에 그대로 실려 간다), 폴더에 수백 개가 있으면 전부 한꺼번에
@@ -105,7 +105,7 @@ function draftMeta(d: ReplayDraft): { when: string; teamSize: string; suspected:
 // 넘어간다(그 경기만 검토 화면에서 직접 등록하면 된다).
 export default function ReplayBatchButton() {
   const members = useAppStore((s) => s.members);
-  const addMatch = useAppStore((s) => s.addMatch);
+  const addGameResult = useAppStore((s) => s.addGameResult);
 
   const [progress, setProgress] = useState<BatchProgress>(EMPTY_PROGRESS);
   const [running, setRunning] = useState(false);
@@ -305,16 +305,16 @@ export default function ReplayBatchButton() {
           const problem = validateReplayDraft(filled);
           if (problem) { fail(draft, problem); continue; }
 
-          const payload: NewMatch = {
+          const payload: NewGameResult = {
             // winnerSide가 null인 드래프트는 위에서 이미 실패로 걸렀으므로 승패는 항상 채워져 있다.
-            date: filled.date, team1: filled.team1, team2: filled.team2, result: filled.result as MatchResult,
+            date: filled.date, team1: filled.team1, team2: filled.team2, result: filled.result as GameOutcome,
             matchType: filled.matchType, replay: filled.replay,
             mapName: filled.mapName || null, gameStartedAt: filled.gameStartedAt,
             durationSeconds: filled.durationSeconds,
             summaryData: filled.summaryData,
           };
           try {
-            await addMatch(payload);
+            await addGameResult(payload);
             record(filled.fileName, "registered", "", draftMeta(filled));
           } catch (e) {
             fail(draft, e instanceof Error ? e.message : "등록에 실패했어요.");

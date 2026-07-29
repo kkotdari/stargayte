@@ -6,7 +6,7 @@ import { api } from "../api/client";
 import { useAppStore } from "../store/appStore";
 import { useLockBodyScroll } from "../utils/bodyScrollLock";
 import { DATE_INPUT_MIN, DATE_INPUT_MAX, gameNow, pad } from "../utils/date";
-import { MATCH_TYPE_INFO } from "../constants/matchTypes";
+import { GAME_TYPE_INFO } from "../constants/gameTypes";
 import type { Challenge, ChallengeResult } from "../types";
 
 interface ChallengeResultInboxModalProps {
@@ -76,7 +76,7 @@ export default function ChallengeResultInboxModal({ challenges, onClose }: Chall
           {/* 어떤 경기인지 구분할 수 있게 종류/일시를 함께 보여준다. */}
           <div className="scr-challenge-inbox-row">
             <span className="scr-label">종류</span>
-            <span>{MATCH_TYPE_INFO[current.matchType]}</span>
+            <span>{GAME_TYPE_INFO[current.matchType]}</span>
           </div>
           {/* 실제 대결 날짜/시간을 무조건 입력한다(요청). 시간 칸은 빈 채로 누르면 21시로 열린다. */}
           <div className="scr-challenge-inbox-row">

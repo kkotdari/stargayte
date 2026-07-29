@@ -6,7 +6,7 @@ import type { ReplaySummaryData } from "./replaySummaryData";
 import { api } from "../api/client";
 import { isComputerSlot, newComputerSlotId } from "../constants/computerSlot";
 import { newUnregisteredSlotId } from "../constants/unregisteredSlot";
-import type { ReplayUpload, MatchResult, MatchSlot, MatchType, Race, Member } from "../types";
+import type { ReplayUpload, GameOutcome, GameResultSlot, GameType, Race, Member } from "../types";
 
 export interface UnmatchedPlayer {
   rawName: string;
@@ -24,16 +24,16 @@ export interface ReplayDraft {
   date: string;
   gameStartedAt: string | null;
   durationSeconds: number | null;
-  team1: MatchSlot[];
-  team2: MatchSlot[];
+  team1: GameResultSlot[];
+  team2: GameResultSlot[];
   unmatchedTeam1: UnmatchedPlayer[];
   unmatchedTeam2: UnmatchedPlayer[];
   // 리플레이엔 승자가 직접 저장되지 않는다 — screp이 "마지막까지 남은 가장 큰 팀"으로
   // 추정할 뿐이고, 그마저 실패하면(winnerSide가 null) 여기는 빈 문자열로 남는다. 그때
   // 임의로 team1을 골라두면 사용자가 확인 없이 그대로 등록해 조용히 틀린 기록이 남는다
   // (실제로 지적받은 문제) — 아무것도 선택되지 않은 상태로 두고 직접 고르게 한다.
-  result: MatchResult | "";
-  matchType: MatchType;
+  result: GameOutcome | "";
+  matchType: GameType;
   replay: ReplayUpload | null;
   winnerSide: "team1" | "team2" | null;
   // 조작량이 현저히 적다는 이유로 관전자로 "추정해" 뺀 사람들 — 초반에 나간 실제 참가자를
@@ -79,8 +79,8 @@ async function buildDraft(file: File, members: Member[]): Promise<ReplayDraft> {
   try {
     const parsed = await parseReplayFile(file);
     const usedIds = new Set<string>();
-    const assign = (players: typeof parsed.team1): { rows: MatchSlot[]; unmatched: UnmatchedPlayer[] } => {
-      const rows: MatchSlot[] = [];
+    const assign = (players: typeof parsed.team1): { rows: GameResultSlot[]; unmatched: UnmatchedPlayer[] } => {
+      const rows: GameResultSlot[] = [];
       const unmatched: UnmatchedPlayer[] = [];
       players.forEach((p) => {
         // 리플레이 슬롯 자체가 "Computer"(AI)면 배틀태그가 있을 리 없으니 회원 매칭을
@@ -174,7 +174,7 @@ async function buildDraft(file: File, members: Member[]): Promise<ReplayDraft> {
 // 화면에서 실제 회원으로 다시 연결할 수 있다.
 export function resolveUnmatchedAsUnregistered(d: ReplayDraft): ReplayDraft {
   if (d.unmatchedTeam1.length === 0 && d.unmatchedTeam2.length === 0) return d;
-  const toSlot = (p: UnmatchedPlayer): MatchSlot => ({
+  const toSlot = (p: UnmatchedPlayer): GameResultSlot => ({
     memberId: newUnregisteredSlotId(), rawName: p.rawName,
     race: p.race, apm: p.apm, eapm: p.eapm, cmdCount: p.cmdCount, effectiveCmdCount: p.effectiveCmdCount, buildCount: p.buildCount,
   });
@@ -239,8 +239,8 @@ async function applyKnownClassifications(drafts: ReplayDraft[]): Promise<ReplayD
   if (entries.length === 0) return drafts;
   const kindByName = new Map(entries.map((e) => [e.rawName, e.kind]));
 
-  const reclassify = (side: UnmatchedPlayer[]): { rows: MatchSlot[]; unmatched: UnmatchedPlayer[] } => {
-    const rows: MatchSlot[] = [];
+  const reclassify = (side: UnmatchedPlayer[]): { rows: GameResultSlot[]; unmatched: UnmatchedPlayer[] } => {
+    const rows: GameResultSlot[] = [];
     const unmatched: UnmatchedPlayer[] = [];
     side.forEach((p) => {
       const kind = kindByName.get(p.rawName);
@@ -258,7 +258,7 @@ async function applyKnownClassifications(drafts: ReplayDraft[]): Promise<ReplayD
     const t2 = reclassify(d.unmatchedTeam2);
     if (t1.rows.length === 0 && t2.rows.length === 0) return d;
     // 사람이 먼저, 컴퓨터가 나중에 오도록 다시 정렬한다 — buildDraft의 assign()과 같은 기준.
-    const bySlotKind = (a: MatchSlot, b: MatchSlot) => Number(isComputerSlot(a.memberId)) - Number(isComputerSlot(b.memberId));
+    const bySlotKind = (a: GameResultSlot, b: GameResultSlot) => Number(isComputerSlot(a.memberId)) - Number(isComputerSlot(b.memberId));
     return {
       ...d,
       team1: [...d.team1, ...t1.rows].sort(bySlotKind),

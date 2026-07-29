@@ -13,7 +13,7 @@ export function useDefaultRaceResolver(members: Member[]): (memberId: string) =>
     const ids = members.map((m) => m.id);
     if (ids.length === 0) return;
     let cancelled = false;
-    api.getMatchStats({ memberIds: ids }).then((res) => {
+    api.getGameResultStats({ memberIds: ids }).then((res) => {
       if (cancelled) return;
       const map: Record<string, Race> = {};
       res.members.forEach((entry) => {

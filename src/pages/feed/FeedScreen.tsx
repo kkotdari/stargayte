@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { createPortal } from "react-dom";
-import RankShiftCard, { RankShiftMenu } from "./RankShiftCard";
+import RankingShiftCard, { RankingShiftMenu } from "./RankingShiftCard";
 import { CalendarPlus, ClipboardList, MoreHorizontal, Phone, Plus, Upload } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
 import { Spinner } from "../../components/common/Feedback";
@@ -10,7 +10,7 @@ import FilterItem from "../../components/common/FilterItem";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 import KakaoShareButton from "../../components/common/KakaoShareButton";
 import type { KakaoShareContent } from "../../utils/kakaoShare";
-import MatchList, { resolveSlotName, type SearchListRow } from "../v2/MatchList";
+import GameResultCardBody, { resolveSlotName, type SearchListRow } from "./GameResultCardBody";
 import { isComputerSlot } from "../../constants/computerSlot";
 import { isUnregisteredSlot } from "../../constants/unregisteredSlot";
 import { ChallengeCard, ChallengeTimeHeadEdit } from "../challenge/ChallengeScreen";
@@ -31,7 +31,7 @@ import { usePageBackground } from "../../hooks/usePageBackground";
 import { getScrollMetrics, getScrollTop, scrollRootTo } from "../../utils/scrollRoot";
 import { buildReplayDrafts, type ReplayDraft } from "../../utils/replayDraft";
 import { hasAppUpdatePreloadErrorOccurred } from "../../utils/appUpdate";
-import type { Challenge, FeedTargetType, Match, MatchSlot, MatchType, Member, RankSnapshot } from "../../types";
+import type { Challenge, FeedTargetType, GameResult, GameResultSlot, GameType, Member, RankingShift } from "../../types";
 
 const PAGE_SIZE = 100;
 const MAX_REPLAY_FILES = 20;
@@ -81,41 +81,41 @@ interface ChallengeItem {
   challenge: Challenge;
 }
 
-export interface MatchItem {
-  kind: "match";
+export interface GameResultItem {
+  kind: "gameResult";
   time: number;
   withClock: boolean;
-  match: Match;
+  gameResult: GameResult;
 }
 
-interface RankShiftFeedItem {
-  kind: "rankshift";
+interface RankingShiftItem {
+  kind: "rankingShift";
   time: number;
   withClock: boolean;
-  shift: RankSnapshot;
+  shift: RankingShift;
 }
 
-type FeedItem = ChallengeItem | MatchItem | RankShiftFeedItem;
+type FeedItem = ChallengeItem | GameResultItem | RankingShiftItem;
 
 // 같은 '세션'의 게임결과가 피드에서 2개 이상 연속되면 겹침 스택 하나로 묶는다.
-export interface MatchStackItem {
-  kind: "matchstack";
+export interface GameResultPostItem {
+  kind: "gameResultPost";
   time: number;
   /** 세션 날짜(YYYY-MM-DD) — 달력 날짜가 아니라 sessionDateOf 기준이다. */
   date: string;
-  items: MatchItem[];
+  items: GameResultItem[];
 }
 
-type DisplayItem = FeedItem | MatchStackItem;
+type DisplayItem = FeedItem | GameResultPostItem;
 
 /** 피드에서 이 항목이 꽂히는 자리(ms) — 너 나와만 표시용 시각과 다르다(challengeSortMs). */
 function sortMsOf(it: FeedItem): number {
   return it.kind === "challenge" ? it.sortTime : it.time;
 }
 
-function rankShiftItem(shift: RankSnapshot): RankShiftFeedItem {
+function rankShiftItem(shift: RankingShift): RankingShiftItem {
   return {
-    kind: "rankshift",
+    kind: "rankingShift",
     time: new Date(shift.createdAt).getTime(),
     withClock: true,
     shift,
@@ -163,13 +163,13 @@ function challengeSortMs(c: Challenge): number {
   return new Date(`${c.scheduledDate}T00:00:00`).getTime() + SESSION_DAY_START_HOUR * 3600_000;
 }
 
-export function matchItem(m: Match): MatchItem {
+export function gameResultItem(m: GameResult): GameResultItem {
   const started = m.gameStartedAt ? new Date(m.gameStartedAt).getTime() : null;
   return {
-    kind: "match",
+    kind: "gameResult",
     time: started ?? new Date(`${m.date}T00:00:00`).getTime(),
     withClock: started != null,
-    match: m,
+    gameResult: m,
   };
 }
 
@@ -178,7 +178,7 @@ export function matchItem(m: Match): MatchItem {
 // 쪼개진다(요청: 연속된 게임결과는 날짜가 달라도 하나로). 새벽 경기는 전날 밤의 연장으로
 // 보고 전날에 붙인다 — 경계는 오전 8시(요청).
 const SESSION_DAY_START_HOUR = 8;
-export function sessionDateOf(it: MatchItem): string {
+export function sessionDateOf(it: GameResultItem): string {
   const d = new Date(it.time);
   // 시각을 모르는 경기(날짜만 등록된 건)는 자정으로 잡혀 있다 — 그걸 새벽으로 읽고
   // 전날로 밀면 안 되니, 시계가 있는 경기에만 이 보정을 건다.
@@ -251,7 +251,7 @@ function ChallengeActionsMenu({ challenge, isAdmin, onDeleted }: {
   return (
     <div className="scr-feed-chal-menu">
       <button
-        type="button" className="scr-match-memo-btn scr-match-kebab-btn"
+        type="button" className="scr-feed-post-menu-btn scr-feed-kebab-btn"
         onClick={() => setOpen((v) => !v)}
         aria-label="더보기" aria-haspopup="menu" aria-expanded={open}
       >
@@ -271,7 +271,7 @@ function ChallengeActionsMenu({ challenge, isAdmin, onDeleted }: {
             {isAdmin && (
               <button
                 type="button" role="menuitem"
-                className={cx("scr-menu-pop-opt", "scr-match-menu-opt-danger")}
+                className={cx("scr-menu-pop-opt", "scr-feed-post-menu-opt-danger")}
                 onClick={() => { setOpen(false); setConfirmOpen(true); }}
               >
                 삭제
@@ -306,12 +306,12 @@ function FeedCardComments({ targetType, targetId }: { targetType: FeedTargetType
 
 // 경기 카드 — 한 경기가 피드 카드 한 장. 기존 경기 로우(접힌 상태)를 카드 본문에 그대로
 // 앉히고(누르면 그 자리에서 펼쳐짐), 하단에 피드 댓글을 단다.
-// memo — 스택 개폐(setOpen)는 MatchStack만 다시 렌더하면 되는데, 그때마다 카드 전체
+// memo — 스택 개폐(setOpen)는 GameResultPost만 다시 렌더하면 되는데, 그때마다 카드 전체
 // (경기 로우·댓글·아바타 이미지)까지 다시 렌더되면서 iOS에서 기존 카드들이 깜빡였다
 // (지적: "펼치기 접기 누를 때 기존 요소들도 다시 그리는 것 같아"). 개폐 때 카드 props는
 // 전부 같은 참조라 memo가 전부 걸러낸다.
-export const MatchCard = memo(function MatchCard({ item, memberOf, onDeleted, dateLabel, highlightMemberIds, highlightTerms, nested = false }: {
-  item: MatchItem;
+export const GameResultCard = memo(function GameResultCard({ item, memberOf, onDeleted, dateLabel, highlightMemberIds, highlightTerms, nested = false }: {
+  item: GameResultItem;
   memberOf: (id: string) => Member | undefined;
   onDeleted: () => void;
   dateLabel: string;
@@ -322,19 +322,19 @@ export const MatchCard = memo(function MatchCard({ item, memberOf, onDeleted, da
   nested?: boolean;
 }) {
   const rows: SearchListRow[] = useMemo(() => {
-    const m = item.match;
+    const m = item.gameResult;
     return [{ id: m.id, date: m.date, team1: m.team1, team2: m.team2, result: m.result, raw: m }];
-  }, [item.match]);
+  }, [item.gameResult]);
 
   return (
-    <div className={nested ? "scr-feed-stack-item" : "scr-feed-card scr-post"}>
+    <div className={nested ? "scr-feed-post-stack-item" : "scr-feed-card scr-post"}>
       <div className="scr-feed-card-head" data-date-label={dateLabel}>
         <div className="scr-feed-card-head-meta">
           <span className="scr-feed-card-time">{formatWhen(item.time, { clock: item.withClock })}</span>
           {/* 등록자 — 예전엔 카드 안쪽 윗줄에 게임번호와 나란히 있었는데, 시각 바로 옆으로
               옮겼다(요청). "누가 언제"가 한 자리에서 읽히고, 카드 안쪽 윗줄은 케밥만 남는다. */}
-          {item.match.createdBy && (
-            <span className="scr-feed-card-by">{item.match.createdBy.nickname} 등록</span>
+          {item.gameResult.createdBy && (
+            <span className="scr-feed-card-by">{item.gameResult.createdBy.nickname} 등록</span>
           )}
         </div>
         {/* 묶음 안에서는 카드 제목을 반복하지 않는다 — 바깥 카드가 이미 "게임결과 N건"이다. */}
@@ -346,16 +346,16 @@ export const MatchCard = memo(function MatchCard({ item, memberOf, onDeleted, da
           </div>
         )}
       </div>
-      <div className="scr-feed-match-body">
-        <MatchList rows={rows} memberOf={memberOf} onDeleted={onDeleted} highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms} />
+      <div className="scr-feed-game-result-body">
+        <GameResultCardBody rows={rows} memberOf={memberOf} onDeleted={onDeleted} highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms} />
       </div>
-      <FeedCardComments targetType="match" targetId={item.match.id} />
+      <FeedCardComments targetType="gameResult" targetId={item.gameResult.id} />
     </div>
   );
 });
 
 // 묶음 카드 우상단 케밥 — 지금은 카카오톡 공유 하나만 담는다(묶음은 DB 행이 아니라
-// 삭제/수정 개념이 없다). 경기결과 카드의 케밥(MatchList의 MatchActionsMenu)과 같은
+// 삭제/수정 개념이 없다). 경기결과 카드의 케밥(GameResultCardBody의 GameResultActionsMenu)과 같은
 // 방식으로 만든다 — 드롭다운을 body로 포털하고 자리는 attachPopover가 잡는다.
 //
 // 처음엔 순위변동 카드처럼 제자리에 그렸는데 세 가지가 어긋났다(지적: 다른 데를 눌러도
@@ -386,7 +386,7 @@ function StackMenu({ content }: { content: KakaoShareContent }) {
       role="presentation"
     >
       <button
-        type="button" ref={anchorRef} className="scr-match-memo-btn scr-match-kebab-btn"
+        type="button" ref={anchorRef} className="scr-feed-post-menu-btn scr-feed-kebab-btn"
         onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
         aria-label="더보기" aria-haspopup="menu" aria-expanded={open}
       >
@@ -402,7 +402,7 @@ function StackMenu({ content }: { content: KakaoShareContent }) {
             aria-hidden
           />
           <div
-            className="scr-menu-pop-drop scr-match-menu-drop scr-scroll" ref={dropRef} role="menu"
+            className="scr-menu-pop-drop scr-feed-post-menu-drop scr-scroll" ref={dropRef} role="menu"
             onClick={(e) => e.stopPropagation()}
           >
             <KakaoShareButton variant="menu" content={content} onDone={() => setOpen(false)} />
@@ -417,10 +417,10 @@ function StackMenu({ content }: { content: KakaoShareContent }) {
 // 게임결과 묶음 — 접힘은 그 세션의 참가자 전원을 담은 '요약 포스트'이고, "자세히 보기"를
 // 누르면 피드 안에서 그 자리가 게임결과 포스트 목록으로 바뀐다(요청). 한때 전체화면 모달로
 // 열어봤지만 다시 이 아코디언으로 돌아왔다.
-export function MatchStack({
+export function GameResultPost({
   stack, memberOf, onDeleted, dateLabel, highlightMemberIds, highlightTerms, defaultOpen = false,
 }: {
-  stack: MatchStackItem;
+  stack: GameResultPostItem;
   memberOf: (id: string) => Member | undefined;
   onDeleted: () => void;
   dateLabel: string;
@@ -456,7 +456,7 @@ export function MatchStack({
   const participants = useMemo(() => {
     const acc = new Map<string, { id: string; name: string; plays: number; wins: number }>();
     for (const it of [...stack.items].sort((a, b) => a.time - b.time)) {
-      const m = it.match;
+      const m = it.gameResult;
       for (const side of ["team1", "team2"] as const) {
         for (const slot of m[side]) {
           // 컴퓨터·비회원은 "누가 있었나"를 말하는 명단이 아니다(요청) — 빼고 센다.
@@ -573,7 +573,7 @@ export function MatchStack({
     const wasToggled = toggledRef.current;
     toggledRef.current = false;
     const swap = swapRef.current;
-    const inner = stackRef.current?.querySelector<HTMLElement>(".scr-feed-stack-inner");
+    const inner = stackRef.current?.querySelector<HTMLElement>(".scr-feed-post-stack-inner");
     const sum = sumRef.current;
     if (!swap || !inner || !sum) return;
 
@@ -599,7 +599,7 @@ export function MatchStack({
     // 들어오는 쪽이 한 번에 나타난다. 예전엔 셋을 동시에 굴리며 카드도 하나씩 어긋나게
     // 띄웠는데, 그러면 '높이를 서로 맞춰 주는' 계산이 늘 따라붙었다(요청: 그 로직 제거).
     //
-    // 지금은 요약과 목록이 같은 껍데기(.scr-feed-stack-swap) 안에서 자리를 주고받는다 —
+    // 지금은 요약과 목록이 같은 껍데기(.scr-feed-post-stack-swap) 안에서 자리를 주고받는다 —
     // 비활성 쪽은 CSS가 절대배치로 흐름에서 빼므로, 껍데기의 자연 높이가 곧 '들어오는
     // 쪽의 높이'다. 그래서 맞출 게 없다.
     const from = heightRef.current;
@@ -676,9 +676,9 @@ export function MatchStack({
     <div
       ref={stackRef}
       className={cx(
-        "scr-feed-card scr-post scr-feed-stack",
-        open && "scr-feed-stack-opened",
-        flash && "scr-feed-stack-flash",
+        "scr-feed-card scr-post scr-feed-post-stack",
+        open && "scr-feed-post-stack-opened",
+        flash && "scr-feed-post-stack-flash",
       )}
     >
       <div className="scr-feed-card-head" data-date-label={dateLabel}>
@@ -706,32 +706,32 @@ export function MatchStack({
           쪽의 높이다 — 둘의 높이를 서로 맞춰 주는 계산이 필요 없다(요청).
           명단 어디를 눌러도 펼쳐진다. button 안에는 목록을 넣을 수 없어(phrasing content만
           허용) role로 대신한다. */}
-      <div className="scr-feed-stack-swap" ref={swapRef}>
-      <div className="scr-feed-stack-sum" ref={sumRef} aria-hidden={open}>
+      <div className="scr-feed-post-stack-swap" ref={swapRef}>
+      <div className="scr-feed-post-stack-sum" ref={sumRef} aria-hidden={open}>
         <div
-          className="scr-feed-stack-sum-body" role="button" tabIndex={open ? -1 : 0}
+          className="scr-feed-post-stack-sum-body" role="button" tabIndex={open ? -1 : 0}
           aria-expanded={open}
           aria-label="게임결과 펼치기"
           onClick={() => expandAndReveal()}
           onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); expandAndReveal(); } }}
         >
-          <div className="scr-feed-stack-sum-head">
-            <span className="scr-feed-stack-sum-title">요약 정보</span>
-            <span className="scr-feed-stack-sum-count">참가자 총 {participants.length}명</span>
+          <div className="scr-feed-post-stack-sum-head">
+            <span className="scr-feed-post-stack-sum-title">요약 정보</span>
+            <span className="scr-feed-post-stack-sum-count">참가자 총 {participants.length}명</span>
           </div>
-          <ul className="scr-feed-stack-sum-players">
+          <ul className="scr-feed-post-stack-sum-players">
             {participants.map((p) => (
               <li
                 key={p.id}
                 className={cx(
-                  "scr-feed-stack-sum-player",
+                  "scr-feed-post-stack-sum-player",
                   (highlightMemberIds?.has(p.id)
                     || highlightTerms?.some((t) => normalizeSearchText(p.name).includes(t)))
-                    && "scr-feed-stack-sum-player-hl",
+                    && "scr-feed-post-stack-sum-player-hl",
                 )}
               >
                 <Avatar member={{ id: p.id, nickname: p.name, avatar: memberOf(p.id)?.avatar ?? null }} size={20} />
-                <span className="scr-feed-stack-sum-name">{p.name}</span>
+                <span className="scr-feed-post-stack-sum-name">{p.name}</span>
               </li>
             ))}
           </ul>
@@ -742,17 +742,17 @@ export function MatchStack({
           예전에는 이 안 맨 위에도 '접기'가 하나 더 있었다(펼치기가 있던 자리) — 같은 일을
           하는 버튼이 위아래로 둘이라 오히려 헷갈려서 없앴다(요청). 접기는 목록 끝의
           버튼 하나가 맡는다. */}
-      <div className="scr-feed-stack-inner" aria-hidden={!open}>
+      <div className="scr-feed-post-stack-inner" aria-hidden={!open}>
         {/* 펼쳐진 목록은 어디를 눌러도 접힌다(요청) — 경기 로우 자체는 이제 펼칠 것이
             없어서(스탯은 시트로 나갔다) 클릭이 남아돌기 때문이다. 그 안의 진짜 버튼들
             (스탯 보기·케밥·댓글·프로필)은 각자 stopPropagation으로 이 클릭을 막는다. */}
         <div
-          className="scr-feed-stack-list" ref={listRef}
+          className="scr-feed-post-stack-list" ref={listRef}
           onClick={() => { if (open) collapseAndReveal(); }}
         >
           {orderedDesc.map((it) => (
-            <div key={it.match.id} className="scr-feed-stack-reveal">
-              <MatchCard
+            <div key={it.gameResult.id} className="scr-feed-post-stack-reveal">
+              <GameResultCard
                 nested item={it} memberOf={memberOf} onDeleted={onDeleted} dateLabel={dateLabel}
                 highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms}
               />
@@ -767,7 +767,7 @@ export function MatchStack({
           글자로 말한다. 버튼으로 남겨 두는 건 키보드로도 여전히 여닫을 수 있게 하려는 것. */}
       <button
         ref={toggleRef}
-        type="button" className="scr-feed-stack-toggle"
+        type="button" className="scr-feed-post-stack-toggle"
         onClick={() => (open ? collapseAndReveal() : expandAndReveal())} aria-expanded={open}
       >
         {labelOpen ? "포스트 눌러서 요약보기" : "포스트 눌러서 펼치기"}
@@ -785,7 +785,7 @@ export default function FeedScreen() {
   const [search, setSearch] = useState("");
   // 피드 유형 필터(요청: 분류(개인전/팀전) 제거하고 유형 드롭다운 추가). 게임결과/너나와/
   // 일정/랭크변동으로 거른다 — 너나와=시간 미확정 도전장, 일정=시간 확정 도전장.
-  const [kindFilter, setKindFilter] = useState<"all" | "match" | "call" | "schedule" | "rankshift">("all");
+  const [kindFilter, setKindFilter] = useState<"all" | "gameResult" | "call" | "schedule" | "rankingShift">("all");
 
   const user = useAppStore((s) => s.user);
   const isAdmin = !!user && isAdminRole(user.roles);
@@ -848,12 +848,12 @@ export default function FeedScreen() {
   // 경기 전체 — 최신순 커서 페이지를 끝까지 이어붙여 한 번에 다 불러온다.
   const fetchPage = useCallback(
     (cursor: string | null) =>
-      api.getMatchesPage({ cursor: cursor ?? undefined, limit: PAGE_SIZE, sort: "latest" }),
+      api.getGameResultsPage({ cursor: cursor ?? undefined, limit: PAGE_SIZE, sort: "latest" }),
     [],
   );
   const {
-    items: matches, loading: matchesLoading, loadingMore, hasMore, loadMore, reload,
-    total: matchTotal,
+    items: gameResults, loading: matchesLoading, loadingMore, hasMore, loadMore, reload,
+    total: gameResultTotal,
   } = useCursorPagination(fetchPage, []);
 
   // 무한스크롤 — 목록 끝 센티널이 보이면 다음 페이지를 불러온다(전체 일괄 로드 대신).
@@ -874,28 +874,28 @@ export default function FeedScreen() {
 
   // 랭크(포인트/순위) 변동 이벤트 — 서버가 경기 등록/삭제 때마다 계산·저장한 스냅샷을
   // 그대로 읽는다(클라이언트는 더 이상 아무것도 계산하지 않는다).
-  const [rankShifts, setRankShifts] = useState<RankSnapshot[]>([]);
-  const reloadRankSnapshots = useCallback(() => {
-    api.listRankSnapshots()
+  const [rankShifts, setRankShifts] = useState<RankingShift[]>([]);
+  const reloadRankingShifts = useCallback(() => {
+    api.listRankingShifts()
       .then(setRankShifts)
       .catch(() => {});
   }, []);
-  useEffect(() => reloadRankSnapshots(), [reloadRankSnapshots]);
+  useEffect(() => reloadRankingShifts(), [reloadRankingShifts]);
 
   // 저장/삭제 완료 — 경기 목록과 함께 변동 이벤트도 갱신한다(서버가 이미 저장을 끝냈다).
   const handleReplaysSaved = useCallback(async () => {
     reload();
-    reloadRankSnapshots();
-  }, [reload, reloadRankSnapshots]);
-  const handleMatchDeleted = useCallback(() => {
+    reloadRankingShifts();
+  }, [reload, reloadRankingShifts]);
+  const handleGameResultDeleted = useCallback(() => {
     reload();
-    reloadRankSnapshots();
-  }, [reload, reloadRankSnapshots]);
+    reloadRankingShifts();
+  }, [reload, reloadRankingShifts]);
 
   // 피드의 "상세" 버튼 — 통계 탭으로 이동하며 그 변동의 게임 유형을 필터로 미리 건다(요청).
   const requestScreen = useAppStore((s) => s.requestScreen);
   const setStatsPresetMatchType = useAppStore((s) => s.setStatsPresetMatchType);
-  const openStatsFor = (matchType: MatchType) => {
+  const openStatsFor = (matchType: GameType) => {
     setStatsPresetMatchType(matchType);
     requestScreen("stats");
   };
@@ -931,21 +931,21 @@ export default function FeedScreen() {
   const feed = useMemo<FeedItem[]>(() => {
     const items: FeedItem[] = [
       ...challenges.map(challengeItem),
-      ...matches.map(matchItem),
+      ...gameResults.map(gameResultItem),
       ...rankShifts.map(rankShiftItem),
     ];
     // 정렬 기준은 time이 아니라 sortTime이다 — 너 나와만 표시용 시각과 꽂히는 자리가
     // 다르다(위 challengeSortMs). 나머지는 sortTime이 없어 time을 그대로 쓴다.
     return items.sort((a, b) => sortMsOf(b) - sortMsOf(a));
-  }, [challenges, matches, rankShifts]);
+  }, [challenges, gameResults, rankShifts]);
 
   // 경기가 아직 더 남아 있으면(hasMore), 이미 불러온 가장 오래된 경기보다 더 과거의
   // 너나와/변동 카드는 보류한다 — 페이지가 이어질 때 시간순이 뒤섞여 보이지 않게.
   const visibleFeed = useMemo(() => {
-    if (!hasMore || matches.length === 0) return feed;
-    const oldest = Math.min(...matches.map((m) => matchItem(m).time));
+    if (!hasMore || gameResults.length === 0) return feed;
+    const oldest = Math.min(...gameResults.map((m) => gameResultItem(m).time));
     return feed.filter((item) => item.time >= oldest);
-  }, [feed, hasMore, matches]);
+  }, [feed, hasMore, gameResults]);
 
   const suggestions = useMemo(() => activeMemberSearchTerms(members), [members]);
   const searchTerms = useMemo(() => splitSearchTerms(search), [search]);
@@ -959,7 +959,7 @@ export default function FeedScreen() {
   }, [members, searchTerms]);
 
   // 슬롯 하나가 검색어와 맞는지 — 회원이면 닉네임/배틀태그/게임아이디, 아니면 rawName.
-  const slotMatchesTerm = (slot: MatchSlot, term: string): boolean => {
+  const slotMatchesTerm = (slot: GameResultSlot, term: string): boolean => {
     const m = memberOf(slot.memberId);
     if (m && memberMatchesTerm(m, term)) return true;
     return !!slot.rawName && normalizeSearchText(slot.rawName).includes(term);
@@ -975,7 +975,7 @@ export default function FeedScreen() {
   // 필터 바에 적을 건수(요청: 무한스크롤이면 미리 전체 건수를 조회해서 써야 한다).
   //
   // 경기결과만 커서 페이지로 나눠 받고(나머지는 한 번에 다 받는다), 그 전체 건수는 서버가
-  // 첫 페이지 응답에 담아 준다(MatchPage.total) — 그래서 아무 필터도 안 걸렸을 때는
+  // 첫 페이지 응답에 담아 준다(GameResultPage.total) — 그래서 아무 필터도 안 걸렸을 때는
   // "서버가 센 경기 수 + 이미 다 받아 둔 너나와/순위변동 수"가 곧 진짜 전체 건수다.
   // 화면에 몇 장이 그려졌는지(filteredFeed.length)와 무관하게 처음부터 이 값을 보여준다.
   //
@@ -984,8 +984,8 @@ export default function FeedScreen() {
   // 페이지의 건수를 알 방법이 없다. 그때는 지금까지 받은 것 중 걸러진 수를 그대로 쓴다 —
   // 목록도 딱 그만큼만 보여주고 있으므로 화면과 숫자가 어긋나지는 않는다.
   const filterActiveForCount = kindFilter !== "all" || searchTerms.length > 0;
-  const nonMatchCount = useMemo(
-    () => feed.filter((it) => it.kind !== "match").length,
+  const nonGameResultCount = useMemo(
+    () => feed.filter((it) => it.kind !== "gameResult").length,
     [feed],
   );
 
@@ -995,14 +995,14 @@ export default function FeedScreen() {
       if (kindFilter !== "all") {
         // 도전장(시간 확정이든 아니든)은 전부 너나와(call)로 본다(요청). 일정은 추후
         // 별도 아이템이 생기면 채워진다.
-        const kind = item.kind === "match" ? "match"
-          : item.kind === "rankshift" ? "rankshift"
+        const kind = item.kind === "gameResult" ? "gameResult"
+          : item.kind === "rankingShift" ? "rankingShift"
           : "call";
         if (kind !== kindFilter) return false;
       }
       if (searchTerms.length > 0) {
-        if (item.kind === "match") {
-          const slots = [...item.match.team1, ...item.match.team2];
+        if (item.kind === "gameResult") {
+          const slots = [...item.gameResult.team1, ...item.gameResult.team2];
           return searchTerms.every((term) => slots.some((slot) => slotMatchesTerm(slot, term)));
         }
         if (item.kind === "challenge") {
@@ -1028,28 +1028,28 @@ export default function FeedScreen() {
   // 답이 오기 전에는 지금 보이는 수를 그대로 둔다(로딩 표시를 새로 만들지 않는다 — 숫자가
   // 잠깐 뒤에 조용히 커지는 편이 낫다). 실패해도 조용히 지나간다.
   // 너나와·순위변동은 처음에 통째로 받아 두므로 그쪽 걸러진 수는 이미 정확하다.
-  const [filteredMatchTotal, setFilteredMatchTotal] = useState<number | null>(null);
+  const [filteredGameResultTotal, setFilteredGameResultTotal] = useState<number | null>(null);
   useEffect(() => {
-    if (!filterActiveForCount) { setFilteredMatchTotal(null); return; }
+    if (!filterActiveForCount) { setFilteredGameResultTotal(null); return; }
     // 게임결과가 아예 대상이 아닌 유형 필터는 물어볼 것도 없다.
-    if (kindFilter === "call" || kindFilter === "rankshift") { setFilteredMatchTotal(0); return; }
+    if (kindFilter === "call" || kindFilter === "rankingShift") { setFilteredGameResultTotal(0); return; }
     let alive = true;
-    setFilteredMatchTotal(null);
+    setFilteredGameResultTotal(null);
     // 검색어는 글자마다 바뀌므로 잠깐 묵혔다 보낸다 — 타자 한 번에 한 번씩 묻지 않게.
     const t = window.setTimeout(() => {
-      api.countMatches({
+      api.countGameResults({
         userQuery: searchTerms.length > 0 ? search.trim() : undefined,
         // 여러 낱말을 모두 만족해야 한다 — 위 passesFilter의 every()와 같은 규칙이다.
         matchAllUsers: true,
       })
-        .then((n) => { if (alive) setFilteredMatchTotal(n); })
+        .then((n) => { if (alive) setFilteredGameResultTotal(n); })
         .catch(() => { /* 조용히 실패 — 로드된 수를 그대로 보여준다 */ });
     }, 300);
     return () => { alive = false; window.clearTimeout(t); };
   }, [filterActiveForCount, kindFilter, search, searchTerms.length]);
   // 필터에 걸린 너나와·순위변동 수 — 이쪽은 전부 받아 뒀으므로 세면 곧 정확한 값이다.
-  const filteredNonMatchCount = useMemo(
-    () => feed.filter((it) => it.kind !== "match" && passesFilter(it)).length,
+  const filteredNonGameResultCount = useMemo(
+    () => feed.filter((it) => it.kind !== "gameResult" && passesFilter(it)).length,
     [feed, passesFilter],
   );
 
@@ -1060,18 +1060,18 @@ export default function FeedScreen() {
     let i = 0;
     while (i < filteredFeed.length) {
       const it = filteredFeed[i];
-      if (it.kind === "match") {
+      if (it.kind === "gameResult") {
         const day = sessionDateOf(it);
         let j = i + 1;
         while (
           j < filteredFeed.length
-          && filteredFeed[j].kind === "match"
-          && sessionDateOf(filteredFeed[j] as MatchItem) === day
+          && filteredFeed[j].kind === "gameResult"
+          && sessionDateOf(filteredFeed[j] as GameResultItem) === day
         ) j++;
         // 한 판짜리도 요약 카드로 낸다(요청) — 게임결과는 판 수와 상관없이 늘 "누가
         // 있었는지"부터 보여주고, 자세히 보기로 카드를 편다. 예전엔 2판 이상만 묶어서
         // 한 판일 때만 카드가 통째로 펼쳐진 채 나와 생김새가 갈렸다.
-        out.push({ kind: "matchstack", time: it.time, date: day, items: filteredFeed.slice(i, j) as MatchItem[] });
+        out.push({ kind: "gameResultPost", time: it.time, date: day, items: filteredFeed.slice(i, j) as GameResultItem[] });
         i = j;
         continue;
       }
@@ -1188,15 +1188,15 @@ export default function FeedScreen() {
         // 보여주는 방식일 뿐이라(지적) 그 묶음 안의 판도 각각 한 건이다.
         count={
           !filterActiveForCount
-            ? (matchTotal !== null ? matchTotal + nonMatchCount : filteredFeed.length)
+            ? (gameResultTotal !== null ? gameResultTotal + nonGameResultCount : filteredFeed.length)
             // 서버 답이 오기 전에는 지금 보이는 수를 그대로 둔다.
-            : (filteredMatchTotal !== null
-              ? filteredMatchTotal + filteredNonMatchCount
+            : (filteredGameResultTotal !== null
+              ? filteredGameResultTotal + filteredNonGameResultCount
               : filteredFeed.length)
         }
         // 필터 건수를 서버에 다시 묻는 동안에는 숫자 옆에 스피너를 둔다(요청) — 그 사이
         // 보이는 값은 아직 화면에 그려진 수라 곧 바뀔 수 있다는 표시다.
-        countLoading={filterActiveForCount && filteredMatchTotal === null}
+        countLoading={filterActiveForCount && filteredGameResultTotal === null}
         countLabel="건"
         searchValue={search}
         onSearchChange={setSearch}
@@ -1214,10 +1214,10 @@ export default function FeedScreen() {
               className="scr-filter-select"
               options={[
                 { value: "all", label: "전체" },
-                { value: "match", label: "게임결과" },
+                { value: "gameResult", label: "게임결과" },
                 { value: "call", label: "너 나와!" },
                 { value: "schedule", label: "일정" },
-                { value: "rankshift", label: "랭크 변동" },
+                { value: "rankingShift", label: "랭크 변동" },
               ]}
             />
           </FilterItem>
@@ -1240,13 +1240,13 @@ export default function FeedScreen() {
               </div>
             ) : null;
             const card = (
-            item.kind === "rankshift" ? (
-              <RankShiftCard
+            item.kind === "rankingShift" ? (
+              <RankingShiftCard
                 key={`rs-${item.shift.id}`}
                 shift={item.shift}
                 timeText={formatWhen(item.time, { clock: item.withClock })}
                 dateLabel={dateLabelOf(item)}
-                actions={<RankShiftMenu shift={item.shift} />}
+                actions={<RankingShiftMenu shift={item.shift} />}
                 highlightMemberIds={matchedIds}
                 highlightTerms={searchTerms}
                 footer={
@@ -1259,7 +1259,7 @@ export default function FeedScreen() {
                       </button>
                     </div>
                     {/* 순위변동 알림에도 댓글(요청) — 경기/너나와 카드와 같은 공통 댓글 영역. */}
-                    <FeedCardComments targetType="rankshift" targetId={item.shift.id} />
+                    <FeedCardComments targetType="rankingShift" targetId={item.shift.id} />
                   </>
                 }
               />
@@ -1301,25 +1301,25 @@ export default function FeedScreen() {
                 </div>
                 <FeedCardComments targetType="challenge" targetId={item.challenge.id} />
               </div>
-            ) : item.kind === "matchstack" ? (
-              <MatchStack
+            ) : item.kind === "gameResultPost" ? (
+              <GameResultPost
                 // 같은 세션이라도 중간에 다른 종류 카드가 끼면 스택이 둘로 갈린다 —
                 // 날짜+시각만으로는 그 둘이 같은 키가 될 수 있어 첫 경기 id로 못박는다.
-                key={`ms-${item.items[0].match.id}`}
+                key={`ms-${item.items[0].gameResult.id}`}
                 stack={item}
                 memberOf={memberOf}
-                onDeleted={handleMatchDeleted}
+                onDeleted={handleGameResultDeleted}
                 dateLabel={sessionDateLabel(item.date)}
                 highlightMemberIds={matchedIds}
                 highlightTerms={searchTerms}
                 defaultOpen={filterActive}
               />
             ) : (
-              <MatchCard
-                key={`m-${item.match.id}`}
+              <GameResultCard
+                key={`m-${item.gameResult.id}`}
                 item={item}
                 memberOf={memberOf}
-                onDeleted={handleMatchDeleted}
+                onDeleted={handleGameResultDeleted}
                 dateLabel={dateLabelOf(item)}
                 highlightMemberIds={matchedIds}
                 highlightTerms={searchTerms}

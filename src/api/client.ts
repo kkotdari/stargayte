@@ -2,10 +2,10 @@
 // API 클라이언트 — stargayte-api 서버와 통신한다.
 // ============================================================
 import type {
-  Member, Match, FeedComment, FeedTargetType, RankSnapshot, NewMatch, SignupPayload, MemberCreatePayload, MemberStatus, MemberRole,
+  Member, GameResult, FeedComment, FeedTargetType, RankingShift, NewGameResult, SignupPayload, MemberCreatePayload, MemberStatus, MemberRole,
   ScreenKey, AppVersion, AppVersionStatus, AppVersionInfo,
-  MatchSlot, MatchPage, MatchStatsResponse, MatchType, Race, TeamRankingResponse,
-  MonthlyMatchStatsResponse, MonthlyTeamRankingResponse, RatingHistoryResponse, RivalryPair,
+  GameResultSlot, GameResultPage, GameResultStatsResponse, GameType, Race, TeamRankingResponse,
+  MonthlyGameResultStatsResponse, MonthlyTeamRankingResponse, RatingHistoryResponse, RivalryPair,
   ReplayNameClassificationEntry, ReplayNameKind, ReplayNameMappingEntry, ReplayNameMappingKind,
   Challenge, ChallengeCreatePayload, ChallengeRevengePayload, ChallengeResult,
   MatchRequest, MatchRequestCreatePayload, MatchRequestListResponse, MatchRequestInboxItem,
@@ -32,35 +32,35 @@ function buildQuery(params: Record<string, string | number | boolean | undefined
 // 한 곳에서만 흡수한다(anti-corruption layer) — 다른 곳은 전부 rawName만 안다. 이 매핑이
 // 없으면 슬롯을 rawName으로 보내도 서버가 못 읽어 리플레이 컴퓨터/비회원 게임아이디가
 // 저장 왕복에서 통째로 유실됐다(실제로 지적받은 문제 — 게임아이디 화면에 안 뜸).
-type WireSlot = Omit<MatchSlot, "rawName"> & { playerName?: string | null };
-type WireMatch = Omit<Match, "team1" | "team2"> & { team1: WireSlot[]; team2: WireSlot[] };
+type WireSlot = Omit<GameResultSlot, "rawName"> & { playerName?: string | null };
+type WireGameResult = Omit<GameResult, "team1" | "team2"> & { team1: WireSlot[]; team2: WireSlot[] };
 
-function slotToWire(slot: MatchSlot): WireSlot {
+function slotToWire(slot: GameResultSlot): WireSlot {
   const { rawName, ...rest } = slot;
   return { ...rest, playerName: rawName ?? null };
 }
-function matchToWire(match: NewMatch): Omit<NewMatch, "team1" | "team2"> & { team1: WireSlot[]; team2: WireSlot[] } {
-  return { ...match, team1: match.team1.map(slotToWire), team2: match.team2.map(slotToWire) };
+function gameResultToWire(gameResult: NewGameResult): Omit<NewGameResult, "team1" | "team2"> & { team1: WireSlot[]; team2: WireSlot[] } {
+  return { ...gameResult, team1: gameResult.team1.map(slotToWire), team2: gameResult.team2.map(slotToWire) };
 }
-function slotFromWire(slot: WireSlot): MatchSlot {
+function slotFromWire(slot: WireSlot): GameResultSlot {
   const { playerName, ...rest } = slot;
   return { ...rest, rawName: playerName || null };
 }
-function matchFromWire(match: WireMatch): Match {
+function gameResultFromWire(gameResult: WireGameResult): GameResult {
   return {
-    ...match,
-    team1: (match.team1 ?? []).map(slotFromWire),
-    team2: (match.team2 ?? []).map(slotFromWire),
+    ...gameResult,
+    team1: (gameResult.team1 ?? []).map(slotFromWire),
+    team2: (gameResult.team2 ?? []).map(slotFromWire),
   };
 }
 
-export interface MatchListParams {
+export interface GameResultListParams {
   cursor?: string;
   limit?: number;
   sort?: "latest" | "oldest";
   dateFrom?: string;
   dateTo?: string;
-  matchType?: MatchType | "all";
+  matchType?: GameType | "all";
   userQuery?: string;
   matchAllUsers?: boolean;
   // 운영자 "유저연결" 화면 전용 — 컴퓨터/비회원 참가자가 있는 경기만 골라본다.
@@ -70,11 +70,11 @@ export interface MatchListParams {
   teamMemberIds?: string[];
 }
 
-export interface MatchStatsParams {
+export interface GameResultStatsParams {
   memberIds?: string[];
   dateFrom?: string;
   dateTo?: string;
-  matchType?: MatchType | "all";
+  matchType?: GameType | "all";
   race?: Race | "all";
 }
 
@@ -86,7 +86,7 @@ export interface TeamRankingParams {
 export interface MonthlyStatsParams {
   months: string[];
   memberIds?: string[];
-  matchType?: MatchType | "all";
+  matchType?: GameType | "all";
   race?: Race | "all";
 }
 
@@ -94,7 +94,7 @@ export interface MainRaceParams {
   memberId: string;
   dateFrom?: string;
   dateTo?: string;
-  matchType?: MatchType | "all";
+  matchType?: GameType | "all";
 }
 
 export const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:8000";
@@ -258,7 +258,7 @@ export const api = {
     return request<Member[]>("/api/members");
   },
 
-  async getMatchesPage(params: MatchListParams = {}): Promise<MatchPage> {
+  async getGameResultsPage(params: GameResultListParams = {}): Promise<GameResultPage> {
     const qs = buildQuery({
       cursor: params.cursor,
       limit: params.limit,
@@ -271,25 +271,25 @@ export const api = {
       matchAllUsers: params.matchAllUsers,
       teamMemberIds: params.teamMemberIds?.length ? params.teamMemberIds.join(",") : undefined,
     });
-    const page = await request<Omit<MatchPage, "items"> & { items: WireMatch[] }>(`/api/matches${qs}`);
-    return { ...page, items: page.items.map(matchFromWire) };
+    const page = await request<Omit<GameResultPage, "items"> & { items: WireGameResult[] }>(`/api/game-results${qs}`);
+    return { ...page, items: page.items.map(gameResultFromWire) };
   },
 
   // 같은 조건의 경기 전체 건수만 필요할 때 — 목록 엔드포인트가 첫 페이지 응답에 total을
-  // 담아 주므로(MatchPage.total) 한 건만 달라고 해서 그 값만 읽는다. 세는 전용 엔드포인트를
+  // 담아 주므로(GameResultPage.total) 한 건만 달라고 해서 그 값만 읽는다. 세는 전용 엔드포인트를
   // 따로 파지 않은 이유는 조건 해석이 목록과 한 글자도 어긋나면 안 되기 때문이다.
-  async countMatches(params: MatchListParams = {}): Promise<number> {
-    const page = await this.getMatchesPage({ ...params, cursor: undefined, limit: 1 });
+  async countGameResults(params: GameResultListParams = {}): Promise<number> {
+    const page = await this.getGameResultsPage({ ...params, cursor: undefined, limit: 1 });
     return page.total ?? page.items.length;
   },
 
   // 카카오톡 공유 링크가 여는 "이 경기만 보이는" 화면용 단건 조회.
-  async getMatch(id: number): Promise<Match> {
-    return matchFromWire(await request<WireMatch>(`/api/matches/${id}`));
+  async getGameResult(id: number): Promise<GameResult> {
+    return gameResultFromWire(await request<WireGameResult>(`/api/game-results/${id}`));
   },
 
   // 전적통계 화면 전용 — 회원별로 이미 집계된 전적을 받는다.
-  async getMatchStats(params: MatchStatsParams = {}): Promise<MatchStatsResponse> {
+  async getGameResultStats(params: GameResultStatsParams = {}): Promise<GameResultStatsResponse> {
     const qs = buildQuery({
       memberIds: params.memberIds?.length ? params.memberIds.join(",") : undefined,
       dateFrom: params.dateFrom,
@@ -297,27 +297,27 @@ export const api = {
       matchType: params.matchType,
       race: params.race,
     });
-    return request<MatchStatsResponse>(`/api/matches/stats${qs}`);
+    return request<GameResultStatsResponse>(`/api/game-results/stats${qs}`);
   },
 
   // 유저 상성(상대전적 쌍) — 상성 맵 화면이 쓴다. mode: solo(기본)=1:1만,
   // team=팀전을 개인 단위 쌍으로 환산(상성맵 팀전 탭).
   async getRivalries(params: { dateFrom?: string; dateTo?: string; mode?: "solo" | "team" } = {}): Promise<{ pairs: RivalryPair[] }> {
     const qs = buildQuery({ dateFrom: params.dateFrom, dateTo: params.dateTo, mode: params.mode });
-    return request<{ pairs: RivalryPair[] }>(`/api/matches/stats/rivalries${qs}`);
+    return request<{ pairs: RivalryPair[] }>(`/api/game-results/stats/rivalries${qs}`);
   },
 
   // 랭킹 조회 전용 엔드포인트 — 응답 구조는 전적통계와 같지만(순위/레이팅 + 전적) URL을
   // 의미(랭킹)에 맞춰 분리했다(요청). 종족 필터는 '랭커의 종족' 기준이라 서버가 (회원,종족)
   // 레이팅으로 순위를 매긴다.
-  async getRanking(params: MatchStatsParams = {}): Promise<MatchStatsResponse> {
+  async getRanking(params: GameResultStatsParams = {}): Promise<GameResultStatsResponse> {
     const qs = buildQuery({
       dateFrom: params.dateFrom,
       dateTo: params.dateTo,
       matchType: params.matchType,
       race: params.race,
     });
-    return request<MatchStatsResponse>(`/api/matches/ranking${qs}`);
+    return request<GameResultStatsResponse>(`/api/game-results/ranking${qs}`);
   },
 
   // 랭킹 상세의 '경기당 레이팅 변화(Δ)' — 이 회원이 뛴 경기의 matchNo → μ 증감. 레이팅은
@@ -328,32 +328,32 @@ export const api = {
     memberId: string, matchType?: string, dateFrom?: string, dateTo?: string, race?: string,
   ): Promise<RatingHistoryResponse> {
     const qs = buildQuery({ memberId, matchType, dateFrom, dateTo, race });
-    return request<RatingHistoryResponse>(`/api/matches/rating-history${qs}`);
+    return request<RatingHistoryResponse>(`/api/game-results/rating-history${qs}`);
   },
 
   // 팀랭킹 — dateFrom/dateTo를 안 넘기면 전체 경기, 넘기면(랭킹 화면의 월 기준 기본
   // 집계) 그 기간만 서버가 집계하고 정렬까지 끝내서 내려준다.
   async getTeamRanking(params: TeamRankingParams = {}): Promise<TeamRankingResponse> {
     const qs = buildQuery({ dateFrom: params.dateFrom, dateTo: params.dateTo });
-    return request<TeamRankingResponse>(`/api/matches/team-ranking${qs}`);
+    return request<TeamRankingResponse>(`/api/game-results/team-ranking${qs}`);
   },
 
   // 개인 랭킹의 월별 순위변동(최근 5개월)/목록의 전월 대비 화살표 — "YYYY-MM" 여러 개를
   // 한 번에 보내 왕복 없이 달마다 집계된 결과를 받는다.
-  async getMatchStatsMonthly(params: MonthlyStatsParams): Promise<MonthlyMatchStatsResponse> {
+  async getGameResultStatsMonthly(params: MonthlyStatsParams): Promise<MonthlyGameResultStatsResponse> {
     const qs = buildQuery({
       months: params.months.join(","),
       memberIds: params.memberIds?.length ? params.memberIds.join(",") : undefined,
       matchType: params.matchType,
       race: params.race,
     });
-    return request<MonthlyMatchStatsResponse>(`/api/matches/stats/monthly${qs}`);
+    return request<MonthlyGameResultStatsResponse>(`/api/game-results/stats/monthly${qs}`);
   },
 
   // 팀 랭킹 버전 — 위와 같은 목적.
   async getTeamRankingMonthly(months: string[]): Promise<MonthlyTeamRankingResponse> {
     const qs = buildQuery({ months: months.join(",") });
-    return request<MonthlyTeamRankingResponse>(`/api/matches/team-ranking/monthly${qs}`);
+    return request<MonthlyTeamRankingResponse>(`/api/game-results/team-ranking/monthly${qs}`);
   },
 
   // 경기 등록 모달에서 "랜덤" 주종족 회원의 종족 select 기본값 프리필용 — 대량 통계
@@ -365,13 +365,13 @@ export const api = {
       dateTo: params.dateTo,
       matchType: params.matchType,
     });
-    const res = await request<{ race: Race | null }>(`/api/matches/main-race${qs}`);
+    const res = await request<{ race: Race | null }>(`/api/game-results/main-race${qs}`);
     return res.race;
   },
 
   // 랭킹 화면의 "이전" 버튼 비활성화 판단용 — 실제 결과가 있는 가장 이른 경기 날짜.
-  async getEarliestMatchDate(): Promise<string | null> {
-    const res = await request<{ date: string | null }>("/api/matches/earliest-date");
+  async getEarliestGameResultDate(): Promise<string | null> {
+    const res = await request<{ date: string | null }>("/api/game-results/earliest-date");
     return res.date;
   },
 
@@ -379,7 +379,7 @@ export const api = {
   // 입력한 값 중 이미 존재하는 것만(원본 문자열 그대로) 돌아온다.
   async checkReplayDuplicates(gameStartedAt: string[]): Promise<string[]> {
     if (gameStartedAt.length === 0) return [];
-    const res = await request<{ existing: string[] }>("/api/matches/duplicate-check", {
+    const res = await request<{ existing: string[] }>("/api/game-results/duplicate-check", {
       method: "POST",
       body: JSON.stringify({ gameStartedAt }),
     });
@@ -406,7 +406,7 @@ export const api = {
       buildCount: number | null;
     }[];
   }): Promise<{ merged: boolean; matchNo: string | null }> {
-    return request<{ merged: boolean; matchNo: string | null }>("/api/matches/merge-replay", {
+    return request<{ merged: boolean; matchNo: string | null }>("/api/game-results/merge-replay", {
       method: "POST",
       body: JSON.stringify(payload),
     });
@@ -418,7 +418,7 @@ export const api = {
   async lookupReplayNameClassifications(rawNames: string[]): Promise<ReplayNameClassificationEntry[]> {
     if (rawNames.length === 0) return [];
     const res = await request<{ classifications: ReplayNameClassificationEntry[] }>(
-      "/api/matches/replay-name-classifications/lookup",
+      "/api/game-results/replay-name-classifications/lookup",
       { method: "POST", body: JSON.stringify({ rawNames }) },
     );
     return res.classifications;
@@ -427,7 +427,7 @@ export const api = {
   // 사용자가 미매칭 선수를 컴퓨터/비회원으로 직접 지정하면, 다음에 같은 이름이 또
   // 나왔을 때 자동으로 같은 분류를 적용할 수 있도록 서버에 기억시킨다.
   async setReplayNameClassification(rawName: string, kind: ReplayNameKind): Promise<ReplayNameClassificationEntry> {
-    return request<ReplayNameClassificationEntry>("/api/matches/replay-name-classifications", {
+    return request<ReplayNameClassificationEntry>("/api/game-results/replay-name-classifications", {
       method: "POST",
       body: JSON.stringify({ rawName, kind }),
     });
@@ -436,14 +436,14 @@ export const api = {
   // 유저연결 화면 — 리플레이 원본 이름(rawName) 전체 목록(회원 별칭/컴퓨터·비회원
   // 분류/아직 미해결 셋을 합친 것)과, 하나를 다시 지정하는 저장.
   async listReplayNameMappings(): Promise<ReplayNameMappingEntry[]> {
-    const res = await request<{ entries: ReplayNameMappingEntry[] }>("/api/matches/replay-name-mappings");
+    const res = await request<{ entries: ReplayNameMappingEntry[] }>("/api/game-results/replay-name-mappings");
     return res.entries;
   },
 
   async setReplayNameMapping(
     rawName: string, kind: ReplayNameMappingKind, memberId?: string,
   ): Promise<ReplayNameMappingEntry> {
-    return request<ReplayNameMappingEntry>("/api/matches/replay-name-mappings", {
+    return request<ReplayNameMappingEntry>("/api/game-results/replay-name-mappings", {
       method: "POST",
       body: JSON.stringify({ rawName, kind, memberId }),
     });
@@ -453,31 +453,31 @@ export const api = {
   // 데이터(replay_aliases 행) 자체를 지워 목록에서 완전히 사라지게 한다 — 이 raw_name으로
   // 등록된 경기가 하나라도 있으면 서버가 막는다(그럼 미지정으로 다시 나타나야 정상이라).
   async deleteReplayNameMapping(rawName: string): Promise<void> {
-    await request<void>(`/api/matches/replay-name-mappings/${encodeURIComponent(rawName)}`, { method: "DELETE" });
+    await request<void>(`/api/game-results/replay-name-mappings/${encodeURIComponent(rawName)}`, { method: "DELETE" });
   },
 
-  async createMatch(match: NewMatch): Promise<Match> {
-    const res = await request<WireMatch>("/api/matches", {
+  async createGameResult(gameResult: NewGameResult): Promise<GameResult> {
+    const res = await request<WireGameResult>("/api/game-results", {
       method: "POST",
-      body: JSON.stringify(matchToWire(match)),
+      body: JSON.stringify(gameResultToWire(gameResult)),
     });
-    return matchFromWire(res);
+    return gameResultFromWire(res);
   },
 
 
-  async deleteMatch(id: number): Promise<void> {
-    await request<void>(`/api/matches/${id}`, { method: "DELETE" });
+  async deleteGameResult(id: number): Promise<void> {
+    await request<void>(`/api/game-results/${id}`, { method: "DELETE" });
   },
 
   // 모든 경기기록 삭제(운영자 제어판) — 첨부 파일까지 서버에서 함께 지운다. 삭제 건수 반환.
-  async deleteAllMatches(): Promise<{ deleted: number }> {
-    return request<{ deleted: number }>("/api/matches/all", { method: "DELETE" });
+  async deleteAllGameResults(): Promise<{ deleted: number }> {
+    return request<{ deleted: number }>("/api/game-results/all", { method: "DELETE" });
   },
 
   // 순위 기준선 다시 깔기(운영자) — 지금 데이터로 개인전/팀전 스냅샷을 새로 만든다.
   // 변동 없이 저장돼 피드 목록에는 안 뜨고, 다음 자정 재집계가 이걸 기준으로 비교한다.
-  async reseedRankSnapshots(): Promise<Record<string, number>> {
-    return request<Record<string, number>>("/api/feed/rank-snapshots/seed", { method: "POST" });
+  async reseedRankingShifts(): Promise<Record<string, number>> {
+    return request<Record<string, number>>("/api/feed/ranking-shifts/seed", { method: "POST" });
   },
 
   // 경기 댓글(메모) — 게시판 댓글처럼 회원 누구나 한 줄(최대 50자)을 남기고 본인/운영자만
@@ -485,8 +485,8 @@ export const api = {
   // 실려 오므로 별도 조회는 잘 안 쓰지만, 필요 시 이 경기 댓글만 다시 받아올 수도 있다.
   // 랭크 변동 이벤트 — 서버가 경기 등록/삭제 때마다 계산·저장한 스냅샷 중 실제 변동이
   // 있었던 것만 내려준다(피드가 재계산하지 않는다).
-  async listRankSnapshots(): Promise<RankSnapshot[]> {
-    return request<RankSnapshot[]>("/api/feed/rank-snapshots");
+  async listRankingShifts(): Promise<RankingShift[]> {
+    return request<RankingShift[]>("/api/feed/ranking-shifts");
   },
 
   // 피드 댓글 — 경기/너 나와! 등 어떤 피드 요소에나 같은 API로 단다.
@@ -520,10 +520,10 @@ export const api = {
 
 
   // 인증 헤더가 필요해 <a href> 로 바로 못 받으므로 blob 으로 받아 저장한다.
-  async downloadReplay(matchId: number): Promise<Blob> {
+  async downloadReplay(gameResultId: number): Promise<Blob> {
     const headers = new Headers();
     if (accessToken) headers.set("Authorization", `Bearer ${accessToken}`);
-    const res = await fetch(`${API_BASE}/api/matches/${matchId}/replay`, { headers });
+    const res = await fetch(`${API_BASE}/api/game-results/${gameResultId}/replay`, { headers });
     if (!res.ok) throw new Error("리플레이를 다운로드하지 못했어요.");
     return res.blob();
   },
@@ -532,7 +532,7 @@ export const api = {
   async downloadReplayArchive(): Promise<Blob> {
     const headers = new Headers();
     if (accessToken) headers.set("Authorization", `Bearer ${accessToken}`);
-    const res = await fetch(`${API_BASE}/api/matches/replays/archive`, { headers });
+    const res = await fetch(`${API_BASE}/api/game-results/replays/archive`, { headers });
     if (!res.ok) throw new Error("리플레이를 다운로드하지 못했어요.");
     return res.blob();
   },

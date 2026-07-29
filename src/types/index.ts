@@ -9,11 +9,11 @@ export type BaseRace = "테란" | "프로토스" | "저그";
 export type Race = "테란" | "프로토스" | "저그" | "랜덤";
 
 // 경기 결과. not_held = 미실시(승패 없음, 통계 집계 제외)
-export type MatchResult = "team1" | "team2" | "draw" | "not_held";
+export type GameOutcome = "team1" | "team2" | "draw" | "not_held";
 
 // 경기유형 코드 (0101=일대일, 0102=팀전) — team1/team2 인원수와 별개로
 // 어떤 성격의 경기인지 분류하기 위한 값
-export type MatchType = "0101" | "0102";
+export type GameType = "0101" | "0102";
 
 // 회원 이용 상태 — 가입 시 pending, 운영자가 승인하면 active, 정지시키면 suspended
 export type MemberStatus = "pending" | "active" | "suspended" | "withdrawn";
@@ -92,7 +92,7 @@ export interface ReplayNameMappingEntry {
 }
 
 // 경기 내 한 명의 참가 슬롯
-export interface MatchSlot {
+export interface GameResultSlot {
   memberId: string;
   race: Race | ""; // "" = 종족 미선택 (폼 작성 중). "랜덤"은 회원 주종족 개념일 뿐 저장은 안 됨
   // 리플레이에서 파싱된 원본 게임 아이디 — 회원 매칭 여부와 무관하게 리플레이로 등록된
@@ -130,7 +130,7 @@ export interface ReplayUpload {
 }
 
 // 경기 작성자 (수정/삭제 권한 판단 및 표시용)
-export interface MatchAuthor {
+export interface GameResultAuthor {
   id: string;
   nickname: string;
 }
@@ -151,7 +151,7 @@ export interface FeedCommentAuthor {
 // 본인/운영자만 수정·삭제할 수 있다(canEdit). 본문에 @닉네임으로 언급 가능.
 // 랭크(포인트/순위) 변동 이벤트 — 서버가 경기 등록/삭제 때마다 스냅샷으로 계산·저장해 두고,
 // 실제 변동(shifts)이 있었던 것만 피드에 노출한다.
-export interface RankShiftEntry {
+export interface RankingShiftEntry {
   memberId: string;
   nickname: string;
   from: number | null; // null = 순위권 밖에서 신규 진입
@@ -160,18 +160,18 @@ export interface RankShiftEntry {
   fromPoints?: number | null;
   toPoints?: number | null;
 }
-export interface RankSnapshot {
+export interface RankingShift {
   id: number;
-  matchType: MatchType;
+  matchType: GameType;
   reason: "register" | "delete" | "seed";
   createdAt: string;
   matchIds: number[];
-  shifts: RankShiftEntry[];
+  shifts: RankingShiftEntry[];
 }
 
 // 피드 댓글 — 대상(targetType, targetId)이 경기든 너 나와!든 순위변동 알림이든
 // 같은 API 하나로 달린다.
-export type FeedTargetType = "match" | "challenge" | "rankshift";
+export type FeedTargetType = "gameResult" | "challenge" | "rankingShift";
 export interface FeedComment {
   id: number;
   targetType: FeedTargetType;
@@ -186,19 +186,19 @@ export interface FeedComment {
 
 
 // 저장된 경기
-export interface Match {
+export interface GameResult {
   id: number;
   // 사람이 보고 지목하는 고유번호 — 등록 순서(id)가 아니라 실제 경기 시각 기준(리플레이가
   // 있으면 실제 시작 시각, 없으면 경기 날짜)이라 id와 순서가 다를 수 있다. 형식:
   // YYMMDDHHMMSS + 2자리 일련번호. 한 번 배정되면 이후 수정에서도 바뀌지 않는다.
   matchNo: string;
   date: string; // YYYY-MM-DD
-  team1: MatchSlot[];
-  team2: MatchSlot[];
-  result: MatchResult;
-  matchType: MatchType; // 경기유형
+  team1: GameResultSlot[];
+  team2: GameResultSlot[];
+  result: GameOutcome;
+  matchType: GameType; // 경기유형
   replay: Replay | null; // 리플레이(.rep) — 없으면 수기등록
-  createdBy: MatchAuthor | null; // 작성자가 탈퇴 등으로 사라졌으면 null
+  createdBy: GameResultAuthor | null; // 작성자가 탈퇴 등으로 사라졌으면 null
   // 아래 3개는 리플레이 파싱으로만 채워진다 (수동 등록 경기는 항상 null)
   mapName: string | null;
   gameStartedAt: string | null; // ISO 8601 (리플레이 실제 시작 시각 — date와 별개)
@@ -211,13 +211,13 @@ export interface Match {
 
 // 경기 생성/수정 요청 (id, 작성자는 서버가 채움). 리플레이는 업로드 payload(id 없음)로 보낸다.
 // 댓글은 별도 API로 관리하므로 경기 저장 payload에는 넣지 않는다.
-export type NewMatch = Omit<Match, "id" | "matchNo" | "createdBy" | "replay"> & {
+export type NewGameResult = Omit<GameResult, "id" | "matchNo" | "createdBy" | "replay"> & {
   replay: ReplayUpload | null;
 };
 
 // 경기결과 화면 무한스크롤용 커서 페이지 — 서버가 필터링/정렬까지 다 해서 내려준다.
-export interface MatchPage {
-  items: Match[];
+export interface GameResultPage {
+  items: GameResult[];
   nextCursor: string | null;
   hasMore: boolean;
   // 같은 필터 조건의 전체 건수 — 첫 페이지(커서 없음) 응답에만 값이 있고, 다음 페이지
@@ -242,7 +242,7 @@ export interface MemberStats {
   avgBuild: number | null;
 }
 
-// 서버 집계(GET /api/matches/stats) 응답 — 통계/랭킹 화면이 매치 원본을 직접 스캔하지 않고
+// 서버 집계(GET /api/game-results/stats) 응답 — 통계/랭킹 화면이 매치 원본을 직접 스캔하지 않고
 // 이 결과를 그대로 쓴다. overall은 요청한 race 파라미터를 반영하고, byRace/mostPlayedRace는
 // race 파라미터와 무관하게 항상 전체 종족 기준이다.
 export interface MemberStatsEntry {
@@ -274,7 +274,7 @@ export interface MemberStatsEntry {
   provisional: boolean | null;
 }
 
-// GET /api/matches/rating-history — 랭킹 상세의 '경기당 레이팅 변화(Δ)'. deltas는 이 회원이
+// GET /api/game-results/rating-history — 랭킹 상세의 '경기당 레이팅 변화(Δ)'. deltas는 이 회원이
 // 뛴 경기의 matchNo → μ 증감(양수=상승). 레이팅은 시간순 누적이라 백엔드가 계산해 준다.
 export interface RatingHistoryResponse {
   deltas: Record<string, number>;
@@ -294,21 +294,21 @@ export interface RivalryPair {
   draws: number;
 }
 
-export interface MatchStatsResponse {
+export interface GameResultStatsResponse {
   members: MemberStatsEntry[];
 }
 
-// GET /api/matches/stats/monthly — 개인 랭킹의 월별 순위변동(최근 5개월) 모달과 목록의
+// GET /api/game-results/stats/monthly — 개인 랭킹의 월별 순위변동(최근 5개월) 모달과 목록의
 // 전월 대비 화살표가 함께 쓴다. months는 요청한 "YYYY-MM" 순서 그대로 온다.
 export interface MemberStatsMonthEntry {
   month: string;
   members: MemberStatsEntry[];
 }
-export interface MonthlyMatchStatsResponse {
+export interface MonthlyGameResultStatsResponse {
   months: MemberStatsMonthEntry[];
 }
 
-// 팀랭킹(GET /api/matches/team-ranking) — 실제로 같은 편이었던 2인 이상 구성 하나가 한 행이다.
+// 팀랭킹(GET /api/game-results/team-ranking) — 실제로 같은 편이었던 2인 이상 구성 하나가 한 행이다.
 // dateFrom/dateTo를 안 넘기면 전체 경기가 대상, 넘기면(랭킹 화면의 월 기준 기본 집계) 그
 // 기간만 대상이다.
 export interface TeamRankEntry {
@@ -326,7 +326,7 @@ export interface TeamRankingResponse {
   teams: TeamRankEntry[];
 }
 
-// GET /api/matches/team-ranking/monthly — 위 개인 버전과 같은 목적(월별 순위변동/전월
+// GET /api/game-results/team-ranking/monthly — 위 개인 버전과 같은 목적(월별 순위변동/전월
 // 대비 화살표), 팀 쪽.
 export interface TeamRankMonthEntry {
   month: string;

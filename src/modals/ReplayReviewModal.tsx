@@ -13,7 +13,7 @@ import { newComputerSlotId } from "../constants/computerSlot";
 import { newUnregisteredSlotId } from "../constants/unregisteredSlot";
 import { useDefaultRaceResolver } from "../hooks/useDefaultRaceResolver";
 import { renderReplaySummary } from "../utils/replaySummaryText";
-import type { MatchSlot, MatchResult, NewMatch, Race, Member } from "../types";
+import type { GameResultSlot, GameOutcome, NewGameResult, Race, Member } from "../types";
 
 // 요약 미리보기 — 이 드래프트에서 그 게임 아이디가 회원으로 연결돼 있으면 닉네임을, 아니면
 // 원본 이름을 그대로 쓴다. 저장되는 건 원본 이름이라, 나중에 연결이 바뀌면 그때의 연결로
@@ -55,7 +55,7 @@ export default function ReplayReviewModal({
 }: ReplayReviewModalProps) {
   useLockBodyScroll();
   const members = useAppStore((s) => s.members);
-  const addMatch = useAppStore((s) => s.addMatch);
+  const addGameResult = useAppStore((s) => s.addGameResult);
   const addMemberReplayAlias = useAppStore((s) => s.addMemberReplayAlias);
 
   const [drafts, setDrafts] = useState<ReplayDraft[]>(initialDrafts);
@@ -72,7 +72,7 @@ export default function ReplayReviewModal({
     setDrafts((prev) => prev.map((d, i) => (i === index ? { ...d, ...patch } : d)));
   };
 
-  const setTeam = (index: number, side: "team1" | "team2", rows: MatchSlot[]) => {
+  const setTeam = (index: number, side: "team1" | "team2", rows: GameResultSlot[]) => {
     setDrafts((prev) => prev.map((d, i) => {
       if (i !== index) return d;
       if (side === "team1") {
@@ -98,7 +98,7 @@ export default function ReplayReviewModal({
       if (!t1Match && !t2Match) return d;
       // 회원으로 연결해도 리플레이 원본 게임 아이디(rawName)는 그대로 들고 간다 —
       // member.battletag는 나중에 바뀔 수 있어 이 값이 이 경기 시점의 유일한 증거다.
-      const toSlot = (match: UnmatchedPlayer): MatchSlot => ({
+      const toSlot = (match: UnmatchedPlayer): GameResultSlot => ({
         memberId: member.id, race: match.race, rawName: match.rawName,
         apm: match.apm, eapm: match.eapm, cmdCount: match.cmdCount, effectiveCmdCount: match.effectiveCmdCount, buildCount: match.buildCount,
       });
@@ -121,7 +121,7 @@ export default function ReplayReviewModal({
       const t1Match = d.unmatchedTeam1.find((p) => p.rawName === player.rawName);
       const t2Match = d.unmatchedTeam2.find((p) => p.rawName === player.rawName);
       if (!t1Match && !t2Match) return d;
-      const toSlot = (match: UnmatchedPlayer): MatchSlot => ({
+      const toSlot = (match: UnmatchedPlayer): GameResultSlot => ({
         memberId: kind === "computer" ? newComputerSlotId() : newUnregisteredSlotId(),
         race: match.race, rawName: match.rawName,
         apm: match.apm, eapm: match.eapm, cmdCount: match.cmdCount, effectiveCmdCount: match.effectiveCmdCount, buildCount: match.buildCount,
@@ -157,7 +157,7 @@ export default function ReplayReviewModal({
   // teamSplitUncertain(screp이 팀을 못 나눔) 전용 — 이미 회원/컴퓨터/비회원으로 확정된
   // 슬롯을 반대 팀으로 통째로 옮긴다. mappingMode라 원래는 팀 구성을 못 바꾸지만, 이
   // 경우는 애초에 자동 분석이 실패한 상태라 사람이 직접 편을 갈라야 한다.
-  const moveToOtherTeam = (index: number, fromSide: "team1" | "team2", row: MatchSlot) => {
+  const moveToOtherTeam = (index: number, fromSide: "team1" | "team2", row: GameResultSlot) => {
     setDrafts((prev) => prev.map((d, i) => {
       if (i !== index) return d;
       const team1 = fromSide === "team1" ? d.team1.filter((r) => r !== row) : [...d.team1, row];
@@ -234,14 +234,14 @@ export default function ReplayReviewModal({
     try {
       for (const i of pendingIndices) {
         const d = resolved[i];
-        const payload: NewMatch = {
+        const payload: NewGameResult = {
           // validateReplayDraft가 바로 위에서 빈 승패(리플레이가 승자를 못 가려낸 경기)를 걸렀다.
-          date: d.date, team1: d.team1, team2: d.team2, result: d.result as MatchResult, matchType: d.matchType,
+          date: d.date, team1: d.team1, team2: d.team2, result: d.result as GameOutcome, matchType: d.matchType,
           replay: d.replay,
           mapName: d.mapName || null, gameStartedAt: d.gameStartedAt, durationSeconds: d.durationSeconds,
           summaryData: d.summaryData,
         };
-        await addMatch(payload);
+        await addGameResult(payload);
         setSubmittedIndices((prev) => new Set(prev).add(i));
         onRegistered?.(d.fileName);
       }

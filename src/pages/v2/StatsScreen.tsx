@@ -14,7 +14,7 @@ import { monthInputToRange, shiftMonthValue, currentMonthValue, monthLabel } fro
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import { usePageBackground } from "../../hooks/usePageBackground";
 import { cx } from "../../utils/format";
-import type { BaseRace, MatchType, Member, MemberStats, MemberStatsEntry } from "../../types";
+import type { BaseRace, GameType, Member, MemberStats, MemberStatsEntry } from "../../types";
 
 // 필터 셋은 이제 그리드 제목을 이루는 문장의 낱말이다(요청: "7월 개인전 전체종족"
 // 형태로 각각을 드롭다운으로) — 라벨도 문장 안에서 그대로 읽히는 말로 적는다("전체"가
@@ -103,7 +103,7 @@ export default function StatsScreenV2() {
   const [race, setRace] = useState<BaseRace | "all">("all");
   // 게임 유형(개인전/팀전) — 라디오이고 "전체"는 없다. 피드의 랭크 변동 카드 "상세"로
   // 들어왔으면 그 변동의 유형을 미리 걸고(연동, 요청), 일반 진입은 랜덤 기본값(요청).
-  const [matchType, setMatchType] = useState<MatchType>(() => {
+  const [matchType, setMatchType] = useState<GameType>(() => {
     const preset = useAppStore.getState().statsPresetMatchType;
     if (preset) {
       useAppStore.getState().setStatsPresetMatchType(null);
@@ -128,7 +128,7 @@ export default function StatsScreenV2() {
   const [firstMonth, setFirstMonth] = useState<string | null>(null);
   useEffect(() => {
     let cancelled = false;
-    api.getMatchesPage({ sort: "oldest", limit: 1 })
+    api.getGameResultsPage({ sort: "oldest", limit: 1 })
       .then((page) => {
         if (!cancelled) setFirstMonth(page.items[0]?.date.slice(0, 7) ?? null);
       })
@@ -208,7 +208,7 @@ export default function StatsScreenV2() {
     let cancelled = false;
     setLoading(true);
     setError("");
-    api.getMatchStats({
+    api.getGameResultStats({
       memberIds,
       dateFrom: debouncedQuery.dateFrom,
       dateTo: debouncedQuery.dateTo,
@@ -226,7 +226,7 @@ export default function StatsScreenV2() {
     });
     // 전달 순위 기준선 — 본 조회와 따로 간다. 실패하면 화살표만 안 나오고 표는 그대로다.
     if (debouncedQuery.prevFrom) {
-      api.getMatchStats({
+      api.getGameResultStats({
         memberIds,
         dateFrom: debouncedQuery.prevFrom,
         dateTo: debouncedQuery.prevTo,
@@ -402,7 +402,7 @@ export default function StatsScreenV2() {
             />
             <Select
               className="scr-sentence-select" value={matchType} options={TYPE_SELECT_OPTS}
-              onChange={(v) => setMatchType(v as MatchType)} minDropWidth={120}
+              onChange={(v) => setMatchType(v as GameType)} minDropWidth={120}
             />
             {/* 마지막 낱말과 초기화는 한 덩어리로 — 줄이 좁아 넘칠 때 초기화만 다음 줄에
                 외따로 떨어지지 않게 한다. */}

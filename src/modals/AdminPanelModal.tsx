@@ -84,7 +84,7 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
   };
 
   // 모든 경기기록 삭제 — 되돌릴 수 없는 파괴적 작업이라, "삭제"를 직접 입력해야 실행된다.
-  const deleteAllMatches = async () => {
+  const deleteAllGameResults = async () => {
     const typed = window.prompt(
       '모든 경기기록을 삭제합니다. 첨부 리플레이까지 지워지고 되돌릴 수 없어요.\n삭제하려면 "삭제"를 입력하세요.',
     );
@@ -92,7 +92,7 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
     setBusy(true);
     setErr("");
     try {
-      const { deleted } = await api.deleteAllMatches();
+      const { deleted } = await api.deleteAllGameResults();
       window.alert(`${deleted}건의 경기기록을 삭제했어요.`);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "삭제하지 못했어요.");
@@ -108,7 +108,7 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
     setSeeding(true);
     setErr("");
     try {
-      const counts = await api.reseedRankSnapshots();
+      const counts = await api.reseedRankingShifts();
       window.alert(
         `순위 기준선을 새로 깔았어요.\n개인전 ${counts["0101"] ?? 0}명 · 팀전 ${counts["0102"] ?? 0}명`,
       );
@@ -295,7 +295,7 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
                         않는다(요청). window.prompt로 "삭제"를 직접 입력해야 실행된다. */}
                     <button
                       type="button" className="scr-btn scr-btn-primary"
-                      onClick={deleteAllMatches} disabled={busy}
+                      onClick={deleteAllGameResults} disabled={busy}
                     >
                       {busy ? <Spinner /> : "배치삭제"}
                     </button>

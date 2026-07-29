@@ -16,10 +16,10 @@ import { normalizeSearchText } from "../../utils/memberSearch";
 import { renderReplaySummaryParts, type SummaryPart } from "../../utils/replaySummaryText";
 import KakaoShareButton from "../../components/common/KakaoShareButton";
 import type { KakaoShareContent } from "../../utils/kakaoShare";
-import type { Match, Member, MatchSlot, MatchResult } from "../../types";
+import type { GameResult, Member, GameResultSlot, GameOutcome } from "../../types";
 
 type Outcome = "win" | "loss" | "draw" | "notHeld";
-function outcomeFor(side: "team1" | "team2", result: MatchResult): Outcome {
+function outcomeFor(side: "team1" | "team2", result: GameOutcome): Outcome {
   if (result === "draw") return "draw";
   if (result === "not_held") return "notHeld";
   return side === result ? "win" : "loss";
@@ -27,7 +27,7 @@ function outcomeFor(side: "team1" | "team2", result: MatchResult): Outcome {
 
 // 컴퓨터/비회원 여부에 따라 표시 이름을 정한다 — PlayerCell(펼친 로스터)과 접힌 상태의
 // 팀 요약("누구 외 N명")이 같은 이름 규칙을 쓰도록 공용으로 뺐다.
-export function resolveSlotName(slot: MatchSlot, players: MatchSlot[], memberOf: (id: string) => Member | undefined): string {
+export function resolveSlotName(slot: GameResultSlot, players: GameResultSlot[], memberOf: (id: string) => Member | undefined): string {
   const isComputer = isComputerSlot(slot.memberId);
   const isUnreg = isUnregisteredSlot(slot.memberId);
   const m = isComputer || isUnreg ? undefined : memberOf(slot.memberId);
@@ -76,37 +76,37 @@ export function SummaryText({ parts }: { parts: SummaryPart[] }) {
 }
 
 // 접힌 상태 요약 줄에 쓰는 "누구 외 N명" — 팀원이 하나뿐이면 그 이름만.
-function teamSummaryName(team: MatchSlot[], memberOf: (id: string) => Member | undefined): string {
+function teamSummaryName(team: GameResultSlot[], memberOf: (id: string) => Member | undefined): string {
   if (team.length === 0) return "";
   const first = resolveSlotName(team[0], team, memberOf);
   return team.length > 1 ? `${first} 외 ${team.length - 1}명` : first;
 }
 
 // 케밥 메뉴의 카카오톡 공유에 쓸 경기 요약 — 양 팀 이름과 결과/맵/날짜.
-function matchShareContent(match: Match, memberOf: (id: string) => Member | undefined): KakaoShareContent {
-  const t1 = teamSummaryName(match.team1, memberOf) || "팀1";
-  const t2 = teamSummaryName(match.team2, memberOf) || "팀2";
+function gameResultShareContent(gameResult: GameResult, memberOf: (id: string) => Member | undefined): KakaoShareContent {
+  const t1 = teamSummaryName(gameResult.team1, memberOf) || "팀1";
+  const t2 = teamSummaryName(gameResult.team2, memberOf) || "팀2";
   const resultLabel =
-    match.result === "draw" ? "무승부"
-    : match.result === "not_held" ? "미실시"
-    : `${outcomeFor("team1", match.result) === "win" ? t1 : t2} 승`;
-  const cleanedMap = cleanMapName(match.mapName);
+    gameResult.result === "draw" ? "무승부"
+    : gameResult.result === "not_held" ? "미실시"
+    : `${outcomeFor("team1", gameResult.result) === "win" ? t1 : t2} 승`;
+  const cleanedMap = cleanMapName(gameResult.mapName);
   const mapPart = cleanedMap ? ` · ${cleanedMap}` : "";
   return {
     title: `${t1} vs ${t2}`,
-    description: `${resultLabel}${mapPart} · ${match.date}`,
-    link: `${window.location.origin}/?sv=match&sid=${match.id}`,
-    fallbackText: `[스타게이트 게임결과]\n${t1} vs ${t2}\n결과: ${resultLabel}${mapPart}\n${match.date}`,
+    description: `${resultLabel}${mapPart} · ${gameResult.date}`,
+    link: `${window.location.origin}/?sv=gameResult&sid=${gameResult.id}`,
+    fallbackText: `[스타게이트 게임결과]\n${t1} vs ${t2}\n결과: ${resultLabel}${mapPart}\n${gameResult.date}`,
   };
 }
 
 // 매치업 한 편(피드 전용) — 너 나와! 카드의 팀 로스터(scr-challenge-side)와 같은 CSS로
 // 세로 나열한다(요청: "게임결과의 팀로스터와 너 나와의 팀로스터를 맞출거야"). 프사를
 // 더하고, 종족 배지는 닉네임 오른쪽(기존 규칙 유지). 컴퓨터/비회원은 작은 아이콘으로 구분.
-function MatchupSide({
+function RosterSide({
   team, memberOf, highlightMemberIds, highlightTerms,
 }: {
-  team: MatchSlot[]; memberOf: (id: string) => Member | undefined;
+  team: GameResultSlot[]; memberOf: (id: string) => Member | undefined;
   highlightMemberIds?: Set<string>; highlightTerms?: string[];
 }) {
   return (
@@ -145,13 +145,13 @@ function MatchupSide({
 export interface SearchListRow {
   id: number;
   date: string;
-  team1: MatchSlot[];
-  team2: MatchSlot[];
-  result: MatchResult;
-  raw: Match;
+  team1: GameResultSlot[];
+  team2: GameResultSlot[];
+  result: GameOutcome;
+  raw: GameResult;
 }
 
-interface MatchListProps {
+interface GameResultCardBodyProps {
   rows: SearchListRow[];
   memberOf: (id: string) => Member | undefined;
   // 삭제 성공 후 목록을 새로고침하기 위한 콜백(호출부가 이미 쓰는 reload를 그대로 넘겨준다).
@@ -162,16 +162,16 @@ interface MatchListProps {
   highlightTerms?: string[];
 }
 
-// 첨부된 리플레이 파일을 목록에서 바로 내려받는다 — 경기상세(MatchDetailModal)/수정
-// (MatchModal)과 같은 방식(blob → 임시 a태그 클릭).
-async function downloadReplay(match: Match) {
-  if (!match.replay) return;
+// 첨부된 리플레이 파일을 목록에서 바로 내려받는다 — 경기상세(GameResultDetailModal)/수정
+// (GameResultModal)과 같은 방식(blob → 임시 a태그 클릭).
+async function downloadReplay(gameResult: GameResult) {
+  if (!gameResult.replay) return;
   try {
-    const blob = await api.downloadReplay(match.id);
+    const blob = await api.downloadReplay(gameResult.id);
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = match.replay.displayName;
+    a.download = gameResult.replay.displayName;
     a.click();
     URL.revokeObjectURL(url);
   } catch {
@@ -181,11 +181,11 @@ async function downloadReplay(match: Match) {
 
 // 카드 오른쪽 세로점세개(⋮) — 누르면 메모/리플레이 저장/삭제를 드롭다운 메뉴로 연다(요청).
 // 위치/뒤집기는 다른 드롭다운과 같은 attachPopover, 바깥 클릭/포커스 이동으로 닫는다.
-function MatchActionsMenu({
-  match, canDelete, memberOf, onDelete,
+function GameResultActionsMenu({
+  gameResult, canDelete, memberOf, onDelete,
 }: {
-  match: Match; canDelete: boolean; memberOf: (id: string) => Member | undefined;
-  onDelete: (m: Match) => void;
+  gameResult: GameResult; canDelete: boolean; memberOf: (id: string) => Member | undefined;
+  onDelete: (m: GameResult) => void;
 }) {
   const [open, setOpen] = useState(false);
   const anchorRef = useRef<HTMLButtonElement>(null);
@@ -205,15 +205,15 @@ function MatchActionsMenu({
   // 메뉴들과 같은 방식).
 
   const items: { key: string; label: string; danger?: boolean; onSelect: () => void }[] = [
-    ...(match.replay ? [{ key: "download", label: "리플레이 저장", onSelect: () => void downloadReplay(match) }] : []),
-    ...(canDelete ? [{ key: "delete", label: "삭제", danger: true, onSelect: () => onDelete(match) }] : []),
+    ...(gameResult.replay ? [{ key: "download", label: "리플레이 저장", onSelect: () => void downloadReplay(gameResult) }] : []),
+    ...(canDelete ? [{ key: "delete", label: "삭제", danger: true, onSelect: () => onDelete(gameResult) }] : []),
   ];
 
   return (
-    <div className="scr-match-menu">
+    <div className="scr-feed-post-menu">
       <button
         type="button" ref={anchorRef}
-        className="scr-match-memo-btn scr-match-kebab-btn"
+        className="scr-feed-post-menu-btn scr-feed-kebab-btn"
         onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
         aria-label="더보기" aria-haspopup="menu" aria-expanded={open}
       >
@@ -229,13 +229,13 @@ function MatchActionsMenu({
             aria-hidden
           />
         <div
-          className="scr-menu-pop-drop scr-match-menu-drop scr-scroll" ref={dropRef} role="menu"
+          className="scr-menu-pop-drop scr-feed-post-menu-drop scr-scroll" ref={dropRef} role="menu"
           onClick={(e) => e.stopPropagation()}
         >
           {items.map((it) => (
             <button
               key={it.key} type="button" role="menuitem"
-              className={cx("scr-menu-pop-opt", it.danger && "scr-match-menu-opt-danger")}
+              className={cx("scr-menu-pop-opt", it.danger && "scr-feed-post-menu-opt-danger")}
               onClick={(e) => { e.stopPropagation(); it.onSelect(); setOpen(false); }}
             >
               {it.label}
@@ -244,7 +244,7 @@ function MatchActionsMenu({
           {/* 이 경기 결과를 카카오톡으로 공유(요청). 누르면 메뉴를 닫는다. */}
           <KakaoShareButton
             variant="menu"
-            content={() => matchShareContent(match, memberOf)}
+            content={() => gameResultShareContent(gameResult, memberOf)}
             onDone={() => setOpen(false)}
           />
         </div>
@@ -258,20 +258,20 @@ function MatchActionsMenu({
 // 예전엔 여기 사람별 총합 스탯 표와, 그걸 띄우는 전체화면 시트(시간축 그래프 포함)가
 // 있었다 — 통째로 걷어냈다(요청: 기능 삭제).
 
-// 피드 카드(MatchCard)의 본문 — 경기 한 장의 로스터·요약·케밥을 그린다. 이름은 목록이지만
+// 피드 카드(GameResultCard)의 본문 — 경기 한 장의 로스터·요약·케밥을 그린다. 이름은 목록이지만
 // 이제 '목록 화면'은 없다: 예전에 이걸 날것으로 쓰던 카톡 단일 경기 공유도 피드 카드를
-// 그대로 쓰게 바뀌어(요청), 부르는 곳은 MatchCard 하나뿐이다. 그래서 날짜 그룹 머리글·
+// 그대로 쓰게 바뀌어(요청), 부르는 곳은 GameResultCard 하나뿐이다. 그래서 날짜 그룹 머리글·
 // 로딩 스피너·비-매치업 로스터처럼 '목록'이던 시절의 갈래는 다 걷어냈다(요청: 잘못
 // 쓰이지 않게) — 다시 목록으로 쓰려면 그때 필요한 것만 되살리는 편이 낫다.
-export default function MatchList({
+export default function GameResultCardBody({
   rows, memberOf, onDeleted, highlightMemberIds, highlightTerms,
-}: MatchListProps) {
+}: GameResultCardBodyProps) {
   const user = useAppStore((s) => s.user);
-  const deleteMatchAction = useAppStore((s) => s.deleteMatch);
+  const deleteGameResultAction = useAppStore((s) => s.deleteGameResult);
   // 삭제는 운영자만 — 카드의 메모(연필)와 달리 실제 경기 기록 자체를 지우는 동작이라
-  // 작성자 본인이어도 허용하지 않는다(오삭제 방지, MatchDetailModal의 canDelete와 동일 기준).
+  // 작성자 본인이어도 허용하지 않는다(오삭제 방지, 경기상세 모달의 canDelete와 동일 기준).
   const canDelete = !!user && isAdminRole(user.roles);
-  const [deleteTarget, setDeleteTarget] = useState<Match | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<GameResult | null>(null);
   const [deleting, setDeleting] = useState(false);
   // 카드 안에서 펼치던 상세(스탯 표)는 없앴다(요청) — 그래서 로우 자체의 펼침/접힘도
   // 통째로 사라졌다. 게임번호·등록자는 펼쳐야 보이던 걸 늘 보이는 자리로 올렸다(요청).
@@ -280,7 +280,7 @@ export default function MatchList({
     if (!deleteTarget) return;
     setDeleting(true);
     try {
-      await deleteMatchAction(deleteTarget.id);
+      await deleteGameResultAction(deleteTarget.id);
       setDeleteTarget(null);
       onDeleted();
     } finally {
@@ -289,19 +289,19 @@ export default function MatchList({
   };
 
   return (
-    <div className="scr-match-list-panel-v2">
-      <div className="scr-match-cards">
+    <div className="scr-game-result-list-panel-v2">
+      <div className="scr-game-result-cards">
         {rows.map((r) => {
               const o1 = outcomeFor("team1", r.result);
               const o2 = outcomeFor("team2", r.result);
               return (
-              <div key={r.id} className="scr-match-trow">
+              <div key={r.id} className="scr-game-result-trow">
                 {/* 윗줄 — 이제 오른쪽 위 케밥메뉴만 남는다. 게임번호는 감췄고(요청),
                     등록자는 카드 머리의 시각 옆으로 옮겼다(요청). */}
-                <div className="scr-match-trow-topline">
-                  <div className="scr-match-trow-topmeta">
-                    <MatchActionsMenu
-                      match={r.raw} canDelete={canDelete} memberOf={memberOf}
+                <div className="scr-game-result-trow-topline">
+                  <div className="scr-game-result-trow-topmeta">
+                    <GameResultActionsMenu
+                      gameResult={r.raw} canDelete={canDelete} memberOf={memberOf}
                       onDelete={setDeleteTarget}
                     />
                   </div>
@@ -309,8 +309,8 @@ export default function MatchList({
                 {/* 로스터 — 너 나와! 매치업과 같은 구조(각 팀 세로 나열 + 가운데 vs +
                     이긴 편 쪽 승/무 배지, 요청). 예전엔 목록 화면용 그리드 로스터가 따로
                     있었는데, 그걸 쓰던 화면이 없어져 걷어냈다. */}
-                <div className="scr-challenge-matchup scr-feed-match-matchup">
-                  <MatchupSide
+                <div className="scr-challenge-matchup scr-feed-game-result-matchup">
+                  <RosterSide
                     team={r.team1} memberOf={memberOf}
                     highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms}
                   />
@@ -325,19 +325,19 @@ export default function MatchList({
                       {o2 === "draw" ? "무" : "승"}
                     </span>
                   </span>
-                  <MatchupSide
+                  <RosterSide
                     team={r.team2} memberOf={memberOf}
                     highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms}
                   />
                 </div>
-                {r.result === "not_held" && <div className="scr-feed-match-notheld">미실시</div>}
+                {r.result === "not_held" && <div className="scr-feed-game-result-notheld">미실시</div>}
                 {/* 맵·플레이시간 — 요약을 읽기 전에 먼저 보는 정보라 요약 바로 위에 두고,
                     접힌 상태에서도 보인다(요청). */}
                 {(cleanMapName(r.raw.mapName) || r.raw.durationSeconds != null) && (
-                  <div className="scr-match-trow-map-line scr-match-trow-map-meta">
-                    {cleanMapName(r.raw.mapName) && <span className="scr-match-trow-map">{cleanMapName(r.raw.mapName)}</span>}
+                  <div className="scr-game-result-trow-map-line scr-game-result-trow-map-meta">
+                    {cleanMapName(r.raw.mapName) && <span className="scr-game-result-trow-map">{cleanMapName(r.raw.mapName)}</span>}
                     {r.raw.durationSeconds != null && (
-                      <span className="scr-match-trow-dur">({Math.round(r.raw.durationSeconds / 60)}분)</span>
+                      <span className="scr-game-result-trow-dur">({Math.round(r.raw.durationSeconds / 60)}분)</span>
                     )}
                   </div>
                 )}
@@ -347,7 +347,7 @@ export default function MatchList({
                 {(() => {
                   const parts = summaryPartsOf(r, memberOf);
                   return parts && parts.length > 0 ? (
-                    <div className="scr-match-trow-summary"><SummaryText parts={parts} /></div>
+                    <div className="scr-game-result-trow-summary"><SummaryText parts={parts} /></div>
                   ) : null;
                 })()}
               </div>

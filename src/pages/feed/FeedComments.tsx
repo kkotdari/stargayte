@@ -194,7 +194,7 @@ function NoteComposer({
   };
 
   return (
-    <div className="scr-mreq-compose-row scr-match-note-compose-row">
+    <div className="scr-mreq-compose-row scr-feed-note-compose-row">
       <div className="scr-mreq-input-wrap">
         <div
           className="scr-input scr-mreq-editor"
@@ -580,7 +580,7 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
   // 댓글 한 줄. interactive=false는 카드 안 미리보기용 — 수정/삭제는 시트에서만 한다
   // (미리보기에서 편집까지 되면 시트를 여는 탭과 버튼 탭이 같은 자리에서 겹친다).
   const renderNote = (c: FeedComment, interactive: boolean) => (
-    <li key={c.id} className="scr-mreq-item scr-match-note-item">
+    <li key={c.id} className="scr-mreq-item scr-feed-note-item">
       <div className="scr-mreq-item-top">
         <div className="scr-mreq-item-author">
           <Avatar
@@ -589,19 +589,19 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
             className="scr-mreq-item-author-avatar"
           />
           <span className="scr-mreq-item-author-name">{c.author.nickname}</span>
-          <span className="scr-match-note-time">{formatCommentTime(c.createdAt)}</span>
+          <span className="scr-feed-note-time">{formatCommentTime(c.createdAt)}</span>
         </div>
         {interactive && c.canEdit && editingId !== c.id && (
           <div className="scr-mreq-item-actions">
             <button
-              type="button" className="scr-match-note-icon-btn"
+              type="button" className="scr-feed-note-icon-btn"
               onClick={() => { setErr(null); setEditingId(c.id); }}
               aria-label="수정"
             >
               <Pencil size={13} />
             </button>
             <button
-              type="button" className="scr-match-note-icon-btn scr-match-note-icon-danger"
+              type="button" className="scr-feed-note-icon-btn scr-feed-note-icon-danger"
               onClick={() => setDeleteTarget(c)}
               aria-label="삭제"
             >
@@ -621,7 +621,7 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
           submitLabel={<CornerDownLeft size={14} />}
         />
       ) : (
-        <p className="scr-mreq-item-text scr-match-note-text">{renderInline(c.text, c.mentions)}</p>
+        <p className="scr-mreq-item-text scr-feed-note-text">{renderInline(c.text, c.mentions)}</p>
       )}
     </li>
   );
@@ -643,8 +643,8 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
     // 시트는 body 포털로 나가지만 리액트 이벤트는 이 트리를 따라 올라오므로 여기서 함께 막힌다.
     <div
       // 댓글이 하나도 없으면 "댓글 쓰기" 아이콘이 줄을 차지하지 않고 포스트 바디 아래
-      // 여백 왼쪽 구석에 얹힌다(요청) — 자리는 CSS(.scr-match-notes-empty)가 잡는다.
-      className={cx("scr-match-notes", notes.length === 0 && "scr-match-notes-empty")}
+      // 여백 왼쪽 구석에 얹힌다(요청) — 자리는 CSS(.scr-feed-notes-empty)가 잡는다.
+      className={cx("scr-feed-notes", notes.length === 0 && "scr-feed-notes-empty")}
       onClick={(e) => e.stopPropagation()}
     >
       {mobile ? (
@@ -653,12 +653,12 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
             // 댓글이 있으면 아이콘 대신 목록 자체가 시트를 여는 버튼이다(요청 1·2).
             // button 안에는 목록을 넣을 수 없어(phrasing content만 허용) role로 대신한다.
             <div
-              className="scr-match-notes-preview" role="button" tabIndex={0}
+              className="scr-feed-notes-preview" role="button" tabIndex={0}
               aria-label={`댓글 ${notes.length}개 보기`}
               onClick={openSheet}
               onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openSheet(); } }}
             >
-              <ul className="scr-mreq-list scr-match-notes-list">
+              <ul className="scr-mreq-list scr-feed-notes-list">
                 {notes.map((c) => renderNote(c, false))}
               </ul>
             </div>
@@ -676,12 +676,12 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
       ) : (
         <>
           {notes.length > 0 && (
-            <ul className="scr-mreq-list scr-match-notes-list">
+            <ul className="scr-mreq-list scr-feed-notes-list">
               {notes.map((c) => renderNote(c, true))}
             </ul>
           )}
 
-          {err && <div className="scr-err scr-match-note-err">{err}</div>}
+          {err && <div className="scr-err scr-feed-note-err">{err}</div>}
 
           {user && editingId === null && (
             <div className={cx("scr-feed-comment-row", composerOpen && "scr-feed-comment-row-open")}>
@@ -716,7 +716,7 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
       {mobile && sheetOpen && createPortal(
         <div
           ref={sheetRef}
-          className={cx("scr-comment-sheet scr-post scr-feed-comments scr-match-notes", typing && "scr-comment-sheet-typing")}
+          className={cx("scr-comment-sheet scr-post scr-feed-comments scr-feed-notes", typing && "scr-comment-sheet-typing")}
           role="dialog" aria-label="댓글"
           onFocus={() => setTyping(true)}
           onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setTyping(false); }}
@@ -729,14 +729,14 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
           </div>
           <div className="scr-comment-sheet-body scr-scroll" ref={sheetBodyRef}>
             {notes.length > 0 ? (
-              <ul className="scr-mreq-list scr-match-notes-list">
+              <ul className="scr-mreq-list scr-feed-notes-list">
                 {notes.map((c) => renderNote(c, true))}
               </ul>
             ) : (
               <p className="scr-comment-sheet-empty">아직 댓글이 없어요.</p>
             )}
           </div>
-          {err && <div className="scr-err scr-match-note-err">{err}</div>}
+          {err && <div className="scr-err scr-feed-note-err">{err}</div>}
           {user && editingId === null && (
             // 입력칸 왼쪽에 내 아바타(요청) — 지금 누구 이름으로 쓰는지 보여준다.
             <div className="scr-comment-sheet-compose">

@@ -2,11 +2,11 @@ import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
-import RankMatchHistory from "./RankMatchHistory";
+import PointDetailHistory from "./PointDetailHistory";
 import { api } from "../../api/client";
 import { useAppStore } from "../../store/appStore";
 import { useLockBodyScroll } from "../../utils/bodyScrollLock";
-import type { Match, MatchType, Member, Race } from "../../types";
+import type { GameResult, GameType, Member, Race } from "../../types";
 
 // 이력은 최근 100건까지만(아주 많은 경우 대비).
 const HISTORY_LIMIT = 100;
@@ -14,7 +14,7 @@ const HISTORY_LIMIT = 100;
 interface PointDetailModalProps {
   member: Member;
   // 개인전이면 "0101"(1:1 경기), 팀전이면 "0102"(팀경기) 이력을 보여준다.
-  matchType: MatchType;
+  matchType: GameType;
   // 통계 화면에서 보고 있던 기간 — 이력과 경기당 포인트(Δ)를 같은 기준으로 좁힌다.
   // 전체 기간이면 빈 문자열.
   period: { from: string; to: string };
@@ -31,21 +31,21 @@ export default function PointDetailModal({
   useLockBodyScroll();
   const memberOf = useAppStore((s) => s.memberOf);
 
-  const [matches, setMatches] = useState<Match[]>([]);
-  const [matchesLoading, setMatchesLoading] = useState(true);
-  const [matchesErr, setMatchesErr] = useState("");
+  const [gameResults, setGameResults] = useState<GameResult[]>([]);
+  const [matchesLoading, setGameResultsLoading] = useState(true);
+  const [matchesErr, setGameResultsErr] = useState("");
 
   const reload = useCallback(() => {
     let cancelled = false;
-    setMatchesLoading(true);
-    setMatchesErr("");
-    api.getMatchesPage({
+    setGameResultsLoading(true);
+    setGameResultsErr("");
+    api.getGameResultsPage({
       teamMemberIds: [member.id], matchType, sort: "latest",
       dateFrom: period.from, dateTo: period.to, limit: HISTORY_LIMIT,
     })
-      .then((page) => { if (!cancelled) setMatches(page.items); })
-      .catch((e) => { if (!cancelled) setMatchesErr(e instanceof Error ? e.message : "경기를 불러오지 못했어요."); })
-      .finally(() => { if (!cancelled) setMatchesLoading(false); });
+      .then((page) => { if (!cancelled) setGameResults(page.items); })
+      .catch((e) => { if (!cancelled) setGameResultsErr(e instanceof Error ? e.message : "경기를 불러오지 못했어요."); })
+      .finally(() => { if (!cancelled) setGameResultsLoading(false); });
     return () => { cancelled = true; };
   }, [member.id, matchType, period.from, period.to]);
 
@@ -82,8 +82,8 @@ export default function PointDetailModal({
           {/* 소제목 없이 이력만 바로 보여준다(요청). */}
           <div className="scr-rank-detail-history">
             {matchesErr && <div className="scr-err">{matchesErr}</div>}
-            <RankMatchHistory
-              matches={matches} members={[member]} memberOf={memberOf} loading={matchesLoading}
+            <PointDetailHistory
+              gameResults={gameResults} members={[member]} memberOf={memberOf} loading={matchesLoading}
               deltaByMatchNo={deltaByMatchNo}
               bothTeams={matchType === "0102"}
             />

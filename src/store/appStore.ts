@@ -2,8 +2,8 @@ import { create } from "zustand";
 import { api } from "../api/client";
 import { versionNumber } from "../utils/appVersion";
 import type {
-  Member, Match, NewMatch, MemberCreatePayload, MemberStatus, MemberRole, AppVersion,
-  AppVersionInfo, Challenge, MatchRequestInboxItem, MatchType, ScreenKey,
+  Member, GameResult, NewGameResult, MemberCreatePayload, MemberStatus, MemberRole, AppVersion,
+  AppVersionInfo, Challenge, MatchRequestInboxItem, GameType, ScreenKey,
 } from "../types";
 
 // 버전이 바뀐 걸 감지했을 때 AppUpdateNoticeModal에 넘기는 정보 — 변경 내용 문구(notes)는
@@ -63,7 +63,7 @@ interface AppState {
   // 이른 경기 날짜. 과거 데이터를 나중에 더 채워 넣어도 하드코딩 없이 항상 최신 값을
   // 반영하도록 상수 대신 부트스트랩 때마다 서버에서 다시 조회한다. 아직 못 불러온 동안은
   // null — 소비하는 쪽에서 빈 문자열(항상 permissive)로 대체해서 쓴다.
-  earliestMatchDate: string | null;
+  earliestGameResultDate: string | null;
   // 랭킹/경기결과/전적통계를 몇 버전 화면 세트로 그릴지 — 부트스트랩 때 로드하고,
   // 제어판에서 바꾸면 그 자리에서 다시 반영한다.
   appVersion: AppVersion;
@@ -118,8 +118,8 @@ interface AppState {
   // ----- 경기결과 ----- 이제 전체 매치를 store에 들고 있지 않는다(경기결과 화면이 서버
   // 페이지네이션으로 직접 조회) — 아래는 API 호출만 하는 얇은 통과 함수. 각 화면은 저장/삭제
   // 후 자기 로컬 목록(useCursorPagination의 reload)을 직접 새로고침한다.
-  addMatch: (match: NewMatch) => Promise<Match>;
-  deleteMatch: (id: number) => Promise<void>;
+  addGameResult: (gameResult: NewGameResult) => Promise<GameResult>;
+  deleteGameResult: (id: number) => Promise<void>;
 
   // 통계/랭킹 화면의 새로고침 버튼용: 회원 목록을 다시 불러온다
   refreshAll: () => Promise<void>;
@@ -168,8 +168,8 @@ interface AppState {
   clearScreenIntent: () => void;
   // 통계 화면이 열릴 때 미리 걸어둘 게임 유형 — 피드 변동 카드 내용과 맞춘다(요청).
   // 소비(마운트) 시점에 비워져, 이후 일반 진입은 다시 랜덤 기본값을 쓴다.
-  statsPresetMatchType: MatchType | null;
-  setStatsPresetMatchType: (mt: MatchType | null) => void;
+  statsPresetMatchType: GameType | null;
+  setStatsPresetMatchType: (mt: GameType | null) => void;
 
   // ----- 파생 셀렉터(헬퍼) -----
   memberOf: (id: string) => Member | undefined;
@@ -178,7 +178,7 @@ interface AppState {
 export const useAppStore = create<AppState>()((set, get) => ({
   user: null,
   members: [],
-  earliestMatchDate: null,
+  earliestGameResultDate: null,
   appVersion: "1",
   appVersions: [],
   noticeEnabled: true,
@@ -233,19 +233,19 @@ export const useAppStore = create<AppState>()((set, get) => ({
     set({ booting: true });
     try {
       const [
-        members, { activeVersion, noticeEnabled }, appVersions, earliestMatchDate,
+        members, { activeVersion, noticeEnabled }, appVersions, earliestGameResultDate,
         { items: inboxChallenges }, { items: resultInboxChallenges }, { items: inboxMatchRequests },
       ] = await Promise.all([
         api.getMembers(),
         api.getAppVersion(),
         api.getAppVersions(),
-        api.getEarliestMatchDate(),
+        api.getEarliestGameResultDate(),
         api.getPendingChallengesForMe(),
         api.getResultPendingChallengesForMe(),
         api.getMatchRequestInbox(),
       ]);
       set({
-        members, appVersion: activeVersion, appVersions, noticeEnabled, earliestMatchDate,
+        members, appVersion: activeVersion, appVersions, noticeEnabled, earliestGameResultDate,
         inboxChallenges, resultInboxChallenges, inboxMatchRequests,
         updateNotice: computeUpdateNotice(activeVersion, noticeEnabled, appVersions),
       });
@@ -254,8 +254,8 @@ export const useAppStore = create<AppState>()((set, get) => ({
     }
   },
 
-  addMatch: async (match) => api.createMatch(match),
-  deleteMatch: async (id) => { await api.deleteMatch(id); },
+  addGameResult: async (gameResult) => api.createGameResult(gameResult),
+  deleteGameResult: async (id) => { await api.deleteGameResult(id); },
 
   // 화면 이동마다 호출 — 회원 목록과 함께 현재 활성 버전도 다시 가져온다. 다른
   // 운영자가 그 사이 제어판에서 전환했어도 화면을 옮기는 것만으로 바로 반영되게 한다.

@@ -4,12 +4,12 @@ import KakaoShareButton from "../../components/common/KakaoShareButton";
 import { cx } from "../../utils/format";
 import { normalizeSearchText } from "../../utils/memberSearch";
 import type { KakaoShareContent } from "../../utils/kakaoShare";
-import type { RankShiftEntry, RankSnapshot } from "../../types";
+import type { RankingShiftEntry, RankingShift } from "../../types";
 
 // 변동이 이보다 많으면 위에서 이 개수만 보이고 나머지는 "…더보기"로 접는다(요청).
 const SHIFT_COLLAPSE_AT = 4;
 
-// 랭크 변동 카드 — 피드와 카카오톡 공유 페이지(?sv=rankshift)가 같은 마크업을 쓰도록
+// 랭크 변동 카드 — 피드와 카카오톡 공유 페이지(?sv=rankingShift)가 같은 마크업을 쓰도록
 // 분리했다(요청: "순위변동 발생도 카톡공유 가능, 피드는 다 가능하게"). 헤더 오른쪽
 // 케밥(actions)과 하단(상세 버튼·댓글, footer)은 쓰는 쪽이 끼워 넣는다.
 
@@ -18,7 +18,7 @@ const SHIFT_COLLAPSE_AT = 4;
 // 예전에는 이 자리에 ▲2 / ▼1 같은 배지를 뒀는데 걷어냈다(요청) — 통계표의 순위 변동
 // 배지와 생김새가 같아, 같은 화면을 오가며 볼 때 어느 쪽 이야기인지 헷갈린다.
 // 여기서는 몇 계단이 아니라 몇 위에서 몇 위로 갔는지를 그대로 읽히게 둔다.
-export function shiftLabel(e: RankShiftEntry): { text: string; cls: string } {
+export function shiftLabel(e: RankingShiftEntry): { text: string; cls: string } {
   if (e.from == null) return { text: `신규 → ${e.to}위`, cls: "scr-feed-shift-new" };
   const d = e.from - e.to;
   return {
@@ -30,7 +30,7 @@ export function shiftLabel(e: RankShiftEntry): { text: string; cls: string } {
 // 포인트 증감 표기(요청: "+100p" 이렇게) — 몇 계단 올랐는지만으로는 그게 한 판 차이인지
 // 몰아친 결과인지 알 수가 없다. 이 필드가 생기기 전 스냅샷에는 포인트가 없으므로,
 // 둘 다 있고 실제로 달라졌을 때만 내놓는다.
-export function pointLabel(e: RankShiftEntry): { text: string; cls: string } | null {
+export function pointLabel(e: RankingShiftEntry): { text: string; cls: string } | null {
   if (e.fromPoints == null || e.toPoints == null) return null;
   const d = Math.round(e.toPoints) - Math.round(e.fromPoints);
   if (d === 0) return null;
@@ -40,11 +40,11 @@ export function pointLabel(e: RankShiftEntry): { text: string; cls: string } | n
   };
 }
 
-export function rankShiftTypeLabel(shift: RankSnapshot): string {
+export function rankShiftTypeLabel(shift: RankingShift): string {
   return shift.matchType === "0101" ? "개인전" : "팀전";
 }
 
-export function rankShiftShareContent(shift: RankSnapshot): KakaoShareContent {
+export function rankShiftShareContent(shift: RankingShift): KakaoShareContent {
   const summary = shift.shifts
     .slice(0, 3)
     .map((e) => `${e.nickname} ${shiftLabel(e).text}`)
@@ -52,19 +52,19 @@ export function rankShiftShareContent(shift: RankSnapshot): KakaoShareContent {
   return {
     title: `${rankShiftTypeLabel(shift)} 랭크 변동 발생`,
     description: summary,
-    link: `${window.location.origin}/?sv=rankshift&sid=${shift.id}`,
+    link: `${window.location.origin}/?sv=rankingShift&sid=${shift.id}`,
     fallbackText: `[스타게이트] ${rankShiftTypeLabel(shift)} 랭크 변동 발생\n${summary}`,
   };
 }
 
 // 카드 우상단 케밥 — 카카오 공유만 담는다(스냅샷은 삭제 개념이 없다). 너 나와 케밥과
 // 같은 CSS(scr-feed-chal-menu) 재사용.
-export function RankShiftMenu({ shift }: { shift: RankSnapshot }) {
+export function RankingShiftMenu({ shift }: { shift: RankingShift }) {
   const [open, setOpen] = useState(false);
   return (
     <div className="scr-feed-chal-menu">
       <button
-        type="button" className="scr-match-memo-btn scr-match-kebab-btn"
+        type="button" className="scr-feed-post-menu-btn scr-feed-kebab-btn"
         onClick={() => setOpen((v) => !v)}
         aria-label="더보기" aria-haspopup="menu" aria-expanded={open}
       >
@@ -92,10 +92,10 @@ export function RankShiftMenu({ shift }: { shift: RankSnapshot }) {
   );
 }
 
-export default function RankShiftCard({
+export default function RankingShiftCard({
   shift, timeText, dateLabel, actions, footer, highlightMemberIds, highlightTerms,
 }: {
-  shift: RankSnapshot;
+  shift: RankingShift;
   timeText?: string;
   dateLabel?: string;
   actions?: React.ReactNode;
