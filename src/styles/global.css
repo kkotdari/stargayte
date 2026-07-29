@@ -1932,6 +1932,10 @@ html:not(.scr-light-theme) .scr-stats-list-panel-v2 .scr-stat-name-cell, html:no
      높이가 되게 한다. 헤더 행은 막대가 없어 원래 낮으므로 PC와 마찬가지로 예외로 푼다. */
   .scr-stats-list-panel-v2 .scr-stat-row { min-height: 65px; }
   .scr-stats-list-panel-v2 .scr-stat-row.scr-stat-row-head { min-height: 0; }
+  /* 컬럼명 ↔ ⓘ ↔ 정렬 화살표 간격(요청: 모바일에서 좀 줄이기) — base의 9px는 PC(아래
+     min-width:481px 블록에서 4px)와 달리 모바일에는 줄여주는 규칙이 없어 그대로 남아
+     있었다. 칸 폭이 120px뿐이라 이 간격 두 번(18px)이 컬럼명 자리를 그만큼 먹는다. */
+  .scr-stats-list-panel-v2 .scr-stat-sort-btn { gap: 5px; }
 }
 .scr-stat-row-head span { text-align: center; justify-content: center; }
 /* 정렬 가능한 헤더 칸(전적/유효APM/유효커맨드) — 버튼이라 span과 달리 위 규칙이 안 먹어서
