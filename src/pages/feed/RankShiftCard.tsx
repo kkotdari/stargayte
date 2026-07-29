@@ -13,12 +13,18 @@ const SHIFT_COLLAPSE_AT = 4;
 // 분리했다(요청: "순위변동 발생도 카톡공유 가능, 피드는 다 가능하게"). 헤더 오른쪽
 // 케밥(actions)과 하단(상세 버튼·댓글, footer)은 쓰는 쪽이 끼워 넣는다.
 
-// 변동 표기 — 신규 진입 / 상승(▲n) / 하락(▼n).
+// 순위가 어디서 어디로 갔나 — "1 → 3위"(신규 진입은 "신규 → 3위").
+//
+// 예전에는 이 자리에 ▲2 / ▼1 같은 배지를 뒀는데 걷어냈다(요청) — 통계표의 순위 변동
+// 배지와 생김새가 같아, 같은 화면을 오가며 볼 때 어느 쪽 이야기인지 헷갈린다.
+// 여기서는 몇 계단이 아니라 몇 위에서 몇 위로 갔는지를 그대로 읽히게 둔다.
 export function shiftLabel(e: RankShiftEntry): { text: string; cls: string } {
-  if (e.from == null) return { text: "신규", cls: "scr-feed-shift-new" };
+  if (e.from == null) return { text: `신규 → ${e.to}위`, cls: "scr-feed-shift-new" };
   const d = e.from - e.to;
-  if (d > 0) return { text: `▲${d}`, cls: "scr-feed-shift-up" };
-  return { text: `▼${-d}`, cls: "scr-feed-shift-down" };
+  return {
+    text: `${e.from} → ${e.to}위`,
+    cls: d > 0 ? "scr-feed-shift-up" : "scr-feed-shift-down",
+  };
 }
 
 // 포인트 증감 표기(요청: "+100p" 이렇게) — 몇 계단 올랐는지만으로는 그게 한 판 차이인지
@@ -41,7 +47,7 @@ export function rankShiftTypeLabel(shift: RankSnapshot): string {
 export function rankShiftShareContent(shift: RankSnapshot): KakaoShareContent {
   const summary = shift.shifts
     .slice(0, 3)
-    .map((e) => `${e.to}위 ${e.nickname} ${shiftLabel(e).text}`)
+    .map((e) => `${e.nickname} ${shiftLabel(e).text}`)
     .join(" · ");
   return {
     title: `${rankShiftTypeLabel(shift)} 랭크 변동 발생`,
@@ -137,11 +143,10 @@ export default function RankShiftCard({
                   && "scr-feed-shift-row-hl")}
             >
               <span className="scr-feed-shift-name">{e.nickname}</span>
+              {/* "조조 1 → 3위 -100p"(요청) — 몇 계단인지를 배지로 말하는 대신 어디서
+                  어디로 갔는지를 그대로 적고, 그 근거인 포인트 변동을 옆에 붙인다. */}
               <span className={label.cls}>{label.text}</span>
-              {/* 순위 변동 바로 옆에 포인트 변동(요청) — 같은 색 규칙을 쓰되 한 톤 작게 둬서
-                  순위가 먼저 읽히고 포인트가 그 근거로 따라 읽히게 한다. */}
               {pts && <span className={cx("scr-feed-shift-pts", pts.cls)}>{pts.text}</span>}
-              {e.from != null && <span className="scr-feed-shift-from">({e.from}위 → {e.to}위)</span>}
             </li>
           );
         })}

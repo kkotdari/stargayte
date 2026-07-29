@@ -16,7 +16,7 @@ import { monthInputToRange, currentMonthValue, MONTH_INPUT_MIN, MONTH_INPUT_MAX 
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import { usePageBackground } from "../../hooks/usePageBackground";
 import { cx } from "../../utils/format";
-import type { BaseRace, MatchType, Member, MemberStats, MemberStatsEntry } from "../../types";
+import type { BaseRace, MatchType, Member, MemberStats, MemberStatsEntry, RankSnapshot } from "../../types";
 
 // 종족 필터 — 검색창 예약어에서 필터창 드롭다운으로 옮겼다(요청).
 const RACE_SELECT_OPTS = [
@@ -144,6 +144,16 @@ export default function StatsScreenV2() {
   const [statsByMember, setStatsByMember] = useState<Record<string, MemberStatsEntry>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  // 최근 순위 변동 — 포인트 옆 화살표(▲2)의 근거다. 피드가 쓰는 것과 같은 목록이고,
+  // 못 불러오면 화살표만 안 나온다(표 자체는 그대로다).
+  const [rankSnapshots, setRankSnapshots] = useState<RankSnapshot[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    api.listRankSnapshots()
+      .then((res) => { if (!cancelled) setRankSnapshots(res); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     const memberIds = debouncedQuery.memberIds ? debouncedQuery.memberIds.split(",") : [];
@@ -176,7 +186,7 @@ export default function StatsScreenV2() {
       const stats = race === "all" ? (entry?.overall ?? EMPTY_STATS) : (entry?.byRace[race] ?? EMPTY_STATS);
       // 포인트(랭크 점수) — 이 기간·유형에서 순위 대상이 아니면(0경기 등) null → "-".
       const points = entry?.rankScore != null ? Math.round(entry.rankScore) : null;
-      return { member: m, stats, points };
+      return { member: m, stats, points, entry };
     });
 
     const sorted = [...list];
@@ -243,6 +253,40 @@ export default function StatsScreenV2() {
     }
     return sorted;
   }, [matchedMembers, statsByMember, sort, race]);
+
+  // 지금 몇 위인가 — 서버가 매긴 자리번호(sortOrder)로 줄을 세우고 완전 동률(tieGroup)은
+  // 공동순위(1,1,3)로 묶는다. 백엔드가 순위 스냅샷을 만들 때 쓰는 규칙(_compute_standings)과
+  // 같은 계산이라, 여기 순위와 랭크 변동 카드의 순위가 어긋나지 않는다.
+  // 표의 정렬(sort)과는 무관하다 — 순위는 정렬을 바꿔도 그 사람의 순위 그대로여야 한다.
+  const rankByMember = useMemo(() => {
+    const ranked = matchedMembers
+      .map((m) => statsByMember[m.id])
+      .filter((e): e is MemberStatsEntry => !!e && e.sortOrder != null && e.tieGroup != null)
+      .filter((e) => (statsByMember[e.memberId]?.overall.plays ?? 0) > 0)
+      .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+    const out = new Map<string, number>();
+    let rank = 0;
+    ranked.forEach((e, i) => {
+      if (i === 0 || e.tieGroup !== ranked[i - 1].tieGroup) rank = i + 1;
+      out.set(e.memberId, rank);
+    });
+    return out;
+  }, [matchedMembers, statsByMember]);
+
+  // 직전 순위표 대비 변동 — 가장 최근 스냅샷(같은 유형)의 shifts에서 가져온다.
+  // 스냅샷은 언제나 '이번 달' 성적으로 계산되므로(_current_month_range), 다른 달이나
+  // 전체 기간을 보고 있을 때는 짝이 안 맞는 숫자라 아예 안 보여준다.
+  const shiftPeriodMatches = periodUnit === "month" && periodMonth === currentMonthValue();
+  const rankDeltaByMember = useMemo(() => {
+    const out = new Map<string, number>();
+    if (!shiftPeriodMatches) return out;
+    const latest = rankSnapshots.find((s) => s.matchType === matchType);
+    for (const e of latest?.shifts ?? []) {
+      if (e.from == null) continue;
+      out.set(e.memberId, e.from - e.to);
+    }
+    return out;
+  }, [rankSnapshots, matchType, shiftPeriodMatches]);
 
   const maxOverallPlays = useMemo(
     () => Math.max(1, ...cards.map((c) => c.stats.plays)), [cards],
@@ -351,8 +395,8 @@ export default function StatsScreenV2() {
               <div className="scr-stat-row scr-stat-row-head">
                 <SortableHead label="유저" sortKey="name" sort={sort} onToggle={toggleSort} className="scr-stat-name-head" />
                 <SortableHead
-                  label="포인트" sortKey="points" sort={sort} onToggle={toggleSort}
-                  tooltip="랭크 포인트 — 이 기간·분류의 경기들로 산정한 레이팅 점수. 숫자를 누르면 경기 이력(경기당 포인트 변화)이 열려요."
+                  label="포인트(순위)" sortKey="points" sort={sort} onToggle={toggleSort}
+                  tooltip="랭크 포인트 — 이 기간·분류의 경기들로 산정한 레이팅 점수. 괄호 안은 지금 순위와 직전 순위표 대비 변동이에요(변동은 이번 달을 볼 때만 나와요). 숫자를 누르면 경기 이력(경기당 포인트 변화)이 열려요."
                 />
                 <SortableHead label="게임수" sortKey="plays" sort={sort} onToggle={toggleSort} />
                 <SortableHead label="승률" sortKey="rate" sort={sort} onToggle={toggleSort} />
@@ -375,6 +419,8 @@ export default function StatsScreenV2() {
                   member={c.member}
                   stats={c.stats}
                   points={c.points}
+                  rank={rankByMember.get(c.member.id) ?? null}
+                  rankDelta={rankDeltaByMember.get(c.member.id) ?? null}
                   onPointsClick={() => setPointMember(c.member)}
                   belowMinPlays={c.stats.plays < MIN_PLAYS_FOR_STATS}
                   compact

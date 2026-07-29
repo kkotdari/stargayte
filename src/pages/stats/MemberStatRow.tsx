@@ -25,6 +25,11 @@ interface MemberStatRowProps {
   // 랭크 포인트(TrueSkill 보수추정, 표시 스케일) — undefined면 포인트 컬럼 자체를 안 그린다
   // (통계 화면 전용, 요청: 랭킹을 통계에 통합). null이면 이 기간 순위 대상이 아니라 "-".
   points?: number | null;
+  // 지금 몇 위인가(공동순위 포함) — 포인트 옆에 함께 보여준다(요청). 순위 대상이 아니면 null.
+  rank?: number | null;
+  // 직전 순위표 대비 몇 계단 움직였나(+면 상승) — 최근 순위 변동 스냅샷에서 온다.
+  // 그 스냅샷은 '이번 달' 기준으로만 계산되므로, 다른 기간을 보고 있으면 호출부가 안 넘긴다.
+  rankDelta?: number | null;
   // 포인트를 누르면 포인트 상세(경기 이력)를 연다.
   onPointsClick?: () => void;
 }
@@ -32,7 +37,7 @@ interface MemberStatRowProps {
 // 전적통계 목록의 테이블 한 행.
 export default function MemberStatRow({
   member, stats, maxOverallPlays, maxBuild, maxEapm, maxEcmd, avatar = true, compact = false, belowMinPlays = false,
-  points, onPointsClick,
+  points, rank, rankDelta, onPointsClick,
 }: MemberStatRowProps) {
   const openMemberProfile = useAppStore((s) => s.openMemberProfile);
   const [photoOpen, setPhotoOpen] = useState(false);
@@ -57,12 +62,27 @@ export default function MemberStatRow({
           {points === null ? (
             <span className="scr-stat-points-empty">-</span>
           ) : (
-            <button
-              type="button" className="scr-stat-points-btn"
-              onClick={onPointsClick} aria-label={`${member.nickname} 포인트 상세`}
-            >
-              {points.toLocaleString()}
-            </button>
+            <>
+              <button
+                type="button" className="scr-stat-points-btn"
+                onClick={onPointsClick} aria-label={`${member.nickname} 포인트 상세`}
+              >
+                {points.toLocaleString()}
+              </button>
+              {/* 포인트 옆에 지금 순위와 그 변동(요청) — 포인트만으로는 그게 몇 등짜리
+                  점수인지 감이 안 온다. 변동은 방향이 곧 의미라 색과 화살표로만 짧게. */}
+              {rank != null && (
+                <span className="scr-stat-points-rank">
+                  ({rank}위
+                  {rankDelta != null && rankDelta !== 0 && (
+                    <span className={rankDelta > 0 ? "scr-feed-shift-up" : "scr-feed-shift-down"}>
+                      {rankDelta > 0 ? `▲${rankDelta}` : `▼${-rankDelta}`}
+                    </span>
+                  )}
+                  )
+                </span>
+              )}
+            </>
           )}
         </div>
       )}

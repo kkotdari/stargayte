@@ -1740,6 +1740,14 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 }
 @media (hover: hover) { .scr-stat-points-btn:hover { color: var(--pipe-bright); } }
 .scr-stat-points-empty { color: var(--dim); }
+/* 포인트 옆 "(3위 ▲2)"(요청) — 포인트가 주인공이라 한 톤 작고 흐리게 두고, 변동 화살표는
+   랭크 변동 카드와 같은 색 규칙(scr-feed-shift-up/down)을 그대로 쓴다. 숫자가 흔들리지
+   않게 tabular-nums, 줄바꿈은 막는다. */
+.scr-stat-points-rank {
+  display: inline-flex; align-items: baseline; gap: 2px;
+  margin-left: 1px; color: var(--dim); font-size: var(--fs-micro);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
 /* (구) 900px 이상에서 minmax(1fr)+width:100%로 남는 폭을 나눠 채우던 분기는 제거 —
    v2 통계 패널은 --list-content-max(800px)로 폭이 상한되는데 칸 합(이름 160 + 150×5 =
    910px)이 그보다 항상 커서 "남는 폭"이라는 게 존재하지 않았고, width:100%(=800px)만
@@ -7364,7 +7372,8 @@ html.scr-light-theme .scr-feed-add-fab {
    갈아 끼운다. 다크의 파스텔 톤은 검은 배경에서만 성립한다. */
 .scr-light-theme .scr-feed-shift-up { color: #16a34a; }
 .scr-light-theme .scr-feed-shift-down { color: #e11d48; }
-.scr-feed-shift-from { color: var(--dim); font-size: var(--fs-micro); }
+/* 예전엔 배지(▲2) 뒤에 "(1위 → 3위)"를 따로 붙였다 — 이제 그 자체가 본문이 되면서
+   (요청: 배지 제거, "조조 1 → 3위 -100p") 이 보조 표기는 필요 없어졌다. */
 /* 포인트 변동(요청: "+100p") — 순위 변동과 같은 상승/하락 색을 쓰되 한 톤 작게 둔다.
    순위가 먼저 읽히고 포인트가 그 근거로 따라 읽히는 순서가 맞다. */
 .scr-feed-shift-pts { font-size: var(--fs-micro); font-variant-numeric: tabular-nums; }
