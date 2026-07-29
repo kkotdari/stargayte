@@ -837,8 +837,10 @@ export default function FeedScreen() {
       api.getMatchesPage({ cursor: cursor ?? undefined, limit: PAGE_SIZE, sort: "latest" }),
     [],
   );
-  const { items: matches, loading: matchesLoading, loadingMore, hasMore, loadMore, reload } =
-    useCursorPagination(fetchPage, []);
+  const {
+    items: matches, loading: matchesLoading, loadingMore, hasMore, loadMore, reload,
+    total: matchTotal,
+  } = useCursorPagination(fetchPage, []);
 
   // 무한스크롤 — 목록 끝 센티널이 보이면 다음 페이지를 불러온다(전체 일괄 로드 대신).
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -955,6 +957,23 @@ export default function FeedScreen() {
     const ids = [c.createdBy.id, ...c.ownMembers.map((m) => m.memberId), ...c.targets.map((t) => t.memberId)];
     return ids.some((id) => { const m = memberOf(id); return !!m && memberMatchesTerm(m, term); });
   };
+
+  // 필터 바에 적을 건수(요청: 무한스크롤이면 미리 전체 건수를 조회해서 써야 한다).
+  //
+  // 경기결과만 커서 페이지로 나눠 받고(나머지는 한 번에 다 받는다), 그 전체 건수는 서버가
+  // 첫 페이지 응답에 담아 준다(MatchPage.total) — 그래서 아무 필터도 안 걸렸을 때는
+  // "서버가 센 경기 수 + 이미 다 받아 둔 너나와/순위변동 수"가 곧 진짜 전체 건수다.
+  // 화면에 몇 장이 그려졌는지(filteredFeed.length)와 무관하게 처음부터 이 값을 보여준다.
+  //
+  // 필터(유형/검색)가 걸리면 이 값을 쓸 수 없다 — 걸러내기는 전부 이미 받아 둔 것들
+  // 위에서만 이뤄지므로(서버에 같은 조건으로 세어 달라고 하지 않는다) 아직 안 받은
+  // 페이지의 건수를 알 방법이 없다. 그때는 지금까지 받은 것 중 걸러진 수를 그대로 쓴다 —
+  // 목록도 딱 그만큼만 보여주고 있으므로 화면과 숫자가 어긋나지는 않는다.
+  const filterActiveForCount = kindFilter !== "all" || searchTerms.length > 0;
+  const nonMatchCount = useMemo(
+    () => feed.filter((it) => it.kind !== "match").length,
+    [feed],
+  );
 
   // 필터 적용 — 유형/게임번호/유저 검색을 아이템 종류별로 건다(너나와에도 유저 필터 적용).
   const filteredFeed = useMemo<FeedItem[]>(() => {
@@ -1116,7 +1135,11 @@ export default function FeedScreen() {
         // 필터 바로 아래에 건수를 둔다(요청). 세는 건 걸러진 활동 하나하나(filteredFeed)이지
         // 화면에 보이는 카드 수(displayFeed)가 아니다 — 같은 날 게임결과를 한 장으로 묶는 건
         // 보여주는 방식일 뿐이라(지적) 그 묶음 안의 판도 각각 한 건이다.
-        count={filteredFeed.length}
+        count={
+          !filterActiveForCount && matchTotal !== null
+            ? matchTotal + nonMatchCount
+            : filteredFeed.length
+        }
         countLabel="건"
         searchValue={search}
         onSearchChange={setSearch}
