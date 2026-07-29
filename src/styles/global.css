@@ -488,6 +488,11 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
 /* "언제" — 신청 메시지 버튼과 같은 아이콘+라벨 알약이다(요청). 생김새는
    .scr-challenge-msg-toggle이 전부 맡고, 여기서는 자리만 잡는다. */
 .scr-datetime-note-add { align-self: flex-start; }
+/* 잠긴 날짜/"언제" 아래 한 줄 — 왜 지금 못 고치는지 알려 주는 안내다(요청). 라벨의
+   "(선택)"과 같은 톤으로, 입력칸에 딸린 부속으로 읽히게 작고 흐리게 둔다. */
+.scr-datetime-locked-note {
+  margin: -2px 0 0; font-size: var(--fs-micro); color: var(--muted); line-height: 1.4;
+}
 /* 지우기(×) 버튼을 입력칸 "내부" 오른쪽에 오버레이한다(요청: "x버튼을 인풋창 내부로 이동").
    입력칸엔 오른쪽 패딩을 넉넉히 줘서 값 텍스트가 × 밑으로 들어가지 않게 한다. 값이 없으면
    ×만 숨기고(자리·패딩은 유지) 레이아웃은 안 변한다. */

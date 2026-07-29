@@ -51,11 +51,17 @@ export default function OptionalDateTimeFields({
   const [noteOpen, setNoteOpen] = useState(noteStr.length > 0);
   // 잠긴 칸(요청자가 이미 적어 보낸 값)은 접을 수 없다 — 읽을 값이 있으니 늘 보여준다.
   const showNote = noteLocked || noteOpen || noteStr.length > 0;
+  // 잠긴 칸이 하나라도 있으면 지금 화면은 '응답'이다 — 잠금은 요청자가 정해서 보낸 값을
+  // 응답자가 못 바꾸게 할 때만 걸린다(도전장 쓰기·일시 수정 팝업은 아무것도 안 잠근다).
+  // 그때는 "(선택)"이 거짓말이 된다(고를 수 있는 게 아니라 이미 정해진 값이다) — 라벨을
+  // 이름만 남기고, 대신 지금 못 바꾸는 이유를 한 줄로 알려 준다(요청).
+  const locked = dateLocked || noteLocked;
+  const optional = locked ? null : <span className="scr-label-optional">(선택)</span>;
 
   return (
     <div className="scr-datetime-stack">
       <label className="scr-field scr-datetime-input">
-        <span className="scr-label">날짜 <span className="scr-label-optional">(선택)</span></span>
+        <span className="scr-label">날짜{optional && <> {optional}</>}</span>
         <span className="scr-datetime-input-wrap">
           <input
             type="date" className={cx(cls, dateLocked && "scr-datetime-locked")} value={dateStr}
@@ -85,7 +91,7 @@ export default function OptionalDateTimeFields({
       </label>
       {showNote ? (
         <label className="scr-field scr-datetime-input">
-          <span className="scr-label">언제 <span className="scr-label-optional">(선택)</span></span>
+          <span className="scr-label">언제{optional && <> {optional}</>}</span>
           <span className="scr-datetime-input-wrap">
             <input
               type="text" className={cx(cls, noteLocked && "scr-datetime-locked")} value={noteStr}
@@ -116,6 +122,12 @@ export default function OptionalDateTimeFields({
           <CalendarPlus size={13} aria-hidden />
           언제
         </button>
+      )}
+      {/* 잠긴 칸을 보고 "왜 못 고치지?" 하고 멈추지 않게, 수락한 뒤에 고칠 수 있다는 것을
+          알려 준다(요청) — 실제로 성사된 뒤에는 시각 옆 연필로 일시 수정 팝업이 열린다
+          (ChallengeTimeEditModal). */}
+      {locked && (
+        <p className="scr-datetime-locked-note">날짜와 언제는 수락 후 변경 가능</p>
       )}
     </div>
   );
