@@ -57,12 +57,34 @@ function loadKakao(): Promise<KakaoLike | null> {
   return sdkPromise;
 }
 
+/** 게임결과·랭크변동 공유 카드의 썸네일 — 클럽 워드마크(요청). 이 두 종류는 너 나와!처럼
+ *  전용 그림이 없어서, 예전에 미사용으로 지웠던 로고 파일을 되살려 쓴다.
+ *
+ *  검정 워드마크를 쓴다: 투명 PNG는 카카오가 서버에서 흰 바탕에 얹어 내보내므로 흰 글씨는
+ *  아예 안 보인다(같은 이유로 logo_white.png는 앱 안에서만 쓴다).
+ *
+ *  이 그림은 워드마크라 6.4:1로 아주 납작하다 — 카카오 피드 템플릿의 그림 자리는 2:1이라
+ *  가운데만 잘려 보일 수 있어, 아래 sendDefault에서 실제 가로·세로를 함께 넘겨 카카오가
+ *  비율을 알고 배치하게 한다. */
+const SHARE_LOGO = "/images/logo/logo_black.png";
+export const SHARE_LOGO_W = 2847;
+export const SHARE_LOGO_H = 444;
+
+/** 공유 썸네일의 절대 URL — 카카오가 서버에서 읽어가므로 상대경로로는 안 된다. */
+export function shareLogoUrl(): string {
+  return `${window.location.origin}${SHARE_LOGO}`;
+}
+
 export interface KakaoShareContent {
   // 카드 제목/설명 — 카카오 네이티브 공유(피드형)에 쓴다.
   title: string;
   description?: string;
   // 카드 썸네일. 카카오가 서버에서 읽어가므로 반드시 공개 접근 가능한 절대 URL이어야 한다.
   imageUrl?: string;
+  // 그 그림의 실제 가로·세로(px) — 카카오가 자리를 잡을 때 쓴다. 워드마크처럼 비율이
+  // 심하게 치우친 그림은 이걸 안 주면 가운데만 잘려 나온다.
+  imageWidth?: number;
+  imageHeight?: number;
   // 카드를 눌렀을 때 이동할 링크(기본: 현재 사이트).
   link?: string;
   // 폴백(OS 공유 시트/클립보드)에서 쓸 순수 텍스트 — 카드가 아니라 글로 나가므로 핵심
@@ -85,6 +107,8 @@ export async function shareToKakao(content: KakaoShareContent): Promise<ShareOut
           title: content.title,
           description: content.description ?? "",
           imageUrl: content.imageUrl ?? `${window.location.origin}/apple-touch-icon.png`,
+          ...(content.imageWidth ? { imageWidth: content.imageWidth } : {}),
+          ...(content.imageHeight ? { imageHeight: content.imageHeight } : {}),
           link: { mobileWebUrl: link, webUrl: link },
         },
         buttons: [{ title: "앱에서 보기", link: { mobileWebUrl: link, webUrl: link } }],

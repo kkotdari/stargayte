@@ -4972,17 +4972,9 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 }
 .scr-challenge-time-edit-btn:active { color: var(--text); background: rgba(255,255,255,0.06); }
 @media (hover: hover) { .scr-challenge-time-edit-btn:hover { color: var(--text); background: rgba(255,255,255,0.06); } }
-/* 라벨 줄 ↔ 수정 폼을 전환할 때, 내용이 바뀌는 만큼의 자리를 즉시 뺏지 않고 실측 높이를
-   CSS transition으로 모핑한다(요청: "연필 누르면 공간이 자연스럽게 확보되는 영역
-   트랜스폼") — ChallengeCard의 페이지 높이 모핑과 같은 패턴. */
-.scr-challenge-time-head-wrap { overflow: hidden; transition: height .18s ease; }
-/* 일시 수정 인라인 폼 — 시간 헤더 자리를 그대로 대신한다. */
-.scr-challenge-time-edit-form {
-  display: flex; flex-direction: column; gap: 6px;
-  padding: 8px 10px; border-radius: 10px; background: rgba(255,255,255,0.04);
-}
-/* 날짜/시간/취소/확인을 한 줄로(요청) — 좁은 화면에서도 안 깨지게 입력칸은 필요한
-   만큼만, 버튼은 줄어들지 않게 최소 폭을 보장한다. */
+/* 결과 입력 폼의 날짜 줄 — 이 클래스는 일시 수정 인라인 폼에서 처음 생겼는데, 그 폼은
+   팝업(ChallengeTimeEditModal)으로 옮기며 없어졌다. 지금 남은 사용처는 결과 입력의
+   [날짜 | 지우기] 한 줄뿐이다(ChallengeCard, ChallengeResultInboxModal). */
 .scr-challenge-time-edit-row { display: flex; align-items: center; gap: 6px; }
 /* 인풋이 너무 튄다는 피드백으로, 기본 .scr-input의 뚜렷한 테두리 대신 모달과 같은
    "테두리 없이 위쪽 반사광(inset)+옅은 그림자로만 구분감" 스타일을 쓴다(요청: "쉐도우
@@ -5015,15 +5007,6 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
    입력칸 실제 폭(fit-content)에 딱 맞춰 ×가 항상 입력칸 오른쪽 안쪽에 오게 한다. */
 .scr-challenge-time-edit-cell { flex: 0 1 auto; min-width: 0; width: fit-content; max-width: 100%; }
 .scr-challenge-time-edit-cell > .scr-challenge-time-edit-input { width: auto; max-width: 100%; }
-/* 취소/확인 — 기존 아이콘 버튼(.scr-icon-btn) 그대로 쓰되 이 좁은 행에 맞게 크기만 줄인다
-   (요청). 클래스명은 연필(수정) 버튼 .scr-challenge-time-edit-btn과 겹치지 않게 별도로 둔다
-   — 예전엔 겹쳐서 그 버튼의 margin:-4px가 같이 먹어 세로 정렬이 어긋났다(지적). */
-.scr-time-edit-action.scr-icon-btn { width: 28px; height: 28px; margin: 0; }
-.scr-time-edit-action.scr-icon-btn svg { display: block; }
-/* 확인은 체크에 포인트 색을 줘서 취소(중립)와 구분한다. */
-.scr-time-edit-confirm.scr-icon-btn { color: var(--point); }
-@media (hover: hover) { .scr-time-edit-confirm.scr-icon-btn:hover { color: var(--text); } }
-
 /* scroll-margin-top — NEXT 너 나와로 자동 스크롤(scrollIntoView block:"start")할 때 화면
    맨 위에 딱 붙지 않고 이만큼만 숨 쉴 여유를 남긴다(위의 다른 카드는 안 보인다). 날짜
    헤더가 스티키라 스크롤이 끝난 뒤에도 그 헤더가 카드 위에 계속 떠 있으므로, 헤더
@@ -6652,18 +6635,24 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
      패딩이 달라 본문만 넓어 보임). 모바일은 아래 720px 블록에서 16/20으로 되돌린다. */
   --post-pad-x: 24px;
   --post-pad-bx: 28px;
-  /* 머리(시각·제목)만 쓰는 왼쪽 들여쓰기 — 본문(--post-pad-bx)보다 눈에 띄게 바깥에서
+  /* 머리(제목·시각)만 쓰는 왼쪽 들여쓰기 — 본문(--post-pad-bx)보다 눈에 띄게 바깥에서
      시작한다(요청). 예전엔 둘의 차이가 4px뿐이라 "머리가 한 단계 위"라는 게 안 읽혔다.
-     12px 차이면 제목 줄이 왼쪽으로 튀어나온 표제처럼 보이고 본문은 한 칸 들여쓴 글이 된다. */
-  --post-head-pad-l: 16px;
+     16 → 10px(요청: 왼쪽 패딩 축소) — 제목과 시각이 한 줄을 나눠 쓰게 되면서 그 줄에 담을
+     글자가 늘었고, 왼쪽을 당기면 제목이 판 왼쪽 끝에 붙은 표제처럼 읽힌다. */
+  --post-head-pad-l: 10px;
   /* 헤더 오른쪽에 비워 두는 케밥 자리. 변수로 둔 건 제목 줄의 음영이 이 값만큼 오른쪽
      끝까지 빠져나가야 하기 때문이다 — 묶음 카드처럼 케밥이 없는 헤더는 이 값을 줄인다. */
   --post-head-pad-r: 44px;
-  /* 케밥(26px)의 위 좌표 — 제목 줄 중심에 딱 맞추면(21px) 버튼 아래끝이 머리 음영띠
-     밖으로 삐져나온다. 눈은 케밥을 제목이 아니라 머리 덩어리 전체와 견주기 때문에
-     그게 아래로 처져 보인다(지적) — 6px 올려 띠 안에 들어오게 한다.
+  /* 케밥(26px)의 위 좌표 — 머리 음영띠 안에서 세로 가운데에 오게 둔다. 눈은 케밥을 제목
+     하나가 아니라 머리 덩어리 전체와 견주기 때문에, 띠를 벗어나면 그것만 아래로 처져
+     보인다(지적).
+     제목과 시각이 한 줄이 되면서 띠 높이가 44 → 33px(위 9 + 줄 19 + 아래 5)로 줄었다 —
+     예전 값 15px이면 케밥이 띠 아래로 삐져나온다.
+     이 값은 버튼이 아니라 버튼을 담은 상자의 좌표다. 버튼(.scr-feed-post-menu-btn)에는
+     터치 영역을 바깥으로 넓히는 margin:-4px이 걸려 있어 실제 버튼 상자는 여기서 4px 더
+     위에서 시작한다 — 그래서 띠 가운데((33-26)/2 = 3.5)에 그 4px을 더한 8px이다.
      헤더 세로 여백에 딸린 값이라 그쪽을 건드리면 여기도 다시 봐야 한다. */
-  --post-kebab-top: 15px;
+  --post-kebab-top: 8px;
   /* 제목 줄 뒤에 깔리는 음영의 색(요청). 알파를 섞어야 해서 색상값이 아니라 RGB 성분으로
      둔다. 다크는 파란 띠 대신 테마 제 색인 검정 반투명으로 둔다(요청) — 색을 얹는 강조가
      아니라 제목 줄이 한 겹 가라앉아 보이는 '음영'이 된다. 포스트 자신은 채움이 아예 없는
@@ -6689,7 +6678,7 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    이 블록은 위 :root와 특이도가 같아서, 반드시 뒤에 와야 이긴다(720px 쪽 모바일 블록에
    넣으면 소스상 앞이라 무시된다). */
 @media (max-width: 720px) {
-  :root { --post-pad-x: 20px; --post-pad-bx: 24px; --post-head-pad-l: 12px; }
+  :root { --post-pad-x: 20px; --post-pad-bx: 24px; --post-head-pad-l: 8px; }
 }
 .scr-feed-card {
   position: relative;
@@ -6810,9 +6799,15 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   white-space: nowrap; flex-shrink: 0;
   font-size: var(--fs-micro); font-weight: 800; color: var(--dim);
 }
-/* 제목이 길어도 헤더가 두 줄로 터지지 않게 — 넘치면 말줄임표로. */
-.scr-feed-post-stack > .scr-feed-card-head .scr-feed-card-label {
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+/* 제목과 시각이 한 줄을 나눠 쓰게 되면서 이 규칙이 묶음 카드만의 것이 아니게 됐다 —
+   "4인팀 랭크 변동 발생"처럼 긴 제목이 좁은 화면에 들어가면 제목이 두 줄로 접혀 머리가
+   다시 두 층이 된다. 넘치면 말줄임표로 자른다(시각은 flex-shrink:0이라 안 줄어든다). */
+.scr-feed-card-head .scr-feed-card-label {
+  /* min-width:0이 함께 있어야 실제로 잘린다 — 라벨도 제목 줄의 플렉스 아이템이고,
+     white-space:nowrap이 걸린 아이템의 기본 min-width(auto)는 '글자 전체 폭'이라
+     아무리 좁아져도 안 줄어든다. 그러면 제목 줄이 안 줄고 시각이 아랫줄로 밀린다(실측:
+     320px에서 머리가 27 → 47px로 두 층이 됐다). */
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 /* 묶음 카드의 헤더 우상단에도 다른 포스트와 똑같이 케밥이 앉는다(요청: 게임요약 통째로
    카톡 공유를 케밥 메뉴 안에). 그만큼 오른쪽 자리를 비워 제목이 케밥 밑으로 흘러 들어가지
@@ -6879,12 +6874,21 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    — 제목을 과감히 키워(요청) 그 무게로 경계를 만든다. 시각은 제목에 딸린 보조라
    baseline을 맞춰 한 줄로 흐르게 한다. */
 .scr-feed-card-head {
-  display: flex; flex-direction: column; align-items: stretch; gap: 3px;
-  /* 위아래 여백을 같게 — 띠가 머리 전체를 덮게 되면서 예전의 위 16px이 그대로 남아,
-     날짜 위만 휑하고 제목 아래는 붙어 보였다(지적: 17px 대 6px). 둘 다 같은 값으로 맞춘다.
-     그리고 그 값을 더 줄인다(지적: 띠가 두꺼워 시선이 거기 머문다) — 8px 여백이던 걸
-     5px 언저리로. 왼쪽은 본문보다 바깥에서 시작한다(--post-head-pad-l 주석 참고). */
-  padding: 4px var(--post-head-pad-r) 4px var(--post-head-pad-l);
+  /* 제목과 시각을 한 줄에 나란히(요청) — 제목이 앞, 시각이 바로 뒤. 두 줄이던 걸 한 줄로
+     합치면 그만큼 띠 높이가 절반 가까이 준다(요청: "띠 부분이 반정도로 축소되겠지").
+     시각 크기는 그대로 두고(요청) baseline만 제목에 맞춰, 큰 글자에 딸린 보조로 읽히게 한다.
+     nowrap이어야 한다 — wrap으로 두면 자리가 모자랄 때 제목이 줄어드는 대신 시각이
+     아랫줄로 내려가 머리가 도로 두 층이 된다(플렉스는 줄을 먼저 나누고 그다음에 줄이므로,
+     줄바꿈 판단에는 줄어들기 전의 폭이 쓰인다. 실측: 320px에서 27 → 47px). */
+  display: flex; flex-direction: row; align-items: baseline; flex-wrap: nowrap;
+  column-gap: 8px; row-gap: 3px;
+  /* 한 줄이 되면서 위아래 4px씩으로는 제목이 판 위 경계에 붙어 보였다 — 위를 늘린다(요청).
+     아래를 그대로 두는 것은 일부러다: 아래에는 곧 본문이 오므로 띠와 본문 사이가 벌어지면
+     머리가 떠 있는 것처럼 보인다. 한글은 글자가 줄 상자 아래쪽에 앉으므로 위를 더 줘야
+     눈으로는 위아래가 비슷해 보인다.
+     왼쪽은 본문보다 바깥에서 시작한다(--post-head-pad-l 주석 참고).
+     이 값을 건드리면 케밥 세로 위치(--post-kebab-top)도 함께 다시 봐야 한다. */
+  padding: 9px var(--post-head-pad-r) 5px var(--post-head-pad-l);
   font-size: var(--fs-micro); color: var(--dim);
   /* 음영 띠를 자식 뒤(z-index:-1)에 깔되 포스트 배경까지 뚫고 내려가지는 않게 —
      isolation이 이 헤더를 새 쌓임 맥락으로 만들어 음수 z-index를 여기 안에 가둔다. */
@@ -6918,13 +6922,20 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 50%, transparent 100%);
   mask-image: linear-gradient(90deg, #000 0%, #000 50%, transparent 100%);
 }
-/* 윗줄 — 시각(그리고 그와 한 묶음인 마감 카운트다운·일시 수정, 요약의 참여 인원). */
-.scr-feed-card-head-meta { display: flex; align-items: center; gap: 8px; min-width: 0; }
-/* 아랫줄 — 아이콘 + 제목. 오른쪽 44px(헤더 패딩)은 케밥 자리라 비워둔다. */
-.scr-feed-card-head-title {
-  display: flex; align-items: center; gap: 7px; min-width: 0;
+/* 제목 뒤 — 시각(그리고 그와 한 묶음인 마감 카운트다운·일시 수정). 제목이 길어 자리가
+   모자라면 제목이 먼저 줄어야 하므로 이쪽은 안 줄인다. */
+.scr-feed-card-head-meta {
+  display: flex; align-items: baseline; gap: 8px; min-width: 0; flex-shrink: 0;
 }
-.scr-feed-card-head-title > svg { flex-shrink: 0; }
+/* 제목 — 아이콘 + 라벨. 오른쪽 44px(헤더 패딩)은 케밥 자리라 비워둔다.
+   align-items를 baseline으로 두는 것은 이 안의 배치 때문이 아니라 바깥 때문이다: 플렉스
+   상자의 baseline은 'baseline으로 정렬된 첫 아이템'에서 나오는데, center로 두면 그런
+   아이템이 하나도 없어 아이콘 박스 아래끝에서 짜맞춘 값이 쓰이고, 그러면 옆에 붙는 시각이
+   제목보다 몇 px 내려앉는다. 라벨만 baseline에 태우고 아이콘은 따로 가운데로 되돌린다. */
+.scr-feed-card-head-title {
+  display: flex; align-items: baseline; gap: 7px; min-width: 0;
+}
+.scr-feed-card-head-title > svg { flex-shrink: 0; align-self: center; }
 /* 다크 테마에서는 띠를 흰색으로 하고 그 위 글자를 뒤집는다(요청) — 검정 띠는 바탕과
    구별이 잘 안 됐다. 완전 불투명이던 걸 살짝 비쳐 보이게 낮춘다(요청).
    날짜 줄까지 띠 위로 올라왔으므로 그 줄의 글자색도 함께 뒤집는다. */
@@ -6973,7 +6984,8 @@ html:not(.scr-light-theme) .scr-feed-card-head:has(.scr-feed-card-head-title) .s
    케밥이 제목보다 12px 아래로 처졌던 적이 있다(지적). 헤더 패딩이나 줄 구성을
    건드리면 여기도 같이 다시 재야 한다. */
 .scr-feed-game-result-body .scr-game-result-trow-topmeta {
-  position: absolute; top: var(--post-kebab-top); right: 10px; z-index: 2;
+  /* flex인 이유는 위 .scr-feed-chal-menu 주석과 같다 — top이 곧 버튼 위끝이어야 한다. */
+  position: absolute; top: var(--post-kebab-top); right: 10px; z-index: 2; display: flex;
 }
 /* 묶음 카드 안의 경기는 헤더가 시각 한 줄뿐이라(제목을 반복하지 않는다), 케밥도 그 줄에
    맞춰 올라와야 한다 — --post-kebab-top은 시각+제목 두 줄짜리 포스트 헤더에 맞춘 값이다
@@ -6982,7 +6994,10 @@ html:not(.scr-light-theme) .scr-feed-card-head:has(.scr-feed-card-head-title) .s
 .scr-feed-post-stack-item .scr-game-result-trow-topmeta { top: 8px; }
 .scr-feed-game-result-body .scr-game-result-trow-topmeta .scr-feed-kebab-btn, .scr-feed-chal-menu .scr-feed-kebab-btn { width: 26px; height: 26px; min-height: 26px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
 /* 너 나와 케밥(피드 레벨)도 같은 자리 — 기존 우상단 '취소' 라벨과 겹치지 않게 라벨은 왼쪽으로. */
-.scr-feed-chal-menu { position: absolute; top: var(--post-kebab-top); right: 10px; z-index: 3; }
+/* display:flex인 이유 — 기본(블록)이면 인라인 버튼이 줄 상자 안에 앉아 상자 높이가
+   line-height에 딸려 달라진다. flex로 두면 상자 높이가 버튼 높이로 고정돼, 세로 위치를
+   --post-kebab-top 하나로만 다스릴 수 있다(그 값 주석 참고). */
+.scr-feed-chal-menu { position: absolute; top: var(--post-kebab-top); right: 10px; z-index: 3; display: flex; }
 .scr-feed-card .scr-challenge-cancel-tag { right: 48px; }
 /* 아이템 내 폰트 전부 1스텝 축소(요청) — 로스터/닉네임 caption, 헤더 micro 등.
    로스터와 너나와 닉네임은 같은 크기 유지(둘 다 caption). */
@@ -7075,7 +7090,12 @@ html.scr-light-theme .scr-feed-comments .scr-mreq-chip-inline { color: #c07c1c; 
 
 
 /* 라벨(무엇인지)이 앞, 시간이 바로 옆(요청) — 라벨이 주, 시간은 흐리게 보조. */
-.scr-feed-card-time { font-weight: 600; color: var(--dim); font-variant-numeric: tabular-nums; }
+/* 시각은 절대 접히지 않는다 — "오늘"이 '오'/'늘' 두 줄로 갈리면 머리 높이가 통째로 늘어난다
+   (일시 수정 폼이 같은 줄에 있을 때 실제로 그랬다). 줄일 자리가 없으면 제목이 줄어야 한다. */
+.scr-feed-card-time {
+  font-weight: 600; color: var(--dim); font-variant-numeric: tabular-nums;
+  white-space: nowrap; flex-shrink: 0;
+}
 /* 시각 바로 옆 등록자(요청: "브래드 등록") — 크기·굵기·색을 시각과 똑같이 맞춰 한 줄로
    읽히게 한다. 글꼴 크기는 이 줄(.scr-feed-card-head-meta)에서 물려받는다. */
 .scr-feed-card-by { font-weight: 600; color: var(--dim); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -7168,9 +7188,7 @@ html.scr-light-theme .scr-feed-comments .scr-mreq-chip-inline { color: #c07c1c; 
 
 /* 일시 수정(연필)은 헤더행 안으로 — 시각은 헤더가 이미 보여주므로 라벨 없이 연필만
    시각 옆에 얹는다(요청: 시간 중복 표기 제거). 수정 폼이 열리면 헤더행의 남은 폭을 쓴다. */
-.scr-feed-card-head .scr-challenge-time-head-wrap { flex: 1 1 auto; min-width: 0; }
 .scr-feed-card-head .scr-challenge-time-head { margin-bottom: 0; }
-.scr-feed-card-head .scr-challenge-time-edit-form { padding: 4px 6px; }
 /* 응답 마감 실시간 카운트다운 — 헤더행 폰트 크기를 그대로 상속(요청: 폰트 크기 맞추기). */
 .scr-feed-chal-countdown { font-weight: 600; color: var(--dim); font-variant-numeric: tabular-nums; white-space: nowrap; }
 

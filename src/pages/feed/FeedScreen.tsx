@@ -9,7 +9,7 @@ import Select from "../../components/common/Select";
 import FilterItem from "../../components/common/FilterItem";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 import KakaoShareButton from "../../components/common/KakaoShareButton";
-import type { KakaoShareContent } from "../../utils/kakaoShare";
+import { shareLogoUrl, SHARE_LOGO_W, SHARE_LOGO_H, type KakaoShareContent } from "../../utils/kakaoShare";
 import GameResultCardBody, { resolveSlotName, type SearchListRow } from "./GameResultCardBody";
 import { isComputerSlot } from "../../constants/computerSlot";
 import { isUnregisteredSlot } from "../../constants/unregisteredSlot";
@@ -329,14 +329,6 @@ export const GameResultCard = memo(function GameResultCard({ item, memberOf, onD
   return (
     <div className={nested ? "scr-feed-post-stack-item" : "scr-feed-card scr-post"}>
       <div className="scr-feed-card-head" data-date-label={dateLabel}>
-        <div className="scr-feed-card-head-meta">
-          <span className="scr-feed-card-time">{formatWhen(item.time, { clock: item.withClock })}</span>
-          {/* 등록자 — 예전엔 카드 안쪽 윗줄에 게임번호와 나란히 있었는데, 시각 바로 옆으로
-              옮겼다(요청). "누가 언제"가 한 자리에서 읽히고, 카드 안쪽 윗줄은 케밥만 남는다. */}
-          {item.gameResult.createdBy && (
-            <span className="scr-feed-card-by">{item.gameResult.createdBy.nickname} 등록</span>
-          )}
-        </div>
         {/* 묶음 안에서는 카드 제목을 반복하지 않는다 — 바깥 카드가 이미 "게임결과 N건"이다. */}
         {!nested && (
           <div className="scr-feed-card-head-title">
@@ -345,6 +337,14 @@ export const GameResultCard = memo(function GameResultCard({ item, memberOf, onD
             <span className="scr-feed-card-label">게임결과</span>
           </div>
         )}
+        <div className="scr-feed-card-head-meta">
+          <span className="scr-feed-card-time">{formatWhen(item.time, { clock: item.withClock })}</span>
+          {/* 등록자 — 예전엔 카드 안쪽 윗줄에 게임번호와 나란히 있었는데, 시각 바로 옆으로
+              옮겼다(요청). "누가 언제"가 한 자리에서 읽히고, 카드 안쪽 윗줄은 케밥만 남는다. */}
+          {item.gameResult.createdBy && (
+            <span className="scr-feed-card-by">{item.gameResult.createdBy.nickname} 등록</span>
+          )}
+        </div>
       </div>
       <div className="scr-feed-game-result-body">
         <GameResultCardBody rows={rows} memberOf={memberOf} onDeleted={onDeleted} highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms} />
@@ -478,11 +478,13 @@ export function GameResultPost({
   // 카카오톡 공유 내용(요청: 게임요약을 통째로 공유). 링크는 세션 날짜로 이 묶음을
   // 가리킨다(sv=stack&sd=…) — 묶음에는 DB id가 없다(SharePage의 ShareTarget 주석).
   const shareContent = useMemo(() => {
-    const label = `${sessionDateLabel(stack.date)} 게임결과${stack.items.length > 1 ? ` ${stack.items.length}건` : ""}`;
+    const label = `${sessionDateLabel(stack.date)} 게임결과 ${stack.items.length}건`;
     const roster = participants.map((p) => p.name).join(", ");
     return {
       title: `스타게이트 · ${label}`,
       description: `참가자 총 ${participants.length}명 — ${roster}`,
+      // 전용 그림이 없어 클럽 워드마크를 쓴다(요청).
+      imageUrl: shareLogoUrl(), imageWidth: SHARE_LOGO_W, imageHeight: SHARE_LOGO_H,
       link: `${window.location.origin}/?sv=stack&sd=${stack.date}`,
       fallbackText: `[스타게이트] ${label}\n참가자 총 ${participants.length}명 — ${roster}`,
     };
@@ -686,19 +688,20 @@ export function GameResultPost({
       )}
     >
       <div className="scr-feed-card-head" data-date-label={dateLabel}>
+        <div className="scr-feed-card-head-title">
+          <ClipboardList size={16} aria-hidden />
+          {/* 라벨 자체가 몇 건인지 말해준다(요청). 한 판일 때는 "1건"을 뺐었는데, 그러면
+              같은 자리의 글씨가 포스트마다 달라져 몇 건인지 훑기 어려웠다 — 1건도 붙인다(요청).
+              참여 인원은 아래 요약의 세미타이틀 줄로 내렸다(요청) — 제목은 "이게 무슨
+              포스트인가"만 말하고, 요약이 제 머리를 따로 갖는다. */}
+          <span className="scr-feed-card-label">
+            게임결과 {stack.items.length}건
+          </span>
+        </div>
         <div className="scr-feed-card-head-meta">
           {/* 다른 포스트와 같은 '언제' 규칙을 쓴다(요청: 표기 통일) — 옆 스크롤 타임라인의
               알약에 뽑히는 data-date-label만 짧은 날짜 그대로다(거긴 늘 날짜여야 한다). */}
           <span className="scr-feed-card-time">{formatWhen(stack.date)}</span>
-        </div>
-        <div className="scr-feed-card-head-title">
-          <ClipboardList size={16} aria-hidden />
-          {/* 묶음이면 라벨 자체가 몇 건인지 말해준다(요청). 한 판이면 "1건"은 안 붙인다.
-              참여 인원은 아래 요약의 세미타이틀 줄로 내렸다(요청) — 제목은 "이게 무슨
-              포스트인가"만 말하고, 요약이 제 머리를 따로 갖는다. */}
-          <span className="scr-feed-card-label">
-            게임결과{stack.items.length > 1 ? ` ${stack.items.length}건` : ""}
-          </span>
         </div>
       </div>
       {/* 묶음 통째로 카카오톡 공유(요청) — 링크를 열면 이 카드 한 장만 접힌 채 뜨고,
@@ -1270,7 +1273,12 @@ export default function FeedScreen() {
             ) : item.kind === "challenge" ? (
               <div className="scr-feed-card scr-post" key={`c-${item.challenge.id}`}>
                 <div className="scr-feed-card-head" data-date-label={dateLabelOf(item)}>
-                  {/* 시각·마감·일시수정은 전부 '언제'에 대한 것이라 제목 윗줄에 함께 둔다(요청). */}
+                  <div className="scr-feed-card-head-title">
+                    {/* 너 나와!는 "호출"이니 수화기 아이콘으로(요청) — 등록 메뉴·호출 버튼과 통일. */}
+                    <Phone size={16} aria-hidden />
+                    <span className="scr-feed-card-label">너 나와!</span>
+                  </div>
+                  {/* 시각·마감·일시수정은 전부 '언제'에 대한 것이라 제목 바로 옆에 함께 둔다(요청). */}
                   <div className="scr-feed-card-head-meta">
                     <span className="scr-feed-card-time">{formatWhen(item.time, { clock: item.withClock })}</span>
                     {/* 응답 마감 실시간 카운트다운 — 날짜 옆, 헤더와 같은 폰트 크기(요청). */}
@@ -1283,11 +1291,6 @@ export default function FeedScreen() {
                       myId={user?.id}
                       onUpdated={upsertChallenge}
                     />
-                  </div>
-                  <div className="scr-feed-card-head-title">
-                    {/* 너 나와!는 "호출"이니 수화기 아이콘으로(요청) — 등록 메뉴·호출 버튼과 통일. */}
-                    <Phone size={16} aria-hidden />
-                    <span className="scr-feed-card-label">너 나와!</span>
                   </div>
                 </div>
                 <ChallengeActionsMenu

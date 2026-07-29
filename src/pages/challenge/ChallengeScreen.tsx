@@ -1,11 +1,10 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { createPortal } from "react-dom";
-import { Pencil, MessageSquarePlus, X, Check, Calendar } from "lucide-react";
+import { Pencil, MessageSquarePlus } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
 import { Spinner } from "../../components/common/Feedback";
-import OptionalDateTimeFields, {
-  openPicker, TIME_NOTE_MAX, TIME_NOTE_PLACEHOLDER,
-} from "../../components/common/OptionalDateTimeFields";
+import OptionalDateTimeFields from "../../components/common/OptionalDateTimeFields";
+import ChallengeTimeEditModal from "../../modals/ChallengeTimeEditModal";
 import InlineCollapse from "../../components/common/InlineCollapse";
 import KakaoShareButton from "../../components/common/KakaoShareButton";
 import type { KakaoShareContent } from "../../utils/kakaoShare";
@@ -477,6 +476,10 @@ export function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, o
 // 보여준다 — 호출부(groupByTime map)에서 tg.items.length===1일 때만 이 컴포넌트를 쓴다.
 // timeLabel을 null로 주면 시각 라벨 없이 연필(수정 진입)만 남는다 — 피드에선 헤더행이
 // 이미 시각을 보여주므로 중복 표기를 피해 연필만 그 옆에 얹는다(요청: "시간이 중복 표시").
+//
+// 수정은 이 자리에서 펼치지 않고 팝업으로 넘긴다(요청: "인라인 폐기하고 팝업으로") — 여기는
+// 시각 한 줄이라 날짜·"언제"·취소·확인을 담을 폭이 없었다. 그래서 이 컴포넌트에는 남는 일이
+// 라벨과 연필뿐이고, 높이 모핑(예전의 scr-challenge-time-head-wrap)도 필요 없어졌다.
 export function ChallengeTimeHeadEdit({
   challenge, timeLabel, myId, onUpdated,
 }: {
@@ -491,139 +494,30 @@ export function ChallengeTimeHeadEdit({
   const canEdit = challenge.status === "confirmed" && isParticipant;
 
   const [editing, setEditing] = useState(false);
-  const [dateStr, setDateStr] = useState("");
-  const [noteStr, setNoteStr] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState("");
-
-  const startEdit = () => {
-    // 저장된 날짜와 "언제"를 그대로 열어 편집한다 — 안 적혀 있으면 빈 칸으로 연다.
-    setDateStr(challenge.scheduledDate ?? "");
-    setNoteStr(challenge.scheduledTimeNote);
-    setErr("");
-    setEditing(true);
-  };
-
-  const save = async () => {
-    setErr("");
-    setBusy(true);
-    try {
-      // 날짜/"언제" 모두 선택 — 날짜를 비우면 일정 전체 미정이 된다(요청: "제약 없이 다 열어두기").
-      const updated = await api.rescheduleChallenge(
-        challenge.id, dateStr || null, dateStr ? noteStr.trim() : "",
-      );
-      onUpdated(updated);
-      setEditing(false);
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "일정을 바꾸지 못했어요.");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  // 연필을 누르면(라벨 줄 ↔ 수정 폼) 내용이 바뀌는 만큼 자리를 즉시 뺏는 대신, 실측 높이를
-  // 인라인으로 박고 CSS transition으로 모핑한다(요청: "연필 누르면 공간이 자연스럽게
-  // 확보되는 영역 트랜스폼") — ChallengeCard의 페이지 높이 모핑과 같은 패턴.
-  const innerRef = useRef<HTMLDivElement>(null);
-  const [wrapHeight, setWrapHeight] = useState<number | undefined>(undefined);
-  useLayoutEffect(() => {
-    const inner = innerRef.current;
-    if (!inner) return;
-    const measure = () => setWrapHeight(inner.offsetHeight);
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(inner);
-    return () => ro.disconnect();
-  }, [editing]);
 
   // 라벨도 없고 수정 권한도 없으면 그릴 게 없다(피드의 연필 전용 모드에서 비참가자).
   if (timeLabel === null && !canEdit) return null;
 
   return (
-    <div
-      className="scr-challenge-time-head-wrap"
-      style={wrapHeight !== undefined ? { height: wrapHeight } : undefined}
-    >
-      <div ref={innerRef}>
-        {editing ? (
-          <div className="scr-challenge-time-edit-form">
-            {/* 날짜/시간/취소/확인을 한 줄로(요청) — 큰 폼용 OptionalDateTimeFields 대신
-                이 자리 전용의 좁은 인라인 입력을 쓴다. */}
-            <div className="scr-challenge-time-edit-row">
-              <span className="scr-datetime-input-wrap scr-challenge-time-edit-cell">
-                <input
-                  type="date" className="scr-input scr-challenge-time-edit-input"
-                  value={dateStr}
-                  min={DATE_INPUT_MIN} max={DATE_INPUT_MAX}
-                  onClick={openPicker}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setDateStr(v);
-                    // 날짜를 지우면 "언제"도 비운다 — 가리킬 날이 없다.
-                    if (!v) setNoteStr("");
-                  }}
-                />
-                {/* 스왑(요청): 값 있으면 지우기 ×, 없으면 달력 아이콘 — 같은 오른쪽 자리. */}
-                {dateStr ? (
-                  <button
-                    type="button" className="scr-datetime-clear" aria-label="날짜 지우기"
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => { setDateStr(""); setNoteStr(""); }}
-                  >
-                    <X size={12} />
-                  </button>
-                ) : (
-                  <span className="scr-datetime-picker-icon" aria-hidden="true"><Calendar size={15} /></span>
-                )}
-              </span>
-              {/* "언제"(자유 텍스트) — 시각 대신 사람 말로 적는 자리(요청). */}
-              <span className="scr-datetime-input-wrap scr-challenge-time-edit-cell">
-                <input
-                  type="text" className="scr-input scr-challenge-time-edit-input"
-                  value={noteStr} placeholder={TIME_NOTE_PLACEHOLDER} maxLength={TIME_NOTE_MAX}
-                  onChange={(e) => setNoteStr(e.target.value)} disabled={!dateStr}
-                />
-                {dateStr && noteStr && (
-                  <button
-                    type="button" className="scr-datetime-clear" aria-label="언제 지우기"
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => setNoteStr("")}
-                  >
-                    <X size={12} />
-                  </button>
-                )}
-              </span>
-              {/* 취소/확인을 기존 아이콘 버튼(scr-icon-btn) 스타일로, 크기만 이 행에 맞게
-                  살짝 줄인다(요청). 확인은 체크에 포인트 색을 준다. */}
-              <button
-                type="button" className="scr-icon-btn scr-time-edit-action"
-                onClick={() => setEditing(false)} disabled={busy} aria-label="취소"
-              >
-                <X size={16} />
-              </button>
-              <button
-                type="button" className="scr-icon-btn scr-time-edit-action scr-time-edit-confirm"
-                onClick={save} disabled={busy} aria-label="확인"
-              >
-                {busy ? <Spinner /> : <Check size={16} />}
-              </button>
-            </div>
-            {err && <div className="scr-err">{err}</div>}
-          </div>
-        ) : (
-          <div className="scr-challenge-time-head">
-            {timeLabel !== null && <span className="scr-challenge-time-head-label">{timeLabel}</span>}
-            {canEdit && (
-              <button
-                type="button" className="scr-challenge-time-edit-btn"
-                onClick={startEdit} aria-label="일시 수정"
-              >
-                <Pencil size={13} />
-              </button>
-            )}
-          </div>
+    <>
+      <span className="scr-challenge-time-head">
+        {timeLabel !== null && <span className="scr-challenge-time-head-label">{timeLabel}</span>}
+        {canEdit && (
+          <button
+            type="button" className="scr-challenge-time-edit-btn"
+            onClick={() => setEditing(true)} aria-label="일시 수정"
+          >
+            <Pencil size={13} />
+          </button>
         )}
-      </div>
-    </div>
+      </span>
+      {editing && (
+        <ChallengeTimeEditModal
+          challenge={challenge}
+          onClose={() => setEditing(false)}
+          onUpdated={onUpdated}
+        />
+      )}
+    </>
   );
 }

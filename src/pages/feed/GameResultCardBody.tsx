@@ -4,6 +4,7 @@ import { MoreHorizontal, Monitor, User } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
 import RaceBadge from "../../components/common/RaceBadge";
 import { cleanMapName } from "../../utils/mapName";
+import { shareLogoUrl, SHARE_LOGO_W, SHARE_LOGO_H } from "../../utils/kakaoShare";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 import { api } from "../../api/client";
 import { useAppStore } from "../../store/appStore";
@@ -95,6 +96,8 @@ function gameResultShareContent(gameResult: GameResult, memberOf: (id: string) =
   return {
     title: `${t1} vs ${t2}`,
     description: `${resultLabel}${mapPart} · ${gameResult.date}`,
+    // 전용 그림이 없어 클럽 워드마크를 쓴다(요청).
+    imageUrl: shareLogoUrl(), imageWidth: SHARE_LOGO_W, imageHeight: SHARE_LOGO_H,
     link: `${window.location.origin}/?sv=gameResult&sid=${gameResult.id}`,
     fallbackText: `[스타게이트 게임결과]\n${t1} vs ${t2}\n결과: ${resultLabel}${mapPart}\n${gameResult.date}`,
   };

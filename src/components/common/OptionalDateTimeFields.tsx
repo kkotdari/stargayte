@@ -13,7 +13,7 @@ export function openPicker(e: React.MouseEvent<HTMLInputElement>) {
 
 /** "언제" 칸 글자 수 상한 — 백엔드 스키마(max_length=30)와 같은 값이어야 한다. */
 export const TIME_NOTE_MAX = 30;
-/** "언제" 칸 안내문 — 인라인 수정 폼(ChallengeTimeHeadEdit)도 같은 문구를 쓴다. */
+/** "언제" 칸 안내문 — 도전장 쓰기/수락과 일시 수정 팝업이 모두 이 부품을 쓴다. */
 export const TIME_NOTE_PLACEHOLDER = "예) 그날 봐서, 아무도 몰래";
 
 interface OptionalDateTimeFieldsProps {
