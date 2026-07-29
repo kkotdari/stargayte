@@ -2521,7 +2521,10 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
    글자는 공용 크기에서 한 단계 줄이고(요청) 목록과의 사이는 벌린다(요청) — 한때
    목록에 착 붙였는데, 그건 건수가 목록 머리처럼 읽히던 시절 얘기다. */
 .scr-filter-bar-count {
-  display: block; align-self: flex-end; font-size: var(--fs-caption);
+  /* 건수를 다시 세는 동안 옆에 작은 스피너가 붙는다(요청) — 숫자와 한 줄로 나란히
+     서야 하므로 block이 아니라 inline-flex다. 스피너가 없을 때의 자리·여백은 그대로. */
+  display: inline-flex; align-items: center; gap: 5px;
+  align-self: flex-end; font-size: var(--fs-caption);
   margin-top: 6px; margin-left: 0; margin-bottom: 10px; position: relative; top: 1px;
 }
 /* 경기번호·메모 검색 필드(경기 화면 전용) — 유저 검색창 바로 아래에 한 줄로 나란히 두고,

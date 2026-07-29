@@ -1,4 +1,5 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import { createPortal } from "react-dom";
 import RankShiftCard, { RankShiftMenu } from "./RankShiftCard";
 import { CalendarPlus, ClipboardList, MoreHorizontal, Phone, Plus, Upload } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
@@ -22,6 +23,7 @@ import { useAppStore } from "../../store/appStore";
 import { isAdminRole } from "../../constants/roles";
 import { activeMemberSearchTerms, memberMatchesTerm, normalizeSearchText, splitSearchTerms } from "../../utils/memberSearch";
 import { cx } from "../../utils/format";
+import { attachPopover } from "../../utils/popover";
 import { api } from "../../api/client";
 import { useCursorPagination } from "../../hooks/useCursorPagination";
 import { useEditableFocused } from "../../hooks/useEditableFocused";
@@ -369,12 +371,30 @@ const MatchCard = memo(function MatchCard({ item, memberOf, onDeleted, dateLabel
 });
 
 // 묶음 카드 우상단 케밥 — 지금은 카카오톡 공유 하나만 담는다(묶음은 DB 행이 아니라
-// 삭제/수정 개념이 없다). 순위변동 카드의 케밥(RankShiftMenu)과 같은 CSS를 쓴다.
-// 카드 어디를 눌러도 펼침/접힘이 되므로, 이 안의 클릭은 전부 위로 안 새게 막는다 —
-// 메뉴를 열자마자 카드가 같이 펼쳐지면 안 된다.
+// 삭제/수정 개념이 없다). 경기결과 카드의 케밥(MatchList의 MatchActionsMenu)과 같은
+// 방식으로 만든다 — 드롭다운을 body로 포털하고 자리는 attachPopover가 잡는다.
+//
+// 처음엔 순위변동 카드처럼 제자리에 그렸는데 세 가지가 어긋났다(지적: 다른 데를 눌러도
+// 안 닫힘 / 모양이 다름 / 클릭이 잘 안 됨). 원인은 전부 "어디에 그리느냐"였다.
+//  · 포스트 판(.scr-feed-card)에 backdrop-filter가 걸려 있어 그 안의 position:fixed는
+//    화면이 아니라 그 카드를 기준으로 잡힌다 — 전체 화면을 덮어야 할 백드롭이 카드
+//    안에만 깔려서, 카드 밖을 누르면 아무 일도 안 일어났다.
+//  · 헤더(.scr-feed-card-head)는 isolation:isolate로 쌓임 맥락을 따로 만들고 글자
+//    크기·자간·대문자 변환도 자기 것을 물려준다 — 그 안에 그린 메뉴는 뒤 요소에 덮이고
+//    생김새도 다른 케밥과 달라진다.
+// 그래서 버튼만 카드 직계 자식으로 옮기고, 백드롭·드롭다운은 body로 포털한다.
 function StackMenu({ content }: { content: KakaoShareContent }) {
   const [open, setOpen] = useState(false);
+  const anchorRef = useRef<HTMLButtonElement>(null);
+  const dropRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    if (!open || !anchorRef.current || !dropRef.current) return;
+    return attachPopover(anchorRef.current, dropRef.current, { growToContent: true, maxWidth: 200 });
+  }, [open]);
+
   return (
+    // 카드 어디를 눌러도 펼침/접힘이 되므로 이 안의 클릭은 위로 안 새게 막는다 —
+    // 메뉴를 열자마자 카드가 같이 펼쳐지면 안 된다.
     <div
       className="scr-feed-chal-menu"
       onClick={(e) => e.stopPropagation()}
@@ -382,25 +402,29 @@ function StackMenu({ content }: { content: KakaoShareContent }) {
       role="presentation"
     >
       <button
-        type="button" className="scr-match-memo-btn scr-match-kebab-btn"
-        onClick={() => setOpen((v) => !v)}
+        type="button" ref={anchorRef} className="scr-match-memo-btn scr-match-kebab-btn"
+        onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
         aria-label="더보기" aria-haspopup="menu" aria-expanded={open}
       >
         <MoreHorizontal size={16} />
       </button>
-      {open && (
+      {open && createPortal(
+        // 포털이라도 이벤트는 리액트 트리를 따라 올라간다 — 위 래퍼가 이미 끊지만,
+        // 백드롭 쪽은 '닫기'까지 하고 끝내야 하므로 여기서도 명시적으로 끊는다.
         <>
-          {/* 백드롭 클릭은 '메뉴 닫기'에서 끝나야 한다(지적) — 안 끊으면 그 클릭이
-              포스트 본체까지 올라가 펼침/접힘까지 같이 눌린다. */}
           <div
             className="scr-feed-add-backdrop"
             onClick={(e) => { e.stopPropagation(); setOpen(false); }}
             aria-hidden
           />
-          <div className="scr-menu-pop-drop scr-feed-chal-menu-drop" role="menu">
+          <div
+            className="scr-menu-pop-drop scr-match-menu-drop scr-scroll" ref={dropRef} role="menu"
+            onClick={(e) => e.stopPropagation()}
+          >
             <KakaoShareButton variant="menu" content={content} onDone={() => setOpen(false)} />
           </div>
-        </>
+        </>,
+        document.body,
       )}
     </div>
   );
@@ -680,12 +704,12 @@ export function MatchStack({
             게임결과{stack.items.length > 1 ? ` ${stack.items.length}건` : ""}
           </span>
         </div>
-        {/* 묶음 통째로 카카오톡 공유(요청) — 링크를 열면 이 카드 한 장만 접힌 채 뜨고,
-            눌러서 펼쳐 볼 수 있다(SharePage의 sv=stack). 다른 포스트와 똑같이 우상단
-            케밥 안에 넣는다(요청) — 공유 아이콘만 밖에 나와 있으면 이 포스트만 조작
-            방식이 다르다. 지금은 담을 게 공유뿐이라 순위변동 카드의 케밥과 같은 모양이다. */}
-        <StackMenu content={shareContent} />
       </div>
+      {/* 묶음 통째로 카카오톡 공유(요청) — 링크를 열면 이 카드 한 장만 접힌 채 뜨고,
+          눌러서 펼쳐 볼 수 있다(SharePage의 sv=stack). 다른 포스트와 똑같이 우상단
+          케밥 안에 넣는다(요청). 헤더 '안'이 아니라 카드 직계 자식으로 두는 이유는
+          StackMenu 주석 참고 — 헤더 안에 두면 안 닫히고 생김새도 달라진다. */}
+      <StackMenu content={shareContent} />
 
       {/* 요약(세미타이틀 + 참가자 로스터)과 경기 목록이 이 껍데기 안에서 자리를 주고받는다.
           비활성 쪽은 CSS가 절대배치로 흐름에서 빼므로 껍데기의 자연 높이가 곧 지금 보이는
@@ -975,9 +999,9 @@ export default function FeedScreen() {
     [feed],
   );
 
-  // 필터 적용 — 유형/게임번호/유저 검색을 아이템 종류별로 건다(너나와에도 유저 필터 적용).
-  const filteredFeed = useMemo<FeedItem[]>(() => {
-    return visibleFeed.filter((item) => {
+  // 필터 판정 — filteredFeed와 아래 건수 계산이 같은 규칙을 쓰도록 함수로 빼 둔다.
+  const passesFilter = useCallback(
+    (item: FeedItem): boolean => {
       if (kindFilter !== "all") {
         // 도전장(시간 확정이든 아니든)은 전부 너나와(call)로 본다(요청). 일정은 추후
         // 별도 아이템이 생기면 채워진다.
@@ -998,9 +1022,46 @@ export default function FeedScreen() {
           item.shift.shifts.some((e) => normalizeSearchText(e.nickname).includes(term)));
       }
       return true;
-    });
+    },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- slotMatchesTerm/challengeMatchesTerm은 members로 충분히 표현됨
-  }, [visibleFeed, kindFilter, searchTerms, members]);
+    [kindFilter, searchTerms, members],
+  );
+  const filteredFeed = useMemo<FeedItem[]>(
+    () => visibleFeed.filter(passesFilter),
+    [visibleFeed, passesFilter],
+  );
+  // 필터가 걸린 상태의 경기 건수는 서버에 조용히 다시 물어 채운다(요청: "필터시 정확한
+  // 건수도 필요해 조용히 비동기적으로 업데이트해줘"). 걸러내기는 이미 받아 둔 페이지
+  // 위에서만 이뤄지므로 클라이언트 혼자서는 알 수가 없다 — 같은 조건(userQuery)으로 목록
+  // 엔드포인트에 한 건만 달라고 해서 거기 실려 오는 total만 읽는다.
+  //
+  // 답이 오기 전에는 지금 보이는 수를 그대로 둔다(로딩 표시를 새로 만들지 않는다 — 숫자가
+  // 잠깐 뒤에 조용히 커지는 편이 낫다). 실패해도 조용히 지나간다.
+  // 너나와·순위변동은 처음에 통째로 받아 두므로 그쪽 걸러진 수는 이미 정확하다.
+  const [filteredMatchTotal, setFilteredMatchTotal] = useState<number | null>(null);
+  useEffect(() => {
+    if (!filterActiveForCount) { setFilteredMatchTotal(null); return; }
+    // 게임결과가 아예 대상이 아닌 유형 필터는 물어볼 것도 없다.
+    if (kindFilter === "call" || kindFilter === "rankshift") { setFilteredMatchTotal(0); return; }
+    let alive = true;
+    setFilteredMatchTotal(null);
+    // 검색어는 글자마다 바뀌므로 잠깐 묵혔다 보낸다 — 타자 한 번에 한 번씩 묻지 않게.
+    const t = window.setTimeout(() => {
+      api.countMatches({
+        userQuery: searchTerms.length > 0 ? search.trim() : undefined,
+        // 여러 낱말을 모두 만족해야 한다 — 위 passesFilter의 every()와 같은 규칙이다.
+        matchAllUsers: true,
+      })
+        .then((n) => { if (alive) setFilteredMatchTotal(n); })
+        .catch(() => { /* 조용히 실패 — 로드된 수를 그대로 보여준다 */ });
+    }, 300);
+    return () => { alive = false; window.clearTimeout(t); };
+  }, [filterActiveForCount, kindFilter, search, searchTerms.length]);
+  // 필터에 걸린 너나와·순위변동 수 — 이쪽은 전부 받아 뒀으므로 세면 곧 정확한 값이다.
+  const filteredNonMatchCount = useMemo(
+    () => feed.filter((it) => it.kind !== "match" && passesFilter(it)).length,
+    [feed, passesFilter],
+  );
 
   // 같은 세션(sessionDateOf — 새벽 경기는 전날에 붙는다)의 게임결과가 2개 이상 연속이면
   // 겹침 스택으로 묶는다(요청).
@@ -1136,10 +1197,16 @@ export default function FeedScreen() {
         // 화면에 보이는 카드 수(displayFeed)가 아니다 — 같은 날 게임결과를 한 장으로 묶는 건
         // 보여주는 방식일 뿐이라(지적) 그 묶음 안의 판도 각각 한 건이다.
         count={
-          !filterActiveForCount && matchTotal !== null
-            ? matchTotal + nonMatchCount
-            : filteredFeed.length
+          !filterActiveForCount
+            ? (matchTotal !== null ? matchTotal + nonMatchCount : filteredFeed.length)
+            // 서버 답이 오기 전에는 지금 보이는 수를 그대로 둔다.
+            : (filteredMatchTotal !== null
+              ? filteredMatchTotal + filteredNonMatchCount
+              : filteredFeed.length)
         }
+        // 필터 건수를 서버에 다시 묻는 동안에는 숫자 옆에 스피너를 둔다(요청) — 그 사이
+        // 보이는 값은 아직 화면에 그려진 수라 곧 바뀔 수 있다는 표시다.
+        countLoading={filterActiveForCount && filteredMatchTotal === null}
         countLabel="건"
         searchValue={search}
         onSearchChange={setSearch}

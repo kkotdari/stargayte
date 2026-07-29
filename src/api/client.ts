@@ -275,6 +275,14 @@ export const api = {
     return { ...page, items: page.items.map(matchFromWire) };
   },
 
+  // 같은 조건의 경기 전체 건수만 필요할 때 — 목록 엔드포인트가 첫 페이지 응답에 total을
+  // 담아 주므로(MatchPage.total) 한 건만 달라고 해서 그 값만 읽는다. 세는 전용 엔드포인트를
+  // 따로 파지 않은 이유는 조건 해석이 목록과 한 글자도 어긋나면 안 되기 때문이다.
+  async countMatches(params: MatchListParams = {}): Promise<number> {
+    const page = await this.getMatchesPage({ ...params, cursor: undefined, limit: 1 });
+    return page.total ?? page.items.length;
+  },
+
   // 카카오톡 공유 링크가 여는 "이 경기만 보이는" 화면용 단건 조회.
   async getMatch(id: number): Promise<Match> {
     return matchFromWire(await request<WireMatch>(`/api/matches/${id}`));

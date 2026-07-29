@@ -3,12 +3,16 @@ import { createPortal } from "react-dom";
 import { X, Plus } from "lucide-react";
 import Avatar from "./Avatar";
 import { attachPopover } from "../../utils/popover";
+import { Spinner } from "./Feedback";
 import { cx } from "../../utils/format";
 import { SEARCH_TERM_SEP, normalizeSearchText, type MemberSearchSuggestion } from "../../utils/memberSearch";
 
 interface SearchFilterBarProps {
   count: number;
   countLabel: string;
+  // 건수를 서버에 다시 물어보는 중인가(요청) — 그동안 숫자 옆에 작은 스피너를 둔다.
+  // 숫자 자체는 계속 보여준다: 지금 화면에 그려진 수라도 있는 편이 빈칸보다 낫다.
+  countLoading?: boolean;
   searchValue: string;
   onSearchChange: (value: string) => void;
   searchPlaceholder?: string;
@@ -44,7 +48,7 @@ function parseSearchChips(value: string): string[] {
 // "각 화면의 필터를 화면 상단 타이틀 아래에 배치, 하단 플로팅은 제거"). 검색창은 유저
 // 입력만 받는다(요청: "검색창에 유저 입력만") — 종족은 필터창의 드롭다운으로 옮겼다.
 export default function SearchFilterBar({
-  count, countLabel,
+  count, countLabel, countLoading = false,
   searchValue, onSearchChange, searchPlaceholder = "유저 검색",
   suggestions,
   filterPanel,
@@ -296,7 +300,12 @@ export default function SearchFilterBar({
         {showSearch && <div className="scr-search-filter-float">{searchItem}</div>}
         {trailing}
       </div>
-      {showCount && <span className="scr-list-count scr-filter-bar-count">{count}{countLabel}</span>}
+      {showCount && (
+        <span className="scr-list-count scr-filter-bar-count">
+          {count}{countLabel}
+          {countLoading && <Spinner size={11} />}
+        </span>
+      )}
     </div>
   );
 }
