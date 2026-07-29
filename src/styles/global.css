@@ -2520,7 +2520,6 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
   min-width: 0; font-size: var(--fs-body); font-weight: 700; color: var(--text);
   margin: 6px 0 10px;
 }
-.scr-grid-title-tail { padding: 0 2px; }
 /* 문장 안에 섞이는 드롭다운 — 상자를 지우고 글자 그대로 둔다. 폭은 내용만큼
    (.scr-cselect의 width:100%를 덮는다). 한때 점선 밑줄로 "누를 수 있는 낱말"임을
    알렸는데, 옆의 화살표가 이미 그 역할을 해서 걷어냈다(요청). */

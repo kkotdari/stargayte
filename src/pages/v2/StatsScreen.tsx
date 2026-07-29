@@ -408,7 +408,6 @@ export default function StatsScreenV2() {
               fixedWidth className="scr-sentence-select" value={race} options={RACE_SELECT_OPTS}
               onChange={(v) => setRace(v as BaseRace | "all")} minDropWidth={130}
             />
-            <span className="scr-grid-title-tail">스탯표</span>
             {/* 초기화(요청) — 문장 끝에 붙여 기간·종족을 한 번에 되돌린다(분류는 유지).
                 이미 기본값이면 누를 게 없으니 흐리게 죽여 둔다. 검색어(유저)는 이 문장
                 밖의 별개 필터라 건드리지 않는다 — 칩마다 제 ×가 있다. */}
