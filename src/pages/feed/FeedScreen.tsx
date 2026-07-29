@@ -42,6 +42,9 @@ const STACK_COLLAPSE_MARGIN = 12;
 // 시간을 준다. 셋을 더해도 반 초 안쪽이라 두 번 누르는 흐름이 답답하지 않다.
 const SWAP_FADE_MS = 130;
 const SWAP_HEIGHT_MS = 260;
+// 접힌 뒤 테두리를 밝혀 두는 시간(요청) — CSS의 scr-stack-collapsed-flash와 같은 값이어야
+// 한다. 연출이 끝난 시점부터 세므로 접히는 시간과 겹치지 않는다.
+const FLASH_MS = 500;
 
 // 피드 — 커뮤니티 활동(경기 결과, 너 나와! 일정)을 한 타임라인으로 보여주는 홈 화면.
 // 타임라인 기준: 너 나와!는 경기 예정 일시, 경기는 리플레이의 게임 시작 시각.
@@ -333,6 +336,10 @@ function MatchStack({
   defaultOpen?: boolean;
 }) {
   const [open, setOpen] = useState(defaultOpen);
+  // 접기가 끝난 뒤 잠깐 테두리를 밝혀 어느 카드가 접힌 건지 짚어 준다(요청).
+  const [flash, setFlash] = useState(false);
+  const flashTimerRef = useRef<number | null>(null);
+  useEffect(() => () => { if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current); }, []);
   // 필터를 걸거나 풀면 그에 맞춰 다시 맞춘다(요청) — 걸러진 결과를 요약 뒤에 숨겨 두면
   // 이 카드가 왜 남았는지가 안 보인다. toggledRef를 건드리지 않으므로 연출 없이 상태만 바뀐다.
   useEffect(() => { setOpen(defaultOpen); }, [defaultOpen]);
@@ -398,6 +405,10 @@ function MatchStack({
     toggleOpen(false);
     // toggleOpen이 예약을 비우므로 반드시 그 뒤에 건다(setOpen은 비동기라 연출 시작 전이다).
     afterCollapseRef.current = () => {
+      // 연출이 끝난 지금부터 0.5초(요청) — 접히는 동안 켜 두면 그만큼 짧게 보인다.
+      setFlash(true);
+      if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current);
+      flashTimerRef.current = window.setTimeout(() => setFlash(false), FLASH_MS);
       const card = stackRef.current;
       if (!card) return;
       // 헤더는 position:relative라 같이 스크롤돼 올라간다 — 그 높이를 빼면 오히려 카드
@@ -486,7 +497,11 @@ function MatchStack({
     // 포스트 한 장 — 요약도 경기 목록도 이 안에 있다(요청).
     <div
       ref={stackRef}
-      className={cx("scr-feed-card scr-post scr-feed-stack", open && "scr-feed-stack-opened")}
+      className={cx(
+        "scr-feed-card scr-post scr-feed-stack",
+        open && "scr-feed-stack-opened",
+        flash && "scr-feed-stack-flash",
+      )}
     >
       <div className="scr-feed-card-head" data-date-label={dateLabel}>
         <div className="scr-feed-card-head-meta">
