@@ -1,6 +1,10 @@
 import type { ParsedReplay, ParsedReplayPlayer, ReplayPlayerSignals } from "./replayParser";
 import { pushersOn, scanTactics } from "./replayTactics";
 import {
+  hasUpgrade, topTech, upgradeFrame, upgradeLevel,
+  ARMOR_WEAPON_PAIRS, SIGNATURE_UPGRADE_KO, UPGRADE_LINE_KO,
+} from "./replayTechNames";
+import {
   eliminatedFrame, fellFrame, productionDips, revivalFrame, surgeSpanMin,
 } from "./replayFell";
 import { REPLAY_SUMMARY_VERSION, type ReplaySummaryBeat, type ReplaySummaryData } from "./replaySummaryData";
@@ -254,7 +258,8 @@ function buildSide(players: ParsedReplayPlayer[]): Side {
     for (const [b, n] of Object.entries(s.buildingCounts)) {
       buildings.set(b, (buildings.get(b) ?? 0) + n);
     }
-    for (const t of s.techNames) if (DECISIVE_TECHS.has(t)) techs.add(t);
+    const top = topTech(s);
+    if (top) techs.add(top);
     s.cmdCountByThird.forEach((n, i) => { thirds[i] += n; });
   }
   return { players, combat, buildings, workers, thirds, techs };
@@ -688,11 +693,11 @@ interface Beat extends ReplaySummaryBeat {
 
 // 승부를 가르는 테크만 이야기에 넣는다(요청: 중요한 이벤트만) — 버로우·환상처럼 있어도
 // 그만인 연구는 자리만 차지한다. 이름은 TECH_KO에 있는 것 중에서 고른다.
-const DECISIVE_TECHS = new Set([
-  "Psionic Storm", "Lurker Aspect", "Dark Swarm", "Recall", "Yamato Gun", "Irradiate",
-  "Lockdown", "Stasis Field", "Plague", "Mind Control", "Spider Mines", "Stim Packs",
-  "Cloaking", "Personnel Cloaking",
-]);
+// (삭제) 예전엔 '결정적 테크' 집합 하나를 두고 그중 먼저 연구한 것을 골랐다. 두 가지가
+// 문제였다 — 목록에 "Cloaking"처럼 screp에 없는 이름이 섞여 있어도 아무도 못 알아챘고
+// (지적), 스팀팩처럼 안 하는 사람이 없는 기술이 늘 먼저 뽑혀 테란 경기 요약이 죄다
+// "스팀팩까지 꺼내 씀"이 됐다. 이제 replayTechNames의 TECH_RANK로 '드물수록 높은 점수'를
+// 매기고 그중 가장 높은 것 하나를 고른다(topTech).
 
 /** 확장 건물의 한국어 이름 — "멀티를 5개까지"가 아니라 "5해처리까지"로 말한다(요청). */
 
@@ -893,7 +898,7 @@ function sideBeats(args: {
     if (!sg) continue;
     const obs = sg.unitCounts["Observer"] ?? 0;
     const ovl = sg.unitCounts["Overlord"] ?? 0;
-    const spread = sg.upgradeNames.includes("Pneumatized Carapace");
+    const spread = hasUpgrade(sg, "Pneumatized Carapace");
     const unit = obs >= 4 ? "Observer" : spread && ovl >= 8 ? "Overlord" : null;
     if (!unit) continue;
     beats.push({
@@ -1048,11 +1053,55 @@ function sideBeats(args: {
     }
   }
 
+  // ── 업그레이드 ── 예전엔 업그레이드를 거의 안 봤다. 이름 비교가 늘 어긋나 있었던
+  // 탓도 있지만(replayTechNames 주석), 애초에 '몇 단계까지 올렸나'를 세지 않았다.
+  // 공/방은 한 단계 올릴 때마다 커맨드가 한 번씩 오므로 나온 횟수가 곧 단계다.
+  for (const p of players) {
+    const sg = p.signals;
+    if (!sg) continue;
+    // (1) 공/방 — 그 종족의 묶음 중 가장 많이 올린 줄 하나만 말한다. 3-3이면 "풀업"이다.
+    const lines = ARMOR_WEAPON_PAIRS[p.race] ?? [];
+    let best: { line: string; w: number; a: number; at: number | null } | null = null;
+    for (const { weapon, armor } of lines) {
+      const w = upgradeLevel(sg, weapon);
+      const a = upgradeLevel(sg, armor);
+      if (w + a === 0) continue;
+      if (!best || w + a > best.w + best.a) {
+        best = { line: UPGRADE_LINE_KO[weapon] ?? "", w, a, at: upgradeFrame(sg, weapon) };
+      }
+    }
+    // 1-1은 거의 다 찍으니 이야깃거리가 아니다 — 합이 4단계(2-2)는 넘어야 말할 값이 된다.
+    if (best && best.w + best.a >= 4 && best.line) {
+      beats.push({
+        // 3-3 풀업은 그 판을 굳힌 사실이라 전술과 겨룰 만하고, 2-2쯤은 자리가 남을 때만.
+        k: "upgrade", won, who: who(p), weight: best.w >= 3 && best.a >= 3 ? 8 : 6,
+        at: best.at,
+        p: { line: best.line, w: best.w, a: best.a },
+      });
+    }
+    // (2) 상징 업그레이드 — 속업·사업처럼 이름만 대도 그림이 그려지는 것 하나.
+    //     여러 개면 가장 먼저 찍은 것을 고른다(그게 그 판의 방향을 정한 결정이다).
+    let sig: { key: string; at: number } | null = null;
+    for (const key of Object.keys(SIGNATURE_UPGRADE_KO)) {
+      const at = sg.firstUpgradeFrame[key];
+      if (at === undefined) continue;
+      if (!sig || at < sig.at) sig = { key, at };
+    }
+    if (sig) {
+      beats.push({
+        // MIN_WEIGHT(6)보다 낮으면 아예 못 뽑힌다 — 자리가 남을 때 들어가는 곁가지라
+        // 딱 그 문턱에 둔다.
+        k: "upgrade-signature", won, who: who(p), weight: 6,
+        at: sig.at, p: { upgrade: sig.key },
+      });
+    }
+  }
+
   // ── 테크 — 싸움을 뒤집는 것만. 사람마다 하나씩. ──
   for (const p of players) {
     const sg = p.signals;
     if (!sg) continue;
-    const t = sg.techNames.find((x) => DECISIVE_TECHS.has(x));
+    const t = topTech(sg);
     if (!t) continue;
     beats.push({
       k: "tech", won, who: who(p), weight: 6,

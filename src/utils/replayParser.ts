@@ -5,6 +5,7 @@
 // 중단됐지만(→ screp-ts) 그건 Go 바이너리를 Node에서 실행하는 CLI 래퍼라 브라우저에서 못
 // 쓴다 — 그래서 이 앱은 계속 screp-js를 쓴다.
 import { fmt } from "./date";
+import { normalizeUpgradeName } from "./replayTechNames";
 import type { Race, GameType } from "../types";
 
 const RACE_NAME_MAP: Record<string, Race> = {
@@ -78,11 +79,20 @@ export interface ReplayPlayerSignals {
    *  한계는 늘 같다 — '명령'이지 '도달'이 아니다. 그래서 한두 번 찍힌 건 정찰로 보고
    *  여러 번 몰린 경우만 근거로 쓴다(replayTactics의 pushersOn). */
   orderPositions: { frame: number; x: number; y: number }[];
-  /** 연구한 테크(스톰/럴커 등)와 업그레이드 이름 — 순서대로. */
+  /** 연구한 테크(스톰/럴커 등)와 업그레이드 이름 — 순서대로.
+   *
+   *  이름은 replayTechNames.ts의 TECH_NAMES / UPGRADE_NAMES 그대로다. 업그레이드는 screp이
+   *  "Ion Thrusters (Vulture Speed)"처럼 괄호 설명을 붙여 주는데, 여기 담을 때 떼어
+   *  ("Ion Thrusters") 통일한다 — 안 그러면 코드에서 이름을 비교할 때마다 긴 이름을 정확히
+   *  적어야 하고, 실제로 그걸 틀려서 조건이 늘 false이던 자리가 여럿 있었다(지적).
+   *
+   *  공/방 업그레이드는 한 단계 올릴 때마다 같은 이름이 한 번씩 더 들어온다 — 그래서 나온
+   *  횟수가 곧 단계(최대 3)다. upgradeLevel()로 센다. */
   techNames: string[];
   upgradeNames: string[];
-  /** 테크별 첫 연구 프레임 — 요약을 시간순으로 늘어놓을 때 이 시점을 쓴다. */
+  /** 테크·업그레이드별 첫 연구 프레임 — 요약을 시간순으로 늘어놓을 때 이 시점을 쓴다. */
   firstTechFrame: Record<string, number>;
+  firstUpgradeFrame: Record<string, number>;
   /** 이 사람이 친 채팅(앞쪽 일부). GG 선언처럼 승부를 말해주는 게 여기 있다. */
   chats: { frame: number | null; text: string }[];
   /** 수송선에서 유닛을 내린 커맨드 수와 첫 시점 — 드랍이 '실제로 있었나'의 유일한 증거다.
@@ -263,7 +273,7 @@ function emptySignals(): ReplayPlayerSignals {
     unitCounts: {}, firstUnitFrame: {},
     buildingCounts: {}, firstBuildingFrame: {},
     unitFrames: {}, buildingFrames: {}, buildPositions: [], orderPositions: [],
-    techNames: [], upgradeNames: [], firstTechFrame: {}, chats: [],
+    techNames: [], upgradeNames: [], firstTechFrame: {}, firstUpgradeFrame: {}, chats: [],
     unloadCount: 0, firstUnloadFrame: null, liftOffCount: 0, firstLiftOffFrame: null,
     leaveFrame: null, leaveReason: null,
     firstCmdFrame: null, lastCmdFrame: null, cmdCountByThird: [0, 0, 0],
@@ -362,8 +372,14 @@ function collectSignals(cmds: ScrepCmd[], totalFrames: number | null): Map<numbe
       s.techNames.push(tech);
       if (frame !== null && s.firstTechFrame[tech] === undefined) s.firstTechFrame[tech] = frame;
     }
-    const upgrade = nameOf(c.Upgrade);
-    if (upgrade) s.upgradeNames.push(upgrade);
+    const upgradeRaw = nameOf(c.Upgrade);
+    if (upgradeRaw) {
+      const upgrade = normalizeUpgradeName(upgradeRaw);
+      s.upgradeNames.push(upgrade);
+      if (frame !== null && s.firstUpgradeFrame[upgrade] === undefined) {
+        s.firstUpgradeFrame[upgrade] = frame;
+      }
+    }
   }
   return out;
 }

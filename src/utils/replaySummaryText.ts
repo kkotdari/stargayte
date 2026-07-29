@@ -1,5 +1,6 @@
 import { ga, ira, neun, reul, ro, wa, yeoss } from "./korean";
 import { isReplaySummaryData, type ReplaySummaryBeat, type ReplaySummaryData } from "./replaySummaryData";
+import { SIGNATURE_UPGRADE_KO } from "./replayTechNames";
 
 // 저장된 요약 데이터(replaySummaryData.ts)를 사람이 읽는 문단으로 옮긴다.
 //
@@ -37,13 +38,22 @@ export const SPECTACLE_UNITS: Record<string, string> = {
   "Dark Archon": "다크아콘이 나온",
 };
 
+// 연구로 잡히는 기술 전부. 예전엔 절반쯤만 적혀 있었고, 그나마 "Cloaking"은 screp에 없는
+// 이름이라 늘 빈손이었다(지적) — 레이스 클로킹의 실제 이름은 "Cloaking Field"다.
 export const TECH_KO: Record<string, string> = {
-  "Psionic Storm": "스톰", "Stim Packs": "스팀팩", Lockdown: "락다운",
-  "Spider Mines": "마인", "Lurker Aspect": "럴커", Burrowing: "버로우",
-  Irradiate: "이레디에이트", "Yamato Gun": "야마토", Recall: "리콜",
-  "Stasis Field": "스테이시스", Consume: "컨슘", "Dark Swarm": "다크스웜",
-  Plague: "플레이그", Hallucination: "환상", "Mind Control": "마인드컨트롤",
-  Cloaking: "클로킹", "Personnel Cloaking": "클로킹",
+  // 테란
+  "Stim Packs": "스팀팩", Lockdown: "락다운", "EMP Shockwave": "EMP",
+  "Spider Mines": "마인", "Tank Siege Mode": "시즈모드", Irradiate: "이레디에이트",
+  "Yamato Gun": "야마토", "Cloaking Field": "레이스 클로킹",
+  "Personnel Cloaking": "고스트 클로킹", Restoration: "리스토레이션",
+  "Optical Flare": "옵티컬 플레어",
+  // 저그
+  Burrowing: "버로우", "Lurker Aspect": "럴커", Plague: "플레이그", Consume: "컨슘",
+  Ensnare: "인스네어", "Spawn Broodlings": "브루들링", "Dark Swarm": "다크스웜",
+  // 프로토스
+  "Psionic Storm": "스톰", Recall: "리콜", "Stasis Field": "스테이시스",
+  Hallucination: "할루시네이션", "Disruption Web": "디스럽션 웹",
+  "Mind Control": "마인드컨트롤", Maelstrom: "마엘스트롬",
 };
 
 /** 방어 건물 — "질럿과 성큰으로 막아섰지만 실패"처럼 유닛과 함께 말한다. */
@@ -950,6 +960,33 @@ const TEMPLATES: Record<string, Tpl> = {
       `${label}까지 돌림`,
     ]))}`;
   },
+  // 공/방 업그레이드(요청: 최대한 활용) — "지상 3-3"처럼 그 판의 굳히기를 말한다.
+  // 3-3은 '풀업'이라 부르고, 그보다 낮으면 숫자를 그대로 읽는다.
+  upgrade: (c) => {
+    const line = str(c.p.line);
+    const w = num(c.p.w, 0);
+    const a = num(c.p.a, 0);
+    if (!line || w + a === 0) return null;
+    const full = w >= 3 && a >= 3;
+    return `${ga(c.who)} ${done(c, c.pick(full ? [
+      `${line} 풀업(3-3)까지 올림`,
+      `${line} 업그레이드를 끝까지 올려 굳힘`,
+      `${line} 3-3을 찍고 힘으로 밀어붙임`,
+    ] : [
+      `${line} ${w}-${a}까지 올림`,
+      `${line} 업그레이드를 ${w}-${a}로 앞세움`,
+    ]), true)}`;
+  },
+
+  // 상징 업그레이드(요청) — 저글링 속업·드라군 사업처럼 이름만 대도 그림이 그려지는 것.
+  "upgrade-signature": (c) => {
+    const ko = SIGNATURE_UPGRADE_KO[str(c.p.upgrade) as keyof typeof SIGNATURE_UPGRADE_KO];
+    if (!ko) return null;
+    return `${ga(c.who)} ${done(c, c.pick([
+      `${reul(ko)} 서둘러 올림`, `${ko}을 먼저 챙김`, `${reul(ko)} 앞세움`,
+    ]), true)}`;
+  },
+
   tech: (c) => {
     const t = TECH_KO[str(c.p.tech)];
     if (!t) return null;

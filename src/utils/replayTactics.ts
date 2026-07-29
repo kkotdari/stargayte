@@ -1,4 +1,5 @@
 import type { BuildPos, ParsedReplayPlayer, ReplayPlayerSignals } from "./replayParser";
+import { hasTech, hasUpgrade } from "./replayTechNames";
 
 // 리플레이 커맨드 스트림에서 '전술'을 짚어낸다(요청: 9드론 저글링 러시 / 투게이트 질럿 /
 // 초반 포토러시 / 몰래 배럭 / 목동 저그 / 바이오닉 / 발키리 오버로드 사냥 / 아비터 리콜 /
@@ -444,7 +445,6 @@ function detectFor(c: Ctx): Tactic[] {
   const u = (n: string) => s.unitCounts[n] ?? 0;
   const firstU = (n: string): number | null => s.firstUnitFrame[n] ?? null;
   const firstB = (n: string): number | null => s.firstBuildingFrame[n] ?? null;
-  const hasTech = (n: string) => s.techNames.includes(n);
   const tanks = u("Siege Tank (Tank Mode)") + u("Siege Tank (Siege Mode)");
   const who = rawName;
   // 당한 쪽 — 1:1에서만 확실하다. 못 짚으면 그 부분만 빠지고 문장은 그대로 나온다.
@@ -574,13 +574,13 @@ function detectFor(c: Ctx): Tactic[] {
       }
     }
     // 목동 저그 — 저글링·울트라에 다크스웜(또는 디파일러)까지 얹은 그림.
-    const swarm = hasTech("Dark Swarm") || u("Defiler") >= 2;
+    const swarm = hasTech(s, "Dark Swarm") || u("Defiler") >= 2;
     if (u("Zergling") >= 12 && u("Ultralisk") >= 3 && swarm) {
       out.push({
         key: "moka", weight: 11, at: firstU("Ultralisk"),
         who,
       });
-    } else if (hasTech("Dark Swarm")) {
+    } else if (hasTech(s, "Dark Swarm")) {
       out.push({
         key: "swarm", weight: 6, at: s.firstTechFrame["Dark Swarm"] ?? null,
         who,
@@ -593,7 +593,7 @@ function detectFor(c: Ctx): Tactic[] {
       });
     }
     // 러커/히드라 드랍(요청) — 저그는 오버로드에 태워야 하므로 수송 업그레이드가 곧 신호다.
-    if (dropped && s.upgradeNames.includes("Ventral Sacs") && (u("Lurker") >= 3 || u("Hydralisk") >= 8)) {
+    if (dropped && hasUpgrade(s, "Ventral Sacs") && (u("Lurker") >= 3 || u("Hydralisk") >= 8)) {
       out.push({
         key: "zerg-drop", ...target, weight: 11,
         at: s.firstUnloadFrame,
@@ -725,7 +725,9 @@ function detectFor(c: Ctx): Tactic[] {
   }
 
   // 클로킹 레이스(요청) — 레이스만으로는 정찰일 수 있고, 클로킹까지 올려야 전략이다.
-  if (race === "테란" && u("Wraith") >= WRAITH_MIN && s.upgradeNames.includes("Cloaking Field")) {
+  // 레이스 클로킹은 '기술(Tech)'이다 — 예전엔 upgradeNames에서 찾고 있어서 이 전술이
+  // 한 번도 안 떴다(지적). 이름을 타입으로 좁힌 hasTech로 바꿔 같은 실수를 막는다.
+  if (race === "테란" && u("Wraith") >= WRAITH_MIN && hasTech(s, "Cloaking Field")) {
     out.push({
       key: "cloak-wraith", ...target, weight: 12,
       at: firstU("Wraith"), who, p: { n: u("Wraith") },
@@ -766,7 +768,7 @@ function detectFor(c: Ctx): Tactic[] {
         who,
       });
     }
-    if (u("Arbiter") >= 1 && hasTech("Recall")) {
+    if (u("Arbiter") >= 1 && hasTech(s, "Recall")) {
       out.push({
         // 아비터 리콜은 전황을 통째로 뒤집는 수다(요청) — 다른 견제와 같은 무게로 두면
         // 정작 판이 뒤집힌 대목이 요약에서 빠진다.
