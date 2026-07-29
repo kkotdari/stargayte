@@ -272,6 +272,12 @@ function linkFamily(t: string): string {
   return t;
 }
 const CONTRAST_LINKS = new Set(["한편", "그와 동시에", "반면", "그러나", "하지만", "그렇지만", "이에 질세라", "다른 쪽에서는", "반대로", "역으로"]);
+// 판이 여러 곳에서 동시에 벌어진다는 전제를 깔고 있는 이음말 — 일대일에서는 쓰지 않는다
+// (지적). 두 사람뿐인 경기에 '다른 쪽'도, 딴 데서 벌어지는 '한편'도 없다.
+const TEAM_ONLY_LINKS = new Set(["한편", "다른 쪽에서는"]);
+// 그 자체에 이미 '-는'이 붙어 있는 이음말 — 뒤따르는 주어까지 '-는'으로 세우면
+// "다른 쪽에서는 조조는 …"처럼 겹친다(지적). 이런 자리에서는 주어를 '-이/가'로 둔다.
+const TOPIC_MARKED_LINKS = new Set(["다른 쪽에서는"]);
 // 시간 순서를 짚는 이음말 — 위 대비 이음말과 함께 문장 앞머리를 알아보는 데 쓴다.
 const SEQUENCE_LINKS = ["이어서", "곧이어", "그 직후", "잠시 후", "한참 후", "소강상태 후", "그 후", "한동안의 대치 후", "그 기세로", "여세를 몰아", "그 기세를 이어간", "여기에", "게다가", "설상가상으로", "그리고"];
 // 정규식에 이름을 그대로 넣기 전에 특수문자를 막는다 — 닉네임에 무엇이 들어올지 모른다.
@@ -1762,7 +1768,14 @@ export function renderReplaySummary(
     // 소유격으로 시작한 문장에는 다음 마디를 이어 붙일 수 없다(지적).
     const prevLedBy = (name: string): boolean =>
       name !== "" && (prevBody.startsWith(`${ga(name)} `) || prevBody.startsWith(`${neun(name)} `));
-    const link = (opts: string[]): string => {
+    const link = (rawOpts: string[]): string => {
+      // 일대일에는 '다른 쪽'이 없다(지적) — 판이 여러 곳에서 동시에 벌어진다는 말은 둘이
+      // 붙은 경기에서 쓸 수 없다. 후보에서 통째로 뺀다(다 빠지면 원래대로 둔다).
+      const opts = duel
+        ? (rawOpts.filter((o) => !TEAM_ONLY_LINKS.has(o)).length > 0
+          ? rawOpts.filter((o) => !TEAM_ONLY_LINKS.has(o))
+          : rawOpts)
+        : rawOpts;
       // 같은 '결'의 이음말이 잇달아 나오면 겉돈다(지적: 접속사 남발) — "하지만 … 그러나"도,
       // "6분 후 … 9분 뒤"도 읽는 사람에겐 같은 말이 두 번 나온 것으로 들린다. 낱말이
       // 아니라 결(역접/시간/그 밖)로 묶어 앞에서 쓴 결을 피한다.
@@ -2037,7 +2050,11 @@ export function renderReplaySummary(
     }
     if (linkWord) {
       // 대비를 뜻하는 이음말 뒤의 주어는 주제격이라야 읽힌다(지적: "반면 Rex는 …").
-      const body = CONTRAST_LINKS.has(linkWord) ? toTopic(text, baseWho) : text;
+      // 다만 이음말 자체에 '-는'이 들어 있으면 그대로 둔다 — "다른 쪽에서는 조조는"이
+      // 아니라 "다른 쪽에서는 조조가"가 맞다(지적).
+      const body = CONTRAST_LINKS.has(linkWord) && !TOPIC_MARKED_LINKS.has(linkWord)
+        ? toTopic(text, baseWho)
+        : text;
       // "2팀의 netan의 …"은 '의'가 겹쳐 어색하다(지적) — 뒤 이름이 소유격이면 "2팀 netan의".
       const tag = teamTag && body.startsWith(`${baseWho}의 `) ? teamTag.replace("팀의 ", "팀 ") : teamTag;
       text = `${linkWord} ${tag}${body}`;
@@ -2174,10 +2191,11 @@ export function renderReplaySummary(
     // 맺음말에는 '도'를 붙이지 않는다 — 결말은 곁들이는 말이 아니다.
     const alsoSubject = flipped && crossTeam && b.k !== "result";
     // 팀이 갈린 반전에는 앞말을 받는 연결어를 한마디 넣어도 좋다(요청).
+    // 일대일에는 '다른 쪽'이 없다(지적) — 그 자리는 대신 '반대로'가 받는다.
     const alsoLead = alsoSubject && b.k !== "result"
       ? (headToHead
         ? ["", "반대로 ", "역으로 ", !duel && myTeam ? `${myTeam}팀의 ` : ""][seed % 4]
-        : ["", "이에 질세라 ", "다른 쪽에서는 ", !duel && myTeam ? `${myTeam}팀의 ` : ""][seed % 4])
+        : ["", "이에 질세라 ", duel ? "반대로 " : "다른 쪽에서는 ", !duel && myTeam ? `${myTeam}팀의 ` : ""][seed % 4])
       : "";
     // "…늘린 뒤"는 그 자체가 이어 주는 말이라 쉼표를 두지 않는다.
     if (chained && sameSubject) {
