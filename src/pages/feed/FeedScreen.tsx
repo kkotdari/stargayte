@@ -393,7 +393,13 @@ function MatchStack({
   };
   const toggleOpen = (next: boolean) => {
     toggledRef.current = true;
-    heightRef.current = swapRef.current?.offsetHeight ?? null;
+    // 지금 높이를 재서 그 자리에 인라인으로 못 박아 둔다 — 리액트가 DOM을 바꾸는 순간
+    // 껍데기의 자연 높이가 '들어오는 쪽'으로 확 바뀌는데, 그 값을 애니메이션의 backwards
+    // fill에만 맡기면 브라우저/시점에 따라 한 프레임 튄다(지적: 누르면 순간 움직임).
+    // 인라인 height는 아래 연출이 끝날 때 clearInline이 걷어낸다.
+    const h = swapRef.current?.offsetHeight ?? null;
+    heightRef.current = h;
+    if (swapRef.current && h !== null) swapRef.current.style.height = `${h}px`;
     afterCollapseRef.current = null;
     setOpen(next);
   };
