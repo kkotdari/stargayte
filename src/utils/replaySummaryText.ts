@@ -571,8 +571,17 @@ const TEMPLATES: Record<string, Tpl> = {
   "raid-damage": (c) => {
     const label = tacticLabel(str(c.p.k), c.p);
     if (!label) return null;
-    const of = c.whom ? `${c.whom}의 ` : "상대 ";
-    const foe = c.whom || "상대";
+    // 당한 쪽이 그때 방어 건물을 거의 안 갖고 있었으면 이름 앞에 그 사실을 붙인다(지적:
+    // 포토를 안 지었다가 당했는데 그 내용이 안 나온다). 문장 하나를 더 쓰지 않고 이름을
+    // 꾸미는 쪽을 택했다 — 같은 순간을 두 문장이 나눠 말하면 읽는 맛이 떨어진다.
+    // 이 필드가 없던 시절의 요약은 이 대목을 그냥 건너뛴다.
+    const vdef = DEFENSE_KO[str(c.p.vdef)];
+    const thin = !vdef || !("vdefN" in c.p) ? ""
+      : num(c.p.vdefN) === 0
+        ? `${vdef} 하나 없던 `
+        : `${vdef} ${num(c.p.vdefN)}개뿐이던 `;
+    const of = c.whom ? `${thin}${c.whom}의 ` : "상대 ";
+    const foe = c.whom ? `${thin}${c.whom}` : "상대";
     // 한 사람이 여러 수에 잇달아 무너졌으면 한 문장으로 묶는다(지적: 같은 이야기가 두 번
     // 나옴). "Rex의 9드론 저글링 러시와 제롬의 4게이트 질럿 러시에 군범이 2분 만에 무너짐".
     const ks = list(c.p.ks);

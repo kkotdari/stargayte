@@ -87,6 +87,10 @@ const TURTLE_MIN = 10;
 
 // 마지막 커맨드가 경기 끝보다 이만큼(비율) 앞서면 "일찍 무너졌다"로 본다.
 const EARLY_OUT_RATIO = 0.7;
+// 맺음말의 '몰아붙여 이긴 사람들'에 들려면 최소한 이만큼은 판에 남아 있어야 한다
+// (지적: 6분에 무너진 사람이 끝까지 살아 싸운 것처럼 읽힘). EARLY_OUT_RATIO보다 훨씬
+// 이르게 잡는 이유는 ENDING_ALIVE_RATIO를 쓰는 자리의 주석 참고.
+const ENDING_ALIVE_RATIO = 0.5;
 
 // 합공으로 볼 시간 창 — 이보다 늦게 끊긴 건 초반 러시가 아니라 그냥 진 것이다.
 const GANG_RUSH_SEC = 9 * 60;
@@ -165,6 +169,12 @@ const DEF_SURGE_REACT_SEC = 5 * 60;
 // 한참 뒤에 맞은 것까지 끌어오면 아무 증설이나 '공격을 예감했다'가 되고, productionDips는
 // 1분 단위라 실제로는 동시에 벌어진 일이 앞뒤로 갈리기도 한다.
 const DEF_SURGE_WARN_SEC = 2 * 60;
+// 들이친 수에 당한 사람의 방어가 '얇았다'고 말할 수 있는 상한 — 이보다 많이 갖췄으면
+// 그건 뚫린 것이지 없어서 당한 게 아니다(그 얘기는 돌파 문장이 한다).
+const DEF_THIN_MAX = 2;
+// 그리고 이 시각은 지나야 한다 — 2분짜리 러시에 "벙커 하나 없었다"고 하면 사실이긴 해도
+// 정보가 아니다. 그 시점엔 아무도 없다. 방어 건물 하나가 자리를 잡을 만한 때부터 센다.
+const DEF_THIN_MIN_SEC = 3 * 60;
 // 시작이 초반을 지나야 '중반부터'다 — 1분부터 뽑은 기본 유닛은 여기 해당하지 않는다.
 const LONG_RUN_START = 0.3;
 // 그리고 끝까지 이어져야 한다.
@@ -1396,12 +1406,28 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
           }
         }
         if (hit) {
+          // 당한 사람이 그때 방어 건물을 몇 채나 갖고 있었나(지적: 포토를 안 지었다가
+          // 당했는데 그 내용이 안 나온다). 기준 시점은 '수가 시작된 때'다 — 얻어맞고
+          // 부랴부랴 올린 것까지 세면 "포토 10개를 두고도 당했다"가 되어 사실과 반대로
+          // 읽힌다(실제 리플레이에서 그랬다: 5분 40초에 11채를 몰아 짓고 6분에 끊김).
+          // 얇았을 때만 싣는다 — 갖출 만큼 갖췄는데 뚫린 건 돌파 문장이 할 얘기다.
+          const victim = foes.find((x) => x.rawName === hit.raw);
+          const guard = victim && t.at !== null && t.at * SECONDS_PER_FRAME >= DEF_THIN_MIN_SEC
+            ? defenseBefore(victim, t.at, mine)
+            : null;
+          // 지은 채수는 있는데 언제 지었는지가 없는 데이터(건물 프레임을 못 읽은 파싱)에서는
+          // "하나 없었다"고 단정하지 않는다 — 없는 게 아니라 모르는 것이다.
+          const known = !guard || !guard.def
+            || (victim?.signals?.buildingCounts[guard.def] ?? 0) === 0
+            || (victim?.signals?.buildingFrames[guard.def]?.length ?? 0) > 0;
+          const thin = known && guard && guard.def && guard.n <= DEF_THIN_MAX ? guard : null;
           return {
             k: "raid-damage", won, who: [t.who], at: t.at,
             weight: t.weight + (hit.out ? 16 : 14),
             whom: [hit.raw],
             p: {
               ...(t.p ?? {}), k: t.key,
+              ...(thin ? { vdef: thin.def, vdefN: thin.n } : {}),
               // 탈락은 몇 분경이었는지까지 말한다(요청) — 서사의 시점이 되는 순간이다.
               ...(hit.out ? { out: true, outMin: minutes(hit.at * SECONDS_PER_FRAME) } : {}),
               // 초반 올인에 초반부터 무너진 건 그 자체로 다른 그림이다(요청).
@@ -1829,8 +1855,20 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   });
   // 팀전 승리를 한 사람의 공으로 돌리지 않는다(요청) — 이긴 편 각자가 무엇으로 싸웠는지를
   // 함께 적어, "유비의 마린, 관우의 저글링으로 승리"처럼 팀 전체로 읽히게 한다.
-  const teamRanked = winnerPlayers.length > 1
-    ? winnerPlayers
+  // 다만 이긴 편이라도 일찍 끊긴 사람은 이 대열에서 뺀다(지적: 6분에 무너진 사람이 끝까지
+  // 살아 질럿 드라군을 쓴 것처럼 읽힌다). 그 사람이 무엇을 뽑았는지는 앞 문장이 이미 말한다.
+  // 기준을 earlyOuts(0.7)보다 훨씬 이르게 잡는 이유: 이긴 쪽이 생산을 멈추는 건 무너져서가
+  // 아니라 이미 갖춘 병력으로 끝냈기 때문인 경우가 많은데, 그건 대개 경기 후반의 일이다.
+  // 절반도 못 가서 끊겼다면 그건 '몰아붙여 이긴' 사람이 아니다.
+  const stillIn = winnerPlayers.filter((p) => {
+    if (!totalFrames) return true;
+    const fell = fellFrame(p, totalFrames);
+    return fell === null || fell >= totalFrames * ENDING_ALIVE_RATIO;
+  });
+  // 아무도 안 남으면 그건 무너진 게 아니라 커맨드가 성긴 것이다 — 그럴 땐 전원을 쓴다.
+  const finishers = stillIn.length > 0 ? stillIn : winnerPlayers;
+  const teamRanked = finishers.length > 1
+    ? finishers
         .map((p) => {
           const own = [...ownCombat(p).entries()].sort((a, b) => b[1] - a[1]);
           // 대표 유닛은 스스로 싸움을 끝낼 수 있는 것으로, 조합에는 메딕·디파일러 같은
@@ -1845,12 +1883,18 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   // 전원의 유닛을 늘어놓으면 문장이 길어지기만 한다(지적) — 대신 같은 주력을 쓴 사람끼리
   // 묶어 말한다(요청). 누구를 묶고 몇 무리까지 말할지는 문장 쪽이 정하므로, 여기서는
   // 이긴 편 전원의 대표 유닛과 조합을 그대로 넘긴다.
-  const useTeam = teamRanked.length === winnerPlayers.length && teamRanked.length > 1;
+  const useTeam = teamRanked.length === finishers.length && teamRanked.length > 1;
 
   const ending: Beat = {
     k: "result", won: true, at: Number.POSITIVE_INFINITY, weight: 1000,
     // 이긴 편 전원을 담아 두고, 몇 명까지 말할지는 문장 쪽에서 정한다.
-    who: useTeam ? teamRanked.map((x) => x.raw) : subject,
+    // 사람별로 나눠 말하지 않는 꼴(useTeam=false)에서도 일찍 끊긴 사람은 뺀다 — 이름만
+    // 나열하는 문장이라도 "몰아붙여 이겼다"의 주어이긴 마찬가지다. 다 빠지면 원래대로 둔다.
+    who: useTeam
+      ? teamRanked.map((x) => x.raw)
+      : (subject.filter((w) => finishers.some((p) => p.rawName === w)).length > 0
+        ? subject.filter((w) => finishers.some((p) => p.rawName === w))
+        : subject),
     p: {
       mode, lead, wentLate, ...(bigSwing ? { swing: true } : {}),
       ...(oneSided ? { oneSided: true } : {}),
