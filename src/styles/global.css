@@ -2480,12 +2480,17 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
      줄였지만 이제 축소를 두지 않아 base 34px/본문 폰트를 그대로 쓴다. 라벨만 caption 유지. */
 }
 /* 건수는 필터 항목들과 같은 줄에 있으면 목록과 멀어 보인다는 피드백 — 그리드 아래
-   자기 줄로 내려서 목록에 더 가깝게 붙인다(모바일은 이 칸 자체가 안 보이므로 —
-   .scr-list-count 공용 규칙 — 영향 없다). 부모(.scr-filter-bar)의 여백을 공용 규칙으로
+   자기 줄로 내려서 목록에 더 가깝게 붙인다. 부모(.scr-filter-bar)의 여백을 공용 규칙으로
    물려받지 않도록 전용 클래스로 분리하고, 아래쪽(목록 방향)은 마진 없이 바로 붙인다
    (요청: "건수가 scr-filter-bar 쓰고 있고 마진 바텀 가진 문제 — 별도 클래스로 마진
-   바텀 없이 목록에 착 붙게"). */
-.scr-filter-bar-count { align-self: flex-end; margin-top: 6px; margin-left: 0; margin-bottom: 0; position: relative; top: 1px; }
+   바텀 없이 목록에 착 붙게").
+   display를 다시 켜는 이유: 공용 .scr-list-count는 모바일에서 숨는다(필터 항목들과 한
+   줄을 다투기 때문). 이쪽은 제 줄을 따로 쓰므로 다툴 자리가 없어 모바일에서도 보인다
+   (요청: 피드 목록에 몇 건인지 필터 바로 아래). */
+.scr-filter-bar-count {
+  display: block; align-self: flex-end;
+  margin-top: 6px; margin-left: 0; margin-bottom: 0; position: relative; top: 1px;
+}
 /* 경기번호·메모 검색 필드(경기 화면 전용) — 유저 검색창 바로 아래에 한 줄로 나란히 두고,
    모바일에서도 한 줄을 유지한다(요청). 라벨 없이 플레이스홀더로만 힌트를 준다(요청). 인풋
    톤은 유저 검색창과 같은 옅은 반투명. */
