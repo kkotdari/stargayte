@@ -240,7 +240,13 @@ function ChallengeActionsMenu({ challenge, isAdmin, onDeleted }: {
       </button>
       {open && (
         <>
-          <div className="scr-feed-add-backdrop" onClick={() => setOpen(false)} aria-hidden />
+          {/* 백드롭 클릭은 '메뉴 닫기'에서 끝나야 한다(지적) — 안 끊으면 그 클릭이
+              포스트 본체까지 올라가 펼침/접힘까지 같이 눌린다. */}
+          <div
+            className="scr-feed-add-backdrop"
+            onClick={(e) => { e.stopPropagation(); setOpen(false); }}
+            aria-hidden
+          />
           <div className="scr-menu-pop-drop scr-feed-chal-menu-drop" role="menu">
             <KakaoShareButton variant="menu" content={shareContent} onDone={() => setOpen(false)} />
             {isAdmin && (
@@ -346,7 +352,13 @@ function StackMenu({ content }: { content: KakaoShareContent }) {
       </button>
       {open && (
         <>
-          <div className="scr-feed-add-backdrop" onClick={() => setOpen(false)} aria-hidden />
+          {/* 백드롭 클릭은 '메뉴 닫기'에서 끝나야 한다(지적) — 안 끊으면 그 클릭이
+              포스트 본체까지 올라가 펼침/접힘까지 같이 눌린다. */}
+          <div
+            className="scr-feed-add-backdrop"
+            onClick={(e) => { e.stopPropagation(); setOpen(false); }}
+            aria-hidden
+          />
           <div className="scr-menu-pop-drop scr-feed-chal-menu-drop" role="menu">
             <KakaoShareButton variant="menu" content={content} onDone={() => setOpen(false)} />
           </div>

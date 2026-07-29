@@ -72,7 +72,13 @@ export function RankShiftMenu({ shift }: { shift: RankSnapshot }) {
       </button>
       {open && (
         <>
-          <div className="scr-feed-add-backdrop" onClick={() => setOpen(false)} aria-hidden />
+          {/* 백드롭 클릭은 '메뉴 닫기'에서 끝나야 한다(지적) — 안 끊으면 그 클릭이 카드
+              본체까지 올라가 순위변동 목록의 펼침/접힘까지 같이 눌린다. */}
+          <div
+            className="scr-feed-add-backdrop"
+            onClick={(e) => { e.stopPropagation(); setOpen(false); }}
+            aria-hidden
+          />
           <div className="scr-menu-pop-drop scr-feed-chal-menu-drop" role="menu">
             <KakaoShareButton
               variant="menu"

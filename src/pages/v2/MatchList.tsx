@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useLayoutEffect } from "react";
+import { useState, useRef, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
 import { MoreHorizontal, Monitor, User, Copy, Check } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
@@ -291,16 +291,12 @@ function MatchActionsMenu({
     if (!open || !anchorRef.current || !dropRef.current) return;
     return attachPopover(anchorRef.current, dropRef.current, { growToContent: true, maxWidth: 200 });
   }, [open]);
-  useEffect(() => {
-    if (!open) return;
-    const onDoc = (e: PointerEvent) => {
-      const t = e.target as Node;
-      if (anchorRef.current?.contains(t) || dropRef.current?.contains(t)) return;
-      setOpen(false);
-    };
-    document.addEventListener("pointerdown", onDoc);
-    return () => document.removeEventListener("pointerdown", onDoc);
-  }, [open]);
+  // 바깥을 눌러 닫는 일은 아래 백드롭(전체 화면 투명 판)이 맡는다 — 예전엔 document의
+  // pointerdown으로 닫았는데, 그러면 '닫기'만 되고 그 뒤에 이어지는 click은 그대로
+  // 포스트 본체까지 가서 묶음이 같이 펼쳐지거나 접혔다(지적: 케밥만 닫히고 끝나야 한다).
+  // pointerdown이 메뉴를 닫아 버리니 백드롭은 click이 오기도 전에 사라져 막을 수가 없다.
+  // 백드롭 하나로 통일하면 그 판이 클릭을 삼키므로 '닫기'에서 정확히 끝난다(피드의 다른
+  // 메뉴들과 같은 방식).
 
   const items: { key: string; label: string; danger?: boolean; onSelect: () => void }[] = [
     ...(match.replay ? [{ key: "download", label: "리플레이 저장", onSelect: () => void downloadReplay(match) }] : []),
@@ -319,7 +315,13 @@ function MatchActionsMenu({
       </button>
       {open && createPortal(
         // 포털이라도 이벤트는 리액트 트리를 따라 올라간다 — 묶음 목록의 '접기'가 같이
-        // 눌리지 않게 여기서 끊는다(위 시트와 같은 이유).
+        // 눌리지 않게 백드롭과 드롭 양쪽에서 끊는다(위 시트와 같은 이유).
+        <>
+          <div
+            className="scr-feed-add-backdrop"
+            onClick={(e) => { e.stopPropagation(); setOpen(false); }}
+            aria-hidden
+          />
         <div
           className="scr-menu-pop-drop scr-match-menu-drop scr-scroll" ref={dropRef} role="menu"
           onClick={(e) => e.stopPropagation()}
@@ -339,7 +341,8 @@ function MatchActionsMenu({
             content={() => matchShareContent(match, memberOf)}
             onDone={() => setOpen(false)}
           />
-        </div>,
+        </div>
+        </>,
         document.body,
       )}
     </div>
