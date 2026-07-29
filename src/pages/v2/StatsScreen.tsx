@@ -12,11 +12,11 @@ import InfoTip from "../../components/common/InfoTip";
 import { useAppStore } from "../../store/appStore";
 import { api } from "../../api/client";
 import { activeMemberSearchTerms, memberMatchesQuery } from "../../utils/memberSearch";
-import { monthInputToRange, currentMonthValue, MONTH_INPUT_MIN, MONTH_INPUT_MAX } from "../../utils/date";
+import { monthInputToRange, shiftMonthValue, currentMonthValue, MONTH_INPUT_MIN, MONTH_INPUT_MAX } from "../../utils/date";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import { usePageBackground } from "../../hooks/usePageBackground";
 import { cx } from "../../utils/format";
-import type { BaseRace, MatchType, Member, MemberStats, MemberStatsEntry, RankSnapshot } from "../../types";
+import type { BaseRace, MatchType, Member, MemberStats, MemberStatsEntry } from "../../types";
 
 // 종족 필터 — 검색창 예약어에서 필터창 드롭다운으로 옮겼다(요청).
 const RACE_SELECT_OPTS = [
@@ -130,12 +130,22 @@ export default function StatsScreenV2() {
       m.status !== "withdrawn" && m.status !== "suspended" && memberMatchesQuery(m, search));
   }, [members, search]);
 
+  // 전달의 같은 조건 — 순위 변동을 견줄 기준선(아래 prevStatsByMember 주석 참고).
+  // '전체 기간'에는 견줄 전달이 없으므로 빈 범위로 두고 조회 자체를 건너뛴다.
+  const prevRange = useMemo(
+    () => (periodUnit === "month"
+      ? monthInputToRange(shiftMonthValue(periodMonth, -1))
+      : { from: "", to: "" }),
+    [periodUnit, periodMonth],
+  );
+
   const queryKey = useMemo(
     () => ({
       dateFrom: effectiveFrom, dateTo: effectiveTo, matchType,
+      prevFrom: prevRange.from, prevTo: prevRange.to,
       memberIds: matchedMembers.map((m) => m.id).sort().join(","),
     }),
-    [effectiveFrom, effectiveTo, matchType, matchedMembers],
+    [effectiveFrom, effectiveTo, prevRange, matchType, matchedMembers],
   );
   const queryKeySignature = useMemo(() => JSON.stringify(queryKey), [queryKey]);
   const debouncedSignature = useDebouncedValue(queryKeySignature, 300);
@@ -144,16 +154,13 @@ export default function StatsScreenV2() {
   const [statsByMember, setStatsByMember] = useState<Record<string, MemberStatsEntry>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  // 최근 순위 변동 — 포인트 옆 화살표(▲2)의 근거다. 피드가 쓰는 것과 같은 목록이고,
-  // 못 불러오면 화살표만 안 나온다(표 자체는 그대로다).
-  const [rankSnapshots, setRankSnapshots] = useState<RankSnapshot[]>([]);
-  useEffect(() => {
-    let cancelled = false;
-    api.listRankSnapshots()
-      .then((res) => { if (!cancelled) setRankSnapshots(res); })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, []);
+  // 전달 같은 조건의 통계 — 포인트 옆 순위 변동(▲2)의 기준선이다.
+  //
+  // 피드의 '랭크 변동 스냅샷'과는 다른 이야기다(지적): 저쪽은 "직전 순위표 대비 방금
+  // 무엇이 바뀌었나"이고, 이쪽은 "지난달 순위와 견주면 지금 몇 계단인가"다. 그래서
+  // 스냅샷을 갖다 쓰지 않고, 조회할 때 그 달 통계를 한 번 더 받아 직접 계산한다.
+  // '전체 기간'을 보고 있으면 견줄 '전달'이 없어 아예 안 부른다.
+  const [prevStatsByMember, setPrevStatsByMember] = useState<Record<string, MemberStatsEntry>>({});
 
   useEffect(() => {
     const memberIds = debouncedQuery.memberIds ? debouncedQuery.memberIds.split(",") : [];
@@ -177,6 +184,22 @@ export default function StatsScreenV2() {
     }).finally(() => {
       if (!cancelled) setLoading(false);
     });
+    // 전달 순위 기준선 — 본 조회와 따로 간다. 실패하면 화살표만 안 나오고 표는 그대로다.
+    if (debouncedQuery.prevFrom) {
+      api.getMatchStats({
+        memberIds,
+        dateFrom: debouncedQuery.prevFrom,
+        dateTo: debouncedQuery.prevTo,
+        matchType: debouncedQuery.matchType,
+      }).then((res) => {
+        if (cancelled) return;
+        const map: Record<string, MemberStatsEntry> = {};
+        res.members.forEach((entry) => { map[entry.memberId] = entry; });
+        setPrevStatsByMember(map);
+      }).catch(() => { if (!cancelled) setPrevStatsByMember({}); });
+    } else {
+      setPrevStatsByMember({});
+    }
     return () => { cancelled = true; };
   }, [debouncedQuery]);
 
@@ -255,14 +278,14 @@ export default function StatsScreenV2() {
   }, [matchedMembers, statsByMember, sort, race]);
 
   // 지금 몇 위인가 — 서버가 매긴 자리번호(sortOrder)로 줄을 세우고 완전 동률(tieGroup)은
-  // 공동순위(1,1,3)로 묶는다. 백엔드가 순위 스냅샷을 만들 때 쓰는 규칙(_compute_standings)과
+  // 공동순위(1,1,3)로 묶는다. 백엔드가 순위표를 만들 때 쓰는 규칙(_compute_standings)과
   // 같은 계산이라, 여기 순위와 랭크 변동 카드의 순위가 어긋나지 않는다.
   // 표의 정렬(sort)과는 무관하다 — 순위는 정렬을 바꿔도 그 사람의 순위 그대로여야 한다.
-  const rankByMember = useMemo(() => {
+  const rankOf = (by: Record<string, MemberStatsEntry>): Map<string, number> => {
     const ranked = matchedMembers
-      .map((m) => statsByMember[m.id])
+      .map((m) => by[m.id])
       .filter((e): e is MemberStatsEntry => !!e && e.sortOrder != null && e.tieGroup != null)
-      .filter((e) => (statsByMember[e.memberId]?.overall.plays ?? 0) > 0)
+      .filter((e) => e.overall.plays > 0)
       .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
     const out = new Map<string, number>();
     let rank = 0;
@@ -271,22 +294,25 @@ export default function StatsScreenV2() {
       out.set(e.memberId, rank);
     });
     return out;
-  }, [matchedMembers, statsByMember]);
-
-  // 직전 순위표 대비 변동 — 가장 최근 스냅샷(같은 유형)의 shifts에서 가져온다.
-  // 스냅샷은 언제나 '이번 달' 성적으로 계산되므로(_current_month_range), 다른 달이나
-  // 전체 기간을 보고 있을 때는 짝이 안 맞는 숫자라 아예 안 보여준다.
-  const shiftPeriodMatches = periodUnit === "month" && periodMonth === currentMonthValue();
+  };
+  const rankByMember = useMemo(
+    () => rankOf(statsByMember),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [matchedMembers, statsByMember],
+  );
+  // 전달 대비 몇 계단 움직였나(+면 상승, 요청) — 같은 규칙으로 전달 순위를 매겨 뺀다.
+  // 지난달에 순위가 없던 사람(그 달에 안 뛴 사람)은 견줄 값이 없어 화살표를 안 단다.
   const rankDeltaByMember = useMemo(() => {
+    const prevRank = rankOf(prevStatsByMember);
     const out = new Map<string, number>();
-    if (!shiftPeriodMatches) return out;
-    const latest = rankSnapshots.find((s) => s.matchType === matchType);
-    for (const e of latest?.shifts ?? []) {
-      if (e.from == null) continue;
-      out.set(e.memberId, e.from - e.to);
+    for (const [id, now] of rankByMember) {
+      const before = prevRank.get(id);
+      if (before === undefined || before === now) continue;
+      out.set(id, before - now);
     }
     return out;
-  }, [rankSnapshots, matchType, shiftPeriodMatches]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rankByMember, prevStatsByMember, matchedMembers]);
 
   const maxOverallPlays = useMemo(
     () => Math.max(1, ...cards.map((c) => c.stats.plays)), [cards],
@@ -396,7 +422,7 @@ export default function StatsScreenV2() {
                 <SortableHead label="유저" sortKey="name" sort={sort} onToggle={toggleSort} className="scr-stat-name-head" />
                 <SortableHead
                   label="포인트(순위)" sortKey="points" sort={sort} onToggle={toggleSort}
-                  tooltip="랭크 포인트 — 이 기간·분류의 경기들로 산정한 레이팅 점수. 괄호 안은 지금 순위와 직전 순위표 대비 변동이에요(변동은 이번 달을 볼 때만 나와요). 숫자를 누르면 경기 이력(경기당 포인트 변화)이 열려요."
+                  tooltip="랭크 포인트 — 이 기간·분류의 경기들로 산정한 레이팅 점수. 괄호 안은 지금 순위와 전달 대비 변동이에요(전체 기간을 보면 견줄 전달이 없어 변동은 안 나와요). 숫자를 누르면 경기 이력(경기당 포인트 변화)이 열려요."
                 />
                 <SortableHead label="게임수" sortKey="plays" sort={sort} onToggle={toggleSort} />
                 <SortableHead label="승률" sortKey="rate" sort={sort} onToggle={toggleSort} />
