@@ -1919,9 +1919,19 @@ html:not(.scr-light-theme) .scr-stats-list-panel-v2 .scr-stat-name-cell, html:no
   .scr-stat-row-head { font-size: var(--fs-body); }
   /* 헤더 확대(요청: 헤더 2스텝 확대) — 위의 .scr-stats-list-panel-v2 .scr-stat-row(클래스
      2개)가 한 클래스짜리 .scr-stat-row-head를 특이도로 이겨 헤더까지 행 폰트로 눌러버리
-     므로, 같은 특이도 이상으로 헤더만 body로 되돌린다. */
-  .scr-stats-list-panel-v2 .scr-stat-row.scr-stat-row-head { font-size: var(--fs-body); }
+     므로, 같은 특이도 이상으로 헤더만 따로 지정한다. 그 뒤 한 스텝 되돌렸다(요청:
+     "통계 그리드 헤드 텍스트 1스텝 축소") — body(16) → caption(14), 즉 데이터 행과 같은
+     크기다. 컬럼명이 값보다 굵고(700) 배경도 한 톤 밝아서 크기가 같아도 제목으로 읽힌다.
+     통계 그리드(.scr-stats-list-panel-v2)에만 걸어, 같은 클래스를 쓰는 접속기록/메뉴권한
+     표(위 한 줄)는 그대로 둔다. */
+  .scr-stats-list-panel-v2 .scr-stat-row.scr-stat-row-head { font-size: var(--fs-caption); }
   .scr-stat-row-head > * { padding-top: 11px; padding-bottom: 11px; }
+  /* 행 최소높이 — PC(아래 min-width:481px 블록)에만 있던 규칙이라 모바일에서는 10전 미만
+     회원 행(승률 막대와 "승/전" 줄을 아예 안 그린다 — StatBar 참고)만 65 → 51px로 폭삭
+     주저앉았다(지적). 내용이 다 있을 때의 실측 높이를 최소값으로 박아 어떤 행이든 같은
+     높이가 되게 한다. 헤더 행은 막대가 없어 원래 낮으므로 PC와 마찬가지로 예외로 푼다. */
+  .scr-stats-list-panel-v2 .scr-stat-row { min-height: 65px; }
+  .scr-stats-list-panel-v2 .scr-stat-row.scr-stat-row-head { min-height: 0; }
 }
 .scr-stat-row-head span { text-align: center; justify-content: center; }
 /* 정렬 가능한 헤더 칸(전적/유효APM/유효커맨드) — 버튼이라 span과 달리 위 규칙이 안 먹어서
