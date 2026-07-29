@@ -18,7 +18,7 @@ import FeedComments from "./FeedComments";
 import ScrollNavTimeline from "../../components/common/ScrollNavTimeline";
 import ReplayReviewModal from "../../modals/ReplayReviewModal";
 import ChallengeFormModal from "../../modals/ChallengeFormModal";
-import { scheduledInstantMs, shortYearPrefix } from "../../utils/date";
+import { scheduledInstantMs, shortYearPrefix, DOW } from "../../utils/date";
 import { useAppStore } from "../../store/appStore";
 import { isAdminRole } from "../../constants/roles";
 import { activeMemberSearchTerms, memberMatchesTerm, normalizeSearchText, splitSearchTerms } from "../../utils/memberSearch";
@@ -58,8 +58,12 @@ const FLASH_MS = 2000;
 const DOW_FULL = ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"];
 
 // 피드 시각 표기 — 다가오는 일정은 "오늘"/"이번주 토요일"/"다음주 화요일"(주 시작 = 월요일),
-// 지난 일주일 안은 일자 대신 요일만("화요일 21:30"), 그 밖은 "M월 D일"(올해가 아니면
-// "25년 3월 4일"처럼 두 자리 연도 포함). 요일 괄호 병기는 하지 않는다.
+// 지난 일주일 안은 일자 대신 요일만("화요일 21:30"), 그 밖은 "M월 D일 (화)"(올해가 아니면
+// "25년 3월 4일 (화)"처럼 두 자리 연도 포함).
+// 날짜만 남는 자리에는 경기 목록의 날짜 머리글과 같은 방식으로 요일을 괄호로 병기한다
+// (요청: 게임 목록의 날짜 표시 규칙을 따르기) — 요일 표는 dateWithDow가 쓰는 것과 같은
+// 것을 가져다 쓴다. 이미 요일을 말로 부르는 갈래("오늘", "이번주 토요일", "화요일")는
+// 같은 말을 두 번 하는 셈이라 그대로 둔다.
 function formatEventTime(ms: number, withClock: boolean): string {
   const d = new Date(ms);
   const now = new Date();
@@ -91,7 +95,8 @@ function formatEventTime(ms: number, withClock: boolean): string {
   }
   // 올해가 아니면 두 자리 연도를 붙인다(요청: "전년도부터는 25년 이렇게") — 통계 제목의
   // 월 라벨과 같은 규칙(shortYearPrefix).
-  return `${shortYearPrefix(d.getFullYear(), now)}${d.getMonth() + 1}월 ${d.getDate()}일${time}`;
+  const year = shortYearPrefix(d.getFullYear(), now);
+  return `${year}${d.getMonth() + 1}월 ${d.getDate()}일 (${DOW[d.getDay()]})${time}`;
 }
 
 interface ChallengeItem {
