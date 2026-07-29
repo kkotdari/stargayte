@@ -6907,7 +6907,9 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    baseline을 맞춰 한 줄로 흐르게 한다. */
 .scr-feed-card-head {
   display: flex; flex-direction: column; align-items: stretch; gap: 3px;
-  padding: 16px var(--post-head-pad-r) 5px var(--post-pad-x);
+  /* 위아래 여백을 같게 — 띠가 머리 전체를 덮게 되면서 예전의 위 16px이 그대로 남아,
+     날짜 위만 휑하고 제목 아래는 붙어 보였다(지적: 17px 대 6px). 둘 다 8px 언저리로 맞춘다. */
+  padding: 7px var(--post-head-pad-r) 7px var(--post-pad-x);
   font-size: var(--fs-micro); color: var(--dim);
   /* 음영 띠를 자식 뒤(z-index:-1)에 깔되 포스트 배경까지 뚫고 내려가지는 않게 —
      isolation이 이 헤더를 새 쌓임 맥락으로 만들어 음수 z-index를 여기 안에 가둔다. */
