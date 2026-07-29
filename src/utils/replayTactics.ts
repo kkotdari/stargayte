@@ -78,6 +78,76 @@ export function burstsOf(frames: number[]): { from: number; to: number; n: numbe
   return out;
 }
 
+/* 생산 커맨드는 '큐에 넣은 명령'이지 '완성된 유닛'이 아니다. 스타게이트 열세 개를 한꺼번에
+   잡고 캐리어를 누르면 그 한 번에 커맨드 열세 개가 찍히고, 거기서 한 번 더 누르면 스물여섯
+   개가 된다 — 실제로 나오는 건 건물 수만큼이고 나머지는 줄을 선다. 판이 끝나면 줄에 남은
+   것은 아예 나오지 않는다.
+   실측(24분 빠른무한, 지적 "캐리어 대수가 자꾸 이상하게 잡혀"): DJKisoo의 캐리어 커맨드
+   69개 중 23개가 23.2~23.5분에 몰려 있었다. 캐리어 한 기에 2100프레임(약 88초)이 걸리고
+   판은 24분에 끝났으니 그 23기는 하나도 못 나왔다. 커맨드를 그대로 세면 없던 함대가 생긴다.
+
+   그래서 생산 건물 수를 상한으로 두고 줄 세워 '언제 완성됐나'를 계산한다. 값은 표에 적어
+   둔 유닛(느리고 비싸서 수가 곧 이야기가 되는 것들)에만 쓴다 — 저글링처럼 금방 나오는
+   유닛은 큐가 밀리지 않아 커맨드 수와 다르지 않다.
+   한계: 리플레이에는 파괴가 없어 부서진 생산 건물도 계속 뽑는 것으로 계산되고, 건물은
+   건설 커맨드 시점부터 쓸 수 있다고 본다(완성까지의 시간만큼 조금 넉넉하다). 둘 다 수를
+   부풀리는 쪽이라, 여기서 나온 값은 '많아야 이만큼'이다. */
+const UNIT_BUILD_FRAMES: Record<string, { frames: number; from: string }> = {
+  Carrier: { frames: 2100, from: "Stargate" },
+  Battlecruiser: { frames: 2000, from: "Starport" },
+};
+
+/** 그 유닛이 실제로 완성됐을 프레임들 — 생산 건물 수를 상한으로 큐를 흉내 내고, 판이
+ *  끝나기 전에 나오지 못한 것은 버린다. 표에 없는 유닛이나 생산 건물을 못 읽은 경우엔
+ *  손대지 않고 커맨드 프레임을 그대로 돌려준다. */
+export function producedFrames(
+  s: ReplayPlayerSignals,
+  unit: string,
+  endFrame: number | null
+): number[] {
+  const cmds = [...(s.unitFrames[unit] ?? [])].sort((a, b) => a - b);
+  const spec = UNIT_BUILD_FRAMES[unit];
+  if (!spec || cmds.length === 0) return cmds;
+  const producers = s.buildingFrames[spec.from] ?? [];
+  if (producers.length === 0) return cmds;
+  const freeAt = [...producers].sort((a, b) => a - b);
+  const out: number[] = [];
+  for (const f of cmds) {
+    // 가장 먼저 비는 생산 건물에 넣는다 — 비어 있으면 곧바로, 아니면 그 건물이 빌 때까지 줄을 선다.
+    let idx = 0;
+    for (let i = 1; i < freeAt.length; i += 1) if (freeAt[i] < freeAt[idx]) idx = i;
+    const at = Math.max(f, freeAt[idx]) + spec.frames;
+    freeAt[idx] = at;
+    if (endFrame === null || at <= endFrame) out.push(at);
+  }
+  return out;
+}
+
+/* '한때 몇 기나 함께 떠 있었나'를 재는 창 — 캐리어(약 1분 반)·배틀크루저(약 2분)의
+   생산시간보다 살짝 넉넉하게 잡는다. 리플레이에는 유닛의 죽음이 없어 동시 보유는 알 수
+   없지만, 짧은 창으로 자르면 그 무렵 손에 있던 수에 훨씬 가깝다. */
+const CONCURRENT_WINDOW_SEC = 150;
+
+/** 어느 CONCURRENT_WINDOW_SEC 창에 가장 많이 나왔나 — 캐리어·배틀크루저처럼 '몇 기까지
+ *  띄웠나'가 이야기인 유닛의 수를 여기서 잡는다. 반드시 producedFrames를 거친 완성 시점을
+ *  넣어야 한다(커맨드 프레임을 그대로 넣으면 한꺼번에 큐에 넣은 것이 그대로 한 창에 몰린다).
+ *
+ *  누계를 쓰면 경기가 길수록 끝없이 늘어나 함대 규모로 읽히는데, 그건 완전히 틀린
+ *  그림이다(지적: 캐리어 대수가 이상하게 잡힘). 캐리어는 6서플이라 동시 보유 상한이
+ *  서른셋인데다 지상군까지 같이 뽑는 이상, 십여 분에 걸친 누계는 함대와 아무 상관이 없다. */
+export function windowPeak(frames: number[], seconds = CONCURRENT_WINDOW_SEC): number {
+  if (frames.length === 0) return 0;
+  const sorted = [...frames].sort((a, b) => a - b);
+  const w = seconds / SECONDS_PER_FRAME;
+  let best = 0;
+  let lo = 0;
+  for (let hi = 0; hi < sorted.length; hi += 1) {
+    while (sorted[hi] - sorted[lo] > w) lo += 1;
+    best = Math.max(best, hi - lo + 1);
+  }
+  return best;
+}
+
 /** 그중 가장 큰 묶음 — '언제 그 물량이 쏟아졌나'의 답이다. */
 export function biggestBurst(frames: number[]): { from: number; to: number; n: number } | null {
   const bs = burstsOf(frames);
@@ -124,9 +194,15 @@ const HOME_RADIUS = 0.33;
    본진 덩어리에 붙은 자리만 남도록 좁힌다. */
 const ENEMY_RADIUS = 0.22;
 /* '센터'로 인정하는 반경 — 내 본진↔가장 가까운 상대 본진의 중점 기준(그 거리를 1로 둔
-   좌표계라 0.22면 중점에서 양쪽으로 22%). 예전엔 본진·아군기지·상대기지가 아닌 자리를
-   전부 센터로 떨어뜨려서 앞마당이나 구석 멀티에 지은 것까지 "센터"가 됐다(지적). */
-const MID_RADIUS = 0.22;
+   좌표계라 0.12면 중점에서 양쪽으로 12%). 예전엔 본진·아군기지·상대기지가 아닌 자리를
+   전부 센터로 떨어뜨려서 앞마당이나 구석 멀티에 지은 것까지 "센터"가 됐다(지적).
+   0.22 → 0.12(요청: "진짜 중심에서 가까운것만"). 실제 리플레이 다섯 판의 중점 거리를
+   재 보면 두 무리로 확실히 갈린다: 정말 길목을 막은 포토는 0.04~0.15에 몰려 있고
+   (mark85 0.04·0.08·0.09·0.10·0.15 / TodayDalsu 0.06·0.06·0.08·0.10·0.10·0.12),
+   0.15~0.22 구간에 걸리던 것들은 죄다 센터가 아니었다 — 0.22로 재면 Sohee_Min의
+   본진 밖 건물 13채, 100000g 5채, [Jeong9] 7채가 "센터에 지었다"로 잡혔는데 0.12에서는
+   전부 빠지고 진짜 중앙 덩어리만 남는다. */
+const MID_RADIUS = 0.12;
 /* 맵 곳곳에 건물을 흩뿌리며 버틴 그림(요청: "둘은 계속해서 맵 구석구석에 건물을 지으며
    도망다니며 버텼어. 이런것도 추출해서 스토리화해줘"). 빠른무한처럼 자원이 무한한 판에서
    서로 자리를 내주고 도망 다니며 새로 짓기를 반복하면 본진 언저리가 아니라 판 전체에
@@ -434,13 +510,15 @@ interface Ctx {
   /** 팀전에서 '내 옆에 붙은' 상대 — 나머지 상대보다 뚜렷하게 가까운 한 사람이 먼저
    *  나가떨어졌을 때만 값이 있다. 탱크 방어의 근거다. */
   neighbor: { raw: string; fellAt: number } | null;
+  /** 판이 끝난 프레임 — 큐에 남아 끝내 나오지 못한 생산을 걸러내는 데 쓴다(producedFrames). */
+  endFrame: number;
 }
 
 const sec = (frame: number) => frame * SECONDS_PER_FRAME;
 
 
 function detectFor(c: Ctx): Tactic[] {
-  const { rawName, s, race, foeRaces, soleFoe, geo, neighbor } = c;
+  const { rawName, s, race, foeRaces, soleFoe, geo, neighbor, endFrame } = c;
   const out: Tactic[] = [];
   const u = (n: string) => s.unitCounts[n] ?? 0;
   const firstU = (n: string): number | null => s.firstUnitFrame[n] ?? null;
@@ -672,10 +750,13 @@ function detectFor(c: Ctx): Tactic[] {
       });
     }
     // 배틀크루저 — 띄우는 것 자체가 사건이고, 띄우고도 지는 경기가 많아 이야기가 된다(요청).
-    if (u("Battlecruiser") >= 3) {
+    // 캐리어와 같은 이유로 누계가 아니라 창 단위 최대로 잰다(위 windowPeak 참고).
+    const bcs = producedFrames(s, "Battlecruiser", endFrame);
+    const bcPeak = windowPeak(bcs);
+    if (bcPeak >= 3) {
       out.push({
         key: "bc", weight: 11, at: firstU("Battlecruiser"), who,
-        p: { n: u("Battlecruiser") },
+        p: { n: bcPeak, total: bcs.length },
       });
     }
     if (u("Valkyrie") >= 3 && foeRaces.includes("저그")) {
@@ -784,11 +865,17 @@ function detectFor(c: Ctx): Tactic[] {
     // 물량 유닛과 달리 캐리어는 몇 기냐보다 '언제 띄웠고 몇 기까지 모았나'가 이야기다.
     // 시점은 가장 크게 몰아 뽑은 묶음의 시작으로 둔다 — 첫 기로 잡으면 한 기 띄워 보고
     // 접은 경기와 구별이 안 된다.
-    if (u("Carrier") >= CARRIER_MIN) {
-      const burst = biggestBurst(s.unitFrames["Carrier"] ?? []);
+    //
+    // 수는 누계가 아니라 창 단위 최대(windowPeak)다 — 누계를 말하면 긴 경기에서 "캐리어를
+    // 69기 뽑았다"가 되어 함대 규모로 읽힌다(지적). 문턱도 같은 값으로 재야 뜻이 맞는다:
+    // 스무 분에 걸쳐 넷을 뽑은 것은 캐리어를 굴린 게 아니라 한두 기씩 갈아 넣은 것이다.
+    const carriers = producedFrames(s, "Carrier", endFrame);
+    const carrierPeak = windowPeak(carriers);
+    if (carrierPeak >= CARRIER_MIN) {
+      const burst = biggestBurst(carriers);
       out.push({
         key: "carrier", weight: 13, at: burst ? burst.from : firstU("Carrier"),
-        who, p: { n: u("Carrier") },
+        who, p: { n: carrierPeak, total: carriers.length },
       });
     }
     if (dropped && u("Shuttle") >= 2 && u("Reaver") >= 3) {
@@ -948,6 +1035,7 @@ export function scanTactics({ sidePlayers, foePlayers }: TacticScanInput): Tacti
         rawName: p.rawName, s: p.signals, race: p.race, foeRaces, soleFoe,
         geo: geoOf(p, sidePlayers.filter((x) => x !== p), foePlayers),
         neighbor: neighborOf(p, foePlayers, endFrame),
+        endFrame,
       })
     );
   }
