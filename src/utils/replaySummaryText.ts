@@ -595,11 +595,16 @@ const TEMPLATES: Record<string, Tpl> = {
         : `${vdef} ${num(c.p.vdefN)}개뿐인 상태에서 `;
     const of = c.whom ? `${c.whom}의 ` : "상대 ";
     const foe = c.whom ? c.whom : "상대";
-    /** 이 앞마디는 '당한 쪽이 주어인' 문장에만 붙일 수 있다 — 때린 쪽이 주어인 문장
-     *  ("A가 바이오닉으로 …") 앞에 놓으면 포토가 없던 쪽이 A로 읽힌다. 그래서 앞마디가
-     *  있을 때는 당한 쪽이 주어인 꼴만 고르고, 없을 때만 두 꼴을 섞어 고른다. */
-    const say = (victimLed: string[], actorLed: string[] = []) =>
-      done(c, c.pick(thinAt ? victimLed.map((s) => `${thinAt}${s}`) : [...victimLed, ...actorLed]));
+    /** 앞마디를 쓸 때는 어순이 '앞마디 → 당한 사람 → 서술부'로 고정된다(지적: 누가
+     *  얇았는지가 문장 한참 뒤에 가서야 나오고, 주어도 사람이 아니라 '팍규의 생산'이
+     *  됐다). 앞마디 바로 뒤에 다른 사람이 오면 포토가 없던 쪽이 그 사람으로 읽히므로
+     *  자리를 바꿀 수 없다. thinTails는 당한 쪽을 주어로 세웠을 때의 서술부다.
+     *  앞마디가 없으면 예전처럼 당한 쪽이 주어인 꼴과 때린 쪽이 주어인 꼴을 섞어 고른다. */
+    const say = (thinTails: string[], victimLed: string[], actorLed: string[] = []) => (
+      thinAt
+        ? done(c, `${thinAt}${ga(foe)} ${c.pick(thinTails)}`)
+        : done(c, c.pick([...victimLed, ...actorLed]))
+    );
     // 이 수를 낸 사람 말고도 같이 덮친 사람이 있었으면 이름을 함께 부른다(지적: 한 사람한테만
     // 당한 게 아니다). 자리(이동·공격 명령이 그 사람 진영에 몰렸나)로 짚은 사람들이다.
     const also = num(c.p.gang) >= 2 && c.who2 ? `${c.who2}까지 달려들어 ` : "";
@@ -659,10 +664,12 @@ const TEMPLATES: Record<string, Tpl> = {
         // 거기까지만 말한다. 실제로 이 자리에서 얻어맞고도 45분 뒤에 이긴 경기가 있었다.
         return c.p.out
           ? say(
+            [`${all}에 ${when}탈락`, `${all}에 ${when}버티지 못함`],
             [`${all}에 ${ga(foe)} ${when}탈락`, `${all}에 ${when}${ga(foe)} 버티지 못함`],
             [`${ro(all)} ${when}${ga(foe)} 탈락`],
           )
           : say(
+            [`${all}에 ${when}큰 타격을 입음`, `${all}에 ${when}크게 흔들림`, `${all}에 ${when}생산이 뚝 끊김`],
             [
               `${all}에 ${ga(foe)} ${when}큰 타격을 입음`,
               `${all}에 ${when}${ga(foe)} 크게 흔들림`,
@@ -691,17 +698,22 @@ const TEMPLATES: Record<string, Tpl> = {
       const when = m > 0 ? `${m}분 만에 ` : "";
       return c.p.out
         ? say(
+          [`${blow} ${also}${when}탈락`],
           [`${blow} ${also}${when}${ga(foe)} 탈락`],
           [`${blow} ${also}${when}${reul(foe)} 판에서 지움`],
         )
         // 탈락이 아니면 '버티지 못함'까지 가지 않는다(위 ks 갈래와 같은 이유).
-        : say([`${blow} ${also}${of}생산이 뚝 끊김`, `${blow} ${also}${when}${ga(foe)} 크게 흔들림`]);
+        : say(
+          [`${blow} ${also}생산이 뚝 끊김`, `${blow} ${also}${when}크게 흔들림`],
+          [`${blow} ${also}${of}생산이 뚝 끊김`, `${blow} ${also}${when}${ga(foe)} 크게 흔들림`],
+        );
     }
     // 초반 올인에 초반부터 무너진 그림(요청) — 몇 분 만이었는지가 곧 이야기다.
     if (c.p.early && !c.p.out) {
       const m = num(c.p.hitMin);
       const when = m > 0 ? `${m}분 만에 ` : "";
       return say(
+        [`${blow} ${when}휘청임`, `${blow} ${when}빈사 상태가 됨`],
         [`${blow} ${when}${ga(foe)} 휘청임`, `${blow} ${when}${ga(foe)} 빈사 상태가 됨`],
         [`${ro(by)} ${when}${of}일꾼에 큰 피해를 줌`, `${ro(by)} ${when}${reul(foe)} 몰아붙임`],
       );
@@ -711,6 +723,7 @@ const TEMPLATES: Record<string, Tpl> = {
       const min = num(c.p.outMin);
       const when = min > 0 ? `${min}분경 ` : "";
       return say(
+        [`${blow} ${when}탈락`],
         [`${blow} ${when}${ga(foe)} 탈락`],
         [`${ro(by)} ${when}${reul(foe)} 엘리시킴`, `${ro(by)} ${when}${reul(foe)} 판에서 지움`],
       );
@@ -718,6 +731,7 @@ const TEMPLATES: Record<string, Tpl> = {
     // 그 사람이 한 행동을 말하는 문장은 주격으로(위 by 참고), 상대 쪽 일이 주어인
     // 문장('생산이 막힘')만 소유격으로 둔다.
     return say(
+      [`${blow} 생산이 막힘`, `${blow} 생산이 뚝 끊김`, `${blow} 크게 흔들림`],
       [`${ro(mine)} ${of}생산이 막힘`, `${blow} ${of}생산이 뚝 끊김`],
       [`${ro(by)} ${of}생산에 큰 피해를 줌`, `${ro(by)} ${of}살림을 크게 흔듦`],
     );
@@ -1982,9 +1996,12 @@ export function renderReplaySummary(
         else {
           // "다른 쪽에서는"은 판이 갈라져 딴 데서 벌어진 일일 때만 맞는 말이다(지적) —
           // 같은 두 사람이 서로 주고받은 이야기면 "반대로 / 역으로 / 그와 동시에"가 맞다.
+          // '그와 동시에'는 여기서 뺐다(지적: 앞 문장과 반대 전황인데 동시성을 뜻하는 말이
+          // 붙었다) — 같은 순간에 벌어졌다는 뜻일 뿐이라, 전황이 넘어가는 자리에서는
+          // 반전을 지운다. 서로 주고받은 그림은 '반대로 / 역으로'가 받는다.
           linkWord = link(crossTeam
             ? (headToHead
-              ? ["하지만", "그러나", "그렇지만", "반대로", "역으로", "그와 동시에"]
+              ? ["하지만", "그러나", "그렇지만", "반대로", "역으로"]
               : ["하지만", "그러나", "그렇지만", "반면", "이에 질세라", "다른 쪽에서는"])
             : ["하지만", "그러나", "그렇지만", "반면"]);
           teamTag = teamTagFor();
@@ -2104,8 +2121,13 @@ export function renderReplaySummary(
       const body = CONTRAST_LINKS.has(linkWord) && !TOPIC_MARKED_LINKS.has(linkWord)
         ? toTopic(text, baseWho)
         : text;
+      // 팀 딱지는 그 이름 바로 앞에서만 뜻이 통한다 — 문장이 이름으로 시작하지 않으면
+      // (당한 쪽을 주어로 세운 raid-damage처럼 "포토 하나 없는 상태에서 팍규가 …") 딱지가
+      // 엉뚱한 말 앞에 붙어 그 사람이 그 팀인 것처럼 읽힌다(지적). 그럴 땐 그냥 뗀다.
       // "2팀의 netan의 …"은 '의'가 겹쳐 어색하다(지적) — 뒤 이름이 소유격이면 "2팀 netan의".
-      const tag = teamTag && body.startsWith(`${baseWho}의 `) ? teamTag.replace("팀의 ", "팀 ") : teamTag;
+      const tag = !body.startsWith(baseWho) ? ""
+        : teamTag && body.startsWith(`${baseWho}의 `) ? teamTag.replace("팀의 ", "팀 ")
+          : teamTag;
       text = `${linkWord} ${tag}${body}`;
     }
     // 한 문장에 반전이 두 번 들어가면 어색하다(지적: "…무너졌지만 …갔으나 막힘").
