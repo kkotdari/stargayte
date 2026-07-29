@@ -218,18 +218,20 @@ export function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, o
   const sharePromptWhen = formatWhen(sharePrompt?.updated?.scheduledDate);
   const sharePromptDesc =
     sharePrompt?.kind === "rejected" ? "호출을 거절했어요." : `${sharePromptWhen}에 만나요.`;
-  // 카카오 공유 내용 — 인박스 응답 공유와 같은 형식(대진/일시 + 폴백 텍스트 + 링크).
+  // 카카오 공유 내용 — 인박스 응답 공유(ChallengeInboxModal의 shareResponded)와 같은 문구다.
+  // 공유 카드는 "누가 누구의 호출에 응답했다"까지만 말한다(요청) — 수락인지 거절인지도,
+  // 대진도, 정해진 일시도 내지 않는다. 그걸 카드에 적으면 링크를 열어 볼 이유가 사라진다
+  // (호출 공유가 지목 상대를 감추는 것과 같은 이유). 그래서 수락/거절이 같은 문구다.
   const buildShareContent = (): KakaoShareContent => {
-    const caller = challenge.createdBy.nickname;
-    const me = user?.nickname ?? "";
-    const matchup = `${creatorSideMembers.map((m) => m.nickname).join(", ")} vs ${targetSideMembers.map((m) => m.nickname).join(", ")}`;
+    const caller = challenge.createdBy.nickname || "누군가";
+    const me = user?.nickname || "누군가";
     const link = `${window.location.origin}/?sv=challenge&sid=${sharePrompt?.updated.id ?? challenge.id}`;
-    if (sharePrompt?.kind === "rejected") {
-      return { title: "대결 거절", description: matchup, ...shareThumb("challengeReply"), link,
-        fallbackText: `[스타게이트] ${me}님이 ${caller}님의 호출을 거절했어요.\n${matchup}` };
-    }
-    return { title: "대결 수락!", description: `${matchup} · ${sharePromptWhen}`, ...shareThumb("challengeReply"), link,
-      fallbackText: `[스타게이트] ${me}님이 ${caller}님의 호출을 수락했어요!\n${matchup}\n일시: ${sharePromptWhen}` };
+    return {
+      title: `${me}님이 ${caller}님의 호출에 응답했어요`,
+      description: "수락일까요, 거절일까요? 👀 탭해서 확인하기",
+      ...shareThumb("challengeReply"), link,
+      fallbackText: `[스타게이트] ${me}님이 ${caller}님의 호출에 응답했어요! 열어서 확인해보세요.`,
+    };
   };
 
   const activeTargetInfos = challenge.targets.map((t) => ({ target: t }));

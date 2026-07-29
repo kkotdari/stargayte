@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { X, Calendar, CalendarPlus } from "lucide-react";
 import { cx } from "../../utils/format";
-import { DATE_INPUT_MIN, DATE_INPUT_MAX } from "../../utils/date";
+import { DATE_INPUT_MIN, DATE_INPUT_MAX, shortDateWithDow, isValidDateStr } from "../../utils/date";
 
 // 네이티브 달력 표시기를 CSS로 숨겼으므로, 데스크톱에서 입력칸을 눌렀을 때 피커가 열리게
 // showPicker를 직접 호출한다(모바일은 인풋 포커스만으로 네이티브 피커가 열려 이 호출이
@@ -63,13 +63,24 @@ export default function OptionalDateTimeFields({
       <label className="scr-field scr-datetime-input">
         <span className="scr-label">날짜{optional && <> {optional}</>}</span>
         <span className="scr-datetime-input-wrap">
-          <input
-            type="date" className={cx(cls, dateLocked && "scr-datetime-locked")} value={dateStr}
-            min={DATE_INPUT_MIN} max={DATE_INPUT_MAX}
-            readOnly={dateLocked} tabIndex={dateLocked ? -1 : undefined}
-            onClick={dateLocked ? undefined : openPicker}
-            onChange={dateLocked ? undefined : (e) => onDateChange(e.target.value)}
-          />
+          {/* 잠긴 칸은 type=date가 아니라 읽기 전용 텍스트다 — 네이티브 날짜 칸의 표기는
+              브라우저 로케일이 정해서 "08/03/2026"처럼 이 앱에서 쓰지 않는 꼴이 나온다
+              (지적: 날짜 표기법이 이상하다). 고칠 수 없는 값이라 피커도 필요 없으니,
+              앱이 날짜를 적는 유일한 꼴(shortDateWithDow — "8월 3일 (월)")로 그냥 적는다.
+              생김새는 클래스가 같아 그대로다. */}
+          {dateLocked ? (
+            <input
+              type="text" className={cx(cls, "scr-datetime-locked")} readOnly tabIndex={-1}
+              value={isValidDateStr(dateStr) ? shortDateWithDow(dateStr) : dateStr}
+            />
+          ) : (
+            <input
+              type="date" className={cls} value={dateStr}
+              min={DATE_INPUT_MIN} max={DATE_INPUT_MAX}
+              onClick={openPicker}
+              onChange={(e) => onDateChange(e.target.value)}
+            />
+          )}
           {/* 스왑(요청): 맨 오른쪽 한 자리에서 — 값이 없으면 달력 아이콘(장식용,
               pointer-events:none이라 인풋을 눌러 피커를 연다), 값이 있으면 지우기 ×로 바뀐다.
               잠긴 칸(수정 불가)은 아무것도 두지 않는다. */}

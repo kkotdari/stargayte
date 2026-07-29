@@ -163,25 +163,18 @@ export default function ChallengeInboxModal({ challenges, onClose, closeLabel = 
   const respondedDesc = respondedAs === "rejected"
     ? "호출을 거절했어요."
     : `${acceptedWhen}에 만나요.`;
+  // 공유 카드는 "누가 누구의 호출에 응답했다"까지만 말한다(요청) — 수락인지 거절인지도,
+  // 대진도, 정해진 일시도 내지 않는다. 그걸 카드에 적으면 링크를 열어 볼 이유가 사라진다
+  // (호출 공유가 지목 상대를 감추는 것과 같은 이유). 그래서 수락/거절이 같은 문구다.
   const shareResponded = (): KakaoShareContent => {
-    const caller = current.createdBy.nickname;
-    const me = user?.nickname ?? "";
-    const matchup = isTeamMatch ? `${opposingTeam.join(", ")} vs ${ourTeam.join(", ")}` : `${caller} vs ${me}`;
-    if (respondedAs === "rejected") {
-      return {
-        title: "대결 거절",
-        description: `${matchup}`,
-        ...shareThumb("challengeReply"),
-        link: `${window.location.origin}/?sv=challenge&sid=${current.id}`,
-        fallbackText: `[스타게이트] ${me}님이 ${caller}님의 호출을 거절했어요.\n${matchup}`,
-      };
-    }
+    const caller = current.createdBy.nickname || "누군가";
+    const me = user?.nickname || "누군가";
     return {
-      title: "대결 수락!",
-      description: `${matchup} · ${acceptedWhen}`,
+      title: `${me}님이 ${caller}님의 호출에 응답했어요`,
+      description: "수락일까요, 거절일까요? 👀 탭해서 확인하기",
       ...shareThumb("challengeReply"),
       link: `${window.location.origin}/?sv=challenge&sid=${current.id}`,
-      fallbackText: `[스타게이트] ${me}님이 ${caller}님의 호출을 수락했어요!\n${matchup}\n일시: ${acceptedWhen}`,
+      fallbackText: `[스타게이트] ${me}님이 ${caller}님의 호출에 응답했어요! 열어서 확인해보세요.`,
     };
   };
 
