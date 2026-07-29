@@ -6636,7 +6636,10 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
      그래서 제목 줄은 페이지 헤더/필터부와 같은 20px에 맞춘다(지적: PC에서 셋의 좌우
      패딩이 달라 본문만 넓어 보임). 모바일은 아래 720px 블록에서 16/20으로 되돌린다. */
   --post-pad-x: 24px;
-  --post-pad-bx: 28px;
+  /* 28 → 20px(요청: 바디 패딩이 과하다). 머리보다 좁아지면 안 되므로(요청) 아래
+     --post-head-pad-l(10px)보다는 늘 커야 한다 — 제목이 표제처럼 한 단 바깥에서 시작하고
+     본문이 그 안으로 들여쓰는 관계는 그대로 남는다. */
+  --post-pad-bx: 20px;
   /* 머리(제목·시각)만 쓰는 왼쪽 들여쓰기 — 본문(--post-pad-bx)보다 눈에 띄게 바깥에서
      시작한다(요청). 예전엔 둘의 차이가 4px뿐이라 "머리가 한 단계 위"라는 게 안 읽혔다.
      16 → 10px(요청: 왼쪽 패딩 축소) — 제목과 시각이 한 줄을 나눠 쓰게 되면서 그 줄에 담을
@@ -6677,7 +6680,7 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    이 블록은 위 :root와 특이도가 같아서, 반드시 뒤에 와야 이긴다(720px 쪽 모바일 블록에
    넣으면 소스상 앞이라 무시된다). */
 @media (max-width: 720px) {
-  :root { --post-pad-x: 20px; --post-pad-bx: 24px; --post-head-pad-l: 8px; }
+  :root { --post-pad-x: 20px; --post-pad-bx: 16px; --post-head-pad-l: 8px; }
 }
 /* 포스트 = 머리(떠 있음) + 유리 패널(바디). 판 자신은 자리만 잡고 아무것도 그리지 않는다
    (요청: "패널 블러/반투명, 위아래 림은 바디에만 적용 헤더는 떠 있는 느낌") — 채움·블러·
@@ -6792,7 +6795,8 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 /* 그 18px은 케밥의 기준면(.scr-feed-post-stack-item)까지 같이 밀어내므로, 첫 경기의 케밥만
    그만큼 시각 줄보다 위로 떠 있었다 — 같은 값을 더해 도로 맞춘다(아래 top: 8px 참고). */
 .scr-feed-post-stack-list > .scr-feed-post-stack-reveal:first-child .scr-game-result-trow-topmeta {
-  top: 26px;
+  /* 위 top(14px) + 첫 경기의 추가 padding-top(18px). */
+  top: 32px;
 }
 /* 참가자 — 이름 길이가 달라도 열이 어긋나지 않게 균등 그리드를 쓴다(flex-wrap이면 이름
    길이만큼 칸이 달라져 줄이 안 맞는다). 한 줄에 세 명(요청). */
@@ -6959,6 +6963,12 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 /* 아래 갭은 넉넉히, 위는 살짝만(요청) — 게임번호 줄은 머리띠에 딸린 꼬리표에 가깝고,
    그 아래 로스터부터가 본문이라 경계는 아래쪽에 둬야 읽힌다. */
 .scr-feed-game-result-body .scr-game-result-trow-topline { padding-right: 0; }
+/* 이 줄에는 흐름에 놓이는 것이 하나도 없다(게임번호는 감췄고, 등록자는 카드 머리로 갔고,
+   케밥은 절대배치다) — 높이는 0인데도 로우의 flex 항목이라 자기 몫의 갭(24px)을 그대로
+   먹고 있었다(지적: 경기결과 목록 내부가 특히 과하다. 실측: 머리 아래 52px 중 24px이 이것).
+   display:contents로 상자를 흐름에서 아예 없애면 갭도 함께 사라지고, 안에 든 케밥은
+   절대배치라 기준면(포스트/묶음 아이템)이 그대로여서 자리도 그대로다. */
+.scr-feed-game-result-body .scr-game-result-trow-topline { display: contents; }
 /* 헤더의 '제목 줄' 언저리에 — 제목 줄 중심(포스트 위에서 33.6px)에 정확히 맞추면
    top이 21px인데, 거기서 6px 올린 자리를 쓴다(--post-kebab-top 주석 참고).
    이 값은 헤더 패딩에 딸린 값이라 변수 하나로 묶어 뒀다 — 머리 여백을 줄이면서(4px)
@@ -6972,7 +6982,10 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    맞춰 올라와야 한다 — --post-kebab-top은 시각+제목 두 줄짜리 포스트 헤더에 맞춘 값이다
    (요청: 시간하고 케밥 나오고 바로 내용). 이쪽 머리는 padding-top이 14px로 따로 고정돼
    있어(위 .scr-feed-post-stack-item .scr-feed-card-head) 그 값과 함께 봐야 한다. */
-.scr-feed-post-stack-item .scr-game-result-trow-topmeta { top: 8px; }
+/* 8 → 14px: 시각 줄 가운데에 맞춘다. 이 머리는 padding-top이 14px이고 줄 높이가 19px이라
+   줄 중심이 아이템 위끝에서 23.5px인데, 버튼에 걸린 margin:-4px까지 셈에 넣으면
+   23.5 - 13 + 4 = 14.5px이다. 행이 촘촘해지면서 5px 위로 뜬 것이 눈에 보였다. */
+.scr-feed-post-stack-item .scr-game-result-trow-topmeta { top: 14px; }
 .scr-feed-game-result-body .scr-game-result-trow-topmeta .scr-feed-kebab-btn, .scr-feed-chal-menu .scr-feed-kebab-btn { width: 26px; height: 26px; min-height: 26px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
 /* 너 나와 케밥(피드 레벨)도 같은 자리 — 기존 우상단 '취소' 라벨과 겹치지 않게 라벨은 왼쪽으로. */
 /* display:flex인 이유 — 기본(블록)이면 인라인 버튼이 줄 상자 안에 앉아 상자 높이가
