@@ -1,5 +1,5 @@
 import type { ParsedReplay, ParsedReplayPlayer, ReplayPlayerSignals } from "./replayParser";
-import { scanTactics } from "./replayTactics";
+import { pushersOn, scanTactics } from "./replayTactics";
 import {
   eliminatedFrame, fellFrame, productionDips, revivalFrame, surgeSpanMin,
 } from "./replayFell";
@@ -461,9 +461,16 @@ function combatBefore(p: ParsedReplayPlayer, frame: number): number {
 }
 
 /** "몇 명이 몰아쳤나"(요청) — 리플레이에 인구수가 없어 '죽었다'를 직접 볼 수는 없다.
- *  대신 커맨드가 끊긴 시점이 그 사람이 판에서 사라진 시점이고, 그때까지 병력을 낸 상대가
- *  몇 명인지는 셀 수 있다. 초반에 한 사람이 먼저 정리됐고 달려든 상대가 둘 이상일 때만
- *  말한다 — 한 명이면 그건 이미 전술 문장이 하고 있는 얘기다. */
+ *  대신 커맨드가 끊긴 시점이 그 사람이 판에서 사라진 시점이다.
+ *
+ *  누가 달려들었는지는 병력을 어디로 보냈는지로 본다(pushersOn) — 그 사람 진영 안쪽에
+ *  이동·공격 명령이 몇 번이나 찍혔는가. 예전에는 '그때까지 병력을 낸 상대'를 세었는데,
+ *  그건 뒤에서 자기 할 일 하던 사람까지 합공에 넣는 셈이라 넷이 붙은 판에서 늘 "넷이
+ *  몰아쳤다"가 됐다(지적: 3컬러 러시였는데 그런 게 안 나온다 — 실제로는 셋이었다).
+ *  좌표를 못 읽는 리플레이에서는 자리 근거가 통째로 없으므로 예전 기준으로 돌아간다.
+ *
+ *  창은 경기 시작부터 무너진 때까지다 — 어차피 초반(GANG_RUSH_SEC 안쪽)에 무너진 경우만
+ *  보므로 그 구간 전체가 곧 '달려든 시간'이다. */
 function gangRush(
   victims: ParsedReplayPlayer[],
   attackers: ParsedReplayPlayer[],
@@ -473,7 +480,10 @@ function gangRush(
   for (const v of victims) {
     const fell = fellFrame(v, totalFrames);
     if (fell === null || fell * SECONDS_PER_FRAME > GANG_RUSH_SEC) continue;
-    const by = attackers.filter((a) => combatBefore(a, fell) >= GANG_MIN_UNITS);
+    const armed = attackers.filter((a) => combatBefore(a, fell) >= GANG_MIN_UNITS);
+    const pushed = new Set(pushersOn(v, attackers, 0, fell));
+    // 자리로 짚힌 사람이 둘 이상이면 그쪽이 답이다. 하나도 못 짚었으면(좌표 없음) 예전 기준.
+    const by = pushed.size >= 2 ? armed.filter((a) => pushed.has(a.rawName)) : armed;
     if (by.length >= 2) out.push({ victim: v, by });
   }
   return out;
@@ -1421,13 +1431,20 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
             || (victim?.signals?.buildingCounts[guard.def] ?? 0) === 0
             || (victim?.signals?.buildingFrames[guard.def]?.length ?? 0) > 0;
           const thin = known && guard && guard.def && guard.n <= DEF_THIN_MAX ? guard : null;
+          // 혼자 들이친 게 아니라 여럿이 함께 덮친 것일 수 있다(지적: 한 사람한테만 당한 게
+          // 아니라 3컬러 러시였다). 병력을 그 사람 진영으로 몰고 간 사람을 자리로 세어,
+          // 이 수를 낸 사람 말고도 있었으면 그 이름들을 함께 싣는다.
+          const gang = victim ? pushersOn(victim, mine, 0, hit.at) : [];
+          const mates = gang.includes(t.who) ? gang.filter((n) => n !== t.who) : [];
           return {
             k: "raid-damage", won, who: [t.who], at: t.at,
             weight: t.weight + (hit.out ? 16 : 14),
             whom: [hit.raw],
+            ...(mates.length > 0 ? { who2: mates } : {}),
             p: {
               ...(t.p ?? {}), k: t.key,
               ...(thin ? { vdef: thin.def, vdefN: thin.n } : {}),
+              ...(mates.length > 0 ? { gang: gang.length } : {}),
               // 탈락은 몇 분경이었는지까지 말한다(요청) — 서사의 시점이 되는 순간이다.
               ...(hit.out ? { out: true, outMin: minutes(hit.at * SECONDS_PER_FRAME) } : {}),
               // 초반 올인에 초반부터 무너진 건 그 자체로 다른 그림이다(요청).
@@ -1491,13 +1508,20 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
       .map((g) => ({ g, won: true })),
     ...gangRush(earlyOuts(winnerPlayers, totalFrames), loserPlayers, totalFrames)
       .map((g) => ({ g, won: false })),
-  ].map(({ g, won }) => {
-    pickedOff.add(g.victim.rawName);
-    return {
-      k: "gang-rush", won, who: g.by.map((p) => p.rawName), whom: [g.victim.rawName],
-      at: fellFrame(g.victim, totalFrames), weight: 13, p: { n: g.by.length },
-    } as Beat;
-  });
+  ]
+    // 들이친 수 문장이 이미 "…에 A·B까지 달려들어"라고 여럿을 말했으면 합공 문장은 뺀다 —
+    // 같은 순간을 두 문장이 나눠 말하는 셈이고, 저쪽은 무슨 수였는지까지 담고 있다.
+    .filter(({ g }) => !tactics.some(
+      (b) => b.k === "raid-damage" && typeof b.p?.gang === "number" && b.p.gang >= 2
+        && (b.whom ?? []).includes(g.victim.rawName),
+    ))
+    .map(({ g, won }) => {
+      pickedOff.add(g.victim.rawName);
+      return {
+        k: "gang-rush", won, who: g.by.map((p) => p.rawName), whom: [g.victim.rawName],
+        at: fellFrame(g.victim, totalFrames), weight: 13, p: { n: g.by.length },
+      } as Beat;
+    });
 
   // 손이 유난히 빨랐던 사람(요청) — APM/유효 APM이 그 경기 평균을 크게 웃돌면 그건
   // 컨트롤과 생산으로 나타난 것이다. 유효 APM을 앞세운다: 그냥 APM은 같은 명령을 여러 번

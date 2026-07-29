@@ -219,6 +219,47 @@ function startHomeOf(p: ParsedReplayPlayer): { x: number; y: number } | null {
   return medoid(early);
 }
 
+/* '누가 그 사람 진영으로 밀고 들어왔나'를 가르는 값들(요청: 여러 명이 함께 덮친 걸 알 수
+   있나). 근거는 이동·공격 명령의 좌표다 — 리플레이에는 전투도 죽음도 없지만 병력을 어디로
+   보냈는지는 명령에 남는다.
+   반경은 상대 진영을 재는 값(ENEMY_RADIUS)보다 조금 넉넉하게 잡는다: 공격은 본진 한복판이
+   아니라 입구·앞마당에서 붙는 일이 흔해서, 0.22로 재면 실제로 들이친 사람이 빠진다. */
+const PUSH_RADIUS = 0.3;
+/* 그 안에 이만큼은 찍혀야 '병력을 몰고 갔다'로 본다. 정찰 일꾼·오버로드도 상대 본진에
+   가지만 그건 몇 번으로 끝난다 — 싸우러 간 쪽은 컨트롤하느라 훨씬 많이 찍는다. */
+const PUSH_ORDER_MIN = 12;
+
+/** 그 사람 진영으로 실제로 병력을 몰고 들어온 상대들의 이름(요청). from~to 프레임 사이만
+ *  본다 — 경기 내내로 재면 결국 모두가 한 번씩은 들어가므로 아무 뜻이 없다.
+ *
+ *  한계는 늘 같다: 이건 '명령'이지 '도달'이 아니고, 몇 명이 갔는지이지 누가 무엇을 죽였는지는
+ *  아니다. 그래서 "셋이 몰아쳤다"까지만 말하고 전과는 말하지 않는다. */
+export function pushersOn(
+  victim: ParsedReplayPlayer,
+  foes: ParsedReplayPlayer[],
+  from: number,
+  to: number,
+): string[] {
+  const home = startHomeOf(victim);
+  if (!home) return [];
+  const foeHomes = foes.map(startHomeOf).filter((h): h is { x: number; y: number } => h !== null);
+  if (foeHomes.length === 0) return [];
+  // 기준 거리는 '가장 가까운 상대까지' — geoOf와 같은 좌표계를 쓴다.
+  const base = Math.min(...foeHomes.map((h) => dist(home, h)));
+  if (!(base > 0)) return [];
+  const r = base * PUSH_RADIUS;
+  return foes
+    .filter((f) => {
+      let n = 0;
+      for (const o of f.signals?.orderPositions ?? []) {
+        if (o.frame < from || o.frame > to) continue;
+        if (dist(o, home) < r && ++n >= PUSH_ORDER_MIN) return true;
+      }
+      return false;
+    })
+    .map((f) => f.rawName);
+}
+
 /** 자리로 알 수 있는 것들을 한 벌로 묶은 것. 좌표를 못 읽었거나 본진을 못 정하면 통째로
  *  null이고, 자리 기반 전술은 그냥 안 나온다(요청: 불확실한 건 빼기). */
 interface Geo {

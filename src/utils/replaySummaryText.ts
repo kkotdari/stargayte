@@ -582,6 +582,9 @@ const TEMPLATES: Record<string, Tpl> = {
         : `${vdef} ${num(c.p.vdefN)}개뿐이던 `;
     const of = c.whom ? `${thin}${c.whom}의 ` : "상대 ";
     const foe = c.whom ? `${thin}${c.whom}` : "상대";
+    // 이 수를 낸 사람 말고도 같이 덮친 사람이 있었으면 이름을 함께 부른다(지적: 한 사람한테만
+    // 당한 게 아니다). 자리(이동·공격 명령이 그 사람 진영에 몰렸나)로 짚은 사람들이다.
+    const also = num(c.p.gang) >= 2 && c.who2 ? `${c.who2}까지 달려들어 ` : "";
     // 한 사람이 여러 수에 잇달아 무너졌으면 한 문장으로 묶는다(지적: 같은 이야기가 두 번
     // 나옴). "Rex의 9드론 저글링 러시와 제롬의 4게이트 질럿 러시에 군범이 2분 만에 무너짐".
     const ks = list(c.p.ks);
@@ -653,6 +656,17 @@ const TEMPLATES: Record<string, Tpl> = {
     // "조조의 바이오닉 한 방으로 …파괴함"이 아니라 "조조는 바이오닉 한 방으로 …파괴함").
     // 소유격은 당한 쪽이 주어인 '-에' 꼴(아래 blow)에만 남긴다.
     const by = `${ga(c.who)} ${label}`;
+    // 여럿이 함께 덮친 그림 — 누가 무슨 수를 냈는지(blow)에 나머지 이름을 이어 붙인다.
+    // 이 꼴 하나로 탈락·빈사·생산 정지를 다 덮으므로 아래 갈래보다 먼저 본다.
+    if (also) {
+      const m = num(c.p.outMin) || num(c.p.hitMin);
+      const when = m > 0 ? `${m}분 만에 ` : "";
+      return done(c, c.pick(
+        c.p.out
+          ? [`${blow} ${also}${when}${ga(foe)} 탈락`, `${blow} ${also}${when}${reul(foe)} 판에서 지움`]
+          : [`${blow} ${also}${of}생산이 뚝 끊김`, `${blow} ${also}${when}${ga(foe)} 버티지 못함`]
+      ));
+    }
     // 초반 올인에 초반부터 무너진 그림(요청) — 몇 분 만이었는지가 곧 이야기다.
     if (c.p.early && !c.p.out) {
       const m = num(c.p.hitMin);

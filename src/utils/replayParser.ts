@@ -71,6 +71,13 @@ export interface ReplayPlayerSignals {
   /** 건물을 지은 좌표 — 몰래 배럭/센터 포토처럼 '어디에' 지었는지가 곧 전술인 것들을
    *  판정한다. screp이 Pos를 안 내려주는 버전이면 빈 배열로 남고, 그 전술들은 그냥 안 나온다. */
   buildPositions: BuildPos[];
+  /** 유닛에게 내린 이동·공격 명령의 좌표(우클릭 / 표적 명령). "누가 누구 진영으로 밀고
+   *  들어갔나"를 알 수 있는 유일한 근거다 — 리플레이에는 전투도 죽음도 없지만, 병력을
+   *  어디로 보냈는지는 명령에 그대로 남는다(요청: 여러 명이 함께 덮친 걸 알 수 있나).
+   *  선택·핫키는 화면 조작이라 좌표가 없고, 미니맵 핑은 의사표시지 병력이 아니라 뺀다.
+   *  한계는 늘 같다 — '명령'이지 '도달'이 아니다. 그래서 한두 번 찍힌 건 정찰로 보고
+   *  여러 번 몰린 경우만 근거로 쓴다(replayTactics의 pushersOn). */
+  orderPositions: { frame: number; x: number; y: number }[];
   /** 연구한 테크(스톰/럴커 등)와 업그레이드 이름 — 순서대로. */
   techNames: string[];
   upgradeNames: string[];
@@ -244,12 +251,18 @@ const BUILD_CMD_NAMES = new Set<string>(["Build", "Building Morph", "Hatch"]);
 // 채팅은 요약 재료로만 쓰므로 앞부분만 있으면 된다(GG는 대개 끝에 나오지만, 한 사람이
 // 수십 줄을 치는 경우까지 전부 들고 있을 이유는 없다).
 const CHAT_CAP = 40;
+// 이동·공격 명령 좌표의 상한 — 병적으로 큰 파일에 대한 안전장치일 뿐, 보통 경기는 여기
+// 한참 못 미친다(실측: 22분 4:4에서 여덟 명 합계 9367개 = 1인당 1200 남짓).
+// 앞쪽만 남기고 자르면 후반의 공격이 통째로 안 보이므로, 자를 일이 없을 만큼 넉넉히 둔다.
+const ORDER_POS_CAP = 20000;
+// 브루드워 좌표: 빌드 타일 한 칸 = 32픽셀.
+const PIXELS_PER_TILE = 32;
 
 function emptySignals(): ReplayPlayerSignals {
   return {
     unitCounts: {}, firstUnitFrame: {},
     buildingCounts: {}, firstBuildingFrame: {},
-    unitFrames: {}, buildingFrames: {}, buildPositions: [],
+    unitFrames: {}, buildingFrames: {}, buildPositions: [], orderPositions: [],
     techNames: [], upgradeNames: [], firstTechFrame: {}, chats: [],
     unloadCount: 0, firstUnloadFrame: null, liftOffCount: 0, firstLiftOffFrame: null,
     leaveFrame: null, leaveReason: null,
@@ -316,6 +329,17 @@ function collectSignals(cmds: ScrepCmd[], totalFrames: number | null): Map<numbe
         if (pos) {
           s.buildPositions.push({ unit: b, frame, x: pos.x, y: pos.y });
         }
+      }
+    }
+    // 이동·공격 명령의 좌표(위 orderPositions 주석). 우클릭이 이동·공격·수리를 다 겸하고,
+    // 표적 명령은 어택땅·패트롤 같은 것들이다. 둘 다 좌표를 갖고 있다.
+    if (cmdName === "Right Click" || cmdName === "Targeted Order") {
+      const pos = s.orderPositions.length < ORDER_POS_CAP ? posOf(c.Pos) : null;
+      // 좌표계를 건물 쪽에 맞춘다: 건설 커맨드는 빌드 타일(128칸 맵이면 0~128), 이동·공격
+      // 커맨드는 픽셀(0~4096)로 온다. 한 타일이 32픽셀이라 나눠 주면 같은 자로 잴 수 있다.
+      // 실측으로 확인했다(같은 리플레이에서 build x[0~33] / order x[0~3797]).
+      if (pos && frame !== null) {
+        s.orderPositions.push({ frame, x: pos.x / PIXELS_PER_TILE, y: pos.y / PIXELS_PER_TILE });
       }
     }
     if (cmdName === "Unload" || cmdName === "Unload All") {
