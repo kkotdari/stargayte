@@ -220,6 +220,11 @@ interface ScrepCmd {
   Message?: string;
   /** "Leave Game" 커맨드의 사유(Quit / Defeat / Dropped …). 버전에 따라 열거형 객체다. */
   Reason?: { Name?: string } | string;
+  /** screp이 매긴 '헛친 커맨드' 종류 — 실제로 아무 일도 안 일어난 커맨드에만 붙는다.
+   *  0(유효)일 때는 아예 필드가 없다(screp-js가 지워서 내려준다). 값은 unit queue overflow /
+   *  too fast cancel / too fast repetition / too fast selection change / repetition /
+   *  repetition of the same hotkey 중 하나다. */
+  IneffKind?: number | string;
 }
 
 interface ScrepResult {
@@ -359,7 +364,17 @@ function collectSignals(cmds: ScrepCmd[], totalFrames: number | null): Map<numbe
       }
     }
     const cmdName = c.Type?.Name;
-    if (cmdName && UNIT_TRAIN_CMD_NAMES.has(cmdName)) {
+    // 헛친 커맨드인가 — screp이 표시해 준다(IneffKind). 아무 일도 안 일으킨 커맨드라
+    // '무엇을 했나'를 셀 때는 빼야 한다. 다만 채팅·퇴장처럼 세는 것이 아니라 기록인
+    // 항목은 그대로 둔다(애초에 이 표시가 붙지도 않는다).
+    //
+    // 실제 리플레이에서 확인한 크기가 사람마다 너무 달라 그냥 둘 수 없었다: 같은 판에서
+    // 프로브 231번 중 158번(68%)이 헛친 사람이 있는가 하면, 69번 중 3번(4%)만 헛친 사람도
+    // 있었다. 그대로 세면 "일꾼 231기 대 69기로 경제에서 앞섰다"가 나가는데, 실제로 나온
+    // 일꾼은 73기 대 66기로 거의 같았다 — 재고 있던 건 경제가 아니라 연타 습관이었다.
+    // (큐가 꽉 찬 채로 또 누른 것, 같은 명령을 순식간에 되풀이한 것 등이다.)
+    const wasted = Boolean(c.IneffKind);
+    if (!wasted && cmdName && UNIT_TRAIN_CMD_NAMES.has(cmdName)) {
       const unit = nameOf(c.Unit);
       if (unit) {
         s.unitCounts[unit] = (s.unitCounts[unit] ?? 0) + 1;
@@ -368,7 +383,7 @@ function collectSignals(cmds: ScrepCmd[], totalFrames: number | null): Map<numbe
           pushFrame(s.unitFrames, unit, frame);
         }
       }
-    } else if (cmdName && BUILD_CMD_NAMES.has(cmdName)) {
+    } else if (!wasted && cmdName && BUILD_CMD_NAMES.has(cmdName)) {
       const b = nameOf(c.Unit);
       if (b) {
         s.buildingCounts[b] = (s.buildingCounts[b] ?? 0) + 1;
@@ -410,10 +425,10 @@ function collectSignals(cmds: ScrepCmd[], totalFrames: number | null): Map<numbe
     }
     // ── 기술을 실제로 썼나 ──
     // 마법은 표적 명령의 Order로, 시즈/버로우/클로킹/스팀은 전용 커맨드로 온다.
-    const order = nameOf(c.Order);
+    const order = wasted ? undefined : nameOf(c.Order);
     const usedTech = order
       ? (CAST_ORDER_TO_TECH[order] ?? (order === PLACE_MINE_ORDER ? "Spider Mines" : null))
-      : (cmdName ? USE_CMD_TO_TECH[cmdName] ?? null : null);
+      : (!wasted && cmdName ? USE_CMD_TO_TECH[cmdName] ?? null : null);
     if (usedTech) {
       s.techUses[usedTech] = (s.techUses[usedTech] ?? 0) + 1;
       if (frame !== null && s.firstTechUseFrame[usedTech] === undefined) {
@@ -458,9 +473,13 @@ export async function parseReplayFile(file: File): Promise<ParsedReplay> {
   // null) 지표 자체를 알 수 없다는 뜻이라 전원 null로 남긴다 — 스트림이 있으면 생산 커맨드가
   // 없던 사람도 0으로 확정된다.
   const cmds = res.Commands?.Cmds ?? null;
+  //
+  // 헛친 커맨드(IneffKind)는 빼고 센다 — 위 collectSignals와 같은 이유다. 안 그러면 이
+  // 숫자가 '얼마나 뽑았나'가 아니라 '얼마나 연타했나'에 가까워진다(실측: 같은 판에서
+  // 일꾼 생산 커맨드의 헛친 비율이 0%인 사람과 68%인 사람이 함께 있었다).
   const buildCountByPlayerId = cmds
     ? cmds.reduce((acc, c) => {
-        if (c.Type?.Name && PRODUCTION_CMD_NAMES.has(c.Type.Name)) {
+        if (!c.IneffKind && c.Type?.Name && PRODUCTION_CMD_NAMES.has(c.Type.Name)) {
           acc.set(c.PlayerID, (acc.get(c.PlayerID) ?? 0) + 1);
         }
         return acc;
