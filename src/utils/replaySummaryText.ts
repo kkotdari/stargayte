@@ -279,6 +279,12 @@ const TEAM_ONLY_LINKS = new Set(["한편", "다른 쪽에서는"]);
 // "다른 쪽에서는 조조는 …"처럼 겹친다(지적). 이런 자리에서는 주어를 '-이/가'로 둔다.
 const TOPIC_MARKED_LINKS = new Set(["다른 쪽에서는"]);
 // 시간 순서를 짚는 이음말 — 위 대비 이음말과 함께 문장 앞머리를 알아보는 데 쓴다.
+/** 서로 바꿔 써도 뜻이 같은 역접 이음말 — 잇달아 같은 말이 나올 때 갈아 끼운다.
+ *  '한편'·'다른 쪽에서는'(일대일에서 못 쓰는 말)과 '그와 동시에'(동시성이라 반전을 지운다)는
+ *  뜻이 달라 여기 넣지 않는다. */
+const ADVERSATIVE_ALTS = ["하지만", "그러나", "그렇지만", "반면", "반대로", "역으로"];
+/** 덧붙이는 이음말끼리도 마찬가지 — 시간을 짚는 말은 사실이라 여기 없다. */
+const ADDITIVE_ALTS = ["여기에", "그리고", "게다가"];
 const SEQUENCE_LINKS = ["이어서", "곧이어", "그 직후", "잠시 후", "한참 후", "소강상태 후", "그 후", "한동안의 대치 후", "그 기세로", "여세를 몰아", "그 기세를 이어간", "여기에", "게다가", "설상가상으로", "그리고"];
 // 정규식에 이름을 그대로 넣기 전에 특수문자를 막는다 — 닉네임에 무엇이 들어올지 모른다.
 const escapeRe = (v: string): string => v.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -1815,6 +1821,9 @@ export function renderReplaySummary(
     const both = b.p?.both === true;
     const names = (b.who ?? []).map(resolveName);
     const seed = variantSeed(b);
+    // 앞 문장이 쓴 이음말 — link()가 이번 문장 것으로 덮어쓰기 전에 붙잡아 둔다.
+    // 아래 alsoLead가 같은 말을 또 고르지 않게 하는 데 쓴다(지적: '반대로'가 연속).
+    const linkBefore = lastLink;
     let who = mutual || both ? joinPair(names) : joinNames(names);
     const baseWho = who;
     const subject = ga(baseWho);
@@ -2238,8 +2247,12 @@ export function renderReplaySummary(
       const tail = text
         .replace(new RegExp(`^${LINK_HEAD()} `), "")
         .replace(`${ga(victimName)} `, "");
-      if (head) out[out.length - 1] = `${head} ${tail}`;
-      else out.push(text);
+      if (head) {
+        out[out.length - 1] = `${head} ${tail}`;
+        // 이 앞마디가 "…했지만 반대로"였으면 그 말을 방금 쓴 것으로 남긴다 — 안 남기면
+        // 다음 문장이 또 '반대로'를 골라 "…반대로 …했다. 반대로 …"가 된다(지적).
+        if (reversal) lastLink = "반대로";
+      } else out.push(text);
       chainCount = head ? chainCount + 1 : 0;
       // 이어 붙였으면 이음말도 아니고 그냥 놓인 것도 아니다 — 둘 다 초기화한다.
       if (head) { linkRun = 0; plainRun = 0; } else { linkRun = 0; plainRun += 1; }
@@ -2263,11 +2276,19 @@ export function renderReplaySummary(
     const alsoSubject = flipped && crossTeam && b.k !== "result";
     // 팀이 갈린 반전에는 앞말을 받는 연결어를 한마디 넣어도 좋다(요청).
     // 일대일에는 '다른 쪽'이 없다(지적) — 그 자리는 대신 '반대로'가 받는다.
-    const alsoLead = alsoSubject && b.k !== "result"
+    const alsoLeadPool = alsoSubject && b.k !== "result"
       ? (headToHead
-        ? ["", "반대로 ", "역으로 ", !duel && myTeam ? `${myTeam}팀의 ` : ""][seed % 4]
-        : ["", "이에 질세라 ", duel ? "반대로 " : "다른 쪽에서는 ", !duel && myTeam ? `${myTeam}팀의 ` : ""][seed % 4])
-      : "";
+        ? ["", "반대로 ", "역으로 ", !duel && myTeam ? `${myTeam}팀의 ` : ""]
+        : ["", "이에 질세라 ", duel ? "반대로 " : "다른 쪽에서는 ", !duel && myTeam ? `${myTeam}팀의 ` : ""])
+      : [];
+    let alsoLead = alsoLeadPool.length > 0 ? alsoLeadPool[seed % alsoLeadPool.length] : "";
+    // 앞 문장이 쓴 말을 또 쓰면 "…반대로 …했다. 반대로 …"가 된다(지적) — 한 칸 민다.
+    // 이 자리는 link()를 거치지 않아 그 안의 중복 회피가 안 걸린다.
+    if (alsoLead.trim() && alsoLead.trim() === linkBefore) {
+      alsoLead = alsoLeadPool[(seed + 1) % alsoLeadPool.length];
+    }
+    // 고른 말도 '방금 쓴 이음말'로 남겨야 다음 문장이 피해 간다.
+    if (CONTRAST_LINKS.has(alsoLead.trim())) lastLink = alsoLead.trim();
     // "…늘린 뒤"는 그 자체가 이어 주는 말이라 쉼표를 두지 않는다.
     if (chained && sameSubject) {
       const body = text.slice(subject.length + 1);
@@ -2302,6 +2323,24 @@ export function renderReplaySummary(
   const afterWhile = new RegExp(`(다가) ${LINK} `, "g");
   // 나머지 어미 뒤에는 한 마디까지만 — 두 번째부터 걷어낸다("…했지만 반대로 하지만 …").
   const twoLinks = new RegExp(`(지만|으나|았고|었고|였고|으며|하고|하며) (${LINK} )${LINK} `, "g");
+  // 붙어 있는 두 문장이 같은 이음말을 쓰면 겉돈다(지적: "…했지만 반대로 …했다. 반대로
+  // …팀의 누구는"). 이음말이 붙는 자리가 여러 군데라(link()를 안 거치는 곳도 있다) 마지막에
+  // 한 번 더 훑어, 뒤 문장의 머리말만 같은 결의 다른 말로 바꾼다 — 통째로 빼면 반전이
+  // 지워질 수 있어 바꾸기만 한다. 시간을 짚는 말("3분 뒤", "소강상태 후")은 뜻이 곧 사실이라
+  // 손대지 않는다.
+  const HEAD_RE = new RegExp(`^(${LINK}) `);
+  for (let i = 1; i < out.length; i += 1) {
+    const m = HEAD_RE.exec(out[i]);
+    if (!m) continue;
+    const head = m[1];
+    if (!out[i - 1].includes(head)) continue;
+    const alts = ADVERSATIVE_ALTS.includes(head) ? ADVERSATIVE_ALTS
+      : ADDITIVE_ALTS.includes(head) ? ADDITIVE_ALTS
+        : null;
+    if (!alts) continue;
+    const alt = alts.find((w) => w !== head && !out[i - 1].includes(w));
+    if (alt) out[i] = out[i].replace(HEAD_RE, `${alt} `);
+  }
   return out.length > 0
     ? out.map((l) => toPlain(l.replace(afterWhile, "$1 ").replace(twoLinks, "$1 $2"))).join(". ")
     : null;
