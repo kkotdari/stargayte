@@ -421,7 +421,7 @@ export default function StatsScreenV2() {
               <div className="scr-stat-row scr-stat-row-head">
                 <SortableHead label="유저" sortKey="name" sort={sort} onToggle={toggleSort} className="scr-stat-name-head" />
                 <SortableHead
-                  label="포인트(순위)" sortKey="points" sort={sort} onToggle={toggleSort}
+                  label="포인트" sortKey="points" sort={sort} onToggle={toggleSort}
                   tooltip="랭크 포인트 — 이 기간·분류의 경기들로 산정한 레이팅 점수. 괄호 안은 지금 순위와 전달 대비 변동이에요(전체 기간을 보면 견줄 전달이 없어 변동은 안 나와요). 숫자를 누르면 경기 이력(경기당 포인트 변화)이 열려요."
                 />
                 <SortableHead label="게임수" sortKey="plays" sort={sort} onToggle={toggleSort} />
