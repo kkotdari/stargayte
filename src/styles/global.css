@@ -3871,9 +3871,19 @@ html.scr-light-theme .scr-admin-sheet::before { background: rgba(244, 246, 250, 
   display: flex; flex-wrap: wrap; gap: 0 8px; color: var(--dim);
   border-bottom: 1px dotted rgba(var(--overlay-rgb), 0.1); padding: 2px 0;
 }
-.scr-admin-panel-batch-log-tag { font-weight: 700; width: 26px; flex-shrink: 0; }
+/* 상태(등록/중복/제외/실패)와 주의(관전자 의심)는 배지로 세운다(요청) — 글자만 두면
+   가운데 열의 날짜·팀 구성과 같은 무게로 읽혀 눈에 안 들어온다. 자리는 항상 잡아 둬서
+   (배지가 없는 줄도) 뒤 열이 줄마다 들쭉날쭉하지 않게 한다. */
+.scr-admin-panel-batch-log-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 0 5px; min-width: 30px; border-radius: 999px;
+  border: 1px solid currentColor; font-weight: 700; font-size: var(--fs-10);
+  line-height: 1.5; white-space: nowrap;
+}
+.scr-admin-panel-batch-log-tag { flex-shrink: 0; }
 .scr-admin-panel-batch-log-when, .scr-admin-panel-batch-log-size { flex-shrink: 0; color: var(--muted); }
-.scr-admin-panel-batch-log-flag { flex-shrink: 0; color: #e0b34d; }
+.scr-admin-panel-batch-log-flag { flex-shrink: 0; min-width: 32px; color: #d99a2b; }
+.scr-light-theme .scr-admin-panel-batch-log-flag { color: #b7791f; }
 .scr-admin-panel-batch-log-name { color: var(--text); word-break: break-all; }
 .scr-admin-panel-batch-log-reason { color: var(--muted); }
 /* 상태(등록/실패)는 꾸밈이 아니라 정보라 색을 남긴다 — 순위 변동의 상승/하락과 같은 값. */

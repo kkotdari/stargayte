@@ -442,10 +442,16 @@ export default function ReplayBatchButton() {
                 <div className="scr-admin-panel-batch-log" ref={logRef}>
                   {results.map((r, i) => (
                     <div key={`${r.fileName}-${i}`} className={cx("scr-admin-panel-batch-log-line", `scr-admin-panel-batch-log-line-${r.outcome}`)}>
-                      <span className="scr-admin-panel-batch-log-tag">{OUTCOME_LABEL[r.outcome]}</span>
+                      <span className="scr-admin-panel-batch-log-tag">
+                        <span className="scr-admin-panel-batch-log-badge">{OUTCOME_LABEL[r.outcome]}</span>
+                      </span>
                       <span className="scr-admin-panel-batch-log-when">{r.when}</span>
                       <span className="scr-admin-panel-batch-log-size">{r.teamSize}</span>
-                      <span className="scr-admin-panel-batch-log-flag">{r.suspected ? "관전자?" : ""}</span>
+                      {/* 관전자 의심 — 상태와 같은 배지 꼴로 세운다(요청). 해당 없는 줄에도
+                          자리는 남겨 뒤 열(파일명)이 줄마다 들쭉날쭉하지 않게 한다. */}
+                      <span className="scr-admin-panel-batch-log-flag">
+                        {r.suspected && <span className="scr-admin-panel-batch-log-badge scr-admin-panel-batch-log-badge-warn">주의</span>}
+                      </span>
                       <span className="scr-admin-panel-batch-log-name">{r.fileName}</span>
                       {r.reason && <span className="scr-admin-panel-batch-log-reason">{r.reason}</span>}
                     </div>
