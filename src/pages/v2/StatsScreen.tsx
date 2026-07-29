@@ -415,21 +415,25 @@ export default function StatsScreenV2() {
               className="scr-sentence-select" value={matchType} options={TYPE_SELECT_OPTS}
               onChange={(v) => setMatchType(v as MatchType)} minDropWidth={120}
             />
-            <Select
-              fixedWidth widthLabels={sentenceWidths}
-              className="scr-sentence-select" value={race} options={RACE_SELECT_OPTS}
-              onChange={(v) => setRace(v as BaseRace | "all")} minDropWidth={130}
-            />
-            {/* 초기화(요청) — 문장 끝에 붙여 기간·종족을 한 번에 되돌린다(분류는 유지).
-                이미 기본값이면 누를 게 없으니 흐리게 죽여 둔다. 검색어(유저)는 이 문장
-                밖의 별개 필터라 건드리지 않는다 — 칩마다 제 ×가 있다. */}
-            <button
-              type="button" className="scr-grid-title-reset"
-              onClick={resetFilters} disabled={isDefaultFilter}
-              aria-label="필터 초기화" title="필터 초기화"
-            >
-              <RotateCcw size={14} aria-hidden />
-            </button>
+            {/* 마지막 낱말과 초기화는 한 덩어리로 — 줄이 좁아 넘칠 때 초기화만 다음 줄에
+                외따로 떨어지지 않게 한다. */}
+            <span className="scr-grid-title-tail">
+              <Select
+                fixedWidth widthLabels={sentenceWidths}
+                className="scr-sentence-select" value={race} options={RACE_SELECT_OPTS}
+                onChange={(v) => setRace(v as BaseRace | "all")} minDropWidth={130}
+              />
+              {/* 초기화(요청) — 문장 끝에 붙여 기간·종족을 한 번에 되돌린다(분류는 유지).
+                  이미 기본값이면 누를 게 없으니 흐리게 죽여 둔다. 검색어(유저)는 이 문장
+                  밖의 별개 필터라 건드리지 않는다 — 칩마다 제 ×가 있다. */}
+              <button
+                type="button" className="scr-grid-title-reset"
+                onClick={resetFilters} disabled={isDefaultFilter}
+                aria-label="필터 초기화" title="필터 초기화"
+              >
+                <RotateCcw size={14} aria-hidden />
+              </button>
+            </span>
           </div>
         }
       />

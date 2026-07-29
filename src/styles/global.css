@@ -2522,10 +2522,14 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
    요청: "7월 개인전 전체종족"처럼 한 문장으로 현재 필터를 보여주고, 그 낱말
    (기간/유형/종족)이 각각 드롭다운. 별도의 필터창을 없애고 제목 하나가 그 역할을 겸한다. */
 .scr-grid-title {
-  display: flex; flex-wrap: wrap; align-items: center; gap: 4px;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 3px;
   min-width: 0; font-size: var(--fs-body); font-weight: 700; color: var(--text);
   margin: 6px 0 10px;
 }
+/* 마지막 낱말과 초기화는 한 덩어리 — 줄이 좁아 넘칠 때 초기화 아이콘만 다음 줄에 외따로
+   떨어지면 버려진 아이콘처럼 보인다(실제로 그랬다). flex 컨테이너라 이 안에서는 줄이
+   안 나뉜다. */
+.scr-grid-title-tail { display: inline-flex; align-items: center; gap: 3px; }
 /* 문장 안에 섞이는 드롭다운 — 낱말 자체가 컨트롤이라, 값 자리와 화살표 자리를 옅은
    구분선으로 갈라 "이 칸 전체가 하나의 드롭다운"임을 보이게 한다(요청: "값영역
    인디케이터 영역 나누고"). 폭이 고정이라 짧은 값 뒤가 비는데, 값을 왼쪽에 붙이면
@@ -2542,7 +2546,7 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
   /* 화살표는 낱말 뒤에 붙어 다니지 않고 칸 오른쪽 끝에 못 박힌다(요청: "드롭다운
      인디케이터도 고정되게") — 칸 폭이 어차피 고정이라 세 화살표가 같은 리듬으로 선다. */
   width: auto; justify-content: space-between; gap: 0;
-  min-height: 0; height: auto; padding: 3px 5px; border-radius: 7px;
+  min-height: 0; height: auto; padding: 3px 4px; border-radius: 7px;
   font: inherit;
   background: #fff; border: 1px solid #fff; color: #10151a;
   box-shadow: var(--lit-pill-glow);
@@ -2554,13 +2558,13 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
    (다크는 흰 알약, 라이트는 하늘색 알약)라, 테마별로 나눌 것 없이 한 값이면 된다. */
 .scr-sentence-select .scr-cselect-value {
   flex: 1; min-width: 0; text-align: center;
-  padding-right: 5px; margin-right: 5px; border-right: 1px solid rgba(16, 21, 26, 0.22);
+  padding-right: 4px; margin-right: 4px; border-right: 1px solid rgba(16, 21, 26, 0.22);
 }
 .scr-sentence-select .scr-cselect-caret { width: 13px; height: 13px; color: #10151a; opacity: 0.55; }
 /* 문장 끝 초기화 — 낱말들과 같은 톤의 아이콘 하나. 기본값 상태에서는 흐리게 죽인다. */
 .scr-grid-title-reset {
   display: inline-flex; align-items: center; justify-content: center;
-  margin-left: 4px; padding: 3px; border: none; border-radius: 6px;
+  margin-left: 1px; padding: 3px; border: none; border-radius: 6px;
   background: none; color: var(--dim); cursor: pointer;
 }
 .scr-grid-title-reset:disabled { opacity: 0.3; cursor: default; }
