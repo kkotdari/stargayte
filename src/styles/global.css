@@ -3839,26 +3839,25 @@ html.scr-light-theme .scr-admin-sheet::before { background: rgba(244, 246, 250, 
   width: 100%; margin-top: 8px; font-size: var(--fs-caption); font-weight: 700; padding: 8px; border-radius: 999px;
 }
 
-/* ===== 배치 로그: 터미널 로그처럼 =====
-   예전엔 카드 아래로 뽑혀 나오는 영수증 용지(포털+절대배치, 프린터가 뽑아내는 연출)였는데,
-   그 연출이 필요 없다는 피드백으로 걷어내고 카드 본문 안에 그냥 스크롤되는 상자 하나로
-   둔다 — 코딩폰트로 상태/일시/몇 대 몇인지/관전자 의심 여부/파일명/사유를 한 줄에 나란히
-   보여줘 정보량을 늘린다. 어차피 PC 전용 기능이라(아래 min-width:720px 미만에서 버튼
-   자체가 숨겨진다) 꾸밈은 최소화한다. */
-/* 배치 결과 창 — 로그가 주인공이라 창에 높이를 정해 주고 남는 세로를 로그가 다 가져간다.
-   로그 높이를 280px로 묶어 뒀더니 화면이 넉넉한 모바일에서도 창이 손바닥만 하게 떴다
-   (지적: 세로가 너무 짧다, 모달 공간을 충분히 쓸 것). 모달의 max-height(88dvh)가 상한이라
-   화면이 작으면 알아서 줄고, PC에서는 720px에서 멈춘다. */
+/* ===== 배치 결과 목록 =====
+   한때 코딩폰트 + 검은 상자의 터미널 흉내였는데, 그 꾸밈을 걷어내고 앱의 기본 글꼴·글자색
+   으로 투명한 바닥에 바로 그린다(요청). 한 줄에 상태/일시/몇 대 몇인지/관전자 의심 여부/
+   파일명/사유를 나란히 두는 구성은 그대로다.
+   창에 높이를 정해 두고(모달 max-height 88dvh가 상한, PC는 720px에서 멈춤) 위쪽 진행
+   상황은 붙박이로, 아래 목록만 스크롤한다(요청). */
 .scr-admin-panel-batch-modal { height: min(88dvh, 720px); }
+/* 본문은 스크롤하지 않는다 — 스크롤은 목록이 혼자 맡아야 진행률이 위에 남는다. */
+.scr-admin-panel-batch-modal .scr-modal-body { overflow: hidden; }
 .scr-admin-panel-batch-modal .scr-admin-panel-batch-log {
   flex: 1 1 auto; max-height: none; min-height: 120px;
 }
+/* 진행률 막대와 카운트 줄은 붙박이 — 목록이 길어져도 밀려 올라가지 않는다. */
+.scr-admin-panel-batch-bar, .scr-admin-panel-batch-counts, .scr-admin-panel-batch-review {
+  flex-shrink: 0;
+}
 .scr-admin-panel-batch-log {
   margin-top: 10px; max-height: min(42vh, 280px); overflow-y: auto;
-  /* 터미널 배경을 더 불투명하게(요청: 0.5→0.8) — 뒤 콘크리트 무늬가 덜 비쳐 로그가 또렷. */
-  background: rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.14); border-radius: 4px;
-  /* 터미널 로그 텍스트 2스텝 축소(요청): caption(14) → 11px. */
-  padding: 8px 10px; font-family: var(--font-mono); font-size: var(--fs-11); line-height: 1.6; text-align: left;
+  padding: 0; font-size: var(--fs-11); line-height: 1.6; text-align: left;
 }
 /* 배치등록 확인창("리플레이 N개를 등록할까요?") — 제목/본문 텍스트 2스텝 축소(요청):
    제목 subhead→caption, 본문 body→micro.
@@ -3866,20 +3865,25 @@ html.scr-light-theme .scr-admin-sheet::before { background: rgba(244, 246, 250, 
    파일을 직접 고르는 모바일에만 세운다. */
 .scr-admin-panel-batch-confirm .scr-confirm-head { font-size: var(--fs-caption); }
 .scr-admin-panel-batch-confirm .scr-confirm-msg { font-size: var(--fs-micro); }
+/* 글자색은 테마 값을 그대로 쓴다 — 검은 상자 위 흰 글씨를 전제로 하드코딩돼 있던 값들이라
+   라이트 테마에서는 배경이 사라지는 순간 안 보이게 된다. */
 .scr-admin-panel-batch-log-line {
-  display: flex; flex-wrap: wrap; gap: 0 8px; color: rgba(255,255,255,0.55);
-  border-bottom: 1px dotted rgba(255,255,255,0.08); padding: 1px 0;
+  display: flex; flex-wrap: wrap; gap: 0 8px; color: var(--dim);
+  border-bottom: 1px dotted rgba(var(--overlay-rgb), 0.1); padding: 2px 0;
 }
 .scr-admin-panel-batch-log-tag { font-weight: 700; width: 26px; flex-shrink: 0; }
-.scr-admin-panel-batch-log-when, .scr-admin-panel-batch-log-size { flex-shrink: 0; color: rgba(255,255,255,0.4); }
+.scr-admin-panel-batch-log-when, .scr-admin-panel-batch-log-size { flex-shrink: 0; color: var(--muted); }
 .scr-admin-panel-batch-log-flag { flex-shrink: 0; color: #e0b34d; }
-.scr-admin-panel-batch-log-name { color: #fff; word-break: break-all; }
-.scr-admin-panel-batch-log-reason { color: rgba(255,255,255,0.4); }
-.scr-admin-panel-batch-log-line-registered .scr-admin-panel-batch-log-tag { color: #6fcf7f; }
-.scr-admin-panel-batch-log-line-failed .scr-admin-panel-batch-log-tag { color: #ff8a80; }
+.scr-admin-panel-batch-log-name { color: var(--text); word-break: break-all; }
+.scr-admin-panel-batch-log-reason { color: var(--muted); }
+/* 상태(등록/실패)는 꾸밈이 아니라 정보라 색을 남긴다 — 순위 변동의 상승/하락과 같은 값. */
+.scr-admin-panel-batch-log-line-registered .scr-admin-panel-batch-log-tag { color: #7fd18b; }
+.scr-admin-panel-batch-log-line-failed .scr-admin-panel-batch-log-tag { color: #e08a8a; }
+.scr-light-theme .scr-admin-panel-batch-log-line-registered .scr-admin-panel-batch-log-tag { color: #16a34a; }
+.scr-light-theme .scr-admin-panel-batch-log-line-failed .scr-admin-panel-batch-log-tag { color: #e11d48; }
 /* 끝났다는 사실을 진행률 막대로 짐작하게 두지 않는다 — 로그 맨 끝에 한 줄 못 박아 찍는다. */
 .scr-admin-panel-batch-log-end {
-  margin-top: 6px; text-align: center; letter-spacing: 0.04em; color: rgba(255,255,255,0.6);
+  margin-top: 6px; text-align: center; letter-spacing: 0.04em; color: var(--dim);
 }
 /* 모바일 폭에서는 정사각형 카드(aspect-ratio 1/1) 높이가 좁아 내용이 넘쳐 세로 스크롤이
    생겼다(실제로 지적받은 문제) — 특히 "버전 보기" 버튼이 다른 버튼과 같은 크기라 유난히

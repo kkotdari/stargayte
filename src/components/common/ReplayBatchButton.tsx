@@ -422,7 +422,7 @@ export default function ReplayBatchButton() {
               <div className="scr-rank-bar-track scr-admin-panel-batch-bar">
                 <div className="scr-rank-bar-fill scr-rank-bar-fill-plays" style={{ width: `${percent}%` }} />
               </div>
-              <div className="scr-mono scr-admin-panel-batch-counts">
+              <div className="scr-admin-panel-batch-counts">
                 {processed}/{total} · 등록 {countOf(results, "registered")} · 중복 {countOf(results, "duplicate")}
                 {" "}· 제외 {countOf(results, "skipped")} · 실패 {countOf(results, "failed")}
               </div>
@@ -435,8 +435,9 @@ export default function ReplayBatchButton() {
                 </button>
               )}
 
-              {/* 진짜 터미널 로그처럼 — 꾸밈 없이 코딩폰트로 한 줄에 한 파일씩, 상태/일시/몇 대
-                  몇인지/관전자 의심 여부/파일명/사유를 나란히 보여준다. */}
+              {/* 한 줄에 한 파일씩 — 상태/일시/몇 대 몇인지/관전자 의심 여부/파일명/사유를
+                  나란히. 코딩폰트와 검은 상자(터미널 흉내)는 걷어내고 앱의 기본 글꼴·글자색
+                  으로 투명한 바닥에 바로 그린다(요청). */}
               {results.length > 0 && (
                 <div className="scr-admin-panel-batch-log" ref={logRef}>
                   {results.map((r, i) => (
