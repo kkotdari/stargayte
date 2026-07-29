@@ -47,7 +47,17 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
   const lastScrollHeightRef = useRef(0);
   const settleTimerRef = useRef<number | null>(null);
 
-  // 지금 상단에 스티키로 핀된 날짜 헤더의 라벨 — 현재 위치를 "며칠"인지로 보여준다.
+  // 현재 위치를 재는 기준선 — 화면 맨 위가 아니라 한가운데다(요청: "어떤 요소가 가장 위에
+  // 있는 게 아니라 가운데 있는 걸 기준으로 측정"). 맨 위를 기준으로 삼으면, 눈은 화면
+  // 한복판을 보고 있는데 라벨은 이미 위로 지나간 그룹의 날짜를 가리킨다 — 화면 반 개
+  // 분량만큼 늘 앞서 있는 셈이다. 눈금(groupFraction)과 현재 라벨(currentDateLabel)이
+  // 반드시 같은 선을 써야 다이얼이 눈금에 정확히 앉는다.
+  const centerLine = (): number => {
+    const { clientHeight } = getScrollMetrics();
+    return Math.max(clientHeight, window.innerHeight || 0) / 2;
+  };
+
+  // 기준선을 지나 있는 날짜 헤더 중 가장 마지막 것의 라벨 — 현재 위치를 "며칠"인지로 보여준다.
   // atBottom이면(더 스크롤할 여지가 없는 맨 끝) 마지막 헤더를 그냥 그대로 쓴다 — 마지막
   // 그룹의 카드 수가 적어 그 헤더가 화면 맨 위(top<=6)까지 밀려 올라올 만큼 스크롤할 거리
   // 자체가 없으면(뒤에 남는 여백뿐이면), 아래 top<=6 조건이 그 헤더를 영영 못 만나 한 칸
@@ -58,9 +68,10 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
     if (atBottom) return heads[heads.length - 1].dataset.dateLabel ?? null;
     const root = getScrollRoot();
     const topY = root instanceof Window ? 0 : root.getBoundingClientRect().top;
+    const line = centerLine();
     let current: string | null = heads[0].dataset.dateLabel ?? null;
     for (const h of heads) {
-      if (h.getBoundingClientRect().top - topY <= 6) current = h.dataset.dateLabel ?? current;
+      if (h.getBoundingClientRect().top - topY <= line) current = h.dataset.dateLabel ?? current;
       else break;
     }
     return current;
@@ -76,7 +87,10 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
     if (!el || max <= 0) return null;
     const root = getScrollRoot();
     const rootTop = root instanceof Window ? 0 : root.getBoundingClientRect().top;
-    const offset = scrollTop + (el.getBoundingClientRect().top - rootTop);
+    // 기준선을 빼서 "이 그룹이 화면 한가운데 오는 스크롤 값"으로 만든다(위 centerLine
+    // 주석) — currentDateLabel도 같은 선으로 재므로, 스크롤이 실제로 이 그룹에 멈추면
+    // 다이얼과 눈금이 같은 자리를 가리킨다.
+    const offset = scrollTop + (el.getBoundingClientRect().top - rootTop) - centerLine();
     return Math.min(1, Math.max(0, offset / max));
   };
 
@@ -270,10 +284,10 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
               key={m.key} type="button" className={m.className}
               style={{ top: `${(markerFractions[m.key] as number) * 100}%` }}
               // 눈금을 누르면 그 지점으로 이동한다(요청). 목적지는 눈금이 이미 알고 있는
-              // 값(markerFractions)을 그대로 쓴다 — scrollIntoView로 옮겼더니 화면 '가운데'에
-              // 두려고 반 화면만큼 더 위로 갔고, 위쪽 여유가 없으면 0으로 잘려 맨 위로
-              // 튀었다(지적: 눌러도 현재가 아니라 맨 위로 감). 눈금 위치는 "그 요소가 화면
-              // 맨 위에 오는 스크롤 값"이라, 같은 척도로 옮겨야 다이얼이 눈금에 정확히 앉는다.
+              // 값(markerFractions)을 그대로 쓴다 — scrollIntoView는 스크롤 루트/스티키
+              // 헤더에 따라 제 나름대로 자리를 잡아 눈금과 어긋난다. 눈금 위치는 이제
+              // "그 그룹이 화면 한가운데 오는 스크롤 값"이라(위 groupFraction), 눌러서 옮기면
+              // 그 그룹이 가운데에 서고 다이얼도 그 눈금에 정확히 앉는다(요청).
               onClick={() => {
                 const f = markerFractions[m.key];
                 if (f === null || f === undefined) return;

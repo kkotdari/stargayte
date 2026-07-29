@@ -832,7 +832,11 @@ function detectFor(c: Ctx): Tactic[] {
   }
   const midCannons = inZone("mid", "Photon Cannon");
   if (midCannons.length >= 2) {
-    out.push({ key: "center-photon", ...target, weight: 10, at: firstOf(midCannons), who, p: { n: midCannons.length } });
+    // 무게 10 → 16(요청: "센터포토 가중치도 좀 높여야 될 듯, 너무 요약에 출현 빈도가 낮음").
+    // 센터 포토는 자리로 확실히 잡히는 데다, 길목 하나로 판 전체가 갈리는 수라 이야기로서의
+    // 값이 크다 — 다른 전술과 자리다툼에서 계속 밀려 요약에 거의 안 나왔다. scatter(14)보다
+    // 조금 위에 둬서, 후반에 둘이 같이 걸리면 이쪽이 먼저 뽑히게 한다.
+    out.push({ key: "center-photon", ...target, weight: 16, at: firstOf(midCannons), who, p: { n: midCannons.length } });
   } else {
     const mid = inZone("mid");
     if (mid.length >= 3) {

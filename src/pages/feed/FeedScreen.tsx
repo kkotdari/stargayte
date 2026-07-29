@@ -25,7 +25,7 @@ import { api } from "../../api/client";
 import { useCursorPagination } from "../../hooks/useCursorPagination";
 import { useEditableFocused } from "../../hooks/useEditableFocused";
 import { usePageBackground } from "../../hooks/usePageBackground";
-import { getScrollTop, scrollRootTo } from "../../utils/scrollRoot";
+import { getScrollMetrics, getScrollTop, scrollRootTo } from "../../utils/scrollRoot";
 import { buildReplayDrafts, type ReplayDraft } from "../../utils/replayDraft";
 import { hasAppUpdatePreloadErrorOccurred } from "../../utils/appUpdate";
 import type { Challenge, FeedTargetType, Match, MatchSlot, MatchType, Member, RankSnapshot } from "../../types";
@@ -35,7 +35,9 @@ const MAX_REPLAY_FILES = 20;
 
 // 묶음 펼침/접힘에서 포스트 한 장이 나타나거나 사라지는 시간과, 포스트 사이의 시차.
 // 공간(높이)이 다 열린 뒤에 포스트가 한 장씩 등장한다(요청) — 접을 땐 그 반대다.
-// 아래쪽 접기로 닫을 때 접힌 카드를 화면 맨 위에서 이만큼 띄워 놓는다.
+// 아래쪽 접기로 닫을 때 접힌 카드를 화면 한가운데에 놓는다(요청) — 맨 위에 붙여 놓으면
+// 방금 접은 카드가 헤더 바로 밑에 걸려 앞뒤 맥락이 안 보인다. 카드가 화면보다 크면
+// 가운데로 못 놓으므로, 그때는 맨 위에서 이만큼만 띄운다(예전 동작).
 const STACK_COLLAPSE_MARGIN = 12;
 // 요약 ↔ 목록 교대 연출(요청: 페이드 아웃 → 높이 이동 → 한 번에 페이드 인).
 // 페이드는 짧게, 높이는 그보다 길게 — 높이가 눈으로 따라가는 유일한 움직임이라 여기에
@@ -428,10 +430,17 @@ function MatchStack({
       flashTimerRef.current = window.setTimeout(() => setFlash(false), FLASH_MS);
       const card = stackRef.current;
       if (!card) return;
-      // 헤더는 position:relative라 같이 스크롤돼 올라간다 — 그 높이를 빼면 오히려 카드
-      // 위쪽으로 한참 더 올라가버린다. 화면 맨 위에 딱 붙지만 않게 조금만 띄운다.
-      const top = getScrollTop() + card.getBoundingClientRect().top - STACK_COLLAPSE_MARGIN;
-      scrollRootTo({ top: Math.max(0, top), behavior: "smooth" });
+      // 접힌 카드를 화면 한가운데에 놓는다(요청). 헤더는 position:relative라 같이 스크롤돼
+      // 올라가므로 따로 빼줄 것이 없다 — 카드 위에 남길 여백을 그대로 더하면 된다.
+      const r = card.getBoundingClientRect();
+      const { clientHeight, scrollHeight } = getScrollMetrics();
+      const vh = Math.max(clientHeight, window.innerHeight || 0);
+      // 카드가 화면보다 크면 가운데 값이 음수가 되어 오히려 카드 위쪽이 잘린다 — 그때는
+      // 예전처럼 맨 위에서 조금만 띄운다.
+      const pad = Math.max(STACK_COLLAPSE_MARGIN, (vh - r.height) / 2);
+      const top = getScrollTop() + r.top - pad;
+      // 문서 끝쪽 카드는 아무리 밀어도 가운데까지 못 온다 — 갈 수 있는 데까지만 간다.
+      scrollRootTo({ top: Math.min(Math.max(0, top), Math.max(0, scrollHeight - vh)), behavior: "smooth" });
     };
   };
 
