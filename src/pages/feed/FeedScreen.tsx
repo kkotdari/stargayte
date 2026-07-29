@@ -683,7 +683,9 @@ export function GameResultPost({
     >
       <div className="scr-feed-card-head" data-date-label={dateLabel}>
         <div className="scr-feed-card-head-meta">
-          <span className="scr-feed-card-time">{dateLabel}</span>
+          {/* 다른 포스트와 같은 '언제' 규칙을 쓴다(요청: 표기 통일) — 옆 스크롤 타임라인의
+              알약에 뽑히는 data-date-label만 짧은 날짜 그대로다(거긴 늘 날짜여야 한다). */}
+          <span className="scr-feed-card-time">{formatWhen(stack.date)}</span>
         </div>
         <div className="scr-feed-card-head-title">
           <ClipboardList size={16} aria-hidden />

@@ -8,7 +8,7 @@ import RankingShiftCard from "../feed/RankingShiftCard";
 import {
   GameResultCard, GameResultPost, gameResultItem, sessionDateLabel, sessionDateOf, type GameResultPostItem,
 } from "../feed/FeedScreen";
-import { shortDateWithDow } from "../../utils/date";
+import { formatWhen, shortDateWithDow } from "../../utils/date";
 import type { Challenge, GameResult, RankingShift } from "../../types";
 
 // 카카오톡으로 공유된 링크(?sv=gameResult|challenge|rankingShift&sid=…)가 여는, 그 한 장만 보이는
@@ -146,7 +146,7 @@ export default function SharePage({ target, onExit }: { target: ShareTarget; onE
         ) : shift ? (
           // 순위변동 공유 — 피드와 같은 카드 한 장(읽기 전용, 케밥/상세/댓글 없이).
           <div className="scr-feed-list">
-            <RankingShiftCard shift={shift} timeText={shift.createdAt.slice(0, 10)} />
+            <RankingShiftCard shift={shift} timeText={formatWhen(shift.createdAt, { clock: true })} />
           </div>
         ) : stack ? (
           // 게임결과 묶음 공유 — 피드의 그 카드를 그대로 재사용한다(요청). 접힌 채로 뜨고
