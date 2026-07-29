@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
-import { MoreHorizontal, Monitor, User, Copy, Check } from "lucide-react";
+import { MoreHorizontal, Monitor, User, Copy, Check, BarChart3, X } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
 import RaceBadge from "../../components/common/RaceBadge";
 import { Spinner } from "../../components/common/Feedback";
@@ -15,6 +15,7 @@ import { cx } from "../../utils/format";
 import { attachPopover } from "../../utils/popover";
 import { dateWithDow } from "../../utils/date";
 import { normalizeSearchText } from "../../utils/memberSearch";
+import { useLockBodyScroll } from "../../utils/bodyScrollLock";
 import { renderReplaySummaryParts, type SummaryPart } from "../../utils/replaySummaryText";
 import KakaoShareButton from "../../components/common/KakaoShareButton";
 import type { KakaoShareContent } from "../../utils/kakaoShare";
@@ -341,8 +342,9 @@ function MatchActionsMenu({
   );
 }
 
-// 펼쳤을 때 카드 하단에 붙는 상세 스탯 표(요청) — 양 팀 전원을 한 표에 모아 유효커맨드
-// 높은 순으로 정렬한다. 리플레이 파싱값(apm/eapm/커맨드/유효커맨드)은 수기등록이면 없어서 '–'.
+// 상세 스탯 표(요청) — 양 팀 전원을 한 표에 모아 생산 높은 순으로 정렬한다.
+// 리플레이 파싱값(apm/eapm/커맨드/유효커맨드)은 수기등록이면 없어서 '–'.
+// 예전에는 카드를 펼치면 그 안에 깔렸는데, 이제 전체화면 시트로 띄운다(요청).
 function MatchStatsTable({
   team1, team2, memberOf, highlightMemberIds, highlightTerms,
 }: {
@@ -375,7 +377,7 @@ function MatchStatsTable({
     );
   };
   return (
-    <div className="scr-match-stats-table-wrap scr-scroll" onClick={(e) => e.stopPropagation()}>
+    <div className="scr-match-stats-table-wrap scr-scroll">
       <table className="scr-match-stats-table">
         <thead>
           <tr>
@@ -411,6 +413,53 @@ function MatchStatsTable({
   );
 }
 
+/** 스탯 표를 띄우는 전체화면 시트(요청: 상성처럼) — 카드 안에서 펼치던 걸 밖으로 뺐다.
+ *  상성 오버레이(.scr-rivalry-overlay)와 같은 껍데기를 쓴다: 딤+블러 위에 내용만 얹고
+ *  닫기는 우상단 X로만 한다(빈 공간 탭으로 닫으면 표를 옆으로 스크롤하다 닫혀버린다).
+ *  머리에는 어느 경기인지 알 수 있게 게임번호와 등록자를 함께 둔다. */
+function MatchStatsOverlay({ row, memberOf, highlightMemberIds, highlightTerms, onClose }: {
+  row: SearchListRow;
+  memberOf: (id: string) => Member | undefined;
+  highlightMemberIds?: Set<string>;
+  highlightTerms?: string[];
+  onClose: () => void;
+}) {
+  useLockBodyScroll();
+  return createPortal(
+    <div className="scr-rivalry-overlay scr-match-stats-overlay">
+      <div className="scr-rivalry-overlay-body">
+        <div className="scr-rivalry-overlay-head">
+          <span className="scr-rivalry-overlay-title">경기 스탯</span>
+          <button type="button" className="scr-rivalry-overlay-close" onClick={onClose} aria-label="닫기">
+            <X size={20} />
+          </button>
+        </div>
+        <MatchMetaLine row={row} />
+        <MatchStatsTable
+          team1={row.team1} team2={row.team2} memberOf={memberOf}
+          highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms}
+        />
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+/** 게임번호 + 등록자 — 예전엔 펼침 맨 아래에만 있었는데, 이제 카드 위쪽에 늘 보인다(요청).
+ *  스탯 시트 머리에도 같은 줄을 써서 "지금 보는 게 어느 경기인가"가 두 곳에서 같게 읽힌다. */
+function MatchMetaLine({ row }: { row: SearchListRow }) {
+  return (
+    <div className="scr-match-trow-meta">
+      <span className="scr-match-trow-no">
+        <span className="scr-match-trow-no-label">게임번호</span>
+        <span className="scr-match-trow-no-val">{row.raw.matchNo}</span>
+        <CopyButton text={row.raw.matchNo} />
+      </span>
+      {row.raw.createdBy && <span className="scr-match-trow-by">등록: {row.raw.createdBy.nickname}</span>}
+    </div>
+  );
+}
+
 export default function MatchList({
   rows, memberOf, onDeleted, loading, highlightMemberIds, highlightTerms, matchup,
 }: MatchListProps) {
@@ -422,34 +471,10 @@ export default function MatchList({
   const canDelete = !!user && isAdminRole(user.roles);
   const [deleteTarget, setDeleteTarget] = useState<Match | null>(null);
   const [deleting, setDeleting] = useState(false);
-  // 경기 목록은 기본 접힌 상태(맵/시간 + 팀 요약 + 승패만)로 시작하고, 행을 누르면
-  // 그 경기만 펼쳐져 케밥메뉴·등록자·전체 로스터가 드러난다(요청).
-  const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
-  // 펼침 트랜지션(높이 애니메이션)을 위해 "지금 열려 있는지"(expandedIds)와 "아직 DOM에
-  // 남겨둬야 하는지"(renderedIds)를 나눈다 — 접을 때도 애니메이션이 끝날 때까지 상세 내용을
-  // 그대로 두고, 트랜지션이 끝나면 그때 언마운트한다. 접힌 로우는 상세표를 아예 안 그려
-  // (목록이 길어도) 가볍게 유지한다.
-  const [renderedIds, setRenderedIds] = useState<Set<number>>(new Set());
-  const toggleExpanded = (id: number) => {
-    setExpandedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-        setRenderedIds((r) => new Set(r).add(id)); // 열기 직전에 먼저 마운트해 0fr→1fr 애니메이션이 걸리게
-      }
-      return next;
-    });
-  };
-  // 접힘 애니메이션(1fr→0fr)이 끝나면 상세 내용을 언마운트한다. 다른 트랜지션(배경 등)이
-  // 버블링돼도 grid-template-rows 종료에만 반응한다.
-  const onExpandTransitionEnd = (id: number, e: React.TransitionEvent) => {
-    if (e.propertyName !== "grid-template-rows") return;
-    if (!expandedIds.has(id)) {
-      setRenderedIds((r) => { const n = new Set(r); n.delete(id); return n; });
-    }
-  };
+  // 카드 안에서 펼치던 상세(스탯 표)는 전체화면 시트로 나갔다(요청) — 그래서 로우 자체의
+  // 펼침/접힘이 통째로 없어졌고, 지금 어느 경기의 스탯을 보고 있는지만 들고 있으면 된다.
+  // 게임번호·등록자는 펼쳐야 보이던 걸 늘 보이는 자리로 올렸다(요청).
+  const [statsRow, setStatsRow] = useState<SearchListRow | null>(null);
 
   const confirmDelete = async () => {
     if (!deleteTarget) return;
@@ -476,7 +501,6 @@ export default function MatchList({
             {g.items.map(({ row: r }) => {
               const o1 = outcomeFor("team1", r.result);
               const o2 = outcomeFor("team2", r.result);
-              const expanded = expandedIds.has(r.id);
               const outcomes = (
                 <div className="scr-match-trow-outcomes">
                   <span className={cx("scr-match-trow-outcome", OUTCOME_CLASS[o1])}>{OUTCOME_LABEL[o1]}</span>
@@ -484,16 +508,21 @@ export default function MatchList({
                 </div>
               );
               return (
-              <div
-                key={r.id} className="scr-match-trow scr-match-trow-clickable"
-                onClick={() => toggleExpanded(r.id)} role="button" tabIndex={0}
-                aria-expanded={expanded}
-              >
-                {/* 윗줄 — 케밥메뉴만. 맵·플레이시간은 접힘 땐 숨기고 펼치면 스탯 표 위에
-                    노출한다(요청). */}
+              <div key={r.id} className="scr-match-trow">
+                {/* 윗줄 — 왼쪽에 게임번호·등록자(늘 보인다, 요청), 오른쪽 위에 스탯 보기와
+                    케밥메뉴. 예전엔 이 줄이 비어 있었고 그 둘은 펼쳐야 나왔다. */}
                 <div className="scr-match-trow-topline">
-                  <div className="scr-match-trow-map-line" />
+                  <MatchMetaLine row={r} />
                   <div className="scr-match-trow-topmeta">
+                    {/* 스탯 보기 — 글자 링크가 아니라 아이콘 하나로(요청). 로스터 우상단
+                        케밥 왼쪽에 붙어 같은 줄을 쓴다. */}
+                    <button
+                      type="button" className="scr-match-kebab-btn scr-match-stats-btn"
+                      onClick={(e) => { e.stopPropagation(); setStatsRow(r); }}
+                      aria-label="경기 스탯 보기"
+                    >
+                      <BarChart3 size={16} />
+                    </button>
                     <MatchActionsMenu
                       match={r.raw} canDelete={canDelete} memberOf={memberOf}
                       onDelete={setDeleteTarget}
@@ -573,38 +602,20 @@ export default function MatchList({
                     <div className="scr-match-trow-summary"><SummaryText parts={parts} /></div>
                   ) : null;
                 })()}
-                {/* 펼침 상세 — grid-template-rows 0fr↔1fr로 높이를 부드럽게 애니메이션한다
-                    (요청: 펼치거나 접을 때 트랜지션). 접힌 로우는 상세 내용을 아예 안 그린다. */}
-                <div
-                  className={cx("scr-match-trow-expand", expanded && "scr-match-trow-expand-open")}
-                  onTransitionEnd={(e) => onExpandTransitionEnd(r.id, e)}
-                >
-                  <div className="scr-match-trow-expand-inner">
-                    {(expanded || renderedIds.has(r.id)) && (
-                      <>
-                        <MatchStatsTable
-                          team1={r.team1} team2={r.team2} memberOf={memberOf}
-                          highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms}
-                        />
-                        {/* 최하단 — 왼쪽에 '경기번호' 라벨 + 번호(#없이) + 복사 버튼, 오른쪽에 등록자(요청). */}
-                        <div className="scr-match-trow-footer">
-                          <span className="scr-match-trow-no">
-                            <span className="scr-match-trow-no-label">게임번호</span>
-                            <span className="scr-match-trow-no-val">{r.raw.matchNo}</span>
-                            <CopyButton text={r.raw.matchNo} />
-                          </span>
-                          {r.raw.createdBy && <span className="scr-match-trow-by">등록: {r.raw.createdBy.nickname}</span>}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </div>
               </div>
               );
             })}
           </div>
         ))}
       </div>
+
+      {statsRow && (
+        <MatchStatsOverlay
+          row={statsRow} memberOf={memberOf}
+          highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms}
+          onClose={() => setStatsRow(null)}
+        />
+      )}
 
       {deleteTarget && (
         <ConfirmDialog

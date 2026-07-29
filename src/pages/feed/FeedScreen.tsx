@@ -261,7 +261,9 @@ function ChallengeActionsMenu({ challenge, isAdmin, onDeleted }: {
 // 피드 카드 하단 공통 댓글 영역 — 목록은 항상, 입력창은 아이콘 옆에서 열리고 닫힌다.
 function FeedCardComments({ targetType, targetId }: { targetType: FeedTargetType; targetId: number }) {
   return (
-    <div className="scr-feed-comments">
+    // 댓글 영역의 클릭은 바깥으로 안 올린다 — 묶음 안에서는 목록 클릭이 '접기'라서(요청),
+    // 댓글을 쓰려고 입력칸을 누른 것만으로 목록이 통째로 접혀 버린다.
+    <div className="scr-feed-comments" onClick={(e) => e.stopPropagation()}>
       <FeedComments targetType={targetType} targetId={targetId} />
     </div>
   );
@@ -532,7 +534,13 @@ function MatchStack({
           하는 버튼이 위아래로 둘이라 오히려 헷갈려서 없앴다(요청). 접기는 목록 끝의
           버튼 하나가 맡는다. */}
       <div className="scr-feed-stack-inner" aria-hidden={!open}>
-        <div className="scr-feed-stack-list" ref={listRef}>
+        {/* 펼쳐진 목록은 어디를 눌러도 접힌다(요청) — 경기 로우 자체는 이제 펼칠 것이
+            없어서(스탯은 시트로 나갔다) 클릭이 남아돌기 때문이다. 그 안의 진짜 버튼들
+            (스탯 보기·케밥·댓글·프로필)은 각자 stopPropagation으로 이 클릭을 막는다. */}
+        <div
+          className="scr-feed-stack-list" ref={listRef}
+          onClick={() => { if (open) collapseAndReveal(); }}
+        >
           {orderedDesc.map((it) => (
             <div key={it.match.id} className="scr-feed-stack-reveal">
               <MatchCard
