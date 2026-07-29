@@ -396,16 +396,11 @@ export default function StatsScreenV2() {
         // 문장으로 옮겼다. 제목이 곧 지금 걸린 조건이라 따로 읽을 필터 UI가 없다.
         heading={
           <div className="scr-grid-title">
-            {/* 각 칸은 제 목록에서 가장 긴 낱말에 맞춰 폭이 잡힌다(요청) — 셋을 같은 폭으로
-                맞춰 봤더니 짧은 낱말 칸에 빈자리만 커졌다. 고른 값이 바뀌어도 그 칸 폭은
-                그대로라, 레이아웃이 흔들리지 않는다는 성질은 그대로다. */}
             <Select
-              fixedWidth
               className="scr-sentence-select" value={period} options={periodOpts}
               onChange={setPeriod} minDropWidth={150}
             />
             <Select
-              fixedWidth
               className="scr-sentence-select" value={matchType} options={TYPE_SELECT_OPTS}
               onChange={(v) => setMatchType(v as MatchType)} minDropWidth={120}
             />
@@ -413,7 +408,6 @@ export default function StatsScreenV2() {
                 외따로 떨어지지 않게 한다. */}
             <span className="scr-grid-title-tail">
               <Select
-                fixedWidth
                 className="scr-sentence-select" value={race} options={RACE_SELECT_OPTS}
                 onChange={(v) => setRace(v as BaseRace | "all")} minDropWidth={130}
               />

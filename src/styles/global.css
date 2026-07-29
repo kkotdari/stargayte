@@ -2533,12 +2533,8 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
 /* 문장 안에 섞이는 드롭다운 — 상자를 지우고 글자 그대로 둔다(요청: 배경 없는 처음 형태로
    되돌림). 화살표는 낱말 바로 옆에 붙어 다니고, 밑줄 같은 장식은 두지 않는다 — 화살표
    하나로 "누를 수 있는 낱말"임이 충분히 읽힌다. 값과 화살표 사이만 살짝 띄운다(요청).
-   폭은 fixedWidth가 잡아줘서(칸마다 제 목록의 가장 긴 낱말 기준) 값이 바뀌어도 문장이
-   좌우로 밀리지 않는다 — 남는 자리는 화살표 뒤 여백으로 간다. */
-/* display는 여기서 안 정한다 — 이 셋은 모두 fixedWidth라 .scr-cselect-fixedw가
-   inline-grid(그림자 트리거와 겹치기)를 잡는다. 여기서 또 정하면 어느 쪽이 이기는지가
-   파일 순서에 달리게 된다. */
-.scr-cselect.scr-sentence-select { width: auto; max-width: 100%; }
+   폭은 지금 고른 값 길이만큼만(요청: 폭 고정 제거) — 값이 바뀌면 문장이 그만큼 다시 흐른다. */
+.scr-cselect.scr-sentence-select { width: auto; max-width: 100%; display: inline-flex; }
 .scr-sentence-select .scr-cselect-trigger {
   width: auto; justify-content: flex-start; gap: 4px;
   min-height: 0; height: auto; padding: 2px 2px 1px; border-radius: 6px;
@@ -4439,15 +4435,6 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 .scr-cselect-placeholder { color: var(--dim); }
 .scr-cselect-value-short { display: none; }
 .scr-cselect-caret { color: var(--dim); flex-shrink: 0; transition: transform .15s; }
-/* fixedWidth — 진짜 트리거와 그림자 트리거들(.scr-cselect-sizer)을 같은 그리드 한 칸에
-   겹쳐 두면, 칸 폭은 그중 가장 넓은 것이 정한다. 즉 어떤 옵션을 골라도 폭이 그대로다.
-   그림자 쪽은 height:0 + hidden이라 높이·클릭에는 전혀 관여하지 않는다. */
-.scr-cselect.scr-cselect-fixedw { display: inline-grid; }
-.scr-cselect.scr-cselect-fixedw > * { grid-area: 1 / 1; }
-.scr-cselect-sizer {
-  display: grid; height: 0; overflow: hidden; visibility: hidden; pointer-events: none;
-}
-.scr-cselect-sizer > * { grid-area: 1 / 1; white-space: nowrap; }
 .scr-cselect-open .scr-cselect-caret { transform: rotate(180deg); color: var(--text); }
 /* 데이터/코딩 폰트(D2Coding, --font-mono) 대신 앱 기본 폰트로 되돌리는 유틸 — 리그
    드롭다운은 숫자/코드값이 아니라 팀명·라운드 같은 일반 텍스트라 기본 폰트가 맞다

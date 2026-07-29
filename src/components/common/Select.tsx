@@ -40,11 +40,6 @@ interface SelectProps {
   // 포커싱을 잃어도 안없어지는 문제") — 지금까진 내부 open 상태만 닫힐 뿐 부모는
   // 몰라서, 빈 트리거+취소 버튼 자리가 계속 남아 있었다.
   onOpenChange?: (open: boolean) => void;
-  // 고른 값에 따라 트리거 폭이 달라지지 않게 한다 — 모든 옵션을 한 칸에 겹쳐 숨겨 두고
-  // 그중 가장 넓은 것이 폭을 정한다(요청: 문장형 필터에서 "각 필터가 차지하는 폭은
-  // 일정해서 레이아웃이 움직이지 않게"). 내용은 왼쪽에 붙으므로 남는 자리는 낱말 뒤
-  // 여백으로만 보인다.
-  fixedWidth?: boolean;
 }
 
 /*
@@ -59,7 +54,7 @@ interface SelectProps {
 */
 export default function Select({
   value, options, onChange, placeholder = "선택", className, size = "md", minDropWidth, disabled = false,
-  defaultOpen = false, onOpenChange, fixedWidth = false,
+  defaultOpen = false, onOpenChange,
 }: SelectProps) {
   const [open, setOpen] = useState(defaultOpen && !disabled);
   const onOpenChangeRef = useRef(onOpenChange);
@@ -128,7 +123,7 @@ export default function Select({
   };
 
   return (
-    <div className={cx("scr-cselect", size === "sm" && "scr-cselect-sm", fixedWidth && "scr-cselect-fixedw", className)} ref={ref}>
+    <div className={cx("scr-cselect", size === "sm" && "scr-cselect-sm", className)} ref={ref}>
       <button
         type="button"
         className={cx("scr-cselect-trigger", open && "scr-cselect-open")}
@@ -153,20 +148,6 @@ export default function Select({
         </span>
         <ChevronDown size={14} className="scr-cselect-caret" />
       </button>
-
-      {/* 폭 고정용 그림자 트리거들 — 화면에는 안 보이고(그리드 한 칸에 겹쳐 높이 0),
-          래퍼의 폭만 "가장 넓은 옵션 기준"으로 밀어 올린다. 진짜 트리거와 같은 클래스를
-          써서 글꼴·패딩·화살표까지 똑같이 재도록 한다(따로 재현하면 어긋난다). */}
-      {fixedWidth && (
-        <span className="scr-cselect-sizer" aria-hidden="true">
-          {options.map((o) => (
-            <span key={o.value} className="scr-cselect-trigger">
-              <span className="scr-cselect-value">{o.label}</span>
-              <ChevronDown size={14} className="scr-cselect-caret" />
-            </span>
-          ))}
-        </span>
-      )}
 
       {open && createPortal(
         <div className={cx("scr-cselect-drop", "scr-scroll", className)} ref={dropRef}>
