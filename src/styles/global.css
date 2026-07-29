@@ -6848,7 +6848,8 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    길이만큼 칸이 달라져 줄이 안 맞는다). 한 줄에 세 명(요청). */
 .scr-feed-stack-sum-players {
   list-style: none; margin: 0;
-  padding: var(--post-pad-y) var(--post-pad-bx) 0;
+  /* 위 여백은 세미타이틀 줄이 가져갔다 — 명단은 그 줄에 딸린 내용이라 바짝 붙인다. */
+  padding: 10px var(--post-pad-bx) 0;
   display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 6px;
 }
 .scr-feed-stack-sum-player { display: flex; align-items: center; gap: 6px; min-width: 0; }
@@ -6861,13 +6862,22 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   font-size: var(--fs-caption); font-weight: 600; color: var(--text);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-/* 참여 인원 — 제목 바로 오른쪽에 붙인다(요청). 제목이 길어 자리가 모자라면 제목이 먼저
-   줄고(그쪽이 min-width:0) 이 값은 통째로 남는다. */
+/* 요약의 세미타이틀 줄(요청) — 왼쪽에 "요약 정보", 오른쪽에 참가자 수. 포스트 제목은
+   "이게 무슨 글인가"만 말하고, 그 아래 요약이 제 머리를 따로 갖는 구조다. */
+.scr-feed-stack-sum-head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  padding: 14px var(--post-pad-bx) 0;
+}
+.scr-feed-stack-sum-title {
+  font-size: var(--fs-micro); font-weight: 800; color: var(--muted);
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+/* 참가자 수 — 자리가 모자라면 세미타이틀이 먼저 줄고(그쪽이 min-width:0) 이 값은 남는다. */
 .scr-feed-stack-sum-count {
   white-space: nowrap; flex-shrink: 0;
   font-size: var(--fs-micro); font-weight: 800; color: var(--dim);
 }
-/* 제목이 줄어드는 쪽이 되도록 — 참여 인원은 항상 온전히 읽혀야 한다. */
+/* 제목이 길어도 헤더가 두 줄로 터지지 않게 — 넘치면 말줄임표로. */
 .scr-feed-stack > .scr-feed-card-head .scr-feed-card-label {
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
@@ -6882,6 +6892,12 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    발생해"). 접힘 애니메이션은 이 블록 높이가 고정이라는 전제로 아래 기준점을 잡는다.
    대신 그만큼 아래 토글 버튼의 위 패딩을 줄여, 접힌 모습의 간격은 예전 그대로 24px다
    (14 + 10). 펼쳤을 때는 이 14px이 곧 명단과 그림자 사이의 숨통이 된다. */
+/* 요약 껍데기 — 펼치면 이 자리가 접히고 아래 목록이 대신 온다(요청). 높이를 0으로
+   눌러야 해서 껍데기(높이만 담당)와 내용물(.scr-feed-stack-sum-body, 여백·클릭 담당)을
+   나눴다: 껍데기에 padding이 있으면 height:0으로도 그 여백이 남아 빈 띠가 생긴다.
+   .scr-feed-stack-inner와 정확히 반대로 움직이는 짝이다. */
+.scr-feed-stack-sum { min-height: 0; overflow: hidden; }
+.scr-feed-stack-opened > .scr-feed-stack-sum { height: 0; }
 .scr-feed-stack-sum-body {
   cursor: pointer; -webkit-tap-highlight-color: transparent;
   padding-bottom: 14px;
@@ -6900,18 +6916,8 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 }
 .scr-feed-stack-toggle-caret { flex-shrink: 0; }
 @media (hover: hover) { .scr-feed-stack-toggle:hover { color: var(--text); } }
-/* 펼쳤을 때 요약(원래 포스트)과 그 아래 목록의 경계 — 요약 아래로만 그림자를 드리워
-   두 층이 겹쳐 있다는 걸 보여 준다(요청). 목록 위로 그려져야 해서 z-index를 올린다.
-   옆으로는 번지면 안 되고 세기도 약해야 한다(요청) — 음수 spread를 blur와 같은 값으로
-   줘서 그림자 사각형을 좌우로 그만큼 좁힌 다음 아래로만 내린다. 그러면 가로로는 원본
-   박스 안쪽에 머물러 옆면에 아무것도 안 생기고, 아래쪽에만 얇게 깔린다. */
-.scr-feed-stack-opened > .scr-feed-stack-sum-body {
-  position: relative; z-index: 2;
-  box-shadow: 0 6px 8px -6px rgba(0, 0, 0, 0.34), 0 1px 0 rgba(var(--overlay-rgb), 0.12);
-}
-.scr-light-theme .scr-feed-stack-opened > .scr-feed-stack-sum-body {
-  box-shadow: 0 6px 8px -6px rgba(0, 0, 0, 0.16), 0 1px 0 rgba(0, 0, 0, 0.08);
-}
+/* 예전에는 펼쳤을 때 요약과 목록의 경계에 그림자를 드리워 두 층이 겹쳐 있다는 걸
+   보여 줬다. 이제 펼치면 요약 자체가 접히므로(요청) 나눌 두 층이 없어 걷어냈다. */
 
 /* 헤더부 — 포스트를 헤더/컨텐츠 둘로 가르는 경계선을 여기 아래에 긋는다(요청).
    오른쪽 44px는 포스트 우상단 케밥 자리.
@@ -6979,7 +6985,6 @@ html:not(.scr-light-theme) .scr-feed-card-head:has(.scr-feed-card-head-title) {
 html:not(.scr-light-theme) .scr-feed-card-head:has(.scr-feed-card-head-title) .scr-feed-card-label {
   color: #10151a;
 }
-html:not(.scr-light-theme) .scr-feed-card-head:has(.scr-feed-card-head-title) .scr-feed-stack-sum-count,
 html:not(.scr-light-theme) .scr-feed-card-head:has(.scr-feed-card-head-title) .scr-feed-card-time,
 html:not(.scr-light-theme) .scr-feed-card-head:has(.scr-feed-card-head-title) .scr-feed-chal-countdown,
 html:not(.scr-light-theme) .scr-feed-card-head:has(.scr-feed-card-head-title) .scr-challenge-time-edit-btn {

@@ -315,15 +315,22 @@ const MatchCard = memo(function MatchCard({ item, memberOf, onDeleted, dateLabel
 // 게임결과 묶음 — 접힘은 그 세션의 참가자 전원을 담은 '요약 포스트'이고, "자세히 보기"를
 // 누르면 피드 안에서 그 자리가 게임결과 포스트 목록으로 바뀐다(요청). 한때 전체화면 모달로
 // 열어봤지만 다시 이 아코디언으로 돌아왔다.
-function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds, highlightTerms }: {
+function MatchStack({
+  stack, memberOf, onDeleted, dateLabel, highlightMemberIds, highlightTerms, defaultOpen = false,
+}: {
   stack: MatchStackItem;
   memberOf: (id: string) => Member | undefined;
   onDeleted: () => void;
   dateLabel: string;
   highlightMemberIds?: Set<string>;
   highlightTerms?: string[];
+  /** 필터가 걸린 상태인가 — 그럴 땐 묶음을 펼친 채로 낸다(요청). */
+  defaultOpen?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
+  // 필터를 걸거나 풀면 그에 맞춰 다시 맞춘다(요청) — 걸러진 결과를 요약 뒤에 숨겨 두면
+  // 이 카드가 왜 남았는지가 안 보인다. toggledRef를 건드리지 않으므로 연출 없이 상태만 바뀐다.
+  useEffect(() => { setOpen(defaultOpen); }, [defaultOpen]);
   // 최신 게임이 위로 오게 — 펼친 목록은 피드와 같은 시간 순서(최신 → 과거)를 따른다.
   const orderedDesc = useMemo(() => [...stack.items].sort((a, b) => b.time - a.time), [stack.items]);
   // 요약에 나열할 참가자 — 이 세션의 모든 게임에 나온 사람을 중복 없이 모은다(요청).
@@ -353,6 +360,8 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
   // 위쪽 내용이 밀릴 일이 없고, 예전에 쓰던 스크롤 상쇄는 iOS 사파리에서 잔떨림만 남겼다.
   const stackRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  // 요약 껍데기 — 목록이 벌어지는 만큼 이쪽이 접힌다(요청: 펼치면 요약은 숨김).
+  const sumRef = useRef<HTMLDivElement>(null);
   // 토글로 열린 것인지(연출 O) 그냥 리렌더인지(연출 X) 구분하는 표시.
   const toggledRef = useRef(false);
   // 진행 중인 연출을 중단·원복하는 함수 — 재토글/언마운트 때 호출한다.
@@ -379,12 +388,14 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
     toggledRef.current = false;
     const inner = stackRef.current?.querySelector<HTMLElement>(":scope > .scr-feed-stack-inner");
     const list = listRef.current;
+    const sum = sumRef.current;
     if (!inner || !list) return;
 
     cancelRevealRef.current?.();
     const clearInline = () => {
       inner.style.height = "";
       inner.style.overflow = "";
+      if (sum) { sum.style.height = ""; sum.style.opacity = ""; }
       list.querySelectorAll<HTMLElement>(":scope > .scr-feed-stack-reveal")
         .forEach((el) => { el.style.opacity = ""; el.style.transform = ""; });
     };
@@ -411,6 +422,16 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
            : [{ height: `${target}px` }, { height: "0px" }],
       { duration: span, easing: open ? "ease-out" : "ease-in", fill: "both" },
     ));
+    // 요약은 목록과 반대로 움직인다 — 목록이 벌어지는 동안 같은 시간에 걸쳐 접힌다.
+    // 껍데기는 열림/닫힘 어느 쪽이든 overflow:hidden이라 scrollHeight가 늘 내용 높이다.
+    if (sum) {
+      const sumH = sum.scrollHeight;
+      anims.push(sum.animate(
+        open ? [{ height: `${sumH}px`, opacity: 1 }, { height: "0px", opacity: 0 }]
+             : [{ height: "0px", opacity: 0 }, { height: `${sumH}px`, opacity: 1 }],
+        { duration: span, easing: open ? "ease-in" : "ease-out", fill: "both" },
+      ));
+    }
     cards.forEach((el, i) => {
       const order = orderOf(i);
       anims.push(el.animate(
@@ -443,40 +464,49 @@ function MatchStack({ stack, memberOf, onDeleted, dateLabel, highlightMemberIds,
         </div>
         <div className="scr-feed-card-head-title">
           <ClipboardList size={16} aria-hidden />
-          {/* 묶음이면 라벨 자체가 몇 건인지 말해준다(요청) — 참여 인원은 그 바로
-              오른쪽에 붙인다(요청). 한 판이면 "1건"은 안 붙인다. */}
+          {/* 묶음이면 라벨 자체가 몇 건인지 말해준다(요청). 한 판이면 "1건"은 안 붙인다.
+              참여 인원은 아래 요약의 세미타이틀 줄로 내렸다(요청) — 제목은 "이게 무슨
+              포스트인가"만 말하고, 요약이 제 머리를 따로 갖는다. */}
           <span className="scr-feed-card-label">
             게임결과{stack.items.length > 1 ? ` ${stack.items.length}건` : ""}
           </span>
-          <span className="scr-feed-stack-sum-count">{participants.length}명 참여</span>
         </div>
       </div>
 
-      {/* 요약 — 펼쳐도 그대로 남는다. 명단 어디를 눌러도 펼침/접힘이 토글된다(요청).
-          button 안에는 목록을 넣을 수 없어(phrasing content만 허용) role로 대신한다. */}
-      <div
-        className="scr-feed-stack-sum-body" role="button" tabIndex={0}
-        aria-expanded={open}
-        aria-label={open ? "게임결과 접기" : "게임결과 펼치기"}
-        onClick={() => toggleOpen(!open)}
-        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleOpen(!open); } }}
-      >
-        <ul className="scr-feed-stack-sum-players">
-          {participants.map((p) => (
-            <li
-              key={p.id}
-              className={cx(
-                "scr-feed-stack-sum-player",
-                (highlightMemberIds?.has(p.id)
-                  || highlightTerms?.some((t) => normalizeSearchText(p.name).includes(t)))
-                  && "scr-feed-stack-sum-player-hl",
-              )}
-            >
-              <Avatar member={{ id: p.id, nickname: p.name, avatar: memberOf(p.id)?.avatar ?? null }} size={20} />
-              <span className="scr-feed-stack-sum-name">{p.name}</span>
-            </li>
-          ))}
-        </ul>
+      {/* 요약 — 세미타이틀 한 줄과 참가자 로스터(요청). 펼치면 이 자리는 접히고 그 아래
+          목록이 대신 온다(요청: 펼치면 요약부분은 숨기면서 목록 보여주기) — 그래서 높이를
+          가진 껍데기와 내용물을 나눠 둔다(껍데기 height만 0↔실제로 오간다).
+          명단 어디를 눌러도 펼쳐진다. button 안에는 목록을 넣을 수 없어(phrasing content만
+          허용) role로 대신한다. */}
+      <div className="scr-feed-stack-sum" ref={sumRef} aria-hidden={open}>
+        <div
+          className="scr-feed-stack-sum-body" role="button" tabIndex={open ? -1 : 0}
+          aria-expanded={open}
+          aria-label="게임결과 펼치기"
+          onClick={() => toggleOpen(true)}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleOpen(true); } }}
+        >
+          <div className="scr-feed-stack-sum-head">
+            <span className="scr-feed-stack-sum-title">요약 정보</span>
+            <span className="scr-feed-stack-sum-count">참가자 총 {participants.length}명</span>
+          </div>
+          <ul className="scr-feed-stack-sum-players">
+            {participants.map((p) => (
+              <li
+                key={p.id}
+                className={cx(
+                  "scr-feed-stack-sum-player",
+                  (highlightMemberIds?.has(p.id)
+                    || highlightTerms?.some((t) => normalizeSearchText(p.name).includes(t)))
+                    && "scr-feed-stack-sum-player-hl",
+                )}
+              >
+                <Avatar member={{ id: p.id, nickname: p.name, avatar: memberOf(p.id)?.avatar ?? null }} size={20} />
+                <span className="scr-feed-stack-sum-name">{p.name}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
 
       {/* 펼치면 이 자리가 목록 높이만큼 벌어지고 카드가 하나씩 나타난다(요청).
@@ -758,6 +788,10 @@ export default function FeedScreen() {
     return out;
   }, [filteredFeed]);
 
+  // 필터(유형/유저 검색)가 걸려 있나 — 걸려 있으면 게임결과 묶음을 펼친 채로 낸다(요청).
+  // 걸러진 결과가 요약 뒤에 접혀 있으면 이 카드가 왜 남았는지 보이지 않는다.
+  const filterActive = kindFilter !== "all" || searchTerms.length > 0;
+
   const dateLabelOf = (item: { time: number }) => {
     const d = new Date(item.time);
     return `${d.getMonth() + 1}월 ${d.getDate()}일`;
@@ -972,6 +1006,7 @@ export default function FeedScreen() {
                 dateLabel={sessionDateLabel(item.date)}
                 highlightMemberIds={matchedIds}
                 highlightTerms={searchTerms}
+                defaultOpen={filterActive}
               />
             ) : (
               <MatchCard
