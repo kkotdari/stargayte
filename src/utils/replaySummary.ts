@@ -160,6 +160,11 @@ const DEF_SURGE_WINDOW_SEC = 2 * 60;
 // 얻어맞은 지 이 안쪽에서 증설이 시작돼야 '그 공격에 대한 반응'이라 말할 수 있다.
 // 한참 뒤의 증설은 그냥 그 사람의 운영이지 뒤늦은 대응이 아니다.
 const DEF_SURGE_REACT_SEC = 5 * 60;
+// 반대로 '온다!' 하고 먼저 짓는 경우도 있다(지적) — 오히려 그쪽이 흔하다. 그래서 증설이
+// 먼저고 생산이 꺾인 게 뒤인 경우도 같은 사건으로 본다. 다만 이쪽 창은 좁게 잡는다:
+// 한참 뒤에 맞은 것까지 끌어오면 아무 증설이나 '공격을 예감했다'가 되고, productionDips는
+// 1분 단위라 실제로는 동시에 벌어진 일이 앞뒤로 갈리기도 한다.
+const DEF_SURGE_WARN_SEC = 2 * 60;
 // 시작이 초반을 지나야 '중반부터'다 — 1분부터 뽑은 기본 유닛은 여기 해당하지 않는다.
 const LONG_RUN_START = 0.3;
 // 그리고 끝까지 이어져야 한다.
@@ -1132,25 +1137,31 @@ function sideBeats(args: {
     });
   }
 
-  // ── 뒤늦은 방어 증설(요청) ── 초반 러시에 생산이 끊길 만큼 맞고 나서야 포토·성큰·벙커를
-  // 한꺼번에 올린 대목이 요약에 아예 안 나온다는 지적. 맞은 순간(생산이 꺾인 프레임)이
-  // 증설보다 앞이고 그 간격이 DEF_SURGE_REACT_SEC 안쪽일 때만 '그 공격에 대한 뒤늦은
-  // 대응'이라 부른다 — 한참 뒤의 증설은 그냥 그 사람의 운영이다.
+  // ── 한 대 맞은 무렵의 방어 증설(요청) ── 러시에 생산이 끊길 만큼 맞았는데 포토·성큰·
+  // 벙커를 한꺼번에 올린 대목이 요약에 아예 안 나온다는 지적.
+  //
+  // 증설과 '생산이 꺾인 순간'이 어느 쪽이 먼저냐는 둘 다 있다(지적): 맞고 나서야 올리기도
+  // 하지만, 오는 걸 보고 먼저 짓는 쪽이 오히려 흔하다. 그래서 앞뒤를 가리지 않고 증설에
+  // 가장 가까운 타격을 짝지어, 어느 쪽이 먼저였는지만 문장에 남긴다(warned).
+  // 창을 앞뒤로 다르게 잡는 이유는 위 상수 주석 참고.
   for (const p of players) {
     const surge = defenseSurge(p, other.players);
     if (!surge) continue;
-    const before = productionDips(p, totalFrames).filter((d) => d < surge.at);
-    if (before.length === 0) continue;
-    // 증설 직전에 맞은 순간을 본다 — 경기 초반의 첫 등락까지 원인으로 삼으면 아무 증설이나
-    // '대응'이 된다.
-    const hit = Math.max(...before);
-    if ((surge.at - hit) * SECONDS_PER_FRAME > DEF_SURGE_REACT_SEC) continue;
+    const react = DEF_SURGE_REACT_SEC / SECONDS_PER_FRAME;
+    const warn = DEF_SURGE_WARN_SEC / SECONDS_PER_FRAME;
+    const near = productionDips(p, totalFrames)
+      // 음수 = 맞고 나서 지었다, 양수 = 짓기 시작한 뒤에 생산이 끊겼다.
+      .map((d) => ({ at: d, gap: d - surge.at }))
+      .filter((x) => x.gap >= -react && x.gap <= warn)
+      .sort((a, b) => Math.abs(a.gap) - Math.abs(b.gap))[0];
+    if (!near) continue;
     beats.push({
       k: "late-defense", won, who: who(p), at: surge.at, weight: 15,
       p: {
         def: surge.def, n: surge.n,
         min: minutes(surge.at * SECONDS_PER_FRAME),
-        hitMin: minutes(hit * SECONDS_PER_FRAME),
+        hitMin: minutes(near.at * SECONDS_PER_FRAME),
+        ...(near.gap >= 0 ? { warned: true } : {}),
       },
     });
   }
@@ -1692,6 +1703,18 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
       const { def: _def, defN: _defN, panic: _panic, ...rest } = b.p ?? {};
       return { ...b, p: rest };
     });
+
+  // 들이친 수가 이미 "○○의 생산에 큰 피해를 줬다"고 말했으면, 방어 증설 문장은 맞은
+  // 얘기를 다시 하지 않는다(quiet) — 안 그러면 "포토를 세우고도 4분에 크게 흔들렸고
+  // ○○는 질럿 러시로 생산에 큰 피해를 줬다"처럼 같은 순간이 두 번 나온다.
+  const hitNarrated = new Set(
+    pool.filter((b) => b.k === "raid-damage" || b.k === "gang-rush").flatMap((b) => b.whom ?? []),
+  );
+  for (let i = 0; i < pool.length; i += 1) {
+    const b = pool[i];
+    if (b.k !== "late-defense" || !b.who.some((w) => hitNarrated.has(w))) continue;
+    pool[i] = { ...b, p: { ...(b.p ?? {}), quiet: true } };
+  }
 
   // 전술·돌파·합공처럼 '그 경기에서만 있었던 일'이 자리보다 많으면 그만큼 더 쓴다
   // (요청: 할 얘기가 많은 경기는 좀 더 써도 됨). 일반적인 사실로 늘리지는 않는다.
