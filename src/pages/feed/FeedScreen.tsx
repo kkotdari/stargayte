@@ -436,9 +436,13 @@ function MatchStack({
     // 쪽의 높이'다. 그래서 맞출 게 없다.
     const from = heightRef.current;
     heightRef.current = null;
-    const to = swap.scrollHeight;
     const outgoing = open ? sum : inner;
     const incoming = open ? inner : sum;
+    // 목표 높이는 '들어오는 쪽'의 높이를 직접 잰다 — 껍데기의 scrollHeight를 쓰면 안 된다.
+    // 나가는 쪽은 절대배치라 흐름에서는 빠졌지만 여전히 껍데기 안에 있어서, 그쪽이 더
+    // 크면 scrollHeight가 그 값을 돌려준다(접을 때 늘 그렇다). 그러면 from == to가 되어
+    // 높이 애니메이션이 아예 안 걸리고, 카드가 줄지 않은 채 목록만 잘려 보였다(지적).
+    const to = incoming.offsetHeight;
     const moves = from !== null && Math.abs(from - to) > 1;
 
     const anims: Animation[] = [];
