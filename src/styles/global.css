@@ -6850,6 +6850,12 @@ html.scr-light-theme .scr-match-stats-overlay { background: rgba(244, 246, 250, 
 /* 목록은 위쪽 요약과 한 덩어리로 이어져야 하므로 포스트 사이 간격(--feed-card-gap)이
    아니라 훨씬 좁은 간격을 쓴다 — 여기부터는 별개의 글이 아니라 같은 글의 문단이다. */
 .scr-feed-stack-list { display: flex; flex-direction: column; }
+/* 펼쳐진 목록은 어디를 눌러도 접힌다(요청) — 커서도 그렇게 말해 줘야 한다(지적: 펼쳤을 때
+   포인터로 안 바뀜). 접혀 있을 때는 그 클릭이 아무 일도 안 하므로 커서도 그대로 둔다.
+   댓글 영역은 예외다: 거기 클릭은 바깥으로 안 올라가고(입력하러 누르는 자리다) 커서도
+   글자 입력 커서여야 한다. */
+.scr-feed-stack-opened .scr-feed-stack-list { cursor: pointer; }
+.scr-feed-stack-opened .scr-feed-stack-list .scr-feed-comments { cursor: auto; }
 .scr-feed-stack-reveal { position: relative; }
 /* 카드 안의 경기 한 건 — 포스트 껍데기(배경·블러)를 벗고 옅은 구분선만 남긴다.
    꼬리 여백은 벗기면 안 된다: 댓글이 없을 때 "댓글" 버튼이 이 여백 안에 절대배치로

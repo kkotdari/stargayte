@@ -319,7 +319,12 @@ function MatchActionsMenu({
         <MoreHorizontal size={16} />
       </button>
       {open && createPortal(
-        <div className="scr-menu-pop-drop scr-match-menu-drop scr-scroll" ref={dropRef} role="menu">
+        // 포털이라도 이벤트는 리액트 트리를 따라 올라간다 — 묶음 목록의 '접기'가 같이
+        // 눌리지 않게 여기서 끊는다(위 시트와 같은 이유).
+        <div
+          className="scr-menu-pop-drop scr-match-menu-drop scr-scroll" ref={dropRef} role="menu"
+          onClick={(e) => e.stopPropagation()}
+        >
           {items.map((it) => (
             <button
               key={it.key} type="button" role="menuitem"
@@ -426,7 +431,10 @@ function MatchStatsOverlay({ row, memberOf, highlightMemberIds, highlightTerms, 
 }) {
   useLockBodyScroll();
   return createPortal(
-    <div className="scr-rivalry-overlay scr-match-stats-overlay">
+    // 리액트 포털은 DOM이 아니라 리액트 트리를 따라 이벤트를 올린다 — 이 시트는 body에
+    // 그려지지만 이벤트는 여전히 경기 로우를 거쳐 올라간다. 그래서 시트 아무 데나 누르면
+    // 뒤에 있는 묶음 목록의 '접기'가 같이 눌렸다(지적). 여기서 끊는다.
+    <div className="scr-rivalry-overlay scr-match-stats-overlay" onClick={(e) => e.stopPropagation()}>
       <div className="scr-rivalry-overlay-body">
         <div className="scr-rivalry-overlay-head">
           <span className="scr-rivalry-overlay-title">경기 스탯</span>
@@ -617,7 +625,10 @@ export default function MatchList({
         />
       )}
 
+      {/* 확인창도 이 컴포넌트 안(=묶음 목록 안)에서 그려진다 — 클릭이 목록으로 올라가면
+          지울지 묻는 중에 목록이 접힌다. 감싸서 끊는다. */}
       {deleteTarget && (
+        <div onClick={(e) => e.stopPropagation()}>
         <ConfirmDialog
           title="게임결과를 삭제할까요?"
           message="삭제하면 되돌릴 수 없어요."
@@ -626,6 +637,7 @@ export default function MatchList({
           onConfirm={confirmDelete}
           onCancel={() => setDeleteTarget(null)}
         />
+        </div>
       )}
     </div>
   );
