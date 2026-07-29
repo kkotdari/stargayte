@@ -1,6 +1,6 @@
 import { ga, ira, neun, reul, ro, wa, yeoss } from "./korean";
 import { isReplaySummaryData, type ReplaySummaryBeat, type ReplaySummaryData } from "./replaySummaryData";
-import { SIGNATURE_UPGRADE_KO } from "./replayTechNames";
+import { SIGNATURE_UPGRADE_KO, TECH_USE_PHRASE } from "./replayTechNames";
 
 // 저장된 요약 데이터(replaySummaryData.ts)를 사람이 읽는 문단으로 옮긴다.
 //
@@ -380,6 +380,7 @@ const CONNECTIVE: [string, string][] = [
   ["듦", "들었으나"], ["걺", "걸었으나"], ["봄", "봤으나"], ["폄", "폈으나"], ["삶", "살았으나"],
   ["바쁨", "바빴으나"], ["찌름", "찔렀으나"], ["덮음", "덮었으나"], ["붙음", "붙었으나"],
   ["읽음", "읽었으나"],
+  ["쏟아부음", "쏟아부었으나"], ["숨음", "숨었으나"], ["숨김", "숨겼으나"],
   ["깜", "깠으나"], ["감", "갔으나"], ["끔", "끌었으나"],
   ["버팀", "버텼으나"], ["않음", "않았으나"], ["짐", "졌으나"],
 ];
@@ -987,11 +988,34 @@ const TEMPLATES: Record<string, Tpl> = {
     ]), true)}`;
   },
 
+  // 기술 — 연구가 아니라 '실제로 쓴' 것만 온다(replaySummary의 topUsedTech). 그래서 몇 번
+  // 썼는지도 말할 수 있다 — 한 번 찔러 본 것과 계속 퍼부은 것은 전혀 다른 이야기다.
   tech: (c) => {
     const t = TECH_KO[str(c.p.tech)];
     if (!t) return null;
+    // 이 값이 없는 옛 요약도 있다 — 사용 횟수를 세기 전에 저장된 것들이라, 그때는 횟수를
+    // 말하지 않고 예전처럼 "꺼내 썼다"까지만 간다("0번 썼다"가 나가면 안 된다).
+    const n = num(c.p.n, 0);
+    // 시즈·마인처럼 '쓴다'는 말이 어색한 것들은 제 말투가 따로 있다(TECH_USE_PHRASE).
+    const own = n >= 1 ? TECH_USE_PHRASE[str(c.p.tech) as keyof typeof TECH_USE_PHRASE] : undefined;
+    if (own) return `${ga(c.who)} ${done(c, own.replace("{n}", String(n)), true)}`;
+    if (n === 1) {
+      return `${ga(c.who)} ${done(c, c.pick([
+        `${reul(t)} 딱 한 번 써 봄`, `${reul(t)} 한 번 꺼내 봄`,
+      ]), true)}`;
+    }
+    if (n >= 8) {
+      return `${ga(c.who)} ${done(c, c.pick([
+        `${reul(t)} ${n}번이나 쏟아부음`, `${t}만 ${n}번을 쓰며 밀어붙임`,
+      ]), true)}`;
+    }
+    if (n >= 2) {
+      return `${ga(c.who)} ${done(c, c.pick([
+        `${reul(t)} ${n}번 씀`, `${t}까지 꺼내 씀`, `${reul(t)} 확보해 씀`,
+      ]), true)}`;
+    }
     return `${ga(c.who)} ${done(c, c.pick([
-      `${t} 등의 고급 기술을 사용해 전투에 임함`, `${t}까지 꺼내 씀`, `${reul(t)} 확보해 씀`,
+      `${t}까지 꺼내 씀`, `${reul(t)} 확보해 씀`,
     ]), true)}`;
   },
   allin: (c) =>

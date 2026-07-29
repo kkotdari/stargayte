@@ -5,7 +5,9 @@
 // 중단됐지만(→ screp-ts) 그건 Go 바이너리를 Node에서 실행하는 CLI 래퍼라 브라우저에서 못
 // 쓴다 — 그래서 이 앱은 계속 screp-js를 쓴다.
 import { fmt } from "./date";
-import { normalizeUpgradeName } from "./replayTechNames";
+import {
+  normalizeUpgradeName, CAST_ORDER_TO_TECH, USE_CMD_TO_TECH, PLACE_MINE_ORDER,
+} from "./replayTechNames";
 import type { Race, GameType } from "../types";
 
 const RACE_NAME_MAP: Record<string, Race> = {
@@ -93,6 +95,11 @@ export interface ReplayPlayerSignals {
   /** 테크·업그레이드별 첫 연구 프레임 — 요약을 시간순으로 늘어놓을 때 이 시점을 쓴다. */
   firstTechFrame: Record<string, number>;
   firstUpgradeFrame: Record<string, number>;
+  /** 기술을 실제로 '쓴' 횟수와 처음 쓴 시점 — 연구만 하고 안 쓴 것과 가르는 유일한 근거다
+   *  (지적: "연구한 것만으로는 아무것도 아니야"). 무엇이 사용 증거인지는 기술마다 달라서
+   *  replayTechNames의 CAST_ORDER_TO_TECH / USE_CMD_TO_TECH / PLACE_MINE_ORDER가 정한다. */
+  techUses: Record<string, number>;
+  firstTechUseFrame: Record<string, number>;
   /** 이 사람이 친 채팅(앞쪽 일부). GG 선언처럼 승부를 말해주는 게 여기 있다. */
   chats: { frame: number | null; text: string }[];
   /** 수송선에서 유닛을 내린 커맨드 수와 첫 시점 — 드랍이 '실제로 있었나'의 유일한 증거다.
@@ -206,6 +213,9 @@ interface ScrepCmd {
   Upgrade?: { Name?: string } | string;
   /** 건설 커맨드의 좌표. screp 버전에 따라 대문자/소문자 키라 둘 다 받는다. */
   Pos?: { X?: number; Y?: number; x?: number; y?: number } | null;
+  /** 표적 명령(Targeted Order)·우클릭이 실어 보내는 '무슨 명령인가' — 마법을 쓴 기록이
+   *  여기 CastPsionicStorm 같은 이름으로 남는다(사용 판정의 근거). */
+  Order?: { Name?: string } | string;
   /** 채팅 커맨드의 본문(Type.Name === "Chat"). */
   Message?: string;
   /** "Leave Game" 커맨드의 사유(Quit / Defeat / Dropped …). 버전에 따라 열거형 객체다. */
@@ -273,7 +283,8 @@ function emptySignals(): ReplayPlayerSignals {
     unitCounts: {}, firstUnitFrame: {},
     buildingCounts: {}, firstBuildingFrame: {},
     unitFrames: {}, buildingFrames: {}, buildPositions: [], orderPositions: [],
-    techNames: [], upgradeNames: [], firstTechFrame: {}, firstUpgradeFrame: {}, chats: [],
+    techNames: [], upgradeNames: [], firstTechFrame: {}, firstUpgradeFrame: {},
+    techUses: {}, firstTechUseFrame: {}, chats: [],
     unloadCount: 0, firstUnloadFrame: null, liftOffCount: 0, firstLiftOffFrame: null,
     leaveFrame: null, leaveReason: null,
     firstCmdFrame: null, lastCmdFrame: null, cmdCountByThird: [0, 0, 0],
@@ -396,6 +407,18 @@ function collectSignals(cmds: ScrepCmd[], totalFrames: number | null): Map<numbe
     }
     if (cmdName === "Chat" && typeof c.Message === "string" && c.Message.trim()) {
       if (s.chats.length < CHAT_CAP) s.chats.push({ frame, text: c.Message.trim() });
+    }
+    // ── 기술을 실제로 썼나 ──
+    // 마법은 표적 명령의 Order로, 시즈/버로우/클로킹/스팀은 전용 커맨드로 온다.
+    const order = nameOf(c.Order);
+    const usedTech = order
+      ? (CAST_ORDER_TO_TECH[order] ?? (order === PLACE_MINE_ORDER ? "Spider Mines" : null))
+      : (cmdName ? USE_CMD_TO_TECH[cmdName] ?? null : null);
+    if (usedTech) {
+      s.techUses[usedTech] = (s.techUses[usedTech] ?? 0) + 1;
+      if (frame !== null && s.firstTechUseFrame[usedTech] === undefined) {
+        s.firstTechUseFrame[usedTech] = frame;
+      }
     }
     const tech = nameOf(c.Tech);
     if (tech && pushResearch(s.techNames, lastResearchFrame, `${c.PlayerID}:T:${tech}`, tech, frame)) {

@@ -138,6 +138,10 @@ export interface TechSignalsLike {
   upgradeNames: string[];
   firstTechFrame: Record<string, number>;
   firstUpgradeFrame: Record<string, number>;
+  /** 기술 이름 → 실제로 쓴 횟수. 연구만 하고 안 썼으면 아예 없다. */
+  techUses: Record<string, number>;
+  /** 기술 이름 → 처음 쓴 프레임. */
+  firstTechUseFrame: Record<string, number>;
 }
 
 /** 이 기술을 연구했나. 이름이 TechName으로 좁혀져 있어, 없는 이름이나 업그레이드 이름을
@@ -187,3 +191,98 @@ export function topTech(s: TechSignalsLike): TechName | null {
   }
   return best;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// "썼나" — 연구했다는 사실만으로는 아무 일도 안 일어난 것이다(지적).
+//
+// 실제 리플레이에서 확인한 예: 한 사람이 마인드컨트롤·디스럽션웹·스톰을 전부 연구해
+// 놓고, 정작 쓴 것은 디스럽션웹 네 번뿐이었다(마인드컨트롤·스톰은 0회). 또 다른 사람은
+// 스톰과 할루시네이션을 연구하고 한 번도 안 썼다. 연구만 보고 "스톰까지 꺼내 썼다"고
+// 하면 없던 일을 지어내는 셈이다.
+//
+// 무엇이 '썼다'의 증거인지는 기술마다 다르다.
+//   · 마법: 표적 명령의 Order가 Cast… 로 온다(CastPsionicStorm 등).
+//   · 시즈/버로우/클로킹/스팀: 전용 커맨드가 따로 있다(Siege, Burrow, Cloack, Stim).
+//   · 마인: 심는 순간 Order가 PlaceMine이다.
+//   · 럴커·아콘류: 변태·합체라 유닛 수(unitCounts)가 곧 증거라 여기서 다루지 않는다.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** 마법 사용 Order 이름 → 그 기술. screp Orders enum의 Cast… 계열이다. */
+export const CAST_ORDER_TO_TECH: Record<string, TechName> = {
+  CastPsionicStorm: "Psionic Storm",
+  CastLockdown: "Lockdown",
+  CastEMPShockwave: "EMP Shockwave",
+  CastIrradiate: "Irradiate",
+  FireYamatoGun: "Yamato Gun",
+  CastDefensiveMatrix: "Defensive Matrix",
+  CastScannerSweep: "Scanner Sweep",
+  CastRestoration: "Restoration",
+  CastOpticalFlare: "Optical Flare",
+  CastDarkSwarm: "Dark Swarm",
+  CastPlague: "Plague",
+  CastConsume: "Consume",
+  CastEnsnare: "Ensnare",
+  CastParasite: "Parasite",
+  CastSpawnBroodlings: "Spawn Broodlings",
+  CastInfestation: "Infestation",
+  CastRecall: "Recall",
+  CastStasisField: "Stasis Field",
+  CastHallucination: "Hallucination",
+  CastDisruptionWeb: "Disruption Web",
+  CastMindControl: "Mind Control",
+  CastFeedback: "Feedback",
+  CastMaelstrom: "Maelstrom",
+  MedicHeal: "Healing",
+};
+
+/** 마법이 아닌 능력 — 전용 커맨드 이름(screp Types)이 곧 사용 증거다. */
+export const USE_CMD_TO_TECH: Record<string, TechName> = {
+  Siege: "Tank Siege Mode",
+  Burrow: "Burrowing",
+  Cloack: "Personnel Cloaking", // 고스트/레이스 공용 커맨드 — 아래에서 종족·유닛으로 가른다
+  Stim: "Stim Packs",
+};
+
+/** 마인은 심는 순간의 Order로 잡는다. */
+export const PLACE_MINE_ORDER = "PlaceMine";
+
+/** 이 기술을 실제로 몇 번 썼나 — 0이면 연구만 하고 안 쓴 것이다. */
+export function techUseCount(s: TechSignalsLike, name: TechName): number {
+  return s.techUses[name] ?? 0;
+}
+
+/** 실제로 쓴 기술 중 가장 이야깃거리가 되는 것 — 안 쓴 것은 아예 후보가 아니다.
+ *
+ *  드묾(TECH_RANK)만 보면 안 된다. 실제 리플레이에서 시즈모드를 49번 쓰고 마인을 2번 깐
+ *  테란이 있었는데, 랭크만 보면 마인(2)이 시즈모드(1)를 이겨 "마인을 두 번 깔았다"가
+ *  나간다 — 그 판의 그림은 시즈 49번 쪽이다. 그래서 많이 쓸수록 점수를 얹는다(10번마다
+ *  1점, 최대 3점). 드문 마법은 한 번만 써도 여전히 이긴다(마인드컨트롤 10 > 시즈 1+3). */
+export function topUsedTech(s: TechSignalsLike): TechName | null {
+  let best: TechName | null = null;
+  let bestScore = 0;
+  let bestUses = 0;
+  for (const [raw, uses] of Object.entries(s.techUses)) {
+    if (uses <= 0) continue;
+    const name = raw as TechName;
+    const rank = TECH_RANK[name] ?? 0;
+    if (rank <= 0) continue;
+    const score = rank + Math.min(3, Math.floor(uses / 10));
+    if (score > bestScore || (score === bestScore && uses > bestUses)) {
+      bestScore = score;
+      bestUses = uses;
+      best = name;
+    }
+  }
+  return best;
+}
+
+/** 그 기술을 "쓴다"를 우리말로 어떻게 말하나 — 마법은 쓰지만 시즈는 펴고 마인은 깐다.
+ *  {n}에 횟수가 들어간다. 없는 기술은 기본형("…를 N번 씀")을 쓴다. */
+export const TECH_USE_PHRASE: Partial<Record<TechName, string>> = {
+  "Tank Siege Mode": "시즈를 {n}번 폄",
+  "Spider Mines": "마인을 {n}개 깜",
+  Burrowing: "버로우로 {n}번 숨음",
+  "Personnel Cloaking": "고스트를 {n}번 숨김",
+  "Cloaking Field": "레이스를 {n}번 숨김",
+  "Stim Packs": "스팀팩을 {n}번 씀",
+};

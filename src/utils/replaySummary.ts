@@ -1,7 +1,7 @@
 import type { ParsedReplay, ParsedReplayPlayer, ReplayPlayerSignals } from "./replayParser";
 import { pushersOn, scanTactics } from "./replayTactics";
 import {
-  hasUpgrade, topTech, upgradeFrame, upgradeLevel,
+  hasUpgrade, topUsedTech, techUseCount, upgradeFrame, upgradeLevel,
   ARMOR_WEAPON_PAIRS, SIGNATURE_UPGRADE_KO, UPGRADE_LINE_KO,
 } from "./replayTechNames";
 import {
@@ -258,7 +258,7 @@ function buildSide(players: ParsedReplayPlayer[]): Side {
     for (const [b, n] of Object.entries(s.buildingCounts)) {
       buildings.set(b, (buildings.get(b) ?? 0) + n);
     }
-    const top = topTech(s);
+    const top = topUsedTech(s);
     if (top) techs.add(top);
     s.cmdCountByThird.forEach((n, i) => { thirds[i] += n; });
   }
@@ -1097,16 +1097,21 @@ function sideBeats(args: {
     }
   }
 
-  // ── 테크 — 싸움을 뒤집는 것만. 사람마다 하나씩. ──
+  // ── 테크 — 실제로 쓴 것만. 사람마다 하나씩. ──
+  // 연구했다는 사실만으로는 아무 일도 안 일어난 것이다(지적: "연구한 것만으로는 아무것도
+  // 아니야 실제 사용해야 돼"). 실제 리플레이에서 마인드컨트롤·스톰을 연구해 놓고 한 번도
+  // 안 쓴 사람이 있었는데, 예전 코드는 그걸 "마인드컨트롤까지 꺼내 썼다"고 적었을 것이다.
+  // 시점도 연구한 때가 아니라 처음 쓴 때다 — 이야기가 벌어진 자리는 그쪽이다.
   for (const p of players) {
     const sg = p.signals;
     if (!sg) continue;
-    const t = topTech(sg);
+    const t = topUsedTech(sg);
     if (!t) continue;
+    const n = techUseCount(sg, t);
     beats.push({
       k: "tech", won, who: who(p), weight: 6,
-      at: sg.firstTechFrame[t] ?? null,
-      p: { tech: t },
+      at: sg.firstTechUseFrame[t] ?? null,
+      p: { tech: t, n },
     });
   }
 
