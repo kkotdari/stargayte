@@ -5831,7 +5831,11 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
   flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
   gap: 12px; padding: 12px 16px calc(24px + env(safe-area-inset-bottom, 0px)); width: 100%;
 }
-.scr-share-match { width: 100%; max-width: 460px; }
+/* 본문은 세로 flex + align-items:center라, 자식이 스스로 폭을 안 잡으면 내용만큼만
+   좁아진다. 예전엔 경기 한 장(.scr-share-match)에만 width:100%를 줬는데, 그래서 묶음
+   공유와 순위변동(둘 다 .scr-feed-list로 온다)이 화면 한가운데 손톱만 하게 떴다
+   (신고: "접은 상태에서 너무 좁게 나오는데"). 자식 무엇이 오든 같은 폭이 되게 한 곳에서 잡는다. */
+.scr-share-body > * { width: 100%; max-width: 460px; }
 
 /* ===== 너 나와! 신청 코너 ("너 나와!" 최상단) =====
    @태그로 최소 2명을 지목하는 공개 요청글 코너. 지목된 사람만 "들어주기"로 도전장을 보낼 수
