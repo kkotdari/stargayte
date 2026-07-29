@@ -1276,18 +1276,14 @@ const TEMPLATES: Record<string, Tpl> = {
   // 배틀크루저(요청) — 띄우는 것 자체가 사건인데, 띄우고도 지는 경기가 많아 이야기가 된다.
   // 그래서 진 쪽에는 도박수와 같은 맺음(망함·소용없었음)을 붙인다.
   //
-  // n은 '한때 함께 떠 있던 수'에 가까운 값(창 단위 최대)이고, total은 경기 내내 뽑은
-  // 누계다 — 자세한 이유는 replayTactics의 windowPeak 주석에 있다. total이 n의 두 배를
-  // 넘으면 띄운 함대가 아니라 계속 갈아 넣은 그림이라, 그걸 따로 말한다.
+  // n은 '한때 함께 떠 있던 수'에 가까운 값(창 단위 최대)이다 — 자세한 이유는
+  // replayTactics의 windowPeak 주석에 있다. 경기 내내 뽑은 누계는 말하지 않는다(요청).
   bc: (c) => {
     const n = num(c.p.n, 3);
-    const total = num(c.p.total);
-    const ground = total >= n * 2;
     return `${ga(c.who)} ${done(c, c.pick([
       `배틀크루저를 ${n}기까지 띄움`,
       `끝내 배틀크루저까지 올림`,
       `배틀크루저 ${n}기로 하늘로 밀고 나감`,
-      ...(ground ? [`배틀크루저를 한때 ${n}기까지 띄우며 ${total}기를 갈아 넣음`] : []),
     ]), true)}`;
   },
 
@@ -1296,13 +1292,10 @@ const TEMPLATES: Record<string, Tpl> = {
   // 십여 분 이어 뽑은 경기의 누계(69기)를 그대로 말하면 있지도 않았던 함대가 된다(지적).
   carrier: (c) => {
     const n = num(c.p.n, 4);
-    const total = num(c.p.total);
-    const ground = total >= n * 2;
     return `${ga(c.who)} ${done(c, c.pick([
       `캐리어를 ${n}기까지 띄워 하늘을 노림`,
       `캐리어 ${n}기를 띄워 올림`,
       `캐리어 ${n}기로 승부를 걺`,
-      ...(ground ? [`캐리어를 한때 ${n}기까지 띄우며 ${total}기를 갈아 넣음`] : []),
       // 수가 적을 때만 '끝내 올렸다'로 말한다 — 열 기 넘게 띄운 경기에서 수를 빼면
       // 정작 그 경기의 그림이 사라진다.
       ...(n < 8 ? ["끝내 캐리어까지 올림"] : []),

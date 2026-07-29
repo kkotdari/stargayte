@@ -756,7 +756,7 @@ function detectFor(c: Ctx): Tactic[] {
     if (bcPeak >= 3) {
       out.push({
         key: "bc", weight: 11, at: firstU("Battlecruiser"), who,
-        p: { n: bcPeak, total: bcs.length },
+        p: { n: bcPeak },
       });
     }
     if (u("Valkyrie") >= 3 && foeRaces.includes("저그")) {
@@ -875,7 +875,7 @@ function detectFor(c: Ctx): Tactic[] {
       const burst = biggestBurst(carriers);
       out.push({
         key: "carrier", weight: 13, at: burst ? burst.from : firstU("Carrier"),
-        who, p: { n: carrierPeak, total: carriers.length },
+        who, p: { n: carrierPeak },
       });
     }
     if (dropped && u("Shuttle") >= 2 && u("Reaver") >= 3) {
