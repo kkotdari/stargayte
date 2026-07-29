@@ -37,8 +37,11 @@ const MAX_REPLAY_FILES = 20;
 // 공간(높이)이 다 열린 뒤에 포스트가 한 장씩 등장한다(요청) — 접을 땐 그 반대다.
 // 아래쪽 접기로 닫을 때 접힌 카드를 화면 맨 위에서 이만큼 띄워 놓는다.
 const STACK_COLLAPSE_MARGIN = 12;
-const CARD_FADE_MS = 150;
-const CARD_STAGGER_MS = 45;
+// 요약 ↔ 목록 교대 연출(요청: 페이드 아웃 → 높이 이동 → 한 번에 페이드 인).
+// 페이드는 짧게, 높이는 그보다 길게 — 높이가 눈으로 따라가는 유일한 움직임이라 여기에
+// 시간을 준다. 셋을 더해도 반 초 안쪽이라 두 번 누르는 흐름이 답답하지 않다.
+const SWAP_FADE_MS = 130;
+const SWAP_HEIGHT_MS = 260;
 
 // 피드 — 커뮤니티 활동(경기 결과, 너 나와! 일정)을 한 타임라인으로 보여주는 홈 화면.
 // 타임라인 기준: 너 나와!는 경기 예정 일시, 경기는 리플레이의 게임 시작 시각.
@@ -362,8 +365,11 @@ function MatchStack({
   // 위쪽 내용이 밀릴 일이 없고, 예전에 쓰던 스크롤 상쇄는 iOS 사파리에서 잔떨림만 남겼다.
   const stackRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
-  // 요약 껍데기 — 목록이 벌어지는 만큼 이쪽이 접힌다(요청: 펼치면 요약은 숨김).
+  // 요약 껍데기와, 요약↔목록이 자리를 주고받는 바깥 껍데기(높이가 이쪽에서 움직인다).
   const sumRef = useRef<HTMLDivElement>(null);
+  const swapRef = useRef<HTMLDivElement>(null);
+  // 토글 직전의 껍데기 높이 — 리액트가 DOM을 바꾼 뒤에는 잴 수 없어 누를 때 미리 담아 둔다.
+  const heightRef = useRef<number | null>(null);
   // 토글로 열린 것인지(연출 O) 그냥 리렌더인지(연출 X) 구분하는 표시.
   const toggledRef = useRef(false);
   // 진행 중인 연출을 중단·원복하는 함수 — 재토글/언마운트 때 호출한다.
@@ -380,6 +386,7 @@ function MatchStack({
   };
   const toggleOpen = (next: boolean) => {
     toggledRef.current = true;
+    heightRef.current = swapRef.current?.offsetHeight ?? null;
     afterCollapseRef.current = null;
     setOpen(next);
   };
@@ -403,61 +410,60 @@ function MatchStack({
   useLayoutEffect(() => {
     const wasToggled = toggledRef.current;
     toggledRef.current = false;
-    const inner = stackRef.current?.querySelector<HTMLElement>(":scope > .scr-feed-stack-inner");
-    const list = listRef.current;
+    const swap = swapRef.current;
+    const inner = stackRef.current?.querySelector<HTMLElement>(".scr-feed-stack-inner");
     const sum = sumRef.current;
-    if (!inner || !list) return;
+    if (!swap || !inner || !sum) return;
 
     cancelRevealRef.current?.();
     const clearInline = () => {
-      inner.style.height = "";
-      inner.style.overflow = "";
-      if (sum) { sum.style.height = ""; sum.style.opacity = ""; }
-      list.querySelectorAll<HTMLElement>(":scope > .scr-feed-stack-reveal")
-        .forEach((el) => { el.style.opacity = ""; el.style.transform = ""; });
+      swap.style.height = "";
+      sum.style.opacity = "";
+      inner.style.opacity = "";
     };
     const cleanup = () => { clearInline(); cancelRevealRef.current = null; };
 
     // 첫 렌더나 리렌더는 연출 없이 상태만 맞춘다 — 스크롤하다 리렌더될 때마다 카드가
     // 다시 펼쳐지는 것처럼 보이면 안 된다. 기다릴 연출이 없으니 예약도 바로 실행한다.
-    if (!wasToggled) { cleanup(); runAfterCollapse(); return; }
+    if (!wasToggled) { cleanup(); heightRef.current = null; runAfterCollapse(); return; }
 
-    // 접히는 영역 전체를 잰다 — scrollHeight는 height가 0으로 눌려 있어도 내용 높이를
-    // 그대로 준다.
-    const target = inner.scrollHeight;
-    const cards = [...list.querySelectorAll<HTMLElement>(":scope > .scr-feed-stack-reveal")];
-    // 접힘 → 펼침은 위에서부터, 펼침 → 접힘은 아래에서부터 사라진다.
-    const orderOf = (i: number) => (open ? i : cards.length - 1 - i);
+    // 세 마디로 나눠 순서대로 간다(요청): 나가는 쪽이 사라지고 → 높이가 옮겨 가고 →
+    // 들어오는 쪽이 한 번에 나타난다. 예전엔 셋을 동시에 굴리며 카드도 하나씩 어긋나게
+    // 띄웠는데, 그러면 '높이를 서로 맞춰 주는' 계산이 늘 따라붙었다(요청: 그 로직 제거).
+    //
+    // 지금은 요약과 목록이 같은 껍데기(.scr-feed-stack-swap) 안에서 자리를 주고받는다 —
+    // 비활성 쪽은 CSS가 절대배치로 흐름에서 빼므로, 껍데기의 자연 높이가 곧 '들어오는
+    // 쪽의 높이'다. 그래서 맞출 게 없다.
+    const from = heightRef.current;
+    heightRef.current = null;
+    const to = swap.scrollHeight;
+    const outgoing = open ? sum : inner;
+    const incoming = open ? inner : sum;
+    const moves = from !== null && Math.abs(from - to) > 1;
 
-    // 높이는 목록이 다 드러나는 데 걸리는 시간에 맞춰 함께 늘어난다 — 공간이 먼저 다
-    // 벌어진 뒤 카드가 뒤늦게 나타나면 빈 칸이 한 박자 보인다.
-    const span = CARD_FADE_MS + Math.max(0, cards.length - 1) * CARD_STAGGER_MS;
-    inner.style.overflow = "hidden";
     const anims: Animation[] = [];
-    anims.push(inner.animate(
-      open ? [{ height: "0px" }, { height: `${target}px` }]
-           : [{ height: `${target}px` }, { height: "0px" }],
-      { duration: span, easing: open ? "ease-out" : "ease-in", fill: "both" },
+    // 나가는 쪽 페이드 아웃. CSS는 이미 투명으로 바꿔 놨으므로 인라인으로 되돌려 시작한다.
+    anims.push(outgoing.animate(
+      [{ opacity: 1 }, { opacity: 0 }],
+      { duration: SWAP_FADE_MS, fill: "both", easing: "ease-in" },
     ));
-    // 요약은 목록과 반대로 움직인다 — 목록이 벌어지는 동안 같은 시간에 걸쳐 접힌다.
-    // 껍데기는 열림/닫힘 어느 쪽이든 overflow:hidden이라 scrollHeight가 늘 내용 높이다.
-    if (sum) {
-      const sumH = sum.scrollHeight;
-      anims.push(sum.animate(
-        open ? [{ height: `${sumH}px`, opacity: 1 }, { height: "0px", opacity: 0 }]
-             : [{ height: "0px", opacity: 0 }, { height: `${sumH}px`, opacity: 1 }],
-        { duration: span, easing: open ? "ease-in" : "ease-out", fill: "both" },
+    // 높이 이동. delay 동안은 fill:"both"가 시작값을 붙들어 줘서, 페이드 아웃이 끝날
+    // 때까지 껍데기가 원래 높이 그대로 있는다.
+    if (moves) {
+      anims.push(swap.animate(
+        [{ height: `${from}px` }, { height: `${to}px` }],
+        { duration: SWAP_HEIGHT_MS, delay: SWAP_FADE_MS, fill: "both", easing: "ease-in-out" },
       ));
     }
-    cards.forEach((el, i) => {
-      const order = orderOf(i);
-      anims.push(el.animate(
-        open
-          ? [{ opacity: 0, transform: "translateY(8px)" }, { opacity: 1, transform: "none" }]
-          : [{ opacity: 1, transform: "none" }, { opacity: 0, transform: "translateY(8px)" }],
-        { duration: CARD_FADE_MS, delay: order * CARD_STAGGER_MS, fill: "both", easing: "ease-out" },
-      ));
-    });
+    // 들어오는 쪽 페이드 인 — 카드 하나씩이 아니라 목록 통째로 한 번에(요청).
+    anims.push(incoming.animate(
+      [{ opacity: 0 }, { opacity: 1 }],
+      {
+        duration: SWAP_FADE_MS,
+        delay: SWAP_FADE_MS + (moves ? SWAP_HEIGHT_MS : 0),
+        fill: "both", easing: "ease-out",
+      },
+    ));
 
     // 펼친 뒤 목록 맨 아래로 스크롤하던 것은 걷어냈다(요청) — 펼치기를 누른 자리에
     // 그대로 있는 편이 낫다. 접기는 collapseAndReveal이 예약해 둔 스크롤이 되돌려 주는데,
@@ -493,11 +499,12 @@ function MatchStack({
         </div>
       </div>
 
-      {/* 요약 — 세미타이틀 한 줄과 참가자 로스터(요청). 펼치면 이 자리는 접히고 그 아래
-          목록이 대신 온다(요청: 펼치면 요약부분은 숨기면서 목록 보여주기) — 그래서 높이를
-          가진 껍데기와 내용물을 나눠 둔다(껍데기 height만 0↔실제로 오간다).
+      {/* 요약(세미타이틀 + 참가자 로스터)과 경기 목록이 이 껍데기 안에서 자리를 주고받는다.
+          비활성 쪽은 CSS가 절대배치로 흐름에서 빼므로 껍데기의 자연 높이가 곧 지금 보이는
+          쪽의 높이다 — 둘의 높이를 서로 맞춰 주는 계산이 필요 없다(요청).
           명단 어디를 눌러도 펼쳐진다. button 안에는 목록을 넣을 수 없어(phrasing content만
           허용) role로 대신한다. */}
+      <div className="scr-feed-stack-swap" ref={swapRef}>
       <div className="scr-feed-stack-sum" ref={sumRef} aria-hidden={open}>
         <div
           className="scr-feed-stack-sum-body" role="button" tabIndex={open ? -1 : 0}
@@ -550,6 +557,7 @@ function MatchStack({
             </div>
           ))}
         </div>
+      </div>
       </div>
 
       {/* 이 버튼은 이제 누르는 곳이라기보다 '어디를 눌러야 하는지' 알려 주는 안내문이다

@@ -2814,6 +2814,7 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
    스탯/케밥 자리라 흐름에 없다 — 예전의 [1fr][가운데][1fr] 3열 짜기는 필요 없어졌다. */
 .scr-match-trow-topline {
   display: flex; align-items: center; column-gap: 10px; margin-bottom: 14px; min-height: 20px;
+  /* 게임번호 줄이 양끝으로 벌어지려면 이 줄이 폭을 다 써야 한다. */
   /* 오른쪽 끝은 절대배치된 스탯/케밥 자리라 흐름에서 비워 둬야 한다 — 등록자 이름이 길면
      그 아래로 파고든다. 버튼 둘(26px) + 갭 + 오른쪽 여백만큼. */
   padding-right: 76px;
@@ -2821,8 +2822,10 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
 /* 게임번호 + 등록자 — 예전엔 펼침 맨 아래(.scr-match-trow-footer)에만 있었다. 스탯 표가
    시트로 나가면서 펼침 자체가 없어져, 늘 보이는 이 자리로 올렸다(요청). */
 .scr-match-trow-meta {
-  display: flex; align-items: center; gap: 10px; min-width: 0; flex-wrap: wrap;
-  font-size: var(--fs-caption);
+  /* 게임번호는 왼쪽 끝, 등록자는 오른쪽 끝(요청) — 줄 하나에 둘뿐이라 양끝으로 벌리면
+     각자 무엇인지가 자리로 읽힌다. */
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  min-width: 0; flex: 1; font-size: var(--fs-caption);
 }
 /* 맵이름·경기시간은 그 줄의 가운데(위 그리드 가운데 칸)에 모은다(요청). */
 .scr-match-trow-map-line { display: flex; align-items: baseline; justify-content: center; gap: 8px; font-size: var(--fs-caption); min-width: 0; }
@@ -6791,8 +6794,24 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 /* 카드는 한 장이다(요청) — 요약(참가자 명단)은 늘 보이고, 그 아래 목록 영역만 0 ↔ 실제
    높이로 자란다. 겉보기로는 카드 안에 카드가 있는 모양이지만 실제로는 한 장 안에서
    내용만 늘어난다. 연출 중에는 JS가 인라인 height로 그 사이를 잇는다(FeedScreen). */
-.scr-feed-stack-inner { min-height: 0; height: 0; overflow: hidden; }
-.scr-feed-stack-opened .scr-feed-stack-inner { height: auto; overflow: visible; }
+/* 요약과 목록이 자리를 주고받는 껍데기(요청) — 높이는 오직 여기서만 움직인다.
+   비활성 쪽을 절대배치로 흐름에서 빼므로, 껍데기의 자연 높이가 곧 지금 보이는 쪽의
+   높이다. 예전처럼 둘의 높이를 서로 맞춰 줄 필요가 없다(요청: 그 로직 제거). */
+.scr-feed-stack-swap { position: relative; overflow: hidden; }
+.scr-feed-stack-swap > * { min-width: 0; }
+/* 접힘: 요약이 흐름을 잡고, 목록은 같은 자리에 겹쳐 투명하게 대기한다. */
+.scr-feed-stack-inner {
+  position: absolute; top: 0; left: 0; right: 0;
+  opacity: 0; pointer-events: none;
+}
+.scr-feed-stack-swap > .scr-feed-stack-sum { position: relative; opacity: 1; }
+/* 펼침: 정확히 반대. */
+.scr-feed-stack-opened .scr-feed-stack-inner {
+  position: relative; opacity: 1; pointer-events: auto;
+}
+.scr-feed-stack-opened .scr-feed-stack-swap > .scr-feed-stack-sum {
+  position: absolute; top: 0; left: 0; right: 0; opacity: 0; pointer-events: none;
+}
 /* 목록은 위쪽 요약과 한 덩어리로 이어져야 하므로 포스트 사이 간격(--feed-card-gap)이
    아니라 훨씬 좁은 간격을 쓴다 — 여기부터는 별개의 글이 아니라 같은 글의 문단이다. */
 .scr-feed-stack-list { display: flex; flex-direction: column; }
@@ -6869,12 +6888,6 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    발생해"). 접힘 애니메이션은 이 블록 높이가 고정이라는 전제로 아래 기준점을 잡는다.
    대신 그만큼 아래 토글 버튼의 위 패딩을 줄여, 접힌 모습의 간격은 예전 그대로 24px다
    (14 + 10). 펼쳤을 때는 이 14px이 곧 명단과 그림자 사이의 숨통이 된다. */
-/* 요약 껍데기 — 펼치면 이 자리가 접히고 아래 목록이 대신 온다(요청). 높이를 0으로
-   눌러야 해서 껍데기(높이만 담당)와 내용물(.scr-feed-stack-sum-body, 여백·클릭 담당)을
-   나눴다: 껍데기에 padding이 있으면 height:0으로도 그 여백이 남아 빈 띠가 생긴다.
-   .scr-feed-stack-inner와 정확히 반대로 움직이는 짝이다. */
-.scr-feed-stack-sum { min-height: 0; overflow: hidden; }
-.scr-feed-stack-opened > .scr-feed-stack-sum { height: 0; }
 .scr-feed-stack-sum-body {
   cursor: pointer; -webkit-tap-highlight-color: transparent;
   padding-bottom: 14px;
@@ -6968,14 +6981,26 @@ html:not(.scr-light-theme) .scr-feed-card-head:has(.scr-feed-card-head-title) .s
 }
 /* 경기 케밥을 포스트 우상단으로(요청 — 이제 오른쪽에 타임라인이 없어 안전 공간 불필요).
    trow의 position:relative가 절대배치를 가로채지 않게 피드 안에서는 static으로. */
-.scr-feed-match-body .scr-match-trow { position: static; }
+/* 게임결과 포스트의 세로 간격은 여기 한 곳에서 정한다(요청: 모든 요소 세로 갭 통일).
+   시간/케밥 줄 → 로스터 → 맵 정보 → 요약이 이 로우의 자식이라, 로우를 flex 컬럼으로
+   두고 gap 하나로 몰아준다 — 각자 margin/padding으로 벌리던 걸 전부 0으로 되돌린다.
+   케밥은 절대배치라 flex 항목이 아니고, 댓글은 이 로우 밖(포스트 직계)이라 같은 값을
+   따로 물려준다(아래 .scr-feed-comments). */
+.scr-feed-card { --post-row-gap: 18px; }
+.scr-feed-match-body .scr-match-trow {
+  position: static;
+  display: flex; flex-direction: column; gap: var(--post-row-gap);
+}
+.scr-feed-match-body .scr-match-trow > * { margin: 0; }
 /* 한때 이 줄이 비어 있어(맵·시간은 아래로, 케밥은 절대배치) 아래 여백 14px만 남았고,
    그게 헤더와 로스터 사이에 얹혀 게임결과만 유독 벌어져 보였다(지적) — 그래서 여백을
    지웠었다. 이제는 게임번호·등록자가 늘 여기 있으므로(요청) 빈 줄이 아니다. 로스터와
    붙지 않을 만큼만 되살린다. */
 /* 피드에선 스탯/케밥이 포스트 머리띠 안(카드 기준 절대배치)에 있어 이 줄과 자리를 다투지
    않는다 — 오른쪽을 비워 둘 이유가 없다. */
-.scr-feed-match-body .scr-match-trow-topline { margin-bottom: 10px; padding-right: 0; }
+/* 아래 갭은 넉넉히, 위는 살짝만(요청) — 게임번호 줄은 머리띠에 딸린 꼬리표에 가깝고,
+   그 아래 로스터부터가 본문이라 경계는 아래쪽에 둬야 읽힌다. */
+.scr-feed-match-body .scr-match-trow-topline { padding-right: 0; }
 /* 헤더의 '제목 줄' 언저리에 — 제목 줄 중심(포스트 위에서 33.6px)에 정확히 맞추면
    top이 21px인데, 거기서 6px 올린 자리를 쓴다(--post-kebab-top 주석 참고).
    이 값은 헤더 패딩에 딸린 값이라 변수 하나로 묶어 뒀다 — 머리 여백을 줄이면서(4px)
@@ -7046,7 +7071,7 @@ html.scr-light-theme .scr-feed-comments .scr-mreq-chip-inline { color: #c07c1c; 
 }
 /* 맵·플레이시간 — 요약 바로 위, 접힘/펼침 상관없이 늘 보인다(요청). 요약을 읽기 전에
    '어느 맵에서 몇 분짜리 경기였나'를 먼저 알아야 이야기가 읽힌다. */
-.scr-match-trow-map-meta { display: flex; align-items: baseline; gap: 6px; padding: 18px 0 0; justify-content: center; }
+.scr-match-trow-map-meta { display: flex; align-items: baseline; gap: 6px; padding: 0; justify-content: center; }
 /* 리플레이 전황 요약 — 로스터 바로 아래, 접힌 상태에서도 보이는 경기 이야기(요청).
    시각을 앞세운 연대기가 아니라 한 문단짜리 글이라(요청) 줄바꿈 없이 그냥 흐른다. */
 .scr-match-trow-summary {
@@ -7063,15 +7088,14 @@ html.scr-light-theme .scr-feed-comments .scr-mreq-chip-inline { color: #c07c1c; 
    좌우는 경기 로우의 패딩을 되물려 댓글 줄과 같은 자리(--post-pad-bx)에서 시작하게
    한다(지적) — 로우 안에 있다 보니 혼자 더 안쪽에서 시작해 어긋나 보였다. */
 .scr-feed-card .scr-match-trow-summary {
-  /* 위는 로스터와, 아래는 댓글 줄과의 간격 — 둘 다 답답했다(지적). */
-  margin-top: 22px;
-  margin-bottom: 26px;
+  /* 위아래 간격은 이제 로우의 gap 하나가 정한다(요청: 세로 갭 통일) — 좌우만 남긴다. */
+  margin-block: 0;
   margin-inline: calc(8px - var(--feed-trow-pad-x, 8px));
 }
 /* 맵·시간 줄이 바로 위에 오면 그 줄이 이미 로스터와의 간격을 만든다 — 요약까지 22px을
    더 띄우면 둘이 따로 노는 것처럼 보인다. 맵·시간은 요약의 머리글에 가깝게 붙인다. */
-.scr-match-trow-map-meta + .scr-match-trow-summary,
-.scr-feed-card .scr-match-trow-map-meta + .scr-match-trow-summary { margin-top: 7px; }
+/* 요약 위 간격도 이제 로우의 gap 하나가 정한다(요청) — 맵 정보가 있고 없고에 따라
+   따로 손보던 규칙은 필요 없어졌다. */
 
 /* 요약 문장 안의 이름에 팀 색을 입힌다(요청: 1팀 청색, 2팀 붉은색) — 누가 어느 편인지
    문장만 읽고도 갈리게 하기 위한 것이다. 배경 없이 글자색과 굵기만 쓴다: 문단 한가운데라
@@ -7108,7 +7132,8 @@ html.scr-light-theme .scr-feed-comments .scr-mreq-chip-inline { color: #c07c1c; 
 /* trow가 자체 좌우 8px을 갖고 있어, 합이 --post-pad-bx가 되도록 나머지만 여기서 낸다. */
 /* 경기 로우의 좌우 패딩을 변수로 둔다 — 요약 상자가 이 값을 되물려 카드의 다른 요소(댓글
    줄)와 같은 자리에서 시작하게 하기 위해서다(지적: 시작 부분을 맞춰야 함). */
-.scr-feed-match-body { --feed-trow-pad-x: 8px; padding: 0 calc(var(--post-pad-bx) - 8px); }
+/* 머리띠와 첫 줄(시간/케밥) 사이도 같은 값으로(요청). */
+.scr-feed-match-body { --feed-trow-pad-x: 8px; padding: var(--post-row-gap) calc(var(--post-pad-bx) - 8px) 0; }
 .scr-feed-match-body .scr-match-date-head { display: none; }
 .scr-feed-match-body .scr-match-list-panel-v2 .scr-match-trow, .scr-light-theme .scr-feed-match-body .scr-match-list-panel-v2 .scr-match-trow {
   background: transparent; border: none; box-shadow: none;
@@ -7129,13 +7154,17 @@ html.scr-light-theme .scr-feed-comments .scr-mreq-chip-inline { color: #c07c1c; 
 /* 컨텐츠부의 꼬리 — 포스트에 자체 아래 패딩이 없으므로 바닥 여백도 여기서 낸다.
    여백을 바깥(.scr-feed-comments)이 아니라 안쪽(.scr-match-notes)이 내는 이유는, 댓글이
    하나도 없을 때 그 여백까지 통째로 걷어야 하기 때문이다(아래 -empty). */
-.scr-feed-comments { padding: 0; }
+/* 댓글은 경기 로우 밖(포스트 직계)이라 로우의 gap이 닿지 않는다 — 같은 값을 여기서 낸다
+   (요청: 사이사이 줄간격 동일). */
+.scr-feed-comments { padding: var(--post-row-gap) 0 0; }
 .scr-feed-comments > .scr-match-notes {
-  border-top: none; padding: 12px var(--post-pad-bx) 0; margin-top: 0;
+  border-top: none; padding: 0 var(--post-pad-bx); margin-top: 0;
 }
 /* 댓글이 없는 포스트가 훨씬 많다(지적) — 그럴 땐 "댓글 쓰기" 아이콘이 한 줄을 통째로
    차지하지 않고, 바디 아래 여백의 왼쪽 구석에 얹혀만 있는다(요청). 기준은 포스트
    (.scr-feed-card, position:relative). */
+/* 댓글이 없는 포스트의 입력줄은 꼬리 여백에 절대배치로 얹히므로 자기 여백을 안 낸다 —
+   대신 위쪽 간격은 .scr-feed-comments가 낸다(아래). */
 .scr-feed-comments > .scr-match-notes-empty { padding: 0; }
 /* 왼쪽 끝은 요약 상자와 같은 자리(--post-pad-bx)에 맞춘다(지적: 시작 부분 정렬). */
 .scr-feed-comments > .scr-match-notes-empty .scr-feed-comment-row {
