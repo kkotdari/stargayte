@@ -43,8 +43,9 @@ const STACK_COLLAPSE_MARGIN = 12;
 const SWAP_FADE_MS = 130;
 const SWAP_HEIGHT_MS = 260;
 // 접힌 뒤 테두리를 밝혀 두는 시간(요청) — CSS의 scr-stack-collapsed-flash와 같은 값이어야
-// 한다. 연출이 끝난 시점부터 세므로 접히는 시간과 겹치지 않는다.
-const FLASH_MS = 500;
+// 한다. 연출이 끝난 시점부터 세는데, 그 뒤에 부드러운 스크롤이 한 번 더 이어지므로
+// 그것까지 지켜볼 만큼 길게 둔다(요청: 스크롤까지 있어서 2초).
+const FLASH_MS = 2000;
 
 // 피드 — 커뮤니티 활동(경기 결과, 너 나와! 일정)을 한 타임라인으로 보여주는 홈 화면.
 // 타임라인 기준: 너 나와!는 경기 예정 일시, 경기는 리플레이의 게임 시작 시각.
@@ -411,7 +412,7 @@ function MatchStack({
     toggleOpen(false);
     // toggleOpen이 예약을 비우므로 반드시 그 뒤에 건다(setOpen은 비동기라 연출 시작 전이다).
     afterCollapseRef.current = () => {
-      // 연출이 끝난 지금부터 0.5초(요청) — 접히는 동안 켜 두면 그만큼 짧게 보인다.
+      // 연출이 끝난 지금부터 센다 — 접히는 동안 켜 두면 그만큼 짧게 보인다.
       setFlash(true);
       if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current);
       flashTimerRef.current = window.setTimeout(() => setFlash(false), FLASH_MS);
