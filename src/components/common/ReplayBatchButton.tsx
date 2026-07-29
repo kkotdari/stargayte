@@ -16,11 +16,11 @@ import type { MatchResult, NewMatch } from "../../types";
 // 만들다가 메모리가 터진다. 묶음 단위로 만들고 등록하고 버린다. 중복확인 API가 한 번에
 // 받는 최대 개수(50)보다 작아야 한다는 제약도 이 값이 함께 만족시킨다.
 //
-// 1로 둔 이유(요청: 진행바를 1건 단위로) — 진행률은 결과가 기록될 때만 움직이는데, 그건
-// 묶음을 통째로 분석한 뒤라 10이면 바가 열 칸씩 건너뛰었다. 대신 중복확인 왕복이 파일마다
-// 한 번씩 생긴다: 파싱이 훨씬 무거운 작업이라 체감 차이는 크지 않고, 어차피 운영자가
-// 지켜보는 화면이라 '지금 몇 개째'가 정확한 편이 낫다.
-const CHUNK_SIZE = 1;
+// 한때 진행바가 열 칸씩 건너뛰는 게 걸려 1로 내렸는데(진행률은 결과가 기록될 때만 움직이고
+// 그건 묶음을 통째로 분석한 뒤다), 그러면 중복확인 왕복이 파일마다 한 번씩 생긴다.
+// 다시 묶음으로 되돌리고, 대신 바 자체를 트랜스폼으로 미끄러지게 했다(요청) — 눈에 보이는
+// 문제는 '건너뛴다'는 인상이었지 묶음 처리 자체가 아니었다.
+const CHUNK_SIZE = 10;
 
 // 배치가 자동으로 처리하지 못한 리플레이를 나중에 검토 화면으로 넘기려면 그 드래프트(첨부
 // data URL 포함)를 계속 들고 있어야 한다 — 수백 개가 실패하는 상황에서 전부 붙잡고 있으면
@@ -425,7 +425,13 @@ export default function ReplayBatchButton() {
             </div>
             <div className="scr-modal-body scr-admin-panel-batch-modal-body">
               <div className="scr-rank-bar-track scr-admin-panel-batch-bar">
-                <div className="scr-rank-bar-fill scr-rank-bar-fill-plays" style={{ width: `${percent}%` }} />
+                {/* 폭이 아니라 scaleX로 움직인다(요청) — 묶음 단위로 처리하는 동안 값이
+                    한 번에 열 칸씩 뛰는데, 트랜스폼이면 그 사이를 미끄러져 건너뛰는
+                    인상이 사라진다. 폭 애니메이션과 달리 레이아웃을 다시 잡지도 않는다. */}
+                <div
+                  className="scr-rank-bar-fill scr-rank-bar-fill-plays"
+                  style={{ transform: `scaleX(${percent / 100})` }}
+                />
               </div>
               <div className="scr-admin-panel-batch-counts">
                 {processed}/{total} · 등록 {countOf(results, "registered")} · 중복 {countOf(results, "duplicate")}
