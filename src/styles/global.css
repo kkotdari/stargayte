@@ -2503,11 +2503,15 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
   margin-top: 6px; margin-left: 0; margin-bottom: 10px; position: relative; top: 1px;
 }
 /* 목록 제목 + 건수 한 줄(SearchFilterBar의 heading prop) — 제목은 왼쪽, 건수는 오른쪽
-   끝. 건수는 제목 없이 혼자일 때 쓰던 세로 정렬(align-self:flex-end, 세로 flex 기준)을
-   여기서는 쓰면 안 된다(가로 flex라 그건 "아래 붙임"이 된다) — 가운데로 되돌리고
-   오른쪽 끝은 auto 마진으로 민다. 제목이 길어 줄바꿈되면 건수는 그대로 오른쪽 위. */
-.scr-filter-head-row { display: flex; align-items: flex-end; gap: 10px; width: 100%; }
-.scr-filter-head-row > .scr-filter-bar-count { align-self: auto; margin-left: auto; flex-shrink: 0; }
+   끝(auto 마진). 건수가 혼자일 때 쓰던 세로 정렬(align-self:flex-end)은 여기선 쓰면
+   안 된다: 세로 flex에서는 "오른쪽 끝"이지만 가로 flex에서는 "아래 붙임"이 된다.
+   글자 크기가 서로 달라(제목 body / 건수 caption) 상자를 맞추면 글줄이 어긋나 보이므로
+   (신고: "문장형필터와 건수가 세로 정렬이 안맞아") 상자가 아니라 글줄(baseline)로 맞추고,
+   혼자 있을 때 쓰던 미세 보정(top:1px)도 여기선 걷어낸다. */
+.scr-filter-head-row { display: flex; align-items: baseline; gap: 10px; width: 100%; }
+.scr-filter-head-row > .scr-filter-bar-count {
+  align-self: baseline; margin-left: auto; flex-shrink: 0; top: 0;
+}
 
 /* ===== 그리드 제목 겸 필터(문장형) =====
    요청: "7월 개인전 전체종족 스탯"처럼 한 문장으로 현재 필터를 보여주고, 그 안의 낱말
@@ -2518,8 +2522,9 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
   margin: 6px 0 10px;
 }
 .scr-grid-title-tail { padding: 0 2px; }
-/* 문장 안에 섞이는 드롭다운 — 상자를 지우고 글자 그대로 두되, 점선 밑줄로 "누를 수
-   있는 낱말"임을 알린다. 폭은 내용만큼(.scr-cselect의 width:100%를 덮는다). */
+/* 문장 안에 섞이는 드롭다운 — 상자를 지우고 글자 그대로 둔다. 폭은 내용만큼
+   (.scr-cselect의 width:100%를 덮는다). 한때 점선 밑줄로 "누를 수 있는 낱말"임을
+   알렸는데, 옆의 화살표가 이미 그 역할을 해서 걷어냈다(요청). */
 .scr-cselect.scr-sentence-select { width: auto; display: inline-flex; max-width: 100%; }
 .scr-sentence-select .scr-cselect-trigger {
   width: auto; justify-content: flex-start; gap: 0;
@@ -2527,8 +2532,6 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
   background: none; border: 1px solid transparent; box-shadow: none;
   font: inherit; color: inherit;
 }
-.scr-sentence-select .scr-cselect-value { border-bottom: 1px dashed rgba(255,255,255,0.4); }
-.scr-light-theme .scr-sentence-select .scr-cselect-value { border-bottom-color: rgba(0,0,0,0.35); }
 .scr-sentence-select .scr-cselect-caret { width: 13px; height: 13px; opacity: 0.6; }
 @media (hover: hover) {
   .scr-sentence-select .scr-cselect-trigger:hover {
