@@ -1630,6 +1630,12 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 .scr-stats-list-panel-v2 .scr-stat-table-clip {
   border-top-left-radius: var(--radius); border-top-right-radius: var(--radius);
 }
+/* 라이트에서 표 바깥 경계가 배경에 묻히는 문제(지적) — 피드 카드와 같은 처방으로,
+   얇은 림 1px + 아주 옅은 그림자 한 겹. 이 요소는 overflow:hidden이지만 그건 자기
+   자식만 자르므로 자기 그림자는 그대로 밖에 그려진다. */
+.scr-light-theme .scr-stats-list-panel-v2 .scr-stat-table-clip {
+  box-shadow: 0 0 0 1px rgba(16, 21, 26, 0.08), 0 1px 3px rgba(16, 21, 26, 0.05);
+}
 /* 헤더 행 아래쪽 선은 행 자신의 border/box-shadow가 아니라, 이 행 위에 절대배치로 얹은
    전용 오버레이 한 장으로 딱 한 번만 그린다 — border-bottom(행)과 box-shadow(이름 칸)를
    각자 따로 그리면, 이름 칸은 sticky+z-index로 다른 칸들 위에 그려지는 별도 레이어라
@@ -2513,27 +2519,44 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
 }
 
 /* ===== 그리드 제목 겸 필터(문장형) =====
-   요청: "7월 개인전 전체종족 스탯표"처럼 한 문장으로 현재 필터를 보여주고, 그 안의 낱말
+   요청: "7월 개인전 전체종족"처럼 한 문장으로 현재 필터를 보여주고, 그 낱말
    (기간/유형/종족)이 각각 드롭다운. 별도의 필터창을 없애고 제목 하나가 그 역할을 겸한다. */
 .scr-grid-title {
-  display: flex; flex-wrap: wrap; align-items: center; gap: 1px 2px;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px;
   min-width: 0; font-size: var(--fs-body); font-weight: 700; color: var(--text);
   margin: 6px 0 10px;
 }
-/* 문장 안에 섞이는 드롭다운 — 상자를 지우고 글자 그대로 둔다. 폭은 내용만큼
-   (.scr-cselect의 width:100%를 덮는다). 한때 점선 밑줄로 "누를 수 있는 낱말"임을
-   알렸는데, 옆의 화살표가 이미 그 역할을 해서 걷어냈다(요청). */
+/* 문장 안에 섞이는 드롭다운 — 낱말 자체가 컨트롤이라, 값 자리와 화살표 자리를 옅은
+   구분선으로 갈라 "이 칸 전체가 하나의 드롭다운"임을 보이게 한다(요청: "값영역
+   인디케이터 영역 나누고"). 폭이 고정이라 짧은 값 뒤가 비는데, 값을 왼쪽에 붙이면
+   그 빈자리가 '안 채운 입력칸'처럼 보인다 — 칸 안에서 가운데로 두면 앞뒤 여백이 반씩
+   나뉘어 낱말 사이 간격도 고르게 읽힌다. */
 /* display는 여기서 안 정한다 — 이 셋은 모두 fixedWidth라 .scr-cselect-fixedw가
    inline-grid(그림자 트리거와 겹치기)를 잡는다. 여기서 또 정하면 어느 쪽이 이기는지가
    파일 순서에 달리게 된다. */
 .scr-cselect.scr-sentence-select { width: auto; max-width: 100%; }
+/* 채움·글자색·글로우는 프라이머리 버튼(.scr-btn-primary)과 똑같은 한 벌을 쓴다(요청) —
+   토큰까지 그대로 물려받아, 나중에 버튼 배색이 바뀌면 이 칩도 같이 따라간다. 모서리만
+   알약이 아니라 각지게 두는데, 이 앱 입력류의 기존 방침(각진 라운드)을 따르는 것이다. */
 .scr-sentence-select .scr-cselect-trigger {
-  width: auto; justify-content: flex-start; gap: 0;
-  min-height: 0; height: auto; padding: 2px 2px 1px; border-radius: 6px;
-  background: none; border: 1px solid transparent; box-shadow: none;
-  font: inherit; color: inherit;
+  /* 화살표는 낱말 뒤에 붙어 다니지 않고 칸 오른쪽 끝에 못 박힌다(요청: "드롭다운
+     인디케이터도 고정되게") — 칸 폭이 어차피 고정이라 세 화살표가 같은 리듬으로 선다. */
+  width: auto; justify-content: space-between; gap: 0;
+  min-height: 0; height: auto; padding: 3px 5px; border-radius: 7px;
+  font: inherit;
+  background: #fff; border: 1px solid #fff; color: #10151a;
+  box-shadow: var(--lit-pill-glow);
 }
-.scr-sentence-select .scr-cselect-caret { width: 13px; height: 13px; opacity: 0.6; }
+.scr-light-theme .scr-sentence-select .scr-cselect-trigger {
+  background: var(--lit-pill-bg); border-color: transparent; color: var(--text);
+}
+/* 값 자리와 화살표 자리를 가르는 선·화살표 — 칩은 두 테마 모두 "밝은 바탕 + 어두운 글자"
+   (다크는 흰 알약, 라이트는 하늘색 알약)라, 테마별로 나눌 것 없이 한 값이면 된다. */
+.scr-sentence-select .scr-cselect-value {
+  flex: 1; min-width: 0; text-align: center;
+  padding-right: 5px; margin-right: 5px; border-right: 1px solid rgba(16, 21, 26, 0.22);
+}
+.scr-sentence-select .scr-cselect-caret { width: 13px; height: 13px; color: #10151a; opacity: 0.55; }
 /* 문장 끝 초기화 — 낱말들과 같은 톤의 아이콘 하나. 기본값 상태에서는 흐리게 죽인다. */
 .scr-grid-title-reset {
   display: inline-flex; align-items: center; justify-content: center;
@@ -2545,14 +2568,16 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
   .scr-grid-title-reset:not(:disabled):hover { color: var(--text); background: rgba(255,255,255,0.12); }
   .scr-light-theme .scr-grid-title-reset:not(:disabled):hover { background: rgba(0,0,0,0.07); }
 }
+/* 평소에도 글로우가 켜져 있으므로 호버/열림은 같은 빛을 한 단계 세게 — 프라이머리 버튼과
+   똑같은 값이다(요청: "글로우도 똑같은 효과"). */
 @media (hover: hover) {
   .scr-sentence-select .scr-cselect-trigger:hover {
-    border-color: transparent; box-shadow: none; background: rgba(255,255,255,0.12);
+    box-shadow: 0 0 12px rgba(var(--lit-rgb), 0.25), 0 0 28px rgba(var(--lit-rgb), 0.13);
   }
-  .scr-light-theme .scr-sentence-select .scr-cselect-trigger:hover { background: rgba(0,0,0,0.07); }
 }
-.scr-sentence-select .scr-cselect-open { border-color: transparent; background: rgba(255,255,255,0.14); }
-.scr-light-theme .scr-sentence-select .scr-cselect-open { background: rgba(0,0,0,0.08); }
+.scr-sentence-select .scr-cselect-open {
+  box-shadow: 0 0 12px rgba(var(--lit-rgb), 0.25), 0 0 28px rgba(var(--lit-rgb), 0.13);
+}
 /* 경기번호·메모 검색 필드(경기 화면 전용) — 유저 검색창 바로 아래에 한 줄로 나란히 두고,
    모바일에서도 한 줄을 유지한다(요청). 라벨 없이 플레이스홀더로만 힌트를 준다(요청). 인풋
    톤은 유저 검색창과 같은 옅은 반투명. */
@@ -5845,7 +5870,11 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
 .scr-challenge-sent-actions { justify-content: center; gap: 8px; }
 
 /* ===== 공유 링크가 여는 "카드만 있는" 화면(SharePage) ===== */
-.scr-share-page { min-height: 100%; display: flex; flex-direction: column; }
+/* 100%가 아니라 뷰포트 기준으로 잡는다 — 100%는 조상 높이가 확정돼 있어야 먹는데, 이
+   화면은 앱 껍데기 없이 단독으로 뜨는 경우가 있어 그 조건이 항상 성립하지는 않았다.
+   본문을 세로 가운데에 두려면(요청) 이 높이가 반드시 확정돼 있어야 한다. dvh는 모바일
+   브라우저 툴바가 접혔다 펴져도 실제 보이는 높이를 따라간다. */
+.scr-share-page { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
 .scr-share-head {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
   padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 12px;
@@ -5858,8 +5887,11 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
 /* 본문은 세로 flex + align-items:center라, 자식이 스스로 폭을 안 잡으면 내용만큼만
    좁아진다. 예전엔 경기 한 장(.scr-share-match)에만 width:100%를 줬는데, 그래서 묶음
    공유와 순위변동(둘 다 .scr-feed-list로 온다)이 화면 한가운데 손톱만 하게 떴다
-   (신고: "접은 상태에서 너무 좁게 나오는데"). 자식 무엇이 오든 같은 폭이 되게 한 곳에서 잡는다. */
-.scr-share-body > * { width: 100%; max-width: 460px; }
+   (신고: "접은 상태에서 너무 좁게 나오는데"). 자식 무엇이 오든 같은 폭이 되게 한 곳에서 잡는다.
+   세로도 가운데(요청: 랭킹 변동·경기·요약 모두) — justify-content:center 대신 자식의
+   auto 마진을 쓴다. 카드가 화면보다 길어지면 justify-content:center는 위쪽이 화면 밖으로
+   밀려 스크롤로도 못 닿지만, auto 마진은 남는 자리가 없으면 그냥 0이 돼 안전하다. */
+.scr-share-body > * { width: 100%; max-width: 460px; margin-block: auto; }
 
 /* ===== 너 나와! 신청 코너 ("너 나와!" 최상단) =====
    @태그로 최소 2명을 지목하는 공개 요청글 코너. 지목된 사람만 "들어주기"로 도전장을 보낼 수
@@ -6859,6 +6891,11 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   background-color: rgba(255, 255, 255, 0.62);
   backdrop-filter: blur(2px) saturate(1.1);
   -webkit-backdrop-filter: blur(2px) saturate(1.1);
+  /* 라이트에서는 흰 판이 흰 배경에 묻혀 카드 경계가 안 보인다(지적). 테두리 대신
+     box-shadow로 얇은 림(퍼짐 0, 1px) + 아주 옅은 그림자 한 겹만 얹는다 — 레이아웃을
+     1px도 안 밀고(테두리와 달리 박스 크기에 안 들어간다), 무게도 거의 안 는다.
+     다크는 배경이 어두워 판의 밝은 채움만으로 이미 구분돼 그대로 둔다. */
+  box-shadow: 0 0 0 1px rgba(16, 21, 26, 0.07), 0 1px 3px rgba(16, 21, 26, 0.05);
 }
 /* 예전에는 피드 목록만 본문 좌우 패딩 바깥으로 빼내 화면 폭을 그대로 썼다 — 포스트가
    채움 없는 투명판이라 판의 경계가 안 보였기 때문이다. 이제 포스트에 유리 채움이 들어와

@@ -16,7 +16,7 @@ import { usePageBackground } from "../../hooks/usePageBackground";
 import { cx } from "../../utils/format";
 import type { BaseRace, MatchType, Member, MemberStats, MemberStatsEntry } from "../../types";
 
-// 필터 셋은 이제 그리드 제목을 이루는 문장의 낱말이다(요청: "7월 개인전 전체종족 스탯표"
+// 필터 셋은 이제 그리드 제목을 이루는 문장의 낱말이다(요청: "7월 개인전 전체종족"
 // 형태로 각각을 드롭다운으로) — 라벨도 문장 안에서 그대로 읽히는 말로 적는다("전체"가
 // 아니라 "전체종족").
 const RACE_SELECT_OPTS: SelectOption[] = [
@@ -89,7 +89,7 @@ function SortableHead({ label, sortKey, sort, onToggle, className, tooltip }: So
 
 // 경기결과/랭킹과 같은 공용 상단 모듈(SearchFilterBar)로 전적통계를 보여준다.
 // 조건은 필터창 대신 목록 바로 위의 제목 한 줄이 통째로 맡는다(요청) — "7월 개인전
-// 전체종족 스탯표"처럼 읽히는 문장인데, 그 안의 낱말 셋(기간/유형/종족)이 각각 드롭다운이라
+// 전체종족"처럼 읽히는 문장인데, 그 낱말 셋(기간/유형/종족)이 각각 드롭다운이라
 // 제목을 읽는 것이 곧 지금 걸린 조건을 읽는 것이고, 고치는 자리도 같은 자리다. 검색창
 // (유저)과 정렬(컬럼 헤더)은 그대로 둔다.
 export default function StatsScreenV2() {
@@ -148,6 +148,14 @@ export default function StatsScreenV2() {
     }
     return opts;
   }, [firstMonth]);
+
+  // 문장 속 세 드롭다운이 모두 같은 폭이 되도록(요청: "세 드롭다운 크기 통일해서 균형감
+  // 있게") 폭 계산의 기준 라벨을 하나로 합쳐 셋에 똑같이 넘긴다 — 셋 다 "가장 긴 낱말"
+  // 기준이라 저절로 같은 크기가 되고, 나중에 옵션이 늘어도 알아서 따라간다.
+  const sentenceWidths = useMemo(
+    () => [...periodOpts, ...TYPE_SELECT_OPTS, ...RACE_SELECT_OPTS].map((o) => o.label),
+    [periodOpts],
+  );
 
   const { from: effectiveFrom, to: effectiveTo } = useMemo(
     () => (periodMonth ? monthInputToRange(periodMonth) : { from: "", to: "" }),
@@ -396,16 +404,20 @@ export default function StatsScreenV2() {
         // 문장으로 옮겼다. 제목이 곧 지금 걸린 조건이라 따로 읽을 필터 UI가 없다.
         heading={
           <div className="scr-grid-title">
+            {/* 셋 다 같은 기준 라벨(sentenceWidths)로 폭을 재서 크기가 통일된다(요청). */}
             <Select
-              fixedWidth className="scr-sentence-select" value={period} options={periodOpts}
+              fixedWidth widthLabels={sentenceWidths}
+              className="scr-sentence-select" value={period} options={periodOpts}
               onChange={setPeriod} minDropWidth={150}
             />
             <Select
-              fixedWidth className="scr-sentence-select" value={matchType} options={TYPE_SELECT_OPTS}
+              fixedWidth widthLabels={sentenceWidths}
+              className="scr-sentence-select" value={matchType} options={TYPE_SELECT_OPTS}
               onChange={(v) => setMatchType(v as MatchType)} minDropWidth={120}
             />
             <Select
-              fixedWidth className="scr-sentence-select" value={race} options={RACE_SELECT_OPTS}
+              fixedWidth widthLabels={sentenceWidths}
+              className="scr-sentence-select" value={race} options={RACE_SELECT_OPTS}
               onChange={(v) => setRace(v as BaseRace | "all")} minDropWidth={130}
             />
             {/* 초기화(요청) — 문장 끝에 붙여 기간·종족을 한 번에 되돌린다(분류는 유지).
