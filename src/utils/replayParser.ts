@@ -298,6 +298,34 @@ function pushFrame(bag: Record<string, number[]>, key: string, frame: number): v
 }
 
 // 커맨드 스트림 한 번 훑기로 사람별 요약 재료를 모은다.
+// 같은 연구를 이 프레임 안에 또 눌렀으면 '연타'로 보고 한 번만 센다.
+//
+// 실제 리플레이에서 확인한 값이다(4:4 빠른무한): 진짜 다음 단계는 4000~10000프레임
+// (170~420초) 뒤에 오고, 연타는 2~12프레임(1초 이내)에 몰려 있다. 한 사람은 시즈모드를
+// 5825~5863프레임 사이에 아홉 번 눌렀다 — 한 번만 연구되는 기술인데 아홉 번으로 기록된다.
+// screp의 무효 표시(IneffKind)만으로는 안 된다: 저 아홉 번은 전부 '유효'로 왔고, 반대로
+// 진짜 단계와 연타가 섞인 자리에서는 앞엣것에 무효 표시가 붙기도 했다.
+// 브루드워에서 가장 빠른 업그레이드도 100초(약 2400프레임)는 걸리므로, 2초(48프레임)로
+// 끊으면 진짜 단계를 잘라먹을 위험은 없다.
+const RESEARCH_DEDUPE_FRAMES = 48;
+
+/** 연구(테크/업그레이드) 하나를 기록한다 — 직전 같은 연구와 너무 붙어 있으면 버린다.
+ *  실제로 담았으면 true(그때만 '첫 시점'을 갱신한다). */
+function pushResearch(
+  into: string[], last: Map<string, number>, key: string, name: string, frame: number | null,
+): boolean {
+  if (frame !== null) {
+    const prev = last.get(key);
+    if (prev !== undefined && frame - prev < RESEARCH_DEDUPE_FRAMES) {
+      last.set(key, frame); // 연타가 이어지는 동안 기준점을 민다
+      return false;
+    }
+    last.set(key, frame);
+  }
+  into.push(name);
+  return true;
+}
+
 function collectSignals(cmds: ScrepCmd[], totalFrames: number | null): Map<number, ReplayPlayerSignals> {
   const out = new Map<number, ReplayPlayerSignals>();
   const at = (id: number) => {
@@ -305,6 +333,8 @@ function collectSignals(cmds: ScrepCmd[], totalFrames: number | null): Map<numbe
     if (!s) { s = emptySignals(); out.set(id, s); }
     return s;
   };
+  // 플레이어+연구 이름 → 마지막으로 기록한 프레임(연타 판정용).
+  const lastResearchFrame = new Map<string, number>();
   for (const c of cmds) {
     const s = at(c.PlayerID);
     const frame = typeof c.Frame === "number" ? c.Frame : null;
@@ -368,15 +398,14 @@ function collectSignals(cmds: ScrepCmd[], totalFrames: number | null): Map<numbe
       if (s.chats.length < CHAT_CAP) s.chats.push({ frame, text: c.Message.trim() });
     }
     const tech = nameOf(c.Tech);
-    if (tech) {
-      s.techNames.push(tech);
+    if (tech && pushResearch(s.techNames, lastResearchFrame, `${c.PlayerID}:T:${tech}`, tech, frame)) {
       if (frame !== null && s.firstTechFrame[tech] === undefined) s.firstTechFrame[tech] = frame;
     }
     const upgradeRaw = nameOf(c.Upgrade);
     if (upgradeRaw) {
       const upgrade = normalizeUpgradeName(upgradeRaw);
-      s.upgradeNames.push(upgrade);
-      if (frame !== null && s.firstUpgradeFrame[upgrade] === undefined) {
+      if (pushResearch(s.upgradeNames, lastResearchFrame, `${c.PlayerID}:U:${upgrade}`, upgrade, frame)
+        && frame !== null && s.firstUpgradeFrame[upgrade] === undefined) {
         s.firstUpgradeFrame[upgrade] = frame;
       }
     }

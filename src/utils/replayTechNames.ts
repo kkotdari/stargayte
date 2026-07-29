@@ -80,8 +80,10 @@ export const UPGRADE_LINE_KO: Record<string, string> = {
   "Terran Infantry Weapons": "보병",
   "Terran Vehicle Weapons": "메카닉",
   "Terran Ship Weapons": "공중",
-  "Zerg Melee Attacks": "지상",
-  "Zerg Missile Attacks": "지상",
+  // 저그는 지상 공격이 근접(저글링·울트라)과 원거리(히드라)로 갈린다 — 둘 다 "지상"이라
+  // 부르면 한 사람에게 같은 이름이 두 줄 나온다. 실제로 부르는 대로 나눠 적는다.
+  "Zerg Melee Attacks": "저글링",
+  "Zerg Missile Attacks": "히드라",
   "Zerg Flyer Attacks": "공중",
   "Protoss Ground Weapons": "지상",
   "Protoss Air Weapons": "공중",
@@ -150,12 +152,18 @@ export function hasUpgrade(s: TechSignalsLike, name: UpgradeName): boolean {
 }
 
 /** 이 업그레이드를 몇 단계까지 올렸나 — 공/방은 한 단계마다 커맨드가 한 번씩 오므로
- *  나온 횟수가 곧 단계다. 한 번뿐인 업그레이드(속업 등)는 0 또는 1. */
+ *  나온 횟수가 곧 단계다. 한 번뿐인 업그레이드(속업 등)는 0 또는 1.
+ *
+ *  파서가 연타를 이미 걸러 주지만(RESEARCH_DEDUPE_FRAMES), 연구를 취소했다 한참 뒤에
+ *  다시 시작한 경우까지는 못 가른다 — 브루드워에 4단계는 없으니 3에서 자른다. */
 export function upgradeLevel(s: TechSignalsLike, name: UpgradeName): number {
   let n = 0;
   for (const u of s.upgradeNames) if (u === name) n += 1;
-  return n;
+  return Math.min(n, MAX_UPGRADE_LEVEL);
 }
+
+/** 브루드워 공/방 업그레이드의 최고 단계. */
+export const MAX_UPGRADE_LEVEL = 3;
 
 /** 이 기술을 처음 연구한 프레임(안 했으면 null). */
 export function techFrame(s: TechSignalsLike, name: TechName): number | null {
