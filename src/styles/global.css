@@ -3846,8 +3846,10 @@ html.scr-light-theme .scr-admin-sheet::before { background: rgba(244, 246, 250, 
    창에 높이를 정해 두고(모달 max-height 88dvh가 상한, PC는 720px에서 멈춤) 위쪽 진행
    상황은 붙박이로, 아래 목록만 스크롤한다(요청). */
 .scr-admin-panel-batch-modal { height: min(88dvh, 720px); }
-/* 본문은 스크롤하지 않는다 — 스크롤은 목록이 혼자 맡아야 진행률이 위에 남는다. */
-.scr-admin-panel-batch-modal .scr-modal-body { overflow: hidden; }
+/* 본문은 스크롤하지 않는다 — 스크롤은 목록이 혼자 맡아야 진행률이 위에 남는다.
+   스크롤을 안 하는데 스크롤바 자리(scrollbar-gutter:stable)만 예약돼 오른쪽이 그만큼
+   비어 있었다(지적) — 목록이 쓰게 돌려준다. */
+.scr-admin-panel-batch-modal .scr-modal-body { overflow: hidden; scrollbar-gutter: auto; }
 .scr-admin-panel-batch-modal .scr-admin-panel-batch-log {
   flex: 1 1 auto; max-height: none; min-height: 120px;
 }
@@ -3857,7 +3859,7 @@ html.scr-light-theme .scr-admin-sheet::before { background: rgba(244, 246, 250, 
 }
 .scr-admin-panel-batch-log {
   margin-top: 10px; max-height: min(42vh, 280px); overflow-y: auto;
-  padding: 0; font-size: var(--fs-11); line-height: 1.6; text-align: left;
+  padding: 0 4px 0 0; font-size: var(--fs-11); line-height: 1.6; text-align: left;
 }
 /* 배치등록 확인창("리플레이 N개를 등록할까요?") — 제목/본문 텍스트 2스텝 축소(요청):
    제목 subhead→caption, 본문 body→micro.
@@ -7351,6 +7353,11 @@ html.scr-light-theme .scr-feed-add-fab {
     box-shadow: none;
   }
   .scr-modal:not(.scr-modal-confirm)::before { border-radius: 0; }
+
+  /* 배치 결과 창만 좌우 여백을 줄인다 — 파일명이 아주 길어서 한 글자라도 더 담는 편이
+     낫다(지적: 오른쪽은 넓게 비었는데 목록은 비좁게 쓴다). 위 전면 규칙과 같은 특이도라
+     소스 순서로 이긴다. */
+  .scr-modal.scr-modal.scr-admin-panel-batch-modal { padding-left: 10px; padding-right: 10px; }
 
   /* 사진뷰어도 같은 방식(요청) — 액자를 화면 전체로 펴고, 사진은 그 안에서 비율을
      유지한 채 가운데 맞춤. 유리 톤은 상성 오버레이와 같은 값으로 통일한다. */
