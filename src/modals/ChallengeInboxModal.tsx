@@ -7,7 +7,7 @@ import KakaoShareButton from "../components/common/KakaoShareButton";
 import { api } from "../api/client";
 import { useAppStore } from "../store/appStore";
 import { useLockBodyScroll } from "../utils/bodyScrollLock";
-import { formatChallengeSchedule, challengeDateGroupLabel } from "../utils/date";
+import { formatWhen } from "../utils/date";
 import { playMailChime } from "../utils/sfx";
 import type { KakaoShareContent } from "../utils/kakaoShare";
 import type { Challenge } from "../types";
@@ -157,7 +157,7 @@ export default function ChallengeInboxModal({ challenges, onClose, closeLabel = 
   // 응답 확인창 — 최종 확정된 일시(요청자가 안 정했으면 내가 방금 고른 값)로 공유 내용을 만든다.
   const acceptedEffDate = current.scheduledDate ?? (dateStr || null);
   const acceptedEffNote = current.scheduledTimeNote.trim() || (acceptedEffDate ? noteStr.trim() : "");
-  const acceptedWhen = formatChallengeSchedule({ scheduledDate: acceptedEffDate })
+  const acceptedWhen = formatWhen(acceptedEffDate)
     + (acceptedEffNote ? ` ${acceptedEffNote}` : "");
   const respondedTitle = respondedAs === "rejected" ? "대결 거절" : "대결 수락!";
   const respondedDesc = respondedAs === "rejected"
@@ -242,7 +242,7 @@ export default function ChallengeInboxModal({ challenges, onClose, closeLabel = 
               />
             ) : (
               <>
-                <div className="scr-challenge-inbox-date">{challengeDateGroupLabel(current)}</div>
+                <div className="scr-challenge-inbox-date">{formatWhen(current.scheduledDate, { empty: "일정 미정" })}</div>
                 {current.scheduledTimeNote.trim() && (
                   <div className="scr-challenge-inbox-time">{current.scheduledTimeNote}</div>
                 )}

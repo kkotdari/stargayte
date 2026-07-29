@@ -13,7 +13,7 @@ import { useAppStore } from "../../store/appStore";
 import { api } from "../../api/client";
 import { cx } from "../../utils/format";
 import {
-  formatChallengeSchedule, formatRelativeSchedule, pad,
+  formatWhen, formatRelativeSchedule, pad,
   DATE_INPUT_MIN, DATE_INPUT_MAX, gameNow,
 } from "../../utils/date";
 import type { Challenge, ChallengeResult, ChallengeSide, ChallengeStatus, ChallengeTarget } from "../../types";
@@ -315,7 +315,7 @@ export function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, o
     sharePrompt?.kind === "rejected" ? "대결 거절"
     : sharePrompt?.kind === "revenge" ? "설욕전 신청!"
     : "대결 수락!";
-  const sharePromptWhen = formatChallengeSchedule(sharePrompt?.updated ?? { scheduledDate: null });
+  const sharePromptWhen = formatWhen(sharePrompt?.updated?.scheduledDate);
   const sharePromptDesc =
     sharePrompt?.kind === "rejected" ? "호출을 거절했어요."
     : sharePrompt?.kind === "revenge" ? "설욕전을 신청했어요."

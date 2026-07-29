@@ -131,7 +131,7 @@ export function periodPresetRange(
 export const DOW = ["일", "월", "화", "수", "목", "금", "토"] as const;
 
 // "YYYY-MM-DD"를 사람 말로 — "7월 28일 (화)", 올해가 아니면 "25년 3월 4일 (화)"
-// (요청: 요일 병기, 전년도부터 두 자리 연도). 아래 formatEventTime이 날짜만 남는 갈래에서
+// (요청: 요일 병기, 전년도부터 두 자리 연도). 아래 formatWhen이 날짜만 남는 갈래에서
 // 이걸 부르므로, 날짜를 보여주는 곳은 결국 전부 이 한 꼴로 모인다.
 // new Date(dateStr)로 바로 파싱하면 UTC 자정으로 해석돼 시간대에 따라 요일이 하루 밀릴 수
 // 있어, 연/월/일을 직접 나눠 로컬 자정으로 만든다.
@@ -144,18 +144,44 @@ export function shortDateWithDow(dateStr: string, now: Date = gameNow()): string
 
 const DOW_FULL = ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"] as const;
 
-// 이 앱의 유일한 "언제" 표기 규칙(요청: 모두 통일) — 피드·너 나와·포인트 이력·리그
-// 대진표가 전부 이 함수를 거친다.
-//   · withClock이고 지난 24시간 안이면 상대 표기: "방금 전" / "N분 전" / "N시간 전"
-//   · 오늘이면 "오늘", 다가오는 이번주/다음주면 "이번주 토요일" / "다음주 화요일"
-//     (주 시작 = 월요일)
-//   · 지난 일주일 안이면 일자 대신 요일만 "목요일"
-//   · 그 밖은 "7월 28일 (화)", 올해가 아니면 "25년 3월 4일 (화)"(shortDateWithDow)
-// withClock이면 끝에 " 21:30"이 붙는다. 날짜만 있는 값(자정 기준)은 상대 표기가 어긋나므로
-// 그 갈래를 건너뛴다. 요일을 이미 말로 부르는 갈래에는 괄호 요일을 덧붙이지 않는다 —
-// 같은 말을 두 번 하는 셈이라서다.
-export function formatEventTime(ms: number, withClock: boolean, now: Date = gameNow()): string {
-  const d = new Date(ms);
+/** 이 앱에서 "언제"를 글로 적는 유일한 함수(요청: 하나의 유틸로 통합). 피드 타임스탬프,
+ *  너 나와 일정과 날짜 그룹 머리글, 포인트 상세 경기 이력, 리그 대진표가 전부 여기를 거친다.
+ *
+ *  규칙(요청: 모두 통일)
+ *   · clock이고 지난 24시간 안이면 상대 표기 — "방금 전" / "N분 전" / "N시간 전"
+ *   · 오늘이면 "오늘", 다가오는 이번주/다음주면 "이번주 토요일" / "다음주 화요일"(주 시작=월)
+ *   · 지난 일주일 안이면 일자 대신 요일만 — "목요일"
+ *   · 그 밖은 "7월 28일 (화)", 올해가 아니면 "25년 3월 4일 (화)"
+ *  요일을 이미 말로 부르는 갈래에는 괄호 요일을 덧붙이지 않는다 — 같은 말을 두 번 하는 셈이라서다.
+ *
+ *  when
+ *   · "YYYY-MM-DD" — 날짜만. 로컬 자정으로 읽는다(new Date(문자열)은 UTC 자정이라 시간대에
+ *     따라 하루 밀린다). 붙일 시각이 없으므로 clock은 무시된다.
+ *   · ISO 일시 문자열 / ms / Date — 그 시각 그대로.
+ *   · null·빈 값 — empty를 그대로 돌려준다(기본 "미정").
+ *  clock이면 끝에 " 21:30"이 붙는다. 날짜만 있는 값(자정 기준)은 상대 표기가 어긋나므로
+ *  그 갈래를 건너뛴다. */
+export function formatWhen(
+  when: number | Date | string | null | undefined,
+  { clock = false, empty = "미정", now = gameNow() }: { clock?: boolean; empty?: string; now?: Date } = {},
+): string {
+  if (when === null || when === undefined || when === "") return empty;
+  let d: Date;
+  let withClock = clock;
+  if (typeof when === "string") {
+    const ymd = /^(\d{4})-(\d{2})-(\d{2})$/.exec(when);
+    if (ymd) {
+      d = new Date(Number(ymd[1]), Number(ymd[2]) - 1, Number(ymd[3]));
+      withClock = false;
+    } else {
+      d = new Date(when);
+    }
+  } else {
+    d = new Date(when);
+  }
+  const ms = d.getTime();
+  if (!Number.isFinite(ms)) return empty;
+
   if (withClock) {
     const diffMs = now.getTime() - ms;
     if (diffMs >= 0 && diffMs < 24 * 60 * 60 * 1000) {
@@ -178,12 +204,6 @@ export function formatEventTime(ms: number, withClock: boolean, now: Date = game
     return `${DOW_FULL[d.getDay()]}${time}`;
   }
   return `${shortDateWithDow(fmt(d), now)}${time}`;
-}
-
-// "YYYY-MM-DD"(시각 없음)에 같은 규칙을 적용한다 — 문자열을 로컬 자정으로 읽어 넘긴다.
-export function formatEventDate(dateStr: string, now: Date = gameNow()): string {
-  const [y, m, d] = dateStr.split("-").map(Number);
-  return formatEventTime(new Date(y, m - 1, d).getTime(), false, now);
 }
 
 // "너 나와!" 도전장의 예정 일정 — 이제 날짜 하나뿐이다(요청: 시간 필드 삭제). 시각 대신
@@ -212,27 +232,10 @@ export function formatKoreanTime(d: Date): string {
   return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-// 도전장 일정 — 날짜만 정한다(시간 필드 없음). 표기는 앱 공통 규칙(formatEventDate).
-export function formatChallengeSchedule(s: ScheduleLike): string {
-  if (!s.scheduledDate) return "미정";
-  return formatEventDate(s.scheduledDate);
-}
-
-// 단일 일시(datetime ISO) 하나를 "YYYY-MM-DD (요일) HH:MM"으로 — 리그 대진표처럼 날짜+시간이
-// 항상 함께인 일정 표기에 쓴다(도전장처럼 날짜/시간이 따로 놀지 않는다). null이면 "미정".
-export function formatDateTime(iso: string | null): string {
-  if (!iso) return "미정";
-  return formatEventTime(new Date(iso).getTime(), true);
-}
-
 // 도전장 화면을 경기결과 화면처럼 날짜별로 묶어 보여주면서(요청: "경기 화면처럼 날짜별로
 // 그룹핑"), 카드 하나하나엔 그 날짜 그룹 라벨과 중복되는 날짜를 다시 안 적고 시간만
 // 보여준다(요청: "각 카드엔 시간만 표시") — 그래서 날짜/시간 표시를 둘로 쪼갠다. 일정이
 // 아예 없는 도전장은 별도 그룹으로 모은다.
-export function challengeDateGroupLabel(s: ScheduleLike): string {
-  if (!s.scheduledDate) return "일정 미정";
-  return formatEventDate(s.scheduledDate);
-}
 // 시각 표기는 없앴다(요청) — 날짜 그룹 라벨 아래에 따로 적을 시간이 없다. "언제"는
 // 카드 안에서 scheduledTimeNote로 보여준다.
 

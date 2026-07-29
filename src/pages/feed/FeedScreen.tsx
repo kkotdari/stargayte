@@ -18,7 +18,7 @@ import FeedComments from "./FeedComments";
 import ScrollNavTimeline from "../../components/common/ScrollNavTimeline";
 import ReplayReviewModal from "../../modals/ReplayReviewModal";
 import ChallengeFormModal from "../../modals/ChallengeFormModal";
-import { scheduledInstantMs, formatEventTime } from "../../utils/date";
+import { scheduledInstantMs, formatWhen } from "../../utils/date";
 import { useAppStore } from "../../store/appStore";
 import { isAdminRole } from "../../constants/roles";
 import { activeMemberSearchTerms, memberMatchesTerm, normalizeSearchText, splitSearchTerms } from "../../utils/memberSearch";
@@ -330,7 +330,7 @@ export const MatchCard = memo(function MatchCard({ item, memberOf, onDeleted, da
     <div className={nested ? "scr-feed-stack-item" : "scr-feed-card scr-post"}>
       <div className="scr-feed-card-head" data-date-label={dateLabel}>
         <div className="scr-feed-card-head-meta">
-          <span className="scr-feed-card-time">{formatEventTime(item.time, item.withClock)}</span>
+          <span className="scr-feed-card-time">{formatWhen(item.time, { clock: item.withClock })}</span>
           {/* 등록자 — 예전엔 카드 안쪽 윗줄에 게임번호와 나란히 있었는데, 시각 바로 옆으로
               옮겼다(요청). "누가 언제"가 한 자리에서 읽히고, 카드 안쪽 윗줄은 케밥만 남는다. */}
           {item.match.createdBy && (
@@ -1244,7 +1244,7 @@ export default function FeedScreen() {
               <RankShiftCard
                 key={`rs-${item.shift.id}`}
                 shift={item.shift}
-                timeText={formatEventTime(item.time, item.withClock)}
+                timeText={formatWhen(item.time, { clock: item.withClock })}
                 dateLabel={dateLabelOf(item)}
                 actions={<RankShiftMenu shift={item.shift} />}
                 highlightMemberIds={matchedIds}
@@ -1268,7 +1268,7 @@ export default function FeedScreen() {
                 <div className="scr-feed-card-head" data-date-label={dateLabelOf(item)}>
                   {/* 시각·마감·일시수정은 전부 '언제'에 대한 것이라 제목 윗줄에 함께 둔다(요청). */}
                   <div className="scr-feed-card-head-meta">
-                    <span className="scr-feed-card-time">{formatEventTime(item.time, item.withClock)}</span>
+                    <span className="scr-feed-card-time">{formatWhen(item.time, { clock: item.withClock })}</span>
                     {/* 응답 마감 실시간 카운트다운 — 날짜 옆, 헤더와 같은 폰트 크기(요청). */}
                     <ChallengeCountdown challenge={item.challenge} />
                     {/* 일시(시간) 수정 — 시각은 헤더가 이미 보여주므로 연필만 얹는다(중복 표기
