@@ -18,7 +18,7 @@ import FeedComments from "./FeedComments";
 import ScrollNavTimeline from "../../components/common/ScrollNavTimeline";
 import ReplayReviewModal from "../../modals/ReplayReviewModal";
 import ChallengeFormModal from "../../modals/ChallengeFormModal";
-import { scheduledInstantMs, shortDateWithDow, fmt } from "../../utils/date";
+import { scheduledInstantMs, formatEventTime } from "../../utils/date";
 import { useAppStore } from "../../store/appStore";
 import { isAdminRole } from "../../constants/roles";
 import { activeMemberSearchTerms, memberMatchesTerm, normalizeSearchText, splitSearchTerms } from "../../utils/memberSearch";
@@ -71,49 +71,6 @@ const FLASH_MS = 2000;
 
 // 피드 — 커뮤니티 활동(경기 결과, 너 나와! 일정)을 한 타임라인으로 보여주는 홈 화면.
 // 타임라인 기준: 너 나와!는 경기 예정 일시, 경기는 리플레이의 게임 시작 시각.
-
-const DOW_FULL = ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"];
-
-// 피드 시각 표기 — 다가오는 일정은 "오늘"/"이번주 토요일"/"다음주 화요일"(주 시작 = 월요일),
-// 지난 일주일 안은 일자 대신 요일만("화요일 21:30"), 그 밖은 "M월 D일 (화)"(올해가 아니면
-// "25년 3월 4일 (화)"처럼 두 자리 연도 포함).
-// 날짜만 남는 자리에는 경기 목록의 날짜 머리글과 같은 방식으로 요일을 괄호로 병기한다
-// (요청: 게임 목록의 날짜 표시 규칙을 따르기) — 요일 표는 dateWithDow가 쓰는 것과 같은
-// 것을 가져다 쓴다. 이미 요일을 말로 부르는 갈래("오늘", "이번주 토요일", "화요일")는
-// 같은 말을 두 번 하는 셈이라 그대로 둔다.
-function formatEventTime(ms: number, withClock: boolean): string {
-  const d = new Date(ms);
-  const now = new Date();
-  // 실제 시각이 있는(withClock) 최근 과거 이벤트는 상대 표기(요청): 1시간 이내면 "N분 전",
-  // 24시간 이내면 "N시간 전"(분 생략). 날짜만 있는 경기(withClock=false)는 자정 기준이라
-  // 상대표기가 어긋나므로 제외하고, 미래 일정(음수 diff)도 기존 절대 표기를 쓴다.
-  if (withClock) {
-    const diffMs = now.getTime() - ms;
-    if (diffMs >= 0 && diffMs < 24 * 60 * 60 * 1000) {
-      const mins = Math.floor(diffMs / 60000);
-      if (mins < 1) return "방금 전";
-      if (mins < 60) return `${mins}분 전`;
-      return `${Math.floor(diffMs / (60 * 60 * 1000))}시간 전`;
-    }
-  }
-  const time = withClock
-    ? ` ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`
-    : "";
-  const dayStart = (x: Date) => { const c = new Date(x); c.setHours(0, 0, 0, 0); return c.getTime(); };
-  const diffDays = Math.round((dayStart(d) - dayStart(now)) / 86_400_000);
-  if (diffDays === 0) return `오늘${time}`;
-  if (diffDays > 0) {
-    const weekStart = (x: Date) => dayStart(x) - ((x.getDay() + 6) % 7) * 86_400_000;
-    const weekDiff = Math.round((weekStart(d) - weekStart(now)) / (7 * 86_400_000));
-    if (weekDiff === 0) return `이번주 ${DOW_FULL[d.getDay()]}${time}`;
-    if (weekDiff === 1) return `다음주 ${DOW_FULL[d.getDay()]}${time}`;
-  } else if (diffDays > -7) {
-    return `${DOW_FULL[d.getDay()]}${time}`;
-  }
-  // 날짜 부분은 다른 화면(포인트 상세 이력 등)과 같은 함수를 쓴다 — 연도 생략 규칙도
-  // 요일 병기도 거기 한 곳에 있다(요청: 날짜 표기 통일).
-  return `${shortDateWithDow(fmt(d), now)}${time}`;
-}
 
 interface ChallengeItem {
   kind: "challenge";
