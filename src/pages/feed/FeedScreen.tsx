@@ -42,6 +42,23 @@ const MAX_REPLAY_FILES = 20;
 // 방금 접은 카드가 헤더 바로 밑에 걸려 앞뒤 맥락이 안 보인다. 카드가 화면보다 크면
 // 가운데로 못 놓으므로, 그때는 맨 위에서 이만큼만 띄운다(예전 동작).
 const STACK_COLLAPSE_MARGIN = 12;
+// 펼칠 때 목록 맨 위와 화면 맨 위 사이에 남길 여백(요청: "정확히 위에 맞추지 말고 위쪽
+// 안전 여백을 줘야 해") — 딱 맞추면 첫 경기가 화면 모서리에 붙어 잘린 것처럼 보인다.
+// 여기에 노치/상태바 높이(--safe-top)를 더해 쓴다: 홈 화면에 추가한 웹앱은 상태바
+// 영역까지 그리므로, 스크롤 위치 0이 곧 노치 밑이 아니다.
+const STACK_EXPAND_MARGIN = 24;
+
+// --safe-top(노치/상태바 높이)의 실제 픽셀값. 이 값은 max()/env()로 적혀 있어
+// getComputedStyle로 읽으면 계산 전 문자열이 그대로 나온다 — 실제로 그 값을 높이로 쓰는
+// 요소를 잠깐 만들어 재는 것이 확실하다. 스크롤 한 번에 한 번만 부른다.
+function safeTopPx(): number {
+  const probe = document.createElement("div");
+  probe.style.cssText = "position:absolute;top:0;left:0;width:0;visibility:hidden;pointer-events:none;height:var(--safe-top)";
+  document.body.appendChild(probe);
+  const h = probe.getBoundingClientRect().height;
+  probe.remove();
+  return Number.isFinite(h) ? h : 0;
+}
 // 요약 ↔ 목록 교대 연출(요청: 페이드 아웃 → 높이 이동 → 한 번에 페이드 인).
 // 페이드는 짧게, 높이는 그보다 길게 — 높이가 눈으로 따라가는 유일한 움직임이라 여기에
 // 시간을 준다. 셋을 더해도 반 초 안쪽이라 두 번 누르는 흐름이 답답하지 않다.
@@ -573,16 +590,17 @@ export function MatchStack({
       const vh = Math.max(clientHeight, window.innerHeight || 0);
       // 카드가 화면보다 크면 가운데 값이 음수가 되어 오히려 카드 위쪽이 잘린다 — 그때는
       // 예전처럼 맨 위에서 조금만 띄운다.
-      const pad = Math.max(STACK_COLLAPSE_MARGIN, (vh - r.height) / 2);
+      const pad = Math.max(safeTopPx() + STACK_COLLAPSE_MARGIN, (vh - r.height) / 2);
       const top = getScrollTop() + r.top - pad;
       // 문서 끝쪽 카드는 아무리 밀어도 가운데까지 못 온다 — 갈 수 있는 데까지만 간다.
       scrollRootTo({ top: Math.min(Math.max(0, top), Math.max(0, scrollHeight - vh)), behavior: "smooth" });
     };
   };
 
-  // 펼칠 때는 가운데가 아니라 목록 맨 위를 화면 맨 위에 붙인다(요청) — 펼친 직후 읽기
+  // 펼칠 때는 가운데가 아니라 목록 맨 위를 화면 위쪽에 둔다(요청) — 펼친 직후 읽기
   // 시작하는 자리가 첫 경기이기 때문이다. 접기(가운데)와 다른 건 목적이 달라서다:
   // 접기는 '어느 카드가 접혔나'를 보여주는 것이고, 펼치기는 '이제 여기부터 읽어라'다.
+  // 다만 화면 맨 위에 딱 붙이지는 않는다(요청) — 노치/상태바 높이에 여백을 더해 띄운다.
   const expandAndReveal = () => {
     toggleOpen(true);
     afterToggleRef.current = () => {
@@ -590,7 +608,7 @@ export function MatchStack({
       if (!list) return;
       const { clientHeight, scrollHeight } = getScrollMetrics();
       const vh = Math.max(clientHeight, window.innerHeight || 0);
-      const top = getScrollTop() + list.getBoundingClientRect().top - STACK_COLLAPSE_MARGIN;
+      const top = getScrollTop() + list.getBoundingClientRect().top - (safeTopPx() + STACK_EXPAND_MARGIN);
       scrollRootTo({ top: Math.min(Math.max(0, top), Math.max(0, scrollHeight - vh)), behavior: "smooth" });
     };
   };
