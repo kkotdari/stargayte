@@ -853,10 +853,10 @@ export default function FeedScreen() {
       {/* 유형 드롭다운(요청: 분류 제거) + 유저 검색을 한 줄에(요청: 모바일도 한 줄) —
           검색바의 filterPanel로 넘겨 같은 인라인 스택에 나란히 둔다. */}
       <SearchFilterBar
-        // 필터 바로 아래에 건수를 둔다(요청). 세는 대상은 목록에 실제로 보이는 포스트 수다
-        // — 같은 날 게임결과는 한 장으로 묶이고(displayFeed), 그 안의 판 수는 카드 제목이
-        // 따로 말한다("게임결과 3건"). 여기서 판 수를 세면 화면의 카드 수와 어긋난다.
-        count={displayFeed.length}
+        // 필터 바로 아래에 건수를 둔다(요청). 세는 건 걸러진 활동 하나하나(filteredFeed)이지
+        // 화면에 보이는 카드 수(displayFeed)가 아니다 — 같은 날 게임결과를 한 장으로 묶는 건
+        // 보여주는 방식일 뿐이라(지적) 그 묶음 안의 판도 각각 한 건이다.
+        count={filteredFeed.length}
         countLabel="건"
         searchValue={search}
         onSearchChange={setSearch}
