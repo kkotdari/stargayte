@@ -2321,13 +2321,6 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
 @media (hover: hover) { .scr-filter-panel .scr-filter-select .scr-cselect-trigger:hover { border-color: transparent; background: rgba(255,255,255,0.12); } }
 @media (hover: hover) { .scr-light-theme .scr-filter-panel .scr-filter-select .scr-cselect-trigger:hover { background: rgba(0,0,0,0.1); } }
 .scr-filter-panel .scr-pill-tab-btn { font-size: var(--fs-body); }
-.scr-filter-panel .scr-filter-month-input {
-  background: rgba(255,255,255,0.08); color: var(--text); color-scheme: dark;
-  height: 28px; font-size: var(--fs-body); min-width: 108px; border-radius: 10px; padding: 0 8px;
-}
-.scr-light-theme .scr-filter-panel .scr-filter-month-input {
-  background: rgba(0,0,0,0.06); color: var(--text); color-scheme: light;
-}
 /* 패널이 없어져 체크박스도 화면 배경 위에 바로 놓이므로, 예전의 밝은 글라스용 어두운
    고정 톤을 걷어내고 기본(테마) 스타일을 그대로 따르게 둔다. */
 
@@ -2438,16 +2431,6 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
   .scr-filter-panel .scr-pill-tab-btn:hover:not(.scr-pill-tab-btn-active) { color: var(--text); }
 }
 
-/* 기간필터(월) — OS 기본 달력을 그대로 쓴다(요청: "os기본 기능으로 연결"). 필터창과
-   같은 밝은 반투명 바탕 위에 얹히므로 텍스트/아이콘을 어두운 톤으로 맞춘다. */
-.scr-filter-month-input {
-  background: rgba(0,0,0,0.08); border: none; border-radius: 12px;
-  /* 데이터 폰트 대신 다른 라벨과 같은 폰트로(요청: "필터 날짜 폰트 라벨 폰트로 적용"). */
-  color: #10151a; font-size: var(--fs-body);
-  /* 옆 알약(.scr-pill-tabs)과 똑같은 고정 height — 위 주석 참고. */
-  padding: 0 8px; height: 36px; box-sizing: border-box; min-width: 118px;
-  color-scheme: light;
-}
 .scr-search-filter-float .scr-list-search-wrap { width: 100%; }
 /* 플로팅이라 라벨("유저")은 군더더기 — 뺀다. */
 .scr-search-filter-float .scr-list-search-wrap > .scr-field-label-text { display: none; }
@@ -2496,15 +2479,7 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
   .scr-feed-screen .scr-filter-inline-stack { flex-direction: row; align-items: center; gap: 8px; }
   .scr-feed-screen .scr-filter-panel { width: auto; justify-content: flex-start; }
   .scr-feed-screen .scr-search-filter-float { width: auto; flex: 1 1 auto; min-width: 0; }
-  /* 통계 — 필터 3개(분류/종족/기간)를 모바일에서도 한 줄에(요청). wrap을 끄고, 좁은
-     폭에 들어가도록 항목 축소를 허용(base의 flex-shrink:0 해제)하고 컨트롤을 한 단계
-     컴팩트하게(폰트 micro, 달력 최소폭 축소) 줄인다. 라벨은 컨트롤 위 절대배치라
-     한 줄 높이에 영향 없다. */
-  .scr-stats-screen-v2 .scr-filter-panel { flex-wrap: nowrap; gap: 26px 6px; }
-  .scr-stats-screen-v2 .scr-filter-panel > .scr-filter-item { flex-shrink: 1; min-width: 0; }
-  .scr-stats-screen-v2 .scr-filter-panel .scr-pill-tab-btn { font-size: var(--fs-micro); padding-left: 8px; padding-right: 8px; }
-  .scr-stats-screen-v2 .scr-filter-panel .scr-filter-select .scr-cselect-trigger { font-size: var(--fs-micro); padding: 0 6px; }
-  .scr-stats-screen-v2 .scr-filter-panel .scr-filter-month-input { font-size: var(--fs-micro); min-width: 0; width: 92px; padding: 0 6px; flex: 0 1 auto; }
+  /* (통계는 필터창 자체가 없어졌다 — 조건은 목록 위 제목 문장이 맡는다. .scr-grid-title 참고.) */
   .scr-filter-item-label { font-size: var(--fs-caption); }
   /* 모바일에서도 필터 요소(알약/달력/종족)를 base(PC)와 같은 크기 — 검색창 높이(34px)에 맞춘다
      (요청: "필터 내 요소 높이를 검색창과 일치, 모바일·PC 모두"). 예전엔 24px로 컴팩트하게
@@ -2527,6 +2502,42 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
   align-self: flex-end; font-size: var(--fs-caption);
   margin-top: 6px; margin-left: 0; margin-bottom: 10px; position: relative; top: 1px;
 }
+/* 목록 제목 + 건수 한 줄(SearchFilterBar의 heading prop) — 제목은 왼쪽, 건수는 오른쪽
+   끝. 건수는 제목 없이 혼자일 때 쓰던 세로 정렬(align-self:flex-end, 세로 flex 기준)을
+   여기서는 쓰면 안 된다(가로 flex라 그건 "아래 붙임"이 된다) — 가운데로 되돌리고
+   오른쪽 끝은 auto 마진으로 민다. 제목이 길어 줄바꿈되면 건수는 그대로 오른쪽 위. */
+.scr-filter-head-row { display: flex; align-items: flex-end; gap: 10px; width: 100%; }
+.scr-filter-head-row > .scr-filter-bar-count { align-self: auto; margin-left: auto; flex-shrink: 0; }
+
+/* ===== 그리드 제목 겸 필터(문장형) =====
+   요청: "7월 개인전 전체종족 스탯"처럼 한 문장으로 현재 필터를 보여주고, 그 안의 낱말
+   (기간/유형/종족)이 각각 드롭다운. 별도의 필터창을 없애고 제목 하나가 그 역할을 겸한다. */
+.scr-grid-title {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 1px 2px;
+  min-width: 0; font-size: var(--fs-body); font-weight: 700; color: var(--text);
+  margin: 6px 0 10px;
+}
+.scr-grid-title-tail { padding: 0 2px; }
+/* 문장 안에 섞이는 드롭다운 — 상자를 지우고 글자 그대로 두되, 점선 밑줄로 "누를 수
+   있는 낱말"임을 알린다. 폭은 내용만큼(.scr-cselect의 width:100%를 덮는다). */
+.scr-cselect.scr-sentence-select { width: auto; display: inline-flex; max-width: 100%; }
+.scr-sentence-select .scr-cselect-trigger {
+  width: auto; justify-content: flex-start; gap: 0;
+  min-height: 0; height: auto; padding: 2px 2px 1px; border-radius: 6px;
+  background: none; border: 1px solid transparent; box-shadow: none;
+  font: inherit; color: inherit;
+}
+.scr-sentence-select .scr-cselect-value { border-bottom: 1px dashed rgba(255,255,255,0.4); }
+.scr-light-theme .scr-sentence-select .scr-cselect-value { border-bottom-color: rgba(0,0,0,0.35); }
+.scr-sentence-select .scr-cselect-caret { width: 13px; height: 13px; opacity: 0.6; }
+@media (hover: hover) {
+  .scr-sentence-select .scr-cselect-trigger:hover {
+    border-color: transparent; box-shadow: none; background: rgba(255,255,255,0.12);
+  }
+  .scr-light-theme .scr-sentence-select .scr-cselect-trigger:hover { background: rgba(0,0,0,0.07); }
+}
+.scr-sentence-select .scr-cselect-open { border-color: transparent; background: rgba(255,255,255,0.14); }
+.scr-light-theme .scr-sentence-select .scr-cselect-open { background: rgba(0,0,0,0.08); }
 /* 경기번호·메모 검색 필드(경기 화면 전용) — 유저 검색창 바로 아래에 한 줄로 나란히 두고,
    모바일에서도 한 줄을 유지한다(요청). 라벨 없이 플레이스홀더로만 힌트를 준다(요청). 인풋
    톤은 유저 검색창과 같은 옅은 반투명. */

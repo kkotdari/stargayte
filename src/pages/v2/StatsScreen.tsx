@@ -2,9 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { Spinner } from "../../components/common/Feedback";
 import SearchFilterBar from "../../components/common/SearchFilterBar";
-import PillTabs from "../../components/common/PillTabs";
-import FilterItem from "../../components/common/FilterItem";
-import Select from "../../components/common/Select";
+import Select, { type SelectOption } from "../../components/common/Select";
 import MemberStatRow from "../stats/MemberStatRow";
 import PointDetailModal from "./PointDetailModal";
 import RivalryOverlay from "../rivalry/RivalryOverlay";
@@ -12,23 +10,30 @@ import InfoTip from "../../components/common/InfoTip";
 import { useAppStore } from "../../store/appStore";
 import { api } from "../../api/client";
 import { activeMemberSearchTerms, memberMatchesQuery } from "../../utils/memberSearch";
-import { monthInputToRange, shiftMonthValue, currentMonthValue, MONTH_INPUT_MIN, MONTH_INPUT_MAX } from "../../utils/date";
+import { monthInputToRange, shiftMonthValue, currentMonthValue, monthLabel } from "../../utils/date";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import { usePageBackground } from "../../hooks/usePageBackground";
 import { cx } from "../../utils/format";
 import type { BaseRace, MatchType, Member, MemberStats, MemberStatsEntry } from "../../types";
 
-// 종족 필터 — 검색창 예약어에서 필터창 드롭다운으로 옮겼다(요청).
-const RACE_SELECT_OPTS = [
-  { value: "all", label: "전체", shortLabel: "종족" },
-  { value: "테란", label: "테란" },
-  { value: "프로토스", label: "프로토스" },
+// 필터 셋은 이제 그리드 제목을 이루는 문장의 낱말이다(요청: "7월 개인전 전체종족 스탯"
+// 형태로 각각을 드롭다운으로) — 라벨도 문장 안에서 그대로 읽히는 말로 적는다("전체"가
+// 아니라 "전체종족").
+const RACE_SELECT_OPTS: SelectOption[] = [
+  { value: "all", label: "전체종족" },
   { value: "저그", label: "저그" },
+  { value: "프로토스", label: "프로토스" },
+  { value: "테란", label: "테란" },
 ];
-const PERIOD_UNIT_OPTS: { value: "all" | "month"; label: string }[] = [
-  { value: "all", label: "전체" },
-  { value: "month", label: "월" },
+const TYPE_SELECT_OPTS: SelectOption[] = [
+  { value: "0101", label: "개인전" },
+  { value: "0102", label: "팀전" },
 ];
+// 기간 드롭다운에서 "전체 기간"을 가리키는 값 — 나머지 값은 전부 "YYYY-MM"이다.
+const PERIOD_ALL = "all";
+// 기간 드롭다운이 늘어놓을 월의 상한 — 첫 경기 조회가 이상한 값을 주더라도 목록이
+// 무한정 길어지지 않게 막는 안전장치일 뿐, 정상 상황에서는 걸리지 않는다.
+const MAX_PERIOD_MONTHS = 240;
 // 최소 10회 플레이해야 승률/APM 등 세부 지표를 신뢰할 수 있다고 보고, 못 채운 회원은
 // 게임수만 보여주고 나머지는 가린다(집계 표본이 너무 적어 왜곡되는 걸 막기 위함).
 const MIN_PLAYS_FOR_STATS = 10;
@@ -64,7 +69,7 @@ interface SortableHeadProps {
   tooltip?: string;
 }
 
-// 기간 필터의 정렬 토글(화살표 아이콘 하나)과 같은 언어로 통일 — 이 컬럼이 지금 정렬
+// 정렬 상태는 화살표 아이콘 하나로 말한다 — 이 컬럼이 지금 정렬
 // 기준이면 방향에 맞는 화살표 하나(오름차순=위, 내림차순=아래)만, 아직 정렬 기준이
 // 아니면(눌러본 적 없거나 다른 컬럼이 활성) 위아래 화살표가 같이 있는 중립 아이콘으로
 // "정렬 가능하지만 지금은 안 걸려 있다"는 걸 흐리게 보여준다.
@@ -83,11 +88,10 @@ function SortableHead({ label, sortKey, sort, onToggle, className, tooltip }: So
 }
 
 // 경기결과/랭킹과 같은 공용 상단 모듈(SearchFilterBar)로 전적통계를 보여준다.
-// 필터 패널(유형/공식)과 목록 타이틀은 없애고 기간(일/주/월)+유저 검색+종족만 남긴다 —
-// 정렬(승률순 등)은 그대로 둔다. 종족별 전적을 한 행에 다 보여주는 대신, 검색창에
-// "테란"/"프로토스"/"저그" 중 하나를 예약어로 완성하면 전적/게임수/APM/커맨드 전부가
-// 그 종족 기준으로 바뀐다 — 랭킹의 종족 필터와 같은 방식(SearchFilterBar의
-// raceValue/onRaceChange).
+// 조건은 필터창 대신 목록 바로 위의 제목 한 줄이 통째로 맡는다(요청) — "7월 개인전
+// 전체종족 스탯"처럼 읽히는 문장인데, 그 안의 낱말 셋(기간/유형/종족)이 각각 드롭다운이라
+// 제목을 읽는 것이 곧 지금 걸린 조건을 읽는 것이고, 고치는 자리도 같은 자리다. 검색창
+// (유저)과 정렬(컬럼 헤더)은 그대로 둔다.
 export default function StatsScreenV2() {
   // 사진 배경은 통계 화면 전용이고, 이제 다크에서만 쓴다(요청: "라이트 테마 통계 배경
   // 제거") — 밝은 바탕에서는 사진이 표/글씨와 경쟁만 해서 읽기를 방해했다.
@@ -114,13 +118,40 @@ export default function StatsScreenV2() {
   // 상성 관계 오버레이(타이틀 옆 "상성 보기" 버튼).
   const [rivalryOpen, setRivalryOpen] = useState(false);
   const toggleSort = (key: StatSortKey) => setSort((prev) => nextSort(prev, key));
-  // 기본값은 "이번 달" — 예전 usePeriodNav(..., "month")과 같은 초기 단위.
-  const [periodUnit, setPeriodUnit] = useState<"all" | "month">("month");
-  const [periodMonth, setPeriodMonth] = useState(currentMonthValue);
+  // 기간은 "전체 기간" 아니면 특정 월("YYYY-MM") 하나 — 예전 단위 알약탭 + 월 선택기를
+  // 드롭다운 하나로 합쳤다(요청). 기본값은 이번 달.
+  const [period, setPeriod] = useState<string>(currentMonthValue);
+  const periodMonth = period === PERIOD_ALL ? "" : period;
+
+  // 기간 드롭다운에 늘어놓을 월의 하한 — 첫 경기가 있는 달. 그보다 과거는 어차피 빈
+  // 표라서 목록에 둘 이유가 없다. 한 번만 물어보고, 실패하면 이번 달만 남는다.
+  const [firstMonth, setFirstMonth] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    api.getMatchesPage({ sort: "oldest", limit: 1 })
+      .then((page) => {
+        if (!cancelled) setFirstMonth(page.items[0]?.date.slice(0, 7) ?? null);
+      })
+      .catch(() => { /* 목록이 이번 달 하나로 줄 뿐이라 조용히 넘어간다 */ });
+    return () => { cancelled = true; };
+  }, []);
+
+  const periodOpts = useMemo<SelectOption[]>(() => {
+    const now = currentMonthValue();
+    const opts: SelectOption[] = [{ value: PERIOD_ALL, label: "전체 기간" }];
+    // 최근순(요청) — 이번 달에서 시작해 첫 경기가 있는 달까지 한 달씩 거슬러 내려간다.
+    // "YYYY-MM"은 사전순 비교가 곧 시간순 비교라 문자열 비교로 충분하다.
+    const stop = firstMonth && firstMonth < now ? firstMonth : now;
+    for (let m = now, i = 0; i < MAX_PERIOD_MONTHS; m = shiftMonthValue(m, -1), i += 1) {
+      opts.push({ value: m, label: monthLabel(m) });
+      if (m <= stop) break;
+    }
+    return opts;
+  }, [firstMonth]);
 
   const { from: effectiveFrom, to: effectiveTo } = useMemo(
-    () => (periodUnit === "month" ? monthInputToRange(periodMonth) : { from: "", to: "" }),
-    [periodUnit, periodMonth],
+    () => (periodMonth ? monthInputToRange(periodMonth) : { from: "", to: "" }),
+    [periodMonth],
   );
 
   // SearchFilterBar가 이제 엔터를 눌러야만 onSearchChange를 부르므로(점프 방지), search
@@ -133,10 +164,10 @@ export default function StatsScreenV2() {
   // 전달의 같은 조건 — 순위 변동을 견줄 기준선(아래 prevStatsByMember 주석 참고).
   // '전체 기간'에는 견줄 전달이 없으므로 빈 범위로 두고 조회 자체를 건너뛴다.
   const prevRange = useMemo(
-    () => (periodUnit === "month"
+    () => (periodMonth
       ? monthInputToRange(shiftMonthValue(periodMonth, -1))
       : { from: "", to: "" }),
-    [periodUnit, periodMonth],
+    [periodMonth],
   );
 
   const queryKey = useMemo(
@@ -352,46 +383,24 @@ export default function StatsScreenV2() {
         onSearchChange={setSearch}
         searchPlaceholder="유저 검색"
         suggestions={suggestions}
-        filterPanel={
-          <>
-            {/* 필터 순서는 분류 → 종족 → 기간(요청). */}
-            {/* 분류(개인전/팀전) 라디오 — "전체" 없음. 진입 기본값은 랜덤(요청). */}
-            <FilterItem label="분류">
-              <PillTabs
-                aria-label="분류"
-                value={matchType}
-                onChange={setMatchType}
-                options={[
-                  { value: "0101", label: "개인전" },
-                  { value: "0102", label: "팀전" },
-                ]}
-              />
-            </FilterItem>
-            {/* 종족은 검색창 예약어 대신 필터 드롭다운으로(요청). */}
-            <FilterItem label="종족">
-              <Select
-                value={race}
-                options={RACE_SELECT_OPTS}
-                onChange={(v) => setRace(v as BaseRace | "all")}
-                size="sm"
-                minDropWidth={110}
-                className="scr-filter-select"
-              />
-            </FilterItem>
-            {/* 기간 단위 알약탭과 그에 딸린 달력은 원래 하나의 요소 — 다른 필터가 둘
-                사이에 끼어 그룹이 갈라지지 않도록 같은 FilterItem 안에 붙여 둔다. */}
-            <FilterItem label="기간">
-              <PillTabs options={PERIOD_UNIT_OPTS} value={periodUnit} onChange={setPeriodUnit} aria-label="기간" />
-              {periodUnit === "month" && (
-                <input
-                  type="month" className="scr-filter-month-input"
-                  min={MONTH_INPUT_MIN} max={MONTH_INPUT_MAX}
-                  value={periodMonth} onChange={(e) => setPeriodMonth(e.target.value)}
-                  aria-label="조회할 월"
-                />
-              )}
-            </FilterItem>
-          </>
+        // 필터창(분류/종족/기간 세 덩어리)은 없앴다(요청) — 그 셋을 목록 바로 위의 제목
+        // 문장으로 옮겼다. 제목이 곧 지금 걸린 조건이라 따로 읽을 필터 UI가 없다.
+        heading={
+          <div className="scr-grid-title">
+            <Select
+              className="scr-sentence-select" value={period} options={periodOpts}
+              onChange={setPeriod} minDropWidth={150}
+            />
+            <Select
+              className="scr-sentence-select" value={matchType} options={TYPE_SELECT_OPTS}
+              onChange={(v) => setMatchType(v as MatchType)} minDropWidth={120}
+            />
+            <Select
+              className="scr-sentence-select" value={race} options={RACE_SELECT_OPTS}
+              onChange={(v) => setRace(v as BaseRace | "all")} minDropWidth={130}
+            />
+            <span className="scr-grid-title-tail">스탯</span>
+          </div>
         }
       />
 

@@ -30,6 +30,9 @@ interface SearchFilterBarProps {
   // false면 건수 표시를 이 바에서 안 그린다 — 경기 화면처럼 건수를 다른 자리(목록 바로
   // 위)에 직접 그리고 싶을 때(요청: "목록 건수는 조회 버튼 아래 목록 위에"). 기본 true.
   showCount?: boolean;
+  // 건수와 같은 줄의 왼쪽에 오는 목록 제목(요청: 통계의 문장형 필터 겸 그리드 제목) —
+  // 넘기면 그 줄이 "제목 ......... 건수" 한 행이 되고, 안 넘기면 예전처럼 건수만 오른쪽에.
+  heading?: ReactNode;
 }
 
 // 후보를 넉넉히 보여준다 — 드롭다운은 max-height 안에서 넘치면 스크롤된다(요청: 자동완성 스크롤).
@@ -55,6 +58,7 @@ export default function SearchFilterBar({
   trailing,
   showSearch = true,
   showCount = true,
+  heading,
 }: SearchFilterBarProps) {
   const [suggestOpen, setSuggestOpen] = useState(false);
   // + 버튼으로 열었을 때 — "@" 없이 후보 전체를 띄우고, 입력하면 그 글자로 바로 거른다
@@ -291,6 +295,13 @@ export default function SearchFilterBar({
     </div>
   );
 
+  const countItem = showCount ? (
+    <span className="scr-list-count scr-filter-bar-count">
+      {count}{countLabel}
+      {countLoading && <Spinner size={11} />}
+    </span>
+  ) : null;
+
   // 필터창(있으면)이 위, 검색창이 아래로 세로로 쌓인다(요청: "필터가 위 검색이 아래").
   // 타이틀 아래 문서 흐름 안에 그대로 있어, 스크롤하면 목록과 함께 자연스럽게 올라간다.
   return (
@@ -300,12 +311,11 @@ export default function SearchFilterBar({
         {showSearch && <div className="scr-search-filter-float">{searchItem}</div>}
         {trailing}
       </div>
-      {showCount && (
-        <span className="scr-list-count scr-filter-bar-count">
-          {count}{countLabel}
-          {countLoading && <Spinner size={11} />}
-        </span>
-      )}
+      {/* 제목이 있으면 건수와 한 줄을 나눠 쓴다 — 없으면 예전 그대로 건수만(오른쪽 정렬은
+          .scr-filter-bar-count 자신의 align-self가 맡는다). */}
+      {heading ? (
+        <div className="scr-filter-head-row">{heading}{countItem}</div>
+      ) : countItem}
     </div>
   );
 }

@@ -18,7 +18,7 @@ import FeedComments from "./FeedComments";
 import ScrollNavTimeline from "../../components/common/ScrollNavTimeline";
 import ReplayReviewModal from "../../modals/ReplayReviewModal";
 import ChallengeFormModal from "../../modals/ChallengeFormModal";
-import { scheduledInstantMs } from "../../utils/date";
+import { scheduledInstantMs, isWithinAYear } from "../../utils/date";
 import { useAppStore } from "../../store/appStore";
 import { isAdminRole } from "../../constants/roles";
 import { activeMemberSearchTerms, memberMatchesTerm, normalizeSearchText, splitSearchTerms } from "../../utils/memberSearch";
@@ -89,7 +89,9 @@ function formatEventTime(ms: number, withClock: boolean): string {
   } else if (diffDays > -7) {
     return `${DOW_FULL[d.getDay()]}${time}`;
   }
-  const year = d.getFullYear() !== now.getFullYear() ? `${d.getFullYear()}년 ` : "";
+  // 연도는 "올해가 아니면"이 아니라 "1년 밖이면" 붙인다(요청) — 12월에 보는 1월 글에
+  // 굳이 연도가 붙던 게 어색했다. 기준은 통계 제목의 월 라벨과 같은 isWithinAYear.
+  const year = isWithinAYear(ms, now) ? "" : `${d.getFullYear()}년 `;
   return `${year}${d.getMonth() + 1}월 ${d.getDate()}일${time}`;
 }
 
