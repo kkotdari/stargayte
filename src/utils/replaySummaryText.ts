@@ -359,6 +359,8 @@ const CONNECTIVE: [string, string][] = [
   ["넣음", "넣었으나"], ["끊음", "끊었으나"], ["뚫음", "뚫었으나"], ["지음", "지었으나"],
   ["모음", "모았으나"], ["잠금", "잠갔으나"], ["나름", "날랐으나"],
   ["무너짐", "무너졌으나"], ["지워짐", "지워졌으나"], ["빠짐", "빠졌으나"],
+  // 피해를 말하는 맺음들 — "김"(→겼으나) 규칙에 잘못 걸리지 않게 "시킴"을 먼저 둔다.
+  ["시킴", "시켰으나"], ["입음", "입었으나"],
   ["탈락", "탈락했으나"], ["실패", "실패했으나"], ["말았음", "말았으나"],
   // 여기부터는 끝 한 글자로 가르는 것들.
   ["함", "했으나"], ["줌", "줬으나"], ["씀", "썼으나"], ["섬", "섰으나"],
@@ -583,6 +585,8 @@ const listForm = (label: string): string => label.replace(/ 한 방$/, " 병력"
 
 const TEMPLATES: Record<string, Tpl> = {
   // 들이친 수와 그 결과를 한 문장으로(요청) — 그 타이밍에 상대 생산이 끊긴 게 근거다.
+  // 결과는 비유(생산이 뚝 끊김·살림을 흔듦) 대신 피해 자체로 말한다(요청: 큰 타격을
+  // 입힘·많은 타격을 줌·기지를 대파함처럼 객관적으로).
   "raid-damage": (c) => {
     const label = tacticLabel(str(c.p.k), c.p);
     if (!label) return null;
@@ -666,22 +670,22 @@ const TEMPLATES: Record<string, Tpl> = {
           return done(c, only);
         }
         // 실제로 탈락한 게 아니면 '무너짐/버티지 못함'은 과하다(지적: 무너진 정도는
-        // 아니고 타격을 받은 정도였다) — 확인된 건 그 무렵 생산이 꺾였다는 것뿐이라
+        // 아니고 타격을 받은 정도였다) — 확인된 건 그 무렵 크게 얻어맞았다는 것뿐이라
         // 거기까지만 말한다. 실제로 이 자리에서 얻어맞고도 45분 뒤에 이긴 경기가 있었다.
         return c.p.out
           ? say(
-            [`${all}에 ${when}탈락`, `${all}에 ${when}버티지 못함`],
-            [`${all}에 ${ga(foe)} ${when}탈락`, `${all}에 ${when}${ga(foe)} 버티지 못함`],
-            [`${ro(all)} ${when}${ga(foe)} 탈락`],
+            [`${all}에 ${when}탈락함`, `${all}에 ${when}그대로 망함`],
+            [`${all}에 ${ga(foe)} ${when}탈락함`, `${all}에 ${when}${ga(foe)} 그대로 망함`],
+            [`${ro(all)} ${when}${ga(foe)} 탈락함`, `${ro(all)} ${when}${reul(foe)} 끝냄`],
           )
           : say(
-            [`${all}에 ${when}큰 타격을 입음`, `${all}에 ${when}크게 흔들림`, `${all}에 ${when}생산이 뚝 끊김`],
+            [`${all}에 ${when}큰 타격을 입음`, `${all}에 ${when}많은 타격을 입음`, `${all}에 ${when}적잖은 피해를 입음`],
             [
               `${all}에 ${ga(foe)} ${when}큰 타격을 입음`,
-              `${all}에 ${when}${ga(foe)} 크게 흔들림`,
-              `${all}에 ${of}생산이 ${when || "빠르게 "}끊김`,
+              `${all}에 ${when}${ga(foe)} 많은 타격을 입음`,
+              `${all}에 ${ga(foe)} ${when}적잖은 피해를 입음`,
             ],
-            [`${ro(all)} ${of}생산이 ${when || "빠르게 "}끊김`],
+            [`${ro(all)} ${when}${foe}에게 큰 타격을 줌`, `${ro(all)} ${when}${foe}에게 많은 타격을 줌`],
           );
       }
     }
@@ -704,14 +708,14 @@ const TEMPLATES: Record<string, Tpl> = {
       const when = m > 0 ? `${m}분 만에 ` : "";
       return c.p.out
         ? say(
-          [`${blow} ${also}${when}탈락`],
-          [`${blow} ${also}${when}${ga(foe)} 탈락`],
-          [`${blow} ${also}${when}${reul(foe)} 판에서 지움`],
+          [`${blow} ${also}${when}탈락함`, `${blow} ${also}${when}그대로 망함`],
+          [`${blow} ${also}${when}${ga(foe)} 탈락함`],
+          [`${blow} ${also}${when}${reul(foe)} 판에서 지움`, `${blow} ${also}${when}${reul(foe)} 끝냄`],
         )
         // 탈락이 아니면 '버티지 못함'까지 가지 않는다(위 ks 갈래와 같은 이유).
         : say(
-          [`${blow} ${also}생산이 뚝 끊김`, `${blow} ${also}${when}크게 흔들림`],
-          [`${blow} ${also}${of}생산이 뚝 끊김`, `${blow} ${also}${when}${ga(foe)} 크게 흔들림`],
+          [`${blow} ${also}${when}큰 타격을 입음`, `${blow} ${also}${when}많은 타격을 입음`],
+          [`${blow} ${also}${when}${ga(foe)} 큰 타격을 입음`, `${blow} ${also}${when}${ga(foe)} 많은 타격을 입음`],
         );
     }
     // 초반 올인에 초반부터 무너진 그림(요청) — 몇 분 만이었는지가 곧 이야기다.
@@ -719,9 +723,9 @@ const TEMPLATES: Record<string, Tpl> = {
       const m = num(c.p.hitMin);
       const when = m > 0 ? `${m}분 만에 ` : "";
       return say(
-        [`${blow} ${when}휘청임`, `${blow} ${when}빈사 상태가 됨`],
-        [`${blow} ${when}${ga(foe)} 휘청임`, `${blow} ${when}${ga(foe)} 빈사 상태가 됨`],
-        [`${ro(by)} ${when}${of}일꾼에 큰 피해를 줌`, `${ro(by)} ${when}${reul(foe)} 몰아붙임`],
+        [`${blow} ${when}빈사 상태가 됨`, `${blow} ${when}병력이 거의 전멸함`, `${blow} ${when}기지가 대파됨`],
+        [`${blow} ${when}${ga(foe)} 빈사 상태가 됨`, `${blow} ${when}${of}기지가 대파됨`],
+        [`${ro(by)} ${when}${of}병력을 거의 전멸시킴`, `${ro(by)} ${when}${of}기지를 거의 파괴함`],
       );
     }
     // 그 창 안에 실제로 탈락했으면(Leave Game) 짐작이 아니라 사실이다 — 그렇게 말한다.
@@ -729,17 +733,17 @@ const TEMPLATES: Record<string, Tpl> = {
       const min = num(c.p.outMin);
       const when = min > 0 ? `${min}분경 ` : "";
       return say(
-        [`${blow} ${when}탈락`],
-        [`${blow} ${when}${ga(foe)} 탈락`],
-        [`${ro(by)} ${when}${reul(foe)} 엘리시킴`, `${ro(by)} ${when}${reul(foe)} 판에서 지움`],
+        [`${blow} ${when}탈락함`, `${blow} ${when}그대로 망함`],
+        [`${blow} ${when}${ga(foe)} 탈락함`],
+        [`${ro(by)} ${when}${reul(foe)} 엘리시킴`, `${ro(by)} ${when}${reul(foe)} 끝냄`],
       );
     }
-    // 그 사람이 한 행동을 말하는 문장은 주격으로(위 by 참고), 상대 쪽 일이 주어인
-    // 문장('생산이 막힘')만 소유격으로 둔다.
+    // 그 사람이 한 행동을 말하는 문장은 주격으로(위 by 참고), 당한 쪽이 주어인 '-에' 꼴만
+    // 소유격으로 둔다.
     return say(
-      [`${blow} 생산이 막힘`, `${blow} 생산이 뚝 끊김`, `${blow} 크게 흔들림`],
-      [`${ro(mine)} ${of}생산이 막힘`, `${blow} ${of}생산이 뚝 끊김`],
-      [`${ro(by)} ${of}생산에 큰 피해를 줌`, `${ro(by)} ${of}살림을 크게 흔듦`],
+      [`${blow} 큰 타격을 입음`, `${blow} 많은 타격을 입음`, `${blow} 적잖은 피해를 입음`],
+      [`${ro(mine)} ${ga(foe)} 큰 타격을 입음`, `${blow} ${ga(foe)} 많은 타격을 입음`],
+      [`${ro(by)} ${foe}에게 큰 타격을 줌`, `${ro(by)} ${foe}에게 많은 타격을 줌`],
     );
   },
 
@@ -987,7 +991,7 @@ const TEMPLATES: Record<string, Tpl> = {
     )}`;
   },
 
-  // 한 대 맞은 무렵에 방어 건물을 한꺼번에 올린 대목(요청: 초반 러시에 생산이 끊길 만큼
+  // 한 대 맞은 무렵에 방어 건물을 한꺼번에 올린 대목(요청: 초반 러시에 크게 얻어맞을 만큼
   // 맞았는데 포토를 추가한 내용이 안 나온다). 판정 기준은 '몇 개가 있느냐'가 아니라
   // '여러 개를 늘린 시점'이다 — 한두 개는 원래 짓는 수라 근거가 못 된다(지적).
   //
@@ -996,7 +1000,7 @@ const TEMPLATES: Record<string, Tpl> = {
   // 문장은 갈라 쓴다.
   //
   // 늘 그렇듯 그게 막아냈는지는 리플레이에 없다. 지었다는 사실과 그 시점까지만 말한다 —
-  // 그래서 warned 쪽도 "막지 못했다"가 아니라 "그래도 생산이 끊겼다"까지만 간다.
+  // 그래서 warned 쪽도 "막지 못했다"가 아니라 "그래도 큰 타격을 입었다"까지만 간다.
   "late-defense": (c) => {
     const def = DEFENSE_KO[str(c.p.def)];
     const n = num(c.p.n);
@@ -1017,13 +1021,13 @@ const TEMPLATES: Record<string, Tpl> = {
     }
     if (c.p.warned === true) {
       return `${ga(c.who)} ${done(c, c.pick([
-        `${min}분경 ${def} ${n}개를 급히 올렸지만 그대로 생산이 끊김`,
-        `공격을 예감하고 ${min}분경 ${def} ${n}개를 몰아 지었지만 ${hit}분에 생산이 꺾임`,
-        `${def} ${n}개를 부랴부랴 세우고도 ${hit}분에 크게 흔들림`,
+        `${min}분경 ${def} ${n}개를 급히 올렸지만 그대로 큰 타격을 입음`,
+        `공격을 예감하고 ${min}분경 ${def} ${n}개를 몰아 지었지만 ${hit}분에 많은 타격을 입음`,
+        `${def} ${n}개를 부랴부랴 세우고도 ${hit}분에 적잖은 피해를 입음`,
       ]))}`;
     }
     return `${ga(c.who)} ${done(c, c.pick([
-      `생산이 끊길 만큼 맞고 나서야 ${min}분경 ${def} ${n}개를 몰아 지음`,
+      `큰 타격을 입고 나서야 ${min}분경 ${def} ${n}개를 몰아 지음`,
       `얻어맞은 뒤에야 ${min}분경 ${def} ${n}개를 한꺼번에 올림`,
       `${hit}분에 한 대 맞고 ${min}분경에야 ${def} ${n}개를 부랴부랴 늘림`,
     ]))}`;
@@ -1252,8 +1256,8 @@ const TEMPLATES: Record<string, Tpl> = {
     if (c.p.out) {
       return `${head}, ${neun(foe)} 막히고 ${ga(c.who)} ${when}${reul(foe)} 엘리시킴`;
     }
-    return `${head}, ${neun(foe)} 막히고 ${ga(c.who)} ${when}${foe}의 ${c.pick([
-      "생산에 큰 피해를 줌", "살림을 크게 흔듦",
+    return `${head}, ${neun(foe)} 막히고 ${ga(c.who)} ${when}${c.pick([
+      `${foe}에게 큰 타격을 줌`, `${foe}에게 많은 타격을 줌`, `${foe}의 기지를 대파함`,
     ])}`;
   },
 
