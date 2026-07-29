@@ -151,6 +151,15 @@ const LONG_RUN_MIN_N = 12;
 // 무너지기 이 안쪽에서야 방어 건물 첫 채를 올렸으면 '부랴부랴 지은 것'이다(요청).
 // 진작부터 지어 둔 사람은 첫 채가 한참 앞이라 여기 안 걸린다.
 const PANIC_DEF_SEC = 2 * 60;
+// '뒤늦게 방어를 올렸다'를 판정하는 값들(요청: 초반 러시에 생산이 끊길 만큼 맞고 나서야
+// 포토를 여러 개 올린 대목이 안 나온다). 한두 개는 원래 짓는 수라 근거가 못 된다는
+// 지적에 따라, 몇 개가 있느냐가 아니라 '한꺼번에 늘린 시점'을 본다.
+// 이 창 안에 이만큼이 몰려 올라갔으면 그게 '증설'이다.
+const DEF_SURGE_MIN = 3;
+const DEF_SURGE_WINDOW_SEC = 2 * 60;
+// 얻어맞은 지 이 안쪽에서 증설이 시작돼야 '그 공격에 대한 반응'이라 말할 수 있다.
+// 한참 뒤의 증설은 그냥 그 사람의 운영이지 뒤늦은 대응이 아니다.
+const DEF_SURGE_REACT_SEC = 5 * 60;
 // 시작이 초반을 지나야 '중반부터'다 — 1분부터 뽑은 기본 유닛은 여기 해당하지 않는다.
 const LONG_RUN_START = 0.3;
 // 그리고 끝까지 이어져야 한다.
@@ -757,6 +766,35 @@ function defenseBefore(
   };
 }
 
+/** 방어 건물을 한꺼번에 여러 채 올린 첫 시점(요청) — "포토가 한두 개 있다"는 근거가 못
+ *  되고, 여러 개를 늘린 그 시점을 봐야 한다는 지적에 따른다.
+ *
+ *  DEF_SURGE_WINDOW_SEC 안에 DEF_SURGE_MIN 채가 몰려 올라간 첫 구간을 찾아, 그 구간이
+ *  시작된 프레임과 그 구간에 지은 수를 돌려준다. 창을 슬라이딩하는 이유는 '누적 3채'로
+ *  세면 경기 내내 하나씩 늘린 사람까지 '증설'이 되기 때문이다.
+ *
+ *  포토 러시로 나간 캐논은 방어가 아니므로 제외한다(defenseBefore와 같은 기준). */
+function defenseSurge(
+  p: ParsedReplayPlayer, foes: ParsedReplayPlayer[],
+): { def: string; at: number; n: number } | null {
+  const sg = p.signals;
+  const key = (airThreat(foes) ? AIR_DEF : GROUND_DEF)[p.race ?? ""] ?? "";
+  if (!sg || !key) return null;
+  if (key === "Photon Cannon" && cannonIsRush(p)) return null;
+  const frames = [...(sg.buildingFrames[key] ?? [])].sort((a, b) => a - b);
+  if (frames.length < DEF_SURGE_MIN) return null;
+  const window = DEF_SURGE_WINDOW_SEC / SECONDS_PER_FRAME;
+  for (let i = 0; i + DEF_SURGE_MIN - 1 < frames.length; i += 1) {
+    const start = frames[i];
+    if (frames[i + DEF_SURGE_MIN - 1] - start > window) continue;
+    // 같은 창 안에 더 있으면 그것까지 한 묶음으로 센다 — "세 개"보다 실제 수가 낫다.
+    let n = DEF_SURGE_MIN;
+    while (i + n < frames.length && frames[i + n] - start <= window) n += 1;
+    return { def: key, at: start, n };
+  }
+  return null;
+}
+
 /** 그 편에서 가장 많이 뽑은 '한 방' 유닛(없으면 undefined). */
 function spectacleOf(side: Side): string | undefined {
   return [...side.combat.entries()]
@@ -1091,6 +1129,29 @@ function sideBeats(args: {
       k: "lift-off", won, who: [p.rawName], weight: 9,
       at: p.signals?.firstLiftOffFrame ?? null,
       p: { n },
+    });
+  }
+
+  // ── 뒤늦은 방어 증설(요청) ── 초반 러시에 생산이 끊길 만큼 맞고 나서야 포토·성큰·벙커를
+  // 한꺼번에 올린 대목이 요약에 아예 안 나온다는 지적. 맞은 순간(생산이 꺾인 프레임)이
+  // 증설보다 앞이고 그 간격이 DEF_SURGE_REACT_SEC 안쪽일 때만 '그 공격에 대한 뒤늦은
+  // 대응'이라 부른다 — 한참 뒤의 증설은 그냥 그 사람의 운영이다.
+  for (const p of players) {
+    const surge = defenseSurge(p, other.players);
+    if (!surge) continue;
+    const before = productionDips(p, totalFrames).filter((d) => d < surge.at);
+    if (before.length === 0) continue;
+    // 증설 직전에 맞은 순간을 본다 — 경기 초반의 첫 등락까지 원인으로 삼으면 아무 증설이나
+    // '대응'이 된다.
+    const hit = Math.max(...before);
+    if ((surge.at - hit) * SECONDS_PER_FRAME > DEF_SURGE_REACT_SEC) continue;
+    beats.push({
+      k: "late-defense", won, who: who(p), at: surge.at, weight: 15,
+      p: {
+        def: surge.def, n: surge.n,
+        min: minutes(surge.at * SECONDS_PER_FRAME),
+        hitMin: minutes(hit * SECONDS_PER_FRAME),
+      },
     });
   }
 
@@ -1576,15 +1637,7 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     return out;
   })();
 
-  const pool: Beat[] = [
-    ...(standoff ? [standoff] : []),
-    ...(lateHold ? [lateHold] : []),
-    ...(handsBeat ? [handsBeat] : []),
-    ...(attritionBeat ? [attritionBeat] : []),
-    ...(breached ? [breached] : []),
-    ...mergeSameFate(greedyBeats, "greedy-punished"),
-    ...gangBeats,
-    ...mergeScatter(mergeMutual(tactics)),
+  const sideAll: Beat[] = [
     ...sideBeats({
       side: winner, other: loser, players: winnerPlayers,
       won: true, sec, totalFrames, pressedEarly: false,
@@ -1592,17 +1645,51 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     ...sideBeats({
       side: loser, other: winner, players: loserPlayers,
       won: false, sec, totalFrames, pressedEarly,
-    }).filter((b) => !(breached && b.k === "defense")),
+    }),
+  ];
+
+  // 같은 방어 건물을 두 문장이 나눠 세지 않게 한 쪽으로 몰아준다. 누가 무엇을 몇 개
+  // 지었나는 세 곳에서 말할 수 있다 — 뚫렸다(breakthrough)·지어서 막았다(defense)·
+  // 얻어맞고 뒤늦게 올렸다(late-defense).
+  //
+  // 셋이 겹치면 late-defense를 남긴다(요청): 나머지 둘은 개수만 말하지만 이쪽은 '언제
+  // 늘렸나'까지 말하고, 사용자가 빠졌다고 지적한 대목이 바로 그 시점이다.
+  const lateDefended = new Map<string, unknown>(
+    sideAll.filter((b) => b.k === "late-defense").flatMap((b) => b.who.map((w) => [w, b.p?.def])),
+  );
+  const coveredByLate = (whos: string[], def: unknown): boolean =>
+    whos.some((w) => lateDefended.has(w) && lateDefended.get(w) === def);
+  const wall = breached && !coveredByLate(breached.whom ?? [], breached.p?.def)
+    ? breached
+    : null;
+
+  const pool: Beat[] = [
+    ...(standoff ? [standoff] : []),
+    ...(lateHold ? [lateHold] : []),
+    ...(handsBeat ? [handsBeat] : []),
+    ...(attritionBeat ? [attritionBeat] : []),
+    ...(wall ? [wall] : []),
+    ...mergeSameFate(greedyBeats, "greedy-punished"),
+    ...gangBeats,
+    ...mergeScatter(mergeMutual(tactics)),
+    // 돌파 문장은 늘 '진 편의 벽'을 말하므로 그쪽 방어 문장만 덜어 낸다(이긴 편이 지어 둔
+    // 방어는 다른 이야기다). 뒤늦은 증설과 겹치는 건 어느 편이든 덜어 낸다.
+    ...sideAll.filter((b) => !(
+      b.k === "defense" && ((breached && !b.won) || coveredByLate(b.who, b.p?.def))
+    )),
   ]
     .filter((b) => !(b.k === "fallen" && b.who.some((w) => pickedOff.has(w))))
     // 돌파 문장이 이미 "조조의 저글링 성큰 5개를 밀어버렸다"고 말했으면, 같은 사람의
     // 무너짐에 "성큰 5개와 함께 버텼지만"을 또 붙이지 않는다 — 같은 방어 건물이 한
     // 요약에 두 번 나온다. 문장은 남기고 그 대목만 덜어 낸다.
+    // 뒤늦은 증설 문장이 있을 때도 마찬가지다 — "부랴부랴 지었지만"과 "뒤늦게 N개를
+    // 올렸다"는 같은 사실의 두 얼굴이다.
     .map((b) => {
-      if (b.k !== "fallen" || !breached) return b;
-      if (breached.p?.def !== b.p?.def) return b;
-      if (!b.who.some((w) => (breached.whom ?? []).includes(w))) return b;
-      const { def: _def, defN: _defN, ...rest } = b.p ?? {};
+      if (b.k !== "fallen") return b;
+      const byWall = wall && wall.p?.def === b.p?.def
+        && b.who.some((w) => (wall.whom ?? []).includes(w));
+      if (!byWall && !coveredByLate(b.who, b.p?.def)) return b;
+      const { def: _def, defN: _defN, panic: _panic, ...rest } = b.p ?? {};
       return { ...b, p: rest };
     });
 
