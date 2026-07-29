@@ -367,20 +367,35 @@ function MatchStack({
   // 진행 중인 연출을 중단·원복하는 함수 — 재토글/언마운트 때 호출한다.
   const cancelRevealRef = useRef<(() => void) | null>(null);
   useEffect(() => () => cancelRevealRef.current?.(), []);
-  const toggleOpen = (next: boolean) => { toggledRef.current = true; setOpen(next); };
+  // 접기 연출이 끝난 뒤에 할 일(요청: 접을 때 애니메이션이 끝나고 스크롤 이동) — 카드가
+  // 줄어드는 동안 스크롤까지 같이 움직이면 두 움직임이 겹쳐 어디를 보고 있는지 알기 어렵다.
+  // 새 토글이 들어오면(toggleOpen) 예약은 그대로 버린다 — 그 스크롤은 이미 지난 의도다.
+  const afterCollapseRef = useRef<(() => void) | null>(null);
+  const runAfterCollapse = () => {
+    const fn = afterCollapseRef.current;
+    afterCollapseRef.current = null;
+    fn?.();
+  };
+  const toggleOpen = (next: boolean) => {
+    toggledRef.current = true;
+    afterCollapseRef.current = null;
+    setOpen(next);
+  };
 
   // 아래쪽 접기로 닫을 때는 접힌 카드로 스크롤해 준다(요청) — 그 버튼은 목록 맨 끝에 있어서,
   // 그냥 접으면 보고 있던 자리가 통째로 사라지고 한참 아래의 다른 포스트를 보게 된다.
-  // 접혀도 카드의 '윗머리' 위치는 그대로이므로(줄어드는 건 아래쪽 높이뿐) 접기 전 좌표로
-  // 스크롤해도 정확하다. 헤더가 위를 덮고 있으니 그 높이만큼 띄운다.
+  // 좌표는 연출이 끝난 뒤에 잰다: 접히는 도중에는 카드 높이가 계속 변한다.
   const collapseAndReveal = () => {
-    const card = stackRef.current;
     toggleOpen(false);
-    if (!card) return;
-    // 헤더는 position:relative라 같이 스크롤돼 올라간다 — 그 높이를 빼면 오히려 카드
-    // 위쪽으로 한참 더 올라가버린다. 화면 맨 위에 딱 붙지만 않게 조금만 띄운다.
-    const top = getScrollTop() + card.getBoundingClientRect().top - STACK_COLLAPSE_MARGIN;
-    scrollRootTo({ top: Math.max(0, top), behavior: "smooth" });
+    // toggleOpen이 예약을 비우므로 반드시 그 뒤에 건다(setOpen은 비동기라 연출 시작 전이다).
+    afterCollapseRef.current = () => {
+      const card = stackRef.current;
+      if (!card) return;
+      // 헤더는 position:relative라 같이 스크롤돼 올라간다 — 그 높이를 빼면 오히려 카드
+      // 위쪽으로 한참 더 올라가버린다. 화면 맨 위에 딱 붙지만 않게 조금만 띄운다.
+      const top = getScrollTop() + card.getBoundingClientRect().top - STACK_COLLAPSE_MARGIN;
+      scrollRootTo({ top: Math.max(0, top), behavior: "smooth" });
+    };
   };
 
   useLayoutEffect(() => {
@@ -402,8 +417,8 @@ function MatchStack({
     const cleanup = () => { clearInline(); cancelRevealRef.current = null; };
 
     // 첫 렌더나 리렌더는 연출 없이 상태만 맞춘다 — 스크롤하다 리렌더될 때마다 카드가
-    // 다시 펼쳐지는 것처럼 보이면 안 된다.
-    if (!wasToggled) { cleanup(); return; }
+    // 다시 펼쳐지는 것처럼 보이면 안 된다. 기다릴 연출이 없으니 예약도 바로 실행한다.
+    if (!wasToggled) { cleanup(); runAfterCollapse(); return; }
 
     // 접히는 영역 전체를 잰다 — scrollHeight는 height가 0으로 눌려 있어도 내용 높이를
     // 그대로 준다.
@@ -443,8 +458,11 @@ function MatchStack({
     });
 
     // 펼친 뒤 목록 맨 아래로 스크롤하던 것은 걷어냈다(요청) — 펼치기를 누른 자리에
-    // 그대로 있는 편이 낫다. 접기는 아래(collapseAndReveal)에서 여전히 되돌려 준다.
-    Promise.all(anims.map((a) => a.finished)).then(cleanup).catch(() => {});
+    // 그대로 있는 편이 낫다. 접기는 collapseAndReveal이 예약해 둔 스크롤이 되돌려 주는데,
+    // 그 실행은 연출이 끝난 지금이다(요청: 접을 때 애니메이션이 끝나고 스크롤 이동).
+    Promise.all(anims.map((a) => a.finished))
+      .then(() => { cleanup(); runAfterCollapse(); })
+      .catch(() => {});
     cancelRevealRef.current = () => {
       anims.forEach((x) => { try { x.cancel(); } catch { /* 이미 끝남 */ } });
       cleanup();
