@@ -6986,8 +6986,12 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-feed-stack-sum-body {
   cursor: pointer; -webkit-tap-highlight-color: transparent;
   /* 접힘 상태에서 명단과 안내글 사이 간격이 곧 이 값이다 — 펼치면 이 블록이 절대배치로
-     빠지므로 흐름에 관여하지 않는다(위 .scr-feed-stack-toggle 주석 참고). */
-  padding-bottom: 2px;
+     빠지므로 흐름에 관여하지 않는다(위 .scr-feed-stack-toggle 주석 참고).
+     2 → 14px(요청: 요약과 아래 버튼 사이에 여유를). 아래 버튼이 자기 위 패딩 10px을
+     따로 갖고 있으니 접힌 모습의 실제 간격은 24px이 된다. 버튼 쪽이 아니라 이쪽을 키우는
+     이유는, 버튼 패딩은 두 상태 모두 흐름에 남아 있어 건드리면 누르는 순간 카드가
+     움직이기 때문이다(위 주석). */
+  padding-bottom: 14px;
 }
 /* 묶음 카드에는 댓글이 없다 — 댓글은 안쪽 경기 카드마다 따로 붙는다. 그런데 포스트 공통
    꼬리 여백(--post-pad-b: 46px)은 "댓글 입력줄이 그 안에 얹힌다"는 전제로 잡은 값이라,

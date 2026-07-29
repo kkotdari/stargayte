@@ -781,7 +781,7 @@ export function MatchStack({
         type="button" className="scr-feed-stack-toggle"
         onClick={() => (open ? collapseAndReveal() : expandAndReveal())} aria-expanded={open}
       >
-        {labelOpen ? "포스트를 눌러 접으세요" : "포스트를 눌러 펼치세요"}
+        {labelOpen ? "포스트 눌러서 요약보기" : "포스트 눌러서 펼치기"}
       </button>
     </div>
   );
