@@ -6898,9 +6898,12 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-feed-stack > .scr-feed-card-head .scr-feed-card-label {
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-/* 묶음 카드의 헤더엔 우상단 케밥이 없어 그 자리(44px)를 비워둘 이유가 없다.
-   패딩이 아니라 변수를 낮춰야 제목 줄 음영의 음수 마진도 같이 따라온다. */
-.scr-feed-stack > .scr-feed-card-head { --post-head-pad-r: var(--post-pad-x); }
+/* 묶음 카드의 헤더 우상단에도 다른 포스트와 똑같이 케밥이 앉는다(요청: 게임요약 통째로
+   카톡 공유를 케밥 메뉴 안에). 그만큼 오른쪽 자리를 비워 제목이 케밥 밑으로 흘러 들어가지
+   않게 한다 — 패딩이 아니라 변수를 바꿔야 제목 줄 음영의 음수 마진도 같이 따라온다.
+   케밥 자체의 자리와 드롭다운은 너 나와/순위변동 카드와 같은 규칙(.scr-feed-chal-menu)을
+   그대로 쓴다. */
+.scr-feed-stack > .scr-feed-card-head { --post-head-pad-r: 44px; }
 
 /* 요약 바디 전체가 펼침/접힘 토글이다(요청) — 명단 어디를 눌러도 열리고 닫힌다. */
 /* 아래 여백은 펼침/접힘과 무관하게 '항상' 같아야 한다. 한때 펼쳤을 때만 줬는데(그림자가

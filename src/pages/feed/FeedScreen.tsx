@@ -8,6 +8,7 @@ import Select from "../../components/common/Select";
 import FilterItem from "../../components/common/FilterItem";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 import KakaoShareButton from "../../components/common/KakaoShareButton";
+import type { KakaoShareContent } from "../../utils/kakaoShare";
 import MatchList, { resolveSlotName, type SearchListRow } from "../v2/MatchList";
 import { isComputerSlot } from "../../constants/computerSlot";
 import { isUnregisteredSlot } from "../../constants/unregisteredSlot";
@@ -97,7 +98,7 @@ interface ChallengeItem {
   challenge: Challenge;
 }
 
-interface MatchItem {
+export interface MatchItem {
   kind: "match";
   time: number;
   withClock: boolean;
@@ -114,7 +115,7 @@ interface RankShiftFeedItem {
 type FeedItem = ChallengeItem | MatchItem | RankShiftFeedItem;
 
 // 같은 '세션'의 게임결과가 피드에서 2개 이상 연속되면 겹침 스택 하나로 묶는다.
-interface MatchStackItem {
+export interface MatchStackItem {
   kind: "matchstack";
   time: number;
   /** 세션 날짜(YYYY-MM-DD) — 달력 날짜가 아니라 sessionDateOf 기준이다. */
@@ -143,7 +144,7 @@ function challengeItem(c: Challenge): ChallengeItem {
   };
 }
 
-function matchItem(m: Match): MatchItem {
+export function matchItem(m: Match): MatchItem {
   const started = m.gameStartedAt ? new Date(m.gameStartedAt).getTime() : null;
   return {
     kind: "match",
@@ -158,7 +159,7 @@ function matchItem(m: Match): MatchItem {
 // 쪼개진다(요청: 연속된 게임결과는 날짜가 달라도 하나로). 새벽 경기는 전날 밤의 연장으로
 // 보고 전날에 붙인다 — 경계는 오전 8시(요청).
 const SESSION_DAY_START_HOUR = 8;
-function sessionDateOf(it: MatchItem): string {
+export function sessionDateOf(it: MatchItem): string {
   const d = new Date(it.time);
   // 시각을 모르는 경기(날짜만 등록된 건)는 자정으로 잡혀 있다 — 그걸 새벽으로 읽고
   // 전날로 밀면 안 되니, 시계가 있는 경기에만 이 보정을 건다.
@@ -169,7 +170,7 @@ function sessionDateOf(it: MatchItem): string {
 }
 // 세션 날짜(YYYY-MM-DD) → 카드 헤더용 라벨. 스택은 자기 첫 아이템의 시각이 아니라
 // 세션 날짜로 이름표를 단다 — 새벽 2시 경기가 맨 위에 있다고 "오늘"로 적히면 안 된다.
-function sessionDateLabel(date: string): string {
+export function sessionDateLabel(date: string): string {
   const [, m, d] = date.split("-");
   return `${Number(m)}월 ${Number(d)}일`;
 }
@@ -323,10 +324,42 @@ const MatchCard = memo(function MatchCard({ item, memberOf, onDeleted, dateLabel
   );
 });
 
+// 묶음 카드 우상단 케밥 — 지금은 카카오톡 공유 하나만 담는다(묶음은 DB 행이 아니라
+// 삭제/수정 개념이 없다). 순위변동 카드의 케밥(RankShiftMenu)과 같은 CSS를 쓴다.
+// 카드 어디를 눌러도 펼침/접힘이 되므로, 이 안의 클릭은 전부 위로 안 새게 막는다 —
+// 메뉴를 열자마자 카드가 같이 펼쳐지면 안 된다.
+function StackMenu({ content }: { content: KakaoShareContent }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div
+      className="scr-feed-chal-menu"
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.stopPropagation()}
+      role="presentation"
+    >
+      <button
+        type="button" className="scr-match-memo-btn scr-match-kebab-btn"
+        onClick={() => setOpen((v) => !v)}
+        aria-label="더보기" aria-haspopup="menu" aria-expanded={open}
+      >
+        <MoreHorizontal size={16} />
+      </button>
+      {open && (
+        <>
+          <div className="scr-feed-add-backdrop" onClick={() => setOpen(false)} aria-hidden />
+          <div className="scr-menu-pop-drop scr-feed-chal-menu-drop" role="menu">
+            <KakaoShareButton variant="menu" content={content} onDone={() => setOpen(false)} />
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 // 게임결과 묶음 — 접힘은 그 세션의 참가자 전원을 담은 '요약 포스트'이고, "자세히 보기"를
 // 누르면 피드 안에서 그 자리가 게임결과 포스트 목록으로 바뀐다(요청). 한때 전체화면 모달로
 // 열어봤지만 다시 이 아코디언으로 돌아왔다.
-function MatchStack({
+export function MatchStack({
   stack, memberOf, onDeleted, dateLabel, highlightMemberIds, highlightTerms, defaultOpen = false,
 }: {
   stack: MatchStackItem;
@@ -379,6 +412,19 @@ function MatchStack({
     return out;
   }, [stack.items, memberOf]);
 
+  // 카카오톡 공유 내용(요청: 게임요약을 통째로 공유). 링크는 세션 날짜로 이 묶음을
+  // 가리킨다(sv=stack&sd=…) — 묶음에는 DB id가 없다(SharePage의 ShareTarget 주석).
+  const shareContent = useMemo(() => {
+    const label = `${sessionDateLabel(stack.date)} 게임결과${stack.items.length > 1 ? ` ${stack.items.length}건` : ""}`;
+    const roster = participants.map((p) => p.name).join(", ");
+    return {
+      title: `스타게이트 · ${label}`,
+      description: `참가자 총 ${participants.length}명 — ${roster}`,
+      link: `${window.location.origin}/?sv=stack&sd=${stack.date}`,
+      fallbackText: `[스타게이트] ${label}\n참가자 총 ${participants.length}명 — ${roster}`,
+    };
+  }, [stack.date, stack.items.length, participants]);
+
   // 카드는 한 장이다(요청). 요약(참가자 명단)은 늘 보이고, 그 아래 목록 영역의 높이만
   // 0 ↔ 실제로 늘렸다 줄인다 — 카드 안에 카드가 있는 모양이지만 실제로는 한 장 안에서
   // 내용만 늘어나는 형태다. 스크롤은 한 번도 건드리지 않는다: 카드가 아래로만 자라므로
@@ -395,13 +441,13 @@ function MatchStack({
   // 진행 중인 연출을 중단·원복하는 함수 — 재토글/언마운트 때 호출한다.
   const cancelRevealRef = useRef<(() => void) | null>(null);
   useEffect(() => () => cancelRevealRef.current?.(), []);
-  // 접기 연출이 끝난 뒤에 할 일(요청: 접을 때 애니메이션이 끝나고 스크롤 이동) — 카드가
-  // 줄어드는 동안 스크롤까지 같이 움직이면 두 움직임이 겹쳐 어디를 보고 있는지 알기 어렵다.
+  // 여닫기 연출이 끝난 뒤에 할 일(요청: 애니메이션이 끝나고 스크롤 이동) — 카드 높이가
+  // 변하는 동안 스크롤까지 같이 움직이면 두 움직임이 겹쳐 어디를 보고 있는지 알기 어렵다.
   // 새 토글이 들어오면(toggleOpen) 예약은 그대로 버린다 — 그 스크롤은 이미 지난 의도다.
-  const afterCollapseRef = useRef<(() => void) | null>(null);
-  const runAfterCollapse = () => {
-    const fn = afterCollapseRef.current;
-    afterCollapseRef.current = null;
+  const afterToggleRef = useRef<(() => void) | null>(null);
+  const runAfterToggle = () => {
+    const fn = afterToggleRef.current;
+    afterToggleRef.current = null;
     fn?.();
   };
   const toggleOpen = (next: boolean) => {
@@ -413,7 +459,7 @@ function MatchStack({
     const h = swapRef.current?.offsetHeight ?? null;
     heightRef.current = h;
     if (swapRef.current && h !== null) swapRef.current.style.height = `${h}px`;
-    afterCollapseRef.current = null;
+    afterToggleRef.current = null;
     setOpen(next);
   };
 
@@ -423,7 +469,7 @@ function MatchStack({
   const collapseAndReveal = () => {
     toggleOpen(false);
     // toggleOpen이 예약을 비우므로 반드시 그 뒤에 건다(setOpen은 비동기라 연출 시작 전이다).
-    afterCollapseRef.current = () => {
+    afterToggleRef.current = () => {
       // 연출이 끝난 지금부터 센다 — 접히는 동안 켜 두면 그만큼 짧게 보인다.
       setFlash(true);
       if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current);
@@ -440,6 +486,21 @@ function MatchStack({
       const pad = Math.max(STACK_COLLAPSE_MARGIN, (vh - r.height) / 2);
       const top = getScrollTop() + r.top - pad;
       // 문서 끝쪽 카드는 아무리 밀어도 가운데까지 못 온다 — 갈 수 있는 데까지만 간다.
+      scrollRootTo({ top: Math.min(Math.max(0, top), Math.max(0, scrollHeight - vh)), behavior: "smooth" });
+    };
+  };
+
+  // 펼칠 때는 가운데가 아니라 목록 맨 위를 화면 맨 위에 붙인다(요청) — 펼친 직후 읽기
+  // 시작하는 자리가 첫 경기이기 때문이다. 접기(가운데)와 다른 건 목적이 달라서다:
+  // 접기는 '어느 카드가 접혔나'를 보여주는 것이고, 펼치기는 '이제 여기부터 읽어라'다.
+  const expandAndReveal = () => {
+    toggleOpen(true);
+    afterToggleRef.current = () => {
+      const list = listRef.current;
+      if (!list) return;
+      const { clientHeight, scrollHeight } = getScrollMetrics();
+      const vh = Math.max(clientHeight, window.innerHeight || 0);
+      const top = getScrollTop() + list.getBoundingClientRect().top - STACK_COLLAPSE_MARGIN;
       scrollRootTo({ top: Math.min(Math.max(0, top), Math.max(0, scrollHeight - vh)), behavior: "smooth" });
     };
   };
@@ -468,7 +529,7 @@ function MatchStack({
 
     // 첫 렌더나 리렌더는 연출 없이 상태만 맞춘다 — 스크롤하다 리렌더될 때마다 카드가
     // 다시 펼쳐지는 것처럼 보이면 안 된다. 기다릴 연출이 없으니 예약도 바로 실행한다.
-    if (!wasToggled) { cleanup(); settleLabel(); heightRef.current = null; runAfterCollapse(); return; }
+    if (!wasToggled) { cleanup(); settleLabel(); heightRef.current = null; runAfterToggle(); return; }
 
     // 세 마디로 나눠 순서대로 간다(요청): 나가는 쪽이 사라지고 → 높이가 옮겨 가고 →
     // 들어오는 쪽이 한 번에 나타난다. 예전엔 셋을 동시에 굴리며 카드도 하나씩 어긋나게
@@ -536,7 +597,7 @@ function MatchStack({
     // 그대로 있는 편이 낫다. 접기는 collapseAndReveal이 예약해 둔 스크롤이 되돌려 주는데,
     // 그 실행은 연출이 끝난 지금이다(요청: 접을 때 애니메이션이 끝나고 스크롤 이동).
     Promise.all(anims.map((a) => a.finished))
-      .then(() => { cleanup(); settleLabel(); runAfterCollapse(); })
+      .then(() => { cleanup(); settleLabel(); runAfterToggle(); })
       .catch(() => {});
     cancelRevealRef.current = () => {
       anims.forEach((x) => { try { x.cancel(); } catch { /* 이미 끝남 */ } });
@@ -569,6 +630,11 @@ function MatchStack({
             게임결과{stack.items.length > 1 ? ` ${stack.items.length}건` : ""}
           </span>
         </div>
+        {/* 묶음 통째로 카카오톡 공유(요청) — 링크를 열면 이 카드 한 장만 접힌 채 뜨고,
+            눌러서 펼쳐 볼 수 있다(SharePage의 sv=stack). 다른 포스트와 똑같이 우상단
+            케밥 안에 넣는다(요청) — 공유 아이콘만 밖에 나와 있으면 이 포스트만 조작
+            방식이 다르다. 지금은 담을 게 공유뿐이라 순위변동 카드의 케밥과 같은 모양이다. */}
+        <StackMenu content={shareContent} />
       </div>
 
       {/* 요약(세미타이틀 + 참가자 로스터)과 경기 목록이 이 껍데기 안에서 자리를 주고받는다.
@@ -582,8 +648,8 @@ function MatchStack({
           className="scr-feed-stack-sum-body" role="button" tabIndex={open ? -1 : 0}
           aria-expanded={open}
           aria-label="게임결과 펼치기"
-          onClick={() => toggleOpen(true)}
-          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleOpen(true); } }}
+          onClick={() => expandAndReveal()}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); expandAndReveal(); } }}
         >
           <div className="scr-feed-stack-sum-head">
             <span className="scr-feed-stack-sum-title">요약 정보</span>
@@ -638,7 +704,7 @@ function MatchStack({
       <button
         ref={toggleRef}
         type="button" className="scr-feed-stack-toggle"
-        onClick={() => (open ? collapseAndReveal() : toggleOpen(true))} aria-expanded={open}
+        onClick={() => (open ? collapseAndReveal() : expandAndReveal())} aria-expanded={open}
       >
         {labelOpen ? "포스트를 눌러 접으세요" : "포스트를 눌러 펼치세요"}
       </button>
