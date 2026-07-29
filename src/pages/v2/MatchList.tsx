@@ -1,6 +1,6 @@
 import { useState, useRef, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
-import { MoreHorizontal, Monitor, User, Copy, Check } from "lucide-react";
+import { MoreHorizontal, Monitor, User } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
 import RaceBadge from "../../components/common/RaceBadge";
 import { Spinner } from "../../components/common/Feedback";
@@ -182,28 +182,6 @@ function MatchupSide({
   );
 }
 
-// 경기번호 복사 버튼 — 누르면 클립보드에 복사하고 잠깐 체크 아이콘으로 바뀐다. 로우
-// 클릭(펼침/접힘)이 같이 발동하지 않게 클릭 전파를 막는다.
-function CopyButton({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false);
-  return (
-    <button
-      type="button"
-      className="scr-match-trow-no-copy"
-      aria-label="게임번호 복사"
-      title="게임번호 복사"
-      onClick={(e) => {
-        e.stopPropagation();
-        navigator.clipboard?.writeText(text)
-          .then(() => { setCopied(true); window.setTimeout(() => setCopied(false), 1200); })
-          .catch(() => {});
-      }}
-    >
-      {copied ? <Check size={12} /> : <Copy size={12} />}
-    </button>
-  );
-}
-
 export interface SearchListRow {
   id: number;
   date: string;
@@ -352,21 +330,6 @@ function MatchActionsMenu({
 // 예전엔 여기 사람별 총합 스탯 표와, 그걸 띄우는 전체화면 시트(시간축 그래프 포함)가
 // 있었다 — 통째로 걷어냈다(요청: 기능 삭제).
 
-/** 게임번호 + 등록자 — 예전엔 펼침 맨 아래에만 있었는데, 이제 카드 위쪽에 늘 보인다(요청).
- *  스탯 시트 머리에도 같은 줄을 써서 "지금 보는 게 어느 경기인가"가 두 곳에서 같게 읽힌다. */
-function MatchMetaLine({ row }: { row: SearchListRow }) {
-  return (
-    <div className="scr-match-trow-meta">
-      <span className="scr-match-trow-no">
-        <span className="scr-match-trow-no-label">게임번호</span>
-        <span className="scr-match-trow-no-val">{row.raw.matchNo}</span>
-        <CopyButton text={row.raw.matchNo} />
-      </span>
-      {row.raw.createdBy && <span className="scr-match-trow-by">등록: {row.raw.createdBy.nickname}</span>}
-    </div>
-  );
-}
-
 export default function MatchList({
   rows, memberOf, onDeleted, loading, highlightMemberIds, highlightTerms, matchup,
 }: MatchListProps) {
@@ -414,10 +377,9 @@ export default function MatchList({
               );
               return (
               <div key={r.id} className="scr-match-trow">
-                {/* 윗줄 — 왼쪽에 게임번호·등록자(늘 보인다, 요청), 오른쪽 위에 스탯 보기와
-                    케밥메뉴. 예전엔 이 줄이 비어 있었고 그 둘은 펼쳐야 나왔다. */}
+                {/* 윗줄 — 이제 오른쪽 위 케밥메뉴만 남는다. 게임번호는 감췄고(요청),
+                    등록자는 카드 머리의 시각 옆으로 옮겼다(요청). */}
                 <div className="scr-match-trow-topline">
-                  <MatchMetaLine row={r} />
                   <div className="scr-match-trow-topmeta">
                     <MatchActionsMenu
                       match={r.raw} canDelete={canDelete} memberOf={memberOf}

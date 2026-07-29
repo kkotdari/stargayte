@@ -2874,19 +2874,9 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
 /* 이제 이 줄은 왼쪽에 게임번호·등록자(늘 보인다, 요청)를 담고, 오른쪽은 절대배치된
    스탯/케밥 자리라 흐름에 없다 — 예전의 [1fr][가운데][1fr] 3열 짜기는 필요 없어졌다. */
 .scr-match-trow-topline {
+  /* 이제 이 줄에 흐름으로 놓이는 건 아무것도 없다(게임번호는 감췄고 등록자는 카드 머리로
+     옮겼다) — 절대배치된 케밥의 자리를 비워 두는 높이 확보용 줄로만 남는다. */
   display: flex; align-items: center; column-gap: 10px; margin-bottom: 14px; min-height: 20px;
-  /* 게임번호 줄이 양끝으로 벌어지려면 이 줄이 폭을 다 써야 한다. */
-  /* 오른쪽 끝은 절대배치된 스탯/케밥 자리라 흐름에서 비워 둬야 한다 — 등록자 이름이 길면
-     그 아래로 파고든다. 버튼 둘(26px) + 갭 + 오른쪽 여백만큼. */
-  padding-right: 76px;
-}
-/* 게임번호 + 등록자 — 예전엔 펼침 맨 아래(.scr-match-trow-footer)에만 있었다. 스탯 표가
-   시트로 나가면서 펼침 자체가 없어져, 늘 보이는 이 자리로 올렸다(요청). */
-.scr-match-trow-meta {
-  /* 게임번호는 왼쪽 끝, 등록자는 오른쪽 끝(요청) — 줄 하나에 둘뿐이라 양끝으로 벌리면
-     각자 무엇인지가 자리로 읽힌다. */
-  display: flex; align-items: center; justify-content: space-between; gap: 10px;
-  min-width: 0; flex: 1; font-size: var(--fs-caption);
 }
 /* 맵이름·경기시간은 그 줄의 가운데(위 그리드 가운데 칸)에 모은다(요청). */
 .scr-match-trow-map-line { display: flex; align-items: baseline; justify-content: center; gap: 8px; font-size: var(--fs-caption); min-width: 0; }
@@ -2899,23 +2889,13 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
    기준 절대배치로 빼서 패딩과 무관하게 카드 오른쪽 끝 가까이 둔다(요청: PC 케밥 오른쪽).
    절대배치라 윗줄 그리드에서 빠지고, 남은 맵/시간은 그대로 가운데에 온다. */
 .scr-match-trow-topmeta { position: absolute; top: 12px; right: 12px; z-index: 2; display: flex; align-items: center; gap: 8px; font-size: var(--fs-caption); }
-.scr-match-trow-by { color: var(--dim); flex-shrink: 0; }
 /* 모바일에선 오른쪽 가장자리의 스크롤 타임라인(32px 터치존)과 겹치지 않게 살짝만 왼쪽으로
    — 예전(margin 22px)엔 너무 왼쪽으로 갔다는 피드백으로 조금 더 오른쪽에 붙인다(요청). */
 @media (max-width: 860px) {
   .scr-match-trow-topmeta { right: 20px; }
 }
-/* 예전의 '펼침 최하단 줄'(.scr-match-trow-footer)은 없앴다 — 게임번호·등록자는 이제
-   윗줄(.scr-match-trow-meta)에서 늘 보이고, 펼침 영역 자체가 사라졌다(요청). */
-.scr-match-trow-no { display: inline-flex; align-items: center; gap: 6px; color: var(--dim); font-variant-numeric: tabular-nums; flex-shrink: 0; }
-.scr-match-trow-no-label { color: var(--muted); }
-.scr-match-trow-no-val { font-weight: 400; color: var(--text); }
-.scr-match-trow-no-copy {
-  display: inline-flex; align-items: center; justify-content: center;
-  background: transparent; border: none; color: var(--dim); cursor: pointer;
-  padding: 2px; border-radius: 4px; line-height: 0;
-}
-@media (hover: hover) { .scr-match-trow-no-copy:hover { color: var(--text); background: rgba(var(--overlay-rgb), 0.08); } }
+/* 게임번호는 화면에서 감췄다(요청) — 값 자체는 데이터에 그대로 있고, 보여주는 자리만
+   없앴다. 등록자는 카드 머리의 시각 옆(.scr-feed-card-by)으로 옮겼다. */
 
 /* 펼침 로우 하단 댓글(메모) 영역 — 게시판 댓글 스타일. 목록·입력창은 "너 나와!"(scr-mreq-*)
    CSS를 그대로 차용한다(요청). 로우 자체가 클릭 토글이라 이 영역은 stopPropagation으로
@@ -7095,6 +7075,7 @@ html:not(.scr-light-theme) .scr-feed-card-head:has(.scr-feed-card-head-title) .s
   color: #10151a;
 }
 html:not(.scr-light-theme) .scr-feed-card-head:has(.scr-feed-card-head-title) .scr-feed-card-time,
+html:not(.scr-light-theme) .scr-feed-card-head:has(.scr-feed-card-head-title) .scr-feed-card-by,
 html:not(.scr-light-theme) .scr-feed-card-head:has(.scr-feed-card-head-title) .scr-feed-chal-countdown,
 html:not(.scr-light-theme) .scr-feed-card-head:has(.scr-feed-card-head-title) .scr-challenge-time-edit-btn {
   color: rgba(16, 21, 26, 0.62);
@@ -7231,6 +7212,9 @@ html.scr-light-theme .scr-feed-comments .scr-mreq-chip-inline { color: #c07c1c; 
 
 /* 라벨(무엇인지)이 앞, 시간이 바로 옆(요청) — 라벨이 주, 시간은 흐리게 보조. */
 .scr-feed-card-time { font-weight: 600; color: var(--dim); font-variant-numeric: tabular-nums; }
+/* 시각 바로 옆 등록자(요청: "브래드 등록") — 크기·굵기·색을 시각과 똑같이 맞춰 한 줄로
+   읽히게 한다. 글꼴 크기는 이 줄(.scr-feed-card-head-meta)에서 물려받는다. */
+.scr-feed-card-by { font-weight: 600; color: var(--dim); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* 포스트 제목 — 피드에서 가장 큰 글자. 굵기·크기 모두 과감히 올린다(요청). */
 .scr-feed-card-label {
   font-size: var(--fs-body); font-weight: 800; color: var(--text);

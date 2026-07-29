@@ -353,6 +353,11 @@ const MatchCard = memo(function MatchCard({ item, memberOf, onDeleted, dateLabel
       <div className="scr-feed-card-head" data-date-label={dateLabel}>
         <div className="scr-feed-card-head-meta">
           <span className="scr-feed-card-time">{formatEventTime(item.time, item.withClock)}</span>
+          {/* 등록자 — 예전엔 카드 안쪽 윗줄에 게임번호와 나란히 있었는데, 시각 바로 옆으로
+              옮겼다(요청). "누가 언제"가 한 자리에서 읽히고, 카드 안쪽 윗줄은 케밥만 남는다. */}
+          {item.match.createdBy && (
+            <span className="scr-feed-card-by">{item.match.createdBy.nickname} 등록</span>
+          )}
         </div>
         {/* 묶음 안에서는 카드 제목을 반복하지 않는다 — 바깥 카드가 이미 "게임결과 N건"이다. */}
         {!nested && (
