@@ -1,7 +1,7 @@
 import MatchTeams, { pointToneClass } from "../../components/common/MatchTeams";
 import { Spinner } from "../../components/common/Feedback";
 import { cx } from "../../utils/format";
-import { dateWithDow } from "../../utils/date";
+import { shortDateWithDow } from "../../utils/date";
 import type { Match, MatchResult, MatchSlot, Member } from "../../types";
 
 interface RankMatchHistoryProps {
@@ -93,7 +93,9 @@ export default function RankMatchHistory({
       <div className="scr-match-cards">
         {groups.map((g) => (
           <div key={g.date} className="scr-match-date-group">
-            <div className="scr-match-date-head scr-match-date-head-compact">{dateWithDow(g.date)}</div>
+            {/* 날짜 표기는 피드 타임스탬프와 같은 규칙으로 통일한다(요청) — "7월 28일 (화)",
+                올해가 아니면 "25년 3월 4일 (화)". */}
+            <div className="scr-match-date-head scr-match-date-head-compact">{shortDateWithDow(g.date)}</div>
             {g.items.map((r) => {
               const dLabel = deltaLabel(deltaByMatchNo.get(r.matchNo));
               // 팀전: 우리팀 대 상대팀을 그대로 보여주고, 이 회원의 경기당 Δ를 카드 아래 로우에.

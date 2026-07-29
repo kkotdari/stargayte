@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
 import { Spinner } from "../../components/common/Feedback";
-import MatchList, { type SearchListRow } from "../v2/MatchList";
 import ChallengeInboxModal from "../../modals/ChallengeInboxModal";
 import { api } from "../../api/client";
 import { useAppStore } from "../../store/appStore";
 import { useForceLightTheme } from "../../utils/theme";
 import RankShiftCard from "../feed/RankShiftCard";
 import {
-  MatchStack, matchItem, sessionDateLabel, sessionDateOf, type MatchStackItem,
+  MatchCard, MatchStack, matchItem, sessionDateLabel, sessionDateOf, type MatchStackItem,
 } from "../feed/FeedScreen";
+import { shortDateWithDow } from "../../utils/date";
 import type { Challenge, Match, RankSnapshot } from "../../types";
 
 // 카카오톡으로 공유된 링크(?sv=match|challenge|rankshift&sid=…)가 여는, 그 한 장만 보이는
@@ -120,10 +120,6 @@ export default function SharePage({ target, onExit }: { target: ShareTarget; onE
     );
   }
 
-  const rows: SearchListRow[] = match
-    ? [{ id: match.id, date: match.date, team1: match.team1, team2: match.team2, result: match.result, raw: match }]
-    : [];
-
   return (
     <div className="scr-share-page">
       <div className="scr-share-head">
@@ -138,8 +134,14 @@ export default function SharePage({ target, onExit }: { target: ShareTarget; onE
         ) : err ? (
           <div className="scr-err">{err}</div>
         ) : match ? (
-          <div className="scr-share-match">
-            <MatchList rows={rows} memberOf={memberOf} onDeleted={() => {}} loading={false} />
+          // 경기 한 장 공유 — 묶음 공유와 마찬가지로 피드의 그 카드를 그대로 쓴다(요청).
+          // 예전엔 목록(MatchList)을 날것으로 얹어서, 피드에는 없는 숫자 날짜 머리글이
+          // 뜨고 카드 머리(시각·등록자·제목)는 없는 다른 모양이었다.
+          <div className="scr-feed-list">
+            <MatchCard
+              item={matchItem(match)} memberOf={memberOf} onDeleted={() => {}}
+              dateLabel={shortDateWithDow(match.date)}
+            />
           </div>
         ) : shift ? (
           // 순위변동 공유 — 피드와 같은 카드 한 장(읽기 전용, 케밥/상세/댓글 없이).

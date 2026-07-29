@@ -18,7 +18,7 @@ import FeedComments from "./FeedComments";
 import ScrollNavTimeline from "../../components/common/ScrollNavTimeline";
 import ReplayReviewModal from "../../modals/ReplayReviewModal";
 import ChallengeFormModal from "../../modals/ChallengeFormModal";
-import { scheduledInstantMs, shortYearPrefix, DOW } from "../../utils/date";
+import { scheduledInstantMs, shortDateWithDow, fmt } from "../../utils/date";
 import { useAppStore } from "../../store/appStore";
 import { isAdminRole } from "../../constants/roles";
 import { activeMemberSearchTerms, memberMatchesTerm, normalizeSearchText, splitSearchTerms } from "../../utils/memberSearch";
@@ -110,10 +110,9 @@ function formatEventTime(ms: number, withClock: boolean): string {
   } else if (diffDays > -7) {
     return `${DOW_FULL[d.getDay()]}${time}`;
   }
-  // 올해가 아니면 두 자리 연도를 붙인다(요청: "전년도부터는 25년 이렇게") — 통계 제목의
-  // 월 라벨과 같은 규칙(shortYearPrefix).
-  const year = shortYearPrefix(d.getFullYear(), now);
-  return `${year}${d.getMonth() + 1}월 ${d.getDate()}일 (${DOW[d.getDay()]})${time}`;
+  // 날짜 부분은 다른 화면(포인트 상세 이력 등)과 같은 함수를 쓴다 — 연도 생략 규칙도
+  // 요일 병기도 거기 한 곳에 있다(요청: 날짜 표기 통일).
+  return `${shortDateWithDow(fmt(d), now)}${time}`;
 }
 
 interface ChallengeItem {
@@ -354,7 +353,7 @@ function FeedCardComments({ targetType, targetId }: { targetType: FeedTargetType
 // (경기 로우·댓글·아바타 이미지)까지 다시 렌더되면서 iOS에서 기존 카드들이 깜빡였다
 // (지적: "펼치기 접기 누를 때 기존 요소들도 다시 그리는 것 같아"). 개폐 때 카드 props는
 // 전부 같은 참조라 memo가 전부 걸러낸다.
-const MatchCard = memo(function MatchCard({ item, memberOf, onDeleted, dateLabel, highlightMemberIds, highlightTerms, nested = false }: {
+export const MatchCard = memo(function MatchCard({ item, memberOf, onDeleted, dateLabel, highlightMemberIds, highlightTerms, nested = false }: {
   item: MatchItem;
   memberOf: (id: string) => Member | undefined;
   onDeleted: () => void;

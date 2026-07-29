@@ -5840,7 +5840,7 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
   gap: 12px; padding: 12px 16px calc(24px + env(safe-area-inset-bottom, 0px)); width: 100%;
 }
 /* 본문은 세로 flex + align-items:center라, 자식이 스스로 폭을 안 잡으면 내용만큼만
-   좁아진다. 예전엔 경기 한 장(.scr-share-match)에만 width:100%를 줬는데, 그래서 묶음
+   좁아진다. 예전엔 경기 한 장을 감싸던 래퍼에만 width:100%를 줬는데, 그래서 묶음
    공유와 순위변동(둘 다 .scr-feed-list로 온다)이 화면 한가운데 손톱만 하게 떴다
    (신고: "접은 상태에서 너무 좁게 나오는데"). 자식 무엇이 오든 같은 폭이 되게 한 곳에서 잡는다.
    세로도 가운데(요청: 랭킹 변동·경기·요약 모두) — justify-content:center 대신 자식의

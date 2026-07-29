@@ -138,6 +138,15 @@ export function dateWithDow(dateStr: string): string {
   return `${dateStr} (${DOW[new Date(y, m - 1, d).getDay()]})`;
 }
 
+// 같은 날짜를 사람 말로 — "7월 28일 (화)", 올해가 아니면 "25년 3월 4일 (화)".
+// 피드 타임스탬프의 날짜 부분과 글자 하나까지 같은 규칙이라, 날짜를 보여주는 곳들이
+// 서로 다른 꼴로 갈라지지 않는다(요청: 날짜 표기 통일). 요일 표·연도 규칙은 위의
+// dateWithDow·shortYearPrefix와 공유한다.
+export function shortDateWithDow(dateStr: string, now: Date = gameNow()): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return `${shortYearPrefix(y, now)}${m}월 ${d}일 (${DOW[new Date(y, m - 1, d).getDay()]})`;
+}
+
 // "너 나와!" 도전장의 예정 일정 — 이제 날짜 하나뿐이다(요청: 시간 필드 삭제). 시각 대신
 // "언제"를 사람 말로 적어 두는 자리(scheduledTimeNote)가 따로 있고, 그건 표시 전용이라
 // 여기 계산에는 절대 들어오지 않는다. scheduledDate는 한국시간 벽시계값 문자열
