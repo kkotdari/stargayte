@@ -182,10 +182,15 @@ export default function StatsScreenV2() {
   const queryKey = useMemo(
     () => ({
       dateFrom: effectiveFrom, dateTo: effectiveTo, matchType,
+      // 종족도 서버에 넘긴다 — 승률/APM 같은 전적은 응답의 byRace로 골라 쓰면 되지만,
+      // 포인트(rankScore)와 순위(sortOrder)는 레이팅을 시간순으로 누적해 만든 값이라
+      // 클라이언트가 종족별로 갈라낼 수 없다. 안 넘기면 종족을 골라도 포인트만 전체
+      // 종족 기준으로 남아 표 안에서 기준이 어긋난다(지적).
+      race,
       prevFrom: prevRange.from, prevTo: prevRange.to,
       memberIds: matchedMembers.map((m) => m.id).sort().join(","),
     }),
-    [effectiveFrom, effectiveTo, prevRange, matchType, matchedMembers],
+    [effectiveFrom, effectiveTo, prevRange, matchType, race, matchedMembers],
   );
   const queryKeySignature = useMemo(() => JSON.stringify(queryKey), [queryKey]);
   const debouncedSignature = useDebouncedValue(queryKeySignature, 300);
@@ -213,6 +218,7 @@ export default function StatsScreenV2() {
       dateFrom: debouncedQuery.dateFrom,
       dateTo: debouncedQuery.dateTo,
       matchType: debouncedQuery.matchType,
+      race: debouncedQuery.race,
     }).then((res) => {
       if (cancelled) return;
       const map: Record<string, MemberStatsEntry> = {};
@@ -231,6 +237,7 @@ export default function StatsScreenV2() {
         dateFrom: debouncedQuery.prevFrom,
         dateTo: debouncedQuery.prevTo,
         matchType: debouncedQuery.matchType,
+        race: debouncedQuery.race,
       }).then((res) => {
         if (cancelled) return;
         const map: Record<string, MemberStatsEntry> = {};

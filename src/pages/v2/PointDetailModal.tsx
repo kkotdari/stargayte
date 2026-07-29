@@ -32,8 +32,8 @@ export default function PointDetailModal({
   const memberOf = useAppStore((s) => s.memberOf);
 
   const [gameResults, setGameResults] = useState<GameResult[]>([]);
-  const [matchesLoading, setGameResultsLoading] = useState(true);
-  const [matchesErr, setGameResultsErr] = useState("");
+  const [gameResultsLoading, setGameResultsLoading] = useState(true);
+  const [gameResultsErr, setGameResultsErr] = useState("");
 
   const reload = useCallback(() => {
     let cancelled = false;
@@ -81,9 +81,9 @@ export default function PointDetailModal({
 
           {/* 소제목 없이 이력만 바로 보여준다(요청). */}
           <div className="scr-rank-detail-history">
-            {matchesErr && <div className="scr-err">{matchesErr}</div>}
+            {gameResultsErr && <div className="scr-err">{gameResultsErr}</div>}
             <PointDetailHistory
-              gameResults={gameResults} members={[member]} memberOf={memberOf} loading={matchesLoading}
+              gameResults={gameResults} members={[member]} memberOf={memberOf} loading={gameResultsLoading}
               deltaByMatchNo={deltaByMatchNo}
               bothTeams={matchType === "0102"}
             />

@@ -560,11 +560,15 @@ export function GameResultPost({
   const expandAndReveal = () => {
     toggleOpen(true);
     afterToggleRef.current = () => {
-      const list = listRef.current;
-      if (!list) return;
+      // 목록이 아니라 포스트 카드 전체를 기준으로 잡는다. 목록에 맞추면 그 위에 있는
+      // 카드 머리(시각·제목·케밥)만큼이 화면 위로 밀려 나가는데, 그 높이가 딱 상단
+      // 안전영역쯤이라 머리가 노치/상태바 밑에 깔렸다(지적: 펼칠 때 위 안전영역).
+      // 실측: 목록 기준일 때 카드 머리가 화면 위 24px — 안전영역(47px) 안이었다.
+      const card = stackRef.current;
+      if (!card) return;
       const { clientHeight, scrollHeight } = getScrollMetrics();
       const vh = Math.max(clientHeight, window.innerHeight || 0);
-      const top = getScrollTop() + list.getBoundingClientRect().top - (safeTopPx() + STACK_EXPAND_MARGIN);
+      const top = getScrollTop() + card.getBoundingClientRect().top - (safeTopPx() + STACK_EXPAND_MARGIN);
       scrollRootTo({ top: Math.min(Math.max(0, top), Math.max(0, scrollHeight - vh)), behavior: "smooth" });
     };
   };
