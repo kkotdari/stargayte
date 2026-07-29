@@ -2514,7 +2514,7 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
 }
 
 /* ===== 그리드 제목 겸 필터(문장형) =====
-   요청: "7월 개인전 전체종족 스탯"처럼 한 문장으로 현재 필터를 보여주고, 그 안의 낱말
+   요청: "7월 개인전 전체종족 스탯표"처럼 한 문장으로 현재 필터를 보여주고, 그 안의 낱말
    (기간/유형/종족)이 각각 드롭다운. 별도의 필터창을 없애고 제목 하나가 그 역할을 겸한다. */
 .scr-grid-title {
   display: flex; flex-wrap: wrap; align-items: center; gap: 1px 2px;

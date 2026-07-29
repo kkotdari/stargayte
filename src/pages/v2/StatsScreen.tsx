@@ -16,7 +16,7 @@ import { usePageBackground } from "../../hooks/usePageBackground";
 import { cx } from "../../utils/format";
 import type { BaseRace, MatchType, Member, MemberStats, MemberStatsEntry } from "../../types";
 
-// 필터 셋은 이제 그리드 제목을 이루는 문장의 낱말이다(요청: "7월 개인전 전체종족 스탯"
+// 필터 셋은 이제 그리드 제목을 이루는 문장의 낱말이다(요청: "7월 개인전 전체종족 스탯표"
 // 형태로 각각을 드롭다운으로) — 라벨도 문장 안에서 그대로 읽히는 말로 적는다("전체"가
 // 아니라 "전체종족").
 const RACE_SELECT_OPTS: SelectOption[] = [
@@ -89,7 +89,7 @@ function SortableHead({ label, sortKey, sort, onToggle, className, tooltip }: So
 
 // 경기결과/랭킹과 같은 공용 상단 모듈(SearchFilterBar)로 전적통계를 보여준다.
 // 조건은 필터창 대신 목록 바로 위의 제목 한 줄이 통째로 맡는다(요청) — "7월 개인전
-// 전체종족 스탯"처럼 읽히는 문장인데, 그 안의 낱말 셋(기간/유형/종족)이 각각 드롭다운이라
+// 전체종족 스탯표"처럼 읽히는 문장인데, 그 안의 낱말 셋(기간/유형/종족)이 각각 드롭다운이라
 // 제목을 읽는 것이 곧 지금 걸린 조건을 읽는 것이고, 고치는 자리도 같은 자리다. 검색창
 // (유저)과 정렬(컬럼 헤더)은 그대로 둔다.
 export default function StatsScreenV2() {
@@ -399,7 +399,7 @@ export default function StatsScreenV2() {
               className="scr-sentence-select" value={race} options={RACE_SELECT_OPTS}
               onChange={(v) => setRace(v as BaseRace | "all")} minDropWidth={130}
             />
-            <span className="scr-grid-title-tail">스탯</span>
+            <span className="scr-grid-title-tail">스탯표</span>
           </div>
         }
       />
