@@ -18,7 +18,7 @@ import FeedComments from "./FeedComments";
 import ScrollNavTimeline from "../../components/common/ScrollNavTimeline";
 import ReplayReviewModal from "../../modals/ReplayReviewModal";
 import ChallengeFormModal from "../../modals/ChallengeFormModal";
-import { scheduledInstantMs, isWithinAYear } from "../../utils/date";
+import { scheduledInstantMs, shortYearPrefix } from "../../utils/date";
 import { useAppStore } from "../../store/appStore";
 import { isAdminRole } from "../../constants/roles";
 import { activeMemberSearchTerms, memberMatchesTerm, normalizeSearchText, splitSearchTerms } from "../../utils/memberSearch";
@@ -58,8 +58,8 @@ const FLASH_MS = 2000;
 const DOW_FULL = ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"];
 
 // 피드 시각 표기 — 다가오는 일정은 "오늘"/"이번주 토요일"/"다음주 화요일"(주 시작 = 월요일),
-// 지난 일주일 안은 일자 대신 요일만("화요일 21:30"), 그 밖은 "M월 D일"(올해가 아니면 년도
-// 포함). 요일 괄호 병기는 하지 않는다.
+// 지난 일주일 안은 일자 대신 요일만("화요일 21:30"), 그 밖은 "M월 D일"(올해가 아니면
+// "25년 3월 4일"처럼 두 자리 연도 포함). 요일 괄호 병기는 하지 않는다.
 function formatEventTime(ms: number, withClock: boolean): string {
   const d = new Date(ms);
   const now = new Date();
@@ -89,10 +89,9 @@ function formatEventTime(ms: number, withClock: boolean): string {
   } else if (diffDays > -7) {
     return `${DOW_FULL[d.getDay()]}${time}`;
   }
-  // 연도는 "올해가 아니면"이 아니라 "1년 밖이면" 붙인다(요청) — 12월에 보는 1월 글에
-  // 굳이 연도가 붙던 게 어색했다. 기준은 통계 제목의 월 라벨과 같은 isWithinAYear.
-  const year = isWithinAYear(ms, now) ? "" : `${d.getFullYear()}년 `;
-  return `${year}${d.getMonth() + 1}월 ${d.getDate()}일${time}`;
+  // 올해가 아니면 두 자리 연도를 붙인다(요청: "전년도부터는 25년 이렇게") — 통계 제목의
+  // 월 라벨과 같은 규칙(shortYearPrefix).
+  return `${shortYearPrefix(d.getFullYear(), now)}${d.getMonth() + 1}월 ${d.getDate()}일${time}`;
 }
 
 interface ChallengeItem {

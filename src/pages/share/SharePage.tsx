@@ -51,9 +51,19 @@ export default function SharePage({ target, onExit }: { target: ShareTarget; onE
           next.setDate(next.getDate() + 1);
           // toISOString은 UTC라 한국(UTC+9)에서는 하루 앞 날짜가 나온다 — 로컬 값으로 직접 짠다.
           const to = `${next.getFullYear()}-${`${next.getMonth() + 1}`.padStart(2, "0")}-${`${next.getDate()}`.padStart(2, "0")}`;
-          const { items } = await api.getMatchesPage({
-            dateFrom: target.day, dateTo: to, sort: "latest", limit: 200,
-          });
+          // 한 번에 받을 수 있는 상한은 100건이다(서버 Query(le=100)) — 그보다 크게
+          // 달라고 하면 422로 튕겨 공유 링크가 통째로 에러 화면이 됐다(신고). 이틀치가
+          // 100건을 넘는 일은 드물지만, 넘더라도 빠지는 경기가 없도록 커서로 이어 받는다.
+          const items: Match[] = [];
+          let cursor: string | undefined;
+          for (let guard = 0; guard < 20; guard += 1) {
+            const page = await api.getMatchesPage({
+              dateFrom: target.day, dateTo: to, sort: "latest", limit: 100, cursor,
+            });
+            items.push(...page.items);
+            if (!page.hasMore || !page.nextCursor) break;
+            cursor = page.nextCursor;
+          }
           const mine = items.map(matchItem).filter((it) => sessionDateOf(it) === target.day);
           if (!alive) return;
           if (mine.length === 0) {

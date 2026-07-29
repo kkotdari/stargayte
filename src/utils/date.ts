@@ -64,23 +64,18 @@ export function monthInputToRange(value: string): { from: string; to: string } {
 export const currentMonthValue = (): string => todayStr().slice(0, 7);
 
 
-// 지금으로부터 1년 안쪽(과거·미래 양쪽)의 시각인가 — 이 범위면 연도를 적지 않아도 어느
-// 해인지 헷갈리지 않는다는 판단 기준이다(요청: "1년 이내건은 연도 생략"). 통계 제목의 월
-// 라벨(monthLabel)과 피드 타임스탬프가 같은 기준을 쓰도록 여기 한 곳에 둔다. 경계(정확히
-// 1년 전/후)는 바깥으로 본다 — 딱 1년 차이 나는 두 날짜가 같은 표기로 겹치면 안 되니까.
-export function isWithinAYear(ms: number, now: Date = gameNow()): boolean {
-  const y = now.getFullYear(), m = now.getMonth(), d = now.getDate();
-  return ms > new Date(y - 1, m, d).getTime() && ms < new Date(y + 1, m, d).getTime();
+// 날짜 표기 앞에 붙일 연도 — 올해면 없고, 다른 해면 두 자리로 붙인다(요청: "전년도부터는
+// 25년 이렇게"). 한때 "최근 12개월이면 생략"으로 뒀는데, 그러면 같은 "1월"이 작년 것인지
+// 올해 것인지 읽는 사람이 세어봐야 해서 헷갈린다는 피드백으로 해 경계로 되돌렸다.
+// 통계 제목의 월 라벨(monthLabel)과 피드 타임스탬프가 이 한 규칙을 같이 쓴다.
+export function shortYearPrefix(year: number, now: Date = gameNow()): string {
+  return year === now.getFullYear() ? "" : `${String(year).slice(2)}년 `;
 }
 
-// "YYYY-MM"을 사람이 읽는 라벨로 — 최근 12개월 안이면 "8월", 그보다 오래면 "26년 1월"
-// (요청). 달 단위로 세는 이유는 날짜 기준으로 재면 이번 달과 작년 같은 달이 둘 다 "7월"이
-// 돼 드롭다운에서 구분이 안 되기 때문이다(정확히 0~11개월 전만 연도를 생략한다).
+// "YYYY-MM"을 사람이 읽는 라벨로 — 올해면 "8월", 다른 해면 "25년 8월".
 export function monthLabel(month: string, now: Date = gameNow()): string {
   const [y, m] = month.split("-").map(Number);
-  const monthsAgo = (now.getFullYear() - y) * 12 + (now.getMonth() + 1 - m);
-  if (monthsAgo >= 0 && monthsAgo < 12) return `${m}월`;
-  return `${String(y).slice(2)}년 ${m}월`;
+  return `${shortYearPrefix(y, now)}${m}월`;
 }
 
 // "YYYY-MM"을 delta개월만큼 앞/뒤로 옮긴다(음수=과거) — 랭킹 화면의 전월 대비 순위변동/
