@@ -2533,6 +2533,17 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
   font: inherit; color: inherit;
 }
 .scr-sentence-select .scr-cselect-caret { width: 13px; height: 13px; opacity: 0.6; }
+/* 문장 끝 초기화 — 낱말들과 같은 톤의 아이콘 하나. 기본값 상태에서는 흐리게 죽인다. */
+.scr-grid-title-reset {
+  display: inline-flex; align-items: center; justify-content: center;
+  margin-left: 4px; padding: 3px; border: none; border-radius: 6px;
+  background: none; color: var(--dim); cursor: pointer;
+}
+.scr-grid-title-reset:disabled { opacity: 0.3; cursor: default; }
+@media (hover: hover) {
+  .scr-grid-title-reset:not(:disabled):hover { color: var(--text); background: rgba(255,255,255,0.12); }
+  .scr-light-theme .scr-grid-title-reset:not(:disabled):hover { background: rgba(0,0,0,0.07); }
+}
 @media (hover: hover) {
   .scr-sentence-select .scr-cselect-trigger:hover {
     border-color: transparent; box-shadow: none; background: rgba(255,255,255,0.12);

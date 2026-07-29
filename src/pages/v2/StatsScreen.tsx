@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import { ArrowUp, ArrowDown, ArrowUpDown, RotateCcw } from "lucide-react";
 import { Spinner } from "../../components/common/Feedback";
 import SearchFilterBar from "../../components/common/SearchFilterBar";
 import Select, { type SelectOption } from "../../components/common/Select";
@@ -31,6 +31,9 @@ const TYPE_SELECT_OPTS: SelectOption[] = [
 ];
 // 기간 드롭다운에서 "전체 기간"을 가리키는 값 — 나머지 값은 전부 "YYYY-MM"이다.
 const PERIOD_ALL = "all";
+// 초기화가 되돌릴 분류 — 진입 기본값은 랜덤(아래 matchType 주석)이라 되돌릴 "원래 값"이
+// 따로 없어서, 초기화만큼은 늘 같은 값이 나오도록 개인전으로 못 박는다.
+const DEFAULT_MATCH_TYPE: MatchType = "0101";
 // 기간 드롭다운이 늘어놓을 월의 상한 — 첫 경기 조회가 이상한 값을 주더라도 목록이
 // 무한정 길어지지 않게 막는 안전장치일 뿐, 정상 상황에서는 걸리지 않는다.
 const MAX_PERIOD_MONTHS = 240;
@@ -153,6 +156,16 @@ export default function StatsScreenV2() {
     () => (periodMonth ? monthInputToRange(periodMonth) : { from: "", to: "" }),
     [periodMonth],
   );
+
+  // 문장 끝 초기화 버튼(요청) — 세 낱말을 한 번에 되돌린다. 분류는 진입 기본값이 랜덤이라
+  // 되돌릴 "원래 값"이 없으므로 개인전으로 고정한다(눌렀는데 팀전이 나오면 초기화로 안 읽힌다).
+  const isDefaultFilter =
+    period === currentMonthValue() && matchType === DEFAULT_MATCH_TYPE && race === "all";
+  const resetFilters = () => {
+    setPeriod(currentMonthValue());
+    setMatchType(DEFAULT_MATCH_TYPE);
+    setRace("all");
+  };
 
   // SearchFilterBar가 이제 엔터를 눌러야만 onSearchChange를 부르므로(점프 방지), search
   // 자체가 이미 확정된 값이다 — 더 늦출 디바운스가 필요 없다.
@@ -400,6 +413,16 @@ export default function StatsScreenV2() {
               onChange={(v) => setRace(v as BaseRace | "all")} minDropWidth={130}
             />
             <span className="scr-grid-title-tail">스탯표</span>
+            {/* 초기화(요청) — 문장 끝에 붙여 세 낱말을 한 번에 기본값으로 되돌린다.
+                이미 기본값이면 누를 게 없으니 흐리게 죽여 둔다. 검색어(유저)는 이 문장
+                밖의 별개 필터라 건드리지 않는다 — 칩마다 제 ×가 있다. */}
+            <button
+              type="button" className="scr-grid-title-reset"
+              onClick={resetFilters} disabled={isDefaultFilter}
+              aria-label="필터 초기화" title="필터 초기화"
+            >
+              <RotateCcw size={14} aria-hidden />
+            </button>
           </div>
         }
       />
