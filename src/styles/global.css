@@ -6766,6 +6766,10 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   /* 헤더 오른쪽에 비워 두는 케밥 자리. 변수로 둔 건 제목 줄의 음영이 이 값만큼 오른쪽
      끝까지 빠져나가야 하기 때문이다 — 묶음 카드처럼 케밥이 없는 헤더는 이 값을 줄인다. */
   --post-head-pad-r: 44px;
+  /* 케밥(26px)의 위 좌표 — 제목 줄 중심에 버튼 중심을 맞춘 값이다(자세한 계산은 아래
+     .scr-feed-match-body .scr-match-trow-topmeta 주석). 헤더 세로 여백에 딸린 값이라
+     그쪽을 건드리면 여기도 다시 재야 한다. */
+  --post-kebab-top: 21px;
   /* 제목 줄 뒤에 깔리는 음영의 색(요청). 알파를 섞어야 해서 색상값이 아니라 RGB 성분으로
      둔다. 다크는 파란 띠 대신 테마 제 색인 검정 반투명으로 둔다(요청) — 색을 얹는 강조가
      아니라 제목 줄이 한 겹 가라앉아 보이는 '음영'이 된다. 포스트 자신은 채움이 아예 없는
@@ -6845,6 +6849,11 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    경기끼리는 구분선이 갈라주지만 첫 경기 위에는 선이 없어서 명단에 그대로 이어 붙었다. */
 .scr-feed-stack-list > .scr-feed-stack-reveal:first-child .scr-feed-stack-item {
   padding-top: 18px;
+}
+/* 그 18px은 케밥의 기준면(.scr-feed-stack-item)까지 같이 밀어내므로, 첫 경기의 케밥만
+   그만큼 시각 줄보다 위로 떠 있었다 — 같은 값을 더해 도로 맞춘다(아래 top: 8px 참고). */
+.scr-feed-stack-list > .scr-feed-stack-reveal:first-child .scr-match-trow-topmeta {
+  top: 26px;
 }
 /* 참가자 — 이름 길이가 달라도 열이 어긋나지 않게 균등 그리드를 쓴다(flex-wrap이면 이름
    길이만큼 칸이 달라져 줄이 안 맞는다). 한 줄에 세 명(요청). */
@@ -7000,17 +7009,23 @@ html:not(.scr-light-theme) .scr-feed-card-head:has(.scr-feed-card-head-title) .s
    사이에 그대로 얹혀 게임결과만 유독 벌어져 보였다(지적) — 빈 줄이니 여백도 지운다.
    실제 헤더 아래 간격은 아래 trow의 padding-top이 혼자 정한다. */
 .scr-feed-match-body .scr-match-trow-topline { margin-bottom: 0; }
-/* 헤더의 '제목 줄'과 같은 라인에 — 26px 버튼의 중심을 제목 줄 중심(포스트 위에서 45.6px)에
-   맞춘다. 시각이 제목 윗줄로 올라가면서 제목 줄이 그만큼 내려왔다(요청). 헤더 패딩이나
-   줄 구성을 건드리면 이 값도 같이 봐야 한다. */
-.scr-feed-match-body .scr-match-trow-topmeta { position: absolute; top: 33px; right: 10px; z-index: 2; }
+/* 헤더의 '제목 줄'과 같은 라인에 — 26px 버튼의 중심을 제목 줄 중심(포스트 위에서
+   33.6px)에 맞춘다: 33.6 - 13 = 20.6 → 21px. 시각이 제목 윗줄로 올라가면서 제목 줄이
+   그만큼 내려왔다(요청).
+   이 값은 헤더 패딩에 딸린 값이라 --post-kebab-top 하나로 묶어 뒀다 — 머리 여백을
+   줄이면서(4px) 이 자리가 제목보다 12px 아래로 처졌던 적이 있다(지적). 헤더 패딩이나
+   줄 구성을 건드리면 여기도 같이 다시 재야 한다. */
+.scr-feed-match-body .scr-match-trow-topmeta {
+  position: absolute; top: var(--post-kebab-top); right: 10px; z-index: 2;
+}
 /* 묶음 카드 안의 경기는 헤더가 시각 한 줄뿐이라(제목을 반복하지 않는다), 케밥도 그 줄에
-   맞춰 올라와야 한다 — 33px은 시각+제목 두 줄짜리 포스트 헤더에 맞춘 값이다(요청:
-   시간하고 케밥 나오고 바로 내용). */
+   맞춰 올라와야 한다 — --post-kebab-top은 시각+제목 두 줄짜리 포스트 헤더에 맞춘 값이다
+   (요청: 시간하고 케밥 나오고 바로 내용). 이쪽 머리는 padding-top이 14px로 따로 고정돼
+   있어(위 .scr-feed-stack-item .scr-feed-card-head) 그 값과 함께 봐야 한다. */
 .scr-feed-stack-item .scr-match-trow-topmeta { top: 8px; }
 .scr-feed-match-body .scr-match-trow-topmeta .scr-match-kebab-btn, .scr-feed-chal-menu .scr-match-kebab-btn { width: 26px; height: 26px; min-height: 26px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
 /* 너 나와 케밥(피드 레벨)도 같은 자리 — 기존 우상단 '취소' 라벨과 겹치지 않게 라벨은 왼쪽으로. */
-.scr-feed-chal-menu { position: absolute; top: 33px; right: 10px; z-index: 3; }
+.scr-feed-chal-menu { position: absolute; top: var(--post-kebab-top); right: 10px; z-index: 3; }
 .scr-feed-card .scr-challenge-cancel-tag { right: 48px; }
 /* 아이템 내 폰트 전부 1스텝 축소(요청) — 로스터/닉네임 caption, 헤더 micro 등.
    로스터와 너나와 닉네임은 같은 크기 유지(둘 다 caption). */
