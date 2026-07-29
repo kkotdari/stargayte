@@ -2423,9 +2423,50 @@ export function renderReplaySummary(
     const alt = alts.find((w) => w !== head && !out[i - 1].includes(w));
     if (alt) out[i] = out[i].replace(HEAD_RE, `${alt} `);
   }
-  return out.length > 0
-    ? out.map((l) => toPlain(l.replace(afterWhile, "$1 ").replace(twoLinks, "$1 $2"))).join(". ")
-    : null;
+  if (out.length === 0) return null;
+  const text = out
+    .map((l) => toPlain(l.replace(afterWhile, "$1 ").replace(twoLinks, "$1 $2")))
+    .join(". ");
+  return withStartClocks(text, data, resolveName);
+}
+
+/** 이름이 처음 나오는 자리에만 "(1시)"를 붙인다(요청: 닉네임이 처음 등장하는 경우 몇시인지도).
+ *  두 번째부터는 안 붙인다 — 같은 사람 이름마다 시각이 따라붙으면 문장이 괄호로 가득해진다.
+ *
+ *  다 만든 문장에서 찾아 끼우는 이유는 renderReplaySummaryParts와 같다: 이름은 틀 안에서
+ *  끼워 만들기 때문에, 틀마다 시각을 신경 쓰는 것보다 마지막에 한 번 훑는 편이 단순하고
+ *  빠짐이 없다. 긴 이름부터 찾는 것도 같은 이유다("정구"가 "정구2"의 일부일 수 있다). */
+function withStartClocks(
+  text: string,
+  data: ReplaySummaryData,
+  resolveName: (rawName: string) => string,
+): string {
+  const spots = data.spots;
+  if (!spots) return text;
+  // 지금 보여줄 이름 → 시각. 원본 아이디가 아니라 화면에 실제로 적힌 이름으로 찾아야 한다.
+  const byName = new Map<string, number>();
+  for (const [raw, clock] of Object.entries(spots)) {
+    const name = resolveName(raw);
+    if (name && !byName.has(name)) byName.set(name, clock);
+  }
+  // 긴 이름부터 — 짧은 이름이 긴 이름의 일부인 경우를 위해서다.
+  const names = [...byName.keys()].sort((a, b) => b.length - a.length);
+  // 끼워 넣을 자리를 먼저 다 모은 뒤 뒤에서부터 넣는다 — 앞에서부터 넣으면 그 뒤 자리가
+  // 전부 밀린다.
+  const inserts: { at: number; tag: string }[] = [];
+  for (const name of names) {
+    const i = text.indexOf(name);
+    if (i < 0) continue;
+    // 더 긴 이름의 일부로 이미 잡힌 자리면 건너뛴다.
+    if (inserts.some((x) => i < x.at && i + name.length > x.at - 10)) continue;
+    inserts.push({ at: i + name.length, tag: `(${byName.get(name)}시)` });
+  }
+  inserts.sort((a, b) => b.at - a.at);
+  let outText = text;
+  for (const ins of inserts) {
+    outText = `${outText.slice(0, ins.at)}${ins.tag}${outText.slice(ins.at)}`;
+  }
+  return outText;
 }
 
 /** 문장을 이름 조각과 나머지로 잘라 놓은 것 — 이름에 팀 색을 입히기 위한 것이다(요청).

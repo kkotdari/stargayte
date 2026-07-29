@@ -2039,12 +2039,20 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     ...(mode === "comeback" ? { whom: loserPlayers.map((p) => p.rawName) } : {}),
   };
 
+  // 시작 지점(몇 시) — 요약에서 그 사람이 처음 나올 때 한 번만 붙인다(요청). 맵 정보를
+  // 못 읽은 리플레이는 startClock이 null이라 그 사람만 빠진다.
+  const spots: Record<string, number> = {};
+  for (const p of replay.players) {
+    if (p.startClock !== null) spots[p.rawName] = p.startClock;
+  }
+
   return {
     v: REPLAY_SUMMARY_VERSION,
     // '초반'을 재려면 경기가 얼마나 길었는지를 알아야 한다(지적).
     ...(totalFrames ? { end: totalFrames } : {}),
     // 개인전에서는 팀 용어를 쓰지 않는다(요청).
     ...(duel ? { duel: true } : {}),
+    ...(Object.keys(spots).length > 0 ? { spots } : {}),
     beats: [...chosen, ending].map(strip),
   };
 }

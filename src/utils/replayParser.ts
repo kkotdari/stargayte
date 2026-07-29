@@ -39,6 +39,9 @@ export interface ParsedReplayPlayer {
   // 리플레이 슬롯 타입이 "Computer"(AI)인 참가자 — 배틀태그가 있을 리 없으니 회원 매칭을
   // 아예 시도하지 않고 컴퓨터 슬롯으로 바로 채운다.
   isComputer: boolean;
+  /** 시작 지점을 시계 방향으로 부른 값(1~12) — "정구(1시)"처럼 요약에서 쓴다(요청).
+   *  맵 정보나 슬롯 번호를 못 읽으면 null이고, 그때는 시각을 아예 안 붙인다. */
+  startClock: number | null;
   // 경기 요약 문장(replaySummary.ts)을 만들기 위한 원재료. 커맨드 스트림을 못 읽었으면 null.
   signals: ReplayPlayerSignals | null;
 }
@@ -183,6 +186,9 @@ function isObserverByActivity(p: ParsedReplayPlayer, all: ParsedReplayPlayer[]):
 interface ScrepPlayer {
   ID: number;
   Name: string;
+  /** 맵의 시작 지점(MapData.StartLocations)과 짝지을 슬롯 번호 — 그 사람이 몇 시에서
+   *  시작했는지를 알아내는 유일한 연결고리다(ID는 커맨드 스트림용 번호로 다르다). */
+  SlotID?: number;
   Race?: { Name?: string };
   Team: number;
   Observer?: boolean;
@@ -233,7 +239,14 @@ interface ScrepResult {
     Map: string;
     Frames: number;
     Players: ScrepPlayer[];
+    /** 맵 크기(타일). 시작 지점 좌표는 타일×32이라, 가운데를 잴 때 32를 곱해 쓴다. */
+    MapWidth?: number;
+    MapHeight?: number;
   };
+  /** mapData:true로 파싱했을 때만 채워진다 — 시작 지점 좌표를 여기서 얻는다. */
+  MapData?: {
+    StartLocations?: { X: number; Y: number; SlotID: number }[] | null;
+  } | null;
   Computed: {
     WinnerTeam: number;
     PlayerDescs: ScrepPlayerDesc[] | null;
@@ -461,7 +474,9 @@ export async function parseReplayFile(file: File): Promise<ParsedReplay> {
     // cmds:true를 줘야 커맨드 스트림(Commands.Cmds)이 채워진다 — 생산 지표 집계에 필요하다.
     // 기본값은 false라 예전엔 헤더/집계치만 받았다. 커맨드 배열이 커져 파싱이 조금 무거워지지만
     // 등록 시 한 번뿐이라 감수한다.
-    res = (await Screp.parseBuffer(buf, { cmds: true })) as ScrepResult;
+    // mapData는 시작 지점(몇 시에서 시작했나)을 얻으려고 함께 받는다 — 요약에서 닉네임이
+    // 처음 나올 때 "(1시)"를 붙이는 데 쓴다(요청).
+    res = (await Screp.parseBuffer(buf, { cmds: true, mapData: true })) as ScrepResult;
   } catch {
     throw new ReplayParseError(`"${file.name}" 파일을 리플레이로 읽지 못했어요.`);
   }
@@ -497,6 +512,44 @@ export async function parseReplayFile(file: File): Promise<ParsedReplay> {
   const signalsOf = (playerId: number): ReplayPlayerSignals | null =>
     signalsByPlayerId ? signalsByPlayerId.get(playerId) ?? emptySignals() : null;
 
+  /* 시작 지점을 "몇 시"로 부른다(요청: 닉네임이 처음 등장할 때 몇시인지도).
+     좌표는 MapData.StartLocations, 슬롯 짝짓기는 Header.Players[].SlotID, 맵 가운데는
+     Header.MapWidth/Height(타일)×32 — 시작 지점 좌표가 타일×32 단위라서다.
+     스타 판에서 부르는 시각은 열두 개가 아니라 여덟 개(12·1·3·5·6·7·9·11)다 — 네 귀퉁이는
+     정확히 45도라서 그냥 반올림하면 1.5시가 되고, 어느 쪽으로 굴리느냐에 따라 대각선 두
+     곳이 서로 다른 규칙으로 불린다(실측: 오른쪽 아래는 4시, 왼쪽 아래는 8시로 갈렸다).
+     그래서 반올림이 아니라 그 여덟 개 중 가장 가까운 것으로 스냅한다. */
+  const SPAWN_CLOCKS = [12, 1, 3, 5, 6, 7, 9, 11];
+  const startClockOf = (() => {
+    const w = res.Header.MapWidth;
+    const h = res.Header.MapHeight;
+    const spots = res.MapData?.StartLocations ?? null;
+    if (!w || !h || !spots || spots.length === 0) return () => null;
+    const cx = (w * 32) / 2;
+    const cy = (h * 32) / 2;
+    const bySlot = new Map(spots.map((s) => [s.SlotID, s]));
+    return (slotId: number | undefined): number | null => {
+      if (slotId === undefined) return null;
+      const s = bySlot.get(slotId);
+      if (!s) return null;
+      const dx = s.X - cx;
+      const dy = s.Y - cy;
+      if (dx === 0 && dy === 0) return null;   // 가운데에서 시작하는 맵은 시각이 없다
+      // 12시가 위(y가 작은 쪽)이고 3시가 오른쪽 — 화면 좌표는 y가 아래로 커지므로 -dy.
+      const deg = (Math.atan2(dx, -dy) * 180) / Math.PI;
+      const hour = ((deg + 360) % 360) / 30;
+      // 0시와 12시는 같은 자리다 — 12를 기준으로 재야 12시가 제대로 가장 가까운 후보가 된다.
+      let best = SPAWN_CLOCKS[0];
+      let bestGap = Infinity;
+      for (const c of SPAWN_CLOCKS) {
+        const target = c === 12 ? 0 : c;
+        const gap = Math.min(Math.abs(hour - target), 12 - Math.abs(hour - target));
+        if (gap < bestGap) { bestGap = gap; best = c; }
+      }
+      return best;
+    };
+  })();
+
   // 확실한 관전자(Observer 플래그/슬롯 타입)는 여기서 걸러낸다. 조작량만으로 의심되는
   // 사람(guessedObservers)은 확정 근거가 아니므로 걸러내지 않고 로스터에 그대로 남겨
   // 검토 화면에서 사람이 눈으로 확인하게 한다(아래 참고).
@@ -514,6 +567,7 @@ export async function parseReplayFile(file: File): Promise<ParsedReplay> {
         effectiveCmdCount: desc?.EffectiveCmdCount ?? null,
         buildCount: buildCountOf(p.ID),
         isComputer: p.Type?.Name === "Computer",
+        startClock: startClockOf(p.SlotID),
         signals: signalsOf(p.ID),
       };
     });
