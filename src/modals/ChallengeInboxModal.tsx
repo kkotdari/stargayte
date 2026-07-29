@@ -9,7 +9,7 @@ import { useAppStore } from "../store/appStore";
 import { useLockBodyScroll } from "../utils/bodyScrollLock";
 import { formatWhen } from "../utils/date";
 import { playMailChime } from "../utils/sfx";
-import type { KakaoShareContent } from "../utils/kakaoShare";
+import { shareThumb, type KakaoShareContent } from "../utils/kakaoShare";
 import type { Challenge } from "../types";
 
 interface ChallengeInboxModalProps {
@@ -171,7 +171,7 @@ export default function ChallengeInboxModal({ challenges, onClose, closeLabel = 
       return {
         title: "대결 거절",
         description: `${matchup}`,
-        imageUrl: `${window.location.origin}/images/challenge/challenge_share_thumb.jpg`,
+        ...shareThumb("challengeReply"),
         link: `${window.location.origin}/?sv=challenge&sid=${current.id}`,
         fallbackText: `[스타게이트] ${me}님이 ${caller}님의 호출을 거절했어요.\n${matchup}`,
       };
@@ -179,7 +179,7 @@ export default function ChallengeInboxModal({ challenges, onClose, closeLabel = 
     return {
       title: "대결 수락!",
       description: `${matchup} · ${acceptedWhen}`,
-      imageUrl: `${window.location.origin}/images/challenge/challenge_share_thumb.jpg`,
+      ...shareThumb("challengeReply"),
       link: `${window.location.origin}/?sv=challenge&sid=${current.id}`,
       fallbackText: `[스타게이트] ${me}님이 ${caller}님의 호출을 수락했어요!\n${matchup}\n일시: ${acceptedWhen}`,
     };

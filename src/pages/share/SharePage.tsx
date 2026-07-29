@@ -163,7 +163,8 @@ export default function SharePage({ target, onExit }: { target: ShareTarget; onE
 function ShareFoot({ onExit }: { onExit: () => void }) {
   return (
     <div className="scr-share-foot">
-      <span className="scr-share-brand">스타게이트</span>
+      {/* 왼쪽에 "스타게이트" 글자를 함께 뒀었는데 지웠다(요청: 의미 없어 보인다) —
+          바로 옆 버튼이 이미 "스타게이트로"라서 같은 말이 두 번이었다. */}
       <button type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid" onClick={onExit}>
         스타게이트로
       </button>

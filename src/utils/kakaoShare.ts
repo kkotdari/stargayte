@@ -57,22 +57,39 @@ function loadKakao(): Promise<KakaoLike | null> {
   return sdkPromise;
 }
 
-/** 게임결과·랭크변동 공유 카드의 썸네일 — 클럽 워드마크(요청). 이 두 종류는 너 나와!처럼
- *  전용 그림이 없어서, 예전에 미사용으로 지웠던 로고 파일을 되살려 쓴다.
- *
- *  검정 워드마크를 쓴다: 투명 PNG는 카카오가 서버에서 흰 바탕에 얹어 내보내므로 흰 글씨는
- *  아예 안 보인다(같은 이유로 logo_white.png는 앱 안에서만 쓴다).
- *
- *  이 그림은 워드마크라 6.4:1로 아주 납작하다 — 카카오 피드 템플릿의 그림 자리는 2:1이라
- *  가운데만 잘려 보일 수 있어, 아래 sendDefault에서 실제 가로·세로를 함께 넘겨 카카오가
- *  비율을 알고 배치하게 한다. */
-const SHARE_LOGO = "/images/logo/logo_black.png";
-export const SHARE_LOGO_W = 2847;
-export const SHARE_LOGO_H = 444;
+/* 공유 카드 썸네일 — 포스트 종류마다 한 장씩 미리 만들어 둔 그림이다(요청).
+   한때 워드마크 원본(logo_black.png)을 그대로 넘겼는데, 그건 6.4:1로 아주 납작해서
+   카카오 피드 템플릿의 2:1 그림 자리에 넣으면 좌우가 잘렸다(신고: 로고 좌우가 잘려).
+   imageWidth/imageHeight로 비율을 알려 줘도 카카오는 자리를 채우도록 잘라 낸다.
+   그래서 처음부터 2:1(1200×600)로 그려 둔 그림을 쓴다 — 위에 로고, 아래에 무슨 글을
+   공유한 것인지(요청). 원본은 public/images/share, 만드는 스크립트는 이 커밋 메시지 참고. */
+const SHARE_THUMB_W = 1200;
+const SHARE_THUMB_H = 600;
+const SHARE_THUMBS = {
+  /** 너 나와! 호출 — 도전장을 보냈다는 글. */
+  challengeCall: "share_thumb_challenge_call.png",
+  /** 너 나와! 응답 — 수락/거절했다는 글. */
+  challengeReply: "share_thumb_challenge_reply.png",
+  /** 게임결과 묶음(같은 자리에서 이어 친 판들). */
+  gameResultList: "share_thumb_game_result_list.png",
+  /** 게임결과 한 건. */
+  gameResult: "share_thumb_game_result.png",
+  /** 랭크 변동 알림. */
+  rankShift: "share_thumb_rank_shift.png",
+} as const;
 
-/** 공유 썸네일의 절대 URL — 카카오가 서버에서 읽어가므로 상대경로로는 안 된다. */
-export function shareLogoUrl(): string {
-  return `${window.location.origin}${SHARE_LOGO}`;
+export type ShareThumbKind = keyof typeof SHARE_THUMBS;
+
+/** 그 종류의 썸네일을 KakaoShareContent에 그대로 펼쳐 넣을 수 있는 꼴로 돌려준다.
+ *  URL이 절대경로여야 하는 것은 카카오가 자기 서버에서 이 그림을 읽어가기 때문이다. */
+export function shareThumb(kind: ShareThumbKind): {
+  imageUrl: string; imageWidth: number; imageHeight: number;
+} {
+  return {
+    imageUrl: `${window.location.origin}/images/share/${SHARE_THUMBS[kind]}`,
+    imageWidth: SHARE_THUMB_W,
+    imageHeight: SHARE_THUMB_H,
+  };
 }
 
 export interface KakaoShareContent {

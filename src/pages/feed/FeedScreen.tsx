@@ -9,7 +9,7 @@ import Select from "../../components/common/Select";
 import FilterItem from "../../components/common/FilterItem";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 import KakaoShareButton from "../../components/common/KakaoShareButton";
-import { shareLogoUrl, SHARE_LOGO_W, SHARE_LOGO_H, type KakaoShareContent } from "../../utils/kakaoShare";
+import { shareThumb, type KakaoShareContent } from "../../utils/kakaoShare";
 import GameResultCardBody, { resolveSlotName, type SearchListRow } from "./GameResultCardBody";
 import { isComputerSlot } from "../../constants/computerSlot";
 import { isUnregisteredSlot } from "../../constants/unregisteredSlot";
@@ -231,7 +231,7 @@ function ChallengeActionsMenu({ challenge, isAdmin, onDeleted }: {
     return {
       title: "너 나와!",
       description: matchup,
-      imageUrl: `${window.location.origin}/images/challenge/challenge_share_thumb.jpg`,
+      ...shareThumb("challengeCall"),
       link: `${window.location.origin}/?sv=challenge&sid=${challenge.id}`,
       fallbackText: `[스타게이트] 너 나와!\n${matchup}`,
     };
@@ -489,8 +489,7 @@ export function GameResultPost({
     return {
       title: `스타게이트 · ${label}`,
       description: `참가자 총 ${participants.length}명 — ${roster}`,
-      // 전용 그림이 없어 클럽 워드마크를 쓴다(요청).
-      imageUrl: shareLogoUrl(), imageWidth: SHARE_LOGO_W, imageHeight: SHARE_LOGO_H,
+      ...shareThumb("gameResultList"),
       link: `${window.location.origin}/?sv=stack&sd=${stack.date}`,
       fallbackText: `[스타게이트] ${label}\n참가자 총 ${participants.length}명 — ${roster}`,
     };

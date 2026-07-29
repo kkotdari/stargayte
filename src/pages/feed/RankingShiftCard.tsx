@@ -3,7 +3,7 @@ import { MoreHorizontal, Trophy } from "lucide-react";
 import KakaoShareButton from "../../components/common/KakaoShareButton";
 import { cx } from "../../utils/format";
 import { normalizeSearchText } from "../../utils/memberSearch";
-import { shareLogoUrl, SHARE_LOGO_W, SHARE_LOGO_H, type KakaoShareContent } from "../../utils/kakaoShare";
+import { shareThumb, type KakaoShareContent } from "../../utils/kakaoShare";
 import type { RankingShiftEntry, RankingShift } from "../../types";
 
 // 변동이 이보다 많으면 위에서 이 개수만 보이고 나머지는 "…더보기"로 접는다(요청).
@@ -52,8 +52,7 @@ export function rankShiftShareContent(shift: RankingShift): KakaoShareContent {
   return {
     title: `${rankShiftTypeLabel(shift)} 랭크 변동 발생`,
     description: summary,
-    // 전용 그림이 없어 클럽 워드마크를 쓴다(요청).
-    imageUrl: shareLogoUrl(), imageWidth: SHARE_LOGO_W, imageHeight: SHARE_LOGO_H,
+    ...shareThumb("rankShift"),
     link: `${window.location.origin}/?sv=rankingShift&sid=${shift.id}`,
     fallbackText: `[스타게이트] ${rankShiftTypeLabel(shift)} 랭크 변동 발생\n${summary}`,
   };

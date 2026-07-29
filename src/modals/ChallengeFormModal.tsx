@@ -10,7 +10,7 @@ import MemberPickBlock from "../components/common/MemberPickBlock";
 import { useAppStore } from "../store/appStore";
 import { api } from "../api/client";
 import { useLockBodyScroll } from "../utils/bodyScrollLock";
-import type { KakaoShareContent } from "../utils/kakaoShare";
+import { shareThumb, type KakaoShareContent } from "../utils/kakaoShare";
 import type { Challenge } from "../types";
 
 // 상대는 최대 4명까지 지목할 수 있고(팀전), 내 팀은 본인 자동 포함이라 "본인 제외"
@@ -128,17 +128,13 @@ export default function ChallengeFormModal({ onClose, onCreated, presetTargetIds
     const caller = user?.nickname ?? "";
     // 미리보기에서 지목 대상("X 너 나와!")은 감추고 "OO님의 호출"만 노출해 궁금증을 유발한다
     // (요청) — 누가 호출됐는지는 링크를 열어 편지지에서 확인한다.
-    // 카톡 카드 이미지는 nawa2 대신 보낸 사람(호출자) 아바타로(요청). 단 카톡은 이미지를
-    // 서버에서 가져가므로 data URL 아바타는 못 쓴다 — http(s) 주소일 때만 쓰고, 아니면
-    // (data URL·아바타 없음) 기존 nawa2로 폴백한다.
-    const avatar = user?.avatar;
-    const imageUrl = avatar && /^https?:\/\//.test(avatar)
-      ? avatar
-      : `${window.location.origin}/images/challenge/challenge_share_thumb.jpg`;
+    // 카드 그림은 종류별 썸네일을 쓴다(요청: 5종). 한때 보낸 사람 아바타를 우선 썼는데,
+    // 카카오 그림 자리가 2:1이라 정사각 아바타는 위아래가 잘려 얼굴이 반토막 났다 —
+    // 로고가 좌우로 잘린 것과 같은 문제다.
     return {
       title: `${caller ? `${caller}님` : "누군가"}의 호출`,
       description: "누가 호출됐을까요? 👀 탭해서 확인하기",
-      imageUrl,
+      ...shareThumb("challengeCall"),
       link: `${window.location.origin}/?sv=challenge&sid=${challenge.id}`,
       fallbackText: `[스타게이트] ${caller ? `${caller}님` : "누군가"}의 호출이 도착했어요! 열어서 확인해보세요.`,
     };

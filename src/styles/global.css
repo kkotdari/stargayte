@@ -5698,10 +5698,11 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
    ShareFoot 주석 참고). 위에 있을 때 필요했던 노치 여백(--safe-top)은 이제 필요 없고,
    대신 아래쪽 홈 인디케이터를 피한다. */
 .scr-share-foot {
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  /* 남은 것이 버튼 하나뿐이라(브랜드 글자 삭제, 요청) space-between으로는 자리가 안 잡힌다
+     — 오른쪽에 붙인다. */
+  display: flex; align-items: center; justify-content: flex-end; gap: 12px;
   padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
 }
-.scr-share-brand { font-weight: 800; letter-spacing: 0.02em; color: var(--text); }
 .scr-share-body {
   flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
   /* 위 노치 여백은 이제 본문이 직접 낸다 — 예전엔 머리(.scr-share-head)가 위에 있어서

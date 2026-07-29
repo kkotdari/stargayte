@@ -7,7 +7,7 @@ import OptionalDateTimeFields from "../../components/common/OptionalDateTimeFiel
 import ChallengeTimeEditModal from "../../modals/ChallengeTimeEditModal";
 import InlineCollapse from "../../components/common/InlineCollapse";
 import KakaoShareButton from "../../components/common/KakaoShareButton";
-import type { KakaoShareContent } from "../../utils/kakaoShare";
+import { shareThumb, type KakaoShareContent } from "../../utils/kakaoShare";
 import { useAppStore } from "../../store/appStore";
 import { api } from "../../api/client";
 import { cx } from "../../utils/format";
@@ -224,12 +224,11 @@ export function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, o
     const me = user?.nickname ?? "";
     const matchup = `${creatorSideMembers.map((m) => m.nickname).join(", ")} vs ${targetSideMembers.map((m) => m.nickname).join(", ")}`;
     const link = `${window.location.origin}/?sv=challenge&sid=${sharePrompt?.updated.id ?? challenge.id}`;
-    const imageUrl = `${window.location.origin}/images/challenge/challenge_share_thumb.jpg`;
     if (sharePrompt?.kind === "rejected") {
-      return { title: "대결 거절", description: matchup, imageUrl, link,
+      return { title: "대결 거절", description: matchup, ...shareThumb("challengeReply"), link,
         fallbackText: `[스타게이트] ${me}님이 ${caller}님의 호출을 거절했어요.\n${matchup}` };
     }
-    return { title: "대결 수락!", description: `${matchup} · ${sharePromptWhen}`, imageUrl, link,
+    return { title: "대결 수락!", description: `${matchup} · ${sharePromptWhen}`, ...shareThumb("challengeReply"), link,
       fallbackText: `[스타게이트] ${me}님이 ${caller}님의 호출을 수락했어요!\n${matchup}\n일시: ${sharePromptWhen}` };
   };
 
