@@ -7660,14 +7660,19 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
 /* ── 미니맵 그림 ── */
 .scr-minimap {
   position: relative; width: 100%; aspect-ratio: 1 / 1;
-  border-radius: 8px; overflow: hidden;
+  border-radius: 8px;
   border: 1px solid var(--line);
-  /* 표시(아바타)가 그림 밖으로 조금 삐져나오는 편이 읽기 좋은데 overflow:hidden이라
-     잘린다 — 대신 표시를 안쪽으로 밀지 않고 그림 자체를 꽉 채운다. */
+  /* 자르지 않는다(지적: 미니맵 경계에서 표시가 잘린다) — 가장자리 본진의 아바타·이름표·
+     해골은 그림 밖으로 조금 삐져나오는 것이 정상이고, 그게 잘리면 누구인지 못 읽는다.
+     지형 그림 자체의 둥근 모서리는 캔버스/이미지에 직접 준다. */
+  overflow: visible;
   background: #101418;
 }
-/* 캔버스(격자 개략도)와 img(사람이 올린 실제 미니맵)가 같은 자리를 쓴다. */
-.scr-minimap-canvas { display: block; width: 100%; height: 100%; object-fit: fill; }
+/* 캔버스(격자 개략도)와 img(사람이 올린 실제 미니맵)가 같은 자리를 쓴다. 둥근 모서리는
+   여기에 준다 — 바깥(.scr-minimap)은 표시가 삐져나올 수 있게 자르지 않는다. */
+.scr-minimap-canvas {
+  display: block; width: 100%; height: 100%; object-fit: fill; border-radius: 7px;
+}
 /* 본진 → 공격 자리 화살표 — 지형 위, 아바타 아래. 스냅이 바뀌면 갈아 끼워지므로 부드럽게
    들어오게 한다(갑자기 선이 튀어나오면 그림이 깜빡이는 것처럼 보인다). */
 .scr-minimap-arrows {
@@ -7842,16 +7847,17 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
 .scr-story-cap-line[data-on="true"] { visibility: visible; opacity: 1; }
 @media (prefers-reduced-motion: reduce) { .scr-story-cap-line { transition: none; } }
 
-/* ── 미니맵 관리(제어판) ── 맵마다 실제 미니맵 그림을 올려 두는 곳. 리플레이의 타일 번호만으로는
+/* ── 미니맵 화면(운영) ── 맵마다 실제 미니맵 그림을 올려 두는 곳. 리플레이의 타일 번호만으로는
    물·풀·땅·벽을 갈라낼 수 없어서 사람이 한 번 올려 둔다(요청). 이름·판본만 다른 맵 여러 개를
    골라 한 그림에 묶는다. */
-.scr-minimap-manage .scr-modal-body { display: flex; flex-direction: column; gap: 8px; }
-.scr-minimap-maps {
-  display: flex; flex-direction: column; gap: 4px;
-  /* 맵이 쌓이면 목록만 길어지므로 여기서만 스크롤한다 — 모달 전체가 늘어나면 아래 조작부가
-     화면 밖으로 밀린다. */
-  max-height: 210px; overflow-y: auto;
+.scr-minimap-screen { display: flex; flex-direction: column; gap: 10px; padding: 0 20px 24px; }
+.scr-minimap-lead { color: var(--muted); font-size: var(--fs-caption); line-height: 1.5; margin: 0; }
+.scr-minimap-panel {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 12px; border-radius: 12px; border: 1px solid var(--line);
+  background: rgba(var(--overlay-rgb), 0.04);
 }
+.scr-minimap-maps { display: flex; flex-direction: column; gap: 6px; }
 .scr-minimap-empty { color: var(--muted); font-size: var(--fs-caption); }
 .scr-minimap-map-row, .scr-minimap-image-row {
   display: flex; align-items: center; gap: 8px; min-width: 0;
@@ -7862,17 +7868,20 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
   border-color: var(--point); background: rgba(var(--overlay-rgb), 0.14);
 }
 .scr-minimap-thumb {
-  flex-shrink: 0; width: 34px; height: 34px; border-radius: 6px;
+  flex-shrink: 0; width: 44px; height: 44px; border-radius: 6px;
   border: 1px solid var(--line); object-fit: cover; background: #101418;
 }
 .scr-minimap-thumb-empty { display: block; }
+/* 격자 개략도 썸네일 — 어느 맵인지 알아보는 근거다(요청). 캔버스를 칸에 꽉 채운다. */
+.scr-minimap-thumb-grid { position: relative; overflow: hidden; padding: 0; }
+.scr-minimap-thumb-grid .scr-minimap-canvas { border-radius: 0; }
 .scr-minimap-map-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1 1 auto; }
 .scr-minimap-map-name {
   font-size: var(--fs-body); font-weight: 700; color: var(--text);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .scr-minimap-map-meta { font-size: var(--fs-caption); color: var(--muted); }
-.scr-minimap-assign { display: flex; align-items: center; gap: 6px; }
+.scr-minimap-assign { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .scr-minimap-assign .scr-input { flex: 1 1 auto; min-width: 0; }
 .scr-minimap-assign .scr-btn { flex-shrink: 0; display: inline-flex; align-items: center; gap: 4px; }
 .scr-minimap-images { display: flex; flex-direction: column; gap: 4px; }

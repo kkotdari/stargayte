@@ -351,7 +351,7 @@ export interface MonthlyTeamRankingResponse {
 // "ranking"은 폐기 — 랭킹은 통계 화면(포인트 컬럼)에 통합됐다(요청).
 // 실제로 갈 수 있는 화면만 남긴다 — 기록실("match")·너 나와! 전용 화면("challenge")·
 // 상성맵 화면("rivalry")은 메뉴에서 빠진 뒤 어디서도 이동하지 않아 함께 걷어냈다(요청).
-export type ScreenKey = "feed" | "stats" | "members" | "leagues";
+export type ScreenKey = "feed" | "stats" | "members" | "leagues" | "minimaps";
 
 // 랭킹/경기결과/전적통계 등 화면·메뉴 구성을 어느 버전 세트로 보여줄지 — 제어판에서 등록된
 // 버전 중 하나로 배포하면 앱 전체가 즉시 바뀐다(개인별 설정이 아니라 서버에 저장된 전역 값).

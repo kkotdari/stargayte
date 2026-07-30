@@ -19,7 +19,7 @@ import LeagueScreen from "./pages/league/LeagueScreen";
 import ProfileModal from "./modals/ProfileModal";
 import MemberProfileModal from "./modals/MemberProfileModal";
 import AdminPanelModal from "./modals/AdminPanelModal";
-import MinimapManageModal from "./modals/MinimapManageModal";
+import MinimapScreen from "./pages/minimaps/MinimapScreen";
 import ChallengeInboxModal from "./modals/ChallengeInboxModal";
 import ChallengeResultInboxModal from "./modals/ChallengeResultInboxModal";
 import MatchRequestInboxModal from "./modals/MatchRequestInboxModal";
@@ -31,7 +31,7 @@ import ShareLoginGate from "./pages/share/ShareLoginGate";
 
 import type { ScreenKey } from "./types";
 
-const SCREEN_KEYS: ScreenKey[] = ["feed", "stats", "members", "leagues"];
+const SCREEN_KEYS: ScreenKey[] = ["feed", "stats", "members", "leagues", "minimaps"];
 
 // 새로고침해도 보던 화면 그대로 있도록 URL의 ?screen= 쿼리에 현재 화면을 기록해둔다 —
 // 사파리의 pull-to-refresh 등 브라우저 기본 새로고침은 앱 상태를 그대로 날려서 첫 화면으로
@@ -71,8 +71,6 @@ export default function App() {
   const clearJustLoggedIn = useAppStore((s) => s.clearJustLoggedIn);
   const adminPanelOpen = useAppStore((s) => s.adminPanelOpen);
   const setAdminPanelOpen = useAppStore((s) => s.setAdminPanelOpen);
-  const minimapManageOpen = useAppStore((s) => s.minimapManageOpen);
-  const setMinimapManageOpen = useAppStore((s) => s.setMinimapManageOpen);
   const bootstrap = useAppStore((s) => s.bootstrap);
   // 부팅(스플래시)이 끝나 본 화면이 처음 그려진 직후, 사파리 엣지 렌더(주소창 알약 뒤
   // 콘텐츠 합성)를 다시 굴린다 — 초기 진입 시 위아래가 잘린 채 남던 문제(지적) 대응.
@@ -226,6 +224,7 @@ export default function App() {
   const resolvedScreen: ScreenKey =
     screen === "members" && !isAdmin ? "feed" :
     screen === "leagues" && !isAdmin ? "feed" :
+    screen === "minimaps" && !isAdmin ? "feed" :
     screen;
 
   // 배경 사진이 있는 화면(지금은 통계뿐 — 피드 배경은 제거)에서는 헤더까지 사진이
@@ -269,6 +268,8 @@ export default function App() {
             {/* 운영자 전용 메뉴로 변경(요청) — 회원/이미지 설정과 같은 기준으로 운영자만 접근. */}
             {/* 공식 리그 대진/결과 관리 — 다음 버전에서 열 예정, 지금은 운영자만(요청). */}
             {isAdmin && !booting && resolvedScreen === "leagues" && <LeagueScreen />}
+            {/* 미니맵 — 맵마다 실제 미니맵 그림을 올려 두는 운영 화면(요청). */}
+            {isAdmin && !booting && resolvedScreen === "minimaps" && <MinimapScreen />}
           </main>
         </div>
 
@@ -289,10 +290,6 @@ export default function App() {
         {profileOpen && <ProfileModal onClose={() => setProfileOpen(false)} />}
         {viewingMember && <MemberProfileModal member={viewingMember} onClose={closeMemberProfile} />}
         {adminPanelOpen && <AdminPanelModal isAdmin={isAdmin} onClose={() => setAdminPanelOpen(false)} />}
-        {/* 미니맵 관리 — 운영 메뉴의 하위 항목(요청). 운영자에게만 보이는 메뉴에서 열린다. */}
-        {minimapManageOpen && isAdmin && (
-          <MinimapManageModal onClose={() => setMinimapManageOpen(false)} />
-        )}
         {updateNotice && <AppUpdateNoticeModal notes={updateNotice.notes} onClose={dismissUpdateNotice} />}
         {inboxChallenges.length > 0 && (
           <ChallengeInboxModal challenges={inboxChallenges} onClose={dismissInboxChallenges} />

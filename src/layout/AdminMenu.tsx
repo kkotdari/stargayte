@@ -34,7 +34,6 @@ interface AdminItem {
 // 위로 뒤집어 열린다.
 export default function AdminMenu({ screen, onNavigate, variant, onOpenChange }: AdminMenuProps) {
   const setAdminPanelOpen = useAppStore((s) => s.setAdminPanelOpen);
-  const setMinimapManageOpen = useAppStore((s) => s.setMinimapManageOpen);
   const items: AdminItem[] = [
     { key: "members", label: "회원", isActive: screen === "members", onSelect: () => onNavigate("members") },
     { key: "leagues", label: "리그", isActive: screen === "leagues", onSelect: () => onNavigate("leagues") },
@@ -42,9 +41,8 @@ export default function AdminMenu({ screen, onNavigate, variant, onOpenChange }:
     // 오버레이(RivalryOverlay)로 띄운다. 운영 전용 화면(RivalryScreen) 자체는 남아 있다.
     // 제어판은 반대로 여기로 들어왔다(요청) — 예전엔 상성 범례의 "누르면" 글자를 연타해야
     // 열리는 숨은 트리거였다. 화면 전환이 아니라 모달이라 isActive는 늘 false다.
-    // 미니맵 — 맵마다 실제 미니맵 그림을 올려 두는 곳(요청). 제어판과 같은 모달 항목이라
-    // 화면 전환이 아니고 isActive는 늘 false다.
-    { key: "minimap", label: "미니맵", isActive: false, onSelect: () => setMinimapManageOpen(true) },
+    // 미니맵 — 맵마다 실제 미니맵 그림을 올려 두는 화면(요청: 모달 말고 정식 화면으로).
+    { key: "minimaps", label: "미니맵", isActive: screen === "minimaps", onSelect: () => onNavigate("minimaps") },
     { key: "admin-panel", label: "제어판", isActive: false, onSelect: () => setAdminPanelOpen(true) },
   ];
   const activeInAdmin = items.some((i) => i.isActive);

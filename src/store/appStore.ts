@@ -76,9 +76,6 @@ interface AppState {
   // 운영 메뉴의 하위 항목으로 옮기면서 그 연타 판정은 통째로 없앴다(AdminMenu).
   adminPanelOpen: boolean;
   setAdminPanelOpen: (open: boolean) => void;
-  // 미니맵 관리 모달 열림 — 제어판과 마찬가지로 운영 메뉴의 하위 항목이다(요청).
-  minimapManageOpen: boolean;
-  setMinimapManageOpen: (open: boolean) => void;
   booting: boolean;
   // 새로고침 직후 저장된 토큰으로 로그인 상태 복원을 시도하는 동안 true
   restoringSession: boolean;
@@ -187,8 +184,6 @@ export const useAppStore = create<AppState>()((set, get) => ({
   noticeEnabled: true,
   adminPanelOpen: false,
   setAdminPanelOpen: (open) => set({ adminPanelOpen: open }),
-  minimapManageOpen: false,
-  setMinimapManageOpen: (open) => set({ minimapManageOpen: open }),
   // 세션 복원(restoreSession)이 user를 채우고 나면 bootstrap() 이펙트가 실행되기 전까지
   // 한 프레임 정도 짧은 틈이 있는데, booting이 기본 false면 그 틈에 화면이 빈 members/matches로
   // 잠깐 마운트됐다가(예: 주간랭킹 화면이 엉뚱한 순간의 데이터로 한 번 그려짐) 다시 스피너로
