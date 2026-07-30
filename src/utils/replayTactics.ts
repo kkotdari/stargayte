@@ -58,6 +58,19 @@ export interface Tactic {
  *  이야기를 만드는 규칙들은 unknown을 아예 집어내지 않으므로, 그런 자리는 언급되지 않는다. */
 type Zone = "home" | "ally" | "mid" | "enemy" | "unknown";
 
+/** 건물을 지은 자리를 사람이 부르는 이름으로(요청: 내 입구/기지인지 아군 입구/기지인지
+ *  상대 입구 앞인지 상대 본진인지 센터인지 다 파악해야 한다).
+ *
+ *  Zone과 따로 두는 이유: Zone은 규칙들이 '남의 기지냐 내 기지냐'만 가르는 데 쓰는 거친
+ *  구분이고, 여기는 문장에 그대로 적을 이름이다. 리플레이에 지형이 없어 '입구'를 지형으로는
+ *  못 찾지만 방향으로는 찾을 수 있다 — 그 기지 안이면서 상대 쪽으로 나가 있는 자리다. */
+export type BuildSpot =
+  | "myBase" | "myFront"
+  | "allyBase" | "allyFront"
+  | "enemyBase" | "enemyFront"
+  | "mid"
+  | "unknown";
+
 /** 생산 프레임들을 '한 번에 몰아 뽑은 묶음'으로 자른다 — 생산 사이가 BURST_GAP_SEC 넘게
  *  벌어지면 다른 묶음이다. 총량만 세면 나눠 뽑은 것도 한 덩어리가 돼, 그 이야기를 놓을
  *  시점이 사라진다(지적: "연속적으로 뽑은 게 아니라 나눠져서 뽑은 거라 따로 계산돼야 함.
@@ -355,6 +368,8 @@ interface Geo {
   enemyAt: (b: BuildPos) => string | null;
   /** 내 본진 안이면서 상대 쪽으로 나가 있는 자리인가 = 진출로(입구) 쪽. */
   front: (b: BuildPos) => boolean;
+  /** 그 자리를 사람이 부르는 이름 — 내 기지/입구, 아군 기지/입구, 상대 본진/입구 앞, 센터. */
+  spot: (b: BuildPos) => BuildSpot;
   /** 내 살림이 아군 기지에 얹혀 있으면 그 아군(지적: 내 기지에 건물이 거의 없고 아군
    *  기지에 있는 게 셋방살이다). 아니면 null. */
   lodgingHost: string | null;
@@ -435,6 +450,48 @@ function geoOf(
     return (v.x * dir.x + v.y * dir.y) / len > FRONT_COS;
   };
 
+  /** origin 기지 안이면서 target 쪽으로 나가 있는 자리인가 — front를 임의의 기지에
+   *  대해 쓸 수 있게 일반화한 것이다(아군 입구·상대 입구 앞을 같은 자로 재려면 필요하다). */
+  const towardFront = (
+    origin: { x: number; y: number }, target: { x: number; y: number }, b: BuildPos, radius: number,
+  ): boolean => {
+    const len = Math.hypot(b.x - origin.x, b.y - origin.y);
+    if (len < base * FRONT_MIN || len > base * radius) return false;
+    const tl = Math.hypot(target.x - origin.x, target.y - origin.y);
+    if (!(tl > 0)) return false;
+    const cos = ((b.x - origin.x) * (target.x - origin.x) + (b.y - origin.y) * (target.y - origin.y))
+      / (len * tl);
+    return cos > FRONT_COS;
+  };
+
+  /** 그 자리를 사람이 부르는 이름으로(요청). 상대 진영은 '본진'과 '입구 앞'을 가른다 —
+   *  내 쪽을 향한 바깥쪽이 입구 앞이고, 더 깊이 들어간 곳이 본진이다. 포토러시가 입구
+   *  앞을 막은 것인지 본진 한복판에 박은 것인지는 전혀 다른 이야기라서다. */
+  const spot = (b: BuildPos): BuildSpot => {
+    // 상대 진영이 가장 먼저다 — 남의 기지에 지은 건물은 무엇보다 그 사실이 중요하다.
+    let nearFoe: { h: { x: number; y: number }; d: number } | null = null;
+    for (const h of foeHomes) {
+      const d = dist(b, h);
+      if (!nearFoe || d < nearFoe.d) nearFoe = { h, d };
+    }
+    if (nearFoe && nearFoe.d < base * ENEMY_RADIUS) {
+      // 그 상대 기지에서 볼 때 '내 쪽으로 나와 있는' 자리 = 그 사람의 입구 앞.
+      return towardFront(nearFoe.h, home, b, ENEMY_RADIUS) ? "enemyFront" : "enemyBase";
+    }
+    if (dist(b, home) < base * HOME_RADIUS) {
+      return front(b) ? "myFront" : "myBase";
+    }
+    for (const a of allyHomes) {
+      if (dist(b, a.h) >= base * HOME_RADIUS) continue;
+      // 그 아군의 입구는 그 아군에게 가장 가까운 상대 쪽이다.
+      const foe = foeHomes.reduce((x, y) => (dist(a.h, y) < dist(a.h, x) ? y : x));
+      return towardFront(a.h, foe, b, HOME_RADIUS) ? "allyFront" : "allyBase";
+    }
+    const center = { x: (home.x + near.x) / 2, y: (home.y + near.y) / 2 };
+    if (dist(b, center) < base * MID_RADIUS) return "mid";
+    return "unknown";
+  };
+
   // 셋방살이 — 두 갈래로 잡는다(요청: 이 이야기가 더 자주 나왔으면).
   //   ① 내 건물 덩어리 자체가 아군 기지 안에 앉아 있다(메도이드가 거기 있다).
   //   ② 시작 자리는 따로 있었는데, 나중에 아군 기지로 살림을 옮겼다 — 본진을 잃은 그림이다.
@@ -500,7 +557,7 @@ function geoOf(
     at: farFrames.length > 0 ? farFrames[Math.floor(farFrames.length / 2)] : null,
   };
 
-  return { zone, allyAt, enemyAt, front, lodgingHost, lodgingLost, spread };
+  return { zone, allyAt, enemyAt, front, spot, lodgingHost, lodgingLost, spread };
 }
 
 interface Ctx {
@@ -542,6 +599,21 @@ function detectFor(c: Ctx): Tactic[] {
   /** 드랍은 수송선을 뽑은 것만으로는 알 수 없다 — 실제로 내린 커맨드가 있어야 드랍이다. */
   const dropped = s.unloadCount >= 2;
   /** 그 구역에 지은 건물들(좌표를 못 읽으면 항상 빈 배열). */
+  /** 그 건물들이 지어진 '자리 이름' — 여럿이면 가장 많이 나온 이름을 쓴다(요청: 내 입구/
+   *  기지, 아군 입구/기지, 상대 입구 앞, 상대 본진, 센터를 다 파악해야 한다). 자리를 못
+   *  가리면 아무 값도 안 남긴다(문장이 자리를 말하지 않는다). */
+  const spotOf = (bs: BuildPos[]): { spot: BuildSpot } | Record<string, never> => {
+    if (!geo || bs.length === 0) return {};
+    const tally = new Map<BuildSpot, number>();
+    for (const b of bs) {
+      const sp = geo.spot(b);
+      if (sp !== "unknown") tally.set(sp, (tally.get(sp) ?? 0) + 1);
+    }
+    if (tally.size === 0) return {};
+    const best = [...tally].sort((a, b) => b[1] - a[1])[0][0];
+    return { spot: best };
+  };
+
   const inZone = (z: Zone, unit?: string, beforeSec?: number): BuildPos[] => {
     if (!geo) return [];
     return s.buildPositions.filter(
@@ -734,6 +806,7 @@ function detectFor(c: Ctx): Tactic[] {
     if (sunkenRush.length > 0) {
       out.push({
         key: "sunken-rush", ...foeAt(sunkenRush), weight: SNEAK_WEIGHT, at: firstOf(sunkenRush), who,
+        p: { ...spotOf(sunkenRush) },
       });
     }
     // 뮤탈 대규모 — 한두 부대로는 '대규모'가 아니다(지적: 3~4부대). 한 부대 12기 기준으로
@@ -809,7 +882,7 @@ function detectFor(c: Ctx): Tactic[] {
     if (sneaky.length > 0) {
       out.push({
         key: "sneak-rax", ...foeAt(sneaky), weight: rushFirebat ? SNEAK_WEIGHT + 1 : SNEAK_WEIGHT,
-        at: firstOf(sneaky), who, p: { firebat: rushFirebat },
+        at: firstOf(sneaky), who, p: { firebat: rushFirebat, ...spotOf(sneaky) },
       });
     }
     // 탱크 방어(흔히 옆탱, 요청) — 두 갈래다. 아군 기지에 팩토리를 올려 그쪽을 받쳐주는 것도 옆탱이고,
@@ -879,7 +952,7 @@ function detectFor(c: Ctx): Tactic[] {
     if (forward.length > 0) {
       out.push({
         key: "cannon-rush", ...foeAt(forward), weight: SNEAK_WEIGHT, at: firstOf(forward),
-        who,
+        who, p: { ...spotOf(forward) },
       });
     }
     if (u("Arbiter") >= 1 && hasTech(s, "Recall")) {

@@ -513,6 +513,22 @@ const done = (c: Ctx, action: string, risky = false): string => {
 /** 한 일만 말하는 흔한 꼴 — 이긴 쪽/진 쪽 모두 같은 표현을 쓰고, 진 쪽에만 결과를 덧붙인다. */
 const act = (actions: string[]): Tpl => (c) => `${ga(c.who)} ${done(c, c.pick(actions))}`;
 
+/** 건물을 지은 자리 이름(replayTactics의 BuildSpot) → 문장에 붙일 우리말. 뒤에 전술 이름이
+ *  바로 오므로 끝에 공백을 둔다. 모르는 값·자리를 못 가린 경우는 빈 문자열이다.
+ *
+ *  '상대 본진'과 '상대 입구 앞'을 가르는 것이 핵심이다 — 앞을 막은 것과 안에 박은 것은
+ *  전혀 다른 수다. 내 기지·내 입구는 방어이고, 아군 기지·입구는 옆을 받쳐 준 것이다. */
+/*  꼴이 중요하다. 이 말은 "누구의 ○○○ 포토러시"처럼 소유격 뒤에 그대로 들어가므로
+ *  '~에'로 끝나면 조사가 겹쳐 무너진다(실제로 "Sohee_Min의 상대 입구 앞에 포토러시 한
+ *  방에"가 나왔다) — 전술 이름을 꾸미는 관형형으로 둔다. */
+const SPOT_KO: Record<string, string> = {
+  myBase: "내 기지에 지은 ", myFront: "입구를 막은 ",
+  allyBase: "아군 기지에 지은 ", allyFront: "아군 입구를 막은 ",
+  enemyBase: "상대 본진에 박은 ", enemyFront: "상대 입구를 막은 ",
+  mid: "센터에 지은 ",
+};
+const spotWord = (v: unknown): string => (typeof v === "string" ? SPOT_KO[v] ?? "" : "");
+
 /** 전술을 문장 안에서 부를 이름 — "3게이트 질럿 러시로 …"처럼 다른 문장에 끼워 넣을 때 쓴다.
  *  여기 없는 키는 '들이친 수'가 아니라는 뜻이라, 피해 문장 자체가 만들어지지 않는다. */
 function tacticLabel(k: string, p: Record<string, unknown>): string {
@@ -525,9 +541,12 @@ function tacticLabel(k: string, p: Record<string, unknown>): string {
       const g = num(p.gates, 2);
       return `${g === 2 ? "투게이트" : `${g}게이트`} 질럿 러시`;
     }
-    case "cannon-rush": return "포토러시";
-    case "sunken-rush": return "성큰러시";
-    case "sneak-rax": return p.firebat ? "몰래 배럭 파이어뱃 러시" : "몰래 배럭";
+    // 자리 이름을 앞에 붙인다(요청: 내 입구/기지인지 아군 입구/기지인지 상대 입구 앞인지
+    // 상대 본진인지 센터인지 다 파악해야 한다) — 같은 포토러시도 상대 입구를 막은 것과 본진
+    // 한복판에 박은 것은 전혀 다른 이야기다. 자리를 못 가린 옛 데이터는 이름만 나온다.
+    case "cannon-rush": return `${spotWord(p.spot)}포토러시`;
+    case "sunken-rush": return `${spotWord(p.spot)}성큰러시`;
+    case "sneak-rax": return `${spotWord(p.spot)}${p.firebat ? "몰래 배럭 파이어뱃 러시" : "몰래 배럭"}`;
     case "shuttle-reaver": return "리버 드랍";
     case "templar-drop": return "하이템플러 드랍";
     case "zerg-drop": return p.lurker ? "러커 드랍" : "히드라 드랍";
