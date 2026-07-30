@@ -149,6 +149,9 @@ export interface MinimapMarker {
   downed?: boolean;
   /** 지금 문장에 이름이 나온 사람인가 — 아바타를 크게 키운다(요청). */
   featured?: boolean;
+  /** 버리고 떠난 옛 본진인가 — 흑백으로만 남긴다(요청: 본진을 버리고 이동한 경우 본진은
+   *  흑백 처리하고 새 기지에 마크를 옮긴다). */
+  ghost?: boolean;
   /** 본진에 붙일 이모지 — 화살표가 없는 이야기(생산·테크·경제)에 쓴다(요청: 생산에도 본진에
    *  열심히 생산하는 이모지). */
   mark?: string;
@@ -240,6 +243,7 @@ export default function ReplayMinimap({
             m.team === 1 && "scr-minimap-mark-t1", m.team === 2 && "scr-minimap-mark-t2",
             m.highlight && "scr-minimap-mark-hit",
             m.downed && "scr-minimap-mark-downed",
+            m.ghost && "scr-minimap-mark-ghost",
             m.featured && "scr-minimap-mark-on",
             labelSide(m))}
           style={place(m)}

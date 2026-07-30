@@ -7699,6 +7699,11 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
 .scr-minimap-arrow-halo { stroke: rgba(0, 0, 0, 0.55); stroke-width: 2.6; stroke-linecap: round; }
 /* 본진 이모지 — 화살표가 없는 이야기(생산·테크 …)를 그 사람 본진에 붙인다(요청). 해골과
    반대쪽(왼쪽 위) 어깨에 둔다 — 둘이 함께 뜰 수 있다. */
+/* 버리고 떠난 옛 본진 — 흑백으로 눌러 '여기 있었다'만 남긴다(요청). 이름표는 새 자리에만
+   달리므로 여기는 아바타 하나뿐이다. */
+.scr-minimap-mark-ghost .scr-avatar {
+  filter: grayscale(1) brightness(0.5); border-color: rgba(255, 255, 255, 0.45);
+}
 /* 본진 이모지 — 화살표가 없는 장면에서는 이것이 유일한 표시라 화살촉 이모지보다 크게(요청). */
 .scr-minimap-mark-home { font-size: 21px; }
 /* 좌·우 절반 — 이전/다음 장면(요청). 아무것도 안 그리는 투명 버튼이다. */
@@ -7859,12 +7864,11 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
    긴 문장 높이로 잡히므로 재생하는 동안 카드가 위아래로 흔들리지 않는다. 문장마다 길이가
    달라 그냥 갈아 끼우면 매 스냅마다 아래 내용이 밀려 읽던 자리를 놓친다. */
 .scr-story-cap {
-  /* 미니맵 바로 아래에 붙인다(요청: 보기 쉽게) — 로우가 정한 세로 간격(10px)만큼 떠 있으면
-     그림과 그 그림을 설명하는 자막이 따로 있는 것처럼 읽힌다. 음수 마진으로 그 간격을
-     되돌려 그림에 붙여 둔다. */
-  margin-top: calc(-1 * var(--story-gap, 10px) + 2px);
+  /* 미니맵에 완전히 붙인다(요청) — 로우가 정한 세로 간격(10px)을 음수 마진으로 되돌리고,
+     맞닿는 위쪽 모서리는 직각으로 둔다(요청: 붙였을 때 깔끔하게). 패딩도 줄였다. */
+  margin-top: calc(-1 * var(--story-gap, 10px));
   display: grid; width: 100%;
-  padding: 9px 12px; border-radius: 10px;
+  padding: 7px 10px; border-radius: 0 0 9px 9px;
   background: rgba(var(--overlay-rgb), 0.06);
   font-size: var(--fs-caption); font-weight: 500; line-height: 1.6;
   color: var(--text); word-break: keep-all; text-align: left;

@@ -198,6 +198,23 @@ export default function GameResultStory({
     return out;
   }, [gameResult.summaryData, sentences, index, slots]);
 
+  /* 본진을 잃고 아군 기지로 살림을 옮긴 사람(요청: 본진을 버리고 이동한 경우 본진은 흑백
+     처리하고 새 기지에 마크를 옮겨야 한다). lodging beat의 who2가 집주인이고, p.lost가 그
+     사람이 원래 자리를 잃었다는 표시다(replayTactics의 lodging 주석). 그 스냅부터 계속
+     옮겨 둔 채로 본다 — 한 번 쫓겨난 사람이 다음 장면에서 제자리로 돌아오면 안 된다. */
+  const moved: Map<string, string> = useMemo(() => {
+    const beats = gameResult.summaryData?.beats ?? [];
+    const upto = Math.max(-1, ...(sentences[index]?.beats ?? []));
+    const out = new Map<string, string>();
+    for (let i = 0; i <= upto && i < beats.length; i += 1) {
+      const b = beats[i];
+      if (b.k !== "lodging" || b.p?.lost !== true) continue;
+      const host = typeof b.who2 === "string" ? b.who2 : null;
+      if (host) (b.who ?? []).forEach((raw) => out.set(raw, host));
+    }
+    return out;
+  }, [gameResult.summaryData, sentences, index]);
+
   /* 지금 스냅에서 벌어진 일을 화살표로 잇는다 — 본진에서 '어디로 갔는가'까지(요청).
 
      자리를 저장된 명령 좌표(beat.pos)에서 뽑던 것을 걷어냈다 — 지적: 공격인데 화살표가 아군
@@ -222,11 +239,19 @@ export default function GameResultStory({
     if (!beats || !idx) return empty;
     const spots = gameResult.summaryData?.bases ?? {};
     const teamOf = new Map(slots.map((s) => [s.raw, s.team]));
+    // 일대일이고 아무도 멀티를 늘리지 않은 판이면 화살표를 상대 진영 안까지 과감하게
+    // 넣는다(요청) — 목표가 본진 하나뿐이라 어디를 가리키는지 헷갈릴 일이 없다. 멀티가
+    // 있으면 실제로 그 멀티를 쳤을 수 있으므로 예전처럼 진영 앞에서 멈춘다.
+    const deep = gameResult.summaryData?.duel === true
+      && !beats.some((b) => b.k === "expand");
     const w = grid?.width ?? 128;
     const h = grid?.height ?? 128;
     const center: [number, number] = [w / 2, h / 2];
     const homeOf = (raw: string): [number, number] | null => {
-      const v = spots[raw];
+      // 살림을 옮긴 사람은 새 자리에서 나간다(요청: 새 기지로 마크를 옮긴다) — 이미 버린
+      // 본진에서 화살표가 출발하면 그림이 거짓이 된다.
+      const host = moved.get(raw);
+      const v = spots[host && spots[host] ? host : raw];
       return v ? [v[0], v[1]] : null;
     };
     /** a에서 b쪽으로 t만큼 간 자리. */
@@ -283,13 +308,23 @@ export default function GameResultStory({
         case "allyFront": return ally ? lerp(ally, center, FRONT) : null;
         default: break;
       }
+      // 아군을 도우러 간 것 — 목표는 그 아군의 기지다(요청: 아군 헬프).
+      if (b.k === "ally-help") {
+        const mate = (b.whom ?? []).find((v) => v !== raw && homeOf(v));
+        return mate ? homeOf(mate) : ally;
+      }
+      // 여기부터는 '실제로 병력을 몰고 나간' 이야기만 화살표를 받는다(지적: 가끔 내용과
+      // 화살표가 반대다 — 공격을 당한 건데 간 것으로 나온다). 막아 냈다·무너졌다·일꾼이
+      // 밀렸다 같은 문장에도 whom이 붙어 있어서, 그것을 목표로 삼으면 맞은 사람에서
+      // 때린 사람 쪽으로 화살표가 거꾸로 그려졌다.
+      if (!ATTACK_BEAT_KEYS.has(b.k) && b.k !== "breakthrough") return null;
       // 당한 사람의 본진 — 여럿이면 상대 편을 먼저 고른다(아군 오사가 아니라 공격 목표).
       const victims = (b.whom ?? []).filter((v) => v !== raw);
       const foeVictim = victims.find((v) => teamOf.get(v) && teamOf.get(v) !== teamOf.get(raw));
       const victim = foeVictim ?? victims[0];
       if (victim && homeOf(victim)) return homeOf(victim);
-      // 공격 이야기인데 목표를 모르면 상대 쪽으로 — 리콜·커널·드랍이 여기 걸린다.
-      if (ATTACK_BEAT_KEYS.has(b.k) && foe) return foe;
+      // 목표를 모르면 상대 쪽으로 — 리콜·커널·드랍이 여기 걸린다.
+      if (foe) return foe;
       // 그 밖(유닛을 뽑았다·물량을 모았다·테크를 올렸다)은 화살표를 그리지 않는다(요청:
       // 유닛 생산에는 화살표 X, 실제로 확실히 공격 나갔을 때만 진출 화살표). 진출 느낌을
       // 주려고 가운데로 짧게 그어 봤지만, 병력을 뽑기만 한 장면에도 화살이 나가서
@@ -331,39 +366,64 @@ export default function GameResultStory({
       if (home && t && dist(home, t) >= ARROW_MIN_TILES) {
         arrows.push({
           key: s.raw, x1: home[0], y1: home[1], x2: t[0], y2: t[1],
-          team: s.team, flight: flight.get(s.raw) ?? false, mark: em,
+          team: s.team, flight: flight.get(s.raw) ?? false, mark: em, deep,
         });
       } else {
         marks.set(s.raw, em);
       }
     }
     return { arrows, marks };
-  }, [gameResult.summaryData, sentences, index, slots, grid]);
+  }, [gameResult.summaryData, sentences, index, slots, grid, moved]);
   const arrows = actions.arrows;
 
   // 미니맵 표시 — 본진 아바타는 늘 떠 있고, 지금 문장의 주인공만 커진다(요청).
   const bases: MinimapMarker[] = useMemo(() => {
     const spots = gameResult.summaryData?.bases;
     if (!spots) return [];
-    return slots
-      .filter((s) => spots[s.raw])
-      .map((s) => {
-        const nameLc = normalizeSearchText(s.name);
-        const hit = highlightMemberIds?.has(s.slot.memberId)
-          || !!highlightTerms?.some((t) => nameLc.includes(t));
-        return {
-          key: s.raw, name: s.name, memberId: s.slot.memberId,
-          avatar: memberOf(s.slot.memberId)?.avatar ?? null,
-          race: s.slot.race, team: s.team,
-          x: spots[s.raw][0], y: spots[s.raw][1],
-          withName: true, highlight: hit, downed: downed.has(s.raw),
-          featured: mentioned.has(s.raw),
-          // 화살표가 없는 이야기(생산·테크·경제)는 그 사람 본진에 이모지를 붙인다(요청).
-          mark: actions.marks.get(s.raw),
-        };
+    const w = grid?.width ?? 128;
+    const h = grid?.height ?? 128;
+    /** 살림을 옮긴 사람의 새 자리 — 집주인 기지에서 가운데 쪽으로 조금 비켜 앉힌다(집주인
+     *  아바타와 겹치지 않게). */
+    const movedSpot = (host: string): [number, number] | null => {
+      const p = spots[host];
+      if (!p) return null;
+      const dx = w / 2 - p[0];
+      const dy = h / 2 - p[1];
+      const len = Math.hypot(dx, dy) || 1;
+      return [p[0] + (dx / len) * 8, p[1] + (dy / len) * 8];
+    };
+    const out: MinimapMarker[] = [];
+    for (const s of slots) {
+      if (!spots[s.raw]) continue;
+      const nameLc = normalizeSearchText(s.name);
+      const hit = highlightMemberIds?.has(s.slot.memberId)
+        || !!highlightTerms?.some((t) => nameLc.includes(t));
+      const host = moved.get(s.raw);
+      const at = host ? movedSpot(host) : null;
+      const common = {
+        name: s.name, memberId: s.slot.memberId,
+        avatar: memberOf(s.slot.memberId)?.avatar ?? null,
+        race: s.slot.race, team: s.team,
+      };
+      if (at) {
+        // 버린 본진 — 흑백으로만 남긴다(요청). 이름표는 새 자리 쪽에만 단다.
+        out.push({
+          ...common, key: `${s.raw}-old`, x: spots[s.raw][0], y: spots[s.raw][1],
+          withName: false, highlight: false, ghost: true,
+        });
+      }
+      out.push({
+        ...common, key: s.raw,
+        x: at ? at[0] : spots[s.raw][0], y: at ? at[1] : spots[s.raw][1],
+        withName: true, highlight: hit, downed: downed.has(s.raw),
+        featured: mentioned.has(s.raw),
+        // 화살표가 없는 이야기(생산·테크·경제)는 그 사람 본진에 이모지를 붙인다(요청).
+        mark: actions.marks.get(s.raw),
       });
+    }
+    return out;
   }, [gameResult.summaryData, slots, memberOf, highlightMemberIds, highlightTerms, downed, mentioned,
-    actions]);
+    actions, moved, grid]);
 
   const o1 = outcomeFor("team1", result);
   const o2 = outcomeFor("team2", result);

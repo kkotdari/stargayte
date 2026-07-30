@@ -256,7 +256,10 @@ const ALLY_CANNON_MIN = 2;
 // 성큰러시·포토러시·몰래 배럭은 '자리를 보고서야 알 수 있는' 기습이라, 그 경기에서만
 // 있었던 일 중에서도 특히 이야깃거리다(요청: 무게감을 올려 달라). 자리가 모자랄 때
 // 일반적인 사실보다 먼저 남도록 무게를 따로 잡아 둔다.
-const SNEAK_WEIGHT = 16;
+// 16 → 20(요청: 포토러시·성큰러시·몰래 배럭이 중요한데 안 나오는 느낌). 이 셋은 그 경기에서만
+// 있었던 '자리로만 알 수 있는' 기습이라, 자리다툼에서 물량·업그레이드 같은 일반적인 사실보다
+// 확실히 앞서야 한다. 실측(빠른무한 24분 팀전): 20으로 올리자 포토러시가 요약에 남았다.
+const SNEAK_WEIGHT = 20;
 
 // '패스트 OO' — 이 시각보다 이르게 첫 기가 나오면 빠른 것이다(요청). 초 단위.
 const FAST_UNITS: [string, number][] = [
@@ -333,19 +336,27 @@ const PUSH_ORDER_MIN = 12;
  *  아니다. 그래서 "셋이 몰아쳤다"까지만 말하고 전과는 말하지 않는다. */
 export function pushersOn(
   victim: ParsedReplayPlayer,
-  foes: ParsedReplayPlayer[],
+  movers: ParsedReplayPlayer[],
   from: number,
   to: number,
+  /** 반경의 자를 정하는 사람들 — 기본은 움직인 사람들(적이 몰고 온 경우가 이 함수의 본래
+   *  용도라 그게 맞다). 아군이 도우러 온 것을 재려면 반드시 상대 쪽을 넘겨야 한다:
+   *  아군 본진은 서로 붙어 있는 일이 흔해서 그 거리로 자를 잡으면 반경이 거의 0이 되어
+   *  아무도 안 걸린다(실측: 팀전 다섯 판에서 아군 지원이 0건이었다). */
+  scaleWith?: ParsedReplayPlayer[],
 ): string[] {
   const home = startHomeOf(victim);
   if (!home) return [];
-  const foeHomes = foes.map(startHomeOf).filter((h): h is { x: number; y: number } => h !== null);
-  if (foeHomes.length === 0) return [];
+  const moverHomes = movers.map(startHomeOf).filter((h): h is { x: number; y: number } => h !== null);
+  if (moverHomes.length === 0) return [];
+  const scaleHomes = (scaleWith ?? movers)
+    .map(startHomeOf).filter((h): h is { x: number; y: number } => h !== null);
+  if (scaleHomes.length === 0) return [];
   // 기준 거리는 '가장 가까운 상대까지' — geoOf와 같은 좌표계를 쓴다.
-  const base = Math.min(...foeHomes.map((h) => dist(home, h)));
+  const base = Math.min(...scaleHomes.map((h) => dist(home, h)));
   if (!(base > 0)) return [];
   const r = base * PUSH_RADIUS;
-  return foes
+  return movers
     .filter((f) => {
       let n = 0;
       for (const o of f.signals?.orderPositions ?? []) {

@@ -1371,7 +1371,10 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   const baseBudget = Math.max(4, Math.min(sec >= LONG_GAME_SEC ? 18 : 13, 4 + Math.floor((sec - 2 * 60) / (2 * 60))));
   // 자리가 남아도 아무거나 채우지 않는다(요청: 승부에 중요한 이벤트만) — 이 무게 아래는
   // "그래서 뭐" 소리가 나오는 사실들이라, 문단을 짧게 끝내는 편이 낫다.
-  const MIN_WEIGHT = 6;
+  // 6 → 8(요청: 중요하지 않은 내용은 숫자 채우려고 넣지 말 것). 자리가 남아도 "그래서 뭐"
+  // 소리가 나오는 사실(업그레이드 한 줄, 건물 몇 채)로 채우지 않는다 — 스냅 수를 늘린 만큼
+  // 이 문턱을 올려야 '늘어난 자리를 아무거나로 채우는' 일이 안 생긴다.
+  const MIN_WEIGHT = 8;
 
   // 전술(9드론 저글링 러시·몰래 배럭·목동 저그…)은 그 경기에서만 있었던 일이라 가장 무겁게
   // 친다 — 자리가 모자라면 일반적인 이야기부터 버려진다.
@@ -1616,7 +1619,10 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
       if (mates.length === 0) continue;
       const from = Math.max(0, at - HELP_BEFORE_SEC / SECONDS_PER_FRAME);
       const to = at + HELP_AFTER_SEC / SECONDS_PER_FRAME;
-      for (const name of pushersOn(victim, mates, from, to)) {
+      // 자는 '그 아군에서 가장 가까운 상대까지'로 잡는다 — 동료 본진 사이 거리로 재면
+      // 반경이 거의 0이 된다(pushersOn의 scaleWith 주석).
+      const foesOfVictim = side === winnerPlayers ? loserPlayers : winnerPlayers;
+      for (const name of pushersOn(victim, mates, from, to, foesOfVictim)) {
         const key = `${name}>${victimName}`;
         if (seen.has(key)) continue;
         seen.add(key);
