@@ -1913,7 +1913,7 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   // 알아야 '남의 집'을 가릴 수 있고, 그러려면 상대의 이사도 알아야 한다(닭과 달걀이라
   // 1차에서는 자리 제한 없이 잡는다).
   const draft = new Map<string, { spot: number; at: number }[]>();
-  for (const p of replay.players) draft.set(p.rawName, relocations(p, mapSpots, () => false));
+  for (const p of replay.players) draft.set(p.rawName, relocations(p, mapSpots, () => false, totalFrames));
   /** 그 사람이 그 시각에 사는 구역 — 그때까지의 이사를 따라간다. */
   const livesAt = (q: ParsedReplayPlayer, frame: number): number => {
     let h = spotOfPlayer(q);
@@ -1927,7 +1927,7 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     const foes = foesOf(p);
     const m = relocations(p, mapSpots, (spot, frame) => (
       foes.some((f) => livesAt(f, frame) === spot)
-    ));
+    ), totalFrames);
     if (m.length > 0) {
       moveList.set(p.rawName, m.map((x) => (
         [round1(mapSpots[x.spot][0]), round1(mapSpots[x.spot][1]), x.at] as [number, number, number]
@@ -2284,12 +2284,14 @@ const MOVE_MIN_NEW = 4;
 const MOVE_BACK_MAX = 1;
 /** 한 사람이 이사한 것으로 볼 수 있는 최대 횟수. */
 const MOVE_MAX = 3;
-/** 새 자리가 옛 본진 대비 이 비율만큼은 커야 '이사'로 본다(지적: 이사가 아니라 멀티인데
- *  이사로 잡힌다) — 해처리 하나에 성큰 두엇 세운 정도의 보통 멀티는 옛 본진의 건물 수에
- *  한참 못 미친다. 자원채집·병력생산은 좌표가 안 남아 직접 잴 수 없으니(명령에 위치가
- *  없다) 좌표가 남는 건물 건설로 대신 잰다(지적에 대한 근사) — 새 자리에 옛 본진만큼
- *  건물을 다시 채웠다면 그건 살림을 통째로 옮긴 것이고, 건물 몇 채뿐이면 그냥 확장이다. */
-const MOVE_SIZE_RATIO = 0.5;
+/** 이사로 보려면 그 전에 본진 생산이 꺾인 적이 있어야 한다(지적: 자리만으로는 크게
+ *  번성한 자기 기지의 한쪽 끝을 남의 동네로 잘못 재는 경우와, 아직 멀쩡한 본진을 두고
+ *  그냥 멀티를 늘린 경우를 못 가른다 — 이사는 보통 본진이 크게 두들겨 맞아서 가는 것이므로
+ *  새 자리가 옛 본진보다 클 수는 없다. 그래서 크기가 아니라 '본진이 실제로 얻어맞았나'를
+ *  본다). 자원채집은 좌표가 안 남아 직접 잴 수 없으니(명령에 위치가 없다) 좌표 없이도
+ *  잴 수 있는 생산 급감(productionDips, 건물+유닛 생산량 기준)으로 근사한다 — 이사 직전
+ *  이 창 안에 그런 급감이 없으면, 자리는 바뀌었어도 실제로는 아직 잘 사는 멀티일 뿐이다. */
+const RELOCATE_HIT_WINDOW_MIN = 10;
 
 /** 시작 지점마다 '이 구역'이라 부를 반경 — 가장 가까운 다른 시작 지점까지의 거리에서 잡는다.
  *  맵마다 자리 수와 간격이 달라서(2인용 투혼 vs 8인용 빠른무한) 고정값은 늘 한쪽에서 틀린다. */
@@ -2332,6 +2334,7 @@ function relocations(
   p: ParsedReplayPlayer,
   spots: [number, number][],
   taken: (spot: number, frame: number) => boolean,
+  totalFrames: number | null,
 ): { spot: number; at: number }[] {
   // 시작 지점을 못 읽은 리플레이는 판정하지 않는다 — 거리로 어림잡으면 위의 오판이 되돌아온다.
   if (spots.length < 2) return [];
@@ -2340,6 +2343,10 @@ function relocations(
     .filter((b): b is typeof b & { frame: number } => b.frame !== null)
     .sort((a, b) => a.frame - b.frame);
   if (pts.length < MOVE_MIN_NEW + 3) return [];
+  // 본진이 실제로 얻어맞은 적이 있어야 이사다(위 RELOCATE_HIT_WINDOW_MIN 주석).
+  const dips = productionDips(p, totalFrames);
+  const hitWindow = (RELOCATE_HIT_WINDOW_MIN * 60) / SECONDS_PER_FRAME;
+  const wasHitBefore = (frame: number): boolean => dips.some((d) => d <= frame && frame - d <= hitWindow);
   const zone = pts.map((b) => spotAt(b, spots, radii));
   let home = p.startX !== null && p.startY !== null
     ? spotAt({ x: p.startX, y: p.startY }, spots, radii)
@@ -2362,12 +2369,9 @@ function relocations(
       const late = zone.slice(i);
       if (late.filter((x) => x === z).length < MOVE_MIN_NEW) continue;
       if (late.filter((x) => x === home).length > MOVE_BACK_MAX) continue;
-      // 새 자리가 옛 본진만큼 커야 이사다(위 MOVE_SIZE_RATIO 주석) — 옛 본진의 크기는
-      // 옮기기 전까지 거기 지은 건물 수로 잰다(그 뒤로는 MOVE_BACK_MAX가 이미 거의 못
-      // 짓게 막아 두었으니, 옮기기 전 몫이 곧 그 본진의 전체 크기다).
-      const homeSize = zone.slice(0, i).filter((x) => x === home).length;
-      const newSize = zone.filter((x) => x === z).length;
-      if (newSize < homeSize * MOVE_SIZE_RATIO) continue;
+      // 본진이 그 무렵 실제로 얻어맞았어야 이사다(위 RELOCATE_HIT_WINDOW_MIN 주석) — 아니면
+      // 자리는 바뀌었어도 아직 멀쩡한 본진을 두고 그냥 멀티를 늘린 것일 수 있다.
+      if (!wasHitBefore(pts[i].frame)) continue;
       hit = { i, z };
       break;
     }
