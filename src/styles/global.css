@@ -7659,6 +7659,11 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
    반대쪽(왼쪽 위) 어깨에 둔다 — 둘이 함께 뜰 수 있다. */
 /* 버리고 떠난 옛 본진 — 흑백으로 눌러 '여기 있었다'만 남긴다(요청). 이름표는 새 자리에만
    달리므로 여기는 아바타 하나뿐이다. */
+/* 사진 없는 사람의 자리표시는 점선 동그라미인데(.scr-avatar-empty), 미니맵에서는 지형 위에
+   뜬 흰 점선으로 보여 무슨 표시인지 헷갈린다(지적: 흰 점선?) — 여기서는 실선으로 채운다. */
+.scr-minimap-mark .scr-avatar-empty {
+  border-style: solid; background: rgba(8, 12, 18, 0.72);
+}
 .scr-minimap-mark-ghost .scr-avatar {
   filter: grayscale(1) brightness(0.5); border-color: rgba(255, 255, 255, 0.45);
 }
@@ -7848,6 +7853,10 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
   background: rgba(var(--overlay-rgb), 0.06);
   font-size: var(--fs-caption); font-weight: 500; line-height: 1.6;
   color: var(--text); word-break: keep-all; text-align: left;
+}
+/* 자막 앞의 시각 — 본문보다 한 단계 작고 흐리게 둔다(요청: [5분]처럼 분까지만). */
+.scr-story-cap-time {
+  margin-right: 5px; color: var(--muted); font-size: var(--fs-micro); font-weight: 700;
 }
 .scr-story-cap-line {
   grid-area: 1 / 1; margin: 0;

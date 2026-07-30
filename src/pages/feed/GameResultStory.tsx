@@ -27,6 +27,9 @@ import type { GameResult, GameResultSlot, Member } from "../../types";
 // 읽기 전에 넘어간다). 이제 자막이 그 문장을 담는 유일한 자리라, 넘어가기 전에 충분히
 // 읽을 수 있어야 한다(요청) — 아래 문단에 전문이 함께 있던 때보다 넉넉하게 잡았다.
 // 글자 하나당 0.11초는 초당 아홉 자 남짓 읽는 속도다.
+/** 프레임 → 초. 자막 앞에 붙이는 "[5분]"을 계산한다(요청: 분까지만). */
+const SECONDS_PER_FRAME = 0.042;
+
 const DWELL_BASE_MS = 1800;
 const DWELL_PER_CHAR_MS = 110;
 const DWELL_MAX_MS = 12000;
@@ -172,6 +175,18 @@ export default function GameResultStory({
      지금 스냅까지의 beat를 시간순으로 훑어 쌓는다: 한 번 쓰러지면 그 뒤 스냅에서도
      쓰러진 채여야 한다(그 스냅의 beat에만 나온다고 그때만 해골을 띄우면, 다음 장면에서
      되살아난 것처럼 보인다). 이 계산은 이미 저장된 값만 쓰므로 옛 경기에도 그대로 붙는다. */
+  /** 그 문장이 가리키는 시각(분) — 문장에 묶인 beat 가운데 가장 이른 것을 쓴다. 시각이
+   *  없는 문장(맺음말 등)은 null이라 아무것도 안 붙는다. */
+  const capMin = (sn: { beats: number[] }): number | null => {
+    const beats = gameResult.summaryData?.beats ?? [];
+    let at: number | null = null;
+    for (const i of sn.beats) {
+      const v = beats[i]?.at;
+      if (typeof v === "number" && (at === null || v < at)) at = v;
+    }
+    return at === null ? null : Math.max(0, Math.round((at * SECONDS_PER_FRAME) / 60));
+  };
+
   /** 지금 스냅이 가리키는 시점(프레임) — 지금까지 나온 beat 가운데 가장 늦은 시각. 저장된
    *  '이사·망함' 시점과 견주는 잣대다. 맺음말 스냅은 경기 끝이므로 전부 지난 것으로 본다. */
   const nowAt: number = useMemo(() => {
@@ -532,6 +547,9 @@ export default function GameResultStory({
       <div className="scr-story-cap">
         {sentences.map((sn, i) => (
           <p key={i} className="scr-story-cap-line" aria-hidden={i !== index} data-on={i === index}>
+            {/* 언제 있었던 일인지 앞에 붙인다(요청: [5분]처럼 분까지만). 시각을 모르는
+                문장(맺음말 등)은 아무것도 안 붙인다 — 0분이라고 적으면 거짓말이다. */}
+            {capMin(sn) !== null && <span className="scr-story-cap-time">[{capMin(sn)}분]</span>}
             {sn.parts.map((pt, j) => (pt.team
               ? <span key={j} className={pt.team === 1 ? "scr-sum-team1" : "scr-sum-team2"}>{pt.text}</span>
               : <span key={j}>{pt.text}</span>))}
