@@ -19,6 +19,7 @@ import LeagueScreen from "./pages/league/LeagueScreen";
 import ProfileModal from "./modals/ProfileModal";
 import MemberProfileModal from "./modals/MemberProfileModal";
 import AdminPanelModal from "./modals/AdminPanelModal";
+import MinimapManageModal from "./modals/MinimapManageModal";
 import ChallengeInboxModal from "./modals/ChallengeInboxModal";
 import ChallengeResultInboxModal from "./modals/ChallengeResultInboxModal";
 import MatchRequestInboxModal from "./modals/MatchRequestInboxModal";
@@ -70,6 +71,8 @@ export default function App() {
   const clearJustLoggedIn = useAppStore((s) => s.clearJustLoggedIn);
   const adminPanelOpen = useAppStore((s) => s.adminPanelOpen);
   const setAdminPanelOpen = useAppStore((s) => s.setAdminPanelOpen);
+  const minimapManageOpen = useAppStore((s) => s.minimapManageOpen);
+  const setMinimapManageOpen = useAppStore((s) => s.setMinimapManageOpen);
   const bootstrap = useAppStore((s) => s.bootstrap);
   // 부팅(스플래시)이 끝나 본 화면이 처음 그려진 직후, 사파리 엣지 렌더(주소창 알약 뒤
   // 콘텐츠 합성)를 다시 굴린다 — 초기 진입 시 위아래가 잘린 채 남던 문제(지적) 대응.
@@ -286,6 +289,10 @@ export default function App() {
         {profileOpen && <ProfileModal onClose={() => setProfileOpen(false)} />}
         {viewingMember && <MemberProfileModal member={viewingMember} onClose={closeMemberProfile} />}
         {adminPanelOpen && <AdminPanelModal isAdmin={isAdmin} onClose={() => setAdminPanelOpen(false)} />}
+        {/* 미니맵 관리 — 운영 메뉴의 하위 항목(요청). 운영자에게만 보이는 메뉴에서 열린다. */}
+        {minimapManageOpen && isAdmin && (
+          <MinimapManageModal onClose={() => setMinimapManageOpen(false)} />
+        )}
         {updateNotice && <AppUpdateNoticeModal notes={updateNotice.notes} onClose={dismissUpdateNotice} />}
         {inboxChallenges.length > 0 && (
           <ChallengeInboxModal challenges={inboxChallenges} onClose={dismissInboxChallenges} />

@@ -263,6 +263,8 @@ export default function ReplayMinimap({
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
+    // 사람이 올려 둔 실제 미니맵 그림이 있으면 캔버스를 아예 안 그린다(요청).
+    if (grid.image) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
@@ -329,7 +331,14 @@ export default function ReplayMinimap({
 
   return (
     <div className={cx("scr-minimap", className)}>
-      <canvas ref={canvasRef} className="scr-minimap-canvas" aria-label={`${grid.name} 미니맵`} />
+      {/* 사람이 올려 둔 실제 미니맵 그림이 있으면 그것을, 없으면 타일 격자로 그린 개략도를
+          쓴다(요청: 물·풀·땅·벽을 실제와 비슷하게). 아바타·화살표는 좌표를 비율로 얹으므로
+          어느 쪽이든 같은 자리에 놓인다. */}
+      {grid.image ? (
+        <img className="scr-minimap-canvas" src={grid.image} alt={`${grid.name} 미니맵`} />
+      ) : (
+        <canvas ref={canvasRef} className="scr-minimap-canvas" aria-label={`${grid.name} 미니맵`} />
+      )}
       {/* 화살표 — 몸통은 지형 위·아바타 아래에 둔다. viewBox를 타일 격자와 같게 두어 좌표를
           그대로 쓰고, preserveAspectRatio를 끄면 아바타(퍼센트 위치)와 같은 자리에 놓인다.
           화살촉만은 아바타 위에 올린 별도 레이어에 그린다(아래) — 어디를 쳤는지가 이 그림에서

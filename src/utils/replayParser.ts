@@ -153,6 +153,9 @@ export interface ReplayMapGrid {
    *  것이다(요청: 자원 위치 파악). 낱개 미네랄 400개를 다 그리면 노이즈라, 묶어서 지대
    *  중심만 남긴다. [타일x, 타일y, 가스있음(0/1)]. 못 읽었으면 빈 배열. */
   resources: [number, number, 0 | 1][];
+  /** 사람이 올려 둔 실제 미니맵 그림(data URL) — 있으면 격자 대신 이걸 그린다(요청: 물·풀·
+   *  땅·벽을 실제와 비슷하게). 서버에서 내려오는 값이라 리플레이를 읽어 만들 때는 없다. */
+  image?: string | null;
 }
 
 export interface ParsedReplay {

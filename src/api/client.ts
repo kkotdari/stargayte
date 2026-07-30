@@ -4,6 +4,7 @@
 import type {
   Member, GameResult, FeedComment, FeedTargetType, RankingShift, NewGameResult, SignupPayload, MemberCreatePayload, MemberStatus, MemberRole,
   ScreenKey, AppVersion, AppVersionStatus, AppVersionInfo,
+  MapCatalog, MinimapImage,
   GameResultSlot, GameResultPage, GameResultStatsResponse, GameType, Race, TeamRankingResponse,
   MonthlyGameResultStatsResponse, MonthlyTeamRankingResponse, RatingHistoryResponse, RivalryPair,
   ReplayNameClassificationEntry, ReplayNameKind, ReplayNameMappingEntry, ReplayNameMappingKind,
@@ -466,6 +467,40 @@ export const api = {
     const qs = hashes.map((h) => `hash=${encodeURIComponent(h)}`).join("&");
     const res = await request<{ maps: ReplayMapGrid[] }>(`/api/game-results/replay-maps?${qs}`);
     return res.maps;
+  },
+
+  // 여기서부터: 미니맵 그림 관리(운영자) — 타일 번호만으로는 물·풀·땅·벽을 갈라낼 수 없어
+  // (네 번 시도해 다 실패) 맵마다 실제 미니맵 그림을 사람이 올려 둔다(요청). 이름·판본만
+  // 다른 거의 같은 맵들은 한 그림을 함께 가리킨다(요청: 한데 묶기).
+  async getMapCatalog(): Promise<MapCatalog> {
+    return request<MapCatalog>("/api/game-results/replay-maps/catalog");
+  },
+
+  async createMinimapImage(body: { name: string; image: string; hashes: string[] }): Promise<MinimapImage> {
+    return request<MinimapImage>("/api/game-results/replay-maps/images", {
+      method: "POST", body: JSON.stringify(body),
+    });
+  },
+
+  /** 이름만 고칠 때는 image를 빼고 부른다 — 수백 KB짜리를 다시 올릴 이유가 없다. */
+  async updateMinimapImage(
+    id: number, body: { name: string; image?: string; hashes?: string[] },
+  ): Promise<MinimapImage> {
+    return request<MinimapImage>(`/api/game-results/replay-maps/images/${id}`, {
+      method: "PUT", body: JSON.stringify(body),
+    });
+  },
+
+  async deleteMinimapImage(id: number): Promise<void> {
+    await request<void>(`/api/game-results/replay-maps/images/${id}`, { method: "DELETE" });
+  },
+
+  /** 맵 여러 개를 한 그림에 묶거나(imageId) 떼어 낸다(null). */
+  async assignMinimapImage(imageId: number | null, hashes: string[]): Promise<number> {
+    const res = await request<{ changed: number }>("/api/game-results/replay-maps/assign", {
+      method: "POST", body: JSON.stringify({ imageId, hashes }),
+    });
+    return res.changed;
   },
 
   async createGameResult(gameResult: NewGameResult): Promise<GameResult> {

@@ -599,3 +599,29 @@ export interface LeagueMatchResultPayload {
     note?: string;
   }[];
 }
+
+// 미니맵 그림(운영자가 맵마다 한 번 올려 두는 실제 미니맵) — 리플레이의 타일 번호만으로는
+// 물·풀·땅·벽을 갈라낼 수 없어서(네 번 시도해 다 실패) 사람이 그림을 올려 두고 그 위에
+// 아바타·화살표를 얹는다(요청). 이름·판본만 다른 거의 같은 맵들은 한 그림을 함께 쓴다.
+export interface MinimapImage {
+  id: number;
+  name: string;
+  /** data URL. */
+  image: string;
+}
+
+/** 제어판 맵 목록의 한 줄 — 격자(22KB)는 빼고 어떤 맵이 있는지만. */
+export interface MapCatalogEntry {
+  hash: string;
+  name: string | null;
+  width: number;
+  height: number;
+  /** 이 맵으로 치른 경기 수 — 어느 맵부터 그림을 올릴지 정하는 기준. */
+  matches: number;
+  imageId: number | null;
+}
+
+export interface MapCatalog {
+  maps: MapCatalogEntry[];
+  images: MinimapImage[];
+}

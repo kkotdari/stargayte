@@ -354,6 +354,7 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
                       {seeding ? <Spinner /> : "순위 기준선"}
                     </button>
                   </div>
+
                 </>
               )}
             </>
@@ -389,6 +390,7 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
       {versionManageOpen && (
         <VersionManageModal onClose={() => setVersionManageOpen(false)} />
       )}
+
 
       {versionPickerOpen && (
         <div className="scr-modal-overlay" onClick={() => setVersionPickerOpen(false)}>

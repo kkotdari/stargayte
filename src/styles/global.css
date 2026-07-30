@@ -7666,7 +7666,8 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
      잘린다 — 대신 표시를 안쪽으로 밀지 않고 그림 자체를 꽉 채운다. */
   background: #101418;
 }
-.scr-minimap-canvas { display: block; width: 100%; height: 100%; }
+/* 캔버스(격자 개략도)와 img(사람이 올린 실제 미니맵)가 같은 자리를 쓴다. */
+.scr-minimap-canvas { display: block; width: 100%; height: 100%; object-fit: fill; }
 /* 본진 → 공격 자리 화살표 — 지형 위, 아바타 아래. 스냅이 바뀌면 갈아 끼워지므로 부드럽게
    들어오게 한다(갑자기 선이 튀어나오면 그림이 깜빡이는 것처럼 보인다). */
 .scr-minimap-arrows {
@@ -7840,3 +7841,40 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
 }
 .scr-story-cap-line[data-on="true"] { visibility: visible; opacity: 1; }
 @media (prefers-reduced-motion: reduce) { .scr-story-cap-line { transition: none; } }
+
+/* ── 미니맵 관리(제어판) ── 맵마다 실제 미니맵 그림을 올려 두는 곳. 리플레이의 타일 번호만으로는
+   물·풀·땅·벽을 갈라낼 수 없어서 사람이 한 번 올려 둔다(요청). 이름·판본만 다른 맵 여러 개를
+   골라 한 그림에 묶는다. */
+.scr-minimap-manage .scr-modal-body { display: flex; flex-direction: column; gap: 8px; }
+.scr-minimap-maps {
+  display: flex; flex-direction: column; gap: 4px;
+  /* 맵이 쌓이면 목록만 길어지므로 여기서만 스크롤한다 — 모달 전체가 늘어나면 아래 조작부가
+     화면 밖으로 밀린다. */
+  max-height: 210px; overflow-y: auto;
+}
+.scr-minimap-empty { color: var(--muted); font-size: var(--fs-caption); }
+.scr-minimap-map-row, .scr-minimap-image-row {
+  display: flex; align-items: center; gap: 8px; min-width: 0;
+  padding: 4px 6px; border-radius: 8px; border: 1px solid var(--line);
+  background: rgba(var(--overlay-rgb), 0.05); cursor: pointer;
+}
+.scr-minimap-map-row-on {
+  border-color: var(--point); background: rgba(var(--overlay-rgb), 0.14);
+}
+.scr-minimap-thumb {
+  flex-shrink: 0; width: 34px; height: 34px; border-radius: 6px;
+  border: 1px solid var(--line); object-fit: cover; background: #101418;
+}
+.scr-minimap-thumb-empty { display: block; }
+.scr-minimap-map-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1 1 auto; }
+.scr-minimap-map-name {
+  font-size: var(--fs-body); font-weight: 700; color: var(--text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.scr-minimap-map-meta { font-size: var(--fs-caption); color: var(--muted); }
+.scr-minimap-assign { display: flex; align-items: center; gap: 6px; }
+.scr-minimap-assign .scr-input { flex: 1 1 auto; min-width: 0; }
+.scr-minimap-assign .scr-btn { flex-shrink: 0; display: inline-flex; align-items: center; gap: 4px; }
+.scr-minimap-images { display: flex; flex-direction: column; gap: 4px; }
+.scr-minimap-image-row { cursor: default; }
+.scr-minimap-unassign { align-self: flex-start; }
