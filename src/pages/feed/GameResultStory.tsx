@@ -87,6 +87,11 @@ const isFlight = (k: string, cause: unknown): boolean =>
  *  돌아가면 어지럽고, 보이지도 않는 카드가 타이머를 물고 있을 이유도 없다. */
 const VISIBLE_RATIO = 0.4;
 
+/** 이사 간 자리가 다른 사람의 지금 자리와 이만큼(타일) 안쪽이면 '겹친다'로 본다 — 이사
+ *  목적지는 실제 시작 지점 좌표를 그대로 쓰므로(replaySummary의 relocations), 같은
+ *  자리면 좌표가 정확히 일치한다. 그래도 살짝 여유를 둔다. */
+const NATIVE_OVERLAP_TILES = 3;
+
 export default function GameResultStory({
   gameResult, team1, team2, result, memberOf, highlightMemberIds, highlightTerms, active = true,
 }: {
@@ -299,8 +304,29 @@ export default function GameResultStory({
         out.set(raw, [at[0] + (dx / len) * 8, at[1] + (dy / len) * 8]);
       });
     }
+    // 이사 간 자리에 원주민이 살아 있으면 아바타가 겹친다(지적: 원주민이 살아있는 곳에
+    // 이사를 간 경우 원래 주인과 겹치지 않게) — 상대가 지금 사는 자리는 애초에 이사
+    // 목적지에서 빠지지만(replaySummary의 relocations 주석), 아군 자리로 옮기는 것은
+    // 막지 않으므로 여기서 겹칠 수 있다. 위 셋방살이와 같은 요령으로, 옮겨 온 쪽만 가운데
+    // 쪽으로 살짝 비켜 앉힌다. 원주민이 이미 무너진 채라면(downed) 자리를 굳이 비키지
+    // 않는다 — 살아 있는 사람과 겹치는 것만 문제다.
+    const posOf = (raw: string): [number, number] | null => (
+      out.get(raw) ?? (spots[raw] ? [spots[raw][0], spots[raw][1]] : null)
+    );
+    for (const [raw, pos] of [...out]) {
+      const native = slots.find((s) => {
+        if (s.raw === raw || downed.has(s.raw)) return false;
+        const p = posOf(s.raw);
+        return p !== null && Math.hypot(p[0] - pos[0], p[1] - pos[1]) < NATIVE_OVERLAP_TILES;
+      });
+      if (!native) continue;
+      const dx = w / 2 - pos[0];
+      const dy = h / 2 - pos[1];
+      const len = Math.hypot(dx, dy) || 1;
+      out.set(raw, [pos[0] + (dx / len) * 8, pos[1] + (dy / len) * 8]);
+    }
     return { to: out, from: prev };
-  }, [gameResult.summaryData, sentences, index, nowAt, grid]);
+  }, [gameResult.summaryData, sentences, index, nowAt, grid, slots, downed]);
   const moved = movedPair.to;
 
   /* 지금 스냅에서 벌어진 일을 화살표로 잇는다 — 본진에서 '어디로 갔는가'까지(요청).
