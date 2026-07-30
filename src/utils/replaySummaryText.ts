@@ -813,8 +813,9 @@ const TEMPLATES: Record<string, Tpl> = {
     return `${ga(c.who)} ${at}${done(c, c.pick([
       `${reul(build)} 함`, `빠른 ${reul(build)} 함`, `과감한 ${reul(allin)} 함`,
       `${ira(build)} 날카로운 전략을 꺼냄`, `날카로운 ${reul(build)} 감행함`,
-      // 깎아내리는 말은 졌거나, 이겼더라도 한 종류만 주야장천 뽑았을 때만(지적).
-      ...(c.won && !c.p.solo ? [] : [`무지성 ${reul(build)} 함`]),
+      // 깎아내리는 말은 졌거나, 이겼더라도 한 종류만 주야장천 뽑았을 때만(지적). '무지성'
+      // 같은 부정적 어휘 대신 '일편단심'처럼 긍정적인 어휘를 쓴다(지적).
+      ...(c.won && !c.p.solo ? [] : [`일편단심 ${reul(build)} 함`]),
       ...(c.won ? [] : [`무리하게 ${reul(build)} 함`]),
     ]), true)}`;
   },
@@ -866,11 +867,12 @@ const TEMPLATES: Record<string, Tpl> = {
     const label = g === 2 ? "투게이트" : `${g}게이트`;
     const at = targetPhrase(c);
     // 질럿 러시는 도박이 아니라 정석이다(지적) — 실패했다고 "끝내 통하지 않음"으로 맺지 않는다.
-    // 한 유닛만 뽑고 달린 경우에만 '무지성'을 붙인다.
+    // 한 유닛만 뽑고 달린 경우에만 '일편단심'을 붙인다(지적: 무지성 같은 부정적 어휘 대신
+    // 긍정적인 어휘를 쓴다).
     return `${ga(c.who)} ${at}${done(c, c.pick([
       `${label} 질럿 러시를 함`, `빠른 ${label} 질럿 러시를 함`,
       ...(g >= 3 ? [`${label} 질럿 올인 러시를 함`] : []),
-      ...(c.p.solo ? [`무지성 ${label} 질럿 러시를 함`] : []),
+      ...(c.p.solo ? [`일편단심 ${label} 질럿 러시를 함`] : []),
     ]))}`;
   },
   "cannon-rush": (c) => {

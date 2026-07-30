@@ -669,7 +669,8 @@ function detectFor(c: Ctx): Tactic[] {
   const who = rawName;
   // 당한 쪽 — 1:1에서만 확실하다. 못 짚으면 그 부분만 빠지고 문장은 그대로 나온다.
   const target = soleFoe ? { whom: soleFoe } : {};
-  // 한 종류만 주야장천 뽑았나 — 그러면 이겼더라도 '무지성'이라 부를 수 있다(지적).
+  // 한 종류만 주야장천 뽑았나 — 그러면 이겼더라도 '일편단심'이라 부를 수 있다(지적: 무지성
+  // 같은 부정적 어휘 대신 긍정적인 어휘를 쓴다).
   const army = Object.entries(s.unitCounts).filter(([u]) => !SOLO_EXCLUDE.has(u));
   const armyTotal = army.reduce((acc, [, n]) => acc + n, 0);
   const topArmy = army.map(([, n]) => n).sort((a, b) => b - a)[0] ?? 0;
