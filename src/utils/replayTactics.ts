@@ -1112,12 +1112,14 @@ function detectFor(c: Ctx): Tactic[] {
     });
   }
   // 판 전체에 건물을 흩뿌리며 버틴 그림(요청) — 자리를 내주고 도망 다니며 새로 짓기를
-  // 반복한 경기다. 아래 센터 건물 이야기보다 이쪽이 훨씬 큰 그림이라 무게를 더 준다.
+  // 반복한 경기다. 다만 좌표만으로는 '그래서 어떻게 됐나'까지는 말할 수 없어(위 scatter
+  // 문장 주석) 다른 전술·러시·물량 이야기가 있으면 그쪽이 먼저다(지적: 그래서 뭐? 하는
+  // 느낌이라 되도록 안 나왔으면 함) — 무게를 낮춰 정말 할 얘기가 없는 경기에서만 나오게 한다.
   if (
     geo && geo.spread.clusters >= SCATTER_CLUSTERS_MIN && geo.spread.far >= SCATTER_FAR_MIN
   ) {
     out.push({
-      key: "scatter", weight: 14, who, at: geo.spread.at,
+      key: "scatter", weight: 9, who, at: geo.spread.at,
       p: { spots: geo.spread.clusters, far: geo.spread.far },
     });
   }
@@ -1125,8 +1127,7 @@ function detectFor(c: Ctx): Tactic[] {
   if (midCannons.length >= 2) {
     // 무게 10 → 16(요청: "센터포토 가중치도 좀 높여야 될 듯, 너무 요약에 출현 빈도가 낮음").
     // 센터 포토는 자리로 확실히 잡히는 데다, 길목 하나로 판 전체가 갈리는 수라 이야기로서의
-    // 값이 크다 — 다른 전술과 자리다툼에서 계속 밀려 요약에 거의 안 나왔다. scatter(14)보다
-    // 조금 위에 둬서, 후반에 둘이 같이 걸리면 이쪽이 먼저 뽑히게 한다.
+    // 값이 크다 — 다른 전술과 자리다툼에서 계속 밀려 요약에 거의 안 나왔다.
     out.push({ key: "center-photon", ...target, weight: 16, at: firstOf(midCannons), who, p: { n: midCannons.length } });
   } else {
     const mid = inZone("mid");
