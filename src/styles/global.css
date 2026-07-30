@@ -7705,9 +7705,24 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
 .scr-minimap-mark-ghost .scr-avatar {
   filter: grayscale(1) brightness(0.5); border-color: rgba(255, 255, 255, 0.45);
 }
-/* 본진 이모지 — 화살표가 없는 장면에서는 이것이 유일한 표시라 크게 둔다(요청: 지금보다
-   1.5배). 21px → 31px. */
-.scr-minimap-mark-home { font-size: 31px; }
+/* 본진 이모지 — 화살표가 없는 장면에서는 이것이 유일한 표시라 크게 둔다(요청: 40px).
+   심장이 뛰듯 살짝 커졌다 작아지게 해 '지금 여기서 뭔가 하고 있다'는 느낌을 준다(요청). */
+.scr-minimap-mark-home {
+  font-size: 40px;
+  animation: scr-minimap-arrow-in 260ms ease-out, scr-minimap-beat 1.4s ease-in-out 260ms infinite;
+}
+@keyframes scr-minimap-beat {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); }
+  18% { transform: translate(-50%, -50%) scale(1.16); }
+  36% { transform: translate(-50%, -50%) scale(1); }
+  54% { transform: translate(-50%, -50%) scale(1.1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .scr-minimap-mark-home { animation: none; }
+}
+/* 아바타에 겹쳐 그리는 이모지(승리 트로피) — 그 사람 자체를 가리키는 표시라 자리를 옮기지
+   않고 아바타 한가운데에 얹는다(요청). */
+.scr-minimap-mark-onavatar { font-size: 34px; }
 /* 좌·우 절반 — 이전/다음 장면(요청). 아무것도 안 그리는 투명 버튼이다. */
 .scr-minimap-half {
   position: absolute; top: 0; bottom: 0; width: 50%;

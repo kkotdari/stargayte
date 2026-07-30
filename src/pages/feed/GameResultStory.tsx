@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type MouseEvent, type PointerEvent } from "react";
 import ReplayMinimap, { ARROW_MIN_TILES, type MinimapArrow, type MinimapMarker } from "../../components/replay/ReplayMinimap";
 import ReplayStoryTimeline from "../../components/replay/ReplayStoryTimeline";
 import RosterSide, { outcomeFor, resolveSlotName } from "./GameResultSides";
@@ -54,7 +54,7 @@ const BEAT_MARK: Record<string, string> = {
   "late-defense": "🛡️", "side-tank": "🛡️", stand: "🛡️", "late-hold": "🛡️", standoff: "🛡️",
   // 본진에서 한 일 — 화살표 없이 본진에 붙는다.
   expand: "🏗️", upgrade: "🔬", "upgrade-signature": "🔬", tech: "🔬", "fast-tech": "🔬",
-  lodging: "🏠", "greedy-build": "🤑", "greedy-paid": "🤑",
+  lodging: "🏠", "greedy-build": "💰", "greedy-paid": "💰", greedy: "💰",
   carrier: "🛩️", bc: "🛩️", guardian: "🛩️", "lift-off": "🛩️", vision: "👁️", "no-detect": "🙈",
   scatter: "🌪️", attrition: "⏳", "fast-hands": "⚡", "pro-like": "🌟", revival: "🔥",
   fallen: "💀", gg: "🏳️", "worker-gap": "📉", "prod-gap": "📉", "greedy-punished": "💸",
@@ -238,8 +238,10 @@ export default function GameResultStory({
        ④ 그 밖(병력을 뽑았다·물량을 모았다처럼 목표가 없는 이야기)은 맵 가운데 쪽으로 조금
           나가는 화살표 — 진출하는 느낌만 준다(요청). 특정 지점을 찍지 않으므로 틀릴 것도
           없다. */
-  const actions = useMemo<{ arrows: MinimapArrow[]; marks: Map<string, string> }>(() => {
-    const empty = { arrows: [], marks: new Map<string, string>() };
+  const actions = useMemo<{
+    arrows: MinimapArrow[]; marks: Map<string, string>; onAvatar: Set<string>;
+  }>(() => {
+    const empty = { arrows: [], marks: new Map<string, string>(), onAvatar: new Set<string>() };
     const beats = gameResult.summaryData?.beats;
     const idx = sentences[index]?.beats;
     if (!beats || !idx) return empty;
@@ -340,6 +342,8 @@ export default function GameResultStory({
 
     // 한 문장에 여러 beat가 들어가면 같은 사람이 여러 번 나올 수 있다 — 뒤에 오는 것(더
     // 나중의 일)이 이긴다. 당한 사람은 뺀다: 맞은 쪽에서 나가는 화살표는 이야기가 아니다.
+    /** 얻어맞은 사람 자리에 얹을 표시(요청: 당한 건 폭발 이모지). */
+    const HIT_MARK = "💥";
     /** 그 beat에 붙일 이모지 — 표에 없으면 공격 계열은 검 대결, 그 밖은 생산으로 채운다. */
     const markOf = (k: string): string =>
       BEAT_MARK[k] ?? (ATTACK_BEAT_KEYS.has(k) ? "⚔️" : "🏭");
@@ -347,10 +351,21 @@ export default function GameResultStory({
     const to = new Map<string, [number, number]>();
     const flight = new Map<string, boolean>();
     const mark = new Map<string, string>();
+    const hit = new Set<string>();
+    // 맺음말 스냅에서는 이긴 편 아바타에 트로피를 겹쳐 얹는다(요청).
+    const trophy = new Set<string>();
     for (const n of idx) {
       const b = beats[n];
       if (!b) continue;
       const victims = new Set(b.whom ?? []);
+      // 당한 사람 자리에는 폭발을 얹는다(요청) — 화살표는 때린 쪽에서만 나가고, 맞은 쪽은
+      // 그 자리에서 터진 것으로 읽힌다.
+      for (const v of victims) if (!(b.who ?? []).includes(v)) hit.add(v);
+      // 맺음말 — 이긴 편 전원에게 트로피를 준다(요청: 승리 트로피는 아바타에 겹쳐서 크게).
+      if (b.k === "result") {
+        const team = slots.find((x) => (b.who ?? []).includes(x.raw))?.team;
+        if (team) slots.filter((x) => x.team === team).forEach((x) => trophy.add(x.raw));
+      }
       for (const raw of b.who ?? []) {
         if (victims.has(raw)) continue;
         mark.set(raw, markOf(b.k));
@@ -364,8 +379,11 @@ export default function GameResultStory({
     // 붙는 것(생산·테크·경제, 그리고 목표가 자기 집 안인 것)으로 나눈다.
     const arrows: MinimapArrow[] = [];
     const marks = new Map<string, string>();
+    const onAvatar = new Set<string>();
     for (const s of slots) {
-      const em = mark.get(s.raw);
+      // 트로피가 있으면 그것이 이긴다 — 맺음말 스냅에서는 그 사람의 승리가 전부다.
+      if (trophy.has(s.raw)) { marks.set(s.raw, "🏆"); onAvatar.add(s.raw); continue; }
+      const em = mark.get(s.raw) ?? (hit.has(s.raw) ? HIT_MARK : undefined);
       if (!em) continue;
       const home = homeOf(s.raw);
       const t = to.get(s.raw);
@@ -378,7 +396,7 @@ export default function GameResultStory({
         marks.set(s.raw, em);
       }
     }
-    return { arrows, marks };
+    return { arrows, marks, onAvatar };
   }, [gameResult.summaryData, sentences, index, slots, grid, moved]);
   const arrows = actions.arrows;
 
@@ -425,6 +443,7 @@ export default function GameResultStory({
         featured: mentioned.has(s.raw),
         // 화살표가 없는 이야기(생산·테크·경제)는 그 사람 본진에 이모지를 붙인다(요청).
         mark: actions.marks.get(s.raw),
+        markOn: actions.onAvatar.has(s.raw),
       });
     }
     return out;
@@ -444,8 +463,18 @@ export default function GameResultStory({
   const caption = grid !== null && sentences.length > 0;
   const showMapLine = grid === null && (mapName || minutes !== null);
 
+  /* 미니맵·자막·타임라인을 눌러도 카드가 접히지 않게 한다(요청) — 이 카드는 눌러서 접는
+     동작을 갖고 있어서(피드 묶음), 그림을 짚어 장면을 넘기거나 자막을 읽으려고 누른 것이
+     그대로 접기로 새어 나갔다. click만 막으면 pointerdown을 보고 접는 쪽이 먼저 반응하므로
+     세 가지를 다 끊는다. */
+  const stopBubble = {
+    onPointerDown: (e: PointerEvent) => e.stopPropagation(),
+    onMouseDown: (e: MouseEvent) => e.stopPropagation(),
+    onClick: (e: MouseEvent) => e.stopPropagation(),
+  };
+
   const mapBlock = grid && (
-    <div className="scr-story-map">
+    <div className="scr-story-map" {...stopBubble}>
       <div className="scr-story-map-head">
         {mapName && <span className="scr-story-map-name">{mapName}</span>}
         {minutes !== null && <span className="scr-story-map-dur">{minutes}분</span>}
@@ -534,6 +563,7 @@ export default function GameResultStory({
       {/* 타임라인은 스냅이 둘 이상일 때만 쓸모가 있다 — 한 문장짜리 요약에 재생 버튼을 두면
           누를 데는 있는데 아무 일도 안 일어난다. */}
       {grid && sentences.length > 1 && (
+        <div {...stopBubble}>
         <ReplayStoryTimeline
           snaps={sentences} end={gameResult.summaryData?.end ?? null}
           index={index} playing={playing} finished={finished}
@@ -543,6 +573,7 @@ export default function GameResultStory({
             setPlaying((v) => !v);
           }}
         />
+        </div>
       )}
       {/* 미니맵이 없는 경기(옛 경기, 맵 정보를 못 읽은 리플레이)는 훑을 그림도 자막도 없다 —
           예전처럼 요약 전문을 한 문단으로 보여준다. 이게 없으면 그 카드는 읽을거리가 통째로

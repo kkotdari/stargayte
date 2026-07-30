@@ -215,7 +215,13 @@ const ENEMY_RADIUS = 0.22;
    중점이 내 입구 바로 앞이 된다 — 입구에 박은 포토가 그대로 "센터 포토"가 됐다.
    그래서 참가자 전원의 시작 자리 평균(=맵 가운데)을 쓰고, 그 자리들이 놓인 반지름을 자로
    삼는다. 이러면 팀 구성이나 자리 배치와 무관하게 늘 같은 곳이 센터다. */
-const MID_MAP_RATIO = 0.3;
+const MID_MAP_RATIO = 0.22;
+/* 센터는 '아무 본진에서도 멀리 떨어진' 자리이기도 하다(지적: 센터포토 금지맵인데도 센터포토가
+   나온다 — 자기 본진 입구를 포토로 막은 것을 센터로 잡는 듯하다. 실측한 그 경기에서
+   Taschen_Ever의 포토는 자기 집에서 30타일 나간 자리였는데, 참가자 다섯 명의 시작 자리 평균이
+   왼쪽으로 쏠려 있어서 그 자리가 '가운데'로 잡혔다). 그래서 가운데에 가까운 것만으로는 안 되고,
+   어느 본진에서도 이만큼(링 반지름 대비)은 떨어져 있어야 센터라고 부른다. */
+const MID_AWAY_RATIO = 0.35;
 /* 맵 곳곳에 건물을 흩뿌리며 버틴 그림(요청: "둘은 계속해서 맵 구석구석에 건물을 지으며
    도망다니며 버텼어. 이런것도 추출해서 스토리화해줘"). 빠른무한처럼 자원이 무한한 판에서
    서로 자리를 내주고 도망 다니며 새로 짓기를 반복하면 본진 언저리가 아니라 판 전체에
@@ -417,16 +423,23 @@ function geoOf(
     .map((f) => ({ raw: f.rawName, h: startHomeOf(f) }))
     .filter((f): f is { raw: string; h: { x: number; y: number } } => f.h !== null);
 
-  // 맵 가운데 — 참가자 전원의 시작 자리 평균. 자(ring)는 그 자리들이 가운데에서 떨어진
-  // 평균 거리다(MID_MAP_RATIO 주석 참고).
+  // 맵 가운데 — 시작 자리들의 '바깥 테두리 가운데'다. 평균을 쓰면 참가자가 한쪽에 쏠린 판에서
+  // 가운데가 그쪽으로 끌려간다(실측: 다섯 명 중 셋이 왼쪽인 경기에서 평균이 (53,51)이었고,
+  // 그 때문에 왼쪽 사람의 앞마당 포토가 센터로 잡혔다). 테두리 가운데는 그 쏠림에 흔들리지
+  // 않는다 — 같은 경기에서 (64,62.5)로, 128×128 맵의 실제 가운데와 거의 같다.
   const allHomes = [home, ...allyHomes.map((a) => a.h), ...foeHomes];
   const mapMid = {
-    x: allHomes.reduce((n, h) => n + h.x, 0) / allHomes.length,
-    y: allHomes.reduce((n, h) => n + h.y, 0) / allHomes.length,
+    x: (Math.min(...allHomes.map((h) => h.x)) + Math.max(...allHomes.map((h) => h.x))) / 2,
+    y: (Math.min(...allHomes.map((h) => h.y)) + Math.max(...allHomes.map((h) => h.y))) / 2,
   };
   const ring = allHomes.reduce((n, h) => n + dist(h, mapMid), 0) / allHomes.length;
-  /** 정말 맵 가운데인가 — 본진·아군기지·상대기지 판정 뒤에만 쓴다. */
-  const atMapMid = (b: BuildPos): boolean => ring > 0 && dist(b, mapMid) < ring * MID_MAP_RATIO;
+  /** 정말 맵 가운데인가 — 가운데에 가깝고, 어느 본진에서도 충분히 멀어야 한다(위 주석).
+   *  본진·아군기지·상대기지 판정 뒤에만 쓴다. */
+  const atMapMid = (b: BuildPos): boolean => {
+    if (!(ring > 0)) return false;
+    if (dist(b, mapMid) >= ring * MID_MAP_RATIO) return false;
+    return allHomes.every((h) => dist(b, h) > ring * MID_AWAY_RATIO);
+  };
 
   const enemyAt = (b: BuildPos): string | null => {
     let best: { raw: string; d: number } | null = null;

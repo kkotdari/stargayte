@@ -1368,7 +1368,8 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   // 자리가 늘어도 아무거나 채우지는 않는다 — 아래 MIN_WEIGHT가 가벼운 사실을 막는다.
   // 자리를 더 열었다(요청: 문장 이어 붙이기를 최소화하고 최대한 나눠서 스냅을 만들 것 —
   // 그러려면 스냅 수 제한부터 완화해야 한다). 2분마다 하나씩, 긴 경기는 열여덟까지.
-  const baseBudget = Math.max(4, Math.min(sec >= LONG_GAME_SEC ? 18 : 13, 4 + Math.floor((sec - 2 * 60) / (2 * 60))));
+  // 18/13 → 16/12(요청: 문장 수 10% 감축).
+  const baseBudget = Math.max(4, Math.min(sec >= LONG_GAME_SEC ? 16 : 12, 4 + Math.floor((sec - 2 * 60) / (2 * 60))));
   // 자리가 남아도 아무거나 채우지 않는다(요청: 승부에 중요한 이벤트만) — 이 무게 아래는
   // "그래서 뭐" 소리가 나오는 사실들이라, 문단을 짧게 끝내는 편이 낫다.
   // 6 → 8(요청: 중요하지 않은 내용은 숫자 채우려고 넣지 말 것). 자리가 남아도 "그래서 뭐"
@@ -1943,7 +1944,14 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   const perPhaseMax = Math.max(1, Math.ceil(slots / 2));
   const taken: [number, number, number] = [0, 0, 0];
 
-  const ranked = [...pool].sort((x, y) => y.weight - x.weight);
+  /* 후반은 이긴 편의 이야기를 앞세운다(요청: 마지막으로 갈수록 왜 결말이 났는지 이해되게,
+     A가 잘 싸우다가 갑자기 B가 이겼다가 되면 이상하다). 마지막 국면(뒤 1/3)에서 이긴 편의
+     문장에만 가산점을 줘서, 자리가 빠듯할 때 그 대목이 먼저 남게 한다. 무게 자체를 바꾸지는
+     않는다 — 고르는 순서에만 쓰는 값이다. */
+  const LATE_WINNER_BONUS = 6;
+  const pickWeight = (b: Beat): number =>
+    b.weight + (b.won && phaseOf(b) === 2 ? LATE_WINNER_BONUS : 0);
+  const ranked = [...pool].sort((x, y) => pickWeight(y) - pickWeight(x));
   const consider = (b: Beat, capped: boolean): boolean => {
     if (chosen.includes(b)) return false;
     if (chosen.length >= slots) return false;

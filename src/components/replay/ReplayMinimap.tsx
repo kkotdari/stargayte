@@ -70,9 +70,9 @@ const HEAD_WIDE = 2.6;
 const MARK_ROOM = 5;
 /** 그 자리 안에서 이모지를 화살촉보다 이만큼 앞에 둔다. */
 const MARK_AHEAD = 2.6;
-/** 본진 이모지를 입구(맵 가운데) 쪽으로 이만큼 띄운다(타일) — 9 → 13(요청: 더 입구 쪽,
- *  더 크게). */
-const MARK_OUT = 13;
+/** 본진 이모지를 입구(맵 가운데) 쪽으로 이만큼 띄운다(타일) — 13 → 22(요청: 본진 한가운데
+ *  느낌이 나게 자기 아바타에서 맵 중앙 쪽으로 많이 가서). */
+const MARK_OUT = 22;
 /** 이름표를 비켜 가려고 세로로 살짝 올리거나 내리는 양(타일). 대각선으로 띄우면 그 세로
  *  성분이 이름표 띠(아바타 아래 11~25px)에 딱 걸려 글자 위에 얹혔다(실측 스크린샷). */
 const MARK_RISE = 4;
@@ -156,6 +156,9 @@ export interface MinimapMarker {
   /** 버리고 떠난 옛 본진인가 — 흑백으로만 남긴다(요청: 본진을 버리고 이동한 경우 본진은
    *  흑백 처리하고 새 기지에 마크를 옮긴다). */
   ghost?: boolean;
+  /** 이모지를 아바타 위에 겹쳐 그릴까 — 승리 트로피처럼 그 사람 자체를 가리키는 표시에 쓴다
+   *  (요청: 승리 트로피는 아바타에 겹쳐서 크게). 기본은 입구 쪽으로 띄워 그린다. */
+  markOn?: boolean;
   /** 본진에 붙일 이모지 — 화살표가 없는 이야기(생산·테크·경제)에 쓴다(요청: 생산에도 본진에
    *  열심히 생산하는 이모지). */
   mark?: string;
@@ -293,7 +296,12 @@ export default function ReplayMinimap({
       <div className="scr-minimap-arrow-marks" aria-hidden>
         {/* 화살표가 없는 장면의 본진 이모지 — 본진에서 입구 쪽으로 띄워 크게(요청). */}
         {bases.map((m) => (m.mark ? (
-          <span key={`bm-${m.key}`} className="scr-minimap-arrow-mark scr-minimap-mark-home" style={markPlace(m)}>
+          <span
+            key={`bm-${m.key}`}
+            className={cx("scr-minimap-arrow-mark",
+              m.markOn ? "scr-minimap-mark-onavatar" : "scr-minimap-mark-home")}
+            style={m.markOn ? place(m) : markPlace(m)}
+          >
             {m.mark}
           </span>
         ) : null))}
