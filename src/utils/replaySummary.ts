@@ -1589,6 +1589,44 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     [...tacticBeats(true), ...tacticBeats(false)],
     (won) => (won ? winnerPlayers.length : loserPlayers.length),
   )));
+  /* 아군이 얻어맞는 동안 그 진영으로 병력을 보낸 사람 — '도우러 갔다'(요청: 아군 헬프도
+     나오면 좋겠다, 내용 파싱 때부터). 팀전에서만 나온다.
+
+     근거는 자리뿐이다: 그 사람의 이동·공격 명령이 아군 본진 반경에 몰렸는가(pushersOn — 정찰
+     한두 번으로는 안 걸리는 최소 개수를 요구한다). 그래서 '도착해서 막아 줬는가'까지는 말하지
+     않는다. 창은 그 수가 시작된 즈음부터 몇 분 — 한참 뒤에 그 자리를 지나간 것을 지원이라
+     부르지 않기 위해서다. */
+  const allyHelpBeats: Beat[] = (() => {
+    if (!hasOrderPositions || duel) return [];
+    const HELP_BEFORE_SEC = 30;
+    const HELP_AFTER_SEC = 150;
+    const out: Beat[] = [];
+    const seen = new Set<string>();
+    for (const t of tactics) {
+      const victimName = (t.whom ?? [])[0];
+      const at = t.at;
+      if (!victimName || at === null || at === undefined || !Number.isFinite(at)) continue;
+      const side = winnerPlayers.some((p) => p.rawName === victimName)
+        ? winnerPlayers : loserPlayers;
+      const victim = side.find((p) => p.rawName === victimName);
+      if (!victim) continue;
+      const mates = side.filter((p) => p.rawName !== victimName);
+      if (mates.length === 0) continue;
+      const from = Math.max(0, at - HELP_BEFORE_SEC / SECONDS_PER_FRAME);
+      const to = at + HELP_AFTER_SEC / SECONDS_PER_FRAME;
+      for (const name of pushersOn(victim, mates, from, to)) {
+        const key = `${name}>${victimName}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push({
+          k: "ally-help", won: side === winnerPlayers, who: [name], whom: [victimName],
+          at, weight: 13, p: { k: t.k },
+        } as Beat);
+      }
+    }
+    return out;
+  })();
+
   // 탱크 방어 문장이 "조조를 밀어냄"까지 말했으면 "조조가 먼저 정리됨"을 또 붙이지 않는다.
   // 여기서만 이름으로 거른다 — 렌더된 문장을 훑는 일반 dedupe는 이름이 우연히 겹치는
   // 다른 문장까지 지워버린다.
@@ -1832,6 +1870,7 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     ...mergeSameFate(greedyBeats, "greedy-punished"),
     ...gangBeats,
     ...mergeScatter(mergeMutual(tactics)),
+    ...allyHelpBeats,
     // 돌파 문장은 늘 '진 편의 벽'을 말하므로 그쪽 방어 문장만 덜어 낸다(이긴 편이 지어 둔
     // 방어는 다른 이야기다). 뒤늦은 증설과 겹치는 건 어느 편이든 덜어 낸다.
     ...sideAll.filter((b) => !(

@@ -1694,6 +1694,18 @@ const TEMPLATES: Record<string, Tpl> = {
   },
 
   // 아군 기지에 포토를 깔아 주는 것 — 제 이득이 아니라 팀을 위한 수라 따로 말한다(요청).
+  /* 아군이 맞는 동안 그 진영으로 병력을 보낸 것(요청: 아군 헬프) — 자리로만 아는 일이라
+     "도우러 갔다"까지만 말하고 막아 줬는지는 말하지 않는다. */
+  "ally-help": (c) => {
+    const who = c.whom ? c.whom : "아군";
+    return `${ga(c.who)} ${done(c, c.pick([
+      `${reul(who)} 도우러 병력을 보냄`,
+      `${who}의 진영으로 지원을 감`,
+      `${reul(who)} 구하러 병력을 돌림`,
+      `${who} 쪽으로 병력을 붙여 줌`,
+    ]))}`;
+  },
+
   "ally-cannon": (c) => {
     const n = num(c.p.n);
     const host = c.who2 ? `${c.who2}의 ` : "아군 ";
@@ -2019,10 +2031,14 @@ function renderLines(
     // "…했지만 결국 이겼다"). 앞 전황이 진 편 쪽이면 '-지만'으로 뒤집으며 받고, 같은
     // 편 쪽이면 '-고'로 그대로 받는다. 앞 문장이 이미 이어 주는 어미를 품고 있으면
     // 접속이 두 번 겹치므로 그때만 끊는다.
-    const endJoinCandidate =
-      b.k === "result" && out.length > 0 && chainCount === 0
-      && !/지만|으나|다가/.test(prevLine)
-      && !!(prevTide < 0 ? toBut(prevLine) : toAnd(prevLine));
+    // 맺음말은 앞 문장에 붙이지 않는다(요청: 결론 문장은 무조건 나눠서 스냅으로 나오게).
+    // 예전에는 "…했고 결국 이겼다"처럼 이어 붙이는 편이 자연스러워 그렇게 뒀는데, 그러면
+    // 맺음말이 앞 장면과 같은 스냅에 묶여 미니맵에서도 그 장면 화살표와 함께 지나가 버린다.
+    // 끊어 두면 아래에서 "결국/그대로/하지만" 머리말이 붙어 문장 자체는 그대로 이어 읽힌다.
+    const endJoinCandidate = false;
+    void toAnd;
+    void toBut;
+    void prevLine;
     // 앞 문장과 이번 문장의 주체가 서로 다른 팀인가 — 팀 표시와 '도' 붙이기, 그리고
     // 반전으로 이을지 말지에 함께 쓴다.
     const myTeam = teamOf?.(names[0] ?? "");
