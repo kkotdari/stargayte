@@ -206,6 +206,16 @@ const HARASS_KEYS = new Set([
   "cloak-wraith",
 ]);
 
+// 공격이 실제로 어디에 떨어졌나를 잴 때 쓰는 값들(지적: 어택 지정 좌표를 구분해도 정작
+// 요약 문장에는 그 내용이 안 늘어난 것 같다) — orderPositions의 kind==='attack'(실제
+// 공격 명령)만 모아 중심을 내고, 그 자리가 당한 쪽의 본진에서 이만큼 안쪽이면 '본진',
+// 아니면 자원 자리(mapGrid.resources) 중 하나에 이만큼 가까울 때만 '멀티'라 부른다 —
+// 둘 다 아니면(빈 땅 근처 어딘가) 아예 말하지 않는다. 실측 없이 정한 값이라(리플레이
+// 표본이 없다) 신중하게 넉넉히 잡았다: 128칸 맵에서 8타일은 본진 건물 몇 채 폭 정도다.
+const ATTACK_ZONE_MIN_ORDERS = 5;
+const ATTACK_ZONE_HOME_TILES = 8;
+const ATTACK_ZONE_RES_TILES = 6;
+
 // 러시·드랍을 간 뒤 이 안에 상대 생산이 끊기면 그 수의 결과로 본다.
 const DAMAGE_WINDOW_SEC = 3 * 60;
 // 탈락을 그 수의 결과로 묶는 창 — 이보다 벌어지면 인과가 아니라 우연에 가깝다(지적).
@@ -1402,6 +1412,29 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
    *  등락만 보고 대상을 지목했는데, 그러면 팀전에서 마침 그때 일꾼을 채운 사람이 엉뚱하게
    *  피해자로 적힌다(실측한 리플레이에서는 세 상대 모두 조건을 만족해, 셋 중 누가 뽑혀도
    *  근거가 없었다). pushersOn이 그 사람 본진 반경에 찍힌 명령 수로 가른다. */
+  /** 그 공격이 실제로 어디에 떨어졌나 — 본진인지, 어딘가의 자원 자리(멀티)인지(지적:
+   *  어택 지정 좌표를 구분한다면 공격 장면이 더 자세해질 텐데 — 실제로는 위치 정확도만
+   *  좋아졌지 문장에는 그 내용이 안 늘었다). 근거는 진짜 공격 명령(kind === "attack")만이다
+   *  — 이동·수리·채집 클릭까지 섞으면 본진 언저리의 흔한 클릭에 묻혀 목표가 흐려진다.
+   *  좌표가 몇 개 안 되거나(정찰 수준) 본진에서도 자원 자리에서도 멀면(빈 땅) 모른다고
+   *  본다 — 확인 안 되는 자리를 멀티라고 우기지 않는다. */
+  const attackZoneOf = (
+    attacker: ParsedReplayPlayer, victim: ParsedReplayPlayer, from: number, to: number,
+  ): "main" | "multi" | null => {
+    if (victim.startX === null || victim.startY === null) return null;
+    const orders = (attacker.signals?.orderPositions ?? [])
+      .filter((o) => o.kind === "attack" && o.frame >= from && o.frame <= to);
+    if (orders.length < ATTACK_ZONE_MIN_ORDERS) return null;
+    const cx = orders.reduce((s, o) => s + o.x, 0) / orders.length;
+    const cy = orders.reduce((s, o) => s + o.y, 0) / orders.length;
+    if (Math.hypot(cx - victim.startX, cy - victim.startY) <= ATTACK_ZONE_HOME_TILES) return "main";
+    const resources = replay.mapGrid?.resources ?? [];
+    const nearRes = resources.some(
+      ([rx, ry]) => Math.hypot(cx - rx, cy - ry) <= ATTACK_ZONE_RES_TILES,
+    );
+    return nearRes ? "multi" : null;
+  };
+
   const reachedBase = (
     attacker: string, victimName: string, from: number,
     side: ParsedReplayPlayer[], foes: ParsedReplayPlayer[],
@@ -1556,6 +1589,13 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
           // 이 수를 낸 사람 말고도 있었으면 그 이름들을 함께 싣는다.
           const gang = victim ? pushersOn(victim, mine, 0, hit.at) : [];
           const mates = gang.includes(t.who) ? gang.filter((n) => n !== t.who) : [];
+          // 탈락시켰으면 '어디를 쳤나'는 이미 안 중요하다(문장이 그 자체로 충분하다) —
+          // 그 앞 단계, 큰 타격만 준 경우에만 어디를 쳤는지를 더해 장면을 자세히 만든다
+          // (지적: 어택 지정 좌표를 구분해도 문장이 안 자세해진 것 같다).
+          const attacker = mine.find((p) => p.rawName === t.who);
+          const zone = !hit.out && attacker && victim && t.at !== null
+            ? attackZoneOf(attacker, victim, t.at, hit.at)
+            : null;
           return {
             k: "raid-damage", won, who: [t.who], at: t.at,
             weight: t.weight + (hit.out ? 16 : 14),
@@ -1565,6 +1605,7 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
               ...(t.p ?? {}), k: t.key,
               ...(thin ? { vdef: thin.def, vdefN: thin.n } : {}),
               ...(mates.length > 0 ? { gang: gang.length } : {}),
+              ...(zone ? { zone } : {}),
               // 탈락은 몇 분경이었는지까지 말한다(요청) — 서사의 시점이 되는 순간이다.
               ...(hit.out ? { out: true, outMin: minutes(hit.at * SECONDS_PER_FRAME) } : {}),
               // 초반 올인에 초반부터 무너진 건 그 자체로 다른 그림이다(요청).

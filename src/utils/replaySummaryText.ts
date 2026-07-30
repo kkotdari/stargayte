@@ -794,12 +794,18 @@ const TEMPLATES: Record<string, Tpl> = {
         [`${ro(by)} ${when}${reul(foe)} 엘리시킴`, `${ro(by)} ${when}${reul(foe)} 끝냄`],
       );
     }
+    // 어디를 쳤나(어택 지정 좌표로 확인될 때만) — 탈락시킨 게 아니라 타격만 준 경우에
+    // 장면을 더 자세히 만든다(지적: 어택/무브 좌표를 구분해도 문장이 안 자세해진 것
+    // 같다). 확인 안 되면(c.p.zone 없음) 예전 그대로 아무 말도 붙지 않는다.
+    const zoneNoun = c.p.zone === "main" ? "본진" : c.p.zone === "multi" ? "멀티" : "";
+    const zoneAt = zoneNoun ? `${zoneNoun}에서 ` : "";
     // 그 사람이 한 행동을 말하는 문장은 주격으로(위 by 참고), 당한 쪽이 주어인 '-에' 꼴만
     // 소유격으로 둔다.
     return say(
-      [`${blow} 큰 타격을 입음`, `${blow} 많은 타격을 입음`, `${blow} 적잖은 피해를 입음`],
-      [`${ro(mine)} ${ga(foe)} 큰 타격을 입음`, `${blow} ${ga(foe)} 많은 타격을 입음`],
-      [`${ro(by)} ${foe}에게 큰 타격을 줌`, `${ro(by)} ${foe}에게 많은 타격을 줌`],
+      [`${blow} ${zoneAt}큰 타격을 입음`, `${blow} ${zoneAt}많은 타격을 입음`, `${blow} ${zoneAt}적잖은 피해를 입음`],
+      [`${ro(mine)} ${ga(foe)} ${zoneAt}큰 타격을 입음`, `${blow} ${ga(foe)} ${zoneAt}많은 타격을 입음`],
+      [`${ro(by)} ${zoneNoun ? `${foe}의 ${zoneNoun}에 ` : `${foe}에게 `}큰 타격을 줌`,
+        `${ro(by)} ${zoneNoun ? `${foe}의 ${zoneNoun}에 ` : `${foe}에게 `}많은 타격을 줌`],
     );
   },
 
