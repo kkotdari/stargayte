@@ -1361,10 +1361,12 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   const domUnit = dominant ? heroUnitOf(winner, dominant, units) : null;
 
   // ── 문장 수 ──
-  // 한 문단짜리 이야기라 길면 읽히지 않는다. 짧은 경기는 두어 문장, 길이에 따라 다섯까지
-  // 3분→2문장에서 5분마다 하나씩 늘린다(요청). 다만 할 얘기가 많은 경기는 더 써도 된다
-  // (요청) — 아래에서 무거운 사실 수를 보고 일곱까지 늘린다.
-  const baseBudget = Math.max(2, Math.min(sec >= LONG_GAME_SEC ? 7 : 5, 2 + Math.floor((sec - 3 * 60) / (5 * 60))));
+  // 예전에는 한 문단으로 한 번에 읽히는 글이라 짧게 끊었다(길이에 따라 두~다섯, 최대 일곱).
+  // 이제는 자막으로 한 문장씩 넘겨 보는 이야기라 사정이 다르다(요청: 스토리라인 방식이니
+  // 전체적으로 문장 수를 늘려 달라) — 문단이 길어져 부담스러워질 걱정이 없고, 오히려 장면이
+  // 적으면 훑을 것이 없다. 3분마다 하나씩 늘려 열둘까지 쓴다.
+  // 자리가 늘어도 아무거나 채우지는 않는다 — 아래 MIN_WEIGHT가 가벼운 사실을 막는다.
+  const baseBudget = Math.max(3, Math.min(sec >= LONG_GAME_SEC ? 12 : 9, 3 + Math.floor((sec - 2 * 60) / (3 * 60))));
   // 자리가 남아도 아무거나 채우지 않는다(요청: 승부에 중요한 이벤트만) — 이 무게 아래는
   // "그래서 뭐" 소리가 나오는 사실들이라, 문단을 짧게 끝내는 편이 낫다.
   const MIN_WEIGHT = 6;

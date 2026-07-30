@@ -225,6 +225,13 @@ const MUTA_MASS_MIN = 36;
 
 // 저글링 러시라 부르려면 초반에 이만큼은 뽑았어야 한다 — 성큰러시에 딸린 두어 기와 가른다.
 const ZLING_RUSH_MIN = 6;
+// 러시라면 저글링을 꾸준히 뽑는다(지적: 스포닝풀을 해처리보다 먼저 지었다고 무조건 저글링
+// 러시는 아니고, 저글링을 좀 꾸준히 뽑았는지 봐야 한다). 예전엔 '경기 전체 저글링 수'만
+// 봤는데 그건 어떤 저그든 넘기는 문턱이라, 풀 먼저 올린 뒤 테크로 간 사람까지 러시로
+// 읽혔다. 이제 첫 저글링 직후의 구간만 보고, 그 구간에 충분히 뽑았고 한 번에 몰아 뽑은
+// 것이 아니라 이어서 뽑았는지까지 확인한다.
+const ZLING_RUSH_WINDOW_SEC = 120;
+const ZLING_RUSH_SPAN_SEC = 30;
 
 // 병력 건물보다 자원을 먼저 늘린 것이 '초반'이라 할 수 있는 한계 — 이보다 늦으면
 // 그냥 확장한 것이지 째기가 아니다.
@@ -637,11 +644,23 @@ function detectFor(c: Ctx): Tactic[] {
     // 저글링을 이만큼은 뽑아야 '러시'다 — 두어 기는 정찰·수비지 러시가 아니다(지적:
     // 성큰러시를 9드론 저글링 러시로 오인함). 성큰러시도 풀을 일찍 올리고 저글링을
     // 조금 뽑기 때문에, 수를 보지 않으면 그대로 저글링 러시로 읽힌다.
-    // 뽑은 총량으로 센다 — unitFrames는 앞쪽만 담아 두는 목록이라 상한에 걸리면 수가
-    // 어긋나지만, unitCounts는 커맨드를 다 세므로 이런 판정에 안전하다.
+    //
+    // 그리고 '경기 전체에 몇 기'가 아니라 '첫 저글링 직후에 꾸준히 뽑았나'를 본다(지적:
+    // 풀을 먼저 지었다고 무조건 러시는 아니다). 두 가지를 함께 요구한다 —
+    //   ① 러시 구간(첫 저글링 + 2분) 안에 충분한 수
+    //   ② 그 수가 한 순간에 몰린 게 아니라 30초 넘게 이어졌다
+    // ②가 없으면 라바 여섯 마리를 한꺼번에 저글링으로 변태시킨 수비 한 번도 러시가 된다.
+    const rushLings = ling === null
+      ? []
+      : (s.unitFrames["Zergling"] ?? [])
+        .filter((f) => f <= ling + ZLING_RUSH_WINDOW_SEC / SECONDS_PER_FRAME)
+        .sort((a, b) => a - b);
+    const rushSpan = rushLings.length > 0
+      ? (rushLings[rushLings.length - 1] - rushLings[0]) * SECONDS_PER_FRAME
+      : 0;
     if (
       pool !== null && ling !== null && sec(pool) < 210 && sec(ling) < 300
-      && u("Zergling") >= ZLING_RUSH_MIN
+      && rushLings.length >= ZLING_RUSH_MIN && rushSpan >= ZLING_RUSH_SPAN_SEC
     ) {
       const drones = 4 + (s.unitFrames["Drone"] ?? []).filter((f) => f < pool).length;
       if (drones >= 7 && drones <= 14) {

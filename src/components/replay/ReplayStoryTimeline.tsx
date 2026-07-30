@@ -48,6 +48,19 @@ export default function ReplayStoryTimeline({
   const at = pos[index] ?? 0;
   const label = playing ? "멈추기" : finished ? "다시 보기" : "재생";
 
+  /** 트랙에서 x 좌표가 가리키는 눈금으로 옮긴다 — 끌기와 누르기가 같은 계산을 쓴다.
+   *  연속 값이 아니라 장면 단위라 '가장 가까운 눈금'을 고르는 것이 맞다. */
+  const seekAt = (track: HTMLElement, clientX: number): void => {
+    const r = track.getBoundingClientRect();
+    if (r.width <= 0) return;
+    const f = Math.min(1, Math.max(0, (clientX - r.left) / r.width));
+    let best = 0;
+    for (let i = 1; i < pos.length; i += 1) {
+      if (Math.abs(pos[i] - f) < Math.abs(pos[best] - f)) best = i;
+    }
+    if (best !== index) onSeek(best);
+  };
+
   return (
     <div className="scr-story-line">
       <button
@@ -57,11 +70,25 @@ export default function ReplayStoryTimeline({
       >
         {playing ? <Pause size={13} /> : finished ? <RotateCcw size={13} /> : <Play size={13} />}
       </button>
-      {/* 트랙 — 눈금 하나하나가 버튼이라 손으로 짚어 옮길 수 있다(요청: 수동 이동도 가능).
-          화살표 키로도 옮긴다. */}
+      {/* 트랙 — 눈금 하나하나가 버튼이라 손으로 짚어 옮길 수 있고(요청: 수동 이동), 트랙을
+          잡고 끌어도 따라온다(요청: 다이얼을 슬라이드도 가능하게). 화살표 키로도 옮긴다.
+
+          끌기는 포인터 이벤트로 처리한다 — setPointerCapture를 걸면 손가락이 트랙 밖으로
+          나가도 계속 따라오고, 마우스/터치/펜을 한 코드로 받는다. 끌 때는 x 위치에서 가장
+          가까운 눈금을 고른다(연속 값이 아니라 장면 단위라 그게 맞다). */}
       <div
         className="scr-story-track" role="group" aria-label="경기 흐름"
         tabIndex={0}
+        onPointerDown={(e) => {
+          e.stopPropagation();
+          e.currentTarget.setPointerCapture(e.pointerId);
+          seekAt(e.currentTarget, e.clientX);
+        }}
+        onPointerMove={(e) => {
+          if (!e.currentTarget.hasPointerCapture(e.pointerId)) return;
+          e.stopPropagation();
+          seekAt(e.currentTarget, e.clientX);
+        }}
         onKeyDown={(e) => {
           if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
           e.preventDefault();

@@ -94,6 +94,17 @@ export default function ReplayMinimap({
         runColor = g;
       }
     }
+    // 자원 지대(앞마당·멀티) — 미네랄은 옅은 청록, 가스 낀 곳은 초록으로 점을 찍는다(요청:
+    // 자원 위치). 지형 위에 얹는 정적 표시라 마커가 아니라 여기 캔버스에 함께 그린다.
+    for (const [rx, ry, gas] of grid.resources ?? []) {
+      ctx.beginPath();
+      ctx.arc(rx * PX_PER_TILE, ry * PX_PER_TILE, gas ? 3.5 : 2.6, 0, Math.PI * 2);
+      ctx.fillStyle = gas ? "rgba(90,220,140,0.95)" : "rgba(120,210,235,0.9)";
+      ctx.fill();
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = "rgba(0,0,0,0.5)";
+      ctx.stroke();
+    }
   }, [grid]);
 
   const place = (m: MinimapMarker) => ({
@@ -112,10 +123,6 @@ export default function ReplayMinimap({
       fy > 1 - EDGE ? "scr-minimap-mark-lab-up" : "",
     );
   };
-  // 지금 어디 있는지가 뜬 사람은 본진 표시를 물러나게 한다 — 같은 사람의 아바타가 두 개
-  // 뜨는데 둘이 똑같이 진하면 어느 쪽이 '지금'인지 헷갈린다.
-  const active = new Set(actors.map((a) => a.key));
-
   return (
     <div className={cx("scr-minimap", className)}>
       <canvas ref={canvasRef} className="scr-minimap-canvas" aria-label={`${grid.name} 미니맵`} />
@@ -126,7 +133,6 @@ export default function ReplayMinimap({
             m.team === 1 && "scr-minimap-mark-t1", m.team === 2 && "scr-minimap-mark-t2",
             m.highlight && "scr-minimap-mark-hit",
             m.downed && "scr-minimap-mark-downed",
-            active.has(m.key) && "scr-minimap-mark-behind",
             labelSide(m))}
           style={place(m)}
         >

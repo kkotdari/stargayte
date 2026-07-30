@@ -7697,10 +7697,8 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
 }
 .scr-minimap-mark-downed .scr-minimap-mark-label { opacity: 0.72; }
 
-/* 지금 어디 있는지가 따로 뜬 사람의 본진 — 같은 사람 아바타가 둘 다 진하면 어느 쪽이
-   '지금'인지 헷갈린다. 본진 쪽 아바타만 물러나게 하고 이름은 그대로 둔다: 모바일에서는
-   이 이름표가 로스터를 대신하는 유일한 자리라 흐려지면 안 된다. */
-.scr-minimap-mark-behind .scr-avatar { opacity: 0.4; }
+/* (삭제) 스냅 아바타가 따로 뜬 사람의 본진을 흐리게 하던 규칙 — 이제 당한 사람 마커를
+   아예 안 그리고 스냅 마커는 늘 다른 자리에 뜨므로, 흐리게 할 이유가 없어졌다(요청). */
 .scr-minimap-mark-t1 .scr-avatar { border-color: #4d9bf0; }
 .scr-minimap-mark-t2 .scr-avatar { border-color: #f26d80; }
 .scr-minimap-mark-t1 .scr-minimap-mark-label { color: #a9d3ff; }
@@ -7733,6 +7731,9 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
 .scr-story-track {
   position: relative; flex: 1 1 auto; min-width: 0; height: 20px;
   cursor: pointer; outline-offset: 3px;
+  /* 트랙을 잡고 끌어 장면을 옮긴다(요청) — 터치에서 이 동작이 페이지 스크롤로 새지 않게
+     막고, 끄는 동안 글자가 선택되지 않게 한다. */
+  touch-action: none; user-select: none;
 }
 .scr-story-rail, .scr-story-fill {
   position: absolute; top: 50%; height: 3px; border-radius: 2px; transform: translateY(-50%);

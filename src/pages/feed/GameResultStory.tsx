@@ -165,9 +165,14 @@ export default function GameResultStory({
     if (!beats || !idx) return [];
     // 한 문장에 여러 beat가 들어가면 같은 사람이 여러 번 나올 수 있다 — 뒤에 오는 것(더
     // 나중의 자리)이 이긴다.
+    // 당한 사람은 표시하지 않는다(요청) — 당한 자리는 자기 본진이라 본진 표시와 겹쳐
+    // 아바타가 두 개 뜨기만 하고 알려 주는 것이 없다.
     const at = new Map<string, [number, number]>();
     for (const n of idx) {
-      for (const [raw, xy] of Object.entries(beats[n]?.pos ?? {})) at.set(raw, xy);
+      const victims = new Set(beats[n]?.whom ?? []);
+      for (const [raw, xy] of Object.entries(beats[n]?.pos ?? {})) {
+        if (!victims.has(raw)) at.set(raw, xy);
+      }
     }
     return slots
       .filter((s) => at.has(s.raw))

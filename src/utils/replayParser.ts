@@ -149,6 +149,10 @@ export interface ReplayMapGrid {
   palette: number[];
   /** width*height개의 팔레트 첨자를 바이트로 늘어놓고 base64로 옮긴 것. */
   tiles: string;
+  /** 자원 자리(앞마당·멀티) — 미네랄 밭과 가스를 가까운 것끼리 묶어 '한 자원 지대'로 만든
+   *  것이다(요청: 자원 위치 파악). 낱개 미네랄 400개를 다 그리면 노이즈라, 묶어서 지대
+   *  중심만 남긴다. [타일x, 타일y, 가스있음(0/1)]. 못 읽었으면 빈 배열. */
+  resources: [number, number, 0 | 1][];
 }
 
 export interface ParsedReplay {
@@ -277,6 +281,10 @@ interface ScrepResult {
      *  값은 16비트 타일 번호로, 위 12비트가 '그룹'(지형 종류)이고 아래 4비트가 그 안의
      *  무늬 변형이다. 미니맵은 그룹만 쓴다. */
     Tiles?: number[] | null;
+    /** mapResLoc:true로 파싱했을 때만 채워진다 — 미네랄 밭/가스의 좌표(단위는 타일×32).
+     *  자원 위치는 앞마당·멀티가 어디인지를 보여줘 동선·전략을 읽는 근거가 된다(요청). */
+    MineralFields?: { X: number; Y: number }[] | null;
+    Geysers?: { Point?: { X: number; Y: number } }[] | null;
   } | null;
   Computed: {
     WinnerTeam: number;
@@ -531,12 +539,55 @@ async function readMapGrid(res: ScrepResult): Promise<ReplayMapGrid | null> {
   const bytes = new Uint8Array(groups.length);
   for (let i = 0; i < groups.length; i += 1) bytes[i] = at.get(groups[i]) ?? 0;
 
-  // 크기까지 해시에 넣는다 — 같은 격자 바이트가 128×64와 64×128 두 모양일 수 있다.
+  const resources = clusterResources(res.MapData);
+
+  // 크기·자원까지 해시에 넣는다 — 같은 격자 바이트가 128×64와 64×128 두 모양일 수 있고,
+  // 자원이 함께 바뀌면 다시 저장돼 옛 맵에도 자원이 채워진다.
   const tiles = toBase64(bytes);
-  const src = new TextEncoder().encode(`${w}x${h}|${palette.join(",")}|${tiles}`);
+  const resKey = resources.map((r) => r.join(",")).join(";");
+  const src = new TextEncoder().encode(`${w}x${h}|${palette.join(",")}|${tiles}|${resKey}`);
   const digest = new Uint8Array(await globalThis.crypto.subtle.digest("SHA-256", src));
   const hash = [...digest].map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 40);
-  return { hash, name: res.Header.Map ?? "", width: w, height: h, palette, tiles };
+  return { hash, name: res.Header.Map ?? "", width: w, height: h, palette, tiles, resources };
+}
+
+// 같은 자원 지대로 볼 반경(타일) / 지대 수 상한. 빠른무한처럼 미네랄이 온 맵에 깔린 맵은
+// 지대가 수십 개 나올 수 있어 상한을 둔다(큰 것부터 남긴다).
+const RESOURCE_CLUSTER_RADIUS = 7;
+const RESOURCE_CLUSTER_MAX = 40;
+
+/** 미네랄 밭·가스를 가까운 것끼리 묶어 자원 지대로 만든다 — 낱개를 다 그리면 노이즈라
+ *  '어디에 자원이 있나'만 남긴다. 좌표 단위는 타일(screp은 타일×32라 32로 나눈다). */
+function clusterResources(md: ScrepResult["MapData"]): [number, number, 0 | 1][] {
+  type P = { x: number; y: number; gas: boolean };
+  const pts: P[] = [];
+  for (const m of md?.MineralFields ?? []) pts.push({ x: m.X / 32, y: m.Y / 32, gas: false });
+  for (const g of md?.Geysers ?? []) {
+    if (g.Point) pts.push({ x: g.Point.X / 32, y: g.Point.Y / 32, gas: true });
+  }
+  if (pts.length === 0) return [];
+  const r2 = RESOURCE_CLUSTER_RADIUS * RESOURCE_CLUSTER_RADIUS;
+  const clusters: { xs: number; ys: number; n: number; gas: boolean }[] = [];
+  for (const p of pts) {
+    // 이미 있는 지대 중 가까운 곳에 넣고, 없으면 새 지대를 연다. 지대 중심은 넣을 때마다
+    // 갱신하지만 이미 넣은 점을 다시 옮기진 않는다(어림 군집이면 충분하다).
+    let hit = null as (typeof clusters)[number] | null;
+    for (const c of clusters) {
+      const dx = c.xs / c.n - p.x;
+      const dy = c.ys / c.n - p.y;
+      if (dx * dx + dy * dy <= r2) { hit = c; break; }
+    }
+    if (hit) { hit.xs += p.x; hit.ys += p.y; hit.n += 1; hit.gas = hit.gas || p.gas; }
+    else clusters.push({ xs: p.x, ys: p.y, n: 1, gas: p.gas });
+  }
+  return clusters
+    .sort((a, b) => b.n - a.n)
+    .slice(0, RESOURCE_CLUSTER_MAX)
+    .map((c) => [
+      Math.round((c.xs / c.n) * 10) / 10,
+      Math.round((c.ys / c.n) * 10) / 10,
+      c.gas ? 1 : 0,
+    ]);
 }
 
 export async function parseReplayFile(file: File): Promise<ParsedReplay> {
@@ -553,7 +604,7 @@ export async function parseReplayFile(file: File): Promise<ParsedReplay> {
     // 처음 나올 때 "(1시)"를 붙이는 데 쓴다(요청).
     // mapTiles는 미니맵을 그릴 지형 격자를 얻으려고 함께 받는다(요청) — 숫자 16384개가
     // 늘지만 파싱 시간은 측정 노이즈 수준이었다(실측 873ms vs 1019ms).
-    res = (await Screp.parseBuffer(buf, { cmds: true, mapData: true, mapTiles: true })) as ScrepResult;
+    res = (await Screp.parseBuffer(buf, { cmds: true, mapData: true, mapTiles: true, mapResLoc: true })) as ScrepResult;
   } catch {
     throw new ReplayParseError(`"${file.name}" 파일을 리플레이로 읽지 못했어요.`);
   }
