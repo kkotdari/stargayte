@@ -7884,6 +7884,19 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
 .scr-minimap-assign { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .scr-minimap-assign .scr-input { flex: 1 1 auto; min-width: 0; }
 .scr-minimap-assign .scr-btn { flex-shrink: 0; display: inline-flex; align-items: center; gap: 4px; }
-.scr-minimap-images { display: flex; flex-direction: column; gap: 4px; }
 .scr-minimap-image-row { cursor: default; }
-.scr-minimap-unassign { align-self: flex-start; }
+/* 등록된 미니맵 한 벌 — 그림 줄 아래에 그 미니맵에 매핑된 맵들이 한 칸 들여쓰기로 딸린다. */
+.scr-minimap-group {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 8px; border-radius: 10px; border: 1px solid var(--line);
+  background: rgba(var(--overlay-rgb), 0.05);
+}
+.scr-minimap-maps-nested { padding-left: 14px; }
+.scr-minimap-thumb-lg { width: 56px; height: 56px; }
+/* 매핑된 맵 줄은 고르는 대상이 아니다 — 커서/호버 틴트를 주지 않는다. */
+.scr-minimap-map-row-static { cursor: default; }
+.scr-minimap-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.scr-minimap-all {
+  display: inline-flex; align-items: center; gap: 5px; cursor: pointer;
+  font-size: var(--fs-caption); color: var(--muted);
+}
