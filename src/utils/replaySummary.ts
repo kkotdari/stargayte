@@ -1885,6 +1885,18 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     ? breached
     : null;
 
+  // 크게 망한 시점 — 건물·유닛 생산이 현저히 떨어져 끝까지 회복하지 못한 지점(요청).
+  // 실제로 판을 떠난 기록이 있으면 그게 먼저다. 되살아난 경우는 productionCollapse가
+  // 애초에 잡지 않는다('끝까지 회복하지 못한' 구간만 본다).
+  const downs: Record<string, number> = {};
+  for (const p of replay.players) {
+    const f = eliminatedFrame(p) ?? productionCollapse(p, totalFrames);
+    // 끝나기 직전에 멈춘 것은 '망한' 것이 아니라 경기가 끝난 것이다 — 마지막 몇 분은
+    // 누구나 손을 놓으므로, 그 상태로 이만큼은 더 끌려가야 망한 것으로 본다.
+    if (f === null || (totalFrames !== null && totalFrames - f < DOWN_MIN_TAIL_FRAMES)) continue;
+    downs[p.rawName] = f;
+  }
+
   // 이사 — 짓는 구역(시작 지점 기준)이 바뀌면 살림을 옮긴 것이다(요청). 본진을 잃고
   // 멀티에서 다시 시작하는 그림이라 그 자체로 큰 사건이고, 요약 문장에도 넣는다(요청).
   const mapSpots = replay.startSpots ?? [];
@@ -1961,6 +1973,22 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
       const { def: _def, defN: _defN, panic: _panic, ...rest } = b.p ?? {};
       return { ...b, p: rest };
     });
+
+  // 이미 무너진 사람의 활약담은 말하지 않는다(지적: 해골이 붙었는데 "병력을 뽑았다"가
+  // 나온다) — 생산이 끊긴 뒤의 이야기는 그림과 앞뒤가 안 맞는다. 무너짐 자체를 말하는
+  // 문장(궤멸·GG·맺음·부활·이사)은 당연히 남긴다.
+  const DOWN_KEEP = new Set(["fallen", "gg", "stand", "result", "revival", "relocate", "lodging"]);
+  for (let i = pool.length - 1; i >= 0; i -= 1) {
+    const b = pool[i];
+    if (DOWN_KEEP.has(b.k) || b.at === null || b.at === undefined) continue;
+    const actors = b.who ?? [];
+    if (actors.length === 0) continue;
+    const allDown = actors.every((w) => {
+      const f = downs[w];
+      return f !== undefined && b.at! > f + DOWN_GRACE_FRAMES;
+    });
+    if (allDown) pool.splice(i, 1);
+  }
 
   // 들이친 수가 이미 "○○의 생산에 큰 피해를 줬다"고 말했으면, 방어 증설 문장은 맞은
   // 얘기를 다시 하지 않는다(quiet) — 안 그러면 "포토를 세우고도 4분에 크게 흔들렸고
@@ -2190,18 +2218,6 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   const moves: Record<string, [number, number, number][]> = {};
   for (const [raw, list] of moveList) moves[raw] = list;
 
-  // 크게 망한 시점 — 건물·유닛 생산이 현저히 떨어져 끝까지 회복하지 못한 지점(요청).
-  // 실제로 판을 떠난 기록이 있으면 그게 먼저다. 되살아난 경우는 productionCollapse가
-  // 애초에 잡지 않는다('끝까지 회복하지 못한' 구간만 본다).
-  const downs: Record<string, number> = {};
-  for (const p of replay.players) {
-    const f = eliminatedFrame(p) ?? productionCollapse(p, totalFrames);
-    // 끝나기 직전에 멈춘 것은 '망한' 것이 아니라 경기가 끝난 것이다 — 마지막 몇 분은
-    // 누구나 손을 놓으므로, 그 상태로 이만큼은 더 끌려가야 망한 것으로 본다.
-    if (f === null || (totalFrames !== null && totalFrames - f < DOWN_MIN_TAIL_FRAMES)) continue;
-    downs[p.rawName] = f;
-  }
-
   const byName = new Map(replay.players.map((p) => [p.rawName, p]));
   return {
     v: REPLAY_SUMMARY_VERSION,
@@ -2222,6 +2238,10 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
 /** 이사 문장의 무게 — 본진을 버리고 다시 편 것은 승부를 가르는 사건이라 무겁게 잡는다.
  *  다만 러시·돌파 같은 '그 경기만의 수'보다는 한 단계 아래다. */
 const RELOCATE_WEIGHT = 18;
+
+/** 무너진 뒤라도 이만큼(프레임 ≒ 1분)까지는 그 무렵의 이야기로 본다 — 무너지는 순간에
+ *  걸쳐 있던 일을 통째로 잘라 내면 왜 무너졌는지가 사라진다. */
+const DOWN_GRACE_FRAMES = 60 / 0.042;
 
 /** 망했다고 말하려면 그 상태로 이만큼(프레임 ≒ 3분)은 더 끌려가야 한다 — 끝나기 직전의
  *  생산 중단은 경기가 끝나서 멈춘 것이다. */
