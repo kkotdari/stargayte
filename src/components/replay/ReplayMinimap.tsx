@@ -182,8 +182,12 @@ export default function ReplayMinimap({
     const dx = grid.width / 2 - m.x;
     const dy = grid.height / 2 - m.y;
     const len = Math.hypot(dx, dy) || 1;
+    // 가로는 가운데(입구) 쪽으로, 세로는 이름표 반대쪽으로 둔다 — 이름표는 아래쪽 본진에서만
+    // 위로 올라가고 나머지는 아바타 아래에 붙으므로, 가운데 방향을 그대로 쓰면 위쪽 본진에서
+    // 이모지가 닉네임 위에 얹혔다(실측 스크린샷).
+    const up = m.y / grid.height <= 1 - EDGE;
     const x = m.x + (dx / len) * MARK_OUT;
-    const y = m.y + (dy / len) * MARK_OUT;
+    const y = m.y + (up ? -1 : 1) * MARK_OUT * 0.62;
     return {
       left: `${(x / grid.width) * 100}%`,
       top: `${(y / grid.height) * 100}%`,

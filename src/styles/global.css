@@ -7864,9 +7864,11 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
    긴 문장 높이로 잡히므로 재생하는 동안 카드가 위아래로 흔들리지 않는다. 문장마다 길이가
    달라 그냥 갈아 끼우면 매 스냅마다 아래 내용이 밀려 읽던 자리를 놓친다. */
 .scr-story-cap {
-  /* 미니맵에 완전히 붙인다(요청) — 로우가 정한 세로 간격(10px)을 음수 마진으로 되돌리고,
-     맞닿는 위쪽 모서리는 직각으로 둔다(요청: 붙였을 때 깔끔하게). 패딩도 줄였다. */
-  margin-top: calc(-1 * var(--story-gap, 10px));
+  /* 미니맵에 완전히 붙인다(요청) — 자막은 미니맵과 같은 감싸개(.scr-story-map) 안에 있고
+     그 감싸개의 세로 간격이 6px 하나뿐이라 그만큼만 되돌리면 정확히 0이 된다. 바깥
+     (.scr-story)에 두던 예전 방식은 그 간격이 24px이라 짐작한 값(10px)으로는 14px이
+     남았다(실측). 맞닿는 위쪽 모서리는 직각으로 둔다(요청: 붙였을 때 깔끔하게). */
+  margin-top: -6px;
   display: grid; width: 100%;
   padding: 7px 10px; border-radius: 0 0 9px 9px;
   background: rgba(var(--overlay-rgb), 0.06);
@@ -7878,7 +7880,10 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
   /* 안 보이는 문장도 자리는 차지해야 한다(그래서 display:none이 아니라 visibility) —
      칸 높이를 가장 긴 문장이 정하게 하는 것이 이 방식의 핵심이다. */
   visibility: hidden;
-  transition: opacity 220ms ease;
+  /* 갈아 끼울 때 페이드를 주지 않는다(지적: 자막이 바뀔 때 앞뒤 문장이 겹친다) — 두 문장이
+     같은 칸에 겹쳐 있는 구조라, 나가는 문장이 사라지는 동안 들어오는 문장이 이미 보이면
+     글자가 그대로 겹쳐 읽힌다. 바로 바뀌는 편이 읽기에도 낫다. */
+  transition: none;
   opacity: 0;
 }
 .scr-story-cap-line[data-on="true"] { visibility: visible; opacity: 1; }

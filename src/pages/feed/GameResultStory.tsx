@@ -464,6 +464,21 @@ export default function GameResultStory({
           setPlaying(false);
         } : undefined}
       />
+      {/* 자막은 미니맵과 같은 감싸개 안에 둔다(요청: 미니맵과 자막 사이 갭 완전히 없애기) —
+          바깥(.scr-story)의 세로 간격은 24px이라 음수 마진으로 되돌리기엔 값을 짐작해야 했고
+          실제로 14px이 남아 있었다(실측). 여기 안의 간격은 6px 하나뿐이라 정확히 지운다. */}
+
+      {sentences.length > 0 && (
+      <div className="scr-story-cap">
+        {sentences.map((sn, i) => (
+          <p key={i} className="scr-story-cap-line" aria-hidden={i !== index} data-on={i === index}>
+            {sn.parts.map((pt, j) => (pt.team
+              ? <span key={j} className={pt.team === 1 ? "scr-sum-team1" : "scr-sum-team2"}>{pt.text}</span>
+              : <span key={j}>{pt.text}</span>))}
+          </p>
+        ))}
+      </div>
+      )}
     </div>
   );
 
@@ -510,17 +525,6 @@ export default function GameResultStory({
           문장을 모두 겹쳐 놓고 지금 것만 보이게 한다 — 이러면 칸이 늘 가장 긴 문장 높이라
           재생하는 동안 카드가 위아래로 흔들리지 않는다. 문장마다 높이가 달라 그냥 갈아
           끼우면 매 스냅마다 아래 내용이 밀린다. */}
-      {caption && (
-        <div className="scr-story-cap">
-          {sentences.map((sn, i) => (
-            <p key={i} className="scr-story-cap-line" aria-hidden={i !== index} data-on={i === index}>
-              {sn.parts.map((pt, j) => (pt.team
-                ? <span key={j} className={pt.team === 1 ? "scr-sum-team1" : "scr-sum-team2"}>{pt.text}</span>
-                : <span key={j}>{pt.text}</span>))}
-            </p>
-          ))}
-        </div>
-      )}
       {/* 타임라인은 스냅이 둘 이상일 때만 쓸모가 있다 — 한 문장짜리 요약에 재생 버튼을 두면
           누를 데는 있는데 아무 일도 안 일어난다. */}
       {grid && sentences.length > 1 && (
