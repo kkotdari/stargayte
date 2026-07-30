@@ -234,9 +234,12 @@ export default function GameResultStory({
     const spots = gameResult.summaryData?.bases ?? {};
     const upto = Math.max(-1, ...(sentences[index]?.beats ?? []));
     const out = new Map<string, [number, number]>();
-    // 이사 — 주로 건물을 짓는 자리가 바뀌면 옮긴 것이다(요청). 저장된 좌표를 그대로 쓴다.
-    for (const [raw, m] of Object.entries(gameResult.summaryData?.moves ?? {})) {
-      if (m[2] <= nowAt) out.set(raw, [m[0], m[1]]);
+    // 이사 — 주로 건물을 짓는 자리가 바뀌면 옮긴 것이다(요청). 여러 번 옮겼으면 그 시점까지
+    // 지나온 마지막 자리가 지금의 집이다(요청: 이사는 여러 번 할 수도 있다).
+    for (const [raw, list] of Object.entries(gameResult.summaryData?.moves ?? {})) {
+      for (const m of list) {
+        if (m[2] <= nowAt) out.set(raw, [m[0], m[1]]);
+      }
     }
     // 아군 기지로 살림을 옮긴 경우 — 집주인 아바타와 겹치지 않게 가운데 쪽으로 조금 비켜 앉힌다.
     const w = grid?.width ?? 128;

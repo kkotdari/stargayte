@@ -2139,10 +2139,10 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
 
   // 이사 — 주로 건물을 짓는 자리가 바뀌면 살림을 옮긴 것이다(요청). 본진을 잃고 멀티에서
   // 다시 시작하는 그림이 대부분이라, 옮긴 뒤에는 옛 자리에 거의 돌아가지 않는다.
-  const moves: Record<string, [number, number, number]> = {};
+  const moves: Record<string, [number, number, number][]> = {};
   for (const p of replay.players) {
-    const m = relocation(p);
-    if (m) moves[p.rawName] = m;
+    const m = relocations(p);
+    if (m.length > 0) moves[p.rawName] = m;
   }
 
   // 크게 망한 시점 — 건물·유닛 생산이 현저히 떨어져 끝까지 회복하지 못한 지점(요청).
@@ -2188,6 +2188,9 @@ const MOVE_BACK_MAX = 1;
  *  빠른무한처럼 멀티를 사방에 늘리는 판에서는 나중 건물이 여기저기 흩어질 뿐이지
  *  이사가 아니다(그때는 한 곳에 모이지 않는다). */
 const MOVE_SHARE = 0.6;
+/** 한 사람이 이사한 것으로 볼 수 있는 최대 횟수 — 이보다 자주 옮겨 다니는 것은 이사가
+ *  아니라 여기저기 지은 것이다. */
+const MOVE_MAX = 3;
 
 const dist2 = (a: { x: number; y: number }, b: { x: number; y: number }): number =>
   Math.hypot(a.x - b.x, a.y - b.y);
@@ -2205,25 +2208,36 @@ function midOf(pts: { x: number; y: number }[]): { x: number; y: number } | null
   return best;
 }
 
-/** 살림을 옮긴 시점과 새 자리 — 없으면 null. 시작 자리에서 멀리 떨어진 곳에 넷 이상
- *  이어 짓고, 그 뒤로 옛 자리에는 거의 돌아가지 않은 첫 지점을 찾는다. */
-function relocation(p: ParsedReplayPlayer): [number, number, number] | null {
+/** 살림을 옮긴 자리들 — 시간순. 시작 자리에서 멀리 떨어진 곳에 넷 이상 이어 짓고, 그 뒤로
+ *  옛 자리에는 거의 돌아가지 않은 지점을 찾는다. 한 번 찾으면 그 자리를 새 '집'으로 삼아
+ *  같은 일을 다시 본다 — 이사는 여러 번 할 수 있다(요청: 쫓겨 다니면 두 번, 세 번도 간다). */
+function relocations(p: ParsedReplayPlayer): [number, number, number][] {
   const pts = (p.signals?.buildPositions ?? [])
     .filter((b): b is typeof b & { frame: number } => b.frame !== null)
     .sort((a, b) => a.frame - b.frame);
-  if (pts.length < MOVE_MIN_NEW + 3) return null;
-  const start = midOf(pts.slice(0, 5));
-  if (!start) return null;
-  for (let i = 3; i <= pts.length - MOVE_MIN_NEW; i += 1) {
-    const late = pts.slice(i);
-    if (late.filter((b) => dist2(b, start) <= MOVE_NEAR).length > MOVE_BACK_MAX) continue;
-    const to = midOf(late);
-    if (!to || dist2(to, start) < MOVE_FAR) continue;
-    const together = late.filter((b) => dist2(b, to) <= MOVE_NEAR).length;
-    if (together < MOVE_MIN_NEW || together < late.length * MOVE_SHARE) continue;
-    return [round1(to.x), round1(to.y), pts[i].frame];
+  if (pts.length < MOVE_MIN_NEW + 3) return [];
+  let start = midOf(pts.slice(0, 5));
+  if (!start) return [];
+  const out: [number, number, number][] = [];
+  let from = 0;
+  while (out.length < MOVE_MAX) {
+    let hit: { i: number; to: { x: number; y: number } } | null = null;
+    for (let i = Math.max(3, from + MOVE_MIN_NEW); i <= pts.length - MOVE_MIN_NEW; i += 1) {
+      const late = pts.slice(i);
+      if (late.filter((b) => dist2(b, start!) <= MOVE_NEAR).length > MOVE_BACK_MAX) continue;
+      const to = midOf(late);
+      if (!to || dist2(to, start!) < MOVE_FAR) continue;
+      const together = late.filter((b) => dist2(b, to) <= MOVE_NEAR).length;
+      if (together < MOVE_MIN_NEW || together < late.length * MOVE_SHARE) continue;
+      hit = { i, to };
+      break;
+    }
+    if (!hit) break;
+    out.push([round1(hit.to.x), round1(hit.to.y), pts[hit.i].frame]);
+    start = hit.to;
+    from = hit.i;
   }
-  return null;
+  return out;
 }
 
 /** 미니맵 좌표는 소수 한 자리까지만 남긴다 — 128칸 맵에서 0.1타일은 3픽셀이라 그림에
