@@ -42,6 +42,10 @@ export interface ParsedReplayPlayer {
   /** 시작 지점을 시계 방향으로 부른 값(1~12) — "정구(1시)"처럼 요약에서 쓴다(요청).
    *  맵 정보나 슬롯 번호를 못 읽으면 null이고, 그때는 시각을 아예 안 붙인다. */
   startClock: number | null;
+  /** 시작 지점의 타일 좌표 — 미니맵에 그 사람의 본진 표시(아바타+닉네임)를 놓는 자리다.
+   *  단위를 타일로 맞춰 두면 이동·공격 명령 좌표(orderPositions)와 같은 자로 잴 수 있다. */
+  startX: number | null;
+  startY: number | null;
   // 경기 요약 문장(replaySummary.ts)을 만들기 위한 원재료. 커맨드 스트림을 못 읽었으면 null.
   signals: ReplayPlayerSignals | null;
 }
@@ -126,6 +130,30 @@ export interface ReplayPlayerSignals {
   cmdCountByThird: [number, number, number];
 }
 
+/** 미니맵을 그리는 데 쓰는 맵의 지형 격자.
+ *
+ *  리플레이 파일 안에는 맵의 시나리오 데이터가 함께 들어 있어서 타일 격자를 그대로 읽을 수
+ *  있다(screp의 mapTiles). 다만 그 타일 번호를 실제 픽셀로 바꾸는 그래픽(tileset의
+ *  cv5/vx4/vr4와 팔레트)은 게임 설치본에 있는 저작물이라 여기 없다 — 그래서 우리가 그리는
+ *  건 게임과 같은 색의 미니맵이 아니라 '타일 종류를 색으로 구분한 개략도'다. 실제로 확인해
+ *  보면 그것만으로도 본진 여덟 자리·램프·중앙 광장이 또렷하게 나온다.
+ *
+ *  담는 형태가 팔레트+바이트인 이유는 크기다: 한 맵에 나오는 타일 그룹은 서른 몇 종류뿐이라
+ *  1바이트 첨자로 접힌다(실측 128×128 맵: 숫자 배열 JSON 63KB → base64 22KB → gzip 1.1KB). */
+export interface ReplayMapGrid {
+  /** 격자 내용의 해시 — 서버에서 같은 맵을 두 번 저장하지 않게 하는 열쇠다(요청: 같은
+   *  맵이면 미니맵 하나를 함께 쓰자). 이름이 아니라 내용이 기준이다. */
+  hash: string;
+  /** 그 리플레이에 적혀 있던 맵 이름(사람이 DB를 볼 때의 단서). */
+  name: string;
+  width: number;
+  height: number;
+  /** 이 맵에 나오는 타일 그룹 번호들 — tiles의 각 바이트가 이 배열의 첨자다. */
+  palette: number[];
+  /** width*height개의 팔레트 첨자를 바이트로 늘어놓고 base64로 옮긴 것. */
+  tiles: string;
+}
+
 export interface ParsedReplay {
   fileName: string;
   date: string; // YYYY-MM-DD (리플레이 시작 시각의 로컬 날짜)
@@ -156,6 +184,8 @@ export interface ParsedReplay {
   // 복구할 방법이 없다). true면 team1에 전원이, team2는 비어있다 — 검토 화면에서 반드시
   // 사람이 직접 편을 갈라야 한다.
   teamSplitUncertain: boolean;
+  /** 맵의 지형 격자 — 못 읽었으면 null이고, 그때는 그 경기에 미니맵이 안 붙는다. */
+  mapGrid: ReplayMapGrid | null;
 }
 
 export class ReplayParseError extends Error {}
@@ -246,6 +276,10 @@ interface ScrepResult {
   /** mapData:true로 파싱했을 때만 채워진다 — 시작 지점 좌표를 여기서 얻는다. */
   MapData?: {
     StartLocations?: { X: number; Y: number; SlotID: number }[] | null;
+    /** mapTiles:true까지 줘야 채워진다 — 타일 하나당 숫자 하나(왼쪽 위부터 가로 순).
+     *  값은 16비트 타일 번호로, 위 12비트가 '그룹'(지형 종류)이고 아래 4비트가 그 안의
+     *  무늬 변형이다. 미니맵은 그룹만 쓴다. */
+    Tiles?: number[] | null;
   } | null;
   Computed: {
     WinnerTeam: number;
@@ -464,6 +498,50 @@ function collectSignals(cmds: ScrepCmd[], totalFrames: number | null): Map<numbe
   return out;
 }
 
+/** 바이트 묶음을 base64로 — String.fromCharCode에 16384개를 한 번에 펼치면 인수 개수
+ *  한계에 걸려 스택이 넘친다(브라우저마다 다르지만 6만 안팎). 나눠서 넘긴다. */
+function toBase64(bytes: Uint8Array): string {
+  const CHUNK = 4096;
+  let s = "";
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    s += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+  }
+  return btoa(s);
+}
+
+// 팔레트 첨자를 1바이트에 담으므로 그룹 종류가 이보다 많은 맵은 이 방식으로 못 담는다.
+// 실측으로는 128×128 맵에 서른 몇 종류뿐이라 걸릴 일이 없지만, 걸리면 미니맵을 포기한다
+// (틀린 격자를 저장하는 것보다 없는 편이 낫다).
+const MAP_PALETTE_MAX = 256;
+
+/** 맵 격자를 뽑는다 — 못 읽으면 null(그 경기엔 미니맵이 안 붙는다).
+ *
+ *  해시는 SHA-256의 앞 40글자(160비트)를 쓴다. 내용이 같으면 같은 값이어야 하고, 서로
+ *  다른 맵이 같은 값이 되면 엉뚱한 미니맵이 뜨므로 짧은 해시로 대충 접을 자리가 아니다.
+ *  crypto.subtle을 쓸 수 없는 환경(보안 컨텍스트가 아닌 곳)에서는 격자를 아예 안 만든다. */
+async function readMapGrid(res: ScrepResult): Promise<ReplayMapGrid | null> {
+  const w = res.Header.MapWidth;
+  const h = res.Header.MapHeight;
+  const raw = res.MapData?.Tiles ?? null;
+  if (!w || !h || !raw || raw.length !== w * h) return null;
+  if (!globalThis.crypto?.subtle) return null;
+
+  const groups = new Uint16Array(raw.length);
+  for (let i = 0; i < raw.length; i += 1) groups[i] = raw[i] >> 4;
+  const palette = [...new Set(groups)].sort((a, b) => a - b);
+  if (palette.length > MAP_PALETTE_MAX) return null;
+  const at = new Map(palette.map((g, i) => [g, i]));
+  const bytes = new Uint8Array(groups.length);
+  for (let i = 0; i < groups.length; i += 1) bytes[i] = at.get(groups[i]) ?? 0;
+
+  // 크기까지 해시에 넣는다 — 같은 격자 바이트가 128×64와 64×128 두 모양일 수 있다.
+  const tiles = toBase64(bytes);
+  const src = new TextEncoder().encode(`${w}x${h}|${palette.join(",")}|${tiles}`);
+  const digest = new Uint8Array(await globalThis.crypto.subtle.digest("SHA-256", src));
+  const hash = [...digest].map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 40);
+  return { hash, name: res.Header.Map ?? "", width: w, height: h, palette, tiles };
+}
+
 export async function parseReplayFile(file: File): Promise<ParsedReplay> {
   const buf = new Uint8Array(await file.arrayBuffer());
   let res: ScrepResult;
@@ -476,7 +554,9 @@ export async function parseReplayFile(file: File): Promise<ParsedReplay> {
     // 등록 시 한 번뿐이라 감수한다.
     // mapData는 시작 지점(몇 시에서 시작했나)을 얻으려고 함께 받는다 — 요약에서 닉네임이
     // 처음 나올 때 "(1시)"를 붙이는 데 쓴다(요청).
-    res = (await Screp.parseBuffer(buf, { cmds: true, mapData: true })) as ScrepResult;
+    // mapTiles는 미니맵을 그릴 지형 격자를 얻으려고 함께 받는다(요청) — 숫자 16384개가
+    // 늘지만 파싱 시간은 측정 노이즈 수준이었다(실측 873ms vs 1019ms).
+    res = (await Screp.parseBuffer(buf, { cmds: true, mapData: true, mapTiles: true })) as ScrepResult;
   } catch {
     throw new ReplayParseError(`"${file.name}" 파일을 리플레이로 읽지 못했어요.`);
   }
@@ -520,6 +600,19 @@ export async function parseReplayFile(file: File): Promise<ParsedReplay> {
      곳이 서로 다른 규칙으로 불린다(실측: 오른쪽 아래는 4시, 왼쪽 아래는 8시로 갈렸다).
      그래서 반올림이 아니라 그 여덟 개 중 가장 가까운 것으로 스냅한다. */
   const SPAWN_CLOCKS = [12, 1, 3, 5, 6, 7, 9, 11];
+  /* 시작 지점의 타일 좌표 — 미니맵에 본진 표시를 놓는 자리다(요청: 본진은 아바타+닉네임을
+     계속 표시). screp이 주는 좌표는 타일×32라 32로 나눠 타일 자로 맞춘다. 그래야 이동·공격
+     명령 좌표(orderPositions)와 한 자로 재진다. */
+  const startTileOf = (() => {
+    const spots = res.MapData?.StartLocations ?? null;
+    if (!spots || spots.length === 0) return () => null;
+    const bySlot = new Map(spots.map((s) => [s.SlotID, s]));
+    return (slotId: number | undefined): { x: number; y: number } | null => {
+      if (slotId === undefined) return null;
+      const s = bySlot.get(slotId);
+      return s ? { x: s.X / 32, y: s.Y / 32 } : null;
+    };
+  })();
   const startClockOf = (() => {
     const w = res.Header.MapWidth;
     const h = res.Header.MapHeight;
@@ -568,6 +661,8 @@ export async function parseReplayFile(file: File): Promise<ParsedReplay> {
         buildCount: buildCountOf(p.ID),
         isComputer: p.Type?.Name === "Computer",
         startClock: startClockOf(p.SlotID),
+        startX: startTileOf(p.SlotID)?.x ?? null,
+        startY: startTileOf(p.SlotID)?.y ?? null,
         signals: signalsOf(p.ID),
       };
     });
@@ -636,5 +731,6 @@ export async function parseReplayFile(file: File): Promise<ParsedReplay> {
     winnerSide,
     guessedObservers,
     teamSplitUncertain,
+    mapGrid: await readMapGrid(res),
   };
 }

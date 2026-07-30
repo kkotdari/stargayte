@@ -34,6 +34,11 @@ export interface ReplaySummaryBeat {
   at?: number | null;
   /** 틀에 꽂히는 값들. 유닛/건물/테크는 screp 영문 키, 나머지는 숫자/불리언. */
   p?: Record<string, string | number | boolean | string[]>;
+  /** 원본 게임 아이디 → 그 무렵 그 사람이 병력을 보낸 자리(타일 좌표). 미니맵 스냅에
+   *  아바타를 놓는 데 쓴다(요청). 근거는 이동·공격 명령 좌표뿐이라 '있던 곳'이 아니라
+   *  '보낸 곳'이고, 명령이 몇 개 안 찍힌 사람은 아예 빠진다(replaySummary의 beatPositions).
+   *  맵 좌표를 못 읽은 리플레이와 옛 데이터에는 없다. */
+  pos?: Record<string, [number, number]>;
 }
 
 export interface ReplaySummaryData {
@@ -48,6 +53,9 @@ export interface ReplaySummaryData {
    *  "정구(1시)"처럼 한 번만 붙인다(요청). 맵 정보를 못 읽은 리플레이와 옛 데이터에는
    *  없어 생략 가능하고, 없으면 시각을 아예 안 붙인다. */
   spots?: Record<string, number>;
+  /** 원본 게임 아이디 → 본진 자리(타일 좌표). 미니맵에 그 사람의 아바타+닉네임을 늘
+   *  띄워 두는 자리다(요청). 옛 데이터에는 없어 생략 가능하다. */
+  bases?: Record<string, [number, number]>;
   beats: ReplaySummaryBeat[];
 }
 

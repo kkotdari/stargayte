@@ -1850,10 +1850,42 @@ export function renderReplaySummary(
   /** 이름 → 팀 번호. 없으면 팀을 짚는 말("2팀에서는")을 쓰지 않는다. */
   teamOf?: (name: string) => 1 | 2 | undefined,
 ): string | null {
+  const r = renderLines(data, resolveName, teamOf);
+  return r ? r.lines.join(". ") : null;
+}
+
+/** 문장 하나와 그 문장이 담고 있는 beat들. 타임라인이 문장 단위로 움직이므로(요청: 요약
+ *  문장 하나당 스냅 하나) 문단을 이어 붙이기 전 단계가 필요하다 — 한 문장에 여러 beat가
+ *  들어가는 일이 흔해서(같은 사람 이야기를 "…했고 …했다"로 잇는다), 문장을 다 만든 뒤
+ *  마침표로 자르는 것으로는 어느 beat가 어느 문장인지 되찾을 수 없다. */
+interface RenderedLines {
+  lines: string[];
+  /** lines와 같은 길이 — 각 문장에 담긴 beat 첨자들(넣은 순서 = 시간순). */
+  lineBeats: number[][];
+}
+
+function renderLines(
+  data: ReplaySummaryData | unknown,
+  resolveName: (rawName: string) => string,
+  teamOf?: (name: string) => 1 | 2 | undefined,
+): RenderedLines | null {
   if (!isReplaySummaryData(data)) return null;
   // 개인전에서는 팀 용어("1팀의 …", "양 팀이 …")를 아예 쓰지 않는다(요청).
   const duel = data.duel === true;
   const out: string[] = [];
+  // out과 나란히 가는 '이 문장은 어느 beat들로 만들어졌나'. 아래 문장을 새로 놓는 자리와
+  // 앞 문장에 이어 붙이는 자리가 여러 군데라, 그 두 가지를 함께 처리하는 자리를 하나 둔다.
+  const lineBeats: number[][] = [];
+  /** 문장을 새로 놓거나(joined=false) 앞 문장을 바꿔 쓴다(joined=true). */
+  const put = (line: string, joined: boolean, beatIdx: number): void => {
+    if (joined && out.length > 0) {
+      out[out.length - 1] = line;
+      lineBeats[lineBeats.length - 1].push(beatIdx);
+    } else {
+      out.push(line);
+      lineBeats.push([beatIdx]);
+    }
+  };
   // 앞 문장과 인과로 이어지는 자리를 표시해 둔다(요청: 서사·인과가 있어야 재밌다).
   // 크게 한 방 먹인 바로 다음에 같은 사람이 또 무언가를 했다면 그건 '그 기세로' 한 것이다.
   let prev: ReplaySummaryBeat | null = null;
@@ -2330,11 +2362,11 @@ export function renderReplaySummary(
         .replace(new RegExp(`^${LINK_HEAD()} `), "")
         .replace(`${ga(victimName)} `, "");
       if (head) {
-        out[out.length - 1] = `${head} ${tail}`;
+        put(`${head} ${tail}`, true, i);
         // 이 앞마디가 "…했지만 반대로"였으면 그 말을 방금 쓴 것으로 남긴다 — 안 남기면
         // 다음 문장이 또 '반대로'를 골라 "…반대로 …했다. 반대로 …"가 된다(지적).
         if (reversal) lastLink = "반대로";
-      } else out.push(text);
+      } else put(text, false, i);
       chainCount = head ? chainCount + 1 : 0;
       // 이어 붙였으면 이음말도 아니고 그냥 놓인 것도 아니다 — 둘 다 초기화한다.
       if (head) { linkRun = 0; plainRun = 0; } else { linkRun = 0; plainRun += 1; }
@@ -2374,14 +2406,14 @@ export function renderReplaySummary(
     // "…늘린 뒤"는 그 자체가 이어 주는 말이라 쉼표를 두지 않는다.
     if (chained && sameSubject) {
       const body = text.slice(subject.length + 1);
-      out[out.length - 1] = afterCause ? `${chained} ${body}` : `${chained}, ${body}`;
+      put(afterCause ? `${chained} ${body}` : `${chained}, ${body}`, true, i);
     }
     else if (chained && (endHead || flipJoin)) {
-      out[out.length - 1] = `${chained} ${alsoLead}${alsoSubject ? toAlsoSubject(text, baseWho) : text}`;
+      put(`${chained} ${alsoLead}${alsoSubject ? toAlsoSubject(text, baseWho) : text}`, true, i);
     } else if (chained) {
-      out[out.length - 1] = `${chained} ${alsoLead}${alsoSubject ? toAlsoSubject(text, baseWho) : toTopic(text, baseWho)}`;
+      put(`${chained} ${alsoLead}${alsoSubject ? toAlsoSubject(text, baseWho) : toTopic(text, baseWho)}`, true, i);
     }
-    else out.push(text);
+    else put(text, false, i);
     chainCount = chained ? chainCount + 1 : 0;
     // 리듬 셈 — 이어 붙였으면 둘 다 0, 이음말로 열었으면 linkRun만 쌓고, 아무 표시도
     // 없이 그냥 놓였으면 plainRun을 쌓는다. 맺음말은 문단의 끝이라 세지 않는다.
@@ -2424,10 +2456,8 @@ export function renderReplaySummary(
     if (alt) out[i] = out[i].replace(HEAD_RE, `${alt} `);
   }
   if (out.length === 0) return null;
-  const text = out
-    .map((l) => toPlain(l.replace(afterWhile, "$1 ").replace(twoLinks, "$1 $2")))
-    .join(". ");
-  return withStartClocks(text, data, resolveName);
+  const lines = out.map((l) => toPlain(l.replace(afterWhile, "$1 ").replace(twoLinks, "$1 $2")));
+  return { lines: withStartClocks(lines, data, resolveName), lineBeats };
 }
 
 /** 이름이 처음 나오는 자리에만 "(1시)"를 붙인다(요청: 닉네임이 처음 등장하는 경우 몇시인지도).
@@ -2437,12 +2467,12 @@ export function renderReplaySummary(
  *  끼워 만들기 때문에, 틀마다 시각을 신경 쓰는 것보다 마지막에 한 번 훑는 편이 단순하고
  *  빠짐이 없다. 긴 이름부터 찾는 것도 같은 이유다("정구"가 "정구2"의 일부일 수 있다). */
 function withStartClocks(
-  text: string,
+  lines: string[],
   data: ReplaySummaryData,
   resolveName: (rawName: string) => string,
-): string {
+): string[] {
   const spots = data.spots;
-  if (!spots) return text;
+  if (!spots) return lines;
   // 지금 보여줄 이름 → 시각. 원본 아이디가 아니라 화면에 실제로 적힌 이름으로 찾아야 한다.
   const byName = new Map<string, number>();
   for (const [raw, clock] of Object.entries(spots)) {
@@ -2451,22 +2481,29 @@ function withStartClocks(
   }
   // 긴 이름부터 — 짧은 이름이 긴 이름의 일부인 경우를 위해서다.
   const names = [...byName.keys()].sort((a, b) => b.length - a.length);
-  // 끼워 넣을 자리를 먼저 다 모은 뒤 뒤에서부터 넣는다 — 앞에서부터 넣으면 그 뒤 자리가
-  // 전부 밀린다.
-  const inserts: { at: number; tag: string }[] = [];
-  for (const name of names) {
-    const i = text.indexOf(name);
-    if (i < 0) continue;
-    // 더 긴 이름의 일부로 이미 잡힌 자리면 건너뛴다.
-    if (inserts.some((x) => i < x.at && i + name.length > x.at - 10)) continue;
-    inserts.push({ at: i + name.length, tag: `(${byName.get(name)}시)` });
-  }
-  inserts.sort((a, b) => b.at - a.at);
-  let outText = text;
-  for (const ins of inserts) {
-    outText = `${outText.slice(0, ins.at)}${ins.tag}${outText.slice(ins.at)}`;
-  }
-  return outText;
+  // 이미 시각을 붙인 이름 — 문장을 앞에서부터 훑으므로, 여기 든 이름은 그 앞 어딘가에서
+  // 이미 한 번 나왔다는 뜻이다(문단 전체에서 '처음 나올 때 한 번'이 되도록).
+  const tagged = new Set<string>();
+  return lines.map((line) => {
+    // 끼워 넣을 자리를 먼저 다 모은 뒤 뒤에서부터 넣는다 — 앞에서부터 넣으면 그 뒤 자리가
+    // 전부 밀린다.
+    const inserts: { at: number; tag: string }[] = [];
+    for (const name of names) {
+      if (tagged.has(name)) continue;
+      const i = line.indexOf(name);
+      if (i < 0) continue;
+      // 더 긴 이름의 일부로 이미 잡힌 자리면 건너뛴다.
+      if (inserts.some((x) => i < x.at && i + name.length > x.at - 10)) continue;
+      tagged.add(name);
+      inserts.push({ at: i + name.length, tag: `(${byName.get(name)}시)` });
+    }
+    inserts.sort((a, b) => b.at - a.at);
+    let outLine = line;
+    for (const ins of inserts) {
+      outLine = `${outLine.slice(0, ins.at)}${ins.tag}${outLine.slice(ins.at)}`;
+    }
+    return outLine;
+  });
 }
 
 /** 문장을 이름 조각과 나머지로 잘라 놓은 것 — 이름에 팀 색을 입히기 위한 것이다(요청).
@@ -2487,16 +2524,61 @@ export function renderReplaySummaryParts(
   resolveName: (rawName: string) => string,
   teamOf: (name: string) => 1 | 2 | undefined,
 ): SummaryPart[] | null {
-  const text = renderReplaySummary(data, resolveName, teamOf);
-  if (!text) return null;
+  const sentences = renderReplaySummarySentences(data, resolveName, teamOf);
+  if (!sentences) return null;
+  // 문단으로 이어 붙일 때 문장 사이는 ". " — 문장 단위로 자르기 전과 글자가 똑같아야 한다.
+  return sentences.flatMap((s, i) => (i === 0 ? s.parts : [{ text: ". " }, ...s.parts]));
+}
+
+/** 요약 문장 하나 — 타임라인의 스냅 하나에 대응한다(요청: 요약 문장 하나당 스냅 하나). */
+export interface ReplaySummarySentence {
+  /** 팀 색이 입혀진 조각들(위 SummaryPart). */
+  parts: SummaryPart[];
+  /** 이 문장에 담긴 beat 첨자들 — 한 문장에 여럿이 들어가는 일이 흔하다. */
+  beats: number[];
+  /** 이 문장이 말하는 시점(프레임) — 담긴 beat 중 가장 이른 것. 시점을 모르는 문장
+   *  (경기 전체를 두고 하는 말·맺음말)은 null이고, 그때 스냅은 타임라인의 끝에 놓인다. */
+  at: number | null;
+}
+
+/**
+ * 요약을 문장 단위로 만든다 — 문장마다 팀 색 조각과 그 문장을 만든 beat들이 함께 온다.
+ * 미니맵 타임라인이 이걸 쓴다: 스냅을 고르면 그 문장에 하이라이트가 가고, 그 문장의
+ * beat들이 가리키는 사람·자리가 미니맵에 뜬다.
+ */
+export function renderReplaySummarySentences(
+  data: ReplaySummaryData | unknown,
+  resolveName: (rawName: string) => string,
+  teamOf: (name: string) => 1 | 2 | undefined,
+): ReplaySummarySentence[] | null {
+  const r = renderLines(data, resolveName, teamOf);
+  if (!r) return null;
+  const beats = isReplaySummaryData(data) ? data.beats : [];
   // 긴 이름부터 찾는다 — 짧은 이름이 긴 이름의 일부인 경우("정구"와 "정구2")를 위해서다.
   const names = [...new Set(
-    (isReplaySummaryData(data) ? data.beats : [])
+    beats
       .flatMap((b) => [...(b.who ?? []), ...(b.who2 ?? []), ...(b.whom ?? [])])
       .map(resolveName)
       .filter(Boolean),
   )].sort((a, b) => b.length - a.length);
 
+  return r.lines.map((line, i) => {
+    const idx = r.lineBeats[i] ?? [];
+    const ats = idx
+      .map((n) => beats[n]?.at)
+      .filter((v): v is number => typeof v === "number");
+    return {
+      parts: splitNames(line, names, teamOf),
+      beats: idx,
+      at: ats.length > 0 ? Math.min(...ats) : null,
+    };
+  });
+}
+
+/** 문장을 이름 조각과 나머지로 자른다 — 이름에 팀 색을 입히기 위한 것이다. */
+function splitNames(
+  text: string, names: string[], teamOf: (name: string) => 1 | 2 | undefined,
+): SummaryPart[] {
   const parts: SummaryPart[] = [];
   let buf = "";
   const flush = () => { if (buf) { parts.push({ text: buf }); buf = ""; } };

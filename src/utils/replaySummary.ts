@@ -701,9 +701,16 @@ interface Beat extends ReplaySummaryBeat {
 
 /** 확장 건물의 한국어 이름 — "멀티를 5개까지"가 아니라 "5해처리까지"로 말한다(요청). */
 
-/** 고를 때만 쓰는 것들(무게·중복 판정)을 떼고 저장할 형태만 남긴다. */
+/** 고를 때만 쓰는 것들(무게·중복 판정)을 떼고 저장할 형태만 남긴다.
+ *
+ *  시점(at)이 유한한 수가 아니면 null로 눌러 둔다. 맺음말은 '늘 마지막'이라는 뜻으로 at을
+ *  Infinity로 두고 정렬에 쓰는데(아래 ending), 그 값이 그대로 남으면 방금 만든 요약과 저장된
+ *  요약이 서로 다르게 읽힌다 — JSON은 Infinity를 표현할 수 없어 저장하면 null이 되기
+ *  때문이다. 실제로 그 차이가 문장으로 새어 나왔다(실측: 같은 경기가 방금 만든 것은 "승리를
+ *  결정지었다", 저장된 것은 "이겼다"). 사람이 보는 건 언제나 저장된 쪽이므로 그쪽에 맞춘다.
+ *  묶기(mergeSameFate)에서 시점을 모르는 것끼리 합쳐질 때 생기는 Infinity도 여기서 걸린다. */
 function strip({ weight: _w, dedupeOn: _d, ...b }: Beat): ReplaySummaryBeat {
-  return b;
+  return typeof b.at === "number" && !Number.isFinite(b.at) ? { ...b, at: null } : b;
 }
 
 /** 방어 건물의 한국어 이름 — "질럿과 성큰으로 막아섰지만 실패"처럼 유닛과 함께 말한다(요청). */
@@ -2042,10 +2049,16 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   // 시작 지점(몇 시) — 요약에서 그 사람이 처음 나올 때 한 번만 붙인다(요청). 맵 정보를
   // 못 읽은 리플레이는 startClock이 null이라 그 사람만 빠진다.
   const spots: Record<string, number> = {};
+  const bases: Record<string, [number, number]> = {};
   for (const p of replay.players) {
     if (p.startClock !== null) spots[p.rawName] = p.startClock;
+    // 본진 자리(타일 좌표) — 미니맵에 아바타+닉네임을 계속 띄우는 자리다(요청).
+    if (p.startX !== null && p.startY !== null) {
+      bases[p.rawName] = [round1(p.startX), round1(p.startY)];
+    }
   }
 
+  const byName = new Map(replay.players.map((p) => [p.rawName, p]));
   return {
     v: REPLAY_SUMMARY_VERSION,
     // '초반'을 재려면 경기가 얼마나 길었는지를 알아야 한다(지적).
@@ -2053,6 +2066,53 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     // 개인전에서는 팀 용어를 쓰지 않는다(요청).
     ...(duel ? { duel: true } : {}),
     ...(Object.keys(spots).length > 0 ? { spots } : {}),
-    beats: [...chosen, ending].map(strip),
+    ...(Object.keys(bases).length > 0 ? { bases } : {}),
+    beats: [...chosen, ending].map(strip).map((b) => {
+      const pos = beatPositions(b, byName);
+      return pos ? { ...b, pos } : b;
+    }),
   };
+}
+
+/** 미니맵 좌표는 소수 한 자리까지만 남긴다 — 128칸 맵에서 0.1타일은 3픽셀이라 그림에
+ *  아무 차이가 없고, 저장되는 JSON만 길어진다. */
+const round1 = (v: number): number => Math.round(v * 10) / 10;
+
+// 그 순간 그 사람이 어디 있었나를 재는 창(초). 스타는 호흡이 빠르니 넉넉히 잡으면 다른
+// 국면의 자리가 섞인다 — 앞뒤 30초까지만 본다.
+const POS_WINDOW_SEC = 30;
+// 이만큼은 찍혀 있어야 '거기 있었다'고 말한다. 한두 번은 정찰이거나 화면을 돌린 것일 수
+// 있다(orderPositions 주석과 replayTactics의 pushersOn이 쓰는 것과 같은 기준).
+const POS_MIN_ORDERS = 3;
+
+/** 그 beat에 이름이 나오는 사람들이 그때 어디에 있었나 — 미니맵 스냅에 아바타를 놓는
+ *  자리다(요청: 요약 전황 스냅에서는 해당 주인공들의 위치를 아바타만 표시).
+ *
+ *  근거는 이동·공격 명령의 좌표뿐이다. 리플레이에는 유닛이 실제로 어디 있었는지가 안 남아
+ *  있고, 남는 건 '병력을 어디로 보냈나'다(orderPositions 주석). 그래서 이 자리는 '그
+ *  사람이 있던 곳'이 아니라 '그 무렵 그 사람이 병력을 보낸 곳'이고, 명령이 몇 개 안 찍힌
+ *  사람은 아예 뺀다 — 정찰 한 번을 그 사람의 자리라고 말할 수는 없다.
+ *
+ *  가운뎃값을 쓰는 이유는 평균이 외딴 한 번(맵 반대편 정찰)에 끌려가기 때문이다. */
+function beatPositions(
+  b: ReplaySummaryBeat, byName: Map<string, ParsedReplayPlayer>,
+): Record<string, [number, number]> | undefined {
+  if (typeof b.at !== "number") return undefined;
+  const half = POS_WINDOW_SEC / SECONDS_PER_FRAME;
+  const out: Record<string, [number, number]> = {};
+  const names = new Set([...(b.who ?? []), ...(b.who2 ?? []), ...(b.whom ?? [])]);
+  for (const name of names) {
+    const orders = byName.get(name)?.signals?.orderPositions;
+    if (!orders) continue;
+    const near = orders.filter((o) => Math.abs(o.frame - b.at!) <= half);
+    if (near.length < POS_MIN_ORDERS) continue;
+    out[name] = [round1(median(near.map((o) => o.x))), round1(median(near.map((o) => o.y)))];
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
+function median(xs: number[]): number {
+  const s = [...xs].sort((a, b) => a - b);
+  const m = s.length >> 1;
+  return s.length % 2 === 1 ? s[m] : (s[m - 1] + s[m]) / 2;
 }
