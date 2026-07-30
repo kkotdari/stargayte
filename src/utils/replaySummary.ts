@@ -1,5 +1,5 @@
 import type { ParsedReplay, ParsedReplayPlayer, ReplayPlayerSignals } from "./replayParser";
-import { pushersOn, scanTactics } from "./replayTactics";
+import { pushersOn, scanTactics, producedFrames, windowPeak } from "./replayTactics";
 import {
   hasUpgrade, topUsedTech, techUseCount, upgradeFrame, upgradeLevel,
   ARMOR_WEAPON_PAIRS, SIGNATURE_UPGRADE_KO, UPGRADE_LINE_KO,
@@ -996,12 +996,21 @@ function sideBeats(args: {
     // 고급 유닛 이야기는 그걸 실제로 뽑은 사람의 몫이다 — 팀 전체를 주어로 세우면
     // "A·B·C·D는 배틀크루저까지 꺼냈지만"처럼 주어가 흐릿해진다(지적).
     let owner: ParsedReplayPlayer | null = star;
-    // 몇 기까지 뽑았는지도 함께 — "캐리어를 한 부대 뽑았으나 실패함"처럼 규모가 곧 그림이다(요청).
+    // 몇 기까지 뽑았는지도 함께 — "캐리어를 한 부대 뽑았으나 실패함"처럼 규모가 곧 그림이다
+    // (요청). 다만 세는 값은 '한때 몇 기를 같이 띄웠나'여야 한다(지적: 총 몇 마리 뽑았는지는
+    // 안 중요하고, 죽고 다시 뽑으니까 그 시간대의 수를 세거나 부정확하면 아예 표기하지
+    // 않아야 한다) — side.combat의 누계를 그대로 쓰면 죽어서 다시 뽑은 몫까지 더해져 실제
+    // 규모보다 훨씬 부풀려진다. windowPeak(replayTactics의 carrier·bc 전술과 같은 잣대)로
+    // '한때 함께 떠 있던 수'만 센다. 그 사람이 없거나 값이 0이면 수는 아예 안 싣는다 —
+    // 문장 쪽(spectacle 갈래)이 amount가 없으면 알아서 숫자 없는 말로 넘어간다.
     if (spectacle) {
-      p = { mode: "spectacle", unit: spectacle, n: side.combat.get(spectacle) ?? 0 };
       owner = players
         .map((x) => ({ x, n: x.signals?.unitCounts[spectacle] ?? 0 }))
         .sort((a, b) => b.n - a.n)[0]?.x ?? star;
+      const peak = owner?.signals
+        ? windowPeak(producedFrames(owner.signals, spectacle, totalFrames))
+        : 0;
+      p = { mode: "spectacle", unit: spectacle, ...(peak > 0 ? { n: peak } : {}) };
     } else if (pressedEarly && units.length > 0) p = { mode: "pressed", units };
     else if (units.length > 0) {
       p = { mode: units.some((u) => LATE_TECH_UNITS.has(u)) ? "late" : "plain", units };
