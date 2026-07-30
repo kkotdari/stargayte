@@ -7686,6 +7686,17 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
 .scr-minimap-mark-lab-up .scr-minimap-mark-label { top: auto; bottom: 13px; }
 .scr-minimap-mark-name { max-width: 108px; overflow: hidden; text-overflow: ellipsis; }
 .scr-minimap-mark-race { flex-shrink: 0; }
+/* 궤멸·빈사 — 본진 아바타를 흑백으로 누르고 그 위에 해골을 얹는다(요청). 아바타를 지우지
+   않는 이유는 누구 자리인지 여전히 알아야 하기 때문이다. */
+.scr-minimap-mark-downed .scr-avatar { filter: grayscale(1) brightness(0.55); }
+.scr-minimap-mark-skull {
+  position: absolute; left: 0; top: 0; transform: translate(-50%, -50%);
+  z-index: 2; color: #fff;
+  /* 어떤 지형 색 위에서도 실루엣이 살아야 한다 — 검은 테를 두른다. */
+  filter: drop-shadow(0 0 2px #000) drop-shadow(0 0 2px #000);
+}
+.scr-minimap-mark-downed .scr-minimap-mark-label { opacity: 0.72; }
+
 /* 지금 어디 있는지가 따로 뜬 사람의 본진 — 같은 사람 아바타가 둘 다 진하면 어느 쪽이
    '지금'인지 헷갈린다. 본진 쪽 아바타만 물러나게 하고 이름은 그대로 둔다: 모바일에서는
    이 이름표가 로스터를 대신하는 유일한 자리라 흐려지면 안 된다. */
@@ -7755,11 +7766,28 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
   color: var(--muted); min-width: 34px; text-align: right;
 }
 
-/* ── 요약 문장 하이라이트 ── */
-/* 지금 스냅의 문장만 밝게, 나머지는 물러나게 한다(요청). 크기·굵기는 건드리지 않는다 —
-   재생 중에 글자 폭이 바뀌면 문단이 매번 다시 흘러 읽는 자리를 놓친다. */
-.scr-sum-sentence { transition: opacity 220ms ease; }
-.scr-sum-sentence-on { opacity: 1; }
-.scr-sum-sentence-off { opacity: 0.42; }
-.scr-sum-sentence-on, .scr-sum-sentence-off { cursor: pointer; }
-@media (prefers-reduced-motion: reduce) { .scr-sum-sentence { transition: none; } }
+/* ── 자막 ── */
+/* 요약을 문단으로 늘어놓는 대신 지금 스냅의 문장만 미니맵 아래에 보여준다(요청).
+   그림 위에 얹지 않는 이유는 지형과 아바타를 가리기 때문이다(요청: 자막이 안 가려지게
+   하단에 캡션 영역으로).
+
+   문장을 모두 같은 칸에 겹쳐 놓고(grid-area 하나) 지금 것만 보이게 한다 — 칸이 늘 가장
+   긴 문장 높이로 잡히므로 재생하는 동안 카드가 위아래로 흔들리지 않는다. 문장마다 길이가
+   달라 그냥 갈아 끼우면 매 스냅마다 아래 내용이 밀려 읽던 자리를 놓친다. */
+.scr-story-cap {
+  display: grid; width: 100%;
+  padding: 9px 12px; border-radius: 10px;
+  background: rgba(var(--overlay-rgb), 0.06);
+  font-size: var(--fs-caption); font-weight: 500; line-height: 1.6;
+  color: var(--text); word-break: keep-all; text-align: left;
+}
+.scr-story-cap-line {
+  grid-area: 1 / 1; margin: 0;
+  /* 안 보이는 문장도 자리는 차지해야 한다(그래서 display:none이 아니라 visibility) —
+     칸 높이를 가장 긴 문장이 정하게 하는 것이 이 방식의 핵심이다. */
+  visibility: hidden;
+  transition: opacity 220ms ease;
+  opacity: 0;
+}
+.scr-story-cap-line[data-on="true"] { visibility: visible; opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .scr-story-cap-line { transition: none; } }

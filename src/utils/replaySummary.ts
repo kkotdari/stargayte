@@ -2080,6 +2080,25 @@ const POS_WINDOW_SEC = 30;
 // 이만큼은 찍혀 있어야 '거기 있었다'고 말한다. 한두 번은 정찰이거나 화면을 돌린 것일 수
 // 있다(orderPositions 주석과 replayTactics의 pushersOn이 쓰는 것과 같은 기준).
 const POS_MIN_ORDERS = 3;
+// 같은 자리로 볼 반경(타일). 128칸 맵에서 10타일은 폭의 8%쯤 — 한 전장 안이다.
+const POS_CLUSTER_RADIUS = 10;
+// 자기 본진에서 이만큼 떨어졌으면 '집 밖'이다 — 본진과 앞마당을 넉넉히 벗어나는 거리다.
+// 실측으로 갈렸다: 집 언저리 군집은 본진에서 3~7타일, 밖으로 나간 군집은 45~83타일이었다.
+const POS_AWAY_MIN = 18;
+
+/** 이 beat가 '들이친 일'인가 — 그렇다면 그 일을 한 사람은 집이 아니라 쳐들어간 자리에
+ *  찍혀야 한다(요청: 공격 갔으면 공격 간 위치에 공격자가 표시되어야 함).
+ *
+ *  집 언저리 명령이 늘 훨씬 많다는 것이 문제였다(일꾼·건물·모으기 클릭). 그대로 가장
+ *  붐비는 자리를 쓰면 러시를 간 사람도 자기 본진에 찍힌다 — 실측: 11드론 러시 beat에서
+ *  창 안 명령 52개 중 33개가 집 언저리, 밖으로 나간 것은 7개였다.
+ *
+ *  전술 beat는 전술 키를 그대로 beat 키로 쓰므로(zling-rush·nydus·cloak-wraith …) 이미
+ *  있는 두 목록을 그대로 쓰고, 전술이 아닌 '공격 이야기' 키만 따로 더한다. */
+const ATTACK_BEAT_KEYS = new Set([
+  ...RAID_KEYS, ...HARASS_KEYS,
+  "raid-damage", "gang-rush", "duel-rush", "harass-workers", "harass-long", "breakthrough",
+]);
 
 /** 그 beat에 이름이 나오는 사람들이 그때 어디에 있었나 — 미니맵 스냅에 아바타를 놓는
  *  자리다(요청: 요약 전황 스냅에서는 해당 주인공들의 위치를 아바타만 표시).
@@ -2089,26 +2108,85 @@ const POS_MIN_ORDERS = 3;
  *  사람이 있던 곳'이 아니라 '그 무렵 그 사람이 병력을 보낸 곳'이고, 명령이 몇 개 안 찍힌
  *  사람은 아예 뺀다 — 정찰 한 번을 그 사람의 자리라고 말할 수는 없다.
  *
- *  가운뎃값을 쓰는 이유는 평균이 외딴 한 번(맵 반대편 정찰)에 끌려가기 때문이다. */
+ *  자리를 고르는 방법이 중요하다. 처음에는 x와 y의 가운뎃값을 따로 구했는데, 그러면 아무
+ *  일도 없던 자리가 나온다(지적: 위치가 좀 안 맞는 것 같다) — 명령이 두 군데로 갈려 있으면
+ *  가운뎃값은 그 사이 빈 곳에 떨어진다. 실측으로 확인했다: 한 사람의 11분 명령 25개가
+ *  (75,107) 언저리에 22개나 몰려 있었는데 가운뎃값은 (108,93)이었다.
+ *
+ *  그래서 '가장 붐비는 자리'를 쓴다 — 반경 안 이웃이 가장 많은 점을 찾고 그 이웃들의
+ *  무게중심을 낸다. 이러면 결과가 늘 실제로 명령이 몰린 곳이 된다. 같은 이웃 수라면 beat
+ *  시점에 더 가까운 쪽을 고른다(그 순간에 더 충실하다). */
 function beatPositions(
   b: ReplaySummaryBeat, byName: Map<string, ParsedReplayPlayer>,
 ): Record<string, [number, number]> | undefined {
   if (typeof b.at !== "number") return undefined;
+  const at = b.at;
   const half = POS_WINDOW_SEC / SECONDS_PER_FRAME;
   const out: Record<string, [number, number]> = {};
-  const names = new Set([...(b.who ?? []), ...(b.who2 ?? []), ...(b.whom ?? [])]);
-  for (const name of names) {
+  const actors = new Set([...(b.who ?? []), ...(b.who2 ?? [])]);
+  const victims = b.whom ?? [];
+  const attack = ATTACK_BEAT_KEYS.has(b.k) || victims.length > 0;
+  const baseOf = (name: string): { x: number; y: number } | null => {
+    const p = byName.get(name);
+    return p && p.startX !== null && p.startY !== null ? { x: p.startX, y: p.startY } : null;
+  };
+  // 쳐들어간 자리를 아는 경우 — 당한 쪽 본진이 곧 그 자리다. 여럿이면 첫 사람 기준.
+  const target = victims.map(baseOf).find((v) => v !== null) ?? null;
+
+  for (const name of new Set([...actors, ...victims])) {
     const orders = byName.get(name)?.signals?.orderPositions;
     if (!orders) continue;
-    const near = orders.filter((o) => Math.abs(o.frame - b.at!) <= half);
+    const near = orders.filter((o) => Math.abs(o.frame - at) <= half);
     if (near.length < POS_MIN_ORDERS) continue;
-    out[name] = [round1(median(near.map((o) => o.x))), round1(median(near.map((o) => o.y)))];
+    const home = baseOf(name);
+    // 들이친 사람은 집이 아니라 나간 자리에 찍는다. 당한 사람은 그대로 — 당한 자리가 곧
+    // 자기 진영이다.
+    const away = attack && actors.has(name) && !victims.includes(name) && home !== null
+      ? near.filter((o) => Math.hypot(o.x - home.x, o.y - home.y) > POS_AWAY_MIN)
+      : [];
+    const pick = clusterOf(away.length >= POS_MIN_ORDERS ? away : near, at, target);
+    if (pick) out[name] = pick;
   }
   return Object.keys(out).length > 0 ? out : undefined;
 }
 
-function median(xs: number[]): number {
-  const s = [...xs].sort((a, b) => a - b);
-  const m = s.length >> 1;
-  return s.length % 2 === 1 ? s[m] : (s[m - 1] + s[m]) / 2;
+/** 명령들이 가장 붐비는 자리 — 반경 안 이웃이 가장 많은 점의 이웃들 무게중심.
+ *
+ *  쳐들어간 자리(target)를 아는 경우에는 '가장 붐비는 곳'이 아니라 '그쪽에 가장 가까운
+ *  군집'을 고른다 — 여러 곳을 동시에 건드린 판에서 이야기가 말하는 그 싸움터를 짚어야 한다.
+ *  받쳐 주는 명령이 모자란 군집은 후보에서 뺀다(정찰 한 번을 싸움터라 할 수는 없다).
+ *
+ *  창 안의 명령은 수십 개라 이중 순회로 충분하다(실측: 한 사람 최대 99개). */
+function clusterOf(
+  pts: { frame: number; x: number; y: number }[],
+  at: number,
+  target: { x: number; y: number } | null,
+): [number, number] | null {
+  if (pts.length === 0) return null;
+  const near = (o: { x: number; y: number }) =>
+    pts.filter((q) => Math.hypot(o.x - q.x, o.y - q.y) <= POS_CLUSTER_RADIUS);
+  let best = pts[0];
+  let bestScore = Infinity;
+  let bestN = -1;
+  for (const o of pts) {
+    const n = near(o).length;
+    if (target !== null) {
+      // 쳐들어간 쪽에 가까운 군집 우선 — 다만 받쳐 주는 명령이 있는 것만.
+      if (n < POS_MIN_ORDERS && bestN >= POS_MIN_ORDERS) continue;
+      const score = Math.hypot(o.x - target.x, o.y - target.y);
+      if (n >= POS_MIN_ORDERS && bestN < POS_MIN_ORDERS) { bestScore = score; bestN = n; best = o; continue; }
+      if (score < bestScore) { bestScore = score; bestN = n; best = o; }
+      continue;
+    }
+    // 아는 자리가 없으면 가장 붐비는 곳, 같으면 그 순간에 가까운 쪽.
+    if (n > bestN || (n === bestN && Math.abs(o.frame - at) < Math.abs(best.frame - at))) {
+      bestN = n;
+      best = o;
+    }
+  }
+  const cluster = near(best);
+  return [
+    round1(cluster.reduce((sum, q) => sum + q.x, 0) / cluster.length),
+    round1(cluster.reduce((sum, q) => sum + q.y, 0) / cluster.length),
+  ];
 }

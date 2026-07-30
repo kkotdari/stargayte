@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { Skull } from "lucide-react";
 import Avatar from "../common/Avatar";
 import RaceBadge from "../common/RaceBadge";
 import { cx } from "../../utils/format";
@@ -51,6 +52,8 @@ export interface MinimapMarker {
   withName: boolean;
   /** 검색 중 짚어야 할 사람인가 — 로스터를 감춘 모바일에서는 여기가 유일한 표시 자리다. */
   highlight: boolean;
+  /** 그 시점에 궤멸됐거나 빈사 상태인가 — 본진에 해골을 얹는다(요청). */
+  downed?: boolean;
 }
 
 export default function ReplayMinimap({
@@ -122,11 +125,15 @@ export default function ReplayMinimap({
           className={cx("scr-minimap-mark", "scr-minimap-mark-base",
             m.team === 1 && "scr-minimap-mark-t1", m.team === 2 && "scr-minimap-mark-t2",
             m.highlight && "scr-minimap-mark-hit",
+            m.downed && "scr-minimap-mark-downed",
             active.has(m.key) && "scr-minimap-mark-behind",
             labelSide(m))}
           style={place(m)}
         >
           <Avatar member={{ id: m.memberId, nickname: m.name, avatar: m.avatar }} size={18} />
+          {/* 궤멸·빈사 — 본진 위에 해골을 얹는다(요청). 아바타는 흑백으로 눌러 두어
+              해골이 그 사람 자리에 붙은 표시로 읽히게 한다. */}
+          {m.downed && <Skull className="scr-minimap-mark-skull" size={14} aria-label="궤멸" />}
           {m.withName && (
             <span className="scr-minimap-mark-label">
               <span className="scr-minimap-mark-name">{m.name}</span>

@@ -23,12 +23,12 @@ import type { GameResult, GameResultSlot, Member } from "../../types";
 // 읽은 리플레이)에서는 모바일에서도 로스터가 유일한 로스터라 그대로 보여준다.
 
 // 자동재생이 한 스냅에 머무는 시간 — 문장 길이에 맞춘다(긴 문장에 같은 시간을 주면 다
-// 읽기 전에 넘어간다). 한글은 초당 열 자 남짓 읽는다고 보고 잡은 값이다.
-const DWELL_BASE_MS = 1200;
-const DWELL_PER_CHAR_MS = 60;
-// 한 스냅에 이보다 오래 머물면 멈춰 있는 것처럼 보인다(실측: 7초로 뒀더니 첫 문장에서
-// 8초를 서 있었다).
-const DWELL_MAX_MS = 5500;
+// 읽기 전에 넘어간다). 이제 자막이 그 문장을 담는 유일한 자리라, 넘어가기 전에 충분히
+// 읽을 수 있어야 한다(요청) — 아래 문단에 전문이 함께 있던 때보다 넉넉하게 잡았다.
+// 글자 하나당 0.11초는 초당 아홉 자 남짓 읽는 속도다.
+const DWELL_BASE_MS = 1800;
+const DWELL_PER_CHAR_MS = 110;
+const DWELL_MAX_MS = 12000;
 
 /** 카드가 화면에 이만큼 들어와 있으면 재생한다 — 피드에 카드가 여럿인데 전부 동시에
  *  돌아가면 어지럽고, 보이지도 않는 카드가 타이머를 물고 있을 이유도 없다. */
@@ -116,6 +116,29 @@ export default function GameResultStory({
     return () => clearTimeout(t);
   }, [playing, visible, active, index, last, dwell]);
 
+  /* 그 시점까지 궤멸됐거나 빈사가 된 사람들 — 본진에 해골을 얹는다(요청).
+     저장된 beat만으로 알 수 있다: 무너진 사람(fallen), 얻어맞고 탈락한 사람
+     (raid-damage의 p.out), 초반 올인에 빈사가 된 사람(p.early), GG를 친 사람. 되살아난
+     사람(revival)은 다시 지운다 — 빈사에서 일어난 경기가 실제로 있다.
+     지금 스냅까지의 beat를 시간순으로 훑어 쌓는다: 한 번 쓰러지면 그 뒤 스냅에서도
+     쓰러진 채여야 한다(그 스냅의 beat에만 나온다고 그때만 해골을 띄우면, 다음 장면에서
+     되살아난 것처럼 보인다). 이 계산은 이미 저장된 값만 쓰므로 옛 경기에도 그대로 붙는다. */
+  const downed: Set<string> = useMemo(() => {
+    const beats = gameResult.summaryData?.beats ?? [];
+    const upto = Math.max(-1, ...(sentences[index]?.beats ?? []));
+    const out = new Set<string>();
+    for (let i = 0; i <= upto && i < beats.length; i += 1) {
+      const b = beats[i];
+      const who = b.who ?? [];
+      const whom = b.whom ?? [];
+      if (b.k === "fallen" || b.k === "gg") who.forEach((n) => out.add(n));
+      else if (b.k === "raid-damage" && (b.p?.out === true || b.p?.early === true)) {
+        whom.forEach((n) => out.add(n));
+      } else if (b.k === "revival") who.forEach((n) => out.delete(n));
+    }
+    return out;
+  }, [gameResult.summaryData, sentences, index]);
+
   // 미니맵 표시 — 본진은 늘, 스냅의 주인공은 그때 자리에(요청).
   const bases: MinimapMarker[] = useMemo(() => {
     const spots = gameResult.summaryData?.bases;
@@ -131,10 +154,10 @@ export default function GameResultStory({
           avatar: memberOf(s.slot.memberId)?.avatar ?? null,
           race: s.slot.race, team: s.team,
           x: spots[s.raw][0], y: spots[s.raw][1],
-          withName: true, highlight: hit,
+          withName: true, highlight: hit, downed: downed.has(s.raw),
         };
       });
-  }, [gameResult.summaryData, slots, memberOf, highlightMemberIds, highlightTerms]);
+  }, [gameResult.summaryData, slots, memberOf, highlightMemberIds, highlightTerms, downed]);
 
   const actors: MinimapMarker[] = useMemo(() => {
     const beats = gameResult.summaryData?.beats;
@@ -165,6 +188,9 @@ export default function GameResultStory({
   // 미니맵이 있으면 맵 이름·플레이시간은 그림의 머리로 올라간다 — 아래 따로 한 줄 더 두면
   // 같은 말이 두 번 나온다.
   const showRoster = !mobile || grid === null;
+  // 자막으로 보여줄 수 있는 경기인가 — 미니맵이 있고 훑을 문장이 있을 때. 그림이 없으면
+  // 자막만 남아 무엇을 보고 읽는 글인지 알 수 없다.
+  const caption = grid !== null && sentences.length > 0;
   const showMapLine = grid === null && (mapName || minutes !== null);
 
   const mapBlock = grid && (
@@ -225,6 +251,23 @@ export default function GameResultStory({
           {minutes !== null && <span className="scr-game-result-trow-dur">({minutes}분)</span>}
         </div>
       )}
+      {/* 자막 — 요약을 문단으로 늘어놓는 대신 지금 스냅의 문장만 보여준다(요청). 미니맵
+          바로 아래에 따로 두는 이유는 그림 위에 얹으면 지형과 아바타를 가리기 때문이다
+          (요청: 자막이 안 가려지게 하단에 캡션 영역으로).
+          문장을 모두 겹쳐 놓고 지금 것만 보이게 한다 — 이러면 칸이 늘 가장 긴 문장 높이라
+          재생하는 동안 카드가 위아래로 흔들리지 않는다. 문장마다 높이가 달라 그냥 갈아
+          끼우면 매 스냅마다 아래 내용이 밀린다. */}
+      {caption && (
+        <div className="scr-story-cap">
+          {sentences.map((sn, i) => (
+            <p key={i} className="scr-story-cap-line" aria-hidden={i !== index} data-on={i === index}>
+              {sn.parts.map((pt, j) => (pt.team
+                ? <span key={j} className={pt.team === 1 ? "scr-sum-team1" : "scr-sum-team2"}>{pt.text}</span>
+                : <span key={j}>{pt.text}</span>))}
+            </p>
+          ))}
+        </div>
+      )}
       {/* 타임라인은 스냅이 둘 이상일 때만 쓸모가 있다 — 한 문장짜리 요약에 재생 버튼을 두면
           누를 데는 있는데 아무 일도 안 일어난다. */}
       {grid && sentences.length > 1 && (
@@ -238,22 +281,16 @@ export default function GameResultStory({
           }}
         />
       )}
-      {sentences.length > 0 && (
+      {/* 미니맵이 없는 경기(옛 경기, 맵 정보를 못 읽은 리플레이)는 훑을 그림도 자막도 없다 —
+          예전처럼 요약 전문을 한 문단으로 보여준다. 이게 없으면 그 카드는 읽을거리가 통째로
+          사라진다. */}
+      {!caption && sentences.length > 0 && (
         <div className="scr-game-result-trow-summary">
-          {sentences.map((s, i) => (
-            <span
-              key={i}
-              className={cx("scr-sum-sentence",
-                // 타임라인이 없으면 하이라이트할 이유도 없다 — 훑을 수 없는 문단에 한 문장만
-                // 밝으면 나머지가 흐려 보인다.
-                grid && sentences.length > 1 && (i === index ? "scr-sum-sentence-on" : "scr-sum-sentence-off"))}
-              onClick={grid && sentences.length > 1
-                ? (e) => { e.stopPropagation(); setIndex(i); setPlaying(false); }
-                : undefined}
-            >
-              {s.parts.map((p, j) => (p.team
-                ? <span key={j} className={p.team === 1 ? "scr-sum-team1" : "scr-sum-team2"}>{p.text}</span>
-                : <span key={j}>{p.text}</span>))}
+          {sentences.map((sn, i) => (
+            <span key={i}>
+              {sn.parts.map((pt, j) => (pt.team
+                ? <span key={j} className={pt.team === 1 ? "scr-sum-team1" : "scr-sum-team2"}>{pt.text}</span>
+                : <span key={j}>{pt.text}</span>))}
               {i < sentences.length - 1 ? ". " : ""}
             </span>
           ))}
