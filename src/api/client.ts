@@ -486,8 +486,14 @@ export const api = {
     return request<{ deleted: number }>("/api/game-results/all", { method: "DELETE" });
   },
 
+  // 지금 바로 하루치 랭킹 집계를 돌린다(운영자) — 스케줄러가 아침에 하는 것과 같은 일이다.
+  // 순위표가 그대로면 아무 카드도 안 남는 게 정상이라, 남았는지(changed)를 함께 돌려준다.
+  async recomputeRankingShifts(): Promise<{ changed: boolean }> {
+    return request<{ changed: boolean }>("/api/feed/ranking-shifts/recompute", { method: "POST" });
+  },
+
   // 순위 기준선 다시 깔기(운영자) — 지금 데이터로 개인전/팀전 스냅샷을 새로 만든다.
-  // 변동 없이 저장돼 피드 목록에는 안 뜨고, 다음 자정 재집계가 이걸 기준으로 비교한다.
+  // 변동 없이 저장돼 피드 목록에는 안 뜨고, 다음 아침 재집계가 이걸 기준으로 비교한다.
   async reseedRankingShifts(): Promise<Record<string, number>> {
     return request<Record<string, number>>("/api/feed/ranking-shifts/seed", { method: "POST" });
   },

@@ -59,6 +59,7 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
   const [downloading, setDownloading] = useState(false);
   // 순위 기준선 다시 깔기 — 눌러 놓고 결과를 바로 알려준다(운영자 1회용).
   const [seeding, setSeeding] = useState(false);
+  const [recomputing, setRecomputing] = useState(false);
   const [confirmSeed, setConfirmSeed] = useState(false);
 
   // 등록된 리플레이(.rep) 전체를 날짜별 폴더 zip으로 받는다 — 인증 헤더가 필요해 blob으로
@@ -101,7 +102,26 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
     }
   };
 
-  // 순위 기준선 적재 — 지금 순위표를 스냅샷으로 남겨 다음 자정 재집계의 비교 대상으로
+  // 지금 집계 — 스케줄러가 아침에 하는 것과 똑같은 일을 손으로 돌린다(요청). 아침을
+  // 기다리지 않고 확인할 수 있고, 스케줄러가 정말 도는지 눈으로 보는 데도 쓴다.
+  // 여러 번 눌러도 순위표가 그대로면 아무것도 안 남는다(recompute_daily가 그렇게 만들어져
+  // 있다) — 그래서 확인창 없이 바로 돌린다.
+  const recomputeRanks = async () => {
+    setRecomputing(true);
+    setErr("");
+    try {
+      const { changed } = await api.recomputeRankingShifts();
+      window.alert(changed
+        ? "랭킹을 다시 집계했어요. 피드에 변동 카드가 올라갑니다."
+        : "랭킹을 다시 집계했어요. 순위가 그대로여서 남길 변동은 없었어요.");
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "집계하지 못했어요.");
+    } finally {
+      setRecomputing(false);
+    }
+  };
+
+  // 순위 기준선 적재 — 지금 순위표를 스냅샷으로 남겨 다음 아침 재집계의 비교 대상으로
   // 삼는다. 변동 없이 저장돼 피드에는 안 뜨고, 여러 번 눌러도 이번 달 기준선을 덮어쓸
   // 뿐 행이 쌓이지 않는다.
   const reseedRanks = async () => {
@@ -314,9 +334,17 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
                   </div>
 
                   {/* 랭킹 관리 — 순위 스냅샷 쪽 일은 경기관리와 성격이 달라 소제목을 따로
-                      뒀다(요청). 앞으로 재집계 수동 실행 같은 게 여기 붙는다. */}
+                      뒀다(요청). */}
                   <div className="scr-admin-panel-section-title">랭킹 관리</div>
                   <div className="scr-admin-panel-grid">
+                    {/* 현재 랭킹 집계하기 — 스케줄러(아침)와 같은 로직을 지금 돌린다(요청).
+                        순위가 그대로면 아무것도 안 남으므로 확인창 없이 바로 실행한다. */}
+                    <button
+                      type="button" className="scr-btn scr-btn-primary"
+                      onClick={() => void recomputeRanks()} disabled={recomputing}
+                    >
+                      {recomputing ? <Spinner /> : "현재 랭킹 집계"}
+                    </button>
                     {/* 순위 기준선 적재 — 지금 데이터로 스냅샷을 남긴다(1회용). 되돌릴 수는
                         없지만 파괴적이지도 않아서(덮어쓰기) 확인창만 한 번 거친다. */}
                     <button
@@ -351,7 +379,7 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
       {confirmSeed && (
         <ConfirmDialog
           title="지금 순위표를 기준선으로 저장할까요?"
-          message="개인전·팀전 순위표를 그대로 스냅샷으로 남깁니다. 피드에는 안 뜨고, 다음 자정 재집계가 이 기준선과 비교해 변동을 만듭니다."
+          message="개인전·팀전 순위표를 그대로 스냅샷으로 남깁니다. 피드에는 안 뜨고, 다음 아침 재집계가 이 기준선과 비교해 변동을 만듭니다."
           confirmLabel="기준선 저장"
           onConfirm={() => { setConfirmSeed(false); void reseedRanks(); }}
           onCancel={() => setConfirmSeed(false)}
