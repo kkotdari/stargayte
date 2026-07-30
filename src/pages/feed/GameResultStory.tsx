@@ -39,8 +39,11 @@ const DWELL_MAX_MS = 12000;
 const BEAT_MARK: Record<string, string> = {
   // 들이친 것.
   "raid-damage": "⚔️", "gang-rush": "⚔️", "duel-rush": "⚔️", breakthrough: "💥",
-  "zling-rush": "⚔️", "zealot-rush": "⚔️", "cannon-rush": "⚔️", "sunken-rush": "⚔️",
-  "sneak-rax": "🔥", allin: "🎲", "rush-backfire": "🙃",
+  "zling-rush": "⚔️", "zealot-rush": "⚔️",
+  // 남의 땅에 건물을 박는 기습은 병력 러시와 다른 이야기라 아이콘도 따로 준다(요청:
+  // 몰래 배럭·포토러시·성큰러시 아이콘과 화살표를 잘 표시).
+  "cannon-rush": "🔮", "sunken-rush": "🐙", "sneak-rax": "🥷",
+  allin: "🎲", "rush-backfire": "🙃",
   // 실어 나르거나 워프로 간 것.
   dropship: "🪂", shuttle: "🪂", "shuttle-reaver": "🪂", "templar-drop": "🪂", "zerg-drop": "🪂",
   recall: "🌀", nydus: "🕳️", nuke: "☢️",
