@@ -1,21 +1,19 @@
 import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { X } from "lucide-react";
-import { Spinner } from "../components/common/Feedback";
-import Select from "../components/common/Select";
-import ConfirmDialog from "../components/common/ConfirmDialog";
-import ReplayBatchButton from "../components/common/ReplayBatchButton";
-import VersionManageModal from "./VersionManageModal";
-import { api } from "../api/client";
-import { useAppStore } from "../store/appStore";
-import { useLockBodyScroll } from "../utils/bodyScrollLock";
-import { cx } from "../utils/format";
-import { versionNumber } from "../utils/appVersion";
-import { playCreak } from "../utils/sfx";
+import { Spinner } from "../../components/common/Feedback";
+import Select from "../../components/common/Select";
+import ConfirmDialog from "../../components/common/ConfirmDialog";
+import ReplayBatchButton from "../../components/common/ReplayBatchButton";
+import VersionManageModal from "../../modals/VersionManageModal";
+import { api } from "../../api/client";
+import { useAppStore } from "../../store/appStore";
+import { useLockBodyScroll } from "../../utils/bodyScrollLock";
+import { cx } from "../../utils/format";
+import { versionNumber } from "../../utils/appVersion";
+import { playCreak } from "../../utils/sfx";
 
-interface AdminPanelModalProps {
+interface AdminPanelScreenProps {
   isAdmin: boolean;
-  onClose: () => void;
 }
 
 // 실수로 눌러도 바로 전환되지 않도록 거는 최소한의 잠금 — 어떤 문구도 없이 숫자
@@ -23,13 +21,11 @@ interface AdminPanelModalProps {
 // 코드에 두지 않고 서버(env_vars.admin_panel_password)에 물어봐서 맞는지만 확인한다 —
 // 코드 배포 없이 DB에서 바로 비밀번호를 바꿀 수 있다.
 
-// 메인 로고를 3번 연달아 눌러야만 뜨는 숨겨진 제어판 — 트리거(로고 탭)도, 통과(비밀번호)도
-// 회원 누구나 할 수 있다. 다만 실제로 앱 버전을 바꾸는 등의 관리 기능은 운영자만 쓸 수 있다
+// 운영 메뉴의 "제어판" 화면 — 모달이 아니라 정식 화면이다(요청). 들어오면 비밀번호부터
+// 묻고, 통과해야 관리 기능이 보인다. 실제로 앱 버전을 바꾸는 등의 기능은 운영자만 쓸 수 있다
 // (예전엔 회원용 "미리보기"가 있었지만 제거됐다).
-export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalProps) {
-  useLockBodyScroll();
-  // 숨겨진 제어판이 열리는 순간 낡은 경첩이 삐걱이는 "끼익" 소리(요청) — 로고 3연타라는
-  // 사용자 제스처 직후라 자동재생 정책에 막히지 않는다. 마운트 때 한 번만.
+export default function AdminPanelScreen({ isAdmin }: AdminPanelScreenProps) {
+  // 제어판에 들어서는 순간 낡은 경첩이 삐걱이는 "끼익" 소리(요청). 마운트 때 한 번만.
   useEffect(() => { playCreak(); }, []);
   const appVersion = useAppStore((s) => s.appVersion);
   const appVersions = useAppStore((s) => s.appVersions);
@@ -203,164 +199,152 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
     }
   };
 
-  return createPortal(
-    // 바깥(딤 처리된 배경)을 눌러도 안 닫히게 한다 — 숨겨진 화면이라 실수로 바깥을
-    // 눌러 닫히면 다시 로고를 여러 번 눌러 찾아 들어와야 해서 번거롭다. 닫기는 모달
-    // 헤더의 공통 X 버튼 하나로만(취소/닫기 같은 별도 버튼을 body에 두지 않는다).
-    <div className="scr-modal-overlay">
-      {/* 카드형 모달이 아니라 상성맵과 같은 시트다(요청) — 딤+블러 위에 내용만 얹으므로
-          모바일에서는 전체화면이 된다. 바깥을 눌러도 안 닫는 원칙은 그대로(위 주석). */}
-      <div className="scr-admin-sheet">
-        <div className="scr-admin-sheet-body">
-        <div className="scr-admin-sheet-head">
-          <span className="scr-admin-sheet-title">제어판</span>
-          <button type="button" className="scr-admin-sheet-close" onClick={onClose} aria-label="닫기">
-            <X size={20} />
-          </button>
-        </div>
+  return (
+    <div className="scr-screen scr-admin-screen">
+      <div className="scr-v2-toolbar">
+        <h1 className="scr-title scr-v2-toolbar-title">제어판</h1>
+      </div>
 
-        {/* 잠긴(비밀번호) 화면은 내용이 짧아 가운데 정렬로, 풀린 뒤(관리 화면)는 위에서부터
-            쌓아 배치등록으로 메뉴가 펼쳐져도 위 내용이 안 밀리게 한다(요청: 공간 예약). */}
-        <div className={cx("scr-admin-sheet-content", !unlocked && "scr-admin-panel-body-locked")}>
-          {!unlocked ? (
-            <>
-              <label className="scr-field">
-                {/* 무엇을 묻는지조차 힌트를 주지 않는다 — 라벨/문구 없이 숫자 비밀번호
-                    입력칸 하나만 보여준다. 숫자 전용이라 모바일에서도 숫자 키패드가
-                    뜨도록 inputMode를 지정하고, type="password"로 입력값을 가린다.
-                    autoFocus는 안 준다 — 모바일에서 모달이 뜨자마자 키보드가 튀어나오는
-                    걸 막는다(이 코드베이스 전반의 원칙). */}
-                <input
-                  ref={passwordRef}
-                  type="password"
-                  inputMode="numeric"
-                  className="scr-input scr-admin-panel-password-input"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") void unlock(); }}
-                  disabled={checking}
-                />
-              </label>
-              {err && <div className="scr-err">{err}</div>}
-              {/* 닫기는 모달 헤더의 공통 X 버튼 하나로 충분하다 — 취소/확인 두 버튼 대신
-                  큼직한 입력 버튼 하나만 둔다. */}
-              <button
-                type="button" className="scr-btn scr-btn-primary scr-admin-panel-quiz-submit-btn"
-                onClick={() => void unlock()} disabled={checking}
-              >
-                {checking ? <Spinner /> : "입력"}
-              </button>
-            </>
-          ) : (
-            <>
-              {/* 버전관리 — 소제목(현재 버전 표시 포함) + 버튼들. 관리 기능은 전부 운영자
-                  전용이라 회원에겐 버튼을 노출하지 않는다(현재 버전 표시만 본다). */}
-              <div className="scr-admin-panel-section-title">
-                버전관리 <span className="scr-admin-panel-section-title-dim">(현재버전 : {currentNumber})</span>
-              </div>
-              {isAdmin ? (
-                <>
-                  <div className="scr-admin-panel-grid">
-                    {/* 현재 버전 설정 — 등록된 버전 중에서 골라 활성 버전을 바꾼다(모두에게
-                        즉시 반영·안내 팝업 재노출이라 확인창을 거친다). */}
-                    <button
-                      type="button" className="scr-btn scr-btn-primary"
-                      onClick={openVersionPicker} disabled={busy}
-                    >
-                      {busy ? <Spinner /> : "현재 버전 설정"}
-                    </button>
-                    {/* 버전 관리 — 버전 추가/삭제 + 버전별 안내 내용 편집 모달. */}
-                    <button
-                      type="button" className="scr-btn scr-btn-primary"
-                      onClick={() => setVersionManageOpen(true)}
-                    >
-                      버전 관리
-                    </button>
+      {/* 잠긴(비밀번호) 화면은 내용이 짧아 가운데 정렬로, 풀린 뒤(관리 화면)는 위에서부터
+          쌓아 배치등록으로 메뉴가 펼쳐져도 위 내용이 안 밀리게 한다(요청: 공간 예약). */}
+      <div className={cx("scr-admin-panel-body", !unlocked && "scr-admin-panel-body-locked")}>
+        {!unlocked ? (
+          <>
+            <label className="scr-field">
+              {/* 무엇을 묻는지조차 힌트를 주지 않는다 — 라벨/문구 없이 숫자 비밀번호
+                  입력칸 하나만 보여준다. 숫자 전용이라 모바일에서도 숫자 키패드가
+                  뜨도록 inputMode를 지정하고, type="password"로 입력값을 가린다.
+                  autoFocus는 안 준다 — 모바일에서 모달이 뜨자마자 키보드가 튀어나오는
+                  걸 막는다(이 코드베이스 전반의 원칙). */}
+              <input
+                ref={passwordRef}
+                type="password"
+                inputMode="numeric"
+                className="scr-input scr-admin-panel-password-input"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") void unlock(); }}
+                disabled={checking}
+              />
+            </label>
+            {err && <div className="scr-err">{err}</div>}
+            {/* 닫기는 모달 헤더의 공통 X 버튼 하나로 충분하다 — 취소/확인 두 버튼 대신
+                큼직한 입력 버튼 하나만 둔다. */}
+            <button
+              type="button" className="scr-btn scr-btn-primary scr-admin-panel-quiz-submit-btn"
+              onClick={() => void unlock()} disabled={checking}
+            >
+              {checking ? <Spinner /> : "입력"}
+            </button>
+          </>
+        ) : (
+          <>
+            {/* 버전관리 — 소제목(현재 버전 표시 포함) + 버튼들. 관리 기능은 전부 운영자
+                전용이라 회원에겐 버튼을 노출하지 않는다(현재 버전 표시만 본다). */}
+            <div className="scr-admin-panel-section-title">
+              버전관리 <span className="scr-admin-panel-section-title-dim">(현재버전 : {currentNumber})</span>
+            </div>
+            {isAdmin ? (
+              <>
+                <div className="scr-admin-panel-grid">
+                  {/* 현재 버전 설정 — 등록된 버전 중에서 골라 활성 버전을 바꾼다(모두에게
+                      즉시 반영·안내 팝업 재노출이라 확인창을 거친다). */}
+                  <button
+                    type="button" className="scr-btn scr-btn-primary"
+                    onClick={openVersionPicker} disabled={busy}
+                  >
+                    {busy ? <Spinner /> : "현재 버전 설정"}
+                  </button>
+                  {/* 버전 관리 — 버전 추가/삭제 + 버전별 안내 내용 편집 모달. */}
+                  <button
+                    type="button" className="scr-btn scr-btn-primary"
+                    onClick={() => setVersionManageOpen(true)}
+                  >
+                    버전 관리
+                  </button>
+                </div>
+
+                {/* 버전 안내 표시 토글 — 예전엔 "버전 안내 설정" 모달 안에 있었지만 제어판
+                    본체로 옮겼다(요청). 켜져 있어야만 버전이 바뀐 뒤 안내 팝업이 뜬다. */}
+                <div className="scr-notice-toggle-row scr-admin-panel-notice-toggle">
+                  <div className="scr-notice-toggle-label">
+                    <span className="scr-notice-toggle-title">버전 안내 표시</span>
+                    <span className="scr-notice-toggle-desc">
+                      {noticeEnabled ? "새 버전 접속 시 안내를 띄웁니다." : "안내를 띄우지 않습니다."}
+                    </span>
                   </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={noticeEnabled}
+                    className={cx("scr-notice-switch", noticeEnabled && "scr-notice-switch-on")}
+                    onClick={() => void toggleNotice()}
+                    disabled={togglingNotice}
+                  >
+                    <span className="scr-notice-switch-knob" />
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="scr-admin-panel-member-note">관리 기능은 운영자만 사용할 수 있어요.</div>
+            )}
 
-                  {/* 버전 안내 표시 토글 — 예전엔 "버전 안내 설정" 모달 안에 있었지만 제어판
-                      본체로 옮겼다(요청). 켜져 있어야만 버전이 바뀐 뒤 안내 팝업이 뜬다. */}
-                  <div className="scr-notice-toggle-row scr-admin-panel-notice-toggle">
-                    <div className="scr-notice-toggle-label">
-                      <span className="scr-notice-toggle-title">버전 안내 표시</span>
-                      <span className="scr-notice-toggle-desc">
-                        {noticeEnabled ? "새 버전 접속 시 안내를 띄웁니다." : "안내를 띄우지 않습니다."}
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={noticeEnabled}
-                      className={cx("scr-notice-switch", noticeEnabled && "scr-notice-switch-on")}
-                      onClick={() => void toggleNotice()}
-                      disabled={togglingNotice}
-                    >
-                      <span className="scr-notice-switch-knob" />
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <div className="scr-admin-panel-member-note">관리 기능은 운영자만 사용할 수 있어요.</div>
-              )}
+            {isAdmin && (
+              <>
+                {err && <div className="scr-err">{err}</div>}
+                {/* 경기관리 — 단순 조회(다운로드)를 뺀 나머지는 전부 실행 전 확인창을
+                    거친다(요청: "관리자 버튼들은 다 컨펌창 있어야돼(단순 조회는
+                    제외)"). */}
+                <div className="scr-admin-panel-section-title">경기관리</div>
+                <div className="scr-admin-panel-grid">
+                  {/* 모든 경기기록 삭제 — 되돌릴 수 없는 작업이지만 버튼 색으로 겁주지는
+                      않는다(요청). window.prompt로 "삭제"를 직접 입력해야 실행된다. */}
+                  <button
+                    type="button" className="scr-btn scr-btn-primary"
+                    onClick={deleteAllGameResults} disabled={busy}
+                  >
+                    {busy ? <Spinner /> : "배치삭제"}
+                  </button>
+                  {/* 등록된 리플레이 전체를 zip으로 백업 다운로드(운영자) — 읽기 전용이라
+                      확인창 없이 바로 받는다. */}
+                  <button
+                    type="button" className="scr-btn scr-btn-primary"
+                    onClick={downloadReplays} disabled={downloading}
+                  >
+                    {downloading ? <Spinner /> : "배치다운로드"}
+                  </button>
+                  {/* 리플레이 폴더 일괄 등록 — 버튼을 누르면 바로 폴더 선택창이 뜬다. 바로 옆
+                      칸에 "결과 보기"를 예약해두려고 마지막에 둔다(그 칸이 항상 비어 있어야
+                      결과 보기가 나타나도 레이아웃이 안 흔들린다). */}
+                  <ReplayBatchButton />
+                </div>
 
-              {isAdmin && (
-                <>
-                  {err && <div className="scr-err">{err}</div>}
-                  {/* 경기관리 — 단순 조회(다운로드)를 뺀 나머지는 전부 실행 전 확인창을
-                      거친다(요청: "관리자 버튼들은 다 컨펌창 있어야돼(단순 조회는
-                      제외)"). */}
-                  <div className="scr-admin-panel-section-title">경기관리</div>
-                  <div className="scr-admin-panel-grid">
-                    {/* 모든 경기기록 삭제 — 되돌릴 수 없는 작업이지만 버튼 색으로 겁주지는
-                        않는다(요청). window.prompt로 "삭제"를 직접 입력해야 실행된다. */}
-                    <button
-                      type="button" className="scr-btn scr-btn-primary"
-                      onClick={deleteAllGameResults} disabled={busy}
-                    >
-                      {busy ? <Spinner /> : "배치삭제"}
-                    </button>
-                    {/* 등록된 리플레이 전체를 zip으로 백업 다운로드(운영자) — 읽기 전용이라
-                        확인창 없이 바로 받는다. */}
-                    <button
-                      type="button" className="scr-btn scr-btn-primary"
-                      onClick={downloadReplays} disabled={downloading}
-                    >
-                      {downloading ? <Spinner /> : "배치다운로드"}
-                    </button>
-                    {/* 리플레이 폴더 일괄 등록 — 버튼을 누르면 바로 폴더 선택창이 뜬다. 바로 옆
-                        칸에 "결과 보기"를 예약해두려고 마지막에 둔다(그 칸이 항상 비어 있어야
-                        결과 보기가 나타나도 레이아웃이 안 흔들린다). */}
-                    <ReplayBatchButton />
-                  </div>
+                {/* 랭킹 관리 — 순위 스냅샷 쪽 일은 경기관리와 성격이 달라 소제목을 따로
+                    뒀다(요청). */}
+                <div className="scr-admin-panel-section-title">랭킹 관리</div>
+                <div className="scr-admin-panel-grid">
+                  {/* 현재 랭킹 집계하기 — 스케줄러(아침)와 같은 로직을 지금 돌린다(요청).
+                      순위가 그대로면 아무것도 안 남으므로 확인창 없이 바로 실행한다. */}
+                  <button
+                    type="button" className="scr-btn scr-btn-primary"
+                    onClick={() => void recomputeRanks()} disabled={recomputing}
+                  >
+                    {recomputing ? <Spinner /> : "현재 랭킹 집계"}
+                  </button>
+                  {/* 순위 기준선 적재 — 지금 데이터로 스냅샷을 남긴다(1회용). 되돌릴 수는
+                      없지만 파괴적이지도 않아서(덮어쓰기) 확인창만 한 번 거친다. */}
+                  <button
+                    type="button" className="scr-btn scr-btn-primary"
+                    onClick={() => setConfirmSeed(true)} disabled={seeding}
+                  >
+                    {seeding ? <Spinner /> : "순위 기준선"}
+                  </button>
+                </div>
 
-                  {/* 랭킹 관리 — 순위 스냅샷 쪽 일은 경기관리와 성격이 달라 소제목을 따로
-                      뒀다(요청). */}
-                  <div className="scr-admin-panel-section-title">랭킹 관리</div>
-                  <div className="scr-admin-panel-grid">
-                    {/* 현재 랭킹 집계하기 — 스케줄러(아침)와 같은 로직을 지금 돌린다(요청).
-                        순위가 그대로면 아무것도 안 남으므로 확인창 없이 바로 실행한다. */}
-                    <button
-                      type="button" className="scr-btn scr-btn-primary"
-                      onClick={() => void recomputeRanks()} disabled={recomputing}
-                    >
-                      {recomputing ? <Spinner /> : "현재 랭킹 집계"}
-                    </button>
-                    {/* 순위 기준선 적재 — 지금 데이터로 스냅샷을 남긴다(1회용). 되돌릴 수는
-                        없지만 파괴적이지도 않아서(덮어쓰기) 확인창만 한 번 거친다. */}
-                    <button
-                      type="button" className="scr-btn scr-btn-primary"
-                      onClick={() => setConfirmSeed(true)} disabled={seeding}
-                    >
-                      {seeding ? <Spinner /> : "순위 기준선"}
-                    </button>
-                  </div>
-
-                </>
-              )}
-            </>
-          )}
-        </div>
-        </div>
+              </>
+            )}
+          </>
+      )}
       </div>
 
       {confirmSetVersion && (
@@ -429,7 +413,6 @@ export default function AdminPanelModal({ isAdmin, onClose }: AdminPanelModalPro
           </div>
         </div>
       )}
-    </div>,
-    document.body,
+    </div>
   );
 }

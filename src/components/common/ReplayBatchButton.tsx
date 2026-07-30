@@ -32,16 +32,8 @@ const CHUNK_SIZE = 50;
 // 메모리가 터지므로 앞쪽 일부만 남긴다(검토 화면도 그만큼을 한 번에 넘겨보는 용도다).
 const MAX_MANUAL_DRAFTS = 20;
 
-// 이 배치가 등록 대상으로 삼을 경기 종류 — 폴더엔 1:1과 팀전이 섞여 있어서, 무엇을 담글지
-// 먼저 고르게 한다.
-type BatchMode = "solo" | "team" | "all";
-
-const MODE_OPTIONS: { value: BatchMode; label: string }[] = [
-  { value: "solo", label: "일대일만" },
-  { value: "team", label: "팀전만" },
-  { value: "all", label: "전체" },
-];
-
+// 폴더에 1:1과 팀전이 섞여 있어도 가리지 않고 전부 담근다(요청: 버튼 하나로) — 예전엔
+// 일대일만/팀전만/전체를 고르는 버튼이 셋이었고, 그 앞에 켜야 하는 스위치까지 있었다.
 // 파일 하나가 어떻게 처리됐는지 — 등록됐든 걸러졌든 실패했든 전부 남겨서 목록으로 보여준다.
 // "왜 몇 개밖에 안 등록됐지?"에 답하려면 등록된 것만 세서는 알 수 없다.
 type Outcome = "registered" | "duplicate" | "skipped" | "failed";
@@ -94,9 +86,8 @@ function draftMeta(d: ReplayDraft): { when: string; teamSize: string; suspected:
   };
 }
 
-// 숨겨진 제어판의 운영자 전용 버튼 — 누르면 무엇을 등록할지(일대일만/팀전만/전체) 고르는
-// 선택지가 펼쳐지고, 하나를 고르면 바로 폴더 선택창이 뜬다. 고른 폴더의 하위(재귀) 전체에서
-// 리플레이(.rep)를 찾아 조건에 맞는 경기만 자동으로 등록한다.
+// 제어판의 운영자 전용 버튼 — 누르면 바로 폴더 선택창이 뜨고, 고른 폴더의 하위(재귀)
+// 전체에서 리플레이(.rep)를 찾아 자동으로 등록한다(요청: 버튼 하나로).
 //
 // 리플레이를 사람이 훑어보는 검토 화면(ReplayReviewModal)과 달리 여기서는 사람이 개입하지 않는다:
 // 배틀태그로 회원을 못 찾은 선수는 전부 "비회원" 슬롯으로 채워 넣고(나중에 유저 매핑
@@ -110,7 +101,6 @@ export default function ReplayBatchButton() {
   const [progress, setProgress] = useState<BatchProgress>(EMPTY_PROGRESS);
   const [running, setRunning] = useState(false);
   const [started, setStarted] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
   const [excludeComputer, setExcludeComputer] = useState(false);
   const [err, setErr] = useState("");
   // 폴더를 고른 직후 브라우저가 실제로 뭘 넘겨줬는지 — 진행이 아예 시작되지 않는 경우를
@@ -121,11 +111,9 @@ export default function ReplayBatchButton() {
   // 없어서 여기 못 들어온다(파일을 다시 골라 돌리는 수밖에 없다).
   const [manualDrafts, setManualDrafts] = useState<ReplayDraft[]>([]);
   const [reviewOpen, setReviewOpen] = useState(false);
-  // 진행률/로그를 제어판 모달 안에 그대로 쌓지 않고 별도의 창(모달)으로 띄운다(요청:
+  // 진행률/로그를 제어판 안에 그대로 쌓지 않고 별도의 창(모달)으로 띄운다(요청:
   // "배치 등록시 별도 창에 결과 나오게, 모달 내에 스크린 만들 필요 없이") — 로그가
-  // 길어질수록 제어판 모달의 본문(.scr-admin-sheet-content)이 늘어나면서
-  // 그 위에 겹치는 CSS 버그(translateY로 인한 닫기 버튼 클릭 안 됨)까지 있었어서, 아예
-  // 분리하는 쪽이 근본적으로 더 안전하다. 배치가 시작되면 자동으로 뜨고, 닫아도(X) 배치
+  // 길어질수록 제어판 본문이 한없이 늘어난다. 배치가 시작되면 자동으로 뜨고, 닫아도(X) 배치
   // 자체는 계속 진행된다 — 다시 보고 싶으면 트리거 버튼 옆에 뜨는 "결과 보기"로 재오픈.
   const [resultsOpen, setResultsOpen] = useState(false);
   // 결과 모달의 배경 입력 차단 + 바깥 탭 닫기 — 예전엔 오버레이 클릭이 담당했지만
@@ -134,7 +122,6 @@ export default function ReplayBatchButton() {
 
   // 중단 요청과 고른 옵션들은 렌더와 무관하게 실행 중인 루프가 즉시 읽어야 해서 ref로 둔다.
   const abortRef = useRef(false);
-  const modeRef = useRef<BatchMode>("solo");
   const excludeComputerRef = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const logRef = useRef<HTMLDivElement>(null);
@@ -177,12 +164,8 @@ export default function ReplayBatchButton() {
     if (el) el.scrollTop = el.scrollHeight;
   }, [results.length]);
 
-  const start = (mode: BatchMode) => {
-    modeRef.current = mode;
+  const start = () => {
     excludeComputerRef.current = excludeComputer;
-    // 스위치는 켜 둔 채로 둔다(지적: "실제 등록 진행중 배치등록이 꺼지는 현상") — 예전엔
-    // 모드를 고르는 순간 꺼버려서, 폴더 선택창이 뜨기도 전에 스위치가 내려가고 등록이
-    // 끝난 뒤에도 꺼진 채였다. 연달아 한 번 더 돌리려면 매번 다시 켜야 했다.
     openPicker();
   };
 
@@ -217,7 +200,6 @@ export default function ReplayBatchButton() {
     setStarted(true);
     setResultsOpen(true);
 
-    const mode = modeRef.current;
     abortRef.current = false;
     setErr("");
     setRunning(true);
@@ -270,13 +252,6 @@ export default function ReplayBatchButton() {
             continue;
           }
 
-          const isSolo = draft.matchType === "0101";
-          if ((mode === "solo" && !isSolo) || (mode === "team" && isSolo)) {
-            // 몇 대 몇으로 잡혔는지는 로그 줄의 별도 칸(teamSize)에 이미 나오므로 사유
-            // 문구에는 굳이 다시 안 넣는다.
-            record(draft.fileName, "skipped", "이번 대상이 아니에요.", draftMeta(draft));
-            continue;
-          }
           if (draft.winnerSide === null) {
             fail(draft, "승자를 판별하지 못했어요 — 직접 등록해 주세요.");
             continue;
@@ -345,23 +320,10 @@ export default function ReplayBatchButton() {
         hidden
         onChange={(e) => runBatch(e.target.files)}
       />
-      {/* 배치등록은 버튼이 아니라 스위치다(요청) — 켜야만 아래 세부 버튼이 살아난다.
-          실수로 폴더 선택창이 뜨는 일을 한 단계 막아 주는 잠금이기도 하다.
-          배치가 도는 중에는 같은 자리가 '중단' 버튼이 된다. */}
-      {/* 한 줄에 [배치등록] [결과 보기] [스위치 / 중단] — 결과 보기를 타이틀 옆으로
-          올렸다(요청). 예전엔 세부 버튼 아래 별도 칸에 있어서 눈에 잘 안 띄었고, 도는
-          중에는 이 줄이 통째로 '중단' 버튼으로 바뀌어 타이틀까지 사라졌다. */}
-      <div className="scr-notice-toggle-row scr-admin-panel-batch-toggle">
-        <span className="scr-notice-toggle-title">배치등록</span>
-        {started && total > 0 && !resultsOpen && (
-          <button
-            type="button"
-            className="scr-admin-panel-results-reopen"
-            onClick={() => setResultsOpen(true)}
-          >
-            <ClipboardList size={12} /> 결과 {processed}/{total}
-          </button>
-        )}
+      {/* 한 줄에 [배치등록] [결과 보기] — 버튼 하나로 줄이고 켜고 끄는 스위치는 없앴다
+          (요청). 누르면 바로 폴더(모바일은 파일) 선택창이 뜨고, 고른 것 중 리플레이를
+          전부(일대일·팀전 가리지 않고) 담근다. 도는 중에는 같은 자리가 '중단'이 된다. */}
+      <div className="scr-admin-panel-batch-row">
         {running ? (
           <button
             type="button"
@@ -371,46 +333,32 @@ export default function ReplayBatchButton() {
             <Spinner /> 중단
           </button>
         ) : (
+          <button type="button" className="scr-btn scr-btn-primary" onClick={start}>
+            배치등록
+          </button>
+        )}
+        {started && total > 0 && !resultsOpen && (
           <button
             type="button"
-            role="switch"
-            aria-checked={menuOpen}
-            className={cx("scr-notice-switch", menuOpen && "scr-notice-switch-on")}
-            onClick={() => setMenuOpen((v) => !v)}
+            className="scr-admin-panel-results-reopen"
+            onClick={() => setResultsOpen(true)}
           >
-            <span className="scr-notice-switch-knob" />
+            <ClipboardList size={12} /> 결과 {processed}/{total}
           </button>
         )}
       </div>
 
-      {/* 세부 버튼은 처음부터 자리에 있고, 스위치를 켜야 눌린다(요청) — 나타났다 사라지면
-          그때마다 아래 내용이 들썩인다. 무엇을 담글지 고르는 즉시 폴더 선택창이 뜨므로,
-          함께 걸 옵션(컴퓨터 제외)은 반드시 그 버튼들보다 위에 있어야 한다. */}
+      {/* 함께 걸 옵션 — 버튼을 누르는 즉시 선택창이 뜨므로 반드시 버튼보다 위에 보여야
+          한다고 봤지만, 버튼이 하나로 줄어 줄 아래에 붙여도 먼저 눈에 들어온다. */}
       {!running && (
-        <div className={cx("scr-admin-panel-batch-menu", !menuOpen && "scr-admin-panel-batch-menu-off")}>
-          <label className="scr-checkbox-field scr-admin-panel-batch-option">
-            <input
-              type="checkbox"
-              checked={excludeComputer}
-              disabled={!menuOpen}
-              onChange={(e) => setExcludeComputer(e.target.checked)}
-            />
-            컴퓨터 낀 경기 제외
-          </label>
-          <div className="scr-admin-panel-batch-modes">
-            {MODE_OPTIONS.map((o) => (
-              <button
-                key={o.value}
-                type="button"
-                className="scr-btn scr-btn-primary scr-admin-panel-batch-mode"
-                disabled={!menuOpen}
-                onClick={() => start(o.value)}
-              >
-                {o.label}
-              </button>
-            ))}
-          </div>
-        </div>
+        <label className="scr-checkbox-field scr-admin-panel-batch-option">
+          <input
+            type="checkbox"
+            checked={excludeComputer}
+            onChange={(e) => setExcludeComputer(e.target.checked)}
+          />
+          컴퓨터 낀 경기 제외
+        </label>
       )}
 
       {/* 진행이 아예 시작되지 않은 경우(리플레이를 하나도 못 찾음)에만 브라우저가 뭘 넘겨줬는지

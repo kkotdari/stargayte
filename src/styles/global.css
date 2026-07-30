@@ -3651,46 +3651,20 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    열었다 닫으면 화면이 밀려 올라감"). 보이는 모습은 상성맵 오버레이와 같다.
    z-index가 있어 이 요소가 쌓임 맥락을 만들므로 ::before의 z-index:-1은 내용 뒤·페이지
    앞에 정확히 놓인다(.scr-modal::before와 같은 원리). */
-.scr-admin-sheet {
-  position: fixed; inset: 0; z-index: 100;
-  display: flex; align-items: safe center; justify-content: center;
-  padding: calc(12px + var(--safe-top)) 12px calc(12px + env(safe-area-inset-bottom, 0px));
-  /* 리바운드/배경 스크롤 전파 둘 다 차단(상성맵과 동일). */
-  overflow-y: auto; overscroll-behavior: none;
-}
-.scr-admin-sheet::before {
-  content: ""; position: absolute; inset: 0; z-index: -1;
-  background: rgba(4, 6, 10, 0.62);
-  -webkit-backdrop-filter: blur(7px); backdrop-filter: blur(7px);
-}
-html.scr-light-theme .scr-admin-sheet::before { background: rgba(244, 246, 250, 0.62); }
-.scr-admin-sheet-body { width: min(420px, 100%); }
-/* 타이틀과 닫기 버튼을 상성 보기 모달처럼 여유 있게(요청) — 위아래로 숨통을 주고
-   본문과의 간격도 벌린다. */
-.scr-admin-sheet-head {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 4px 2px 0; margin-bottom: 16px;
-}
-.scr-admin-sheet-title { font-size: var(--fs-subhead); font-weight: 800; }
-.scr-admin-sheet-close {
-  background: transparent; border: none; cursor: pointer; color: var(--muted);
-  padding: 6px; display: inline-flex; -webkit-tap-highlight-color: transparent;
-}
-@media (hover: hover) { .scr-admin-sheet-close:hover { color: var(--text); } }
-/* 내용은 세로로 쌓는다 — 예전 .scr-modal-body가 하던 역할(간격·정렬·최소높이)만 옮겼다.
-   스크롤은 시트 자신이 맡으므로 여기에 overflow를 두지 않는다. */
-.scr-admin-sheet-content {
-  /* 앞으로 붙을 요소가 많다(요청) — 세로 간격을 넉넉히 잡아 둔다. */
+/* 제어판은 모달이 아니라 정식 화면이다(요청) — 미니맵 화면과 같은 폭·여백을 쓰고,
+   내용은 가운데 한 칸(420px)에 모은다. */
+.scr-admin-screen { display: flex; flex-direction: column; gap: 10px; padding: 0 20px 24px; }
+/* 내용은 세로로 쌓는다 — 앞으로 붙을 요소가 많아(요청) 세로 간격을 넉넉히 잡아 둔다. */
+.scr-admin-panel-body {
+  width: min(420px, 100%); margin-inline: auto;
   display: flex; flex-direction: column; gap: 20px;
   /* 잠금 화면과 관리 화면의 크기가 크게 달라 보이지 않을 만큼만 자리를 예약한다. */
   min-height: 300px;
 }
-
-/* 암호 입력 위 큰 자물쇠 이모지 — 무엇을 묻는지 문구 없이도 맥락을 준다. */
 /* 잠긴(비밀번호) 화면은 내용이 짧아 가운데로 모으고, 풀린 뒤 관리 화면은 위에서부터 쌓는다. */
-.scr-admin-sheet-content { justify-content: flex-start; }
-.scr-admin-sheet-content.scr-admin-panel-body-locked { justify-content: center; }
-.scr-admin-sheet-content .scr-field { align-items: center; }
+.scr-admin-panel-body { justify-content: flex-start; }
+.scr-admin-panel-body.scr-admin-panel-body-locked { justify-content: center; min-height: 60vh; }
+.scr-admin-panel-body .scr-field { align-items: center; }
 /* 라벨 없는 숫자 PIN 입력칸 하나 — 자간을 넉넉히 둬 PIN 느낌을 준다. */
 .scr-admin-panel-password-input {
   font-size: var(--fs-hero-3); font-family: var(--font-ui); text-align: center;
@@ -3726,10 +3700,12 @@ html.scr-light-theme .scr-admin-sheet::before { background: rgba(244, 246, 250, 
    실제 트리거 버튼만 grid 칸을 차지하고, 메뉴/부가 정보는 아래에서 grid-column:1/-1로
    가로 전체를 차지하는 한 줄로 펼쳐진다. */
 .scr-admin-panel-batch { display: contents; }
-.scr-admin-panel-batch-menu, .scr-admin-panel-batch-counts, .scr-admin-panel-batch .scr-err {
+.scr-admin-panel-batch-option, .scr-admin-panel-batch-counts, .scr-admin-panel-batch .scr-err {
   grid-column: 1 / -1;
 }
-.scr-admin-panel-batch-menu { margin-top: 6px; }
+/* 트리거 버튼과 '결과 보기'가 한 칸에 나란히 — 버튼 하나로 줄이면서 스위치 줄을 없앴다(요청). */
+.scr-admin-panel-batch-row { display: flex; align-items: center; gap: 8px; }
+.scr-admin-panel-batch-row .scr-btn { flex: 1; min-width: 0; }
 /* "결과 보기" 재오픈 버튼 — 그리드 칸으로 두면 나타났다 사라질 때마다 그 아래(경기관리
    섹션 등) 버튼들이 들썩였다(실제로 지적받은 문제 — "결과보기 생기면 레이아웃이
    흔들리잖아"). 그리드 흐름에서 완전히 빼고 카드(.scr-modal-body, position:relative)
@@ -3760,26 +3736,7 @@ html.scr-light-theme .scr-admin-sheet::before { background: rgba(244, 246, 250, 
 .scr-admin-panel-batch-modal-body { padding-bottom: 16px; }
 /* 카운트 요약("등록 X · 중복 Y ...") 데이터 텍스트를 2스텝 작게(요청). */
 .scr-admin-panel-batch-counts { font-size: var(--fs-11); }
-.scr-admin-panel-batch-option { justify-content: center; color: var(--text); font-size: var(--fs-caption); margin-bottom: 8px; }
-/* 대상 버튼(일대일만/팀전만/전체) — 셋 다 같은 지름의 완전한 원형으로 통일(요청: 알약이
-   아니라 진짜 원). 지름은 가장 긴 라벨("일대일만" 4자 × micro 12px ≈ 48px)이 한 줄로
-   들어가는 크기. 텍스트는 caption→micro로 1스텝 축소(요청). */
-/* 대상 버튼(일대일만/팀전만/전체) — 위 버튼 그리드와 같은 폭·모양으로 두 개씩 놓는다.
-   예전의 원형 버튼은 제어판이 물리 버튼 판이던 시절의 것이라 함께 폐기했다(요청). */
-.scr-admin-panel-batch-modes {
-  /* 셋뿐이라 한 줄에 나란히 놓는다(요청) — 대신 위 버튼들보다 한 단계 작게. */
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
-}
-.scr-admin-panel-batch-mode {
-  width: 100%; padding: 6px 4px; min-height: var(--field-h-sm);
-  font-size: var(--fs-caption);
-}
-/* 스위치가 꺼져 있으면 세부 버튼은 자리에 있되 눌리지 않는다(요청: 처음부터 비활성으로
-   보이게). 자리를 늘 차지하므로 켜고 꺼도 아래 내용이 들썩이지 않는다. */
-.scr-admin-panel-batch-menu-off { opacity: 0.4; }
-.scr-admin-panel-batch-menu-off * { cursor: not-allowed; }
-/* 배치등록 스위치 줄 — 그리드 한 칸이 아니라 가로 전체를 쓴다. */
-.scr-admin-panel-batch-toggle { grid-column: 1 / -1; }
+.scr-admin-panel-batch-option { justify-content: center; color: var(--text); font-size: var(--fs-caption); margin-top: 2px; }
 /* 배치가 못 처리한 리플레이를 검토 화면으로 넘기는 버튼 — 배치 버튼과 같은 톤이되, 할 일이
    남아있다는 신호라 테두리만 조금 더 또렷하게 준다. */
 .scr-admin-panel-batch-review {
