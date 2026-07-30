@@ -255,6 +255,28 @@ const ZLING_RUSH_SPAN_SEC = 30;
 // 병력 건물보다 자원을 먼저 늘린 것이 '초반'이라 할 수 있는 한계 — 이보다 늦으면
 // 그냥 확장한 것이지 째기가 아니다.
 const GREEDY_BUILD_SEC = 6 * 60;
+/** 병력·방어탑 없이 늘리기만 한 째기는 조금 더 늦게까지 본다 — 해처리를 다섯까지 늘리는
+ *  데는 시간이 걸린다(요청: 풀이 있어도 병력·성큰 없이 해처리 다섯이면 째기). */
+const GREEDY_MASS_SEC = 9 * 60;
+/** 저그가 병력 건물(스포닝풀)도 없이 늘린 확장이 이만큼이면 째기 — 첫 본진을 뺀 수라
+ *  2면 해처리 셋이다(요청). 다른 종족은 하나만 늘려도(생더블) 순서가 곧 증거다. */
+const GREEDY_BARE_EXPANDS_Z = 2;
+/** 병력 건물이 있는데도 째기로 보려면 늘린 본진이 이만큼은 돼야 한다 — 첫 본진을 뺀
+ *  수라 4면 해처리 다섯이다(요청: 풀이 있어도 병력·성큰 없이 해처리 다섯이면 째기). */
+const GREEDY_MIN_EXPANDS = 4;
+/** 늘린 몫 하나당 이만큼의 병력(생산 명령 수)은 있어야 '막으면서 늘렸다'로 본다. */
+const GREEDY_ARMY_PER_BASE = 2;
+/** 방어탑 하나를 병력 몇 몫으로 셀지 — 성큰·포토·벙커는 병력을 대신한다. */
+const GREEDY_DEF_WORTH = 2;
+/** 방어탑으로 세는 건물. 성큰·스포어는 크립 콜로니로 지어지므로 그것도 함께 본다. */
+const DEF_BUILDINGS = [
+  "Creep Colony", "Sunken Colony", "Spore Colony", "Photon Cannon", "Bunker", "Missile Turret",
+];
+/** 병력으로 세지 않는 것 — 일꾼과 수송·정찰용, 그리고 알 단계. */
+const PEACE_UNITS = new Set([
+  "SCV", "Probe", "Drone", "Larva", "Egg", "Overlord", "Cocoon", "Mutalisk Cocoon", "Lurker Egg",
+  "Shuttle", "Dropship", "Observer", "Science Vessel", "Medic",
+]);
 
 // 아군 기지에 이만큼은 깔아 줘야 '받쳐줬다'고 말할 수 있다 — 한 개는 지나가다 지은 것일 수 있다.
 const ALLY_CANNON_MIN = 2;
@@ -684,23 +706,41 @@ function detectFor(c: Ctx): Tactic[] {
     return f.length > 0 ? Math.min(...f) : null;
   };
 
-  // 병력 건물부터 올리지 않고 자원부터 늘리는 것도 '째기'다(요청) — 저그는 스포닝풀 없이
-  // 해처리 셋, 프로토스·테란은 게이트/배럭 없이 투넥서스·투커맨드가 그 신호다. 순서 자체가
-  // 증거라 유닛 수를 세는 것보다 확실하다.
+  // 째기의 기준은 하나다 — 병력과 방어탑에 견줘 본진(가장 중요)이나 생산건물을 늘렸나(요청).
+  // 저그는 원래 해처리를 여러 개 가는 종족이라, 수만 세면 정상적인 운영이 죄다 째기가 된다
+  // (지적: 너무 째기가 잘 나온다). 그래서 두 갈래로만 본다.
+  //  ① 병력 건물도 없이 늘렸을 때 — 저그는 스포닝풀 없이 해처리 셋, 프로토스·테란은
+  //     게이트·배럭 없는 더블. 순서 자체가 증거다.
+  //  ② 병력 건물은 있어도 병력도 방어탑도 없이 늘리기만 했을 때 — 늘린 수에 견줘 본다.
   {
-    // 병력 건물이 아예 안 보이는 기록은 '늦게 지었다'가 아니라 '기록이 없다'로 봐야 한다 —
-    // 그걸 째기로 세면 커맨드만 늘린 판이 죄다 째기가 된다. 병력 건물이 실제로 있는
-    // 기록에서만, 그것보다 자원 건물이 먼저 올라갔을 때를 본다.
-    const later = (b: string) => firstB(b) ?? Infinity;
+    const base = race === "저그" ? "Hatchery" : race === "프로토스" ? "Nexus" : "Command Center";
     const military = race === "저그" ? "Spawning Pool" : race === "프로토스" ? "Gateway" : "Barracks";
-    const hatches = (s.buildingFrames["Hatchery"] ?? []).filter((f) => f < later(military));
-    const greedy =
-      firstB(military) === null ? null
-      : race === "저그" ? (hatches.length >= 2 ? hatches[1] : null)
-      : race === "프로토스" ? (later("Nexus") < later("Gateway") ? firstB("Nexus") : null)
-      : race === "테란" ? (later("Command Center") < later("Barracks") ? firstB("Command Center") : null)
-      : null;
-    if (greedy !== null && sec(greedy) < GREEDY_BUILD_SEC) {
+    const prod = race === "저그" ? [] : race === "프로토스"
+      ? ["Gateway", "Robotics Facility", "Stargate"] : ["Barracks", "Factory", "Starport"];
+    const before = (b: string, f: number) => (s.buildingFrames[b] ?? []).filter((x) => x < f).length;
+    /** 그때까지 갖춘 방어력 — 뽑은 병력에 방어탑을 몇 몫으로 얹어 센다. */
+    const guarded = (f: number) => {
+      const troops = Object.entries(s.unitFrames)
+        .filter(([n]) => !PEACE_UNITS.has(n))
+        .reduce((n, [, fs]) => n + fs.filter((x) => x < f).length, 0);
+      return troops + DEF_BUILDINGS.reduce((n, b) => n + before(b, f), 0) * GREEDY_DEF_WORTH;
+    };
+    /** 그때까지 늘린 정도 — 본진이 가장 무겁고 생산 건물은 절반 몫이다(요청). */
+    const grown = (f: number, i: number) =>
+      i + 1 + Math.max(0, prod.reduce((n, b) => n + before(b, f), 0) - 1) * 0.5;
+
+    // 병력 건물이 아예 안 보이는 기록은 '늦게 지었다'가 아니라 '기록이 없다'로 봐야 한다 —
+    // 그걸 째기로 세면 커맨드만 늘린 판이 죄다 째기가 된다.
+    const milFrame = firstB(military);
+    const expands = [...(s.buildingFrames[base] ?? [])].sort((a, b) => a - b);
+    const bareFrom = race === "저그" ? GREEDY_BARE_EXPANDS_Z : 1;
+    const greedy = expands.find((f, i) => {
+      if (milFrame !== null && milFrame > f) return i + 1 >= bareFrom && sec(f) < GREEDY_BUILD_SEC;
+      return i + 1 >= GREEDY_MIN_EXPANDS
+        && sec(f) < GREEDY_MASS_SEC
+        && guarded(f) < grown(f, i) * GREEDY_ARMY_PER_BASE;
+    }) ?? null;
+    if (greedy !== null) {
       out.push({
         key: "greedy-build", weight: 12, at: greedy, who,
         p: { kind: race === "저그" ? "hatch" : race === "프로토스" ? "nexus" : "command" },
