@@ -187,13 +187,18 @@ export default function GameResultStory({
     return at === null ? null : Math.max(0, Math.round((at * SECONDS_PER_FRAME) / 60));
   };
 
-  /** 지금 스냅이 가리키는 시점(프레임) — 지금까지 나온 beat 가운데 가장 늦은 시각. 저장된
-   *  '이사·망함' 시점과 견주는 잣대다. 맺음말 스냅은 경기 끝이므로 전부 지난 것으로 본다. */
+  /** 지금 스냅이 가리키는 시점(프레임) — 여기까지 지나온 beat 가운데 가장 늦은 시각. 저장된
+   *  '이사·망함' 시점과 견주는 잣대다. 맺음말 스냅은 경기 끝이므로 전부 지난 것으로 본다.
+   *
+   *  지금 문장의 beat만 보면 안 된다 — 맺음 문장(stand·gg 등)에는 시각이 아예 없어서 그
+   *  스냅에서만 시계가 0으로 돌아갔고, 이사한 사람의 아바타가 시작 지점으로 되돌아갔다
+   *  (지적). 시각은 한 번 흐르면 되돌아가지 않으므로 처음부터 훑어 가장 늦은 값을 쓴다. */
   const nowAt: number = useMemo(() => {
     if (index >= last) return Infinity;
     const beats = gameResult.summaryData?.beats ?? [];
+    const upto = Math.max(-1, ...(sentences[index]?.beats ?? []));
     let at = 0;
-    for (const i of sentences[index]?.beats ?? []) {
+    for (let i = 0; i <= upto && i < beats.length; i += 1) {
       const v = beats[i]?.at;
       if (typeof v === "number" && v > at) at = v;
     }
