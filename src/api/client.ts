@@ -13,6 +13,7 @@ import type {
   LeagueMatch, LeagueMatchSide, LeagueMatchResultPayload,
 } from "../types";
 import type { ReplaySummaryData } from "../utils/replaySummaryData";
+import type { ReplayMapGrid } from "../utils/replayParser";
 
 // undefined/""/"all"(필터 미지정 관례) 값은 아예 뺀 쿼리스트링을 만든다 — 서버는 파라미터가
 // 없으면 그 조건을 걸지 않는 것으로 해석한다.
@@ -396,6 +397,7 @@ export const api = {
     mapName: string | null;
     durationSeconds: number | null;
     summaryData: ReplaySummaryData | null;
+    mapData: ReplayMapGrid | null;
     players: {
       playerName: string;
       race: string | null;
@@ -454,6 +456,16 @@ export const api = {
   // 등록된 경기가 하나라도 있으면 서버가 막는다(그럼 미지정으로 다시 나타나야 정상이라).
   async deleteReplayNameMapping(rawName: string): Promise<void> {
     await request<void>(`/api/game-results/replay-name-mappings/${encodeURIComponent(rawName)}`, { method: "DELETE" });
+  },
+
+  // 미니맵 격자 — 경기 응답에는 해시만 있고 격자는 이걸로 따로 받는다(같은 맵을 쓰는 경기가
+  // 수십 건이라 목록에 끼워 보내면 22KB짜리가 되풀이된다). 서버가 모르는 해시는 그냥 빠진
+  // 채로 돌아온다 — 오류가 아니라 그 경기만 미니맵 없이 그려진다.
+  async getReplayMaps(hashes: string[]): Promise<ReplayMapGrid[]> {
+    if (hashes.length === 0) return [];
+    const qs = hashes.map((h) => `hash=${encodeURIComponent(h)}`).join("&");
+    const res = await request<{ maps: ReplayMapGrid[] }>(`/api/game-results/replay-maps?${qs}`);
+    return res.maps;
   },
 
   async createGameResult(gameResult: NewGameResult): Promise<GameResult> {

@@ -312,6 +312,7 @@ export default function ReplayBatchButton() {
             mapName: filled.mapName || null, gameStartedAt: filled.gameStartedAt,
             durationSeconds: filled.durationSeconds,
             summaryData: filled.summaryData,
+            mapData: filled.mapGrid,
           };
           try {
             await addGameResult(payload);

@@ -10,7 +10,8 @@ import FilterItem from "../../components/common/FilterItem";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 import KakaoShareButton from "../../components/common/KakaoShareButton";
 import { shareThumb, type KakaoShareContent } from "../../utils/kakaoShare";
-import GameResultCardBody, { resolveSlotName, type SearchListRow } from "./GameResultCardBody";
+import GameResultCardBody, { type SearchListRow } from "./GameResultCardBody";
+import { resolveSlotName } from "./GameResultSides";
 import { isComputerSlot } from "../../constants/computerSlot";
 import { isUnregisteredSlot } from "../../constants/unregisteredSlot";
 import { ChallengeCard, ChallengeTimeHeadEdit } from "../challenge/ChallengeScreen";
@@ -315,7 +316,7 @@ function FeedCardComments({ targetType, targetId }: { targetType: FeedTargetType
 // (경기 로우·댓글·아바타 이미지)까지 다시 렌더되면서 iOS에서 기존 카드들이 깜빡였다
 // (지적: "펼치기 접기 누를 때 기존 요소들도 다시 그리는 것 같아"). 개폐 때 카드 props는
 // 전부 같은 참조라 memo가 전부 걸러낸다.
-export const GameResultCard = memo(function GameResultCard({ item, memberOf, onDeleted, dateLabel, highlightMemberIds, highlightTerms, nested = false }: {
+export const GameResultCard = memo(function GameResultCard({ item, memberOf, onDeleted, dateLabel, highlightMemberIds, highlightTerms, nested = false, active = true }: {
   item: GameResultItem;
   memberOf: (id: string) => Member | undefined;
   onDeleted: () => void;
@@ -325,6 +326,10 @@ export const GameResultCard = memo(function GameResultCard({ item, memberOf, onD
   // 묶음 카드 안에 들어갈 때 — 포스트 껍데기(배경·블러·꼬리여백)와 "게임결과" 제목을 벗고
   // 내용만 낸다. 겉보기로는 한 장의 카드 안에 경기들이 이어지는 모양이 된다(요청).
   nested?: boolean;
+  // 지금 실제로 보이는 카드인가 — 접힌 묶음도 카드 본체를 투명하게 깔아 둔 채로 두기
+  // 때문에(자리를 주고받는 애니메이션 때문), 이 값 없이는 안 보이는 카드의 미니맵
+  // 타임라인이 혼자 돌아가 있다가 펼치는 순간 중간 장면부터 보인다.
+  active?: boolean;
 }) {
   const rows: SearchListRow[] = useMemo(() => {
     const m = item.gameResult;
@@ -357,7 +362,7 @@ export const GameResultCard = memo(function GameResultCard({ item, memberOf, onD
           래퍼 밖에 둔다(기준면은 포스트 판이어야 한다). */}
       <div className="scr-post-panel">
         <div className="scr-feed-game-result-body">
-          <GameResultCardBody rows={rows} memberOf={memberOf} onDeleted={onDeleted} highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms} />
+          <GameResultCardBody rows={rows} memberOf={memberOf} onDeleted={onDeleted} highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms} active={active} />
         </div>
         <FeedCardComments targetType="gameResult" targetId={item.gameResult.id} />
       </div>
@@ -777,6 +782,7 @@ export function GameResultPost({
               <GameResultCard
                 nested item={it} memberOf={memberOf} onDeleted={onDeleted} dateLabel={dateLabel}
                 highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms}
+                active={open}
               />
             </div>
           ))}

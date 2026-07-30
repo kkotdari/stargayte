@@ -2046,13 +2046,10 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     ...(mode === "comeback" ? { whom: loserPlayers.map((p) => p.rawName) } : {}),
   };
 
-  // 시작 지점(몇 시) — 요약에서 그 사람이 처음 나올 때 한 번만 붙인다(요청). 맵 정보를
-  // 못 읽은 리플레이는 startClock이 null이라 그 사람만 빠진다.
-  const spots: Record<string, number> = {};
+  // 본진 자리(타일 좌표) — 미니맵에 아바타+닉네임을 계속 띄우는 자리다(요청). 맵 정보를
+  // 못 읽은 리플레이는 좌표가 null이라 그 사람만 빠진다.
   const bases: Record<string, [number, number]> = {};
   for (const p of replay.players) {
-    if (p.startClock !== null) spots[p.rawName] = p.startClock;
-    // 본진 자리(타일 좌표) — 미니맵에 아바타+닉네임을 계속 띄우는 자리다(요청).
     if (p.startX !== null && p.startY !== null) {
       bases[p.rawName] = [round1(p.startX), round1(p.startY)];
     }
@@ -2065,7 +2062,6 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     ...(totalFrames ? { end: totalFrames } : {}),
     // 개인전에서는 팀 용어를 쓰지 않는다(요청).
     ...(duel ? { duel: true } : {}),
-    ...(Object.keys(spots).length > 0 ? { spots } : {}),
     ...(Object.keys(bases).length > 0 ? { bases } : {}),
     beats: [...chosen, ending].map(strip).map((b) => {
       const pos = beatPositions(b, byName);

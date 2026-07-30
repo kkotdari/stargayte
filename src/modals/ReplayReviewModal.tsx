@@ -240,6 +240,7 @@ export default function ReplayReviewModal({
           replay: d.replay,
           mapName: d.mapName || null, gameStartedAt: d.gameStartedAt, durationSeconds: d.durationSeconds,
           summaryData: d.summaryData,
+          mapData: d.mapGrid,
         };
         await addGameResult(payload);
         setSubmittedIndices((prev) => new Set(prev).add(i));

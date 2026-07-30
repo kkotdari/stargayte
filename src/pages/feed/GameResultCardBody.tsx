@@ -1,87 +1,19 @@
 import { useState, useRef, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
-import { MoreHorizontal, Monitor, User } from "lucide-react";
-import Avatar from "../../components/common/Avatar";
-import RaceBadge from "../../components/common/RaceBadge";
+import { MoreHorizontal } from "lucide-react";
+import GameResultStory from "./GameResultStory";
+import { outcomeFor, teamSummaryName } from "./GameResultSides";
 import { cleanMapName } from "../../utils/mapName";
 import { shareThumb } from "../../utils/kakaoShare";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 import { api } from "../../api/client";
 import { useAppStore } from "../../store/appStore";
 import { isAdminRole } from "../../constants/roles";
-import { isComputerSlot, computerSlotLabel } from "../../constants/computerSlot";
-import { isUnregisteredSlot, unregisteredSlotLabel } from "../../constants/unregisteredSlot";
 import { cx } from "../../utils/format";
 import { attachPopover } from "../../utils/popover";
-import { normalizeSearchText } from "../../utils/memberSearch";
-import { renderReplaySummaryParts, type SummaryPart } from "../../utils/replaySummaryText";
 import KakaoShareButton from "../../components/common/KakaoShareButton";
 import type { KakaoShareContent } from "../../utils/kakaoShare";
 import type { GameResult, Member, GameResultSlot, GameOutcome } from "../../types";
-
-type Outcome = "win" | "loss" | "draw" | "notHeld";
-function outcomeFor(side: "team1" | "team2", result: GameOutcome): Outcome {
-  if (result === "draw") return "draw";
-  if (result === "not_held") return "notHeld";
-  return side === result ? "win" : "loss";
-}
-
-// 컴퓨터/비회원 여부에 따라 표시 이름을 정한다 — PlayerCell(펼친 로스터)과 접힌 상태의
-// 팀 요약("누구 외 N명")이 같은 이름 규칙을 쓰도록 공용으로 뺐다.
-export function resolveSlotName(slot: GameResultSlot, players: GameResultSlot[], memberOf: (id: string) => Member | undefined): string {
-  const isComputer = isComputerSlot(slot.memberId);
-  const isUnreg = isUnregisteredSlot(slot.memberId);
-  const m = isComputer || isUnreg ? undefined : memberOf(slot.memberId);
-  return isComputer
-    ? (slot.rawName || computerSlotLabel(players, slot.memberId))
-    : isUnreg
-      ? (slot.rawName || unregisteredSlotLabel(players, slot.memberId))
-      : (m?.nickname ?? slot.memberId);
-}
-
-// 리플레이 전황 요약 — 저장된 건 문장이 아니라 '무슨 일이 있었나'라서, 볼 때마다 지금의
-// 회원 연결로 이름을 다시 풀어 문장을 만든다(요청). 그래서 누가 닉네임을 바꾸거나 비회원
-// 게임 아이디가 회원으로 연결되면 이미 등록된 경기의 요약도 바로 따라온다.
-function summaryPartsOf(
-  r: SearchListRow, memberOf: (id: string) => Member | undefined,
-): SummaryPart[] | null {
-  const slots = [...r.team1, ...r.team2];
-  const nameByRaw = new Map<string, string>();
-  // 이름 → 팀 번호. 문장 안의 이름에 팀 색을 입히기 위한 것이다(요청).
-  const teamByName = new Map<string, 1 | 2>();
-  const add = (list: typeof r.team1, team: 1 | 2) => {
-    list.forEach((slot) => {
-      const name = resolveSlotName(slot, slots, memberOf);
-      if (slot.rawName) nameByRaw.set(slot.rawName, name);
-      if (name) teamByName.set(name, team);
-    });
-  };
-  add(r.team1, 1);
-  add(r.team2, 2);
-  return renderReplaySummaryParts(
-    r.raw.summaryData,
-    (raw) => nameByRaw.get(raw) ?? raw,
-    (name) => teamByName.get(name),
-  );
-}
-
-/** 요약 조각을 팀 색이 입혀진 문장으로 — 이름만 span으로 감싸고 나머지는 그대로 흐른다. */
-export function SummaryText({ parts }: { parts: SummaryPart[] }) {
-  return (
-    <>
-      {parts.map((p, i) => (p.team
-        ? <span key={i} className={p.team === 1 ? "scr-sum-team1" : "scr-sum-team2"}>{p.text}</span>
-        : <span key={i}>{p.text}</span>))}
-    </>
-  );
-}
-
-// 접힌 상태 요약 줄에 쓰는 "누구 외 N명" — 팀원이 하나뿐이면 그 이름만.
-function teamSummaryName(team: GameResultSlot[], memberOf: (id: string) => Member | undefined): string {
-  if (team.length === 0) return "";
-  const first = resolveSlotName(team[0], team, memberOf);
-  return team.length > 1 ? `${first} 외 ${team.length - 1}명` : first;
-}
 
 // 케밥 메뉴의 카카오톡 공유에 쓸 경기 요약 — 양 팀 이름과 결과/맵/날짜.
 function gameResultShareContent(gameResult: GameResult, memberOf: (id: string) => Member | undefined): KakaoShareContent {
@@ -102,48 +34,6 @@ function gameResultShareContent(gameResult: GameResult, memberOf: (id: string) =
   };
 }
 
-// 매치업 한 편(피드 전용) — 너 나와! 카드의 팀 로스터(scr-challenge-side)와 같은 CSS로
-// 세로 나열한다(요청: "게임결과의 팀로스터와 너 나와의 팀로스터를 맞출거야"). 프사를
-// 더하고, 종족 배지는 닉네임 오른쪽(기존 규칙 유지). 컴퓨터/비회원은 작은 아이콘으로 구분.
-function RosterSide({
-  team, memberOf, highlightMemberIds, highlightTerms,
-}: {
-  team: GameResultSlot[]; memberOf: (id: string) => Member | undefined;
-  highlightMemberIds?: Set<string>; highlightTerms?: string[];
-}) {
-  return (
-    <div className="scr-challenge-side">
-      {team.map((s, i) => {
-        const name = resolveSlotName(s, team, memberOf);
-        const m = memberOf(s.memberId);
-        const nameLc = normalizeSearchText(name);
-        const hl = highlightMemberIds?.has(s.memberId) || !!highlightTerms?.some((t) => nameLc.includes(t));
-        const isComputer = isComputerSlot(s.memberId);
-        const isUnreg = isUnregisteredSlot(s.memberId);
-        return (
-          <div key={`${s.memberId}-${i}`} className="scr-challenge-side-block">
-            <div className="scr-challenge-side-row">
-              <span className={cx("scr-challenge-person", hl && "scr-challenge-person-hit")}>
-                {/* 컴퓨터/비회원은 프사 자리에 아이콘 — 팀과 무관하게 항상 닉네임 왼쪽
-                    (요청). 비회원은 사람 아이콘. */}
-                {isComputer || isUnreg ? (
-                  <span className="scr-matchup-slot-icon" aria-hidden>
-                    {isComputer ? <Monitor size={14} /> : <User size={14} />}
-                  </span>
-                ) : (
-                  <Avatar member={{ id: s.memberId, nickname: name, avatar: m?.avatar ?? null }} size={20} />
-                )}
-                <span className="scr-challenge-person-name">{name}</span>
-                <RaceBadge race={s.race} size={13} circleLetter className="scr-team-name-race" />
-              </span>
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
 export interface SearchListRow {
   id: number;
   date: string;
@@ -162,6 +52,9 @@ interface GameResultCardBodyProps {
   highlightMemberIds?: Set<string>;
   // memberId 매칭에 더해 표시 이름을 검색어로도 매칭해 하이라이트한다(별칭/비회원 보완).
   highlightTerms?: string[];
+  // 지금 실제로 보이는 카드인가(접힌 묶음 안의 투명한 사본이면 false) — 미니맵 타임라인의
+  // 자동재생을 그때만 돌린다.
+  active?: boolean;
 }
 
 // 첨부된 리플레이 파일을 목록에서 바로 내려받는다 — 경기상세(GameResultDetailModal)/수정
@@ -266,7 +159,7 @@ function GameResultActionsMenu({
 // 로딩 스피너·비-매치업 로스터처럼 '목록'이던 시절의 갈래는 다 걷어냈다(요청: 잘못
 // 쓰이지 않게) — 다시 목록으로 쓰려면 그때 필요한 것만 되살리는 편이 낫다.
 export default function GameResultCardBody({
-  rows, memberOf, onDeleted, highlightMemberIds, highlightTerms,
+  rows, memberOf, onDeleted, highlightMemberIds, highlightTerms, active = true,
 }: GameResultCardBodyProps) {
   const user = useAppStore((s) => s.user);
   const deleteGameResultAction = useAppStore((s) => s.deleteGameResult);
@@ -293,10 +186,7 @@ export default function GameResultCardBody({
   return (
     <div className="scr-game-result-list-panel-v2">
       <div className="scr-game-result-cards">
-        {rows.map((r) => {
-              const o1 = outcomeFor("team1", r.result);
-              const o2 = outcomeFor("team2", r.result);
-              return (
+        {rows.map((r) => (
               <div key={r.id} className="scr-game-result-trow">
                 {/* 윗줄 — 이제 오른쪽 위 케밥메뉴만 남는다. 게임번호는 감췄고(요청),
                     등록자는 카드 머리의 시각 옆으로 옮겼다(요청). */}
@@ -308,53 +198,16 @@ export default function GameResultCardBody({
                     />
                   </div>
                 </div>
-                {/* 로스터 — 너 나와! 매치업과 같은 구조(각 팀 세로 나열 + 가운데 vs +
-                    이긴 편 쪽 승/무 배지, 요청). 예전엔 목록 화면용 그리드 로스터가 따로
-                    있었는데, 그걸 쓰던 화면이 없어져 걷어냈다. */}
-                <div className="scr-challenge-matchup scr-feed-game-result-matchup">
-                  <RosterSide
-                    team={r.team1} memberOf={memberOf}
-                    highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms}
-                  />
-                  {/* 승/무 배지 — 너 나와!와 동일하게 vs 양옆에 이긴 편 쪽만 보이고,
-                      해당 없는 쪽은 자리만 예약(투명)해 vs가 좌우로 안 흔들린다. */}
-                  <span className="scr-challenge-arrow-row">
-                    <span className={cx("scr-challenge-inline-win", o1 === "draw" && "scr-challenge-inline-draw", o1 !== "win" && o1 !== "draw" && "scr-challenge-inline-win-hidden")}>
-                      {o1 === "draw" ? "무" : "승"}
-                    </span>
-                    <span className="scr-challenge-arrow scr-challenge-arrow-vs" aria-hidden="true">vs</span>
-                    <span className={cx("scr-challenge-inline-win", o2 === "draw" && "scr-challenge-inline-draw", o2 !== "win" && o2 !== "draw" && "scr-challenge-inline-win-hidden")}>
-                      {o2 === "draw" ? "무" : "승"}
-                    </span>
-                  </span>
-                  <RosterSide
-                    team={r.team2} memberOf={memberOf}
-                    highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms}
-                  />
-                </div>
-                {r.result === "not_held" && <div className="scr-feed-game-result-notheld">미실시</div>}
-                {/* 맵·플레이시간 — 요약을 읽기 전에 먼저 보는 정보라 요약 바로 위에 두고,
-                    접힌 상태에서도 보인다(요청). */}
-                {(cleanMapName(r.raw.mapName) || r.raw.durationSeconds != null) && (
-                  <div className="scr-game-result-trow-map-line scr-game-result-trow-map-meta">
-                    {cleanMapName(r.raw.mapName) && <span className="scr-game-result-trow-map">{cleanMapName(r.raw.mapName)}</span>}
-                    {r.raw.durationSeconds != null && (
-                      <span className="scr-game-result-trow-dur">({Math.round(r.raw.durationSeconds / 60)}분)</span>
-                    )}
-                  </div>
-                )}
-                {/* 리플레이에서 규칙으로 뽑은 전황 요약(요청: 팀 로스터 아래에 배치) — 접힌
-                    상태에서도 보인다. 이 줄이 카드의 '읽을거리'라 펼치기 전에 눈에
-                    들어와야 한다. */}
-                {(() => {
-                  const parts = summaryPartsOf(r, memberOf);
-                  return parts && parts.length > 0 ? (
-                    <div className="scr-game-result-trow-summary"><SummaryText parts={parts} /></div>
-                  ) : null;
-                })()}
+                {/* 로스터·미니맵·타임라인·요약 — 한 상태를 함께 쓰는 한 덩어리라 통째로
+                    GameResultStory가 맡는다(타임라인의 스냅을 고르면 미니맵과 요약 문장이
+                    같이 따라와야 한다). */}
+                <GameResultStory
+                  gameResult={r.raw} team1={r.team1} team2={r.team2} result={r.result}
+                  memberOf={memberOf} active={active}
+                  highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms}
+                />
               </div>
-              );
-        })}
+        ))}
       </div>
 
       {/* 확인창도 이 컴포넌트 안(=묶음 목록 안)에서 그려진다 — 클릭이 목록으로 올라가면

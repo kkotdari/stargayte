@@ -1,4 +1,5 @@
 import type { ReplaySummaryData } from "../utils/replaySummaryData";
+import type { ReplayMapGrid } from "../utils/replayParser";
 
 // ===== 도메인 공용 타입 =====
 
@@ -207,12 +208,20 @@ export interface GameResult {
   // (replaySummaryData.ts 참고), 닉네임이나 표현이 나중에 바뀌어도 보는 시점의 값으로 읽힌다.
   // 사람이 쓴 글이 아니라 파생 데이터라 리플레이를 다시 올리면 덮어쓴다. 재료가 모자라면 null.
   summaryData: ReplaySummaryData | null;
+  // 이 경기 맵의 지형 격자를 가리키는 해시 — 미니맵을 그리는 데 쓴다. 격자 자체는 경기마다
+  // 오지 않고(같은 맵을 쓰는 경기가 수십 건이라 22KB짜리가 되풀이된다) 이 해시로 따로
+  // 받아 온다(api.getReplayMaps). 리플레이 없는 수기 등록과 옛 경기는 null.
+  mapHash: string | null;
 }
 
 // 경기 생성/수정 요청 (id, 작성자는 서버가 채움). 리플레이는 업로드 payload(id 없음)로 보낸다.
 // 댓글은 별도 API로 관리하므로 경기 저장 payload에는 넣지 않는다.
-export type NewGameResult = Omit<GameResult, "id" | "matchNo" | "createdBy" | "replay"> & {
+export type NewGameResult = Omit<GameResult, "id" | "matchNo" | "createdBy" | "replay" | "mapHash"> & {
   replay: ReplayUpload | null;
+  // 보낼 때는 해시가 아니라 격자 자체를 싣는다 — 서버가 같은 해시를 이미 갖고 있으면 버리고
+  // 해시만 이어 붙인다(요청: 맵이 동일하면 같은 미니맵을 함께 쓰자). 리플레이를 읽지 않은
+  // 경로(수기 등록·수정 폼)에서는 null이고, 그때 서버는 기존 연결을 지우지 않는다.
+  mapData: ReplayMapGrid | null;
 };
 
 // 경기결과 화면 무한스크롤용 커서 페이지 — 서버가 필터링/정렬까지 다 해서 내려준다.

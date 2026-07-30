@@ -1,5 +1,6 @@
 import { todayStr } from "./date";
 import { parseReplayFile, ReplayParseError } from "./replayParser";
+import type { ReplayMapGrid } from "./replayParser";
 import { matchReplayPlayerToMember } from "./replayMemberMatch";
 import { buildReplaySummary } from "./replaySummary";
 import type { ReplaySummaryData } from "./replaySummaryData";
@@ -45,6 +46,9 @@ export interface ReplayDraft {
   /** 리플레이에서 뽑은 요약 데이터. 재료가 모자라면 null — 그땐 요약 없이 등록한다. 문장이 아니라 '무슨 일이 있었나'라서, 나중에 닉네임이나
    *  표현이 바뀌어도 보는 시점의 값으로 읽힌다(replaySummaryData.ts 참고). */
   summaryData: ReplaySummaryData | null;
+  /** 미니맵을 그릴 맵의 지형 격자. 못 읽었으면 null이고 그 경기엔 미니맵이 안 붙는다.
+   *  서버는 같은 해시를 이미 갖고 있으면 이 격자를 버리고 해시만 이어 붙인다. */
+  mapGrid: ReplayMapGrid | null;
   parseError: string | null;
   // 자동(중복/컴퓨터) 또는 수동으로 이 리플레이를 전체 등록 대상에서 뺀 상태 — 배열에서
   // 지우지 않고 계속 화면에 보여주면서 토글만 한다(전체 등록 시에만 건너뛴다).
@@ -138,6 +142,7 @@ async function buildDraft(file: File, members: Member[]): Promise<ReplayDraft> {
       guessedObservers: parsed.guessedObservers,
       teamSplitUncertain: parsed.teamSplitUncertain,
       summaryData,
+      mapGrid: parsed.mapGrid,
       parseError: null,
       excluded: false,
       excludeReason: null,
@@ -161,6 +166,7 @@ async function buildDraft(file: File, members: Member[]): Promise<ReplayDraft> {
       guessedObservers: [],
       teamSplitUncertain: false,
       summaryData: null,
+      mapGrid: null,
       parseError: e instanceof ReplayParseError ? e.message : "리플레이를 분석하지 못했어요. 직접 입력해 주세요.",
       excluded: false,
       excludeReason: null,
@@ -319,6 +325,8 @@ function draftToMergePayload(d: ReplayDraft, gameStartedAt: string) {
     // 요약은 파싱해야만 나오는 값이라, 예전에 등록해 요약이 비어 있는 경기도 리플레이를
     // 다시 올리면 이 경로로 채워진다(요청: 배치 업로드에서 갱신).
     summaryData: d.summaryData,
+    // 미니맵도 같은 이유로 여기서 채워진다 — 옛 경기에 미니맵을 붙일 유일한 길이다.
+    mapData: d.mapGrid,
     players: [...fromSlots, ...fromUnmatched].filter((p) => p.playerName),
   };
 }

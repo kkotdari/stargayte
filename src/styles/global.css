@@ -7599,3 +7599,167 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
   border: 1px solid color-mix(in srgb, var(--point) 34%, transparent);
   font-size: var(--fs-caption); color: var(--text); line-height: 1.6; text-align: left;
 }
+
+/* ── 경기 이야기: 미니맵 + 타임라인 + 요약 문장 ─────────────────────────────
+   (요청) 리플레이에서 읽은 지형 격자로 미니맵을 그리고, 그 아래 타임라인의 스냅을 따라
+   요약 문장 하나하나를 짚어 간다. 스냅을 고르면 문장에 하이라이트가 가고 미니맵에는 그
+   문장의 주인공들이 그때 병력을 보낸 자리에 뜬다.
+
+   로스터는 모바일에서만 감춘다(요청: 카드 하나가 너무 길어졌다) — 편은 미니맵 표시의 색이
+   말해 준다. PC는 가로로 자리가 남으므로 로스터를 양쪽에 두고 미니맵을 그 사이에 둔다. */
+.scr-story { display: flex; flex-direction: column; gap: inherit; }
+/* 로우(.scr-game-result-trow)가 정한 세로 간격을 그대로 물려받는다 — 이 안의 조각들도
+   로스터·요약과 같은 리듬으로 놓여야 한다. gap: inherit이 안 통하는 환경을 위한 대비값. */
+@supports not (gap: inherit) { .scr-story { gap: 10px; } }
+
+/* 미니맵이 들어오면 가운데 열이 폭을 먹으므로 매치업을 조금 넓게 쓴다 — 그러지 않으면
+   양쪽 로스터가 닉네임 한 줄도 못 담을 만큼 눌린다(기본 max-width는 560px). */
+@media (min-width: 641px) {
+  .scr-challenge-matchup.scr-story-matchup-wide { max-width: 620px; }
+}
+/* 가운데 열 — 승/무 배지와 vs가 첫 줄, 그 아래가 미니맵. 예전엔 배지 줄 자체가 flex
+   항목이었는데, 미니맵을 그 아래 두려고 한 겹 감쌌다. 배지 줄의 좌우 마진(14px)은 그대로
+   안쪽에 남아 간격이 유지된다. */
+.scr-story-mid {
+  flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 10px;
+  min-width: 0;
+}
+
+.scr-story-map { display: flex; flex-direction: column; gap: 6px; align-items: center; }
+/* 모바일에서는 로스터가 없으니 본문 폭을 다 쓴다(요청: 크게). PC 가운데 열에서는 양쪽
+   로스터가 살아 있어야 하므로 상한을 둔다. */
+.scr-story-map { width: 100%; max-width: 320px; }
+@media (min-width: 641px) { .scr-story-mid .scr-story-map { max-width: 240px; } }
+
+.scr-story-map-head {
+  display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; justify-content: center;
+  font-size: var(--fs-caption); line-height: 1.2;
+}
+.scr-story-map-name { font-weight: 700; color: var(--text); }
+.scr-story-map-dur { color: var(--muted); }
+/* 승패 — 로스터를 감춘 자리(모바일)에서 vs 양옆의 배지가 사라지므로 여기서 알린다.
+   색이 곧 이긴 편이다(미니맵 표시의 팀 색과 같은 값). */
+.scr-story-win {
+  font-weight: 800; font-size: var(--fs-caption); line-height: 1;
+  padding: 3px 7px; border-radius: 6px; color: #fff;
+}
+.scr-story-win-t1 { background: #2475cc; }
+.scr-story-win-t2 { background: #cf3f55; }
+.scr-story-win-draw { background: rgba(var(--overlay-rgb), 0.34); color: var(--text); }
+
+/* ── 미니맵 그림 ── */
+.scr-minimap {
+  position: relative; width: 100%; aspect-ratio: 1 / 1;
+  border-radius: 8px; overflow: hidden;
+  border: 1px solid var(--line);
+  /* 표시(아바타)가 그림 밖으로 조금 삐져나오는 편이 읽기 좋은데 overflow:hidden이라
+     잘린다 — 대신 표시를 안쪽으로 밀지 않고 그림 자체를 꽉 채운다. */
+  background: #101418;
+}
+.scr-minimap-canvas { display: block; width: 100%; height: 100%; }
+
+/* 표시 하나 — 크기 없는 '점'으로 두고 아바타와 닉네임을 그 점 기준으로 얹는다(위치는
+   인라인 스타일). 아바타를 flex로 나란히 두면 닉네임 길이만큼 아바타가 실제 좌표에서
+   밀려나므로, 아바타만은 정확히 점 위에 있어야 한다. */
+.scr-minimap-mark { position: absolute; width: 0; height: 0; pointer-events: none; }
+.scr-minimap-mark .scr-avatar {
+  position: absolute; left: 0; top: 0; transform: translate(-50%, -50%);
+  border: 2px solid rgba(255, 255, 255, 0.85); box-sizing: content-box;
+}
+/* 본진 — 아바타에 팀 색 테두리를 두르고 아래에 닉네임(요청: 아바타+닉네임 계속 표시).
+   검은 판을 깔아 어떤 지형 색 위에서도 읽히게 한다. */
+.scr-minimap-mark-label {
+  /* 이름표는 스냅 아바타보다 위에 둔다 — 본진과 거의 같은 자리에 스냅 아바타가 뜨면 그
+     아바타가 이름을 절반쯤 덮어 "yDalsu"처럼 읽혔다(실측). 글자가 가려지는 편이 아바타가
+     가려지는 편보다 나쁘다. */
+  z-index: 3;
+  position: absolute; left: 0; top: 13px; transform: translateX(-50%);
+  display: inline-flex; align-items: center; gap: 2px;
+  font-size: 10px; font-weight: 700; line-height: 1; white-space: nowrap;
+  padding: 2px 4px; border-radius: 4px;
+  background: rgba(0, 0, 0, 0.62); color: #fff;
+}
+/* 가장자리 본진 — 이름이 그림 밖으로 나가 잘리지 않게 안쪽으로 붙인다(실제로 오른쪽 아래
+   본진의 이름이 잘렸다). 아래쪽 본진은 이름을 아바타 위로 올린다. */
+.scr-minimap-mark-lab-r .scr-minimap-mark-label { transform: translateX(-14%); }
+.scr-minimap-mark-lab-l .scr-minimap-mark-label { transform: translateX(-86%); }
+.scr-minimap-mark-lab-up .scr-minimap-mark-label { top: auto; bottom: 13px; }
+.scr-minimap-mark-name { max-width: 108px; overflow: hidden; text-overflow: ellipsis; }
+.scr-minimap-mark-race { flex-shrink: 0; }
+/* 지금 어디 있는지가 따로 뜬 사람의 본진 — 같은 사람 아바타가 둘 다 진하면 어느 쪽이
+   '지금'인지 헷갈린다. 본진 쪽 아바타만 물러나게 하고 이름은 그대로 둔다: 모바일에서는
+   이 이름표가 로스터를 대신하는 유일한 자리라 흐려지면 안 된다. */
+.scr-minimap-mark-behind .scr-avatar { opacity: 0.4; }
+.scr-minimap-mark-t1 .scr-avatar { border-color: #4d9bf0; }
+.scr-minimap-mark-t2 .scr-avatar { border-color: #f26d80; }
+.scr-minimap-mark-t1 .scr-minimap-mark-label { color: #a9d3ff; }
+.scr-minimap-mark-t2 .scr-minimap-mark-label { color: #ffc0c9; }
+/* 검색으로 짚은 사람 — 로스터를 감춘 모바일에서는 여기가 유일한 표시 자리다. */
+.scr-minimap-mark-hit .scr-minimap-mark-label {
+  background: var(--point); color: #101010;
+}
+/* 스냅의 주인공 — 아바타만, 조금 크게. 스냅이 바뀌면 같은 사람의 표시가 제자리에서
+   움직이도록(React가 같은 DOM을 다시 쓴다) 위치에 전환을 건다. */
+.scr-minimap-mark-actor {
+  z-index: 2;
+  transition: left 420ms ease, top 420ms ease;
+}
+.scr-minimap-mark-actor .scr-avatar {
+  border-width: 2px;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.55), 0 0 10px 2px rgba(255, 255, 255, 0.35);
+}
+@media (prefers-reduced-motion: reduce) { .scr-minimap-mark-actor { transition: none; } }
+
+/* ── 타임라인 ── */
+.scr-story-line { display: flex; align-items: center; gap: 8px; width: 100%; }
+.scr-story-play {
+  flex-shrink: 0; width: 24px; height: 24px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--line); background: rgba(var(--overlay-rgb), 0.08);
+  color: var(--text); cursor: pointer; padding: 0;
+}
+.scr-story-play:hover { background: rgba(var(--overlay-rgb), 0.16); }
+.scr-story-track {
+  position: relative; flex: 1 1 auto; min-width: 0; height: 20px;
+  cursor: pointer; outline-offset: 3px;
+}
+.scr-story-rail, .scr-story-fill {
+  position: absolute; top: 50%; height: 3px; border-radius: 2px; transform: translateY(-50%);
+}
+.scr-story-rail { left: 0; right: 0; background: rgba(var(--overlay-rgb), 0.18); }
+.scr-story-fill { left: 0; background: var(--point); transition: width 420ms ease; }
+@media (prefers-reduced-motion: reduce) { .scr-story-fill { transition: none; } }
+/* 눈금 — 가로 위치가 그 문장의 시점이라, 초반에 몰린 이야기와 한참 뒤의 이야기가 간격으로
+   갈린다. 손가락으로 짚기 좋게 실제 점보다 넓은 판을 준다. */
+.scr-story-snap {
+  position: absolute; top: 50%; transform: translate(-50%, -50%);
+  width: 16px; height: 16px; padding: 0; border: 0; background: transparent;
+  cursor: pointer; border-radius: 50%;
+}
+.scr-story-snap::after {
+  content: ""; position: absolute; inset: 50% auto auto 50%;
+  transform: translate(-50%, -50%);
+  width: 7px; height: 7px; border-radius: 50%;
+  background: rgba(var(--overlay-rgb), 0.34);
+  border: 1px solid rgba(var(--overlay-rgb), 0.5);
+  transition: width 160ms ease, height 160ms ease, background 160ms ease;
+}
+.scr-story-snap-past::after { background: var(--point); border-color: var(--point); }
+.scr-story-snap-on::after {
+  width: 12px; height: 12px;
+  background: var(--point); border-color: #fff;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--point) 34%, transparent);
+}
+.scr-story-time {
+  flex-shrink: 0; font-size: 11px; font-variant-numeric: tabular-nums;
+  color: var(--muted); min-width: 34px; text-align: right;
+}
+
+/* ── 요약 문장 하이라이트 ── */
+/* 지금 스냅의 문장만 밝게, 나머지는 물러나게 한다(요청). 크기·굵기는 건드리지 않는다 —
+   재생 중에 글자 폭이 바뀌면 문단이 매번 다시 흘러 읽는 자리를 놓친다. */
+.scr-sum-sentence { transition: opacity 220ms ease; }
+.scr-sum-sentence-on { opacity: 1; }
+.scr-sum-sentence-off { opacity: 0.42; }
+.scr-sum-sentence-on, .scr-sum-sentence-off { cursor: pointer; }
+@media (prefers-reduced-motion: reduce) { .scr-sum-sentence { transition: none; } }

@@ -150,7 +150,9 @@ const DOW_FULL = ["일요일", "월요일", "화요일", "수요일", "목요일
  *  규칙(요청: 모두 통일)
  *   · clock이고 지난 24시간 안이면 상대 표기 — "방금 전" / "N분 전" / "N시간 전"
  *   · 오늘이면 "오늘", 다가오는 이번주/다음주면 "이번주 토요일" / "다음주 화요일"(주 시작=월)
- *   · 지난 일주일 안이면 일자 대신 요일만 — "목요일"
+ *   · 어제·그저께는 요일이 아니라 그 말로 부른다(요청) — 요일로 적으면 그게 어제인지
+ *     지난주인지 한눈에 안 들어온다
+ *   · 그 앞으로 지난 일주일 안이면 일자 대신 요일만 — "목요일"
  *   · 그 밖은 "7월 28일 (화)", 올해가 아니면 "25년 3월 4일 (화)"
  *  요일을 이미 말로 부르는 갈래에는 괄호 요일을 덧붙이지 않는다 — 같은 말을 두 번 하는 셈이라서다.
  *
@@ -200,6 +202,10 @@ export function formatWhen(
     const weekDiff = Math.round((wkStart(d) - wkStart(now)) / (7 * 86_400_000));
     if (weekDiff === 0) return `이번주 ${DOW_FULL[d.getDay()]}${time}`;
     if (weekDiff === 1) return `다음주 ${DOW_FULL[d.getDay()]}${time}`;
+  } else if (diffDays === -1) {
+    return `어제${time}`;
+  } else if (diffDays === -2) {
+    return `그저께${time}`;
   } else if (diffDays > -7) {
     return `${DOW_FULL[d.getDay()]}${time}`;
   }

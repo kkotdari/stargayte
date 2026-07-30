@@ -354,10 +354,18 @@ const LOST_TAILS = [
   // 이 꼬리는 이제 끝 무렵 문장에만 붙는다 — "기울기 시작함"처럼 앞을 내다보는 말은 뺐다.
   "흐름은 상대에게 넘어감", "끝내 뒤집지는 못함", "소득은 크지 않았음",
   "전황을 뒤집지 못함", "역부족이었음", "경기를 뒤집기엔 역부족",
+  // 세게 맺는 말도 함께 둔다(요청) — 이 꼬리가 붙는 자리는 경기 끝 무렵의 진 편 문장이라
+  // "그대로 끝장남"이 사실과 어긋나지 않는다.
+  "그대로 끝장남", "거기서 끝났음", "그대로 무너졌음",
 ];
 // 도박수(초반 올인)가 안 됐을 때만 쓰는 맺음 — 성공 여부를 단정하지 않는 선에서
 // "실패함" "큰 피해는 못 줌"까지만 말한다(지적: 독이 됐다·발목을 잡았다는 지나치다).
-const RISKY_TAILS = ["실패함", "큰 피해는 못 줌", "결국 망함", "소용없었음"];
+const RISKY_TAILS = [
+  "실패함", "큰 피해는 못 줌", "결국 망함", "소용없었음",
+  // 요청: 망했다·끝장났다·폭망했다 같은 표현을 많이 쓰면 재미있다. 도박수가 어긋난
+  // 자리라 세게 말해도 사실과 어긋나지 않는다 — 그 수가 안 통했다는 건 확인된 것이다.
+  "그대로 폭망함", "쫄딱 망함", "완전히 헛수고가 됨",
+];
 
 // 진 편 문장은 "…뚫음, 경기는 내줌"처럼 끊어 붙이는 것보다 "…뚫었으나 경기는 내줌"으로
 // 이어야 자연스럽다(지적). 한 일은 전부 명사형('-ㅁ')으로 써 두었으므로, 그 끝만 과거
@@ -367,11 +375,14 @@ const CONNECTIVE: [string, string][] = [
   // 긴 것부터 — 먼저 걸리는 것이 이긴다("밀어붙임"이 "임"보다 앞에 있어야 한다).
   ["승부를 걸음", "승부를 걸었으나"], ["막아섬", "막아섰으나"], ["얹혀삶", "얹혀살았으나"], ["붙어삶", "붙어살았으나"],
   ["되살아남", "되살아났으나"], ["물러남", "물러났으나"], ["끝남", "끝났으나"],
+  // "망했다/끝장났다" 계열(요청: 그런 표현을 많이 써 줘, 재밌다) — 여기 등록해 두지 않으면
+  // 문장을 이어 붙이거나 평서형('-다')으로 펴지 못하고 명사형 그대로 남는다.
+  ["끝장남", "끝장났으나"], ["거덜남", "거덜났으나"], ["나가떨어짐", "나가떨어졌으나"],
   ["밀어붙임", "밀어붙였으나"], ["파고듦", "파고들었으나"], ["흔듦", "흔들었으나"],
   ["감행함", "감행했으나"], ["뒤집음", "뒤집었으나"], ["헤집음", "헤집었으나"],
   ["놓음", "놓았으나"], ["막음", "막았으나"], ["잡음", "잡았으나"], ["뽑음", "뽑았으나"],
   ["넣음", "넣었으나"], ["끊음", "끊었으나"], ["뚫음", "뚫었으나"], ["지음", "지었으나"],
-  ["모음", "모았으나"], ["잠금", "잠갔으나"], ["나름", "날랐으나"],
+  ["모음", "모았으나"], ["잠금", "잠갔으나"], ["나름", "날랐으나"], ["담음", "담았으나"],
   ["무너짐", "무너졌으나"], ["지워짐", "지워졌으나"], ["빠짐", "빠졌으나"],
   // 피해를 말하는 맺음들 — "김"(→겼으나) 규칙에 잘못 걸리지 않게 "시킴"을 먼저 둔다.
   ["시킴", "시켰으나"], ["입음", "입었으나"],
@@ -689,7 +700,8 @@ const TEMPLATES: Record<string, Tpl> = {
         // 거기까지만 말한다. 실제로 이 자리에서 얻어맞고도 45분 뒤에 이긴 경기가 있었다.
         return c.p.out
           ? say(
-            [`${all}에 ${when}탈락함`, `${all}에 ${when}그대로 망함`],
+            [`${all}에 ${when}탈락함`, `${all}에 ${when}그대로 망함`,
+              `${all}에 ${when}폭망함`, `${all}에 ${when}그대로 끝장남`],
             [`${all}에 ${ga(foe)} ${when}탈락함`, `${all}에 ${when}${ga(foe)} 그대로 망함`],
             [`${ro(all)} ${when}${ga(foe)} 탈락함`, `${ro(all)} ${when}${reul(foe)} 끝냄`],
           )
@@ -723,7 +735,8 @@ const TEMPLATES: Record<string, Tpl> = {
       const when = m > 0 ? `${m}분 만에 ` : "";
       return c.p.out
         ? say(
-          [`${blow} ${also}${when}탈락함`, `${blow} ${also}${when}그대로 망함`],
+          [`${blow} ${also}${when}탈락함`, `${blow} ${also}${when}그대로 망함`,
+            `${blow} ${also}${when}그대로 끝장남`, `${blow} ${also}${when}폭망함`],
           [`${blow} ${also}${when}${ga(foe)} 탈락함`],
           [`${blow} ${also}${when}${reul(foe)} 판에서 지움`, `${blow} ${also}${when}${reul(foe)} 끝냄`],
         )
@@ -738,7 +751,9 @@ const TEMPLATES: Record<string, Tpl> = {
       const m = num(c.p.hitMin);
       const when = m > 0 ? `${m}분 만에 ` : "";
       return say(
-        [`${blow} ${when}빈사 상태가 됨`, `${blow} ${when}병력이 거의 전멸함`, `${blow} ${when}기지가 대파됨`],
+        [`${blow} ${when}빈사 상태가 됨`, `${blow} ${when}병력이 거의 전멸함`,
+          `${blow} ${when}기지가 대파됨`, `${blow} ${when}기지가 쑥대밭이 됨`,
+          `${blow} ${when}거덜남`],
         [`${blow} ${when}${ga(foe)} 빈사 상태가 됨`, `${blow} ${when}${of}기지가 대파됨`],
         [`${ro(by)} ${when}${of}병력을 거의 전멸시킴`, `${ro(by)} ${when}${of}기지를 거의 파괴함`],
       );
@@ -1048,11 +1063,11 @@ const TEMPLATES: Record<string, Tpl> = {
     return `${ga(c.who)} ${guard}${c.pick(
       c.p.out
         ? c.p.team
-          ? ["먼저 엘리당함", "제일 먼저 탈락하며 한 명이 빠짐", "먼저 지워짐"]
-          : ["엘리당함", "탈락함"]
+          ? ["먼저 엘리당함", "제일 먼저 탈락하며 한 명이 빠짐", "먼저 지워짐", "먼저 끝장남"]
+          : ["엘리당함", "탈락함", "그대로 끝장남", "폭망함"]
         : c.p.team
-          ? ["먼저 무너지며 전열이 갈림", "먼저 정리되며 한 명이 빠짐"]
-          : ["일찍 손을 놓음", "일찍 무너짐", "허무하게 먼저 정리됨"]
+          ? ["먼저 무너지며 전열이 갈림", "먼저 정리되며 한 명이 빠짐", "먼저 나가떨어짐"]
+          : ["일찍 손을 놓음", "일찍 무너짐", "허무하게 먼저 정리됨", "일찌감치 망함"]
     )}`;
   },
 
@@ -1369,7 +1384,8 @@ const TEMPLATES: Record<string, Tpl> = {
     // 마지막 꼴은 주어가 '일꾼'이라 바깥 주어를 붙이면 주어가 둘이 된다 — 통째로 만든다.
     return done(c, c.pick([
       `${ga(c.who)} ${ro(label)} ${foe}일꾼을 잡아냄`,
-      `${ga(c.who)} ${ro(label)} ${foe}일꾼 줄을 계속 끊음`,
+      `${ga(c.who)} ${ro(label)} ${foe}일꾼을 계속 잡음`,
+      `${ga(c.who)} ${ro(label)} ${foe}일꾼을 쓸어담음`,
       `${foe}일꾼이 ${c.who}의 ${label}에 계속 잡혀 다시 뽑기 바쁨`,
     ]));
   },
@@ -1383,7 +1399,8 @@ const TEMPLATES: Record<string, Tpl> = {
     const span = m > 0 ? `${m}분 내내 ` : "";
     return `${ga(c.who)} ${done(c, c.pick([
       `${span}${ro(label)} ${foe}일꾼을 끈질기게 괴롭힘`,
-      `${ro(label)} ${foe}일꾼 줄을 ${span}끊어댐`,
+      `${ro(label)} ${foe}일꾼을 ${span}잡아댐`,
+      `${span}${ro(label)} ${foe}일꾼을 계속 잡음`,
     ]))}`;
   },
 
@@ -1515,8 +1532,8 @@ const TEMPLATES: Record<string, Tpl> = {
   // 채팅에서 잡은 항복 선언(요청) — 승부가 어디서 끝났는지 말해주는 유일한 '사람의 말'이다.
   gg: (c) =>
     c.p.all
-      ? `${c.whoList.join("·")}${c.duel ? "가" : " 팀이"} ${c.pick(["결국 GG 선언", "결국 GG를 치고 물러남"])}`
-      : `${ga(c.who)} ${c.pick(["결국 GG 선언", "GG를 침", "GG 치고 나감", "일찌감치 GG"])}`,
+      ? `${c.whoList.join("·")}${c.duel ? "가" : " 팀이"} ${c.pick(["결국 GG 선언", "결국 GG를 치고 물러남", "결국 GG 치고 끝냄"])}`
+      : `${ga(c.who)} ${c.pick(["결국 GG 선언", "GG를 침", "GG 치고 나감", "일찌감치 GG", "손 놓고 GG"])}`,
 
   // "유비의 바이오닉 한 방으로 관우의 저글링 성큰을 뚫음"(요청) — 양쪽을 한 문장에 담는다.
   breakthrough: (c) => {
@@ -2046,8 +2063,13 @@ function renderLines(
     const headToHead =
       (b.who ?? []).some((w) => (prev?.whom ?? []).includes(w))
       || (b.whom ?? []).some((w) => (prev?.who ?? []).includes(w));
-    // "1팀에서는"은 어색하다(지적) — "1팀의 누구는" 꼴로만 쓴다.
-    const teamTagFor = (): string => (!duel && crossTeam ? `${myTeam}팀의 ` : "");
+    /** 예전에는 흐름이 다른 편으로 넘어가는 자리에 "1팀의 누구는"처럼 팀 번호를 붙였다.
+     *  이제 안 붙인다(요청: 요약 문장에서 팀 언급은 빼도 되겠다) — 카드에서 로스터를
+     *  걷어내고 편을 미니맵의 색으로 나타내기로 했으니, 글 속의 팀 번호는 대조해 볼 데가
+     *  없어졌다. 이름의 색은 그대로 팀을 따라간다(아래 splitNames).
+     *  자리 표시로 남겨 둔 이유는 이 값이 '팀이 갈렸다'는 판단(crossTeam)과 한 벌로
+     *  여러 갈래에서 쓰이는데, 그 판단 자체는 이음말을 고르는 데 여전히 필요해서다. */
+    const teamTagFor = (): string => "";
     // 같은 사람이 주인공인 이야기가 잇달아 나오면 문장을 나누지 말고 한 문장으로 잇는다
     // (요청: 세 문장까지는 합치기). 이음말을 앞에 붙이면 문장이 그 말로 시작해 이어 붙일
     // 수 없으므로, 이을 참이면 이음말 고르기 자체를 건너뛴다 — 아래 sameSubject가 받는다.
@@ -2185,7 +2207,9 @@ function renderLines(
         end: typeof data.end === "number" && data.end > 0 ? data.end : null,
         lastLost: i === lastLostIdx,
         duel,
-        team: duel ? 0 : (teamOf?.(names[0] ?? "") ?? 0),
+        // 0 = 팀 번호를 쓰지 않는다(위 teamTagFor 참고) — teamPhrase가 팀 번호 대신
+        // 이름을 늘어놓는 쪽으로 물러선다.
+        team: 0,
         p: b.p ?? {},
         pick: (opts) => {
           const t = opts[(seed + offset) % opts.length];
@@ -2392,8 +2416,8 @@ function renderLines(
     // 일대일에는 '다른 쪽'이 없다(지적) — 그 자리는 대신 '반대로'가 받는다.
     const alsoLeadPool = alsoSubject && b.k !== "result"
       ? (headToHead
-        ? ["", "반대로 ", "역으로 ", !duel && myTeam ? `${myTeam}팀의 ` : ""]
-        : ["", "이에 질세라 ", duel ? "반대로 " : "다른 쪽에서는 ", !duel && myTeam ? `${myTeam}팀의 ` : ""])
+        ? ["", "반대로 ", "역으로 "]
+        : ["", "이에 질세라 ", duel ? "반대로 " : "다른 쪽에서는 "])
       : [];
     let alsoLead = alsoLeadPool.length > 0 ? alsoLeadPool[seed % alsoLeadPool.length] : "";
     // 앞 문장이 쓴 말을 또 쓰면 "…반대로 …했다. 반대로 …"가 된다(지적) — 한 칸 민다.
@@ -2457,53 +2481,7 @@ function renderLines(
   }
   if (out.length === 0) return null;
   const lines = out.map((l) => toPlain(l.replace(afterWhile, "$1 ").replace(twoLinks, "$1 $2")));
-  return { lines: withStartClocks(lines, data, resolveName), lineBeats };
-}
-
-/** 이름이 처음 나오는 자리에만 "(1시)"를 붙인다(요청: 닉네임이 처음 등장하는 경우 몇시인지도).
- *  두 번째부터는 안 붙인다 — 같은 사람 이름마다 시각이 따라붙으면 문장이 괄호로 가득해진다.
- *
- *  다 만든 문장에서 찾아 끼우는 이유는 renderReplaySummaryParts와 같다: 이름은 틀 안에서
- *  끼워 만들기 때문에, 틀마다 시각을 신경 쓰는 것보다 마지막에 한 번 훑는 편이 단순하고
- *  빠짐이 없다. 긴 이름부터 찾는 것도 같은 이유다("정구"가 "정구2"의 일부일 수 있다). */
-function withStartClocks(
-  lines: string[],
-  data: ReplaySummaryData,
-  resolveName: (rawName: string) => string,
-): string[] {
-  const spots = data.spots;
-  if (!spots) return lines;
-  // 지금 보여줄 이름 → 시각. 원본 아이디가 아니라 화면에 실제로 적힌 이름으로 찾아야 한다.
-  const byName = new Map<string, number>();
-  for (const [raw, clock] of Object.entries(spots)) {
-    const name = resolveName(raw);
-    if (name && !byName.has(name)) byName.set(name, clock);
-  }
-  // 긴 이름부터 — 짧은 이름이 긴 이름의 일부인 경우를 위해서다.
-  const names = [...byName.keys()].sort((a, b) => b.length - a.length);
-  // 이미 시각을 붙인 이름 — 문장을 앞에서부터 훑으므로, 여기 든 이름은 그 앞 어딘가에서
-  // 이미 한 번 나왔다는 뜻이다(문단 전체에서 '처음 나올 때 한 번'이 되도록).
-  const tagged = new Set<string>();
-  return lines.map((line) => {
-    // 끼워 넣을 자리를 먼저 다 모은 뒤 뒤에서부터 넣는다 — 앞에서부터 넣으면 그 뒤 자리가
-    // 전부 밀린다.
-    const inserts: { at: number; tag: string }[] = [];
-    for (const name of names) {
-      if (tagged.has(name)) continue;
-      const i = line.indexOf(name);
-      if (i < 0) continue;
-      // 더 긴 이름의 일부로 이미 잡힌 자리면 건너뛴다.
-      if (inserts.some((x) => i < x.at && i + name.length > x.at - 10)) continue;
-      tagged.add(name);
-      inserts.push({ at: i + name.length, tag: `(${byName.get(name)}시)` });
-    }
-    inserts.sort((a, b) => b.at - a.at);
-    let outLine = line;
-    for (const ins of inserts) {
-      outLine = `${outLine.slice(0, ins.at)}${ins.tag}${outLine.slice(ins.at)}`;
-    }
-    return outLine;
-  });
+  return { lines, lineBeats };
 }
 
 /** 문장을 이름 조각과 나머지로 잘라 놓은 것 — 이름에 팀 색을 입히기 위한 것이다(요청).
@@ -2591,15 +2569,8 @@ function splitNames(
       i += hit.length;
       continue;
     }
-    // "1팀 / 2팀"도 그 팀을 가리키는 말이라 이름과 같은 색을 입힌다(요청) — 팀전 문장은
-    // "1팀의 홍탑", "2팀이 승리"처럼 이 말로 편을 가르는데, 정작 그 대목만 흑백이었다.
-    const d = text.charAt(i);
-    if ((d === "1" || d === "2") && text.startsWith("팀", i + 1)) {
-      flush();
-      parts.push({ text: `${d}팀`, team: d === "1" ? 1 : 2 });
-      i += 2;
-      continue;
-    }
+    // (삭제) 예전엔 "1팀 / 2팀"이라는 말에도 팀 색을 입혔다 — 이제 그 말 자체를 문장에
+    // 쓰지 않으므로(위 teamTagFor) 색을 입힐 자리가 없다.
     buf += text[i];
     i += 1;
   }

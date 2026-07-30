@@ -39,9 +39,6 @@ export interface ParsedReplayPlayer {
   // 리플레이 슬롯 타입이 "Computer"(AI)인 참가자 — 배틀태그가 있을 리 없으니 회원 매칭을
   // 아예 시도하지 않고 컴퓨터 슬롯으로 바로 채운다.
   isComputer: boolean;
-  /** 시작 지점을 시계 방향으로 부른 값(1~12) — "정구(1시)"처럼 요약에서 쓴다(요청).
-   *  맵 정보나 슬롯 번호를 못 읽으면 null이고, 그때는 시각을 아예 안 붙인다. */
-  startClock: number | null;
   /** 시작 지점의 타일 좌표 — 미니맵에 그 사람의 본진 표시(아바타+닉네임)를 놓는 자리다.
    *  단위를 타일로 맞춰 두면 이동·공격 명령 좌표(orderPositions)와 같은 자로 잴 수 있다. */
   startX: number | null;
@@ -592,17 +589,13 @@ export async function parseReplayFile(file: File): Promise<ParsedReplay> {
   const signalsOf = (playerId: number): ReplayPlayerSignals | null =>
     signalsByPlayerId ? signalsByPlayerId.get(playerId) ?? emptySignals() : null;
 
-  /* 시작 지점을 "몇 시"로 부른다(요청: 닉네임이 처음 등장할 때 몇시인지도).
-     좌표는 MapData.StartLocations, 슬롯 짝짓기는 Header.Players[].SlotID, 맵 가운데는
-     Header.MapWidth/Height(타일)×32 — 시작 지점 좌표가 타일×32 단위라서다.
-     스타 판에서 부르는 시각은 열두 개가 아니라 여덟 개(12·1·3·5·6·7·9·11)다 — 네 귀퉁이는
-     정확히 45도라서 그냥 반올림하면 1.5시가 되고, 어느 쪽으로 굴리느냐에 따라 대각선 두
-     곳이 서로 다른 규칙으로 불린다(실측: 오른쪽 아래는 4시, 왼쪽 아래는 8시로 갈렸다).
-     그래서 반올림이 아니라 그 여덟 개 중 가장 가까운 것으로 스냅한다. */
-  const SPAWN_CLOCKS = [12, 1, 3, 5, 6, 7, 9, 11];
-  /* 시작 지점의 타일 좌표 — 미니맵에 본진 표시를 놓는 자리다(요청: 본진은 아바타+닉네임을
-     계속 표시). screp이 주는 좌표는 타일×32라 32로 나눠 타일 자로 맞춘다. 그래야 이동·공격
-     명령 좌표(orderPositions)와 한 자로 재진다. */
+  /* 시작 지점의 타일 좌표 — 미니맵에 본진 표시(아바타+닉네임)를 놓는 자리다(요청).
+     screp이 주는 좌표는 타일×32라 32로 나눠 타일 자로 맞춘다. 그래야 이동·공격 명령
+     좌표(orderPositions)와 한 자로 재진다.
+
+     (삭제) 예전엔 이 좌표를 맵 가운데 기준 각도로 바꿔 "몇 시"로 불렀고, 요약에서 닉네임이
+     처음 나올 때 "(1시)"를 붙였다 — 미니맵이 생기면서 그 표기는 걷어냈다(요청: 팀 언급과
+     몇시는 빼도 되겠다). 어디서 시작했는지는 이제 그림이 직접 보여준다. */
   const startTileOf = (() => {
     const spots = res.MapData?.StartLocations ?? null;
     if (!spots || spots.length === 0) return () => null;
@@ -611,35 +604,6 @@ export async function parseReplayFile(file: File): Promise<ParsedReplay> {
       if (slotId === undefined) return null;
       const s = bySlot.get(slotId);
       return s ? { x: s.X / 32, y: s.Y / 32 } : null;
-    };
-  })();
-  const startClockOf = (() => {
-    const w = res.Header.MapWidth;
-    const h = res.Header.MapHeight;
-    const spots = res.MapData?.StartLocations ?? null;
-    if (!w || !h || !spots || spots.length === 0) return () => null;
-    const cx = (w * 32) / 2;
-    const cy = (h * 32) / 2;
-    const bySlot = new Map(spots.map((s) => [s.SlotID, s]));
-    return (slotId: number | undefined): number | null => {
-      if (slotId === undefined) return null;
-      const s = bySlot.get(slotId);
-      if (!s) return null;
-      const dx = s.X - cx;
-      const dy = s.Y - cy;
-      if (dx === 0 && dy === 0) return null;   // 가운데에서 시작하는 맵은 시각이 없다
-      // 12시가 위(y가 작은 쪽)이고 3시가 오른쪽 — 화면 좌표는 y가 아래로 커지므로 -dy.
-      const deg = (Math.atan2(dx, -dy) * 180) / Math.PI;
-      const hour = ((deg + 360) % 360) / 30;
-      // 0시와 12시는 같은 자리다 — 12를 기준으로 재야 12시가 제대로 가장 가까운 후보가 된다.
-      let best = SPAWN_CLOCKS[0];
-      let bestGap = Infinity;
-      for (const c of SPAWN_CLOCKS) {
-        const target = c === 12 ? 0 : c;
-        const gap = Math.min(Math.abs(hour - target), 12 - Math.abs(hour - target));
-        if (gap < bestGap) { bestGap = gap; best = c; }
-      }
-      return best;
     };
   })();
 
@@ -660,7 +624,6 @@ export async function parseReplayFile(file: File): Promise<ParsedReplay> {
         effectiveCmdCount: desc?.EffectiveCmdCount ?? null,
         buildCount: buildCountOf(p.ID),
         isComputer: p.Type?.Name === "Computer",
-        startClock: startClockOf(p.SlotID),
         startX: startTileOf(p.SlotID)?.x ?? null,
         startY: startTileOf(p.SlotID)?.y ?? null,
         signals: signalsOf(p.ID),
