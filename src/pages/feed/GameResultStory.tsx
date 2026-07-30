@@ -64,11 +64,17 @@ const BEAT_MARK: Record<string, string> = {
 /** 실제로 맵 가운데에서 벌어진 일 — 화살표를 센터로 보낸다(요청: 센터 내용은 실제 센터에). */
 const CENTER_BEAT_KEYS = new Set(["center", "center-photon"]);
 
-/** 날아서·워프로 간 수 — 화살표를 곧은 점선으로 그린다. 나머지(지상군)는 곡선(요청). */
+/** 날아서·워프로 간 수 — 화살표를 곧은 점선으로 그린다(요청: 드랍이나 공중유닛 이동은 직선).
+ *  지상군만 곡선으로 돌아간다. */
 const FLIGHT_BEAT_KEYS = new Set([
   "recall", "nydus", "dropship", "shuttle", "shuttle-reaver", "templar-drop", "zerg-drop",
-  "muta", "cloak-wraith",
+  "muta", "cloak-wraith", "valk-hunt", "carrier", "guardian", "bc", "lift-off", "infested",
 ]);
+
+/** 그 beat가 공중·워프로 간 것인가 — 피해 문장(raid-damage)은 무슨 수로 때렸는지가 p.k에
+ *  들어 있어서, 그것까지 봐야 드랍으로 준 피해가 곡선으로 그려지지 않는다(지적). */
+const isFlight = (k: string, cause: unknown): boolean =>
+  FLIGHT_BEAT_KEYS.has(k) || (typeof cause === "string" && FLIGHT_BEAT_KEYS.has(cause));
 
 /** 카드가 화면에 이만큼 들어와 있으면 재생한다 — 피드에 카드가 여럿인데 전부 동시에
  *  돌아가면 어지럽고, 보이지도 않는 카드가 타이머를 물고 있을 이유도 없다. */
@@ -351,7 +357,7 @@ export default function GameResultStory({
         const t = target(b, raw);
         if (!t) { to.delete(raw); continue; }
         to.set(raw, t);
-        flight.set(raw, FLIGHT_BEAT_KEYS.has(b.k));
+        flight.set(raw, isFlight(b.k, b.p?.k));
       }
     }
     // 화살표로 그릴 수 있는 것(자기 집에서 충분히 멀리 간 것)과, 화살표 없이 본진에만 이모지가

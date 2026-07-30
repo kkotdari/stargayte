@@ -70,8 +70,12 @@ const HEAD_WIDE = 2.6;
 const MARK_ROOM = 5;
 /** 그 자리 안에서 이모지를 화살촉보다 이만큼 앞에 둔다. */
 const MARK_AHEAD = 2.6;
-/** 본진 이모지를 본진에서 가운데 쪽으로 이만큼 띄운다(타일). */
-const MARK_OUT = 9;
+/** 본진 이모지를 입구(맵 가운데) 쪽으로 이만큼 띄운다(타일) — 9 → 13(요청: 더 입구 쪽,
+ *  더 크게). */
+const MARK_OUT = 13;
+/** 이름표를 비켜 가려고 세로로 살짝 올리거나 내리는 양(타일). 대각선으로 띄우면 그 세로
+ *  성분이 이름표 띠(아바타 아래 11~25px)에 딱 걸려 글자 위에 얹혔다(실측 스크린샷). */
+const MARK_RISE = 4;
 
 /** 팀 색 — 미니맵은 지형 위라 채도가 낮으면 두 편이 잘 안 갈린다(요청: 팀 구분이
  *  더 확실하게). CSS의 마커 테두리 색과 같은 값을 쓴다. */
@@ -182,12 +186,12 @@ export default function ReplayMinimap({
     const dx = grid.width / 2 - m.x;
     const dy = grid.height / 2 - m.y;
     const len = Math.hypot(dx, dy) || 1;
-    // 가로는 가운데(입구) 쪽으로, 세로는 이름표 반대쪽으로 둔다 — 이름표는 아래쪽 본진에서만
-    // 위로 올라가고 나머지는 아바타 아래에 붙으므로, 가운데 방향을 그대로 쓰면 위쪽 본진에서
-    // 이모지가 닉네임 위에 얹혔다(실측 스크린샷).
-    const up = m.y / grid.height <= 1 - EDGE;
-    const x = m.x + (dx / len) * MARK_OUT;
-    const y = m.y + (up ? -1 : 1) * MARK_OUT * 0.62;
+    // 가로로는 가운데(입구) 쪽으로 크게 띄우고, 세로로는 이름표를 비켜 조금만 올린다(내린다).
+    // 대각선으로 한 번에 띄우면 세로 성분이 이름표 띠에 걸린다(실측).
+    void len;
+    const labelBelow = m.y / grid.height <= 1 - EDGE;
+    const x = m.x + Math.sign(dx || 1) * MARK_OUT;
+    const y = m.y + (labelBelow ? -MARK_RISE : MARK_RISE);
     return {
       left: `${(x / grid.width) * 100}%`,
       top: `${(y / grid.height) * 100}%`,
