@@ -2066,7 +2066,26 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   // 0차: 이사와 궤멸은 자리를 다투기 전에 먼저 넣는다(요청: 이사·궤멸은 중요 이벤트라
   // 절대 빠지면 안 된다). 무게로 겨루게 두면 러시·물량 이야기에 밀려 통째로 사라졌다.
   const MUST_KEEP = new Set(["relocate", "fallen"]);
-  for (const b of ranked) if (MUST_KEEP.has(b.k)) consider(b, false);
+  // 이사·빈사·궤멸 앞에는 반드시 '누구에게 당했나'가 있어야 한다(지적: 그 앞에 공격당한
+  // 이야기가 없으면 왜 그렇게 됐는지 모른 채 갑자기 무너진 것처럼 읽힌다) — 그 사람을
+  // whom으로 지목한 공격 문장 중 이 시점 이전이면서 가장 무거운 것을 함께 끼워 넣는다.
+  // 그런 문장이 pool에 아예 없으면(팀전이라 누가 때렸는지 명령만으로는 못 짚는 경우 등)
+  // 없는 근거를 지어낼 수는 없어 그대로 둔다 — 최종 정렬은 시간순이라 여기서 챙긴 공격
+  // 문장은 자연히 이사·궤멸 문장보다 앞에 놓인다.
+  const attackerFor = (victim: string, upTo: number | null | undefined): Beat | null => (
+    pool
+      .filter((b) => (
+        !MUST_KEEP.has(b.k) && (b.whom ?? []).includes(victim)
+        && (typeof upTo !== "number" || typeof b.at !== "number" || b.at <= upTo)
+      ))
+      .sort((a, b) => b.weight - a.weight)[0] ?? null
+  );
+  for (const b of ranked) {
+    if (!MUST_KEEP.has(b.k) || !consider(b, false)) continue;
+    const victim = b.who[0];
+    const hit = victim ? attackerFor(victim, b.at) : null;
+    if (hit) consider(hit, false);
+  }
   // 1차: 국면 상한을 지키며 무게순으로 채운다.
   for (const b of ranked) consider(b, true);
   // 2차: 그래도 자리가 남으면(한쪽 국면에만 이야기가 몰린 경기) 상한을 풀고 마저 채운다 —
@@ -2265,6 +2284,12 @@ const MOVE_MIN_NEW = 4;
 const MOVE_BACK_MAX = 1;
 /** 한 사람이 이사한 것으로 볼 수 있는 최대 횟수. */
 const MOVE_MAX = 3;
+/** 새 자리가 옛 본진 대비 이 비율만큼은 커야 '이사'로 본다(지적: 이사가 아니라 멀티인데
+ *  이사로 잡힌다) — 해처리 하나에 성큰 두엇 세운 정도의 보통 멀티는 옛 본진의 건물 수에
+ *  한참 못 미친다. 자원채집·병력생산은 좌표가 안 남아 직접 잴 수 없으니(명령에 위치가
+ *  없다) 좌표가 남는 건물 건설로 대신 잰다(지적에 대한 근사) — 새 자리에 옛 본진만큼
+ *  건물을 다시 채웠다면 그건 살림을 통째로 옮긴 것이고, 건물 몇 채뿐이면 그냥 확장이다. */
+const MOVE_SIZE_RATIO = 0.5;
 
 /** 시작 지점마다 '이 구역'이라 부를 반경 — 가장 가까운 다른 시작 지점까지의 거리에서 잡는다.
  *  맵마다 자리 수와 간격이 달라서(2인용 투혼 vs 8인용 빠른무한) 고정값은 늘 한쪽에서 틀린다. */
@@ -2337,6 +2362,12 @@ function relocations(
       const late = zone.slice(i);
       if (late.filter((x) => x === z).length < MOVE_MIN_NEW) continue;
       if (late.filter((x) => x === home).length > MOVE_BACK_MAX) continue;
+      // 새 자리가 옛 본진만큼 커야 이사다(위 MOVE_SIZE_RATIO 주석) — 옛 본진의 크기는
+      // 옮기기 전까지 거기 지은 건물 수로 잰다(그 뒤로는 MOVE_BACK_MAX가 이미 거의 못
+      // 짓게 막아 두었으니, 옮기기 전 몫이 곧 그 본진의 전체 크기다).
+      const homeSize = zone.slice(0, i).filter((x) => x === home).length;
+      const newSize = zone.filter((x) => x === z).length;
+      if (newSize < homeSize * MOVE_SIZE_RATIO) continue;
       hit = { i, z };
       break;
     }
