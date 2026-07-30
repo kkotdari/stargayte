@@ -7,16 +7,15 @@ import { useReplayMap } from "../../hooks/useReplayMap";
 import { cleanMapName } from "../../utils/mapName";
 import { cx } from "../../utils/format";
 import { normalizeSearchText } from "../../utils/memberSearch";
-import { ATTACK_BEAT_KEYS } from "../../utils/replaySummary";
 import { renderReplaySummarySentences } from "../../utils/replaySummaryText";
 import type { GameResult, GameResultSlot, Member } from "../../types";
 
 // 경기 한 판을 '이야기'로 보여주는 부분 — 로스터/미니맵, 타임라인, 요약 문장이 한 상태를
 // 함께 쓴다(요청).
 //
-// 타임라인의 스냅 하나가 요약 문장 하나다. 스냅을 고르면 그 문장에 하이라이트가 가고,
-// 미니맵에는 그 문장의 주인공들이 그때 병력을 보낸 자리에 아바타로 뜬다. 본진 표시(아바타+
-// 닉네임)는 스냅과 무관하게 늘 떠 있다.
+// 타임라인의 스냅 하나가 요약 문장 하나다. 스냅을 고르면 그 문장이 자막으로 나오고, 미니맵에는
+// 그 문장에서 벌어진 일이 본진 → 그 자리 화살표로 그려진다. 본진 표시(아바타+닉네임)는 늘 떠
+// 있고, 그 문장에 이름이 나온 사람만 아바타가 커진다(요청).
 //
 // 로스터는 모바일에서만 감춘다(요청: 카드 하나가 너무 길어졌다) — 편은 미니맵의 색이
 // 말해 주고, 종족도 미니맵 표시에 함께 붙는다. PC는 가로로 자리가 남으므로 예전처럼 로스터를
@@ -146,7 +145,20 @@ export default function GameResultStory({
     return out;
   }, [gameResult.summaryData, sentences, index]);
 
-  // 미니맵 표시 — 본진은 늘, 스냅의 주인공은 그때 자리에(요청).
+  /** 지금 문장에 이름이 나온 사람들 — 그 사람 본진 아바타를 크게 키운다(요청). 스냅마다
+   *  주인공이 바뀌는 것을 아바타 크기로 보여 주는 자리다. */
+  const mentioned: Set<string> = useMemo(() => {
+    const beats = gameResult.summaryData?.beats ?? [];
+    const out = new Set<string>();
+    for (const n of sentences[index]?.beats ?? []) {
+      const b = beats[n];
+      if (!b) continue;
+      [...(b.who ?? []), ...(b.whom ?? [])].forEach((raw) => out.add(raw));
+    }
+    return out;
+  }, [gameResult.summaryData, sentences, index]);
+
+  // 미니맵 표시 — 본진 아바타는 늘 떠 있고, 지금 문장의 주인공만 커진다(요청).
   const bases: MinimapMarker[] = useMemo(() => {
     const spots = gameResult.summaryData?.bases;
     if (!spots) return [];
@@ -162,25 +174,26 @@ export default function GameResultStory({
           race: s.slot.race, team: s.team,
           x: spots[s.raw][0], y: spots[s.raw][1],
           withName: true, highlight: hit, downed: downed.has(s.raw),
+          featured: mentioned.has(s.raw),
         };
       });
-  }, [gameResult.summaryData, slots, memberOf, highlightMemberIds, highlightTerms, downed]);
+  }, [gameResult.summaryData, slots, memberOf, highlightMemberIds, highlightTerms, downed, mentioned]);
 
-  /* 지금 스냅의 주인공 아바타와, 그 사람 본진에서 그 자리까지 잇는 화살표(요청: 공격의
-     경우 본진에서 공격위치까지 팀컬러 화살표). 둘이 같은 자료를 쓰므로 한 번에 만든다. */
-  const { actors, arrows } = useMemo<{ actors: MinimapMarker[]; arrows: MinimapArrow[] }>(() => {
+  /* 지금 스냅에서 벌어진 일을 화살표로 잇는다 — 본진에서 그 일이 있었던 자리까지(요청).
+     공격만이 아니라 "센터에 포토를 지었다"·"유닛을 뽑았다"처럼 자리가 남는 모든 beat가
+     대상이다(요청). 아바타를 그 자리에 따로 띄우는 일은 이제 아예 없다(요청) — 누가
+     무엇을 했는지는 화살표의 팀 색과, 본진 표시에서 커진 아바타가 말해 준다.
+     자기 본진 안에서 벌어진 일은 화살표가 그려지지 않는다(길이 조건) — 그건 '어디로
+     갔다'가 아니라 그냥 집에서 한 일이다. */
+  const arrows: MinimapArrow[] = useMemo(() => {
     const beats = gameResult.summaryData?.beats;
     const idx = sentences[index]?.beats;
-    if (!beats || !idx) return { actors: [], arrows: [] };
+    if (!beats || !idx) return [];
     const spots = gameResult.summaryData?.bases ?? {};
     // 한 문장에 여러 beat가 들어가면 같은 사람이 여러 번 나올 수 있다 — 뒤에 오는 것(더
-    // 나중의 자리)이 이긴다.
-    // 당한 사람은 표시하지 않는다(요청) — 당한 자리는 자기 본진이라 본진 표시와 겹쳐
-    // 아바타가 두 개 뜨기만 하고 알려 주는 것이 없다.
+    // 나중의 자리)이 이긴다. 당한 사람은 뺀다: 당한 자리는 자기 본진이라 자기 집에서
+    // 자기 집으로 가는 화살표가 된다.
     const at = new Map<string, [number, number]>();
-    // 화살표는 공격 beat에만 — 물량을 모았다·병력을 충원했다 같은 beat도 자리는 남는데,
-    // 거기까지 화살을 그으면 아무 일 없던 곳으로 공격을 간 것처럼 읽힌다(실측: "히드라를
-    // 141기 충원했다" 장면에 화살표가 그려졌다).
     const flight = new Map<string, boolean>();
     for (const n of idx) {
       const b = beats[n];
@@ -189,39 +202,23 @@ export default function GameResultStory({
       for (const [raw, xy] of Object.entries(b.pos ?? {})) {
         if (victims.has(raw)) continue;
         at.set(raw, xy);
-        if (ATTACK_BEAT_KEYS.has(b.k)) flight.set(raw, FLIGHT_BEAT_KEYS.has(b.k));
-        else flight.delete(raw);
+        flight.set(raw, FLIGHT_BEAT_KEYS.has(b.k));
       }
     }
-    const rows = slots.filter((s) => at.has(s.raw));
-    /* 화살표를 그은 사람은 아바타를 띄우지 않는다(요청: 화살표 끝에 공격자 아바타도 없애기) —
-       화살표의 팀 색과 머리만으로 누가 어디를 쳤는지 읽히고, 그 사람 얼굴은 본진 표시에 이미
-       있다. 아바타를 함께 두면 화살촉이 얼굴에 가려 방향이 안 보였다.
-       화살표가 실제로 그려지는지(길이 조건)까지 여기서 같은 기준으로 본다. */
-    const drawn = new Set(rows
+    return slots
       .filter((s) => {
         const home = spots[s.raw];
-        if (!home || !flight.has(s.raw)) return false;
-        const [x, y] = at.get(s.raw)!;
-        return Math.hypot(x - home[0], y - home[1]) >= ARROW_MIN_TILES;
+        const to = at.get(s.raw);
+        if (!home || !to) return false;
+        return Math.hypot(to[0] - home[0], to[1] - home[1]) >= ARROW_MIN_TILES;
       })
-      .map((s) => s.raw));
-    return {
-      actors: rows.filter((s) => !drawn.has(s.raw)).map((s) => ({
-        key: s.raw, name: s.name, memberId: s.slot.memberId,
-        avatar: memberOf(s.slot.memberId)?.avatar ?? null,
-        race: s.slot.race, team: s.team,
-        x: at.get(s.raw)![0], y: at.get(s.raw)![1],
-        withName: false, highlight: false,
-      })),
-      arrows: rows.filter((s) => drawn.has(s.raw)).map((s) => ({
+      .map((s) => ({
         key: s.raw,
         x1: spots[s.raw][0], y1: spots[s.raw][1],
         x2: at.get(s.raw)![0], y2: at.get(s.raw)![1],
         team: s.team, flight: flight.get(s.raw) ?? false,
-      })),
-    };
-  }, [gameResult.summaryData, sentences, index, slots, memberOf]);
+      }));
+  }, [gameResult.summaryData, sentences, index, slots]);
 
   const o1 = outcomeFor("team1", result);
   const o2 = outcomeFor("team2", result);
@@ -253,7 +250,7 @@ export default function GameResultStory({
           </span>
         )}
       </div>
-      <ReplayMinimap grid={grid} bases={bases} actors={actors} arrows={arrows} />
+      <ReplayMinimap grid={grid} bases={bases} arrows={arrows} />
     </div>
   );
 

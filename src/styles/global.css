@@ -7616,6 +7616,16 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
    양쪽 로스터가 닉네임 한 줄도 못 담을 만큼 눌린다(기본 max-width는 560px). */
 @media (min-width: 641px) {
   .scr-challenge-matchup.scr-story-matchup-wide { max-width: 620px; }
+  /* 좌우 로스터가 미니맵에서 같은 거리에 오게 한다(지적: 좌우대칭이 안 맞음). 두 열은 폭이
+     같지만 둘 다 왼쪽 정렬이라, 왼쪽 로스터는 미니맵에서 멀고 오른쪽 로스터는 딱 붙어
+     보였다(실측: 왼쪽 79px, 오른쪽 0px). 프사는 늘 닉네임 왼쪽이라는 규칙은 그대로 두고
+     (요청) 열 정렬만 안쪽으로 모은다. */
+  .scr-story-matchup-wide > .scr-challenge-side:first-child {
+    justify-items: end; padding-right: 12px;
+  }
+  .scr-story-matchup-wide > .scr-challenge-side:last-child {
+    justify-items: start; padding-left: 12px;
+  }
 }
 /* 가운데 열 — 승/무 배지와 vs가 첫 줄, 그 아래가 미니맵. 예전엔 배지 줄 자체가 flex
    항목이었는데, 미니맵을 그 아래 두려고 한 겹 감쌌다. 배지 줄의 좌우 마진(14px)은 그대로
@@ -7668,9 +7678,17 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
 }
 @keyframes scr-minimap-arrow-in { from { opacity: 0; } to { opacity: 1; } }
 /* 값은 타일 단위다(viewBox가 타일 격자) — 128칸 맵에서 1타일이 화면 2~3px이다. */
+/* 화살촉 레이어 — 아바타·이름표(z-index 3)보다 위. 몸통은 위 레이어(z-index 없음)라
+   아바타 아래에 남는다. */
+.scr-minimap-arrow-tips {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  pointer-events: none; z-index: 4;
+  animation: scr-minimap-arrow-in 260ms ease-out;
+}
 .scr-minimap-arrow { stroke-width: 1.1; stroke-linecap: round; }
 .scr-minimap-arrow-halo { stroke: rgba(0, 0, 0, 0.55); stroke-width: 2.6; stroke-linecap: round; }
-.scr-minimap-arrow-head { stroke: rgba(0, 0, 0, 0.55); stroke-width: 0.8; }
+/* 화살촉 — 아바타 위에 뜨므로 검은 테를 좀 더 두껍게 둘러 그림에서 떠 보이게 한다. */
+.scr-minimap-arrow-head { stroke: rgba(0, 0, 0, 0.7); stroke-width: 1; }
 
 /* 표시 하나 — 크기 없는 '점'으로 두고 아바타와 닉네임을 그 점 기준으로 얹는다(위치는
    인라인 스타일). 아바타를 flex로 나란히 두면 닉네임 길이만큼 아바타가 실제 좌표에서
@@ -7678,7 +7696,25 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
 .scr-minimap-mark { position: absolute; width: 0; height: 0; pointer-events: none; }
 .scr-minimap-mark .scr-avatar {
   position: absolute; left: 0; top: 0; transform: translate(-50%, -50%);
-  border: 2px solid rgba(255, 255, 255, 0.85); box-sizing: content-box;
+  /* 팀 색이 곧 편 구분이라 테두리를 두껍게 두른다(요청: 팀 구분이 더 확실하게) — 지형 위에
+     올라가는 그림이라 얇은 테두리는 색이 거의 안 읽혔다. 바깥에 검은 테를 한 겹 더 깔아
+     밝은 지형에서도 테두리 색이 살아 있게 한다. */
+  border: 3px solid rgba(255, 255, 255, 0.9); box-sizing: content-box;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.65);
+  /* 스냅이 바뀌면 크기가 바뀐다 — 튀지 않게 넘긴다. */
+  transition: width 220ms ease, height 220ms ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .scr-minimap-mark .scr-avatar { transition: none; }
+}
+/* 지금 문장의 주인공 — 크게 키우고 팀 색 고리를 한 겹 더 둘러 확실히 도드라지게 한다(요청). */
+.scr-minimap-mark-on { z-index: 2; }
+.scr-minimap-mark-on .scr-avatar { border-width: 4px; }
+.scr-minimap-mark-on.scr-minimap-mark-t1 .scr-avatar {
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.65), 0 0 10px 3px rgba(43, 155, 255, 0.55);
+}
+.scr-minimap-mark-on.scr-minimap-mark-t2 .scr-avatar {
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.65), 0 0 10px 3px rgba(255, 77, 104, 0.55);
 }
 /* 본진 — 아바타에 팀 색 테두리를 두르고 아래에 닉네임(요청: 아바타+닉네임 계속 표시).
    검은 판을 깔아 어떤 지형 색 위에서도 읽히게 한다. */
@@ -7687,7 +7723,7 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
      아바타가 이름을 절반쯤 덮어 "yDalsu"처럼 읽혔다(실측). 글자가 가려지는 편이 아바타가
      가려지는 편보다 나쁘다. */
   z-index: 3;
-  position: absolute; left: 0; top: 13px; transform: translateX(-50%);
+  position: absolute; left: 0; top: 11px; transform: translateX(-50%);
   display: inline-flex; align-items: center; gap: 2px;
   font-size: 10px; font-weight: 700; line-height: 1; white-space: nowrap;
   padding: 2px 4px; border-radius: 4px;
@@ -7697,14 +7733,17 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
    본진의 이름이 잘렸다). 아래쪽 본진은 이름을 아바타 위로 올린다. */
 .scr-minimap-mark-lab-r .scr-minimap-mark-label { transform: translateX(-14%); }
 .scr-minimap-mark-lab-l .scr-minimap-mark-label { transform: translateX(-86%); }
-.scr-minimap-mark-lab-up .scr-minimap-mark-label { top: auto; bottom: 13px; }
+.scr-minimap-mark-lab-up .scr-minimap-mark-label { top: auto; bottom: 11px; }
+/* 커진 아바타에 이름이 겹치지 않게 한 칸 더 내려(올려) 붙인다. */
+.scr-minimap-mark-on .scr-minimap-mark-label { top: 19px; }
+.scr-minimap-mark-on.scr-minimap-mark-lab-up .scr-minimap-mark-label { top: auto; bottom: 19px; }
 .scr-minimap-mark-name { max-width: 108px; overflow: hidden; text-overflow: ellipsis; }
 .scr-minimap-mark-race { flex-shrink: 0; }
 /* 궤멸·빈사 — 본진 아바타를 흑백으로 누르고 그 위에 해골을 얹는다(요청). 아바타를 지우지
    않는 이유는 누구 자리인지 여전히 알아야 하기 때문이다. */
 .scr-minimap-mark-downed .scr-avatar { filter: grayscale(1) brightness(0.55); }
 .scr-minimap-mark-skull {
-  /* 아바타 가운데가 아니라 오른쪽 위 어깨에 얹는다 — 가운데에 두면 18px 아바타를 거의 다
+  /* 아바타 가운데가 아니라 오른쪽 위 어깨에 얹는다 — 가운데에 두면 작은 아바타를 거의 다
      덮어 누구 자리인지 알 수 없었다(실측 스크린샷). */
   position: absolute; left: 7px; top: -7px; transform: translate(-50%, -50%);
   z-index: 2; color: #fff;
@@ -7715,25 +7754,18 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
 
 /* (삭제) 스냅 아바타가 따로 뜬 사람의 본진을 흐리게 하던 규칙 — 이제 당한 사람 마커를
    아예 안 그리고 스냅 마커는 늘 다른 자리에 뜨므로, 흐리게 할 이유가 없어졌다(요청). */
-.scr-minimap-mark-t1 .scr-avatar { border-color: #4d9bf0; }
-.scr-minimap-mark-t2 .scr-avatar { border-color: #f26d80; }
-.scr-minimap-mark-t1 .scr-minimap-mark-label { color: #a9d3ff; }
-.scr-minimap-mark-t2 .scr-minimap-mark-label { color: #ffc0c9; }
+/* 팀 색 — 채도를 올려 두 편이 한눈에 갈리게 한다(요청). ReplayMinimap의 TEAM_COLOR(화살표
+   색)와 같은 값이라 화살표와 아바타 테두리가 같은 편으로 읽힌다. */
+.scr-minimap-mark-t1 .scr-avatar { border-color: #2b9bff; }
+.scr-minimap-mark-t2 .scr-avatar { border-color: #ff4d68; }
+.scr-minimap-mark-t1 .scr-minimap-mark-label { color: #8fcaff; }
+.scr-minimap-mark-t2 .scr-minimap-mark-label { color: #ffa3b1; }
 /* 검색으로 짚은 사람 — 로스터를 감춘 모바일에서는 여기가 유일한 표시 자리다. */
 .scr-minimap-mark-hit .scr-minimap-mark-label {
   background: var(--point); color: #101010;
 }
-/* 스냅의 주인공 — 아바타만, 조금 크게. 스냅이 바뀌면 같은 사람의 표시가 제자리에서
-   움직이도록(React가 같은 DOM을 다시 쓴다) 위치에 전환을 건다. */
-.scr-minimap-mark-actor {
-  z-index: 2;
-  transition: left 420ms ease, top 420ms ease;
-}
-.scr-minimap-mark-actor .scr-avatar {
-  border-width: 2px;
-  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.55), 0 0 10px 2px rgba(255, 255, 255, 0.35);
-}
-@media (prefers-reduced-motion: reduce) { .scr-minimap-mark-actor { transition: none; } }
+/* (삭제) 스냅 주인공을 그 자리에 아바타로 띄우던 표시 — 이제 화살표가 그 일을 하고,
+   주인공은 본진 아바타가 커지는 것으로 나타낸다(요청). */
 
 /* ── 타임라인 ── */
 .scr-story-line { display: flex; align-items: center; gap: 8px; width: 100%; }

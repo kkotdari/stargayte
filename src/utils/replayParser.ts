@@ -514,9 +514,12 @@ function toBase64(bytes: Uint8Array): string {
   return btoa(s);
 }
 
-// 팔레트 첨자를 1바이트에 담으므로 그룹 종류가 이보다 많은 맵은 이 방식으로 못 담는다.
-// 실측으로는 128×128 맵에 서른 몇 종류뿐이라 걸릴 일이 없지만, 걸리면 미니맵을 포기한다
-// (틀린 격자를 저장하는 것보다 없는 편이 낫다).
+// 팔레트 첨자를 1바이트에 담으므로 팔레트는 256칸까지다. 빠른무한류는 그룹이 서른 몇
+// 종류뿐이라 그냥 들어가지만, 실제 래더맵은 훨씬 많다 — 투혼(Jungle)은 642종류라 예전에는
+// 여기서 포기해 미니맵이 아예 안 나왔다(사용자 지적: "투혼은 맵이 안나옴").
+// 그래서 넘칠 때는 포기하는 대신 순위를 256칸으로 눌러 담는다(아래). 색은 어차피 '팔레트
+// 안에서의 순위 → 색 램프'라(ReplayMinimap의 rampOf) 순위를 뭉치는 것은 색 단계 몇 개를
+// 잃는 것뿐이고, 지형이 면으로 뭉쳐 보이는 성질은 그대로 남는다.
 const MAP_PALETTE_MAX = 256;
 
 /** 맵 격자를 뽑는다 — 못 읽으면 null(그 경기엔 미니맵이 안 붙는다).
@@ -533,9 +536,17 @@ async function readMapGrid(res: ScrepResult): Promise<ReplayMapGrid | null> {
 
   const groups = new Uint16Array(raw.length);
   for (let i = 0; i < raw.length; i += 1) groups[i] = raw[i] >> 4;
-  const palette = [...new Set(groups)].sort((a, b) => a - b);
-  if (palette.length > MAP_PALETTE_MAX) return null;
-  const at = new Map(palette.map((g, i) => [g, i]));
+  const uniq = [...new Set(groups)].sort((a, b) => a - b);
+  // 팔레트가 256칸을 넘으면 순위를 고르게 눌러 담는다 — 첨자 i를 가진 그룹은 i번째 순위이고,
+  // 팔레트에는 그 칸을 대표하는 그룹 번호를 넣는다(그림에는 순위만 쓰이므로 대표값이면 된다).
+  const bucket = uniq.length / MAP_PALETTE_MAX;
+  const palette = uniq.length <= MAP_PALETTE_MAX
+    ? uniq
+    : Array.from({ length: MAP_PALETTE_MAX }, (_, i) => uniq[Math.floor(i * bucket)]);
+  const at = new Map(uniq.map((g, i) => [
+    g,
+    uniq.length <= MAP_PALETTE_MAX ? i : Math.min(MAP_PALETTE_MAX - 1, Math.floor(i / bucket)),
+  ]));
   const bytes = new Uint8Array(groups.length);
   for (let i = 0; i < groups.length; i += 1) bytes[i] = at.get(groups[i]) ?? 0;
 
