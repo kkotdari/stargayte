@@ -7,6 +7,7 @@ import { useReplayMap } from "../../hooks/useReplayMap";
 import { cleanMapName } from "../../utils/mapName";
 import { cx } from "../../utils/format";
 import { normalizeSearchText } from "../../utils/memberSearch";
+import { ATTACK_BEAT_KEYS } from "../../utils/replaySummary";
 import { renderReplaySummarySentences } from "../../utils/replaySummaryText";
 import type { GameResult, GameResultSlot, Member } from "../../types";
 
@@ -179,46 +180,130 @@ export default function GameResultStory({
       });
   }, [gameResult.summaryData, slots, memberOf, highlightMemberIds, highlightTerms, downed, mentioned]);
 
-  /* 지금 스냅에서 벌어진 일을 화살표로 잇는다 — 본진에서 그 일이 있었던 자리까지(요청).
-     공격만이 아니라 "센터에 포토를 지었다"·"유닛을 뽑았다"처럼 자리가 남는 모든 beat가
-     대상이다(요청). 아바타를 그 자리에 따로 띄우는 일은 이제 아예 없다(요청) — 누가
-     무엇을 했는지는 화살표의 팀 색과, 본진 표시에서 커진 아바타가 말해 준다.
-     자기 본진 안에서 벌어진 일은 화살표가 그려지지 않는다(길이 조건) — 그건 '어디로
-     갔다'가 아니라 그냥 집에서 한 일이다. */
+  /* 지금 스냅에서 벌어진 일을 화살표로 잇는다 — 본진에서 '어디로 갔는가'까지(요청).
+
+     자리를 저장된 명령 좌표(beat.pos)에서 뽑던 것을 걷어냈다 — 지적: 공격인데 화살표가 아군
+     기지나 자기 본진에 꽂히는 경우가 더 많고, 아무도 없는 곳으로 가는 경우도 많았다. 원인은
+     명령 좌표 자체다: 사람은 병력을 자기 집 앞에 모으고, 화면을 끌면서 빈 땅을 찍고, 리콜은
+     '데려올 병력이 있는 자기 기지'를 찍는다(지적: 리콜이 자기 기지로 향한다). 그 좌표 뭉치의
+     중심은 '무엇을 쳤는가'와 별로 관계가 없다.
+
+     그래서 확실한 지점만 쓴다. 우선순위:
+       ① 건물 자리 분류(p.spot) — 상대 본진/상대 입구/센터/내 입구/아군 기지처럼 이미 판정해
+          둔 값이다(replayTactics의 spot()).
+       ② 당한 사람의 본진 — 누가 맞았는지 아는 beat는 그 사람 집이 곧 목표다.
+       ③ 공격 beat인데 당한 사람을 모르면 가장 가까운 상대 본진 — 틀릴 수는 있어도 최소한
+          '상대 쪽'이다. 리콜·커널·드랍이 여기 걸린다.
+       ④ 그 밖(병력을 뽑았다·물량을 모았다처럼 목표가 없는 이야기)은 맵 가운데 쪽으로 조금
+          나가는 화살표 — 진출하는 느낌만 준다(요청). 특정 지점을 찍지 않으므로 틀릴 것도
+          없다. */
   const arrows: MinimapArrow[] = useMemo(() => {
     const beats = gameResult.summaryData?.beats;
     const idx = sentences[index]?.beats;
     if (!beats || !idx) return [];
     const spots = gameResult.summaryData?.bases ?? {};
+    const teamOf = new Map(slots.map((s) => [s.raw, s.team]));
+    const w = grid?.width ?? 128;
+    const h = grid?.height ?? 128;
+    const center: [number, number] = [w / 2, h / 2];
+    const homeOf = (raw: string): [number, number] | null => {
+      const v = spots[raw];
+      return v ? [v[0], v[1]] : null;
+    };
+    /** a에서 b쪽으로 t만큼 간 자리. */
+    const lerp = (a: [number, number], b: [number, number], t: number): [number, number] =>
+      [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+    const dist = (a: [number, number], b: [number, number]) => Math.hypot(b[0] - a[0], b[1] - a[1]);
+    /** 그 사람에게 가장 가까운 상대(다른 편) 본진. */
+    const nearestFoe = (raw: string): [number, number] | null => {
+      const home = homeOf(raw);
+      const team = teamOf.get(raw);
+      if (!home || !team) return null;
+      let best: [number, number] | null = null;
+      for (const s of slots) {
+        if (s.team === team) continue;
+        const p = homeOf(s.raw);
+        if (!p) continue;
+        if (best === null || dist(home, p) < dist(home, best)) best = p;
+      }
+      return best;
+    };
+    /** 그 사람에게 가장 가까운 아군(자기 제외) 본진. */
+    const nearestAlly = (raw: string): [number, number] | null => {
+      const home = homeOf(raw);
+      const team = teamOf.get(raw);
+      if (!home || !team) return null;
+      let best: [number, number] | null = null;
+      for (const s of slots) {
+        if (s.raw === raw || s.team !== team) continue;
+        const p = homeOf(s.raw);
+        if (!p) continue;
+        if (best === null || dist(home, p) < dist(home, best)) best = p;
+      }
+      return best;
+    };
+    // '입구'는 본진에서 가운데 쪽으로 이만큼 나온 자리로 본다 — 정확한 입구 좌표는 지형 표가
+    // 없어 알 수 없지만(ReplayMapCanvas 주석), 입구는 늘 본진과 가운데 사이에 있다.
+    const FRONT = 0.24;
+    // 목표가 없는 이야기에서 '진출' 느낌만 주는 길이(요청).
+    const PUSH = 0.36;
+
+    const target = (b: (typeof beats)[number], raw: string): [number, number] | null => {
+      const home = homeOf(raw);
+      if (!home) return null;
+      const foe = nearestFoe(raw);
+      const ally = nearestAlly(raw);
+      const spot = typeof b.p?.spot === "string" ? b.p.spot : null;
+      switch (spot) {
+        case "enemyBase": return foe;
+        case "enemyFront": return foe ? lerp(foe, center, FRONT) : null;
+        case "mid": return center;
+        case "myBase": return home;
+        case "myFront": return lerp(home, center, FRONT);
+        case "allyBase": return ally;
+        case "allyFront": return ally ? lerp(ally, center, FRONT) : null;
+        default: break;
+      }
+      // 당한 사람의 본진 — 여럿이면 상대 편을 먼저 고른다(아군 오사가 아니라 공격 목표).
+      const victims = (b.whom ?? []).filter((v) => v !== raw);
+      const foeVictim = victims.find((v) => teamOf.get(v) && teamOf.get(v) !== teamOf.get(raw));
+      const victim = foeVictim ?? victims[0];
+      if (victim && homeOf(victim)) return homeOf(victim);
+      // 공격 이야기인데 목표를 모르면 상대 쪽으로 — 리콜·커널·드랍이 여기 걸린다.
+      if (ATTACK_BEAT_KEYS.has(b.k) && foe) return foe;
+      // 목표가 없는 이야기 — 가운데 쪽으로 조금(요청: 진출하는 느낌).
+      return lerp(home, center, PUSH);
+    };
+
     // 한 문장에 여러 beat가 들어가면 같은 사람이 여러 번 나올 수 있다 — 뒤에 오는 것(더
-    // 나중의 자리)이 이긴다. 당한 사람은 뺀다: 당한 자리는 자기 본진이라 자기 집에서
-    // 자기 집으로 가는 화살표가 된다.
-    const at = new Map<string, [number, number]>();
+    // 나중의 일)이 이긴다. 당한 사람은 뺀다: 맞은 쪽에서 나가는 화살표는 이야기가 아니다.
+    const to = new Map<string, [number, number]>();
     const flight = new Map<string, boolean>();
     for (const n of idx) {
       const b = beats[n];
       if (!b) continue;
       const victims = new Set(b.whom ?? []);
-      for (const [raw, xy] of Object.entries(b.pos ?? {})) {
+      for (const raw of b.who ?? []) {
         if (victims.has(raw)) continue;
-        at.set(raw, xy);
+        const t = target(b, raw);
+        if (!t) continue;
+        to.set(raw, t);
         flight.set(raw, FLIGHT_BEAT_KEYS.has(b.k));
       }
     }
     return slots
       .filter((s) => {
-        const home = spots[s.raw];
-        const to = at.get(s.raw);
-        if (!home || !to) return false;
-        return Math.hypot(to[0] - home[0], to[1] - home[1]) >= ARROW_MIN_TILES;
+        const home = homeOf(s.raw);
+        const t = to.get(s.raw);
+        return !!home && !!t && dist(home, t) >= ARROW_MIN_TILES;
       })
       .map((s) => ({
         key: s.raw,
-        x1: spots[s.raw][0], y1: spots[s.raw][1],
-        x2: at.get(s.raw)![0], y2: at.get(s.raw)![1],
+        x1: homeOf(s.raw)![0], y1: homeOf(s.raw)![1],
+        x2: to.get(s.raw)![0], y2: to.get(s.raw)![1],
         team: s.team, flight: flight.get(s.raw) ?? false,
       }));
-  }, [gameResult.summaryData, sentences, index, slots]);
+  }, [gameResult.summaryData, sentences, index, slots, grid]);
 
   const o1 = outcomeFor("team1", result);
   const o2 = outcomeFor("team2", result);
