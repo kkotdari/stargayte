@@ -83,8 +83,15 @@ export interface ReplayPlayerSignals {
    *  어디로 보냈는지는 명령에 그대로 남는다(요청: 여러 명이 함께 덮친 걸 알 수 있나).
    *  선택·핫키는 화면 조작이라 좌표가 없고, 미니맵 핑은 의사표시지 병력이 아니라 뺀다.
    *  한계는 늘 같다 — '명령'이지 '도달'이 아니다. 그래서 한두 번 찍힌 건 정찰로 보고
-   *  여러 번 몰린 경우만 근거로 쓴다(replayTactics의 pushersOn). */
-  orderPositions: { frame: number; x: number; y: number }[];
+   *  여러 번 몰린 경우만 근거로 쓴다(replayTactics의 pushersOn).
+   *
+   *  kind는 그 우클릭·표적 명령이 실제로 어떤 명령이었나다(요청: 어택 지정·무브한 곳의
+   *  좌표를 정확히 알 수 있나) — screp이 커맨드마다 실어 주는 Order 이름으로 가른다.
+   *  "AttackMove"/"AttackUnit"류(Attack로 시작)는 공격, "Move"는 이동이고, 채집·수리·
+   *  따라가기 같은 나머지는 공격 장면의 근거로 삼기 애매해 그냥 비워 둔다(undefined). 옛
+   *  screp 버전이 Order를 안 주면 역시 비워지고, 그 좌표는 여느 때처럼 '근처에 몰렸나'로만
+   *  쓰인다 — kind가 있으면 그중에서도 '진짜 공격 명령'만 추려 더 정확히 짚을 수 있다. */
+  orderPositions: { frame: number; x: number; y: number; kind?: "attack" | "move" }[];
   /** 연구한 테크(스톰/럴커 등)와 업그레이드 이름 — 순서대로.
    *
    *  이름은 replayTechNames.ts의 TECH_NAMES / UPGRADE_NAMES 그대로다. 업그레이드는 screp이
@@ -464,7 +471,16 @@ function collectSignals(cmds: ScrepCmd[], totalFrames: number | null): Map<numbe
       // 커맨드는 픽셀(0~4096)로 온다. 한 타일이 32픽셀이라 나눠 주면 같은 자로 잴 수 있다.
       // 실측으로 확인했다(같은 리플레이에서 build x[0~33] / order x[0~3797]).
       if (pos && frame !== null) {
-        s.orderPositions.push({ frame, x: pos.x / PIXELS_PER_TILE, y: pos.y / PIXELS_PER_TILE });
+        // 이 명령이 실제로 어떤 것이었나(위 orderPositions의 kind 주석) — Order 이름이
+        // "Attack"으로 시작하면(AttackMove/AttackUnit/AttackFixedRange …) 공격, 정확히
+        // "Move"면 이동이다. 나머지(채집·수리·따라가기 등)는 kind를 안 붙인다.
+        const orderName = nameOf(c.Order);
+        const kind = orderName === "Move" ? "move" as const
+          : orderName?.startsWith("Attack") ? "attack" as const
+            : undefined;
+        s.orderPositions.push({
+          frame, x: pos.x / PIXELS_PER_TILE, y: pos.y / PIXELS_PER_TILE, ...(kind ? { kind } : {}),
+        });
       }
     }
     if (cmdName === "Unload" || cmdName === "Unload All") {

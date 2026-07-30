@@ -2455,12 +2455,19 @@ function beatPositions(
     const near = orders.filter((o) => Math.abs(o.frame - at) <= half);
     if (near.length < POS_MIN_ORDERS) continue;
     const home = baseOf(name);
+    const invader = attack && actors.has(name) && !victims.includes(name);
+    // 진짜 공격 명령(kind === "attack")이 있으면 그게 최우선이다(요청: 어택 지정 좌표를
+    // 정확히 알 수 있나 — 그게 있으면 공격 장면이 더 정확해진다) — screp이 Order 이름을
+    // 주는 버전에서는 "집에서 멀리 떨어진 명령"이라는 거리 어림보다 훨씬 확실하다.
+    const attacks = invader ? near.filter((o) => o.kind === "attack") : [];
     // 들이친 사람은 집이 아니라 나간 자리에 찍는다. 당한 사람은 그대로 — 당한 자리가 곧
     // 자기 진영이다.
-    const away = attack && actors.has(name) && !victims.includes(name) && home !== null
+    const away = invader && home !== null
       ? near.filter((o) => Math.hypot(o.x - home.x, o.y - home.y) > POS_AWAY_MIN)
       : [];
-    const pick = clusterOf(away.length >= POS_MIN_ORDERS ? away : near, at, target);
+    const pool = attacks.length >= POS_MIN_ORDERS ? attacks
+      : away.length >= POS_MIN_ORDERS ? away : near;
+    const pick = clusterOf(pool, at, target);
     if (pick) out[name] = pick;
   }
   return Object.keys(out).length > 0 ? out : undefined;
