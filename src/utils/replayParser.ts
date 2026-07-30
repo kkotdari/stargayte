@@ -190,6 +190,10 @@ export interface ParsedReplay {
   teamSplitUncertain: boolean;
   /** 맵의 지형 격자 — 못 읽었으면 null이고, 그때는 그 경기에 미니맵이 안 붙는다. */
   mapGrid: ReplayMapGrid | null;
+  /** 맵에 있는 '모든' 시작 지점(타일) — 이번 판에 아무도 안 앉은 자리까지 포함한다. 맵의
+   *  가운데를 재는 데 쓴다(요청: 센터는 실제로 안 나왔더라도 모든 스타팅 포인트의 중심으로
+   *  잡아야 한다). 못 읽었으면 빈 배열. */
+  startSpots: [number, number][];
 }
 
 export class ReplayParseError extends Error {}
@@ -760,5 +764,6 @@ export async function parseReplayFile(file: File): Promise<ParsedReplay> {
     guessedObservers,
     teamSplitUncertain,
     mapGrid: await readMapGrid(res),
+    startSpots: (res.MapData?.StartLocations ?? []).map((sp) => [sp.X / 32, sp.Y / 32] as [number, number]),
   };
 }

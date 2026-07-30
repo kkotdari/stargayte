@@ -401,7 +401,9 @@ interface Geo {
 function geoOf(
   me: ParsedReplayPlayer,
   allies: ParsedReplayPlayer[],
-  foes: ParsedReplayPlayer[]
+  foes: ParsedReplayPlayer[],
+  /** 맵의 모든 시작 지점(타일) — 센터를 재는 기준(요청). */
+  startSpots?: [number, number][],
 ): Geo | null {
   // 구역은 전부 '시작 본진'을 기준으로 가른다(위 startHomeOf 참고) — 경기 전체의 무게중심을
   // 쓰면 멀티를 늘리거나 자리를 옮긴 사람의 본진이 통째로 밀려 러시가 안 잡힌다.
@@ -423,11 +425,14 @@ function geoOf(
     .map((f) => ({ raw: f.rawName, h: startHomeOf(f) }))
     .filter((f): f is { raw: string; h: { x: number; y: number } } => f.h !== null);
 
-  // 맵 가운데 — 시작 자리들의 '바깥 테두리 가운데'다. 평균을 쓰면 참가자가 한쪽에 쏠린 판에서
-  // 가운데가 그쪽으로 끌려간다(실측: 다섯 명 중 셋이 왼쪽인 경기에서 평균이 (53,51)이었고,
-  // 그 때문에 왼쪽 사람의 앞마당 포토가 센터로 잡혔다). 테두리 가운데는 그 쏠림에 흔들리지
-  // 않는다 — 같은 경기에서 (64,62.5)로, 128×128 맵의 실제 가운데와 거의 같다.
-  const allHomes = [home, ...allyHomes.map((a) => a.h), ...foeHomes];
+  // 맵 가운데 — 맵에 있는 '모든' 시작 지점의 가운데다(요청: 실제로 안 나왔더라도 모든 스타팅
+  // 포인트의 중심으로). 참가자 자리만 쓰면 한쪽에 쏠린 판에서 가운데가 그쪽으로 끌려간다
+  // (실측: 다섯 명 중 셋이 왼쪽인 경기에서 (53,51)). 시작 지점을 못 읽은 리플레이에서는
+  // 참가자 자리의 테두리 가운데로 물러선다 — 평균보다는 쏠림에 덜 흔들린다.
+  const seatHomes = [home, ...allyHomes.map((a) => a.h), ...foeHomes];
+  const allHomes = (startSpots ?? []).length >= 2
+    ? (startSpots as [number, number][]).map(([x, y]) => ({ x, y }))
+    : seatHomes;
   const mapMid = {
     x: (Math.min(...allHomes.map((h) => h.x)) + Math.max(...allHomes.map((h) => h.x))) / 2,
     y: (Math.min(...allHomes.map((h) => h.y)) + Math.max(...allHomes.map((h) => h.y))) / 2,
@@ -438,7 +443,9 @@ function geoOf(
   const atMapMid = (b: BuildPos): boolean => {
     if (!(ring > 0)) return false;
     if (dist(b, mapMid) >= ring * MID_MAP_RATIO) return false;
-    return allHomes.every((h) => dist(b, h) > ring * MID_AWAY_RATIO);
+    // 멀리 떨어져 있어야 한다는 조건은 '실제로 앉은 자리'로만 본다 — 빈 시작 지점은 그 판에
+    // 아무도 없던 곳이라 거기서 멀 이유가 없다.
+    return seatHomes.every((h) => dist(b, h) > ring * MID_AWAY_RATIO);
   };
 
   const enemyAt = (b: BuildPos): string | null => {
@@ -1152,10 +1159,13 @@ function neighborOf(
 export interface TacticScanInput {
   sidePlayers: ParsedReplayPlayer[];
   foePlayers: ParsedReplayPlayer[];
+  /** 맵의 모든 시작 지점(타일) — 이번 판에 아무도 안 앉은 자리까지. 센터를 재는 기준이다
+   *  (요청). 안 넘기면 참가자들의 자리만으로 잰다. */
+  startSpots?: [number, number][];
 }
 
 /** 한 편의 전술 목록 — 무게 큰 것부터, 같은 전술은 한 번만. */
-export function scanTactics({ sidePlayers, foePlayers }: TacticScanInput): Tactic[] {
+export function scanTactics({ sidePlayers, foePlayers, startSpots }: TacticScanInput): Tactic[] {
   const foeRaces = [...new Set(foePlayers.map((p) => p.race).filter(Boolean))];
   // 당한 쪽은 1:1에서만 확실하다 — 팀전에서 누구를 때렸는지는 커맨드만으로 알 수 없어서
   // 아예 말하지 않는다(요청: 불확실한 건 빼기).
@@ -1173,7 +1183,7 @@ export function scanTactics({ sidePlayers, foePlayers }: TacticScanInput): Tacti
     all.push(
       ...detectFor({
         rawName: p.rawName, s: p.signals, race: p.race, foeRaces, soleFoe,
-        geo: geoOf(p, sidePlayers.filter((x) => x !== p), foePlayers),
+        geo: geoOf(p, sidePlayers.filter((x) => x !== p), foePlayers, startSpots),
         neighbor: neighborOf(p, foePlayers, endFrame),
         endFrame,
       })

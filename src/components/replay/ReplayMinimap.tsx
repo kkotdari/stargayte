@@ -73,9 +73,8 @@ const MARK_AHEAD = 2.6;
 /** 본진 이모지를 입구(맵 가운데) 쪽으로 이만큼 띄운다(타일) — 13 → 22(요청: 본진 한가운데
  *  느낌이 나게 자기 아바타에서 맵 중앙 쪽으로 많이 가서). */
 const MARK_OUT = 22;
-/** 이름표를 비켜 가려고 세로로 살짝 올리거나 내리는 양(타일). 대각선으로 띄우면 그 세로
- *  성분이 이름표 띠(아바타 아래 11~25px)에 딱 걸려 글자 위에 얹혔다(실측 스크린샷). */
-const MARK_RISE = 4;
+/** 이모지가 그림 밖으로 잘리지 않게 가장자리에서 남겨 두는 여백(타일). */
+const MARK_EDGE = 3;
 
 /** 팀 색 — 미니맵은 지형 위라 채도가 낮으면 두 편이 잘 안 갈린다(요청: 팀 구분이
  *  더 확실하게). CSS의 마커 테두리 색과 같은 값을 쓴다. */
@@ -182,19 +181,25 @@ export default function ReplayMinimap({
     top: `${(m.y / grid.height) * 100}%`,
   });
 
-  /** 본진 이모지 자리 — 본진에서 맵 가운데(=입구가 있는 쪽) 으로 띄운다(요청: 좀 더 입구
-   *  쪽으로 띄어서, 크게). 아바타·이름표와 겹치지 않고, 어느 자리의 본진이든 '나가는 쪽'에
-   *  붙어 진출하려는 그림으로 읽힌다. */
-  const markPlace = (m: MinimapMarker) => {
+  /** 본진 이모지 자리 — 본진과 맵 한가운데를 잇는 선 위에 올린다(요청). 전에는 가로로만
+   *  띄웠던 탓에, 가운데와 세로로 마주 보는(12시·6시) 본진의 이모지가 선을 벗어나 엉뚱하게
+   *  맵 바깥쪽으로 밀려났다(지적: 왜 자꾸 맵 외곽에 위치하냐). */
+  const markPoint = (m: MinimapMarker): [number, number] => {
     const dx = grid.width / 2 - m.x;
     const dy = grid.height / 2 - m.y;
     const len = Math.hypot(dx, dy) || 1;
-    // 가로로는 가운데(입구) 쪽으로 크게 띄우고, 세로로는 이름표를 비켜 조금만 올린다(내린다).
-    // 대각선으로 한 번에 띄우면 세로 성분이 이름표 띠에 걸린다(실측).
-    void len;
-    const labelBelow = m.y / grid.height <= 1 - EDGE;
-    const x = m.x + Math.sign(dx || 1) * MARK_OUT;
-    const y = m.y + (labelBelow ? -MARK_RISE : MARK_RISE);
+    // 가운데를 지나쳐 반대편으로 넘어가지 않게 거리도 함께 줄인다.
+    const out = Math.min(MARK_OUT, len * 0.7);
+    const px = m.x + (dx / len) * out;
+    const py = m.y + (dy / len) * out;
+    return [
+      Math.min(grid.width - MARK_EDGE, Math.max(MARK_EDGE, px)),
+      Math.min(grid.height - MARK_EDGE, Math.max(MARK_EDGE, py)),
+    ];
+  };
+
+  const markPlace = (m: MinimapMarker) => {
+    const [x, y] = markPoint(m);
     return {
       left: `${(x / grid.width) * 100}%`,
       top: `${(y / grid.height) * 100}%`,
@@ -203,10 +208,18 @@ export default function ReplayMinimap({
 
   /** 닉네임을 아바타 어느 쪽에 붙일까 — 가장자리 본진에서 가운데 정렬로 두면 이름이 그림
    *  밖으로 나가 잘린다(실제로 오른쪽 아래 본진의 이름이 잘렸다). 맵의 어느 쪽에 있는지
-   *  보고 안쪽으로 붙인다. 아래쪽 본진은 이름을 아바타 위로 올린다. */
+   *  보고 안쪽으로 붙인다. 아래쪽 본진은 이름을 아바타 위로 올린다.
+   *  본진 이모지가 붙는 본진이면 이모지 반대쪽으로 이름을 밀어 글자가 가리지 않게 한다. */
   const labelSide = (m: MinimapMarker): string => {
     const fx = m.x / grid.width;
     const fy = m.y / grid.height;
+    if (m.mark && !m.markOn) {
+      const [, my] = markPoint(m);
+      return cx(
+        fx < EDGE ? "scr-minimap-mark-lab-r" : fx > 1 - EDGE ? "scr-minimap-mark-lab-l" : "",
+        my > m.y ? "scr-minimap-mark-lab-up" : "",
+      );
+    }
     return cx(
       fx < EDGE ? "scr-minimap-mark-lab-r" : fx > 1 - EDGE ? "scr-minimap-mark-lab-l" : "",
       fy > 1 - EDGE ? "scr-minimap-mark-lab-up" : "",

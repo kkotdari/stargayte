@@ -1360,6 +1360,18 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   })();
   const domUnit = dominant ? heroUnitOf(winner, dominant, units) : null;
 
+  /* 마지막 국면에서 '전황이 이긴 편에 유리한' 문장을 가려내는 표(요청). 아래 tideOf(문장
+     쪽 판정)와 같은 기준이다 — 어느 편에도 기울지 않는 이야기와, 한 사람의 일이지만 국면은
+     상대 쪽으로 기우는 이야기(제 수가 역풍을 맞음·당함·무너짐)를 갈라 둔다. */
+  const LATE_NEUTRAL = new Set([
+    "standoff", "attrition", "fast-hands", "power-unit", "expand", "prod-gap", "worker-gap",
+    "tech", "vision", "no-detect", "revival", "greedy-build", "scatter", "long-run",
+  ]);
+  const LATE_AGAINST_ACTOR = new Set([
+    "rush-backfire", "greedy-punished", "fallen", "lodging", "lift-off", "gg", "stand",
+    "late-defense",
+  ]);
+
   // ── 문장 수 ──
   // 예전에는 한 문단으로 한 번에 읽히는 글이라 짧게 끊었다(길이에 따라 두~다섯, 최대 일곱).
   // 이제는 자막으로 한 문장씩 넘겨 보는 이야기라 사정이 다르다(요청: 스토리라인 방식이니
@@ -1368,8 +1380,11 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   // 자리가 늘어도 아무거나 채우지는 않는다 — 아래 MIN_WEIGHT가 가벼운 사실을 막는다.
   // 자리를 더 열었다(요청: 문장 이어 붙이기를 최소화하고 최대한 나눠서 스냅을 만들 것 —
   // 그러려면 스냅 수 제한부터 완화해야 한다). 2분마다 하나씩, 긴 경기는 열여덟까지.
-  // 18/13 → 16/12(요청: 문장 수 10% 감축).
-  const baseBudget = Math.max(4, Math.min(sec >= LONG_GAME_SEC ? 16 : 12, 4 + Math.floor((sec - 2 * 60) / (2 * 60))));
+  // 경기 길이에 맞춘 자리 수(요청: 10분이면 서넛, 20분이면 일고여덟). 2분 30초에 한 문장
+  // 꼴이다 — 10분 4, 20분 8, 30분 12. 아주 긴 경기도 열둘에서 멈춘다(그 이상은 읽는 사람이
+  // 지친다). 아래 MIN_WEIGHT가 가벼운 사실을 막으므로 자리가 남아도 아무거나 채우지 않는다.
+  const SEC_PER_LINE = 150;
+  const baseBudget = Math.max(3, Math.min(sec >= LONG_GAME_SEC ? 12 : 10, Math.round(sec / SEC_PER_LINE)));
   // 자리가 남아도 아무거나 채우지 않는다(요청: 승부에 중요한 이벤트만) — 이 무게 아래는
   // "그래서 뭐" 소리가 나오는 사실들이라, 문단을 짧게 끝내는 편이 낫다.
   // 6 → 8(요청: 중요하지 않은 내용은 숫자 채우려고 넣지 말 것). 자리가 남아도 "그래서 뭐"
@@ -1476,7 +1491,7 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   const tacticBeats = (won: boolean): Beat[] => {
     const foes = won ? loserPlayers : winnerPlayers;
     const mine = won ? winnerPlayers : loserPlayers;
-    return scanTactics({ sidePlayers: mine, foePlayers: foes })
+    return scanTactics({ sidePlayers: mine, foePlayers: foes, startSpots: replay.startSpots })
       // GG는 진 편이 쳤을 때만 항복이다. 이긴 쪽도 마무리로 같이 치는 게 관례라, 채팅만
       // 보고 붙이면 "Sohee_Min이 GG 치고 나갔지만 결국 Sohee_Min이 이겼다"가 나온다
       // (실제 리플레이에서 이긴 사람이 끝나기 2초 전에 'ㅈㅈ'를 쳤다).
@@ -1949,8 +1964,18 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
      문장에만 가산점을 줘서, 자리가 빠듯할 때 그 대목이 먼저 남게 한다. 무게 자체를 바꾸지는
      않는다 — 고르는 순서에만 쓰는 값이다. */
   const LATE_WINNER_BONUS = 6;
+  /** 그 문장이 이긴 편 쪽으로 기운 국면인가 — 이긴 편이 한 일이라도 그게 역풍을 맞았거나
+   *  (rush-backfire) 자원부터 챙기다 얻어맞은 이야기면 국면은 상대 쪽이다. 진 편이 당한
+   *  이야기는 반대로 이긴 편에 유리한 국면이다(요청: 마지막 국면에선 전황이 이긴 팀에
+   *  유리한 걸 고르면 될 듯). */
+  const favorsWinner = (b: Beat): boolean => {
+    // 어느 편에도 기울지 않는 이야기(대치·소모전·손 빠르기·물량 …)는 마지막 국면에서
+    // 앞세울 이유가 없다.
+    if (LATE_NEUTRAL.has(b.k)) return false;
+    return LATE_AGAINST_ACTOR.has(b.k) ? !b.won : b.won;
+  };
   const pickWeight = (b: Beat): number =>
-    b.weight + (b.won && phaseOf(b) === 2 ? LATE_WINNER_BONUS : 0);
+    b.weight + (phaseOf(b) === 2 && favorsWinner(b) ? LATE_WINNER_BONUS : 0);
   const ranked = [...pool].sort((x, y) => pickWeight(y) - pickWeight(x));
   const consider = (b: Beat, capped: boolean): boolean => {
     if (chosen.includes(b)) return false;
