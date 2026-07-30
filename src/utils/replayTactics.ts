@@ -206,16 +206,16 @@ const HOME_RADIUS = 0.33;
    방어 건물을 러시로 오판할 여지가 있었다(지적: 무조건 상대 본진에 가까울 때만).
    본진 덩어리에 붙은 자리만 남도록 좁힌다. */
 const ENEMY_RADIUS = 0.22;
-/* '센터'로 인정하는 반경 — 내 본진↔가장 가까운 상대 본진의 중점 기준(그 거리를 1로 둔
-   좌표계라 0.12면 중점에서 양쪽으로 12%). 예전엔 본진·아군기지·상대기지가 아닌 자리를
-   전부 센터로 떨어뜨려서 앞마당이나 구석 멀티에 지은 것까지 "센터"가 됐다(지적).
-   0.22 → 0.12(요청: "진짜 중심에서 가까운것만"). 실제 리플레이 다섯 판의 중점 거리를
-   재 보면 두 무리로 확실히 갈린다: 정말 길목을 막은 포토는 0.04~0.15에 몰려 있고
-   (mark85 0.04·0.08·0.09·0.10·0.15 / TodayDalsu 0.06·0.06·0.08·0.10·0.10·0.12),
-   0.15~0.22 구간에 걸리던 것들은 죄다 센터가 아니었다 — 0.22로 재면 Sohee_Min의
-   본진 밖 건물 13채, 100000g 5채, [Jeong9] 7채가 "센터에 지었다"로 잡혔는데 0.12에서는
-   전부 빠지고 진짜 중앙 덩어리만 남는다. */
-const MID_RADIUS = 0.12;
+/* (삭제) '센터'를 내 본진↔가장 가까운 상대 본진의 중점 기준으로 재던 반경(MID_RADIUS=0.12).
+   일대일에서는 그 중점이 맵 가운데와 같아서 잘 맞았고, 실측으로도 진짜 길목 포토는 0.04~0.15에
+   몰려 있었다. 하지만 본진이 여덟 개인 팀전에서 이 기준이 무너졌다 — 아래 MID_MAP_RATIO. */
+/* '센터'를 재는 기준점을 바꾼 이유(지적: 입구 방어를 센터 포토로 오인하는 경우가 많다).
+   예전에는 '내 본진과 가장 가까운 상대 본진의 중점'을 센터로 삼았다. 일대일에서는 그게 곧
+   맵 가운데지만, 본진이 여덟 개인 팀전에서는 가장 가까운 상대가 바로 옆자리일 수 있어 그
+   중점이 내 입구 바로 앞이 된다 — 입구에 박은 포토가 그대로 "센터 포토"가 됐다.
+   그래서 참가자 전원의 시작 자리 평균(=맵 가운데)을 쓰고, 그 자리들이 놓인 반지름을 자로
+   삼는다. 이러면 팀 구성이나 자리 배치와 무관하게 늘 같은 곳이 센터다. */
+const MID_MAP_RATIO = 0.3;
 /* 맵 곳곳에 건물을 흩뿌리며 버틴 그림(요청: "둘은 계속해서 맵 구석구석에 건물을 지으며
    도망다니며 버텼어. 이런것도 추출해서 스토리화해줘"). 빠른무한처럼 자원이 무한한 판에서
    서로 자리를 내주고 도망 다니며 새로 짓기를 반복하면 본진 언저리가 아니라 판 전체에
@@ -406,6 +406,17 @@ function geoOf(
     .map((f) => ({ raw: f.rawName, h: startHomeOf(f) }))
     .filter((f): f is { raw: string; h: { x: number; y: number } } => f.h !== null);
 
+  // 맵 가운데 — 참가자 전원의 시작 자리 평균. 자(ring)는 그 자리들이 가운데에서 떨어진
+  // 평균 거리다(MID_MAP_RATIO 주석 참고).
+  const allHomes = [home, ...allyHomes.map((a) => a.h), ...foeHomes];
+  const mapMid = {
+    x: allHomes.reduce((n, h) => n + h.x, 0) / allHomes.length,
+    y: allHomes.reduce((n, h) => n + h.y, 0) / allHomes.length,
+  };
+  const ring = allHomes.reduce((n, h) => n + dist(h, mapMid), 0) / allHomes.length;
+  /** 정말 맵 가운데인가 — 본진·아군기지·상대기지 판정 뒤에만 쓴다. */
+  const atMapMid = (b: BuildPos): boolean => ring > 0 && dist(b, mapMid) < ring * MID_MAP_RATIO;
+
   const enemyAt = (b: BuildPos): string | null => {
     let best: { raw: string; d: number } | null = null;
     for (const f of foeHomeOf) {
@@ -431,11 +442,11 @@ function geoOf(
     // 아군 본진도 '남의 기지가 아닌 곳'이다(지적: 다른 저그의 크립 콜로니 위에도 짓는다).
     // 내 본진과 갈라 두어야 성큰러시에서 빼고 옆탱에서만 쓸 수 있다.
     if (allyAt(b) !== null) return "ally";
-    // '센터'라고 부르려면 정말 가운데여야 한다(요청) — 내 본진과 가장 가까운 상대 본진의
-    // 중점 언저리만 센터로 친다. 여기 안 드는 자리(앞마당·삼룡이·구석 멀티 등)는 어디라고
-    // 특정할 수 없으므로 unknown으로 두고, 자리를 근거로 삼는 규칙들이 아예 안 건드린다.
-    const center = { x: (home.x + near.x) / 2, y: (home.y + near.y) / 2 };
-    if (dist(b, center) < base * MID_RADIUS) return "mid";
+    // '센터'라고 부르려면 정말 맵 가운데여야 한다(요청) — 참가자 전원의 시작 자리 평균
+    // 언저리만 센터로 친다(MID_MAP_RATIO 주석: 예전 기준은 팀전에서 내 입구를 센터로
+    // 잡았다). 여기 안 드는 자리(앞마당·삼룡이·구석 멀티 등)는 어디라고 특정할 수 없으므로
+    // unknown으로 두고, 자리를 근거로 삼는 규칙들이 아예 안 건드린다.
+    if (atMapMid(b)) return "mid";
     return "unknown";
   };
 
@@ -487,8 +498,7 @@ function geoOf(
       const foe = foeHomes.reduce((x, y) => (dist(a.h, y) < dist(a.h, x) ? y : x));
       return towardFront(a.h, foe, b, HOME_RADIUS) ? "allyFront" : "allyBase";
     }
-    const center = { x: (home.x + near.x) / 2, y: (home.y + near.y) / 2 };
-    if (dist(b, center) < base * MID_RADIUS) return "mid";
+    if (atMapMid(b)) return "mid";
     return "unknown";
   };
 

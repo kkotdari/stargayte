@@ -7699,11 +7699,18 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
 .scr-minimap-arrow-halo { stroke: rgba(0, 0, 0, 0.55); stroke-width: 2.6; stroke-linecap: round; }
 /* 본진 이모지 — 화살표가 없는 이야기(생산·테크 …)를 그 사람 본진에 붙인다(요청). 해골과
    반대쪽(왼쪽 위) 어깨에 둔다 — 둘이 함께 뜰 수 있다. */
-.scr-minimap-mark-emoji {
-  position: absolute; left: -8px; top: -8px; transform: translate(-50%, -50%);
-  z-index: 2; font-size: 13px; line-height: 1;
-  filter: drop-shadow(0 0 2px #000) drop-shadow(0 0 1px #000);
+/* 본진 이모지 — 화살표가 없는 장면에서는 이것이 유일한 표시라 화살촉 이모지보다 크게(요청). */
+.scr-minimap-mark-home { font-size: 21px; }
+/* 좌·우 절반 — 이전/다음 장면(요청). 아무것도 안 그리는 투명 버튼이다. */
+.scr-minimap-half {
+  position: absolute; top: 0; bottom: 0; width: 50%;
+  padding: 0; border: 0; background: transparent; cursor: pointer;
+  /* 아바타·이모지보다 위에 둔다 — 그것들은 pointer-events:none이라 눌림을 가로채지 않는다. */
+  z-index: 6;
 }
+.scr-minimap-half-prev { left: 0; }
+.scr-minimap-half-next { right: 0; }
+.scr-minimap-half:focus-visible { outline: 2px solid var(--point); outline-offset: -3px; }
 /* 화살표 이모지 — 화살촉과 같은 층(아바타·이름표 위). */
 .scr-minimap-arrow-marks {
   position: absolute; inset: 0; pointer-events: none; z-index: 5;
@@ -7852,6 +7859,10 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
    긴 문장 높이로 잡히므로 재생하는 동안 카드가 위아래로 흔들리지 않는다. 문장마다 길이가
    달라 그냥 갈아 끼우면 매 스냅마다 아래 내용이 밀려 읽던 자리를 놓친다. */
 .scr-story-cap {
+  /* 미니맵 바로 아래에 붙인다(요청: 보기 쉽게) — 로우가 정한 세로 간격(10px)만큼 떠 있으면
+     그림과 그 그림을 설명하는 자막이 따로 있는 것처럼 읽힌다. 음수 마진으로 그 간격을
+     되돌려 그림에 붙여 둔다. */
+  margin-top: calc(-1 * var(--story-gap, 10px) + 2px);
   display: grid; width: 100%;
   padding: 9px 12px; border-radius: 10px;
   background: rgba(var(--overlay-rgb), 0.06);

@@ -395,7 +395,15 @@ export default function GameResultStory({
           </span>
         )}
       </div>
-      <ReplayMinimap grid={grid} bases={bases} arrows={arrows} />
+      <ReplayMinimap
+        grid={grid} bases={bases} arrows={arrows}
+        onStep={sentences.length > 1 ? (d) => {
+          // 그림 좌·우 절반으로 장면을 옮긴다(요청). 손으로 옮겼으면 자동재생은 멈춘다 —
+          // 타임라인의 눈금을 짚었을 때와 같은 규칙이다.
+          setIndex((i) => Math.min(sentences.length - 1, Math.max(0, i + d)));
+          setPlaying(false);
+        } : undefined}
+      />
     </div>
   );
 

@@ -35,6 +35,9 @@ export interface MinimapArrow {
   team: 1 | 2 | undefined;
   /** 날아서·워프로 간 것인가 — 곧은 점선으로 그린다. 지상은 곡선(요청). */
   flight: boolean;
+  /** 상대 진영 안까지 과감하게 들어가도 되는가 — 일대일이고 상대 멀티가 없어서 목표가
+   *  하나뿐일 때만 켠다(요청). 켜지면 끝 간격을 줄여 화살촉이 적진에 더 붙는다. */
+  deep?: boolean;
   /** 화살촉 끝에 얹을 이모지 — 무슨 일인지 한 글자로 알려 준다(요청: 공격은 검 대결, 아군
    *  지원은 천사, 핵은 핵폭발 …). 없으면 안 그린다. */
   mark?: string;
@@ -47,12 +50,15 @@ export interface MinimapArrow {
 // 쓴다 — 스타에서 지상군은 본진을 나와 가운데 길로 돌아 들어가기 때문에, 곧은 직선보다 이게
 // 실제 동선에 가깝다. 대각(크로스) 자리끼리는 현이 이미 가운데를 지나므로 자연히 직선이
 // 된다(휘는 양이 0이 된다). 벽을 정확히 피해 가는 경로는 지형 표가 없으면 그릴 수 없다.
-const BEND = 0.22;
+// 휘는 양(현 길이 대비) — 실제로는 더 크게 돌아가는 일이 많아 키웠다(요청).
+const BEND = 0.4;
 /** 시작·끝에서 이만큼 띄운다 — 아바타 밑에서 시작하면 화살표가 아바타에 가려 안 보인다. */
 const GAP_FROM = 4.4;
 /* 끝은 더 넉넉히 띄운다 — 목표 자리에는 그 사람 본진 아바타(커지면 지름 28px+테두리)가 있어
    화살촉이 그 밑에 들어가 안 보였다(지적: "화살촉이 다른 요소들에 가려짐"). */
 const GAP_TO = 6;
+/** 일대일에서 목표가 하나뿐일 때는 이만큼만 띄운다 — 적진에 더 붙여 그린다(요청). */
+const GAP_TO_DEEP = 2.5;
 /** 이보다 짧은 화살표는 그리지 않는다 — 자기 본진 안에서 벌어진 일은 '어디로 갔다'가 아니다.
  *  부르는 쪽에서도 같은 기준으로 걸러 낼 수 있게 내보낸다. */
 export const ARROW_MIN_TILES = 8;
@@ -64,6 +70,8 @@ const HEAD_WIDE = 2.6;
 const MARK_ROOM = 5;
 /** 그 자리 안에서 이모지를 화살촉보다 이만큼 앞에 둔다. */
 const MARK_AHEAD = 2.6;
+/** 본진 이모지를 본진에서 가운데 쪽으로 이만큼 띄운다(타일). */
+const MARK_OUT = 9;
 
 /** 팀 색 — 미니맵은 지형 위라 채도가 낮으면 두 편이 잘 안 갈린다(요청: 팀 구분이
  *  더 확실하게). CSS의 마커 테두리 색과 같은 값을 쓴다. */
@@ -82,7 +90,7 @@ function arrowGeom(a: MinimapArrow, w: number, h: number) {
   const gapFrom = Math.min(GAP_FROM, len * 0.2);
   // 이모지를 붙일 화살표는 그 자리만큼 더 짧게 끝낸다 — 안 그러면 이모지가 화살촉·목표
   // 아바타와 겹쳐 뭉친다(지적).
-  const gapTo = Math.min(GAP_TO, len * 0.22) + (a.mark ? MARK_ROOM : 0);
+  const gapTo = Math.min(a.deep ? GAP_TO_DEEP : GAP_TO, len * 0.22) + (a.mark ? MARK_ROOM : 0);
   const headLen = Math.min(HEAD_LEN, len * 0.3);
   const headWide = HEAD_WIDE * (headLen / HEAD_LEN);
   const x1 = a.x1 + ux * gapFrom;
@@ -147,7 +155,7 @@ export interface MinimapMarker {
 }
 
 export default function ReplayMinimap({
-  grid, bases, arrows = [], className,
+  grid, bases, arrows = [], onStep, className,
 }: {
   grid: ReplayMapGrid;
   /** 늘 보이는 본진 표시(요청: 본진은 아바타+닉네임 계속 표시). 지금 문장의 주인공은
@@ -155,12 +163,29 @@ export default function ReplayMinimap({
   bases: MinimapMarker[];
   /** 본진 → 그 일이 있었던 자리로 잇는 화살표(요청). */
   arrows?: MinimapArrow[];
+  /** 그림 좌·우 절반을 눌러 장면을 옮긴다(요청) — -1이면 이전, +1이면 다음. */
+  onStep?: (delta: -1 | 1) => void;
   className?: string;
 }) {
   const place = (m: MinimapMarker) => ({
     left: `${(m.x / grid.width) * 100}%`,
     top: `${(m.y / grid.height) * 100}%`,
   });
+
+  /** 본진 이모지 자리 — 본진에서 맵 가운데(=입구가 있는 쪽) 으로 띄운다(요청: 좀 더 입구
+   *  쪽으로 띄어서, 크게). 아바타·이름표와 겹치지 않고, 어느 자리의 본진이든 '나가는 쪽'에
+   *  붙어 진출하려는 그림으로 읽힌다. */
+  const markPlace = (m: MinimapMarker) => {
+    const dx = grid.width / 2 - m.x;
+    const dy = grid.height / 2 - m.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const x = m.x + (dx / len) * MARK_OUT;
+    const y = m.y + (dy / len) * MARK_OUT;
+    return {
+      left: `${(x / grid.width) * 100}%`,
+      top: `${(y / grid.height) * 100}%`,
+    };
+  };
 
   /** 닉네임을 아바타 어느 쪽에 붙일까 — 가장자리 본진에서 가운데 정렬로 두면 이름이 그림
    *  밖으로 나가 잘린다(실제로 오른쪽 아래 본진의 이름이 잘렸다). 맵의 어느 쪽에 있는지
@@ -228,8 +253,6 @@ export default function ReplayMinimap({
           {/* 궤멸·빈사 — 본진 위에 해골을 얹는다(요청). 아바타는 흑백으로 눌러 두어
               해골이 그 사람 자리에 붙은 표시로 읽히게 한다. */}
           {m.downed && <Skull className="scr-minimap-mark-skull" size={14} aria-label="궤멸" />}
-          {/* 본진에서 한 일(생산·테크 …)을 알려 주는 이모지 — 아바타 왼쪽 위 어깨(요청). */}
-          {m.mark && <span className="scr-minimap-mark-emoji" aria-hidden>{m.mark}</span>}
           {m.withName && (
             <span className="scr-minimap-mark-label">
               <span className="scr-minimap-mark-name">{m.name}</span>
@@ -256,6 +279,12 @@ export default function ReplayMinimap({
           이유는 글꼴 이모지라 브라우저가 그대로 그려 주는 편이 안전하고, 크기를 px로 잡아야
           맵 크기와 무관하게 같게 보이기 때문이다. */}
       <div className="scr-minimap-arrow-marks" aria-hidden>
+        {/* 화살표가 없는 장면의 본진 이모지 — 본진에서 입구 쪽으로 띄워 크게(요청). */}
+        {bases.map((m) => (m.mark ? (
+          <span key={`bm-${m.key}`} className="scr-minimap-arrow-mark scr-minimap-mark-home" style={markPlace(m)}>
+            {m.mark}
+          </span>
+        ) : null))}
         {geoms.map(({ a, g }) => (a.mark ? (
           <span
             key={`mk-${a.key}`} className="scr-minimap-arrow-mark"
@@ -265,6 +294,19 @@ export default function ReplayMinimap({
           </span>
         ) : null))}
       </div>
+      {/* 그림의 좌·우 절반을 누르면 이전/다음 장면으로 옮긴다(요청). 이 카드는 눌러서 접는
+          동작을 갖고 있어(피드 묶음) 여기서 이벤트를 반드시 끊어야 한다 — click만 막으면
+          pointerdown을 보고 접는 쪽이 먼저 반응한다(요청: 접기로 작동 안 하게 주의). */}
+      {onStep && ([-1, 1] as const).map((d) => (
+        <button
+          key={`step${d}`} type="button"
+          className={cx("scr-minimap-half", d < 0 ? "scr-minimap-half-prev" : "scr-minimap-half-next")}
+          aria-label={d < 0 ? "이전 장면" : "다음 장면"}
+          onPointerDown={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={(e) => { e.stopPropagation(); onStep(d); }}
+        />
+      ))}
     </div>
   );
 }

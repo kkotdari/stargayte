@@ -321,7 +321,14 @@ const AGAINST_ACTOR = new Set([
 // 만들어지는 시간 표현도 함께 본다(요청: 시간이 많이 벌어지면 몇 분 후라고 적기).
 const LINK_HEAD = () => `(?:${[...CONTRAST_LINKS, ...SEQUENCE_LINKS].join("|")}|\\d+분 (?:뒤|후))`;
 // 한 문장에 이어 붙일 수 있는 마디 수 — 이보다 길어지면 읽다가 숨이 찬다.
-const MAX_CHAIN = 2;
+/* 한 문장에 이어 붙일 마디 수 — 0으로 두면 이어 붙이기가 사실상 꺼진다(요청: 문장 이어
+   붙이기를 최소화하고 최대한 나눠서 스냅을 만들 것). 자막 한 장에 한 장면이 오는 편이
+   읽기도 쉽고, 미니맵도 그 장면의 화살표만 보여줄 수 있다 — 두 마디가 한 스냅에 묶이면
+   화살표도 두 장면이 겹쳐 그려진다.
+   완전히 0으로 막지는 않는다: 같은 사람이 곧바로 이어서 한 일("…하고 곧바로 …")은 한
+   문장으로 읽는 편이 자연스럽고, 그건 어차피 같은 사람의 같은 자리 이야기라 미니맵도
+   헷갈리지 않는다. */
+const MAX_CHAIN = 1;
 // 진 편 문장에 결과 한 마디를 다는 건 '끝 무렵에 벌어진 일'에만 한다(지적) — 초중반의
 // 한 수를 곧바로 경기 결과와 이어 붙이면 인과가 과장된다. 끝나기 전 몇 분 동안의 일이라야
 // 결과에 영향을 줬다고 말할 수 있다.
@@ -2130,8 +2137,9 @@ function renderLines(
         who = `${link(["그 기세로", "여세를 몰아", "그 기세를 이어간"])} ${who}`;
       }
     } else if (linkable && gapSec !== null && gapSec <= SAME_TIME_SEC) {
-      if (!sharesWho && seed % 2 === 0) joinPrev = true;
-      else if (flipped) {
+      // 주어가 다른데도 절반 확률로 이어 붙이던 자리를 껐다(요청: 최대한 나눠서 스냅으로) —
+      // 서로 다른 사람의 서로 다른 장면이 한 스냅에 묶이면 미니맵 화살표도 겹쳐 그려진다.
+      if (flipped) {
         // 비슷한 두 문장은 "하지만 …"으로 갈라 놓지 말고 "…했지만 …했다"로 바로
         // 잇는다(지적). 못 이을 때만 대비를 뜻하는 말을 앞에 단다.
         if (canFlipJoin()) flipJoin = true;
@@ -2159,8 +2167,11 @@ function renderLines(
       // (경기 전체를 두고 하는 말)도 여기에 들어온다.
       // 전황이 갈리지 않았고 같은 편 이야기면 잇는다 — 총 생산량처럼 어느 순간을 짚지
       // 않는 문장(tide 0)도 같은 편의 우세를 말하는 것이라 여기에 들어온다.
+      // 예전에는 같은 편 이야기가 이어지면(또는 절반 확률로) 한 문장으로 묶었다. 이제는
+      // 같은 사람의 이야기일 때만 잇는다(요청: 이어 붙이기 최소화) — 사람이 다르면 장면도
+      // 다른 자리에서 벌어진 일이라 미니맵이 두 장면을 한 번에 그려야 했다.
       linkable && !flipped && !crossTeam && !!prev!.won === !!b.won
-      && !sharesWho && closeEnough && (sameTide || seed % 2 === 0) && canAndJoin()
+      && sharesWho && closeEnough && sameTide && canAndJoin()
     ) {
       joinPrev = true;
     } else if (linkable && gapSec !== null && (flipped || gapSec > STANDOFF_SEC || seed % 3 === 0)) {

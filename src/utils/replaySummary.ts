@@ -1366,7 +1366,9 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   // 전체적으로 문장 수를 늘려 달라) — 문단이 길어져 부담스러워질 걱정이 없고, 오히려 장면이
   // 적으면 훑을 것이 없다. 3분마다 하나씩 늘려 열둘까지 쓴다.
   // 자리가 늘어도 아무거나 채우지는 않는다 — 아래 MIN_WEIGHT가 가벼운 사실을 막는다.
-  const baseBudget = Math.max(3, Math.min(sec >= LONG_GAME_SEC ? 12 : 9, 3 + Math.floor((sec - 2 * 60) / (3 * 60))));
+  // 자리를 더 열었다(요청: 문장 이어 붙이기를 최소화하고 최대한 나눠서 스냅을 만들 것 —
+  // 그러려면 스냅 수 제한부터 완화해야 한다). 2분마다 하나씩, 긴 경기는 열여덟까지.
+  const baseBudget = Math.max(4, Math.min(sec >= LONG_GAME_SEC ? 18 : 13, 4 + Math.floor((sec - 2 * 60) / (2 * 60))));
   // 자리가 남아도 아무거나 채우지 않는다(요청: 승부에 중요한 이벤트만) — 이 무게 아래는
   // "그래서 뭐" 소리가 나오는 사실들이라, 문단을 짧게 끝내는 편이 낫다.
   const MIN_WEIGHT = 6;
@@ -1910,7 +1912,7 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   // 한때 열 문장까지 열어 봤는데 오히려 읽기 어려웠다(지적) — 다섯으로 되돌린다.
   // 다만 30분을 넘긴 경기는 그만큼 국면이 많아 일곱까지 허용한다(요청 — 위 baseBudget).
   // 일방적인 경기는 늘어놓을 국면 자체가 없다(요청) — 자리를 줄여 짧게 끝낸다.
-  const budget = oneSided ? Math.min(baseBudget, 3) : baseBudget;
+  const budget = oneSided ? Math.min(baseBudget, 5) : baseBudget;
 
   // 고를 때는 무게순(재미있는 것부터), 이야기로 늘어놓을 때는 시간순 — 순서를 이 둘로 나눠야
   // "자리가 모자라 재미없는 걸 남기는" 일도, "중요한 게 뜬금없는 자리에 오는" 일도 없다.
