@@ -475,7 +475,7 @@ function toBut(action: string): string | null {
  *  "홍탑(최고가 되고"가 "홍탑(최고는 되고"로 이름 자체가 망가졌고(지적), 이름이 깨지면
  *  뒤에서 이름을 찾아 팀 색을 입히는 일까지 통째로 실패했다. */
 const subjectHead = (name: string, particles: string): RegExp =>
-  new RegExp(`^(\\d+팀의 )?${escapeRe(name)}(?:${particles})(\\s)`);
+  new RegExp(`^(\\d+팀의 |양 팀의 )?${escapeRe(name)}(?:${particles})(\\s)`);
 
 /** 문장 첫머리의 주어에 '도'를 붙인다 — "제롬이 " → "제롬도 ". 전황이 뒤집히면서
  *  주체까지 다른 팀으로 넘어갈 때, 앞말을 받아 "…했지만 제롬도 …했다"로 읽히게 한다(요청). */
@@ -1511,9 +1511,11 @@ const TEMPLATES: Record<string, Tpl> = {
     const spots = num(c.p.spots);
     if (spots <= 0) return null;
     // 양쪽이 다 그랬으면 한 문장으로 말한다(mergeScatter) — 서로 도망 다닌 한 장면이라
-    // 두 문장으로 나누면 후반이 자리를 둘이나 먹는다.
+    // 두 문장으로 나누면 후반이 자리를 둘이나 먹는다. 이름은 반드시 함께 부른다(지적:
+    // 정확한 플레이어 지목 없이 "양 팀 모두 ~~했다"만 있으면 안 된다) — mergeScatter가
+    // 이미 두 사람의 이름을 who에 합쳐 뒀으니, "양 팀 모두"로 뭉개지 않고 그대로 쓴다.
     if (c.p.bothSides === true) {
-      const both = c.duel ? "둘 다" : "양 팀 모두";
+      const both = ga(joinPair(c.whoList));
       return `${both} ${c.pick([
         `한자리에 못 있고 이곳저곳에 건물을 벌려 지으며 버팀`,
         `자리를 내주고 여러 곳에 살림을 새로 차림`,
@@ -2472,9 +2474,12 @@ function renderLines(
         new RegExp(`^${LINK_HEAD()} `), "",
       );
       // 앞 문장과 주어가 같으면 이름을 두 번 부르지 않는다(지적: "A는 …했고 A는 …했다").
-      // 조사는 문장마다 달라질 수 있어(가/이/는/은) 이름만 보고 뗀다.
+      // 조사는 문장마다 달라질 수 있어(가/이/는/은) 이름만 보고 뗀다. 개인전이 아닌 both
+      // 문장은 이름 앞에 "양 팀의 "가 붙어 있을 수 있어(위 who 조립부 참고) 그 자리도
+      // 함께 걷어낸다 — 안 그러면 그 앞머리만 못 지워 "…했고, 양 팀의 A가 …"처럼 주어가
+      // 중복으로 남는다(지적: 반복되는 주어를 생략 안 하는 오류가 가끔 있다).
       if (baseWho !== "" && lastBaseWho === baseWho) {
-        text = text.replace(new RegExp(`^${escapeRe(baseWho)}(?:가|이|는|은) `), "");
+        text = text.replace(new RegExp(`^(?:양 팀의 )?${escapeRe(baseWho)}(?:가|이|는|은) `), "");
       }
     }
     // 전황이 뒤집히면서 주체까지 다른 팀이면 "…했지만 제롬도 …했다"가 자연스럽다(요청).
