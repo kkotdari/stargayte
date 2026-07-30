@@ -57,7 +57,7 @@ const BEAT_MARK: Record<string, string> = {
   "late-defense": "🛡️", "side-tank": "🛡️", stand: "🛡️", "late-hold": "🛡️", standoff: "🛡️",
   // 본진에서 한 일 — 화살표 없이 본진에 붙는다.
   expand: "🏗️", upgrade: "🔬", "upgrade-signature": "🔬", tech: "🔬", "fast-tech": "🔬",
-  lodging: "🏠", "greedy-build": "💰", "greedy-paid": "💰", greedy: "💰",
+  lodging: "🏠", relocate: "🚚", "greedy-build": "💰", "greedy-paid": "💰", greedy: "💰",
   carrier: "🛩️", bc: "🛩️", guardian: "🛩️", "lift-off": "🛩️", vision: "👁️", "no-detect": "🙈",
   scatter: "🌪️", attrition: "⏳", "fast-hands": "⚡", "pro-like": "🌟", revival: "🔥",
   fallen: "💀", gg: "🏳️", "worker-gap": "📉", "prod-gap": "📉", "greedy-punished": "💸",

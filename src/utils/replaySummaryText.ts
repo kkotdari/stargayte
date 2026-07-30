@@ -313,7 +313,7 @@ const NEUTRAL_BEATS = new Set([
 // 이미 상대 쪽으로 넘어갔다는 말이라, 그 뒤에 오는 맺음말은 반전이 아니라 마무리다
 // (지적: "밀렸다" 다음에 이긴 쪽이 나오는데 "하지만"이 붙음 — "결국/그대로"가 맞다).
 const AGAINST_ACTOR = new Set([
-  "rush-backfire", "greedy-punished", "fallen", "lodging", "lift-off", "gg", "stand",
+  "rush-backfire", "greedy-punished", "fallen", "lodging", "relocate", "lift-off", "gg", "stand",
   // 얻어맞고 나서야 방어를 올린 것도 그 사람의 일이지만 국면은 상대 쪽이다.
   "late-defense",
 ]);
@@ -1299,6 +1299,15 @@ const TEMPLATES: Record<string, Tpl> = {
       `예상치 못한 커널을 뚫어 ${at}병력을 넘김`,
     ]))}`;
   },
+
+  // 이사(요청) — 주로 건물을 짓는 자리가 통째로 바뀐 것. 본진이 밀려 다른 곳에서 다시
+  // 시작하는 그림이라, 그 자체로 판이 기운 신호다. 여러 번 옮기면 그때마다 한 문장이다.
+  relocate: (c) => `${ga(c.who)} ${done(c, c.pick([
+    "본진을 버리고 다른 곳에 살림을 폄",
+    "본진을 접고 멀티에서 다시 시작함",
+    "터를 옮겨 새 기지에서 판을 다시 폄",
+    "본진을 포기하고 다른 자리로 살림을 옮김",
+  ]))}`,
 
   // 셋방살이(요청) — 제 기지에는 건물이 거의 없고 아군 기지에 살림을 차린 것.
   // 시작 자리를 두고 옮겨온 경우는 '본진을 잃고'까지 말한다 — 그게 더 재미있는 그림이다.

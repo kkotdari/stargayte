@@ -1368,7 +1368,7 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     "tech", "vision", "no-detect", "revival", "greedy-build", "scatter", "long-run",
   ]);
   const LATE_AGAINST_ACTOR = new Set([
-    "rush-backfire", "greedy-punished", "fallen", "lodging", "lift-off", "gg", "stand",
+    "rush-backfire", "greedy-punished", "fallen", "lodging", "relocate", "lift-off", "gg", "stand",
     "late-defense",
   ]);
 
@@ -1885,7 +1885,21 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     ? breached
     : null;
 
+  // 이사 — 주로 건물을 짓는 자리가 바뀌면 살림을 옮긴 것이다(요청). 본진을 잃고 멀티에서
+  // 다시 시작하는 그림이라 그 자체로 큰 사건이고, 요약 문장에도 넣는다(요청). 여러 번
+  // 옮겼으면 그때마다 따로 이야기가 된다.
+  const moveList = new Map<string, [number, number, number][]>();
+  for (const p of replay.players) {
+    const m = relocations(p);
+    if (m.length > 0) moveList.set(p.rawName, m);
+  }
+  const moveBeats: Beat[] = [...moveList].flatMap(([raw, list]) => {
+    const won = winnerPlayers.some((p) => p.rawName === raw);
+    return list.map((m) => ({ k: "relocate", who: [raw], won, at: m[2], weight: RELOCATE_WEIGHT }));
+  });
+
   const pool: Beat[] = [
+    ...moveBeats,
     ...(standoff ? [standoff] : []),
     ...(lateHold ? [lateHold] : []),
     ...(handsBeat ? [handsBeat] : []),
@@ -2137,13 +2151,8 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     }
   }
 
-  // 이사 — 주로 건물을 짓는 자리가 바뀌면 살림을 옮긴 것이다(요청). 본진을 잃고 멀티에서
-  // 다시 시작하는 그림이 대부분이라, 옮긴 뒤에는 옛 자리에 거의 돌아가지 않는다.
   const moves: Record<string, [number, number, number][]> = {};
-  for (const p of replay.players) {
-    const m = relocations(p);
-    if (m.length > 0) moves[p.rawName] = m;
-  }
+  for (const [raw, list] of moveList) moves[raw] = list;
 
   // 크게 망한 시점 — 건물·유닛 생산이 현저히 떨어져 끝까지 회복하지 못한 지점(요청).
   // 실제로 판을 떠난 기록이 있으면 그게 먼저다. 되살아난 경우는 productionCollapse가
@@ -2173,6 +2182,10 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     }),
   };
 }
+
+/** 이사 문장의 무게 — 본진을 버리고 다시 편 것은 승부를 가르는 사건이라 무겁게 잡는다.
+ *  다만 러시·돌파 같은 '그 경기만의 수'보다는 한 단계 아래다. */
+const RELOCATE_WEIGHT = 18;
 
 /** 망했다고 말하려면 그 상태로 이만큼(프레임 ≒ 3분)은 더 끌려가야 한다 — 끝나기 직전의
  *  생산 중단은 경기가 끝나서 멈춘 것이다. */
