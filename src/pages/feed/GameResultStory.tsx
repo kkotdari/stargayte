@@ -91,6 +91,11 @@ const VISIBLE_RATIO = 0.4;
  *  목적지는 실제 시작 지점 좌표를 그대로 쓰므로(replaySummary의 relocations), 같은
  *  자리면 좌표가 정확히 일치한다. 그래도 살짝 여유를 둔다. */
 const NATIVE_OVERLAP_TILES = 3;
+/** 셋방살이·겹침을 피해 옮겨 앉는 거리(타일) — 128칸 맵에서 1타일은 화면 2~3px뿐이라
+ *  (ReplayMinimap 주석), 8타일(16~24px)로는 지금 문장의 주인공이라 커진 아바타(28px)
+ *  둘이 마주치면 여전히 겹쳤다(지적: 확대되면 너무 겹쳐서 하나가 안 보인다). 두 아바타가
+ *  다 커진 최악의 경우까지 넉넉히 떨어지도록 배로 늘린다. */
+const LODGING_OFFSET_TILES = 16;
 
 export default function GameResultStory({
   gameResult, team1, team2, result, memberOf, highlightMemberIds, highlightTerms, active = true,
@@ -301,7 +306,7 @@ export default function GameResultStory({
       (b.who ?? []).forEach((raw) => {
         const before = out.get(raw) ?? (spots[raw] ? [spots[raw][0], spots[raw][1]] as [number, number] : null);
         if (before) prev.set(raw, before);
-        out.set(raw, [at[0] + (dx / len) * 8, at[1] + (dy / len) * 8]);
+        out.set(raw, [at[0] + (dx / len) * LODGING_OFFSET_TILES, at[1] + (dy / len) * LODGING_OFFSET_TILES]);
       });
     }
     // 이사 간 자리에 원주민이 살아 있으면 아바타가 겹친다(지적: 원주민이 살아있는 곳에
@@ -323,7 +328,7 @@ export default function GameResultStory({
       const dx = w / 2 - pos[0];
       const dy = h / 2 - pos[1];
       const len = Math.hypot(dx, dy) || 1;
-      out.set(raw, [pos[0] + (dx / len) * 8, pos[1] + (dy / len) * 8]);
+      out.set(raw, [pos[0] + (dx / len) * LODGING_OFFSET_TILES, pos[1] + (dy / len) * LODGING_OFFSET_TILES]);
     }
     return { to: out, from: prev };
   }, [gameResult.summaryData, sentences, index, nowAt, grid, slots, downed]);
