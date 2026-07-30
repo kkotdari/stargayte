@@ -7570,9 +7570,12 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
 @supports not (gap: inherit) { .scr-story { gap: 10px; } }
 
 /* 미니맵이 들어오면 가운데 열이 폭을 먹으므로 매치업을 조금 넓게 쓴다 — 그러지 않으면
-   양쪽 로스터가 닉네임 한 줄도 못 담을 만큼 눌린다(기본 max-width는 560px). */
+   양쪽 로스터가 닉네임 한 줄도 못 담을 만큼 눌린다(기본 max-width는 560px).
+   PC에서는 미니맵을 훨씬 크게 보여 달라는 요청이 있어 620 → 820으로 더 넓힌다 — 로스터는
+   flex: 1 1 0(아래 .scr-challenge-side)라 가운데 열(.scr-story-map)이 커진 만큼 자동으로
+   줄어든다(요청: 좌우 로스터는 많이 줄여도 됨). */
 @media (min-width: 641px) {
-  .scr-challenge-matchup.scr-story-matchup-wide { max-width: 620px; }
+  .scr-challenge-matchup.scr-story-matchup-wide { max-width: 820px; }
   /* 좌우 로스터가 미니맵에서 같은 거리에 오게 한다(지적: 좌우대칭이 안 맞음). 두 열은 폭이
      같지만 둘 다 왼쪽 정렬이라, 왼쪽 로스터는 미니맵에서 멀고 오른쪽 로스터는 딱 붙어
      보였다(실측: 왼쪽 79px, 오른쪽 0px). 프사는 늘 닉네임 왼쪽이라는 규칙은 그대로 두고
@@ -7600,11 +7603,19 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
    왼쪽 16px, 오른쪽 52px). 폭을 다 쓰면 카드 패딩만 남아 저절로 대칭이 된다. 상한이 걸리는
    경우에도 가운데로 오도록 auto 마진을 함께 둔다. */
 .scr-story-map { width: 100%; max-width: 100%; margin-inline: auto; }
-@media (min-width: 641px) { .scr-story-mid .scr-story-map { max-width: 240px; } }
+/* PC 상한을 240 → 440으로 크게 올린다(요청: 미니맵 크기 훨씬 크게, 좌우 로스터는 많이
+   줄여도 됨) — 위 .scr-story-matchup-wide의 넓어진 폭이 이 상한을 뒷받침한다. */
+@media (min-width: 641px) { .scr-story-mid .scr-story-map { max-width: 440px; } }
 
 .scr-story-map-head {
   display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; justify-content: center;
   font-size: var(--fs-caption); line-height: 1.2;
+}
+/* 미니맵이 커진 PC에서는 그 위 요소(맵 이름·시간, 승/무 배지)도 같이 키운다(요청: 미니맵
+   위 요소 알맞게 확대) — 작은 미니맵 시절 크기 그대로면 위아래 균형이 안 맞는다. */
+@media (min-width: 641px) {
+  .scr-story-mid .scr-story-map-head { font-size: var(--fs-body); gap: 8px; }
+  .scr-story-mid .scr-challenge-arrow-row { transform: scale(1.15); margin-bottom: 2px; }
 }
 .scr-story-map-name { font-weight: 700; color: var(--text); }
 .scr-story-map-dur { color: var(--muted); }
@@ -7849,7 +7860,9 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
      남았다(실측). 맞닿는 위쪽 모서리는 직각으로 둔다(요청: 붙였을 때 깔끔하게). */
   margin-top: -6px;
   display: grid; width: 100%;
-  padding: 7px 10px; border-radius: 0 0 9px 9px;
+  /* 아래 모서리도 직각으로 둔다(요청) — 위 모서리는 미니맵에 붙어 이미 직각이었는데
+     아래만 둥글면 한 덩어리로 안 읽힌다. */
+  padding: 7px 10px; border-radius: 0;
   background: rgba(var(--overlay-rgb), 0.06);
   font-size: var(--fs-caption); font-weight: 500; line-height: 1.6;
   color: var(--text); word-break: keep-all; text-align: left;
