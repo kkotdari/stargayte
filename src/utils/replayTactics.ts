@@ -202,6 +202,12 @@ function spreadOf(p: ParsedReplayPlayer): number | null {
 const MIN_BUILDINGS_FOR_HOME = 4;
 // 내 본진 ↔ 가장 가까운 상대 본진 거리를 1로 뒀을 때의 경계.
 const HOME_RADIUS = 0.33;
+/** 확장(멀티) 건물 — 이게 서 있는 자리는 무조건 '내 기지'다(지적: 위치에 따라 본인
+ *  기지인데 상대 스타팅포인트와 더 가까울 수도 있다). 시작 지점 하나만 기준으로 자리를
+ *  가르면, 지형상 상대 시작점 쪽에 더 가까운 뒷문·구석 멀티에 지은 건물이 '상대 진영에
+ *  몰래 지은 것'(성큰러시·포토러시·몰래배럭)으로 오판된다. 그래서 시작 지점뿐 아니라
+ *  실제로 멀티를 편 자리도 전부 '내 기지'에 넣는다. */
+const TOWN_HALLS = new Set(["Nexus", "Hatchery", "Command Center"]);
 /* 상대 '본진'이라 부를 수 있는 반경. 0.35는 상대 앞마당·입구까지 품어서, 그쪽에 지은
    방어 건물을 러시로 오판할 여지가 있었다(지적: 무조건 상대 본진에 가까울 때만).
    본진 덩어리에 붙은 자리만 남도록 좁힌다. */
@@ -470,6 +476,15 @@ function geoOf(
     return seatHomes.every((h) => dist(b, h) > ring * MID_AWAY_RATIO);
   };
 
+  // 내가 실제로 지은 확장(멀티) 건물 자리 — 위 TOWN_HALLS 주석대로, 시작 지점 하나만으로
+  // '내 기지'를 가르면 상대 쪽에 더 가까운 멀티가 몰래러시로 오판된다. 그 건물이 서 있는
+  // 자리 자체를 '내 기지'로 더해 둔다(집을 늘려 가며 옮긴 이사와는 다르다 — 이사는
+  // relocations()가 시간순으로 따로 판정한다).
+  const myBases = [home, ...(me.signals?.buildPositions ?? [])
+    .filter((b) => TOWN_HALLS.has(b.unit))
+    .map((b) => ({ x: b.x, y: b.y }))];
+  const nearMyBase = (b: BuildPos): boolean => myBases.some((h) => dist(b, h) < base * HOME_RADIUS);
+
   const enemyAt = (b: BuildPos): string | null => {
     let best: { raw: string; d: number } | null = null;
     for (const f of foeHomeOf) {
@@ -489,9 +504,10 @@ function geoOf(
   };
 
   const zone = (b: BuildPos): Zone => {
+    // 내 멀티부터 먼저 본다 — 상대 진영 판정보다 앞서야 한다(위 myBases 주석).
+    if (nearMyBase(b)) return "home";
     const toFoe = Math.min(...foeHomes.map((h) => dist(b, h)));
     if (toFoe < base * ENEMY_RADIUS) return "enemy";
-    if (dist(b, home) < base * HOME_RADIUS) return "home";
     // 아군 본진도 '남의 기지가 아닌 곳'이다(지적: 다른 저그의 크립 콜로니 위에도 짓는다).
     // 내 본진과 갈라 두어야 성큰러시에서 빼고 옆탱에서만 쓸 수 있다.
     if (allyAt(b) !== null) return "ally";
@@ -532,7 +548,9 @@ function geoOf(
    *  내 쪽을 향한 바깥쪽이 입구 앞이고, 더 깊이 들어간 곳이 본진이다. 포토러시가 입구
    *  앞을 막은 것인지 본진 한복판에 박은 것인지는 전혀 다른 이야기라서다. */
   const spot = (b: BuildPos): BuildSpot => {
-    // 상대 진영이 가장 먼저다 — 남의 기지에 지은 건물은 무엇보다 그 사실이 중요하다.
+    // 내 멀티부터 먼저 본다 — 상대 진영 판정보다 앞서야 한다(위 myBases 주석).
+    if (nearMyBase(b)) return front(b) ? "myFront" : "myBase";
+    // 상대 진영이 다음이다 — 남의 기지에 지은 건물은 무엇보다 그 사실이 중요하다.
     let nearFoe: { h: { x: number; y: number }; d: number } | null = null;
     for (const h of foeHomes) {
       const d = dist(b, h);
@@ -541,9 +559,6 @@ function geoOf(
     if (nearFoe && nearFoe.d < base * ENEMY_RADIUS) {
       // 그 상대 기지에서 볼 때 '내 쪽으로 나와 있는' 자리 = 그 사람의 입구 앞.
       return towardFront(nearFoe.h, home, b, ENEMY_RADIUS) ? "enemyFront" : "enemyBase";
-    }
-    if (dist(b, home) < base * HOME_RADIUS) {
-      return front(b) ? "myFront" : "myBase";
     }
     for (const a of allyHomes) {
       if (dist(b, a.h) >= base * HOME_RADIUS) continue;
