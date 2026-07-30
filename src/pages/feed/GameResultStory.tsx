@@ -169,10 +169,28 @@ export default function GameResultStory({
      지금 스냅까지의 beat를 시간순으로 훑어 쌓는다: 한 번 쓰러지면 그 뒤 스냅에서도
      쓰러진 채여야 한다(그 스냅의 beat에만 나온다고 그때만 해골을 띄우면, 다음 장면에서
      되살아난 것처럼 보인다). 이 계산은 이미 저장된 값만 쓰므로 옛 경기에도 그대로 붙는다. */
+  /** 지금 스냅이 가리키는 시점(프레임) — 지금까지 나온 beat 가운데 가장 늦은 시각. 저장된
+   *  '이사·망함' 시점과 견주는 잣대다. 맺음말 스냅은 경기 끝이므로 전부 지난 것으로 본다. */
+  const nowAt: number = useMemo(() => {
+    if (index >= last) return Infinity;
+    const beats = gameResult.summaryData?.beats ?? [];
+    let at = 0;
+    for (const i of sentences[index]?.beats ?? []) {
+      const v = beats[i]?.at;
+      if (typeof v === "number" && v > at) at = v;
+    }
+    return at;
+  }, [gameResult.summaryData, sentences, index, last]);
+
   const downed: Set<string> = useMemo(() => {
     const beats = gameResult.summaryData?.beats ?? [];
     const upto = Math.max(-1, ...(sentences[index]?.beats ?? []));
     const out = new Set<string>();
+    // 크게 망한 사람 — 건물·유닛 생산이 현저히 떨어져 끝까지 회복하지 못한 시점부터다
+    // (요청). 저장된 값이라 beat로 이야기되지 않은 사람도 그림에는 제대로 나온다.
+    for (const [raw, f] of Object.entries(gameResult.summaryData?.downs ?? {})) {
+      if (f <= nowAt) out.add(raw);
+    }
     for (let i = 0; i <= upto && i < beats.length; i += 1) {
       const b = beats[i];
       const who = b.who ?? [];
@@ -183,7 +201,7 @@ export default function GameResultStory({
       } else if (b.k === "revival") who.forEach((n) => out.delete(n));
     }
     return out;
-  }, [gameResult.summaryData, sentences, index]);
+  }, [gameResult.summaryData, sentences, index, nowAt]);
 
   /** 지금 문장에 이름이 나온 사람들 — 그 사람 본진 아바타를 크게 키운다(요청). 스냅마다
    *  주인공이 바뀌는 것을 아바타 크기로 보여 주는 자리다. */
@@ -208,18 +226,31 @@ export default function GameResultStory({
      처리하고 새 기지에 마크를 옮겨야 한다). lodging beat의 who2가 집주인이고, p.lost가 그
      사람이 원래 자리를 잃었다는 표시다(replayTactics의 lodging 주석). 그 스냅부터 계속
      옮겨 둔 채로 본다 — 한 번 쫓겨난 사람이 다음 장면에서 제자리로 돌아오면 안 된다. */
-  const moved: Map<string, string> = useMemo(() => {
+  const moved: Map<string, [number, number]> = useMemo(() => {
     const beats = gameResult.summaryData?.beats ?? [];
+    const spots = gameResult.summaryData?.bases ?? {};
     const upto = Math.max(-1, ...(sentences[index]?.beats ?? []));
-    const out = new Map<string, string>();
+    const out = new Map<string, [number, number]>();
+    // 이사 — 주로 건물을 짓는 자리가 바뀌면 옮긴 것이다(요청). 저장된 좌표를 그대로 쓴다.
+    for (const [raw, m] of Object.entries(gameResult.summaryData?.moves ?? {})) {
+      if (m[2] <= nowAt) out.set(raw, [m[0], m[1]]);
+    }
+    // 아군 기지로 살림을 옮긴 경우 — 집주인 아바타와 겹치지 않게 가운데 쪽으로 조금 비켜 앉힌다.
+    const w = grid?.width ?? 128;
+    const h = grid?.height ?? 128;
     for (let i = 0; i <= upto && i < beats.length; i += 1) {
       const b = beats[i];
       if (b.k !== "lodging" || b.p?.lost !== true) continue;
       const host = typeof b.who2 === "string" ? b.who2 : null;
-      if (host) (b.who ?? []).forEach((raw) => out.set(raw, host));
+      const at = host ? spots[host] : null;
+      if (!at) continue;
+      const dx = w / 2 - at[0];
+      const dy = h / 2 - at[1];
+      const len = Math.hypot(dx, dy) || 1;
+      (b.who ?? []).forEach((raw) => out.set(raw, [at[0] + (dx / len) * 8, at[1] + (dy / len) * 8]));
     }
     return out;
-  }, [gameResult.summaryData, sentences, index]);
+  }, [gameResult.summaryData, sentences, index, nowAt, grid]);
 
   /* 지금 스냅에서 벌어진 일을 화살표로 잇는다 — 본진에서 '어디로 갔는가'까지(요청).
 
@@ -258,8 +289,9 @@ export default function GameResultStory({
     const homeOf = (raw: string): [number, number] | null => {
       // 살림을 옮긴 사람은 새 자리에서 나간다(요청: 새 기지로 마크를 옮긴다) — 이미 버린
       // 본진에서 화살표가 출발하면 그림이 거짓이 된다.
-      const host = moved.get(raw);
-      const v = spots[host && spots[host] ? host : raw];
+      const to = moved.get(raw);
+      if (to) return to;
+      const v = spots[raw];
       return v ? [v[0], v[1]] : null;
     };
     /** a에서 b쪽으로 t만큼 간 자리. */
@@ -404,26 +436,13 @@ export default function GameResultStory({
   const bases: MinimapMarker[] = useMemo(() => {
     const spots = gameResult.summaryData?.bases;
     if (!spots) return [];
-    const w = grid?.width ?? 128;
-    const h = grid?.height ?? 128;
-    /** 살림을 옮긴 사람의 새 자리 — 집주인 기지에서 가운데 쪽으로 조금 비켜 앉힌다(집주인
-     *  아바타와 겹치지 않게). */
-    const movedSpot = (host: string): [number, number] | null => {
-      const p = spots[host];
-      if (!p) return null;
-      const dx = w / 2 - p[0];
-      const dy = h / 2 - p[1];
-      const len = Math.hypot(dx, dy) || 1;
-      return [p[0] + (dx / len) * 8, p[1] + (dy / len) * 8];
-    };
     const out: MinimapMarker[] = [];
     for (const s of slots) {
       if (!spots[s.raw]) continue;
       const nameLc = normalizeSearchText(s.name);
       const hit = highlightMemberIds?.has(s.slot.memberId)
         || !!highlightTerms?.some((t) => nameLc.includes(t));
-      const host = moved.get(s.raw);
-      const at = host ? movedSpot(host) : null;
+      const at = moved.get(s.raw) ?? null;
       const common = {
         name: s.name, memberId: s.slot.memberId,
         avatar: memberOf(s.slot.memberId)?.avatar ?? null,

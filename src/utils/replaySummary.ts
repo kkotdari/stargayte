@@ -5,7 +5,7 @@ import {
   ARMOR_WEAPON_PAIRS, SIGNATURE_UPGRADE_KO, UPGRADE_LINE_KO,
 } from "./replayTechNames";
 import {
-  eliminatedFrame, fellFrame, productionDips, revivalFrame, surgeSpanMin,
+  eliminatedFrame, fellFrame, productionCollapse, productionDips, revivalFrame, surgeSpanMin,
 } from "./replayFell";
 import { REPLAY_SUMMARY_VERSION, type ReplaySummaryBeat, type ReplaySummaryData } from "./replaySummaryData";
 import {
@@ -2137,6 +2137,26 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     }
   }
 
+  // 이사 — 주로 건물을 짓는 자리가 바뀌면 살림을 옮긴 것이다(요청). 본진을 잃고 멀티에서
+  // 다시 시작하는 그림이 대부분이라, 옮긴 뒤에는 옛 자리에 거의 돌아가지 않는다.
+  const moves: Record<string, [number, number, number]> = {};
+  for (const p of replay.players) {
+    const m = relocation(p);
+    if (m) moves[p.rawName] = m;
+  }
+
+  // 크게 망한 시점 — 건물·유닛 생산이 현저히 떨어져 끝까지 회복하지 못한 지점(요청).
+  // 실제로 판을 떠난 기록이 있으면 그게 먼저다. 되살아난 경우는 productionCollapse가
+  // 애초에 잡지 않는다('끝까지 회복하지 못한' 구간만 본다).
+  const downs: Record<string, number> = {};
+  for (const p of replay.players) {
+    const f = eliminatedFrame(p) ?? productionCollapse(p, totalFrames);
+    // 끝나기 직전에 멈춘 것은 '망한' 것이 아니라 경기가 끝난 것이다 — 마지막 몇 분은
+    // 누구나 손을 놓으므로, 그 상태로 이만큼은 더 끌려가야 망한 것으로 본다.
+    if (f === null || (totalFrames !== null && totalFrames - f < DOWN_MIN_TAIL_FRAMES)) continue;
+    downs[p.rawName] = f;
+  }
+
   const byName = new Map(replay.players.map((p) => [p.rawName, p]));
   return {
     v: REPLAY_SUMMARY_VERSION,
@@ -2145,11 +2165,65 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     // 개인전에서는 팀 용어를 쓰지 않는다(요청).
     ...(duel ? { duel: true } : {}),
     ...(Object.keys(bases).length > 0 ? { bases } : {}),
+    ...(Object.keys(moves).length > 0 ? { moves } : {}),
+    ...(Object.keys(downs).length > 0 ? { downs } : {}),
     beats: [...chosen, ending].map(strip).map((b) => {
       const pos = beatPositions(b, byName);
       return pos ? { ...b, pos } : b;
     }),
   };
+}
+
+/** 망했다고 말하려면 그 상태로 이만큼(프레임 ≒ 3분)은 더 끌려가야 한다 — 끝나기 직전의
+ *  생산 중단은 경기가 끝나서 멈춘 것이다. */
+const DOWN_MIN_TAIL_FRAMES = 180 / 0.042;
+
+/** 이사 판정에 쓰는 값들 — 128칸 맵 기준 타일 수. 앞마당(대개 20타일 안팎)까지는 '늘린
+ *  것'이고, 그보다 멀리 옮겨 앉아 옛 자리로 돌아가지 않으면 '옮긴 것'으로 본다(요청). */
+const MOVE_NEAR = 12;
+const MOVE_FAR = 22;
+const MOVE_MIN_NEW = 4;
+const MOVE_BACK_MAX = 1;
+/** 옮긴 뒤 지은 것 가운데 이만큼은 새 자리 한 곳에 모여야 '살림을 옮겼다'로 본다 —
+ *  빠른무한처럼 멀티를 사방에 늘리는 판에서는 나중 건물이 여기저기 흩어질 뿐이지
+ *  이사가 아니다(그때는 한 곳에 모이지 않는다). */
+const MOVE_SHARE = 0.6;
+
+const dist2 = (a: { x: number; y: number }, b: { x: number; y: number }): number =>
+  Math.hypot(a.x - b.x, a.y - b.y);
+
+/** 점 무리의 대표 자리 — 평균은 멀리 떨어진 한 채에 끌려가므로, 서로에게 가장 가까운
+ *  실제 점(메도이드)을 쓴다. */
+function midOf(pts: { x: number; y: number }[]): { x: number; y: number } | null {
+  if (pts.length === 0) return null;
+  let best = pts[0];
+  let bestSum = Infinity;
+  for (const a of pts) {
+    const sum = pts.reduce((n, b) => n + dist2(a, b), 0);
+    if (sum < bestSum) { bestSum = sum; best = a; }
+  }
+  return best;
+}
+
+/** 살림을 옮긴 시점과 새 자리 — 없으면 null. 시작 자리에서 멀리 떨어진 곳에 넷 이상
+ *  이어 짓고, 그 뒤로 옛 자리에는 거의 돌아가지 않은 첫 지점을 찾는다. */
+function relocation(p: ParsedReplayPlayer): [number, number, number] | null {
+  const pts = (p.signals?.buildPositions ?? [])
+    .filter((b): b is typeof b & { frame: number } => b.frame !== null)
+    .sort((a, b) => a.frame - b.frame);
+  if (pts.length < MOVE_MIN_NEW + 3) return null;
+  const start = midOf(pts.slice(0, 5));
+  if (!start) return null;
+  for (let i = 3; i <= pts.length - MOVE_MIN_NEW; i += 1) {
+    const late = pts.slice(i);
+    if (late.filter((b) => dist2(b, start) <= MOVE_NEAR).length > MOVE_BACK_MAX) continue;
+    const to = midOf(late);
+    if (!to || dist2(to, start) < MOVE_FAR) continue;
+    const together = late.filter((b) => dist2(b, to) <= MOVE_NEAR).length;
+    if (together < MOVE_MIN_NEW || together < late.length * MOVE_SHARE) continue;
+    return [round1(to.x), round1(to.y), pts[i].frame];
+  }
+  return null;
 }
 
 /** 미니맵 좌표는 소수 한 자리까지만 남긴다 — 128칸 맵에서 0.1타일은 3픽셀이라 그림에

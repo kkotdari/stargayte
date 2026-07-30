@@ -26,7 +26,9 @@ function windows(p: ParsedReplayPlayer, totalFrames: number): number[] {
   const n = Math.max(1, Math.ceil(totalFrames / per));
   const buckets = new Array<number>(n).fill(0);
   // 일꾼도 함께 센다 — 기지가 날아가면 제일 먼저 멈추는 게 일꾼 생산이다.
-  for (const frames of Object.values(s.unitFrames)) {
+  // 건물도 함께 센다(요청: 크게 망한 것은 건물 건설과 유닛 생산이 함께 현저히 떨어진 것) —
+  // 유닛만 보면, 병력은 못 뽑아도 기지를 다시 펴 보려 애쓰는 국면이 '멀쩡함'으로 읽혔다.
+  for (const frames of [...Object.values(s.unitFrames), ...Object.values(s.buildingFrames)]) {
     for (const f of frames) {
       const i = Math.floor(f / per);
       if (i >= 0 && i < n) buckets[i] += 1;
