@@ -69,8 +69,11 @@ const BEND = 0.22;
 /** 시작·끝에서 이만큼 띄운다 — 아바타 밑에서 시작하면 화살표가 아바타에 가려 안 보인다. */
 const GAP_FROM = 3.4;
 const GAP_TO = 3.8;
-/** 이보다 짧은 화살표는 그리지 않는다 — 본진 안에서 조금 움직인 것은 '공격 갔다'가 아니다. */
-const MIN_LEN = 8;
+/** 이보다 짧은 화살표는 그리지 않는다 — 본진 안에서 조금 움직인 것은 '공격 갔다'가 아니다.
+ *  화살표가 그려지는지에 따라 아바타를 뺄지 말지가 갈리므로(요청: 화살표 끝에 공격자 아바타는
+ *  없애기) 부르는 쪽에서도 같은 기준을 쓸 수 있게 내보낸다. */
+export const ARROW_MIN_TILES = 8;
+const MIN_LEN = ARROW_MIN_TILES;
 const HEAD_LEN = 4.6;
 const HEAD_WIDE = 2.6;
 

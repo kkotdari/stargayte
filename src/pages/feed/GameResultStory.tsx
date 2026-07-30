@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import ReplayMinimap, { type MinimapArrow, type MinimapMarker } from "../../components/replay/ReplayMinimap";
+import ReplayMinimap, { ARROW_MIN_TILES, type MinimapArrow, type MinimapMarker } from "../../components/replay/ReplayMinimap";
 import ReplayStoryTimeline from "../../components/replay/ReplayStoryTimeline";
 import RosterSide, { outcomeFor, resolveSlotName } from "./GameResultSides";
 import { useIsMobile } from "../../hooks/useIsMobile";
@@ -194,17 +194,27 @@ export default function GameResultStory({
       }
     }
     const rows = slots.filter((s) => at.has(s.raw));
+    /* 화살표를 그은 사람은 아바타를 띄우지 않는다(요청: 화살표 끝에 공격자 아바타도 없애기) —
+       화살표의 팀 색과 머리만으로 누가 어디를 쳤는지 읽히고, 그 사람 얼굴은 본진 표시에 이미
+       있다. 아바타를 함께 두면 화살촉이 얼굴에 가려 방향이 안 보였다.
+       화살표가 실제로 그려지는지(길이 조건)까지 여기서 같은 기준으로 본다. */
+    const drawn = new Set(rows
+      .filter((s) => {
+        const home = spots[s.raw];
+        if (!home || !flight.has(s.raw)) return false;
+        const [x, y] = at.get(s.raw)!;
+        return Math.hypot(x - home[0], y - home[1]) >= ARROW_MIN_TILES;
+      })
+      .map((s) => s.raw));
     return {
-      actors: rows.map((s) => ({
+      actors: rows.filter((s) => !drawn.has(s.raw)).map((s) => ({
         key: s.raw, name: s.name, memberId: s.slot.memberId,
         avatar: memberOf(s.slot.memberId)?.avatar ?? null,
         race: s.slot.race, team: s.team,
         x: at.get(s.raw)![0], y: at.get(s.raw)![1],
         withName: false, highlight: false,
       })),
-      // 본진을 아는 사람만 — 시작점이 없으면 그릴 수 없다. 자기 본진 근처에 머문 자리는
-      // 화살표 쪽에서 길이를 보고 걸러낸다(arrowGeom의 MIN_LEN).
-      arrows: rows.filter((s) => spots[s.raw] && flight.has(s.raw)).map((s) => ({
+      arrows: rows.filter((s) => drawn.has(s.raw)).map((s) => ({
         key: s.raw,
         x1: spots[s.raw][0], y1: spots[s.raw][1],
         x2: at.get(s.raw)![0], y2: at.get(s.raw)![1],
