@@ -35,6 +35,9 @@ export interface MinimapArrow {
   team: 1 | 2 | undefined;
   /** 날아서·워프로 간 것인가 — 곧은 점선으로 그린다. 지상은 곡선(요청). */
   flight: boolean;
+  /** 화살촉 끝에 얹을 이모지 — 무슨 일인지 한 글자로 알려 준다(요청: 공격은 검 대결, 아군
+   *  지원은 천사, 핵은 핵폭발 …). 없으면 안 그린다. */
+  mark?: string;
 }
 
 // 화살표 모양 — 값은 모두 타일 단위다(SVG viewBox가 타일 격자와 같다).
@@ -56,6 +59,11 @@ export const ARROW_MIN_TILES = 8;
 const MIN_LEN = ARROW_MIN_TILES;
 const HEAD_LEN = 4.6;
 const HEAD_WIDE = 2.6;
+/** 이모지가 들어갈 자리(타일) — 이모지를 붙일 화살표는 그만큼 짧게 그린다(지적: 이모지 자리
+ *  만큼 화살표를 줄여야 겹쳐서 정신없지 않다). 화면에서 15px 이모지가 대략 이 폭이다. */
+const MARK_ROOM = 5;
+/** 그 자리 안에서 이모지를 화살촉보다 이만큼 앞에 둔다. */
+const MARK_AHEAD = 2.6;
 
 /** 팀 색 — 미니맵은 지형 위라 채도가 낮으면 두 편이 잘 안 갈린다(요청: 팀 구분이
  *  더 확실하게). CSS의 마커 테두리 색과 같은 값을 쓴다. */
@@ -72,7 +80,9 @@ function arrowGeom(a: MinimapArrow, w: number, h: number) {
   // 짧은 화살표는 띄우는 양·머리 크기를 길이에 맞춰 줄인다 — 고정값을 쓰면 가까운 곳으로 간
   // 화살표가 몸통 없이 화살촉만 남아 지형 위에 얼룩처럼 찍혔다(실측 스크린샷).
   const gapFrom = Math.min(GAP_FROM, len * 0.2);
-  const gapTo = Math.min(GAP_TO, len * 0.22);
+  // 이모지를 붙일 화살표는 그 자리만큼 더 짧게 끝낸다 — 안 그러면 이모지가 화살촉·목표
+  // 아바타와 겹쳐 뭉친다(지적).
+  const gapTo = Math.min(GAP_TO, len * 0.22) + (a.mark ? MARK_ROOM : 0);
   const headLen = Math.min(HEAD_LEN, len * 0.3);
   const headWide = HEAD_WIDE * (headLen / HEAD_LEN);
   const x1 = a.x1 + ux * gapFrom;
@@ -104,6 +114,8 @@ function arrowGeom(a: MinimapArrow, w: number, h: number) {
   return {
     d: `M ${x1} ${y1} Q ${cx0} ${cy0} ${x2} ${y2}`,
     head: `${x2},${y2} ${bx - hy * headWide},${by + hx * headWide} ${bx + hy * headWide},${by - hx * headWide}`,
+    // 이모지 자리 — 화살촉 바로 앞. 촉을 덮지 않고, 목표 아바타에도 닿지 않는 사이다.
+    tip: [x2 + hx * MARK_AHEAD, y2 + hy * MARK_AHEAD] as [number, number],
   };
 }
 
@@ -129,6 +141,9 @@ export interface MinimapMarker {
   downed?: boolean;
   /** 지금 문장에 이름이 나온 사람인가 — 아바타를 크게 키운다(요청). */
   featured?: boolean;
+  /** 본진에 붙일 이모지 — 화살표가 없는 이야기(생산·테크·경제)에 쓴다(요청: 생산에도 본진에
+   *  열심히 생산하는 이모지). */
+  mark?: string;
 }
 
 export default function ReplayMinimap({
@@ -213,6 +228,8 @@ export default function ReplayMinimap({
           {/* 궤멸·빈사 — 본진 위에 해골을 얹는다(요청). 아바타는 흑백으로 눌러 두어
               해골이 그 사람 자리에 붙은 표시로 읽히게 한다. */}
           {m.downed && <Skull className="scr-minimap-mark-skull" size={14} aria-label="궤멸" />}
+          {/* 본진에서 한 일(생산·테크 …)을 알려 주는 이모지 — 아바타 왼쪽 위 어깨(요청). */}
+          {m.mark && <span className="scr-minimap-mark-emoji" aria-hidden>{m.mark}</span>}
           {m.withName && (
             <span className="scr-minimap-mark-label">
               <span className="scr-minimap-mark-name">{m.name}</span>
@@ -235,6 +252,19 @@ export default function ReplayMinimap({
           />
         ))}
       </svg>
+      {/* 무슨 일인지 알려 주는 이모지 — 화살촉 앞에 얹는다(요청). SVG가 아니라 DOM으로 두는
+          이유는 글꼴 이모지라 브라우저가 그대로 그려 주는 편이 안전하고, 크기를 px로 잡아야
+          맵 크기와 무관하게 같게 보이기 때문이다. */}
+      <div className="scr-minimap-arrow-marks" aria-hidden>
+        {geoms.map(({ a, g }) => (a.mark ? (
+          <span
+            key={`mk-${a.key}`} className="scr-minimap-arrow-mark"
+            style={{ left: `${(g.tip[0] / grid.width) * 100}%`, top: `${(g.tip[1] / grid.height) * 100}%` }}
+          >
+            {a.mark}
+          </span>
+        ) : null))}
+      </div>
     </div>
   );
 }
