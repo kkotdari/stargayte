@@ -1885,18 +1885,50 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     ? breached
     : null;
 
-  // 이사 — 주로 건물을 짓는 자리가 바뀌면 살림을 옮긴 것이다(요청). 본진을 잃고 멀티에서
-  // 다시 시작하는 그림이라 그 자체로 큰 사건이고, 요약 문장에도 넣는다(요청). 여러 번
-  // 옮겼으면 그때마다 따로 이야기가 된다.
+  // 이사 — 짓는 구역(시작 지점 기준)이 바뀌면 살림을 옮긴 것이다(요청). 본진을 잃고
+  // 멀티에서 다시 시작하는 그림이라 그 자체로 큰 사건이고, 요약 문장에도 넣는다(요청).
+  const mapSpots = replay.startSpots ?? [];
+  const spotRadiiAll = spotRadii(mapSpots);
+  const spotOfPlayer = (q: ParsedReplayPlayer): number => (
+    q.startX !== null && q.startY !== null
+      ? spotAt({ x: q.startX, y: q.startY }, mapSpots, spotRadiiAll)
+      : -1
+  );
+  const foesOf = (q: ParsedReplayPlayer): ParsedReplayPlayer[] => (
+    winnerPlayers.includes(q) ? loserPlayers : loserPlayers.includes(q) ? winnerPlayers : []
+  );
+  // 1차: 누가 언제 어디로 옮겼는지 시간표를 먼저 만든다 — 상대가 지금 어느 자리에 사는지
+  // 알아야 '남의 집'을 가릴 수 있고, 그러려면 상대의 이사도 알아야 한다(닭과 달걀이라
+  // 1차에서는 자리 제한 없이 잡는다).
+  const draft = new Map<string, { spot: number; at: number }[]>();
+  for (const p of replay.players) draft.set(p.rawName, relocations(p, mapSpots, () => false));
+  /** 그 사람이 그 시각에 사는 구역 — 그때까지의 이사를 따라간다. */
+  const livesAt = (q: ParsedReplayPlayer, frame: number): number => {
+    let h = spotOfPlayer(q);
+    for (const m of draft.get(q.rawName) ?? []) if (m.at <= frame) h = m.spot;
+    return h;
+  };
+  // 2차: 그 순간 상대가 살고 있는 자리만 뺀다 — 상대가 이미 버리고 떠난 자리에 들어가는
+  // 것은 이사가 맞다(요청: 그 땅의 지금 주인을 정확히 파악).
   const moveList = new Map<string, [number, number, number][]>();
   for (const p of replay.players) {
-    const m = relocations(p);
-    if (m.length > 0) moveList.set(p.rawName, m);
+    const foes = foesOf(p);
+    const m = relocations(p, mapSpots, (spot, frame) => (
+      foes.some((f) => livesAt(f, frame) === spot)
+    ));
+    if (m.length > 0) {
+      moveList.set(p.rawName, m.map((x) => (
+        [round1(mapSpots[x.spot][0]), round1(mapSpots[x.spot][1]), x.at] as [number, number, number]
+      )));
+    }
   }
-  const moveBeats: Beat[] = [...moveList].flatMap(([raw, list]) => {
-    const won = winnerPlayers.some((p) => p.rawName === raw);
-    return list.map((m) => ({ k: "relocate", who: [raw], won, at: m[2], weight: RELOCATE_WEIGHT }));
-  });
+  // 문장으로 말하는 것은 첫 이사 하나뿐이다(요청: 여러 곳 전전한 것은 부정확하니 빼기) —
+  // 두 번째·세 번째 자리는 그림에서 아바타를 옮기는 데만 쓴다.
+  const moveBeats: Beat[] = [...moveList].map(([raw, list]) => ({
+    k: "relocate", who: [raw],
+    won: winnerPlayers.some((p) => p.rawName === raw),
+    at: list[0][2], weight: RELOCATE_WEIGHT,
+  }));
 
   const pool: Beat[] = [
     ...moveBeats,
@@ -2003,6 +2035,10 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     taken[phaseOf(b)] += 1;
     return true;
   };
+  // 0차: 이사와 궤멸은 자리를 다투기 전에 먼저 넣는다(요청: 이사·궤멸은 중요 이벤트라
+  // 절대 빠지면 안 된다). 무게로 겨루게 두면 러시·물량 이야기에 밀려 통째로 사라졌다.
+  const MUST_KEEP = new Set(["relocate", "fallen"]);
+  for (const b of ranked) if (MUST_KEEP.has(b.k)) consider(b, false);
   // 1차: 국면 상한을 지키며 무게순으로 채운다.
   for (const b of ranked) consider(b, true);
   // 2차: 그래도 자리가 남으면(한쪽 국면에만 이야기가 몰린 경기) 상한을 풀고 마저 채운다 —
@@ -2191,64 +2227,103 @@ const RELOCATE_WEIGHT = 18;
  *  생산 중단은 경기가 끝나서 멈춘 것이다. */
 const DOWN_MIN_TAIL_FRAMES = 180 / 0.042;
 
-/** 이사 판정에 쓰는 값들 — 128칸 맵 기준 타일 수. 앞마당(대개 20타일 안팎)까지는 '늘린
- *  것'이고, 그보다 멀리 옮겨 앉아 옛 자리로 돌아가지 않으면 '옮긴 것'으로 본다(요청). */
-const MOVE_NEAR = 12;
-const MOVE_FAR = 22;
+/** 이사 판정 — 맵의 시작 지점(스타팅 포인트)으로 본진 구역을 나눠서 본다(요청).
+ *
+ *  거리만으로 보던 판정은 두 가지를 자꾸 틀렸다(지적):
+ *   ① 초반에는 본진 자원 옆에 짓지만 후반에는 같은 기지의 외곽에 짓는다 — 그걸 이사로 봤다.
+ *   ② 8인용 맵은 시작 자리가 구석·외곽에 촘촘히 박혀 있어, 옆자리로 조금 나간 것도 딴
+ *      동네로 읽혔다. 게다가 상대 진영에 지은 것까지 '거기로 이사했다'가 됐다.
+ *  그래서 건물마다 '가장 가까운 시작 지점'을 붙여 그 자리로 묶는다 — 한 구역 안에서 어디에
+ *  짓든 같은 집이고, 구역이 바뀌어야 이사다. 상대 자리로 간 것은 이사가 아니다(점령이다).
+ */
+/** 건물을 시작 지점에 붙일 때, 그 자리에서 이 배수(가장 가까운 두 시작 지점 사이 거리 대비)
+ *  안에 있어야 그 구역으로 본다 — 맵 가운데에 지은 것을 남의 본진으로 세지 않기 위한 것이다. */
+const SPOT_OWN_RATIO = 0.62;
+/** 새 자리에 이만큼은 지어야 살림을 옮긴 것으로 본다. */
 const MOVE_MIN_NEW = 4;
+/** 옮긴 뒤 옛 구역에 남는 것은 이 정도까지 — 그보다 많으면 아직 거기 산다. */
 const MOVE_BACK_MAX = 1;
-/** 옮긴 뒤 지은 것 가운데 이만큼은 새 자리 한 곳에 모여야 '살림을 옮겼다'로 본다 —
- *  빠른무한처럼 멀티를 사방에 늘리는 판에서는 나중 건물이 여기저기 흩어질 뿐이지
- *  이사가 아니다(그때는 한 곳에 모이지 않는다). */
-const MOVE_SHARE = 0.6;
-/** 한 사람이 이사한 것으로 볼 수 있는 최대 횟수 — 이보다 자주 옮겨 다니는 것은 이사가
- *  아니라 여기저기 지은 것이다. */
+/** 한 사람이 이사한 것으로 볼 수 있는 최대 횟수. */
 const MOVE_MAX = 3;
 
-const dist2 = (a: { x: number; y: number }, b: { x: number; y: number }): number =>
-  Math.hypot(a.x - b.x, a.y - b.y);
+/** 시작 지점마다 '이 구역'이라 부를 반경 — 가장 가까운 다른 시작 지점까지의 거리에서 잡는다.
+ *  맵마다 자리 수와 간격이 달라서(2인용 투혼 vs 8인용 빠른무한) 고정값은 늘 한쪽에서 틀린다. */
+function spotRadii(spots: [number, number][]): number[] {
+  return spots.map(([x, y], i) => {
+    let near = Infinity;
+    spots.forEach(([ox, oy], j) => {
+      if (i === j) return;
+      near = Math.min(near, Math.hypot(x - ox, y - oy));
+    });
+    return Number.isFinite(near) ? near * SPOT_OWN_RATIO : Infinity;
+  });
+}
 
-/** 점 무리의 대표 자리 — 평균은 멀리 떨어진 한 채에 끌려가므로, 서로에게 가장 가까운
- *  실제 점(메도이드)을 쓴다. */
-function midOf(pts: { x: number; y: number }[]): { x: number; y: number } | null {
-  if (pts.length === 0) return null;
-  let best = pts[0];
-  let bestSum = Infinity;
-  for (const a of pts) {
-    const sum = pts.reduce((n, b) => n + dist2(a, b), 0);
-    if (sum < bestSum) { bestSum = sum; best = a; }
-  }
+/** 그 자리가 속한 시작 지점 번호 — 어느 구역에도 안 들면 -1(가운데·빈 땅). */
+function spotAt(
+  b: { x: number; y: number },
+  spots: [number, number][],
+  radii: number[],
+): number {
+  let best = -1;
+  let bd = Infinity;
+  spots.forEach(([x, y], i) => {
+    const d = Math.hypot(b.x - x, b.y - y);
+    if (d < bd && d <= radii[i]) { bd = d; best = i; }
+  });
   return best;
 }
 
-/** 살림을 옮긴 자리들 — 시간순. 시작 자리에서 멀리 떨어진 곳에 넷 이상 이어 짓고, 그 뒤로
- *  옛 자리에는 거의 돌아가지 않은 지점을 찾는다. 한 번 찾으면 그 자리를 새 '집'으로 삼아
- *  같은 일을 다시 본다 — 이사는 여러 번 할 수 있다(요청: 쫓겨 다니면 두 번, 세 번도 간다). */
-function relocations(p: ParsedReplayPlayer): [number, number, number][] {
+/** 살림을 옮긴 자리들 — 시간순. 지금 사는 구역이 아닌 다른 시작 지점 구역에 넷 이상 짓고,
+ *  그 뒤로 옛 구역에는 거의 돌아가지 않았으면 그때 옮긴 것이다. 한 번 찾으면 그 구역을 새
+ *  집으로 삼아 같은 일을 다시 본다 — 이사는 여러 번 할 수 있다(요청).
+ *
+ *  상대가 살고 있는 자리로 간 것은 이사가 아니다(지적: 적군에 이사했다고 한다) — 그건 남의
+ *  집에 들어간 것이다. 다만 '살고 있는지'는 그 순간을 봐야 한다(요청: 이사 간 자리에 누가
+ *  들어왔을 때 그 땅의 주인을 정확히 파악해야 한다) — 상대가 이미 버리고 떠난 빈 자리에
+ *  들어가는 것은 이사가 맞다. 그래서 자리 번호가 아니라 '그때 그 자리가 남의 집인가'를
+ *  묻는 함수를 받는다. */
+function relocations(
+  p: ParsedReplayPlayer,
+  spots: [number, number][],
+  taken: (spot: number, frame: number) => boolean,
+): { spot: number; at: number }[] {
+  // 시작 지점을 못 읽은 리플레이는 판정하지 않는다 — 거리로 어림잡으면 위의 오판이 되돌아온다.
+  if (spots.length < 2) return [];
+  const radii = spotRadii(spots);
   const pts = (p.signals?.buildPositions ?? [])
     .filter((b): b is typeof b & { frame: number } => b.frame !== null)
     .sort((a, b) => a.frame - b.frame);
   if (pts.length < MOVE_MIN_NEW + 3) return [];
-  let start = midOf(pts.slice(0, 5));
-  if (!start) return [];
-  const out: [number, number, number][] = [];
+  const zone = pts.map((b) => spotAt(b, spots, radii));
+  let home = p.startX !== null && p.startY !== null
+    ? spotAt({ x: p.startX, y: p.startY }, spots, radii)
+    : -1;
+  if (home < 0) {
+    // 시작 자리를 모르면 처음 지은 건물들이 가장 많이 든 구역을 집으로 본다.
+    const tally = new Map<number, number>();
+    zone.slice(0, 5).forEach((z) => { if (z >= 0) tally.set(z, (tally.get(z) ?? 0) + 1); });
+    home = [...tally].sort((a, b) => b[1] - a[1])[0]?.[0] ?? -1;
+  }
+  if (home < 0) return [];
+
+  const out: { spot: number; at: number }[] = [];
   let from = 0;
   while (out.length < MOVE_MAX) {
-    let hit: { i: number; to: { x: number; y: number } } | null = null;
-    for (let i = Math.max(3, from + MOVE_MIN_NEW); i <= pts.length - MOVE_MIN_NEW; i += 1) {
-      const late = pts.slice(i);
-      if (late.filter((b) => dist2(b, start!) <= MOVE_NEAR).length > MOVE_BACK_MAX) continue;
-      const to = midOf(late);
-      if (!to || dist2(to, start!) < MOVE_FAR) continue;
-      const together = late.filter((b) => dist2(b, to) <= MOVE_NEAR).length;
-      if (together < MOVE_MIN_NEW || together < late.length * MOVE_SHARE) continue;
-      hit = { i, to };
+    let hit: { i: number; z: number } | null = null;
+    for (let i = from; i < pts.length; i += 1) {
+      const z = zone[i];
+      if (z < 0 || z === home || taken(z, pts[i].frame)) continue;
+      const late = zone.slice(i);
+      if (late.filter((x) => x === z).length < MOVE_MIN_NEW) continue;
+      if (late.filter((x) => x === home).length > MOVE_BACK_MAX) continue;
+      hit = { i, z };
       break;
     }
     if (!hit) break;
-    out.push([round1(hit.to.x), round1(hit.to.y), pts[hit.i].frame]);
-    start = hit.to;
-    from = hit.i;
+    out.push({ spot: hit.z, at: pts[hit.i].frame });
+    home = hit.z;
+    from = hit.i + 1;
   }
   return out;
 }

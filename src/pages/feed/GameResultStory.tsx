@@ -9,6 +9,7 @@ import { cx } from "../../utils/format";
 import { normalizeSearchText } from "../../utils/memberSearch";
 import { ATTACK_BEAT_KEYS } from "../../utils/replaySummary";
 import { renderReplaySummarySentences } from "../../utils/replaySummaryText";
+import type { SummaryPart } from "../../utils/replaySummaryText";
 import type { GameResult, GameResultSlot, Member } from "../../types";
 
 // 경기 한 판을 '이야기'로 보여주는 부분 — 로스터/미니맵, 타임라인, 요약 문장이 한 상태를
@@ -125,14 +126,28 @@ export default function GameResultStory({
     return { nameByRaw: byRaw, teamByName: byName, slots: rows };
   }, [team1, team2, memberOf]);
 
-  const sentences = useMemo(
-    () => renderReplaySummarySentences(
+  const sentences = useMemo(() => {
+    const body = renderReplaySummarySentences(
       gameResult.summaryData,
       (raw) => nameByRaw.get(raw) ?? raw,
       (name) => teamByName.get(name),
-    ) ?? [],
-    [gameResult.summaryData, nameByRaw, teamByName],
-  );
+    ) ?? [];
+    if (body.length === 0) return body;
+    // 첫 장면은 누가 누구와 붙었는지부터(요청) — 이야기를 읽기 전에 편을 알아야 한다.
+    // 요약(beat)과 무관한 소개라 beats는 비워 둔다: 시각도 안 붙고, 그림에도 아무 표시가
+    // 얹히지 않아 로스터만 보이는 깨끗한 시작이 된다.
+    const nameOf = (t: 1 | 2) => slots.filter((x) => x.team === t).map((x) => x.name).join("·");
+    const a = nameOf(1);
+    const b = nameOf(2);
+    if (!a || !b) return body;
+    const duel = gameResult.summaryData?.duel === true;
+    const parts: SummaryPart[] = duel
+      ? [{ text: a, team: 1 }, { text: " 대 " }, { text: b, team: 2 }]
+      : [{ text: `1팀 ${a}`, team: 1 }, { text: " 대 " }, { text: `2팀 ${b}`, team: 2 }];
+    // at은 0으로 둔다 — 타임라인은 시각을 모르는 문장(null)을 맨 끝에 놓기 때문에, 소개가
+    // 오른쪽 끝 눈금으로 밀려나면 안 된다. beats가 비어 있어 자막에 "[0분]"은 안 붙는다.
+    return [{ parts, beats: [], at: 0 }, ...body];
+  }, [gameResult.summaryData, nameByRaw, teamByName, slots]);
 
   const [index, setIndex] = useState(0);
   // 기본은 자동재생(요청). 사람이 멈추면 그 뜻을 지켜 다시 켜지 않는다.
@@ -249,16 +264,21 @@ export default function GameResultStory({
      처리하고 새 기지에 마크를 옮겨야 한다). lodging beat의 who2가 집주인이고, p.lost가 그
      사람이 원래 자리를 잃었다는 표시다(replayTactics의 lodging 주석). 그 스냅부터 계속
      옮겨 둔 채로 본다 — 한 번 쫓겨난 사람이 다음 장면에서 제자리로 돌아오면 안 된다. */
-  const moved: Map<string, [number, number]> = useMemo(() => {
+  const movedPair: { to: Map<string, [number, number]>; from: Map<string, [number, number]> } = useMemo(() => {
     const beats = gameResult.summaryData?.beats ?? [];
     const spots = gameResult.summaryData?.bases ?? {};
     const upto = Math.max(-1, ...(sentences[index]?.beats ?? []));
     const out = new Map<string, [number, number]>();
+    // 옮겨 오기 직전에 살던 자리 — 이사 화살표의 출발점이다(요청: 하얀 점선 화살표).
+    const prev = new Map<string, [number, number]>();
     // 이사 — 주로 건물을 짓는 자리가 바뀌면 옮긴 것이다(요청). 여러 번 옮겼으면 그 시점까지
     // 지나온 마지막 자리가 지금의 집이다(요청: 이사는 여러 번 할 수도 있다).
     for (const [raw, list] of Object.entries(gameResult.summaryData?.moves ?? {})) {
       for (const m of list) {
-        if (m[2] <= nowAt) out.set(raw, [m[0], m[1]]);
+        if (m[2] > nowAt) continue;
+        const before = out.get(raw) ?? (spots[raw] ? [spots[raw][0], spots[raw][1]] as [number, number] : null);
+        if (before) prev.set(raw, before);
+        out.set(raw, [m[0], m[1]]);
       }
     }
     // 아군 기지로 살림을 옮긴 경우 — 집주인 아바타와 겹치지 않게 가운데 쪽으로 조금 비켜 앉힌다.
@@ -273,10 +293,15 @@ export default function GameResultStory({
       const dx = w / 2 - at[0];
       const dy = h / 2 - at[1];
       const len = Math.hypot(dx, dy) || 1;
-      (b.who ?? []).forEach((raw) => out.set(raw, [at[0] + (dx / len) * 8, at[1] + (dy / len) * 8]));
+      (b.who ?? []).forEach((raw) => {
+        const before = out.get(raw) ?? (spots[raw] ? [spots[raw][0], spots[raw][1]] as [number, number] : null);
+        if (before) prev.set(raw, before);
+        out.set(raw, [at[0] + (dx / len) * 8, at[1] + (dy / len) * 8]);
+      });
     }
-    return out;
+    return { to: out, from: prev };
   }, [gameResult.summaryData, sentences, index, nowAt, grid]);
+  const moved = movedPair.to;
 
   /* 지금 스냅에서 벌어진 일을 화살표로 잇는다 — 본진에서 '어디로 갔는가'까지(요청).
 
@@ -363,7 +388,19 @@ export default function GameResultStory({
       const ally = nearestAlly(raw);
       // 센터에서 벌어진 일은 맵 가운데로(요청) — 건물 자리 분류보다 이 판정이 확실하다.
       if (CENTER_BEAT_KEYS.has(b.k)) return center;
+      /** 자막이 지목한 상대 — 그 사람 집이 곧 목표다. 8인용 맵에서는 '상대 진영'이 여럿이라
+       *  자리 분류(enemyBase)만 믿고 가장 가까운 상대를 고르면 자막과 다른 곳을 가리켰다
+       *  (지적: 공격 대상을 잘못 타겟팅해서 자막과 다른 곳에 화살표가 향한다). */
+      const named = (() => {
+        const vs = (b.whom ?? []).filter((v) => v !== raw);
+        const other = vs.find((v) => teamOf.get(v) && teamOf.get(v) !== teamOf.get(raw));
+        const pick = other ?? vs[0];
+        return pick ? homeOf(pick) : null;
+      })();
       const spot = typeof b.p?.spot === "string" ? b.p.spot : null;
+      if (named && (spot === "enemyBase" || spot === "enemyFront")) {
+        return spot === "enemyBase" ? named : lerp(named, center, FRONT);
+      }
       switch (spot) {
         case "enemyBase": return foe;
         case "enemyFront": return foe ? lerp(foe, center, FRONT) : null;
@@ -384,11 +421,8 @@ export default function GameResultStory({
       // 밀렸다 같은 문장에도 whom이 붙어 있어서, 그것을 목표로 삼으면 맞은 사람에서
       // 때린 사람 쪽으로 화살표가 거꾸로 그려졌다.
       if (!ATTACK_BEAT_KEYS.has(b.k) && b.k !== "breakthrough") return null;
-      // 당한 사람의 본진 — 여럿이면 상대 편을 먼저 고른다(아군 오사가 아니라 공격 목표).
-      const victims = (b.whom ?? []).filter((v) => v !== raw);
-      const foeVictim = victims.find((v) => teamOf.get(v) && teamOf.get(v) !== teamOf.get(raw));
-      const victim = foeVictim ?? victims[0];
-      if (victim && homeOf(victim)) return homeOf(victim);
+      // 당한 사람의 본진 — 위에서 이미 골라 뒀다(자막이 지목한 상대가 먼저다).
+      if (named) return named;
       // 목표를 모르면 상대 쪽으로 — 리콜·커널·드랍이 여기 걸린다.
       if (foe) return foe;
       // 그 밖(유닛을 뽑았다·물량을 모았다·테크를 올렸다)은 화살표를 그리지 않는다(요청:
@@ -424,7 +458,12 @@ export default function GameResultStory({
         const team = slots.find((x) => (b.who ?? []).includes(x.raw))?.team;
         if (team) slots.filter((x) => x.team === team).forEach((x) => trophy.add(x.raw));
       }
-      for (const raw of b.who ?? []) {
+      // 같이 덮친 사람(who2)도 공격자다(지적: "누구도 가세하여 같이 공격한 것"에 화살표가
+      // 없다) — 문장은 "○○까지 달려들어"로 이름을 부르는데 그림에는 아무것도 없었다.
+      const helpers = ATTACK_BEAT_KEYS.has(b.k) || b.k === "breakthrough"
+        ? (Array.isArray(b.who2) ? b.who2 : typeof b.who2 === "string" ? [b.who2] : [])
+        : [];
+      for (const raw of [...(b.who ?? []), ...helpers]) {
         if (victims.has(raw)) continue;
         mark.set(raw, markOf(b.k));
         const t = target(b, raw);
@@ -436,11 +475,30 @@ export default function GameResultStory({
     // 화살표로 그릴 수 있는 것(자기 집에서 충분히 멀리 간 것)과, 화살표 없이 본진에만 이모지가
     // 붙는 것(생산·테크·경제, 그리고 목표가 자기 집 안인 것)으로 나눈다.
     const arrows: MinimapArrow[] = [];
+    // 이사는 옛 자리에서 새 자리로 가는 하얀 점선 화살표다(요청) — 팀 색을 주지 않아 공격
+    // 화살표와 한눈에 갈리고, 끝에는 이삿짐차를 얹는다. 본진 이모지 자리는 비워 둔다.
+    const movers = new Set<string>();
+    for (const n of idx) {
+      const b = beats[n];
+      if (b?.k !== "relocate") continue;
+      for (const raw of b.who ?? []) {
+        const from = movedPair.from.get(raw);
+        const at = movedPair.to.get(raw);
+        if (!from || !at) continue;
+        arrows.push({
+          key: `mv-${raw}`, x1: from[0], y1: from[1], x2: at[0], y2: at[1],
+          team: undefined, flight: true, mark: BEAT_MARK.relocate,
+        });
+        movers.add(raw);
+      }
+    }
     const marks = new Map<string, string>();
     const onAvatar = new Set<string>();
     for (const s of slots) {
       // 트로피가 있으면 그것이 이긴다 — 맺음말 스냅에서는 그 사람의 승리가 전부다.
       if (trophy.has(s.raw)) { marks.set(s.raw, "🏆"); onAvatar.add(s.raw); continue; }
+      // 이사 화살표를 이미 그렸으면 이모지는 그 끝에 있다 — 본진에 또 얹지 않는다.
+      if (movers.has(s.raw)) continue;
       const em = mark.get(s.raw) ?? (hit.has(s.raw) ? HIT_MARK : undefined);
       if (!em) continue;
       const home = homeOf(s.raw);
@@ -455,7 +513,7 @@ export default function GameResultStory({
       }
     }
     return { arrows, marks, onAvatar };
-  }, [gameResult.summaryData, sentences, index, slots, grid, moved]);
+  }, [gameResult.summaryData, sentences, index, slots, grid, moved, movedPair]);
   const arrows = actions.arrows;
 
   // 미니맵 표시 — 본진 아바타는 늘 떠 있고, 지금 문장의 주인공만 커진다(요청).

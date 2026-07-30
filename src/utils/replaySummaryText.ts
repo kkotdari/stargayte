@@ -2463,6 +2463,11 @@ function renderLines(
       text = text.replace(
         new RegExp(`^${LINK_HEAD()} `), "",
       );
+      // 앞 문장과 주어가 같으면 이름을 두 번 부르지 않는다(지적: "A는 …했고 A는 …했다").
+      // 조사는 문장마다 달라질 수 있어(가/이/는/은) 이름만 보고 뗀다.
+      if (baseWho !== "" && lastBaseWho === baseWho) {
+        text = text.replace(new RegExp(`^${escapeRe(baseWho)}(?:가|이|는|은) `), "");
+      }
     }
     // 전황이 뒤집히면서 주체까지 다른 팀이면 "…했지만 제롬도 …했다"가 자연스럽다(요청).
     // 맺음말에는 '도'를 붙이지 않는다 — 결말은 곁들이는 말이 아니다.
