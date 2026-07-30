@@ -1117,12 +1117,10 @@ export default function FeedScreen() {
     return `${d.getMonth() + 1}월 ${d.getDate()}일`;
   };
 
-  // 피드 진입 시 오늘 날짜 아이템으로 스크롤(요청) — 없으면 가장 가까운 과거로. 피드는
-  // 최신순(내림차순)이라 위에서부터 첫 "오늘 이하" 아이템이 곧 오늘(있으면) 또는 그 바로
-  // 아래의 가장 가까운 과거다. 로딩이 끝나 목록이 처음 그려진 직후 딱 한 번만 한다.
   // "현재"(now) 경계 = 미래(위)와 오늘/과거(아래)가 갈리는 지점 = 위에서부터 첫 "오늘
   // 이하" 아이템. 그 위에 미래 아이템이 있을 때만(idx>0) 카드 사이에 "현재" 구분선을
-  // 넣는다(요청). 진입 자동 스크롤도 이 지점으로 맞춘다.
+  // 넣는다(요청). 진입할 때 이 지점으로 자동 스크롤하지는 않는다(요청) — 타임라인에서
+  // 눈금을 골라 옮기는 것(스냅)은 그대로 둔다.
   // "현재" 선은 아직 안 끝난 너 나와 바로 아래에 둔다(지적: 당일에 잡혔지만 아직 안 한
   // 너 나와가 현재선 아래로 내려가면 안 된다). 예전엔 날짜로 갈랐는데, 오늘 잡힌 너 나와는
   // 날짜가 '오늘'이라 이미 끝난 오늘 경기들과 같은 편으로 묶여 버렸다. 선 위쪽은 "앞으로
@@ -1134,26 +1132,6 @@ export default function FeedScreen() {
   const showNowDivider = nowIndex > 0;
 
   const feedListRef = useRef<HTMLDivElement>(null);
-  const didInitialScrollRef = useRef(false);
-  useEffect(() => {
-    if (loading || didInitialScrollRef.current) return;
-    const list = feedListRef.current;
-    if (!list || displayFeed.length === 0) return;
-    didInitialScrollRef.current = true;
-    requestAnimationFrame(() => {
-      // "현재" 구분선이 있으면 그 위에, 없으면 첫 오늘/과거 카드에 맞춘다. 구분선이 없을
-      // 땐 DOM 자식 인덱스가 displayFeed 인덱스와 일치한다(구분선 미삽입).
-      const marker = list.querySelector<HTMLElement>("[data-now-marker]");
-      const idx = nowIndex >= 0 ? nowIndex : displayFeed.length - 1;
-      const el = marker ?? (list.children[idx] as HTMLElement | undefined);
-      if (!el) return;
-      // "현재" 구분선이 화면 세로 가운데쯤 오게(요청 — 이전엔 헤더 바로 아래에 붙어
-      // 미래 카드가 안 보였다). 가운데 오프셋만큼 위 미래 카드들이 함께 보인다.
-      const r = el.getBoundingClientRect();
-      const top = window.scrollY + r.top + r.height / 2 - window.innerHeight / 2;
-      if (top > 1) window.scrollTo({ top, behavior: "instant" });
-    });
-  }, [loading, displayFeed, nowIndex]);
 
   return (
     <div className="scr-screen scr-feed-screen">
