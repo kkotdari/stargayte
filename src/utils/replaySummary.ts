@@ -986,7 +986,7 @@ function sideBeats(args: {
     // 고급 유닛 이야기는 그걸 실제로 뽑은 사람의 몫이다 — 팀 전체를 주어로 세우면
     // "A·B·C·D는 배틀크루저까지 꺼냈지만"처럼 주어가 흐릿해진다(지적).
     let owner: ParsedReplayPlayer | null = star;
-    // 몇 기까지 뽑았는지도 함께 — "캐리어를 한 부대 뽑았으나 망함"처럼 규모가 곧 그림이다(요청).
+    // 몇 기까지 뽑았는지도 함께 — "캐리어를 한 부대 뽑았으나 실패함"처럼 규모가 곧 그림이다(요청).
     if (spectacle) {
       p = { mode: "spectacle", unit: spectacle, n: side.combat.get(spectacle) ?? 0 };
       owner = players

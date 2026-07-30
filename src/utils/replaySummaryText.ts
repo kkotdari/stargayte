@@ -367,11 +367,11 @@ const LOST_TAILS = [
 ];
 // 도박수(초반 올인)가 안 됐을 때만 쓰는 맺음 — 성공 여부를 단정하지 않는 선에서
 // "실패함" "큰 피해는 못 줌"까지만 말한다(지적: 독이 됐다·발목을 잡았다는 지나치다).
+// (예전엔 여기에 "망함·폭망함" 계열을 일부러 많이 썼다 — 지금은 반대로 순화해 달라는
+// 요청이 와서 "실패함" 계열로만 채운다.)
 const RISKY_TAILS = [
-  "실패함", "큰 피해는 못 줌", "결국 망함", "소용없었음",
-  // 요청: 망했다·끝장났다·폭망했다 같은 표현을 많이 쓰면 재미있다. 도박수가 어긋난
-  // 자리라 세게 말해도 사실과 어긋나지 않는다 — 그 수가 안 통했다는 건 확인된 것이다.
-  "그대로 폭망함", "쫄딱 망함", "완전히 헛수고가 됨",
+  "실패함", "큰 피해는 못 줌", "끝내 통하지 않음", "소용없었음",
+  "그대로 실패함", "별다른 소득이 없었음", "완전히 헛수고가 됨",
 ];
 
 // 진 편 문장은 "…뚫음, 경기는 내줌"처럼 끊어 붙이는 것보다 "…뚫었으나 경기는 내줌"으로
@@ -726,9 +726,9 @@ const TEMPLATES: Record<string, Tpl> = {
         // 거기까지만 말한다. 실제로 이 자리에서 얻어맞고도 45분 뒤에 이긴 경기가 있었다.
         return c.p.out
           ? say(
-            [`${all}에 ${when}탈락함`, `${all}에 ${when}그대로 망함`,
-              `${all}에 ${when}폭망함`, `${all}에 ${when}그대로 끝장남`],
-            [`${all}에 ${ga(foe)} ${when}탈락함`, `${all}에 ${when}${ga(foe)} 그대로 망함`],
+            [`${all}에 ${when}탈락함`, `${all}에 ${when}그대로 실패함`,
+              `${all}에 ${when}크게 실패함`, `${all}에 ${when}그대로 끝장남`],
+            [`${all}에 ${ga(foe)} ${when}탈락함`, `${all}에 ${when}${ga(foe)} 그대로 실패함`],
             [`${ro(all)} ${when}${ga(foe)} 탈락함`, `${ro(all)} ${when}${reul(foe)} 끝냄`],
           )
           : say(
@@ -761,8 +761,8 @@ const TEMPLATES: Record<string, Tpl> = {
       const when = m > 0 ? `${m}분 만에 ` : "";
       return c.p.out
         ? say(
-          [`${blow} ${also}${when}탈락함`, `${blow} ${also}${when}그대로 망함`,
-            `${blow} ${also}${when}그대로 끝장남`, `${blow} ${also}${when}폭망함`],
+          [`${blow} ${also}${when}탈락함`, `${blow} ${also}${when}그대로 실패함`,
+            `${blow} ${also}${when}그대로 끝장남`, `${blow} ${also}${when}크게 실패함`],
           [`${blow} ${also}${when}${ga(foe)} 탈락함`],
           [`${blow} ${also}${when}${reul(foe)} 판에서 지움`, `${blow} ${also}${when}${reul(foe)} 끝냄`],
         )
@@ -789,7 +789,7 @@ const TEMPLATES: Record<string, Tpl> = {
       const min = num(c.p.outMin);
       const when = min > 0 ? `${min}분경 ` : "";
       return say(
-        [`${blow} ${when}탈락함`, `${blow} ${when}그대로 망함`],
+        [`${blow} ${when}탈락함`, `${blow} ${when}그대로 실패함`],
         [`${blow} ${when}${ga(foe)} 탈락함`],
         [`${ro(by)} ${when}${reul(foe)} 엘리시킴`, `${ro(by)} ${when}${reul(foe)} 끝냄`],
       );
@@ -865,7 +865,7 @@ const TEMPLATES: Record<string, Tpl> = {
     const g = num(c.p.gates, 2);
     const label = g === 2 ? "투게이트" : `${g}게이트`;
     const at = targetPhrase(c);
-    // 질럿 러시는 도박이 아니라 정석이다(지적) — 실패했다고 "결국 망함"으로 맺지 않는다.
+    // 질럿 러시는 도박이 아니라 정석이다(지적) — 실패했다고 "끝내 통하지 않음"으로 맺지 않는다.
     // 한 유닛만 뽑고 달린 경우에만 '무지성'을 붙인다.
     return `${ga(c.who)} ${at}${done(c, c.pick([
       `${label} 질럿 러시를 함`, `빠른 ${label} 질럿 러시를 함`,
@@ -935,7 +935,7 @@ const TEMPLATES: Record<string, Tpl> = {
       const n = num(c.p.n);
       const amount = n >= 12 ? "한 부대" : n >= 4 ? `${n}기` : "";
       return `${neun(c.who)} ${c.pick([
-        ...(amount ? [`${reul(u)} ${amount} 뽑았으나 망함`, `${reul(u)} ${amount}나 뽑고도 소용없었음`] : []),
+        ...(amount ? [`${reul(u)} ${amount} 뽑았으나 실패함`, `${reul(u)} ${amount}나 뽑고도 소용없었음`] : []),
         `${u} 등의 고급 유닛을 사용해 전투에 임했으나 판을 뒤집지 못함`,
         `${u}까지 꺼냈지만 판을 뒤집지 못함`,
         `${u}까지 갔지만 늦었음`,
@@ -1090,10 +1090,10 @@ const TEMPLATES: Record<string, Tpl> = {
       c.p.out
         ? c.p.team
           ? ["먼저 엘리당함", "제일 먼저 탈락하며 한 명이 빠짐", "먼저 지워짐", "먼저 끝장남"]
-          : ["엘리당함", "탈락함", "그대로 끝장남", "폭망함"]
+          : ["엘리당함", "탈락함", "그대로 끝장남", "크게 실패함"]
         : c.p.team
           ? ["먼저 무너지며 전열이 갈림", "먼저 정리되며 한 명이 빠짐", "먼저 나가떨어짐"]
-          : ["일찍 손을 놓음", "일찍 무너짐", "허무하게 먼저 정리됨", "일찌감치 망함"]
+          : ["일찍 손을 놓음", "일찍 무너짐", "허무하게 먼저 정리됨", "일찌감치 실패함"]
     )}`;
   },
 
@@ -1328,7 +1328,7 @@ const TEMPLATES: Record<string, Tpl> = {
   },
 
   // 배틀크루저(요청) — 띄우는 것 자체가 사건인데, 띄우고도 지는 경기가 많아 이야기가 된다.
-  // 그래서 진 쪽에는 도박수와 같은 맺음(망함·소용없었음)을 붙인다.
+  // 그래서 진 쪽에는 도박수와 같은 맺음(실패함·소용없었음)을 붙인다.
   //
   // n은 '한때 함께 떠 있던 수'에 가까운 값(창 단위 최대)이다 — 자세한 이유는
   // replayTactics의 windowPeak 주석에 있다. 경기 내내 뽑은 누계는 말하지 않는다(요청).
