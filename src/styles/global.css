@@ -7657,6 +7657,20 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
   background: #101418;
 }
 .scr-minimap-canvas { display: block; width: 100%; height: 100%; }
+/* 본진 → 공격 자리 화살표 — 지형 위, 아바타 아래. 스냅이 바뀌면 갈아 끼워지므로 부드럽게
+   들어오게 한다(갑자기 선이 튀어나오면 그림이 깜빡이는 것처럼 보인다). */
+.scr-minimap-arrows {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  /* z-index를 주지 않는다 — 주면(양수) 아바타보다 위로 올라와 화살표가 얼굴을 덮는다.
+     기본값이면 문서 순서대로 지형(캔버스) 위, 아바타 아래에 놓인다. */
+  pointer-events: none;
+  animation: scr-minimap-arrow-in 260ms ease-out;
+}
+@keyframes scr-minimap-arrow-in { from { opacity: 0; } to { opacity: 1; } }
+/* 값은 타일 단위다(viewBox가 타일 격자) — 128칸 맵에서 1타일이 화면 2~3px이다. */
+.scr-minimap-arrow { stroke-width: 1.1; stroke-linecap: round; }
+.scr-minimap-arrow-halo { stroke: rgba(0, 0, 0, 0.55); stroke-width: 2.6; stroke-linecap: round; }
+.scr-minimap-arrow-head { stroke: rgba(0, 0, 0, 0.55); stroke-width: 0.8; }
 
 /* 표시 하나 — 크기 없는 '점'으로 두고 아바타와 닉네임을 그 점 기준으로 얹는다(위치는
    인라인 스타일). 아바타를 flex로 나란히 두면 닉네임 길이만큼 아바타가 실제 좌표에서
@@ -7690,7 +7704,9 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
    않는 이유는 누구 자리인지 여전히 알아야 하기 때문이다. */
 .scr-minimap-mark-downed .scr-avatar { filter: grayscale(1) brightness(0.55); }
 .scr-minimap-mark-skull {
-  position: absolute; left: 0; top: 0; transform: translate(-50%, -50%);
+  /* 아바타 가운데가 아니라 오른쪽 위 어깨에 얹는다 — 가운데에 두면 18px 아바타를 거의 다
+     덮어 누구 자리인지 알 수 없었다(실측 스크린샷). */
+  position: absolute; left: 7px; top: -7px; transform: translate(-50%, -50%);
   z-index: 2; color: #fff;
   /* 어떤 지형 색 위에서도 실루엣이 살아야 한다 — 검은 테를 두른다. */
   filter: drop-shadow(0 0 2px #000) drop-shadow(0 0 2px #000);

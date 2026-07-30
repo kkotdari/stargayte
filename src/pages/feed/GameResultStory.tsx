@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import ReplayMinimap, { type MinimapMarker } from "../../components/replay/ReplayMinimap";
+import ReplayMinimap, { type MinimapArrow, type MinimapMarker } from "../../components/replay/ReplayMinimap";
 import ReplayStoryTimeline from "../../components/replay/ReplayStoryTimeline";
 import RosterSide, { outcomeFor, resolveSlotName } from "./GameResultSides";
 import { useIsMobile } from "../../hooks/useIsMobile";
@@ -7,6 +7,7 @@ import { useReplayMap } from "../../hooks/useReplayMap";
 import { cleanMapName } from "../../utils/mapName";
 import { cx } from "../../utils/format";
 import { normalizeSearchText } from "../../utils/memberSearch";
+import { ATTACK_BEAT_KEYS } from "../../utils/replaySummary";
 import { renderReplaySummarySentences } from "../../utils/replaySummaryText";
 import type { GameResult, GameResultSlot, Member } from "../../types";
 
@@ -29,6 +30,12 @@ import type { GameResult, GameResultSlot, Member } from "../../types";
 const DWELL_BASE_MS = 1800;
 const DWELL_PER_CHAR_MS = 110;
 const DWELL_MAX_MS = 12000;
+
+/** 날아서·워프로 간 수 — 화살표를 곧은 점선으로 그린다. 나머지(지상군)는 곡선(요청). */
+const FLIGHT_BEAT_KEYS = new Set([
+  "recall", "nydus", "dropship", "shuttle", "shuttle-reaver", "templar-drop", "zerg-drop",
+  "muta", "cloak-wraith",
+]);
 
 /** 카드가 화면에 이만큼 들어와 있으면 재생한다 — 피드에 카드가 여럿인데 전부 동시에
  *  돌아가면 어지럽고, 보이지도 않는 카드가 타이머를 물고 있을 이유도 없다. */
@@ -159,30 +166,51 @@ export default function GameResultStory({
       });
   }, [gameResult.summaryData, slots, memberOf, highlightMemberIds, highlightTerms, downed]);
 
-  const actors: MinimapMarker[] = useMemo(() => {
+  /* 지금 스냅의 주인공 아바타와, 그 사람 본진에서 그 자리까지 잇는 화살표(요청: 공격의
+     경우 본진에서 공격위치까지 팀컬러 화살표). 둘이 같은 자료를 쓰므로 한 번에 만든다. */
+  const { actors, arrows } = useMemo<{ actors: MinimapMarker[]; arrows: MinimapArrow[] }>(() => {
     const beats = gameResult.summaryData?.beats;
     const idx = sentences[index]?.beats;
-    if (!beats || !idx) return [];
+    if (!beats || !idx) return { actors: [], arrows: [] };
+    const spots = gameResult.summaryData?.bases ?? {};
     // 한 문장에 여러 beat가 들어가면 같은 사람이 여러 번 나올 수 있다 — 뒤에 오는 것(더
     // 나중의 자리)이 이긴다.
     // 당한 사람은 표시하지 않는다(요청) — 당한 자리는 자기 본진이라 본진 표시와 겹쳐
     // 아바타가 두 개 뜨기만 하고 알려 주는 것이 없다.
     const at = new Map<string, [number, number]>();
+    // 화살표는 공격 beat에만 — 물량을 모았다·병력을 충원했다 같은 beat도 자리는 남는데,
+    // 거기까지 화살을 그으면 아무 일 없던 곳으로 공격을 간 것처럼 읽힌다(실측: "히드라를
+    // 141기 충원했다" 장면에 화살표가 그려졌다).
+    const flight = new Map<string, boolean>();
     for (const n of idx) {
-      const victims = new Set(beats[n]?.whom ?? []);
-      for (const [raw, xy] of Object.entries(beats[n]?.pos ?? {})) {
-        if (!victims.has(raw)) at.set(raw, xy);
+      const b = beats[n];
+      if (!b) continue;
+      const victims = new Set(b.whom ?? []);
+      for (const [raw, xy] of Object.entries(b.pos ?? {})) {
+        if (victims.has(raw)) continue;
+        at.set(raw, xy);
+        if (ATTACK_BEAT_KEYS.has(b.k)) flight.set(raw, FLIGHT_BEAT_KEYS.has(b.k));
+        else flight.delete(raw);
       }
     }
-    return slots
-      .filter((s) => at.has(s.raw))
-      .map((s) => ({
+    const rows = slots.filter((s) => at.has(s.raw));
+    return {
+      actors: rows.map((s) => ({
         key: s.raw, name: s.name, memberId: s.slot.memberId,
         avatar: memberOf(s.slot.memberId)?.avatar ?? null,
         race: s.slot.race, team: s.team,
         x: at.get(s.raw)![0], y: at.get(s.raw)![1],
         withName: false, highlight: false,
-      }));
+      })),
+      // 본진을 아는 사람만 — 시작점이 없으면 그릴 수 없다. 자기 본진 근처에 머문 자리는
+      // 화살표 쪽에서 길이를 보고 걸러낸다(arrowGeom의 MIN_LEN).
+      arrows: rows.filter((s) => spots[s.raw] && flight.has(s.raw)).map((s) => ({
+        key: s.raw,
+        x1: spots[s.raw][0], y1: spots[s.raw][1],
+        x2: at.get(s.raw)![0], y2: at.get(s.raw)![1],
+        team: s.team, flight: flight.get(s.raw) ?? false,
+      })),
+    };
   }, [gameResult.summaryData, sentences, index, slots, memberOf]);
 
   const o1 = outcomeFor("team1", result);
@@ -215,7 +243,7 @@ export default function GameResultStory({
           </span>
         )}
       </div>
-      <ReplayMinimap grid={grid} bases={bases} actors={actors} />
+      <ReplayMinimap grid={grid} bases={bases} actors={actors} arrows={arrows} />
     </div>
   );
 

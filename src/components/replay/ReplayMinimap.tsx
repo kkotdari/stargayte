@@ -45,6 +45,77 @@ const PX_PER_TILE = 4;
 // 맵의 이만큼 안쪽까지를 '가장자리'로 보고 닉네임을 안쪽으로 붙인다.
 const EDGE = 0.22;
 
+/** 본진에서 공격 자리까지 이어지는 화살표 하나(요청). */
+export interface MinimapArrow {
+  key: string;
+  /** 타일 좌표 — 시작(본진)과 끝(공격 자리). */
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  team: 1 | 2 | undefined;
+  /** 날아서·워프로 간 것인가 — 곧은 점선으로 그린다. 지상 이동은 곡선(요청). */
+  flight: boolean;
+}
+
+// 화살표 모양 — 값은 모두 타일 단위다(SVG viewBox가 타일 격자와 같다).
+//
+// 지상 이동을 곡선으로 그리라는 요청이 있었지만, 실제 이동 경로를 리플레이에서 알 수는 없다
+// (위 주석: 어디가 절벽이고 어디가 다리인지 모른다). 그래서 '가운데 쪽으로 조금 휘는' 곡선을
+// 쓴다 — 스타에서 지상군은 본진을 나와 가운데 길로 돌아 들어가기 때문에, 곧은 직선보다 이게
+// 실제 동선에 가깝다. 대각(크로스) 자리끼리는 현이 이미 가운데를 지나므로 자연히 직선이
+// 된다(휘는 양이 0이 된다). 벽을 정확히 피해 가는 경로는 지형 표가 없으면 그릴 수 없다.
+const BEND = 0.22;
+/** 시작·끝에서 이만큼 띄운다 — 아바타 밑에서 시작하면 화살표가 아바타에 가려 안 보인다. */
+const GAP_FROM = 3.4;
+const GAP_TO = 3.8;
+/** 이보다 짧은 화살표는 그리지 않는다 — 본진 안에서 조금 움직인 것은 '공격 갔다'가 아니다. */
+const MIN_LEN = 8;
+const HEAD_LEN = 4.6;
+const HEAD_WIDE = 2.6;
+
+const TEAM_COLOR: Record<number, string> = { 1: "#4d9bf0", 2: "#f26d80" };
+
+/** 화살표 하나를 SVG 경로와 머리 삼각형으로 바꾼다. 그릴 값이 없으면 null. */
+function arrowGeom(a: MinimapArrow, w: number, h: number) {
+  const dx = a.x2 - a.x1;
+  const dy = a.y2 - a.y1;
+  const len = Math.hypot(dx, dy);
+  if (len < MIN_LEN) return null;
+  const ux = dx / len;
+  const uy = dy / len;
+  const x1 = a.x1 + ux * GAP_FROM;
+  const y1 = a.y1 + uy * GAP_FROM;
+  const x2 = a.x2 - ux * GAP_TO;
+  const y2 = a.y2 - uy * GAP_TO;
+  const mx = (x1 + x2) / 2;
+  const my = (y1 + y2) / 2;
+  let cx0 = mx;
+  let cy0 = my;
+  if (!a.flight) {
+    // 현에 수직인 방향 중 맵 가운데를 향하는 쪽으로 휜다. 휘는 양은 '가운데까지의 수직
+    // 거리'를 넘지 않게 잡는다 — 그래서 현이 이미 가운데를 지나면 휘지 않는다.
+    const nx = -uy;
+    const ny = ux;
+    const d = nx * (w / 2 - mx) + ny * (h / 2 - my);
+    const amt = Math.sign(d) * Math.min(len * BEND, Math.abs(d));
+    cx0 = mx + nx * amt;
+    cy0 = my + ny * amt;
+  }
+  // 머리 방향은 곡선의 끝 접선(2차 베지에는 끝점 - 제어점).
+  const tx = x2 - cx0;
+  const ty = y2 - cy0;
+  const tl = Math.hypot(tx, ty) || 1;
+  const hx = tx / tl;
+  const hy = ty / tl;
+  const bx = x2 - hx * HEAD_LEN;
+  const by = y2 - hy * HEAD_LEN;
+  return {
+    d: `M ${x1} ${y1} Q ${cx0} ${cy0} ${x2} ${y2}`,
+    head: `${x2},${y2} ${bx - hy * HEAD_WIDE},${by + hx * HEAD_WIDE} ${bx + hy * HEAD_WIDE},${by - hx * HEAD_WIDE}`,
+  };
+}
+
 /** 미니맵 위에 놓을 표시 하나. */
 export interface MinimapMarker {
   /** 리플레이 원본 게임 아이디 — 목록 키로도 쓴다. */
@@ -68,13 +139,15 @@ export interface MinimapMarker {
 }
 
 export default function ReplayMinimap({
-  grid, bases, actors, className,
+  grid, bases, actors, arrows = [], className,
 }: {
   grid: ReplayMapGrid;
   /** 늘 보이는 본진 표시(요청: 본진은 아바타+닉네임 계속 표시). */
   bases: MinimapMarker[];
   /** 지금 스냅의 주인공들 — 아바타만, 그때 병력을 보낸 자리에(요청). */
   actors: MinimapMarker[];
+  /** 본진 → 공격 자리 화살표(요청). */
+  arrows?: MinimapArrow[];
   className?: string;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -141,6 +214,32 @@ export default function ReplayMinimap({
   return (
     <div className={cx("scr-minimap", className)}>
       <canvas ref={canvasRef} className="scr-minimap-canvas" aria-label={`${grid.name} 미니맵`} />
+      {/* 화살표 — 지형 위, 아바타 아래에 둔다. viewBox를 타일 격자와 같게 두어 좌표를 그대로
+          쓰고, preserveAspectRatio를 끄면 아바타(퍼센트 위치)와 정확히 같은 자리에 놓인다. */}
+      <svg
+        className="scr-minimap-arrows" aria-hidden
+        viewBox={`0 0 ${grid.width} ${grid.height}`} preserveAspectRatio="none"
+      >
+        {arrows.map((a) => {
+          const g = arrowGeom(a, grid.width, grid.height);
+          if (!g) return null;
+          const color = TEAM_COLOR[a.team ?? 0] ?? "#d8dee6";
+          return (
+            <g key={`arw-${a.key}`} stroke={color} fill={color}>
+              {/* 어두운 지형에도 밝은 지형에도 걸치므로 검은 테를 한 겹 깔아 둔다. */}
+              <path
+                d={g.d} className="scr-minimap-arrow-halo" fill="none"
+                strokeDasharray={a.flight ? "3 2.4" : undefined}
+              />
+              <path
+                d={g.d} fill="none" className="scr-minimap-arrow"
+                strokeDasharray={a.flight ? "3 2.4" : undefined}
+              />
+              <polygon points={g.head} className="scr-minimap-arrow-head" />
+            </g>
+          );
+        })}
+      </svg>
       {bases.map((m) => (
         <span
           key={`base-${m.key}`}

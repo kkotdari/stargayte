@@ -2097,7 +2097,10 @@ const POS_AWAY_MIN = 18;
  *
  *  전술 beat는 전술 키를 그대로 beat 키로 쓰므로(zling-rush·nydus·cloak-wraith …) 이미
  *  있는 두 목록을 그대로 쓰고, 전술이 아닌 '공격 이야기' 키만 따로 더한다. */
-const ATTACK_BEAT_KEYS = new Set([
+/** 공격 이야기인 beat 키 — 미니맵의 화살표도 이 목록으로 가른다(요청: 공격의 경우 본진에서
+ *  공격위치까지 화살표). 병력을 모았다·물량을 뽑았다 같은 beat도 자리는 남지만, 거기까지
+ *  화살을 그으면 아무 일 없던 곳으로 공격을 간 것처럼 읽힌다. */
+export const ATTACK_BEAT_KEYS = new Set([
   ...RAID_KEYS, ...HARASS_KEYS,
   "raid-damage", "gang-rush", "duel-rush", "harass-workers", "harass-long", "breakthrough",
 ]);
