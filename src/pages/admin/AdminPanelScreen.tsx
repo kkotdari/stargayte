@@ -6,6 +6,8 @@ import ConfirmDialog from "../../components/common/ConfirmDialog";
 import ReplayBatchButton from "../../components/common/ReplayBatchButton";
 import VersionManageModal from "../../modals/VersionManageModal";
 import { api } from "../../api/client";
+import { parseReplayFile } from "../../utils/replayParser";
+import { buildReplaySummary } from "../../utils/replaySummary";
 import { useAppStore } from "../../store/appStore";
 import { useLockBodyScroll } from "../../utils/bodyScrollLock";
 import { cx } from "../../utils/format";
@@ -43,6 +45,11 @@ export default function AdminPanelScreen({ isAdmin }: AdminPanelScreenProps) {
   const [seeding, setSeeding] = useState(false);
   const [recomputing, setRecomputing] = useState(false);
   const [confirmSeed, setConfirmSeed] = useState(false);
+  /* 요약 재분석 — 이미 등록된 경기의 리플레이를 다시 읽어 요약만 새로 써 넣는다(요청).
+     요약은 규칙으로 뽑아내는 파생 데이터라 규칙이 좋아지면 옛 경기도 함께 좋아져야 하는데,
+     지금까지는 리플레이를 다시 올리는 수밖에 없었다. 진행 상황은 숫자로만 보여준다. */
+  const [redo, setRedo] = useState<{ done: number; total: number; failed: number } | null>(null);
+  const [confirmRedo, setConfirmRedo] = useState(false);
 
   // 등록된 리플레이(.rep) 전체를 날짜별 폴더 zip으로 받는다 — 인증 헤더가 필요해 blob으로
   // 받아 클라이언트에서 임시 링크로 저장 트리거한다.
@@ -100,6 +107,44 @@ export default function AdminPanelScreen({ isAdmin }: AdminPanelScreenProps) {
       setErr(e instanceof Error ? e.message : "집계하지 못했어요.");
     } finally {
       setRecomputing(false);
+    }
+  };
+
+  // 등록된 경기를 하나씩 다시 읽어 요약만 갈아 끼운다 — 리플레이가 붙은 경기만 대상이고,
+  // 분석에 실패한 건은 건드리지 않고 세기만 한다(그 경기는 예전 요약 그대로 남는다).
+  const redoSummaries = async () => {
+    setErr("");
+    setRedo({ done: 0, total: 0, failed: 0 });
+    let done = 0;
+    let failed = 0;
+    try {
+      // 한 번에 다 받으면 응답이 수십 MB가 되므로 커서로 나눠 받는다.
+      let cursor: string | undefined;
+      const ids: number[] = [];
+      do {
+        const page = await api.getGameResultsPage({ cursor, limit: 100 });
+        page.items.forEach((m) => { if (m.replay) ids.push(m.id); });
+        cursor = page.nextCursor ?? undefined;
+      } while (cursor);
+      setRedo({ done: 0, total: ids.length, failed: 0 });
+
+      for (const id of ids) {
+        try {
+          const blob = await api.downloadReplay(id);
+          const parsed = await parseReplayFile(new File([blob], `${id}.rep`));
+          const summaryData = buildReplaySummary(parsed);
+          await api.rewriteSummary(id, { summaryData, mapData: parsed.mapGrid ?? null });
+        } catch {
+          failed += 1;
+        }
+        done += 1;
+        setRedo({ done, total: ids.length, failed });
+      }
+      window.alert(`요약 ${done - failed}건을 다시 계산했어요.${failed > 0 ? `\n${failed}건은 리플레이를 읽지 못해 그대로 뒀어요.` : ""}`);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "요약을 다시 계산하지 못했어요.");
+    } finally {
+      setRedo(null);
     }
   };
 
@@ -281,6 +326,24 @@ export default function AdminPanelScreen({ isAdmin }: AdminPanelScreenProps) {
                   </button>
                 </div>
 
+                {/* 요약 재분석 — 규칙이 좋아졌을 때 옛 경기까지 새 규칙으로 다시 읽는다(요청).
+                    경기 내용은 그대로고 요약(과 없던 미니맵)만 바뀐다. */}
+                <div className="scr-admin-panel-section-title">요약 관리</div>
+                <div className="scr-admin-panel-grid">
+                  <button
+                    type="button" className="scr-btn scr-btn-primary"
+                    onClick={() => setConfirmRedo(true)} disabled={redo !== null}
+                  >
+                    {redo ? <Spinner /> : "요약 재분석"}
+                  </button>
+                  {redo && (
+                    <span className="scr-admin-panel-batch-counts">
+                      {redo.total > 0 ? `${redo.done}/${redo.total}` : "경기 목록 받는 중"}
+                      {redo.failed > 0 ? ` · 실패 ${redo.failed}` : ""}
+                    </span>
+                  )}
+                </div>
+
               </>
             )}
           </>
@@ -298,6 +361,16 @@ export default function AdminPanelScreen({ isAdmin }: AdminPanelScreenProps) {
             void setVersion(next);
           }}
           onCancel={() => setConfirmSetVersion(null)}
+        />
+      )}
+
+      {confirmRedo && (
+        <ConfirmDialog
+          title="등록된 경기의 요약을 모두 다시 계산할까요?"
+          message="리플레이가 붙은 경기를 하나씩 다시 읽어 전황 요약을 새로 만듭니다. 경기 내용(팀·승패)은 바뀌지 않고, 건수가 많으면 몇 분 걸립니다."
+          confirmLabel="다시 계산"
+          onConfirm={() => { setConfirmRedo(false); void redoSummaries(); }}
+          onCancel={() => setConfirmRedo(false)}
         />
       )}
 

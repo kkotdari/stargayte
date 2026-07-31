@@ -581,6 +581,18 @@ export const api = {
     return res.blob();
   },
 
+  /** 이미 등록된 경기의 요약만 다시 써 넣는다(운영자 전용, 제어판의 '요약 재분석').
+   *  요약을 만드는 파서가 화면 쪽에만 있어서, 화면이 리플레이를 내려받아 다시 분석한 결과를
+   *  올린다 — 서버는 그 값만 갈아 끼우고 경기 내용은 건드리지 않는다. */
+  async rewriteSummary(
+    gameResultId: number,
+    body: { summaryData: ReplaySummaryData | null; mapData?: ReplayMapGrid | null },
+  ): Promise<void> {
+    await request<void>(`/api/game-results/${gameResultId}/summary`, {
+      method: "POST", body: JSON.stringify(body),
+    });
+  },
+
   // 등록된 리플레이(.rep) 전체를 날짜별 폴더 zip으로 받는다(운영자 전용, 관리자 제어판).
   async downloadReplayArchive(): Promise<Blob> {
     const headers = new Headers();
