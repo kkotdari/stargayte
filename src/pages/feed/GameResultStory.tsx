@@ -92,6 +92,13 @@ const HOME_BEAT_KEYS = new Set([
 /** 실제로 맵 가운데에서 벌어진 일 — 화살표를 센터로 보낸다(요청: 센터 내용은 실제 센터에). */
 const CENTER_BEAT_KEYS = new Set(["center", "center-photon"]);
 
+/** '여기서 저기로 건너간' 수 — 화살표를 본진에서 상대에게로 통째로 잇는다(요청).
+ *  마법을 쓴 좌표·문을 뚫은 좌표는 대개 제 진영 언저리라 목표로 삼으면 제 집 옆에서 짧게
+ *  끝난다. 출발 자리는 회오리·구멍으로, 도착 자리는 반짝임으로 따로 표시한다. */
+const WARP_BEAT_KEYS = new Set(["recall", "nydus"]);
+/** 건너간 자리에 얹는 표시 — 마법으로 옮겨 간 느낌을 준다(요청: 별 반짝). */
+const WARP_ARRIVE_MARK = "✨";
+
 /** 날아서·워프로 간 수 — 화살표를 곧은 점선으로 그린다(요청: 드랍이나 공중유닛 이동은 직선).
  *  지상군만 곡선으로 돌아간다. */
 const FLIGHT_BEAT_KEYS = new Set([
@@ -483,6 +490,17 @@ export default function GameResultStory({
         const pick = namedFoe ?? vs[0];
         return pick ? homeOf(pick) : null;
       })();
+      /* 리콜·커널처럼 '여기서 저기로 건너간' 수는 화살표가 본진에서 상대에게로 이어져야
+         그림이 읽힌다(요청). 마법을 쓴 좌표·문을 뚫은 좌표는 대개 제 진영 언저리라, 그걸
+         목표로 삼으면 제 집 옆에서 짧게 끝나는 화살표가 된다(실측 스크린샷: 리콜 회오리가
+         제 본진 바로 옆에 붙어 있었고, 커널 화살표는 자막이 부른 타센 쪽으로 가다 중간에
+         멈췄다). 자막이 부른 상대가 있으면 그 사람 집이 목표다 — 출발 자리는 아래에서
+         회오리·구멍 이모지로 따로 표시한다. */
+      if (WARP_BEAT_KEYS.has(b.k) && namedFoe) {
+        const to = homeOf(namedFoe);
+        if (to) return to;
+      }
+
       /* 자리를 아는 것이 최우선이다(요청: 위치가 파악된 건 무조건 정확한 위치를 표시).
          p.xy는 어림이 아니라 리플레이에 그대로 적힌 좌표다 — 마법을 쓴 자리, 셔틀이 내린
          자리, 탱크를 세운 자리, 상대 유닛을 찍은 자리. 본진 한복판을 가리키는 것보다 늘
@@ -570,6 +588,8 @@ export default function GameResultStory({
     const to = new Map<string, [number, number]>();
     const flight = new Map<string, boolean>();
     const mark = new Map<string, string>();
+    // 화살표가 출발하는 자리에 얹을 표시 — 지금은 리콜·커널만 쓴다(WARP_BEAT_KEYS).
+    const fromMark = new Map<string, string>();
     const hit = new Set<string>();
     // 맺음말 스냅에서는 이긴 편 아바타에 트로피를 겹쳐 얹는다(요청).
     const trophy = new Set<string>();
@@ -597,6 +617,14 @@ export default function GameResultStory({
         if (!t) { to.delete(raw); continue; }
         to.set(raw, t);
         flight.set(raw, isFlight(b.k, b.p?.k));
+        /* 건너간 수는 양 끝이 다 사건이다(요청) — 출발 자리에 회오리·구멍을, 도착 자리에
+           반짝임을 얹는다. 화살표 하나로 "여기서 저기로 넘어갔다"가 그대로 읽힌다. */
+        if (WARP_BEAT_KEYS.has(b.k)) {
+          fromMark.set(raw, markOf(b.k));
+          mark.set(raw, WARP_ARRIVE_MARK);
+        } else {
+          fromMark.delete(raw);
+        }
       }
     }
     // 화살표로 그릴 수 있는 것(자기 집에서 충분히 멀리 간 것)과, 화살표 없이 본진에만 이모지가
@@ -634,6 +662,7 @@ export default function GameResultStory({
         arrows.push({
           key: s.raw, x1: home[0], y1: home[1], x2: t[0], y2: t[1],
           team: s.team, flight: flight.get(s.raw) ?? false, mark: em, deep,
+          ...(fromMark.get(s.raw) ? { markFrom: fromMark.get(s.raw) } : {}),
         });
       } else {
         marks.set(s.raw, em);
@@ -688,6 +717,11 @@ export default function GameResultStory({
   // 미니맵이 있으면 맵 이름·플레이시간은 그림의 머리로 올라간다 — 아래 따로 한 줄 더 두면
   // 같은 말이 두 번 나온다.
   const showRoster = !mobile || grid === null;
+  /* 첫 스냅에서는 모바일에서도 로스터를 보여준다(요청: 첫 시점 로스터는 좌우로 vs 양쪽에
+     팀별 세로 배치, 가운데 정렬) — 이야기를 읽기 전에 누가 어느 편인지부터 알아야 하는데,
+     자막 한 줄("1팀 A·B 대 2팀 C·D")로는 프사도 종족도 안 보였다. 그림은 예전처럼 그
+     아래에 그대로 둔다 — 좁은 화면에서 로스터 사이에 끼우면 미니맵이 뭉개진다. */
+  const introRoster = mobile && grid !== null && index === 0;
   // 자막으로 보여줄 수 있는 경기인가 — 미니맵이 있고 훑을 문장이 있을 때. 그림이 없으면
   // 자막만 남아 무엇을 보고 읽는 글인지 알 수 없다.
   const caption = grid !== null && sentences.length > 0;
@@ -752,8 +786,10 @@ export default function GameResultStory({
 
   return (
     <div className="scr-story" ref={rootRef}>
-      {showRoster && (
-        <div className={cx("scr-challenge-matchup", "scr-feed-game-result-matchup", grid && "scr-story-matchup-wide")}>
+      {(showRoster || introRoster) && (
+        <div className={cx("scr-challenge-matchup", "scr-feed-game-result-matchup",
+          grid && showRoster && "scr-story-matchup-wide",
+          introRoster && "scr-story-intro-roster")}>
           <RosterSide
             team={team1} memberOf={memberOf}
             highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms}
@@ -770,7 +806,7 @@ export default function GameResultStory({
                 {o2 === "draw" ? "무" : "승"}
               </span>
             </span>
-            {mapBlock}
+            {showRoster && mapBlock}
           </div>
           <RosterSide
             team={team2} memberOf={memberOf}

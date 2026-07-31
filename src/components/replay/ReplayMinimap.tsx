@@ -41,6 +41,9 @@ export interface MinimapArrow {
   /** 화살촉 끝에 얹을 이모지 — 무슨 일인지 한 글자로 알려 준다(요청: 공격은 검 대결, 아군
    *  지원은 천사, 핵은 핵폭발 …). 없으면 안 그린다. */
   mark?: string;
+  /** 화살표가 시작하는 자리에 얹을 이모지 — 리콜·커널처럼 '여기서 저기로 건너간' 수는
+   *  출발점도 사건이다(요청: 원본 위치는 회오리, 이동 위치는 별 반짝). 없으면 안 그린다. */
+  markFrom?: string;
 }
 
 // 화살표 모양 — 값은 모두 타일 단위다(SVG viewBox가 타일 격자와 같다).
@@ -135,6 +138,9 @@ function arrowGeom(a: MinimapArrow, w: number, h: number) {
     head: `${x2},${y2} ${bx - hy * headWide},${by + hx * headWide} ${bx + hy * headWide},${by - hx * headWide}`,
     // 이모지 자리 — 화살촉 바로 앞. 촉을 덮지 않고, 목표 아바타에도 닿지 않는 사이다.
     tip: [x2 + hx * MARK_AHEAD, y2 + hy * MARK_AHEAD] as [number, number],
+    // 출발 쪽 이모지 자리 — 몸통이 시작하는 점 그대로. 아바타에서 이미 gapFrom만큼
+    // 띄워 둔 자리라 아바타를 덮지 않는다.
+    from: [x1, y1] as [number, number],
   };
 }
 
@@ -326,6 +332,14 @@ export default function ReplayMinimap({
             style={m.markOn ? place(m) : markPlace(m)}
           >
             {m.mark}
+          </span>
+        ) : null))}
+        {geoms.map(({ a, g }) => (a.markFrom ? (
+          <span
+            key={`mf-${a.key}`} className="scr-minimap-arrow-mark"
+            style={{ left: `${(g.from[0] / grid.width) * 100}%`, top: `${(g.from[1] / grid.height) * 100}%` }}
+          >
+            {a.markFrom}
           </span>
         ) : null))}
         {geoms.map(({ a, g }) => (a.mark ? (

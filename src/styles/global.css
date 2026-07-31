@@ -7019,6 +7019,14 @@ html.scr-light-theme .scr-feed-comments .scr-mreq-chip-inline { color: #c07c1c; 
 /* 좌우 4px을 더 갖고 있어 로스터만 다른 카드보다 4px 안쪽에 섰다(지적: 카드마다 내부
    여백이 다르다) — 좌우는 trow(8) + 본문(8) = 16px으로 충분하니 여기선 0으로 둔다. */
 .scr-feed-game-result-matchup { padding: 0; }
+/* 첫 스냅의 로스터(요청: 좌우로 vs 양쪽에 팀별 세로 배치, 가운데 정렬) — 모바일에서 그림
+   위에 잠깐 얹히는 소개라, 화면 폭을 다 쓰지 않고 내용 크기대로 가운데에 모은다. 양옆이
+   flex:1로 늘어나면 두 팀이 화면 양 끝으로 밀려 vs만 덩그러니 가운데 남는다. */
+.scr-story-intro-roster { justify-content: center; align-items: center; gap: 4px; margin-bottom: 8px; }
+.scr-story-intro-roster > .scr-challenge-side { flex: 0 1 auto; }
+.scr-story-intro-roster > .scr-challenge-side:first-child { align-items: flex-end; text-align: right; }
+.scr-story-intro-roster > .scr-challenge-side:last-child { align-items: flex-start; }
+.scr-story-intro-roster .scr-story-mid { flex: 0 0 auto; }
 /* 피드에선 양편 flex를 똑같이 둬서 가운데(손가락/vs) 묶음이 카드 가로 정중앙에 온다
    (요청: "손가락, vs 세로 정렬" — 원본 화면의 비대칭 flex(0.85/1.15)가 중앙을 밀고 있었다). */
 .scr-feed-card .scr-challenge-matchup .scr-challenge-side { flex: 1 1 0; }
