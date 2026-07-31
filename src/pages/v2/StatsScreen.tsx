@@ -34,9 +34,12 @@ const PERIOD_ALL = "all";
 // 기간 드롭다운이 늘어놓을 월의 상한 — 첫 경기 조회가 이상한 값을 주더라도 목록이
 // 무한정 길어지지 않게 막는 안전장치일 뿐, 정상 상황에서는 걸리지 않는다.
 const MAX_PERIOD_MONTHS = 240;
-// 최소 10회 플레이해야 승률/APM 등 세부 지표를 신뢰할 수 있다고 보고, 못 채운 회원은
-// 게임수만 보여주고 나머지는 가린다(집계 표본이 너무 적어 왜곡되는 걸 막기 위함).
-const MIN_PLAYS_FOR_STATS = 10;
+/* 세부 지표(승률·APM·커맨드)를 보여줄 최소 판수 — 못 채운 회원은 게임수만 보이고 나머지는
+   가린다(표본이 적으면 값이 왜곡된다). 유형마다 기준이 다르다(요청: 개인전은 1판 이상,
+   팀전은 5판): 개인전은 결과가 온전히 그 사람 몫이라 한 판도 값이 있지만, 팀전은 한 판의
+   결과를 넷이 나눠 갖는 자리라 그만큼 표본이 얕다. 백엔드도 같은 기준으로 포인트를 내린다
+   (game_results/service.py의 _MIN_PLAYS_FOR_RANK) — 두 값은 같이 움직여야 한다. */
+const MIN_PLAYS_BY_TYPE: Record<GameType, number> = { "0101": 1, "0102": 5 };
 // 지난 기간의 각 칸 1·2·3위에 붙일 메달(요청) — 순서가 곧 등수다.
 const MEDALS = ["🥇", "🥈", "🥉"];
 
@@ -252,6 +255,9 @@ export default function StatsScreenV2() {
     return () => { cancelled = true; };
   }, [debouncedQuery]);
 
+  // 지금 보고 있는 유형의 최소 판수(위 MIN_PLAYS_BY_TYPE).
+  const minPlays = MIN_PLAYS_BY_TYPE[matchType];
+
   const cards = useMemo(() => {
     const list = matchedMembers.map((m) => {
       const entry = statsByMember[m.id];
@@ -270,19 +276,19 @@ export default function StatsScreenV2() {
       if (b.stats.plays === 0) return -1;
       return 0;
     };
-    // 최소 게임수(MIN_PLAYS_FOR_STATS) 미달이면 승률/APM/커맨드는 화면에 "-"로 가려지므로,
+    // 최소 게임수(minPlays) 미달이면 승률/APM/커맨드는 화면에 "-"로 가려지므로,
     // 그 값 기준으로 정렬할 땐(게임수 자체로 정렬할 때는 제외) 진짜 데이터가 있는 회원
     // 뒤로 보낸다 — 안 그러면 "-"로 표시되는 행이 값 있는 행들 사이에 뒤섞여 보인다.
     const belowMinLast = (a: (typeof list)[number], b: (typeof list)[number]) => {
-      const aBelow = a.stats.plays < MIN_PLAYS_FOR_STATS, bBelow = b.stats.plays < MIN_PLAYS_FOR_STATS;
+      const aBelow = a.stats.plays < minPlays, bBelow = b.stats.plays < minPlays;
       if (aBelow && bBelow) return nicknameTiebreak(a, b);
       if (aBelow) return 1;
       if (bBelow) return -1;
       return 0;
     };
     const noAvgLast = (a: (typeof list)[number], b: (typeof list)[number], key: "avgApm" | "avgCmd" | "avgBuild") => {
-      const aMissing = a.stats.plays < MIN_PLAYS_FOR_STATS || a.stats[key] === null;
-      const bMissing = b.stats.plays < MIN_PLAYS_FOR_STATS || b.stats[key] === null;
+      const aMissing = a.stats.plays < minPlays || a.stats[key] === null;
+      const bMissing = b.stats.plays < minPlays || b.stats[key] === null;
       if (aMissing && bMissing) return nicknameTiebreak(a, b);
       if (aMissing) return 1;
       if (bMissing) return -1;
@@ -325,7 +331,7 @@ export default function StatsScreenV2() {
       sorted.sort((a, b) => noAvgLast(a, b, "avgCmd") || dirSign * ((a.stats.avgCmd ?? 0) - (b.stats.avgCmd ?? 0)) || nicknameTiebreak(a, b));
     }
     return sorted;
-  }, [matchedMembers, statsByMember, sort, race]);
+  }, [matchedMembers, statsByMember, sort, race, minPlays]);
 
   // 지금 몇 위인가 — 서버가 매긴 자리번호(sortOrder)로 줄을 세우고 완전 동률(tieGroup)은
   // 공동순위(1,1,3)로 묶는다. 백엔드가 순위표를 만들 때 쓰는 규칙(_compute_standings)과
@@ -383,7 +389,7 @@ export default function StatsScreenV2() {
         return {
           id: m.id, stats,
           points: entry?.rankScore != null ? Math.round(entry.rankScore) : null,
-          below: stats.plays < MIN_PLAYS_FOR_STATS,
+          below: stats.plays < minPlays,
         };
       });
     const give = (
@@ -406,7 +412,7 @@ export default function StatsScreenV2() {
     give("apm", (c) => (c.below ? null : c.stats.avgApm));
     give("cmd", (c) => (c.below ? null : c.stats.avgCmd));
     return out;
-  }, [members, statsByMember, race, period]);
+  }, [members, statsByMember, race, period, minPlays]);
 
   const maxOverallPlays = useMemo(
     () => Math.max(1, ...cards.map((c) => c.stats.plays)), [cards],
@@ -534,7 +540,7 @@ export default function StatsScreenV2() {
                   rankDelta={rankDeltaByMember.get(c.member.id) ?? null}
                   onPointsClick={() => setPointMember(c.member)}
                   medals={medalByMember.get(c.member.id)}
-                  belowMinPlays={c.stats.plays < MIN_PLAYS_FOR_STATS}
+                  belowMinPlays={c.stats.plays < minPlays}
                   compact
                   maxOverallPlays={maxOverallPlays}
                   maxBuild={maxBuild}
