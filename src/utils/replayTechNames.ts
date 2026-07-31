@@ -276,15 +276,78 @@ export function topUsedTech(s: TechSignalsLike): TechName | null {
   return best;
 }
 
+/** 실제로 쓴 기술을 이야깃거리 순으로 여러 개 — topUsedTech와 같은 점수 규칙이다.
+ *
+ *  사람마다 하나만 말하면 요약이 늘 같은 말만 하게 된다(요청: 다양한 세부 기술 사용 진술).
+ *  스톰을 30번 뿌리면서 스테이시스로 판을 끊은 경기는 그 둘이 다 이야기다. 다만 흔한 능력
+ *  (시즈·스팀·마인)까지 줄줄이 붙으면 그것대로 지루해서, 두 번째부터는 '판을 가르는' 급
+ *  (TECH_RANK가 SECOND_TECH_MIN_RANK 이상)에 실제로 여러 번 쓴 것만 남긴다. */
+export const SECOND_TECH_MIN_RANK = 5;
+export const SECOND_TECH_MIN_USES = 3;
+export function topUsedTechs(s: TechSignalsLike, max: number): TechName[] {
+  const scored: { name: TechName; score: number; uses: number }[] = [];
+  for (const [raw, uses] of Object.entries(s.techUses)) {
+    if (uses <= 0) continue;
+    const name = raw as TechName;
+    const rank = TECH_RANK[name] ?? 0;
+    if (rank <= 0) continue;
+    scored.push({ name, score: rank + Math.min(3, Math.floor(uses / 10)), uses });
+  }
+  scored.sort((a, b) => b.score - a.score || b.uses - a.uses);
+  return scored
+    .filter((x, i) => i === 0
+      || ((TECH_RANK[x.name] ?? 0) >= SECOND_TECH_MIN_RANK && x.uses >= SECOND_TECH_MIN_USES))
+    .slice(0, max)
+    .map((x) => x.name);
+}
+
 /** 그 기술을 "쓴다"를 우리말로 어떻게 말하나 — 마법은 쓰지만 시즈는 펴고 마인은 깐다.
- *  {n}에 횟수가 들어간다. 없는 기술은 기본형("…를 N번 씀")을 쓴다. */
-export const TECH_USE_PHRASE: Partial<Record<TechName, string>> = {
-  "Tank Siege Mode": "시즈를 {n}번 폄",
-  "Spider Mines": "마인을 {n}개 깜",
-  Burrowing: "버로우로 {n}번 숨음",
-  "Personnel Cloaking": "고스트를 {n}번 숨김",
-  "Cloaking Field": "레이스를 {n}번 숨김",
-  "Stim Packs": "스팀팩을 {n}번 씀",
+ *  {n}에 횟수가 들어간다. 없는 기술은 기본형("…를 N번 씀")을 쓴다.
+ *
+ *  기술마다 제 말투를 적어 두는 이유는 두 가지다. 하나는 정확함이다 — "다크스웜을 썼다"
+ *  보다 "다크스웜을 깔아 총알을 지웠다"가 그 마법이 실제로 한 일이다. 다른 하나는 다채로움
+ *  이다(요청: 다양한 세부 기술 사용 진술) — 기본형만 쓰면 어느 경기든 "…를 N번 썼다"
+ *  한 줄로 끝나서, 스톰 서른 번과 브루들링 다섯 번이 같은 문장이 된다. 한 기술에 여럿을
+ *  적어 두면 같은 마법이라도 경기마다 다르게 읽힌다. */
+export const TECH_USE_PHRASE: Partial<Record<TechName, string[]>> = {
+  // ── 능력(마법이 아닌 것) ──
+  "Tank Siege Mode": ["시즈를 {n}번 폄", "탱크를 {n}번 앉혔다 일으킴"],
+  "Spider Mines": ["마인을 {n}개 깜", "길목마다 마인을 {n}개 심음"],
+  Burrowing: ["버로우로 {n}번 숨음", "{n}번 땅에 숨어 기다림"],
+  "Personnel Cloaking": ["고스트를 {n}번 숨김", "고스트를 {n}번 지워 놓고 움직임"],
+  "Cloaking Field": ["레이스를 {n}번 숨김", "레이스를 {n}번 지워 놓고 들어감"],
+  "Stim Packs": ["스팀팩을 {n}번 씀", "스팀을 {n}번 올려 달려듦"],
+  // ── 프로토스 ──
+  "Psionic Storm": [
+    "스톰을 {n}번 뿌림", "사이오닉 스톰으로 {n}번 지짐", "머리 위로 스톰을 {n}번 떨굼",
+  ],
+  "Stasis Field": [
+    "스테이시스로 {n}번 병력을 통째로 묶음", "스테이시스 필드를 {n}번 걸어 시간을 벌음",
+  ],
+  Hallucination: ["할루시네이션으로 {n}번 허상을 앞세움", "환영을 {n}번 만들어 앞세움"],
+  "Mind Control": ["마인드컨트롤로 {n}번 빼앗음", "다크아콘으로 {n}번 남의 유닛을 가져옴"],
+  Feedback: ["피드백으로 {n}번 마나를 터뜨림", "상대 마법 유닛을 {n}번 피드백으로 지움"],
+  "Disruption Web": ["디스럽션 웹을 {n}번 깔아 지상 공격을 막음", "웹을 {n}번 깔아 길을 끊음"],
+  Maelstrom: ["마엘스트롬으로 {n}번 얼려 세움", "마엘스트롬을 {n}번 걸어 발을 묶음"],
+  // ── 저그 ──
+  "Dark Swarm": [
+    "다크스웜을 {n}번 깔아 총알을 지움", "스웜 아래로 {n}번 밀고 들어감",
+  ],
+  Plague: ["플레이그를 {n}번 뿌려 체력을 깎음", "플레이그로 {n}번 병력을 갉아 놓음"],
+  Consume: ["컨슘으로 {n}번 마나를 채움", "저글링을 {n}번 삼켜 마나를 채움"],
+  Ensnare: ["인스네어를 {n}번 뿌려 발을 묶음", "인스네어로 {n}번 속도를 죽임"],
+  Parasite: ["패러사이트로 {n}번 시야를 훔침", "{n}번 패러사이트를 걸어 속을 들여다봄"],
+  "Spawn Broodlings": [
+    "브루들링으로 {n}번 유닛을 통째로 지움", "브루들링을 {n}번 심어 한 방에 없앰",
+  ],
+  // ── 테란 ──
+  Lockdown: ["락다운으로 {n}번 묶어 놓음", "락다운을 {n}번 걸어 세워 둠"],
+  "EMP Shockwave": ["EMP로 {n}번 마나와 실드를 날림", "EMP를 {n}번 터뜨려 판을 정리함"],
+  Irradiate: ["이레디에이트를 {n}번 걸음", "이레디로 {n}번 뭉친 병력을 녹임"],
+  "Yamato Gun": ["야마토를 {n}번 쏨", "야마토로 {n}번 큰 것을 지움"],
+  Restoration: ["리스토레이션으로 {n}번 풀어냄", "걸린 마법을 {n}번 풀어 줌"],
+  "Optical Flare": ["옵티컬 플레어로 {n}번 눈을 멀게 함", "{n}번 눈을 멀게 해 놓고 붙음"],
+  "Defensive Matrix": ["디펜시브 매트릭스를 {n}번 씌움", "{n}번 매트릭스로 감싸 살림"],
 };
 
 /** 그 마법을 쓸 수 있는 유닛 — 마법 하나는 대개 한 유닛만 쓴다. 명령을 내린 순간 골라져

@@ -1067,7 +1067,9 @@ const TEMPLATES: Record<string, Tpl> = {
     const n = num(c.p.n, 0);
     // 시즈·마인처럼 '쓴다'는 말이 어색한 것들은 제 말투가 따로 있다(TECH_USE_PHRASE).
     const own = n >= 1 ? TECH_USE_PHRASE[str(c.p.tech) as keyof typeof TECH_USE_PHRASE] : undefined;
-    if (own) return `${ga(c.who)} ${done(c, own.replace("{n}", String(n)), true)}`;
+    if (own && own.length > 0) {
+      return `${ga(c.who)} ${done(c, c.pick(own).replace("{n}", String(n)), true)}`;
+    }
     if (n === 1) {
       return `${ga(c.who)} ${done(c, c.pick([
         `${reul(t)} 딱 한 번 써 봄`, `${reul(t)} 한 번 꺼내 봄`,
@@ -1338,10 +1340,29 @@ const TEMPLATES: Record<string, Tpl> = {
   clash: (c) => {
     const where = c.who2 ? `${c.who2}의 기지에서 `
       : str(c.p.place) === "mid" ? "센터에서 " : "";
-    const both = c.duel ? "둘의 병력이" : "양 팀 병력이";
-    return `${where}${both} ${done(c, c.pick([
-      "크게 부딪침", "정면으로 맞붙음", "한데 엉켜 크게 싸움", "가장 큰 싸움을 벌임",
-    ]))}`;
+    /* 무엇이 부딪쳤나(요청: 어떤 병력으로 무엇을 했는지) — 그 창 안에서 실제로 명령을 받은
+       유닛들이다(replaySummary의 forceAt). "양 팀 병력이 크게 싸웠다"는 그 판의 절정을
+       말하면서 정작 무엇이 맞붙었는지를 안 말해, 어느 경기에서나 똑같이 읽혔다. */
+    // 한 종류만 짚었을 때는 그 이름을 앞세우지 않는다 — 어느 편 것인지 모르는 채로
+    // "히드라가 뒤엉켜 맞붙었다"가 되면 한쪽만 싸운 것처럼 읽힌다. 둘 이상일 때만 부른다.
+    const force = list(c.p.force).map((u) => UNIT_KO[u] ?? "").filter(Boolean);
+    const named = force.length >= 2;
+    const both = named
+      ? ga(listForm(force.join("·")))
+      : c.duel ? "둘의 병력이" : "양 팀 병력이";
+    /* 그 싸움에서 실제로 터진 마법(요청: 다양한 세부 기술 사용 진술) — 마법 좌표에 시각이
+       함께 남아 있어 몇 번 터졌는지까지 셀 수 있다. 큰 싸움의 그림은 대개 이것이 만든다. */
+    const tech = TECH_KO[str(c.p.tech)];
+    const techN = num(c.p.techN, 0);
+    /* 마법 이야기는 앞에 얹는다 — 문장을 평서형('-다')으로 펴는 일은 맨 끝의 명사형('-ㅁ')을
+       보고 이루어지므로, 뒤에 붙이면 정작 본절이 "크게 부딪침"인 채로 남는다(실측). */
+    const spell = tech && techN >= 2 ? `${ga(tech)} ${techN}번 터지는 가운데 ` : "";
+    return `${where}${spell}${both} ${done(c, c.pick(
+      named
+        ? ["뒤엉켜 크게 부딪침", "맞부딪쳐 그 판의 가장 큰 싸움을 벌임",
+          "정면으로 맞붙음", "한데 뒤엉켜 한판 크게 붙음"]
+        : ["크게 부딪침", "정면으로 맞붙음", "한데 엉켜 크게 싸움", "가장 큰 싸움을 벌임"],
+    ))}`;
   },
 
   // 이사(요청) — 주로 건물을 짓는 자리가 통째로 바뀐 것. 본진이 밀려 다른 곳에서 다시

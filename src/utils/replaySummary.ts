@@ -1,7 +1,7 @@
 import type { ParsedReplay, ParsedReplayPlayer, ReplayPlayerSignals } from "./replayParser";
 import { pushersOn, scanTactics, producedFrames, windowPeak } from "./replayTactics";
 import {
-  hasUpgrade, topUsedTech, techUseCount, upgradeFrame, upgradeLevel,
+  hasUpgrade, topUsedTech, topUsedTechs, TECH_RANK, techUseCount, upgradeFrame, upgradeLevel,
   ARMOR_WEAPON_PAIRS, SIGNATURE_UPGRADE_KO, UPGRADE_LINE_KO,
 } from "./replayTechNames";
 import {
@@ -227,6 +227,25 @@ const STRIKE_ZONE_RATIO = 0.34;
 /** 그 창 안의 명령을 본다 — 태그로 찍은 기록보다 근거가 옅은 대신, 러시가 붙었다 떨어지는
  *  한 호흡을 넉넉히 담는다. */
 const STRIKE_ZONE_WINDOW_SEC = 90;
+/* '무엇으로 싸웠나'를 말할 때 쓰는 값들 — 그 유닛에게 이만큼은 명령이 갔어야 그 싸움의
+   주력이라 부를 수 있고(한두 번 딸려 든 유닛은 주력이 아니다), 이름은 둘까지만 부른다
+   (셋을 넘기면 조합 나열이 되어 문장이 늘어진다). */
+const FORCE_MIN_ORDERS = 4;
+const FORCE_MAX_UNITS = 2;
+/** 최대 교전 문장에 이름을 부를 병력 수 — 양쪽에서 모으므로 조금 넉넉히 둔다. */
+const CLASH_FORCE_MAX = 3;
+/* 최대 교전에서 터진 마법을 셀 창과 최소 횟수 — 한두 번은 그 싸움의 그림이 아니다. */
+const CLASH_TECH_WINDOW_SEC = 90;
+const CLASH_TECH_MIN = 3;
+/* 기술을 실제로 쓴 이야기의 무게 — 기본값에 그 기술의 이야깃거리 점수(TECH_RANK)를 얹는다.
+   사람마다 몇 개까지 말할지도 여기서 정한다(요청: 다양한 세부 기술 사용 진술). */
+const TECH_BASE_WEIGHT = 9;
+const TECH_BEATS_PER_PLAYER = 2;
+/** 이야깃거리가 되는 기술만 문장이 된다 — 시즈(1)·스팀(1)·마인(2)·버로우(2)처럼 늘 나오는
+ *  능력은 "썼다"고 말해 봐야 아무 소식이 아니다. */
+const TECH_MIN_RANK = 4;
+/** 한 요약에 기술 문장은 이만큼까지 — 다채로우려고 넣은 것이 도배가 되면 안 된다. */
+const TECH_BEATS_PER_SUMMARY = 2;
 
 /** 목표를 못 짚으면 뜻이 옅어지는 수들(요청) — 드랍은 '어디에 내렸나'가 그 수의 전부이고,
  *  병력을 뽑아 나갔다는 이야기는 '누구에게 갔나'가 없으면 생산 이야기와 다르지 않다.
@@ -1173,17 +1192,26 @@ function sideBeats(args: {
   // 아니야 실제 사용해야 돼"). 실제 리플레이에서 마인드컨트롤·스톰을 연구해 놓고 한 번도
   // 안 쓴 사람이 있었는데, 예전 코드는 그걸 "마인드컨트롤까지 꺼내 썼다"고 적었을 것이다.
   // 시점도 연구한 때가 아니라 처음 쓴 때다 — 이야기가 벌어진 자리는 그쪽이다.
+  /* 무게는 그 기술이 얼마나 이야깃거리인가(TECH_RANK)에 얹는다. 예전엔 6으로 고정이었는데
+     자리를 다투는 최소 무게가 8이라, 기술을 실제로 쓴 이야기가 단 한 번도 요약에 오르지
+     못했다(실측한 리플레이 일곱 판 전부에서 빠져 있었다) — 마인드컨트롤도 시즈모드도 똑같이
+     6이었으니 당연한 결과다. 이제 마인드컨트롤(10)·스톰(7)·스테이시스(7) 같은 것은 넉넉히
+     자리를 얻고, 시즈(1)·스팀(1)처럼 뻔한 능력은 여전히 문턱을 못 넘는다. */
   for (const p of players) {
     const sg = p.signals;
     if (!sg) continue;
-    const t = topUsedTech(sg);
-    if (!t) continue;
-    const n = techUseCount(sg, t);
-    beats.push({
-      k: "tech", won, who: who(p), weight: 6,
-      at: sg.firstTechUseFrame[t] ?? null,
-      p: { tech: t, n },
-    });
+    for (const t of topUsedTechs(sg, TECH_BEATS_PER_PLAYER)) {
+      if ((TECH_RANK[t] ?? 0) < TECH_MIN_RANK) continue;
+      const n = techUseCount(sg, t);
+      beats.push({
+        // 많이 쓴 마법일수록 그 경기의 그림에 가깝다 — 스톰 스무 번은 그 판의 주인공이고
+        // 다섯 번은 곁들인 수다. 고르는 점수(topUsedTechs)와 같은 자로 잰다.
+        k: "tech", won, who: who(p),
+        weight: TECH_BASE_WEIGHT + (TECH_RANK[t] ?? 0) + Math.min(3, Math.floor(n / 10)),
+        at: sg.firstTechUseFrame[t] ?? null,
+        p: { tech: t, n },
+      });
+    }
   }
 
   // ── 일꾼을 거의 안 뽑고 병력만 짜낸 올인 — 그 편에서 가장 극단적인 사람 이름으로 ──
@@ -1675,6 +1703,31 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
       }
     }
     return best ? { whom: best.whom, xy: [best.o.x, best.o.y] } : null;
+  };
+
+  /** 그 무렵 실제로 움직인 병력이 무엇이었나 — 명령마다 짚어 둔 주인(orderPositions.by)을
+   *  세어 가장 많이 나온 것들을 고른다(요청: 어떤 병력으로 누구에게 무엇을 했는지).
+   *
+   *  '뽑은 유닛'과는 다른 값이다. 유닛 수는 경기 내내 뽑은 총량이라 그 순간 무엇이 나갔는지를
+   *  말해 주지 못한다 — 여기 세는 것은 그 창 안에서 실제로 명령을 받은 유닛들이라, "그때
+   *  무엇으로 싸웠나"에 대한 유일한 근거다. 일꾼·건물·수송선은 병력 이름이 아니라 뺀다.
+   *  정체를 모르는 명령이 많으면 그만큼 덜 나온다 — 없는 것을 지어내지는 않는다. */
+  const FORCE_EXCLUDE = new Set(["Worker", "Building", "Transport"]);
+  const forceAt = (who: string, at: number | null, side: ParsedReplayPlayer[]): string[] => {
+    if (at === null) return [];
+    const me = side.find((p) => p.rawName === who);
+    const tally = new Map<string, number>();
+    for (const o of me?.signals?.orderPositions ?? []) {
+      if (o.kind !== "attack" && o.kind !== "move") continue;
+      if (!o.by || FORCE_EXCLUDE.has(o.by)) continue;
+      if (Math.abs(o.frame - at) * SECONDS_PER_FRAME > STRIKE_ZONE_WINDOW_SEC) continue;
+      tally.set(o.by, (tally.get(o.by) ?? 0) + 1);
+    }
+    return [...tally]
+      .filter(([, n]) => n >= FORCE_MIN_ORDERS)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, FORCE_MAX_UNITS)
+      .map(([u]) => u);
   };
 
   /** 들이친 이야기인데 '누구를' 또는 '어디를'이 비어 있으면 그 자리를 실제 타격으로 채운다.
@@ -2180,6 +2233,29 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   // 가장 크게 부딪친 대목 — 마법과 공격 명령이 한때 한곳에 몰린 자리다(요청: 마법 좌표로
   // 그 경기의 최대 교전 지점을 짚을 수 있겠다). 그 판의 절정이라 이야기에서 빠지면 안 된다.
   const clash = biggestClash(winnerPlayers, loserPlayers);
+  const clashForce: string[] = clash
+    ? [...new Set(clash.who.flatMap((w) => forceAt(
+      w, clash.at,
+      winnerPlayers.some((p) => p.rawName === w) ? winnerPlayers : loserPlayers,
+    )))].slice(0, CLASH_FORCE_MAX)
+    : [];
+  /* 그 싸움에서 가장 많이 터진 마법(요청: 다양한 세부 기술 사용 진술) — 마법을 쓴 좌표에는
+     시각이 함께 남으므로(castPositions), 교전 시각 언저리에서 몇 번 터졌는지를 그대로 셀 수
+     있다. 기술 이야기를 따로 한 문장으로 세우면 짧은 경기에서는 자리 다툼에 늘 밀리는데,
+     정작 마법이 실제로 쓰인 자리는 이 싸움터다 — 그러니 여기에 얹는다. */
+  const clashTech = (() => {
+    if (!clash) return null;
+    const tally = new Map<string, number>();
+    for (const p of [...winnerPlayers, ...loserPlayers]) {
+      for (const c of p.signals?.castPositions ?? []) {
+        if (Math.abs(c.frame - clash.at) * SECONDS_PER_FRAME > CLASH_TECH_WINDOW_SEC) continue;
+        if ((TECH_RANK[c.tech as keyof typeof TECH_RANK] ?? 0) < TECH_MIN_RANK) continue;
+        tally.set(c.tech, (tally.get(c.tech) ?? 0) + 1);
+      }
+    }
+    const best = [...tally].sort((a, b) => b[1] - a[1])[0];
+    return best && best[1] >= CLASH_TECH_MIN ? { tech: best[0], n: best[1] } : null;
+  })();
   const clashBeats: Beat[] = clash && clash.who.length >= 2
     ? [{
       k: "clash", who: clash.who, won: true, at: clash.at, weight: CLASH_WEIGHT,
@@ -2189,6 +2265,10 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
       p: {
         xy: clash.xy, n: clash.n,
         ...(clashPlace(clash.xy, bases) === "" ? { place: "mid" } : {}),
+        // 그 싸움에 실제로 나간 병력(요청) — "양 팀 병력이 크게 싸웠다"는 그 판의 절정을
+        // 말하면서 정작 무엇이 부딪쳤는지를 안 말한다. 양쪽에서 이름을 모아 붙인다.
+        ...(clashForce.length > 0 ? { force: clashForce } : {}),
+        ...(clashTech ? { tech: clashTech.tech, techN: clashTech.n } : {}),
       },
     }]
     : [];
@@ -2332,6 +2412,8 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     if (b.weight < MIN_WEIGHT) return false;
     const sig = unitSig(b);
     if (sig && chosen.some((x) => unitSig(x) === sig)) return false;
+    if (b.k === "tech"
+      && chosen.filter((x) => x.k === "tech").length >= TECH_BEATS_PER_SUMMARY) return false;
     if (capped && taken[phaseOf(b)] >= perPhaseMax) return false;
     if (b.dedupeOn && chosen.some((x) => renderReplaySummary(
       { v: REPLAY_SUMMARY_VERSION, beats: [strip(x)] }, (raw) => raw,
