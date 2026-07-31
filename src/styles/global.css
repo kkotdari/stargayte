@@ -3663,16 +3663,7 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 }
 /* 잠긴(비밀번호) 화면은 내용이 짧아 가운데로 모으고, 풀린 뒤 관리 화면은 위에서부터 쌓는다. */
 .scr-admin-panel-body { justify-content: flex-start; }
-.scr-admin-panel-body.scr-admin-panel-body-locked { justify-content: center; min-height: 60vh; }
 .scr-admin-panel-body .scr-field { align-items: center; }
-/* 라벨 없는 숫자 PIN 입력칸 하나 — 자간을 넉넉히 둬 PIN 느낌을 준다. */
-.scr-admin-panel-password-input {
-  font-size: var(--fs-hero-3); font-family: var(--font-ui); text-align: center;
-  letter-spacing: 6px; padding: 10px 8px; min-height: var(--field-h);
-  width: 220px; max-width: 85%;
-  -webkit-text-security: disc;
-}
-.scr-admin-panel-quiz-submit-btn { width: 100%; max-width: 220px; margin: 4px auto 0; }
 /* 소제목 — 버전관리 / 경기관리 두 묶음을 가른다. */
 .scr-admin-panel-section-title {
   width: 100%; text-align: center; font-size: var(--fs-body); font-weight: 700; color: var(--text);
@@ -3829,8 +3820,6 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    같은 특정도(단일 클래스)에서 나중에 나오는 기본 규칙이 이겨버려 모바일에서도 축소가
    전혀 적용되지 않았다(실제로 겪은 문제 — 소스 순서 실수). */
 @media (max-width: 480px) {
-  .scr-admin-panel-password-input { font-size: var(--fs-title); padding: 10px 8px; min-height: 52px; letter-spacing: 3px; }
-  .scr-admin-panel-quiz-submit-btn { font-size: var(--fs-body); padding: 10px; margin-top: 10px; }
   .scr-admin-panel-section-title { font-size: var(--fs-caption); }
   .scr-admin-panel-grid { gap: 12px; margin-top: 10px; }
   .scr-admin-panel-grid .scr-btn { font-size: var(--fs-caption); padding: 8px 4px; }
@@ -5966,8 +5955,6 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
 }
 .scr-title { font-size: var(--fs-title); }
 .scr-team-name { font-size: var(--fs-caption); }
-.scr-admin-panel-password-input { font-size: var(--fs-title); }
-.scr-admin-panel-quiz-submit-btn { font-size: var(--fs-body); }
 .scr-admin-panel-section-title { font-size: var(--fs-caption); }
 .scr-admin-panel-grid .scr-btn { font-size: var(--fs-caption); }
 .scr-member-row-tag { font-size: var(--fs-caption); }
@@ -7684,7 +7671,12 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
 }
 /* 아바타에 겹쳐 그리는 이모지(승리 트로피) — 그 사람 자체를 가리키는 표시라 자리를 옮기지
    않고 아바타 한가운데에 얹는다(요청). */
-.scr-minimap-mark-onavatar { font-size: 34px; }
+/* 아바타에 겹쳐 얹는 표시(트로피) — 한가운데에 두면 얼굴을 통째로 가린다(지적).
+   위쪽 어깨로 올리고, 맵 가장자리 쪽이 아니라 안쪽으로 비켜 놓는다. */
+.scr-minimap-arrow-mark.scr-minimap-mark-onavatar {
+  font-size: 30px; transform: translate(-4%, -125%);
+}
+.scr-minimap-arrow-mark.scr-minimap-mark-onavatar-l { transform: translate(-96%, -125%); }
 /* 좌·우 절반 — 이전/다음 장면(요청). 아무것도 안 그리는 투명 버튼이다. */
 .scr-minimap-half {
   position: absolute; top: 0; bottom: 0; width: 50%;
@@ -7780,14 +7772,18 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
 .scr-minimap-mark-t1 .scr-minimap-mark-label { color: #8fcaff; }
 .scr-minimap-mark-t2 .scr-minimap-mark-label { color: #ffa3b1; }
 /* 검색으로 짚은 사람 — 로스터를 감춘 모바일에서는 여기가 유일한 표시 자리다. */
+/* 색을 테마 토큰(--point)에서 떼어 고정값으로 둔다 — 라이트 테마의 --point는 검정이라
+   어두운 지형 위의 검은 이름표가 되어 강조가 아예 안 보였다(지적: 다크는 괜찮은데
+   라이트에서 하이라이팅이 안 된다). 미니맵 그림은 어느 테마에서나 어둡다. */
 .scr-minimap-mark-hit .scr-minimap-mark-label {
-  background: var(--point); color: #101010;
+  background: #e6a23e; color: #101010;
 }
 /* (삭제) 스냅 주인공을 그 자리에 아바타로 띄우던 표시 — 이제 화살표가 그 일을 하고,
    주인공은 본진 아바타가 커지는 것으로 나타낸다(요청). */
 
 /* ── 타임라인 ── */
-.scr-story-line { display: flex; align-items: center; gap: 8px; width: 100%; }
+/* 재생 버튼과 트랙 사이를 띄운다(요청) — 붙어 있으면 첫 눈금이 버튼에 먹힌다. */
+.scr-story-line { display: flex; align-items: center; gap: 14px; width: 100%; }
 .scr-story-play {
   flex-shrink: 0; width: 24px; height: 24px; border-radius: 50%;
   display: inline-flex; align-items: center; justify-content: center;
@@ -7875,6 +7871,13 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
 /* ── 미니맵 화면(운영) ── 맵마다 실제 미니맵 그림을 올려 두는 곳. 리플레이의 타일 번호만으로는
    물·풀·땅·벽을 갈라낼 수 없어서 사람이 한 번 올려 둔다(요청). 이름·판본만 다른 맵 여러 개를
    골라 한 그림에 묶는다. */
+/* 접어 둔 매핑 목록. */
+.scr-hidden { display: none !important; }
+/* 미니맵 이름 줄 전체가 여닫이 버튼이다 — 버튼 꼴은 지우고 글자만 남긴다. */
+.scr-minimap-toggle {
+  background: none; border: 0; padding: 0; text-align: left; cursor: pointer; color: inherit;
+  font: inherit;
+}
 .scr-minimap-screen { display: flex; flex-direction: column; gap: 10px; padding: 0 20px 24px; }
 .scr-minimap-lead { color: var(--muted); font-size: var(--fs-caption); line-height: 1.5; margin: 0; }
 .scr-minimap-panel {
