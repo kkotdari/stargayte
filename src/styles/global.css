@@ -1712,6 +1712,15 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 .scr-stat-cmd-cell { padding-right: 20px; }
 .scr-value-bar { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 100%; }
 .scr-value-bar-num { font-size: var(--fs-body); font-weight: 700; color: var(--text); }
+/* 지난 기간의 1·2·3위 메달(요청: 작게) — 숫자·승률 글자 옆에 붙되 그 줄의 높이를 늘리지
+   않게 글자보다 작게 두고, 이모지가 기본으로 갖는 아래쪽 여백만큼 살짝 올린다. */
+/* 지난 기간의 1·2·3위 메달(요청: 작게) — 숫자·승률 글자 옆에 붙는다. 이모지 글리프는
+   글자보다 키가 커서 줄 높이를 밀 수 있으므로, line-height 0인 inline-block으로 두어
+   메달이 붙은 행만 높아지는 일이 없게 한다(실측으로 행 높이가 같은 것을 확인했다). */
+.scr-stat-medal {
+  display: inline-block; font-size: 0.8em; line-height: 0;
+  margin-left: 2px; vertical-align: 1px; letter-spacing: 0;
+}
 .scr-value-bar-track-wrap { width: 100%; height: 10px; border-radius: 1px; overflow: hidden; }
 .scr-value-bar-track { height: 100%; background: var(--info); border-radius: 1px; }
 /* v2 통계만 — 전체적으로 더 촘촘하게: 행 상하 패딩/막대 두께를 줄이고, 컬럼 기본폭도

@@ -6,6 +6,12 @@ import ValueBar from "../../components/common/ValueBar";
 import { useAppStore } from "../../store/appStore";
 import type { Member, MemberStats } from "../../types";
 
+/** 이미 끝난 기간에서 각 칸의 1·2·3위에 붙는 메달(요청) — 칸 이름 → 이모지. 값이 없는
+ *  칸(표본 미달로 "-"인 곳)은 애초에 순위에서 빠지므로 키 자체가 없다. */
+export type StatColumnMedals = Partial<Record<
+  "points" | "plays" | "rate" | "build" | "apm" | "cmd", string
+>>;
+
 interface MemberStatRowProps {
   member: Member;
   stats: MemberStats;
@@ -32,12 +38,14 @@ interface MemberStatRowProps {
   rankDelta?: number | null;
   // 포인트를 누르면 포인트 상세(경기 이력)를 연다.
   onPointsClick?: () => void;
+  // 지난 기간을 볼 때만 온다 — 아직 안 끝난 달에는 메달을 안 단다(StatsScreen 참고).
+  medals?: StatColumnMedals;
 }
 
 // 전적통계 목록의 테이블 한 행.
 export default function MemberStatRow({
   member, stats, maxOverallPlays, maxBuild, maxApm, maxCmd, avatar = true, compact = false, belowMinPlays = false,
-  points, rank, rankDelta, onPointsClick,
+  points, rank, rankDelta, onPointsClick, medals,
 }: MemberStatRowProps) {
   const openMemberProfile = useAppStore((s) => s.openMemberProfile);
   const [photoOpen, setPhotoOpen] = useState(false);
@@ -69,6 +77,7 @@ export default function MemberStatRow({
               >
                 {points.toLocaleString()}
               </button>
+              {medals?.points && <span className="scr-stat-medal">{medals.points}</span>}
               {/* 포인트 옆에 지금 순위와 그 변동(요청) — 포인트만으로는 그게 몇 등짜리
                   점수인지 감이 안 온다. 변동은 방향이 곧 의미라 색과 화살표로만 짧게. */}
               {rank != null && (
@@ -87,19 +96,19 @@ export default function MemberStatRow({
         </div>
       )}
       <div className="scr-stat-plays-cell">
-        <ValueBar value={stats.plays > 0 ? stats.plays : null} maxValue={maxOverallPlays} />
+        <ValueBar value={stats.plays > 0 ? stats.plays : null} maxValue={maxOverallPlays} medal={medals?.plays} />
       </div>
       <div className="scr-stat-bar-cell">
-        <StatBar plays={belowMinPlays ? 0 : stats.plays} wins={stats.wins} draws={stats.draws} losses={stats.losses} winRate={stats.winRate} compact={compact} />
+        <StatBar plays={belowMinPlays ? 0 : stats.plays} wins={stats.wins} draws={stats.draws} losses={stats.losses} winRate={stats.winRate} compact={compact} medal={medals?.rate} />
       </div>
       <div className="scr-stat-build-cell">
-        <ValueBar value={belowMinPlays ? null : stats.avgBuild} maxValue={maxBuild} />
+        <ValueBar value={belowMinPlays ? null : stats.avgBuild} maxValue={maxBuild} medal={medals?.build} />
       </div>
       <div className="scr-stat-apm-cell">
-        <ValueBar value={belowMinPlays ? null : stats.avgApm} maxValue={maxApm} />
+        <ValueBar value={belowMinPlays ? null : stats.avgApm} maxValue={maxApm} medal={medals?.apm} />
       </div>
       <div className="scr-stat-cmd-cell">
-        <ValueBar value={belowMinPlays ? null : stats.avgCmd} maxValue={maxCmd} />
+        <ValueBar value={belowMinPlays ? null : stats.avgCmd} maxValue={maxCmd} medal={medals?.cmd} />
       </div>
       {photoOpen && member.avatar && (
         <PhotoViewer src={member.avatar} alt={member.nickname} onClose={() => setPhotoOpen(false)} />

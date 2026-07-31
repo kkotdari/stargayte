@@ -9,12 +9,14 @@ interface StatBarProps {
   // v2 전용 — 캡션을 "승/전"(예: 5/8) 짧은 표기로 줄인다. 기본(false, v1)은 기존처럼
   // 승/무/패를 풀어서 보여준다.
   compact?: boolean;
+  // 이미 끝난 기간에서 승률 1·2·3위에 붙는 메달(요청) — 막대가 아니라 승률 텍스트 옆이다.
+  medal?: string;
 }
 
 // 승/무/패 비율만 막대 안 색 구간으로 보여준다 — 경기수(누가 더 많이 뛰었는지)는 별도
 // 게임수 칸(ValueBar)이 맡으므로, 이 막대 길이는 항상 꽉 채워서 구간 비율(승:무:패)만
 // 비교하면 된다. 정확한 수치(전적)는 라벨/승률과 같은 줄(top row) 가운데에 보여준다.
-export default function StatBar({ label, plays, wins, draws, losses, winRate, compact = false }: StatBarProps) {
+export default function StatBar({ label, plays, wins, draws, losses, winRate, compact = false, medal }: StatBarProps) {
   return (
     <div className="scr-stat-bar-row">
       <div className="scr-stat-bar-top">
@@ -31,7 +33,10 @@ export default function StatBar({ label, plays, wins, draws, losses, winRate, co
             {wins}승{draws > 0 && ` ${draws}무`} {losses}패
           </span>
         )}
-        <span className="scr-stat-bar-rate">{plays > 0 ? `${winRate}%` : "-"}</span>
+        <span className="scr-stat-bar-rate">
+          {plays > 0 ? `${winRate}%` : "-"}
+          {medal && <span className="scr-stat-medal">{medal}</span>}
+        </span>
       </div>
       <div className="scr-stat-bar-track-wrap">
         {plays > 0 && (

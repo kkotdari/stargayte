@@ -3,7 +3,7 @@ import { ArrowUp, ArrowDown, ArrowUpDown, RotateCcw } from "lucide-react";
 import { Spinner } from "../../components/common/Feedback";
 import SearchFilterBar from "../../components/common/SearchFilterBar";
 import Select, { type SelectOption } from "../../components/common/Select";
-import MemberStatRow from "../stats/MemberStatRow";
+import MemberStatRow, { type StatColumnMedals } from "../stats/MemberStatRow";
 import PointDetailModal from "./PointDetailModal";
 import RivalryOverlay from "../rivalry/RivalryOverlay";
 import InfoTip from "../../components/common/InfoTip";
@@ -37,6 +37,8 @@ const MAX_PERIOD_MONTHS = 240;
 // 최소 10회 플레이해야 승률/APM 등 세부 지표를 신뢰할 수 있다고 보고, 못 채운 회원은
 // 게임수만 보여주고 나머지는 가린다(집계 표본이 너무 적어 왜곡되는 걸 막기 위함).
 const MIN_PLAYS_FOR_STATS = 10;
+// 지난 기간의 각 칸 1·2·3위에 붙일 메달(요청) — 순서가 곧 등수다.
+const MEDALS = ["🥇", "🥈", "🥉"];
 
 const EMPTY_STATS: MemberStats = {
   plays: 0, wins: 0, losses: 0, draws: 0, winRate: 0,
@@ -362,6 +364,50 @@ export default function StatsScreenV2() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rankByMember, prevStatsByMember, matchedMembers]);
 
+  /* 이미 끝난 달을 볼 때는 각 칸의 1·2·3위에 메달을 붙인다(요청) — 그 달의 성적은 더
+     바뀌지 않으니 그렇게 못 박아도 된다. 이번 달과 '전체 기간'은 아직 진행 중이라 안 붙인다.
+
+     순위는 검색창에 걸린 목록이 아니라 그 조건(기간·분류·종족)의 회원 전체에서 매긴다 —
+     이름을 검색했다고 메달이 옮겨 다니면 그건 순위가 아니다. 화면에서 "-"로 가려지는 값
+     (표본 미달·기록 없음)은 애초에 후보에서 뺀다. 같은 값이면 같은 메달을 나눠 갖는다. */
+  const medalByMember = useMemo(() => {
+    const out = new Map<string, StatColumnMedals>();
+    if (period === PERIOD_ALL || period >= currentMonthValue()) return out;
+    const pool = members
+      .filter((m) => m.status !== "withdrawn" && m.status !== "suspended")
+      .map((m) => {
+        const entry = statsByMember[m.id];
+        const stats = race === "all"
+          ? (entry?.overall ?? EMPTY_STATS)
+          : (entry?.byRace[race] ?? EMPTY_STATS);
+        return {
+          id: m.id, stats,
+          points: entry?.rankScore != null ? Math.round(entry.rankScore) : null,
+          below: stats.plays < MIN_PLAYS_FOR_STATS,
+        };
+      });
+    const give = (
+      key: keyof StatColumnMedals, valueOf: (c: (typeof pool)[number]) => number | null,
+    ) => {
+      const vals = pool
+        .map((c) => ({ id: c.id, v: valueOf(c) }))
+        .filter((x): x is { id: string; v: number } => x.v !== null);
+      const top = [...new Set(vals.map((x) => x.v))].sort((a, b) => b - a).slice(0, MEDALS.length);
+      for (const x of vals) {
+        const i = top.indexOf(x.v);
+        if (i < 0) continue;
+        out.set(x.id, { ...(out.get(x.id) ?? {}), [key]: MEDALS[i] });
+      }
+    };
+    give("points", (c) => c.points);
+    give("plays", (c) => (c.stats.plays > 0 ? c.stats.plays : null));
+    give("rate", (c) => (c.below || c.stats.plays === 0 ? null : c.stats.winRate));
+    give("build", (c) => (c.below ? null : c.stats.avgBuild));
+    give("apm", (c) => (c.below ? null : c.stats.avgApm));
+    give("cmd", (c) => (c.below ? null : c.stats.avgCmd));
+    return out;
+  }, [members, statsByMember, race, period]);
+
   const maxOverallPlays = useMemo(
     () => Math.max(1, ...cards.map((c) => c.stats.plays)), [cards],
   );
@@ -487,6 +533,7 @@ export default function StatsScreenV2() {
                   rank={rankByMember.get(c.member.id) ?? null}
                   rankDelta={rankDeltaByMember.get(c.member.id) ?? null}
                   onPointsClick={() => setPointMember(c.member)}
+                  medals={medalByMember.get(c.member.id)}
                   belowMinPlays={c.stats.plays < MIN_PLAYS_FOR_STATS}
                   compact
                   maxOverallPlays={maxOverallPlays}
