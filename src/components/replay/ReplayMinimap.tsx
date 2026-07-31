@@ -312,7 +312,9 @@ export default function ReplayMinimap({
           <span
             key={`bm-${m.key}`}
             className={cx("scr-minimap-arrow-mark",
-              m.markOn ? "scr-minimap-mark-onavatar" : "scr-minimap-mark-home")}
+              m.markOn ? "scr-minimap-mark-onavatar" : "scr-minimap-mark-home",
+              // 아바타 위 어깨에 얹는 표시는 그림 밖으로 나가지 않게 안쪽 어깨를 고른다.
+              m.markOn && m.x / grid.width > 0.5 ? "scr-minimap-mark-onavatar-l" : "")}
             style={m.markOn ? place(m) : markPlace(m)}
           >
             {m.mark}

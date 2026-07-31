@@ -58,9 +58,14 @@ const BEAT_MARK: Record<string, string> = {
   "ally-help": "😇", "ally-cannon": "😇",
   // 자리를 잡거나 길을 막은 것.
   center: "🚩", "center-photon": "🚧", defense: "🛡️", "front-defense": "🛡️",
-  "late-defense": "🛡️", "side-tank": "🛡️", stand: "🛡️", "late-hold": "🛡️", standoff: "🛡️",
+  "late-defense": "🛡️", "side-tank": "🛡️",
+  // 방패는 실제로 방어 건물을 세운 이야기에만 준다(지적: 유닛을 뽑은 것뿐인데 본진에
+  // 방패가 뜬다) — 병력으로 맞선 이야기는 싸움이라 검 대결이 맞다.
+  stand: "⚔️", "late-hold": "⚔️", standoff: "⚔️",
   // 본진에서 한 일 — 화살표 없이 본진에 붙는다.
-  expand: "🏗️", upgrade: "🔬", "upgrade-signature": "🔬", tech: "🔬", "fast-tech": "🔬",
+  // 현미경은 무슨 일인지 안 읽힌다(지적) — 테크·업그레이드도 결국 싸우려고 하는 일이라
+  // 검 대결로 통일한다.
+  expand: "🏗️", upgrade: "⚔️", "upgrade-signature": "⚔️", tech: "⚔️", "fast-tech": "⚔️",
   lodging: "🏠", relocate: "🚚", "greedy-build": "💰", "greedy-paid": "💰", greedy: "💰",
   carrier: "🛩️", bc: "🛩️", guardian: "🛩️", "lift-off": "🛩️", vision: "👁️", "no-detect": "🙈",
   scatter: "🌪️", attrition: "⏳", "fast-hands": "⚡", "pro-like": "🌟", revival: "🔥",
@@ -160,8 +165,9 @@ export default function GameResultStory({
   }, [gameResult.summaryData, nameByRaw, teamByName, slots]);
 
   const [index, setIndex] = useState(0);
-  // 기본은 자동재생(요청). 사람이 멈추면 그 뜻을 지켜 다시 켜지 않는다.
-  const [playing, setPlaying] = useState(true);
+  // 자동재생은 꺼 둔다(요청) — 카드가 여럿 뜨는 피드에서 저마다 장면이 넘어가면 어지럽다.
+  // 재생 버튼을 누르거나 그림 좌·우를 짚어 사람이 넘긴다.
+  const [playing, setPlaying] = useState(false);
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -259,13 +265,14 @@ export default function GameResultStory({
     for (const n of sentences[index]?.beats ?? []) {
       const b = beats[n];
       if (!b) continue;
-      [...(b.who ?? []), ...(b.whom ?? [])].forEach((raw) => out.add(raw));
-      // 맺음말 스냅에서는 이긴 편 전원을 키운다(요청: 결론에선 이긴 팀들 다 아바타 확대하며
-      // 마무리) — 맺음말의 who는 대표 몇 명으로 줄어 있을 수 있어서 팀 전체로 넓힌다.
+      // 맺음말 스냅에서는 자막에 누가 나오든 이긴 편 전원만 키운다(요청) — 역전패를 말하는
+      // 맺음말은 진 편(whom)까지 부르는데, 그걸 그대로 키우면 진 편 아바타가 함께 커졌다.
       if (b.k === "result") {
         const team = slots.find((x) => (b.who ?? []).includes(x.raw))?.team;
         if (team) slots.filter((x) => x.team === team).forEach((x) => out.add(x.raw));
+        continue;
       }
+      [...(b.who ?? []), ...(b.whom ?? [])].forEach((raw) => out.add(raw));
     }
     return out;
   }, [gameResult.summaryData, sentences, index, slots]);

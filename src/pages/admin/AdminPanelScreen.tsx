@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { Spinner } from "../../components/common/Feedback";
 import Select from "../../components/common/Select";
@@ -32,21 +32,7 @@ export default function AdminPanelScreen({ isAdmin }: AdminPanelScreenProps) {
   const setAppVersion = useAppStore((s) => s.setAppVersion);
   const noticeEnabled = useAppStore((s) => s.noticeEnabled);
   const setNoticeEnabled = useAppStore((s) => s.setNoticeEnabled);
-  const [password, setPassword] = useState("");
-  const [unlocked, setUnlocked] = useState(false);
-  // 열자마자 비밀번호 칸에 포커스를 준다(요청: 모바일에서도) — 이 모달은 비밀번호를
-  // 넣는 것 말고 할 일이 없어서, 키보드가 바로 뜨는 편이 낫다. 다른 화면에서 모바일
-  // 자동 포커스를 피하는 원칙의 예외다.
-  //
-  // iOS 사파리는 사용자 제스처가 끝난 뒤의 focus()로는 키보드를 안 올려 주는 일이 있어,
-  // 다음 프레임에 한 번 더 시도한다(포털이 붙은 직후라 첫 시도가 헛돌 수 있다).
-  const passwordRef = useRef<HTMLInputElement>(null);
-  useEffect(() => {
-    passwordRef.current?.focus();
-    const t = requestAnimationFrame(() => passwordRef.current?.focus());
-    return () => cancelAnimationFrame(t);
-  }, []);
-  const [checking, setChecking] = useState(false);
+
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   // "버전 관리" 모달 — 버전 추가/삭제와 버전별 안내 내용 편집을 담는다.
@@ -137,23 +123,6 @@ export default function AdminPanelScreen({ isAdmin }: AdminPanelScreenProps) {
 
   const currentNumber = versionNumber(appVersion);
 
-  const unlock = async () => {
-    setChecking(true);
-    setErr("");
-    try {
-      const ok = await api.verifyAdminPanelPassword(password);
-      if (ok) {
-        setUnlocked(true);
-      } else {
-        setErr("비밀번호가 올바르지 않아요.");
-      }
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "확인에 실패했어요.");
-    } finally {
-      setChecking(false);
-    }
-  };
-
   // "현재 버전 설정" — 등록된 버전 중 하나로 활성 버전을 바꾼다(예전 배포/롤백을 하나로 합침).
   // 바꾸면 모두에게 즉시 반영되고, 회원들은 다음 접속 때 버전 안내 팝업을 다시 보게 된다.
   const [versionPickerOpen, setVersionPickerOpen] = useState(false);
@@ -205,39 +174,10 @@ export default function AdminPanelScreen({ isAdmin }: AdminPanelScreenProps) {
         <h1 className="scr-title scr-v2-toolbar-title">제어판</h1>
       </div>
 
-      {/* 잠긴(비밀번호) 화면은 내용이 짧아 가운데 정렬로, 풀린 뒤(관리 화면)는 위에서부터
-          쌓아 배치등록으로 메뉴가 펼쳐져도 위 내용이 안 밀리게 한다(요청: 공간 예약). */}
-      <div className={cx("scr-admin-panel-body", !unlocked && "scr-admin-panel-body-locked")}>
-        {!unlocked ? (
-          <>
-            <label className="scr-field">
-              {/* 무엇을 묻는지조차 힌트를 주지 않는다 — 라벨/문구 없이 숫자 비밀번호
-                  입력칸 하나만 보여준다. 숫자 전용이라 모바일에서도 숫자 키패드가
-                  뜨도록 inputMode를 지정하고, type="password"로 입력값을 가린다.
-                  autoFocus는 안 준다 — 모바일에서 모달이 뜨자마자 키보드가 튀어나오는
-                  걸 막는다(이 코드베이스 전반의 원칙). */}
-              <input
-                ref={passwordRef}
-                type="password"
-                inputMode="numeric"
-                className="scr-input scr-admin-panel-password-input"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") void unlock(); }}
-                disabled={checking}
-              />
-            </label>
-            {err && <div className="scr-err">{err}</div>}
-            {/* 닫기는 모달 헤더의 공통 X 버튼 하나로 충분하다 — 취소/확인 두 버튼 대신
-                큼직한 입력 버튼 하나만 둔다. */}
-            <button
-              type="button" className="scr-btn scr-btn-primary scr-admin-panel-quiz-submit-btn"
-              onClick={() => void unlock()} disabled={checking}
-            >
-              {checking ? <Spinner /> : "입력"}
-            </button>
-          </>
-        ) : (
+      {/* 운영 메뉴 안의 화면이라 여기까지 들어온 사람은 이미 운영자다 — 비밀번호 잠금은
+          없앴다(요청). 예전에는 로고 3연타로 들어오는 숨은 화면이라 한 겹이 필요했다. */}
+      <div className="scr-admin-panel-body">
+        {(
           <>
             {/* 버전관리 — 소제목(현재 버전 표시 포함) + 버튼들. 관리 기능은 전부 운영자
                 전용이라 회원에겐 버튼을 노출하지 않는다(현재 버전 표시만 본다). */}

@@ -116,6 +116,8 @@ export default function MinimapScreen() {
   // ① 새 미니맵 이름.
   const [name, setName] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<MinimapImage | null>(null);
+  /** 매핑된 맵 목록을 펼쳐 둔 미니맵들 — 기본은 접힘(요청). */
+  const [openIds, setOpenIds] = useState<Set<number>>(new Set());
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = async () => {
@@ -219,11 +221,6 @@ export default function MinimapScreen() {
       <div className="scr-v2-toolbar">
         <h1 className="scr-title scr-v2-toolbar-title">미니맵</h1>
       </div>
-      <p className="scr-minimap-lead">
-        경기 미니맵에 쓸 실제 그림을 먼저 등록하고, 리플레이에서 읽은 맵을 그 그림에 매핑합니다.
-        매핑 안 된 맵은 리플레이 격자로 그린 개략도(썸네일 그림)가 그대로 쓰입니다. 이름·판본만
-        다른 같은 맵은 한 미니맵에 여러 개를 매핑하세요.
-      </p>
 
       {err && <div className="scr-err">{err}</div>}
 
@@ -237,11 +234,12 @@ export default function MinimapScreen() {
             placeholder="미니맵 이름(예: 투혼 1.3)"
             disabled={busy}
           />
+          {/* 버튼은 작게 — 한 번 쓰고 마는 자리라 크게 둘 이유가 없다(요청). */}
           <button
-            type="button" className="scr-btn scr-btn-primary"
+            type="button" className="scr-btn scr-btn-primary scr-btn-sm"
             onClick={() => fileRef.current?.click()} disabled={busy}
           >
-            {busy ? <Spinner /> : <><Upload size={14} /> 그림 올려 등록</>}
+            {busy ? <Spinner /> : <><Upload size={14} /> 등록</>}
           </button>
           <input
             ref={fileRef} type="file" accept="image/*" hidden
@@ -314,14 +312,27 @@ export default function MinimapScreen() {
         )}
         {images.map((i) => {
           const mapped = mappedOf(i.id);
+          const open = openIds.has(i.id);
           return (
             <div key={i.id} className="scr-minimap-group">
               <div className="scr-minimap-image-row">
                 <img className="scr-minimap-thumb scr-minimap-thumb-lg" src={i.image} alt={i.name} />
-                <span className="scr-minimap-map-text">
+                {/* 매핑된 맵 목록은 접어 둔다(요청) — 미니맵이 늘면 목록만 길어져 정작
+                    어떤 그림이 있는지 한눈에 안 들어온다. 줄 전체가 여닫이다. */}
+                <button
+                  type="button" className="scr-minimap-map-text scr-minimap-toggle"
+                  onClick={() => setOpenIds((prev) => {
+                    const next = new Set(prev);
+                    if (next.has(i.id)) next.delete(i.id); else next.add(i.id);
+                    return next;
+                  })}
+                  aria-expanded={open}
+                >
                   <span className="scr-minimap-map-name">{i.name}</span>
-                  <span className="scr-minimap-map-meta">매핑된 맵 {mapped.length}개</span>
-                </span>
+                  <span className="scr-minimap-map-meta">
+                    매핑된 맵 {mapped.length}개 {open ? "▲" : "▼"}
+                  </span>
+                </button>
                 <button
                   type="button" className="scr-icon-btn"
                   onClick={() => setConfirmDelete(i)} disabled={busy}
@@ -330,7 +341,7 @@ export default function MinimapScreen() {
                   <Trash2 size={14} />
                 </button>
               </div>
-              <div className="scr-minimap-maps scr-minimap-maps-nested">
+              <div className={cx("scr-minimap-maps scr-minimap-maps-nested", !open && "scr-hidden")}>
                 {mapped.length === 0 && (
                   <div className="scr-minimap-empty">매핑된 맵이 없어요 — 위에서 골라 매핑하세요.</div>
                 )}
