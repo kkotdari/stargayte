@@ -292,6 +292,28 @@ function formatCommentTime(iso: string): string {
   return `${mm}.${dd} ${hh}:${mi}`;
 }
 
+/* 목록을 부를 때 댓글도 한 번에 같이 받아 둔다(요청) — 카드마다 따로 부르면 답이 제각각
+   도착하며 카드 키가 뒤늦게 자라, 피드에 들어올 때 "현재"에 맞춰 둔 자리가 그만큼 밀린다
+   (실측: 380px). 여기 채워 두면 아래 컴포넌트가 첫 렌더부터 최종 높이로 그려진다.
+
+   프롭으로 내리지 않고 모듈 안의 표에 담는 건, 댓글 영역이 카드·묶음·스토리를 지나 깊이
+   들어가 있어서다(미니맵 격자를 담아 두는 useReplayMap과 같은 방식). 표가 비어 있으면
+   예전처럼 카드마다 제 것만 불러온다 — 피드 밖에서 쓰이는 자리를 위한 길이다. */
+const primed = new Map<string, FeedComment[]>();
+let primedOnce = false;
+const keyOf = (t: FeedTargetType, id: number) => `${t}:${id}`;
+
+export async function primeFeedComments(): Promise<void> {
+  const items = await api.listAllFeedComments();
+  primed.clear();
+  for (const c of items) {
+    const k = keyOf(c.targetType, c.targetId);
+    const list = primed.get(k);
+    if (list) list.push(c); else primed.set(k, [c]);
+  }
+  primedOnce = true;
+}
+
 // 펼쳐진 경기 로우 하단의 댓글(메모) 영역 — 게시판 댓글 스타일. 목록·입력은 "너 나와!" 요청
 // 입력의 CSS(scr-mreq-*)를 차용한다. 대댓글은 없다(요청). 로그인 회원만 작성할 수 있고
 // 작성자 본인/운영자만 수정·삭제할 수 있다(comment.canEdit).
@@ -313,7 +335,10 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
   const members = useAppStore((s) => s.members);
   // 댓글은 이 컴포넌트가 로컬로 관리한다 — 마운트 시 대상의 댓글을 불러오고,
   // 작성/수정/삭제 시 서버가 돌려준 댓글로 그 자리만 갱신해 전체 목록을 다시 안 불러온다.
-  const [notes, setNotes] = useState<FeedComment[]>([]);
+  // 목록과 함께 미리 받아 둔 것이 있으면 첫 렌더부터 그걸로 그린다(위 primeFeedComments).
+  const [notes, setNotes] = useState<FeedComment[]>(
+    () => (primedOnce ? primed.get(keyOf(targetType, targetId)) ?? [] : []),
+  );
   const [editingId, setEditingId] = useState<number | null>(null);
   // 새 메모를 남기면 작성 컴포저를 새로 마운트해 입력을 비운다(요청: 남긴 뒤 인풋창이 그대로
   // 있는 문제). 컴포저는 자기 입력 상태를 로컬로 들고 있어, 성공 시 이 key를 올려 초기화한다.
@@ -530,6 +555,9 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
   // 부모가 목록을 다시 불러오면(경기 등록/삭제 등) 새 배열로 재동기화. 댓글 작성/수정/삭제는
   // 부모 리로드를 트리거하지 않아 이 효과가 로컬 편집을 덮어쓰지 않는다(같은 배열 참조 유지).
   useEffect(() => {
+    // 목록과 함께 이미 받아 왔으면 다시 부르지 않는다 — 그 한 번의 응답이 진실이고,
+    // 여기서 또 부르면 답이 늦게 도착하며 카드 키가 흔들려 애초의 문제로 되돌아간다.
+    if (primedOnce) { setNotes(primed.get(keyOf(targetType, targetId)) ?? []); return; }
     let cancelled = false;
     api.listFeedComments(targetType, targetId)
       .then((items) => { if (!cancelled) setNotes(items); })
@@ -537,12 +565,23 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
     return () => { cancelled = true; };
   }, [targetType, targetId]);
 
+  /** 내가 쓰고·고치고·지운 것을 미리 받아 둔 표에도 반영한다 — 카드가 다시 마운트될 때
+   *  (묶음 접기/펼치기 등) 그 표가 첫 렌더의 진실이라, 여기서 안 맞춰 두면 방금 쓴 댓글이
+   *  사라진 것처럼 보인다. 목록을 다시 부르는 것과 달리 이건 이미 손에 든 값이다. */
+  const apply = (next: (prev: FeedComment[]) => FeedComment[]) => {
+    setNotes((prev) => {
+      const out = next(prev);
+      if (primedOnce) primed.set(keyOf(targetType, targetId), out);
+      return out;
+    });
+  };
+
   const create = async (text: string, ids: string[]) => {
     setBusy(true);
     setErr(null);
     try {
       const created = await api.createFeedComment(targetType, targetId, text, ids);
-      setNotes((prev) => [...prev, created]);
+      apply((prev) => [...prev, created]);
       setComposerKey((k) => k + 1); // 성공 시 작성 컴포저 초기화(입력 비우기)
     } catch (e) {
       setErr(e instanceof Error ? e.message : "메모를 남기지 못했어요.");
@@ -555,7 +594,7 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
     setErr(null);
     try {
       const updated = await api.updateFeedComment(id, text, ids);
-      setNotes((prev) => prev.map((c) => (c.id === id ? updated : c)));
+      apply((prev) => prev.map((c) => (c.id === id ? updated : c)));
       setEditingId(null);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "메모를 수정하지 못했어요.");
@@ -568,7 +607,7 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
     setErr(null);
     try {
       await api.deleteFeedComment(id);
-      setNotes((prev) => prev.filter((c) => c.id !== id));
+      apply((prev) => prev.filter((c) => c.id !== id));
     } catch (e) {
       setErr(e instanceof Error ? e.message : "메모를 삭제하지 못했어요.");
     } finally {

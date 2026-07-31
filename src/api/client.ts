@@ -551,6 +551,12 @@ export const api = {
   async listFeedComments(targetType: FeedTargetType, targetId: number): Promise<FeedComment[]> {
     return request<FeedComment[]>(`/api/feed/comments?targetType=${targetType}&targetId=${targetId}`);
   },
+  /** 댓글 전부 — 피드가 목록을 부를 때 한 번에 같이 받아 온다(요청: 목록 조회 시 댓글도
+   *  같이 조회). 카드마다 따로 부르면 답이 제각각 도착하며 카드 키가 뒤늦게 자라, 들어올
+   *  때 맞춰 둔 스크롤 자리가 밀린다. 댓글은 한 줄짜리라 전부 합쳐도 가볍다. */
+  async listAllFeedComments(): Promise<FeedComment[]> {
+    return request<FeedComment[]>("/api/feed/comments/all");
+  },
   async createFeedComment(
     targetType: FeedTargetType, targetId: number, text: string, targetMemberIds: string[],
   ): Promise<FeedComment> {

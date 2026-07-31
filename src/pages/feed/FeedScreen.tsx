@@ -15,7 +15,8 @@ import { resolveSlotName } from "./GameResultSides";
 import { isComputerSlot } from "../../constants/computerSlot";
 import { isUnregisteredSlot } from "../../constants/unregisteredSlot";
 import { ChallengeCard, ChallengeTimeHeadEdit, isCanceledChallenge } from "../challenge/ChallengeScreen";
-import FeedComments from "./FeedComments";
+import FeedComments, { primeFeedComments } from "./FeedComments";
+import { primeReplayMaps } from "../../hooks/useReplayMap";
 import ScrollNavTimeline from "../../components/common/ScrollNavTimeline";
 import ReplayReviewModal from "../../modals/ReplayReviewModal";
 import ChallengeFormModal from "../../modals/ChallengeFormModal";
@@ -36,13 +37,6 @@ import type { Challenge, FeedTargetType, GameResult, GameResultSlot, GameType, M
 
 const PAGE_SIZE = 100;
 const MAX_REPLAY_FILES = 20;
-
-/** 들어올 때 "현재"에 맞춰 둔 자리를, 목록이 잠잠해질 때까지 이만큼 붙잡고 있는다 —
- *  카드마다 댓글이 뒤늦게 따로 도착하며 키가 자라기 때문이다(아래 center 주석). 사용자가
- *  손을 대면 이 시간이 남아 있어도 즉시 그만둔다. */
-const NOW_SCROLL_SETTLE_MS = 4000;
-/** 이만큼 안쪽으로 어긋난 것은 다시 안 맞춘다 — 1px 단위로 되잡으면 오히려 화면이 떤다. */
-const NOW_SCROLL_EPS = 2;
 
 // 묶음 펼침/접힘에서 포스트 한 장이 나타나거나 사라지는 시간과, 포스트 사이의 시차.
 // 공간(높이)이 다 열린 뒤에 포스트가 한 장씩 등장한다(요청) — 접을 땐 그 반대다.
@@ -863,6 +857,17 @@ export default function FeedScreen() {
   }, []);
   useEffect(loadChallenges, [loadChallenges]);
 
+  /* 댓글도 목록과 함께 한 번에 받아 둔다(요청) — 카드마다 따로 부르면 답이 제각각 도착하며
+     카드 키가 뒤늦게 자라, 들어올 때 "현재"에 맞춰 둔 자리가 그만큼 밀린다. 이게 끝나야
+     목록을 그린다: 그래야 첫 렌더의 카드 높이가 곧 최종 높이다.
+     실패해도 목록까지 막지는 않는다 — 그때는 카드가 예전처럼 제 것만 따로 불러온다. */
+  const [commentsLoading, setCommentsLoading] = useState(true);
+  useEffect(() => {
+    let alive = true;
+    primeFeedComments().catch(() => {}).finally(() => { if (alive) setCommentsLoading(false); });
+    return () => { alive = false; };
+  }, []);
+
   // 카드의 카운트다운/마감 파생 상태를 1분마다 갱신한다.
   const [, setTick] = useState(0);
   useEffect(() => {
@@ -904,7 +909,22 @@ export default function FeedScreen() {
     return () => io.disconnect();
   }, [hasMore, matchesLoading, loadingMore, loadMore]);
 
-  const loading = challengesLoading || matchesLoading;
+  /* 미니맵 격자도 목록과 함께 받아 둔다 — 댓글과 같은 이유다(위 primeFeedComments).
+     카드가 뜬 뒤에 격자가 도착하면 미니맵이 그때 생겨나며 카드 키가 자라, 들어올 때
+     맞춰 둔 자리가 밀린다. 첫 페이지 것만 미리 받으면 된다: 그 아래는 무한스크롤로
+     내려가며 뜨는 것이라 이미 사용자가 스크롤을 쥔 뒤다. */
+  const [mapsLoading, setMapsLoading] = useState(true);
+  const didPrimeMapsRef = useRef(false);
+  useEffect(() => {
+    if (matchesLoading || didPrimeMapsRef.current) return;
+    didPrimeMapsRef.current = true;
+    let alive = true;
+    primeReplayMaps(gameResults.map((g) => g.mapHash))
+      .catch(() => {}).finally(() => { if (alive) setMapsLoading(false); });
+    return () => { alive = false; };
+  }, [matchesLoading, gameResults]);
+
+  const loading = challengesLoading || matchesLoading || commentsLoading || mapsLoading;
 
   // 랭크(포인트/순위) 변동 이벤트 — 서버가 경기 등록/삭제 때마다 계산·저장한 스냅샷을
   // 그대로 읽는다(클라이언트는 더 이상 아무것도 계산하지 않는다).
@@ -1148,45 +1168,25 @@ export default function FeedScreen() {
     if (!list || displayFeed.length === 0) return;
     didInitialScrollRef.current = true;
 
-    /* 한 번 맞춰 놓고 끝낼 수가 없다 — 카드마다 댓글이 뒤늦게 따로 도착하면서 키가
-       자라는데, 그게 "현재"보다 위에서 일어나면 맞춰 둔 자리가 그만큼 밀린다(지적:
-       이미 스크롤한 상태에서 댓글이 나중에 로딩되어 스크롤 위치가 망가진다).
-       그래서 목록 높이가 바뀔 때마다 다시 맞춘다 — 목록이 잠잠해질 때까지만(SETTLE_MS),
-       그리고 사용자가 손을 대면 그 즉시 그만둔다(읽고 있는 자리를 뺏지 않는다). */
-    let done = false;
-    const center = () => {
-      if (done) return;
+    requestAnimationFrame(() => {
       // "현재" 구분선이 있으면 그 자리에, 없으면(전부 과거) 첫 오늘/과거 카드에 맞춘다.
       // 구분선이 없을 땐 DOM 자식 인덱스가 displayFeed 인덱스와 그대로 일치한다.
+      //
+      // 한 번만 맞추면 된다 — 댓글까지 목록과 함께 받아 두고 그린 화면이라(위
+      // primeFeedComments) 이 시점의 카드 높이가 곧 최종 높이다. 예전에는 카드마다 댓글이
+      // 뒤늦게 따로 도착해 "현재"가 380px이나 밀렸고, 그걸 계속 되잡는 식으로 막고 있었다.
       const marker = list.querySelector<HTMLElement>("[data-now-marker]");
       const idx = nowIndex >= 0 ? nowIndex : displayFeed.length - 1;
       const el = marker ?? (list.children[idx] as HTMLElement | undefined);
-      if (!el) { done = true; return; }
+      if (!el) return;
       const r = el.getBoundingClientRect();
       const top = window.scrollY + r.top + r.height / 2 - window.innerHeight / 2;
-      if (top <= 1 || Math.abs(top - window.scrollY) < NOW_SCROLL_EPS) return;
+      if (top <= 1) return;
       // 이 자동 스크롤이 "아래로 스크롤했다"로 읽혀 탭바·헤더가 접히면 안 된다
       // (useHideOnScrollDown이 이 창 동안 방향 판정을 건너뛴다).
       suppressScrollHide();
       window.scrollTo({ top, behavior: "instant" });
-    };
-    const stop = () => { done = true; };
-    const raf = requestAnimationFrame(center);
-    const ro = new ResizeObserver(center);
-    ro.observe(list);
-    const timer = window.setTimeout(stop, NOW_SCROLL_SETTLE_MS);
-    window.addEventListener("wheel", stop, { passive: true });
-    window.addEventListener("touchstart", stop, { passive: true });
-    window.addEventListener("keydown", stop);
-    return () => {
-      stop();
-      cancelAnimationFrame(raf);
-      ro.disconnect();
-      window.clearTimeout(timer);
-      window.removeEventListener("wheel", stop);
-      window.removeEventListener("touchstart", stop);
-      window.removeEventListener("keydown", stop);
-    };
+    });
   }, [loading, displayFeed, nowIndex]);
 
   return (
