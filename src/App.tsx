@@ -102,6 +102,26 @@ export default function App() {
   // 않는다(요청: "페이지 상태 유지 기능 삭제 — 페이지 이동시 항상 초기상태로 로딩").
   const navigate = (next: ScreenKey) => setScreen(next);
 
+  /* 피드로 돌아오면 보던 자리로 되돌린다(요청) — 화면을 떠날 때 스크롤 위치를 적어 두고,
+     돌아온 다음 프레임에 그대로 옮긴다. 피드는 언마운트하지 않으므로 내용 높이는 그대로다.
+     훅은 반드시 조건부 return보다 위에 둔다 — 아래(로그인 뒤에만 지나가는 자리)에 두면
+     로그인 전후로 훅 개수가 달라져 리액트가 통째로 죽는다(실제로 그랬다: 로그인은 되는데
+     어떤 화면도 안 열림 / "Rendered more hooks than during the previous render"). */
+  const feedScrollRef = useRef(0);
+  useEffect(() => {
+    if (screen !== "feed") return;
+    const y = feedScrollRef.current;
+    if (y > 0) {
+      const raf = requestAnimationFrame(() => window.scrollTo({ top: y, behavior: "instant" }));
+      return () => {
+        cancelAnimationFrame(raf);
+        feedScrollRef.current = window.scrollY;
+      };
+    }
+    return () => { feedScrollRef.current = window.scrollY; };
+  }, [screen]);
+
+
   // 화면 컴포넌트발 이동 요청(스토어) — 피드의 랭크 변동 카드 "상세" 버튼이 통계 탭으로
   // 보낼 때 쓴다. 처리 후 비워 다음 요청을 받을 수 있게 한다.
   const screenIntent = useAppStore((s) => s.screenIntent);
@@ -225,22 +245,6 @@ export default function App() {
     screen === "minimaps" && !isAdmin ? "feed" :
     screen === "control" && !isAdmin ? "feed" :
     screen;
-
-  /* 피드로 돌아오면 보던 자리로 되돌린다(요청) — 화면을 떠날 때 스크롤 위치를 적어 두고,
-     돌아온 다음 프레임에 그대로 옮긴다. 피드는 언마운트하지 않으므로 내용 높이는 그대로다. */
-  const feedScrollRef = useRef(0);
-  useEffect(() => {
-    if (resolvedScreen !== "feed") return;
-    const y = feedScrollRef.current;
-    if (y > 0) {
-      const raf = requestAnimationFrame(() => window.scrollTo({ top: y, behavior: "instant" }));
-      return () => {
-        cancelAnimationFrame(raf);
-        feedScrollRef.current = window.scrollY;
-      };
-    }
-    return () => { feedScrollRef.current = window.scrollY; };
-  }, [resolvedScreen]);
 
   // 배경 사진이 있는 화면(지금은 통계뿐 — 피드 배경은 제거)에서는 헤더까지 사진이
   // 이어져 보이게 — 헤더의 불투명 배경을 끄는 클래스를 앱 루트에 건다(CSS
