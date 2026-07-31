@@ -15,8 +15,14 @@ import { addRafScrollListener, getScrollMetrics, isScrollHideSuppressed } from "
 const EDGE_PX = 24;
 const HIDE_DELTA_PX = 10;
 /* 위로 조금 올렸다고 바로 커지면 내리다 손이 살짝 튄 것에도 탭바가 오르내려 어지럽다
-   (요청: 어느 정도 스크롤해야 복구되게) — 되돌리는 쪽은 넉넉히 잡는다. */
-const SHOW_DELTA_PX = 80;
+   (요청: 어느 정도 스크롤해야 복구되게) — 되돌리는 쪽은 넉넉히 잡는다.
+
+   고정 80px이었는데 그래도 금방 커졌다(지적: 위로 조금만 스크롤해도 다시 확대된다) —
+   손가락 한 번 튕기면 수백 px이 지나가는 자리라 80px은 '조금'에도 못 미친다. 화면
+   높이에 견줘 잰다: 고정 px은 기기마다 체감이 달라서, 작은 화면에서 넉넉한 값이 큰
+   화면에서는 여전히 '조금'이다. 화면의 반쯤은 되돌려야 일부러 위로 올린 것으로 본다. */
+const SHOW_DELTA_RATIO = 0.5;
+const SHOW_DELTA_MIN_PX = 260;
 
 export function useHideOnScrollDown(screen: string): boolean {
   const [hidden, setHidden] = useState(false);
@@ -26,6 +32,9 @@ export function useHideOnScrollDown(screen: string): boolean {
 
   useEffect(() => {
     lastScrollTopRef.current = getScrollMetrics().scrollTop;
+    // 문턱은 여기서 한 번만 잰다 — 스크롤 리스너 안에서 높이를 읽으면 프레임마다 강제
+    // 리플로우가 걸린다(addRafScrollListener 주석). 화면 회전 정도는 따라가지 않아도 된다.
+    const showDeltaPx = Math.max(SHOW_DELTA_MIN_PX, window.innerHeight * SHOW_DELTA_RATIO);
     const onScroll = () => {
       const { scrollTop } = getScrollMetrics();
       // 프로그램(자동) 스크롤 중엔 숨김 판정을 건너뛴다 — 위치/누적만 최신으로 맞춰 두어,
@@ -54,7 +63,7 @@ export function useHideOnScrollDown(screen: string): boolean {
         if (accumRef.current > HIDE_DELTA_PX) setHidden(true);
       } else if (delta < 0) {
         accumRef.current = accumRef.current < 0 ? accumRef.current + delta : delta;
-        if (accumRef.current < -SHOW_DELTA_PX) setHidden(false);
+        if (accumRef.current < -showDeltaPx) setHidden(false);
       }
     };
     return addRafScrollListener(onScroll);
