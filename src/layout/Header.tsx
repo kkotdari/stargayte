@@ -51,13 +51,18 @@ export default function Header({
   // 따로 관리했지만 이제 누구나 쓸 수 있다.
   const [lightTheme, setLightTheme] = useLightTheme();
 
-  // 서랍 메뉴의 "홈 화면에 추가" — 안드로이드는 네이티브 설치 창, iOS는 안내 모달을 연다.
-  // 이미 설치(standalone)면 canInstall=false라 항목 자체가 안 뜬다.
-  const { canInstall, promptInstall } = usePwaInstall();
+  /* 서랍 메뉴의 "홈 화면에 추가" — 버튼 한 번으로 설치까지 되는 자리(안드로이드 크롬)에서는
+     네이티브 설치 창을, 그 밖에서는 안내 모달을 연다.
+
+     항목을 띄우는 조건은 '이미 설치했나'뿐이다. 예전엔 canInstall(=자동 설치가 가능한가)로
+     가렸는데, 그러면 카카오톡·인스타 인앱 브라우저, beforeinstallprompt가 안 뜬 안드로이드,
+     iOS 크롬 같은 자리에서 항목이 통째로 사라졌다(지적: 일부 사람들은 아예 안 보인다) —
+     정작 방법을 몰라 안내가 필요한 쪽이 그 사람들이다. */
+  const { canInstall, installed, promptInstall } = usePwaInstall();
   const [installGuideOpen, setInstallGuideOpen] = useState(false);
   const onInstallClick = async () => {
     const r = await promptInstall();
-    if (r === "ios") setInstallGuideOpen(true);
+    if (r === "ios" || r === "unavailable") setInstallGuideOpen(true);
     else setMenuOpen(false);
   };
 
@@ -325,7 +330,7 @@ export default function Header({
               <button className="scr-btn scr-btn-ghost scr-btn-sm" onClick={() => { onLogout(); setMenuOpen(false); }}>
                 로그아웃
               </button>
-              {canInstall && (
+              {!installed && (
                 <button className="scr-btn scr-btn-ghost scr-btn-sm" onClick={onInstallClick}>
                   홈 화면에 추가
                 </button>

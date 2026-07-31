@@ -55,6 +55,14 @@ export type InstallPlatform = "android" | "ios";
 export interface PwaInstall {
   // 설치 안내를 띄울 만한 상태인지(미설치 + 안드로이드 설치가능 or iOS 사파리).
   canInstall: boolean;
+  /** 이미 홈 화면에서 실행 중인가 — 그때만 '추가' 안내가 아무 뜻이 없다.
+   *
+   *  메뉴의 "홈 화면에 추가"는 canInstall이 아니라 이 값으로 가려야 한다(지적: 일부
+   *  사람들은 그 항목이 아예 안 보인다). canInstall은 '버튼 한 번으로 설치까지 되는가'라
+   *  카카오톡·인스타 인앱 브라우저, 안드로이드에서 beforeinstallprompt가 안 뜬 경우,
+   *  iOS 크롬 같은 자리에서 모두 false가 된다 — 정작 그런 사람들이야말로 방법을 몰라
+   *  안내가 필요한 쪽인데, 항목 자체가 사라져 물어볼 곳도 없었다. */
+  installed: boolean;
   platform: InstallPlatform | null;
   // 안드로이드: 네이티브 설치 창을 띄운다. iOS/불가면 "ios"/false를 돌려줘 호출부가 안내를 연다.
   promptInstall: () => Promise<"installed" | "dismissed" | "ios" | "unavailable">;
@@ -85,5 +93,9 @@ export function usePwaInstall(): PwaInstall {
     return "unavailable";
   };
 
-  return { canInstall: !standalone && (androidReady || ios), platform, promptInstall };
+  return {
+    canInstall: !standalone && (androidReady || ios),
+    installed: standalone,
+    platform, promptInstall,
+  };
 }
