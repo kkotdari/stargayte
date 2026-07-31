@@ -56,7 +56,9 @@ const BEND = 0.4;
 const GAP_FROM = 4.4;
 /* 끝은 더 넉넉히 띄운다 — 목표 자리에는 그 사람 본진 아바타(커지면 지름 28px+테두리)가 있어
    화살촉이 그 밑에 들어가 안 보였다(지적: "화살촉이 다른 요소들에 가려짐"). */
-const GAP_TO = 6;
+/* 끝은 목표 본진 한가운데를 겨눈다(요청: 타겟 아바타가 아니라 본진 중앙을 향하게) —
+   화살촉이 아바타 밑으로 들어가지 않을 만큼만 남기고 바짝 붙인다. */
+const GAP_TO = 3.5;
 /** 일대일에서 목표가 하나뿐일 때는 이만큼만 띄운다 — 적진에 더 붙여 그린다(요청). */
 const GAP_TO_DEEP = 2.5;
 /** 이보다 짧은 화살표는 그리지 않는다 — 자기 본진 안에서 벌어진 일은 '어디로 갔다'가 아니다.
@@ -96,8 +98,14 @@ function arrowGeom(a: MinimapArrow, w: number, h: number) {
   const gapTo = Math.min(a.deep ? GAP_TO_DEEP : GAP_TO, len * 0.22) + (a.mark ? MARK_ROOM : 0);
   const headLen = Math.min(HEAD_LEN, len * 0.3);
   const headWide = HEAD_WIDE * (headLen / HEAD_LEN);
-  const x1 = a.x1 + ux * gapFrom;
-  const y1 = a.y1 + uy * gapFrom;
+  // 지상(곡선) 화살표는 아바타 한가운데가 아니라 '맵 가운데 쪽 가장자리'에서 나온다(요청) —
+  // 병력은 본진 안쪽이 아니라 나가는 쪽에서 출발하므로 그림이 훨씬 자연스럽다. 곧은
+  // 화살표(공중·워프)는 지금처럼 아바타 한가운데에서 나온다(요청).
+  const ox = a.flight ? ux : (w / 2 - a.x1);
+  const oy = a.flight ? uy : (h / 2 - a.y1);
+  const ol = Math.hypot(ox, oy) || 1;
+  const x1 = a.x1 + (ox / ol) * gapFrom;
+  const y1 = a.y1 + (oy / ol) * gapFrom;
   const x2 = a.x2 - ux * gapTo;
   const y2 = a.y2 - uy * gapTo;
   const mx = (x1 + x2) / 2;

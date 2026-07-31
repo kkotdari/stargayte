@@ -263,7 +263,9 @@ const SAME_TIME_SEC = 45;
 const STANDOFF_SEC = 5 * 60;
 // 두 일을 한 문장으로 합칠 수 있는 최대 시간 차(지적: 시간 차이가 제일 우선) — 이보다
 // 벌어지면 인과가 아무리 그럴듯해도 각각 제 문장으로 둔다.
-const JOIN_MAX_SEC = 3 * 60;
+/* 3분 → 1분(요청: 문장 합치기는 최대한 금지하고, 사건의 시간이 유의미하게 차이 나면
+   스냅을 나눈다). 한 문장에 묶이려면 사실상 같은 순간이어야 한다. */
+const JOIN_MAX_SEC = 60;
 /** '-다가'로 이을 수 있는 사이 — 이 어미는 하던 일이 그 일 때문에 끊겼다는 뜻이라,
  *  정말 밀접한 인과관계가 아니면 쓰면 안 된다(지적). 몇 분 떨어진 두 일을 이걸로 묶으면
  *  없는 인과를 지어내는 셈이다. 다만 '자원부터 먼저 챙겼다'처럼 한동안 이어지는 상태는
@@ -1281,6 +1283,13 @@ const TEMPLATES: Record<string, Tpl> = {
           : [`탱크 방어로 ${foe} 잡아냈지만 판을 뒤집지 못함`, `${foe} 탱크로 눌러놓고도 끝내 밀림`]
       )}`;
     }
+    if (str(c.p.at) === "front") {
+      return `${ga(c.who)} ${done(c, c.pick([
+        "상대 쪽 가장자리에 팩토리를 올려 옆탱을 박음",
+        "기지 옆구리에 팩토리를 펴고 탱크로 눌러 둠",
+        "상대와 맞닿은 쪽에 탱크를 박아 옆을 걸어 잠금",
+      ]))}`;
+    }
     const at = c.who2 ? `${c.who2}의 기지에 ` : "아군 기지에 ";
     return `${ga(c.who)} ${at}${done(c, c.pick([
       "팩토리를 올려 탱크 방어를 받쳐줌", "팩토리를 펴고 탱크를 뽑음",
@@ -2099,6 +2108,8 @@ function renderLines(
     const canJoin = (): boolean => {
       const line = out.length > 0 ? out[out.length - 1] : "";
       if (line === "" || chainCount !== 0) return false;
+      // 시간이 벌어진 두 일은 무슨 관계든 각자 제 스냅을 갖는다(요청).
+      if (!closeEnough) return false;
       if (new RegExp(`^${LINK_HEAD()} `).test(line)) return false;
       return !/지만|으나|다가/.test(line);
     };
