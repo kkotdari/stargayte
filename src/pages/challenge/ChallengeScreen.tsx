@@ -39,6 +39,18 @@ function targetPillInfo(t: ChallengeTarget): { tone: PillTone } {
 
 
 
+/** 아무 응답도 못 받고 사라진 너 나와인가 — 아무도 안 받아 준 채 마감돼(무응답 폐기) 그냥
+ *  없던 일이 된 것이다. 거절(사유가 있음)·버림·미실시와는 응답·결과 유무로 갈린다.
+ *
+ *  피드는 이것을 아예 안 싣는다(지적: 취소된 건 안 나와야 하지 않나) — 아무 일도 일어나지
+ *  않은 카드가 남아 있으면 "어제 누가 불렀는데 아무도 안 왔다"가 계속 타임라인을 차지한다.
+ *  서버는 그대로 갖고 있고(폐기 7일 뒤 소프트 삭제) 여기서는 보여 주지만 않는다. */
+export function isCanceledChallenge(c: Challenge): boolean {
+  return c.status === "discarded"
+    && c.resultWinnerSide === null
+    && c.targets.every((t) => t.response === "pending");
+}
+
 type SideMember = { id: string; nickname: string; avatar: string | null };
 
 // 팀 구성 한 편(도전자편/상대편)을 세로로 쌓는다(요청: "각팀을 세로로 배치") — 1:1이든
@@ -120,13 +132,9 @@ export function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, o
   const schedulePassed = !!challenge.scheduledAt && new Date(challenge.scheduledAt).getTime() < Date.now();
   const resultInputOpen = schedulePassed || !challenge.scheduledAt;
   const canEnterResult = isParticipant && challenge.status === "confirmed" && resultInputOpen && challenge.resultWinnerSide === null;
-  // "취소" — 아무도 응답하지 않은 채 폐기(휴지통)로 끝난 건(응답 전 취소/흐지부지). 응답 후
-  // 취소는 이제 없다(요청). 거절/버림(응답 있음)·미실시(결과 있음)와 구분해 휴지통에서
-  // 우상단 "취소" 라벨로 표시한다(요청: "응답전 취소 건은 휴지통에서 '취소' 라벨 우상단에").
-  const isCanceled =
-    challenge.status === "discarded"
-    && challenge.resultWinnerSide === null
-    && challenge.targets.every((t) => t.response === "pending");
+  // "취소" — 아무도 응답하지 않은 채 폐기로 끝난 건(위 isCanceledChallenge). 피드에는 안
+  // 실리지만, 다른 자리(링크로 바로 연 카드 등)에서는 우상단 라벨로 그 사실을 말한다.
+  const isCanceled = isCanceledChallenge(challenge);
 
   const [mode, setMode] = useState<CardMode>("none");
   const [dateStr, setDateStr] = useState("");
@@ -241,9 +249,11 @@ export function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, o
   const isEnded = challenge.status === "done" || challenge.status === "discarded";
 
   return (
-    <div className={cx("scr-challenge-card", isEnded ? "scr-challenge-card-ended" : "scr-challenge-card-active", challenge.matchType === "0102" && "scr-challenge-card-team")}>
-      {/* 응답 전 취소(아무도 응답 안 하고 폐기)된 건은 휴지통에서 우상단에 "취소" 라벨로
-          표시한다(요청). 거절/버림/미실시와는 응답·결과 유무로 구분된다. */}
+    <div className={cx("scr-challenge-card", isEnded ? "scr-challenge-card-ended" : "scr-challenge-card-active", challenge.matchType === "0102" && "scr-challenge-card-team", isCanceled && "scr-challenge-card-canceled")}>
+      {/* 응답 전 취소(아무도 응답 안 하고 폐기)된 건은 우상단에 "취소" 라벨을 얹는다(요청).
+          라벨이 붙는 카드는 그만큼 위를 비워 둔다(지적: 취소 배지가 겹친다) — 절대 배치라
+          자리를 안 밀어서, 카드 머리가 없는 자리(피드처럼 헤더를 바깥에 둔 곳)에서는
+          그대로 로스터 첫 줄 위에 얹혔다. */}
       {isCanceled && <span className="scr-challenge-cancel-tag">취소</span>}
       <div className="scr-challenge-card-body">
         {/* 약속한 "언제" — 로스터 바로 위에 그냥 글로 보여준다(요청: 인풋창이 아니라

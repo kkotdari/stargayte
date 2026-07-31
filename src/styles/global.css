@@ -4839,6 +4839,10 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
   color: var(--muted); border: 1px solid var(--line-soft); border-radius: 5px;
   padding: 1px 6px; background: rgba(120, 95, 50, 0.08); white-space: nowrap;
 }
+/* 라벨은 절대 배치라 제 자리를 안 민다 — 붙는 카드만 그만큼 위를 비운다(지적: 취소 배지가
+   겹친다). 카드 머리가 있는 자리에서는 원래 그 여백에 얹혔지만, 헤더를 카드 바깥에 둔
+   피드에서는 곧바로 로스터 첫 줄이라 이름·응답 배지를 덮었다. */
+.scr-challenge-card-canceled > .scr-challenge-card-body { padding-top: 26px; }
 .scr-light-theme .scr-challenge-card {
   background: rgba(255, 255, 255, 0.62);
   backdrop-filter: blur(10px) saturate(1.1);

@@ -14,7 +14,7 @@ import GameResultCardBody, { type SearchListRow } from "./GameResultCardBody";
 import { resolveSlotName } from "./GameResultSides";
 import { isComputerSlot } from "../../constants/computerSlot";
 import { isUnregisteredSlot } from "../../constants/unregisteredSlot";
-import { ChallengeCard, ChallengeTimeHeadEdit } from "../challenge/ChallengeScreen";
+import { ChallengeCard, ChallengeTimeHeadEdit, isCanceledChallenge } from "../challenge/ChallengeScreen";
 import FeedComments from "./FeedComments";
 import ScrollNavTimeline from "../../components/common/ScrollNavTimeline";
 import ReplayReviewModal from "../../modals/ReplayReviewModal";
@@ -957,7 +957,9 @@ export default function FeedScreen() {
   // 너 나와!와 경기를 하나의 타임라인으로 — 최근 이벤트가 위.
   const feed = useMemo<FeedItem[]>(() => {
     const items: FeedItem[] = [
-      ...challenges.map(challengeItem),
+      // 아무도 안 받아 준 채 사라진 너 나와는 안 싣는다(지적: 취소된 건 안 나와야 하지
+      // 않나) — 아무 일도 일어나지 않은 카드라 타임라인에 남길 것이 없다.
+      ...challenges.filter((c) => !isCanceledChallenge(c)).map(challengeItem),
       ...gameResults.map(gameResultItem),
       ...rankShifts.map(rankShiftItem),
     ];
