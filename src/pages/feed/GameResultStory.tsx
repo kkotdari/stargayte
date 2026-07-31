@@ -811,7 +811,14 @@ export default function GameResultStory({
                 team={team1} memberOf={memberOf}
                 highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms}
               />
-              <div className="scr-story-mid">{vsRow}</div>
+              {/* 시작 스냅에는 승·무 배지를 빼고 vs만 둔다(지적: 시작에 이미 승패가 나오는
+                  건 이상하다) — 이야기를 처음부터 읽는 자리에서 결말부터 알려 줄 이유가
+                  없다. 결과는 맺음말 스냅과 카드 머리가 말한다. */}
+              <div className="scr-story-mid">
+                <span className="scr-challenge-arrow-row">
+                  <span className="scr-challenge-arrow scr-challenge-arrow-vs" aria-hidden="true">vs</span>
+                </span>
+              </div>
               <RosterSide
                 team={team2} memberOf={memberOf}
                 highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms}
