@@ -157,7 +157,6 @@ export const UNIT_UPGRADE_TAG: Partial<Record<UpgradeName, { unit: string; tag: 
   "Singularity Charge": { unit: "Dragoon", tag: "사업" },
   "Leg Enhancement": { unit: "Zealot", tag: "속업" },
   "Gravitic Drive": { unit: "Shuttle", tag: "속업" },
-  "Reaver Capacity": { unit: "Reaver", tag: "스캐럽 증설" },
   "Khaydarin Amulet": { unit: "High Templar", tag: "에너지업" },
   "Khaydarin Core": { unit: "Arbiter", tag: "에너지업" },
   "Argus Talisman": { unit: "Dark Archon", tag: "에너지업" },
@@ -174,11 +173,11 @@ export const UNIT_UPGRADE_TAG: Partial<Record<UpgradeName, { unit: string; tag: 
  *  그림이라 높게 둔다.
  *
  *  여기 없는 것은 0점이고, 0점짜리는 아예 문장이 되지 않는다(replaySummary의
- *  UPGRADE_MIN_RANK). 캐리어 인터셉터 증설이 그렇다 — 캐리어를 쓰면 으레 따라오는
- *  것이라 "무슨 일이 있었나"를 말해 주지 않는다(지적). */
+ *  UPGRADE_MIN_RANK). 캐리어 인터셉터 증설과 리버 스캐럽 증설이 그렇다 — 그 유닛을 쓰면
+ *  으레 따라오는 것이라 "무슨 일이 있었나"를 말해 주지 않는다(지적). */
 export const UPGRADE_RANK: Partial<Record<UpgradeName, number>> = {
   // 나오면 그 판의 그림이 보이는 것들.
-  "Reaver Capacity": 6, "Chitinous Plating": 6,
+  "Chitinous Plating": 6,
   "Anabolic Synthesis": 6, "Khaydarin Amulet": 6, "Argus Talisman": 6,
   "Defiler Energy": 6, "Khaydarin Core": 6, "Adrenal Glands": 6,
   // 그 판의 색을 정하는 것들.
