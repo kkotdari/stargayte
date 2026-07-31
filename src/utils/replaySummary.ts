@@ -276,6 +276,20 @@ const NEED_TARGET_KEYS = new Set([
 ]);
 const NO_TARGET_PENALTY = 10;
 
+/** 러시는 '뽑은 때'와 '닿은 때'가 다르다 — 그래서 목표를 앞뒤 창으로만 찾으면 늘 빈손이다
+ *  (지적: 질럿 러시의 타겟이 없다). 이 beat들의 at은 첫 유닛이 나온 프레임이고, 그 병력이
+ *  상대에게 닿는 것은 그 뒤다. 실측한 4:4에서 크리스의 3게이트 질럿 러시는 2분에 잡혔는데
+ *  실제로 정구의 유닛을 찍기 시작한 것은 8분 36초였고, 그 무렵 정구 진영 안에 명령 142개가
+ *  몰렸다 — 앞뒤 90초만 보는 창으로는 그 사실이 통째로 안 보인다.
+ *
+ *  그래서 러시 계열만 '앞으로' 길게 본다. 대신 두 가지로 좁힌다: ①그 사람이 그 경기에서
+ *  처음으로 상대 유닛을 찍은 순간이어야 하고(중반 교전을 러시의 결과로 끌어오지 않는다)
+ *  ②그 창을 넘기면 아무것도 안 붙인다. */
+const RUSH_LAND_KEYS = new Set([
+  "zling-rush", "zealot-rush", "cannon-rush", "sunken-rush", "sneak-rax", "duel-rush",
+]);
+const RUSH_LAND_SEC = 8 * 60;
+
 // 러시·드랍을 간 뒤 이 안에 상대 생산이 끊기면 그 수의 결과로 본다.
 const DAMAGE_WINDOW_SEC = 3 * 60;
 // 탈락을 그 수의 결과로 묶는 창 — 이보다 벌어지면 인과가 아니라 우연에 가깝다(지적).
@@ -1528,12 +1542,29 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
    *  — 이동·수리·채집 클릭까지 섞으면 본진 언저리의 흔한 클릭에 묻혀 목표가 흐려진다.
    *  좌표가 몇 개 안 되거나(정찰 수준) 본진에서도 자원 자리에서도 멀면(빈 땅) 모른다고
    *  본다 — 확인 안 되는 자리를 멀티라고 우기지 않는다. */
+  /** 그 자리의 임자 — 가장 가까운 시작 본진의 주인이다. 아래 placeFits와 attackZoneOf가
+   *  "이건 저 사람 동네에서 벌어진 일인가"를 묻는 데 함께 쓴다. */
+  const homeOwnerAt = (x: number, y: number): string | null => {
+    let owner: string | null = null;
+    let near = Infinity;
+    for (const q of replay.players) {
+      if (q.startX === null || q.startY === null) continue;
+      const d = Math.hypot(q.startX - x, q.startY - y);
+      if (d < near) { near = d; owner = q.rawName; }
+    }
+    return owner;
+  };
+
   const attackZoneOf = (
     attacker: ParsedReplayPlayer, victim: ParsedReplayPlayer, from: number, to: number,
   ): "main" | "multi" | null => {
     if (victim.startX === null || victim.startY === null) return null;
     const orders = (attacker.signals?.orderPositions ?? [])
-      .filter((o) => o.kind === "attack" && o.frame >= from && o.frame <= to);
+      .filter((o) => o.kind === "attack" && o.frame >= from && o.frame <= to)
+      // 그 사람 동네에 떨어진 명령만 본다(지적: 자막이 부른 사람과 그림이 다른 곳을
+      // 가리킨다) — 같은 시간에 맵 반대편을 두들기고 있으면 그 좌표들이 평균에 섞여
+      // "○○의 멀티를 쳤다"가 엉뚱한 자리에서 나온다.
+      .filter((o) => homeOwnerAt(o.x, o.y) === victim.rawName);
     if (orders.length < ATTACK_ZONE_MIN_ORDERS) return null;
     const cx = orders.reduce((s, o) => s + o.x, 0) / orders.length;
     const cy = orders.reduce((s, o) => s + o.y, 0) / orders.length;
@@ -1565,13 +1596,7 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     const xy = p?.xy;
     if (!Array.isArray(xy) || xy.length !== 2
       || typeof xy[0] !== "number" || typeof xy[1] !== "number") return true;
-    let owner: string | null = null;
-    let near = Infinity;
-    for (const q of replay.players) {
-      if (q.startX === null || q.startY === null) continue;
-      const d = Math.hypot(q.startX - xy[0], q.startY - xy[1]);
-      if (d < near) { near = d; owner = q.rawName; }
-    }
+    const owner = homeOwnerAt(xy[0], xy[1]);
     return owner === null || owner === victim;
   };
 
@@ -1665,12 +1690,13 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
    *  그중 그 시점에 가장 가까운 클릭 하나를 그대로 쓴다(여러 곳의 평균을 내면 아무 일도
    *  없던 빈 땅이 나온다 — beatPositions에서 겪은 것과 같은 함정이다). */
   const struckAt = (
-    who: string, at: number | null, side: ParsedReplayPlayer[],
+    who: string, at: number | null, side: ParsedReplayPlayer[], only?: string | null,
   ): { whom: string; xy: [number, number] } | null => {
     if (at === null) return null;
     const me = side.find((p) => p.rawName === who);
     const near = (me?.signals?.hits ?? [])
-      .filter((h) => Math.abs(h.frame - at) * SECONDS_PER_FRAME <= HIT_WINDOW_SEC);
+      .filter((h) => (!only || h.whom === only)
+        && Math.abs(h.frame - at) * SECONDS_PER_FRAME <= HIT_WINDOW_SEC);
     if (near.length < HIT_MIN) return null;
     const tally = new Map<string, number>();
     for (const h of near) tally.set(h.whom, (tally.get(h.whom) ?? 0) + 1);
@@ -1680,6 +1706,26 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
       .filter((h) => h.whom === best[0])
       .sort((a, b) => Math.abs(a.frame - at) - Math.abs(b.frame - at))[0];
     return { whom: best[0], xy: [spot.x, spot.y] };
+  };
+
+  /** 러시가 닿은 자리 — 그 사람이 그 경기에서 처음으로 상대 유닛을 찍은 순간을 찾는다
+   *  (위 RUSH_LAND_KEYS 주석). 그 첫 접촉이 러시가 도착한 때이고, 찍은 대상이 곧 목표다. */
+  const landedOn = (
+    who: string, at: number | null, side: ParsedReplayPlayer[],
+  ): { whom: string; xy: [number, number]; at: number } | null => {
+    if (at === null) return null;
+    const hits = side.find((p) => p.rawName === who)?.signals?.hits ?? [];
+    if (hits.length === 0) return null;
+    const first = hits.reduce((a, b) => (b.frame < a.frame ? b : a));
+    if (first.frame < at) return null;
+    if ((first.frame - at) * SECONDS_PER_FRAME > RUSH_LAND_SEC) return null;
+    // 한 번 스친 것은 정찰끼리 부딪친 것일 수 있다 — 그 접촉이 실제로 이어졌어야 한다.
+    const run = hits.filter(
+      (h) => h.whom === first.whom
+        && (h.frame - first.frame) * SECONDS_PER_FRAME <= HIT_WINDOW_SEC,
+    );
+    if (run.length < HIT_MIN) return null;
+    return { whom: first.whom, xy: [first.x, first.y], at: first.frame };
   };
 
   /* 상대의 유닛을 직접 찍은 기록이 없을 때 쓰는 두 번째 근거 — 그 무렵의 '공격 명령'이
@@ -1770,13 +1816,34 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     // 건물 자리로 이미 '어디였나'를 말한 beat(포토러시·성큰러시·몰래배럭)는 그대로 둔다 —
     // 그 자리가 곧 그 수 자체이고, 같은 무렵의 다른 교전 좌표를 얹으면 오히려 어긋난다.
     const hasXy = Array.isArray(b.p?.xy) || typeof b.p?.spot === "string";
+    /* 자막이 부를 사람이 이미 정해져 있으면 자리도 '그 사람에게 벌어진 일'에서만 찾는다
+       (지적: 내용과 화살표가 가리키는 곳이 다르다). 그러지 않으면 이런 일이 생긴다 —
+       실측한 4:4에서 타센의 클로킹 레이스가 Rex의 생산을 꺾은 것으로 잡혔는데, 같은
+       무렵 타센의 탱크가 다른 편 사람 진영을 두들기고 있어서 그 좌표가 얹혔다. 자막은
+       Rex를 부르고 화살표는 맵 반대편을 가리켰다.
+
+       그 사람 쪽에서 아무 자리도 안 나오면 좌표 없이 둔다 — 그러면 그림은 자막이 부른
+       사람의 본진을 가리키므로 둘이 어긋나지 않는다. */
+    const victim = hasWhom ? b.whom?.[0] ?? null : null;
+    // 러시는 뽑은 때가 아니라 닿은 때에 목표가 드러난다(위 RUSH_LAND_KEYS 주석).
+    const land = hasWhom || !RUSH_LAND_KEYS.has(b.k)
+      ? null : landedOn(b.who[0], b.at ?? null, mine);
     const s = hasWhom && hasXy ? null
-      : struckAt(b.who[0], b.at ?? null, mine) ?? struckZone(b.who[0], b.at ?? null, mine, foes);
+      : land
+        ?? struckAt(b.who[0], b.at ?? null, mine, victim)
+        ?? struckZone(b.who[0], b.at ?? null, mine,
+          victim ? foes.filter((f) => f.rawName === victim) : foes);
     const out = s
       ? {
         ...b,
         ...(hasWhom ? {} : { whom: [s.whom] }),
-        ...(hasXy ? {} : { p: { ...(b.p ?? {}), xy: s.xy } }),
+        p: {
+          ...(b.p ?? {}),
+          ...(hasXy ? {} : { xy: s.xy }),
+          // 뽑은 때와 닿은 때가 벌어져 있으면 닿은 때도 남긴다 — 왜 이 목표를 골랐는지의
+          // 근거이자, 문장이 '언제 부딪쳤나'를 말해야 할 때 쓰는 값이다.
+          ...(land ? { landMin: minutes(land.at * SECONDS_PER_FRAME) } : {}),
+        },
       }
       : b;
     const blind = NEED_TARGET_KEYS.has(out.k)
@@ -2226,18 +2293,26 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     for (const m of draft.get(q.rawName) ?? []) if (m.at <= frame) h = m.spot;
     return h;
   };
-  // 2차: 그 순간 상대가 살고 있는 자리만 뺀다 — 상대가 이미 버리고 떠난 자리에 들어가는
-  // 것은 이사가 맞다(요청: 그 땅의 지금 주인을 정확히 파악).
+  // 2차: 그 순간 남이 살고 있는 자리는 뺀다(아군 자리도 남의 집이다) — 이미 버리고 떠난
+  // 자리에 들어가는 것은 이사가 맞다(요청: 그 땅의 지금 주인을 정확히 파악).
   const moveList = new Map<string, [number, number, number][]>();
+  /** 그 이사를 누가 만들었나 — 문장에서 "누구에게 내주고 옮겼는지"를 말하는 데 쓴다. */
+  const moveBy = new Map<string, string>();
+  const pushWindow = (RELOCATE_HIT_WINDOW_MIN * 60) / SECONDS_PER_FRAME;
   for (const p of replay.players) {
     const foes = foesOf(p);
+    const others = replay.players.filter((q) => q.rawName !== p.rawName);
     const m = relocations(p, mapSpots, (spot, frame) => (
-      foes.some((f) => livesAt(f, frame) === spot)
-    ), totalFrames);
+      others.some((f) => livesAt(f, frame) === spot)
+    ), totalFrames, hasOrderPositions
+      // 이사 직전 그 창 안에 그 집까지 병력을 몰고 온 사람 — 없으면 이사가 아니다.
+      ? (frame) => pushersOn(p, foes, Math.max(0, frame - pushWindow), frame)[0] ?? null
+      : undefined);
     if (m.length > 0) {
       moveList.set(p.rawName, m.map((x) => (
         [round1(mapSpots[x.spot][0]), round1(mapSpots[x.spot][1]), x.at] as [number, number, number]
       )));
+      if (m[0].by) moveBy.set(p.rawName, m[0].by);
     }
   }
   // 문장으로 말하는 것은 첫 이사 하나뿐이다(요청: 여러 곳 전전한 것은 부정확하니 빼기) —
@@ -2246,6 +2321,9 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     k: "relocate", who: [raw],
     won: winnerPlayers.some((p) => p.rawName === raw),
     at: list[0][2], weight: RELOCATE_WEIGHT,
+    // 쫓아낸 사람은 p.by로 싣는다 — whom으로 실으면 '이 사람이 당했다'는 뜻이 되어 그림이
+    // 뒤집힌다(맞은 자리 폭발 표시가 때린 쪽에 붙고, 화살표도 거꾸로 그려진다).
+    ...(moveBy.get(raw) ? { p: { by: moveBy.get(raw) as string } } : {}),
   }));
 
   // 본진 자리(타일 좌표) — 미니맵에 아바타+닉네임을 계속 띄우는 자리다(요청). 맵 정보를
@@ -2738,6 +2816,22 @@ const MOVE_MAX = 3;
  *  잴 수 있는 생산 급감(productionDips, 건물+유닛 생산량 기준)으로 근사한다 — 이사 직전
  *  이 창 안에 그런 급감이 없으면, 자리는 바뀌었어도 실제로는 아직 잘 사는 멀티일 뿐이다. */
 const RELOCATE_HIT_WINDOW_MIN = 10;
+/** 이사는 '누가 쫓아냈나'까지 자리로 확인될 때만 말한다(지적: 이사하기 전에 그 사람이
+ *  타격을 입은 내용이 아예 없었다).
+ *
+ *  생산 급감만으로는 모자랐다 — 실측한 4:4에서 타센이 10분에 '이사'로 잡혔는데, 그때까지
+ *  타센 본진 반경에 병력을 몰고 온 상대가 아무도 없었다(가장 가까이 온 명령이 33타일
+ *  밖). 빠른무한 같은 판에서는 다들 맵 곳곳에 짓기 때문에 자리가 바뀌는 일도, 생산이
+ *  출렁이는 일도 흔하다. 그러니 상대가 실제로 그 집까지 밀고 들어온 기록(pushersOn)을
+ *  함께 요구한다 — 그 이름을 알면 문장에서 "누구에게 내주고 옮겼는지"까지 말할 수 있다.
+ *
+ *  명령 좌표를 못 읽는 판(screp이 Pos를 안 주는 리플레이)에서는 이 검사가 늘 실패하므로
+ *  그때는 예전처럼 생산 급감만 본다. */
+/** 경기가 이만큼(분)도 안 남았을 때 바뀐 자리는 이사가 아니라 마지막 확장이다(지적:
+ *  이긴 사람이 29분에 '터를 옮겼다'고 나왔는데, 31분 경기의 끝자락에 상대가 버리고 간
+ *  자리에 몇 채 지은 것뿐이었다). '새 자리에서 판을 다시 폈다'고 말하려면 그 자리에서
+ *  살아 볼 시간이 있어야 한다 — 위 DOWN_MIN_TAIL_FRAMES와 같은 생각이다. */
+const MOVE_MIN_TAIL_MIN = 3;
 
 /** 시작 지점마다 '이 구역'이라 부를 반경 — 가장 가까운 다른 시작 지점까지의 거리에서 잡는다.
  *  맵마다 자리 수와 간격이 달라서(2인용 투혼 vs 8인용 빠른무한) 고정값은 늘 한쪽에서 틀린다. */
@@ -2775,13 +2869,17 @@ function spotAt(
  *  집에 들어간 것이다. 다만 '살고 있는지'는 그 순간을 봐야 한다(요청: 이사 간 자리에 누가
  *  들어왔을 때 그 땅의 주인을 정확히 파악해야 한다) — 상대가 이미 버리고 떠난 빈 자리에
  *  들어가는 것은 이사가 맞다. 그래서 자리 번호가 아니라 '그때 그 자리가 남의 집인가'를
- *  묻는 함수를 받는다. */
+ *  묻는 함수를 받는다. 아군 자리도 마찬가지로 남의 집이다(지적) — 실측한 4:4에서 타센이
+ *  팀 동료 수달이의 시작 자리 언저리에 지은 것을 '본진을 포기하고 옮겼다'로 읽었다.
+ *
+ *  누가 쫓아냈는지(drivenBy)는 위 RELOCATE_HIT_WINDOW_MIN 옆 주석을 보라. */
 function relocations(
   p: ParsedReplayPlayer,
   spots: [number, number][],
   taken: (spot: number, frame: number) => boolean,
   totalFrames: number | null,
-): { spot: number; at: number }[] {
+  drivenBy?: (frame: number) => string | null,
+): { spot: number; at: number; by?: string }[] {
   // 시작 지점을 못 읽은 리플레이는 판정하지 않는다 — 거리로 어림잡으면 위의 오판이 되돌아온다.
   if (spots.length < 2) return [];
   const radii = spotRadii(spots);
@@ -2805,24 +2903,33 @@ function relocations(
   }
   if (home < 0) return [];
 
-  const out: { spot: number; at: number }[] = [];
+  // 끝나기 직전에 바뀐 자리는 이사가 아니라 마지막 확장이다(위 MOVE_MIN_TAIL_MIN 주석).
+  const tail = (MOVE_MIN_TAIL_MIN * 60) / SECONDS_PER_FRAME;
+  const lastMoveFrame = totalFrames === null ? Infinity : totalFrames - tail;
+
+  const out: { spot: number; at: number; by?: string }[] = [];
   let from = 0;
   while (out.length < MOVE_MAX) {
-    let hit: { i: number; z: number } | null = null;
+    let hit: { i: number; z: number; by?: string } | null = null;
     for (let i = from; i < pts.length; i += 1) {
       const z = zone[i];
       if (z < 0 || z === home || taken(z, pts[i].frame)) continue;
+      if (pts[i].frame > lastMoveFrame) continue;
       const late = zone.slice(i);
       if (late.filter((x) => x === z).length < MOVE_MIN_NEW) continue;
       if (late.filter((x) => x === home).length > MOVE_BACK_MAX) continue;
       // 본진이 그 무렵 실제로 얻어맞았어야 이사다(위 RELOCATE_HIT_WINDOW_MIN 주석) — 아니면
       // 자리는 바뀌었어도 아직 멀쩡한 본진을 두고 그냥 멀티를 늘린 것일 수 있다.
       if (!wasHitBefore(pts[i].frame)) continue;
-      hit = { i, z };
+      // 그리고 실제로 누가 그 집까지 밀고 들어왔어야 한다 — 아무도 안 왔으면 스스로
+      // 옮긴 것이라 '본진을 포기했다'는 이야기가 아니다.
+      const by = drivenBy?.(pts[i].frame) ?? null;
+      if (drivenBy && !by) continue;
+      hit = { i, z, ...(by ? { by } : {}) };
       break;
     }
     if (!hit) break;
-    out.push({ spot: hit.z, at: pts[hit.i].frame });
+    out.push({ spot: hit.z, at: pts[hit.i].frame, ...(hit.by ? { by: hit.by } : {}) });
     home = hit.z;
     from = hit.i + 1;
   }

@@ -217,6 +217,9 @@ interface Ctx {
   who2: string;
   /** 당한 쪽 — 없으면 빈 문자열이고, 그때는 대상을 뺀 표현을 쓴다. */
   whom: string;
+  /** 그 일을 만든 상대 — who도 whom도 아닌 제3의 이름이다(이사를 만든 사람 등).
+   *  못 짚었으면 빈 문자열이고, 그때는 이름 없이도 성립하는 표현을 쓴다. */
+  by: string;
   won: boolean;
   /** 일어난 프레임 — 초반 일은 결과를 덧붙이지 않고 그때 일만 말한다(지적). */
   at: number | null;
@@ -1387,12 +1390,22 @@ const TEMPLATES: Record<string, Tpl> = {
 
   // 이사(요청) — 주로 건물을 짓는 자리가 통째로 바뀐 것. 본진이 밀려 다른 곳에서 다시
   // 시작하는 그림이라, 그 자체로 판이 기운 신호다. 여러 번 옮기면 그때마다 한 문장이다.
-  relocate: (c) => `${ga(c.who)} ${done(c, c.pick([
-    "본진을 버리고 다른 곳에 살림을 폄",
-    "본진을 접고 멀티에서 다시 시작함",
-    "터를 옮겨 새 기지에서 판을 다시 폄",
-    "본진을 포기하고 다른 자리로 살림을 옮김",
-  ]))}`,
+  /* 이사는 '누가 밀고 들어와서' 간 것이다(지적: 이사하기 전에 그 사람이 타격을 입은
+     내용이 아예 없었다) — 이제 그 이름을 자리로 짚어 두므로(replaySummary의 moveBy) 한
+     문장 안에서 원인과 결과가 같이 읽힌다. 못 짚은 판에서는 예전 표현 그대로다. */
+  relocate: (c) => (c.by
+    ? `${ga(c.who)} ${done(c, c.pick([
+      `${c.by}에게 본진을 내주고 다른 곳에 살림을 폄`,
+      `${c.by}의 공세에 본진을 접고 멀티에서 다시 시작함`,
+      `${c.by}에게 밀려 터를 옮겨 새 기지에서 판을 다시 폄`,
+      `${c.by}에게 본진을 두들겨 맞고 다른 자리로 살림을 옮김`,
+    ]))}`
+    : `${ga(c.who)} ${done(c, c.pick([
+      "본진을 버리고 다른 곳에 살림을 폄",
+      "본진을 접고 멀티에서 다시 시작함",
+      "터를 옮겨 새 기지에서 판을 다시 폄",
+      "본진을 포기하고 다른 자리로 살림을 옮김",
+    ]))}`),
 
   // 셋방살이(요청) — 제 기지에는 건물이 거의 없고 아군 기지에 살림을 차린 것.
   // 시작 자리를 두고 옮겨온 경우는 '본진을 잃고'까지 말한다 — 그게 더 재미있는 그림이다.
@@ -2346,6 +2359,7 @@ function renderLines(
         whoList: (b.who ?? []).map(resolveName).filter(Boolean),
         who2: joinNames((b.who2 ?? []).map(resolveName)),
         whom: joinNames((b.whom ?? []).map(resolveName)),
+        by: typeof b.p?.by === "string" ? resolveName(b.p.by) : "",
         won: !!b.won,
         at: typeof b.at === "number" ? b.at : null,
         end: typeof data.end === "number" && data.end > 0 ? data.end : null,

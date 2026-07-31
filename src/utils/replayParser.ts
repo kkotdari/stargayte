@@ -87,11 +87,14 @@ export interface ReplayPlayerSignals {
    *  여러 번 몰린 경우만 근거로 쓴다(replayTactics의 pushersOn).
    *
    *  kind는 그 우클릭·표적 명령이 실제로 어떤 명령이었나다(요청: 어택 지정·무브한 곳의
-   *  좌표를 정확히 알 수 있나) — screp이 커맨드마다 실어 주는 Order 이름으로 가른다.
-   *  "AttackMove"/"AttackUnit"류(Attack로 시작)는 공격, "Move"는 이동이고, 채집·수리·
-   *  따라가기 같은 나머지는 공격 장면의 근거로 삼기 애매해 그냥 비워 둔다(undefined). 옛
-   *  screp 버전이 Order를 안 주면 역시 비워지고, 그 좌표는 여느 때처럼 '근처에 몰렸나'로만
-   *  쓰인다 — kind가 있으면 그중에서도 '진짜 공격 명령'만 추려 더 정확히 짚을 수 있다. */
+   *  좌표를 정확히 알 수 있나). 근거가 둘이다.
+   *   · 표적 명령(어택땅·패트롤 …)에는 Order 이름이 실린다 — "Attack"으로 시작하면 공격,
+   *     "Move"면 이동이고, 채집·수리·랠리 같은 나머지는 비워 둔다.
+   *   · 우클릭에는 Order가 아예 없다. 대신 '무엇을 찍었나'가 남는다 — 자원을 찍었으면
+   *     채집이라 비우고, 다른 편 유닛을 찍었으면 공격, 빈 땅이면 이동이다.
+   *  스타에서 병력을 움직이는 건 대부분 그냥 우클릭이라 이 둘째 갈래가 훨씬 크다(실측한
+   *  4:4에서 우클릭 9885개 대 표적 명령 1466개). 옛 screp 버전이 Order도 Unit도 안 주면
+   *  비워지고, 그 좌표는 여느 때처럼 '근처에 몰렸나'로만 쓰인다. */
   orderPositions: {
     frame: number; x: number; y: number; kind?: "attack" | "move";
     /** 그 명령을 받은 유닛이 무엇이었나 — 알아낸 경우에만 붙는다("Siege Tank",
@@ -637,9 +640,29 @@ function collectSignals(
         // "Attack"으로 시작하면(AttackMove/AttackUnit/AttackFixedRange …) 공격, 정확히
         // "Move"면 이동이다. 나머지(채집·수리·따라가기 등)는 kind를 안 붙인다.
         const orderName = nameOf(c.Order);
+        /* 우클릭에는 Order가 아예 안 실린다 — 실측한 4:4에서 우클릭 9885개가 전부
+           Order 없음이었고, 이름이 붙은 것은 표적 명령 1466개뿐이었다(그중 어택땅 776).
+           그래서 예전 규칙으로는 명령 좌표의 93%가 kind 없이 버려졌고, 병력을 어디로
+           몰고 갔는지를 자리로 읽는 곳(struckZone·beatPositions)이 표적 명령만 보게 됐다.
+           스타에서 병력을 움직이는 건 대부분 그냥 우클릭이라, 이게 "타겟을 못 잡는다"의
+           가장 큰 원인이었다.
+
+           우클릭도 무엇을 찍었는지는 알 수 있다: screp이 찍힌 대상(Unit)과 그 번호를
+           함께 준다. 자원을 찍은 것은 채집이라 그대로 비워 두고, 다른 편 유닛을 찍은
+           것은 공격이며(그 번호의 임자를 아래 hits와 같은 방법으로 안다), 나머지 — 빈
+           땅을 찍은 것 — 는 이동이다. 어림이 아니라 커맨드에 적힌 그대로다. */
+        const clickedName = cmdName === "Right Click" ? nameOf(c.Unit) : undefined;
+        const clickedOwner = typeof c.UnitTag === "number" && c.UnitTag > 0
+          ? tagOwner.get(c.UnitTag) : undefined;
+        const clickedFoe = clickedOwner !== undefined && clickedOwner !== c.PlayerID
+          && teamOf.get(clickedOwner) !== undefined
+          && teamOf.get(clickedOwner) !== teamOf.get(c.PlayerID);
+        const byClick = cmdName !== "Right Click" ? undefined
+          : clickedName && RESOURCE_TARGETS.has(clickedName) ? undefined
+            : clickedFoe ? "attack" as const : "move" as const;
         const kind = orderName === "Move" ? "move" as const
           : orderName?.startsWith("Attack") ? "attack" as const
-            : undefined;
+            : byClick;
         s.orderPositions.push({
           frame, x: pos.x / PIXELS_PER_TILE, y: pos.y / PIXELS_PER_TILE, ...(kind ? { kind } : {}),
         });
@@ -648,11 +671,8 @@ function collectSignals(
           pending.push({ pid: c.PlayerID, idx: s.orderPositions.length - 1, tags: [...picked] });
         }
         // 찍은 대상이 다른 편의 유닛이면 그건 어림이 아니라 '그 사람을 쳤다'는 사실이다.
-        const owner = typeof c.UnitTag === "number" && c.UnitTag > 0
-          ? tagOwner.get(c.UnitTag) : undefined;
-        const whom = owner !== undefined && owner !== c.PlayerID
-          && teamOf.get(owner) !== undefined && teamOf.get(owner) !== teamOf.get(c.PlayerID)
-          ? rawOf.get(owner) : undefined;
+        const whom = clickedFoe && clickedOwner !== undefined
+          ? rawOf.get(clickedOwner) : undefined;
         if (whom && s.hits.length < ORDER_POS_CAP) {
           s.hits.push({
             frame, x: pos.x / PIXELS_PER_TILE, y: pos.y / PIXELS_PER_TILE, whom,
