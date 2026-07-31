@@ -75,6 +75,10 @@ const BEAT_MARK: Record<string, string> = {
   result: "🏆",
 };
 
+/** 저장된 자리(pos)·마법 좌표(p.xy)를 화살표 목표로 믿는 최소 요약 버전
+ *  (replaySummaryData의 REPLAY_SUMMARY_VERSION 주석 참고). */
+const POS_TRUSTED_VERSION = 2;
+
 /** 집에서 한 일 — 병력이 나간 자리가 있어도 화살표를 긋지 않는다. 테크·경제·방어·이사처럼
  *  '어디로 갔다'가 이야기의 뼈대가 아닌 것들이다. */
 const HOME_BEAT_KEYS = new Set([
@@ -381,6 +385,11 @@ export default function GameResultStory({
     if (!beats || !idx) return empty;
     const spots = gameResult.summaryData?.bases ?? {};
     const teamOf = new Map(slots.map((s) => [s.raw, s.team]));
+    /* 저장된 자리 값을 믿어도 되는 요약인가 — 옛 요약(v1)의 pos는 '그 무렵 찍은 명령의
+       중심'이라 일꾼의 자원 클릭과 건물의 랠리가 섞여 대부분 제 집을 가리킨다. 새 뜻으로
+       읽으면 화살표가 자기 기지로 향한다(지적). 옛 경기는 제어판의 '요약 재분석'을 돌리면
+       새 값으로 바뀐다. */
+    const posTrusted = (gameResult.summaryData?.v ?? 0) >= POS_TRUSTED_VERSION;
     // 일대일이고 아무도 멀티를 늘리지 않은 판이면 화살표를 상대 진영 안까지 과감하게
     // 넣는다(요청) — 목표가 본진 하나뿐이라 어디를 가리키는지 헷갈릴 일이 없다. 멀티가
     // 있으면 실제로 그 멀티를 쳤을 수 있으므로 예전처럼 진영 앞에서 멈춘다.
@@ -433,6 +442,24 @@ export default function GameResultStory({
     // 없어 알 수 없지만(ReplayMapCanvas 주석), 입구는 늘 본진과 가운데 사이에 있다.
     const FRONT = 0.24;
 
+    /* 그 자리가 '상대 쪽'인가 — 내 집보다 상대 집에 가까워야 공격으로 읽는다.
+       자리 값만으로는 진출과 멀티·집결이 안 갈린다(지적: 견제·드랍인데 화살표가 내 기지
+       쪽이다). 실측으로 확인했다: 캐리어를 모은 자리가 내 집에서 22타일, 상대 집에서는
+       88타일이었다 — 그건 제 앞마당이지 공격이 아니다. */
+    const towardFoe = (raw: string, at: [number, number]): boolean => {
+      const home = homeOf(raw);
+      if (!home) return false;
+      const mine = teamOf.get(raw);
+      let best = Infinity;
+      for (const s of slots) {
+        if (!mine || s.team === mine) continue;
+        const h = homeOf(s.raw);
+        if (h) best = Math.min(best, dist(at, h));
+      }
+      // 상대를 못 찾는 판(팀을 못 가른 기록)에서는 막지 않는다 — 근거가 없으면 예전대로 둔다.
+      return best === Infinity || best <= dist(at, home);
+    };
+
     const target = (b: (typeof beats)[number], raw: string): [number, number] | null => {
       const home = homeOf(raw);
       if (!home) return null;
@@ -441,7 +468,9 @@ export default function GameResultStory({
       // 마법을 쓴 자리는 리플레이에 좌표가 그대로 적혀 있다(리콜·마인드컨트롤 등) — 어림한
       // 어떤 값보다 정확하므로 가장 먼저 쓴다(지적: 리콜 화살표가 자기 기지를 가리킨다).
       const xy = b.p?.xy;
-      if (Array.isArray(xy) && xy.length === 2 && typeof xy[0] === "number" && typeof xy[1] === "number") {
+      if (posTrusted && Array.isArray(xy) && xy.length === 2
+        && typeof xy[0] === "number" && typeof xy[1] === "number"
+        && towardFoe(raw, [xy[0], xy[1]])) {
         return [xy[0], xy[1]];
       }
       // 센터에서 벌어진 일은 맵 가운데로(요청) — 건물 자리 분류보다 이 판정이 확실하다.
@@ -485,9 +514,10 @@ export default function GameResultStory({
          공격 이야기가 아니어도(캐리어를 모았다·물량을 뽑았다) 병력이 실제로 나간 자리가
          있으면 그리로 잇는다 — 지적: 대부분의 병력 운용이 타겟을 못 잡고 본진 아이콘으로
          끝난다. 집에서 한 일(테크·경제·방어·이사)은 아래 표로 빼 둔다. */
-      const sent = HOME_BEAT_KEYS.has(b.k) ? undefined : b.pos?.[raw];
+      const sent = posTrusted && !HOME_BEAT_KEYS.has(b.k) ? b.pos?.[raw] : undefined;
       if (Array.isArray(sent) && sent.length === 2
-        && dist(home, [sent[0], sent[1]]) >= ARROW_MIN_TILES) {
+        && dist(home, [sent[0], sent[1]]) >= ARROW_MIN_TILES
+        && towardFoe(raw, [sent[0], sent[1]])) {
         return [sent[0], sent[1]];
       }
       // 여기부터는 '실제로 병력을 몰고 나간' 이야기만 화살표를 받는다(지적: 가끔 내용과
@@ -497,8 +527,10 @@ export default function GameResultStory({
       if (!ATTACK_BEAT_KEYS.has(b.k) && b.k !== "breakthrough") return null;
       // 당한 사람의 본진 — 위에서 이미 골라 뒀다(자막이 지목한 상대가 먼저다).
       if (named) return named;
-      // 그래도 모르면 화살표를 긋지 않는다(지적: 지도에는 적진으로 이어진 화살표가 있는데
-      // 자막에는 타겟이 없다) — 가장 가까운 상대 쪽으로 어림해 긋던 자리다.
+      // 일대일이면 상대가 한 사람뿐이라, 자막이 이름을 안 불러도 그 사람이 목표다(지적:
+      // 공격에 대한 타겟팅이 거의 안 된다) — 팀전에서는 '가장 가까운 상대'를 고르다 자막과
+      // 다른 곳을 가리켰던 자리라 그대로 막아 둔다.
+      if (gameResult.summaryData?.duel === true && foe) return foe;
       void foe;
       // 그 밖(유닛을 뽑았다·물량을 모았다·테크를 올렸다)은 화살표를 그리지 않는다(요청:
       // 유닛 생산에는 화살표 X, 실제로 확실히 공격 나갔을 때만 진출 화살표). 진출 느낌을
