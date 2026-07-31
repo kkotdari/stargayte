@@ -167,27 +167,28 @@ export const UNIT_UPGRADE_TAG: Partial<Record<UpgradeName, { unit: string; tag: 
 
 /** 상징 업그레이드의 '이야깃거리 점수' — TECH_RANK와 같은 뜻이다(클수록 먼저 말한다).
  *
- *  속업·사업은 거의 필수라 그 자체로는 소식이 아니지만, 언제 찍었나가 곧 그 판의 빌드라
- *  아주 낮게 두지는 않는다(요청: 발업·사정거리 같은 유의미한 업그레이드도 말해 달라).
- *  반대로 울트라 속방업·에너지업처럼 후반에나 손대는 것들은 나왔다는 사실 자체가 그 경기의
- *  그림이라 높게 둔다.
+ *  기준은 '그 업그레이드가 판을 바꾸나'다(지적으로 바로잡은 순서).
+ *   · 속업·사업(이동속도·사거리)이 가장 높다. 병력의 성능 자체가 달라져서, 언제 찍었느냐로
+ *     그 판의 싸움이 갈린다 — 발업 저글링과 안 된 저글링은 다른 유닛이다.
+ *   · 오버로드 수송·셔틀 속업처럼 '무엇을 하겠다'는 선언이 그다음이다.
+ *   · 에너지업·시야업이 가장 낮다. 그 유닛을 오래 쓰면 으레 따라오는 것이라 판을 바꾸지
+ *     않는다(지적: 템플러·다크아콘·아비터·디파일러 에너지업은 낮은 축이다).
  *
  *  여기 없는 것은 0점이고, 0점짜리는 아예 문장이 되지 않는다(replaySummary의
  *  UPGRADE_MIN_RANK). 캐리어 인터셉터 증설과 리버 스캐럽 증설이 그렇다 — 그 유닛을 쓰면
  *  으레 따라오는 것이라 "무슨 일이 있었나"를 말해 주지 않는다(지적). */
 export const UPGRADE_RANK: Partial<Record<UpgradeName, number>> = {
-  // 나오면 그 판의 그림이 보이는 것들.
-  "Chitinous Plating": 6,
-  "Anabolic Synthesis": 6, "Khaydarin Amulet": 6, "Argus Talisman": 6,
-  "Defiler Energy": 6, "Khaydarin Core": 6, "Adrenal Glands": 6,
-  // 그 판의 색을 정하는 것들.
-  "Ventral Sacs": 4, "Charon Boosters": 4, "Ion Thrusters": 4, "Gravitic Drive": 4,
-  "Gravitic Booster": 4, "Scarab Damage": 4, "Pneumatized Carapace": 4, "U-238 Shells": 4,
-  "Argus Jewel": 4, "Gamete Meiosis": 4, "Moebius Reactor": 4, "Titan Reactor": 4,
-  "Colossus Reactor": 4, "Apollo Reactor": 4, "Gravitic Thrusters": 4,
-  // 거의 필수라 '언제 찍었나'가 이야기의 전부인 것들.
-  "Metabolic Boost": 2, "Muscular Augments": 2, "Grooved Spines": 2,
-  "Singularity Charge": 2, "Leg Enhancement": 2, "Caduceus Reactor": 2,
+  // 병력의 성능 자체가 달라지는 것들 — 속업·사업.
+  "Metabolic Boost": 6, "Adrenal Glands": 6, "Muscular Augments": 6, "Grooved Spines": 6,
+  "Singularity Charge": 6, "Leg Enhancement": 6, "Ion Thrusters": 6, "Charon Boosters": 6,
+  "U-238 Shells": 6, "Anabolic Synthesis": 6, "Chitinous Plating": 6,
+  // '무엇을 하겠다'는 선언 — 드랍을 가겠다, 옵저버로 훑겠다.
+  "Ventral Sacs": 4, "Gravitic Drive": 4, "Gravitic Booster": 4, "Gravitic Thrusters": 4,
+  "Pneumatized Carapace": 4, "Scarab Damage": 4,
+  // 오래 쓰면 으레 따라오는 것들 — 에너지업·시야업.
+  "Khaydarin Amulet": 2, "Khaydarin Core": 2, "Argus Talisman": 2, "Argus Jewel": 2,
+  "Defiler Energy": 2, "Gamete Meiosis": 2, "Moebius Reactor": 2, "Titan Reactor": 2,
+  "Colossus Reactor": 2, "Apollo Reactor": 2, "Caduceus Reactor": 2,
   "Sensor Array": 2, "Apial Sensors": 2, "Ocular Implants": 2, Antennae: 2,
 };
 
