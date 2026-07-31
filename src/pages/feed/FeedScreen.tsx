@@ -29,7 +29,7 @@ import { api } from "../../api/client";
 import { useCursorPagination } from "../../hooks/useCursorPagination";
 import { useEditableFocused } from "../../hooks/useEditableFocused";
 import { usePageBackground } from "../../hooks/usePageBackground";
-import { getScrollMetrics, getScrollTop, scrollRootTo } from "../../utils/scrollRoot";
+import { getScrollMetrics, getScrollTop, scrollRootTo, suppressScrollHide } from "../../utils/scrollRoot";
 import { buildReplayDrafts, type ReplayDraft } from "../../utils/replayDraft";
 import { hasAppUpdatePreloadErrorOccurred } from "../../utils/appUpdate";
 import type { Challenge, FeedTargetType, GameResult, GameResultSlot, GameType, Member, RankingShift } from "../../types";
@@ -1121,8 +1121,8 @@ export default function FeedScreen() {
 
   // "현재"(now) 경계 = 미래(위)와 오늘/과거(아래)가 갈리는 지점 = 위에서부터 첫 "오늘
   // 이하" 아이템. 그 위에 미래 아이템이 있을 때만(idx>0) 카드 사이에 "현재" 구분선을
-  // 넣는다(요청). 진입할 때 이 지점으로 자동 스크롤하지는 않는다(요청) — 타임라인에서
-  // 눈금을 골라 옮기는 것(스냅)은 그대로 둔다.
+  // 넣는다(요청). 피드에 들어오면 이 지점이 화면 가운데 오도록 스크롤한다(요청) — 위로는
+  // 앞으로 있을 일, 아래로는 이미 벌어진 일이라 그 경계가 곧 "지금 어디쯤인가"다.
   // "현재" 선은 아직 안 끝난 너 나와 바로 아래에 둔다(지적: 당일에 잡혔지만 아직 안 한
   // 너 나와가 현재선 아래로 내려가면 안 된다). 예전엔 날짜로 갈랐는데, 오늘 잡힌 너 나와는
   // 날짜가 '오늘'이라 이미 끝난 오늘 경기들과 같은 편으로 묶여 버렸다. 선 위쪽은 "앞으로
@@ -1134,6 +1134,28 @@ export default function FeedScreen() {
   const showNowDivider = nowIndex > 0;
 
   const feedListRef = useRef<HTMLDivElement>(null);
+  const didInitialScrollRef = useRef(false);
+  useEffect(() => {
+    if (loading || didInitialScrollRef.current) return;
+    const list = feedListRef.current;
+    if (!list || displayFeed.length === 0) return;
+    didInitialScrollRef.current = true;
+    requestAnimationFrame(() => {
+      // "현재" 구분선이 있으면 그 자리에, 없으면(전부 과거) 첫 오늘/과거 카드에 맞춘다.
+      // 구분선이 없을 땐 DOM 자식 인덱스가 displayFeed 인덱스와 그대로 일치한다.
+      const marker = list.querySelector<HTMLElement>("[data-now-marker]");
+      const idx = nowIndex >= 0 ? nowIndex : displayFeed.length - 1;
+      const el = marker ?? (list.children[idx] as HTMLElement | undefined);
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      const top = window.scrollY + r.top + r.height / 2 - window.innerHeight / 2;
+      if (top <= 1) return;
+      // 이 한 번의 자동 스크롤이 "아래로 스크롤했다"로 읽혀 탭바·헤더가 접히면 안 된다
+      // (useHideOnScrollDown이 이 창 동안 방향 판정을 건너뛴다).
+      suppressScrollHide();
+      window.scrollTo({ top, behavior: "instant" });
+    });
+  }, [loading, displayFeed, nowIndex]);
 
   return (
     <div className="scr-screen scr-feed-screen">
@@ -1190,6 +1212,9 @@ export default function FeedScreen() {
       {/* 유형 드롭다운(요청: 분류 제거) + 유저 검색을 한 줄에(요청: 모바일도 한 줄) —
           검색바의 filterPanel로 넘겨 같은 인라인 스택에 나란히 둔다. */}
       <SearchFilterBar
+        // 스크롤해도 필터+건수 줄은 화면 위에 붙어 있는다(요청) — 끝없이 이어지는
+        // 타임라인이라 한참 내려간 뒤에도 무엇으로 걸러 보고 있는지가 보여야 한다.
+        sticky
         // 필터 바로 아래에 건수를 둔다(요청). 세는 건 걸러진 활동 하나하나(filteredFeed)이지
         // 화면에 보이는 카드 수(displayFeed)가 아니다 — 같은 날 게임결과를 한 장으로 묶는 건
         // 보여주는 방식일 뿐이라(지적) 그 묶음 안의 판도 각각 한 건이다.
