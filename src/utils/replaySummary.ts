@@ -1470,6 +1470,26 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     return pushersOn(victim, [me], from, totalFrames || Infinity).length > 0;
   };
 
+  /** 그 수가 남긴 좌표(p.xy)로 볼 때 '그 사람에게' 벌어진 일이 맞나 — 그 자리에서 가장
+   *  가까운 시작 본진의 주인이 그 자리의 임자다. 임자가 다른 사람이면(또는 때린 사람
+   *  자신이면) 그 수의 결과가 아니다. 좌표가 없는 수(대부분)는 아무것도 막지 않는다.
+   *
+   *  한계는 안다: 본진에서 멀리 떨어진 멀티를 친 것은 임자가 어긋나 걸러질 수 있다. 그래도
+   *  자막과 화살표가 서로 다른 곳을 가리키는 것보다는 한 문장 덜 말하는 편이 낫다(지적). */
+  const placeFits = (p: Record<string, unknown> | undefined, victim: string): boolean => {
+    const xy = p?.xy;
+    if (!Array.isArray(xy) || xy.length !== 2
+      || typeof xy[0] !== "number" || typeof xy[1] !== "number") return true;
+    let owner: string | null = null;
+    let near = Infinity;
+    for (const q of replay.players) {
+      if (q.startX === null || q.startY === null) continue;
+      const d = Math.hypot(q.startX - xy[0], q.startY - xy[1]);
+      if (d < near) { near = d; owner = q.rawName; }
+    }
+    return owner === null || owner === victim;
+  };
+
   const damageFrom = (
     t: { key: string; at: number | null; whom?: string; who?: string; p?: Record<string, unknown> },
     foes: ParsedReplayPlayer[],
@@ -1504,6 +1524,13 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     if (best && side && t.who && hasOrderPositions) {
       if (!reachedBase(t.who, best.raw, t.at, side, foes)) return null;
     }
+    // 그 수가 '어디서' 벌어졌는지가 좌표로 남아 있으면(리콜·드랍처럼 p.xy가 붙는 수), 그
+    // 자리가 곧 대상을 말해 준다 — reachedBase는 그 뒤 경기 끝까지를 다 보므로 "언젠가
+    // 그쪽으로 병력을 보냈다"만 확인할 뿐, 그 수가 거기서 벌어졌다는 뜻이 아니다(실측한
+    // 4:4에서 수달이의 리콜 셋이 모두 제 쪽 빈 땅(97,31)이었는데 같은 무렵 생산이 꺾인
+    // 타센을 두고 "리콜로 타센에게 큰 타격을 줬다"가 나왔다 — 타센 본진은 그 반대편
+    // (9,64)이라 자막과 화살표가 서로 다른 곳을 가리켰다).
+    if (best && !placeFits(t.p, best.raw)) return null;
     return best;
   };
 

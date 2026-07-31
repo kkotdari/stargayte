@@ -460,31 +460,54 @@ export default function GameResultStory({
       return best === Infinity || best <= dist(at, home);
     };
 
+    /** 그 집의 '앞마당 안쪽'을 재는 자 — 가장 가까운 다른 본진까지 거리의 이만큼. */
+    const YARD = 0.3;
+    const yardOf = (h: [number, number]): number => {
+      let near = Infinity;
+      for (const s of slots) {
+        const p = homeOf(s.raw);
+        if (p && dist(p, h) > 1) near = Math.min(near, dist(p, h));
+      }
+      return Number.isFinite(near) ? Math.max(ARROW_MIN_TILES, near * YARD) : ARROW_MIN_TILES;
+    };
+
     const target = (b: (typeof beats)[number], raw: string): [number, number] | null => {
       const home = homeOf(raw);
       if (!home) return null;
       const foe = nearestFoe(raw);
       const ally = nearestAlly(raw);
-      // 마법을 쓴 자리는 리플레이에 좌표가 그대로 적혀 있다(리콜·마인드컨트롤 등) — 어림한
-      // 어떤 값보다 정확하므로 가장 먼저 쓴다(지적: 리콜 화살표가 자기 기지를 가리킨다).
-      const xy = b.p?.xy;
-      if (posTrusted && Array.isArray(xy) && xy.length === 2
-        && typeof xy[0] === "number" && typeof xy[1] === "number"
-        && towardFoe(raw, [xy[0], xy[1]])) {
-        return [xy[0], xy[1]];
-      }
-      // 센터에서 벌어진 일은 맵 가운데로(요청) — 건물 자리 분류보다 이 판정이 확실하다.
-      if (CENTER_BEAT_KEYS.has(b.k)) return center;
+      const attack = ATTACK_BEAT_KEYS.has(b.k) || b.k === "breakthrough";
+      const spot = typeof b.p?.spot === "string" ? b.p.spot : null;
+      /** 마법·드랍이 실제로 떨어진 자리 — 리플레이에 좌표가 그대로 적혀 있어(리콜·셔틀 등)
+       *  어림한 어떤 값보다 정확하다. */
+      const raw_xy = b.p?.xy;
+      const xy: [number, number] | null = posTrusted && Array.isArray(raw_xy) && raw_xy.length === 2
+        && typeof raw_xy[0] === "number" && typeof raw_xy[1] === "number"
+        ? [raw_xy[0], raw_xy[1]] : null;
       /** 자막이 지목한 상대 — 그 사람 집이 곧 목표다. 8인용 맵에서는 '상대 진영'이 여럿이라
        *  자리 분류(enemyBase)만 믿고 가장 가까운 상대를 고르면 자막과 다른 곳을 가리켰다
        *  (지적: 공격 대상을 잘못 타겟팅해서 자막과 다른 곳에 화살표가 향한다). */
+      const namedFoe = (b.whom ?? [])
+        .find((v) => v !== raw && teamOf.get(v) && teamOf.get(v) !== teamOf.get(raw));
       const named = (() => {
         const vs = (b.whom ?? []).filter((v) => v !== raw);
-        const other = vs.find((v) => teamOf.get(v) && teamOf.get(v) !== teamOf.get(raw));
-        const pick = other ?? vs[0];
+        const pick = namedFoe ?? vs[0];
         return pick ? homeOf(pick) : null;
       })();
-      const spot = typeof b.p?.spot === "string" ? b.p.spot : null;
+      /* 자막이 이름을 부른 순간, 화살표가 갈 곳은 이미 정해졌다 — 그 사람이다(지적: 자막과
+         화살표 위치가 안 맞는다). 예전엔 좌표(p.xy)를 먼저 봤는데, 그 좌표가 자막이 부른
+         사람과 다른 곳을 가리키면 한 화면에서 둘이 서로 다른 말을 했다. 좌표는 그 사람
+         자리 언저리일 때만 — 그때는 본진 한복판보다 정확하니까 — 그대로 쓴다. */
+      const foeHome = namedFoe ? homeOf(namedFoe) : null;
+      if (foeHome && (attack || spot === "enemyBase" || spot === "enemyFront")) {
+        if (xy && dist(xy, foeHome) <= yardOf(foeHome)) return xy;
+        return spot === "enemyFront" ? lerp(foeHome, center, FRONT) : foeHome;
+      }
+      // 자막이 아무도 안 불렀으면 좌표가 곧 목표다 — 다만 제 앞마당 안쪽(방어용 리콜, 태우러
+      // 들른 셔틀)은 뺀다(지적: 리콜·견제·드랍인데 화살표가 내 기지 쪽이다).
+      if (xy && dist(home, xy) >= yardOf(home)) return xy;
+      // 센터에서 벌어진 일은 맵 가운데로(요청) — 건물 자리 분류보다 이 판정이 확실하다.
+      if (CENTER_BEAT_KEYS.has(b.k)) return center;
       if (named && (spot === "enemyBase" || spot === "enemyFront")) {
         return spot === "enemyBase" ? named : lerp(named, center, FRONT);
       }
@@ -524,14 +547,18 @@ export default function GameResultStory({
       // 화살표가 반대다 — 공격을 당한 건데 간 것으로 나온다). 막아 냈다·무너졌다·일꾼이
       // 밀렸다 같은 문장에도 whom이 붙어 있어서, 그것을 목표로 삼으면 맞은 사람에서
       // 때린 사람 쪽으로 화살표가 거꾸로 그려졌다.
-      if (!ATTACK_BEAT_KEYS.has(b.k) && b.k !== "breakthrough") return null;
+      if (!attack) return null;
       // 당한 사람의 본진 — 위에서 이미 골라 뒀다(자막이 지목한 상대가 먼저다).
       if (named) return named;
       // 일대일이면 상대가 한 사람뿐이라, 자막이 이름을 안 불러도 그 사람이 목표다(지적:
-      // 공격에 대한 타겟팅이 거의 안 된다) — 팀전에서는 '가장 가까운 상대'를 고르다 자막과
-      // 다른 곳을 가리켰던 자리라 그대로 막아 둔다.
+      // 공격에 대한 타겟팅이 거의 안 된다).
       if (gameResult.summaryData?.duel === true && foe) return foe;
-      void foe;
+      /* 팀전에서 자막이 아무도 안 부른 공격(러시·패스트 OO) — 예전엔 '가장 가까운 상대'를
+         고르다 자막과 다른 사람을 가리켜서 아예 막아 뒀는데, 그러니 러시 자막에 화살표가
+         하나도 없었다(지적: 타겟이 없다). 자막이 이름을 부르지 않은 문장은 어긋날 자막이
+         없으니, 가장 가까운 상대 '진영 앞'까지만 그어 나간 방향만 말한다 — 누구 본진을
+         쳤다고 단정하지는 않는다. */
+      if (foe) return lerp(foe, center, FRONT);
       // 그 밖(유닛을 뽑았다·물량을 모았다·테크를 올렸다)은 화살표를 그리지 않는다(요청:
       // 유닛 생산에는 화살표 X, 실제로 확실히 공격 나갔을 때만 진출 화살표). 진출 느낌을
       // 주려고 가운데로 짧게 그어 봤지만, 병력을 뽑기만 한 장면에도 화살이 나가서
