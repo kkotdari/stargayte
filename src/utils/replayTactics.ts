@@ -787,6 +787,17 @@ function detectFor(c: Ctx): Tactic[] {
     const f = b.map((x) => x.frame).filter((x): x is number => x !== null);
     return f.length > 0 ? Math.min(...f) : null;
   };
+  /** 그 묶음이 '다 갖춰진' 때 — 마지막 한 채가 올라간 프레임.
+   *
+   *  "포토 13개로 막아 세웠다"처럼 개수를 말하는 이야기는 첫 채가 아니라 그 개수가 된 때를
+   *  시점으로 잡아야 한다. 예전엔 첫 채의 프레임을 썼는데, 그러면 같은 화면에서 "3분 30초에
+   *  포토 13개로 막아 세웠다"와 "포토 2개뿐인 상태에서 크게 당했다"가 나란히 나왔다(실측한
+   *  리플레이에서 그대로 나왔다) — 3분 30초에는 실제로 두 채뿐이었으니 앞 문장이 거짓이다.
+   *  러시(포토러시·성큰러시)는 반대로 언제 시작했나가 곧 이야기라 그대로 firstOf를 쓴다. */
+  const lastOf = (b: BuildPos[]): number | null => {
+    const f = b.map((x) => x.frame).filter((x): x is number => x !== null);
+    return f.length > 0 ? Math.max(...f) : null;
+  };
 
   // 째기의 기준은 하나다 — 병력과 방어탑에 견줘 본진(가장 중요)이나 생산건물을 늘렸나(요청).
   // 저그는 원래 해처리를 여러 개 가는 종족이라, 수만 세면 정상적인 운영이 죄다 째기가 된다
@@ -954,7 +965,13 @@ function detectFor(c: Ctx): Tactic[] {
       // 진영도 아니고, 상대 진영에 들어간 것은 16.1분이었다).
       const intoSpots = geo ? nydusSpots.filter((b) => geo.enemyAt(b) !== null) : [];
       out.push({
-        key: "nydus", ...(intoFoe ? into : target), weight: 12,
+        key: "nydus",
+        ...(intoFoe ? into : target),
+        // 제 진영 안에만 뚫은 커널은 이야깃거리가 아니라 살림 도구다 — 병력을 실어 나르는
+        // 길일 뿐이라 "커널을 뚫었다"만 덩그러니 나오면 읽는 사람에게 아무 뜻이 없다(실측:
+        // 한 경기에 커널 문장이 둘 나왔는데 뒤엣것이 그런 커널이었다). 지우지는 않고
+        // 무게만 낮춰, 할 이야기가 그것뿐일 때만 나오게 한다.
+        weight: intoFoe ? 12 : 5,
         at: (intoFoe ? firstOf(intoSpots) : null) ?? s.firstBuildingFrame["Nydus Canal"] ?? null,
         who, p: { intoFoe },
       });
@@ -1228,7 +1245,7 @@ function detectFor(c: Ctx): Tactic[] {
   if (allyCannons.length >= ALLY_CANNON_MIN) {
     const helped = geo?.allyAt(allyCannons[0]) ?? null;
     out.push({
-      key: "ally-cannon", weight: 11, at: firstOf(allyCannons), who,
+      key: "ally-cannon", weight: 11, at: lastOf(allyCannons), who,
       ...(helped ? { who2: helped } : {}), p: { n: allyCannons.length },
     });
   }
@@ -1249,7 +1266,7 @@ function detectFor(c: Ctx): Tactic[] {
     // 무게 10 → 16(요청: "센터포토 가중치도 좀 높여야 될 듯, 너무 요약에 출현 빈도가 낮음").
     // 센터 포토는 자리로 확실히 잡히는 데다, 길목 하나로 판 전체가 갈리는 수라 이야기로서의
     // 값이 크다 — 다른 전술과 자리다툼에서 계속 밀려 요약에 거의 안 나왔다.
-    out.push({ key: "center-photon", ...target, weight: 16, at: firstOf(midCannons), who, p: { n: midCannons.length } });
+    out.push({ key: "center-photon", ...target, weight: 16, at: lastOf(midCannons), who, p: { n: midCannons.length } });
   } else {
     const mid = inZone("mid");
     if (mid.length >= 3) {
@@ -1258,7 +1275,7 @@ function detectFor(c: Ctx): Tactic[] {
       for (const b of mid) byKind.set(b.unit, (byKind.get(b.unit) ?? 0) + 1);
       const top = [...byKind.entries()].sort((a, b) => b[1] - a[1])[0];
       out.push({
-        key: "center", weight: 8, at: firstOf(mid), who,
+        key: "center", weight: 8, at: lastOf(mid), who,
         p: { n: mid.length, ...(top ? { b: top[0] } : {}) },
       });
     }
@@ -1272,7 +1289,7 @@ function detectFor(c: Ctx): Tactic[] {
   })).filter((x) => x.at.length >= 2).sort((a, b) => b.at.length - a.at.length)[0];
   if (frontDef) {
     out.push({
-      key: "front-defense", weight: 8, at: firstOf(frontDef.at), who,
+      key: "front-defense", weight: 8, at: lastOf(frontDef.at), who,
       p: { b: frontDef.b, n: frontDef.at.length },
     });
   }

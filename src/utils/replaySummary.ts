@@ -231,6 +231,15 @@ const STRIKE_ZONE_WINDOW_SEC = 90;
 /** 목표를 못 짚으면 뜻이 옅어지는 수들(요청) — 드랍은 '어디에 내렸나'가 그 수의 전부이고,
  *  병력을 뽑아 나갔다는 이야기는 '누구에게 갔나'가 없으면 생산 이야기와 다르지 않다.
  *  러시·몰래건물은 여기 안 넣는다: 그건 목표를 몰라도 '언제 무엇을 갔나'가 곧 이야기다. */
+/** 그 beat가 곧 '이 유닛 이야기'인 키들 — 위 unitSig가 같은 사람의 같은 유닛 이야기를
+ *  한 번으로 줄이는 데 쓴다. 여기 없는 키는 p.unit이 있으면 그 값을 쓴다(패스트 OO,
+ *  파워 OO, 끝까지 뽑은 유닛 …). */
+const UNIT_STORY_KEYS: Record<string, string> = {
+  carrier: "Carrier", bc: "Battlecruiser", guardian: "Guardian", devourer: "Devourer",
+  valkyrie: "Valkyrie", muta: "Mutalisk", ultra: "Ultralisk", moka: "Ultralisk",
+  arbiter: "Arbiter", lurker: "Lurker", "cloak-wraith": "Wraith",
+};
+
 const NEED_TARGET_KEYS = new Set([
   "shuttle", "shuttle-reaver", "templar-drop", "zerg-drop", "dropship",
   "bionic", "mech", "moka",
@@ -2306,10 +2315,23 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   const pickWeight = (b: Beat): number =>
     b.weight + (phaseOf(b) === 2 && favorsWinner(b) ? LATE_WINNER_BONUS : 0);
   const ranked = [...pool].sort((x, y) => pickWeight(y) - pickWeight(x));
+  /** '누가 무슨 유닛으로' — 같은 사람의 같은 유닛 이야기는 요약에 한 번이면 된다.
+   *
+   *  실측한 리플레이에서 한 사람의 캐리어 이야기가 셋이나 나왔다: "10분부터 26분까지
+   *  캐리어를 놓지 않고 뽑으며 끌고 갔다", "캐리어 20기를 띄워 올렸다", 그리고 맺음말의
+   *  "캐리어까지 꺼냈지만". 서로 다른 beat라 각자 무게 겨루기를 통과했지만 읽는 사람에게는
+   *  같은 말이 세 번이다. 무게가 큰 것 하나만 남긴다(맺음말은 경기 전체를 요약하는
+   *  자리라 여기 안 걸린다). */
+  const unitSig = (b: Beat): string | null => {
+    const unit = UNIT_STORY_KEYS[b.k] ?? (typeof b.p?.unit === "string" ? b.p.unit : null);
+    return unit && b.who[0] ? `${b.who[0]}|${unit}` : null;
+  };
   const consider = (b: Beat, capped: boolean): boolean => {
     if (chosen.includes(b)) return false;
     if (chosen.length >= slots) return false;
     if (b.weight < MIN_WEIGHT) return false;
+    const sig = unitSig(b);
+    if (sig && chosen.some((x) => unitSig(x) === sig)) return false;
     if (capped && taken[phaseOf(b)] >= perPhaseMax) return false;
     if (b.dedupeOn && chosen.some((x) => renderReplaySummary(
       { v: REPLAY_SUMMARY_VERSION, beats: [strip(x)] }, (raw) => raw,
