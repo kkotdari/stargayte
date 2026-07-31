@@ -30,13 +30,21 @@ import { api } from "../../api/client";
 import { useCursorPagination } from "../../hooks/useCursorPagination";
 import { useEditableFocused } from "../../hooks/useEditableFocused";
 import { usePageBackground } from "../../hooks/usePageBackground";
-import { getScrollMetrics, getScrollTop, scrollRootTo, suppressScrollHide } from "../../utils/scrollRoot";
+import {
+  addRafScrollListener, getScrollMetrics, getScrollTop, scrollRootTo,
+  smoothScrollRootTo, suppressScrollHide,
+} from "../../utils/scrollRoot";
 import { buildReplayDrafts, type ReplayDraft } from "../../utils/replayDraft";
 import { hasAppUpdatePreloadErrorOccurred } from "../../utils/appUpdate";
 import type { Challenge, FeedTargetType, GameResult, GameResultSlot, GameType, Member, RankingShift } from "../../types";
 
 const PAGE_SIZE = 100;
 const MAX_REPLAY_FILES = 20;
+
+/** 들어올 때 "현재" 구분선까지 내려가는 시간 — 맨 위로 올라가는 것(420ms)보다 조금 길게
+ *  잡는다. 여기서는 지나가는 카드들이 곧 "이만큼이 앞으로 있을 일"이라는 설명이라, 너무
+ *  빠르면 그냥 튄 것처럼 보인다. */
+const NOW_SCROLL_MS = 620;
 
 // 묶음 펼침/접힘에서 포스트 한 장이 나타나거나 사라지는 시간과, 포스트 사이의 시차.
 // 공간(높이)이 다 열린 뒤에 포스트가 한 장씩 등장한다(요청) — 접을 땐 그 반대다.
@@ -1161,6 +1169,62 @@ export default function FeedScreen() {
   const showNowDivider = nowIndex > 0;
 
   const feedListRef = useRef<HTMLDivElement>(null);
+
+  /* 필터를 걸면 목록이 통째로 바뀐다 — 그때 맨 위로 튀지 않고, 보던 포스트와 가장 가까운
+     포스트로 옮겨 간다(요청). 그러려면 두 가지가 필요하다: 지금 무엇을 보고 있었나(아래
+     anchorRef)와, 바뀐 목록에서 그 자리를 어떻게 찾나(카드마다 찍어 두는 시각)이다.
+
+     보고 있던 포스트는 '화면 위에 아직 걸쳐 있는 첫 카드'로 잡는다 — 피드를 읽을 때 눈이
+     따라가는 자리가 거기다. 그 카드가 화면 위에서 얼마나 잘려 있었는지(top)까지 같이
+     기억해 두었다가 그대로 복원하면, 목록이 바뀌어도 보던 화면이 그 자리에 그대로 있다. */
+  const anchorRef = useRef<{ at: number; top: number } | null>(null);
+  useEffect(() => addRafScrollListener(() => {
+    const list = feedListRef.current;
+    if (!list) return;
+    for (const el of list.children) {
+      const at = (el as HTMLElement).dataset.feedAt;
+      if (!at) continue; // "현재" 구분선
+      const r = el.getBoundingClientRect();
+      if (r.bottom <= 0) continue;
+      anchorRef.current = { at: Number(at), top: r.top };
+      return;
+    }
+  }), []);
+
+  const filterKey = `${kindFilter} ${search}`;
+  const prevFilterKeyRef = useRef(filterKey);
+  useLayoutEffect(() => {
+    const list = feedListRef.current;
+    if (!list) return;
+    // 카드마다 제 시각을 찍어 둔다 — 목록이 바뀐 뒤에도 "이게 그때 그 언저리"를 이걸로 찾는다.
+    // "현재" 구분선은 아이템이 아니라 건너뛰므로, 자식 순서와 displayFeed 순서를 여기서 맞춘다.
+    const cards = ([...list.children] as HTMLElement[])
+      .filter((el) => !el.hasAttribute("data-now-marker"));
+    cards.forEach((el, i) => {
+      const it = displayFeed[i];
+      // 묶음 포스트는 sortTime이 없다(그날 세션 시각 하나) — 그때는 time을 그대로 쓴다.
+      if (it) el.dataset.feedAt = String(it.kind === "challenge" ? it.sortTime : it.time);
+    });
+
+    if (prevFilterKeyRef.current === filterKey) return;
+    prevFilterKeyRef.current = filterKey;
+    const a = anchorRef.current;
+    if (!a || cards.length === 0) return;
+    // 시각이 가장 가까운 포스트 — 보던 그 포스트가 걸러졌어도 바로 옆 이야기로 이어진다.
+    let best = cards[0];
+    let bestGap = Infinity;
+    for (const el of cards) {
+      const gap = Math.abs(Number(el.dataset.feedAt) - a.at);
+      if (gap < bestGap) { bestGap = gap; best = el; }
+    }
+    const top = window.scrollY + best.getBoundingClientRect().top - a.top;
+    suppressScrollHide();
+    window.scrollTo({ top: Math.max(0, top), behavior: "instant" });
+    // loading도 의존값이다 — 목록이 뜨는 건 loading이 풀리는 렌더인데, 그때 displayFeed는
+    // 이미 그 앞 렌더에서 정해져 있을 수 있다. 그러면 이 효과가 목록이 붙은 뒤로는 한
+    // 번도 안 돌아 시각이 안 찍힌다(실측: data-feed-at이 끝내 안 붙었다).
+  }, [displayFeed, filterKey, loading]);
+
   const didInitialScrollRef = useRef(false);
   useEffect(() => {
     if (loading || didInitialScrollRef.current) return;
@@ -1184,8 +1248,10 @@ export default function FeedScreen() {
       if (top <= 1) return;
       // 이 자동 스크롤이 "아래로 스크롤했다"로 읽혀 탭바·헤더가 접히면 안 된다
       // (useHideOnScrollDown이 이 창 동안 방향 판정을 건너뛴다).
-      suppressScrollHide();
-      window.scrollTo({ top, behavior: "instant" });
+      suppressScrollHide(NOW_SCROLL_MS + 300);
+      // 순간이동 대신 부드럽게 내려간다(요청) — 위에서 아래로 흐르는 그 동작 자체가
+      // "여기가 지금 자리다"를 말해 준다. 손을 대면 그 즉시 멈춘다(smoothScrollRootTo).
+      smoothScrollRootTo(top, NOW_SCROLL_MS);
     });
   }, [loading, displayFeed, nowIndex]);
 
@@ -1244,10 +1310,6 @@ export default function FeedScreen() {
       {/* 유형 드롭다운(요청: 분류 제거) + 유저 검색을 한 줄에(요청: 모바일도 한 줄) —
           검색바의 filterPanel로 넘겨 같은 인라인 스택에 나란히 둔다. */}
       <SearchFilterBar
-        // 스크롤해도 필터+검색 줄은 화면 위에 붙어 있는다(요청) — 끝없이 이어지는
-        // 타임라인이라 한참 내려간 뒤에도 무엇으로 걸러 보고 있는지가 보여야 한다.
-        // 건수는 안 붙는다(요청) — 목록과 함께 흘러간다.
-        sticky
         // 필터 바로 아래에 건수를 둔다(요청). 세는 건 걸러진 활동 하나하나(filteredFeed)이지
         // 화면에 보이는 카드 수(displayFeed)가 아니다 — 같은 날 게임결과를 한 장으로 묶는 건
         // 보여주는 방식일 뿐이라(지적) 그 묶음 안의 판도 각각 한 건이다.

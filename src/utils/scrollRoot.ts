@@ -22,8 +22,17 @@ export function scrollRootTo(opts: ScrollToOptions, root: ScrollRoot = getScroll
 // 시간(기본 420ms) 동안 easeOutCubic으로 감속하며 올라간다. 애니메이션 중에 사용자가
 // 다시 스크롤/터치를 시작하면 즉시 중단해 조작과 싸우지 않는다.
 export function smoothScrollRootToTop(duration = 420, root: ScrollRoot = getScrollRoot()): void {
+  smoothScrollRootTo(0, duration, root);
+}
+
+/** 위와 같은 rAF 애니메이션으로 임의의 자리까지 — 피드에 들어올 때 "현재" 구분선으로
+ *  부드럽게 내려가는 데 쓴다(요청). 위 함수와 한 몸이라 취소 규칙도 그대로다. */
+export function smoothScrollRootTo(
+  target: number, duration = 420, root: ScrollRoot = getScrollRoot(),
+): void {
   const start = getScrollTop(root);
-  if (start <= 0) return;
+  const delta = target - start;
+  if (delta === 0) return;
   const t0 = performance.now();
   let raf = 0;
   const removeListeners = () => {
@@ -46,7 +55,7 @@ export function smoothScrollRootToTop(duration = 420, root: ScrollRoot = getScro
     // 스무스 스크롤로 해석돼 서로 재시작을 반복하며 제자리걸음한다(실제로 이 함수가
     // 처음에 전혀 안 움직였던 원인). 프레임마다는 즉시 이동시키고, "부드러움"은 이
     // rAF 루프의 이징이 만든다.
-    root.scrollTo({ top: start * (1 - ease(p)), behavior: "instant" });
+    root.scrollTo({ top: start + delta * ease(p), behavior: "instant" });
     if (p < 1) raf = requestAnimationFrame(step);
     else removeListeners();
   };
