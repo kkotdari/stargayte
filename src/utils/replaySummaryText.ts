@@ -265,6 +265,8 @@ const STANDOFF_SEC = 5 * 60;
 // 벌어지면 인과가 아무리 그럴듯해도 각각 제 문장으로 둔다.
 /* 3분 → 1분(요청: 문장 합치기는 최대한 금지하고, 사건의 시간이 유의미하게 차이 나면
    스냅을 나눈다). 한 문장에 묶이려면 사실상 같은 순간이어야 한다. */
+/** 이 안에 찍었으면 '서둘러 올렸다'고 말할 수 있는 분 — 속업·사업은 대개 그 뒤에 나온다. */
+const EARLY_UPGRADE_MIN = 8;
 const JOIN_MAX_SEC = 60;
 /** '-다가'로 이을 수 있는 사이 — 이 어미는 하던 일이 그 일 때문에 끊겼다는 뜻이라,
  *  정말 밀접한 인과관계가 아니면 쓰면 안 된다(지적). 몇 분 떨어진 두 일을 이걸로 묶으면
@@ -1062,17 +1064,16 @@ const TEMPLATES: Record<string, Tpl> = {
   "upgrade-signature": (c) => {
     const ko = SIGNATURE_UPGRADE_KO[str(c.p.upgrade) as keyof typeof SIGNATURE_UPGRADE_KO];
     if (!ko) return null;
-    /* 속업·사업은 다들 하므로 '언제' 했는지가 곧 그 판의 빌드다(요청) — 시각을 알면 그걸
-       앞세워 말한다. 이 값이 없는 옛 요약은 예전처럼 시각 없이 나간다. */
-    const m = num(c.p.min, 0);
-    if (m > 0) {
-      return `${ga(c.who)} ${done(c, c.pick([
-        `${m}분에 ${reul(ko)} 올림`, `${m}분 만에 ${reul(ko)} 마침`,
-        `${m}분에 ${ko}부터 챙김`, `${m}분에 ${ko}까지 올림`,
-      ]), true)}`;
-    }
-    return `${ga(c.who)} ${done(c, c.pick([
-      `${reul(ko)} 서둘러 올림`, `${reul(ko)} 먼저 챙김`, `${reul(ko)} 앞세움`,
+    /* 속업·사업은 다들 하므로 '언제' 했는지가 곧 그 판의 빌드다(요청). 다만 몇 분인지를
+       문장 안에 적지는 않는다 — 자막은 이미 "[14분]"으로 시작하고 앞에 "5분 뒤" 같은
+       이음말까지 붙어서, 시각이 한 줄에 세 번 나온다(실측: "5분 뒤 …가 14분에 템플러
+       에너지업부터 챙겼다"). 대신 이르게 찍었을 때만 그 사실을 말로 표시한다. */
+    const early = num(c.p.min, 0) > 0 && num(c.p.min, 0) <= EARLY_UPGRADE_MIN;
+    return `${ga(c.who)} ${done(c, c.pick(early ? [
+      `${reul(ko)} 서둘러 올림`, `${reul(ko)} 일찌감치 마침`, `${ko}부터 챙김`,
+      `${reul(ko)} 남보다 먼저 찍음`,
+    ] : [
+      `${reul(ko)} 올림`, `${ko}까지 챙김`, `${reul(ko)} 마저 올림`, `${reul(ko)} 더함`,
     ]), true)}`;
   },
 

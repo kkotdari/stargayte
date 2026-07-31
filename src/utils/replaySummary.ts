@@ -251,6 +251,8 @@ const TECH_BEATS_PER_SUMMARY = 2;
  *  자리를 못 얻는다 — 이야깃거리가 큰 업그레이드(랭크 4~6)가 전술과 겨룰 만한 자리에 오게
  *  base를 맞춘다. 흔한 속업·사업(랭크 2)은 여전히 자리가 남을 때만 나온다. */
 const UPGRADE_BASE_WEIGHT = 11;
+/** 이 점수 아래는 문장을 따로 세우지 않는다 — 그 유닛을 쓰면 으레 따라오는 업그레이드다. */
+const UPGRADE_MIN_RANK = 2;
 /** 한 요약에 같은 갈래 문장을 이만큼까지 — 곁가지가 도배되면 정작 승부 이야기가 밀린다. */
 const PER_KEY_CAP: Record<string, number> = {
   tech: TECH_BEATS_PER_SUMMARY, "upgrade-signature": 2, upgrade: 2,
@@ -1194,7 +1196,11 @@ function sideBeats(args: {
       .filter((x): x is { key: string; at: number; rank: number } => x.at !== undefined);
     const bySoon = [...sigs].sort((a, b) => a.at - b.at)[0];
     const byRank = [...sigs].sort((a, b) => b.rank - a.rank || a.at - b.at)[0];
-    for (const sig of [bySoon, byRank].filter((x, i, arr) => x && arr.indexOf(x) === i)) {
+    for (const sig of [bySoon, byRank]
+      .filter((x, i, arr) => x && arr.indexOf(x) === i)
+      // 0점짜리는 문장으로 세우지 않는다 — 그 유닛을 쓰면 으레 따라오는 것이라 소식이
+      // 아니다(지적: 인터셉터 증설은 딱히 안 중요하다).
+      .filter((x) => x.rank >= UPGRADE_MIN_RANK)) {
       beats.push({
         k: "upgrade-signature", won, who: who(p),
         weight: UPGRADE_BASE_WEIGHT + sig.rank,

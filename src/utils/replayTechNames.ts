@@ -157,7 +157,6 @@ export const UNIT_UPGRADE_TAG: Partial<Record<UpgradeName, { unit: string; tag: 
   "Singularity Charge": { unit: "Dragoon", tag: "사업" },
   "Leg Enhancement": { unit: "Zealot", tag: "속업" },
   "Gravitic Drive": { unit: "Shuttle", tag: "속업" },
-  "Carrier Capacity": { unit: "Carrier", tag: "인터셉터 증설" },
   "Reaver Capacity": { unit: "Reaver", tag: "스캐럽 증설" },
   "Khaydarin Amulet": { unit: "High Templar", tag: "에너지업" },
   "Khaydarin Core": { unit: "Arbiter", tag: "에너지업" },
@@ -171,11 +170,15 @@ export const UNIT_UPGRADE_TAG: Partial<Record<UpgradeName, { unit: string; tag: 
  *
  *  속업·사업은 거의 필수라 그 자체로는 소식이 아니지만, 언제 찍었나가 곧 그 판의 빌드라
  *  아주 낮게 두지는 않는다(요청: 발업·사정거리 같은 유의미한 업그레이드도 말해 달라).
- *  반대로 캐리어 인터셉터 증설·울트라 속방업·에너지업처럼 후반에나 손대는 것들은 나왔다는
- *  사실 자체가 그 경기의 그림이라 높게 둔다. 여기 없는 것은 기본 점수 0으로 친다. */
+ *  반대로 울트라 속방업·에너지업처럼 후반에나 손대는 것들은 나왔다는 사실 자체가 그 경기의
+ *  그림이라 높게 둔다.
+ *
+ *  여기 없는 것은 0점이고, 0점짜리는 아예 문장이 되지 않는다(replaySummary의
+ *  UPGRADE_MIN_RANK). 캐리어 인터셉터 증설이 그렇다 — 캐리어를 쓰면 으레 따라오는
+ *  것이라 "무슨 일이 있었나"를 말해 주지 않는다(지적). */
 export const UPGRADE_RANK: Partial<Record<UpgradeName, number>> = {
   // 나오면 그 판의 그림이 보이는 것들.
-  "Carrier Capacity": 6, "Reaver Capacity": 6, "Chitinous Plating": 6,
+  "Reaver Capacity": 6, "Chitinous Plating": 6,
   "Anabolic Synthesis": 6, "Khaydarin Amulet": 6, "Argus Talisman": 6,
   "Defiler Energy": 6, "Khaydarin Core": 6, "Adrenal Glands": 6,
   // 그 판의 색을 정하는 것들.
