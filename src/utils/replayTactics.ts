@@ -295,6 +295,9 @@ const DROP_WINDOW_FRAMES = 40 / 0.042;
 const SIDE_TANK_MIN = 5;
 /** 그 자리로 이만큼은 몰아야 '세워 뒀다'고 본다 — 한두 번은 지나가며 찍은 것일 수 있다. */
 const SIDE_TANK_ORDERS = 4;
+/** 탱크를 세운 '한 지점'으로 묶는 반경(타일) — 자리를 잡고 나서도 조금씩 고쳐 앉으므로
+ *  낱개 좌표가 아니라 몰린 덩어리의 가운데를 쓴다(요청: 옆탱한 지점을 정확히). */
+const SIDE_TANK_SPOT_TILES = 6;
 
 // 성큰러시·포토러시·몰래 배럭은 '자리를 보고서야 알 수 있는' 기습이라, 그 경기에서만
 // 있었던 일 중에서도 특히 이야깃거리다(요청: 무게감을 올려 달라). 자리가 모자랄 때
@@ -1069,7 +1072,21 @@ function detectFor(c: Ctx): Tactic[] {
           const sp = geo.spot(o);
           return sp === "myFront" || sp === "allyFront";
         });
-      return parked.length >= SIDE_TANK_ORDERS ? parked[0].frame : null;
+      if (parked.length < SIDE_TANK_ORDERS) return null;
+      // 자리는 가장 붐빈 한 점으로 — 탱크를 세운 지점을 그대로 찍어야지, 본진 한가운데를
+      // 가리키면 옆탱이라는 말이 무색해진다(요청: 옆탱한 지점을 정확히).
+      const seed = parked.reduce((best, o) => {
+        const n = parked.filter((x) => dist(x, o) <= SIDE_TANK_SPOT_TILES).length;
+        return n > best.n ? { o, n } : best;
+      }, { o: parked[0], n: 0 });
+      const near = parked.filter((x) => dist(x, seed.o) <= SIDE_TANK_SPOT_TILES);
+      return {
+        frame: Math.min(...near.map((o) => o.frame)),
+        xy: [
+          near.reduce((a, o) => a + o.x, 0) / near.length,
+          near.reduce((a, o) => a + o.y, 0) / near.length,
+        ] as [number, number],
+      };
     })();
     if (sideFactory.length > 0 && tanks >= 3) {
       const helped = geo?.allyAt(sideFactory[0]) ?? null;
@@ -1079,7 +1096,10 @@ function detectFor(c: Ctx): Tactic[] {
       });
     } else if (tankPark !== null) {
       // 옆탱은 팩토리를 어디에 지었나가 아니라 탱크를 어디로 옮겼나로 가른다(지적).
-      out.push({ key: "side-tank", weight: 11, at: tankPark, who, p: { at: "front" } });
+      out.push({
+        key: "side-tank", weight: 11, at: tankPark.frame, who,
+        p: { at: "front", xy: tankPark.xy },
+      });
     } else if (neighbor && tanks >= 3 && firstTank !== null && neighbor.fellAt > firstTank) {
       // 탱크가 실제로 무엇을 잡았는지는 리플레이에 없다. 확실한 건 '옆에 붙은 상대가
       // 내 탱크가 나온 뒤에 먼저 판에서 사라졌다'는 것이고, 딱 그만큼만 말한다.

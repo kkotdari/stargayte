@@ -460,17 +460,6 @@ export default function GameResultStory({
       return best === Infinity || best <= dist(at, home);
     };
 
-    /** 그 집의 '앞마당 안쪽'을 재는 자 — 가장 가까운 다른 본진까지 거리의 이만큼. */
-    const YARD = 0.3;
-    const yardOf = (h: [number, number]): number => {
-      let near = Infinity;
-      for (const s of slots) {
-        const p = homeOf(s.raw);
-        if (p && dist(p, h) > 1) near = Math.min(near, dist(p, h));
-      }
-      return Number.isFinite(near) ? Math.max(ARROW_MIN_TILES, near * YARD) : ARROW_MIN_TILES;
-    };
-
     const target = (b: (typeof beats)[number], raw: string): [number, number] | null => {
       const home = homeOf(raw);
       if (!home) return null;
@@ -494,18 +483,21 @@ export default function GameResultStory({
         const pick = namedFoe ?? vs[0];
         return pick ? homeOf(pick) : null;
       })();
-      /* 자막이 이름을 부른 순간, 화살표가 갈 곳은 이미 정해졌다 — 그 사람이다(지적: 자막과
-         화살표 위치가 안 맞는다). 예전엔 좌표(p.xy)를 먼저 봤는데, 그 좌표가 자막이 부른
-         사람과 다른 곳을 가리키면 한 화면에서 둘이 서로 다른 말을 했다. 좌표는 그 사람
-         자리 언저리일 때만 — 그때는 본진 한복판보다 정확하니까 — 그대로 쓴다. */
+      /* 자리를 아는 것이 최우선이다(요청: 위치가 파악된 건 무조건 정확한 위치를 표시).
+         p.xy는 어림이 아니라 리플레이에 그대로 적힌 좌표다 — 마법을 쓴 자리, 셔틀이 내린
+         자리, 탱크를 세운 자리, 상대 유닛을 찍은 자리. 본진 한복판을 가리키는 것보다 늘
+         정확하다.
+
+         한때 이 값을 자막이 부른 사람보다 뒤로 미뤘던 적이 있다. 좌표와 자막이 서로 다른
+         곳을 가리키는 일이 있어서였는데, 그 원인은 좌표가 아니라 '누구를'을 엉뚱하게 고른
+         쪽이었다 — 이제 그 이름도 같은 좌표에서 나오므로(replayTactics의 castAt·dropSpot,
+         replaySummary의 withStrike·placeFits) 둘이 어긋나지 않는다. */
+      if (xy) return xy;
       const foeHome = namedFoe ? homeOf(namedFoe) : null;
+      // 자리를 모르면 자막이 부른 상대의 집이 목표다.
       if (foeHome && (attack || spot === "enemyBase" || spot === "enemyFront")) {
-        if (xy && dist(xy, foeHome) <= yardOf(foeHome)) return xy;
         return spot === "enemyFront" ? lerp(foeHome, center, FRONT) : foeHome;
       }
-      // 자막이 아무도 안 불렀으면 좌표가 곧 목표다 — 다만 제 앞마당 안쪽(방어용 리콜, 태우러
-      // 들른 셔틀)은 뺀다(지적: 리콜·견제·드랍인데 화살표가 내 기지 쪽이다).
-      if (xy && dist(home, xy) >= yardOf(home)) return xy;
       // 센터에서 벌어진 일은 맵 가운데로(요청) — 건물 자리 분류보다 이 판정이 확실하다.
       if (CENTER_BEAT_KEYS.has(b.k)) return center;
       if (named && (spot === "enemyBase" || spot === "enemyFront")) {

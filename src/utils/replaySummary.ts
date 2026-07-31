@@ -222,6 +222,15 @@ const ATTACK_ZONE_RES_TILES = 6;
 const HIT_WINDOW_SEC = 60;
 const HIT_MIN = 3;
 
+/** 목표를 못 짚으면 뜻이 옅어지는 수들(요청) — 드랍은 '어디에 내렸나'가 그 수의 전부이고,
+ *  병력을 뽑아 나갔다는 이야기는 '누구에게 갔나'가 없으면 생산 이야기와 다르지 않다.
+ *  러시·몰래건물은 여기 안 넣는다: 그건 목표를 몰라도 '언제 무엇을 갔나'가 곧 이야기다. */
+const NEED_TARGET_KEYS = new Set([
+  "shuttle", "shuttle-reaver", "templar-drop", "zerg-drop", "dropship",
+  "bionic", "mech", "moka",
+]);
+const NO_TARGET_PENALTY = 10;
+
 // 러시·드랍을 간 뒤 이 안에 상대 생산이 끊기면 그 수의 결과로 본다.
 const DAMAGE_WINDOW_SEC = 3 * 60;
 // 탈락을 그 수의 결과로 묶는 창 — 이보다 벌어지면 인과가 아니라 우연에 가깝다(지적).
@@ -1604,21 +1613,30 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   };
 
   /** 들이친 이야기인데 '누구를' 또는 '어디를'이 비어 있으면 그 자리를 실제 타격으로 채운다.
-   *  이미 들어 있는 값은 건드리지 않는다 — 건물 자리·마법 좌표가 더 정확하다. */
+   *  이미 들어 있는 값은 건드리지 않는다 — 건물 자리·마법 좌표가 더 정확하다.
+   *
+   *  그러고도 목표가 안 잡히는 수(NEED_TARGET_KEYS)는 무게를 크게 깎는다(요청: 타겟 없는
+   *  드랍이나 병력 뽑아 진출한 이야기는 뜻이 옅다) — 어디에 내렸는지 모르는 드랍은 그냥
+   *  셔틀을 띄운 것이고, 누구에게 갔는지 모르는 진출은 생산 이야기일 뿐이다. 지우지는
+   *  않는다: 다른 할 이야기가 없는 조용한 경기에서는 그것도 그날의 장면이다. */
   const withStrike = (b: Beat, mine: ParsedReplayPlayer[]): Beat => {
     if (!ATTACK_BEAT_KEYS.has(b.k)) return b;
     const hasWhom = (b.whom?.length ?? 0) > 0;
     // 건물 자리로 이미 '어디였나'를 말한 beat(포토러시·성큰러시·몰래배럭)는 그대로 둔다 —
     // 그 자리가 곧 그 수 자체이고, 같은 무렵의 다른 교전 좌표를 얹으면 오히려 어긋난다.
     const hasXy = Array.isArray(b.p?.xy) || typeof b.p?.spot === "string";
-    if (hasWhom && hasXy) return b;
-    const s = struckAt(b.who[0], b.at ?? null, mine);
-    if (!s) return b;
-    return {
-      ...b,
-      ...(hasWhom ? {} : { whom: [s.whom] }),
-      ...(hasXy ? {} : { p: { ...(b.p ?? {}), xy: s.xy } }),
-    };
+    const s = hasWhom && hasXy ? null : struckAt(b.who[0], b.at ?? null, mine);
+    const out = s
+      ? {
+        ...b,
+        ...(hasWhom ? {} : { whom: [s.whom] }),
+        ...(hasXy ? {} : { p: { ...(b.p ?? {}), xy: s.xy } }),
+      }
+      : b;
+    const blind = NEED_TARGET_KEYS.has(out.k)
+      && (out.whom?.length ?? 0) === 0
+      && !Array.isArray(out.p?.xy) && typeof out.p?.spot !== "string";
+    return blind ? { ...out, weight: out.weight - NO_TARGET_PENALTY } : out;
   };
 
   const tacticBeats = (won: boolean): Beat[] => {
