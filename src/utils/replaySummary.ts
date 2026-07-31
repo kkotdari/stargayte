@@ -709,34 +709,6 @@ function mergeDuelRush(list: Beat[]): Beat[] {
 
 /** 양쪽이 같은 짓을 했으면 한 문장으로 묶는다(요청: "누구와 누구가 서로 ~함").
  *  재료가 다르면 묶지 않는다 — 9드론과 12드론을 한 숫자로 말하면 한쪽이 거짓이 된다. */
-/** 양쪽이 똑같이 '맵 곳곳에 흩어 지었다'면 한 문장으로 묶는다. mergeMutual은 p가 완전히
- *  같을 때만 묶는데 흩어진 군데 수는 사람마다 달라서 안 묶였고, 그 바람에 후반 비트 두 개가
- *  자리를 둘이나 먹었다(지적: "후반이 너무 강해져서 초중반 내용이 사라졌다"). 애초에
- *  서로 도망 다닌 한 장면이라 한 문장이 맞다. */
-function mergeScatter(list: Beat[]): Beat[] {
-  const scatters = list.filter((b) => b.k === "scatter");
-  if (scatters.length < 2) return list;
-  const w = scatters.find((b) => b.won);
-  const l = scatters.find((b) => !b.won);
-  if (!w || !l) return list;
-  const ats = [w.at, l.at].filter((x): x is number => x !== null && x !== undefined);
-  const merged: Beat = {
-    ...w,
-    who: [...w.who, ...l.who],
-    at: ats.length > 0 ? Math.min(...ats) : null,
-    weight: Math.max(w.weight, l.weight),
-    p: {
-      ...(w.p ?? {}),
-      // 한 문장으로 말할 땐 '몇 군데'가 사람마다 다르니 적은 쪽을 기준으로 말한다.
-      spots: Math.min(Number(w.p?.spots ?? 0), Number(l.p?.spots ?? 0)),
-      // 'mutual'은 렌더러가 문장 앞에 "서로 "를 붙이는 신호로 이미 쓰고 있다 — 여기서
-      // 쓰면 "둘 다 서로 …"가 된다. 다른 이름으로 둔다.
-      bothSides: true,
-    },
-  };
-  return [...list.filter((b) => b.k !== "scatter"), merged];
-}
-
 function mergeMutual(list: Beat[]): Beat[] {
   const byKey = new Map<string, Beat[]>();
   for (const b of list) {
@@ -1494,7 +1466,7 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
      상대 쪽으로 기우는 이야기(제 수가 역풍을 맞음·당함·무너짐)를 갈라 둔다. */
   const LATE_NEUTRAL = new Set([
     "standoff", "attrition", "fast-hands", "power-unit", "expand", "prod-gap", "worker-gap",
-    "tech", "vision", "no-detect", "revival", "greedy-build", "scatter", "long-run",
+    "tech", "vision", "no-detect", "revival", "greedy-build", "long-run",
   ]);
   const LATE_AGAINST_ACTOR = new Set([
     "rush-backfire", "greedy-punished", "fallen", "lodging", "relocate", "lift-off", "gg", "stand",
@@ -1828,21 +1800,31 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     // 러시는 뽑은 때가 아니라 닿은 때에 목표가 드러난다(위 RUSH_LAND_KEYS 주석).
     const land = hasWhom || !RUSH_LAND_KEYS.has(b.k)
       ? null : landedOn(b.who[0], b.at ?? null, mine);
-    const s = hasWhom && hasXy ? null
+    const found = hasWhom && hasXy ? null
       : land
         ?? struckAt(b.who[0], b.at ?? null, mine, victim)
         ?? struckZone(b.who[0], b.at ?? null, mine,
           victim ? foes.filter((f) => f.rawName === victim) : foes);
+    /* 그 자리가 정말 '그 사람 동네'인가 — 유닛을 직접 찍은 기록(struckAt·landedOn)은
+       클릭한 자리를 그대로 주는데, 그 자리는 상대 유닛이 있던 곳이지 상대의 집이 아니다.
+       실측한 3:3에서 군범의 2분 질럿 러시가 제롬을 꺾은 것으로 잡혔는데, 좌표는
+       (119.9, 123.5) — 군범 자기 본진이었다(제롬의 정찰 유닛을 제 집에서 찍은 클릭).
+       화살표가 제 집을 가리키니 "제롬이 큰 타격을 입었다"와 정반대로 읽혔다.
+
+       자리가 안 맞으면 좌표는 버린다. 이름까지 그 클릭에서 나온 경우(hasWhom이 아닐 때)는
+       이름도 함께 버린다 — 제 집에서 스친 것을 '내가 저 사람을 쳤다'고 부를 수는 없다. */
+    const placed = !!found && homeOwnerAt(found.xy[0], found.xy[1]) === found.whom;
+    const s = found && (placed || hasWhom) ? found : null;
     const out = s
       ? {
         ...b,
         ...(hasWhom ? {} : { whom: [s.whom] }),
         p: {
           ...(b.p ?? {}),
-          ...(hasXy ? {} : { xy: s.xy }),
+          ...(hasXy || !placed ? {} : { xy: s.xy }),
           // 뽑은 때와 닿은 때가 벌어져 있으면 닿은 때도 남긴다 — 왜 이 목표를 골랐는지의
           // 근거이자, 문장이 '언제 부딪쳤나'를 말해야 할 때 쓰는 값이다.
-          ...(land ? { landMin: minutes(land.at * SECONDS_PER_FRAME) } : {}),
+          ...(land && placed ? { landMin: minutes(land.at * SECONDS_PER_FRAME) } : {}),
         },
       }
       : b;
@@ -2388,7 +2370,7 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     ...(wall ? [wall] : []),
     ...mergeSameFate(greedyBeats, "greedy-punished"),
     ...gangBeats,
-    ...mergeScatter(mergeMutual(tactics)),
+    ...mergeMutual(tactics),
     ...allyHelpBeats,
     // 돌파 문장은 늘 '진 편의 벽'을 말하므로 그쪽 방어 문장만 덜어 낸다(이긴 편이 지어 둔
     // 방어는 다른 이야기다). 뒤늦은 증설과 겹치는 건 어느 편이든 덜어 낸다.

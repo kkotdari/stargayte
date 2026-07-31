@@ -70,7 +70,7 @@ const BEAT_MARK: Record<string, string> = {
   expand: "🏗️", upgrade: "⚔️", "upgrade-signature": "⚔️", tech: "⚔️", "fast-tech": "⚔️",
   lodging: "🏠", relocate: "🚚", "greedy-build": "💰", "greedy-paid": "💰", greedy: "💰",
   carrier: "🛩️", bc: "🛩️", guardian: "🛩️", "lift-off": "🛩️", vision: "👁️", "no-detect": "🙈",
-  scatter: "🌪️", attrition: "⏳", "fast-hands": "⚡", "pro-like": "🌟", revival: "🔥",
+  attrition: "⏳", "fast-hands": "⚡", "pro-like": "🌟", revival: "🔥",
   fallen: "💀", gg: "🏳️", "worker-gap": "📉", "prod-gap": "📉", "greedy-punished": "💸",
   result: "🏆",
 };
@@ -83,7 +83,7 @@ const POS_TRUSTED_VERSION = 2;
  *  '어디로 갔다'가 이야기의 뼈대가 아닌 것들이다. */
 const HOME_BEAT_KEYS = new Set([
   "expand", "upgrade", "upgrade-signature", "tech", "fast-tech", "vision", "no-detect",
-  "greedy-build", "greedy-paid", "greedy-punished", "lodging", "relocate", "scatter",
+  "greedy-build", "greedy-paid", "greedy-punished", "lodging", "relocate",
   "defense", "front-defense", "late-defense", "side-tank", "revival", "fallen", "gg",
   "stand", "result", "standoff", "attrition", "fast-hands", "pro-like", "worker-gap",
   "prod-gap", "long-run", "late-hold", "lift-off",

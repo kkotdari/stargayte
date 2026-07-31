@@ -230,16 +230,6 @@ const MID_MAP_RATIO = 0.22;
    왼쪽으로 쏠려 있어서 그 자리가 '가운데'로 잡혔다). 그래서 가운데에 가까운 것만으로는 안 되고,
    어느 본진에서도 이만큼(링 반지름 대비)은 떨어져 있어야 센터라고 부른다. */
 const MID_AWAY_RATIO = 0.35;
-/* 맵 곳곳에 건물을 흩뿌리며 버틴 그림(요청: "둘은 계속해서 맵 구석구석에 건물을 지으며
-   도망다니며 버텼어. 이런것도 추출해서 스토리화해줘"). 빠른무한처럼 자원이 무한한 판에서
-   서로 자리를 내주고 도망 다니며 새로 짓기를 반복하면 본진 언저리가 아니라 판 전체에
-   군집이 생긴다. 실측(Super빠른무한 45분 경기): 두 사람 다 군집 17~18개, 본진에서 본진↔본진
-   거리의 0.7배 넘게 나가 지은 건물이 73~80채였다. 보통 경기는 본진·앞마당·삼룡이 정도라
-   군집이 서넛을 안 넘으므로 8을 기준으로 잡으면 오탐이 사실상 없다. */
-const SCATTER_RADIUS = 0.2;   // 이 안쪽이면 같은 군집
-const SCATTER_FAR = 0.7;      // 본진에서 이만큼 넘게 나가면 '멀리 나가 지은 것'
-const SCATTER_CLUSTERS_MIN = 8;
-const SCATTER_FAR_MIN = 20;
 // 본진 중심에서 이만큼은 나가 있어야 '앞'이다 — 안쪽에 박은 건 그냥 본진 건물이다.
 const FRONT_MIN = 0.1;
 // 상대 쪽으로 60도 안쪽(cos 0.5)이어야 진출로 쪽이라고 본다.
@@ -437,10 +427,6 @@ interface Geo {
   lodgingHost: string | null;
   /** 그중에서도 '시작 자리를 두고 옮겨온' 경우 — 본진을 잃은 그림이라 문장이 달라진다. */
   lodgingLost: boolean;
-  /** 건물이 판 전체에 얼마나 흩어져 있나 — 자리를 내주고 도망 다니며 새로 짓기를 반복하면
-   *  본진 언저리가 아니라 맵 곳곳에 군집이 생긴다. clusters는 서로 떨어진 건물 무리의 수,
-   *  far는 본진에서 SCATTER_FAR 배 넘게 나가 지은 건물 수. */
-  spread: { clusters: number; far: number; at: number | null };
 }
 
 function geoOf(
@@ -634,26 +620,8 @@ function geoOf(
   const lodgingHost = lodging?.raw ?? null;
   const lodgingLost = lodging?.lost ?? false;
 
-  // 건물 분포 — 군집 수는 '그리디 군집화'로 센다(서로 SCATTER_RADIUS 안쪽이면 같은 무리).
-  const mine = me.signals?.buildPositions ?? [];
-  const seeds: BuildPos[] = [];
-  for (const b of mine) {
-    if (!seeds.some((c) => dist(c, b) < base * SCATTER_RADIUS)) seeds.push(b);
-  }
-  // 시점은 '본진을 벗어나 지은 건물들의 중간 때' — 첫 채로 잡으면 지나가다 하나 지은 것에
-  // 끌려 앞으로 당겨지고, 시점을 아예 안 두면 맺음말 앞으로 밀려 타임라인이 어긋난다(지적).
-  const far = mine.filter((b) => dist(b, home) > base * SCATTER_FAR);
-  const farFrames = far
-    .map((b) => b.frame)
-    .filter((f): f is number => f !== null)
-    .sort((x, y) => x - y);
-  const spread = {
-    clusters: seeds.length,
-    far: far.length,
-    at: farFrames.length > 0 ? farFrames[Math.floor(farFrames.length / 2)] : null,
-  };
-
-  return { zone, allyAt, enemyAt, front, spot, lodgingHost, lodgingLost, spread };
+  // (삭제) 건물이 몇 군데에 흩어졌나(spread) — scatter 전술만 쓰던 값이라 함께 걷어냈다.
+  return { zone, allyAt, enemyAt, front, spot, lodgingHost, lodgingLost };
 }
 
 interface Ctx {
@@ -1252,18 +1220,12 @@ function detectFor(c: Ctx): Tactic[] {
       ...(helped ? { who2: helped } : {}), p: { n: allyCannons.length },
     });
   }
-  // 판 전체에 건물을 흩뿌리며 버틴 그림(요청) — 자리를 내주고 도망 다니며 새로 짓기를
-  // 반복한 경기다. 다만 좌표만으로는 '그래서 어떻게 됐나'까지는 말할 수 없어(위 scatter
-  // 문장 주석) 다른 전술·러시·물량 이야기가 있으면 그쪽이 먼저다(지적: 그래서 뭐? 하는
-  // 느낌이라 되도록 안 나왔으면 함) — 무게를 낮춰 정말 할 얘기가 없는 경기에서만 나오게 한다.
-  if (
-    geo && geo.spread.clusters >= SCATTER_CLUSTERS_MIN && geo.spread.far >= SCATTER_FAR_MIN
-  ) {
-    out.push({
-      key: "scatter", weight: 9, who, at: geo.spread.at,
-      p: { spots: geo.spread.clusters, far: geo.spread.far },
-    });
-  }
+  /* (삭제) "이곳저곳에 건물을 벌려 지으며 버텼다" — 건물이 몇 군데에 흩어졌나만 세는
+     이야기였다. 그 군데들이 제 본진 안인지, 센터에 박은 포토인지, 정말 쫓겨 다니며 새로
+     지은 자리인지를 좌표만으로는 못 가른다(지적: 본진 안인 것 같기도 하고 센터 포토
+     같기도 하고 부정확하고 의미없다). 게다가 빠른무한 같은 판에서는 원래 다들 맵 곳곳에
+     짓는다 — 이사 판정이 헛돌던 것과 같은 이유다. 무게를 낮춰 두는 것으로는 부족했다:
+     낮춰 놔도 할 얘기가 적은 경기에서는 결국 자리를 차지했다. */
   const midCannons = inZone("mid", "Photon Cannon");
   if (midCannons.length >= 2) {
     // 무게 10 → 16(요청: "센터포토 가중치도 좀 높여야 될 듯, 너무 요약에 출현 빈도가 낮음").
