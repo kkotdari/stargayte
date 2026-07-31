@@ -290,6 +290,8 @@ const PEACE_UNITS = new Set([
 const ALLY_CANNON_MIN = 2;
 
 /** 자리만으로 옆탱을 말하려면 탱크가 이만큼은 있어야 한다 — 한두 기를 옮긴 것은 옆탱이 아니다. */
+/** 내린 자리를 찾을 때 언로드 시각에서 앞뒤로 보는 폭(프레임 ≒ 40초). */
+const DROP_WINDOW_FRAMES = 40 / 0.042;
 const SIDE_TANK_MIN = 5;
 /** 그 자리로 이만큼은 몰아야 '세워 뒀다'고 본다 — 한두 번은 지나가며 찍은 것일 수 있다. */
 const SIDE_TANK_ORDERS = 4;
@@ -700,6 +702,21 @@ function detectFor(c: Ctx): Tactic[] {
     return hit ? { frame: hit.frame, xy: [hit.x, hit.y] } : null;
   };
 
+  /** 수송선을 어디로 몰고 갔나 — 내린 순간(firstUnloadFrame) 언저리에 수송선에게 내린
+   *  이동 명령의 좌표다(요청: 유닛 특정을 살려 드랍 지점을 정확히). 언로드 커맨드 자체에는
+   *  좌표가 없어서, 그 직전에 수송선을 어디로 보냈나가 곧 내린 자리다. 집 근처(태우러 간
+   *  것)는 빼고 가장 가까운 시각의 것을 고른다. */
+  const dropSpot = (): [number, number] | null => {
+    const unload = s.firstUnloadFrame;
+    if (unload === null || !geo) return null;
+    const near = (s.orderPositions ?? [])
+      .filter((o) => o.by === "Transport" && Math.abs(o.frame - unload) <= DROP_WINDOW_FRAMES)
+      // 태우러 집에 들른 것은 뺀다 — 내 기지 안에서 내리는 드랍은 없다.
+      .filter((o) => { const sp = geo.spot(o); return sp !== "myBase" && sp !== "myFront"; })
+      .sort((a, b) => Math.abs(a.frame - unload) - Math.abs(b.frame - unload));
+    return near.length > 0 ? [near[0].x, near[0].y] : null;
+  };
+
   /** 그 건물들이 지어진 '자리 이름' — 여럿이면 가장 많이 나온 이름을 쓴다(요청: 내 입구/
    *  기지, 아군 입구/기지, 상대 입구 앞, 상대 본진, 센터를 다 파악해야 한다). 자리를 못
    *  가리면 아무 값도 안 남긴다(문장이 자리를 말하지 않는다). */
@@ -886,7 +903,7 @@ function detectFor(c: Ctx): Tactic[] {
       out.push({
         key: "zerg-drop", ...target, weight: 11,
         at: s.firstUnloadFrame,
-        who, p: { lurker: u("Lurker") >= 3 },
+        who, p: { lurker: u("Lurker") >= 3, ...(dropSpot() ? { xy: dropSpot()! } : {}) },
       });
     }
     // 커널(나이더스 커널) — 뚫어 놓으면 병력이 순식간에 건너간다(요청). 건물 건설 커맨드
@@ -1047,7 +1064,7 @@ function detectFor(c: Ctx): Tactic[] {
     if (dropped && u("Dropship") >= 2) {
       out.push({
         key: "dropship", ...target, weight: 7, at: s.firstUnloadFrame,
-        who,
+        who, ...(dropSpot() ? { p: { xy: dropSpot()! } } : {}),
       });
     }
   }
@@ -1132,19 +1149,19 @@ function detectFor(c: Ctx): Tactic[] {
     if (dropped && u("Shuttle") >= 2 && u("Reaver") >= 3) {
       out.push({
         key: "shuttle-reaver", ...target, weight: 11, at: s.firstUnloadFrame,
-        who,
+        who, ...(dropSpot() ? { p: { xy: dropSpot()! } } : {}),
       });
     } else if (dropped && u("Shuttle") >= 2 && u("High Templar") >= 4) {
       // 하이템플러 드랍(요청) — 셔틀에 템플러를 태워 일꾼을 지지는 그림. 리버 드랍과
       // 같은 셔틀 플레이지만 결과가 전혀 달라서 따로 말한다.
       out.push({
         key: "templar-drop", ...target, weight: 11, at: s.firstUnloadFrame,
-        who,
+        who, ...(dropSpot() ? { p: { xy: dropSpot()! } } : {}),
       });
     } else if (dropped && u("Shuttle") >= 2) {
       out.push({
         key: "shuttle", ...target, weight: 6, at: s.firstUnloadFrame,
-        who,
+        who, ...(dropSpot() ? { p: { xy: dropSpot()! } } : {}),
       });
     }
   }

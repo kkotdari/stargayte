@@ -1992,7 +1992,33 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     at: list[0][2], weight: RELOCATE_WEIGHT,
   }));
 
+  // 본진 자리(타일 좌표) — 미니맵에 아바타+닉네임을 계속 띄우는 자리다(요청). 맵 정보를
+  // 못 읽은 리플레이는 좌표가 null이라 그 사람만 빠진다.
+  const bases: Record<string, [number, number]> = {};
+  for (const p of replay.players) {
+    if (p.startX !== null && p.startY !== null) {
+      bases[p.rawName] = [round1(p.startX), round1(p.startY)];
+    }
+  }
+
+  // 가장 크게 부딪친 대목 — 마법과 공격 명령이 한때 한곳에 몰린 자리다(요청: 마법 좌표로
+  // 그 경기의 최대 교전 지점을 짚을 수 있겠다). 그 판의 절정이라 이야기에서 빠지면 안 된다.
+  const clash = biggestClash(winnerPlayers, loserPlayers);
+  const clashBeats: Beat[] = clash && clash.who.length >= 2
+    ? [{
+      k: "clash", who: clash.who, won: true, at: clash.at, weight: CLASH_WEIGHT,
+      // 자리 이름은 두 갈래다 — 누군가의 기지면 그 사람을 who2로 부르고(이름은 볼 때
+      // 다시 풀린다), 맵 한가운데면 place에 "mid"만 남긴다.
+      ...(clashPlace(clash.xy, bases) ? { who2: [clashPlace(clash.xy, bases)!] } : {}),
+      p: {
+        xy: clash.xy, n: clash.n,
+        ...(clashPlace(clash.xy, bases) === "" ? { place: "mid" } : {}),
+      },
+    }]
+    : [];
+
   const pool: Beat[] = [
+    ...clashBeats,
     ...moveBeats,
     ...(standoff ? [standoff] : []),
     ...(lateHold ? [lateHold] : []),
@@ -2125,9 +2151,10 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     taken[phaseOf(b)] += 1;
     return true;
   };
-  // 0차: 이사와 궤멸은 자리를 다투기 전에 먼저 넣는다(요청: 이사·궤멸은 중요 이벤트라
-  // 절대 빠지면 안 된다). 무게로 겨루게 두면 러시·물량 이야기에 밀려 통째로 사라졌다.
-  const MUST_KEEP = new Set(["relocate", "fallen"]);
+  // 0차: 이사·궤멸과 그 판 최대 교전은 자리를 다투기 전에 먼저 넣는다(요청: 중요 이벤트라
+  // 절대 빠지면 안 된다). 무게로 겨루게 두면 러시·물량 이야기에 밀려 통째로 사라졌다 —
+  // 실측으로 확인했다: 최대 교전은 리플레이 8판 모두에서 잡히는데 문장이 된 건 한 판뿐이었다.
+  const MUST_KEEP = new Set(["relocate", "fallen", "clash"]);
   // 이사·빈사·궤멸 앞에는 반드시 '누구에게 당했나'가 있어야 한다(지적: 그 앞에 공격당한
   // 이야기가 없으면 왜 그렇게 됐는지 모른 채 갑자기 무너진 것처럼 읽힌다) — 그 사람을
   // whom으로 지목한 공격 문장 중 이 시점 이전이면서 가장 무거운 것을 함께 끼워 넣는다.
@@ -2287,15 +2314,6 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     ...(mode === "comeback" ? { whom: loserPlayers.map((p) => p.rawName) } : {}),
   };
 
-  // 본진 자리(타일 좌표) — 미니맵에 아바타+닉네임을 계속 띄우는 자리다(요청). 맵 정보를
-  // 못 읽은 리플레이는 좌표가 null이라 그 사람만 빠진다.
-  const bases: Record<string, [number, number]> = {};
-  for (const p of replay.players) {
-    if (p.startX !== null && p.startY !== null) {
-      bases[p.rawName] = [round1(p.startX), round1(p.startY)];
-    }
-  }
-
   const moves: Record<string, [number, number, number][]> = {};
   for (const [raw, list] of moveList) moves[raw] = list;
 
@@ -2315,6 +2333,33 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     }),
   };
 }
+
+/** 큰 교전 문장의 무게 — 그 판의 절정이라 무겁게 잡되, 러시·돌파처럼 '누가 무엇을 했다'가
+ *  분명한 이야기보다는 한 단계 아래다. */
+const CLASH_WEIGHT = 14;
+
+/** 그 자리를 사람이 부르는 말로 — 누군가의 본진 언저리면 그 사람의 기지, 맵 한가운데면
+ *  센터. 어느 쪽도 아니면 자리를 말하지 않는다(틀린 이름을 붙이느니 생략한다). */
+function clashPlace(xy: [number, number], bases: Record<string, [number, number]>): string | null {
+  const spots = Object.entries(bases);
+  const near = spots
+    .map(([raw, b]) => ({ raw, d: Math.hypot(xy[0] - b[0], xy[1] - b[1]) }))
+    .sort((a, b) => a.d - b.d)[0];
+  if (near && near.d <= CLASH_AT_BASE) return near.raw;
+  // 아래에서 ""(센터)를 돌려주므로, 부르는 쪽은 null(모름)과 ""(센터)를 갈라 봐야 한다.
+  if (spots.length >= 2) {
+    const xs = spots.map(([, b]) => b[0]);
+    const ys = spots.map(([, b]) => b[1]);
+    const mid = { x: (Math.min(...xs) + Math.max(...xs)) / 2, y: (Math.min(...ys) + Math.max(...ys)) / 2 };
+    const ring = spots.reduce((n, [, b]) => n + Math.hypot(b[0] - mid.x, b[1] - mid.y), 0) / spots.length;
+    if (ring > 0 && Math.hypot(xy[0] - mid.x, xy[1] - mid.y) < ring * CLASH_AT_MID) return "";
+  }
+  return null;
+}
+/** 본진에서 이만큼 안이면 '그 사람 기지에서'라고 부른다(타일). */
+const CLASH_AT_BASE = 18;
+/** 시작 지점들의 한가운데에서 이 비율 안이면 센터로 본다. */
+const CLASH_AT_MID = 0.3;
 
 /** 이사 문장의 무게 — 본진을 버리고 다시 편 것은 승부를 가르는 사건이라 무겁게 잡는다.
  *  다만 러시·돌파 같은 '그 경기만의 수'보다는 한 단계 아래다. */
@@ -2447,6 +2492,76 @@ function relocations(
     from = hit.i + 1;
   }
   return out;
+}
+
+/** 큰 교전을 찾는 데 쓰는 값들 — 마법과 공격 명령이 '한때 한곳에' 몰린 정도로 잰다.
+ *  마법(스톰·다크스웜·플레이그·이레디에이트 …)은 병력이 실제로 엉켰다는 가장 확실한
+ *  증거다. 아무 데나 뿌리는 마법은 없다. */
+const CLASH_WINDOW_FRAMES = 60 / 0.042;
+/** 같은 싸움으로 볼 반경(타일). */
+const CLASH_RADIUS = 14;
+/** 이만큼은 몰려야 '큰 교전'이다 — 양쪽 것을 합쳐 센다. */
+const CLASH_MIN = 8;
+/** 교전으로 세는 마법 — 병력끼리 엉켰을 때만 쓰는 것들이다. 스캔·마인 심기처럼 혼자
+ *  하는 것은 뺀다. */
+const CLASH_TECHS = new Set([
+  "Psionic Storm", "Dark Swarm", "Plague", "Irradiate", "EMP Shockwave", "Stasis Field",
+  "Maelstrom", "Ensnare", "Lockdown", "Disruption Web", "Spawn Broodlings", "Yamato Gun",
+]);
+
+/** 그 경기에서 가장 크게 부딪친 때와 자리 — 없으면 null.
+ *
+ *  근거는 두 가지다: 좌표가 그대로 적히는 마법(castPositions)과, 주인이 병력으로 확인된
+ *  공격 명령(orderPositions의 kind/by). 둘을 한 통에 넣고 '1분 안, 반경 14타일 안'에 가장
+ *  많이 몰린 지점을 찾는다. 양쪽이 다 찍혀 있어야 교전이다 — 한쪽만 있으면 그건 일방적인
+ *  견제거나 그냥 진출이다. */
+function biggestClash(
+  a: ParsedReplayPlayer[], b: ParsedReplayPlayer[],
+): { at: number; xy: [number, number]; n: number; who: string[] } | null {
+  type Hit = { frame: number; x: number; y: number; side: 0 | 1; raw: string };
+  const hits: Hit[] = [];
+  const add = (ps: ParsedReplayPlayer[], side: 0 | 1) => {
+    for (const p of ps) {
+      const sg = p.signals;
+      if (!sg) continue;
+      for (const c of sg.castPositions ?? []) {
+        if (CLASH_TECHS.has(c.tech)) hits.push({ frame: c.frame, x: c.x, y: c.y, side, raw: p.rawName });
+      }
+      for (const o of sg.orderPositions ?? []) {
+        if (o.kind !== "attack" || o.by === "Worker" || o.by === "Building") continue;
+        hits.push({ frame: o.frame, x: o.x, y: o.y, side, raw: p.rawName });
+      }
+    }
+  };
+  add(a, 0);
+  add(b, 1);
+  if (hits.length < CLASH_MIN) return null;
+
+  let best: { at: number; xy: [number, number]; n: number; who: string[] } | null = null;
+  for (const h of hits) {
+    const near = hits.filter(
+      (x) => Math.abs(x.frame - h.frame) <= CLASH_WINDOW_FRAMES
+        && Math.hypot(x.x - h.x, x.y - h.y) <= CLASH_RADIUS,
+    );
+    if (near.length < CLASH_MIN) continue;
+    if (!near.some((x) => x.side === 0) || !near.some((x) => x.side === 1)) continue;
+    if (best && near.length <= best.n) continue;
+    // 자리는 몰린 점들의 한가운데, 때는 그중 가장 이른 것 — 싸움이 시작된 시각이다.
+    const cx = near.reduce((n, x) => n + x.x, 0) / near.length;
+    const cy = near.reduce((n, x) => n + x.y, 0) / near.length;
+    // 양쪽에서 가장 많이 찍은 사람 하나씩을 주인공으로 부른다.
+    const top = (side: 0 | 1): string | null => {
+      const tally = new Map<string, number>();
+      near.filter((x) => x.side === side).forEach((x) => tally.set(x.raw, (tally.get(x.raw) ?? 0) + 1));
+      return [...tally].sort((p, q) => q[1] - p[1])[0]?.[0] ?? null;
+    };
+    const who = [top(0), top(1)].filter((v): v is string => v !== null);
+    best = {
+      at: Math.min(...near.map((x) => x.frame)),
+      xy: [round1(cx), round1(cy)], n: near.length, who,
+    };
+  }
+  return best;
 }
 
 /** 미니맵 좌표는 소수 한 자리까지만 남긴다 — 128칸 맵에서 0.1타일은 3픽셀이라 그림에

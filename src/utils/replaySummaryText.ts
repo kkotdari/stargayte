@@ -304,7 +304,7 @@ const escapeRe = (v: string): string => v.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 // 유리한가'를 말하지 않는 것들이다.
 const NEUTRAL_BEATS = new Set([
   "standoff", "attrition", "fast-hands", "power-unit", "expand", "prod-gap", "worker-gap",
-  "tech", "vision", "no-detect", "revival",
+  "tech", "vision", "no-detect", "revival", "clash",
   // 째기(greedy-build)도 여기다 — 자원을 먼저 챙긴 것은 공격이 아니라 준비라서, 그 뒤에
   // 상대의 러시가 오면 "하지만"이 아니라 "~했고"로 이어야 맞다(지적: 째기는 공격이 아니라
   // 하지만이 붙는 게 어색하다). 째기가 실제로 응징당한 경우는 greedy-punished가 따로 말한다.
@@ -1314,6 +1314,17 @@ const TEMPLATES: Record<string, Tpl> = {
     return `${ga(c.who)} ${done(c, c.pick([
       `커널을 뚫어 ${at}병력을 실어 나름`, `${at}커널을 뚫음`,
       `예상치 못한 커널을 뚫어 ${at}병력을 넘김`,
+    ]))}`;
+  },
+
+  // 그 판에서 가장 크게 부딪친 대목(요청) — 마법과 공격 명령이 한때 한곳에 몰린 자리다.
+  // 자리 이름(place)은 누군가의 기지면 그 이름, 센터면 빈 문자열, 모르면 아예 없다.
+  clash: (c) => {
+    const where = c.who2 ? `${c.who2}의 기지에서 `
+      : str(c.p.place) === "mid" ? "센터에서 " : "";
+    const both = c.duel ? "둘의 병력이" : "양 팀 병력이";
+    return `${where}${both} ${done(c, c.pick([
+      "크게 부딪침", "정면으로 맞붙음", "한데 엉켜 크게 싸움", "가장 큰 싸움을 벌임",
     ]))}`;
   },
 

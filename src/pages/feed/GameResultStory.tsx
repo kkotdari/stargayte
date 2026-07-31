@@ -43,6 +43,8 @@ const DWELL_MAX_MS = 12000;
 const BEAT_MARK: Record<string, string> = {
   // 들이친 것.
   "raid-damage": "⚔️", "gang-rush": "⚔️", "duel-rush": "⚔️", breakthrough: "💥",
+  // 그 판 최대 교전 — 양쪽에서 화살표가 한 자리로 모인다.
+  clash: "💥",
   "zling-rush": "⚔️", "zealot-rush": "⚔️",
   // 남의 땅에 건물을 박는 기습은 병력 러시와 다른 이야기라 아이콘도 따로 준다(요청:
   // 몰래 배럭·포토러시·성큰러시 아이콘과 화살표를 잘 표시).
