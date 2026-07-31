@@ -102,25 +102,12 @@ export default function App() {
   // 않는다(요청: "페이지 상태 유지 기능 삭제 — 페이지 이동시 항상 초기상태로 로딩").
   const navigate = (next: ScreenKey) => setScreen(next);
 
-  /* 피드로 돌아오면 보던 자리로 되돌린다(요청) — 화면을 떠날 때 스크롤 위치를 적어 두고,
-     돌아온 다음 프레임에 그대로 옮긴다. 피드는 언마운트하지 않으므로 내용 높이는 그대로다.
-     훅은 반드시 조건부 return보다 위에 둔다 — 아래(로그인 뒤에만 지나가는 자리)에 두면
-     로그인 전후로 훅 개수가 달라져 리액트가 통째로 죽는다(실제로 그랬다: 로그인은 되는데
-     어떤 화면도 안 열림 / "Rendered more hooks than during the previous render"). */
-  const feedScrollRef = useRef(0);
-  useEffect(() => {
-    if (screen !== "feed") return;
-    const y = feedScrollRef.current;
-    if (y > 0) {
-      const raf = requestAnimationFrame(() => window.scrollTo({ top: y, behavior: "instant" }));
-      return () => {
-        cancelAnimationFrame(raf);
-        feedScrollRef.current = window.scrollY;
-      };
-    }
-    return () => { feedScrollRef.current = window.scrollY; };
-  }, [screen]);
-
+  /* (삭제) 피드로 돌아오면 보던 자리로 되돌리던 장치 — 요청으로 걷어냈다. 스크롤 위치를
+     기억해 뒀다가 돌아올 때 옮겨 놓는 방식이었는데, 실제로는 제자리를 못 찾는 일이 잦았다
+     (이 앱의 스크롤은 window가 아니라 #scroll-root에서 일어나고, 돌아온 시점에는 목록이
+     아직 다시 그려지는 중이라 높이도 그때그때 달랐다). 피드도 다른 화면과 똑같이 떠날 때
+     언마운트하고 돌아올 때 처음부터 새로 불러온다 — 어중간하게 기억하느니 늘 최신을
+     보여주는 편이 낫다(요청). */
 
   // 화면 컴포넌트발 이동 요청(스토어) — 피드의 랭크 변동 카드 "상세" 버튼이 통계 탭으로
   // 보낼 때 쓴다. 처리 후 비워 다음 요청을 받을 수 있게 한다.
@@ -281,14 +268,9 @@ export default function App() {
                 "페이지 상태 유지 기능 삭제 — 페이지 이동시 항상 초기상태로 로딩"). 접근
                 권한이 없는 화면(challenge/members 등)은 랭킹으로 대체되던
                 기존 동작과 같게, resolvedScreen으로 보여줄 화면만 고른다. */}
-            {/* 피드만은 화면을 떠나도 살려 둔다(요청: 다른 화면 갔다 돌아오면 보던 그대로).
-                목록·펼침·스냅 상태가 컴포넌트 안에 있어서, 언마운트하면 전부 처음으로
-                돌아가고 스크롤도 맨 위로 튄다. 다른 화면은 예전대로 매번 새로 만든다. */}
-            {!booting && (
-              <div hidden={resolvedScreen !== "feed"}>
-                <FeedScreen />
-              </div>
-            )}
+            {/* 피드도 다른 화면과 같다 — 떠나면 언마운트하고 돌아오면 처음부터 새로
+                불러온다(요청: 상태 저장이 잘 안 되니 그 기능은 취소하고 매번 새로). */}
+            {!booting && resolvedScreen === "feed" && <FeedScreen />}
             {!booting && resolvedScreen === "stats" && <StatsScreen />}
             {isAdmin && !booting && resolvedScreen === "members" && <MembersScreen />}
             {/* 운영자 전용 메뉴로 변경(요청) — 회원/이미지 설정과 같은 기준으로 운영자만 접근. */}
