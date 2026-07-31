@@ -110,6 +110,46 @@ export const SIGNATURE_UPGRADE_KO: Partial<Record<UpgradeName, string>> = {
   "Reaver Capacity": "리버 스캐럽 증설",
   "Scarab Damage": "스캐럽 공업",
   "Khaydarin Amulet": "템플러 에너지업",
+  // 아래는 '나오면 그 판의 방향이 보이는' 것들 — 옵저버 속업은 클로킹 싸움, 디파일러·
+  // 다크아콘 에너지업은 마법을 주력으로 쓰겠다는 선언이다(요청: 유의미한 업그레이드 진술).
+  "Gravitic Booster": "옵저버 속업",
+  "Sensor Array": "옵저버 시야업",
+  "Gravitic Thrusters": "스카웃 속업",
+  "Apial Sensors": "스카웃 시야업",
+  "Argus Talisman": "다크아콘 에너지업",
+  "Argus Jewel": "커세어 에너지업",
+  "Defiler Energy": "디파일러 에너지업",
+  "Khaydarin Core": "아비터 에너지업",
+  "Gamete Meiosis": "퀸 에너지업",
+  "Moebius Reactor": "고스트 에너지업",
+  "Ocular Implants": "고스트 시야업",
+  "Titan Reactor": "베슬 에너지업",
+  "Caduceus Reactor": "메딕 에너지업",
+  "Apollo Reactor": "레이스 에너지업",
+  "Colossus Reactor": "배틀크루저 에너지업",
+  Antennae: "오버로드 시야업",
+};
+
+/** 상징 업그레이드의 '이야깃거리 점수' — TECH_RANK와 같은 뜻이다(클수록 먼저 말한다).
+ *
+ *  속업·사업은 거의 필수라 그 자체로는 소식이 아니지만, 언제 찍었나가 곧 그 판의 빌드라
+ *  아주 낮게 두지는 않는다(요청: 발업·사정거리 같은 유의미한 업그레이드도 말해 달라).
+ *  반대로 캐리어 인터셉터 증설·울트라 속방업·에너지업처럼 후반에나 손대는 것들은 나왔다는
+ *  사실 자체가 그 경기의 그림이라 높게 둔다. 여기 없는 것은 기본 점수 0으로 친다. */
+export const UPGRADE_RANK: Partial<Record<UpgradeName, number>> = {
+  // 나오면 그 판의 그림이 보이는 것들.
+  "Carrier Capacity": 6, "Reaver Capacity": 6, "Chitinous Plating": 6,
+  "Anabolic Synthesis": 6, "Khaydarin Amulet": 6, "Argus Talisman": 6,
+  "Defiler Energy": 6, "Khaydarin Core": 6, "Adrenal Glands": 6,
+  // 그 판의 색을 정하는 것들.
+  "Ventral Sacs": 4, "Charon Boosters": 4, "Ion Thrusters": 4, "Gravitic Drive": 4,
+  "Gravitic Booster": 4, "Scarab Damage": 4, "Pneumatized Carapace": 4, "U-238 Shells": 4,
+  "Argus Jewel": 4, "Gamete Meiosis": 4, "Moebius Reactor": 4, "Titan Reactor": 4,
+  "Colossus Reactor": 4, "Apollo Reactor": 4, "Gravitic Thrusters": 4,
+  // 거의 필수라 '언제 찍었나'가 이야기의 전부인 것들.
+  "Metabolic Boost": 2, "Muscular Augments": 2, "Grooved Spines": 2,
+  "Singularity Charge": 2, "Leg Enhancement": 2, "Caduceus Reactor": 2,
+  "Sensor Array": 2, "Apial Sensors": 2, "Ocular Implants": 2, Antennae: 2,
 };
 
 /** 기술의 '이야깃거리 점수' — 클수록 요약에서 먼저 말한다.

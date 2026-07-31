@@ -1,7 +1,7 @@
 import type { ParsedReplay, ParsedReplayPlayer, ReplayPlayerSignals } from "./replayParser";
 import { pushersOn, scanTactics, producedFrames, windowPeak } from "./replayTactics";
 import {
-  hasUpgrade, topUsedTech, topUsedTechs, TECH_RANK, techUseCount, upgradeFrame, upgradeLevel,
+  hasUpgrade, topUsedTech, topUsedTechs, TECH_RANK, UPGRADE_RANK, techUseCount, upgradeFrame, upgradeLevel,
   ARMOR_WEAPON_PAIRS, SIGNATURE_UPGRADE_KO, UPGRADE_LINE_KO,
 } from "./replayTechNames";
 import {
@@ -246,6 +246,15 @@ const TECH_BEATS_PER_PLAYER = 2;
 const TECH_MIN_RANK = 4;
 /** 한 요약에 기술 문장은 이만큼까지 — 다채로우려고 넣은 것이 도배가 되면 안 된다. */
 const TECH_BEATS_PER_SUMMARY = 2;
+/** 상징 업그레이드 문장의 기본 무게 — 여기에 UPGRADE_RANK를 얹는다. 전술 문장은 저마다의
+ *  무게에 10을 더해 들어오므로(tacticBeats), 재료 문장을 그 아래에 두면 아무리 늘려도
+ *  자리를 못 얻는다 — 이야깃거리가 큰 업그레이드(랭크 4~6)가 전술과 겨룰 만한 자리에 오게
+ *  base를 맞춘다. 흔한 속업·사업(랭크 2)은 여전히 자리가 남을 때만 나온다. */
+const UPGRADE_BASE_WEIGHT = 11;
+/** 한 요약에 같은 갈래 문장을 이만큼까지 — 곁가지가 도배되면 정작 승부 이야기가 밀린다. */
+const PER_KEY_CAP: Record<string, number> = {
+  tech: TECH_BEATS_PER_SUMMARY, "upgrade-signature": 2, upgrade: 2,
+};
 
 /** 목표를 못 짚으면 뜻이 옅어지는 수들(요청) — 드랍은 '어디에 내렸나'가 그 수의 전부이고,
  *  병력을 뽑아 나갔다는 이야기는 '누구에게 갔나'가 없으면 생산 이야기와 다르지 않다.
@@ -1164,25 +1173,32 @@ function sideBeats(args: {
     if (best && best.w + best.a >= 4 && best.line) {
       beats.push({
         // 3-3 풀업은 그 판을 굳힌 사실이라 전술과 겨룰 만하고, 2-2쯤은 자리가 남을 때만.
-        k: "upgrade", won, who: who(p), weight: best.w >= 3 && best.a >= 3 ? 8 : 6,
+        // 3-3 풀업은 그 판을 굳힌 사실이라 넉넉히, 2-2쯤은 자리가 남을 때만 — 다만 예전
+        // 값(8/6)은 자리를 다투는 최소 무게에 걸려 2-2가 아예 안 나왔다.
+        k: "upgrade", won, who: who(p), weight: best.w >= 3 && best.a >= 3 ? 12 : 9,
         at: best.at,
         p: { line: best.line, w: best.w, a: best.a },
       });
     }
-    // (2) 상징 업그레이드 — 속업·사업처럼 이름만 대도 그림이 그려지는 것 하나.
-    //     여러 개면 가장 먼저 찍은 것을 고른다(그게 그 판의 방향을 정한 결정이다).
-    let sig: { key: string; at: number } | null = null;
-    for (const key of Object.keys(SIGNATURE_UPGRADE_KO)) {
-      const at = sg.firstUpgradeFrame[key];
-      if (at === undefined) continue;
-      if (!sig || at < sig.at) sig = { key, at };
-    }
-    if (sig) {
+    /* (2) 상징 업그레이드 — 속업·사업처럼 이름만 대도 그림이 그려지는 것들(요청: 발업·
+       사정거리 같은 유의미한 업그레이드 진술을 더해 달라).
+
+       예전엔 사람마다 '가장 먼저 찍은 것' 하나를 무게 6으로 넣었는데, 자리를 다투는 최소
+       무게가 8이라 단 한 번도 문장이 된 적이 없다(기술 문장과 똑같은 함정이었다). 이제
+       그 업그레이드의 이야깃거리 점수(UPGRADE_RANK)를 무게에 얹고, 사람마다 둘까지 —
+       '가장 이르게 찍은 것'과 '가장 이야깃거리인 것'을 함께 본다. 찍은 시각도 함께 실어
+       "5분 만에 저글링 속업"처럼 말할 수 있게 한다: 속업·사업은 다들 하므로 언제 했는지가
+       곧 그 판의 빌드다. */
+    const sigs = Object.keys(SIGNATURE_UPGRADE_KO)
+      .map((key) => ({ key, at: sg.firstUpgradeFrame[key], rank: UPGRADE_RANK[key as keyof typeof UPGRADE_RANK] ?? 0 }))
+      .filter((x): x is { key: string; at: number; rank: number } => x.at !== undefined);
+    const bySoon = [...sigs].sort((a, b) => a.at - b.at)[0];
+    const byRank = [...sigs].sort((a, b) => b.rank - a.rank || a.at - b.at)[0];
+    for (const sig of [bySoon, byRank].filter((x, i, arr) => x && arr.indexOf(x) === i)) {
       beats.push({
-        // MIN_WEIGHT(6)보다 낮으면 아예 못 뽑힌다 — 자리가 남을 때 들어가는 곁가지라
-        // 딱 그 문턱에 둔다.
-        k: "upgrade-signature", won, who: who(p), weight: 6,
-        at: sig.at, p: { upgrade: sig.key },
+        k: "upgrade-signature", won, who: who(p),
+        weight: UPGRADE_BASE_WEIGHT + sig.rank,
+        at: sig.at, p: { upgrade: sig.key, min: minutes(sig.at * SECONDS_PER_FRAME) },
       });
     }
   }
@@ -1476,8 +1492,13 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   // 경기 길이에 맞춘 자리 수(요청: 10분이면 서넛, 20분이면 일고여덟). 2분 30초에 한 문장
   // 꼴이다 — 10분 4, 20분 8, 30분 12. 아주 긴 경기도 열둘에서 멈춘다(그 이상은 읽는 사람이
   // 지친다). 아래 MIN_WEIGHT가 가벼운 사실을 막으므로 자리가 남아도 아무거나 채우지 않는다.
-  const SEC_PER_LINE = 150;
-  const baseBudget = Math.max(3, Math.min(sec >= LONG_GAME_SEC ? 12 : 10, Math.round(sec / SEC_PER_LINE)));
+  /* 자리를 조금 더 연다(요청: 유의미한 업그레이드·기술 진술을 더해 달라). 재료가 늘어도
+     자리가 그대로면 전부 제로섬이 되어, 새로 짚어낸 이야기(무슨 기술을 몇 번 썼나·발업을
+     몇 분에 찍었나)가 러시·교전 문장에 밀려 하나도 못 나온다 — 실제로 그랬다. 2분에 한
+     문장 꼴로 바꾸고 상한도 함께 올린다. 아래 MIN_WEIGHT와 갈래별 상한(PER_KEY_CAP)이
+     가벼운 사실로 자리를 채우는 것은 그대로 막는다. */
+  const SEC_PER_LINE = 120;
+  const baseBudget = Math.max(3, Math.min(sec >= LONG_GAME_SEC ? 15 : 12, Math.round(sec / SEC_PER_LINE)));
   // 자리가 남아도 아무거나 채우지 않는다(요청: 승부에 중요한 이벤트만) — 이 무게 아래는
   // "그래서 뭐" 소리가 나오는 사실들이라, 문단을 짧게 끝내는 편이 낫다.
   // 6 → 8(요청: 중요하지 않은 내용은 숫자 채우려고 넣지 말 것). 자리가 남아도 "그래서 뭐"
@@ -2412,8 +2433,8 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     if (b.weight < MIN_WEIGHT) return false;
     const sig = unitSig(b);
     if (sig && chosen.some((x) => unitSig(x) === sig)) return false;
-    if (b.k === "tech"
-      && chosen.filter((x) => x.k === "tech").length >= TECH_BEATS_PER_SUMMARY) return false;
+    const cap = PER_KEY_CAP[b.k];
+    if (cap !== undefined && chosen.filter((x) => x.k === b.k).length >= cap) return false;
     if (capped && taken[phaseOf(b)] >= perPhaseMax) return false;
     if (b.dedupeOn && chosen.some((x) => renderReplaySummary(
       { v: REPLAY_SUMMARY_VERSION, beats: [strip(x)] }, (raw) => raw,

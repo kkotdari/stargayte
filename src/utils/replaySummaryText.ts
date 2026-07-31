@@ -1052,8 +1052,17 @@ const TEMPLATES: Record<string, Tpl> = {
   "upgrade-signature": (c) => {
     const ko = SIGNATURE_UPGRADE_KO[str(c.p.upgrade) as keyof typeof SIGNATURE_UPGRADE_KO];
     if (!ko) return null;
+    /* 속업·사업은 다들 하므로 '언제' 했는지가 곧 그 판의 빌드다(요청) — 시각을 알면 그걸
+       앞세워 말한다. 이 값이 없는 옛 요약은 예전처럼 시각 없이 나간다. */
+    const m = num(c.p.min, 0);
+    if (m > 0) {
+      return `${ga(c.who)} ${done(c, c.pick([
+        `${m}분에 ${reul(ko)} 올림`, `${m}분 만에 ${reul(ko)} 마침`,
+        `${m}분에 ${ko}부터 챙김`, `${m}분에 ${ko}까지 올림`,
+      ]), true)}`;
+    }
     return `${ga(c.who)} ${done(c, c.pick([
-      `${reul(ko)} 서둘러 올림`, `${ko}을 먼저 챙김`, `${reul(ko)} 앞세움`,
+      `${reul(ko)} 서둘러 올림`, `${reul(ko)} 먼저 챙김`, `${reul(ko)} 앞세움`,
     ]), true)}`;
   },
 
