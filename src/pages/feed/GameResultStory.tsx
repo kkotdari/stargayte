@@ -75,6 +75,16 @@ const BEAT_MARK: Record<string, string> = {
   result: "🏆",
 };
 
+/** 집에서 한 일 — 병력이 나간 자리가 있어도 화살표를 긋지 않는다. 테크·경제·방어·이사처럼
+ *  '어디로 갔다'가 이야기의 뼈대가 아닌 것들이다. */
+const HOME_BEAT_KEYS = new Set([
+  "expand", "upgrade", "upgrade-signature", "tech", "fast-tech", "vision", "no-detect",
+  "greedy-build", "greedy-paid", "greedy-punished", "lodging", "relocate", "scatter",
+  "defense", "front-defense", "late-defense", "side-tank", "revival", "fallen", "gg",
+  "stand", "result", "standoff", "attrition", "fast-hands", "pro-like", "worker-gap",
+  "prod-gap", "long-run", "late-hold", "lift-off",
+]);
+
 /** 실제로 맵 가운데에서 벌어진 일 — 화살표를 센터로 보낸다(요청: 센터 내용은 실제 센터에). */
 const CENTER_BEAT_KEYS = new Set(["center", "center-photon"]);
 
@@ -464,6 +474,22 @@ export default function GameResultStory({
         const mate = (b.whom ?? []).find((v) => v !== raw && homeOf(v));
         return mate ? homeOf(mate) : ally;
       }
+      /* 그 사람이 그 무렵 실제로 병력을 보낸 자리(beat.pos) — 이제 이 값이 믿을 만하다.
+         명령마다 주인을 짚게 되면서(replayParser의 orderPositions.by) 일꾼이 자원 캐러 찍은
+         것과 건물이 랠리를 찍은 것을 빼고, 어택 지정만 따로 골라 쓰기 때문이다. 예전에는
+         이 좌표가 집 언저리 클릭에 끌려가 엉뚱한 곳을 가리켜 걷어냈던 자리인데(아래 옛
+         주석), 근거가 달라졌으므로 되살린다.
+
+         집에서 화살표를 그릴 만큼 떨어져 있을 때만 쓴다 — 그게 곧 '실제로 나갔다'는
+         증거다(요청: 유닛을 뽑기만 한 것에는 화살표 X, 확실히 공격 나갔을 때만). 그래서
+         공격 이야기가 아니어도(캐리어를 모았다·물량을 뽑았다) 병력이 실제로 나간 자리가
+         있으면 그리로 잇는다 — 지적: 대부분의 병력 운용이 타겟을 못 잡고 본진 아이콘으로
+         끝난다. 집에서 한 일(테크·경제·방어·이사)은 아래 표로 빼 둔다. */
+      const sent = HOME_BEAT_KEYS.has(b.k) ? undefined : b.pos?.[raw];
+      if (Array.isArray(sent) && sent.length === 2
+        && dist(home, [sent[0], sent[1]]) >= ARROW_MIN_TILES) {
+        return [sent[0], sent[1]];
+      }
       // 여기부터는 '실제로 병력을 몰고 나간' 이야기만 화살표를 받는다(지적: 가끔 내용과
       // 화살표가 반대다 — 공격을 당한 건데 간 것으로 나온다). 막아 냈다·무너졌다·일꾼이
       // 밀렸다 같은 문장에도 whom이 붙어 있어서, 그것을 목표로 삼으면 맞은 사람에서
@@ -471,9 +497,8 @@ export default function GameResultStory({
       if (!ATTACK_BEAT_KEYS.has(b.k) && b.k !== "breakthrough") return null;
       // 당한 사람의 본진 — 위에서 이미 골라 뒀다(자막이 지목한 상대가 먼저다).
       if (named) return named;
-      // 자막이 아무도 지목하지 않았으면 화살표를 긋지 않는다(지적: 지도에는 적진으로 이어진
-      // 화살표가 있는데 자막에는 타겟이 없다) — 가장 가까운 상대 쪽으로 어림해 긋던 자리다.
-      // 자리가 이미 분류돼 있거나(p.spot·p.xy) 당한 사람을 아는 경우는 위에서 처리했다.
+      // 그래도 모르면 화살표를 긋지 않는다(지적: 지도에는 적진으로 이어진 화살표가 있는데
+      // 자막에는 타겟이 없다) — 가장 가까운 상대 쪽으로 어림해 긋던 자리다.
       void foe;
       // 그 밖(유닛을 뽑았다·물량을 모았다·테크를 올렸다)은 화살표를 그리지 않는다(요청:
       // 유닛 생산에는 화살표 X, 실제로 확실히 공격 나갔을 때만 진출 화살표). 진출 느낌을
