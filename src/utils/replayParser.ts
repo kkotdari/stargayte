@@ -91,7 +91,16 @@ export interface ReplayPlayerSignals {
    *  따라가기 같은 나머지는 공격 장면의 근거로 삼기 애매해 그냥 비워 둔다(undefined). 옛
    *  screp 버전이 Order를 안 주면 역시 비워지고, 그 좌표는 여느 때처럼 '근처에 몰렸나'로만
    *  쓰인다 — kind가 있으면 그중에서도 '진짜 공격 명령'만 추려 더 정확히 짚을 수 있다. */
-  orderPositions: { frame: number; x: number; y: number; kind?: "attack" | "move" }[];
+  orderPositions: {
+    frame: number; x: number; y: number; kind?: "attack" | "move";
+    /** 그 명령을 받은 것이 시즈탱크였나(요청: 옆탱은 탱크를 옮긴 자리로 봐야 한다).
+     *
+     *  리플레이에는 '어떤 유닛에게 내린 명령'인지가 직접 안 적힌다. 대신 두 가지가 남는다:
+     *  선택(Select)에 실린 유닛 번호(UnitTags)와, 시즈/언시즈 커맨드. 시즈는 시즈탱크만
+     *  할 수 있으므로 '그 순간 선택돼 있던 번호들'은 곧 탱크의 번호다. 그렇게 알아낸 번호가
+     *  선택에 들어 있는 동안의 이동·공격 명령을 탱크의 것으로 표시한다. */
+    tank?: true;
+  }[];
   /** 연구한 테크(스톰/럴커 등)와 업그레이드 이름 — 순서대로.
    *
    *  이름은 replayTechNames.ts의 TECH_NAMES / UPGRADE_NAMES 그대로다. 업그레이드는 screp이
@@ -267,6 +276,12 @@ interface ScrepCmd {
   /** 표적 명령(Targeted Order)·우클릭이 실어 보내는 '무슨 명령인가' — 마법을 쓴 기록이
    *  여기 CastPsionicStorm 같은 이름으로 남는다(사용 판정의 근거). */
   Order?: { Name?: string } | string;
+  /** 선택 커맨드가 실어 보내는 유닛 번호들 — 시즈탱크를 가려내는 데 쓴다
+   *  (위 orderPositions.tank 주석). */
+  UnitTags?: number[];
+  /** 핫키 커맨드의 그룹 번호와 종류(Assign/Select). */
+  Group?: number | { Name?: string };
+  HotkeyType?: { Name?: string } | string;
   /** 채팅 커맨드의 본문(Type.Name === "Chat"). */
   Message?: string;
   /** "Leave Game" 커맨드의 사유(Quit / Defeat / Dropped …). 버전에 따라 열거형 객체다. */
@@ -417,6 +432,19 @@ function collectSignals(cmds: ScrepCmd[], totalFrames: number | null): Map<numbe
   };
   // 플레이어+연구 이름 → 마지막으로 기록한 프레임(연타 판정용).
   const lastResearchFrame = new Map<string, number>();
+  /* 시즈탱크의 유닛 번호를 알아내기 위한 장치(위 orderPositions.tank 주석).
+     · sel: 지금 그 사람이 골라 둔 유닛 번호들. 선택/추가/해제와 핫키로 갱신된다.
+     · groups: 핫키 그룹에 넣어 둔 번호들 — 핫키로 부르면 그게 곧 선택이 된다.
+     · tankTags: 시즈/언시즈를 누른 순간 골라져 있던 번호들 = 탱크.
+     · pending: 명령 하나하나가 '그때의 선택'을 기억해 둔다 — 탱크 번호는 첫 시즈 뒤에야
+       알 수 있어서, 다 훑은 뒤에 되돌아가 표시해야 그 앞의 이동도 놓치지 않는다. */
+  const sel = new Map<number, number[]>();
+  const groups = new Map<string, number[]>();
+  const tankTags = new Map<number, Set<number>>();
+  const pending: { pid: number; idx: number; tags: number[] }[] = [];
+  const tagsOf = (c: ScrepCmd): number[] => (
+    Array.isArray(c.UnitTags) ? c.UnitTags.filter((t) => typeof t === "number") : []
+  );
   for (const c of cmds) {
     const s = at(c.PlayerID);
     const frame = typeof c.Frame === "number" ? c.Frame : null;
@@ -463,6 +491,23 @@ function collectSignals(cmds: ScrepCmd[], totalFrames: number | null): Map<numbe
         }
       }
     }
+    // ── 무엇을 골라 두고 있나 — 탱크 번호를 알아내는 데 쓴다(위 pending 주석) ──
+    if (cmdName === "Select") sel.set(c.PlayerID, tagsOf(c));
+    else if (cmdName === "Select Add") sel.set(c.PlayerID, [...(sel.get(c.PlayerID) ?? []), ...tagsOf(c)]);
+    else if (cmdName === "Select Remove") {
+      const drop = new Set(tagsOf(c));
+      sel.set(c.PlayerID, (sel.get(c.PlayerID) ?? []).filter((t) => !drop.has(t)));
+    } else if (cmdName === "Hotkey") {
+      const key = `${c.PlayerID}:${typeof c.Group === "number" ? c.Group : nameOf(c.Group)}`;
+      const how = nameOf(c.HotkeyType);
+      if (how === "Assign") groups.set(key, [...(sel.get(c.PlayerID) ?? [])]);
+      else if (how === "Select") sel.set(c.PlayerID, [...(groups.get(key) ?? [])]);
+    } else if (cmdName === "Siege" || cmdName === "Unsiege") {
+      // 시즈는 시즈탱크만 한다 — 그때 골라져 있던 번호는 전부 탱크다.
+      let set = tankTags.get(c.PlayerID);
+      if (!set) { set = new Set(); tankTags.set(c.PlayerID, set); }
+      for (const t of sel.get(c.PlayerID) ?? []) set.add(t);
+    }
     // 이동·공격 명령의 좌표(위 orderPositions 주석). 우클릭이 이동·공격·수리를 다 겸하고,
     // 표적 명령은 어택땅·패트롤 같은 것들이다. 둘 다 좌표를 갖고 있다.
     if (cmdName === "Right Click" || cmdName === "Targeted Order") {
@@ -481,6 +526,10 @@ function collectSignals(cmds: ScrepCmd[], totalFrames: number | null): Map<numbe
         s.orderPositions.push({
           frame, x: pos.x / PIXELS_PER_TILE, y: pos.y / PIXELS_PER_TILE, ...(kind ? { kind } : {}),
         });
+        const picked = sel.get(c.PlayerID) ?? [];
+        if (picked.length > 0) {
+          pending.push({ pid: c.PlayerID, idx: s.orderPositions.length - 1, tags: [...picked] });
+        }
       }
     }
     if (cmdName === "Unload" || cmdName === "Unload All") {
@@ -521,6 +570,18 @@ function collectSignals(cmds: ScrepCmd[], totalFrames: number | null): Map<numbe
         && frame !== null && s.firstUpgradeFrame[upgrade] === undefined) {
         s.firstUpgradeFrame[upgrade] = frame;
       }
+    }
+  }
+  // 다 훑은 뒤에 탱크 명령을 표시한다 — 탱크 번호는 첫 시즈에서야 드러나므로, 그 앞에
+  // 내린 이동 명령까지 함께 짚으려면 되돌아와야 한다. 고른 것의 절반 이상이 탱크일 때만
+  // '탱크를 옮겼다'로 본다(탱크 한 기가 딸려 든 부대 이동은 탱크의 자리가 아니다).
+  for (const { pid, idx, tags } of pending) {
+    const set = tankTags.get(pid);
+    if (!set || set.size === 0) continue;
+    const hit = tags.reduce((n, t) => n + (set.has(t) ? 1 : 0), 0);
+    if (hit * 2 >= tags.length) {
+      const o = out.get(pid)?.orderPositions[idx];
+      if (o) o.tank = true;
     }
   }
   return out;

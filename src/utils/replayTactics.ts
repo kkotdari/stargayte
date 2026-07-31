@@ -993,14 +993,17 @@ function detectFor(c: Ctx): Tactic[] {
     // 내 기지에서 뽑은 탱크로 바로 옆에 붙은 상대를 잡아내는 것도 옆탱이다(지적).
     const sideFactory = inZone("ally", "Factory");
     const firstTank = firstU("Siege Tank (Tank Mode)") ?? firstU("Siege Tank (Siege Mode)");
-    /** 탱크를 세워 둔 자리 — '내 기지(또는 아군 기지) 안이면서 상대 쪽 가장자리'로 옮긴
-     *  시점. 리플레이에는 어떤 유닛에게 내린 명령인지가 안 남아서(좌표와 종류뿐), 탱크가
-     *  나온 뒤의 이동 명령 가운데 그 자리에 몰린 것을 탱크의 자리로 읽는다 — 탱크는 한 번
-     *  자리를 잡으면 거기 눌러앉으므로 같은 자리에 명령이 여러 번 찍힌다. */
+    /** 탱크를 세워 둔 자리 — '내 기지(또는 아군 기지) 안이면서 상대 쪽 가장자리'로 탱크를
+     *  옮긴 시점(요청: 옆탱은 탱크를 이동시킨 위치 기준이다).
+     *
+     *  어떤 유닛에게 내린 명령인지는 파서가 짚어 준다(replayParser의 orderPositions.tank) —
+     *  시즈/언시즈를 누른 순간 골라져 있던 유닛 번호가 곧 탱크라서, 그 번호를 고른 채 내린
+     *  이동 명령만 추린다. 탱크는 한 번 자리를 잡으면 눌러앉으므로 같은 자리에 여러 번
+     *  찍힌다 — 그만큼 몰렸을 때만 '세워 뒀다'고 말한다. */
     const tankPark = (() => {
-      if (!geo || firstTank === null || tanks < SIDE_TANK_MIN) return null;
+      if (!geo || tanks < SIDE_TANK_MIN) return null;
       const parked = (s.orderPositions ?? [])
-        .filter((o) => o.frame >= firstTank && o.kind !== "attack")
+        .filter((o) => o.tank === true)
         .filter((o) => {
           const sp = geo.spot(o);
           return sp === "myFront" || sp === "allyFront";
