@@ -1974,6 +1974,18 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
       return { ...b, p: rest };
     });
 
+  // 고급 유닛을 뽑았다는 것만으로는 무게를 다 주지 않는다(요청: 실제 타겟이 있는 공격·
+  // 전투로 이어져야 한다) — 캐리어·가디언·배틀크루저처럼 '무엇을 뽑았다'로 끝나는 이야기가
+  // 러시·돌파보다 앞자리를 먹고 있었다. 상대를 짚지 못한(whom이 없는) 생산담만 낮춘다.
+  const FANCY_UNIT_KEYS = new Set([
+    "carrier", "guardian", "bc", "valkyrie", "muta", "power-unit", "arbiter", "ultra",
+  ]);
+  for (let i = 0; i < pool.length; i += 1) {
+    const b = pool[i];
+    if (!FANCY_UNIT_KEYS.has(b.k) || (b.whom ?? []).length > 0) continue;
+    pool[i] = { ...b, weight: Math.max(1, b.weight - FANCY_UNIT_PENALTY) };
+  }
+
   // 이미 무너진 사람의 활약담은 말하지 않는다(지적: 해골이 붙었는데 "병력을 뽑았다"가
   // 나온다) — 생산이 끊긴 뒤의 이야기는 그림과 앞뒤가 안 맞는다. 무너짐 자체를 말하는
   // 문장(궤멸·GG·맺음·부활·이사)은 당연히 남긴다.
@@ -2257,6 +2269,10 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
 /** 이사 문장의 무게 — 본진을 버리고 다시 편 것은 승부를 가르는 사건이라 무겁게 잡는다.
  *  다만 러시·돌파 같은 '그 경기만의 수'보다는 한 단계 아래다. */
 const RELOCATE_WEIGHT = 18;
+
+/** 상대를 짚지 못한 고급 유닛 생산담에서 덜어 내는 무게 — 이만큼 빼면 러시·돌파·이사
+ *  같은 '실제로 부딪친 이야기'가 먼저 자리를 잡는다. */
+const FANCY_UNIT_PENALTY = 5;
 
 /** 무너진 뒤라도 이만큼(프레임 ≒ 1분)까지는 그 무렵의 이야기로 본다 — 무너지는 순간에
  *  걸쳐 있던 일을 통째로 잘라 내면 왜 무너졌는지가 사라진다. */

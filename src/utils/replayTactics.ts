@@ -287,6 +287,10 @@ const PEACE_UNITS = new Set([
 // 아군 기지에 이만큼은 깔아 줘야 '받쳐줬다'고 말할 수 있다 — 한 개는 지나가다 지은 것일 수 있다.
 const ALLY_CANNON_MIN = 2;
 
+/** 자리만으로 옆탱을 말하려면 탱크가 이만큼은 있어야 한다 — 팩토리를 입구 쪽에 둔 것만으로는
+ *  옆탱이 아니다(테란이 흔히 그렇게 짓는다). */
+const SIDE_TANK_MIN = 5;
+
 // 성큰러시·포토러시·몰래 배럭은 '자리를 보고서야 알 수 있는' 기습이라, 그 경기에서만
 // 있었던 일 중에서도 특히 이야깃거리다(요청: 무게감을 올려 달라). 자리가 모자랄 때
 // 일반적인 사실보다 먼저 남도록 무게를 따로 잡아 둔다.
@@ -991,6 +995,13 @@ function detectFor(c: Ctx): Tactic[] {
       out.push({
         key: "side-tank", weight: 11, at: firstOf(sideFactory), who,
         ...(helped ? { who2: helped } : {}), p: { at: "ally" },
+      });
+    } else if (atFront("Factory").length > 0 && tanks >= SIDE_TANK_MIN) {
+      // 자리로도 잡는다(요청) — 내 기지 안이면서 상대 쪽 가장자리에 올린 팩토리가 곧
+      // 옆탱이다. 다만 테란은 팩토리를 입구 쪽에 두는 일이 흔해, 탱크를 실제로 줄줄이
+      // 뽑았을 때만 '옆탱을 박았다'고 말한다.
+      out.push({
+        key: "side-tank", weight: 11, at: firstOf(atFront("Factory")), who, p: { at: "front" },
       });
     } else if (neighbor && tanks >= 3 && firstTank !== null && neighbor.fellAt > firstTank) {
       // 탱크가 실제로 무엇을 잡았는지는 리플레이에 없다. 확실한 건 '옆에 붙은 상대가
