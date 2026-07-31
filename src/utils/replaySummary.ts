@@ -221,6 +221,12 @@ const ATTACK_ZONE_RES_TILES = 6;
    공격이라 부르지 않게 몇 번은 찍혔어야 한다고 둔다. */
 const HIT_WINDOW_SEC = 60;
 const HIT_MIN = 3;
+/** 상대 진영으로 볼 반경 — 그 사람 시작 지점에서 가장 가까운 다른 시작 지점까지 거리의
+ *  이만큼. 절대 타일 수로 두면 맵 크기마다 뜻이 달라진다. */
+const STRIKE_ZONE_RATIO = 0.34;
+/** 그 창 안의 명령을 본다 — 태그로 찍은 기록보다 근거가 옅은 대신, 러시가 붙었다 떨어지는
+ *  한 호흡을 넉넉히 담는다. */
+const STRIKE_ZONE_WINDOW_SEC = 90;
 
 /** 목표를 못 짚으면 뜻이 옅어지는 수들(요청) — 드랍은 '어디에 내렸나'가 그 수의 전부이고,
  *  병력을 뽑아 나갔다는 이야기는 '누구에게 갔나'가 없으면 생산 이야기와 다르지 않다.
@@ -1612,6 +1618,56 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     return { whom: best[0], xy: [spot.x, spot.y] };
   };
 
+  /* 상대의 유닛을 직접 찍은 기록이 없을 때 쓰는 두 번째 근거 — 그 무렵의 '공격 명령'이
+     누구의 진영 안에 떨어졌나다. 어택 지정은 그 자리를 때리라는 뜻이고, 남의 진영 안에
+     여러 번 몰렸다면 그건 그 사람을 친 것이다.
+
+     태그 기록(hits)만큼 확실하지는 않다 — 빈 땅에 어택땅을 찍고 지나가기도 하니까. 그래서
+     ①진짜 공격 명령만 보고 ②일꾼·건물이 낸 것은 빼고 ③한 진영에 여러 번 몰렸을 때만 쓴다.
+     자리는 그 시점에 가장 가까운 명령 하나를 그대로 쓴다(여러 곳의 평균은 빈 땅이 된다). */
+  const zoneRadius = (() => {
+    const homes = replay.players
+      .filter((p) => p.startX !== null && p.startY !== null)
+      .map((p) => ({ raw: p.rawName, x: p.startX as number, y: p.startY as number }));
+    return (raw: string): { x: number; y: number; r: number } | null => {
+      const h = homes.find((x) => x.raw === raw);
+      if (!h) return null;
+      const others = homes.filter((x) => x.raw !== raw)
+        .map((x) => Math.hypot(x.x - h.x, x.y - h.y));
+      if (others.length === 0) return null;
+      return { x: h.x, y: h.y, r: Math.min(...others) * STRIKE_ZONE_RATIO };
+    };
+  })();
+
+  const struckZone = (
+    who: string, at: number | null,
+    side: ParsedReplayPlayer[], foes: ParsedReplayPlayer[],
+  ): { whom: string; xy: [number, number] } | null => {
+    if (at === null) return null;
+    const me = side.find((p) => p.rawName === who);
+    // 이동 명령도 함께 본다 — 남의 본진 안으로 병력을 '옮기는' 것과 '때리는' 것은 실제로
+    // 같은 장면이다(들어가면서 무브로 끌고 가는 일이 흔하다). 반경 안이라는 조건이 이미
+    // 세서, 지나가다 한 번 찍은 것은 HIT_MIN에 걸려 걸러진다.
+    const near = (me?.signals?.orderPositions ?? []).filter(
+      (o) => (o.kind === "attack" || o.kind === "move")
+        && o.by !== "Worker" && o.by !== "Building"
+        && Math.abs(o.frame - at) * SECONDS_PER_FRAME <= STRIKE_ZONE_WINDOW_SEC,
+    );
+    if (near.length < HIT_MIN) return null;
+    let best: { whom: string; n: number; o: { frame: number; x: number; y: number } } | null = null;
+    for (const f of foes) {
+      const z = zoneRadius(f.rawName);
+      if (!z || !(z.r > 0)) continue;
+      const inside = near.filter((o) => Math.hypot(o.x - z.x, o.y - z.y) <= z.r);
+      if (inside.length < HIT_MIN) continue;
+      if (!best || inside.length > best.n) {
+        const o = inside.sort((a, b) => Math.abs(a.frame - at) - Math.abs(b.frame - at))[0];
+        best = { whom: f.rawName, n: inside.length, o };
+      }
+    }
+    return best ? { whom: best.whom, xy: [best.o.x, best.o.y] } : null;
+  };
+
   /** 들이친 이야기인데 '누구를' 또는 '어디를'이 비어 있으면 그 자리를 실제 타격으로 채운다.
    *  이미 들어 있는 값은 건드리지 않는다 — 건물 자리·마법 좌표가 더 정확하다.
    *
@@ -1619,13 +1675,14 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
    *  드랍이나 병력 뽑아 진출한 이야기는 뜻이 옅다) — 어디에 내렸는지 모르는 드랍은 그냥
    *  셔틀을 띄운 것이고, 누구에게 갔는지 모르는 진출은 생산 이야기일 뿐이다. 지우지는
    *  않는다: 다른 할 이야기가 없는 조용한 경기에서는 그것도 그날의 장면이다. */
-  const withStrike = (b: Beat, mine: ParsedReplayPlayer[]): Beat => {
+  const withStrike = (b: Beat, mine: ParsedReplayPlayer[], foes: ParsedReplayPlayer[]): Beat => {
     if (!ATTACK_BEAT_KEYS.has(b.k)) return b;
     const hasWhom = (b.whom?.length ?? 0) > 0;
     // 건물 자리로 이미 '어디였나'를 말한 beat(포토러시·성큰러시·몰래배럭)는 그대로 둔다 —
     // 그 자리가 곧 그 수 자체이고, 같은 무렵의 다른 교전 좌표를 얹으면 오히려 어긋난다.
     const hasXy = Array.isArray(b.p?.xy) || typeof b.p?.spot === "string";
-    const s = hasWhom && hasXy ? null : struckAt(b.who[0], b.at ?? null, mine);
+    const s = hasWhom && hasXy ? null
+      : struckAt(b.who[0], b.at ?? null, mine) ?? struckZone(b.who[0], b.at ?? null, mine, foes);
     const out = s
       ? {
         ...b,
@@ -1739,7 +1796,7 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
           ...(t.who2 ? { who2: [t.who2] } : {}),
         } as Beat;
       })
-      .map((b) => withStrike(b, mine));
+      .map((b) => withStrike(b, mine, foes));
   };
 
   // "유비의 바이오닉 한 방으로 관우의 저글링 성큰을 뚫음" — 이긴 편의 주력이 진 편의 누구를
