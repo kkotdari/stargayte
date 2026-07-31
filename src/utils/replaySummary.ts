@@ -1,7 +1,7 @@
 import type { ParsedReplay, ParsedReplayPlayer, ReplayPlayerSignals } from "./replayParser";
 import { pushersOn, scanTactics, producedFrames, windowPeak } from "./replayTactics";
 import {
-  hasUpgrade, topUsedTech, topUsedTechs, TECH_RANK, UPGRADE_RANK, techUseCount, upgradeFrame, upgradeLevel,
+  hasUpgrade, topUsedTech, topUsedTechs, TECH_RANK, UPGRADE_RANK, UNIT_UPGRADE_TAG, techUseCount, upgradeFrame, upgradeLevel,
   ARMOR_WEAPON_PAIRS, SIGNATURE_UPGRADE_KO, UPGRADE_LINE_KO,
 } from "./replayTechNames";
 import {
@@ -2326,6 +2326,43 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
       const { def: _def, defN: _defN, panic: _panic, ...rest } = b.p ?? {};
       return { ...b, p: rest };
     });
+
+  /* 업그레이드는 그 유닛이 나오는 문장에 딱지로 붙인다(요청) — "속업 저글링", "사업
+     히드라"처럼 스타에서 실제로 쓰는 말이고, 한 문장을 따로 세우는 것보다 짧으면서 그
+     병력이 어떤 물건이었는지가 한눈에 읽힌다. 그 사람이 그 문장의 시점 이전에 실제로 찍은
+     것만 붙인다 — 20분에 찍은 속업을 5분 러시에 붙이면 거짓말이다. 여럿이면 이야깃거리가
+     큰 쪽(UPGRADE_RANK)을 고른다. */
+  /* 그 유닛이 '내 병력'인 문장에만 붙인다 — 방어·돌파·탐지 문장의 유닛은 상대 것이라
+     내 업그레이드를 얹으면 딴 사람 물건에 딱지를 다는 셈이 된다. */
+  const UP_FOLD_KEYS = new Set([
+    "power-unit", "fast-tech", "long-run", "stand", "solo", "vision",
+  ]);
+  const foldedUpgrades = new Set<string>();
+  for (let i = 0; i < pool.length; i += 1) {
+    const b = pool[i];
+    if (!UP_FOLD_KEYS.has(b.k)) continue;
+    // p.unit이 있는 문장만 본다 — 그 값을 쓰는 템플릿만 딱지를 실제로 보여주기 때문이다.
+    // 안 보여주는 문장에까지 '붙었다'고 쳐 버리면 따로 세운 업그레이드 문장까지 지워져
+    // 그 사실이 통째로 사라진다(실측: 캐리어 인터셉터 증설이 그렇게 없어졌다).
+    const unit = typeof b.p?.unit === "string" ? b.p.unit : undefined;
+    if (!unit || b.p?.up !== undefined) continue;
+    const sg = replay.players.find((p) => p.rawName === b.who[0])?.signals;
+    if (!sg) continue;
+    const best = (Object.entries(UNIT_UPGRADE_TAG) as [string, { unit: string; tag: string }][])
+      .filter(([key, v]) => v.unit === unit && sg.firstUpgradeFrame[key] !== undefined
+        && (b.at === null || b.at === undefined || sg.firstUpgradeFrame[key] <= b.at))
+      .sort((x, y) => (UPGRADE_RANK[y[0] as keyof typeof UPGRADE_RANK] ?? 0)
+        - (UPGRADE_RANK[x[0] as keyof typeof UPGRADE_RANK] ?? 0))[0];
+    if (!best) continue;
+    pool[i] = { ...b, p: { ...(b.p ?? {}), up: best[1].tag } };
+    foldedUpgrades.add(`${b.who[0]}|${best[0]}`);
+  }
+  // 유닛 문장에 이미 붙은 업그레이드는 따로 한 문장을 더 쓰지 않는다 — 같은 사실이 두 번이다.
+  for (let i = pool.length - 1; i >= 0; i -= 1) {
+    const b = pool[i];
+    if (b.k !== "upgrade-signature") continue;
+    if (foldedUpgrades.has(`${b.who[0]}|${String(b.p?.upgrade ?? "")}`)) pool.splice(i, 1);
+  }
 
   // 고급 유닛을 뽑았다는 것만으로는 무게를 다 주지 않는다(요청: 실제 타겟이 있는 공격·
   // 전투로 이어져야 한다) — 캐리어·가디언·배틀크루저처럼 '무엇을 뽑았다'로 끝나는 이야기가

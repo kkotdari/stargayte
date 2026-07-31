@@ -520,6 +520,16 @@ const done = (c: Ctx, action: string, risky = false): string => {
 };
 
 /** 한 일만 말하는 흔한 꼴 — 이긴 쪽/진 쪽 모두 같은 표현을 쓰고, 진 쪽에만 결과를 덧붙인다. */
+/** 유닛 이름 앞에 업그레이드 딱지를 붙인다 — "속업 저글링", "사업 히드라"(요청: 업그레이드는
+ *  그 유닛이 나올 때 같이 덧붙여도 된다). 딱지는 replaySummary가 p.up에 실어 주고, 그
+ *  사람이 그 문장의 시점 이전에 실제로 찍은 것만 온다. 없으면 유닛 이름 그대로다. */
+function unitWithUp(c: Ctx, key?: unknown): string {
+  const ko = UNIT_KO[str(key === undefined ? c.p.unit : key)];
+  if (!ko) return "";
+  const up = str(c.p.up);
+  return up ? `${up} ${ko}` : ko;
+}
+
 const act = (actions: string[]): Tpl => (c) => `${ga(c.who)} ${done(c, c.pick(actions))}`;
 
 /** 건물을 지은 자리 이름(replayTactics의 BuildSpot) → 문장에 붙일 우리말. 뒤에 전술 이름이
@@ -953,7 +963,7 @@ const TEMPLATES: Record<string, Tpl> = {
     const mode = str(c.p.mode);
     const phrase = unitPhrase(list(c.p.units));
     if (mode === "spectacle") {
-      const u = UNIT_KO[str(c.p.unit)];
+      const u = unitWithUp(c);
       if (!u) return null;
       // 몇 기까지 갔는지가 곧 그림이다(요청) — 한 부대면 그렇게 말한다.
       const n = num(c.p.n);
@@ -1180,7 +1190,7 @@ const TEMPLATES: Record<string, Tpl> = {
   // 그 유닛이 맺음말이나 진 편 문장에 또 나와도 괜찮다(요청). 다만 여기서 말하는 건
   // 언제부터 언제까지 계속 뽑았나까지다 — 그게 살아남아 싸웠는지는 리플레이에 없다.
   "long-run": (c) => {
-    const unit = UNIT_KO[str(c.p.unit)];
+    const unit = unitWithUp(c);
     if (!unit) return null;
     const from = num(c.p.from);
     const to = num(c.p.to);
@@ -1605,7 +1615,7 @@ const TEMPLATES: Record<string, Tpl> = {
 
   // 시야(요청) — 오버로드·옵저버를 뿌려 판을 읽는 플레이.
   vision: (c) => {
-    const u = UNIT_KO[str(c.p.unit)];
+    const u = unitWithUp(c);
     if (!u) return null;
     return `${ga(c.who)} ${done(c, c.pick([
       `${reul(u)} 곳곳에 뿌려 전황을 파악함`,
@@ -1688,7 +1698,7 @@ const TEMPLATES: Record<string, Tpl> = {
 
   // 패스트 OO(요청) — 보통 나오는 때보다 이르게 뽑아 상대가 준비하기 전에 들이대는 수.
   "fast-tech": (c) => {
-    const unit = UNIT_KO[str(c.p.unit)] ?? "";
+    const unit = unitWithUp(c);
     if (!unit) return null;
     const m = num(c.p.min);
     const when = m > 0 ? `${m}분 만에 ` : "";
@@ -1702,7 +1712,7 @@ const TEMPLATES: Record<string, Tpl> = {
   },
   // 파워 OO(요청) — 한 유닛만 압도적으로 뽑아 그 물량으로 밀어붙이는 그림.
   "power-unit": (c) => {
-    const unit = UNIT_KO[str(c.p.unit)] ?? "";
+    const unit = unitWithUp(c);
     if (!unit) return null;
     const n = num(c.p.n);
     // 이 수는 그 순간의 병력이 아니라 경기 내내 뽑은 총량이다 — 그렇게 말해야 정확하다(지적).

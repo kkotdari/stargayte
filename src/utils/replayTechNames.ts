@@ -130,6 +130,43 @@ export const SIGNATURE_UPGRADE_KO: Partial<Record<UpgradeName, string>> = {
   Antennae: "오버로드 시야업",
 };
 
+/** 그 업그레이드가 꾸미는 유닛과, 유닛 이름 앞에 붙일 딱지(요청: 업그레이드는 그 유닛이
+ *  나올 때 같이 덧붙여도 된다).
+ *
+ *  스타에서 실제로 쓰는 말이 그렇다 — "속업 저글링", "사업 히드라", "발업 질럿". 따로 한
+ *  문장을 세우는 것보다 이렇게 붙이는 편이 짧고, 자리도 아끼고, 무엇보다 그 병력이 어떤
+ *  물건이었는지가 한눈에 읽힌다. 유닛 이름은 screp의 영문명이다. */
+export const UNIT_UPGRADE_TAG: Partial<Record<UpgradeName, { unit: string; tag: string }>> = {
+  "Metabolic Boost": { unit: "Zergling", tag: "속업" },
+  "Adrenal Glands": { unit: "Zergling", tag: "아드레날린" },
+  "Muscular Augments": { unit: "Hydralisk", tag: "속업" },
+  "Grooved Spines": { unit: "Hydralisk", tag: "사업" },
+  "Chitinous Plating": { unit: "Ultralisk", tag: "방업" },
+  "Anabolic Synthesis": { unit: "Ultralisk", tag: "속업" },
+  "Pneumatized Carapace": { unit: "Overlord", tag: "속업" },
+  "Ventral Sacs": { unit: "Overlord", tag: "수송업" },
+  "Defiler Energy": { unit: "Defiler", tag: "에너지업" },
+  "Gamete Meiosis": { unit: "Queen", tag: "에너지업" },
+  "U-238 Shells": { unit: "Marine", tag: "사업" },
+  "Ion Thrusters": { unit: "Vulture", tag: "속업" },
+  "Charon Boosters": { unit: "Goliath", tag: "사업" },
+  "Moebius Reactor": { unit: "Ghost", tag: "에너지업" },
+  "Titan Reactor": { unit: "Science Vessel", tag: "에너지업" },
+  "Apollo Reactor": { unit: "Wraith", tag: "에너지업" },
+  "Colossus Reactor": { unit: "Battlecruiser", tag: "에너지업" },
+  "Singularity Charge": { unit: "Dragoon", tag: "사업" },
+  "Leg Enhancement": { unit: "Zealot", tag: "속업" },
+  "Gravitic Drive": { unit: "Shuttle", tag: "속업" },
+  "Carrier Capacity": { unit: "Carrier", tag: "인터셉터 증설" },
+  "Reaver Capacity": { unit: "Reaver", tag: "스캐럽 증설" },
+  "Khaydarin Amulet": { unit: "High Templar", tag: "에너지업" },
+  "Khaydarin Core": { unit: "Arbiter", tag: "에너지업" },
+  "Argus Talisman": { unit: "Dark Archon", tag: "에너지업" },
+  "Argus Jewel": { unit: "Corsair", tag: "에너지업" },
+  "Gravitic Booster": { unit: "Observer", tag: "속업" },
+  "Gravitic Thrusters": { unit: "Scout", tag: "속업" },
+};
+
 /** 상징 업그레이드의 '이야깃거리 점수' — TECH_RANK와 같은 뜻이다(클수록 먼저 말한다).
  *
  *  속업·사업은 거의 필수라 그 자체로는 소식이 아니지만, 언제 찍었나가 곧 그 판의 빌드라
