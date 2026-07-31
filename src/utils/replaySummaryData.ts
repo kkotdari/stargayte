@@ -33,7 +33,7 @@ export interface ReplaySummaryBeat {
   /** 일어난 프레임 — 이야기를 시간순으로 늘어놓는 데만 쓴다. */
   at?: number | null;
   /** 틀에 꽂히는 값들. 유닛/건물/테크는 screp 영문 키, 나머지는 숫자/불리언. */
-  p?: Record<string, string | number | boolean | string[]>;
+  p?: Record<string, string | number | boolean | string[] | number[]>;
   /** 원본 게임 아이디 → 그 무렵 그 사람이 병력을 보낸 자리(타일 좌표). 미니맵 스냅에
    *  아바타를 놓는 데 쓴다(요청). 근거는 이동·공격 명령 좌표뿐이라 '있던 곳'이 아니라
    *  '보낸 곳'이고, 명령이 몇 개 안 찍힌 사람은 아예 빠진다(replaySummary의 beatPositions).

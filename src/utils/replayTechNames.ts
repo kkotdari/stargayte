@@ -286,3 +286,47 @@ export const TECH_USE_PHRASE: Partial<Record<TechName, string>> = {
   "Cloaking Field": "레이스를 {n}번 숨김",
   "Stim Packs": "스팀팩을 {n}번 씀",
 };
+
+/** 그 마법을 쓸 수 있는 유닛 — 마법 하나는 대개 한 유닛만 쓴다. 명령을 내린 순간 골라져
+ *  있던 유닛 번호에 이 이름을 붙여 두면, 그 뒤(그리고 그 앞)의 이동·공격 명령이 '누구를
+ *  움직인 것'인지 알 수 있다(replayParser의 orderPositions.by).
+ *  두 유닛이 함께 쓰는 것(클로킹=고스트·레이스 등)은 여기 넣지 않는다 — 틀리게 짚느니
+ *  모른 채로 두는 편이 낫다. */
+export const CAST_ORDER_TO_UNIT: Record<string, string> = {
+  CastPsionicStorm: "High Templar",
+  CastHallucination: "High Templar",
+  CastLockdown: "Ghost",
+  CastEMPShockwave: "Science Vessel",
+  CastIrradiate: "Science Vessel",
+  CastDefensiveMatrix: "Science Vessel",
+  FireYamatoGun: "Battlecruiser",
+  CastRestoration: "Medic",
+  CastOpticalFlare: "Medic",
+  MedicHeal: "Medic",
+  CastDarkSwarm: "Defiler",
+  CastPlague: "Defiler",
+  CastConsume: "Defiler",
+  CastEnsnare: "Queen",
+  CastParasite: "Queen",
+  CastSpawnBroodlings: "Queen",
+  CastInfestation: "Queen",
+  CastRecall: "Arbiter",
+  CastStasisField: "Arbiter",
+  CastDisruptionWeb: "Corsair",
+  CastMindControl: "Dark Archon",
+  CastFeedback: "Dark Archon",
+  CastMaelstrom: "Dark Archon",
+};
+
+/** 전용 커맨드가 곧 유닛을 알려 주는 것들 — 시즈는 시즈탱크만, 스팀은 마린·파이어뱃만
+ *  한다. 파이어뱃까지 함께 묶이는 자리는 '바이오닉'이라는 한 이름으로 둔다. */
+export const USE_CMD_TO_UNIT: Record<string, string> = {
+  Siege: "Siege Tank",
+  Unsiege: "Siege Tank",
+  Stim: "Bionic",
+  "Train Fighter": "Carrier",
+  "Merge Archon": "High Templar",
+  "Merge Dark Archon": "Dark Templar",
+  "Unload All": "Transport",
+  Unload: "Transport",
+};

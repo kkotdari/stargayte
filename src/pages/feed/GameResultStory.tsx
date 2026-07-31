@@ -424,6 +424,12 @@ export default function GameResultStory({
       if (!home) return null;
       const foe = nearestFoe(raw);
       const ally = nearestAlly(raw);
+      // 마법을 쓴 자리는 리플레이에 좌표가 그대로 적혀 있다(리콜·마인드컨트롤 등) — 어림한
+      // 어떤 값보다 정확하므로 가장 먼저 쓴다(지적: 리콜 화살표가 자기 기지를 가리킨다).
+      const xy = b.p?.xy;
+      if (Array.isArray(xy) && xy.length === 2 && typeof xy[0] === "number" && typeof xy[1] === "number") {
+        return [xy[0], xy[1]];
+      }
       // 센터에서 벌어진 일은 맵 가운데로(요청) — 건물 자리 분류보다 이 판정이 확실하다.
       if (CENTER_BEAT_KEYS.has(b.k)) return center;
       /** 자막이 지목한 상대 — 그 사람 집이 곧 목표다. 8인용 맵에서는 '상대 진영'이 여럿이라

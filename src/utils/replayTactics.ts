@@ -38,7 +38,9 @@ export interface Tactic {
   /** 덕을 본 아군 — 옆탱처럼 '누구 기지에서 했나'가 곧 전술의 뜻인 경우만. */
   who2?: string;
   /** 문장 틀에 꽂히는 값(드론 수·게이트 수 등). 없으면 생략. */
-  p?: Record<string, string | number | boolean>;
+  /** 문장 틀에 꽂히는 값(드론 수·게이트 수 등)과, 마법 좌표처럼 그림이 쓰는 값(xy).
+   *  없으면 생략. */
+  p?: Record<string, string | number | boolean | number[]>;
 }
 
 
@@ -685,6 +687,16 @@ function detectFor(c: Ctx): Tactic[] {
   /** 드랍은 수송선을 뽑은 것만으로는 알 수 없다 — 실제로 내린 커맨드가 있어야 드랍이다. */
   const dropped = s.unloadCount >= 2;
   /** 그 구역에 지은 건물들(좌표를 못 읽으면 항상 빈 배열). */
+  /** 그 마법을 실제로 쓴 첫 지점 — 리플레이에 그대로 적힌 좌표라, 명령 뭉치를 어림하는
+   *  것과 비교가 안 되게 정확하다(요청: 유닛 특정 로직을 다른 기술로 넓히면 요약이 정확해
+   *  진다). 쓴 적이 없으면 null. */
+  const castAt = (tech: string): { frame: number; xy: [number, number] } | null => {
+    const hit = (s.castPositions ?? [])
+      .filter((c) => c.tech === tech)
+      .sort((a, b) => a.frame - b.frame)[0];
+    return hit ? { frame: hit.frame, xy: [hit.x, hit.y] } : null;
+  };
+
   /** 그 건물들이 지어진 '자리 이름' — 여럿이면 가장 많이 나온 이름을 쓴다(요청: 내 입구/
    *  기지, 아군 입구/기지, 상대 입구 앞, 상대 본진, 센터를 다 파악해야 한다). 자리를 못
    *  가리면 아무 값도 안 남긴다(문장이 자리를 말하지 않는다). */
@@ -788,6 +800,7 @@ function detectFor(c: Ctx): Tactic[] {
   if (foreign.length > 0) {
     out.push({
       key: "mind-control", weight: 16,
+      ...(castAt("Mind Control") ? { p: { xy: castAt("Mind Control")!.xy } } : {}),
       at: firstU([...WORKER_OF].find(([, r]) => r === foreign[0])?.[0] ?? "") ?? null,
       who, p: { race: foreign[0] },
     });
@@ -934,6 +947,7 @@ function detectFor(c: Ctx): Tactic[] {
     if (u("Infested Terran") >= 1) {
       out.push({
         key: "infested", ...target, weight: 16,
+        ...(castAt("Infestation") ? { p: { xy: castAt("Infestation")!.xy } } : {}),
         at: firstU("Infested Terran"), who, p: { n: u("Infested Terran") },
       });
     }
@@ -1003,7 +1017,7 @@ function detectFor(c: Ctx): Tactic[] {
     const tankPark = (() => {
       if (!geo || tanks < SIDE_TANK_MIN) return null;
       const parked = (s.orderPositions ?? [])
-        .filter((o) => o.tank === true)
+        .filter((o) => o.by === "Siege Tank")
         .filter((o) => {
           const sp = geo.spot(o);
           return sp === "myFront" || sp === "allyFront";
@@ -1079,12 +1093,16 @@ function detectFor(c: Ctx): Tactic[] {
         who, p: { ...spotOf(forward) },
       });
     }
+    const recall = castAt("Recall");
     if (u("Arbiter") >= 1 && hasTech(s, "Recall")) {
       out.push({
         // 아비터 리콜은 전황을 통째로 뒤집는 수다(요청) — 다른 견제와 같은 무게로 두면
         // 정작 판이 뒤집힌 대목이 요약에서 빠진다.
-        key: "recall", weight: 15, at: firstU("Arbiter"),
-        who,
+        key: "recall", weight: 15,
+        // 리콜은 아비터가 나온 때가 아니라 실제로 리콜을 쓴 때·자리다(지적: 리콜 화살표가
+        // 자기 기지를 가리킨다) — 마법 좌표가 있으면 그것부터 쓴다.
+        at: recall?.frame ?? firstU("Arbiter"),
+        who, ...(recall ? { p: { xy: recall.xy } } : {}),
       });
     }
     // 캐리어 — 저그의 목동(울트라), 테란의 배틀크루저와 같은 자리인데 프로토스만 비어

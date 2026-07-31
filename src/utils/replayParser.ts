@@ -7,6 +7,7 @@
 import { fmt } from "./date";
 import {
   normalizeUpgradeName, CAST_ORDER_TO_TECH, USE_CMD_TO_TECH, PLACE_MINE_ORDER,
+  CAST_ORDER_TO_UNIT, USE_CMD_TO_UNIT,
 } from "./replayTechNames";
 import type { Race, GameType } from "../types";
 
@@ -93,13 +94,15 @@ export interface ReplayPlayerSignals {
    *  쓰인다 — kind가 있으면 그중에서도 '진짜 공격 명령'만 추려 더 정확히 짚을 수 있다. */
   orderPositions: {
     frame: number; x: number; y: number; kind?: "attack" | "move";
-    /** 그 명령을 받은 것이 시즈탱크였나(요청: 옆탱은 탱크를 옮긴 자리로 봐야 한다).
+    /** 그 명령을 받은 유닛이 무엇이었나 — 알아낸 경우에만 붙는다("Siege Tank",
+     *  "High Templar", "Arbiter", "Defiler", "Bionic", "Transport" …).
      *
      *  리플레이에는 '어떤 유닛에게 내린 명령'인지가 직접 안 적힌다. 대신 두 가지가 남는다:
-     *  선택(Select)에 실린 유닛 번호(UnitTags)와, 시즈/언시즈 커맨드. 시즈는 시즈탱크만
-     *  할 수 있으므로 '그 순간 선택돼 있던 번호들'은 곧 탱크의 번호다. 그렇게 알아낸 번호가
-     *  선택에 들어 있는 동안의 이동·공격 명령을 탱크의 것으로 표시한다. */
-    tank?: true;
+     *  선택(Select)에 실린 유닛 번호(UnitTags)와, 그 유닛만 할 수 있는 커맨드다. 시즈는
+     *  시즈탱크만, 스톰은 하이템플러만, 리콜은 아비터만 한다 — 그런 커맨드가 나온 순간
+     *  골라져 있던 번호는 곧 그 유닛의 번호다(replayTechNames의 CAST_ORDER_TO_UNIT /
+     *  USE_CMD_TO_UNIT). 그렇게 알아낸 번호를 고른 채 내린 이동·공격 명령에 이름을 붙인다. */
+    by?: string;
   }[];
   /** 연구한 테크(스톰/럴커 등)와 업그레이드 이름 — 순서대로.
    *
@@ -119,6 +122,11 @@ export interface ReplayPlayerSignals {
    *  (지적: "연구한 것만으로는 아무것도 아니야"). 무엇이 사용 증거인지는 기술마다 달라서
    *  replayTechNames의 CAST_ORDER_TO_TECH / USE_CMD_TO_TECH / PLACE_MINE_ORDER가 정한다. */
   techUses: Record<string, number>;
+  /** 마법을 실제로 '어디에' 썼나 — 리콜·스톰·다크스웜·이레디에이트처럼 좌표를 갖는 마법은
+   *  그 좌표가 곧 그 장면의 자리다(요청: 유닛 특정 로직을 다른 기술로도 넓히기). 이동
+   *  명령 뭉치의 중심을 어림하는 것과 달리 이건 게임이 실제로 받은 지점이라 정확하다.
+   *  좌표 단위는 타일(orderPositions와 같은 자). */
+  castPositions: { tech: string; frame: number; x: number; y: number }[];
   firstTechUseFrame: Record<string, number>;
   /** 이 사람이 친 채팅(앞쪽 일부). GG 선언처럼 승부를 말해주는 게 여기 있다. */
   chats: { frame: number | null; text: string }[];
@@ -370,7 +378,7 @@ function emptySignals(): ReplayPlayerSignals {
     buildingCounts: {}, firstBuildingFrame: {},
     unitFrames: {}, buildingFrames: {}, buildPositions: [], orderPositions: [],
     techNames: [], upgradeNames: [], firstTechFrame: {}, firstUpgradeFrame: {},
-    techUses: {}, firstTechUseFrame: {}, chats: [],
+    techUses: {}, firstTechUseFrame: {}, castPositions: [], chats: [],
     unloadCount: 0, firstUnloadFrame: null, liftOffCount: 0, firstLiftOffFrame: null,
     leaveFrame: null, leaveReason: null,
     firstCmdFrame: null, lastCmdFrame: null, cmdCountByThird: [0, 0, 0],
@@ -432,15 +440,15 @@ function collectSignals(cmds: ScrepCmd[], totalFrames: number | null): Map<numbe
   };
   // 플레이어+연구 이름 → 마지막으로 기록한 프레임(연타 판정용).
   const lastResearchFrame = new Map<string, number>();
-  /* 시즈탱크의 유닛 번호를 알아내기 위한 장치(위 orderPositions.tank 주석).
+  /* 명령을 받은 유닛이 무엇인지 알아내기 위한 장치(위 orderPositions.by 주석).
      · sel: 지금 그 사람이 골라 둔 유닛 번호들. 선택/추가/해제와 핫키로 갱신된다.
      · groups: 핫키 그룹에 넣어 둔 번호들 — 핫키로 부르면 그게 곧 선택이 된다.
-     · tankTags: 시즈/언시즈를 누른 순간 골라져 있던 번호들 = 탱크.
-     · pending: 명령 하나하나가 '그때의 선택'을 기억해 둔다 — 탱크 번호는 첫 시즈 뒤에야
-       알 수 있어서, 다 훑은 뒤에 되돌아가 표시해야 그 앞의 이동도 놓치지 않는다. */
+     · unitOfTag: 그 유닛만 할 수 있는 커맨드가 나온 순간 골라져 있던 번호 → 그 유닛 이름.
+     · pending: 명령 하나하나가 '그때의 선택'을 기억해 둔다 — 유닛 이름은 그 커맨드가
+       나온 뒤에야 알 수 있어서, 다 훑은 뒤에 되돌아가 붙여야 그 앞의 이동도 놓치지 않는다. */
   const sel = new Map<number, number[]>();
   const groups = new Map<string, number[]>();
-  const tankTags = new Map<number, Set<number>>();
+  const unitOfTag = new Map<string, string>();
   const pending: { pid: number; idx: number; tags: number[] }[] = [];
   const tagsOf = (c: ScrepCmd): number[] => (
     Array.isArray(c.UnitTags) ? c.UnitTags.filter((t) => typeof t === "number") : []
@@ -502,11 +510,16 @@ function collectSignals(cmds: ScrepCmd[], totalFrames: number | null): Map<numbe
       const how = nameOf(c.HotkeyType);
       if (how === "Assign") groups.set(key, [...(sel.get(c.PlayerID) ?? [])]);
       else if (how === "Select") sel.set(c.PlayerID, [...(groups.get(key) ?? [])]);
-    } else if (cmdName === "Siege" || cmdName === "Unsiege") {
-      // 시즈는 시즈탱크만 한다 — 그때 골라져 있던 번호는 전부 탱크다.
-      let set = tankTags.get(c.PlayerID);
-      if (!set) { set = new Set(); tankTags.set(c.PlayerID, set); }
-      for (const t of sel.get(c.PlayerID) ?? []) set.add(t);
+    }
+    // 그 유닛만 할 수 있는 커맨드가 나오면, 그때 골라져 있던 번호가 곧 그 유닛이다.
+    {
+      const orderName = nameOf(c.Order);
+      const named = (cmdName ? USE_CMD_TO_UNIT[cmdName] : undefined)
+        ?? (orderName ? CAST_ORDER_TO_UNIT[orderName] : undefined)
+        ?? (orderName === PLACE_MINE_ORDER ? "Vulture" : undefined);
+      if (named) {
+        for (const t of sel.get(c.PlayerID) ?? []) unitOfTag.set(`${c.PlayerID}:${t}`, named);
+      }
     }
     // 이동·공격 명령의 좌표(위 orderPositions 주석). 우클릭이 이동·공격·수리를 다 겸하고,
     // 표적 명령은 어택땅·패트롤 같은 것들이다. 둘 다 좌표를 갖고 있다.
@@ -555,6 +568,14 @@ function collectSignals(cmds: ScrepCmd[], totalFrames: number | null): Map<numbe
       : (!wasted && cmdName ? USE_CMD_TO_TECH[cmdName] ?? null : null);
     if (usedTech) {
       s.techUses[usedTech] = (s.techUses[usedTech] ?? 0) + 1;
+      // 좌표를 갖는 마법은 그 지점을 그대로 남긴다(위 castPositions 주석).
+      const castAt = posOf(c.Pos);
+      if (castAt && frame !== null && s.castPositions.length < ORDER_POS_CAP) {
+        s.castPositions.push({
+          tech: usedTech, frame,
+          x: castAt.x / PIXELS_PER_TILE, y: castAt.y / PIXELS_PER_TILE,
+        });
+      }
       if (frame !== null && s.firstTechUseFrame[usedTech] === undefined) {
         s.firstTechUseFrame[usedTech] = frame;
       }
@@ -576,12 +597,17 @@ function collectSignals(cmds: ScrepCmd[], totalFrames: number | null): Map<numbe
   // 내린 이동 명령까지 함께 짚으려면 되돌아와야 한다. 고른 것의 절반 이상이 탱크일 때만
   // '탱크를 옮겼다'로 본다(탱크 한 기가 딸려 든 부대 이동은 탱크의 자리가 아니다).
   for (const { pid, idx, tags } of pending) {
-    const set = tankTags.get(pid);
-    if (!set || set.size === 0) continue;
-    const hit = tags.reduce((n, t) => n + (set.has(t) ? 1 : 0), 0);
-    if (hit * 2 >= tags.length) {
+    // 고른 것 가운데 가장 많은 이름을 그 명령의 주인으로 본다 — 절반은 넘어야 한다
+    // (부대에 한 기 딸려 든 유닛의 자리로 읽으면 안 된다).
+    const tally = new Map<string, number>();
+    for (const t of tags) {
+      const name = unitOfTag.get(`${pid}:${t}`);
+      if (name) tally.set(name, (tally.get(name) ?? 0) + 1);
+    }
+    const top = [...tally].sort((a, b) => b[1] - a[1])[0];
+    if (top && top[1] * 2 >= tags.length) {
       const o = out.get(pid)?.orderPositions[idx];
-      if (o) o.tank = true;
+      if (o) o.by = top[0];
     }
   }
   return out;
