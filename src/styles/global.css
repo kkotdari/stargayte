@@ -5893,13 +5893,14 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
       낮아졌다. 내용이 다 있을 때의 높이를 행 최소높이로 박아 어떤 행이든 같은 높이가
       되게 한다(칸들은 stretch라 최소높이를 그대로 나눠 갖는다). */
 @media (min-width: 481px) {
-  .scr-stats-list-panel-v2 .scr-stat-name-btn { font-size: var(--fs-micro); }
-  .scr-stats-list-panel-v2 .scr-stat-points-btn { font-size: var(--fs-micro); }
-  .scr-stats-list-panel-v2 .scr-stat-row { font-size: var(--fs-11); }
-  .scr-stats-list-panel-v2 .scr-value-bar-num { font-size: var(--fs-11); }
-  .scr-stats-list-panel-v2 .scr-stat-bar-rate { font-size: var(--fs-11); }
-  .scr-stats-list-panel-v2 .scr-stat-bar-top { font-size: var(--fs-10); }
-  .scr-stats-list-panel-v2 .scr-stat-bar-count-below { font-size: var(--fs-9); }
+  /* PC 그리드 글자를 한 스텝씩 키운다(요청) — 넓은 화면에서 유독 작아 읽기 힘들었다. */
+  .scr-stats-list-panel-v2 .scr-stat-name-btn { font-size: var(--fs-caption); }
+  .scr-stats-list-panel-v2 .scr-stat-points-btn { font-size: var(--fs-caption); }
+  .scr-stats-list-panel-v2 .scr-stat-row { font-size: var(--fs-micro); }
+  .scr-stats-list-panel-v2 .scr-value-bar-num { font-size: var(--fs-micro); }
+  .scr-stats-list-panel-v2 .scr-stat-bar-rate { font-size: var(--fs-micro); }
+  .scr-stats-list-panel-v2 .scr-stat-bar-top { font-size: var(--fs-11); }
+  .scr-stats-list-panel-v2 .scr-stat-bar-count-below { font-size: var(--fs-10); }
 
   .scr-stats-list-panel-v2 .scr-stat-row {
     /* 유저 칸 축소(요청) 176 → 148px. 프사 32 + 갭 8 + 좌우 패딩 24를 빼면 닉네임에
@@ -6603,16 +6604,20 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
      포스트는 좌우 꽉 차는 전면판이라 이 값이 곧 화면 가장자리로부터의 들여쓰기다 —
      그래서 제목 줄은 페이지 헤더/필터부와 같은 20px에 맞춘다(지적: PC에서 셋의 좌우
      패딩이 달라 본문만 넓어 보임). 모바일은 아래 720px 블록에서 16/20으로 되돌린다. */
-  --post-pad-x: 24px;
+  /* 계층적 들여쓰기를 없앤다(요청: 피드 타이틀부터 경기결과 카드 바디까지 좌우 패딩을
+     가장 좁은 값으로 통일). 포스트 판은 --post-bleed(=--main-pad-x)만큼 밖으로 나갔다가
+     같은 값을 투명 테두리로 되돌려 받으므로, 여기서 0을 주면 머리도 본문도 화면 패딩과
+     정확히 같은 자리에서 시작한다. */
+  --post-pad-x: 0px;
   /* 28 → 20px(요청: 바디 패딩이 과하다). 머리보다 좁아지면 안 되므로(요청) 아래
      --post-head-pad-l(10px)보다는 늘 커야 한다 — 제목이 표제처럼 한 단 바깥에서 시작하고
      본문이 그 안으로 들여쓰는 관계는 그대로 남는다. */
-  --post-pad-bx: 20px;
+  --post-pad-bx: 0px;
   /* 머리(제목·시각)만 쓰는 왼쪽 들여쓰기 — 본문(--post-pad-bx)보다 눈에 띄게 바깥에서
      시작한다(요청). 예전엔 둘의 차이가 4px뿐이라 "머리가 한 단계 위"라는 게 안 읽혔다.
      16 → 10px(요청: 왼쪽 패딩 축소) — 제목과 시각이 한 줄을 나눠 쓰게 되면서 그 줄에 담을
      글자가 늘었고, 왼쪽을 당기면 제목이 판 왼쪽 끝에 붙은 표제처럼 읽힌다. */
-  --post-head-pad-l: 10px;
+  --post-head-pad-l: 0px;
   /* 헤더 오른쪽에 비워 두는 케밥 자리. 변수로 둔 건 제목 줄의 음영이 이 값만큼 오른쪽
      끝까지 빠져나가야 하기 때문이다 — 묶음 카드처럼 케밥이 없는 헤더는 이 값을 줄인다. */
   --post-head-pad-r: 44px;
@@ -6648,7 +6653,7 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    이 블록은 위 :root와 특이도가 같아서, 반드시 뒤에 와야 이긴다(720px 쪽 모바일 블록에
    넣으면 소스상 앞이라 무시된다). */
 @media (max-width: 720px) {
-  :root { --post-pad-x: 20px; --post-pad-bx: 16px; --post-head-pad-l: 8px; }
+  :root { --post-pad-x: 0px; --post-pad-bx: 0px; --post-head-pad-l: 0px; }
 }
 /* 포스트 = 머리(떠 있음) + 유리 패널(바디). 판 자신은 자리만 잡고 아무것도 그리지 않는다
    (요청: "패널 블러/반투명, 위아래 림은 바디에만 적용 헤더는 떠 있는 느낌") — 채움·블러·
@@ -7094,10 +7099,13 @@ html.scr-light-theme .scr-feed-comments .scr-mreq-chip-inline { color: #c07c1c; 
      본문 여백과 겹쳐 주면 그 자리만 유독 벌어졌다. */
   border-radius: 0; margin: 0;
   padding-top: calc(var(--post-row-gap) + 4px); padding-bottom: 0;
+  /* 카드 안의 경기 로우도 들여쓰지 않는다(요청) — 로스터·미니맵이 헤더보다 안쪽에서
+     시작하면 계층이 한 겹 더 생긴다. */
+  padding-left: 0; padding-right: 0;
 }
 /* 카드 폭이 이미 좁으니 PC의 넓은 좌우 패딩(100px)도 카드 안에선 줄인다. */
 @media (min-width: 720px) {
-  .scr-feed-game-result-body { --feed-trow-pad-x: 24px; }
+  .scr-feed-game-result-body { --feed-trow-pad-x: 0px; }
   .scr-feed-game-result-body .scr-game-result-list-panel-v2 .scr-game-result-trow {
     padding-left: var(--feed-trow-pad-x); padding-right: var(--feed-trow-pad-x);
   }
@@ -7559,7 +7567,12 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
 /* 미니맵이 들어오면 가운데 열이 폭을 먹으므로 매치업을 조금 넓게 쓴다 — 그러지 않으면
    양쪽 로스터가 닉네임 한 줄도 못 담을 만큼 눌린다(기본 max-width는 560px). */
 @media (min-width: 641px) {
-  .scr-challenge-matchup.scr-story-matchup-wide { max-width: 620px; }
+  /* 미니맵이 주인공이다(요청: PC에서 로스터 폭을 더 줄이고 미니맵을 키우기) — 매치업 전체를
+     넓게 쓰고, 양쪽 로스터는 이름 한 줄이 들어갈 만큼만 남긴다. */
+  .scr-challenge-matchup.scr-story-matchup-wide { max-width: 720px; }
+  .scr-story-matchup-wide > .scr-challenge-side { flex: 0 1 150px; }
+  .scr-feed-card .scr-story-matchup-wide .scr-challenge-side { flex: 0 1 150px; }
+  .scr-story-matchup-wide > .scr-story-mid { flex: 1 1 auto; }
   /* 좌우 로스터가 미니맵에서 같은 거리에 오게 한다(지적: 좌우대칭이 안 맞음). 두 열은 폭이
      같지만 둘 다 왼쪽 정렬이라, 왼쪽 로스터는 미니맵에서 멀고 오른쪽 로스터는 딱 붙어
      보였다(실측: 왼쪽 79px, 오른쪽 0px). 프사는 늘 닉네임 왼쪽이라는 규칙은 그대로 두고
@@ -7587,7 +7600,7 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
    왼쪽 16px, 오른쪽 52px). 폭을 다 쓰면 카드 패딩만 남아 저절로 대칭이 된다. 상한이 걸리는
    경우에도 가운데로 오도록 auto 마진을 함께 둔다. */
 .scr-story-map { width: 100%; max-width: 100%; margin-inline: auto; }
-@media (min-width: 641px) { .scr-story-mid .scr-story-map { max-width: 240px; } }
+@media (min-width: 641px) { .scr-story-mid .scr-story-map { max-width: 360px; } }
 
 .scr-story-map-head {
   display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; justify-content: center;
