@@ -37,6 +37,13 @@ import type { Challenge, FeedTargetType, GameResult, GameResultSlot, GameType, M
 const PAGE_SIZE = 100;
 const MAX_REPLAY_FILES = 20;
 
+/** 들어올 때 "현재"에 맞춰 둔 자리를, 목록이 잠잠해질 때까지 이만큼 붙잡고 있는다 —
+ *  카드마다 댓글이 뒤늦게 따로 도착하며 키가 자라기 때문이다(아래 center 주석). 사용자가
+ *  손을 대면 이 시간이 남아 있어도 즉시 그만둔다. */
+const NOW_SCROLL_SETTLE_MS = 4000;
+/** 이만큼 안쪽으로 어긋난 것은 다시 안 맞춘다 — 1px 단위로 되잡으면 오히려 화면이 떤다. */
+const NOW_SCROLL_EPS = 2;
+
 // 묶음 펼침/접힘에서 포스트 한 장이 나타나거나 사라지는 시간과, 포스트 사이의 시차.
 // 공간(높이)이 다 열린 뒤에 포스트가 한 장씩 등장한다(요청) — 접을 땐 그 반대다.
 // 아래쪽 접기로 닫을 때 접힌 카드를 화면 한가운데에 놓는다(요청) — 맨 위에 붙여 놓으면
@@ -1140,21 +1147,46 @@ export default function FeedScreen() {
     const list = feedListRef.current;
     if (!list || displayFeed.length === 0) return;
     didInitialScrollRef.current = true;
-    requestAnimationFrame(() => {
+
+    /* 한 번 맞춰 놓고 끝낼 수가 없다 — 카드마다 댓글이 뒤늦게 따로 도착하면서 키가
+       자라는데, 그게 "현재"보다 위에서 일어나면 맞춰 둔 자리가 그만큼 밀린다(지적:
+       이미 스크롤한 상태에서 댓글이 나중에 로딩되어 스크롤 위치가 망가진다).
+       그래서 목록 높이가 바뀔 때마다 다시 맞춘다 — 목록이 잠잠해질 때까지만(SETTLE_MS),
+       그리고 사용자가 손을 대면 그 즉시 그만둔다(읽고 있는 자리를 뺏지 않는다). */
+    let done = false;
+    const center = () => {
+      if (done) return;
       // "현재" 구분선이 있으면 그 자리에, 없으면(전부 과거) 첫 오늘/과거 카드에 맞춘다.
       // 구분선이 없을 땐 DOM 자식 인덱스가 displayFeed 인덱스와 그대로 일치한다.
       const marker = list.querySelector<HTMLElement>("[data-now-marker]");
       const idx = nowIndex >= 0 ? nowIndex : displayFeed.length - 1;
       const el = marker ?? (list.children[idx] as HTMLElement | undefined);
-      if (!el) return;
+      if (!el) { done = true; return; }
       const r = el.getBoundingClientRect();
       const top = window.scrollY + r.top + r.height / 2 - window.innerHeight / 2;
-      if (top <= 1) return;
-      // 이 한 번의 자동 스크롤이 "아래로 스크롤했다"로 읽혀 탭바·헤더가 접히면 안 된다
+      if (top <= 1 || Math.abs(top - window.scrollY) < NOW_SCROLL_EPS) return;
+      // 이 자동 스크롤이 "아래로 스크롤했다"로 읽혀 탭바·헤더가 접히면 안 된다
       // (useHideOnScrollDown이 이 창 동안 방향 판정을 건너뛴다).
       suppressScrollHide();
       window.scrollTo({ top, behavior: "instant" });
-    });
+    };
+    const stop = () => { done = true; };
+    const raf = requestAnimationFrame(center);
+    const ro = new ResizeObserver(center);
+    ro.observe(list);
+    const timer = window.setTimeout(stop, NOW_SCROLL_SETTLE_MS);
+    window.addEventListener("wheel", stop, { passive: true });
+    window.addEventListener("touchstart", stop, { passive: true });
+    window.addEventListener("keydown", stop);
+    return () => {
+      stop();
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+      window.clearTimeout(timer);
+      window.removeEventListener("wheel", stop);
+      window.removeEventListener("touchstart", stop);
+      window.removeEventListener("keydown", stop);
+    };
   }, [loading, displayFeed, nowIndex]);
 
   return (
