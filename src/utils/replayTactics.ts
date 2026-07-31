@@ -422,7 +422,8 @@ interface Geo {
   allyAt: (b: BuildPos) => string | null;
   /** 이 자리가 어느 상대의 진영인가 — 성큰러시·포토러시처럼 '누구한테 갔나'가 곧
    *  전술의 내용인 경우. 팀전에서도 자리로는 확실히 짚힌다(요청). */
-  enemyAt: (b: BuildPos) => string | null;
+  /** 건물 자리뿐 아니라 마법·이동 명령 좌표도 넘길 수 있게 좌표만 받는다. */
+  enemyAt: (b: { x: number; y: number }) => string | null;
   /** 내 본진 안이면서 상대 쪽으로 나가 있는 자리인가 = 진출로(입구) 쪽. */
   front: (b: BuildPos) => boolean;
   /** 그 자리를 사람이 부르는 이름 — 내 기지/입구, 아군 기지/입구, 상대 본진/입구 앞, 센터. */
@@ -498,7 +499,7 @@ function geoOf(
     .map((b) => ({ x: b.x, y: b.y }))];
   const nearMyBase = (b: { x: number; y: number }): boolean => myBases.some((h) => dist(b, h) < base * HOME_RADIUS);
 
-  const enemyAt = (b: BuildPos): string | null => {
+  const enemyAt = (b: { x: number; y: number }): string | null => {
     let best: { raw: string; d: number } | null = null;
     for (const f of foeHomeOf) {
       const d = dist(b, f.h);
@@ -692,21 +693,41 @@ function detectFor(c: Ctx): Tactic[] {
   /** 드랍은 수송선을 뽑은 것만으로는 알 수 없다 — 실제로 내린 커맨드가 있어야 드랍이다. */
   const dropped = s.unloadCount >= 2;
   /** 그 구역에 지은 건물들(좌표를 못 읽으면 항상 빈 배열). */
-  /** 그 마법을 실제로 쓴 첫 지점 — 리플레이에 그대로 적힌 좌표라, 명령 뭉치를 어림하는
+  /** 그 마법을 실제로 쓴 지점 — 리플레이에 그대로 적힌 좌표라, 명령 뭉치를 어림하는
    *  것과 비교가 안 되게 정확하다(요청: 유닛 특정 로직을 다른 기술로 넓히면 요약이 정확해
-   *  진다). 쓴 적이 없으면 null. */
-  const castAt = (tech: string): { frame: number; xy: [number, number] } | null => {
-    const hit = (s.castPositions ?? [])
+   *  진다). 쓴 적이 없으면 null.
+   *
+   *  여러 번 썼으면 '상대 진영에 떨어진' 것을 고른다(지적: 리콜인데 화살표가 내 기지
+   *  쪽이다) — 예전엔 무조건 첫 시전을 썼는데, 실측한 팀전에서 리콜 셋이 모두 제 본진에서
+   *  33타일(본진 사이 거리의 0.57배)인 제 쪽 빈 땅이었는데도 그 첫 좌표가 "타센에게 큰
+   *  타격을 줬다"는 문장의 화살표가 됐다. 상대 진영에 떨어진 것이 없으면 첫 시전을 그대로
+   *  쓰되, 그때는 누구를 친 것인지 말할 근거가 없으므로 whom을 남기지 않는다. */
+  const castAt = (
+    tech: string,
+  ): { frame: number; xy: [number, number]; whom?: string } | null => {
+    const hits = (s.castPositions ?? [])
       .filter((c) => c.tech === tech)
-      .sort((a, b) => a.frame - b.frame)[0];
-    return hit ? { frame: hit.frame, xy: [hit.x, hit.y] } : null;
+      .sort((a, b) => a.frame - b.frame);
+    if (hits.length === 0) return null;
+    const owned = geo
+      ? hits.map((c) => ({ c, whom: geo.enemyAt(c) })).find((x) => x.whom !== null)
+      : undefined;
+    const hit = owned?.c ?? hits[0];
+    return {
+      frame: hit.frame, xy: [hit.x, hit.y],
+      ...(owned?.whom ? { whom: owned.whom } : {}),
+    };
   };
 
   /** 수송선을 어디로 몰고 갔나 — 내린 순간(firstUnloadFrame) 언저리에 수송선에게 내린
    *  이동 명령의 좌표다(요청: 유닛 특정을 살려 드랍 지점을 정확히). 언로드 커맨드 자체에는
    *  좌표가 없어서, 그 직전에 수송선을 어디로 보냈나가 곧 내린 자리다. 집 근처(태우러 간
-   *  것)는 빼고 가장 가까운 시각의 것을 고른다. */
-  const dropSpot = (): [number, number] | null => {
+   *  것)는 빼고 가장 가까운 시각의 것을 고른다.
+   *
+   *  그중에서도 '누군가의 진영에 들어간' 것을 먼저 고른다 — 그 진영의 주인이 곧 드랍을
+   *  맞은 사람이다(요청: 자막과 화살표가 같은 곳을 가리켜야 한다). 팀전에서는 이 값이
+   *  없으면 누구에게 내렸는지를 말할 길이 아예 없다. */
+  const dropSpot = (): { xy: [number, number]; whom?: string } | null => {
     const unload = s.firstUnloadFrame;
     if (unload === null || !geo) return null;
     const near = (s.orderPositions ?? [])
@@ -714,7 +735,10 @@ function detectFor(c: Ctx): Tactic[] {
       // 태우러 집에 들른 것은 뺀다 — 내 기지 안에서 내리는 드랍은 없다.
       .filter((o) => { const sp = geo.spot(o); return sp !== "myBase" && sp !== "myFront"; })
       .sort((a, b) => Math.abs(a.frame - unload) - Math.abs(b.frame - unload));
-    return near.length > 0 ? [near[0].x, near[0].y] : null;
+    if (near.length === 0) return null;
+    const owned = near.map((o) => ({ o, whom: geo.enemyAt(o) })).find((x) => x.whom !== null);
+    const pick = owned?.o ?? near[0];
+    return { xy: [pick.x, pick.y], ...(owned?.whom ? { whom: owned.whom } : {}) };
   };
 
   /** 그 건물들이 지어진 '자리 이름' — 여럿이면 가장 많이 나온 이름을 쓴다(요청: 내 입구/
@@ -818,11 +842,12 @@ function detectFor(c: Ctx): Tactic[] {
     .filter(([w, r]) => r !== race && u(w) >= MIND_WORKER_MIN)
     .map(([, r]) => r);
   if (foreign.length > 0) {
+    const mc = castAt("Mind Control");
     out.push({
       key: "mind-control", weight: 16,
-      ...(castAt("Mind Control") ? { p: { xy: castAt("Mind Control")!.xy } } : {}),
+      ...(mc?.whom ? { whom: mc.whom } : {}),
       at: firstU([...WORKER_OF].find(([, r]) => r === foreign[0])?.[0] ?? "") ?? null,
-      who, p: { race: foreign[0] },
+      who, p: { race: foreign[0], ...(mc ? { xy: mc.xy } : {}) },
     });
   }
   // '파워 OO' — 한 유닛을 압도적으로 뽑아 그 물량으로 밀어붙이는 그림(요청).
@@ -900,10 +925,11 @@ function detectFor(c: Ctx): Tactic[] {
     }
     // 러커/히드라 드랍(요청) — 저그는 오버로드에 태워야 하므로 수송 업그레이드가 곧 신호다.
     if (dropped && hasUpgrade(s, "Ventral Sacs") && (u("Lurker") >= 3 || u("Hydralisk") >= 8)) {
+      const at = dropSpot();
       out.push({
-        key: "zerg-drop", ...target, weight: 11,
+        key: "zerg-drop", ...target, ...(at?.whom ? { whom: at.whom } : {}), weight: 11,
         at: s.firstUnloadFrame,
-        who, p: { lurker: u("Lurker") >= 3, ...(dropSpot() ? { xy: dropSpot()! } : {}) },
+        who, p: { lurker: u("Lurker") >= 3, ...(at ? { xy: at.xy } : {}) },
       });
     }
     // 커널(나이더스 커널) — 뚫어 놓으면 병력이 순식간에 건너간다(요청). 건물 건설 커맨드
@@ -965,10 +991,11 @@ function detectFor(c: Ctx): Tactic[] {
     // 인페스티드 테란(요청) — 퀸으로 상대 커맨드센터를 감염시켜야만 나온다. 경기에 한 번
     // 나올까 말까 한 사건이라, 나왔다는 것 자체가 그날의 이야기다.
     if (u("Infested Terran") >= 1) {
+      const inf = castAt("Infestation");
       out.push({
-        key: "infested", ...target, weight: 16,
-        ...(castAt("Infestation") ? { p: { xy: castAt("Infestation")!.xy } } : {}),
-        at: firstU("Infested Terran"), who, p: { n: u("Infested Terran") },
+        key: "infested", ...target, ...(inf?.whom ? { whom: inf.whom } : {}), weight: 16,
+        at: firstU("Infested Terran"), who,
+        p: { n: u("Infested Terran"), ...(inf ? { xy: inf.xy } : {}) },
       });
     }
     if (u("Lurker") >= 5) {
@@ -1062,9 +1089,11 @@ function detectFor(c: Ctx): Tactic[] {
       });
     }
     if (dropped && u("Dropship") >= 2) {
+      const at = dropSpot();
       out.push({
-        key: "dropship", ...target, weight: 7, at: s.firstUnloadFrame,
-        who, ...(dropSpot() ? { p: { xy: dropSpot()! } } : {}),
+        key: "dropship", ...target, ...(at?.whom ? { whom: at.whom } : {}),
+        weight: 7, at: s.firstUnloadFrame,
+        who, ...(at ? { p: { xy: at.xy } } : {}),
       });
     }
   }
@@ -1119,6 +1148,9 @@ function detectFor(c: Ctx): Tactic[] {
         // 아비터 리콜은 전황을 통째로 뒤집는 수다(요청) — 다른 견제와 같은 무게로 두면
         // 정작 판이 뒤집힌 대목이 요약에서 빠진다.
         key: "recall", weight: 15,
+        // 누구한테 떨어뜨린 리콜인지는 그 좌표가 말해 준다 — 상대 진영 밖에서 쓴 리콜은
+        // 병력을 모으려고 부른 것이라 '누구를 쳤다'고 말하지 않는다(1:1이면 상대가 하나뿐).
+        ...(recall?.whom ? { whom: recall.whom } : target),
         // 리콜은 아비터가 나온 때가 아니라 실제로 리콜을 쓴 때·자리다(지적: 리콜 화살표가
         // 자기 기지를 가리킨다) — 마법 좌표가 있으면 그것부터 쓴다.
         at: recall?.frame ?? firstU("Arbiter"),
@@ -1146,22 +1178,25 @@ function detectFor(c: Ctx): Tactic[] {
         who, p: { n: carrierPeak },
       });
     }
+    const shuttleAt = dropped && u("Shuttle") >= 2 ? dropSpot() : null;
+    const shuttleWhom = shuttleAt?.whom ? { whom: shuttleAt.whom } : {};
+    const shuttleP = shuttleAt ? { p: { xy: shuttleAt.xy } } : {};
     if (dropped && u("Shuttle") >= 2 && u("Reaver") >= 3) {
       out.push({
-        key: "shuttle-reaver", ...target, weight: 11, at: s.firstUnloadFrame,
-        who, ...(dropSpot() ? { p: { xy: dropSpot()! } } : {}),
+        key: "shuttle-reaver", ...target, ...shuttleWhom, weight: 11,
+        at: s.firstUnloadFrame, who, ...shuttleP,
       });
     } else if (dropped && u("Shuttle") >= 2 && u("High Templar") >= 4) {
       // 하이템플러 드랍(요청) — 셔틀에 템플러를 태워 일꾼을 지지는 그림. 리버 드랍과
       // 같은 셔틀 플레이지만 결과가 전혀 달라서 따로 말한다.
       out.push({
-        key: "templar-drop", ...target, weight: 11, at: s.firstUnloadFrame,
-        who, ...(dropSpot() ? { p: { xy: dropSpot()! } } : {}),
+        key: "templar-drop", ...target, ...shuttleWhom, weight: 11,
+        at: s.firstUnloadFrame, who, ...shuttleP,
       });
     } else if (dropped && u("Shuttle") >= 2) {
       out.push({
-        key: "shuttle", ...target, weight: 6, at: s.firstUnloadFrame,
-        who, ...(dropSpot() ? { p: { xy: dropSpot()! } } : {}),
+        key: "shuttle", ...target, ...shuttleWhom, weight: 6,
+        at: s.firstUnloadFrame, who, ...shuttleP,
       });
     }
   }
