@@ -2518,7 +2518,11 @@ function beatPositions(
   for (const name of new Set([...actors, ...victims])) {
     const orders = byName.get(name)?.signals?.orderPositions;
     if (!orders) continue;
-    const near = orders.filter((o) => Math.abs(o.frame - at) <= half);
+    // 일꾼이 자원 캐러 찍은 것, 건물이 랠리를 찍은 것은 '병력이 어디 있었나'와 아무 상관이
+    // 없다(파서가 orderPositions.by로 짚어 준다) — 그 둘만 걷어 내도 좌표 뭉치가 훨씬
+    // 깨끗해진다. 정체를 모르는 명령은 예전처럼 그대로 쓴다.
+    const near = orders.filter((o) => Math.abs(o.frame - at) <= half)
+      .filter((o) => o.by !== "Worker" && o.by !== "Building");
     if (near.length < POS_MIN_ORDERS) continue;
     const home = baseOf(name);
     const invader = attack && actors.has(name) && !victims.includes(name);

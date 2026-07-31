@@ -402,6 +402,9 @@ export function pushersOn(
       let n = 0;
       for (const o of f.signals?.orderPositions ?? []) {
         if (o.frame < from || o.frame > to) continue;
+        // 일꾼·건물이 낸 명령(자원 캐기·랠리)은 '덮치러 갔다'의 근거가 못 된다
+        // (파서가 orderPositions.by로 짚어 준다).
+        if (o.by === "Worker" || o.by === "Building") continue;
         if (dist(o, home) < r && ++n >= PUSH_ORDER_MIN) return true;
       }
       return false;
@@ -1010,7 +1013,7 @@ function detectFor(c: Ctx): Tactic[] {
     /** 탱크를 세워 둔 자리 — '내 기지(또는 아군 기지) 안이면서 상대 쪽 가장자리'로 탱크를
      *  옮긴 시점(요청: 옆탱은 탱크를 이동시킨 위치 기준이다).
      *
-     *  어떤 유닛에게 내린 명령인지는 파서가 짚어 준다(replayParser의 orderPositions.tank) —
+     *  어떤 유닛에게 내린 명령인지는 파서가 짚어 준다(replayParser의 orderPositions.by) —
      *  시즈/언시즈를 누른 순간 골라져 있던 유닛 번호가 곧 탱크라서, 그 번호를 고른 채 내린
      *  이동 명령만 추린다. 탱크는 한 번 자리를 잡으면 눌러앉으므로 같은 자리에 여러 번
      *  찍힌다 — 그만큼 몰렸을 때만 '세워 뒀다'고 말한다. */

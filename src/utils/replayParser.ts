@@ -346,6 +346,12 @@ const PRODUCTION_CMD_NAMES = new Set<string>([
 // 유닛을 '뽑는' 커맨드 / 건물을 '짓는' 커맨드 — 둘을 갈라 세야 조합 이야기(유닛)와
 // 운영 이야기(확장·테크·방어건물)를 따로 할 수 있다.
 const UNIT_TRAIN_CMD_NAMES = new Set<string>(["Train", "Train Fighter", "Unit Morph"]);
+/** 일꾼만 낼 수 있는 커맨드 — 고른 것이 일꾼이라는 뜻이다(위 byRole 주석). */
+const WORKER_CMD_NAMES = new Set<string>(["Build", "Hatch"]);
+/** 건물만 낼 수 있는 커맨드 — 고른 것이 건물이고, 그 뒤의 우클릭은 랠리 찍기다. */
+const BUILDING_ONLY_CMD_NAMES = new Set<string>([
+  "Train", "Cancel Train", "Building Morph", "Lift Off", "Land",
+]);
 const BUILD_CMD_NAMES = new Set<string>(["Build", "Building Morph", "Hatch"]);
 
 // (삭제) 예전엔 유닛/건물 생산 프레임을 종류별 앞쪽 24개까지만 남겼다 — "9드론이냐
@@ -514,9 +520,24 @@ function collectSignals(cmds: ScrepCmd[], totalFrames: number | null): Map<numbe
     // 그 유닛만 할 수 있는 커맨드가 나오면, 그때 골라져 있던 번호가 곧 그 유닛이다.
     {
       const orderName = nameOf(c.Order);
+      /* 마법·전용 커맨드 말고도, '무엇을 고르고 눌렀나'만으로 정체가 드러나는 것들이 있다
+         (요청: 어택·무브도 유닛과 목표가 특정되는 것 아니냐).
+          · 건설 커맨드는 일꾼만 낸다 → 고른 것은 일꾼이다.
+          · 생산 커맨드(훈련·취소·이륙)는 건물만 낸다 → 고른 것은 건물이고, 그 뒤의
+            우클릭은 병력 이동이 아니라 '랠리 찍기'다. 공격 자리를 어림할 때 이 둘을
+            빼는 것만으로도 좌표 뭉치가 훨씬 깨끗해진다.
+          · 변태는 대상이 곧 정체다 — 럴커면 히드라, 가디언·디바우러면 뮤탈, 저그 건물이면
+            드론(일꾼)이 고른 것이다. */
+      const morphTo = cmdName === "Unit Morph" ? nameOf(c.Unit) : undefined;
+      const byMorph = morphTo === "Lurker" ? "Hydralisk"
+        : morphTo === "Guardian" || morphTo === "Devourer" ? "Mutalisk"
+          : morphTo ? "Worker" : undefined;   // 나머지 변태(저그 건물)는 드론이 낸다
+      const byRole = cmdName && WORKER_CMD_NAMES.has(cmdName) ? "Worker"
+        : cmdName && BUILDING_ONLY_CMD_NAMES.has(cmdName) ? "Building" : undefined;
       const named = (cmdName ? USE_CMD_TO_UNIT[cmdName] : undefined)
         ?? (orderName ? CAST_ORDER_TO_UNIT[orderName] : undefined)
-        ?? (orderName === PLACE_MINE_ORDER ? "Vulture" : undefined);
+        ?? (orderName === PLACE_MINE_ORDER ? "Vulture" : undefined)
+        ?? byMorph ?? byRole;
       if (named) {
         for (const t of sel.get(c.PlayerID) ?? []) unitOfTag.set(`${c.PlayerID}:${t}`, named);
       }
