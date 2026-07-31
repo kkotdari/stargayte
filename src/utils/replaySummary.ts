@@ -216,6 +216,12 @@ const ATTACK_ZONE_MIN_ORDERS = 5;
 const ATTACK_ZONE_HOME_TILES = 8;
 const ATTACK_ZONE_RES_TILES = 6;
 
+/* 그 수의 '누구를·어디를'을 실제 타격 클릭으로 채울 때 보는 시간 창과 최소 횟수(파서의
+   hits 주석). 창은 한 번의 공방이 이어지는 정도로 잡고, 스쳐 지나간 정찰끼리의 클릭을
+   공격이라 부르지 않게 몇 번은 찍혔어야 한다고 둔다. */
+const HIT_WINDOW_SEC = 60;
+const HIT_MIN = 3;
+
 // 러시·드랍을 간 뒤 이 안에 상대 생산이 끊기면 그 수의 결과로 본다.
 const DAMAGE_WINDOW_SEC = 3 * 60;
 // 탈락을 그 수의 결과로 묶는 창 — 이보다 벌어지면 인과가 아니라 우연에 가깝다(지적).
@@ -1573,6 +1579,48 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     return productionDips(self, totalFrames).some((d) => d >= t.at! && d <= window);
   };
 
+  /** 그 사람이 그 무렵 실제로 누구의 유닛을 찍었나 — 이름과 자리를 함께 준다(파서의 hits
+   *  주석 참고). 어림이 아니라 사실이다: 찍은 대상의 번호가 그 사람 것이었다는 기록이다.
+   *
+   *  한 번 스친 것은 정찰 유닛끼리 부딪친 것일 수 있어 HIT_MIN번은 찍혔어야 하고, 자리는
+   *  그중 그 시점에 가장 가까운 클릭 하나를 그대로 쓴다(여러 곳의 평균을 내면 아무 일도
+   *  없던 빈 땅이 나온다 — beatPositions에서 겪은 것과 같은 함정이다). */
+  const struckAt = (
+    who: string, at: number | null, side: ParsedReplayPlayer[],
+  ): { whom: string; xy: [number, number] } | null => {
+    if (at === null) return null;
+    const me = side.find((p) => p.rawName === who);
+    const near = (me?.signals?.hits ?? [])
+      .filter((h) => Math.abs(h.frame - at) * SECONDS_PER_FRAME <= HIT_WINDOW_SEC);
+    if (near.length < HIT_MIN) return null;
+    const tally = new Map<string, number>();
+    for (const h of near) tally.set(h.whom, (tally.get(h.whom) ?? 0) + 1);
+    const best = [...tally].sort((a, b) => b[1] - a[1])[0];
+    if (!best || best[1] < HIT_MIN) return null;
+    const spot = near
+      .filter((h) => h.whom === best[0])
+      .sort((a, b) => Math.abs(a.frame - at) - Math.abs(b.frame - at))[0];
+    return { whom: best[0], xy: [spot.x, spot.y] };
+  };
+
+  /** 들이친 이야기인데 '누구를' 또는 '어디를'이 비어 있으면 그 자리를 실제 타격으로 채운다.
+   *  이미 들어 있는 값은 건드리지 않는다 — 건물 자리·마법 좌표가 더 정확하다. */
+  const withStrike = (b: Beat, mine: ParsedReplayPlayer[]): Beat => {
+    if (!ATTACK_BEAT_KEYS.has(b.k)) return b;
+    const hasWhom = (b.whom?.length ?? 0) > 0;
+    // 건물 자리로 이미 '어디였나'를 말한 beat(포토러시·성큰러시·몰래배럭)는 그대로 둔다 —
+    // 그 자리가 곧 그 수 자체이고, 같은 무렵의 다른 교전 좌표를 얹으면 오히려 어긋난다.
+    const hasXy = Array.isArray(b.p?.xy) || typeof b.p?.spot === "string";
+    if (hasWhom && hasXy) return b;
+    const s = struckAt(b.who[0], b.at ?? null, mine);
+    if (!s) return b;
+    return {
+      ...b,
+      ...(hasWhom ? {} : { whom: [s.whom] }),
+      ...(hasXy ? {} : { p: { ...(b.p ?? {}), xy: s.xy } }),
+    };
+  };
+
   const tacticBeats = (won: boolean): Beat[] => {
     const foes = won ? loserPlayers : winnerPlayers;
     const mine = won ? winnerPlayers : loserPlayers;
@@ -1672,7 +1720,8 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
           ...(t.whom ? { whom: [t.whom] } : {}),
           ...(t.who2 ? { who2: [t.who2] } : {}),
         } as Beat;
-      });
+      })
+      .map((b) => withStrike(b, mine));
   };
 
   // "유비의 바이오닉 한 방으로 관우의 저글링 성큰을 뚫음" — 이긴 편의 주력이 진 편의 누구를

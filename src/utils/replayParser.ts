@@ -104,6 +104,22 @@ export interface ReplayPlayerSignals {
      *  USE_CMD_TO_UNIT). 그렇게 알아낸 번호를 고른 채 내린 이동·공격 명령에 이름을 붙인다. */
     by?: string;
   }[];
+  /** 상대의 유닛·건물을 직접 찍은 순간 — '누구를 쳤나'를 어림이 아니라 사실로 아는
+   *  유일한 자리다(요청: 공격 타겟팅을 정확히).
+   *
+   *  근거는 우클릭·표적 명령에 실려 오는 '찍은 대상의 번호(UnitTag)'다. 번호만으로는
+   *  누구 것인지 모르지만, 사람은 저마다 제 유닛만 고르므로 선택(Select) 기록을 다 모으면
+   *  번호마다 임자가 드러난다. 그 임자가 다른 편이면 그 클릭은 곧 그 사람을 친 것이고,
+   *  좌표·시각까지 그대로 남는다.
+   *
+   *  주의한 것 둘. ① 관전자는 남의 유닛도 고를 수 있어 임자를 흐리므로 선택 기록에서
+   *  아예 뺀다(실측: 관전자 둘이 낀 1:1에서 '피격자'로 관전자 이름이 72번 나왔다).
+   *  ② 유닛이 죽으면 그 번호를 새 유닛이 물려받는다 — 그래서 한 번이라도 고른 사람이
+   *  아니라 '압도적으로 많이 고른 사람'만 임자로 인정한다(TAG_OWNER_SHARE).
+   *
+   *  한계: 아군을 찍은 것(따라가기·수리·힐)은 제외했고, 어택땅처럼 대상 없이 땅을 찍은
+   *  공격은 여기 안 남는다(그건 orderPositions가 맡는다). */
+  hits: { frame: number; x: number; y: number; whom: string }[];
   /** 연구한 테크(스톰/럴커 등)와 업그레이드 이름 — 순서대로.
    *
    *  이름은 replayTechNames.ts의 TECH_NAMES / UPGRADE_NAMES 그대로다. 업그레이드는 screp이
@@ -392,7 +408,7 @@ function emptySignals(): ReplayPlayerSignals {
   return {
     unitCounts: {}, firstUnitFrame: {},
     buildingCounts: {}, firstBuildingFrame: {},
-    unitFrames: {}, buildingFrames: {}, buildPositions: [], orderPositions: [],
+    unitFrames: {}, buildingFrames: {}, buildPositions: [], orderPositions: [], hits: [],
     techNames: [], upgradeNames: [], firstTechFrame: {}, firstUpgradeFrame: {},
     techUses: {}, firstTechUseFrame: {}, castPositions: [], chats: [],
     unloadCount: 0, firstUnloadFrame: null, liftOffCount: 0, firstLiftOffFrame: null,
@@ -447,7 +463,45 @@ function pushResearch(
   return true;
 }
 
-function collectSignals(cmds: ScrepCmd[], totalFrames: number | null): Map<number, ReplayPlayerSignals> {
+/** 유닛 번호의 임자로 인정하려면 그 번호를 고른 횟수의 이만큼을 혼자 차지해야 한다 —
+ *  유닛이 죽으면 번호가 재사용되므로, 스쳐 지나간 한두 번으로 임자를 정하면 안 된다. */
+const TAG_OWNER_SHARE = 0.7;
+
+/** 유닛 번호 → 임자(PlayerID). 사람은 저마다 제 유닛만 고르므로 선택 기록만 모으면
+ *  임자가 드러난다(위 hits 주석). 관전자의 선택은 남의 유닛도 섞이므로 아예 뺀다. */
+function ownerOfTags(cmds: ScrepCmd[], observers: Set<number>): Map<number, number> {
+  const tally = new Map<number, Map<number, number>>();
+  for (const c of cmds) {
+    const n = nameOf(c.Type);
+    if ((n !== "Select" && n !== "Select Add") || observers.has(c.PlayerID)) continue;
+    for (const t of c.UnitTags ?? []) {
+      if (typeof t !== "number") continue;
+      let m = tally.get(t);
+      if (!m) { m = new Map(); tally.set(t, m); }
+      m.set(c.PlayerID, (m.get(c.PlayerID) ?? 0) + 1);
+    }
+  }
+  const out = new Map<number, number>();
+  for (const [tag, m] of tally) {
+    let total = 0;
+    let best: [number, number] | null = null;
+    for (const e of m) { total += e[1]; if (!best || e[1] > best[1]) best = e; }
+    if (best && best[1] / total >= TAG_OWNER_SHARE) out.set(tag, best[0]);
+  }
+  return out;
+}
+
+function collectSignals(
+  cmds: ScrepCmd[],
+  totalFrames: number | null,
+  /** 누가 어느 편이고 누가 관전자인가 — '상대의 유닛을 찍었다'를 가리는 데만 쓴다.
+   *  없으면 hits는 빈 배열로 남는다(옛 리플레이·헤더를 못 읽은 경우). */
+  roster?: { id: number; team: number; obs: boolean; raw: string }[],
+): Map<number, ReplayPlayerSignals> {
+  const observers = new Set((roster ?? []).filter((p) => p.obs).map((p) => p.id));
+  const teamOf = new Map((roster ?? []).map((p) => [p.id, p.team]));
+  const rawOf = new Map((roster ?? []).map((p) => [p.id, p.raw]));
+  const tagOwner = roster ? ownerOfTags(cmds, observers) : new Map<number, number>();
   const out = new Map<number, ReplayPlayerSignals>();
   const at = (id: number) => {
     let s = out.get(id);
@@ -592,6 +646,17 @@ function collectSignals(cmds: ScrepCmd[], totalFrames: number | null): Map<numbe
         const picked = sel.get(c.PlayerID) ?? [];
         if (picked.length > 0) {
           pending.push({ pid: c.PlayerID, idx: s.orderPositions.length - 1, tags: [...picked] });
+        }
+        // 찍은 대상이 다른 편의 유닛이면 그건 어림이 아니라 '그 사람을 쳤다'는 사실이다.
+        const owner = typeof c.UnitTag === "number" && c.UnitTag > 0
+          ? tagOwner.get(c.UnitTag) : undefined;
+        const whom = owner !== undefined && owner !== c.PlayerID
+          && teamOf.get(owner) !== undefined && teamOf.get(owner) !== teamOf.get(c.PlayerID)
+          ? rawOf.get(owner) : undefined;
+        if (whom && s.hits.length < ORDER_POS_CAP) {
+          s.hits.push({
+            frame, x: pos.x / PIXELS_PER_TILE, y: pos.y / PIXELS_PER_TILE, whom,
+          });
         }
       }
     }
@@ -807,7 +872,11 @@ export async function parseReplayFile(file: File): Promise<ParsedReplay> {
   const totalFrames = typeof res.Header.Frames === "number" && res.Header.Frames > 0
     ? res.Header.Frames
     : null;
-  const signalsByPlayerId = cmds ? collectSignals(cmds, totalFrames) : null;
+  const signalsByPlayerId = cmds
+    ? collectSignals(cmds, totalFrames, res.Header.Players.map((p) => ({
+      id: p.ID, team: p.Team, obs: p.Observer === true, raw: p.Name,
+    })))
+    : null;
   const signalsOf = (playerId: number): ReplayPlayerSignals | null =>
     signalsByPlayerId ? signalsByPlayerId.get(playerId) ?? emptySignals() : null;
 
