@@ -254,6 +254,8 @@ export default function GameResultStory({
       if (b.k === "fallen" || b.k === "gg") who.forEach((n) => out.add(n));
       else if (b.k === "raid-damage" && (b.p?.out === true || b.p?.early === true)) {
         whom.forEach((n) => out.add(n));
+      // 다시 일어선 사람은 해골을 뗀다(요청: 부활한 거라면 해골을 없애고 부활한 내용이
+      // 들어가야 한다) — beat로 붙은 것뿐 아니라 저장된 '망함' 시점으로 붙은 것도 지운다.
       } else if (b.k === "revival") who.forEach((n) => out.delete(n));
     }
     return out;
@@ -469,8 +471,10 @@ export default function GameResultStory({
       if (!ATTACK_BEAT_KEYS.has(b.k) && b.k !== "breakthrough") return null;
       // 당한 사람의 본진 — 위에서 이미 골라 뒀다(자막이 지목한 상대가 먼저다).
       if (named) return named;
-      // 목표를 모르면 상대 쪽으로 — 리콜·커널·드랍이 여기 걸린다.
-      if (foe) return foe;
+      // 자막이 아무도 지목하지 않았으면 화살표를 긋지 않는다(지적: 지도에는 적진으로 이어진
+      // 화살표가 있는데 자막에는 타겟이 없다) — 가장 가까운 상대 쪽으로 어림해 긋던 자리다.
+      // 자리가 이미 분류돼 있거나(p.spot·p.xy) 당한 사람을 아는 경우는 위에서 처리했다.
+      void foe;
       // 그 밖(유닛을 뽑았다·물량을 모았다·테크를 올렸다)은 화살표를 그리지 않는다(요청:
       // 유닛 생산에는 화살표 X, 실제로 확실히 공격 나갔을 때만 진출 화살표). 진출 느낌을
       // 주려고 가운데로 짧게 그어 봤지만, 병력을 뽑기만 한 장면에도 화살이 나가서

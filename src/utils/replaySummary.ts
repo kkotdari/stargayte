@@ -405,8 +405,22 @@ function sumSupply(p: ParsedReplayPlayer): number {
 /** 그 편에서 눈에 띄게 많이 뽑은 사람 — 팀전이라도 이 사람 얘기를 많이 하기 위한 기준
  *  (요청). 2등보다 1.4배 넘게 앞서면 인정한다(예전엔 "혼자 절반 넘게"라 3인 이상 팀에서는
  *  거의 안 잡혔다). 1:1은 당연히 그 사람이다. */
-function standout(side: Side): ParsedReplayPlayer | null {
-  const ranked = side.players
+/** 후반까지 살아 있었나 — 경기의 앞 2/3 안에 생산이 끊겨 끝내 회복하지 못한 사람은 뺀다.
+ *  결론은 종반의 이야기라, 그때 이미 빈사였던 사람의 조합을 주어로 세우면 안 된다(지적). */
+const LATE_ALIVE_RATIO = 2 / 3;
+function lateAliveOf(totalFrames: number | null): (p: ParsedReplayPlayer) => boolean {
+  return (p) => {
+    if (!totalFrames) return true;
+    const f = eliminatedFrame(p) ?? productionCollapse(p, totalFrames);
+    return f === null || f >= totalFrames * LATE_ALIVE_RATIO;
+  };
+}
+
+function standout(side: Side, alive?: (p: ParsedReplayPlayer) => boolean): ParsedReplayPlayer | null {
+  // 맺음말에서는 '그때까지 살아 있던 사람'만 고른다(지적: 이미 빈사인 플레이어의 유닛이
+  // 결론에 나온다) — 초반에 무너진 사람이 후반 이야기의 주어가 되면 앞뒤가 안 맞는다.
+  const pool = alive ? side.players.filter(alive) : side.players;
+  const ranked = (pool.length > 0 ? pool : side.players)
     .map((p) => ({ p, n: sumSupply(p) }))
     .filter((x) => x.n > 0)
     .sort((a, b) => b.n - a.n);
@@ -892,6 +906,7 @@ function sideBeats(args: {
   pressedEarly: boolean;
 }): Beat[] {
   const { side, other, players, won, sec, totalFrames, pressedEarly } = args;
+  const lateAlive = lateAliveOf(totalFrames);
   const beats: Beat[] = [];
   if (players.length === 0) return beats;
   const who = (p: ParsedReplayPlayer) => [p.rawName];
@@ -985,7 +1000,7 @@ function sideBeats(args: {
   // 마린 같은 초반 물량이면 몰아 뽑은 구간도 앞쪽이라 "역부족" 같은 결론이 요약 맨 앞으로
   // 튀어 올랐다(지적: "패배팀의 결론이 맨 처음에 나온다"). 결말은 시간축 위의 점이 아니다.
   if (!won) {
-    const star = standout(side);
+    const star = standout(side, lateAlive);
     const units = nameableUnits(
       star
         ? mainUnits(ownCombat(star), armyBySupply([star]))
@@ -1321,10 +1336,11 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
 
   const winner = buildSide(winnerPlayers);
   const loser = buildSide(loserPlayers);
+  const lateAlive = lateAliveOf(totalFrames);
 
   // 눈에 띄는 사람이 있으면 그 사람을 주어로 세우고 조합도 '그 사람의 것'으로 말한다
   // (요청: 팀전이라도 잘한 사람 얘기를 많이). 없으면 편 전체로 말한다.
-  const star = standout(winner);
+  const star = standout(winner, lateAlive);
   const units = nameableUnits(
     star
       ? mainUnits(ownCombat(star), armyBySupply([star]))
