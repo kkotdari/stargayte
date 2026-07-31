@@ -287,9 +287,10 @@ const PEACE_UNITS = new Set([
 // 아군 기지에 이만큼은 깔아 줘야 '받쳐줬다'고 말할 수 있다 — 한 개는 지나가다 지은 것일 수 있다.
 const ALLY_CANNON_MIN = 2;
 
-/** 자리만으로 옆탱을 말하려면 탱크가 이만큼은 있어야 한다 — 팩토리를 입구 쪽에 둔 것만으로는
- *  옆탱이 아니다(테란이 흔히 그렇게 짓는다). */
+/** 자리만으로 옆탱을 말하려면 탱크가 이만큼은 있어야 한다 — 한두 기를 옮긴 것은 옆탱이 아니다. */
 const SIDE_TANK_MIN = 5;
+/** 그 자리로 이만큼은 몰아야 '세워 뒀다'고 본다 — 한두 번은 지나가며 찍은 것일 수 있다. */
+const SIDE_TANK_ORDERS = 4;
 
 // 성큰러시·포토러시·몰래 배럭은 '자리를 보고서야 알 수 있는' 기습이라, 그 경기에서만
 // 있었던 일 중에서도 특히 이야깃거리다(요청: 무게감을 올려 달라). 자리가 모자랄 때
@@ -418,7 +419,8 @@ interface Geo {
   /** 내 본진 안이면서 상대 쪽으로 나가 있는 자리인가 = 진출로(입구) 쪽. */
   front: (b: BuildPos) => boolean;
   /** 그 자리를 사람이 부르는 이름 — 내 기지/입구, 아군 기지/입구, 상대 본진/입구 앞, 센터. */
-  spot: (b: BuildPos) => BuildSpot;
+  /** 건물 자리뿐 아니라 명령 좌표(옆탱 판정)도 넘길 수 있게 좌표만 받는다. */
+  spot: (b: { x: number; y: number }) => BuildSpot;
   /** 내 살림이 아군 기지에 얹혀 있으면 그 아군(지적: 내 기지에 건물이 거의 없고 아군
    *  기지에 있는 게 셋방살이다). 아니면 null. */
   lodgingHost: string | null;
@@ -472,7 +474,7 @@ function geoOf(
   const ring = allHomes.reduce((n, h) => n + dist(h, mapMid), 0) / allHomes.length;
   /** 정말 맵 가운데인가 — 가운데에 가깝고, 어느 본진에서도 충분히 멀어야 한다(위 주석).
    *  본진·아군기지·상대기지 판정 뒤에만 쓴다. */
-  const atMapMid = (b: BuildPos): boolean => {
+  const atMapMid = (b: { x: number; y: number }): boolean => {
     if (!(ring > 0)) return false;
     if (dist(b, mapMid) >= ring * MID_MAP_RATIO) return false;
     // 멀리 떨어져 있어야 한다는 조건은 '실제로 앉은 자리'로만 본다 — 빈 시작 지점은 그 판에
@@ -487,7 +489,7 @@ function geoOf(
   const myBases = [home, ...(me.signals?.buildPositions ?? [])
     .filter((b) => TOWN_HALLS.has(b.unit))
     .map((b) => ({ x: b.x, y: b.y }))];
-  const nearMyBase = (b: BuildPos): boolean => myBases.some((h) => dist(b, h) < base * HOME_RADIUS);
+  const nearMyBase = (b: { x: number; y: number }): boolean => myBases.some((h) => dist(b, h) < base * HOME_RADIUS);
 
   const enemyAt = (b: BuildPos): string | null => {
     let best: { raw: string; d: number } | null = null;
@@ -526,7 +528,7 @@ function geoOf(
   // 리플레이에는 지형이 없다 — 램프가 어디인지는 알 방법이 없다. 대신 확실한 건
   // 방향이다: 내 본진 안이되 상대 쪽으로 나가 있는 자리는 진출로 쪽이다. 뒤나 옆에
   // 박은 건물은 걸리지 않는다.
-  const front = (b: BuildPos): boolean => {
+  const front = (b: { x: number; y: number }): boolean => {
     const v = { x: b.x - home.x, y: b.y - home.y };
     const len = Math.hypot(v.x, v.y);
     if (len < base * FRONT_MIN) return false;      // 본진 한복판이면 앞이 아니다
@@ -537,7 +539,8 @@ function geoOf(
   /** origin 기지 안이면서 target 쪽으로 나가 있는 자리인가 — front를 임의의 기지에
    *  대해 쓸 수 있게 일반화한 것이다(아군 입구·상대 입구 앞을 같은 자로 재려면 필요하다). */
   const towardFront = (
-    origin: { x: number; y: number }, target: { x: number; y: number }, b: BuildPos, radius: number,
+    origin: { x: number; y: number }, target: { x: number; y: number },
+    b: { x: number; y: number }, radius: number,
   ): boolean => {
     const len = Math.hypot(b.x - origin.x, b.y - origin.y);
     if (len < base * FRONT_MIN || len > base * radius) return false;
@@ -551,7 +554,7 @@ function geoOf(
   /** 그 자리를 사람이 부르는 이름으로(요청). 상대 진영은 '본진'과 '입구 앞'을 가른다 —
    *  내 쪽을 향한 바깥쪽이 입구 앞이고, 더 깊이 들어간 곳이 본진이다. 포토러시가 입구
    *  앞을 막은 것인지 본진 한복판에 박은 것인지는 전혀 다른 이야기라서다. */
-  const spot = (b: BuildPos): BuildSpot => {
+  const spot = (b: { x: number; y: number }): BuildSpot => {
     // 내 멀티부터 먼저 본다 — 상대 진영 판정보다 앞서야 한다(위 myBases 주석).
     if (nearMyBase(b)) return front(b) ? "myFront" : "myBase";
     // 상대 진영이 다음이다 — 남의 기지에 지은 건물은 무엇보다 그 사실이 중요하다.
@@ -990,19 +993,29 @@ function detectFor(c: Ctx): Tactic[] {
     // 내 기지에서 뽑은 탱크로 바로 옆에 붙은 상대를 잡아내는 것도 옆탱이다(지적).
     const sideFactory = inZone("ally", "Factory");
     const firstTank = firstU("Siege Tank (Tank Mode)") ?? firstU("Siege Tank (Siege Mode)");
+    /** 탱크를 세워 둔 자리 — '내 기지(또는 아군 기지) 안이면서 상대 쪽 가장자리'로 옮긴
+     *  시점. 리플레이에는 어떤 유닛에게 내린 명령인지가 안 남아서(좌표와 종류뿐), 탱크가
+     *  나온 뒤의 이동 명령 가운데 그 자리에 몰린 것을 탱크의 자리로 읽는다 — 탱크는 한 번
+     *  자리를 잡으면 거기 눌러앉으므로 같은 자리에 명령이 여러 번 찍힌다. */
+    const tankPark = (() => {
+      if (!geo || firstTank === null || tanks < SIDE_TANK_MIN) return null;
+      const parked = (s.orderPositions ?? [])
+        .filter((o) => o.frame >= firstTank && o.kind !== "attack")
+        .filter((o) => {
+          const sp = geo.spot(o);
+          return sp === "myFront" || sp === "allyFront";
+        });
+      return parked.length >= SIDE_TANK_ORDERS ? parked[0].frame : null;
+    })();
     if (sideFactory.length > 0 && tanks >= 3) {
       const helped = geo?.allyAt(sideFactory[0]) ?? null;
       out.push({
         key: "side-tank", weight: 11, at: firstOf(sideFactory), who,
         ...(helped ? { who2: helped } : {}), p: { at: "ally" },
       });
-    } else if (atFront("Factory").length > 0 && tanks >= SIDE_TANK_MIN) {
-      // 자리로도 잡는다(요청) — 내 기지 안이면서 상대 쪽 가장자리에 올린 팩토리가 곧
-      // 옆탱이다. 다만 테란은 팩토리를 입구 쪽에 두는 일이 흔해, 탱크를 실제로 줄줄이
-      // 뽑았을 때만 '옆탱을 박았다'고 말한다.
-      out.push({
-        key: "side-tank", weight: 11, at: firstOf(atFront("Factory")), who, p: { at: "front" },
-      });
+    } else if (tankPark !== null) {
+      // 옆탱은 팩토리를 어디에 지었나가 아니라 탱크를 어디로 옮겼나로 가른다(지적).
+      out.push({ key: "side-tank", weight: 11, at: tankPark, who, p: { at: "front" } });
     } else if (neighbor && tanks >= 3 && firstTank !== null && neighbor.fellAt > firstTank) {
       // 탱크가 실제로 무엇을 잡았는지는 리플레이에 없다. 확실한 건 '옆에 붙은 상대가
       // 내 탱크가 나온 뒤에 먼저 판에서 사라졌다'는 것이고, 딱 그만큼만 말한다.
