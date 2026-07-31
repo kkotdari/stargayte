@@ -3695,8 +3695,16 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   grid-column: 1 / -1;
 }
 /* 트리거 버튼과 '결과 보기'가 한 칸에 나란히 — 버튼 하나로 줄이면서 스위치 줄을 없앴다(요청). */
-.scr-admin-panel-batch-row { display: flex; align-items: center; gap: 8px; }
-.scr-admin-panel-batch-row .scr-btn { flex: 1; min-width: 0; }
+/* 이 줄은 가로 전체를 쓴다 — 그리드 한 칸(절반 폭)에 버튼과 '결과 보기'를 같이 넣었더니
+   버튼이 "배치/등록" 두 줄로 찌그러졌다(지적: 레이아웃 깨짐). 버튼은 다른 버튼들과 같은
+   폭(한 칸)으로 두고, 결과 알약은 그 옆 빈자리에 놓는다. */
+.scr-admin-panel-batch-row {
+  grid-column: 1 / -1;
+  display: flex; align-items: center; gap: 14px;
+}
+.scr-admin-panel-batch-row .scr-btn {
+  flex: 0 0 calc(50% - 7px); min-width: 0;
+}
 /* "결과 보기" 재오픈 버튼 — 그리드 칸으로 두면 나타났다 사라질 때마다 그 아래(경기관리
    섹션 등) 버튼들이 들썩였다(실제로 지적받은 문제 — "결과보기 생기면 레이아웃이
    흔들리잖아"). 그리드 흐름에서 완전히 빼고 카드(.scr-modal-body, position:relative)
