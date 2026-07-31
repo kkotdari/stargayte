@@ -226,6 +226,22 @@ export default function App() {
     screen === "control" && !isAdmin ? "feed" :
     screen;
 
+  /* 피드로 돌아오면 보던 자리로 되돌린다(요청) — 화면을 떠날 때 스크롤 위치를 적어 두고,
+     돌아온 다음 프레임에 그대로 옮긴다. 피드는 언마운트하지 않으므로 내용 높이는 그대로다. */
+  const feedScrollRef = useRef(0);
+  useEffect(() => {
+    if (resolvedScreen !== "feed") return;
+    const y = feedScrollRef.current;
+    if (y > 0) {
+      const raf = requestAnimationFrame(() => window.scrollTo({ top: y, behavior: "instant" }));
+      return () => {
+        cancelAnimationFrame(raf);
+        feedScrollRef.current = window.scrollY;
+      };
+    }
+    return () => { feedScrollRef.current = window.scrollY; };
+  }, [resolvedScreen]);
+
   // 배경 사진이 있는 화면(지금은 통계뿐 — 피드 배경은 제거)에서는 헤더까지 사진이
   // 이어져 보이게 — 헤더의 불투명 배경을 끄는 클래스를 앱 루트에 건다(CSS
   // .scr-app-hasbg 참고). 배경 있는 화면이 늘면 이 조건에 추가하면 된다.
@@ -261,7 +277,14 @@ export default function App() {
                 "페이지 상태 유지 기능 삭제 — 페이지 이동시 항상 초기상태로 로딩"). 접근
                 권한이 없는 화면(challenge/members 등)은 랭킹으로 대체되던
                 기존 동작과 같게, resolvedScreen으로 보여줄 화면만 고른다. */}
-            {!booting && resolvedScreen === "feed" && <FeedScreen />}
+            {/* 피드만은 화면을 떠나도 살려 둔다(요청: 다른 화면 갔다 돌아오면 보던 그대로).
+                목록·펼침·스냅 상태가 컴포넌트 안에 있어서, 언마운트하면 전부 처음으로
+                돌아가고 스크롤도 맨 위로 튄다. 다른 화면은 예전대로 매번 새로 만든다. */}
+            {!booting && (
+              <div hidden={resolvedScreen !== "feed"}>
+                <FeedScreen />
+              </div>
+            )}
             {!booting && resolvedScreen === "stats" && <StatsScreen />}
             {isAdmin && !booting && resolvedScreen === "members" && <MembersScreen />}
             {/* 운영자 전용 메뉴로 변경(요청) — 회원/이미지 설정과 같은 기준으로 운영자만 접근. */}

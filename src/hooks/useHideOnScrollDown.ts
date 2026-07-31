@@ -14,7 +14,9 @@ import { addRafScrollListener, getScrollMetrics, isScrollHideSuppressed } from "
 // 누적됐을 때만 실제로 토글한다(iOS Safari 주소창이 숨는 방식과 같은 원리).
 const EDGE_PX = 24;
 const HIDE_DELTA_PX = 10;
-const SHOW_DELTA_PX = 4;
+/* 위로 조금 올렸다고 바로 커지면 내리다 손이 살짝 튄 것에도 탭바가 오르내려 어지럽다
+   (요청: 어느 정도 스크롤해야 복구되게) — 되돌리는 쪽은 넉넉히 잡는다. */
+const SHOW_DELTA_PX = 80;
 
 export function useHideOnScrollDown(screen: string): boolean {
   const [hidden, setHidden] = useState(false);
