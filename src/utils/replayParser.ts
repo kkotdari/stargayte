@@ -287,6 +287,10 @@ interface ScrepCmd {
   /** 선택 커맨드가 실어 보내는 유닛 번호들 — 시즈탱크를 가려내는 데 쓴다
    *  (위 orderPositions.tank 주석). */
   UnitTags?: number[];
+  /** 우클릭·표적 명령이 '무엇을 찍었나' — 찍은 대상의 유닛 번호(UnitTag)와, 그 대상이
+   *  건물·자원처럼 종류가 확실할 때만 채워지는 이름(Unit). 병력을 찍은 우클릭은 이름 없이
+   *  번호만 온다(그 번호의 임자는 선택 기록으로 따로 푼다). */
+  UnitTag?: number;
   /** 핫키 커맨드의 그룹 번호와 종류(Assign/Select). */
   Group?: number | { Name?: string };
   HotkeyType?: { Name?: string } | string;
@@ -348,6 +352,12 @@ const PRODUCTION_CMD_NAMES = new Set<string>([
 const UNIT_TRAIN_CMD_NAMES = new Set<string>(["Train", "Train Fighter", "Unit Morph"]);
 /** 일꾼만 낼 수 있는 커맨드 — 고른 것이 일꾼이라는 뜻이다(위 byRole 주석). */
 const WORKER_CMD_NAMES = new Set<string>(["Build", "Hatch"]);
+/** 우클릭으로 찍었을 때 '고른 것이 일꾼'임을 말해 주는 대상들 — 미네랄은 종류가 여럿이라
+ *  이름 앞부분으로 가른다(Mineral Field (Type 1~3)). */
+const RESOURCE_TARGETS = new Set<string>([
+  "Vespene Geyser", "Assimilator", "Refinery", "Extractor",
+  "Mineral Field (Type 1)", "Mineral Field (Type 2)", "Mineral Field (Type 3)",
+]);
 /** 건물만 낼 수 있는 커맨드 — 고른 것이 건물이고, 그 뒤의 우클릭은 랠리 찍기다. */
 const BUILDING_ONLY_CMD_NAMES = new Set<string>([
   "Train", "Cancel Train", "Building Morph", "Lift Off", "Land",
@@ -529,11 +539,30 @@ function collectSignals(cmds: ScrepCmd[], totalFrames: number | null): Map<numbe
           · 변태는 대상이 곧 정체다 — 럴커면 히드라, 가디언·디바우러면 뮤탈, 저그 건물이면
             드론(일꾼)이 고른 것이다. */
       const morphTo = cmdName === "Unit Morph" ? nameOf(c.Unit) : undefined;
-      const byMorph = morphTo === "Lurker" ? "Hydralisk"
-        : morphTo === "Guardian" || morphTo === "Devourer" ? "Mutalisk"
-          : morphTo ? "Worker" : undefined;   // 나머지 변태(저그 건물)는 드론이 낸다
+      /* 변태 커맨드는 '고른 것이 무엇이 되는가'를 그대로 말해 준다 — 번호(태그)는 변태
+         뒤에도 그대로라, 결과 유닛을 그 번호의 이름으로 삼으면 그 뒤 명령의 주인이 전부
+         드러난다.
+
+         예전엔 러커·가디언·디바우러만 앞 유닛을 짚고 나머지는 전부 "Worker"로 적었다(저그
+         건물은 드론이 변태시킨다고 봤다). 그런데 저그 건물은 Build 커맨드로 오고, Unit
+         Morph는 죄다 라바→유닛이다 — 그래서 저글링·히드라·뮤탈이 통째로 일꾼으로 적히고,
+         그 부대의 공격 명령이 '일꾼이 자원 찍은 것'으로 몰려 통째로 버려졌다. 실측한
+         리플레이에서 저그의 공격 명령 가운데 일꾼 표기가 11/11, 96/99, 202/229, 375/515
+         였다 — 저그의 진출·공격 자리가 요약에서 거의 사라진 원인이 이것이다. */
+      const byMorph = morphTo === "Lurker" ? "Lurker"
+        : morphTo === "Guardian" || morphTo === "Devourer" ? morphTo
+          : morphTo === "Drone" ? "Worker"
+            : morphTo === "Overlord" ? "Transport"
+              : morphTo;
+      /* 자원을 찍은 우클릭은 일꾼만 낸다 — 미네랄·가스에 병력을 보낼 일은 없다. 찍은
+         대상이 건물·자원일 때는 screp이 그 이름(Unit)까지 실어 주므로 확실하다. 일꾼
+         번호가 일찍 드러날수록, 뒤에 그 번호로 찍힌 자원 클릭 뭉치를 공격 자리에서
+         걷어내기가 쉬워진다. */
+      const clicked = (cmdName === "Right Click" || cmdName === "Targeted Order")
+        ? nameOf(c.Unit) : undefined;
+      const byClick = clicked && RESOURCE_TARGETS.has(clicked) ? "Worker" : undefined;
       const byRole = cmdName && WORKER_CMD_NAMES.has(cmdName) ? "Worker"
-        : cmdName && BUILDING_ONLY_CMD_NAMES.has(cmdName) ? "Building" : undefined;
+        : cmdName && BUILDING_ONLY_CMD_NAMES.has(cmdName) ? "Building" : byClick;
       const named = (cmdName ? USE_CMD_TO_UNIT[cmdName] : undefined)
         ?? (orderName ? CAST_ORDER_TO_UNIT[orderName] : undefined)
         ?? (orderName === PLACE_MINE_ORDER ? "Vulture" : undefined)
