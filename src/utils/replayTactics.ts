@@ -973,7 +973,10 @@ function detectFor(c: Ctx): Tactic[] {
         // 무게만 낮춰, 할 이야기가 그것뿐일 때만 나오게 한다.
         weight: intoFoe ? 12 : 5,
         at: (intoFoe ? firstOf(intoSpots) : null) ?? s.firstBuildingFrame["Nydus Canal"] ?? null,
-        who, p: { intoFoe },
+        // 상대 진영에 뚫은 문의 자리 — 그게 곧 병력이 나온 곳이다(지적: 커널의 자막과 실제
+        // 도착 위치가 달랐다). 그 사람 본진 한복판보다 정확하다.
+        who, p: { intoFoe, ...(intoFoe && intoSpots.length > 0
+          ? { xy: [intoSpots[0].x, intoSpots[0].y] as [number, number] } : {}) },
       });
     }
     // 성큰러시(요청) — 초반에 상대 본진 코앞에 성큰을 박는 것. 해처리는 보지 않는다

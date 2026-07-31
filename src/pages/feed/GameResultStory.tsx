@@ -96,8 +96,9 @@ const CENTER_BEAT_KEYS = new Set(["center", "center-photon"]);
  *  마법을 쓴 좌표·문을 뚫은 좌표는 대개 제 진영 언저리라 목표로 삼으면 제 집 옆에서 짧게
  *  끝난다. 출발 자리는 회오리·구멍으로, 도착 자리는 반짝임으로 따로 표시한다. */
 const WARP_BEAT_KEYS = new Set(["recall", "nydus"]);
-/** 건너간 자리에 얹는 표시 — 마법으로 옮겨 간 느낌을 준다(요청: 별 반짝). */
-const WARP_ARRIVE_MARK = "✨";
+/** 건너간 자리에 얹는 표시 — 리콜은 마법으로 나타난 느낌(별 반짝), 커널은 양 끝이 다
+ *  구멍이다(지적: 커널은 시작과 끝 둘 다 구멍이 맞다). */
+const WARP_ARRIVE_MARK: Record<string, string> = { recall: "✨", nydus: "🕳️" };
 
 /** 날아서·워프로 간 수 — 화살표를 곧은 점선으로 그린다(요청: 드랍이나 공중유닛 이동은 직선).
  *  지상군만 곡선으로 돌아간다. */
@@ -467,6 +468,17 @@ export default function GameResultStory({
       return best === Infinity || best <= dist(at, home);
     };
 
+    /** 그 집의 '앞마당 안쪽'을 재는 자 — 가장 가까운 다른 본진까지 거리의 이만큼. */
+    const YARD = 0.3;
+    const yardOf = (h: [number, number]): number => {
+      let near = Infinity;
+      for (const s2 of slots) {
+        const p = homeOf(s2.raw);
+        if (p && dist(p, h) > 1) near = Math.min(near, dist(p, h));
+      }
+      return Number.isFinite(near) ? Math.max(ARROW_MIN_TILES, near * YARD) : ARROW_MIN_TILES;
+    };
+
     const target = (b: (typeof beats)[number], raw: string): [number, number] | null => {
       const home = homeOf(raw);
       if (!home) return null;
@@ -498,6 +510,11 @@ export default function GameResultStory({
          회오리·구멍 이모지로 따로 표시한다. */
       if (WARP_BEAT_KEYS.has(b.k) && namedFoe) {
         const to = homeOf(namedFoe);
+        /* 도착 자리를 정확히 아는 경우 — 상대 진영에 뚫은 커널의 좌표(replayTactics의
+           nydus)다. 그 사람 진영 안쪽일 때만 쓴다: 자막이 부른 사람과 다른 곳에 찍힌
+           좌표라면 그건 이 수의 도착점이 아니다(지적: 커널의 자막과 실제 도착 위치가
+           달랐다). 아니면 그 사람 본진을 목표로 삼는다. */
+        if (to && xy && dist(xy, to) <= yardOf(to)) return xy;
         if (to) return to;
       }
 
@@ -621,7 +638,7 @@ export default function GameResultStory({
            반짝임을 얹는다. 화살표 하나로 "여기서 저기로 넘어갔다"가 그대로 읽힌다. */
         if (WARP_BEAT_KEYS.has(b.k)) {
           fromMark.set(raw, markOf(b.k));
-          mark.set(raw, WARP_ARRIVE_MARK);
+          mark.set(raw, WARP_ARRIVE_MARK[b.k] ?? markOf(b.k));
         } else {
           fromMark.delete(raw);
         }
@@ -717,11 +734,9 @@ export default function GameResultStory({
   // 미니맵이 있으면 맵 이름·플레이시간은 그림의 머리로 올라간다 — 아래 따로 한 줄 더 두면
   // 같은 말이 두 번 나온다.
   const showRoster = !mobile || grid === null;
-  /* 첫 스냅에서는 모바일에서도 로스터를 보여준다(요청: 첫 시점 로스터는 좌우로 vs 양쪽에
-     팀별 세로 배치, 가운데 정렬) — 이야기를 읽기 전에 누가 어느 편인지부터 알아야 하는데,
-     자막 한 줄("1팀 A·B 대 2팀 C·D")로는 프사도 종족도 안 보였다. 그림은 예전처럼 그
-     아래에 그대로 둔다 — 좁은 화면에서 로스터 사이에 끼우면 미니맵이 뭉개진다. */
-  const introRoster = mobile && grid !== null && index === 0;
+  /* 시작 스냅(누가 누구와 붙었는지 소개하는 자리) — 그 자막 대신 로스터를 보여준다(요청).
+     소개 문장은 beat 없이 만들어 넣은 것이라 beats가 비어 있는 것으로 가려낸다. */
+  const introIdx = sentences.length > 1 && (sentences[0]?.beats?.length ?? 0) === 0 ? 0 : -1;
   // 자막으로 보여줄 수 있는 경기인가 — 미니맵이 있고 훑을 문장이 있을 때. 그림이 없으면
   // 자막만 남아 무엇을 보고 읽는 글인지 알 수 없다.
   const caption = grid !== null && sentences.length > 0;
@@ -736,6 +751,20 @@ export default function GameResultStory({
     onMouseDown: (e: MouseEvent) => e.stopPropagation(),
     onClick: (e: MouseEvent) => e.stopPropagation(),
   };
+
+  /* 두 팀 사이의 vs 줄(승·무 배지 포함) — 로스터 위쪽(PC)과 시작 스냅의 자막 자리
+     (모바일 포함) 두 곳이 같은 것을 쓴다. */
+  const vsRow = (
+    <span className="scr-challenge-arrow-row">
+      <span className={cx("scr-challenge-inline-win", o1 === "draw" && "scr-challenge-inline-draw", o1 !== "win" && o1 !== "draw" && "scr-challenge-inline-win-hidden")}>
+        {o1 === "draw" ? "무" : "승"}
+      </span>
+      <span className="scr-challenge-arrow scr-challenge-arrow-vs" aria-hidden="true">vs</span>
+      <span className={cx("scr-challenge-inline-win", o2 === "draw" && "scr-challenge-inline-draw", o2 !== "win" && o2 !== "draw" && "scr-challenge-inline-win-hidden")}>
+        {o2 === "draw" ? "무" : "승"}
+      </span>
+    </span>
+  );
 
   const mapBlock = grid && (
     <div className="scr-story-map" {...stopBubble}>
@@ -769,7 +798,27 @@ export default function GameResultStory({
 
       {sentences.length > 0 && (
       <div className="scr-story-cap">
-        {sentences.map((sn, i) => (
+        {sentences.map((sn, i) => (i === introIdx ? (
+          /* 시작 스냅은 글 대신 로스터를 보여준다(요청: 로스터는 자막 패널에, 지금 시작
+             자막 대신) — "1팀 A·B 대 2팀 C·D" 한 줄로는 프사도 종족도 안 보였다. 자리는
+             다른 자막과 같은 칸이라, 넘길 때 그림이 흔들리지 않는다. */
+          <div
+            key={i} className="scr-story-cap-line scr-story-cap-roster"
+            aria-hidden={i !== index} data-on={i === index}
+          >
+            <div className="scr-challenge-matchup scr-feed-game-result-matchup scr-story-intro-roster">
+              <RosterSide
+                team={team1} memberOf={memberOf}
+                highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms}
+              />
+              <div className="scr-story-mid">{vsRow}</div>
+              <RosterSide
+                team={team2} memberOf={memberOf}
+                highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms}
+              />
+            </div>
+          </div>
+        ) : (
           <p key={i} className="scr-story-cap-line" aria-hidden={i !== index} data-on={i === index}>
             {/* 언제 있었던 일인지 앞에 붙인다(요청: [5분]처럼 분까지만). 시각을 모르는
                 문장(맺음말 등)은 아무것도 안 붙인다 — 0분이라고 적으면 거짓말이다. */}
@@ -778,7 +827,7 @@ export default function GameResultStory({
               ? <span key={j} className={pt.team === 1 ? "scr-sum-team1" : "scr-sum-team2"}>{pt.text}</span>
               : <span key={j}>{pt.text}</span>))}
           </p>
-        ))}
+        )))}
       </div>
       )}
     </div>
@@ -786,10 +835,8 @@ export default function GameResultStory({
 
   return (
     <div className="scr-story" ref={rootRef}>
-      {(showRoster || introRoster) && (
-        <div className={cx("scr-challenge-matchup", "scr-feed-game-result-matchup",
-          grid && showRoster && "scr-story-matchup-wide",
-          introRoster && "scr-story-intro-roster")}>
+      {showRoster && (
+        <div className={cx("scr-challenge-matchup", "scr-feed-game-result-matchup", grid && "scr-story-matchup-wide")}>
           <RosterSide
             team={team1} memberOf={memberOf}
             highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms}
@@ -797,16 +844,8 @@ export default function GameResultStory({
           {/* 가운데 — 승/무 배지와 vs, 그리고 PC에서는 그 아래 미니맵(요청: PC에서는
               로스터 사이에). */}
           <div className="scr-story-mid">
-            <span className="scr-challenge-arrow-row">
-              <span className={cx("scr-challenge-inline-win", o1 === "draw" && "scr-challenge-inline-draw", o1 !== "win" && o1 !== "draw" && "scr-challenge-inline-win-hidden")}>
-                {o1 === "draw" ? "무" : "승"}
-              </span>
-              <span className="scr-challenge-arrow scr-challenge-arrow-vs" aria-hidden="true">vs</span>
-              <span className={cx("scr-challenge-inline-win", o2 === "draw" && "scr-challenge-inline-draw", o2 !== "win" && o2 !== "draw" && "scr-challenge-inline-win-hidden")}>
-                {o2 === "draw" ? "무" : "승"}
-              </span>
-            </span>
-            {showRoster && mapBlock}
+            {vsRow}
+            {mapBlock}
           </div>
           <RosterSide
             team={team2} memberOf={memberOf}
