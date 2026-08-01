@@ -2403,6 +2403,9 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
       ...(clashPlace(clash.xy, bases) ? { who2: [clashPlace(clash.xy, bases)!] } : {}),
       p: {
         xy: clash.xy, n: clash.n,
+        // 몇 사람이 얽혔나 — 문장이 '둘의 싸움'과 '여럿이 얽힌 난전'을 갈라 쓰는 근거다
+        // (지적: 둘이 붙은 건데 "양 팀 병력이 한데 엉켜"로 나온다). biggestClash 주석 참고.
+        people: clash.people,
         ...(clashPlace(clash.xy, bases) === "" ? { place: "mid" } : {}),
         // 그 싸움에 실제로 나간 병력(요청) — "양 팀 병력이 크게 싸웠다"는 그 판의 절정을
         // 말하면서 정작 무엇이 부딪쳤는지를 안 말한다. 양쪽에서 이름을 모아 붙인다.
@@ -3023,6 +3026,8 @@ const CLASH_WINDOW_FRAMES = 60 / 0.042;
 const CLASH_RADIUS = 14;
 /** 이만큼은 몰려야 '큰 교전'이다 — 양쪽 것을 합쳐 센다. */
 const CLASH_MIN = 8;
+// 그 싸움의 '참가자'로 셀 최소 명령 수 — 한두 번 스친 것은 옆을 지나간 것이지 싸운 게 아니다.
+const CLASH_PART_MIN = 3;
 /** 교전으로 세는 마법 — 병력끼리 엉켰을 때만 쓰는 것들이다. 스캔·마인 심기처럼 혼자
  *  하는 것은 뺀다. */
 const CLASH_TECHS = new Set([
@@ -3038,7 +3043,7 @@ const CLASH_TECHS = new Set([
  *  견제거나 그냥 진출이다. */
 function biggestClash(
   a: ParsedReplayPlayer[], b: ParsedReplayPlayer[],
-): { at: number; xy: [number, number]; n: number; who: string[] } | null {
+): { at: number; xy: [number, number]; n: number; who: string[]; people: number } | null {
   type Hit = { frame: number; x: number; y: number; side: 0 | 1; raw: string };
   const hits: Hit[] = [];
   const add = (ps: ParsedReplayPlayer[], side: 0 | 1) => {
@@ -3058,7 +3063,7 @@ function biggestClash(
   add(b, 1);
   if (hits.length < CLASH_MIN) return null;
 
-  let best: { at: number; xy: [number, number]; n: number; who: string[] } | null = null;
+  let best: { at: number; xy: [number, number]; n: number; who: string[]; people: number } | null = null;
   for (const h of hits) {
     const near = hits.filter(
       (x) => Math.abs(x.frame - h.frame) <= CLASH_WINDOW_FRAMES
@@ -3077,9 +3082,18 @@ function biggestClash(
       return [...tally].sort((p, q) => q[1] - p[1])[0]?.[0] ?? null;
     };
     const who = [top(0), top(1)].filter((v): v is string => v !== null);
+    /* 실제로 몇 사람이 얽혔나 — who는 양쪽에서 하나씩만 뽑은 대표라 늘 둘이어서, 이 수가
+       없으면 둘이 붙은 싸움도 "양 팀 병력이 한데 엉켜"로 말하게 된다(지적). 자리에 찍힌
+       사람 수를 세어 문장이 '둘의 싸움'과 '여럿이 얽힌 난전'을 갈라 쓰게 한다.
+       한두 번 스친 사람은 빼고 센다 — 반경이 14타일·창이 60초라 옆에서 제 할 일 하던
+       사람의 명령 한둘은 쉽게 딸려 들어오는데, 그걸 참가자로 세면 둘이 붙은 싸움이 곧바로
+       '여럿'이 되어 이 구분이 무의미해진다(다른 곳의 POS_MIN_ORDERS와 같은 취지). */
+    const tally = new Map<string, number>();
+    for (const x of near) tally.set(x.raw, (tally.get(x.raw) ?? 0) + 1);
+    const people = [...tally.values()].filter((n) => n >= CLASH_PART_MIN).length;
     best = {
       at: Math.min(...near.map((x) => x.frame)),
-      xy: [round1(cx), round1(cy)], n: near.length, who,
+      xy: [round1(cx), round1(cy)], n: near.length, who, people,
     };
   }
   return best;

@@ -719,6 +719,10 @@ export default function GameResultStory({
     const attacker = new Set<string>();
     const helper = new Set<string>();
     const helped = new Set<string>();
+    /** 제 기지가 싸움터가 된 사람 — 그 자리에 얹는 표시는 공격(💥)이 아니라 방어(🛡️)다.
+     *  때린 쪽 화살표가 이미 그 자리에 💥를 찍으므로, 집주인에게도 💥를 주면 같은 자리에
+     *  같은 표시가 둘 겹친다. */
+    const homeDefender = new Set<string>();
     for (const n of idx) {
       const b = beats[n];
       if (!b) continue;
@@ -738,24 +742,24 @@ export default function GameResultStory({
       if (SEVERE_SUBJECT_KEYS.has(b.k)) who.forEach((r) => severe.add(r));
       if (SEVERE_VICTIM_KEYS.has(b.k)) victims.forEach((r) => severe.add(r));
       if (MODERATE_SUBJECT_KEYS.has(b.k)) who.forEach((r) => moderate.add(r));
-      // clash가 누군가의 기지에서 벌어졌으면(who2) 그 집주인도 이 장면의 당사자다(지적:
-      // "OO의 기지에서 …싸웠다"인데 정작 그 사람은 표정도 없었다) — 직접 싸운 건 아니라도
-      // 제 앞마당이 싸움터가 된 것이니 당황한 얼굴을 준다.
-      if (b.k === "clash") {
-        (Array.isArray(b.who2) ? b.who2 : typeof b.who2 === "string" ? [b.who2] : [])
-          .forEach((r) => { if (!who.includes(r)) moderate.add(r); });
-      }
       if (DEFENDED_ALWAYS_KEYS.has(b.k)) who.forEach((r) => defended.add(r));
       // stand는 이긴 편·진 편 모두에 붙는다 — won을 봐야 자신감/힘겨움이 갈린다.
       if (b.k === "stand") who.forEach((r) => (b.won ? defended : struggling).add(r));
-      // clash는 누구 기지에서 붙었느냐를 본다(지적: 아군 기지에서 벌어진 전투에 참여한
-      // 것은 공격이 아니라 헬프로 봐야 한다) — 기지 주인(who2)이 같은 편이면 그 싸움에 낀
-      // 사람은 아군을 도우러 온 것이고, 상대 편(또는 기지 없는 한복판 교전)이면 공격이다.
+      /* clash는 누구 기지에서 붙었느냐를 본다(지적: 아군 기지에서 벌어진 전투에 참여한
+         것은 공격이 아니라 헬프로 봐야 한다) — 기지 주인(who2)이 같은 편이면 그 싸움에 낀
+         사람은 아군을 도우러 온 것이고, 상대 편(또는 기지 없는 한복판 교전)이면 공격이다.
+
+         집주인 자신은 어느 쪽도 아니다. 제 기지가 싸움터가 된 사람은 '도우러 온 아군'이
+         아니라 공격받은 당사자다 — 그런데 "같은 편이면 헬프"라는 판정이 집주인 본인까지
+         같이 걸어서, 제 본진에서 얻어맞은 사람에게 천사 얼굴이 붙었다(지적: 팍규 본진에서
+         팍규와 태섭이 싸운 건데 팍규가 도우러 간 사람처럼 보인다). 직접 싸웠든 아니든
+         당황한 얼굴을 준다. */
       if (b.k === "clash") {
         const owners = Array.isArray(b.who2) ? b.who2 : typeof b.who2 === "string" ? [b.who2] : [];
+        owners.forEach((r) => { moderate.add(r); homeDefender.add(r); });
         const ownerTeam = owners.length > 0 ? teamOf.get(owners[0]) : undefined;
         who.forEach((r) => {
-          if (victims.has(r)) return;
+          if (victims.has(r) || owners.includes(r)) return;
           if (ownerTeam !== undefined && teamOf.get(r) === ownerTeam) helper.add(r);
           else attacker.add(r);
         });
@@ -792,7 +796,8 @@ export default function GameResultStory({
         // 아군 기지의 교전을 도우러 간 것(위에서 helper로 분류됨)은 화살표 끝 표시도
         // 공격(💥)이 아니라 방어(🛡️)로 바꾼다(지적: "정구의 화살표 끝은 공격이라기보다
         // 방어지 — 저렇게 하면 꼭 태섭을 공격한 거 같잖아").
-        const em = (b.k === "clash" && helper.has(raw)) ? "🛡️" : markOf(b);
+        const em = (b.k === "clash" && (helper.has(raw) || homeDefender.has(raw)))
+          ? "🛡️" : markOf(b);
         // 화살표를 못 그리는 경우(자리를 모름·너무 가까움)의 마지막 대비책 — 아래에서
         // hits가 하나도 화살표로 못 그려지면 이 값으로 본진에 이모지를 얹는다.
         mark.set(raw, em);

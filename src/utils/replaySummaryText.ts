@@ -1419,9 +1419,15 @@ const TEMPLATES: Record<string, Tpl> = {
     // "히드라가 뒤엉켜 맞붙었다"가 되면 한쪽만 싸운 것처럼 읽힌다. 둘 이상일 때만 부른다.
     const force = list(c.p.force).map((u) => UNIT_KO[u] ?? "").filter(Boolean);
     const named = force.length >= 2;
-    const both = named
-      ? ga(listForm(force.join("·")))
-      : c.duel ? "둘의 병력이" : "양 팀 병력이";
+    /* 실제로 몇 사람이 얽혔나(replaySummary의 biggestClash) — "양 팀 병력이"는 여럿이
+       뒤엉킨 난전에나 쓸 말이라, 둘이 붙은 싸움에 붙이면 사실과 다르다(지적). 옛 요약에는
+       이 값이 없으니 그때는 예전처럼 말한다. */
+    const people = num(c.p.people, 0);
+    const pair = people === 2 && c.whoList.length === 2;
+    // 둘이 붙은 싸움이면 이름을 부른다 — 그게 가장 정확하고, 그림(화살표)과도 맞는다.
+    const both = pair ? ga(c.who)
+      : named ? ga(listForm(force.join("·")))
+        : c.duel ? "둘의 병력이" : "양 팀 병력이";
     /* 그 싸움에서 실제로 터진 마법(요청: 다양한 세부 기술 사용 진술) — 마법 좌표에 시각이
        함께 남아 있어 몇 번 터졌는지까지 셀 수 있다. 큰 싸움의 그림은 대개 이것이 만든다. */
     const tech = TECH_KO[str(c.p.tech)];
@@ -1429,6 +1435,24 @@ const TEMPLATES: Record<string, Tpl> = {
     /* 마법 이야기는 앞에 얹는다 — 문장을 평서형('-다')으로 펴는 일은 맨 끝의 명사형('-ㅁ')을
        보고 이루어지므로, 뒤에 붙이면 정작 본절이 "크게 부딪침"인 채로 남는다(실측). */
     const spell = tech && techN >= 2 ? `${ga(tech)} ${techN}번 터지는 가운데 ` : "";
+    /* 둘이 붙은 싸움이 한쪽의 기지에서 벌어졌으면 "양 팀 병력이"가 아니라 누가 누구를
+       쳤는지로 말한다(지적: 팍규 본진에서 팍규와 태섭이 싸운 건데 "양 팀 병력이 한데 엉켜
+       크게 싸웠다"로 나온다 — 그건 여럿이 얽혔을 때 쓰는 말이다). who는 양쪽에서 가장 많이
+       찍은 사람을 하나씩 뽑은 것이라(replaySummary의 biggestClash), 그 둘 중 하나가 그
+       기지의 주인이면 나머지 하나가 쳐들어간 사람이다 — 둘은 반드시 다른 편이다.
+       기지 주인이 싸운 당사자가 아닐 때(제3자의 앞마당에서 붙은 경우)는 예전 표현 그대로다. */
+    const owner = c.who2;
+    const raider = owner ? c.whoList.find((n) => n !== owner) : undefined;
+    if (pair && owner && raider && c.whoList.includes(owner)) {
+      // 병력 이름은 양쪽 것이 섞여 있어(clashForce) 쳐들어간 사람의 것이라고 말할 수 없다 —
+      // '무엇이 뒤엉켰나'로만 얹는다. 관형형('뒤엉킨')이라 반드시 명사가 뒤에 와야 한다.
+      const mix = named ? `${ga(listForm(force.join("·")))} 뒤엉킨 ` : "";
+      return `${spell}${ga(raider)} ${done(c, c.pick([
+        `${owner}의 기지를 덮쳐 ${mix}큰 싸움을 벌임`,
+        `${owner}의 본진까지 밀고 들어가 ${mix}큰 싸움을 벌임`,
+        `${owner}의 기지를 들이쳐 ${mix}그 판의 가장 큰 싸움을 벌임`,
+      ]))}`;
+    }
     return `${where}${spell}${both} ${done(c, c.pick(
       named
         ? ["뒤엉켜 크게 부딪침", "맞부딪쳐 그 판의 가장 큰 싸움을 벌임",
