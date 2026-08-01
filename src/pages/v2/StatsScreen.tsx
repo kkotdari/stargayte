@@ -455,41 +455,43 @@ export default function StatsScreenV2() {
         // 필터창(분류/종족/기간 세 덩어리)은 없앴다(요청) — 그 셋을 목록 바로 위의 제목
         // 문장으로 옮겼다. 제목이 곧 지금 걸린 조건이라 따로 읽을 필터 UI가 없다.
         heading={
-          <div className="scr-grid-title">
-            <Select
-              className="scr-sentence-select" value={period} options={periodOpts}
-              onChange={setPeriod} minDropWidth={150}
-            />
-            <Select
-              className="scr-sentence-select" value={matchType} options={TYPE_SELECT_OPTS}
-              onChange={(v) => setMatchType(v as GameType)} minDropWidth={120}
-            />
-            {/* 분류 옆에 최소 참여 기준을 알려준다(지적: 필터 옆에 몇 게임 이상 참여한
-                경우만 집계된다는 설명 표시) — 안 그러면 왜 어떤 회원은 게임수만 보이고
-                승률·생산·APM·커맨드·포인트가 "-"인지 알 길이 없다. 지금 고른 분류의
-                기준을 먼저 말하고 다른 분류 기준도 괄호로 덧붙인다. */}
-            <InfoTip
-              label="최소 참여 기준"
-              text={`${matchType === "0101" ? "개인전" : "팀전"}은 ${minPlays}판 이상 참여해야 승률·생산·APM·커맨드와 포인트·순위가 표시돼요(개인전 ${MIN_PLAYS_BY_TYPE["0101"]}판, 팀전 ${MIN_PLAYS_BY_TYPE["0102"]}판). 미달이면 게임수만 보여요.`}
-            />
-            {/* 마지막 낱말과 초기화는 한 덩어리로 — 줄이 좁아 넘칠 때 초기화만 다음 줄에
-                외따로 떨어지지 않게 한다. */}
-            <span className="scr-grid-title-tail">
+          <div className="scr-stats-heading">
+            <div className="scr-grid-title">
               <Select
-                className="scr-sentence-select" value={race} options={RACE_SELECT_OPTS}
-                onChange={(v) => setRace(v as BaseRace | "all")} minDropWidth={130}
+                className="scr-sentence-select" value={period} options={periodOpts}
+                onChange={setPeriod} minDropWidth={150}
               />
-              {/* 초기화(요청) — 문장 끝에 붙여 기간·종족을 한 번에 되돌린다(분류는 유지).
-                  이미 기본값이면 누를 게 없으니 흐리게 죽여 둔다. 검색어(유저)는 이 문장
-                  밖의 별개 필터라 건드리지 않는다 — 칩마다 제 ×가 있다. */}
-              <button
-                type="button" className="scr-grid-title-reset"
-                onClick={resetFilters} disabled={isDefaultFilter}
-                aria-label="필터 초기화" title="필터 초기화"
-              >
-                <RotateCcw size={14} aria-hidden />
-              </button>
-            </span>
+              <Select
+                className="scr-sentence-select" value={matchType} options={TYPE_SELECT_OPTS}
+                onChange={(v) => setMatchType(v as GameType)} minDropWidth={120}
+              />
+              {/* 마지막 낱말과 초기화는 한 덩어리로 — 줄이 좁아 넘칠 때 초기화만 다음 줄에
+                  외따로 떨어지지 않게 한다. */}
+              <span className="scr-grid-title-tail">
+                <Select
+                  className="scr-sentence-select" value={race} options={RACE_SELECT_OPTS}
+                  onChange={(v) => setRace(v as BaseRace | "all")} minDropWidth={130}
+                />
+                {/* 초기화(요청) — 문장 끝에 붙여 기간·종족을 한 번에 되돌린다(분류는 유지).
+                    이미 기본값이면 누를 게 없으니 흐리게 죽여 둔다. 검색어(유저)는 이 문장
+                    밖의 별개 필터라 건드리지 않는다 — 칩마다 제 ×가 있다. */}
+                <button
+                  type="button" className="scr-grid-title-reset"
+                  onClick={resetFilters} disabled={isDefaultFilter}
+                  aria-label="필터 초기화" title="필터 초기화"
+                >
+                  <RotateCcw size={14} aria-hidden />
+                </button>
+              </span>
+            </div>
+            {/* 분류 아래에 최소 참여 기준을 늘 보이는 글줄로 둔다(지적: 필터 옆에 몇 게임
+                이상 참여한 경우만 집계된다는 설명 표시 — 눌러야 보이는 툴팁이 아니라 그냥
+                텍스트로 기본 노출) — 안 그러면 왜 어떤 회원은 게임수만 보이고 승률·생산·
+                APM·커맨드·포인트가 "-"인지 알 길이 없다. */}
+            <p className="scr-stats-min-plays-note">
+              개인전은 {MIN_PLAYS_BY_TYPE["0101"]}판, 팀전은 {MIN_PLAYS_BY_TYPE["0102"]}판 이상
+              참여해야 승률·생산·APM·커맨드와 포인트·순위가 표시돼요. 미달이면 게임수만 보여요.
+            </p>
           </div>
         }
       />

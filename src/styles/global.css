@@ -2565,6 +2565,13 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
   .scr-grid-title-reset:not(:disabled):hover { color: var(--text); background: rgba(255,255,255,0.12); }
   .scr-light-theme .scr-grid-title-reset:not(:disabled):hover { background: rgba(0,0,0,0.07); }
 }
+/* 제목 문장 + 최소 참여 기준 한 줄을 한 묶음으로(요청: 그냥 텍스트로 기본 노출) — 눌러야
+   보이는 툴팁이 아니라 늘 보이는 글줄이라, 제목 바로 아래 작게 둔다. */
+.scr-stats-heading { display: flex; flex-direction: column; }
+.scr-stats-heading .scr-grid-title { margin-bottom: 2px; }
+.scr-stats-min-plays-note {
+  margin: 0 0 10px; font-size: var(--fs-caption); color: var(--muted); line-height: 1.4;
+}
 /* 배경이 없는 낱말이라, 누를 수 있다는 신호는 호버/열림에서만 옅은 바탕으로 준다. */
 @media (hover: hover) {
   .scr-sentence-select .scr-cselect-trigger:hover {
