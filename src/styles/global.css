@@ -7876,8 +7876,12 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
      밝은 지형에서도 테두리 색이 살아 있게 한다. */
   border: 3px solid rgba(255, 255, 255, 0.9); box-sizing: content-box;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.65);
-  /* 스냅이 바뀌면 크기가 바뀐다 — 튀지 않게 넘긴다. */
-  transition: width 220ms ease, height 220ms ease;
+  /* 스냅이 바뀌면 크기가 바뀐다 — 튀지 않게 넘긴다. transform도 반드시 함께 넘긴다:
+     아바타 크기는 width/height(Avatar의 size)와 CSS scale이 곱해진 값인데, 한쪽만
+     넘기면 다른 쪽이 순간이동해 그 220ms 동안 엉뚱한 크기가 스친다. 주인공이었다가
+     아닌 게 되는 아바타가 특히 심했다 — 28px은 그대로인 채 scale만 1.08에서 1.5로
+     튀어 한 번 더 커졌다가 줄어들었다(지적: 다음 스냅으로 넘기면 잠깐 확대됐다 돌아옴). */
+  transition: width 220ms ease, height 220ms ease, transform 220ms ease;
 }
 @media (prefers-reduced-motion: reduce) {
   .scr-minimap-mark .scr-avatar { transition: none; }
@@ -8196,4 +8200,19 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
 .scr-minimap-all {
   display: inline-flex; align-items: center; gap: 5px; cursor: pointer;
   font-size: var(--fs-caption); color: var(--muted);
+}
+
+/* 시작 스냅 — 자막이 "게임 시작!" 한 줄뿐이라 누가 나왔는지는 미니맵만 말해 준다(요청:
+   로스터 대신 미니맵 아바타·닉네임 확대). 이 스냅에서는 아무도 '주인공'이 아니므로
+   .scr-minimap-mark-on이 안 붙고, 그러면 비확대 규칙(scale 1.5 / PC 2)이 걸린다 —
+   아바타 크기(size)만 키우면 그 배율이 그대로 곱해져 거꾸로 너무 커진다. 주인공과 같은
+   배율로 눌러 준다. 특이도는 비확대 규칙(:not까지 세 클래스)과 같게 맞추고, 순서로
+   이긴다 — 그래서 이 파일 맨 끝에 둔다. */
+.scr-minimap-mark-base.scr-minimap-mark-introbig .scr-avatar {
+  transform: translate(-50%, -50%) scale(1.08);
+}
+@media (min-width: 641px) {
+  .scr-minimap-mark-base.scr-minimap-mark-introbig .scr-avatar {
+    transform: translate(-50%, -50%) scale(1.3);
+  }
 }

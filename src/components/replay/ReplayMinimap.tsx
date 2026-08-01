@@ -296,7 +296,7 @@ export default function ReplayMinimap({
    *  바깥으로 물린다 — 작은 아바타 기준값 그대로 두면 큰 아바타 안쪽에 파묻힌다(예전에
    *  CSS의 .scr-minimap-mark-on 규칙이 하던 일인데, 이제 자리는 인라인이 정하므로
    *  여기서 갈라야 한다). */
-  const shoulderOf = (m: MinimapMarker) => (m.featured ? 13 : 9);
+  const shoulderOf = (m: MinimapMarker) => (m.featured || m.introBig ? 13 : 9);
   const place = (m: MinimapMarker) => ({
     left: `${(m.x / grid.width) * 100}%`,
     top: `${(m.y / grid.height) * 100}%`,
@@ -402,7 +402,10 @@ export default function ReplayMinimap({
               "이 문장은 이 사람 이야기"라는 표시다. */}
           <Avatar
             member={{ id: m.memberId, nickname: m.name, avatar: m.avatar }}
-            size={m.featured ? AVATAR_ON : AVATAR_OFF}
+            /* 시작 스냅에서는 아무도 '주인공'이 아니지만 모두를 크게 그린다(요청: 시작
+               스냅에 아바타들 확대) — 자막 패널의 로스터를 걷어내면서 그 자리를 미니맵이
+               대신하기로 한 화면이라, 여기서 작으면 누가 나왔는지 알 길이 없다. */
+            size={m.featured || m.introBig ? AVATAR_ON : AVATAR_OFF}
           />
           {/* 궤멸·빈사 — 본진 위에 해골을 얹는다(요청). 아바타는 흑백으로 눌러 두어
               해골이 그 사람 자리에 붙은 표시로 읽히게 한다. 다른 상태 표시가 전부 이모지로
