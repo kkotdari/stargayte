@@ -8017,14 +8017,18 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
 @media (max-width: 640px) {
   /* 주인공(확대된) 아바타 — 1.08 × 0.8. 비확대 아바타는 요청 대상이 아니라 그대로 둔다. */
   .scr-minimap-mark-on .scr-avatar { transform: translate(-50%, -50%) scale(0.86); }
-  /* 본진 액션·화살촉 끝 이모지(같은 클래스를 쓴다) — 28 × 0.8. */
-  .scr-minimap-arrow-mark { font-size: 22px; }
-  .scr-minimap-arrow-mark.scr-minimap-mark-home { font-size: 22px; }
-  /* 표정·해골 — 13 × 0.8 ≈ 10. 주인공 표정은 19 × 0.8 ≈ 16(짝수), 트로피는 28 × 0.8. */
-  .scr-minimap-mark-face { font-size: 10px; }
-  .scr-minimap-mark-skull { font-size: 10px; }
-  .scr-minimap-mark-on .scr-minimap-mark-face { font-size: 16px; }
-  .scr-minimap-mark-face.scr-minimap-mark-face-trophy { font-size: 22px; }
+  /* 액션·표정 이모지를 한 번 더 20% 줄인다(요청) — 아래 값은 전부 위 1차 축소값에
+     다시 0.8을 곱한 것이다. 확대된 아바타(위 0.86)는 이번 요청 대상이 아니라 그대로 둔다.
+     해골도 표정과 같이 줄인다: 둘은 아바타 양쪽 어깨에 짝으로 앉는 표시라 한쪽만 줄이면
+     짝이 어긋나 보인다. */
+  /* 본진 액션·화살촉 끝 이모지(같은 클래스를 쓴다) — 22 × 0.8 ≈ 18(짝수). */
+  .scr-minimap-arrow-mark { font-size: 18px; }
+  .scr-minimap-arrow-mark.scr-minimap-mark-home { font-size: 18px; }
+  /* 표정·해골 — 10 × 0.8 = 8. 주인공 표정은 16 × 0.8 ≈ 12(짝수), 트로피는 22 × 0.8 ≈ 18. */
+  .scr-minimap-mark-face { font-size: 8px; }
+  .scr-minimap-mark-skull { font-size: 8px; }
+  .scr-minimap-mark-on .scr-minimap-mark-face { font-size: 12px; }
+  .scr-minimap-mark-face.scr-minimap-mark-face-trophy { font-size: 18px; }
 }
 
 /* (삭제) 스냅 아바타가 따로 뜬 사람의 본진을 흐리게 하던 규칙 — 이제 당한 사람 마커를
