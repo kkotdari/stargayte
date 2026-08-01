@@ -4770,21 +4770,27 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 .scr-challenge-respond { display: flex; flex-direction: column; gap: 8px; }
 /* 카드에 보여주는 한마디(호출/응답) — 예전 너 나와 때처럼 로스터의 그 사람 줄 바로
    아래에, 줄을 맞춰 붙인다(지적: 로스터 아래 별도 목록이 아니라 해당 유저 아랫줄에).
-   따옴표 없이, 닉네임보다 한 단계 작은 글자로(요청) — 닉네임 크기가 화면(기본/피드/
-   팀전)마다 달라, 아래 각 자리에서 그 나름의 한 단계 아래 값으로 맞춘다. */
+   글자 크기는 한 단계 작았다가(요청) 다시 한 단계 키웠다(지적: 다시 1스텝 확대) —
+   지금은 닉네임과 같은 크기다. 그냥 텍스트로는 "이건 그 사람이 한 말"이라는 게 안
+   읽혀서(지적: 메시지라는 느낌을 줄 방법), 따옴표 대신(예전에 따옴표는 빼기로 했다)
+   말풍선처럼 옅은 배경 알약을 두른다 — display:inline-block이라 글자 길이만큼만
+   배경이 붙어 실제 말풍선 태그처럼 보인다. */
 .scr-challenge-side-msg {
-  display: block; color: var(--dim); line-height: 1.35;
-  word-break: break-word; font-size: var(--fs-caption); /* 기본 닉네임(body)의 한 단계 아래 */
+  display: inline-block; max-width: 100%; color: var(--dim); line-height: 1.4;
+  word-break: break-word; font-size: var(--fs-body); /* 기본 닉네임(body)과 같은 크기 */
+  background: rgba(var(--overlay-rgb), 0.09); border-radius: 10px; padding: 3px 9px;
   /* 시작점을 닉네임 글자 시작점에 맞춘다(지적) — 닉네임 앞에 프사(20px)+간격(6px, 위
-     .scr-challenge-person의 gap)이 있어, 그만큼 들여야 줄이 맞는다. 닉네임 줄과의
-     간격도 살짝 늘렸다(지적: 줄간격 살짝 증가) — 예전엔 -1px로 오히려 붙어 있었다. */
-  margin-top: 3px; margin-left: 26px;
+     .scr-challenge-person의 gap)이 있어, 그만큼 들여야 줄이 맞는다. 다만 말풍선 배경이
+     생겨서 왼쪽 패딩(9px)만큼은 들여쓰기에서 뺀다 — 안 그러면 글자가 시작점보다 9px
+     더 밀려 보인다. 닉네임 줄과의 간격도 살짝 늘렸다(지적: 줄간격 살짝 증가) — 예전엔
+     -1px로 오히려 붙어 있었다. */
+  margin-top: 4px; margin-left: 17px;
 }
-/* 팀전 닉네임(micro)의 한 단계 아래. */
-.scr-challenge-card-team .scr-challenge-side-msg { font-size: var(--fs-11); }
-/* 피드 카드 닉네임(caption)의 한 단계 아래 — 팀전보다 뒤에 둬서(피드+팀전이 겹쳐도)
+/* 팀전 닉네임(micro)과 같은 크기. */
+.scr-challenge-card-team .scr-challenge-side-msg { font-size: var(--fs-micro); }
+/* 피드 카드 닉네임(caption)과 같은 크기 — 팀전보다 뒤에 둬서(피드+팀전이 겹쳐도)
    피드 쪽 기준이 이긴다(위 .scr-feed-card .scr-challenge-person-name과 같은 순서). */
-.scr-feed-card .scr-challenge-side-msg { font-size: var(--fs-micro); }
+.scr-feed-card .scr-challenge-side-msg { font-size: var(--fs-caption); }
 .scr-light-theme .scr-challenge-submit-btn:disabled { border-color: rgba(0, 0, 0, 0.14); }
 /* "호출" 버튼 — 활성화 시 각 테마의 라이팅 프라이머리(요청: 핑크 고유색 대신 공통
    라이팅 테마). 다크=거의 흰 알약, 라이트=하늘빛 알약 + 윤곽 글로우. 비활성은 위
