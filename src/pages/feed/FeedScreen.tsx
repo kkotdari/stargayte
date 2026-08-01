@@ -906,17 +906,6 @@ export default function FeedScreen() {
 
   // 무한스크롤 — 목록 끝 센티널이 보이면 다음 페이지를 불러온다(전체 일괄 로드 대신).
   const sentinelRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const el = sentinelRef.current;
-    if (!el || !hasMore) return;
-    const io = new IntersectionObserver((entries) => {
-      if (entries.some((e) => e.isIntersecting) && hasMore && !matchesLoading && !loadingMore) {
-        loadMore();
-      }
-    }, { rootMargin: "600px 0px" });
-    io.observe(el);
-    return () => io.disconnect();
-  }, [hasMore, matchesLoading, loadingMore, loadMore]);
 
   /* 미니맵 격자도 목록과 함께 받아 둔다 — 댓글과 같은 이유다(위 primeFeedComments).
      카드가 뜬 뒤에 격자가 도착하면 미니맵이 그때 생겨나며 카드 키가 자라, 들어올 때
@@ -924,16 +913,47 @@ export default function FeedScreen() {
      내려가며 뜨는 것이라 이미 사용자가 스크롤을 쥔 뒤다. */
   const [mapsLoading, setMapsLoading] = useState(true);
   const didPrimeMapsRef = useRef(false);
+  /* 이 화면이 아직 살아 있나 — 화면이 사라진 뒤의 setState만 막으면 되므로 ref로 둔다.
+     예전에는 이펙트마다 새로 만드는 지역 변수(let alive)로 봤는데, 이 이펙트는 ref로
+     한 번만 돌게 막아 놓은 자리라 그러면 안 된다: 프리페치가 끝나기 전에 gameResults가
+     한 번만 바뀌어도(아래 무한스크롤이 한 페이지를 더 부르면 바뀐다) React가 앞선
+     이펙트의 정리를 돌려 그 변수를 꺼 버리고, 새로 도는 이펙트는 ref 가드에 걸려 아무
+     일도 안 한다 — 그래서 setMapsLoading(false)가 영영 안 불려 피드가 로딩에서
+     멈췄다(지적: 가끔 피드 진입 시 무한로딩). */
+  const aliveRef = useRef(true);
+  // 다시 마운트되면 반드시 되살려 놔야 한다 — 정리에서 끄기만 하면 한 번 꺼진 뒤로는
+  // 영영 꺼진 채다. StrictMode(개발)는 마운트→정리→마운트를 일부러 한 번 더 돌리므로
+  // 이게 없으면 개발에서는 100% 로딩에서 멈춘다.
+  useEffect(() => {
+    aliveRef.current = true;
+    return () => { aliveRef.current = false; };
+  }, []);
   useEffect(() => {
     if (matchesLoading || didPrimeMapsRef.current) return;
     didPrimeMapsRef.current = true;
-    let alive = true;
     primeReplayMaps(gameResults.map((g) => g.mapHash))
-      .catch(() => {}).finally(() => { if (alive) setMapsLoading(false); });
-    return () => { alive = false; };
+      .catch(() => {}).finally(() => { if (aliveRef.current) setMapsLoading(false); });
   }, [matchesLoading, gameResults]);
 
   const loading = challengesLoading || matchesLoading || commentsLoading || mapsLoading;
+
+  /* 무한스크롤 관측 — 목록이 실제로 그려진 뒤에만 건다. 이 판단은 경기 목록의 로딩
+     (matchesLoading)이 아니라 화면 전체의 loading이어야 한다(지적: 로딩바가 두 개 뜬다).
+     경기 목록만 먼저 도착하고 댓글·격자 프리페치가 아직인 구간에서는 목록 자리에 스피너
+     하나만 있어 화면이 짧으니, 맨 아래 센티널이 처음부터 보인다 — 그러면 사용자가 스크롤을
+     하기도 전에 다음 페이지를 부르고, 스피너가 하나 더 붙어 두 개가 됐다. 딸려온 문제가 더
+     크다: 그 바람에 gameResults가 바뀌면서 위 프리페치까지 어긋났다. */
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || !hasMore || loading) return;
+    const io = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting) && hasMore && !matchesLoading && !loadingMore) {
+        loadMore();
+      }
+    }, { rootMargin: "600px 0px" });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [hasMore, loading, matchesLoading, loadingMore, loadMore]);
 
   // 랭크(포인트/순위) 변동 이벤트 — 서버가 경기 등록/삭제 때마다 계산·저장한 스냅샷을
   // 그대로 읽는다(클라이언트는 더 이상 아무것도 계산하지 않는다).
@@ -1389,8 +1409,11 @@ export default function FeedScreen() {
         </div>
       )}
 
-      {loadingMore && <div className="scr-empty"><Spinner size={16} /></div>}
-      <div ref={sentinelRef} aria-hidden />
+      {/* 스피너는 화면에 하나뿐이어야 한다 — 위 목록 자리의 것과 여기 '더 불러오는 중'이
+          동시에 뜨면 로딩바가 두 개로 보인다(지적). 센티널도 목록이 그려진 뒤에만 둔다:
+          없으면 관측할 것 자체가 없어 조기 loadMore가 원천적으로 안 생긴다. */}
+      {!loading && loadingMore && <div className="scr-empty"><Spinner size={16} /></div>}
+      {!loading && <div ref={sentinelRef} aria-hidden />}
 
       {/* 우측 스크롤 타임라인 — 피드는 최신순(위=최근, 아래=과거). 무한스크롤과 함께 쓰면
           타임라인은 "지금까지 불러온 범위"를 나타내고, 더 불러올수록 아래(과거)가 늘어난다. */}
