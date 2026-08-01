@@ -4735,11 +4735,19 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 .scr-challenge-msg-inner .scr-input { width: 100%; }
 /* 응답 영역 — 한마디 토글/입력 + 버튼 행을 세로로 쌓는다. */
 .scr-challenge-respond { display: flex; flex-direction: column; gap: 8px; }
-/* 카드에 보여주는 한마디(호출/응답) — 따옴표 없이, 본문보다 한 스텝 작게(요청). */
-.scr-challenge-card-msgs { display: flex; flex-direction: column; gap: 3px; margin-top: 8px; }
-.scr-challenge-card-msg { display: flex; gap: 6px; align-items: baseline; font-size: var(--fs-caption); line-height: 1.4; }
-.scr-challenge-card-msg-who { flex: 0 0 auto; font-weight: 700; color: var(--dim); font-size: var(--fs-micro); }
-.scr-challenge-card-msg-text { color: var(--text); word-break: break-word; }
+/* 카드에 보여주는 한마디(호출/응답) — 예전 너 나와 때처럼 로스터의 그 사람 줄 바로
+   아래에, 줄을 맞춰 붙인다(지적: 로스터 아래 별도 목록이 아니라 해당 유저 아랫줄에).
+   따옴표 없이, 닉네임보다 한 단계 작은 글자로(요청) — 닉네임 크기가 화면(기본/피드/
+   팀전)마다 달라, 아래 각 자리에서 그 나름의 한 단계 아래 값으로 맞춘다. */
+.scr-challenge-side-msg {
+  display: block; margin-top: -1px; color: var(--dim); line-height: 1.35;
+  word-break: break-word; font-size: var(--fs-caption); /* 기본 닉네임(body)의 한 단계 아래 */
+}
+/* 팀전 닉네임(micro)의 한 단계 아래. */
+.scr-challenge-card-team .scr-challenge-side-msg { font-size: var(--fs-11); }
+/* 피드 카드 닉네임(caption)의 한 단계 아래 — 팀전보다 뒤에 둬서(피드+팀전이 겹쳐도)
+   피드 쪽 기준이 이긴다(위 .scr-feed-card .scr-challenge-person-name과 같은 순서). */
+.scr-feed-card .scr-challenge-side-msg { font-size: var(--fs-micro); }
 .scr-light-theme .scr-challenge-submit-btn:disabled { border-color: rgba(0, 0, 0, 0.14); }
 /* "호출" 버튼 — 활성화 시 각 테마의 라이팅 프라이머리(요청: 핑크 고유색 대신 공통
    라이팅 테마). 다크=거의 흰 알약, 라이트=하늘빛 알약 + 윤곽 글로우. 비활성은 위
@@ -7155,6 +7163,16 @@ html.scr-light-theme .scr-feed-comments .scr-mreq-chip-inline { color: #c07c1c; 
 .scr-feed-comments > .scr-feed-notes {
   border-top: none; padding: var(--post-row-gap) var(--post-pad-bx) 0; margin-top: 0;
 }
+/* 댓글이 있으면 본문(경기결과/너나와 로스터)과 구분되는 소제목을 단다(지적: 댓글과
+   본문 구역 구분이 안 됨 — 상단부에 "댓글" 소제목을 달고 그 위 여백도 넣기). */
+.scr-feed-comments-heading {
+  margin-top: 4px; margin-bottom: 6px;
+  font-size: var(--fs-micro); font-weight: 700; color: var(--dim);
+}
+/* 댓글이 실제로 있으면 입력줄이 절대배치가 아니라 목록 흐름 안에 있어, 빈 카드를 위해
+   잡아 둔 꼬리 여백(46px)이 그대로 남아 "댓글 추가" 버튼 아래가 휑했다(지적: 그 아래
+   여백이 많이 남는 문제) — 이때는 여백을 줄인다. */
+.scr-feed-card:has(.scr-feed-notes:not(.scr-feed-notes-empty)) { --post-pad-b: 16px; }
 /* 댓글이 없는 포스트가 훨씬 많다(지적) — 그럴 땐 "댓글 쓰기" 아이콘이 한 줄을 통째로
    차지하지 않고, 바디 아래 여백의 왼쪽 구석에 얹혀만 있는다(요청). 기준은 포스트
    (.scr-feed-card, position:relative). */
@@ -7192,12 +7210,15 @@ html.scr-light-theme .scr-feed-comments .scr-mreq-chip-inline { color: #c07c1c; 
 /* 응답 마감 실시간 카운트다운 — 헤더행 폰트 크기를 그대로 상속(요청: 폰트 크기 맞추기). */
 .scr-feed-chal-countdown { font-weight: 600; color: var(--dim); font-variant-numeric: tabular-nums; white-space: nowrap; }
 
-/* 가운데의 + 댓글 아이콘 ↔ 입력창 전환(요청) — 아이콘을 누르면 입력창이 트랜지션으로
-   가로로 펼쳐지며 포커스되고, 포커스를 잃으면 다시 아이콘으로 줄어든다. 입력창은 늘
-   마운트된 채 max-width/opacity로만 접히고, 줄 높이(34px)는 항상 예약해 흔들림이 없다. */
-/* gap을 0으로 — 접혀 있어도 gap이 살아 있으면 아이콘이 그만큼 왼쪽으로 밀려 카드
-   정중앙에서 벗어난다(지적). 열리면 아이콘이 width 0으로 접히므로 gap 자체가 필요 없다. */
-.scr-feed-comment-row { display: flex; align-items: center; justify-content: center; gap: 0; min-height: 34px; }
+/* + 댓글 아이콘 ↔ 입력창 전환(요청) — 아이콘을 누르면 입력창이 트랜지션으로 가로로
+   펼쳐지며 포커스되고, 포커스를 잃으면 다시 아이콘으로 줄어든다. 입력창은 늘 마운트된
+   채 max-width/opacity로만 접히고, 줄 높이(34px)는 항상 예약해 흔들림이 없다. */
+/* 가운데 정렬은 되돌렸다(지적: "댓글 추가"가 가운데 정렬된 게 문제) — 댓글 목록·소제목이
+   전부 왼쪽 정렬인데 이 줄만 가운데면 그 사이에 놓였을 때 붕 떠 보인다. 왼쪽으로
+   맞춘다(빈 카드용 절대배치 버전은 이미 flex-start였다 — 위 -empty 규칙 참고).
+   gap은 0으로 — 접혀 있어도 gap이 살아 있으면 아이콘이 그만큼 밀린다. 열리면 아이콘이
+   width 0으로 접히므로 gap 자체가 필요 없다. */
+.scr-feed-comment-row { display: flex; align-items: center; justify-content: flex-start; gap: 0; min-height: 34px; }
 /* width를 명시해야 0으로의 트랜지션이 걸린다(auto→0은 애니메이션 불가) — 아이콘 24px에서
    글자 폭으로 바꿨다(글자 1스텝 축소에 맞춰 30px이었던 것을, "댓글" → "댓글 추가"로
    늘리며(지적) 그 폭에 맞춰 54px로 다시 넓혔다). */

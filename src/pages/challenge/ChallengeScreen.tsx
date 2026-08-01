@@ -56,19 +56,24 @@ type SideMember = { id: string; nickname: string; avatar: string | null };
 // 팀 구성 한 편(도전자편/상대편)을 세로로 쌓는다(요청: "각팀을 세로로 배치") — 1:1이든
 // 팀전이든 모양은 같고, 인원이 하나든 여럿이든 그냥 줄 수만 늘어난다.
 function ChallengeSide({
-  people, targets, highlightMemberIds,
+  people, targets, highlightMemberIds, messageOf,
 }: {
   people: SideMember[];
   targets?: { target: ChallengeTarget }[];
   // 유저 검색에 걸린 사람 — 경기결과 로스터와 같은 반전색으로 프사+닉네임을 함께 칠한다
   // (요청: "랭킹, 너 나와 유저 검색시 하이라이팅 추가 단! 닉네임뿐 아니라 프사까지").
   highlightMemberIds?: Set<string>;
+  // 그 사람의 한마디(호출자의 challenge.message / 지목자의 responseMessage) — 있으면
+  // 그 사람 줄 바로 아래에 붙인다(지적: 예전 너 나와 때처럼 로스터의 해당 유저 아랫줄에
+  // 줄 맞춰서). 없으면 아무것도 안 그린다.
+  messageOf?: (personId: string) => string | null | undefined;
 }) {
   return (
     <div className={cx("scr-challenge-side", targets && "scr-challenge-side-target")}>
       {people.map((p, i) => {
         const t = targets?.[i];
         const tone = t ? targetPillInfo(t.target).tone : null;
+        const msg = messageOf?.(p.id);
         return (
           <div key={p.id} className="scr-challenge-side-block">
             <div className="scr-challenge-side-row">
@@ -86,6 +91,8 @@ function ChallengeSide({
                 </span>
               )}
             </div>
+            {/* 한마디 — 따옴표 없이, 닉네임보다 한 단계 작은 글자로(요청). */}
+            {msg && <span className="scr-challenge-side-msg">{msg}</span>}
           </div>
         );
       })}
@@ -263,7 +270,12 @@ export function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, o
             )}
 
             <div className="scr-challenge-matchup">
-              <ChallengeSide people={creatorSideMembers} highlightMemberIds={highlightMemberIds} />
+              <ChallengeSide
+                people={creatorSideMembers} highlightMemberIds={highlightMemberIds}
+                // 호출자의 한마디(challenge.message)는 호출자 본인 줄에만 붙는다 — 같은 편
+                // 팀원(ownMembers)에게는 없다.
+                messageOf={(id) => (id === challenge.createdBy.id ? challenge.message : null)}
+              />
               {/* 승/무 배지 — 이긴 편 쪽으로(손 이모지 기준 이긴 편이 있는 방향에) 붙인다
                   (요청: "승리배지는 손 이모지 옆에 표시(이긴쪽에)"). 자리가 좁아 "승리"
                   대신 한 글자만(요청: "좁아서 그냥 승/무 한글자 배지로 표시해야할듯").
@@ -294,27 +306,12 @@ export function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, o
                   {challenge.resultWinnerSide === "draw" ? "무" : "승"}
                 </span>
               </span>
-              <ChallengeSide people={targetSideMembers} targets={activeTargetInfos} highlightMemberIds={highlightMemberIds} />
+              <ChallengeSide
+                people={targetSideMembers} targets={activeTargetInfos} highlightMemberIds={highlightMemberIds}
+                // 지목된 상대의 응답 한마디 — 그 사람 줄 아래에(위 messageOf 참고).
+                messageOf={(id) => challenge.targets.find((t) => t.memberId === id)?.responseMessage}
+              />
             </div>
-
-            {/* 한마디 — 호출자의 한마디(challenge.message)와 각 대상의 응답 한마디를 카드에
-                보여준다(요청). 따옴표 없이, 본문보다 한 스텝 작게. */}
-            {(challenge.message || challenge.targets.some((t) => t.responseMessage)) && (
-              <div className="scr-challenge-card-msgs">
-                {challenge.message && (
-                  <div className="scr-challenge-card-msg">
-                    <span className="scr-challenge-card-msg-who">{challenge.createdBy.nickname}</span>
-                    <span className="scr-challenge-card-msg-text">{challenge.message}</span>
-                  </div>
-                )}
-                {challenge.targets.filter((t) => t.responseMessage).map((t) => (
-                  <div key={t.memberId} className="scr-challenge-card-msg">
-                    <span className="scr-challenge-card-msg-who">{t.nickname}</span>
-                    <span className="scr-challenge-card-msg-text">{t.responseMessage}</span>
-                  </div>
-                ))}
-              </div>
-            )}
       </div>
 
       {err && <div className="scr-err">{err}</div>}

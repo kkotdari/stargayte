@@ -10,6 +10,7 @@ import { useAppStore } from "../../store/appStore";
 import { api } from "../../api/client";
 import { cx } from "../../utils/format";
 import { attachPopover } from "../../utils/popover";
+import { formatWhen } from "../../utils/date";
 import type { Member, FeedComment, FeedTargetType } from "../../types";
 
 // 게시판 댓글처럼 한 줄(요청: 한글 50자 제한). 입력부·목록 디자인은 "너 나와!"(MatchRequestCorner)
@@ -282,15 +283,6 @@ function hiddenOffset(el: HTMLElement): number {
 
 // 아래로 쓸어내려 닫을 때, 이만큼 내려가면 손을 떼는 순간 닫는다.
 const SWIPE_CLOSE_PX = 96;
-
-function formatCommentTime(iso: string): string {
-  const d = new Date(iso);
-  const mm = `${d.getMonth() + 1}`.padStart(2, "0");
-  const dd = `${d.getDate()}`.padStart(2, "0");
-  const hh = `${d.getHours()}`.padStart(2, "0");
-  const mi = `${d.getMinutes()}`.padStart(2, "0");
-  return `${mm}.${dd} ${hh}:${mi}`;
-}
 
 /* 목록을 부를 때 댓글도 한 번에 같이 받아 둔다(요청) — 카드마다 따로 부르면 답이 제각각
    도착하며 카드 키가 뒤늦게 자라, 피드에 들어올 때 "현재"에 맞춰 둔 자리가 그만큼 밀린다
@@ -628,7 +620,10 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
             className="scr-mreq-item-author-avatar"
           />
           <span className="scr-mreq-item-author-name">{c.author.nickname}</span>
-          <span className="scr-feed-note-time">{formatCommentTime(c.createdAt)}</span>
+          {/* 이 앱의 "언제" 공통 포맷(formatWhen)을 그대로 쓴다(지적: 댓글 타임스탬프만
+              공통 양식이 안 적용되고 있었다) — 방금 전/N분 전/오늘/어제/이번주 요일 등
+              피드 타임스탬프·너 나와 일정과 같은 규칙으로 읽힌다. */}
+          <span className="scr-feed-note-time">{formatWhen(c.createdAt, { clock: true })}</span>
         </div>
         {interactive && c.canEdit && editingId !== c.id && (
           <div className="scr-mreq-item-actions">
@@ -686,6 +681,10 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
       className={cx("scr-feed-notes", notes.length === 0 && "scr-feed-notes-empty")}
       onClick={(e) => e.stopPropagation()}
     >
+      {/* 댓글이 있을 때만 "댓글" 소제목을 단다(지적: 댓글과 본문 구역 구분이 안 됨 —
+          상단부에 소제목을 달고 그 위 여백도 넣기). 댓글이 하나도 없는 포스트는 여전히
+          구석의 작은 "댓글 추가" 버튼만 있는 미니멀한 모습 그대로 둔다. */}
+      {notes.length > 0 && <div className="scr-feed-comments-heading">댓글</div>}
       {mobile ? (
         <>
           {notes.length > 0 ? (
