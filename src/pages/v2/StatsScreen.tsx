@@ -464,6 +464,14 @@ export default function StatsScreenV2() {
               className="scr-sentence-select" value={matchType} options={TYPE_SELECT_OPTS}
               onChange={(v) => setMatchType(v as GameType)} minDropWidth={120}
             />
+            {/* 분류 옆에 최소 참여 기준을 알려준다(지적: 필터 옆에 몇 게임 이상 참여한
+                경우만 집계된다는 설명 표시) — 안 그러면 왜 어떤 회원은 게임수만 보이고
+                승률·생산·APM·커맨드·포인트가 "-"인지 알 길이 없다. 지금 고른 분류의
+                기준을 먼저 말하고 다른 분류 기준도 괄호로 덧붙인다. */}
+            <InfoTip
+              label="최소 참여 기준"
+              text={`${matchType === "0101" ? "개인전" : "팀전"}은 ${minPlays}판 이상 참여해야 승률·생산·APM·커맨드와 포인트·순위가 표시돼요(개인전 ${MIN_PLAYS_BY_TYPE["0101"]}판, 팀전 ${MIN_PLAYS_BY_TYPE["0102"]}판). 미달이면 게임수만 보여요.`}
+            />
             {/* 마지막 낱말과 초기화는 한 덩어리로 — 줄이 좁아 넘칠 때 초기화만 다음 줄에
                 외따로 떨어지지 않게 한다. */}
             <span className="scr-grid-title-tail">
