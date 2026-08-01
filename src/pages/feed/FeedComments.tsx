@@ -625,24 +625,6 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
               피드 타임스탬프·너 나와 일정과 같은 규칙으로 읽힌다. */}
           <span className="scr-feed-note-time">{formatWhen(c.createdAt, { clock: true })}</span>
         </div>
-        {interactive && c.canEdit && editingId !== c.id && (
-          <div className="scr-mreq-item-actions">
-            <button
-              type="button" className="scr-feed-note-icon-btn"
-              onClick={() => { setErr(null); setEditingId(c.id); }}
-              aria-label="수정"
-            >
-              <Pencil size={13} />
-            </button>
-            <button
-              type="button" className="scr-feed-note-icon-btn scr-feed-note-icon-danger"
-              onClick={() => setDeleteTarget(c)}
-              aria-label="삭제"
-            >
-              <Trash2 size={13} />
-            </button>
-          </div>
-        )}
       </div>
       {interactive && editingId === c.id ? (
         <NoteComposer
@@ -655,7 +637,29 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
           submitLabel={<CornerDownLeft size={14} />}
         />
       ) : (
-        <p className="scr-mreq-item-text scr-feed-note-text">{renderInline(c.text, c.mentions)}</p>
+        // 수정/삭제 버튼을 댓글 바로 옆으로(지적: 예전엔 위쪽 작성자 줄 오른쪽 끝에 있어
+        // 댓글 내용과 멀리 떨어져 보였다) — 내용과 한 줄에 나란히 둔다.
+        <div className="scr-feed-note-body-row">
+          <p className="scr-mreq-item-text scr-feed-note-text">{renderInline(c.text, c.mentions)}</p>
+          {interactive && c.canEdit && (
+            <div className="scr-mreq-item-actions scr-feed-note-actions">
+              <button
+                type="button" className="scr-feed-note-icon-btn"
+                onClick={() => { setErr(null); setEditingId(c.id); }}
+                aria-label="수정"
+              >
+                <Pencil size={13} />
+              </button>
+              <button
+                type="button" className="scr-feed-note-icon-btn scr-feed-note-icon-danger"
+                onClick={() => setDeleteTarget(c)}
+                aria-label="삭제"
+              >
+                <Trash2 size={13} />
+              </button>
+            </div>
+          )}
+        </div>
       )}
     </li>
   );
@@ -684,7 +688,8 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
       {/* 댓글이 있을 때만 "댓글" 소제목을 단다(지적: 댓글과 본문 구역 구분이 안 됨 —
           상단부에 소제목을 달고 그 위 여백도 넣기). 댓글이 하나도 없는 포스트는 여전히
           구석의 작은 "댓글 추가" 버튼만 있는 미니멀한 모습 그대로 둔다. */}
-      {notes.length > 0 && <div className="scr-feed-comments-heading">댓글</div>}
+      {/* 소제목 옆에 건수도 함께(지적: 댓글 소제목 옆에 건수 표시). */}
+      {notes.length > 0 && <div className="scr-feed-comments-heading">댓글 {notes.length}</div>}
       {mobile ? (
         <>
           {notes.length > 0 ? (

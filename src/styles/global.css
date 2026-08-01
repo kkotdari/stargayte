@@ -2928,6 +2928,12 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
 .scr-feed-note-item .scr-mreq-item-top { margin-bottom: 3px; }
 .scr-feed-note-time { font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; flex-shrink: 0; }
 .scr-feed-note-text { font-size: var(--fs-micro); }
+/* 수정·삭제 버튼을 댓글 내용 바로 옆에(지적: 예전엔 위쪽 작성자 줄 오른쪽 끝에 있어
+   내용과 멀리 떨어져 보였다) — 내용과 한 줄에 나란히 둔다. 여러 줄로 늘어나는 긴
+   댓글도 있어 flex-start로 위쪽을 맞춘다. */
+.scr-feed-note-body-row { display: flex; align-items: flex-start; gap: 6px; }
+.scr-feed-note-body-row .scr-feed-note-text { flex: 1 1 auto; min-width: 0; margin: 0; }
+.scr-feed-note-actions { flex-shrink: 0; margin-top: 1px; }
 /* 메모 영역 전체를 한 스텝 작게(요청) — 목록 텍스트·입력창·버튼 폰트/크기를 함께 줄인다.
    입력 편집기(scr-mreq-*)는 --field-h를 지역 재정의해 높이만 줄이고, 폰트/칩/버튼은 아래에서
    개별로 한 스텝 낮춘다. */
@@ -4740,8 +4746,12 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
    따옴표 없이, 닉네임보다 한 단계 작은 글자로(요청) — 닉네임 크기가 화면(기본/피드/
    팀전)마다 달라, 아래 각 자리에서 그 나름의 한 단계 아래 값으로 맞춘다. */
 .scr-challenge-side-msg {
-  display: block; margin-top: -1px; color: var(--dim); line-height: 1.35;
+  display: block; color: var(--dim); line-height: 1.35;
   word-break: break-word; font-size: var(--fs-caption); /* 기본 닉네임(body)의 한 단계 아래 */
+  /* 시작점을 닉네임 글자 시작점에 맞춘다(지적) — 닉네임 앞에 프사(20px)+간격(6px, 위
+     .scr-challenge-person의 gap)이 있어, 그만큼 들여야 줄이 맞는다. 닉네임 줄과의
+     간격도 살짝 늘렸다(지적: 줄간격 살짝 증가) — 예전엔 -1px로 오히려 붙어 있었다. */
+  margin-top: 3px; margin-left: 26px;
 }
 /* 팀전 닉네임(micro)의 한 단계 아래. */
 .scr-challenge-card-team .scr-challenge-side-msg { font-size: var(--fs-11); }
@@ -7010,6 +7020,13 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 }
 /* 라이트 테마의 --point는 검정(맥락별 용도)이라 멘션 강조로는 약하다 — 읽히는 앰버로. */
 html.scr-light-theme .scr-feed-comments .scr-mreq-chip-inline { color: #c07c1c; }
+/* 모바일 댓글 시트는 화면 전체를 쓰는 전용 화면이라 카드 안 미리보기보다 자리가
+   넉넉하다(지적: 시트 열렸을 땐 폰트 크기 1씩 확대) — 위에서 카드용으로 한 단계씩
+   줄인 값들을 시트 안에서만 한 단계 도로 올린다. 클래스 두 개짜리라(.scr-comment-sheet
+   .scr-feed-comments) 위 한 단계짜리 규칙보다 우선한다. */
+.scr-comment-sheet.scr-feed-comments .scr-mreq-item-text { font-size: var(--fs-caption); }
+.scr-comment-sheet.scr-feed-comments .scr-mreq-item-author-name { font-size: var(--fs-micro); }
+.scr-comment-sheet.scr-feed-comments .scr-mreq-chip-inline { font-size: var(--fs-caption); }
 /* 입력·수정창의 유저칩 — 좌우 패딩을 줄여 문장에 더 잘 섞이게(요청). */
 .scr-feed-shift-row { font-size: var(--fs-caption); }
 /* 윗줄 높이는 게임번호 줄이 스스로 정한다 — 예약은 필요 없다. */
