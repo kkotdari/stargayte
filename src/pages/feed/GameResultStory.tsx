@@ -525,6 +525,10 @@ export default function GameResultStory({
     // '입구'는 본진에서 가운데 쪽으로 이만큼 나온 자리로 본다 — 정확한 입구 좌표는 지형 표가
     // 없어 알 수 없지만(ReplayMapCanvas 주석), 입구는 늘 본진과 가운데 사이에 있다.
     const FRONT = 0.24;
+    /* 입구 이모지는 화살표가 겨누는 '입구 앞'보다 조금 더 나가 선다(요청: 입구막기는 좀
+       더 입구 쪽으로) — 화살표의 FRONT는 '이 언저리를 쳤다'는 넉넉한 겨냥이지만, 이쪽은
+       거기 벽이 서 있다는 표시라 본진 살림에서 확실히 떨어져야 벽으로 읽힌다. */
+    const MARK_FRONT = 0.38;
 
     /* 그 자리가 '상대 쪽'인가 — 내 집보다 상대 집에 가까워야 공격으로 읽는다.
        자리 값만으로는 진출과 멀티·집결이 안 갈린다(지적: 견제·드랍인데 화살표가 내 기지
@@ -719,7 +723,7 @@ export default function GameResultStory({
     /** 한 사람이 이 스냅에서 실제로 때린 자리들 — 여러 곳을 쳤으면 여러 개가 쌓인다(요청:
      *  한 사람이 여러 곳에 피해를 준 경우 아바타 하나에서 화살표 여러 개로 갈라지게).
      *  예전에는 자리당 하나(Map<raw, target>)만 기억해 마지막 것만 그려졌다. */
-    interface RawHit { t: [number, number]; flight: boolean; mark?: string; fromMark?: string }
+    interface RawHit { t: [number, number]; flight: boolean; mark?: string; fromMark?: string; converge?: boolean }
     const hits = new Map<string, RawHit[]>();
     const hit = new Set<string>();
     // 맺음말 스냅에서는 이긴 편 아바타에 트로피를 겹쳐 얹는다(요청).
@@ -851,7 +855,7 @@ export default function GameResultStory({
            그 '입구'는 위 target()이 myFront에 쓰는 것과 똑같은 자리다 — 본진에서 가운데
            쪽으로 FRONT만큼 나온 지점. 아바타 옆에 살짝 비켜 뜨는 것과는 그림이 다르다. */
         const myHome = homeOf(raw);
-        if (FRONT_BEAT_KEYS.has(b.k) && myHome) markSpot.set(raw, lerp(myHome, center, FRONT));
+        if (FRONT_BEAT_KEYS.has(b.k) && myHome) markSpot.set(raw, lerp(myHome, center, MARK_FRONT));
         /* 본진에서 한 일은 '본진 건물이 실제로 선 자리'에 세운다(요청: 본진 이모지는
            아바타가 아니라 본진 건물 자리에) — 아바타는 시작 지점에 선 사람 표시라,
            거기에 그대로 얹으면 얼굴을 덮는다. hubs는 그 사람 살림의 무게중심이다
@@ -874,6 +878,8 @@ export default function GameResultStory({
           t, flight: flightVal,
           ...(PLAIN_TIP_MARKS.has(arrive) ? {} : { mark: arrive }),
           ...(WARP_BEAT_KEYS.has(b.k) ? { fromMark: em } : {}),
+          // 양 팀이 부딪친 자리는 양쪽 화살표가 한 점에서 만나야 한다(요청).
+          ...(b.k === "clash" ? { converge: true } : {}),
         });
         hits.set(raw, list);
       }
@@ -918,6 +924,7 @@ export default function GameResultStory({
           key: `${s.raw}-${i}`, x1: home[0], y1: home[1], x2: h.t[0], y2: h.t[1],
           team: s.team, flight: h.flight, deep,
           ...(h.mark ? { mark: h.mark } : {}),
+          ...(h.converge ? { converge: true } : {}),
           ...(h.fromMark ? { markFrom: h.fromMark } : {}),
         });
         drawn += 1;
@@ -925,6 +932,16 @@ export default function GameResultStory({
       // 화살표로 그릴 만큼 먼 자리가 하나도 없으면(전부 본진 근처거나 자리를 모름) 본진에
       // 이모지 하나만 띄운다 — 마지막 것의 이모지를 쓴다(요청 이전과 같은 규칙).
       if (drawn === 0 && mark.has(s.raw)) marks.set(s.raw, mark.get(s.raw)!);
+    }
+    /* 같은 자리로 모인 화살표들에는 이모지를 하나만 남긴다(요청: 폭발 이모지도 하나만
+       있어야 됨) — 양 팀이 부딪친 자리에는 양쪽에서 화살표가 들어오는데, 저마다 촉 앞에
+       제 이모지를 얹으면 한 점에 폭발이 두세 개 겹쳐 뭉친다. 그 자리에서 일어난 일은
+       하나이므로 표시도 하나다. */
+    const marked = new Set<string>();
+    for (const a of arrows) {
+      if (!a.mark) continue;
+      const at = `${Math.round(a.x2)},${Math.round(a.y2)}`;
+      if (marked.has(at)) delete a.mark; else marked.add(at);
     }
     /* 아바타에 겹쳐 얹는 상태 얼굴 — "그 사람이 지금 어떤 처지인가"만 말한다(요청: 해골·
      * 트로피 말고는 아바타에 붙는 표시가 없으니 공격자·당한 사람도 아바타로 알려 달라).

@@ -41,6 +41,12 @@ export interface MinimapArrow {
   /** 화살표가 시작하는 자리에 얹을 이모지 — 리콜·커널처럼 '여기서 저기로 건너간' 수는
    *  출발점도 사건이다(요청: 원본 위치는 회오리, 이동 위치는 별 반짝). 없으면 안 그린다. */
   markFrom?: string;
+  /** 여러 화살표가 한 점에서 만나는가 — 양 팀이 부딪친 자리가 그렇다(요청: 상대편끼리
+   *  충돌한 경우 화살표는 한곳으로 모여야 한다). 보통 화살표는 목표 앞에서 조금씩 다르게
+   *  멈추고(길이에 비례한 여백) 이모지도 촉 앞에 따로 서는데, 그러면 같은 자리를 겨눈
+   *  화살표들이 제각각 다른 데서 끝나 '모였다'로 안 읽힌다. 이 표가 붙으면 여백 없이
+   *  목표에 정확히 닿고, 이모지도 그 점 위에 선다. */
+  converge?: boolean;
 }
 
 // 화살표 모양 — 값은 모두 타일 단위다(SVG viewBox가 타일 격자와 같다).
@@ -98,7 +104,11 @@ function arrowGeom(a: MinimapArrow, w: number, h: number) {
   const gapFrom = Math.min(GAP_FROM, len * 0.2);
   // 이모지를 붙일 화살표는 그 자리만큼 더 짧게 끝낸다 — 안 그러면 이모지가 화살촉·목표
   // 아바타와 겹쳐 뭉친다(지적).
-  const gapTo = Math.min(a.deep ? GAP_TO_DEEP : GAP_TO, len * 0.22) + (a.mark ? MARK_ROOM : 0);
+  // 한 점에 모이는 화살표는 여백 없이 목표에 정확히 닿는다 — 그래야 여럿이 같은 자리에서
+  // 만난다(요청). 이모지 자리(MARK_ROOM)도 비우지 않는다: 그 이모지는 촉 앞이 아니라
+  // 만나는 점 위에 하나만 서기 때문이다(아래 tip).
+  const gapTo = a.converge ? 0
+    : Math.min(a.deep ? GAP_TO_DEEP : GAP_TO, len * 0.22) + (a.mark ? MARK_ROOM : 0);
   const headLen = Math.min(HEAD_LEN, len * 0.3);
   const headWide = HEAD_WIDE * (headLen / HEAD_LEN);
   // 지상(곡선) 화살표는 아바타 한가운데가 아니라 '맵 가운데 쪽 가장자리'에서 나온다(요청) —
@@ -140,7 +150,7 @@ function arrowGeom(a: MinimapArrow, w: number, h: number) {
     d: `M ${x1} ${y1} Q ${cx0} ${cy0} ${bx} ${by}`,
     head: `${x2},${y2} ${bx - hy * headWide},${by + hx * headWide} ${bx + hy * headWide},${by - hx * headWide}`,
     // 이모지 자리 — 화살촉 바로 앞. 촉을 덮지 않고, 목표 아바타에도 닿지 않는 사이다.
-    tip: [x2 + hx * MARK_AHEAD, y2 + hy * MARK_AHEAD] as [number, number],
+    tip: (a.converge ? [a.x2, a.y2] : [x2 + hx * MARK_AHEAD, y2 + hy * MARK_AHEAD]) as [number, number],
     // 출발 쪽 이모지 자리 — 몸통이 시작하는 점 그대로. 아바타에서 이미 gapFrom만큼
     // 띄워 둔 자리라 아바타를 덮지 않는다.
     from: [x1, y1] as [number, number],

@@ -2409,16 +2409,11 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     if (!home || pts.length < HUB_MIN_BUILDINGS) continue;
     const cx = pts.reduce((n, b) => n + b.x, 0) / pts.length;
     const cy = pts.reduce((n, b) => n + b.y, 0) / pts.length;
-    /* 무게중심이 시작 지점과 거의 같은 사람도 있다(실측: 3.7타일 = 화면에서 10px) — 그러면
-       이모지가 도로 아바타 밑으로 들어간다. 방향은 실제 살림이 퍼진 쪽 그대로 두고 거리만
-       최소치까지 밀어 준다. 정확히 겹쳐 방향조차 없으면 값을 안 남긴다(보는 쪽이 시작
-       지점을 그대로 쓴다). */
-    const dx = cx - home[0];
-    const dy = cy - home[1];
-    const len = Math.hypot(dx, dy);
-    if (len < 0.5) continue;
-    const k = len < HUB_MIN_GAP ? HUB_MIN_GAP / len : 1;
-    hubs[p.rawName] = [round1(home[0] + dx * k), round1(home[1] + dy * k)];
+    /* 잰 자리를 그대로 쓴다. 한때 시작 지점에서 최소 몇 타일은 떨어뜨렸는데(아바타에
+       안 겹치게), 그러면 자리가 '살림의 한가운데'가 아니라 아바타에서 일정 거리 떨어진
+       고정 슬롯이 돼 버렸다(지적: 아바타 슬롯이 아니라 본진 한가운데에 나와야 한다).
+       아바타와 겹치는 판이 있더라도 그게 그 사람 본진의 진짜 한가운데다. */
+    hubs[p.rawName] = [round1(cx), round1(cy)];
   }
 
   // 가장 크게 부딪친 대목 — 마법과 공격 명령이 한때 한곳에 몰린 자리다(요청: 마법 좌표로
@@ -2930,10 +2925,6 @@ const RELOCATE_WEIGHT = 18;
 const HUB_RADIUS = 22;
 /** 그 안에 이만큼은 있어야 '살림'이라 부른다 — 한두 채로는 무게중심이 튄다. */
 const HUB_MIN_BUILDINGS = 4;
-/** 시작 지점에서 최소한 이만큼(타일)은 떨어뜨린다 — 표준 128타일 맵에서 화면상 17px쯤
- *  되어 확대된 아바타(최대 44px) 반지름을 넘긴다. 이보다 가까우면 이모지가 도로 아바타
- *  밑으로 들어가 애초에 옮긴 뜻이 사라진다. */
-const HUB_MIN_GAP = 6;
 
 /** 상대를 짚지 못한 고급 유닛 생산담에서 덜어 내는 무게 — 이만큼 빼면 러시·돌파·이사
  *  같은 '실제로 부딪친 이야기'가 먼저 자리를 잡는다. */
