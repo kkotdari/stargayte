@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { addRafScrollListener, getScrollMetrics, isScrollHideSuppressed } from "../utils/scrollRoot";
+import { addRafScrollListener, getScrollTop, isScrollHideSuppressed } from "../utils/scrollRoot";
 
 // 아래로 스크롤하면 하단 탭바(+ 헤더/플로팅 필터·검색창)를 숨기고, 위로 스크롤하거나
 // 맨 위/맨 아래에 있으면 보여준다(요청: "아래로 스크롤시: 탭바 숨겨짐 / 위로 스크롤시:
@@ -31,12 +31,15 @@ export function useHideOnScrollDown(screen: string): boolean {
   const accumRef = useRef(0);
 
   useEffect(() => {
-    lastScrollTopRef.current = getScrollMetrics().scrollTop;
+    lastScrollTopRef.current = getScrollTop();
     // 문턱은 여기서 한 번만 잰다 — 스크롤 리스너 안에서 높이를 읽으면 프레임마다 강제
     // 리플로우가 걸린다(addRafScrollListener 주석). 화면 회전 정도는 따라가지 않아도 된다.
     const showDeltaPx = Math.max(SHOW_DELTA_MIN_PX, window.innerHeight * SHOW_DELTA_RATIO);
     const onScroll = () => {
-      const { scrollTop } = getScrollMetrics();
+      // 위치만 읽는다 — getScrollMetrics는 scrollHeight·clientHeight까지 읽어 프레임마다
+      // 강제 리플로우를 부른다(그 함수 주석). 이 판정에 필요한 건 scrollTop 하나뿐이라,
+      // 스크롤 한 프레임의 값을 그만큼 아낀다(지적: 자동 스크롤이 부드럽지 않음).
+      const scrollTop = getScrollTop();
       // 프로그램(자동) 스크롤 중엔 숨김 판정을 건너뛴다 — 위치/누적만 최신으로 맞춰 두어,
       // 억제가 끝난 뒤 첫 사용자 스크롤에서 갑자기 큰 delta로 튀지 않게 한다(요청: "next
       // 너 나와 자동 스크롤하면서 탭바와 아이콘 숨겨지는 문제 해결").
@@ -78,7 +81,7 @@ export function useHideOnScrollDown(screen: string): boolean {
   // 인한 숨김/노출에는 그대로 부드러운 트랜지션을 남겨둔다.
   useEffect(() => {
     accumRef.current = 0;
-    lastScrollTopRef.current = getScrollMetrics().scrollTop;
+    lastScrollTopRef.current = getScrollTop();
     document.documentElement.classList.add("scr-screen-switch-jump");
     setHidden(false);
     const raf = requestAnimationFrame(() => {

@@ -47,11 +47,21 @@ export function smoothScrollRootTo(
   if (delta === 0) return;
   const t0 = performance.now();
   let raf = 0;
+  // 이 애니메이션이 도는 동안임을 알린다 — 스크롤 구독자 중 무거운 것(타임라인)이 매
+  // 프레임 재는 일을 건너뛰게 해서 스크롤이 끊기지 않게 한다(아래 isProgrammaticScroll).
+  programmaticUntil = t0 + duration;
+  /** 다 끝났거나 중간에 취소됐을 때 — 표시를 걷고, 구독자들이 마지막으로 한 번은 제대로
+   *  잴 수 있게 스크롤 이벤트를 한 번 흘려 준다. 애니메이션이 멈추면 브라우저가 더 이상
+   *  scroll을 쏘지 않으므로, 이게 없으면 건너뛴 채로 굳은 값이 그대로 남는다. */
+  const done = () => {
+    programmaticUntil = 0;
+    requestAnimationFrame(() => root.dispatchEvent(new Event("scroll")));
+  };
   const removeListeners = () => {
     window.removeEventListener("wheel", cancel);
     window.removeEventListener("touchmove", cancel);
   };
-  const cancel = () => { cancelAnimationFrame(raf); removeListeners(); };
+  const cancel = () => { cancelAnimationFrame(raf); removeListeners(); done(); };
   window.addEventListener("wheel", cancel, { passive: true });
   // touchstart가 아니라 touchmove로 취소한다 — 이 스크롤탑을 발동시키는 게 탭(터치)
   // 자체라, touchstart로 취소하면 방금 시작한 애니메이션을 그 탭의 touchstart가 곧바로
@@ -69,9 +79,20 @@ export function smoothScrollRootTo(
     // rAF 루프의 이징이 만든다.
     root.scrollTo({ top: start + delta * ease(p), behavior: "instant" });
     if (p < 1) raf = requestAnimationFrame(step);
-    else removeListeners();
+    else { removeListeners(); done(); }
   };
   raf = requestAnimationFrame(step);
+}
+
+/* 프로그램이 굴리는 스크롤이 도는 중인가 — 손으로 굴릴 때는 브라우저가 스크롤 자체를
+   따로 처리해 주지만, 이 rAF 애니메이션은 매 프레임 우리가 scrollTo를 부르는 것이라
+   구독자들이 그 프레임에 하는 일이 곧바로 다음 프레임을 늦춘다. 문서 전체를 훑어 재는
+   구독자(타임라인)는 그동안 쉬어야 스크롤이 끊기지 않는다(지적: 피드 진입 시 스크롤이
+   부드럽지 않음). isScrollHideSuppressed와 창은 비슷하지만 뜻이 다르다 — 그쪽은
+   "숨김 방향 판정을 하지 마라"이고, 이쪽은 "지금은 재지 마라"다. */
+let programmaticUntil = 0;
+export function isProgrammaticScroll(): boolean {
+  return programmaticUntil > 0 && performance.now() < programmaticUntil;
 }
 
 // 프로그램(자동) 스크롤이 "아래로 스크롤 = 탭바/필터 숨김"으로 오인되지 않게 하는 창구 —

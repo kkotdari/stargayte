@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { cx } from "../../utils/format";
-import { getScrollRoot, getScrollMetrics, addRafScrollListener, scrollRootTo } from "../../utils/scrollRoot";
+import {
+  getScrollRoot, getScrollMetrics, addRafScrollListener, scrollRootTo, isProgrammaticScroll,
+} from "../../utils/scrollRoot";
 import { isBodyScrollLocked } from "../../utils/bodyScrollLock";
 
 // 트랙에 찍는 눈금 하나 — 특정 날짜 그룹(groupSelector)의 스크롤 위치에 짧은 가로선/라벨을
@@ -129,7 +131,18 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
   };
 
   useEffect(() => {
-    const onScroll = () => { update(); showThenScheduleHide(); };
+    /* 프로그램이 굴리는 스크롤(피드에 들어오며 "현재"로 내려가는 애니메이션 등) 동안에는
+       재지 않는다 — update()는 프레임마다 문서 전체의 날짜 머리를 훑고(querySelectorAll +
+       머리마다 getBoundingClientRect) 상태를 네 개나 바꾼다. 손으로 굴릴 때는 브라우저가
+       스크롤을 따로 처리해 티가 덜 나지만, 그 애니메이션은 매 프레임 우리가 scrollTo를
+       부르는 것이라 여기서 쓴 시간이 곧바로 다음 프레임을 늦춰 스크롤이 끊겨 보인다
+       (지적: 피드 진입 시 스크롤이 부드럽지 않음). 애니메이션이 끝나면 scrollRoot가
+       스크롤 이벤트를 한 번 흘려 주므로 그때 제대로 잰다. */
+    const onScroll = () => {
+      if (isProgrammaticScroll()) return;
+      update();
+      showThenScheduleHide();
+    };
     const off = addRafScrollListener(onScroll);
     update();
     // update()는 그동안 scroll 이벤트로만 다시 불렸다 — 피드 카드를 펼치거나 접을 때는

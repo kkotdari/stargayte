@@ -1,4 +1,5 @@
 import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
+import { isProgrammaticScroll } from "./scrollRoot";
 
 // 라이트 테마(흰 배경 + 검은 글씨 토글) — 로그인 화면과 로그인 후 헤더가 각자 독립적으로
 // 켜고 끌 수 있는 같은 설정을 공유한다. html에 filter를 걸면 프사 같은 이미지까지 통째로
@@ -102,7 +103,17 @@ export function resampleSafariChrome(): void {
 // 안에서 곧장 되돌리면 순이동이 0이라 스크롤 자체가 없었던 것으로 합쳐 불발됐다(지적) —
 // 1px 이동을 한 프레임 실제로 렌더시킨 뒤 원위치한다(1px이라 눈에는 안 보인다). 스크롤
 // 여지가 없는 짧은 화면 대비로 html에 2px 여유 높이를 잠깐 준다.
+/** 재샘플링 넛지가 프로그램 스크롤과 겹쳤을 때 다시 시도하기까지 기다리는 시간. */
+const JIGGLE_RETRY_MS = 260;
+
 function jiggleScroll(): void {
+  /* 프로그램이 굴리는 스크롤(피드에 들어오며 "현재"로 내려가는 애니메이션 등)이 도는
+     중이면 비켜선다 — 이 함수는 부른 시점의 y를 붙잡아 두었다가 다음 프레임에 그 자리로
+     되돌리는데, 애니메이션 중에는 그 되돌리기가 그 프레임의 진행을 통째로 물어 스크롤이
+     턱 걸린다(지적: 피드 진입 시 스크롤이 부드럽지 않음). 넛지는 '언젠가 한 번' 돌기만
+     하면 목적(사파리 툴바 재샘플링)을 달성하므로, 끝난 뒤로 미루면 그만이다.
+     isProgrammaticScroll은 애니메이션 길이만큼만 참이라 이 재시도는 반드시 끝난다. */
+  if (isProgrammaticScroll()) { window.setTimeout(jiggleScroll, JIGGLE_RETRY_MS); return; }
   const root = document.documentElement;
   const prevHeight = root.style.height;
   root.style.height = "calc(100% + 2px)";
