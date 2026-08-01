@@ -241,6 +241,9 @@ const FORCE_MIN_ORDERS = 4;
 const FORCE_MAX_UNITS = 2;
 /** 최대 교전 문장에 이름을 부를 병력 수 — 양쪽에서 모으므로 조금 넉넉히 둔다. */
 const CLASH_FORCE_MAX = 3;
+/** 편별로 나눠 부를 때의 수 — 양쪽을 나란히 놓으므로 한 편에 둘까지가 읽기 좋다
+ *  ("질럿·드라군과 마린·탱크가"). 셋씩 늘어놓으면 문장이 조합 나열이 된다. */
+const CLASH_FORCE_SIDE_MAX = 2;
 /* 최대 교전에서 터진 마법을 셀 창과 최소 횟수 — 한두 번은 그 싸움의 그림이 아니다. */
 const CLASH_TECH_WINDOW_SEC = 90;
 const CLASH_TECH_MIN = 3;
@@ -2372,12 +2375,22 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   // 가장 크게 부딪친 대목 — 마법과 공격 명령이 한때 한곳에 몰린 자리다(요청: 마법 좌표로
   // 그 경기의 최대 교전 지점을 짚을 수 있겠다). 그 판의 절정이라 이야기에서 빠지면 안 된다.
   const clash = biggestClash(winnerPlayers, loserPlayers);
-  const clashForce: string[] = clash
-    ? [...new Set(clash.who.flatMap((w) => forceAt(
-      w, clash.at,
-      winnerPlayers.some((p) => p.rawName === w) ? winnerPlayers : loserPlayers,
-    )))].slice(0, CLASH_FORCE_MAX)
-    : [];
+  /* 그 싸움에 나간 병력을 편별로 나눠 센다(지적: 난전에서 엉켜 싸운 유닛을 뭉뚱그려
+     말하니 어느 편 것인지 구분이 안 된다). 예전에는 양쪽 것을 한 자루에 담아
+     "아비터·다크아콘·디파일러가 맞부딪쳤다"로만 말했는데, 그러면 누가 무엇으로 싸웠는지가
+     통째로 사라진다. 세는 대상은 그 자리에 실제로 명령을 찍은 사람들(clash.parts)이다 —
+     그 무렵 딴 데서 제 할 일 하던 사람의 병력까지 끌어오지 않기 위해서다. */
+  const forceOfSide = (side: ParsedReplayPlayer[]): string[] => {
+    if (!clash) return [];
+    const mine = clash.parts.filter((n) => side.some((p) => p.rawName === n));
+    return [...new Set(mine.flatMap((w) => forceAt(w, clash.at, side)))].slice(0, CLASH_FORCE_SIDE_MAX);
+  };
+  const clashForceWin = forceOfSide(winnerPlayers);
+  const clashForceLose = forceOfSide(loserPlayers);
+  // 옛 요약을 읽는 자리를 위해 합친 목록도 그대로 남긴다(문장 쪽이 편별 목록이 없으면
+  // 이걸로 되돌아간다).
+  const clashForce: string[] = [...new Set([...clashForceWin, ...clashForceLose])]
+    .slice(0, CLASH_FORCE_MAX);
   /* 그 싸움에서 가장 많이 터진 마법(요청: 다양한 세부 기술 사용 진술) — 마법을 쓴 좌표에는
      시각이 함께 남으므로(castPositions), 교전 시각 언저리에서 몇 번 터졌는지를 그대로 셀 수
      있다. 기술 이야기를 따로 한 문장으로 세우면 짧은 경기에서는 자리 다툼에 늘 밀리는데,
@@ -2408,8 +2421,12 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
         people: clash.people,
         ...(clashPlace(clash.xy, bases) === "" ? { place: "mid" } : {}),
         // 그 싸움에 실제로 나간 병력(요청) — "양 팀 병력이 크게 싸웠다"는 그 판의 절정을
-        // 말하면서 정작 무엇이 부딪쳤는지를 안 말한다. 양쪽에서 이름을 모아 붙인다.
+        // 말하면서 정작 무엇이 부딪쳤는지를 안 말한다. 편별로 나눠 싣는다(지적: 뭉뚱그려
+        // 말하니 어느 편 것인지 구분이 안 된다). forceA는 who[0](이긴 편 대표) 쪽,
+        // forceB는 who[1](진 편 대표) 쪽이다 — biggestClash가 그 순서로 뽑는다.
         ...(clashForce.length > 0 ? { force: clashForce } : {}),
+        ...(clashForceWin.length > 0 ? { forceA: clashForceWin } : {}),
+        ...(clashForceLose.length > 0 ? { forceB: clashForceLose } : {}),
         ...(clashTech ? { tech: clashTech.tech, techN: clashTech.n } : {}),
       },
     }]
@@ -3043,7 +3060,7 @@ const CLASH_TECHS = new Set([
  *  견제거나 그냥 진출이다. */
 function biggestClash(
   a: ParsedReplayPlayer[], b: ParsedReplayPlayer[],
-): { at: number; xy: [number, number]; n: number; who: string[]; people: number } | null {
+): { at: number; xy: [number, number]; n: number; who: string[]; people: number; parts: string[] } | null {
   type Hit = { frame: number; x: number; y: number; side: 0 | 1; raw: string };
   const hits: Hit[] = [];
   const add = (ps: ParsedReplayPlayer[], side: 0 | 1) => {
@@ -3063,7 +3080,7 @@ function biggestClash(
   add(b, 1);
   if (hits.length < CLASH_MIN) return null;
 
-  let best: { at: number; xy: [number, number]; n: number; who: string[]; people: number } | null = null;
+  let best: { at: number; xy: [number, number]; n: number; who: string[]; people: number; parts: string[] } | null = null;
   for (const h of hits) {
     const near = hits.filter(
       (x) => Math.abs(x.frame - h.frame) <= CLASH_WINDOW_FRAMES
@@ -3090,10 +3107,10 @@ function biggestClash(
        '여럿'이 되어 이 구분이 무의미해진다(다른 곳의 POS_MIN_ORDERS와 같은 취지). */
     const tally = new Map<string, number>();
     for (const x of near) tally.set(x.raw, (tally.get(x.raw) ?? 0) + 1);
-    const people = [...tally.values()].filter((n) => n >= CLASH_PART_MIN).length;
+    const parts = [...tally].filter(([, n]) => n >= CLASH_PART_MIN).map(([raw]) => raw);
     best = {
       at: Math.min(...near.map((x) => x.frame)),
-      xy: [round1(cx), round1(cy)], n: near.length, who, people,
+      xy: [round1(cx), round1(cy)], n: near.length, who, people: parts.length, parts,
     };
   }
   return best;
