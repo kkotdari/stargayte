@@ -74,6 +74,7 @@ export const BUILDING_KO: Record<string, string> = {
   ...DEFENSE_KO, ...PRODUCTION_KO,
   Pylon: "파일런", "Supply Depot": "서플라이", "Creep Colony": "크립 콜로니",
   Forge: "포지", Academy: "아카데미", Armory: "아머리", Observatory: "옵저버토리",
+  "Evolution Chamber": "에볼루션", "Spawning Pool": "스포닝풀",
   "Nydus Canal": "커널", "Engineering Bay": "엔지니어링 베이", Refinery: "리파이너리",
   Assimilator: "어시밀레이터", Extractor: "익스트랙터", Nexus: "넥서스",
   "Command Center": "커맨드", Hatchery: "해처리",
@@ -1425,18 +1426,25 @@ const TEMPLATES: Record<string, Tpl> = {
       `진출로 쪽에 ${def} ${n}개를 지어 길을 좁힘`,
     ]))}`;
   },
-  /* 입구막기(요청: "본진 입구를 막고 발전한거도 좋은 묘사 포인트임") — 방어탑이 아니라
-     살림 건물로 앞을 잠근 것이다. 이 수의 값어치는 막았다는 사실이 아니라 '막아 놓고
-     뒤에서 컸다'는 데 있으므로(그래서 판정도 발전까지 함께 본다) 문장도 반드시 둘을
-     같이 말한다. 몇 분에 잠갔는지가 있으면 앞에 붙인다 — 입구막기는 타이밍이 곧 내용이다. */
+  /* 입구막기(요청: "본진 입구를 막고 발전한거도 좋은 묘사 포인트임") — 이 수의 값어치는
+     막았다는 사실이 아니라 '막아 놓고 뒤에서 컸다'는 데 있으므로(그래서 판정도 발전까지
+     함께 본다) 문장도 반드시 둘을 같이 말한다. 몇 분에 잠갔는지가 있으면 앞에 붙인다 —
+     입구막기는 타이밍이 곧 내용이다.
+
+     무엇으로 막았는지도 부른다(요청: 배럭·서플·벙커 / 게이트웨이·포토 / 해처리·성큰) —
+     같은 '입구막기'라도 배럭에 벙커를 얹은 것과 해처리에 성큰을 붙인 것은 그림이 전혀
+     다르다. 판정 쪽이 가장 많이 쓴 두 종류를 p.bs에 콤마로 실어 보낸다. */
   "wall-in": (c) => {
     const min = num(c.p.min, 0);
     const when = min > 0 ? `${min}분경 ` : "";
+    const kinds = str(c.p.bs).split(",").map((b) => BUILDING_KO[b]).filter(Boolean);
+    // 이름을 못 부르는 건물뿐이면 그냥 "건물"이라고만 한다 — 근거 없는 이름은 안 붙인다.
+    const what = kinds.length >= 2 ? `${wa(kinds[0])} ${kinds[1]}` : kinds.length === 1 ? kinds[0] : "건물";
     return `${ga(c.who)} ${when}${done(c, c.pick([
-      "본진 입구를 건물로 막아 놓고 뒤에서 마음 놓고 발전함",
-      "입구를 건물로 걸어 잠그고 안전하게 살림을 키움",
-      "본진 앞을 건물로 틀어막고 그 뒤에서 조용히 덩치를 불림",
-      "입구를 막아 두고 병력 대신 확장과 테크에 투자함",
+      `본진 입구를 ${ro(what)} 막아 놓고 뒤에서 마음 놓고 발전함`,
+      `입구를 ${ro(what)} 걸어 잠그고 안전하게 살림을 키움`,
+      `본진 앞을 ${ro(what)} 틀어막고 그 뒤에서 조용히 덩치를 불림`,
+      `입구를 ${ro(what)} 막아 두고 병력 대신 확장과 테크에 투자함`,
     ]))}`;
   },
 

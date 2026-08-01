@@ -22,20 +22,24 @@ const SUNKEN_RUSH_SEC = 7 * 60;
 // 포토러시로 볼 시간 창 — 이보다 늦게 상대 본진에 박는 포토는 러시가 아니라 조이기다.
 const CANNON_RUSH_SEC = 6 * 60;
 
-// 입구막기(wall-in)로 볼 시간 창 — 입구막기는 초반에 앞을 잠가 놓고 그 뒤에서 크는
-// 수라, 4분이 지나 앞쪽에 올린 살림 건물은 벽이 아니라 그냥 늘려 간 살림이다. 실측한
-// 아홉 판에서 5분 넘어 잡힌 것들은 전부 앞으로 뻗어 나간 건물 줄이었다.
-const WALL_IN_SEC = 4 * 60;
-/** 입구 쪽 살림 건물이 몇 채부터 '막았다'인가 — 한 채는 우연, 둘부터가 벽이다. */
+// 입구막기(wall-in)로 볼 시간 창 — 입구막기는 앞을 잠가 놓고 그 뒤에서 크는 수다.
+// 빠른무한처럼 처음부터 자원이 넘치는 판에서는 벽이 더 늦게, 더 두껍게 서기도 해서
+// 초반만 보면 통째로 놓친다(요청: 빠른무한에서도 나오게).
+const WALL_IN_SEC = 10 * 60;
+/** 입구 쪽 건물이 몇 채부터 '막았다'인가 — 한 채는 우연, 둘부터가 벽이다. */
 const WALL_IN_MIN = 2;
-/** 한 벽으로 볼 만큼 서로 붙어 있는 거리(타일) — 실제 입구막기는 서플·배럭 두세 채가
- *  맞닿아 한 줄을 이룬다. 이보다 벌어지면 벽이 아니라 그냥 앞쪽에 지은 살림이다. */
-const WALL_SPAN = 7;
+/** 그 안에 몇 종류가 섞여야 벽인가 — 이 값이 살림과 벽을 가르는 핵심이다.
+ *  파일런만 여섯 채, 해처리만 다섯 채는 그냥 살림을 앞으로 늘린 것이고,
+ *  게이트+포토·배럭+서플+벙커·해처리+성큰처럼 다른 종류가 붙어 있어야 벽이다. */
+const WALL_KIND_MIN = 2;
+/** 한 벽으로 볼 만큼 서로 붙어 있는 거리(타일) — 실제 입구막기는 두세 채가 맞닿아
+ *  한 줄을 이룬다. 이보다 벌어지면 벽이 아니라 그냥 앞쪽에 지은 살림이다. */
+const WALL_SPAN = 5;
+/** 이보다 두꺼우면 벽이 아니라 건물 밭이다 — 게이트·파일런 열몇 채가 한 자리에 모인 것은
+ *  입구를 막은 게 아니라 생산 단지를 앞쪽에 앉힌 것이다(실측: 13채, 11채, 10채). */
+const WALL_MAX = 6;
 /** 그 몇 채가 '한 번에' 올라간 것으로 볼 시간 — 벽은 잇달아 짓는다. */
 const WALL_BURST_SEC = 180;
-/** 그 자리 언저리에 있는 건물이 이보다 많으면 입구가 아니라 건물 밭이다(빠른무한처럼
- *  살림이 빽빽한 판에서 앞쪽 건물이 열 채씩 잡히던 것을 막는다). */
-const WALL_CROWD_MAX = 4;
 /** 막은 뒤에 늘린 본진 + 새로 올린 테크 건물이 몇부터 '발전했다'인가. */
 const WALL_IN_GROW_MIN = 2;
 
@@ -1273,81 +1277,104 @@ function detectFor(c: Ctx): Tactic[] {
     }
   }
 
+  /* ── 입구 막고 발전하기(요청: "본진 입구를 막고 발전한거도 좋은 묘사 포인트임") ──
+     아래 front-defense가 '입구에 방어탑을 세운' 이야기라면, 이건 건물로 길 자체를
+     틀어막은 이야기다. 그리고 실제로 사람들이 막는 방식은 살림 건물 하나로만이 아니다
+     (지적): 테란은 배럭·서플에 벙커를 얹고, 프로토스는 게이트웨이에 포토를, 저그는
+     해처리에 성큰을 붙여 막는다. 그래서 살림 건물과 방어 건물을 함께 본다.
+
+     자리로만 보면 오탐이 아주 쉽다 — 리플레이에 지형이 없어 램프가 어디인지 모르는데,
+     원래 본진 건물은 다 본진 안에 있고 그중 상대 쪽에 치우친 것이 몇 채 되는 일은 흔하다.
+     실측한 아홉 판(대부분 빠른무한)에서 '앞쪽 건물'은 사람마다 열 채씩 잡혔는데, 그건
+     파일런을 한 줄로 죽 늘어놓은 것이지 벽이 아니었다.
+
+     그 둘을 가르는 진짜 열쇠가 '섞임'이다(요청이 알려 준 것): 파일런만 여섯 채, 해처리만
+     다섯 채는 살림이고, 게이트+포토·배럭+서플+벙커·해처리+성큰처럼 **다른 종류가 섞여**
+     한 자리에 붙어 있는 것이 벽이다. 한 종류만으로는 벽이라 부르지 않는다.
+     여기에 자리(붙어 있나)·시각(잇달아 세웠나)·발전(그러고 나서 컸나)을 함께 본다. */
+  const wallIn = ((): { at: number; n: number; kinds: string[] } | null => {
+    const live = race === "저그"
+      ? ["Hatchery", "Evolution Chamber", "Spawning Pool"]
+      : race === "프로토스"
+        ? ["Pylon", "Gateway", "Forge"]
+        : ["Supply Depot", "Barracks", "Engineering Bay", "Factory"];
+    const guard = race === "저그"
+      ? ["Sunken Colony", "Creep Colony", "Spore Colony"]
+      : race === "프로토스" ? ["Photon Cannon"] : ["Bunker", "Missile Turret"];
+    const cand = [...live, ...guard]
+      .flatMap((b) => atFront(b))
+      .filter((b) => b.frame !== null && sec(b.frame) < WALL_IN_SEC)
+      .sort((a, b) => (a.frame ?? 0) - (b.frame ?? 0));
+    const near = (a: BuildPos, b: BuildPos) => Math.hypot(a.x - b.x, a.y - b.y) <= WALL_SPAN;
+    const wall = cand
+      .map((seed) => cand.filter((b) => near(seed, b)
+        && Math.abs((b.frame ?? 0) - (seed.frame ?? 0)) * SECONDS_PER_FRAME <= WALL_BURST_SEC))
+      // 섞여 있어야 벽이다 — 같은 건물만 줄지어 선 것은 살림이지 벽이 아니다.
+      .filter((g) => g.length >= WALL_IN_MIN && g.length <= WALL_MAX
+        && new Set(g.map((b) => b.unit)).size >= WALL_KIND_MIN)
+      // 여럿이면 가장 여러 종류가 섞인 것 — 그게 가장 벽다운 자리다.
+      .sort((a, b) => new Set(b.map((x) => x.unit)).size - new Set(a.map((x) => x.unit)).size)[0];
+    const closed = wall ? lastOf(wall) : null;
+    if (!wall || closed === null) return null;
+    // 막은 뒤에 실제로 컸나("발전") — 막아 놓고 아무것도 안 했으면 할 얘기가 아니다.
+    // 벽을 이룬 건물이 여기 다시 세어지지 않도록 '막은 시각 뒤'만 본다.
+    const base = race === "저그" ? "Hatchery" : race === "프로토스" ? "Nexus" : "Command Center";
+    const tech = race === "저그"
+      ? ["Lair", "Hive", "Spire", "Hydralisk Den", "Queen's Nest"]
+      : race === "프로토스"
+        ? ["Robotics Facility", "Stargate", "Citadel of Adun", "Templar Archives"]
+        : ["Factory", "Starport", "Science Facility", "Armory"];
+    const grew = [base, ...tech]
+      .reduce((n, b) => n + (s.buildingFrames[b] ?? []).filter((f) => f > closed).length, 0);
+    if (grew < WALL_IN_GROW_MIN) return null;
+    /* 무엇으로 막았나 — 많이 쓴 것부터 두 가지까지 문장이 부른다.
+       저그만 사정이 다르다: 리플레이에 자리가 남는 건 크립 콜로니뿐이고, 성큰·스포어로의
+       변태는 자리 없이 개수로만 남는다(실측한 판에서 크립 19, 스포어 15, 성큰 1). 그래서
+       그 자리를 "크립 콜로니"라 부르면 이야기가 어색하고, 무턱대고 "성큰"이라 부르면
+       열에 아홉이 스포어였던 판에서 거짓이 된다. 그 사람이 실제로 무엇으로 바꿨는지가
+       한쪽으로 확실히 기울 때만(두 배 이상) 그 이름을 쓰고, 아니면 크립 그대로 둔다. */
+    const tally = new Map<string, number>();
+    for (const b of wall) tally.set(b.unit, (tally.get(b.unit) ?? 0) + 1);
+    if (tally.has("Sunken Colony") || tally.has("Spore Colony")) tally.delete("Creep Colony");
+    const creep = tally.get("Creep Colony");
+    if (creep !== undefined) {
+      const sunk = s.buildingCounts["Sunken Colony"] ?? 0;
+      const spore = s.buildingCounts["Spore Colony"] ?? 0;
+      const grown = sunk >= spore * 2 && sunk > 0 ? "Sunken Colony"
+        : spore >= sunk * 2 && spore > 0 ? "Spore Colony" : null;
+      if (grown) { tally.delete("Creep Colony"); tally.set(grown, creep); }
+    }
+    const kinds = [...tally].sort((a, b) => b[1] - a[1]).slice(0, 2).map(([u]) => u);
+    return { at: closed, n: wall.length, kinds };
+  })();
+  if (wallIn) {
+    out.push({
+      // 몇 분에 잠겼나 — 첫 채가 아니라 마지막 한 채가 올라가 길이 닫힌 때다(문장에
+      // 실리는 시각 at과도 같아야 한다. 첫 채로 쓰면 "2분경"이라 말해 놓고 화면의
+      // 타임라인은 8분을 가리키는 어긋남이 난다).
+      key: "wall-in", weight: 11, at: wallIn.at, who,
+      p: { n: wallIn.n, min: Math.max(1, Math.round(sec(wallIn.at) / 60)), bs: wallIn.kinds.join(",") },
+    });
+  }
+
   // ── 입구 방어(요청) ── 리플레이에 지형이 없어 램프 자체는 알 수 없다. 대신 '내 본진
   // 안이면서 상대 쪽으로 나가 있는 자리'는 진출로 쪽이고, 거기 박은 방어 건물은 뒤나 옆에
   // 세운 것과 뜻이 다르다. 한 채는 우연일 수 있어 두 채부터 말한다.
   // 터렛도 함께 본다(요청: 터렛도 포토·성큰처럼 맥락 적용) — 제 진출로에 세운 것이면
   // 그것도 막아선 이야기다. 이 자리의 표시는 방패다(GameResultStory의 BEAT_MARK 주석).
-  const frontDef = (["Bunker", "Photon Cannon", "Sunken Colony", "Missile Turret"] as const)
-    .map((b) => ({ b, at: atFront(b) }))
-    .filter((x) => x.at.length >= 2).sort((a, b) => b.at.length - a.at.length)[0];
+  //
+  // 위 입구막기가 잡혔으면 이 이야기는 하지 않는다 — 그 방어탑은 십중팔구 벽의 일부라,
+  // 둘 다 말하면 같은 자리를 두 문장이 나눠 말하게 된다("입구를 막고 발전했다" 다음에
+  // "입구 쪽에 포토 2개를 지어 방어했다"). 벽 쪽이 더 큰 이야기다.
+  const frontDef = wallIn ? undefined
+    : (["Bunker", "Photon Cannon", "Sunken Colony", "Missile Turret"] as const)
+      .map((b) => ({ b, at: atFront(b) }))
+      .filter((x) => x.at.length >= 2).sort((a, b) => b.at.length - a.at.length)[0];
   if (frontDef) {
     out.push({
       key: "front-defense", weight: 8, at: lastOf(frontDef.at), who,
       p: { b: frontDef.b, n: frontDef.at.length },
     });
-  }
-
-  /* ── 입구 막고 발전하기(요청: "본진 입구를 막고 발전한거도 좋은 묘사 포인트임") ──
-     위 front-defense가 '입구에 방어탑을 세운' 이야기라면, 이건 방어탑이 아니라 살림
-     건물 자체로 길을 틀어막은 이야기다 — 서플·배럭으로 짜는 테란의 입구막기, 파일런·
-     게이트·포지로 짜는 프로토스의 그것. 스타에서 이건 방어가 아니라 '앞을 잠가 놓고
-     뒤에서 마음 놓고 크는' 운영의 시작이라, 방어탑 이야기와 뜻이 아예 다르다.
-
-     자리로만 보면 오탐이 아주 쉽다. 리플레이에 지형이 없어 램프가 어디인지 모르는데,
-     원래 본진 건물은 다 본진 안에 있고 그중 상대 쪽에 치우친 것이 몇 채 되는 일은 흔하다.
-     실측한 아홉 판(대부분 빠른무한)에서 '앞쪽 살림 건물'은 사람마다 열 채씩 잡혔다 —
-     파일런을 한 줄로 죽 늘어놓은 것이지 벽이 아니다. 그래서 조건을 넷 다 요구한다.
-      ① 저그는 아예 안 본다 — 해처리·에볼루션이 앞쪽에 모여 있는 건 입구막기가 아니라
-         멀티다. 입구막기는 서플·배럭(테란), 파일런·게이트·포지(프로토스)의 수다.
-      ② 초반이어야 하고(WALL_IN_SEC), 몇 채가 서로 붙은 채 잇달아 올라가야 하며,
-         그 언저리에 다른 건물이 잔뜩이면 입구가 아니라 건물 밭이다(아래 세 자).
-      ③ 그러고 나서 실제로 컸어야 한다("발전") — 막아 놓고 아무것도 안 했으면 할 얘기가
-         아니다. 막은 뒤에 늘린 본진이나 새로 올린 테크 건물로 본다.
-     이렇게 조이면 빠른무한에서는 거의 안 나온다. 그 판에서는 애초에 입구를 막는 수가
-     없거니와, 있다 해도 건물 밭과 구별할 근거가 없어서 말하지 않는 편이 맞다. */
-  {
-    const wallKinds = race === "프로토스"
-      ? ["Pylon", "Gateway", "Forge"]
-      : race === "테란" ? ["Supply Depot", "Barracks", "Engineering Bay"] : [];
-    const cand = wallKinds
-      .flatMap((b) => atFront(b))
-      .filter((b) => b.frame !== null && sec(b.frame) < WALL_IN_SEC)
-      .sort((a, b) => (a.frame ?? 0) - (b.frame ?? 0));
-    /* 앞쪽에 있다는 것만으로는 벽이 아니다 — 특히 빠른무한처럼 살림이 빽빽한 판에서는
-       상대 쪽으로 치우친 건물이 열 채씩 나온다(실측: 한 판에서 11채, 다른 판에서 10채).
-       벽은 '서로 붙어 있는 몇 채를 한 번에 세운 것'이라, 자리와 시각 둘 다로 좁힌다.
-        · 자리: 몇 타일 안에 모여 있어야 한다. 흩어져 있으면 그냥 살림이다.
-        · 시각: 그 몇 채가 잇달아 올라가야 한다. 몇 분씩 벌어지면 벽을 짠 게 아니다.
-        · 밀도: 그 자리 언저리에 다른 건물까지 잔뜩이면 입구가 아니라 그냥 건물 밭이다. */
-    const near = (a: BuildPos, b: BuildPos) => Math.hypot(a.x - b.x, a.y - b.y) <= WALL_SPAN;
-    const frontAll = geo ? s.buildPositions.filter(geo.front) : [];
-    const wall = cand.map((seed) => {
-      const g = cand.filter((b) => near(seed, b)
-        && Math.abs((b.frame ?? 0) - (seed.frame ?? 0)) * SECONDS_PER_FRAME <= WALL_BURST_SEC);
-      const crowd = frontAll.filter((b) => near(seed, b)).length;
-      return crowd <= WALL_CROWD_MAX ? g : [];
-    }).find((g) => g.length >= WALL_IN_MIN && g.length <= WALL_CROWD_MAX) ?? [];
-    const closed = lastOf(wall);
-    if (wall.length >= WALL_IN_MIN && closed !== null) {
-      const base = race === "프로토스" ? "Nexus" : "Command Center";
-      const tech = race === "프로토스"
-        ? ["Robotics Facility", "Stargate", "Citadel of Adun", "Templar Archives"]
-        : ["Factory", "Starport", "Science Facility", "Armory"];
-      // 막은 뒤에 늘린 본진과 새로 올린 테크 건물 — 벽을 이룬 건물 자체가 여기 다시
-      // 세어지지 않도록 '막은 시각 뒤'만 본다.
-      const grew = (s.buildingFrames[base] ?? []).filter((f) => f > closed).length
-        + tech.reduce((n, b) => n + (s.buildingFrames[b] ?? []).filter((f) => f > closed).length, 0);
-      if (grew >= WALL_IN_GROW_MIN) {
-        out.push({
-          // 몇 분에 잠겼나 — 첫 채가 아니라 마지막 한 채가 올라가 길이 닫힌 때다(문장에
-          // 실리는 시각 at과도 같아야 한다. 첫 채로 쓰면 "2분경"이라 말해 놓고 화면의
-          // 타임라인은 8분을 가리키는 어긋남이 난다).
-          key: "wall-in", weight: 11, at: closed, who,
-          p: { n: wall.length, min: Math.max(1, Math.round(sec(closed) / 60)) },
-        });
-      }
-    }
   }
 
   // ── 셋방살이(요청) ── 내 기지에는 건물이 거의 없고 아군 기지에 얹혀 있는 것(지적).

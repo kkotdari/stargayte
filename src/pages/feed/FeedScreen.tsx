@@ -31,7 +31,7 @@ import { useCursorPagination } from "../../hooks/useCursorPagination";
 import { useEditableFocused } from "../../hooks/useEditableFocused";
 import { usePageBackground } from "../../hooks/usePageBackground";
 import {
-  getScrollMetrics, getScrollTop, scrollRootTo, smoothScrollRootTo, suppressScrollHide,
+  getScrollMetrics, getScrollTop, scrollRootTo, suppressScrollHide,
 } from "../../utils/scrollRoot";
 import { buildReplayDrafts, type ReplayDraft } from "../../utils/replayDraft";
 import { hasAppUpdatePreloadErrorOccurred } from "../../utils/appUpdate";
@@ -40,12 +40,12 @@ import type { Challenge, FeedTargetType, GameResult, GameResultSlot, Member, Ran
 const PAGE_SIZE = 100;
 const MAX_REPLAY_FILES = 20;
 
-/** 들어올 때 "현재" 구분선까지 내려가는 시간 — 맨 위로 올라가는 것(420ms)보다 넉넉히
- *  잡는다. 여기서는 지나가는 카드들이 곧 "이만큼이 앞으로 있을 일"이라는 설명이라, 너무
- *  빠르면 그냥 튄 것처럼 보인다. 620ms로도 여전히 급했다(지적) — 1100ms로 늘리고,
- *  이징도 시작부터 천천히 붙는 것으로 바꿨다(scrollRoot의 "inOut"). 아무도 안 눌렀는데
- *  화면이 스스로 움직이는 자리라 출발이 조용해야 한다. */
-const NOW_SCROLL_MS = 1100;
+/** 들어올 때 "현재" 구분선으로 옮겨 간 뒤, 탭바·헤더가 "아래로 스크롤했다"로 오해하지
+ *  않게 막아 두는 시간. 예전에는 이 자리를 1.1초짜리 rAF 애니메이션으로 내려갔는데,
+ *  그 동안 매 프레임 scrollTo를 부르는 통에 카드가 많은 피드에서는 눈에 띄게 버벅였다
+ *  (지적: 스크롤 버벅임이 심하니 그냥 순간이동으로). 이제 한 번에 옮기므로 이 창은
+ *  그 직후의 스크롤 이벤트 한두 번만 덮으면 된다. */
+const NOW_SCROLL_MS = 300;
 
 // 묶음 펼침/접힘에서 포스트 한 장이 나타나거나 사라지는 시간과, 포스트 사이의 시차.
 // 공간(높이)이 다 열린 뒤에 포스트가 한 장씩 등장한다(요청) — 접을 땐 그 반대다.
@@ -1207,9 +1207,13 @@ export default function FeedScreen() {
       // 이 자동 스크롤이 "아래로 스크롤했다"로 읽혀 탭바·헤더가 접히면 안 된다
       // (useHideOnScrollDown이 이 창 동안 방향 판정을 건너뛴다).
       suppressScrollHide(NOW_SCROLL_MS + 300);
-      // 순간이동 대신 부드럽게 내려간다(요청) — 위에서 아래로 흐르는 그 동작 자체가
-      // "여기가 지금 자리다"를 말해 준다. 손을 대면 그 즉시 멈춘다(smoothScrollRootTo).
-      smoothScrollRootTo(top, NOW_SCROLL_MS, { ease: "inOut" });
+      /* 한 번에 옮긴다(요청: "스크롤시 버벅임이 심해서 그냥 순간이동으로 변경").
+         부드럽게 흘러내리는 편이 "여기가 지금 자리다"를 잘 말해 주긴 했지만, 그건 매
+         프레임 scrollTo를 부르는 rAF 애니메이션이라 카드가 많은 피드에서는 그 1.1초
+         내내 메인 스레드가 밀렸다 — 첫인상이 곧 버벅임이면 얻는 것보다 잃는 게 크다.
+         behavior:"instant"를 반드시 명시한다: #scroll-root에 CSS scroll-behavior:smooth가
+         걸려 있어서 안 주면 네이티브 스무스 스크롤로 해석돼 도로 애니메이션이 된다. */
+      scrollRootTo({ top, behavior: "instant" });
     });
   }, [loading, displayFeed, nowIndex]);
 
