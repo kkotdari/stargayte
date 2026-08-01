@@ -2940,7 +2940,11 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
 .scr-feed-note-item { padding: 7px 0; }
 .scr-feed-note-item + .scr-feed-note-item { border-top: 1px solid rgba(var(--overlay-rgb), 0.06); }
 .scr-feed-note-item .scr-mreq-item-top { margin-bottom: 3px; }
-.scr-feed-note-time { font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; flex-shrink: 0; }
+/* 닉네임(.scr-mreq-item-author-name)과 같은 색(--dim)을 쓰되 더 연하게(지적: 타임스탬프
+   색깔 닉네임과 동일하게 약간 연하게) — 이 앱에서 --muted가 --dim보다 오히려 더 진해서
+   (다크 테마 기준 0.88 vs 0.68), 그동안 타임스탬프가 닉네임보다 더 또렷해 보였다.
+   --dim에 opacity를 얹어 두 테마 모두에서 "닉네임 색조 그대로, 살짝만 더 흐리게"가 되게 한다. */
+.scr-feed-note-time { font-size: 10px; color: var(--dim); opacity: 0.75; font-variant-numeric: tabular-nums; flex-shrink: 0; }
 .scr-feed-note-text { font-size: var(--fs-micro); }
 /* 수정·삭제 버튼을 댓글 내용이 끝나는 자리에(지적: 오른쪽 끝이 아니라 내용이 끝나는
    부분 바로 옆으로) — 텍스트가 담긴 <p> 안에 이어 붙는 인라인 요소라, 글이 짧으면
@@ -4778,23 +4782,19 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
    보이게 한다. display:inline-block이라 글자 길이만큼만 배경이 붙는다. */
 .scr-challenge-side-msg {
   display: inline-block; position: relative; max-width: 100%; line-height: 1.3;
-  word-break: break-word; font-size: var(--fs-body); /* 기본 닉네임(body)과 같은 크기 */
-  /* 모양은 몇 차례 오갔다 — 10→14px(더 둥글게) → 999px 알약 → 50%(진짜 타원, 럭비공처럼
-     양 끝이 뾰족해져 롤백) → 999px 알약 → "둥근네모"로 16px을 줬는데, 이 박스 높이
-     (약 30px)의 절반(15px)에 거의 맞먹는 값이라 여전히 알약처럼 보였다(지적: 아직
-     알약 모양인데?) — 절반에 한참 못 미치는 6px로 확 낮춰서 모서리만 살짝 둥글고
-     위아래·좌우는 뚜렷하게 직선인 진짜 둥근네모로 만든다. 위아래 여백은 아래가 더
-     넓어 보였다(지적) — line-height가 만드는 여유가 글자 아래쪽에 더 남는 데다(한글은
-     시각적 무게가 위쪽에 쏠린다) 위쪽은 꼬리가 이미 자리를 차지해 그만큼 비어
-     보이므로, 위 5px·아래 4px로 아래를 살짝 줄인다. 좌우 패딩은 줄여 뒀다(지적: 좌우
-     패딩 감소) 9px. */
-  background: #fff; color: #24272d; border-radius: 6px; padding: 5px 9px 4px;
+  word-break: break-word;
+  /* 모양은 몇 차례 오갔다 — 10→14→999(알약)→50%(진짜 타원, 럭비공처럼 뾰족해져 롤백)
+     →999(알약)→16(절반 높이에 맞먹어 여전히 알약 같음)→6px(둥근네모 확정). 글자는
+     닉네임과 같은 크기까지 키웠다가(지적) 패딩과 함께 한 단계씩 다시 줄인다(지적:
+     말풍선 패딩 살짝 축소, 글자 1스텝 축소) — 아래 각 문맥별 font-size 규칙도 함께. */
+  font-size: var(--fs-caption); /* 기본 닉네임(body)의 한 단계 아래 */
+  background: #fff; color: #24272d; border-radius: 6px; padding: 4px 7px 3px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18), 0 0 1px rgba(0, 0, 0, 0.1);
   /* 시작점을 닉네임 글자 시작점에 맞춘다(지적) — 닉네임 앞에 프사(20px)+간격(6px, 위
      .scr-challenge-person의 gap)이 있어, 그만큼 들여야 줄이 맞는다. 다만 말풍선 배경이
-     생겨서 왼쪽 패딩(9px)만큼은 들여쓰기에서 뺀다 — 안 그러면 글자가 시작점보다 더
+     생겨서 왼쪽 패딩(7px)만큼은 들여쓰기에서 뺀다 — 안 그러면 글자가 시작점보다 더
      밀려 보인다. 위쪽은 꼬리(아래 ::before, 5px)가 들어갈 자리까지 넉넉히 띄운다. */
-  margin-top: 8px; margin-left: 17px;
+  margin-top: 8px; margin-left: 19px;
 }
 /* 말풍선 꼬리 — 위쪽 닉네임 줄(그 사람이 한 말임을 가리키는 방향)을 향해 뾰족하게. 테두리
    트릭(위·좌·우는 투명, 아래만 흰색)으로 삼각형을 만든다. */
@@ -4803,11 +4803,11 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
   border-left: 5px solid transparent; border-right: 5px solid transparent;
   border-bottom: 6px solid #fff;
 }
-/* 팀전 닉네임(micro)과 같은 크기. */
-.scr-challenge-card-team .scr-challenge-side-msg { font-size: var(--fs-micro); }
-/* 피드 카드 닉네임(caption)과 같은 크기 — 팀전보다 뒤에 둬서(피드+팀전이 겹쳐도)
+/* 팀전 닉네임(micro)의 한 단계 아래. */
+.scr-challenge-card-team .scr-challenge-side-msg { font-size: var(--fs-11); }
+/* 피드 카드 닉네임(caption)의 한 단계 아래 — 팀전보다 뒤에 둬서(피드+팀전이 겹쳐도)
    피드 쪽 기준이 이긴다(위 .scr-feed-card .scr-challenge-person-name과 같은 순서). */
-.scr-feed-card .scr-challenge-side-msg { font-size: var(--fs-caption); }
+.scr-feed-card .scr-challenge-side-msg { font-size: var(--fs-micro); }
 .scr-light-theme .scr-challenge-submit-btn:disabled { border-color: rgba(0, 0, 0, 0.14); }
 /* "호출" 버튼 — 활성화 시 각 테마의 라이팅 프라이머리(요청: 핑크 고유색 대신 공통
    라이팅 테마). 다크=거의 흰 알약, 라이트=하늘빛 알약 + 윤곽 글로우. 비활성은 위
