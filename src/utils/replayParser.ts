@@ -349,6 +349,8 @@ interface ScrepResult {
   Computed: {
     WinnerTeam: number;
     PlayerDescs: ScrepPlayerDesc[] | null;
+    /** 나간 기록 — screp이 승패를 못 가렸을 때 우리가 직접 가리는 근거다(아래 winnerSide). */
+    LeaveGameCmds?: { Frame: number; PlayerID: number }[] | null;
   };
   // cmds:true 옵션을 줘야 채워진다. 옵션이 없거나 파싱 실패면 null.
   Commands?: { Cmds?: ScrepCmd[] | null } | null;
@@ -978,7 +980,41 @@ export async function parseReplayFile(file: File): Promise<ParsedReplay> {
   const confirmedTeam2 = team2.filter((p) => !guessedObserverSet.has(p.rawName));
   const matchType: GameType = confirmedTeam1.length === 1 && confirmedTeam2.length === 1 ? "0101" : "0102";
 
-  const winnerTeamRaw = res.Computed?.WinnerTeam ?? 0;
+  /* screp이 승패를 못 가렸을 때(WinnerTeam=0)의 마지막 근거 — 나간 기록(Leave Game)이다.
+     screp의 판정은 "끝까지 남은 편"을 보는데, 이긴 편에서도 한 명이 (대개 마지막 프레임에)
+     같이 나가 버리면 그 판단이 통째로 비어 버린다. 실측한 3:3 두 판이 정확히 그 모양이었다:
+     진 편 셋이 21051·21093·21267 프레임에 차례로 나갔는데, 이긴 편의 한 사람이 마지막
+     프레임(21329, 총 21330)에 같이 나갔다는 이유로 WinnerTeam이 0이 됐다. 그러면
+     buildReplaySummary가 첫 줄에서 되돌아가 요약이 통째로 안 만들어진다(지적).
+
+     그때는 직접 본다: 실제로 플레이한 사람(사람 슬롯이면서 명령이 있는 사람)만 놓고,
+     한 편이 전원 나갔는데 다른 편엔 아직 누군가 남아 있으면 남아 있는 편이 이긴 편이다.
+     컴퓨터·관전 슬롯은 애초에 나갈 일이 없으니 이 셈에서 뺀다 — 넣으면 그 편은 영영
+     '전원 나감'이 안 된다. 양쪽 다 전원 나갔거나 양쪽 다 남아 있으면 손대지 않는다:
+     그건 정말 못 가리는 판이라 사람이 검토 화면에서 직접 골라야 한다(아래 winnerSide=null).
+     screp이 이미 가린 판은 절대 건드리지 않는다 — 이건 빈자리를 채우는 값이다. */
+  const leaveWinnerTeam = ((): number | null => {
+    const [t1Id, t2Id] = playingTeamIds;
+    if (t1Id === undefined || t2Id === undefined) return null;
+    const leftIds = new Set(
+      (res.Computed?.LeaveGameCmds ?? []).map((c) => c.PlayerID),
+    );
+    const played = (res.Header.Players ?? []).filter((p) => (
+      !p.Observer && p.Type?.Name !== "Observer" && p.Type?.Name !== "Computer"
+      && playingTeamIds.includes(p.Team)
+      && (descByPlayerId.get(p.ID)?.CmdCount ?? 0) > 0
+    ));
+    const allLeft = (team: number): boolean => {
+      const ids = played.filter((p) => p.Team === team).map((p) => p.ID);
+      return ids.length > 0 && ids.every((id) => leftIds.has(id));
+    };
+    const out1 = allLeft(t1Id);
+    const out2 = allLeft(t2Id);
+    if (out1 === out2) return null;
+    return out1 ? t2Id : t1Id;
+  })();
+  const screpWinner = res.Computed?.WinnerTeam ?? 0;
+  const winnerTeamRaw = screpWinner !== 0 ? screpWinner : leaveWinnerTeam ?? 0;
   const winnerSide: "team1" | "team2" | null =
     winnerTeamRaw === 0 ? null : winnerTeamRaw === firstTeam ? "team1" : "team2";
 
