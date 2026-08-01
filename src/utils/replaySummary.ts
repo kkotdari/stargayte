@@ -288,6 +288,13 @@ const NEED_TARGET_KEYS = new Set([
   "fast-tech",
 ]);
 const NO_TARGET_PENALTY = 10;
+/** 타겟이 없으면 아예 문장이 되지 않는 수들(요청: 타겟 없는 러시는 문장에 안 나오게).
+ *  병력을 몰고 갔다는 이야기인데 어디로 갔는지도 누구에게 갔는지도 없으면 남는 뜻이 없다.
+ *  건물을 박는 러시(포토·성큰·몰래배럭)는 그 건물 자리가 곧 타겟이라 여기 들어와도
+ *  정상적으로는 안 걸린다 — 자리를 못 읽은 리플레이에서만 걸러진다. */
+const RUSH_NEED_TARGET = new Set([
+  "zling-rush", "zealot-rush", "duel-rush", "cannon-rush", "sunken-rush", "sneak-rax",
+]);
 
 /** 러시는 '뽑은 때'와 '닿은 때'가 다르다 — 그래서 목표를 앞뒤 창으로만 찾으면 늘 빈손이다
  *  (지적: 질럿 러시의 타겟이 없다). 이 beat들의 at은 첫 유닛이 나온 프레임이고, 그 병력이
@@ -1989,7 +1996,15 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
           ...(t.who2 ? { who2: [t.who2] } : {}),
         } as Beat;
       })
-      .map((b) => withStrike(b, mine, foes));
+      .map((b) => withStrike(b, mine, foes))
+      /* 타겟을 못 짚은 러시는 아예 말하지 않는다(요청) — "누구에게 갔는지도, 어디로 갔는지도
+         모르는 러시"는 병력을 좀 뽑았다는 말과 다를 바 없고, 그림에도 화살표가 안 그려져
+         본진에 이모지만 덩그러니 남는다. 무게만 깎아 두던 자리인데(NO_TARGET_PENALTY),
+         할 얘기가 적은 경기에서는 그래도 문장이 되어 나왔다. withStrike가 이미 닿은
+         자리·찍은 상대를 다 뒤진 뒤라, 여기서도 비어 있으면 정말 근거가 없는 것이다. */
+      .filter((b) => !(RUSH_NEED_TARGET.has(b.k)
+        && (b.whom?.length ?? 0) === 0
+        && !Array.isArray(b.p?.xy) && typeof b.p?.spot !== "string"));
   };
 
   // "유비의 바이오닉 한 방으로 관우의 저글링 성큰을 뚫음" — 이긴 편의 주력이 진 편의 누구를
@@ -2255,8 +2270,14 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
           .sort((a, b) => b[1] - a[1])[0];
         if (hurtBy) {
           out.push({
-            k: "greedy-punished", won, who: [p.rawName], whom: [hurtBy],
-            at: first, weight: 15, p: { min: minutes(first * SECONDS_PER_FRAME) },
+            /* 때린 사람은 whom이 아니라 p.by다(지적: 태섭이 공격한 건데 화살표가 없고
+               태섭 얼굴이 왜 저거냐) — 이 문장은 주어(who)가 당한 쪽이라 whom 자리에
+               공격자를 넣으면 그림이 통째로 뒤집힌다: 그림은 whom을 '당한 사람'으로 읽어
+               공격자에게 당황한 얼굴을 붙이고, 화살표는 당한 사람에게서 나가야 하는 줄
+               알고 아무것도 못 그린다. relocate·fallen의 by와 같은 자리다. */
+            k: "greedy-punished", won, who: [p.rawName],
+            at: first, weight: 15,
+            p: { min: minutes(first * SECONDS_PER_FRAME), by: hurtBy },
           } as Beat);
         } else if (top && top[1] >= GREEDY_PAYOFF_UNITS) {
           out.push({

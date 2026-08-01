@@ -84,6 +84,9 @@ const BEAT_MARK: Record<string, string> = {
   // 통일한다. 업그레이드만은 공격보다 연구 쪽이 어울려(지적) 따로 시험관을 준다.
   expand: "🏗️", upgrade: "🧪", "upgrade-signature": "🧪", tech: "⚔️", "fast-tech": "⚔️",
   lodging: "🏠", relocate: "🚚", "greedy-build": "💰", "greedy-paid": "💰", greedy: "💰",
+  // 째다 응징당한 문장에서 표시를 받는 건 당한 사람이 아니라 때린 사람(p.by)뿐이라
+  // (BY_ATTACKER_KEYS) 검 대결이 맞다 — 당한 사람은 얼굴로만 알린다.
+  "greedy-punished": "⚔️",
   carrier: "🛩️", bc: "🛩️", guardian: "🛩️", "lift-off": "🛩️", vision: "👁️", "no-detect": "🙈",
   attrition: "⏳", "fast-hands": "⚡", "pro-like": "🌟", revival: "🔥",
   "worker-gap": "📉", "prod-gap": "📉",
@@ -120,6 +123,12 @@ const HOME_BEAT_KEYS = new Set([
   "stand", "result", "standoff", "attrition", "fast-hands", "pro-like", "worker-gap",
   "prod-gap", "long-run", "late-hold", "lift-off",
 ]);
+
+/** 주어(who)가 당한 쪽이고, 때린 사람은 p.by에 실린 문장들 — whom에 넣으면 그림이
+ *  통째로 뒤집히기 때문이다(그림은 whom을 '당한 사람'으로 읽는다). 이 문장들에서는
+ *  by가 공격자이고, 화살표는 by의 집에서 who의 집으로 간다(지적: 태섭이 공격한 건데
+ *  화살표가 없고 태섭 얼굴이 당황한 표정이었다). */
+const BY_ATTACKER_KEYS = new Set(["fallen", "greedy-punished"]);
 
 /** 실제로 맵 가운데에서 벌어진 일 — 화살표를 센터로 보낸다(요청: 센터 내용은 실제 센터에). */
 const CENTER_BEAT_KEYS = new Set(["center", "center-photon"]);
@@ -527,10 +536,10 @@ export default function GameResultStory({
     const target = (b: (typeof beats)[number], raw: string): [number, number] | null => {
       const home = homeOf(raw);
       if (!home) return null;
-      // fallen의 p.by(민 사람)는 whom이 아니라 p에 실려 있다(replaySummary의 by 주석 —
-      // whom으로 실으면 '이 사람이 당했다'가 뒤집힌다) — 그래서 여기서 따로 잡는다.
-      // 목표는 무너진 사람(who[0])의 집이다.
-      if (b.k === "fallen" && b.p?.by === raw) {
+      // 때린 사람이 whom이 아니라 p.by에 실린 문장들(replaySummary의 by 주석 — whom으로
+      // 실으면 '이 사람이 당했다'가 뒤집힌다) — 그래서 여기서 따로 잡는다. 목표는 당한
+      // 사람(who[0])의 집이다.
+      if (BY_ATTACKER_KEYS.has(b.k) && b.p?.by === raw) {
         const victimHome = homeOf((b.who ?? [])[0] ?? "");
         if (victimHome) return victimHome;
       }
@@ -787,13 +796,13 @@ export default function GameResultStory({
       // 왜 화살표가 없지?" — 자막은 p.by/p.theirs 이름을 쓰는데 그림에는 그 사람이 아예
       // 없었다). 공격자로 잡아 helpers에 끼워 넣는다 — target()에서 "fallen의 by는 무너진
       // 사람 집이 목표"로 따로 잡아 준다.
-      const fallenBy = b.k === "fallen" && typeof b.p?.by === "string" ? [b.p.by] : [];
-      if (fallenBy.length > 0) fallenBy.forEach((r) => attacker.add(r));
+      const byAttacker = BY_ATTACKER_KEYS.has(b.k) && typeof b.p?.by === "string" ? [b.p.by] : [];
+      if (byAttacker.length > 0) byAttacker.forEach((r) => attacker.add(r));
       // 같이 덮친 사람(who2)도 공격자다(지적: "누구도 가세하여 같이 공격한 것"에 화살표가
       // 없다) — 문장은 "○○까지 달려들어"로 이름을 부르는데 그림에는 아무것도 없었다.
       const helpers = ATTACK_BEAT_KEYS.has(b.k) || b.k === "breakthrough"
         ? (Array.isArray(b.who2) ? b.who2 : typeof b.who2 === "string" ? [b.who2] : [])
-        : fallenBy;
+        : byAttacker;
       const actors = who;
       for (const raw of [...actors, ...helpers]) {
         if (victims.has(raw)) continue;
@@ -801,7 +810,7 @@ export default function GameResultStory({
         // 이모지·화살표 대상이 아니라 아바타 얼굴로만 알린다. result(맺음말)도 마찬가지로
         // 트로피는 아바타 얼굴 쪽에서만 준다(지적: 본진에 뜨는 트로피와 아바타 트로피가
         // 겹쳐서 두 개로 보였다). actors로 한정하는 이유는 fallen의 p.by(helpers)까지
-        // 걸러지면 안 되기 때문 — 그 사람은 당한 쪽이 아니라 민 쪽이다.
+        // 걸러지면 안 되기 때문 — 그 사람은 당한 쪽이 아니라 민 쪽이다(byAttacker).
         if (actors.includes(raw)
           && (SEVERE_SUBJECT_KEYS.has(b.k) || MODERATE_SUBJECT_KEYS.has(b.k) || b.k === "result")) continue;
         // 아군 기지의 교전을 도우러 간 것(위에서 helper로 분류됨)은 화살표 끝 표시도

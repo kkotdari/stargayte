@@ -210,6 +210,8 @@ function contPhrase(units: string[], pick: (o: string[]) => string): string {
 }
 
 interface Ctx {
+  /** 이 문장이 어떤 beat인가 — 결과 꼬리를 붙일지 가르는 데 쓴다(아래 done). */
+  k: string;
   /** 이름들을 이미 합쳐 놓은 것("조조" 또는 "조조·유비"). */
   who: string;
   /** 합치기 전의 이름들 — 팀 승리를 "유비의 마린, 관우의 저글링"으로 말할 때 쓴다. */
@@ -534,6 +536,11 @@ const done = (c: Ctx, action: string, risky = false): string => {
   // "…했으나 역부족" 같은 부정적인 맺음은 경기당 딱 한 번, 진 편의 마지막 문장에만 붙인다
   // (지적) — 문장마다 붙으면 같은 말이 반복돼 읽는 맛이 없다.
   if (!c.lastLost) return action;
+  /* 이미 그 사람이 당한 이야기(응징·궤멸·이사 등)에는 결과 꼬리를 붙이지 않는다 —
+     "…팍규의 공격에 노출됐으나 크게 망했다"처럼 나쁜 일 둘을 역접('-으나')으로 잇게 되어
+     인과가 깨진다(지적: 문장 인과관계가 이해가 안 되고 하나로 합치면 안 되는 문장).
+     그런 문장은 이미 제 결말을 말하고 있어 덧붙일 것이 없다. */
+  if (AGAINST_ACTOR.has(c.k)) return action;
   // 그 한 번도 끝 무렵의 일이라야 한다 — 초중반의 한 수를 곧바로 결과와 잇지 않는다.
   if (c.at !== null) {
     const late = c.end !== null
@@ -1734,16 +1741,21 @@ const TEMPLATES: Record<string, Tpl> = {
 
   // 합공(요청: 초반에 누가 죽은 것 같으면 몇 명이 러시했는지 유추) — 이름을 다 부르므로
   // 숫자는 "둘이서/셋이서"로만 거든다.
+  /* 여럿이 붙어 한 사람을 먼저 끊은 것 — 한 일만 말한다. 예전에는 진 편일 때
+     "먼저 끊고도 끝내 밀림"처럼 경기 결과까지 한 문장에 넣었는데, 그건 초반에 벌어진
+     이 사건과 한참 뒤의 결말을 한 호흡에 묶는 것이라 인과가 안 읽힌다(지적: 문장
+     인과관계가 이해가 안 되고 하나로 합치면 안 되는 문장). 결과 꼬리는 done()이
+     '진 편의 마지막 문장이면서 끝 무렵의 일'일 때만 붙인다 — 이 수는 정의상 초반이라
+     거기 걸리지 않는다. */
   "gang-rush": (c) => {
     const n = num(c.p.n, 2);
     const cnt = n === 2 ? "둘이서" : `${n}명이서`;
     const whom = c.whom ? `${reul(c.whom)} ` : "";
-    return `${ga(c.who)} ${cnt} ${c.pick(
-      c.won
-        ? [`초반부터 몰아쳐 ${whom}먼저 무너뜨림`, `함께 붙어 ${whom}일찌감치 정리함`,
-           `초반에 달라붙어 ${whom}그대로 지워버림`]
-        : [`초반부터 몰아쳐 ${whom}잡았지만 판을 뒤집지 못함`, `함께 붙어 ${whom}먼저 끊고도 끝내 밀림`]
-    )}`;
+    return `${ga(c.who)} ${cnt} ${done(c, c.pick([
+      `초반부터 몰아쳐 ${whom}먼저 무너뜨림`,
+      `함께 붙어 ${whom}일찌감치 정리함`,
+      `초반에 달라붙어 ${whom}그대로 지워버림`,
+    ]))}`;
   },
 
   // 채팅에서 잡은 항복 선언(요청) — 승부가 어디서 끝났는지 말해주는 유일한 '사람의 말'이다.
@@ -1769,7 +1781,8 @@ const TEMPLATES: Record<string, Tpl> = {
   "greedy-punished": (c) => {
     const m = num(c.p.min);
     const when = m > 0 ? `${m}분까지 ` : "";
-    const foe = c.whom ? `${c.whom}의 ` : "상대의 ";
+    // 때린 사람은 by다(whom이 아니다) — replaySummary의 greedy-punished 주석 참고.
+    const foe = c.by ? `${c.by}의 ` : c.whom ? `${c.whom}의 ` : "상대의 ";
     return `${ga(c.who)} ${done(c, c.pick([
       `무리하게 자원부터 챙기다가 ${foe}공격에 노출됨`,
       `초반에 병력을 미루다가 ${foe}공격에 무너짐`,
@@ -2477,6 +2490,7 @@ function renderLines(
     const render = (offset: number): string | null => {
       let firstPick = true;
       return tpl({
+        k: b.k,
         who,
         whoList: (b.who ?? []).map(resolveName).filter(Boolean),
         who2: joinNames((b.who2 ?? []).map(resolveName)),

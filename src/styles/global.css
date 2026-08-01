@@ -7765,6 +7765,13 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
   animation: scr-minimap-arrow-in 260ms ease-out;
 }
 @keyframes scr-minimap-arrow-in { from { opacity: 0; } to { opacity: 1; } }
+/* 화살표 그림자는 몸통·화살촉 path가 아니라 레이어(svg)에 준다(지적: 화살표엔 그림자가
+   아예 없다) — path에 걸면 filter의 px가 SVG 사용자 좌표(viewBox=타일 격자)로 해석돼
+   실제 화면에서는 엉뚱한 크기가 되거나 아예 안 보인다. svg 요소에 걸면 CSS px 그대로다.
+   지형 위에서 선이 뜨기만 하면 되므로 아주 약하게만 준다(요청: 화살표엔 약한 그림자). */
+.scr-minimap-arrows, .scr-minimap-arrow-tips {
+  filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.5));
+}
 /* 값은 타일 단위다(viewBox가 타일 격자) — 128칸 맵에서 1타일이 화면 2~3px이다. */
 /* 화살촉 레이어 — 아바타·이름표(z-index 3)보다 위. 몸통은 위 레이어(z-index 없음)라
    아바타 아래에 남는다. */
@@ -7776,10 +7783,7 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
 /* 테두리(halo) 없이 색+그림자만 쓴다(요청) — 기둥 끝도 둥글게 두지 않는다. 테두리가
    주던 두께감이 빠지니 굵기 자체를 키웠는데(요청: 화살 두께 늘리기) 2.2는 살짝 과했다
    (지적: 두께 살짝만 줄이기) — 1.8로. */
-.scr-minimap-arrow {
-  stroke-width: 1.8; stroke-linecap: butt;
-  filter: drop-shadow(0 0 1.5px rgba(0, 0, 0, 0.75));
-}
+.scr-minimap-arrow { stroke-width: 1.8; stroke-linecap: butt; }
 .scr-minimap-arrow-halo { display: none; }
 /* 본진 이모지 — 화살표가 없는 이야기(생산·테크 …)를 그 사람 본진에 붙인다(요청). 해골과
    반대쪽(왼쪽 위) 어깨에 둔다 — 둘이 함께 뜰 수 있다. */
@@ -7838,8 +7842,13 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
   /* 본진 표시와 화살촉 끝 표시 크기를 통일한다(지적: "둘 다 크기 통일하라니까", 짝수로) —
      위 .scr-minimap-mark-home과 같은 28px. */
   font-size: 28px; line-height: 1; white-space: nowrap;
-  /* 어떤 지형 위에서도 떠 보이게 검은 테를 두른다. */
-  filter: drop-shadow(0 0 2px #000) drop-shadow(0 0 1px #000);
+  /* 이모지는 그림자가 아니라 테두리다(요청) — 번지는 그림자(drop-shadow blur)는 특히
+     모바일의 큰 이모지에서 아래로 짙게 깔려 지저분했다. 흐림 0의 상하좌우 네 겹으로
+     실루엣을 따라 도는 얇은 검은 테를 만든다 — 어떤 지형 색 위에서도 모양이 살고,
+     아래로 처지는 그늘은 생기지 않는다. */
+  filter:
+    drop-shadow(1px 0 0 #000) drop-shadow(-1px 0 0 #000)
+    drop-shadow(0 1px 0 #000) drop-shadow(0 -1px 0 #000);
 }
 /* 화살촉·출발 자리 표시 전용 바운스(요청: 화살표에 비해 액션 아이콘이 존재감이 약하다) —
    본진 표시(.scr-minimap-mark-home)와 상태 얼굴(.scr-minimap-mark-face)은 각자 자기
@@ -7858,7 +7867,7 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
 }
 /* 화살촉 — 아바타 위에 뜨므로 검은 테를 좀 더 두껍게 둘러 그림에서 떠 보이게 한다. */
 /* 화살촉도 화살 몸통과 같다(요청) — 테두리(stroke) 대신 그림자만. */
-.scr-minimap-arrow-head { stroke: none; filter: drop-shadow(0 0 1.5px rgba(0, 0, 0, 0.75)); }
+.scr-minimap-arrow-head { stroke: none; }
 
 /* 표시 하나 — 크기 없는 '점'으로 두고 아바타와 닉네임을 그 점 기준으로 얹는다(위치는
    인라인 스타일). 아바타를 flex로 나란히 두면 닉네임 길이만큼 아바타가 실제 좌표에서
@@ -7981,7 +7990,10 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
      대신 궤멸은 다른 얼굴들보다 죽어 보여야 하니(요청: 딤 처리) 채도·밝기를 낮춘다.
      어떤 지형 색 위에서도 실루엣이 살아야 하니 검은 테는 그대로 둔다. */
   opacity: 0.75;
-  filter: grayscale(0.6) brightness(0.85) drop-shadow(0 0 2px #000) drop-shadow(0 0 2px #000);
+  filter:
+    grayscale(0.6) brightness(0.85)
+    drop-shadow(1px 0 0 #000) drop-shadow(-1px 0 0 #000)
+    drop-shadow(0 1px 0 #000) drop-shadow(0 -1px 0 #000);
 }
 .scr-minimap-mark-downed .scr-minimap-mark-label { opacity: 0.72; }
 /* 트로피·공격자·당한 정도·아군 헬프 같은 상태 얼굴 — 해골과 같은 자리·크기로 붙인다
@@ -7990,7 +8002,13 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
 .scr-minimap-mark-face {
   position: absolute; left: -9px; top: -9px; transform: translate(-50%, -50%);
   z-index: 2; font-size: 13px; line-height: 1;
-  filter: drop-shadow(0 0 2px #000) drop-shadow(0 0 2px #000);
+  /* 이모지는 그림자가 아니라 테두리다(요청) — 번지는 그림자(drop-shadow blur)는 특히
+     모바일의 큰 이모지에서 아래로 짙게 깔려 지저분했다. 흐림 0의 상하좌우 네 겹으로
+     실루엣을 따라 도는 얇은 검은 테를 만든다 — 어떤 지형 색 위에서도 모양이 살고,
+     아래로 처지는 그늘은 생기지 않는다. */
+  filter:
+    drop-shadow(1px 0 0 #000) drop-shadow(-1px 0 0 #000)
+    drop-shadow(0 1px 0 #000) drop-shadow(0 -1px 0 #000);
 }
 /* 상태 얼굴은 대개 그 스냅의 주인공(featured, 큰 아바타) 자리에 붙는다 — 아바타가
    커진 만큼 얼굴도 함께 키우고, 어깨 자리도 그만큼 바깥으로 물린다(지적: 작은 아바타
