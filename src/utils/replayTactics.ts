@@ -1226,12 +1226,22 @@ function detectFor(c: Ctx): Tactic[] {
      같기도 하고 부정확하고 의미없다). 게다가 빠른무한 같은 판에서는 원래 다들 맵 곳곳에
      짓는다 — 이사 판정이 헛돌던 것과 같은 이유다. 무게를 낮춰 두는 것으로는 부족했다:
      낮춰 놔도 할 얘기가 적은 경기에서는 결국 자리를 차지했다. */
-  const midCannons = inZone("mid", "Photon Cannon");
-  if (midCannons.length >= 2) {
+  /* 센터에 박은 방어 건물 — 포토뿐 아니라 성큰·터렛도 같은 수다(요청: 터렛도 포토·성큰처럼
+     맥락 적용). 어느 것으로 박든 '다투는 땅에 자리를 잡아 길을 잠갔다'는 이야기가 같아서,
+     예전처럼 포토만 보면 같은 수를 저그·테란이 냈을 때만 통째로 안 나왔다. 가장 많이 세운
+     것 하나로 말한다 — 무엇으로 잠갔는지는 문장이 p.b로 부른다. */
+  const midGuard = (["Photon Cannon", "Sunken Colony", "Missile Turret"] as const)
+    .map((b) => ({ b, at: inZone("mid", b) }))
+    .filter((x) => x.at.length >= 2)
+    .sort((a, b) => b.at.length - a.at.length)[0];
+  if (midGuard) {
     // 무게 10 → 16(요청: "센터포토 가중치도 좀 높여야 될 듯, 너무 요약에 출현 빈도가 낮음").
     // 센터 포토는 자리로 확실히 잡히는 데다, 길목 하나로 판 전체가 갈리는 수라 이야기로서의
     // 값이 크다 — 다른 전술과 자리다툼에서 계속 밀려 요약에 거의 안 나왔다.
-    out.push({ key: "center-photon", ...target, weight: 16, at: lastOf(midCannons), who, p: { n: midCannons.length } });
+    out.push({
+      key: "center-photon", ...target, weight: 16, at: lastOf(midGuard.at), who,
+      p: { n: midGuard.at.length, b: midGuard.b },
+    });
   } else {
     const mid = inZone("mid");
     if (mid.length >= 3) {
@@ -1249,9 +1259,11 @@ function detectFor(c: Ctx): Tactic[] {
   // ── 입구 방어(요청) ── 리플레이에 지형이 없어 램프 자체는 알 수 없다. 대신 '내 본진
   // 안이면서 상대 쪽으로 나가 있는 자리'는 진출로 쪽이고, 거기 박은 방어 건물은 뒤나 옆에
   // 세운 것과 뜻이 다르다. 한 채는 우연일 수 있어 두 채부터 말한다.
-  const frontDef = (["Bunker", "Photon Cannon", "Sunken Colony"] as const).map((b) => ({
-    b, at: atFront(b),
-  })).filter((x) => x.at.length >= 2).sort((a, b) => b.at.length - a.at.length)[0];
+  // 터렛도 함께 본다(요청: 터렛도 포토·성큰처럼 맥락 적용) — 제 진출로에 세운 것이면
+  // 그것도 막아선 이야기다. 이 자리의 표시는 방패다(GameResultStory의 BEAT_MARK 주석).
+  const frontDef = (["Bunker", "Photon Cannon", "Sunken Colony", "Missile Turret"] as const)
+    .map((b) => ({ b, at: atFront(b) }))
+    .filter((x) => x.at.length >= 2).sort((a, b) => b.at.length - a.at.length)[0];
   if (frontDef) {
     out.push({
       key: "front-defense", weight: 8, at: lastOf(frontDef.at), who,

@@ -280,11 +280,11 @@ export default function ReplayMinimap({
     };
   };
 
-  /** 이름표는 지도 '안'에 둔다(요청: 미니맵 테두리를 없애고 이름표는 안에서 위치조정으로
-   *  커버). 예전에는 바깥으로 밀어 놓고 그 자리를 프레임 여백으로 마련했는데, 테두리가
-   *  사라지면 그 여백은 그냥 빈 공간이라 지도만 작아 보인다. 그래서 미는 방향을 뒤집어
-   *  맵 한가운데 쪽으로 넣는다 — 가장자리 본진일수록 지도 안쪽에 빈 칸이 많으니 자리도
-   *  거기가 넉넉하다. 모든 본진에 같은 규칙을 쓴다(지적: 전부 이탈 방지가 필요). */
+  /** 이름표는 본진 바깥쪽(테두리 쪽)에 붙이되 지도를 벗어나지는 않게 한다(요청).
+   *  방향은 예전 그대로 바깥이다 — 안쪽으로 밀어 봤더니 이름표가 지도 한복판으로 들어와
+   *  지형과 화살표를 덮었다(지적: 안쪽으로 옮기지 말고 테두리 쪽에 두라는 얘기였다).
+   *  넘어가는 것은 아래 실측 보정(labelFix)이 지도 가장자리에서 되돌려 준다 — 그래서
+   *  가장자리 본진의 이름표는 테두리에 딱 붙어 앉는다. */
   // 아바타를 CSS scale로 키우면서(요청: 평상시 크기 확대) 세로 간격이 빡빡해졌다(지적:
   // 확대 상태를 고려해 아바타·닉네임 세로 갭을 조금 늘려야 함) — 20 → 26.
   const LABEL_OUT_Y = 26;
@@ -296,9 +296,9 @@ export default function ReplayMinimap({
   const labelPlace = (m: MinimapMarker) => {
     const dx = m.x - grid.width / 2;
     const dy = m.y - grid.height / 2;
-    // 부호가 안쪽(가운데) 방향이다 — 왼쪽 본진이면 오른쪽으로, 위쪽 본진이면 아래로.
-    const ox = Math.abs(dx) < CENTER_EPS ? 0 : dx < 0 ? LABEL_OUT_X : -LABEL_OUT_X;
-    const oy = Math.abs(dy) < CENTER_EPS ? LABEL_OUT_Y : dy < 0 ? LABEL_OUT_Y : -LABEL_OUT_Y;
+    // 부호가 바깥(테두리) 방향이다 — 왼쪽 본진이면 왼쪽으로, 위쪽 본진이면 위로.
+    const ox = Math.abs(dx) < CENTER_EPS ? 0 : dx < 0 ? -LABEL_OUT_X : LABEL_OUT_X;
+    const oy = Math.abs(dy) < CENTER_EPS ? LABEL_OUT_Y : dy < 0 ? -LABEL_OUT_Y : LABEL_OUT_Y;
     // 이름표는 밀려난 방향과 같은 쪽으로 자라야 한다 — 반대로 자라면 그 길이만큼
     // 도로 아바타를 덮는다(지적: 아바타·닉네임은 겹치면 안 된다).
     const anchorX = ox < -0.5 ? "-100%" : ox > 0.5 ? "0%" : "-50%";
