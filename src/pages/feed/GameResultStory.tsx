@@ -594,6 +594,24 @@ export default function GameResultStory({
       return null;
     };
 
+    /** 그 사람이 그 무렵 무엇으로 싸웠나 — 화살표 모양(공중=곧은 점선 / 지상=휜 실선)을
+     *  정한다. 협공에 이름만 불린 사람에게 쓰는 값이다: 그 문장의 beat는 주공격자가 무엇으로
+     *  갔는지만 담고 있어서, 그것을 그대로 쓰면 뮤탈로 온 사람과 걸어온 사람이 똑같은
+     *  점선이 된다(지적). 요약 전체에서 그 사람이 주어인 공격·이동 beat 중 이 시점에 가장
+     *  가까운 것을 찾아 그 수의 모양을 준다. 그런 beat가 하나도 없으면(정말 이름만 불린
+     *  경우) 지상으로 본다 — 없는 근거로 점선을 그리느니 기본값이 낫다. */
+    const styleOf = (raw: string, at: number | null | undefined): boolean => {
+      let best: { d: number; f: boolean } | null = null;
+      for (const b of beats) {
+        if (!(b.who ?? []).includes(raw)) continue;
+        if (!ATTACK_BEAT_KEYS.has(b.k) && !isFlight(b.k, b.p?.k)) continue;
+        const d = typeof at === "number" && typeof b.at === "number"
+          ? Math.abs(b.at - at) : Number.POSITIVE_INFINITY;
+        if (!best || d < best.d) best = { d, f: isFlight(b.k, b.p?.k) };
+      }
+      return best?.f ?? false;
+    };
+
     // 한 문장에 여러 beat가 들어가면 같은 사람이 여러 번 나올 수 있다 — 뒤에 오는 것(더
     // 나중의 일)이 이긴다. 당한 사람은 뺀다: 맞은 쪽에서 나가는 화살표는 이야기가 아니다.
     /** 얻어맞은 사람 자리에 얹을 표시(요청: 당한 건 폭발 이모지). */
@@ -627,13 +645,18 @@ export default function GameResultStory({
       const helpers = ATTACK_BEAT_KEYS.has(b.k) || b.k === "breakthrough"
         ? (Array.isArray(b.who2) ? b.who2 : typeof b.who2 === "string" ? [b.who2] : [])
         : [];
-      for (const raw of [...(b.who ?? []), ...helpers]) {
+      const actors = b.who ?? [];
+      for (const raw of [...actors, ...helpers]) {
         if (victims.has(raw)) continue;
         mark.set(raw, markOf(b.k));
         const t = target(b, raw);
         if (!t) { to.delete(raw); continue; }
         to.set(raw, t);
-        flight.set(raw, isFlight(b.k, b.p?.k));
+        // 화살표 모양은 그 사람이 무엇으로 갔느냐다 — 협공 문장은 도와준 사람을 이름으로만
+        // 부를 뿐 '무엇으로' 왔는지는 담고 있지 않아, 예전에는 주공격자의 모양을 그대로
+        // 복사해 썼다(지적: 여러 명이 협공하면 점선·실선·곡선·직선이 전부 똑같이 그려진다).
+        // 도와준 사람에게는 그 사람 자신의 수를 찾아 그 모양을 준다(styleOf).
+        flight.set(raw, actors.includes(raw) ? isFlight(b.k, b.p?.k) : styleOf(raw, b.at));
         /* 건너간 수는 양 끝이 다 사건이다(요청) — 출발 자리에 회오리·구멍을, 도착 자리에
            반짝임을 얹는다. 화살표 하나로 "여기서 저기로 넘어갔다"가 그대로 읽힌다. */
         if (WARP_BEAT_KEYS.has(b.k)) {

@@ -159,6 +159,13 @@ const LONG_RUN_MIN_N = 12;
 // 무너지기 이 안쪽에서야 방어 건물 첫 채를 올렸으면 '부랴부랴 지은 것'이다(요청).
 // 진작부터 지어 둔 사람은 첫 채가 한참 앞이라 여기 안 걸린다.
 const PANIC_DEF_SEC = 2 * 60;
+// 무너지기 이 안쪽에 그 집까지 병력을 몰고 온 사람을 '무너뜨린 사람'으로 본다(지적: 해골이
+// 뜨기 전 히스토리가 없다). 이사(RELOCATE_HIT_WINDOW_MIN)보다 짧게 잡는 이유는, 이사는
+// 한참 시달리다 결심하는 일이지만 무너지는 건 마지막 한 방에 가까워서다.
+const FALLEN_PUSH_WINDOW_MIN = 5;
+// 무너진 뒤 이만큼까지도 함께 본다 — fellFrame은 '생산이 끊긴 때'라, 그 집을 실제로 밟는
+// 것은 대개 그 조금 뒤다.
+const FALLEN_PUSH_TAIL_MIN = 3;
 // '뒤늦게 방어를 올렸다'를 판정하는 값들(요청: 초반 러시에 생산이 끊길 만큼 맞고 나서야
 // 포토를 여러 개 올린 대목이 안 나온다). 한두 개는 원래 짓는 수라 근거가 못 된다는
 // 지적에 따라, 몇 개가 있느냐가 아니라 '한꺼번에 늘린 시점'을 본다.
@@ -1364,6 +1371,21 @@ function sideBeats(args: {
     // 첫 채가 한참 앞이라 여기 안 걸린다.
     const panic = guard.n > 0 && fell !== null && guard.from !== null
       && (fell - guard.from) * SECONDS_PER_FRAME <= PANIC_DEF_SEC;
+    // 누가 밀어붙여서 무너졌나(지적: 해골이 뜨기 전에 히스토리가 없는 경우가 너무 많다) —
+    // 이사(relocate)와 똑같이 그 집까지 병력을 몰고 온 사람으로 짚는다. 이름이 잡히면
+    // 문장이 "○○에게 밀려"로 시작해 원인이 생기고, 아래 attackerFor도 그 사람의 공격
+    // 문장을 앞줄로 끌어올 수 있게 된다. 창은 무너지기 전 FALLEN_PUSH_WINDOW_MIN분.
+    // 창은 무너진 시점 앞뒤로 잡는다. 뒤쪽도 봐야 하는 이유는 fellFrame이 '생산이 끊긴
+    // 때'라, 실제로 그 집을 밟는 건 그 조금 뒤이기 때문이다(실측: 13분에 끊긴 판에서
+    // 앞쪽만 보면 빈손이었고, 뒤까지 넓히자 실제로 밀고 들어온 사람이 잡혔다).
+    // 그래도 못 짚으면 그 판 내내 그 집을 두들긴 사람으로 넓힌다.
+    const min = 60 / SECONDS_PER_FRAME;
+    const pushBy = fell === null ? null : (
+      pushersOn(
+        p, other.players,
+        Math.max(0, fell - FALLEN_PUSH_WINDOW_MIN * min), fell + FALLEN_PUSH_TAIL_MIN * min,
+      )[0] ?? pushersOn(p, other.players, 0, totalFrames ?? Infinity)[0] ?? null
+    );
     beats.push({
       k: "fallen", won, who: who(p), weight: 9,
       at: fell,
@@ -1372,6 +1394,9 @@ function sideBeats(args: {
         team: players.length > 1, def: guard.def, defN: guard.n,
         ...(panic ? { panic: true } : {}),
         ...(eliminatedFrame(p) !== null ? { out: true } : {}),
+        // 때린 사람은 whom이 아니라 p.by다 — whom으로 실으면 '이 사람이 당했다'가 뒤집힌다
+        // (relocate의 by 주석 참고).
+        ...(pushBy ? { by: pushBy } : {}),
       },
     });
   }
@@ -1497,6 +1522,11 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   // 소리가 나오는 사실(업그레이드 한 줄, 건물 몇 채)로 채우지 않는다 — 스냅 수를 늘린 만큼
   // 이 문턱을 올려야 '늘어난 자리를 아무거나로 채우는' 일이 안 생긴다.
   const MIN_WEIGHT = 8;
+  // 다만 이사·궤멸의 '왜'를 대는 앞이야기는 이 문턱을 따로 쓴다 — 그 자리는 재미로 뽑는
+  // 자리가 아니라 인과를 잇는 자리라, 가벼운 사실이라도 있는 편이 훨씬 낫다(지적).
+  const CAUSE_MIN_WEIGHT = 4;
+  // 그 앞이야기가 이만큼 안쪽이어야 인과로 읽힌다 — 10분 전 일을 끌어오면 "그래서?"가 된다.
+  const CAUSE_NEAR_SEC = 5 * 60;
 
   // 전술(9드론 저글링 러시·몰래 배럭·목동 저그…)은 그 경기에서만 있었던 일이라 가장 무겁게
   // 친다 — 자리가 모자라면 일반적인 이야기부터 버려진다.
@@ -2430,16 +2460,26 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     if (foldedUpgrades.has(`${b.who[0]}|${String(b.p?.upgrade ?? "")}`)) pool.splice(i, 1);
   }
 
-  // 고급 유닛을 뽑았다는 것만으로는 무게를 다 주지 않는다(요청: 실제 타겟이 있는 공격·
-  // 전투로 이어져야 한다) — 캐리어·가디언·배틀크루저처럼 '무엇을 뽑았다'로 끝나는 이야기가
-  // 러시·돌파보다 앞자리를 먹고 있었다. 상대를 짚지 못한(whom이 없는) 생산담만 낮춘다.
-  const FANCY_UNIT_KEYS = new Set([
+  /* 유닛을 뽑았다는 것만으로는 무게를 다 주지 않는다(요청: 무의미한 유닛생산 내용은
+     중요도를 낮추고, 실제 이동·공격 등 타겟팅된 것 위주로 띄울 것).
+
+     예전엔 '고급 유닛' 몇 가지만 낮췄는데, 정작 자리를 먹고 있던 건 "11분부터 30분까지
+     드라군을 놓지 않고 뽑았다" "발키리 59기를 뽑았다" 같은 생산 이야기였다(실측한 요약
+     한 편에 그런 문장이 나란히 둘). 무엇을 몇 기 뽑았다는 건 어느 경기에나 있는 사실이라,
+     그 자체로는 그날의 장면이 아니다.
+
+     낮추는 것은 '아무것도 못 짚은' 생산담뿐이다. 누구를 쳤는지(whom)나 어디였는지(p.xy)가
+     붙어 있으면 그건 이미 생산 이야기가 아니라 공격 이야기라 그대로 둔다. 자리(b.pos)는
+     여기서 못 쓴다 — 그건 고르기가 끝난 뒤에 붙는 값이다(아래 beatPositions). */
+  const PROD_ONLY_KEYS = new Set([
     "carrier", "guardian", "bc", "valkyrie", "muta", "power-unit", "arbiter", "ultra",
+    "long-run", "unit-mass", "devourer", "lurker", "infested", "scout", "reaver", "queen",
   ]);
   for (let i = 0; i < pool.length; i += 1) {
     const b = pool[i];
-    if (!FANCY_UNIT_KEYS.has(b.k) || (b.whom ?? []).length > 0) continue;
-    pool[i] = { ...b, weight: Math.max(1, b.weight - FANCY_UNIT_PENALTY) };
+    if (!PROD_ONLY_KEYS.has(b.k)) continue;
+    if ((b.whom ?? []).length > 0 || Array.isArray(b.p?.xy)) continue;
+    pool[i] = { ...b, weight: Math.max(1, b.weight - PROD_ONLY_PENALTY) };
   }
 
   // 이미 무너진 사람의 활약담은 말하지 않는다(지적: 해골이 붙었는데 "병력을 뽑았다"가
@@ -2530,10 +2570,18 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     const unit = UNIT_STORY_KEYS[b.k] ?? (typeof b.p?.unit === "string" ? b.p.unit : null);
     return unit && b.who[0] ? `${b.who[0]}|${unit}` : null;
   };
-  const consider = (b: Beat, capped: boolean): boolean => {
+  /** 인과 문장(이사·궤멸의 '왜')에만 내주는 여유 자리 — 요청: 문장 수를 늘리더라도
+   *  스토리텔링이 잘 되게. 자리 다툼에 맡기면 앞이야기가 늘 먼저 잘려 나가, 해골이
+   *  아무 맥락 없이 툭 뜨는 요약이 됐다. 여유분은 이 목적으로만 쓰이므로 평범한 경기의
+   *  길이는 그대로다. */
+  const CAUSE_EXTRA_SLOTS = 2;
+  let causeUsed = 0;
+  const consider = (b: Beat, capped: boolean, asCause = false): boolean => {
     if (chosen.includes(b)) return false;
-    if (chosen.length >= slots) return false;
-    if (b.weight < MIN_WEIGHT) return false;
+    const room = slots + (asCause ? CAUSE_EXTRA_SLOTS - causeUsed : 0);
+    if (chosen.length >= room) return false;
+    // 앞이야기는 무게가 가벼워도 싣는다 — '재미'로 뽑는 자리가 아니라 '왜'를 대는 자리다.
+    if (b.weight < (asCause ? CAUSE_MIN_WEIGHT : MIN_WEIGHT)) return false;
     const sig = unitSig(b);
     if (sig && chosen.some((x) => unitSig(x) === sig)) return false;
     const cap = PER_KEY_CAP[b.k];
@@ -2542,6 +2590,7 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     if (b.dedupeOn && chosen.some((x) => renderReplaySummary(
       { v: REPLAY_SUMMARY_VERSION, beats: [strip(x)] }, (raw) => raw,
     )?.includes(b.dedupeOn!))) return false;
+    if (asCause && chosen.length >= slots) causeUsed += 1;
     chosen.push(b);
     taken[phaseOf(b)] += 1;
     return true;
@@ -2550,25 +2599,48 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   // 절대 빠지면 안 된다). 무게로 겨루게 두면 러시·물량 이야기에 밀려 통째로 사라졌다 —
   // 실측으로 확인했다: 최대 교전은 리플레이 8판 모두에서 잡히는데 문장이 된 건 한 판뿐이었다.
   const MUST_KEEP = new Set(["relocate", "fallen", "clash"]);
-  // 이사·빈사·궤멸 앞에는 반드시 '누구에게 당했나'가 있어야 한다(지적: 그 앞에 공격당한
-  // 이야기가 없으면 왜 그렇게 됐는지 모른 채 갑자기 무너진 것처럼 읽힌다) — 그 사람을
-  // whom으로 지목한 공격 문장 중 이 시점 이전이면서 가장 무거운 것을 함께 끼워 넣는다.
-  // 그런 문장이 pool에 아예 없으면(팀전이라 누가 때렸는지 명령만으로는 못 짚는 경우 등)
-  // 없는 근거를 지어낼 수는 없어 그대로 둔다 — 최종 정렬은 시간순이라 여기서 챙긴 공격
-  // 문장은 자연히 이사·궤멸 문장보다 앞에 놓인다.
-  const attackerFor = (victim: string, upTo: number | null | undefined): Beat | null => (
-    pool
-      .filter((b) => (
-        !MUST_KEEP.has(b.k) && (b.whom ?? []).includes(victim)
-        && (typeof upTo !== "number" || typeof b.at !== "number" || b.at <= upTo)
-      ))
-      .sort((a, b) => b.weight - a.weight)[0] ?? null
-  );
+  // 이사·빈사·궤멸 앞에는 반드시 '왜 그렇게 됐나'가 있어야 한다(지적: 그 앞에 아무 이야기가
+  // 없으면 갑자기 무너진 것처럼 읽힌다 — 여전히 그런 경기가 너무 많다). 세 단계로 찾는다:
+  //
+  //  ① 그 사람을 whom으로 콕 집어 때린 문장. 가장 곧은 원인이라 무게순으로 고른다.
+  //  ② 없으면, 그 사람을 밀어낸 사람(p.by — 그 집까지 병력을 몰고 온 사람)이 그 무렵 한 일.
+  //     "누가 때렸다"고 못 박지는 못해도 "그 사람이 이러고 있을 때 이렇게 됐다"는 되고,
+  //     팀전에서 whom을 못 짚는 경기가 정확히 여기서 구제된다.
+  //  ③ 그것도 없으면 당사자가 직전에 무엇을 하고 있었나. 원인의 반쪽이지만, 아무 앞이야기
+  //     없이 해골만 뜨는 것보다는 낫다(요청: 문장 수를 늘리더라도 스토리텔링이 되게).
+  //
+  // ②·③은 한참 전 이야기를 끌어오면 인과로 안 읽히므로 CAUSE_NEAR_SEC 안쪽만 본다. 또
+  // 타겟 없는 순수 생산 이야기는 후보에서 뺀다(요청: 무의미한 유닛생산은 중요도 낮추기).
+  // 최종 정렬은 시간순이라 여기서 챙긴 문장은 자연히 이사·궤멸 문장보다 앞에 놓인다.
+  const causeFor = (b: Beat): Beat | null => {
+    const victim = b.who[0];
+    if (!victim) return null;
+    const upTo = b.at;
+    const before = (x: Beat) =>
+      typeof upTo !== "number" || typeof x.at !== "number" || x.at <= upTo;
+    const near = (x: Beat) =>
+      typeof upTo !== "number" || typeof x.at !== "number"
+      || (upTo - x.at) * SECONDS_PER_FRAME <= CAUSE_NEAR_SEC;
+    const targeted = (x: Beat) =>
+      !PROD_ONLY_KEYS.has(x.k) || (x.whom ?? []).length > 0 || Array.isArray(x.p?.xy);
+    const cand = pool.filter((x) => x !== b && !MUST_KEEP.has(x.k) && before(x) && targeted(x));
+    const heaviest = (xs: Beat[]) => xs.sort((m, n) => n.weight - m.weight)[0] ?? null;
+    /** ②·③은 '직전'이 곧 인과라, 무게보다 가까움을 앞세운다. */
+    const latest = (xs: Beat[]) =>
+      xs.sort((m, n) => (n.at ?? -Infinity) - (m.at ?? -Infinity) || n.weight - m.weight)[0] ?? null;
+    const direct = heaviest(cand.filter((x) => (x.whom ?? []).includes(victim)));
+    if (direct) return direct;
+    const by = typeof b.p?.by === "string" ? b.p.by : null;
+    if (by) {
+      const byAct = latest(cand.filter((x) => near(x) && (x.who ?? []).includes(by)));
+      if (byAct) return byAct;
+    }
+    return latest(cand.filter((x) => near(x) && (x.who ?? []).includes(victim)));
+  };
   for (const b of ranked) {
     if (!MUST_KEEP.has(b.k) || !consider(b, false)) continue;
-    const victim = b.who[0];
-    const hit = victim ? attackerFor(victim, b.at) : null;
-    if (hit) consider(hit, false);
+    const hit = causeFor(b);
+    if (hit) consider(hit, false, true);
   }
   // 1차: 국면 상한을 지키며 무게순으로 채운다.
   for (const b of ranked) consider(b, true);
@@ -2762,7 +2834,10 @@ const RELOCATE_WEIGHT = 18;
 
 /** 상대를 짚지 못한 고급 유닛 생산담에서 덜어 내는 무게 — 이만큼 빼면 러시·돌파·이사
  *  같은 '실제로 부딪친 이야기'가 먼저 자리를 잡는다. */
-const FANCY_UNIT_PENALTY = 5;
+/** 아무것도 못 짚은 생산담을 깎는 폭(위 PROD_ONLY_KEYS) — 5에서 올렸다(요청: 무의미한
+ *  유닛생산 내용은 중요도 낮추기). 5로는 러시·돌파와 겨루기에서 여전히 이겨서, 요약 한
+ *  편에 "○○를 계속 뽑았다"가 나란히 둘씩 들어갔다. */
+const PROD_ONLY_PENALTY = 9;
 
 /** 무너진 뒤라도 이만큼(프레임 ≒ 1분)까지는 그 무렵의 이야기로 본다 — 무너지는 순간에
  *  걸쳐 있던 일을 통째로 잘라 내면 왜 무너졌는지가 사라진다. */

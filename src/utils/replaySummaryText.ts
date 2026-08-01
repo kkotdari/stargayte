@@ -302,7 +302,19 @@ const TOPIC_MARKED_LINKS = new Set(["다른 쪽에서는"]);
 const ADVERSATIVE_ALTS = ["하지만", "그러나", "그렇지만", "반면", "반대로", "역으로"];
 /** 덧붙이는 이음말끼리도 마찬가지 — 시간을 짚는 말은 사실이라 여기 없다. */
 const ADDITIVE_ALTS = ["여기에", "그리고", "게다가"];
-const SEQUENCE_LINKS = ["이어서", "곧이어", "그 직후", "잠시 후", "한참 후", "소강상태 후", "그 후", "한동안의 대치 후", "그 기세로", "여세를 몰아", "그 기세를 이어간", "여기에", "게다가", "설상가상으로", "그리고"];
+const SEQUENCE_LINKS = ["이어서", "곧이어", "그 직후", "잠시 후", "한참 후", "소강상태 후", "그 후", "한동안의 대치 후", "그 기세로", "여세를 몰아", "그 기세를 이어간", "여기에", "게다가", "설상가상으로", "그리고", "결국", "그러는 사이"];
+
+/** 서로 다른 두 편을 '견주는' 이음말 — 주어가 앞 문장과 같은 사람인 자리에는 쓸 수 없다
+ *  (지적: "Sohee_Min이 러시를 했다 → 반면 Sohee_Min이 타격을 입었다"처럼 제 자신과 대비하는
+ *  문장이 된다). 그런 자리에서는 곧이곧대로 뒤집는 말(하지만·그러나·그렇지만)만 맞다. */
+const COMPARATIVE_LINKS = new Set(["반면", "반대로", "역으로", "이에 질세라", "다른 쪽에서는"]);
+
+/** 큰 사건에 달면 곁가지처럼 읽히는 가벼운 이음말(지적: 궤멸 같은 큰 사건에 '한편'이 붙는다).
+ *  '한편'은 딴 데서 벌어지는 소식을 곁들일 때 쓰는 말이라, 누가 무너진 자리에는 어울리지
+ *  않는다. 이 자리에서는 결말을 향하는 말로 받는다. */
+const WEAK_LINKS = new Set(["한편", "그와 동시에", "여기에", "그리고", "게다가", "다른 쪽에서는"]);
+const HEAVY_BEATS = new Set(["fallen", "gg", "relocate", "lift-off", "lodging", "rush-backfire"]);
+const HEAVY_LINKS = ["결국", "그러는 사이"];
 // 정규식에 이름을 그대로 넣기 전에 특수문자를 막는다 — 닉네임에 무엇이 들어올지 모른다.
 const escapeRe = (v: string): string => v.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 // 어느 편에도 기울지 않는 문장들 — 대치·소모전·손 빠르기·총 생산량처럼 '그 순간 누가
@@ -1135,7 +1147,13 @@ const TEMPLATES: Record<string, Tpl> = {
             ])} `
             : n <= 2 ? `${c.pick([`${def} ${n}개뿐인 채로`, `${reul(def)} ${n}개밖에 못 두고`])} `
               : `${c.pick([`${def} ${n}개와 함께 버텼지만`, `${def} ${n}개를 세워 두고도`])} `;
-    return `${ga(c.who)} ${guard}${c.pick(
+    // 누가 밀어붙여 무너뜨렸는지(지적: 해골이 뜨기 전에 아무 히스토리가 없다) — 이름이
+    // 잡히면 그것만으로도 앞뒤가 이어진다. 방어 건물 문구가 이미 "…지었지만"처럼 접속으로
+    // 끝나 있으면 그 뒤에 다시 "○○에게 밀려"를 붙이면 겹치므로, 이름은 문장 맨 앞에 둔다.
+    const push = c.by
+      ? c.pick([`${c.by}에게 밀려 `, `${c.by}의 공세에 `, `${c.by}에게 두들겨 맞고 `])
+      : "";
+    return `${ga(c.who)} ${push}${guard}${c.pick(
       c.p.out
         ? c.p.team
           ? ["먼저 엘리당함", "제일 먼저 탈락하며 한 명이 빠짐", "먼저 지워짐", "먼저 끝장남"]
@@ -2073,14 +2091,24 @@ function renderLines(
     // 소유격으로 시작한 문장에는 다음 마디를 이어 붙일 수 없다(지적).
     const prevLedBy = (name: string): boolean =>
       name !== "" && (prevBody.startsWith(`${ga(name)} `) || prevBody.startsWith(`${neun(name)} `));
+    /** 후보에서 못 쓰는 말을 걷어낸다 — 다 걷히면 원래 후보를 그대로 둔다(틀린 말을
+     *  피하려다 이음말 자체가 사라지는 것보다는 낫다). */
+    const without = (opts: string[], bad: (o: string) => boolean): string[] =>
+      (opts.filter((o) => !bad(o)).length > 0 ? opts.filter((o) => !bad(o)) : opts);
     const link = (rawOpts: string[]): string => {
       // 일대일에는 '다른 쪽'이 없다(지적) — 판이 여러 곳에서 동시에 벌어진다는 말은 둘이
       // 붙은 경기에서 쓸 수 없다. 후보에서 통째로 뺀다(다 빠지면 원래대로 둔다).
-      const opts = duel
-        ? (rawOpts.filter((o) => !TEAM_ONLY_LINKS.has(o)).length > 0
-          ? rawOpts.filter((o) => !TEAM_ONLY_LINKS.has(o))
-          : rawOpts)
-        : rawOpts;
+      let opts = duel ? without(rawOpts, (o) => TEAM_ONLY_LINKS.has(o)) : rawOpts;
+      // 주어가 앞 문장과 같은 사람이면 '견주는' 말은 쓸 수 없다(지적: 같은 사람인데 "반면"이
+      // 붙는다) — 제 자신과 대비하는 문장이 된다. COMPARATIVE_LINKS 주석 참고.
+      if (sharesWho) opts = without(opts, (o) => COMPARATIVE_LINKS.has(o));
+      // 무너짐·GG·이사 같은 큰 사건은 '한편'으로 곁들일 일이 아니다(지적). 가벼운 말밖에
+      // 남지 않으면 결말을 향하는 말로 갈아 끼운다.
+      if (HEAVY_BEATS.has(b.k)) {
+        opts = opts.some((o) => !WEAK_LINKS.has(o))
+          ? opts.filter((o) => !WEAK_LINKS.has(o))
+          : HEAVY_LINKS;
+      }
       // 같은 '결'의 이음말이 잇달아 나오면 겉돈다(지적: 접속사 남발) — "하지만 … 그러나"도,
       // "6분 후 … 9분 뒤"도 읽는 사람에겐 같은 말이 두 번 나온 것으로 들린다. 낱말이
       // 아니라 결(역접/시간/그 밖)로 묶어 앞에서 쓴 결을 피한다.
@@ -2182,6 +2210,12 @@ function renderLines(
     const headToHead =
       (b.who ?? []).some((w) => (prev?.whom ?? []).includes(w))
       || (b.whom ?? []).some((w) => (prev?.who ?? []).includes(w));
+    /** 양쪽이 똑같은 짓을 한 자리인가 — 실제로 "100000g가 빠른 3게이트 질럿 러시를 했지만
+     *  ○○가 3게이트 질럿 러시를 했다"가 나왔다(지적). 전황(tide)만 보면 서로 반대편이라
+     *  반전으로 잡히지만, 읽는 사람에게는 반전이 아니라 맞불이다. 이런 자리는 '-지만'으로
+     *  잇지 않고 "이에 질세라"로 받는다. */
+    const mirrored = !!prev && prev.k === b.k && !!prev.won !== !!b.won
+      && !AGAINST_ACTOR.has(b.k) && !AGAINST_ACTOR.has(prev.k);
     /** 예전에는 흐름이 다른 편으로 넘어가는 자리에 "1팀의 누구는"처럼 팀 번호를 붙였다.
      *  이제 안 붙인다(요청: 요약 문장에서 팀 언급은 빼도 되겠다) — 카드에서 로스터를
      *  걷어내고 편을 미니맵의 색으로 나타내기로 했으니, 글 속의 팀 번호는 대조해 볼 데가
@@ -2217,9 +2251,11 @@ function renderLines(
       // 주어가 다른데도 절반 확률로 이어 붙이던 자리를 껐다(요청: 최대한 나눠서 스냅으로) —
       // 서로 다른 사람의 서로 다른 장면이 한 스냅에 묶이면 미니맵 화살표도 겹쳐 그려진다.
       if (flipped) {
+        // 맞불(양쪽이 똑같은 짓)은 반전이 아니다 — mirrored 주석 참고.
+        if (mirrored) { linkWord = link(["이에 질세라", "그와 동시에"]); teamTag = teamTagFor(); }
         // 비슷한 두 문장은 "하지만 …"으로 갈라 놓지 말고 "…했지만 …했다"로 바로
         // 잇는다(지적). 못 이을 때만 대비를 뜻하는 말을 앞에 단다.
-        if (canFlipJoin()) flipJoin = true;
+        else if (canFlipJoin()) flipJoin = true;
         else {
           linkWord = link(["반면", "하지만", "그러나"]);
           teamTag = teamTagFor();
@@ -2260,7 +2296,8 @@ function renderLines(
         // 있으면 그때만 이음말을 쓴다.
         // 앞 문장이 이미 이음말로 시작하거나 반전을 품고 있으면 또 잇지 않는다 —
         // "그러나 …했지만 …"처럼 접속이 두 번 겹친다(지적).
-        if ((closeEnough || sameKind) && canFlipJoin()) flipJoin = true;
+        if (mirrored) { linkWord = link(["이에 질세라", "그와 동시에"]); teamTag = teamTagFor(); }
+        else if ((closeEnough || sameKind) && canFlipJoin()) flipJoin = true;
         else {
           // "다른 쪽에서는"은 판이 갈라져 딴 데서 벌어진 일일 때만 맞는 말이다(지적) —
           // 같은 두 사람이 서로 주고받은 이야기면 "반대로 / 역으로 / 그와 동시에"가 맞다.
@@ -2611,6 +2648,40 @@ function renderLines(
     const alt = alts.find((w) => w !== head && !out[i - 1].includes(w));
     if (alt) out[i] = out[i].replace(HEAD_RE, `${alt} `);
   }
+  /* '견주는' 이음말(반면·반대로·역으로·이에 질세라)은 서로 다른 두 사람을 나란히 놓고
+     견줄 때만 맞는 말이다(지적: 같은 사람 이야기가 이어지는데 "반면"이 붙는다 —
+     "Sohee_Min이 러시를 했다 / 반면 … Sohee_Min이 타격을 입었다"). 그런데 문장의 주어가
+     누구인지는 beat의 who로 알 수 없다: 피해 문장은 당한 사람(whom)을 앞에 세우기 때문이다.
+     그래서 다 만들어진 문장에서 맨 먼저 나오는 이름을 직접 읽어 견준다. 같은 사람이면
+     곧이곧대로 뒤집는 말로 갈아 끼운다(반전 자체는 지우지 않는다). */
+  const allNames = [...new Set(
+    beats
+      .flatMap((b) => [
+        ...(b.who ?? []), ...(b.who2 ?? []), ...(b.whom ?? []),
+        ...(typeof b.p?.by === "string" ? [b.p.by] : []),
+      ])
+      .map(resolveName)
+      .filter(Boolean),
+  )];
+  const leadName = (line: string): string => {
+    let best = "";
+    let at = Infinity;
+    for (const n of allNames) {
+      const i = line.indexOf(n);
+      // 같은 자리에서 시작하면 긴 이름이 이긴다("정구"와 "정구2").
+      if (i >= 0 && (i < at || (i === at && n.length > best.length))) { at = i; best = n; }
+    }
+    return best;
+  };
+  for (let i = 1; i < out.length; i += 1) {
+    const m = HEAD_RE.exec(out[i]);
+    if (!m || !COMPARATIVE_LINKS.has(m[1])) continue;
+    const lead = leadName(out[i]);
+    if (!lead || lead !== leadName(out[i - 1])) continue;
+    const alt = ADVERSATIVE_ALTS
+      .find((w) => !COMPARATIVE_LINKS.has(w) && !out[i - 1].includes(w)) ?? "하지만";
+    out[i] = out[i].replace(HEAD_RE, `${alt} `);
+  }
   if (out.length === 0) return null;
   const lines = out.map((l) => toPlain(l.replace(afterWhile, "$1 ").replace(twoLinks, "$1 $2")));
   return { lines, lineBeats };
@@ -2667,7 +2738,11 @@ export function renderReplaySummarySentences(
   // 긴 이름부터 찾는다 — 짧은 이름이 긴 이름의 일부인 경우("정구"와 "정구2")를 위해서다.
   const names = [...new Set(
     beats
-      .flatMap((b) => [...(b.who ?? []), ...(b.who2 ?? []), ...(b.whom ?? [])])
+      // p.by(이사·궤멸을 만든 사람)도 문장에 이름으로 나오므로 같이 색을 입힌다.
+      .flatMap((b) => [
+        ...(b.who ?? []), ...(b.who2 ?? []), ...(b.whom ?? []),
+        ...(typeof b.p?.by === "string" ? [b.p.by] : []),
+      ])
       .map(resolveName)
       .filter(Boolean),
   )].sort((a, b) => b.length - a.length);
