@@ -132,8 +132,24 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
     const onScroll = () => { update(); showThenScheduleHide(); };
     const off = addRafScrollListener(onScroll);
     update();
+    // update()는 그동안 scroll 이벤트로만 다시 불렸다 — 피드 카드를 펼치거나 접을 때는
+    // 문서 높이가 바뀌는데도(WAAPI로 높이만 애니메이션하고 실제 스크롤은 안 일어난다)
+    // 아무것도 다시 재지 않아 눈금·다이얼이 옛 문서 높이 그대로 굳어 있었다(지적: 펼침/
+    // 접을 때도 무한스크롤처럼 타임라인 재계산 필요). 무한스크롤이 멀쩡했던 건 그게
+    // 스크롤이 바닥에 닿은 순간에만 일어나 스크롤 이벤트가 계속 같이 따라왔기 때문이다.
+    // documentElement 크기 변화를 직접 관찰하면 스크롤 여부와 무관하게 항상 다시 잰다 —
+    // 이 문서는 늘 window가 유일한 스크롤 주체라(scrollRoot.ts) 이 엘리먼트 하나만 보면
+    // 충분하다. 스크롤과 같은 rAF 스로틀을 써서 애니메이션 도중 프레임마다 다시 재지 않게 한다.
+    let resizeScheduled = false;
+    const ro = new ResizeObserver(() => {
+      if (resizeScheduled) return;
+      resizeScheduled = true;
+      requestAnimationFrame(() => { resizeScheduled = false; update(); });
+    });
+    ro.observe(document.documentElement);
     return () => {
       off();
+      ro.disconnect();
       if (hideTimerRef.current) window.clearTimeout(hideTimerRef.current);
       if (settleTimerRef.current) window.clearTimeout(settleTimerRef.current);
     };
