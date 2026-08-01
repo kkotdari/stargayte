@@ -2009,7 +2009,10 @@ html:not(.scr-light-theme) .scr-stats-list-panel-v2 .scr-stat-name-cell, html:no
   max-width: min(260px, 78vw); width: max-content; padding: 8px 11px;
   color: var(--text); border-radius: 9px;
   font-size: var(--fs-caption); font-weight: 500; line-height: 1.45; letter-spacing: normal;
-  text-transform: none; text-align: left; white-space: normal;
+  text-transform: none; text-align: left;
+  /* 줄바꿈을 살린다 — 여러 갈래를 설명하는 툴팁(최소 게임수 등)은 항목마다 줄을 나눠야
+     읽힌다. 한 줄짜리 툴팁은 개행이 없으니 pre-line이어도 지금과 똑같이 그려진다. */
+  white-space: pre-line;
 }
 /* "유저" 헤더도 정렬 버튼(.scr-stat-sort-btn)이 되면서, 그 규칙의 background:none이
    이름 칸의 불투명 배경(.scr-stat-name-head, 가로 스크롤 중 옆 칸이 이 sticky 칸
@@ -7728,6 +7731,13 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
 @media (min-width: 641px) {
   .scr-story-mid .scr-story-map-head { font-size: var(--fs-body); gap: 8px; }
   .scr-story-mid .scr-challenge-arrow-row { transform: scale(1.15); margin-bottom: 2px; }
+}
+/* 미니맵 조작 안내(요청: 미니맵 위에 작게 "좌우를 눌러 이전/다음 내용으로 이동") —
+   그림 자체에는 누를 자리를 알리는 표시가 없어서 한 줄로 일러 둔다. 맵 이름 줄보다
+   한 단계 더 작고 흐리게 둬 정보가 아니라 안내로 읽히게 한다. */
+.scr-story-map-hint {
+  text-align: center; color: var(--muted); opacity: 0.75;
+  font-size: calc(var(--fs-caption) - 1px); line-height: 1.2; margin: 2px 0 3px;
 }
 .scr-story-map-name { font-weight: 700; color: var(--text); }
 .scr-story-map-dur { color: var(--muted); }

@@ -1069,6 +1069,11 @@ export default function GameResultStory({
           </span>
         )}
       </div>
+      {/* 그림을 어떻게 넘기는지 한 줄로 일러 둔다(요청) — 좌·우 절반이 누르는 자리라는 건
+          보이는 표시가 없어 아무도 모른다. 넘길 장면이 둘 이상일 때만 띄운다. */}
+      {sentences.length > 1 && (
+        <div className="scr-story-map-hint">미니맵 좌우를 눌러 이전/다음 내용으로 이동</div>
+      )}
       <ReplayMinimap
         grid={grid} bases={bases} arrows={arrows}
         onStep={sentences.length > 1 ? (d) => {

@@ -253,7 +253,8 @@ export default function StatsScreenV2() {
     const list = matchedMembers.map((m) => {
       const entry = statsByMember[m.id];
       const stats = race === "all" ? (entry?.overall ?? EMPTY_STATS) : (entry?.byRace[race] ?? EMPTY_STATS);
-      // 포인트(랭크 점수) — 이 기간·유형에서 순위 대상이 아니면(0경기 등) null → "-".
+      // 포인트(랭크 점수) — 이 기간·유형에 한 판도 안 뛰었으면 null → "-"(최소 게임수는
+      // 안 따진다. 백엔드 _apply_rank_order 주석 참고).
       const points = entry?.rankScore != null ? Math.round(entry.rankScore) : null;
       return { member: m, stats, points, entry };
     });
@@ -463,6 +464,16 @@ export default function StatsScreenV2() {
               >
                 <RotateCcw size={14} aria-hidden />
               </button>
+              {/* 최소 게임수 규칙 설명(요청) — 표에 "-"가 왜 뜨는지는 컬럼별 툴팁만으로는
+                  안 보인다(그 컬럼을 눌러 봐야 나온다). 조건을 고르는 자리 옆에 한 번에
+                  일러 둔다. 판수는 지금 걸린 분류에 따라 달라지므로 둘 다 적는다. */}
+              <InfoTip
+                label="최소 게임수"
+                text={"게임수가 적으면 일부 값은 '-'로 나와요.\n\n"
+                  + "· 생산·APM·커맨드: 개인전 3판, 팀전 10판을 채워야 나와요. 경기당 평균이라 두 판 중 한 판만 튀어도 그 평균이 통째로 끌려가거든요 — 잴 만큼 안 뛴 값을 숫자로 내보내는 게 더 나빠요.\n"
+                  + "· 포인트·승률·게임수: 판수와 상관없이 그대로 나와요. 포인트는 평균이 아니라 이길 때만 쌓이는 누적이라, 적게 뛴 사람은 못 믿을 값이 나오는 게 아니라 그냥 적게 쌓인 거예요.\n\n"
+                  + "종족을 고르면 판수도 그 종족 것만 세요. 이 기간·분류에 한 판도 안 뛰었으면 포인트도 '-'예요."}
+              />
             </span>
           </div>
         }
@@ -495,7 +506,7 @@ export default function StatsScreenV2() {
                 <SortableHead label="유저" sortKey="name" sort={sort} onToggle={toggleSort} className="scr-stat-name-head" />
                 <SortableHead
                   label="포인트" sortKey="points" sort={sort} onToggle={toggleSort}
-                  tooltip="랭크 포인트 — 이 기간·분류의 경기들로 산정한 레이팅 점수. 괄호 안은 지금 순위와 전달 대비 변동이에요(전체 기간을 보면 견줄 전달이 없어 변동은 안 나와요). 숫자를 누르면 경기 이력(경기당 포인트 변화)이 열려요."
+                  tooltip="랭크 포인트 — 이 기간·분류의 경기들로 산정한 레이팅 점수. 최소 게임수를 안 따져요(평균이 아니라 이길 때만 쌓이는 누적이라, 적게 뛰면 그냥 적게 쌓입니다). 괄호 안은 지금 순위와 전달 대비 변동이에요(전체 기간을 보면 견줄 전달이 없어 변동은 안 나와요). 숫자를 누르면 경기 이력(경기당 포인트 변화)이 열려요."
                 />
                 <SortableHead label="게임수" sortKey="plays" sort={sort} onToggle={toggleSort} />
                 <SortableHead label="승률" sortKey="rate" sort={sort} onToggle={toggleSort} />
