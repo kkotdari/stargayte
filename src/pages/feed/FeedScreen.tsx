@@ -35,15 +35,17 @@ import {
 } from "../../utils/scrollRoot";
 import { buildReplayDrafts, type ReplayDraft } from "../../utils/replayDraft";
 import { hasAppUpdatePreloadErrorOccurred } from "../../utils/appUpdate";
-import type { Challenge, FeedTargetType, GameResult, GameResultSlot, GameType, Member, RankingShift } from "../../types";
+import type { Challenge, FeedTargetType, GameResult, GameResultSlot, Member, RankingShift } from "../../types";
 
 const PAGE_SIZE = 100;
 const MAX_REPLAY_FILES = 20;
 
-/** 들어올 때 "현재" 구분선까지 내려가는 시간 — 맨 위로 올라가는 것(420ms)보다 조금 길게
+/** 들어올 때 "현재" 구분선까지 내려가는 시간 — 맨 위로 올라가는 것(420ms)보다 넉넉히
  *  잡는다. 여기서는 지나가는 카드들이 곧 "이만큼이 앞으로 있을 일"이라는 설명이라, 너무
- *  빠르면 그냥 튄 것처럼 보인다. */
-const NOW_SCROLL_MS = 620;
+ *  빠르면 그냥 튄 것처럼 보인다. 620ms로도 여전히 급했다(지적) — 1100ms로 늘리고,
+ *  이징도 시작부터 천천히 붙는 것으로 바꿨다(scrollRoot의 "inOut"). 아무도 안 눌렀는데
+ *  화면이 스스로 움직이는 자리라 출발이 조용해야 한다. */
+const NOW_SCROLL_MS = 1100;
 
 // 묶음 펼침/접힘에서 포스트 한 장이 나타나거나 사라지는 시간과, 포스트 사이의 시차.
 // 공간(높이)이 다 열린 뒤에 포스트가 한 장씩 등장한다(요청) — 접을 땐 그 반대다.
@@ -953,14 +955,6 @@ export default function FeedScreen() {
     reloadRankingShifts();
   }, [reload, reloadRankingShifts]);
 
-  // 피드의 "상세" 버튼 — 통계 탭으로 이동하며 그 변동의 게임 유형을 필터로 미리 건다(요청).
-  const requestScreen = useAppStore((s) => s.requestScreen);
-  const setStatsPresetMatchType = useAppStore((s) => s.setStatsPresetMatchType);
-  const openStatsFor = (matchType: GameType) => {
-    setStatsPresetMatchType(matchType);
-    requestScreen("stats");
-  };
-
   const handleReplayFilesChosen = async (e: ChangeEvent<HTMLInputElement>) => {
     const picked = Array.from(e.target.files ?? []);
     e.target.value = "";
@@ -1195,7 +1189,7 @@ export default function FeedScreen() {
       suppressScrollHide(NOW_SCROLL_MS + 300);
       // 순간이동 대신 부드럽게 내려간다(요청) — 위에서 아래로 흐르는 그 동작 자체가
       // "여기가 지금 자리다"를 말해 준다. 손을 대면 그 즉시 멈춘다(smoothScrollRootTo).
-      smoothScrollRootTo(top, NOW_SCROLL_MS);
+      smoothScrollRootTo(top, NOW_SCROLL_MS, { ease: "inOut" });
     });
   }, [loading, displayFeed, nowIndex]);
 
@@ -1320,19 +1314,9 @@ export default function FeedScreen() {
                 actions={<RankingShiftMenu shift={item.shift} />}
                 highlightMemberIds={matchedIds}
                 highlightTerms={searchTerms}
-                footer={
-                  <>
-                    <div className="scr-feed-rank-actions">
-                      {/* 버튼 대신 텍스트 링크(요청) — 통계 탭으로 이동하며 그 변동의
-                          게임 유형을 필터로 미리 건다. */}
-                      <button type="button" className="scr-link-btn scr-feed-rank-link" onClick={() => openStatsFor(item.shift.matchType)}>
-                        실시간 랭크 확인
-                      </button>
-                    </div>
-                    {/* 순위변동 알림에도 댓글(요청) — 경기/너나와 카드와 같은 공통 댓글 영역. */}
-                    <FeedCardComments targetType="rankingShift" targetId={item.shift.id} />
-                  </>
-                }
+                /* 순위변동 알림에도 댓글(요청) — 경기/너나와 카드와 같은 공통 댓글 영역.
+                   그 위에 있던 "실시간 랭크 확인" 링크는 걷어냈다(요청). */
+                footer={<FeedCardComments targetType="rankingShift" targetId={item.shift.id} />}
               />
             ) : item.kind === "challenge" ? (
               <div className="scr-feed-card scr-post" key={`c-${item.challenge.id}`}>

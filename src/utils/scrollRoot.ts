@@ -22,14 +22,26 @@ export function scrollRootTo(opts: ScrollToOptions, root: ScrollRoot = getScroll
 // 시간(기본 420ms) 동안 easeOutCubic으로 감속하며 올라간다. 애니메이션 중에 사용자가
 // 다시 스크롤/터치를 시작하면 즉시 중단해 조작과 싸우지 않는다.
 export function smoothScrollRootToTop(duration = 420, root: ScrollRoot = getScrollRoot()): void {
-  smoothScrollRootTo(0, duration, root);
+  smoothScrollRootTo(0, duration, { root });
 }
+
+/** 이징 — "out"은 처음부터 빠르게 출발해 끝에서 감속한다(탭을 눌러 맨 위로 갈 때처럼
+ *  손짓에 바로 반응해야 하는 자리). "inOut"은 시작도 천천히라, 아무도 안 눌렀는데
+ *  화면이 스스로 움직이는 자리에 맞다 — 갑자기 튀어나가는 느낌이 없다(요청: 피드 첫
+ *  자동 스크롤을 좀 더 부드럽게). */
+type ScrollEase = "out" | "inOut";
+const EASES: Record<ScrollEase, (t: number) => number> = {
+  out: (t) => 1 - Math.pow(1 - t, 3),
+  inOut: (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2),
+};
 
 /** 위와 같은 rAF 애니메이션으로 임의의 자리까지 — 피드에 들어올 때 "현재" 구분선으로
  *  부드럽게 내려가는 데 쓴다(요청). 위 함수와 한 몸이라 취소 규칙도 그대로다. */
 export function smoothScrollRootTo(
-  target: number, duration = 420, root: ScrollRoot = getScrollRoot(),
+  target: number, duration = 420,
+  opts: { ease?: ScrollEase; root?: ScrollRoot } = {},
 ): void {
+  const root = opts.root ?? getScrollRoot();
   const start = getScrollTop(root);
   const delta = target - start;
   if (delta === 0) return;
@@ -47,7 +59,7 @@ export function smoothScrollRootTo(
   // 않으므로(touchmove 없음) 발동 탭엔 반응하지 않고, 사용자가 실제로 스크롤하려고
   // 손가락을 움직일 때(touchmove)만 취소한다.
   window.addEventListener("touchmove", cancel, { passive: true });
-  const ease = (t: number) => 1 - Math.pow(1 - t, 3);
+  const ease = EASES[opts.ease ?? "out"];
   const step = (now: number) => {
     const p = Math.min(1, (now - t0) / duration);
     // behavior:"instant"가 핵심이다 — #scroll-root에는 CSS scroll-behavior:smooth가

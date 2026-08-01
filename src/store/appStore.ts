@@ -3,7 +3,7 @@ import { api } from "../api/client";
 import { versionNumber } from "../utils/appVersion";
 import type {
   Member, GameResult, NewGameResult, MemberCreatePayload, MemberStatus, MemberRole, AppVersion,
-  AppVersionInfo, Challenge, MatchRequestInboxItem, GameType, ScreenKey,
+  AppVersionInfo, Challenge, MatchRequestInboxItem, ScreenKey,
 } from "../types";
 
 // 버전이 바뀐 걸 감지했을 때 AppUpdateNoticeModal에 넘기는 정보 — 변경 내용 문구(notes)는
@@ -166,8 +166,6 @@ interface AppState {
   clearScreenIntent: () => void;
   // 통계 화면이 열릴 때 미리 걸어둘 게임 유형 — 피드 변동 카드 내용과 맞춘다(요청).
   // 소비(마운트) 시점에 비워져, 이후 일반 진입은 다시 랜덤 기본값을 쓴다.
-  statsPresetMatchType: GameType | null;
-  setStatsPresetMatchType: (mt: GameType | null) => void;
 
   // ----- 파생 셀렉터(헬퍼) -----
   memberOf: (id: string) => Member | undefined;
@@ -372,8 +370,6 @@ export const useAppStore = create<AppState>()((set, get) => ({
   screenIntent: null,
   requestScreen: (screen) => set({ screenIntent: screen }),
   clearScreenIntent: () => set({ screenIntent: null }),
-  statsPresetMatchType: null,
-  setStatsPresetMatchType: (mt) => set({ statsPresetMatchType: mt }),
 
   memberOf: (id) => get().members.find((m) => m.id === id),
 }));

@@ -7369,12 +7369,6 @@ html.scr-light-theme .scr-feed-add-fab {
 /* 포인트 변동(요청: "+100p") — 순위 변동과 같은 상승/하락 색을 쓰되 한 톤 작게 둔다.
    순위가 먼저 읽히고 포인트가 그 근거로 따라 읽히는 순서가 맞다. */
 .scr-feed-shift-pts { font-size: var(--fs-micro); font-variant-numeric: tabular-nums; }
-/* "실시간 랭크 확인" 줄 — 위 여백은 목록이 아니라 여기서만 낸다(목록이 --post-pad-b를
-   내던 시절엔 "외 N건" 줄이 없는 카드에서 이 링크가 한참 아래로 떨어져 보였다, 지적).
-   아래는 포스트 꼬리 여백(--post-pad-b)이 이어받는다 — 댓글이 없어도 바닥이 안 붙는다. */
-.scr-feed-rank-actions { display: flex; justify-content: center; padding: 12px var(--post-pad-bx) 0; }
-/* "실시간 랭크 확인" 텍스트 링크(요청: 버튼 아님) — 은은하게, 호버 시 또렷하게. */
-.scr-feed-rank-link { color: var(--dim); font-size: var(--fs-caption); font-weight: 600; }
 
 /* 너 나와 케밥 드롭 — 버튼 바로 아래 오른쪽 정렬(포털 없이 로컬 절대배치). */
 .scr-feed-chal-menu-drop {

@@ -106,16 +106,12 @@ export default function StatsScreenV2() {
 
   const [search, setSearch] = useState("");
   const [race, setRace] = useState<BaseRace | "all">("all");
-  // 게임 유형(개인전/팀전) — 라디오이고 "전체"는 없다. 피드의 랭크 변동 카드 "상세"로
-  // 들어왔으면 그 변동의 유형을 미리 걸고(연동, 요청), 일반 진입은 랜덤 기본값(요청).
-  const [matchType, setMatchType] = useState<GameType>(() => {
-    const preset = useAppStore.getState().statsPresetMatchType;
-    if (preset) {
-      useAppStore.getState().setStatsPresetMatchType(null);
-      return preset;
-    }
-    return Math.random() < 0.5 ? "0101" : "0102";
-  });
+  // 게임 유형(개인전/팀전) — 라디오이고 "전체"는 없다. 기본값은 랜덤(요청).
+  // (삭제) 피드의 랭크 변동 카드에서 유형을 미리 걸어 주는 연동이 있었는데, 그 입구였던
+  // "실시간 랭크 확인" 링크를 걷어내면서(요청) 걸어 줄 사람이 없어졌다.
+  const [matchType, setMatchType] = useState<GameType>(
+    () => (Math.random() < 0.5 ? "0101" : "0102"),
+  );
   // 기본 정렬은 포인트(랭크 점수) 내림차순 — 랭킹을 통계에 통합한 기본 모습(요청).
   const [sort, setSort] = useState<StatSort | null>({ key: "points", dir: "desc" });
   // 포인트를 누르면 그 회원의 포인트 상세(경기 이력)를 연다.
