@@ -2937,9 +2937,12 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
 .scr-feed-note-actions.scr-mreq-item-actions {
   display: inline-flex; align-items: center; gap: 2px;
   margin-left: 3px;
-  /* inline-flex는 기본 baseline이 상자 아래쪽이라 글자보다 처져 보였다(지적: 버튼이
-     내용보다 살짝 아래로 내려가 보인다) — middle로 글자 가운데에 맞춘다. */
+  /* inline-flex 기본 baseline이 상자 아래쪽이라 글자보다 처져 보였다 — middle로 한 번
+     맞췄지만, middle의 기준(부모 폰트의 x-height 중점)이 한글 글자 높이보다 낮은
+     지점이라 그래도 살짝 처져 보였다(지적: 아직도 아래로 보인다). 위치를 살짝 더
+     끌어올려 보정한다. */
   vertical-align: middle;
+  position: relative; top: -1.5px;
 }
 /* 버튼이 댓글 글자보다 상대적으로 커 보였다(지적: 댓글 내용과 크기 맞추기) — 아이콘도
    13→11px로, 버튼 여백도 3→2px로 줄여 본문 글자(micro, 12px) 크기에 맞춘다. */
