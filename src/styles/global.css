@@ -7094,19 +7094,10 @@ html.scr-light-theme .scr-feed-comments .scr-mreq-chip-inline { color: #c07c1c; 
 /* 좌우 4px을 더 갖고 있어 로스터만 다른 카드보다 4px 안쪽에 섰다(지적: 카드마다 내부
    여백이 다르다) — 좌우는 trow(8) + 본문(8) = 16px으로 충분하니 여기선 0으로 둔다. */
 .scr-feed-game-result-matchup { padding: 0; }
-/* 첫 스냅의 로스터(요청: 좌우로 vs 양쪽에 팀별 세로 배치, 가운데 정렬) — 모바일에서 그림
-   위에 잠깐 얹히는 소개라, 화면 폭을 다 쓰지 않고 내용 크기대로 가운데에 모은다. 양옆이
-   flex:1로 늘어나면 두 팀이 화면 양 끝으로 밀려 vs만 덩그러니 가운데 남는다. */
-.scr-story-intro-roster { justify-content: center; align-items: center; gap: 4px; margin-bottom: 8px; }
-.scr-story-intro-roster > .scr-challenge-side { flex: 0 1 auto; }
-.scr-story-intro-roster > .scr-challenge-side:first-child { align-items: flex-end; text-align: right; }
-.scr-story-intro-roster > .scr-challenge-side:last-child { align-items: flex-start; }
-.scr-story-intro-roster .scr-story-mid { flex: 0 0 auto; }
-/* 닉네임에 팀 색을 입힌다(요청) — 자막 문장 안의 이름과 같은 색이라, 시작 스냅에서 익힌
-   색이 그대로 이야기 내내 "이 사람은 이 편"으로 읽힌다. 값은 .scr-sum-team1/2와 같은
-   것을 쓴다(두 테마 모두에서 읽히도록 고른 색). */
-.scr-story-intro-roster > .scr-challenge-side:first-child .scr-challenge-person-name { color: #2475cc; }
-.scr-story-intro-roster > .scr-challenge-side:last-child .scr-challenge-person-name { color: #cf3f55; }
+/* (삭제) 첫 스냅의 로스터(.scr-story-intro-roster) — 자막 패널이 세로로 너무 커져서
+   (지적) 로스터를 걷어내고 "게임 시작!" 한 줄로 바꿨다. 로스터는 대신 미니맵 아바타·
+   닉네임을 키워 보여준다(.scr-minimap-mark-introbig). */
+.scr-story-cap-intro { font-weight: 700; text-align: center; }
 /* 피드에선 양편 flex를 똑같이 둬서 가운데(손가락/vs) 묶음이 카드 가로 정중앙에 온다
    (요청: "손가락, vs 세로 정렬" — 원본 화면의 비대칭 flex(0.85/1.15)가 중앙을 밀고 있었다). */
 .scr-feed-card .scr-challenge-matchup .scr-challenge-side { flex: 1 1 0; }
@@ -7798,9 +7789,13 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
   filter: grayscale(1) brightness(0.5); border-color: rgba(255, 255, 255, 0.45);
 }
 /* 본진 이모지 — 화살표가 없는 장면에서는 이것이 유일한 표시라 크게 둔다(요청: 40px).
-   심장이 뛰듯 살짝 커졌다 작아지게 해 '지금 여기서 뭔가 하고 있다'는 느낌을 준다(요청). */
-.scr-minimap-mark-home {
-  font-size: 40px;
+   심장이 뛰듯 살짝 커졌다 작아지게 해 '지금 여기서 뭔가 하고 있다'는 느낌을 준다(요청).
+   .scr-minimap-arrow-mark와 같은 특이도(단일 클래스)라 소스 순서상 뒤에 있는 그쪽의
+   15px에 밀려 실제로는 40px이 아니라 15px로 그려지고 있었다(지적: 화살표에 비해 액션
+   아이콘이 너무 작다) — 두 클래스를 합쳐 특이도를 확실히 높여 고정한다. */
+.scr-minimap-arrow-mark.scr-minimap-mark-home {
+  /* 40px은 막상 보니 과했다(지적) — 20% 낮춘다. */
+  font-size: 32px;
   animation: scr-minimap-arrow-in 260ms ease-out, scr-minimap-beat 1.4s ease-in-out 260ms infinite;
 }
 @keyframes scr-minimap-beat {
@@ -7810,16 +7805,12 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
   54% { transform: translate(-50%, -50%) scale(1.1); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .scr-minimap-mark-home { animation: none; }
+  .scr-minimap-arrow-mark.scr-minimap-mark-home { animation: none; }
 }
-/* 아바타에 겹쳐 그리는 이모지(승리 트로피) — 그 사람 자체를 가리키는 표시라 자리를 옮기지
-   않고 아바타 한가운데에 얹는다(요청). */
-/* 아바타에 겹쳐 얹는 표시(트로피) — 한가운데에 두면 얼굴을 통째로 가린다(지적).
-   위쪽 어깨로 올리고, 맵 가장자리 쪽이 아니라 안쪽으로 비켜 놓는다. */
-.scr-minimap-arrow-mark.scr-minimap-mark-onavatar {
-  font-size: 30px; transform: translate(-4%, -125%);
-}
-.scr-minimap-arrow-mark.scr-minimap-mark-onavatar-l { transform: translate(-96%, -125%); }
+/* (삭제) 아바타에 겹쳐 그리던 상태 얼굴(트로피 등)의 예전 자리 — .scr-minimap-arrow-marks
+   레이어에 화살촉과 같은 층으로 떠 있어 이름표와 겹치는 문제가 반복됐다. 이제 해골과
+   같은 방식(아바타 span 안에 중첩, 고정 픽셀 오프셋)으로 옮겼다 — .scr-minimap-mark-face
+   참고. */
 /* 좌·우 절반 — 이전/다음 장면(요청). 아무것도 안 그리는 투명 버튼이다. */
 .scr-minimap-half {
   position: absolute; top: 0; bottom: 0; width: 50%;
@@ -7837,9 +7828,27 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
 }
 .scr-minimap-arrow-mark {
   position: absolute; transform: translate(-50%, -50%);
-  font-size: 15px; line-height: 1; white-space: nowrap;
+  /* 본진 표시(32px)만 키운 게 아니라 화살촉 끝 표시도 같이 키운다(지적: 둘 다 키워
+     달랬는데 본진만 커 보였다) — 화살표 자체가 있어 본진 표시보다는 작아도 되지만, 15px은
+     화살표에 비해 존재감이 약했다. */
+  font-size: 26px; line-height: 1; white-space: nowrap;
   /* 어떤 지형 위에서도 떠 보이게 검은 테를 두른다. */
   filter: drop-shadow(0 0 2px #000) drop-shadow(0 0 1px #000);
+}
+/* 화살촉·출발 자리 표시 전용 바운스(요청: 화살표에 비해 액션 아이콘이 존재감이 약하다) —
+   본진 표시(.scr-minimap-mark-home)와 상태 얼굴(.scr-minimap-mark-face)은 각자 자기
+   transform을 쓰므로, 이 애니메이션이 그 transform을 덮어쓰지 않도록 여기서만 따로 준다. */
+.scr-minimap-arrow-mark-pop {
+  animation: scr-minimap-mark-pop 420ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes scr-minimap-mark-pop {
+  0% { transform: translate(-50%, -50%) scale(0.3); opacity: 0; }
+  55% { transform: translate(-50%, -50%) scale(1.3); opacity: 1; }
+  75% { transform: translate(-50%, -50%) scale(0.9); }
+  100% { transform: translate(-50%, -50%) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .scr-minimap-arrow-mark-pop { animation: none; }
 }
 /* 화살촉 — 아바타 위에 뜨므로 검은 테를 좀 더 두껍게 둘러 그림에서 떠 보이게 한다. */
 .scr-minimap-arrow-head { stroke: rgba(0, 0, 0, 0.7); stroke-width: 1; }
@@ -7891,7 +7900,13 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
 /* 커진 아바타에 이름이 겹치지 않게 한 칸 더 내려(올려) 붙인다. */
 .scr-minimap-mark-on .scr-minimap-mark-label { top: 19px; }
 .scr-minimap-mark-on.scr-minimap-mark-lab-up .scr-minimap-mark-label { top: auto; bottom: 19px; }
+/* 시작 스냅("게임 시작!")은 닉네임도 아바타만큼 키운다(요청) — 로스터가 빠진 자리를
+   미니맵 쪽 아바타·닉네임 확대로 채운다. */
+.scr-minimap-mark-introbig .scr-minimap-mark-label {
+  font-size: 13px; padding: 3px 6px;
+}
 .scr-minimap-mark-name { max-width: 108px; overflow: hidden; text-overflow: ellipsis; }
+.scr-minimap-mark-introbig .scr-minimap-mark-name { max-width: 140px; }
 .scr-minimap-mark-race { flex-shrink: 0; }
 /* 궤멸·빈사 — 본진 아바타를 흑백으로 누르고 그 위에 해골을 얹는다(요청). 아바타를 지우지
    않는 이유는 누구 자리인지 여전히 알아야 하기 때문이다. */
@@ -7900,11 +7915,28 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
   /* 아바타 가운데가 아니라 오른쪽 위 어깨에 얹는다 — 가운데에 두면 작은 아바타를 거의 다
      덮어 누구 자리인지 알 수 없었다(실측 스크린샷). */
   position: absolute; left: 7px; top: -7px; transform: translate(-50%, -50%);
-  z-index: 2; color: #fff;
-  /* 어떤 지형 색 위에서도 실루엣이 살아야 한다 — 검은 테를 두른다. */
-  filter: drop-shadow(0 0 2px #000) drop-shadow(0 0 2px #000);
+  z-index: 2; font-size: 13px; line-height: 1;
+  /* 다른 상태 표시가 전부 이모지가 되면서(요청) 아이콘 컴포넌트 대신 이모지로 통일했다 —
+     대신 궤멸은 다른 얼굴들보다 죽어 보여야 하니(요청: 딤 처리) 채도·밝기를 낮춘다.
+     어떤 지형 색 위에서도 실루엣이 살아야 하니 검은 테는 그대로 둔다. */
+  opacity: 0.75;
+  filter: grayscale(0.6) brightness(0.85) drop-shadow(0 0 2px #000) drop-shadow(0 0 2px #000);
 }
 .scr-minimap-mark-downed .scr-minimap-mark-label { opacity: 0.72; }
+/* 트로피·공격자·당한 정도·아군 헬프 같은 상태 얼굴 — 해골과 같은 자리·크기로 붙인다
+   (지적: 상태 얼굴도 해골처럼 아바타에 바짝 붙어야 한다). 해골은 오른쪽 위 어깨라, 자리가
+   안 겹치게 반대쪽(왼쪽 위) 어깨에 둔다 — 둘이 함께 뜰 수 있다. */
+.scr-minimap-mark-face {
+  position: absolute; left: -9px; top: -9px; transform: translate(-50%, -50%);
+  z-index: 2; font-size: 13px; line-height: 1;
+  filter: drop-shadow(0 0 2px #000) drop-shadow(0 0 2px #000);
+}
+/* 상태 얼굴은 대개 그 스냅의 주인공(featured, 큰 아바타) 자리에 붙는다 — 아바타가
+   커진 만큼 얼굴도 함께 키우고, 어깨 자리도 그만큼 바깥으로 물린다(지적: 작은 아바타
+   기준 자리·크기라 큰 아바타에서는 안쪽으로 파묻혀 보였다). */
+.scr-minimap-mark-on .scr-minimap-mark-face {
+  left: -13px; top: -13px; font-size: 19px;
+}
 
 /* (삭제) 스냅 아바타가 따로 뜬 사람의 본진을 흐리게 하던 규칙 — 이제 당한 사람 마커를
    아예 안 그리고 스냅 마커는 늘 다른 자리에 뜨므로, 흐리게 할 이유가 없어졌다(요청). */

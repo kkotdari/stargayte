@@ -1,4 +1,3 @@
-import { Skull } from "lucide-react";
 import ReplayMapCanvas from "./ReplayMapCanvas";
 import Avatar from "../common/Avatar";
 import RaceBadge from "../common/RaceBadge";
@@ -169,12 +168,15 @@ export interface MinimapMarker {
   /** 버리고 떠난 옛 본진인가 — 흑백으로만 남긴다(요청: 본진을 버리고 이동한 경우 본진은
    *  흑백 처리하고 새 기지에 마크를 옮긴다). */
   ghost?: boolean;
-  /** 이모지를 아바타 위에 겹쳐 그릴까 — 승리 트로피처럼 그 사람 자체를 가리키는 표시에 쓴다
-   *  (요청: 승리 트로피는 아바타에 겹쳐서 크게). 기본은 입구 쪽으로 띄워 그린다. */
-  markOn?: boolean;
   /** 본진에 붙일 이모지 — 화살표가 없는 이야기(생산·테크·경제)에 쓴다(요청: 생산에도 본진에
-   *  열심히 생산하는 이모지). */
+   *  열심히 생산하는 이모지). 입구 쪽으로 띄워 그린다. */
   mark?: string;
+  /** 아바타 위에 겹쳐 그리는 상태 얼굴 — 트로피·공격자·당한 정도·아군 헬프처럼 그 사람
+   *  자체를 가리키는 표시에 쓴다(요청: 해골·트로피 말고도 아바타로 상태를 알려 달라). */
+  face?: string;
+  /** 시작 스냅인가 — 로스터 없이 "게임 시작!"만 보여주는 자리라, 닉네임 글자도 아바타만큼
+   *  키운다(요청: 시작시 로스터 대신 아바타·닉네임 확대). */
+  introBig?: boolean;
 }
 
 export default function ReplayMinimap({
@@ -227,7 +229,7 @@ export default function ReplayMinimap({
   const labelSide = (m: MinimapMarker): string => {
     const fx = m.x / grid.width;
     const fy = m.y / grid.height;
-    if (m.mark && !m.markOn) {
+    if (m.mark) {
       const [, my] = markPoint(m);
       return cx(
         fx < EDGE ? "scr-minimap-mark-lab-r" : fx > 1 - EDGE ? "scr-minimap-mark-lab-l" : "",
@@ -283,6 +285,7 @@ export default function ReplayMinimap({
             m.downed && "scr-minimap-mark-downed",
             m.ghost && "scr-minimap-mark-ghost",
             m.featured && "scr-minimap-mark-on",
+            m.introBig && "scr-minimap-mark-introbig",
             labelSide(m))}
           style={place(m)}
         >
@@ -293,8 +296,16 @@ export default function ReplayMinimap({
             size={m.featured ? AVATAR_ON : AVATAR_OFF}
           />
           {/* 궤멸·빈사 — 본진 위에 해골을 얹는다(요청). 아바타는 흑백으로 눌러 두어
-              해골이 그 사람 자리에 붙은 표시로 읽히게 한다. */}
-          {m.downed && <Skull className="scr-minimap-mark-skull" size={14} aria-label="궤멸" />}
+              해골이 그 사람 자리에 붙은 표시로 읽히게 한다. 다른 상태 표시가 전부 이모지로
+              통일되면서(요청) 여기도 아이콘 컴포넌트 대신 이모지로 맞추고, 딤 처리는 CSS
+              필터로 남긴다. */}
+          {m.downed && (
+            <span className="scr-minimap-mark-skull" role="img" aria-label="궤멸">💀</span>
+          )}
+          {/* 트로피·공격자·당한 정도·아군 헬프 같은 상태 얼굴 — 해골과 같은 자리·크기로
+              아바타 반대쪽 어깨에 붙인다(지적: 상태 얼굴도 해골처럼 아바타에 바짝 붙어야
+              한다). 해골과 자리가 겹치지 않게 반대쪽(왼쪽 위)에 둔다. */}
+          {m.face && <span className="scr-minimap-mark-face" aria-hidden>{m.face}</span>}
           {m.withName && (
             <span className="scr-minimap-mark-label">
               <span className="scr-minimap-mark-name">{m.name}</span>
@@ -325,18 +336,15 @@ export default function ReplayMinimap({
         {bases.map((m) => (m.mark ? (
           <span
             key={`bm-${m.key}`}
-            className={cx("scr-minimap-arrow-mark",
-              m.markOn ? "scr-minimap-mark-onavatar" : "scr-minimap-mark-home",
-              // 아바타 위 어깨에 얹는 표시는 그림 밖으로 나가지 않게 안쪽 어깨를 고른다.
-              m.markOn && m.x / grid.width > 0.5 ? "scr-minimap-mark-onavatar-l" : "")}
-            style={m.markOn ? place(m) : markPlace(m)}
+            className="scr-minimap-arrow-mark scr-minimap-mark-home"
+            style={markPlace(m)}
           >
             {m.mark}
           </span>
         ) : null))}
         {geoms.map(({ a, g }) => (a.markFrom ? (
           <span
-            key={`mf-${a.key}`} className="scr-minimap-arrow-mark"
+            key={`mf-${a.key}`} className="scr-minimap-arrow-mark scr-minimap-arrow-mark-pop"
             style={{ left: `${(g.from[0] / grid.width) * 100}%`, top: `${(g.from[1] / grid.height) * 100}%` }}
           >
             {a.markFrom}
@@ -344,7 +352,7 @@ export default function ReplayMinimap({
         ) : null))}
         {geoms.map(({ a, g }) => (a.mark ? (
           <span
-            key={`mk-${a.key}`} className="scr-minimap-arrow-mark"
+            key={`mk-${a.key}`} className="scr-minimap-arrow-mark scr-minimap-arrow-mark-pop"
             style={{ left: `${(g.tip[0] / grid.width) * 100}%`, top: `${(g.tip[1] / grid.height) * 100}%` }}
           >
             {a.mark}

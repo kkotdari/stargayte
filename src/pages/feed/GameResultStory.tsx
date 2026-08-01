@@ -56,23 +56,44 @@ const BEAT_MARK: Record<string, string> = {
   // 견제·사냥·잠입.
   "harass-workers": "🎯", "harass-long": "🎯", muta: "🦟", "cloak-wraith": "👻",
   "valk-hunt": "🎯", infested: "🧟", "mind-control": "🧠", "power-unit": "💪",
-  // 아군을 도우러 간 것(요청: 천사 얼굴).
-  "ally-help": "😇", "ally-cannon": "😇",
+  // 아군을 도우러 간 것 — 화살촉(도착한 아군 기지)에는 방어를 보탰다는 뜻으로 방패를
+  // 준다. 천사 얼굴은 이제 도우러 간 사람 아바타 쪽으로 옮겼다(요청).
+  "ally-help": "🛡️", "ally-cannon": "🛡️",
   // 자리를 잡거나 길을 막은 것.
   center: "🚩", "center-photon": "🚧", defense: "🛡️", "front-defense": "🛡️",
-  "late-defense": "🛡️", "side-tank": "🛡️",
+  "late-defense": "🛡️",
   // 방패는 실제로 방어 건물을 세운 이야기에만 준다(지적: 유닛을 뽑은 것뿐인데 본진에
   // 방패가 뜬다) — 병력으로 맞선 이야기는 싸움이라 검 대결이 맞다.
   stand: "⚔️", "late-hold": "⚔️", standoff: "⚔️",
+  // 옆탱은 이름과 달리 방어가 아니라 공격이지만(지적), 병력이 맞붙는 싸움과는 결이 달라
+  // 칼 모양이 아니라 포토·성큰처럼 자리 잡고 쏘는 "공격 타워" 느낌으로 구분한다.
+  "side-tank": "🗼",
   // 본진에서 한 일 — 화살표 없이 본진에 붙는다.
-  // 현미경은 무슨 일인지 안 읽힌다(지적) — 테크·업그레이드도 결국 싸우려고 하는 일이라
-  // 검 대결로 통일한다.
-  expand: "🏗️", upgrade: "⚔️", "upgrade-signature": "⚔️", tech: "⚔️", "fast-tech": "⚔️",
+  // 현미경은 무슨 일인지 안 읽힌다(지적) — 테크는 결국 싸우려고 하는 일이라 검 대결로
+  // 통일한다. 업그레이드만은 공격보다 연구 쪽이 어울려(지적) 따로 시험관을 준다.
+  expand: "🏗️", upgrade: "🧪", "upgrade-signature": "🧪", tech: "⚔️", "fast-tech": "⚔️",
   lodging: "🏠", relocate: "🚚", "greedy-build": "💰", "greedy-paid": "💰", greedy: "💰",
   carrier: "🛩️", bc: "🛩️", guardian: "🛩️", "lift-off": "🛩️", vision: "👁️", "no-detect": "🙈",
   attrition: "⏳", "fast-hands": "⚡", "pro-like": "🌟", revival: "🔥",
-  fallen: "💀", gg: "🏳️", "worker-gap": "📉", "prod-gap": "📉", "greedy-punished": "💸",
-  result: "🏆",
+  "worker-gap": "📉", "prod-gap": "📉",
+  // fallen·gg·greedy-punished·result는 여기 없다 — 전부 주어(who)가 사실 당한 쪽이거나
+  // (fallen·gg·greedy-punished) 아바타 얼굴이 이미 전담하는 것(result의 트로피)이라, 무기
+  // 이모지·화살표 대상이 아니다(요청: 쨀다가 당한 얼굴도 아바타 얼굴 하나로 통합, 트로피
+  // 중복 제거).
+};
+
+/** "tech" beat는 전부 같은 검 대결 이모지였다(지적: 스톰이든 이레디에이트든 구분이 안
+ *  된다) — 실제로 쓴 마법 이름(replaySummary의 p.tech, replayTechNames.ts의 TECH_RANK
+ *  키와 같은 문자열)으로 더 세분화한다. 여기 없는 마법은 markOf가 tech 기본값(검 대결)로
+ *  채운다. */
+const TECH_MARK: Record<string, string> = {
+  "Psionic Storm": "🌩️", Irradiate: "☣️", "Dark Swarm": "☁️", Hallucination: "🪞",
+  "EMP Shockwave": "⚡", "Stasis Field": "🧊", "Stim Packs": "💉",
+  Lockdown: "🔒", Plague: "🦠", Consume: "🍽️", Ensnare: "🕸️", Parasite: "🪱",
+  "Mind Control": "🧠", Feedback: "💢", Maelstrom: "🗿", "Spawn Broodlings": "🥚",
+  "Disruption Web": "🚫", "Yamato Gun": "🎆", Restoration: "💊", "Optical Flare": "🕶️",
+  "Defensive Matrix": "🔷", "Spider Mines": "🕷️", "Scanner Sweep": "📡",
+  "Archon Warp": "🔱", "Dark Archon Meld": "🌑",
 };
 
 /** 저장된 자리(pos)·마법 좌표(p.xy)를 화살표 목표로 믿는 최소 요약 버전
@@ -172,17 +193,12 @@ export default function GameResultStory({
       (name) => teamByName.get(name),
     ) ?? [];
     if (body.length === 0) return body;
-    // 첫 장면은 누가 누구와 붙었는지부터(요청) — 이야기를 읽기 전에 편을 알아야 한다.
+    // 첫 장면은 로스터 대신 짧게 "게임 시작!"만 알린다(요청: 시작 자막의 로스터가 자막
+    // 패널을 세로로 너무 키웠다 — 로스터는 미니맵 쪽 아바타·닉네임이 대신 크게 보여준다).
     // 요약(beat)과 무관한 소개라 beats는 비워 둔다: 시각도 안 붙고, 그림에도 아무 표시가
-    // 얹히지 않아 로스터만 보이는 깨끗한 시작이 된다.
-    const nameOf = (t: 1 | 2) => slots.filter((x) => x.team === t).map((x) => x.name).join("·");
-    const a = nameOf(1);
-    const b = nameOf(2);
-    if (!a || !b) return body;
-    const duel = gameResult.summaryData?.duel === true;
-    const parts: SummaryPart[] = duel
-      ? [{ text: a, team: 1 }, { text: " 대 " }, { text: b, team: 2 }]
-      : [{ text: `1팀 ${a}`, team: 1 }, { text: " 대 " }, { text: `2팀 ${b}`, team: 2 }];
+    // 얹히지 않는 깨끗한 시작이 된다.
+    if (!slots.some((x) => x.team === 1) || !slots.some((x) => x.team === 2)) return body;
+    const parts: SummaryPart[] = [{ text: "게임 시작!" }];
     // at은 0으로 둔다 — 타임라인은 시각을 모르는 문장(null)을 맨 끝에 놓기 때문에, 소개가
     // 오른쪽 끝 눈금으로 밀려나면 안 된다. beats가 비어 있어 자막에 "[0분]"은 안 붙는다.
     return [{ parts, beats: [], at: 0 }, ...body];
@@ -288,6 +304,10 @@ export default function GameResultStory({
   const mentioned: Set<string> = useMemo(() => {
     const beats = gameResult.summaryData?.beats ?? [];
     const out = new Set<string>();
+    // 시작 스냅("게임 시작!")은 특정 주인공이 없다 — 로스터가 빠진 자리라 전원을 키워서
+    // 보여준다(요청: 아바타 및 닉네임 확대).
+    const isIntro = index === 0 && sentences.length > 1 && (sentences[0]?.beats?.length ?? 0) === 0;
+    if (isIntro) { slots.forEach((x) => out.add(x.raw)); return out; }
     for (const n of sentences[index]?.beats ?? []) {
       const b = beats[n];
       if (!b) continue;
@@ -299,6 +319,13 @@ export default function GameResultStory({
         continue;
       }
       [...(b.who ?? []), ...(b.whom ?? [])].forEach((raw) => out.add(raw));
+      // ally-cannon은 도움받은 아군이 whom이 아니라 who2에 실린다(지적: 아군 헬프면 도움
+      // 받은 사람 아바타도 커져야 하는데 ally-cannon만 안 커졌다) — ally-help는 whom이라
+      // 위 줄에서 이미 잡힌다.
+      if (b.k === "ally-cannon") {
+        (Array.isArray(b.who2) ? b.who2 : typeof b.who2 === "string" ? [b.who2] : [])
+          .forEach((raw) => out.add(raw));
+      }
     }
     return out;
   }, [gameResult.summaryData, sentences, index, slots]);
@@ -385,9 +412,9 @@ export default function GameResultStory({
           나가는 화살표 — 진출하는 느낌만 준다(요청). 특정 지점을 찍지 않으므로 틀릴 것도
           없다. */
   const actions = useMemo<{
-    arrows: MinimapArrow[]; marks: Map<string, string>; onAvatar: Set<string>;
+    arrows: MinimapArrow[]; marks: Map<string, string>; faces: Map<string, string>;
   }>(() => {
-    const empty = { arrows: [], marks: new Map<string, string>(), onAvatar: new Set<string>() };
+    const empty = { arrows: [], marks: new Map<string, string>(), faces: new Map<string, string>() };
     const beats = gameResult.summaryData?.beats;
     const idx = sentences[index]?.beats;
     if (!beats || !idx) return empty;
@@ -548,9 +575,14 @@ export default function GameResultStory({
         case "allyFront": return ally ? lerp(ally, center, FRONT) : null;
         default: break;
       }
-      // 아군을 도우러 간 것 — 목표는 그 아군의 기지다(요청: 아군 헬프).
-      if (b.k === "ally-help") {
-        const mate = (b.whom ?? []).find((v) => v !== raw && homeOf(v));
+      // 아군을 도우러 간 것 — 목표는 그 아군의 기지다(요청: 아군 헬프). ally-help는
+      // 도움받은 아군을 whom에 담고, ally-cannon(포토 지원)은 who2에 담는다 — 만든
+      // 자리가 달라서다(지적: 포토 지원은 화살표 없이 제 기지에 얼굴만 떴다 — target()이
+      // ally-cannon의 who2를 안 보고 있었다).
+      if (b.k === "ally-help" || b.k === "ally-cannon") {
+        const mates = b.k === "ally-help" ? (b.whom ?? [])
+          : Array.isArray(b.who2) ? b.who2 : typeof b.who2 === "string" ? [b.who2] : [];
+        const mate = mates.find((v) => v !== raw && homeOf(v));
         return mate ? homeOf(mate) : ally;
       }
       /* 그 사람이 그 무렵 실제로 병력을 보낸 자리(beat.pos) — 이제 이 값이 믿을 만하다.
@@ -614,11 +646,15 @@ export default function GameResultStory({
 
     // 한 문장에 여러 beat가 들어가면 같은 사람이 여러 번 나올 수 있다 — 뒤에 오는 것(더
     // 나중의 일)이 이긴다. 당한 사람은 뺀다: 맞은 쪽에서 나가는 화살표는 이야기가 아니다.
-    /** 얻어맞은 사람 자리에 얹을 표시(요청: 당한 건 폭발 이모지). */
-    const HIT_MARK = "💥";
-    /** 그 beat에 붙일 이모지 — 표에 없으면 공격 계열은 검 대결, 그 밖은 생산으로 채운다. */
-    const markOf = (k: string): string =>
-      BEAT_MARK[k] ?? (ATTACK_BEAT_KEYS.has(k) ? "⚔️" : "🏭");
+    /** 그 beat에 붙일 이모지 — 표에 없으면 공격 계열은 검 대결, 그 밖은 생산으로 채운다.
+     *  b.k가 "tech"면 어떤 마법을 썼는지(p.tech)로 더 세분화한다(요청: 스톰은 번개,
+     *  이레디에이트는 독가스처럼 기술마다 맞는 이모지). */
+    const markOf = (b: (typeof beats)[number]): string => {
+      if (b.k === "tech" && typeof b.p?.tech === "string" && TECH_MARK[b.p.tech]) {
+        return TECH_MARK[b.p.tech];
+      }
+      return BEAT_MARK[b.k] ?? (ATTACK_BEAT_KEYS.has(b.k) ? "⚔️" : "🏭");
+    };
 
     const to = new Map<string, [number, number]>();
     const flight = new Map<string, boolean>();
@@ -628,13 +664,65 @@ export default function GameResultStory({
     const hit = new Set<string>();
     // 맺음말 스냅에서는 이긴 편 아바타에 트로피를 겹쳐 얹는다(요청).
     const trophy = new Set<string>();
+    /* 아바타에 겹쳐 얹는 상태 얼굴(요청: 해골·트로피 말고는 아바타에 붙는 표시가 없으니
+     * 공격자·당한 사람도 아바타로 상태를 알려 달라) — 화살표 끝의 무기 이모지(무엇으로
+     * 쳤나)와는 다른 자리다. 이건 "그 사람이 지금 어떤 처지인가"를 말한다.
+     * 우선순위: 트로피 > 크게 무너짐 > 적당히 당함 > 잘 막아냄 > 공격자. */
+    const ATTACK_FACE = "😤";
+    const SEVERE_FACE = "😭";
+    const MODERATE_FACE = "😰";
+    const DEFENDED_FACE = "😎";
+    /** 막아서긴 했지만 결국 역부족이었던 것 — 힘겨워하는 표정(지적: 진 편의 stand까지
+     *  자신감 얼굴을 주면 안 된다. "팀원과 함께 막아섰으나 역부족" 문장에 자신감은 어색함). */
+    const STRUGGLE_FACE = "😣";
+    /** 크게 무너진 것 — 본인이 주어(who)인 궤멸·기권. */
+    const SEVERE_SUBJECT_KEYS = new Set(["fallen", "gg"]);
+    /** 크게 무너진 것 — 방어가 뚫린 쪽(whom)이 이 사람. */
+    const SEVERE_VICTIM_KEYS = new Set(["breakthrough"]);
+    /** 적당히 당한 것 — 본인이 주어(who)지만 당한 쪽인 경우(쨀다가 공격당함 등). */
+    const MODERATE_SUBJECT_KEYS = new Set(["greedy-punished"]);
+    /** 막아낸 것 — 본인이 주어(who)고 버텼다. late-hold·standoff는 항상 승리 쪽 이야기라
+     *  그대로 자신감이지만, stand는 진 편에도 붙는 beat라(지적: "…역부족"인데도 자신감
+     *  얼굴이 붙었다) won을 봐야 한다. */
+    const DEFENDED_ALWAYS_KEYS = new Set(["late-hold", "standoff"]);
+    /** 공격하는 얼굴을 붙일 대상 — 옆탱은 이름과 달리 공격이라(지적) 여기 더한다. */
+    const ATTACKER_FACE_KEYS = new Set([...ATTACK_BEAT_KEYS, "clash", "allin", "side-tank"]);
+    /** 아군을 도우러 간 것 — 도와준 사람은 천사, 도움받은 사람은 감동으로 각자 얼굴이
+     *  갈린다(지적: 화살표는 도움받은 기지로 잇고, 천사는 도와준 사람 아바타로, 도움받은
+     *  사람 아바타에는 감동 얼굴을 준다). */
+    const ALLY_HELP_KEYS = new Set(["ally-help", "ally-cannon"]);
+    const HELPER_FACE = "😇";
+    const HELPED_FACE = "🥹";
+    const severe = new Set<string>();
+    const moderate = new Set<string>();
+    const defended = new Set<string>();
+    const struggling = new Set<string>();
+    const attacker = new Set<string>();
+    const helper = new Set<string>();
+    const helped = new Set<string>();
     for (const n of idx) {
       const b = beats[n];
       if (!b) continue;
       const victims = new Set(b.whom ?? []);
-      // 당한 사람 자리에는 폭발을 얹는다(요청) — 화살표는 때린 쪽에서만 나가고, 맞은 쪽은
-      // 그 자리에서 터진 것으로 읽힌다.
-      for (const v of victims) if (!(b.who ?? []).includes(v)) hit.add(v);
+      const who = b.who ?? [];
+      // 아군 헬프는 whom(ally-help)/who2(ally-cannon)에 '도움받은 아군'이 실려 있다 —
+      // 공격당한 것이 아니므로 아래 당한 사람 후보(hit)에는 넣지 않는다.
+      if (!ALLY_HELP_KEYS.has(b.k)) {
+        // 당한 사람은 일단 후보로만 잡아 둔다 — 아래에서 심함/적당 중 하나로 정리한다.
+        for (const v of victims) if (!who.includes(v)) hit.add(v);
+      } else {
+        who.forEach((r) => helper.add(r));
+        const helpedRaw = b.k === "ally-help" ? (b.whom ?? [])
+          : Array.isArray(b.who2) ? b.who2 : typeof b.who2 === "string" ? [b.who2] : [];
+        helpedRaw.forEach((r) => helped.add(r));
+      }
+      if (SEVERE_SUBJECT_KEYS.has(b.k)) who.forEach((r) => severe.add(r));
+      if (SEVERE_VICTIM_KEYS.has(b.k)) victims.forEach((r) => severe.add(r));
+      if (MODERATE_SUBJECT_KEYS.has(b.k)) who.forEach((r) => moderate.add(r));
+      if (DEFENDED_ALWAYS_KEYS.has(b.k)) who.forEach((r) => defended.add(r));
+      // stand는 이긴 편·진 편 모두에 붙는다 — won을 봐야 자신감/힘겨움이 갈린다.
+      if (b.k === "stand") who.forEach((r) => (b.won ? defended : struggling).add(r));
+      if (ATTACKER_FACE_KEYS.has(b.k)) who.forEach((r) => { if (!victims.has(r)) attacker.add(r); });
       // 맺음말 — 이긴 편 전원에게 트로피를 준다(요청: 승리 트로피는 아바타에 겹쳐서 크게).
       if (b.k === "result") {
         const team = slots.find((x) => (b.who ?? []).includes(x.raw))?.team;
@@ -645,10 +733,16 @@ export default function GameResultStory({
       const helpers = ATTACK_BEAT_KEYS.has(b.k) || b.k === "breakthrough"
         ? (Array.isArray(b.who2) ? b.who2 : typeof b.who2 === "string" ? [b.who2] : [])
         : [];
-      const actors = b.who ?? [];
+      const actors = who;
       for (const raw of [...actors, ...helpers]) {
         if (victims.has(raw)) continue;
-        mark.set(raw, markOf(b.k));
+        // fallen·gg·greedy-punished는 주어가 사실 당한 쪽이다(위 표 참고) — 무기
+        // 이모지·화살표 대상이 아니라 아바타 얼굴로만 알린다. result(맺음말)도 마찬가지로
+        // 트로피는 아바타 얼굴 쪽에서만 준다(지적: 본진에 뜨는 트로피와 아바타 트로피가
+        // 겹쳐서 두 개로 보였다).
+        if (SEVERE_SUBJECT_KEYS.has(b.k) || MODERATE_SUBJECT_KEYS.has(b.k) || b.k === "result") continue;
+        mark.set(raw, markOf(b));
+        if (ATTACKER_FACE_KEYS.has(b.k)) attacker.add(raw);
         const t = target(b, raw);
         if (!t) { to.delete(raw); continue; }
         to.set(raw, t);
@@ -660,13 +754,16 @@ export default function GameResultStory({
         /* 건너간 수는 양 끝이 다 사건이다(요청) — 출발 자리에 회오리·구멍을, 도착 자리에
            반짝임을 얹는다. 화살표 하나로 "여기서 저기로 넘어갔다"가 그대로 읽힌다. */
         if (WARP_BEAT_KEYS.has(b.k)) {
-          fromMark.set(raw, markOf(b.k));
-          mark.set(raw, WARP_ARRIVE_MARK[b.k] ?? markOf(b.k));
+          fromMark.set(raw, markOf(b));
+          mark.set(raw, WARP_ARRIVE_MARK[b.k] ?? markOf(b));
         } else {
           fromMark.delete(raw);
         }
       }
     }
+    // 후보로 잡아 둔 "당한 사람"(hit) 중 심하게 무너진 쪽에 못 든 나머지는 적당히 당한
+    // 것으로 정리한다(요청: 쨀다가 당한 것도 이 적당히 당함 얼굴로 통합).
+    for (const r of hit) if (!severe.has(r)) moderate.add(r);
     // 화살표로 그릴 수 있는 것(자기 집에서 충분히 멀리 간 것)과, 화살표 없이 본진에만 이모지가
     // 붙는 것(생산·테크·경제, 그리고 목표가 자기 집 안인 것)으로 나눈다.
     const arrows: MinimapArrow[] = [];
@@ -687,15 +784,14 @@ export default function GameResultStory({
         movers.add(raw);
       }
     }
+    // 화살표 끝(또는 화살표가 안 나올 만큼 가까우면 본진)에 붙는 무기 이모지 — "무엇으로
+    // 쳤나/무엇을 했나"를 말한다. 아바타에 겹쳐 얹는 상태 얼굴(아래)과는 다른 자리다.
     const marks = new Map<string, string>();
-    const onAvatar = new Set<string>();
     for (const s of slots) {
-      // 트로피가 있으면 그것이 이긴다 — 맺음말 스냅에서는 그 사람의 승리가 전부다.
-      if (trophy.has(s.raw)) { marks.set(s.raw, "🏆"); onAvatar.add(s.raw); continue; }
       // 이사 화살표를 이미 그렸으면 이모지는 그 끝에 있다 — 본진에 또 얹지 않는다.
       if (movers.has(s.raw)) continue;
-      const em = mark.get(s.raw) ?? (hit.has(s.raw) ? HIT_MARK : undefined);
-      if (!em) continue;
+      if (!mark.has(s.raw)) continue;
+      const em = mark.get(s.raw)!;
       const home = homeOf(s.raw);
       const t = to.get(s.raw);
       if (home && t && dist(home, t) >= ARROW_MIN_TILES) {
@@ -708,7 +804,22 @@ export default function GameResultStory({
         marks.set(s.raw, em);
       }
     }
-    return { arrows, marks, onAvatar };
+    /* 아바타에 겹쳐 얹는 상태 얼굴 — "그 사람이 지금 어떤 처지인가"만 말한다(요청: 해골·
+     * 트로피 말고는 아바타에 붙는 표시가 없으니 공격자·당한 사람도 아바타로 알려 달라).
+     * 우선순위: 트로피 > 크게 무너짐 > 적당히 당함 > 힘겨움(역부족) > 도움받음(감동) >
+     * 잘 막아냄 > 공격자 > 도와줌(천사). */
+    const faces = new Map<string, string>();
+    for (const s of slots) {
+      if (trophy.has(s.raw)) { faces.set(s.raw, "🏆"); continue; }
+      if (severe.has(s.raw)) { faces.set(s.raw, SEVERE_FACE); continue; }
+      if (moderate.has(s.raw)) { faces.set(s.raw, MODERATE_FACE); continue; }
+      if (struggling.has(s.raw)) { faces.set(s.raw, STRUGGLE_FACE); continue; }
+      if (helped.has(s.raw)) { faces.set(s.raw, HELPED_FACE); continue; }
+      if (defended.has(s.raw)) { faces.set(s.raw, DEFENDED_FACE); continue; }
+      if (attacker.has(s.raw)) { faces.set(s.raw, ATTACK_FACE); continue; }
+      if (helper.has(s.raw)) { faces.set(s.raw, HELPER_FACE); continue; }
+    }
+    return { arrows, marks, faces };
   }, [gameResult.summaryData, sentences, index, slots, grid, moved, movedPair]);
   const arrows = actions.arrows;
 
@@ -717,6 +828,8 @@ export default function GameResultStory({
     const spots = gameResult.summaryData?.bases;
     if (!spots) return [];
     const out: MinimapMarker[] = [];
+    // 시작 스냅("게임 시작!")은 로스터가 빠진 자리라, 닉네임도 아바타만큼 키운다(요청).
+    const introBig = index === 0 && sentences.length > 1 && (sentences[0]?.beats?.length ?? 0) === 0;
     for (const s of slots) {
       if (!spots[s.raw]) continue;
       const nameLc = normalizeSearchText(s.name);
@@ -739,15 +852,16 @@ export default function GameResultStory({
         ...common, key: s.raw,
         x: at ? at[0] : spots[s.raw][0], y: at ? at[1] : spots[s.raw][1],
         withName: true, highlight: hit, downed: downed.has(s.raw),
-        featured: mentioned.has(s.raw),
+        featured: mentioned.has(s.raw), introBig,
         // 화살표가 없는 이야기(생산·테크·경제)는 그 사람 본진에 이모지를 붙인다(요청).
         mark: actions.marks.get(s.raw),
-        markOn: actions.onAvatar.has(s.raw),
+        // 아바타에 겹쳐 얹는 상태 얼굴 — 트로피·공격자·당한 정도·아군 헬프(요청).
+        face: actions.faces.get(s.raw),
       });
     }
     return out;
   }, [gameResult.summaryData, slots, memberOf, highlightMemberIds, highlightTerms, downed, mentioned,
-    actions, moved, grid]);
+    actions, moved, grid, index, sentences]);
 
   const o1 = outcomeFor("team1", result);
   const o2 = outcomeFor("team2", result);
@@ -757,8 +871,9 @@ export default function GameResultStory({
   // 미니맵이 있으면 맵 이름·플레이시간은 그림의 머리로 올라간다 — 아래 따로 한 줄 더 두면
   // 같은 말이 두 번 나온다.
   const showRoster = !mobile || grid === null;
-  /* 시작 스냅(누가 누구와 붙었는지 소개하는 자리) — 그 자막 대신 로스터를 보여준다(요청).
-     소개 문장은 beat 없이 만들어 넣은 것이라 beats가 비어 있는 것으로 가려낸다. */
+  /* 시작 스냅("게임 시작!") — 자막은 짧은 한 줄뿐이니, 그 대신 미니맵 쪽 아바타·닉네임을
+     키워 로스터를 보여준다(요청). 소개 문장은 beat 없이 만들어 넣은 것이라 beats가 비어
+     있는 것으로 가려낸다. */
   const introIdx = sentences.length > 1 && (sentences[0]?.beats?.length ?? 0) === 0 ? 0 : -1;
   // 자막으로 보여줄 수 있는 경기인가 — 미니맵이 있고 훑을 문장이 있을 때. 그림이 없으면
   // 자막만 남아 무엇을 보고 읽는 글인지 알 수 없다.
@@ -821,35 +936,12 @@ export default function GameResultStory({
 
       {sentences.length > 0 && (
       <div className="scr-story-cap">
-        {sentences.map((sn, i) => (i === introIdx ? (
-          /* 시작 스냅은 글 대신 로스터를 보여준다(요청: 로스터는 자막 패널에, 지금 시작
-             자막 대신) — "1팀 A·B 대 2팀 C·D" 한 줄로는 프사도 종족도 안 보였다. 자리는
-             다른 자막과 같은 칸이라, 넘길 때 그림이 흔들리지 않는다. */
-          <div
-            key={i} className="scr-story-cap-line scr-story-cap-roster"
+        {sentences.map((sn, i) => (
+          <p
+            key={i}
+            className={cx("scr-story-cap-line", i === introIdx && "scr-story-cap-intro")}
             aria-hidden={i !== index} data-on={i === index}
           >
-            <div className="scr-challenge-matchup scr-feed-game-result-matchup scr-story-intro-roster">
-              <RosterSide
-                team={team1} memberOf={memberOf}
-                highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms}
-              />
-              {/* 시작 스냅에는 승·무 배지를 빼고 vs만 둔다(지적: 시작에 이미 승패가 나오는
-                  건 이상하다) — 이야기를 처음부터 읽는 자리에서 결말부터 알려 줄 이유가
-                  없다. 결과는 맺음말 스냅과 카드 머리가 말한다. */}
-              <div className="scr-story-mid">
-                <span className="scr-challenge-arrow-row">
-                  <span className="scr-challenge-arrow scr-challenge-arrow-vs" aria-hidden="true">vs</span>
-                </span>
-              </div>
-              <RosterSide
-                team={team2} memberOf={memberOf}
-                highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms}
-              />
-            </div>
-          </div>
-        ) : (
-          <p key={i} className="scr-story-cap-line" aria-hidden={i !== index} data-on={i === index}>
             {/* 언제 있었던 일인지 앞에 붙인다(요청: [5분]처럼 분까지만). 시각을 모르는
                 문장(맺음말 등)은 아무것도 안 붙인다 — 0분이라고 적으면 거짓말이다. */}
             {capMin(sn) !== null && <span className="scr-story-cap-time">[{capMin(sn)}분]</span>}
@@ -857,7 +949,7 @@ export default function GameResultStory({
               ? <span key={j} className={pt.team === 1 ? "scr-sum-team1" : "scr-sum-team2"}>{pt.text}</span>
               : <span key={j}>{pt.text}</span>))}
           </p>
-        )))}
+        ))}
       </div>
       )}
     </div>

@@ -51,15 +51,6 @@ export default function MemberStatRow({
   const openMemberProfile = useAppStore((s) => s.openMemberProfile);
   const [photoOpen, setPhotoOpen] = useState(false);
 
-  // 최소 판수 미달이면 게임수를 뺀 나머지는 전부 가린다(지적: 미충족 시 경기수 제외한
-  // 필드는 모두 null 처리) — 포인트·순위는 백엔드가 내려주는 값인데, 백엔드의 최소 판수
-  // 기준이 이 프론트와 어긋나 있을 수 있어(StatsScreen의 MIN_PLAYS_BY_TYPE 주석) 여기서
-  // 한 번 더 가린다. 그래야 백엔드가 아직 옛 기준을 쓰고 있어도 화면은 항상 지금 기준을
-  // 따른다.
-  const shownPoints = belowMinPlays ? null : points;
-  const shownRank = belowMinPlays ? null : rank;
-  const shownRankDelta = belowMinPlays ? null : rankDelta;
-
   return (
     <div className="scr-stat-row">
       <div className="scr-stat-name-cell">
@@ -75,7 +66,18 @@ export default function MemberStatRow({
           </button>
         </div>
       </div>
-      {points !== undefined && (
+      {points !== undefined && (() => {
+        // 최소 판수 미달이면 게임수를 뺀 나머지는 전부 가린다(지적: 미충족 시 경기수 제외한
+        // 필드는 모두 null 처리) — 포인트·순위는 백엔드가 내려주는 값인데, 백엔드의 최소
+        // 판수 기준이 이 프론트와 어긋나 있을 수 있어(StatsScreen의 MIN_PLAYS_BY_TYPE
+        // 주석) 여기서 한 번 더 가린다. 그래야 백엔드가 아직 옛 기준을 쓰고 있어도 화면은
+        // 항상 지금 기준을 따른다.
+        // points가 여기서 number | null로 좁혀지므로(위 가드), shownPoints도 undefined
+        // 없이 number | null로 잡힌다 — 가드 밖에서 미리 계산하면 그 좁힘이 안 먹는다.
+        const shownPoints = belowMinPlays ? null : points;
+        const shownRank = belowMinPlays ? null : rank;
+        const shownRankDelta = belowMinPlays ? null : rankDelta;
+        return (
         <div className="scr-stat-points-cell">
           {shownPoints === null ? (
             <span className="scr-stat-points-empty">-</span>
@@ -104,7 +106,8 @@ export default function MemberStatRow({
             </>
           )}
         </div>
-      )}
+        );
+      })()}
       <div className="scr-stat-plays-cell">
         <ValueBar value={stats.plays > 0 ? stats.plays : null} maxValue={maxOverallPlays} medal={medals?.plays} />
       </div>
