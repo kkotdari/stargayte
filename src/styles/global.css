@@ -7735,21 +7735,18 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
 .scr-story-win-draw { background: rgba(var(--overlay-rgb), 0.34); color: var(--text); }
 
 /* ── 미니맵 그림 ── */
-/* 이름표가 지도 밖으로 나가는 자리(요청: 이름표는 지도 밖까지 나가도 된다) — 눈에 보이는
-   테두리·배경은 없이 투명하게 둔다(지적: 미니맵만 떠 있어야지). overflow:hidden은
-   안전판으로 남긴다: 이름표가 아무리 길어도 이 여백 밖(카드 자체의 바깥 패딩)까지는
-   절대 못 나간다(지적). */
-.scr-minimap-frame { width: 100%; padding: 40px; overflow: hidden; }
-/* 모바일은 카드 폭 자체가 좁다(지적: PC는 지금 두께가 맞음, 모바일은 반으로). */
-@media (max-width: 640px) { .scr-minimap-frame { padding: 20px; } }
+/* 이름표는 이제 지도 안에 들어간다(요청: 테두리 제거하고 이름표는 미니맵 안에서
+   위치조정으로 커버) — 그 자리를 마련하려고 두던 바깥 여백(PC 40px·모바일 20px)이
+   필요 없어졌다. 여백만 남기면 테두리 없이 지도만 작아 보인다. */
+.scr-minimap-frame { width: 100%; }
 .scr-minimap {
   position: relative; width: 100%; aspect-ratio: 1 / 1;
   /* 둥근 모서리를 없앤다(요청) — 아래 자막이 딱 붙어 있어 각진 편이 한 덩어리로 읽힌다. */
   border-radius: 0;
-  border: 1px solid var(--line);
-  /* 자르지 않는다(지적: 미니맵 경계에서 표시가 잘린다) — 가장자리 본진의 아바타·이름표·
-     해골은 그림 밖으로 조금 삐져나오는 것이 정상이고, 그게 잘리면 누구인지 못 읽는다.
-     지형 그림 자체의 둥근 모서리는 캔버스/이미지에 직접 준다. */
+  /* 테두리 없음(요청) — 지도 자체가 곧 경계라 선을 한 겹 더 두르면 액자처럼 보인다. */
+  /* 자르지 않는다(지적: 미니맵 경계에서 표시가 잘린다) — 가장자리 본진의 아바타·해골은
+     그림 밖으로 조금 삐져나오는 것이 정상이고, 그게 잘리면 누구인지 못 읽는다. 이름표는
+     안쪽으로 넣었으므로(labelPlace) 이 규칙에 기대지 않는다. */
   overflow: visible;
   background: #101418;
 }

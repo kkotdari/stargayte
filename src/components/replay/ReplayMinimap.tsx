@@ -205,6 +205,8 @@ export default function ReplayMinimap({
    * 실제로 얼마나 튀어나오는지는 그려 보기 전엔 모르니, 어림값을 아무리 잘 잡아도
    * 완벽할 수 없다. 그려진 뒤 실제 자리를 재서(getBoundingClientRect) 튀어나온 만큼만
    * 보정값으로 얹는다 — 페인트 전에 반영해야 눈에 깜빡임이 없다(useLayoutEffect). */
+  /** 재는 기준은 지도 자체다 — 예전에는 바깥 프레임이었다. 이름표를 지도 안에 두기로
+   *  했으니(labelPlace) 넘어가면 안 되는 선도 지도 가장자리다. */
   const frameRef = useRef<HTMLDivElement>(null);
   const labelElsRef = useRef<Map<string, HTMLSpanElement>>(new Map());
   const [labelFix, setLabelFix] = useState<Map<string, { x: number; y: number }>>(new Map());
@@ -278,11 +280,11 @@ export default function ReplayMinimap({
     };
   };
 
-  /** 이름표는 지도 밖(감싸는 테두리 안)까지 나가도 된다(요청) — 다만 카드 자체의
-   *  바깥 패딩까지 넘어가면 안 되므로(지적: 오른쪽으로 벗어나면 그만큼 왼쪽으로), 좌우로는
-   *  조금만, 위아래로는 넉넉히 뗀다 — 옆으로 크게 밀면 프레임의(특히 모바일에서 얼마 안
-   *  되는) 좌우 폭을 쉽게 넘어서지만, 위아래는 지도 안쪽의 빈 칸을 넉넉히 쓸 수 있다.
-   *  모든 본진에 같은 규칙을 쓴다(지적: 가운데뿐 아니라 전부 좌우 이탈 방지가 필요). */
+  /** 이름표는 지도 '안'에 둔다(요청: 미니맵 테두리를 없애고 이름표는 안에서 위치조정으로
+   *  커버). 예전에는 바깥으로 밀어 놓고 그 자리를 프레임 여백으로 마련했는데, 테두리가
+   *  사라지면 그 여백은 그냥 빈 공간이라 지도만 작아 보인다. 그래서 미는 방향을 뒤집어
+   *  맵 한가운데 쪽으로 넣는다 — 가장자리 본진일수록 지도 안쪽에 빈 칸이 많으니 자리도
+   *  거기가 넉넉하다. 모든 본진에 같은 규칙을 쓴다(지적: 전부 이탈 방지가 필요). */
   // 아바타를 CSS scale로 키우면서(요청: 평상시 크기 확대) 세로 간격이 빡빡해졌다(지적:
   // 확대 상태를 고려해 아바타·닉네임 세로 갭을 조금 늘려야 함) — 20 → 26.
   const LABEL_OUT_Y = 26;
@@ -294,8 +296,9 @@ export default function ReplayMinimap({
   const labelPlace = (m: MinimapMarker) => {
     const dx = m.x - grid.width / 2;
     const dy = m.y - grid.height / 2;
-    const ox = Math.abs(dx) < CENTER_EPS ? 0 : dx < 0 ? -LABEL_OUT_X : LABEL_OUT_X;
-    const oy = Math.abs(dy) < CENTER_EPS ? LABEL_OUT_Y : dy < 0 ? -LABEL_OUT_Y : LABEL_OUT_Y;
+    // 부호가 안쪽(가운데) 방향이다 — 왼쪽 본진이면 오른쪽으로, 위쪽 본진이면 아래로.
+    const ox = Math.abs(dx) < CENTER_EPS ? 0 : dx < 0 ? LABEL_OUT_X : -LABEL_OUT_X;
+    const oy = Math.abs(dy) < CENTER_EPS ? LABEL_OUT_Y : dy < 0 ? LABEL_OUT_Y : -LABEL_OUT_Y;
     // 이름표는 밀려난 방향과 같은 쪽으로 자라야 한다 — 반대로 자라면 그 길이만큼
     // 도로 아바타를 덮는다(지적: 아바타·닉네임은 겹치면 안 된다).
     const anchorX = ox < -0.5 ? "-100%" : ox > 0.5 ? "0%" : "-50%";
@@ -312,13 +315,13 @@ export default function ReplayMinimap({
     .filter((v): v is { a: MinimapArrow; g: NonNullable<ReturnType<typeof arrowGeom>> } => v.g !== null);
 
   return (
-    <div className="scr-minimap-frame" ref={frameRef}>
+    <div className="scr-minimap-frame">
       {/* 이름표가 나갈 자리를 지도 바깥에 미리 마련해 둔다(요청: 미니맵 바깥을 자막
           패널과 같은 재질의 테두리로 감싸서 이름표 공간을 확보) — 지도 자체(.scr-minimap)
           는 그대로 두고, 그 바깥에 자막 패널(.scr-story-cap)과 같은 톤의 여백을 두른다.
           카드 자체의 바깥 패딩까지 넘어가면 안 되므로(지적) 이 여백은 부모 폭 안에서만
           늘어난다 — 지도가 그만큼 작아지는 대신 이름표가 늘 이 안에 머문다. */}
-      <div className={cx("scr-minimap", className)}>
+      <div className={cx("scr-minimap", className)} ref={frameRef}>
         {/* 사람이 올려 둔 실제 미니맵 그림이 있으면 그것을, 없으면 타일 격자로 그린 개략도를
             쓴다(요청: 물·풀·땅·벽을 실제와 비슷하게). 아바타·화살표는 좌표를 비율로 얹으므로
             어느 쪽이든 같은 자리에 놓인다. */}

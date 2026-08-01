@@ -59,7 +59,9 @@ const BEAT_MARK: Record<string, string> = {
   // 준다. 천사 얼굴은 이제 도우러 간 사람 아바타 쪽으로 옮겼다(요청).
   "ally-help": "🛡️", "ally-cannon": "🛡️",
   // 자리를 잡거나 길을 막은 것.
-  center: "🚩", "center-photon": "🚧", defense: "🛡️", "front-defense": "🛡️",
+  // 센터에 포토·터렛을 박아 길을 잠근 것 — 공사 표지(🚧)는 무슨 뜻인지 안 읽혔다(지적:
+  // 터렛 이모지를 방패로) — 길목을 막아 세운 수라 방패가 맞다.
+  center: "🚩", "center-photon": "🛡️", defense: "🛡️", "front-defense": "🛡️",
   "late-defense": "🛡️",
   // 방패는 실제로 방어 건물을 세운 이야기에만 준다(지적: 유닛을 뽑은 것뿐인데 본진에
   // 방패가 뜬다) — 병력으로 맞선 이야기는 싸움이라 검 대결이 맞다.
