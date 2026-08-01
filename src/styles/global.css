@@ -2930,8 +2930,11 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
 .scr-feed-note-text { font-size: var(--fs-micro); }
 /* 수정·삭제 버튼을 댓글 내용이 끝나는 자리에(지적: 오른쪽 끝이 아니라 내용이 끝나는
    부분 바로 옆으로) — 텍스트가 담긴 <p> 안에 이어 붙는 인라인 요소라, 글이 짧으면
-   글자 바로 뒤에 붙고 길어서 줄이 꽉 차면 마지막 줄로 자연스럽게 넘어간다. */
-.scr-feed-note-actions {
+   글자 바로 뒤에 붙고 길어서 줄이 꽉 차면 마지막 줄로 자연스럽게 넘어간다.
+   .scr-mreq-item-actions(display:flex, 한 클래스라 소스 순서상 이 규칙보다 뒤에 있어
+   이겼었다)의 block 성질이 줄바꿈을 강제했다(지적: 아랫줄에 붙는다) — 클래스 두 개짜리
+   묶음 선택자로 특이도를 올려 확실히 이기게 한다. */
+.scr-feed-note-actions.scr-mreq-item-actions {
   display: inline-flex; align-items: center; gap: 2px;
   margin-left: 3px; vertical-align: -2px;
 }
