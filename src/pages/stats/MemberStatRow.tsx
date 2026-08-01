@@ -26,7 +26,8 @@ interface MemberStatRowProps {
   // 전적 막대 캡션을 "승/전" 짧은 표기로 줄인다(StatBar의 compact 참고).
   compact?: boolean;
   // 표본이 너무 적어(최소 게임수 미달) 승률/APM 등이 왜곡될 수 있는 회원은 게임수 칸만
-  // 실제 값을 보여주고 나머지(전적/승률/APM/커맨드)는 "-"로 가린다.
+  // 실제 값을 보여주고 나머지(전적/승률/APM/커맨드/포인트/순위)는 "-"로 가린다(지적:
+  // 미충족 시 경기수 제외한 필드는 모두 null 처리).
   belowMinPlays?: boolean;
   // 랭크 포인트(TrueSkill 보수추정, 표시 스케일) — undefined면 포인트 컬럼 자체를 안 그린다
   // (통계 화면 전용, 요청: 랭킹을 통계에 통합). null이면 이 기간 순위 대상이 아니라 "-".
@@ -50,6 +51,15 @@ export default function MemberStatRow({
   const openMemberProfile = useAppStore((s) => s.openMemberProfile);
   const [photoOpen, setPhotoOpen] = useState(false);
 
+  // 최소 판수 미달이면 게임수를 뺀 나머지는 전부 가린다(지적: 미충족 시 경기수 제외한
+  // 필드는 모두 null 처리) — 포인트·순위는 백엔드가 내려주는 값인데, 백엔드의 최소 판수
+  // 기준이 이 프론트와 어긋나 있을 수 있어(StatsScreen의 MIN_PLAYS_BY_TYPE 주석) 여기서
+  // 한 번 더 가린다. 그래야 백엔드가 아직 옛 기준을 쓰고 있어도 화면은 항상 지금 기준을
+  // 따른다.
+  const shownPoints = belowMinPlays ? null : points;
+  const shownRank = belowMinPlays ? null : rank;
+  const shownRankDelta = belowMinPlays ? null : rankDelta;
+
   return (
     <div className="scr-stat-row">
       <div className="scr-stat-name-cell">
@@ -67,7 +77,7 @@ export default function MemberStatRow({
       </div>
       {points !== undefined && (
         <div className="scr-stat-points-cell">
-          {points === null ? (
+          {shownPoints === null ? (
             <span className="scr-stat-points-empty">-</span>
           ) : (
             <>
@@ -75,17 +85,17 @@ export default function MemberStatRow({
                 type="button" className="scr-stat-points-btn"
                 onClick={onPointsClick} aria-label={`${member.nickname} 포인트 상세`}
               >
-                {points.toLocaleString()}
+                {shownPoints.toLocaleString()}
               </button>
               {medals?.points && <span className="scr-stat-medal">{medals.points}</span>}
               {/* 포인트 옆에 지금 순위와 그 변동(요청) — 포인트만으로는 그게 몇 등짜리
                   점수인지 감이 안 온다. 변동은 방향이 곧 의미라 색과 화살표로만 짧게. */}
-              {rank != null && (
+              {shownRank != null && (
                 <span className="scr-stat-points-rank">
-                  ({rank}위
-                  {rankDelta != null && rankDelta !== 0 && (
-                    <span className={rankDelta > 0 ? "scr-feed-shift-up" : "scr-feed-shift-down"}>
-                      {rankDelta > 0 ? `▲${rankDelta}` : `▼${-rankDelta}`}
+                  ({shownRank}위
+                  {shownRankDelta != null && shownRankDelta !== 0 && (
+                    <span className={shownRankDelta > 0 ? "scr-feed-shift-up" : "scr-feed-shift-down"}>
+                      {shownRankDelta > 0 ? `▲${shownRankDelta}` : `▼${-shownRankDelta}`}
                     </span>
                   )}
                   )
