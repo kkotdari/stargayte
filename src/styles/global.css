@@ -3021,7 +3021,8 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
 .scr-feed-note-icon-btn {
   display: inline-flex; align-items: center; justify-content: center;
   background: transparent; border: none; color: var(--muted); cursor: pointer;
-  padding: 3px; border-radius: 4px; line-height: 0;
+  /* 호버 영역이 네모였다(지적) — 원형으로. */
+  padding: 3px; border-radius: 50%; line-height: 0;
 }
 @media (hover: hover) { .scr-feed-note-icon-btn:hover { color: var(--text); background: rgba(var(--overlay-rgb), 0.08); } }
 @media (hover: hover) { .scr-feed-note-icon-danger:hover { color: var(--loss); background: rgba(220, 70, 70, 0.14); } }
