@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { X, ClipboardList } from "lucide-react";
+import { X } from "lucide-react";
 import { Spinner } from "./Feedback";
 import ConfirmDialog from "./ConfirmDialog";
 import { useLockBodyScroll } from "../../utils/bodyScrollLock";
@@ -113,8 +113,9 @@ export default function ReplayBatchButton() {
   const [reviewOpen, setReviewOpen] = useState(false);
   // 진행률/로그를 제어판 안에 그대로 쌓지 않고 별도의 창(모달)으로 띄운다(요청:
   // "배치 등록시 별도 창에 결과 나오게, 모달 내에 스크린 만들 필요 없이") — 로그가
-  // 길어질수록 제어판 본문이 한없이 늘어난다. 배치가 시작되면 자동으로 뜨고, 닫아도(X) 배치
-  // 자체는 계속 진행된다 — 다시 보고 싶으면 트리거 버튼 옆에 뜨는 "결과 보기"로 재오픈.
+  // 길어질수록 제어판 본문이 한없이 늘어난다. 배치가 시작되면 자동으로 뜨고, 닫으면(X)
+  // 배치 자체는 백그라운드에서 계속 진행된다. 재오픈 버튼은 없앴다(지적: 배치등록하면
+  // 생기는 결과 보기 버튼 삭제) — 한 번 닫으면 다음 배치가 시작될 때까지 다시 안 뜬다.
   const [resultsOpen, setResultsOpen] = useState(false);
   // 결과 모달의 배경 입력 차단 + 바깥 탭 닫기 — 예전엔 오버레이 클릭이 담당했지만
   // 오버레이는 display:contents라 더 이상 박스/클릭이 없다(bodyScrollLock 실드 참고).
@@ -320,9 +321,10 @@ export default function ReplayBatchButton() {
         hidden
         onChange={(e) => runBatch(e.target.files)}
       />
-      {/* 한 줄에 [배치등록] [결과 보기] — 버튼 하나로 줄이고 켜고 끄는 스위치는 없앴다
-          (요청). 누르면 바로 폴더(모바일은 파일) 선택창이 뜨고, 고른 것 중 리플레이를
-          전부(일대일·팀전 가리지 않고) 담근다. 도는 중에는 같은 자리가 '중단'이 된다. */}
+      {/* 버튼 하나로 줄이고 켜고 끄는 스위치는 없앴다(요청). 누르면 바로 폴더(모바일은
+          파일) 선택창이 뜨고, 고른 것 중 리플레이를 전부(일대일·팀전 가리지 않고)
+          담근다. 도는 중에는 같은 자리가 '중단'이 된다. 결과 보기 재오픈 버튼은
+          없앴다(지적) — 결과 모달은 배치 시작 때 자동으로만 뜬다. */}
       <div className="scr-admin-panel-batch-row">
         {running ? (
           <button
@@ -335,15 +337,6 @@ export default function ReplayBatchButton() {
         ) : (
           <button type="button" className="scr-btn scr-btn-primary" onClick={start}>
             배치등록
-          </button>
-        )}
-        {started && total > 0 && !resultsOpen && (
-          <button
-            type="button"
-            className="scr-admin-panel-results-reopen"
-            onClick={() => setResultsOpen(true)}
-          >
-            <ClipboardList size={12} /> 결과 {processed}/{total}
           </button>
         )}
       </div>

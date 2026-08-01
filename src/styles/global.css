@@ -3707,10 +3707,8 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-admin-panel-batch-option, .scr-admin-panel-batch-counts, .scr-admin-panel-batch .scr-err {
   grid-column: 1 / -1;
 }
-/* 트리거 버튼과 '결과 보기'가 한 칸에 나란히 — 버튼 하나로 줄이면서 스위치 줄을 없앴다(요청). */
-/* 이 줄은 가로 전체를 쓴다 — 그리드 한 칸(절반 폭)에 버튼과 '결과 보기'를 같이 넣었더니
-   버튼이 "배치/등록" 두 줄로 찌그러졌다(지적: 레이아웃 깨짐). 버튼은 다른 버튼들과 같은
-   폭(한 칸)으로 두고, 결과 알약은 그 옆 빈자리에 놓는다. */
+/* 트리거 버튼 한 줄 — 결과 보기 재오픈 버튼은 없앴다(지적: 배치등록하면 생기는 결과
+   보기 버튼 삭제). 버튼이 이 줄의 유일한 항목이라 다른 그리드 칸들과 같은 폭이면 된다. */
 .scr-admin-panel-batch-row {
   grid-column: 1 / -1;
   display: flex; align-items: center; gap: 14px;
@@ -3718,31 +3716,9 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-admin-panel-batch-row .scr-btn {
   flex: 0 0 calc(50% - 7px); min-width: 0;
 }
-/* "결과 보기" 재오픈 버튼 — 그리드 칸으로 두면 나타났다 사라질 때마다 그 아래(경기관리
-   섹션 등) 버튼들이 들썩였다(실제로 지적받은 문제 — "결과보기 생기면 레이아웃이
-   흔들리잖아"). 그리드 흐름에서 완전히 빼고 카드(.scr-modal-body, position:relative)
-   모서리에 고정해 다른 요소에 전혀 영향을 주지 않게 한다. */
-/* (삭제) 결과 보기 예약 칸 — 결과 보기를 배치등록 타이틀 줄로 올리면서 없앴다(요청). */
-.scr-admin-panel-results-reopen {
-  /* 리포트 아이콘 + 알약 버튼. 제어판 안의 버튼은 전부 라이팅 프라이머리 색으로
-     통일한다(요청) — .scr-btn을 안 쓰는 이 알약도 같은 채움/글자색/글로우를 직접 쓴다.
-     이제 배치등록 타이틀 줄 안에 들어가므로(요청) 그 줄 높이를 넘지 않게 작게 잡는다 —
-     제목(body)과 스위치(26px) 사이에 끼어도 줄 높이가 안 늘어난다. */
-  display: inline-flex; align-items: center; justify-content: center; gap: 4px;
-  margin-left: auto; flex: none; min-width: 0;
-  padding: 4px 10px; border: 1px solid transparent; border-radius: 999px;
-  background: var(--lit-pill-bg); color: var(--lit-pill-text);
-  font-size: var(--fs-micro); font-weight: 700; line-height: 1.4; cursor: pointer;
-  box-shadow: var(--lit-pill-glow); white-space: nowrap;
-}
 /* 도는 중의 '중단'도 같은 줄에 들어간다 — 스위치 자리를 대신하므로 그만큼 작게. */
 .scr-admin-panel-batch-stop {
   flex: none; min-height: 0; padding: 5px 12px; font-size: var(--fs-micro); border-radius: 999px;
-}
-@media (hover: hover) {
-  .scr-admin-panel-results-reopen:hover {
-    box-shadow: 0 0 12px rgba(var(--lit-rgb), 0.25), 0 0 28px rgba(var(--lit-rgb), 0.13);
-  }
 }
 /* 배치 결과 모달 — 로그/카운트가 본문 맨 아래에 딱 붙어 답답해 보이던 문제(요청): 아래 여백을 준다. */
 .scr-admin-panel-batch-modal-body { padding-bottom: 16px; }
