@@ -2936,7 +2936,10 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
    묶음 선택자로 특이도를 올려 확실히 이기게 한다. */
 .scr-feed-note-actions.scr-mreq-item-actions {
   display: inline-flex; align-items: center; gap: 2px;
-  margin-left: 3px; vertical-align: -2px;
+  margin-left: 3px;
+  /* inline-flex는 기본 baseline이 상자 아래쪽이라 글자보다 처져 보였다(지적: 버튼이
+     내용보다 살짝 아래로 내려가 보인다) — middle로 글자 가운데에 맞춘다. */
+  vertical-align: middle;
 }
 /* 버튼이 댓글 글자보다 상대적으로 커 보였다(지적: 댓글 내용과 크기 맞추기) — 아이콘도
    13→11px로, 버튼 여백도 3→2px로 줄여 본문 글자(micro, 12px) 크기에 맞춘다. */
