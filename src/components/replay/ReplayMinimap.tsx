@@ -173,8 +173,12 @@ export interface MinimapMarker {
    *  흑백 처리하고 새 기지에 마크를 옮긴다). */
   ghost?: boolean;
   /** 본진에 붙일 이모지 — 화살표가 없는 이야기(생산·테크·경제)에 쓴다(요청: 생산에도 본진에
-   *  열심히 생산하는 이모지). 입구 쪽으로 띄워 그린다. */
+   *  열심히 생산하는 이모지). 본진 한가운데에 얹는다 — 그 본진에서 벌어진 일이니까. */
   mark?: string;
+  /** 그 일이 본진 안이 아니라 '입구'에서 벌어졌나(입구막기·입구 방어) — 그러면 이모지를
+   *  본진 한가운데가 아니라 상대 쪽(=입구 쪽)으로 밀어 그린다(요청: "벽을 쌓는 입구
+   *  막기는 입구쪽에 나와야 자연스럽고"). */
+  markAtFront?: boolean;
   /** 아바타 위에 겹쳐 그리는 상태 얼굴 — 트로피·공격자·당한 정도·아군 헬프처럼 그 사람
    *  자체를 가리키는 표시에 쓴다(요청: 해골·트로피 말고도 아바타로 상태를 알려 달라). */
   face?: string;
@@ -276,23 +280,11 @@ export default function ReplayMinimap({
    *  CSS의 .scr-minimap-mark-on 규칙이 하던 일인데, 이제 자리는 인라인이 정하므로
    *  여기서 갈라야 한다). */
   const shoulderOf = (m: MinimapMarker) => (m.featured ? 13 : 9);
-  /** 액션 이모지가 앉는 자리 — 단위가 px가 아니라 em인 것이 요점이다.
-   *
-   *  이 이모지는 화면마다 크기가 다르다(모바일 22px / PC 42px). px로 띄우면 한쪽에서
-   *  맞춘 간격이 다른 쪽에서 무너진다 — PC 42px짜리 글리프는 가로로만 52px을 먹어서,
-   *  20px쯤 옆으로 민 정도로는 반대쪽 어깨에 앉은 표정을 그대로 덮었다(실측: 모바일·PC
-   *  양쪽에서 face ✕ action, PC에서는 skull ✕ action까지). em은 그 요소 제 글자 크기를
-   *  따르므로 두 화면에서 같은 비율의 여백이 나온다.
-   *
-   *  값의 근거(글리프 상자는 대략 가로 1.25em, 세로 1em):
-   *   · 가로 0.8em — 상자의 반(0.62em)에 표정 상자의 반(어깨 9px 바깥)까지 얹어도 남는다.
-   *   · 세로 0.65em — 상자 아래끝(0.65 - 0.5 = 0.15em 위)이 아래 안쪽 해골(+9px)보다 위다.
-   *
-   *  가장자리 본진에서는 이 이모지가 지도 밖으로 조금 나간다 — 아바타·해골이 이미 그렇고,
-   *  지도는 일부러 자르지 않는다(global.css의 .scr-minimap overflow 주석). 안으로 당기면
-   *  본진 자리에 따라 표정·이름표와 같은 칸에 몰리는, 원래 고치려던 문제로 되돌아간다. */
-  const ACTION_X = 0.8;
-  const ACTION_Y = 0.65;
+  /** 입구에서 벌어진 일(markAtFront)의 이모지를 본진에서 상대 쪽으로 미는 거리 —
+   *  단위가 px가 아니라 em인 것이 요점이다. 이 이모지는 화면마다 크기가 다르므로
+   *  (모바일 22px / PC 42px) px로 띄우면 한쪽에서 맞춘 간격이 다른 쪽에서 무너진다.
+   *  1.1em이면 제 글리프 상자(가로 1.25em) 반을 넘겨, 아바타를 비켜 입구 쪽에 선다. */
+  const ACTION_FRONT = 1.1;
 
   const place = (m: MinimapMarker) => ({
     left: `${(m.x / grid.width) * 100}%`,
@@ -306,13 +298,29 @@ export default function ReplayMinimap({
       : { left: `${-outwardX(m) * d}px`, top: `${d}px` };
   };
 
-  /** 본진 액션 이모지 = 위 안쪽. CSS의 translate(-50%,-50%)를 여기서 다시 써야 한다 —
-   *  인라인 transform이 그 규칙을 덮어쓰기 때문이다. */
-  const markPlace = (m: MinimapMarker) => ({
-    left: `${(m.x / grid.width) * 100}%`,
-    top: `${(m.y / grid.height) * 100}%`,
-    transform: `translate(calc(-50% + ${-outwardX(m) * ACTION_X}em), calc(-50% - ${ACTION_Y}em))`,
-  });
+  /* 본진 액션 이모지 = 본진 한가운데(요청: "그건 본진 중앙에 있는게 더 자연스러워").
+     한때 아바타 둘레의 고정 슬롯(위 안쪽)에 앉혔는데, 표정·이름표와 안 겹치는 대신
+     "그 본진에서 무슨 일이 있었다"가 아니라 옆에 뭔가 떠 있는 것처럼 읽혔다.
+
+     예외는 입구에서 벌어진 일이다(markAtFront) — 입구막기·입구 방어는 본진 안이 아니라
+     나가는 길목의 이야기라, 상대 쪽으로 밀어 그 자리에 세운다(요청: "벽을 쌓는 입구
+     막기는 입구쪽에 나와야 자연스럽고"). 방향은 지도 한가운데 쪽이다: 본진이 지도
+     가장자리에 있고 상대는 늘 그 반대편이라, 가운데를 향하는 것이 곧 나가는 길이다.
+
+     CSS의 translate(-50%,-50%)를 여기서 다시 써야 한다 — 인라인 transform이 그 규칙을
+     통째로 덮어쓰기 때문이다. */
+  const markPlace = (m: MinimapMarker) => {
+    const dx = grid.width / 2 - m.x;
+    const dy = grid.height / 2 - m.y;
+    const len = Math.hypot(dx, dy);
+    // 본진이 지도 한가운데에 있으면 '입구 쪽'이라 부를 방향이 없다 — 그냥 가운데에 둔다.
+    const t = m.markAtFront && len > 1 ? ACTION_FRONT / len : 0;
+    return {
+      left: `${(m.x / grid.width) * 100}%`,
+      top: `${(m.y / grid.height) * 100}%`,
+      transform: `translate(calc(-50% + ${(dx * t).toFixed(3)}em), calc(-50% + ${(dy * t).toFixed(3)}em))`,
+    };
+  };
 
   /** 닉네임 = 아래 바깥쪽. 아바타를 CSS scale로 키우면서 세로 간격이 빡빡해져(지적)
    *  아래로 26px 띄운다. 가로로는 살짝만 — 크게 밀면 지도를 쉽게 벗어난다. */
@@ -327,8 +335,25 @@ export default function ReplayMinimap({
     return {
       left: `${(m.x / grid.width) * 100}%`,
       top: `${(m.y / grid.height) * 100}%`,
-      transform: `translate(calc(${anchorX} + ${ox.toFixed(1)}px), calc(0% + ${LABEL_OUT_Y}px))`,
+      transform: `translate(calc(${anchorX} + ${ox.toFixed(1)}px), ${labelY(m)})`,
     };
+  };
+  /* 이름표를 아래로 얼마나 내릴까 — 보통은 고정값이지만, 입구 이모지가 '아래쪽'으로
+     밀린 본진(지도 위쪽에 자리 잡아 나가는 길이 아래인 경우)에서는 그 이모지가 이름표
+     자리를 그대로 덮는다(실측: 벽돌이 닉네임 글자 위에 앉았다). 그럴 때만 이모지 아래로
+     비켜선다.
+
+     이모지 크기는 화면마다 다르고(모바일 22 / PC 42px) JS는 그 값을 모르므로, CSS가
+     --scr-mark-size로 알려 준다(global.css 끝의 .scr-minimap 규칙). max()로 감싸므로
+     이모지가 작아 원래 자리로 충분한 화면에서는 고정값 그대로다. */
+  const labelY = (m: MinimapMarker): string => {
+    if (!m.mark || !m.markAtFront) return `${LABEL_OUT_Y}px`;
+    const dy = grid.height / 2 - m.y;
+    const len = Math.hypot(grid.width / 2 - m.x, dy);
+    if (!(len > 1) || dy <= 0) return `${LABEL_OUT_Y}px`;
+    // 이모지 아래끝 = (밀린 세로 거리 + 글리프 상자의 반) × 이모지 크기. 그 아래로 4px.
+    const coef = (dy / len) * ACTION_FRONT + 0.5;
+    return `max(${LABEL_OUT_Y}px, calc(var(--scr-mark-size, 28px) * ${coef.toFixed(3)} + 4px))`;
   };
   // 그릴 화살표만 미리 계산한다 — 몸통 레이어와 머리 레이어가 같은 값을 쓴다.
   const geoms = arrows

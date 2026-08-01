@@ -136,6 +136,12 @@ const BY_ATTACKER_KEYS = new Set(["fallen", "greedy-punished"]);
 /** 실제로 맵 가운데에서 벌어진 일 — 화살표를 센터로 보낸다(요청: 센터 내용은 실제 센터에). */
 const CENTER_BEAT_KEYS = new Set(["center", "center-photon"]);
 
+/** 본진 안이 아니라 '입구'에서 벌어진 일 — 본진 이모지를 한가운데가 아니라 상대 쪽으로
+ *  밀어 그린다(요청: "벽을 쌓는 입구 막기는 입구쪽에 나와야 자연스럽고"). 판정 자체가
+ *  '내 본진 안이면서 상대 쪽으로 나가 있는 자리'로 잡은 것들이라(replayTactics의 atFront),
+ *  그림도 그 자리에 서는 것이 맞다. */
+const FRONT_BEAT_KEYS = new Set(["wall-in", "front-defense"]);
+
 /** '여기서 저기로 건너간' 수 — 화살표를 본진에서 상대에게로 통째로 잇는다(요청).
  *  마법을 쓴 좌표·문을 뚫은 좌표는 대개 제 진영 언저리라 목표로 삼으면 제 집 옆에서 짧게
  *  끝난다. 출발 자리는 회오리·구멍으로, 도착 자리는 반짝임으로 따로 표시한다. */
@@ -442,9 +448,13 @@ export default function GameResultStory({
           나가는 화살표 — 진출하는 느낌만 준다(요청). 특정 지점을 찍지 않으므로 틀릴 것도
           없다. */
   const actions = useMemo<{
-    arrows: MinimapArrow[]; marks: Map<string, string>; faces: Map<string, string>;
+    arrows: MinimapArrow[]; marks: Map<string, string>; markFronts: Set<string>;
+    faces: Map<string, string>;
   }>(() => {
-    const empty = { arrows: [], marks: new Map<string, string>(), faces: new Map<string, string>() };
+    const empty = {
+      arrows: [], marks: new Map<string, string>(), markFronts: new Set<string>(),
+      faces: new Map<string, string>(),
+    };
     const beats = gameResult.summaryData?.beats;
     const idx = sentences[index]?.beats;
     if (!beats || !idx) return empty;
@@ -694,6 +704,8 @@ export default function GameResultStory({
     };
 
     const mark = new Map<string, string>();
+    /** 그 이모지가 입구 이야기인가 — 위 mark와 짝을 이뤄 같은 자리에서 채운다. */
+    const markFront = new Set<string>();
     /** 한 사람이 이 스냅에서 실제로 때린 자리들 — 여러 곳을 쳤으면 여러 개가 쌓인다(요청:
      *  한 사람이 여러 곳에 피해를 준 경우 아바타 하나에서 화살표 여러 개로 갈라지게).
      *  예전에는 자리당 하나(Map<raw, target>)만 기억해 마지막 것만 그려졌다. */
@@ -824,6 +836,7 @@ export default function GameResultStory({
         // 화살표를 못 그리는 경우(자리를 모름·너무 가까움)의 마지막 대비책 — 아래에서
         // hits가 하나도 화살표로 못 그려지면 이 값으로 본진에 이모지를 얹는다.
         mark.set(raw, em);
+        if (FRONT_BEAT_KEYS.has(b.k)) markFront.add(raw); else markFront.delete(raw);
         if (ATTACKER_FACE_KEYS.has(b.k)) attacker.add(raw);
         const t = target(b, raw);
         if (!t) continue;
@@ -908,7 +921,7 @@ export default function GameResultStory({
       if (helper.has(s.raw)) { faces.set(s.raw, HELPER_FACE); continue; }
       if (attacker.has(s.raw)) { faces.set(s.raw, ATTACK_FACE); continue; }
     }
-    return { arrows, marks, faces };
+    return { arrows, marks, markFronts: markFront, faces };
   }, [gameResult.summaryData, sentences, index, slots, grid, moved, movedPair]);
   const arrows = actions.arrows;
 
@@ -944,6 +957,7 @@ export default function GameResultStory({
         featured: mentioned.has(s.raw), introBig,
         // 화살표가 없는 이야기(생산·테크·경제)는 그 사람 본진에 이모지를 붙인다(요청).
         mark: actions.marks.get(s.raw),
+        markAtFront: actions.markFronts.has(s.raw),
         // 아바타에 겹쳐 얹는 상태 얼굴 — 트로피·공격자·당한 정도·아군 헬프(요청).
         face: actions.faces.get(s.raw),
         // 트로피는 다른 얼굴들과 크기·바운스가 다르다(요청: 28px 확대 + 계속 바운스).

@@ -8197,3 +8197,12 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
   display: inline-flex; align-items: center; gap: 5px; cursor: pointer;
   font-size: var(--fs-caption); color: var(--muted);
 }
+
+/* 액션 이모지 크기를 변수로도 내보낸다 — 이름표(ReplayMinimap의 labelY)가 그 크기를
+   알아야 입구 쪽으로 밀린 이모지 아래로 비켜설 수 있는데, JS는 미디어쿼리 결과를 모른다.
+   값은 .scr-minimap-arrow-mark의 font-size와 반드시 같아야 한다(기본 28 / 모바일 22 /
+   PC 42px). 파일 맨 끝에 두는 이유는 이 파일의 기본값 규칙들이 PC 미디어쿼리(641px)보다
+   뒤에 있어서, 앞쪽에 두면 순서에 밀려 뒤집히기 때문이다. */
+.scr-minimap { --scr-mark-size: 28px; }
+@media (min-width: 641px) { .scr-minimap { --scr-mark-size: 42px; } }
+@media (max-width: 640px) { .scr-minimap { --scr-mark-size: 22px; } }
