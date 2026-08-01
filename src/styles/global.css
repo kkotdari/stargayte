@@ -1211,7 +1211,21 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    미디어쿼리가 이 값을 덮어쓴다). */
 /* 좌우 패딩을 토큰으로 둔다 — 피드 포스트가 이 값만큼 음수 마진으로 빠져나가 화면을
    꽉 채우기 때문에(아래 .scr-feed-list), 두 곳이 반드시 같은 값이어야 한다. */
-.scr-main { --main-pad-x: 20px; --post-bleed: var(--main-pad-x); max-width: var(--content-max); margin: 0 auto; padding: 34px var(--main-pad-x) 96px; position: relative; z-index: 1; }
+/* 포스트(피드 카드) 좌우 여백을 본문 여백의 2배로(지적: 포스트들 좌우 여백을 1스텝
+   증가, 현재의 2배) — 아래 :root의 --post-pad-bx/--post-head-pad-l 기본값(0px)은
+   "포스트 자체 패딩 없음(본문 패딩만)"이던 예전 요청이다. 여기서 --main-pad-x를 그대로
+   덧붙여, 포스트 안쪽 콘텐츠(헤더·바디·댓글 — 전부 --post-pad-bx 하나를 같이 쓴다)가
+   본문 패딩 위에 한 겹 더 들여쓰도록 한다. .scr-main 밑에서만 적용되므로 그 바깥(공유
+   랜딩의 .scr-share-page)은 그대로 0으로 남는다 — 거기 쓰이는 값도 함께 커지면 안 된다.
+   var() 참조라 아래 모바일 미디어쿼리에서 --main-pad-x가 16px로 바뀌면 자동으로 같이
+   줄어든다(따로 재선언할 필요 없음). 게임결과를 펼쳐도 안쪽 콘텐츠가 이 값 하나만
+   같이 쓰므로 뎁스가 하나 더 들여써지지 않는다(지적: 펼쳐도 뎁스가 늘어나면 안 됨). */
+.scr-main {
+  --main-pad-x: 20px; --post-bleed: var(--main-pad-x);
+  --post-pad-bx: var(--main-pad-x); --post-head-pad-l: var(--main-pad-x);
+  max-width: var(--content-max); margin: 0 auto; padding: 34px var(--main-pad-x) 96px;
+  position: relative; z-index: 1;
+}
 /* 전 화면 공통 고정 배경판 — 결정적 관찰(지적): 배경 사진이 있는 랭킹 화면만 다크에서도
    위아래(주소줄/상태바 뒤)가 잘 나왔다. 랭킹의 사진은 position:fixed inset:0 레이어
    (.scr-rank-screen-v2::before)로 깔리는데, 사파리는 이런 "뷰포트 크기 고정 배경 레이어"를
@@ -6655,6 +6669,10 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   /* 28 → 20px(요청: 바디 패딩이 과하다). 머리보다 좁아지면 안 되므로(요청) 아래
      --post-head-pad-l(10px)보다는 늘 커야 한다 — 제목이 표제처럼 한 단 바깥에서 시작하고
      본문이 그 안으로 들여쓰는 관계는 그대로 남는다. */
+  /* (지적: 포스트들 좌우 여백을 1스텝 증가, 현재의 2배) 이 0px은 .scr-main 바깥(공유
+     랜딩 등)의 기본값으로만 남는다 — .scr-main 스코프에서는 이 값과 --post-head-pad-l을
+     --main-pad-x로 덮어써 포스트 안쪽 콘텐츠가 본문 패딩 위에 한 겹 더 들여써진다(위
+     .scr-main 규칙 참고). */
   --post-pad-bx: 0px;
   /* 머리(제목·시각)만 쓰는 왼쪽 들여쓰기 — 본문(--post-pad-bx)보다 눈에 띄게 바깥에서
      시작한다(요청). 예전엔 둘의 차이가 4px뿐이라 "머리가 한 단계 위"라는 게 안 읽혔다.
