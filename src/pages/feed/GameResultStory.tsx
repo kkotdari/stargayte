@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState, type MouseEvent, type PointerEven
 import ReplayMinimap, { ARROW_MIN_TILES, type MinimapArrow, type MinimapMarker } from "../../components/replay/ReplayMinimap";
 import ReplayStoryTimeline from "../../components/replay/ReplayStoryTimeline";
 import RosterSide, { outcomeFor, resolveSlotName } from "./GameResultSides";
-import { useIsMobile } from "../../hooks/useIsMobile";
 import { useReplayMap } from "../../hooks/useReplayMap";
 import { cleanMapName } from "../../utils/mapName";
 import { cx } from "../../utils/format";
@@ -163,7 +162,6 @@ export default function GameResultStory({
    *  돌아가 있다가 펼치는 순간 중간 장면부터 보인다. */
   active?: boolean;
 }) {
-  const mobile = useIsMobile();
   const grid = useReplayMap(gameResult.mapHash);
   const rootRef = useRef<HTMLDivElement>(null);
 
