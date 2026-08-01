@@ -7044,11 +7044,13 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    로스터와 너나와 닉네임은 같은 크기 유지(둘 다 caption). */
 .scr-feed-card .scr-challenge-person-name { font-size: var(--fs-caption); }
 .scr-feed-game-result-body .scr-game-result-trow-map, .scr-feed-game-result-body .scr-game-result-trow-dur { font-size: var(--fs-micro); }
-/* 댓글이 본문(카드 메시지)과 같은 크기로 보여 어색했다(지적) — 이미 caption/micro로
-   한 단계 줄여 뒀던 것을 여기서 한 단계씩 더 줄인다. 글쓴이 줄과 내용 사이, 댓글끼리의
-   세로 간격도 살짝 좁힌다(지적) — 글자가 작아진 만큼 그대로 두면 오히려 헐렁해 보인다. */
-.scr-feed-comments .scr-mreq-item-text { font-size: var(--fs-micro); }
-.scr-feed-comments .scr-mreq-item-author-name { font-size: var(--fs-11); }
+/* 댓글이 본문(카드 메시지)과 같은 크기로 보여 어색했다(지적) — caption/micro로 한
+   단계 줄였다가(요청) 다시 한 단계 더 줄였는데(지적), 이번엔 다시 한 단계 키워
+   달라고 해서(지적: 댓글들도 다시 크기 1스텝 확대) 원래의 caption/micro로 되돌아왔다.
+   글쓴이 줄과 내용 사이, 댓글끼리의 세로 간격을 좁힌 것(지적)은 그대로 둔다 — 크기만
+   다시 키운 것이라 간격까지 다시 벌릴 이유는 없다. */
+.scr-feed-comments .scr-mreq-item-text { font-size: var(--fs-caption); }
+.scr-feed-comments .scr-mreq-item-author-name { font-size: var(--fs-micro); }
 .scr-feed-comments .scr-mreq-item { gap: 2px; padding: 7px 2px; }
 /* 댓글에 표시되는 @유저 멘션은 칩(알약 배경)이 아니라 그냥 굵은 텍스트로(요청: "유저칩이
    아닌 굵게 표시로 변경"). 읽기용 인라인 칩만 배경·그림자·패딩을 걷어 본문과 같은
@@ -7058,19 +7060,14 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    평문 그대로(색 없음) + @뒤 실시간 드롭다운만 — 이 규칙은 읽기용 인라인에만 적용. */
 .scr-feed-comments .scr-mreq-chip-inline {
   background: none; box-shadow: none; padding: 0; border-radius: 0;
-  /* 댓글 본문과 같은 크기로 흐르게(위에서 본문을 micro로 한 단계 더 줄였다). */
-  color: var(--point); font-weight: 700; font-size: var(--fs-micro);
+  /* 댓글 본문과 같은 크기로 흐르게. */
+  color: var(--point); font-weight: 700; font-size: var(--fs-caption);
   top: 0; margin: 0;
 }
 /* 라이트 테마의 --point는 검정(맥락별 용도)이라 멘션 강조로는 약하다 — 읽히는 앰버로. */
 html.scr-light-theme .scr-feed-comments .scr-mreq-chip-inline { color: #c07c1c; }
-/* 모바일 댓글 시트는 화면 전체를 쓰는 전용 화면이라 카드 안 미리보기보다 자리가
-   넉넉하다(지적: 시트 열렸을 땐 폰트 크기 1씩 확대) — 위에서 카드용으로 한 단계씩
-   줄인 값들을 시트 안에서만 한 단계 도로 올린다. 클래스 두 개짜리라(.scr-comment-sheet
-   .scr-feed-comments) 위 한 단계짜리 규칙보다 우선한다. */
-.scr-comment-sheet.scr-feed-comments .scr-mreq-item-text { font-size: var(--fs-caption); }
-.scr-comment-sheet.scr-feed-comments .scr-mreq-item-author-name { font-size: var(--fs-micro); }
-.scr-comment-sheet.scr-feed-comments .scr-mreq-chip-inline { font-size: var(--fs-caption); }
+/* (삭제) 모바일 댓글 시트 전용 "+1스텝" 규칙 — 카드용 크기를 caption/micro로 다시
+   키우면서 시트 크기와 똑같아져 더는 필요 없다. */
 /* 입력·수정창의 유저칩 — 좌우 패딩을 줄여 문장에 더 잘 섞이게(요청). */
 .scr-feed-shift-row { font-size: var(--fs-caption); }
 /* 윗줄 높이는 게임번호 줄이 스스로 정한다 — 예약은 필요 없다. */
