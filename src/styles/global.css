@@ -7814,13 +7814,8 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
      아래 기본 .scr-minimap-arrow-mark 규칙과 같은 값이어야 한다 — 같이 안 맞추면
      PC 미디어쿼리 쪽(38px)과도 다시 어긋난다. */
   font-size: 28px;
-  animation: scr-minimap-arrow-in 260ms ease-out, scr-minimap-beat 1.4s ease-in-out 260ms infinite;
-}
-@keyframes scr-minimap-beat {
-  0%, 100% { transform: translate(-50%, -50%) scale(1); }
-  18% { transform: translate(-50%, -50%) scale(1.16); }
-  36% { transform: translate(-50%, -50%) scale(1); }
-  54% { transform: translate(-50%, -50%) scale(1.1); }
+  /* 바운스 제거(요청) — 들어올 때 한 번 부드럽게 나타나기만 하고, 그 뒤로는 가만히 있는다. */
+  animation: scr-minimap-arrow-in 260ms ease-out;
 }
 @media (prefers-reduced-motion: reduce) {
   .scr-minimap-arrow-mark.scr-minimap-mark-home { animation: none; }
@@ -7849,25 +7844,19 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
   /* 본진 표시와 화살촉 끝 표시 크기를 통일한다(지적: "둘 다 크기 통일하라니까", 짝수로) —
      위 .scr-minimap-mark-home과 같은 28px. */
   font-size: 28px; line-height: 1; white-space: nowrap;
-  /* 이모지는 그림자가 아니라 테두리다(요청) — 번지는 그림자(drop-shadow blur)는 특히
-     모바일의 큰 이모지에서 아래로 짙게 깔려 지저분했다. 흐림 0의 상하좌우 네 겹으로
-     실루엣을 따라 도는 얇은 검은 테를 만든다 — 어떤 지형 색 위에서도 모양이 살고,
-     아래로 처지는 그늘은 생기지 않는다. */
-  filter:
-    drop-shadow(1px 0 0 #000) drop-shadow(-1px 0 0 #000)
-    drop-shadow(0 1px 0 #000) drop-shadow(0 -1px 0 #000);
+  /* 이모지는 그림자가 아니라 테두리다(요청) — 다만 filter의 drop-shadow를 네 번 겹치면
+     각 겹이 '앞 겹의 결과'에 다시 걸려 테가 두 겹, 세 겹으로 두꺼워진다(지적: 테두리 두께
+     축소). text-shadow는 언제나 원본 글리프에서 그려져 겹쳐도 굵어지지 않으므로, 같은
+     네 방향을 주면 딱 1px짜리 테 하나가 된다. */
+  text-shadow: 1px 0 0 #000, -1px 0 0 #000, 0 1px 0 #000, 0 -1px 0 #000;
 }
-/* 화살촉·출발 자리 표시 전용 바운스(요청: 화살표에 비해 액션 아이콘이 존재감이 약하다) —
-   본진 표시(.scr-minimap-mark-home)와 상태 얼굴(.scr-minimap-mark-face)은 각자 자기
-   transform을 쓰므로, 이 애니메이션이 그 transform을 덮어쓰지 않도록 여기서만 따로 준다. */
+/* 액션 이모지가 등장하는 방식 — 바운스(튀어나왔다 줄었다)는 뺐다(요청: 이모지 바운스 효과
+   제거). 그냥 부드럽게 떠오르기만 한다. transform은 절대 건드리지 않는다: 이 이모지들은
+   아바타 둘레의 고정 슬롯으로 밀어내는 인라인 transform을 쓰는데, 키프레임이 transform을
+   한 번이라도 선언하면(특히 both로 끝 상태를 물고 있으면) 그 인라인 값을 통째로 덮어써
+   이모지가 다시 아바타 한가운데로 돌아가 겹친다. */
 .scr-minimap-arrow-mark-pop {
-  animation: scr-minimap-mark-pop 420ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
-}
-@keyframes scr-minimap-mark-pop {
-  0% { transform: translate(-50%, -50%) scale(0.3); opacity: 0; }
-  55% { transform: translate(-50%, -50%) scale(1.3); opacity: 1; }
-  75% { transform: translate(-50%, -50%) scale(0.9); }
-  100% { transform: translate(-50%, -50%) scale(1); }
+  animation: scr-minimap-arrow-in 260ms ease-out;
 }
 @media (prefers-reduced-motion: reduce) {
   .scr-minimap-arrow-mark-pop { animation: none; }
@@ -7968,15 +7957,11 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
   .scr-minimap-arrow-mark.scr-minimap-mark-home { font-size: 42px; }
   .scr-minimap-arrow-mark { font-size: 42px; }
 }
-/* 승리 트로피는 다른 상태 얼굴과 다르게 취급한다(요청: "승리트로피도 28px로 확대 및
-   바운스") — 기본(모바일)은 28px 고정, 본진 이모지(scr-minimap-beat)와 같은 방식으로
-   계속 바운스한다. 아래에 둬 위 규칙(19/20/28px)보다 특이도 동률로 나중에 이겨야 한다. */
+/* 승리 트로피는 다른 상태 얼굴과 다르게 크게 둔다(요청: "승리트로피도 28px로 확대") —
+   기본(모바일)은 28px 고정. 바운스는 뺐다(요청). 아래에 둬 위 규칙(19/20/28px)보다
+   특이도 동률로 나중에 이겨야 한다. */
 .scr-minimap-mark-face.scr-minimap-mark-face-trophy {
   font-size: 28px;
-  animation: scr-minimap-beat 1.4s ease-in-out infinite;
-}
-@media (prefers-reduced-motion: reduce) {
-  .scr-minimap-mark-face.scr-minimap-mark-face-trophy { animation: none; }
 }
 /* 트로피도 PC에서는 다른 상태 얼굴(30px)만큼 커야 한다(지적: "PC에서 트로피 크기
    안커짐 — 다른 이모지들만큼 커야 함") — 위 고정값(28px)은 모바일 기준이라 PC에서
@@ -7997,10 +7982,10 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
      대신 궤멸은 다른 얼굴들보다 죽어 보여야 하니(요청: 딤 처리) 채도·밝기를 낮춘다.
      어떤 지형 색 위에서도 실루엣이 살아야 하니 검은 테는 그대로 둔다. */
   opacity: 0.75;
-  filter:
-    grayscale(0.6) brightness(0.85)
-    drop-shadow(1px 0 0 #000) drop-shadow(-1px 0 0 #000)
-    drop-shadow(0 1px 0 #000) drop-shadow(0 -1px 0 #000);
+  filter: grayscale(0.6) brightness(0.85);
+  /* 테는 filter가 아니라 text-shadow로 — 위 .scr-minimap-arrow-mark 주석 참고(겹쳐도
+     굵어지지 않는다). filter는 딤 처리만 맡는다. */
+  text-shadow: 1px 0 0 #000, -1px 0 0 #000, 0 1px 0 #000, 0 -1px 0 #000;
 }
 .scr-minimap-mark-downed .scr-minimap-mark-label { opacity: 0.72; }
 /* 트로피·공격자·당한 정도·아군 헬프 같은 상태 얼굴 — 해골과 같은 자리·크기로 붙인다
@@ -8009,13 +7994,11 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
 .scr-minimap-mark-face {
   position: absolute; left: -9px; top: -9px; transform: translate(-50%, -50%);
   z-index: 2; font-size: 13px; line-height: 1;
-  /* 이모지는 그림자가 아니라 테두리다(요청) — 번지는 그림자(drop-shadow blur)는 특히
-     모바일의 큰 이모지에서 아래로 짙게 깔려 지저분했다. 흐림 0의 상하좌우 네 겹으로
-     실루엣을 따라 도는 얇은 검은 테를 만든다 — 어떤 지형 색 위에서도 모양이 살고,
-     아래로 처지는 그늘은 생기지 않는다. */
-  filter:
-    drop-shadow(1px 0 0 #000) drop-shadow(-1px 0 0 #000)
-    drop-shadow(0 1px 0 #000) drop-shadow(0 -1px 0 #000);
+  /* 이모지는 그림자가 아니라 테두리다(요청) — 다만 filter의 drop-shadow를 네 번 겹치면
+     각 겹이 '앞 겹의 결과'에 다시 걸려 테가 두 겹, 세 겹으로 두꺼워진다(지적: 테두리 두께
+     축소). text-shadow는 언제나 원본 글리프에서 그려져 겹쳐도 굵어지지 않으므로, 같은
+     네 방향을 주면 딱 1px짜리 테 하나가 된다. */
+  text-shadow: 1px 0 0 #000, -1px 0 0 #000, 0 1px 0 #000, 0 -1px 0 #000;
 }
 /* 상태 얼굴은 대개 그 스냅의 주인공(featured, 큰 아바타) 자리에 붙는다 — 아바타가
    커진 만큼 얼굴도 함께 키우고, 어깨 자리도 그만큼 바깥으로 물린다(지적: 작은 아바타

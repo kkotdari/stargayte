@@ -1523,7 +1523,7 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
      상대 쪽으로 기우는 이야기(제 수가 역풍을 맞음·당함·무너짐)를 갈라 둔다. */
   const LATE_NEUTRAL = new Set([
     "standoff", "attrition", "fast-hands", "power-unit", "expand", "prod-gap", "worker-gap",
-    "tech", "vision", "no-detect", "revival", "greedy-build", "long-run",
+    "tech", "vision", "no-detect", "revival", "greedy-build", "long-run", "wall-in",
   ]);
   const LATE_AGAINST_ACTOR = new Set([
     "rush-backfire", "greedy-punished", "fallen", "lodging", "relocate", "lift-off", "gg", "stand",

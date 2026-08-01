@@ -72,6 +72,9 @@ const BEAT_MARK: Record<string, string> = {
      깃발(🚩)은 쓰지 않는다(요청). */
   center: "⚔️", "center-photon": "⚔️", defense: "🛡️", "front-defense": "🛡️",
   "late-defense": "🛡️",
+  /* 입구막기 — 방어탑이 아니라 살림 건물로 앞을 잠근 것이라 방패(막아섰다)와도, 창
+     (다투는 땅을 먹었다)과도 다르다. 제 집 앞을 벽돌로 쌓아 올린 그림 그대로 벽돌을 준다. */
+  "wall-in": "🧱",
   // 방패는 실제로 방어 건물을 세운 이야기에만 준다(지적: 유닛을 뽑은 것뿐인데 본진에
   // 방패가 뜬다) — 병력으로 맞선 이야기는 싸움이라 검 대결이 맞다.
   stand: "⚔️", "late-hold": "⚔️", standoff: "⚔️",
@@ -119,7 +122,7 @@ const POS_TRUSTED_VERSION = 2;
 const HOME_BEAT_KEYS = new Set([
   "expand", "upgrade", "upgrade-signature", "tech", "fast-tech", "vision", "no-detect",
   "greedy-build", "greedy-paid", "greedy-punished", "lodging", "relocate",
-  "defense", "front-defense", "late-defense", "side-tank", "revival", "fallen", "gg",
+  "defense", "front-defense", "late-defense", "wall-in", "side-tank", "revival", "fallen", "gg",
   "stand", "result", "standoff", "attrition", "fast-hands", "pro-like", "worker-gap",
   "prod-gap", "long-run", "late-hold", "lift-off",
 ]);

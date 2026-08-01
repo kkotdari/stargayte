@@ -22,6 +22,23 @@ const SUNKEN_RUSH_SEC = 7 * 60;
 // 포토러시로 볼 시간 창 — 이보다 늦게 상대 본진에 박는 포토는 러시가 아니라 조이기다.
 const CANNON_RUSH_SEC = 6 * 60;
 
+// 입구막기(wall-in)로 볼 시간 창 — 입구막기는 초반에 앞을 잠가 놓고 그 뒤에서 크는
+// 수라, 4분이 지나 앞쪽에 올린 살림 건물은 벽이 아니라 그냥 늘려 간 살림이다. 실측한
+// 아홉 판에서 5분 넘어 잡힌 것들은 전부 앞으로 뻗어 나간 건물 줄이었다.
+const WALL_IN_SEC = 4 * 60;
+/** 입구 쪽 살림 건물이 몇 채부터 '막았다'인가 — 한 채는 우연, 둘부터가 벽이다. */
+const WALL_IN_MIN = 2;
+/** 한 벽으로 볼 만큼 서로 붙어 있는 거리(타일) — 실제 입구막기는 서플·배럭 두세 채가
+ *  맞닿아 한 줄을 이룬다. 이보다 벌어지면 벽이 아니라 그냥 앞쪽에 지은 살림이다. */
+const WALL_SPAN = 7;
+/** 그 몇 채가 '한 번에' 올라간 것으로 볼 시간 — 벽은 잇달아 짓는다. */
+const WALL_BURST_SEC = 180;
+/** 그 자리 언저리에 있는 건물이 이보다 많으면 입구가 아니라 건물 밭이다(빠른무한처럼
+ *  살림이 빽빽한 판에서 앞쪽 건물이 열 채씩 잡히던 것을 막는다). */
+const WALL_CROWD_MAX = 4;
+/** 막은 뒤에 늘린 본진 + 새로 올린 테크 건물이 몇부터 '발전했다'인가. */
+const WALL_IN_GROW_MIN = 2;
+
 /** 짚어낸 전술 하나. 문구는 여기 없다 — 저장은 키와 재료로만 하고(replaySummaryData.ts의
  *  이유 참고) 문장은 replaySummaryText.ts가 만든다. */
 export interface Tactic {
@@ -1269,6 +1286,68 @@ function detectFor(c: Ctx): Tactic[] {
       key: "front-defense", weight: 8, at: lastOf(frontDef.at), who,
       p: { b: frontDef.b, n: frontDef.at.length },
     });
+  }
+
+  /* ── 입구 막고 발전하기(요청: "본진 입구를 막고 발전한거도 좋은 묘사 포인트임") ──
+     위 front-defense가 '입구에 방어탑을 세운' 이야기라면, 이건 방어탑이 아니라 살림
+     건물 자체로 길을 틀어막은 이야기다 — 서플·배럭으로 짜는 테란의 입구막기, 파일런·
+     게이트·포지로 짜는 프로토스의 그것. 스타에서 이건 방어가 아니라 '앞을 잠가 놓고
+     뒤에서 마음 놓고 크는' 운영의 시작이라, 방어탑 이야기와 뜻이 아예 다르다.
+
+     자리로만 보면 오탐이 아주 쉽다. 리플레이에 지형이 없어 램프가 어디인지 모르는데,
+     원래 본진 건물은 다 본진 안에 있고 그중 상대 쪽에 치우친 것이 몇 채 되는 일은 흔하다.
+     실측한 아홉 판(대부분 빠른무한)에서 '앞쪽 살림 건물'은 사람마다 열 채씩 잡혔다 —
+     파일런을 한 줄로 죽 늘어놓은 것이지 벽이 아니다. 그래서 조건을 넷 다 요구한다.
+      ① 저그는 아예 안 본다 — 해처리·에볼루션이 앞쪽에 모여 있는 건 입구막기가 아니라
+         멀티다. 입구막기는 서플·배럭(테란), 파일런·게이트·포지(프로토스)의 수다.
+      ② 초반이어야 하고(WALL_IN_SEC), 몇 채가 서로 붙은 채 잇달아 올라가야 하며,
+         그 언저리에 다른 건물이 잔뜩이면 입구가 아니라 건물 밭이다(아래 세 자).
+      ③ 그러고 나서 실제로 컸어야 한다("발전") — 막아 놓고 아무것도 안 했으면 할 얘기가
+         아니다. 막은 뒤에 늘린 본진이나 새로 올린 테크 건물로 본다.
+     이렇게 조이면 빠른무한에서는 거의 안 나온다. 그 판에서는 애초에 입구를 막는 수가
+     없거니와, 있다 해도 건물 밭과 구별할 근거가 없어서 말하지 않는 편이 맞다. */
+  {
+    const wallKinds = race === "프로토스"
+      ? ["Pylon", "Gateway", "Forge"]
+      : race === "테란" ? ["Supply Depot", "Barracks", "Engineering Bay"] : [];
+    const cand = wallKinds
+      .flatMap((b) => atFront(b))
+      .filter((b) => b.frame !== null && sec(b.frame) < WALL_IN_SEC)
+      .sort((a, b) => (a.frame ?? 0) - (b.frame ?? 0));
+    /* 앞쪽에 있다는 것만으로는 벽이 아니다 — 특히 빠른무한처럼 살림이 빽빽한 판에서는
+       상대 쪽으로 치우친 건물이 열 채씩 나온다(실측: 한 판에서 11채, 다른 판에서 10채).
+       벽은 '서로 붙어 있는 몇 채를 한 번에 세운 것'이라, 자리와 시각 둘 다로 좁힌다.
+        · 자리: 몇 타일 안에 모여 있어야 한다. 흩어져 있으면 그냥 살림이다.
+        · 시각: 그 몇 채가 잇달아 올라가야 한다. 몇 분씩 벌어지면 벽을 짠 게 아니다.
+        · 밀도: 그 자리 언저리에 다른 건물까지 잔뜩이면 입구가 아니라 그냥 건물 밭이다. */
+    const near = (a: BuildPos, b: BuildPos) => Math.hypot(a.x - b.x, a.y - b.y) <= WALL_SPAN;
+    const frontAll = geo ? s.buildPositions.filter(geo.front) : [];
+    const wall = cand.map((seed) => {
+      const g = cand.filter((b) => near(seed, b)
+        && Math.abs((b.frame ?? 0) - (seed.frame ?? 0)) * SECONDS_PER_FRAME <= WALL_BURST_SEC);
+      const crowd = frontAll.filter((b) => near(seed, b)).length;
+      return crowd <= WALL_CROWD_MAX ? g : [];
+    }).find((g) => g.length >= WALL_IN_MIN && g.length <= WALL_CROWD_MAX) ?? [];
+    const closed = lastOf(wall);
+    if (wall.length >= WALL_IN_MIN && closed !== null) {
+      const base = race === "프로토스" ? "Nexus" : "Command Center";
+      const tech = race === "프로토스"
+        ? ["Robotics Facility", "Stargate", "Citadel of Adun", "Templar Archives"]
+        : ["Factory", "Starport", "Science Facility", "Armory"];
+      // 막은 뒤에 늘린 본진과 새로 올린 테크 건물 — 벽을 이룬 건물 자체가 여기 다시
+      // 세어지지 않도록 '막은 시각 뒤'만 본다.
+      const grew = (s.buildingFrames[base] ?? []).filter((f) => f > closed).length
+        + tech.reduce((n, b) => n + (s.buildingFrames[b] ?? []).filter((f) => f > closed).length, 0);
+      if (grew >= WALL_IN_GROW_MIN) {
+        out.push({
+          // 몇 분에 잠겼나 — 첫 채가 아니라 마지막 한 채가 올라가 길이 닫힌 때다(문장에
+          // 실리는 시각 at과도 같아야 한다. 첫 채로 쓰면 "2분경"이라 말해 놓고 화면의
+          // 타임라인은 8분을 가리키는 어긋남이 난다).
+          key: "wall-in", weight: 11, at: closed, who,
+          p: { n: wall.length, min: Math.max(1, Math.round(sec(closed) / 60)) },
+        });
+      }
+    }
   }
 
   // ── 셋방살이(요청) ── 내 기지에는 건물이 거의 없고 아군 기지에 얹혀 있는 것(지적).

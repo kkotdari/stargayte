@@ -74,14 +74,12 @@ const HEAD_WIDE = 2.6;
  *  만큼 화살표를 줄여야 겹쳐서 정신없지 않다). 이모지를 15 → 26px로 키우면서(요청: 화살표에
  *  비해 액션 아이콘이 작음) 이 자리도 같은 비율로 늘린다 — 안 늘리면 커진 이모지가 화살촉과
  *  겹친다(지적: 화살표와 화살표 끝 이모지가 겹침). */
-const MARK_ROOM = 9;
+const MARK_ROOM = 12;
 /** 그 자리 안에서 이모지를 화살촉보다 이만큼 앞에 둔다. */
 const MARK_AHEAD = 5;
-/** 본진 이모지를 입구(맵 가운데) 쪽으로 이만큼 띄운다(타일) — 13 → 22(요청: 본진 한가운데
- *  느낌이 나게 자기 아바타에서 맵 중앙 쪽으로 많이 가서). */
-const MARK_OUT = 22;
-/** 이모지가 그림 밖으로 잘리지 않게 가장자리에서 남겨 두는 여백(타일). */
-const MARK_EDGE = 3;
+/* (삭제) 본진 이모지를 맵 가운데 쪽으로 멀리 띄우던 값(MARK_OUT/MARK_EDGE) — 이제 액션
+   이모지는 아바타의 '위 안쪽' 슬롯에 고정으로 앉는다(아래 markPlace). 멀리 띄우면 본진이
+   지도 어디에 있느냐에 따라 이름표·표정과 같은 칸에 몰리는 조합이 생겼다(지적). */
 
 /** 팀 색 — 미니맵은 지형 위라 채도가 낮으면 두 편이 잘 안 갈린다(요청: 팀 구분이
  *  더 확실하게). CSS의 마커 테두리 색과 같은 값을 쓴다. */
@@ -219,7 +217,12 @@ export default function ReplayMinimap({
     if (!frame) return;
     // 한 축을 재는 규칙 — 가로·세로 둘 다 같은 규칙을 쓴다(지적: "이름표 잘림이 양옆뿐
     // 아니라 위아래도 잘릴 수 있어서 그때도 보정 필요").
-    const clamp = (naturalMin: number, naturalMax: number, frameMin: number, frameMax: number): number => {
+    /* 가장자리에 딱 붙이지 않고 아주 살짝만 띄운다(요청) — 0으로 두면 이름표가 지도 선에
+       그대로 얹혀 잘린 것처럼 보인다. */
+    const EDGE_INSET = 4;
+    const clamp = (naturalMin: number, naturalMax: number, frameMin0: number, frameMax0: number): number => {
+      const frameMin = frameMin0 + EDGE_INSET;
+      const frameMax = frameMax0 - EDGE_INSET;
       if (naturalMax - naturalMin >= frameMax - frameMin) {
         // 이름표 자체가 프레임보다 크면(아주 긴 닉네임) 어느 한쪽도 완전히는 못 담는다 —
         // 그럴 땐 한가운데로 맞춰 최대한 보이게 한다.
@@ -250,63 +253,81 @@ export default function ReplayMinimap({
     return () => window.removeEventListener("resize", measure);
   }, [bases, grid]);
 
+  /* ── 아바타 둘레의 고정 슬롯(요청) ──
+     닉네임은 아래 바깥쪽, 표정은 위 바깥쪽, 액션 이모지는 위 안쪽, 해골은 아래 안쪽.
+     넷이 서로 다른 칸을 쓰므로 본진이 지도 어디에 있든 절대 포개지지 않는다.
+
+     예전에는 셋이 저마다 다른 규칙으로 자리를 잡았다 — 이름표는 '지도 바깥 방향', 표정은
+     CSS에 왼쪽 위 고정, 액션은 '본진에서 맵 한가운데를 잇는 선 위'. 그래서 본진 위치에
+     따라 두셋이 같은 칸에 몰리는 조합이 생겼다(지적: 닉네임·표정·액션 이모지가 겹친다).
+
+     '바깥쪽/안쪽'은 맵 한가운데를 기준으로 한 가로 방향이다. 세로는 방향을 안 나눈다 —
+     위/아래를 슬롯으로 고정하는 편이 규칙이 단순하고, 어차피 넘치면 아래 실측 보정
+     (labelFix)이 지도 안으로 되돌린다. */
+  /** 가로 중앙선에 거의 걸친(12시·6시) 본진은 어느 쪽도 아니다 — 그때는 왼쪽을 바깥으로
+   *  친다. 0에 아주 가까운 값을 "왼쪽이 아니면 오른쪽"으로 갈라 버리면 늘 한쪽으로 쏠린다. */
+  const CENTER_EPS = 4;
+  const outwardX = (m: MinimapMarker): -1 | 1 => {
+    const dx = m.x - grid.width / 2;
+    return Math.abs(dx) < CENTER_EPS ? -1 : dx < 0 ? -1 : 1;
+  };
+  /** 표정·해골이 앉는 어깨까지의 거리. 주인공(featured)은 아바타가 커지므로 그만큼
+   *  바깥으로 물린다 — 작은 아바타 기준값 그대로 두면 큰 아바타 안쪽에 파묻힌다(예전에
+   *  CSS의 .scr-minimap-mark-on 규칙이 하던 일인데, 이제 자리는 인라인이 정하므로
+   *  여기서 갈라야 한다). */
+  const shoulderOf = (m: MinimapMarker) => (m.featured ? 13 : 9);
+  /** 액션 이모지가 앉는 자리 — 단위가 px가 아니라 em인 것이 요점이다.
+   *
+   *  이 이모지는 화면마다 크기가 다르다(모바일 22px / PC 42px). px로 띄우면 한쪽에서
+   *  맞춘 간격이 다른 쪽에서 무너진다 — PC 42px짜리 글리프는 가로로만 52px을 먹어서,
+   *  20px쯤 옆으로 민 정도로는 반대쪽 어깨에 앉은 표정을 그대로 덮었다(실측: 모바일·PC
+   *  양쪽에서 face ✕ action, PC에서는 skull ✕ action까지). em은 그 요소 제 글자 크기를
+   *  따르므로 두 화면에서 같은 비율의 여백이 나온다.
+   *
+   *  값의 근거(글리프 상자는 대략 가로 1.25em, 세로 1em):
+   *   · 가로 0.8em — 상자의 반(0.62em)에 표정 상자의 반(어깨 9px 바깥)까지 얹어도 남는다.
+   *   · 세로 0.65em — 상자 아래끝(0.65 - 0.5 = 0.15em 위)이 아래 안쪽 해골(+9px)보다 위다.
+   *
+   *  가장자리 본진에서는 이 이모지가 지도 밖으로 조금 나간다 — 아바타·해골이 이미 그렇고,
+   *  지도는 일부러 자르지 않는다(global.css의 .scr-minimap overflow 주석). 안으로 당기면
+   *  본진 자리에 따라 표정·이름표와 같은 칸에 몰리는, 원래 고치려던 문제로 되돌아간다. */
+  const ACTION_X = 0.8;
+  const ACTION_Y = 0.65;
+
   const place = (m: MinimapMarker) => ({
     left: `${(m.x / grid.width) * 100}%`,
     top: `${(m.y / grid.height) * 100}%`,
   });
-
-  /** 본진 이모지 자리 — 본진과 맵 한가운데를 잇는 선 위에 올린다(요청). 전에는 가로로만
-   *  띄웠던 탓에, 가운데와 세로로 마주 보는(12시·6시) 본진의 이모지가 선을 벗어나 엉뚱하게
-   *  맵 바깥쪽으로 밀려났다(지적: 왜 자꾸 맵 외곽에 위치하냐). */
-  const markPoint = (m: MinimapMarker): [number, number] => {
-    const dx = grid.width / 2 - m.x;
-    const dy = grid.height / 2 - m.y;
-    const len = Math.hypot(dx, dy) || 1;
-    // 가운데를 지나쳐 반대편으로 넘어가지 않게 거리도 함께 줄인다.
-    const out = Math.min(MARK_OUT, len * 0.7);
-    const px = m.x + (dx / len) * out;
-    const py = m.y + (dy / len) * out;
-    return [
-      Math.min(grid.width - MARK_EDGE, Math.max(MARK_EDGE, px)),
-      Math.min(grid.height - MARK_EDGE, Math.max(MARK_EDGE, py)),
-    ];
+  /** 표정 = 위 바깥쪽 / 해골 = 아래 안쪽. */
+  const shoulder = (m: MinimapMarker, kind: "face" | "skull") => {
+    const d = shoulderOf(m);
+    return kind === "face"
+      ? { left: `${outwardX(m) * d}px`, top: `${-d}px` }
+      : { left: `${-outwardX(m) * d}px`, top: `${d}px` };
   };
 
-  const markPlace = (m: MinimapMarker) => {
-    const [x, y] = markPoint(m);
-    return {
-      left: `${(x / grid.width) * 100}%`,
-      top: `${(y / grid.height) * 100}%`,
-    };
-  };
+  /** 본진 액션 이모지 = 위 안쪽. CSS의 translate(-50%,-50%)를 여기서 다시 써야 한다 —
+   *  인라인 transform이 그 규칙을 덮어쓰기 때문이다. */
+  const markPlace = (m: MinimapMarker) => ({
+    left: `${(m.x / grid.width) * 100}%`,
+    top: `${(m.y / grid.height) * 100}%`,
+    transform: `translate(calc(-50% + ${-outwardX(m) * ACTION_X}em), calc(-50% - ${ACTION_Y}em))`,
+  });
 
-  /** 이름표는 본진 바깥쪽(테두리 쪽)에 붙이되 지도를 벗어나지는 않게 한다(요청).
-   *  방향은 예전 그대로 바깥이다 — 안쪽으로 밀어 봤더니 이름표가 지도 한복판으로 들어와
-   *  지형과 화살표를 덮었다(지적: 안쪽으로 옮기지 말고 테두리 쪽에 두라는 얘기였다).
-   *  넘어가는 것은 아래 실측 보정(labelFix)이 지도 가장자리에서 되돌려 준다 — 그래서
-   *  가장자리 본진의 이름표는 테두리에 딱 붙어 앉는다. */
-  // 아바타를 CSS scale로 키우면서(요청: 평상시 크기 확대) 세로 간격이 빡빡해졌다(지적:
-  // 확대 상태를 고려해 아바타·닉네임 세로 갭을 조금 늘려야 함) — 20 → 26.
+  /** 닉네임 = 아래 바깥쪽. 아바타를 CSS scale로 키우면서 세로 간격이 빡빡해져(지적)
+   *  아래로 26px 띄운다. 가로로는 살짝만 — 크게 밀면 지도를 쉽게 벗어난다. */
   const LABEL_OUT_Y = 26;
   const LABEL_OUT_X = 8;
-  /** 가로 중앙선에 거의 걸친(예: 12시·6시) 본진은 옆으로 밀지 않고 가운데 정렬한다
-   *  (지적: "12시 6시 이름표는 왜 우측으로 옮겨짐? 가운데 정렬해도 되는데") — dx가 0에
-   *  아주 가까운 값도 "왼쪽이 아니면 오른쪽"으로 갈라 버리면 늘 한쪽(오른쪽)으로 쏠린다. */
-  const CENTER_EPS = 4;
   const labelPlace = (m: MinimapMarker) => {
     const dx = m.x - grid.width / 2;
-    const dy = m.y - grid.height / 2;
-    // 부호가 바깥(테두리) 방향이다 — 왼쪽 본진이면 왼쪽으로, 위쪽 본진이면 위로.
-    const ox = Math.abs(dx) < CENTER_EPS ? 0 : dx < 0 ? -LABEL_OUT_X : LABEL_OUT_X;
-    const oy = Math.abs(dy) < CENTER_EPS ? LABEL_OUT_Y : dy < 0 ? -LABEL_OUT_Y : LABEL_OUT_Y;
+    const ox = Math.abs(dx) < CENTER_EPS ? 0 : outwardX(m) * LABEL_OUT_X;
     // 이름표는 밀려난 방향과 같은 쪽으로 자라야 한다 — 반대로 자라면 그 길이만큼
     // 도로 아바타를 덮는다(지적: 아바타·닉네임은 겹치면 안 된다).
     const anchorX = ox < -0.5 ? "-100%" : ox > 0.5 ? "0%" : "-50%";
-    const anchorY = oy < -0.5 ? "-100%" : oy > 0.5 ? "0%" : "-50%";
     return {
       left: `${(m.x / grid.width) * 100}%`,
       top: `${(m.y / grid.height) * 100}%`,
-      transform: `translate(calc(${anchorX} + ${ox.toFixed(1)}px), calc(${anchorY} + ${oy.toFixed(1)}px))`,
+      transform: `translate(calc(${anchorX} + ${ox.toFixed(1)}px), calc(0% + ${LABEL_OUT_Y}px))`,
     };
   };
   // 그릴 화살표만 미리 계산한다 — 몸통 레이어와 머리 레이어가 같은 값을 쓴다.
@@ -373,7 +394,12 @@ export default function ReplayMinimap({
               통일되면서(요청) 여기도 아이콘 컴포넌트 대신 이모지로 맞추고, 딤 처리는 CSS
               필터로 남긴다. */}
           {m.downed && (
-            <span className="scr-minimap-mark-skull" role="img" aria-label="궤멸">💀</span>
+            <span
+              className="scr-minimap-mark-skull" role="img" aria-label="궤멸"
+              style={shoulder(m, "skull")}
+            >
+              💀
+            </span>
           )}
           {/* 트로피·공격자·당한 정도·아군 헬프 같은 상태 얼굴 — 해골과 같은 자리·크기로
               아바타 반대쪽 어깨에 붙인다(지적: 상태 얼굴도 해골처럼 아바타에 바짝 붙어야
@@ -381,6 +407,7 @@ export default function ReplayMinimap({
           {m.face && (
             <span
               className={cx("scr-minimap-mark-face", m.faceIsTrophy && "scr-minimap-mark-face-trophy")}
+              style={shoulder(m, "face")}
               aria-hidden
             >
               {m.face}
