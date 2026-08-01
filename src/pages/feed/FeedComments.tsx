@@ -637,29 +637,31 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
           submitLabel={<CornerDownLeft size={14} />}
         />
       ) : (
-        // 수정/삭제 버튼을 댓글 바로 옆으로(지적: 예전엔 위쪽 작성자 줄 오른쪽 끝에 있어
-        // 댓글 내용과 멀리 떨어져 보였다) — 내용과 한 줄에 나란히 둔다.
-        <div className="scr-feed-note-body-row">
-          <p className="scr-mreq-item-text scr-feed-note-text">{renderInline(c.text, c.mentions)}</p>
+        // 수정/삭제 버튼을 댓글 내용이 끝나는 자리 바로 옆에 붙인다(지적: 오른쪽 끝이
+        // 아니라 내용이 끝나는 부분 옆으로) — 같은 <p> 안에 이어 붙여, 텍스트와 한
+        // 흐름으로 줄바꿈되게 한다(글이 짧으면 글자 바로 뒤에, 길어서 꽉 차면 마지막
+        // 줄로 자연스럽게 넘어간다). 별도 flex 줄로 두면 늘 오른쪽 끝에 떨어져 붙는다.
+        <p className="scr-mreq-item-text scr-feed-note-text">
+          {renderInline(c.text, c.mentions)}
           {interactive && c.canEdit && (
-            <div className="scr-mreq-item-actions scr-feed-note-actions">
+            <span className="scr-mreq-item-actions scr-feed-note-actions">
               <button
                 type="button" className="scr-feed-note-icon-btn"
                 onClick={() => { setErr(null); setEditingId(c.id); }}
                 aria-label="수정"
               >
-                <Pencil size={13} />
+                <Pencil size={11} />
               </button>
               <button
                 type="button" className="scr-feed-note-icon-btn scr-feed-note-icon-danger"
                 onClick={() => setDeleteTarget(c)}
                 aria-label="삭제"
               >
-                <Trash2 size={13} />
+                <Trash2 size={11} />
               </button>
-            </div>
+            </span>
           )}
-        </div>
+        </p>
       )}
     </li>
   );

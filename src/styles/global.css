@@ -2928,12 +2928,16 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
 .scr-feed-note-item .scr-mreq-item-top { margin-bottom: 3px; }
 .scr-feed-note-time { font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; flex-shrink: 0; }
 .scr-feed-note-text { font-size: var(--fs-micro); }
-/* 수정·삭제 버튼을 댓글 내용 바로 옆에(지적: 예전엔 위쪽 작성자 줄 오른쪽 끝에 있어
-   내용과 멀리 떨어져 보였다) — 내용과 한 줄에 나란히 둔다. 여러 줄로 늘어나는 긴
-   댓글도 있어 flex-start로 위쪽을 맞춘다. */
-.scr-feed-note-body-row { display: flex; align-items: flex-start; gap: 6px; }
-.scr-feed-note-body-row .scr-feed-note-text { flex: 1 1 auto; min-width: 0; margin: 0; }
-.scr-feed-note-actions { flex-shrink: 0; margin-top: 1px; }
+/* 수정·삭제 버튼을 댓글 내용이 끝나는 자리에(지적: 오른쪽 끝이 아니라 내용이 끝나는
+   부분 바로 옆으로) — 텍스트가 담긴 <p> 안에 이어 붙는 인라인 요소라, 글이 짧으면
+   글자 바로 뒤에 붙고 길어서 줄이 꽉 차면 마지막 줄로 자연스럽게 넘어간다. */
+.scr-feed-note-actions {
+  display: inline-flex; align-items: center; gap: 2px;
+  margin-left: 3px; vertical-align: -2px;
+}
+/* 버튼이 댓글 글자보다 상대적으로 커 보였다(지적: 댓글 내용과 크기 맞추기) — 아이콘도
+   13→11px로, 버튼 여백도 3→2px로 줄여 본문 글자(micro, 12px) 크기에 맞춘다. */
+.scr-feed-note-actions .scr-feed-note-icon-btn { padding: 2px; }
 /* 메모 영역 전체를 한 스텝 작게(요청) — 목록 텍스트·입력창·버튼 폰트/크기를 함께 줄인다.
    입력 편집기(scr-mreq-*)는 --field-h를 지역 재정의해 높이만 줄이고, 폰트/칩/버튼은 아래에서
    개별로 한 스텝 낮춘다. */
@@ -7570,11 +7574,9 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
   overscroll-behavior: contain; touch-action: pan-y;
 }
 .scr-comment-sheet-empty { margin: 14px 0; text-align: center; font-size: var(--fs-micro); color: var(--muted); }
-/* 수정/삭제 아이콘도 닫기(X)와 같은 이유로 여백선보다 안쪽에 앉는다 — 아이콘(13px)이
-   패딩 3px짜리 버튼 안에 있고, 댓글 항목(.scr-mreq-item)이 좌우 2px을 더 갖기 때문이다.
-   합 5px만큼 묶음을 바깥으로 밀어 아이콘을 헤더의 X와 같은 선에 세운다(지적: 닫기 버튼보다
-   오른쪽 여백이 커 보인다). */
-.scr-comment-sheet .scr-mreq-item-actions { margin-right: -5px; }
+/* (삭제) 수정/삭제 아이콘을 헤더 X와 같은 선에 세우던 -5px 보정 — 그 시절엔 아이콘
+   묶음이 항목의 오른쪽 끝에 붙는 별도 줄이었다. 이제는 댓글 내용 뒤에 이어 붙는
+   인라인 요소라(위 .scr-feed-note-actions) 오른쪽 끝에 고정되지 않으므로 더는 맞지 않다. */
 /* 수정 취소 버튼 — 등록(프라이머리 솔리드) 옆에 같은 크기로, 톤만 조용하게. */
 .scr-mreq-cancel-btn {
   background: rgba(var(--overlay-rgb), 0.1); border: none; color: var(--dim); box-shadow: none;
