@@ -34,16 +34,10 @@ const PERIOD_ALL = "all";
 // 기간 드롭다운이 늘어놓을 월의 상한 — 첫 경기 조회가 이상한 값을 주더라도 목록이
 // 무한정 길어지지 않게 막는 안전장치일 뿐, 정상 상황에서는 걸리지 않는다.
 const MAX_PERIOD_MONTHS = 240;
-/* 세부 지표(승률·APM·커맨드)를 보여줄 최소 판수 — 못 채운 회원은 게임수만 보이고 나머지는
-   가린다(표본이 적으면 값이 왜곡된다). 유형마다 기준이 다르다: 개인전은 결과가 온전히 그
-   사람 몫이라 팀전보다 적어도 되지만, 팀전은 한 판의 결과를 넷이 나눠 갖는 자리라 그만큼
-   표본이 얕다. 한때 1/5까지 낮췄다가(요청) 다시 3/10으로 올렸다(지적: 다시 올려 달라) —
-   표본이 너무 적으면 세부 지표가 흔들린다는 판단이다. 백엔드도 같은 기준으로 포인트를
-   내린다(game_results/service.py의 _MIN_PLAYS_FOR_RANK) — 두 값은 같이 움직여야 하는데,
-   그 백엔드 값은 이 저장소 밖에 있어 여기서 함께 바꿀 수 없다. 그래서 포인트·순위도
-   프론트에서 이 기준으로 한 번 더 가린다(MemberStatRow의 belowMinPlays) — 백엔드가 아직
-   옛 기준으로 내려주더라도 화면은 항상 지금 기준을 따른다. */
-const MIN_PLAYS_BY_TYPE: Record<GameType, number> = { "0101": 3, "0102": 10 };
+/* 세부 지표(승률·APM·커맨드·포인트·순위) 표본 미달 판정은 백엔드가 전담한다(요청: 프론트에서
+   경기수로 필터링하는 것 자체를 없앰) — 프론트는 그 값을 그대로 보여주고, null이면 "-"로만
+   바꾼다. 최소 판수 기준(game_results/service.py의 _MIN_PLAYS_FOR_RANK)이 바뀌어도 여기는
+   손댈 게 없다. */
 // 지난 기간의 각 칸 1·2·3위에 붙일 메달(요청) — 순서가 곧 등수다.
 const MEDALS = ["🥇", "🥈", "🥉"];
 
@@ -255,9 +249,6 @@ export default function StatsScreenV2() {
     return () => { cancelled = true; };
   }, [debouncedQuery]);
 
-  // 지금 보고 있는 유형의 최소 판수(위 MIN_PLAYS_BY_TYPE).
-  const minPlays = MIN_PLAYS_BY_TYPE[matchType];
-
   const cards = useMemo(() => {
     const list = matchedMembers.map((m) => {
       const entry = statsByMember[m.id];
@@ -276,19 +267,11 @@ export default function StatsScreenV2() {
       if (b.stats.plays === 0) return -1;
       return 0;
     };
-    // 최소 게임수(minPlays) 미달이면 승률/APM/커맨드는 화면에 "-"로 가려지므로,
-    // 그 값 기준으로 정렬할 땐(게임수 자체로 정렬할 때는 제외) 진짜 데이터가 있는 회원
-    // 뒤로 보낸다 — 안 그러면 "-"로 표시되는 행이 값 있는 행들 사이에 뒤섞여 보인다.
-    const belowMinLast = (a: (typeof list)[number], b: (typeof list)[number]) => {
-      const aBelow = a.stats.plays < minPlays, bBelow = b.stats.plays < minPlays;
-      if (aBelow && bBelow) return nicknameTiebreak(a, b);
-      if (aBelow) return 1;
-      if (bBelow) return -1;
-      return 0;
-    };
+    // 값이 없는(null) 회원을 뒤로 보낸다 — 표본 미달 판정은 백엔드가 이미 null로 내려주므로
+    // (요청: 프론트에서 경기수로 필터링하지 않음) 여기서는 그 null 여부만 본다.
     const noAvgLast = (a: (typeof list)[number], b: (typeof list)[number], key: "avgApm" | "avgCmd" | "avgBuild") => {
-      const aMissing = a.stats.plays < minPlays || a.stats[key] === null;
-      const bMissing = b.stats.plays < minPlays || b.stats[key] === null;
+      const aMissing = a.stats[key] === null;
+      const bMissing = b.stats[key] === null;
       if (aMissing && bMissing) return nicknameTiebreak(a, b);
       if (aMissing) return 1;
       if (bMissing) return -1;
@@ -316,7 +299,7 @@ export default function StatsScreenV2() {
       sorted.sort((a, b) => dirSign * a.member.nickname.localeCompare(b.member.nickname));
     }
     if (sort.key === "rate") {
-      sorted.sort((a, b) => belowMinLast(a, b) || dirSign * (a.stats.winRate - b.stats.winRate) || dirSign * (a.stats.plays - b.stats.plays) || nicknameTiebreak(a, b));
+      sorted.sort((a, b) => noPlaysLast(a, b) || dirSign * (a.stats.winRate - b.stats.winRate) || dirSign * (a.stats.plays - b.stats.plays) || nicknameTiebreak(a, b));
     }
     if (sort.key === "plays") {
       sorted.sort((a, b) => noPlaysLast(a, b) || dirSign * (a.stats.plays - b.stats.plays) || nicknameTiebreak(a, b));
@@ -331,7 +314,7 @@ export default function StatsScreenV2() {
       sorted.sort((a, b) => noAvgLast(a, b, "avgCmd") || dirSign * ((a.stats.avgCmd ?? 0) - (b.stats.avgCmd ?? 0)) || nicknameTiebreak(a, b));
     }
     return sorted;
-  }, [matchedMembers, statsByMember, sort, race, minPlays]);
+  }, [matchedMembers, statsByMember, sort, race]);
 
   // 지금 몇 위인가 — 서버가 매긴 자리번호(sortOrder)로 줄을 세우고 완전 동률(tieGroup)은
   // 공동순위(1,1,3)로 묶는다. 백엔드가 순위표를 만들 때 쓰는 규칙(_compute_standings)과
@@ -389,7 +372,6 @@ export default function StatsScreenV2() {
         return {
           id: m.id, stats,
           points: entry?.rankScore != null ? Math.round(entry.rankScore) : null,
-          below: stats.plays < minPlays,
         };
       });
     const give = (
@@ -407,12 +389,12 @@ export default function StatsScreenV2() {
     };
     give("points", (c) => c.points);
     give("plays", (c) => (c.stats.plays > 0 ? c.stats.plays : null));
-    give("rate", (c) => (c.below || c.stats.plays === 0 ? null : c.stats.winRate));
-    give("build", (c) => (c.below ? null : c.stats.avgBuild));
-    give("apm", (c) => (c.below ? null : c.stats.avgApm));
-    give("cmd", (c) => (c.below ? null : c.stats.avgCmd));
+    give("rate", (c) => (c.stats.plays === 0 ? null : c.stats.winRate));
+    give("build", (c) => c.stats.avgBuild);
+    give("apm", (c) => c.stats.avgApm);
+    give("cmd", (c) => c.stats.avgCmd);
     return out;
-  }, [members, statsByMember, race, period, minPlays]);
+  }, [members, statsByMember, race, period]);
 
   const maxOverallPlays = useMemo(
     () => Math.max(1, ...cards.map((c) => c.stats.plays)), [cards],
@@ -455,45 +437,33 @@ export default function StatsScreenV2() {
         // 필터창(분류/종족/기간 세 덩어리)은 없앴다(요청) — 그 셋을 목록 바로 위의 제목
         // 문장으로 옮겼다. 제목이 곧 지금 걸린 조건이라 따로 읽을 필터 UI가 없다.
         heading={
-          <div className="scr-stats-heading">
-            <div className="scr-grid-title">
+          <div className="scr-grid-title">
+            <Select
+              className="scr-sentence-select" value={period} options={periodOpts}
+              onChange={setPeriod} minDropWidth={150}
+            />
+            <Select
+              className="scr-sentence-select" value={matchType} options={TYPE_SELECT_OPTS}
+              onChange={(v) => setMatchType(v as GameType)} minDropWidth={120}
+            />
+            {/* 마지막 낱말과 초기화는 한 덩어리로 — 줄이 좁아 넘칠 때 초기화만 다음 줄에
+                외따로 떨어지지 않게 한다. */}
+            <span className="scr-grid-title-tail">
               <Select
-                className="scr-sentence-select" value={period} options={periodOpts}
-                onChange={setPeriod} minDropWidth={150}
+                className="scr-sentence-select" value={race} options={RACE_SELECT_OPTS}
+                onChange={(v) => setRace(v as BaseRace | "all")} minDropWidth={130}
               />
-              <Select
-                className="scr-sentence-select" value={matchType} options={TYPE_SELECT_OPTS}
-                onChange={(v) => setMatchType(v as GameType)} minDropWidth={120}
-              />
-              {/* 마지막 낱말과 초기화는 한 덩어리로 — 줄이 좁아 넘칠 때 초기화만 다음 줄에
-                  외따로 떨어지지 않게 한다. */}
-              <span className="scr-grid-title-tail">
-                <Select
-                  className="scr-sentence-select" value={race} options={RACE_SELECT_OPTS}
-                  onChange={(v) => setRace(v as BaseRace | "all")} minDropWidth={130}
-                />
-                {/* 초기화(요청) — 문장 끝에 붙여 기간·종족을 한 번에 되돌린다(분류는 유지).
-                    이미 기본값이면 누를 게 없으니 흐리게 죽여 둔다. 검색어(유저)는 이 문장
-                    밖의 별개 필터라 건드리지 않는다 — 칩마다 제 ×가 있다. */}
-                <button
-                  type="button" className="scr-grid-title-reset"
-                  onClick={resetFilters} disabled={isDefaultFilter}
-                  aria-label="필터 초기화" title="필터 초기화"
-                >
-                  <RotateCcw size={14} aria-hidden />
-                </button>
-              </span>
-            </div>
-            {/* 분류 아래에 최소 참여 기준을 늘 보이는 글줄로 둔다(지적: 필터 옆에 몇 게임
-                이상 참여한 경우만 집계된다는 설명 표시 — 눌러야 보이는 툴팁이 아니라 그냥
-                텍스트로 기본 노출) — 안 그러면 왜 어떤 회원은 게임수만 보이고 승률·생산·
-                APM·커맨드·포인트가 "-"인지 알 길이 없다.
-                지금 고른 분류(개인전/팀전)에 맞는 판수만 짧게 말한다(지적: 문구가 길고
-                양쪽 기준을 다 늘어놓을 필요는 없다) — 나머지 분류 기준은 분류를 바꿔야
-                보이므로 지금 화면과는 무관하다. */}
-            <p className="scr-stats-min-plays-note">
-              {minPlays}판 이상 경기한 사람만 집계됩니다.
-            </p>
+              {/* 초기화(요청) — 문장 끝에 붙여 기간·종족을 한 번에 되돌린다(분류는 유지).
+                  이미 기본값이면 누를 게 없으니 흐리게 죽여 둔다. 검색어(유저)는 이 문장
+                  밖의 별개 필터라 건드리지 않는다 — 칩마다 제 ×가 있다. */}
+              <button
+                type="button" className="scr-grid-title-reset"
+                onClick={resetFilters} disabled={isDefaultFilter}
+                aria-label="필터 초기화" title="필터 초기화"
+              >
+                <RotateCcw size={14} aria-hidden />
+              </button>
+            </span>
           </div>
         }
       />
@@ -552,7 +522,6 @@ export default function StatsScreenV2() {
                   rankDelta={rankDeltaByMember.get(c.member.id) ?? null}
                   onPointsClick={() => setPointMember(c.member)}
                   medals={medalByMember.get(c.member.id)}
-                  belowMinPlays={c.stats.plays < minPlays}
                   compact
                   maxOverallPlays={maxOverallPlays}
                   maxBuild={maxBuild}
