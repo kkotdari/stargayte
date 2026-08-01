@@ -175,10 +175,11 @@ export interface MinimapMarker {
   /** 본진에 붙일 이모지 — 화살표가 없는 이야기(생산·테크·경제)에 쓴다(요청: 생산에도 본진에
    *  열심히 생산하는 이모지). 본진 한가운데에 얹는다 — 그 본진에서 벌어진 일이니까. */
   mark?: string;
-  /** 그 일이 본진 안이 아니라 '입구'에서 벌어졌나(입구막기·입구 방어) — 그러면 이모지를
-   *  본진 한가운데가 아니라 상대 쪽(=입구 쪽)으로 밀어 그린다(요청: "벽을 쌓는 입구
-   *  막기는 입구쪽에 나와야 자연스럽고"). */
-  markAtFront?: boolean;
+  /** 그 이모지를 얹을 자리(타일) — 본진이 아닌 곳에서 벌어진 일에 쓴다. 입구막기·입구
+   *  방어가 그렇다: 그건 본진 안이 아니라 나가는 길목의 이야기라, 이모지도 진짜 입구
+   *  자리에 서야 한다(지적: "입구도 본진 입구를 말한 거야 아바타 위가 아니라").
+   *  없으면 본진 자리(x, y) 그대로 — 그 본진에서 벌어진 일이니까. */
+  markAt?: [number, number];
   /** 아바타 위에 겹쳐 그리는 상태 얼굴 — 트로피·공격자·당한 정도·아군 헬프처럼 그 사람
    *  자체를 가리키는 표시에 쓴다(요청: 해골·트로피 말고도 아바타로 상태를 알려 달라). */
   face?: string;
@@ -211,6 +212,8 @@ export default function ReplayMinimap({
    *  했으니(labelPlace) 넘어가면 안 되는 선도 지도 가장자리다. */
   const frameRef = useRef<HTMLDivElement>(null);
   const labelElsRef = useRef<Map<string, HTMLSpanElement>>(new Map());
+  /** 본진 액션 이모지 엘리먼트 — 이름표가 그 위에 얹히지 않게 실제 자리를 재는 데 쓴다. */
+  const markElsRef = useRef<Map<string, HTMLSpanElement>>(new Map());
   const [labelFix, setLabelFix] = useState<Map<string, { x: number; y: number }>>(new Map());
   // 리사이즈 리스너가 오래 살아 있는 동안 labelFix state가 여러 번 바뀔 수 있다 — 리스너
   // 클로저 안의 값은 등록 시점에 멈춰 있으므로(오래된 값), ref로 늘 최신 값을 읽는다.
@@ -224,6 +227,8 @@ export default function ReplayMinimap({
     /* 가장자리에 딱 붙이지 않고 아주 살짝만 띄운다(요청) — 0으로 두면 이름표가 지도 선에
        그대로 얹혀 잘린 것처럼 보인다. */
     const EDGE_INSET = 4;
+    /** 이름표가 액션 이모지를 피해 내려설 때 두는 사이 간격. */
+    const MARK_DODGE_GAP = 3;
     const clamp = (naturalMin: number, naturalMax: number, frameMin0: number, frameMax0: number): number => {
       const frameMin = frameMin0 + EDGE_INSET;
       const frameMax = frameMax0 - EDGE_INSET;
@@ -245,8 +250,20 @@ export default function ReplayMinimap({
         // 매번 자기 자신 위에 쌓여 점점 커진다.
         const prev = labelFixRef.current.get(key) ?? { x: 0, y: 0 };
         const box = el.getBoundingClientRect();
+        const top0 = box.top - prev.y;
+        const bottom0 = box.bottom - prev.y;
+        /* 액션 이모지가 이름표 자리를 덮었으면 그만큼 아래로 비켜선다. 이모지는 이제
+           아바타에 딸린 표시가 아니라 '그 일이 벌어진 타일'에 서므로(markPlace), 본진이
+           지도 위쪽이고 입구가 아래인 조합에서는 이름표 자리에 그대로 내려앉는다(실측:
+           벽돌이 닉네임 글자 위에 앉았다). 어림값으로는 못 막는다 — 이모지 크기도
+           화면마다 다르고 입구까지의 거리도 본진마다 달라서, 여기서 실제로 잰다. */
+        const markBox = markElsRef.current.get(key)?.getBoundingClientRect();
+        const dodge = markBox
+          && markBox.bottom > top0 && markBox.top < bottom0
+          && markBox.right > box.left - prev.x && markBox.left < box.right - prev.x
+          ? markBox.bottom + MARK_DODGE_GAP - top0 : 0;
         const fixX = clamp(box.left - prev.x, box.right - prev.x, frameBox.left, frameBox.right);
-        const fixY = clamp(box.top - prev.y, box.bottom - prev.y, frameBox.top, frameBox.bottom);
+        const fixY = dodge + clamp(top0 + dodge, bottom0 + dodge, frameBox.top, frameBox.bottom);
         if (Math.abs(fixX) > 0.5 || Math.abs(fixY) > 0.5) { next.set(key, { x: fixX, y: fixY }); changed = true; }
         else if (prev.x !== 0 || prev.y !== 0) changed = true;
       });
@@ -280,12 +297,6 @@ export default function ReplayMinimap({
    *  CSS의 .scr-minimap-mark-on 규칙이 하던 일인데, 이제 자리는 인라인이 정하므로
    *  여기서 갈라야 한다). */
   const shoulderOf = (m: MinimapMarker) => (m.featured ? 13 : 9);
-  /** 입구에서 벌어진 일(markAtFront)의 이모지를 본진에서 상대 쪽으로 미는 거리 —
-   *  단위가 px가 아니라 em인 것이 요점이다. 이 이모지는 화면마다 크기가 다르므로
-   *  (모바일 22px / PC 42px) px로 띄우면 한쪽에서 맞춘 간격이 다른 쪽에서 무너진다.
-   *  1.1em이면 제 글리프 상자(가로 1.25em) 반을 넘겨, 아바타를 비켜 입구 쪽에 선다. */
-  const ACTION_FRONT = 1.1;
-
   const place = (m: MinimapMarker) => ({
     left: `${(m.x / grid.width) * 100}%`,
     top: `${(m.y / grid.height) * 100}%`,
@@ -298,27 +309,23 @@ export default function ReplayMinimap({
       : { left: `${-outwardX(m) * d}px`, top: `${d}px` };
   };
 
-  /* 본진 액션 이모지 = 본진 한가운데(요청: "그건 본진 중앙에 있는게 더 자연스러워").
-     한때 아바타 둘레의 고정 슬롯(위 안쪽)에 앉혔는데, 표정·이름표와 안 겹치는 대신
-     "그 본진에서 무슨 일이 있었다"가 아니라 옆에 뭔가 떠 있는 것처럼 읽혔다.
+  /* 액션 이모지는 '그 일이 벌어진 자리'에 선다 — 아바타에 딸린 표시가 아니라 지도 위의
+     한 지점이다(지적: "본진 이모지는 아바타가 아니라 본진 중앙, 입구도 본진 입구를
+     말한 거야 아바타 위가 아니라").
 
-     예외는 입구에서 벌어진 일이다(markAtFront) — 입구막기·입구 방어는 본진 안이 아니라
-     나가는 길목의 이야기라, 상대 쪽으로 밀어 그 자리에 세운다(요청: "벽을 쌓는 입구
-     막기는 입구쪽에 나와야 자연스럽고"). 방향은 지도 한가운데 쪽이다: 본진이 지도
-     가장자리에 있고 상대는 늘 그 반대편이라, 가운데를 향하는 것이 곧 나가는 길이다.
+     그래서 자리는 아바타 기준의 픽셀 오프셋이 아니라 타일 좌표로 받는다(markAt). 본진에서
+     한 일이면 본진 자리 그대로이고, 입구막기·입구 방어면 부르는 쪽이 진짜 입구 좌표를
+     넣어 준다(GameResultStory의 FRONT) — 아바타 옆에 살짝 비켜 뜨는 것과 지도의 입구에
+     서 있는 것은 그림이 아예 다르다.
 
      CSS의 translate(-50%,-50%)를 여기서 다시 써야 한다 — 인라인 transform이 그 규칙을
      통째로 덮어쓰기 때문이다. */
   const markPlace = (m: MinimapMarker) => {
-    const dx = grid.width / 2 - m.x;
-    const dy = grid.height / 2 - m.y;
-    const len = Math.hypot(dx, dy);
-    // 본진이 지도 한가운데에 있으면 '입구 쪽'이라 부를 방향이 없다 — 그냥 가운데에 둔다.
-    const t = m.markAtFront && len > 1 ? ACTION_FRONT / len : 0;
+    const [mx, my] = m.markAt ?? [m.x, m.y];
     return {
-      left: `${(m.x / grid.width) * 100}%`,
-      top: `${(m.y / grid.height) * 100}%`,
-      transform: `translate(calc(-50% + ${(dx * t).toFixed(3)}em), calc(-50% + ${(dy * t).toFixed(3)}em))`,
+      left: `${(mx / grid.width) * 100}%`,
+      top: `${(my / grid.height) * 100}%`,
+      transform: "translate(-50%, -50%)",
     };
   };
 
@@ -335,25 +342,8 @@ export default function ReplayMinimap({
     return {
       left: `${(m.x / grid.width) * 100}%`,
       top: `${(m.y / grid.height) * 100}%`,
-      transform: `translate(calc(${anchorX} + ${ox.toFixed(1)}px), ${labelY(m)})`,
+      transform: `translate(calc(${anchorX} + ${ox.toFixed(1)}px), ${LABEL_OUT_Y}px)`,
     };
-  };
-  /* 이름표를 아래로 얼마나 내릴까 — 보통은 고정값이지만, 입구 이모지가 '아래쪽'으로
-     밀린 본진(지도 위쪽에 자리 잡아 나가는 길이 아래인 경우)에서는 그 이모지가 이름표
-     자리를 그대로 덮는다(실측: 벽돌이 닉네임 글자 위에 앉았다). 그럴 때만 이모지 아래로
-     비켜선다.
-
-     이모지 크기는 화면마다 다르고(모바일 22 / PC 42px) JS는 그 값을 모르므로, CSS가
-     --scr-mark-size로 알려 준다(global.css 끝의 .scr-minimap 규칙). max()로 감싸므로
-     이모지가 작아 원래 자리로 충분한 화면에서는 고정값 그대로다. */
-  const labelY = (m: MinimapMarker): string => {
-    if (!m.mark || !m.markAtFront) return `${LABEL_OUT_Y}px`;
-    const dy = grid.height / 2 - m.y;
-    const len = Math.hypot(grid.width / 2 - m.x, dy);
-    if (!(len > 1) || dy <= 0) return `${LABEL_OUT_Y}px`;
-    // 이모지 아래끝 = (밀린 세로 거리 + 글리프 상자의 반) × 이모지 크기. 그 아래로 4px.
-    const coef = (dy / len) * ACTION_FRONT + 0.5;
-    return `max(${LABEL_OUT_Y}px, calc(var(--scr-mark-size, 28px) * ${coef.toFixed(3)} + 4px))`;
   };
   // 그릴 화살표만 미리 계산한다 — 몸통 레이어와 머리 레이어가 같은 값을 쓴다.
   const geoms = arrows
@@ -491,6 +481,10 @@ export default function ReplayMinimap({
         {bases.map((m) => (m.mark ? (
           <span
             key={`bm-${m.key}`}
+            ref={(el) => {
+              if (el) markElsRef.current.set(m.key, el);
+              else markElsRef.current.delete(m.key);
+            }}
             className="scr-minimap-arrow-mark scr-minimap-mark-home"
             style={markPlace(m)}
           >
