@@ -2579,13 +2579,6 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
   .scr-grid-title-reset:not(:disabled):hover { color: var(--text); background: rgba(255,255,255,0.12); }
   .scr-light-theme .scr-grid-title-reset:not(:disabled):hover { background: rgba(0,0,0,0.07); }
 }
-/* 제목 문장 + 최소 참여 기준 한 줄을 한 묶음으로(요청: 그냥 텍스트로 기본 노출) — 눌러야
-   보이는 툴팁이 아니라 늘 보이는 글줄이라, 제목 바로 아래 작게 둔다. */
-.scr-stats-heading { display: flex; flex-direction: column; }
-.scr-stats-heading .scr-grid-title { margin-bottom: 2px; }
-.scr-stats-min-plays-note {
-  margin: 0 0 10px; font-size: var(--fs-caption); color: var(--muted); line-height: 1.4;
-}
 /* 배경이 없는 낱말이라, 누를 수 있다는 신호는 호버/열림에서만 옅은 바탕으로 준다. */
 @media (hover: hover) {
   .scr-sentence-select .scr-cselect-trigger:hover {
@@ -6732,7 +6725,11 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
      기본값은 0이다: 본문(.scr-main) 밖에서 쓰이는 포스트(공유 랜딩의 .scr-share-page)는
      빼낼 패딩이 없어서, 나갔다 돌아오는 계산 자체를 하지 않아야 한다. */
   --post-bleed: 0px;
-  --post-comment-dock-h: 26px;
+  /* 26 → 34px(지적: 댓글 없는 게임결과 카드에서 "댓글 추가" 버튼 아래 공간이 너무 좁음 —
+     버튼이 절대배치라 이 여백을 흐름으로 안 차지해서 그 아래가 빡빡해 보였다). 버튼의
+     bottom 오프셋(.scr-feed-notes-empty .scr-feed-comment-row)도 같이 늘려야 위아래
+     여백이 함께 넓어진다. */
+  --post-comment-dock-h: 34px;
   /* 포스트 꼬리 여백 — 댓글이 없을 때 "댓글 쓰기" 아이콘이 이 안에 얹힌다(요청).
      컨텐츠가 아니라 포스트 자신이 낸다: 마지막 블록이 무엇이든(본문/링크 줄/댓글)
      꼬리 여백은 늘 한 번만 붙어야 한다.
@@ -7189,12 +7186,13 @@ html.scr-light-theme .scr-feed-comments .scr-mreq-chip-inline { color: #c07c1c; 
 }
 /* 경기 로우도 동일 — 행 자신의 라이팅 글라스 패널(배경·블러·그림자·마진)을 벗기고
    내용만 피드 카드에 직접 얹는다. 날짜 헤더는 카드 헤더가 대신하므로 숨긴다. */
-/* trow가 자체 좌우 8px을 갖고 있어, 합이 --post-pad-bx가 되도록 나머지만 여기서 낸다. */
-/* 경기 로우의 좌우 패딩을 변수로 둔다 — 요약 상자가 이 값을 되물려 카드의 다른 요소(댓글
-   줄)와 같은 자리에서 시작하게 하기 위해서다(지적: 시작 부분을 맞춰야 함). */
-/* 머리띠 아래 간격은 아래 .scr-game-result-trow의 padding-top 하나가 낸다 — 여기서도 내면
-   두 값이 더해져 그 자리만 유독 벌어진다(지적: 거기만 12쯤 더 큼). */
-.scr-feed-game-result-body { --feed-trow-pad-x: 8px; padding: 0 calc(var(--post-pad-bx) - 8px); }
+/* trow 자신의 좌우 패딩은 늘 0(아래 padding-left/right:0)이라, "trow가 8px을 갖고 있으니
+   나머지만 여기서 낸다"며 --post-pad-bx에서 8px을 뺀 값을 쓰던 것은 잘못된 전제였다
+   (지적: 헤더보다 20이어야 하는데 실제로는 12만 남았다) — trow는 그 8px을 낸 적이 없다.
+   --feed-trow-pad-x는 .scr-game-result-trow-summary가 별도로 쓰므로(아래) 그대로 두고,
+   본문 자신의 패딩만 전체 --post-pad-bx로 고친다. */
+.scr-feed-game-result-body { --feed-trow-pad-x: 8px; padding: 0 var(--post-pad-bx); }
+@media (min-width: 720px) { .scr-feed-game-result-body { --feed-trow-pad-x: 0px; } }
 .scr-feed-game-result-body .scr-game-result-list-panel-v2 .scr-game-result-trow, .scr-light-theme .scr-feed-game-result-body .scr-game-result-list-panel-v2 .scr-game-result-trow {
   background: transparent; border: none; box-shadow: none;
   backdrop-filter: none; -webkit-backdrop-filter: none;
@@ -7206,13 +7204,6 @@ html.scr-light-theme .scr-feed-comments .scr-mreq-chip-inline { color: #c07c1c; 
   /* 카드 안의 경기 로우도 들여쓰지 않는다(요청) — 로스터·미니맵이 헤더보다 안쪽에서
      시작하면 계층이 한 겹 더 생긴다. */
   padding-left: 0; padding-right: 0;
-}
-/* 카드 폭이 이미 좁으니 PC의 넓은 좌우 패딩(100px)도 카드 안에선 줄인다. */
-@media (min-width: 720px) {
-  .scr-feed-game-result-body { --feed-trow-pad-x: 0px; }
-  .scr-feed-game-result-body .scr-game-result-list-panel-v2 .scr-game-result-trow {
-    padding-left: var(--feed-trow-pad-x); padding-right: var(--feed-trow-pad-x);
-  }
 }
 
 /* 카드 하단 공통 댓글 영역 — 토글을 누르면 목록/입력이 그 자리에서 펼쳐진다.
@@ -7245,12 +7236,16 @@ html.scr-light-theme .scr-feed-comments .scr-mreq-chip-inline { color: #c07c1c; 
 /* 댓글이 없는 포스트의 입력줄은 꼬리 여백에 절대배치로 얹히므로 자기 여백을 안 낸다 —
    대신 위쪽 간격은 .scr-feed-comments가 낸다(아래). */
 /* 댓글이 없으면 입력줄이 꼬리 여백 안에 절대배치로 앉으므로 여기서 자리를 잡아 줄 필요가
-   없다 — 위쪽만 조금(8px) 띄워 바로 위 내용과 딱 붙지 않게 한다. */
-.scr-feed-comments > .scr-feed-notes-empty { padding: 8px 0 0; }
+   없다 — 위쪽만 띄워 바로 위 내용과 딱 붙지 않게 한다. 게임결과 카드는 위 내용이
+   타임라인(트랙+시각)이라 8px로는 거의 안 띄워 보였다(지적: 스토리라인과 "댓글 추가"
+   사이 갭이 없음) — 다른 줄 간격과 같은 --post-row-gap을 쓴다. */
+.scr-feed-comments > .scr-feed-notes-empty { padding: var(--post-row-gap) 0 0; }
 /* 왼쪽 끝은 요약 상자와 같은 자리(--post-pad-bx)에 맞춘다(지적: 시작 부분 정렬). */
 .scr-feed-comments > .scr-feed-notes-empty .scr-feed-comment-row {
-  /* bottom은 --post-pad-b와 짝이다 — 꼬리 여백 안에서 글자 위아래가 비슷해 보이는 자리. */
-  position: absolute; left: var(--post-pad-bx); bottom: 10px;
+  /* bottom은 --post-pad-b와 짝이다 — 꼬리 여백 안에서 글자 위아래가 비슷해 보이는 자리.
+     10 → 14px — 위 --post-comment-dock-h를 26→34로 늘린 만큼(+8) 절반씩 위아래로
+     나눠 준다(지적: 버튼 아래 공간이 좁음). */
+  position: absolute; left: var(--post-pad-bx); bottom: 14px;
   min-height: 0; justify-content: flex-start; z-index: 2;
 }
 /* 다만 펼쳐지면 얘기가 다르다 — 절대배치라 폭이 내용만큼만 잡혀서, 입력칸이 flex:1이어도
@@ -7740,6 +7735,13 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
 .scr-story-win-draw { background: rgba(var(--overlay-rgb), 0.34); color: var(--text); }
 
 /* ── 미니맵 그림 ── */
+/* 이름표가 지도 밖으로 나가는 자리(요청: 이름표는 지도 밖까지 나가도 된다) — 눈에 보이는
+   테두리·배경은 없이 투명하게 둔다(지적: 미니맵만 떠 있어야지). overflow:hidden은
+   안전판으로 남긴다: 이름표가 아무리 길어도 이 여백 밖(카드 자체의 바깥 패딩)까지는
+   절대 못 나간다(지적). */
+.scr-minimap-frame { width: 100%; padding: 40px; overflow: hidden; }
+/* 모바일은 카드 폭 자체가 좁다(지적: PC는 지금 두께가 맞음, 모바일은 반으로). */
+@media (max-width: 640px) { .scr-minimap-frame { padding: 20px; } }
 .scr-minimap {
   position: relative; width: 100%; aspect-ratio: 1 / 1;
   /* 둥근 모서리를 없앤다(요청) — 아래 자막이 딱 붙어 있어 각진 편이 한 덩어리로 읽힌다. */
@@ -7774,8 +7776,14 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
   pointer-events: none; z-index: 4;
   animation: scr-minimap-arrow-in 260ms ease-out;
 }
-.scr-minimap-arrow { stroke-width: 1.1; stroke-linecap: round; }
-.scr-minimap-arrow-halo { stroke: rgba(0, 0, 0, 0.55); stroke-width: 2.6; stroke-linecap: round; }
+/* 테두리(halo) 없이 색+그림자만 쓴다(요청) — 기둥 끝도 둥글게 두지 않는다. 테두리가
+   주던 두께감이 빠지니 굵기 자체를 키웠는데(요청: 화살 두께 늘리기) 2.2는 살짝 과했다
+   (지적: 두께 살짝만 줄이기) — 1.8로. */
+.scr-minimap-arrow {
+  stroke-width: 1.8; stroke-linecap: butt;
+  filter: drop-shadow(0 0 1.5px rgba(0, 0, 0, 0.75));
+}
+.scr-minimap-arrow-halo { display: none; }
 /* 본진 이모지 — 화살표가 없는 이야기(생산·테크 …)를 그 사람 본진에 붙인다(요청). 해골과
    반대쪽(왼쪽 위) 어깨에 둔다 — 둘이 함께 뜰 수 있다. */
 /* 버리고 떠난 옛 본진 — 흑백으로 눌러 '여기 있었다'만 남긴다(요청). 이름표는 새 자리에만
@@ -7851,7 +7859,8 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
   .scr-minimap-arrow-mark-pop { animation: none; }
 }
 /* 화살촉 — 아바타 위에 뜨므로 검은 테를 좀 더 두껍게 둘러 그림에서 떠 보이게 한다. */
-.scr-minimap-arrow-head { stroke: rgba(0, 0, 0, 0.7); stroke-width: 1; }
+/* 화살촉도 화살 몸통과 같다(요청) — 테두리(stroke) 대신 그림자만. */
+.scr-minimap-arrow-head { stroke: none; filter: drop-shadow(0 0 1.5px rgba(0, 0, 0, 0.75)); }
 
 /* 표시 하나 — 크기 없는 '점'으로 두고 아바타와 닉네임을 그 점 기준으로 얹는다(위치는
    인라인 스타일). 아바타를 flex로 나란히 두면 닉네임 길이만큼 아바타가 실제 좌표에서
@@ -7879,35 +7888,66 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
 .scr-minimap-mark-on.scr-minimap-mark-t2 .scr-avatar {
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.65), 0 0 10px 3px rgba(255, 77, 104, 0.55);
 }
-/* 본진 — 아바타에 팀 색 테두리를 두르고 아래에 닉네임(요청: 아바타+닉네임 계속 표시).
-   검은 판을 깔아 어떤 지형 색 위에서도 읽히게 한다. */
-.scr-minimap-mark-label {
-  /* 이름표는 스냅 아바타보다 위에 둔다 — 본진과 거의 같은 자리에 스냅 아바타가 뜨면 그
-     아바타가 이름을 절반쯤 덮어 "yDalsu"처럼 읽혔다(실측). 글자가 가려지는 편이 아바타가
-     가려지는 편보다 나쁘다. */
-  z-index: 3;
-  position: absolute; left: 0; top: 11px; transform: translateX(-50%);
+/* 이름표 — 아바타 옆이 아니라 본진 span 밖으로 따로 뗀 자리에 뜬다(요청: 화살표·아바타·
+   상태 얼굴에 가려지지 않게 늘 보이는 자리로, 아바타와는 절대 겹치지 않게). 자리·자란
+   방향(왼쪽/오른쪽 끝 고정)은 전부 ReplayMinimap의 labelPlace가 인라인 style의 transform
+   으로 계산한다(지도 크기와 무관하게 아바타에서 늘 같은 픽셀 거리) — 여기 transform은
+   인라인 style에 덮이므로 실제로는 안 쓰이지만, style이 없는 경우를 대비해 남겨 둔다.
+   z-index를 높여 다른 레이어에 덮이지 않게 한다. */
+.scr-minimap-mark-label-out {
+  position: absolute; z-index: 5; transform: translate(-50%, -50%);
   display: inline-flex; align-items: center; gap: 2px;
-  font-size: 10px; font-weight: 700; line-height: 1; white-space: nowrap;
-  padding: 2px 4px; border-radius: 4px;
-  background: rgba(0, 0, 0, 0.62); color: #fff;
+  /* 요청: 지도가 로스터 자리까지 커져 이름표 자리가 빠듯해졌으니 글자를 한 단계 줄인다. */
+  font-size: 9px; font-weight: 700; line-height: 1; white-space: nowrap;
+  /* 모바일은 카드 폭 자체가 좁다(지적: 닉네임 크기 축소 필요) — 아래 @media(max-width:640px)
+     에서 한 단계 더 줄인다. */
+  /* 배경 판을 없앤다(요청) — 글자만 떠 있는다. 어떤 지형 색 위에서도 읽히도록 검은 테를
+     둘러 대비만 남긴다(다른 상태 표시들과 같은 방식). */
+  color: #fff;
+  text-shadow: 0 0 2px #000, 0 0 2px #000, 0 1px 1px #000;
+  pointer-events: none;
 }
-/* 가장자리 본진 — 이름이 그림 밖으로 나가 잘리지 않게 안쪽으로 붙인다(실제로 오른쪽 아래
-   본진의 이름이 잘렸다). 아래쪽 본진은 이름을 아바타 위로 올린다. */
-.scr-minimap-mark-lab-r .scr-minimap-mark-label { transform: translateX(-14%); }
-.scr-minimap-mark-lab-l .scr-minimap-mark-label { transform: translateX(-86%); }
-.scr-minimap-mark-lab-up .scr-minimap-mark-label { top: auto; bottom: 11px; }
-/* 커진 아바타에 이름이 겹치지 않게 한 칸 더 내려(올려) 붙인다. */
-.scr-minimap-mark-on .scr-minimap-mark-label { top: 19px; }
-.scr-minimap-mark-on.scr-minimap-mark-lab-up .scr-minimap-mark-label { top: auto; bottom: 19px; }
 /* 시작 스냅("게임 시작!")은 닉네임도 아바타만큼 키운다(요청) — 로스터가 빠진 자리를
    미니맵 쪽 아바타·닉네임 확대로 채운다. */
-.scr-minimap-mark-introbig .scr-minimap-mark-label {
-  font-size: 13px; padding: 3px 6px;
-}
+.scr-minimap-mark-label-out.scr-minimap-mark-introbig { font-size: 13px; }
 .scr-minimap-mark-name { max-width: 108px; overflow: hidden; text-overflow: ellipsis; }
-.scr-minimap-mark-introbig .scr-minimap-mark-name { max-width: 140px; }
+.scr-minimap-mark-label-out.scr-minimap-mark-introbig .scr-minimap-mark-name { max-width: 140px; }
 .scr-minimap-mark-race { flex-shrink: 0; }
+/* 지도 자체가 훨씬 커졌는데(로스터 제거) 본진 표시는 작은 화면 시절 크기 그대로라 기본
+   상태(주인공 아님)는 거의 안 보였다(지적: 확대 상태는 그럭저럭인데 평상시엔 잘 안 보임)
+   — 아바타·이름표를 CSS scale로 키운다(요청: PC/모바일 모두 평상시 크기 확대). 주인공
+   (featured)은 이미 커서 조금만 더 키운다. 모바일은 폭이 좁아 우선 이 정도로, PC는
+   아래에서 한 번 더 키운다. */
+.scr-minimap-mark-base:not(.scr-minimap-mark-on) .scr-avatar {
+  transform: translate(-50%, -50%) scale(1.25);
+}
+.scr-minimap-mark-on .scr-avatar { transform: translate(-50%, -50%) scale(1.08); }
+/* 1스텝 더 키운다(요청: PC/모바일 모두 이름표 크기 좀더 확대, 1스텝 확대). */
+.scr-minimap-mark-label-out { font-size: 11px; }
+/* 모바일에서 확대(시작 스냅) 상태가 너무 크다(지적) — 1스텝 축소. */
+.scr-minimap-mark-label-out.scr-minimap-mark-introbig { font-size: 13px; }
+/* 모바일은 프레임 폭이 좁아(20px) 이름표가 그 밖으로 잘리기 쉽다(지적: 이름표가 영역
+   밖으로 벗어나 잘림) — 닉네임 글자 폭을 좁혀 프레임 안에 들어올 확률을 높인다. */
+@media (max-width: 640px) {
+  .scr-minimap-mark-name { max-width: 56px; }
+}
+/* PC에서는 화살표만 빼고 전부 키운다(요청: "화살표 제외한 모든 요소들 크기 1.5배") —
+   기본·주인공 아바타를 같은 배율로 맞추고, 얼굴 표시(해골·상태 얼굴)·이름표·본진/화살촉
+   이모지도 함께 키운다. 화살표 몸통·촉(.scr-minimap-arrow*)은 여기서 손대지 않는다.
+   1.5배로도 기본(주인공 아님) 아바타가 작아 보인다는 지적이 있어 1.8로 더 올린다. */
+@media (min-width: 641px) {
+  .scr-minimap-mark-base .scr-avatar { transform: translate(-50%, -50%) scale(1.8); }
+  .scr-minimap-mark-label-out { font-size: 14px; }
+  .scr-minimap-mark-label-out.scr-minimap-mark-introbig { font-size: 19px; }
+  .scr-minimap-mark-skull { font-size: 20px; }
+  .scr-minimap-mark-face { font-size: 20px; }
+  .scr-minimap-mark-on .scr-minimap-mark-face { font-size: 28px; }
+  /* 본진 이모지(화살표 없는 이야기)·화살촉 끝 이모지도 같이 키운다(지적: "일반 이모지
+     크기도 너무 작아"). */
+  .scr-minimap-arrow-mark.scr-minimap-mark-home { font-size: 44px; }
+  .scr-minimap-arrow-mark { font-size: 34px; }
+}
+.scr-minimap-mark-label-out.scr-minimap-mark-downed { opacity: 0.72; }
 /* 궤멸·빈사 — 본진 아바타를 흑백으로 누르고 그 위에 해골을 얹는다(요청). 아바타를 지우지
    않는 이유는 누구 자리인지 여전히 알아야 하기 때문이다. */
 .scr-minimap-mark-downed .scr-avatar { filter: grayscale(1) brightness(0.55); }
@@ -7944,20 +7984,22 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
    색)와 같은 값이라 화살표와 아바타 테두리가 같은 편으로 읽힌다. */
 .scr-minimap-mark-t1 .scr-avatar { border-color: #2b9bff; }
 .scr-minimap-mark-t2 .scr-avatar { border-color: #ff4d68; }
-.scr-minimap-mark-t1 .scr-minimap-mark-label { color: #8fcaff; }
-.scr-minimap-mark-t2 .scr-minimap-mark-label { color: #ffa3b1; }
+.scr-minimap-mark-label-out.scr-minimap-mark-t1 { color: #8fcaff; }
+.scr-minimap-mark-label-out.scr-minimap-mark-t2 { color: #ffa3b1; }
 /* 검색으로 짚은 사람 — 로스터를 감춘 모바일에서는 여기가 유일한 표시 자리다. */
 /* 색을 테마 토큰(--point)에서 떼어 고정값으로 둔다 — 라이트 테마의 --point는 검정이라
    어두운 지형 위의 검은 이름표가 되어 강조가 아예 안 보였다(지적: 다크는 괜찮은데
    라이트에서 하이라이팅이 안 된다). 미니맵 그림은 어느 테마에서나 어둡다. */
-.scr-minimap-mark-hit .scr-minimap-mark-label {
+.scr-minimap-mark-label-out.scr-minimap-mark-hit {
   background: #e6a23e; color: #101010;
 }
 /* (삭제) 스냅 주인공을 그 자리에 아바타로 띄우던 표시 — 이제 화살표가 그 일을 하고,
    주인공은 본진 아바타가 커지는 것으로 나타낸다(요청). */
 
 /* ── 타임라인 ── */
-/* 재생 버튼과 트랙 사이를 띄운다(요청) — 붙어 있으면 첫 눈금이 버튼에 먹힌다. */
+/* 재생 버튼과 트랙 사이를 띄운다(요청) — 붙어 있으면 첫 눈금이 버튼에 먹힌다.
+   좌우 패딩은 여기서 따로 안 낸다(지적: 독자 좌우 패딩 없애야 함) — .scr-feed-game-result-body가
+   이미 --post-pad-bx 전체를 내므로(위 참고), 여기서 또 내면 두 배로 겹친다. */
 .scr-story-line { display: flex; align-items: center; gap: 14px; width: 100%; }
 .scr-story-play {
   flex-shrink: 0; width: 24px; height: 24px; border-radius: 50%;
@@ -8020,12 +8062,17 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
      남았다(실측). 맞닿는 위쪽 모서리는 직각으로 둔다(요청: 붙였을 때 깔끔하게). */
   margin-top: -6px;
   display: grid; width: 100%;
+  /* 가로·세로 모두 가운데 정렬한다(요청) — 문장이 짧을 때(특히 "게임 시작!") 왼쪽에
+     쏠려 붙지 않고 칸 한가운데에 놓인다. */
+  justify-items: center; align-items: center;
   /* 아래 모서리도 직각으로 둔다(요청) — 위 모서리는 미니맵에 붙어 이미 직각이었는데
-     아래만 둥글면 한 덩어리로 안 읽힌다. */
-  padding: 7px 10px; border-radius: 0;
+     아래만 둥글면 한 덩어리로 안 읽힌다.
+     좌우 패딩은 여기서 안 낸다(지적: 독자 패딩 없애야 함) — .scr-feed-game-result-body가
+     이미 --post-pad-bx 전체를 내므로 여기서 또 내면 두 배로 겹친다. */
+  padding: 7px 0; border-radius: 0;
   background: rgba(var(--overlay-rgb), 0.06);
   font-size: var(--fs-caption); font-weight: 500; line-height: 1.6;
-  color: var(--text); word-break: keep-all; text-align: left;
+  color: var(--text); word-break: keep-all; text-align: center;
 }
 /* 자막 앞의 시각 — 본문보다 한 단계 작고 흐리게 둔다(요청: [5분]처럼 분까지만). */
 .scr-story-cap-time {

@@ -66,8 +66,9 @@ const BEAT_MARK: Record<string, string> = {
   // 방패가 뜬다) — 병력으로 맞선 이야기는 싸움이라 검 대결이 맞다.
   stand: "⚔️", "late-hold": "⚔️", standoff: "⚔️",
   // 옆탱은 이름과 달리 방어가 아니라 공격이지만(지적), 병력이 맞붙는 싸움과는 결이 달라
-  // 칼 모양이 아니라 포토·성큰처럼 자리 잡고 쏘는 "공격 타워" 느낌으로 구분한다.
-  "side-tank": "🗼",
+  // 칼 모양이 아니라 자리 잡고 쏘는 느낌으로 구분한다. 탑(🗼)은 건물 느낌만 나고 공격으로
+  // 안 읽혀서(지적) 활(🏹)로 바꾼다 — 멀리서 쏘는 공격이라는 게 한눈에 보인다.
+  "side-tank": "🏹",
   // 본진에서 한 일 — 화살표 없이 본진에 붙는다.
   // 현미경은 무슨 일인지 안 읽힌다(지적) — 테크는 결국 싸우려고 하는 일이라 검 대결로
   // 통일한다. 업그레이드만은 공격보다 연구 쪽이 어울려(지적) 따로 시험관을 준다.
@@ -321,8 +322,16 @@ export default function GameResultStory({
       [...(b.who ?? []), ...(b.whom ?? [])].forEach((raw) => out.add(raw));
       // ally-cannon은 도움받은 아군이 whom이 아니라 who2에 실린다(지적: 아군 헬프면 도움
       // 받은 사람 아바타도 커져야 하는데 ally-cannon만 안 커졌다) — ally-help는 whom이라
-      // 위 줄에서 이미 잡힌다.
-      if (b.k === "ally-cannon") {
+      // 위 줄에서 이미 잡힌다. clash도 마찬가지로, 누구 기지에서 붙었는지가 who2에 실린다
+      // (지적: "태섭의 기지에서 …싸웠다"인데 정작 태섭은 아바타도 안 커지고 표정도 없었다
+      // — 제 기지가 싸움터가 된 사람도 이 장면의 주인공이다).
+      if (b.k === "ally-cannon" || b.k === "clash") {
+        (Array.isArray(b.who2) ? b.who2 : typeof b.who2 === "string" ? [b.who2] : [])
+          .forEach((raw) => out.add(raw));
+      }
+      // 협공에 가세한 사람(who2)도 이 장면의 주인공이다(지적: "○○까지 달려들어"에서
+      // 가세한 사람 아바타가 안 커졌다) — actions useMemo의 helpers 계산과 같은 조건.
+      if (ATTACK_BEAT_KEYS.has(b.k) || b.k === "breakthrough") {
         (Array.isArray(b.who2) ? b.who2 : typeof b.who2 === "string" ? [b.who2] : [])
           .forEach((raw) => out.add(raw));
       }
@@ -656,11 +665,12 @@ export default function GameResultStory({
       return BEAT_MARK[b.k] ?? (ATTACK_BEAT_KEYS.has(b.k) ? "⚔️" : "🏭");
     };
 
-    const to = new Map<string, [number, number]>();
-    const flight = new Map<string, boolean>();
     const mark = new Map<string, string>();
-    // 화살표가 출발하는 자리에 얹을 표시 — 지금은 리콜·커널만 쓴다(WARP_BEAT_KEYS).
-    const fromMark = new Map<string, string>();
+    /** 한 사람이 이 스냅에서 실제로 때린 자리들 — 여러 곳을 쳤으면 여러 개가 쌓인다(요청:
+     *  한 사람이 여러 곳에 피해를 준 경우 아바타 하나에서 화살표 여러 개로 갈라지게).
+     *  예전에는 자리당 하나(Map<raw, target>)만 기억해 마지막 것만 그려졌다. */
+    interface RawHit { t: [number, number]; flight: boolean; mark: string; fromMark?: string }
+    const hits = new Map<string, RawHit[]>();
     const hit = new Set<string>();
     // 맺음말 스냅에서는 이긴 편 아바타에 트로피를 겹쳐 얹는다(요청).
     const trophy = new Set<string>();
@@ -668,10 +678,14 @@ export default function GameResultStory({
      * 공격자·당한 사람도 아바타로 상태를 알려 달라) — 화살표 끝의 무기 이모지(무엇으로
      * 쳤나)와는 다른 자리다. 이건 "그 사람이 지금 어떤 처지인가"를 말한다.
      * 우선순위: 트로피 > 크게 무너짐 > 적당히 당함 > 잘 막아냄 > 공격자. */
-    const ATTACK_FACE = "😤";
+    // 씩씩대는 얼굴(😤)도, 웃는 얼굴(😏)도 어색하다(지적: 웃음이 기분 나빠 보임) —
+    // 선글라스로 자신감만 남긴다.
+    const ATTACK_FACE = "😎";
     const SEVERE_FACE = "😭";
     const MODERATE_FACE = "😰";
-    const DEFENDED_FACE = "😎";
+    // 자신감(😎)은 막아낸 상황과는 결이 안 맞아 보여(지적) 경례로 바꾼다 — "막아냈다,
+    // 문제없다"는 느낌이 선글라스보다 잘 읽힌다.
+    const DEFENDED_FACE = "🫡";
     /** 막아서긴 했지만 결국 역부족이었던 것 — 힘겨워하는 표정(지적: 진 편의 stand까지
      *  자신감 얼굴을 주면 안 된다. "팀원과 함께 막아섰으나 역부족" 문장에 자신감은 어색함). */
     const STRUGGLE_FACE = "😣";
@@ -719,10 +733,30 @@ export default function GameResultStory({
       if (SEVERE_SUBJECT_KEYS.has(b.k)) who.forEach((r) => severe.add(r));
       if (SEVERE_VICTIM_KEYS.has(b.k)) victims.forEach((r) => severe.add(r));
       if (MODERATE_SUBJECT_KEYS.has(b.k)) who.forEach((r) => moderate.add(r));
+      // clash가 누군가의 기지에서 벌어졌으면(who2) 그 집주인도 이 장면의 당사자다(지적:
+      // "OO의 기지에서 …싸웠다"인데 정작 그 사람은 표정도 없었다) — 직접 싸운 건 아니라도
+      // 제 앞마당이 싸움터가 된 것이니 당황한 얼굴을 준다.
+      if (b.k === "clash") {
+        (Array.isArray(b.who2) ? b.who2 : typeof b.who2 === "string" ? [b.who2] : [])
+          .forEach((r) => { if (!who.includes(r)) moderate.add(r); });
+      }
       if (DEFENDED_ALWAYS_KEYS.has(b.k)) who.forEach((r) => defended.add(r));
       // stand는 이긴 편·진 편 모두에 붙는다 — won을 봐야 자신감/힘겨움이 갈린다.
       if (b.k === "stand") who.forEach((r) => (b.won ? defended : struggling).add(r));
-      if (ATTACKER_FACE_KEYS.has(b.k)) who.forEach((r) => { if (!victims.has(r)) attacker.add(r); });
+      // clash는 누구 기지에서 붙었느냐를 본다(지적: 아군 기지에서 벌어진 전투에 참여한
+      // 것은 공격이 아니라 헬프로 봐야 한다) — 기지 주인(who2)이 같은 편이면 그 싸움에 낀
+      // 사람은 아군을 도우러 온 것이고, 상대 편(또는 기지 없는 한복판 교전)이면 공격이다.
+      if (b.k === "clash") {
+        const owners = Array.isArray(b.who2) ? b.who2 : typeof b.who2 === "string" ? [b.who2] : [];
+        const ownerTeam = owners.length > 0 ? teamOf.get(owners[0]) : undefined;
+        who.forEach((r) => {
+          if (victims.has(r)) return;
+          if (ownerTeam !== undefined && teamOf.get(r) === ownerTeam) helper.add(r);
+          else attacker.add(r);
+        });
+      } else if (ATTACKER_FACE_KEYS.has(b.k)) {
+        who.forEach((r) => { if (!victims.has(r)) attacker.add(r); });
+      }
       // 맺음말 — 이긴 편 전원에게 트로피를 준다(요청: 승리 트로피는 아바타에 겹쳐서 크게).
       if (b.k === "result") {
         const team = slots.find((x) => (b.who ?? []).includes(x.raw))?.team;
@@ -741,24 +775,27 @@ export default function GameResultStory({
         // 트로피는 아바타 얼굴 쪽에서만 준다(지적: 본진에 뜨는 트로피와 아바타 트로피가
         // 겹쳐서 두 개로 보였다).
         if (SEVERE_SUBJECT_KEYS.has(b.k) || MODERATE_SUBJECT_KEYS.has(b.k) || b.k === "result") continue;
-        mark.set(raw, markOf(b));
+        const em = markOf(b);
+        // 화살표를 못 그리는 경우(자리를 모름·너무 가까움)의 마지막 대비책 — 아래에서
+        // hits가 하나도 화살표로 못 그려지면 이 값으로 본진에 이모지를 얹는다.
+        mark.set(raw, em);
         if (ATTACKER_FACE_KEYS.has(b.k)) attacker.add(raw);
         const t = target(b, raw);
-        if (!t) { to.delete(raw); continue; }
-        to.set(raw, t);
+        if (!t) continue;
         // 화살표 모양은 그 사람이 무엇으로 갔느냐다 — 협공 문장은 도와준 사람을 이름으로만
         // 부를 뿐 '무엇으로' 왔는지는 담고 있지 않아, 예전에는 주공격자의 모양을 그대로
         // 복사해 썼다(지적: 여러 명이 협공하면 점선·실선·곡선·직선이 전부 똑같이 그려진다).
         // 도와준 사람에게는 그 사람 자신의 수를 찾아 그 모양을 준다(styleOf).
-        flight.set(raw, actors.includes(raw) ? isFlight(b.k, b.p?.k) : styleOf(raw, b.at));
+        const flightVal = actors.includes(raw) ? isFlight(b.k, b.p?.k) : styleOf(raw, b.at);
         /* 건너간 수는 양 끝이 다 사건이다(요청) — 출발 자리에 회오리·구멍을, 도착 자리에
            반짝임을 얹는다. 화살표 하나로 "여기서 저기로 넘어갔다"가 그대로 읽힌다. */
-        if (WARP_BEAT_KEYS.has(b.k)) {
-          fromMark.set(raw, markOf(b));
-          mark.set(raw, WARP_ARRIVE_MARK[b.k] ?? markOf(b));
-        } else {
-          fromMark.delete(raw);
-        }
+        const arrive = WARP_BEAT_KEYS.has(b.k) ? (WARP_ARRIVE_MARK[b.k] ?? em) : em;
+        const list = hits.get(raw) ?? [];
+        list.push({
+          t, flight: flightVal, mark: arrive,
+          ...(WARP_BEAT_KEYS.has(b.k) ? { fromMark: em } : {}),
+        });
+        hits.set(raw, list);
       }
     }
     // 후보로 잡아 둔 "당한 사람"(hit) 중 심하게 무너진 쪽에 못 든 나머지는 적당히 당한
@@ -790,19 +827,23 @@ export default function GameResultStory({
     for (const s of slots) {
       // 이사 화살표를 이미 그렸으면 이모지는 그 끝에 있다 — 본진에 또 얹지 않는다.
       if (movers.has(s.raw)) continue;
-      if (!mark.has(s.raw)) continue;
-      const em = mark.get(s.raw)!;
       const home = homeOf(s.raw);
-      const t = to.get(s.raw);
-      if (home && t && dist(home, t) >= ARROW_MIN_TILES) {
+      const list = hits.get(s.raw) ?? [];
+      // 한 사람이 여러 곳을 쳤으면 아바타 하나에서 화살표 여러 개로 갈라진다(요청) — 자리마다
+      // 화살표 하나씩, 키는 자리 순번을 붙여 갈라 둔다.
+      let drawn = 0;
+      list.forEach((h, i) => {
+        if (!home || dist(home, h.t) < ARROW_MIN_TILES) return;
         arrows.push({
-          key: s.raw, x1: home[0], y1: home[1], x2: t[0], y2: t[1],
-          team: s.team, flight: flight.get(s.raw) ?? false, mark: em, deep,
-          ...(fromMark.get(s.raw) ? { markFrom: fromMark.get(s.raw) } : {}),
+          key: `${s.raw}-${i}`, x1: home[0], y1: home[1], x2: h.t[0], y2: h.t[1],
+          team: s.team, flight: h.flight, mark: h.mark, deep,
+          ...(h.fromMark ? { markFrom: h.fromMark } : {}),
         });
-      } else {
-        marks.set(s.raw, em);
-      }
+        drawn += 1;
+      });
+      // 화살표로 그릴 만큼 먼 자리가 하나도 없으면(전부 본진 근처거나 자리를 모름) 본진에
+      // 이모지 하나만 띄운다 — 마지막 것의 이모지를 쓴다(요청 이전과 같은 규칙).
+      if (drawn === 0 && mark.has(s.raw)) marks.set(s.raw, mark.get(s.raw)!);
     }
     /* 아바타에 겹쳐 얹는 상태 얼굴 — "그 사람이 지금 어떤 처지인가"만 말한다(요청: 해골·
      * 트로피 말고는 아바타에 붙는 표시가 없으니 공격자·당한 사람도 아바타로 알려 달라).
@@ -816,8 +857,11 @@ export default function GameResultStory({
       if (struggling.has(s.raw)) { faces.set(s.raw, STRUGGLE_FACE); continue; }
       if (helped.has(s.raw)) { faces.set(s.raw, HELPED_FACE); continue; }
       if (defended.has(s.raw)) { faces.set(s.raw, DEFENDED_FACE); continue; }
-      if (attacker.has(s.raw)) { faces.set(s.raw, ATTACK_FACE); continue; }
+      // 아군 헬프가 공격보다 먼저다(지적: 도우러 아군 기지에 간 사람이 공격 얼굴로
+      // 나왔다) — 같은 장면에 다른 beat로 공격 계열에도 이름이 걸렸더라도, 아군을
+      // 도우러 간 것이 더 구체적이고 뚜렷한 사실이라 그쪽을 우선한다.
       if (helper.has(s.raw)) { faces.set(s.raw, HELPER_FACE); continue; }
+      if (attacker.has(s.raw)) { faces.set(s.raw, ATTACK_FACE); continue; }
     }
     return { arrows, marks, faces };
   }, [gameResult.summaryData, sentences, index, slots, grid, moved, movedPair]);
@@ -869,8 +913,11 @@ export default function GameResultStory({
   const minutes = gameResult.durationSeconds != null
     ? Math.round(gameResult.durationSeconds / 60) : null;
   // 미니맵이 있으면 맵 이름·플레이시간은 그림의 머리로 올라간다 — 아래 따로 한 줄 더 두면
-  // 같은 말이 두 번 나온다.
-  const showRoster = !mobile || grid === null;
+  // 같은 말이 두 번 나온다. 미니맵이 있으면 PC에서도 로스터를 접는다(요청: 로스터 자리를
+  // 미니맵에 넘겨 그만큼 더 키운다) — 편·종족은 미니맵의 색·표시가, 닉네임은 이제 지도
+  // 가장자리에 붙는 이름표가 맡는다. 미니맵을 못 그리는 경기만 로스터가 유일한 표시라
+  // 그대로 보여준다.
+  const showRoster = grid === null;
   /* 시작 스냅("게임 시작!") — 자막은 짧은 한 줄뿐이니, 그 대신 미니맵 쪽 아바타·닉네임을
      키워 로스터를 보여준다(요청). 소개 문장은 beat 없이 만들어 넣은 것이라 beats가 비어
      있는 것으로 가려낸다. */

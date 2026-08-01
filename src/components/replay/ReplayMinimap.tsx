@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef, useState } from "react";
 import ReplayMapCanvas from "./ReplayMapCanvas";
 import Avatar from "../common/Avatar";
 import RaceBadge from "../common/RaceBadge";
@@ -13,9 +14,6 @@ import type { Race } from "../../types";
 //
 // 왜 실제 그림을 사람이 올리는지, 타일 번호만으로 물·풀·땅·벽을 갈라 보려던 네 번의 시도가
 // 어떻게 실패했는지는 ReplayMapCanvas 주석에 적어 뒀다.
-
-// 맵의 이만큼 안쪽까지를 '가장자리'로 보고 닉네임을 안쪽으로 붙인다.
-const EDGE = 0.22;
 
 // 본진 아바타 크기 — 지금 문장의 주인공(ON)과 나머지(OFF). 차이를 크게 벌려 둔다(요청:
 // 언급된 유저는 더 확실하게 크게, 기본은 축소).
@@ -54,8 +52,11 @@ export interface MinimapArrow {
 // 된다(휘는 양이 0이 된다). 벽을 정확히 피해 가는 경로는 지형 표가 없으면 그릴 수 없다.
 // 휘는 양(현 길이 대비) — 실제로는 더 크게 돌아가는 일이 많아 키웠다(요청).
 const BEND = 0.4;
-/** 시작·끝에서 이만큼 띄운다 — 아바타 밑에서 시작하면 화살표가 아바타에 가려 안 보인다. */
-const GAP_FROM = 4.4;
+/** 시작·끝에서 이만큼 띄운다 — 아바타 밑에서 시작하면 화살표가 아바타에 가려 안 보인다.
+ *  아바타를 CSS scale로 키우면서(요청: 평상시 크기 확대) 예전 값으로는 커진 아바타 밖으로
+ *  화살 기둥이 삐져나와 보였다(지적: "화살기둥 끝이 아바타에 숨겨지지 않고 구분됨") —
+ *  더 넉넉히 띄운다. */
+const GAP_FROM = 7;
 /* 끝은 더 넉넉히 띄운다 — 목표 자리에는 그 사람 본진 아바타(커지면 지름 28px+테두리)가 있어
    화살촉이 그 밑에 들어가 안 보였다(지적: "화살촉이 다른 요소들에 가려짐"). */
 /* 끝은 목표 본진 한가운데를 겨눈다(요청: 타겟 아바타가 아니라 본진 중앙을 향하게) —
@@ -70,10 +71,12 @@ const MIN_LEN = ARROW_MIN_TILES;
 const HEAD_LEN = 4.6;
 const HEAD_WIDE = 2.6;
 /** 이모지가 들어갈 자리(타일) — 이모지를 붙일 화살표는 그만큼 짧게 그린다(지적: 이모지 자리
- *  만큼 화살표를 줄여야 겹쳐서 정신없지 않다). 화면에서 15px 이모지가 대략 이 폭이다. */
-const MARK_ROOM = 5;
+ *  만큼 화살표를 줄여야 겹쳐서 정신없지 않다). 이모지를 15 → 26px로 키우면서(요청: 화살표에
+ *  비해 액션 아이콘이 작음) 이 자리도 같은 비율로 늘린다 — 안 늘리면 커진 이모지가 화살촉과
+ *  겹친다(지적: 화살표와 화살표 끝 이모지가 겹침). */
+const MARK_ROOM = 9;
 /** 그 자리 안에서 이모지를 화살촉보다 이만큼 앞에 둔다. */
-const MARK_AHEAD = 2.6;
+const MARK_AHEAD = 5;
 /** 본진 이모지를 입구(맵 가운데) 쪽으로 이만큼 띄운다(타일) — 13 → 22(요청: 본진 한가운데
  *  느낌이 나게 자기 아바타에서 맵 중앙 쪽으로 많이 가서). */
 const MARK_OUT = 22;
@@ -133,7 +136,10 @@ function arrowGeom(a: MinimapArrow, w: number, h: number) {
   const bx = x2 - hx * headLen;
   const by = y2 - hy * headLen;
   return {
-    d: `M ${x1} ${y1} Q ${cx0} ${cy0} ${x2} ${y2}`,
+    // 기둥은 화살촉 끝(x2,y2)이 아니라 촉의 밑동(bx,by)에서 멈춘다(지적: "화살촉 밑으로
+    // 기둥 끝이 보임") — 촉 전체를 기둥이 관통해 그리면, 촉이 뾰족해지는 자리에서 굵은
+    // 기둥이 삼각형 옆으로 삐져나와 보인다.
+    d: `M ${x1} ${y1} Q ${cx0} ${cy0} ${bx} ${by}`,
     head: `${x2},${y2} ${bx - hy * headWide},${by + hx * headWide} ${bx + hy * headWide},${by - hx * headWide}`,
     // 이모지 자리 — 화살촉 바로 앞. 촉을 덮지 않고, 목표 아바타에도 닿지 않는 사이다.
     tip: [x2 + hx * MARK_AHEAD, y2 + hy * MARK_AHEAD] as [number, number],
@@ -192,6 +198,54 @@ export default function ReplayMinimap({
   onStep?: (delta: -1 | 1) => void;
   className?: string;
 }) {
+  /* 이름표가 프레임 밖(카드 자체의 바깥 패딩)까지 나가면 그만큼 안으로 되돌린다(지적:
+   * "이름표가 밖으로 나가면 보정해서 안으로 이동시키라고 했잖아") — 닉네임 글자 수마다
+   * 실제로 얼마나 튀어나오는지는 그려 보기 전엔 모르니, 어림값을 아무리 잘 잡아도
+   * 완벽할 수 없다. 그려진 뒤 실제 자리를 재서(getBoundingClientRect) 튀어나온 만큼만
+   * 보정값으로 얹는다 — 페인트 전에 반영해야 눈에 깜빡임이 없다(useLayoutEffect). */
+  const frameRef = useRef<HTMLDivElement>(null);
+  const labelElsRef = useRef<Map<string, HTMLSpanElement>>(new Map());
+  const [labelFix, setLabelFix] = useState<Map<string, { x: number; y: number }>>(new Map());
+  // 리사이즈 리스너가 오래 살아 있는 동안 labelFix state가 여러 번 바뀔 수 있다 — 리스너
+  // 클로저 안의 값은 등록 시점에 멈춰 있으므로(오래된 값), ref로 늘 최신 값을 읽는다.
+  const labelFixRef = useRef(labelFix);
+  labelFixRef.current = labelFix;
+  useLayoutEffect(() => {
+    const frame = frameRef.current;
+    if (!frame) return;
+    // 한 축을 재는 규칙 — 가로·세로 둘 다 같은 규칙을 쓴다(지적: "이름표 잘림이 양옆뿐
+    // 아니라 위아래도 잘릴 수 있어서 그때도 보정 필요").
+    const clamp = (naturalMin: number, naturalMax: number, frameMin: number, frameMax: number): number => {
+      if (naturalMax - naturalMin >= frameMax - frameMin) {
+        // 이름표 자체가 프레임보다 크면(아주 긴 닉네임) 어느 한쪽도 완전히는 못 담는다 —
+        // 그럴 땐 한가운데로 맞춰 최대한 보이게 한다.
+        return (frameMin + frameMax) / 2 - (naturalMin + naturalMax) / 2;
+      }
+      if (naturalMin < frameMin) return frameMin - naturalMin;
+      if (naturalMax > frameMax) return frameMax - naturalMax;
+      return 0;
+    };
+    const measure = () => {
+      const frameBox = frame.getBoundingClientRect();
+      let changed = false;
+      const next = new Map<string, { x: number; y: number }>();
+      labelElsRef.current.forEach((el, key) => {
+        // 이전 보정을 걷어낸 '있는 그대로'의 자리를 봐야 한다 — 안 그러면 보정값이
+        // 매번 자기 자신 위에 쌓여 점점 커진다.
+        const prev = labelFixRef.current.get(key) ?? { x: 0, y: 0 };
+        const box = el.getBoundingClientRect();
+        const fixX = clamp(box.left - prev.x, box.right - prev.x, frameBox.left, frameBox.right);
+        const fixY = clamp(box.top - prev.y, box.bottom - prev.y, frameBox.top, frameBox.bottom);
+        if (Math.abs(fixX) > 0.5 || Math.abs(fixY) > 0.5) { next.set(key, { x: fixX, y: fixY }); changed = true; }
+        else if (prev.x !== 0 || prev.y !== 0) changed = true;
+      });
+      if (changed || next.size !== labelFixRef.current.size) setLabelFix(next);
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [bases, grid]);
+
   const place = (m: MinimapMarker) => ({
     left: `${(m.x / grid.width) * 100}%`,
     top: `${(m.y / grid.height) * 100}%`,
@@ -222,24 +276,33 @@ export default function ReplayMinimap({
     };
   };
 
-  /** 닉네임을 아바타 어느 쪽에 붙일까 — 가장자리 본진에서 가운데 정렬로 두면 이름이 그림
-   *  밖으로 나가 잘린다(실제로 오른쪽 아래 본진의 이름이 잘렸다). 맵의 어느 쪽에 있는지
-   *  보고 안쪽으로 붙인다. 아래쪽 본진은 이름을 아바타 위로 올린다.
-   *  본진 이모지가 붙는 본진이면 이모지 반대쪽으로 이름을 밀어 글자가 가리지 않게 한다. */
-  const labelSide = (m: MinimapMarker): string => {
-    const fx = m.x / grid.width;
-    const fy = m.y / grid.height;
-    if (m.mark) {
-      const [, my] = markPoint(m);
-      return cx(
-        fx < EDGE ? "scr-minimap-mark-lab-r" : fx > 1 - EDGE ? "scr-minimap-mark-lab-l" : "",
-        my > m.y ? "scr-minimap-mark-lab-up" : "",
-      );
-    }
-    return cx(
-      fx < EDGE ? "scr-minimap-mark-lab-r" : fx > 1 - EDGE ? "scr-minimap-mark-lab-l" : "",
-      fy > 1 - EDGE ? "scr-minimap-mark-lab-up" : "",
-    );
+  /** 이름표는 지도 밖(감싸는 테두리 안)까지 나가도 된다(요청) — 다만 카드 자체의
+   *  바깥 패딩까지 넘어가면 안 되므로(지적: 오른쪽으로 벗어나면 그만큼 왼쪽으로), 좌우로는
+   *  조금만, 위아래로는 넉넉히 뗀다 — 옆으로 크게 밀면 프레임의(특히 모바일에서 얼마 안
+   *  되는) 좌우 폭을 쉽게 넘어서지만, 위아래는 지도 안쪽의 빈 칸을 넉넉히 쓸 수 있다.
+   *  모든 본진에 같은 규칙을 쓴다(지적: 가운데뿐 아니라 전부 좌우 이탈 방지가 필요). */
+  // 아바타를 CSS scale로 키우면서(요청: 평상시 크기 확대) 세로 간격이 빡빡해졌다(지적:
+  // 확대 상태를 고려해 아바타·닉네임 세로 갭을 조금 늘려야 함) — 20 → 26.
+  const LABEL_OUT_Y = 26;
+  const LABEL_OUT_X = 8;
+  /** 가로 중앙선에 거의 걸친(예: 12시·6시) 본진은 옆으로 밀지 않고 가운데 정렬한다
+   *  (지적: "12시 6시 이름표는 왜 우측으로 옮겨짐? 가운데 정렬해도 되는데") — dx가 0에
+   *  아주 가까운 값도 "왼쪽이 아니면 오른쪽"으로 갈라 버리면 늘 한쪽(오른쪽)으로 쏠린다. */
+  const CENTER_EPS = 4;
+  const labelPlace = (m: MinimapMarker) => {
+    const dx = m.x - grid.width / 2;
+    const dy = m.y - grid.height / 2;
+    const ox = Math.abs(dx) < CENTER_EPS ? 0 : dx < 0 ? -LABEL_OUT_X : LABEL_OUT_X;
+    const oy = Math.abs(dy) < CENTER_EPS ? LABEL_OUT_Y : dy < 0 ? -LABEL_OUT_Y : LABEL_OUT_Y;
+    // 이름표는 밀려난 방향과 같은 쪽으로 자라야 한다 — 반대로 자라면 그 길이만큼
+    // 도로 아바타를 덮는다(지적: 아바타·닉네임은 겹치면 안 된다).
+    const anchorX = ox < -0.5 ? "-100%" : ox > 0.5 ? "0%" : "-50%";
+    const anchorY = oy < -0.5 ? "-100%" : oy > 0.5 ? "0%" : "-50%";
+    return {
+      left: `${(m.x / grid.width) * 100}%`,
+      top: `${(m.y / grid.height) * 100}%`,
+      transform: `translate(calc(${anchorX} + ${ox.toFixed(1)}px), calc(${anchorY} + ${oy.toFixed(1)}px))`,
+    };
   };
   // 그릴 화살표만 미리 계산한다 — 몸통 레이어와 머리 레이어가 같은 값을 쓴다.
   const geoms = arrows
@@ -247,10 +310,16 @@ export default function ReplayMinimap({
     .filter((v): v is { a: MinimapArrow; g: NonNullable<ReturnType<typeof arrowGeom>> } => v.g !== null);
 
   return (
-    <div className={cx("scr-minimap", className)}>
-      {/* 사람이 올려 둔 실제 미니맵 그림이 있으면 그것을, 없으면 타일 격자로 그린 개략도를
-          쓴다(요청: 물·풀·땅·벽을 실제와 비슷하게). 아바타·화살표는 좌표를 비율로 얹으므로
-          어느 쪽이든 같은 자리에 놓인다. */}
+    <div className="scr-minimap-frame" ref={frameRef}>
+      {/* 이름표가 나갈 자리를 지도 바깥에 미리 마련해 둔다(요청: 미니맵 바깥을 자막
+          패널과 같은 재질의 테두리로 감싸서 이름표 공간을 확보) — 지도 자체(.scr-minimap)
+          는 그대로 두고, 그 바깥에 자막 패널(.scr-story-cap)과 같은 톤의 여백을 두른다.
+          카드 자체의 바깥 패딩까지 넘어가면 안 되므로(지적) 이 여백은 부모 폭 안에서만
+          늘어난다 — 지도가 그만큼 작아지는 대신 이름표가 늘 이 안에 머문다. */}
+      <div className={cx("scr-minimap", className)}>
+        {/* 사람이 올려 둔 실제 미니맵 그림이 있으면 그것을, 없으면 타일 격자로 그린 개략도를
+            쓴다(요청: 물·풀·땅·벽을 실제와 비슷하게). 아바타·화살표는 좌표를 비율로 얹으므로
+            어느 쪽이든 같은 자리에 놓인다. */}
       {grid.image
         ? <img className="scr-minimap-canvas" src={grid.image} alt={`${grid.name} 미니맵`} />
         : <ReplayMapCanvas grid={grid} />}
@@ -285,8 +354,7 @@ export default function ReplayMinimap({
             m.downed && "scr-minimap-mark-downed",
             m.ghost && "scr-minimap-mark-ghost",
             m.featured && "scr-minimap-mark-on",
-            m.introBig && "scr-minimap-mark-introbig",
-            labelSide(m))}
+            m.introBig && "scr-minimap-mark-introbig")}
           style={place(m)}
         >
           {/* 지금 문장의 주인공은 확실히 크게, 나머지는 작게(요청) — 크기 차이가 곧
@@ -306,15 +374,38 @@ export default function ReplayMinimap({
               아바타 반대쪽 어깨에 붙인다(지적: 상태 얼굴도 해골처럼 아바타에 바짝 붙어야
               한다). 해골과 자리가 겹치지 않게 반대쪽(왼쪽 위)에 둔다. */}
           {m.face && <span className="scr-minimap-mark-face" aria-hidden>{m.face}</span>}
-          {m.withName && (
-            <span className="scr-minimap-mark-label">
-              <span className="scr-minimap-mark-name">{m.name}</span>
-              {/* 로스터를 감춘 모바일에서 종족이 통째로 사라지지 않게 여기 함께 붙인다. */}
-              <RaceBadge race={m.race} size={11} circleLetter className="scr-minimap-mark-race" />
-            </span>
-          )}
         </span>
       ))}
+      {/* 이름표 — 아바타 바로 바깥(지도 중심의 반대 방향)에 고정 거리로 붙인다(요청:
+          화살표·아바타·상태 얼굴에 가려지지 않되, 지도가 커도 타이틀·자막 칸까지 멀리
+          밀려나지 않게 아바타 코앞에). 본진 span 안에 두면 아바타 자리에 묶여 같이
+          가려지므로 따로 뗀다. */}
+      {bases.map((m) => (m.withName ? (
+        <span
+          key={`lb-${m.key}`}
+          ref={(el) => {
+            if (el) labelElsRef.current.set(m.key, el);
+            else labelElsRef.current.delete(m.key);
+          }}
+          className={cx("scr-minimap-mark-label-out",
+            m.team === 1 && "scr-minimap-mark-t1", m.team === 2 && "scr-minimap-mark-t2",
+            m.highlight && "scr-minimap-mark-hit", m.downed && "scr-minimap-mark-downed",
+            m.introBig && "scr-minimap-mark-introbig")}
+          // 실측 보정(labelFix) — 프레임 밖으로 나간 만큼 안으로 되돌린다(지적: "이름표가
+          // 밖으로 나가면 보정해서 안으로 이동시키라고 했잖아", 위아래도 잘릴 수 있다는
+          // 지적까지 포함해 가로·세로 둘 다). transform 뒤에 적용되는 margin이라 기존
+          // 위치 계산과 섞이지 않고 그 값에 더해진다.
+          style={{
+            ...labelPlace(m),
+            marginLeft: `${labelFix.get(m.key)?.x ?? 0}px`,
+            marginTop: `${labelFix.get(m.key)?.y ?? 0}px`,
+          }}
+        >
+          <span className="scr-minimap-mark-name">{m.name}</span>
+          {/* 로스터를 감춘 모바일에서 종족이 통째로 사라지지 않게 여기 함께 붙인다. */}
+          <RaceBadge race={m.race} size={11} circleLetter className="scr-minimap-mark-race" />
+        </span>
+      ) : null))}
       {/* 화살촉 — 아바타·이름표 위에 올린다(지적: 화살촉이 다른 요소들에 가려짐). 몸통까지
           위로 올리면 긴 화살표가 남의 얼굴을 가로지르므로 머리만 올린다. */}
       <svg
@@ -372,6 +463,7 @@ export default function ReplayMinimap({
           onClick={(e) => { e.stopPropagation(); onStep(d); }}
         />
       ))}
+      </div>
     </div>
   );
 }
