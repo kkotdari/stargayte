@@ -13,13 +13,16 @@ const SHIFT_COLLAPSE_AT = 4;
 // 분리했다(요청: "순위변동 발생도 카톡공유 가능, 피드는 다 가능하게"). 헤더 오른쪽
 // 케밥(actions)과 하단(댓글, footer)은 쓰는 쪽이 끼워 넣는다.
 
-// 순위가 어디서 어디로 갔나 — "1 → 3위"(신규 진입은 "신규 → 3위").
+// 순위가 어디서 어디로 갔나 — "1 → 3위".
 //
 // 예전에는 이 자리에 ▲2 / ▼1 같은 배지를 뒀는데 걷어냈다(요청) — 통계표의 순위 변동
 // 배지와 생김새가 같아, 같은 화면을 오가며 볼 때 어느 쪽 이야기인지 헷갈린다.
 // 여기서는 몇 계단이 아니라 몇 위에서 몇 위로 갔는지를 그대로 읽히게 둔다.
+//
+// 그 달에 처음 순위가 잡힌 사람은 "3위(신규)"다(요청) — 예전엔 "신규 → 3위"라고 적었는데,
+// 화살표는 '어디서 왔다'는 말이라 오기 전 자리가 있는 것처럼 읽힌다. 그런 자리는 없다.
 export function shiftLabel(e: RankingShiftEntry): { text: string; cls: string } {
-  if (e.from == null) return { text: `신규 → ${e.to}위`, cls: "scr-feed-shift-new" };
+  if (e.from == null) return { text: `${e.to}위(신규)`, cls: "scr-feed-shift-new" };
   const d = e.from - e.to;
   return {
     text: `${e.from} → ${e.to}위`,
@@ -44,17 +47,24 @@ export function rankShiftTypeLabel(shift: RankingShift): string {
   return shift.matchType === "0101" ? "개인전" : "팀전";
 }
 
+/** 카드·공유에 쓰는 제목(요청: "일일 랭크 변동 알림") — 하루치를 모아 자정에 한 번만
+ *  남기는 카드라 '발생'보다 '일일 알림'이 실제 동작에 맞다. 유형(개인전·팀전)은 앞에
+ *  그대로 둔다: 같은 날 두 카드가 나란히 뜰 수 있어 그게 없으면 구분이 안 된다. */
+export function rankShiftTitle(shift: RankingShift): string {
+  return `${rankShiftTypeLabel(shift)} 일일 랭크 변동 알림`;
+}
+
 export function rankShiftShareContent(shift: RankingShift): KakaoShareContent {
   const summary = shift.shifts
     .slice(0, 3)
     .map((e) => `${e.nickname} ${shiftLabel(e).text}`)
     .join(" · ");
   return {
-    title: `${rankShiftTypeLabel(shift)} 랭크 변동 발생`,
+    title: rankShiftTitle(shift),
     description: summary,
     ...shareThumb("rankShift"),
     link: `${window.location.origin}/?sv=rankingShift&sid=${shift.id}`,
-    fallbackText: `[스타게이트] ${rankShiftTypeLabel(shift)} 랭크 변동 발생\n${summary}`,
+    fallbackText: `[스타게이트] ${rankShiftTitle(shift)}\n${summary}`,
   };
 }
 
@@ -117,7 +127,7 @@ export default function RankingShiftCard({
       <div className="scr-feed-card-head" {...(dateLabel ? { "data-date-label": dateLabel } : {})}>
         <div className="scr-feed-card-head-title">
           <Trophy size={16} aria-hidden />
-          <span className="scr-feed-card-label">{rankShiftTypeLabel(shift)} 랭크 변동 발생</span>
+          <span className="scr-feed-card-label">{rankShiftTitle(shift)}</span>
         </div>
         <div className="scr-feed-card-head-meta">
           {timeText && <span className="scr-feed-card-time">{timeText}</span>}
