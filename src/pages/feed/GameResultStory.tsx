@@ -136,6 +136,14 @@ const BY_ATTACKER_KEYS = new Set(["fallen", "greedy-punished"]);
 /** 실제로 맵 가운데에서 벌어진 일 — 화살표를 센터로 보낸다(요청: 센터 내용은 실제 센터에). */
 const CENTER_BEAT_KEYS = new Set(["center", "center-photon"]);
 
+/* 화살표 끝에는 '특별한 기술'일 때만 이모지를 얹는다(요청: 일반 공격과 방어, 헬프의
+   화살표 끝에 칼 이모지 더는 안 붙이기). 칼·방패는 그 화살표가 이미 말하고 있는 것을
+   한 번 더 말할 뿐이라 — 화살표가 상대 진영으로 가면 공격이고, 아군 기지로 가면 도우러
+   간 것이다 — 지도만 시끄러워졌다. 스톰·리콜·커널·드랍처럼 그 자체가 무슨 수인지
+   알려 주는 표시들만 남긴다. 본진 이모지(화살표가 없는 이야기)는 여기 해당하지 않는다:
+   거기서는 그 이모지가 유일한 표시라 없으면 아무 말도 안 남는다. */
+const PLAIN_TIP_MARKS = new Set(["⚔️", "🛡️"]);
+
 /** 본진 안이 아니라 '입구'에서 벌어진 일 — 본진 이모지를 한가운데가 아니라 상대 쪽으로
  *  밀어 그린다(요청: "벽을 쌓는 입구 막기는 입구쪽에 나와야 자연스럽고"). 판정 자체가
  *  '내 본진 안이면서 상대 쪽으로 나가 있는 자리'로 잡은 것들이라(replayTactics의 atFront),
@@ -459,6 +467,7 @@ export default function GameResultStory({
     const idx = sentences[index]?.beats;
     if (!beats || !idx) return empty;
     const spots = gameResult.summaryData?.bases ?? {};
+    const hubs = gameResult.summaryData?.hubs ?? {};
     const teamOf = new Map(slots.map((s) => [s.raw, s.team]));
     /* 저장된 자리 값을 믿어도 되는 요약인가 — 옛 요약(v1)의 pos는 '그 무렵 찍은 명령의
        중심'이라 일꾼의 자원 클릭과 건물의 랠리가 섞여 대부분 제 집을 가리킨다. 새 뜻으로
@@ -710,7 +719,7 @@ export default function GameResultStory({
     /** 한 사람이 이 스냅에서 실제로 때린 자리들 — 여러 곳을 쳤으면 여러 개가 쌓인다(요청:
      *  한 사람이 여러 곳에 피해를 준 경우 아바타 하나에서 화살표 여러 개로 갈라지게).
      *  예전에는 자리당 하나(Map<raw, target>)만 기억해 마지막 것만 그려졌다. */
-    interface RawHit { t: [number, number]; flight: boolean; mark: string; fromMark?: string }
+    interface RawHit { t: [number, number]; flight: boolean; mark?: string; fromMark?: string }
     const hits = new Map<string, RawHit[]>();
     const hit = new Set<string>();
     // 맺음말 스냅에서는 이긴 편 아바타에 트로피를 겹쳐 얹는다(요청).
@@ -843,6 +852,11 @@ export default function GameResultStory({
            쪽으로 FRONT만큼 나온 지점. 아바타 옆에 살짝 비켜 뜨는 것과는 그림이 다르다. */
         const myHome = homeOf(raw);
         if (FRONT_BEAT_KEYS.has(b.k) && myHome) markSpot.set(raw, lerp(myHome, center, FRONT));
+        /* 본진에서 한 일은 '본진 건물이 실제로 선 자리'에 세운다(요청: 본진 이모지는
+           아바타가 아니라 본진 건물 자리에) — 아바타는 시작 지점에 선 사람 표시라,
+           거기에 그대로 얹으면 얼굴을 덮는다. hubs는 그 사람 살림의 무게중심이다
+           (replaySummary). 살림을 옮긴 사람은 그 값이 옛 자리를 가리키므로 쓰지 않는다. */
+        else if (hubs[raw] && !moved.has(raw)) markSpot.set(raw, [hubs[raw][0], hubs[raw][1]]);
         else markSpot.delete(raw);
         if (ATTACKER_FACE_KEYS.has(b.k)) attacker.add(raw);
         const t = target(b, raw);
@@ -857,7 +871,8 @@ export default function GameResultStory({
         const arrive = WARP_BEAT_KEYS.has(b.k) ? (WARP_ARRIVE_MARK[b.k] ?? em) : em;
         const list = hits.get(raw) ?? [];
         list.push({
-          t, flight: flightVal, mark: arrive,
+          t, flight: flightVal,
+          ...(PLAIN_TIP_MARKS.has(arrive) ? {} : { mark: arrive }),
           ...(WARP_BEAT_KEYS.has(b.k) ? { fromMark: em } : {}),
         });
         hits.set(raw, list);
@@ -901,7 +916,8 @@ export default function GameResultStory({
         if (!home || dist(home, h.t) < ARROW_MIN_TILES) return;
         arrows.push({
           key: `${s.raw}-${i}`, x1: home[0], y1: home[1], x2: h.t[0], y2: h.t[1],
-          team: s.team, flight: h.flight, mark: h.mark, deep,
+          team: s.team, flight: h.flight, deep,
+          ...(h.mark ? { mark: h.mark } : {}),
           ...(h.fromMark ? { markFrom: h.fromMark } : {}),
         });
         drawn += 1;

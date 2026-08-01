@@ -2393,6 +2393,34 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     }
   }
 
+  /* 본진 살림의 한가운데(요청: 본진 이모지는 아바타가 아니라 본진 건물 자리에) — 아바타는
+     '시작 지점'에 서 있는 사람 표시이고, 그 사람이 실제로 살림을 편 자리는 그 언저리에
+     퍼져 있다. 그 무게중심을 따로 실어 두면 액션 이모지를 아바타에 겹치지 않고 진짜
+     본진 위에 세울 수 있다.
+
+     멀리 나간 멀티·센터 포토까지 끌어오면 무게중심이 지도 한가운데로 끌려가므로, 시작
+     지점 언저리(HUB_RADIUS 타일)에 있는 건물만 센다. 그 안에 아무것도 없으면(좌표를 못
+     읽은 리플레이) 값을 안 남기고, 보는 쪽은 예전처럼 시작 지점을 그대로 쓴다. */
+  const hubs: Record<string, [number, number]> = {};
+  for (const p of replay.players) {
+    const home = bases[p.rawName];
+    const pts = (p.signals?.buildPositions ?? [])
+      .filter((b) => home && Math.hypot(b.x - home[0], b.y - home[1]) <= HUB_RADIUS);
+    if (!home || pts.length < HUB_MIN_BUILDINGS) continue;
+    const cx = pts.reduce((n, b) => n + b.x, 0) / pts.length;
+    const cy = pts.reduce((n, b) => n + b.y, 0) / pts.length;
+    /* 무게중심이 시작 지점과 거의 같은 사람도 있다(실측: 3.7타일 = 화면에서 10px) — 그러면
+       이모지가 도로 아바타 밑으로 들어간다. 방향은 실제 살림이 퍼진 쪽 그대로 두고 거리만
+       최소치까지 밀어 준다. 정확히 겹쳐 방향조차 없으면 값을 안 남긴다(보는 쪽이 시작
+       지점을 그대로 쓴다). */
+    const dx = cx - home[0];
+    const dy = cy - home[1];
+    const len = Math.hypot(dx, dy);
+    if (len < 0.5) continue;
+    const k = len < HUB_MIN_GAP ? HUB_MIN_GAP / len : 1;
+    hubs[p.rawName] = [round1(home[0] + dx * k), round1(home[1] + dy * k)];
+  }
+
   // 가장 크게 부딪친 대목 — 마법과 공격 명령이 한때 한곳에 몰린 자리다(요청: 마법 좌표로
   // 그 경기의 최대 교전 지점을 짚을 수 있겠다). 그 판의 절정이라 이야기에서 빠지면 안 된다.
   const clash = biggestClash(winnerPlayers, loserPlayers);
@@ -2855,6 +2883,7 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     // 개인전에서는 팀 용어를 쓰지 않는다(요청).
     ...(duel ? { duel: true } : {}),
     ...(Object.keys(bases).length > 0 ? { bases } : {}),
+    ...(Object.keys(hubs).length > 0 ? { hubs } : {}),
     ...(Object.keys(moves).length > 0 ? { moves } : {}),
     ...(Object.keys(downs).length > 0 ? { downs } : {}),
     beats: [...chosen, ending].map(strip).map((b) => {
@@ -2894,6 +2923,17 @@ const CLASH_AT_MID = 0.3;
 /** 이사 문장의 무게 — 본진을 버리고 다시 편 것은 승부를 가르는 사건이라 무겁게 잡는다.
  *  다만 러시·돌파 같은 '그 경기만의 수'보다는 한 단계 아래다. */
 const RELOCATE_WEIGHT = 18;
+
+/** 본진 살림의 무게중심을 잴 때, 시작 지점에서 이만큼(타일) 안에 있는 건물만 센다.
+ *  스타의 본진 한 곳은 대략 이 정도 폭이고, 앞마당까지는 들어오되 삼룡이·센터는 빠진다 —
+ *  멀리 나간 건물까지 세면 무게중심이 지도 한가운데로 끌려간다. */
+const HUB_RADIUS = 22;
+/** 그 안에 이만큼은 있어야 '살림'이라 부른다 — 한두 채로는 무게중심이 튄다. */
+const HUB_MIN_BUILDINGS = 4;
+/** 시작 지점에서 최소한 이만큼(타일)은 떨어뜨린다 — 표준 128타일 맵에서 화면상 17px쯤
+ *  되어 확대된 아바타(최대 44px) 반지름을 넘긴다. 이보다 가까우면 이모지가 도로 아바타
+ *  밑으로 들어가 애초에 옮긴 뜻이 사라진다. */
+const HUB_MIN_GAP = 6;
 
 /** 상대를 짚지 못한 고급 유닛 생산담에서 덜어 내는 무게 — 이만큼 빼면 러시·돌파·이사
  *  같은 '실제로 부딪친 이야기'가 먼저 자리를 잡는다. */
