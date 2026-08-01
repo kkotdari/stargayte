@@ -280,6 +280,9 @@ const UNIT_STORY_KEYS: Record<string, string> = {
 const NEED_TARGET_KEYS = new Set([
   "shuttle", "shuttle-reaver", "templar-drop", "zerg-drop", "dropship",
   "bionic", "mech", "moka",
+  // 패스트 OO도 마찬가지다(지적: "일찍 뽑아서 어딜 갔는지가 없네") — 어디로도 안 간 빠른
+  // 테크는 '들이댄 수'가 아니라 그냥 빌드 순서라, 목표를 못 짚으면 무게를 내린다.
+  "fast-tech",
 ]);
 const NO_TARGET_PENALTY = 10;
 
@@ -294,6 +297,9 @@ const NO_TARGET_PENALTY = 10;
  *  ②그 창을 넘기면 아무것도 안 붙인다. */
 const RUSH_LAND_KEYS = new Set([
   "zling-rush", "zealot-rush", "cannon-rush", "sunken-rush", "sneak-rax", "duel-rush",
+  // 패스트 OO도 같은 사정이다(지적) — at은 그 유닛이 처음 나온 프레임이라 앞뒤 창으로는
+  // 늘 빈손이고, 정작 "일찍 뽑아서 어디로 갔나"는 그 병력이 처음 닿은 자리에 있다.
+  "fast-tech",
 ]);
 const RUSH_LAND_SEC = 8 * 60;
 
@@ -1085,6 +1091,16 @@ function sideBeats(args: {
     } else if (sec > 0 && sec < EARLY_GAME_SEC) {
       p = { mode: "nothing" };
     }
+    /* 무엇을 막기에 늦었는지(지적: "뽑았지만 누구를 막기에 늦었는지가 없네") — "아비터까지
+       갔지만 늦었다"는 무엇에 늦었다는 건지 알 수 없는 문장이었다. 상대 쪽에서 그 판을 끌고
+       간 사람과 그 사람의 주력을 함께 실어, 문장이 "○○의 △△를 막기엔 늦었다"까지 가게 한다.
+       상대가 하나뿐이면 그 사람이 곧 답이고, 팀전이면 그 편의 눈에 띈 사람을 쓴다. */
+    const rival = other.players.length === 1
+      ? other.players[0]
+      : standout(other, lateAlive) ?? other.players[0] ?? null;
+    const rivalUnits = rival
+      ? nameableUnits(mainUnits(ownCombat(rival), armyBySupply([rival])))
+      : [];
     if (p) {
       beats.push({
         // 팀전이면 혼자 버틴 게 아니다 — 문장도 "팀원이 도와줬으나"로 갈린다(요청).
@@ -1092,7 +1108,13 @@ function sideBeats(args: {
         // 사실(센터 건물 등)에 밀려 통째로 빠지면, 이긴 쪽 조합만 남아 경기가 한쪽
         // 이야기가 된다(실제로 골리앗 77기를 뽑은 편의 조합이 계속 안 나왔다).
         k: "stand", won, at: null, weight: 16,
-        p: { ...p, team: players.length > 1 },
+        p: {
+          ...p, team: players.length > 1,
+          // 이긴 쪽 사람은 whom이 아니라 p.foe다 — whom으로 실으면 '이 사람이 당했다'는
+          // 뜻이 되어 그림이 뒤집힌다(relocate·fallen의 by와 같은 이유).
+          ...(rival ? { foe: rival.rawName } : {}),
+          ...(rivalUnits.length > 0 ? { foeUnits: rivalUnits.slice(0, 2) } : {}),
+        },
         who: owner ? who(owner) : players.map((x) => x.rawName),
       });
     }

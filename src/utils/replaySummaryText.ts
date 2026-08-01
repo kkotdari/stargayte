@@ -220,6 +220,9 @@ interface Ctx {
   /** 그 일을 만든 상대 — who도 whom도 아닌 제3의 이름이다(이사를 만든 사람 등).
    *  못 짚었으면 빈 문자열이고, 그때는 이름 없이도 성립하는 표현을 쓴다. */
   by: string;
+  /** 이 편을 넘어선 상대 — 진 편의 맺음말이 "누구를 막기엔 늦었다"까지 가게 하는 이름이다
+   *  (지적). by와 마찬가지로 whom이 아니다: 이 사람은 당한 쪽이 아니라 이긴 쪽이다. */
+  foe: string;
   won: boolean;
   /** 일어난 프레임 — 초반 일은 결과를 덧붙이지 않고 그때 일만 말한다(지적). */
   at: number | null;
@@ -979,13 +982,28 @@ const TEMPLATES: Record<string, Tpl> = {
   stand: (c) => {
     const mode = str(c.p.mode);
     const phrase = unitPhrase(list(c.p.units));
+    /* 무엇에 늦었나 — "아비터까지 갔지만 늦었다"는 무엇에 늦었다는 건지 없는 문장이었다
+       (지적: "뽑았지만 누구를 막기에 늦었는지가 없네"). 넘어선 상대와 그 사람의 주력을
+       실어 두었으니(replaySummary의 stand 비트), 그것으로 "○○의 △△를 막기엔"까지 간다.
+       이름을 못 짚은 경기에서는 빈 문자열이라 예전 문장 그대로 나온다. */
+    const foeKo = list(c.p.foeUnits).map((u) => UNIT_KO[u]).filter(Boolean);
+    const foeArmy = foeKo.length >= 2 ? `${foeKo[0]}·${foeKo[1]}` : foeKo[0] ?? "";
+    const wall = !c.foe ? "" : foeArmy ? `${c.foe}의 ${foeArmy}` : c.foe;
+    /** "…를 막기엔" — 막을 대상이 없으면 빈 문자열이라 뒷말이 그대로 이어진다. */
+    const block = wall ? `${reul(wall)} 막기엔 ` : "";
     if (mode === "spectacle") {
       const u = unitWithUp(c);
       if (!u) return null;
       // 몇 기까지 갔는지가 곧 그림이다(요청) — 한 부대면 그렇게 말한다.
       const n = num(c.p.n);
       const amount = n >= 12 ? "한 부대" : n >= 4 ? `${n}기` : "";
-      return `${neun(c.who)} ${c.pick([
+      // 넘어선 상대를 짚을 수 있으면 후보를 통째로 그쪽으로 바꾼다 — 섞어 두면 제비뽑기가
+      // 여전히 "늦었음"만 남은 문장을 골라, 고쳐도 안 고쳐진 것처럼 보인다.
+      return `${neun(c.who)} ${c.pick(wall ? [
+        ...(amount ? [`${reul(u)} ${amount} 뽑고도 ${block}모자랐음`] : []),
+        `${u}까지 꺼냈지만 ${block}늦었음`,
+        `${u}까지 갔지만 ${block}모자랐음`,
+      ] : [
         ...(amount ? [`${reul(u)} ${amount} 뽑았으나 실패함`, `${reul(u)} ${amount}나 뽑고도 소용없었음`] : []),
         `${u} 등의 고급 유닛을 사용해 전투에 임했으나 판을 뒤집지 못함`,
         `${u}까지 꺼냈지만 판을 뒤집지 못함`,
@@ -1000,7 +1018,10 @@ const TEMPLATES: Record<string, Tpl> = {
     }
     if (!phrase) return null;
     if (mode === "pressed") {
-      return `${neun(c.who)} ${c.pick([
+      return `${neun(c.who)} ${c.pick(wall ? [
+        `초반 경기를 주도했지만 ${phrase} ${reul(wall)} 넘지는 못함`,
+        `초반 주도권을 쥐고도 ${phrase} ${reul(wall)} 넘어서지는 못함`,
+      ] : [
         // "초반을 잡고 흔들었지만 … 굳히지 못했다"는 목적어가 없어 무엇을 굳히려던 건지
         // 붕 떴다(요청) — 무엇을 주도했고 무엇을 못 굳혔는지 둘 다 채운다.
         `초반 경기를 주도했지만 ${phrase} 승부를 굳히지는 못함`,
@@ -1008,9 +1029,19 @@ const TEMPLATES: Record<string, Tpl> = {
       ])}`;
     }
     if (mode === "late") {
-      return `${neun(c.who)} ${c.pick([`${phrase} 후반을 노렸지만 역부족`, `${phrase} 길게 갔지만 미치지 못함`])}`;
+      return `${neun(c.who)} ${c.pick(wall ? [
+        `${phrase} 후반을 노렸지만 ${block}늦었음`,
+        `${phrase} 길게 갔지만 ${block}모자랐음`,
+      ] : [
+        `${phrase} 후반을 노렸지만 역부족`, `${phrase} 길게 갔지만 미치지 못함`,
+      ])}`;
     }
-    return `${neun(c.who)} ${c.pick([
+    return `${neun(c.who)} ${c.pick(wall ? [
+      `${phrase} 맞섰지만 ${block}역부족`,
+      `${phrase} 버텼지만 ${block}모자랐음`,
+      `${phrase} 끝까지 붙었지만 ${block}부족했음`,
+      ...(c.p.team ? [`${phrase} 팀원과 함께 막아섰으나 ${block}역부족`] : []),
+    ] : [
       `${phrase} 맞섰지만 역부족`, `${phrase} 버텼지만 모자랐음`, `${phrase} 받아쳤지만 밀림`,
       `${phrase} 끝까지 붙었지만 넘지 못함`, `${phrase} 싸웠지만 한 끗이 모자랐음`,
       ...(c.p.team ? [`${phrase} 팀원과 함께 막아섰으나 역부족`, `팀원이 도와줬으나 ${phrase} 막지 못함`] : []),
@@ -1701,6 +1732,27 @@ const TEMPLATES: Record<string, Tpl> = {
     const m = num(c.p.min);
     const when = m > 0 ? `${m}분 만에 ` : "";
     const at = targetPhrase(c);
+    /* 어디로 갔는지 모르면 갔다고 말하지 않는다(지적: "일찍 뽑아서 어딜 갔는지가 없네").
+       예전에는 목표가 없어도 "상대가 준비하기 전에 들이댐"·"승부를 걸음"·"허를 찌름"이
+       나왔는데, 그건 리플레이에 없는 이야기다 — 확인된 건 그 유닛이 이르게 나왔다는 것뿐이다.
+       그럴 때는 타이밍만 말하고 끝낸다. */
+    if (!c.whom) {
+      return `${ga(c.who)} ${done(c, c.pick([
+        `${when}${reul(unit)} 뽑아 ${unit} 타이밍을 크게 당김`,
+        `${unit} 타이밍을 크게 당김`,
+        `남들보다 이르게 ${reul(unit)} 확보함`,
+      ]))}`;
+    }
+    // 언제 닿았는지까지 알면 그것도 말한다(withStrike의 landMin) — 뽑은 때와 부딪친 때가
+    // 벌어져 있을수록 "일찍 뽑아 그 병력이 어디로 갔나"가 또렷해진다.
+    const land = num(c.p.landMin);
+    if (land > 0 && land > m) {
+      return `${ga(c.who)} ${done(c, c.pick([
+        `${when}${reul(unit)} 뽑아 ${land}분에 ${reul(c.whom)} 덮침`,
+        `${when}${reul(unit)} 확보해 ${land}분에 ${c.whom}에게 들이댐`,
+        `${ira(`패스트 ${unit}`)} ${land}분에 ${reul(c.whom)} 찌름`,
+      ]))}`;
+    }
     return `${ga(c.who)} ${at}${done(c, c.pick([
       `${ro(`패스트 ${unit}`)} 승부를 걸음`,
       `${ira(`패스트 ${unit}`)} 날카로운 빌드로 허를 찌름`,
@@ -2363,6 +2415,7 @@ function renderLines(
         who2: joinNames((b.who2 ?? []).map(resolveName)),
         whom: joinNames((b.whom ?? []).map(resolveName)),
         by: typeof b.p?.by === "string" ? resolveName(b.p.by) : "",
+        foe: typeof b.p?.foe === "string" ? resolveName(b.p.foe) : "",
         won: !!b.won,
         at: typeof b.at === "number" ? b.at : null,
         end: typeof data.end === "number" && data.end > 0 ? data.end : null,
@@ -2659,6 +2712,7 @@ function renderLines(
       .flatMap((b) => [
         ...(b.who ?? []), ...(b.who2 ?? []), ...(b.whom ?? []),
         ...(typeof b.p?.by === "string" ? [b.p.by] : []),
+        ...(typeof b.p?.foe === "string" ? [b.p.foe] : []),
       ])
       .map(resolveName)
       .filter(Boolean),
@@ -2738,10 +2792,12 @@ export function renderReplaySummarySentences(
   // 긴 이름부터 찾는다 — 짧은 이름이 긴 이름의 일부인 경우("정구"와 "정구2")를 위해서다.
   const names = [...new Set(
     beats
-      // p.by(이사·궤멸을 만든 사람)도 문장에 이름으로 나오므로 같이 색을 입힌다.
+      // p.by(이사·궤멸을 만든 사람)·p.foe(진 편을 넘어선 사람)도 문장에 이름으로 나오므로
+      // 같이 색을 입힌다.
       .flatMap((b) => [
         ...(b.who ?? []), ...(b.who2 ?? []), ...(b.whom ?? []),
         ...(typeof b.p?.by === "string" ? [b.p.by] : []),
+        ...(typeof b.p?.foe === "string" ? [b.p.foe] : []),
       ])
       .map(resolveName)
       .filter(Boolean),
