@@ -3533,7 +3533,14 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
   /* 우측 버튼 묶음(.scr-user)은 모바일에서 자식이 전부 숨김인데 margin-left:auto가 남아
      justify-content:center를 무력화했다(지적: 가로 가운데가 안 됨) — 묶음째 숨긴다. */
   .scr-user { display: none; }
-  .scr-main { --main-pad-x: 16px; padding: 30px var(--main-pad-x) 48px; }
+  /* 모바일에서는 포스트에 덧붙이던 좌우 패딩을 걷는다(요청: 피드 포스트들 추가 좌우패딩
+     제거) — 판은 --post-bleed만큼 나갔다가 같은 값을 되돌려 받으므로, 이 둘을 0으로 두면
+     포스트 안쪽 내용이 본문 패딩(16px)과 정확히 같은 자리에서 시작한다. PC는 위 .scr-main의
+     값(본문 패딩 위에 한 겹 더)을 그대로 쓴다 — 화면이 넓어 한 단 들여쓰는 편이 읽기 좋다. */
+  .scr-main {
+    --main-pad-x: 16px; padding: 30px var(--main-pad-x) 48px;
+    --post-pad-bx: 0px; --post-head-pad-l: 0px;
+  }
   /* 너나와 카드 좌우 내부 패딩 축소(요청: "모바일 좌우 패딩은 메인이 아니라 너나와 카드
      내부 패딩"). 예전엔 이 패딩 안에 좌우 이동 버튼(절대배치)이 들어가야 해서 넓게
      뒀는데(24px), 이동 버튼을 카드 하단 바로 옮긴 뒤로는 그럴 필요가 없어졌다 — 좁혀서
@@ -8015,6 +8022,22 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
    기준 자리·크기라 큰 아바타에서는 안쪽으로 파묻혀 보였다). */
 .scr-minimap-mark-on .scr-minimap-mark-face {
   left: -13px; top: -13px; font-size: 19px;
+}
+/* 모바일에서만 20% 축소(요청: 확대된 아바타·본진액션/화살표액션/표정 이모지 20% 축소).
+   맨 뒤에 두는 이유는 이 파일의 기본값 규칙들이 PC 미디어쿼리(641px)보다 뒤에 있어서,
+   기본값을 직접 줄이면 PC까지 같이 줄어들기 때문이다(실측으로 확인). 여기서 화면 폭으로
+   가르면 PC는 지금 크기를 그대로 유지한다. */
+@media (max-width: 640px) {
+  /* 주인공(확대된) 아바타 — 1.08 × 0.8. 비확대 아바타는 요청 대상이 아니라 그대로 둔다. */
+  .scr-minimap-mark-on .scr-avatar { transform: translate(-50%, -50%) scale(0.86); }
+  /* 본진 액션·화살촉 끝 이모지(같은 클래스를 쓴다) — 28 × 0.8. */
+  .scr-minimap-arrow-mark { font-size: 22px; }
+  .scr-minimap-arrow-mark.scr-minimap-mark-home { font-size: 22px; }
+  /* 표정·해골 — 13 × 0.8 ≈ 10. 주인공 표정은 19 × 0.8 ≈ 16(짝수), 트로피는 28 × 0.8. */
+  .scr-minimap-mark-face { font-size: 10px; }
+  .scr-minimap-mark-skull { font-size: 10px; }
+  .scr-minimap-mark-on .scr-minimap-mark-face { font-size: 16px; }
+  .scr-minimap-mark-face.scr-minimap-mark-face-trophy { font-size: 22px; }
 }
 
 /* (삭제) 스냅 아바타가 따로 뜬 사람의 본진을 흐리게 하던 규칙 — 이제 당한 사람 마커를
