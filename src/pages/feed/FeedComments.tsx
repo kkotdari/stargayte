@@ -707,7 +707,7 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
                 type="button" className="scr-feed-comments-toggle"
                 onClick={openSheet} title="댓글 쓰기"
               >
-                댓글
+                댓글 추가
               </button>
             </div>
           ) : null}
@@ -730,7 +730,7 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
                 aria-expanded={composerOpen} title="댓글 쓰기"
                 tabIndex={composerOpen ? -1 : 0}
               >
-                댓글
+                댓글 추가
               </button>
               <div
                 ref={composerWrapRef}

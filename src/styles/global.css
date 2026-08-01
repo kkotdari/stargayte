@@ -7199,8 +7199,9 @@ html.scr-light-theme .scr-feed-comments .scr-mreq-chip-inline { color: #c07c1c; 
    정중앙에서 벗어난다(지적). 열리면 아이콘이 width 0으로 접히므로 gap 자체가 필요 없다. */
 .scr-feed-comment-row { display: flex; align-items: center; justify-content: center; gap: 0; min-height: 34px; }
 /* width를 명시해야 0으로의 트랜지션이 걸린다(auto→0은 애니메이션 불가) — 아이콘 24px에서
-   "댓글" 두 글자 폭으로 바꿨다(글자 1스텝 축소에 맞춰 30px). */
-.scr-feed-comments-toggle { width: 30px; justify-content: flex-start; transition: width .28s cubic-bezier(0.32, 0.72, 0, 1), opacity .18s ease; }
+   글자 폭으로 바꿨다(글자 1스텝 축소에 맞춰 30px이었던 것을, "댓글" → "댓글 추가"로
+   늘리며(지적) 그 폭에 맞춰 54px로 다시 넓혔다). */
+.scr-feed-comments-toggle { width: 54px; justify-content: flex-start; transition: width .28s cubic-bezier(0.32, 0.72, 0, 1), opacity .18s ease; }
 .scr-feed-comment-row-open .scr-feed-comments-toggle {
   width: 0; padding-left: 0; padding-right: 0; overflow: hidden; opacity: 0; pointer-events: none;
 }
