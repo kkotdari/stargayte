@@ -180,6 +180,8 @@ export interface MinimapMarker {
   /** 아바타 위에 겹쳐 그리는 상태 얼굴 — 트로피·공격자·당한 정도·아군 헬프처럼 그 사람
    *  자체를 가리키는 표시에 쓴다(요청: 해골·트로피 말고도 아바타로 상태를 알려 달라). */
   face?: string;
+  /** face가 승리 트로피인가 — 다른 상태 얼굴과 달리 더 크고 계속 바운스한다(요청). */
+  faceIsTrophy?: boolean;
   /** 시작 스냅인가 — 로스터 없이 "게임 시작!"만 보여주는 자리라, 닉네임 글자도 아바타만큼
    *  키운다(요청: 시작시 로스터 대신 아바타·닉네임 확대). */
   introBig?: boolean;
@@ -373,7 +375,14 @@ export default function ReplayMinimap({
           {/* 트로피·공격자·당한 정도·아군 헬프 같은 상태 얼굴 — 해골과 같은 자리·크기로
               아바타 반대쪽 어깨에 붙인다(지적: 상태 얼굴도 해골처럼 아바타에 바짝 붙어야
               한다). 해골과 자리가 겹치지 않게 반대쪽(왼쪽 위)에 둔다. */}
-          {m.face && <span className="scr-minimap-mark-face" aria-hidden>{m.face}</span>}
+          {m.face && (
+            <span
+              className={cx("scr-minimap-mark-face", m.faceIsTrophy && "scr-minimap-mark-face-trophy")}
+              aria-hidden
+            >
+              {m.face}
+            </span>
+          )}
         </span>
       ))}
       {/* 이름표 — 아바타 바로 바깥(지도 중심의 반대 방향)에 고정 거리로 붙인다(요청:

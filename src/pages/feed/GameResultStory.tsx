@@ -518,6 +518,13 @@ export default function GameResultStory({
     const target = (b: (typeof beats)[number], raw: string): [number, number] | null => {
       const home = homeOf(raw);
       if (!home) return null;
+      // fallen의 p.by(민 사람)는 whom이 아니라 p에 실려 있다(replaySummary의 by 주석 —
+      // whom으로 실으면 '이 사람이 당했다'가 뒤집힌다) — 그래서 여기서 따로 잡는다.
+      // 목표는 무너진 사람(who[0])의 집이다.
+      if (b.k === "fallen" && b.p?.by === raw) {
+        const victimHome = homeOf((b.who ?? [])[0] ?? "");
+        if (victimHome) return victimHome;
+      }
       const foe = nearestFoe(raw);
       const ally = nearestAlly(raw);
       const attack = ATTACK_BEAT_KEYS.has(b.k) || b.k === "breakthrough";
@@ -762,20 +769,32 @@ export default function GameResultStory({
         const team = slots.find((x) => (b.who ?? []).includes(x.raw))?.team;
         if (team) slots.filter((x) => x.team === team).forEach((x) => trophy.add(x.raw));
       }
+      // fallen의 p.by(민 사람)는 whom이 아니라 p에 실려 있어(위 SEVERE_SUBJECT_KEYS 주석)
+      // 지금까지 화살표 대상에서 통째로 빠져 있었다(지적: "자막엔 정구의 히드라가 있는데
+      // 왜 화살표가 없지?" — 자막은 p.by/p.theirs 이름을 쓰는데 그림에는 그 사람이 아예
+      // 없었다). 공격자로 잡아 helpers에 끼워 넣는다 — target()에서 "fallen의 by는 무너진
+      // 사람 집이 목표"로 따로 잡아 준다.
+      const fallenBy = b.k === "fallen" && typeof b.p?.by === "string" ? [b.p.by] : [];
+      if (fallenBy.length > 0) fallenBy.forEach((r) => attacker.add(r));
       // 같이 덮친 사람(who2)도 공격자다(지적: "누구도 가세하여 같이 공격한 것"에 화살표가
       // 없다) — 문장은 "○○까지 달려들어"로 이름을 부르는데 그림에는 아무것도 없었다.
       const helpers = ATTACK_BEAT_KEYS.has(b.k) || b.k === "breakthrough"
         ? (Array.isArray(b.who2) ? b.who2 : typeof b.who2 === "string" ? [b.who2] : [])
-        : [];
+        : fallenBy;
       const actors = who;
       for (const raw of [...actors, ...helpers]) {
         if (victims.has(raw)) continue;
-        // fallen·gg·greedy-punished는 주어가 사실 당한 쪽이다(위 표 참고) — 무기
+        // fallen·gg·greedy-punished는 주어(actors)가 사실 당한 쪽이다(위 표 참고) — 무기
         // 이모지·화살표 대상이 아니라 아바타 얼굴로만 알린다. result(맺음말)도 마찬가지로
         // 트로피는 아바타 얼굴 쪽에서만 준다(지적: 본진에 뜨는 트로피와 아바타 트로피가
-        // 겹쳐서 두 개로 보였다).
-        if (SEVERE_SUBJECT_KEYS.has(b.k) || MODERATE_SUBJECT_KEYS.has(b.k) || b.k === "result") continue;
-        const em = markOf(b);
+        // 겹쳐서 두 개로 보였다). actors로 한정하는 이유는 fallen의 p.by(helpers)까지
+        // 걸러지면 안 되기 때문 — 그 사람은 당한 쪽이 아니라 민 쪽이다.
+        if (actors.includes(raw)
+          && (SEVERE_SUBJECT_KEYS.has(b.k) || MODERATE_SUBJECT_KEYS.has(b.k) || b.k === "result")) continue;
+        // 아군 기지의 교전을 도우러 간 것(위에서 helper로 분류됨)은 화살표 끝 표시도
+        // 공격(💥)이 아니라 방어(🛡️)로 바꾼다(지적: "정구의 화살표 끝은 공격이라기보다
+        // 방어지 — 저렇게 하면 꼭 태섭을 공격한 거 같잖아").
+        const em = (b.k === "clash" && helper.has(raw)) ? "🛡️" : markOf(b);
         // 화살표를 못 그리는 경우(자리를 모름·너무 가까움)의 마지막 대비책 — 아래에서
         // hits가 하나도 화살표로 못 그려지면 이 값으로 본진에 이모지를 얹는다.
         mark.set(raw, em);
@@ -901,6 +920,8 @@ export default function GameResultStory({
         mark: actions.marks.get(s.raw),
         // 아바타에 겹쳐 얹는 상태 얼굴 — 트로피·공격자·당한 정도·아군 헬프(요청).
         face: actions.faces.get(s.raw),
+        // 트로피는 다른 얼굴들과 크기·바운스가 다르다(요청: 28px 확대 + 계속 바운스).
+        faceIsTrophy: actions.faces.get(s.raw) === "🏆",
       });
     }
     return out;

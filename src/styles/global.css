@@ -7802,8 +7802,10 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
    15px에 밀려 실제로는 40px이 아니라 15px로 그려지고 있었다(지적: 화살표에 비해 액션
    아이콘이 너무 작다) — 두 클래스를 합쳐 특이도를 확실히 높여 고정한다. */
 .scr-minimap-arrow-mark.scr-minimap-mark-home {
-  /* 40px은 막상 보니 과했다(지적) — 20% 낮춘다. */
-  font-size: 32px;
+  /* 본진 이모지(32px)와 화살촉 끝 이모지(26px) 크기를 통일한다(요청: 짝수로) — 28px.
+     아래 기본 .scr-minimap-arrow-mark 규칙과 같은 값이어야 한다 — 같이 안 맞추면
+     PC 미디어쿼리 쪽(38px)과도 다시 어긋난다. */
+  font-size: 28px;
   animation: scr-minimap-arrow-in 260ms ease-out, scr-minimap-beat 1.4s ease-in-out 260ms infinite;
 }
 @keyframes scr-minimap-beat {
@@ -7836,10 +7838,9 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
 }
 .scr-minimap-arrow-mark {
   position: absolute; transform: translate(-50%, -50%);
-  /* 본진 표시(32px)만 키운 게 아니라 화살촉 끝 표시도 같이 키운다(지적: 둘 다 키워
-     달랬는데 본진만 커 보였다) — 화살표 자체가 있어 본진 표시보다는 작아도 되지만, 15px은
-     화살표에 비해 존재감이 약했다. */
-  font-size: 26px; line-height: 1; white-space: nowrap;
+  /* 본진 표시와 화살촉 끝 표시 크기를 통일한다(지적: "둘 다 크기 통일하라니까", 짝수로) —
+     위 .scr-minimap-mark-home과 같은 28px. */
+  font-size: 28px; line-height: 1; white-space: nowrap;
   /* 어떤 지형 위에서도 떠 보이게 검은 테를 두른다. */
   filter: drop-shadow(0 0 2px #000) drop-shadow(0 0 1px #000);
 }
@@ -7907,45 +7908,68 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
   text-shadow: 0 0 2px #000, 0 0 2px #000, 0 1px 1px #000;
   pointer-events: none;
 }
-/* 시작 스냅("게임 시작!")은 닉네임도 아바타만큼 키운다(요청) — 로스터가 빠진 자리를
-   미니맵 쪽 아바타·닉네임 확대로 채운다. */
-.scr-minimap-mark-label-out.scr-minimap-mark-introbig { font-size: 13px; }
-.scr-minimap-mark-name { max-width: 108px; overflow: hidden; text-overflow: ellipsis; }
-.scr-minimap-mark-label-out.scr-minimap-mark-introbig .scr-minimap-mark-name { max-width: 140px; }
+/* 시작 스냅(140px)과 나머지 스냅(108px)의 폭이 서로 달라, 나머지 스냅에서만 말줄임표가
+   보였다(지적: "말줄임표 아직 있는데?" — 밖으로 잘리는 문제가 아니라 이 값 자체가
+   좁았다). 둘을 같은 값(140px)으로 맞춘다 — introBig 전용 규칙은 이제 필요 없다. */
+.scr-minimap-mark-name { max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
 .scr-minimap-mark-race { flex-shrink: 0; }
 /* 지도 자체가 훨씬 커졌는데(로스터 제거) 본진 표시는 작은 화면 시절 크기 그대로라 기본
    상태(주인공 아님)는 거의 안 보였다(지적: 확대 상태는 그럭저럭인데 평상시엔 잘 안 보임)
    — 아바타·이름표를 CSS scale로 키운다(요청: PC/모바일 모두 평상시 크기 확대). 주인공
    (featured)은 이미 커서 조금만 더 키운다. 모바일은 폭이 좁아 우선 이 정도로, PC는
    아래에서 한 번 더 키운다. */
+/* 비확대(주인공 아님) 아바타를 PC/모바일 모두 한 번 더 1.2배 키운다(요청). */
 .scr-minimap-mark-base:not(.scr-minimap-mark-on) .scr-avatar {
-  transform: translate(-50%, -50%) scale(1.25);
+  transform: translate(-50%, -50%) scale(1.5);
 }
 .scr-minimap-mark-on .scr-avatar { transform: translate(-50%, -50%) scale(1.08); }
-/* 1스텝 더 키운다(요청: PC/모바일 모두 이름표 크기 좀더 확대, 1스텝 확대). */
+/* 닉네임 글자 크기는 PC/모바일, 아바타 확대 여부와 무관하게 늘 고정이다(요청: "닉네임
+   크기 확대 제거 — 아바타 확대되도 확대 안함"). */
 .scr-minimap-mark-label-out { font-size: 11px; }
-/* 모바일에서 확대(시작 스냅) 상태가 너무 크다(지적) — 1스텝 축소. */
-.scr-minimap-mark-label-out.scr-minimap-mark-introbig { font-size: 13px; }
-/* 모바일은 프레임 폭이 좁아(20px) 이름표가 그 밖으로 잘리기 쉽다(지적: 이름표가 영역
-   밖으로 벗어나 잘림) — 닉네임 글자 폭을 좁혀 프레임 안에 들어올 확률을 높인다. */
-@media (max-width: 640px) {
-  .scr-minimap-mark-name { max-width: 56px; }
-}
+/* (삭제) 모바일 전용 max-width: 56px — 프레임 밖으로 잘리는 걸 막으려 닉네임 폭을
+   좁혔었는데, 특이도가 introBig(140px) 규칙보다 낮아 시작 스냅에서만 안 먹히고 다음
+   스냅부터 적용돼 "시작 스냅은 괜찮다가 다음부터 말줄임표"로 보였다(지적). 지금은
+   ReplayMinimap의 실측 보정(labelFix)이 프레임을 벗어난 만큼 안으로 되돌려 주므로
+   이 사전 폭 제한은 더 필요 없다. */
 /* PC에서는 화살표만 빼고 전부 키운다(요청: "화살표 제외한 모든 요소들 크기 1.5배") —
-   기본·주인공 아바타를 같은 배율로 맞추고, 얼굴 표시(해골·상태 얼굴)·이름표·본진/화살촉
-   이모지도 함께 키운다. 화살표 몸통·촉(.scr-minimap-arrow*)은 여기서 손대지 않는다.
-   1.5배로도 기본(주인공 아님) 아바타가 작아 보인다는 지적이 있어 1.8로 더 올린다. */
+   얼굴 표시(해골·상태 얼굴)·이름표·본진/화살촉 이모지도 함께 키운다. 화살표 몸통·촉
+   (.scr-minimap-arrow*)은 여기서 손대지 않는다. 기본(주인공 아님) 아바타는 정확히
+   1.5배로(지적), 주인공은 이미 커서(AVATAR_ON) 조금만 더 키운다. */
 @media (min-width: 641px) {
-  .scr-minimap-mark-base .scr-avatar { transform: translate(-50%, -50%) scale(1.8); }
-  .scr-minimap-mark-label-out { font-size: 14px; }
-  .scr-minimap-mark-label-out.scr-minimap-mark-introbig { font-size: 19px; }
-  .scr-minimap-mark-skull { font-size: 20px; }
-  .scr-minimap-mark-face { font-size: 20px; }
-  .scr-minimap-mark-on .scr-minimap-mark-face { font-size: 28px; }
+  /* 비확대 아바타를 한 번 더 1.2배(요청) — 1.5 * 1.2 = 1.8. */
+  .scr-minimap-mark-base:not(.scr-minimap-mark-on) .scr-avatar {
+    transform: translate(-50%, -50%) scale(2);
+  }
+  .scr-minimap-mark-on .scr-avatar { transform: translate(-50%, -50%) scale(1.3); }
+  /* PC 전체를 한 번 더 1.1배가량 키운다(요청: "PC에서 미니맵 모든 요소들 1.1배정도
+     확대", 크기는 짝수로). 이름표는 PC/모바일 차이는 그대로 두되(지적: "PC에서는 더
+     커야지"), 아바타가 확대(주인공/시작 스냅)됐다고 같이 커지지는 않는다(지적: "아바타
+     확대되도 확대 안함") — introBig 전용 값은 안 둔다. */
+  .scr-minimap-mark-label-out { font-size: 16px; }
+  .scr-minimap-mark-skull { font-size: 22px; }
+  .scr-minimap-mark-face { font-size: 22px; }
+  .scr-minimap-mark-on .scr-minimap-mark-face { font-size: 30px; }
   /* 본진 이모지(화살표 없는 이야기)·화살촉 끝 이모지도 같이 키운다(지적: "일반 이모지
-     크기도 너무 작아"). */
-  .scr-minimap-arrow-mark.scr-minimap-mark-home { font-size: 44px; }
-  .scr-minimap-arrow-mark { font-size: 34px; }
+     크기도 너무 작아"). 둘을 같은 크기로 통일한다(지적: "본진 액션 이모지가 화살표 끝
+     이모지보다 훨씬 큼 — 둘 다 크기 통일", 짝수로) — 42px. */
+  .scr-minimap-arrow-mark.scr-minimap-mark-home { font-size: 42px; }
+  .scr-minimap-arrow-mark { font-size: 42px; }
+}
+/* 승리 트로피는 다른 상태 얼굴과 다르게 취급한다(요청: "승리트로피도 28px로 확대 및
+   바운스") — 기본(모바일)은 28px 고정, 본진 이모지(scr-minimap-beat)와 같은 방식으로
+   계속 바운스한다. 아래에 둬 위 규칙(19/20/28px)보다 특이도 동률로 나중에 이겨야 한다. */
+.scr-minimap-mark-face.scr-minimap-mark-face-trophy {
+  font-size: 28px;
+  animation: scr-minimap-beat 1.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .scr-minimap-mark-face.scr-minimap-mark-face-trophy { animation: none; }
+}
+/* 트로피도 PC에서는 다른 상태 얼굴(30px)만큼 커야 한다(지적: "PC에서 트로피 크기
+   안커짐 — 다른 이모지들만큼 커야 함") — 위 고정값(28px)은 모바일 기준이라 PC에서
+   따로 올려 준다. 위 규칙 뒤에 둬야(동률 특이도) 실제로 이긴다. */
+@media (min-width: 641px) {
+  .scr-minimap-mark-face.scr-minimap-mark-face-trophy { font-size: 30px; }
 }
 .scr-minimap-mark-label-out.scr-minimap-mark-downed { opacity: 0.72; }
 /* 궤멸·빈사 — 본진 아바타를 흑백으로 누르고 그 위에 해골을 얹는다(요청). 아바타를 지우지
