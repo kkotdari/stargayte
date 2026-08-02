@@ -45,6 +45,11 @@ export interface ReplaySummaryBeat {
    *  '보낸 곳'이고, 명령이 몇 개 안 찍힌 사람은 아예 빠진다(replaySummary의 beatPositions).
    *  맵 좌표를 못 읽은 리플레이와 옛 데이터에는 없다. */
   pos?: Record<string, [number, number]>;
+  /** 원본 게임 아이디 → 그 사람이 '무엇으로' 거기 갔나(screp 영문 유닛·건물 키). 미니맵이
+   *  화살표 기둥 위에 이름표로 붙인다(요청: 모든 공격·포토러시·성큰러시·몰래 배럭·방어타워·
+   *  옆탱 등에 다 적용). 건물을 박은 이야기는 그 건물, 병력을 몰고 간 이야기는 그 무렵 실제로
+   *  명령을 받은 유닛이다. 옛 요약에는 없다. */
+  units?: Record<string, string[]>;
 }
 
 export interface ReplaySummaryData {

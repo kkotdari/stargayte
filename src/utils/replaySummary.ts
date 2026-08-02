@@ -2450,6 +2450,49 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
       .filter(([raw, n]) => n >= bar && side.some((p) => p.rawName === raw))
       .map(([raw]) => raw);
   };
+  /* 화살표 기둥에 붙일 이름표 — 그 사람이 '무엇으로' 거기 갔나(요청: 모든 공격·포토러시·
+     성큰러시·몰래 배럭·방어타워·옆탱 등에 다 적용). 자막에서 유닛을 빼고 이름을 부르게
+     되면서, "무엇으로 싸웠나"는 그림이 맡는 편이 낫다 — 화살표를 보는 것만으로 파악된다.
+
+     두 갈래다. 건물을 박은 이야기는 그 건물 이름이 곧 답이고(이미 beat에 실려 있다),
+     병력을 몰고 간 이야기는 그 무렵 실제로 명령을 받은 유닛이다(forceAt) — 뽑은 총량이
+     아니라 그때 움직인 것이라야 "무엇으로 갔나"의 답이 된다. */
+  const BEAT_BUILDING: Record<string, string[]> = {
+    "cannon-rush": ["Photon Cannon"], "sunken-rush": ["Sunken Colony"],
+    "sneak-rax": ["Barracks"], "center-photon": ["Photon Cannon"],
+    "side-tank": ["Siege Tank"], "ally-cannon": ["Photon Cannon"],
+  };
+  const sideOf = (raw: string): ParsedReplayPlayer[] | null =>
+    (winnerPlayers.some((p) => p.rawName === raw) ? winnerPlayers
+      : loserPlayers.some((p) => p.rawName === raw) ? loserPlayers : null);
+  const arrowUnits = (b: Omit<Beat, "weight">): Record<string, string[]> | null => {
+    // 그 화살표를 그리는 사람들 — 주어(who)와, 주어가 아닌 채로 화살표를 받는 이들
+    // (같이 덮친 사람 who2, 민 사람 p.by). 자리를 모르는 문장에도 붙지만 그림 쪽에서
+    // 화살표가 안 그려지면 그냥 안 쓰인다.
+    const who2 = Array.isArray(b.who2) ? b.who2 : typeof b.who2 === "string" ? [b.who2] : [];
+    const by = typeof b.p?.by === "string" ? [b.p.by] : [];
+    /* 큰 싸움은 대표 둘이 아니라 참여자 전원이 화살표를 받는다(GameResultStory) — 이름표도
+       그 사람들 것을 다 실어야 화살표마다 제 병력이 붙는다. */
+    const parts = b.k === "clash"
+      ? [...(Array.isArray(b.p?.partsA) ? b.p.partsA : []),
+        ...(Array.isArray(b.p?.partsB) ? b.p.partsB : [])].filter((v): v is string => typeof v === "string")
+      : [];
+    const people = [...new Set([...(b.who ?? []), ...who2, ...by, ...parts])];
+    if (people.length === 0) return null;
+    /** 건물 이야기인가 — 그러면 모두에게 같은 이름을 준다(그 건물이 곧 그 수다). */
+    const bs = typeof b.p?.bs === "string" ? b.p.bs.split(",").filter(Boolean)
+      : typeof b.p?.b === "string" ? [b.p.b]
+        : BEAT_BUILDING[b.k] ?? null;
+    const out: Record<string, string[]> = {};
+    for (const raw of people) {
+      if (bs) { out[raw] = bs.slice(0, ARROW_LABEL_MAX); continue; }
+      const side = sideOf(raw);
+      if (!side) continue;
+      const us = forceAt(raw, b.at ?? null, side).slice(0, ARROW_LABEL_MAX);
+      if (us.length > 0) out[raw] = us;
+    }
+    return Object.keys(out).length > 0 ? out : null;
+  };
   const clashPartsWin = clashPartsOf(winnerPlayers);
   const clashPartsLose = clashPartsOf(loserPlayers);
   const clashForceWin = forceOfSide(winnerPlayers, clash?.who[0]);
@@ -2926,7 +2969,8 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     ...(Object.keys(downs).length > 0 ? { downs } : {}),
     beats: [...chosen, ending].map(strip).map((b) => {
       const pos = beatPositions(b, byName);
-      return pos ? { ...b, pos } : b;
+      const units = arrowUnits(b);
+      return { ...b, ...(pos ? { pos } : {}), ...(units ? { units } : {}) };
     }),
   };
 }
@@ -2934,6 +2978,9 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
 /** 큰 교전 문장의 무게 — 그 판의 절정이라 무겁게 잡되, 러시·돌파처럼 '누가 무엇을 했다'가
  *  분명한 이야기보다는 한 단계 아래다. */
 const CLASH_WEIGHT = 14;
+
+/** 화살표 기둥 이름표에 실을 최대 가짓수 — 지도 위 글이라 길면 그림을 가린다. */
+const ARROW_LABEL_MAX = 2;
 
 /** 그 자리를 사람이 부르는 말로 — 누군가의 본진 언저리면 그 사람의 기지, 맵 한가운데면
  *  센터. 어느 쪽도 아니면 자리를 말하지 않는다(틀린 이름을 붙이느니 생략한다). */

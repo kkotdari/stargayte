@@ -7,7 +7,7 @@ import { cleanMapName } from "../../utils/mapName";
 import { cx } from "../../utils/format";
 import { normalizeSearchText } from "../../utils/memberSearch";
 import { ATTACK_BEAT_KEYS } from "../../utils/replaySummary";
-import { renderReplaySummarySentences } from "../../utils/replaySummaryText";
+import { renderReplaySummarySentences, UNIT_KO, BUILDING_KO } from "../../utils/replaySummaryText";
 import type { SummaryPart } from "../../utils/replaySummaryText";
 import type { GameResult, GameResultSlot, Member } from "../../types";
 
@@ -734,7 +734,11 @@ export default function GameResultStory({
     /** 한 사람이 이 스냅에서 실제로 때린 자리들 — 여러 곳을 쳤으면 여러 개가 쌓인다(요청:
      *  한 사람이 여러 곳에 피해를 준 경우 아바타 하나에서 화살표 여러 개로 갈라지게).
      *  예전에는 자리당 하나(Map<raw, target>)만 기억해 마지막 것만 그려졌다. */
-    interface RawHit { t: [number, number]; flight: boolean; mark?: string; fromMark?: string; converge?: boolean }
+    interface RawHit {
+      t: [number, number]; flight: boolean; mark?: string; fromMark?: string; converge?: boolean;
+      /** 기둥 위에 붙일 유닛·건물 이름(요청) — 요약이 사람마다 실어 준다(beat.units). */
+      label?: string;
+    }
     const hits = new Map<string, RawHit[]>();
     const hit = new Set<string>();
     // 맺음말 스냅에서는 이긴 편 아바타에 트로피를 겹쳐 얹는다(요청).
@@ -892,9 +896,14 @@ export default function GameResultStory({
         /* 건너간 수는 양 끝이 다 사건이다(요청) — 출발 자리에 회오리·구멍을, 도착 자리에
            반짝임을 얹는다. 화살표 하나로 "여기서 저기로 넘어갔다"가 그대로 읽힌다. */
         const arrive = WARP_BEAT_KEYS.has(b.k) ? (WARP_ARRIVE_MARK[b.k] ?? em) : em;
+        /* 무엇으로 갔나 — 화살표 기둥 위에 붙인다(요청: 모든 공격·포토러시·성큰러시·몰래
+           배럭·방어타워·옆탱 등에 다 적용). 자막에서 유닛을 빼도 그림만 보고 파악되게 하는
+           자리라, 이름은 그 사람 자신의 것이어야 한다(요약의 units가 사람별로 싣는다). */
+        const labelUnits = (b as { units?: Record<string, string[]> }).units?.[raw] ?? [];
+        const label = labelUnits.map((u) => UNIT_KO[u] ?? BUILDING_KO[u] ?? "").filter(Boolean).join("·");
         const list = hits.get(raw) ?? [];
         list.push({
-          t, flight: flightVal,
+          t, flight: flightVal, ...(label ? { label } : {}),
           ...(PLAIN_TIP_MARKS.has(arrive) ? {} : { mark: arrive }),
           ...(WARP_BEAT_KEYS.has(b.k) ? { fromMark: em } : {}),
           // 양 팀이 부딪친 자리는 양쪽 화살표가 한 점에서 만나야 한다(요청).
@@ -943,6 +952,7 @@ export default function GameResultStory({
           key: `${s.raw}-${i}`, x1: home[0], y1: home[1], x2: h.t[0], y2: h.t[1],
           team: s.team, flight: h.flight, deep,
           ...(h.mark ? { mark: h.mark } : {}),
+          ...(h.label ? { label: h.label } : {}),
           ...(h.converge ? { converge: true } : {}),
           ...(h.fromMark ? { markFrom: h.fromMark } : {}),
         });

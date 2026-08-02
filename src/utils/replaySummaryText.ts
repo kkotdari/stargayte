@@ -25,6 +25,10 @@ export const UNIT_KO: Record<string, string> = {
   Zergling: "저글링", Hydralisk: "히드라", Lurker: "러커", Ultralisk: "울트라",
   Mutalisk: "뮤탈", Scourge: "스커지", Guardian: "가디언", Devourer: "디바우러",
   Queen: "퀸", Defiler: "디파일러", "Infested Terran": "감염된 테란",
+  /* 파서가 짚어 주는 묶음 이름(replayParser의 orderPositions.by) — 마린·메딕·파이어뱃은
+     한 부대로 같이 움직여 하나로 잡히고, 탱크는 시즈/언시즈 커맨드로 짚이므로 모드 없는
+     이름으로 온다. 위의 "Siege Tank (Tank Mode)"와 같은 것이라 같은 말로 옮긴다. */
+  Bionic: "바이오닉", "Siege Tank": "탱크",
 };
 
 /** 등장만으로도 이야깃거리가 되는 '한 방' 유닛 — 맺음말 머리에 세운다. */

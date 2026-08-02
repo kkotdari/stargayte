@@ -8110,6 +8110,16 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
 /* 시작 스냅(140px)과 나머지 스냅(108px)의 폭이 서로 달라, 나머지 스냅에서만 말줄임표가
    보였다(지적: "말줄임표 아직 있는데?" — 밖으로 잘리는 문제가 아니라 이 값 자체가
    좁았다). 둘을 같은 값(140px)으로 맞춘다 — introBig 전용 규칙은 이제 필요 없다. */
+/* 화살표 기둥 위(촉 가까운 쪽)의 유닛 이름표(요청) — 배경 없이 글자만, 어떤 지형 위에서도
+   읽히도록 검은 테만 두른다(닉네임과 같은 방식). 팀 색은 화살표와 같은 값을 쓴다
+   (.scr-minimap-mark-t1/t2). 클릭은 지도 좌우 절반이 받아야 하므로 통과시킨다. */
+.scr-minimap-arrow-label {
+  position: absolute; transform: translate(-50%, -50%); z-index: 6;
+  font-size: 10px; font-weight: 800; line-height: 1; white-space: nowrap;
+  color: #fff; text-shadow: 0 0 2px #000, 0 0 2px #000, 0 1px 1px #000;
+  pointer-events: none;
+}
+@media (min-width: 641px) { .scr-minimap-arrow-label { font-size: 15px; } }
 .scr-minimap-mark-name { max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
 .scr-minimap-mark-race { flex-shrink: 0; }
 /* 지도 자체가 훨씬 커졌는데(로스터 제거) 본진 표시는 작은 화면 시절 크기 그대로라 기본
@@ -8244,6 +8254,9 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
 .scr-minimap-mark-t2 .scr-avatar { border-color: #ff4d68; }
 .scr-minimap-mark-label-out.scr-minimap-mark-t1 { color: #8fcaff; }
 .scr-minimap-mark-label-out.scr-minimap-mark-t2 { color: #ffa3b1; }
+/* 화살표 위 유닛 이름표도 같은 편 색을 쓴다 — 글을 안 읽어도 어느 쪽 병력인지 보인다. */
+.scr-minimap-arrow-label.scr-minimap-mark-t1 { color: #8fcaff; }
+.scr-minimap-arrow-label.scr-minimap-mark-t2 { color: #ffa3b1; }
 /* 검색으로 짚은 사람 — 로스터를 감춘 모바일에서는 여기가 유일한 표시 자리다. */
 /* 색을 테마 토큰(--point)에서 떼어 고정값으로 둔다 — 라이트 테마의 --point는 검정이라
    어두운 지형 위의 검은 이름표가 되어 강조가 아예 안 보였다(지적: 다크는 괜찮은데

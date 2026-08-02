@@ -41,6 +41,9 @@ export interface MinimapArrow {
   /** 화살표가 시작하는 자리에 얹을 이모지 — 리콜·커널처럼 '여기서 저기로 건너간' 수는
    *  출발점도 사건이다(요청: 원본 위치는 회오리, 이동 위치는 별 반짝). 없으면 안 그린다. */
   markFrom?: string;
+  /** 기둥 위(촉 가까운 쪽)에 얹을 짧은 글 — 그 사람이 무엇으로 갔는지다(요청: 화살촉 위가
+   *  아니라 기둥 위 촉에 가까운 쪽에 유닛 캡션). 없으면 안 그린다. */
+  label?: string;
   /** 여러 화살표가 한 점에서 만나는가 — 양 팀이 부딪친 자리가 그렇다(요청: 상대편끼리
    *  충돌한 경우 화살표는 한곳으로 모여야 한다). 보통 화살표는 목표 앞에서 조금씩 다르게
    *  멈추고(길이에 비례한 여백) 이모지도 촉 앞에 따로 서는데, 그러면 같은 자리를 겨눈
@@ -83,6 +86,15 @@ const HEAD_WIDE = 2.6;
 const MARK_ROOM = 12;
 /** 그 자리 안에서 이모지를 화살촉보다 이만큼 앞에 둔다. */
 const MARK_AHEAD = 5;
+/** 유닛 이름표를 화살촉에서 이만큼 뒤(기둥 쪽)에 둔다(요청: 촉 위가 아니라 기둥 위,
+ *  촉에 좀 가까운 쪽). 촉 위에 얹으면 촉을 덮고, 기둥 한가운데에 두면 어느 화살표의
+ *  이름표인지 헷갈린다 — 촉 바로 뒤가 둘 다 피하는 자리다. */
+const LABEL_BACK = 9;
+/** 한 점으로 모이는 화살표(큰 싸움)의 이름표는 더 뒤로 물린다 — 일곱 개가 한 점에 모이면
+ *  촉 바로 뒤는 사실상 같은 자리라 이름표가 서로 겹쳐 읽히지 않는다(실측 스크린샷:
+ *  "탱크·사이언스베러커·히드라"). 뒤로 갈수록 화살표들이 부채처럼 벌어지므로, 그만큼
+ *  물리면 저절로 서로 떨어진다. */
+const LABEL_BACK_CONVERGE = 22;
 /* (삭제) 본진 이모지를 맵 가운데 쪽으로 멀리 띄우던 값(MARK_OUT/MARK_EDGE) — 이제 액션
    이모지는 아바타의 '위 안쪽' 슬롯에 고정으로 앉는다(아래 markPlace). 멀리 띄우면 본진이
    지도 어디에 있느냐에 따라 이름표·표정과 같은 칸에 몰리는 조합이 생겼다(지적). */
@@ -154,6 +166,14 @@ function arrowGeom(a: MinimapArrow, w: number, h: number) {
     // 출발 쪽 이모지 자리 — 몸통이 시작하는 점 그대로. 아바타에서 이미 gapFrom만큼
     // 띄워 둔 자리라 아바타를 덮지 않는다.
     from: [x1, y1] as [number, number],
+    /* 유닛 이름표 자리 — 촉의 밑동에서 기둥 쪽으로 조금 물러선 점(요청). 짧은 화살표에서는
+       그만큼 물러설 기둥이 없어 출발점을 지나쳐 버리므로, 기둥 길이의 절반을 넘지 않게
+       묶는다. */
+    label: (() => {
+      const back = Math.min(a.converge ? LABEL_BACK_CONVERGE : LABEL_BACK,
+        Math.hypot(bx - x1, by - y1) / 2);
+      return [bx - hx * back, by - hy * back] as [number, number];
+    })(),
   };
 }
 
@@ -594,6 +614,18 @@ export default function ReplayMinimap({
             style={{ left: `${(g.from[0] / grid.width) * 100}%`, top: `${(g.from[1] / grid.height) * 100}%` }}
           >
             {a.markFrom}
+          </span>
+        ) : null))}
+        {/* 유닛 이름표 — 촉 바로 뒤 기둥 위(요청). 화살표와 같은 편 색을 써서 어느 쪽
+            병력인지가 글을 안 읽어도 보인다. */}
+        {geoms.map(({ a, g }) => (a.label ? (
+          <span
+            key={`lbl-${a.key}`}
+            className={cx("scr-minimap-arrow-label",
+              a.team === 1 && "scr-minimap-mark-t1", a.team === 2 && "scr-minimap-mark-t2")}
+            style={{ left: `${(g.label[0] / grid.width) * 100}%`, top: `${(g.label[1] / grid.height) * 100}%` }}
+          >
+            {a.label}
           </span>
         ) : null))}
         {geoms.map(({ a, g }) => (a.mark ? (
