@@ -367,6 +367,14 @@ export default function GameResultStory({
         (Array.isArray(b.who2) ? b.who2 : typeof b.who2 === "string" ? [b.who2] : [])
           .forEach((raw) => out.add(raw));
       }
+      // 큰 싸움에 상당 부분 참여한 사람은 모두 그 장면의 주인공이다(요청) — 자막이 이름을
+      // 다 부르므로 아바타도 다 커져야 글과 그림이 맞는다.
+      if (b.k === "clash") {
+        for (const key of ["partsA", "partsB"] as const) {
+          const v = b.p?.[key];
+          if (Array.isArray(v)) v.forEach((raw) => { if (typeof raw === "string") out.add(raw); });
+        }
+      }
       // 협공에 가세한 사람(who2)도 이 장면의 주인공이다(지적: "○○까지 달려들어"에서
       // 가세한 사람 아바타가 안 커졌다) — actions useMemo의 helpers 계산과 같은 조건.
       if (ATTACK_BEAT_KEYS.has(b.k) || b.k === "breakthrough") {
@@ -779,7 +787,15 @@ export default function GameResultStory({
       const b = beats[n];
       if (!b) continue;
       const victims = new Set(b.whom ?? []);
-      const who = b.who ?? [];
+      /* 큰 싸움(clash)의 주체는 대표 둘이 아니라 상당 부분 참여한 사람 전부다(요청: 유닛보다
+         누가 참여했는지를 다 나열하고 화살표도 그 사람들에게서 모이게) — 일곱이 얽힌
+         대난전인데 화살표가 둘뿐이라 1:1처럼 보였다(지적한 스크린샷). 참가자를 안 실은
+         옛 요약에서는 예전처럼 대표 둘만 쓴다. */
+      const clashParts = b.k === "clash"
+        ? [...(Array.isArray(b.p?.partsA) ? b.p.partsA : []),
+          ...(Array.isArray(b.p?.partsB) ? b.p.partsB : [])].filter((v): v is string => typeof v === "string")
+        : [];
+      const who = clashParts.length > 0 ? clashParts : (b.who ?? []);
       // 아군 헬프는 whom(ally-help)/who2(ally-cannon)에 '도움받은 아군'이 실려 있다 —
       // 공격당한 것이 아니므로 아래 당한 사람 후보(hit)에는 넣지 않는다.
       if (!ALLY_HELP_KEYS.has(b.k)) {

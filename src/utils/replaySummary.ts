@@ -2441,6 +2441,17 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     if (!clash || !rep || !side.some((p) => p.rawName === rep)) return [];
     return forceAt(rep, clash.at, side).slice(0, CLASH_FORCE_SIDE_MAX);
   };
+  /** 이름을 부를 만큼 싸운 사람들 — 그 자리 전체 명령의 CLASH_NAME_SHARE는 넘어야 한다.
+   *  많이 싸운 순 그대로라 문장이 앞에서부터 부르면 곧 비중순이 된다. */
+  const clashPartsOf = (side: ParsedReplayPlayer[]): string[] => {
+    if (!clash) return [];
+    const bar = Math.max(CLASH_PART_MIN, clash.n * CLASH_NAME_SHARE);
+    return clash.ranked
+      .filter(([raw, n]) => n >= bar && side.some((p) => p.rawName === raw))
+      .map(([raw]) => raw);
+  };
+  const clashPartsWin = clashPartsOf(winnerPlayers);
+  const clashPartsLose = clashPartsOf(loserPlayers);
   const clashForceWin = forceOfSide(winnerPlayers, clash?.who[0]);
   const clashForceLose = forceOfSide(loserPlayers, clash?.who[1]);
   // 이름 없이 "무엇이 뒤엉켰나"만 말하는 자리(그리고 옛 요약을 읽는 자리)를 위해 그 편
@@ -2481,6 +2492,14 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
         // 몇 사람이 얽혔나 — 문장이 '둘의 싸움'과 '여럿이 얽힌 난전'을 갈라 쓰는 근거다
         // (지적: 둘이 붙은 건데 "양 팀 병력이 한데 엉켜"로 나온다). biggestClash 주석 참고.
         people: clash.people,
+        /* 상당 부분 참여한 사람들을 편별로(요청: 큰 싸움은 유닛보다 누가 참여했는지를 다
+           나열하고, 화살표도 그 사람들에게서 모이게) — 그때까지는 양쪽 대표 한 사람씩만
+           불렀고 화살표도 둘뿐이라, 일곱이 얽힌 대난전이 1:1처럼 보였다(지적한 스크린샷).
+           이름을 부를 만큼 싸웠나는 그 자리 전체 명령 대비 비율로 가른다. */
+        ...(clashPartsWin.length > 0 ? { partsA: clashPartsWin } : {}),
+        ...(clashPartsLose.length > 0 ? { partsB: clashPartsLose } : {}),
+        // 그 싸움을 누가 이겼나 — 자리를 지킨 쪽이다(요청: 전투의 승패나 비긴 것도 묘사).
+        hold: clash.hold,
         ...(clashPlace(clash.xy, bases) === "" ? { place: "mid" } : {}),
         // 그 싸움에 실제로 나간 병력(요청) — "양 팀 병력이 크게 싸웠다"는 그 판의 절정을
         // 말하면서 정작 무엇이 부딪쳤는지를 안 말한다. 편별로 나눠 싣는다(지적: 뭉뚱그려
@@ -3121,6 +3140,21 @@ const CLASH_RADIUS = 14;
 const CLASH_MIN = 8;
 // 그 싸움의 '참가자'로 셀 최소 명령 수 — 한두 번 스친 것은 옆을 지나간 것이지 싸운 게 아니다.
 const CLASH_PART_MIN = 3;
+/** 문장이 이름을 부를 만큼 '상당 부분' 참여했나 — 그 싸움 전체 명령의 이 비율은 돼야 한다
+ *  (요청: 상당 부분 참여한 플레이어를 다 나열). 고정 수(CLASH_PART_MIN)만 쓰면 명령이
+ *  백 건 넘게 몰린 대난전에서 두세 번 스친 사람까지 주인공으로 불린다. */
+const CLASH_NAME_SHARE = 0.05;
+/* ── 그 싸움을 누가 이겼나(요청: 전투의 승패나 비긴 것도 묘사) ──
+   리플레이에는 "누가 몇 기를 잡았다"가 없다. 확실히 아는 것은 '싸움이 끝난 뒤 그 자리에
+   누가 남아 계속 명령을 내렸나'다 — 밀린 쪽은 그 땅에서 물러나므로 명령이 끊긴다. 딱
+   그만큼만 말한다: 자리를 지킨 쪽을 이겼다고 부르고, 양쪽 다 물러났거나 비슷하게 남아
+   있으면 비긴 것으로 둔다. */
+const CLASH_AFTER_SEC = 120;
+/** 이긴 것으로 부르려면 남은 명령이 상대의 이 배는 돼야 한다. */
+const CLASH_HOLD_RATIO = 2;
+/** 그래도 이만큼은 남아 있어야 '지켰다'고 말한다 — 둘 다 물러난 자리에서 한둘 차이로
+ *  승패를 가르면 그건 근거가 아니라 잡음이다. */
+const CLASH_HOLD_MIN = 6;
 /** 교전으로 세는 마법 — 병력끼리 엉켰을 때만 쓰는 것들이다. 스캔·마인 심기처럼 혼자
  *  하는 것은 뺀다. */
 const CLASH_TECHS = new Set([
@@ -3136,7 +3170,15 @@ const CLASH_TECHS = new Set([
  *  견제거나 그냥 진출이다. */
 function biggestClash(
   a: ParsedReplayPlayer[], b: ParsedReplayPlayer[],
-): { at: number; xy: [number, number]; n: number; who: string[]; people: number; parts: string[] } | null {
+): {
+  at: number; xy: [number, number]; n: number; who: string[]; people: number; parts: string[];
+  /** 참가자와 그 사람이 그 자리에 찍은 명령 수 — 많이 싸운 순. 문장이 이름을 부를 사람을
+   *  고르는 데 쓴다(위 CLASH_NAME_SHARE). */
+  ranked: [string, number][];
+  /** 싸움이 끝난 뒤 그 자리를 지킨 쪽 — "a"는 who[0] 쪽(경기를 이긴 편), "b"는 who[1] 쪽,
+   *  "draw"는 양쪽 다 물러났거나 비슷하게 남은 경우(위 CLASH_AFTER_SEC 주석). */
+  hold: "a" | "b" | "draw";
+} | null {
   type Hit = { frame: number; x: number; y: number; side: 0 | 1; raw: string };
   const hits: Hit[] = [];
   const add = (ps: ParsedReplayPlayer[], side: 0 | 1) => {
@@ -3156,7 +3198,10 @@ function biggestClash(
   add(b, 1);
   if (hits.length < CLASH_MIN) return null;
 
-  let best: { at: number; xy: [number, number]; n: number; who: string[]; people: number; parts: string[] } | null = null;
+  let best: {
+    at: number; xy: [number, number]; n: number; who: string[]; people: number; parts: string[];
+    ranked: [string, number][]; hold: "a" | "b" | "draw";
+  } | null = null;
   for (const h of hits) {
     const near = hits.filter(
       (x) => Math.abs(x.frame - h.frame) <= CLASH_WINDOW_FRAMES
@@ -3183,10 +3228,22 @@ function biggestClash(
        '여럿'이 되어 이 구분이 무의미해진다(다른 곳의 POS_MIN_ORDERS와 같은 취지). */
     const tally = new Map<string, number>();
     for (const x of near) tally.set(x.raw, (tally.get(x.raw) ?? 0) + 1);
-    const parts = [...tally].filter(([, n]) => n >= CLASH_PART_MIN).map(([raw]) => raw);
+    const ranked = [...tally].sort((p, q) => q[1] - p[1]);
+    const parts = ranked.filter(([, n]) => n >= CLASH_PART_MIN).map(([raw]) => raw);
+    /* 싸움이 끝난 뒤 그 자리를 누가 지켰나(위 CLASH_AFTER_SEC 주석) — 교전 창이 끝난
+       시점부터 2분 동안 같은 반경 안에 남은 명령을 편별로 센다. */
+    const endAt = Math.max(...near.map((x) => x.frame));
+    const after = hits.filter(
+      (x) => x.frame > endAt && x.frame - endAt <= CLASH_AFTER_SEC / 0.042
+        && Math.hypot(x.x - cx, x.y - cy) <= CLASH_RADIUS,
+    );
+    const heldA = after.filter((x) => x.side === 0).length;
+    const heldB = after.filter((x) => x.side === 1).length;
+    const hold = heldA >= CLASH_HOLD_MIN && heldA >= heldB * CLASH_HOLD_RATIO ? "a"
+      : heldB >= CLASH_HOLD_MIN && heldB >= heldA * CLASH_HOLD_RATIO ? "b" : "draw";
     best = {
       at: Math.min(...near.map((x) => x.frame)),
-      xy: [round1(cx), round1(cy)], n: near.length, who, people: parts.length, parts,
+      xy: [round1(cx), round1(cy)], n: near.length, who, people: parts.length, parts, ranked, hold,
     };
   }
   return best;

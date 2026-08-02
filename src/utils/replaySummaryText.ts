@@ -239,6 +239,9 @@ interface Ctx {
    *  "4인 팀"은 이상한 말). 팀을 모르면 0이고, 그때는 이름을 늘어놓는다. */
   team: 0 | 1 | 2;
   p: Record<string, unknown>;
+  /** p에 실린 원본 게임 아이디 목록을 지금의 닉네임으로 푼다 — who/whom과 달리 p 값은
+   *  미리 풀어 두지 않는다(어떤 키가 이름인지는 문장마다 다르다). */
+  names: (v: unknown) => string[];
   /** 여러 표현 중 하나를 고른다 — 같은 경기는 늘 같은 것이 나온다(아래 variantSeed 참고). */
   pick: (opts: string[]) => string;
 }
@@ -1514,6 +1517,34 @@ const TEMPLATES: Record<string, Tpl> = {
        찍은 사람을 하나씩 뽑은 것이라(replaySummary의 biggestClash), 그 둘 중 하나가 그
        기지의 주인이면 나머지 하나가 쳐들어간 사람이다 — 둘은 반드시 다른 편이다.
        기지 주인이 싸운 당사자가 아닐 때(제3자의 앞마당에서 붙은 경우)는 예전 표현 그대로다. */
+    /* 여럿이 얽힌 대난전은 무엇으로 싸웠나보다 누가 붙었나가 이야기다(요청: "가장 큰 싸움이
+       벌어진 경우 유닛보다는 상당 부분 참여를 한 플레이어 누구누구가 참여했다를 다 나열").
+       일곱이 얽힌 판에서 양쪽 대표 한 사람씩만 부르니 1:1처럼 읽혔다(지적한 스크린샷).
+       한쪽만 여럿이어도 그대로 부른다 — 편별 인원이 다른 것 자체가 그 싸움의 그림이다. */
+    const pa = c.names(c.p.partsA);
+    const pb = c.names(c.p.partsB);
+    const roster = pa.length > 0 && pb.length > 0 && pa.length + pb.length >= 3;
+    /* 그 싸움을 누가 이겼나(요청) — 리플레이에 전사자 수는 없다. 아는 것은 싸움이 끝난
+       뒤 그 자리에 누가 남아 계속 명령을 내렸나뿐이라(replaySummary의 CLASH_AFTER_SEC),
+       딱 그만큼만 "자리를 지켰다"로 말한다. 어느 쪽도 못 지켰으면 비긴 것으로 둔다. */
+    const hold = str(c.p.hold);
+    const holder = hold === "a" ? pa[0] ?? c.whoList[0] : hold === "b" ? pb[0] ?? c.whoList[1] : "";
+    const outcome = holder
+      ? c.pick([
+        `${ga(`${holder} 쪽`)} 그 자리를 지킴`,
+        `${ga(`${holder} 쪽`)} 끝내 밀어내고 자리를 차지함`,
+        `${ga(`${holder} 쪽`)} 물러서지 않고 버팀`,
+      ])
+      : c.pick([
+        "어느 쪽도 자리를 잡지 못하고 서로 물러섬",
+        "양쪽 다 크게 갈리고 비긴 채 물러섬",
+        "승부를 못 가른 채 서로 물러섬",
+      ]);
+    if (roster) {
+      return `${where}${spell}${wa(pa.join("·"))} ${ga(pb.join("·"))} ${c.pick([
+        "맞붙어", "정면으로 부딪쳐", "한데 뒤엉켜",
+      ])} ${done(c, outcome)}`;
+    }
     const owner = c.who2;
     const raider = owner ? c.whoList.find((n) => n !== owner) : undefined;
     if (pair && owner && raider && c.whoList.includes(owner)) {
@@ -2565,6 +2596,7 @@ function renderLines(
         // 이름을 늘어놓는 쪽으로 물러선다.
         team: 0,
         p: b.p ?? {},
+        names: (v) => list(v).map(resolveName).filter(Boolean),
         pick: (opts) => {
           const t = opts[(seed + offset) % opts.length];
           if (!lead || !firstPick) return t;
