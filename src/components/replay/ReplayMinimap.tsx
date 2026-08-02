@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import ReplayMapCanvas from "./ReplayMapCanvas";
 import Avatar from "../common/Avatar";
 import RaceBadge from "../common/RaceBadge";
@@ -230,6 +230,18 @@ export default function ReplayMinimap({
   /** 본진 액션 이모지 엘리먼트 — 이름표가 그 위에 얹히지 않게 실제 자리를 재는 데 쓴다. */
   const markElsRef = useRef<Map<string, HTMLSpanElement>>(new Map());
   const [labelFix, setLabelFix] = useState<Map<string, { x: number; y: number }>>(new Map());
+  /* 자막 폭이 지도의 2/3인가(PC) 1/2인가(모바일) — 아래 자막 자리 고르기가 '자막이 덮을
+     네모'로 겹침을 재는데, 그 네모의 폭이 곧 이 값이다. CSS와 같은 경계(641px)를 본다. */
+  const [wideCaption, setWideCaption] = useState(
+    () => typeof window !== "undefined" && window.matchMedia("(min-width: 641px)").matches,
+  );
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 641px)");
+    const sync = () => setWideCaption(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
   // 리사이즈 리스너가 오래 살아 있는 동안 labelFix state가 여러 번 바뀔 수 있다 — 리스너
   // 클로저 안의 값은 등록 시점에 멈춰 있으므로(오래된 값), ref로 늘 최신 값을 읽는다.
   const labelFixRef = useRef(labelFix);
@@ -365,37 +377,69 @@ export default function ReplayMinimap({
     .map((a) => ({ a, g: arrowGeom(a, grid.width, grid.height) }))
     .filter((v): v is { a: MinimapArrow; g: NonNullable<ReturnType<typeof arrowGeom>> } => v.g !== null);
 
-  /* 자막이 앉을 칸 — 지도를 가로로 셋(위/가운데/아래)으로 나눠, 이번 스냅의 '일'이 가장
-     적은 칸을 고른다(요청: 스냅별로 액션 요소를 안 가리는 위치로 재배치). 늘 한가운데에
-     고정돼 있어서, 가운데에서 붙은 싸움이나 지도를 가로지르는 화살표를 자막이 그대로
-     끊어 놓았다(실측 스크린샷).
+  /* 자막이 앉을 칸 — 지도를 아홉 칸(3×3)으로 나눠 이번 스냅의 '일'과 가장 덜 겹치는 칸에
+     둔다(요청). 늘 한가운데 고정이던 때는 가운데에서 붙은 싸움이나 지도를 가로지르는
+     화살표를 자막이 그대로 끊어 놓았다(실측 스크린샷).
 
-     무게는 '가려지면 얼마나 아쉬운가'로 준다 — 화살촉·본진 액션 이모지처럼 그 장면의
-     결론에 해당하는 표시가 가장 무겁고, 주인공 아바타가 그다음, 그냥 서 있는 아바타와
-     화살표 몸통이 지나가는 칸은 가볍다. 몸통까지 세는 이유는 자막이 가운데를 막으면
-     '어디서 어디로 갔나'가 통째로 끊기기 때문이다.
+     겹침은 칸 자체가 아니라 '자막이 실제로 덮을 네모'로 잰다 — 자막은 폭이 지도의 절반
+     남짓이라 한 칸보다 넓어서, 칸 안의 것만 세면 옆 칸까지 덮으면서도 깨끗한 자리로
+     보인다. 무게는 '가려지면 얼마나 아쉬운가'로 준다: 화살촉·본진 액션 이모지처럼 그
+     장면의 결론에 해당하는 표시가 가장 무겁고, 주인공 아바타가 그다음, 그냥 서 있는
+     아바타와 화살표 몸통이 지나가는 자리는 가볍다. 몸통까지 세는 이유는 자막이 가운데를
+     막으면 '어디서 어디로 갔나'가 통째로 끊기기 때문이다.
 
-     같은 점수면 아래 → 위 → 가운데 순으로 고른다. 자막은 원래 아래에서 읽는 것이고,
-     가운데는 지도에서 가장 자주 무슨 일이 벌어지는 자리라 마지막이다. */
-  const capSlot = ((): "top" | "mid" | "bottom" => {
-    const bandOf = (y: number) => Math.min(2, Math.max(0, Math.floor((y / grid.height) * 3)));
-    const cost = [0, 0, 0];
+     단, 화살표가 하나도 없고 가운데 칸에 액션 이모지도 없으면 가운데에 고정한다(요청) —
+     그때는 지도 한복판이 비어 있어서, 굳이 구석으로 밀어내면 읽기만 불편해진다. */
+  const capCell = ((): { row: "top" | "mid" | "bottom"; col: "left" | "center" | "right" } => {
+    const MID = { row: "mid", col: "center" } as const;
+    /** 자막이 덮는다고 보는 너비·높이(지도 대비) — 폭은 CSS의 최대폭 그대로다(PC 2/3,
+     *  모바일 1/2). 높이는 두세 줄이 보통이라 한 칸으로 본다. */
+    const CAP_W = wideCaption ? 2 / 3 : 1 / 2;
+    const CAP_H = 1 / 3;
+    const cx = [CAP_W / 2, 0.5, 1 - CAP_W / 2];
+    const cy = [CAP_H / 2, 0.5, 1 - CAP_H / 2];
+    const inBox = (r: number, c: number, x: number, y: number) =>
+      Math.abs(x / grid.width - cx[c]) <= CAP_W / 2 && Math.abs(y / grid.height - cy[r]) <= CAP_H / 2;
+    // 가운데 칸에 액션 이모지가 서 있나 — 화살표가 없을 때 가운데 고정 여부를 가른다.
+    const markInMid = bases.some((m) => !m.ghost && m.mark
+      && inBox(1, 1, (m.markAt ?? [m.x, m.y])[0], (m.markAt ?? [m.x, m.y])[1]));
+    if (geoms.length === 0 && !markInMid) return MID;
+
+    const cost = Array.from({ length: 3 }, () => [0, 0, 0]);
+    const add = (x: number, y: number, w: number) => {
+      for (let r = 0; r < 3; r += 1) for (let c = 0; c < 3; c += 1) if (inBox(r, c, x, y)) cost[r][c] += w;
+    };
     for (const m of bases) {
       // 버린 본진(흑백)은 이번 장면의 이야기가 아니라 배경이다.
       if (m.ghost) continue;
-      cost[bandOf(m.y)] += m.featured || m.introBig ? 3 : 1;
-      if (m.mark) cost[bandOf((m.markAt ?? [m.x, m.y])[1])] += 4;
+      add(m.x, m.y, m.featured || m.introBig ? 3 : 1);
+      if (m.mark) add((m.markAt ?? [m.x, m.y])[0], (m.markAt ?? [m.x, m.y])[1], 4);
     }
+    /** 화살표 몸통이 지나가는 자리 — 곡선을 직선으로 어림해 훑는다(칸 판정에는 충분하다). */
+    const BODY_SAMPLES = 12;
     for (const { a, g } of geoms) {
-      cost[bandOf(g.tip[1])] += 4;
-      cost[bandOf(g.from[1])] += 2;
-      const lo = bandOf(Math.min(a.y1, a.y2));
-      const hi = bandOf(Math.max(a.y1, a.y2));
-      for (let b = lo; b <= hi; b += 1) cost[b] += 1;
+      add(g.tip[0], g.tip[1], 4);
+      add(g.from[0], g.from[1], 2);
+      for (let i = 0; i <= BODY_SAMPLES; i += 1) {
+        const t = i / BODY_SAMPLES;
+        add(a.x1 + (a.x2 - a.x1) * t, a.y1 + (a.y2 - a.y1) * t, 1 / BODY_SAMPLES);
+      }
     }
-    const order = [2, 0, 1] as const;
-    const best = order.reduce((acc, b) => (cost[b] < cost[acc] ? b : acc), order[0]);
-    return best === 0 ? "top" : best === 1 ? "mid" : "bottom";
+    /* 같은 점수면 아래 → 위 → 가운데, 가로는 가운데 → 왼쪽 → 오른쪽 순으로 고른다.
+       자막은 원래 아래에서 읽는 것이고, 가운데 줄은 지도에서 가장 자주 무슨 일이 벌어지는
+       자리라 마지막이다. */
+    const rows = [2, 0, 1] as const;
+    const cols = [1, 0, 2] as const;
+    let best = { r: 1, c: 1, v: Infinity };
+    for (const r of rows) {
+      for (const c of cols) {
+        if (cost[r][c] < best.v) best = { r, c, v: cost[r][c] };
+      }
+    }
+    return {
+      row: best.r === 0 ? "top" : best.r === 1 ? "mid" : "bottom",
+      col: best.c === 0 ? "left" : best.c === 1 ? "center" : "right",
+    };
   })();
 
   return (
@@ -575,7 +619,11 @@ export default function ReplayMinimap({
         />
       ))}
       {caption && (
-        <div className={cx("scr-minimap-caption", `scr-minimap-caption-${capSlot}`)}>{caption}</div>
+        <div className={cx("scr-minimap-caption",
+          `scr-minimap-caption-${capCell.row}`, `scr-minimap-caption-${capCell.col}`)}
+        >
+          {caption}
+        </div>
       )}
       </div>
     </div>
