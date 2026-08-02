@@ -15,7 +15,7 @@ import { FeedCard } from "./FeedCard";
 import { resolveSlotName } from "./GameResultSides";
 import { isComputerSlot } from "../../constants/computerSlot";
 import { isUnregisteredSlot } from "../../constants/unregisteredSlot";
-import { ChallengeCard, ChallengeTimeHeadEdit, isCanceledChallenge } from "../challenge/ChallengeScreen";
+import { ChallengeCard, ChallengeTimeHeadEdit } from "../challenge/ChallengeScreen";
 import FeedComments, { primeFeedComments } from "./FeedComments";
 import { primeReplayMaps } from "../../hooks/useReplayMap";
 import ScrollNavTimeline from "../../components/common/ScrollNavTimeline";
@@ -133,7 +133,11 @@ function rankShiftItem(shift: RankingShift): RankingShiftItem {
 }
 
 function challengeItem(c: Challenge): ChallengeItem {
-  const iso = c.scheduledAt ?? c.createdAt;
+  /* 표시 시각 — 취소·거절·만료로 끝난 건은 그 끝난 때다(요청: 시간은 취소/거절/만료
+     시간으로). 약속 날짜를 그대로 쓰면 "8월 3일 대결"이라 적힌 채 카드에는 취소라고
+     쓰여 있는, 서로 어긋난 머리가 된다. 성사·완료는 예전대로 약속한 날이다. */
+  const ended = c.status === "discarded" && c.discardedAt;
+  const iso = ended ? c.discardedAt! : (c.scheduledAt ?? c.createdAt);
   return {
     kind: "challenge",
     time: new Date(iso).getTime(),
@@ -227,14 +231,22 @@ function ChallengeCountdown({ challenge }: { challenge: Challenge }) {
 }
 
 // 너 나와 포스트 우상단 케밥 — 카카오 공유(전체) + 삭제(운영자만).
-function ChallengeActionsMenu({ challenge, isAdmin, onDeleted }: {
+function ChallengeActionsMenu({ challenge, isAdmin, myId, onDeleted, onChanged }: {
   challenge: Challenge;
   isAdmin: boolean;
+  /** 지금 보고 있는 사람 — 제 호출만 취소할 수 있어서 필요하다(요청). */
+  myId: string;
   onDeleted: (id: number) => void;
+  onChanged: (c: Challenge) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  /* 취소는 부른 사람(또는 운영자)이, 아직 안 끝난 것만(요청: "호출자가 취소도 가능함").
+     삭제와 달리 기록은 남고 폐기로만 넘어간다 — 피드에 "취소"로 남는다. */
+  const canCancel = (challenge.createdBy.id === myId || isAdmin)
+    && (challenge.status === "pending" || challenge.status === "confirmed");
 
   // 지목된 상대는 절대 미리보기에 내지 않는다(요청: "누구한테 보냈는지는 꼭 숨겨달라") —
   // 누가 불렸는지는 링크를 열어 편지지에서 확인하는 것이 이 기능의 재미다. 여기만 대진을
@@ -263,6 +275,16 @@ function ChallengeActionsMenu({ challenge, isAdmin, onDeleted }: {
     }
   };
 
+  const cancel = async () => {
+    setBusy(true);
+    try {
+      onChanged(await api.cancelChallenge(challenge.id));
+    } finally {
+      setBusy(false);
+      setCancelOpen(false);
+    }
+  };
+
   return (
     <div className="scr-feed-chal-menu">
       <button
@@ -283,6 +305,14 @@ function ChallengeActionsMenu({ challenge, isAdmin, onDeleted }: {
           />
           <div className="scr-menu-pop-drop scr-feed-chal-menu-drop" role="menu">
             <KakaoShareButton variant="menu" content={shareContent} onDone={() => setOpen(false)} />
+            {canCancel && (
+              <button
+                type="button" role="menuitem" className="scr-menu-pop-opt"
+                onClick={() => { setOpen(false); setCancelOpen(true); }}
+              >
+                취소
+              </button>
+            )}
             {isAdmin && (
               <button
                 type="button" role="menuitem"
@@ -302,6 +332,17 @@ function ChallengeActionsMenu({ challenge, isAdmin, onDeleted }: {
           confirmLabel={busy ? "삭제 중..." : "삭제"}
           onConfirm={() => void remove()}
           onCancel={() => setConfirmOpen(false)}
+        />
+      )}
+      {cancelOpen && (
+        <ConfirmDialog
+          title="너 나와! 취소"
+          message="이 호출을 거둬들일까요? 피드에는 취소로 남아요."
+          confirmLabel={busy ? "취소 중..." : "취소하기"}
+          // 기본 취소 버튼도 "취소"라 한 창에 취소가 둘이 된다 — 물러나는 쪽은 "그냥 둘래요"로.
+          cancelLabel="그냥 둘래요"
+          onConfirm={() => void cancel()}
+          onCancel={() => setCancelOpen(false)}
         />
       )}
     </div>
@@ -876,9 +917,11 @@ export default function FeedScreen() {
   // 너 나와!와 경기를 하나의 타임라인으로 — 최근 이벤트가 위.
   const feed = useMemo<FeedItem[]>(() => {
     const items: FeedItem[] = [
-      // 아무도 안 받아 준 채 사라진 너 나와는 안 싣는다(지적: 취소된 건 안 나와야 하지
-      // 않나) — 아무 일도 일어나지 않은 카드라 타임라인에 남길 것이 없다.
-      ...challenges.filter((c) => !isCanceledChallenge(c)).map(challengeItem),
+      /* 끝난 너 나와도 다 싣는다(요청: 거절/무응답거절/취소도 나오게) — 예전에는 아무도
+         응답하지 않은 채 사라진 건을 통째로 뺐는데, 그러면 "불렀는데 아무도 안 왔다"와
+         "부른 사람이 거둬들였다"가 둘 다 없던 일이 된다. 그 둘은 카드에서 각각 만료·취소로
+         구분해 보여준다. */
+      ...challenges.map(challengeItem),
       ...gameResults.map(gameResultItem),
       ...rankShifts.map(rankShiftItem),
     ];
@@ -1243,7 +1286,9 @@ export default function FeedScreen() {
                     <ChallengeActionsMenu
                       challenge={item.challenge}
                       isAdmin={isAdmin}
+                      myId={user?.id ?? ""}
                       onDeleted={(id) => setChallenges((prev) => prev.filter((c) => c.id !== id))}
+                      onChanged={(c) => setChallenges((prev) => prev.map((x) => (x.id === c.id ? c : x)))}
                     />
                   }
                   comment={<FeedCardComments targetType="challenge" targetId={item.challenge.id} />}

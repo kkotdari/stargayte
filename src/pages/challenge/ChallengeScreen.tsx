@@ -22,8 +22,13 @@ import type { Challenge, ChallengeResult, ChallengeSide, ChallengeTarget } from 
 // (confirmed)고, 거절·무응답·미실시·(레거시)취소는 모두 폐기(discarded)로 통합됐다. 프론트가
 // 파생 계산을 하지 않는다(서버가 내려준 status를 그대로 쓴다).
 
-type PillTone = "pending" | "accepted" | "rejected" | "discarded";
-const PILL_LABEL: Record<PillTone, string> = { accepted: "수락", rejected: "거절", discarded: "버림", pending: "대기" };
+type PillTone = "pending" | "accepted" | "rejected" | "discarded" | "canceled" | "expired";
+const PILL_LABEL: Record<PillTone, string> = {
+  accepted: "수락", rejected: "거절", discarded: "버림", pending: "대기",
+  // 아무도 응답하지 않은 채 끝난 두 가지(요청) — 부른 사람이 거둬들였으면 "취소", 그냥
+  // 마감이 지난 것이면 "만료". 둘은 canceledBy 유무로 갈린다.
+  canceled: "취소", expired: "만료",
+};
 
 // 상대 한 명의 응답 톤 — 수락/거절/버림/대기로 구분한다. 각자의 실제 응답을 그대로 쓴다 —
 // 무응답 거절(폐기)이어도 그 사람이 실제로는 응답하지 않았으므로 "대기"로 남는다. "버림"
@@ -53,17 +58,19 @@ function aggregateTargetTone(targets: ChallengeTarget[]): PillTone {
 
 
 
-/** 아무 응답도 못 받고 사라진 너 나와인가 — 아무도 안 받아 준 채 마감돼(무응답 폐기) 그냥
- *  없던 일이 된 것이다. 거절(사유가 있음)·버림·미실시와는 응답·결과 유무로 갈린다.
- *
- *  피드는 이것을 아예 안 싣는다(지적: 취소된 건 안 나와야 하지 않나) — 아무 일도 일어나지
- *  않은 카드가 남아 있으면 "어제 누가 불렀는데 아무도 안 왔다"가 계속 타임라인을 차지한다.
- *  서버는 그대로 갖고 있고(폐기 7일 뒤 소프트 삭제) 여기서는 보여 주지만 않는다. */
-export function isCanceledChallenge(c: Challenge): boolean {
-  return c.status === "discarded"
-    && c.resultWinnerSide === null
-    && c.targets.every((t) => t.response === "pending");
+/** 아무 응답도 못 받고 끝난 너 나와가 어떤 끝이었나 — 부른 사람이 거둬들였으면 "취소",
+ *  그냥 응답 마감이 지난 것이면 "만료"다(요청: 무응답 거절은 만료로, 취소는 취소로 표시).
+ *  응답이 하나라도 있었거나(거절·버림) 결과가 들어온 건(미실시)은 여기 해당하지 않는다 —
+ *  그건 그 사람의 응답·결과가 이미 말하고 있다. 아직 안 끝난 건이면 null. */
+export function challengeEnding(c: Challenge): "canceled" | "expired" | null {
+  if (c.status !== "discarded" || c.resultWinnerSide !== null) return null;
+  if (c.canceledBy) return "canceled";
+  return c.targets.every((t) => t.response === "pending") ? "expired" : null;
 }
+
+/* (삭제) isCanceledChallenge — 아무 응답 없이 끝난 건을 피드에서 통째로 빼던 판정이다.
+   이제 피드가 그런 건도 싣고(요청: 거절/무응답거절/취소도 나오게), 취소와 만료를 갈라
+   보여주므로(위 challengeEnding) 이 함수가 하던 일이 없어졌다. */
 
 type SideMember = { id: string; nickname: string; avatar: string | null };
 
@@ -167,9 +174,19 @@ export function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, o
   const schedulePassed = !!challenge.scheduledAt && new Date(challenge.scheduledAt).getTime() < Date.now();
   const resultInputOpen = schedulePassed || !challenge.scheduledAt;
   const canEnterResult = isParticipant && challenge.status === "confirmed" && resultInputOpen && challenge.resultWinnerSide === null;
-  // "취소" — 아무도 응답하지 않은 채 폐기로 끝난 건(위 isCanceledChallenge). 피드에는 안
-  // 실리지만, 다른 자리(링크로 바로 연 카드 등)에서는 우상단 라벨로 그 사실을 말한다.
-  const isCanceled = isCanceledChallenge(challenge);
+  /* 아무 응답 없이 끝난 두 가지(요청) — 취소는 취소한 사람 자리에, 만료는 상대 응답
+     자리에 적는다. 손 이모지 양옆의 배지 자리를 그대로 쓴다: 왼쪽이 부른 편, 오른쪽이
+     지목된 편이라, 누가 거둬들였는지가 자리만으로 읽힌다. */
+  const ending = challengeEnding(challenge);
+  const canceledById = challenge.canceledBy?.id ?? null;
+  const canceledByCreatorSide = ending === "canceled" && canceledById !== null
+    && (canceledById === challenge.createdBy.id
+      || challenge.ownMembers.some((m) => m.memberId === canceledById));
+  const canceledByTargetSide = ending === "canceled" && !canceledByCreatorSide;
+  /* 지목된 편 배지 — 결과가 나오기 전에는 응답 상태를 보여주는 자리다. 아무도 응답 못 한
+     채 끝났으면 그 사실("만료")이 "대기"보다 정확하다(요청: 무응답 거절은 만료로 표시). */
+  const targetSideTone: PillTone = canceledByTargetSide ? "canceled"
+    : ending === "expired" ? "expired" : aggregateTargetTone(challenge.targets);
 
   const [mode, setMode] = useState<CardMode>("none");
   const [dateStr, setDateStr] = useState("");
@@ -284,12 +301,11 @@ export function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, o
   const isEnded = challenge.status === "done" || challenge.status === "discarded";
 
   return (
-    <div className={cx("scr-challenge-card", isEnded ? "scr-challenge-card-ended" : "scr-challenge-card-active", challenge.matchType === "0102" && "scr-challenge-card-team", isCanceled && "scr-challenge-card-canceled")}>
-      {/* 응답 전 취소(아무도 응답 안 하고 폐기)된 건은 우상단에 "취소" 라벨을 얹는다(요청).
-          라벨이 붙는 카드는 그만큼 위를 비워 둔다(지적: 취소 배지가 겹친다) — 절대 배치라
-          자리를 안 밀어서, 카드 머리가 없는 자리(피드처럼 헤더를 바깥에 둔 곳)에서는
-          그대로 로스터 첫 줄 위에 얹혔다. */}
-      {isCanceled && <span className="scr-challenge-cancel-tag">취소</span>}
+    <div className={cx("scr-challenge-card", isEnded ? "scr-challenge-card-ended" : "scr-challenge-card-active", challenge.matchType === "0102" && "scr-challenge-card-team", ending && "scr-challenge-card-canceled")}>
+      {/* (삭제) 우상단 "취소" 라벨 — 예전엔 응답 없이 끝난 건을 카드 귀퉁이에 통째로 표시했다.
+          이제 취소는 거둬들인 사람 자리에, 만료는 상대 응답 자리에 적히므로(요청) 같은 말을
+          두 번 하는 셈이고, 절대 배치라 헤더가 바깥에 있는 피드에서는 로스터 첫 줄 위에
+          겹치기까지 했다. 끝난 티는 카드 자체를 흐리게 하는 것(-canceled)으로 충분하다. */}
       <div className="scr-challenge-card-body">
         {/* 약속한 "언제" — 로스터 바로 위에 그냥 글로 보여준다(요청: 인풋창이 아니라
             텍스트로). 안 적었으면 줄 자체를 안 만든다. */}
@@ -319,16 +335,23 @@ export function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, o
                   (요청: "응답 상태를 결과 배지 부분과 공유해서 사용 — 결과 배지가 들어가면
                   응답 상태는 불필요하므로"). */}
               <span className="scr-challenge-arrow-row">
-                <span
-                  className={cx(
-                    "scr-challenge-inline-win",
-                    challenge.resultWinnerSide === "draw" && "scr-challenge-inline-draw",
-                    challenge.resultWinnerSide !== "creator" && challenge.resultWinnerSide !== "draw"
-                      && "scr-challenge-inline-win-hidden",
-                  )}
-                >
-                  {challenge.resultWinnerSide === "draw" ? "무" : "승"}
-                </span>
+                {canceledByCreatorSide ? (
+                  // 부른 쪽이 거둬들인 것 — 그 사람 자리에 "취소"라고 적는다(요청).
+                  <span className="scr-challenge-inline-win scr-challenge-inline-status scr-challenge-avatar-badge-canceled">
+                    {PILL_LABEL.canceled}
+                  </span>
+                ) : (
+                  <span
+                    className={cx(
+                      "scr-challenge-inline-win",
+                      challenge.resultWinnerSide === "draw" && "scr-challenge-inline-draw",
+                      challenge.resultWinnerSide !== "creator" && challenge.resultWinnerSide !== "draw"
+                        && "scr-challenge-inline-win-hidden",
+                    )}
+                  >
+                    {challenge.resultWinnerSide === "draw" ? "무" : "승"}
+                  </span>
+                )}
                 <span className="scr-challenge-arrow" aria-hidden="true">👉🏻</span>
                 {challenge.resultWinnerSide ? (
                   <span
@@ -345,10 +368,15 @@ export function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, o
                   <span
                     className={cx(
                       "scr-challenge-inline-win", "scr-challenge-inline-status",
-                      `scr-challenge-avatar-badge-${aggregateTargetTone(challenge.targets)}`,
+                      `scr-challenge-avatar-badge-${targetSideTone}`,
+                      // 부른 쪽이 거둬들인 건은 상대가 답할 기회 자체가 없었다 — 끝난 카드에
+                      // "대기"는 아직 기다리는 것처럼 읽히므로 자리만 비워 둔다(우상단
+                      // "취소" 라벨과 부른 쪽 배지가 이미 무슨 일이었는지 말한다).
+                      canceledByCreatorSide && targetSideTone === "pending"
+                        && "scr-challenge-inline-win-hidden",
                     )}
                   >
-                    {PILL_LABEL[aggregateTargetTone(challenge.targets)]}
+                    {PILL_LABEL[targetSideTone]}
                   </span>
                 )}
               </span>

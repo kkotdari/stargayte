@@ -414,6 +414,9 @@ export interface Challenge {
   createdAt: string;
   // 폐기(휴지통)된 시각(ISO) — 폐기 상태가 아니면 null. 휴지통을 "최근 버려진 순"으로 정렬한다.
   discardedAt: string | null;
+  /** 그 폐기가 '취소'였다면 취소한 사람 — 아니면 null(상대의 거절·버림, 무응답 만료,
+   *  미실시). 피드가 이 값으로 "취소"와 "만료"를 갈라 그 사람 자리에 적는다(요청). */
+  canceledBy: { id: string; nickname: string; avatar: string | null } | null;
   // 확정 너 나와의 결과 — 아직 아무도 입력하지 않았으면 null.
   resultWinnerSide: ChallengeResult | null;
   // "너 나와! 신청 들어주기"로 만들어졌으면 true — 카드에 "요청너 나와" 배지를 붙인다.

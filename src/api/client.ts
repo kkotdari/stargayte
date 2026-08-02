@@ -523,6 +523,12 @@ export const api = {
     await request<void>(`/api/challenges/${id}`, { method: "DELETE" });
   },
 
+  /** 너 나와! 취소 — 부른 사람(또는 운영자)이 성사 전에 거둬들인다(요청). 삭제와 달리
+   *  기록은 남고 폐기로만 넘어가며, 누가 취소했는지가 함께 저장된다. */
+  async cancelChallenge(id: number): Promise<Challenge> {
+    return request<Challenge>(`/api/challenges/${id}/cancel`, { method: "POST" });
+  },
+
   async listFeedComments(targetType: FeedTargetType, targetId: number): Promise<FeedComment[]> {
     return request<FeedComment[]>(`/api/feed/comments?targetType=${targetType}&targetId=${targetId}`);
   },

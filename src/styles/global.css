@@ -5018,18 +5018,8 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 /* 종료된 너 나와!도 특별한 CSS 없이 기본 카드와 완전히 동일하게(요청) — 진행중/종료를
    패널 밝기로 구분하던 것을 없앤다. */
 .scr-challenge-card-active, .scr-challenge-card-ended { background: rgba(255, 255, 255, 0.05); }
-/* 응답 전 취소(아무도 응답 안 하고 폐기)된 건의 우상단 "취소" 라벨 — 휴지통 낡은 편지지
-   톤에 맞춰 옅은 회갈색 도장식 알약으로(요청: "취소 라벨 우상단에"). */
-.scr-challenge-cancel-tag {
-  position: absolute; top: 8px; right: 10px; z-index: 3;
-  font-size: var(--fs-caption); font-weight: 800; letter-spacing: 0.02em;
-  color: var(--muted); border: 1px solid var(--line-soft); border-radius: 5px;
-  padding: 1px 6px; background: rgba(120, 95, 50, 0.08); white-space: nowrap;
-}
-/* 라벨은 절대 배치라 제 자리를 안 민다 — 붙는 카드만 그만큼 위를 비운다(지적: 취소 배지가
-   겹친다). 카드 머리가 있는 자리에서는 원래 그 여백에 얹혔지만, 헤더를 카드 바깥에 둔
-   피드에서는 곧바로 로스터 첫 줄이라 이름·응답 배지를 덮었다. */
-.scr-challenge-card-canceled > .scr-challenge-card-body { padding-top: 26px; }
+/* (삭제) .scr-challenge-cancel-tag / -canceled의 위 여백 — 우상단 "취소" 라벨을 걷어냈다.
+   취소·만료는 이제 그 사람 배지 자리에서 말한다(ChallengeScreen 참고). */
 .scr-light-theme .scr-challenge-card {
   background: rgba(255, 255, 255, 0.62);
   backdrop-filter: blur(10px) saturate(1.1);
@@ -5488,6 +5478,10 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
 /* 버림(discarded) — 사유 있는 거절(붉은톤)과 구분되게 무채색 회색으로. */
 .scr-challenge-avatar-badge-discarded { color: #9a97a3; }
 .scr-challenge-avatar-badge-pending { color: #cdaa54; }
+/* 아무 응답 없이 끝난 두 가지(요청) — 취소는 부른 쪽이 거둬들인 것이라 "버림"과 같은
+   무채색으로, 만료는 대기가 그대로 시들어 버린 것이라 대기색을 눌러 흐리게 둔다. */
+.scr-challenge-avatar-badge-canceled { color: #9a97a3; }
+.scr-challenge-avatar-badge-expired { color: #8f8467; }
 /* 결과 배지(.scr-challenge-inline-win)는 승/무를 원(20×20) 안에 담지만, 이 응답 상태는
    알약도 원도 아니라 글자만(요청: "대기 수락 거절 배지는 알약 모양말고 글자만 표시") —
    원 배지의 모양 관련 속성(크기·테두리·배경·패딩·둥근모서리)을 전부 지워 순수 텍스트로
@@ -7192,12 +7186,10 @@ html:not(.scr-light-theme) .scr-feed-now-divider span { color: var(--muted); }
   position: absolute; top: var(--post-kebab-top); right: 10px; z-index: 2; display: flex;
 }
 .scr-feed-game-result-body .scr-game-result-trow-topmeta .scr-feed-kebab-btn, .scr-feed-chal-menu .scr-feed-kebab-btn { width: 26px; height: 26px; min-height: 26px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
-/* 너 나와 케밥(피드 레벨)도 같은 자리 — 기존 우상단 '취소' 라벨과 겹치지 않게 라벨은 왼쪽으로. */
 /* display:flex인 이유 — 기본(블록)이면 인라인 버튼이 줄 상자 안에 앉아 상자 높이가
    line-height에 딸려 달라진다. flex로 두면 상자 높이가 버튼 높이로 고정돼, 세로 위치를
    --post-kebab-top 하나로만 다스릴 수 있다(그 값 주석 참고). */
 .scr-feed-chal-menu { position: absolute; top: var(--post-kebab-top); right: 10px; z-index: 3; display: flex; }
-.scr-feed-card .scr-challenge-cancel-tag { right: 48px; }
 /* 아이템 내 폰트 전부 1스텝 축소(요청) — 로스터/닉네임 caption, 헤더 micro 등.
    로스터와 너나와 닉네임은 같은 크기 유지(둘 다 caption). */
 .scr-feed-card .scr-challenge-person-name { font-size: var(--fs-caption); }
