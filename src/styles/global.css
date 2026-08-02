@@ -8342,22 +8342,30 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   /* 한 줄이 너무 길어지지 않게 자른다(요청: 최대 폭 좁히기) — PC에서는 지도가 764px까지
      커져 자막이 그 폭을 거의 다 쓰는 한 줄이 됐다(실측 703px). 눈이 한 줄을 끝까지 따라간
      뒤 다시 왼쪽 끝으로 돌아와야 해서 읽기 나쁘고, 가로로 넓은 띠라 지도를 그만큼 더
-     가린다. em으로 잡아 두면 좁은 화면(모바일 실측 310px)은 이미 이보다 좁아 그대로다. */
+     가린다. em으로 잡아 두면 좁은 화면(모바일 실측 310px)은 이미 이보다 좁아 그대로다.
+     em이라 아래 글자 크기를 한 단계 줄이면 이 폭도 함께 줄어든다 — 이 값이 재는 것은
+     픽셀이 아니라 '한 줄에 몇 자'라서, 그게 이 규칙의 뜻에 맞다. */
   max-width: min(80%, 28em);
   justify-items: center; align-items: center;
-  font-size: var(--fs-caption); font-weight: 500; line-height: 1.6;
+  /* 한 단계 축소(요청) — caption(14) → micro(12). 지도 위에 얹히는 글자라 본문만큼 클
+     이유가 없고, 작을수록 그림을 덜 가린다. */
+  font-size: var(--fs-micro); font-weight: 500; line-height: 1.6;
   color: #fff; text-shadow: 0 0 3px #000, 0 0 6px #000, 0 1px 2px #000;
   word-break: keep-all; text-align: center;
 }
-/* 자막 앞의 시각 — 본문보다 한 단계 작고 흐리게 둔다(요청: [5분]처럼 분까지만). */
+/* 자막 앞의 시각 — 본문보다 한 단계 작고 흐리게 둔다(요청: [5분]처럼 분까지만).
+   본문이 한 단계 내려간 만큼(caption → micro) 여기도 같이 내려 서열을 지킨다. */
 .scr-story-cap-time {
-  margin-right: 5px; font-size: var(--fs-micro); font-weight: 700; opacity: 0.78;
+  margin-right: 5px; font-size: var(--fs-11); font-weight: 700; opacity: 0.78;
 }
 .scr-story-cap-line {
   grid-area: 1 / 1; margin: 0;
   /* 배경은 문장 자신의 폭만큼만(요청) — 바깥 칸(.scr-story-cap)에 배경을 주면 가장 긴
      문장 크기 그대로 깔려, 짧은 문장일 때 양옆으로 빈 배경이 남는다. */
-  background: rgba(0, 0, 0, 0.42); border-radius: 10px; padding: 6px 14px;
+  /* 불투명도를 낮춘다(요청) — 판을 완전히 덮기보다 지형이 비쳐 보이는 정도로만 깐다.
+     글자 자체의 검은 테(위 text-shadow)가 대비를 이미 맡고 있어, 이 배경은 밝은 지형에서
+     글자가 뜨는 것만 막아 주면 된다. */
+  background: rgba(0, 0, 0, 0.28); border-radius: 10px; padding: 6px 14px;
   /* 안 보이는 문장도 자리는 차지해야 한다(그래서 display:none이 아니라 visibility) —
      칸 높이를 가장 긴 문장이 정하게 하는 것이 이 방식의 핵심이다. */
   visibility: hidden;
