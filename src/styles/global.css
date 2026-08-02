@@ -3003,9 +3003,18 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
 .scr-feed-notes { margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(var(--overlay-rgb), 0.08); }
 
 .scr-feed-notes-list { margin-bottom: 8px; }
-/* 각 댓글은 상하 여백만(구분선은 옅게) — scr-mreq-item의 카드 톤 대신 콤팩트하게. */
-.scr-feed-note-item { padding: 7px 0; }
+/* 각 댓글은 상하 여백만(구분선은 옅게) — scr-mreq-item의 카드 톤 대신 콤팩트하게.
+   인스타그램식 레이아웃(요청) — 아바타를 왼쪽 칸에 크게 두고, 닉네임·시각·본문은
+   전부 오른쪽 칸에 쌓는다. 이 <li>는 공용 .scr-mreq-item(뒤쪽 소스, flex-direction:column)도
+   같이 달고 있어 한 클래스짜리로 두면 특이도가 같아 소스 순서상 그 규칙에 진다 — 두
+   클래스를 묶어 확실히 이긴다. */
+.scr-mreq-item.scr-feed-note-item { display: flex; flex-direction: row; align-items: flex-start; gap: 12px; padding: 7px 0; }
 .scr-feed-note-item + .scr-feed-note-item { border-top: 1px solid rgba(var(--overlay-rgb), 0.06); }
+/* border-radius:50% !important — 원래 회원 사진(size 기준 각진 정도)이든 닉네임 첫 글자
+   폴백이든 무조건 동그랗게(다른 프사 원형 처리와 같은 규칙, .scr-mreq-item-author-avatar
+   참고). 살짝 아래로 내려 첫 줄(닉네임) 글자 중심과 시각적으로 맞춘다. */
+.scr-feed-note-avatar { border-radius: 50% !important; flex-shrink: 0; margin-top: 1px; }
+.scr-feed-note-body { flex: 1; min-width: 0; }
 .scr-feed-note-item .scr-mreq-item-top { margin-bottom: 3px; }
 /* 닉네임(.scr-mreq-item-author-name)과 같은 색(--dim)을 쓰되 더 연하게(지적: 타임스탬프
    색깔 닉네임과 동일하게 약간 연하게) — 이 앱에서 --muted가 --dim보다 오히려 더 진해서
@@ -7201,11 +7210,12 @@ html:not(.scr-light-theme) .scr-feed-now-divider span { color: var(--muted); }
 /* 댓글이 본문(카드 메시지)과 같은 크기로 보여 어색했다(지적) — caption/micro로 한
    단계 줄였다가(요청) 다시 한 단계 더 줄였는데(지적), 이번엔 다시 한 단계 키워
    달라고 해서(지적: 댓글들도 다시 크기 1스텝 확대) 원래의 caption/micro로 되돌아왔다.
-   글쓴이 줄과 내용 사이, 댓글끼리의 세로 간격을 좁힌 것(지적)은 그대로 둔다 — 크기만
-   다시 키운 것이라 간격까지 다시 벌릴 이유는 없다. */
+   (예전엔 여기서 gap/padding도 좁혔는데, 인스타그램식 레이아웃(아바타|본문 좌우 배치)으로
+   바뀌며 그 gap이 세로 간격이 아니라 아바타-본문 사이 가로 간격을 의미하게 돼 버려
+   지적대로 삭제 — 레이아웃 관련 값은 이제 위 .scr-mreq-item.scr-feed-note-item 한
+   군데에서만 정한다.) */
 .scr-feed-comments .scr-mreq-item-text { font-size: var(--fs-caption); }
 .scr-feed-comments .scr-mreq-item-author-name { font-size: var(--fs-micro); }
-.scr-feed-comments .scr-mreq-item { gap: 2px; padding: 7px 2px; }
 /* 댓글에 표시되는 @유저 멘션은 칩(알약 배경)이 아니라 그냥 굵은 텍스트로(요청: "유저칩이
    아닌 굵게 표시로 변경"). 읽기용 인라인 칩만 배경·그림자·패딩을 걷어 본문과 같은
    caption 크기의 볼드로 흐르게 한다. 입력창(.scr-mreq-chip-editor)의 칩은 삭제·편집을

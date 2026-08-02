@@ -608,61 +608,66 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
     }
   };
 
-  // 댓글 한 줄. interactive=false는 카드 안 미리보기용 — 수정/삭제는 시트에서만 한다
-  // (미리보기에서 편집까지 되면 시트를 여는 탭과 버튼 탭이 같은 자리에서 겹친다).
+  // 댓글 한 줄 — 인스타그램식으로 아바타를 왼쪽 칸에 크게 두고, 닉네임·시각·본문은
+  // 전부 그 오른쪽 칸에 쌓는다(요청). 예전엔 아바타가 닉네임 옆의 작은 인라인 아이콘이라
+  // 닉네임 줄에 끼어 있고, 본문은 그 줄 전체 밑에 아바타와 무관하게 통짜로 흘렀다.
+  // interactive=false는 카드 안 미리보기용 — 수정/삭제는 시트에서만 한다(미리보기에서
+  // 편집까지 되면 시트를 여는 탭과 버튼 탭이 같은 자리에서 겹친다).
   const renderNote = (c: FeedComment, interactive: boolean) => (
     <li key={c.id} className="scr-mreq-item scr-feed-note-item">
-      <div className="scr-mreq-item-top">
-        <div className="scr-mreq-item-author">
-          <Avatar
-            member={{ id: c.author.memberId, nickname: c.author.nickname, avatar: c.author.avatar }}
-            size={13}
-            className="scr-mreq-item-author-avatar"
-          />
-          <span className="scr-mreq-item-author-name">{c.author.nickname}</span>
-          {/* 이 앱의 "언제" 공통 포맷(formatWhen)을 그대로 쓴다(지적: 댓글 타임스탬프만
-              공통 양식이 안 적용되고 있었다) — 방금 전/N분 전/오늘/어제/이번주 요일 등
-              피드 타임스탬프·너 나와 일정과 같은 규칙으로 읽힌다. */}
-          <span className="scr-feed-note-time">{formatWhen(c.createdAt, { clock: true })}</span>
+      <Avatar
+        member={{ id: c.author.memberId, nickname: c.author.nickname, avatar: c.author.avatar }}
+        size={32}
+        className="scr-feed-note-avatar"
+      />
+      <div className="scr-feed-note-body">
+        <div className="scr-mreq-item-top">
+          <div className="scr-mreq-item-author">
+            <span className="scr-mreq-item-author-name">{c.author.nickname}</span>
+            {/* 이 앱의 "언제" 공통 포맷(formatWhen)을 그대로 쓴다(지적: 댓글 타임스탬프만
+                공통 양식이 안 적용되고 있었다) — 방금 전/N분 전/오늘/어제/이번주 요일 등
+                피드 타임스탬프·너 나와 일정과 같은 규칙으로 읽힌다. */}
+            <span className="scr-feed-note-time">{formatWhen(c.createdAt, { clock: true })}</span>
+          </div>
         </div>
+        {interactive && editingId === c.id ? (
+          <NoteComposer
+            members={members}
+            initialText={c.text}
+            submitting={busy}
+            onSubmit={(text, ids) => void update(c.id, text, ids)}
+            onCancel={() => setEditingId(null)}
+            placeholder="메모 수정"
+            submitLabel={<CornerDownLeft size={14} />}
+          />
+        ) : (
+          // 수정/삭제 버튼을 댓글 내용이 끝나는 자리 바로 옆에 붙인다(지적: 오른쪽 끝이
+          // 아니라 내용이 끝나는 부분 옆으로) — 같은 <p> 안에 이어 붙여, 텍스트와 한
+          // 흐름으로 줄바꿈되게 한다(글이 짧으면 글자 바로 뒤에, 길어서 꽉 차면 마지막
+          // 줄로 자연스럽게 넘어간다). 별도 flex 줄로 두면 늘 오른쪽 끝에 떨어져 붙는다.
+          <p className="scr-mreq-item-text scr-feed-note-text">
+            {renderInline(c.text, c.mentions)}
+            {interactive && c.canEdit && (
+              <span className="scr-mreq-item-actions scr-feed-note-actions">
+                <button
+                  type="button" className="scr-feed-note-icon-btn"
+                  onClick={() => { setErr(null); setEditingId(c.id); }}
+                  aria-label="수정"
+                >
+                  <Pencil size={11} />
+                </button>
+                <button
+                  type="button" className="scr-feed-note-icon-btn scr-feed-note-icon-danger"
+                  onClick={() => setDeleteTarget(c)}
+                  aria-label="삭제"
+                >
+                  <Trash2 size={11} />
+                </button>
+              </span>
+            )}
+          </p>
+        )}
       </div>
-      {interactive && editingId === c.id ? (
-        <NoteComposer
-          members={members}
-          initialText={c.text}
-          submitting={busy}
-          onSubmit={(text, ids) => void update(c.id, text, ids)}
-          onCancel={() => setEditingId(null)}
-          placeholder="메모 수정"
-          submitLabel={<CornerDownLeft size={14} />}
-        />
-      ) : (
-        // 수정/삭제 버튼을 댓글 내용이 끝나는 자리 바로 옆에 붙인다(지적: 오른쪽 끝이
-        // 아니라 내용이 끝나는 부분 옆으로) — 같은 <p> 안에 이어 붙여, 텍스트와 한
-        // 흐름으로 줄바꿈되게 한다(글이 짧으면 글자 바로 뒤에, 길어서 꽉 차면 마지막
-        // 줄로 자연스럽게 넘어간다). 별도 flex 줄로 두면 늘 오른쪽 끝에 떨어져 붙는다.
-        <p className="scr-mreq-item-text scr-feed-note-text">
-          {renderInline(c.text, c.mentions)}
-          {interactive && c.canEdit && (
-            <span className="scr-mreq-item-actions scr-feed-note-actions">
-              <button
-                type="button" className="scr-feed-note-icon-btn"
-                onClick={() => { setErr(null); setEditingId(c.id); }}
-                aria-label="수정"
-              >
-                <Pencil size={11} />
-              </button>
-              <button
-                type="button" className="scr-feed-note-icon-btn scr-feed-note-icon-danger"
-                onClick={() => setDeleteTarget(c)}
-                aria-label="삭제"
-              >
-                <Trash2 size={11} />
-              </button>
-            </span>
-          )}
-        </p>
-      )}
     </li>
   );
 
