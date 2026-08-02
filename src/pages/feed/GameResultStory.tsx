@@ -55,6 +55,8 @@ const BEAT_MARK: Record<string, string> = {
   // 견제·사냥·잠입.
   "harass-workers": "🎯", "harass-long": "🎯", muta: "🦟", "cloak-wraith": "👻",
   "valk-hunt": "🎯", infested: "🧟", "mind-control": "🧠", "power-unit": "💪",
+  // 물량 — 본진에서 쉼 없이 찍어낸 이야기라 공장이 아니라 '쏟아진다'는 느낌이 맞다.
+  "mass-army": "🌊",
   // 아군을 도우러 간 것 — 화살촉(도착한 아군 기지)에는 방어를 보탰다는 뜻으로 방패를
   // 준다. 천사 얼굴은 이제 도우러 간 사람 아바타 쪽으로 옮겼다(요청).
   "ally-help": "🛡️", "ally-cannon": "🛡️",
@@ -121,6 +123,7 @@ const POS_TRUSTED_VERSION = 2;
  *  '어디로 갔다'가 이야기의 뼈대가 아닌 것들이다. */
 const HOME_BEAT_KEYS = new Set([
   "expand", "upgrade", "upgrade-signature", "tech", "fast-tech", "vision", "no-detect",
+  "mass-army",
   "greedy-build", "greedy-paid", "greedy-punished", "lodging", "relocate",
   "defense", "front-defense", "late-defense", "wall-in", "side-tank", "revival", "fallen", "gg",
   "stand", "result", "standoff", "attrition", "fast-hands", "pro-like", "worker-gap",

@@ -65,7 +65,9 @@ export interface Tactic {
   /** 문장 틀에 꽂히는 값(드론 수·게이트 수 등). 없으면 생략. */
   /** 문장 틀에 꽂히는 값(드론 수·게이트 수 등)과, 마법 좌표처럼 그림이 쓰는 값(xy).
    *  없으면 생략. */
-  p?: Record<string, string | number | boolean | number[]>;
+  /** 문자열 목록도 실을 수 있다(물량 조합의 유닛 이름 등) — 저장 쪽(replaySummaryData의
+   *  Beat)도 같은 모양이라 그대로 실려 나간다. */
+  p?: Record<string, string | number | boolean | string[] | number[]>;
 }
 
 
@@ -335,6 +337,20 @@ const POWER_UNITS: [string, number][] = [
   ["Vulture", 30], ["Zergling", 60],
 ];
 const POWER_SHARE = 0.6;
+/* ── 물량(요청: "프로토스들의 질럿 드라군 물량 이야기도 없네") ──
+   위 '파워 OO'는 한 유닛이 병력의 60%를 넘겨야 나온다. 그런데 실제로 사람들이 물량이라
+   부르는 그림은 대개 두 유닛의 조합이다 — 실측한 판에서 질럿 521 + 드라군 504로 둘이
+   합쳐 94%였는데, 각각은 48%·46%라 어느 쪽도 60%를 못 넘어 아무 이야기도 안 나왔다.
+
+   총량이 아니라 '분당 몇 기'로 잰다. 35분 빠른무한과 12분 경기를 같은 자로 잴 수 없어서다.
+   실측 열 판에서 분당 생산량은 대개 3~15기였고, 사람이 물량이라 부른 그 판의 두 사람만
+   26·31기로 뚜렷이 떨어져 있었다 — 그 사이에 선을 긋는다. */
+const MASS_RATE_MIN = 20;
+/** 그래도 총량이 이만큼은 돼야 한다 — 짧은 경기의 한순간 폭발은 물량이 아니다. */
+const MASS_TOTAL_MIN = 200;
+/** 상위 두 유닛이 이만큼을 차지해야 "OO·OO 물량"이라 이름 붙여 부른다 — 그보다 흩어져
+ *  있으면 조합이라 부를 게 없어 수만 말한다. */
+const MASS_PAIR_SHARE = 0.7;
 // 클로킹 레이스 — 이만큼은 띄워야 '레이스 전략'이다.
 const WRAITH_MIN = 4;
 // 캐리어 — 한두 기 띄워 보고 접은 것과 실제로 캐리어를 굴린 것을 가른다. 인터셉터까지
@@ -447,6 +463,11 @@ interface Geo {
   /** 그 자리를 사람이 부르는 이름 — 내 기지/입구, 아군 기지/입구, 상대 본진/입구 앞, 센터. */
   /** 건물 자리뿐 아니라 명령 좌표(옆탱 판정)도 넘길 수 있게 좌표만 받는다. */
   spot: (b: { x: number; y: number }) => BuildSpot;
+  /** 아군 기지의 진출로(allyFront)라면 그 아군과, 그 진출로가 향하고 있는 상대.
+   *  spot()이 "allyFront"를 가르는 데 이미 이 둘을 쓰고 있는데, 밖에서는 "아군 앞"이라는
+   *  사실만 받고 누구의 앞인지·어느 쪽을 보고 선 앞인지는 못 봤다 — 옆탱은 그 둘이 곧
+   *  이야기라(지적: "브래드가 군범 기지에서 7시를 옆탱으로 견제") 여기서 함께 돌려준다. */
+  allyFrontOf: (b: { x: number; y: number }) => { ally: string; foe: string | null } | null;
   /** 내 살림이 아군 기지에 얹혀 있으면 그 아군(지적: 내 기지에 건물이 거의 없고 아군
    *  기지에 있는 게 셋방살이다). 아니면 null. */
   lodgingHost: string | null;
@@ -599,6 +620,17 @@ function geoOf(
     return "unknown";
   };
 
+  /** 아군 진출로면 그 아군과 그 앞이 향한 상대 — 위 spot()의 allyFront 갈래와 같은 계산이다
+   *  (거기서는 판정 결과만 쓰고 누구의 앞인지는 버린다). */
+  const allyFrontOf = (b: { x: number; y: number }): { ally: string; foe: string | null } | null => {
+    if (spot(b) !== "allyFront") return null;
+    const a = allyHomes.find((x) => dist(b, x.h) < base * HOME_RADIUS);
+    if (!a) return null;
+    const foe = foeHomeOf.length > 0
+      ? foeHomeOf.reduce((x, y) => (dist(a.h, y.h) < dist(a.h, x.h) ? y : x)).raw : null;
+    return { ally: a.raw, foe };
+  };
+
   // 셋방살이 — 두 갈래로 잡는다(요청: 이 이야기가 더 자주 나왔으면).
   //   ① 내 건물 덩어리 자체가 아군 기지 안에 앉아 있다(메도이드가 거기 있다).
   //   ② 시작 자리는 따로 있었는데, 나중에 아군 기지로 살림을 옮겼다 — 본진을 잃은 그림이다.
@@ -646,7 +678,7 @@ function geoOf(
   const lodgingLost = lodging?.lost ?? false;
 
   // (삭제) 건물이 몇 군데에 흩어졌나(spread) — scatter 전술만 쓰던 값이라 함께 걷어냈다.
-  return { zone, allyAt, enemyAt, front, spot, lodgingHost, lodgingLost };
+  return { zone, allyAt, enemyAt, front, spot, allyFrontOf, lodgingHost, lodgingLost };
 }
 
 interface Ctx {
@@ -875,6 +907,31 @@ function detectFor(c: Ctx): Tactic[] {
       break;
     }
   }
+  /* 물량 — 한 유닛에 쏠리지 않아도 '분당 몇 기를 찍어냈나' 자체가 이야기다(요청, 위
+     MASS_RATE_MIN 주석). 위 '파워 OO'가 이미 나왔으면 안 낸다: 같은 물량을 두 번 말하는
+     꼴이고, 그쪽이 더 구체적이다. */
+  if (!out.some((t) => t.key === "power-unit")) {
+    const mins = sec(endFrame) / 60;
+    const rate = mins > 0 ? armyTotal / mins : 0;
+    if (armyTotal >= MASS_TOTAL_MIN && rate >= MASS_RATE_MIN) {
+      const top = [...army].sort((a, b) => b[1] - a[1]).slice(0, 2);
+      const pair = top.length === 2 && (top[0][1] + top[1][1]) / armyTotal >= MASS_PAIR_SHARE
+        ? top : null;
+      /* 시점은 그 병력을 절반쯤 뽑았을 때 — 물량이 한창 쏟아지던 무렵이다. power-unit처럼
+         '가장 몰아 뽑은 묶음'을 쓰면 안 된다: 경기 내내 쉼 없이 뽑는 그림이라 가장 빽빽한
+         한 토막은 초반 질럿 연타 같은 데 걸린다(실측: 35분 경기인데 1.7분으로 찍혔다).
+         시점을 아예 안 두면 문장이 맺음말 바로 앞으로 밀린다. */
+      const frames = (pair ?? top).flatMap(([unit]) => s.unitFrames[unit] ?? []).sort((a, b) => a - b);
+      const mid = frames.length > 0 ? frames[Math.floor(frames.length / 2)] : null;
+      out.push({
+        key: "mass-army", weight: 12, at: mid, who,
+        p: {
+          n: armyTotal, rate: Math.round(rate),
+          ...(pair ? { units: pair.map(([unit]) => unit), ns: pair.map(([, n]) => n) } : {}),
+        },
+      });
+    }
+  }
 
   // ── 저그 ──
   if (race === "저그") {
@@ -1079,27 +1136,37 @@ function detectFor(c: Ctx): Tactic[] {
      *  찍힌다 — 그만큼 몰렸을 때만 '세워 뒀다'고 말한다. */
     const tankPark = (() => {
       if (!geo || tanks < SIDE_TANK_MIN) return null;
-      const parked = (s.orderPositions ?? [])
-        .filter((o) => o.by === "Siege Tank")
-        .filter((o) => {
-          const sp = geo.spot(o);
-          return sp === "myFront" || sp === "allyFront";
-        });
-      if (parked.length < SIDE_TANK_ORDERS) return null;
-      // 자리는 가장 붐빈 한 점으로 — 탱크를 세운 지점을 그대로 찍어야지, 본진 한가운데를
-      // 가리키면 옆탱이라는 말이 무색해진다(요청: 옆탱한 지점을 정확히).
-      const seed = parked.reduce((best, o) => {
-        const n = parked.filter((x) => dist(x, o) <= SIDE_TANK_SPOT_TILES).length;
-        return n > best.n ? { o, n } : best;
-      }, { o: parked[0], n: 0 });
-      const near = parked.filter((x) => dist(x, seed.o) <= SIDE_TANK_SPOT_TILES);
-      return {
-        frame: Math.min(...near.map((o) => o.frame)),
-        xy: [
-          near.reduce((a, o) => a + o.x, 0) / near.length,
-          near.reduce((a, o) => a + o.y, 0) / near.length,
-        ] as [number, number],
+      const tankOrders = (s.orderPositions ?? []).filter((o) => o.by === "Siege Tank");
+      /** 그 자리들 중 가장 붐빈 한 점 — 탱크를 세운 지점을 그대로 찍어야지, 본진 한가운데를
+       *  가리키면 옆탱이라는 말이 무색해진다(요청: 옆탱한 지점을 정확히). */
+      const busiest = (parked: typeof tankOrders) => {
+        if (parked.length < SIDE_TANK_ORDERS) return null;
+        const seed = parked.reduce((best, o) => {
+          const n = parked.filter((x) => dist(x, o) <= SIDE_TANK_SPOT_TILES).length;
+          return n > best.n ? { o, n } : best;
+        }, { o: parked[0], n: 0 });
+        const near = parked.filter((x) => dist(x, seed.o) <= SIDE_TANK_SPOT_TILES);
+        return {
+          frame: Math.min(...near.map((o) => o.frame)),
+          xy: [
+            near.reduce((a, o) => a + o.x, 0) / near.length,
+            near.reduce((a, o) => a + o.y, 0) / near.length,
+          ] as [number, number],
+        };
       };
+      /* 아군 진출로에 세운 것을 먼저 본다(지적: "브래드가 군범 기지에서 7시를 옆탱으로
+         견제"한 내용이 없다). 예전에는 내 앞이든 아군 앞이든 한 자루에 담아 가장 붐빈
+         한 점만 골랐는데, 그러면 내 앞의 명령이 조금이라도 많으면 아군 쪽 이야기가 통째로
+         사라진다 — 실측한 그 판에서 내 앞 16건 대 아군 앞 14건으로 갈렸고, 정작 사람이
+         기억하는 장면은 아군 쪽이었다. 남의 집 앞까지 탱크를 끌고 가 지켜 주는 것이
+         제 앞을 잠그는 것보다 훨씬 눈에 띄는 일이라, 수가 비슷하면 그쪽을 말한다. */
+      const ally = busiest(tankOrders.filter((o) => geo.spot(o) === "allyFront"));
+      if (ally) {
+        const at = geo.allyFrontOf({ x: ally.xy[0], y: ally.xy[1] });
+        if (at) return { ...ally, ally: at.ally, foe: at.foe };
+      }
+      const mine = busiest(tankOrders.filter((o) => geo.spot(o) === "myFront"));
+      return mine ? { ...mine, ally: null as string | null, foe: null as string | null } : null;
     })();
     if (sideFactory.length > 0 && tanks >= 3) {
       const helped = geo?.allyAt(sideFactory[0]) ?? null;
@@ -1110,8 +1177,11 @@ function detectFor(c: Ctx): Tactic[] {
     } else if (tankPark !== null) {
       // 옆탱은 팩토리를 어디에 지었나가 아니라 탱크를 어디로 옮겼나로 가른다(지적).
       out.push({
-        key: "side-tank", weight: 11, at: tankPark.frame, who,
-        p: { at: "front", xy: tankPark.xy },
+        key: "side-tank", weight: tankPark.ally ? 12 : 11, at: tankPark.frame, who,
+        // 아군 앞이면 누구의 앞인지·어느 쪽을 보고 선 앞인지가 곧 그 이야기다(지적).
+        ...(tankPark.ally ? { who2: tankPark.ally } : {}),
+        ...(tankPark.foe ? { whom: tankPark.foe } : {}),
+        p: { at: tankPark.ally ? "allyFront" : "front", xy: tankPark.xy },
       });
     } else if (neighbor && tanks >= 3 && firstTank !== null && neighbor.fellAt > firstTank) {
       // 탱크가 실제로 무엇을 잡았는지는 리플레이에 없다. 확실한 건 '옆에 붙은 상대가

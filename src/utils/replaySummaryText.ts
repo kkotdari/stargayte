@@ -246,6 +246,8 @@ interface Ctx {
 const num = (v: unknown, fallback = 0): number => (typeof v === "number" ? v : fallback);
 const str = (v: unknown): string => (typeof v === "string" ? v : "");
 const list = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x) => typeof x === "string") : []);
+/** 숫자 목록 — list는 문자열만 걸러 내므로 수를 실은 값(물량 조합의 기수 등)에는 이쪽을 쓴다. */
+const numList = (v: unknown): number[] => (Array.isArray(v) ? v.filter((x) => typeof x === "number") : []);
 
 // 같은 전황이라도 경기마다 다른 문장이 나오게 표현을 여러 개 준비해 두고 하나를 고른다
 // (요청: 지루하지 않게, 대신 장황하지 않게). 고르는 건 난수가 아니라 그 beat 내용의 해시다 —
@@ -326,8 +328,8 @@ const escapeRe = (v: string): string => v.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 // 어느 편에도 기울지 않는 문장들 — 대치·소모전·손 빠르기·총 생산량처럼 '그 순간 누가
 // 유리한가'를 말하지 않는 것들이다.
 const NEUTRAL_BEATS = new Set([
-  "standoff", "attrition", "fast-hands", "power-unit", "expand", "prod-gap", "worker-gap",
-  "tech", "vision", "no-detect", "revival", "clash",
+  "standoff", "attrition", "fast-hands", "power-unit", "mass-army", "expand", "prod-gap",
+  "worker-gap", "tech", "vision", "no-detect", "revival", "clash",
   // 째기(greedy-build)도 여기다 — 자원을 먼저 챙긴 것은 공격이 아니라 준비라서, 그 뒤에
   // 상대의 러시가 오면 "하지만"이 아니라 "~했고"로 이어야 맞다(지적: 째기는 공격이 아니라
   // 하지만이 붙는 게 어색하다). 째기가 실제로 응징당한 경우는 greedy-punished가 따로 말한다.
@@ -1400,6 +1402,16 @@ const TEMPLATES: Record<string, Tpl> = {
           : [`탱크 방어로 ${foe} 잡아냈지만 판을 뒤집지 못함`, `${foe} 탱크로 눌러놓고도 끝내 밀림`]
       )}`;
     }
+    /* 아군 진출로에 세운 옆탱(요청) — 남의 집 앞까지 탱크를 끌고 가 지켜 주는 것이라
+       "기지 가장자리에 탱크를 세웠다"로는 그 이야기가 통째로 사라진다(지적: "브래드가
+       군범 기지에서 7시를 옆탱으로 견제한 내용도 없다"). 누구의 앞인지(who2)와 그 앞이
+       어느 쪽을 보고 선 것인지(whom)를 함께 말한다. */
+    if (str(c.p.at) === "allyFront" && c.who2) {
+      const foe = c.whom ? `${c.whom} 쪽을 ` : "길목을 ";
+      return `${ga(c.who)} ${c.who2}의 진출로에 탱크를 세워 ${done(c, c.pick([
+        `${foe}눌러 둠`, `${foe}틀어막음`, `${foe}견제함`,
+      ]))}`;
+    }
     if (str(c.p.at) === "front") {
       // 팩토리를 어디에 지었나가 아니라 탱크를 어디에 세워 뒀나다(지적: 팩토리 위치랑
       // 옆탱은 상관없다) — 판정도 탱크에게 내린 이동 명령으로 한다(replayTactics의 tankPark).
@@ -1888,6 +1900,28 @@ const TEMPLATES: Record<string, Tpl> = {
       `${reul(unit)} 총 ${n}기나 뽑아내며 물량으로 몰아침`,
       `경기 내내 ${unit} 물량을 많이 뽑아냄`,
       `${unit} 물량 하나로 판을 끌고 감`,
+    ]))}`;
+  },
+  /* 물량(요청: "프로토스들의 질럿 드라군 물량 이야기도 없네") — 위 '파워 OO'는 한 유닛이
+     병력의 절반을 훌쩍 넘겨야 나오는데, 사람들이 물량이라 부르는 그림은 대개 두 유닛의
+     조합이다(실측: 질럿 521 + 드라군 504로 둘이 94%인데 각각은 48%·46%라 아무 말도 안
+     나왔다). 여기서는 '분당 몇 기'를 근거로 삼는다 — 총량은 경기 길이에 끌려다닌다. */
+  "mass-army": (c) => {
+    const units = list(c.p.units).map((u) => UNIT_KO[u] ?? "").filter(Boolean);
+    const ns = numList(c.p.ns);
+    const n = num(c.p.n);
+    const rate = num(c.p.rate);
+    if (units.length === 2 && ns.length === 2) {
+      const both = units.join("·");
+      return `${ga(c.who)} ${done(c, c.pick([
+        `${both}을 각각 ${ns[0]}기·${ns[1]}기까지 찍어내며 물량으로 밀어붙임`,
+        `${both} 물량을 분당 ${rate}기꼴로 쏟아냄`,
+        `쉬지 않고 ${both}만 뽑아 총 ${n}기를 굴림`,
+      ]))}`;
+    }
+    return `${ga(c.who)} ${done(c, c.pick([
+      `병력을 분당 ${rate}기꼴로 찍어내며 물량으로 밀어붙임`,
+      `경기 내내 총 ${n}기를 뽑아 물량으로 몰아침`,
     ]))}`;
   },
   // 클로킹 레이스(요청) — 보이지 않는 병력이라 대공이 없으면 그대로 뚫린다.

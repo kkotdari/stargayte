@@ -266,6 +266,9 @@ const UPGRADE_MIN_RANK = 2;
 /** 한 요약에 같은 갈래 문장을 이만큼까지 — 곁가지가 도배되면 정작 승부 이야기가 밀린다. */
 const PER_KEY_CAP: Record<string, number> = {
   tech: TECH_BEATS_PER_SUMMARY, "upgrade-signature": 2, upgrade: 2,
+  /* 물량은 둘까지 — 여덟 명이 붙는 판에서 서넛이 한꺼번에 걸리면 같은 모양의 문장이
+     줄줄이 서서, 정작 그 판의 사건들이 밀려난다. 둘이면 "양쪽 다 물량전이었다"가 읽힌다. */
+  "mass-army": 2,
 };
 
 /** 목표를 못 짚으면 뜻이 옅어지는 수들(요청) — 드랍은 '어디에 내렸나'가 그 수의 전부이고,
@@ -1522,8 +1525,8 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
      쪽 판정)와 같은 기준이다 — 어느 편에도 기울지 않는 이야기와, 한 사람의 일이지만 국면은
      상대 쪽으로 기우는 이야기(제 수가 역풍을 맞음·당함·무너짐)를 갈라 둔다. */
   const LATE_NEUTRAL = new Set([
-    "standoff", "attrition", "fast-hands", "power-unit", "expand", "prod-gap", "worker-gap",
-    "tech", "vision", "no-detect", "revival", "greedy-build", "long-run", "wall-in",
+    "standoff", "attrition", "fast-hands", "power-unit", "mass-army", "expand", "prod-gap",
+    "worker-gap", "tech", "vision", "no-detect", "revival", "greedy-build", "long-run", "wall-in",
   ]);
   const LATE_AGAINST_ACTOR = new Set([
     "rush-backfire", "greedy-punished", "fallen", "lodging", "relocate", "lift-off", "gg", "stand",
@@ -2577,6 +2580,10 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   const PROD_ONLY_KEYS = new Set([
     "carrier", "guardian", "bc", "valkyrie", "muta", "power-unit", "arbiter", "ultra",
     "long-run", "unit-mass", "devourer", "lurker", "infested", "scout", "reaver", "queen",
+    // mass-army는 여기 없다 — 이 표가 낮추려는 것은 "캐리어 네 기 띄웠다"처럼 그 자체로는
+    // 그날의 장면이 아닌 생산담인데, 분당 스무 기 넘게 찍어낸 물량은 그 판이 어떤 판이었나
+    // 그 자체다(요청: "프로토스들의 질럿 드라군 물량 이야기도 없네" — 실제로 이 표에
+    // 넣어 봤더니 그 이야기가 그대로 잘려 나갔다).
   ]);
   for (let i = 0; i < pool.length; i += 1) {
     const b = pool[i];
