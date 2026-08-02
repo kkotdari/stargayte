@@ -2018,8 +2018,13 @@ html:not(.scr-light-theme) .scr-stats-list-panel-v2 .scr-stat-name-cell, html:no
   .scr-stats-list-panel-v2 .scr-stat-name-head { padding-left: 7px; padding-right: 7px; }
   /* 글자 크기는 이제 공용 규칙(위 .scr-stats-list-panel-v2 .scr-stat-name-btn)과 같다 —
      여기선 폭이 실제로 줄어들도록 max-width만 풀어준다(base가 이미 overflow/ellipsis/
-     nowrap을 갖고 있다). */
-  .scr-stats-list-panel-v2 .scr-stat-name-btn { max-width: 100%; }
+     nowrap을 갖고 있다).
+     +8px인 이유(지적: "짧은 닉네임까지도 말줄임표가 생겨") — 이 버튼은 호버 배경을 칠할
+     자리로 좌우 4px 패딩을 갖고 그만큼 음수 마진으로 되돌려 놓는다. box-sizing이
+     border-box라 max-width:100%는 그 패딩까지 100% 안에 밀어 넣어, 글자에 남는 자리가 늘
+     8px 모자랐다 — "군범"처럼 칸이 남아도는 이름도 8px 넘쳐 말줄임이 걸렸다(실측 28/36px).
+     패딩만큼 얹어 주면 글자 자리가 정확히 칸 폭이 되고, 진짜 긴 이름은 그대로 잘린다. */
+  .scr-stats-list-panel-v2 .scr-stat-name-btn { max-width: calc(100% + 8px); }
   .scr-stats-list-panel-v2 .scr-stat-row {
     /* 데이터 칸 폭 축소(요청): 150 → 120px. 칸 안은 막대+숫자뿐이라 150px은 남는 여백이
        컸고, 6칸이라 그 여백이 가로 스크롤 길이로 그대로 쌓였다(6×30 = 180px 단축). */
@@ -7229,7 +7234,9 @@ html.scr-light-theme .scr-feed-card-comment .scr-mreq-chip-inline { color: #1d4e
 /* (삭제) 모바일 댓글 시트 전용 "+1스텝" 규칙 — 카드용 크기를 caption/micro로 다시
    키우면서 시트 크기와 똑같아져 더는 필요 없다. */
 /* 입력·수정창의 유저칩 — 좌우 패딩을 줄여 문장에 더 잘 섞이게(요청). */
-.scr-feed-shift-row { font-size: var(--fs-caption); }
+/* 카드 안 줄 전체를 1스텝 줄인다(요청) — 하루치가 열댓 줄까지 쌓이는 카드라
+   caption으로는 카드 하나가 화면을 다 먹었다. */
+.scr-feed-shift-row { font-size: var(--fs-micro); }
 /* 윗줄 높이는 게임번호 줄이 스스로 정한다 — 예약은 필요 없다. */
 .scr-feed-game-result-body .scr-game-result-trow-topline { min-height: 0; }
 /* 게임결과 로스터 = 너 나와! 매치업과 같은 구조/CSS(요청: "너 나와의 css기준으로") —
@@ -7591,7 +7598,7 @@ html.scr-light-theme .scr-feed-add-fab {
 .scr-feed-shift-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 /* (삭제) "…외 N건"으로 접던 규칙 — 길어도 줄이지 않는다(요청). 하루에 한 장뿐인
    카드라 길어도 목록을 밀어내지 않고, 접혀 있으면 정작 궁금한 아래쪽 순위가 늘 가려졌다. */
-.scr-feed-shift-row { display: flex; align-items: baseline; gap: 8px; font-size: var(--fs-caption); }
+.scr-feed-shift-row { display: flex; align-items: baseline; gap: 8px; font-size: var(--fs-micro); }
 /* 칸이 반으로 좁아지면서(요청) 긴 닉네임이 줄을 접었고, 그 바람에 "5 → 4위"의 '위'까지
    다음 줄로 넘어가 한 사람의 변동이 두 줄로 찢어졌다(실측). 순위·포인트는 절대 안 접고,
    길이가 들쭉날쭉한 닉네임 쪽만 말줄임으로 양보시킨다. */
@@ -7604,20 +7611,20 @@ html.scr-light-theme .scr-feed-add-fab {
 .scr-feed-shift-name { font-weight: 600; }
 .scr-feed-shift-up { color: #7fd18b; font-weight: 700; }
 .scr-feed-shift-down { color: #e08a8a; font-weight: 700; }
-.scr-feed-shift-new { color: var(--point); font-weight: 700; }
+/* 신규 진입은 오르내림이 아니다 — 올림(초록)/내림(빨강) 옆에서 골드까지 칠하면 셋 다
+   "무슨 일이 있었다"는 신호로 읽혀 정작 오르내린 사람이 안 도드라진다(요청: 신규는 기본색). */
+.scr-feed-shift-new { color: var(--text); font-weight: 700; }
 /* 라이트에서는 이 색이 흰 배경에 묻혀 거의 안 읽혔다(지적) — 어두우면서 채도는 높은 쪽으로
    갈아 끼운다. 다크의 파스텔 톤은 검은 배경에서만 성립한다. */
 .scr-light-theme .scr-feed-shift-up { color: #16a34a; }
 .scr-light-theme .scr-feed-shift-down { color: #e11d48; }
-/* 통계 월간 랭크의 순위변동 "신규"만 다크 테마에서 포인트색(골드)을 빼고 기본 글자색으로
-   (요청) — 피드 쪽 랭크변동 카드의 "신규"는 그대로 포인트색을 쓴다(이 표에서만의 요청).
-   라이트는 --point가 이미 검정(#000)이라 기본 글자색과 다를 게 없어 그대로 둔다. */
-html:not(.scr-light-theme) .scr-stat-rank-cell .scr-feed-shift-new { color: var(--text); }
+/* (삭제) 통계표 "신규"만 기본 글자색으로 바꾸던 예외 — 이제 피드 카드도 같은 기본색이라
+   (위 .scr-feed-shift-new) 예외 자체가 필요 없어졌다. */
 /* 예전엔 배지(▲2) 뒤에 "(1위 → 3위)"를 따로 붙였다 — 이제 그 자체가 본문이 되면서
    (요청: 배지 제거, "조조 1 → 3위 -100p") 이 보조 표기는 필요 없어졌다. */
 /* 포인트 변동(요청: "+100p") — 순위 변동과 같은 상승/하락 색을 쓰되 한 톤 작게 둔다.
    순위가 먼저 읽히고 포인트가 그 근거로 따라 읽히는 순서가 맞다. */
-.scr-feed-shift-pts { font-size: var(--fs-micro); font-variant-numeric: tabular-nums; }
+.scr-feed-shift-pts { font-size: var(--fs-11); font-variant-numeric: tabular-nums; }
 
 /* 너 나와 케밥 드롭 — 버튼 바로 아래 오른쪽 정렬(포털 없이 로컬 절대배치). */
 .scr-feed-chal-menu-drop {

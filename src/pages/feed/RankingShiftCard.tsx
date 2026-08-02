@@ -32,8 +32,15 @@ export function shiftLabel(e: RankingShiftEntry): { text: string; cls: string } 
 // 몰아친 결과인지 알 수가 없다. 이 필드가 생기기 전 스냅샷에는 포인트가 없으므로,
 // 둘 다 있고 실제로 달라졌을 때만 내놓는다.
 export function pointLabel(e: RankingShiftEntry): { text: string; cls: string } | null {
-  if (e.fromPoints == null || e.toPoints == null) return null;
-  const d = Math.round(e.toPoints) - Math.round(e.fromPoints);
+  if (e.toPoints == null) return null;
+  /* 신규 진입(from이 null)은 어제 순위표에 아예 없던 사람이라 fromPoints도 비어 있다.
+     그렇다고 포인트까지 안 적으면 "게임을 해서 새로 들어온" 사람만 변동이 통째로 빠진다
+     (지적: 신규도 포인트 변동은 나와야 한다). 순위표에 없었다 = 그 달 성적이 없었다이므로
+     기준선은 0이다. from이 있는데 fromPoints만 없는 건 이 필드가 생기기 전 옛 스냅샷이라
+     그때는 예전대로 아무것도 안 적는다(0으로 치면 전액이 상승으로 둔갑한다). */
+  const fromPoints = e.from == null ? (e.fromPoints ?? 0) : e.fromPoints;
+  if (fromPoints == null) return null;
+  const d = Math.round(e.toPoints) - Math.round(fromPoints);
   if (d === 0) return null;
   return {
     text: `${d > 0 ? "+" : "−"}${Math.abs(d)}p`,
