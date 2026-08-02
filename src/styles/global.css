@@ -8117,11 +8117,23 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
    — 아바타·이름표를 CSS scale로 키운다(요청: PC/모바일 모두 평상시 크기 확대). 주인공
    (featured)은 이미 커서 조금만 더 키운다. 모바일은 폭이 좁아 우선 이 정도로, PC는
    아래에서 한 번 더 키운다. */
-/* 비확대(주인공 아님) 아바타를 PC/모바일 모두 한 번 더 1.2배 키운다(요청). */
+/* 비확대(주인공 아님) 아바타를 PC/모바일 모두 한 번 더 1.2배 키운다(요청). 배율을 변수로
+   뽑아 두는 이유는 바로 아래 주인공 배율이 이 값에 묶여 있기 때문이다. */
+.scr-minimap-mark-base { --scr-mm-av: 1.5; }
 .scr-minimap-mark-base:not(.scr-minimap-mark-on) .scr-avatar {
-  transform: translate(-50%, -50%) scale(1.5);
+  transform: translate(-50%, -50%) scale(var(--scr-mm-av, 1.5));
 }
-.scr-minimap-mark-on .scr-avatar { transform: translate(-50%, -50%) scale(1.08); }
+/* 주인공(featured)은 비확대의 1.5배로 그린다 — 크기 차이가 곧 "이 문장은 이 사람 이야기"
+   라는 표시인데, 실측으로 재 보니 모바일 31px vs 28.5px(+9%)까지 좁혀져 사실상 구분이
+   안 됐다(지적: 주인공 아바타 확대가 안 된다). 두 요청이 서로 다른 때에 들어와 양쪽을
+   반대로 움직인 결과다 — "평상시 아바타 확대"가 비확대를 1.5·2배로 키웠고, 그 뒤 "모바일
+   확대 아바타 20% 축소"가 주인공을 0.86배로 줄였다. 그래서 이제 절대값을 따로 두지 않고
+   비확대 배율에 곱해 둔다: 한쪽만 바뀌어도 배수는 그대로 1.5배다.
+   0.79는 테두리까지 친 실제 크기를 맞추는 보정이다 — 비확대는 13+3×2=19px, 주인공은
+   28+4×2=36px에서 출발하므로 19/36 × 1.5 ≒ 0.79. */
+.scr-minimap-mark-on .scr-avatar {
+  transform: translate(-50%, -50%) scale(calc(var(--scr-mm-av, 1.5) * 0.79));
+}
 /* 닉네임 글자 크기는 PC/모바일, 아바타 확대 여부와 무관하게 늘 고정이다(요청: "닉네임
    크기 확대 제거 — 아바타 확대되도 확대 안함"). */
 .scr-minimap-mark-label-out { font-size: 11px; }
@@ -8135,11 +8147,9 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
    (.scr-minimap-arrow*)은 여기서 손대지 않는다. 기본(주인공 아님) 아바타는 정확히
    1.5배로(지적), 주인공은 이미 커서(AVATAR_ON) 조금만 더 키운다. */
 @media (min-width: 641px) {
-  /* 비확대 아바타를 한 번 더 1.2배(요청) — 1.5 * 1.2 = 1.8. */
-  .scr-minimap-mark-base:not(.scr-minimap-mark-on) .scr-avatar {
-    transform: translate(-50%, -50%) scale(2);
-  }
-  .scr-minimap-mark-on .scr-avatar { transform: translate(-50%, -50%) scale(1.3); }
+  /* 비확대 아바타를 한 번 더 1.2배(요청) — 1.5 * 1.2 = 1.8. 주인공 배율은 이 값에
+     묶여 있어(위) 여기서 따로 적지 않는다. */
+  .scr-minimap-mark-base { --scr-mm-av: 2; }
   /* PC 전체를 한 번 더 1.1배가량 키운다(요청: "PC에서 미니맵 모든 요소들 1.1배정도
      확대", 크기는 짝수로). 이름표는 PC/모바일 차이는 그대로 두되(지적: "PC에서는 더
      커야지"), 아바타가 확대(주인공/시작 스냅)됐다고 같이 커지지는 않는다(지적: "아바타
@@ -8208,8 +8218,10 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
    기본값을 직접 줄이면 PC까지 같이 줄어들기 때문이다(실측으로 확인). 여기서 화면 폭으로
    가르면 PC는 지금 크기를 그대로 유지한다. */
 @media (max-width: 640px) {
-  /* 주인공(확대된) 아바타 — 1.08 × 0.8. 비확대 아바타는 요청 대상이 아니라 그대로 둔다. */
-  .scr-minimap-mark-on .scr-avatar { transform: translate(-50%, -50%) scale(0.86); }
+  /* (삭제) 주인공 아바타 20% 축소 — 그때는 주인공만 크고 나머지가 작던 시절이라 맞는
+     보정이었는데, 그 뒤 "평상시 아바타 확대"로 비확대 쪽이 1.5·2배가 되면서 둘의 크기가
+     사실상 같아져 버렸다(실측 31 vs 28.5px). 이제 주인공 배율은 비확대의 1.5배로 묶여
+     있으므로(위 --scr-mm-av) 여기서 따로 줄이지 않는다. */
   /* 액션·표정 이모지를 한 번 더 20% 줄인다(요청) — 아래 값은 전부 위 1차 축소값에
      다시 0.8을 곱한 것이다. 확대된 아바타(위 0.86)는 이번 요청 대상이 아니라 그대로 둔다.
      해골도 표정과 같이 줄인다: 둘은 아바타 양쪽 어깨에 짝으로 앉는 표시라 한쪽만 줄이면
@@ -8317,11 +8329,21 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   display: flex; align-items: center; justify-content: center;
   padding: 16px; pointer-events: none;
 }
+/* 자막이 앉는 칸 — 어느 칸인지는 그 스냅의 표시·화살표를 재서 ReplayMinimap이 고른다
+   (요청: 스냅별로 액션 요소를 안 가리는 위치로). 여기서는 고른 칸에 붙이기만 한다. */
+.scr-minimap-caption-top { align-items: flex-start; }
+.scr-minimap-caption-mid { align-items: center; }
+.scr-minimap-caption-bottom { align-items: flex-end; }
 /* 문장을 모두 같은 칸에 겹쳐 놓고(grid-area 하나) 지금 것만 보이게 한다 — 칸이 늘 가장
    긴 문장 높이로 잡히므로 재생하는 동안 자리가 위아래로 흔들리지 않는다. 문장마다 길이가
    달라 그냥 갈아 끼우면 매 스냅마다 자막 한가운데 자리가 흔들린다. */
 .scr-story-cap {
-  display: grid; max-width: 100%;
+  display: grid;
+  /* 한 줄이 너무 길어지지 않게 자른다(요청: 최대 폭 좁히기) — PC에서는 지도가 764px까지
+     커져 자막이 그 폭을 거의 다 쓰는 한 줄이 됐다(실측 703px). 눈이 한 줄을 끝까지 따라간
+     뒤 다시 왼쪽 끝으로 돌아와야 해서 읽기 나쁘고, 가로로 넓은 띠라 지도를 그만큼 더
+     가린다. em으로 잡아 두면 좁은 화면(모바일 실측 310px)은 이미 이보다 좁아 그대로다. */
+  max-width: min(80%, 28em);
   justify-items: center; align-items: center;
   font-size: var(--fs-caption); font-weight: 500; line-height: 1.6;
   color: #fff; text-shadow: 0 0 3px #000, 0 0 6px #000, 0 1px 2px #000;
@@ -8412,9 +8434,11 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 /* 시작 스냅 — 자막이 "게임 시작!" 한 줄뿐이라 누가 나왔는지는 미니맵만 말해 준다(요청:
    로스터 대신 미니맵 아바타·닉네임 확대). 이 스냅에서는 아무도 '주인공'이 아니므로
    .scr-minimap-mark-on이 안 붙고, 그러면 비확대 규칙(scale 1.5 / PC 2)이 걸린다 —
-   아바타 크기(size)만 키우면 그 배율이 그대로 곱해져 거꾸로 너무 커진다. 주인공과 같은
-   배율로 눌러 준다. 특이도는 비확대 규칙(:not까지 세 클래스)과 같게 맞추고, 순서로
-   이긴다 — 그래서 이 파일 맨 끝에 둔다. */
+   아바타 크기(size)만 키우면 그 배율이 그대로 곱해져 거꾸로 너무 커진다. 여기서 눌러
+   준다. 특이도는 비확대 규칙(:not까지 세 클래스)과 같게 맞추고, 순서로 이긴다 — 그래서
+   이 파일 맨 끝에 둔다.
+   주인공(--scr-mm-av × 0.79)보다 조금 작은 값인데 일부러 그렇다: 시작 스냅은 여덟 명이
+   한꺼번에 커지는 자리라 주인공 크기로 두면 서로 겹친다. */
 .scr-minimap-mark-base.scr-minimap-mark-introbig .scr-avatar {
   transform: translate(-50%, -50%) scale(1.08);
 }

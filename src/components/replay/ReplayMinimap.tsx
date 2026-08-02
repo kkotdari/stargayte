@@ -365,6 +365,39 @@ export default function ReplayMinimap({
     .map((a) => ({ a, g: arrowGeom(a, grid.width, grid.height) }))
     .filter((v): v is { a: MinimapArrow; g: NonNullable<ReturnType<typeof arrowGeom>> } => v.g !== null);
 
+  /* 자막이 앉을 칸 — 지도를 가로로 셋(위/가운데/아래)으로 나눠, 이번 스냅의 '일'이 가장
+     적은 칸을 고른다(요청: 스냅별로 액션 요소를 안 가리는 위치로 재배치). 늘 한가운데에
+     고정돼 있어서, 가운데에서 붙은 싸움이나 지도를 가로지르는 화살표를 자막이 그대로
+     끊어 놓았다(실측 스크린샷).
+
+     무게는 '가려지면 얼마나 아쉬운가'로 준다 — 화살촉·본진 액션 이모지처럼 그 장면의
+     결론에 해당하는 표시가 가장 무겁고, 주인공 아바타가 그다음, 그냥 서 있는 아바타와
+     화살표 몸통이 지나가는 칸은 가볍다. 몸통까지 세는 이유는 자막이 가운데를 막으면
+     '어디서 어디로 갔나'가 통째로 끊기기 때문이다.
+
+     같은 점수면 아래 → 위 → 가운데 순으로 고른다. 자막은 원래 아래에서 읽는 것이고,
+     가운데는 지도에서 가장 자주 무슨 일이 벌어지는 자리라 마지막이다. */
+  const capSlot = ((): "top" | "mid" | "bottom" => {
+    const bandOf = (y: number) => Math.min(2, Math.max(0, Math.floor((y / grid.height) * 3)));
+    const cost = [0, 0, 0];
+    for (const m of bases) {
+      // 버린 본진(흑백)은 이번 장면의 이야기가 아니라 배경이다.
+      if (m.ghost) continue;
+      cost[bandOf(m.y)] += m.featured || m.introBig ? 3 : 1;
+      if (m.mark) cost[bandOf((m.markAt ?? [m.x, m.y])[1])] += 4;
+    }
+    for (const { a, g } of geoms) {
+      cost[bandOf(g.tip[1])] += 4;
+      cost[bandOf(g.from[1])] += 2;
+      const lo = bandOf(Math.min(a.y1, a.y2));
+      const hi = bandOf(Math.max(a.y1, a.y2));
+      for (let b = lo; b <= hi; b += 1) cost[b] += 1;
+    }
+    const order = [2, 0, 1] as const;
+    const best = order.reduce((acc, b) => (cost[b] < cost[acc] ? b : acc), order[0]);
+    return best === 0 ? "top" : best === 1 ? "mid" : "bottom";
+  })();
+
   return (
     <div className="scr-minimap-frame">
       {/* 이름표가 나갈 자리를 지도 바깥에 미리 마련해 둔다(요청: 미니맵 바깥을 자막
@@ -541,7 +574,9 @@ export default function ReplayMinimap({
           onClick={(e) => { e.stopPropagation(); onStep(d); }}
         />
       ))}
-      {caption && <div className="scr-minimap-caption">{caption}</div>}
+      {caption && (
+        <div className={cx("scr-minimap-caption", `scr-minimap-caption-${capSlot}`)}>{caption}</div>
+      )}
       </div>
     </div>
   );
