@@ -161,13 +161,19 @@ export interface RankingShiftEntry {
   fromPoints?: number | null;
   toPoints?: number | null;
 }
+/** 하루치 스냅샷 안의 경기유형 한 칸 — 카드가 좌우로 나눠 그리는 단위다(요청). */
+export interface RankingShiftSection {
+  matchType: GameType;
+  shifts: RankingShiftEntry[];
+}
+/** 하루치 랭크 변동 스냅샷 — 하루에 한 건이고 그 안에 유형별 칸을 담는다(요청).
+ *  유형이 늘어도 sections에 칸이 하나 더 붙을 뿐이라 이 형식은 그대로다. */
 export interface RankingShift {
   id: number;
-  matchType: GameType;
-  reason: "register" | "delete" | "seed";
+  reason: "daily" | "seed";
   createdAt: string;
   matchIds: number[];
-  shifts: RankingShiftEntry[];
+  sections: RankingShiftSection[];
 }
 
 // 피드 댓글 — 대상(targetType, targetId)이 경기든 너 나와!든 순위변동 알림이든

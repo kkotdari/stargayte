@@ -43,62 +43,42 @@ export function pointLabel(e: RankingShiftEntry): { text: string; cls: string } 
   };
 }
 
-export function rankShiftTypeLabel(shift: RankingShift): string {
-  return shift.matchType === "0101" ? "개인전" : "팀전";
-}
-
 /** 카드·공유에 쓰는 제목(요청: "일일 랭크 변동 알림") — 하루치를 모아 아침에 한 번만
- *  남기는 카드라 '발생'보다 '일일 알림'이 실제 동작에 맞다. 유형은 이제 제목이 아니라
- *  카드 안의 좌우 두 칸이 말한다(요청: 개인전·팀전을 한 카드에 반씩). */
+ *  남기는 카드라 '발생'보다 '일일 알림'이 실제 동작에 맞다. 유형은 제목이 아니라 카드
+ *  안의 좌우 두 칸이 말한다(요청: 개인전·팀전을 한 카드에 반씩). */
 export const RANK_SHIFT_TITLE = "일일 랭크 변동 알림";
 
-/** 같은 날 남은 개인전·팀전 스냅샷 한 쌍 — 카드 한 장이 그리는 단위다(요청). */
-export interface RankingShiftPair {
-  /** 카드 키·댓글 앵커로 쓸 대표 id. 개인전이 있으면 그쪽, 없으면 팀전 것. */
-  id: number;
-  /** 카드에 적을 시각 — 둘 중 먼저 남은 쪽. */
-  createdAt: string;
-  solo: RankingShift | null;
-  team: RankingShift | null;
-}
+/** 카드가 좌우로 나눠 그리는 순서와 이름 — 서버가 sections에 담아 주는 유형들이다.
+ *  유형이 늘면 여기 한 줄만 더하면 된다(저장 형식은 안 바뀐다). */
+const SECTION_LABELS: { matchType: string; label: string }[] = [
+  { matchType: "0101", label: "개인전" },
+  { matchType: "0102", label: "팀전" },
+];
 
-/** 하루치 스냅샷들을 날짜별로 묶어 카드 단위(개인전+팀전)로 만든다.
- *
- *  서버는 두 유형을 한 번의 집계(recompute_daily)에서 각각 한 행으로 남기므로, 같은 날에
- *  남은 것끼리가 곧 한 쌍이다. 한쪽만 변동이 있었던 날은 그쪽만 채워지고 나머지 칸은
- *  "변동 없음"으로 그려진다. */
-export function pairRankingShifts(shifts: RankingShift[]): RankingShiftPair[] {
-  const byDay = new Map<string, RankingShiftPair>();
-  // 최신이 앞이라고 가정하지 않는다 — 오래된 것부터 넣어야 createdAt이 '먼저 남은 쪽'이 된다.
-  for (const s of [...shifts].sort((a, b) => a.createdAt.localeCompare(b.createdAt))) {
-    const day = new Date(s.createdAt).toDateString();
-    const cur = byDay.get(day) ?? { id: s.id, createdAt: s.createdAt, solo: null, team: null };
-    if (s.matchType === "0101") cur.solo = s; else cur.team = s;
-    // 대표 id는 개인전 우선 — 댓글이 이 값에 달리므로 같은 카드가 늘 같은 실을 본다.
-    cur.id = cur.solo?.id ?? cur.team?.id ?? cur.id;
-    byDay.set(day, cur);
-  }
-  return [...byDay.values()];
-}
+const sectionOf = (shift: RankingShift, matchType: string): RankingShiftEntry[] =>
+  shift.sections.find((s) => s.matchType === matchType)?.shifts ?? [];
 
-export function rankShiftShareContent(pair: RankingShiftPair): KakaoShareContent {
-  const side = (s: RankingShift | null, label: string): string | null => {
-    if (!s || s.shifts.length === 0) return null;
-    return `${label} ${s.shifts.slice(0, 2).map((e) => `${e.nickname} ${shiftLabel(e).text}`).join(" · ")}`;
-  };
-  const summary = [side(pair.solo, "개인전"), side(pair.team, "팀전")].filter(Boolean).join(" / ");
+export function rankShiftShareContent(shift: RankingShift): KakaoShareContent {
+  const summary = SECTION_LABELS
+    .map(({ matchType, label }) => {
+      const rows = sectionOf(shift, matchType);
+      if (rows.length === 0) return null;
+      return `${label} ${rows.slice(0, 2).map((e) => `${e.nickname} ${shiftLabel(e).text}`).join(" · ")}`;
+    })
+    .filter(Boolean)
+    .join(" / ");
   return {
     title: RANK_SHIFT_TITLE,
     description: summary,
     ...shareThumb("rankShift"),
-    link: `${window.location.origin}/?sv=rankingShift&sid=${pair.id}`,
+    link: `${window.location.origin}/?sv=rankingShift&sid=${shift.id}`,
     fallbackText: `[스타게이트] ${RANK_SHIFT_TITLE}\n${summary}`,
   };
 }
 
 // 카드 우상단 케밥 — 카카오 공유만 담는다(스냅샷은 삭제 개념이 없다). 너 나와 케밥과
 // 같은 CSS(scr-feed-chal-menu) 재사용.
-export function RankingShiftMenu({ pair }: { pair: RankingShiftPair }) {
+export function RankingShiftMenu({ shift }: { shift: RankingShift }) {
   const [open, setOpen] = useState(false);
   return (
     <div className="scr-feed-chal-menu">
@@ -121,7 +101,7 @@ export function RankingShiftMenu({ pair }: { pair: RankingShiftPair }) {
           <div className="scr-menu-pop-drop scr-feed-chal-menu-drop" role="menu">
             <KakaoShareButton
               variant="menu"
-              content={() => rankShiftShareContent(pair)}
+              content={() => rankShiftShareContent(shift)}
               onDone={() => setOpen(false)}
             />
           </div>
@@ -132,9 +112,10 @@ export function RankingShiftMenu({ pair }: { pair: RankingShiftPair }) {
 }
 
 export default function RankingShiftCard({
-  pair, timeText, dateLabel, actions, footer, highlightMemberIds, highlightTerms,
+  shift, timeText, dateLabel, actions, footer, highlightMemberIds, highlightTerms,
 }: {
-  pair: RankingShiftPair;
+  /** 하루치 스냅샷 하나 — 개인전·팀전이 그 안의 sections에 함께 들어 있다(요청). */
+  shift: RankingShift;
   timeText?: string;
   dateLabel?: string;
   actions?: React.ReactNode;
@@ -147,11 +128,8 @@ export default function RankingShiftCard({
      펼쳐지고 다시 누르면 접힌다(요청). 펼침 상태는 좌우 두 칸이 함께 쓴다 — 칸마다 따로
      접히면 같은 카드 안에서 높이가 제각각 흔들려 무엇을 눌러야 하는지가 흐려진다. */
   const [expanded, setExpanded] = useState(false);
-  const sides: { label: string; shift: RankingShift | null }[] = [
-    { label: "개인전", shift: pair.solo },
-    { label: "팀전", shift: pair.team },
-  ];
-  const overflow = sides.some((s) => (s.shift?.shifts.length ?? 0) > SHIFT_COLLAPSE_AT);
+  const cols = SECTION_LABELS.map((s) => ({ ...s, rows: sectionOf(shift, s.matchType) }));
+  const overflow = cols.some((c) => c.rows.length > SHIFT_COLLAPSE_AT);
   const toggle = () => setExpanded((v) => !v);
   return (
     <div className="scr-feed-card scr-post">
@@ -185,45 +163,41 @@ export default function RankingShiftCard({
               }
             : {})}
         >
-          {sides.map(({ label, shift }) => {
-            const all = shift?.shifts ?? [];
-            const rows = expanded ? all : all.slice(0, SHIFT_COLLAPSE_AT);
-            return (
-              <section className="scr-feed-shift-col" key={label}>
-                <h4 className="scr-feed-shift-col-head">{label}</h4>
-                {all.length === 0 ? (
-                  <p className="scr-feed-shift-none">변동 없음</p>
-                ) : (
-                  <ul className="scr-feed-shift-list">
-                    {rows.map((e) => {
-                      const label2 = shiftLabel(e);
-                      const pts = pointLabel(e);
-                      return (
-                        <li
-                          key={`${e.memberId}-${e.to}`}
-                          className={cx("scr-feed-shift-row",
-                            (highlightMemberIds?.has(e.memberId)
-                              || highlightTerms?.some((t) => normalizeSearchText(e.nickname).includes(t)))
-                              && "scr-feed-shift-row-hl")}
-                        >
-                          <span className="scr-feed-shift-name">{e.nickname}</span>
-                          {/* "조조 1 → 3위 -100p"(요청) — 몇 계단인지를 배지로 말하는 대신
-                              어디서 어디로 갔는지를 그대로 적고, 그 근거인 포인트 변동을 옆에. */}
-                          <span className={label2.cls}>{label2.text}</span>
-                          {pts && <span className={cx("scr-feed-shift-pts", pts.cls)}>{pts.text}</span>}
-                        </li>
-                      );
-                    })}
-                    {!expanded && all.length > SHIFT_COLLAPSE_AT && (
-                      <li className="scr-feed-shift-more" aria-hidden>
-                        ⋯ 외 {all.length - SHIFT_COLLAPSE_AT}건
+          {cols.map(({ label, rows }) => (
+            <section className="scr-feed-shift-col" key={label}>
+              <h4 className="scr-feed-shift-col-head">{label}</h4>
+              {rows.length === 0 ? (
+                <p className="scr-feed-shift-none">변동 없음</p>
+              ) : (
+                <ul className="scr-feed-shift-list">
+                  {(expanded ? rows : rows.slice(0, SHIFT_COLLAPSE_AT)).map((e) => {
+                    const rank = shiftLabel(e);
+                    const pts = pointLabel(e);
+                    return (
+                      <li
+                        key={`${e.memberId}-${e.to}`}
+                        className={cx("scr-feed-shift-row",
+                          (highlightMemberIds?.has(e.memberId)
+                            || highlightTerms?.some((t) => normalizeSearchText(e.nickname).includes(t)))
+                            && "scr-feed-shift-row-hl")}
+                      >
+                        <span className="scr-feed-shift-name">{e.nickname}</span>
+                        {/* "조조 1 → 3위 -100p"(요청) — 몇 계단인지를 배지로 말하는 대신
+                            어디서 어디로 갔는지를 그대로 적고, 그 근거인 포인트 변동을 옆에. */}
+                        <span className={rank.cls}>{rank.text}</span>
+                        {pts && <span className={cx("scr-feed-shift-pts", pts.cls)}>{pts.text}</span>}
                       </li>
-                    )}
-                  </ul>
-                )}
-              </section>
-            );
-          })}
+                    );
+                  })}
+                  {!expanded && rows.length > SHIFT_COLLAPSE_AT && (
+                    <li className="scr-feed-shift-more" aria-hidden>
+                      ⋯ 외 {rows.length - SHIFT_COLLAPSE_AT}건
+                    </li>
+                  )}
+                </ul>
+              )}
+            </section>
+          ))}
         </div>
         {footer}
       </div>

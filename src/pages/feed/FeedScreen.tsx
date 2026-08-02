@@ -1,8 +1,6 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { createPortal } from "react-dom";
-import RankingShiftCard, {
-  RankingShiftMenu, pairRankingShifts, type RankingShiftPair,
-} from "./RankingShiftCard";
+import RankingShiftCard, { RankingShiftMenu } from "./RankingShiftCard";
 import { CalendarPlus, ClipboardList, MoreHorizontal, Phone, Plus, Upload } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
 import { Spinner } from "../../components/common/Feedback";
@@ -105,8 +103,8 @@ interface RankingShiftItem {
   kind: "rankingShift";
   time: number;
   withClock: boolean;
-  /** 그날의 개인전+팀전 한 쌍 — 카드 한 장이 좌우 두 칸으로 그린다(요청). */
-  pair: RankingShiftPair;
+  /** 하루치 스냅샷 하나 — 개인전·팀전이 그 안의 sections에 함께 들어 있다(요청). */
+  shift: RankingShift;
 }
 
 type FeedItem = ChallengeItem | GameResultItem | RankingShiftItem;
@@ -127,12 +125,12 @@ function sortMsOf(it: FeedItem): number {
   return it.kind === "challenge" ? it.sortTime : it.time;
 }
 
-function rankShiftItem(pair: RankingShiftPair): RankingShiftItem {
+function rankShiftItem(shift: RankingShift): RankingShiftItem {
   return {
     kind: "rankingShift",
-    time: new Date(pair.createdAt).getTime(),
+    time: new Date(shift.createdAt).getTime(),
     withClock: true,
-    pair,
+    shift,
   };
 }
 
@@ -1012,7 +1010,7 @@ export default function FeedScreen() {
       // 않나) — 아무 일도 일어나지 않은 카드라 타임라인에 남길 것이 없다.
       ...challenges.filter((c) => !isCanceledChallenge(c)).map(challengeItem),
       ...gameResults.map(gameResultItem),
-      ...pairRankingShifts(rankShifts).map(rankShiftItem),
+      ...rankShifts.map(rankShiftItem),
     ];
     // 정렬 기준은 time이 아니라 sortTime이다 — 너 나와만 표시용 시각과 꽂히는 자리가
     // 다르다(위 challengeSortMs). 나머지는 sortTime이 없어 time을 그대로 쓴다.
@@ -1089,7 +1087,8 @@ export default function FeedScreen() {
           return searchTerms.every((term) => challengeMatchesTerm(item.challenge, term));
         }
         // 좌우 두 칸(개인전·팀전)을 함께 훑는다 — 어느 칸에 걸리든 그 카드는 검색에 맞다.
-        const names = [...(item.pair.solo?.shifts ?? []), ...(item.pair.team?.shifts ?? [])]
+        const names = item.shift.sections
+          .flatMap((sec) => sec.shifts)
           .map((e) => normalizeSearchText(e.nickname));
         return searchTerms.every((term) => names.some((n) => n.includes(term)));
       }
@@ -1336,17 +1335,17 @@ export default function FeedScreen() {
             const card = (
             item.kind === "rankingShift" ? (
               <RankingShiftCard
-                key={`rs-${item.pair.id}`}
-                pair={item.pair}
+                key={`rs-${item.shift.id}`}
+                shift={item.shift}
                 timeText={formatWhen(item.time, { clock: item.withClock })}
                 dateLabel={dateLabelOf(item)}
-                actions={<RankingShiftMenu pair={item.pair} />}
+                actions={<RankingShiftMenu shift={item.shift} />}
                 highlightMemberIds={matchedIds}
                 highlightTerms={searchTerms}
                 /* 순위변동 알림에도 댓글(요청) — 경기/너나와 카드와 같은 공통 댓글 영역.
                    그 위에 있던 "실시간 랭크 확인" 링크는 걷어냈다(요청). */
-                /* 댓글은 대표 id(개인전 우선)에 단다 — 카드가 하나가 됐으니 실도 하나다. */
-                footer={<FeedCardComments targetType="rankingShift" targetId={item.pair.id} />}
+                /* 하루에 스냅샷 한 건이라 댓글 실도 자연히 하나다(요청: 한 로우). */
+                footer={<FeedCardComments targetType="rankingShift" targetId={item.shift.id} />}
               />
             ) : item.kind === "challenge" ? (
               <div className="scr-feed-card scr-post" key={`c-${item.challenge.id}`}>
