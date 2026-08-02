@@ -49,6 +49,11 @@ export interface ReplaySummaryBeat {
 
 export interface ReplaySummaryData {
   v: number;
+  /** 리플레이가 승자를 못 가려낸 경기를 등록할 때 붙는다(요청: 검토창 없이 바로 등록하고
+   *  피드 카드에서 빨간 글씨로 알리기) — result 필드 자체는 GameOutcome 중 하나(무승부로
+   *  채운다)라야 해서, "진짜 판별이 아니라 임의로 채웠다"는 사실은 여기 따로 남긴다.
+   *  옛 데이터에는 없다(=판별된 경기). */
+  resultUncertain?: boolean;
   /** 일대일이었나 — 개인전에서는 "1팀이", "양 팀이" 같은 팀 용어를 쓰지 않는다(요청).
    *  옛 데이터에는 없어 생략 가능하고, 없으면 예전처럼 팀 용어를 쓴다. */
   duel?: boolean;

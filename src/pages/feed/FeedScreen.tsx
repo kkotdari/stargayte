@@ -19,7 +19,6 @@ import { ChallengeCard, ChallengeTimeHeadEdit, isCanceledChallenge } from "../ch
 import FeedComments, { primeFeedComments } from "./FeedComments";
 import { primeReplayMaps } from "../../hooks/useReplayMap";
 import ScrollNavTimeline from "../../components/common/ScrollNavTimeline";
-import ReplayReviewModal from "../../modals/ReplayReviewModal";
 import ChallengeFormModal from "../../modals/ChallengeFormModal";
 import { scheduledInstantMs, formatWhen } from "../../utils/date";
 import { useAppStore } from "../../store/appStore";
@@ -34,9 +33,15 @@ import { usePageBackground } from "../../hooks/usePageBackground";
 import {
   getScrollMetrics, getScrollTop, scrollRootTo, suppressScrollHide,
 } from "../../utils/scrollRoot";
-import { buildReplayDrafts, type ReplayDraft } from "../../utils/replayDraft";
+import {
+  buildReplayDrafts, resolveUnmatchedAsUnregistered, validateReplayDraft, type ReplayDraft,
+} from "../../utils/replayDraft";
+import { useLockBodyScroll } from "../../utils/bodyScrollLock";
+import { REPLAY_SUMMARY_VERSION } from "../../utils/replaySummaryData";
 import { hasAppUpdatePreloadErrorOccurred } from "../../utils/appUpdate";
-import type { Challenge, FeedTargetType, GameResult, GameResultSlot, Member, RankingShift } from "../../types";
+import type {
+  Challenge, FeedTargetType, GameOutcome, GameResult, GameResultSlot, Member, NewGameResult, RankingShift,
+} from "../../types";
 
 const PAGE_SIZE = 100;
 const MAX_REPLAY_FILES = 20;
@@ -48,12 +53,6 @@ const MAX_REPLAY_FILES = 20;
  *  그 직후의 스크롤 이벤트 한두 번만 덮으면 된다. */
 const NOW_SCROLL_MS = 300;
 
-// 묶음 펼침/접힘에서 포스트 한 장이 나타나거나 사라지는 시간과, 포스트 사이의 시차.
-// 공간(높이)이 다 열린 뒤에 포스트가 한 장씩 등장한다(요청) — 접을 땐 그 반대다.
-// 아래쪽 접기로 닫을 때 접힌 카드를 화면 한가운데에 놓는다(요청) — 맨 위에 붙여 놓으면
-// 방금 접은 카드가 헤더 바로 밑에 걸려 앞뒤 맥락이 안 보인다. 카드가 화면보다 크면
-// 가운데로 못 놓으므로, 그때는 맨 위에서 이만큼만 띄운다(예전 동작).
-const STACK_COLLAPSE_MARGIN = 12;
 // 펼칠 때 목록 맨 위와 화면 맨 위 사이에 남길 여백(요청: "정확히 위에 맞추지 말고 위쪽
 // 안전 여백을 줘야 해") — 딱 맞추면 첫 경기가 화면 모서리에 붙어 잘린 것처럼 보인다.
 // 여기에 노치/상태바 높이(--safe-top)를 더해 쓴다: 홈 화면에 추가한 웹앱은 상태바
@@ -71,15 +70,13 @@ function safeTopPx(): number {
   probe.remove();
   return Number.isFinite(h) ? h : 0;
 }
-// 요약 ↔ 목록 교대 연출(요청: 페이드 아웃 → 높이 이동 → 한 번에 페이드 인).
-// 페이드는 짧게, 높이는 그보다 길게 — 높이가 눈으로 따라가는 유일한 움직임이라 여기에
-// 시간을 준다. 셋을 더해도 반 초 안쪽이라 두 번 누르는 흐름이 답답하지 않다.
-const SWAP_FADE_MS = 130;
-const SWAP_HEIGHT_MS = 260;
-// 접힌 뒤 테두리를 밝혀 두는 시간(요청) — CSS의 scr-stack-collapsed-flash와 같은 값이어야
-// 한다. 연출이 끝난 시점부터 세는데, 그 뒤에 부드러운 스크롤이 한 번 더 이어지므로
-// 그것까지 지켜볼 만큼 길게 둔다(요청: 스크롤까지 있어서 2초).
-const FLASH_MS = 2000;
+// 요약 ↔ 목록 전환 — 높이를 재서 애니메이션하는 대신, 보일 쪽만 조건부로 마운트하고
+// 각 카드가 개별적으로 살짝 아래에서 올라오며 페이드인한다(요청: "그냥 하나씩 순차적으로
+// hidden을 제거하면 자연스럽게 스크롤이 늘어날거잖아 — 한번에 영역 확보하는거만 없애면
+// 되는거지") — 래퍼가 몇 px로 커질지 계산할 필요 없이, 마운트된 만큼 문서가 자연히
+// 자란다. 이 값은 그 등장 애니메이션 길이이자, 애니메이션이 끝난 뒤 스크롤을 옮기기까지
+// 기다리는 시간이다.
+const REVEAL_MS = 220;
 
 // 피드 — 커뮤니티 활동(경기 결과, 너 나와! 일정)을 한 타임라인으로 보여주는 홈 화면.
 // 타임라인 기준: 너 나와!는 경기 예정 일시, 경기는 리플레이의 게임 시작 시각.
@@ -324,17 +321,16 @@ function FeedCardComments({ targetType, targetId }: { targetType: FeedTargetType
 // (경기 로우·댓글·아바타 이미지)까지 다시 렌더되면서 iOS에서 기존 카드들이 깜빡였다
 // (지적: "펼치기 접기 누를 때 기존 요소들도 다시 그리는 것 같아"). 개폐 때 카드 props는
 // 전부 같은 참조라 memo가 전부 걸러낸다.
-export const GameResultCard = memo(function GameResultCard({ item, memberOf, onDeleted, dateLabel, highlightMemberIds, highlightTerms, active = true }: {
+export const GameResultCard = memo(function GameResultCard({ item, memberOf, onDeleted, dateLabel, highlightMemberIds, highlightTerms, active = true, className }: {
   item: GameResultItem;
   memberOf: (id: string) => Member | undefined;
   onDeleted: () => void;
   dateLabel: string;
   highlightMemberIds?: Set<string>;
   highlightTerms?: string[];
-  // 지금 실제로 보이는 카드인가 — 접힌 묶음도 카드 본체를 투명하게 깔아 둔 채로 두기
-  // 때문에(자리를 주고받는 애니메이션 때문), 이 값 없이는 안 보이는 카드의 미니맵
-  // 타임라인이 혼자 돌아가 있다가 펼치는 순간 중간 장면부터 보인다.
   active?: boolean;
+  // 게임결과 묶음을 펼칠 때 카드가 하나씩 나타나는 등장 연출에 쓴다(GameResultPost).
+  className?: string;
 }) {
   const rows: SearchListRow[] = useMemo(() => {
     const m = item.gameResult;
@@ -343,6 +339,7 @@ export const GameResultCard = memo(function GameResultCard({ item, memberOf, onD
 
   return (
     <FeedCard
+      className={className}
       dateLabel={dateLabel}
       icon={<ClipboardList size={16} aria-hidden />}
       label="게임결과"
@@ -423,6 +420,7 @@ function StackMenu({ content }: { content: KakaoShareContent }) {
 // 열어봤지만 다시 이 아코디언으로 돌아왔다.
 export function GameResultPost({
   stack, memberOf, onDeleted, dateLabel, highlightMemberIds, highlightTerms, defaultOpen = false,
+  expanded, onExpand,
 }: {
   stack: GameResultPostItem;
   memberOf: (id: string) => Member | undefined;
@@ -432,25 +430,22 @@ export function GameResultPost({
   highlightTerms?: string[];
   /** 필터가 걸린 상태인가 — 그럴 땐 묶음을 펼친 채로 낸다(요청). */
   defaultOpen?: boolean;
+  /** 이 묶음이 지금 펼쳐져 있어야 하는가 — FeedScreen이 전역으로 하나만 관리한다
+   *  (요청: "다른 포스트를 펴면 나머지는 자동으로 접힘"). 생략하면(SharePage의 단독
+   *  공유 화면처럼 이 묶음 하나뿐인 곳) 로컬 상태로 스스로 관리한다. */
+  expanded?: boolean;
+  /** 펼치기를 눌렀을 때 FeedScreen에 알린다 — 이 값이 다른 묶음의 키로 바뀌면 그
+   *  묶음은 저절로 접힌다. */
+  onExpand?: () => void;
 }) {
-  const [open, setOpen] = useState(defaultOpen);
-  // 아래 안내문("포스트를 눌러 …")이 지금 무슨 글자여야 하는가 — open을 그대로 쓰지 않고
-  // 한 박자 늦춘다(요청: 연출 동안에는 글자를 안 보여주기). open을 그대로 쓰면 누르는
-  // 순간 글자가 먼저 바뀌어, 카드는 아직 움직이는 중인데 안내문만 '이미 다 됐다'고 말한다.
-  // 글자는 아래 연출의 페이드 아웃이 끝난 뒤(=안 보이는 사이)에 바꾼다.
-  const [labelOpen, setLabelOpen] = useState(defaultOpen);
-  const toggleRef = useRef<HTMLButtonElement>(null);
-  const labelTimerRef = useRef<number | null>(null);
-  // 접기가 끝난 뒤 잠깐 테두리를 밝혀 어느 카드가 접힌 건지 짚어 준다(요청).
-  const [flash, setFlash] = useState(false);
-  const flashTimerRef = useRef<number | null>(null);
-  useEffect(() => () => {
-    if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current);
-    if (labelTimerRef.current) window.clearTimeout(labelTimerRef.current);
-  }, []);
-  // 필터를 걸거나 풀면 그에 맞춰 다시 맞춘다(요청) — 걸러진 결과를 요약 뒤에 숨겨 두면
-  // 이 카드가 왜 남았는지가 안 보인다. toggledRef를 건드리지 않으므로 연출 없이 상태만 바뀐다.
-  useEffect(() => { setOpen(defaultOpen); }, [defaultOpen]);
+  // 아무도 안 넘겨주면(SharePage처럼 묶음이 하나뿐이라 다른 묶음과 자리를 다툴 일이
+  // 없는 곳) 로컬 상태로 대신한다.
+  const [localExpanded, setLocalExpanded] = useState(false);
+  const isExpanded = expanded ?? localExpanded;
+  // 실제 열림 상태 — 필터가 강제로 펼치거나(defaultOpen), 이 묶음이 선택돼 있으면
+  // (isExpanded) 열린다. 수동으로 접는 길은 없다(요청: "포스트 눌러서 요약보기 제거
+  // 이제 한번 펴면 못접음") — 다른 묶음을 펼치면 여기는 꺼지며 저절로 접힌다.
+  const open = defaultOpen || isExpanded;
   // 최신 게임이 위로 오게 — 펼친 목록은 피드와 같은 시간 순서(최신 → 과거)를 따른다.
   const orderedDesc = useMemo(() => [...stack.items].sort((a, b) => b.time - a.time), [stack.items]);
   // 요약에 나열할 참가자 — 이 세션의 모든 게임에 나온 사람을 중복 없이 모은다(요청).
@@ -493,80 +488,31 @@ export function GameResultPost({
     };
   }, [stack.date, stack.items.length, participants]);
 
-  // 카드는 한 장이다(요청). 요약(참가자 명단)은 늘 보이고, 그 아래 목록 영역의 높이만
-  // 0 ↔ 실제로 늘렸다 줄인다 — 카드 안에 카드가 있는 모양이지만 실제로는 한 장 안에서
-  // 내용만 늘어나는 형태다. 스크롤은 한 번도 건드리지 않는다: 카드가 아래로만 자라므로
-  // 위쪽 내용이 밀릴 일이 없고, 예전에 쓰던 스크롤 상쇄는 iOS 사파리에서 잔떨림만 남겼다.
+  // 카드는 한 장이다(요청). 접히면 요약 포스트 하나, 펼치면 게임결과 포스트 N개가 이
+  // 래퍼 안에 조건부로 마운트된다 — 높이를 재서 애니메이션하지 않는다(요청: "왜 높이
+  // 합산을 해야 하는거야? 하나씩 순차적으로 hidden을 제거하면 자연스럽게 스크롤이
+  // 늘어날거잖아 — 한번에 영역 확보하는거만 없애면 되는거지"). 보일 쪽만 렌더하고, 각
+  // 카드가 개별적으로 등장 애니메이션(아래 .scr-feed-card-stack-reveal)으로 나타나면,
+  // 래퍼의 높이는 마운트된 만큼 문서가 자연히 자라는 것뿐이다 — JS가 계산할 게 없다.
   const stackRef = useRef<HTMLDivElement>(null);
-  // 요약 카드 자신(불필요한 중간 래퍼 없이 카드 뿌리가 곧 트랙이다)과, 요약↔목록이 자리를
-  // 주고받는 바깥 껍데기(높이가 이쪽에서 움직인다). swap의 자식은 늘 이 둘(요약 카드,
-  // 목록)뿐이라 각자에 이름표를 붙이는 대신 순서(첫째/둘째)로 가른다(요청: 트랙 전용
-  // 클래스 scr-feed-card-stack-summary/-inner 제거).
-  const sumRef = useRef<HTMLDivElement>(null);
-  const innerRef = useRef<HTMLDivElement>(null);
-  const swapRef = useRef<HTMLDivElement>(null);
-  // 토글 직전의 껍데기 높이 — 리액트가 DOM을 바꾼 뒤에는 잴 수 없어 누를 때 미리 담아 둔다.
-  const heightRef = useRef<number | null>(null);
-  // 토글로 열린 것인지(연출 O) 그냥 리렌더인지(연출 X) 구분하는 표시.
+  // 펼치기가 실제 사용자 조작이었는지 — 필터 동기화나 다른 묶음이 펼쳐지며 자동으로
+  // 접히는 간접 변경(위 open 계산)에는 스크롤을 옮기지 않는다.
   const toggledRef = useRef(false);
-  // 진행 중인 연출을 중단·원복하는 함수 — 재토글/언마운트 때 호출한다.
-  const cancelRevealRef = useRef<(() => void) | null>(null);
-  useEffect(() => () => cancelRevealRef.current?.(), []);
-  // 여닫기 연출이 끝난 뒤에 할 일(요청: 애니메이션이 끝나고 스크롤 이동) — 카드 높이가
-  // 변하는 동안 스크롤까지 같이 움직이면 두 움직임이 겹쳐 어디를 보고 있는지 알기 어렵다.
-  // 새 토글이 들어오면(toggleOpen) 예약은 그대로 버린다 — 그 스크롤은 이미 지난 의도다.
+  // 펼침 연출이 끝난 뒤에 할 일(요청: 애니메이션이 끝나고 스크롤 이동) — 카드가 나타나는
+  // 동안 스크롤까지 같이 움직이면 두 움직임이 겹쳐 어디를 보고 있는지 알기 어렵다.
   const afterToggleRef = useRef<(() => void) | null>(null);
   const runAfterToggle = () => {
     const fn = afterToggleRef.current;
     afterToggleRef.current = null;
     fn?.();
   };
-  const toggleOpen = (next: boolean) => {
-    toggledRef.current = true;
-    // 지금 높이를 재서 그 자리에 인라인으로 못 박아 둔다 — 리액트가 DOM을 바꾸는 순간
-    // 껍데기의 자연 높이가 '들어오는 쪽'으로 확 바뀌는데, 그 값을 애니메이션의 backwards
-    // fill에만 맡기면 브라우저/시점에 따라 한 프레임 튄다(지적: 누르면 순간 움직임).
-    // 인라인 height는 아래 연출이 끝날 때 clearInline이 걷어낸다.
-    const h = swapRef.current?.offsetHeight ?? null;
-    heightRef.current = h;
-    if (swapRef.current && h !== null) swapRef.current.style.height = `${h}px`;
-    afterToggleRef.current = null;
-    setOpen(next);
-  };
 
-  // 아래쪽 접기로 닫을 때는 접힌 카드로 스크롤해 준다(요청) — 그 버튼은 목록 맨 끝에 있어서,
-  // 그냥 접으면 보고 있던 자리가 통째로 사라지고 한참 아래의 다른 포스트를 보게 된다.
-  // 좌표는 연출이 끝난 뒤에 잰다: 접히는 도중에는 카드 높이가 계속 변한다.
-  const collapseAndReveal = () => {
-    toggleOpen(false);
-    // toggleOpen이 예약을 비우므로 반드시 그 뒤에 건다(setOpen은 비동기라 연출 시작 전이다).
-    afterToggleRef.current = () => {
-      // 연출이 끝난 지금부터 센다 — 접히는 동안 켜 두면 그만큼 짧게 보인다.
-      setFlash(true);
-      if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current);
-      flashTimerRef.current = window.setTimeout(() => setFlash(false), FLASH_MS);
-      const card = stackRef.current;
-      if (!card) return;
-      // 접힌 카드를 화면 한가운데에 놓는다(요청). 헤더는 position:relative라 같이 스크롤돼
-      // 올라가므로 따로 빼줄 것이 없다 — 카드 위에 남길 여백을 그대로 더하면 된다.
-      const r = card.getBoundingClientRect();
-      const { clientHeight, scrollHeight } = getScrollMetrics();
-      const vh = Math.max(clientHeight, window.innerHeight || 0);
-      // 카드가 화면보다 크면 가운데 값이 음수가 되어 오히려 카드 위쪽이 잘린다 — 그때는
-      // 예전처럼 맨 위에서 조금만 띄운다.
-      const pad = Math.max(safeTopPx() + STACK_COLLAPSE_MARGIN, (vh - r.height) / 2);
-      const top = getScrollTop() + r.top - pad;
-      // 문서 끝쪽 카드는 아무리 밀어도 가운데까지 못 온다 — 갈 수 있는 데까지만 간다.
-      scrollRootTo({ top: Math.min(Math.max(0, top), Math.max(0, scrollHeight - vh)), behavior: "smooth" });
-    };
-  };
-
-  // 펼칠 때는 가운데가 아니라 목록 맨 위를 화면 위쪽에 둔다(요청) — 펼친 직후 읽기
-  // 시작하는 자리가 첫 경기이기 때문이다. 접기(가운데)와 다른 건 목적이 달라서다:
-  // 접기는 '어느 카드가 접혔나'를 보여주는 것이고, 펼치기는 '이제 여기부터 읽어라'다.
-  // 다만 화면 맨 위에 딱 붙이지는 않는다(요청) — 노치/상태바 높이에 여백을 더해 띄운다.
+  // 펼칠 때는 목록 맨 위를 화면 위쪽에 둔다(요청) — 펼친 직후 읽기 시작하는 자리가 첫
+  // 경기이기 때문이다. 화면 맨 위에 딱 붙이지는 않는다(요청) — 노치/상태바 높이에
+  // 여백을 더해 띄운다. 수동으로 접는 길은 없으므로(요청) 접을 때 쓰던 스크롤·강조
+  // 표시(flash)는 이제 필요 없다 — 다른 묶음을 펼치면 여기는 그냥 조용히 접힌다.
   const expandAndReveal = () => {
-    toggleOpen(true);
+    toggledRef.current = true;
     afterToggleRef.current = () => {
       // 목록이 아니라 포스트 카드 전체를 기준으로 잡는다. 목록에 맞추면 그 위에 있는
       // 카드 머리(시각·제목·케밥)만큼이 화면 위로 밀려 나가는데, 그 높이가 딱 상단
@@ -579,135 +525,46 @@ export function GameResultPost({
       const top = getScrollTop() + card.getBoundingClientRect().top - (safeTopPx() + STACK_EXPAND_MARGIN);
       scrollRootTo({ top: Math.min(Math.max(0, top), Math.max(0, scrollHeight - vh)), behavior: "smooth" });
     };
+    if (onExpand) onExpand(); else setLocalExpanded(true);
   };
 
-  useLayoutEffect(() => {
+  // 카드가 개별적으로 나타나는 등장 애니메이션이 끝난 뒤에 스크롤을 옮긴다 — 실제 펼치기
+  // (사용자가 눌렀을 때)일 때만, 필터 동기화나 다른 묶음이 펼쳐지며 자동으로 접히는
+  // 간접 변경은 스크롤을 건드리지 않는다.
+  useEffect(() => {
     const wasToggled = toggledRef.current;
     toggledRef.current = false;
-    const swap = swapRef.current;
-    const inner = innerRef.current;
-    const sum = sumRef.current;
-    if (!swap || !inner || !sum) return;
-
-    cancelRevealRef.current?.();
-    const clearInline = () => {
-      swap.style.height = "";
-      sum.style.opacity = "";
-      inner.style.opacity = "";
-    };
-    const cleanup = () => { clearInline(); cancelRevealRef.current = null; };
-    // 안내문 글자 바꾸기 예약 — 연출이 중간에 끊기면(재토글/언마운트) 지금 상태로 맞춘다.
-    const settleLabel = () => {
-      if (labelTimerRef.current) window.clearTimeout(labelTimerRef.current);
-      labelTimerRef.current = null;
-      setLabelOpen(open);
-    };
-
-    // 첫 렌더나 리렌더는 연출 없이 상태만 맞춘다 — 스크롤하다 리렌더될 때마다 카드가
-    // 다시 펼쳐지는 것처럼 보이면 안 된다. 기다릴 연출이 없으니 예약도 바로 실행한다.
-    if (!wasToggled) { cleanup(); settleLabel(); heightRef.current = null; runAfterToggle(); return; }
-
-    // 세 마디로 나눠 순서대로 간다(요청): 나가는 쪽이 사라지고 → 높이가 옮겨 가고 →
-    // 들어오는 쪽이 한 번에 나타난다. 예전엔 셋을 동시에 굴리며 카드도 하나씩 어긋나게
-    // 띄웠는데, 그러면 '높이를 서로 맞춰 주는' 계산이 늘 따라붙었다(요청: 그 로직 제거).
-    //
-    // 지금은 요약과 목록이 같은 껍데기(.scr-feed-card-stack-swap) 안에서 자리를 주고받는다 —
-    // 비활성 쪽은 CSS가 절대배치로 흐름에서 빼므로, 껍데기의 자연 높이가 곧 '들어오는
-    // 쪽의 높이'다. 그래서 맞출 게 없다.
-    const from = heightRef.current;
-    heightRef.current = null;
-    const outgoing = open ? sum : inner;
-    const incoming = open ? inner : sum;
-    // 목표 높이는 '들어오는 쪽'의 높이를 직접 잰다 — 껍데기의 scrollHeight를 쓰면 안 된다.
-    // 나가는 쪽은 절대배치라 흐름에서는 빠졌지만 여전히 껍데기 안에 있어서, 그쪽이 더
-    // 크면 scrollHeight가 그 값을 돌려준다(접을 때 늘 그렇다). 그러면 from == to가 되어
-    // 높이 애니메이션이 아예 안 걸리고, 카드가 줄지 않은 채 목록만 잘려 보였다(지적).
-    const to = incoming.offsetHeight;
-    const moves = from !== null && Math.abs(from - to) > 1;
-
-    const anims: Animation[] = [];
-    // 나가는 쪽 페이드 아웃. CSS는 이미 투명으로 바꿔 놨으므로 인라인으로 되돌려 시작한다.
-    anims.push(outgoing.animate(
-      [{ opacity: 1 }, { opacity: 0 }],
-      { duration: SWAP_FADE_MS, fill: "both", easing: "ease-in" },
-    ));
-    // 높이 이동. delay 동안은 fill:"both"가 시작값을 붙들어 줘서, 페이드 아웃이 끝날
-    // 때까지 껍데기가 원래 높이 그대로 있는다.
-    if (moves) {
-      anims.push(swap.animate(
-        [{ height: `${from}px` }, { height: `${to}px` }],
-        { duration: SWAP_HEIGHT_MS, delay: SWAP_FADE_MS, fill: "both", easing: "ease-in-out" },
-      ));
-    }
-    // 들어오는 쪽 페이드 인 — 카드 하나씩이 아니라 목록 통째로 한 번에(요청).
-    anims.push(incoming.animate(
-      [{ opacity: 0 }, { opacity: 1 }],
-      {
-        duration: SWAP_FADE_MS,
-        delay: SWAP_FADE_MS + (moves ? SWAP_HEIGHT_MS : 0),
-        fill: "both", easing: "ease-out",
-      },
-    ));
-
-    // 아래 안내문은 연출이 도는 동안 감춘다(요청) — 앞뒤로만 잠깐 보이고 가운데(높이가
-    // 옮겨 가는 구간)에는 없다. 페이드 아웃/인을 따로 두 개 걸면 뒤에 건 쪽이 delay
-    // 구간까지 backwards fill로 이겨 버려서(둘 다 opacity를 건드린다) 시작하자마자 툭
-    // 사라진다 — 한 애니메이션 안에 네 지점을 offset으로 찍어 한 번에 굴린다.
-    const total = SWAP_FADE_MS * 2 + (moves ? SWAP_HEIGHT_MS : 0);
-    if (toggleRef.current) {
-      anims.push(toggleRef.current.animate(
-        [
-          { opacity: 1, offset: 0 },
-          { opacity: 0, offset: SWAP_FADE_MS / total },
-          { opacity: 0, offset: (total - SWAP_FADE_MS) / total },
-          { opacity: 1, offset: 1 },
-        ],
-        { duration: total, fill: "both", easing: "linear" },
-      ));
-    }
-    // 글자 자체는 안 보이는 사이에 바꾼다(위 labelOpen 주석).
-    if (labelTimerRef.current) window.clearTimeout(labelTimerRef.current);
-    labelTimerRef.current = window.setTimeout(() => setLabelOpen(open), SWAP_FADE_MS);
-
-    // 펼친 뒤 목록 맨 아래로 스크롤하던 것은 걷어냈다(요청) — 펼치기를 누른 자리에
-    // 그대로 있는 편이 낫다. 접기는 collapseAndReveal이 예약해 둔 스크롤이 되돌려 주는데,
-    // 그 실행은 연출이 끝난 지금이다(요청: 접을 때 애니메이션이 끝나고 스크롤 이동).
-    Promise.all(anims.map((a) => a.finished))
-      .then(() => { cleanup(); settleLabel(); runAfterToggle(); })
-      .catch(() => {});
-    cancelRevealRef.current = () => {
-      anims.forEach((x) => { try { x.cancel(); } catch { /* 이미 끝남 */ } });
-      cleanup();
-      settleLabel();
-    };
+    if (!wasToggled) { afterToggleRef.current = null; return; }
+    const t = window.setTimeout(runAfterToggle, REVEAL_MS);
+    // 다른 묶음이 펼쳐져 이 효과가 다시 돌기 전에 언마운트되면 예약을 버린다 — 그
+    // 스크롤은 이미 지난 의도다.
+    return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   return (
     // 래퍼 한 장 — 접히면 요약 포스트 1개, 펼치면 게임결과 포스트 N개를 담는다(요청:
-    // "포스트가 여러 개인 걸로"). 래퍼 자신은 헤더·글래스가 없는 순수 레이아웃이다.
-    <div
-      ref={stackRef}
-      className={cx(
-        "scr-feed-card-stack-wrapper",
-        open && "scr-feed-card-stack-opened",
-        flash && "scr-feed-card-stack-flash",
-      )}
-    >
-      {/* 요약 포스트와 경기 목록이 이 껍데기 안에서 자리를 주고받는다. 비활성 쪽은 CSS가
-          절대배치로 흐름에서 빼므로 껍데기의 자연 높이가 곧 지금 보이는 쪽의 높이다 —
-          둘의 높이를 서로 맞춰 주는 계산이 필요 없다(요청). 요약 쪽에 헤더("게임결과
-          N건"+케밥)까지 통째로 담아 뒀으므로, 펼치는 순간 헤더도 목록과 함께 사라진다
-          (요청: 펼치면 공유 헤더는 접힘에만 보이고 각 게임이 자기 헤더를 갖는다). */}
-      <div className="scr-feed-card-stack-swap" ref={swapRef}>
-        {/* 요약 카드 자신이 스왑 트랙이다(요청: 요약↔목록 전환에 불필요한 중간 래퍼 없이
-            단순하게) — 감싸는 .scr-feed-card-stack-sum div 없이 rootRef/ariaHidden으로
-            카드 뿌리에 바로 건다. swap의 자식은 늘 이 카드(첫째)와 목록(둘째)뿐이라
-            트랙을 가리키는 별도 클래스(scr-feed-card-stack-summary/-inner)도 없앤다 —
-            CSS가 순서(:first-child/:last-child)로 가른다(요청). */}
+    // "포스트가 여러 개인 걸로"). 래퍼 자신은 헤더·글래스가 없는 순수 레이아웃이라 다른
+    // 타입의 래퍼와 CSS가 똑같다(요청: "다른 카드들과 css가 다르게 분기되고 있어").
+    <div ref={stackRef} className="scr-feed-card-stack-wrapper">
+      {open ? (
+        // 펼치면 이 자리에 승격된 포스트가 하나씩 나타난다(요청: 게임결과 카드도 하나의
+        // 피드 포스트로 승격) — 각 포스트가 실제 댓글 입력창을 갖게 되므로, 예전의
+        // "목록 아무 데나 눌러 접기"는 없앴다(요청) — 접기는 아래 전용 버튼으로만 한다.
+        orderedDesc.map((it) => (
+          <GameResultCard
+            key={it.gameResult.id}
+            item={it} memberOf={memberOf} onDeleted={onDeleted} dateLabel={dateLabel}
+            highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms}
+            className="scr-feed-card-stack-reveal"
+          />
+        ))
+      ) : (
+        // 요약 쪽에 헤더("게임결과 N건"+케밥)까지 통째로 담아 두므로, 펼치면 이 카드
+        // 자체가 언마운트되면서 헤더도 함께 사라진다(요청: 펼치면 공유 헤더는 접힘에만
+        // 보이고 각 게임이 자기 헤더를 갖는다).
         <FeedCard
-          rootRef={sumRef}
-          ariaHidden={open}
+          className="scr-feed-card-stack-summary scr-feed-card-stack-reveal"
           dateLabel={dateLabel}
           icon={<ClipboardList size={16} aria-hidden />}
           label={`게임결과 ${stack.items.length}건`}
@@ -716,68 +573,49 @@ export function GameResultPost({
           // 넣는다. 헤더 '안'이 아니라 카드 직계 자식으로 두는 이유는 StackMenu 주석 참고.
           actions={<StackMenu content={shareContent} />}
         >
-          {/* 명단 어디를 눌러도 펼쳐진다. button 안에는 목록을 넣을 수 없어(phrasing
-              content만 허용) role로 대신한다. */}
-          <div
-            className="scr-feed-card-stack-sum-body" role="button" tabIndex={open ? -1 : 0}
-            aria-expanded={open}
-            aria-label="게임결과 펼치기"
-            onClick={() => expandAndReveal()}
-            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); expandAndReveal(); } }}
-          >
-            <div className="scr-feed-card-stack-sum-head">
-              <span className="scr-feed-card-stack-sum-title">요약 정보</span>
-              <span className="scr-feed-card-stack-sum-count">참가자 총 {participants.length}명</span>
-            </div>
-            <ul className="scr-feed-card-stack-sum-players">
-              {participants.map((p) => (
-                <li
-                  key={p.id}
-                  className={cx(
-                    "scr-feed-card-stack-sum-player",
-                    (highlightMemberIds?.has(p.id)
-                      || highlightTerms?.some((t) => normalizeSearchText(p.name).includes(t)))
-                      && "scr-feed-card-stack-sum-player-hl",
-                  )}
-                >
-                  {/* 아바타·닉네임 확대(요청) — 한 줄에 3명이던 그리드는 2명으로 줄인다
-                      (아래 .scr-feed-card-stack-sum-players 참고). */}
-                  <Avatar member={{ id: p.id, nickname: p.name, avatar: memberOf(p.id)?.avatar ?? null }} size={28} />
-                  <span className="scr-feed-card-stack-sum-name">{p.name}</span>
-                </li>
-              ))}
-            </ul>
+        {/* 명단 어디를 눌러도 펼쳐진다. button 안에는 목록을 넣을 수 없어(phrasing
+            content만 허용) role로 대신한다. */}
+        <div
+          className="scr-feed-card-stack-sum-body" role="button" tabIndex={0}
+          aria-expanded={false}
+          aria-label="게임결과 펼치기"
+          onClick={() => expandAndReveal()}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); expandAndReveal(); } }}
+        >
+          <div className="scr-feed-card-stack-sum-head">
+            <span className="scr-feed-card-stack-sum-title">요약 정보</span>
+            <span className="scr-feed-card-stack-sum-count">참가자 총 {participants.length}명</span>
           </div>
-        </FeedCard>
-
-        {/* 펼치면 이 자리가 목록 높이만큼 벌어지고, 승격된 포스트가 하나씩 나타난다
-            (요청: 게임결과 카드도 하나의 피드 포스트로 승격) — 각 포스트가 실제 댓글
-            입력창을 갖게 되므로, 예전의 "목록 아무 데나 눌러 접기"는 없앴다(요청) —
-            접기는 아래 전용 버튼으로만 한다. 목록 정렬(flex/gap)도 이 트랙 자신이
-            맡는다 — 그 역할만 하던 별도 .scr-feed-card-stack-list 래퍼는 없앤다. */}
-        <div ref={innerRef} aria-hidden={!open}>
-          {orderedDesc.map((it) => (
-            <GameResultCard
-              key={it.gameResult.id}
-              item={it} memberOf={memberOf} onDeleted={onDeleted} dateLabel={dateLabel}
-              highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms}
-              active={open}
-            />
-          ))}
+          <ul className="scr-feed-card-stack-sum-players">
+            {participants.map((p) => (
+              <li
+                key={p.id}
+                className={cx(
+                  "scr-feed-card-stack-sum-player",
+                  (highlightMemberIds?.has(p.id)
+                    || highlightTerms?.some((t) => normalizeSearchText(p.name).includes(t)))
+                    && "scr-feed-card-stack-sum-player-hl",
+                )}
+              >
+                {/* 아바타·닉네임 확대(요청) — 한 줄에 3명이던 그리드는 2명으로 줄인다
+                    (아래 .scr-feed-card-stack-sum-players 참고). */}
+                <Avatar member={{ id: p.id, nickname: p.name, avatar: memberOf(p.id)?.avatar ?? null }} size={28} />
+                <span className="scr-feed-card-stack-sum-name">{p.name}</span>
+              </li>
+            ))}
+          </ul>
         </div>
-      </div>
+        </FeedCard>
+      )}
 
-      {/* 이 버튼은 이제 누르는 곳이라기보다 '어디를 눌러야 하는지' 알려 주는 안내문이다
-          (요청) — 포스트 어디를 눌러도 펼침/접힘이 되므로, 방향 삼각형 대신 그 사실을
-          글자로 말한다. 버튼으로 남겨 두는 건 키보드로도 여전히 여닫을 수 있게 하려는 것.
-          펼친 뒤에는 이 버튼이 유일한 접기 트리거다(요청). */}
-      <button
-        ref={toggleRef}
-        type="button" className="scr-feed-card-stack-toggle"
-        onClick={() => (open ? collapseAndReveal() : expandAndReveal())} aria-expanded={open}
-      >
-        {labelOpen ? "포스트 눌러서 요약보기" : "포스트 눌러서 펼치기"}
-      </button>
+      {/* 접었을 때만 보이는 안내문(요청: 한번 펴면 못 접으므로 펼친 뒤에는 누를 일이
+          없다) — 포스트 어디를 눌러도 펼쳐지므로, 방향 삼각형 대신 그 사실을 글자로
+          말한다. 버튼으로 남겨 두는 건 키보드로도 펼칠 수 있게 하려는 것. */}
+      {!open && (
+        <button type="button" className="scr-feed-card-stack-toggle" onClick={expandAndReveal}>
+          포스트 눌러서 펼치기
+        </button>
+      )}
     </div>
   );
 }
@@ -793,10 +631,17 @@ export default function FeedScreen() {
   // 일정/랭크변동으로 거른다 — 너나와=시간 미확정 도전장, 일정=시간 확정 도전장.
   const [kindFilter, setKindFilter] = useState<"all" | "gameResult" | "call" | "schedule" | "rankingShift">("all");
 
+  // 게임결과 묶음은 한 번에 하나만 펼쳐 둔다(요청: "포스트 눌러서 요약보기 제거 이제
+  // 한번 펴면 못접음... 대신! 다른 포스트를 펴면 나머지는 자동으로 접힘") — 수동으로
+  // 접는 방법은 없앴고, 다른 묶음을 펼치면 그 키로 바뀌면서 이전 것이 저절로 접힌다.
+  // 키는 그 묶음 첫 경기의 id(렌더 루프의 key와 같은 값)다.
+  const [expandedStackKey, setExpandedStackKey] = useState<number | null>(null);
+
   const user = useAppStore((s) => s.user);
   const isAdmin = !!user && isAdminRole(user.roles);
   const memberOf = useAppStore((s) => s.memberOf);
   const members = useAppStore((s) => s.members);
+  const addGameResult = useAppStore((s) => s.addGameResult);
 
   // + 등록 메뉴(리플레이/너 나와!/일정) — 버튼 아래 작은 팝오버로 연다.
   const [addMenuOpen, setAddMenuOpen] = useState(false);
@@ -811,11 +656,19 @@ export default function FeedScreen() {
     if (fabHidden) setAddMenuOpen(false);
   }, [fabHidden]);
 
-  // 리플레이 등록 — 파일 선택 → 분석(buildReplayDrafts) → 검토 모달.
+  // 리플레이 등록 — 파일 선택 → 분석(buildReplayDrafts) → 바로 등록(요청: "검토창이
+  // 너무 복잡해... 기존 리플레이 검토창은 이제 필요없음"). 사람이 매핑을 봐야 하던
+  // 자리는 등록 자체를 막지 않고, 대신 저장된 경기 카드에 빨간 글씨로 남긴다(아래
+  // GameResultCardBody의 이상 케이스 안내 참고) — 확인 후 지우는 건 그 카드의 기존
+  // 삭제(케밥) 버튼으로 충분하다.
   const replayInputRef = useRef<HTMLInputElement>(null);
   const [parsingReplays, setParsingReplays] = useState(false);
-  const [replayDrafts, setReplayDrafts] = useState<ReplayDraft[] | null>(null);
-  const [replayTruncated, setReplayTruncated] = useState(false);
+  // 등록 결과 안내 — 인라인 토스트 대신 확인 버튼 있는 팝업으로 띄운다(지적: "저렇게
+  // 토스트로 뜨지말고 내용과 확인버튼 있는 팝업으로"). 실패가 없으면 순수 안내, 하나라도
+  // 있으면 확인이 필요하다는 뜻으로 제목만 다르게 단다 — 어느 쪽이든 사람이 "확인"을
+  // 눌러야 닫힌다.
+  const [replayNotice, setReplayNotice] = useState<{ text: string; kind: "success" | "error" } | null>(null);
+  useLockBodyScroll(!!replayNotice);
 
   // 너 나와! 등록 폼.
   const [challengeFormOpen, setChallengeFormOpen] = useState(false);
@@ -955,15 +808,66 @@ export default function FeedScreen() {
     }
     const truncated = chosen.length > MAX_REPLAY_FILES;
     const batch = chosen.slice(0, MAX_REPLAY_FILES);
-    setReplayTruncated(truncated);
     setParsingReplays(true);
+    setError("");
     try {
       const [drafts] = await Promise.all([
         buildReplayDrafts(batch, members),
         new Promise((resolve) => setTimeout(resolve, 500)),
       ]);
       if (hasAppUpdatePreloadErrorOccurred()) return;
-      setReplayDrafts(drafts);
+
+      // 검토창 없이 바로 등록한다(요청) — 중복(이미 등록됨/병합됨)은 buildReplayDrafts가
+      // 이미 걸러 뒀으므로 조용히 넘어간다. 팀을 아예 못 나눴거나(teamSplitUncertain)
+      // 관전자 의심 인원이 있는 경우만 여전히 사람 눈이 필요해 등록하지 않고 실패로
+      // 남긴다 — 나머지(짧은 경기·승패 미확인·미확정 참가자)는 등록은 하되 피드 카드에
+      // 빨간 글씨로 남겨 확인/삭제를 유도한다.
+      let registered = 0;
+      const failed: string[] = [];
+      for (const raw of drafts) {
+        if (raw.excludeReason === "duplicate") continue;
+        if (raw.parseError) { failed.push(`${raw.fileName}: ${raw.parseError}`); continue; }
+        if (raw.teamSplitUncertain) {
+          failed.push(`${raw.fileName}: 팀을 자동으로 나누지 못했어요.`);
+          continue;
+        }
+        if (raw.guessedObservers.length > 0) {
+          failed.push(`${raw.fileName}: 관전자로 의심되는 사람이 있어요(${raw.guessedObservers.join(", ")}).`);
+          continue;
+        }
+        // 승패를 못 가려낸 경기 — 등록은 하되(요청) 무승부로 채우고 그 사실을 summaryData에
+        // 남긴다(피드 카드가 이 표시를 보고 빨간 글씨를 낸다).
+        const resultUncertain = !raw.result;
+        const filled = resolveUnmatchedAsUnregistered(raw);
+        const d: ReplayDraft = resultUncertain ? { ...filled, result: "draw" } : filled;
+        const problem = validateReplayDraft(d);
+        if (problem) { failed.push(`${d.fileName}: ${problem}`); continue; }
+
+        const payload: NewGameResult = {
+          date: d.date, team1: d.team1, team2: d.team2, result: d.result as GameOutcome, matchType: d.matchType,
+          replay: d.replay,
+          mapName: d.mapName || null, gameStartedAt: d.gameStartedAt, durationSeconds: d.durationSeconds,
+          summaryData: resultUncertain
+            ? { ...(d.summaryData ?? { v: REPLAY_SUMMARY_VERSION, beats: [] }), resultUncertain: true }
+            : d.summaryData,
+          mapData: d.mapGrid,
+        };
+        try {
+          await addGameResult(payload);
+          registered += 1;
+        } catch (err) {
+          failed.push(`${d.fileName}: ${err instanceof Error ? err.message : "등록에 실패했어요."}`);
+        }
+      }
+
+      if (registered > 0) await handleReplaysSaved();
+      const parts: string[] = [];
+      if (truncated) parts.push(`한 번에 최대 ${MAX_REPLAY_FILES}개까지만 등록돼 처음 ${MAX_REPLAY_FILES}개만 처리했어요.`);
+      if (registered > 0) parts.push(`${registered}개 등록했어요.`);
+      if (failed.length > 0) parts.push(`${failed.length}개는 등록하지 못했어요 — ${failed.join(" / ")}`);
+      if (parts.length > 0) {
+        setReplayNotice({ text: parts.join(" "), kind: failed.length > 0 ? "error" : "success" });
+      }
     } finally {
       setParsingReplays(false);
     }
@@ -1366,6 +1270,8 @@ export default function FeedScreen() {
                 highlightMemberIds={matchedIds}
                 highlightTerms={searchTerms}
                 defaultOpen={filterActive}
+                expanded={expandedStackKey === item.items[0].gameResult.id}
+                onExpand={() => setExpandedStackKey(item.items[0].gameResult.id)}
               />
             ) : (
               <div className="scr-feed-card-stack-wrapper" key={`m-${item.gameResult.id}`}>
@@ -1406,20 +1312,31 @@ export default function FeedScreen() {
         />
       )}
 
-      {replayDrafts && (
-        <ReplayReviewModal
-          drafts={replayDrafts}
-          truncated={replayTruncated}
-          onClose={() => setReplayDrafts(null)}
-          onSaved={handleReplaysSaved}
-        />
-      )}
-
       {challengeFormOpen && (
         <ChallengeFormModal
           onClose={() => setChallengeFormOpen(false)}
           onCreated={(c) => { upsertChallenge(c); setChallengeFormOpen(false); }}
         />
+      )}
+
+      {/* 리플레이 등록 결과 — 인라인 토스트 대신 확인 버튼 있는 팝업으로(지적). "취소"가
+          아니라 순수 안내라 버튼은 "확인" 하나뿐이다 — ConfirmDialog는 항상 두 버튼을
+          내므로 여기선 그 대신 같은 모양의 팝업을 직접 그린다. */}
+      {replayNotice && createPortal(
+        <div className="scr-modal-overlay">
+          <div className="scr-modal scr-modal-sm scr-modal-confirm">
+            <div className="scr-confirm-head">
+              <span>{replayNotice.kind === "success" ? "등록 완료" : "등록 결과 확인 필요"}</span>
+            </div>
+            <p className="scr-confirm-msg">{replayNotice.text}</p>
+            <div className="scr-form-actions">
+              <button type="button" className="scr-btn scr-btn-primary" onClick={() => setReplayNotice(null)}>
+                확인
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body,
       )}
 
     </div>

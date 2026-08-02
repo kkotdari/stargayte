@@ -1,4 +1,4 @@
-import type { ReactNode, Ref } from "react";
+import type { ReactNode } from "react";
 import { cx } from "../../utils/format";
 
 // 피드 포스트 4종(게임결과/너 나와/랭크변동/게임요약)이 공유하는 뼈대 — 머리(떠 있음) +
@@ -7,7 +7,6 @@ import { cx } from "../../utils/format";
 // "모든 포스트의 구조를 공통화").
 export function FeedCard({
   className, dateLabel, icon, label, timeText, headMeta, actions, bodyClassName, children, comment,
-  rootRef, ariaHidden,
 }: {
   className?: string;
   dateLabel?: string;
@@ -24,14 +23,9 @@ export function FeedCard({
   // 생략하면 .scr-feed-card-comment 자체가 렌더되지 않는다(게임요약 접힘 카드처럼
   // 댓글 없는 타입을 위함).
   comment?: ReactNode;
-  // 게임결과 묶음의 요약 카드처럼, 카드 자신이 곧 스왑 트랙이어야 할 때 쓴다(요청: 요약↔
-  // 목록 전환에 불필요한 중간 래퍼 div를 두지 않기) — 카드 바깥에 별도 래퍼를 씌우는 대신
-  // 이 카드의 뿌리 요소에 직접 ref/aria-hidden을 건다.
-  rootRef?: Ref<HTMLDivElement>;
-  ariaHidden?: boolean;
 }) {
   return (
-    <div className={cx("scr-feed-card", className)} ref={rootRef} aria-hidden={ariaHidden}>
+    <div className={cx("scr-feed-card", className)}>
       <div className="scr-feed-card-head" {...(dateLabel ? { "data-date-label": dateLabel } : {})}>
         <div className="scr-feed-card-head-title">
           {icon}

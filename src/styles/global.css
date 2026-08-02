@@ -6992,38 +6992,32 @@ html:not(.scr-light-theme) .scr-feed-now-divider span { color: var(--muted); }
    본문의 좌우 패딩 안으로 되돌린다 — 툴바·필터 등 형제들과 같은 자리에서 시작한다. */
 
 /* ── 게임결과 묶음(요약 ↔ 목록) ──
-   접힘은 참가자 전원을 담은 요약 포스트, 펼침은 그 자리에 들어서는 게임결과 포스트 목록
-   이다(요청). 두 모습 모두 항상 마운트돼 있고 각자의 래퍼 높이(0 ↔ 실제)로 자리를 주고
-   받는다 — 연출 중에는 JS가 인라인 height로 그 사이를 잇는다(FeedScreen).
-   묶음 테두리(레일)는 두지 않는다 — 포스트가 좌우 여백 없이 화면을 꽉 채우게 되면서
-   그 테두리를 그릴 자리 자체가 없어졌다. */
-/* 카드는 한 장이다(요청) — 요약(참가자 명단)은 늘 보이고, 그 아래 목록 영역만 0 ↔ 실제
-   높이로 자란다. 겉보기로는 카드 안에 카드가 있는 모양이지만 실제로는 한 장 안에서
-   내용만 늘어난다. 연출 중에는 JS가 인라인 height로 그 사이를 잇는다(FeedScreen). */
-/* 요약과 목록이 자리를 주고받는 껍데기(요청) — 높이는 오직 여기서만 움직인다.
-   비활성 쪽을 절대배치로 흐름에서 빼므로, 껍데기의 자연 높이가 곧 지금 보이는 쪽의
-   높이다. 예전처럼 둘의 높이를 서로 맞춰 줄 필요가 없다(요청: 그 로직 제거). */
-.scr-feed-card-stack-swap { position: relative; overflow: hidden; }
-.scr-feed-card-stack-swap > * { min-width: 0; }
-/* swap의 자식은 늘 이 둘(요약 카드, 목록)뿐이라 각자에 이름표(scr-feed-card-stack-
-   summary/-inner)를 붙이는 대신 순서로 가른다(요청: 불필요한 중간 클래스 제거) — 첫째
-   = 요약 카드, 둘째 = 목록.
-   접힘: 첫째(요약)가 흐름을 잡고, 둘째(목록)는 같은 자리에 겹쳐 투명하게 대기한다.
-   목록 트랙 자신이 곧 정렬 컨테이너다 — 펼치면 안의 경기들이 각자 완전히 승격된
-   포스트라(요청: "게임결과 카드도 하나의 피드 포스트로 승격"), 다른 최상위 포스트와
-   같은 간격(--feed-card-gap)으로 늘어선다. */
-.scr-feed-card-stack-swap > :last-child {
-  position: absolute; top: 0; left: 0; right: 0;
-  opacity: 0; pointer-events: none;
-  display: flex; flex-direction: column; gap: var(--feed-card-gap);
+   접힘은 참가자 전원을 담은 요약 포스트 하나, 펼침은 그 자리를 대신하는 게임결과
+   포스트 N개다(요청) — 예전에는 둘 다 항상 마운트해 두고 절대배치·JS 높이 계산으로
+   자리를 주고받았는데, 보일 쪽만 조건부로 마운트하는 쪽으로 단순화했다(요청: "왜 높이
+   합산을 해야 하는거야? 하나씩 순차적으로 hidden을 제거하면 자연스럽게 스크롤이
+   늘어날거잖아 — 한번에 영역 확보하는거만 없애면 되는거지"). 마운트된 만큼 문서가
+   자연히 자라므로 래퍼가 잴 높이 자체가 없다. 래퍼 자신은 다른 포스트 타입과 똑같이
+   CSS가 하나도 없다(요청: "다른 카드들과 css가 다르게 분기되고 있어"). */
+
+/* 카드가 나타날 때(요약이든 목록의 각 게임이든) 살짝 아래에서 올라오며 페이드인한다 —
+   예전의 "페이드아웃 → 높이 이동 → 페이드인" 3단 연출을 대신하는 훨씬 단순한 등장
+   연출이다. */
+@keyframes scr-feed-card-stack-reveal-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
-.scr-feed-card-stack-swap > :first-child { position: relative; opacity: 1; }
-/* 펼침: 정확히 반대. */
-.scr-feed-card-stack-opened .scr-feed-card-stack-swap > :last-child {
-  position: relative; opacity: 1; pointer-events: auto;
+.scr-feed-card-stack-reveal { animation: scr-feed-card-stack-reveal-in 220ms ease-out both; }
+@media (prefers-reduced-motion: reduce) {
+  .scr-feed-card-stack-reveal { animation: none; }
 }
-.scr-feed-card-stack-opened .scr-feed-card-stack-swap > :first-child {
-  position: absolute; top: 0; left: 0; right: 0; opacity: 0; pointer-events: none;
+/* 목록을 펼치면 승격된 포스트들이 래퍼의 평범한 자식으로 나란히 쌓인다(더 이상 flex
+   트랙이 아니다) — 다른 최상위 포스트와 같은 간격(--feed-card-gap)으로 떨어지게
+   카드 사이에만 그 간격을 더한다(요청: "게임결과 카드도 하나의 피드 포스트로 승격"
+   — 각 카드 자신의 꼬리 여백(margin-bottom, .scr-feed-card 공통 규칙)에 이 값을
+   더하면 최상위 포스트 사이 간격과 정확히 같아진다). */
+.scr-feed-card-stack-wrapper > .scr-feed-card + .scr-feed-card {
+  margin-top: var(--feed-card-gap);
 }
 /* 참가자 — 이름 길이가 달라도 열이 어긋나지 않게 균등 그리드를 쓴다(flex-wrap이면 이름
    길이만큼 칸이 달라져 줄이 안 맞는다). 한 줄에 세 명이었는데, 아바타·닉네임을 키운
@@ -7081,7 +7075,7 @@ html:not(.scr-light-theme) .scr-feed-now-divider span { color: var(--muted); }
    않게 한다 — 패딩이 아니라 변수를 바꿔야 제목 줄 음영의 음수 마진도 같이 따라온다.
    케밥 자체의 자리와 드롭다운은 너 나와/순위변동 카드와 같은 규칙(.scr-feed-chal-menu)을
    그대로 쓴다. */
-.scr-feed-card-stack-swap > :first-child > .scr-feed-card-head { --post-head-pad-r: 44px; }
+.scr-feed-card-stack-summary > .scr-feed-card-head { --post-head-pad-r: 44px; }
 
 /* 요약 바디 전체가 펼침/접힘 토글이다(요청) — 명단 어디를 눌러도 열리고 닫힌다. */
 /* 아래 여백은 펼침/접힘과 무관하게 '항상' 같아야 한다. 한때 펼쳤을 때만 줬는데(그림자가
@@ -7115,18 +7109,7 @@ html:not(.scr-light-theme) .scr-feed-now-divider span { color: var(--muted); }
 /* 안내글 위 여백을 접힘/펼침에 따라 다르게 주면 안 된다 — 이 버튼은 두 상태 모두 흐름에
    남아 있어서, 누르는 순간 padding이 바뀌며 카드가 툭 움직인다(지적: 누르면 순간 움직임).
    접힘 쪽만 좁히고 싶으면 위에 있는 요약 본문의 아래 여백을 줄인다(그쪽은 펼치면 절대배치로
-   빠져 흐름에 관여하지 않는다).
-/* 묶음이 접힌 뒤 잠깐 테두리를 밝혀 어느 카드가 접힌 건지 짚어 준다(요청) — 접기는
-   목록 높이가 통째로 줄어드는 동작이라, 끝나고 나면 화면이 확 달라져 눈이 길을 잃는다.
-   연출이 끝난 뒤부터 세므로 접히는 시간과 겹치지 않는다. */
-/* 곧바로 옅어지기 시작하면 스크롤이 멈추기도 전에 사라진다 — 절반 넘게는 그대로 켜 두고
-   그 뒤에 천천히 내린다(요청: 스크롤까지 있어서 2초). */
-@keyframes scr-stack-collapsed-flash {
-  0%, 55% { box-shadow: 0 0 0 1.5px var(--point), 0 0 16px 2px rgba(var(--overlay-rgb), 0.35); }
-  100% { box-shadow: 0 0 0 1.5px transparent, 0 0 16px 2px transparent; }
-}
-.scr-feed-card-stack-flash { animation: scr-stack-collapsed-flash 2s ease-out; }
-@media (prefers-reduced-motion: reduce) { .scr-feed-card-stack-flash { animation: none; } }
+   빠져 흐름에 관여하지 않는다). */
 @media (hover: hover) { .scr-feed-card-stack-toggle:hover { color: var(--text); } }
 /* 예전에는 펼쳤을 때 요약과 목록의 경계에 그림자를 드리워 두 층이 겹쳐 있다는 걸
    보여 줬다. 이제 펼치면 요약 자체가 접히므로(요청) 나눌 두 층이 없어 걷어냈다. */
@@ -8323,9 +8306,12 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 /* ── 자막 ── */
 /* 자막 패널을 없애고 지금 스냅의 문장을 미니맵 가운데에 바로 얹는다(요청) — 대신 글자
    뒤에 반투명 배경을 깔아 준다(요청: "미니맵 자막뒤에 반투명 배경깔기") — 검은 테두리
-   (text-shadow)만으로는 밝은 지형 위에서 글자가 흐려 보였다. 배경은 카드 전체가 아니라
-   글자 칸(.scr-story-cap)에만 좁게 붙는다. ReplayMinimap이 .scr-minimap 안에 이 레이어를
-   얹고, 지도 좌우 절반 클릭(.scr-minimap-half)을 가리지 않게 pointer-events는 끈다. */
+   (text-shadow)만으로는 밝은 지형 위에서 글자가 흐려 보였다. 배경은 글자가 있는 부분에만
+   붙는다(요청: "배경은 글자가 있는 부분에만") — .scr-story-cap(바깥 칸)은 자리 예약용
+   으로 늘 가장 긴 문장 크기 그대로 두고, 배경·패딩은 실제 문장 하나하나(.scr-story-cap-
+   line)에 준다. 그래야 짧은 문장일 때 배경이 그 문장 폭만큼만 좁게 잡힌다.
+   ReplayMinimap이 .scr-minimap 안에 이 레이어를 얹고, 지도 좌우 절반 클릭
+   (.scr-minimap-half)을 가리지 않게 pointer-events는 끈다. */
 .scr-minimap-caption {
   position: absolute; inset: 0; z-index: 7;
   display: flex; align-items: center; justify-content: center;
@@ -8340,8 +8326,6 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   font-size: var(--fs-caption); font-weight: 500; line-height: 1.6;
   color: #fff; text-shadow: 0 0 3px #000, 0 0 6px #000, 0 1px 2px #000;
   word-break: keep-all; text-align: center;
-  background: rgba(0, 0, 0, 0.42); border-radius: 10px;
-  padding: 6px 14px;
 }
 /* 자막 앞의 시각 — 본문보다 한 단계 작고 흐리게 둔다(요청: [5분]처럼 분까지만). */
 .scr-story-cap-time {
@@ -8349,6 +8333,9 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 }
 .scr-story-cap-line {
   grid-area: 1 / 1; margin: 0;
+  /* 배경은 문장 자신의 폭만큼만(요청) — 바깥 칸(.scr-story-cap)에 배경을 주면 가장 긴
+     문장 크기 그대로 깔려, 짧은 문장일 때 양옆으로 빈 배경이 남는다. */
+  background: rgba(0, 0, 0, 0.42); border-radius: 10px; padding: 6px 14px;
   /* 안 보이는 문장도 자리는 차지해야 한다(그래서 display:none이 아니라 visibility) —
      칸 높이를 가장 긴 문장이 정하게 하는 것이 이 방식의 핵심이다. */
   visibility: hidden;

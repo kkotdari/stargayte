@@ -111,7 +111,7 @@ function MemberSearchDrop({ dropRef, candidates, highlight, onHighlight, onPick,
   );
 }
 
-interface UnresolvedChipProps {
+export interface UnresolvedChipProps {
   entry: UnresolvedRow;
   candidates: Member[];
   onResolve: (member: Member) => void;
