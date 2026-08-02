@@ -6,7 +6,7 @@ import type {
   ScreenKey, AppVersion, AppVersionStatus, AppVersionInfo,
   MapCatalog, MinimapImage,
   GameResultSlot, GameResultPage, GameResultStatsResponse, GameType, Race, TeamRankingResponse,
-  MonthlyGameResultStatsResponse, MonthlyTeamRankingResponse, RatingHistoryResponse, RivalryPair,
+  RatingHistoryResponse, RivalryPair,
   ReplayNameClassificationEntry, ReplayNameKind, ReplayNameMappingEntry, ReplayNameMappingKind,
   Challenge, ChallengeCreatePayload, ChallengeResult,
   MatchRequest, MatchRequestCreatePayload, MatchRequestListResponse, MatchRequestInboxItem,
@@ -83,13 +83,6 @@ export interface GameResultStatsParams {
 export interface TeamRankingParams {
   dateFrom?: string;
   dateTo?: string;
-}
-
-export interface MonthlyStatsParams {
-  months: string[];
-  memberIds?: string[];
-  matchType?: GameType | "all";
-  race?: Race | "all";
 }
 
 export interface MainRaceParams {
@@ -338,24 +331,6 @@ export const api = {
   async getTeamRanking(params: TeamRankingParams = {}): Promise<TeamRankingResponse> {
     const qs = buildQuery({ dateFrom: params.dateFrom, dateTo: params.dateTo });
     return request<TeamRankingResponse>(`/api/game-results/team-ranking${qs}`);
-  },
-
-  // 개인 랭킹의 월별 순위변동(최근 5개월)/목록의 전월 대비 화살표 — "YYYY-MM" 여러 개를
-  // 한 번에 보내 왕복 없이 달마다 집계된 결과를 받는다.
-  async getGameResultStatsMonthly(params: MonthlyStatsParams): Promise<MonthlyGameResultStatsResponse> {
-    const qs = buildQuery({
-      months: params.months.join(","),
-      memberIds: params.memberIds?.length ? params.memberIds.join(",") : undefined,
-      matchType: params.matchType,
-      race: params.race,
-    });
-    return request<MonthlyGameResultStatsResponse>(`/api/game-results/stats/monthly${qs}`);
-  },
-
-  // 팀 랭킹 버전 — 위와 같은 목적.
-  async getTeamRankingMonthly(months: string[]): Promise<MonthlyTeamRankingResponse> {
-    const qs = buildQuery({ months: months.join(",") });
-    return request<MonthlyTeamRankingResponse>(`/api/game-results/team-ranking/monthly${qs}`);
   },
 
   // 경기 등록 모달에서 "랜덤" 주종족 회원의 종족 select 기본값 프리필용 — 대량 통계

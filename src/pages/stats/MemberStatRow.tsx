@@ -25,16 +25,19 @@ interface MemberStatRowProps {
   avatar?: boolean;
   // 전적 막대 캡션을 "승/전" 짧은 표기로 줄인다(StatBar의 compact 참고).
   compact?: boolean;
-  // 랭크 포인트(TrueSkill 보수추정, 표시 스케일) — undefined면 포인트 컬럼 자체를 안 그린다
-  // (통계 화면 전용, 요청: 랭킹을 통계에 통합). null이면 이 기간 순위 대상이 아니라 "-".
+  // 랭크 포인트(TrueSkill 보수추정, 표시 스케일) — undefined면 랭크·포인트 두 컬럼을
+  // 통째로 안 그린다(통계 화면 전용). null이면 이 기간 순위 대상이 아니라 "-".
   points?: number | null;
-  // 지금 몇 위인가(공동순위 포함) — 포인트 옆에 함께 보여준다(요청). 순위 대상이 아니면 null.
+  // 지금 몇 위인가(공동순위 포함) — 포인트와 나란한 제 컬럼이다(요청: 랭크·포인트 분리).
   rank?: number | null;
   // 직전 순위표 대비 몇 계단 움직였나(+면 상승) — 최근 순위 변동 스냅샷에서 온다.
   // 그 스냅샷은 '이번 달' 기준으로만 계산되므로, 다른 기간을 보고 있으면 호출부가 안 넘긴다.
   rankDelta?: number | null;
   // 포인트를 누르면 포인트 상세(경기 이력)를 연다.
   onPointsClick?: () => void;
+  // 랭크를 누르면 최근 5개월 순위변동 그래프를 연다(요청) — 월을 보고 있을 때만 넘어온다.
+  // 안 넘기면 랭크는 그냥 글자로만 그려진다.
+  onRankClick?: () => void;
   // 지난 기간을 볼 때만 온다 — 아직 안 끝난 달에는 메달을 안 단다(StatsScreen 참고).
   medals?: StatColumnMedals;
 }
@@ -42,7 +45,7 @@ interface MemberStatRowProps {
 // 전적통계 목록의 테이블 한 행.
 export default function MemberStatRow({
   member, stats, maxOverallPlays, maxBuild, maxApm, maxCmd, avatar = true, compact = false,
-  points, rank, rankDelta, onPointsClick, medals,
+  points, rank, rankDelta, onPointsClick, onRankClick, medals,
 }: MemberStatRowProps) {
   const openMemberProfile = useAppStore((s) => s.openMemberProfile);
   const [photoOpen, setPhotoOpen] = useState(false);
@@ -62,35 +65,51 @@ export default function MemberStatRow({
           </button>
         </div>
       </div>
+      {/* 랭크와 포인트는 각자의 컬럼이다(요청: 분리) — 예전엔 "1,234 (3위▲2)"처럼 한 칸에
+          담았는데, 무엇으로 정렬해 보고 있는지가 안 읽히고 둘 중 하나만 눌러야 하는 자리
+          (랭크=순위변동, 포인트=경기 이력)를 한 칸에 겹쳐 두게 됐다. */}
       {points !== undefined && (
-        <div className="scr-stat-points-cell">
-          {points === null ? (
-            <span className="scr-stat-points-empty">-</span>
-          ) : (
-            <>
-              <button
-                type="button" className="scr-stat-points-btn"
-                onClick={onPointsClick} aria-label={`${member.nickname} 포인트 상세`}
-              >
-                {points.toLocaleString()}
-              </button>
-              {medals?.points && <span className="scr-stat-medal">{medals.points}</span>}
-              {/* 포인트 옆에 지금 순위와 그 변동(요청) — 포인트만으로는 그게 몇 등짜리
-                  점수인지 감이 안 온다. 변동은 방향이 곧 의미라 색과 화살표로만 짧게. */}
-              {rank != null && (
-                <span className="scr-stat-points-rank">
-                  ({rank}위
-                  {rankDelta != null && rankDelta !== 0 && (
-                    <span className={rankDelta > 0 ? "scr-feed-shift-up" : "scr-feed-shift-down"}>
-                      {rankDelta > 0 ? `▲${rankDelta}` : `▼${-rankDelta}`}
-                    </span>
-                  )}
-                  )
-                </span>
-              )}
-            </>
-          )}
-        </div>
+        <>
+          <div className="scr-stat-rank-cell">
+            {rank == null ? (
+              <span className="scr-stat-points-empty">-</span>
+            ) : (
+              <>
+                {onRankClick ? (
+                  <button
+                    type="button" className="scr-stat-points-btn"
+                    onClick={onRankClick} aria-label={`${member.nickname} 순위변동`}
+                  >
+                    {rank}위
+                  </button>
+                ) : (
+                  <span className="scr-stat-rank-plain">{rank}위</span>
+                )}
+                {/* 변동은 방향이 곧 의미라 색과 화살표로만 짧게. */}
+                {rankDelta != null && rankDelta !== 0 && (
+                  <span className={rankDelta > 0 ? "scr-feed-shift-up" : "scr-feed-shift-down"}>
+                    {rankDelta > 0 ? `▲${rankDelta}` : `▼${-rankDelta}`}
+                  </span>
+                )}
+              </>
+            )}
+          </div>
+          <div className="scr-stat-points-cell">
+            {points === null ? (
+              <span className="scr-stat-points-empty">-</span>
+            ) : (
+              <>
+                <button
+                  type="button" className="scr-stat-points-btn"
+                  onClick={onPointsClick} aria-label={`${member.nickname} 포인트 상세`}
+                >
+                  {points.toLocaleString()}
+                </button>
+                {medals?.points && <span className="scr-stat-medal">{medals.points}</span>}
+              </>
+            )}
+          </div>
+        </>
       )}
       <div className="scr-stat-plays-cell">
         <ValueBar value={stats.plays > 0 ? stats.plays : null} maxValue={maxOverallPlays} medal={medals?.plays} />

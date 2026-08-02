@@ -5,6 +5,8 @@ import SearchFilterBar from "../../components/common/SearchFilterBar";
 import Select, { type SelectOption } from "../../components/common/Select";
 import MemberStatRow, { type StatColumnMedals } from "../stats/MemberStatRow";
 import PointDetailModal from "./PointDetailModal";
+import RankTrendModal from "./RankTrendModal";
+import { rankOf } from "./rankOrder";
 import RivalryOverlay from "../rivalry/RivalryOverlay";
 import InfoTip from "../../components/common/InfoTip";
 import { useAppStore } from "../../store/appStore";
@@ -46,7 +48,7 @@ const EMPTY_STATS: MemberStats = {
   avgApm: null, avgEapm: null, avgCmd: null, avgEcmd: null, avgBuild: null,
 };
 
-type StatSortKey = "name" | "points" | "rate" | "plays" | "build" | "apm" | "cmd";
+type StatSortKey = "name" | "rank" | "points" | "rate" | "plays" | "build" | "apm" | "cmd";
 type StatSortDir = "desc" | "asc";
 interface StatSort { key: StatSortKey; dir: StatSortDir }
 
@@ -54,10 +56,12 @@ interface StatSort { key: StatSortKey; dir: StatSortDir }
 // 3단 토글 — 같은 컬럼을 다시 누르면 방향만 바뀌고, 다른 컬럼을 누르면 그 컬럼의
 // 내림차순부터 새로 시작한다(한 번에 하나의 정렬 기준만 유지).
 function nextSort(prev: StatSort | null, key: StatSortKey): StatSort | null {
-  // 유저(이름)만 오름차순(가나다순)부터 시작하는 게 자연스러워 시작 방향과 토글 순서를
-  // 반대로 둔다(asc -> desc -> null) — 나머지 지표는 그대로 desc -> asc -> null.
-  if (!prev || prev.key !== key) return { key, dir: key === "name" ? "asc" : "desc" };
-  if (key === "name") return prev.dir === "asc" ? { key, dir: "desc" } : null;
+  // 유저(이름)와 랭크만 오름차순부터 시작하는 게 자연스러워 시작 방향과 토글 순서를
+  // 반대로 둔다(asc -> desc -> null) — 이름은 가나다순, 랭크는 숫자가 작을수록 좋은
+  // 성적이라 1위부터가 맨 위다. 나머지 지표는 그대로 desc -> asc -> null.
+  const ascFirst = key === "name" || key === "rank";
+  if (!prev || prev.key !== key) return { key, dir: ascFirst ? "asc" : "desc" };
+  if (ascFirst) return prev.dir === "asc" ? { key, dir: "desc" } : null;
   if (prev.dir === "desc") return { key, dir: "asc" };
   return null;
 }
@@ -114,6 +118,9 @@ export default function StatsScreenV2() {
   const [sort, setSort] = useState<StatSort | null>({ key: "points", dir: "desc" });
   // 포인트를 누르면 그 회원의 포인트 상세(경기 이력)를 연다.
   const [pointMember, setPointMember] = useState<Member | null>(null);
+  // 월간 랭크를 누르면 그 회원의 최근 다섯 달 순위변동 그래프를 연다(요청). 전체 기간을
+  // 볼 때는 견줄 달이 없어 열 게 없다 — 그래서 아래에서 월일 때만 클릭을 붙인다.
+  const [trendMember, setTrendMember] = useState<Member | null>(null);
   // 상성 관계 오버레이(타이틀 옆 "상성 보기" 버튼).
   const [rivalryOpen, setRivalryOpen] = useState(false);
   const toggleSort = (key: StatSortKey) => setSort((prev) => nextSort(prev, key));
@@ -249,6 +256,27 @@ export default function StatsScreenV2() {
     return () => { cancelled = true; };
   }, [debouncedQuery]);
 
+  // 지금 몇 위인가 — 규칙은 rankOrder.ts에 있다(순위변동 모달이 달마다 같은 계산을
+  // 다시 해야 해서 밖으로 뺐다). 표의 정렬(sort)과는 무관하다 — 순위는 정렬을 바꿔도
+  // 그 사람의 순위 그대로여야 한다.
+  const rankPool = useMemo(() => matchedMembers.map((m) => m.id), [matchedMembers]);
+  const rankByMember = useMemo(
+    () => rankOf(statsByMember, rankPool),
+    [rankPool, statsByMember],
+  );
+  // 전달 대비 몇 계단 움직였나(+면 상승, 요청) — 같은 규칙으로 전달 순위를 매겨 뺀다.
+  // 지난달에 순위가 없던 사람(그 달에 안 뛴 사람)은 견줄 값이 없어 화살표를 안 단다.
+  const rankDeltaByMember = useMemo(() => {
+    const prevRank = rankOf(prevStatsByMember, rankPool);
+    const out = new Map<string, number>();
+    for (const [id, now] of rankByMember) {
+      const before = prevRank.get(id);
+      if (before === undefined || before === now) continue;
+      out.set(id, before - now);
+    }
+    return out;
+  }, [rankByMember, prevStatsByMember, rankPool]);
+
   const cards = useMemo(() => {
     const list = matchedMembers.map((m) => {
       const entry = statsByMember[m.id];
@@ -296,6 +324,19 @@ export default function StatsScreenV2() {
     if (sort.key === "points") {
       sorted.sort((a, b) => noPointsLast(a, b) || dirSign * ((a.points ?? 0) - (b.points ?? 0)) || nicknameTiebreak(a, b));
     }
+    // 랭크 — 순위가 없는(한 판도 안 뛴) 회원은 방향과 무관하게 맨 아래. 공동순위는
+    // 닉네임순으로 갈라 놓는다.
+    if (sort.key === "rank") {
+      const rankValue = (c: (typeof list)[number]) => rankByMember.get(c.member.id) ?? null;
+      sorted.sort((a, b) => {
+        const ra = rankValue(a), rb = rankValue(b);
+        if (ra === null || rb === null) {
+          if (ra === null && rb === null) return nicknameTiebreak(a, b);
+          return ra === null ? 1 : -1;
+        }
+        return dirSign * (ra - rb) || nicknameTiebreak(a, b);
+      });
+    }
     if (sort.key === "name") {
       sorted.sort((a, b) => dirSign * a.member.nickname.localeCompare(b.member.nickname));
     }
@@ -315,44 +356,8 @@ export default function StatsScreenV2() {
       sorted.sort((a, b) => noAvgLast(a, b, "avgCmd") || dirSign * ((a.stats.avgCmd ?? 0) - (b.stats.avgCmd ?? 0)) || nicknameTiebreak(a, b));
     }
     return sorted;
-  }, [matchedMembers, statsByMember, sort, race]);
+  }, [matchedMembers, statsByMember, sort, race, rankByMember]);
 
-  // 지금 몇 위인가 — 서버가 매긴 자리번호(sortOrder)로 줄을 세우고 완전 동률(tieGroup)은
-  // 공동순위(1,1,3)로 묶는다. 백엔드가 순위표를 만들 때 쓰는 규칙(_compute_standings)과
-  // 같은 계산이라, 여기 순위와 랭크 변동 카드의 순위가 어긋나지 않는다.
-  // 표의 정렬(sort)과는 무관하다 — 순위는 정렬을 바꿔도 그 사람의 순위 그대로여야 한다.
-  const rankOf = (by: Record<string, MemberStatsEntry>): Map<string, number> => {
-    const ranked = matchedMembers
-      .map((m) => by[m.id])
-      .filter((e): e is MemberStatsEntry => !!e && e.sortOrder != null && e.tieGroup != null)
-      .filter((e) => e.overall.plays > 0)
-      .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
-    const out = new Map<string, number>();
-    let rank = 0;
-    ranked.forEach((e, i) => {
-      if (i === 0 || e.tieGroup !== ranked[i - 1].tieGroup) rank = i + 1;
-      out.set(e.memberId, rank);
-    });
-    return out;
-  };
-  const rankByMember = useMemo(
-    () => rankOf(statsByMember),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [matchedMembers, statsByMember],
-  );
-  // 전달 대비 몇 계단 움직였나(+면 상승, 요청) — 같은 규칙으로 전달 순위를 매겨 뺀다.
-  // 지난달에 순위가 없던 사람(그 달에 안 뛴 사람)은 견줄 값이 없어 화살표를 안 단다.
-  const rankDeltaByMember = useMemo(() => {
-    const prevRank = rankOf(prevStatsByMember);
-    const out = new Map<string, number>();
-    for (const [id, now] of rankByMember) {
-      const before = prevRank.get(id);
-      if (before === undefined || before === now) continue;
-      out.set(id, before - now);
-    }
-    return out;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rankByMember, prevStatsByMember, matchedMembers]);
 
   /* 이미 끝난 달을 볼 때는 각 칸의 1·2·3위에 메달을 붙인다(요청) — 그 달의 성적은 더
      바뀌지 않으니 그렇게 못 박아도 된다. 이번 달과 '전체 기간'은 아직 진행 중이라 안 붙인다.
@@ -505,9 +510,17 @@ export default function StatsScreenV2() {
                   네이티브 스크롤이 완벽히 동기화해서 그 흔들림 자체가 원천적으로 사라진다. */}
               <div className="scr-stat-row scr-stat-row-head">
                 <SortableHead label="유저" sortKey="name" sort={sort} onToggle={toggleSort} className="scr-stat-name-head" />
+                {/* 랭크와 포인트는 별개의 칸이다(요청) — 이름도 지금 걸린 기간을 그대로
+                    말한다: 전체 기간이면 "누적", 한 달이면 "월간". */}
                 <SortableHead
-                  label="포인트" sortKey="points" sort={sort} onToggle={toggleSort}
-                  tooltip="랭크 포인트 — 이 기간·분류의 경기들로 산정한 레이팅 점수. 최소 게임수를 안 따져요(평균이 아니라 이길 때만 쌓이는 누적이라, 적게 뛰면 그냥 적게 쌓입니다). 컴퓨터·비회원이 한 명이라도 낀 경기는 0점이에요 — 견줄 실력치가 없는 상대라 점수가 오르내릴 근거가 없어요(게임수·승률에는 그대로 들어갑니다). 괄호 안은 지금 순위와 전달 대비 변동이에요(전체 기간을 보면 견줄 전달이 없어 변동은 안 나와요). 숫자를 누르면 경기 이력(경기당 포인트 변화)이 열려요."
+                  label={periodMonth ? "월간 랭크" : "누적 랭크"} sortKey="rank" sort={sort} onToggle={toggleSort}
+                  tooltip={periodMonth
+                    ? "이 달 이 분류·종족에서 포인트로 매긴 순위. 완전 동률이면 공동순위(1,1,3)예요. 한 판도 안 뛰었으면 '-'고, 옆의 ▲▼는 전달 대비 몇 계단 움직였는지예요(지난달에 순위가 없었으면 안 나와요). 숫자를 누르면 최근 다섯 달 순위변동 그래프가 열려요."
+                    : "전체 기간 누적 포인트로 매긴 순위. 완전 동률이면 공동순위(1,1,3)예요. 한 판도 안 뛰었으면 '-'예요. 견줄 전달이 없어 변동(▲▼)과 순위변동 그래프는 달을 골랐을 때만 나와요."}
+                />
+                <SortableHead
+                  label={periodMonth ? "월간 포인트" : "누적 포인트"} sortKey="points" sort={sort} onToggle={toggleSort}
+                  tooltip="랭크 포인트 — 이 기간·분류의 경기들로 산정한 레이팅 점수. 최소 게임수를 안 따져요(평균이 아니라 이길 때만 쌓이는 누적이라, 적게 뛰면 그냥 적게 쌓입니다). 컴퓨터·비회원이 한 명이라도 낀 경기는 0점이에요 — 견줄 실력치가 없는 상대라 점수가 오르내릴 근거가 없어요(게임수·승률에는 그대로 들어갑니다). 숫자를 누르면 경기 이력(경기당 포인트 변화)이 열려요."
                 />
                 <SortableHead label="게임수" sortKey="plays" sort={sort} onToggle={toggleSort} />
                 <SortableHead label="승률" sortKey="rate" sort={sort} onToggle={toggleSort} />
@@ -533,6 +546,7 @@ export default function StatsScreenV2() {
                   rank={rankByMember.get(c.member.id) ?? null}
                   rankDelta={rankDeltaByMember.get(c.member.id) ?? null}
                   onPointsClick={() => setPointMember(c.member)}
+                  onRankClick={periodMonth ? () => setTrendMember(c.member) : undefined}
                   medals={medalByMember.get(c.member.id)}
                   compact
                   maxOverallPlays={maxOverallPlays}
@@ -554,6 +568,19 @@ export default function StatsScreenV2() {
           period={{ from: effectiveFrom, to: effectiveTo }}
           race={race}
           onClose={() => setPointMember(null)}
+        />
+      )}
+
+      {/* 순위변동 — 최근 다섯 달의 순위를 그린다(요청). 순위는 그 달 표 전체에서 나오는
+          값이라 회원 목록(rankPool)을 통째로 넘겨 화면과 같은 규칙으로 다시 매긴다. */}
+      {trendMember && periodMonth && (
+        <RankTrendModal
+          member={trendMember}
+          memberIds={rankPool}
+          month={periodMonth}
+          matchType={matchType}
+          race={race}
+          onClose={() => setTrendMember(null)}
         />
       )}
 
