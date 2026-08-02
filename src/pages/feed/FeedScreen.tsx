@@ -11,6 +11,7 @@ import ConfirmDialog from "../../components/common/ConfirmDialog";
 import KakaoShareButton from "../../components/common/KakaoShareButton";
 import { shareThumb, type KakaoShareContent } from "../../utils/kakaoShare";
 import GameResultCardBody, { type SearchListRow } from "./GameResultCardBody";
+import { FeedCard } from "./FeedCard";
 import { resolveSlotName } from "./GameResultSides";
 import { isComputerSlot } from "../../constants/computerSlot";
 import { isUnregisteredSlot } from "../../constants/unregisteredSlot";
@@ -311,14 +312,10 @@ function ChallengeActionsMenu({ challenge, isAdmin, onDeleted }: {
 }
 
 // 피드 카드 하단 공통 댓글 영역 — 목록은 항상, 입력창은 아이콘 옆에서 열리고 닫힌다.
+// 래퍼(.scr-feed-card-comment)는 FeedCard가 낸다 — 댓글이 있는 타입만 이 컴포넌트를
+// comment 슬롯에 넘긴다.
 function FeedCardComments({ targetType, targetId }: { targetType: FeedTargetType; targetId: number }) {
-  return (
-    // 댓글 영역의 클릭은 바깥으로 안 올린다 — 묶음 안에서는 목록 클릭이 '접기'라서(요청),
-    // 댓글을 쓰려고 입력칸을 누른 것만으로 목록이 통째로 접혀 버린다.
-    <div className="scr-feed-comments" onClick={(e) => e.stopPropagation()}>
-      <FeedComments targetType={targetType} targetId={targetId} />
-    </div>
-  );
+  return <FeedComments targetType={targetType} targetId={targetId} />;
 }
 
 // 경기 카드 — 한 경기가 피드 카드 한 장. 기존 경기 로우(접힌 상태)를 카드 본문에 그대로
@@ -327,16 +324,13 @@ function FeedCardComments({ targetType, targetId }: { targetType: FeedTargetType
 // (경기 로우·댓글·아바타 이미지)까지 다시 렌더되면서 iOS에서 기존 카드들이 깜빡였다
 // (지적: "펼치기 접기 누를 때 기존 요소들도 다시 그리는 것 같아"). 개폐 때 카드 props는
 // 전부 같은 참조라 memo가 전부 걸러낸다.
-export const GameResultCard = memo(function GameResultCard({ item, memberOf, onDeleted, dateLabel, highlightMemberIds, highlightTerms, nested = false, active = true }: {
+export const GameResultCard = memo(function GameResultCard({ item, memberOf, onDeleted, dateLabel, highlightMemberIds, highlightTerms, active = true }: {
   item: GameResultItem;
   memberOf: (id: string) => Member | undefined;
   onDeleted: () => void;
   dateLabel: string;
   highlightMemberIds?: Set<string>;
   highlightTerms?: string[];
-  // 묶음 카드 안에 들어갈 때 — 포스트 껍데기(배경·블러·꼬리여백)와 "게임결과" 제목을 벗고
-  // 내용만 낸다. 겉보기로는 한 장의 카드 안에 경기들이 이어지는 모양이 된다(요청).
-  nested?: boolean;
   // 지금 실제로 보이는 카드인가 — 접힌 묶음도 카드 본체를 투명하게 깔아 둔 채로 두기
   // 때문에(자리를 주고받는 애니메이션 때문), 이 값 없이는 안 보이는 카드의 미니맵
   // 타임라인이 혼자 돌아가 있다가 펼치는 순간 중간 장면부터 보인다.
@@ -348,36 +342,19 @@ export const GameResultCard = memo(function GameResultCard({ item, memberOf, onD
   }, [item.gameResult]);
 
   return (
-    <div className={nested ? "scr-feed-post-stack-item" : "scr-feed-card scr-post"}>
-      <div className="scr-feed-card-head" data-date-label={dateLabel}>
-        {/* 묶음 안에서는 카드 제목을 반복하지 않는다 — 바깥 카드가 이미 "게임결과 N건"이다. */}
-        {!nested && (
-          <div className="scr-feed-card-head-title">
-            {/* 게임결과는 결과지 느낌의 아이콘으로(요청) — 칼은 너 나와!가 쓴다. */}
-            <ClipboardList size={16} aria-hidden />
-            <span className="scr-feed-card-label">게임결과</span>
-          </div>
-        )}
-        <div className="scr-feed-card-head-meta">
-          <span className="scr-feed-card-time">{formatWhen(item.time, { clock: item.withClock })}</span>
-          {/* 등록자 — 예전엔 카드 안쪽 윗줄에 게임번호와 나란히 있었는데, 시각 바로 옆으로
-              옮겼다(요청). "누가 언제"가 한 자리에서 읽히고, 카드 안쪽 윗줄은 케밥만 남는다. */}
-          {item.gameResult.createdBy && (
-            <span className="scr-feed-card-by">{item.gameResult.createdBy.nickname} 등록</span>
-          )}
-        </div>
-      </div>
-      {/* 유리 패널(반투명·블러·위아래 림)은 머리를 빼고 여기만 덮는다(요청: "패널
-          블러/반투명, 위아래 림은 바디에만 적용 헤더는 떠 있는 느낌") — 머리 뒤에는
-          아무 채움도 없어서 제목이 배경 위에 그대로 떠 보인다. 케밥은 절대배치라 이
-          래퍼 밖에 둔다(기준면은 포스트 판이어야 한다). */}
-      <div className="scr-post-panel">
-        <div className="scr-feed-game-result-body">
-          <GameResultCardBody rows={rows} memberOf={memberOf} onDeleted={onDeleted} highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms} active={active} />
-        </div>
-        <FeedCardComments targetType="gameResult" targetId={item.gameResult.id} />
-      </div>
-    </div>
+    <FeedCard
+      dateLabel={dateLabel}
+      icon={<ClipboardList size={16} aria-hidden />}
+      label="게임결과"
+      timeText={formatWhen(item.time, { clock: item.withClock })}
+      headMeta={item.gameResult.createdBy && (
+        <span className="scr-feed-card-by">{item.gameResult.createdBy.nickname} 등록</span>
+      )}
+      bodyClassName="scr-feed-game-result-body"
+      comment={<FeedCardComments targetType="gameResult" targetId={item.gameResult.id} />}
+    >
+      <GameResultCardBody rows={rows} memberOf={memberOf} onDeleted={onDeleted} highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms} active={active} />
+    </FeedCard>
   );
 });
 
@@ -521,9 +498,12 @@ export function GameResultPost({
   // 내용만 늘어나는 형태다. 스크롤은 한 번도 건드리지 않는다: 카드가 아래로만 자라므로
   // 위쪽 내용이 밀릴 일이 없고, 예전에 쓰던 스크롤 상쇄는 iOS 사파리에서 잔떨림만 남겼다.
   const stackRef = useRef<HTMLDivElement>(null);
-  const listRef = useRef<HTMLDivElement>(null);
-  // 요약 껍데기와, 요약↔목록이 자리를 주고받는 바깥 껍데기(높이가 이쪽에서 움직인다).
+  // 요약 카드 자신(불필요한 중간 래퍼 없이 카드 뿌리가 곧 트랙이다)과, 요약↔목록이 자리를
+  // 주고받는 바깥 껍데기(높이가 이쪽에서 움직인다). swap의 자식은 늘 이 둘(요약 카드,
+  // 목록)뿐이라 각자에 이름표를 붙이는 대신 순서(첫째/둘째)로 가른다(요청: 트랙 전용
+  // 클래스 scr-feed-card-stack-summary/-inner 제거).
   const sumRef = useRef<HTMLDivElement>(null);
+  const innerRef = useRef<HTMLDivElement>(null);
   const swapRef = useRef<HTMLDivElement>(null);
   // 토글 직전의 껍데기 높이 — 리액트가 DOM을 바꾼 뒤에는 잴 수 없어 누를 때 미리 담아 둔다.
   const heightRef = useRef<number | null>(null);
@@ -605,7 +585,7 @@ export function GameResultPost({
     const wasToggled = toggledRef.current;
     toggledRef.current = false;
     const swap = swapRef.current;
-    const inner = stackRef.current?.querySelector<HTMLElement>(".scr-feed-post-stack-inner");
+    const inner = innerRef.current;
     const sum = sumRef.current;
     if (!swap || !inner || !sum) return;
 
@@ -631,7 +611,7 @@ export function GameResultPost({
     // 들어오는 쪽이 한 번에 나타난다. 예전엔 셋을 동시에 굴리며 카드도 하나씩 어긋나게
     // 띄웠는데, 그러면 '높이를 서로 맞춰 주는' 계산이 늘 따라붙었다(요청: 그 로직 제거).
     //
-    // 지금은 요약과 목록이 같은 껍데기(.scr-feed-post-stack-swap) 안에서 자리를 주고받는다 —
+    // 지금은 요약과 목록이 같은 껍데기(.scr-feed-card-stack-swap) 안에서 자리를 주고받는다 —
     // 비활성 쪽은 CSS가 절대배치로 흐름에서 빼므로, 껍데기의 자연 높이가 곧 '들어오는
     // 쪽의 높이'다. 그래서 맞출 게 없다.
     const from = heightRef.current;
@@ -704,114 +684,100 @@ export function GameResultPost({
   }, [open]);
 
   return (
-    // 포스트 한 장 — 요약도 경기 목록도 이 안에 있다(요청).
+    // 래퍼 한 장 — 접히면 요약 포스트 1개, 펼치면 게임결과 포스트 N개를 담는다(요청:
+    // "포스트가 여러 개인 걸로"). 래퍼 자신은 헤더·글래스가 없는 순수 레이아웃이다.
     <div
       ref={stackRef}
       className={cx(
-        "scr-feed-card scr-post scr-feed-post-stack",
-        open && "scr-feed-post-stack-opened",
-        flash && "scr-feed-post-stack-flash",
+        "scr-feed-card-stack-wrapper",
+        open && "scr-feed-card-stack-opened",
+        flash && "scr-feed-card-stack-flash",
       )}
     >
-      <div className="scr-feed-card-head" data-date-label={dateLabel}>
-        <div className="scr-feed-card-head-title">
-          <ClipboardList size={16} aria-hidden />
-          {/* 라벨 자체가 몇 건인지 말해준다(요청). 한 판일 때는 "1건"을 뺐었는데, 그러면
-              같은 자리의 글씨가 포스트마다 달라져 몇 건인지 훑기 어려웠다 — 1건도 붙인다(요청).
-              참여 인원은 아래 요약의 세미타이틀 줄로 내렸다(요청) — 제목은 "이게 무슨
-              포스트인가"만 말하고, 요약이 제 머리를 따로 갖는다. */}
-          <span className="scr-feed-card-label">
-            게임결과 {stack.items.length}건
-          </span>
-        </div>
-        <div className="scr-feed-card-head-meta">
-          {/* 다른 포스트와 같은 '언제' 규칙을 쓴다(요청: 표기 통일) — 옆 스크롤 타임라인의
-              알약에 뽑히는 data-date-label만 짧은 날짜 그대로다(거긴 늘 날짜여야 한다). */}
-          <span className="scr-feed-card-time">{formatWhen(stack.date)}</span>
-        </div>
-      </div>
-      {/* 묶음 통째로 카카오톡 공유(요청) — 링크를 열면 이 카드 한 장만 접힌 채 뜨고,
-          눌러서 펼쳐 볼 수 있다(SharePage의 sv=stack). 다른 포스트와 똑같이 우상단
-          케밥 안에 넣는다(요청). 헤더 '안'이 아니라 카드 직계 자식으로 두는 이유는
-          StackMenu 주석 참고 — 헤더 안에 두면 안 닫히고 생김새도 달라진다. */}
-      <StackMenu content={shareContent} />
-
-      {/* 요약(세미타이틀 + 참가자 로스터)과 경기 목록이 이 껍데기 안에서 자리를 주고받는다.
-          비활성 쪽은 CSS가 절대배치로 흐름에서 빼므로 껍데기의 자연 높이가 곧 지금 보이는
-          쪽의 높이다 — 둘의 높이를 서로 맞춰 주는 계산이 필요 없다(요청).
-          명단 어디를 눌러도 펼쳐진다. button 안에는 목록을 넣을 수 없어(phrasing content만
-          허용) role로 대신한다. */}
-      {/* 유리 패널은 바디만 덮는다(GameResultCard의 같은 래퍼 주석 참고) — 요약/목록과
-          그 아래 안내 토글이 한 판이고, 머리는 그 위에 떠 있다. */}
-      <div className="scr-post-panel">
-      <div className="scr-feed-post-stack-swap" ref={swapRef}>
-      <div className="scr-feed-post-stack-sum" ref={sumRef} aria-hidden={open}>
-        <div
-          className="scr-feed-post-stack-sum-body" role="button" tabIndex={open ? -1 : 0}
-          aria-expanded={open}
-          aria-label="게임결과 펼치기"
-          onClick={() => expandAndReveal()}
-          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); expandAndReveal(); } }}
+      {/* 요약 포스트와 경기 목록이 이 껍데기 안에서 자리를 주고받는다. 비활성 쪽은 CSS가
+          절대배치로 흐름에서 빼므로 껍데기의 자연 높이가 곧 지금 보이는 쪽의 높이다 —
+          둘의 높이를 서로 맞춰 주는 계산이 필요 없다(요청). 요약 쪽에 헤더("게임결과
+          N건"+케밥)까지 통째로 담아 뒀으므로, 펼치는 순간 헤더도 목록과 함께 사라진다
+          (요청: 펼치면 공유 헤더는 접힘에만 보이고 각 게임이 자기 헤더를 갖는다). */}
+      <div className="scr-feed-card-stack-swap" ref={swapRef}>
+        {/* 요약 카드 자신이 스왑 트랙이다(요청: 요약↔목록 전환에 불필요한 중간 래퍼 없이
+            단순하게) — 감싸는 .scr-feed-card-stack-sum div 없이 rootRef/ariaHidden으로
+            카드 뿌리에 바로 건다. swap의 자식은 늘 이 카드(첫째)와 목록(둘째)뿐이라
+            트랙을 가리키는 별도 클래스(scr-feed-card-stack-summary/-inner)도 없앤다 —
+            CSS가 순서(:first-child/:last-child)로 가른다(요청). */}
+        <FeedCard
+          rootRef={sumRef}
+          ariaHidden={open}
+          dateLabel={dateLabel}
+          icon={<ClipboardList size={16} aria-hidden />}
+          label={`게임결과 ${stack.items.length}건`}
+          timeText={formatWhen(stack.date)}
+          // 묶음 통째로 카카오톡 공유(요청) — 다른 포스트와 똑같이 우상단 케밥 안에
+          // 넣는다. 헤더 '안'이 아니라 카드 직계 자식으로 두는 이유는 StackMenu 주석 참고.
+          actions={<StackMenu content={shareContent} />}
         >
-          <div className="scr-feed-post-stack-sum-head">
-            <span className="scr-feed-post-stack-sum-title">요약 정보</span>
-            <span className="scr-feed-post-stack-sum-count">참가자 총 {participants.length}명</span>
-          </div>
-          <ul className="scr-feed-post-stack-sum-players">
-            {participants.map((p) => (
-              <li
-                key={p.id}
-                className={cx(
-                  "scr-feed-post-stack-sum-player",
-                  (highlightMemberIds?.has(p.id)
-                    || highlightTerms?.some((t) => normalizeSearchText(p.name).includes(t)))
-                    && "scr-feed-post-stack-sum-player-hl",
-                )}
-              >
-                <Avatar member={{ id: p.id, nickname: p.name, avatar: memberOf(p.id)?.avatar ?? null }} size={20} />
-                <span className="scr-feed-post-stack-sum-name">{p.name}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
-
-      {/* 펼치면 이 자리가 목록 높이만큼 벌어지고 카드가 하나씩 나타난다(요청).
-          예전에는 이 안 맨 위에도 '접기'가 하나 더 있었다(펼치기가 있던 자리) — 같은 일을
-          하는 버튼이 위아래로 둘이라 오히려 헷갈려서 없앴다(요청). 접기는 목록 끝의
-          버튼 하나가 맡는다. */}
-      <div className="scr-feed-post-stack-inner" aria-hidden={!open}>
-        {/* 펼쳐진 목록은 어디를 눌러도 접힌다(요청) — 경기 로우 자체는 이제 펼칠 것이
-            없어서(스탯은 시트로 나갔다) 클릭이 남아돌기 때문이다. 그 안의 진짜 버튼들
-            (스탯 보기·케밥·댓글·프로필)은 각자 stopPropagation으로 이 클릭을 막는다. */}
-        <div
-          className="scr-feed-post-stack-list" ref={listRef}
-          onClick={() => { if (open) collapseAndReveal(); }}
-        >
-          {orderedDesc.map((it) => (
-            <div key={it.gameResult.id} className="scr-feed-post-stack-reveal">
-              <GameResultCard
-                nested item={it} memberOf={memberOf} onDeleted={onDeleted} dateLabel={dateLabel}
-                highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms}
-                active={open}
-              />
+          {/* 명단 어디를 눌러도 펼쳐진다. button 안에는 목록을 넣을 수 없어(phrasing
+              content만 허용) role로 대신한다. */}
+          <div
+            className="scr-feed-card-stack-sum-body" role="button" tabIndex={open ? -1 : 0}
+            aria-expanded={open}
+            aria-label="게임결과 펼치기"
+            onClick={() => expandAndReveal()}
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); expandAndReveal(); } }}
+          >
+            <div className="scr-feed-card-stack-sum-head">
+              <span className="scr-feed-card-stack-sum-title">요약 정보</span>
+              <span className="scr-feed-card-stack-sum-count">참가자 총 {participants.length}명</span>
             </div>
+            <ul className="scr-feed-card-stack-sum-players">
+              {participants.map((p) => (
+                <li
+                  key={p.id}
+                  className={cx(
+                    "scr-feed-card-stack-sum-player",
+                    (highlightMemberIds?.has(p.id)
+                      || highlightTerms?.some((t) => normalizeSearchText(p.name).includes(t)))
+                      && "scr-feed-card-stack-sum-player-hl",
+                  )}
+                >
+                  {/* 아바타·닉네임 확대(요청) — 한 줄에 3명이던 그리드는 2명으로 줄인다
+                      (아래 .scr-feed-card-stack-sum-players 참고). */}
+                  <Avatar member={{ id: p.id, nickname: p.name, avatar: memberOf(p.id)?.avatar ?? null }} size={28} />
+                  <span className="scr-feed-card-stack-sum-name">{p.name}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </FeedCard>
+
+        {/* 펼치면 이 자리가 목록 높이만큼 벌어지고, 승격된 포스트가 하나씩 나타난다
+            (요청: 게임결과 카드도 하나의 피드 포스트로 승격) — 각 포스트가 실제 댓글
+            입력창을 갖게 되므로, 예전의 "목록 아무 데나 눌러 접기"는 없앴다(요청) —
+            접기는 아래 전용 버튼으로만 한다. 목록 정렬(flex/gap)도 이 트랙 자신이
+            맡는다 — 그 역할만 하던 별도 .scr-feed-card-stack-list 래퍼는 없앤다. */}
+        <div ref={innerRef} aria-hidden={!open}>
+          {orderedDesc.map((it) => (
+            <GameResultCard
+              key={it.gameResult.id}
+              item={it} memberOf={memberOf} onDeleted={onDeleted} dateLabel={dateLabel}
+              highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms}
+              active={open}
+            />
           ))}
         </div>
-      </div>
       </div>
 
       {/* 이 버튼은 이제 누르는 곳이라기보다 '어디를 눌러야 하는지' 알려 주는 안내문이다
           (요청) — 포스트 어디를 눌러도 펼침/접힘이 되므로, 방향 삼각형 대신 그 사실을
-          글자로 말한다. 버튼으로 남겨 두는 건 키보드로도 여전히 여닫을 수 있게 하려는 것. */}
+          글자로 말한다. 버튼으로 남겨 두는 건 키보드로도 여전히 여닫을 수 있게 하려는 것.
+          펼친 뒤에는 이 버튼이 유일한 접기 트리거다(요청). */}
       <button
         ref={toggleRef}
-        type="button" className="scr-feed-post-stack-toggle"
+        type="button" className="scr-feed-card-stack-toggle"
         onClick={() => (open ? collapseAndReveal() : expandAndReveal())} aria-expanded={open}
       >
         {labelOpen ? "포스트 눌러서 요약보기" : "포스트 눌러서 펼치기"}
       </button>
-      </div>
     </div>
   );
 }
@@ -1334,30 +1300,30 @@ export default function FeedScreen() {
             ) : null;
             const card = (
             item.kind === "rankingShift" ? (
-              <RankingShiftCard
-                key={`rs-${item.shift.id}`}
-                shift={item.shift}
-                timeText={formatWhen(item.time, { clock: item.withClock })}
-                dateLabel={dateLabelOf(item)}
-                actions={<RankingShiftMenu shift={item.shift} />}
-                highlightMemberIds={matchedIds}
-                highlightTerms={searchTerms}
-                /* 순위변동 알림에도 댓글(요청) — 경기/너나와 카드와 같은 공통 댓글 영역.
-                   그 위에 있던 "실시간 랭크 확인" 링크는 걷어냈다(요청). */
-                /* 하루에 스냅샷 한 건이라 댓글 실도 자연히 하나다(요청: 한 로우). */
-                footer={<FeedCardComments targetType="rankingShift" targetId={item.shift.id} />}
-              />
+              <div className="scr-feed-card-stack-wrapper" key={`rs-${item.shift.id}`}>
+                <RankingShiftCard
+                  shift={item.shift}
+                  timeText={formatWhen(item.time, { clock: item.withClock })}
+                  dateLabel={dateLabelOf(item)}
+                  actions={<RankingShiftMenu shift={item.shift} />}
+                  highlightMemberIds={matchedIds}
+                  highlightTerms={searchTerms}
+                  /* 순위변동 알림에도 댓글(요청) — 경기/너나와 카드와 같은 공통 댓글 영역.
+                     그 위에 있던 "실시간 랭크 확인" 링크는 걷어냈다(요청). */
+                  /* 하루에 스냅샷 한 건이라 댓글 실도 자연히 하나다(요청: 한 로우). */
+                  footer={<FeedCardComments targetType="rankingShift" targetId={item.shift.id} />}
+                />
+              </div>
             ) : item.kind === "challenge" ? (
-              <div className="scr-feed-card scr-post" key={`c-${item.challenge.id}`}>
-                <div className="scr-feed-card-head" data-date-label={dateLabelOf(item)}>
-                  <div className="scr-feed-card-head-title">
-                    {/* 너 나와!는 "호출"이니 수화기 아이콘으로(요청) — 등록 메뉴·호출 버튼과 통일. */}
-                    <Phone size={16} aria-hidden />
-                    <span className="scr-feed-card-label">너 나와!</span>
-                  </div>
-                  {/* 시각·마감·일시수정은 전부 '언제'에 대한 것이라 제목 바로 옆에 함께 둔다(요청). */}
-                  <div className="scr-feed-card-head-meta">
-                    <span className="scr-feed-card-time">{formatWhen(item.time, { clock: item.withClock })}</span>
+              <div className="scr-feed-card-stack-wrapper" key={`c-${item.challenge.id}`}>
+                <FeedCard
+                  dateLabel={dateLabelOf(item)}
+                  // 너 나와!는 "호출"이니 수화기 아이콘으로(요청) — 등록 메뉴·호출 버튼과 통일.
+                  icon={<Phone size={16} aria-hidden />}
+                  label="너 나와!"
+                  timeText={formatWhen(item.time, { clock: item.withClock })}
+                  // 시각·마감·일시수정은 전부 '언제'에 대한 것이라 제목 바로 옆에 함께 둔다(요청).
+                  headMeta={<>
                     {/* 응답 마감 실시간 카운트다운 — 날짜 옆, 헤더와 같은 폰트 크기(요청). */}
                     <ChallengeCountdown challenge={item.challenge} />
                     {/* 일시(시간) 수정 — 시각은 헤더가 이미 보여주므로 연필만 얹는다(중복 표기
@@ -1368,27 +1334,27 @@ export default function FeedScreen() {
                       myId={user?.id}
                       onUpdated={upsertChallenge}
                     />
-                  </div>
-                </div>
-                <ChallengeActionsMenu
-                  challenge={item.challenge}
-                  isAdmin={isAdmin}
-                  onDeleted={(id) => setChallenges((prev) => prev.filter((c) => c.id !== id))}
-                />
-                {/* 유리 패널은 바디만 덮는다(GameResultCard의 같은 래퍼 주석 참고). */}
-                <div className="scr-post-panel">
-                  <div className="scr-feed-card-body">
-                    <ChallengeCard
+                  </>}
+                  actions={
+                    <ChallengeActionsMenu
                       challenge={item.challenge}
-                      myId={user?.id}
-                      highlightMemberIds={matchedIds}
-                      onResponded={upsertChallenge}
+                      isAdmin={isAdmin}
+                      onDeleted={(id) => setChallenges((prev) => prev.filter((c) => c.id !== id))}
                     />
-                  </div>
-                  <FeedCardComments targetType="challenge" targetId={item.challenge.id} />
-                </div>
+                  }
+                  comment={<FeedCardComments targetType="challenge" targetId={item.challenge.id} />}
+                >
+                  <ChallengeCard
+                    challenge={item.challenge}
+                    myId={user?.id}
+                    highlightMemberIds={matchedIds}
+                    onResponded={upsertChallenge}
+                  />
+                </FeedCard>
               </div>
             ) : item.kind === "gameResultPost" ? (
+              // GameResultPost는 접힘/펼침에 따라 카드가 1~N개로 늘어나므로, 자기 몫의
+              // .scr-feed-card-stack-wrapper를 스스로 렌더한다 — 여기서 또 감싸지 않는다.
               <GameResultPost
                 // 같은 세션이라도 중간에 다른 종류 카드가 끼면 스택이 둘로 갈린다 —
                 // 날짜+시각만으로는 그 둘이 같은 키가 될 수 있어 첫 경기 id로 못박는다.
@@ -1402,15 +1368,16 @@ export default function FeedScreen() {
                 defaultOpen={filterActive}
               />
             ) : (
-              <GameResultCard
-                key={`m-${item.gameResult.id}`}
-                item={item}
-                memberOf={memberOf}
-                onDeleted={handleGameResultDeleted}
-                dateLabel={dateLabelOf(item)}
-                highlightMemberIds={matchedIds}
-                highlightTerms={searchTerms}
-              />
+              <div className="scr-feed-card-stack-wrapper" key={`m-${item.gameResult.id}`}>
+                <GameResultCard
+                  item={item}
+                  memberOf={memberOf}
+                  onDeleted={handleGameResultDeleted}
+                  dateLabel={dateLabelOf(item)}
+                  highlightMemberIds={matchedIds}
+                  highlightTerms={searchTerms}
+                />
+              </div>
             )
             );
             return divider ? [divider, card] : [card];

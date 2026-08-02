@@ -615,9 +615,11 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
   // 편집까지 되면 시트를 여는 탭과 버튼 탭이 같은 자리에서 겹친다).
   const renderNote = (c: FeedComment, interactive: boolean) => (
     <li key={c.id} className="scr-mreq-item scr-feed-note-item">
+      {/* 포스트 본문(너 나와/게임요약)보다 댓글이 더 중요해 보이면 안 된다는 지적으로
+          아주 살짝만 줄인다(32 → 28) — 포스트 쪽 아바타는 반대로 키운다. */}
       <Avatar
         member={{ id: c.author.memberId, nickname: c.author.nickname, avatar: c.author.avatar }}
-        size={32}
+        size={28}
         className="scr-feed-note-avatar"
       />
       <div className="scr-feed-note-body">
@@ -687,9 +689,7 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
     // 로우 전체가 클릭 토글이라, 댓글 영역에서의 클릭/입력은 로우 접힘을 막는다.
     // 시트는 body 포털로 나가지만 리액트 이벤트는 이 트리를 따라 올라오므로 여기서 함께 막힌다.
     <div
-      // 댓글이 하나도 없으면 "댓글 쓰기" 아이콘이 줄을 차지하지 않고 포스트 바디 아래
-      // 여백 왼쪽 구석에 얹힌다(요청) — 자리는 CSS(.scr-feed-notes-empty)가 잡는다.
-      className={cx("scr-feed-notes", notes.length === 0 && "scr-feed-notes-empty")}
+      className="scr-feed-notes"
       onClick={(e) => e.stopPropagation()}
     >
       {/* 댓글이 있을 때만 "댓글" 소제목을 단다(지적: 댓글과 본문 구역 구분이 안 됨 —
@@ -766,7 +766,7 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
       {mobile && sheetOpen && createPortal(
         <div
           ref={sheetRef}
-          className={cx("scr-comment-sheet scr-post scr-feed-comments scr-feed-notes", typing && "scr-comment-sheet-typing")}
+          className={cx("scr-comment-sheet scr-feed-card-comment scr-feed-notes", typing && "scr-comment-sheet-typing")}
           role="dialog" aria-label="댓글"
           onFocus={() => setTyping(true)}
           onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setTyping(false); }}

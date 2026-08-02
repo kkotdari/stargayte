@@ -1082,29 +1082,27 @@ export default function GameResultStory({
           setIndex((i) => Math.min(sentences.length - 1, Math.max(0, i + d)));
           setPlaying(false);
         } : undefined}
+        // 자막 패널을 없애고 자막을 미니맵 가운데에 얹는다(요청) — ReplayMinimap이
+        // 지도 위에 겹쳐서(overlay) 그린다.
+        caption={sentences.length > 0 && (
+          <div className="scr-story-cap">
+            {sentences.map((sn, i) => (
+              <p
+                key={i}
+                className={cx("scr-story-cap-line", i === introIdx && "scr-story-cap-intro")}
+                aria-hidden={i !== index} data-on={i === index}
+              >
+                {/* 언제 있었던 일인지 앞에 붙인다(요청: [5분]처럼 분까지만). 시각을 모르는
+                    문장(맺음말 등)은 아무것도 안 붙인다 — 0분이라고 적으면 거짓말이다. */}
+                {capMin(sn) !== null && <span className="scr-story-cap-time">[{capMin(sn)}분]</span>}
+                {sn.parts.map((pt, j) => (pt.team
+                  ? <span key={j} className={pt.team === 1 ? "scr-sum-team1" : "scr-sum-team2"}>{pt.text}</span>
+                  : <span key={j}>{pt.text}</span>))}
+              </p>
+            ))}
+          </div>
+        )}
       />
-      {/* 자막은 미니맵과 같은 감싸개 안에 둔다(요청: 미니맵과 자막 사이 갭 완전히 없애기) —
-          바깥(.scr-story)의 세로 간격은 24px이라 음수 마진으로 되돌리기엔 값을 짐작해야 했고
-          실제로 14px이 남아 있었다(실측). 여기 안의 간격은 6px 하나뿐이라 정확히 지운다. */}
-
-      {sentences.length > 0 && (
-      <div className="scr-story-cap">
-        {sentences.map((sn, i) => (
-          <p
-            key={i}
-            className={cx("scr-story-cap-line", i === introIdx && "scr-story-cap-intro")}
-            aria-hidden={i !== index} data-on={i === index}
-          >
-            {/* 언제 있었던 일인지 앞에 붙인다(요청: [5분]처럼 분까지만). 시각을 모르는
-                문장(맺음말 등)은 아무것도 안 붙인다 — 0분이라고 적으면 거짓말이다. */}
-            {capMin(sn) !== null && <span className="scr-story-cap-time">[{capMin(sn)}분]</span>}
-            {sn.parts.map((pt, j) => (pt.team
-              ? <span key={j} className={pt.team === 1 ? "scr-sum-team1" : "scr-sum-team2"}>{pt.text}</span>
-              : <span key={j}>{pt.text}</span>))}
-          </p>
-        ))}
-      </div>
-      )}
     </div>
   );
 

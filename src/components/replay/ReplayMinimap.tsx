@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import ReplayMapCanvas from "./ReplayMapCanvas";
 import Avatar from "../common/Avatar";
 import RaceBadge from "../common/RaceBadge";
@@ -202,7 +202,7 @@ export interface MinimapMarker {
 }
 
 export default function ReplayMinimap({
-  grid, bases, arrows = [], onStep, className,
+  grid, bases, arrows = [], onStep, className, caption,
 }: {
   grid: ReplayMapGrid;
   /** 늘 보이는 본진 표시(요청: 본진은 아바타+닉네임 계속 표시). 지금 문장의 주인공은
@@ -213,6 +213,10 @@ export default function ReplayMinimap({
   /** 그림 좌·우 절반을 눌러 장면을 옮긴다(요청) — -1이면 이전, +1이면 다음. */
   onStep?: (delta: -1 | 1) => void;
   className?: string;
+  /** 자막 — 별도 패널 없이 미니맵 가운데에 얹는다(요청: 자막 패널을 없애고 자막을 미니맵
+   *  가운데에 노출). 클릭은 그대로 지도 좌우 절반(.scr-minimap-half)에 떨어져야 하므로
+   *  이 레이어는 pointer-events:none이다. */
+  caption?: ReactNode;
 }) {
   /* 이름표가 프레임 밖(카드 자체의 바깥 패딩)까지 나가면 그만큼 안으로 되돌린다(지적:
    * "이름표가 밖으로 나가면 보정해서 안으로 이동시키라고 했잖아") — 닉네임 글자 수마다
@@ -537,6 +541,7 @@ export default function ReplayMinimap({
           onClick={(e) => { e.stopPropagation(); onStep(d); }}
         />
       ))}
+      {caption && <div className="scr-minimap-caption">{caption}</div>}
       </div>
     </div>
   );

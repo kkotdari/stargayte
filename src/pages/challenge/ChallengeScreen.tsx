@@ -23,16 +23,30 @@ import type { Challenge, ChallengeResult, ChallengeSide, ChallengeTarget } from 
 // 파생 계산을 하지 않는다(서버가 내려준 status를 그대로 쓴다).
 
 type PillTone = "pending" | "accepted" | "rejected" | "discarded";
+const PILL_LABEL: Record<PillTone, string> = { accepted: "수락", rejected: "거절", discarded: "버림", pending: "대기" };
 
-// 상대 한 명의 응답 배지 — 수락/거절/버림/대기로 구분한다(아바타 옆 작은 배지). 각자의 실제
-// 응답을 그대로 쓴다 — 무응답 거절(폐기)이어도 그 사람이 실제로는 응답하지 않았으므로 "대기"로
-// 남는다. "버림"(discarded)은 편지봉투를 열지 않고 사유 없이 버린 것으로, 사유가 있는 "거절"
-// (rejected)과 구분해 표시한다(요청: "버림으로 상태 표시(거절하고 다른 응답)").
+// 상대 한 명의 응답 톤 — 수락/거절/버림/대기로 구분한다. 각자의 실제 응답을 그대로 쓴다 —
+// 무응답 거절(폐기)이어도 그 사람이 실제로는 응답하지 않았으므로 "대기"로 남는다. "버림"
+// (discarded)은 편지봉투를 열지 않고 사유 없이 버린 것으로, 사유가 있는 "거절"(rejected)과
+// 구분해 표시한다(요청: "버림으로 상태 표시(거절하고 다른 응답)").
 function targetPillInfo(t: ChallengeTarget): { tone: PillTone } {
   if (t.response === "accepted") return { tone: "accepted" };
   if (t.response === "rejected") return { tone: "rejected" };
   if (t.response === "discarded") return { tone: "discarded" };
   return { tone: "pending" };
+}
+
+// 상대편 전체(팀전이면 여러 명)를 한 톤으로 요약한다 — 결과가 들어오기 전, 손 이모지 옆
+// 공용 슬롯에 띄울 값이다(요청: "응답 상태를 결과 배지 부분과 공유"). 한 명이라도 거절했으면
+// 거절, 전원 버려졌으면 버림, 전원 수락이면 수락, 그 외(한 명이라도 아직 대기)엔 대기로
+// 본다 — 1:1이면 그 한 명의 응답이 곧 이 값이다.
+function aggregateTargetTone(targets: ChallengeTarget[]): PillTone {
+  if (targets.length === 0) return "pending";
+  const tones = targets.map((t) => targetPillInfo(t).tone);
+  if (tones.some((tone) => tone === "rejected")) return "rejected";
+  if (tones.every((tone) => tone === "discarded")) return "discarded";
+  if (tones.every((tone) => tone === "accepted")) return "accepted";
+  return "pending";
 }
 
 
@@ -70,29 +84,43 @@ function ChallengeSide({
 }) {
   return (
     <div className={cx("scr-challenge-side", targets && "scr-challenge-side-target")}>
-      {people.map((p, i) => {
-        const t = targets?.[i];
-        const tone = t ? targetPillInfo(t.target).tone : null;
+      {people.map((p) => {
         const msg = messageOf?.(p.id);
+        // 인스타그램식 배치(요청) — 아바타를 왼쪽 칸에 크게 두고, 닉네임·한마디는 전부
+        // 오른쪽 칸에 세로로 쌓는다. 예전엔 아바타가 닉네임과 한 줄(scr-challenge-person)에
+        // 나란히 있어 아바타를 키우기 어려웠고, 한마디도 그 줄 밑에 아바타 폭만큼
+        // margin-left로 억지로 들여써야 했다.
+        //
+        // 응답 배지(대기/수락/거절)는 더 이상 여기(사람 옆)에 안 찍는다(요청: "응답 상태를
+        // 결과 배지 부분과 공유해서 사용 — 결과 배지가 들어가면 응답 상태는 불필요") — 손
+        // 이모지 옆 공용 슬롯(ChallengeCard의 scr-challenge-arrow-row) 하나가 결과 입력
+        // 전에는 응답 상태를, 입력 후에는 승/무 결과를 보여준다.
+        //
+        // 그리드로 짠다(요청: "아바타가 닉네임 및 손 이모지, 응답 배지와 세로로 가운데
+        // 정렬되게") — 아바타는 1행에만 놓여 그 행의 트랙 높이를 자기 크기(34px)만큼
+        // 밀어 올리고, 닉네임 줄은 그 행 안에서 align-self:center로 가운데 앉는다(=아바타와
+        // 같은 중심선). 한마디는 2행으로 따로 떨어져(요청: "말풍선은 아래쪽에 위치하는
+        // 느낌으로") 아바타 높이와 무관하게 밑에 붙는다. flex였다면 아바타 높이가
+        // 그대로 전체 블록 정렬 기준이 돼(align-items:center) 한마디까지 포함한 전체
+        // 높이 기준으로 가운데 잡혀버렸을 것이다 — 그리드는 행이 갈려 있어 1행(닉네임)만
+        // 따로 기준 삼을 수 있다.
         return (
-          <div key={p.id} className="scr-challenge-side-block">
+          <div
+            key={p.id}
+            className={cx("scr-challenge-side-block", highlightMemberIds?.has(p.id) && "scr-challenge-person-hit")}
+          >
+            <Avatar member={p} size={34} className="scr-challenge-side-avatar" />
             <div className="scr-challenge-side-row">
-              <span className={cx("scr-challenge-person", highlightMemberIds?.has(p.id) && "scr-challenge-person-hit")}>
-                <Avatar member={p} size={20} />
-                <span className="scr-challenge-person-name">{p.nickname}</span>
-              </span>
-              {/* 응답 배지 — 수락/거절/대기 세 가지로만 구분한 작은 도장식 알약(요청:
-                  "응답 배지는 수락/거절/대기 세개로 통일" → "수락 거절 대기 글자 배지로
-                  해줘 작고 진하게" → "닉네임 옆으로 다시 이동" — 아바타에 겹치는
-                  대신 다시 이름 옆 인라인으로). */}
-              {tone && (
-                <span className={cx("scr-challenge-avatar-badge", `scr-challenge-avatar-badge-${tone}`)}>
-                  {tone === "accepted" ? "수락" : tone === "rejected" ? "거절" : tone === "discarded" ? "버림" : "대기"}
-                </span>
-              )}
+              <span className="scr-challenge-person-name">{p.nickname}</span>
             </div>
-            {/* 한마디 — 따옴표 없이, 닉네임보다 한 단계 작은 글자로(요청). */}
-            {msg && <span className="scr-challenge-side-msg">{msg}</span>}
+            {/* 한마디 — 따옴표 없이, 닉네임보다 한 단계 작은 글자로(요청). 있든 없든 항상
+                이 자리를 그린다(요청: "한마디가 있건 없건 레이아웃 유지되게 자리를 예약")
+                — 없으면 보이지만 않게(visibility:hidden) 하고 자리는 그대로 차지해서,
+                같은 편 안에서 어떤 사람은 한마디가 있고 어떤 사람은 없어도 줄 높이가
+                들쭉날쭉해지지 않는다. */}
+            <span className={cx("scr-challenge-side-msg", !msg && "scr-challenge-side-msg-empty")}>
+              {msg || " "}
+            </span>
           </div>
         );
       })}
@@ -266,7 +294,10 @@ export function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, o
         {/* 약속한 "언제" — 로스터 바로 위에 그냥 글로 보여준다(요청: 인풋창이 아니라
             텍스트로). 안 적었으면 줄 자체를 안 만든다. */}
             {challenge.scheduledTimeNote.trim() && (
-              <div className="scr-challenge-when-note">{challenge.scheduledTimeNote}</div>
+              <div className="scr-challenge-when-note">
+                <span className="scr-challenge-when-label">언제</span>
+                {challenge.scheduledTimeNote}
+              </div>
             )}
 
             <div className="scr-challenge-matchup">
@@ -279,10 +310,14 @@ export function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, o
               {/* 승/무 배지 — 이긴 편 쪽으로(손 이모지 기준 이긴 편이 있는 방향에) 붙인다
                   (요청: "승리배지는 손 이모지 옆에 표시(이긴쪽에)"). 자리가 좁아 "승리"
                   대신 한 글자만(요청: "좁아서 그냥 승/무 한글자 배지로 표시해야할듯").
-                  무승부는 어느 한쪽 편이 아니라 양쪽 다 표시한다. 양쪽 다 자리를 항상
-                  예약해 두고 해당 안 되는 쪽만 투명하게(visibility:hidden) — 안 그러면
-                  페이지를 넘길 때 배지 유무에 따라 손 이모지가 좌우로 흔들린다(요청:
-                  "손이모지 양옆에도 승리/무승부 배지 넣을 공간 예약해야함"). */}
+                  무승부는 어느 한쪽 편이 아니라 양쪽 다 표시한다. 도전자편은 개별 응답이
+                  없어(ChallengeOwnMember 참고) 결과가 나오기 전엔 항상 자리만 예약해 두고
+                  투명하게 비운다(visibility:hidden) — 안 그러면 페이지를 넘길 때 배지
+                  유무에 따라 손 이모지가 좌우로 흔들린다(요청: "손이모지 양옆에도 승리/
+                  무승부 배지 넣을 공간 예약해야함"). 상대편은 개별 응답이 있으므로, 결과가
+                  나오기 전엔 그 자리에 응답 상태(대기/수락/거절/버림)를 대신 보여준다
+                  (요청: "응답 상태를 결과 배지 부분과 공유해서 사용 — 결과 배지가 들어가면
+                  응답 상태는 불필요하므로"). */}
               <span className="scr-challenge-arrow-row">
                 <span
                   className={cx(
@@ -295,16 +330,27 @@ export function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, o
                   {challenge.resultWinnerSide === "draw" ? "무" : "승"}
                 </span>
                 <span className="scr-challenge-arrow" aria-hidden="true">👉🏻</span>
-                <span
-                  className={cx(
-                    "scr-challenge-inline-win",
-                    challenge.resultWinnerSide === "draw" && "scr-challenge-inline-draw",
-                    challenge.resultWinnerSide !== "target" && challenge.resultWinnerSide !== "draw"
-                      && "scr-challenge-inline-win-hidden",
-                  )}
-                >
-                  {challenge.resultWinnerSide === "draw" ? "무" : "승"}
-                </span>
+                {challenge.resultWinnerSide ? (
+                  <span
+                    className={cx(
+                      "scr-challenge-inline-win",
+                      challenge.resultWinnerSide === "draw" && "scr-challenge-inline-draw",
+                      challenge.resultWinnerSide !== "target" && challenge.resultWinnerSide !== "draw"
+                        && "scr-challenge-inline-win-hidden",
+                    )}
+                  >
+                    {challenge.resultWinnerSide === "draw" ? "무" : "승"}
+                  </span>
+                ) : (
+                  <span
+                    className={cx(
+                      "scr-challenge-inline-win", "scr-challenge-inline-status",
+                      `scr-challenge-avatar-badge-${aggregateTargetTone(challenge.targets)}`,
+                    )}
+                  >
+                    {PILL_LABEL[aggregateTargetTone(challenge.targets)]}
+                  </span>
+                )}
               </span>
               <ChallengeSide
                 people={targetSideMembers} targets={activeTargetInfos} highlightMemberIds={highlightMemberIds}

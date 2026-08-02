@@ -5,6 +5,7 @@ import { cx } from "../../utils/format";
 import { normalizeSearchText } from "../../utils/memberSearch";
 import { shareThumb, type KakaoShareContent } from "../../utils/kakaoShare";
 import type { RankingShiftEntry, RankingShift } from "../../types";
+import { FeedCard } from "./FeedCard";
 
 // 랭크 변동 카드 — 피드와 카카오톡 공유 페이지(?sv=rankingShift)가 같은 마크업을 쓰도록
 // 분리했다(요청: "순위변동 발생도 카톡공유 가능, 피드는 다 가능하게"). 헤더 오른쪽
@@ -125,57 +126,48 @@ export default function RankingShiftCard({
      목록을 밀어내지 않고, 접혀 있으면 정작 궁금한 아래쪽 순위가 늘 가려졌다. */
   const cols = SECTION_LABELS.map((s) => ({ ...s, rows: sectionOf(shift, s.matchType) }));
   return (
-    <div className="scr-feed-card scr-post">
-      <div className="scr-feed-card-head" {...(dateLabel ? { "data-date-label": dateLabel } : {})}>
-        <div className="scr-feed-card-head-title">
-          <Trophy size={16} aria-hidden />
-          <span className="scr-feed-card-label">{RANK_SHIFT_TITLE}</span>
-        </div>
-        <div className="scr-feed-card-head-meta">
-          {timeText && <span className="scr-feed-card-time">{timeText}</span>}
-        </div>
-      </div>
-      {actions}
-      {/* 유리 패널(반투명·블러·위아래 림)은 머리를 빼고 여기만 덮는다(요청: 머리는 떠 있는
-          느낌) — FeedScreen의 같은 래퍼와 한 규칙이다. actions(케밥)는 절대배치라 밖에 둔다. */}
-      <div className="scr-post-panel">
-        {/* 개인전·팀전을 한 카드에 반씩 나눠 담는다(요청) — 예전엔 유형마다 카드가 따로
-            떠서 같은 날 아침에 두 장이 나란히 붙었다. 가운데 구분선은 위아래를 조금 띄워
-            (요청: 살짝 위아래 패딩) 카드 테두리까지 닿지 않게 한다. */}
-        <div className="scr-feed-shift-split">
-          {cols.map(({ label, rows }) => (
-            <section className="scr-feed-shift-col" key={label}>
-              <h4 className="scr-feed-shift-col-head">{label}</h4>
-              {rows.length === 0 ? (
-                <p className="scr-feed-shift-none">변동 없음</p>
-              ) : (
-                <ul className="scr-feed-shift-list">
-                  {rows.map((e) => {
-                    const rank = shiftLabel(e);
-                    const pts = pointLabel(e);
-                    return (
-                      <li
-                        key={`${e.memberId}-${e.to}`}
-                        className={cx("scr-feed-shift-row",
-                          (highlightMemberIds?.has(e.memberId)
-                            || highlightTerms?.some((t) => normalizeSearchText(e.nickname).includes(t)))
-                            && "scr-feed-shift-row-hl")}
-                      >
-                        <span className="scr-feed-shift-name">{e.nickname}</span>
-                        {/* "조조 1 → 3위 -100p"(요청) — 몇 계단인지를 배지로 말하는 대신
-                            어디서 어디로 갔는지를 그대로 적고, 그 근거인 포인트 변동을 옆에. */}
-                        <span className={rank.cls}>{rank.text}</span>
-                        {pts && <span className={cx("scr-feed-shift-pts", pts.cls)}>{pts.text}</span>}
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </section>
-          ))}
-        </div>
-        {footer}
-      </div>
-    </div>
+    <FeedCard
+      dateLabel={dateLabel}
+      icon={<Trophy size={16} aria-hidden />}
+      label={RANK_SHIFT_TITLE}
+      timeText={timeText}
+      actions={actions}
+      // 개인전·팀전을 한 카드에 반씩 나눠 담는다(요청) — 예전엔 유형마다 카드가 따로
+      // 떠서 같은 날 아침에 두 장이 나란히 붙었다. 가운데 구분선은 위아래를 조금 띄워
+      // (요청: 살짝 위아래 패딩) 카드 테두리까지 닿지 않게 한다.
+      bodyClassName="scr-feed-shift-split"
+      comment={footer}
+    >
+      {cols.map(({ label, rows }) => (
+        <section className="scr-feed-shift-col" key={label}>
+          <h4 className="scr-feed-shift-col-head">{label}</h4>
+          {rows.length === 0 ? (
+            <p className="scr-feed-shift-none">변동 없음</p>
+          ) : (
+            <ul className="scr-feed-shift-list">
+              {rows.map((e) => {
+                const rank = shiftLabel(e);
+                const pts = pointLabel(e);
+                return (
+                  <li
+                    key={`${e.memberId}-${e.to}`}
+                    className={cx("scr-feed-shift-row",
+                      (highlightMemberIds?.has(e.memberId)
+                        || highlightTerms?.some((t) => normalizeSearchText(e.nickname).includes(t)))
+                        && "scr-feed-shift-row-hl")}
+                  >
+                    <span className="scr-feed-shift-name">{e.nickname}</span>
+                    {/* "조조 1 → 3위 -100p"(요청) — 몇 계단인지를 배지로 말하는 대신
+                        어디서 어디로 갔는지를 그대로 적고, 그 근거인 포인트 변동을 옆에. */}
+                    <span className={rank.cls}>{rank.text}</span>
+                    {pts && <span className={cx("scr-feed-shift-pts", pts.cls)}>{pts.text}</span>}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+      ))}
+    </FeedCard>
   );
 }
