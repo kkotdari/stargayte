@@ -7456,13 +7456,8 @@ html.scr-light-theme .scr-feed-add-fab {
 }
 .scr-feed-shift-none { margin: 0; color: var(--dim); font-size: var(--fs-caption); }
 .scr-feed-shift-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
-/* 변동이 많으면 위에서 4개만 보이고 "…더보기"로 접힌다 — 카드를 누르면 펼쳐진다(요청). */
-.scr-feed-shift-list-toggle { cursor: pointer; -webkit-tap-highlight-color: transparent; }
-.scr-feed-shift-more {
-  display: flex; align-items: center; gap: 6px; margin-top: 2px;
-  color: var(--dim); font-size: var(--fs-caption); font-weight: 600;
-}
-@media (hover: hover) { .scr-feed-shift-list-toggle:hover .scr-feed-shift-more { color: var(--text); } }
+/* (삭제) "…외 N건"으로 접던 규칙 — 길어도 줄이지 않는다(요청). 하루에 한 장뿐인
+   카드라 길어도 목록을 밀어내지 않고, 접혀 있으면 정작 궁금한 아래쪽 순위가 늘 가려졌다. */
 .scr-feed-shift-row { display: flex; align-items: baseline; gap: 8px; font-size: var(--fs-caption); }
 /* 칸이 반으로 좁아지면서(요청) 긴 닉네임이 줄을 접었고, 그 바람에 "5 → 4위"의 '위'까지
    다음 줄로 넘어가 한 사람의 변동이 두 줄로 찢어졌다(실측). 순위·포인트는 절대 안 접고,

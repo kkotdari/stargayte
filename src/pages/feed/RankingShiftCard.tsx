@@ -6,9 +6,6 @@ import { normalizeSearchText } from "../../utils/memberSearch";
 import { shareThumb, type KakaoShareContent } from "../../utils/kakaoShare";
 import type { RankingShiftEntry, RankingShift } from "../../types";
 
-// 변동이 이보다 많으면 위에서 이 개수만 보이고 나머지는 "…더보기"로 접는다(요청).
-const SHIFT_COLLAPSE_AT = 4;
-
 // 랭크 변동 카드 — 피드와 카카오톡 공유 페이지(?sv=rankingShift)가 같은 마크업을 쓰도록
 // 분리했다(요청: "순위변동 발생도 카톡공유 가능, 피드는 다 가능하게"). 헤더 오른쪽
 // 케밥(actions)과 하단(댓글, footer)은 쓰는 쪽이 끼워 넣는다.
@@ -46,7 +43,7 @@ export function pointLabel(e: RankingShiftEntry): { text: string; cls: string } 
 /** 카드·공유에 쓰는 제목(요청: "일일 랭크 변동 알림") — 하루치를 모아 아침에 한 번만
  *  남기는 카드라 '발생'보다 '일일 알림'이 실제 동작에 맞다. 유형은 제목이 아니라 카드
  *  안의 좌우 두 칸이 말한다(요청: 개인전·팀전을 한 카드에 반씩). */
-export const RANK_SHIFT_TITLE = "일일 랭크 변동 알림";
+export const RANK_SHIFT_TITLE = "일일 랭크 변동";
 
 /** 카드가 좌우로 나눠 그리는 순서와 이름 — 서버가 sections에 담아 주는 유형들이다.
  *  유형이 늘면 여기 한 줄만 더하면 된다(저장 형식은 안 바뀐다). */
@@ -92,7 +89,7 @@ export function RankingShiftMenu({ shift }: { shift: RankingShift }) {
       {open && (
         <>
           {/* 백드롭 클릭은 '메뉴 닫기'에서 끝나야 한다(지적) — 안 끊으면 그 클릭이 카드
-              본체까지 올라가 순위변동 목록의 펼침/접힘까지 같이 눌린다. */}
+              본체까지 올라간다. */}
           <div
             className="scr-feed-add-backdrop"
             onClick={(e) => { e.stopPropagation(); setOpen(false); }}
@@ -124,13 +121,9 @@ export default function RankingShiftCard({
   highlightMemberIds?: Set<string>;
   highlightTerms?: string[];
 }) {
-  /* 변동이 4개 넘으면 위에서 4개만 보이고 나머지는 "…더보기"로 접힌다. 카드를 누르면
-     펼쳐지고 다시 누르면 접힌다(요청). 펼침 상태는 좌우 두 칸이 함께 쓴다 — 칸마다 따로
-     접히면 같은 카드 안에서 높이가 제각각 흔들려 무엇을 눌러야 하는지가 흐려진다. */
-  const [expanded, setExpanded] = useState(false);
+  /* 접기/펴기는 없앴다(요청: 길어도 줄이지 않기) — 하루에 한 장뿐인 카드라 길어도
+     목록을 밀어내지 않고, 접혀 있으면 정작 궁금한 아래쪽 순위가 늘 가려졌다. */
   const cols = SECTION_LABELS.map((s) => ({ ...s, rows: sectionOf(shift, s.matchType) }));
-  const overflow = cols.some((c) => c.rows.length > SHIFT_COLLAPSE_AT);
-  const toggle = () => setExpanded((v) => !v);
   return (
     <div className="scr-feed-card scr-post">
       <div className="scr-feed-card-head" {...(dateLabel ? { "data-date-label": dateLabel } : {})}>
@@ -149,20 +142,7 @@ export default function RankingShiftCard({
         {/* 개인전·팀전을 한 카드에 반씩 나눠 담는다(요청) — 예전엔 유형마다 카드가 따로
             떠서 같은 날 아침에 두 장이 나란히 붙었다. 가운데 구분선은 위아래를 조금 띄워
             (요청: 살짝 위아래 패딩) 카드 테두리까지 닿지 않게 한다. */}
-        <div
-          className={cx("scr-feed-shift-split", overflow && "scr-feed-shift-list-toggle")}
-          {...(overflow
-            ? {
-                onClick: toggle,
-                role: "button" as const,
-                tabIndex: 0,
-                "aria-expanded": expanded,
-                onKeyDown: (ev: React.KeyboardEvent) => {
-                  if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); toggle(); }
-                },
-              }
-            : {})}
-        >
+        <div className="scr-feed-shift-split">
           {cols.map(({ label, rows }) => (
             <section className="scr-feed-shift-col" key={label}>
               <h4 className="scr-feed-shift-col-head">{label}</h4>
@@ -170,7 +150,7 @@ export default function RankingShiftCard({
                 <p className="scr-feed-shift-none">변동 없음</p>
               ) : (
                 <ul className="scr-feed-shift-list">
-                  {(expanded ? rows : rows.slice(0, SHIFT_COLLAPSE_AT)).map((e) => {
+                  {rows.map((e) => {
                     const rank = shiftLabel(e);
                     const pts = pointLabel(e);
                     return (
@@ -189,11 +169,6 @@ export default function RankingShiftCard({
                       </li>
                     );
                   })}
-                  {!expanded && rows.length > SHIFT_COLLAPSE_AT && (
-                    <li className="scr-feed-shift-more" aria-hidden>
-                      ⋯ 외 {rows.length - SHIFT_COLLAPSE_AT}건
-                    </li>
-                  )}
                 </ul>
               )}
             </section>
