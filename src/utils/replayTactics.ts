@@ -38,7 +38,11 @@ const WALL_SPAN = 5;
 /** 이보다 두꺼우면 벽이 아니라 건물 밭이다 — 게이트·파일런 열몇 채가 한 자리에 모인 것은
  *  입구를 막은 게 아니라 생산 단지를 앞쪽에 앉힌 것이다(실측: 13채, 11채, 10채). */
 const WALL_MAX = 6;
-/** 그 몇 채가 '한 번에' 올라간 것으로 볼 시간 — 벽은 잇달아 짓는다. */
+/** 그 몇 채가 '한 번에' 올라간 것으로 볼 시간 — 벽은 잇달아 짓는다. 재는 기준은 묶음
+ *  전체의 처음~끝이다(가운데 한 채 기준이 아니라). 가운데를 기준으로 재면 앞뒤로 각각
+ *  이만큼씩 늘어져 실제로는 두 배 넘게 벌어진 묶음도 '한 번에'가 된다 — 실측: 5.6분
+ *  엔지니어링 베이부터 10.0분 팩토리까지 4.4분에 걸쳐 지은 본진 건물들이 하나의 벽으로
+ *  잡혔다(지적: "팩토리와 엔지니어링베이는 입구를 막은 게 아니라 그냥 본진에 지은 것"). */
 const WALL_BURST_SEC = 180;
 /** 막은 뒤에 늘린 본진 + 새로 올린 테크 건물이 몇부터 '발전했다'인가. */
 const WALL_IN_GROW_MIN = 2;
@@ -1293,14 +1297,22 @@ function detectFor(c: Ctx): Tactic[] {
      한 자리에 붙어 있는 것이 벽이다. 한 종류만으로는 벽이라 부르지 않는다.
      여기에 자리(붙어 있나)·시각(잇달아 세웠나)·발전(그러고 나서 컸나)을 함께 본다. */
   const wallIn = ((): { at: number; n: number; kinds: string[] } | null => {
+    /* 벽을 이룰 수 있는 건물만 본다 — 사람이 실제로 길을 막는 데 쓰는 것들이다(요청이
+       그대로 알려 줬다: "테란 배럭과 서플 벙커로 입구 막거나 프로토스 게이트웨이나 포토로
+       막기 저그도 해처리와 성큰으로"). 테란에서 엔지니어링 베이·팩토리를 뺐다 — 그 둘은
+       길을 막는 물건이 아니라 본진 아무 데나 서는 테크·생산 건물이고, 실제로 그 둘 때문에
+       평범한 본진 살림이 벽으로 잡혔다(지적). 팩토리는 애초에 아래 '막고 나서 컸나'를
+       재는 테크 목록에도 들어 있어, 벽이면서 동시에 벽 뒤의 발전이라는 앞뒤가 안 맞는
+       자리였다. 터렛도 뺀다 — 대공·탐지용이라 길을 막는 데는 쓰지 않는다(입구에 세운
+       터렛 이야기는 아래 front-defense가 따로 맡는다). */
     const live = race === "저그"
       ? ["Hatchery", "Evolution Chamber", "Spawning Pool"]
       : race === "프로토스"
         ? ["Pylon", "Gateway", "Forge"]
-        : ["Supply Depot", "Barracks", "Engineering Bay", "Factory"];
+        : ["Supply Depot", "Barracks"];
     const guard = race === "저그"
       ? ["Sunken Colony", "Creep Colony", "Spore Colony"]
-      : race === "프로토스" ? ["Photon Cannon"] : ["Bunker", "Missile Turret"];
+      : race === "프로토스" ? ["Photon Cannon"] : ["Bunker"];
     const cand = [...live, ...guard]
       .flatMap((b) => atFront(b))
       .filter((b) => b.frame !== null && sec(b.frame) < WALL_IN_SEC)
@@ -1310,8 +1322,14 @@ function detectFor(c: Ctx): Tactic[] {
       .map((seed) => cand.filter((b) => near(seed, b)
         && Math.abs((b.frame ?? 0) - (seed.frame ?? 0)) * SECONDS_PER_FRAME <= WALL_BURST_SEC))
       // 섞여 있어야 벽이다 — 같은 건물만 줄지어 선 것은 살림이지 벽이 아니다.
-      .filter((g) => g.length >= WALL_IN_MIN && g.length <= WALL_MAX
-        && new Set(g.map((b) => b.unit)).size >= WALL_KIND_MIN)
+      // 묶음 전체가 한 번에 올라갔어야 한다 — 위 near가 씨앗 한 채를 기준으로 앞뒤를
+      // 보는 탓에, 씨앗에서 각각 3분 이내여도 처음과 끝은 6분 가까이 벌어질 수 있다.
+      .filter((g) => {
+        if (g.length < WALL_IN_MIN || g.length > WALL_MAX) return false;
+        if (new Set(g.map((b) => b.unit)).size < WALL_KIND_MIN) return false;
+        const fs = g.map((b) => b.frame ?? 0);
+        return sec(Math.max(...fs) - Math.min(...fs)) <= WALL_BURST_SEC;
+      })
       // 여럿이면 가장 여러 종류가 섞인 것 — 그게 가장 벽다운 자리다.
       .sort((a, b) => new Set(b.map((x) => x.unit)).size - new Set(a.map((x) => x.unit)).size)[0];
     const closed = wall ? lastOf(wall) : null;
