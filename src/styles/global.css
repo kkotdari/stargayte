@@ -7426,8 +7426,33 @@ html.scr-light-theme .scr-feed-add-fab {
 /* 헤더(타이틀)와 변동 목록 사이가 유독 좁았다(지적: "랭크변동일때만 타이틀과 본문
    사이가 좁아") — 상단 패딩을 키워 다른 카드(경기/너나와)와 비슷한 숨통을 준다. */
 /* 컨텐츠부 공통 여백 — 네 종류 포스트가 같은 토큰을 쓴다(요청: 내부 여백 통일). */
-.scr-feed-shift-list { list-style: none; margin: 0; padding: var(--post-pad-y) var(--post-pad-bx) 0; display: flex; flex-direction: column; gap: 8px; }
-/* 변동이 많으면 위에서 4개만 보이고 "…더보기"로 접힌다 — 리스트를 누르면 펼쳐진다(요청). */
+/* 개인전·팀전을 한 카드에 반씩(요청) — 두 칸을 정확히 반으로 가르고, 가운데에 구분선을
+   하나 세운다. 선은 칸의 border가 아니라 이 컨테이너의 가상 요소다: border로 그리면 칸
+   높이를 그대로 따라 카드 위아래 끝까지 닿는데, 위아래를 조금 띄워 달라는 요청이라
+   위치를 직접 잡을 수 있어야 한다.
+   1fr 1fr이 아니라 minmax(0, 1fr)인 이유 — 긴 닉네임 한 줄이 칸을 밀어 좌우 반반이
+   깨지는 것을 막는다(그리드 기본 min-width는 auto라 내용이 칸을 넓힌다). */
+.scr-feed-shift-split {
+  position: relative;
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  padding: var(--post-pad-y) var(--post-pad-bx) 0;
+  column-gap: 12px;
+}
+.scr-feed-shift-split::before {
+  content: ""; position: absolute; left: 50%; width: 1px;
+  /* 살짝 위아래 패딩(요청) — 선이 본문 위아래 끝에 닿지 않게 안쪽에서 시작하고 끝난다. */
+  top: calc(var(--post-pad-y) + 6px); bottom: 6px;
+  background: var(--line);
+}
+.scr-feed-shift-col { min-width: 0; }
+/* 어느 칸이 무엇인지는 이제 제목이 아니라 이 머리글이 말한다(제목은 유형을 안 적는다). */
+.scr-feed-shift-col-head {
+  margin: 0 0 6px; font-size: var(--fs-micro); font-weight: 800;
+  color: var(--dim); letter-spacing: 0.02em;
+}
+.scr-feed-shift-none { margin: 0; color: var(--dim); font-size: var(--fs-caption); }
+.scr-feed-shift-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+/* 변동이 많으면 위에서 4개만 보이고 "…더보기"로 접힌다 — 카드를 누르면 펼쳐진다(요청). */
 .scr-feed-shift-list-toggle { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .scr-feed-shift-more {
   display: flex; align-items: center; gap: 6px; margin-top: 2px;
@@ -7435,6 +7460,13 @@ html.scr-light-theme .scr-feed-add-fab {
 }
 @media (hover: hover) { .scr-feed-shift-list-toggle:hover .scr-feed-shift-more { color: var(--text); } }
 .scr-feed-shift-row { display: flex; align-items: baseline; gap: 8px; font-size: var(--fs-caption); }
+/* 칸이 반으로 좁아지면서(요청) 긴 닉네임이 줄을 접었고, 그 바람에 "5 → 4위"의 '위'까지
+   다음 줄로 넘어가 한 사람의 변동이 두 줄로 찢어졌다(실측). 순위·포인트는 절대 안 접고,
+   길이가 들쭉날쭉한 닉네임 쪽만 말줄임으로 양보시킨다. */
+.scr-feed-shift-row > * { flex-shrink: 0; white-space: nowrap; }
+.scr-feed-shift-row > .scr-feed-shift-name {
+  flex-shrink: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+}
 .scr-feed-shift-row-hl { background: var(--highlight-bg); }
 .scr-feed-shift-row-hl .scr-feed-shift-name { color: var(--bar-text); }
 .scr-feed-shift-name { font-weight: 600; }

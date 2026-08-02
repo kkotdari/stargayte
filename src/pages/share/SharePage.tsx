@@ -4,12 +4,12 @@ import ChallengeInboxModal from "../../modals/ChallengeInboxModal";
 import { api } from "../../api/client";
 import { useAppStore } from "../../store/appStore";
 import { useForceLightTheme } from "../../utils/theme";
-import RankingShiftCard from "../feed/RankingShiftCard";
+import RankingShiftCard, { pairRankingShifts, type RankingShiftPair } from "../feed/RankingShiftCard";
 import {
   GameResultCard, GameResultPost, gameResultItem, sessionDateLabel, sessionDateOf, type GameResultPostItem,
 } from "../feed/FeedScreen";
 import { formatWhen, shortDateWithDow } from "../../utils/date";
-import type { Challenge, GameResult, RankingShift } from "../../types";
+import type { Challenge, GameResult } from "../../types";
 
 // 카카오톡으로 공유된 링크(?sv=gameResult|challenge|rankingShift&sid=…)가 여는, 그 한 장만 보이는
 // 화면(요청: "너나와/경기 공유시 해당 카드만 있는 화면" + "순위변동도 카톡공유 가능").
@@ -27,7 +27,7 @@ export default function SharePage({ target, onExit }: { target: ShareTarget; onE
   const memberOf = useAppStore((s) => s.memberOf);
   const [gameResult, setGameResult] = useState<GameResult | null>(null);
   const [challenge, setChallenge] = useState<Challenge | null>(null);
-  const [shift, setShift] = useState<RankingShift | null>(null);
+  const [shift, setShift] = useState<RankingShiftPair | null>(null);
   const [stack, setStack] = useState<GameResultPostItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
@@ -77,9 +77,11 @@ export default function SharePage({ target, onExit }: { target: ShareTarget; onE
           const m = await api.getGameResult(target.id);
           if (alive) setGameResult(m);
         } else if (target.type === "rankingShift") {
-          // 단건 조회 엔드포인트가 없어 목록에서 골라낸다(너 나와와 같은 방식).
+          // 단건 조회 엔드포인트가 없어 목록에서 골라낸다(너 나와와 같은 방식). 카드는
+          // 그날의 개인전+팀전 한 쌍이므로(요청), 공유 링크가 가리키는 스냅샷이 낀 쌍을 찾는다.
           const snaps = await api.listRankingShifts();
-          const s = snaps.find((it) => it.id === target.id) ?? null;
+          const s = pairRankingShifts(snaps)
+            .find((p) => p.solo?.id === target.id || p.team?.id === target.id) ?? null;
           if (alive) {
             setShift(s);
             if (!s) setErr("공유된 순위변동을 찾을 수 없어요.");
@@ -137,7 +139,7 @@ export default function SharePage({ target, onExit }: { target: ShareTarget; onE
         ) : shift ? (
           // 순위변동 공유 — 피드와 같은 카드 한 장(읽기 전용, 케밥/상세/댓글 없이).
           <div className="scr-feed-list">
-            <RankingShiftCard shift={shift} timeText={formatWhen(shift.createdAt, { clock: true })} />
+            <RankingShiftCard pair={shift} timeText={formatWhen(shift.createdAt, { clock: true })} />
           </div>
         ) : stack ? (
           // 게임결과 묶음 공유 — 피드의 그 카드를 그대로 재사용한다(요청). 접힌 채로 뜨고
