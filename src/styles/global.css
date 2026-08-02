@@ -8321,10 +8321,11 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 }
 
 /* ── 자막 ── */
-/* 자막 패널을 없애고 지금 스냅의 문장을 미니맵 가운데에 바로 얹는다(요청) — 별도 패널
-   배경 없이 글자만 떠 있으므로, 어떤 지형 색 위에서도 읽히도록 흰 글자에 검은 테를 두른다
-   (이름표·상태 이모지와 같은 방식). ReplayMinimap이 .scr-minimap 안에 이 레이어를 얹고,
-   지도 좌우 절반 클릭(.scr-minimap-half)을 가리지 않게 pointer-events는 끈다. */
+/* 자막 패널을 없애고 지금 스냅의 문장을 미니맵 가운데에 바로 얹는다(요청) — 대신 글자
+   뒤에 반투명 배경을 깔아 준다(요청: "미니맵 자막뒤에 반투명 배경깔기") — 검은 테두리
+   (text-shadow)만으로는 밝은 지형 위에서 글자가 흐려 보였다. 배경은 카드 전체가 아니라
+   글자 칸(.scr-story-cap)에만 좁게 붙는다. ReplayMinimap이 .scr-minimap 안에 이 레이어를
+   얹고, 지도 좌우 절반 클릭(.scr-minimap-half)을 가리지 않게 pointer-events는 끈다. */
 .scr-minimap-caption {
   position: absolute; inset: 0; z-index: 7;
   display: flex; align-items: center; justify-content: center;
@@ -8339,6 +8340,8 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   font-size: var(--fs-caption); font-weight: 500; line-height: 1.6;
   color: #fff; text-shadow: 0 0 3px #000, 0 0 6px #000, 0 1px 2px #000;
   word-break: keep-all; text-align: center;
+  background: rgba(0, 0, 0, 0.42); border-radius: 10px;
+  padding: 6px 14px;
 }
 /* 자막 앞의 시각 — 본문보다 한 단계 작고 흐리게 둔다(요청: [5분]처럼 분까지만). */
 .scr-story-cap-time {
