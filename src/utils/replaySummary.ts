@@ -2422,19 +2422,34 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   /* 그 싸움에 나간 병력을 편별로 나눠 센다(지적: 난전에서 엉켜 싸운 유닛을 뭉뚱그려
      말하니 어느 편 것인지 구분이 안 된다). 예전에는 양쪽 것을 한 자루에 담아
      "아비터·다크아콘·디파일러가 맞부딪쳤다"로만 말했는데, 그러면 누가 무엇으로 싸웠는지가
-     통째로 사라진다. 세는 대상은 그 자리에 실제로 명령을 찍은 사람들(clash.parts)이다 —
-     그 무렵 딴 데서 제 할 일 하던 사람의 병력까지 끌어오지 않기 위해서다. */
-  const forceOfSide = (side: ParsedReplayPlayer[]): string[] => {
+     통째로 사라진다.
+
+     그 편의 대표(clash.who[0]/[1]) 한 사람 것만 센다. 예전에는 그 자리에서 싸운 그 편
+     사람들 것을 한데 모았는데, 문장은 그 목록을 대표 이름에 붙여 "○○ 쪽의 …"로 말한다 —
+     그래서 저그인 사람 쪽에 팀 동료(테란)의 사이언스베슬이 붙었다(지적: "사이언스 베슬은
+     군범이 아니라 브래드 거였는데"). 종족이 아예 다른 유닛이 남의 이름으로 불리는 것은
+     색을 더하는 게 아니라 그냥 틀린 말이다. 한 사람 것만 세면 이름과 병력이 늘 같은
+     사람에게서 나오므로 이런 어긋남 자체가 생기지 않는다.
+
+     팀 전체가 무엇으로 싸웠는지는 아래 합친 목록(force)이 그대로 들고 있고, 문장은
+     편별 목록이 없을 때 그걸 이름 없이 쓴다 — 그 자리에서는 누구 것이라고 말하지 않으니
+     같은 문제가 안 생긴다. */
+  const forceOfSide = (side: ParsedReplayPlayer[], rep: string | undefined): string[] => {
+    if (!clash || !rep || !side.some((p) => p.rawName === rep)) return [];
+    return forceAt(rep, clash.at, side).slice(0, CLASH_FORCE_SIDE_MAX);
+  };
+  const clashForceWin = forceOfSide(winnerPlayers, clash?.who[0]);
+  const clashForceLose = forceOfSide(loserPlayers, clash?.who[1]);
+  // 이름 없이 "무엇이 뒤엉켰나"만 말하는 자리(그리고 옛 요약을 읽는 자리)를 위해 그 편
+  // 사람들 것을 합친 목록도 남긴다 — 여기엔 이름이 안 붙으므로 섞여도 틀린 말이 아니다.
+  const clashForceAll = (side: ParsedReplayPlayer[]): string[] => {
     if (!clash) return [];
     const mine = clash.parts.filter((n) => side.some((p) => p.rawName === n));
-    return [...new Set(mine.flatMap((w) => forceAt(w, clash.at, side)))].slice(0, CLASH_FORCE_SIDE_MAX);
+    return [...new Set(mine.flatMap((w) => forceAt(w, clash.at, side)))];
   };
-  const clashForceWin = forceOfSide(winnerPlayers);
-  const clashForceLose = forceOfSide(loserPlayers);
-  // 옛 요약을 읽는 자리를 위해 합친 목록도 그대로 남긴다(문장 쪽이 편별 목록이 없으면
-  // 이걸로 되돌아간다).
-  const clashForce: string[] = [...new Set([...clashForceWin, ...clashForceLose])]
-    .slice(0, CLASH_FORCE_MAX);
+  const clashForce: string[] = [
+    ...new Set([...clashForceAll(winnerPlayers), ...clashForceAll(loserPlayers)]),
+  ].slice(0, CLASH_FORCE_MAX);
   /* 그 싸움에서 가장 많이 터진 마법(요청: 다양한 세부 기술 사용 진술) — 마법을 쓴 좌표에는
      시각이 함께 남으므로(castPositions), 교전 시각 언저리에서 몇 번 터졌는지를 그대로 셀 수
      있다. 기술 이야기를 따로 한 문장으로 세우면 짧은 경기에서는 자리 다툼에 늘 밀리는데,
@@ -2466,8 +2481,10 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
         ...(clashPlace(clash.xy, bases) === "" ? { place: "mid" } : {}),
         // 그 싸움에 실제로 나간 병력(요청) — "양 팀 병력이 크게 싸웠다"는 그 판의 절정을
         // 말하면서 정작 무엇이 부딪쳤는지를 안 말한다. 편별로 나눠 싣는다(지적: 뭉뚱그려
-        // 말하니 어느 편 것인지 구분이 안 된다). forceA는 who[0](이긴 편 대표) 쪽,
-        // forceB는 who[1](진 편 대표) 쪽이다 — biggestClash가 그 순서로 뽑는다.
+        // 말하니 어느 편 것인지 구분이 안 된다). forceA는 who[0](이긴 편 대표) 자신의,
+        // forceB는 who[1](진 편 대표) 자신의 병력이다 — 이름과 병력의 주인이 반드시
+        // 같아야 한다(위 forceOfSide 주석). force는 편을 안 가른 합친 목록이라 이름 없이
+        // 쓰는 자리 전용이다.
         ...(clashForce.length > 0 ? { force: clashForce } : {}),
         ...(clashForceWin.length > 0 ? { forceA: clashForceWin } : {}),
         ...(clashForceLose.length > 0 ? { forceB: clashForceLose } : {}),
