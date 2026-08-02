@@ -42,8 +42,10 @@ export interface MinimapArrow {
    *  출발점도 사건이다(요청: 원본 위치는 회오리, 이동 위치는 별 반짝). 없으면 안 그린다. */
   markFrom?: string;
   /** 기둥 위(촉 가까운 쪽)에 얹을 짧은 글 — 그 사람이 무엇으로 갔는지다(요청: 화살촉 위가
-   *  아니라 기둥 위 촉에 가까운 쪽에 유닛 캡션). 없으면 안 그린다. */
-  label?: string;
+   *  아니라 기둥 위 촉에 가까운 쪽에 유닛 캡션). 유닛마다 한 줄씩 쌓는다(요청) — 가로로
+   *  이으면 두 종류만 돼도 띠가 길어져 지도를 가리고, 모이는 화살표끼리 서로 겹친다.
+   *  없거나 비어 있으면 안 그린다. */
+  label?: string[];
   /** 여러 화살표가 한 점에서 만나는가 — 양 팀이 부딪친 자리가 그렇다(요청: 상대편끼리
    *  충돌한 경우 화살표는 한곳으로 모여야 한다). 보통 화살표는 목표 앞에서 조금씩 다르게
    *  멈추고(길이에 비례한 여백) 이모지도 촉 앞에 따로 서는데, 그러면 같은 자리를 겨눈
@@ -618,14 +620,14 @@ export default function ReplayMinimap({
         ) : null))}
         {/* 유닛 이름표 — 촉 바로 뒤 기둥 위(요청). 화살표와 같은 편 색을 써서 어느 쪽
             병력인지가 글을 안 읽어도 보인다. */}
-        {geoms.map(({ a, g }) => (a.label ? (
+        {geoms.map(({ a, g }) => ((a.label?.length ?? 0) > 0 ? (
           <span
             key={`lbl-${a.key}`}
             className={cx("scr-minimap-arrow-label",
               a.team === 1 && "scr-minimap-mark-t1", a.team === 2 && "scr-minimap-mark-t2")}
             style={{ left: `${(g.label[0] / grid.width) * 100}%`, top: `${(g.label[1] / grid.height) * 100}%` }}
           >
-            {a.label}
+            {a.label!.map((u) => <span key={u}>{u}</span>)}
           </span>
         ) : null))}
         {geoms.map(({ a, g }) => (a.mark ? (

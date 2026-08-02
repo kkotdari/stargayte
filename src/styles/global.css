@@ -8115,7 +8115,10 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
    (.scr-minimap-mark-t1/t2). 클릭은 지도 좌우 절반이 받아야 하므로 통과시킨다. */
 .scr-minimap-arrow-label {
   position: absolute; transform: translate(-50%, -50%); z-index: 6;
-  font-size: 10px; font-weight: 800; line-height: 1; white-space: nowrap;
+  /* 유닛마다 한 줄씩(요청) — 가로로 이으면 두 종류만 돼도 띠가 길어져 지도를 가리고,
+     한 점으로 모이는 화살표들끼리 서로 겹친다. */
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
+  font-size: 10px; font-weight: 800; line-height: 1.1; white-space: nowrap;
   color: #fff; text-shadow: 0 0 2px #000, 0 0 2px #000, 0 1px 1px #000;
   pointer-events: none;
 }

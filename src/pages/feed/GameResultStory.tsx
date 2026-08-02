@@ -736,8 +736,9 @@ export default function GameResultStory({
      *  예전에는 자리당 하나(Map<raw, target>)만 기억해 마지막 것만 그려졌다. */
     interface RawHit {
       t: [number, number]; flight: boolean; mark?: string; fromMark?: string; converge?: boolean;
-      /** 기둥 위에 붙일 유닛·건물 이름(요청) — 요약이 사람마다 실어 준다(beat.units). */
-      label?: string;
+      /** 기둥 위에 붙일 유닛·건물 이름(요청) — 요약이 사람마다 실어 준다(beat.units).
+       *  한 줄에 하나씩 쌓이므로 이어 붙이지 않고 목록 그대로 넘긴다(요청). */
+      label?: string[];
     }
     const hits = new Map<string, RawHit[]>();
     const hit = new Set<string>();
@@ -900,10 +901,10 @@ export default function GameResultStory({
            배럭·방어타워·옆탱 등에 다 적용). 자막에서 유닛을 빼도 그림만 보고 파악되게 하는
            자리라, 이름은 그 사람 자신의 것이어야 한다(요약의 units가 사람별로 싣는다). */
         const labelUnits = (b as { units?: Record<string, string[]> }).units?.[raw] ?? [];
-        const label = labelUnits.map((u) => UNIT_KO[u] ?? BUILDING_KO[u] ?? "").filter(Boolean).join("·");
+        const label = labelUnits.map((u) => UNIT_KO[u] ?? BUILDING_KO[u] ?? "").filter(Boolean);
         const list = hits.get(raw) ?? [];
         list.push({
-          t, flight: flightVal, ...(label ? { label } : {}),
+          t, flight: flightVal, ...(label.length > 0 ? { label } : {}),
           ...(PLAIN_TIP_MARKS.has(arrive) ? {} : { mark: arrive }),
           ...(WARP_BEAT_KEYS.has(b.k) ? { fromMark: em } : {}),
           // 양 팀이 부딪친 자리는 양쪽 화살표가 한 점에서 만나야 한다(요청).
@@ -952,7 +953,7 @@ export default function GameResultStory({
           key: `${s.raw}-${i}`, x1: home[0], y1: home[1], x2: h.t[0], y2: h.t[1],
           team: s.team, flight: h.flight, deep,
           ...(h.mark ? { mark: h.mark } : {}),
-          ...(h.label ? { label: h.label } : {}),
+          ...(h.label?.length ? { label: h.label } : {}),
           ...(h.converge ? { converge: true } : {}),
           ...(h.fromMark ? { markFrom: h.fromMark } : {}),
         });

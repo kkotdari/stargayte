@@ -246,6 +246,9 @@ interface Ctx {
   /** p에 실린 원본 게임 아이디 목록을 지금의 닉네임으로 푼다 — who/whom과 달리 p 값은
    *  미리 풀어 두지 않는다(어떤 키가 이름인지는 문장마다 다르다). */
   names: (v: unknown) => string[];
+  /** 그 닉네임이 몇 팀인가 — 사람이 너무 많아 이름을 다 부를 수 없을 때 "1팀/2팀"으로
+   *  뭉뚱그리는 데 쓴다(요청). 팀을 모르면 undefined. */
+  teamOfName: (name: string) => 1 | 2 | undefined;
   /** 여러 표현 중 하나를 고른다 — 같은 경기는 늘 같은 것이 나온다(아래 variantSeed 참고). */
   pick: (opts: string[]) => string;
 }
@@ -1528,16 +1531,30 @@ const TEMPLATES: Record<string, Tpl> = {
     const pa = c.names(c.p.partsA);
     const pb = c.names(c.p.partsB);
     const roster = pa.length > 0 && pb.length > 0 && pa.length + pb.length >= 3;
+    /* 넷을 넘으면 이름을 다 부르지 않고 팀으로 뭉뚱그린다(요청) — 일곱 명을 늘어놓으면
+       자막이 대여섯 줄이 되어 지도를 통째로 가린다. 팀 번호를 모르는 판(기록이 팀을 안
+       가른 경우)에서는 "양 팀"으로 물러선다. */
+    const lumped = pa.length + pb.length > 4;
+    const teamWord = (names: string[]): string => {
+      const t = names.map((n) => c.teamOfName(n)).find((v) => v !== undefined);
+      return t ? `${t}팀` : "";
+    };
+    const [la, lb] = [teamWord(pa), teamWord(pb)];
+    const sideA = lumped && la && lb ? la : pa.join("·");
+    const sideB = lumped && la && lb ? lb : pb.join("·");
     /* 그 싸움을 누가 이겼나(요청) — 리플레이에 전사자 수는 없다. 아는 것은 싸움이 끝난
        뒤 그 자리에 누가 남아 계속 명령을 내렸나뿐이라(replaySummary의 CLASH_AFTER_SEC),
        딱 그만큼만 "자리를 지켰다"로 말한다. 어느 쪽도 못 지켰으면 비긴 것으로 둔다. */
     const hold = str(c.p.hold);
-    const holder = hold === "a" ? pa[0] ?? c.whoList[0] : hold === "b" ? pb[0] ?? c.whoList[1] : "";
+    const holderSide = hold === "a" ? sideA : hold === "b" ? sideB : "";
+    // 팀으로 뭉뚱그린 문장에서는 "1팀이"로 끝난다 — "1팀 쪽이"는 겹말이다.
+    const holder = holderSide
+      ? (lumped && la && lb ? holderSide : `${holderSide.split("·")[0]} 쪽`) : "";
     const outcome = holder
       ? c.pick([
-        `${ga(`${holder} 쪽`)} 그 자리를 지킴`,
-        `${ga(`${holder} 쪽`)} 끝내 밀어내고 자리를 차지함`,
-        `${ga(`${holder} 쪽`)} 물러서지 않고 버팀`,
+        `${ga(holder)} 그 자리를 지킴`,
+        `${ga(holder)} 끝내 밀어내고 자리를 차지함`,
+        `${ga(holder)} 물러서지 않고 버팀`,
       ])
       : c.pick([
         "어느 쪽도 자리를 잡지 못하고 서로 물러섬",
@@ -1545,7 +1562,7 @@ const TEMPLATES: Record<string, Tpl> = {
         "승부를 못 가른 채 서로 물러섬",
       ]);
     if (roster) {
-      return `${where}${spell}${wa(pa.join("·"))} ${ga(pb.join("·"))} ${c.pick([
+      return `${where}${spell}${wa(sideA)} ${ga(sideB)} ${c.pick([
         "맞붙어", "정면으로 부딪쳐", "한데 뒤엉켜",
       ])} ${done(c, outcome)}`;
     }
@@ -2601,6 +2618,7 @@ function renderLines(
         team: 0,
         p: b.p ?? {},
         names: (v) => list(v).map(resolveName).filter(Boolean),
+        teamOfName: (name) => teamOf?.(name),
         pick: (opts) => {
           const t = opts[(seed + offset) % opts.length];
           if (!lead || !firstPick) return t;
