@@ -7445,6 +7445,10 @@ html.scr-light-theme .scr-feed-add-fab {
   background: var(--line);
 }
 .scr-feed-shift-col { min-width: 0; }
+/* 오른쪽 칸(팀전)은 글이 구분선에 바짝 붙어 시작했다(지적: 팀전 랭크 왼쪽에 패딩이 조금
+   있어야 한다) — 왼쪽 칸은 카드 안쪽 여백을 그대로 받는데 오른쪽 칸은 열 간격의 절반
+   (6px)뿐이라 둘의 들여쓰기가 달라 보였다. 이 칸만 안쪽으로 조금 더 민다. */
+.scr-feed-shift-col + .scr-feed-shift-col { padding-left: 10px; }
 /* 어느 칸이 무엇인지는 이제 제목이 아니라 이 머리글이 말한다(제목은 유형을 안 적는다). */
 .scr-feed-shift-col-head {
   margin: 0 0 6px; font-size: var(--fs-micro); font-weight: 800;
