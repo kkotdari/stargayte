@@ -265,17 +265,24 @@ export default function StatsScreenV2() {
     [rankPool, statsByMember],
   );
   // 전달 대비 몇 계단 움직였나(+면 상승, 요청) — 같은 규칙으로 전달 순위를 매겨 뺀다.
-  // 지난달에 순위가 없던 사람(그 달에 안 뛴 사람)은 견줄 값이 없어 화살표를 안 단다.
+  // 지난달에 순위가 없던 사람(그 달에 안 뛴 사람)은 "new"로 표시한다(요청: "월간 랭크
+  // 옆에 전월대비 순위 변동, 신규면 신규 표시"). '전체 기간'을 보고 있을 때는 애초에
+  // 견줄 전달 데이터를 안 받으므로(prevStatsByMember 조회 자체를 건너뜀) periodMonth로
+  // 한 번 더 막는다 — 안 막으면 누구나 "신규"로 보인다.
   const rankDeltaByMember = useMemo(() => {
     const prevRank = rankOf(prevStatsByMember, rankPool);
-    const out = new Map<string, number>();
+    const out = new Map<string, number | "new">();
     for (const [id, now] of rankByMember) {
       const before = prevRank.get(id);
-      if (before === undefined || before === now) continue;
+      if (before === undefined) {
+        if (periodMonth) out.set(id, "new");
+        continue;
+      }
+      if (before === now) continue;
       out.set(id, before - now);
     }
     return out;
-  }, [rankByMember, prevStatsByMember, rankPool]);
+  }, [rankByMember, prevStatsByMember, rankPool, periodMonth]);
 
   const cards = useMemo(() => {
     const list = matchedMembers.map((m) => {
@@ -321,40 +328,59 @@ export default function StatsScreenV2() {
       return sorted;
     }
     const dirSign = sort.dir === "desc" ? -1 : 1;
-    if (sort.key === "points") {
-      sorted.sort((a, b) => noPointsLast(a, b) || dirSign * ((a.points ?? 0) - (b.points ?? 0)) || nicknameTiebreak(a, b));
+    // 데이터 칸(랭크·유저 제외) 하나를 비교한다 — 값이 없는 쪽은 방향과 무관하게 항상
+    // 맨 아래(위 noPointsLast/noPlaysLast/noAvgLast), 있으면 지금 선택된 방향(dirSign)
+    // 그대로 크고 작음을 비교한다(요청: "오름차순인지 내림차순인지도 따져서" — 타이브레이크도
+    // 반대로 뒤집힐 수 있다는 뜻).
+    type DataKey = "points" | "plays" | "rate" | "build" | "apm" | "cmd";
+    const compareData = (key: DataKey, a: (typeof list)[number], b: (typeof list)[number]) => {
+      switch (key) {
+        case "points": return noPointsLast(a, b) || dirSign * ((a.points ?? 0) - (b.points ?? 0));
+        case "plays": return noPlaysLast(a, b) || dirSign * (a.stats.plays - b.stats.plays);
+        case "rate": return noPlaysLast(a, b) || dirSign * (a.stats.winRate - b.stats.winRate);
+        case "build": return noAvgLast(a, b, "avgBuild") || dirSign * ((a.stats.avgBuild ?? 0) - (b.stats.avgBuild ?? 0));
+        case "apm": return noAvgLast(a, b, "avgApm") || dirSign * ((a.stats.avgApm ?? 0) - (b.stats.avgApm ?? 0));
+        case "cmd": return noAvgLast(a, b, "avgCmd") || dirSign * ((a.stats.avgCmd ?? 0) - (b.stats.avgCmd ?? 0));
+      }
+    };
+    // 타이브레이크 우선순위 — 표의 칸 순서 그대로(포인트 > 게임수 > 승률 > 생산 > APM >
+    // 커맨드, 요청: "타이인 경우 앞에서부터 순서대로 적용"). 지금 고른 칸은 이미 맨 앞으로
+    // 당겨 첫 비교로 쓰고, 나머지는 이 순서 그대로 이어서 본다. 랭크는 포인트와 사실상
+    // 같은 값이라(동점=공동순위) 별도 타이브레이크 칸으로 안 쓴다(요청) — 랭크가 갈리지
+    // 않으면 포인트도 갈리지 않으므로 그대로 다음 칸(게임수)으로 자연히 넘어간다. 유저
+    // 닉네임은 숫자 칸이 전부 같을 때만 쓰는 최후의 보루(요청: "닉네임이 마지막")다.
+    const DATA_ORDER: DataKey[] = ["points", "plays", "rate", "build", "apm", "cmd"];
+    const tiebreakChain = (primary: DataKey | null) => {
+      const order = primary ? [primary, ...DATA_ORDER.filter((k) => k !== primary)] : DATA_ORDER;
+      return (a: (typeof list)[number], b: (typeof list)[number]) => {
+        for (const key of order) {
+          const c = compareData(key, a, b);
+          if (c) return c;
+        }
+        return nicknameTiebreak(a, b);
+      };
+    };
+    if (sort.key === "name") {
+      sorted.sort((a, b) => dirSign * a.member.nickname.localeCompare(b.member.nickname));
+      return sorted;
     }
-    // 랭크 — 순위가 없는(한 판도 안 뛴) 회원은 방향과 무관하게 맨 아래. 공동순위는
-    // 닉네임순으로 갈라 놓는다.
+    // 랭크 — 순위가 없는(한 판도 안 뛴) 회원은 방향과 무관하게 맨 아래. 공동순위(랭크가
+    // 갈리지 않음)는 포인트부터 시작하는 위 타이브레이크 체인으로 넘어간다(랭크=포인트라
+    // 포인트도 당연히 갈리지 않고 자연히 게임수로 넘어간다).
     if (sort.key === "rank") {
       const rankValue = (c: (typeof list)[number]) => rankByMember.get(c.member.id) ?? null;
+      const breakTie = tiebreakChain(null);
       sorted.sort((a, b) => {
         const ra = rankValue(a), rb = rankValue(b);
         if (ra === null || rb === null) {
           if (ra === null && rb === null) return nicknameTiebreak(a, b);
           return ra === null ? 1 : -1;
         }
-        return dirSign * (ra - rb) || nicknameTiebreak(a, b);
+        return dirSign * (ra - rb) || breakTie(a, b);
       });
+      return sorted;
     }
-    if (sort.key === "name") {
-      sorted.sort((a, b) => dirSign * a.member.nickname.localeCompare(b.member.nickname));
-    }
-    if (sort.key === "rate") {
-      sorted.sort((a, b) => noPlaysLast(a, b) || dirSign * (a.stats.winRate - b.stats.winRate) || dirSign * (a.stats.plays - b.stats.plays) || nicknameTiebreak(a, b));
-    }
-    if (sort.key === "plays") {
-      sorted.sort((a, b) => noPlaysLast(a, b) || dirSign * (a.stats.plays - b.stats.plays) || nicknameTiebreak(a, b));
-    }
-    if (sort.key === "build") {
-      sorted.sort((a, b) => noAvgLast(a, b, "avgBuild") || dirSign * ((a.stats.avgBuild ?? 0) - (b.stats.avgBuild ?? 0)) || nicknameTiebreak(a, b));
-    }
-    if (sort.key === "apm") {
-      sorted.sort((a, b) => noAvgLast(a, b, "avgApm") || dirSign * ((a.stats.avgApm ?? 0) - (b.stats.avgApm ?? 0)) || nicknameTiebreak(a, b));
-    }
-    if (sort.key === "cmd") {
-      sorted.sort((a, b) => noAvgLast(a, b, "avgCmd") || dirSign * ((a.stats.avgCmd ?? 0) - (b.stats.avgCmd ?? 0)) || nicknameTiebreak(a, b));
-    }
+    sorted.sort(tiebreakChain(sort.key as DataKey));
     return sorted;
   }, [matchedMembers, statsByMember, sort, race, rankByMember]);
 
@@ -474,11 +500,8 @@ export default function StatsScreenV2() {
                   일러 둔다. 판수는 지금 걸린 분류에 따라 달라지므로 둘 다 적는다. */}
               <InfoTip
                 label="최소 게임수"
-                text={"게임수가 적으면 일부 값은 '-'로 나와요.\n\n"
-                  + "· 생산·APM·커맨드: 개인전 3판, 팀전 10판을 채워야 나와요. 경기당 평균이라 두 판 중 한 판만 튀어도 그 평균이 통째로 끌려가거든요 — 잴 만큼 안 뛴 값을 숫자로 내보내는 게 더 나빠요.\n"
-                  + "· 포인트·승률·게임수: 판수와 상관없이 그대로 나와요. 포인트는 평균이 아니라 이길 때만 쌓이는 누적이라, 적게 뛴 사람은 못 믿을 값이 나오는 게 아니라 그냥 적게 쌓인 거예요.\n\n"
-                  + "컴퓨터·비회원이 한 명이라도 낀 경기는 포인트가 0이에요(팀전에서 한 자리만 그래도 그 경기는 전원 0). 포인트는 상대의 실력치와 견줘 움직이는 값인데 컴퓨터·비회원에는 그 값이 없거든요 — 그 자리 하나 때문에 나머지 점수가 흔들리면 실제로는 없던 실력차가 들어가요. 게임수·승률에는 그대로 들어가요.\n\n"
-                  + "종족을 고르면 판수도 그 종족 것만 세요. 이 기간·분류에 한 판도 안 뛰었으면 포인트도 '-'예요."}
+                text={"생산·APM·커맨드는 개인전 3판, 팀전 10판을 채워야 나와요. 안 채우면 '-'예요.\n\n"
+                  + "컴퓨터·비회원이 한 명이라도 낀 경기는 포인트가 0이에요. 팀전은 한 자리만 그래도 전원 0이에요."}
               />
             </span>
           </div>
@@ -515,26 +538,26 @@ export default function StatsScreenV2() {
                 <SortableHead
                   label={periodMonth ? "월간 랭크" : "누적 랭크"} sortKey="rank" sort={sort} onToggle={toggleSort}
                   tooltip={periodMonth
-                    ? "이 달 이 분류·종족에서 포인트로 매긴 순위. 완전 동률이면 공동순위(1,1,3)예요. 한 판도 안 뛰었으면 '-'고, 옆의 ▲▼는 전달 대비 몇 계단 움직였는지예요(지난달에 순위가 없었으면 안 나와요). 숫자를 누르면 최근 다섯 달 순위변동 그래프가 열려요."
-                    : "전체 기간 누적 포인트로 매긴 순위. 완전 동률이면 공동순위(1,1,3)예요. 한 판도 안 뛰었으면 '-'예요. 견줄 전달이 없어 변동(▲▼)과 순위변동 그래프는 달을 골랐을 때만 나와요."}
+                    ? "이 달 이 분류·종족에서 포인트로 매긴 순위. 완전 동률이면 공동순위예요. 한 판도 안 뛰었으면 '-'고, 옆의 ▲▼는 전달 대비 몇 계단 움직였는지예요. 숫자를 누르면 최근 다섯 달 순위변동 그래프가 열려요."
+                    : "전체 기간 누적 포인트로 매긴 순위. 완전 동률이면 공동순위예요. 한 판도 안 뛰었으면 '-'예요. 견줄 전달이 없어 변동과 순위변동 그래프는 달을 골랐을 때만 나와요."}
                 />
                 <SortableHead
                   label={periodMonth ? "월간 포인트" : "누적 포인트"} sortKey="points" sort={sort} onToggle={toggleSort}
-                  tooltip="랭크 포인트 — 이 기간·분류의 경기들로 산정한 레이팅 점수. 최소 게임수를 안 따져요(평균이 아니라 이길 때만 쌓이는 누적이라, 적게 뛰면 그냥 적게 쌓입니다). 컴퓨터·비회원이 한 명이라도 낀 경기는 0점이에요 — 견줄 실력치가 없는 상대라 점수가 오르내릴 근거가 없어요(게임수·승률에는 그대로 들어갑니다). 숫자를 누르면 경기 이력(경기당 포인트 변화)이 열려요."
+                  tooltip="랭크 포인트 — 이 기간·분류의 경기들로 산정한 레이팅 점수. 최소 게임수를 안 따져요. 컴퓨터·비회원이 한 명이라도 낀 경기는 0점이에요 — 견줄 실력치가 없는 상대라 점수가 오르내릴 근거가 없어요. 숫자를 누르면 경기 이력이 열려요."
                 />
                 <SortableHead label="게임수" sortKey="plays" sort={sort} onToggle={toggleSort} />
                 <SortableHead label="승률" sortKey="rate" sort={sort} onToggle={toggleSort} />
                 <SortableHead
                   label="생산" sortKey="build" sort={sort} onToggle={toggleSort}
-                  tooltip="경기당 평균 '생산'(유닛 훈련+건물 건설+저그 변태 커맨드 수) — 유닛·건물을 얼마나 뽑고 지었나의 어림 지표."
+                  tooltip="경기당 평균 '생산' — 유닛·건물을 얼마나 뽑고 지었나의 어림 지표."
                 />
                 <SortableHead
                   label="APM" sortKey="apm" sort={sort} onToggle={toggleSort}
-                  tooltip="분당 조작 수(Actions Per Minute) — 리플레이에 기록된 명령을 분 단위로 나눈 값. 화면 이동이나 중복 클릭도 그대로 세므로 실제 손이 얼마나 바빴는지에 가깝다."
+                  tooltip="분당 조작 수 — 리플레이에 기록된 명령을 분 단위로 나눈 값. 화면 이동이나 중복 클릭도 그대로 세므로 실제 손이 얼마나 바빴는지에 가깝다."
                 />
                 <SortableHead
                   label="커맨드" sortKey="cmd" sort={sort} onToggle={toggleSort}
-                  tooltip="경기당 평균 명령 수 — 리플레이에 기록된 명령을 전부 센 값(한 경기에서 몇 번이나 입력했나)."
+                  tooltip="경기당 평균 명령 수 — 리플레이에 기록된 명령을 전부 센 값."
                 />
               </div>
               {cards.map((c) => (

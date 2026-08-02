@@ -1,3 +1,5 @@
+import type { CSSProperties } from "react";
+
 interface StatBarProps {
   // 없으면(전체 전적처럼 칸 제목이 이미 있는 경우) 라벨 줄 자체를 생략한다.
   label?: string;
@@ -6,58 +8,44 @@ interface StatBarProps {
   draws: number;
   losses: number;
   winRate: number;
-  // v2 전용 — 캡션을 "승/전"(예: 5/8) 짧은 표기로 줄인다. 기본(false, v1)은 기존처럼
-  // 승/무/패를 풀어서 보여준다.
+  // v2 전용 — 승률 숫자를 막대 위에 겹쳐 그린다(ValueBar와 같은 방식). 기본(false, v1)은
+  // 기존처럼 라벨/전적/승률을 막대 위 별도 줄에 풀어서 보여준다.
   compact?: boolean;
-  // 이미 끝난 기간에서 승률 1·2·3위에 붙는 메달(요청) — 막대가 아니라 승률 텍스트 옆이다.
+  // 이미 끝난 기간에서 승률 1·2·3위에 붙는 메달(요청) — 칸 좌상단에 절대배치된다
+  // (CSS의 .scr-stat-medal 참고).
   medal?: string;
 }
 
-// 승/무/패 비율만 막대 안 색 구간으로 보여준다 — 경기수(누가 더 많이 뛰었는지)는 별도
-// 게임수 칸(ValueBar)이 맡으므로, 이 막대 길이는 항상 꽉 채워서 구간 비율(승:무:패)만
-// 비교하면 된다. 정확한 수치(전적)는 라벨/승률과 같은 줄(top row) 가운데에 보여준다.
+// 승률만 막대 안에 초록으로 채워 보여준다(요청: "승만 초록색 표시, 나머지는 빈칸으로" —
+// 무/패를 각각 회색·붉은색으로 구분해 그리던 것을 없앴다). 게임수/생산/APM/커맨드
+// (ValueBar)와 같은 원리로, 채운 만큼만 진하고 나머지는 반투명 그라디언트 한 장이다.
 export default function StatBar({ label, plays, wins, draws, losses, winRate, compact = false, medal }: StatBarProps) {
+  const rateText = plays > 0 ? `${winRate}%` : "-";
+  const trackStyle: CSSProperties = plays > 0 ? { ["--scr-value-fill" as string]: `${winRate}%` } : {};
   return (
     <div className="scr-stat-bar-row">
-      <div className="scr-stat-bar-top">
-        <span className="scr-stat-bar-label-group">
-          {label && <span className="scr-stat-bar-label">{label}</span>}
-          {/* compact(통계 그리드)에선 승/전 수치를 승률과 같은 줄에 두면 좁다(지적) —
-              막대 아래 줄로 내린다. */}
-          {!compact && (
+      {!compact && (
+        <div className="scr-stat-bar-top">
+          <span className="scr-stat-bar-label-group">
+            {label && <span className="scr-stat-bar-label">{label}</span>}
             <span className="scr-stat-bar-count">{plays > 0 ? `${plays}전` : "-"}</span>
-          )}
-        </span>
-        {!compact && plays > 0 && (
-          <span className="scr-stat-bar-nums">
-            {wins}승{draws > 0 && ` ${draws}무`} {losses}패
           </span>
-        )}
-        <span className="scr-stat-bar-rate">
-          {plays > 0 ? `${winRate}%` : "-"}
-          {medal && <span className="scr-stat-medal">{medal}</span>}
-        </span>
-      </div>
-      <div className="scr-stat-bar-track-wrap">
-        {plays > 0 && (
-          <div className="scr-stat-bar-track">
-            {wins > 0 && <div className="scr-stat-bar-seg scr-stat-bar-seg-win" style={{ flexGrow: wins }} />}
-            {draws > 0 && <div className="scr-stat-bar-seg scr-stat-bar-seg-draw" style={{ flexGrow: draws }} />}
-            {losses > 0 && <div className="scr-stat-bar-seg scr-stat-bar-seg-loss" style={{ flexGrow: losses }} />}
-          </div>
-        )}
-      </div>
-      {/* "승/전" 줄은 경기가 없어도 자리를 비워 둔 채 항상 그린다(요청: "데이터 안 나오는
-          로우와 나오는 로우 높이가 달라서 흔들림"). 예전엔 이 줄을 아예 안 그려서 경기가
-          없는 행만 한 줄 낮았고, 그 차이를 행 min-height로 덮고 있었다 — 글자 크기가
-          커지면(iOS 텍스트 크기 조절 등) 내용 있는 행이 그 최소높이를 넘어서면서 다시
-          어긋난다. 자리를 늘 잡아 두면 애초에 어긋날 일이 없다. */}
-      {compact && (
-        <div className="scr-stat-bar-count-below" aria-hidden={plays === 0 || undefined}>
-          {/* 그냥 공백은 접혀서 줄 높이가 안 생기므로 안 접히는 공백(U+00A0)으로 자리만 남긴다. */}
-          {plays > 0 ? `${wins}/${plays}` : " "}
+          {plays > 0 && (
+            <span className="scr-stat-bar-nums">
+              {wins}승{draws > 0 && ` ${draws}무`} {losses}패
+            </span>
+          )}
+          <span className="scr-stat-bar-rate">{rateText}</span>
         </div>
       )}
+      <div
+        className={plays > 0 ? "scr-stat-bar-track-wrap" : "scr-stat-bar-track-wrap scr-value-bar-track-wrap-empty"}
+        style={trackStyle}
+      >
+        {/* 승률도 다른 막대(게임수/생산/APM/커맨드)처럼 막대 위에 겹쳐 그린다(요청). */}
+        {compact && <span className="scr-stat-bar-rate scr-stat-bar-rate-overlay">{rateText}</span>}
+      </div>
+      {medal && <span className="scr-stat-medal">{medal}</span>}
     </div>
   );
 }

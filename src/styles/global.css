@@ -139,9 +139,13 @@
   /* 결과 표시(승/패)만 최소한으로 색 사용 — 흰색을 섞어 파스텔 톤으로 옅게 */
   --win: #a3d693;
   --loss: #c07a86;
-  /* 통계 화면의 승률 도넛과 같은 계열의 파랑 — 순위 변동없음 표시, 주간랭킹 경기수 막대 등
-     "정보성" 파랑이 필요한 곳에 공통으로 쓴다. 흰색을 섞어 파스텔 톤으로. */
-  --info: #86bdf0;
+  /* 전적통계 게임수/생산/APM/커맨드 막대(ValueBar) 채움색 — 이제 이 막대 위에 흰 글자가
+     겹쳐 얹히므로(요청: "막대그래프 위에 텍스트 겹쳐서 표시"), 옅은 파스텔 톤이면 흰
+     글자와 명도 차가 거의 없어 잘 안 읽힌다는 지적으로 낮춘다. 채도를 높였다 낮췄다 하다
+     "눈이 아프다"는 지적으로 채도 낮춘 dusty 파스텔로 잡았고, "다크는 더 어둡게, 라이트는
+     더 밝게"로 명도를 벌렸다가, 그 dusty 톤이 "너무 애매하다"는 지적으로 명도는 유지한 채
+     채도만 한 단계 다시 올린다. */
+  --info: #34599d;
   /* 카드/랭킹 행 사이 구분선 톤 — 예전 옅은 붉은기(192,122,134)는 이제 안 쓰는
      팔레트(요청) — 흰 계열로 통일(알파는 쓰는 곳마다 그대로). */
   --divider-tint: 255, 255, 255;
@@ -150,14 +154,10 @@
      테마와 무관하게 밝은 색을 유지하는 전용 변수로 분리한다. */
   --bar-winrate: #8ef97a;
   --bar-plays: #6cabe8;
-  /* 전적통계 표의 승/무/패 막대 그래프 전용 — 위 두 변수와 같은 이유로 라이트 테마에서도
-     검정으로 바뀌지 않게 별도 변수로 분리한다(승/무/패를 색으로 구분하는 게 이 표의
-     핵심이라 그레이스케일화하면 의미가 없어짐). */
-  --bar-win: #8ef97a;
-  --bar-draw: #eef0f2;
-  /* 한때 회색 계열(#9aa2ab)로 바꿨지만 원래의 녹/회/적 조합으로 복귀(요청) —
-   랭킹 경기이력/경기목록/통계에 공용으로 쓰인다. */
-  --bar-loss: #f2798c;
+  /* 승률 그래프는 이제 승만 초록으로 채우고 나머지는 빈칸이다(요청: "승만 초록색 표시,
+     나머지는 빈칸으로" — 무/패 전용 색(--bar-draw/--bar-loss)은 더 이상 안 쓴다). --info와
+     같은 사연(dusty 파스텔 → 명도 조정 → 채도 재조정)을 그대로 따라간다. */
+  --bar-win: #2f8a5c;
   /* 항상 고정된 어두운 글자색 — 밝은 파스텔 배경(예: 유저 검색 하이라이트) 위에서 테마와
      무관하게 항상 잘 읽히도록 쓴다. */
   --bar-text: #14181c;
@@ -819,14 +819,16 @@ html.scr-light-theme {
   /* 승/패 텍스트, 순위 변동 화살표, 랭킹 막대(승률/경기수) — 전부 검정으로 눌러뒀던 걸
      흰 배경에서도 잘 보이도록 진하게 채도를 살린 색으로 되돌린다(다크 테마의 파스텔
      톤과 같은 색 계열이지만, 흰 배경 대비를 위해 훨씬 진하게). */
-  /* 승/패 텍스트색 — 통계 차트 채움색과 똑같이 맞춘다(요청: "기록실 승무패 텍스트도
-     차트 색과 동일하게") — 승=맑은 초록(--bar-win과 동일), 패=맑은 코랄(--bar-loss와
-     동일). 이제 텍스트와 막대가 완전히 같은 색 계열로 통일된다. */
+  /* 승/패 텍스트색 — 원래 통계 차트 채움색(--bar-win/--bar-loss)과 맞춰 뒀었는데, 이제
+     승률 차트는 승만 초록으로 채우고 패 전용 색 자체가 없어져(위 --bar-win 참고) 더 이상
+     막대와 텍스트가 같은 변수를 공유하지 않는다 — 값은 그대로 둔다(패 텍스트색까지 바꾸란
+     요청은 아니었음). */
   --win: #34c759;
   --loss: #f2637a;
-  /* 통계 그래프(막대/차트) 채움색 — 밝고 맑게(요청). 파랑은 더 시원하고 파란 톤이 강한
-     쪽으로(요청: "차트 파란색 좀더 시원해보이는 강한 파랑"). */
-  --info: #2f7cf0;
+  /* 통계 그래프(막대/차트) 채움색. 한때 진하고 채도 강한 파랑(#2f7cf0)까지 갔다가 "눈이
+     아프다"는 지적으로 채도를 낮춘 파스텔로 되돌렸고, 그 뒤 "라이트는 더 밝게"라는
+     지적으로 명도를 한 번 더 올린다(다크 테마 --info는 반대로 더 어둡게). */
+  --info: #93b3e0;
   --divider-tint: 0, 0, 0;
   --overlay-rgb: 0, 0, 0;
   --dd-panel-bg: rgba(255, 255, 255, 0.62);
@@ -842,12 +844,12 @@ html.scr-light-theme {
   --lit-press-glow: 0 0 10px rgba(140, 190, 255, 0.18), 0 0 22px rgba(140, 190, 255, 0.08);
   --bar-winrate: #34c759;
   --bar-plays: #2f7cf0;
-  /* 전적통계 승/무/패 막대(StatBar) — 라이트 테마 전용 값이 없어 다크 파스텔을 그대로
-     썼는데, 무승부(--bar-draw #eef0f2, 거의 흰색)가 흰 배경에서 안 보였다. 흰 배경에서
-     맑게 보이는 톤으로 다시 잡는다(승=맑은 초록, 무=옅은 회색, 패=맑은 코랄). */
-  --bar-win: #34c759;
-  --bar-draw: #c2c8d0;
-  --bar-loss: #f2637a;
+  /* 승률 그래프 채움색 — 이제 승만 초록으로 채우고 나머지는 빈칸이다(요청: "승만 초록색
+     표시, 나머지는 빈칸으로" — 무/패 전용 값은 더 이상 안 쓴다). --info와 같은 사연으로
+     채도를 낮췄다가 "라이트는 더 밝게"라는 지적으로 명도를 한 번 더 올린다. 이 표 전용
+     값이라 --win/--loss(다른 화면의 승/패 텍스트색)와는 의도적으로 분리돼 있다 — 이 막대는
+     흰 숫자를 얹어야 해서(요청) 텍스트 색상과 같은 제약을 안 받는다. */
+  --bar-win: #93cba0;
 }
 
 /* 어두운 배경을 전제로 한 헤더/스타필드 장식은 흰 배경에선 그대로 못 쓴다 — 헤더는
@@ -1353,6 +1355,17 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
     max-width: var(--list-content-max); margin-left: auto; margin-right: auto; width: 100%;
   }
 }
+/* 통계 화면만 PC에서 더 넓힌다(요청: 처음 1600 → 1280으로 조정) — 칸이 랭크·포인트까지
+   7개라 위 공용 --list-content-max(860px)로는 계속 좁았다. 다른 화면(회원 목록 등)은
+   위 공용 규칙을 그대로 쓰므로 이 화면 전용 클래스만 뒤에서 덮어쓴다. 처음 시도가
+   "안 늘었다"(지적)로 실패한 이유: 이 화면도 다른 모든 화면처럼 .scr-main
+   (--content-max=860px로 폭이 상한된 공통 부모, 아래 규칙) 안에 들어 있어서, 자식인
+   .scr-stats-screen-v2를 아무리 넓혀도 부모가 먼저 860px로 잘라 실제로는 못 늘어났다 —
+   부모도 이 화면을 담고 있을 때만 :has()로 같이 넓혀야 한다. */
+@media (min-width: 641px) {
+  .scr-stats-screen-v2 { max-width: 1280px; }
+  .scr-main:has(.scr-stats-screen-v2) { max-width: 1280px; }
+}
 
 /* 맨 위로 이동 플로팅 버튼 — 콘텐츠를 안 가리려고 페이지 하단에 큰 여백을 예약해뒀었는데,
    차지하는 공간 대비 실제로 누르는 일은 드문 보조 버튼이라 낭비가 컸다. 작고 가볍게 줄이고,
@@ -1644,9 +1657,10 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    컨테이너(.scr-stat-table) 안의 평범한 첫 행이라, 헤더 전용 래퍼(.scr-stat-head-sticky)가
    맡던 위쪽 모서리 둥글림을 이 클립 래퍼가 위아래 다 맡는다(v1은 여전히 별도 헤더
    래퍼가 있어 아래쪽만 필요). */
-.scr-stats-list-panel-v2 .scr-stat-table-clip {
-  border-top-left-radius: var(--radius); border-top-right-radius: var(--radius);
-}
+/* 모서리 둥글림 제거(요청: "통계 그리드 래디우스 아예 제거") — 전역 --radius를 바꾸면
+   다른 화면 카드까지 다 각져 버리므로, 이 표 전용 클래스로 네 모서리 전부 0으로 덮는다
+   (아래 .scr-stat-table-clip 기본 규칙의 하단 두 모서리도 함께 이긴다). */
+.scr-stats-list-panel-v2 .scr-stat-table-clip { border-radius: 0; }
 /* 라이트에서 표 바깥 경계가 배경에 묻히는 문제(지적) — 피드 카드와 같은 처방으로,
    얇은 림 1px + 아주 옅은 그림자 한 겹. 이 요소는 overflow:hidden이지만 그건 자기
    자식만 자르므로 자기 그림자는 그대로 밖에 그려진다. */
@@ -1709,34 +1723,83 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 .scr-stat-name-btn {
   /* 원래는 행의 다른 칸들과 같은 크기(상속)였는데, 닉네임을 눈에 잘 띄게 키웠다가(19px)
      너무 커 보인다는 피드백으로 그 값의 80%(20% 축소)로 다시 낮춘다. */
-  background: transparent; border: none; padding: 0; font-family: inherit; cursor: pointer;
+  background: transparent; border: none; font-family: inherit; cursor: pointer;
   color: var(--text); font-weight: 600; text-align: left; min-width: 0; font-size: var(--fs-subhead);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  /* 배경 호버를 위한 여백 — padding으로 칠할 자리를 만들고 같은 크기의 음수 margin으로
+     되돌려서, 글자 위치나 옆 요소와의 간격은 이전과 그대로다(다른 하이라이트 배경 패턴과
+     같은 기법, .scr-team-player-highlight 참고). */
+  padding: 2px 4px; margin: -2px -4px; border-radius: var(--radius-sm);
+  transition: background-color .12s, box-shadow .12s;
 }
-/* 마우스가 있는 기기에서만 hover 색을 준다 — 터치 기기는 탭 후에도 :hover가 남아
-   닉네임이 포인트색으로 물든 채 유지되던 버그(지적). 다른 hover 규칙들과 같은 가드. */
-@media (hover: hover) { .scr-stat-name-btn:hover { color: var(--text); } }
+/* 마우스가 있는 기기에서만 hover를 준다 — 터치 기기는 탭 후에도 :hover가 남는 문제를
+   이 가드로 막는다(다른 hover 규칙들과 같은 가드). 예전엔 글자색만 바꾸려다 그 자체가
+   변화 없는 색이라 호버가 아예 안 보였다(지적) — 다른 글자 버튼(.scr-icon-btn,
+   .scr-stat-points-btn)과 같은 기본 라이팅 호버(배경+글로우)로 실제 반응을 준다. */
+@media (hover: hover) {
+  .scr-stat-name-btn:hover { background: var(--lit-hover-bg); box-shadow: var(--lit-hover-glow); }
+}
 
 /* 숫자 칸(게임수/APM/커맨드)도 전적 칸과 같은 원칙으로 막대 그래프를 곁들인다 —
    승/패 구분이 없는 값 하나라 구간 색 없이 단색 막대로, 가장 높은 값이 칸을 꽉 채우는
    상대값이다(StatsScreen의 maxOverallPlays/maxEapm/maxEcmd 참고). */
-.scr-stat-plays-cell, .scr-stat-build-cell, .scr-stat-apm-cell, .scr-stat-cmd-cell { justify-content: center; }
+/* 메달이 절대배치로 우상단에 앉을 자리 — 이 네 칸 + 포인트/승률 칸(각각 아래) 전부
+   position:relative가 필요하다. 셀 자신에게 relative를 주면, 그 안쪽의 어떤 자식(값
+   글자, 막대 래퍼 등)에도 position을 줄 필요 없이 메달이 곧장 이 칸을 기준으로
+   자리 잡는다(안 그러면 shifted 자식이 새 containing block이 돼버려 메달이 셀이 아닌
+   그 자식 기준으로 어긋난다). */
+.scr-stat-plays-cell, .scr-stat-build-cell, .scr-stat-apm-cell, .scr-stat-cmd-cell {
+  justify-content: center; position: relative;
+}
 /* 표 오른쪽 끝 칸 — 위 .scr-stat-table이 더는 오른쪽 패딩을 안 줘서, 마지막 칸이 직접
    여백을 책임진다(왼쪽은 이름 칸이 자기 padding-left로 책임지는 것과 대칭). */
 .scr-stat-cmd-cell { padding-right: 20px; }
-.scr-value-bar { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 100%; }
-.scr-value-bar-num { font-size: var(--fs-body); font-weight: 700; color: var(--text); }
-/* 지난 기간의 1·2·3위 메달(요청: 작게) — 숫자·승률 글자 옆에 붙되 그 줄의 높이를 늘리지
-   않게 글자보다 작게 두고, 이모지가 기본으로 갖는 아래쪽 여백만큼 살짝 올린다. */
-/* 지난 기간의 1·2·3위 메달(요청: 작게) — 숫자·승률 글자 옆에 붙는다. 이모지 글리프는
-   글자보다 키가 커서 줄 높이를 밀 수 있으므로, line-height 0인 inline-block으로 두어
-   메달이 붙은 행만 높아지는 일이 없게 한다(실측으로 행 높이가 같은 것을 확인했다). */
-.scr-stat-medal {
-  display: inline-block; font-size: 0.8em; line-height: 0;
-  margin-left: 2px; vertical-align: 1px; letter-spacing: 0;
+.scr-value-bar { display: flex; align-items: center; justify-content: center; width: 100%; }
+/* 게임수/생산/APM/커맨드 값(요청: "막대그래프 위에 텍스트 겹쳐서 표시") — 트랙 자신의
+   배경(아래 .scr-value-bar-track-wrap) 위에 얹힌 보통 자식이라, 배경은 항상 자식보다
+   먼저 그려진다는 CSS 규칙 그대로 숫자가 막대 위에 자연히 얹힌다(포지셔닝 트릭 불필요).
+   외곽선(-webkit-text-stroke)을 둘렀다가, 막대색을 어둡게 낮춘 뒤로는 글자가 그 자체로
+   충분히 잘 보인다는 확인으로 뺐다(요청). */
+/* 수치 텍스트는 이 표 전체에서 하나의 크기로 통일한다(요청: "모든 텍스트 14고 딱 하나
+   순위변동쪽만 12로") — 랭크/포인트 버튼(.scr-stat-points-btn)과 같은 caption(14). 순위
+   변동 화살표·"신규"(.scr-stat-rank-cell .scr-feed-shift-*, 아래)만 유일한 예외로 micro(12)
+   그대로 둔다. */
+.scr-value-bar-num {
+  position: relative; font-size: var(--fs-caption); font-weight: 600; color: var(--text);
+  font-variant-numeric: tabular-nums;
 }
-.scr-value-bar-track-wrap { width: 100%; height: 10px; border-radius: 1px; overflow: hidden; }
-.scr-value-bar-track { height: 100%; background: var(--info); border-radius: 1px; }
+/* 지난 기간의 1·2·3위 메달(요청: 데이터 옆이 아니라 셀 좌상단에 절대배치, 위쪽 여유는
+   더 넉넉하게) — 다른 요소의 정렬에 영향을 주지 않도록 흐름에서 완전히 뺀다. 셀
+   가장자리에 딱 붙지는 않게 살짝 여백을 둔다. 크기는 한 번 더 키운다(요청: "메달 좀더
+   크게, 막대 등 다른 요소와 겹침 허용") — 절대배치라 겹쳐도 레이아웃에 영향은 없다. */
+.scr-stat-medal {
+  position: absolute; top: 8px; left: 4px; font-size: var(--fs-subhead); line-height: 1; letter-spacing: 0;
+}
+/* 트랙 배경을 채움 비율(--scr-value-fill, ValueBar.tsx 인라인 변수)까지는 진하게, 나머지는
+   옅게 칠하는 그라디언트 한 장으로 그린다(요청: "배경 막대를 채우기 — 나머지는 반투명
+   100%길이") — 예전엔 채운 만큼만 별도 DOM(.scr-value-bar-track)으로 그려서 나머지
+   구간이 완전히 빈 채였다. 하드 스톱 두 단계짜리 gradient라 채워진/안 채워진 경계가
+   흐려지지 않고 또렷하다. 모서리는 각지게(요청: "모든 그래프 래디우스 제거"). */
+.scr-value-bar-track-wrap {
+  width: 100%; height: 20px; border-radius: 0; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  background-image: linear-gradient(
+    to right,
+    var(--info) var(--scr-value-fill, 0%),
+    color-mix(in srgb, var(--info) 12%, transparent) var(--scr-value-fill, 0%)
+  );
+}
+/* 값 자체가 없어 "-"로 나오는 칸(요청: "'-'인 칸은 0점과 구분 안 되므로 빈 막대그래프도
+   그리지 않는다") — 위 그라디언트를 그대로 두면 채움 0%인 진짜 0점과 똑같아 보인다.
+   ValueBar.tsx/StatBar.tsx가 값·경기수가 없을 때만 이 클래스를 함께 얹어 배경 자체를
+   지운다. 두 클래스를 묶어 선택자 특이도를 올린다 — 한 클래스짜리로 두면 이 규칙과
+   .scr-stat-bar-track-wrap(승률, 아래)의 그라디언트 규칙이 특이도가 같아져 "누가 소스
+   순서상 더 뒤에 있느냐"로만 승패가 갈리고, 실제로 승률 쪽 그라디언트가 더 뒤에 있어
+   이 규칙을 이겨버려 "-"인데도 빈 막대가 그대로 보이는 버그가 있었다(지적). */
+.scr-value-bar-track-wrap.scr-value-bar-track-wrap-empty,
+.scr-stat-bar-track-wrap.scr-value-bar-track-wrap-empty {
+  background-image: none;
+}
 /* v2 통계만 — 전체적으로 더 촘촘하게: 행 상하 패딩/막대 두께를 줄이고, 컬럼 기본폭도
    좁힌다. 유저 칸은 좌우 여백을 같게 맞추고, 배틀태그 캡슐은 더 각지게, 닉네임/배틀태그
    사이 간격은 프사(40px) 위아래 경계에 맞춰 벌린다. v1 통계 화면은 그대로 둔다. */
@@ -1757,6 +1820,8 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
      됐고, 다시 랭크와 포인트를 갈라(요청) 7칸이 됐다. 모두 균등폭. v2는 구분선을 각 칸
      border-left로 그려 칸 폭이 어떻게 늘어나도 경계가 항상 맞다. */
   grid-template-columns: var(--scr-stat-name-w) repeat(7, minmax(var(--scr-stat-col-w), 1fr));
+  /* 데이터 글자 크기 — 모바일/PC 분기 없이 하나로 통일(요청). */
+  font-size: var(--fs-micro);
   /* 세로 구분선은 background-gradient(계산된 위치) 대신 각 칸의 border-left로 그린다
      (아래 nth-child 규칙) — gradient 방식은 "칸이 실제로 얼마나 넓게 렌더됐는지"를
      퍼센트/고정값으로 다시 계산해야 해서, 패널 폭이 좁아 칸이 min폭으로 넘칠 때(가로
@@ -1769,27 +1834,42 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    1|2(유저|게임수) 경계는 이름 칸(.scr-stat-name-cell/head)의 border-right가 그린다.
    box-sizing:border-box라 border가 칸 폭을 바꾸지 않아 트랙 정렬에도 영향이 없다. */
 .scr-stats-list-panel-v2 .scr-stat-row > *:nth-child(n+3) { border-left: 1px solid var(--line-soft); }
-/* 포인트 칸 — 숫자 하나를 가운데에, 누르면 포인트 상세(경기 이력)가 열리는 버튼으로. */
-.scr-stat-points-cell { justify-content: center; }
+/* 포인트 칸 — 숫자 하나를 가운데에, 누르면 포인트 상세(경기 이력)가 열리는 버튼으로.
+   메달이 이 칸 우상단에 절대배치되므로 position:relative가 필요하다(위 .scr-stat-medal
+   참고). */
+.scr-stat-points-cell { justify-content: center; position: relative; }
+/* 글자 크기·굵기는 모바일/PC 분기 없이 하나로 통일(요청) — 예전엔 PC에서만 caption으로
+   줄이는 규칙이 있고 모바일엔 없어(subhead=20px 그대로 남아) 모바일 값이 유독 커
+   보였다. 굵기도 800 → 700으로 한 단계 낮춘다(요청: "데이터 폰트 웨이트 감소, 너무 볼드"). */
 .scr-stat-points-btn {
-  background: transparent; border: none; padding: 4px 6px; cursor: pointer;
-  font-family: inherit; font-size: var(--fs-subhead); font-weight: 800; color: var(--text);
+  background: transparent; border: none; padding: 4px 6px; border-radius: var(--radius-sm); cursor: pointer;
+  font-family: inherit; font-size: var(--fs-caption); font-weight: 700; color: var(--text);
   font-variant-numeric: tabular-nums;
   text-decoration: underline dotted; text-underline-offset: 4px; text-decoration-color: var(--dim);
   -webkit-tap-highlight-color: transparent;
+  transition: background-color .12s, box-shadow .12s;
 }
-@media (hover: hover) { .scr-stat-points-btn:hover { color: var(--pipe-bright); } }
+/* 예전엔 호버에서 --pipe-bright(붉은 톤, 인풋 포커스 등에 쓰는 전용 강조색)로 글자색이
+   바뀌어 이 표에서만 뜬금없이 빨갛게 보였다(지적) — 다른 글자 버튼들(.scr-icon-btn,
+   .scr-header-text-btn)과 같은 기본 라이팅 호버(은은한 유리 배경 + 글로우, 글자색은 그대로)
+   로 통일한다. */
+@media (hover: hover) {
+  .scr-stat-points-btn:hover { background: var(--lit-hover-bg); box-shadow: var(--lit-hover-glow); }
+}
 .scr-stat-points-empty { color: var(--dim); }
 /* 랭크 칸 — 포인트와 같은 모양으로 가운데. 월을 보고 있으면 누를 수 있는 버튼이 되고
    (최근 5개월 순위변동), 전체 기간이면 견줄 달이 없어 글자로만 둔다. 변동 화살표는 랭크
    변동 카드와 같은 색 규칙(scr-feed-shift-up/down)을 그대로 쓴다. */
 .scr-stat-rank-cell { justify-content: center; gap: 2px; }
+/* 클릭 가능한 랭크(.scr-stat-points-btn 재사용)와 글자 크기·굵기가 같아야 한다 —
+   전체 기간(견줄 달 없음)에서만 이 non-button 버전이 쓰인다. */
 .scr-stat-rank-plain {
-  font-size: var(--fs-subhead); font-weight: 800; color: var(--text);
+  font-size: var(--fs-caption); font-weight: 700; color: var(--text);
   font-variant-numeric: tabular-nums;
 }
 .scr-stat-rank-cell .scr-feed-shift-up,
-.scr-stat-rank-cell .scr-feed-shift-down {
+.scr-stat-rank-cell .scr-feed-shift-down,
+.scr-stat-rank-cell .scr-feed-shift-new {
   font-size: var(--fs-micro); font-variant-numeric: tabular-nums; white-space: nowrap;
 }
 /* (구) 900px 이상에서 minmax(1fr)+width:100%로 남는 폭을 나눠 채우던 분기는 제거 —
@@ -1855,35 +1935,28 @@ html:not(.scr-light-theme) .scr-stats-list-panel-v2 .scr-stat-name-cell, html:no
    닉네임 혼자 가운데로 떨어졌다(가운데 정렬 요청과 어긋남) — 프사+닉네임을 한 덩어리로
    칸 가운데에 모은다. */
 .scr-stats-list-panel-v2 .scr-stat-name-stack { align-items: center; flex: none; min-width: 0; }
-.scr-stats-list-panel-v2 .scr-stat-name-btn { text-align: center; }
+/* 글자 크기는 모바일/PC 분기 없이 하나로 통일(요청) — 기본(subhead, 19px)보다 작게. */
+.scr-stats-list-panel-v2 .scr-stat-name-btn { text-align: center; font-size: var(--fs-caption); }
 /* 프사는 동그란 크롭(요청). */
 .scr-stats-list-panel-v2 .scr-stat-avatar-btn .scr-avatar { border-radius: 50% !important; }
 
-/* 승률 막대(StatBar)와 다른 막대(게임수/APM/커맨드, ValueBar)의 굵기를 맞춘다. */
-.scr-stats-list-panel-v2 .scr-stat-bar-track { height: 6px; }
-/* 종족별 전적 칸의 막대 세 줄(테/프/저) 사이 수직 간격을 더 좁혀서 그만큼 행 높이도 줄인다. */
-.scr-stats-list-panel-v2 .scr-stat-bar-cell { gap: 1px; }
-.scr-stats-list-panel-v2 .scr-value-bar-track-wrap { height: 6px; }
+/* 종족별 전적 칸의 막대 세 줄(테/프/저) 사이 수직 간격을 더 좁혀서 그만큼 행 높이도 줄인다.
+   메달이 이 칸 우상단에 절대배치되므로 position:relative가 필요하다. */
+.scr-stats-list-panel-v2 .scr-stat-bar-cell { gap: 1px; position: relative; }
 /* 전적 칸을 다른 데이터 칸(ValueBar)과 똑같은 구성으로 맞춘다(지적: 승률 컬럼만 바
    두께/위치가 달라 어색) — ① 트랙 래퍼의 기본 min-height(14px) 때문에 6px 막대가 큰
    상자 안에 떠 있던 것을 래퍼 자체를 6px로, ② 숫자(승률)와 막대 사이 간격을 ValueBar와
    같은 4px로, ③ 승률 숫자를 ValueBar 숫자처럼 가운데 정렬 + 같은 크기(body, 모바일에선
    아래 480px 블록이 caption으로 덮음)로. */
 .scr-stats-list-panel-v2 .scr-stat-bar-row { gap: 4px; }
-.scr-stats-list-panel-v2 .scr-stat-bar-track-wrap { min-height: 0; height: 6px; }
+.scr-stats-list-panel-v2 .scr-stat-bar-track-wrap { min-height: 0; height: 20px; }
 .scr-stats-list-panel-v2 .scr-stat-bar-top { display: flex; justify-content: center; gap: 0; }
-.scr-stats-list-panel-v2 .scr-stat-bar-rate { font-size: var(--fs-body); }
-/* ④ 세로 위치 — 전적 칸만 아래 승/전 줄이 하나 더 있어 내용이 더 크고, 모든 칸이
-   세로 가운데 정렬이라 전적 칸의 막대만 위로 밀려 높이가 안 맞았다. 데이터 칸 전부를
-   위 정렬로 통일하면 숫자·막대의 y좌표가 컬럼마다 똑같아지고, 승/전 줄만 전적 칸
-   아래로 자연스럽게 더 내려온다. ValueBar 칸들은 flex row(세로축 = align-items,
-   .scr-stat-row > * 의 center를 덮음)이고, 전적 칸(.scr-stat-bar-cell)만 flex
-   column(세로축 = justify-content)이라 각각 다른 속성을 바꿔야 한다. */
-/* (헤더 버튼이 한때 이 칸 클래스들을 같이 달고 있어 :not(.scr-stat-row-head)로 헤더를
-   제외해야 했는데, 헤더에서 데이터 칸 클래스를 아예 걷어내(StatsScreen) 단순한 선택자로
-   되돌렸다 — 이제 이 클래스들은 데이터 행에만 존재한다.) */
-.scr-stats-list-panel-v2 .scr-stat-plays-cell, .scr-stats-list-panel-v2 .scr-stat-build-cell, .scr-stats-list-panel-v2 .scr-stat-apm-cell, .scr-stats-list-panel-v2 .scr-stat-cmd-cell { align-items: flex-start; }
-.scr-stats-list-panel-v2 .scr-stat-bar-cell { justify-content: flex-start; }
+/* 글자 크기는 이제 base(.scr-stat-bar-rate, caption)를 그대로 쓴다 — 모든 수치 텍스트와
+   같은 14px로 통일(요청). */
+/* ④ 세로 위치 — 막대그래프는 항상 칸 정중앙(요청: "막대그래프는 딱 세로 중앙에 표시").
+   과거엔 전적 칸의 "승/전" 아래줄 때문에 다른 칸들과 함께 위 정렬로 맞췄었는데, 그 아래줄을
+   없앤 지금은 base(.scr-stat-row > *의 center / .scr-stat-bar-cell의 justify-content:center)
+   그대로 둬 모든 막대가 세로 중앙에 오게 한다 — 이 칸들에서 따로 덮어쓸 필요가 없다. */
 /* 위 8px는 모바일 기준 — PC는 화면/행 자체가 넓어 여유가 있으니 위아래 패딩을 더
    넉넉하게 되돌린다(경기결과 카드와 같은 원칙: PC만 증가, 모바일은 컴팩트 유지). */
 @media (min-width: 720px) {
@@ -1923,7 +1996,10 @@ html:not(.scr-light-theme) .scr-stats-list-panel-v2 .scr-stat-name-cell, html:no
      자른다(아래 name-btn/stack의 min-width:0 + ellipsis). */
   /* 107 → 118px(요청: 10% 확대) — 프사 24px + 갭/패딩을 빼면 닉네임에 남는 폭이 얼마
      안 돼 말줄임이 너무 일찍 걸렸다. */
-  .scr-stats-list-panel-v2 .scr-stat-row { --scr-stat-name-w: 118px; font-size: var(--fs-caption); }
+  /* 폰트 크기는 모바일/PC 분기 없이 통일한다(요청: "CSS는 모바일과 PC 통일, 컬럼 폭과
+     표 폭만 차별") — 여기서 폭(--scr-stat-name-w)만 정하고, 글자 크기는 아래 공용
+     규칙(브레이크포인트 밖) 하나만 따른다. */
+  .scr-stats-list-panel-v2 .scr-stat-row { --scr-stat-name-w: 118px; }
   .scr-stats-list-panel-v2 .scr-stat-name-cell {
     flex-direction: row; align-items: center; justify-content: center; gap: 7px;
     padding-left: 7px; padding-right: 7px;
@@ -1940,18 +2016,10 @@ html:not(.scr-light-theme) .scr-stats-list-panel-v2 .scr-stat-name-cell, html:no
      (지적: "왜 아바타와 닉네임이 따로 배치됐어") — 프사+닉네임은 한 덩어리로 칸 가운데다. */
   .scr-stats-list-panel-v2 .scr-stat-name-stack { min-width: 0; flex: 0 1 auto; }
   .scr-stats-list-panel-v2 .scr-stat-name-head { padding-left: 7px; padding-right: 7px; }
-  /* 닉네임도 1스텝 축소(요청): body → caption. 좁은 칸에서 넘치면 말줄임(base
-     .scr-stat-name-btn이 이미 overflow/ellipsis/nowrap을 갖고 있다 — 여기선 폭이
-     실제로 줄어들도록 max-width만 풀어준다). */
-  .scr-stats-list-panel-v2 .scr-stat-name-btn {
-    text-align: center; font-size: var(--fs-caption); max-width: 100%;
-  }
-  /* 데이터 값들은 행 폰트를 안 물려받는다 — 게임수/생산/APM/커맨드 숫자
-     (.scr-value-bar-num)는 body, 승률 칸(.scr-stat-bar-top/-rate)은 caption으로 각자
-     고정돼 있어서 행 단위 축소가 안 보였다(지적된 버그). 모바일 값(caption)으로 직접 지정. */
-  .scr-stats-list-panel-v2 .scr-value-bar-num { font-size: var(--fs-caption); }
-  .scr-stats-list-panel-v2 .scr-stat-bar-top { font-size: var(--fs-caption); }
-  .scr-stats-list-panel-v2 .scr-stat-bar-rate { font-size: var(--fs-caption); }
+  /* 글자 크기는 이제 공용 규칙(위 .scr-stats-list-panel-v2 .scr-stat-name-btn)과 같다 —
+     여기선 폭이 실제로 줄어들도록 max-width만 풀어준다(base가 이미 overflow/ellipsis/
+     nowrap을 갖고 있다). */
+  .scr-stats-list-panel-v2 .scr-stat-name-btn { max-width: 100%; }
   .scr-stats-list-panel-v2 .scr-stat-row {
     /* 데이터 칸 폭 축소(요청): 150 → 120px. 칸 안은 막대+숫자뿐이라 150px은 남는 여백이
        컸고, 6칸이라 그 여백이 가로 스크롤 길이로 그대로 쌓였다(6×30 = 180px 단축). */
@@ -1960,15 +2028,8 @@ html:not(.scr-light-theme) .scr-stats-list-panel-v2 .scr-stat-name-cell, html:no
     grid-template-columns: var(--scr-stat-name-w) repeat(7, var(--scr-stat-col-w));
   }
 
-  .scr-stat-row-head { font-size: var(--fs-body); }
-  /* 헤더 확대(요청: 헤더 2스텝 확대) — 위의 .scr-stats-list-panel-v2 .scr-stat-row(클래스
-     2개)가 한 클래스짜리 .scr-stat-row-head를 특이도로 이겨 헤더까지 행 폰트로 눌러버리
-     므로, 같은 특이도 이상으로 헤더만 따로 지정한다. 그 뒤 한 스텝 되돌렸다(요청:
-     "통계 그리드 헤드 텍스트 1스텝 축소") — body(16) → caption(14), 즉 데이터 행과 같은
-     크기다. 컬럼명이 값보다 굵고(700) 배경도 한 톤 밝아서 크기가 같아도 제목으로 읽힌다.
-     통계 그리드(.scr-stats-list-panel-v2)에만 걸어, 같은 클래스를 쓰는 접속기록/메뉴권한
-     표(위 한 줄)는 그대로 둔다. */
-  .scr-stats-list-panel-v2 .scr-stat-row.scr-stat-row-head { font-size: var(--fs-caption); }
+  /* 헤더 글자 크기는 더 이상 여기서 따로 안 잡는다 — PC와 같은 값(공용 규칙, 아래
+     .scr-stats-list-panel-v2 .scr-stat-row-head 참고)으로 통일했다. */
   .scr-stat-row-head > * { padding-top: 11px; padding-bottom: 11px; }
   /* 행 최소높이 — PC(아래 min-width:481px 블록)에만 있던 규칙이라 모바일에서는 10전 미만
      회원 행(승률 막대와 "승/전" 줄을 아예 안 그린다 — StatBar 참고)만 65 → 51px로 폭삭
@@ -1976,10 +2037,7 @@ html:not(.scr-light-theme) .scr-stats-list-panel-v2 .scr-stat-name-cell, html:no
      높이가 되게 한다. 헤더 행은 막대가 없어 원래 낮으므로 PC와 마찬가지로 예외로 푼다. */
   .scr-stats-list-panel-v2 .scr-stat-row { min-height: 65px; }
   .scr-stats-list-panel-v2 .scr-stat-row.scr-stat-row-head { min-height: 0; }
-  /* 컬럼명 ↔ ⓘ ↔ 정렬 화살표 간격(요청: 모바일에서 좀 줄이기) — base의 9px는 PC(아래
-     min-width:481px 블록에서 4px)와 달리 모바일에는 줄여주는 규칙이 없어 그대로 남아
-     있었다. 칸 폭이 120px뿐이라 이 간격 두 번(18px)이 컬럼명 자리를 그만큼 먹는다. */
-  .scr-stats-list-panel-v2 .scr-stat-sort-btn { gap: 5px; }
+  /* 컬럼명 ↔ ⓘ ↔ 정렬 화살표 간격도 이제 모바일/PC 분기 없이 하나(아래 공용 규칙)로 통일. */
 }
 .scr-stat-row-head span { text-align: center; justify-content: center; }
 /* 정렬 가능한 헤더 칸(전적/APM/커맨드) — 버튼이라 span과 달리 위 규칙이 안 먹어서
@@ -1991,8 +2049,8 @@ html:not(.scr-light-theme) .scr-stats-list-panel-v2 .scr-stat-name-cell, html:no
   /* display:flex가 없으면(기본은 버튼의 inline-block) justify-content/gap이 효과가 없다. */
   width: 100%; height: 100%; display: flex; background: none; border: none; padding: 0; margin: 0;
   font: inherit; color: inherit; text-transform: inherit; letter-spacing: inherit;
-  /* 컬럼명·ⓘ·정렬 화살표 사이 간격 — 5px가 답답하다는 지적으로 확대. */
-  align-items: center; justify-content: center; gap: 9px; cursor: pointer;
+  /* 컬럼명·ⓘ·정렬 화살표 사이 간격 — 모바일/PC 분기 없이 하나로 통일(요청). */
+  align-items: center; justify-content: center; gap: 4px; cursor: pointer;
   will-change: color;
 }
 
@@ -2078,26 +2136,32 @@ html:not(.scr-light-theme) .scr-stats-list-panel-v2 .scr-stat-name-cell, html:no
 .scr-stat-bar-label { font-weight: 700; color: var(--muted); min-width: 37px; flex-shrink: 0; }
 /* 승률은 이 표에서 가장 중요한 값이라 트랙 옆(예전 위치)이 아니라 각 그래프 우상단에,
    나머지 top row 글자보다 도드라지게 둔다(전체 전적 칸도 종족별 칸과 동일). */
-.scr-stat-bar-rate { font-size: var(--fs-caption); font-weight: 700; color: var(--text); justify-self: end; }
+.scr-stat-bar-rate { font-size: var(--fs-caption); font-weight: 600; color: var(--text); justify-self: end; }
+/* 승률도 다른 막대처럼 트랙 위에 겹쳐 그린다(요청) — ValueBar 숫자(.scr-value-bar-num)와
+   같은 원리. top-row 배치(justify-self:end 등)는 이 변형에서 의미가 없으니 절대배치로
+   덮어써 트랙 정중앙에 앉힌다. */
+.scr-stat-bar-rate-overlay {
+  position: absolute; inset: 0; justify-self: auto;
+  display: flex; align-items: center; justify-content: center;
+}
 /* 전적(승/무/패 숫자)은 라벨/승률과 같은 줄, 가운데에 둔다 — 실제 전적 수치라 연하게
    두 겹(줄 기본색 dim + 이 규칙 muted)으로 죽이지 않고 기본 글자색으로 또렷하게 보여준다. */
 .scr-stat-bar-nums { justify-self: center; font-weight: 700; color: var(--text); white-space: nowrap; }
 /* 막대는 항상 칸을 꽉 채우고(길이로 경기수를 표현하지 않는다 — 그건 별도 게임수 칸의
-   몫이다), 그 안에서 승:무:패 구간 비율만 색으로 보여준다. 이래야 경기수가 적은 사람과
-   많은 사람의 막대를 나란히 봐도 "비율"만 정확히 비교된다. */
-.scr-stat-bar-track-wrap { display: flex; align-items: center; min-height: 14px; }
-.scr-stat-bar-track {
-  width: 100%; height: 14px; display: flex; overflow: hidden; flex-shrink: 0; border-radius: 1px;
+   몫이다), 그 안에서 승률(0~100%)만 초록으로 채워 보여준다(요청: "승만 초록색 표시,
+   나머지는 빈칸으로" — 예전엔 무/패도 각자 회색·붉은색 구간으로 채웠다). ValueBar와
+   똑같이 별도 DOM 없이 그라디언트 한 장(--scr-value-fill, StatBar.tsx 인라인 변수)으로
+   채운/안 채운 경계를 그린다 — position:relative는 승률 오버레이
+   (.scr-stat-bar-rate-overlay)가 이 트랙 래퍼를 기준으로 앉기 위함이다. */
+.scr-stat-bar-track-wrap {
+  display: flex; align-items: center; justify-content: center; min-height: 14px; position: relative;
+  overflow: hidden;
+  background-image: linear-gradient(
+    to right,
+    var(--bar-win) var(--scr-value-fill, 0%),
+    color-mix(in srgb, var(--bar-win) 12%, transparent) var(--scr-value-fill, 0%)
+  );
 }
-/* compact(통계 그리드)의 승/전 수치 — 승률과 같은 줄에 있으면 좁아서(지적) 막대 아래로
-   내리고 top row(caption)보다 1스텝 작게(micro) 둔다. */
-.scr-stat-bar-count-below {
-  font-size: var(--fs-micro); color: var(--muted); text-align: center; line-height: 1.2;
-}
-.scr-stat-bar-seg { height: 100%; }
-.scr-stat-bar-seg-win { background: var(--bar-win); }
-.scr-stat-bar-seg-draw { background: var(--bar-draw); }
-.scr-stat-bar-seg-loss { background: var(--bar-loss); }
 
 /* 숫자와 변동 표시 둘 다 이탤릭으로 기울여 살짝 역동적인 느낌만 주고, 색은 방향별
    단색으로만 구분해 화려하지 않고 한눈에 읽히게 한다. NEW는 라임(포인트색)이 이미
@@ -2744,7 +2808,10 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
   /* 항상 검색 박스 오른쪽 끝에 고정(요청) — 입력칸(flex:1)이 밀어내 오른쪽에 오지만, 칩이
      많아 가로 스크롤될 때도 오른쪽에 붙어 보이도록 sticky로 고정한다. */
   flex-shrink: 0; margin-left: auto; position: sticky; right: 0;
-  display: inline-grid; place-items: center; width: 22px; height: 22px;
+  /* 22 → 18px(지적: "유저 추가 버튼 크기 축소") — 검색창 안에서 아이콘 하나치고
+     과하게 크게 도드라져 보였다. SearchFilterBar를 쓰는 모든 화면이 이 클래스
+     하나를 같이 쓰므로 여기서 한 번만 고치면 전부 같이 줄어든다. */
+  display: inline-grid; place-items: center; width: 18px; height: 18px;
   /* 브라우저 기본 버튼 패딩이 남아 있으면 22px 고정 원 안에서 + 아이콘이 한쪽으로
      쏠린다(실제로 지적받은 문제 — "+가 동그라미 중심에 안 맞음") — 반드시 0으로. */
   padding: 0; line-height: 1;
@@ -3294,6 +3361,9 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
    승 색, 음수는 패 색. */
 .scr-rank-history-calc strong.scr-win { color: var(--win); }
 .scr-rank-history-calc strong.scr-loss { color: var(--loss); }
+/* 컴퓨터·비회원이 껴서 레이팅 미반영인 경기(요청: "점수 대신 레이팅 제외라고") — 실제
+   점수가 아니라는 게 한눈에 보이게 옅고 가는 글자로, 승/패 색은 안 입힌다. */
+.scr-rank-history-calc strong.scr-rank-history-excluded { font-weight: 500; color: var(--dim); }
 /* 팀전 이력에서 상대팀 각 구성원 이름 옆에 '그 상대에게 얻은 점수'를 인라인으로 붙인다
    (요청: "각 구성원에 대해 몇점씩 얻은건지 각각도 표시"). 로스터 칸을 flex로 바꿔 이름 뒤에
    작게 나란히 둔다. */
@@ -3663,7 +3733,7 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 /* 그래프를 둥근 네모 배경으로 감싼다. 다크는 옅은 흰 배경, 라이트는 옅은 검정 배경. */
 .scr-rank-detail-chart-area {
   aspect-ratio: 300 / 140; display: flex; align-items: center; justify-content: center;
-  background: rgba(255, 255, 255, 0.05); border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05); border-radius: 0;
   box-sizing: border-box; overflow: hidden;
   /* CSS 패딩은 안 준다 — svg viewBox(300:140)가 박스 비율과 같아야 aspect-ratio 높이와
      정확히 맞아떨어져, 로딩(스피너)→그래프 전환 때 높이가 안 흔들린다. 여백은 이미
@@ -3672,10 +3742,17 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-light-theme .scr-rank-detail-chart-area { background: rgba(0, 0, 0, 0.035); }
 .scr-rank-detail-chart-area .scr-empty { width: 100%; }
 .scr-rank-detail-chart { width: 100%; height: auto; overflow: visible; }
-.scr-rank-detail-line { fill: none; stroke: var(--point); stroke-width: 2; }
-.scr-rank-detail-dot { fill: var(--point); }
-.scr-rank-detail-value { font-size: var(--fs-caption); font-weight: 700; fill: var(--text); text-anchor: middle; }
-.scr-rank-detail-axis-label { font-size: var(--fs-micro); fill: var(--dim); text-anchor: middle; }
+/* 포인트색(강조 컬러)이 아니라 기본 글자색으로(요청) — 이 그래프만 유독 튀어 보였다. */
+.scr-rank-detail-line { fill: none; stroke: var(--text); stroke-width: 2; }
+.scr-rank-detail-dot { fill: var(--text); }
+/* 이 SVG(viewBox 300×140)는 모달 폭(~420~460px)에 맞춰 약 1.4배로 늘어나 그려진다 —
+   그 안의 font-size는 화면 픽셀이 아니라 viewBox 단위라서, 여기 12(micro)를 줘도 실제
+   화면에는 12×1.4 ≈ 17px로 그려져 그리드의 진짜 14px "3위"보다 오히려 더 커 보였다
+   (지적: "모달의 폰트들이 전체적으로 커보인다" — 착시가 아니라 실측 크기 차이였다).
+   그리드의 다른 캡션류(micro=12px 실측)와 비슷하게 보이도록, 그 배율을 거꾸로 감안해
+   9(--fs-9, 9×1.4≈12.6px 실측)로 낮춘다. */
+.scr-rank-detail-value { font-size: var(--fs-9); font-weight: 400; fill: var(--text); text-anchor: middle; }
+.scr-rank-detail-axis-label { font-size: var(--fs-9); fill: var(--dim); text-anchor: middle; }
 
 /* 순위변동 모달(월간 랭크 클릭) — 아바타 한 줄과 그래프뿐이라 랭킹 상세처럼 높이를
    크게 고정하지 않고 내용만큼만 연다. 폭만 PC에서 조금 넓혀 다섯 달 라벨이 붙지 않게
@@ -5180,6 +5257,13 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
      오히려 좌표 판정과 두 경로가 겹친다. */
   pointer-events: none;
 }
+/* 다크 테마에서 "현재" 위치(썸)만 강조색(blue) 대신 기본 글자색으로(요청) — 트랙 축선의
+   블루 그라디언트는 양 테마 통일이라 그대로 둔다(위 --timeline-blue 주석 참고, 이 점만
+   예외로 덮는다). */
+html:not(.scr-light-theme) .scr-scroll-timeline-thumb {
+  background: var(--text);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--text) 26%, transparent), 0 1px 4px rgba(0, 0, 0, 0.3);
+}
 @media (hover: hover) and (pointer: fine) {
   /* 마우스는 CSS로 그대로 잡는다 — 정확히 겨냥해 누르므로 문제가 없었던 경로다.
      touch-action:none은 트랙패드 관성 스크롤이 드래그와 겹치지 않게. */
@@ -5221,6 +5305,10 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
   font-size: var(--fs-micro); font-weight: 800; color: var(--point);
   white-space: nowrap;
 }
+/* 다크 테마에서 이 "현재" 눈금도 포인트색(금색이 주황으로 보인다는 지적) 대신 기본
+   글자색으로(요청) — 라이트는 --point가 검정이라 그대로 둔다. */
+html:not(.scr-light-theme) .scr-scroll-timeline-now::before { background: var(--text); }
+html:not(.scr-light-theme) .scr-scroll-timeline-now::after { color: var(--text); }
 /* 현재 상단에 핀된 날짜를 알약으로 — 다이얼(썸) 바로 위에 얹는다(요청).
    트랙 왼쪽에 붙이던 예전 자리는 "현재" 눈금 라벨과 세로로 부딪혔고, 가운데 정렬하면
    화면 오른쪽 밖으로 넘쳤다 — 오른쪽 끝을 트랙에 맞춰(right:0) 왼쪽으로만 자라게 해
@@ -6011,15 +6099,6 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
       낮아졌다. 내용이 다 있을 때의 높이를 행 최소높이로 박아 어떤 행이든 같은 높이가
       되게 한다(칸들은 stretch라 최소높이를 그대로 나눠 갖는다). */
 @media (min-width: 481px) {
-  /* PC 그리드 글자를 한 스텝씩 키운다(요청) — 넓은 화면에서 유독 작아 읽기 힘들었다. */
-  .scr-stats-list-panel-v2 .scr-stat-name-btn { font-size: var(--fs-caption); }
-  .scr-stats-list-panel-v2 .scr-stat-points-btn { font-size: var(--fs-caption); }
-  .scr-stats-list-panel-v2 .scr-stat-row { font-size: var(--fs-micro); }
-  .scr-stats-list-panel-v2 .scr-value-bar-num { font-size: var(--fs-micro); }
-  .scr-stats-list-panel-v2 .scr-stat-bar-rate { font-size: var(--fs-micro); }
-  .scr-stats-list-panel-v2 .scr-stat-bar-top { font-size: var(--fs-11); }
-  .scr-stats-list-panel-v2 .scr-stat-bar-count-below { font-size: var(--fs-10); }
-
   .scr-stats-list-panel-v2 .scr-stat-row {
     /* 유저 칸 축소(요청) 176 → 148px. 프사 32 + 갭 8 + 좌우 패딩 24를 빼면 닉네임에
        84px이 남는다(12px 글자로 일곱 자쯤) — 넘치면 기존 말줄임이 처리한다. */
@@ -6043,10 +6122,6 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
   .scr-stats-list-panel-v2 .scr-stat-name-cell,
   .scr-stats-list-panel-v2 .scr-stat-name-head { padding-left: 12px; padding-right: 12px; }
   .scr-stats-list-panel-v2 .scr-stat-cmd-cell { padding-right: 12px; }
-  .scr-stats-list-panel-v2 .scr-stat-sort-btn { gap: 4px; }
-  /* 글자를 3스텝 줄인 만큼 ⓘ·정렬 화살표도 같이 줄인다(JSX의 size=14보다 CSS가 우선) —
-     안 줄이면 아이콘 둘이 칸 폭의 4분의 1을 먹어 컬럼명이 밀린다. */
-  .scr-stats-list-panel-v2 .scr-stat-sort-btn svg { width: 12px; height: 12px; }
   /* 컬럼명이 좁아진 칸에서 두 줄로 접히면 헤더만 높아지고 구분선 정렬이 흐트러진다.
      혹시 라벨이 더 길어져도 칸을 밀지 않고 잘리도록 min-width:0 + 말줄임을 함께 둔다. */
   .scr-stats-list-panel-v2 .scr-stat-row-head > * {
@@ -6054,6 +6129,26 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
   }
 }
 .scr-stat-row-head { font-size: var(--fs-body); }
+/* PC 전용 — 폭이 넉넉해 가로 스크롤이 필요 없는 지점부터는(요청: "PC에서 각 컬럼이 폭을
+   균등하게 가져가도록") 위 481px 블록의 고정폭 트랙 대신 minmax(_,1fr)로 남는 폭을 7칸에
+   똑같이 나눠 채운다. 고정폭이었던 이유(헤더/데이터 행이 각각 width:max-content로 따로
+   계산돼 어긋나는 문제, 위 481px 블록 주석 참고)는 화면이 이만큼 넓으면 행이 이미
+   min-width:100%로 패널 폭에 꽉 차 있어서(max-content가 이길 일이 없다) 걱정할 필요가
+   없다. 헤더 폰트·아이콘 크기도 여기서 모바일/PC 분기 없이 하나로 고정한다(요청 흐름:
+   "16px로" → "폰트만 14로 축소", 아이콘은 16 유지) — 무조건 규칙(같은 파일 내 한
+   클래스짜리라 특이도가 같아 소스 순서로만 이김)을 두 클래스 선택자로 확실히 이겨야 해서
+   접속기록/메뉴권한 등 같은 .scr-stat-row-head를 쓰는 다른 표는 안 건드리도록 통계 그리드
+   전용 클래스로 범위를 좁힌다. */
+@media (min-width: 641px) {
+  .scr-stats-list-panel-v2 .scr-stat-row {
+    grid-template-columns: var(--scr-stat-name-w) repeat(7, minmax(var(--scr-stat-col-w), 1fr));
+  }
+  .scr-stats-list-panel-v2 .scr-stat-row-head { font-size: var(--fs-caption); }
+  .scr-stats-list-panel-v2 .scr-stat-sort-btn svg,
+  .scr-stats-list-panel-v2 .scr-stat-row-head .scr-infotip svg {
+    width: 16px; height: 16px;
+  }
+}
 
 /* 필터/검색창 폰트를 전부 한 스텝씩 낮춘다(요청: "모든 필터와 검색창의 폰트들을
    1스텝씩 낮춰줘(라벨도)") — 라벨 caption(14)→micro(12), 필터 컨트롤(알약/달력/종족)
@@ -6708,6 +6803,13 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   font-size: var(--fs-micro); font-weight: 800; color: var(--point);
   letter-spacing: 0.06em; white-space: nowrap;
 }
+/* 다크 테마에서 포인트색(골드)을 빼고 기본색으로(요청) — 선은 다른 구분선과 같은 톤,
+   라벨은 다른 보조 캡션과 같은 muted로. 라이트는 --point가 이미 검정이라 그대로 둔다. */
+html:not(.scr-light-theme) .scr-feed-now-divider::before,
+html:not(.scr-light-theme) .scr-feed-now-divider::after {
+  background: var(--line); opacity: 1;
+}
+html:not(.scr-light-theme) .scr-feed-now-divider span { color: var(--muted); }
 /* ── 포스트(피드 카드) ──────────────────────────────────────────────────────
    패널형 유리판에서 인스타그램식 '포스트'로 바꾼다(요청). 포스트 한 장은 크게
    헤더부와 컨텐츠부로 나뉘고 그 사이를 선으로 긋는다(요청). 좌우 여백은 줄이고
@@ -7108,16 +7210,16 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    아닌 굵게 표시로 변경"). 읽기용 인라인 칩만 배경·그림자·패딩을 걷어 본문과 같은
    caption 크기의 볼드로 흐르게 한다. 입력창(.scr-mreq-chip-editor)의 칩은 삭제·편집을
    위해 칩 형태를 유지하되 크기만 본문에 맞춘다. */
-/* 노출(읽기)되는 @멘션은 "@닉네임"을 포인트 컬러 굵게로 강조한다(요청). 입력창은
+/* 노출(읽기)되는 @멘션은 "@닉네임"을 굵게로 강조한다. 포인트 컬러(골드/앰버)였다가
+   푸른색으로(요청) — 다크는 밝은 파랑, 라이트는 흰 배경 대비를 위해 더 어두운 파랑. 입력창은
    평문 그대로(색 없음) + @뒤 실시간 드롭다운만 — 이 규칙은 읽기용 인라인에만 적용. */
 .scr-feed-comments .scr-mreq-chip-inline {
   background: none; box-shadow: none; padding: 0; border-radius: 0;
   /* 댓글 본문과 같은 크기로 흐르게. */
-  color: var(--point); font-weight: 700; font-size: var(--fs-caption);
+  color: #5b9bd8; font-weight: 700; font-size: var(--fs-caption);
   top: 0; margin: 0;
 }
-/* 라이트 테마의 --point는 검정(맥락별 용도)이라 멘션 강조로는 약하다 — 읽히는 앰버로. */
-html.scr-light-theme .scr-feed-comments .scr-mreq-chip-inline { color: #c07c1c; }
+html.scr-light-theme .scr-feed-comments .scr-mreq-chip-inline { color: #1d4ed8; }
 /* (삭제) 모바일 댓글 시트 전용 "+1스텝" 규칙 — 카드용 크기를 caption/micro로 다시
    키우면서 시트 크기와 똑같아져 더는 필요 없다. */
 /* 입력·수정창의 유저칩 — 좌우 패딩을 줄여 문장에 더 잘 섞이게(요청). */
@@ -7365,12 +7467,18 @@ html.scr-light-theme .scr-feed-comments .scr-mreq-chip-inline { color: #c07c1c; 
    따로 떠 보이므로(지적), 같은 비율로 함께 내려 12px 간격을 지킨다. */
 /* 탭바가 줄면 버튼은 그 위가 아니라 탭바 왼쪽 같은 줄로 내려앉는다(요청) — 줄어든 탭바는
    좌우로도 10%씩 물러나(scale 0.8, 기준점 50% 100%) 그 자리가 비고, 버튼이 거기 들어가면
-   화면 아래가 한 줄로 정리된다. 버튼도 탭바만큼 작아진다. */
-html.scr-tabbar-mini .scr-feed-add-fab-wrap {
-  bottom: calc(var(--scr-float-bottom) + (var(--mobile-footer-h) * 0.72 - 44px) / 2);
-  left: 8px;
+   화면 아래가 한 줄로 정리된다. 버튼도 탭바만큼 작아진다. 탭바 자체가 모바일 전용이라
+   (PC는 하단 탭바를 안 쓴다) 이 축소도 모바일 폭에서만 건다 — html.scr-tabbar-mini는
+   순수 스크롤 방향으로만 토글되는 클래스(useHideOnScrollDown)라 화면 폭과 무관하게 붙는데,
+   미디어쿼리 없이 걸면 PC에서도 스크롤만으로 버튼 크기·위치가 바뀌었다(지적: "PC에서
+   스크롤 다운하면... 이건 모바일용 로직이라 PC에선 빼야돼"). */
+@media (max-width: 640px) {
+  html.scr-tabbar-mini .scr-feed-add-fab-wrap {
+    bottom: calc(var(--scr-float-bottom) + (var(--mobile-footer-h) * 0.72 - 44px) / 2);
+    left: 8px;
+  }
+  html.scr-tabbar-mini .scr-feed-add-fab { width: 44px; height: 44px; }
 }
-html.scr-tabbar-mini .scr-feed-add-fab { width: 44px; height: 44px; }
 /* 넓은 화면에서는 화면 왼쪽 끝이 아니라 본문 칸 바로 옆에 둔다(요청) — 본문은 가운데
    860px로 모여 있는데 버튼만 저 멀리 구석에 있으면 한 화면으로 안 읽힌다. 본문 왼쪽
    바깥으로 버튼 폭(52) + 간격(16)만큼 나간 자리다.
@@ -7504,6 +7612,10 @@ html.scr-light-theme .scr-feed-add-fab {
    갈아 끼운다. 다크의 파스텔 톤은 검은 배경에서만 성립한다. */
 .scr-light-theme .scr-feed-shift-up { color: #16a34a; }
 .scr-light-theme .scr-feed-shift-down { color: #e11d48; }
+/* 통계 월간 랭크의 순위변동 "신규"만 다크 테마에서 포인트색(골드)을 빼고 기본 글자색으로
+   (요청) — 피드 쪽 랭크변동 카드의 "신규"는 그대로 포인트색을 쓴다(이 표에서만의 요청).
+   라이트는 --point가 이미 검정(#000)이라 기본 글자색과 다를 게 없어 그대로 둔다. */
+html:not(.scr-light-theme) .scr-stat-rank-cell .scr-feed-shift-new { color: var(--text); }
 /* 예전엔 배지(▲2) 뒤에 "(1위 → 3위)"를 따로 붙였다 — 이제 그 자체가 본문이 되면서
    (요청: 배지 제거, "조조 1 → 3위 -100p") 이 보조 표기는 필요 없어졌다. */
 /* 포인트 변동(요청: "+100p") — 순위 변동과 같은 상승/하락 색을 쓰되 한 톤 작게 둔다.
@@ -8143,6 +8255,10 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
 .scr-story-rail { left: 0; right: 0; background: rgba(var(--overlay-rgb), 0.18); }
 .scr-story-fill { left: 0; background: var(--point); transition: width 420ms ease; }
 @media (prefers-reduced-motion: reduce) { .scr-story-fill { transition: none; } }
+/* 다크 테마에서 진행바의 포인트색(골드) 적용 부분(진행 채움선 + 지나간 눈금)은 진한
+   화이트로(요청) — "현재" 눈금(.scr-story-snap-on, 아래)만 별도로 기본색을 쓴다. 라이트는
+   --point가 이미 검정이라 그대로 둔다. */
+html:not(.scr-light-theme) .scr-story-fill { background: #fff; }
 /* 눈금 — 가로 위치가 그 문장의 시점이라, 초반에 몰린 이야기와 한참 뒤의 이야기가 간격으로
    갈린다. 손가락으로 짚기 좋게 실제 점보다 넓은 판을 준다. */
 .scr-story-snap {
@@ -8159,10 +8275,16 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
   transition: width 160ms ease, height 160ms ease, background 160ms ease;
 }
 .scr-story-snap-past::after { background: var(--point); border-color: var(--point); }
+html:not(.scr-light-theme) .scr-story-snap-past::after { background: #fff; border-color: #fff; }
 .scr-story-snap-on::after {
   width: 12px; height: 12px;
   background: var(--point); border-color: #fff;
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--point) 34%, transparent);
+}
+/* "현재" 눈금만 다크 테마에서 기본색으로(요청) — 링(box-shadow)도 같이 낮춘다. */
+html:not(.scr-light-theme) .scr-story-snap-on::after {
+  background: var(--text); border-color: #fff;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--text) 34%, transparent);
 }
 .scr-story-time {
   flex-shrink: 0; font-size: 11px; font-variant-numeric: tabular-nums;

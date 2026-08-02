@@ -30,9 +30,10 @@ interface MemberStatRowProps {
   points?: number | null;
   // 지금 몇 위인가(공동순위 포함) — 포인트와 나란한 제 컬럼이다(요청: 랭크·포인트 분리).
   rank?: number | null;
-  // 직전 순위표 대비 몇 계단 움직였나(+면 상승) — 최근 순위 변동 스냅샷에서 온다.
-  // 그 스냅샷은 '이번 달' 기준으로만 계산되므로, 다른 기간을 보고 있으면 호출부가 안 넘긴다.
-  rankDelta?: number | null;
+  // 전달 대비 몇 계단 움직였나(+면 상승). "new"면 전달엔 순위가 없던 신규(요청: "신규면
+  // 신규 표시") — null이면 변동 없음이거나 애초에 견줄 전달이 없는 경우(전체 기간 등)라
+  // 아무것도 안 보여준다.
+  rankDelta?: number | "new" | null;
   // 포인트를 누르면 포인트 상세(경기 이력)를 연다.
   onPointsClick?: () => void;
   // 랭크를 누르면 최근 5개월 순위변동 그래프를 연다(요청) — 월을 보고 있을 때만 넘어온다.
@@ -85,8 +86,12 @@ export default function MemberStatRow({
                 ) : (
                   <span className="scr-stat-rank-plain">{rank}위</span>
                 )}
-                {/* 변동은 방향이 곧 의미라 색과 화살표로만 짧게. */}
-                {rankDelta != null && rankDelta !== 0 && (
+                {/* 변동은 방향이 곧 의미라 색과 화살표로만 짧게. 신규는 화살표 대신
+                    "신규" 글자로(요청). */}
+                {rankDelta === "new" ? (
+                  // 기존 피드 랭크변동 카드의 "신규" 배지와 같은 톤을 그대로 쓴다.
+                  <span className="scr-feed-shift-new">신규</span>
+                ) : rankDelta != null && rankDelta !== 0 && (
                   <span className={rankDelta > 0 ? "scr-feed-shift-up" : "scr-feed-shift-down"}>
                     {rankDelta > 0 ? `▲${rankDelta}` : `▼${-rankDelta}`}
                   </span>

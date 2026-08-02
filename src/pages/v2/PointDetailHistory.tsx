@@ -2,6 +2,8 @@ import GameResultTeams, { pointToneClass } from "../../components/common/GameRes
 import { Spinner } from "../../components/common/Feedback";
 import { cx } from "../../utils/format";
 import { formatWhen } from "../../utils/date";
+import { isComputerSlot } from "../../constants/computerSlot";
+import { isUnregisteredSlot } from "../../constants/unregisteredSlot";
 import type { GameResult, GameOutcome, GameResultSlot, Member } from "../../types";
 
 interface PointDetailHistoryProps {
@@ -20,13 +22,19 @@ interface PointDetailHistoryProps {
   bothTeams?: boolean;
 }
 
-// 경기당 레이팅 변화 병기용 — 양수엔 +를 붙이고(음수는 자연히 -), 0도 그대로. 없으면(미실시/
-// 상대 미회원 등으로 레이팅 미반영) 병기하지 않는다.
+// 경기당 레이팅 변화 병기용 — 양수엔 +를 붙이고(음수는 자연히 -), 0도 그대로.
 function deltaLabel(d: number | undefined): string | undefined {
   if (d === undefined) return undefined;
   // 서버가 ×10 스케일로 내려주므로 카드 점수와 똑같이 자연수로 반올림해 보여준다(요청).
   const n = Math.round(d);
   return `${n > 0 ? "+" : ""}${n}점`;
+}
+
+// 컴퓨터·비회원이 한 명이라도 낀 경기 — 상대 실력치가 없어 레이팅에 아예 반영되지 않는다
+// (통계 화면 "최소 게임수" 안내와 같은 규칙). Δ가 없는 이유가 이거다 싶으면 점수 대신
+// "레이팅 제외"라고 밝힌다(요청) — 그냥 숫자를 안 보여주면 "아직 안 됐나?" 헷갈린다.
+function isExcludedFromRating(row: { team1: GameResultSlot[]; team2: GameResultSlot[] }): boolean {
+  return [...row.team1, ...row.team2].some((s) => isComputerSlot(s.memberId) || isUnregisteredSlot(s.memberId));
 }
 
 interface HistoryRow {
@@ -98,6 +106,9 @@ export default function PointDetailHistory({
             <div className="scr-game-result-date-head scr-game-result-date-head-compact">{formatWhen(g.date)}</div>
             {g.items.map((r) => {
               const dLabel = deltaLabel(deltaByMatchNo.get(r.matchNo));
+              // Δ가 안 왔는데 컴퓨터·비회원이 껴 있으면 "레이팅 제외"로 이유를 밝힌다 —
+              // 그 밖의 이유(아직 집계 전 등)로 없는 경우는 예전처럼 아무것도 안 보여준다.
+              const excluded = !dLabel && isExcludedFromRating(r);
               // 팀전: 우리팀 대 상대팀을 그대로 보여주고, 이 회원의 경기당 Δ를 카드 아래 로우에.
               // 개인전: "VS 상대 + 승패 + Δ"만.
               return bothTeams ? (
@@ -106,10 +117,12 @@ export default function PointDetailHistory({
                     team1={r.team1} team2={r.team2} memberOf={memberOf} result={r.result}
                     disableProfileLink compact bothTeamsTail textRoster
                   />
-                  {dLabel && (
+                  {(dLabel || excluded) && (
                     <div className="scr-rank-history-points-line">
                       <span className="scr-rank-history-calc">
-                        레이팅 <strong className={cx(pointToneClass(dLabel))}>{dLabel}</strong>
+                        레이팅 {dLabel
+                          ? <strong className={cx(pointToneClass(dLabel))}>{dLabel}</strong>
+                          : <strong className="scr-rank-history-excluded">제외</strong>}
                       </span>
                     </div>
                   )}
@@ -119,7 +132,7 @@ export default function PointDetailHistory({
                   <GameResultTeams
                     team1={r.team1} team2={r.team2} memberOf={memberOf} result={r.result}
                     disableProfileLink stackedOutcome compact opponentOnly textRoster
-                    outcomeNote={dLabel}
+                    outcomeNote={dLabel ?? (excluded ? "레이팅 제외" : undefined)}
                   />
                 </div>
               );

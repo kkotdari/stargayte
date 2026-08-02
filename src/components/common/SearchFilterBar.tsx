@@ -269,7 +269,7 @@ export default function SearchFilterBar({
             onClick={openMention}
             aria-label="유저 추가"
           >
-            <Plus size={15} />
+            <Plus size={12} />
           </button>
         )}
       </div>
