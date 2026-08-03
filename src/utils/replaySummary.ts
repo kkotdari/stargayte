@@ -987,7 +987,7 @@ const PRO_LIKE: Record<string, { pro: string; style: string; units: string[] }[]
   ],
   저그: [
     { pro: "홍진호", style: "폭풍 저글링", units: ["Zergling"] },
-    { pro: "박성준", style: "공격적인 저그", units: ["Hydralisk", "Mutalisk"] },
+    { pro: "박성준", style: "공격 저그", units: ["Hydralisk", "Mutalisk"] },
     { pro: "조용호", style: "운영형 목동 저그", units: ["Ultralisk", "Defiler", "Lurker"] },
   ],
   프로토스: [

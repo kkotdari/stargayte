@@ -1,4 +1,4 @@
-import { ga, ira, neun, reul, ro, wa, yeoss } from "./korean";
+import { ga, ira, neun, reul, ro, wa } from "./korean";
 import { isReplaySummaryData, type ReplaySummaryBeat, type ReplaySummaryData } from "./replaySummaryData";
 import { SIGNATURE_UPGRADE_KO, TECH_USE_PHRASE } from "./replayTechNames";
 
@@ -2124,10 +2124,14 @@ const TEMPLATES: Record<string, Tpl> = {
     const style = str(c.p.style);
     if (!pro || !style) return null;
     const at = c.whom ? `${reul(c.whom)} 상대로 ` : "";
+    /* 세 표현 다 style을 목적어로 받는다 — 한때 "박성준 못지않은 공격적인 저그였다"처럼
+       그 말 자체를 서술어로 세웠는데, style은 "바이오닉 운영"·"폭풍 저글링"처럼 사람이
+       아니라 '그림'을 부르는 말이라 '~였다'로 받으면 사람이 그 그림이 되어 버린다
+       (지적: 문장이 어색하다). */
     return `${ga(c.who)} ${at}${done(c, c.pick([
-      `마치 ${pro}같은 ${reul(style)} 보여줌`,
+      `마치 ${pro}처럼 ${reul(style)} 펼쳐 보임`,
       `${reul(pro)} 떠올리게 하는 ${reul(style)} 선보임`,
-      `${pro} 못지않은 ${yeoss(style)}`,
+      `${pro} 못지않은 ${reul(style)} 보여줌`,
     ]))}`;
   },
 
