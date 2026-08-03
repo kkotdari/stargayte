@@ -256,6 +256,10 @@ const TECH_BEATS_PER_PLAYER = 2;
 const TECH_MIN_RANK = 4;
 /** 한 요약에 기술 문장은 이만큼까지 — 다채로우려고 넣은 것이 도배가 되면 안 된다. */
 const TECH_BEATS_PER_SUMMARY = 2;
+/** 마법 예약석(위 EXTRA_SLOTS.tech)을 받으려면 최소 이만큼은 썼어야 한다 — 열 번쯤부터가
+ *  "그 판 내내 썼다"고 할 수 있는 선이고, 무게 보너스(floor(n/10))가 붙기 시작하는 선이기도
+ *  하다. 이보다 적게 쓴 마법은 예약 없이 무게로만 겨룬다. */
+const TECH_RESERVE_MIN_USES = 10;
 /** 상징 업그레이드 문장의 기본 무게 — 여기에 UPGRADE_RANK를 얹는다. 전술 문장은 저마다의
  *  무게에 10을 더해 들어오므로(tacticBeats), 재료 문장을 그 아래에 두면 아무리 늘려도
  *  자리를 못 얻는다 — 이야깃거리가 큰 업그레이드(랭크 4~6)가 전술과 겨룰 만한 자리에 오게
@@ -2746,14 +2750,22 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
    *  스토리텔링이 잘 되게. 자리 다툼에 맡기면 앞이야기가 늘 먼저 잘려 나가, 해골이
    *  아무 맥락 없이 툭 뜨는 요약이 됐다. 여유분은 이 목적으로만 쓰이므로 평범한 경기의
    *  길이는 그대로다. */
-  const CAUSE_EXTRA_SLOTS = 2;
-  let causeUsed = 0;
-  const consider = (b: Beat, capped: boolean, asCause = false): boolean => {
+  /* 마법을 실제로 여러 번 쓴 이야기(tech)에도 같은 방식의 예약석을 준다(요청: 스톰 문장
+     자리 확보). 무게만으로는 이 갈래가 구조적으로 진다 — 최대치가 19쯤인데(TECH_BASE_WEIGHT
+     9 + 기술 점수 + 사용 횟수 보너스 3) 러시·물량·교전은 20을 예사로 넘는다. 그래서 스톰을
+     150번 쓴 판에서도 그 이야기가 통째로 빠졌다(실측: 8인전 vessel — 컷 20, 스톰 19). 예약석은
+     tech에만 쓰이므로 마법이 없던 경기의 길이는 그대로다. */
+  const EXTRA_SLOTS = { cause: 2, tech: 2 } as const;
+  type Reserve = keyof typeof EXTRA_SLOTS;
+  const extraUsed: Record<Reserve, number> = { cause: 0, tech: 0 };
+  /** 예약 없이 들어간 수 — 예약석은 갈래마다 따로 세야 한다. 예전엔 chosen.length로
+   *  방을 쟀는데, 갈래가 둘이 되면 한쪽이 쓴 예약석이 다른 쪽 방까지 먹어 버린다. */
+  let plain = 0;
+  const consider = (b: Beat, capped: boolean, reserve?: Reserve): boolean => {
     if (chosen.includes(b)) return false;
-    const room = slots + (asCause ? CAUSE_EXTRA_SLOTS - causeUsed : 0);
-    if (chosen.length >= room) return false;
+    if (plain >= slots && (!reserve || extraUsed[reserve] >= EXTRA_SLOTS[reserve])) return false;
     // 앞이야기는 무게가 가벼워도 싣는다 — '재미'로 뽑는 자리가 아니라 '왜'를 대는 자리다.
-    if (b.weight < (asCause ? CAUSE_MIN_WEIGHT : MIN_WEIGHT)) return false;
+    if (b.weight < (reserve === "cause" ? CAUSE_MIN_WEIGHT : MIN_WEIGHT)) return false;
     const sig = unitSig(b);
     if (sig && chosen.some((x) => unitSig(x) === sig)) return false;
     const cap = PER_KEY_CAP[b.k];
@@ -2762,7 +2774,7 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     if (b.dedupeOn && chosen.some((x) => renderReplaySummary(
       { v: REPLAY_SUMMARY_VERSION, beats: [strip(x)] }, (raw) => raw,
     )?.includes(b.dedupeOn!))) return false;
-    if (asCause && chosen.length >= slots) causeUsed += 1;
+    if (reserve && plain >= slots) extraUsed[reserve] += 1; else plain += 1;
     chosen.push(b);
     taken[phaseOf(b)] += 1;
     return true;
@@ -2812,13 +2824,25 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   for (const b of ranked) {
     if (!MUST_KEEP.has(b.k) || !consider(b, false)) continue;
     const hit = causeFor(b);
-    if (hit) consider(hit, false, true);
+    if (hit) consider(hit, false, "cause");
   }
   // 1차: 국면 상한을 지키며 무게순으로 채운다.
   for (const b of ranked) consider(b, true);
   // 2차: 그래도 자리가 남으면(한쪽 국면에만 이야기가 몰린 경기) 상한을 풀고 마저 채운다 —
   // 균형을 맞추자고 쓸 수 있는 이야기를 버리지는 않는다.
   for (const b of ranked) consider(b, false);
+  // 3차: 마법 예약석(요청) — 여기까지 와서도 못 든 tech를 예약분만큼 태운다. 맨 뒤에 두는
+  // 이유는, 자리 다툼에서 정상적으로 이겼으면 이미 들어가 있어 예약분을 안 쓰기 때문이다.
+  // 갈래 상한(PER_KEY_CAP.tech)이 그대로 걸려 스톰 이야기가 줄줄이 서지는 않는다.
+  //
+  // 다만 예약석은 '많이 써서 그 판의 그림이 된' 마법에만 내준다 — 한두 번 써 본 스톰까지
+  // 자리를 보장하면 예약이 곧 "스톰 한 번 썼음" 줄을 만드는 장치가 된다(실측: 스톰 1회,
+  // 디스럽션웹 4회가 새로 문장이 됐다). 그런 것도 무게로 이기면 얼마든지 들어간다 —
+  // 여기서 막는 건 자리 보장뿐이다.
+  for (const b of ranked) {
+    if (b.k !== "tech" || (typeof b.p?.n === "number" ? b.p.n : 0) < TECH_RESERVE_MIN_USES) continue;
+    consider(b, false, "tech");
+  }
   // 이야기의 뼈대는 시간이다(지적) — 편끼리 묶는다고 시간을 넘나들면 앞뒤가 뒤집혀 읽힌다.
   // 그래서 먼저 시간순으로 세우고, 같은 편 이야기를 붙이는 건 '거의 같은 때'에 벌어진
   // 일들 안에서만 한다. 시점을 못 잡은 문장(올인처럼 한 순간이 아닌 것)은 맺음말 앞으로 밀린다.
