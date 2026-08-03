@@ -1784,7 +1784,9 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    통째로 길어졌다(실측 251px). */
 .scr-stat-build-cell, .scr-stat-units-cell, .scr-stat-skills-cell {
   flex-direction: row; align-items: center; justify-content: center;
-  gap: 8px; position: relative;
+  /* 갭과 아래 padding-left가 짝이다 — 선 좌우로 같은 폭이 남아야 선이 두 덩어리 한가운데에
+     선다. 8px씩은 너무 다닥다닥 붙어 보여(지적) 14px씩으로 벌린다. */
+  gap: 14px; position: relative;
 }
 /* 덩어리 사이 실선(요청) — 칸 사이 구분선보다 옅은 --line-hair로, 좌우 여백을 갭과 같게
    둬서 선이 두 덩어리 한가운데에 선다. */
@@ -1793,8 +1795,12 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 .scr-stat-skills-cell > * + *,
 .scr-stat-record-cell > * + * {
   border-left: 1px solid var(--line-hair); padding-left: 14px; align-self: stretch;
-  display: flex; flex-direction: column; justify-content: center;
 }
+/* stretch로 늘린 덩어리는 저마다 제 방식으로 속을 세로 가운데에 세운다 — 여기서 display를
+   지정하면 격자로 짠 목록(.scr-stat-toplist)이 flex로 덮여 열이 통째로 무너진다(실측:
+   스킬 목록이 칸 위쪽으로 붙어 버렸다). */
+.scr-stat-toplist, .scr-stat-upgrades { align-content: center; }
+.scr-stat-worker5 { justify-content: center; }
 /* 남는 폭은 목록이 가져간다 — 그림·수치는 제 크기 그대로 둔다. */
 /* 이름은 왼쪽, 수는 오른쪽 끝에 세로로 맞추는데(space-between) 칸이 넓으면 그 사이가
    통째로 벌어져 두 값이 한 줄로 안 읽힌다(지적: 갭이 너무 크다) — 목록 자체의 폭을 묶어
@@ -1876,19 +1882,25 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 /* ── 유닛·스킬 칸(요청: Top5 목록, 정렬 없음) ───────────────────────────────────
    이름은 왼쪽에 붙이고 수는 오른쪽 끝에 세로로 맞춘다 — 다섯 줄을 위아래로 훑을 때
    자릿수가 흔들리면 큰 값과 작은 값이 한눈에 안 갈린다(그래서 tabular-nums도 함께). */
+/* 이름 열과 수 열이 각자 제 내용만큼만 넓다 — 줄마다 flex로 space-between을 주면 칸이
+   넓을수록 이름과 수가 서로 멀어져 한 줄로 안 읽힌다(지적: 스킬 쪽은 이름에 비해 공간이
+   너무 넓다). 두 열짜리 격자를 만들고 통째로 가운데 세우면, 목록이 차지하는 자리(=구분선
+   위치)는 줄마다 같게 두면서 글자 사이만 붙는다. 줄(li)은 subgrid로 그 두 열을 물려받아
+   목록 전체에서 수의 자릿수가 세로로 맞는다. */
 .scr-stat-toplist {
   list-style: none; margin: 0; padding: 0; width: 100%;
-  display: flex; flex-direction: column; gap: 2px;
+  display: grid; grid-template-columns: auto auto;
+  justify-content: center; column-gap: 10px; row-gap: 2px;
 }
 .scr-stat-toplist li {
-  display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
-  line-height: 1.35; min-width: 0;
+  display: grid; grid-column: 1 / -1; grid-template-columns: subgrid;
+  align-items: baseline; line-height: 1.35; min-width: 0;
 }
 .scr-stat-toplist-name {
   color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .scr-stat-toplist-n {
-  color: var(--dim); font-variant-numeric: tabular-nums; white-space: nowrap; flex: none;
+  color: var(--dim); font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right;
 }
 /* 정렬 안 되는 컬럼 머리 — 정렬되는 머리(.scr-stat-sort-btn)와 같은 자리/크기로 앉히되
    화살표가 없고 눌리지도 않는다. */
