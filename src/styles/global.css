@@ -1228,7 +1228,7 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    그 버튼 높이만큼 아래쪽에 여백을 둔다(모바일은 탭바 몫으로 별도 여백을 두므로 아래
    미디어쿼리가 이 값을 덮어쓴다). */
 /* 좌우 패딩을 토큰으로 둔다 — 피드 포스트가 이 값만큼 음수 마진으로 빠져나가 화면을
-   꽉 채우기 때문에(아래 .scr-feed-list), 두 곳이 반드시 같은 값이어야 한다. */
+   꽉 채우기 때문에(아래 .scr-activity-list), 두 곳이 반드시 같은 값이어야 한다. */
 /* 포스트(피드 카드) 좌우 여백을 본문 여백의 2배로(지적: 포스트들 좌우 여백을 1스텝
    증가, 현재의 2배) — 아래 :root의 --post-pad-bx/--post-head-pad-l 기본값(0px)은
    "포스트 자체 패딩 없음(본문 패딩만)"이던 예전 요청이다. 여기서 --main-pad-x를 그대로
@@ -2012,7 +2012,7 @@ html:not(.scr-light-theme) .scr-donut {
    충분히 잘 보인다는 확인으로 뺐다(요청). */
 /* 수치 텍스트는 이 표 전체에서 하나의 크기로 통일한다(요청: "모든 텍스트 14고 딱 하나
    순위변동쪽만 12로") — 랭크/포인트 버튼(.scr-stat-points-btn)과 같은 caption(14). 순위
-   변동 화살표·"신규"(.scr-stat-rank-cell .scr-feed-shift-*, 아래)만 유일한 예외로 micro(12)
+   변동 화살표·"신규"(.scr-stat-rank-cell .scr-activity-shift-*, 아래)만 유일한 예외로 micro(12)
    그대로 둔다. */
 .scr-value-bar-num {
   position: relative; font-size: var(--fs-caption); font-weight: 600; color: var(--text);
@@ -2131,7 +2131,7 @@ html:not(.scr-light-theme) .scr-donut {
 /* 랭크 칸 — 순위와 포인트가 위아래 두 줄이다(요청: 통합, 세로 배치는 위 규칙). 월을 보고
    있으면 순위가 누를 수 있는 버튼이 되고(최근 5개월 순위변동), 전체 기간이면 견줄 달이
    없어 글자로만 둔다. 포인트는 늘 버튼이다(경기 이력). 변동 화살표는 피드의 랭크 변동
-   카드와 같은 색 규칙(scr-feed-shift-up/down)을 그대로 쓴다.
+   카드와 같은 색 규칙(scr-activity-shift-up/down)을 그대로 쓴다.
    메달이 이 칸 우상단에 절대배치되므로 position:relative가 필요하다(.scr-stat-medal 참고). */
 .scr-stat-rank-cell { justify-content: center; gap: 2px; position: relative; }
 /* 클릭 가능한 랭크(.scr-stat-points-btn 재사용)와 글자 크기·굵기가 같아야 한다 —
@@ -2140,9 +2140,9 @@ html:not(.scr-light-theme) .scr-donut {
   font-size: var(--fs-caption); font-weight: 700; color: var(--text);
   font-variant-numeric: tabular-nums;
 }
-.scr-stat-rank-cell .scr-feed-shift-up,
-.scr-stat-rank-cell .scr-feed-shift-down,
-.scr-stat-rank-cell .scr-feed-shift-new {
+.scr-stat-rank-cell .scr-activity-shift-up,
+.scr-stat-rank-cell .scr-activity-shift-down,
+.scr-stat-rank-cell .scr-activity-shift-new {
   font-size: var(--fs-micro); font-variant-numeric: tabular-nums; white-space: nowrap;
 }
 /* (구) 900px 이상에서 minmax(1fr)+width:100%로 남는 폭을 나눠 채우던 분기는 제거 —
@@ -2158,7 +2158,7 @@ html:not(.scr-light-theme) .scr-donut {
 .scr-stats-list-panel-v2 .scr-stat-name-cell { justify-content: center; }
 /* v2 통계 그리드(표) 전체를 피드 카드와 같은 투명 유리로(요청: "통계 화면 그리드를
    투명 블러로") — 배경 사진(stats_bg)이 표 뒤로 비쳐 보이게 한다. base .scr-stat-table의
-   불투명 --panel-solid를 덮는다. 값은 .scr-feed-card와 동일(다크/라이트 각각). */
+   불투명 --panel-solid를 덮는다. 값은 .scr-activity-card와 동일(다크/라이트 각각). */
 /* 유리(backdrop-filter)는 '표' 하나만 든다 — 한때 sticky 유저칸과 이중 합성되는 걸 피하려고
    데이터 칸마다 따로 줬는데(지적: "두 번 불투명"), 그러면 blur 요소가 셀 수만큼 생겨
    스크롤이 눈에 띄게 끊겼다(지적: "통계 스크롤이 부드럽지 않음"). 이중 합성은 아래에서
@@ -2877,9 +2877,9 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
   .scr-search-filter-float { width: 100%; }
   /* 피드는 모바일에서도 유형+유저검색을 한 줄에(요청) — 세로 스택/폭 100% 규칙을 되돌려
      유형(내용 폭)은 왼쪽, 유저검색은 남는 폭을 채운다. */
-  .scr-feed-screen .scr-filter-inline-stack { flex-direction: row; align-items: center; gap: 8px; }
-  .scr-feed-screen .scr-filter-panel { width: auto; justify-content: flex-start; }
-  .scr-feed-screen .scr-search-filter-float { width: auto; flex: 1 1 auto; min-width: 0; }
+  .scr-activity-screen .scr-filter-inline-stack { flex-direction: row; align-items: center; gap: 8px; }
+  .scr-activity-screen .scr-filter-panel { width: auto; justify-content: flex-start; }
+  .scr-activity-screen .scr-search-filter-float { width: auto; flex: 1 1 auto; min-width: 0; }
   /* (통계는 필터창 자체가 없어졌다 — 조건은 목록 위 제목 문장이 맡는다. .scr-grid-title 참고.) */
   .scr-filter-item-label { font-size: var(--fs-caption); }
   /* 모바일에서도 필터 요소(알약/달력/종족)를 base(PC)와 같은 크기 — 검색창 높이(34px)에 맞춘다
@@ -3209,11 +3209,11 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
   background: rgba(var(--divider-tint), 0.35);
 }
 
-.scr-feed-post-menu-btn {
+.scr-activity-post-menu-btn {
   display: inline-flex; align-items: center; justify-content: center;
   background: transparent; border: none; padding: 4px; margin: -4px; color: var(--dim); flex-shrink: 0; cursor: pointer;
 }
-@media (hover: hover) { .scr-feed-post-menu-btn:hover { color: var(--text); } }
+@media (hover: hover) { .scr-activity-post-menu-btn:hover { color: var(--text); } }
 /* PC 폭에서도 카드는 한 줄에 하나씩 — 카드 자체 폭은 넓어지니(위 헐렁해 보이는 문제)
    팀 칸 폭/간격만 좁혀서 내용을 수평으로 바짝 모은다("N경기" 태그와의 연결감은 정렬을
    맞추는 대신 태그 자체를 더 또렷하게 보이도록 색을 밝힌다, 아래 .scr-game-result-seq). */
@@ -3297,40 +3297,40 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
   .scr-game-result-trow-topmeta { right: 20px; }
 }
 /* 게임번호는 화면에서 감췄다(요청) — 값 자체는 데이터에 그대로 있고, 보여주는 자리만
-   없앴다. 등록자는 카드 머리의 시각 옆(.scr-feed-card-by)으로 옮겼다. */
+   없앴다. 등록자는 카드 머리의 시각 옆(.scr-activity-card-by)으로 옮겼다. */
 
 /* 펼침 로우 하단 댓글(메모) 영역 — 게시판 댓글 스타일. 목록·입력창은 공용 댓글
    CSS(.scr-comment-*)를 그대로 쓴다. 로우 자체가 클릭 토글이라 이 영역은
    stopPropagation으로 접힘을 막는다. */
-.scr-feed-notes { margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(var(--overlay-rgb), 0.08); }
+.scr-activity-notes { margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(var(--overlay-rgb), 0.08); }
 
-.scr-feed-notes-list { margin-bottom: 8px; }
+.scr-activity-notes-list { margin-bottom: 8px; }
 /* 각 댓글은 상하 여백만(구분선은 옅게) — scr-comment-item의 카드 톤 대신 콤팩트하게.
    인스타그램식 레이아웃(요청) — 아바타를 왼쪽 칸에 크게 두고, 닉네임·시각·본문은
    전부 오른쪽 칸에 쌓는다. 이 <li>는 공용 .scr-comment-item(뒤쪽 소스, flex-direction:column)도
    같이 달고 있어 한 클래스짜리로 두면 특이도가 같아 소스 순서상 그 규칙에 진다 — 두
    클래스를 묶어 확실히 이긴다. */
-.scr-comment-item.scr-feed-note-item { display: flex; flex-direction: row; align-items: flex-start; gap: 12px; padding: 7px 0; }
-.scr-feed-note-item + .scr-feed-note-item { border-top: 1px solid rgba(var(--overlay-rgb), 0.06); }
+.scr-comment-item.scr-activity-note-item { display: flex; flex-direction: row; align-items: flex-start; gap: 12px; padding: 7px 0; }
+.scr-activity-note-item + .scr-activity-note-item { border-top: 1px solid rgba(var(--overlay-rgb), 0.06); }
 /* border-radius:50% !important — 원래 회원 사진(size 기준 각진 정도)이든 닉네임 첫 글자
    폴백이든 무조건 동그랗게(다른 프사 원형 처리와 같은 규칙). 살짝 아래로 내려 첫 줄
    (닉네임) 글자 중심과 시각적으로 맞춘다. */
-.scr-feed-note-avatar { border-radius: 50% !important; flex-shrink: 0; margin-top: 1px; }
-.scr-feed-note-body { flex: 1; min-width: 0; }
-.scr-feed-note-item .scr-comment-item-top { margin-bottom: 3px; }
+.scr-activity-note-avatar { border-radius: 50% !important; flex-shrink: 0; margin-top: 1px; }
+.scr-activity-note-body { flex: 1; min-width: 0; }
+.scr-activity-note-item .scr-comment-item-top { margin-bottom: 3px; }
 /* 닉네임(.scr-comment-author-name)과 같은 색(--dim)을 쓰되 더 연하게(지적: 타임스탬프
    색깔 닉네임과 동일하게 약간 연하게) — 이 앱에서 --muted가 --dim보다 오히려 더 진해서
    (다크 테마 기준 0.88 vs 0.68), 그동안 타임스탬프가 닉네임보다 더 또렷해 보였다.
    --dim에 opacity를 얹어 두 테마 모두에서 "닉네임 색조 그대로, 살짝만 더 흐리게"가 되게 한다. */
-.scr-feed-note-time { font-size: 10px; color: var(--dim); opacity: 0.75; font-variant-numeric: tabular-nums; flex-shrink: 0; }
-.scr-feed-note-text { font-size: var(--fs-micro); }
+.scr-activity-note-time { font-size: 10px; color: var(--dim); opacity: 0.75; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+.scr-activity-note-text { font-size: var(--fs-micro); }
 /* 수정·삭제 버튼을 댓글 내용이 끝나는 자리에(지적: 오른쪽 끝이 아니라 내용이 끝나는
    부분 바로 옆으로) — 텍스트가 담긴 <p> 안에 이어 붙는 인라인 요소라, 글이 짧으면
    글자 바로 뒤에 붙고 길어서 줄이 꽉 차면 마지막 줄로 자연스럽게 넘어간다.
    .scr-comment-actions(display:flex, 한 클래스라 소스 순서상 이 규칙보다 뒤에 있어
    이겼었다)의 block 성질이 줄바꿈을 강제했다(지적: 아랫줄에 붙는다) — 클래스 두 개짜리
    묶음 선택자로 특이도를 올려 확실히 이기게 한다. */
-.scr-feed-note-actions.scr-comment-actions {
+.scr-activity-note-actions.scr-comment-actions {
   display: inline-flex; align-items: center; gap: 2px;
   margin-left: 3px;
   /* inline-flex 기본 baseline이 상자 아래쪽이라 글자보다 처져 보였다 — middle로 한 번
@@ -3342,14 +3342,14 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
 }
 /* 버튼이 댓글 글자보다 상대적으로 커 보였다(지적: 댓글 내용과 크기 맞추기) — 아이콘도
    13→11px로, 버튼 여백도 3→2px로 줄여 본문 글자(micro, 12px) 크기에 맞춘다. */
-.scr-feed-note-actions .scr-feed-note-icon-btn { padding: 2px; }
+.scr-activity-note-actions .scr-activity-note-icon-btn { padding: 2px; }
 /* 메모 영역 전체를 한 스텝 작게(요청) — 목록 텍스트·입력창·버튼 폰트/크기를 함께 줄인다.
    입력 편집기(.scr-comment-editor)는 --field-h를 지역 재정의해 높이만 줄이고, 폰트·버튼은
    아래에서 개별로 한 스텝 낮춘다. */
-.scr-feed-notes { --field-h: 30px; }
-.scr-feed-notes .scr-comment-author-name { font-size: var(--fs-micro); }
-.scr-feed-notes .scr-comment-input { font-size: var(--fs-caption); }
-.scr-feed-notes .scr-comment-submit-btn {
+.scr-activity-notes { --field-h: 30px; }
+.scr-activity-notes .scr-comment-author-name { font-size: var(--fs-micro); }
+.scr-activity-notes .scr-comment-input { font-size: var(--fs-caption); }
+.scr-activity-notes .scr-comment-submit-btn {
   flex-basis: 30px; width: 30px; height: 30px;
   min-width: 30px; min-height: 30px; max-width: 30px; max-height: 30px;
   /* 이 버튼은 펼침 영역(.scr-game-result-trow-expand-inner { overflow:hidden })의 맨 아래에
@@ -3359,7 +3359,7 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
   box-shadow: inset 0 0 9px rgba(var(--lit-rgb), 0.4);
 }
 @media (hover: hover) {
-  .scr-feed-notes .scr-comment-submit-btn:hover { box-shadow: inset 0 0 12px rgba(var(--lit-rgb), 0.55); }
+  .scr-activity-notes .scr-comment-submit-btn:hover { box-shadow: inset 0 0 12px rgba(var(--lit-rgb), 0.55); }
 }
 /* 메모 입력칸 — 너나와의 불투명 흰 박스 대신, 로우 글라스 패널에 녹아드는 반투명 유리로
    (요청: 튀지 않게 최대한 — 반투명 + 아주 옅은 반사광/그림자). --overlay-rgb가 테마별로
@@ -3369,7 +3369,7 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
    (.scr-game-result-trow-expand-inner { overflow:hidden })의 맨 아래·좌우 끝에 붙어 있어서,
    바깥으로 뻗는 box-shadow(드롭섀도/아웃라인 링)를 쓰면 그 효과가 overflow에 잘려 보였다
    (요청: 포커싱 효과가 잘림). inset은 박스 안쪽에만 그려져 절대 잘리지 않는다. */
-.scr-feed-notes .scr-comment-editor {
+.scr-activity-notes .scr-comment-editor {
   background: rgba(var(--overlay-rgb), 0.06);
   --text: #e7edf2; --muted: rgba(231, 237, 242, 0.5);
   box-shadow:
@@ -3378,13 +3378,13 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
 }
 /* 포커스에도 테두리(1px 링)를 두르지 않는다(요청: 테두리 제거, 그림자와 림으로) —
    윗면 림을 한 단계 밝히고 아래 그림자를 깊게 해서 "눌린 칸"으로 읽히게만 한다. */
-.scr-feed-notes .scr-comment-editor:focus-within {
+.scr-activity-notes .scr-comment-editor:focus-within {
   background: rgba(var(--overlay-rgb), 0.1);
   box-shadow:
     inset 0 1px 0 rgba(var(--overlay-rgb), 0.22),    /* 윗면 림 */
     inset 0 -4px 10px rgba(0, 0, 0, 0.12);           /* 아래로 깊어지는 그림자 */
 }
-.scr-light-theme .scr-feed-notes .scr-comment-editor {
+.scr-light-theme .scr-activity-notes .scr-comment-editor {
   /* 다크용 inset 그림자(어두운 윗림 + 아래 그늘)를 그대로 물려받아 흰 배경에서 유독
      어둡고 그림자가 심했다(지적) — 라이트는 흰 필드에 얇은 테두리 하나로 끝낸다. */
   background: rgba(255, 255, 255, 0.92);
@@ -3396,29 +3396,29 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
    소스상 더 뒤라 이겨버려, 라이트에서만 바깥 링이 되살아나 펼침영역 overflow에 아래가
    잘렸다(지적된 버그 — "특히 아래부분 특히 라이트"). 특이도를 한 단계 높인 이 규칙으로
    라이트에서도 inset만 쓰게 못박는다. */
-.scr-light-theme .scr-feed-notes .scr-comment-editor:focus-within {
+.scr-light-theme .scr-activity-notes .scr-comment-editor:focus-within {
   background: #fff;
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18);
 }
-.scr-feed-note-icon-btn {
+.scr-activity-note-icon-btn {
   display: inline-flex; align-items: center; justify-content: center;
   background: transparent; border: none; color: var(--muted); cursor: pointer;
   /* 호버 영역이 네모였다(지적) — 원형으로. */
   padding: 3px; border-radius: 50%; line-height: 0;
 }
-@media (hover: hover) { .scr-feed-note-icon-btn:hover { color: var(--text); background: rgba(var(--overlay-rgb), 0.08); } }
-@media (hover: hover) { .scr-feed-note-icon-danger:hover { color: var(--loss); background: rgba(220, 70, 70, 0.14); } }
-.scr-feed-note-err { margin: 4px 0 8px; }
+@media (hover: hover) { .scr-activity-note-icon-btn:hover { color: var(--text); background: rgba(var(--overlay-rgb), 0.08); } }
+@media (hover: hover) { .scr-activity-note-icon-danger:hover { color: var(--loss); background: rgba(220, 70, 70, 0.14); } }
+.scr-activity-note-err { margin: 4px 0 8px; }
 /* 입력 줄 — "너 나와!"의 compose-row를 그대로 쓰되(인풋+제출 버튼 한 줄), 상단 여백만 살짝. */
-.scr-feed-note-compose-row { margin-top: 2px; }
+.scr-activity-note-compose-row { margin-top: 2px; }
 /* 예전엔 여기 '펼침 상세'(0fr↔1fr 높이 애니메이션)가 있었다 — 스탯 표가 전체화면 시트로
    나가면서 펼칠 내용 자체가 없어져 통째로 걷어냈다(요청). */
 /* 세로점세개(⋮) 메뉴 트리거 — 등록자 오른쪽 끝에. 아이콘 버튼 톤은 기존 메모 버튼과 공유. */
-.scr-feed-post-menu { display: inline-flex; flex-shrink: 0; }
-.scr-feed-post-menu-drop { min-width: 128px; }
+.scr-activity-post-menu { display: inline-flex; flex-shrink: 0; }
+.scr-activity-post-menu-drop { min-width: 128px; }
 /* 삭제 항목만 위험 톤 — 기본 붉은 글자, hover 시 옅은 붉은 배경(공용 드롭다운 hover 흰배경 대신). */
-.scr-feed-post-menu-drop .scr-feed-post-menu-opt-danger { color: var(--loss); }
-@media (hover: hover) { .scr-feed-post-menu-drop .scr-feed-post-menu-opt-danger:hover { color: var(--loss); background: rgba(220, 70, 70, 0.14); } }
+.scr-activity-post-menu-drop .scr-activity-post-menu-opt-danger { color: var(--loss); }
+@media (hover: hover) { .scr-activity-post-menu-drop .scr-activity-post-menu-opt-danger:hover { color: var(--loss); background: rgba(220, 70, 70, 0.14); } }
 /* 목록 화면용 2열 그리드 로스터(.scr-game-result-trow-grid/-team/-roster, .scr-mt-*)는
    걷어냈다 — 그걸 쓰던 마지막 화면(카톡 단일 경기 공유)이 피드 카드를 그대로 쓰게
    바뀌면서 그리는 곳이 없어졌다(요청: 잘못 쓰이지 않게 제거). 지금 로스터는 너 나와!와
@@ -3545,7 +3545,7 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
 /* 글자 굵기는 건드리지 않는다(지적: 하이라이트된 이름에만 말줄임표가 생긴다) — 600을
    800으로 올리면 같은 글자가 더 넓어져서, 안 잘리던 닉네임이 하이라이트된 순간에만
    잘린다. 눈에 띄게 하는 일은 배경색이 이미 충분히 하고 있다. 요약 명단 쪽
-   (.scr-feed-card-stack-sum-player-hl)은 같은 이유로 진작 굵기를 뺐는데 이쪽이 남아 있었다. */
+   (.scr-activity-card-stack-sum-player-hl)은 같은 이유로 진작 굵기를 뺐는데 이쪽이 남아 있었다. */
 .scr-team-player-highlight .scr-team-name { color: var(--bar-text); }
 /* 승/패 표시는 이 표에서 가장 먼저 눈에 들어와야 하는 값이라 닉네임(13px)보다 뚜렷하게 크게 둔다. */
 .scr-team-outcome { flex-shrink: 0; text-align: center; font-size: var(--fs-subhead); font-weight: 800; min-width: 14px; position: relative; }
@@ -4410,7 +4410,7 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   background-color: color-mix(in srgb, var(--panel-solid) 30%, transparent);
   backdrop-filter: blur(8px) saturate(1.15);
   -webkit-backdrop-filter: blur(8px) saturate(1.15);
-  /* 림·그림자는 FAB(.scr-feed-add-fab)와 같은 문법으로 통일한다(지적: "탭바 패널 효과가
+  /* 림·그림자는 FAB(.scr-activity-add-fab)와 같은 문법으로 통일한다(지적: "탭바 패널 효과가
      FAB에 비해 촌스럽다 — FAB처럼 은은하면서 퍼지는 림과 그림자로"). 또렷한 아래 라인
      (0.36)과 강한 접촉 그림자로 테두리를 그리던 방식을 버리고, 얇은 유리 테 + 은은한 위
      림만 남긴 뒤 그림자는 넓게 퍼지는 쪽으로 옮긴다. FAB보다 패널이 훨씬 크므로 값은
@@ -4456,7 +4456,7 @@ html.scr-light-theme .scr-mobile-tabbar {
 .scr-mobile-tabbar-mini {
   /* 0.8 → 0.72(요청: 축소 시 탭바와 등록 버튼이 겹치니 탭바를 좀 더 줄이기). 축소 기준점이
      가운데 아래라 줄인 만큼 좌우가 각각 (1-비율)/2씩 물러나는데, 왼쪽에 생기는 그 자리에
-     등록 버튼이 들어간다(아래 .scr-feed-add-fab-wrap) — 0.8에서는 좁은 화면일수록 그 자리가
+     등록 버튼이 들어간다(아래 .scr-activity-add-fab-wrap) — 0.8에서는 좁은 화면일수록 그 자리가
      버튼보다 좁아 겹쳤다(실측: 375px 화면에서 버튼 오른쪽 끝 58px vs 탭바 왼쪽 끝 50px). */
   transform: scale(0.72);
   transform-origin: 50% 100%;
@@ -5205,9 +5205,9 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 .scr-challenge-card-team .scr-challenge-side-msg { font-size: var(--fs-11); }
 /* 피드에서 아바타·닉네임을 키운 만큼(요청: "너 나와... 모든 폰트 크기 확대") 한마디도
    같이 한 단계 키웠다가, 다시 1스텝 축소(요청) — 팀전보다 뒤에 둬서(피드+팀전이 겹쳐도)
-   피드 쪽 기준이 이긴다(아래 .scr-feed-card .scr-challenge-card .scr-challenge-person-name
+   피드 쪽 기준이 이긴다(아래 .scr-activity-card .scr-challenge-card .scr-challenge-person-name
    과 같은 순서). */
-.scr-feed-card .scr-challenge-side-msg { font-size: var(--fs-micro); }
+.scr-activity-card .scr-challenge-side-msg { font-size: var(--fs-micro); }
 .scr-light-theme .scr-challenge-submit-btn:disabled { border-color: rgba(0, 0, 0, 0.14); }
 /* "호출" 버튼 — 활성화 시 각 테마의 라이팅 프라이머리(요청: 핑크 고유색 대신 공통
    라이팅 테마). 다크=거의 흰 알약, 라이트=하늘빛 알약 + 윤곽 글로우. 비활성은 위
@@ -6187,7 +6187,7 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
 }
 /* 본문은 세로 flex + align-items:center라, 자식이 스스로 폭을 안 잡으면 내용만큼만
    좁아진다. 예전엔 경기 한 장을 감싸던 래퍼에만 width:100%를 줬는데, 그래서 묶음
-   공유와 순위변동(둘 다 .scr-feed-list로 온다)이 화면 한가운데 손톱만 하게 떴다
+   공유와 순위변동(둘 다 .scr-activity-list로 온다)이 화면 한가운데 손톱만 하게 떴다
    (신고: "접은 상태에서 너무 좁게 나오는데"). 자식 무엇이 오든 같은 폭이 되게 한 곳에서 잡는다.
    세로도 가운데(요청: 랭킹 변동·경기·요약 모두) — justify-content:center 대신 자식의
    auto 마진을 쓴다. 카드가 화면보다 길어지면 justify-content:center는 위쪽이 화면 밖으로
@@ -6290,7 +6290,7 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
 /* ── 공용 댓글 ── 목록·본문·입력이 전부 여기서 나온다. 댓글이 붙는 자리(경기 로우 아래,
    피드 카드, 모바일 시트)마다 크기만 자기 문맥에서 덧칠한다. */
 /* 본문 안의 @닉네임 — 세로로 앉는 자리를 잡는다. 배경 있는 칩이던 시절의 보정이 남아
-   있는데(middle + 1px), 지금 쓰는 자리(.scr-feed-card-comment)는 배경을 걷어내고
+   있는데(middle + 1px), 지금 쓰는 자리(.scr-activity-card-comment)는 배경을 걷어내고
    baseline으로 다시 맞춘다. */
 .scr-comment-mention { vertical-align: middle; position: relative; top: -1px; margin: 0 1px; user-select: none; }
 .scr-comment-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
@@ -7062,7 +7062,7 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    채움이 없어진 지금은 위아래 림 한 줄이 그 일을 하므로 그만큼 벌릴 이유가 없다 — 오히려
    화면이 휑해 보인다. 카드 자신의 꼬리 여백(--post-pad-b 16px)이 여기 더해진다. */
 :root { --feed-card-gap: 26px; }
-.scr-feed-list { display: flex; flex-direction: column; gap: var(--feed-card-gap); }
+.scr-activity-list { display: flex; flex-direction: column; gap: var(--feed-card-gap); }
 
 /* ── 목록 보기(요청) ─────────────────────────────────────────────────────────────
    카드 넉 장이면 한 화면인 피드에서 "무엇이 있었나"만 훑는 모드다. 한 줄에 시각·제목·
@@ -7071,26 +7071,26 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    점선이 실선이 되어 지금 이 모드라는 것이 글자만으로 읽힌다. */
 /* 밑줄은 뺐다(요청) — 제목 바로 옆이라 눌리는 자리라는 건 자리와 글자("~로 보기")가
    이미 말하고, 점선이 있으면 제목 줄에 잔금이 하나 더 그어진 것처럼 보인다. */
-.scr-feed-listmode-btn {
+.scr-activity-listmode-btn {
   background: transparent; border: none; padding: 0; cursor: pointer; font-family: inherit;
   font-size: var(--fs-caption); font-weight: 600; line-height: 1;
   color: var(--muted); white-space: nowrap; opacity: 0.85;
   -webkit-tap-highlight-color: transparent;
 }
-@media (hover: hover) { .scr-feed-listmode-btn:hover { color: var(--text); opacity: 1; } }
+@media (hover: hover) { .scr-activity-listmode-btn:hover { color: var(--text); opacity: 1; } }
 
 /* 줄 구분선은 본문 칸 좌우 여백을 뚫고 끝까지 간다(요청: 양쪽 끝까지 꽉 차게) — 표의
    가로줄은 칸 안쪽이 아니라 표 전체를 가르는 선이다. 여백만큼 밖으로 나갔다가 같은 값을
    줄 안쪽 패딩으로 되돌려 글자 자리는 그대로 둔다(--post-bleed는 .scr-main이 자기
    좌우 패딩과 같은 값으로 내려 준다). */
-.scr-feed-rows {
+.scr-activity-rows {
   display: flex; flex-direction: column;
   margin-inline: calc(-1 * var(--post-bleed)); --scr-row-pad-x: calc(var(--post-bleed) + 2px);
 }
 /* 줄 사이는 얇은 실선 하나로만 가른다 — 카드처럼 저마다 유리판을 두면 '목록'이 아니라
    '작은 카드 목록'이 되어 훑기가 다시 느려진다. */
-.scr-feed-row-wrap + .scr-feed-row-wrap { border-top: 1px solid var(--line-hair); }
-.scr-feed-row {
+.scr-activity-row-wrap + .scr-activity-row-wrap { border-top: 1px solid var(--line-hair); }
+.scr-activity-row {
   display: grid; align-items: center; gap: 0; width: 100%;
   /* 시각은 가장 긴 값("8월 3일 23:59")에 맞춰 고정 — 줄마다 폭이 달라지면 제목이 들쭉
      날쭉해져 세로로 훑을 수가 없다. 제목도 고정폭이라 내용 칸이 늘 같은 x에서 시작한다. */
@@ -7102,22 +7102,22 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 /* 세로 구분선(요청) — 가로줄(--line-hair)보다 더 흐리게 둔다. 표의 세로줄은 칸을 가르기만
    하면 되고, 가로줄만큼 진하면 격자가 글자보다 먼저 눈에 들어온다. 선 좌우로 같은 여백을
    두려고 gap 대신 각 칸의 패딩으로 자리를 만든다. */
-.scr-feed-row > * + * { border-left: 1px solid var(--line-faint); padding-left: 10px; }
-.scr-feed-row > * { padding-right: 10px; }
-.scr-feed-row > *:last-child { padding-right: 0; }
+.scr-activity-row > * + * { border-left: 1px solid var(--line-faint); padding-left: 10px; }
+.scr-activity-row > * { padding-right: 10px; }
+.scr-activity-row > *:last-child { padding-right: 0; }
 /* 고른 줄에 배경을 깔지 않는다(요청) — 아래에 카드가 펼쳐져 있는 것이 이미 '고른 줄'을
    말하고, 배경까지 깔면 그 줄만 다른 표처럼 보인다. 호버는 마우스가 어디 있는지 알려
    주는 것이라 그대로 둔다. */
-@media (hover: hover) { .scr-feed-row:hover { background: var(--lit-hover-bg); } }
+@media (hover: hover) { .scr-activity-row:hover { background: var(--lit-hover-bg); } }
 /* 번호 — 읽는 값이 아니라 자리를 세는 값이라 가장 흐리게, 오른쪽 정렬(자릿수가 늘어도
    숫자 끝이 한 줄로 선다). */
-.scr-feed-row-no {
+.scr-activity-row-no {
   color: var(--dim); font-variant-numeric: tabular-nums; text-align: right;
   font-size: var(--fs-11);
 }
 /* 시각은 맨 끝으로 갔다(요청) — 오른쪽 끝에 세로로 줄지어 서므로 오른쪽 정렬이라야
    날짜 끝이 한 줄로 맞는다. */
-.scr-feed-row-time {
+.scr-activity-row-time {
   color: var(--dim); font-variant-numeric: tabular-nums; white-space: nowrap;
   text-align: right;
   /* 한 스텝 작게(요청) — 시각은 줄을 가르는 기준일 뿐 읽을 값이 아니다. */
@@ -7125,35 +7125,35 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 }
 /* 가장 긴 제목("일일 랭크 변동")에 맞춘 고정폭이다 — 그래도 넘치면 트랙을 밀지 말고
    잘린다(실측: min-width 없이 두면 제목이 내용 칸을 덮어썼다). */
-.scr-feed-row-title { display: flex; align-items: center; min-width: 0; font-weight: 700; }
-.scr-feed-row-title-text {
+.scr-activity-row-title { display: flex; align-items: center; min-width: 0; font-weight: 700; }
+.scr-activity-row-title-text {
   white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis;
 }
 /* NEW — 이 목록에서 유일하게 색을 쓰는 자리다(요청: 연두 라임 녹색). 새것이 몇 개
    안 되기 때문에 색 하나가 눈에 바로 걸리고, 그게 이 배지가 하는 일 전부다. 글자를 그대로
    적으므로 색을 못 보는 눈에도 뜻이 남는다. 제목이 잘려도 배지는 안 잘리게 flex: none. */
-.scr-feed-row-new {
+.scr-activity-row-new {
   margin-left: 5px; flex: none; color: var(--new-badge);
   font-size: var(--fs-9); font-weight: 800; letter-spacing: 0.02em; vertical-align: 1px;
 }
 /* 내용은 한 줄로 끝난다 — 넘치면 말줄임이다. 여기서 두 줄이 되면 줄 높이가 흔들려
    목록의 리듬이 깨진다. */
-.scr-feed-row-desc {
+.scr-activity-row-desc {
   display: flex; align-items: center; gap: 6px; min-width: 0;
   color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.scr-feed-row-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.scr-feed-row-arrow { color: var(--dim); flex: none; }
+.scr-activity-row-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.scr-activity-row-arrow { color: var(--dim); flex: none; }
 /* 모바일은 가로가 좁아 앞 두 칸을 실제 최댓값("어제 00:32" / "랭크 변동")까지 조인다. */
 @media (max-width: 480px) {
   /* 제목 84px — "랭크 변동"이 74px에서 "랭크 …"로 잘렸다(실측). 내용 칸은 "4명 9경기"
      정도라 남는 폭을 앞뒤에 나눠 줘도 넉넉하다. */
   /* 제목 칸은 "랭크 변동" + NEW가 함께 들어갈 만큼(실측 110px). 내용 칸은 "4명 9경기"
      정도라 남는 폭을 앞에 더 줘도 넉넉하다. */
-  .scr-feed-row { grid-template-columns: 26px 110px minmax(0, 1fr) 78px; }
-  .scr-feed-row > * + * { padding-left: 8px; }
-  .scr-feed-row > * { padding-right: 8px; }
-  .scr-feed-row > *:last-child { padding-right: 0; }
+  .scr-activity-row { grid-template-columns: 26px 110px minmax(0, 1fr) 78px; }
+  .scr-activity-row > * + * { padding-left: 8px; }
+  .scr-activity-row > * { padding-right: 8px; }
+  .scr-activity-row > *:last-child { padding-right: 0; }
 }
 /* 여닫는 연출(요청) — 투명도와 이동만 쓴다.
    처음에는 격자 트랙(0fr↔1fr)을 애니메이션해서 실제로 접었다 폈는데, 그러면 매 프레임마다
@@ -7161,34 +7161,34 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    transform은 배치를 건드리지 않아(합성 단계에서만 처리) 내용이 아무리 많아도 값이 같다.
    자리는 즉시 잡히고 내용만 스며들 듯 나타난다.
    애니메이션은 트랜지션과 달리 '붙자마자' 도는 것이라, 펼칠 때만 마운트하는 지금 구조에서도
-   첫 프레임을 놓치지 않는다. 닫을 때는 FeedScreen이 ROW_CLOSE_MS만큼 언마운트를 미뤄 준다. */
-.scr-feed-row-fold-open { animation: scr-row-open .2s ease-out both; }
-.scr-feed-row-fold-closing { animation: scr-row-close .18s ease-in both; }
+   첫 프레임을 놓치지 않는다. 닫을 때는 ActivityScreen이 ROW_CLOSE_MS만큼 언마운트를 미뤄 준다. */
+.scr-activity-row-fold-open { animation: scr-row-open .2s ease-out both; }
+.scr-activity-row-fold-closing { animation: scr-row-close .18s ease-in both; }
 @keyframes scr-row-open { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
 @keyframes scr-row-close { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(-6px); } }
 @media (prefers-reduced-motion: reduce) {
-  .scr-feed-row-fold-open, .scr-feed-row-fold-closing { animation: none; }
+  .scr-activity-row-fold-open, .scr-activity-row-fold-closing { animation: none; }
 }
 /* 펼친 자리 — 원래 카드를 그대로 넣되 머리(시각·제목)는 감춘다(요청: 카드 바디와 댓글).
    바로 위 줄이 이미 같은 말을 하고 있어, 그대로 두면 시각이 두 번 적힌다. */
-.scr-feed-row-body { padding: 0 var(--scr-row-pad-x) 12px; }
-.scr-feed-row-body .scr-feed-card-head { display: none; }
+.scr-activity-row-body { padding: 0 var(--scr-row-pad-x) 12px; }
+.scr-activity-row-body .scr-activity-card-head { display: none; }
 /* 목록에서는 카드마다 따로 등장하지 않는다(요청: 열릴 때 게임결과 목록이 한 번에 뜨게).
-   .scr-feed-card-stack-reveal은 카드를 translateY(8px)에서 0으로 끌어올리는데, 그 위에
+   .scr-activity-card-stack-reveal은 카드를 translateY(8px)에서 0으로 끌어올리는데, 그 위에
    줄이 펼쳐지는 연출까지 겹치면 두 움직임이 서로 다른 속도로 붙어 "무언가 줄어들면서
    위로 올라가는" 느낌이 된다(지적). 여기서는 줄이 펼쳐지는 연출 하나만 남긴다. */
-.scr-feed-row-body .scr-feed-card-stack-reveal { animation: none; }
+.scr-activity-row-body .scr-activity-card-stack-reveal { animation: none; }
 /* 목록 안에서는 위아래 림도 뺀다 — 이미 줄 구분선이 칸을 가르고 있어, 림까지 그으면
    한 칸 안에 가로줄이 두 겹으로 겹친다(채움·블러는 이제 카드 공통에서 아예 안 쓴다).
    씌우는 쪽이 자식 결합자라 여기도 같은 꼴로 맞춰야 이기고, 라이트 테마 규칙은 앞에
    .scr-light-theme가 하나 더 붙어 더 세므로 그쪽도 따로 지워 준다. */
-.scr-feed-row-body .scr-feed-card > .scr-feed-card-body,
-.scr-light-theme .scr-feed-row-body .scr-feed-card > .scr-feed-card-body {
+.scr-activity-row-body .scr-activity-card > .scr-activity-card-body,
+.scr-light-theme .scr-activity-row-body .scr-activity-card > .scr-activity-card-body {
   background-image: none;
 }
 /* "현재"(now) 구분선 — 미래(위)와 오늘/과거(아래) 카드 사이에 위치 안내(요청). 포인트
    색 얇은 라인 + 가운데 "현재" 라벨. */
-.scr-feed-now-divider {
+.scr-activity-now-divider {
   display: flex; align-items: center; gap: 10px; margin: -2px 2px;
   /* 위아래 여백을 맞춘다(지적: 현재 라인 위아래 갭이 달라 보인다). 포스트는 목록의
      갭(--feed-card-gap) 말고도 제 꼬리 여백(margin-bottom: --post-pad-b)을 하나 더
@@ -7198,21 +7198,21 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 }
 /* 양쪽 끝이 흐려지는 그라데이션을 쓰다가 균일한 단색 선으로 바꿨다(요청) — 가운데만
    진하고 끝이 사라지는 선은 라벨 주변만 강조돼 "선"이 아니라 번짐처럼 보였다. */
-.scr-feed-now-divider::before, .scr-feed-now-divider::after {
+.scr-activity-now-divider::before, .scr-activity-now-divider::after {
   content: ""; flex: 1; height: 1px; background: var(--point);
   opacity: 0.7;
 }
-.scr-feed-now-divider span {
+.scr-activity-now-divider span {
   font-size: var(--fs-micro); font-weight: 800; color: var(--point);
   letter-spacing: 0.06em; white-space: nowrap;
 }
 /* 다크 테마에서 포인트색(골드)을 빼고 기본색으로(요청) — 선은 다른 구분선과 같은 톤,
    라벨은 다른 보조 캡션과 같은 muted로. 라이트는 --point가 이미 검정이라 그대로 둔다. */
-html:not(.scr-light-theme) .scr-feed-now-divider::before,
-html:not(.scr-light-theme) .scr-feed-now-divider::after {
+html:not(.scr-light-theme) .scr-activity-now-divider::before,
+html:not(.scr-light-theme) .scr-activity-now-divider::after {
   background: var(--line); opacity: 1;
 }
-html:not(.scr-light-theme) .scr-feed-now-divider span { color: var(--muted); }
+html:not(.scr-light-theme) .scr-activity-now-divider span { color: var(--muted); }
 /* ── 포스트(피드 카드) ──────────────────────────────────────────────────────
    패널형 유리판에서 인스타그램식 '포스트'로 바꾼다(요청). 포스트 한 장은 크게
    헤더부와 컨텐츠부로 나뉘고 그 사이를 선으로 긋는다(요청). 좌우 여백은 줄이고
@@ -7251,7 +7251,7 @@ html:not(.scr-light-theme) .scr-feed-now-divider span { color: var(--muted); }
   /* 케밥(26px)의 위 좌표 — 제목 줄 가운데에 맞춘다. 한때 머리에 음영 띠가 있어 케밥을 그
      띠 덩어리 전체와 견줘야 했는데(띠를 벗어나면 그것만 처져 보였다), 띠를 걷어낸 뒤로는
      견줄 상대가 제목 줄뿐이다 — 머리 아래 패딩을 늘려도 이 값이 따라 움직이지 않는 이유다.
-     이 값은 버튼이 아니라 버튼을 담은 상자의 좌표다. 버튼(.scr-feed-post-menu-btn)에는
+     이 값은 버튼이 아니라 버튼을 담은 상자의 좌표다. 버튼(.scr-activity-post-menu-btn)에는
      터치 영역을 바깥으로 넓히는 margin:-4px이 걸려 있어 실제 버튼 상자는 여기서 4px 더
      위에서 시작한다 — 제목 줄 가운데가 머리 위끝에서 18.5px(위 패딩 9 + 줄 19의 절반)이니
      버튼 상자 위끝은 18.5 - 13 = 5.5px, 여기에 그 4px을 더해 10px이다. */
@@ -7277,12 +7277,12 @@ html:not(.scr-light-theme) .scr-feed-now-divider span { color: var(--muted); }
 @media (max-width: 720px) {
   :root { --post-pad-x: 0px; --post-pad-bx: 0px; --post-head-pad-l: 0px; }
 }
-/* 포스트(피드 카드) = 머리(떠 있음, 글래스 없음) + 본문(.scr-feed-card-body, 글래스는
+/* 포스트(피드 카드) = 머리(떠 있음, 글래스 없음) + 본문(.scr-activity-card-body, 글래스는
    오직 여기) + 댓글(있을 때만, 글래스 없음) — 4가지 타입(게임결과/너나와/랭크변동/
    게임요약) 전부 이 한 구조를 공유한다(요청: "모든 포스트의 구조를 공통화"). 헤더·본문·
    댓글은 이제 서로의 형제일 뿐 감싸는 패널이 따로 없다 — 각자 필요한 만큼만 스스로
    책임진다(요청: "불필요한 css 단계도 제거하고 최대한 추상화·공통화"). */
-.scr-feed-card {
+.scr-activity-card {
   position: relative;
   /* 판을 본문 좌우 패딩 밖으로 빼내 본문폭을 끝까지 쓴다(요청) — 빼낸 만큼은 판이 안쪽으로
      되돌려 받아 내용을 제자리에 붙잡는다.
@@ -7295,7 +7295,7 @@ html:not(.scr-light-theme) .scr-feed-now-divider span { color: var(--muted); }
   margin-inline: calc(-1 * var(--post-bleed));
   /* 포스트 꼬리 여백 — 예전엔 헤더·본문·댓글을 함께 감싸는 패널 하나가 이 여백을
      냈는데, 그 패널 자체가 없어졌으므로 카드 자신의 margin-bottom으로 옮긴다(다음
-     포스트와의 간격은 이 값 + .scr-feed-list의 --feed-card-gap이다). */
+     포스트와의 간격은 이 값 + .scr-activity-list의 --feed-card-gap이다). */
   margin-bottom: var(--post-pad-b);
 }
 /* 본문 — 유리(반투명·블러·위아래 림)가 걸리는 유일한 자리(요청: "패널 블러/반투명,
@@ -7304,14 +7304,14 @@ html:not(.scr-light-theme) .scr-feed-now-divider span { color: var(--muted); }
    것처럼 읽힌다. 위아래만 림 한 줄로 경계를 만든다. 유리 톤은 통계 그리드 패널과 같은
    값으로 맞춘다(요청) — 채움을 아주 옅게 한 겹 깔고 블러는 2px만.
    사방 패딩도 여기 한 곳에서 공통으로 정의한다(요청: "포스트 본문 공통 css로 패딩
-   넣기", "사방 패딩을 공통으로 정의") — 타입별 전용 클래스(.scr-feed-game-result-body/
-   .scr-feed-shift-split 등)는 이제 순수 내용 레이아웃만 책임지고, 글래스·패딩은 여기
+   넣기", "사방 패딩을 공통으로 정의") — 타입별 전용 클래스(.scr-activity-game-result-body/
+   .scr-activity-shift-split 등)는 이제 순수 내용 레이아웃만 책임지고, 글래스·패딩은 여기
    하나로 통일한다(요청: 불필요한 CSS 단계 제거). */
 /* 유리(반투명 채움 + 블러)는 걷어냈다(요청) — 목록 보기에서 먼저 벗겨 보니 배경 사진이
    그대로 비쳐 보이는 쪽이 훨씬 시원했고, 카드가 여럿인 화면에서 blur 요소가 그 수만큼
    생기는 부담도 없어진다. 경계는 위아래 림 한 줄만 남긴다 — 채움까지 없는데 림마저 빼면
    카드가 어디서 끊기는지 알 수가 없다. */
-.scr-feed-card > .scr-feed-card-body {
+.scr-activity-card > .scr-activity-card-body {
   margin-inline: calc(-1 * var(--post-bleed));
   border-inline: var(--post-bleed) solid transparent;
   padding: var(--post-row-gap) calc(var(--post-pad-bx) + 8px);
@@ -7319,7 +7319,7 @@ html:not(.scr-light-theme) .scr-feed-now-divider span { color: var(--muted); }
     linear-gradient(to bottom, rgba(var(--overlay-rgb), 0.1) 1px, transparent 1px),
     linear-gradient(to top, rgba(var(--overlay-rgb), 0.1) 1px, transparent 1px);
 }
-.scr-light-theme .scr-feed-card > .scr-feed-card-body {
+.scr-light-theme .scr-activity-card > .scr-activity-card-body {
   /* 라이트에서는 흰 판이 흰 배경에 묻혀 경계가 안 보인다(지적) — 위아래 림을 조금 더
      진하게 잡는다. 좌우는 다크와 같은 이유로 비운다. */
   background-image:
@@ -7343,41 +7343,41 @@ html:not(.scr-light-theme) .scr-feed-now-divider span { color: var(--muted); }
 /* 카드가 나타날 때(요약이든 목록의 각 게임이든) 살짝 아래에서 올라오며 페이드인한다 —
    예전의 "페이드아웃 → 높이 이동 → 페이드인" 3단 연출을 대신하는 훨씬 단순한 등장
    연출이다. */
-@keyframes scr-feed-card-stack-reveal-in {
+@keyframes scr-activity-card-stack-reveal-in {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
-.scr-feed-card-stack-reveal { animation: scr-feed-card-stack-reveal-in 220ms ease-out both; }
+.scr-activity-card-stack-reveal { animation: scr-activity-card-stack-reveal-in 220ms ease-out both; }
 @media (prefers-reduced-motion: reduce) {
-  .scr-feed-card-stack-reveal { animation: none; }
+  .scr-activity-card-stack-reveal { animation: none; }
 }
 /* 목록을 펼치면 승격된 포스트들이 래퍼의 평범한 자식으로 나란히 쌓인다(더 이상 flex
    트랙이 아니다) — 다른 최상위 포스트와 같은 간격(--feed-card-gap)으로 떨어지게
    카드 사이에만 그 간격을 더한다(요청: "게임결과 카드도 하나의 피드 포스트로 승격"
-   — 각 카드 자신의 꼬리 여백(margin-bottom, .scr-feed-card 공통 규칙)에 이 값을
+   — 각 카드 자신의 꼬리 여백(margin-bottom, .scr-activity-card 공통 규칙)에 이 값을
    더하면 최상위 포스트 사이 간격과 정확히 같아진다). */
-.scr-feed-card-stack-wrapper > .scr-feed-card + .scr-feed-card {
+.scr-activity-card-stack-wrapper > .scr-activity-card + .scr-activity-card {
   margin-top: var(--feed-card-gap);
 }
 /* 참가자 — 이름 길이가 달라도 열이 어긋나지 않게 균등 그리드를 쓴다(flex-wrap이면 이름
    길이만큼 칸이 달라져 줄이 안 맞는다). 한 줄에 세 명이었는데, 아바타·닉네임을 키운
    만큼(요청) 두 명으로 줄인다 — 안 그러면 세 칸에 커진 아바타+글자가 부대껴 보인다. */
-.scr-feed-card-stack-sum-players {
+.scr-activity-card-stack-sum-players {
   list-style: none; margin: 0;
   /* 세미타이틀 줄("요약 정보")과 명단 사이 — 10 → 18px(지적: 너무 가깝다). 딸린 내용이라
      바짝 붙였었는데, 아바타가 있는 줄이라 그 정도로는 두 덩이가 한 줄처럼 뭉쳐 보였다.
-     좌우 패딩은 이제 .scr-feed-card-body(공용)가 내므로 여기서는 뺐다 — 위쪽 18px은
+     좌우 패딩은 이제 .scr-activity-card-body(공용)가 내므로 여기서는 뺐다 — 위쪽 18px은
      세미타이틀과의 내부 간격이라 그대로 둔다. */
   padding: 18px 0 0;
   display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 6px;
 }
-.scr-feed-card-stack-sum-player { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.scr-activity-card-stack-sum-player { display: flex; align-items: center; gap: 8px; min-width: 0; }
 /* 검색어에 걸린 사람은 요약 명단에서도 표시한다(지적) — 로스터와 같은 규칙(배경+글자색,
    굵기는 그대로: 굵히면 폭이 늘어 없던 말줄임표가 생긴다). */
-.scr-feed-card-stack-sum-player-hl { background: var(--highlight-bg); padding: 2px 4px; margin: -2px -4px; }
-.scr-feed-card-stack-sum-player-hl .scr-feed-card-stack-sum-name { color: var(--bar-text); }
-.scr-feed-card-stack-sum-player .scr-avatar { flex-shrink: 0; border-radius: 50% !important; }
-.scr-feed-card-stack-sum-name {
+.scr-activity-card-stack-sum-player-hl { background: var(--highlight-bg); padding: 2px 4px; margin: -2px -4px; }
+.scr-activity-card-stack-sum-player-hl .scr-activity-card-stack-sum-name { color: var(--bar-text); }
+.scr-activity-card-stack-sum-player .scr-avatar { flex-shrink: 0; border-radius: 50% !important; }
+.scr-activity-card-stack-sum-name {
   /* 아바타 확대와 함께 한 단계 키운다(요청: "게임결과 요약에서... 아바타 크기 및
      닉네임 등 모든 폰트 크기 확대"). */
   font-size: var(--fs-body); font-weight: 600; color: var(--text);
@@ -7385,25 +7385,25 @@ html:not(.scr-light-theme) .scr-feed-now-divider span { color: var(--muted); }
 }
 /* 요약의 세미타이틀 줄(요청) — 왼쪽에 "요약 정보", 오른쪽에 참가자 수. 포스트 제목은
    "이게 무슨 글인가"만 말하고, 그 아래 요약이 제 머리를 따로 갖는 구조다. */
-.scr-feed-card-stack-sum-head {
+.scr-activity-card-stack-sum-head {
   display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
-  /* 좌우 패딩은 .scr-feed-card-body가 공용으로 낸다(위 .scr-feed-card-stack-sum-players와
+  /* 좌우 패딩은 .scr-activity-card-body가 공용으로 낸다(위 .scr-activity-card-stack-sum-players와
      같은 이유) — 위쪽 14px만 이 요소 몫(카드 머리와의 내부 간격). */
   padding: 14px 0 0;
 }
-.scr-feed-card-stack-sum-title {
+.scr-activity-card-stack-sum-title {
   font-size: var(--fs-micro); font-weight: 800; color: var(--muted);
   min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 /* 참가자 수 — 자리가 모자라면 세미타이틀이 먼저 줄고(그쪽이 min-width:0) 이 값은 남는다. */
-.scr-feed-card-stack-sum-count {
+.scr-activity-card-stack-sum-count {
   white-space: nowrap; flex-shrink: 0;
   font-size: var(--fs-micro); font-weight: 800; color: var(--dim);
 }
 /* 제목과 시각이 한 줄을 나눠 쓰게 되면서 이 규칙이 묶음 카드만의 것이 아니게 됐다 —
    "개인전 일일 랭크 변동 알림"처럼 긴 제목이 좁은 화면에 들어가면 제목이 두 줄로 접혀 머리가
    다시 두 층이 된다. 넘치면 말줄임표로 자른다(시각은 flex-shrink:0이라 안 줄어든다). */
-.scr-feed-card-head .scr-feed-card-label {
+.scr-activity-card-head .scr-activity-card-label {
   /* min-width:0이 함께 있어야 실제로 잘린다 — 라벨도 제목 줄의 플렉스 아이템이고,
      white-space:nowrap이 걸린 아이템의 기본 min-width(auto)는 '글자 전체 폭'이라
      아무리 좁아져도 안 줄어든다. 그러면 제목 줄이 안 줄고 시각이 아랫줄로 밀린다(실측:
@@ -7413,9 +7413,9 @@ html:not(.scr-light-theme) .scr-feed-now-divider span { color: var(--muted); }
 /* 묶음 카드의 헤더 우상단에도 다른 포스트와 똑같이 케밥이 앉는다(요청: 게임요약 통째로
    카톡 공유를 케밥 메뉴 안에). 그만큼 오른쪽 자리를 비워 제목이 케밥 밑으로 흘러 들어가지
    않게 한다 — 패딩이 아니라 변수를 바꿔야 제목 줄 음영의 음수 마진도 같이 따라온다.
-   케밥 자체의 자리와 드롭다운은 너 나와/순위변동 카드와 같은 규칙(.scr-feed-chal-menu)을
+   케밥 자체의 자리와 드롭다운은 너 나와/순위변동 카드와 같은 규칙(.scr-activity-chal-menu)을
    그대로 쓴다. */
-.scr-feed-card-stack-summary > .scr-feed-card-head { --post-head-pad-r: 44px; }
+.scr-activity-card-stack-summary > .scr-activity-card-head { --post-head-pad-r: 44px; }
 
 /* 요약 바디 전체가 펼침/접힘 토글이다(요청) — 명단 어디를 눌러도 열리고 닫힌다. */
 /* 아래 여백은 펼침/접힘과 무관하게 '항상' 같아야 한다. 한때 펼쳤을 때만 줬는데(그림자가
@@ -7424,10 +7424,10 @@ html:not(.scr-light-theme) .scr-feed-now-divider span { color: var(--muted); }
    발생해"). 접힘 애니메이션은 이 블록 높이가 고정이라는 전제로 아래 기준점을 잡는다.
    대신 그만큼 아래 토글 버튼의 위 패딩을 줄여, 접힌 모습의 간격은 예전 그대로 24px다
    (14 + 10). 펼쳤을 때는 이 14px이 곧 명단과 그림자 사이의 숨통이 된다. */
-.scr-feed-card-stack-sum-body {
+.scr-activity-card-stack-sum-body {
   cursor: pointer; -webkit-tap-highlight-color: transparent;
   /* 접힘 상태에서 명단과 안내글 사이 간격이 곧 이 값이다 — 펼치면 이 블록이 절대배치로
-     빠지므로 흐름에 관여하지 않는다(위 .scr-feed-card-stack-toggle 주석 참고).
+     빠지므로 흐름에 관여하지 않는다(위 .scr-activity-card-stack-toggle 주석 참고).
      2 → 14px(요청: 요약과 아래 버튼 사이에 여유를). 아래 버튼이 자기 위 패딩 10px을
      따로 갖고 있으니 접힌 모습의 실제 간격은 24px이 된다. 버튼 쪽이 아니라 이쪽을 키우는
      이유는, 버튼 패딩은 두 상태 모두 흐름에 남아 있어 건드리면 누르는 순간 카드가
@@ -7437,10 +7437,10 @@ html:not(.scr-light-theme) .scr-feed-now-divider span { color: var(--muted); }
 /* 펼치기 ↔ 접기 — 같은 자리에서 글자와 삼각형 방향만 바뀐다(요청). 예전에는 펼치면
    원래 펼치기가 있던 자리에도 접기가 하나 더 생겼는데, 같은 일을 하는 버튼이 위아래로
    둘이라 오히려 헷갈려서 없앴다(요청). */
-.scr-feed-card-stack-toggle {
+.scr-activity-card-stack-toggle {
   display: flex; align-items: center; justify-content: center; gap: 5px; width: 100%;
   /* 위 여백 24 → 10px. 나머지 14px은 요약 바디가 자기 padding-bottom으로 갖고 있다
-     (위 .scr-feed-card-stack-sum-body 주석 — 접었다 폈다 할 때 높이가 안 변해야 한다).
+     (위 .scr-activity-card-stack-sum-body 주석 — 접었다 폈다 할 때 높이가 안 변해야 한다).
      접힌 모습에서 명단↔펼치기 간격은 14 + 10 = 24px로 예전과 같다. */
   padding: 10px 0 0; border: none; background: none;
   font-family: inherit; font-size: var(--fs-micro); font-weight: 700; color: var(--dim);
@@ -7450,7 +7450,7 @@ html:not(.scr-light-theme) .scr-feed-now-divider span { color: var(--muted); }
    남아 있어서, 누르는 순간 padding이 바뀌며 카드가 툭 움직인다(지적: 누르면 순간 움직임).
    접힘 쪽만 좁히고 싶으면 위에 있는 요약 본문의 아래 여백을 줄인다(그쪽은 펼치면 절대배치로
    빠져 흐름에 관여하지 않는다). */
-@media (hover: hover) { .scr-feed-card-stack-toggle:hover { color: var(--text); } }
+@media (hover: hover) { .scr-activity-card-stack-toggle:hover { color: var(--text); } }
 /* 예전에는 펼쳤을 때 요약과 목록의 경계에 그림자를 드리워 두 층이 겹쳐 있다는 걸
    보여 줬다. 이제 펼치면 요약 자체가 접히므로(요청) 나눌 두 층이 없어 걷어냈다. */
 
@@ -7459,7 +7459,7 @@ html:not(.scr-light-theme) .scr-feed-now-divider span { color: var(--muted); }
    포스트가 좌우 여백 없이 이어지다 보니 어디서 다음 글이 시작하는지 잘 안 읽혔다(지적)
    — 제목을 과감히 키워(요청) 그 무게로 경계를 만든다. 시각은 제목에 딸린 보조라
    baseline을 맞춰 한 줄로 흐르게 한다. */
-.scr-feed-card-head {
+.scr-activity-card-head {
   /* 제목과 시각을 한 줄에 나란히(요청) — 제목이 앞, 시각이 바로 뒤. 두 줄이던 걸 한 줄로
      합치면 그만큼 띠 높이가 절반 가까이 준다(요청: "띠 부분이 반정도로 축소되겠지").
      시각 크기는 그대로 두고(요청) baseline만 제목에 맞춰, 큰 글자에 딸린 보조로 읽히게 한다.
@@ -7482,7 +7482,7 @@ html:not(.scr-light-theme) .scr-feed-now-divider span { color: var(--muted); }
 }
 /* 제목 뒤 — 시각(그리고 그와 한 묶음인 마감 카운트다운·일시 수정). 제목이 길어 자리가
    모자라면 제목이 먼저 줄어야 하므로 이쪽은 안 줄인다. */
-.scr-feed-card-head-meta {
+.scr-activity-card-head-meta {
   display: flex; align-items: baseline; gap: 8px; min-width: 0; flex-shrink: 0;
 }
 /* 제목 — 아이콘 + 라벨. 오른쪽 44px(헤더 패딩)은 케밥 자리라 비워둔다.
@@ -7490,23 +7490,23 @@ html:not(.scr-light-theme) .scr-feed-now-divider span { color: var(--muted); }
    상자의 baseline은 'baseline으로 정렬된 첫 아이템'에서 나오는데, center로 두면 그런
    아이템이 하나도 없어 아이콘 박스 아래끝에서 짜맞춘 값이 쓰이고, 그러면 옆에 붙는 시각이
    제목보다 몇 px 내려앉는다. 라벨만 baseline에 태우고 아이콘은 따로 가운데로 되돌린다. */
-.scr-feed-card-head-title {
+.scr-activity-card-head-title {
   display: flex; align-items: baseline; gap: 7px; min-width: 0;
 }
-.scr-feed-card-head-title > svg { flex-shrink: 0; align-self: center; }
+.scr-activity-card-head-title > svg { flex-shrink: 0; align-self: center; }
 /* 경기 케밥을 포스트 우상단으로(요청 — 이제 오른쪽에 타임라인이 없어 안전 공간 불필요).
    trow의 position:relative가 절대배치를 가로채지 않게 피드 안에서는 static으로. */
 /* 게임결과 포스트의 세로 간격은 여기 한 곳에서 정한다(요청: 모든 요소 세로 갭 통일).
    시간/케밥 줄 → 로스터 → 맵 정보 → 요약이 이 로우의 자식이라, 로우를 flex 컬럼으로
    두고 gap 하나로 몰아준다 — 각자 margin/padding으로 벌리던 걸 전부 0으로 되돌린다.
    케밥은 절대배치라 flex 항목이 아니고, 댓글은 이 로우 밖(포스트 직계)이라 같은 값을
-   따로 물려준다(아래 .scr-feed-card-comment). */
-.scr-feed-card { --post-row-gap: 24px; }
-.scr-feed-game-result-body .scr-game-result-trow {
+   따로 물려준다(아래 .scr-activity-card-comment). */
+.scr-activity-card { --post-row-gap: 24px; }
+.scr-activity-game-result-body .scr-game-result-trow {
   position: static;
   display: flex; flex-direction: column; gap: var(--post-row-gap);
 }
-.scr-feed-game-result-body .scr-game-result-trow > * { margin: 0; }
+.scr-activity-game-result-body .scr-game-result-trow > * { margin: 0; }
 /* 한때 이 줄이 비어 있어(맵·시간은 아래로, 케밥은 절대배치) 아래 여백 14px만 남았고,
    그게 헤더와 로스터 사이에 얹혀 게임결과만 유독 벌어져 보였다(지적) — 그래서 여백을
    지웠었다. 이제는 게임번호·등록자가 늘 여기 있으므로(요청) 빈 줄이 아니다. 로스터와
@@ -7515,56 +7515,56 @@ html:not(.scr-light-theme) .scr-feed-now-divider span { color: var(--muted); }
    않는다 — 오른쪽을 비워 둘 이유가 없다. */
 /* 아래 갭은 넉넉히, 위는 살짝만(요청) — 게임번호 줄은 머리띠에 딸린 꼬리표에 가깝고,
    그 아래 로스터부터가 본문이라 경계는 아래쪽에 둬야 읽힌다. */
-.scr-feed-game-result-body .scr-game-result-trow-topline { padding-right: 0; }
+.scr-activity-game-result-body .scr-game-result-trow-topline { padding-right: 0; }
 /* 이 줄에는 흐름에 놓이는 것이 하나도 없다(게임번호는 감췄고, 등록자는 카드 머리로 갔고,
    케밥은 절대배치다) — 높이는 0인데도 로우의 flex 항목이라 자기 몫의 갭(24px)을 그대로
    먹고 있었다(지적: 경기결과 목록 내부가 특히 과하다. 실측: 머리 아래 52px 중 24px이 이것).
    display:contents로 상자를 흐름에서 아예 없애면 갭도 함께 사라지고, 안에 든 케밥은
    절대배치라 기준면(포스트/묶음 아이템)이 그대로여서 자리도 그대로다. */
-.scr-feed-game-result-body .scr-game-result-trow-topline { display: contents; }
+.scr-activity-game-result-body .scr-game-result-trow-topline { display: contents; }
 /* 헤더의 '제목 줄' 언저리에 — 제목 줄 중심(포스트 위에서 33.6px)에 정확히 맞추면
    top이 21px인데, 거기서 6px 올린 자리를 쓴다(--post-kebab-top 주석 참고).
    이 값은 헤더 패딩에 딸린 값이라 변수 하나로 묶어 뒀다 — 머리 여백을 줄이면서(4px)
    케밥이 제목보다 12px 아래로 처졌던 적이 있다(지적). 헤더 패딩이나 줄 구성을
    건드리면 여기도 같이 다시 재야 한다. */
-.scr-feed-game-result-body .scr-game-result-trow-topmeta {
-  /* flex인 이유는 위 .scr-feed-chal-menu 주석과 같다 — top이 곧 버튼 위끝이어야 한다. */
+.scr-activity-game-result-body .scr-game-result-trow-topmeta {
+  /* flex인 이유는 위 .scr-activity-chal-menu 주석과 같다 — top이 곧 버튼 위끝이어야 한다. */
   position: absolute; top: var(--post-kebab-top); right: 10px; z-index: 2; display: flex;
 }
-.scr-feed-game-result-body .scr-game-result-trow-topmeta .scr-feed-kebab-btn, .scr-feed-chal-menu .scr-feed-kebab-btn { width: 26px; height: 26px; min-height: 26px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
+.scr-activity-game-result-body .scr-game-result-trow-topmeta .scr-activity-kebab-btn, .scr-activity-chal-menu .scr-activity-kebab-btn { width: 26px; height: 26px; min-height: 26px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
 /* display:flex인 이유 — 기본(블록)이면 인라인 버튼이 줄 상자 안에 앉아 상자 높이가
    line-height에 딸려 달라진다. flex로 두면 상자 높이가 버튼 높이로 고정돼, 세로 위치를
    --post-kebab-top 하나로만 다스릴 수 있다(그 값 주석 참고). */
-.scr-feed-chal-menu { position: absolute; top: var(--post-kebab-top); right: 10px; z-index: 3; display: flex; }
+.scr-activity-chal-menu { position: absolute; top: var(--post-kebab-top); right: 10px; z-index: 3; display: flex; }
 /* 아이템 내 폰트 전부 1스텝 축소(요청) — 로스터/닉네임 caption, 헤더 micro 등.
    로스터와 너나와 닉네임은 같은 크기 유지(둘 다 caption). */
-.scr-feed-card .scr-challenge-person-name { font-size: var(--fs-caption); }
+.scr-activity-card .scr-challenge-person-name { font-size: var(--fs-caption); }
 /* 너 나와 카드만 한 단계 더 키운다(요청: "너 나와... 아바타 크기 및 닉네임 등 모든
    폰트 크기 확대") — 위 규칙(로스터에도 걸리는 공용 규칙)보다 특이도를 올려 카드
    스코프(.scr-challenge-card)에서만 이긴다. 게임결과 로스터(RosterSide)는 이 클래스가
    없어 그대로 caption 유지 — "로스터와 너나와 닉네임은 같은 크기" 원칙은 로스터 쪽은
    건드리지 않았으니 그대로다. */
-.scr-feed-card .scr-challenge-card .scr-challenge-person-name { font-size: var(--fs-body); }
+.scr-activity-card .scr-challenge-card .scr-challenge-person-name { font-size: var(--fs-body); }
 /* 응답상태(대기/수락/거절)도 닉네임과 같이 한 단계 키운다 — 옆에 나란히 붙는 짝이라
    커진 닉네임 옆에서 유독 작아 보이면 안 된다. */
-.scr-feed-card .scr-challenge-card .scr-challenge-avatar-badge { font-size: var(--fs-body); }
-.scr-feed-game-result-body .scr-game-result-trow-map, .scr-feed-game-result-body .scr-game-result-trow-dur { font-size: var(--fs-micro); }
+.scr-activity-card .scr-challenge-card .scr-challenge-avatar-badge { font-size: var(--fs-body); }
+.scr-activity-game-result-body .scr-game-result-trow-map, .scr-activity-game-result-body .scr-game-result-trow-dur { font-size: var(--fs-micro); }
 /* 댓글이 본문(카드 메시지)과 같은 크기로 보여 어색했다(지적) — caption/micro로 한
    단계 줄였다가(요청) 다시 한 단계 더 줄였는데(지적), 이번엔 다시 한 단계 키워
    달라고 해서(지적: 댓글들도 다시 크기 1스텝 확대) 원래의 caption/micro로 되돌아왔다.
    (예전엔 여기서 gap/padding도 좁혔는데, 인스타그램식 레이아웃(아바타|본문 좌우 배치)으로
    바뀌며 그 gap이 세로 간격이 아니라 아바타-본문 사이 가로 간격을 의미하게 돼 버려
-   지적대로 삭제 — 레이아웃 관련 값은 이제 위 .scr-comment-item.scr-feed-note-item 한
+   지적대로 삭제 — 레이아웃 관련 값은 이제 위 .scr-comment-item.scr-activity-note-item 한
    군데에서만 정한다.) */
-.scr-feed-card-comment .scr-comment-text { font-size: var(--fs-caption); }
-.scr-feed-card-comment .scr-comment-author-name { font-size: var(--fs-micro); }
+.scr-activity-card-comment .scr-comment-text { font-size: var(--fs-caption); }
+.scr-activity-card-comment .scr-comment-author-name { font-size: var(--fs-micro); }
 /* 댓글에 표시되는 @유저 멘션은 칩(알약 배경)이 아니라 그냥 굵은 텍스트다(요청: "유저칩이
    아닌 굵게 표시로 변경") — 배경·그림자·패딩을 걷어 본문과 같은 caption 크기의 볼드로
-   흐르게 한다. 입력창 쪽은 애초에 평문이라(FeedComments 주석) 손댈 것이 없다. */
+   흐르게 한다. 입력창 쪽은 애초에 평문이라(ActivityComments 주석) 손댈 것이 없다. */
 /* 노출(읽기)되는 @멘션은 "@닉네임"을 굵게로 강조한다. 포인트 컬러(골드/앰버)였다가
    푸른색으로(요청) — 다크는 밝은 파랑, 라이트는 흰 배경 대비를 위해 더 어두운 파랑. 입력창은
    평문 그대로(색 없음) + @뒤 실시간 드롭다운만 — 이 규칙은 읽기용 인라인에만 적용. */
-.scr-feed-card-comment .scr-comment-mention {
+.scr-activity-card-comment .scr-comment-mention {
   background: none; box-shadow: none; padding: 0; border-radius: 0;
   /* 댓글 본문과 같은 크기로 흐르게. */
   color: #5b9bd8; font-weight: 700; font-size: var(--fs-caption);
@@ -7576,31 +7576,31 @@ html:not(.scr-light-theme) .scr-feed-now-divider span { color: var(--muted); }
      글자라(위) 밑선끼리 맞추는 것이 맞다. */
   vertical-align: baseline;
 }
-html.scr-light-theme .scr-feed-card-comment .scr-comment-mention { color: #1d4ed8; }
+html.scr-light-theme .scr-activity-card-comment .scr-comment-mention { color: #1d4ed8; }
 /* (삭제) 모바일 댓글 시트 전용 "+1스텝" 규칙 — 카드용 크기를 caption/micro로 다시
    키우면서 시트 크기와 똑같아져 더는 필요 없다. */
 /* 입력·수정창의 유저칩 — 좌우 패딩을 줄여 문장에 더 잘 섞이게(요청). */
 /* 카드 안 줄 전체를 1스텝 줄인다(요청) — 하루치가 열댓 줄까지 쌓이는 카드라
    caption으로는 카드 하나가 화면을 다 먹었다. */
-.scr-feed-shift-row { font-size: var(--fs-micro); }
+.scr-activity-shift-row { font-size: var(--fs-micro); }
 /* 윗줄 높이는 게임번호 줄이 스스로 정한다 — 예약은 필요 없다. */
-.scr-feed-game-result-body .scr-game-result-trow-topline { min-height: 0; }
+.scr-activity-game-result-body .scr-game-result-trow-topline { min-height: 0; }
 /* 게임결과 로스터 = 너 나와! 매치업과 같은 구조/CSS(요청: "너 나와의 css기준으로") —
    각 팀 세로 나열 + 프사, 가운데는 손가락 이모지 대신 vs, 승/무 배지도 동일 방식. */
 /* 좌우 4px을 더 갖고 있어 로스터만 다른 카드보다 4px 안쪽에 섰다(지적: 카드마다 내부
    여백이 다르다) — 좌우는 trow(8) + 본문(8) = 16px으로 충분하니 여기선 0으로 둔다. */
-.scr-feed-game-result-matchup { padding: 0; }
+.scr-activity-game-result-matchup { padding: 0; }
 /* (삭제) 첫 스냅의 로스터(.scr-story-intro-roster) — 자막 패널이 세로로 너무 커져서
    (지적) 로스터를 걷어내고 "게임 시작!" 한 줄로 바꿨다. 로스터는 대신 미니맵 아바타·
    닉네임을 키워 보여준다(.scr-minimap-mark-introbig). */
 .scr-story-cap-intro { font-weight: 700; text-align: center; }
 /* 피드에선 양편 flex를 똑같이 둬서 가운데(손가락/vs) 묶음이 카드 가로 정중앙에 온다
    (요청: "손가락, vs 세로 정렬" — 원본 화면의 비대칭 flex(0.85/1.15)가 중앙을 밀고 있었다). */
-.scr-feed-card .scr-challenge-matchup .scr-challenge-side { flex: 1 1 0; }
+.scr-activity-card .scr-challenge-matchup .scr-challenge-side { flex: 1 1 0; }
 /* 종족 배지 — 기록실의 절대배치(.scr-team-name-wrap 기준 right:-8px) 대신, 매치업
    로스터에선 닉네임 바로 오른쪽 인라인으로 흐르게 한다(기준 래퍼가 없는 자리라
    절대배치를 그대로 두면 카드 밖으로 튄다). */
-.scr-feed-game-result-matchup .scr-team-name-race { position: static; margin-left: 1px; }
+.scr-activity-game-result-matchup .scr-team-name-race { position: static; margin-left: 1px; }
 /* 컴퓨터/비회원 슬롯 — 프사 자리를 그대로 차지하는 20px 아이콘 박스(닉네임 왼쪽, 팀 무관). */
 .scr-matchup-slot-icon {
   flex-shrink: 0; width: 20px; height: 20px;
@@ -7612,7 +7612,7 @@ html.scr-light-theme .scr-feed-card-comment .scr-comment-mention { color: #1d4ed
   letter-spacing: 0.02em;
 }
 /* 결과 없는 미실시 — 배지 대신 매치업 아래 작은 정적 텍스트로만. */
-.scr-feed-game-result-notheld {
+.scr-activity-game-result-notheld {
   text-align: center; padding: 2px 0 0;
   font-size: var(--fs-micro); font-weight: 700; color: var(--dim);
 }
@@ -7634,7 +7634,7 @@ html.scr-light-theme .scr-feed-card-comment .scr-comment-mention { color: #1d4ed
    따로 줘서 둘 사이에 숨 쉴 자리를 만든다.
    좌우는 경기 로우의 패딩을 되물려 댓글 줄과 같은 자리(--post-pad-bx)에서 시작하게
    한다(지적) — 로우 안에 있다 보니 혼자 더 안쪽에서 시작해 어긋나 보였다. */
-.scr-feed-card .scr-game-result-trow-summary {
+.scr-activity-card .scr-game-result-trow-summary {
   /* 위아래 간격은 이제 로우의 gap 하나가 정한다(요청: 세로 갭 통일) — 좌우만 남긴다. */
   margin-block: 0;
   margin-inline: calc(8px - var(--feed-trow-pad-x, 8px));
@@ -7667,39 +7667,39 @@ html.scr-light-theme .scr-feed-card-comment .scr-comment-mention { color: #1d4ed
 /* 라벨(무엇인지)이 앞, 시간이 바로 옆(요청) — 라벨이 주, 시간은 흐리게 보조. */
 /* 시각은 절대 접히지 않는다 — "오늘"이 '오'/'늘' 두 줄로 갈리면 머리 높이가 통째로 늘어난다
    (일시 수정 폼이 같은 줄에 있을 때 실제로 그랬다). 줄일 자리가 없으면 제목이 줄어야 한다. */
-.scr-feed-card-time {
+.scr-activity-card-time {
   font-weight: 600; color: var(--dim); font-variant-numeric: tabular-nums;
   white-space: nowrap; flex-shrink: 0;
 }
 /* 시각 바로 옆 등록자(요청: "브래드 등록") — 크기·굵기·색을 시각과 똑같이 맞춰 한 줄로
-   읽히게 한다. 글꼴 크기는 이 줄(.scr-feed-card-head-meta)에서 물려받는다. */
-.scr-feed-card-by { font-weight: 600; color: var(--dim); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+   읽히게 한다. 글꼴 크기는 이 줄(.scr-activity-card-head-meta)에서 물려받는다. */
+.scr-activity-card-by { font-weight: 600; color: var(--dim); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* 포스트 제목 — 피드에서 가장 큰 글자. 크기는 그대로 두되 굵기만 한 단계 낮춘다
    (요청: 800이 너무 강했다). 크기·색만으로도 제목으로 읽힌다. */
-.scr-feed-card-label {
+.scr-activity-card-label {
   font-size: var(--fs-body); font-weight: 700; color: var(--text);
   letter-spacing: -0.01em; line-height: 1.2;
 }
 /* 카드 속 카드 금지(요청) — 안에 앉힌 너 나와! 카드/경기 로우는 자기 패널(배경·블러·그림자·
    라운딩)을 전부 벗고 내용만 피드 카드에 직접 얹힌다. 세로 여백도 압축(요청: 퍼져 보이지 않게).
-   글래스는 오직 바깥 .scr-feed-card-body 한 장이어야 한다 — .scr-challenge-card는 라이트
+   글래스는 오직 바깥 .scr-activity-card-body 한 장이어야 한다 — .scr-challenge-card는 라이트
    테마 변형(.scr-light-theme .scr-challenge-card)을 포함해 여러 곳에서 자기 배경·블러·
    라운딩을 스스로 다시 정하므로, 안전하게 !important로 확실히 눌러 이중 글래스나 다른 폭
    (24px 좌우 패딩·14px 라운딩)이 새어 나오지 않게 한다. */
-.scr-feed-card-body > .scr-challenge-card {
+.scr-activity-card-body > .scr-challenge-card {
   border: none !important; background: transparent !important; box-shadow: none !important;
   backdrop-filter: none !important; -webkit-backdrop-filter: none !important; border-radius: 0 !important;
-  /* 사방 패딩은 이제 .scr-feed-card-body(공용) 한 곳에서만 낸다 — 여기서 또 내면 그만큼
+  /* 사방 패딩은 이제 .scr-activity-card-body(공용) 한 곳에서만 낸다 — 여기서 또 내면 그만큼
      겹쳐 이중으로 들어간다. */
   padding: 0 !important; gap: 10px;
 }
 /* 경기 로우도 동일 — 행 자신의 라이팅 글라스 패널(배경·블러·그림자·마진)을 벗기고
    내용만 피드 카드에 직접 얹는다. 날짜 헤더는 카드 헤더가 대신하므로 숨긴다.
-   좌우 패딩은 이제 .scr-feed-card-body(공용, 이 요소 자신에 함께 붙어 있다)가 낸다 —
+   좌우 패딩은 이제 .scr-activity-card-body(공용, 이 요소 자신에 함께 붙어 있다)가 낸다 —
    여기서 또 내면 이중으로 겹친다. */
-.scr-feed-game-result-body { --feed-trow-pad-x: 8px; }
-@media (min-width: 720px) { .scr-feed-game-result-body { --feed-trow-pad-x: 0px; } }
-.scr-feed-game-result-body .scr-game-result-list-panel-v2 .scr-game-result-trow, .scr-light-theme .scr-feed-game-result-body .scr-game-result-list-panel-v2 .scr-game-result-trow {
+.scr-activity-game-result-body { --feed-trow-pad-x: 8px; }
+@media (min-width: 720px) { .scr-activity-game-result-body { --feed-trow-pad-x: 0px; } }
+.scr-activity-game-result-body .scr-game-result-list-panel-v2 .scr-game-result-trow, .scr-light-theme .scr-activity-game-result-body .scr-game-result-list-panel-v2 .scr-game-result-trow {
   background: transparent; border: none; box-shadow: none;
   backdrop-filter: none; -webkit-backdrop-filter: none;
   /* 머리띠 ↔ 게임번호 줄 간격 — 본문 간격보다 4px만 크게(요청). 머리띠가 제 아래 여백으로
@@ -7715,56 +7715,56 @@ html.scr-light-theme .scr-feed-card-comment .scr-comment-mention { color: #1d4ed
 /* 카드 하단 공통 댓글 영역 — 토글을 누르면 목록/입력이 그 자리에서 펼쳐진다.
    구분선은 아이템 사이 하나로 충분하니(요청) 댓글 영역/댓글끼리의 선은 모두 없앤다. */
 /* 컨텐츠부의 꼬리 — 포스트에 자체 아래 패딩이 없으므로 바닥 여백도 여기서 낸다.
-   여백을 바깥(.scr-feed-card-comment)이 아니라 안쪽(.scr-feed-notes)이 내는 이유는, 댓글이
+   여백을 바깥(.scr-activity-card-comment)이 아니라 안쪽(.scr-activity-notes)이 내는 이유는, 댓글이
    하나도 없을 때 그 여백까지 통째로 걷어야 하기 때문이다(아래 -empty). */
 /* 댓글은 경기 로우 밖(포스트 직계)이라 로우의 gap이 닿지 않는다 — 같은 값을 여기서 낸다
    (요청: 사이사이 줄간격 동일). */
-/* 위 여백은 바깥이 아니라 안쪽(.scr-feed-notes)이 낸다 — 댓글이 하나도 없을 때는 입력줄이
+/* 위 여백은 바깥이 아니라 안쪽(.scr-activity-notes)이 낸다 — 댓글이 하나도 없을 때는 입력줄이
    꼬리 여백에 절대배치로 얹혀 흐름에 없으므로, 바깥이 내면 아무도 안 쓰는 24px이 그대로
    죽은 자리로 남는다(지적: 버튼 밑부터 댓글까지 갭이 너무 크다). */
-/* 사방 패딩 고정값(요청) — 댓글 모달(.scr-comment-sheet, 시트 자신이 .scr-feed-notes를
-   겸함)에는 안 걸리게, 반드시 카드 인라인 구조(.scr-feed-card-comment의 자식으로 별도로
-   렌더되는 .scr-feed-notes)에만 닿는 자손 결합자를 쓴다. 본문(.scr-feed-card-body)의
+/* 사방 패딩 고정값(요청) — 댓글 모달(.scr-comment-sheet, 시트 자신이 .scr-activity-notes를
+   겸함)에는 안 걸리게, 반드시 카드 인라인 구조(.scr-activity-card-comment의 자식으로 별도로
+   렌더되는 .scr-activity-notes)에만 닿는 자손 결합자를 쓴다. 본문(.scr-activity-card-body)의
    형제일 뿐 감싸는 패널이 없으므로, 화면 끝까지 닿으려면 이 요소도 자기 몫의 풀블리드를
-   직접 진다(위 .scr-feed-card-body와 같은 트릭). */
-.scr-feed-card > .scr-feed-card-comment {
+   직접 진다(위 .scr-activity-card-body와 같은 트릭). */
+.scr-activity-card > .scr-activity-card-comment {
   margin-inline: calc(-1 * var(--post-bleed));
   border-inline: var(--post-bleed) solid transparent;
   padding: 0;
 }
-.scr-feed-card-comment > .scr-feed-notes {
+.scr-activity-card-comment > .scr-activity-notes {
   border-top: none; padding: 16px 20px; margin-top: 0;
 }
 /* 댓글이 있으면 본문(경기결과/너나와 로스터)과 구분되는 소제목을 단다(지적: 댓글과
    본문 구역 구분이 안 됨 — 상단부에 "댓글" 소제목을 달고 그 위 여백도 넣기). */
-.scr-feed-comments-heading {
+.scr-activity-comments-heading {
   margin-top: 4px; margin-bottom: 6px;
   font-size: var(--fs-micro); font-weight: 700; color: var(--dim);
 }
 /* 댓글이 없는 포스트가 훨씬 많다(지적) — "댓글 쓰기" 버튼이 한 줄을 통째로 차지하지
-   않고 작게 얹혀 있는다(요청). 예전엔 이걸 절대배치(기준: .scr-feed-card)로 카드 맨
+   않고 작게 얹혀 있는다(요청). 예전엔 이걸 절대배치(기준: .scr-activity-card)로 카드 맨
    아래 전용 여백에 띄웠는데, 그러려면 그 여백을 계속 크게 잡아 둬야 했다(위
    --post-pad-b 주석 참고) — 이제 절대배치를 걷어내고(요청: "댓글이 없을 때 저 부분이
    굳이 있을 필요가 없다는 뜻이야") 댓글이 있을 때와 완전히 같은 흐름·같은 자리
-   (.scr-feed-card-comment > .scr-feed-notes의 공용 패딩, --feed-comment-indent 포함)를
+   (.scr-activity-card-comment > .scr-activity-notes의 공용 패딩, --feed-comment-indent 포함)를
    그대로 물려받는다 — 이 -empty 전용 규칙들은 그래서 필요 없어졌다. */
-.scr-feed-card-comment .scr-comment-item + .scr-comment-item { border-top: none; }
+.scr-activity-card-comment .scr-comment-item + .scr-comment-item { border-top: none; }
 /* 아이콘 대신 "댓글" 텍스트 링크로(요청) — 무엇을 누르는 건지 글자로 읽히는 편이 낫다. */
-.scr-feed-comments-toggle {
+.scr-activity-comments-toggle {
   display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0;
   background: transparent; border: none; color: var(--dim); cursor: pointer;
   padding: 4px 0; font-family: inherit; font-size: var(--fs-micro); font-weight: 700;
   white-space: nowrap;
 }
-@media (hover: hover) { .scr-feed-comments-toggle:hover { color: var(--text); } }
+@media (hover: hover) { .scr-activity-comments-toggle:hover { color: var(--text); } }
 /* 로스터와 리벤지 신청(액션 줄) 사이 갭 확대(요청). */
-.scr-feed-card .scr-challenge-card-actions { margin-top: 8px; }
+.scr-activity-card .scr-challenge-card-actions { margin-top: 8px; }
 
 /* 일시 수정(연필)은 헤더행 안으로 — 시각은 헤더가 이미 보여주므로 라벨 없이 연필만
    시각 옆에 얹는다(요청: 시간 중복 표기 제거). 수정 폼이 열리면 헤더행의 남은 폭을 쓴다. */
-.scr-feed-card-head .scr-challenge-time-head { margin-bottom: 0; }
+.scr-activity-card-head .scr-challenge-time-head { margin-bottom: 0; }
 /* 응답 마감 실시간 카운트다운 — 헤더행 폰트 크기를 그대로 상속(요청: 폰트 크기 맞추기). */
-.scr-feed-chal-countdown { font-weight: 600; color: var(--dim); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.scr-activity-chal-countdown { font-weight: 600; color: var(--dim); font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 /* + 댓글 아이콘 ↔ 입력창 전환(요청) — 아이콘을 누르면 입력창이 트랜지션으로 가로로
    펼쳐지며 포커스되고, 포커스를 잃으면 다시 아이콘으로 줄어든다. 입력창은 늘 마운트된
@@ -7774,43 +7774,43 @@ html.scr-light-theme .scr-feed-card-comment .scr-comment-mention { color: #1d4ed
    맞춘다(빈 카드용 절대배치 버전은 이미 flex-start였다 — 위 -empty 규칙 참고).
    gap은 0으로 — 접혀 있어도 gap이 살아 있으면 아이콘이 그만큼 밀린다. 열리면 아이콘이
    width 0으로 접히므로 gap 자체가 필요 없다. */
-.scr-feed-comment-row { display: flex; align-items: center; justify-content: flex-start; gap: 0; min-height: 34px; }
+.scr-activity-comment-row { display: flex; align-items: center; justify-content: flex-start; gap: 0; min-height: 34px; }
 /* width를 명시해야 0으로의 트랜지션이 걸린다(auto→0은 애니메이션 불가) — 아이콘 24px에서
    글자 폭으로 바꿨다(글자 1스텝 축소에 맞춰 30px이었던 것을, "댓글" → "댓글 추가"로
    늘리며(지적) 그 폭에 맞춰 54px로 다시 넓혔다). */
-.scr-feed-comments-toggle { width: 54px; justify-content: flex-start; transition: width .28s cubic-bezier(0.32, 0.72, 0, 1), opacity .18s ease; }
-.scr-feed-comment-row-open .scr-feed-comments-toggle {
+.scr-activity-comments-toggle { width: 54px; justify-content: flex-start; transition: width .28s cubic-bezier(0.32, 0.72, 0, 1), opacity .18s ease; }
+.scr-activity-comment-row-open .scr-activity-comments-toggle {
   width: 0; padding-left: 0; padding-right: 0; overflow: hidden; opacity: 0; pointer-events: none;
 }
 /* visibility는 쓰지 않는다 — 모바일(iOS)은 사용자 제스처 안에서 focus()가 불려야
    키보드가 뜨는데, visibility:hidden 상태의 인풋은 포커스가 안 잡힌다. 접힘은
    max-width 0 + overflow hidden만으로 충분하다(패딩도 접힘 땐 0). */
-.scr-feed-comment-composer {
+.scr-activity-comment-composer {
   flex: 1; min-width: 0; max-width: 0; opacity: 0; overflow: hidden; padding: 0;
   transition: max-width .28s cubic-bezier(0.32, 0.72, 0, 1), opacity .2s ease, padding .28s cubic-bezier(0.32, 0.72, 0, 1);
 }
-.scr-feed-comment-row-open .scr-feed-comment-composer { max-width: 100%; opacity: 1; padding: 2px; }
+.scr-activity-comment-row-open .scr-activity-comment-composer { max-width: 100%; opacity: 1; padding: 2px; }
 /* 입력창이 펼쳐지면 포스트 꼬리 여백을 조금 늘린다(요청) — 접혀 있을 땐 "댓글" 글자 한
    줄이지만 펼치면 입력칸과 등록 버튼이 들어와 그 자리로는 빠듯하다.
-   조상 선택이라 :has()를 쓴다 — 열림 상태는 자손(.scr-feed-comment-row-open)에만 있다.
+   조상 선택이라 :has()를 쓴다 — 열림 상태는 자손(.scr-activity-comment-row-open)에만 있다.
    한때 --field-h(38px)만큼 통째로 늘렸는데, 그러면 아래 포스트가 눈에 띄게 밀려 내려간다
    (지적). 실측하면 줄은 4px 커지고 바닥 여백이 3px 내려갈 뿐이라 8px이면 충분하다. */
-.scr-feed-card { transition: padding-bottom .28s cubic-bezier(0.32, 0.72, 0, 1); }
-.scr-feed-card:has(.scr-feed-comment-row-open) {
+.scr-activity-card { transition: padding-bottom .28s cubic-bezier(0.32, 0.72, 0, 1); }
+.scr-activity-card:has(.scr-activity-comment-row-open) {
   padding-bottom: calc(var(--post-pad-b) + 8px);
 }
 
-@media (prefers-reduced-motion: reduce) { .scr-feed-card { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .scr-activity-card { transition: none; } }
 @media (prefers-reduced-motion: reduce) {
-  .scr-feed-comments-toggle, .scr-feed-comment-composer { transition: none; }
+  .scr-activity-comments-toggle, .scr-activity-comment-composer { transition: none; }
 }
 /* 다크에서 댓글 입력창은 흰 필드로(요청) — 글자/플레이스홀더는 어두운 톤으로 뒤집는다. */
 
 /* + 등록 팝오버 메뉴 — 버튼 아래 라이팅 글라스 패널, 3항목(리플레이/너 나와!/일정). */
-.scr-feed-add-wrap { position: relative; }
+.scr-activity-add-wrap { position: relative; }
 /* 등록 FAB — 탭바 좌상단(탭바 위·왼쪽)에 플로팅하는 동그란 유리 + 버튼(요청). 탭바와
    같은 bottom 기준(vv-inset/안전영역) 위에 탭바 높이+간격만큼 올려 얹는다. */
-.scr-feed-add-fab-wrap {
+.scr-activity-add-fab-wrap {
   position: fixed; z-index: 56; left: 20px;
   bottom: calc(var(--scr-float-bottom) + var(--mobile-footer-h) + 12px);
   /* 탭바가 축소될 때 함께 내려간다 — 탭바의 transform과 같은 곡선·길이로 맞춰야 둘이
@@ -7828,11 +7828,11 @@ html.scr-light-theme .scr-feed-card-comment .scr-comment-mention { color: #1d4ed
    미디어쿼리 없이 걸면 PC에서도 스크롤만으로 버튼 크기·위치가 바뀌었다(지적: "PC에서
    스크롤 다운하면... 이건 모바일용 로직이라 PC에선 빼야돼"). */
 @media (max-width: 640px) {
-  html.scr-tabbar-mini .scr-feed-add-fab-wrap {
+  html.scr-tabbar-mini .scr-activity-add-fab-wrap {
     bottom: calc(var(--scr-float-bottom) + (var(--mobile-footer-h) * 0.72 - 44px) / 2);
     left: 8px;
   }
-  html.scr-tabbar-mini .scr-feed-add-fab { width: 44px; height: 44px; }
+  html.scr-tabbar-mini .scr-activity-add-fab { width: 44px; height: 44px; }
 }
 /* 넓은 화면에서는 화면 왼쪽 끝이 아니라 본문 칸 바로 옆에 둔다(요청) — 본문은 가운데
    860px로 모여 있는데 버튼만 저 멀리 구석에 있으면 한 화면으로 안 읽힌다. 본문 왼쪽
@@ -7842,9 +7842,9 @@ html.scr-light-theme .scr-feed-card-comment .scr-comment-mention { color: #1d4ed
    그보다 좁으면 예전처럼 화면 왼쪽에 띄운다 — 어설프게 옮기면 채움이 생긴 포스트 판 위로
    버튼이 올라앉는다. */
 @media (min-width: 1060px) {
-  .scr-feed-add-fab-wrap { left: calc(50% - var(--content-max) / 2 - 68px); }
+  .scr-activity-add-fab-wrap { left: calc(50% - var(--content-max) / 2 - 68px); }
 }
-.scr-feed-add-fab {
+.scr-activity-add-fab {
   width: 52px; height: 52px; border-radius: 50%;
   display: inline-flex; align-items: center; justify-content: center;
   border: none; cursor: pointer; color: var(--text);
@@ -7866,16 +7866,16 @@ html.scr-light-theme .scr-feed-card-comment .scr-comment-mention { color: #1d4ed
   transition: transform .12s ease;
   -webkit-tap-highlight-color: transparent;
 }
-.scr-feed-add-fab:active { transform: scale(0.94); }
-html.scr-light-theme .scr-feed-add-fab {
+.scr-activity-add-fab:active { transform: scale(0.94); }
+html.scr-light-theme .scr-activity-add-fab {
   box-shadow:
     inset 0 0 0 0.5px rgba(255, 255, 255, 0.5),
     inset 0 1px 0 rgba(255, 255, 255, 0.55),
     0 2px 5px rgba(0, 0, 0, 0.1),
     0 6px 16px -8px rgba(0, 0, 0, 0.16);
 }
-.scr-feed-add-backdrop { position: fixed; inset: 0; z-index: 89; background: transparent; }
-.scr-feed-add-menu {
+.scr-activity-add-backdrop { position: fixed; inset: 0; z-index: 89; background: transparent; }
+.scr-activity-add-menu {
   position: absolute; top: calc(100% + 6px); left: 50%; transform: translateX(-50%);
   z-index: 90; min-width: 180px; padding: 6px;
   display: flex; flex-direction: column; gap: 2px;
@@ -7888,27 +7888,27 @@ html.scr-light-theme .scr-feed-add-fab {
     inset 0 0 0 1px rgba(255, 255, 255, 0.06),
     0 8px 24px rgba(0, 0, 0, 0.35);
 }
-.scr-light-theme .scr-feed-add-menu {
+.scr-light-theme .scr-activity-add-menu {
   background: rgba(255, 255, 255, 0.85);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.9),
     inset 0 0 0 1px rgba(255, 255, 255, 0.6),
     0 8px 24px rgba(0, 0, 0, 0.14);
 }
-/* FAB용 — 메뉴를 버튼 위로 펼친다(아래엔 탭바). base .scr-feed-add-menu 뒤에 와야
+/* FAB용 — 메뉴를 버튼 위로 펼친다(아래엔 탭바). base .scr-activity-add-menu 뒤에 와야
    base의 top(아래로 펼침)을 확실히 덮는다. 좌측 정렬. */
-.scr-feed-add-menu.scr-feed-add-menu-up {
+.scr-activity-add-menu.scr-activity-add-menu-up {
   top: auto; bottom: calc(100% + 8px); left: 0; transform: none;
 }
-.scr-feed-add-menu > button {
+.scr-activity-add-menu > button {
   display: flex; align-items: center; gap: 8px;
   background: transparent; border: none; color: var(--text);
   padding: 9px 12px; border-radius: 8px; cursor: pointer; text-align: left;
   font-family: inherit; font-size: var(--fs-caption); font-weight: 600; white-space: nowrap;
 }
-@media (hover: hover) { .scr-feed-add-menu > button:not(:disabled):hover { background: rgba(var(--lit-rgb), 0.1); } }
-.scr-feed-add-menu > button:disabled { color: var(--dim); cursor: default; }
-.scr-feed-add-soon {
+@media (hover: hover) { .scr-activity-add-menu > button:not(:disabled):hover { background: rgba(var(--lit-rgb), 0.1); } }
+.scr-activity-add-menu > button:disabled { color: var(--dim); cursor: default; }
+.scr-activity-add-soon {
   margin-left: auto; font-size: var(--fs-micro); font-weight: 700; color: var(--dim);
   border: 1px solid var(--line-soft); border-radius: 999px; padding: 0 6px;
 }
@@ -7923,14 +7923,14 @@ html.scr-light-theme .scr-feed-add-fab {
    위치를 직접 잡을 수 있어야 한다.
    1fr 1fr이 아니라 minmax(0, 1fr)인 이유 — 긴 닉네임 한 줄이 칸을 밀어 좌우 반반이
    깨지는 것을 막는다(그리드 기본 min-width는 auto라 내용이 칸을 넓힌다). */
-.scr-feed-shift-split {
+.scr-activity-shift-split {
   position: relative;
   display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  /* 사방 패딩은 이제 .scr-feed-card-body(공용, 이 요소와 함께 붙는다)가 낸다 — 여기서
+  /* 사방 패딩은 이제 .scr-activity-card-body(공용, 이 요소와 함께 붙는다)가 낸다 — 여기서
      또 내면 이중으로 겹친다. */
   column-gap: 12px;
 }
-.scr-feed-shift-split::before {
+.scr-activity-shift-split::before {
   content: ""; position: absolute; left: 50%; width: 1px;
   /* 살짝 위아래 여백(요청) — 선이 본문 위아래 끝에 닿지 않게 안쪽에서 시작하고 끝난다.
      이 칸 자신은 더 이상 패딩이 없으므로(위 참고) --post-pad-y를 더할 필요 없이 그냥
@@ -7941,60 +7941,60 @@ html.scr-light-theme .scr-feed-add-fab {
 /* 라이트에서 --line은 순검정(#000)이라 이 실선만 유독 새까맣게 도드라진다(지적: 가운데
    선이 너무 진하다) — 다크의 흰 16% 선과 같은 무게로 낮춘다. --line 자체를 못 건드리는
    건 그 값이 이 카드 말고도 곳곳에서 쓰이기 때문이다. */
-.scr-light-theme .scr-feed-shift-split::before { background: rgba(0, 0, 0, 0.16); }
+.scr-light-theme .scr-activity-shift-split::before { background: rgba(0, 0, 0, 0.16); }
 /* 라이트에서 --line은 순검정(#000)이라 이 실선만 유독 새까맣게 도드라진다(지적: 가운데
    선이 너무 진하다) — 다크의 흰 16% 선과 같은 무게로 낮춘다. --line 자체를 못 건드리는
    건 그 값이 이 표 말고도 곳곳에서 쓰이기 때문이다. */
-.scr-light-theme .scr-feed-shift-split::before { background: rgba(0, 0, 0, 0.16); }
-.scr-feed-shift-col { min-width: 0; }
+.scr-light-theme .scr-activity-shift-split::before { background: rgba(0, 0, 0, 0.16); }
+.scr-activity-shift-col { min-width: 0; }
 /* 오른쪽 칸(팀전)은 글이 구분선에 바짝 붙어 시작했다(지적: 팀전 랭크 왼쪽에 패딩이 조금
    있어야 한다) — 왼쪽 칸은 카드 안쪽 여백을 그대로 받는데 오른쪽 칸은 열 간격의 절반
    (6px)뿐이라 둘의 들여쓰기가 달라 보였다. 이 칸만 안쪽으로 조금 더 민다. */
-.scr-feed-shift-col + .scr-feed-shift-col { padding-left: 10px; }
+.scr-activity-shift-col + .scr-activity-shift-col { padding-left: 10px; }
 /* 어느 칸이 무엇인지는 이제 제목이 아니라 이 머리글이 말한다(제목은 유형을 안 적는다). */
-.scr-feed-shift-col-head {
+.scr-activity-shift-col-head {
   margin: 0 0 6px; font-size: var(--fs-micro); font-weight: 800;
   color: var(--dim); letter-spacing: 0.02em;
 }
-.scr-feed-shift-none { margin: 0; color: var(--dim); font-size: var(--fs-caption); }
-.scr-feed-shift-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.scr-activity-shift-none { margin: 0; color: var(--dim); font-size: var(--fs-caption); }
+.scr-activity-shift-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 /* (삭제) "…외 N건"으로 접던 규칙 — 길어도 줄이지 않는다(요청). 하루에 한 장뿐인
    카드라 길어도 목록을 밀어내지 않고, 접혀 있으면 정작 궁금한 아래쪽 순위가 늘 가려졌다. */
-.scr-feed-shift-row { display: flex; align-items: baseline; gap: 8px; font-size: var(--fs-micro); }
+.scr-activity-shift-row { display: flex; align-items: baseline; gap: 8px; font-size: var(--fs-micro); }
 /* 칸이 반으로 좁아지면서(요청) 긴 닉네임이 줄을 접었고, 그 바람에 "5 → 4위"의 '위'까지
    다음 줄로 넘어가 한 사람의 변동이 두 줄로 찢어졌다(실측). 순위·포인트는 절대 안 접고,
    길이가 들쭉날쭉한 닉네임 쪽만 말줄임으로 양보시킨다. */
-.scr-feed-shift-row > * { flex-shrink: 0; white-space: nowrap; }
-.scr-feed-shift-row > .scr-feed-shift-name {
+.scr-activity-shift-row > * { flex-shrink: 0; white-space: nowrap; }
+.scr-activity-shift-row > .scr-activity-shift-name {
   flex-shrink: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
 }
-.scr-feed-shift-row-hl { background: var(--highlight-bg); }
-.scr-feed-shift-row-hl .scr-feed-shift-name { color: var(--bar-text); }
+.scr-activity-shift-row-hl { background: var(--highlight-bg); }
+.scr-activity-shift-row-hl .scr-activity-shift-name { color: var(--bar-text); }
 /* 줄을 1스텝 줄일 때 닉네임까지 딸려 줄었다(지적: 닉네임은 원래 크기로) — 작아져야
    하는 건 순위·포인트 같은 수치 쪽이고, 누구 이야기인지는 그대로 읽혀야 한다. */
-.scr-feed-shift-name { font-weight: 600; font-size: var(--fs-caption); }
-.scr-feed-shift-up { color: #7fd18b; font-weight: 700; }
-.scr-feed-shift-down { color: #e08a8a; font-weight: 700; }
+.scr-activity-shift-name { font-weight: 600; font-size: var(--fs-caption); }
+.scr-activity-shift-up { color: #7fd18b; font-weight: 700; }
+.scr-activity-shift-down { color: #e08a8a; font-weight: 700; }
 /* 신규 진입은 오르내림이 아니다 — 한때 골드였는데, 올림(초록)/내림(빨강) 옆에서 셋 다
    "무슨 일이 있었다"는 신호로 읽혀 정작 오르내린 사람이 안 도드라져 기본 글자색으로 뒀다.
    이제 파랑이다(요청: 상승도 하락도 아닌 중립을 푸른색으로) — 기본색은 '아무 일도 아님'과
    구분이 안 됐는데, 파랑은 오르내림 어느 쪽도 아니면서 제 자리는 있는 색이다.
    통계표의 "신규" 배지도 이 클래스를 그대로 쓴다(같은 뜻이니 같은 색이라야 한다). */
-.scr-feed-shift-new { color: #8ab4e8; font-weight: 700; }
+.scr-activity-shift-new { color: #8ab4e8; font-weight: 700; }
 /* 라이트에서는 이 색이 흰 배경에 묻혀 거의 안 읽혔다(지적) — 어두우면서 채도는 높은 쪽으로
    갈아 끼운다. 다크의 파스텔 톤은 검은 배경에서만 성립한다. */
-.scr-light-theme .scr-feed-shift-up { color: #16a34a; }
-.scr-light-theme .scr-feed-shift-down { color: #e11d48; }
+.scr-light-theme .scr-activity-shift-up { color: #16a34a; }
+.scr-light-theme .scr-activity-shift-down { color: #e11d48; }
 /* 신규의 파랑도 같은 사연이다 — 다크의 파스텔 파랑은 흰 배경에서 흐려 보인다. */
-.scr-light-theme .scr-feed-shift-new { color: #2563eb; }
+.scr-light-theme .scr-activity-shift-new { color: #2563eb; }
 /* (삭제) 통계표 "신규"만 기본 글자색으로 바꾸던 예외 — 이제 피드 카드도 같은 기본색이라
-   (위 .scr-feed-shift-new) 예외 자체가 필요 없어졌다. */
+   (위 .scr-activity-shift-new) 예외 자체가 필요 없어졌다. */
 /* 예전엔 배지(▲2) 뒤에 "(1위 → 3위)"를 따로 붙였다 — 이제 그 자체가 본문이 되면서
    (요청: 배지 제거, "조조 1 → 3위 -100p") 이 보조 표기는 필요 없어졌다. */
-/* (삭제) .scr-feed-shift-pts — 포인트 증감을 순위 옆에 적던 자리다(요청: 제거). */
+/* (삭제) .scr-activity-shift-pts — 포인트 증감을 순위 옆에 적던 자리다(요청: 제거). */
 
 /* 너 나와 케밥 드롭 — 버튼 바로 아래 오른쪽 정렬(포털 없이 로컬 절대배치). */
-.scr-feed-chal-menu-drop {
+.scr-activity-chal-menu-drop {
   position: absolute; top: calc(100% + 4px); right: 0; z-index: 95;
   display: flex; flex-direction: column; min-width: 140px;
 }
@@ -8050,7 +8050,7 @@ html.scr-light-theme .scr-feed-add-fab {
    가리지 않으므로 검색창에 포커스했다고 사라지면 안 된다. 연출은 넣지 않는다 —
    페이드/슬라이드로 숨기면 키보드가 오르내리는 동안 잔상처럼 보였다(지적). */
 @media (max-width: 860px) {
-  .scr-feed-add-fab-wrap-hidden { visibility: hidden; pointer-events: none; }
+  .scr-activity-add-fab-wrap-hidden { visibility: hidden; pointer-events: none; }
 }
 
 /* ===== 댓글 전체화면(모바일) =====
@@ -8065,7 +8065,7 @@ html.scr-light-theme .scr-feed-add-fab {
    물리면(top:0/bottom:0) iOS가 이 fixed 요소를 어느 뷰포트에 앉히든 — 레이아웃이든 키보드
    위 비주얼이든 — 그 뷰포트를 꽉 채우므로 '아래에 남는 띠' 자체가 생기지 않는다.
 
-   루트에 .scr-feed-card-comment/.scr-feed-notes를 함께 붙여, 카드 안에서 쓰던 목록·입력
+   루트에 .scr-activity-card-comment/.scr-activity-notes를 함께 붙여, 카드 안에서 쓰던 목록·입력
    스타일(폰트 한 스텝 축소, --field-h, 다크 흰 입력칸)을 포털 안에서도 그대로 상속받는다.
    대신 그 두 클래스가 들고 오는 카드용 여백/구분선은 여기서 되돌린다. */
 .scr-comment-sheet {
@@ -8164,7 +8164,7 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
 /* 댓글을 아래에 정렬한다(요청) — 채팅창처럼 최근 댓글이 입력줄 바로 위, 화면 아래쪽에
    붙는다. 댓글이 적어 목록이 남는 공간을 다 못 채워도 위쪽에 빈 자리를 남기는 대신
    아래로 몰린다(justify-content: flex-end). 넘칠 만큼 많을 때는 자연히 스크롤되고,
-   시트를 열 때 아래(최신)로 내리는 것은 별도 로직(FeedComments의 useLayoutEffect)이 맡는다. */
+   시트를 열 때 아래(최신)로 내리는 것은 별도 로직(ActivityComments의 useLayoutEffect)이 맡는다. */
 .scr-comment-sheet-body {
   flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden;
   display: flex; flex-direction: column; justify-content: flex-end;
@@ -8174,10 +8174,10 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
 .scr-comment-sheet-empty { margin: 14px 0; text-align: center; font-size: var(--fs-micro); color: var(--muted); }
 /* flex 자식은 기본 flex-shrink:1이라, 내용이 넘칠 때 스크롤 대신 눌려 찌그러질 수 있다 —
    목록은 제 내용 높이 그대로 유지하고 넘치는 몫은 부모(overflow-y:auto)가 스크롤로 받는다. */
-.scr-comment-sheet-body > .scr-feed-notes-list { flex-shrink: 0; }
+.scr-comment-sheet-body > .scr-activity-notes-list { flex-shrink: 0; }
 /* (삭제) 수정/삭제 아이콘을 헤더 X와 같은 선에 세우던 -5px 보정 — 그 시절엔 아이콘
    묶음이 항목의 오른쪽 끝에 붙는 별도 줄이었다. 이제는 댓글 내용 뒤에 이어 붙는
-   인라인 요소라(위 .scr-feed-note-actions) 오른쪽 끝에 고정되지 않으므로 더는 맞지 않다. */
+   인라인 요소라(위 .scr-activity-note-actions) 오른쪽 끝에 고정되지 않으므로 더는 맞지 않다. */
 /* 수정 취소 버튼 — 등록(프라이머리 솔리드) 옆에 같은 크기로, 톤만 조용하게. */
 .scr-comment-cancel-btn {
   background: rgba(var(--overlay-rgb), 0.1); border: none; color: var(--dim); box-shadow: none;
@@ -8201,17 +8201,17 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
    넘어선 것으로 잡혀 브라우저가 포커스 대상을 보이게 하려고 스크롤을 보정했다). 링
    자체(두께·색)는 전역과 같고, 방향만 안쪽으로 돌려 입력칸 박스 밖으로 전혀 안 나가게 한다. */
 .scr-comment-sheet-compose .scr-comment-input:focus-visible { outline-offset: -2px; }
-/* 등록 버튼도 필드와 같은 40px 정사각으로 — .scr-feed-notes가 30px로 못박아 둔 값을
+/* 등록 버튼도 필드와 같은 40px 정사각으로 — .scr-activity-notes가 30px로 못박아 둔 값을
    덮는다(특이도 동일, 소스가 뒤라 이긴다). 아이콘도 한 단계 키운다. */
 .scr-comment-sheet-compose .scr-comment-submit-btn {
   flex-basis: 40px; width: 40px; height: 40px;
   min-width: 40px; min-height: 40px; max-width: 40px; max-height: 40px;
 }
 .scr-comment-sheet-compose .scr-comment-submit-btn svg { width: 17px; height: 17px; }
-.scr-comment-sheet .scr-feed-note-err { margin: 6px 0 0; }
+.scr-comment-sheet .scr-activity-note-err { margin: 6px 0 0; }
 
 /* 카드 안 미리보기 — 여기서는 읽기만 하고, 누르면 시트가 열린다(요청 2). */
-.scr-feed-notes-preview { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.scr-activity-notes-preview { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 
 /* 리플레이 검토 화면의 경기 요약 미리보기 — 등록 전에 문장을 눈으로 확인하는 자리다. */
 .scr-replay-summary-preview {
@@ -8662,7 +8662,7 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
 
 /* ── 타임라인 ── */
 /* 재생 버튼과 트랙 사이를 띄운다(요청) — 붙어 있으면 첫 눈금이 버튼에 먹힌다.
-   좌우 패딩은 여기서 따로 안 낸다(지적: 독자 좌우 패딩 없애야 함) — .scr-feed-game-result-body가
+   좌우 패딩은 여기서 따로 안 낸다(지적: 독자 좌우 패딩 없애야 함) — .scr-activity-game-result-body가
    이미 --post-pad-bx 전체를 내므로(위 참고), 여기서 또 내면 두 배로 겹친다. */
 .scr-story-line { display: flex; align-items: center; gap: 14px; width: 100%; }
 /* 다른 아이콘 버튼(.scr-icon-btn)과 같은 기본 차림 — 테두리도 채움도 없이 아이콘만

@@ -4,10 +4,10 @@ import ChallengeInboxModal from "../../modals/ChallengeInboxModal";
 import { api } from "../../api/client";
 import { useAppStore } from "../../store/appStore";
 import { useForceLightTheme } from "../../utils/theme";
-import RankingShiftCard from "../feed/RankingShiftCard";
+import RankingShiftCard from "../activity/RankingShiftCard";
 import {
   GameResultCard, GameResultPost, gameResultItem, sessionDateLabel, sessionDateOf, type GameResultPostItem,
-} from "../feed/FeedScreen";
+} from "../activity/ActivityScreen";
 import { formatWhen, shortDateWithDow } from "../../utils/date";
 import type { Challenge, GameResult, RankingShift } from "../../types";
 
@@ -128,7 +128,7 @@ export default function SharePage({ target, onExit }: { target: ShareTarget; onE
           // 경기 한 장 공유 — 묶음 공유와 마찬가지로 피드의 그 카드를 그대로 쓴다(요청).
           // 예전엔 목록(GameResultCardBody)을 날것으로 얹어서, 피드에는 없는 숫자 날짜 머리글이
           // 뜨고 카드 머리(시각·등록자·제목)는 없는 다른 모양이었다.
-          <div className="scr-feed-list">
+          <div className="scr-activity-list">
             <GameResultCard
               item={gameResultItem(gameResult)} memberOf={memberOf} onDeleted={() => {}}
               dateLabel={shortDateWithDow(gameResult.date)}
@@ -136,13 +136,13 @@ export default function SharePage({ target, onExit }: { target: ShareTarget; onE
           </div>
         ) : shift ? (
           // 순위변동 공유 — 피드와 같은 카드 한 장(읽기 전용, 케밥/상세/댓글 없이).
-          <div className="scr-feed-list">
+          <div className="scr-activity-list">
             <RankingShiftCard shift={shift} timeText={formatWhen(shift.createdAt, { clock: true })} />
           </div>
         ) : stack ? (
           // 게임결과 묶음 공유 — 피드의 그 카드를 그대로 재사용한다(요청). 접힌 채로 뜨고
           // 누르면 피드에서와 똑같이 펼쳐진다.
-          <div className="scr-feed-list">
+          <div className="scr-activity-list">
             <GameResultPost
               stack={stack} memberOf={memberOf} onDeleted={() => {}}
               dateLabel={sessionDateLabel(stack.date)}

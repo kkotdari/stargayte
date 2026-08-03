@@ -103,7 +103,7 @@ export default function AdminPanelScreen({ isAdmin }: AdminPanelScreenProps) {
     try {
       const { changed } = await api.recomputeRankingShifts();
       window.alert(changed
-        ? "랭킹을 다시 집계했어요. 피드에 변동 카드가 올라갑니다."
+        ? "랭킹을 다시 집계했어요. 활동에 변동 카드가 올라갑니다."
         : "랭킹을 다시 집계했어요. 순위가 그대로여서 남길 변동은 없었어요.");
     } catch (e) {
       setErr(e instanceof Error ? e.message : "집계하지 못했어요.");
@@ -428,7 +428,7 @@ export default function AdminPanelScreen({ isAdmin }: AdminPanelScreenProps) {
       {confirmSeed && (
         <ConfirmDialog
           title="지금 순위표를 기준선으로 저장할까요?"
-          message="개인전·팀전 순위표를 그대로 스냅샷으로 남깁니다. 피드에는 안 뜨고, 다음 아침 재집계가 이 기준선과 비교해 변동을 만듭니다."
+          message="개인전·팀전 순위표를 그대로 스냅샷으로 남깁니다. 활동에는 안 뜨고, 다음 아침 재집계가 이 기준선과 비교해 변동을 만듭니다."
           confirmLabel="기준선 저장"
           onConfirm={() => { setConfirmSeed(false); void reseedRanks(); }}
           onCancel={() => setConfirmSeed(false)}

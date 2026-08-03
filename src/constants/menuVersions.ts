@@ -10,7 +10,7 @@ export interface NavMenuItem {
 
 // 헤더/모바일 탭바에 나열되는 공통 메뉴 — 배열 순서가 곧 노출 순서.
 export const NAV_MENU_ITEMS: NavMenuItem[] = [
-  { key: "feed", label: "피드" },
+  { key: "activity", label: "활동" },
   { key: "stats", label: "통계" },
 ];
 

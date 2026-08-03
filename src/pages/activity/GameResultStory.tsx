@@ -1289,7 +1289,7 @@ export default function GameResultStory({
   return (
     <div className="scr-story" ref={rootRef}>
       {showRoster && (
-        <div className={cx("scr-challenge-matchup", "scr-feed-game-result-matchup", grid && "scr-story-matchup-wide")}>
+        <div className={cx("scr-challenge-matchup", "scr-activity-game-result-matchup", grid && "scr-story-matchup-wide")}>
           <RosterSide
             team={team1} memberOf={memberOf}
             highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms}
@@ -1306,7 +1306,7 @@ export default function GameResultStory({
           />
         </div>
       )}
-      {result === "not_held" && <div className="scr-feed-game-result-notheld">미실시</div>}
+      {result === "not_held" && <div className="scr-activity-game-result-notheld">미실시</div>}
       {!showRoster && mapBlock}
       {/* 미니맵이 없는 경기는 예전처럼 맵 이름·플레이시간을 한 줄로 적는다. */}
       {showMapLine && (

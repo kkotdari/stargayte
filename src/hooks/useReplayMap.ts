@@ -47,8 +47,8 @@ async function flush(): Promise<void> {
   for (const l of listeners) l();
 }
 
-/** 목록을 부를 때 필요한 격자를 미리 다 받아 둔다 — 댓글과 같은 이유다(FeedComments의
- *  primeFeedComments 주석): 카드가 뜬 뒤에 격자가 도착하면 미니맵이 그때 생겨나며 카드
+/** 목록을 부를 때 필요한 격자를 미리 다 받아 둔다 — 댓글과 같은 이유다(ActivityComments의
+ *  primeActivityComments 주석): 카드가 뜬 뒤에 격자가 도착하면 미니맵이 그때 생겨나며 카드
  *  키가 자라고, 그만큼 피드의 스크롤 자리가 밀린다. 이미 받아 둔 해시는 건너뛴다. */
 export async function primeReplayMaps(hashes: (string | null | undefined)[]): Promise<void> {
   const need = [...new Set(hashes.filter((h): h is string => !!h && !cache.has(h)))];

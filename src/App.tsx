@@ -23,21 +23,21 @@ import MinimapScreen from "./pages/minimaps/MinimapScreen";
 import ChallengeInboxModal from "./modals/ChallengeInboxModal";
 import ChallengeResultInboxModal from "./modals/ChallengeResultInboxModal";
 import AppUpdateNoticeModal from "./modals/AppUpdateNoticeModal";
-import FeedScreen from "./pages/feed/FeedScreen";
+import ActivityScreen from "./pages/activity/ActivityScreen";
 import StatsScreen from "./pages/v2/StatsScreen";
 import SharePage, { type ShareTarget } from "./pages/share/SharePage";
 import ShareLoginGate from "./pages/share/ShareLoginGate";
 
 import type { ScreenKey } from "./types";
 
-const SCREEN_KEYS: ScreenKey[] = ["feed", "stats", "members", "leagues", "minimaps", "control"];
+const SCREEN_KEYS: ScreenKey[] = ["activity", "stats", "members", "leagues", "minimaps", "control"];
 
 // 새로고침해도 보던 화면 그대로 있도록 URL의 ?screen= 쿼리에 현재 화면을 기록해둔다 —
 // 사파리의 pull-to-refresh 등 브라우저 기본 새로고침은 앱 상태를 그대로 날려서 첫 화면으로
 // 돌아가 버리는데, URL만은 새로고침 후에도 그대로 유지되기 때문에 여기 저장해두는 것.
 function screenFromUrl(): ScreenKey {
   const s = new URLSearchParams(window.location.search).get("screen");
-  return (SCREEN_KEYS as string[]).includes(s ?? "") ? (s as ScreenKey) : "feed";
+  return (SCREEN_KEYS as string[]).includes(s ?? "") ? (s as ScreenKey) : "activity";
 }
 
 // 카카오톡 공유 링크(?sv=gameResult|challenge|rankingShift&sid=123) — 있으면 그 한 장만 보이는
@@ -124,7 +124,7 @@ export default function App() {
     const qs = params.toString();
     window.history.replaceState(null, "", `${window.location.pathname}${qs ? `?${qs}` : ""}${window.location.hash}`);
     setShareTarget(null);
-    setScreen("feed");
+    setScreen("activity");
   };
   // (키보드가 닫힐 때 스크롤을 되돌리던 훅은 제거했다 — 그 훅은 뷰포트가 키보드만큼
   //  줄어드는 interactive-widget=resizes-content를 전제로 만들었는데, iOS 사파리는 그
@@ -224,10 +224,10 @@ export default function App() {
   const isAdmin = isAdminRole(user.roles);
   // 접근 권한이 없는 화면으로 들어온 경우(예: URL 직접 조작) 실제로 보여줄 화면 —
   const resolvedScreen: ScreenKey =
-    screen === "members" && !isAdmin ? "feed" :
-    screen === "leagues" && !isAdmin ? "feed" :
-    screen === "minimaps" && !isAdmin ? "feed" :
-    screen === "control" && !isAdmin ? "feed" :
+    screen === "members" && !isAdmin ? "activity" :
+    screen === "leagues" && !isAdmin ? "activity" :
+    screen === "minimaps" && !isAdmin ? "activity" :
+    screen === "control" && !isAdmin ? "activity" :
     screen;
 
   // 배경 사진이 있는 화면(지금은 통계뿐 — 피드 배경은 제거)에서는 헤더까지 사진이
@@ -267,7 +267,7 @@ export default function App() {
                 기존 동작과 같게, resolvedScreen으로 보여줄 화면만 고른다. */}
             {/* 피드도 다른 화면과 같다 — 떠나면 언마운트하고 돌아오면 처음부터 새로
                 불러온다(요청: 상태 저장이 잘 안 되니 그 기능은 취소하고 매번 새로). */}
-            {!booting && resolvedScreen === "feed" && <FeedScreen />}
+            {!booting && resolvedScreen === "activity" && <ActivityScreen />}
             {!booting && resolvedScreen === "stats" && <StatsScreen />}
             {isAdmin && !booting && resolvedScreen === "members" && <MembersScreen />}
             {/* 운영자 전용 메뉴로 변경(요청) — 회원/이미지 설정과 같은 기준으로 운영자만 접근. */}

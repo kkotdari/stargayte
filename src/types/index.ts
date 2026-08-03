@@ -142,12 +142,12 @@ export interface GameResultAuthor {
 }
 
 // 경기 댓글(메모)에 언급(@)된 회원 — 렌더 시 인라인 칩으로 표시한다.
-export interface FeedCommentMention {
+export interface ActivityCommentMention {
   memberId: string;
   nickname: string;
 }
 
-export interface FeedCommentAuthor {
+export interface ActivityCommentAuthor {
   memberId: string;
   nickname: string;
   avatar: string | null;
@@ -183,17 +183,17 @@ export interface RankingShift {
 
 // 피드 댓글 — 대상(targetType, targetId)이 경기든 너 나와!든 순위변동 알림이든
 // 같은 API 하나로 달린다.
-export type FeedTargetType = "gameResult" | "challenge" | "rankingShift";
-export interface FeedComment {
+export type ActivityTargetType = "gameResult" | "challenge" | "rankingShift";
+export interface ActivityComment {
   id: number;
-  targetType: FeedTargetType;
+  targetType: ActivityTargetType;
   targetId: number;
   text: string;
-  author: FeedCommentAuthor;
+  author: ActivityCommentAuthor;
   createdAt: string;
   updatedAt: string;
   canEdit: boolean;
-  mentions: FeedCommentMention[];
+  mentions: ActivityCommentMention[];
 }
 
 
@@ -354,7 +354,7 @@ export interface TeamRankingResponse {
 // "ranking"은 폐기 — 랭킹은 통계 화면(포인트 컬럼)에 통합됐다(요청).
 // 실제로 갈 수 있는 화면만 남긴다 — 기록실("match")·너 나와! 전용 화면("challenge")·
 // 상성맵 화면("rivalry")은 메뉴에서 빠진 뒤 어디서도 이동하지 않아 함께 걷어냈다(요청).
-export type ScreenKey = "feed" | "stats" | "members" | "leagues" | "minimaps" | "control";
+export type ScreenKey = "activity" | "stats" | "members" | "leagues" | "minimaps" | "control";
 
 // 랭킹/경기결과/전적통계 등 화면·메뉴 구성을 어느 버전 세트로 보여줄지 — 제어판에서 등록된
 // 버전 중 하나로 배포하면 앱 전체가 즉시 바뀐다(개인별 설정이 아니라 서버에 저장된 전역 값).

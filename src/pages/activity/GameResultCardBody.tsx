@@ -105,10 +105,10 @@ function GameResultActionsMenu({
   ];
 
   return (
-    <div className="scr-feed-post-menu">
+    <div className="scr-activity-post-menu">
       <button
         type="button" ref={anchorRef}
-        className="scr-feed-post-menu-btn scr-feed-kebab-btn"
+        className="scr-activity-post-menu-btn scr-activity-kebab-btn"
         onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
         aria-label="더보기" aria-haspopup="menu" aria-expanded={open}
       >
@@ -119,18 +119,18 @@ function GameResultActionsMenu({
         // 눌리지 않게 백드롭과 드롭 양쪽에서 끊는다(위 시트와 같은 이유).
         <>
           <div
-            className="scr-feed-add-backdrop"
+            className="scr-activity-add-backdrop"
             onClick={(e) => { e.stopPropagation(); setOpen(false); }}
             aria-hidden
           />
         <div
-          className="scr-menu-pop-drop scr-feed-post-menu-drop scr-scroll" ref={dropRef} role="menu"
+          className="scr-menu-pop-drop scr-activity-post-menu-drop scr-scroll" ref={dropRef} role="menu"
           onClick={(e) => e.stopPropagation()}
         >
           {items.map((it) => (
             <button
               key={it.key} type="button" role="menuitem"
-              className={cx("scr-menu-pop-opt", it.danger && "scr-feed-post-menu-opt-danger")}
+              className={cx("scr-menu-pop-opt", it.danger && "scr-activity-post-menu-opt-danger")}
               onClick={(e) => { e.stopPropagation(); it.onSelect(); setOpen(false); }}
             >
               {it.label}

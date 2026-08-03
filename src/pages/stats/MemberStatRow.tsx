@@ -171,9 +171,9 @@ export default function MemberStatRow({
                       "신규" 글자로(요청). */}
                   {rankDelta === "new" ? (
                     // 기존 피드 랭크변동 카드의 "신규" 배지와 같은 톤을 그대로 쓴다.
-                    <span className="scr-feed-shift-new">신규</span>
+                    <span className="scr-activity-shift-new">신규</span>
                   ) : rankDelta != null && rankDelta !== 0 && (
-                    <span className={rankDelta > 0 ? "scr-feed-shift-up" : "scr-feed-shift-down"}>
+                    <span className={rankDelta > 0 ? "scr-activity-shift-up" : "scr-activity-shift-down"}>
                       {rankDelta > 0 ? `▲${rankDelta}` : `▼${-rankDelta}`}
                     </span>
                   )}

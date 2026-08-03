@@ -11,7 +11,7 @@ import { api } from "../../api/client";
 import { cx } from "../../utils/format";
 import { attachPopover } from "../../utils/popover";
 import { formatWhen } from "../../utils/date";
-import type { Member, FeedComment, FeedTargetType } from "../../types";
+import type { Member, ActivityComment, ActivityTargetType } from "../../types";
 
 // 게시판 댓글처럼 한 줄(요청: 한글 50자 제한). 입력부·목록의 생김새는 공용 댓글
 // CSS(.scr-comment-*)가 맡는다 — 앱 안의 댓글은 어디서든 같은 양식이다(요청).
@@ -203,7 +203,7 @@ function NoteComposer({
   };
 
   return (
-    <div className="scr-comment-compose-row scr-feed-note-compose-row">
+    <div className="scr-comment-compose-row scr-activity-note-compose-row">
       <div className="scr-comment-input-wrap">
         <div
           className="scr-input scr-comment-editor"
@@ -303,12 +303,12 @@ const SWIPE_CLOSE_PX = 96;
    프롭으로 내리지 않고 모듈 안의 표에 담는 건, 댓글 영역이 카드·묶음·스토리를 지나 깊이
    들어가 있어서다(미니맵 격자를 담아 두는 useReplayMap과 같은 방식). 표가 비어 있으면
    예전처럼 카드마다 제 것만 불러온다 — 피드 밖에서 쓰이는 자리를 위한 길이다. */
-const primed = new Map<string, FeedComment[]>();
+const primed = new Map<string, ActivityComment[]>();
 let primedOnce = false;
-const keyOf = (t: FeedTargetType, id: number) => `${t}:${id}`;
+const keyOf = (t: ActivityTargetType, id: number) => `${t}:${id}`;
 
-export async function primeFeedComments(): Promise<void> {
-  const items = await api.listAllFeedComments();
+export async function primeActivityComments(): Promise<void> {
+  const items = await api.listAllActivityComments();
   primed.clear();
   for (const c of items) {
     const k = keyOf(c.targetType, c.targetId);
@@ -321,7 +321,7 @@ export async function primeFeedComments(): Promise<void> {
 // 펼쳐진 경기 로우 하단의 댓글(메모) 영역 — 게시판 댓글 스타일. 목록·입력은 공용 댓글
 // CSS(.scr-comment-*)를 쓴다. 대댓글은 없다(요청). 로그인 회원만 작성할 수 있고
 // 작성자 본인/운영자만 수정·삭제할 수 있다(comment.canEdit).
-export default function FeedComments({ targetType, targetId }: { targetType: FeedTargetType; targetId: number }) {
+export default function ActivityComments({ targetType, targetId }: { targetType: ActivityTargetType; targetId: number }) {
   // 작성 입력창 — 가운데의 + 댓글 아이콘을 누르면 트랜지션으로 입력창으로 바뀌며 바로
   // 포커스되고, 포커스를 잃으면 다시 아이콘으로 돌아간다(요청). 입력창은 늘 마운트해 두고
   // CSS(max-width/opacity)로만 접었다 편다 — 닫혀도 쓰던 내용이 남는다.
@@ -339,8 +339,8 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
   const members = useAppStore((s) => s.members);
   // 댓글은 이 컴포넌트가 로컬로 관리한다 — 마운트 시 대상의 댓글을 불러오고,
   // 작성/수정/삭제 시 서버가 돌려준 댓글로 그 자리만 갱신해 전체 목록을 다시 안 불러온다.
-  // 목록과 함께 미리 받아 둔 것이 있으면 첫 렌더부터 그걸로 그린다(위 primeFeedComments).
-  const [notes, setNotes] = useState<FeedComment[]>(
+  // 목록과 함께 미리 받아 둔 것이 있으면 첫 렌더부터 그걸로 그린다(위 primeActivityComments).
+  const [notes, setNotes] = useState<ActivityComment[]>(
     () => (primedOnce ? primed.get(keyOf(targetType, targetId)) ?? [] : []),
   );
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -349,7 +349,7 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
   const [composerKey, setComposerKey] = useState(0);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<FeedComment | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ActivityComment | null>(null);
   // 모바일에서는 댓글을 카드 안에서 바로 쓰지 않고 전체화면에서 읽고 쓴다(요청) — 카드에는
   // 목록 미리보기(또는 댓글이 하나도 없을 때만 추가 아이콘)만 남고, 그걸 누르면 시트가 열린다.
   // PC는 화면이 넓고 키보드가 본문을 가리지 않으니 기존의 인라인 방식 그대로다(요청: 모바일만).
@@ -467,7 +467,7 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
   // 시트가 떠 있는 동안 배경(본문)으로 가는 스크롤/클릭을 막고, 바깥 탭이면 닫는다.
   useLockBodyScroll(mobile && sheetOpen, closeSheet);
   // 열릴 때 아래에서 올라온다. 시작 위치를 인라인으로 먼저 박는다 — WAAPI fill에만 맡기면
-  // iOS가 첫 프레임에 적용하지 않아 열린 자리가 한 번 스쳐 보인다(FeedScreen에서도 같은 함정).
+  // iOS가 첫 프레임에 적용하지 않아 열린 자리가 한 번 스쳐 보인다(ActivityScreen에서도 같은 함정).
   useLayoutEffect(() => {
     const el = sheetRef.current;
     if (!sheetOpen || !el || reducedMotion()) return;
@@ -563,7 +563,7 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
     // 여기서 또 부르면 답이 늦게 도착하며 카드 키가 흔들려 애초의 문제로 되돌아간다.
     if (primedOnce) { setNotes(primed.get(keyOf(targetType, targetId)) ?? []); return; }
     let cancelled = false;
-    api.listFeedComments(targetType, targetId)
+    api.listActivityComments(targetType, targetId)
       .then((items) => { if (!cancelled) setNotes(items); })
       .catch(() => {});
     return () => { cancelled = true; };
@@ -572,7 +572,7 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
   /** 내가 쓰고·고치고·지운 것을 미리 받아 둔 표에도 반영한다 — 카드가 다시 마운트될 때
    *  (묶음 접기/펼치기 등) 그 표가 첫 렌더의 진실이라, 여기서 안 맞춰 두면 방금 쓴 댓글이
    *  사라진 것처럼 보인다. 목록을 다시 부르는 것과 달리 이건 이미 손에 든 값이다. */
-  const apply = (next: (prev: FeedComment[]) => FeedComment[]) => {
+  const apply = (next: (prev: ActivityComment[]) => ActivityComment[]) => {
     setNotes((prev) => {
       const out = next(prev);
       if (primedOnce) primed.set(keyOf(targetType, targetId), out);
@@ -584,7 +584,7 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
     setBusy(true);
     setErr(null);
     try {
-      const created = await api.createFeedComment(targetType, targetId, text, ids);
+      const created = await api.createActivityComment(targetType, targetId, text, ids);
       apply((prev) => [...prev, created]);
       setComposerKey((k) => k + 1); // 성공 시 작성 컴포저 초기화(입력 비우기)
     } catch (e) {
@@ -597,7 +597,7 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
     setBusy(true);
     setErr(null);
     try {
-      const updated = await api.updateFeedComment(id, text, ids);
+      const updated = await api.updateActivityComment(id, text, ids);
       apply((prev) => prev.map((c) => (c.id === id ? updated : c)));
       setEditingId(null);
     } catch (e) {
@@ -610,7 +610,7 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
     setBusy(true);
     setErr(null);
     try {
-      await api.deleteFeedComment(id);
+      await api.deleteActivityComment(id);
       apply((prev) => prev.filter((c) => c.id !== id));
     } catch (e) {
       setErr(e instanceof Error ? e.message : "메모를 삭제하지 못했어요.");
@@ -625,23 +625,23 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
   // 닉네임 줄에 끼어 있고, 본문은 그 줄 전체 밑에 아바타와 무관하게 통짜로 흘렀다.
   // interactive=false는 카드 안 미리보기용 — 수정/삭제는 시트에서만 한다(미리보기에서
   // 편집까지 되면 시트를 여는 탭과 버튼 탭이 같은 자리에서 겹친다).
-  const renderNote = (c: FeedComment, interactive: boolean) => (
-    <li key={c.id} className="scr-comment-item scr-feed-note-item">
+  const renderNote = (c: ActivityComment, interactive: boolean) => (
+    <li key={c.id} className="scr-comment-item scr-activity-note-item">
       {/* 포스트 본문(너 나와/게임요약)보다 댓글이 더 중요해 보이면 안 된다는 지적으로
           아주 살짝만 줄인다(32 → 28) — 포스트 쪽 아바타는 반대로 키운다. */}
       <Avatar
         member={{ id: c.author.memberId, nickname: c.author.nickname, avatar: c.author.avatar }}
         size={28}
-        className="scr-feed-note-avatar"
+        className="scr-activity-note-avatar"
       />
-      <div className="scr-feed-note-body">
+      <div className="scr-activity-note-body">
         <div className="scr-comment-item-top">
           <div className="scr-comment-author">
             <span className="scr-comment-author-name">{c.author.nickname}</span>
             {/* 이 앱의 "언제" 공통 포맷(formatWhen)을 그대로 쓴다(지적: 댓글 타임스탬프만
                 공통 양식이 안 적용되고 있었다) — 방금 전/N분 전/오늘/어제/이번주 요일 등
                 피드 타임스탬프·너 나와 일정과 같은 규칙으로 읽힌다. */}
-            <span className="scr-feed-note-time">{formatWhen(c.createdAt, { clock: true })}</span>
+            <span className="scr-activity-note-time">{formatWhen(c.createdAt, { clock: true })}</span>
           </div>
         </div>
         {interactive && editingId === c.id ? (
@@ -659,19 +659,19 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
           // 아니라 내용이 끝나는 부분 옆으로) — 같은 <p> 안에 이어 붙여, 텍스트와 한
           // 흐름으로 줄바꿈되게 한다(글이 짧으면 글자 바로 뒤에, 길어서 꽉 차면 마지막
           // 줄로 자연스럽게 넘어간다). 별도 flex 줄로 두면 늘 오른쪽 끝에 떨어져 붙는다.
-          <p className="scr-comment-text scr-feed-note-text">
+          <p className="scr-comment-text scr-activity-note-text">
             {renderInline(c.text, c.mentions)}
             {interactive && c.canEdit && (
-              <span className="scr-comment-actions scr-feed-note-actions">
+              <span className="scr-comment-actions scr-activity-note-actions">
                 <button
-                  type="button" className="scr-feed-note-icon-btn"
+                  type="button" className="scr-activity-note-icon-btn"
                   onClick={() => { setErr(null); setEditingId(c.id); }}
                   aria-label="수정"
                 >
                   <Pencil size={11} />
                 </button>
                 <button
-                  type="button" className="scr-feed-note-icon-btn scr-feed-note-icon-danger"
+                  type="button" className="scr-activity-note-icon-btn scr-activity-note-icon-danger"
                   onClick={() => setDeleteTarget(c)}
                   aria-label="삭제"
                 >
@@ -701,33 +701,33 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
     // 로우 전체가 클릭 토글이라, 댓글 영역에서의 클릭/입력은 로우 접힘을 막는다.
     // 시트는 body 포털로 나가지만 리액트 이벤트는 이 트리를 따라 올라오므로 여기서 함께 막힌다.
     <div
-      className="scr-feed-notes"
+      className="scr-activity-notes"
       onClick={(e) => e.stopPropagation()}
     >
       {/* 댓글이 있을 때만 "댓글" 소제목을 단다(지적: 댓글과 본문 구역 구분이 안 됨 —
           상단부에 소제목을 달고 그 위 여백도 넣기). 댓글이 하나도 없는 포스트는 여전히
           구석의 작은 "댓글 추가" 버튼만 있는 미니멀한 모습 그대로 둔다. */}
       {/* 소제목 옆에 건수도 함께(지적: 댓글 소제목 옆에 건수 표시). */}
-      {notes.length > 0 && <div className="scr-feed-comments-heading">댓글 {notes.length}</div>}
+      {notes.length > 0 && <div className="scr-activity-comments-heading">댓글 {notes.length}</div>}
       {mobile ? (
         <>
           {notes.length > 0 ? (
             // 댓글이 있으면 아이콘 대신 목록 자체가 시트를 여는 버튼이다(요청 1·2).
             // button 안에는 목록을 넣을 수 없어(phrasing content만 허용) role로 대신한다.
             <div
-              className="scr-feed-notes-preview" role="button" tabIndex={0}
+              className="scr-activity-notes-preview" role="button" tabIndex={0}
               aria-label={`댓글 ${notes.length}개 보기`}
               onClick={openSheet}
               onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openSheet(); } }}
             >
-              <ul className="scr-comment-list scr-feed-notes-list">
+              <ul className="scr-comment-list scr-activity-notes-list">
                 {notes.map((c) => renderNote(c, false))}
               </ul>
             </div>
           ) : user ? (
-            <div className="scr-feed-comment-row">
+            <div className="scr-activity-comment-row">
               <button
-                type="button" className="scr-feed-comments-toggle"
+                type="button" className="scr-activity-comments-toggle"
                 onClick={openSheet} title="댓글 쓰기"
               >
                 댓글 추가
@@ -738,17 +738,17 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
       ) : (
         <>
           {notes.length > 0 && (
-            <ul className="scr-comment-list scr-feed-notes-list">
+            <ul className="scr-comment-list scr-activity-notes-list">
               {notes.map((c) => renderNote(c, true))}
             </ul>
           )}
 
-          {err && <div className="scr-err scr-feed-note-err">{err}</div>}
+          {err && <div className="scr-err scr-activity-note-err">{err}</div>}
 
           {user && editingId === null && (
-            <div className={cx("scr-feed-comment-row", composerOpen && "scr-feed-comment-row-open")}>
+            <div className={cx("scr-activity-comment-row", composerOpen && "scr-activity-comment-row-open")}>
               <button
-                type="button" className="scr-feed-comments-toggle"
+                type="button" className="scr-activity-comments-toggle"
                 onClick={openComposer}
                 aria-expanded={composerOpen} title="댓글 쓰기"
                 tabIndex={composerOpen ? -1 : 0}
@@ -757,7 +757,7 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
               </button>
               <div
                 ref={composerWrapRef}
-                className="scr-feed-comment-composer"
+                className="scr-activity-comment-composer"
                 // 포커스가 입력창/등록 버튼 밖으로 나가면 아이콘으로 되돌린다(요청). 멘션
                 // 드롭다운·지우기 버튼은 mousedown preventDefault라 블러 자체가 안 난다.
                 onBlur={(e) => {
@@ -778,7 +778,7 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
       {mobile && sheetOpen && createPortal(
         <div
           ref={sheetRef}
-          className={cx("scr-comment-sheet scr-feed-card-comment scr-feed-notes", typing && "scr-comment-sheet-typing")}
+          className={cx("scr-comment-sheet scr-activity-card-comment scr-activity-notes", typing && "scr-comment-sheet-typing")}
           role="dialog" aria-label="댓글"
           onFocus={() => setTyping(true)}
           onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setTyping(false); }}
@@ -791,14 +791,14 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
           </div>
           <div className="scr-comment-sheet-body scr-scroll" ref={sheetBodyRef}>
             {notes.length > 0 ? (
-              <ul className="scr-comment-list scr-feed-notes-list">
+              <ul className="scr-comment-list scr-activity-notes-list">
                 {notes.map((c) => renderNote(c, true))}
               </ul>
             ) : (
               <p className="scr-comment-sheet-empty">아직 댓글이 없어요.</p>
             )}
           </div>
-          {err && <div className="scr-err scr-feed-note-err">{err}</div>}
+          {err && <div className="scr-err scr-activity-note-err">{err}</div>}
           {user && editingId === null && (
             // 입력칸 왼쪽에 내 아바타(요청) — 지금 누구 이름으로 쓰는지 보여준다.
             <div className="scr-comment-sheet-compose">
