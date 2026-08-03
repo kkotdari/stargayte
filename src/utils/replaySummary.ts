@@ -2901,6 +2901,20 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
       const us = forceAt(raw, b.at ?? null, side).slice(0, ARROW_LABEL_MAX);
       if (us.length > 0) out[raw] = us;
     }
+    /* 맺음말은 이제 자막에서 유닛을 아예 뺐다(요청) — "무엇으로 끝냈나"의 답이 오로지 이
+       이름표뿐이다. 그런데 그 무렵 명령이 안 잡힌 사람은 forceAt이 비어 이름표가 통째로
+       없고(실측: 넷이 한 점에 덮친 판에서 둘만 붙었다), 그러면 그 사람 몫의 답이 사라진다.
+       문장이 쓰던 것과 같은 재료(teamComp — 그 사람이 그 판에서 굴린 조합)로 메운다. 그
+       사람 자신의 것이라 남의 병력이 남의 이름으로 불리는 문제도 없다. */
+    if (b.k === "result") {
+      const comps = Array.isArray(b.p?.teamComp) ? b.p.teamComp : [];
+      (b.who ?? []).forEach((raw, i) => {
+        const comp = comps[i];
+        if (out[raw] || typeof comp !== "string") return;
+        const us = comp.split("|").filter(Boolean).slice(0, ARROW_LABEL_MAX);
+        if (us.length > 0) out[raw] = us;
+      });
+    }
     return Object.keys(out).length > 0 ? out : null;
   };
   // 이름 없이 "무엇이 뒤엉켰나"만 말하는 자리(그리고 옛 요약을 읽는 자리)를 위해 그 편

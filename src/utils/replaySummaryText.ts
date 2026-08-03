@@ -144,63 +144,23 @@ export function unitPhrase(units: string[]): string {
 function teamPhrase(c: Ctx): string {
   const names = c.whoList;
   const leads = list(c.p.teamUnits);
-  const comps = list(c.p.teamComp).map((x) => x.split("|"));
+  // teamUnits가 있다는 것 자체가 '편 전체가 끝낸 판'이라는 표시다 — 유닛 이름은 더 이상
+  // 안 쓰지만, 이 문장을 세울지 말지는 여전히 여기서 갈린다.
   if (leads.length < 2 || names.length !== leads.length) return "";
 
-  // 주력이 같은 사람끼리 묶는다(요청) — 같은 그림으로 싸운 사람을 따로 늘어놓으면
-  // 문장만 길어지고, 묶으면 "정구, 브래드의 마린 메딕 조합"처럼 한 덩어리로 읽힌다.
-  const groups: { key: string; names: string[]; units: string[] }[] = [];
-  names.forEach((n, i) => {
-    const g = groups.find((x) => x.key === leads[i]);
-    const own = comps[i] ?? [leads[i]];
-    if (g) {
-      g.names.push(n);
-      for (const u of own) if (!g.units.includes(u)) g.units.push(u);
-    } else {
-      groups.push({ key: leads[i], names: [n], units: [...own] });
-    }
-  });
-
-  // 다들 같은 그림으로 싸웠고 사람도 많으면, 이름을 다 부르는 대신 팀으로 뭉뚱그린다.
-  // 다만 "힘을 모아"로 끝내면 무엇으로 이겼는지가 빠진다(지적) — 종족과 무관하게 그 편이
-  // 함께 쓴 조합을 앞세워 말한다.
-  if (groups.length === 1 && names.length >= 4) {
-    const ko = groups[0].units.map((u) => UNIT_KO[u]).filter(Boolean).slice(0, 3);
-    // "4인 팀"은 쓰지 않는 말이다(지적) — 로스터에 있는 그대로 "1팀/2팀"이라 부른다.
-    // 팀 번호를 모르면(옛 데이터·1:1) 이름을 늘어놓는 쪽으로 물러선다.
-    const team = c.team ? `${c.team}팀` : names.join("·");
-    if (ko.length === 0) return c.pick([`${team}이 힘을 모아`, `${names.join("·")} 팀이 함께 밀어붙여`]);
-    const combo = ko.length >= 2 ? `${ko.join(" ")} 조합` : ko[0];
-    return c.pick([
-      `${team}이 ${reul(combo)} 필두로`,
-      `${team}이 ${reul(combo)} 앞세워`,
-      `${names.join("·")} 팀이 ${ro(combo)} 몰아쳐`,
-    ]);
+  /* 유닛 이름은 이 문장에서 뺐다(요청: 자막에서 빼고 화살표에 캡션으로) — 넷이 저마다
+     조합을 갖고 싸운 판에서 이 한 문장이 유닛 일곱 개를 늘어놓는 줄이 됐다("정구·석주가
+     마린 탱크 조합으로, 형거긴안돼요·수달이가 질럿 드라군 조합으로 몰아붙여…"). 같은
+     그림에서 화살표마다 그 사람이 무엇을 몰고 갔는지가 이미 이름표로 붙어 있으니, 글은
+     '누가'만 말하면 된다. 그래서 같은 주력끼리 묶던 무리 짓기도 필요가 없어졌다. */
+  // "4인 팀"은 쓰지 않는 말이다(지적) — 로스터에 있는 그대로 "1팀/2팀"이라 부른다.
+  // 팀 번호를 모르면(옛 데이터) 이름을 늘어놓는 쪽으로 물러선다.
+  const team = c.team ? `${c.team}팀` : "";
+  if (names.length >= 4 && team) {
+    return c.pick([`${team}이 힘을 모아`, `${team}이 함께 밀어붙여`, `${team}이 한꺼번에 몰아붙여`]);
   }
-  /* 많이 뽑은 쪽부터 두 무리까지, 무리마다 두 유닛까지만 말한다(요청: 자막에는 유닛
-     나열을 자제하고 화살표에 싣는 쪽으로) — 넷이 저마다 조합을 갖고 싸운 판에서는 이
-     한 문장이 유닛 일곱 개를 늘어놓는 줄이 됐다. 누가 무엇으로 끝냈나는 두 무리면
-     충분하고, 나머지는 그림이 말한다. */
-  const shown = groups.slice(0, 2);
-  const made = shown.map((g) => {
-    const ko = g.units.map((u) => UNIT_KO[u]).filter(Boolean).slice(0, 2);
-    if (ko.length === 0) return null;
-    const many = g.names.length > 1;
-    return { who: g.names.join("·"), what: many ? `${ko.join(" ")} 조합` : ko.join(" ") };
-  }).filter((x): x is { who: string; what: string } => x !== null);
-  if (made.length === 0) return "";
-  // 조합만 늘어놓고 끝내면 누가 이겼는지가 빠진다(지적) — 팀 번호로 주어를 세우거나,
-  // 아예 사람을 주격으로 놓고 "누가 무엇으로 몰아붙여"로 말한다.
-  const subject = c.team ? `${c.team}팀이 ` : "";
-  const parts = made.map((g) => `${g.who}의 ${g.what}`);
-  if (parts.length === 1) return `${ro(parts[0])} ${subject}`.trimEnd();
-  const head = parts.slice(0, -1).join(", ");
-  const listed = `${ro(`${wa(head)} ${parts[parts.length - 1]}`)} ${subject}`.trimEnd();
-  // "제롬·Rex가 질럿 조합으로, 태섭이 마린 메딕 조합으로 몰아붙여"(요청) — 무리마다
-  // 격을 달리하면 셋 이상일 때 문장이 무너진다(지적: ~을 ~을 ~으로가 된다). 모두 같은
-  // 도구격으로 늘어놓고 마지막에 서술어 하나만 받는다.
-  const acting = `${made.map((g) => `${ga(g.who)} ${ro(g.what)}`).join(", ")} 몰아붙여`;
-  return c.pick([listed, acting]);
+  const who = names.join("·");
+  return c.pick([`${ga(who)} 함께 몰아붙여`, `${ga(who)} 나란히 밀어붙여`, `${ga(who)} 한꺼번에 몰아붙여`]);
 }
 
 /** 이어받는 맺음말의 앞머리 — "결국 마린과 메딕 조합으로 " / "계속된 마린 공격으로 ". */
@@ -869,8 +829,8 @@ const TEMPLATES: Record<string, Tpl> = {
        분명하니 그렇게 말한다. 탈락까지 간 경우는 그쪽 문구가 더 큰 이야기라 안 건드린다. */
     if (!c.p.out && WORKER_DROP_KEYS.has(str(c.p.k))) {
       return say(
-        [`${blow} ${also}일꾼 줄이 통째로 지워짐`, `${blow} ${also}일꾼이 크게 갈림`],
-        [`${blow} ${also}${of}일꾼이 크게 갈림`, `${blow} ${also}${of}일꾼 줄이 지워짐`],
+        [`${blow} ${also}일꾼 줄이 통째로 지워짐`, `${blow} ${also}일꾼이 크게 줄어듦`],
+        [`${blow} ${also}${of}일꾼이 크게 줄어듦`, `${blow} ${also}${of}일꾼 줄이 지워짐`],
         [`${ro(by)} ${also}${of}일꾼을 쓸어 담음`, `${ro(by)} ${also}${of}일꾼 줄을 지움`],
       );
     }
@@ -1367,7 +1327,7 @@ const TEMPLATES: Record<string, Tpl> = {
             "먼저 크게 망함"]
           : ["엘리당함", "탈락함", "그대로 끝장남", "크게 실패함", "그대로 크게 망함"]
         : c.p.team
-          ? ["먼저 무너지며 전열이 갈림", "먼저 정리되며 한 명이 빠짐", "먼저 나가떨어짐",
+          ? ["먼저 무너지며 한 축이 빠짐", "먼저 정리되며 한 명이 빠짐", "먼저 나가떨어짐",
             "먼저 망함"]
           : ["일찍 손을 놓음", "일찍 무너짐", "허무하게 먼저 정리됨", "일찌감치 실패함",
             "일찌감치 망함"]
@@ -1728,10 +1688,14 @@ const TEMPLATES: Record<string, Tpl> = {
         `${ga(holder)} 끝내 밀어내고 자리를 차지함`,
         `${ga(holder)} 물러서지 않고 버팀`,
       ])
+      /* "서로 물러섬" · "크게 갈림"은 쓰지 않는다(지적: 교전 문장이 어색하다) — 리플레이가
+         실제로 아는 건 "그 자리를 지킨 쪽이 없다"뿐인데, 물러섰다는 말은 안 본 움직임을
+         지어내는 것이고 '갈리다'는 병력 손실을 뜻하는 은어라 문장체와 겉돈다. 아는 그대로
+         "승부가 나지 않았다"와, 그 자리에 병력을 부어 넣은 사실만 말한다. */
       : c.pick([
-        "어느 쪽도 자리를 잡지 못하고 서로 물러섬",
-        "양쪽 다 크게 갈리고 비긴 채 물러섬",
-        "승부를 못 가른 채 서로 물러섬",
+        "승부가 나지 않음",
+        "양쪽 다 병력만 소모하고 승부가 나지 않음",
+        "어느 쪽도 자리를 지키지 못한 채 병력만 소모함",
       ]);
     if (roster) {
       return `${where}${spell}${wa(sideA)} ${ga(sideB)} ${c.pick([
