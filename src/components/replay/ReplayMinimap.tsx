@@ -46,6 +46,9 @@ export interface MinimapArrow {
    *  이으면 두 종류만 돼도 띠가 길어져 지도를 가리고, 모이는 화살표끼리 서로 겹친다.
    *  없거나 비어 있으면 안 그린다. */
   label?: string[];
+  /** 기둥 굵기(SVG stroke-width, 타일 좌표계) — 그 화살표에 실린 병력이 클수록 굵다
+   *  (요청: 병력 규모에 따라 화살표 두께도 다르게). 없으면 CSS 기본값을 그대로 쓴다. */
+  width?: number;
   /** 여러 화살표가 한 점에서 만나는가 — 양 팀이 부딪친 자리가 그렇다(요청: 상대편끼리
    *  충돌한 경우 화살표는 한곳으로 모여야 한다). 보통 화살표는 목표 앞에서 조금씩 다르게
    *  멈추고(길이에 비례한 여백) 이모지도 촉 앞에 따로 서는데, 그러면 같은 자리를 겨눈
@@ -546,6 +549,7 @@ export default function ReplayMinimap({
             <path
               d={g.d} fill="none" className="scr-minimap-arrow"
               strokeDasharray={a.flight ? "3 2.4" : undefined}
+              {...(a.width ? { strokeWidth: a.width } : {})}
             />
           </g>
         ))}

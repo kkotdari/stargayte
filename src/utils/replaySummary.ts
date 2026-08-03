@@ -2804,6 +2804,25 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   };
   /** 이름을 부를 만큼 싸운 사람들 — 그 자리 전체 명령의 CLASH_NAME_SHARE는 넘어야 한다.
    *  많이 싸운 순 그대로라 문장이 앞에서부터 부르면 곧 비중순이 된다. */
+  /** 화살표 굵기의 근거 — 그 사람이 그 무렵 굴린 병력의 크기(요청). 문장 시각 직전
+   *  ARROW_SIZE_SEC 동안 뽑은 전투 유닛 수다. 화살표에 이름표(units)가 붙는 사람만 센다 —
+   *  굵기는 그 화살표의 성질이라 화살표가 없으면 쓸 데가 없다. */
+  const arrowSizes = (b: Omit<Beat, "weight">, units: Record<string, string[]> | null): Record<string, number> | null => {
+    if (!units || typeof b.at !== "number") return null;
+    const out: Record<string, number> = {};
+    for (const raw of Object.keys(units)) {
+      const p = replay.players.find((x: ParsedReplayPlayer) => x.rawName === raw);
+      const uf = p?.signals?.unitFrames;
+      if (!uf) continue;
+      let n = 0;
+      for (const [unit, frames] of Object.entries(uf)) {
+        if (FORCE_EXCLUDE.has(unit) || WORKER_UNITS.has(unit)) continue;
+        n += frames.filter((f) => f <= b.at! && f >= b.at! - ARROW_SIZE_SEC / SECONDS_PER_FRAME).length;
+      }
+      if (n > 0) out[raw] = n;
+    }
+    return Object.keys(out).length > 0 ? out : null;
+  };
   const clashPartsOf = (c: Clash, side: ParsedReplayPlayer[]): string[] => {
     const bar = Math.max(CLASH_PART_MIN, c.n * CLASH_NAME_SHARE);
     return c.ranked
@@ -3462,8 +3481,10 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
       /* 화살표 기둥의 이름표는 '그 무렵 무엇을 움직였나'라 시각이 있어야 한다. 맺음말은
          '늘 마지막'이라는 뜻으로 시각을 비워 두므로(strip), 그 대신 경기를 끝낸 싸움의
          시각을 넘겨 준다 — 그래야 다른 교전 스냅처럼 화살표에 병력 이름이 붙는다(요청). */
-      const units = arrowUnits(b.k === "result" && finale ? { ...b, at: finale.at } : b);
-      return { ...b, ...(pos ? { pos } : {}), ...(units ? { units } : {}) };
+      const forArrow = b.k === "result" && finale ? { ...b, at: finale.at } : b;
+      const units = arrowUnits(forArrow);
+      const sizes = arrowSizes(forArrow, units);
+      return { ...b, ...(pos ? { pos } : {}), ...(units ? { units } : {}), ...(sizes ? { sizes } : {}) };
     }),
   };
 }
@@ -3471,6 +3492,11 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
 /** 큰 교전 문장의 무게 — 그 판의 절정이라 무겁게 잡되, 러시·돌파처럼 '누가 무엇을 했다'가
  *  분명한 이야기보다는 한 단계 아래다. */
 const CLASH_WEIGHT = 14;
+
+/** 화살표 굵기를 재는 창(초) — 그 직전 얼마 동안 뽑은 병력을 '그 무렵의 규모'로 볼 것인가.
+ *  급습이 "무엇으로 갔나"를 재는 창(replayTactics의 WENT_WITH_SEC)과 같은 값이라야 자막의
+ *  "질럿 13기"와 화살표 굵기가 같은 것을 말한다. */
+const ARROW_SIZE_SEC = 240;
 
 /** 화살표 기둥 이름표에 실을 최대 가짓수 — 지도 위 글이라 길면 그림을 가린다. */
 const ARROW_LABEL_MAX = 2;

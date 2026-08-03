@@ -50,6 +50,12 @@ export interface ReplaySummaryBeat {
    *  옆탱 등에 다 적용). 건물을 박은 이야기는 그 건물, 병력을 몰고 간 이야기는 그 무렵 실제로
    *  명령을 받은 유닛이다. 옛 요약에는 없다. */
   units?: Record<string, string[]>;
+  /** 원본 게임 아이디 → 그 무렵 그 사람이 굴린 병력의 크기(요청: 병력 규모에 따라 화살표
+   *  두께도 다르게). 리플레이에 '지금 병력이 몇 기'는 없다 — 그 문장 시각 직전 몇 분 동안
+   *  뽑은 전투 유닛 수로 대신한다(replaySummary의 arrowSizes). 급습 문장이 "질럿 13기"라고
+   *  말할 때 쓰는 것과 같은 근거이고, 초반이 아니면 죽은 병력이 빠지지 않으므로 '그 무렵
+   *  얼마나 뽑고 있었나'로 읽어야 한다. 옛 요약에는 없다. */
+  sizes?: Record<string, number>;
 }
 
 export interface ReplaySummaryData {

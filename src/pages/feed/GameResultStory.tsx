@@ -140,6 +140,15 @@ const HOME_BEAT_KEYS = new Set([
  *  화살표가 없고 태섭 얼굴이 당황한 표정이었다). */
 const BY_ATTACKER_KEYS = new Set(["fallen", "greedy-punished"]);
 
+/** 병력 규모 → 화살표 기둥 굵기(요청: 병력 규모에 따라 화살표 두께도 다르게).
+ *
+ *  규모는 그 무렵 뽑은 전투 유닛 수다(요약의 beat.sizes). 실측(172판)한 급습들의 분포가
+ *  중앙 19기·75% 37기·90% 53기·최대 113기라, 그 사분위에 맞춰 네 단계로 끊는다. 비례로
+ *  두면 후반의 몇백 기짜리 화살표가 지도를 덮어 버리고, 두 단계로는 차이가 안 읽힌다.
+ *  CSS 기본값(1.8)이 가운데 단계가 되게 잡아, 값이 없는 옛 요약과 나란히 놓여도 어색하지
+ *  않다. */
+const arrowWidth = (n: number): number => (n >= 55 ? 3 : n >= 35 ? 2.4 : n >= 15 ? 1.8 : 1.3);
+
 /** 실제로 맵 가운데에서 벌어진 일 — 화살표를 센터로 보낸다(요청: 센터 내용은 실제 센터에). */
 const CENTER_BEAT_KEYS = new Set(["center", "center-photon", "center-tank"]);
 
@@ -744,6 +753,8 @@ export default function GameResultStory({
      *  예전에는 자리당 하나(Map<raw, target>)만 기억해 마지막 것만 그려졌다. */
     interface RawHit {
       t: [number, number]; flight: boolean; mark?: string; fromMark?: string; converge?: boolean;
+      /** 기둥 굵기 — 그 무렵 그 사람이 굴린 병력 크기(beat.sizes)를 눈에 보이는 두께로. */
+      width?: number;
       /** 기둥 위에 붙일 유닛·건물 이름(요청) — 요약이 사람마다 실어 준다(beat.units).
        *  한 줄에 하나씩 쌓이므로 이어 붙이지 않고 목록 그대로 넘긴다(요청). */
       label?: string[];
@@ -932,9 +943,15 @@ export default function GameResultStory({
            자리라, 이름은 그 사람 자신의 것이어야 한다(요약의 units가 사람별로 싣는다). */
         const labelUnits = (b as { units?: Record<string, string[]> }).units?.[raw] ?? [];
         const label = labelUnits.map((u) => UNIT_KO[u] ?? BUILDING_KO[u] ?? "").filter(Boolean);
+        /* 병력이 클수록 기둥을 굵게(요청) — 요약이 사람마다 실어 준 규모(beat.sizes)를
+           단계로 끊어 쓴다. 수치를 그대로 비례로 놓으면 몇백 기짜리 후반 화살표가 지도를
+           덮어 버린다. 옛 요약에는 이 값이 없어 그때는 기본 굵기 그대로다. */
+        const size = (b as { sizes?: Record<string, number> }).sizes?.[raw];
+        const width = size === undefined ? undefined : arrowWidth(size);
         const list = hits.get(raw) ?? [];
         list.push({
           t, flight: flightVal, ...(label.length > 0 ? { label } : {}),
+          ...(width !== undefined ? { width } : {}),
           // 부딪친 자리의 이모지는 하나면 된다 — 맞붙은 상대 화살표의 촉에까지 얹으면 한
           // 점에 둘이 겹친다(아래 marked 정리와 같은 취지). 마법을 쓴 쪽 것만 남긴다.
           ...(inFight || PLAIN_TIP_MARKS.has(arrive) ? {} : { mark: arrive }),
@@ -988,6 +1005,7 @@ export default function GameResultStory({
           team: s.team, flight: h.flight, deep,
           ...(h.mark ? { mark: h.mark } : {}),
           ...(h.label?.length ? { label: h.label } : {}),
+          ...(h.width !== undefined ? { width: h.width } : {}),
           ...(h.converge ? { converge: true } : {}),
           ...(h.fromMark ? { markFrom: h.fromMark } : {}),
         });
