@@ -125,9 +125,8 @@ function ChallengeSide({
                 — 없으면 보이지만 않게(visibility:hidden) 하고 자리는 그대로 차지해서,
                 같은 편 안에서 어떤 사람은 한마디가 있고 어떤 사람은 없어도 줄 높이가
                 들쭉날쭉해지지 않는다. */}
-            {/* 글자는 한 겹 안쪽에 둔다 — 두 줄 넘김 자르기(-webkit-line-clamp)는
-                overflow:hidden을 요구하는데 그걸 말풍선 자신에 걸면 상자 밖으로 나가 있는
-                꼬리(::before)까지 잘려 나간다. */}
+            {/* 글자는 한 겹 안쪽에 둔다 — 한 줄 넘김 자르기는 overflow:hidden을 요구하는데
+                그걸 말풍선 자신에 걸면 상자 밖으로 나가 있는 꼬리(::before)까지 잘려 나간다. */}
             <span className={cx("scr-challenge-side-msg", !msg && "scr-challenge-side-msg-empty")}>
               <span className="scr-challenge-side-msg-text">{msg || " "}</span>
             </span>
