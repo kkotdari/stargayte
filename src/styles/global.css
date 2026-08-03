@@ -124,6 +124,10 @@
   /* 그보다 한 겹 더 옅은 선 — 표의 세로줄처럼 '칸을 가르기만 하면 되는' 자리에 쓴다.
      가로줄과 같은 진하기면 격자가 글자보다 먼저 눈에 들어온다(요청: 행 구분선보다 흐리게). */
   --line-faint: rgba(255, 255, 255, 0.045);
+  /* NEW 배지(요청: 연두 라임 녹색) — 다크 바탕에서 굵은 9px 글자로도 읽히게 밝은 쪽으로
+     잡았다(검정 대비 11.8:1). 승/패 막대의 초록(--bar-win)과는 다른 색이다: 저쪽은 '이겼다',
+     이쪽은 '새것'이라 뜻이 겹치면 안 된다. */
+  --new-badge: #9ee83a;
 
   /* 텍스트: 한 가지 색(거의 흰색)만 사용 — 대부분 기본색 그대로, 꼭 필요한 곳만 살짝 낮춘 투명도 */
   --text: #f5f6f7;
@@ -807,6 +811,9 @@ html.scr-light-theme {
   --line-soft: #000000;
   --line-hair: rgba(0, 0, 0, 0.12);
   --line-faint: rgba(0, 0, 0, 0.07);
+  /* 라이트에서는 같은 연두가 흰 바탕에 떠 버린다(대비 1.5:1) — 같은 계열에서 어두운 쪽으로
+     내려 잡는다(4.6:1). */
+  --new-badge: #3f7d0a;
   --text: #000000;
   --muted: rgba(0, 0, 0, 0.68);
   --dim: rgba(0, 0, 0, 0.48);
@@ -7062,16 +7069,13 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    한 줄 요약뿐이고, 볼 것만 눌러서 그 자리에 원래 카드를 편다.
    제목 옆 토글은 통계의 "도움말"과 같은 글자 트리거 관용구를 쓴다 — 켜져 있을 때만
    점선이 실선이 되어 지금 이 모드라는 것이 글자만으로 읽힌다. */
+/* 밑줄은 뺐다(요청) — 제목 바로 옆이라 눌리는 자리라는 건 자리와 글자("~로 보기")가
+   이미 말하고, 점선이 있으면 제목 줄에 잔금이 하나 더 그어진 것처럼 보인다. */
 .scr-feed-listmode-btn {
   background: transparent; border: none; padding: 0; cursor: pointer; font-family: inherit;
   font-size: var(--fs-caption); font-weight: 600; line-height: 1;
   color: var(--muted); white-space: nowrap; opacity: 0.85;
-  text-decoration: underline dotted; text-underline-offset: 4px; text-decoration-color: var(--dim);
   -webkit-tap-highlight-color: transparent;
-}
-.scr-feed-listmode-btn-on {
-  color: var(--text); opacity: 1;
-  text-decoration-style: solid; text-decoration-color: currentColor;
 }
 @media (hover: hover) { .scr-feed-listmode-btn:hover { color: var(--text); opacity: 1; } }
 
@@ -7090,8 +7094,8 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   display: grid; align-items: center; gap: 0; width: 100%;
   /* 시각은 가장 긴 값("8월 3일 23:59")에 맞춰 고정 — 줄마다 폭이 달라지면 제목이 들쭉
      날쭉해져 세로로 훑을 수가 없다. 제목도 고정폭이라 내용 칸이 늘 같은 x에서 시작한다. */
-  grid-template-columns: 34px 102px minmax(0, 1fr) 106px;
-  padding: 11px var(--scr-row-pad-x); background: transparent; border: none; cursor: pointer;
+  grid-template-columns: 34px 128px minmax(0, 1fr) 106px;
+  padding: 15px var(--scr-row-pad-x); background: transparent; border: none; cursor: pointer;
   font-family: inherit; font-size: var(--fs-caption); color: var(--text); text-align: left;
   -webkit-tap-highlight-color: transparent;
 }
@@ -7121,9 +7125,16 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 }
 /* 가장 긴 제목("일일 랭크 변동")에 맞춘 고정폭이다 — 그래도 넘치면 트랙을 밀지 말고
    잘린다(실측: min-width 없이 두면 제목이 내용 칸을 덮어썼다). */
-.scr-feed-row-title {
-  font-weight: 700; white-space: nowrap;
-  min-width: 0; overflow: hidden; text-overflow: ellipsis;
+.scr-feed-row-title { display: flex; align-items: center; min-width: 0; font-weight: 700; }
+.scr-feed-row-title-text {
+  white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+}
+/* NEW — 이 목록에서 유일하게 색을 쓰는 자리다(요청: 연두 라임 녹색). 새것이 몇 개
+   안 되기 때문에 색 하나가 눈에 바로 걸리고, 그게 이 배지가 하는 일 전부다. 글자를 그대로
+   적으므로 색을 못 보는 눈에도 뜻이 남는다. 제목이 잘려도 배지는 안 잘리게 flex: none. */
+.scr-feed-row-new {
+  margin-left: 5px; flex: none; color: var(--new-badge);
+  font-size: var(--fs-9); font-weight: 800; letter-spacing: 0.02em; vertical-align: 1px;
 }
 /* 내용은 한 줄로 끝난다 — 넘치면 말줄임이다. 여기서 두 줄이 되면 줄 높이가 흔들려
    목록의 리듬이 깨진다. */
@@ -7137,7 +7148,9 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 @media (max-width: 480px) {
   /* 제목 84px — "랭크 변동"이 74px에서 "랭크 …"로 잘렸다(실측). 내용 칸은 "4명 9경기"
      정도라 남는 폭을 앞뒤에 나눠 줘도 넉넉하다. */
-  .scr-feed-row { grid-template-columns: 26px 84px minmax(0, 1fr) 84px; }
+  /* 제목 칸은 "랭크 변동" + NEW가 함께 들어갈 만큼(실측 110px). 내용 칸은 "4명 9경기"
+     정도라 남는 폭을 앞에 더 줘도 넉넉하다. */
+  .scr-feed-row { grid-template-columns: 26px 110px minmax(0, 1fr) 78px; }
   .scr-feed-row > * + * { padding-left: 8px; }
   .scr-feed-row > * { padding-right: 8px; }
   .scr-feed-row > *:last-child { padding-right: 0; }

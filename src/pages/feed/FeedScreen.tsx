@@ -80,6 +80,18 @@ const ROW_CLOSE_MS = 200;
 /** 목록/타임라인 중 무엇을 보고 있었나 — 테마(LIGHT_THEME_KEY)와 같은 방식으로 남긴다. */
 const FEED_VIEW_KEY = "scr-feed-view";
 
+/** 지난 방문에서 어디까지 봤나 — 종류별 최대 id다. 시각이 아니라 id로 재는 이유: 피드는
+ *  '일어난 때' 순인데 NEW는 '등록된 때'의 이야기라 둘이 다르다(지난주 경기를 오늘 올릴 수
+ *  있다). id는 등록 순서 그대로라 그 물음에 정확히 답한다. */
+const FEED_SEEN_KEY = "scr-feed-seen";
+interface SeenMarks { gr: number; ch: number; rs: number }
+function readSeen(): SeenMarks | null {
+  try {
+    const v = JSON.parse(localStorage.getItem(FEED_SEEN_KEY) ?? "null");
+    return v && typeof v.gr === "number" ? v as SeenMarks : null;
+  } catch { return null; }
+}
+
 // 피드 — 커뮤니티 활동(경기 결과, 너 나와! 일정)을 한 타임라인으로 보여주는 홈 화면.
 // 타임라인 기준: 너 나와!는 경기 예정 일시, 경기는 리플레이의 게임 시작 시각.
 
@@ -729,6 +741,10 @@ export default function FeedScreen() {
     localStorage.setItem(FEED_VIEW_KEY, listMode ? "list" : "timeline");
   }, [listMode]);
   const [openRowKey, setOpenRowKey] = useState<string | null>(null);
+  /* NEW 배지의 기준선 — 마운트할 때 한 번만 읽는다. 곧바로 지금 최대값으로 덮어쓰므로
+     배지는 이번 방문 내내 그 자리에 있고 다음 방문에는 사라진다. 처음 온 사람에게는
+     기준선이 없어(null) 아무것도 새것으로 치지 않는다 — 전부 NEW면 아무 말도 아니다. */
+  const [seenMarks] = useState<SeenMarks | null>(readSeen);
   /* 접히는 모습을 보여 주려면(요청: 여닫을 때 트랜지션) 닫는 동안에도 그 줄의 카드가
      잠깐 더 붙어 있어야 한다 — 바로 언마운트하면 그냥 사라진다. 다른 줄을 펴서 밀려
      닫히는 경우도 같은 길을 탄다. */
@@ -1122,6 +1138,32 @@ export default function FeedScreen() {
 
   // 같은 세션(sessionDateOf — 새벽 경기는 전날에 붙는다)의 게임결과가 2개 이상 연속이면
   // 겹침 스택으로 묶는다(요청).
+  /* 지금 화면에 온 것 중 종류별 최대 id를 기준선으로 저장한다 — 다음 방문에서 이보다 큰
+     것만 NEW다. 최대값은 커지기만 하므로 더 불러올 때마다 다시 써도 값이 흔들리지 않는다. */
+  useEffect(() => {
+    if (feed.length === 0) return;
+    const max: SeenMarks = { gr: 0, ch: 0, rs: 0 };
+    for (const it of feed) {
+      if (it.kind === "gameResult") max.gr = Math.max(max.gr, it.gameResult.id);
+      else if (it.kind === "challenge") max.ch = Math.max(max.ch, it.challenge.id);
+      else max.rs = Math.max(max.rs, it.shift.id);
+    }
+    const prev = readSeen();
+    localStorage.setItem(FEED_SEEN_KEY, JSON.stringify({
+      gr: Math.max(max.gr, prev?.gr ?? 0),
+      ch: Math.max(max.ch, prev?.ch ?? 0),
+      rs: Math.max(max.rs, prev?.rs ?? 0),
+    }));
+  }, [feed]);
+  /** 지난 방문 이후에 등록된 건인가 — 묶음은 그중 하나라도 새것이면 새것이다. */
+  const isNewItem = (it: DisplayItem): boolean => {
+    if (!seenMarks) return false;
+    if (it.kind === "challenge") return it.challenge.id > seenMarks.ch;
+    if (it.kind === "rankingShift") return it.shift.id > seenMarks.rs;
+    if (it.kind === "gameResultPost") return it.items.some((x) => x.gameResult.id > seenMarks.gr);
+    return it.gameResult.id > seenMarks.gr;
+  };
+
   const displayFeed = useMemo<DisplayItem[]>(() => {
     const out: DisplayItem[] = [];
     let i = 0;
@@ -1305,14 +1347,14 @@ export default function FeedScreen() {
               훑으려면 한참을 굴려야 한다. 목록 보기는 그 훑기 전용이라 한 줄에 시각·제목·
               한 줄 요약만 남기고, 자세히 볼 것만 눌러서 펼친다.
               버튼 글자는 '지금 무엇인가'가 아니라 '누르면 무엇이 되는가'다 — 목록을 보고
-              있으면 "타임라인으로 보기"라고 적힌다. */}
+              있으면 "피드로 보기"라고 적힌다. */}
           <button
             type="button"
             className={cx("scr-feed-listmode-btn", listMode && "scr-feed-listmode-btn-on")}
             onClick={() => setListMode((v) => !v)}
             aria-pressed={listMode}
           >
-            {listMode ? "타임라인으로 보기" : "목록으로 보기"}
+            {listMode ? "피드로 보기" : "목록으로 보기"}
           </button>
         </div>
       </div>
@@ -1434,7 +1476,12 @@ export default function FeedScreen() {
                     {/* 번호(요청) — 역순이라 맨 아래(가장 오래된 것)가 1이다. 지금까지
                         불러온 것 안에서 세므로, 더 불러오면 위쪽 번호가 그만큼 커진다. */}
                     <span className="scr-feed-row-no">{displayFeed.length - i}</span>
-                    <span className="scr-feed-row-title">{rowTitleOf(item)}</span>
+                    <span className="scr-feed-row-title">
+                      <span className="scr-feed-row-title-text">{rowTitleOf(item)}</span>
+                      {/* 지난 방문 이후 새로 올라온 건(요청) — 색만으로 말하지 않도록 글자를
+                          그대로 적는다. 배지는 안 줄고, 자리가 모자라면 제목이 줄어든다. */}
+                      {isNewItem(item) && <span className="scr-feed-row-new">NEW</span>}
+                    </span>
                     <span className="scr-feed-row-desc">{rowDesc(item)}</span>
                     {/* 시각은 종류를 안 가리고 한 가지로 적는다(요청) — 예전에는 너 나와는
                         날짜만, 랭크 변동은 "12시간 전", 게임결과 묶음은 세션 날짜라 세 줄이
