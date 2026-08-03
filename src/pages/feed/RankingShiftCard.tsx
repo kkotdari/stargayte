@@ -28,25 +28,9 @@ export function shiftLabel(e: RankingShiftEntry): { text: string; cls: string } 
   };
 }
 
-// 포인트 증감 표기(요청: "+100p" 이렇게) — 몇 계단 올랐는지만으로는 그게 한 판 차이인지
-// 몰아친 결과인지 알 수가 없다. 이 필드가 생기기 전 스냅샷에는 포인트가 없으므로,
-// 둘 다 있고 실제로 달라졌을 때만 내놓는다.
-export function pointLabel(e: RankingShiftEntry): { text: string; cls: string } | null {
-  if (e.toPoints == null) return null;
-  /* 신규 진입(from이 null)은 어제 순위표에 아예 없던 사람이라 fromPoints도 비어 있다.
-     그렇다고 포인트까지 안 적으면 "게임을 해서 새로 들어온" 사람만 변동이 통째로 빠진다
-     (지적: 신규도 포인트 변동은 나와야 한다). 순위표에 없었다 = 그 달 성적이 없었다이므로
-     기준선은 0이다. from이 있는데 fromPoints만 없는 건 이 필드가 생기기 전 옛 스냅샷이라
-     그때는 예전대로 아무것도 안 적는다(0으로 치면 전액이 상승으로 둔갑한다). */
-  const fromPoints = e.from == null ? (e.fromPoints ?? 0) : e.fromPoints;
-  if (fromPoints == null) return null;
-  const d = Math.round(e.toPoints) - Math.round(fromPoints);
-  if (d === 0) return null;
-  return {
-    text: `${d > 0 ? "+" : "−"}${Math.abs(d)}p`,
-    cls: d > 0 ? "scr-feed-shift-up" : "scr-feed-shift-down",
-  };
-}
+/* (삭제) 포인트 증감 표기("+100p") — 순위가 몇 위에서 몇 위로 갔는지가 이 카드의 이야기
+   전부라, 그 옆의 수치는 읽는 데 보태는 것 없이 줄만 길게 했다(요청: 포인트 변동은 제거).
+   포인트 자체는 통계 화면이 자리를 갖고 보여준다. */
 
 /** 카드·공유에 쓰는 제목(요청: "일일 랭크 변동 알림") — 하루치를 모아 아침에 한 번만
  *  남기는 카드라 '발생'보다 '일일 알림'이 실제 동작에 맞다. 유형은 제목이 아니라 카드
@@ -154,7 +138,6 @@ export default function RankingShiftCard({
             <ul className="scr-feed-shift-list">
               {rows.map((e) => {
                 const rank = shiftLabel(e);
-                const pts = pointLabel(e);
                 return (
                   <li
                     key={`${e.memberId}-${e.to}`}
@@ -164,10 +147,9 @@ export default function RankingShiftCard({
                         && "scr-feed-shift-row-hl")}
                   >
                     <span className="scr-feed-shift-name">{e.nickname}</span>
-                    {/* "조조 1 → 3위 -100p"(요청) — 몇 계단인지를 배지로 말하는 대신
-                        어디서 어디로 갔는지를 그대로 적고, 그 근거인 포인트 변동을 옆에. */}
+                    {/* "조조 1 → 3위" — 몇 계단인지를 배지로 말하는 대신 어디서 어디로
+                        갔는지를 그대로 적는다. */}
                     <span className={rank.cls}>{rank.text}</span>
-                    {pts && <span className={cx("scr-feed-shift-pts", pts.cls)}>{pts.text}</span>}
                   </li>
                 );
               })}

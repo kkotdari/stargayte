@@ -7666,9 +7666,7 @@ html.scr-light-theme .scr-feed-add-fab {
    (위 .scr-feed-shift-new) 예외 자체가 필요 없어졌다. */
 /* 예전엔 배지(▲2) 뒤에 "(1위 → 3위)"를 따로 붙였다 — 이제 그 자체가 본문이 되면서
    (요청: 배지 제거, "조조 1 → 3위 -100p") 이 보조 표기는 필요 없어졌다. */
-/* 포인트 변동(요청: "+100p") — 순위 변동과 같은 상승/하락 색을 쓰되 한 톤 작게 둔다.
-   순위가 먼저 읽히고 포인트가 그 근거로 따라 읽히는 순서가 맞다. */
-.scr-feed-shift-pts { font-size: var(--fs-11); font-variant-numeric: tabular-nums; }
+/* (삭제) .scr-feed-shift-pts — 포인트 증감을 순위 옆에 적던 자리다(요청: 제거). */
 
 /* 너 나와 케밥 드롭 — 버튼 바로 아래 오른쪽 정렬(포털 없이 로컬 절대배치). */
 .scr-feed-chal-menu-drop {
