@@ -19,6 +19,7 @@ import { ChallengeCard, ChallengeTimeHeadEdit } from "../challenge/ChallengeScre
 import FeedComments, { primeFeedComments } from "./FeedComments";
 import { primeReplayMaps } from "../../hooks/useReplayMap";
 import ScrollNavTimeline from "../../components/common/ScrollNavTimeline";
+import InfoTip from "../../components/common/InfoTip";
 import ChallengeFormModal from "../../modals/ChallengeFormModal";
 import { scheduledInstantMs, formatWhen } from "../../utils/date";
 import { useAppStore } from "../../store/appStore";
@@ -1137,7 +1138,20 @@ export default function FeedScreen() {
   return (
     <div className="scr-screen scr-feed-screen">
       <div className="scr-v2-toolbar">
-        <h1 className="scr-title scr-v2-toolbar-title">피드</h1>
+        <div className="scr-v2-toolbar-title-row">
+          <h1 className="scr-title scr-v2-toolbar-title">피드</h1>
+          {/* 통계 제목 옆과 같은 자리·같은 트리거(요청). 피드는 화면 어디에도 "여기 카드가
+              몇 종류고 저 ＋는 뭘 받느냐"를 적어 둔 곳이 없다 — 특히 리플레이는 파일을
+              고르라고만 하면 그 파일이 컴퓨터 어디 있는지부터 막힌다. */}
+          <InfoTip
+            trigger="도움말"
+            label="피드 보는 법"
+            text={"· 카드 세 종류 — 게임결과 / 너 나와!(호출) / 랭크 변동\n"
+              + "· 왼쪽 아래 ＋ 로 게임결과·너 나와! 등록 (일정은 추후)\n"
+              + "· 게임결과는 리플레이(.rep)를 고르면 자동 등록, 여러 개 한 번에 가능\n"
+              + "· 리플레이 위치 — 문서\\StarCraft\\Maps\\Replays (자동저장은 그 안 Autosave)"}
+          />
+        </div>
       </div>
 
       {/* 등록 진입점 — 리플레이 / 너 나와! / 일정(추후 개발). 탭바 좌상단에 플로팅하는
