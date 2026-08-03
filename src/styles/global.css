@@ -8056,6 +8056,16 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
 .scr-minimap-arrow-mark-pop {
   animation: scr-minimap-arrow-in 260ms ease-out;
 }
+/* 화살표 목에 다는 표시(요청: 팀원을 도와준 화살표에 천사 날개를, 끝 말고 목쯤에) —
+   촉의 이모지보다 작다. 기둥 위에 얹히는 것이라 크게 두면 화살표 자체를 덮고, 목표
+   자리의 이모지(무슨 일이 벌어졌나)보다 도드라지면 자리도 뜻도 뒤바뀐다. */
+.scr-minimap-arrow-mark-neck {
+  font-size: 18px;
+  animation: scr-minimap-arrow-in 260ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .scr-minimap-arrow-mark-neck { animation: none; }
+}
 @media (prefers-reduced-motion: reduce) {
   .scr-minimap-arrow-mark-pop { animation: none; }
 }
@@ -8176,6 +8186,8 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
      이모지보다 훨씬 큼 — 둘 다 크기 통일", 짝수로) — 42px. */
   .scr-minimap-arrow-mark.scr-minimap-mark-home { font-size: 42px; }
   .scr-minimap-arrow-mark { font-size: 42px; }
+  /* 화살표 목의 표시도 같은 비율로(촉의 0.6배) — 기둥 위에 얹히는 것이라 촉보다 작다. */
+  .scr-minimap-arrow-mark-neck { font-size: 26px; }
 }
 /* 승리 트로피는 다른 상태 얼굴과 다르게 크게 둔다(요청: "승리트로피도 28px로 확대") —
    기본(모바일)은 28px 고정. 바운스는 뺐다(요청). 아래에 둬 위 규칙(19/20/28px)보다
@@ -8239,14 +8251,19 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
      다시 0.8을 곱한 것이다. 확대된 아바타(위 0.86)는 이번 요청 대상이 아니라 그대로 둔다.
      해골도 표정과 같이 줄인다: 둘은 아바타 양쪽 어깨에 짝으로 앉는 표시라 한쪽만 줄이면
      짝이 어긋나 보인다. */
-  /* 본진 액션·화살촉 끝 이모지(같은 클래스를 쓴다) — 22 × 0.8 ≈ 18(짝수). */
-  .scr-minimap-arrow-mark { font-size: 18px; }
-  .scr-minimap-arrow-mark.scr-minimap-mark-home { font-size: 18px; }
-  /* 표정·해골 — 10 × 0.8 = 8. 주인공 표정은 16 × 0.8 ≈ 12(짝수), 트로피는 22 × 0.8 ≈ 18. */
-  .scr-minimap-mark-face { font-size: 8px; }
-  .scr-minimap-mark-skull { font-size: 8px; }
-  .scr-minimap-mark-on .scr-minimap-mark-face { font-size: 12px; }
-  .scr-minimap-mark-face.scr-minimap-mark-face-trophy { font-size: 18px; }
+  /* 여기 값들을 한 번 더 10% 키운다(요청: 모바일에서 이모지들 크기 10%만 증가). 값이
+     한 자리 수까지 내려와 있어 1.1배가 정수로 안 떨어지는 것들이 있는데(8 → 8.8), 그럴
+     때는 가장 가까운 정수로 올린다 — 아래 괄호에 실제 배율을 적어 둔다. */
+  /* 본진 액션·화살촉 끝 이모지(같은 클래스를 쓴다) — 18 → 20(+11%, 짝수). */
+  .scr-minimap-arrow-mark { font-size: 20px; }
+  .scr-minimap-arrow-mark.scr-minimap-mark-home { font-size: 20px; }
+  /* 화살표 목의 표시(도우러 간 길의 날개) — 촉 이모지의 0.6배. */
+  .scr-minimap-arrow-mark-neck { font-size: 12px; }
+  /* 표정·해골 8 → 9(+12%), 주인공 표정 12 → 13(+8%), 트로피 18 → 20(+11%). */
+  .scr-minimap-mark-face { font-size: 9px; }
+  .scr-minimap-mark-skull { font-size: 9px; }
+  .scr-minimap-mark-on .scr-minimap-mark-face { font-size: 13px; }
+  .scr-minimap-mark-face.scr-minimap-mark-face-trophy { font-size: 20px; }
 }
 
 /* (삭제) 스냅 아바타가 따로 뜬 사람의 본진을 흐리게 하던 규칙 — 이제 당한 사람 마커를

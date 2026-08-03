@@ -781,6 +781,8 @@ export default function GameResultStory({
       t: [number, number]; flight: boolean; mark?: string; fromMark?: string; converge?: boolean;
       /** 기둥 굵기 — 그 무렵 그 사람이 굴린 병력 크기(beat.sizes)를 눈에 보이는 두께로. */
       width?: number;
+      /** 아군을 도우러 간 길인가 — 목에 천사 날개를 단다(요청). */
+      wing?: boolean;
       /** 기둥 위에 붙일 유닛·건물 이름(요청) — 요약이 사람마다 실어 준다(beat.units).
        *  한 줄에 하나씩 쌓이므로 이어 붙이지 않고 목록 그대로 넘긴다(요청). */
       label?: string[];
@@ -938,6 +940,11 @@ export default function GameResultStory({
         // 뿌린 쪽의 이모지를 그 사람에게도 주면 둘이 같은 마법을 쓴 것처럼 읽힌다.
         const em = inFight ? "⚔️"
           : (b.k === "clash" && (helper.has(raw) || homeDefender.has(raw))) ? "🛡️" : markOf(b);
+        /* 팀원을 도우러 간 화살표에는 목에 천사 날개를 단다(요청) — 촉의 방패는 '그 자리에
+           방어를 보탰다'는 뜻이고, 날개는 '이 길이 도우러 간 길'이라는 뜻이라 자리가 다르다.
+           집주인 자신(homeDefender)은 도우러 간 것이 아니라 제 집을 지킨 것이라 뺀다. */
+        const wing = ALLY_HELP_KEYS.has(b.k)
+          || (b.k === "clash" && helper.has(raw) && !homeDefender.has(raw));
         // 화살표를 못 그리는 경우(자리를 모름·너무 가까움)의 마지막 대비책 — 아래에서
         // hits가 하나도 화살표로 못 그려지면 이 값으로 본진에 이모지를 얹는다.
         mark.set(raw, em);
@@ -978,6 +985,7 @@ export default function GameResultStory({
         list.push({
           t, flight: flightVal, ...(label.length > 0 ? { label } : {}),
           ...(width !== undefined ? { width } : {}),
+          ...(wing ? { wing: true } : {}),
           // 부딪친 자리의 이모지는 하나면 된다 — 맞붙은 상대 화살표의 촉에까지 얹으면 한
           // 점에 둘이 겹친다(아래 marked 정리와 같은 취지). 마법을 쓴 쪽 것만 남긴다.
           ...(inFight || PLAIN_TIP_MARKS.has(arrive) ? {} : { mark: arrive }),
@@ -1032,6 +1040,7 @@ export default function GameResultStory({
           ...(h.mark ? { mark: h.mark } : {}),
           ...(h.label?.length ? { label: h.label } : {}),
           ...(h.width !== undefined ? { width: h.width } : {}),
+          ...(h.wing ? { markNeck: "🪽" } : {}),
           ...(h.converge ? { converge: true } : {}),
           ...(h.fromMark ? { markFrom: h.fromMark } : {}),
         });

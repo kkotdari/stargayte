@@ -46,6 +46,9 @@ export interface MinimapArrow {
    *  이으면 두 종류만 돼도 띠가 길어져 지도를 가리고, 모이는 화살표끼리 서로 겹친다.
    *  없거나 비어 있으면 안 그린다. */
   label?: string[];
+  /** 화살표 목(촉 바로 뒤 기둥 위)에 얹을 이모지 — 그 화살표가 어떤 길인지를 말한다
+   *  (요청: 팀원을 도와준 화살표에 천사 날개를, 화살표 끝 말고 목쯤에). 없으면 안 그린다. */
+  markNeck?: string;
   /** 기둥 굵기(SVG stroke-width, 타일 좌표계) — 그 화살표에 실린 병력이 클수록 굵다
    *  (요청: 병력 규모에 따라 화살표 두께도 다르게). 없으면 CSS 기본값을 그대로 쓴다. */
   width?: number;
@@ -98,6 +101,9 @@ const MARK_AHEAD = 5;
  *  촉에 좀 가까운 쪽). 촉 위에 얹으면 촉을 덮고, 기둥 한가운데에 두면 어느 화살표의
  *  이름표인지 헷갈린다 — 촉 바로 뒤가 둘 다 피하는 자리다. */
 const LABEL_BACK = 9;
+/** 화살표 '목' — 촉 밑동에서 기둥 쪽으로 이만큼 물러선 자리(요청: 화살표 끝 말고 목쯤에).
+ *  이름표(LABEL_BACK)보다 앞이라 둘이 같은 자리에 겹치지 않는다. */
+const NECK_BACK = 3.4;
 /** 한 점으로 모이는 화살표(큰 싸움)의 이름표는 더 뒤로 물린다 — 일곱 개가 한 점에 모이면
  *  촉 바로 뒤는 사실상 같은 자리라 이름표가 서로 겹쳐 읽히지 않는다(실측 스크린샷:
  *  "탱크·사이언스베러커·히드라"). 뒤로 갈수록 화살표들이 부채처럼 벌어지므로, 그만큼
@@ -176,6 +182,12 @@ function arrowGeom(a: MinimapArrow, w: number, h: number) {
     // 출발 쪽 이모지 자리 — 몸통이 시작하는 점 그대로. 아바타에서 이미 gapFrom만큼
     // 띄워 둔 자리라 아바타를 덮지 않는다.
     from: [x1, y1] as [number, number],
+    /** 화살표 '목' — 촉 바로 뒤 기둥 위(요청). 촉에 붙는 이모지(tip)와 달리 목표를 덮지
+     *  않아서, 그 화살표 자체의 성질(아군을 도우러 간 길이라는 표시)을 얹기에 맞다. */
+    neck: (() => {
+      const back = Math.min(NECK_BACK, Math.hypot(bx - x1, by - y1) / 2);
+      return [bx - hx * back, by - hy * back] as [number, number];
+    })(),
     /* 유닛 이름표 자리 — 촉의 밑동에서 기둥 쪽으로 조금 물러선 점(요청). 짧은 화살표에서는
        그만큼 물러설 기둥이 없어 출발점을 지나쳐 버리므로, 기둥 길이의 절반을 넘지 않게
        묶는다. */
@@ -670,6 +682,16 @@ export default function ReplayMinimap({
             style={{ left: `${(g.from[0] / grid.width) * 100}%`, top: `${(g.from[1] / grid.height) * 100}%` }}
           >
             {a.markFrom}
+          </span>
+        ) : null))}
+        {/* 화살표 목의 표시(요청: 도와준 화살표에 천사 날개) — 촉의 이모지가 '무슨 일이
+            벌어졌나'라면 이쪽은 '이 화살표가 어떤 길인가'다. */}
+        {geoms.map(({ a, g }) => (a.markNeck ? (
+          <span
+            key={`mn-${a.key}`} className="scr-minimap-arrow-mark scr-minimap-arrow-mark-neck"
+            style={{ left: `${(g.neck[0] / grid.width) * 100}%`, top: `${(g.neck[1] / grid.height) * 100}%` }}
+          >
+            {a.markNeck}
           </span>
         ) : null))}
         {/* 유닛 이름표 — 촉 바로 뒤 기둥 위(요청). 화살표와 같은 편 색을 써서 어느 쪽
