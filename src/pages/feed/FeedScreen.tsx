@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { createPortal } from "react-dom";
-import RankingShiftCard, { RankingShiftMenu } from "./RankingShiftCard";
+import RankingShiftCard, { RankingShiftMenu, RANK_SHIFT_TITLE } from "./RankingShiftCard";
 import { CalendarPlus, ClipboardList, MoreHorizontal, Phone, Plus, Upload } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
 import { Spinner } from "../../components/common/Feedback";
@@ -15,11 +15,10 @@ import { FeedCard } from "./FeedCard";
 import { resolveSlotName } from "./GameResultSides";
 import { isComputerSlot } from "../../constants/computerSlot";
 import { isUnregisteredSlot } from "../../constants/unregisteredSlot";
-import { ChallengeCard, ChallengeTimeHeadEdit } from "../challenge/ChallengeScreen";
+import { ChallengeCard, ChallengeTimeHeadEdit, challengeSideBadges } from "../challenge/ChallengeScreen";
 import FeedComments, { primeFeedComments } from "./FeedComments";
 import { primeReplayMaps } from "../../hooks/useReplayMap";
 import ScrollNavTimeline from "../../components/common/ScrollNavTimeline";
-import InfoTip from "../../components/common/InfoTip";
 import ChallengeFormModal from "../../modals/ChallengeFormModal";
 import { scheduledInstantMs, formatWhen } from "../../utils/date";
 import { useAppStore } from "../../store/appStore";
@@ -32,7 +31,7 @@ import { useCursorPagination } from "../../hooks/useCursorPagination";
 import { useEditableFocused } from "../../hooks/useEditableFocused";
 import { usePageBackground } from "../../hooks/usePageBackground";
 import {
-  getScrollMetrics, getScrollTop, scrollRootTo, suppressScrollHide,
+  getScrollMetrics, getScrollTop, scrollRootTo,
 } from "../../utils/scrollRoot";
 import {
   buildReplayDrafts, resolveUnmatchedAsUnregistered, validateReplayDraft, type ReplayDraft,
@@ -47,12 +46,7 @@ import type {
 const PAGE_SIZE = 100;
 const MAX_REPLAY_FILES = 20;
 
-/** 들어올 때 "현재" 구분선으로 옮겨 간 뒤, 탭바·헤더가 "아래로 스크롤했다"로 오해하지
- *  않게 막아 두는 시간. 예전에는 이 자리를 1.1초짜리 rAF 애니메이션으로 내려갔는데,
- *  그 동안 매 프레임 scrollTo를 부르는 통에 카드가 많은 피드에서는 눈에 띄게 버벅였다
- *  (지적: 스크롤 버벅임이 심하니 그냥 순간이동으로). 이제 한 번에 옮기므로 이 창은
- *  그 직후의 스크롤 이벤트 한두 번만 덮으면 된다. */
-const NOW_SCROLL_MS = 300;
+
 
 // 펼칠 때 목록 맨 위와 화면 맨 위 사이에 남길 여백(요청: "정확히 위에 맞추지 말고 위쪽
 // 안전 여백을 줘야 해") — 딱 맞추면 첫 경기가 화면 모서리에 붙어 잘린 것처럼 보인다.
@@ -204,6 +198,36 @@ export function sessionDateOf(it: GameResultItem): string {
 }
 // 세션 날짜(YYYY-MM-DD) → 카드 헤더용 라벨. 스택은 자기 첫 아이템의 시각이 아니라
 // 세션 날짜로 이름표를 단다 — 새벽 2시 경기가 맨 위에 있다고 "오늘"로 적히면 안 된다.
+/** 목록 보기 한 줄의 키 — 펼쳐 둔 줄을 기억하는 데 쓴다. 종류마다 id 공간이 달라
+ *  접두어로 갈라 둔다(게임결과 3번과 너 나와 3번이 같은 줄이 되면 안 된다). */
+function rowKeyOf(it: DisplayItem): string {
+  return it.kind === "challenge" ? `c-${it.challenge.id}`
+    : it.kind === "rankingShift" ? `rs-${it.shift.id}`
+      : it.kind === "gameResultPost" ? `ms-${it.items[0].gameResult.id}`
+        : `m-${it.gameResult.id}`;
+}
+
+/** 그 줄이 무엇에 대한 것인가 — 카드 머리의 제목과 같은 말을 쓴다. */
+function rowTitleOf(it: DisplayItem): string {
+  return it.kind === "challenge" ? "너 나와!"
+    : it.kind === "rankingShift" ? RANK_SHIFT_TITLE : "게임결과";
+}
+
+/** 게임결과 묶음에 실제로 몇 사람이 있었나 — 컴퓨터·비회원은 "누가 있었나"의 답이
+ *  아니라서 뺀다(요약 카드의 참가자 명단과 같은 규칙). */
+function playerCountOf(items: GameResultItem[]): number {
+  const ids = new Set<string>();
+  for (const it of items) {
+    for (const side of ["team1", "team2"] as const) {
+      for (const slot of it.gameResult[side]) {
+        if (isComputerSlot(slot.memberId) || isUnregisteredSlot(slot.memberId)) continue;
+        ids.add(slot.memberId);
+      }
+    }
+  }
+  return ids.size;
+}
+
 export function sessionDateLabel(date: string): string {
   const [, m, d] = date.split("-");
   return `${Number(m)}월 ${Number(d)}일`;
@@ -678,6 +702,11 @@ export default function FeedScreen() {
   // 접는 방법은 없앴고, 다른 묶음을 펼치면 그 키로 바뀌면서 이전 것이 저절로 접힌다.
   // 키는 그 묶음 첫 경기의 id(렌더 루프의 key와 같은 값)다.
   const [expandedStackKey, setExpandedStackKey] = useState<number | null>(null);
+  /* 목록 보기(요청) — 카드를 다 그리는 대신 한 줄짜리 목록으로 훑고, 볼 것만 눌러 편다.
+     펼침은 한 번에 하나다: 여러 줄을 동시에 펴 두면 목록의 값어치(한 화면에 많이)가
+     사라지고, 그럴 바에는 카드 보기가 낫다. */
+  const [listMode, setListMode] = useState(false);
+  const [openRowKey, setOpenRowKey] = useState<string | null>(null);
 
   const user = useAppStore((s) => s.user);
   const isAdmin = !!user && isAdminRole(user.roles);
@@ -1099,58 +1128,147 @@ export default function FeedScreen() {
   );
   const showNowDivider = nowIndex > 0;
 
-  const feedListRef = useRef<HTMLDivElement>(null);
 
-  const didInitialScrollRef = useRef(false);
-  useEffect(() => {
-    if (loading || didInitialScrollRef.current) return;
-    const list = feedListRef.current;
-    if (!list || displayFeed.length === 0) return;
-    didInitialScrollRef.current = true;
+  /* (삭제) 진입할 때 "현재" 구분선으로 한 번 스크롤하던 처리 — 없앴다(요청: 피드 진입시
+     스크롤 제거). 피드는 최신순이라 맨 위가 곧 가장 새 소식인데, 열자마자 화면이 아래로
+     한 번 뛰면 그 사이에 새로 올라온 것을 지나쳐 버린다. "현재" 구분선과 오른쪽 타임라인의
+     눈금은 그대로라, 지금 자리로 가고 싶으면 그 눈금을 짚으면 된다. */
 
-    requestAnimationFrame(() => {
-      // "현재" 구분선이 있으면 그 자리에, 없으면(전부 과거) 첫 오늘/과거 카드에 맞춘다.
-      // 구분선이 없을 땐 DOM 자식 인덱스가 displayFeed 인덱스와 그대로 일치한다.
-      //
-      // 한 번만 맞추면 된다 — 댓글까지 목록과 함께 받아 두고 그린 화면이라(위
-      // primeFeedComments) 이 시점의 카드 높이가 곧 최종 높이다. 예전에는 카드마다 댓글이
-      // 뒤늦게 따로 도착해 "현재"가 380px이나 밀렸고, 그걸 계속 되잡는 식으로 막고 있었다.
-      const marker = list.querySelector<HTMLElement>("[data-now-marker]");
-      const idx = nowIndex >= 0 ? nowIndex : displayFeed.length - 1;
-      const el = marker ?? (list.children[idx] as HTMLElement | undefined);
-      if (!el) return;
-      const r = el.getBoundingClientRect();
-      const top = window.scrollY + r.top + r.height / 2 - window.innerHeight / 2;
-      if (top <= 1) return;
-      // 이 자동 스크롤이 "아래로 스크롤했다"로 읽혀 탭바·헤더가 접히면 안 된다
-      // (useHideOnScrollDown이 이 창 동안 방향 판정을 건너뛴다).
-      suppressScrollHide(NOW_SCROLL_MS + 300);
-      /* 한 번에 옮긴다(요청: "스크롤시 버벅임이 심해서 그냥 순간이동으로 변경").
-         부드럽게 흘러내리는 편이 "여기가 지금 자리다"를 잘 말해 주긴 했지만, 그건 매
-         프레임 scrollTo를 부르는 rAF 애니메이션이라 카드가 많은 피드에서는 그 1.1초
-         내내 메인 스레드가 밀렸다 — 첫인상이 곧 버벅임이면 얻는 것보다 잃는 게 크다.
-         behavior:"instant"를 반드시 명시한다: #scroll-root에 CSS scroll-behavior:smooth가
-         걸려 있어서 안 주면 네이티브 스무스 스크롤로 해석돼 도로 애니메이션이 된다. */
-      scrollRootTo({ top, behavior: "instant" });
-    });
-  }, [loading, displayFeed, nowIndex]);
+  /* 목록 한 줄의 '내용' 칸(요청) — 종류마다 한 줄로 줄이면 무엇이 남나.
+       · 너 나와  — 누가 누구를 불렀나. 이름 사이 배지는 카드의 손 이모지 양옆 배지와
+                    같은 값이다(challengeSideBadges) — 왼쪽이 부른 편, 오른쪽이 지목된 편.
+       · 게임결과 — 몇 사람이 몇 판을 쳤나.
+       · 랭크변동 — 몇 사람의 순위가 움직였나(개인전·팀전에 다 오른 사람은 한 번만 센다). */
+  const rowDesc = (item: DisplayItem) => {
+    if (item.kind === "challenge") {
+      const c = item.challenge;
+      const mine = [c.createdBy.nickname, ...c.ownMembers.map((m) => m.nickname)].join("·");
+      const theirs = c.targets.map((t) => t.nickname).join("·");
+      const { left, right } = challengeSideBadges(c);
+      return (
+        <>
+          <span className="scr-feed-row-name">{mine}</span>
+          {left && <span className="scr-feed-row-badge">{left}</span>}
+          <span className="scr-feed-row-arrow" aria-hidden>→</span>
+          {right && <span className="scr-feed-row-badge">{right}</span>}
+          <span className="scr-feed-row-name">{theirs}</span>
+        </>
+      );
+    }
+    if (item.kind === "rankingShift") {
+      const ids = new Set(item.shift.sections.flatMap((sec) => sec.shifts.map((e) => e.memberId)));
+      return `${ids.size}명 변동`;
+    }
+    const items = item.kind === "gameResultPost" ? item.items : [item];
+    return `${playerCountOf(items)}명 ${items.length}경기`;
+  };
+
+  /* 카드 한 장 — 카드 보기와 목록 보기의 펼침이 같은 것을 그리도록 한 곳에 둔다.
+     forceOpen은 목록 보기에서만 참이다: 게임결과 묶음은 요약(참가자 명단)을 건너뛰고
+     곧장 경기 목록을 편다(요청). */
+  const renderCard = (item: DisplayItem, forceOpen: boolean) => (
+    item.kind === "rankingShift" ? (
+      <div className="scr-feed-card-stack-wrapper" key={`rs-${item.shift.id}`}>
+        <RankingShiftCard
+          shift={item.shift}
+          timeText={formatWhen(item.time, { clock: item.withClock })}
+          dateLabel={dateLabelOf(item)}
+          actions={<RankingShiftMenu shift={item.shift} />}
+          highlightMemberIds={matchedIds}
+          highlightTerms={searchTerms}
+          /* 순위변동 알림에도 댓글(요청) — 경기/너나와 카드와 같은 공통 댓글 영역.
+             그 위에 있던 "실시간 랭크 확인" 링크는 걷어냈다(요청). */
+          /* 하루에 스냅샷 한 건이라 댓글 실도 자연히 하나다(요청: 한 로우). */
+          footer={<FeedCardComments targetType="rankingShift" targetId={item.shift.id} />}
+        />
+      </div>
+    ) : item.kind === "challenge" ? (
+      <div className="scr-feed-card-stack-wrapper" key={`c-${item.challenge.id}`}>
+        <FeedCard
+          dateLabel={dateLabelOf(item)}
+          // 너 나와!는 "호출"이니 수화기 아이콘으로(요청) — 등록 메뉴·호출 버튼과 통일.
+          icon={<Phone size={16} aria-hidden />}
+          label="너 나와!"
+          timeText={formatWhen(item.time, { clock: item.withClock })}
+          // 시각·마감·일시수정은 전부 '언제'에 대한 것이라 제목 바로 옆에 함께 둔다(요청).
+          headMeta={<>
+            {/* 응답 마감 실시간 카운트다운 — 날짜 옆, 헤더와 같은 폰트 크기(요청). */}
+            <ChallengeCountdown challenge={item.challenge} />
+            {/* 일시(시간) 수정 — 시각은 헤더가 이미 보여주므로 연필만 얹는다(중복 표기
+                제거, 요청). 참가자만 연필이 보인다(컴포넌트가 판정). */}
+            <ChallengeTimeHeadEdit
+              challenge={item.challenge}
+              timeLabel={null}
+              myId={user?.id}
+              onUpdated={upsertChallenge}
+            />
+          </>}
+          actions={
+            <ChallengeActionsMenu
+              challenge={item.challenge}
+              isAdmin={isAdmin}
+              myId={user?.id ?? ""}
+              onDeleted={(id) => setChallenges((prev) => prev.filter((c) => c.id !== id))}
+              onChanged={(c) => setChallenges((prev) => prev.map((x) => (x.id === c.id ? c : x)))}
+            />
+          }
+          comment={<FeedCardComments targetType="challenge" targetId={item.challenge.id} />}
+        >
+          <ChallengeCard
+            challenge={item.challenge}
+            myId={user?.id}
+            highlightMemberIds={matchedIds}
+            onResponded={upsertChallenge}
+          />
+        </FeedCard>
+      </div>
+    ) : item.kind === "gameResultPost" ? (
+      // GameResultPost는 접힘/펼침에 따라 카드가 1~N개로 늘어나므로, 자기 몫의
+      // .scr-feed-card-stack-wrapper를 스스로 렌더한다 — 여기서 또 감싸지 않는다.
+      <GameResultPost
+        // 같은 세션이라도 중간에 다른 종류 카드가 끼면 스택이 둘로 갈린다 —
+        // 날짜+시각만으로는 그 둘이 같은 키가 될 수 있어 첫 경기 id로 못박는다.
+        key={`ms-${item.items[0].gameResult.id}`}
+        stack={item}
+        memberOf={memberOf}
+        onDeleted={handleGameResultDeleted}
+        dateLabel={sessionDateLabel(item.date)}
+        highlightMemberIds={matchedIds}
+        highlightTerms={searchTerms}
+        defaultOpen={forceOpen || filterActive}
+        expanded={expandedStackKey === item.items[0].gameResult.id}
+        onExpand={() => setExpandedStackKey(item.items[0].gameResult.id)}
+      />
+    ) : (
+      <div className="scr-feed-card-stack-wrapper" key={`m-${item.gameResult.id}`}>
+        <GameResultCard
+          item={item}
+          memberOf={memberOf}
+          onDeleted={handleGameResultDeleted}
+          dateLabel={dateLabelOf(item)}
+          highlightMemberIds={matchedIds}
+          highlightTerms={searchTerms}
+        />
+      </div>
+    )
+  );
 
   return (
     <div className="scr-screen scr-feed-screen">
       <div className="scr-v2-toolbar">
         <div className="scr-v2-toolbar-title-row">
           <h1 className="scr-title scr-v2-toolbar-title">피드</h1>
-          {/* 통계 제목 옆과 같은 자리·같은 트리거(요청). 피드는 화면 어디에도 "여기 카드가
-              몇 종류고 저 ＋는 뭘 받느냐"를 적어 둔 곳이 없다 — 특히 리플레이는 파일을
-              고르라고만 하면 그 파일이 컴퓨터 어디 있는지부터 막힌다. */}
-          <InfoTip
-            trigger="도움말"
-            label="피드 보는 법"
-            text={"· 카드 세 종류 — 게임결과 / 너 나와!(호출) / 랭크 변동\n"
-              + "· 왼쪽 아래 ＋ 로 게임결과·너 나와! 등록 (일정은 추후)\n"
-              + "· 게임결과는 리플레이(.rep)를 고르면 자동 등록, 여러 개 한 번에 가능\n"
-              + "· 리플레이 위치 — 문서\\StarCraft\\Maps\\Replays (자동저장은 그 안 Autosave)"}
-          />
+          {/* 도움말이 있던 자리다(요청) — 카드 넉 장이면 한 화면인 피드에서 "무엇이 있었나"를
+              훑으려면 한참을 굴려야 한다. 목록 보기는 그 훑기 전용이라 한 줄에 시각·제목·
+              한 줄 요약만 남기고, 자세히 볼 것만 눌러서 펼친다. */}
+          <button
+            type="button"
+            className={cx("scr-feed-listmode-btn", listMode && "scr-feed-listmode-btn-on")}
+            onClick={() => setListMode((v) => !v)}
+            aria-pressed={listMode}
+          >
+            {listMode ? "카드로 보기" : "목록으로 보기"}
+          </button>
         </div>
       </div>
 
@@ -1251,7 +1369,39 @@ export default function FeedScreen() {
       ) : displayFeed.length === 0 ? (
         <div className="scr-empty">아직 표시할 활동이 없어요.</div>
       ) : (
-        <div className="scr-feed-list" ref={feedListRef}>
+        listMode ? (
+          /* 목록 보기(요청) — 한 줄에 시각·제목·한 줄 요약만 두고, 누르면 그 줄 아래에
+             원래 카드의 본문과 댓글이 그대로 열린다. 카드를 새로 만들지 않고 카드 보기와
+             같은 renderCard를 부르는 이유는, 여기만 따로 만들면 카드 쪽 수정이 목록 쪽에
+             반영되지 않아 두 화면이 서서히 어긋나기 때문이다. 머리(시각·제목)만 CSS로
+             감춘다 — 바로 위 줄이 이미 같은 말을 하고 있다. */
+          <div className="scr-feed-rows">
+            {displayFeed.map((item) => {
+              const key = rowKeyOf(item);
+              const open = openRowKey === key;
+              return (
+                <div className={cx("scr-feed-row-wrap", open && "scr-feed-row-wrap-open")} key={key}>
+                  <button
+                    type="button" className="scr-feed-row" aria-expanded={open}
+                    onClick={() => setOpenRowKey(open ? null : key)}
+                  >
+                    <span className="scr-feed-row-time">
+                      {item.kind === "gameResultPost"
+                        ? sessionDateLabel(item.date)
+                        : formatWhen(item.time, { clock: item.withClock })}
+                    </span>
+                    <span className="scr-feed-row-title">{rowTitleOf(item)}</span>
+                    <span className="scr-feed-row-desc">{rowDesc(item)}</span>
+                  </button>
+                  {/* 게임결과는 요약(참가자 명단)을 건너뛰고 바로 경기 목록을 편다(요청) —
+                      목록 줄이 이미 "n명 n경기"로 그 요약을 말했다. */}
+                  {open && <div className="scr-feed-row-body">{renderCard(item, true)}</div>}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+        <div className="scr-feed-list">
           {displayFeed.flatMap((item, i) => {
             // 미래↔과거 경계(nowIndex)에 "현재" 구분선을 카드 사이에 끼운다(요청).
             const divider = showNowDivider && i === nowIndex ? (
@@ -1259,95 +1409,11 @@ export default function FeedScreen() {
                 <span>현재</span>
               </div>
             ) : null;
-            const card = (
-            item.kind === "rankingShift" ? (
-              <div className="scr-feed-card-stack-wrapper" key={`rs-${item.shift.id}`}>
-                <RankingShiftCard
-                  shift={item.shift}
-                  timeText={formatWhen(item.time, { clock: item.withClock })}
-                  dateLabel={dateLabelOf(item)}
-                  actions={<RankingShiftMenu shift={item.shift} />}
-                  highlightMemberIds={matchedIds}
-                  highlightTerms={searchTerms}
-                  /* 순위변동 알림에도 댓글(요청) — 경기/너나와 카드와 같은 공통 댓글 영역.
-                     그 위에 있던 "실시간 랭크 확인" 링크는 걷어냈다(요청). */
-                  /* 하루에 스냅샷 한 건이라 댓글 실도 자연히 하나다(요청: 한 로우). */
-                  footer={<FeedCardComments targetType="rankingShift" targetId={item.shift.id} />}
-                />
-              </div>
-            ) : item.kind === "challenge" ? (
-              <div className="scr-feed-card-stack-wrapper" key={`c-${item.challenge.id}`}>
-                <FeedCard
-                  dateLabel={dateLabelOf(item)}
-                  // 너 나와!는 "호출"이니 수화기 아이콘으로(요청) — 등록 메뉴·호출 버튼과 통일.
-                  icon={<Phone size={16} aria-hidden />}
-                  label="너 나와!"
-                  timeText={formatWhen(item.time, { clock: item.withClock })}
-                  // 시각·마감·일시수정은 전부 '언제'에 대한 것이라 제목 바로 옆에 함께 둔다(요청).
-                  headMeta={<>
-                    {/* 응답 마감 실시간 카운트다운 — 날짜 옆, 헤더와 같은 폰트 크기(요청). */}
-                    <ChallengeCountdown challenge={item.challenge} />
-                    {/* 일시(시간) 수정 — 시각은 헤더가 이미 보여주므로 연필만 얹는다(중복 표기
-                        제거, 요청). 참가자만 연필이 보인다(컴포넌트가 판정). */}
-                    <ChallengeTimeHeadEdit
-                      challenge={item.challenge}
-                      timeLabel={null}
-                      myId={user?.id}
-                      onUpdated={upsertChallenge}
-                    />
-                  </>}
-                  actions={
-                    <ChallengeActionsMenu
-                      challenge={item.challenge}
-                      isAdmin={isAdmin}
-                      myId={user?.id ?? ""}
-                      onDeleted={(id) => setChallenges((prev) => prev.filter((c) => c.id !== id))}
-                      onChanged={(c) => setChallenges((prev) => prev.map((x) => (x.id === c.id ? c : x)))}
-                    />
-                  }
-                  comment={<FeedCardComments targetType="challenge" targetId={item.challenge.id} />}
-                >
-                  <ChallengeCard
-                    challenge={item.challenge}
-                    myId={user?.id}
-                    highlightMemberIds={matchedIds}
-                    onResponded={upsertChallenge}
-                  />
-                </FeedCard>
-              </div>
-            ) : item.kind === "gameResultPost" ? (
-              // GameResultPost는 접힘/펼침에 따라 카드가 1~N개로 늘어나므로, 자기 몫의
-              // .scr-feed-card-stack-wrapper를 스스로 렌더한다 — 여기서 또 감싸지 않는다.
-              <GameResultPost
-                // 같은 세션이라도 중간에 다른 종류 카드가 끼면 스택이 둘로 갈린다 —
-                // 날짜+시각만으로는 그 둘이 같은 키가 될 수 있어 첫 경기 id로 못박는다.
-                key={`ms-${item.items[0].gameResult.id}`}
-                stack={item}
-                memberOf={memberOf}
-                onDeleted={handleGameResultDeleted}
-                dateLabel={sessionDateLabel(item.date)}
-                highlightMemberIds={matchedIds}
-                highlightTerms={searchTerms}
-                defaultOpen={filterActive}
-                expanded={expandedStackKey === item.items[0].gameResult.id}
-                onExpand={() => setExpandedStackKey(item.items[0].gameResult.id)}
-              />
-            ) : (
-              <div className="scr-feed-card-stack-wrapper" key={`m-${item.gameResult.id}`}>
-                <GameResultCard
-                  item={item}
-                  memberOf={memberOf}
-                  onDeleted={handleGameResultDeleted}
-                  dateLabel={dateLabelOf(item)}
-                  highlightMemberIds={matchedIds}
-                  highlightTerms={searchTerms}
-                />
-              </div>
-            )
-            );
+            const card = renderCard(item, false);
             return divider ? [divider, card] : [card];
           })}
         </div>
+        )
       )}
 
       {/* 스피너는 화면에 하나뿐이어야 한다 — 위 목록 자리의 것과 여기 '더 불러오는 중'이
@@ -1357,8 +1423,11 @@ export default function FeedScreen() {
       {!loading && <div ref={sentinelRef} aria-hidden />}
 
       {/* 우측 스크롤 타임라인 — 피드는 최신순(위=최근, 아래=과거). 무한스크롤과 함께 쓰면
-          타임라인은 "지금까지 불러온 범위"를 나타내고, 더 불러올수록 아래(과거)가 늘어난다. */}
-      {!loading && displayFeed.length > 0 && (
+          타임라인은 "지금까지 불러온 범위"를 나타내고, 더 불러올수록 아래(과거)가 늘어난다.
+          목록 보기에서는 숨긴다(요청) — 타임라인은 카드 머리(.scr-feed-card-head)의 날짜를
+          읽어 눈금을 세우는데 목록에는 그 머리가 없고, 한 화면에 훨씬 많이 들어와 굴릴
+          거리 자체가 짧다. */}
+      {!loading && !listMode && displayFeed.length > 0 && (
         <ScrollNavTimeline
           headSelector=".scr-feed-card-head"
           topLabel="최근"

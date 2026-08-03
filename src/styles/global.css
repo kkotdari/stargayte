@@ -7041,6 +7041,66 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 /* 포스트 사이 갭 — 세로 여백은 전반적으로 키운다(요청). */
 :root { --feed-card-gap: 42px; }
 .scr-feed-list { display: flex; flex-direction: column; gap: var(--feed-card-gap); }
+
+/* ── 목록 보기(요청) ─────────────────────────────────────────────────────────────
+   카드 넉 장이면 한 화면인 피드에서 "무엇이 있었나"만 훑는 모드다. 한 줄에 시각·제목·
+   한 줄 요약뿐이고, 볼 것만 눌러서 그 자리에 원래 카드를 편다.
+   제목 옆 토글은 통계의 "도움말"과 같은 글자 트리거 관용구를 쓴다 — 켜져 있을 때만
+   점선이 실선이 되어 지금 이 모드라는 것이 글자만으로 읽힌다. */
+.scr-feed-listmode-btn {
+  background: transparent; border: none; padding: 0; cursor: pointer; font-family: inherit;
+  font-size: var(--fs-caption); font-weight: 600; line-height: 1;
+  color: var(--muted); white-space: nowrap; opacity: 0.85;
+  text-decoration: underline dotted; text-underline-offset: 4px; text-decoration-color: var(--dim);
+  -webkit-tap-highlight-color: transparent;
+}
+.scr-feed-listmode-btn-on {
+  color: var(--text); opacity: 1;
+  text-decoration-style: solid; text-decoration-color: currentColor;
+}
+@media (hover: hover) { .scr-feed-listmode-btn:hover { color: var(--text); opacity: 1; } }
+
+.scr-feed-rows { display: flex; flex-direction: column; }
+/* 줄 사이는 얇은 실선 하나로만 가른다 — 카드처럼 저마다 유리판을 두면 '목록'이 아니라
+   '작은 카드 목록'이 되어 훑기가 다시 느려진다. */
+.scr-feed-row-wrap + .scr-feed-row-wrap { border-top: 1px solid var(--line-hair); }
+.scr-feed-row {
+  display: grid; align-items: center; gap: 10px; width: 100%;
+  /* 시각은 가장 긴 값("8월 3일 23:59")에 맞춰 고정 — 줄마다 폭이 달라지면 제목이 들쭉
+     날쭉해져 세로로 훑을 수가 없다. 제목도 고정폭이라 내용 칸이 늘 같은 x에서 시작한다. */
+  grid-template-columns: 96px 92px minmax(0, 1fr);
+  padding: 11px 12px; background: transparent; border: none; cursor: pointer;
+  font-family: inherit; font-size: var(--fs-caption); color: var(--text); text-align: left;
+  -webkit-tap-highlight-color: transparent;
+}
+@media (hover: hover) { .scr-feed-row:hover { background: var(--lit-hover-bg); } }
+.scr-feed-row-wrap-open .scr-feed-row { background: var(--lit-hover-bg); }
+.scr-feed-row-time { color: var(--dim); font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* 가장 긴 제목("일일 랭크 변동")에 맞춘 고정폭이다 — 그래도 넘치면 트랙을 밀지 말고
+   잘린다(실측: min-width 없이 두면 제목이 내용 칸을 덮어썼다). */
+.scr-feed-row-title {
+  font-weight: 700; white-space: nowrap;
+  min-width: 0; overflow: hidden; text-overflow: ellipsis;
+}
+/* 내용은 한 줄로 끝난다 — 넘치면 말줄임이다. 여기서 두 줄이 되면 줄 높이가 흔들려
+   목록의 리듬이 깨진다. */
+.scr-feed-row-desc {
+  display: flex; align-items: center; gap: 6px; min-width: 0;
+  color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.scr-feed-row-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.scr-feed-row-arrow { color: var(--dim); flex: none; }
+/* 상태 배지 — 카드의 손 이모지 양옆 배지와 같은 말을 글자만으로 옮긴 것이라 색을 쓰지
+   않는다(목록은 텍스트 위주라는 요청). 테두리만으로 '배지'임이 읽힌다. */
+.scr-feed-row-badge {
+  flex: none; padding: 1px 6px; border-radius: 999px;
+  border: 1px solid var(--line-hair); color: var(--text);
+  font-size: var(--fs-11); font-weight: 700; line-height: 1.5;
+}
+/* 펼친 자리 — 원래 카드를 그대로 넣되 머리(시각·제목)는 감춘다(요청: 카드 바디와 댓글).
+   바로 위 줄이 이미 같은 말을 하고 있어, 그대로 두면 시각이 두 번 적힌다. */
+.scr-feed-row-body { padding: 0 0 12px; }
+.scr-feed-row-body .scr-feed-card-head { display: none; }
 /* "현재"(now) 구분선 — 미래(위)와 오늘/과거(아래) 카드 사이에 위치 안내(요청). 포인트
    색 얇은 라인 + 가운데 "현재" 라벨. */
 .scr-feed-now-divider {

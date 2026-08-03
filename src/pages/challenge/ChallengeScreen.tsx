@@ -58,6 +58,33 @@ function aggregateTargetTone(targets: ChallengeTarget[]): PillTone {
 
 
 
+/** 손 이모지 양옆에 붙는 배지 두 개 — 왼쪽이 부른 편, 오른쪽이 지목된 편이다. 카드가
+ *  하던 판단(아래 ChallengeCard의 canceledByCreatorSide/targetSideTone과 승/무 배지)을
+ *  그대로 한 곳에 모았다. 피드의 목록 보기가 같은 값을 써야 "카드에선 취소인데 목록에선
+ *  대기"처럼 한 도전장이 두 얼굴을 갖는 일이 안 생긴다. 빈 자리는 null이다. */
+export function challengeSideBadges(c: Challenge): { left: string | null; right: string | null } {
+  const ending = challengeEnding(c);
+  const canceledById = c.canceledBy?.id ?? null;
+  const byCreatorSide = ending === "canceled" && canceledById !== null
+    && (canceledById === c.createdBy.id || c.ownMembers.some((m) => m.memberId === canceledById));
+  // 결과가 들어왔으면 그 승/무가 응답 상태를 대신한다(카드와 같은 규칙).
+  if (c.resultWinnerSide) {
+    const draw = c.resultWinnerSide === "draw";
+    return {
+      left: draw ? "무" : c.resultWinnerSide === "creator" ? "승" : null,
+      right: draw ? "무" : c.resultWinnerSide === "target" ? "승" : null,
+    };
+  }
+  const rightTone: PillTone = ending === "canceled" && !byCreatorSide ? "canceled"
+    : ending === "expired" ? "expired" : aggregateTargetTone(c.targets);
+  return {
+    left: byCreatorSide ? PILL_LABEL.canceled : null,
+    // 부른 쪽이 거둬들인 건은 상대가 답할 기회 자체가 없었다 — 끝난 건에 "대기"는 아직
+    // 기다리는 것처럼 읽힌다(카드도 같은 자리를 비운다).
+    right: byCreatorSide && rightTone === "pending" ? null : PILL_LABEL[rightTone],
+  };
+}
+
 /** 아무 응답도 못 받고 끝난 너 나와가 어떤 끝이었나 — 부른 사람이 거둬들였으면 "취소",
  *  그냥 응답 마감이 지난 것이면 "만료"다(요청: 무응답 거절은 만료로, 취소는 취소로 표시).
  *  응답이 하나라도 있었거나(거절·버림) 결과가 들어온 건(미실시)은 여기 해당하지 않는다 —
