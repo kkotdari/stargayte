@@ -706,9 +706,11 @@ export default function ActivityScreen() {
       .then(setRankShifts)
       .catch(() => {});
     api.listActivityRows()
-      // 번호는 있으면 좋은 표시일 뿐이라, 못 받아 오면 조용히 없는 채로 둔다.
       .then((res) => setRowNos(new Map(res.rows.map((r) => [r.key, r.no]))))
-      .catch(() => {});
+      // 못 받아 와도 화면은 그대로 돌아간다(번호만 안 붙는다) — 다만 조용히 삼키지는
+      // 않는다. 한 번 그렇게 뒀다가 운영에서 번호가 통째로 안 나오는데 왜인지 알 길이
+      // 없었다(지적). 콘솔에 남겨 두면 무엇이 끊겼는지가 한눈에 보인다.
+      .catch((e) => console.error("[활동] 줄 번호를 못 받아 왔습니다 — /api/activity/list", e));
   }, []);
   useEffect(() => reloadRankingShifts(), [reloadRankingShifts]);
 
@@ -991,6 +993,19 @@ export default function ActivityScreen() {
     }
     return out;
   }, [filteredFeed]);
+
+  /* 번호를 받아는 왔는데 한 줄도 못 붙는 경우 — 서버가 센 줄과 화면이 그린 줄의 열쇠가
+     어긋났다는 뜻이라 원인이 전혀 다르다(양쪽 묶음 규칙이 갈라졌을 때 이렇게 된다).
+     둘을 구분해 두지 않으면 "번호가 안 나온다" 하나로 보여 어디를 봐야 할지 알 수 없다. */
+  useEffect(() => {
+    if (rowNos.size === 0 || displayFeed.length === 0) return;
+    if (displayFeed.some((it) => rowNos.has(rowKeyOf(it)))) return;
+    console.error(
+      "[활동] 서버가 준 줄 번호가 화면의 어느 줄과도 안 맞습니다 — 묶음 규칙이 갈라졌을 수 있어요.",
+      { 서버열쇠: [...rowNos.keys()].slice(0, 5), 화면열쇠: displayFeed.slice(0, 5).map(rowKeyOf) },
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rowNos, displayFeed]);
 
   const dateLabelOf = (item: { time: number }) => {
     const d = new Date(item.time);
