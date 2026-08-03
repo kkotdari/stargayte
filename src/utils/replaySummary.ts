@@ -3261,6 +3261,15 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   chosen.sort((a, b) => tailRank(a) - tailRank(b) || (a.at ?? Infinity) - (b.at ?? Infinity));
   // 같은 편 두 문장 사이에 다른 편 문장 하나가 끼었는데 셋이 다 비슷한 때라면, 그건
   // 시간이 아니라 편이 갈라 놓은 것이라 붙여 준다. 창을 넘어가면 손대지 않는다.
+  /** 자리를 바꿔도 자막에 적히는 '분'이 거꾸로 가지 않나 — 이야기 순서를 손보는 두 아래
+   *  규칙의 공통 안전장치다(지적: 가끔 시간이 역순으로 나온다, 7분과 8분이 바뀐 경우).
+   *  자막은 시각을 분까지만 적으므로, 같은 분 안에서 자리를 바꾸는 것은 눈에 안 보인다 —
+   *  거기까지만 허용한다. 초 단위로 몇십 초 차이는 같은 장면이고, 분이 넘어가면 읽는
+   *  사람에게는 그냥 시간이 뒤집힌 글이다. */
+  const sameLabel = (a: Beat, b: Beat): boolean => {
+    if (typeof a.at !== "number" || typeof b.at !== "number") return false;
+    return minutes(a.at * SECONDS_PER_FRAME) === minutes(b.at * SECONDS_PER_FRAME);
+  };
   for (let i = 1; i + 1 < chosen.length; i += 1) {
     const before = chosen[i - 1];
     const cut = chosen[i];
@@ -3269,6 +3278,8 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     if (typeof before.at !== "number" || typeof after.at !== "number") continue;
     if (Math.abs(after.at - before.at) * SECONDS_PER_FRAME
       > sceneWindowSec(CLUSTER_SEC, before.at)) continue;
+    // 바꾸면 자막의 분이 거꾸로 가는 자리는 그냥 둔다(위 sameLabel).
+    if (!sameLabel(cut, after)) continue;
     chosen[i] = after;
     chosen[i + 1] = cut;
   }
@@ -3285,9 +3296,16 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
       if (victims.length === 0) continue;
       if (!(act.who ?? []).some((w) => victims.includes(w))) continue;
       if ((act.whom ?? []).some((w) => (hit.who ?? []).includes(w))) continue; // 맞받아친 것
+      /* 뒤엣것도 그 사람이 '당한' 이야기(이사·궤멸·GG 등)면 밀지 않는다 — 이 규칙은
+         "무너진 사람이 그 뒤에 무언가를 갔다"를 막으려는 것인데, 당한 이야기 둘을 맞바꾸면
+         결과가 원인 앞으로 온다(실측: 10.3분 급습 → 11.3분 이사가 뒤집혀 이사가 먼저
+         나왔다). 그건 고치는 게 아니라 새로 만드는 어긋남이다. */
+      if (LATE_AGAINST_ACTOR.has(act.k)) continue;
       if (typeof hit.at !== "number" || typeof act.at !== "number") continue;
       if (Math.abs(hit.at - act.at) * SECONDS_PER_FRAME
         > sceneWindowSec(RAID_MERGE_SEC, hit.at)) continue;
+      // 바꾸면 자막의 분이 거꾸로 가는 자리는 그냥 둔다(위 sameLabel).
+      if (!sameLabel(hit, act)) continue;
       chosen[i] = act;
       chosen[i + 1] = hit;
       moved = true;
