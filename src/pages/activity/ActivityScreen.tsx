@@ -16,7 +16,7 @@ import { isComputerSlot } from "../../constants/computerSlot";
 import { isUnregisteredSlot } from "../../constants/unregisteredSlot";
 import { ChallengeCard, ChallengeTimeHeadEdit, challengeSideBadges, challengeStatusInfo } from "../challenge/ChallengeScreen";
 import ReplayReviewModal from "../../modals/ReplayReviewModal";
-import ActivityComments, { primeActivityComments } from "./ActivityComments";
+import ActivityComments, { latestCommentMs, primeActivityComments } from "./ActivityComments";
 import { primeReplayMaps } from "../../hooks/useReplayMap";
 import ChallengeFormModal from "../../modals/ChallengeFormModal";
 import { scheduledInstantMs, formatWhen, formatAgo, serverMs } from "../../utils/date";
@@ -968,6 +968,23 @@ export default function ActivityScreen() {
     return fresh(it.time) ? "new" : null;
   };
 
+  /** 이 줄에 하루 안에 달린 댓글이 있나(요청) — NEW/UPDATE와 같은 24시간 창이다.
+   *
+   *  위 rowFlagOf와 나란히 서지만 세는 것이 다르다: 저건 그 건 자체가 새것이냐를 보고,
+   *  이건 그 건에 새 말이 붙었느냐를 본다. 사흘 전 경기에 오늘 댓글이 달리면 줄 자체는
+   *  아무 딱지도 없는데 볼 것은 생긴 상태라, 그 경우가 딱 이 딱지가 있어야 하는 자리다.
+   *  게임결과 묶음은 그 안 어느 경기에 달렸든 줄에 붙인다 — 접힌 채로는 안이 안 보인다. */
+  const hasNewCommentOf = (it: DisplayItem): boolean => {
+    const now = Date.now();
+    const fresh = (ms: number) => now - ms >= 0 && now - ms <= NEW_WINDOW_MS;
+    if (it.kind === "challenge") return fresh(latestCommentMs("challenge", it.challenge.id));
+    if (it.kind === "rankingShift") return fresh(latestCommentMs("rankingShift", it.shift.id));
+    if (it.kind === "gameResultPost") {
+      return it.items.some((x) => fresh(latestCommentMs("gameResult", x.gameResult.id)));
+    }
+    return fresh(latestCommentMs("gameResult", it.gameResult.id));
+  };
+
   const displayFeed = useMemo<DisplayItem[]>(() => {
     const out: DisplayItem[] = [];
     let i = 0;
@@ -1301,6 +1318,7 @@ export default function ActivityScreen() {
               const open = openRowKey === key;
               const closing = closingRowKey === key;
               const flag = rowFlagOf(item);
+              const newComment = hasNewCommentOf(item);
               const no = rowNos.get(key);
               return (
                 <div className={cx("scr-activity-row-wrap", open && "scr-activity-row-wrap-open")} key={key}>
@@ -1324,6 +1342,12 @@ export default function ActivityScreen() {
                           {flag === "new" ? "NEW" : "UPDATE"}
                         </span>
                       )}
+                      {/* 하루 안에 새 댓글이 붙은 건(요청) — 우하단이다. 위 세 딱지(번호·
+                          NEW·UPDATE)와 한 줄에 못 선다: 제목 칸의 글자 자리는 62px인데
+                          "#17"(16) + "UPDATE"(37)만으로 이미 57px을 쓴다(실측). 대신
+                          제목 아래 칸 여백이 비어 있어 거기로 내렸다 — 번호가 좌상단,
+                          NEW/UPDATE가 우상단, 이것이 우하단으로 세 모서리가 갈린다. */}
+                      {newComment && <span className="scr-activity-row-flag-comment">NEW댓글</span>}
                     </span>
                     <span className="scr-activity-row-desc">{rowDesc(item)}</span>
                     {/* 얼마나 지났나(요청) — 하루까지는 "N분 전/N시간 전", 일주일까지는

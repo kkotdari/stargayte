@@ -10,7 +10,7 @@ import { useAppStore } from "../../store/appStore";
 import { api } from "../../api/client";
 import { cx } from "../../utils/format";
 import { attachPopover } from "../../utils/popover";
-import { formatWhen } from "../../utils/date";
+import { formatWhen, serverMs } from "../../utils/date";
 import type { Member, ActivityComment, ActivityTargetType } from "../../types";
 
 // 게시판 댓글처럼 한 줄(요청: 한글 50자 제한). 입력부·목록의 생김새는 공용 댓글
@@ -306,6 +306,17 @@ const SWIPE_CLOSE_PX = 96;
 const primed = new Map<string, ActivityComment[]>();
 let primedOnce = false;
 const keyOf = (t: ActivityTargetType, id: number) => `${t}:${id}`;
+
+/** 이 대상에 가장 최근 달린 댓글 시각(ms) — 없으면 NaN. 목록 줄의 '새 댓글' 딱지가 쓴다.
+ *
+ *  목록과 함께 미리 받아 둔 것(primed)만 본다. 줄마다 따로 부르면 화면에 뜬 줄 수만큼
+ *  요청이 나가는데, 딱지 하나 때문에 그럴 일은 아니다 — 미리받기가 실패했으면 그냥
+ *  딱지가 안 붙는다. */
+export function latestCommentMs(targetType: ActivityTargetType, targetId: number): number {
+  const list = primed.get(keyOf(targetType, targetId));
+  if (!list || list.length === 0) return NaN;
+  return Math.max(...list.map((c) => serverMs(c.createdAt)));
+}
 
 export async function primeActivityComments(): Promise<void> {
   const items = await api.listAllActivityComments();
