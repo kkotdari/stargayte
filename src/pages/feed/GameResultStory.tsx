@@ -514,6 +514,18 @@ export default function GameResultStory({
       const v = spots[raw];
       return v ? [v[0], v[1]] : null;
     };
+    /** 화살표가 '그 사람에게로' 갈 때 겨눌 자리 — 아바타(시작 지점)가 아니라 그 사람
+     *  살림의 한가운데다(지적: 타겟이 특정 안 될 때 아바타를 향하는 건 부적절하고 본진
+     *  중앙을 향하는 게 자연스럽다). 아바타는 시작 지점에 서 있는 사람 표시라 화살촉이
+     *  얼굴을 덮고, 실제로 병력이 향한 곳도 그 사람의 건물이 선 자리다. 살림을 옮겼으면
+     *  옮긴 자리, 살림 한가운데를 모르는 옛 요약이면 예전처럼 시작 지점이다. */
+    const hubOf = (raw: string): [number, number] | null => {
+      const to = moved.get(raw);
+      if (to) return to;
+      const h = hubs[raw];
+      if (h) return [h[0], h[1]];
+      return homeOf(raw);
+    };
     /** a에서 b쪽으로 t만큼 간 자리. */
     const lerp = (a: [number, number], b: [number, number], t: number): [number, number] =>
       [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
@@ -526,7 +538,7 @@ export default function GameResultStory({
       let best: [number, number] | null = null;
       for (const s of slots) {
         if (s.team === team) continue;
-        const p = homeOf(s.raw);
+        const p = hubOf(s.raw);
         if (!p) continue;
         if (best === null || dist(home, p) < dist(home, best)) best = p;
       }
@@ -540,7 +552,7 @@ export default function GameResultStory({
       let best: [number, number] | null = null;
       for (const s of slots) {
         if (s.raw === raw || s.team !== team) continue;
-        const p = homeOf(s.raw);
+        const p = hubOf(s.raw);
         if (!p) continue;
         if (best === null || dist(home, p) < dist(home, best)) best = p;
       }
@@ -590,7 +602,7 @@ export default function GameResultStory({
       // 실으면 '이 사람이 당했다'가 뒤집힌다) — 그래서 여기서 따로 잡는다. 목표는 당한
       // 사람(who[0])의 집이다.
       if (BY_ATTACKER_KEYS.has(b.k) && b.p?.by === raw) {
-        const victimHome = homeOf((b.who ?? [])[0] ?? "");
+        const victimHome = hubOf((b.who ?? [])[0] ?? "");
         if (victimHome) return victimHome;
       }
       const foe = nearestFoe(raw);
@@ -611,7 +623,7 @@ export default function GameResultStory({
       const named = (() => {
         const vs = (b.whom ?? []).filter((v) => v !== raw);
         const pick = namedFoe ?? vs[0];
-        return pick ? homeOf(pick) : null;
+        return pick ? hubOf(pick) : null;
       })();
       /* 리콜·커널처럼 '여기서 저기로 건너간' 수는 화살표가 본진에서 상대에게로 이어져야
          그림이 읽힌다(요청). 마법을 쓴 좌표·문을 뚫은 좌표는 대개 제 진영 언저리라, 그걸
@@ -624,7 +636,7 @@ export default function GameResultStory({
          가리키면 화살표가 자막과 정반대 방향으로 뻗는다. 그런 리콜은 아래 좌표 갈래로
          내려가 그 싸움터를 가리키고, 상대 화살표도 같은 점으로 모인다. */
       if (WARP_BEAT_KEYS.has(b.k) && namedFoe && b.p?.fight !== true) {
-        const to = homeOf(namedFoe);
+        const to = hubOf(namedFoe);
         /* 도착 자리를 정확히 아는 경우 — 상대 진영에 뚫은 커널의 좌표(replayTactics의
            nydus)다. 그 사람 진영 안쪽일 때만 쓴다: 자막이 부른 사람과 다른 곳에 찍힌
            좌표라면 그건 이 수의 도착점이 아니다(지적: 커널의 자막과 실제 도착 위치가
@@ -642,8 +654,13 @@ export default function GameResultStory({
          곳을 가리키는 일이 있어서였는데, 그 원인은 좌표가 아니라 '누구를'을 엉뚱하게 고른
          쪽이었다 — 이제 그 이름도 같은 좌표에서 나오므로(replayTactics의 castAt·dropSpot,
          replaySummary의 withStrike·placeFits) 둘이 어긋나지 않는다. */
+      /* 제 집 안에 부은 리콜·커널은 화살표로 그릴 것이 없다(지적: 리콜 이동 위치가 자기
+         본진인 경우가 있어 이상하다) — 출발도 도착도 같은 자리라 화살표가 제자리를 맴돈다.
+         실제로 있는 일이다(제 진영을 지키러 부르는 리콜) — 그러니 지우지 않고, 자리
+         표시(이모지)만 그 집에 남기고 화살표는 안 그린다. */
+      if (WARP_BEAT_KEYS.has(b.k) && xy && dist(home, xy) <= yardOf(home)) return null;
       if (xy) return xy;
-      const foeHome = namedFoe ? homeOf(namedFoe) : null;
+      const foeHome = namedFoe ? hubOf(namedFoe) : null;
       // 자리를 모르면 자막이 부른 상대의 집이 목표다.
       if (foeHome && (attack || spot === "enemyBase" || spot === "enemyFront")) {
         return spot === "enemyFront" ? lerp(foeHome, center, FRONT) : foeHome;
@@ -653,14 +670,18 @@ export default function GameResultStory({
       if (named && (spot === "enemyBase" || spot === "enemyFront")) {
         return spot === "enemyBase" ? named : lerp(named, center, FRONT);
       }
+      /* 자리 분류만 있고 '누구'가 없으면 가장 가까운 상대·아군으로 때우지 않는다(지적:
+         타겟이 확정 안 되는데 화살표가 있는 것도 이상하다). 일대일은 예외다 — 상대가
+         한 사람뿐이라 '가장 가까운 상대'가 곧 그 상대다. */
+      const only = gameResult.summaryData?.duel === true;
       switch (spot) {
-        case "enemyBase": return foe;
-        case "enemyFront": return foe ? lerp(foe, center, FRONT) : null;
+        case "enemyBase": return only ? foe : null;
+        case "enemyFront": return only && foe ? lerp(foe, center, FRONT) : null;
         case "mid": return center;
         case "myBase": return home;
         case "myFront": return lerp(home, center, FRONT);
-        case "allyBase": return ally;
-        case "allyFront": return ally ? lerp(ally, center, FRONT) : null;
+        case "allyBase": return only ? ally : null;
+        case "allyFront": return only && ally ? lerp(ally, center, FRONT) : null;
         default: break;
       }
       // 아군을 도우러 간 것 — 목표는 그 아군의 기지다(요청: 아군 헬프). ally-help는
@@ -670,8 +691,11 @@ export default function GameResultStory({
       if (b.k === "ally-help" || b.k === "ally-cannon") {
         const mates = b.k === "ally-help" ? (b.whom ?? [])
           : Array.isArray(b.who2) ? b.who2 : typeof b.who2 === "string" ? [b.who2] : [];
-        const mate = mates.find((v) => v !== raw && homeOf(v));
-        return mate ? homeOf(mate) : ally;
+        /* 도움받은 아군이 누구인지 모르면 화살표를 안 그린다(지적: 애초에 타겟이 확정
+           안 되는데 화살표가 있는 것도 이상하다) — 예전에는 '가장 가까운 아군'으로
+           때웠는데, 그건 근거가 아니라 추측이라 옆 사람 쪽으로 잘못 그어졌다. */
+        const mate = mates.find((v) => v !== raw && hubOf(v));
+        return mate ? hubOf(mate) : null;
       }
       /* 그 사람이 그 무렵 실제로 병력을 보낸 자리(beat.pos) — 이제 이 값이 믿을 만하다.
          명령마다 주인을 짚게 되면서(replayParser의 orderPositions.by) 일꾼이 자원 캐러 찍은
