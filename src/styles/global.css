@@ -7051,7 +7051,10 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    20px에선 글자가 위아래 카드 한가운데에 떠서 어느 카드 것인지 모호했다(지적) — 넓히면
    글자 위로 여백이 더 남아 바로 아래 카드에 붙은 것으로 읽힌다. */
 /* 포스트 사이 갭 — 세로 여백은 전반적으로 키운다(요청). */
-:root { --feed-card-gap: 42px; }
+/* 42 → 26px(요청). 유리판이 있을 때는 판과 판 사이가 이만큼 벌어져야 두 장으로 읽혔는데,
+   채움이 없어진 지금은 위아래 림 한 줄이 그 일을 하므로 그만큼 벌릴 이유가 없다 — 오히려
+   화면이 휑해 보인다. 카드 자신의 꼬리 여백(--post-pad-b 16px)이 여기 더해진다. */
+:root { --feed-card-gap: 26px; }
 .scr-feed-list { display: flex; flex-direction: column; gap: var(--feed-card-gap); }
 
 /* ── 목록 보기(요청) ─────────────────────────────────────────────────────────────
@@ -7149,15 +7152,13 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    줄이 펼쳐지는 연출까지 겹치면 두 움직임이 서로 다른 속도로 붙어 "무언가 줄어들면서
    위로 올라가는" 느낌이 된다(지적). 여기서는 줄이 펼쳐지는 연출 하나만 남긴다. */
 .scr-feed-row-body .scr-feed-card-stack-reveal { animation: none; }
-/* 목록 안에서는 카드가 유리판을 벗는다(요청) — 표 한 칸을 열어 본 것이지 새 카드가 뜬
-   것이 아니고, blur 요소가 줄마다 생기면 여닫는 연출도 그만큼 무거워진다.
-   글래스를 씌우는 쪽(.scr-feed-card > .scr-feed-card-body)이 자식 결합자라 여기도 같은
-   꼴로 맞춰야 이긴다. 라이트 테마 규칙은 앞에 .scr-light-theme가 하나 더 붙어 더 세므로
-   그쪽도 따로 벗겨 준다. */
+/* 목록 안에서는 위아래 림도 뺀다 — 이미 줄 구분선이 칸을 가르고 있어, 림까지 그으면
+   한 칸 안에 가로줄이 두 겹으로 겹친다(채움·블러는 이제 카드 공통에서 아예 안 쓴다).
+   씌우는 쪽이 자식 결합자라 여기도 같은 꼴로 맞춰야 이기고, 라이트 테마 규칙은 앞에
+   .scr-light-theme가 하나 더 붙어 더 세므로 그쪽도 따로 지워 준다. */
 .scr-feed-row-body .scr-feed-card > .scr-feed-card-body,
 .scr-light-theme .scr-feed-row-body .scr-feed-card > .scr-feed-card-body {
-  background-color: transparent; background-image: none;
-  backdrop-filter: none; -webkit-backdrop-filter: none;
+  background-image: none;
 }
 /* "현재"(now) 구분선 — 미래(위)와 오늘/과거(아래) 카드 사이에 위치 안내(요청). 포인트
    색 얇은 라인 + 가운데 "현재" 라벨. */
@@ -7280,21 +7281,19 @@ html:not(.scr-light-theme) .scr-feed-now-divider span { color: var(--muted); }
    넣기", "사방 패딩을 공통으로 정의") — 타입별 전용 클래스(.scr-feed-game-result-body/
    .scr-feed-shift-split 등)는 이제 순수 내용 레이아웃만 책임지고, 글래스·패딩은 여기
    하나로 통일한다(요청: 불필요한 CSS 단계 제거). */
+/* 유리(반투명 채움 + 블러)는 걷어냈다(요청) — 목록 보기에서 먼저 벗겨 보니 배경 사진이
+   그대로 비쳐 보이는 쪽이 훨씬 시원했고, 카드가 여럿인 화면에서 blur 요소가 그 수만큼
+   생기는 부담도 없어진다. 경계는 위아래 림 한 줄만 남긴다 — 채움까지 없는데 림마저 빼면
+   카드가 어디서 끊기는지 알 수가 없다. */
 .scr-feed-card > .scr-feed-card-body {
   margin-inline: calc(-1 * var(--post-bleed));
   border-inline: var(--post-bleed) solid transparent;
   padding: var(--post-row-gap) calc(var(--post-pad-bx) + 8px);
-  background-color: rgba(var(--overlay-rgb), 0.07);
-  backdrop-filter: blur(2px) saturate(1.2);
-  -webkit-backdrop-filter: blur(2px) saturate(1.2);
   background-image:
     linear-gradient(to bottom, rgba(var(--overlay-rgb), 0.1) 1px, transparent 1px),
     linear-gradient(to top, rgba(var(--overlay-rgb), 0.1) 1px, transparent 1px);
 }
 .scr-light-theme .scr-feed-card > .scr-feed-card-body {
-  background-color: rgba(255, 255, 255, 0.62);
-  backdrop-filter: blur(2px) saturate(1.1);
-  -webkit-backdrop-filter: blur(2px) saturate(1.1);
   /* 라이트에서는 흰 판이 흰 배경에 묻혀 경계가 안 보인다(지적) — 위아래 림을 조금 더
      진하게 잡는다. 좌우는 다크와 같은 이유로 비운다. */
   background-image:
