@@ -17,10 +17,11 @@ import { FeedCard } from "./FeedCard";
 // 배지와 생김새가 같아, 같은 화면을 오가며 볼 때 어느 쪽 이야기인지 헷갈린다.
 // 여기서는 몇 계단이 아니라 몇 위에서 몇 위로 갔는지를 그대로 읽히게 둔다.
 //
-// 그 달에 처음 순위가 잡힌 사람은 "3위(신규)"다(요청) — 예전엔 "신규 → 3위"라고 적었는데,
-// 화살표는 '어디서 왔다'는 말이라 오기 전 자리가 있는 것처럼 읽힌다. 그런 자리는 없다.
+// 그 달에 처음 순위가 잡힌 사람은 "3위 신규진입"이다(요청: 괄호 없이) — 예전엔 "신규 → 3위"
+// 라고 적었는데, 화살표는 '어디서 왔다'는 말이라 오기 전 자리가 있는 것처럼 읽힌다. 그런
+// 자리는 없다. 괄호도 뗐다: 괄호는 곁다리라는 뜻인데 이 사람에게는 그게 본 이야기다.
 export function shiftLabel(e: RankingShiftEntry): { text: string; cls: string } {
-  if (e.from == null) return { text: `${e.to}위(신규)`, cls: "scr-feed-shift-new" };
+  if (e.from == null) return { text: `${e.to}위 신규진입`, cls: "scr-feed-shift-new" };
   const d = e.from - e.to;
   return {
     text: `${e.from} → ${e.to}위`,

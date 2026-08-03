@@ -7655,13 +7655,18 @@ html.scr-light-theme .scr-feed-add-fab {
 .scr-feed-shift-name { font-weight: 600; font-size: var(--fs-caption); }
 .scr-feed-shift-up { color: #7fd18b; font-weight: 700; }
 .scr-feed-shift-down { color: #e08a8a; font-weight: 700; }
-/* 신규 진입은 오르내림이 아니다 — 올림(초록)/내림(빨강) 옆에서 골드까지 칠하면 셋 다
-   "무슨 일이 있었다"는 신호로 읽혀 정작 오르내린 사람이 안 도드라진다(요청: 신규는 기본색). */
-.scr-feed-shift-new { color: var(--text); font-weight: 700; }
+/* 신규 진입은 오르내림이 아니다 — 한때 골드였는데, 올림(초록)/내림(빨강) 옆에서 셋 다
+   "무슨 일이 있었다"는 신호로 읽혀 정작 오르내린 사람이 안 도드라져 기본 글자색으로 뒀다.
+   이제 파랑이다(요청: 상승도 하락도 아닌 중립을 푸른색으로) — 기본색은 '아무 일도 아님'과
+   구분이 안 됐는데, 파랑은 오르내림 어느 쪽도 아니면서 제 자리는 있는 색이다.
+   통계표의 "신규" 배지도 이 클래스를 그대로 쓴다(같은 뜻이니 같은 색이라야 한다). */
+.scr-feed-shift-new { color: #8ab4e8; font-weight: 700; }
 /* 라이트에서는 이 색이 흰 배경에 묻혀 거의 안 읽혔다(지적) — 어두우면서 채도는 높은 쪽으로
    갈아 끼운다. 다크의 파스텔 톤은 검은 배경에서만 성립한다. */
 .scr-light-theme .scr-feed-shift-up { color: #16a34a; }
 .scr-light-theme .scr-feed-shift-down { color: #e11d48; }
+/* 신규의 파랑도 같은 사연이다 — 다크의 파스텔 파랑은 흰 배경에서 흐려 보인다. */
+.scr-light-theme .scr-feed-shift-new { color: #2563eb; }
 /* (삭제) 통계표 "신규"만 기본 글자색으로 바꾸던 예외 — 이제 피드 카드도 같은 기본색이라
    (위 .scr-feed-shift-new) 예외 자체가 필요 없어졌다. */
 /* 예전엔 배지(▲2) 뒤에 "(1위 → 3위)"를 따로 붙였다 — 이제 그 자체가 본문이 되면서
