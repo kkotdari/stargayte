@@ -1179,6 +1179,17 @@ export default function GameResultStory({
 
   const o1 = outcomeFor("team1", result);
   const o2 = outcomeFor("team2", result);
+  /* 이긴 편을 이름으로 부른다(요청: "승" → "n팀 승") — 미니맵 머리의 이 배지는 로스터를
+     감춘 자리에서 승패를 알리는 유일한 표시인데, "승"만으로는 색을 읽어야 어느 편인지
+     알 수 있었다. 1:1은 팀 용어를 쓰지 않으므로(요청) 이긴 사람 이름을 그대로 부른다. */
+  const winLabel = (() => {
+    if (result === "draw") return "무승부";
+    const side = o1 === "win" ? team1 : team2;
+    if (team1.length === 1 && team2.length === 1) {
+      return `${resolveSlotName(side[0], [...team1, ...team2], memberOf)} 승`;
+    }
+    return `${o1 === "win" ? 1 : 2}팀 승`;
+  })();
   const mapName = cleanMapName(gameResult.mapName);
   const minutes = gameResult.durationSeconds != null
     ? Math.round(gameResult.durationSeconds / 60) : null;
@@ -1234,7 +1245,7 @@ export default function GameResultStory({
               result === "draw" ? "scr-story-win-draw"
                 : o1 === "win" ? "scr-story-win-t1" : "scr-story-win-t2")}
           >
-            {result === "draw" ? "무승부" : "승"}
+            {winLabel}
           </span>
         )}
       </div>
