@@ -1805,7 +1805,9 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    고정한다. 고정해야 줄마다 구분선이 같은 x에 서고, 남는 폭을 목록이 안 먹으므로 덩어리
    묶음이 칸 가운데에 선다(지적: 스킬 쪽 오른쪽 빈 자리가 너무 넓다 — 목록이 flex로 남는
    폭을 통째로 가져가는 바람에 그 빈 자리가 목록 안쪽에 생겼다). */
-.scr-stat-build-cell, .scr-stat-units-cell, .scr-stat-skills-cell { --scr-toplist-w: 186px; }
+/* 지금은 이름만 보여주므로(MemberStatRow의 SHOW_TOP_VALUES) 자리를 그만큼 줄여 뒀다 —
+   수를 다시 켜면 186px으로 되돌려야 "어시밀레이터 19.0개"가 한 줄에 들어간다. */
+.scr-stat-build-cell, .scr-stat-units-cell, .scr-stat-skills-cell { --scr-toplist-w: 90px; }
 .scr-stat-build-cell .scr-stat-toplist,
 .scr-stat-units-cell .scr-stat-toplist,
 .scr-stat-skills-cell .scr-stat-toplist { flex: none; width: var(--scr-toplist-w); min-width: 0; }
@@ -1893,6 +1895,8 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   display: grid; grid-template-columns: auto auto;
   justify-content: center; column-gap: 10px; row-gap: 2px;
 }
+/* 수를 숨긴 동안에는 한 열짜리다 — 두 열로 두면 빈 열만큼 이름이 왼쪽으로 쏠린다. */
+.scr-stat-toplist-nameonly { grid-template-columns: auto; }
 .scr-stat-toplist li {
   display: grid; grid-column: 1 / -1; grid-template-columns: subgrid;
   align-items: baseline; line-height: 1.35; min-width: 0;
@@ -1903,6 +1907,8 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 .scr-stat-toplist-n {
   color: var(--dim); font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right;
 }
+/* 라벨에 붙는 환산 단위(/10분) — 라벨보다 한 단계 더 여리게 둔다. */
+.scr-stat-record-per { opacity: 0.7; }
 /* 포인트 뒤의 단위(요청) — 숫자보다 한 단계 여리게 둬 값이 먼저 읽히게 한다. */
 .scr-stat-points-unit { font-size: var(--fs-11); font-weight: 600; color: var(--dim); }
 /* 판당 평균 — 총합보다 한 단계 여린 톤으로, 둘이 한 덩어리로 뭉쳐 보이지 않게 한다. */
@@ -2038,9 +2044,9 @@ html:not(.scr-light-theme) .scr-donut {
      건설은 도넛 하나 + 건물 다섯 줄, 유닛은 도넛 둘 + 일꾼 한 줄 + 유닛 다섯 줄,
      스킬은 공/방 표 + 스킬 다섯 줄을 담는다. */
   --scr-stat-record-w: 460px;
-  --scr-stat-build-w: 300px;
-  --scr-stat-unit-w: 462px;
-  --scr-stat-skill-w: 342px;
+  --scr-stat-build-w: 204px;
+  --scr-stat-unit-w: 366px;
+  --scr-stat-skill-w: 246px;
   /* 도넛 지름 — MemberStatRow의 DONUT과 짝이다(svg 좌표계 크기라 그쪽이 실제 값을 정하고,
      여기서는 상자 폭을 그에 맞춘다). 한쪽만 고치면 어긋난다. */
   --scr-donut-size: 72px;
@@ -2258,9 +2264,9 @@ html:not(.scr-light-theme) .scr-stats-list-panel-v2 .scr-stat-name-cell, html:no
        한다 — 그보다 넓으면 끝까지 밀어도 그 칸을 온전히 볼 수가 없다. */
     --scr-stat-col-w: 124px;
     --scr-stat-record-w: 446px;
-    --scr-stat-build-w: 292px;
-    --scr-stat-unit-w: 450px;
-    --scr-stat-skill-w: 332px;
+    --scr-stat-build-w: 196px;
+    --scr-stat-unit-w: 354px;
+    --scr-stat-skill-w: 236px;
     grid-template-columns: var(--scr-stat-tracks);
   }
 
@@ -6307,9 +6313,9 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
        PC 폭(1920) 안에 들어와 가로 스크롤이 안 생긴다. */
     --scr-stat-col-w: 100px;
     --scr-stat-record-w: 456px;
-    --scr-stat-build-w: 298px;
-    --scr-stat-unit-w: 458px;
-    --scr-stat-skill-w: 338px;
+    --scr-stat-build-w: 202px;
+    --scr-stat-unit-w: 362px;
+    --scr-stat-skill-w: 242px;
     /* 헤더 행과 데이터 행은 각각 별개의 그리드 컨테이너다. 트랙을 minmax(_,1fr)로 두면
        width:max-content인 이 행들이 '자기 내용이 원하는 폭'으로 따로 계산돼, 라벨+ⓘ+정렬
        아이콘이 든 헤더 행만 넓어진다 — 실측 873px vs 820px, 오른쪽으로 갈수록 최대 45px씩

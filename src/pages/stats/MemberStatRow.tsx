@@ -5,7 +5,8 @@ import StatBar from "../../components/common/StatBar";
 import ValueBar from "../../components/common/ValueBar";
 import DonutChart from "../../components/common/DonutChart";
 import { useAppStore } from "../../store/appStore";
-import { topEntries, type BuildMix, type TopEntry } from "../../utils/replayBuildMix";
+import { cx } from "../../utils/format";
+import { PER_WINDOW_SECONDS, topEntries, type BuildMix, type TopEntry } from "../../utils/replayBuildMix";
 import { BUILDING_KO, TECH_KO, UNIT_KO } from "../../utils/replaySummaryText";
 import type { Member, MemberStats } from "../../types";
 
@@ -19,10 +20,12 @@ const TOP_N = 5;
    값은 global.css의 --scr-donut-size와 짝이다 — 한쪽만 고치면 칸 폭이 어긋난다. */
 const DONUT = 72;
 
-/** 합계를 경기당 값으로 — 원장은 기간 안의 경기를 통째로 더한 값이라 그대로 적으면
- *  "많이 뛴 사람일수록 큰 수"가 된다. 경기 수를 모르면(옛 응답) 아무것도 안 적는다. */
-function perGame(total: number, plays: number | null | undefined): string | undefined {
-  return plays && plays > 0 ? `${Math.round(total / plays)}` : undefined;
+/** 합계를 10분당 값으로(요청) — 원장은 기간 안의 경기를 통째로 더한 값이라 그대로 적으면
+ *  "오래 뛴 사람일수록 큰 수"가 된다. 총 시간을 모르면(옛 응답) 아무것도 안 적는다. */
+function per10(total: number, seconds: number | null | undefined): string | undefined {
+  return seconds && seconds > 0
+    ? (total / seconds * PER_WINDOW_SECONDS).toFixed(1)
+    : undefined;
 }
 
 /** 공/방/실드 단계 — 지상·공중 두 줄, 공·방·실드 세 칸(요청). 소수 첫째 자리까지 적는다:
@@ -49,24 +52,29 @@ function UpgradeGrid({ mix, plays }: { mix: BuildMix; plays: number | null | und
   );
 }
 
+/* 목록에 수를 적을지 — 지금은 이름만 보여준다(요청: 값이 정확한지 확인이 필요해 잠시 숨김).
+   계산과 배관은 그대로 살아 있어서 이 상수만 true로 되돌리면 다시 나온다. 되돌릴 때
+   global.css의 --scr-toplist-w도 90px → 186px으로 함께 올려야 자리가 맞는다. */
+const SHOW_TOP_VALUES = false;
+
 /** 많이 나온 순 목록 한 칸. 값이 없으면 다른 칸과 같은 "-" 하나로 둔다.
  *
- *  괄호 안은 '그 이름이 나온 판당 평균'이다(요청) — 총합만 보면 많이 뛴 사람이 늘 큰 수라
- *  한 판에 얼마나 쏟아붓는 사람인지가 안 보인다. 분모를 전체 게임수로 두지 않는 것도 같은
- *  이유다: 안 쓴 판까지 세면 프로토스만 쓰는 기술의 값이 종족 비율만큼 깎여 버린다. */
+ *  적는 수는 총합이 아니라 10분당 값이다(요청) — 총합은 오래 뛴 사람이 늘 크다. 분모를 전체
+ *  경기시간으로 두지 않는 것도 같은 이유다: 안 쓴 판의 시간까지 세면 프로토스만 쓰는 기술의
+ *  값이 종족 비율만큼 깎인다. 다만 목록의 '순서'는 총합으로 매긴다(topEntries 참고). */
 function TopList({ items, unit }: { items: TopEntry[]; unit: string }) {
+  void unit; // 수를 숨긴 동안에는 안 쓰인다(SHOW_TOP_VALUES 참고).
   if (items.length === 0) return <span className="scr-stat-points-empty">-</span>;
   return (
-    <ul className="scr-stat-toplist">
+    <ul className={cx("scr-stat-toplist", !SHOW_TOP_VALUES && "scr-stat-toplist-nameonly")}>
       {items.map((it) => (
         <li key={it.name}>
           <span className="scr-stat-toplist-name">{it.name}</span>
-          <span className="scr-stat-toplist-n">
-            {it.count.toLocaleString()}{unit}
-            {it.plays > 0 && (
-              <span className="scr-stat-toplist-avg"> ({(it.count / it.plays).toFixed(1)})</span>
-            )}
-          </span>
+          {SHOW_TOP_VALUES && (
+            <span className="scr-stat-toplist-n">
+              {it.per10 === null ? "-" : `${it.per10.toFixed(1)}${unit}`}
+            </span>
+          )}
         </li>
       ))}
     </ul>
@@ -208,7 +216,8 @@ export default function MemberStatRow({
             <ValueBar value={stats.avgApm} maxValue={maxApm} medal={medals?.apm} />
           </div>
           <div className="scr-stat-record-item">
-            <span className="scr-stat-record-label">커맨드</span>
+            {/* 10분당임을 라벨에 적는다(요청) — APM은 원래 분당이라 라벨 그대로. */}
+            <span className="scr-stat-record-label">커맨드<span className="scr-stat-record-per">/10분</span></span>
             <ValueBar value={stats.avgCmd} maxValue={maxCmd} medal={medals?.cmd} />
           </div>
         </div>
@@ -223,14 +232,14 @@ export default function MemberStatRow({
               <DonutChart
                 title="건물"
                 size={DONUT}
-                note={perGame(mix.bProd + mix.bDef, stats.mixPlays)}
+                note={per10(mix.bProd + mix.bDef, stats.mixSeconds)}
                 slices={[
                   { label: "생산", value: mix.bProd },
                   { label: "방어", value: mix.bDef },
                 ]}
               />
             </div>
-            <TopList items={topEntries(mix.buildings, BUILDING_KO, TOP_N, mix.buildingPlays)} unit="개" />
+            <TopList items={topEntries(mix.buildings, BUILDING_KO, TOP_N, mix.buildingSecs)} unit="개" />
           </>
         ) : (
           <span className="scr-stat-points-empty">-</span>
@@ -265,7 +274,7 @@ export default function MemberStatRow({
               <span className="scr-stat-worker5-label">5분 일꾼</span>
               <span className="scr-stat-worker5-n">{stats.avgWorker5 ?? "-"}</span>
             </div>
-            <TopList items={topEntries(mix.units, UNIT_KO, TOP_N, mix.unitPlays)} unit="기" />
+            <TopList items={topEntries(mix.units, UNIT_KO, TOP_N, mix.unitSecs)} unit="기" />
           </>
         ) : (
           <span className="scr-stat-points-empty">-</span>
@@ -276,7 +285,7 @@ export default function MemberStatRow({
         {mix ? (
           <>
             <UpgradeGrid mix={mix} plays={stats.mixPlays} />
-            <TopList items={topEntries(mix.skills, TECH_KO, TOP_N, mix.skillPlays)} unit="회" />
+            <TopList items={topEntries(mix.skills, TECH_KO, TOP_N, mix.skillSecs)} unit="회" />
           </>
         ) : (
           <span className="scr-stat-points-empty">-</span>

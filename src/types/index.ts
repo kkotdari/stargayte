@@ -269,6 +269,9 @@ export interface MemberStats {
    *  공/방 평균 단계). 서버가 합계만 주고 나눗셈은 화면이 하는 이유는, 무엇을 무엇으로
    *  나눌지가 칸마다 다르기 때문이다(비율은 합계 그대로, 수치는 경기당). */
   mixPlays: number | null;
+  /** 그 경기들의 총 길이(초) — 총합을 10분당 값으로 되돌릴 분모다(요청: 게임시간에 영향을
+   *  받는 값은 모두 10분당). */
+  mixSeconds: number | null;
 }
 
 // 서버 집계(GET /api/game-results/stats) 응답 — 통계/랭킹 화면이 매치 원본을 직접 스캔하지 않고

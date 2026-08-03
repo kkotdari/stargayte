@@ -87,18 +87,18 @@ export interface BuildMix {
   /** 실제로 '쓴' 마법·기술별 횟수(screp 영문명) — 통계 '스킬' 칸의 Top5. 연구만 하고 안
    *  쓴 기술은 0이라 여기 안 들어온다(signals.techUses가 사용 증거만 센다). */
   skills: Record<string, number>;
-  /** 위 세 원장의 '이름별 판수' — 그 이름이 한 번이라도 나온 경기가 몇 판인가.
+  /** 위 세 원장의 '이름별 총 경기시간(초)' — 그 이름이 한 번이라도 나온 경기들의 길이 합.
    *
-   *  집계(기간 합계)에서만 채워지고 경기 하나짜리 값에서는 비어 있다. 한 판만 놓고 보면
-   *  전부 1이라 실을 이유가 없고, 서버가 합칠 때 세는 편이 payload도 가볍다.
+   *  집계(기간 합계)에서만 채워지고 경기 하나짜리 값에서는 비어 있다 — 서버가 합칠 때
+   *  세는 편이 payload도 가볍다.
    *
-   *  왜 필요한가: 총합만으로는 "많이 뛰어서 큰 수"와 "한 판에 많이 써서 큰 수"가 구분되지
-   *  않는다. 전체 게임수로 나누면 이번엔 그 기술을 안 쓴 판까지 분모에 들어가 프로토스만
-   *  쓰는 기술의 값이 종족 비율만큼 깎인다 — 그래서 '그 이름이 실제로 나온 판수'로 나눈다
-   *  (요청). */
-  buildingPlays: Record<string, number>;
-  unitPlays: Record<string, number>;
-  skillPlays: Record<string, number>;
+   *  왜 필요한가: 총합만으로는 "오래 뛰어서 큰 수"와 "한 판에 많이 써서 큰 수"가 구분되지
+   *  않는다. 그래서 10분당 값으로 환산해 보여주는데(요청), 전체 경기시간으로 나누면 이번엔
+   *  그 기술을 안 쓴 판의 시간까지 분모에 들어가 프로토스만 쓰는 기술의 값이 종족 비율만큼
+   *  깎인다 — 그 이름이 실제로 나온 판의 시간만 분모로 쓴다. */
+  buildingSecs: Record<string, number>;
+  unitSecs: Record<string, number>;
+  skillSecs: Record<string, number>;
 }
 
 /** 새 값 하나. 상수를 spread 해서 쓰면 사전들이 같은 객체를 공유하므로 함수로 낸다. */
@@ -107,7 +107,7 @@ export function emptyBuildMix(): BuildMix {
     bProd: 0, bDef: 0, uBasic: 0, uAdv: 0, uCaster: 0, uGround: 0, uAir: 0, worker5: 0,
     upGw: 0, upGa: 0, upAw: 0, upAa: 0, upSh: 0,
     buildings: {}, units: {}, skills: {},
-    buildingPlays: {}, unitPlays: {}, skillPlays: {},
+    buildingSecs: {}, unitSecs: {}, skillSecs: {},
   };
 }
 
@@ -136,30 +136,38 @@ const SUPPLY_BUILDINGS = new Set(["Pylon", "Supply Depot"]);
  *  같은 수면 이름순으로 갈라 순서가 조회마다 흔들리지 않게 한다. */
 export function topEntries(
   d: Record<string, number> | undefined, ko: Record<string, string>, n: number,
-  plays?: Record<string, number>,
+  secs?: Record<string, number>,
 ): TopEntry[] {
   const merged: Record<string, number> = {};
-  const mergedPlays: Record<string, number> = {};
+  const mergedSecs: Record<string, number> = {};
   // 서버가 아직 이 갈래를 안 내려주는 사이(프론트만 먼저 배포된 순간)에도 칸이 깨지지
   // 않아야 한다 — 없으면 그냥 빈 목록이다.
   for (const [key, v] of Object.entries(d ?? {})) {
     const name = ko[key];
     if (!name || !(v > 0)) continue;
     merged[name] = (merged[name] ?? 0) + v;
-    const pv = plays?.[key];
-    if (typeof pv === "number" && pv > 0) mergedPlays[name] = (mergedPlays[name] ?? 0) + pv;
+    const sv = secs?.[key];
+    if (typeof sv === "number" && sv > 0) mergedSecs[name] = (mergedSecs[name] ?? 0) + sv;
   }
-  /* 탱크처럼 영문명 둘이 한국어 하나로 합쳐지는 이름은 판수도 함께 더해진다 — 한 판에서
-     시즈/언시즈가 둘 다 나오면 2로 세어져 평균이 실제보다 낮게 나온다. 이름이 갈리는 것은
-     탱크뿐이고 평균이 조금 보수적으로 잡히는 쪽이라 그대로 둔다. */
+  /* 탱크처럼 영문명 둘이 한국어 하나로 합쳐지는 이름은 시간도 함께 더해진다 — 한 판에서
+     시즈/언시즈가 둘 다 나오면 그 판 길이가 두 번 들어가 값이 실제보다 낮게 나온다. 이름이
+     갈리는 것은 탱크뿐이고 보수적으로 잡히는 쪽이라 그대로 둔다.
+     순위는 10분당 값이 아니라 총합으로 매긴다 — 한 판에만 잠깐 쓴 것이 10분당으로는 커 보여
+     상위로 올라오면 "많이 뽑은 다섯"이라는 목록의 뜻이 어긋난다. */
   return Object.entries(merged)
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
     .slice(0, n)
-    .map(([name, count]) => ({ name, count, plays: mergedPlays[name] ?? 0 }));
+    .map(([name, count]) => ({
+      name,
+      per10: mergedSecs[name] > 0 ? (count / mergedSecs[name]) * PER_WINDOW_SECONDS : null,
+    }));
 }
 
-/** 목록 한 줄 — 총합과, 그 이름이 나온 판수(경기당 평균을 낼 분모). */
-export interface TopEntry { name: string; count: number; plays: number }
+/** 10분(초) — 경기당 총합을 이 길이로 환산한다(서버의 PER_WINDOW_SECONDS와 같은 값). */
+export const PER_WINDOW_SECONDS = 600;
+
+/** 목록 한 줄 — 이름과 10분당 값. 길이를 모르면(옛 응답) null이라 화면이 그 줄의 수를 뺀다. */
+export interface TopEntry { name: string; per10: number | null }
 
 /** 커맨드 스트림에서 모은 재료(signals)로 그 경기의 구성을 낸다. 재료가 없으면 null. */
 export function buildMixOf(s: ReplayPlayerSignals | null | undefined): BuildMix | null {

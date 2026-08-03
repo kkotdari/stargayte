@@ -45,7 +45,7 @@ const MEDALS = ["🥇", "🥈", "🥉"];
 
 const EMPTY_STATS: MemberStats = {
   plays: 0, wins: 0, losses: 0, draws: 0, winRate: 0,
-  avgApm: null, avgEapm: null, avgCmd: null, avgEcmd: null, avgBuild: null, buildMix: null, avgWorker5: null, mixPlays: null,
+  avgApm: null, avgEapm: null, avgCmd: null, avgEcmd: null, avgBuild: null, buildMix: null, avgWorker5: null, mixPlays: null, mixSeconds: null,
 };
 
 // 정렬 가능한 칸 — 건설/유닛/스킬은 순위로 줄 세울 값이 아니라 그 사람의 색깔이라 뺐다
@@ -462,10 +462,13 @@ export default function StatsScreenV2() {
                눌러야 하는 것으로 안 보인다. */
             size={18}
             text={"· 랭크 — 포인트로 매긴 순위 / 아랫줄은 그 포인트. 눌러서 상세\n"
-              + "· 기록 — 게임수·승률 / 경기당 APM·커맨드\n"
-              + "· 건설 — 생산·방어 비율, 가운데는 경기당 건물 수, 많이 지은 건물 5\n"
+              + "· 기록 — 게임수·승률 / APM·커맨드\n"
+              + "· 건설 — 생산·방어 비율, 가운데는 건물 수, 많이 지은 건물 5\n"
               + "· 유닛 — 기본·고급·마법 / 지상·공중 비율, 5분 일꾼, 많이 뽑은 유닛 5\n"
               + "· 스킬 — 공/방/실드 경기당 평균 단계, 많이 쓴 마법 5\n"
+              + "· 경기가 길수록 커지는 수(커맨드, 건물 수)는 모두 10분당으로 환산\n"
+              + "· APM은 원래 분당, 5분 일꾼과 공/방 단계는 환산 대상이 아님\n"
+              + "· 목록은 많이 나온 순서만 보여줌(수는 검증 중이라 잠시 숨김)\n"
               + "· 건설·유닛·스킬은 리플레이로 등록한 경기만\n"
               + "· APM·커맨드는 개인전 3판, 팀전 10판을 채워야 나옴\n"
               + "· 컴퓨터·비회원이 낀 경기는 포인트 0"}
