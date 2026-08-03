@@ -1400,24 +1400,16 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    차지하는 공간 대비 실제로 누르는 일은 드문 보조 버튼이라 낭비가 컸다. 작고 가볍게 줄이고,
    콘텐츠 마지막 줄과 겹쳐도 그냥 그 위에 살짝 뜨는 것으로 허용한다(아래 .scr-main도 이제
    이 버튼을 위한 별도 여백을 안 둔다). */
+/* 자리·크기·유리 재질은 전부 등록 버튼과 같다(요청) — 크기와 유리는 위 .scr-activity-add-fab
+   규칙에 이 선택자를 함께 얹어 한 곳에서 정하고(값을 베껴 오면 언젠가 갈라진다), 여기서는
+   '어디에 서는가'만 정한다. 예전에는 제 나름의 채움(overlay 35%)과 블러(6px), 다른 그림자를
+   갖고 있어 나란히 두면 등록 버튼과 다른 재질로 보였다. */
 .scr-scrolltop {
-  /* 크기·바닥 기준을 등록 버튼(.scr-activity-add-fab-wrap)과 같은 값으로 — 두 버튼이
-     화면 아래 같은 줄에 좌우 대칭으로 선다(요청). */
   position: fixed; right: 20px;
   bottom: calc(var(--scr-float-bottom) + var(--mobile-footer-h) + 12px);
-  width: 52px; height: 52px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  /* 콘텐츠 마지막 줄 위에 늘 떠 있는 버튼이라, 예전 거의 불투명한 배경(--panel-raised)은
-     뒤에 지나가는 내용을 너무 많이 가린다는 피드백 — 투명도를 낮추고 블러만으로
-     최소한의 구분감을 준다. */
-  background: rgba(var(--overlay-rgb), 0.35); backdrop-filter: blur(6px);
-  border: none; color: var(--text); cursor: pointer; z-index: 30; transition: background .15s;
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.10),
-    inset 0 -1px 0 rgba(255,255,255,0.04),
-    0 2px 6px rgba(0,0,0,0.16);
+  border: none; color: var(--text); cursor: pointer; z-index: 30;
+  -webkit-tap-highlight-color: transparent;
 }
-@media (hover: hover) { .scr-scrolltop:hover { background: rgba(var(--overlay-rgb), 0.5); } }
 
 /* ===== PWA "홈 화면에 추가" 유도 배너 + iOS 안내 ===== */
 /* 인앱 브라우저(카톡 등) 안내 배너 — 화면 상단에 고정. 로그인이 유지되는 기본 브라우저로
@@ -7758,7 +7750,7 @@ html.scr-light-theme .scr-activity-card-comment .scr-comment-mention { color: #1
    알약이 되어, 같은 자리에 나란히 서는 탭바의 둥근 아이콘들과 결이 어긋났다. 폭을 높이와
    같게 못 박고 좌우 패딩을 없앤다: "등록" 두 글자는 52px 원 안에 들어간다(실측 26px).
    로딩 스피너가 들어설 때도 같은 원이라 폭이 튀지 않는다. */
-.scr-activity-add-fab {
+.scr-activity-add-fab, .scr-scrolltop {
   width: 52px; height: 52px; border-radius: 50%; padding: 0;
   display: inline-flex; align-items: center; justify-content: center;
   border: none; cursor: pointer; color: var(--text);
@@ -7782,8 +7774,8 @@ html.scr-light-theme .scr-activity-card-comment .scr-comment-mention { color: #1
     height .26s cubic-bezier(0.16, 1, 0.3, 1), font-size .26s cubic-bezier(0.16, 1, 0.3, 1);
   -webkit-tap-highlight-color: transparent;
 }
-.scr-activity-add-fab:active { transform: scale(0.94); }
-html.scr-light-theme .scr-activity-add-fab {
+.scr-activity-add-fab:active, .scr-scrolltop:active { transform: scale(0.94); }
+html.scr-light-theme .scr-activity-add-fab, html.scr-light-theme .scr-scrolltop {
   box-shadow:
     inset 0 0 0 0.5px rgba(255, 255, 255, 0.5),
     inset 0 1px 0 rgba(255, 255, 255, 0.55),
