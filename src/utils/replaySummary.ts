@@ -255,8 +255,15 @@ const CLASH_FORCE_MAX = 3;
 /** 편별로 나눠 부를 때의 수 — 양쪽을 나란히 놓으므로 한 편에 둘까지가 읽기 좋다
  *  ("질럿·드라군과 마린·탱크가"). 셋씩 늘어놓으면 문장이 조합 나열이 된다. */
 const CLASH_FORCE_SIDE_MAX = 2;
-/* 최대 교전에서 터진 마법을 셀 창과 최소 횟수 — 한두 번은 그 싸움의 그림이 아니다. */
-const CLASH_TECH_WINDOW_SEC = 90;
+/* 최대 교전에서 터진 마법을 셀 때의 최소 횟수 — 한두 번은 그 싸움의 그림이 아니다.
+   세는 범위는 '그 싸움이 벌어진 동안(clash.at~clash.end), 그 싸움터(반경 CLASH_RADIUS)'다.
+   예전에는 시각만 봤다(교전 시작 앞뒤 90초, 자리는 안 봄) — 그래서 판 전체에서 3분 사이에
+   터진 마법이 전부 이 싸움 것으로 딸려 들어왔다(지적: 후반 전투가 너무 묶여 문장이 길어졌다).
+   실측 169판: 그렇게 세던 마법 중 '그 싸움터 밖'의 것이 중앙 57%(1/4분위 13%, 3/4분위 94%)
+   였고, "스톰이 40번 터지는 가운데"가 실제로 그 자리에서 터진 건 17번이었다. 문장이 길어진
+   것보다 이쪽이 더 문제다 — 다른 데서 벌어진 싸움의 마법을 이 싸움 것이라고 말한 셈이다.
+   범위를 좁히면 마법을 얹는 판이 49 → 31로 준다. 줄어든 18판은 그 싸움터에서 실제로 터진
+   마법이 세 번이 안 되던 판이다. */
 const CLASH_TECH_MIN = 3;
 /* 기술을 실제로 쓴 이야기의 무게 — 기본값에 그 기술의 이야깃거리 점수(TECH_RANK)를 얹는다.
    사람마다 몇 개까지 말할지도 여기서 정한다(요청: 다양한 세부 기술 사용 진술). */
@@ -2821,7 +2828,9 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     const tally = new Map<string, number>();
     for (const p of [...winnerPlayers, ...loserPlayers]) {
       for (const c of p.signals?.castPositions ?? []) {
-        if (Math.abs(c.frame - clash.at) * SECONDS_PER_FRAME > CLASH_TECH_WINDOW_SEC) continue;
+        // 그 싸움이 벌어진 동안, 그 싸움터에서 터진 것만 센다(아래 CLASH_TECH_WINDOW_SEC 주석).
+        if (c.frame < clash.at || c.frame > clash.end) continue;
+        if (Math.hypot(c.x - clash.xy[0], c.y - clash.xy[1]) > CLASH_RADIUS) continue;
         if ((TECH_RANK[c.tech as keyof typeof TECH_RANK] ?? 0) < TECH_MIN_RANK) continue;
         tally.set(c.tech, (tally.get(c.tech) ?? 0) + 1);
       }
@@ -3685,8 +3694,24 @@ const CLASH_MIN = 8;
 const CLASH_PART_MIN = 3;
 /** 문장이 이름을 부를 만큼 '상당 부분' 참여했나 — 그 싸움 전체 명령의 이 비율은 돼야 한다
  *  (요청: 상당 부분 참여한 플레이어를 다 나열). 고정 수(CLASH_PART_MIN)만 쓰면 명령이
- *  백 건 넘게 몰린 대난전에서 두세 번 스친 사람까지 주인공으로 불린다. */
-const CLASH_NAME_SHARE = 0.05;
+ *  백 건 넘게 몰린 대난전에서 두세 번 스친 사람까지 주인공으로 불린다.
+ *
+ *  5% → 10%(지적: 후반 전투가 너무 묶여 문장이 길어졌다). 후반 문장이 길어진 자리를 172판
+ *  전체에서 찾아보니 범인은 시간 창이 아니라 이 문턱이었다 — 가장 긴 문장들은 하나같이
+ *  큰 교전 하나였고, 한 문장이 양쪽 합쳐 대여섯 이름을 불렀다(4:4 팀전). 그 싸움의 명령이
+ *  중앙 98건이라 5%는 다섯 번만 찍어도 주인공이 된다는 뜻이고, 그건 '상당 부분'이 아니라
+ *  '옆을 지나갔다'에 가깝다.
+ *
+ *  실측(교전을 찾은 169판, 불리는 이름 수 중앙/75%/최대):
+ *      5% → 5/5/8 · 8% → 4/5/7 · 10% → 3/4/6 · 15% → 2/3/5
+ *  10%면 이름이 중앙 셋으로 줄고 한쪽이 통째로 비는 판은 20판인데, 그 판들은 예전처럼
+ *  양쪽 대표 한 사람씩(clash.who)을 부르므로 문장이 비지 않는다. 15%부터는 그 판이
+ *  38판으로 늘어 '누가 싸웠나'를 잃는 쪽이 커진다.
+ *
+ *  창을 좁히는 쪽은 답이 아니었다 — 60초·14타일을 20초·10타일까지 줄여 봐도 불리는 이름은
+ *  중앙 5에서 4로 줄었을 뿐이다(교전을 찾은 판은 169 → 168). 큰 싸움에는 실제로 여럿이
+ *  달려들기 때문이다. */
+const CLASH_NAME_SHARE = 0.1;
 /* ── 그 싸움을 누가 이겼나(요청: 전투의 승패나 비긴 것도 묘사) ──
    리플레이에는 "누가 몇 기를 잡았다"가 없다. 확실히 아는 것은 '싸움이 끝난 뒤 그 자리에
    누가 남아 계속 명령을 내렸나'다 — 밀린 쪽은 그 땅에서 물러나므로 명령이 끊긴다. 딱
@@ -3716,7 +3741,11 @@ function biggestClash(
    *  — 경기를 끝낸 그 싸움터가 그 문장의 자리다). 근거도 문턱도 똑같고 고르는 자만 다르다. */
   mode: "big" | "late" = "big",
 ): {
-  at: number; xy: [number, number]; n: number; who: string[]; people: number; parts: string[];
+  at: number;
+  /** 그 싸움에 찍힌 마지막 명령의 프레임 — at부터 여기까지가 '그 싸움이 벌어진 동안'이다.
+   *  거기서 터진 마법만 그 싸움 이야기에 얹는다(clashTech 주석). */
+  end: number;
+  xy: [number, number]; n: number; who: string[]; people: number; parts: string[];
   /** 참가자와 그 사람이 그 자리에 찍은 명령 수 — 많이 싸운 순. 문장이 이름을 부를 사람을
    *  고르는 데 쓴다(위 CLASH_NAME_SHARE). */
   ranked: [string, number][];
@@ -3744,8 +3773,8 @@ function biggestClash(
   if (hits.length < CLASH_MIN) return null;
 
   let best: {
-    at: number; xy: [number, number]; n: number; who: string[]; people: number; parts: string[];
-    ranked: [string, number][]; hold: "a" | "b" | "draw";
+    at: number; end: number; xy: [number, number]; n: number; who: string[]; people: number;
+    parts: string[]; ranked: [string, number][]; hold: "a" | "b" | "draw";
   } | null = null;
   for (const h of hits) {
     const near = hits.filter(
@@ -3789,7 +3818,7 @@ function biggestClash(
     const hold = heldA >= CLASH_HOLD_MIN && heldA >= heldB * CLASH_HOLD_RATIO ? "a"
       : heldB >= CLASH_HOLD_MIN && heldB >= heldA * CLASH_HOLD_RATIO ? "b" : "draw";
     best = {
-      at: Math.min(...near.map((x) => x.frame)),
+      at: Math.min(...near.map((x) => x.frame)), end: endAt,
       xy: [round1(cx), round1(cy)], n: near.length, who, people: parts.length, parts, ranked, hold,
     };
   }
