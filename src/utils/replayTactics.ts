@@ -452,6 +452,8 @@ const PUSH_ORDER_MIN = 12;
 const RUSH_GO_ORDERS = 12;
 /** 러시는 뽑자마자 가는 수다 — 첫 병력이 나온 뒤 이 안에 안 갔으면 러시가 아니라 빌드다. */
 const RUSH_GO_SEC = 180;
+/** 그 러시에 실린 병력을 셀 창(초) — 위 판정 창과 달라야 한다(rushSize 주석의 실측). */
+const RUSH_SIZE_SEC = 90;
 /** 본진 급습(위 raidOn) — 이 시간 안에 상대 본진에 이만큼 찍혔으면 들이친 것이다. */
 const RAID_WINDOW_SEC = 120;
 const RAID_ORDERS_MIN = 30;
@@ -883,11 +885,17 @@ function detectFor(c: Ctx): Tactic[] {
   const out: Tactic[] = [];
   const u = (n: string) => s.unitCounts[n] ?? 0;
   const firstU = (n: string): number | null => s.firstUnitFrame[n] ?? null;
-  /** 러시에 실린 병력 규모 — 첫 유닛이 나온 뒤 RUSH_GO_SEC 안에 그 유닛을 몇 기까지
-   *  뽑았나(요청: 초반 러시에서는 유닛 기수도 중요하다). 그때까지 뽑은 총수라 '몇 기로
-   *  달렸나'의 상한인데, 초반에는 죽은 병력이 거의 없어 실제 규모에 가깝다. */
+  /** 러시에 실린 병력 규모 — 첫 유닛이 나온 뒤 RUSH_SIZE_SEC 안에 그 유닛을 몇 기까지
+   *  뽑았나(요청: 초반 러시에서는 유닛 기수도 중요하다).
+   *
+   *  창을 러시 판정 창(RUSH_GO_SEC 180초)에서 90초로 줄였다(지적: 초반 병력 기수는 진짜
+   *  초반, 3~5분까지여야 한다. 그 이후까지 합치면 수가 너무 부풀려진다). 실측(질럿 러시
+   *  58건): 첫 질럿이 중앙 1.7분에 나오고 상대 진영에 닿는 것이 중앙 2.1분인데, 뽑은 수를
+   *  세는 창이 +180초면 중앙 20기가 된다 — 그건 러시 병력이 아니라 3분 동안의 생산량이다.
+   *  +90초면 중앙 12기(닿을 무렵 뽑아 둔 것 + 곧바로 따라붙은 것)이고, 닿은 순간까지만
+   *  세면 중앙 3기로 이번엔 너무 적다(뒤따라 들어간 병력이 통째로 빠진다). */
   const rushSize = (unit: string, from: number): number =>
-    (s.unitFrames[unit] ?? []).filter((f) => f <= from + RUSH_GO_SEC / SECONDS_PER_FRAME).length;
+    (s.unitFrames[unit] ?? []).filter((f) => f <= from + RUSH_SIZE_SEC / SECONDS_PER_FRAME).length;
   const firstB = (n: string): number | null => s.firstBuildingFrame[n] ?? null;
   const tanks = u("Siege Tank (Tank Mode)") + u("Siege Tank (Siege Mode)");
   const who = rawName;

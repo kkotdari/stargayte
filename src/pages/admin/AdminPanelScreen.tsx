@@ -327,6 +327,11 @@ export default function AdminPanelScreen({ isAdmin }: AdminPanelScreenProps) {
                   >
                     {downloading ? <Spinner /> : "배치다운로드"}
                   </button>
+                  {/* 리플레이 폴더 일괄 등록 — 버튼을 누르면 바로 폴더 선택창이 뜬다.
+                      배치등록 → 요약 재분석 순이 자연스럽다(요청) — 먼저 등록하고 그다음
+                      다시 읽는 순서다. 이 컴포넌트가 함께 그리는 옵션·안내 줄은 CSS에서
+                      뒤로 미뤄(order) 두 버튼이 한 줄에 나란히 선다. */}
+                  <ReplayBatchButton />
                   {/* 요약 재분석 — 규칙이 좋아졌을 때 옛 경기까지 새 규칙으로 다시 읽는다(요청).
                       경기 내용은 그대로고 요약(과 없던 미니맵)만 바뀐다. 소제목을 따로 두지
                       않고 경기관리에 함께 둔다(요청) — 등록된 경기를 손대는 일이라 배치등록·
@@ -345,9 +350,6 @@ export default function AdminPanelScreen({ isAdmin }: AdminPanelScreenProps) {
                       </>
                     ) : "요약 재분석"}
                   </button>
-                  {/* 리플레이 폴더 일괄 등록 — 버튼을 누르면 바로 폴더 선택창이 뜬다. 제 줄을
-                      통째로 쓰는 컴포넌트라(그 안의 결과 창·옵션까지 함께) 맨 뒤에 둔다. */}
-                  <ReplayBatchButton />
                 </div>
 
                 {/* 랭킹 관리 — 순위 스냅샷 쪽 일은 경기관리와 성격이 달라 소제목을 따로

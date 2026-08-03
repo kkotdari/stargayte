@@ -3896,8 +3896,12 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    실제 트리거 버튼만 grid 칸을 차지하고, 메뉴/부가 정보는 아래에서 grid-column:1/-1로
    가로 전체를 차지하는 한 줄로 펼쳐진다. */
 .scr-admin-panel-batch { display: contents; }
+/* 옵션 체크박스·안내 줄은 그리드의 마지막으로 미룬다(order) — 이 컴포넌트는
+   display:contents라 자식들이 그대로 그리드 칸이 되는데, 그 사이에 끼면 뒤에 오는
+   버튼(요약 재분석)이 다음 줄로 밀린다(요청: 배치등록 옆에 요약 재분석, 배치등록 →
+   요약 재분석 순). 줄 전체를 쓰는 것들이라 맨 아래가 제자리이기도 하다. */
 .scr-admin-panel-batch-option, .scr-admin-panel-batch-counts, .scr-admin-panel-batch .scr-err {
-  grid-column: 1 / -1;
+  grid-column: 1 / -1; order: 1;
 }
 /* 트리거 버튼 한 줄 — 결과 보기 재오픈 버튼은 없앴다(지적: 배치등록하면 생기는 결과
    보기 버튼 삭제). 버튼이 이 줄의 유일한 항목이라 다른 그리드 칸들과 같은 폭이면 된다. */
