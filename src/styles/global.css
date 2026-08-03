@@ -7114,7 +7114,7 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   display: grid; align-items: stretch; gap: 0; width: 100%;
   /* 시각은 가장 긴 값("8월 3일 23:59")에 맞춰 고정 — 줄마다 폭이 달라지면 제목이 들쭉
      날쭉해져 세로로 훑을 수가 없다. 제목도 고정폭이라 내용 칸이 늘 같은 x에서 시작한다. */
-  grid-template-columns: 100px minmax(0, 1fr) 106px;
+  grid-template-columns: 84px minmax(0, 1fr) 106px;
   /* 위아래 여백은 줄이 아니라 각 칸이 낸다(아래 규칙) — 줄이 내면 그 여백이 격자 밖이라
      칸 높이가 글자 높이(18px)에 그치고, 세로 구분선도 딱 그만큼만 그려진다(실측). 칸이
      내면 칸이 줄 높이를 통째로 채워 선이 위아래 줄과 맞닿는다. */
@@ -7128,12 +7128,12 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 /* 칸 안에서는 가운데(요청) — 표의 칸처럼 읽히려면 글자가 칸의 한가운데 서야 한다. 폭이
    고정인 제목·시각 칸은 남는 자리가 좌우로 반씩 갈리고, 늘어나는 내용 칸도 같은 규칙을
    따라 한 덩어리로 가운데 앉는다. */
-/* 줄 높이는 이 위아래 패딩이 정한다 — 40% 키웠다(요청: 48 → 67px). 글자는 18px뿐이라
-   높이는 전부 여백이고, 여백이 늘면 한 줄이 한 덩어리로 잡혀 훑기가 편해진다. 딱지가
-   앉을 윗자리도 이 여백에서 나온다(아래 .scr-activity-row-flag). */
+/* 줄 높이는 이 위아래 패딩이 정한다 — 48에서 67px로 키웠다가 10% 되돌렸다(요청).
+   높이는 사실상 전부 여백이고, 여백이 넉넉해야 한 줄이 한 덩어리로 잡혀 훑기가 편하다.
+   딱지와 번호가 앉을 윗자리도 이 여백에서 나온다. */
 .scr-activity-row > * {
   display: flex; align-items: center; justify-content: center;
-  padding: 24.5px 10px 24.5px 0;
+  padding: 21px 10px 21px 0;
 }
 .scr-activity-row > * + * { border-left: 1px solid var(--line-faint); padding-left: 10px; }
 .scr-activity-row > *:last-child { padding-right: 0; }
@@ -7152,6 +7152,9 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    잘린다(실측: min-width 없이 두면 제목이 내용 칸을 덮어썼다). */
 .scr-activity-row-title {
   display: flex; align-items: center; min-width: 0; font-weight: 600;
+  /* 제목은 한 스텝 작게(요청) — 줄마다 같은 낱말 몇 개가 되풀이되는 자리라, 한 번 익히면
+     크기가 작아도 모양만으로 읽힌다. 정작 매번 달라지는 건 내용 칸이다. */
+  font-size: var(--fs-micro);
   /* 딱지(.scr-activity-row-flag)가 이 칸을 기준으로 앉는다. */
   position: relative;
 }
@@ -7200,9 +7203,9 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    도로 진하게 올린다. */
 .scr-activity-row-desc {
   display: flex; align-items: center; gap: 6px; min-width: 0;
-  /* 한 스텝 작게(요청) — 제목이 이 줄의 이름표고 내용은 그 부연이다. 같은 크기로 두면
-     둘이 같은 무게로 읽혀 어느 쪽부터 봐야 할지가 안 정해진다. */
-  font-size: var(--fs-micro);
+  /* 내용은 도로 키운다(요청) — 줄마다 실제로 달라지는 값이 여기 있어서, 훑을 때 눈이
+     머무는 자리다. 대신 제목 쪽을 한 스텝 내려 위계를 만든다. */
+  font-size: var(--fs-caption);
   color: var(--row-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .scr-activity-row-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
@@ -7228,7 +7231,7 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
      정도라 남는 폭을 앞뒤에 나눠 줘도 넉넉하다. */
   /* 제목 칸은 "랭크 변동" + NEW가 함께 들어갈 만큼(실측 110px). 내용 칸은 "4명 9경기"
      정도라 남는 폭을 앞에 더 줘도 넉넉하다. */
-  .scr-activity-row { grid-template-columns: 100px minmax(0, 1fr) 84px; }
+  .scr-activity-row { grid-template-columns: 84px minmax(0, 1fr) 84px; }
   .scr-activity-row > * + * { padding-left: 8px; }
   .scr-activity-row > * { padding-right: 8px; }
   .scr-activity-row > *:last-child { padding-right: 0; }
@@ -7250,7 +7253,11 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    backwards는 시작 전 상태만 미리 잡아 첫 프레임 튐을 막고, 끝난 뒤에는 아무것도 안 남긴다.
    닫힘(closing)은 끝나면 언마운트되므로 어느 쪽이든 같지만, 짝을 맞춰 둔다. */
 .scr-activity-row-fold-open { animation: scr-row-open .2s ease-out backwards; }
-.scr-activity-row-fold-closing { animation: scr-row-close .18s ease-in backwards; }
+/* 닫힘만 forwards다 — 애니메이션이 끝난 뒤에도 마지막 프레임(투명)을 붙들고 있어야 한다.
+   backwards로 두면 0.18초가 끝나는 순간 제 색으로 돌아왔다가 그 다음 렌더에 언마운트돼,
+   접히는 마지막에 카드가 한 번 번쩍인다(지적). 담는 블록 문제(위 주석)는 이쪽엔 없다 —
+   닫히는 줄은 곧 사라지고, 확인창은 펼쳐진 줄에서만 뜬다. */
+.scr-activity-row-fold-closing { animation: scr-row-close .18s ease-in forwards; }
 @keyframes scr-row-open { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
 @keyframes scr-row-close { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(-6px); } }
 @media (prefers-reduced-motion: reduce) {
@@ -7908,9 +7915,19 @@ html.scr-light-theme .scr-activity-card-comment .scr-comment-mention { color: #1
 .scr-activity-add-fab-wrap {
   position: fixed; z-index: 56; left: 20px;
   bottom: calc(var(--scr-float-bottom) + var(--mobile-footer-h) + 12px);
-  /* 탭바가 축소될 때 함께 내려간다 — 탭바의 transform과 같은 곡선·길이로 맞춰야 둘이
-     한 덩어리로 움직인다(탭바는 .28s ease-in-out). */
-  transition: bottom .28s ease-in-out;
+  /* 여기 적은 트랜지션은 '커질 때'를 맡는다(축소로 갈 때는 아래 -mini 규칙의 것이 쓰인다).
+     두 방향을 따로 두는 이유: 같은 곡선으로 맞췄더니 커지는 동안 둘이 겹쳤다(지적).
+     탭바는 왼쪽 끝이 66→16px로 쓸고 들어오는데, 버튼은 아직 탭바 높이 안에 있어서
+     실측 16프레임 중 7프레임이 겹쳤다(그중 4프레임은 버튼이 통째로 탭바 안, 52×52).
+     그래서 커질 때는 앞이 급한 곡선(expo-out)으로 버튼을 먼저 띄워 보낸다 — 탭바 왼쪽
+     끝이 버튼 자리에 닿는 건 대략 0.1초쯤인데, 이 곡선이면 그때 이미 9할을 올라가 있다.
+     크기(44→52)도 같이 물려 둔다. 위치만 움직이고 크기가 툭 바뀌면 올라가는 도중에
+     버튼만 한 번 커졌다 가는 것처럼 보인다.
+     left도 함께 묶되 계단 함수로 둔다(step-end) — 커질 때 왼쪽 자리는 8px에서 20px로
+     '오른쪽으로' 옮겨 가는데, 그게 즉시 일어나면 버튼이 아직 탭바 높이에 있는 채로
+     탭바 쪽으로 12px 밀려 들어간다(실측: 이것 때문에 첫 두 프레임이 겹쳤다). 다 올라간
+     뒤에 옮기면 그 순간엔 이미 탭바 위라 부딪힐 것이 없다. */
+  transition: bottom .22s cubic-bezier(0.16, 1, 0.3, 1), left .22s step-end;
 }
 /* 탭바가 0.8로 줄면 바닥 기준으로 그 높이의 20%만큼 자리가 빈다(축소 기준점이 50% 100%
    라 아래는 그대로고 위가 내려온다). FAB만 제자리에 있으면 탭바와의 간격이 그만큼 벌어져
@@ -7926,6 +7943,10 @@ html.scr-light-theme .scr-activity-card-comment .scr-comment-mention { color: #1
   html.scr-tabbar-mini .scr-activity-add-fab-wrap {
     bottom: calc(var(--scr-float-bottom) + (var(--mobile-footer-h) * 0.72 - 44px) / 2);
     left: 8px;
+    /* 작아질 때는 반대로 탭바가 먼저 물러나야 한다 — 버튼이 먼저 내려가면 아직 넓은
+       탭바 위로 들어간다. 탭바와 같은 곡선(.28s ease-in-out)에 살짝 늦게 출발시킨다. */
+    /* 작아질 때는 반대다 — 왼쪽으로 먼저 비켜서고(step-start) 그 다음에 내려간다. */
+    transition: bottom .28s ease-in-out .05s, left .05s step-start;
   }
   /* 원이 44px로 줄면 글자도 같이 줄어야 한다(요청) — 크기만 줄이면 "등록"이 원 안을
      꽉 채워, 줄어든 게 아니라 글자가 커진 것처럼 보였다. 52:44와 같은 비율의 한 단계
@@ -7968,7 +7989,8 @@ html.scr-light-theme .scr-activity-card-comment .scr-comment-mention { color: #1
     inset 0 1px 0 rgba(255, 255, 255, 0.1),
     0 2px 5px rgba(0, 0, 0, 0.2),
     0 6px 16px -8px rgba(0, 0, 0, 0.3);
-  transition: transform .12s ease;
+  transition: transform .12s ease, width .22s cubic-bezier(0.16, 1, 0.3, 1),
+    height .22s cubic-bezier(0.16, 1, 0.3, 1), font-size .22s cubic-bezier(0.16, 1, 0.3, 1);
   -webkit-tap-highlight-color: transparent;
 }
 .scr-activity-add-fab:active { transform: scale(0.94); }
