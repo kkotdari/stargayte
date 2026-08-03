@@ -7623,7 +7623,9 @@ html.scr-light-theme .scr-feed-add-fab {
 }
 .scr-feed-shift-row-hl { background: var(--highlight-bg); }
 .scr-feed-shift-row-hl .scr-feed-shift-name { color: var(--bar-text); }
-.scr-feed-shift-name { font-weight: 600; }
+/* 줄을 1스텝 줄일 때 닉네임까지 딸려 줄었다(지적: 닉네임은 원래 크기로) — 작아져야
+   하는 건 순위·포인트 같은 수치 쪽이고, 누구 이야기인지는 그대로 읽혀야 한다. */
+.scr-feed-shift-name { font-weight: 600; font-size: var(--fs-caption); }
 .scr-feed-shift-up { color: #7fd18b; font-weight: 700; }
 .scr-feed-shift-down { color: #e08a8a; font-weight: 700; }
 /* 신규 진입은 오르내림이 아니다 — 올림(초록)/내림(빨강) 옆에서 골드까지 칠하면 셋 다
