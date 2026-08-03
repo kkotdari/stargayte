@@ -114,7 +114,15 @@ function NoteComposer({
       if (inputRef.current?.contains(t) || dropRef.current?.contains(t)) return;
       setMentionQuery(null);
     };
-    const closeOnScroll = () => setMentionQuery(null);
+    /* 목록 자신을 굴리는 건 '바깥 스크롤'이 아니다 — 후보가 많아 드롭다운(max-height 260px,
+       overflow-y:auto)을 굴리려 하면 그 scroll이 이 캡처 리스너에 잡혀 창이 그대로
+       닫혔다(지적: @ 드롭다운을 스크롤하면 닫힘). 안에서 난 스크롤은 흘려보낸다 —
+       그 경우 드롭다운과 입력칸의 상대 위치는 어차피 그대로다. */
+    const closeOnScroll = (e: Event) => {
+      const t = e.target as Node | null;
+      if (t && dropRef.current?.contains(t)) return;
+      setMentionQuery(null);
+    };
     document.addEventListener("pointerdown", closeOnOutside, true);
     // 스크롤은 캡처 단계로 전역에서(어느 스크롤 컨테이너든) 잡는다.
     window.addEventListener("scroll", closeOnScroll, true);
