@@ -1,6 +1,7 @@
 // ============================================================
 // API 클라이언트 — stargayte-api 서버와 통신한다.
 // ============================================================
+import type { BuildMix } from "../utils/replayBuildMix";
 import type {
   Member, GameResult, FeedComment, FeedTargetType, RankingShift, NewGameResult, SignupPayload, MemberCreatePayload, MemberStatus, MemberRole,
   ScreenKey, AppVersion, AppVersionStatus, AppVersionInfo,
@@ -381,6 +382,7 @@ export const api = {
       cmdCount: number | null;
       effectiveCmdCount: number | null;
       buildCount: number | null;
+      buildMix: BuildMix | null;
     }[];
   }): Promise<{ merged: boolean; matchNo: string | null }> {
     return request<{ merged: boolean; matchNo: string | null }>("/api/game-results/merge-replay", {

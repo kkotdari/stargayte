@@ -100,7 +100,7 @@ export default function ReplayReviewModal({
       // member.battletag는 나중에 바뀔 수 있어 이 값이 이 경기 시점의 유일한 증거다.
       const toSlot = (match: UnmatchedPlayer): GameResultSlot => ({
         memberId: member.id, race: match.race, rawName: match.rawName,
-        apm: match.apm, eapm: match.eapm, cmdCount: match.cmdCount, effectiveCmdCount: match.effectiveCmdCount, buildCount: match.buildCount,
+        apm: match.apm, eapm: match.eapm, cmdCount: match.cmdCount, effectiveCmdCount: match.effectiveCmdCount, buildCount: match.buildCount, buildMix: match.buildMix,
       });
       return {
         ...d,
@@ -124,7 +124,7 @@ export default function ReplayReviewModal({
       const toSlot = (match: UnmatchedPlayer): GameResultSlot => ({
         memberId: kind === "computer" ? newComputerSlotId() : newUnregisteredSlotId(),
         race: match.race, rawName: match.rawName,
-        apm: match.apm, eapm: match.eapm, cmdCount: match.cmdCount, effectiveCmdCount: match.effectiveCmdCount, buildCount: match.buildCount,
+        apm: match.apm, eapm: match.eapm, cmdCount: match.cmdCount, effectiveCmdCount: match.effectiveCmdCount, buildCount: match.buildCount, buildMix: match.buildMix,
       });
       return {
         ...d,
