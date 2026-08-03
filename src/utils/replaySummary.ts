@@ -334,6 +334,9 @@ const TECH_BEATS_PER_SUMMARY = 2;
  *  "그 판 내내 썼다"고 할 수 있는 선이고, 무게 보너스(floor(n/10))가 붙기 시작하는 선이기도
  *  하다. 이보다 적게 쓴 마법은 예약 없이 무게로만 겨룬다. */
 const TECH_RESERVE_MIN_USES = 10;
+/** 드물게 쓰지만 한 번으로 판이 갈리는 마법 — 그 등급과, 그때 자리를 줄 최소 횟수. */
+const TECH_RARE_RANK = 6;
+const TECH_RARE_MIN_USES = 3;
 /** 상징 업그레이드 문장의 기본 무게 — 여기에 UPGRADE_RANK를 얹는다. 전술 문장은 저마다의
  *  무게에 10을 더해 들어오므로(tacticBeats), 재료 문장을 그 아래에 두면 아무리 늘려도
  *  자리를 못 얻는다 — 이야깃거리가 큰 업그레이드(랭크 4~6)가 전술과 겨룰 만한 자리에 오게
@@ -3287,7 +3290,18 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   // 디스럽션웹 4회가 새로 문장이 됐다). 그런 것도 무게로 이기면 얼마든지 들어간다 —
   // 여기서 막는 건 자리 보장뿐이다.
   for (const b of ranked) {
-    if (b.k !== "tech" || (typeof b.p?.n === "number" ? b.p.n : 0) < TECH_RESERVE_MIN_USES) continue;
+    if (b.k !== "tech") continue;
+    const uses = typeof b.p?.n === "number" ? b.p.n : 0;
+    const rank = typeof b.p?.tech === "string"
+      ? (TECH_RANK[b.p.tech as keyof typeof TECH_RANK] ?? 0) : 0;
+    /* 자주 쓰는 마법은 '많이 썼나'로, 드물게 쓰는 마법은 '썼나'로 가른다(지적: 아비터를
+       클로킹·스테이시스로도 쓰는데 무조건 리콜로만 연결되는 건 아닌지 검토).
+       리콜은 실제로 리콜을 쓴 좌표에서만 나오므로 잘못 붙는 일은 없었지만, 확인하다 보니
+       반대쪽이 비어 있었다 — 실측(172판) 스테이시스를 쓴 사람이 17명인데 요약에 나온 적은
+       0건이었다. 예약석 문턱이 '열 번 이상'이라 그 마법에는 절대 안 걸린다: 마법별 사용
+       횟수 중앙값이 스톰 11회·마인 18회인 반면 스테이시스 3회·플레이그 3회·EMP 4회다.
+       한 번 쓰는 것만으로 판이 갈리는 마법(TECH_RANK 6 이상)은 세 번부터 자리를 준다. */
+    if (uses < TECH_RESERVE_MIN_USES && !(rank >= TECH_RARE_RANK && uses >= TECH_RARE_MIN_USES)) continue;
     consider(b, false, "tech");
   }
   // 4차: 정찰 예약석 — 판을 훑어본 스캔에만(위 EXTRA_SLOTS 주석).

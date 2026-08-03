@@ -8189,19 +8189,23 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
      다시 0.8을 곱한 것이다. 확대된 아바타(위 0.86)는 이번 요청 대상이 아니라 그대로 둔다.
      해골도 표정과 같이 줄인다: 둘은 아바타 양쪽 어깨에 짝으로 앉는 표시라 한쪽만 줄이면
      짝이 어긋나 보인다. */
-  /* 여기 값들을 한 번 더 10% 키운다(요청: 모바일에서 이모지들 크기 10%만 증가). 값이
-     한 자리 수까지 내려와 있어 1.1배가 정수로 안 떨어지는 것들이 있는데(8 → 8.8), 그럴
-     때는 가장 가까운 정수로 올린다 — 아래 괄호에 실제 배율을 적어 둔다. */
-  /* 본진 액션·화살촉 끝 이모지(같은 클래스를 쓴다) — 18 → 20(+11%, 짝수). */
-  .scr-minimap-arrow-mark { font-size: 20px; }
-  .scr-minimap-arrow-mark.scr-minimap-mark-home { font-size: 20px; }
-  /* 화살표 목의 표시(도우러 간 길의 날개) — 촉 이모지의 0.6배. */
-  .scr-minimap-arrow-mark-neck { font-size: 12px; }
-  /* 표정·해골 8 → 9(+12%), 주인공 표정 12 → 13(+8%), 트로피 18 → 20(+11%). */
-  .scr-minimap-mark-face { font-size: 9px; }
-  .scr-minimap-mark-skull { font-size: 9px; }
-  .scr-minimap-mark-on .scr-minimap-mark-face { font-size: 13px; }
-  .scr-minimap-mark-face.scr-minimap-mark-face-trophy { font-size: 20px; }
+  /* 모바일 이모지를 한 벌로 다시 잡는다(지적: 이모지를 키웠는데 표정·화살표 날개는
+     그대로다. 다 같이 크기를 맞춰 달라).
+     처음에는 값마다 1.1을 곱했는데, 표정은 8 → 9라 1px이 늘어 눈에 띄지도 않았다.
+     그래서 배율이 아니라 'PC 대비 같은 비율'로 다시 잡는다 — PC 값(액션 42 / 목 26 /
+     표정·해골 22 / 주인공 표정 30)에 일제히 0.52를 곱한 값이다. 그러면 모바일에서도
+     PC와 같은 크기 서열이 그대로 유지되고, 한 종류만 덜 커 보이는 일이 없다.
+     트로피만 예외로 더 크다(요청: 승리 트로피는 크게) — 서열을 일부러 깬 자리다. */
+  /* 본진 액션·화살촉 끝 이모지(같은 클래스를 쓴다) — 42 × 0.52 ≈ 22(짝수). */
+  .scr-minimap-arrow-mark { font-size: 22px; }
+  .scr-minimap-arrow-mark.scr-minimap-mark-home { font-size: 22px; }
+  /* 화살표 목의 날개 — 26 × 0.52 ≈ 14. */
+  .scr-minimap-arrow-mark-neck { font-size: 14px; }
+  /* 표정·해골 22 × 0.52 ≈ 12, 주인공 표정 30 × 0.52 ≈ 16. */
+  .scr-minimap-mark-face { font-size: 12px; }
+  .scr-minimap-mark-skull { font-size: 12px; }
+  .scr-minimap-mark-on .scr-minimap-mark-face { font-size: 16px; }
+  .scr-minimap-mark-face.scr-minimap-mark-face-trophy { font-size: 22px; }
 }
 
 /* (삭제) 스냅 아바타가 따로 뜬 사람의 본진을 흐리게 하던 규칙 — 이제 당한 사람 마커를
