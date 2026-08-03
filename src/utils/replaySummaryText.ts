@@ -603,6 +603,8 @@ const spotWord = (v: unknown): string => (typeof v === "string" ? SPOT_KO[v] ?? 
 
 /** 전술을 문장 안에서 부를 이름 — "3게이트 질럿 러시로 …"처럼 다른 문장에 끼워 넣을 때 쓴다.
  *  여기 없는 키는 '들이친 수'가 아니라는 뜻이라, 피해 문장 자체가 만들어지지 않는다. */
+/** 급습 문장에 유닛 수를 적기 시작하는 선 — 이보다 적으면 '모아서 갔다'가 아니라 견제다. */
+const RAID_UNIT_SHOW = 5;
 function tacticLabel(k: string, p: Record<string, unknown>): string {
   switch (k) {
     case "zling-rush": {
@@ -632,6 +634,15 @@ function tacticLabel(k: string, p: Record<string, unknown>): string {
     case "mech": return "메카닉 진출";
     case "moka": return "목동 저그";
     case "muta": return "뮤탈 견제";
+    /* 이름 없는 급습(replayTactics의 raidOn) — 무엇으로 갔는지가 곧 이름이다. 유닛을
+       못 짚었으면 "본진 급습"으로만 부른다. */
+    case "base-raid": {
+      const unit = UNIT_KO[str(p.unit)] ?? "";
+      if (!unit) return "본진 급습";
+      // 몇 기를 모아 갔는지가 곧 그 수의 크기다(요청) — 한두 기는 견제라 수를 안 적는다.
+      const n = num(p.n);
+      return n >= RAID_UNIT_SHOW ? `${unit} ${n}기 급습` : `${unit} 급습`;
+    }
     case "fast-tech": {
       const unit = UNIT_KO[str(p.unit)] ?? "";
       return unit ? `패스트 ${unit}` : "";

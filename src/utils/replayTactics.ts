@@ -423,6 +423,16 @@ const PUSH_ORDER_MIN = 12;
 const RUSH_GO_ORDERS = 12;
 /** 러시는 뽑자마자 가는 수다 — 첫 병력이 나온 뒤 이 안에 안 갔으면 러시가 아니라 빌드다. */
 const RUSH_GO_SEC = 180;
+/** 본진 급습(위 raidOn) — 이 시간 안에 상대 본진에 이만큼 찍혔으면 들이친 것이다. */
+const RAID_WINDOW_SEC = 120;
+const RAID_ORDERS_MIN = 30;
+/** '무엇으로 갔나'를 그 직전 이 시간 안의 생산에서 짚는다. */
+const WENT_WITH_SEC = 240;
+/** 급습의 주인공이 될 수 없는 것들 — 일꾼·보급·정찰 유닛은 병력이 아니다. */
+const RAID_UNIT_EXCLUDE = new Set([
+  "SCV", "Probe", "Drone", "Supply Depot", "Pylon", "Overlord", "Larva",
+  "Observer", "Scanner Sweep", "Medic", "Shuttle", "Dropship", "Overlord (Transport)",
+]);
 
 /** 그 사람 진영으로 실제로 병력을 몰고 들어온 상대들의 이름(요청). from~to 프레임 사이만
  *  본다 — 경기 내내로 재면 결국 모두가 한 번씩은 들어가므로 아무 뜻이 없다.
@@ -456,9 +466,15 @@ export function pushersOn(
       let n = 0;
       for (const o of f.signals?.orderPositions ?? []) {
         if (o.frame < from || o.frame > to) continue;
-        // 일꾼·건물이 낸 명령(자원 캐기·랠리)은 '덮치러 갔다'의 근거가 못 된다
-        // (파서가 orderPositions.by로 짚어 준다).
-        if (o.by === "Worker" || o.by === "Building") continue;
+        /* 자원 캐기·랠리는 '덮치러 갔다'의 근거가 못 된다. 다만 '일꾼'이라는 꼬리표만으로
+           버리면 안 된다(지적: 뮤탈로 본진 뚝배기를 날린 내용이 통째로 빠진다) — 그 꼬리표는
+           '저만 쓸 수 있는 커맨드'로 역추적해 붙이는 값이라, 뮤탈처럼 그런 커맨드가 없는
+           유닛은 무리째로 Worker에 남는다(실측: 상대 본진을 헤집은 명령 117개가 전부
+           Worker였고, 그래서 그 급습이 어디에서도 안 잡혔다).
+           그래서 꼬리표 대신 '무엇을 하러 간 명령인가'를 본다 — 이동·공격이면 병력이 간
+           것이고, 종류가 안 붙은 우클릭(자원 채집·수리)만 버린다. */
+        if (o.by === "Building") continue;
+        if (o.by === "Worker" && o.kind === undefined) continue;
         if (dist(o, home) < r && ++n >= PUSH_ORDER_MIN) return true;
       }
       return false;
@@ -847,6 +863,18 @@ function detectFor(c: Ctx): Tactic[] {
    *
    *  좌표를 못 읽는 리플레이(geo 없음)에서는 예전처럼 빌드만으로 통과시킨다 — 여기서 막으면
    *  그런 판은 러시가 통째로 사라진다. */
+  /** 그 무렵 무엇을 몰고 갔나 — 직전 WENT_WITH_SEC 안에 가장 많이 뽑은 전투 유닛.
+   *  명령에 실린 유닛 이름(orderPositions.by)은 못 짚는 경우가 많아 이쪽이 더 잘 맞는다. */
+  const wentWith = (at: number): { unit: string; n: number } | null => {
+    const from = at - WENT_WITH_SEC / SECONDS_PER_FRAME;
+    let best: { unit: string; n: number } | null = null;
+    for (const [unit, fs] of Object.entries(s.unitFrames)) {
+      if (RAID_UNIT_EXCLUDE.has(unit)) continue;
+      const n = fs.filter((f) => f >= from && f <= at).length;
+      if (n > 0 && (!best || n > best.n)) best = { unit, n };
+    }
+    return best;
+  };
   const wentAt = (from: number | null, withinSec: number): boolean => {
     if (!geo) return true;
     if (from === null) return false;
@@ -1649,6 +1677,66 @@ function detectFor(c: Ctx): Tactic[] {
     });
   }
 
+  /* ── 본진 급습 ── 상대 본진에 명령이 확 몰린 구간 그 자체를 하나의 수로 본다(지적:
+     뮤탈로 본진 뚝배기를 날린 중요한 내용이 통째로 빠진다).
+
+     지금까지 '들이친 이야기'는 전부 이름 있는 전술에 딸려 있었다 — 드랍·리버·러시·커널처럼
+     먼저 그 전술로 잡혀야 "그래서 상대가 꺾였다"까지 갈 수 있었다. 그런데 뮤탈 여섯 기로
+     본진을 헤집는 것 같은 수는 어느 전술 이름에도 안 걸린다(뮤탈 견제는 아홉 기부터다).
+     그래서 이름 없이도, 근거만으로 잡는다: 상대 본진에 짧은 시간 안에 명령이 쏟아졌다.
+     정찰은 몇 번으로 끝나므로 수 자체가 근거가 된다(pushersOn의 PUSH_ORDER_MIN과 같은 생각).
+
+     무엇으로 갔는지는 명령에 안 남을 때가 많아(선택 태그로 못 짚으면 by가 비거나 엉뚱하다)
+     '그 직전에 뽑은 전투 유닛'으로 짚는다 — 급습은 뽑자마자 가는 수라 이게 잘 맞는다. */
+  const raidOn = (): Tactic[] => {
+    if (!geo) return [];
+    const byFoe = new Map<string, { frame: number; x: number; y: number }[]>();
+    for (const o of s.orderPositions) {
+      // 병력을 움직인 명령만 센다 — 랠리와 종류 없는 우클릭(채집)은 급습의 근거가 아니다.
+      if (o.by === "Building" || o.kind === undefined) continue;
+      const f = geo.enemyAt(o);
+      if (!f) continue;
+      const list = byFoe.get(f);
+      if (list) list.push(o); else byFoe.set(f, [o]);
+    }
+    const win = RAID_WINDOW_SEC / SECONDS_PER_FRAME;
+    const res: Tactic[] = [];
+    for (const [foe, list] of byFoe) {
+      list.sort((a, b) => a.frame - b.frame);
+      // 가장 많이 몰린 창 하나만 — 한 사람에게 두 번 들이친 이야기까지 늘어놓지는 않는다.
+      let best: { i: number; n: number } | null = null;
+      for (let i = 0; i < list.length; i += 1) {
+        let j = i;
+        while (j < list.length && list[j].frame - list[i].frame <= win) j += 1;
+        if (!best || j - i > best.n) best = { i, n: j - i };
+      }
+      if (!best || best.n < RAID_ORDERS_MIN) continue;
+      const burst = list.slice(best.i, best.i + best.n);
+      const at = burst[0].frame;
+      res.push({
+        // 크게 들이칠수록 무겁다 — 서른 번 찍고 지나간 것과 이백 번을 쏟아부은 것은 다르다.
+        key: "base-raid", weight: 10 + Math.min(4, Math.floor(best.n / RAID_ORDERS_MIN)),
+        at, who, whom: foe,
+        p: {
+          xy: [
+            burst.reduce((n, o) => n + o.x, 0) / burst.length,
+            burst.reduce((n, o) => n + o.y, 0) / burst.length,
+          ] as [number, number],
+          /* 무엇을 얼마나 모아서 갔나(요청: 특정 유닛을 많이 모아 공격 간 경우 문장에).
+             수는 '경기 전체에 뽑은 수'가 아니라 가기 직전 창(WENT_WITH_SEC) 안에 뽑은
+             수다 — 총량으로 세면 후반 급습이 "질럿 171기 급습"이 되어, 그 병력을 다
+             몰고 간 것처럼 읽힌다(실측). */
+          ...(() => {
+            const w = wentWith(at);
+            return (w ? { unit: w.unit, n: w.n } : {}) as Record<string, string | number>;
+          })(),
+        },
+      });
+    }
+    return res;
+  };
+  out.push(...raidOn());
+
   // ── 셋방살이(요청) ── 내 기지에는 건물이 거의 없고 아군 기지에 얹혀 있는 것(지적).
   // 건물 하나가 아군 쪽에 있는 걸로는 부족하다 — 내 건물 덩어리 자체가 거기 앉아야 한다.
   if (geo?.lodgingHost) {
@@ -1746,12 +1834,16 @@ export function scanTactics({ sidePlayers, foePlayers, startSpots }: TacticScanI
   return all
     .sort((a, b) => b.weight - a.weight)
     // gg는 사람마다 남긴다 — 팀원이 잇달아 친 걸 한 문장으로 묶으려면 전부 필요하다(요청).
+    // 급습도 '누구를 쳤나'가 곧 다른 이야기라 상대별로 남긴다(지적: 팀원이 다른 사람을
+    // 친 것 때문에 정작 본진이 헤집힌 이야기가 통째로 사라졌다). 그 뒤 요약 쪽에서
+    // 갈래 상한(PER_KEY_CAP)이 몇 줄까지 나갈지를 따로 정한다.
     // 리콜도 때마다 남긴다(요청: 여러 번 하면 여러 번 나오게) — 다른 때에 다시 떨군 것은
     // 같은 전술의 중복이 아니라 그 판의 다른 사건이다.
     .filter((t) => {
       const key = t.key === "gg" ? `gg|${t.who}`
-        : t.key === "recall" ? `recall|${t.who}|${t.at}`
-          : t.key;
+        : t.key === "base-raid" ? `base-raid|${t.who}|${t.whom ?? ""}`
+          : t.key === "recall" ? `recall|${t.who}|${t.at}`
+            : t.key;
       return seen.has(key) ? false : (seen.add(key), true);
     });
 }
