@@ -249,6 +249,33 @@ const CLASH_TECH_WINDOW_SEC = 90;
 const CLASH_TECH_MIN = 3;
 /* 기술을 실제로 쓴 이야기의 무게 — 기본값에 그 기술의 이야깃거리 점수(TECH_RANK)를 얹는다.
    사람마다 몇 개까지 말할지도 여기서 정한다(요청: 다양한 세부 기술 사용 진술). */
+/** 마법이 가장 많이 떨어진 자리(타일 좌표)와 그 무렵 — 없거나 한곳에 안 몰렸으면 null.
+ *
+ *  "정구가 스톰을 21번 뿌렸다"만으로는 그게 제 집을 지킨 것인지 남의 집을 지진 것인지,
+ *  어디였는지가 통째로 빠진다(지적: 이런 경우가 진짜 많다). 마법은 상태가 아니라 액션이라
+ *  아바타가 아니라 실제로 터진 자리에 그려져야 한다 — 리플레이에는 시전 좌표가 그대로
+ *  적혀 있으므로(castPositions) 그중 가장 많이 몰린 자리를 그 이야기의 자리로 삼는다.
+ *
+ *  스물한 번을 맵 곳곳에 흩뿌린 경우까지 한 자리로 부르면 거짓말이 되므로, 그 뭉치가 전체의
+ *  CAST_HOT_SHARE는 되어야 자리를 말한다. 아니면 예전처럼 자리 없이 횟수만 말한다. */
+const CAST_HOT_RADIUS = 20;
+const CAST_HOT_SHARE = 0.4;
+function castHotspot(
+  sg: ReplayPlayerSignals, tech: string,
+): { xy: [number, number]; at: number; n: number } | null {
+  const pts = (sg.castPositions ?? []).filter((c) => c.tech === tech);
+  if (pts.length === 0) return null;
+  let best: typeof pts | null = null;
+  for (const c of pts) {
+    const near = pts.filter((o) => Math.hypot(o.x - c.x, o.y - c.y) <= CAST_HOT_RADIUS);
+    if (!best || near.length > best.length) best = near;
+  }
+  if (!best || best.length < Math.ceil(pts.length * CAST_HOT_SHARE)) return null;
+  const x = best.reduce((n, o) => n + o.x, 0) / best.length;
+  const y = best.reduce((n, o) => n + o.y, 0) / best.length;
+  return { xy: [round1(x), round1(y)], at: Math.min(...best.map((o) => o.frame)), n: best.length };
+}
+
 const TECH_BASE_WEIGHT = 9;
 const TECH_BEATS_PER_PLAYER = 2;
 /** 이야깃거리가 되는 기술만 문장이 된다 — 시즈(1)·스팀(1)·마인(2)·버로우(2)처럼 늘 나오는
@@ -1257,13 +1284,17 @@ function sideBeats(args: {
     for (const t of topUsedTechs(sg, TECH_BEATS_PER_PLAYER)) {
       if ((TECH_RANK[t] ?? 0) < TECH_MIN_RANK) continue;
       const n = techUseCount(sg, t);
+      /* 가장 많이 떨어진 자리 — 있으면 그 자리가 이 이야기의 자리다(위 castHotspot).
+         시점도 첫 시전이 아니라 그 뭉치가 시작된 때로 잡는다: 문장이 말하는 것도 그림이
+         가리키는 것도 그 대목이라, 첫 시전 시각을 쓰면 자막과 그림이 서로 다른 때를 말한다. */
+      const hot = castHotspot(sg, t);
       beats.push({
         // 많이 쓴 마법일수록 그 경기의 그림에 가깝다 — 스톰 스무 번은 그 판의 주인공이고
         // 다섯 번은 곁들인 수다. 고르는 점수(topUsedTechs)와 같은 자로 잰다.
         k: "tech", won, who: who(p),
         weight: TECH_BASE_WEIGHT + (TECH_RANK[t] ?? 0) + Math.min(3, Math.floor(n / 10)),
-        at: sg.firstTechUseFrame[t] ?? null,
-        p: { tech: t, n },
+        at: hot?.at ?? sg.firstTechUseFrame[t] ?? null,
+        p: { tech: t, n, ...(hot ? { xy: hot.xy } : {}) },
       });
     }
   }
@@ -2449,6 +2480,26 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     } as Beat;
   })();
 
+  /** 마법이 떨어진 자리를 사람이 부르는 말로 바꿔 문장에 실어 준다(지적: 어디에 뿌렸는지,
+   *  방어인지 공격인지가 표시되지 않는다). 이름을 붙이려면 시작 본진 목록(bases)과 편 정보가
+   *  있어야 해서 beat를 만들 때가 아니라 여기서 한다.
+   *   · place  — 그 자리의 임자(원본 게임 아이디). 맵 한가운데면 ""(센터), 못 짚으면 안 싣는다.
+   *   · def    — 그게 제 편(자기 또는 팀원) 자리인가. 즉 지킨 것인가 퍼부은 것인가. */
+  const teamOfRaw = new Map<string, 1 | 2>([
+    ...winnerPlayers.map((p) => [p.rawName, 1] as [string, 1]),
+    ...loserPlayers.map((p) => [p.rawName, 2] as [string, 2]),
+  ]);
+  const withCastPlace = (b: ReplaySummaryBeat): ReplaySummaryBeat => {
+    const xy = b.p?.xy;
+    if (b.k !== "tech" || !Array.isArray(xy) || xy.length !== 2
+      || typeof xy[0] !== "number" || typeof xy[1] !== "number") return b;
+    const place = clashPlace([xy[0], xy[1]], bases);
+    if (place === null) return b;
+    const mine = teamOfRaw.get(b.who[0] ?? "");
+    const def = place !== "" && teamOfRaw.get(place) === mine;
+    return { ...b, p: { ...(b.p ?? {}), place, def } };
+  };
+
   // 가장 크게 부딪친 대목 — 마법과 공격 명령이 한때 한곳에 몰린 자리다(요청: 마법 좌표로
   // 그 경기의 최대 교전 지점을 짚을 수 있겠다). 그 판의 절정이라 이야기에서 빠지면 안 된다.
   const clash = biggestClash(winnerPlayers, loserPlayers);
@@ -3018,7 +3069,7 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     ...(Object.keys(hubs).length > 0 ? { hubs } : {}),
     ...(Object.keys(moves).length > 0 ? { moves } : {}),
     ...(Object.keys(downs).length > 0 ? { downs } : {}),
-    beats: [...chosen, ending].map(strip).map((b) => {
+    beats: [...chosen, ending].map(strip).map(withCastPlace).map((b) => {
       const pos = beatPositions(b, byName);
       const units = arrowUnits(b);
       return { ...b, ...(pos ? { pos } : {}), ...(units ? { units } : {}) };

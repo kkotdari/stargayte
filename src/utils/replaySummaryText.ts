@@ -1167,23 +1167,38 @@ const TEMPLATES: Record<string, Tpl> = {
     // 이 값이 없는 옛 요약도 있다 — 사용 횟수를 세기 전에 저장된 것들이라, 그때는 횟수를
     // 말하지 않고 예전처럼 "꺼내 썼다"까지만 간다("0번 썼다"가 나가면 안 된다).
     const n = num(c.p.n, 0);
+    /* 어디에 떨어졌나(요청: 어디에 뿌렸는지, 방어인지 공격인지가 표시되지 않는다) —
+       replaySummary의 withCastPlace가 실어 준다. 옛 요약과 한곳에 안 몰린 판에는 없고,
+       그때는 예전처럼 자리 없이 횟수만 말한다. */
+    const placeRaw = c.p.place;
+    const where = ((): string => {
+      if (typeof placeRaw !== "string") return "";
+      if (placeRaw === "") return "센터에서 ";
+      const owner = c.names([placeRaw])[0];
+      if (!owner) return "";
+      if (owner === c.who) return "제 진영을 지키며 ";
+      return c.p.def === true ? `${owner}의 기지를 지키며 ` : `${owner}의 기지에 `;
+    })();
     // 시즈·마인처럼 '쓴다'는 말이 어색한 것들은 제 말투가 따로 있다(TECH_USE_PHRASE).
     const own = n >= 1 ? TECH_USE_PHRASE[str(c.p.tech) as keyof typeof TECH_USE_PHRASE] : undefined;
     if (own && own.length > 0) {
-      return `${ga(c.who)} ${done(c, c.pick(own).replace("{n}", String(n)), true)}`;
+      /* 자리를 말할 때는 "머리 위로"처럼 자리를 겸하는 수식이 겹치므로 첫 표현(가장 담백한
+         것)으로 고정한다 — "조조의 기지에 머리 위로 스톰을 21번 떨궜다"가 되면 안 된다. */
+      const phrase = (where ? own[0] : c.pick(own)).replace("{n}", String(n));
+      return `${ga(c.who)} ${where}${done(c, phrase, true)}`;
     }
     if (n === 1) {
-      return `${ga(c.who)} ${done(c, c.pick([
+      return `${ga(c.who)} ${where}${done(c, c.pick([
         `${reul(t)} 딱 한 번 써 봄`, `${reul(t)} 한 번 꺼내 봄`,
       ]), true)}`;
     }
     if (n >= 8) {
-      return `${ga(c.who)} ${done(c, c.pick([
+      return `${ga(c.who)} ${where}${done(c, c.pick([
         `${reul(t)} ${n}번이나 쏟아부음`, `${t}만 ${n}번을 쓰며 밀어붙임`,
       ]), true)}`;
     }
     if (n >= 2) {
-      return `${ga(c.who)} ${done(c, c.pick([
+      return `${ga(c.who)} ${where}${done(c, c.pick([
         `${reul(t)} ${n}번 씀`, `${t}까지 꺼내 씀`, `${reul(t)} 확보해 씀`,
       ]), true)}`;
     }
