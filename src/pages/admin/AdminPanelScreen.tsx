@@ -8,6 +8,7 @@ import VersionManageModal from "../../modals/VersionManageModal";
 import { api } from "../../api/client";
 import { parseReplayFile } from "../../utils/replayParser";
 import { buildReplaySummary } from "../../utils/replaySummary";
+import { createSummaryPool, runLanes } from "../../utils/replaySummaryPool";
 import { useAppStore } from "../../store/appStore";
 import { useLockBodyScroll } from "../../utils/bodyScrollLock";
 import { cx } from "../../utils/format";
@@ -110,13 +111,27 @@ export default function AdminPanelScreen({ isAdmin }: AdminPanelScreenProps) {
     }
   };
 
-  // 등록된 경기를 하나씩 다시 읽어 요약만 갈아 끼운다 — 리플레이가 붙은 경기만 대상이고,
+  // 등록된 경기를 다시 읽어 요약만 갈아 끼운다 — 리플레이가 붙은 경기만 대상이고,
   // 분석에 실패한 건은 건드리지 않고 세기만 한다(그 경기는 예전 요약 그대로 남는다).
+  //
+  // 예전에는 경기 하나마다 '내려받기 → 파싱 → 올리기'를 한 줄로 세워 놓고 그걸 화면 쪽에서
+  // 돌렸다. 파싱 한 번이 실측 252ms(+요약 23ms)라 그동안 화면이 통째로 멈췄고, 기다림
+  // (내려받기·올리기)과 계산(파싱)이 번갈아 노는 바람에 경기 수만큼 그대로 곱해졌다
+  // (지적: 너무 느려서 못 쓰겠다. 배치 등록보다는 빨라야 하지 않나).
+  //
+  // 이제 두 가지를 함께 고친다.
+  //   ① 파싱은 일꾼(Web Worker) 여럿에게 나눠 준다 — 코어 수만큼 실제로 나란히 돈다.
+  //   ② 갈래를 일꾼보다 조금 더 많이 굴린다 — 한쪽이 파싱하는 동안 다른 쪽은 내려받는다.
+  // 화면이 안 멈추는 것은 덤이 아니라 요점이다: 진행 숫자가 실제로 흐르고 중단도 눌린다.
+  //
+  // 배치 등록과 견주면 이쪽은 '내려받기'가 한 번 더 있다 — 배치는 이미 손에 든 파일을 읽지만
+  // 재분석은 서버에서 리플레이(한 개 128KB)를 받아 와야 한다. 그 몫만큼은 구조적으로 더 든다.
   const redoSummaries = async () => {
     setErr("");
     setRedo({ done: 0, total: 0, failed: 0 });
     let done = 0;
     let failed = 0;
+    const pool = createSummaryPool();
     try {
       // 한 번에 다 받으면 응답이 수십 MB가 되므로 커서로 나눠 받는다.
       let cursor: string | undefined;
@@ -128,22 +143,35 @@ export default function AdminPanelScreen({ isAdmin }: AdminPanelScreenProps) {
       } while (cursor);
       setRedo({ done: 0, total: ids.length, failed: 0 });
 
-      for (const id of ids) {
+      const one = async (id: number) => {
         try {
           const blob = await api.downloadReplay(id);
-          const parsed = await parseReplayFile(new File([blob], `${id}.rep`));
-          const summaryData = buildReplaySummary(parsed);
-          await api.rewriteSummary(id, { summaryData, mapData: parsed.mapGrid ?? null });
+          if (pool) {
+            const r = await pool.run(id, `${id}.rep`, await blob.arrayBuffer());
+            if (!r.ok) throw new Error(r.error);
+            await api.rewriteSummary(id, { summaryData: r.summaryData, mapData: r.mapData });
+          } else {
+            // 일꾼을 못 쓰는 환경(옛 브라우저 등)에서는 예전처럼 화면 쪽에서 읽는다.
+            const parsed = await parseReplayFile(new File([blob], `${id}.rep`));
+            await api.rewriteSummary(id, {
+              summaryData: buildReplaySummary(parsed), mapData: parsed.mapGrid ?? null,
+            });
+          }
         } catch {
           failed += 1;
         }
         done += 1;
         setRedo({ done, total: ids.length, failed });
-      }
+      };
+      // 갈래는 일꾼 수의 두 배 — 절반이 파싱하는 동안 나머지 절반이 내려받고 있게 된다.
+      // 일꾼이 없는 환경에서도 내려받기·올리기는 겹칠 수 있으므로 여러 갈래로 굴린다.
+      await runLanes(ids, (pool?.size ?? 2) * 2, one);
+
       window.alert(`요약 ${done - failed}건을 다시 계산했어요.${failed > 0 ? `\n${failed}건은 리플레이를 읽지 못해 그대로 뒀어요.` : ""}`);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "요약을 다시 계산하지 못했어요.");
     } finally {
+      pool?.close();
       setRedo(null);
     }
   };
