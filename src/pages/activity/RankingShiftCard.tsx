@@ -11,22 +11,31 @@ import { ActivityCard } from "./ActivityCard";
 // 분리했다(요청: "순위변동 발생도 카톡공유 가능, 활동는 다 가능하게"). 헤더 오른쪽
 // 케밥(actions)과 하단(댓글, footer)은 쓰는 쪽이 끼워 넣는다.
 
-// 순위가 어디서 어디로 갔나 — "1 → 3위".
+// 지금 몇 위이고 얼마나 움직였나 — "3위 ▲2".
 //
-// 예전에는 이 자리에 ▲2 / ▼1 같은 배지를 뒀는데 걷어냈다(요청) — 통계표의 순위 변동
-// 배지와 생김새가 같아, 같은 화면을 오가며 볼 때 어느 쪽 이야기인지 헷갈린다.
-// 여기서는 몇 계단이 아니라 몇 위에서 몇 위로 갔는지를 그대로 읽히게 둔다.
+// 한동안 "1 → 3위"라고 적었는데 잘 안 읽힌다(지적). 화살표 하나를 사이에 두고 숫자가
+// 둘이라 어느 쪽이 지금 자리인지 매번 세어 봐야 했고, 정작 궁금한 '몇 계단'은 두 수를
+// 빼야 나왔다. 그래서 통계표 순위 칸과 같은 방식으로 되돌린다(요청): 지금 순위를 먼저
+// 못박고, 움직인 크기는 세모 화살표 배지로 옆에 붙인다. 두 화면이 같은 모양으로 말하면
+// 오가며 볼 때 오히려 헷갈리지 않는다.
 //
-// 그 달에 처음 순위가 잡힌 사람은 "3위 진입"이다(요청: 괄호 없이) — 예전엔 "신규 → 3위"
-// 라고 적었는데, 화살표는 '어디서 왔다'는 말이라 오기 전 자리가 있는 것처럼 읽힌다. 그런
-// 자리는 없다. 괄호도 뗐다: 괄호는 곁다리라는 뜻인데 이 사람에게는 그게 본 이야기다.
-export function shiftLabel(e: RankingShiftEntry): { text: string; cls: string } {
-  if (e.from == null) return { text: `${e.to}위 진입`, cls: "scr-activity-shift-new" };
+// 그 달에 처음 순위가 잡힌 사람은 "3위 진입"이다(요청: 괄호 없이) — 오르내린 게 아니라
+// 자리가 새로 생긴 것이라 화살표를 붙일 데가 없다.
+export function shiftLabel(e: RankingShiftEntry): { rank: string; delta: string; cls: string } {
+  const rank = `${e.to}위`;
+  if (e.from == null) return { rank, delta: "진입", cls: "scr-activity-shift-new" };
   const d = e.from - e.to;
   return {
-    text: `${e.from} → ${e.to}위`,
+    rank,
+    delta: d > 0 ? `▲${d}` : `▼${-d}`,
     cls: d > 0 ? "scr-activity-shift-up" : "scr-activity-shift-down",
   };
+}
+
+/** 카카오 공유처럼 마크업을 못 쓰는 자리용 한 줄 — "3위 ▲2". */
+export function shiftLabelText(e: RankingShiftEntry): string {
+  const s = shiftLabel(e);
+  return `${s.rank} ${s.delta}`;
 }
 
 /* (삭제) 포인트 증감 표기("+100p") — 순위가 몇 위에서 몇 위로 갔는지가 이 카드의 이야기
@@ -54,7 +63,7 @@ export function rankShiftShareContent(shift: RankingShift): KakaoShareContent {
     .map(({ matchType, label }) => {
       const rows = sectionOf(shift, matchType);
       if (rows.length === 0) return null;
-      return `${label} ${rows.slice(0, 2).map((e) => `${e.nickname} ${shiftLabel(e).text}`).join(" · ")}`;
+      return `${label} ${rows.slice(0, 2).map((e) => `${e.nickname} ${shiftLabelText(e)}`).join(" · ")}`;
     })
     .filter(Boolean)
     .join(" / ");
@@ -149,9 +158,11 @@ export default function RankingShiftCard({
                         && "scr-activity-shift-row-hl")}
                   >
                     <span className="scr-activity-shift-name">{e.nickname}</span>
-                    {/* "조조 1 → 3위" — 몇 계단인지를 배지로 말하는 대신 어디서 어디로
-                        갔는지를 그대로 적는다. */}
-                    <span className={rank.cls}>{rank.text}</span>
+                    {/* "조조 3위 ▲2" — 지금 자리를 먼저 못박고, 움직인 크기만 색으로
+                        말한다. 순위 숫자까지 색을 입히면 어디까지가 '자리'이고 어디부터가
+                        '변동'인지 한 덩어리로 뭉쳐 읽힌다. */}
+                    <span className="scr-activity-shift-rank">{rank.rank}</span>
+                    <span className={rank.cls}>{rank.delta}</span>
                   </li>
                 );
               })}

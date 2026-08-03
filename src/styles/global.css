@@ -7091,17 +7091,12 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-activity-rows {
   display: flex; flex-direction: column;
   margin-inline: calc(-1 * var(--card-bleed)); --scr-row-pad-x: calc(var(--card-bleed) + 2px);
-  /* 이 목록의 '흐린 글자'(되풀이되는 말·시각·구분점)가 쓰는 색. 앱 전역 --dim을 그대로
-     쓰다가 라이트 테마에서 너무 옅었다(지적, 두 번) — 흰 바탕 위 검정 48%는 대비 3.7:1,
-     한 번 눌러 본 62%도 6.2:1이라 11px짜리 시각에는 여전히 모자랐다. 라이트만 76%
-     (10.7:1)로 둔다.
-     이만큼 진해져도 위계가 안 무너지는 건 이 목록이 색 하나로만 강약을 주는 게 아니라서다
-     — 진한 쪽은 검정 100%에 굵기 700까지 함께 쥐고 있어서, 색 차이가 좁아져도 굵기가
-     "여기가 읽을 값"을 계속 말해 준다. 다크는 검정 바탕에 흰 68%라 이미 8.5:1이므로
-     그대로 둔다. */
-  --row-dim: var(--dim);
+  /* 이 목록은 글자를 흐리게 해서 강약을 주지 않는다(요청) — 색을 두 단계로 나눠 봤지만
+     흐린 쪽이 얼마나 진해야 하는지가 테마마다 달라 계속 어긋났고(라이트에서 두 번 지적),
+     정작 굵기 차이(700 vs 400)만으로도 "여기가 읽을 값"은 충분히 드러났다. 그래서 모든
+     글자가 같은 색(--text)을 쓰고, 위계는 굵기 하나가 진다. */
+  --row-dim: var(--text);
 }
-.scr-light-theme .scr-activity-rows { --row-dim: rgba(0, 0, 0, 0.76); }
 /* 줄 사이는 얇은 실선 하나로만 가른다 — 카드처럼 저마다 유리판을 두면 '목록'이 아니라
    '작은 카드 목록'이 되어 훑기가 다시 느려진다. */
 .scr-activity-row-wrap + .scr-activity-row-wrap { border-top: 1px solid var(--line-hair); }
@@ -8017,6 +8012,13 @@ html.scr-light-theme .scr-activity-add-fab {
 /* 줄을 1스텝 줄일 때 닉네임까지 딸려 줄었다(지적: 닉네임은 원래 크기로) — 작아져야
    하는 건 순위·포인트 같은 수치 쪽이고, 누구 이야기인지는 그대로 읽혀야 한다. */
 .scr-activity-shift-name { font-weight: 600; font-size: var(--fs-caption); }
+/* 지금 몇 위인가 — 이 줄의 기준값이라 기본 글자색으로 둔다. 색은 '움직임'만 갖는다:
+   순위 숫자까지 초록/빨강을 입히면 어디까지가 자리이고 어디부터가 변동인지 한 덩어리로
+   뭉쳐 읽힌다(통계표 순위 칸도 같은 규칙이다). */
+.scr-activity-shift-rank { font-weight: 700; font-variant-numeric: tabular-nums; }
+/* 순위와 변동은 한 값이다 — 줄의 기본 간격(8px)대로 두면 "3위"와 "▲2"가 따로 놀아서
+   닉네임·순위·변동 셋이 나란한 세 칸처럼 보인다. */
+.scr-activity-shift-rank + span { margin-left: -4px; }
 .scr-activity-shift-up { color: #7fd18b; font-weight: 700; }
 .scr-activity-shift-down { color: #e08a8a; font-weight: 700; }
 /* 신규 진입은 오르내림이 아니다 — 한때 골드였는데, 올림(초록)/내림(빨강) 옆에서 셋 다
