@@ -3122,6 +3122,22 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     if (!moved) break;
   }
 
+  /* 경기를 끝낸 마지막 싸움 — 맺음말이 가리킬 자리다(요청: 결론은 전투니까 화살표와 액션
+     이모지도 다른 스냅과 동일하게). 근거는 그 판 최대 교전을 찾을 때와 같고(마법과 어택
+     지정이 한때 한곳에 몰린 자리), 가장 큰 것 대신 가장 늦은 것을 고른다. */
+  const finale = biggestClash(winnerPlayers, loserPlayers, "late");
+  /** 그 마지막 싸움에서 맞은 쪽 — 그림이 이 사람들에게서도 화살표를 그어 맞부딪게 한다. */
+  const finaleFoes = (() => {
+    if (!finale) return [];
+    const inSide = (raw: string) => loserPlayers.some((q) => q.rawName === raw);
+    const named = finale.parts.filter(inSide);
+    // 그 자리에서 이름을 부를 만큼 싸운 사람이 없으면(맞고만 있었으면 명령이 몇 개 안
+    // 남는다) 그 편에서 가장 많이 찍은 한 사람을 쓴다 — 맞은 쪽이 없는 싸움은 없다.
+    if (named.length > 0) return named;
+    const rep = finale.who.find(inSide);
+    return rep ? [rep] : [];
+  })();
+
   // 결과는 이야기의 맺음말로 맨 뒤에 붙인다 — 앞에 먼저 요약을 놓으면 뒤의 이야기가
   // 이미 아는 결말의 부연이 되어버린다(요청: 맨 처음의 전체 요약은 빼기).
   // 앞선 문장들이 이미 그 조합을 말했으면 조합은 빼고 결과만 말한다. 판단은 실제로 만들어질
@@ -3205,13 +3221,35 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
       ...(useTeam
         ? (domUnit ? { heroUnit: domUnit, heroMode: "dominant" } : {})
         : (heroUnit ? { heroUnit } : {})),
+      /* 맺음말도 전투 장면이다(요청: 결론은 전투니까 화살표와 액션 이모지도 다른 스냅과
+         동일하게) — 경기를 끝낸 그 싸움터가 이 문장의 자리다. 마지막으로 부딪친 자리를
+         찍어 두면 그림 쪽이 다른 교전 스냅과 똑같이 그린다: 양쪽 화살표가 그 한 점에서
+         만나고(fight), 촉에는 전투 이모지가 붙는다. 못 찾으면 예전처럼 자리 없이 간다. */
+      ...(finale ? { xy: finale.xy, fight: true } : {}),
     },
     ...(useTeam
       ? (domUnit && dominant ? { who2: [dominant.rawName] } : {})
       : (heroUnit && star ? { who2: [star.rawName] } : {})),
     // 역전패한 경기는 진 편 입장에서 맺어도 좋다(요청: "결국 2팀은 초반 승기를 잡았지만
     // 1팀의 …에 버티지 못하고 GG"). 그러려면 진 편이 누구인지 문장 쪽이 알아야 한다.
-    ...(mode === "comeback" ? { whom: loserPlayers.map((p) => p.rawName) } : {}),
+    /* 역전패한 경기는 진 편 입장에서 맺어도 좋다(요청: "결국 2팀은 초반 승기를 잡았지만
+       1팀의 …에 버티지 못하고 GG"). 그러려면 진 편이 누구인지 문장 쪽이 알아야 한다.
+       그 밖의 경기에서는 '마지막 싸움에서 맞은 쪽'을 담는다 — 문장은 이 값을 쓰지 않지만
+       그림이 그 사람들에게서 화살표를 받아 맞부딪는 장면을 그린다(위 finale). */
+    ...(mode === "comeback"
+      ? { whom: loserPlayers.map((p) => p.rawName) }
+      : finaleFoes.length > 0 ? { whom: finaleFoes } : {}),
+  };
+
+  /* 승패는 맺음말에서 떼어 마지막 한 스냅으로 못박는다(요청: 결론 스텝을 결론 전투 내용과
+     승패로 나누고, 승패는 시작 스냅처럼 누가 이겼는지만 표시하는 스냅으로 고정).
+
+     맺음말(ending)은 '무엇으로 어떻게 끝냈나'까지만 말하고, '누가 이겼나'는 이 한 줄이
+     전담한다. 이긴 편 전원을 담는다 — 문장은 팀 번호로 부르고(팀전) 그림은 이 사람들
+     아바타에 트로피를 얹는다(GameResultStory). */
+  const verdict: Beat = {
+    k: "verdict", won: true, at: Number.POSITIVE_INFINITY, weight: 1001,
+    who: winnerPlayers.map((p) => p.rawName),
   };
 
   const moves: Record<string, [number, number, number][]> = {};
@@ -3228,9 +3266,12 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     ...(Object.keys(hubs).length > 0 ? { hubs } : {}),
     ...(Object.keys(moves).length > 0 ? { moves } : {}),
     ...(Object.keys(downs).length > 0 ? { downs } : {}),
-    beats: [...chosen, ending].map(strip).map(withCastPlace).map((b) => {
+    beats: [...chosen, ending, verdict].map(strip).map(withCastPlace).map((b) => {
       const pos = beatPositions(b, byName);
-      const units = arrowUnits(b);
+      /* 화살표 기둥의 이름표는 '그 무렵 무엇을 움직였나'라 시각이 있어야 한다. 맺음말은
+         '늘 마지막'이라는 뜻으로 시각을 비워 두므로(strip), 그 대신 경기를 끝낸 싸움의
+         시각을 넘겨 준다 — 그래야 다른 교전 스냅처럼 화살표에 병력 이름이 붙는다(요청). */
+      const units = arrowUnits(b.k === "result" && finale ? { ...b, at: finale.at } : b);
       return { ...b, ...(pos ? { pos } : {}), ...(units ? { units } : {}) };
     }),
   };
@@ -3602,6 +3643,10 @@ const CLASH_TECHS = FIGHT_TECHS;
  *  견제거나 그냥 진출이다. */
 function biggestClash(
   a: ParsedReplayPlayer[], b: ParsedReplayPlayer[],
+  /** "big"은 그 판에서 가장 크게 부딪친 자리, "late"는 마지막으로 부딪친 자리다. 맺음말이
+   *  가리킬 곳은 뒤쪽이다(요청: 결론은 전투니까 화살표와 액션 이모지도 다른 스냅과 똑같이
+   *  — 경기를 끝낸 그 싸움터가 그 문장의 자리다). 근거도 문턱도 똑같고 고르는 자만 다르다. */
+  mode: "big" | "late" = "big",
 ): {
   at: number; xy: [number, number]; n: number; who: string[]; people: number; parts: string[];
   /** 참가자와 그 사람이 그 자리에 찍은 명령 수 — 많이 싸운 순. 문장이 이름을 부를 사람을
@@ -3641,7 +3686,9 @@ function biggestClash(
     );
     if (near.length < CLASH_MIN) continue;
     if (!near.some((x) => x.side === 0) || !near.some((x) => x.side === 1)) continue;
-    if (best && near.length <= best.n) continue;
+    if (best && (mode === "big"
+      ? near.length <= best.n
+      : Math.min(...near.map((x) => x.frame)) <= best.at)) continue;
     // 자리는 몰린 점들의 한가운데, 때는 그중 가장 이른 것 — 싸움이 시작된 시각이다.
     const cx = near.reduce((n, x) => n + x.x, 0) / near.length;
     const cy = near.reduce((n, x) => n + x.y, 0) / near.length;

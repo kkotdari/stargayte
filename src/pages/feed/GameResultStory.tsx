@@ -95,10 +95,13 @@ const BEAT_MARK: Record<string, string> = {
   carrier: "🛩️", bc: "🛩️", guardian: "🛩️", "lift-off": "🛩️", vision: "👁️", "no-detect": "🙈",
   attrition: "⏳", "fast-hands": "⚡", "pro-like": "🌟", revival: "🔥",
   "worker-gap": "📉", "prod-gap": "📉",
-  // fallen·gg·greedy-punished·result는 여기 없다 — 전부 주어(who)가 사실 당한 쪽이거나
-  // (fallen·gg·greedy-punished) 아바타 얼굴이 이미 전담하는 것(result의 트로피)이라, 무기
-  // 이모지·화살표 대상이 아니다(요청: 쨀다가 당한 얼굴도 아바타 얼굴 하나로 통합, 트로피
-  // 중복 제거).
+  /* 맺음말(result)은 경기를 끝낸 그 싸움 이야기다(요청: 결론은 전투니까 화살표와 액션
+     이모지도 다른 스냅과 동일하게) — 다른 교전 스냅과 같은 표시를 준다. 트로피는 이제
+     맺음말이 아니라 그 뒤의 승패 스냅(verdict)이 전담하므로 겹치지 않는다. */
+  result: "💥",
+  // fallen·gg·greedy-punished는 여기 없다 — 주어(who)가 사실 당한 쪽이라 무기 이모지·
+  // 화살표 대상이 아니고 아바타 얼굴로만 알린다(요청: 쨀다가 당한 얼굴도 아바타 얼굴
+  // 하나로 통합). 승패 스냅(verdict)도 없다 — 그 스냅은 트로피만 얹는 자리다.
 };
 
 /** "tech" beat는 전부 같은 검 대결 이모지였다(지적: 스톰이든 이레디에이트든 구분이 안
@@ -350,9 +353,9 @@ export default function GameResultStory({
     for (const n of sentences[index]?.beats ?? []) {
       const b = beats[n];
       if (!b) continue;
-      // 맺음말 스냅에서는 자막에 누가 나오든 이긴 편 전원만 키운다(요청) — 역전패를 말하는
-      // 맺음말은 진 편(whom)까지 부르는데, 그걸 그대로 키우면 진 편 아바타가 함께 커졌다.
-      if (b.k === "result") {
+      // 승패 스냅에서는 이긴 편 전원만 키운다(요청) — 그 자리는 "누가 이겼나"만 말한다.
+      // 맺음말(result)은 그 앞의 전투 장면이라 여느 교전 스냅처럼 who·whom을 다 키운다.
+      if (b.k === "verdict") {
         const team = slots.find((x) => (b.who ?? []).includes(x.raw))?.team;
         if (team) slots.filter((x) => x.team === team).forEach((x) => out.add(x.raw));
         continue;
@@ -774,7 +777,11 @@ export default function GameResultStory({
      *  얼굴이 붙었다) won을 봐야 한다. */
     const DEFENDED_ALWAYS_KEYS = new Set(["late-hold", "standoff"]);
     /** 공격하는 얼굴을 붙일 대상 — 옆탱은 이름과 달리 공격이라(지적) 여기 더한다. */
-    const ATTACKER_FACE_KEYS = new Set([...ATTACK_BEAT_KEYS, "clash", "allin", "side-tank"]);
+    // 맺음말도 그 마지막 싸움 이야기라 공격하는 얼굴을 준다(요청: 결론은 전투니까 다른
+    // 스냅과 동일하게) — 트로피는 그 뒤 승패 스냅이 따로 얹는다.
+    const ATTACKER_FACE_KEYS = new Set([
+      ...ATTACK_BEAT_KEYS, "clash", "allin", "side-tank", "result",
+    ]);
     /** 아군을 도우러 간 것 — 도와준 사람은 천사, 도움받은 사람은 감동으로 각자 얼굴이
      *  갈린다(지적: 화살표는 도움받은 기지로 잇고, 천사는 도와준 사람 아바타로, 도움받은
      *  사람 아바타에는 감동 얼굴을 준다). */
@@ -844,7 +851,9 @@ export default function GameResultStory({
         who.forEach((r) => { if (!victims.has(r)) attacker.add(r); });
       }
       // 맺음말 — 이긴 편 전원에게 트로피를 준다(요청: 승리 트로피는 아바타에 겹쳐서 크게).
-      if (b.k === "result") {
+      // 트로피는 승패 스냅이 전담한다(요청: 승패는 시작처럼 누가 이겼는지만 표시하는
+      // 스냅으로 고정) — 맺음말은 그 앞의 전투 장면이라 다른 교전 스냅과 같은 표시를 받는다.
+      if (b.k === "verdict") {
         const team = slots.find((x) => (b.who ?? []).includes(x.raw))?.team;
         if (team) slots.filter((x) => x.team === team).forEach((x) => trophy.add(x.raw));
       }
@@ -878,8 +887,12 @@ export default function GameResultStory({
         // 트로피는 아바타 얼굴 쪽에서만 준다(지적: 본진에 뜨는 트로피와 아바타 트로피가
         // 겹쳐서 두 개로 보였다). actors로 한정하는 이유는 fallen의 p.by(helpers)까지
         // 걸러지면 안 되기 때문 — 그 사람은 당한 쪽이 아니라 민 쪽이다(byAttacker).
+        // (맺음말은 여기서 빠져 있었다 — 트로피가 본진과 아바타에 두 번 뜨는 것을 막느라
+        // 화살표까지 통째로 없앴었다. 이제 트로피는 승패 스냅이 전담하므로, 맺음말은 그
+        // 마지막 싸움을 다른 교전 스냅과 똑같이 그린다(요청).)
         if (actors.includes(raw)
-          && (SEVERE_SUBJECT_KEYS.has(b.k) || MODERATE_SUBJECT_KEYS.has(b.k) || b.k === "result")) continue;
+          && (SEVERE_SUBJECT_KEYS.has(b.k) || MODERATE_SUBJECT_KEYS.has(b.k)
+            || b.k === "verdict")) continue;
         // 아군 기지의 교전을 도우러 간 것(위에서 helper로 분류됨)은 화살표 끝 표시도
         // 공격(💥)이 아니라 방어(🛡️)로 바꾼다(지적: "정구의 화살표 끝은 공격이라기보다
         // 방어지 — 저렇게 하면 꼭 태섭을 공격한 거 같잖아").

@@ -2294,7 +2294,7 @@ const TEMPLATES: Record<string, Tpl> = {
       const meLabel = c.team ? `${c.team}팀` : c.who;
       return withHero(head + c.pick([
         `${ga(meLabel)} 압도한 경기였음`,
-        `${p}${ga(meLabel)} 완승, 일방적인 경기였음`,
+        `${p}${ga(meLabel)} 처음부터 끝까지 몰아붙인 일방적인 경기였음`,
         `처음부터 끝까지 ${ga(meLabel)} 끌고 간 일방적인 경기였음`,
       ]));
     }
@@ -2306,8 +2306,8 @@ const TEMPLATES: Record<string, Tpl> = {
       const meLabel = c.team ? `${c.team}팀` : c.who;
       const by = phrase ? `${meLabel}의 ${phrase.replace(/으?로$/, "")}에 ` : `${meLabel}의 뒷심에 `;
       return withHero(c.pick([
-        `${neun(foeLabel)} 초반 승기를 잡았지만 ${by}버티지 못하고 GG`,
-        `${neun(foeLabel)} 앞서가다 ${by}무너지며 아쉽게 패함`,
+        `${neun(foeLabel)} 초반 승기를 잡았지만 ${by}끝내 버티지 못함`,
+        `${neun(foeLabel)} 앞서가다 ${by}아쉽게 무너짐`,
         `${neun(foeLabel)} 다 잡았던 경기를 ${by}내주고 말았음`,
       ]));
     }
@@ -2315,13 +2315,13 @@ const TEMPLATES: Record<string, Tpl> = {
     if (team && (mode === "plain" || mode === "late")) {
       // "길게 끌어"는 쓰지 않는다(지적) — 장기전이었다는 말로 바꾼다.
       const t = mode === "late" ? c.pick(["후반 ", "장기전 끝에 ", "긴 대치 끝에 "]) : "";
-      const body2 = head + `${t}${team} ${c.pick(["승리", "이김"])}`;
+      const body2 = head + `${t}${team} ${c.pick(["경기를 끝냄", "판을 정리함"])}`;
       return withHero(body2);
     }
     if (spectacle) {
       const b2 = `${c.who}의 ${c.pick([
-        `${spectacle}까지 나온 끝에 승리`,
-        `${reul(spectacle)} 앞세워 승리`,
+        `${spectacle}까지 나온 끝에 승부가 갈림`,
+        `${reul(spectacle)} 앞세워 몰아붙임`,
         `${reul(spectacle)} 꺼내 승부를 냄`,
       ])}`;
       return withHero(b2);
@@ -2330,8 +2330,8 @@ const TEMPLATES: Record<string, Tpl> = {
     let body: string;
     if (mode === "rush") {
       body = phrase
-        ? `${who} ${c.pick([`초반 ${p}승리`, `초반 ${p}그대로 끝냄`, `초반 ${p}승리를 결정지음`])}`
-        : `${who} ${c.pick(["승리", "그대로 끝냄", "그대로 승리를 결정지음"])}`;
+        ? `${who} ${c.pick([`초반 ${p}그대로 끝냄`, `초반 ${p}경기를 끝냄`, `초반 ${p}판을 정리함`])}`
+        : `${who} ${c.pick(["그대로 끝냄", "초반에 그대로 판을 정리함"])}`;
     } else if (mode === "comeback") {
       const late = c.p.wentLate ? "후반에 " : "";
       // 전반과 후반이 아예 뒤집힌 경기는 그냥 '역전'이 아니라 대역전이다(요청).
@@ -2343,18 +2343,20 @@ const TEMPLATES: Record<string, Tpl> = {
           ])}`
         : `${who} ${c.pick([`초반 열세이다가 ${late}${p}역전`, `밀리다가 ${late}${p}뒤집음`])}`;
     } else if (mode === "late") {
-      body = `${who} ${c.pick([`후반 ${p}승리`, `장기전 끝에 ${p}승리`, `긴 대치 끝에 ${p}승리`])}`;
+      body = `${who} ${c.pick([
+        `후반 ${p}경기를 끝냄`, `장기전 끝에 ${p}판을 정리함`, `긴 대치 끝에 ${p}경기를 끝냄`,
+      ])}`;
     } else {
       // 주력을 부대 단위로 뽑았으면 그 규모 자체가 그림이다(요청) — 12기를 한 부대로 센다.
       const leadKo = UNIT_KO[list(c.p.units)[0] ?? ""] ?? "";
       const squads = Math.floor(num(c.p.unitN) / 12);
       // 조합이 둘이면 '질럿만 10부대' 식으로 한 유닛만 부르지 않는다(위 cont와 같은 이유).
       const bulk = leadKo && squads >= 2 && !cont && units.length < 2
-        ? [`${leadKo} ${squads}부대를 뽑아 승리`, `${leadKo}만 ${squads}부대 넘게 생산해 이김`]
+        ? [`${leadKo} ${squads}부대를 뽑아 밀어붙임`, `${leadKo}만 ${squads}부대 넘게 뽑아 몰아붙임`]
         : [];
       body = phrase
-        ? `${who} ${c.pick([`${p}승리`, `${p}이김`, `${p}승리를 결정지음`, ...bulk])}`
-        : `${who} ${c.pick(["그대로 승리", "그대로 가져감"])}`;
+        ? `${who} ${c.pick([`${p}몰아붙임`, `${p}경기를 끝냄`, `${p}판을 정리함`, ...bulk])}`
+        : `${who} ${c.pick(["그대로 굳힘", "그대로 판을 정리함"])}`;
     }
 
     // 맺음말은 "결국 …"으로 열어도 좋다(요청) — 앞의 흐름을 받아 마무리한다는 신호가 된다.
@@ -2362,6 +2364,25 @@ const TEMPLATES: Record<string, Tpl> = {
     // 이어받기 문구(contPhrase)가 이미 "결국"을 품고 있으면 또 붙이지 않는다.
     const close = head || body.includes("결국") ? head + body : c.pick(["", "결국 "]) + body;
     return withHero(close);
+  },
+
+  /* 승패만 말하는 마지막 한 줄(요청: 결론 스텝을 결론 전투 내용과 승패로 나누고, 승패는
+     시작 스냅처럼 누가 이겼는지만 표시하는 스냅으로 고정) — 시작의 "게임 시작!"과 짝이
+     되는 자리라 경기마다 표현을 바꾸지 않는다. 무엇으로 어떻게 끝냈는지는 바로 앞 맺음말이
+     이미 말했고, 여기서는 트로피만 얹는다.
+
+     팀전은 팀 번호로 부른다. 팀을 모르는 기록이면 이름을 늘어놓되, 여럿이면 대표 둘까지만
+     부르고 나머지는 수로 줄인다 — 여덟 명 이름이 한 줄에 늘어서면 시작 스냅과 달리
+     자막이 지도를 가린다. */
+  verdict: (c) => {
+    // 팀 번호는 이름으로 되묻는다 — 렌더러가 c.team을 늘 0으로 넘기기 때문이다(clash의
+    // teamWord와 같은 방법).
+    const team = c.whoList.map((n) => c.teamOfName(n)).find((v) => v !== undefined);
+    if (!c.duel && team) return `${team}팀 승리!`;
+    const names = c.whoList;
+    if (names.length === 0) return null;
+    if (names.length <= 2) return `${names.join("·")} 승리!`;
+    return `${names.slice(0, 2).join("·")} 외 ${names.length - 2}명 승리!`;
   },
 };
 
@@ -2809,6 +2830,9 @@ function renderLines(
       }
     }
     if (!text) continue;
+    /* 승패 한 줄은 언제나 홀로 선다(요청: 시작 스냅처럼 고정) — 이음말도 안 붙이고, 앞
+       문장에 이어 붙이지도 않는다. 스냅 하나가 통째로 "누가 이겼나"만 말하는 자리다. */
+    if (b.k === "verdict") { put(text, false, i); continue; }
     // "서로"·"모두"는 주어 뒤에 와야 한다 — 틀이 주어를 문장 안에서 만드는 꼴(“정구와
     // 크리스의 3게이트 질럿 러시 한 방에 …”)에서는 이 말이 맨 앞으로 밀려 나와 어색하다
     // (지적: 서로는 없어야 됨). 문장 첫머리에 붙었으면 그냥 뗀다.
