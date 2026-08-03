@@ -177,12 +177,15 @@ function teamPhrase(c: Ctx): string {
       `${names.join("·")} 팀이 ${ro(combo)} 몰아쳐`,
     ]);
   }
-  // 많이 뽑은 쪽부터 세 무리까지 말한다 — 그 이상은 문장만 길어진다.
-  const shown = groups.slice(0, 3);
+  /* 많이 뽑은 쪽부터 두 무리까지, 무리마다 두 유닛까지만 말한다(요청: 자막에는 유닛
+     나열을 자제하고 화살표에 싣는 쪽으로) — 넷이 저마다 조합을 갖고 싸운 판에서는 이
+     한 문장이 유닛 일곱 개를 늘어놓는 줄이 됐다. 누가 무엇으로 끝냈나는 두 무리면
+     충분하고, 나머지는 그림이 말한다. */
+  const shown = groups.slice(0, 2);
   const made = shown.map((g) => {
-    const many = g.names.length > 1;
-    const ko = g.units.map((u) => UNIT_KO[u]).filter(Boolean).slice(0, many ? 3 : 2);
+    const ko = g.units.map((u) => UNIT_KO[u]).filter(Boolean).slice(0, 2);
     if (ko.length === 0) return null;
+    const many = g.names.length > 1;
     return { who: g.names.join("·"), what: many ? `${ko.join(" ")} 조합` : ko.join(" ") };
   }).filter((x): x is { who: string; what: string } => x !== null);
   if (made.length === 0) return "";
@@ -923,10 +926,13 @@ const TEMPLATES: Record<string, Tpl> = {
   "zling-rush": (c) => {
     const n = num(c.p.drones);
     const build = n > 0 ? `${n}드론 저글링 러시` : "초반 저글링 러시";
+    // 몇 기로 달렸나(요청: 초반 러시에서는 유닛 기수도 중요하다) — zealot-rush 주석 참고.
+    const lings = num(c.p.n, 0);
     // 올인 표현은 '러시'를 갈아 끼운다 — "…저글링 러시 올인러시"가 되면 말이 겹친다.
     const allin = build.replace(/러시$/, "올인 러시");
     const at = targetPhrase(c);
     return `${ga(c.who)} ${at}${done(c, c.pick([
+      ...(lings >= 6 ? [`${build}를 저글링 ${lings}기로 감행함`, `저글링 ${lings}기로 ${reul(build)} 감행함`] : []),
       `${reul(build)} 함`, `빠른 ${reul(build)} 함`, `과감한 ${reul(allin)} 함`,
       `${ira(build)} 날카로운 전략을 꺼냄`, `날카로운 ${reul(build)} 감행함`,
       // 깎아내리는 말은 졌거나, 이겼더라도 한 종류만 주야장천 뽑았을 때만(지적). '무지성'
@@ -982,10 +988,15 @@ const TEMPLATES: Record<string, Tpl> = {
     const g = num(c.p.gates, 2);
     const label = g === 2 ? "투게이트" : `${g}게이트`;
     const at = targetPhrase(c);
+    /* 몇 기로 달렸나 — 초반 러시에서는 게이트 수만큼이나 이게 이야기다(요청). 첫 질럿이
+       나온 뒤 러시가 나가는 창 안에 뽑은 수라, 초반이라 죽은 병력이 거의 없어 실제로
+       달려간 규모에 가깝다. 옛 요약에는 이 값이 없어 예전 문장 그대로다. */
+    const n = num(c.p.n, 0);
     // 질럿 러시는 도박이 아니라 정석이다(지적) — 실패했다고 "끝내 통하지 않음"으로 맺지 않는다.
     // 한 유닛만 뽑고 달린 경우에만 '일편단심'을 붙인다(지적: 무지성 같은 부정적 어휘 대신
     // 긍정적인 어휘를 쓴다).
     return `${ga(c.who)} ${at}${done(c, c.pick([
+      ...(n >= 4 ? [`${label}에서 질럿 ${n}기로 러시를 함`, `질럿 ${n}기를 모아 ${label} 러시를 감행함`] : []),
       `${label} 질럿 러시를 함`, `빠른 ${label} 질럿 러시를 함`,
       ...(g >= 3 ? [`${label} 질럿 올인 러시를 함`] : []),
       ...(c.p.solo ? [`일편단심 ${label} 질럿 러시를 함`] : []),
@@ -1254,11 +1265,12 @@ const TEMPLATES: Record<string, Tpl> = {
     const fight = c.p.fight === true && !!c.whom;
     const vs = list(c.p.vs).map((u) => UNIT_KO[u] ?? "").filter(Boolean);
     const foeIsHost = fight && typeof placeRaw === "string" && c.names([placeRaw])[0] === c.whom;
-    /** 맞붙은 상대를 부르는 말 — 그 기지가 이미 그 사람 이름을 말했으면 병력만 부르고,
-     *  무엇으로 싸웠는지조차 모르면 아예 안 부른다("그 병력과 맞붙어"는 빈말이다). */
-    const foeWord = !fight ? ""
-      : vs.length > 0 ? (foeIsHost ? vs.join("·") : `${c.whom}의 ${vs.join("·")}`)
-        : foeIsHost ? "" : (c.whom ?? "");
+    /** 맞붙은 상대를 부르는 말 — 이름만 부른다(요청: 자막에는 유닛 나열을 자제하고
+     *  화살표에 싣는 쪽으로). 무엇과 붙었는지는 화살표 이름표가 말하고, 자막은 '누구와
+     *  맞붙어 무엇을 몇 번 썼나'만 말한다. 그 기지가 이미 그 사람 이름을 말했으면 두 번
+     *  부르지 않는다. */
+    void vs;
+    const foeWord = !fight || foeIsHost ? "" : (c.whom ?? "");
     const met = !fight ? "" : foeWord ? `${wa(foeWord)} 맞붙어 ` : "맞붙어 ";
     const spot = ((): string => {
       if (typeof placeRaw !== "string") return "";
@@ -1600,10 +1612,14 @@ const TEMPLATES: Record<string, Tpl> = {
     const kinds = str(c.p.bs).split(",").map((b) => BUILDING_KO[b]).filter(Boolean);
     // 이름을 못 부르는 건물뿐이면 그냥 "건물"이라고만 한다 — 근거 없는 이름은 안 붙인다.
     const what = kinds.length >= 2 ? `${wa(kinds[0])} ${kinds[1]}` : kinds.length === 1 ? kinds[0] : "건물";
+    /* "마음 놓고", "안전하게", "조용히" 같은 말은 뺐다(지적: 맘 놓고 발전했다는 표현이
+       어색하다 — 입구를 단단히 막고 발전·생산을 한 것이다). 리플레이가 말해 주는 것은
+       '입구를 무엇으로 막았나'와 '그 뒤로 확장·생산을 이어갔다'까지고, 그 사람이 마음을
+       놓았는지 조마조마했는지는 어디에도 안 적혀 있다. */
     return `${ga(c.who)} ${when}${done(c, c.pick([
-      `본진 입구를 ${ro(what)} 막아 놓고 뒤에서 마음 놓고 발전함`,
-      `입구를 ${ro(what)} 걸어 잠그고 안전하게 살림을 키움`,
-      `본진 앞을 ${ro(what)} 틀어막고 그 뒤에서 조용히 덩치를 불림`,
+      `본진 입구를 ${ro(what)} 단단히 막고 발전에 집중함`,
+      `입구를 ${ro(what)} 걸어 잠그고 살림을 키움`,
+      `본진 앞을 ${ro(what)} 틀어막고 그 뒤에서 덩치를 불림`,
       `입구를 ${ro(what)} 막아 두고 병력 대신 확장과 테크에 투자함`,
     ]))}`;
   },
@@ -1642,13 +1658,15 @@ const TEMPLATES: Record<string, Tpl> = {
     const fa = koOf(c.p.forceA);
     const fb = koOf(c.p.forceB);
     const split = fa.length > 0 && fb.length > 0 && c.whoList.length === 2;
-    const sideName = (i: 0 | 1) => (pair ? c.whoList[i] : `${c.whoList[i]} 쪽`);
-    // 둘이 붙은 싸움이면 이름을 부른다 — 그게 가장 정확하고, 그림(화살표)과도 맞는다.
-    const both = split
-      ? `${wa(`${sideName(0)}의 ${fa.join("·")}`)} ${ga(`${sideName(1)}의 ${fb.join("·")}`)}`
-      : pair ? ga(c.who)
-        : named ? ga(listForm(force.join("·")))
-          : c.duel ? "둘의 병력이" : "양 팀 병력이";
+    /* 둘이 붙은 싸움이면 이름을 부른다 — 그게 가장 정확하고, 그림(화살표)과도 맞는다.
+       유닛 나열은 걷어냈다(요청: 자막에는 유닛 나열을 자제하고 화살표에 싣는 쪽으로) —
+       "○○ 쪽의 히드라·러커와 △△ 쪽의 탱크"는 화살표 기둥의 이름표가 이미 그대로
+       말하고 있고, 자막에서는 그 줄만 길어졌다. 이름을 못 부르는 자리(양쪽 대표를 못
+       뽑은 옛 요약 등)에서만 무엇이 뒤엉켰는지로 대신한다. */
+    const both = pair || split
+      ? ga(c.who)
+      : named ? ga(listForm(force.join("·")))
+        : c.duel ? "둘의 병력이" : "양 팀 병력이";
     /* 그 싸움에서 실제로 터진 마법(요청: 다양한 세부 기술 사용 진술) — 마법 좌표에 시각이
        함께 남아 있어 몇 번 터졌는지까지 셀 수 있다. 큰 싸움의 그림은 대개 이것이 만든다. */
     const tech = TECH_KO[str(c.p.tech)];
@@ -1723,20 +1741,13 @@ const TEMPLATES: Record<string, Tpl> = {
       const raiderIsA = c.whoList[0] === raider;
       const rf = split ? (raiderIsA ? fa : fb) : [];
       const of = split ? (raiderIsA ? fb : fa) : [];
-      if (rf.length > 0) {
-        const led = `${reul(rf.join("·"))} 몰고 `;
-        const met = of.length > 0 ? `${owner}의 ${wa(of.join("·"))} ` : "";
-        return `${spell}${ga(raider)} ${led}${done(c, c.pick(says([
-          `${owner}의 기지를 덮쳐 ${met}크게 붙음`,
-          `${owner}의 본진까지 밀고 들어가 ${met}그 판의 가장 큰 싸움을 벌임`,
-          `${owner}의 기지를 들이쳐 ${met}한판 크게 붙음`,
-        ])))}`;
-      }
-      const mix = named ? `${ga(listForm(force.join("·")))} 뒤엉킨 ` : "";
+      /* 무엇을 몰고 갔고 무엇과 붙었는지는 화살표 이름표가 말한다(요청: 자막에는 유닛
+         나열을 자제) — 자막은 '누가 누구 집을 들이쳐 크게 붙었나'만 말한다. */
+      void rf; void of;
       return `${spell}${ga(raider)} ${done(c, c.pick(says([
-        `${owner}의 기지를 덮쳐 ${mix}큰 싸움을 벌임`,
-        `${owner}의 본진까지 밀고 들어가 ${mix}큰 싸움을 벌임`,
-        `${owner}의 기지를 들이쳐 ${mix}그 판의 가장 큰 싸움을 벌임`,
+        `${owner}의 기지를 덮쳐 크게 붙음`,
+        `${owner}의 본진까지 밀고 들어가 그 판의 가장 큰 싸움을 벌임`,
+        `${owner}의 기지를 들이쳐 한판 크게 붙음`,
       ])))}`;
     }
     return `${where}${spell}${both} ${done(c, c.pick(says(

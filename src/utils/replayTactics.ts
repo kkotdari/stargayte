@@ -883,6 +883,11 @@ function detectFor(c: Ctx): Tactic[] {
   const out: Tactic[] = [];
   const u = (n: string) => s.unitCounts[n] ?? 0;
   const firstU = (n: string): number | null => s.firstUnitFrame[n] ?? null;
+  /** 러시에 실린 병력 규모 — 첫 유닛이 나온 뒤 RUSH_GO_SEC 안에 그 유닛을 몇 기까지
+   *  뽑았나(요청: 초반 러시에서는 유닛 기수도 중요하다). 그때까지 뽑은 총수라 '몇 기로
+   *  달렸나'의 상한인데, 초반에는 죽은 병력이 거의 없어 실제 규모에 가깝다. */
+  const rushSize = (unit: string, from: number): number =>
+    (s.unitFrames[unit] ?? []).filter((f) => f <= from + RUSH_GO_SEC / SECONDS_PER_FRAME).length;
   const firstB = (n: string): number | null => s.firstBuildingFrame[n] ?? null;
   const tanks = u("Siege Tank (Tank Mode)") + u("Siege Tank (Siege Mode)");
   const who = rawName;
@@ -1199,7 +1204,7 @@ function detectFor(c: Ctx): Tactic[] {
       if (drones >= 7 && drones <= 14 && wentAt(ling, RUSH_GO_SEC)) {
         out.push({
           key: "zling-rush", ...target, weight: 12, at: ling,
-          who, p: { drones, solo },
+          who, p: { drones, solo, n: rushSize("Zergling", ling) },
         });
       }
     }
@@ -1499,7 +1504,7 @@ function detectFor(c: Ctx): Tactic[] {
       if (gates >= 2 && wentAt(zealot, RUSH_GO_SEC)) {
         out.push({
           key: "zealot-rush", ...target, weight: 12, at: zealot,
-          who, p: { gates, solo },
+          who, p: { gates, solo, n: rushSize("Zealot", zealot) },
         });
       }
     }
