@@ -627,8 +627,8 @@ export default function ActivityComments({ targetType, targetId }: { targetType:
   // 편집까지 되면 시트를 여는 탭과 버튼 탭이 같은 자리에서 겹친다).
   const renderNote = (c: ActivityComment, interactive: boolean) => (
     <li key={c.id} className="scr-comment-item scr-activity-note-item">
-      {/* 포스트 본문(너 나와/게임요약)보다 댓글이 더 중요해 보이면 안 된다는 지적으로
-          아주 살짝만 줄인다(32 → 28) — 포스트 쪽 아바타는 반대로 키운다. */}
+      {/* 카드 본문(너 나와/게임요약)보다 댓글이 더 중요해 보이면 안 된다는 지적으로
+          아주 살짝만 줄인다(32 → 28) — 카드 쪽 아바타는 반대로 키운다. */}
       <Avatar
         member={{ id: c.author.memberId, nickname: c.author.nickname, avatar: c.author.avatar }}
         size={28}
@@ -705,7 +705,7 @@ export default function ActivityComments({ targetType, targetId }: { targetType:
       onClick={(e) => e.stopPropagation()}
     >
       {/* 댓글이 있을 때만 "댓글" 소제목을 단다(지적: 댓글과 본문 구역 구분이 안 됨 —
-          상단부에 소제목을 달고 그 위 여백도 넣기). 댓글이 하나도 없는 포스트는 여전히
+          상단부에 소제목을 달고 그 위 여백도 넣기). 댓글이 하나도 없는 카드는 여전히
           구석의 작은 "댓글 추가" 버튼만 있는 미니멀한 모습 그대로 둔다. */}
       {/* 소제목 옆에 건수도 함께(지적: 댓글 소제목 옆에 건수 표시). */}
       {notes.length > 0 && <div className="scr-activity-comments-heading">댓글 {notes.length}</div>}

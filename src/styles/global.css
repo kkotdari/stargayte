@@ -90,12 +90,12 @@
   --void: #000000;
   --panel: rgba(255, 255, 255, 0.04);      /* 패널 (반투명 유리) */
   --panel-solid: #101011;                  /* 불투명이 필요한 곳 */
-  /* 포스트(활동 포스트·댓글 화면·게임결과 모달)의 종이 색 — 반드시 불투명이다(반투명이면
-     전체화면 패널 뒤로 페이지가 그대로 비친다). 포스트가 좌우 여백 없이 화면을 꽉 채우므로
-     이 색이 페이지 배경과 조금은 달라야 포스트끼리 경계가 남는다 — 다크는 순검정 페이지
+  /* 카드(활동 카드·댓글 화면·게임결과 모달)의 종이 색 — 반드시 불투명이다(반투명이면
+     전체화면 패널 뒤로 페이지가 그대로 비친다). 카드가 좌우 여백 없이 화면을 꽉 채우므로
+     이 색이 페이지 배경과 조금은 달라야 카드끼리 경계가 남는다 — 다크는 순검정 페이지
      위의 아주 살짝 밝은 판. 입력 중 캔버스(html/body/.scr-main::before)도 이 값으로 칠해
      키보드 위 띠가 패널의 연장처럼 보이게 하므로, 값은 한 곳에서만 정한다. */
-  --post-bg: #0d0d0e;
+  --card-bg: #0d0d0e;
   --panel-raised: rgba(255, 255, 255, 0.12); /* 드롭다운/칩 등 */
   --input-bg: rgba(6, 6, 7, 0.86);         /* 입력 필드 */
   --header-bg: rgba(7, 7, 8, 0.74);        /* 헤더 전용 배경 — .scr-light-theme에서 재정의 */
@@ -804,7 +804,7 @@ html.scr-light-theme .scr-checkbox-field input[type="radio"]:not(:checked), html
    종족 배지처럼 변수를 안 쓰는 요소는 원래 색 그대로 남는다. */
 html.scr-light-theme {
   --void: #ffffff;
-  --post-bg: #ffffff;
+  --card-bg: #ffffff;
   --panel: rgba(255, 255, 255, 0.46);
   --panel-solid: #ffffff;
   --panel-raised: #f0f0f0;
@@ -1229,20 +1229,20 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 /* 맨 위로 이동 버튼(.scr-scrolltop)이 화면 맨 아래 실제 버튼(저장 등)을 가리지 않도록
    그 버튼 높이만큼 아래쪽에 여백을 둔다(모바일은 탭바 몫으로 별도 여백을 두므로 아래
    미디어쿼리가 이 값을 덮어쓴다). */
-/* 좌우 패딩을 토큰으로 둔다 — 활동 포스트가 이 값만큼 음수 마진으로 빠져나가 화면을
+/* 좌우 패딩을 토큰으로 둔다 — 활동 카드가 이 값만큼 음수 마진으로 빠져나가 화면을
    꽉 채우기 때문에(아래 .scr-activity-list), 두 곳이 반드시 같은 값이어야 한다. */
-/* 포스트(활동 카드) 좌우 여백을 본문 여백의 2배로(지적: 포스트들 좌우 여백을 1스텝
-   증가, 현재의 2배) — 아래 :root의 --post-pad-bx/--post-head-pad-l 기본값(0px)은
-   "포스트 자체 패딩 없음(본문 패딩만)"이던 예전 요청이다. 여기서 --main-pad-x를 그대로
-   덧붙여, 포스트 안쪽 콘텐츠(헤더·바디·댓글 — 전부 --post-pad-bx 하나를 같이 쓴다)가
+/* 카드(활동 카드) 좌우 여백을 본문 여백의 2배로(지적: 카드들 좌우 여백을 1스텝
+   증가, 현재의 2배) — 아래 :root의 --card-pad-bx/--card-head-pad-l 기본값(0px)은
+   "카드 자체 패딩 없음(본문 패딩만)"이던 예전 요청이다. 여기서 --main-pad-x를 그대로
+   덧붙여, 카드 안쪽 콘텐츠(헤더·바디·댓글 — 전부 --card-pad-bx 하나를 같이 쓴다)가
    본문 패딩 위에 한 겹 더 들여쓰도록 한다. .scr-main 밑에서만 적용되므로 그 바깥(공유
    랜딩의 .scr-share-page)은 그대로 0으로 남는다 — 거기 쓰이는 값도 함께 커지면 안 된다.
    var() 참조라 아래 모바일 미디어쿼리에서 --main-pad-x가 16px로 바뀌면 자동으로 같이
    줄어든다(따로 재선언할 필요 없음). 게임결과를 펼쳐도 안쪽 콘텐츠가 이 값 하나만
    같이 쓰므로 뎁스가 하나 더 들여써지지 않는다(지적: 펼쳐도 뎁스가 늘어나면 안 됨). */
 .scr-main {
-  --main-pad-x: 20px; --post-bleed: var(--main-pad-x);
-  --post-pad-bx: var(--main-pad-x); --post-head-pad-l: var(--main-pad-x);
+  --main-pad-x: 20px; --card-bleed: var(--main-pad-x);
+  --card-pad-bx: var(--main-pad-x); --card-head-pad-l: var(--main-pad-x);
   max-width: var(--content-max); margin: 0 auto; padding: 34px var(--main-pad-x) 96px;
   position: relative; z-index: 1;
 }
@@ -2585,7 +2585,7 @@ html.scr-page-bg:not(.scr-light-theme) .scr-main::before {
 }
 /* 라이트 테마 배경은 훅에 라이트 이미지를 넘긴 화면에서만 켜진다(.scr-page-bg-light).
    통계는 안 넘기므로 예전처럼 다크 전용이고, 활동는 넘기므로 양 테마 모두 깔린다
-   (요청: 포스트 구분감을 위해 활동 배경 복구). */
+   (요청: 카드 구분감을 위해 활동 배경 복구). */
 html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
   background:
     var(--page-bg-scrim),
@@ -3922,13 +3922,13 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
   /* 우측 버튼 묶음(.scr-user)은 모바일에서 자식이 전부 숨김인데 margin-left:auto가 남아
      justify-content:center를 무력화했다(지적: 가로 가운데가 안 됨) — 묶음째 숨긴다. */
   .scr-user { display: none; }
-  /* 모바일에서는 포스트에 덧붙이던 좌우 패딩을 걷는다(요청: 활동 포스트들 추가 좌우패딩
-     제거) — 판은 --post-bleed만큼 나갔다가 같은 값을 되돌려 받으므로, 이 둘을 0으로 두면
-     포스트 안쪽 내용이 본문 패딩(16px)과 정확히 같은 자리에서 시작한다. PC는 위 .scr-main의
+  /* 모바일에서는 카드에 덧붙이던 좌우 패딩을 걷는다(요청: 활동 카드들 추가 좌우패딩
+     제거) — 판은 --card-bleed만큼 나갔다가 같은 값을 되돌려 받으므로, 이 둘을 0으로 두면
+     카드 안쪽 내용이 본문 패딩(16px)과 정확히 같은 자리에서 시작한다. PC는 위 .scr-main의
      값(본문 패딩 위에 한 겹 더)을 그대로 쓴다 — 화면이 넓어 한 단 들여쓰는 편이 읽기 좋다. */
   .scr-main {
     --main-pad-x: 16px; padding: 30px var(--main-pad-x) 48px;
-    --post-pad-bx: 0px; --post-head-pad-l: 0px;
+    --card-pad-bx: 0px; --card-head-pad-l: 0px;
   }
   /* 너나와 카드 좌우 내부 패딩 축소(요청: "모바일 좌우 패딩은 메인이 아니라 너나와 카드
      내부 패딩"). 예전엔 이 패딩 안에 좌우 이동 버튼(절대배치)이 들어가야 해서 넓게
@@ -7059,10 +7059,10 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 /* 카드 사이 갭 20 → 28px — 이 여백에 접힘 상태의 "+ N건 펼치기" 글자가 absolute로 얹힌다.
    20px에선 글자가 위아래 카드 한가운데에 떠서 어느 카드 것인지 모호했다(지적) — 넓히면
    글자 위로 여백이 더 남아 바로 아래 카드에 붙은 것으로 읽힌다. */
-/* 포스트 사이 갭 — 세로 여백은 전반적으로 키운다(요청). */
+/* 카드 사이 갭 — 세로 여백은 전반적으로 키운다(요청). */
 /* 42 → 26px(요청). 유리판이 있을 때는 판과 판 사이가 이만큼 벌어져야 두 장으로 읽혔는데,
    채움이 없어진 지금은 위아래 림 한 줄이 그 일을 하므로 그만큼 벌릴 이유가 없다 — 오히려
-   화면이 휑해 보인다. 카드 자신의 꼬리 여백(--post-pad-b 16px)이 여기 더해진다. */
+   화면이 휑해 보인다. 카드 자신의 꼬리 여백(--card-pad-b 16px)이 여기 더해진다. */
 :root { --feed-card-gap: 26px; }
 .scr-activity-list { display: flex; flex-direction: column; gap: var(--feed-card-gap); }
 
@@ -7083,30 +7083,37 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 
 /* 줄 구분선은 본문 칸 좌우 여백을 뚫고 끝까지 간다(요청: 양쪽 끝까지 꽉 차게) — 표의
    가로줄은 칸 안쪽이 아니라 표 전체를 가르는 선이다. 여백만큼 밖으로 나갔다가 같은 값을
-   줄 안쪽 패딩으로 되돌려 글자 자리는 그대로 둔다(--post-bleed는 .scr-main이 자기
+   줄 안쪽 패딩으로 되돌려 글자 자리는 그대로 둔다(--card-bleed는 .scr-main이 자기
    좌우 패딩과 같은 값으로 내려 준다). */
 .scr-activity-rows {
   display: flex; flex-direction: column;
-  margin-inline: calc(-1 * var(--post-bleed)); --scr-row-pad-x: calc(var(--post-bleed) + 2px);
+  margin-inline: calc(-1 * var(--card-bleed)); --scr-row-pad-x: calc(var(--card-bleed) + 2px);
 }
 /* 줄 사이는 얇은 실선 하나로만 가른다 — 카드처럼 저마다 유리판을 두면 '목록'이 아니라
    '작은 카드 목록'이 되어 훑기가 다시 느려진다. */
 .scr-activity-row-wrap + .scr-activity-row-wrap { border-top: 1px solid var(--line-hair); }
 .scr-activity-row {
-  display: grid; align-items: center; gap: 0; width: 100%;
+  /* 칸을 줄 높이만큼 늘린다(stretch) — 가운데 정렬로 두면 칸이 제 글자 높이로 쪼그라들어
+     세로 구분선이 글자 높이만큼만 그려지고 줄마다 뚝뚝 끊긴다(지적: 열 구분 없이 이어지게).
+     늘려 두면 위아래 줄의 선이 서로 맞닿아 목록 전체를 관통하는 한 줄이 된다. 글자를
+     가운데 세우는 일은 각 칸이 제 안에서 한다(바로 아래 규칙). */
+  display: grid; align-items: stretch; gap: 0; width: 100%;
   /* 시각은 가장 긴 값("8월 3일 23:59")에 맞춰 고정 — 줄마다 폭이 달라지면 제목이 들쭉
      날쭉해져 세로로 훑을 수가 없다. 제목도 고정폭이라 내용 칸이 늘 같은 x에서 시작한다. */
-  grid-template-columns: 128px minmax(0, 1fr) 106px;
-  padding: 15px var(--scr-row-pad-x); background: transparent; border: none; cursor: pointer;
+  grid-template-columns: 100px minmax(0, 1fr) 106px;
+  /* 위아래 여백은 줄이 아니라 각 칸이 낸다(아래 규칙) — 줄이 내면 그 여백이 격자 밖이라
+     칸 높이가 글자 높이(18px)에 그치고, 세로 구분선도 딱 그만큼만 그려진다(실측). 칸이
+     내면 칸이 줄 높이를 통째로 채워 선이 위아래 줄과 맞닿는다. */
+  padding: 0 var(--scr-row-pad-x); background: transparent; border: none; cursor: pointer;
   font-family: inherit; font-size: var(--fs-caption); color: var(--text); text-align: left;
   -webkit-tap-highlight-color: transparent;
 }
 /* 세로 구분선(요청) — 가로줄(--line-hair)보다 더 흐리게 둔다. 표의 세로줄은 칸을 가르기만
    하면 되고, 가로줄만큼 진하면 격자가 글자보다 먼저 눈에 들어온다. 선 좌우로 같은 여백을
    두려고 gap 대신 각 칸의 패딩으로 자리를 만든다. */
+.scr-activity-row > * { display: flex; align-items: center; padding: 15px 10px 15px 0; }
 .scr-activity-row > * + * { border-left: 1px solid var(--line-faint); padding-left: 10px; }
-.scr-activity-row > * { padding-right: 10px; }
-.scr-activity-row > *:last-child { padding-right: 0; }
+.scr-activity-row > *:last-child { padding-right: 0; justify-content: flex-end; }
 /* 고른 줄에 배경을 깔지 않는다(요청) — 아래에 카드가 펼쳐져 있는 것이 이미 '고른 줄'을
    말하고, 배경까지 깔면 그 줄만 다른 표처럼 보인다. 호버는 마우스가 어디 있는지 알려
    주는 것이라 그대로 둔다. */
@@ -7152,7 +7159,7 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
      정도라 남는 폭을 앞뒤에 나눠 줘도 넉넉하다. */
   /* 제목 칸은 "랭크 변동" + NEW가 함께 들어갈 만큼(실측 110px). 내용 칸은 "4명 9경기"
      정도라 남는 폭을 앞에 더 줘도 넉넉하다. */
-  .scr-activity-row { grid-template-columns: 110px minmax(0, 1fr) 78px; }
+  .scr-activity-row { grid-template-columns: 100px minmax(0, 1fr) 84px; }
   .scr-activity-row > * + * { padding-left: 8px; }
   .scr-activity-row > * { padding-right: 8px; }
   .scr-activity-row > *:last-child { padding-right: 0; }
@@ -7192,11 +7199,11 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    색 얇은 라인 + 가운데 "현재" 라벨. */
 .scr-activity-now-divider {
   display: flex; align-items: center; gap: 10px; margin: -2px 2px;
-  /* 위아래 여백을 맞춘다(지적: 현재 라인 위아래 갭이 달라 보인다). 포스트는 목록의
-     갭(--feed-card-gap) 말고도 제 꼬리 여백(margin-bottom: --post-pad-b)을 하나 더
+  /* 위아래 여백을 맞춘다(지적: 현재 라인 위아래 갭이 달라 보인다). 카드는 목록의
+     갭(--feed-card-gap) 말고도 제 꼬리 여백(margin-bottom: --card-pad-b)을 하나 더
      달고 있어서, 이 선의 위쪽은 42+16, 아래쪽은 42로 16px이 어긋나 있었다. 이 선도
-     포스트와 같은 꼬리 여백을 달아 양쪽을 같게 만든다(-2px는 위와 같은 보정). */
-  margin-bottom: calc(var(--post-pad-b) - 2px);
+     카드와 같은 꼬리 여백을 달아 양쪽을 같게 만든다(-2px는 위와 같은 보정). */
+  margin-bottom: calc(var(--card-pad-b) - 2px);
 }
 /* 양쪽 끝이 흐려지는 그라데이션을 쓰다가 균일한 단색 선으로 바꿨다(요청) — 가운데만
    진하고 끝이 사라지는 선은 라벨 주변만 강조돼 "선"이 아니라 번짐처럼 보였다. */
@@ -7215,41 +7222,41 @@ html:not(.scr-light-theme) .scr-activity-now-divider::after {
   background: var(--line); opacity: 1;
 }
 html:not(.scr-light-theme) .scr-activity-now-divider span { color: var(--muted); }
-/* ── 포스트(활동 카드) ──────────────────────────────────────────────────────
-   패널형 유리판에서 인스타그램식 '포스트'로 바꾼다(요청). 포스트 한 장은 크게
+/* ── 카드(활동 카드) ──────────────────────────────────────────────────────
+   패널형 유리판에서 인스타그램식 '카드'로 바꾼다(요청). 카드 한 장은 크게
    헤더부와 컨텐츠부로 나뉘고 그 사이를 선으로 긋는다(요청). 좌우 여백은 줄이고
    대신 세로 패딩·갭을 키워 글이 숨 쉬게 한다(요청).
-   다크 테마에서도 이 종이는 흰색이다(요청) — 색은 테마가 아니라 .scr-post 스코프가
+   다크 테마에서도 이 종이는 흰색이다(요청) — 색은 테마가 아니라 이 공유 화면 스코프가
    정하고, 그 스코프는 라이트 테마와 토큰 선언을 공유한다(위 html.scr-light-theme,
-   .scr-post 블록 참고). 그래서 테마별 카드 규칙이 따로 없다. */
+   이 아래 블록 참고). 그래서 테마별 카드 규칙이 따로 없다. */
 :root {
-  /* 포스트 안쪽 여백 — 한 곳에서 정해 헤더·컨텐츠·댓글이 같이 쓴다.
+  /* 카드 안쪽 여백 — 한 곳에서 정해 헤더·컨텐츠·댓글이 같이 쓴다.
      좌우는 헤더보다 바디를 살짝 넓게 잡는다(요청) — 제목이 조금 더 바깥에서 시작해
      글의 시작점이 되고, 그 아래 내용은 한 칸 들여쓴 것처럼 읽힌다.
-     포스트는 좌우 꽉 차는 전면판이라 이 값이 곧 화면 가장자리로부터의 들여쓰기다 —
+     카드는 좌우 꽉 차는 전면판이라 이 값이 곧 화면 가장자리로부터의 들여쓰기다 —
      그래서 제목 줄은 페이지 헤더/필터부와 같은 20px에 맞춘다(지적: PC에서 셋의 좌우
      패딩이 달라 본문만 넓어 보임). 모바일은 아래 720px 블록에서 16/20으로 되돌린다. */
   /* 계층적 들여쓰기를 없앤다(요청: 활동 타이틀부터 경기결과 카드 바디까지 좌우 패딩을
-     가장 좁은 값으로 통일). 포스트 판은 --post-bleed(=--main-pad-x)만큼 밖으로 나갔다가
+     가장 좁은 값으로 통일). 카드 판은 --card-bleed(=--main-pad-x)만큼 밖으로 나갔다가
      같은 값을 투명 테두리로 되돌려 받으므로, 여기서 0을 주면 머리도 본문도 화면 패딩과
      정확히 같은 자리에서 시작한다. */
-  --post-pad-x: 0px;
+  --card-pad-x: 0px;
   /* 28 → 20px(요청: 바디 패딩이 과하다). 머리보다 좁아지면 안 되므로(요청) 아래
-     --post-head-pad-l(10px)보다는 늘 커야 한다 — 제목이 표제처럼 한 단 바깥에서 시작하고
+     --card-head-pad-l(10px)보다는 늘 커야 한다 — 제목이 표제처럼 한 단 바깥에서 시작하고
      본문이 그 안으로 들여쓰는 관계는 그대로 남는다. */
-  /* (지적: 포스트들 좌우 여백을 1스텝 증가, 현재의 2배) 이 0px은 .scr-main 바깥(공유
-     랜딩 등)의 기본값으로만 남는다 — .scr-main 스코프에서는 이 값과 --post-head-pad-l을
-     --main-pad-x로 덮어써 포스트 안쪽 콘텐츠가 본문 패딩 위에 한 겹 더 들여써진다(위
+  /* (지적: 카드들 좌우 여백을 1스텝 증가, 현재의 2배) 이 0px은 .scr-main 바깥(공유
+     랜딩 등)의 기본값으로만 남는다 — .scr-main 스코프에서는 이 값과 --card-head-pad-l을
+     --main-pad-x로 덮어써 카드 안쪽 콘텐츠가 본문 패딩 위에 한 겹 더 들여써진다(위
      .scr-main 규칙 참고). */
-  --post-pad-bx: 0px;
-  /* 머리(제목·시각)만 쓰는 왼쪽 들여쓰기 — 본문(--post-pad-bx)보다 눈에 띄게 바깥에서
+  --card-pad-bx: 0px;
+  /* 머리(제목·시각)만 쓰는 왼쪽 들여쓰기 — 본문(--card-pad-bx)보다 눈에 띄게 바깥에서
      시작한다(요청). 예전엔 둘의 차이가 4px뿐이라 "머리가 한 단계 위"라는 게 안 읽혔다.
      16 → 10px(요청: 왼쪽 패딩 축소) — 제목과 시각이 한 줄을 나눠 쓰게 되면서 그 줄에 담을
      글자가 늘었고, 왼쪽을 당기면 제목이 판 왼쪽 끝에 붙은 표제처럼 읽힌다. */
-  --post-head-pad-l: 0px;
+  --card-head-pad-l: 0px;
   /* 헤더 오른쪽에 비워 두는 케밥 자리. 변수로 둔 건 제목 줄의 음영이 이 값만큼 오른쪽
      끝까지 빠져나가야 하기 때문이다 — 묶음 카드처럼 케밥이 없는 헤더는 이 값을 줄인다. */
-  --post-head-pad-r: 44px;
+  --card-head-pad-r: 44px;
   /* 케밥(26px)의 위 좌표 — 제목 줄 가운데에 맞춘다. 한때 머리에 음영 띠가 있어 케밥을 그
      띠 덩어리 전체와 견줘야 했는데(띠를 벗어나면 그것만 처져 보였다), 띠를 걷어낸 뒤로는
      견줄 상대가 제목 줄뿐이다 — 머리 아래 패딩을 늘려도 이 값이 따라 움직이지 않는 이유다.
@@ -7257,31 +7264,31 @@ html:not(.scr-light-theme) .scr-activity-now-divider span { color: var(--muted);
      터치 영역을 바깥으로 넓히는 margin:-4px이 걸려 있어 실제 버튼 상자는 여기서 4px 더
      위에서 시작한다 — 제목 줄 가운데가 머리 위끝에서 18.5px(위 패딩 9 + 줄 19의 절반)이니
      버튼 상자 위끝은 18.5 - 13 = 5.5px, 여기에 그 4px을 더해 10px이다. */
-  --post-kebab-top: 10px;
-  --post-pad-y: 24px;
-  /* 포스트 판이 본문 좌우 패딩 '밖으로' 나가는 양(요청: 판을 본문폭 최대로, 좌우 패딩 없이).
+  --card-kebab-top: 10px;
+  --card-pad-y: 24px;
+  /* 카드 판이 본문 좌우 패딩 '밖으로' 나가는 양(요청: 판을 본문폭 최대로, 좌우 패딩 없이).
      판은 이만큼 음수 마진으로 나가고 같은 값을 자기 패딩으로 되돌려 받으므로, 안에 든
      머리·내용·케밥은 한 픽셀도 움직이지 않는다(요청: 현재와 위치 동일하게 유지) — 안쪽
      여백 값들을 하나하나 더해 줄 필요가 없다.
-     기본값은 0이다: 본문(.scr-main) 밖에서 쓰이는 포스트(공유 랜딩의 .scr-share-page)는
+     기본값은 0이다: 본문(.scr-main) 밖에서 쓰이는 카드(공유 랜딩의 .scr-share-page)는
      빼낼 패딩이 없어서, 나갔다 돌아오는 계산 자체를 하지 않아야 한다. */
-  --post-bleed: 0px;
-  /* 포스트 꼬리 여백 — 댓글이 없을 때 "댓글 쓰기" 버튼이 절대배치로 이 안에 얹히던
+  --card-bleed: 0px;
+  /* 카드 꼬리 여백 — 댓글이 없을 때 "댓글 쓰기" 버튼이 절대배치로 이 안에 얹히던
      시절엔 46px까지 키워야 했지만(요청: "댓글이 없을때 저 부분이 굳이 있을 필요가
      없다는 뜻이야"로 그 절대배치 자체를 없앰), 이제 그 버튼도 다른 댓글 줄과 똑같이
      보통 흐름으로 그려지므로 특별히 더 벌릴 이유가 없다 — 댓글이 있을 때와 같은 값
      하나로 통일한다(예전 :has() 분기 삭제). */
-  --post-pad-b: 16px;
+  --card-pad-b: 16px;
 }
-/* 모바일은 본문 좌우 여백(--main-pad-x)이 16px로 줄어드니 포스트 들여쓰기도 같이 줄인다.
+/* 모바일은 본문 좌우 여백(--main-pad-x)이 16px로 줄어드니 카드 들여쓰기도 같이 줄인다.
    이 블록은 위 :root와 특이도가 같아서, 반드시 뒤에 와야 이긴다(720px 쪽 모바일 블록에
    넣으면 소스상 앞이라 무시된다). */
 @media (max-width: 720px) {
-  :root { --post-pad-x: 0px; --post-pad-bx: 0px; --post-head-pad-l: 0px; }
+  :root { --card-pad-x: 0px; --card-pad-bx: 0px; --card-head-pad-l: 0px; }
 }
-/* 포스트(활동 카드) = 머리(떠 있음, 글래스 없음) + 본문(.scr-activity-card-body, 글래스는
+/* 카드(활동 카드) = 머리(떠 있음, 글래스 없음) + 본문(.scr-activity-card-body, 글래스는
    오직 여기) + 댓글(있을 때만, 글래스 없음) — 4가지 타입(게임결과/너나와/랭크변동/
-   게임요약) 전부 이 한 구조를 공유한다(요청: "모든 포스트의 구조를 공통화"). 헤더·본문·
+   게임요약) 전부 이 한 구조를 공유한다(요청: "모든 카드의 구조를 공통화"). 헤더·본문·
    댓글은 이제 서로의 형제일 뿐 감싸는 패널이 따로 없다 — 각자 필요한 만큼만 스스로
    책임진다(요청: "불필요한 css 단계도 제거하고 최대한 추상화·공통화"). */
 .scr-activity-card {
@@ -7293,19 +7300,19 @@ html:not(.scr-light-theme) .scr-activity-now-divider span { color: var(--muted);
      여전히 화면 끝이라 케밥이 그만큼 밖으로 밀린다(실측: 오른쪽 끝이 364 → 380px). 테두리는
      패딩 박스 밖이라, 이렇게 두면 기준면이 예전 판의 자리에 그대로 남아 안에 걸린 right
      값들을 한 줄도 안 고쳐도 된다. */
-  border-inline: var(--post-bleed) solid transparent;
-  margin-inline: calc(-1 * var(--post-bleed));
-  /* 포스트 꼬리 여백 — 예전엔 헤더·본문·댓글을 함께 감싸는 패널 하나가 이 여백을
+  border-inline: var(--card-bleed) solid transparent;
+  margin-inline: calc(-1 * var(--card-bleed));
+  /* 카드 꼬리 여백 — 예전엔 헤더·본문·댓글을 함께 감싸는 패널 하나가 이 여백을
      냈는데, 그 패널 자체가 없어졌으므로 카드 자신의 margin-bottom으로 옮긴다(다음
-     포스트와의 간격은 이 값 + .scr-activity-list의 --feed-card-gap이다). */
-  margin-bottom: var(--post-pad-b);
+     카드와의 간격은 이 값 + .scr-activity-list의 --feed-card-gap이다). */
+  margin-bottom: var(--card-pad-b);
 }
 /* 본문 — 유리(반투명·블러·위아래 림)가 걸리는 유일한 자리(요청: "패널 블러/반투명,
    위아래 림은 바디에만 적용 헤더는 떠 있는 느낌"). 좌우로는 테두리도 그림자도 두지
    않는다(요청: 좌우 그림자 제거) — 화면 밖으로 이어지는 면에 선을 그으면 판이 잘린
    것처럼 읽힌다. 위아래만 림 한 줄로 경계를 만든다. 유리 톤은 통계 그리드 패널과 같은
    값으로 맞춘다(요청) — 채움을 아주 옅게 한 겹 깔고 블러는 2px만.
-   사방 패딩도 여기 한 곳에서 공통으로 정의한다(요청: "포스트 본문 공통 css로 패딩
+   사방 패딩도 여기 한 곳에서 공통으로 정의한다(요청: "카드 본문 공통 css로 패딩
    넣기", "사방 패딩을 공통으로 정의") — 타입별 전용 클래스(.scr-activity-game-result-body/
    .scr-activity-shift-split 등)는 이제 순수 내용 레이아웃만 책임지고, 글래스·패딩은 여기
    하나로 통일한다(요청: 불필요한 CSS 단계 제거). */
@@ -7314,9 +7321,9 @@ html:not(.scr-light-theme) .scr-activity-now-divider span { color: var(--muted);
    생기는 부담도 없어진다. 경계는 위아래 림 한 줄만 남긴다 — 채움까지 없는데 림마저 빼면
    카드가 어디서 끊기는지 알 수가 없다. */
 .scr-activity-card > .scr-activity-card-body {
-  margin-inline: calc(-1 * var(--post-bleed));
-  border-inline: var(--post-bleed) solid transparent;
-  padding: var(--post-row-gap) calc(var(--post-pad-bx) + 8px);
+  margin-inline: calc(-1 * var(--card-bleed));
+  border-inline: var(--card-bleed) solid transparent;
+  padding: var(--card-row-gap) calc(var(--card-pad-bx) + 8px);
   background-image:
     linear-gradient(to bottom, rgba(var(--overlay-rgb), 0.1) 1px, transparent 1px),
     linear-gradient(to top, rgba(var(--overlay-rgb), 0.1) 1px, transparent 1px);
@@ -7328,18 +7335,18 @@ html:not(.scr-light-theme) .scr-activity-now-divider span { color: var(--muted);
     linear-gradient(to bottom, rgba(16, 21, 26, 0.08) 1px, transparent 1px),
     linear-gradient(to top, rgba(16, 21, 26, 0.08) 1px, transparent 1px);
 }
-/* 예전에는 활동 목록만 본문 좌우 패딩 바깥으로 빼내 화면 폭을 그대로 썼다 — 포스트가
-   채움 없는 투명판이라 판의 경계가 안 보였기 때문이다. 이제 포스트에 유리 채움이 들어와
+/* 예전에는 활동 목록만 본문 좌우 패딩 바깥으로 빼내 화면 폭을 그대로 썼다 — 카드가
+   채움 없는 투명판이라 판의 경계가 안 보였기 때문이다. 이제 카드에 유리 채움이 들어와
    판의 좌우 끝이 눈에 보이므로, 화면 끝에 붙으면 여백 없이 잘린 것처럼 읽힌다(지적).
    본문의 좌우 패딩 안으로 되돌린다 — 툴바·필터 등 형제들과 같은 자리에서 시작한다. */
 
 /* ── 게임결과 묶음(요약 ↔ 목록) ──
-   접힘은 참가자 전원을 담은 요약 포스트 하나, 펼침은 그 자리를 대신하는 게임결과
-   포스트 N개다(요청) — 예전에는 둘 다 항상 마운트해 두고 절대배치·JS 높이 계산으로
+   접힘은 참가자 전원을 담은 요약 카드 하나, 펼침은 그 자리를 대신하는 게임결과
+   카드 N개다(요청) — 예전에는 둘 다 항상 마운트해 두고 절대배치·JS 높이 계산으로
    자리를 주고받았는데, 보일 쪽만 조건부로 마운트하는 쪽으로 단순화했다(요청: "왜 높이
    합산을 해야 하는거야? 하나씩 순차적으로 hidden을 제거하면 자연스럽게 스크롤이
    늘어날거잖아 — 한번에 영역 확보하는거만 없애면 되는거지"). 마운트된 만큼 문서가
-   자연히 자라므로 래퍼가 잴 높이 자체가 없다. 래퍼 자신은 다른 포스트 타입과 똑같이
+   자연히 자라므로 래퍼가 잴 높이 자체가 없다. 래퍼 자신은 다른 카드 타입과 똑같이
    CSS가 하나도 없다(요청: "다른 카드들과 css가 다르게 분기되고 있어"). */
 
 /* 카드가 나타날 때(요약이든 목록의 각 게임이든) 살짝 아래에서 올라오며 페이드인한다 —
@@ -7353,11 +7360,11 @@ html:not(.scr-light-theme) .scr-activity-now-divider span { color: var(--muted);
 @media (prefers-reduced-motion: reduce) {
   .scr-activity-card-stack-reveal { animation: none; }
 }
-/* 목록을 펼치면 승격된 포스트들이 래퍼의 평범한 자식으로 나란히 쌓인다(더 이상 flex
-   트랙이 아니다) — 다른 최상위 포스트와 같은 간격(--feed-card-gap)으로 떨어지게
-   카드 사이에만 그 간격을 더한다(요청: "게임결과 카드도 하나의 활동 포스트로 승격"
+/* 목록을 펼치면 승격된 카드들이 래퍼의 평범한 자식으로 나란히 쌓인다(더 이상 flex
+   트랙이 아니다) — 다른 최상위 카드와 같은 간격(--feed-card-gap)으로 떨어지게
+   카드 사이에만 그 간격을 더한다(요청: "게임결과 카드도 하나의 활동 카드로 승격"
    — 각 카드 자신의 꼬리 여백(margin-bottom, .scr-activity-card 공통 규칙)에 이 값을
-   더하면 최상위 포스트 사이 간격과 정확히 같아진다). */
+   더하면 최상위 카드 사이 간격과 정확히 같아진다). */
 .scr-activity-card-stack-wrapper > .scr-activity-card + .scr-activity-card {
   margin-top: var(--feed-card-gap);
 }
@@ -7385,7 +7392,7 @@ html:not(.scr-light-theme) .scr-activity-now-divider span { color: var(--muted);
   font-size: var(--fs-body); font-weight: 600; color: var(--text);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-/* 요약의 세미타이틀 줄(요청) — 왼쪽에 "요약 정보", 오른쪽에 참가자 수. 포스트 제목은
+/* 요약의 세미타이틀 줄(요청) — 왼쪽에 "요약 정보", 오른쪽에 참가자 수. 카드 제목은
    "이게 무슨 글인가"만 말하고, 그 아래 요약이 제 머리를 따로 갖는 구조다. */
 .scr-activity-card-stack-sum-head {
   display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
@@ -7412,12 +7419,12 @@ html:not(.scr-light-theme) .scr-activity-now-divider span { color: var(--muted);
      320px에서 머리가 27 → 47px로 두 층이 됐다). */
   min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-/* 묶음 카드의 헤더 우상단에도 다른 포스트와 똑같이 케밥이 앉는다(요청: 게임요약 통째로
+/* 묶음 카드의 헤더 우상단에도 다른 카드와 똑같이 케밥이 앉는다(요청: 게임요약 통째로
    카톡 공유를 케밥 메뉴 안에). 그만큼 오른쪽 자리를 비워 제목이 케밥 밑으로 흘러 들어가지
    않게 한다 — 패딩이 아니라 변수를 바꿔야 제목 줄 음영의 음수 마진도 같이 따라온다.
    케밥 자체의 자리와 드롭다운은 너 나와/순위변동 카드와 같은 규칙(.scr-activity-chal-menu)을
    그대로 쓴다. */
-.scr-activity-card-stack-summary > .scr-activity-card-head { --post-head-pad-r: 44px; }
+.scr-activity-card-stack-summary > .scr-activity-card-head { --card-head-pad-r: 44px; }
 
 /* 요약 바디 전체가 펼침/접힘 토글이다(요청) — 명단 어디를 눌러도 열리고 닫힌다. */
 /* 아래 여백은 펼침/접힘과 무관하게 '항상' 같아야 한다. 한때 펼쳤을 때만 줬는데(그림자가
@@ -7456,9 +7463,9 @@ html:not(.scr-light-theme) .scr-activity-now-divider span { color: var(--muted);
 /* 예전에는 펼쳤을 때 요약과 목록의 경계에 그림자를 드리워 두 층이 겹쳐 있다는 걸
    보여 줬다. 이제 펼치면 요약 자체가 접히므로(요청) 나눌 두 층이 없어 걷어냈다. */
 
-/* 헤더부 — 포스트를 헤더/컨텐츠 둘로 가르는 경계선을 여기 아래에 긋는다(요청).
-   오른쪽 44px는 포스트 우상단 케밥 자리.
-   포스트가 좌우 여백 없이 이어지다 보니 어디서 다음 글이 시작하는지 잘 안 읽혔다(지적)
+/* 헤더부 — 카드를 헤더/컨텐츠 둘로 가르는 경계선을 여기 아래에 긋는다(요청).
+   오른쪽 44px는 카드 우상단 케밥 자리.
+   카드가 좌우 여백 없이 이어지다 보니 어디서 다음 글이 시작하는지 잘 안 읽혔다(지적)
    — 제목을 과감히 키워(요청) 그 무게로 경계를 만든다. 시각은 제목에 딸린 보조라
    baseline을 맞춰 한 줄로 흐르게 한다. */
 .scr-activity-card-head {
@@ -7474,8 +7481,8 @@ html:not(.scr-light-theme) .scr-activity-now-divider span { color: var(--muted);
      아래는 5 → 12px으로 더 늘린다(요청: 헤더 아래 패딩 증가). 처음엔 "벌어지면 머리가 떠
      보인다"는 이유로 좁게 뒀는데, 유리 패널이 바디만 덮게 되면서 머리는 실제로 떠 있는 게
      맞고(요청), 그 상태에서는 제목이 패널 위 경계에 거의 닿아 있었다.
-     왼쪽은 본문보다 바깥에서 시작한다(--post-head-pad-l 주석 참고). */
-  padding: 9px var(--post-head-pad-r) 12px var(--post-head-pad-l);
+     왼쪽은 본문보다 바깥에서 시작한다(--card-head-pad-l 주석 참고). */
+  padding: 9px var(--card-head-pad-r) 12px var(--card-head-pad-l);
   font-size: var(--fs-micro); color: var(--dim);
   /* 한때 여기 음영 띠(::before, z-index:-1)를 깔았고 그걸 헤더 안에 가두려고 isolation을
      걸었는데, 띠를 걷어냈으므로(요청: 음영 제거) 둘 다 필요 없다. position:relative만
@@ -7496,24 +7503,24 @@ html:not(.scr-light-theme) .scr-activity-now-divider span { color: var(--muted);
   display: flex; align-items: baseline; gap: 7px; min-width: 0;
 }
 .scr-activity-card-head-title > svg { flex-shrink: 0; align-self: center; }
-/* 경기 케밥을 포스트 우상단으로(요청 — 이제 오른쪽에 타임라인이 없어 안전 공간 불필요).
+/* 경기 케밥을 카드 우상단으로(요청 — 이제 오른쪽에 타임라인이 없어 안전 공간 불필요).
    trow의 position:relative가 절대배치를 가로채지 않게 활동 안에서는 static으로. */
-/* 게임결과 포스트의 세로 간격은 여기 한 곳에서 정한다(요청: 모든 요소 세로 갭 통일).
+/* 게임결과 카드의 세로 간격은 여기 한 곳에서 정한다(요청: 모든 요소 세로 갭 통일).
    시간/케밥 줄 → 로스터 → 맵 정보 → 요약이 이 로우의 자식이라, 로우를 flex 컬럼으로
    두고 gap 하나로 몰아준다 — 각자 margin/padding으로 벌리던 걸 전부 0으로 되돌린다.
-   케밥은 절대배치라 flex 항목이 아니고, 댓글은 이 로우 밖(포스트 직계)이라 같은 값을
+   케밥은 절대배치라 flex 항목이 아니고, 댓글은 이 로우 밖(카드 직계)이라 같은 값을
    따로 물려준다(아래 .scr-activity-card-comment). */
-.scr-activity-card { --post-row-gap: 24px; }
+.scr-activity-card { --card-row-gap: 24px; }
 .scr-activity-game-result-body .scr-game-result-trow {
   position: static;
-  display: flex; flex-direction: column; gap: var(--post-row-gap);
+  display: flex; flex-direction: column; gap: var(--card-row-gap);
 }
 .scr-activity-game-result-body .scr-game-result-trow > * { margin: 0; }
 /* 한때 이 줄이 비어 있어(맵·시간은 아래로, 케밥은 절대배치) 아래 여백 14px만 남았고,
    그게 헤더와 로스터 사이에 얹혀 게임결과만 유독 벌어져 보였다(지적) — 그래서 여백을
    지웠었다. 이제는 게임번호·등록자가 늘 여기 있으므로(요청) 빈 줄이 아니다. 로스터와
    붙지 않을 만큼만 되살린다. */
-/* 활동에선 스탯/케밥이 포스트 머리띠 안(카드 기준 절대배치)에 있어 이 줄과 자리를 다투지
+/* 활동에선 스탯/케밥이 카드 머리띠 안(카드 기준 절대배치)에 있어 이 줄과 자리를 다투지
    않는다 — 오른쪽을 비워 둘 이유가 없다. */
 /* 아래 갭은 넉넉히, 위는 살짝만(요청) — 게임번호 줄은 머리띠에 딸린 꼬리표에 가깝고,
    그 아래 로스터부터가 본문이라 경계는 아래쪽에 둬야 읽힌다. */
@@ -7522,22 +7529,22 @@ html:not(.scr-light-theme) .scr-activity-now-divider span { color: var(--muted);
    케밥은 절대배치다) — 높이는 0인데도 로우의 flex 항목이라 자기 몫의 갭(24px)을 그대로
    먹고 있었다(지적: 경기결과 목록 내부가 특히 과하다. 실측: 머리 아래 52px 중 24px이 이것).
    display:contents로 상자를 흐름에서 아예 없애면 갭도 함께 사라지고, 안에 든 케밥은
-   절대배치라 기준면(포스트/묶음 아이템)이 그대로여서 자리도 그대로다. */
+   절대배치라 기준면(카드/묶음 아이템)이 그대로여서 자리도 그대로다. */
 .scr-activity-game-result-body .scr-game-result-trow-topline { display: contents; }
-/* 헤더의 '제목 줄' 언저리에 — 제목 줄 중심(포스트 위에서 33.6px)에 정확히 맞추면
-   top이 21px인데, 거기서 6px 올린 자리를 쓴다(--post-kebab-top 주석 참고).
+/* 헤더의 '제목 줄' 언저리에 — 제목 줄 중심(카드 위에서 33.6px)에 정확히 맞추면
+   top이 21px인데, 거기서 6px 올린 자리를 쓴다(--card-kebab-top 주석 참고).
    이 값은 헤더 패딩에 딸린 값이라 변수 하나로 묶어 뒀다 — 머리 여백을 줄이면서(4px)
    케밥이 제목보다 12px 아래로 처졌던 적이 있다(지적). 헤더 패딩이나 줄 구성을
    건드리면 여기도 같이 다시 재야 한다. */
 .scr-activity-game-result-body .scr-game-result-trow-topmeta {
   /* flex인 이유는 위 .scr-activity-chal-menu 주석과 같다 — top이 곧 버튼 위끝이어야 한다. */
-  position: absolute; top: var(--post-kebab-top); right: 10px; z-index: 2; display: flex;
+  position: absolute; top: var(--card-kebab-top); right: 10px; z-index: 2; display: flex;
 }
 .scr-activity-game-result-body .scr-game-result-trow-topmeta .scr-activity-kebab-btn, .scr-activity-chal-menu .scr-activity-kebab-btn { width: 26px; height: 26px; min-height: 26px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
 /* display:flex인 이유 — 기본(블록)이면 인라인 버튼이 줄 상자 안에 앉아 상자 높이가
    line-height에 딸려 달라진다. flex로 두면 상자 높이가 버튼 높이로 고정돼, 세로 위치를
-   --post-kebab-top 하나로만 다스릴 수 있다(그 값 주석 참고). */
-.scr-activity-chal-menu { position: absolute; top: var(--post-kebab-top); right: 10px; z-index: 3; display: flex; }
+   --card-kebab-top 하나로만 다스릴 수 있다(그 값 주석 참고). */
+.scr-activity-chal-menu { position: absolute; top: var(--card-kebab-top); right: 10px; z-index: 3; display: flex; }
 /* 아이템 내 폰트 전부 1스텝 축소(요청) — 로스터/닉네임 caption, 헤더 micro 등.
    로스터와 너나와 닉네임은 같은 크기 유지(둘 다 caption). */
 .scr-activity-card .scr-challenge-person-name { font-size: var(--fs-caption); }
@@ -7631,10 +7638,10 @@ html.scr-light-theme .scr-activity-card-comment .scr-comment-mention { color: #1
   /* 로우가 가운데 정렬이라(맵/시간 줄과 같은 부모) 여러 줄 글은 왼쪽으로 못박는다. */
   text-align: left;
 }
-/* 활동 포스트에서는 이 상자 바로 아래에 댓글 줄이 온다(댓글이 없으면 절대배치로 꼬리
+/* 활동 카드에서는 이 상자 바로 아래에 댓글 줄이 온다(댓글이 없으면 절대배치로 꼬리
    여백에 얹힌다) — 그대로 두면 요약 상자와 댓글이 맞붙어 답답하다(지적). 아래 여백을
    따로 줘서 둘 사이에 숨 쉴 자리를 만든다.
-   좌우는 경기 로우의 패딩을 되물려 댓글 줄과 같은 자리(--post-pad-bx)에서 시작하게
+   좌우는 경기 로우의 패딩을 되물려 댓글 줄과 같은 자리(--card-pad-bx)에서 시작하게
    한다(지적) — 로우 안에 있다 보니 혼자 더 안쪽에서 시작해 어긋나 보였다. */
 .scr-activity-card .scr-game-result-trow-summary {
   /* 위아래 간격은 이제 로우의 gap 하나가 정한다(요청: 세로 갭 통일) — 좌우만 남긴다. */
@@ -7676,7 +7683,7 @@ html.scr-light-theme .scr-activity-card-comment .scr-comment-mention { color: #1
 /* 시각 바로 옆 등록자(요청: "브래드 등록") — 크기·굵기·색을 시각과 똑같이 맞춰 한 줄로
    읽히게 한다. 글꼴 크기는 이 줄(.scr-activity-card-head-meta)에서 물려받는다. */
 .scr-activity-card-by { font-weight: 600; color: var(--dim); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* 포스트 제목 — 활동에서 가장 큰 글자. 크기는 그대로 두되 굵기만 한 단계 낮춘다
+/* 카드 제목 — 활동에서 가장 큰 글자. 크기는 그대로 두되 굵기만 한 단계 낮춘다
    (요청: 800이 너무 강했다). 크기·색만으로도 제목으로 읽힌다. */
 .scr-activity-card-label {
   font-size: var(--fs-body); font-weight: 700; color: var(--text);
@@ -7705,10 +7712,10 @@ html.scr-light-theme .scr-activity-card-comment .scr-comment-mention { color: #1
   background: transparent; border: none; box-shadow: none;
   backdrop-filter: none; -webkit-backdrop-filter: none;
   /* 머리띠 ↔ 게임번호 줄 간격 — 본문 간격보다 4px만 크게(요청). 머리띠가 제 아래 여백으로
-     이미 한 번 끊어 주므로 똑같이 주면 좁아 보이고, 예전처럼 --post-pad-y(24px)를 여기에
+     이미 한 번 끊어 주므로 똑같이 주면 좁아 보이고, 예전처럼 --card-pad-y(24px)를 여기에
      본문 여백과 겹쳐 주면 그 자리만 유독 벌어졌다. */
   border-radius: 0; margin: 0;
-  padding-top: calc(var(--post-row-gap) + 4px); padding-bottom: 0;
+  padding-top: calc(var(--card-row-gap) + 4px); padding-bottom: 0;
   /* 카드 안의 경기 로우도 들여쓰지 않는다(요청) — 로스터·미니맵이 헤더보다 안쪽에서
      시작하면 계층이 한 겹 더 생긴다. */
   padding-left: 0; padding-right: 0;
@@ -7716,10 +7723,10 @@ html.scr-light-theme .scr-activity-card-comment .scr-comment-mention { color: #1
 
 /* 카드 하단 공통 댓글 영역 — 토글을 누르면 목록/입력이 그 자리에서 펼쳐진다.
    구분선은 아이템 사이 하나로 충분하니(요청) 댓글 영역/댓글끼리의 선은 모두 없앤다. */
-/* 컨텐츠부의 꼬리 — 포스트에 자체 아래 패딩이 없으므로 바닥 여백도 여기서 낸다.
+/* 컨텐츠부의 꼬리 — 카드에 자체 아래 패딩이 없으므로 바닥 여백도 여기서 낸다.
    여백을 바깥(.scr-activity-card-comment)이 아니라 안쪽(.scr-activity-notes)이 내는 이유는, 댓글이
    하나도 없을 때 그 여백까지 통째로 걷어야 하기 때문이다(아래 -empty). */
-/* 댓글은 경기 로우 밖(포스트 직계)이라 로우의 gap이 닿지 않는다 — 같은 값을 여기서 낸다
+/* 댓글은 경기 로우 밖(카드 직계)이라 로우의 gap이 닿지 않는다 — 같은 값을 여기서 낸다
    (요청: 사이사이 줄간격 동일). */
 /* 위 여백은 바깥이 아니라 안쪽(.scr-activity-notes)이 낸다 — 댓글이 하나도 없을 때는 입력줄이
    꼬리 여백에 절대배치로 얹혀 흐름에 없으므로, 바깥이 내면 아무도 안 쓰는 24px이 그대로
@@ -7730,8 +7737,8 @@ html.scr-light-theme .scr-activity-card-comment .scr-comment-mention { color: #1
    형제일 뿐 감싸는 패널이 없으므로, 화면 끝까지 닿으려면 이 요소도 자기 몫의 풀블리드를
    직접 진다(위 .scr-activity-card-body와 같은 트릭). */
 .scr-activity-card > .scr-activity-card-comment {
-  margin-inline: calc(-1 * var(--post-bleed));
-  border-inline: var(--post-bleed) solid transparent;
+  margin-inline: calc(-1 * var(--card-bleed));
+  border-inline: var(--card-bleed) solid transparent;
   padding: 0;
 }
 .scr-activity-card-comment > .scr-activity-notes {
@@ -7743,10 +7750,10 @@ html.scr-light-theme .scr-activity-card-comment .scr-comment-mention { color: #1
   margin-top: 4px; margin-bottom: 6px;
   font-size: var(--fs-micro); font-weight: 700; color: var(--dim);
 }
-/* 댓글이 없는 포스트가 훨씬 많다(지적) — "댓글 쓰기" 버튼이 한 줄을 통째로 차지하지
+/* 댓글이 없는 카드가 훨씬 많다(지적) — "댓글 쓰기" 버튼이 한 줄을 통째로 차지하지
    않고 작게 얹혀 있는다(요청). 예전엔 이걸 절대배치(기준: .scr-activity-card)로 카드 맨
    아래 전용 여백에 띄웠는데, 그러려면 그 여백을 계속 크게 잡아 둬야 했다(위
-   --post-pad-b 주석 참고) — 이제 절대배치를 걷어내고(요청: "댓글이 없을 때 저 부분이
+   --card-pad-b 주석 참고) — 이제 절대배치를 걷어내고(요청: "댓글이 없을 때 저 부분이
    굳이 있을 필요가 없다는 뜻이야") 댓글이 있을 때와 완전히 같은 흐름·같은 자리
    (.scr-activity-card-comment > .scr-activity-notes의 공용 패딩, --feed-comment-indent 포함)를
    그대로 물려받는다 — 이 -empty 전용 규칙들은 그래서 필요 없어졌다. */
@@ -7792,14 +7799,14 @@ html.scr-light-theme .scr-activity-card-comment .scr-comment-mention { color: #1
   transition: max-width .28s cubic-bezier(0.32, 0.72, 0, 1), opacity .2s ease, padding .28s cubic-bezier(0.32, 0.72, 0, 1);
 }
 .scr-activity-comment-row-open .scr-activity-comment-composer { max-width: 100%; opacity: 1; padding: 2px; }
-/* 입력창이 펼쳐지면 포스트 꼬리 여백을 조금 늘린다(요청) — 접혀 있을 땐 "댓글" 글자 한
+/* 입력창이 펼쳐지면 카드 꼬리 여백을 조금 늘린다(요청) — 접혀 있을 땐 "댓글" 글자 한
    줄이지만 펼치면 입력칸과 등록 버튼이 들어와 그 자리로는 빠듯하다.
    조상 선택이라 :has()를 쓴다 — 열림 상태는 자손(.scr-activity-comment-row-open)에만 있다.
-   한때 --field-h(38px)만큼 통째로 늘렸는데, 그러면 아래 포스트가 눈에 띄게 밀려 내려간다
+   한때 --field-h(38px)만큼 통째로 늘렸는데, 그러면 아래 카드가 눈에 띄게 밀려 내려간다
    (지적). 실측하면 줄은 4px 커지고 바닥 여백이 3px 내려갈 뿐이라 8px이면 충분하다. */
 .scr-activity-card { transition: padding-bottom .28s cubic-bezier(0.32, 0.72, 0, 1); }
 .scr-activity-card:has(.scr-activity-comment-row-open) {
-  padding-bottom: calc(var(--post-pad-b) + 8px);
+  padding-bottom: calc(var(--card-pad-b) + 8px);
 }
 
 @media (prefers-reduced-motion: reduce) { .scr-activity-card { transition: none; } }
@@ -7841,7 +7848,7 @@ html.scr-light-theme .scr-activity-card-comment .scr-comment-mention { color: #1
    바깥으로 버튼 폭(52) + 간격(16)만큼 나간 자리다.
    조건은 '그 자리가 실제로 나올 때'로 잡는다: 한쪽 여백이 화면 끝 여백(20) + 버튼(52) +
    간격(16) = 88px는 돼야 하므로 860 + 176 = 1036px, 세로 스크롤바 몫까지 보면 1060px부터.
-   그보다 좁으면 예전처럼 화면 왼쪽에 띄운다 — 어설프게 옮기면 채움이 생긴 포스트 판 위로
+   그보다 좁으면 예전처럼 화면 왼쪽에 띄운다 — 어설프게 옮기면 채움이 생긴 카드 판 위로
    버튼이 올라앉는다. */
 @media (min-width: 1060px) {
   .scr-activity-add-fab-wrap { left: calc(50% - var(--content-max) / 2 - 68px); }
@@ -7918,7 +7925,7 @@ html.scr-light-theme .scr-activity-add-fab {
 /* 일일 랭크 변동 알림 카드 — 변동 후 순위 오름차순 목록(상승 ▲/하락 ▼/신규). */
 /* 헤더(타이틀)와 변동 목록 사이가 유독 좁았다(지적: "랭크변동일때만 타이틀과 본문
    사이가 좁아") — 상단 패딩을 키워 다른 카드(경기/너나와)와 비슷한 숨통을 준다. */
-/* 컨텐츠부 공통 여백 — 네 종류 포스트가 같은 토큰을 쓴다(요청: 내부 여백 통일). */
+/* 컨텐츠부 공통 여백 — 네 종류 카드가 같은 토큰을 쓴다(요청: 내부 여백 통일). */
 /* 개인전·팀전을 한 카드에 반씩(요청) — 두 칸을 정확히 반으로 가르고, 가운데에 구분선을
    하나 세운다. 선은 칸의 border가 아니라 이 컨테이너의 가상 요소다: border로 그리면 칸
    높이를 그대로 따라 카드 위아래 끝까지 닿는데, 위아래를 조금 띄워 달라는 요청이라
@@ -7935,7 +7942,7 @@ html.scr-light-theme .scr-activity-add-fab {
 .scr-activity-shift-split::before {
   content: ""; position: absolute; left: 50%; width: 1px;
   /* 살짝 위아래 여백(요청) — 선이 본문 위아래 끝에 닿지 않게 안쪽에서 시작하고 끝난다.
-     이 칸 자신은 더 이상 패딩이 없으므로(위 참고) --post-pad-y를 더할 필요 없이 그냥
+     이 칸 자신은 더 이상 패딩이 없으므로(위 참고) --card-pad-y를 더할 필요 없이 그냥
      6px만 띄운다. */
   top: 6px; bottom: 6px;
   background: var(--line);
@@ -8081,7 +8088,7 @@ html.scr-light-theme .scr-activity-add-fab {
   position: fixed; inset: 0;
   /* 반드시 불투명이다 — 반투명이면 뒷페이지가 그대로 비친다. 입력 중 캔버스를 같은
      색으로 칠할 때(아래 .scr-comment-typing) 값이 어긋나면 안 되므로 토큰 하나를 쓴다. */
-  background: var(--post-bg);
+  background: var(--card-bg);
   /* 탭바(55)보다 위, 모달(100)보다 아래 — 여기서 연 삭제 확인창이 이 화면에 가리지 않는다. */
   z-index: 90;
   display: flex; flex-direction: column;
@@ -8139,11 +8146,11 @@ html.scr-comment-typing .scr-main { visibility: visible; }
 html.scr-comment-typing .scr-main > * { visibility: hidden; }
 /* 배경 사진 규칙(html.scr-page-bg …)이 더 구체적이라 !important로 확실히 이긴다 —
    입력 중 한때뿐이고, 여기서 지면 그 띠에 사진이 그대로 드러난다. */
-html.scr-comment-typing .scr-main::before { background: var(--post-bg) !important; }
+html.scr-comment-typing .scr-main::before { background: var(--card-bg) !important; }
 /* 캔버스(문서 배경)까지 같은 색으로 칠한다 — 이걸 빼먹었더니 띠만 유독 까맸다(지적).
    .scr-main::before도 결국 position:fixed라, 키보드가 올라오면 패널과 똑같이 비주얼
    뷰포트로 다시 앉혀져 그 아래를 못 덮는다. 거기 남는 건 html의 배경(--void)이다. */
-html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-bg); }
+html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-bg); }
 /* 목록이 이 아래로 스크롤해 들어가므로 경계선을 둔다 — 없으면 스크롤된 글이 제목 줄에
    그대로 붙어 어디까지가 헤더인지 안 보인다. */
 /* 윗모서리 곡선이 헤더 줄 높이까지 파고들므로 제목과 X를 위로 조금 더 내려 피한다. 좌우는
@@ -8665,7 +8672,7 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
 /* ── 타임라인 ── */
 /* 재생 버튼과 트랙 사이를 띄운다(요청) — 붙어 있으면 첫 눈금이 버튼에 먹힌다.
    좌우 패딩은 여기서 따로 안 낸다(지적: 독자 좌우 패딩 없애야 함) — .scr-activity-game-result-body가
-   이미 --post-pad-bx 전체를 내므로(위 참고), 여기서 또 내면 두 배로 겹친다. */
+   이미 --card-pad-bx 전체를 내므로(위 참고), 여기서 또 내면 두 배로 겹친다. */
 .scr-story-line { display: flex; align-items: center; gap: 14px; width: 100%; }
 /* 다른 아이콘 버튼(.scr-icon-btn)과 같은 기본 차림 — 테두리도 채움도 없이 아이콘만
    두고, 반응은 라이팅 호버(은은한 유리 배경 + 글로우)로 낸다(요청). 예전의 테두리 원은

@@ -194,7 +194,7 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
   // 손가락으로 잡을 수 있는 여유 — 손잡이 점(12px) 주위로 이만큼 넓힌 사각형이 잡는 영역.
   // 12+20*2 = 52px 폭, 12+44*2 = 100px 높이(요청: 터치 영역을 좀 크게). 세로를 더 크게
   // 벌린 건 세로 드래그가 이 조작의 전부이기 때문이고, 가로는 화면 오른쪽 끝의 다른
-  // 버튼(포스트 우상단 케밥)까지 삼키지 않을 만큼만 늘렸다.
+  // 버튼(카드 우상단 케밥)까지 삼키지 않을 만큼만 늘렸다.
   const TOUCH_PAD_X = 20;
   const TOUCH_PAD_Y = 44;
 

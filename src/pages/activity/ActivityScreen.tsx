@@ -298,7 +298,7 @@ function ChallengeCountdown({ challenge }: { challenge: Challenge }) {
   return <span className="scr-activity-chal-countdown">응답마감까지 {hh}:{mm}:{ss}</span>;
 }
 
-// 너 나와 포스트 우상단 케밥 — 카카오 공유(전체) + 삭제(운영자만).
+// 너 나와 카드 우상단 케밥 — 카카오 공유(전체) + 삭제(운영자만).
 function ChallengeActionsMenu({ challenge, isAdmin, myId, onDeleted, onChanged }: {
   challenge: Challenge;
   isAdmin: boolean;
@@ -365,7 +365,7 @@ function ChallengeActionsMenu({ challenge, isAdmin, myId, onDeleted, onChanged }
       {open && (
         <>
           {/* 백드롭 클릭은 '메뉴 닫기'에서 끝나야 한다(지적) — 안 끊으면 그 클릭이
-              포스트 본체까지 올라가 펼침/접힘까지 같이 눌린다. */}
+              카드 본체까지 올라가 펼침/접힘까지 같이 눌린다. */}
           <div
             className="scr-activity-add-backdrop"
             onClick={(e) => { e.stopPropagation(); setOpen(false); }}
@@ -470,7 +470,7 @@ export const GameResultCard = memo(function GameResultCard({ item, memberOf, onD
 //
 // 처음엔 순위변동 카드처럼 제자리에 그렸는데 세 가지가 어긋났다(지적: 다른 데를 눌러도
 // 안 닫힘 / 모양이 다름 / 클릭이 잘 안 됨). 원인은 전부 "어디에 그리느냐"였다.
-//  · 포스트 판(.scr-activity-card)에 backdrop-filter가 걸려 있어 그 안의 position:fixed는
+//  · 카드 판(.scr-activity-card)에 backdrop-filter가 걸려 있어 그 안의 position:fixed는
 //    화면이 아니라 그 카드를 기준으로 잡힌다 — 전체 화면을 덮어야 할 백드롭이 카드
 //    안에만 깔려서, 카드 밖을 누르면 아무 일도 안 일어났다.
 //  · 헤더(.scr-activity-card-head)는 isolation:isolate로 쌓임 맥락을 따로 만들고 글자
@@ -524,8 +524,8 @@ function StackMenu({ content }: { content: KakaoShareContent }) {
   );
 }
 
-// 게임결과 묶음 — 접힘은 그 세션의 참가자 전원을 담은 '요약 포스트'이고, "자세히 보기"를
-// 누르면 활동 안에서 그 자리가 게임결과 포스트 목록으로 바뀐다(요청). 한때 전체화면 모달로
+// 게임결과 묶음 — 접힘은 그 세션의 참가자 전원을 담은 '요약 카드'이고, "자세히 보기"를
+// 누르면 활동 안에서 그 자리가 게임결과 카드 목록으로 바뀐다(요청). 한때 전체화면 모달로
 // 열어봤지만 다시 이 아코디언으로 돌아왔다.
 export function GameResultPost({
   stack, memberOf, onDeleted, dateLabel, highlightMemberIds, highlightTerms, defaultOpen = false,
@@ -540,7 +540,7 @@ export function GameResultPost({
   /** 필터가 걸린 상태인가 — 그럴 땐 묶음을 펼친 채로 낸다(요청). */
   defaultOpen?: boolean;
   /** 이 묶음이 지금 펼쳐져 있어야 하는가 — ActivityScreen이 전역으로 하나만 관리한다
-   *  (요청: "다른 포스트를 펴면 나머지는 자동으로 접힘"). 생략하면(SharePage의 단독
+   *  (요청: "다른 카드를 펴면 나머지는 자동으로 접힘"). 생략하면(SharePage의 단독
    *  공유 화면처럼 이 묶음 하나뿐인 곳) 로컬 상태로 스스로 관리한다. */
   expanded?: boolean;
   /** 펼치기를 눌렀을 때 ActivityScreen에 알린다 — 이 값이 다른 묶음의 키로 바뀌면 그
@@ -552,7 +552,7 @@ export function GameResultPost({
   const [localExpanded, setLocalExpanded] = useState(false);
   const isExpanded = expanded ?? localExpanded;
   // 실제 열림 상태 — 필터가 강제로 펼치거나(defaultOpen), 이 묶음이 선택돼 있으면
-  // (isExpanded) 열린다. 수동으로 접는 길은 없다(요청: "포스트 눌러서 요약보기 제거
+  // (isExpanded) 열린다. 수동으로 접는 길은 없다(요청: "카드 눌러서 요약보기 제거
   // 이제 한번 펴면 못접음") — 다른 묶음을 펼치면 여기는 꺼지며 저절로 접힌다.
   const open = defaultOpen || isExpanded;
   // 최신 게임이 위로 오게 — 펼친 목록은 활동와 같은 시간 순서(최신 → 과거)를 따른다.
@@ -597,7 +597,7 @@ export function GameResultPost({
     };
   }, [stack.date, stack.items.length, participants]);
 
-  // 카드는 한 장이다(요청). 접히면 요약 포스트 하나, 펼치면 게임결과 포스트 N개가 이
+  // 카드는 한 장이다(요청). 접히면 요약 카드 하나, 펼치면 게임결과 카드 N개가 이
   // 래퍼 안에 조건부로 마운트된다 — 높이를 재서 애니메이션하지 않는다(요청: "왜 높이
   // 합산을 해야 하는거야? 하나씩 순차적으로 hidden을 제거하면 자연스럽게 스크롤이
   // 늘어날거잖아 — 한번에 영역 확보하는거만 없애면 되는거지"). 보일 쪽만 렌더하고, 각
@@ -623,7 +623,7 @@ export function GameResultPost({
   const expandAndReveal = () => {
     toggledRef.current = true;
     afterToggleRef.current = () => {
-      // 목록이 아니라 포스트 카드 전체를 기준으로 잡는다. 목록에 맞추면 그 위에 있는
+      // 목록이 아니라 카드 카드 전체를 기준으로 잡는다. 목록에 맞추면 그 위에 있는
       // 카드 머리(시각·제목·케밥)만큼이 화면 위로 밀려 나가는데, 그 높이가 딱 상단
       // 안전영역쯤이라 머리가 노치/상태바 밑에 깔렸다(지적: 펼칠 때 위 안전영역).
       // 실측: 목록 기준일 때 카드 머리가 화면 위 24px — 안전영역(47px) 안이었다.
@@ -652,13 +652,13 @@ export function GameResultPost({
   }, [open]);
 
   return (
-    // 래퍼 한 장 — 접히면 요약 포스트 1개, 펼치면 게임결과 포스트 N개를 담는다(요청:
-    // "포스트가 여러 개인 걸로"). 래퍼 자신은 헤더·글래스가 없는 순수 레이아웃이라 다른
+    // 래퍼 한 장 — 접히면 요약 카드 1개, 펼치면 게임결과 카드 N개를 담는다(요청:
+    // "카드가 여러 개인 걸로"). 래퍼 자신은 헤더·글래스가 없는 순수 레이아웃이라 다른
     // 타입의 래퍼와 CSS가 똑같다(요청: "다른 카드들과 css가 다르게 분기되고 있어").
     <div ref={stackRef} className="scr-activity-card-stack-wrapper">
       {open ? (
-        // 펼치면 이 자리에 승격된 포스트가 하나씩 나타난다(요청: 게임결과 카드도 하나의
-        // 활동 포스트로 승격) — 각 포스트가 실제 댓글 입력창을 갖게 되므로, 예전의
+        // 펼치면 이 자리에 승격된 카드가 하나씩 나타난다(요청: 게임결과 카드도 하나의
+        // 활동 카드로 승격) — 각 카드가 실제 댓글 입력창을 갖게 되므로, 예전의
         // "목록 아무 데나 눌러 접기"는 없앴다(요청) — 접기는 아래 전용 버튼으로만 한다.
         orderedDesc.map((it) => (
           <GameResultCard
@@ -678,7 +678,7 @@ export function GameResultPost({
           icon={<ClipboardList size={16} aria-hidden />}
           label={`게임결과 ${stack.items.length}건`}
           timeText={formatWhen(stack.date)}
-          // 묶음 통째로 카카오톡 공유(요청) — 다른 포스트와 똑같이 우상단 케밥 안에
+          // 묶음 통째로 카카오톡 공유(요청) — 다른 카드와 똑같이 우상단 케밥 안에
           // 넣는다. 헤더 '안'이 아니라 카드 직계 자식으로 두는 이유는 StackMenu 주석 참고.
           actions={<StackMenu content={shareContent} />}
         >
@@ -718,7 +718,7 @@ export function GameResultPost({
             눌러도 펼쳐지므로, 방향 삼각형 대신 그 사실을 글자로 말한다. 버튼으로 남겨 두는
             건 키보드로도 펼칠 수 있게 하려는 것.
             카드 바깥(래퍼의 형제)이 아니라 카드 본문 안에 둔다(요청) — 밖에 있으면 안내문만
-            유리 본문 밖 배경 위에 떠서, 자기가 어느 포스트 이야기인지가 안 읽혔다. 이 카드는
+            유리 본문 밖 배경 위에 떠서, 자기가 어느 카드 이야기인지가 안 읽혔다. 이 카드는
             펼치는 순간 통째로 언마운트되므로 '접혔을 때만'이라는 조건은 따로 필요 없다. */}
         <button type="button" className="scr-activity-card-stack-toggle" onClick={expandAndReveal}>
           카드 눌러서 펼치기
@@ -740,8 +740,8 @@ export default function ActivityScreen() {
   // 일정/랭크변동으로 거른다 — 너나와=시간 미확정 도전장, 일정=시간 확정 도전장.
   const [kindFilter, setKindFilter] = useState<"all" | "gameResult" | "call" | "schedule" | "rankingShift">("all");
 
-  // 게임결과 묶음은 한 번에 하나만 펼쳐 둔다(요청: "포스트 눌러서 요약보기 제거 이제
-  // 한번 펴면 못접음... 대신! 다른 포스트를 펴면 나머지는 자동으로 접힘") — 수동으로
+  // 게임결과 묶음은 한 번에 하나만 펼쳐 둔다(요청: "카드 눌러서 요약보기 제거 이제
+  // 한번 펴면 못접음... 대신! 다른 카드를 펴면 나머지는 자동으로 접힘") — 수동으로
   // 접는 방법은 없앴고, 다른 묶음을 펼치면 그 키로 바뀌면서 이전 것이 저절로 접힌다.
   // 키는 그 묶음 첫 경기의 id(렌더 루프의 key와 같은 값)다.
   const [expandedStackKey, setExpandedStackKey] = useState<number | null>(null);

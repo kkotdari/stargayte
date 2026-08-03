@@ -57,7 +57,7 @@ function loadKakao(): Promise<KakaoLike | null> {
   return sdkPromise;
 }
 
-/* 공유 카드 썸네일 — 포스트 종류마다 한 장씩 미리 만들어 둔 그림이다(요청).
+/* 공유 카드 썸네일 — 카드 종류마다 한 장씩 미리 만들어 둔 그림이다(요청).
    한때 워드마크 원본(logo_black.png)을 그대로 넘겼는데, 그건 6.4:1로 아주 납작해서
    카카오 피드 템플릿의 2:1 그림 자리에 넣으면 좌우가 잘렸다(신고: 로고 좌우가 잘려).
    imageWidth/imageHeight로 비율을 알려 줘도 카카오는 자리를 채우도록 잘라 낸다.

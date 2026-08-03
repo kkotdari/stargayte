@@ -16,7 +16,7 @@ import type { Challenge, GameResult, RankingShift } from "../../types";
 // 로그인 뒤에 뜨며, "스타게이트로"로 전체 앱에 들어간다.
 // 게임결과 묶음만 id가 아니라 세션 날짜(YYYY-MM-DD)로 가리킨다 — 묶음은 DB 행이 아니라
 // '같은 자리에서 이어 친 판들'을 화면에서 묶어 보여주는 것뿐이라 가리킬 id가 없다(요청:
-// "포스트뭉치는 UI적으로만 뭉쳐보이는거니까"). 그 자리를 정하는 값이 곧 세션 날짜다.
+// "카드뭉치는 UI적으로만 뭉쳐보이는거니까"). 그 자리를 정하는 값이 곧 세션 날짜다.
 export type ShareTarget =
   | { type: "gameResult" | "challenge" | "rankingShift"; id: number }
   | { type: "stack"; day: string };
