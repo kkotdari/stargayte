@@ -841,7 +841,7 @@ export default function GameResultStory({
        그 사이 살림을 편 쪽에는 열심인 얼굴을 준다(요청). 이 스냅은 화살표가 없는 이야기라
        (아무도 어디로 가지 않았다) 아바타 얼굴이 유일한 그림이다. */
     const IDLE_FACE = "😴";
-    const BUSY_FACE = "💪";
+    const BUSY_FACE = "🔥";
     const severe = new Set<string>();
     const moderate = new Set<string>();
     const defended = new Set<string>();
@@ -1125,7 +1125,8 @@ export default function GameResultStory({
       if (helper.has(s.raw)) { faces.set(s.raw, HELPER_FACE); continue; }
       if (attacker.has(s.raw)) { faces.set(s.raw, ATTACK_FACE); continue; }
       /* 타이밍 이야기는 맨 뒤에 본다(요청) — 같은 스냅에 다른 일이 겹쳐 있으면 그쪽이
-         더 구체적인 사실이다. 흘려보낸 쪽은 자는 얼굴, 그 사이 살림을 편 쪽은 열심인 얼굴. */
+         더 구체적인 사실이다. 흘려보낸 쪽은 자는 얼굴, 그 사이 살림을 편 쪽은 불이다
+         (지적: 근육보다 불이 낫다) — 근육은 '힘이 세다'로 읽혀 병력 이야기와 헷갈렸다. */
       if (idling.has(s.raw)) { faces.set(s.raw, IDLE_FACE); continue; }
       if (busy.has(s.raw)) { faces.set(s.raw, BUSY_FACE); continue; }
     }
