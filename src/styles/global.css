@@ -7155,8 +7155,23 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   /* 딱지(.scr-activity-row-flag)가 이 칸을 기준으로 앉는다. */
   position: relative;
 }
+/* 제목 글자와 번호를 함께 쥐는 껍데기 — 번호가 글자의 왼쪽 끝에 맞춰 앉으려면 기준이
+   글자여야 한다(칸이 기준이면 칸 모서리로 가서 제목과 떨어진다). 글자 폭만큼만 차지하고
+   칸 안에서 가운데 선다. */
+.scr-activity-row-title-main { position: relative; display: inline-flex; min-width: 0; }
 .scr-activity-row-title-text {
   white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+}
+/* 몇 번째 활동인가 — 제목 글자 바로 위, 왼쪽 끝을 맞춰 세운다. NEW/UPDATE와 달리
+   비스듬히 밀지 않는다(요청: 대각선 아님): 이건 그 줄의 자리를 짚는 눈금이라 제목과 한
+   덩어리로 읽혀야 하고, 딱지처럼 멀리 떨어지면 어느 줄 번호인지가 흐려진다.
+   흐름에서 빼 두므로(absolute) 제목 자리는 번호가 있든 없든 그대로고, 늘어난 줄 위 여백
+   안에 들어앉아 줄 높이도 안 건드린다. 색은 흐리게 — 읽을 값이 아니라 눈금이다. */
+.scr-activity-row-no {
+  position: absolute; left: 0; bottom: 100%; margin-bottom: 3px;
+  font-size: var(--fs-9); font-weight: 700; color: var(--dim);
+  font-variant-numeric: tabular-nums; line-height: 1; white-space: nowrap;
+  pointer-events: none;
 }
 /* NEW / UPDATE — 이 목록에서 유일하게 색을 쓰는 자리다. 새것·달라진 것이 몇 개 안 되기
    때문에 색 하나가 눈에 바로 걸리고, 그게 이 딱지가 하는 일 전부다. 글자를 그대로 적으므로

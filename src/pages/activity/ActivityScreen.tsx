@@ -129,10 +129,15 @@ function sortMsOf(it: ActivityItem): number {
   return it.kind === "challenge" ? it.sortTime : it.time;
 }
 
+/* 서버 시각을 읽을 때는 반드시 serverMs를 거친다(new Date(문자열) 금지).
+   서버의 created_at·discarded_at 계열은 UTC인데 DB에 따라 "…+00:00"이 붙기도 안 붙기도
+   한다. 안 붙은 문자열을 new Date에 그냥 넣으면 브라우저가 '로컬 시각'으로 읽어, 한국에서는
+   실제보다 9시간 이른 순간이 된다. 목록 순서가 바로 그만큼 어긋났다 — 8월 2일 23:56(UTC)에
+   버려진 너 나와가 14:56으로 읽혀, 8월 3일 경기들보다 아래로 내려갔다. */
 function rankShiftItem(shift: RankingShift): RankingShiftItem {
   return {
     kind: "rankingShift",
-    time: new Date(shift.createdAt).getTime(),
+    time: serverMs(shift.createdAt),
     withClock: true,
     shift,
   };
@@ -146,7 +151,7 @@ function challengeItem(c: Challenge): ChallengeItem {
   const iso = ended ? c.discardedAt! : (c.scheduledAt ?? c.createdAt);
   return {
     kind: "challenge",
-    time: new Date(iso).getTime(),
+    time: serverMs(iso),
     // 시각 개념이 없어졌다(요청: 너 나와는 날짜만) — 헤더는 늘 날짜만 적는다.
     withClock: false,
     sortTime: challengeSortMs(c),
@@ -171,7 +176,7 @@ export function isUpcomingChallenge(it: { kind: string; challenge?: Challenge })
 //    경기목록 사이"). 세션 날짜의 시작(오전 8시 — sessionDateOf의 경계와 같은 값)에
 //    앉히면 그날 경기들(8시 이후)보다 아래, 전날 것들보다 위가 된다.
 function challengeSortMs(c: Challenge): number {
-  const base = new Date(c.scheduledAt ?? c.createdAt).getTime();
+  const base = serverMs(c.scheduledAt ?? c.createdAt);
   if (c.status === "pending" || c.status === "confirmed") {
     // 그날 끝(23:59:59)을 기준으로 잡아 같은 날 경기들보다 위에 서게 하고, 이미 지난
     // 약속이면 "지금 바로 위"까지 끌어올린다.
@@ -185,7 +190,7 @@ function challengeSortMs(c: Challenge): number {
      그러면 8월 1일로 잡았다가 어제 취소한 건이 "어제"라고 적힌 채 8월 1일 자리에 끼어
      들었다(지적: 취소/만료/거절 너 나와가 순서가 안 맞는 곳에 있다). 적는 시각과 꽂는
      자리가 다르면 목록은 어느 쪽으로 읽어도 틀린 그림이 된다. */
-  if (c.status === "discarded" && c.discardedAt) return new Date(c.discardedAt).getTime();
+  if (c.status === "discarded" && c.discardedAt) return serverMs(c.discardedAt);
   if (!c.scheduledDate) return base;
   // 결과까지 들어온 건(완료)은 여전히 약속한 날의 이야기다 — 그날 경기들 아래(오전 8시,
   // sessionDateOf의 경계와 같은 값)에 앉혀 전날 것들보다는 위가 되게 한다.
@@ -193,7 +198,7 @@ function challengeSortMs(c: Challenge): number {
 }
 
 export function gameResultItem(m: GameResult): GameResultItem {
-  const started = m.gameStartedAt ? new Date(m.gameStartedAt).getTime() : null;
+  const started = m.gameStartedAt ? serverMs(m.gameStartedAt) : null;
   return {
     kind: "gameResult",
     time: started ?? new Date(`${m.date}T00:00:00`).getTime(),
@@ -965,9 +970,18 @@ export default function ActivityScreen() {
   // 랭크(포인트/순위) 변동 이벤트 — 서버가 경기 등록/삭제 때마다 계산·저장한 스냅샷을
   // 그대로 읽는다(클라이언트는 더 이상 아무것도 계산하지 않는다).
   const [rankShifts, setRankShifts] = useState<RankingShift[]>([]);
+  /* 줄 번호 — 서버가 센 값을 그대로 쓴다(요청: "api에서 보내주는 값이어야 한다").
+     화면이 직접 셀 수 없는 값이다: 목록은 세 곳을 시간순으로 섞어 만드는데 게임결과는
+     페이지 단위로 나눠 받으므로, 화면이 쥔 것만 세면 아직 안 받아온 과거만큼 번호가
+     통째로 어긋난다. 열쇠(rowKeyOf와 같은 꼴)로 자기 줄에 얹는다. */
+  const [rowNos, setRowNos] = useState<Map<string, number>>(new Map());
   const reloadRankingShifts = useCallback(() => {
     api.listRankingShifts()
       .then(setRankShifts)
+      .catch(() => {});
+    api.listActivityRows()
+      // 번호는 있으면 좋은 표시일 뿐이라, 못 받아 오면 조용히 없는 채로 둔다.
+      .then((res) => setRowNos(new Map(res.rows.map((r) => [r.key, r.no]))))
       .catch(() => {});
   }, []);
   useEffect(() => reloadRankingShifts(), [reloadRankingShifts]);
@@ -1566,6 +1580,7 @@ export default function ActivityScreen() {
               const open = openRowKey === key;
               const closing = closingRowKey === key;
               const flag = rowFlagOf(item);
+              const no = rowNos.get(key);
               return (
                 <div className={cx("scr-activity-row-wrap", open && "scr-activity-row-wrap-open")} key={key}>
                   <button
@@ -1573,7 +1588,13 @@ export default function ActivityScreen() {
                     onClick={() => toggleRow(key)}
                   >
                     <span className="scr-activity-row-title">
-                      <span className="scr-activity-row-title-text">{rowTitleOf(item)}</span>
+                      <span className="scr-activity-row-title-main">
+                        {/* 몇 번째 활동인가 — 제목 글자 바로 위, 왼쪽 끝을 맞춰 세운다
+                            (요청: 좌상단, 대각선 아님). 흐름에서 빼 두므로 제목 자리는
+                            번호가 있든 없든 그대로다. */}
+                        {no !== undefined && <span className="scr-activity-row-no">#{no}</span>}
+                        <span className="scr-activity-row-title-text">{rowTitleOf(item)}</span>
+                      </span>
                       {/* 하루 안에 올라왔거나(NEW) 달라진(UPDATE) 건 — 색만으로 말하지
                           않도록 글자를 그대로 적는다. 배지는 안 줄고, 자리가 모자라면
                           제목이 줄어든다. */}

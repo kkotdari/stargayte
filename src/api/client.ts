@@ -3,7 +3,7 @@
 // ============================================================
 import type { BuildMix } from "../utils/replayBuildMix";
 import type {
-  Member, GameResult, ActivityComment, ActivityTargetType, RankingShift, NewGameResult, SignupPayload, MemberCreatePayload, MemberStatus, MemberRole,
+  Member, GameResult, ActivityComment, ActivityTargetType, RankingShift, ActivityListOut, NewGameResult, SignupPayload, MemberCreatePayload, MemberStatus, MemberRole,
   ScreenKey, AppVersion, AppVersionStatus, AppVersionInfo,
   MapCatalog, MinimapImage,
   GameResultSlot, GameResultPage, GameResultStatsResponse, GameType, Race, TeamRankingResponse,
@@ -516,6 +516,14 @@ export const api = {
   // 있었던 것만 내려준다(활동가 재계산하지 않는다).
   async listRankingShifts(): Promise<RankingShift[]> {
     return request<RankingShift[]>("/api/activity/ranking-shifts");
+  },
+
+  // 활동 목록의 줄 번호 — 내용이 아니라 "그 줄이 전체에서 몇 번째인가"만 받는다.
+  // 화면이 직접 셀 수 없는 값이다: 목록은 세 곳(도전장·게임결과·랭크변동)을 시간순으로
+  // 섞어 만드는데 게임결과는 페이지 단위로 나눠 받으므로, 화면이 쥔 것만 세면 아직 안
+  // 받아온 과거만큼 번호가 통째로 어긋난다.
+  async listActivityRows(): Promise<ActivityListOut> {
+    return request<ActivityListOut>("/api/activity/list");
   },
 
   // 활동 댓글 — 경기/너 나와! 등 어떤 활동 요소에나 같은 API로 단다.
