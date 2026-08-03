@@ -213,6 +213,12 @@ const HARASS_KEYS = new Set([
   "shuttle-reaver", "zerg-drop", "dropship", "shuttle", "muta",
   // 클로킹 레이스는 일꾼을 지우는 대표적인 수다(요청).
   "cloak-wraith",
+  // 하이템플러 드랍도 마찬가지다(요청: 하이템플러나 리버로 일꾼 견제한 내용이 더 나와야
+  // 한다) — 스톰 한 방이면 일꾼 줄이 통째로 사라진다. 리버 드랍(shuttle-reaver)은 위에 있다.
+  "templar-drop",
+  /* (뺌) 이름 없는 급습(base-raid) — 여기 넣어 봤더니 같은 급습이 "타격을 줬다"와
+     "일꾼을 계속 잡았다" 두 갈래로 갈려 같은 사람·같은 상대 이야기가 세 문장씩 나왔다
+     (실측). 급습이 통했다는 것은 raid-damage가 이미 말한다. */
 ]);
 
 // 공격이 실제로 어디에 떨어졌나를 잴 때 쓰는 값들(지적: 어택 지정 좌표를 구분해도 정작
@@ -1677,7 +1683,11 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
      문장 꼴로 바꾸고 상한도 함께 올린다. 아래 MIN_WEIGHT와 갈래별 상한(PER_KEY_CAP)이
      가벼운 사실로 자리를 채우는 것은 그대로 막는다. */
   const SEC_PER_LINE = 120;
-  const baseBudget = Math.max(3, Math.min(sec >= LONG_GAME_SEC ? 15 : 12, Math.round(sec / SEC_PER_LINE)));
+  /* 상한을 올린다(요청: 경기시간에 비례해서 문장 최대개수 늘리기) — 2분에 한 문장 꼴로
+     세어도 30분이 넘는 판은 상한(15)에 걸려 45분 경기와 35분 경기가 같은 길이였다.
+     이제 긴 판은 스물까지 열린다. 자리가 늘어도 아래 MIN_WEIGHT와 갈래별 상한이 가벼운
+     사실로 채우는 것은 그대로 막는다. */
+  const baseBudget = Math.max(3, Math.min(sec >= LONG_GAME_SEC ? 20 : 14, Math.round(sec / SEC_PER_LINE)));
   // 자리가 남아도 아무거나 채우지 않는다(요청: 승부에 중요한 이벤트만) — 이 무게 아래는
   // "그래서 뭐" 소리가 나오는 사실들이라, 문단을 짧게 끝내는 편이 낫다.
   // 6 → 8(요청: 중요하지 않은 내용은 숫자 채우려고 넣지 말 것). 자리가 남아도 "그래서 뭐"
@@ -1717,6 +1727,26 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
       if (d < near) { near = d; owner = q.rawName; }
     }
     return owner;
+  };
+
+  /* 본진(자원 받는 홀)이 날아갔나 — 빠른무한처럼 자원이 무한한 판에서는 이게 곧 자원
+     수급이 끊긴다는 뜻이라 그 판에서 가장 큰 사건이다(요청: 본진 뚝배기 날림 판정 가능?).
+     리플레이에는 건물이 죽는 기록이 없다. 대신 남는 게 하나 있다 — '제 시작 자리에 홀을
+     다시 지었다'. 넥서스·커맨드는 시작할 때 이미 서 있으므로 그 자리에 또 짓는 일은
+     날아갔을 때뿐이다. 저그는 본진에 해처리를 더 얹는 게 평범한 운영이라 이 판정에서 뺀다
+     (거짓으로 "본진이 날아갔다"고 말하느니 그 종족만 조용한 편이 낫다). */
+  const HALL_REBUILD_TILES = 12;
+  const HALL_REBUILD_SEC = 4 * 60;
+  const hallRebuilt = (victim: ParsedReplayPlayer, from: number): number | null => {
+    if (victim.race === "저그") return null;
+    if (victim.startX === null || victim.startY === null) return null;
+    const to = from + (HALL_REBUILD_SEC / SECONDS_PER_FRAME);
+    const hit = (victim.signals?.buildPositions ?? []).find((b) => (
+      (b.unit === "Nexus" || b.unit === "Command Center")
+      && b.frame !== null && b.frame >= from && b.frame <= to
+      && Math.hypot(b.x - (victim.startX as number), b.y - (victim.startY as number)) <= HALL_REBUILD_TILES
+    ));
+    return hit?.frame ?? null;
   };
 
   const attackZoneOf = (
@@ -2101,6 +2131,8 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
           const zone = !hit.out && attacker && victim && t.at !== null
             ? attackZoneOf(attacker, victim, t.at, hit.at)
             : null;
+          // 본진 홀이 날아갔나(위 hallRebuilt) — 자원이 무한한 판에서도 이건 치명타다.
+          const hall = victim && t.at !== null ? hallRebuilt(victim, t.at) : null;
           return {
             k: "raid-damage", won, who: [t.who], at: t.at,
             weight: t.weight + (hit.out ? 16 : 14),
@@ -2111,6 +2143,7 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
               ...(thin ? { vdef: thin.def, vdefN: thin.n } : {}),
               ...(mates.length > 0 ? { gang: gang.length } : {}),
               ...(zone ? { zone } : {}),
+              ...(hall !== null ? { hall: true } : {}),
               // 탈락은 몇 분경이었는지까지 말한다(요청) — 서사의 시점이 되는 순간이다.
               ...(hit.out ? { out: true, outMin: minutes(hit.at * SECONDS_PER_FRAME) } : {}),
               // 초반 올인에 초반부터 무너진 건 그 자체로 다른 그림이다(요청).
@@ -2142,7 +2175,8 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     return list
       .sort((a, b) => b.weight - a.weight)
       .filter((b) => {
-        if (b.k !== "raid-damage") return true;
+        // 때린 이야기든 괴롭힌 이야기든, 같은 사람이 같은 상대에게 한 일은 한 문장이면 된다.
+        if (b.k !== "raid-damage" && b.k !== "harass-workers" && b.k !== "harass-long") return true;
         const key = `${b.who.join(",")}|${(b.whom ?? []).join(",")}`;
         return seenHit.has(key) ? false : (seenHit.add(key), true);
       });
@@ -2552,8 +2586,20 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   const hubs: Record<string, [number, number]> = {};
   for (const p of replay.players) {
     const home = bases[p.rawName];
-    const pts = (p.signals?.buildPositions ?? [])
-      .filter((b) => home && Math.hypot(b.x - home[0], b.y - home[1]) <= HUB_RADIUS);
+    const all = p.signals?.buildPositions ?? [];
+    let pts = all.filter((b) => home && Math.hypot(b.x - home[0], b.y - home[1]) <= HUB_RADIUS);
+    /* 시작 지점 언저리에 살림이 없으면 실제로 건물이 모인 자리를 쓴다(요청: 셋방살이 위치를
+       고정으로 하지 말고 건물 지은 위치로 파악해서 미니맵에 아바타 표시) — 아군 기지에
+       얹혀 사는 사람은 제 시작 지점이 텅 비어 있어서, 그 자리를 고집하면 아바타가 아무것도
+       없는 구석에 홀로 서 있게 된다. 가장 붐비는 건물 하나를 중심으로 그 언저리만 센다. */
+    if (pts.length < HUB_MIN_BUILDINGS && all.length >= HUB_MIN_BUILDINGS) {
+      let best: typeof all = [];
+      for (const c of all) {
+        const near = all.filter((b) => Math.hypot(b.x - c.x, b.y - c.y) <= HUB_RADIUS);
+        if (near.length > best.length) best = near;
+      }
+      if (best.length >= HUB_MIN_BUILDINGS) pts = best;
+    }
     if (!home || pts.length < HUB_MIN_BUILDINGS) continue;
     const cx = pts.reduce((n, b) => n + b.x, 0) / pts.length;
     const cy = pts.reduce((n, b) => n + b.y, 0) / pts.length;

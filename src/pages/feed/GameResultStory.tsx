@@ -983,6 +983,26 @@ export default function GameResultStory({
       // 이모지 하나만 띄운다 — 마지막 것의 이모지를 쓴다(요청 이전과 같은 규칙).
       if (drawn === 0 && mark.has(s.raw)) marks.set(s.raw, mark.get(s.raw)!);
     }
+    /* 한 자리에 여러 화살표가 꽂히면 기둥 위 이름표가 한 점에 겹쳐 글자가 뭉친다(지적:
+       "하히드라라 아비터"). 큰 교전은 이미 그런 표시(converge)를 달고 있어 이름표를 더
+       뒤로 물리는데, 급습처럼 여러 명이 같은 집을 친 경우에는 그 표시가 없었다. 끝점이
+       서로 붙어 있는 화살표들에 같은 표시를 달아 준다 — 그리는 규칙은 하나뿐이라 여기서
+       사실만 짚어 주면 된다. */
+    const SHARED_TIP_TILES = 8;
+    for (const a of arrows) {
+      if (a.converge) continue;
+      if (!arrows.some((b) => b !== a
+        && Math.hypot(b.x2 - a.x2, b.y2 - a.y2) <= SHARED_TIP_TILES)) continue;
+      a.converge = true;
+    }
+    // 같은 점에 모인 것들끼리 순번을 매긴다 — 이름표를 서로 다른 높이에 앉히는 값이다.
+    const ranked: MinimapArrow[][] = [];
+    for (const a of arrows) {
+      if (!a.converge) continue;
+      const g = ranked.find((grp) => Math.hypot(grp[0].x2 - a.x2, grp[0].y2 - a.y2) <= SHARED_TIP_TILES);
+      if (g) g.push(a); else ranked.push([a]);
+    }
+    for (const g of ranked) g.forEach((a, i) => { a.rank = i; });
     /* 같은 자리로 모인 화살표들에는 이모지를 하나만 남긴다(요청: 폭발 이모지도 하나만
        있어야 됨) — 양 팀이 부딪친 자리에는 양쪽에서 화살표가 들어오는데, 저마다 촉 앞에
        제 이모지를 얹으면 한 점에 폭발이 두세 개 겹쳐 뭉친다. 그 자리에서 일어난 일은

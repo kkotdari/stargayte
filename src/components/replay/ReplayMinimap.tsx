@@ -52,6 +52,9 @@ export interface MinimapArrow {
    *  화살표들이 제각각 다른 데서 끝나 '모였다'로 안 읽힌다. 이 표가 붙으면 여백 없이
    *  목표에 정확히 닿고, 이모지도 그 점 위에 선다. */
   converge?: boolean;
+  /** 같은 점에 모인 화살표들 사이의 순번 — 이름표를 서로 어긋나게 앉히는 데만 쓴다
+   *  (위 LABEL_BACK_STEP). 안 붙이면 0으로 본다. */
+  rank?: number;
 }
 
 // 화살표 모양 — 값은 모두 타일 단위다(SVG viewBox가 타일 격자와 같다).
@@ -97,6 +100,8 @@ const LABEL_BACK = 9;
  *  "탱크·사이언스베러커·히드라"). 뒤로 갈수록 화살표들이 부채처럼 벌어지므로, 그만큼
  *  물리면 저절로 서로 떨어진다. */
 const LABEL_BACK_CONVERGE = 22;
+/** 같은 점에 모인 화살표끼리 이름표를 어긋나게 앉히는 간격(순번마다 이만큼 더 뒤로). */
+const LABEL_BACK_STEP = 13;
 /* (삭제) 본진 이모지를 맵 가운데 쪽으로 멀리 띄우던 값(MARK_OUT/MARK_EDGE) — 이제 액션
    이모지는 아바타의 '위 안쪽' 슬롯에 고정으로 앉는다(아래 markPlace). 멀리 띄우면 본진이
    지도 어디에 있느냐에 따라 이름표·표정과 같은 칸에 몰리는 조합이 생겼다(지적). */
@@ -172,7 +177,12 @@ function arrowGeom(a: MinimapArrow, w: number, h: number) {
        그만큼 물러설 기둥이 없어 출발점을 지나쳐 버리므로, 기둥 길이의 절반을 넘지 않게
        묶는다. */
     label: (() => {
-      const back = Math.min(a.converge ? LABEL_BACK_CONVERGE : LABEL_BACK,
+      /* 한 점으로 모이는 화살표들은 뒤로 물려도 서로 겹칠 수 있다 — 세 개가 거의 같은
+         각도로 들어오면 같은 거리에서는 여전히 한 자리다(실측: "히히드라러커/아비터").
+         그래서 물리는 거리를 화살표마다 조금씩 달리 준다(rank) — 부채처럼 벌어지는 효과에
+         더해, 아예 다른 높이에 앉아 글자가 안 포갠다. */
+      const stagger = a.converge ? LABEL_BACK_STEP * (a.rank ?? 0) : 0;
+      const back = Math.min((a.converge ? LABEL_BACK_CONVERGE : LABEL_BACK) + stagger,
         Math.hypot(bx - x1, by - y1) / 2);
       return [bx - hx * back, by - hy * back] as [number, number];
     })(),

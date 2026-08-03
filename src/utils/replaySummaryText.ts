@@ -603,6 +603,8 @@ const spotWord = (v: unknown): string => (typeof v === "string" ? SPOT_KO[v] ?? 
 
 /** 전술을 문장 안에서 부를 이름 — "3게이트 질럿 러시로 …"처럼 다른 문장에 끼워 넣을 때 쓴다.
  *  여기 없는 키는 '들이친 수'가 아니라는 뜻이라, 피해 문장 자체가 만들어지지 않는다. */
+/** 일꾼을 노리고 가는 드랍들 — 이 수로 크게 타격을 줬다면 갈린 것은 십중팔구 일꾼이다. */
+const WORKER_DROP_KEYS = new Set(["templar-drop", "shuttle-reaver", "shuttle"]);
 /** 급습 문장에 유닛 수를 적기 시작하는 선 — 이보다 적으면 '모아서 갔다'가 아니라 견제다. */
 const RAID_UNIT_SHOW = 5;
 function tacticLabel(k: string, p: Record<string, unknown>): string {
@@ -830,6 +832,30 @@ const TEMPLATES: Record<string, Tpl> = {
     // "조조의 바이오닉 한 방으로 …파괴함"이 아니라 "조조는 바이오닉 한 방으로 …파괴함").
     // 소유격은 당한 쪽이 주어인 '-에' 꼴(아래 blow)에만 남긴다.
     const by = `${ga(c.who)} ${label}`;
+    /* 본진 건물이 날아간 것(요청: 빠른무한에서는 본진 뚝배기가 날아가면 자원 수급이
+       끊겨서 가장 큰 사건이다) — 확인한 근거가 '제 시작 자리에 넥서스·커맨드를 다시
+       지었다'이므로, 다시 지어야 했다는 사실까지 그대로 말한다. 탈락·빈사보다 먼저
+       본다: 그보다 구체적이고 확실한 이야기다. */
+    if (c.p.hall) {
+      const m = num(c.p.outMin) || num(c.p.hitMin);
+      const when = m > 0 ? `${m}분 만에 ` : "";
+      return say(
+        [`${blow} ${also}${when}본진이 날아가 다시 지어야 했음`,
+          `${blow} ${also}${when}본진째 밀려 새로 올려야 했음`],
+        [`${blow} ${also}${when}${of}본진이 날아가 다시 지어야 했음`],
+        [`${ro(by)} ${also}${when}${of}본진을 통째로 밀어버림`],
+      );
+    }
+    /* 하이템플러·리버·셔틀 드랍은 일꾼을 노리고 가는 수다(요청: 하이템플러나 리버로 일꾼
+       견제한 내용이 더 나와야 한다) — 같은 '큰 타격'이라도 이 수는 무엇이 갈렸는지가
+       분명하니 그렇게 말한다. 탈락까지 간 경우는 그쪽 문구가 더 큰 이야기라 안 건드린다. */
+    if (!c.p.out && WORKER_DROP_KEYS.has(str(c.p.k))) {
+      return say(
+        [`${blow} ${also}일꾼 줄이 통째로 지워짐`, `${blow} ${also}일꾼이 크게 갈림`],
+        [`${blow} ${also}${of}일꾼이 크게 갈림`, `${blow} ${also}${of}일꾼 줄이 지워짐`],
+        [`${ro(by)} ${also}${of}일꾼을 쓸어 담음`, `${ro(by)} ${also}${of}일꾼 줄을 지움`],
+      );
+    }
     // 여럿이 함께 덮친 그림 — 누가 무슨 수를 냈는지(blow)에 나머지 이름을 이어 붙인다.
     // 이 꼴 하나로 탈락·빈사·생산 정지를 다 덮으므로 아래 갈래보다 먼저 본다.
     if (also) {
