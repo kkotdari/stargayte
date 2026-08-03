@@ -7144,6 +7144,11 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    바로 위 줄이 이미 같은 말을 하고 있어, 그대로 두면 시각이 두 번 적힌다. */
 .scr-feed-row-body { padding: 0 var(--scr-row-pad-x) 12px; }
 .scr-feed-row-body .scr-feed-card-head { display: none; }
+/* 목록에서는 카드마다 따로 등장하지 않는다(요청: 열릴 때 게임결과 목록이 한 번에 뜨게).
+   .scr-feed-card-stack-reveal은 카드를 translateY(8px)에서 0으로 끌어올리는데, 그 위에
+   줄이 펼쳐지는 연출까지 겹치면 두 움직임이 서로 다른 속도로 붙어 "무언가 줄어들면서
+   위로 올라가는" 느낌이 된다(지적). 여기서는 줄이 펼쳐지는 연출 하나만 남긴다. */
+.scr-feed-row-body .scr-feed-card-stack-reveal { animation: none; }
 /* 목록 안에서는 카드가 유리판을 벗는다(요청) — 표 한 칸을 열어 본 것이지 새 카드가 뜬
    것이 아니고, blur 요소가 줄마다 생기면 여닫는 연출도 그만큼 무거워진다.
    글래스를 씌우는 쪽(.scr-feed-card > .scr-feed-card-body)이 자식 결합자라 여기도 같은
