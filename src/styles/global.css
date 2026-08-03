@@ -4957,7 +4957,13 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
      붙어 있는데 이 모서리가 둥글면 꼬리와 말풍선 사이에 삼각형 빈틈이 생겼다. */
   font-size: var(--fs-micro); /* 닉네임(body)보다 두 단계 아래 — 한 번 더 1스텝 축소(요청) */
   background: #fff; color: #24272d; border-radius: 0 6px 6px 6px; padding: 4px 5px 3px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18), 0 0 1px rgba(0, 0, 0, 0.1);
+  /* 그림자는 box-shadow가 아니라 filter로 준다 — box-shadow는 '이 상자'의 네모만 따라
+     그려서 꼬리(아래 ::before, 테두리로 만든 삼각형)는 그림자가 없었다. 다크에서는 어두운
+     바탕이라 티가 안 났지만, 라이트에서는 그림자가 곧 말풍선의 윤곽이라 꼬리 자리에서
+     윤곽이 뚝 끊겨 보였다(지적). drop-shadow는 그려진 모양(자식인 꼬리까지)의 실루엣을
+     따라가므로 말풍선과 꼬리에 하나로 이어진 그림자가 생긴다. 배경이 불투명한 흰색이라
+     안쪽 글자에는 그림자가 안 붙는다. */
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.18)) drop-shadow(0 0 0.5px rgba(0, 0, 0, 0.12));
   /* 아바타(34px) 한가운데가 17px, 거기서 9px 더 오른쪽 — 20px으로 뒀더니 꼬리가 거의
      한가운데라 아직 왼쪽으로 보였다(지적: 좀 더 오른쪽에서 시작). 아바타 오른쪽 절반
      안에 확실히 걸치는 자리다. 위쪽은 꼬리(아래 ::before, 5px) 자리까지만 살짝 띄운다. */
@@ -7271,6 +7277,12 @@ html:not(.scr-light-theme) .scr-feed-now-divider span { color: var(--muted); }
   /* 댓글 본문과 같은 크기로 흐르게. */
   color: #5b9bd8; font-weight: 700; font-size: var(--fs-caption);
   top: 0; margin: 0;
+  /* 글자 밑선을 옆 글자와 맞춘다(지적: 언급된 사람만 살짝 아래로 내려가 있다).
+     기본 규칙(.scr-mreq-chip-inline)은 배경 있는 칩이라 vertical-align:middle로 가운데를
+     맞추는데, 그 middle은 '상자 한가운데를 옆 글자의 밑선 + x높이 절반에 맞춘다'는 뜻이라
+     상자가 글자보다 높으면 그만큼 아래로 내려앉는다. 여기서는 배경도 패딩도 없앤 맨
+     글자라(위) 밑선끼리 맞추는 것이 맞다. */
+  vertical-align: baseline;
 }
 html.scr-light-theme .scr-feed-card-comment .scr-mreq-chip-inline { color: #1d4ed8; }
 /* (삭제) 모바일 댓글 시트 전용 "+1스텝" 규칙 — 카드용 크기를 caption/micro로 다시
