@@ -5453,160 +5453,17 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
    버그") — 스냅 타깃에서 뺀다. 눈금(타임라인)/뱃지는 그대로 두고 스크롤 정지 동작에서만
    제외한다. */
 
-/* 우측 네비게이션 타임라인(요청: "위가 과거 아래가 미래, 현재 위치 표시, 스크롤 시에만
-   보임"). 목록이 과거(위)→미래(아래) 순이라 스크롤 위치(0~1)를 그대로 세로 축에 매핑한다.
-   position:fixed로 뷰포트 우측에 떠 있고, 스크롤하는 동안에만 opacity로 나타난다. 위쪽은
-   헤더/툴바/검색줄, 아래쪽은 탭바를 비켜 배치한다. */
-.scr-scroll-timeline {
-  position: fixed; right: 2px; z-index: 40;
-  /* 타이틀 아래 버튼 로우(등록/생성/도전장 쓰기 등)는 이제 sticky가 아니라 그냥 문서
-     흐름 안에 있어 스크롤하면 같이 밀려 올라간다 — 더 이상 그 버튼 높이만큼 비워둘
-     필요가 없다. 헤더 자리만 남겨두고 최대한 위로 올린다(요청: "타임라인 상단 페이지
-     상단까지 올려도 됨 이제(헤더 자리는 남겨놓고)"). 헤더 자체 높이(PC 기준 상단
-     패딩 6px + 안쪽 14px×2 + 아바타/로고 콘텐츠 ~38px ≈ 72px)를 다 가려서(신고: "PC에서
-     타임라인 상단이 헤더에 가려짐") 여유를 조금 더 둔다 — 다만 위아래 다 너무 넉넉하다는
-     피드백으로(요청: "위아래로 늘려도 됨") 여유값 자체는 줄였다. */
-  top: calc(var(--safe-top) + 76px);
-  bottom: calc(var(--mobile-footer-h) + env(safe-area-inset-bottom, 0px) + 16px);
-  display: flex; flex-direction: column; align-items: center; gap: 6px;
-  opacity: 0; pointer-events: none; transition: opacity 0.25s ease;
-}
-/* 모바일은 세로 스크롤바를 숨기므로(@media (max-width: 860px) 스크롤바 숨김 규칙)
-   그만큼 오른쪽 가장자리에 더 붙여도 된다(요청: "스크롤 없는 만큼 모바일에서 타임라인을
-   더 오른쪽으로 이동"). */
-@media (max-width: 860px) {
-  .scr-scroll-timeline { right: -1px; }
-}
-/* PC에서는 타임라인/맨위로 버튼을 화면 오른쪽 끝이 아니라 본문 컬럼 바로 옆에 둔다(요청)
-   — 맨위로 버튼이 본문 오른쪽 살짝 옆(16px), 타임라인이 그 오른쪽(버튼 52px + 12px 뒤).
-   본문은 min(100%, --list-content-max) 폭으로 중앙 정렬이므로 left = 50% + 본문 반폭 + 여백.
-   본문이 화면을 거의 꽉 채우는 좁은 PC 폭에서는 min()이 기존 오른쪽 가장자리 위치
-   (버튼 right 18px / 타임라인 right 2px 상당)로 가둬 화면 밖으로 안 나간다. */
+/* PC에서는 맨위로 버튼을 화면 오른쪽 끝이 아니라 본문 컬럼 바로 옆에 둔다(요청) —
+   본문 오른쪽 살짝 옆(16px). 본문은 min(100%, --list-content-max) 폭으로 중앙 정렬이므로
+   left = 50% + 본문 반폭 + 여백. 본문이 화면을 거의 꽉 채우는 좁은 PC 폭에서는 min()이
+   기존 오른쪽 가장자리 위치로 가둬 화면 밖으로 안 나간다.
+   (이 자리에 함께 있던 우측 네비게이션 타임라인은 통째로 걷어냈다 — 활동의 카드
+    타임라인 보기 전용 장치였고, 그 보기가 사라지면서 쓰는 곳이 없어졌다.) */
 @media (min-width: 861px) {
   .scr-scrolltop {
     right: auto;
     left: min(calc(50% + var(--list-content-max) / 2 + 16px), calc(100% - 70px));
   }
-  .scr-scroll-timeline {
-    right: auto;
-    left: min(calc(50% + var(--list-content-max) / 2 + 80px), calc(100% - 34px));
-  }
-}
-/* 모바일 헤더가 로고만 남고 낮아져(패딩 10px + 로고 24px ≈ 44px) 타임라인 상단도 그만큼
-   끌어올린다(요청). */
-@media (max-width: 640px) {
-  .scr-scroll-timeline { top: calc(var(--safe-top) + 52px); }
-}
-.scr-scroll-timeline-visible { opacity: 1; pointer-events: auto; }
-.scr-scroll-timeline-end {
-  font-size: var(--fs-micro); font-weight: 800; color: var(--dim); letter-spacing: 0.06em;
-  user-select: none;
-}
-/* 트랙은 '보여주기'만 하고 터치를 받지 않는다 — 이 타임라인은 화면 오른쪽 가장자리
-   (right:2px, 폭 32px)에 세로로 길게 붙어 있고 스크롤 중에만 pointer-events가 켜진다.
-   예전엔 트랙 전체가 touch-action:none으로 터치를 가로채고 pointerdown 즉시 그 지점으로
-   스크럽했는데, 한 손으로 스크롤할 때 엄지가 자연스럽게 이 띠에 닿아 페이지가 손가락
-   높이로 순간이동했다 — 실기기 계측에서 확인된 '튐'의 정체다(분모는 그대로인데 scrollY만
-   0 또는 max로 튀었다). 이제 터치는 트랙을 통과해 페이지를 정상 스크롤하고, 스크럽은
-   아래 thumb을 직접 잡았을 때만 동작한다. */
-.scr-scroll-timeline-track {
-  position: relative; flex: 1; width: 32px;
-  display: flex; justify-content: center;
-  pointer-events: none;
-}
-/* 세로 축선 — 위(과거)는 옅고 아래(미래)로 갈수록 포인트색이 진해져 방향을 은근히 전한다. */
-.scr-scroll-timeline-track::before {
-  content: ""; position: absolute; top: 0; bottom: 0; width: 3px; border-radius: 3px;
-  background: linear-gradient(
-    to bottom,
-    color-mix(in srgb, var(--timeline-blue) 20%, transparent),
-    color-mix(in srgb, var(--timeline-blue) 78%, transparent)
-  );
-}
-/* 무한스크롤로 문서가 길어진 직후에만 위치를 미끄러지게 한다(ScrollNavTimeline의 settling
-   주석) — 평상시 스크롤엔 트랜지션이 없어 지연도, 잔상도 없다. transform이 아니라 top을
-   옮기므로 예전처럼 합성 잔상(두 개로 보임)이 생기지 않는다. */
-.scr-scroll-timeline-settling .scr-scroll-timeline-thumb, .scr-scroll-timeline-settling .scr-scroll-timeline-date { transition: top .3s ease-out; }
-.scr-scroll-timeline-thumb {
-  position: absolute; left: 50%; width: 12px; height: 12px; border-radius: 50%;
-  background: var(--timeline-blue); transform: translate(-50%, -50%);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--timeline-blue) 26%, transparent), 0 1px 4px rgba(0, 0, 0, 0.3);
-  z-index: 1;
-  /* 터치는 CSS 히트테스트를 안 쓴다 — ScrollNavTimeline이 문서 레벨 터치 리스너에서 좌표로
-     직접 판정한다(그 주석 참고). 그래서 여기선 아무 것도 안 열어둔다: 손잡이가 터치를 받으면
-     오히려 좌표 판정과 두 경로가 겹친다. */
-  pointer-events: none;
-}
-/* 다크 테마에서 "현재" 위치(썸)만 강조색(blue) 대신 기본 글자색으로(요청) — 트랙 축선의
-   블루 그라디언트는 양 테마 통일이라 그대로 둔다(위 --timeline-blue 주석 참고, 이 점만
-   예외로 덮는다). */
-html:not(.scr-light-theme) .scr-scroll-timeline-thumb {
-  background: var(--text);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--text) 26%, transparent), 0 1px 4px rgba(0, 0, 0, 0.3);
-}
-@media (hover: hover) and (pointer: fine) {
-  /* 마우스는 CSS로 그대로 잡는다 — 정확히 겨냥해 누르므로 문제가 없었던 경로다.
-     touch-action:none은 트랙패드 관성 스크롤이 드래그와 겹치지 않게. */
-  .scr-scroll-timeline-thumb { pointer-events: auto; touch-action: none; cursor: grab; }
-  /* 12px 점은 겨냥하기 작아 보이지 않는 여유 히트 영역을 덧댄다(요청: 좀 더 크게 —
-     터치 쪽 여유(TOUCH_PAD)를 키운 것과 같은 결). */
-  .scr-scroll-timeline-thumb::after {
-    content: ""; position: absolute; inset: -14px; border-radius: 50%;
-  }
-}
-/* "오늘" 눈금 — 트랙 위 오늘 위치에 짧은 가로선 + 라벨. 썸이 지나가며 여기서 딱 걸린다.
-   라벨을 트랙 왼쪽으로 띄우던 이전 방식은 현재 위치 알약(.scr-scroll-timeline-date,
-   역시 트랙 왼쪽에 붙는다)과 세로 위치가 겹칠 때 서로 부딪혀 지저분해 보였다(실제로
-   지적받은 문제) — "과거"/"미래" 끝 라벨처럼 눈금 바로 위에 작게 얹는 걸로 바꾼다.
-   라벨(::after)을 컨테이너의 플로우 안에 넣으면(flex-direction:column) 컨테이너 높이가
-   라벨+선을 합친 만큼 커져서, translate(-50%,-50%)가 그 전체 묶음의 중앙을 스크롤 위치에
-   맞춰버려 실제 눈금(선)이 정확한 스크롤 지점에서 벗어나 버렸다(실제로 지적받은 문제 —
-   "스냅이 바가 아니라 글자에 걸리는 문제") — 컨테이너의 플로우 콘텐츠는 선(::before)
-   하나만 남기고, 라벨은 그 위에 절대 위치로 얹어서 컨테이너 중앙(=스크롤 위치)은 항상
-   선 기준으로 유지한다. */
-/* 활동 타임라인의 "현재" 눈금(요청) — 미래↔과거 경계(활동 목록의 현재 구분선) 위치를
-   트랙에 찍는다. 너 나와의 "오늘" 눈금과 같은 모양·크기, 색만 포인트색으로 구분한다. */
-.scr-scroll-timeline-now {
-  position: absolute; left: 50%; transform: translate(-50%, -50%);
-  display: flex; align-items: center;
-  /* 누르면 그 지점으로 이동한다(요청) — 트랙이 pointer-events:none이라 여기서만 다시 연다.
-     기본 버튼 모양은 걷고, 2px 선은 겨냥하기 작으니 보이지 않는 여유 히트 영역을 덧댄다. */
-  padding: 10px 6px; border: none; background: none; cursor: pointer;
-  pointer-events: auto; -webkit-tap-highlight-color: transparent;
-}
-.scr-scroll-timeline-now::before {
-  content: ""; width: 16px; height: 2px; border-radius: 2px;
-  background: var(--point);
-}
-.scr-scroll-timeline-now::after {
-  /* 히트 영역을 padding으로 넓혔으므로(위) 라벨은 그만큼 되내려 선 바로 위에 붙인다. */
-  content: "현재"; position: absolute; left: 50%; bottom: 100%; margin-bottom: -8px;
-  transform: translateX(-50%);
-  font-size: var(--fs-micro); font-weight: 800; color: var(--point);
-  white-space: nowrap;
-}
-/* 다크 테마에서 이 "현재" 눈금도 포인트색(금색이 주황으로 보인다는 지적) 대신 기본
-   글자색으로(요청) — 라이트는 --point가 검정이라 그대로 둔다. */
-html:not(.scr-light-theme) .scr-scroll-timeline-now::before { background: var(--text); }
-html:not(.scr-light-theme) .scr-scroll-timeline-now::after { color: var(--text); }
-/* 현재 상단에 핀된 날짜를 알약으로 — 다이얼(썸) 바로 위에 얹는다(요청).
-   트랙 왼쪽에 붙이던 예전 자리는 "현재" 눈금 라벨과 세로로 부딪혔고, 가운데 정렬하면
-   화면 오른쪽 밖으로 넘쳤다 — 오른쪽 끝을 트랙에 맞춰(right:0) 왼쪽으로만 자라게 해
-   어떤 길이여도 잘리지 않는다. 세로로는 썸 반지름(6px)만큼 더 띄운다. */
-.scr-scroll-timeline-date {
-  position: absolute; right: 6px; transform: translateY(calc(-100% - 12px));
-  white-space: nowrap; font-size: var(--fs-11); font-weight: 700;
-  /* 완전 불투명(--panel-solid)이던 알약을 반투명으로(요청: "타임라인 다크 라이트에서 탭
-     투명도 높여줘") — --panel-solid가 테마별 색을 갖고 있어 다크/라이트 모두 한 규칙로 덮인다. */
-  color: var(--text); background: color-mix(in srgb, var(--panel-solid) 55%, transparent);
-  padding: 3px 7px; border-radius: 5px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22); pointer-events: none;
-}
-/* 다크에서 반투명해진 알약이 배경에 묻히지 않게, 탭바/드로어와 같은 위쪽 반사광 한 줄을
-   inset 그림자로 얹는다(요청: "다크테마에서 날짜태그에 반사광 필요") — inset이라
-   라운딩을 그대로 따라간다. 라이트는 밝은 배경이라 그대로. */
-html:not(.scr-light-theme) .scr-scroll-timeline-date {
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 2px 8px rgba(0, 0, 0, 0.22);
 }
 
 
@@ -6344,8 +6201,6 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
   .scr-team-outcome { font-size: var(--fs-body); }
   /* 경기목록 승·패 글자는 body(16) 유지 — 닉네임(caption 14)보다 한 단계 위. */
   /* 타임라인 폰트 한 단계 축소(날짜 알약 14→12, 끝/오늘 라벨 12→11) */
-  .scr-scroll-timeline-end { font-size: var(--fs-11); }
-  .scr-scroll-timeline-date { font-size: var(--fs-11); }
   /* 도전장 보내기 힌트 두 단계 축소(20→14) */
   .scr-challenge-form-modal .scr-hint { font-size: var(--fs-caption); }
 }
@@ -6454,9 +6309,7 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
 .scr-drawer-actions .scr-btn { font-size: var(--fs-body); }
 .scr-challenge-card-team .scr-challenge-person-name { font-size: var(--fs-micro); }
 .scr-team-outcome { font-size: var(--fs-body); }
-.scr-scroll-timeline-end { font-size: var(--fs-11); }
 /* 한 스텝 더 축소(요청) — 다이얼 위로 올라가면서 더 작아도 읽힌다. */
-.scr-scroll-timeline-date { font-size: var(--fs-11); }
 .scr-challenge-form-modal .scr-hint { font-size: var(--fs-caption); }
 
 /* ═══ 모바일 폭에서 활성 스케일을 모바일 세트로 스위칭. 지금은 PC/모바일 값이 같아
@@ -7074,15 +6927,6 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    한 줄 요약뿐이고, 볼 것만 눌러서 그 자리에 원래 카드를 편다.
    제목 옆 토글은 통계의 "도움말"과 같은 글자 트리거 관용구를 쓴다 — 켜져 있을 때만
    점선이 실선이 되어 지금 이 모드라는 것이 글자만으로 읽힌다. */
-/* 밑줄은 뺐다(요청) — 제목 바로 옆이라 눌리는 자리라는 건 자리와 글자("~로 보기")가
-   이미 말하고, 점선이 있으면 제목 줄에 잔금이 하나 더 그어진 것처럼 보인다. */
-.scr-activity-listmode-btn {
-  background: transparent; border: none; padding: 0; cursor: pointer; font-family: inherit;
-  font-size: var(--fs-caption); font-weight: 600; line-height: 1;
-  color: var(--muted); white-space: nowrap; opacity: 0.85;
-  -webkit-tap-highlight-color: transparent;
-}
-@media (hover: hover) { .scr-activity-listmode-btn:hover { color: var(--text); opacity: 1; } }
 
 /* 줄 구분선은 본문 칸 좌우 여백을 뚫고 끝까지 간다(요청: 양쪽 끝까지 꽉 차게) — 표의
    가로줄은 칸 안쪽이 아니라 표 전체를 가르는 선이다. 여백만큼 밖으로 나갔다가 같은 값을
@@ -7275,6 +7119,10 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    이미 하고 있는 말이라, 묶음을 펼치면 같은 낱말이 경기 수만큼 되풀이됐다. 남는 건 줄이
    말하지 않는 것들뿐이다: 경기별 시각, 등록자, 그리고 케밥(삭제·공유). */
 .scr-activity-row-body .scr-activity-card-head-title { display: none; }
+/* 머리를 남기는 쪽(게임결과)도 제목만은 뗀다(요청) — 아이콘과 "게임결과"는 바로 위 줄이
+   이미 하고 있는 말이라, 묶음을 펼치면 같은 낱말이 경기 수만큼 되풀이됐다. 남는 건 줄이
+   말하지 않는 것들뿐이다: 경기별 시각, 등록자, 그리고 케밥(삭제·공유). */
+.scr-activity-row-body .scr-activity-card-head-title { display: none; }
 /* 목록에서는 카드마다 따로 등장하지 않는다(요청: 열릴 때 게임결과 목록이 한 번에 뜨게).
    .scr-activity-card-stack-reveal은 카드를 translateY(8px)에서 0으로 끌어올리는데, 그 위에
    줄이 펼쳐지는 연출까지 겹치면 두 움직임이 서로 다른 속도로 붙어 "무언가 줄어들면서
@@ -7288,33 +7136,6 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-light-theme .scr-activity-row-body .scr-activity-card > .scr-activity-card-body {
   background-image: none;
 }
-/* "현재"(now) 구분선 — 미래(위)와 오늘/과거(아래) 카드 사이에 위치 안내(요청). 포인트
-   색 얇은 라인 + 가운데 "현재" 라벨. */
-.scr-activity-now-divider {
-  display: flex; align-items: center; gap: 10px; margin: -2px 2px;
-  /* 위아래 여백을 맞춘다(지적: 현재 라인 위아래 갭이 달라 보인다). 카드는 목록의
-     갭(--feed-card-gap) 말고도 제 꼬리 여백(margin-bottom: --card-pad-b)을 하나 더
-     달고 있어서, 이 선의 위쪽은 42+16, 아래쪽은 42로 16px이 어긋나 있었다. 이 선도
-     카드와 같은 꼬리 여백을 달아 양쪽을 같게 만든다(-2px는 위와 같은 보정). */
-  margin-bottom: calc(var(--card-pad-b) - 2px);
-}
-/* 양쪽 끝이 흐려지는 그라데이션을 쓰다가 균일한 단색 선으로 바꿨다(요청) — 가운데만
-   진하고 끝이 사라지는 선은 라벨 주변만 강조돼 "선"이 아니라 번짐처럼 보였다. */
-.scr-activity-now-divider::before, .scr-activity-now-divider::after {
-  content: ""; flex: 1; height: 1px; background: var(--point);
-  opacity: 0.7;
-}
-.scr-activity-now-divider span {
-  font-size: var(--fs-micro); font-weight: 800; color: var(--point);
-  letter-spacing: 0.06em; white-space: nowrap;
-}
-/* 다크 테마에서 포인트색(골드)을 빼고 기본색으로(요청) — 선은 다른 구분선과 같은 톤,
-   라벨은 다른 보조 캡션과 같은 muted로. 라이트는 --point가 이미 검정이라 그대로 둔다. */
-html:not(.scr-light-theme) .scr-activity-now-divider::before,
-html:not(.scr-light-theme) .scr-activity-now-divider::after {
-  background: var(--line); opacity: 1;
-}
-html:not(.scr-light-theme) .scr-activity-now-divider span { color: var(--muted); }
 /* ── 카드(활동 카드) ──────────────────────────────────────────────────────
    패널형 유리판에서 인스타그램식 '카드'로 바꾼다(요청). 카드 한 장은 크게
    헤더부와 컨텐츠부로 나뉘고 그 사이를 선으로 긋는다(요청). 좌우 여백은 줄이고

@@ -19,7 +19,6 @@ import { ChallengeCard, ChallengeTimeHeadEdit, challengeStatusInfo } from "../ch
 import ReplayReviewModal from "../../modals/ReplayReviewModal";
 import ActivityComments, { primeActivityComments } from "./ActivityComments";
 import { primeReplayMaps } from "../../hooks/useReplayMap";
-import ScrollNavTimeline from "../../components/common/ScrollNavTimeline";
 import ChallengeFormModal from "../../modals/ChallengeFormModal";
 import { scheduledInstantMs, formatWhen, formatAgo, serverMs } from "../../utils/date";
 import { useAppStore } from "../../store/appStore";
@@ -76,9 +75,6 @@ const REVEAL_MS = 220;
 /** 목록 줄이 접히는 데 걸리는 시간 — CSS의 scr-row-close 애니메이션과 같은 값이라야
  *  카드가 다 접힌 뒤에 사라진다(짧으면 접히다 말고 툭 없어진다). */
 const ROW_CLOSE_MS = 200;
-
-/** 목록/타임라인 중 무엇을 보고 있었나 — 테마(LIGHT_THEME_KEY)와 같은 방식으로 남긴다. */
-const FEED_VIEW_KEY = "scr-activity-view";
 
 /** NEW로 볼 기간(요청: 24시간 내) — 지난 방문을 기억해 두던 방식에서 이 단순한 규칙으로
  *  바꿨다. 누구에게나 같은 것이 보이고, 브라우저에 기억해 둘 것도 없다. */
@@ -784,21 +780,12 @@ export default function ActivityScreen() {
   // 일정/랭크변동으로 거른다 — 너나와=시간 미확정 도전장, 일정=시간 확정 도전장.
   const [kindFilter, setKindFilter] = useState<"all" | "gameResult" | "call" | "schedule" | "rankingShift">("all");
 
-  // 게임결과 묶음은 한 번에 하나만 펼쳐 둔다(요청: "카드 눌러서 요약보기 제거 이제
-  // 한번 펴면 못접음... 대신! 다른 카드를 펴면 나머지는 자동으로 접힘") — 수동으로
-  // 접는 방법은 없앴고, 다른 묶음을 펼치면 그 키로 바뀌면서 이전 것이 저절로 접힌다.
-  // 키는 그 묶음 첫 경기의 id(렌더 루프의 key와 같은 값)다.
-  const [expandedStackKey, setExpandedStackKey] = useState<number | null>(null);
-  /* 목록 보기(요청) — 카드를 다 그리는 대신 한 줄짜리 목록으로 훑고, 볼 것만 눌러 편다.
-     펼침은 한 번에 하나다: 여러 줄을 동시에 펴 두면 목록의 값어치(한 화면에 많이)가
-     사라지고, 그럴 바에는 카드 보기가 낫다.
-     이쪽이 기본이다(요청) — 카드(타임라인)는 골라서 보는 쪽으로 바뀌었다.
-     고른 값은 테마와 같은 자리(localStorage)에 남긴다(요청) — 새로고침하거나 다른 탭에
-     다녀와도 방금 보던 모양 그대로여야 한다. 저장된 게 없으면 목록이 기본이다. */
-  const [listMode, setListMode] = useState(() => localStorage.getItem(FEED_VIEW_KEY) !== "timeline");
-  useEffect(() => {
-    localStorage.setItem(FEED_VIEW_KEY, listMode ? "list" : "timeline");
-  }, [listMode]);
+  /* 목록 한 줄을 눌러 펼친다 — 펼침은 한 번에 하나다. 여러 줄을 동시에 펴 두면 목록의
+     값어치(한 화면에 많이)가 사라진다.
+     (예전엔 카드를 죽 늘어놓는 '타임라인' 보기가 따로 있고 둘을 버튼으로 오갔는데,
+      통째로 걷어냈다(요청) — 목록이 기본이 된 뒤로는 아무도 그쪽으로 넘어가지 않았고,
+      같은 카드를 두 가지 배치로 그리느라 카드 쪽 수정마다 양쪽을 다 확인해야 했다.
+      보던 모양을 기억하던 localStorage 자리도 함께 없앴다.) */
   const [openRowKey, setOpenRowKey] = useState<string | null>(null);
   /* 접히는 모습을 보여 주려면(요청: 여닫을 때 트랜지션) 닫는 동안에도 그 줄의 카드가
      잠깐 더 붙어 있어야 한다 — 바로 언마운트하면 그냥 사라진다. 다른 줄을 펴서 밀려
@@ -1266,10 +1253,6 @@ export default function ActivityScreen() {
     return out;
   }, [filteredFeed]);
 
-  // 필터(유형/유저 검색)가 걸려 있나 — 걸려 있으면 게임결과 묶음을 펼친 채로 낸다(요청).
-  // 걸러진 결과가 요약 뒤에 접혀 있으면 이 카드가 왜 남았는지 보이지 않는다.
-  const filterActive = kindFilter !== "all" || searchTerms.length > 0;
-
   const dateLabelOf = (item: { time: number }) => {
     const d = new Date(item.time);
     return `${d.getMonth() + 1}월 ${d.getDate()}일`;
@@ -1279,15 +1262,6 @@ export default function ActivityScreen() {
   // 이하" 아이템. 그 위에 미래 아이템이 있을 때만(idx>0) 카드 사이에 "현재" 구분선을
   // 넣는다(요청). 활동에 들어오면 이 지점이 화면 가운데 오도록 스크롤한다(요청) — 위로는
   // 앞으로 있을 일, 아래로는 이미 벌어진 일이라 그 경계가 곧 "지금 어디쯤인가"다.
-  // "현재" 선은 아직 안 끝난 너 나와 바로 아래에 둔다(지적: 당일에 잡혔지만 아직 안 한
-  // 너 나와가 현재선 아래로 내려가면 안 된다). 예전엔 날짜로 갈랐는데, 오늘 잡힌 너 나와는
-  // 날짜가 '오늘'이라 이미 끝난 오늘 경기들과 같은 편으로 묶여 버렸다. 선 위쪽은 "앞으로
-  // 있을 일", 아래쪽은 "이미 벌어진 일"이라는 뜻으로 통일한다.
-  const nowIndex = useMemo(
-    () => displayFeed.findIndex((it) => !isUpcomingChallenge(it)),
-    [displayFeed],
-  );
-  const showNowDivider = nowIndex > 0;
 
 
   /* (삭제) 진입할 때 "현재" 구분선으로 한 번 스크롤하던 처리 — 없앴다(요청: 활동 진입시
@@ -1346,17 +1320,16 @@ export default function ActivityScreen() {
     );
   };
 
-  /* 카드 한 장 — 카드 보기와 목록 보기의 펼침이 같은 것을 그리도록 한 곳에 둔다.
-     inList는 이 카드가 목록 줄 밑에 펼쳐진 것인가다. 두 가지가 달라진다:
-     ① 게임결과 묶음은 요약(참가자 명단)을 건너뛰고 곧장 경기 목록을 편다(요청).
-     ② 너 나와·랭크 변동은 카드 머리를 감춘다 — 바로 위 줄이 이미 같은 제목·시각을 말한다.
-        게임결과 묶음은 감추지 않는다: 그 안의 머리들은 줄이 한 번도 말한 적 없는 경기별
-        시각·등록자와 삭제 메뉴를 쥐고 있다(지적: 목록에서 시각·등록자가 사라지고 삭제 불가).
-        경기가 한 판뿐인 묶음도 마찬가지라, 카드가 몇 장인지로는 가를 수 없다. */
-  const renderCard = (item: DisplayItem, inList: boolean) => (
+  /* 줄을 펼쳤을 때 그 아래에 들어가는 카드 한 장.
+     너 나와·랭크 변동은 카드 머리를 감춘다(scr-activity-card-head-off) — 바로 위 줄이 이미
+     같은 제목·시각을 말한다. 게임결과 묶음은 감추지 않는다: 그 안의 머리들은 줄이 한 번도
+     말한 적 없는 경기별 시각·등록자와 삭제 메뉴를 쥐고 있다(지적: 목록에서 시각·등록자가
+     사라지고 삭제 불가). 경기가 한 판뿐인 묶음도 마찬가지라, 카드가 몇 장인지로는 가를 수
+     없어서 어느 쪽인지를 여기서 표시한다. */
+  const renderCard = (item: DisplayItem) => (
     item.kind === "rankingShift" ? (
       <div
-        className={cx("scr-activity-card-stack-wrapper", inList && "scr-activity-card-head-off")}
+        className="scr-activity-card-stack-wrapper scr-activity-card-head-off"
         key={`rs-${item.shift.id}`}
       >
         <RankingShiftCard
@@ -1374,7 +1347,7 @@ export default function ActivityScreen() {
       </div>
     ) : item.kind === "challenge" ? (
       <div
-        className={cx("scr-activity-card-stack-wrapper", inList && "scr-activity-card-head-off")}
+        className="scr-activity-card-stack-wrapper scr-activity-card-head-off"
         key={`c-${item.challenge.id}`}
       >
         <ActivityCard
@@ -1428,9 +1401,9 @@ export default function ActivityScreen() {
         dateLabel={sessionDateLabel(item.date)}
         highlightMemberIds={matchedIds}
         highlightTerms={searchTerms}
-        defaultOpen={inList || filterActive}
-        expanded={expandedStackKey === item.items[0].gameResult.id}
-        onExpand={() => setExpandedStackKey(item.items[0].gameResult.id)}
+        /* 줄을 펼치면 요약(참가자 명단)을 건너뛰고 곧장 경기 목록이다(요청) — 줄이 이미
+           "n명 n경기"로 그 요약을 말했다. 접었다 폈다 하는 쪽은 공유 페이지만 쓴다. */
+        defaultOpen
       />
     ) : (
       // 묶이지 않은 낱장 경기 — 머리는 목록에서도 남긴다. 줄이 말하지 않는 등록자와
@@ -1453,19 +1426,6 @@ export default function ActivityScreen() {
       <div className="scr-v2-toolbar">
         <div className="scr-v2-toolbar-title-row">
           <h1 className="scr-title scr-v2-toolbar-title">활동</h1>
-          {/* 도움말이 있던 자리다(요청) — 카드 넉 장이면 한 화면인 활동에서 "무엇이 있었나"를
-              훑으려면 한참을 굴려야 한다. 목록 보기는 그 훑기 전용이라 한 줄에 시각·제목·
-              한 줄 요약만 남기고, 자세히 볼 것만 눌러서 펼친다.
-              버튼 글자는 '지금 무엇인가'가 아니라 '누르면 무엇이 되는가'다 — 목록을 보고
-              있으면 "타임라인으로 보기"라고 적힌다. */}
-          <button
-            type="button"
-            className={cx("scr-activity-listmode-btn", listMode && "scr-activity-listmode-btn-on")}
-            onClick={() => setListMode((v) => !v)}
-            aria-pressed={listMode}
-          >
-            {listMode ? "타임라인으로 보기" : "목록으로 보기"}
-          </button>
         </div>
       </div>
 
@@ -1568,7 +1528,7 @@ export default function ActivityScreen() {
       ) : displayFeed.length === 0 ? (
         <div className="scr-empty">아직 표시할 활동이 없어요.</div>
       ) : (
-        listMode ? (
+        (
           /* 목록 보기(요청) — 한 줄에 시각·제목·한 줄 요약만 두고, 누르면 그 줄 아래에
              원래 카드의 본문과 댓글이 그대로 열린다. 카드를 새로 만들지 않고 카드 보기와
              같은 renderCard를 부르는 이유는, 여기만 따로 만들면 카드 쪽 수정이 목록 쪽에
@@ -1615,26 +1575,13 @@ export default function ActivityScreen() {
                       목록 줄이 이미 "n명 n경기"로 그 요약을 말했다. */}
                   {(open || closing) && (
                     <div className={cx("scr-activity-row-fold", open ? "scr-activity-row-fold-open" : "scr-activity-row-fold-closing")}>
-                      <div className="scr-activity-row-body">{renderCard(item, true)}</div>
+                      <div className="scr-activity-row-body">{renderCard(item)}</div>
                     </div>
                   )}
                 </div>
               );
             })}
           </div>
-        ) : (
-        <div className="scr-activity-list">
-          {displayFeed.flatMap((item, i) => {
-            // 미래↔과거 경계(nowIndex)에 "현재" 구분선을 카드 사이에 끼운다(요청).
-            const divider = showNowDivider && i === nowIndex ? (
-              <div key="now-divider" className="scr-activity-now-divider" data-now-marker>
-                <span>현재</span>
-              </div>
-            ) : null;
-            const card = renderCard(item, false);
-            return divider ? [divider, card] : [card];
-          })}
-        </div>
         )
       )}
 
@@ -1643,24 +1590,6 @@ export default function ActivityScreen() {
           없으면 관측할 것 자체가 없어 조기 loadMore가 원천적으로 안 생긴다. */}
       {!loading && loadingMore && <div className="scr-empty"><Spinner size={16} /></div>}
       {!loading && <div ref={sentinelRef} aria-hidden />}
-
-      {/* 우측 스크롤 타임라인 — 활동는 최신순(위=최근, 아래=과거). 무한스크롤과 함께 쓰면
-          타임라인은 "지금까지 불러온 범위"를 나타내고, 더 불러올수록 아래(과거)가 늘어난다.
-          목록 보기에서는 숨긴다(요청) — 타임라인은 카드 머리(.scr-activity-card-head)의 날짜를
-          읽어 눈금을 세우는데 목록에는 그 머리가 없고, 한 화면에 훨씬 많이 들어와 굴릴
-          거리 자체가 짧다. */}
-      {!loading && !listMode && displayFeed.length > 0 && (
-        <ScrollNavTimeline
-          headSelector=".scr-activity-card-head"
-          topLabel="최근"
-          bottomLabel="과거"
-          /* 미래↔과거 경계("현재" 구분선) 눈금(요청) — 구분선이 없으면(전부 과거 등)
-             groupFraction이 null을 돌려줘 눈금도 안 그려진다. */
-          markers={[
-            { key: "now", className: "scr-scroll-timeline-now", groupSelector: "[data-now-marker]" },
-          ]}
-        />
-      )}
 
       {challengeFormOpen && (
         <ChallengeFormModal
