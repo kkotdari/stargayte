@@ -7,7 +7,8 @@
 //
 // 띠에 글자를 얹으려면 그 조각이 글자를 담을 만큼 커야 한다. 작은 조각에 억지로 얹으면
 // 글자가 옆 조각까지 넘어가 엉뚱한 조각의 이름처럼 읽힌다 — 그래서 담기는지 실제로 재고,
-// 못 담는 조각만 도넛 아래 한 줄로 뺀다(이름이 사라지지는 않게).
+// 못 담는 조각은 이름을 생략한다(요청: 크기·자리 고정, 아래 캡션 생략). 그 조각의 이름과
+// 실제 수치는 그림 전체에 붙은 title이 대신 말한다.
 //
 // 색은 조각 순서에 고정으로 붙는다 — 도넛들이 같은 순서를 쓰므로 첫 조각(생산·기본·지상·
 // 초반)은 어느 도넛에서나 같은 색이다. 남는 색을 돌려 쓰지 않는다.
@@ -41,7 +42,6 @@ const EDGE = 3;
 
 export default function DonutChart({ title, note, slices, size = 76 }: DonutChartProps) {
   const total = slices.reduce((n, s) => n + s.value, 0);
-  const pct = (v: number) => (total > 0 ? Math.round((v / total) * 100) : 0);
 
   // 링의 굵기와 반지름 — 가운데 구멍이 이름을 담을 만큼 남으면서 띠도 글자를 담을 만큼
   // 두꺼운 값. 구멍 지름은 size - 2*stroke다.
@@ -59,7 +59,6 @@ export default function DonutChart({ title, note, slices, size = 76 }: DonutChar
   // 조각을 돌면서 그릴 것(호)과 적을 것(띠 위 글자 / 아래로 뺀 글자)을 한 번에 정한다.
   const segs: { key: string; idx: number; dash: number; offset: number }[] = [];
   const onBand: { key: string; x: number; y: number; text: string }[] = [];
-  const rest: string[] = [];
   let acc = 0;
   slices.slice(0, SEG_MAX).forEach((s, i) => {
     if (total <= 0 || s.value <= 0) return;
@@ -90,9 +89,6 @@ export default function DonutChart({ title, note, slices, size = 76 }: DonutChar
     const nudged = Math.max(Math.abs(fx - px), Math.abs(fy - py));
     if (tangential <= len * 0.95 && radial <= stroke + 6 && nudged <= MAX_NUDGE) {
       onBand.push({ key: s.label, x: fx, y: fy, text: s.label });
-    } else {
-      // 띠에 못 담은 조각 — 작아서 못 담은 것이므로 몇 %인지가 오히려 궁금한 값이다.
-      rest.push(`${s.label} ${pct(s.value)}%`);
     }
     acc += len;
   });
@@ -100,7 +96,9 @@ export default function DonutChart({ title, note, slices, size = 76 }: DonutChar
   return (
     <div
       className="scr-donut"
-      title={`${title} — ${slices.map((s) => `${s.label} ${s.value}`).join(" / ")}`}
+      title={`${title} — ${slices
+        .map((s) => `${s.label} ${s.value}` + (total > 0 ? ` (${Math.round((s.value / total) * 100)}%)` : ""))
+        .join(" / ")}`}
     >
       <svg className="scr-donut-svg" width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden>
         <circle className="scr-donut-track" cx={cx} cy={cx} r={r} strokeWidth={stroke} fill="none" />
@@ -143,9 +141,6 @@ export default function DonutChart({ title, note, slices, size = 76 }: DonutChar
           </text>
         )}
       </svg>
-      {/* 띠가 좁아 이름을 못 얹은 조각들 — 여기서 이름을 되찾아 준다. 없으면 줄 자체가 없다. */}
-      {rest.length > 0 && <span className="scr-donut-rest">{rest.join(" · ")}</span>}
-      {total <= 0 && <span className="scr-donut-rest">-</span>}
     </div>
   );
 }

@@ -1866,18 +1866,25 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    지상)은 어느 도넛에서나 같은 색이다. 값은 dataviz 검증을 통과한 색이고(밝기 대역·
    채도 하한·색각 분리·대비), 라이트/다크는 같은 색을 각 바탕에 맞춰 따로 고른 값이다 —
    한쪽 값을 뒤집어 쓰지 않는다. */
+/* 크기와 자리를 고정한다(요청) — 그림 하나가 정확히 이만큼만 쓰고, 옆 덩어리는 그 뒤에서
+   시작한다. 밑에 붙는 줄이 있고 없고에 따라 도넛이 위아래로 흔들리던 것도 이걸로 없어진다. */
 .scr-donut {
-  display: flex; flex-direction: column; align-items: center; gap: 2px;
-  width: var(--scr-donut-size);
-  --scr-donut-1: #2a78d6;
-  --scr-donut-2: #eb6834;
-  --scr-donut-3: #1baf7a;
+  display: flex; align-items: center; justify-content: center;
+  width: var(--scr-donut-size); height: var(--scr-donut-size); flex: none;
+  /* 조각 색은 각 테마의 막대 그래프와 같은 톤으로 맞춘다(요청) — 다크는 짙고 탁한 쪽,
+     라이트는 밝고 맑은 쪽. 그 톤을 유지한 채 dataviz 검증(밝기 대역·채도 하한·색각 분리·
+     기본 시각 분리·바탕 대비)을 전부 통과하는 값으로 골랐다. 톤만 맞추고 검증을 건너뛰면
+     파랑과 초록이 서로 안 갈리는 조합이 바로 나온다(실측: 막대색 그대로 쓴 첫 시도가
+     기본 시각 ΔE 10.6으로 하한 15에 한참 못 미쳤다). */
+  --scr-donut-1: #628fd0;
+  --scr-donut-2: #cd8422;
+  --scr-donut-3: #3aa27c;
   --scr-donut-track: rgba(0, 0, 0, 0.10);
 }
 html:not(.scr-light-theme) .scr-donut {
-  --scr-donut-1: #3987e5;
-  --scr-donut-2: #d95926;
-  --scr-donut-3: #199e70;
+  --scr-donut-1: #4479cc;
+  --scr-donut-2: #cb7a28;
+  --scr-donut-3: #2ea183;
   --scr-donut-track: rgba(255, 255, 255, 0.10);
 }
 .scr-donut-svg { display: block; }
@@ -1886,9 +1893,9 @@ html:not(.scr-light-theme) .scr-donut {
 .scr-donut-seg-1 { stroke: var(--scr-donut-1); }
 .scr-donut-seg-2 { stroke: var(--scr-donut-2); }
 .scr-donut-seg-3 { stroke: var(--scr-donut-3); }
-/* 조각 띠 위에 얹는 이름(요청) — 조각 색은 여섯 값(라이트/다크 × 셋) 모두 어두운 잉크와
-   충분히 갈리므로, 테마와 무관하게 같은 잉크 하나를 쓴다. 색깔 위의 글씨는 밝은 잉크로
-   두면 주황·아쿠아에서 대비가 무너진다. */
+/* 조각 띠 위에 얹는 이름(요청) — 조각 색 여섯(라이트/다크 × 셋) 모두 검정과 4.85:1 이상으로
+   갈리므로 테마와 무관하게 검정 하나를 쓴다. 흰 잉크로 두면 주황 3.0 · 초록 3.2로 무너진다:
+   바탕이 어둡든 밝든 조각 색 자체는 밝은 편이라, 잉크는 테마를 따라가지 않는다. */
 /* 조각 색 위에 얹는 글자는 테마와 무관하게 검정 하나다. 여섯 색(라이트/다크 × 셋) 모두
    검정과 4.76:1 이상으로 갈리는데(가장 빡빡한 것이 라이트 파랑), 흰 글자로 두면 주황
    2.9:1 · 아쿠아 2.6:1로 무너진다 — 바탕이 어둡든 밝든 조각 색은 그대로이므로 잉크도
@@ -1898,12 +1905,7 @@ html:not(.scr-light-theme) .scr-donut {
    뜻이 되면 색을 못 가르는 사람에게 이름까지 사라진다. */
 .scr-donut-center-title { fill: var(--dim); font-weight: 600; }
 .scr-donut-center-note { fill: var(--text); font-weight: 700; font-variant-numeric: tabular-nums; }
-/* 띠가 좁아 이름을 못 얹은 조각 — 도넛 밑에서 이름을 되찾아 준다. */
-.scr-donut-rest {
-  width: 100%;
-  font-size: var(--fs-11); color: var(--dim); line-height: 1.2;
-  text-align: center; word-break: keep-all;
-}
+
 .scr-value-bar { display: flex; align-items: center; justify-content: center; width: 100%; }
 /* 게임수/생산/APM/커맨드 값(요청: "막대그래프 위에 텍스트 겹쳐서 표시") — 트랙 자신의
    배경(아래 .scr-value-bar-track-wrap) 위에 얹힌 보통 자식이라, 배경은 항상 자식보다
