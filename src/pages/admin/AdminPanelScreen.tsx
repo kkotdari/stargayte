@@ -335,14 +335,16 @@ export default function AdminPanelScreen({ isAdmin }: AdminPanelScreenProps) {
                     type="button" className="scr-btn scr-btn-primary"
                     onClick={() => setConfirmRedo(true)} disabled={redo !== null}
                   >
-                    {redo ? <Spinner /> : "요약 재분석"}
+                    {/* 진행 숫자는 버튼 안에 넣는다(요청) — 밖에 따로 두면 그 줄이 통째로
+                        생겼다 사라지며 아래 버튼들이 위아래로 밀린다(스크린샷). */}
+                    {redo ? (
+                      <>
+                        <Spinner />
+                        {redo.total > 0 ? `${redo.done}/${redo.total}` : "목록 받는 중"}
+                        {redo.failed > 0 ? ` · 실패 ${redo.failed}` : ""}
+                      </>
+                    ) : "요약 재분석"}
                   </button>
-                  {redo && (
-                    <span className="scr-admin-panel-batch-counts">
-                      {redo.total > 0 ? `${redo.done}/${redo.total}` : "경기 목록 받는 중"}
-                      {redo.failed > 0 ? ` · 실패 ${redo.failed}` : ""}
-                    </span>
-                  )}
                   {/* 리플레이 폴더 일괄 등록 — 버튼을 누르면 바로 폴더 선택창이 뜬다. 제 줄을
                       통째로 쓰는 컴포넌트라(그 안의 결과 창·옵션까지 함께) 맨 뒤에 둔다. */}
                   <ReplayBatchButton />
