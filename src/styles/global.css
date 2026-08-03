@@ -3861,9 +3861,17 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 /* 그리드 칸의 버튼은 칸을 꽉 채우고 두 줄 라벨도 가운데로 떨어지게 한다. */
 .scr-admin-panel-grid .scr-btn { width: 100%; padding-left: 8px; padding-right: 8px; text-align: center; }
 /* 현재 버전 고르기 팝업 — 드롭다운과 확인 버튼 폭을 같게 맞춘다. */
-.scr-admin-panel-version-popup .scr-modal-body { align-items: center; gap: 16px; }
+/* 이 모달은 하단 폼 버튼 줄(.scr-form-actions)이 없어 본문이 마지막 요소다 — .scr-modal의
+   패딩은 위쪽만 있으므로(하단은 버튼 줄이 제 몫을 책임지는 구조) 아래 여백을 본문이
+   직접 챙긴다(지적: 아래 패딩이 없다. 랭킹 상세·알림 설정 모달과 같은 처리). */
+.scr-admin-panel-version-popup .scr-modal-body { align-items: center; gap: 16px; padding-bottom: 18px; }
 .scr-cselect.scr-version-pick-select { width: 220px; max-width: 100%; }
-.scr-version-pick-confirm { width: 220px; max-width: 100%; }
+/* 바로 위 드롭다운과 같은 크기로 맞춘다(지적: 버튼이 너무 크다) — .scr-btn의 기본 세로
+   여백(10px+10px)이 --field-h를 밀어내 드롭다운보다 9px 높은 47px짜리 버튼이 됐다. */
+.scr-version-pick-confirm {
+  width: 220px; max-width: 100%;
+  height: var(--field-h); min-height: var(--field-h); padding: 0 16px;
+}
 .scr-version-pick-empty { color: var(--muted); font-size: var(--fs-body); text-align: center; padding: 8px 0 4px; }
 /* 배치 등록 버튼(ReplayBatchButton)은 자체 상태(모드 메뉴/결과 보기 링크/에러)를 가진
    컴포넌트라 grid 안에서도 레이아웃에 끼어들지 않게 display:contents로 투명화한다 —

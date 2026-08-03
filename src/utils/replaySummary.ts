@@ -1744,43 +1744,61 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
      (거짓으로 "본진이 날아갔다"고 말하느니 그 종족만 조용한 편이 낫다). */
   const HALL_REBUILD_TILES = 12;
   const HALL_REBUILD_SEC = 4 * 60;
-  /* 넥서스·커맨드가 다 지어지는 데 걸리는 시간. 그 사이에 일꾼이 나왔나가 '다시 지은 것'과
-     '하나 더 얹은 것'을 가른다(아래). */
+  /* 홀을 짓기 직전, 그 자리가 실제로 두들겨 맞고 있었나를 재는 창과 문턱. */
+  const HALL_FIRE_SEC = 90;
+  const HALL_FIRE_ORDERS = 10;
+  /* 넥서스·커맨드가 다 지어지는 데 걸리는 시간 — 그 사이에 일꾼이 한 기도 못 나왔다면
+     뽑을 홀이 없었다는 뜻이다(아래 두 번째 근거). */
   const HALL_BUILD_SEC = 75;
-  /* 그 수를 맞기 전에 일꾼을 이만큼은 뽑고 있었어야 한다 — 후반에 일꾼을 더 안 뽑는
-     사람은 홀이 멀쩡해도 '짓는 동안 0기'가 되기 때문이다. */
   const HALL_BUSY_MIN = 3;
   const HALL_BUSY_SEC = 2 * 60;
-  const hallRebuilt = (victim: ParsedReplayPlayer, from: number): number | null => {
+  const hallRebuilt = (
+    victim: ParsedReplayPlayer, from: number, attackers: ParsedReplayPlayer[],
+  ): number | null => {
     if (victim.race === "저그") return null;
-    if (victim.startX === null || victim.startY === null) return null;
+    const hx = victim.startX;
+    const hy = victim.startY;
+    if (hx === null || hy === null) return null;
     const to = from + (HALL_REBUILD_SEC / SECONDS_PER_FRAME);
     const hit = (victim.signals?.buildPositions ?? []).find((b) => (
       (b.unit === "Nexus" || b.unit === "Command Center")
       && b.frame !== null && b.frame >= from && b.frame <= to
-      && Math.hypot(b.x - (victim.startX as number), b.y - (victim.startY as number)) <= HALL_REBUILD_TILES
+      && Math.hypot(b.x - hx, b.y - hy) <= HALL_REBUILD_TILES
     ));
     if (!hit || hit.frame === null) return null;
+    const at = hit.frame;
     /* 정말 '날아가서 다시 지은' 것인가 — 제 자리에 홀을 또 짓는 일은 날아갔을 때뿐이라고
        봤는데, 실측하니 그렇지 않았다: 빠른무한 172판에서 테란·프로토스 678명 중 535명이
-       제 시작 자리 12타일 안에 홀을 다시 지었고(967채), 그 대부분은 일꾼을 더 뽑으려고
-       하나 더 얹은 것이었다. 그 전제로는 지금 잡히는 39건 가운데 24건이 멀쩡한 본진을 두고
-       "본진이 날아갔다"고 말한다.
+       제 시작 자리 12타일 안에 홀을 다시 지었다(967채). 자원이 무한한 판에서는 일꾼을 더
+       뽑으려고 홀을 하나 더 얹는 게 평범한 운영이다.
 
-       둘을 가르는 것은 '짓는 동안 일꾼이 나왔나'다. 홀이 서 있으면 새 홀을 올리는 사이에도
-       일꾼이 계속 나오고(실측 중앙 4기), 뚝배기가 깨졌으면 새 홀이 다 지어질 때까지 한
-       기도 못 뽑는다 — 일꾼은 홀에서만 나오기 때문이다. 이건 어림이 아니라 규칙이다.
+       가르는 근거는 '그 홀을 올릴 때 그 자리가 두들겨 맞고 있었나'다. 평범하게 얹는 홀은
+       조용할 때 짓는다 — 실측하면 짓기 직전 90초 동안 그 자리에 찍힌 상대 어택 지정이
+       중앙 0개, 상위 10%에서야 4개다. 뚝배기가 깨져 다시 올리는 홀만 그 수가 확 뛴다
+       (열 개 넘는 것이 967채 중 59채, 6%). 홀이 몇 채든 상관없는 근거라는 게 중요하다 —
+       처음에는 '짓는 동안 일꾼이 나왔나'로 갈랐는데, 지적대로 뚝배기가 깨져도 다른 홀이
+       남아 있으면 일꾼은 계속 나오므로 그건 진짜 재건을 놓친다.
 
-       다만 후반에 일꾼을 더 안 뽑는 사람은 홀이 멀쩡해도 0기라, 맞기 직전에 실제로 일꾼을
-       뽑고 있었을 때만 이 판정을 쓴다. */
+       그 일꾼 근거는 버리지 않고 둘째 갈래로 남긴다 — 홀이 그것 하나뿐이었다면 새 홀이 다
+       지어질 때까지 한 기도 못 뽑는다(일꾼은 홀에서만 나온다). 좌표가 성겨 상대의 어택
+       지정이 안 남은 판을 이쪽이 건진다. 다만 후반에 일꾼을 더 안 뽑는 사람은 홀이 멀쩡해도
+       0기라, 맞기 직전에 실제로 뽑고 있었을 때만 인정한다. */
+    let fire = 0;
+    for (const foe of attackers) {
+      for (const o of foe.signals?.orderPositions ?? []) {
+        if (o.kind !== "attack" || o.by === "Building") continue;
+        if (o.frame < at - HALL_FIRE_SEC / SECONDS_PER_FRAME || o.frame > at) continue;
+        if (Math.hypot(o.x - hx, o.y - hy) <= HALL_REBUILD_TILES) fire += 1;
+      }
+    }
+    if (fire >= HALL_FIRE_ORDERS) return at;
     const w = [...WORKER_UNITS].flatMap((u) => victim.signals?.unitFrames[u] ?? []);
     const during = w.filter(
-      (x) => x > (hit.frame as number) && x <= (hit.frame as number) + HALL_BUILD_SEC / SECONDS_PER_FRAME,
+      (x) => x > at && x <= at + HALL_BUILD_SEC / SECONDS_PER_FRAME,
     ).length;
     if (during > 0) return null;
     const busy = w.filter((x) => x >= from - HALL_BUSY_SEC / SECONDS_PER_FRAME && x <= from).length;
-    if (busy < HALL_BUSY_MIN) return null;
-    return hit.frame;
+    return busy >= HALL_BUSY_MIN ? at : null;
   };
 
   const attackZoneOf = (
@@ -2166,7 +2184,7 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
             ? attackZoneOf(attacker, victim, t.at, hit.at)
             : null;
           // 본진 홀이 날아갔나(위 hallRebuilt) — 자원이 무한한 판에서도 이건 치명타다.
-          const hall = victim && t.at !== null ? hallRebuilt(victim, t.at) : null;
+          const hall = victim && t.at !== null ? hallRebuilt(victim, t.at, mine) : null;
           return {
             k: "raid-damage", won, who: [t.who], at: t.at,
             weight: t.weight + (hit.out ? 16 : 14),
