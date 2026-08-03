@@ -268,12 +268,13 @@ export default function AdminPanelScreen({ isAdmin }: AdminPanelScreenProps) {
                   >
                     {busy ? <Spinner /> : "현재 버전 설정"}
                   </button>
-                  {/* 버전 관리 — 버전 추가/삭제 + 버전별 안내 내용 편집 모달. */}
+                  {/* 버전 등록 — 버전 추가/삭제 + 버전별 안내 내용 편집 모달(요청: 소제목이
+                      이미 '버전관리'라 버튼까지 같은 이름이면 무엇이 다른지 안 읽힌다). */}
                   <button
                     type="button" className="scr-btn scr-btn-primary"
                     onClick={() => setVersionManageOpen(true)}
                   >
-                    버전 관리
+                    버전 등록
                   </button>
                 </div>
 
@@ -326,9 +327,24 @@ export default function AdminPanelScreen({ isAdmin }: AdminPanelScreenProps) {
                   >
                     {downloading ? <Spinner /> : "배치다운로드"}
                   </button>
-                  {/* 리플레이 폴더 일괄 등록 — 버튼을 누르면 바로 폴더 선택창이 뜬다. 바로 옆
-                      칸에 "결과 보기"를 예약해두려고 마지막에 둔다(그 칸이 항상 비어 있어야
-                      결과 보기가 나타나도 레이아웃이 안 흔들린다). */}
+                  {/* 요약 재분석 — 규칙이 좋아졌을 때 옛 경기까지 새 규칙으로 다시 읽는다(요청).
+                      경기 내용은 그대로고 요약(과 없던 미니맵)만 바뀐다. 소제목을 따로 두지
+                      않고 경기관리에 함께 둔다(요청) — 등록된 경기를 손대는 일이라 배치등록·
+                      배치삭제와 같은 성격이다. */}
+                  <button
+                    type="button" className="scr-btn scr-btn-primary"
+                    onClick={() => setConfirmRedo(true)} disabled={redo !== null}
+                  >
+                    {redo ? <Spinner /> : "요약 재분석"}
+                  </button>
+                  {redo && (
+                    <span className="scr-admin-panel-batch-counts">
+                      {redo.total > 0 ? `${redo.done}/${redo.total}` : "경기 목록 받는 중"}
+                      {redo.failed > 0 ? ` · 실패 ${redo.failed}` : ""}
+                    </span>
+                  )}
+                  {/* 리플레이 폴더 일괄 등록 — 버튼을 누르면 바로 폴더 선택창이 뜬다. 제 줄을
+                      통째로 쓰는 컴포넌트라(그 안의 결과 창·옵션까지 함께) 맨 뒤에 둔다. */}
                   <ReplayBatchButton />
                 </div>
 
@@ -352,24 +368,6 @@ export default function AdminPanelScreen({ isAdmin }: AdminPanelScreenProps) {
                   >
                     {seeding ? <Spinner /> : "순위 기준선"}
                   </button>
-                </div>
-
-                {/* 요약 재분석 — 규칙이 좋아졌을 때 옛 경기까지 새 규칙으로 다시 읽는다(요청).
-                    경기 내용은 그대로고 요약(과 없던 미니맵)만 바뀐다. */}
-                <div className="scr-admin-panel-section-title">요약 관리</div>
-                <div className="scr-admin-panel-grid">
-                  <button
-                    type="button" className="scr-btn scr-btn-primary"
-                    onClick={() => setConfirmRedo(true)} disabled={redo !== null}
-                  >
-                    {redo ? <Spinner /> : "요약 재분석"}
-                  </button>
-                  {redo && (
-                    <span className="scr-admin-panel-batch-counts">
-                      {redo.total > 0 ? `${redo.done}/${redo.total}` : "경기 목록 받는 중"}
-                      {redo.failed > 0 ? ` · 실패 ${redo.failed}` : ""}
-                    </span>
-                  )}
                 </div>
 
               </>

@@ -17,7 +17,7 @@ interface VersionManageModalProps {
 // 먼저 걸러 헛된 요청을 막고, 서버가 중복·형식을 한 번 더 검증한다.
 const VERSION_PATTERN = /^[1-9][0-9]*(\.[0-9]+)?$/;
 
-// 제어판의 "버전 관리" — 제어판보다 작은 모달로, (1) 새 버전 등록/삭제, (2) 버전을 골라 그
+// 제어판의 "버전 등록" — 제어판보다 작은 모달로, (1) 새 버전 등록/삭제, (2) 버전을 골라 그
 // 버전의 안내 내용(한 줄에 한 항목)을 편집하는 두 부분으로 이뤄진다. 버전 안내 표시 여부
 // (전역 토글)는 이제 이 모달이 아니라 제어판 본체에 있다(요청). 현재 활성 버전은 삭제할 수
 // 없고(서버·버튼 모두 막음), 편집 중인 안내가 어떻게 보일지는 "미리보기"로 확인한다.
@@ -120,7 +120,7 @@ export default function VersionManageModal({ onClose }: VersionManageModalProps)
     <div className="scr-modal-overlay">
       <div className="scr-modal scr-modal-sm scr-notice-settings-modal">
         <div className="scr-modal-head">
-          <span>버전 관리</span>
+          <span>버전 등록</span>
           <button className="scr-icon-btn" onClick={onClose} aria-label="닫기"><X size={14} /></button>
         </div>
 
