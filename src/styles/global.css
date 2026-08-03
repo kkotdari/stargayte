@@ -130,6 +130,7 @@
      잡았다(검정 대비 11.8:1). 승/패 막대의 초록(--bar-win)과는 다른 색이다: 저쪽은 '이겼다',
      이쪽은 '새것'이라 뜻이 겹치면 안 된다. */
   --new-badge: #9ee83a;
+  --update-badge: #5cc8f5;
 
   /* 텍스트: 한 가지 색(거의 흰색)만 사용 — 대부분 기본색 그대로, 꼭 필요한 곳만 살짝 낮춘 투명도 */
   --text: #f5f6f7;
@@ -816,6 +817,8 @@ html.scr-light-theme {
   /* 라이트에서는 같은 연두가 흰 바탕에 떠 버린다(대비 1.5:1) — 같은 계열에서 어두운 쪽으로
      내려 잡는다(4.6:1). */
   --new-badge: #3f7d0a;
+  /* 라이트도 같은 이유로 어두운 쪽으로 내려 잡는다(흰 바탕 대비 4.6:1). */
+  --update-badge: #0d6c96;
   --text: #000000;
   --muted: rgba(0, 0, 0, 0.68);
   --dim: rgba(0, 0, 0, 0.48);
@@ -7137,25 +7140,38 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-activity-row-title-text {
   white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis;
 }
-/* NEW — 이 목록에서 유일하게 색을 쓰는 자리다(요청: 연두 라임 녹색). 새것이 몇 개
-   안 되기 때문에 색 하나가 눈에 바로 걸리고, 그게 이 배지가 하는 일 전부다. 글자를 그대로
-   적으므로 색을 못 보는 눈에도 뜻이 남는다. 제목이 잘려도 배지는 안 잘리게 flex: none. */
-.scr-activity-row-new {
-  margin-left: 5px; flex: none; color: var(--new-badge);
+/* NEW / UPDATE — 이 목록에서 유일하게 색을 쓰는 자리다. 새것·달라진 것이 몇 개 안 되기
+   때문에 색 하나가 눈에 바로 걸리고, 그게 이 딱지가 하는 일 전부다. 글자를 그대로 적으므로
+   색을 못 보는 눈에도 뜻이 남는다. 제목이 잘려도 딱지는 안 잘리게 flex: none. */
+.scr-activity-row-flag {
+  margin-left: 5px; flex: none;
   font-size: var(--fs-9); font-weight: 800; letter-spacing: 0.02em; vertical-align: 1px;
 }
+/* 새것은 연두 라임(요청), 달라진 것은 그와 확실히 갈리는 하늘색으로 둔다 — 둘 다 눈에
+   걸려야 하지만 서로는 한눈에 달라야 한다. 다크에서 검정 대비 연두 11.8:1 / 하늘 8.4:1. */
+.scr-activity-row-flag-new { color: var(--new-badge); }
+.scr-activity-row-flag-update { color: var(--update-badge); }
 /* 내용은 한 줄로 끝난다 — 넘치면 말줄임이다. 여기서 두 줄이 되면 줄 높이가 흔들려
    목록의 리듬이 깨진다. */
+/* 바탕은 흐린 색이다(요청) — 이 칸의 글자 대부분("외 / 명 / 변동 / 경기")은 줄마다 똑같이
+   되풀이되는 말이라 읽을 값이 아니다. 읽을 값(닉네임·사람 수·경기 수)만 아래 -em으로
+   도로 진하게 올린다. */
 .scr-activity-row-desc {
   display: flex; align-items: center; gap: 6px; min-width: 0;
-  color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .scr-activity-row-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.scr-activity-row-names { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+/* 이 칸에서 눈이 짚어야 하는 값 — 닉네임과 숫자다. */
+.scr-activity-row-em { color: var(--text); font-weight: 700; }
+/* 이름 사이 가운뎃점 — 좌우를 띄운다(요청). 붙여 두면 "Cheol·bob"이 한 낱말로 읽혔다. */
+.scr-activity-row-sep { margin: 0 5px; color: var(--dim); flex: none; }
 .scr-activity-row-arrow { color: var(--dim); flex: none; }
-/* 상태("응답 대기중" 등) — 이름 다음에 오지만 이름이 아니다. 한 칸 띄우고 더 흐리게 둬서
-   훑을 때 이름줄과 안 섞이게 한다. 자리가 모자라면 이쪽이 먼저 밀린다. */
+/* 상태("응답 대기중" 등) — 이름 다음에 오지만 이름이 아니다. 한 칸 띄워 훑을 때 이름줄과
+   안 섞이게 한다. 색은 카드의 응답 배지 톤(.scr-challenge-avatar-badge-*)이 덮어쓴다.
+   자리가 모자라면 이쪽이 먼저 밀린다. */
 .scr-activity-row-note {
-  margin-left: 4px; color: var(--dim); min-width: 0;
+  margin-left: 4px; min-width: 0;
   overflow: hidden; text-overflow: ellipsis;
 }
 /* 모바일은 가로가 좁아 앞 두 칸을 실제 최댓값("어제 00:32" / "랭크 변동")까지 조인다. */
@@ -7858,10 +7874,14 @@ html.scr-light-theme .scr-activity-card-comment .scr-comment-mention { color: #1
 @media (min-width: 1060px) {
   .scr-activity-add-fab-wrap { left: calc(50% - var(--content-max) / 2 - 68px); }
 }
+/* ＋ 아이콘 대신 "등록" 글자를 담는다(요청) — 동그란 원이 아니라 글자가 들어가는 알약이
+   되므로, 폭은 글자에 맡기고 높이만 예전 원과 같게 못 박는다(탭바와 나란히 서는 높이라
+   그 관계가 흐트러지면 안 된다). 로딩 스피너가 들어설 때도 폭이 튀지 않게 최소폭을 준다. */
 .scr-activity-add-fab {
-  width: 52px; height: 52px; border-radius: 50%;
+  min-width: 52px; height: 52px; border-radius: 26px; padding: 0 18px;
   display: inline-flex; align-items: center; justify-content: center;
   border: none; cursor: pointer; color: var(--text);
+  font-family: inherit; font-size: var(--fs-caption); font-weight: 700; white-space: nowrap;
   /* 투명도·블러를 탭바 패널(.scr-mobile-tabbar::before)과 동일하게(요청) — 거의 투명한
      채움 + 블러8·채도1.15 + 유리 테/림 반사 그림자. */
   /* 블러 복원 — 탭바 .scr-mobile-tabbar::before 주석 참고. 채움도 탭바와 같은 30%로. */

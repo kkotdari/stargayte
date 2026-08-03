@@ -222,6 +222,41 @@ export interface ScheduleLike {
 
 // 응답 마감/지남 판정용 로컬(한국) 시각(ms) — 늘 그날 끝(23:59:59)이다. 백엔드와 동일
 // (요청: 날짜만 지정 시 그날이 지나면 자동 무응답 취소). 날짜가 없으면 null.
+/** 서버가 준 시각 문자열을 ms로 — 시간대 표시가 없으면 UTC로 읽는다.
+ *
+ *  서버의 created_at 계열은 UTC다. 그런데 문자열에 시간대가 붙어 올 때도 있고
+ *  ("…+00:00") 안 붙어 올 때도 있다("2026-08-02T23:42:29" — DB에 따라 다르다).
+ *  new Date(그 문자열)은 시간대가 없으면 '로컬 시각'으로 읽으므로, 한국(UTC+9)에서는
+ *  실제보다 9시간 이른 순간이 된다 — "24시간 안"처럼 지금과 견주는 계산이 딱 그만큼
+ *  어긋난다(하루 안에 올라온 것이 15시간만 지나도 하루가 넘은 것으로 읽힌다).
+ *  이미 시간대를 달고 있으면 그대로 믿는다. */
+export function serverMs(iso: string | null | undefined): number {
+  if (!iso) return NaN;
+  return new Date(/(?:Z|[+-]\d{2}:?\d{2})$/.test(iso) ? iso : `${iso}Z`).getTime();
+}
+
+/** 목록의 "얼마나 지났나"(요청) — 하루까지는 분·시간, 일주일까지는 일, 그 뒤로는 날짜.
+ *
+ *  formatWhen과 나눠 둔 이유: 그쪽은 '언제인가'를 말하는 함수라 앞일("이번주 토요일")도
+ *  다루고 어제·그저께를 그 말로 부른다. 여기는 지나간 것만 늘어놓는 목록 전용이라 "얼마나
+ *  됐나" 하나로 끝난다 — 같은 함수에 둘을 다 넣으면 어느 갈래가 나올지 부르는 쪽이 예측할
+ *  수 없다. 앞일이나 값이 없으면 formatWhen에 넘겨 그쪽 규칙대로 적는다. */
+export function formatAgo(when: number | string | Date | null | undefined, now: Date = gameNow()): string {
+  if (when === null || when === undefined || when === "") return formatWhen(when, { now });
+  const ms = typeof when === "number" ? when : new Date(when).getTime();
+  if (!Number.isFinite(ms)) return formatWhen(when, { now });
+  const diff = now.getTime() - ms;
+  if (diff < 0) return formatWhen(when, { now });
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "방금 전";
+  if (mins < 60) return `${mins}분 전`;
+  const hours = Math.floor(diff / 3_600_000);
+  if (hours < 24) return `${hours}시간 전`;
+  const days = Math.floor(diff / 86_400_000);
+  if (days <= 7) return `${days}일 전`;
+  return formatWhen(when, { now });
+}
+
 export function scheduledInstantMs(s: ScheduleLike): number | null {
   if (!s.scheduledDate) return null;
   return new Date(`${s.scheduledDate}T23:59:59`).getTime();

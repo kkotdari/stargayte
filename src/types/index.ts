@@ -429,6 +429,9 @@ export interface Challenge {
   targets: ChallengeTarget[];
   ownMembers: ChallengeOwnMember[];
   createdAt: string;
+  /** 마지막으로 손댄 시각 — 응답(수락/거절/버림), 일시 수정, 결과 입력, 취소가 전부 여기
+   *  찍힌다. 활동 목록이 "새로 올라온 것(NEW)"과 "달라진 것(UPDATE)"을 가른다. */
+  updatedAt: string;
   // 폐기(휴지통)된 시각(ISO) — 폐기 상태가 아니면 null. 휴지통을 "최근 버려진 순"으로 정렬한다.
   discardedAt: string | null;
   /** 그 폐기가 '취소'였다면 취소한 사람 — 아니면 null(상대의 거절·버림, 무응답 만료,

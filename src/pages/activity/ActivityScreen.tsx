@@ -1,7 +1,7 @@
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import RankingShiftCard, { RankingShiftMenu, RANK_SHIFT_TITLE } from "./RankingShiftCard";
-import { CalendarPlus, ClipboardList, MoreHorizontal, Phone, Plus, Upload } from "lucide-react";
+import { CalendarPlus, ClipboardList, MoreHorizontal, Phone, Upload } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
 import { Spinner } from "../../components/common/Feedback";
 import SearchFilterBar from "../../components/common/SearchFilterBar";
@@ -15,12 +15,12 @@ import { ActivityCard } from "./ActivityCard";
 import { resolveSlotName } from "./GameResultSides";
 import { isComputerSlot } from "../../constants/computerSlot";
 import { isUnregisteredSlot } from "../../constants/unregisteredSlot";
-import { ChallengeCard, ChallengeTimeHeadEdit, challengeStatusText } from "../challenge/ChallengeScreen";
+import { ChallengeCard, ChallengeTimeHeadEdit, challengeStatusInfo } from "../challenge/ChallengeScreen";
 import ActivityComments, { primeActivityComments } from "./ActivityComments";
 import { primeReplayMaps } from "../../hooks/useReplayMap";
 import ScrollNavTimeline from "../../components/common/ScrollNavTimeline";
 import ChallengeFormModal from "../../modals/ChallengeFormModal";
-import { scheduledInstantMs, formatWhen } from "../../utils/date";
+import { scheduledInstantMs, formatWhen, formatAgo, serverMs } from "../../utils/date";
 import { useAppStore } from "../../store/appStore";
 import { isAdminRole } from "../../constants/roles";
 import { activeMemberSearchTerms, memberMatchesTerm, normalizeSearchText, splitSearchTerms } from "../../utils/memberSearch";
@@ -237,12 +237,27 @@ function rowTitleOf(it: DisplayItem): string {
  *  이름으로만 차서, 정작 그 줄이 무엇에 대한 것인지가 밀린다. */
 const ROW_NAME_MAX = 2;
 
-/** "Cheol·bob 외 2명" — 목록 한 줄이 사람을 부르는 방식(요청). 아무도 없으면 빈 문자열. */
-function namesWithRest(names: string[]): string {
-  if (names.length === 0) return "";
-  const head = names.slice(0, ROW_NAME_MAX).join("·");
+/** 이름들을 부르는 한 가지 방식 — 닉네임만 진하게 두고, 사이의 가운뎃점은 흐리게 띄운다
+ *  (요청: "· 좌우에 공백", "닉네임 볼드"). 붙여 쓴 "Cheol·bob"은 한 낱말로 읽혀서 몇
+ *  사람인지가 안 보였다. */
+function nameNodes(names: string[]): ReactNode[] {
+  return names.flatMap((n, i) => [
+    ...(i > 0 ? [<span className="scr-activity-row-sep" key={`s${i}`}>·</span>] : []),
+    <span className="scr-activity-row-em" key={`n${i}`}>{n}</span>,
+  ]);
+}
+
+/** "Cheol · bob 외 2명" — 목록 한 줄이 사람을 부르는 방식(요청). 사람 수도 이름과 같이
+ *  진하게 둔다: 줄마다 되풀이되는 "외 / 명"은 훑을 때 읽을 값이 아니다. 아무도 없으면 null. */
+function namesWithRest(names: string[]): ReactNode {
+  if (names.length === 0) return null;
   const rest = names.length - ROW_NAME_MAX;
-  return rest > 0 ? `${head} 외 ${rest}명` : head;
+  return (
+    <>
+      {nameNodes(names.slice(0, ROW_NAME_MAX))}
+      {rest > 0 && <>{" 외 "}<span className="scr-activity-row-em">{rest}</span>{"명"}</>}
+    </>
+  );
 }
 
 /** 게임결과 묶음에 있었던 사람들 — 컴퓨터·비회원은 "누가 있었나"의 답이 아니라서 뺀다
@@ -1141,21 +1156,28 @@ export default function ActivityScreen() {
 
   // 같은 세션(sessionDateOf — 새벽 경기는 전날에 붙는다)의 게임결과가 2개 이상 연속이면
   // 겹침 스택으로 묶는다(요청).
-  /** 올라온 지 하루가 안 된 건인가(요청: 24시간 내) — 묶음은 그중 하나라도 새것이면
-   *  새것이다.
+  /** 이 줄에 붙일 딱지 — 하루 안에 올라온 것은 NEW, 올라온 지는 지났는데 하루 안에
+   *  달라진 것은 UPDATE, 그 밖은 없음(요청).
    *
-   *  '언제 올라왔나'를 종류마다 아는 만큼만 쓴다. 너 나와와 랭크 변동은 등록 시각
-   *  (createdAt)이 그대로 있고, 게임결과에는 그 값이 없어(GameResult에 createdAt이 없다)
-   *  경기 시각으로 대신한다 — 대개 친 날 바로 올리므로 거의 같지만, 한참 지난 경기를
-   *  오늘 올리면 그 건에는 NEW가 안 붙는다. 앞으로의 일(예정된 너 나와)은 새것이 아니라
-   *  아직 안 온 것이라 제외한다. */
-  const isNewItem = (it: DisplayItem): boolean => {
+   *  둘을 가르는 이유는 너 나와다 — 사흘 전에 부른 호출에 방금 답이 오면 그건 새것이
+   *  아니라 달라진 것인데, NEW 하나로는 그 둘이 구별되지 않는다. 응답·일시 수정·결과
+   *  입력·취소가 모두 updatedAt을 갱신하므로 그 값 하나로 답이 된다.
+   *
+   *  '언제'를 종류마다 아는 만큼만 쓴다. 너 나와는 등록/수정 시각이 다 있고, 랭크 변동은
+   *  하루치 스냅샷이라 만들어진 뒤 바뀌지 않아 NEW만 있다. 게임결과에는 등록 시각 자체가
+   *  없어(GameResult에 createdAt이 없다) 경기 시각으로 대신한다 — 대개 친 날 바로
+   *  올리므로 거의 같지만, 한참 지난 경기를 오늘 올리면 그 건에는 아무 딱지도 안 붙는다.
+   *  앞으로의 일(예정된 너 나와)은 새것이 아니라 아직 안 온 것이라 제외한다. */
+  const rowFlagOf = (it: DisplayItem): "new" | "update" | null => {
     const now = Date.now();
     const fresh = (ms: number) => now - ms >= 0 && now - ms <= NEW_WINDOW_MS;
-    if (it.kind === "challenge") return fresh(new Date(it.challenge.createdAt).getTime());
-    if (it.kind === "rankingShift") return fresh(new Date(it.shift.createdAt).getTime());
-    if (it.kind === "gameResultPost") return it.items.some((x) => fresh(x.time));
-    return fresh(it.time);
+    if (it.kind === "challenge") {
+      if (fresh(serverMs(it.challenge.createdAt))) return "new";
+      return fresh(serverMs(it.challenge.updatedAt)) ? "update" : null;
+    }
+    if (it.kind === "rankingShift") return fresh(serverMs(it.shift.createdAt)) ? "new" : null;
+    if (it.kind === "gameResultPost") return it.items.some((x) => fresh(x.time)) ? "new" : null;
+    return fresh(it.time) ? "new" : null;
   };
 
   const displayFeed = useMemo<DisplayItem[]>(() => {
@@ -1221,19 +1243,24 @@ export default function ActivityScreen() {
   const rowDesc = (item: DisplayItem) => {
     if (item.kind === "challenge") {
       const c = item.challenge;
-      const mine = [c.createdBy.nickname, ...c.ownMembers.map((m) => m.nickname)].join("·");
-      const theirs = c.targets.map((t) => t.nickname).join("·");
+      const mine = [c.createdBy.nickname, ...c.ownMembers.map((m) => m.nickname)];
+      const theirs = c.targets.map((t) => t.nickname);
+      const status = challengeStatusInfo(c);
       /* 배지(취소/거절/버림…)는 뺐다(요청) — 목록은 "무슨 일이 있었나"를 훑는 자리라
          누가 누구를 불렀나까지가 한 줄의 몫이고, 그 끝이 어땠는지는 펼쳐 보면 카드가
          말한다. 배지가 붙어 있으면 이름 자리가 그만큼 줄어 모바일에서 닉네임이 잘렸다. */
       return (
         <>
-          <span className="scr-activity-row-name">{mine}</span>
+          <span className="scr-activity-row-name">{nameNodes(mine)}</span>
           <span className="scr-activity-row-arrow" aria-hidden>→</span>
-          <span className="scr-activity-row-name">{theirs}</span>
-          {/* 어디까지 왔나(요청) — 이 줄에서 유일하게 '지금 상태'를 말하는 자리라 이름들과
-              시각적으로 갈라 둔다. */}
-          <span className="scr-activity-row-note">{challengeStatusText(c)}</span>
+          <span className="scr-activity-row-name">{nameNodes(theirs)}</span>
+          {/* 어디까지 왔나(요청) — 이 줄에서 유일하게 '지금 상태'를 말하는 자리다. 색은
+              카드가 응답 배지에 쓰는 그 톤을 그대로 빌려 온다(요청: "본래 고유 색") —
+              같은 사실을 카드에선 초록, 목록에선 회색으로 말하면 둘이 다른 것처럼 읽힌다. */}
+          <span className={cx(
+            "scr-activity-row-note",
+            `scr-challenge-avatar-badge-${status.tone}`,
+          )}>{status.text}</span>
         </>
       );
     }
@@ -1247,10 +1274,16 @@ export default function ActivityScreen() {
           seen.add(e.memberId); names.push(e.nickname);
         }
       }
-      return `${namesWithRest(names)} 변동`;
+      return <span className="scr-activity-row-names">{namesWithRest(names)}{" 변동"}</span>;
     }
     const items = item.kind === "gameResultPost" ? item.items : [item];
-    return `${namesWithRest(playersOf(items, memberOf))} · ${items.length}경기`;
+    return (
+      <span className="scr-activity-row-names">
+        {namesWithRest(playersOf(items, memberOf))}
+        <span className="scr-activity-row-sep">·</span>
+        <span className="scr-activity-row-em">{items.length}</span>{"경기"}
+      </span>
+    );
   };
 
   /* 카드 한 장 — 카드 보기와 목록 보기의 펼침이 같은 것을 그리도록 한 곳에 둔다.
@@ -1352,14 +1385,14 @@ export default function ActivityScreen() {
               훑으려면 한참을 굴려야 한다. 목록 보기는 그 훑기 전용이라 한 줄에 시각·제목·
               한 줄 요약만 남기고, 자세히 볼 것만 눌러서 펼친다.
               버튼 글자는 '지금 무엇인가'가 아니라 '누르면 무엇이 되는가'다 — 목록을 보고
-              있으면 "피드로 보기"라고 적힌다. */}
+              있으면 "타임라인으로 보기"라고 적힌다. */}
           <button
             type="button"
             className={cx("scr-activity-listmode-btn", listMode && "scr-activity-listmode-btn-on")}
             onClick={() => setListMode((v) => !v)}
             aria-pressed={listMode}
           >
-            {listMode ? "피드로 보기" : "목록으로 보기"}
+            {listMode ? "타임라인으로 보기" : "목록으로 보기"}
           </button>
         </div>
       </div>
@@ -1378,9 +1411,11 @@ export default function ActivityScreen() {
           className="scr-activity-add-fab"
           onClick={() => setAddMenuOpen((v) => !v)}
           aria-expanded={addMenuOpen}
-          aria-label="등록"
         >
-          {parsingReplays ? <Spinner size={18} /> : <Plus size={24} />}
+          {/* 아이콘 대신 글자로(요청) — 동그란 ＋는 "무언가 추가"까지만 말하고 무엇을
+              추가하는지는 눌러 봐야 알았다. 리플레이를 읽는 동안에는 그 자리에 스피너가
+              들어서므로, 글자와 스피너가 자리를 다투지 않게 둘 중 하나만 그린다. */}
+          {parsingReplays ? <Spinner size={18} /> : "등록"}
         </button>
         {addMenuOpen && (
           <>
@@ -1472,6 +1507,7 @@ export default function ActivityScreen() {
               const key = rowKeyOf(item);
               const open = openRowKey === key;
               const closing = closingRowKey === key;
+              const flag = rowFlagOf(item);
               return (
                 <div className={cx("scr-activity-row-wrap", open && "scr-activity-row-wrap-open")} key={key}>
                   <button
@@ -1480,18 +1516,21 @@ export default function ActivityScreen() {
                   >
                     <span className="scr-activity-row-title">
                       <span className="scr-activity-row-title-text">{rowTitleOf(item)}</span>
-                      {/* 지난 방문 이후 새로 올라온 건(요청) — 색만으로 말하지 않도록 글자를
-                          그대로 적는다. 배지는 안 줄고, 자리가 모자라면 제목이 줄어든다. */}
-                      {isNewItem(item) && <span className="scr-activity-row-new">NEW</span>}
+                      {/* 하루 안에 올라왔거나(NEW) 달라진(UPDATE) 건 — 색만으로 말하지
+                          않도록 글자를 그대로 적는다. 배지는 안 줄고, 자리가 모자라면
+                          제목이 줄어든다. */}
+                      {flag && (
+                        <span className={cx("scr-activity-row-flag", `scr-activity-row-flag-${flag}`)}>
+                          {flag === "new" ? "NEW" : "UPDATE"}
+                        </span>
+                      )}
                     </span>
                     <span className="scr-activity-row-desc">{rowDesc(item)}</span>
-                    {/* 시각은 종류를 안 가리고 한 가지로 적는다(요청) — 예전에는 너 나와는
-                        날짜만, 랭크 변동은 "12시간 전", 게임결과 묶음은 세션 날짜라 세 줄이
-                        저마다 다른 말투였다. 시각까지 넣으면 종류마다 있고 없고가 갈리므로
-                        (너 나와에는 시각 개념이 없다) 모두가 가진 날짜 하나로 맞춘다. */}
-                    <span className="scr-activity-row-time">
-                      {formatWhen(item.time, { clock: false })}
-                    </span>
+                    {/* 얼마나 지났나(요청) — 하루까지는 "N분 전/N시간 전", 일주일까지는
+                        "N일 전", 그보다 오래된 것만 날짜. 종류를 안 가리고 한 가지로 적는다
+                        (예전에는 너 나와는 날짜만, 랭크 변동은 "12시간 전", 게임결과 묶음은
+                        세션 날짜라 세 줄이 저마다 다른 말투였다). */}
+                    <span className="scr-activity-row-time">{formatAgo(item.time)}</span>
                   </button>
                   {/* 게임결과는 요약(참가자 명단)을 건너뛰고 바로 경기 목록을 편다(요청) —
                       목록 줄이 이미 "n명 n경기"로 그 요약을 말했다. */}

@@ -62,17 +62,25 @@ function aggregateTargetTone(targets: ChallengeTarget[]): PillTone {
  *  카드는 이 사실을 손 이모지 양옆 배지 두 개로 나눠 말하는데(누가 취소했나까지 자리로
  *  보여 준다), 한 줄에는 그럴 자리가 없으니 '무슨 일까지 왔나' 하나로 합친다. 판단 근거는
  *  아래 challengeSideBadges와 같다 — 서버가 확정해 준 status가 먼저고, 폐기된 건만
- *  어떤 끝이었는지(challengeEnding)와 상대의 응답으로 갈린다. */
-export function challengeStatusText(c: Challenge): string {
-  if (c.status === "pending") return "응답 대기중";
-  if (c.status === "confirmed") return "응답(수락)";
-  if (c.status === "done") return "완료";
+ *  어떤 끝이었는지(challengeEnding)와 상대의 응답으로 갈린다.
+ *
+ *  톤도 같이 돌려준다(요청: "너 나와 상태 본래 고유 색 사용") — 목록이 이 말을 카드의
+ *  응답 배지와 같은 색으로 칠하려면 '무슨 상태인가'를 문자열에서 되짚지 말고 여기서
+ *  받아 가야 한다. 색 이름은 .scr-challenge-avatar-badge-* 와 같은 톤 키다. */
+export function challengeStatusInfo(c: Challenge): { text: string; tone: PillTone } {
+  if (c.status === "pending") return { text: "응답 대기중", tone: "pending" };
+  if (c.status === "confirmed") return { text: "응답(수락)", tone: "accepted" };
+  // 완료는 실제로 붙어서 결과까지 들어온 건이다 — 카드는 그 자리에 승/무를 띄우므로 톤이
+  // 따로 없다. 목록에선 '성사됐다'는 뜻이 가장 가까운 수락 색을 그대로 쓴다.
+  if (c.status === "done") return { text: "완료", tone: "accepted" };
   const ending = challengeEnding(c);
-  if (ending === "canceled") return "취소";
-  if (ending === "expired") return "만료";
+  if (ending === "canceled") return { text: "취소", tone: "canceled" };
+  if (ending === "expired") return { text: "만료", tone: "expired" };
   const tone = aggregateTargetTone(c.targets);
   // 응답이 하나도 없는데 폐기까지 간 건(미실시 등) — "응답(대기)"는 말이 안 된다.
-  return tone === "pending" ? "종료" : `응답(${PILL_LABEL[tone]})`;
+  return tone === "pending"
+    ? { text: "종료", tone: "discarded" }
+    : { text: `응답(${PILL_LABEL[tone]})`, tone };
 }
 
 /** 손 이모지 양옆에 붙는 배지 두 개 — 왼쪽이 부른 편, 오른쪽이 지목된 편이다. 카드가
