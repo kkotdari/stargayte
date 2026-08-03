@@ -1853,7 +1853,13 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    비워 두므로 줄기에서 또 비우면 두 번 빈다. */
 .scr-stat-rank-col {
   display: flex; flex-direction: column; justify-content: center; gap: 2px;
-  flex: 0 0 auto; padding-right: 0;
+  /* 폭을 못 박는다(요청: 로우 사이 인셀 컬럼끼리 줄이 안 맞음 — 테이블처럼).
+     내용 폭(flex:0 0 auto)으로 두면 "132 포인트"인 줄과 "82 포인트"인 줄의 이 칸 폭이
+     달라, 뒤따르는 막대 줄기와 그 사이 구분선이 줄마다 다른 x에 섰다(지적 사진: 1행만
+     오른쪽으로 밀려 있다). 값은 가장 긴 내용("132 포인트" + 메달 자리 22px)에 맞췄다 —
+     칸이 고정이면 남는 폭은 막대 두 줄기가 똑같이 나눠 가지므로 모든 줄이 같은 격자가
+     된다. 메달 자리는 줄(.scr-stat-rank-line)이 제 오른쪽에 이미 비워 둔다. */
+  flex: 0 0 var(--scr-stat-rank-w); width: var(--scr-stat-rank-w); padding-right: 0;
 }
 /* 어느 막대인지는 왼쪽 이름이 말한다 — 칸 머리가 "기록" 하나가 되면서 이름을 잃었다. */
 .scr-stat-record-label {
@@ -2066,6 +2072,8 @@ html:not(.scr-light-theme) .scr-donut {
      건설은 도넛 하나 + 건물 다섯 줄, 유닛은 도넛 둘 + 일꾼 한 줄 + 유닛 다섯 줄,
      스킬은 공/방 표 + 스킬 다섯 줄을 담는다. */
   --scr-stat-record-w: 580px;
+  /* 랭크·포인트 줄기의 고정폭(위 .scr-stat-rank-col 주석). */
+  --scr-stat-rank-w: 108px;
   --scr-stat-build-w: 204px;
   --scr-stat-unit-w: 366px;
   --scr-stat-skill-w: 246px;
@@ -7068,13 +7076,19 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   display: grid; align-items: center; gap: 10px; width: 100%;
   /* 시각은 가장 긴 값("8월 3일 23:59")에 맞춰 고정 — 줄마다 폭이 달라지면 제목이 들쭉
      날쭉해져 세로로 훑을 수가 없다. 제목도 고정폭이라 내용 칸이 늘 같은 x에서 시작한다. */
-  grid-template-columns: 96px 92px minmax(0, 1fr);
+  grid-template-columns: 30px 96px 92px minmax(0, 1fr);
   padding: 11px 12px; background: transparent; border: none; cursor: pointer;
   font-family: inherit; font-size: var(--fs-caption); color: var(--text); text-align: left;
   -webkit-tap-highlight-color: transparent;
 }
 @media (hover: hover) { .scr-feed-row:hover { background: var(--lit-hover-bg); } }
 .scr-feed-row-wrap-open .scr-feed-row { background: var(--lit-hover-bg); }
+/* 번호 — 읽는 값이 아니라 자리를 세는 값이라 가장 흐리게, 오른쪽 정렬(자릿수가 늘어도
+   숫자 끝이 한 줄로 선다). */
+.scr-feed-row-no {
+  color: var(--dim); font-variant-numeric: tabular-nums; text-align: right;
+  font-size: var(--fs-11);
+}
 .scr-feed-row-time { color: var(--dim); font-variant-numeric: tabular-nums; white-space: nowrap; }
 /* 가장 긴 제목("일일 랭크 변동")에 맞춘 고정폭이다 — 그래도 넘치면 트랙을 밀지 말고
    잘린다(실측: min-width 없이 두면 제목이 내용 칸을 덮어썼다). */
@@ -7096,6 +7110,15 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   flex: none; padding: 1px 6px; border-radius: 999px;
   border: 1px solid var(--line-hair); color: var(--text);
   font-size: var(--fs-11); font-weight: 700; line-height: 1.5;
+}
+/* 모바일은 가로가 398px뿐이라 고정 트랙 셋(30+96+92)에 갭·패딩까지 빼면 내용 칸에 126px밖에
+   안 남아, "Cheol → 버림 bob"이 양쪽 다 말줄임으로 잘렸다(실측). 앞 세 칸을 실제 최댓값
+   ("16" / "어제 00:32" / "일일 랭크 변동")에 맞게 조이고 갭·패딩도 줄여 174px을 만든다. */
+@media (max-width: 480px) {
+  .scr-feed-row {
+    grid-template-columns: 22px 74px 84px minmax(0, 1fr);
+    gap: 8px; padding: 11px 10px;
+  }
 }
 /* 펼친 자리 — 원래 카드를 그대로 넣되 머리(시각·제목)는 감춘다(요청: 카드 바디와 댓글).
    바로 위 줄이 이미 같은 말을 하고 있어, 그대로 두면 시각이 두 번 적힌다. */

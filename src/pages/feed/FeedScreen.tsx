@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { createPortal } from "react-dom";
-import RankingShiftCard, { RankingShiftMenu, RANK_SHIFT_TITLE } from "./RankingShiftCard";
+import RankingShiftCard, { RankingShiftMenu } from "./RankingShiftCard";
 import { CalendarPlus, ClipboardList, MoreHorizontal, Phone, Plus, Upload } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
 import { Spinner } from "../../components/common/Feedback";
@@ -207,10 +207,13 @@ function rowKeyOf(it: DisplayItem): string {
         : `m-${it.gameResult.id}`;
 }
 
-/** 그 줄이 무엇에 대한 것인가 — 카드 머리의 제목과 같은 말을 쓴다. */
+/** 그 줄이 무엇에 대한 것인가.
+ *  랭크 변동만 카드 제목(RANK_SHIFT_TITLE = "일일 랭크 변동")보다 짧게 부른다 — 모바일에서
+ *  제목 칸이 84px이라 그대로 쓰면 "일일 랭크 …"로 잘렸다(실측). 유형 필터가 이미 쓰고 있는
+ *  이름이라 새 말을 만드는 것도 아니다. */
 function rowTitleOf(it: DisplayItem): string {
   return it.kind === "challenge" ? "너 나와!"
-    : it.kind === "rankingShift" ? RANK_SHIFT_TITLE : "게임결과";
+    : it.kind === "rankingShift" ? "랭크 변동" : "게임결과";
 }
 
 /** 게임결과 묶음에 실제로 몇 사람이 있었나 — 컴퓨터·비회원은 "누가 있었나"의 답이
@@ -704,8 +707,9 @@ export default function FeedScreen() {
   const [expandedStackKey, setExpandedStackKey] = useState<number | null>(null);
   /* 목록 보기(요청) — 카드를 다 그리는 대신 한 줄짜리 목록으로 훑고, 볼 것만 눌러 편다.
      펼침은 한 번에 하나다: 여러 줄을 동시에 펴 두면 목록의 값어치(한 화면에 많이)가
-     사라지고, 그럴 바에는 카드 보기가 낫다. */
-  const [listMode, setListMode] = useState(false);
+     사라지고, 그럴 바에는 카드 보기가 낫다.
+     이쪽이 기본이다(요청) — 카드(타임라인)는 골라서 보는 쪽으로 바뀌었다. */
+  const [listMode, setListMode] = useState(true);
   const [openRowKey, setOpenRowKey] = useState<string | null>(null);
 
   const user = useAppStore((s) => s.user);
@@ -1260,14 +1264,16 @@ export default function FeedScreen() {
           <h1 className="scr-title scr-v2-toolbar-title">피드</h1>
           {/* 도움말이 있던 자리다(요청) — 카드 넉 장이면 한 화면인 피드에서 "무엇이 있었나"를
               훑으려면 한참을 굴려야 한다. 목록 보기는 그 훑기 전용이라 한 줄에 시각·제목·
-              한 줄 요약만 남기고, 자세히 볼 것만 눌러서 펼친다. */}
+              한 줄 요약만 남기고, 자세히 볼 것만 눌러서 펼친다.
+              버튼 글자는 '지금 무엇인가'가 아니라 '누르면 무엇이 되는가'다 — 목록을 보고
+              있으면 "타임라인으로 보기"라고 적힌다. */}
           <button
             type="button"
             className={cx("scr-feed-listmode-btn", listMode && "scr-feed-listmode-btn-on")}
             onClick={() => setListMode((v) => !v)}
             aria-pressed={listMode}
           >
-            {listMode ? "카드로 보기" : "목록으로 보기"}
+            {listMode ? "타임라인으로 보기" : "목록으로 보기"}
           </button>
         </div>
       </div>
@@ -1376,7 +1382,7 @@ export default function FeedScreen() {
              반영되지 않아 두 화면이 서서히 어긋나기 때문이다. 머리(시각·제목)만 CSS로
              감춘다 — 바로 위 줄이 이미 같은 말을 하고 있다. */
           <div className="scr-feed-rows">
-            {displayFeed.map((item) => {
+            {displayFeed.map((item, i) => {
               const key = rowKeyOf(item);
               const open = openRowKey === key;
               return (
@@ -1385,6 +1391,8 @@ export default function FeedScreen() {
                     type="button" className="scr-feed-row" aria-expanded={open}
                     onClick={() => setOpenRowKey(open ? null : key)}
                   >
+                    {/* 번호(요청) — 위에서부터 몇 번째 소식인가. 최신순이라 1이 가장 새 것이다. */}
+                    <span className="scr-feed-row-no">{i + 1}</span>
                     <span className="scr-feed-row-time">
                       {item.kind === "gameResultPost"
                         ? sessionDateLabel(item.date)
