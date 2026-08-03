@@ -503,7 +503,7 @@ export default function GameResultStory({
     const teamOf = new Map(slots.map((s) => [s.raw, s.team]));
     /* 저장된 자리 값을 믿어도 되는 요약인가 — 옛 요약(v1)의 pos는 '그 무렵 찍은 명령의
        중심'이라 일꾼의 자원 클릭과 건물의 랠리가 섞여 대부분 제 집을 가리킨다. 새 뜻으로
-       읽으면 화살표가 자기 기지로 향한다(지적). 옛 경기는 제어판의 '요약 재분석'을 돌리면
+       읽으면 화살표가 자기 기지로 향한다(지적). 옛 경기는 제어판의 '경기 재분석'을 돌리면
        새 값으로 바뀐다. */
     const posTrusted = (gameResult.summaryData?.v ?? 0) >= POS_TRUSTED_VERSION;
     // 일대일이고 아무도 멀티를 늘리지 않은 판이면 화살표를 상대 진영 안까지 과감하게

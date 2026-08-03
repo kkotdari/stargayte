@@ -25,7 +25,7 @@ const CHUNK_SIZE = 50;
 const MAX_MANUAL_DRAFTS = 20;
 
 /* 한 번 돌린 결과 — 파일 한 줄씩 남기던 로그는 걷어냈다(요청: 배치등록도 결과창을 없애고
-   요약 재분석처럼 진행 상황만 보여주기). 남길 것은 '몇 개를 어떻게 처리했나'뿐이라
+   경기 재분석처럼 진행 상황만 보여주기). 남길 것은 '몇 개를 어떻게 처리했나'뿐이라
    숫자만 센다. 무엇이 왜 실패했는지는 끝난 뒤 검토 화면이 그 리플레이째로 보여준다. */
 interface BatchTally {
   total: number;
@@ -206,7 +206,7 @@ export default function ReplayBatchButton() {
           }
         }
       }
-      /* 끝나면 한 번에 알린다(요청: 요약 재분석처럼) — 도는 동안 로그를 지켜볼 필요가
+      /* 끝나면 한 번에 알린다(요청: 경기 재분석처럼) — 도는 동안 로그를 지켜볼 필요가
          없어진 만큼, 무엇이 어떻게 됐는지는 여기서 한 줄로 말해야 한다. */
       const left = done.total - done.done;
       window.alert(
@@ -240,7 +240,7 @@ export default function ReplayBatchButton() {
       {/* 버튼 하나로 줄이고 켜고 끄는 스위치는 없앴다(요청). 누르면 바로 폴더(모바일은
           파일) 선택창이 뜨고, 고른 것 중 리플레이를 전부(일대일·팀전 가리지 않고)
           담근다. 도는 중에는 같은 자리에 진행 숫자가 흐르고, 누르면 중단이다(요청:
-          요약 재분석처럼 진행 상황만 버튼 안에서). */}
+          경기 재분석처럼 진행 상황만 버튼 안에서). */}
       <div className="scr-admin-panel-batch-row">
         {running ? (
           <button

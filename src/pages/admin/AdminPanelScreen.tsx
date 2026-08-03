@@ -46,9 +46,10 @@ export default function AdminPanelScreen({ isAdmin }: AdminPanelScreenProps) {
   const [seeding, setSeeding] = useState(false);
   const [recomputing, setRecomputing] = useState(false);
   const [confirmSeed, setConfirmSeed] = useState(false);
-  /* 요약 재분석 — 이미 등록된 경기의 리플레이를 다시 읽어 요약만 새로 써 넣는다(요청).
-     요약은 규칙으로 뽑아내는 파생 데이터라 규칙이 좋아지면 옛 경기도 함께 좋아져야 하는데,
-     지금까지는 리플레이를 다시 올리는 수밖에 없었다. 진행 상황은 숫자로만 보여준다. */
+  /* 경기 재분석 — 이미 등록된 경기의 리플레이를 다시 읽어, 리플레이에서 나오는 값을 전부
+     새로 써 넣는다(요청). 파서와 규칙으로 뽑아내는 파생 데이터라 그쪽이 좋아지면 옛 경기도
+     함께 좋아져야 하는데, 지금까지는 리플레이를 다시 올리는 수밖에 없었다. 진행 상황은
+     버튼 안의 숫자로만 보여준다. */
   const [redo, setRedo] = useState<{ done: number; total: number; failed: number } | null>(null);
   const [confirmRedo, setConfirmRedo] = useState(false);
 
@@ -111,8 +112,15 @@ export default function AdminPanelScreen({ isAdmin }: AdminPanelScreenProps) {
     }
   };
 
-  // 등록된 경기를 다시 읽어 요약만 갈아 끼운다 — 리플레이가 붙은 경기만 대상이고,
-  // 분석에 실패한 건은 건드리지 않고 세기만 한다(그 경기는 예전 요약 그대로 남는다).
+  /* 등록된 경기를 리플레이로 다시 분석해 그 결과를 갈아 끼운다 — 리플레이가 붙은 경기만
+     대상이고, 분석에 실패한 건은 건드리지 않고 세기만 한다(그 경기는 예전 값 그대로다).
+
+     갈아 끼우는 것은 '리플레이가 말해 주는 값'뿐이다(요청: 요약뿐 아니라 다른 모든 데이터를
+     재분석하되, 등록자·등록시간처럼 절대 바뀌면 안 되는 것은 그대로) — 요약·지형 격자에
+     더해 맵 이름·실제 시작 시각·경기 길이, 사람별 지표(종족·APM·EAPM·커맨드·생산·생산
+     구성)다. 사람이 정한 것은 아예 안 보낸다: 등록자·등록 시각·경기번호·날짜·분류·승패·
+     회원 연결·첨부 리플레이. 파서가 좋아지면 옛 경기의 이 값들도 같이 낡기 때문에, 요약만
+     고쳐서는 반쪽이었다(실제로 생산 구성·초반 일꾼 수는 옛 경기에 아예 없다). */
   //
   // 예전에는 경기 하나마다 '내려받기 → 파싱 → 올리기'를 한 줄로 세워 놓고 그걸 화면 쪽에서
   // 돌렸다. 파싱 한 번이 실측 252ms(+요약 23ms)라 그동안 화면이 통째로 멈췄고, 기다림
@@ -126,7 +134,7 @@ export default function AdminPanelScreen({ isAdmin }: AdminPanelScreenProps) {
   //
   // 배치 등록과 견주면 이쪽은 '내려받기'가 한 번 더 있다 — 배치는 이미 손에 든 파일을 읽지만
   // 재분석은 서버에서 리플레이(한 개 128KB)를 받아 와야 한다. 그 몫만큼은 구조적으로 더 든다.
-  const redoSummaries = async () => {
+  const reanalyzeGames = async () => {
     setErr("");
     setRedo({ done: 0, total: 0, failed: 0 });
     let done = 0;
@@ -149,12 +157,25 @@ export default function AdminPanelScreen({ isAdmin }: AdminPanelScreenProps) {
           if (pool) {
             const r = await pool.run(id, `${id}.rep`, await blob.arrayBuffer());
             if (!r.ok) throw new Error(r.error);
-            await api.rewriteSummary(id, { summaryData: r.summaryData, mapData: r.mapData });
+            await api.reanalyzeGameResult(id, {
+              summaryData: r.summaryData, mapData: r.mapData,
+              mapName: r.mapName, gameStartedAt: r.gameStartedAt,
+              durationSeconds: r.durationSeconds, slots: r.slots,
+            });
           } else {
             // 일꾼을 못 쓰는 환경(옛 브라우저 등)에서는 예전처럼 화면 쪽에서 읽는다.
             const parsed = await parseReplayFile(new File([blob], `${id}.rep`));
-            await api.rewriteSummary(id, {
+            await api.reanalyzeGameResult(id, {
               summaryData: buildReplaySummary(parsed), mapData: parsed.mapGrid ?? null,
+              mapName: parsed.mapName || null,
+              gameStartedAt: parsed.gameStartedAt ?? null,
+              durationSeconds: parsed.durationSeconds ?? null,
+              slots: parsed.players.map((p) => ({
+                rawName: p.rawName, race: p.race,
+                apm: p.apm, eapm: p.eapm,
+                cmdCount: p.cmdCount, effectiveCmdCount: p.effectiveCmdCount,
+                buildCount: p.buildCount, buildMix: p.buildMix,
+              })),
             });
           }
         } catch {
@@ -167,9 +188,9 @@ export default function AdminPanelScreen({ isAdmin }: AdminPanelScreenProps) {
       // 일꾼이 없는 환경에서도 내려받기·올리기는 겹칠 수 있으므로 여러 갈래로 굴린다.
       await runLanes(ids, (pool?.size ?? 2) * 2, one);
 
-      window.alert(`요약 ${done - failed}건을 다시 계산했어요.${failed > 0 ? `\n${failed}건은 리플레이를 읽지 못해 그대로 뒀어요.` : ""}`);
+      window.alert(`경기 ${done - failed}건을 다시 분석했어요.${failed > 0 ? `\n${failed}건은 리플레이를 읽지 못해 그대로 뒀어요.` : ""}`);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "요약을 다시 계산하지 못했어요.");
+      setErr(e instanceof Error ? e.message : "경기를 다시 분석하지 못했어요.");
     } finally {
       pool?.close();
       setRedo(null);
@@ -328,14 +349,14 @@ export default function AdminPanelScreen({ isAdmin }: AdminPanelScreenProps) {
                     {downloading ? <Spinner /> : "배치다운로드"}
                   </button>
                   {/* 리플레이 폴더 일괄 등록 — 버튼을 누르면 바로 폴더 선택창이 뜬다.
-                      배치등록 → 요약 재분석 순이 자연스럽다(요청) — 먼저 등록하고 그다음
+                      배치등록 → 경기 재분석 순이 자연스럽다(요청) — 먼저 등록하고 그다음
                       다시 읽는 순서다. 이 컴포넌트가 함께 그리는 옵션·안내 줄은 CSS에서
                       뒤로 미뤄(order) 두 버튼이 한 줄에 나란히 선다. */}
                   <ReplayBatchButton />
-                  {/* 요약 재분석 — 규칙이 좋아졌을 때 옛 경기까지 새 규칙으로 다시 읽는다(요청).
-                      경기 내용은 그대로고 요약(과 없던 미니맵)만 바뀐다. 소제목을 따로 두지
-                      않고 경기관리에 함께 둔다(요청) — 등록된 경기를 손대는 일이라 배치등록·
-                      배치삭제와 같은 성격이다. */}
+                  {/* 경기 재분석 — 파서·규칙이 좋아졌을 때 옛 경기까지 다시 읽는다(요청).
+                      리플레이에서 나오는 값만 새로 쓰고 사람이 정한 것은 그대로다(위 주석).
+                      소제목을 따로 두지 않고 경기관리에 함께 둔다(요청) — 등록된 경기를
+                      손대는 일이라 배치등록·배치삭제와 같은 성격이다. */}
                   <button
                     type="button" className="scr-btn scr-btn-primary"
                     onClick={() => setConfirmRedo(true)} disabled={redo !== null}
@@ -348,7 +369,7 @@ export default function AdminPanelScreen({ isAdmin }: AdminPanelScreenProps) {
                         {redo.total > 0 ? `${redo.done}/${redo.total}` : "목록 받는 중"}
                         {redo.failed > 0 ? ` · 실패 ${redo.failed}` : ""}
                       </>
-                    ) : "요약 재분석"}
+                    ) : "경기 재분석"}
                   </button>
                 </div>
 
@@ -396,10 +417,10 @@ export default function AdminPanelScreen({ isAdmin }: AdminPanelScreenProps) {
 
       {confirmRedo && (
         <ConfirmDialog
-          title="등록된 경기의 요약을 모두 다시 계산할까요?"
-          message="리플레이가 붙은 경기를 하나씩 다시 읽어 전황 요약을 새로 만듭니다. 경기 내용(팀·승패)은 바뀌지 않고, 건수가 많으면 몇 분 걸립니다."
-          confirmLabel="다시 계산"
-          onConfirm={() => { setConfirmRedo(false); void redoSummaries(); }}
+          title="등록된 경기를 모두 다시 분석할까요?"
+          message="리플레이가 붙은 경기를 하나씩 다시 읽어 전황 요약·미니맵과 맵 이름·시작 시각·경기 길이, 참가자별 지표(종족·APM·커맨드·생산)를 새로 씁니다. 등록자·등록 시각·경기번호·날짜·분류·승패·회원 연결은 그대로입니다. 건수가 많으면 몇 분 걸립니다."
+          confirmLabel="다시 분석"
+          onConfirm={() => { setConfirmRedo(false); void reanalyzeGames(); }}
           onCancel={() => setConfirmRedo(false)}
         />
       )}

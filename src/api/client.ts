@@ -569,12 +569,35 @@ export const api = {
     return res.blob();
   },
 
-  /** 이미 등록된 경기의 요약만 다시 써 넣는다(운영자 전용, 제어판의 '요약 재분석').
-   *  요약을 만드는 파서가 화면 쪽에만 있어서, 화면이 리플레이를 내려받아 다시 분석한 결과를
-   *  올린다 — 서버는 그 값만 갈아 끼우고 경기 내용은 건드리지 않는다. */
-  async rewriteSummary(
+  /** 이미 등록된 경기를 리플레이로 다시 분석해 그 결과를 써 넣는다(운영자 전용, 제어판의
+   *  '경기 재분석'). 리플레이를 읽는 파서가 화면 쪽에만 있어서, 화면이 내려받아 다시
+   *  분석한 결과를 올린다.
+   *
+   *  올리는 것은 '리플레이가 말해 주는 값'뿐이다(요청: 요약뿐 아니라 다른 모든 데이터를
+   *  재분석하되 절대 바뀌면 안 되는 것은 그대로) — 요약·지형 격자에 더해 맵 이름·실제
+   *  시작 시각·경기 길이, 그리고 사람별 지표(종족·APM·EAPM·커맨드·생산·생산 구성)다.
+   *  사람이 정한 것은 아예 안 보낸다: 등록자·등록 시각·경기번호·날짜·분류·승패·회원
+   *  연결·첨부 리플레이. 슬롯의 짝은 회원 pk가 아니라 원본 게임 아이디(rawName)로 맞춰야
+   *  한다 — 회원 연결은 사람이 고쳤을 수 있고, rawName은 그 경기 시점의 유일한 증거다. */
+  async reanalyzeGameResult(
     gameResultId: number,
-    body: { summaryData: ReplaySummaryData | null; mapData?: ReplayMapGrid | null },
+    body: {
+      summaryData: ReplaySummaryData | null;
+      mapData?: ReplayMapGrid | null;
+      mapName?: string | null;
+      gameStartedAt?: string | null;
+      durationSeconds?: number | null;
+      slots?: {
+        rawName: string;
+        race: string;
+        apm: number | null;
+        eapm: number | null;
+        cmdCount: number | null;
+        effectiveCmdCount: number | null;
+        buildCount: number | null;
+        buildMix: unknown;
+      }[];
+    },
   ): Promise<void> {
     await request<void>(`/api/game-results/${gameResultId}/summary`, {
       method: "POST", body: JSON.stringify(body),

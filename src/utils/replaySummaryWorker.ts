@@ -2,7 +2,7 @@
 //
 // 왜 화면 밖으로 내보내나 — 리플레이 파싱(screp-js)은 GopherJS로 컴파일된 순수 JS라
 // 통째로 한 실꾸리(스레드)에서 돈다. 실측으로 한 판에 파싱 252ms + 요약 23ms이고, 이걸
-// 화면 쪽에서 돌리면 그 275ms 동안 화면이 통째로 멈춘다. 제어판의 '요약 재분석'은 등록된
+// 화면 쪽에서 돌리면 그 275ms 동안 화면이 통째로 멈춘다. 제어판의 '경기 재분석'은 등록된
 // 경기를 전부 다시 읽는 일이라 그 275ms가 경기 수만큼 곱해진다(지적: 너무 느려서 못 쓰겠다).
 //
 // 일꾼으로 내보내면 두 가지가 한꺼번에 풀린다.
@@ -16,6 +16,7 @@ import { parseReplayFile } from "./replayParser";
 import { buildReplaySummary } from "./replaySummary";
 import type { ReplaySummaryData } from "./replaySummaryData";
 import type { ReplayMapGrid } from "./replayParser";
+import type { BuildMix } from "./replayBuildMix";
 
 /** 일감 — id는 부른 쪽이 짝을 맞추는 데만 쓴다(경기 id를 그대로 넣는다). */
 export interface SummaryJob {
@@ -25,8 +26,34 @@ export interface SummaryJob {
   buf: ArrayBuffer;
 }
 
+/** 한 사람 몫의 '리플레이가 말해 주는 값' — 회원 연결과 무관한 것만 담는다. 짝은 원본
+ *  게임 아이디(rawName)로 맞춘다: 슬롯의 회원 연결은 사람이 고쳤을 수 있어 손대면 안 되고,
+ *  rawName은 그 경기 시점의 유일한 증거라 서버가 한 번 저장하면 바꾸지 않는다. */
+export interface ReanalyzedSlot {
+  rawName: string;
+  race: string;
+  apm: number | null;
+  eapm: number | null;
+  cmdCount: number | null;
+  effectiveCmdCount: number | null;
+  buildCount: number | null;
+  buildMix: BuildMix | null;
+}
+
 export type SummaryJobResult =
-  | { id: number; ok: true; summaryData: ReplaySummaryData | null; mapData: ReplayMapGrid | null }
+  | {
+    id: number; ok: true;
+    summaryData: ReplaySummaryData | null;
+    mapData: ReplayMapGrid | null;
+    /* 아래는 요약 말고도 리플레이에서 다시 나오는 값들이다(요청: 요약뿐 아니라 다른 모든
+       데이터를 재분석. 단 등록자·등록시간처럼 절대 바뀌면 안 되는 것은 그대로) — 파서가
+       바뀌면 옛 경기의 이 값들도 같이 낡는다. 사람이 정한 것(등록자·등록시각·경기번호·
+       날짜·분류·승패·회원 연결·첨부 리플레이)은 여기 없다. */
+    mapName: string | null;
+    gameStartedAt: string | null;
+    durationSeconds: number | null;
+    slots: ReanalyzedSlot[];
+  }
   | { id: number; ok: false; error: string };
 
 /* 일꾼 전역(self)의 타입 — DedicatedWorkerGlobalScope를 쓰려면 tsconfig에 WebWorker lib을
@@ -46,6 +73,16 @@ ctx.onmessage = (e: MessageEvent<SummaryJob>) => {
         id, ok: true,
         summaryData: buildReplaySummary(parsed),
         mapData: parsed.mapGrid ?? null,
+        mapName: parsed.mapName || null,
+        gameStartedAt: parsed.gameStartedAt ?? null,
+        durationSeconds: parsed.durationSeconds ?? null,
+        slots: parsed.players.map((p) => ({
+          rawName: p.rawName,
+          race: p.race,
+          apm: p.apm, eapm: p.eapm,
+          cmdCount: p.cmdCount, effectiveCmdCount: p.effectiveCmdCount,
+          buildCount: p.buildCount, buildMix: p.buildMix,
+        })),
       });
     } catch (err) {
       ctx.postMessage({ id, ok: false, error: err instanceof Error ? err.message : "리플레이를 읽지 못했어요." });
