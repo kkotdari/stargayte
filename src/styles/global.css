@@ -8435,9 +8435,14 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   opacity: 0;
 }
 .scr-story-cap-line[data-on="true"] { visibility: visible; opacity: 1; }
-/* PC는 지도가 훨씬 넓어 절반이면 오히려 좁고 줄이 자주 접힌다 — 2/3까지 준다(요청). */
+/* PC는 지도가 훨씬 넓어 절반이면 오히려 좁고 줄이 자주 접힌다 — 2/3까지 준다(요청).
+   글자도 PC에서만 두 단계 키운다(요청: PC에서 미니맵 자막 글자가 너무 작다) —
+   micro(12) → body(16), 앞의 시각은 서열 그대로 11 → caption(14). 지도가 큰 만큼
+   같은 12px라도 화면에서 차지하는 비중이 모바일보다 훨씬 작아 보인다. 모바일은
+   지도가 좁아 키우면 자막이 그림을 덮으므로 그대로 둔다. */
 @media (min-width: 641px) {
-  .scr-story-cap { width: calc((100% + var(--scr-cap-inset, 0px) * 2) * 2 / 3); }
+  .scr-story-cap { width: calc((100% + var(--scr-cap-inset, 0px) * 2) * 2 / 3); font-size: var(--fs-body); }
+  .scr-story-cap-time { font-size: var(--fs-caption); }
 }
 @media (prefers-reduced-motion: reduce) { .scr-story-cap-line { transition: none; } }
 
