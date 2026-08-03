@@ -351,6 +351,35 @@ const POWER_UNITS: [string, number][] = [
   ["Vulture", 30], ["Zergling", 60],
 ];
 const POWER_SHARE = 0.6;
+/* 비중은 안 되지만 '그 유닛 하나만으로도 어마어마한' 수(지적: 탱크를 135기나 뽑아 중앙을
+   잡은 이야기가 통째로 안 나온다).
+   위 '파워 OO'는 한 유닛이 병력의 60%를 넘어야 하는데, 값비싼 유닛은 그 문턱을 구조적으로
+   못 넘는다 — 실측(972명) 탱크의 병력 비중은 중앙 20%, 상위 10%라야 54%다. 메카닉은 탱크에
+   골리앗·벌처·마린이 늘 섞여서 그렇다. 그 판의 탱크 135기는 상위 5% 안에 드는 수인데도
+   비중이 42%라 아무 말도 안 나왔다.
+   그래서 수 자체로도 한 번 본다. 문턱은 실측 분포의 상위 10%(그 유닛을 한 기라도 뽑은
+   사람 기준)다 — 뽑은 수 중앙/75%/90%:
+     질럿 90/141/225 · 마린 66/128/180 · 드라군 30/64/112 · 히드라 32/56/102
+     탱크 26/51/91 · 골리앗 22/51/78 · 스카우트 11/43/60 · 벌처 18/34/50
+     저글링 7/16/36 · 뮤탈 7/16/30
+   이미 제 이야기를 가진 유닛(캐리어·리버·다크템플러·아비터·러커·가디언·울트라·발키리·
+   레이스)은 여기 안 넣는다 — 같은 물량을 두 문장이 말하게 된다. */
+const POWER_SOLO: { unit: string; min: number; keys?: string[] }[] = [
+  { unit: "Zealot", min: 220 },
+  { unit: "Marine", min: 180 },
+  { unit: "Dragoon", min: 110 },
+  { unit: "Hydralisk", min: 100 },
+  // 탱크는 시즈/탱크 모드가 따로 세어져 둘을 합쳐야 '몇 기 뽑았나'가 된다.
+  {
+    unit: "Siege Tank (Tank Mode)", min: 90,
+    keys: ["Siege Tank (Tank Mode)", "Siege Tank (Siege Mode)"],
+  },
+  { unit: "Goliath", min: 80 },
+  { unit: "Scout", min: 60 },
+  { unit: "Vulture", min: 50 },
+  { unit: "Zergling", min: 40 },
+  { unit: "Mutalisk", min: 30 },
+];
 /* ── 물량(요청: "프로토스들의 질럿 드라군 물량 이야기도 없네") ──
    위 '파워 OO'는 한 유닛이 병력의 60%를 넘겨야 나온다. 그런데 실제로 사람들이 물량이라
    부르는 그림은 대개 두 유닛의 조합이다 — 실측한 판에서 질럿 521 + 드라군 504로 둘이
@@ -1066,23 +1095,34 @@ function detectFor(c: Ctx): Tactic[] {
     });
   }
   // '파워 OO' — 한 유닛을 압도적으로 뽑아 그 물량으로 밀어붙이는 그림(요청).
-  for (const [unit, min] of POWER_UNITS) {
-    if (u(unit) >= min && armyTotal > 0 && u(unit) / armyTotal >= POWER_SHARE) {
-      // 시점은 '가장 크게 몰아 뽑은 묶음'에 건다. 예전엔 총량 이야기라며 시점을 안 뒀는데,
-      // 시점 없는 문장은 맺음말 바로 앞으로 밀려서 정작 그 물량이 쏟아진 때와 한참 어긋난
-      // 자리에 놓였다(지적). 나눠 뽑았으면 그중 가장 큰 묶음이 곧 그 이야기의 시점이다.
-      const burst = biggestBurst(s.unitFrames[unit] ?? []);
-      out.push({
-        key: "power-unit", weight: 11, at: burst ? burst.from : null, who,
-        p: {
-          unit, n: u(unit),
-          // 한 묶음에 다 뽑았으면 굳이 나눠 말하지 않는다 — 총량 문장 그대로다.
-          ...(burst && burst.n < u(unit) ? { burst: burst.n, min: Math.round((burst.from * SECONDS_PER_FRAME) / 60) } : {}),
-        },
-      });
-      break;
+  // 비중으로 못 잡히지만 수 자체가 압도적인 경우도 함께 본다(위 POWER_SOLO).
+  const dominant = (() => {
+    for (const [unit, min] of POWER_UNITS) {
+      if (u(unit) >= min && armyTotal > 0 && u(unit) / armyTotal >= POWER_SHARE) {
+        return { unit, keys: [unit], n: u(unit), solo: false };
+      }
     }
-  }
+    return null;
+  })();
+  const pushPower = (power: { unit: string; keys: string[]; n: number; solo: boolean }) => {
+    // 시점은 '가장 크게 몰아 뽑은 묶음'에 건다. 예전엔 총량 이야기라며 시점을 안 뒀는데,
+    // 시점 없는 문장은 맺음말 바로 앞으로 밀려서 정작 그 물량이 쏟아진 때와 한참 어긋난
+    // 자리에 놓였다(지적). 나눠 뽑았으면 그중 가장 큰 묶음이 곧 그 이야기의 시점이다.
+    const frames = power.keys.flatMap((k) => s.unitFrames[k] ?? []).sort((a, b) => a - b);
+    const burst = biggestBurst(frames);
+    out.push({
+      key: "power-unit", weight: 11, at: burst ? burst.from : null, who,
+      p: {
+        unit: power.unit, n: power.n,
+        // 비중이 아니라 수로 걸린 경우 — 문장이 "OO만 뽑았다"고 말하면 안 된다(그 사람은
+        // 다른 병력도 함께 굴렸다). 어느 쪽인지를 문장 쪽에 알려 준다.
+        ...(power.solo ? { solo: true } : {}),
+        // 한 묶음에 다 뽑았으면 굳이 나눠 말하지 않는다 — 총량 문장 그대로다.
+        ...(burst && burst.n < power.n ? { burst: burst.n, min: Math.round((burst.from * SECONDS_PER_FRAME) / 60) } : {}),
+      },
+    });
+  };
+  if (dominant) pushPower(dominant);
   /* 물량 — 한 유닛에 쏠리지 않아도 '분당 몇 기를 찍어냈나' 자체가 이야기다(요청, 위
      MASS_RATE_MIN 주석). 위 '파워 OO'가 이미 나왔으면 안 낸다: 같은 물량을 두 번 말하는
      꼴이고, 그쪽이 더 구체적이다. */
@@ -1107,6 +1147,18 @@ function detectFor(c: Ctx): Tactic[] {
         },
       });
     }
+  }
+  /* 비중으로도 분당 생산량으로도 안 걸렸지만 그 유닛 하나의 수가 상위 10%인 경우(위
+     POWER_SOLO) — 값비싼 유닛이 여기서 구제된다. 맨 뒤에 두는 이유는 앞의 둘이 더
+     구체적이어서다: '파워 OO'는 그것만 뽑았다는 말이고, 물량은 조합을 이름으로 부른다. */
+  if (!out.some((t) => t.key === "power-unit" || t.key === "mass-army")) {
+    let best: { unit: string; keys: string[]; n: number; solo: boolean } | null = null;
+    for (const e of POWER_SOLO) {
+      const keys = e.keys ?? [e.unit];
+      const n = keys.reduce((sum, k) => sum + u(k), 0);
+      if (n >= e.min && (!best || n > best.n)) best = { unit: e.unit, keys, n, solo: true };
+    }
+    if (best) pushPower(best);
   }
 
   // ── 저그 ──

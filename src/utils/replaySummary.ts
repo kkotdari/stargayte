@@ -3142,9 +3142,14 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
      이긴 편 가산점(LATE_WINNER_BONUS)까지 얹혀 20을 예사로 넘기 때문이다.
      그래서 마법(tech)과 같은 방식의 예약석을 준다. 예약은 교전이 여러 번이던 판에서만
      쓰이므로 다른 경기의 길이는 그대로고, 밀려나는 이야기도 없다. */
-  const EXTRA_SLOTS = { cause: 2, tech: 2, clash: CLASH_BEATS_MAX - 1 } as const;
+  /* 물량 이야기(파워 OO·물량)도 같은 사연이다(지적: 탱크를 135기나 뽑아 중앙을 잡은
+     내용이 통째로 안 나온다). 무게가 11~12라 급습·교전(20 안팎)에 늘 밀리는데, 172판에서
+     실제로 요약까지 간 물량 문장은 8건뿐이었고 큰 교전이 여러 번 나오게 되면서 0건이
+     됐다. 한 판에 한 자리만 내준다 — 물량이 있던 판에서만 쓰이므로 다른 경기 길이는
+     그대로다. */
+  const EXTRA_SLOTS = { cause: 2, tech: 2, clash: CLASH_BEATS_MAX - 1, mass: 1 } as const;
   type Reserve = keyof typeof EXTRA_SLOTS;
-  const extraUsed: Record<Reserve, number> = { cause: 0, tech: 0, clash: 0 };
+  const extraUsed: Record<Reserve, number> = { cause: 0, tech: 0, clash: 0, mass: 0 };
   /** 예약 없이 들어간 수 — 예약석은 갈래마다 따로 세야 한다. 예전엔 chosen.length로
    *  방을 쟀는데, 갈래가 둘이 되면 한쪽이 쓴 예약석이 다른 쪽 방까지 먹어 버린다. */
   let plain = 0;
@@ -3234,7 +3239,12 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     if (b.k !== "tech" || (typeof b.p?.n === "number" ? b.p.n : 0) < TECH_RESERVE_MIN_USES) continue;
     consider(b, false, "tech");
   }
-  // 4차: 큰 교전 예약석(요청: 큰 교전이 여러 번이면 여러 번 나오는 게 맞다) — 그 판의 절정
+  // 4차: 물량 예약석 — 파워 OO와 물량 중 무거운 쪽 하나만 태운다(위 EXTRA_SLOTS 주석).
+  for (const b of ranked) {
+    if (b.k !== "power-unit" && b.k !== "mass-army") continue;
+    if (consider(b, false, "mass")) break;
+  }
+  // 5차: 큰 교전 예약석(요청: 큰 교전이 여러 번이면 여러 번 나오는 게 맞다) — 그 판의 절정
   // 하나는 0차에서 이미 들어갔고, 여기서 태우는 건 그에 견줄 만한(CLASH_EXTRA_SHARE) 다른
   // 싸움들이다. 자리 다툼에서 정상적으로 이겼으면 이미 들어가 있어 예약분을 안 쓴다.
   for (const b of ranked) {
