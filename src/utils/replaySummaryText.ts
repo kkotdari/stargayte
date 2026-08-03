@@ -845,10 +845,10 @@ const TEMPLATES: Record<string, Tpl> = {
       const m = num(c.p.outMin) || num(c.p.hitMin);
       const when = m > 0 ? `${m}분 만에 ` : "";
       return say(
-        [`${blow} ${also}${when}본진이 날아가 다시 지어야 했음`,
-          `${blow} ${also}${when}본진째 밀려 새로 올려야 했음`],
-        [`${blow} ${also}${when}${of}본진이 날아가 다시 지어야 했음`],
-        [`${ro(by)} ${also}${when}${of}본진을 통째로 밀어버림`],
+        [`${blow} ${also}${when}뚝배기가 깨져 다시 지어야 했음`,
+          `${blow} ${also}${when}뚝배기째 날아가 새로 올려야 했음`],
+        [`${blow} ${also}${when}${of}뚝배기가 깨져 다시 지어야 했음`],
+        [`${ro(by)} ${also}${when}${of}뚝배기를 깨버림`],
       );
     }
     /* 하이템플러·리버·셔틀 드랍은 일꾼을 노리고 가는 수다(요청: 하이템플러나 리버로 일꾼
@@ -1536,8 +1536,9 @@ const TEMPLATES: Record<string, Tpl> = {
        군범 기지에서 7시를 옆탱으로 견제한 내용도 없다"). 누구의 앞인지(who2)와 그 앞이
        어느 쪽을 보고 선 것인지(whom)를 함께 말한다. */
     if (str(c.p.at) === "allyFront" && c.who2) {
+      // 옆탱은 남의 집 '진출로'가 아니라 상대와 맞닿은 '벽 쪽'에 세우는 것이다(지적).
       const foe = c.whom ? `${c.whom} 쪽을 ` : "길목을 ";
-      return `${ga(c.who)} ${c.who2}의 진출로에 탱크를 세워 ${done(c, c.pick([
+      return `${ga(c.who)} ${c.who2}의 기지 벽 쪽에 탱크를 세워 ${done(c, c.pick([
         `${foe}눌러 둠`, `${foe}틀어막음`, `${foe}견제함`,
       ]))}`;
     }
