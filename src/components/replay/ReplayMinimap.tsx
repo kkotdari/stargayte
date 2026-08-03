@@ -252,6 +252,14 @@ export default function ReplayMinimap({
   /** 본진 액션 이모지 엘리먼트 — 이름표가 그 위에 얹히지 않게 실제 자리를 재는 데 쓴다. */
   const markElsRef = useRef<Map<string, HTMLSpanElement>>(new Map());
   const [labelFix, setLabelFix] = useState<Map<string, { x: number; y: number }>>(new Map());
+  /** 자막 상자 — 자리를 고르려면 '이 자막이 실제로 얼마나 덮나'를 알아야 한다. 폭은 CSS가
+   *  정하니 계산으로 알지만(아래 wideCaption), 높이는 문장이 몇 줄이 되느냐라 그려 보기
+   *  전엔 모른다. 한때 "두세 줄이면 한 칸쯤"이라고 1/3로 어림했는데, 네 줄짜리 자막은
+   *  지도의 절반(실측 0.48)을 덮어서 '아래 칸'에 뒀는데도 한가운데까지 올라와 화살표를
+   *  끊었다(지적). 그려진 높이를 재서 그 값으로 자리를 다시 고른다 — 페인트 전에
+   *  반영해야 자막이 튀지 않는다(useLayoutEffect, 아래 이름표 보정과 같은 방식). */
+  const capRef = useRef<HTMLDivElement>(null);
+  const [capH, setCapH] = useState(1 / 3);
   /* 자막 폭이 지도의 2/3인가(PC) 1/2인가(모바일) — 아래 자막 자리 고르기가 '자막이 덮을
      네모'로 겹침을 재는데, 그 네모의 폭이 곧 이 값이다. CSS와 같은 경계(641px)를 본다. */
   const [wideCaption, setWideCaption] = useState(
@@ -264,6 +272,20 @@ export default function ReplayMinimap({
     mq.addEventListener("change", sync);
     return () => mq.removeEventListener("change", sync);
   }, []);
+  /* 그려진 자막이 지도 높이의 몇 할을 덮나 — 이 값으로 아래 capCell이 자리를 다시 고른다.
+     캡션 컨테이너는 지도를 통째로 덮는 정렬용 상자라, 실제로 글이 앉은 알맹이(.scr-story-cap)
+     를 잰다. 값이 눈에 띄게 달라졌을 때만 state를 건드린다 — 매 렌더 재기 → 상태 변경 →
+     다시 렌더의 고리를 끊는다. 한 칸(1/3)보다 작게는 안 본다: 그보다 작아도 칸 하나는
+     차지한다고 봐야 이웃 칸 판정이 흔들리지 않는다. */
+  useLayoutEffect(() => {
+    const frame = frameRef.current;
+    const box = capRef.current?.querySelector(".scr-story-cap") ?? capRef.current?.firstElementChild;
+    if (!frame || !box) return;
+    const fh = frame.getBoundingClientRect().height;
+    if (fh <= 0) return;
+    const next = Math.min(1, Math.max(1 / 3, box.getBoundingClientRect().height / fh));
+    setCapH((prev) => (Math.abs(prev - next) > 0.02 ? next : prev));
+  });
   // 리사이즈 리스너가 오래 살아 있는 동안 labelFix state가 여러 번 바뀔 수 있다 — 리스너
   // 클로저 안의 값은 등록 시점에 멈춰 있으므로(오래된 값), ref로 늘 최신 값을 읽는다.
   const labelFixRef = useRef(labelFix);
@@ -415,9 +437,9 @@ export default function ReplayMinimap({
   const capCell = ((): { row: "top" | "mid" | "bottom"; col: "left" | "center" | "right" } => {
     const MID = { row: "mid", col: "center" } as const;
     /** 자막이 덮는다고 보는 너비·높이(지도 대비) — 폭은 CSS의 최대폭 그대로다(PC 2/3,
-     *  모바일 1/2). 높이는 두세 줄이 보통이라 한 칸으로 본다. */
+     *  모바일 1/2). 높이는 그려진 것을 실측한 값이다(위 capH). */
     const CAP_W = wideCaption ? 2 / 3 : 1 / 2;
-    const CAP_H = 1 / 3;
+    const CAP_H = capH;
     const cx = [CAP_W / 2, 0.5, 1 - CAP_W / 2];
     const cy = [CAP_H / 2, 0.5, 1 - CAP_H / 2];
     const inBox = (r: number, c: number, x: number, y: number) =>
@@ -437,14 +459,20 @@ export default function ReplayMinimap({
       add(m.x, m.y, m.featured || m.introBig ? 3 : 1);
       if (m.mark) add((m.markAt ?? [m.x, m.y])[0], (m.markAt ?? [m.x, m.y])[1], 4);
     }
-    /** 화살표 몸통이 지나가는 자리 — 곡선을 직선으로 어림해 훑는다(칸 판정에는 충분하다). */
+    /** 화살표 몸통이 지나가는 자리 — 곡선을 직선으로 어림해 훑는다(칸 판정에는 충분하다).
+     *  한 화살표가 칸을 온전히 가로지르면 BODY_WEIGHT만큼 든다. 예전엔 이 값이 1이라
+     *  '화살표 한 줄을 통째로 끊는 것'과 '가만히 서 있는 아바타 하나를 가리는 것'이 같은
+     *  값이었다 — 그 바람에 아무도 안 싸우는 구석을 두고 굳이 진격로 위에 자막이 앉았다
+     *  (지적: 참여 안 하는 사람 자리로 가는 게 낫다). 화살표는 그 장면의 이야기 자체라
+     *  훨씬 비싸야 한다. */
     const BODY_SAMPLES = 12;
+    const BODY_WEIGHT = 6;
     for (const { a, g } of geoms) {
       add(g.tip[0], g.tip[1], 4);
       add(g.from[0], g.from[1], 2);
       for (let i = 0; i <= BODY_SAMPLES; i += 1) {
         const t = i / BODY_SAMPLES;
-        add(a.x1 + (a.x2 - a.x1) * t, a.y1 + (a.y2 - a.y1) * t, 1 / BODY_SAMPLES);
+        add(a.x1 + (a.x2 - a.x1) * t, a.y1 + (a.y2 - a.y1) * t, BODY_WEIGHT / BODY_SAMPLES);
       }
     }
     /* 같은 점수면 아래 → 위 → 가운데, 가로는 가운데 → 왼쪽 → 오른쪽 순으로 고른다.
@@ -653,8 +681,10 @@ export default function ReplayMinimap({
         />
       ))}
       {caption && (
-        <div className={cx("scr-minimap-caption",
-          `scr-minimap-caption-${capCell.row}`, `scr-minimap-caption-${capCell.col}`)}
+        <div
+          ref={capRef}
+          className={cx("scr-minimap-caption",
+            `scr-minimap-caption-${capCell.row}`, `scr-minimap-caption-${capCell.col}`)}
         >
           {caption}
         </div>
