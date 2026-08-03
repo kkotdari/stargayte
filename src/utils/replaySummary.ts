@@ -1744,6 +1744,13 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
      (거짓으로 "본진이 날아갔다"고 말하느니 그 종족만 조용한 편이 낫다). */
   const HALL_REBUILD_TILES = 12;
   const HALL_REBUILD_SEC = 4 * 60;
+  /* 넥서스·커맨드가 다 지어지는 데 걸리는 시간. 그 사이에 일꾼이 나왔나가 '다시 지은 것'과
+     '하나 더 얹은 것'을 가른다(아래). */
+  const HALL_BUILD_SEC = 75;
+  /* 그 수를 맞기 전에 일꾼을 이만큼은 뽑고 있었어야 한다 — 후반에 일꾼을 더 안 뽑는
+     사람은 홀이 멀쩡해도 '짓는 동안 0기'가 되기 때문이다. */
+  const HALL_BUSY_MIN = 3;
+  const HALL_BUSY_SEC = 2 * 60;
   const hallRebuilt = (victim: ParsedReplayPlayer, from: number): number | null => {
     if (victim.race === "저그") return null;
     if (victim.startX === null || victim.startY === null) return null;
@@ -1753,7 +1760,27 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
       && b.frame !== null && b.frame >= from && b.frame <= to
       && Math.hypot(b.x - (victim.startX as number), b.y - (victim.startY as number)) <= HALL_REBUILD_TILES
     ));
-    return hit?.frame ?? null;
+    if (!hit || hit.frame === null) return null;
+    /* 정말 '날아가서 다시 지은' 것인가 — 제 자리에 홀을 또 짓는 일은 날아갔을 때뿐이라고
+       봤는데, 실측하니 그렇지 않았다: 빠른무한 172판에서 테란·프로토스 678명 중 535명이
+       제 시작 자리 12타일 안에 홀을 다시 지었고(967채), 그 대부분은 일꾼을 더 뽑으려고
+       하나 더 얹은 것이었다. 그 전제로는 지금 잡히는 39건 가운데 24건이 멀쩡한 본진을 두고
+       "본진이 날아갔다"고 말한다.
+
+       둘을 가르는 것은 '짓는 동안 일꾼이 나왔나'다. 홀이 서 있으면 새 홀을 올리는 사이에도
+       일꾼이 계속 나오고(실측 중앙 4기), 뚝배기가 깨졌으면 새 홀이 다 지어질 때까지 한
+       기도 못 뽑는다 — 일꾼은 홀에서만 나오기 때문이다. 이건 어림이 아니라 규칙이다.
+
+       다만 후반에 일꾼을 더 안 뽑는 사람은 홀이 멀쩡해도 0기라, 맞기 직전에 실제로 일꾼을
+       뽑고 있었을 때만 이 판정을 쓴다. */
+    const w = [...WORKER_UNITS].flatMap((u) => victim.signals?.unitFrames[u] ?? []);
+    const during = w.filter(
+      (x) => x > (hit.frame as number) && x <= (hit.frame as number) + HALL_BUILD_SEC / SECONDS_PER_FRAME,
+    ).length;
+    if (during > 0) return null;
+    const busy = w.filter((x) => x >= from - HALL_BUSY_SEC / SECONDS_PER_FRAME && x <= from).length;
+    if (busy < HALL_BUSY_MIN) return null;
+    return hit.frame;
   };
 
   const attackZoneOf = (
