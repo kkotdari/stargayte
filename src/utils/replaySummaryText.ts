@@ -1,5 +1,8 @@
 import { ga, ira, neun, reul, ro, wa } from "./korean";
-import { isReplaySummaryData, type ReplaySummaryBeat, type ReplaySummaryData } from "./replaySummaryData";
+import {
+  isReplaySummaryData, sceneWindowSec,
+  type ReplaySummaryBeat, type ReplaySummaryData,
+} from "./replaySummaryData";
 import { SIGNATURE_UPGRADE_KO, TECH_USE_PHRASE } from "./replayTechNames";
 
 // 저장된 요약 데이터(replaySummaryData.ts)를 사람이 읽는 문단으로 옮긴다.
@@ -279,6 +282,8 @@ type Tpl = (c: Ctx) => string | null;
 const SECONDS_PER_FRAME = 0.042;
 // 이 안에 벌어진 양쪽 일은 '같은 때'로 보고 이어 주는 말을 붙인다.
 // 스타는 호흡이 빨라 1분만 지나도 다른 국면이다(지적) — 창을 더 좁혔다.
+// 이 값과 아래 JOIN_MAX_SEC는 '중반(5~10분)' 기준이고, 실제로는 그 시각의 배율을 곱해
+// 쓴다(sceneWindowSec — 요청: 초반엔 자잘하게, 후반으로 갈수록 크게).
 const SAME_TIME_SEC = 45;
 // 이만큼이나 벌어졌으면 그 사이는 정말로 대치였다고 말해도 된다(요청: "한동안의 대치 후").
 const STANDOFF_SEC = 5 * 60;
@@ -2521,6 +2526,12 @@ function renderLines(
     const gapSec = prev && typeof prev.at === "number" && typeof b.at === "number"
       ? Math.abs(prev.at - b.at) * SECONDS_PER_FRAME
       : null;
+    /* 두 일을 '같은 때'로 볼 창 — 시간대마다 다르다(요청: 초반엔 자잘하게, 후반엔 크게.
+       replaySummaryData의 scenePace 주석에 실측이 있다). 초반에는 다음 장면이 30~40초
+       만에 또 오므로 60초 창이 서로 다른 일을 한 문장에 묶고, 후반에는 몇 분씩 비어 있어
+       한 장면이 여러 문장으로 쪼개진다. */
+    const joinMax = sceneWindowSec(JOIN_MAX_SEC, b.at);
+    const sameTimeMax = sceneWindowSec(SAME_TIME_SEC, b.at);
     const linkable = !!prev && b.k !== "result" && prev.k !== "result";
     // 이 문장과 앞 문장이 각각 어느 편으로 기운 국면인가(요청: 전황이 굉장히 중요하다).
     // 0은 어느 쪽도 아니라는 뜻이라, 그런 문장 앞뒤는 반전으로 잇지 않는다.
@@ -2556,7 +2567,7 @@ function renderLines(
     // 문장을 나눈다(지적). 시점을 모르는 문장(맺음말 등)은 이 조건에서 뺀다.
     // 시점을 모르는 문장(경기 전체를 두고 하는 말 — 총 생산량 등)은 앞말에 붙여도
     // 시간이 어긋날 일이 없으므로 '가까운 것'으로 친다.
-    const closeEnough = gapSec === null || gapSec <= JOIN_MAX_SEC;
+    const closeEnough = gapSec === null || gapSec <= joinMax;
     const sameTide = tide !== 0 && tide === prevTide;
     // 앞뒤가 같은 종류의 일이면(양쪽이 서로 견제를 주고받은 것처럼) 시간이 좀 벌어져도
     // 한 문장으로 묶는 편이 낫다(요청) — 같은 이야기를 두 문장으로 끊어 놓고 "그렇지만"을
@@ -2636,7 +2647,7 @@ function renderLines(
       if (!(lastSubject === subject && prevLedBy(lastBaseWho) && chainCount < MAX_CHAIN)) {
         who = `${link(["그 기세로", "여세를 몰아", "그 기세를 이어간"])} ${who}`;
       }
-    } else if (linkable && gapSec !== null && gapSec <= SAME_TIME_SEC) {
+    } else if (linkable && gapSec !== null && gapSec <= sameTimeMax) {
       // 주어가 다른데도 절반 확률로 이어 붙이던 자리를 껐다(요청: 최대한 나눠서 스냅으로) —
       // 서로 다른 사람의 서로 다른 장면이 한 스냅에 묶이면 미니맵 화살표도 겹쳐 그려진다.
       if (flipped) {

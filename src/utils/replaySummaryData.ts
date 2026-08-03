@@ -90,6 +90,39 @@ export interface ReplaySummaryData {
   beats: ReplaySummaryBeat[];
 }
 
+/* ── 사건을 '같은 때'로 묶는 창 ────────────────────────────────────────────────
+   요청: 타임 윈도우를 경기 전반에 똑같이 두지 말고 초반엔 자잘하게, 후반으로 갈수록 크게.
+
+   실측(172판)이 그 필요를 확인해 줬는데, 이유는 예상과 달랐다. 한 교전이 이어진 길이는
+   경기 내내 거의 그대로였다(중앙값 47초 → 55초). 달라지는 것은 '장면과 장면 사이'다 —
+   같은 자리에서 다음 교전이 다시 벌어지기까지 걸린 시간의 하위 25%가
+
+       0~5분 35초 · 5~10분 57초 · 10~15분 68초 · 15~20분 79초 · 20분 이후 86초
+
+   였다. 즉 초반에는 40~90초짜리 고정 창이 '다음 장면'까지 삼키고(서로 다른 일이 한
+   문장으로 묶인다), 후반에는 한 장면이 여러 문장으로 쪼개진다.
+
+   그래서 배율은 위 수치를 그대로 따라간다(5~10분을 1로 놓은 비율 0.61 / 1.0 / 1.19 /
+   1.39 / 1.51). 5분에 0.75, 10분에 1.1, 20분 이후 1.5로 완만하게 오르고 양끝을 묶는다.
+
+   이 배율은 '이야기를 묶는 창'에만 쓴다. 교전 자체를 찾는 창(replayTactics의
+   FIGHT_WINDOW_SEC, replaySummary의 CLASH_WINDOW_FRAMES, 리콜을 한 수로 묶는
+   RECALL_SAME_SEC)은 위 실측대로 교전 길이가 시간대와 무관하므로 고정이고, 러시·패스트
+   테크처럼 시각 자체가 정의인 문턱도 물론 고정이다. */
+export function scenePace(sec: number): number {
+  return Math.min(1.5, Math.max(0.6, 0.55 + sec / (15 * 60)));
+}
+
+/** 그 프레임 무렵에 '같은 때'로 볼 창(초) — base는 중반(5~10분) 기준값이다.
+ *  시각을 모르는 beat는 배율 없이 기준값 그대로 쓴다. */
+export function sceneWindowSec(base: number, frame: number | null | undefined): number {
+  if (typeof frame !== "number") return base;
+  return base * scenePace(frame * SECONDS_PER_FRAME);
+}
+
+/** 1 프레임 = 0.042초(replayParser와 같은 상수). */
+const SECONDS_PER_FRAME = 0.042;
+
 /** 서버에서 받은 값이 우리가 아는 형식인지 — JSON 컬럼이라 무엇이든 들어올 수 있다. */
 export function isReplaySummaryData(v: unknown): v is ReplaySummaryData {
   if (!v || typeof v !== "object") return false;

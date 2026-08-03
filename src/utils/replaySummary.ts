@@ -9,7 +9,10 @@ import {
 import {
   eliminatedFrame, fellFrame, productionCollapse, productionDips, revivalFrame, surgeSpanMin,
 } from "./replayFell";
-import { REPLAY_SUMMARY_VERSION, type ReplaySummaryBeat, type ReplaySummaryData } from "./replaySummaryData";
+import {
+  REPLAY_SUMMARY_VERSION, sceneWindowSec,
+  type ReplaySummaryBeat, type ReplaySummaryData,
+} from "./replaySummaryData";
 import {
   DEFENSE_KO, EXPANSION_KO, PRODUCTION_KO, SPECTACLE_UNITS, SUPPORT_UNITS, UNIT_KO, UNIT_ROLE,
   renderReplaySummary,
@@ -726,6 +729,8 @@ function tacticParam(key: string, p: Record<string, unknown> | undefined): strin
 
 // 같은 사람이 이 안에서 여러 번 얻어맞았으면 한 순간으로 본다.
 // 스타는 호흡이 빠른 게임이라 창을 넉넉히 잡으면 서로 먼 일이 한 순간으로 묶인다(지적).
+// 아래 두 값은 '중반(5~10분)' 기준이고, 실제로 쓸 때는 그 시각의 배율을 곱한다
+// (sceneWindowSec — 초반엔 좁게, 후반엔 넓게. 요청).
 const RAID_MERGE_SEC = 90;
 
 // 같은 편 이야기를 붙여 읽어도 될 만큼 '거의 같은 때'로 보는 간격. 이걸 넘으면 시간이 먼저다(지적).
@@ -741,7 +746,8 @@ function mergeRaids(list: Beat[]): Beat[] {
   for (const b of [...raids].sort((x, y) => (x.at ?? 0) - (y.at ?? 0))) {
     const g = groups.find((x) =>
       x[0].whom?.[0] === b.whom?.[0]
-      && Math.abs((x[0].at ?? 0) - (b.at ?? 0)) * SECONDS_PER_FRAME <= RAID_MERGE_SEC);
+      && Math.abs((x[0].at ?? 0) - (b.at ?? 0)) * SECONDS_PER_FRAME
+        <= sceneWindowSec(RAID_MERGE_SEC, x[0].at));
     if (g) g.push(b); else groups.push([b]);
   }
   const merged = groups.map((g) => {
@@ -781,7 +787,8 @@ function mergeDuelRush(list: Beat[]): Beat[] {
         !used.has(x) && x.who[0] === victim && String(x.p?.k ?? "") === key
         // 같은 이름의 수여야 한 문장으로 묶을 수 있다 — 3게이트와 4게이트는 다른 수다.
         && tacticParam(key, x.p) === tacticParam(key, r.p)
-        && Math.abs((x.at ?? 0) - (r.at ?? 0)) * SECONDS_PER_FRAME <= RAID_MERGE_SEC,
+        && Math.abs((x.at ?? 0) - (r.at ?? 0)) * SECONDS_PER_FRAME
+          <= sceneWindowSec(RAID_MERGE_SEC, r.at),
     );
     if (!bk) continue;
     used.add(bk);
@@ -3087,7 +3094,8 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     const after = chosen[i + 1];
     if (before.won === cut.won || before.won !== after.won) continue;
     if (typeof before.at !== "number" || typeof after.at !== "number") continue;
-    if (Math.abs(after.at - before.at) * SECONDS_PER_FRAME > CLUSTER_SEC) continue;
+    if (Math.abs(after.at - before.at) * SECONDS_PER_FRAME
+      > sceneWindowSec(CLUSTER_SEC, before.at)) continue;
     chosen[i] = after;
     chosen[i + 1] = cut;
   }
@@ -3105,7 +3113,8 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
       if (!(act.who ?? []).some((w) => victims.includes(w))) continue;
       if ((act.whom ?? []).some((w) => (hit.who ?? []).includes(w))) continue; // 맞받아친 것
       if (typeof hit.at !== "number" || typeof act.at !== "number") continue;
-      if (Math.abs(hit.at - act.at) * SECONDS_PER_FRAME > RAID_MERGE_SEC) continue;
+      if (Math.abs(hit.at - act.at) * SECONDS_PER_FRAME
+        > sceneWindowSec(RAID_MERGE_SEC, hit.at)) continue;
       chosen[i] = act;
       chosen[i + 1] = hit;
       moved = true;
