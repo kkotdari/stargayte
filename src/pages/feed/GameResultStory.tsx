@@ -140,7 +140,13 @@ const HOME_BEAT_KEYS = new Set([
  *  통째로 뒤집히기 때문이다(그림은 whom을 '당한 사람'으로 읽는다). 이 문장들에서는
  *  by가 공격자이고, 화살표는 by의 집에서 who의 집으로 간다(지적: 태섭이 공격한 건데
  *  화살표가 없고 태섭 얼굴이 당황한 표정이었다). */
-const BY_ATTACKER_KEYS = new Set(["fallen", "greedy-punished"]);
+const BY_ATTACKER_KEYS = new Set([
+  "fallen", "greedy-punished",
+  /* 이사도 여기다(요청: 터를 옮긴 경우 "누구의 공격에 밀려"라는 내용이 있으면 그 내용도
+     액션으로 담겨야 한다) — 자막은 민 사람의 이름을 부르는데 그림에는 이삿짐 화살표만
+     있어 '누가 밀었나'가 통째로 빠져 있었다. */
+  "relocate",
+]);
 
 /** 병력 규모 → 화살표 기둥 굵기(요청: 병력 규모에 따라 화살표 두께도 다르게).
  *
@@ -604,7 +610,10 @@ export default function GameResultStory({
       // 실으면 '이 사람이 당했다'가 뒤집힌다) — 그래서 여기서 따로 잡는다. 목표는 당한
       // 사람(who[0])의 집이다.
       if (BY_ATTACKER_KEYS.has(b.k) && b.p?.by === raw) {
-        const victimHome = hubOf((b.who ?? [])[0] ?? "");
+        const victim = (b.who ?? [])[0] ?? "";
+        /* 이사는 '옮기기 전 집'이 두들겨 맞은 자리다 — 지금 집(hubOf)은 밀려나서 새로
+           편 살림이라, 그리로 화살표를 그으면 아직 벌어지지도 않은 일을 가리킨다. */
+        const victimHome = (b.k === "relocate" ? movedPair.from.get(victim) : null) ?? hubOf(victim);
         if (victimHome) return victimHome;
       }
       const foe = nearestFoe(raw);
@@ -939,7 +948,10 @@ export default function GameResultStory({
         // 맞붙은 상대의 표시는 그 사람이 쓴 마법이 아니라 '싸웠다'는 것뿐이다 — 스톰을
         // 뿌린 쪽의 이모지를 그 사람에게도 주면 둘이 같은 마법을 쓴 것처럼 읽힌다.
         const em = inFight ? "⚔️"
-          : (b.k === "clash" && (helper.has(raw) || homeDefender.has(raw))) ? "🛡️" : markOf(b);
+          : (b.k === "clash" && (helper.has(raw) || homeDefender.has(raw))) ? "🛡️"
+            /* 민 사람의 화살표에는 그 이야기의 이모지를 그대로 주면 안 된다 — 이사의
+               이모지는 이삿짐차라, 밀어낸 사람 화살표 끝에 트럭이 붙는다. */
+            : (BY_ATTACKER_KEYS.has(b.k) && b.p?.by === raw) ? "💥" : markOf(b);
         /* 팀원을 도우러 간 화살표에는 목에 천사 날개를 단다(요청) — 촉의 방패는 '그 자리에
            방어를 보탰다'는 뜻이고, 날개는 '이 길이 도우러 간 길'이라는 뜻이라 자리가 다르다.
            집주인 자신(homeDefender)은 도우러 간 것이 아니라 제 집을 지킨 것이라 뺀다. */
