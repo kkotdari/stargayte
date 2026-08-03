@@ -16,7 +16,7 @@ import { isComputerSlot } from "../../constants/computerSlot";
 import { isUnregisteredSlot } from "../../constants/unregisteredSlot";
 import { ChallengeCard, ChallengeTimeHeadEdit, challengeSideBadges, challengeStatusInfo } from "../challenge/ChallengeScreen";
 import ReplayReviewModal from "../../modals/ReplayReviewModal";
-import ActivityComments, { latestCommentMs, primeActivityComments } from "./ActivityComments";
+import ActivityComments, { commentStatOf, primeActivityComments } from "./ActivityComments";
 import { primeReplayMaps } from "../../hooks/useReplayMap";
 import ChallengeFormModal from "../../modals/ChallengeFormModal";
 import { scheduledInstantMs, formatWhen, formatAgo, serverMs } from "../../utils/date";
@@ -968,21 +968,26 @@ export default function ActivityScreen() {
     return fresh(it.time) ? "new" : null;
   };
 
-  /** 이 줄에 하루 안에 달린 댓글이 있나(요청) — NEW/UPDATE와 같은 24시간 창이다.
+  /** 이 줄에 댓글이 몇 개 달렸나, 그중 하루 안에 달린 게 있나(요청).
+   *
+   *  내용 칸 옆에 선다 — 댓글은 제목("게임결과")이 아니라 그날 무슨 일이 있었는지에
+   *  붙는 말이라, 그 내용 바로 옆이 제자리다(지적). 없으면 아무것도 안 그린다.
    *
    *  위 rowFlagOf와 나란히 서지만 세는 것이 다르다: 저건 그 건 자체가 새것이냐를 보고,
    *  이건 그 건에 새 말이 붙었느냐를 본다. 사흘 전 경기에 오늘 댓글이 달리면 줄 자체는
    *  아무 딱지도 없는데 볼 것은 생긴 상태라, 그 경우가 딱 이 딱지가 있어야 하는 자리다.
-   *  게임결과 묶음은 그 안 어느 경기에 달렸든 줄에 붙인다 — 접힌 채로는 안이 안 보인다. */
-  const hasNewCommentOf = (it: DisplayItem): boolean => {
+   *  게임결과 묶음은 안의 경기들 것을 다 더한다 — 접힌 채로는 안이 안 보이므로 줄이
+   *  묶음 전체를 대신 말해야 한다. */
+  const commentBadgeOf = (it: DisplayItem): { count: number; fresh: boolean } | null => {
     const now = Date.now();
-    const fresh = (ms: number) => now - ms >= 0 && now - ms <= NEW_WINDOW_MS;
-    if (it.kind === "challenge") return fresh(latestCommentMs("challenge", it.challenge.id));
-    if (it.kind === "rankingShift") return fresh(latestCommentMs("rankingShift", it.shift.id));
-    if (it.kind === "gameResultPost") {
-      return it.items.some((x) => fresh(latestCommentMs("gameResult", x.gameResult.id)));
-    }
-    return fresh(latestCommentMs("gameResult", it.gameResult.id));
+    const isFresh = (ms: number) => now - ms >= 0 && now - ms <= NEW_WINDOW_MS;
+    const stats = it.kind === "challenge" ? [commentStatOf("challenge", it.challenge.id)]
+      : it.kind === "rankingShift" ? [commentStatOf("rankingShift", it.shift.id)]
+        : it.kind === "gameResultPost" ? it.items.map((x) => commentStatOf("gameResult", x.gameResult.id))
+          : [commentStatOf("gameResult", it.gameResult.id)];
+    const count = stats.reduce((sum, s) => sum + s.count, 0);
+    if (count === 0) return null;
+    return { count, fresh: stats.some((s) => isFresh(s.latestMs)) };
   };
 
   const displayFeed = useMemo<DisplayItem[]>(() => {
@@ -1318,7 +1323,7 @@ export default function ActivityScreen() {
               const open = openRowKey === key;
               const closing = closingRowKey === key;
               const flag = rowFlagOf(item);
-              const newComment = hasNewCommentOf(item);
+              const comments = commentBadgeOf(item);
               const no = rowNos.get(key);
               return (
                 <div className={cx("scr-activity-row-wrap", open && "scr-activity-row-wrap-open")} key={key}>
@@ -1342,14 +1347,20 @@ export default function ActivityScreen() {
                           {flag === "new" ? "NEW" : "UPDATE"}
                         </span>
                       )}
-                      {/* 하루 안에 새 댓글이 붙은 건(요청) — 우하단이다. 위 세 딱지(번호·
-                          NEW·UPDATE)와 한 줄에 못 선다: 제목 칸의 글자 자리는 62px인데
-                          "#17"(16) + "UPDATE"(37)만으로 이미 57px을 쓴다(실측). 대신
-                          제목 아래 칸 여백이 비어 있어 거기로 내렸다 — 번호가 좌상단,
-                          NEW/UPDATE가 우상단, 이것이 우하단으로 세 모서리가 갈린다. */}
-                      {newComment && <span className="scr-activity-row-flag-comment">NEW댓글</span>}
                     </span>
-                    <span className="scr-activity-row-desc">{rowDesc(item)}</span>
+                    <span className="scr-activity-row-desc">
+                      {rowDesc(item)}
+                      {/* 댓글 수는 내용 옆이다(요청) — 댓글은 제목이 아니라 그날 무슨 일이
+                          있었는지에 붙는 말이다. 없으면 아예 안 그린다. 하루 안에 새로
+                          달린 게 있으면 그 자리에 NEW를 덧붙인다 — 딱지를 따로 세우지
+                          않는 건, 수와 새것 여부가 같은 것("댓글")에 대한 말이라 떨어져
+                          있으면 둘을 이어 읽어야 하기 때문이다. */}
+                      {comments && (
+                        <span className={cx("scr-activity-row-comment", comments.fresh && "scr-activity-row-comment-fresh")}>
+                          [{comments.count}]{comments.fresh && <b>NEW</b>}
+                        </span>
+                      )}
+                    </span>
                     {/* 얼마나 지났나(요청) — 하루까지는 "N분 전/N시간 전", 일주일까지는
                         "N일 전", 그보다 오래된 것만 날짜. 종류를 안 가리고 한 가지로 적는다
                         (예전에는 너 나와는 날짜만, 랭크 변동은 "12시간 전", 게임결과 묶음은

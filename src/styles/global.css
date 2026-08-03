@@ -7072,19 +7072,24 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    걸려야 하지만 서로는 한눈에 달라야 한다. 다크에서 검정 대비 연두 11.8:1 / 하늘 8.4:1. */
 .scr-activity-row-flag-new { color: var(--new-badge); }
 .scr-activity-row-flag-update { color: var(--update-badge); }
-/* 새 댓글 딱지 — 제목 글자 바로 아래, 오른쪽 끝을 위 딱지와 맞춰 세운다.
-   위 세 딱지와 한 줄에 못 세운 건 폭 때문이다: 제목 칸의 글자 자리는 62px인데
-   "#17"(15.6) + "UPDATE"(37.4) + 사이 간격만으로 이미 57px을 쓴다(실측). 여기에 뭘
-   더 얹으면 옆 칸 구분선을 넘어간다. 제목 아래 칸 여백(17px)은 비어 있으므로 그리로
-   내렸다 — 번호가 좌상단, NEW/UPDATE가 우상단, 이것이 우하단이라 셋이 안 겹친다.
-   다른 둘보다 작게 둔다(요청): 먼저 읽혀야 하는 건 "이 건이 새것인가"이고 댓글은 그
-   뒤에 붙는 소식이라 크기로 순서를 준다. --fs-9 아래로는 토큰이 없어 여기만 8px을
-   직접 쓴다 — 목록 딱지 말고는 이만한 글자를 쓰는 자리가 없다. */
-.scr-activity-row-flag-comment {
-  position: absolute; bottom: 8px; right: 10px;
-  font-size: 8px; font-weight: 800; letter-spacing: 0.02em; line-height: 1;
-  color: var(--comment-badge); white-space: nowrap; pointer-events: none;
+/* 댓글 수 — 내용 칸의 글 바로 뒤다(요청). 제목 칸에 두지 않는 건 붙는 자리가 다르기
+   때문이다: 댓글은 "게임결과"라는 종류가 아니라 그날 무슨 일이 있었는지에 달린 말이다.
+   제목 칸에는 자리도 없다 — 글자 자리 62px 중 "#17"(15.6) + "UPDATE"(37.4)로 이미
+   57px을 쓴다(실측).
+   딱지들보다 작게 둔다(요청): --fs-9 아래로는 토큰이 없어 여기만 8px을 직접 쓴다.
+   flex 항목이라 줄지 않게 못박아 둔다 — 줄어야 하는 건 내용 글자 쪽이다. */
+.scr-activity-row-comment {
+  flex: 0 0 auto; margin-left: 2px;
+  font-size: 8px; font-weight: 700; line-height: 1;
+  color: var(--dim); white-space: nowrap;
 }
+/* 하루 안에 새로 달린 게 있으면 수까지 통째로 색을 올린다 — 수와 새것 여부는 같은 것에
+   대한 말이라 떨어뜨려 놓으면 둘을 이어 읽어야 한다. NEW는 한 번 더 굵게.
+   색은 눈으로 고르지 않고 계산했다(다크 #e0a5d8 검정 대비 10.5 / 라이트 #93438b 흰
+   바탕 대비 6.1). 제목 칸의 NEW 연두·UPDATE 하늘과는 OKLab ΔE 25.6 / 13.3이라 한 줄에
+   나란히 떠도 갈린다. */
+.scr-activity-row-comment-fresh { color: var(--comment-badge); }
+.scr-activity-row-comment-fresh b { font-weight: 800; margin-left: 1px; }
 /* 내용은 한 줄로 끝난다 — 넘치면 말줄임이다. 여기서 두 줄이 되면 줄 높이가 흔들려
    목록의 리듬이 깨진다. */
 /* 바탕은 흐린 색이다(요청) — 이 칸의 글자 대부분("외 / 명 / 변동 / 경기")은 줄마다 똑같이

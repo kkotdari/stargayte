@@ -307,15 +307,18 @@ const primed = new Map<string, ActivityComment[]>();
 let primedOnce = false;
 const keyOf = (t: ActivityTargetType, id: number) => `${t}:${id}`;
 
-/** 이 대상에 가장 최근 달린 댓글 시각(ms) — 없으면 NaN. 목록 줄의 '새 댓글' 딱지가 쓴다.
+/** 이 대상에 달린 댓글 수와 가장 최근 시각(ms) — 목록 줄의 [n] 딱지가 쓴다.
+ *  댓글이 없으면 {수: 0, 마지막: NaN}이라 딱지 자체가 안 붙는다.
  *
  *  목록과 함께 미리 받아 둔 것(primed)만 본다. 줄마다 따로 부르면 화면에 뜬 줄 수만큼
  *  요청이 나가는데, 딱지 하나 때문에 그럴 일은 아니다 — 미리받기가 실패했으면 그냥
  *  딱지가 안 붙는다. */
-export function latestCommentMs(targetType: ActivityTargetType, targetId: number): number {
+export function commentStatOf(
+  targetType: ActivityTargetType, targetId: number,
+): { count: number; latestMs: number } {
   const list = primed.get(keyOf(targetType, targetId));
-  if (!list || list.length === 0) return NaN;
-  return Math.max(...list.map((c) => serverMs(c.createdAt)));
+  if (!list || list.length === 0) return { count: 0, latestMs: NaN };
+  return { count: list.length, latestMs: Math.max(...list.map((c) => serverMs(c.createdAt))) };
 }
 
 export async function primeActivityComments(): Promise<void> {
