@@ -837,6 +837,11 @@ export default function GameResultStory({
     const ALLY_HELP_KEYS = new Set(["ally-help", "ally-cannon"]);
     const HELPER_FACE = "😇";
     const HELPED_FACE = "🥹";
+    /* 타이밍을 흘려보낸 스냅(idle-lead) — 병력을 쌓아 두고도 안 들어간 쪽에는 자는 얼굴을,
+       그 사이 살림을 편 쪽에는 열심인 얼굴을 준다(요청). 이 스냅은 화살표가 없는 이야기라
+       (아무도 어디로 가지 않았다) 아바타 얼굴이 유일한 그림이다. */
+    const IDLE_FACE = "😴";
+    const BUSY_FACE = "💪";
     const severe = new Set<string>();
     const moderate = new Set<string>();
     const defended = new Set<string>();
@@ -844,6 +849,9 @@ export default function GameResultStory({
     const attacker = new Set<string>();
     const helper = new Set<string>();
     const helped = new Set<string>();
+    /** 타이밍을 놓친 쪽 / 그 사이 발전한 쪽(위 IDLE_FACE·BUSY_FACE). */
+    const idling = new Set<string>();
+    const busy = new Set<string>();
     /** 제 기지가 싸움터가 된 사람 — 그 자리에 얹는 표시는 공격(💥)이 아니라 방어(🛡️)다.
      *  때린 쪽 화살표가 이미 그 자리에 💥를 찍으므로, 집주인에게도 💥를 주면 같은 자리에
      *  같은 표시가 둘 겹친다. */
@@ -871,6 +879,13 @@ export default function GameResultStory({
         const helpedRaw = b.k === "ally-help" ? (b.whom ?? [])
           : Array.isArray(b.who2) ? b.who2 : typeof b.who2 === "string" ? [b.who2] : [];
         helpedRaw.forEach((r) => helped.add(r));
+      }
+      /* 타이밍 놓침 — 주어(who)가 쌓아 두고도 안 들어간 쪽이고, whom이 그 사이 멀티를
+         늘린 쪽이다(replaySummary의 idleLead). 당한/때린 이야기가 아니라서 아래 표들에는
+         안 걸린다 — 여기서 따로 잡는다. */
+      if (b.k === "idle-lead") {
+        who.forEach((r) => idling.add(r));
+        (b.whom ?? []).forEach((r) => busy.add(r));
       }
       if (SEVERE_SUBJECT_KEYS.has(b.k)) who.forEach((r) => severe.add(r));
       if (SEVERE_VICTIM_KEYS.has(b.k)) victims.forEach((r) => severe.add(r));
@@ -1109,6 +1124,10 @@ export default function GameResultStory({
       // 도우러 간 것이 더 구체적이고 뚜렷한 사실이라 그쪽을 우선한다.
       if (helper.has(s.raw)) { faces.set(s.raw, HELPER_FACE); continue; }
       if (attacker.has(s.raw)) { faces.set(s.raw, ATTACK_FACE); continue; }
+      /* 타이밍 이야기는 맨 뒤에 본다(요청) — 같은 스냅에 다른 일이 겹쳐 있으면 그쪽이
+         더 구체적인 사실이다. 흘려보낸 쪽은 자는 얼굴, 그 사이 살림을 편 쪽은 열심인 얼굴. */
+      if (idling.has(s.raw)) { faces.set(s.raw, IDLE_FACE); continue; }
+      if (busy.has(s.raw)) { faces.set(s.raw, BUSY_FACE); continue; }
     }
     return { arrows, marks, markSpots: markSpot, faces };
   }, [gameResult.summaryData, sentences, index, slots, grid, moved, movedPair]);
