@@ -199,7 +199,11 @@ function NoteComposer({
       <div className="scr-comment-input-wrap">
         <div
           className="scr-input scr-comment-editor"
-          onClick={() => {
+          /* 인풋을 감싼 테두리(패딩 자리)를 눌렀을 때만 포커스를 넘겨준다 — 예전엔 인풋
+             자체를 눌러도 이 핸들러가 같이 돌아(버블링) 커서를 늘 맨 끝으로 되돌려 놨다.
+             글 중간을 짚을 수도, 드래그로 고를 수도 없었다(지적: 커서 이동이 안 된다). */
+          onClick={(e) => {
+            if (e.target !== e.currentTarget) return;
             const el = inputRef.current;
             if (!el) return;
             el.focus();

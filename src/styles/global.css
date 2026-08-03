@@ -7881,7 +7881,11 @@ html.scr-light-theme .scr-feed-add-fab {
    transition 값이 쓰이므로, typing이 붙을 땐 none, 떨어질 땐 기본값이 적용된다. */
 .scr-comment-sheet { transition: padding-bottom 220ms cubic-bezier(0.32, 0.72, 0, 1); }
 .scr-comment-sheet-typing {
-  padding-bottom: 8px;
+  /* 8px까지 내렸다가 18px로 되돌린다(지적: 인풋을 누르면 아래 여백이 없어진다) — 걷어낼
+     것은 키보드가 이미 덮고 있는 두 가지(사파리 주소창 알약·홈 인디케이터)뿐이고, 어느
+     기기에서나 두는 기본 여백까지 걷을 이유는 없었다. 8px에서는 입력줄이 화면 바닥에 붙어
+     잘린 것처럼 보였고, 키보드가 아직 안 올라온 순간에는 그 모습이 그대로 드러난다. */
+  padding-bottom: 18px;
   transition: none;
 }
 /* 전체화면으로 바꿔도 키보드가 올라오면 그 아래로 뒷페이지가 드러났다(지적, 재발) —
