@@ -45,7 +45,7 @@ const MEDALS = ["🥇", "🥈", "🥉"];
 
 const EMPTY_STATS: MemberStats = {
   plays: 0, wins: 0, losses: 0, draws: 0, winRate: 0,
-  avgApm: null, avgEapm: null, avgCmd: null, avgEcmd: null, avgBuild: null,
+  avgApm: null, avgEapm: null, avgCmd: null, avgEcmd: null, avgBuild: null, buildMix: null, avgWorker5: null,
 };
 
 type StatSortKey = "name" | "rank" | "points" | "rate" | "plays" | "build" | "apm" | "cmd";
@@ -607,7 +607,12 @@ export default function StatsScreenV2() {
                 <SortableHead label="승률" sortKey="rate" sort={sort} onToggle={toggleSort} />
                 <SortableHead
                   label="생산" sortKey="build" sort={sort} onToggle={toggleSort}
-                  tooltip="경기당 평균 '생산' — 유닛·건물을 얼마나 뽑고 지었나의 어림 지표."
+                  tooltip={"경기당 평균 '생산' — 유닛·건물을 얼마나 뽑고 지었나의 어림 지표예요.\n\n"
+                    + "그 아래 도넛 셋은 그 총량이 무엇으로 채워졌나예요. 건물은 생산(테크·확장 포함)과 방어로, "
+                    + "병력은 기본·고급·마법으로, 지형은 지상과 공중으로 나눠요. 도넛에 손을 올리면 실제 수치가 나와요.\n\n"
+                    + "맨 아래는 경기당 초반(5분) 일꾼 수예요.\n\n"
+                    + "기간 안의 경기를 통째로 더해서 비율을 내요 — 경기마다 비율을 내서 평균 내면 3분짜리 판 한 번이 "
+                    + "그림을 통째로 흔들거든요. 리플레이로 등록한 경기만 들어가요."}
                 />
                 <SortableHead
                   label="APM" sortKey="apm" sort={sort} onToggle={toggleSort}

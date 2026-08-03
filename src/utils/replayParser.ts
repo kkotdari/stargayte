@@ -5,6 +5,7 @@
 // 중단됐지만(→ screp-ts) 그건 Go 바이너리를 Node에서 실행하는 CLI 래퍼라 브라우저에서 못
 // 쓴다 — 그래서 이 앱은 계속 screp-js를 쓴다.
 import { fmt } from "./date";
+import { buildMixOf, type BuildMix } from "./replayBuildMix";
 import {
   normalizeUpgradeName, CAST_ORDER_TO_TECH, USE_CMD_TO_TECH, PLACE_MINE_ORDER,
   CAST_ORDER_TO_UNIT, USE_CMD_TO_UNIT,
@@ -37,6 +38,9 @@ export interface ParsedReplayPlayer {
   // 정확한 유닛 수가 아님을 유의: 저그 라바 여러 마리를 한 번에 변태시키면 커맨드는 1개라
   // 실제 생산량보다 적게 세질 수 있다(어림 지표).
   buildCount: number | null;
+  /** 그 '생산'을 갈래별로 나눈 값(replayBuildMix.ts) — 건물 생산/방어, 병력 기본/고급/마법,
+   *  지상/공중, 초반 일꾼 수. 커맨드 스트림을 못 읽은 리플레이면 null. */
+  buildMix: BuildMix | null;
   // 리플레이 슬롯 타입이 "Computer"(AI)인 참가자 — 배틀태그가 있을 리 없으니 회원 매칭을
   // 아예 시도하지 않고 컴퓨터 슬롯으로 바로 채운다.
   isComputer: boolean;
@@ -936,6 +940,8 @@ export async function parseReplayFile(file: File): Promise<ParsedReplay> {
         cmdCount: desc?.CmdCount ?? null,
         effectiveCmdCount: desc?.EffectiveCmdCount ?? null,
         buildCount: buildCountOf(p.ID),
+        // 그 총량을 갈래별로 나눈 값(요청: 통계 생산 칸의 도넛 셋 + 초반 일꾼 수).
+        buildMix: buildMixOf(signalsOf(p.ID)),
         isComputer: p.Type?.Name === "Computer",
         startX: startTileOf(p.SlotID)?.x ?? null,
         startY: startTileOf(p.SlotID)?.y ?? null,

@@ -3,6 +3,7 @@ import Avatar from "../../components/common/Avatar";
 import PhotoViewer from "../../components/common/PhotoViewer";
 import StatBar from "../../components/common/StatBar";
 import ValueBar from "../../components/common/ValueBar";
+import DonutChart from "../../components/common/DonutChart";
 import { useAppStore } from "../../store/appStore";
 import type { Member, MemberStats } from "../../types";
 
@@ -124,6 +125,38 @@ export default function MemberStatRow({
       </div>
       <div className="scr-stat-build-cell">
         <ValueBar value={stats.avgBuild} maxValue={maxBuild} medal={medals?.build} />
+        {/* 총량 옆에 '무엇으로 그 총량이 됐나'를 함께 놓는다(요청: 도넛 셋 + 초반 일꾼).
+            구성이 실린 경기가 하나도 없거나 표본이 모자라면 이 아래는 통째로 안 그린다 —
+            빈 도넛 셋이 서 있는 것보다 총량만 있는 편이 정직하다. */}
+        {stats.buildMix && (
+          <div className="scr-stat-mix">
+            <DonutChart
+              title="건물"
+              slices={[
+                { label: "생산", value: stats.buildMix.bProd },
+                { label: "방어", value: stats.buildMix.bDef },
+              ]}
+            />
+            <DonutChart
+              title="병력"
+              slices={[
+                { label: "기본", value: stats.buildMix.uBasic },
+                { label: "고급", value: stats.buildMix.uAdv },
+                { label: "마법", value: stats.buildMix.uCaster },
+              ]}
+            />
+            <DonutChart
+              title="지형"
+              slices={[
+                { label: "지상", value: stats.buildMix.uGround },
+                { label: "공중", value: stats.buildMix.uAir },
+              ]}
+            />
+          </div>
+        )}
+        {stats.avgWorker5 !== null && (
+          <span className="scr-stat-worker5">초반 일꾼 {stats.avgWorker5}</span>
+        )}
       </div>
       <div className="scr-stat-apm-cell">
         <ValueBar value={stats.avgApm} maxValue={maxApm} medal={medals?.apm} />

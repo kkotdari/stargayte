@@ -1,3 +1,4 @@
+import type { BuildMix } from "../utils/replayBuildMix";
 import type { ReplaySummaryData } from "../utils/replaySummaryData";
 import type { ReplayMapGrid } from "../utils/replayParser";
 
@@ -110,6 +111,10 @@ export interface GameResultSlot {
   // 커맨드 스트림에서 센 '생산' 지표(유닛 훈련+건물 건설+변태 커맨드 수). 커맨드 스트림을
   // 못 읽은 리플레이/수동 등록은 null.
   buildCount: number | null;
+  /** 그 '생산'의 구성(replayBuildMix.ts) — 건물 생산/방어, 병력 기본/고급/마법, 지상/공중,
+   *  초반 일꾼 수. 총량만으로는 "많이 했다"까지밖에 못 말해서 갈래를 따로 싣는다(요청).
+   *  리플레이 없이 등록한 경기와 이 값이 생기기 전 경기는 null이다. */
+  buildMix: BuildMix | null;
 }
 
 // 리플레이(.rep). 서버는 별도 replays 테이블에 풀 메타데이터로 저장하고 경기는 그 id로
@@ -255,6 +260,11 @@ export interface MemberStats {
   avgEcmd: number | null;
   // 경기당 평균 '생산'(유닛 훈련+건물 건설+변태 커맨드 수). 리플레이 등록 경기만 반영, 없으면 null.
   avgBuild: number | null;
+  /** 그 기간 경기들의 생산 구성 합계(replayBuildMix.ts) — 도넛 셋을 그리는 값이다.
+   *  구성이 실린 경기가 하나도 없거나 표본이 모자라면 null. */
+  buildMix: BuildMix | null;
+  /** 경기당 초반(5분) 일꾼 수(요청). 위와 같은 조건에서 null. */
+  avgWorker5: number | null;
 }
 
 // 서버 집계(GET /api/game-results/stats) 응답 — 통계/랭킹 화면이 매치 원본을 직접 스캔하지 않고

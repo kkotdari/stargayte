@@ -1,4 +1,5 @@
 import { todayStr } from "./date";
+import type { BuildMix } from "./replayBuildMix";
 import { parseReplayFile, ReplayParseError } from "./replayParser";
 import type { ReplayMapGrid } from "./replayParser";
 import { matchReplayPlayerToMember } from "./replayMemberMatch";
@@ -17,6 +18,8 @@ export interface UnmatchedPlayer {
   cmdCount: number | null;
   effectiveCmdCount: number | null;
   buildCount: number | null;
+  /** 생산 구성(replayBuildMix.ts) — 회원으로 이어 붙일 때 그대로 넘어간다. */
+  buildMix: BuildMix | null;
 }
 
 export interface ReplayDraft {
@@ -92,7 +95,7 @@ async function buildDraft(file: File, members: Member[]): Promise<ReplayDraft> {
         if (p.isComputer) {
           rows.push({
             memberId: newComputerSlotId(), race: p.race, rawName: p.rawName,
-            apm: p.apm, eapm: p.eapm, cmdCount: p.cmdCount, effectiveCmdCount: p.effectiveCmdCount, buildCount: p.buildCount,
+            apm: p.apm, eapm: p.eapm, cmdCount: p.cmdCount, effectiveCmdCount: p.effectiveCmdCount, buildCount: p.buildCount, buildMix: p.buildMix,
           });
           return;
         }
@@ -103,12 +106,12 @@ async function buildDraft(file: File, members: Member[]): Promise<ReplayDraft> {
             // 회원으로 매칭돼도 리플레이 원본 게임 아이디(rawName)는 그대로 들고 간다 —
             // member.battletag는 나중에 바뀔 수 있어 이 값이 이 경기 시점의 유일한 증거다.
             memberId: member.id, race: p.race, rawName: p.rawName,
-            apm: p.apm, eapm: p.eapm, cmdCount: p.cmdCount, effectiveCmdCount: p.effectiveCmdCount, buildCount: p.buildCount,
+            apm: p.apm, eapm: p.eapm, cmdCount: p.cmdCount, effectiveCmdCount: p.effectiveCmdCount, buildCount: p.buildCount, buildMix: p.buildMix,
           });
         } else {
           unmatched.push({
             rawName: p.rawName, race: p.race,
-            apm: p.apm, eapm: p.eapm, cmdCount: p.cmdCount, effectiveCmdCount: p.effectiveCmdCount, buildCount: p.buildCount,
+            apm: p.apm, eapm: p.eapm, cmdCount: p.cmdCount, effectiveCmdCount: p.effectiveCmdCount, buildCount: p.buildCount, buildMix: p.buildMix,
           });
         }
       });
@@ -182,7 +185,7 @@ export function resolveUnmatchedAsUnregistered(d: ReplayDraft): ReplayDraft {
   if (d.unmatchedTeam1.length === 0 && d.unmatchedTeam2.length === 0) return d;
   const toSlot = (p: UnmatchedPlayer): GameResultSlot => ({
     memberId: newUnregisteredSlotId(), rawName: p.rawName,
-    race: p.race, apm: p.apm, eapm: p.eapm, cmdCount: p.cmdCount, effectiveCmdCount: p.effectiveCmdCount, buildCount: p.buildCount,
+    race: p.race, apm: p.apm, eapm: p.eapm, cmdCount: p.cmdCount, effectiveCmdCount: p.effectiveCmdCount, buildCount: p.buildCount, buildMix: p.buildMix,
   });
   return {
     ...d,
@@ -253,7 +256,7 @@ async function applyKnownClassifications(drafts: ReplayDraft[]): Promise<ReplayD
       if (!kind) { unmatched.push(p); return; }
       rows.push({
         memberId: kind === "computer" ? newComputerSlotId() : newUnregisteredSlotId(), rawName: p.rawName,
-        race: p.race, apm: p.apm, eapm: p.eapm, cmdCount: p.cmdCount, effectiveCmdCount: p.effectiveCmdCount, buildCount: p.buildCount,
+        race: p.race, apm: p.apm, eapm: p.eapm, cmdCount: p.cmdCount, effectiveCmdCount: p.effectiveCmdCount, buildCount: p.buildCount, buildMix: p.buildMix,
       });
     });
     return { rows, unmatched };
@@ -310,12 +313,12 @@ function draftToMergePayload(d: ReplayDraft, gameStartedAt: string) {
   const fromSlots = [...d.team1, ...d.team2].map((s) => ({
     playerName: s.rawName ?? "",
     race: s.race || null, apm: s.apm, eapm: s.eapm, cmdCount: s.cmdCount,
-    effectiveCmdCount: s.effectiveCmdCount, buildCount: s.buildCount,
+    effectiveCmdCount: s.effectiveCmdCount, buildCount: s.buildCount, buildMix: s.buildMix,
   }));
   const fromUnmatched = [...d.unmatchedTeam1, ...d.unmatchedTeam2].map((p) => ({
     playerName: p.rawName,
     race: p.race || null, apm: p.apm, eapm: p.eapm, cmdCount: p.cmdCount,
-    effectiveCmdCount: p.effectiveCmdCount, buildCount: p.buildCount,
+    effectiveCmdCount: p.effectiveCmdCount, buildCount: p.buildCount, buildMix: p.buildMix,
   }));
   return {
     gameStartedAt,
