@@ -23,10 +23,8 @@ const MAX_OWN_TEAM = 3;
 interface ChallengeFormModalProps {
   onClose: () => void;
   onCreated: (challenge: Challenge) => void;
-  // 너 나와! 신청 "들어주기"로 열 때 — 요청 작성자를 상대로 미리 채워 넣는다.
+  // 랭킹 목록의 종이비행기 버튼처럼 특정 상대로 열 때 — 그 사람을 상대로 미리 채워 넣는다.
   presetTargetIds?: string[];
-  // 너 나와! 신청 "들어주기"로 만드는 도전장이면 true — 서버가 "요청너 나와" 표식을 남긴다.
-  fromMatchRequest?: boolean;
   // 랭킹 목록의 종이비행기 버튼처럼 "바로 그 상대"로 연 경우 — 상대를 presetTargetIds
   // 그대로 고정해서 더/빼기가 아예 안 되게 하고(요청: "상대팀에도 딱 그 상대만 고정 x
   // 버튼도 없어야되고 추가버튼도 없어야돼"), 팀전 구성("내 팀") 자체를 이 흐름에서는
@@ -37,12 +35,12 @@ interface ChallengeFormModalProps {
 // "너 나와!" 도전장 작성 — 상대 지목(최대 4명)/내 팀(선택, 최대 3명)/일시(선택, 날짜만도
 // 가능)/한마디. 상대가 응답할 때는 이 시간을 바꿀 수 없고 수락/거절만 가능하다 — 거절되면
 // 요청자가 재신청하면서 시간/메모를 고칠 수 있다.
-export default function ChallengeFormModal({ onClose, onCreated, presetTargetIds, fromMatchRequest, lockTarget }: ChallengeFormModalProps) {
+export default function ChallengeFormModal({ onClose, onCreated, presetTargetIds, lockTarget }: ChallengeFormModalProps) {
   useLockBodyScroll();
   const members = useAppStore((s) => s.members);
   const user = useAppStore((s) => s.user);
 
-  // 너 나와! 신청 들어주기로 열렸으면 그 작성자를 상대로 미리 채운다.
+  // 특정 상대로 열렸으면(랭킹의 종이비행기 등) 그 사람을 상대로 미리 채운다.
   const preset = presetTargetIds ?? [];
   const [targetIds, setTargetIds] = useState<string[]>(preset);
   const [ownTeamIds, setOwnTeamIds] = useState<string[]>([]);
@@ -106,7 +104,6 @@ export default function ChallengeFormModal({ onClose, onCreated, presetTargetIds
         scheduledDate: dateStr || null,
         scheduledTimeNote: dateStr ? noteStr.trim() : "",
         message: message.trim(),
-        fromMatchRequest,
       });
       // 바로 닫지 않고 확인창(카카오 공유)으로 넘어간다.
       setSentChallenge(challenge);

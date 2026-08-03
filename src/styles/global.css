@@ -3020,26 +3020,26 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
 /* 게임번호는 화면에서 감췄다(요청) — 값 자체는 데이터에 그대로 있고, 보여주는 자리만
    없앴다. 등록자는 카드 머리의 시각 옆(.scr-feed-card-by)으로 옮겼다. */
 
-/* 펼침 로우 하단 댓글(메모) 영역 — 게시판 댓글 스타일. 목록·입력창은 "너 나와!"(scr-mreq-*)
-   CSS를 그대로 차용한다(요청). 로우 자체가 클릭 토글이라 이 영역은 stopPropagation으로
-   접힘을 막는다. */
+/* 펼침 로우 하단 댓글(메모) 영역 — 게시판 댓글 스타일. 목록·입력창은 공용 댓글
+   CSS(.scr-comment-*)를 그대로 쓴다. 로우 자체가 클릭 토글이라 이 영역은
+   stopPropagation으로 접힘을 막는다. */
 .scr-feed-notes { margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(var(--overlay-rgb), 0.08); }
 
 .scr-feed-notes-list { margin-bottom: 8px; }
-/* 각 댓글은 상하 여백만(구분선은 옅게) — scr-mreq-item의 카드 톤 대신 콤팩트하게.
+/* 각 댓글은 상하 여백만(구분선은 옅게) — scr-comment-item의 카드 톤 대신 콤팩트하게.
    인스타그램식 레이아웃(요청) — 아바타를 왼쪽 칸에 크게 두고, 닉네임·시각·본문은
-   전부 오른쪽 칸에 쌓는다. 이 <li>는 공용 .scr-mreq-item(뒤쪽 소스, flex-direction:column)도
+   전부 오른쪽 칸에 쌓는다. 이 <li>는 공용 .scr-comment-item(뒤쪽 소스, flex-direction:column)도
    같이 달고 있어 한 클래스짜리로 두면 특이도가 같아 소스 순서상 그 규칙에 진다 — 두
    클래스를 묶어 확실히 이긴다. */
-.scr-mreq-item.scr-feed-note-item { display: flex; flex-direction: row; align-items: flex-start; gap: 12px; padding: 7px 0; }
+.scr-comment-item.scr-feed-note-item { display: flex; flex-direction: row; align-items: flex-start; gap: 12px; padding: 7px 0; }
 .scr-feed-note-item + .scr-feed-note-item { border-top: 1px solid rgba(var(--overlay-rgb), 0.06); }
 /* border-radius:50% !important — 원래 회원 사진(size 기준 각진 정도)이든 닉네임 첫 글자
-   폴백이든 무조건 동그랗게(다른 프사 원형 처리와 같은 규칙, .scr-mreq-item-author-avatar
-   참고). 살짝 아래로 내려 첫 줄(닉네임) 글자 중심과 시각적으로 맞춘다. */
+   폴백이든 무조건 동그랗게(다른 프사 원형 처리와 같은 규칙). 살짝 아래로 내려 첫 줄
+   (닉네임) 글자 중심과 시각적으로 맞춘다. */
 .scr-feed-note-avatar { border-radius: 50% !important; flex-shrink: 0; margin-top: 1px; }
 .scr-feed-note-body { flex: 1; min-width: 0; }
-.scr-feed-note-item .scr-mreq-item-top { margin-bottom: 3px; }
-/* 닉네임(.scr-mreq-item-author-name)과 같은 색(--dim)을 쓰되 더 연하게(지적: 타임스탬프
+.scr-feed-note-item .scr-comment-item-top { margin-bottom: 3px; }
+/* 닉네임(.scr-comment-author-name)과 같은 색(--dim)을 쓰되 더 연하게(지적: 타임스탬프
    색깔 닉네임과 동일하게 약간 연하게) — 이 앱에서 --muted가 --dim보다 오히려 더 진해서
    (다크 테마 기준 0.88 vs 0.68), 그동안 타임스탬프가 닉네임보다 더 또렷해 보였다.
    --dim에 opacity를 얹어 두 테마 모두에서 "닉네임 색조 그대로, 살짝만 더 흐리게"가 되게 한다. */
@@ -3048,10 +3048,10 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
 /* 수정·삭제 버튼을 댓글 내용이 끝나는 자리에(지적: 오른쪽 끝이 아니라 내용이 끝나는
    부분 바로 옆으로) — 텍스트가 담긴 <p> 안에 이어 붙는 인라인 요소라, 글이 짧으면
    글자 바로 뒤에 붙고 길어서 줄이 꽉 차면 마지막 줄로 자연스럽게 넘어간다.
-   .scr-mreq-item-actions(display:flex, 한 클래스라 소스 순서상 이 규칙보다 뒤에 있어
+   .scr-comment-actions(display:flex, 한 클래스라 소스 순서상 이 규칙보다 뒤에 있어
    이겼었다)의 block 성질이 줄바꿈을 강제했다(지적: 아랫줄에 붙는다) — 클래스 두 개짜리
    묶음 선택자로 특이도를 올려 확실히 이기게 한다. */
-.scr-feed-note-actions.scr-mreq-item-actions {
+.scr-feed-note-actions.scr-comment-actions {
   display: inline-flex; align-items: center; gap: 2px;
   margin-left: 3px;
   /* inline-flex 기본 baseline이 상자 아래쪽이라 글자보다 처져 보였다 — middle로 한 번
@@ -3065,22 +3065,22 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
    13→11px로, 버튼 여백도 3→2px로 줄여 본문 글자(micro, 12px) 크기에 맞춘다. */
 .scr-feed-note-actions .scr-feed-note-icon-btn { padding: 2px; }
 /* 메모 영역 전체를 한 스텝 작게(요청) — 목록 텍스트·입력창·버튼 폰트/크기를 함께 줄인다.
-   입력 편집기(scr-mreq-*)는 --field-h를 지역 재정의해 높이만 줄이고, 폰트/칩/버튼은 아래에서
-   개별로 한 스텝 낮춘다. */
+   입력 편집기(.scr-comment-editor)는 --field-h를 지역 재정의해 높이만 줄이고, 폰트·버튼은
+   아래에서 개별로 한 스텝 낮춘다. */
 .scr-feed-notes { --field-h: 30px; }
-.scr-feed-notes .scr-mreq-item-author-name { font-size: var(--fs-micro); }
-.scr-feed-notes .scr-mreq-live-input { font-size: var(--fs-caption); }
-.scr-feed-notes .scr-mreq-submit-btn {
+.scr-feed-notes .scr-comment-author-name { font-size: var(--fs-micro); }
+.scr-feed-notes .scr-comment-input { font-size: var(--fs-caption); }
+.scr-feed-notes .scr-comment-submit-btn {
   flex-basis: 30px; width: 30px; height: 30px;
   min-width: 30px; min-height: 30px; max-width: 30px; max-height: 30px;
   /* 이 버튼은 펼침 영역(.scr-game-result-trow-expand-inner { overflow:hidden })의 맨 아래에
      붙어 있어, 프라이머리솔리드의 바깥 알약 글로우(box-shadow)가 하단 클립 경계에서
-     싹둑 잘려 "베이스라인에서 단절"돼 보였다(지적) — 편집칸(.scr-mreq-editor)과 같은
+     싹둑 잘려 "베이스라인에서 단절"돼 보였다(지적) — 편집칸(.scr-comment-editor)과 같은
      원칙으로 글로우를 inset(안쪽)으로 담아 절대 잘리지 않게 한다. */
   box-shadow: inset 0 0 9px rgba(var(--lit-rgb), 0.4);
 }
 @media (hover: hover) {
-  .scr-feed-notes .scr-mreq-submit-btn:hover { box-shadow: inset 0 0 12px rgba(var(--lit-rgb), 0.55); }
+  .scr-feed-notes .scr-comment-submit-btn:hover { box-shadow: inset 0 0 12px rgba(var(--lit-rgb), 0.55); }
 }
 /* 메모 입력칸 — 너나와의 불투명 흰 박스 대신, 로우 글라스 패널에 녹아드는 반투명 유리로
    (요청: 튀지 않게 최대한 — 반투명 + 아주 옅은 반사광/그림자). --overlay-rgb가 테마별로
@@ -3090,7 +3090,7 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
    (.scr-game-result-trow-expand-inner { overflow:hidden })의 맨 아래·좌우 끝에 붙어 있어서,
    바깥으로 뻗는 box-shadow(드롭섀도/아웃라인 링)를 쓰면 그 효과가 overflow에 잘려 보였다
    (요청: 포커싱 효과가 잘림). inset은 박스 안쪽에만 그려져 절대 잘리지 않는다. */
-.scr-feed-notes .scr-mreq-editor {
+.scr-feed-notes .scr-comment-editor {
   background: rgba(var(--overlay-rgb), 0.06);
   --text: #e7edf2; --muted: rgba(231, 237, 242, 0.5);
   box-shadow:
@@ -3099,25 +3099,25 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
 }
 /* 포커스에도 테두리(1px 링)를 두르지 않는다(요청: 테두리 제거, 그림자와 림으로) —
    윗면 림을 한 단계 밝히고 아래 그림자를 깊게 해서 "눌린 칸"으로 읽히게만 한다. */
-.scr-feed-notes .scr-mreq-editor:focus-within {
+.scr-feed-notes .scr-comment-editor:focus-within {
   background: rgba(var(--overlay-rgb), 0.1);
   box-shadow:
     inset 0 1px 0 rgba(var(--overlay-rgb), 0.22),    /* 윗면 림 */
     inset 0 -4px 10px rgba(0, 0, 0, 0.12);           /* 아래로 깊어지는 그림자 */
 }
-.scr-light-theme .scr-feed-notes .scr-mreq-editor {
+.scr-light-theme .scr-feed-notes .scr-comment-editor {
   /* 다크용 inset 그림자(어두운 윗림 + 아래 그늘)를 그대로 물려받아 흰 배경에서 유독
      어둡고 그림자가 심했다(지적) — 라이트는 흰 필드에 얇은 테두리 하나로 끝낸다. */
   background: rgba(255, 255, 255, 0.92);
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.09);
   --text: #1f2328; --muted: rgba(31, 35, 40, 0.5);
 }
-/* 라이트 테마 포커스 — 너나와 공용의 라이트 포커스 규칙(.scr-light-theme .scr-mreq-editor
+/* 라이트 테마 포커스 — 너나와 공용의 라이트 포커스 규칙(.scr-light-theme .scr-comment-editor
    :focus-within, 바깥으로 나가는 파란 링)이 위 메모 전용 inset 규칙과 특이도가 같으면서
    소스상 더 뒤라 이겨버려, 라이트에서만 바깥 링이 되살아나 펼침영역 overflow에 아래가
    잘렸다(지적된 버그 — "특히 아래부분 특히 라이트"). 특이도를 한 단계 높인 이 규칙으로
    라이트에서도 inset만 쓰게 못박는다. */
-.scr-light-theme .scr-feed-notes .scr-mreq-editor:focus-within {
+.scr-light-theme .scr-feed-notes .scr-comment-editor:focus-within {
   background: #fff;
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18);
 }
@@ -4926,7 +4926,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
    글자 크기는 한 단계 작았다가(요청) 다시 한 단계 키웠다(지적: 다시 1스텝 확대) —
    지금은 닉네임과 같은 크기다. 처음엔 옅은 배경 알약으로 뒀는데(지적: 알약 말고
    말주머니 느낌, 배경은 아예 흰색에 검정 글씨) — 테마와 무관하게 늘 흰 배경 + 검정
-   글자로 고정하고(.scr-mreq-chip과 같은 색), 위쪽에 작은 꼬리를 달아 실제 말풍선처럼
+   글자로 고정하고, 위쪽에 작은 꼬리를 달아 실제 말풍선처럼
    보이게 한다. display:inline-block이라 글자 길이만큼만 배경이 붙는다. */
 .scr-challenge-side-msg {
   /* 그리드 2행(요청: "말풍선은 아래쪽에 위치하는 느낌으로") — 1행(아바타·닉네임)과는
@@ -5018,9 +5018,9 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 /* 너 나와 화면의 유일한 섹션은 위 .scr-screen의 gap이 이미 소제목/토글링크와 간격을 주므로
    추가 margin이 겹치면 상단 여백이 과했다(신고: "진행중목록 소제목 아래 공간 남는거
    제거") — .scr-screen의 형제간 gap(PC 10px)에서 음수 margin으로 상쇄한다. 예전엔
-   ":first-of-type"으로 걸었는데, 그 위 너 나와! 신청 코너(MatchRequestCorner)도 자기
-   루트가 <section>이라 이 섹션이 실제로는 두 번째 section이 되어 그 셀렉터가 전혀
-   먹지 않고 있었다(그래서 여백이 과하게 남았다) — 화면 클래스로 직접 스코프한다. */
+   ":first-of-type"으로 걸었는데, 그때는 위에 섹션이 하나 더 있어(지금은 없어진 신청 코너)
+   이 섹션이 두 번째가 되는 바람에 그 셀렉터가 전혀 안 먹었다 — 화면 클래스로 직접
+   스코프한다. */
 /* 너나와: "너 나와! 목록" 중타이틀. 예전엔 위쪽 "보고싶은 너 나와!" 코너와 크게 떨어뜨리려고
    margin-top:54px를 뒀는데, 그 코너를 숨기면서 그 자리가 빈 공백으로 남았다(신고: "숨긴
    보고싶은 너 나와! 영역 때문에 공백") — 코너가 없으니 위 여백을 줄인다(버튼 줄의 nawa가
@@ -5983,19 +5983,11 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
    밀려 스크롤로도 못 닿지만, auto 마진은 남는 자리가 없으면 그냥 0이 돼 안전하다. */
 .scr-share-body > * { width: 100%; max-width: 460px; margin-block: auto; }
 
-/* ===== 너 나와! 신청 코너 ("너 나와!" 최상단) =====
-   @태그로 최소 2명을 지목하는 공개 요청글 코너. 지목된 사람만 "들어주기"로 도전장을 보낼 수
-   있고, 다른 회원은 추천(엄지척)만 누른다. 정렬은 추천 많은 순 → 먼저 등록순, 페이지당 5개. */
-/* 화이트보드 테마는 폐지(요청) — 아래 도전장 목록 카드(.scr-challenge-card)와 같은 유리
-   패널 톤으로 맞춰 화면 전체의 일관성을 준다. 토큰 재정의 없이 기본 테마 색을 그대로 써서
-   자식(제목/칩/버튼/입력)이 목록 카드와 동일하게 보인다. */
-/* 라이트 테마 — 목록 카드(.scr-light-theme .scr-challenge-card)와 동일한 불투명 유리 톤. */
-.scr-mreq-compose { display: flex; flex-direction: column; gap: 8px; }
 /* 인풋과 확인 버튼을 한 줄에 나란히, 높이도 서로 맞춘다(요청: "지우기 확인을 인풋과
    같은 라인에 배치하고 높이도 일치시킴") — align-items 기본값(stretch)이 두 자식을
    서로의 높이에 맞춰 늘려준다. */
-.scr-mreq-compose-row { display: flex; align-items: stretch; gap: 8px; }
-.scr-mreq-input-wrap { position: relative; flex: 1; min-width: 0; }
+.scr-comment-compose-row { display: flex; align-items: stretch; gap: 8px; }
+.scr-comment-input-wrap { position: relative; flex: 1; min-width: 0; }
 /* 편집창은 검색창(SearchFilterBar)의 유저 태그 칩 입력과 완전히 같은 구조(요청: "검색창의
    소스를 그대로 가져와서") — 확정된 평문/칩 조각은 실제 DOM 요소로 굳어지고, 지금
    타이핑 중인 마지막 조각만 진짜 <input> 하나가 담당한다. contentEditable+execCommand로
@@ -6005,7 +5997,7 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
    문제가 생길 여지가 없다. */
 /* 테두리 대신 위/아래 반사광으로 경계를 준다(요청: "입력칸 테두리 없애고 반사광
    그림자로 해결") — 다른 유리 패널들(.scr-pv-drop 등)과 같은 원칙. */
-.scr-mreq-editor {
+.scr-comment-editor {
   /* height를 100%(부모 stretch에 의존) 대신 고정값으로 못박는다 — 칩(패딩이 있어
      plain input 한 줄보다 살짝 큼)이 있을 때/없을 때 박스 높이가 흔들리던 문제(실제로
      지적받은 문제 — "칩 있을때랑 없을때 높이가 흔들림")를 이렇게 막는다. */
@@ -6015,56 +6007,53 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
   overflow-x: auto; scrollbar-width: none;
   cursor: text;
   border: none;
-  /* 다크 테마에서 패널(.scr-mreq-corner)이 이미 거의 투명한 어두운 유리라, 반투명
-     흰색 입력창은 잘 안 보였다(요청: "다크테마에서 요청하기 입력창 흰색으로
-     변경(글자 검정)") — 불투명 흰 박스 + 어두운 글자로, 다른 일반 입력칸처럼 뚜렷하게
-     구분되게 한다. --text/--muted를 지역적으로 재정의해 안의 칩 텍스트/placeholder도
-     같이 따라온다. */
+  /* 다크 테마의 어두운 유리 배경 위에서는 반투명 흰색 입력창이 잘 안 보였다(지적) —
+     불투명 흰 박스 + 어두운 글자로, 다른 일반 입력칸처럼 뚜렷하게 구분되게 한다.
+     --text/--muted를 지역적으로 재정의해 안의 글자·placeholder도 같이 따라온다. */
   background: #ffffff;
   --text: #1f2328;
   --muted: rgba(31, 35, 40, 0.6);
   /* .scr-input 공용 규칙의 데이터 폰트(D2Coding) 대신 기본 UI 폰트(Pretendard)를 쓴다
-     (요청: "요청 인풋 폰트 데이터펀트 말고 기본 폰트(pretendard) 적용") — 검색창
-     (.scr-search-chip-box)과 같은 방식으로 unset해서 body의 기본 폰트를 물려받는다. */
+     (요청) — 검색창(.scr-search-chip-box)과 같은 방식으로 unset해서 body의 기본 폰트를
+     물려받는다. */
   font-family: unset;
   box-shadow: inset 0 1px 2px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.08);
 }
-.scr-mreq-editor::-webkit-scrollbar { display: none; }
-.scr-mreq-editor:focus-within {
+.scr-comment-editor::-webkit-scrollbar { display: none; }
+.scr-comment-editor:focus-within {
   outline: none;
   box-shadow: inset 0 1px 2px rgba(0,0,0,0.08), 0 0 0 1px rgba(59,130,246,0.35);
 }
-/* 라이트 테마의 패널(.scr-mreq-corner)이 이미 반투명 흰색이라, 인풋도 흰색 반사광만
-   주면 배경과 거의 안 구분됐다(실제로 지적받은 문제 — "라이트 테마에서 요청 인풋창
-   구분이 잘 안됨") — 옅은 회색조로 살짝 꺼진 느낌을 주고, 얇은 테두리 링을 더해 확실히
+/* 라이트 테마는 바탕이 이미 반투명 흰색이라, 인풋도 흰색 반사광만 주면 배경과 거의 안
+   구분됐다(지적) — 옅은 회색조로 살짝 꺼진 느낌을 주고, 얇은 테두리 링을 더해 확실히
    구분되게 한다. */
-.scr-light-theme .scr-mreq-editor {
+.scr-light-theme .scr-comment-editor {
   background: rgba(0, 0, 0, 0.045);
   box-shadow: inset 0 1px 2px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.08);
 }
-.scr-light-theme .scr-mreq-editor:focus-within {
+.scr-light-theme .scr-comment-editor:focus-within {
   box-shadow: inset 0 1px 2px rgba(0,0,0,0.06), 0 0 0 1px rgba(59,130,246,0.35);
 }
 /* 확정된 평문 조각 — 다시 편집은 안 되고 그냥 흘러가는 문장의 일부로 보인다. */
 /* 지금 타이핑 중인 마지막 조각 — 칩들 옆에 이어지는 진짜 인풋(검색창의
    .scr-search-chip-input과 동일 패턴). 테두리/배경은 바깥 박스가 이미 그려주니 여긴
    완전히 투명하게. */
-.scr-mreq-live-input {
+.scr-comment-input {
   flex: 1 0 40px; min-width: 40px; background: transparent; border: none; outline: none;
   color: var(--text); font-family: inherit; font-size: var(--fs-body); padding: 0; line-height: 1;
 }
-.scr-mreq-live-input::placeholder { color: var(--muted); }
+.scr-comment-input::placeholder { color: var(--muted); }
 /* 지우기 — 별도 버튼 대신 인풋 안의 X로(요청). */
-.scr-mreq-clear-btn {
+.scr-comment-clear-btn {
   position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
   display: inline-flex; align-items: center; justify-content: center;
   width: 22px; height: 22px; border-radius: 50%; border: none; cursor: pointer;
   background: transparent; color: var(--muted); padding: 0;
 }
-@media (hover: hover) { .scr-mreq-clear-btn:hover { background: rgba(var(--overlay-rgb), 0.12); color: var(--text); } }
+@media (hover: hover) { .scr-comment-clear-btn:hover { background: rgba(var(--overlay-rgb), 0.12); color: var(--text); } }
 /* 요청 등록 버튼 — 동그란 엔터 아이콘 버튼으로(요청: "요청하기 확인 버튼을 동그란
    엔터아이콘 버튼으로 수정"). */
-.scr-mreq-submit-btn {
+.scr-comment-submit-btn {
   /* 배색은 .scr-btn-primary/.scr-btn-primary-solid가 그대로 맡는다(요청: "버튼 기본색으로
      바꿔주고", "프라이머리 버튼 테마") — 여기서 background/color를 따로 주면 이 규칙이
      스타일시트 뒤쪽에 있어 그 배색을 덮어써버린다. 모양(동그란 아이콘 버튼)만 준다. */
@@ -6077,80 +6066,34 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
   padding: 0; border-radius: 50%; cursor: pointer;
   transition: filter .12s, opacity .12s;
 }
-.scr-mreq-submit-btn:disabled { opacity: 0.4; cursor: default; }
-@media (hover: hover) { .scr-mreq-submit-btn:not(:disabled):hover { filter: brightness(1.08); } }
+.scr-comment-submit-btn:disabled { opacity: 0.4; cursor: default; }
+@media (hover: hover) { .scr-comment-submit-btn:not(:disabled):hover { filter: brightness(1.08); } }
 /* 자동완성 드롭다운은 검색창(SearchFilterBar)의 유저 추천 드롭다운과 같은 요소를
    재사용한다(요청: "드롭다운도 같은 요소를 재사용") — .scr-pv-drop/.scr-pv-opt. 여기선
    아바타를 함께 보여줘야 해서 가로 정렬만 얹는다. */
 /* 유저 멘션/추천 드롭다운(유저 검색·너나와 지목·메모 태그 공용) — .scr-pv-opt의
    데이터폰트 대신 기본 UI 폰트로(요청: 유저 드롭다운은 기본 폰트). */
-.scr-mreq-mention-opt { display: flex; align-items: center; gap: 8px; font-family: var(--font-ui); }
-.scr-mreq-mention-opt .scr-avatar { flex-shrink: 0; border-radius: 50% !important; }
-.scr-mreq-mention-name { font-size: var(--fs-body); font-weight: 600; }
-/* 지목 회원은 문장 안 인라인 유저 칩으로(요청: "칩이 문장 안에 포함", "칩에는 @ 없이 표현").
-   흰 칩에 그림자만 줘서(요청) 흰 보드 위에서도 살짝 떠 보이게 한다. */
-.scr-mreq-chip {
-  display: inline-flex; align-items: center; gap: 3px;
-  /* 래디우스는 완전한 알약보다 살짝 감소(요청: "유저칩 래디우스 살짝 감소시켜줘").
-     패딩도 줄여서 문장에 섞여드는 만큼 "칩" 느낌을 줄인다(요청: "유저칩이 문장에
-     섞이는 만큼 패딩을 좀 줄여서 칩의 느낌을 감소시키기"). */
-  padding: 0 4px; border-radius: 8px;
-  /* 한때 다크 테마만 투명도를 훨씬 높이고 글자를 흰색으로 바꿨었는데(은은한 하이라이트
-     느낌 의도), 정작 입력창(.scr-mreq-editor)이 항상 흰 배경으로 바뀌면서 그 위에 흰
-     글자 칩이 그대로 안 보이는 문제가 생겼다(요청: "요청 인풋에 유저칩 글자색 안보임").
-     테마/자리(입력창·목록)와 무관하게 항상 불투명 흰 배경 + 어두운 글자로 통일한다
-     (요청: "너 나와! 신청 유저칩 다크테마에선 투명 말고 흰색 반전 칩으로 복구", "요청
-     목록에도 유저칩 디자인 통일"). */
-  background: rgba(255, 255, 255, 0.72); color: #24272d;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18), 0 0 1px rgba(0, 0, 0, 0.1);
-  /* 주변 본문(.scr-mreq-item-text)과 글자 크기가 달랐던 게(caption vs body) 세로
-     정렬이 어긋나 보이던 원인이었다(실제로 지적받은 문제 — "유저칩과 일반 텍스트가
-     세로 정렬이 안맞으니 맞춰줘") — 본문과 같은 크기로 맞춘다. */
-  font-size: var(--fs-body); font-weight: 700; white-space: nowrap;
-}
-/* 인라인 칩 — 텍스트 흐름 안에서 세로로 앉는 위치를 잡는다(목록 카드의 읽기용 렌더에서
-   쓴다). middle만으로는 패딩이 있는 칩이 주변 글자보다 살짝 아래로 처져 보였다(실제로
-   지적받은 문제 — "일반 텍스트가 칩보다 좀 위에 있는 느낌") — 위로 살짝 밀어 보정한다. */
-.scr-mreq-chip-inline { vertical-align: middle; position: relative; top: -1px; margin: 0 1px; user-select: none; }
-/* 편집창 안의 칩 — 이제 진짜 DOM 요소라(검색창의 칩과 동일 구조) × 버튼도 실제로
-   클릭해서 지울 수 있다. 백스페이스로 통째로 지우는 것도 여전히 된다(SearchFilterBar와
-   동일한 되돌리기 동작). */
-/* x 버튼이 없어져서(요청: "요청하기 입력에서는 유저칩에 x 버튼 제거") 좌우 패딩을
-   다시 대칭으로. */
-.scr-mreq-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
-/* 요청자+버튼 줄, 메시지 줄 — 세로로 두 단(요청: "요청자와 버튼로우가 한줄에 배치"). */
-.scr-mreq-item {
+.scr-mention-opt { display: flex; align-items: center; gap: 8px; font-family: var(--font-ui); }
+.scr-mention-opt .scr-avatar { flex-shrink: 0; border-radius: 50% !important; }
+.scr-mention-name { font-size: var(--fs-body); font-weight: 600; }
+/* ── 공용 댓글 ── 목록·본문·입력이 전부 여기서 나온다. 댓글이 붙는 자리(경기 로우 아래,
+   피드 카드, 모바일 시트)마다 크기만 자기 문맥에서 덧칠한다. */
+/* 본문 안의 @닉네임 — 세로로 앉는 자리를 잡는다. 배경 있는 칩이던 시절의 보정이 남아
+   있는데(middle + 1px), 지금 쓰는 자리(.scr-feed-card-comment)는 배경을 걷어내고
+   baseline으로 다시 맞춘다. */
+.scr-comment-mention { vertical-align: middle; position: relative; top: -1px; margin: 0 1px; user-select: none; }
+.scr-comment-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+/* 작성자+버튼 줄, 본문 줄 — 세로로 두 단. */
+.scr-comment-item {
   display: flex; flex-direction: column; gap: 4px; padding: 10px 2px;
 }
-.scr-mreq-item + .scr-mreq-item { border-top: 1px solid rgba(var(--divider-tint), 0.3); }
-.scr-mreq-item-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.scr-mreq-item-author { display: flex; align-items: center; gap: 6px; min-width: 0; }
-.scr-mreq-item-author-name { font-size: var(--fs-caption); font-weight: 600; color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* 요청자 프사는 완전한 원으로, 살짝 축소(요청) — Avatar가 size 비례 borderRadius를
-   인라인 style로 직접 주기 때문에 클래스만으로는 못 이겨 !important가 필요하다. */
-.scr-mreq-item-author-avatar { border-radius: 50% !important; }
-.scr-mreq-item-text { margin: 0; font-size: var(--fs-body); color: var(--text); line-height: 1.4; word-break: break-word; }
-/* 성사됨을 추천 왼쪽에(요청) — 세로 스택 대신 가로 한 줄로. */
-.scr-mreq-item-actions { flex-shrink: 0; display: flex; flex-direction: row; align-items: center; gap: 6px; }
-/* 추천(엄지척) 버튼 — 눌렀으면 포인트색으로 채운다. */
-/* 알약 테두리/배경 없이 아이콘+숫자만(요청: "추천버튼 알약 테두리및 배경 제거") —
-   눌렀는지는 색으로만 구분한다. */
-/* 누가 추천했는지 PC 마우스오버 팝오버(요청) — 마우스가 실제로 되는 입력장치에서만
-   켠다(터치 화면은 탭 후 :hover가 고착돼 계속 떠 있는 문제가 있어, 다른 곳의
-   scr-period-sort-btn 등과 같은 원칙으로 원천 차단). */
-/* "성사됨"은 항목마다 상시 노출하기엔 무거운 액션이라 케밥(⋮) 메뉴 안으로(요청).
-   버튼/드롭다운 자체는 경기 목록 케밥과 톤을 맞춰 .scr-feed-post-menu-btn·.scr-menu-pop-drop을
-   그대로 재사용한다. */
-/* ===== 너 나와! 신청 언급 알림 인박스 팝업 ===== */
-.scr-mreq-inbox-lead { margin: 0 0 10px; font-size: var(--fs-body); font-weight: 700; color: var(--text); }
-.scr-mreq-inbox-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
-.scr-mreq-inbox-item {
-  border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;
-  background: rgba(var(--overlay-rgb), 0.05); display: flex; flex-direction: column; gap: 4px;
-}
-.scr-mreq-inbox-author { font-size: var(--fs-caption); font-weight: 700; color: var(--dim); }
-.scr-mreq-inbox-text { margin: 0; font-size: var(--fs-body); color: var(--text); line-height: 1.4; word-break: break-word; }
-.scr-mreq-inbox-mentioned { font-size: var(--fs-caption); color: var(--muted); }
+.scr-comment-item + .scr-comment-item { border-top: 1px solid rgba(var(--divider-tint), 0.3); }
+.scr-comment-item-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.scr-comment-author { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.scr-comment-author-name { font-size: var(--fs-caption); font-weight: 600; color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.scr-comment-text { margin: 0; font-size: var(--fs-body); color: var(--text); line-height: 1.4; word-break: break-word; }
+/* 수정·삭제 버튼 — 세로 스택 대신 가로 한 줄로. */
+.scr-comment-actions { flex-shrink: 0; display: flex; flex-direction: row; align-items: center; gap: 6px; }
 
 /* ===== 요청: 모바일 전용 크기/폭 조정 (데스크톱은 그대로) ===== */
 @media (max-width: 640px) {
@@ -7261,30 +7204,29 @@ html:not(.scr-light-theme) .scr-feed-now-divider span { color: var(--muted); }
    달라고 해서(지적: 댓글들도 다시 크기 1스텝 확대) 원래의 caption/micro로 되돌아왔다.
    (예전엔 여기서 gap/padding도 좁혔는데, 인스타그램식 레이아웃(아바타|본문 좌우 배치)으로
    바뀌며 그 gap이 세로 간격이 아니라 아바타-본문 사이 가로 간격을 의미하게 돼 버려
-   지적대로 삭제 — 레이아웃 관련 값은 이제 위 .scr-mreq-item.scr-feed-note-item 한
+   지적대로 삭제 — 레이아웃 관련 값은 이제 위 .scr-comment-item.scr-feed-note-item 한
    군데에서만 정한다.) */
-.scr-feed-card-comment .scr-mreq-item-text { font-size: var(--fs-caption); }
-.scr-feed-card-comment .scr-mreq-item-author-name { font-size: var(--fs-micro); }
-/* 댓글에 표시되는 @유저 멘션은 칩(알약 배경)이 아니라 그냥 굵은 텍스트로(요청: "유저칩이
-   아닌 굵게 표시로 변경"). 읽기용 인라인 칩만 배경·그림자·패딩을 걷어 본문과 같은
-   caption 크기의 볼드로 흐르게 한다. 입력창(.scr-mreq-chip-editor)의 칩은 삭제·편집을
-   위해 칩 형태를 유지하되 크기만 본문에 맞춘다. */
+.scr-feed-card-comment .scr-comment-text { font-size: var(--fs-caption); }
+.scr-feed-card-comment .scr-comment-author-name { font-size: var(--fs-micro); }
+/* 댓글에 표시되는 @유저 멘션은 칩(알약 배경)이 아니라 그냥 굵은 텍스트다(요청: "유저칩이
+   아닌 굵게 표시로 변경") — 배경·그림자·패딩을 걷어 본문과 같은 caption 크기의 볼드로
+   흐르게 한다. 입력창 쪽은 애초에 평문이라(FeedComments 주석) 손댈 것이 없다. */
 /* 노출(읽기)되는 @멘션은 "@닉네임"을 굵게로 강조한다. 포인트 컬러(골드/앰버)였다가
    푸른색으로(요청) — 다크는 밝은 파랑, 라이트는 흰 배경 대비를 위해 더 어두운 파랑. 입력창은
    평문 그대로(색 없음) + @뒤 실시간 드롭다운만 — 이 규칙은 읽기용 인라인에만 적용. */
-.scr-feed-card-comment .scr-mreq-chip-inline {
+.scr-feed-card-comment .scr-comment-mention {
   background: none; box-shadow: none; padding: 0; border-radius: 0;
   /* 댓글 본문과 같은 크기로 흐르게. */
   color: #5b9bd8; font-weight: 700; font-size: var(--fs-caption);
   top: 0; margin: 0;
   /* 글자 밑선을 옆 글자와 맞춘다(지적: 언급된 사람만 살짝 아래로 내려가 있다).
-     기본 규칙(.scr-mreq-chip-inline)은 배경 있는 칩이라 vertical-align:middle로 가운데를
+     기본 규칙(.scr-comment-mention)은 배경 있는 칩이라 vertical-align:middle로 가운데를
      맞추는데, 그 middle은 '상자 한가운데를 옆 글자의 밑선 + x높이 절반에 맞춘다'는 뜻이라
      상자가 글자보다 높으면 그만큼 아래로 내려앉는다. 여기서는 배경도 패딩도 없앤 맨
      글자라(위) 밑선끼리 맞추는 것이 맞다. */
   vertical-align: baseline;
 }
-html.scr-light-theme .scr-feed-card-comment .scr-mreq-chip-inline { color: #1d4ed8; }
+html.scr-light-theme .scr-feed-card-comment .scr-comment-mention { color: #1d4ed8; }
 /* (삭제) 모바일 댓글 시트 전용 "+1스텝" 규칙 — 카드용 크기를 caption/micro로 다시
    키우면서 시트 크기와 똑같아져 더는 필요 없다. */
 /* 입력·수정창의 유저칩 — 좌우 패딩을 줄여 문장에 더 잘 섞이게(요청). */
@@ -7448,7 +7390,7 @@ html.scr-light-theme .scr-feed-card-comment .scr-mreq-chip-inline { color: #1d4e
    굳이 있을 필요가 없다는 뜻이야") 댓글이 있을 때와 완전히 같은 흐름·같은 자리
    (.scr-feed-card-comment > .scr-feed-notes의 공용 패딩, --feed-comment-indent 포함)를
    그대로 물려받는다 — 이 -empty 전용 규칙들은 그래서 필요 없어졌다. */
-.scr-feed-card-comment .scr-mreq-item + .scr-mreq-item { border-top: none; }
+.scr-feed-card-comment .scr-comment-item + .scr-comment-item { border-top: none; }
 /* 아이콘 대신 "댓글" 텍스트 링크로(요청) — 무엇을 누르는 건지 글자로 읽히는 편이 낫다. */
 .scr-feed-comments-toggle {
   display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0;
@@ -7868,10 +7810,10 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
    묶음이 항목의 오른쪽 끝에 붙는 별도 줄이었다. 이제는 댓글 내용 뒤에 이어 붙는
    인라인 요소라(위 .scr-feed-note-actions) 오른쪽 끝에 고정되지 않으므로 더는 맞지 않다. */
 /* 수정 취소 버튼 — 등록(프라이머리 솔리드) 옆에 같은 크기로, 톤만 조용하게. */
-.scr-mreq-cancel-btn {
+.scr-comment-cancel-btn {
   background: rgba(var(--overlay-rgb), 0.1); border: none; color: var(--dim); box-shadow: none;
 }
-@media (hover: hover) { .scr-mreq-cancel-btn:hover { color: var(--text); background: rgba(var(--overlay-rgb), 0.16); } }
+@media (hover: hover) { .scr-comment-cancel-btn:hover { color: var(--text); background: rgba(var(--overlay-rgb), 0.16); } }
 /* 입력칸은 목록과 분리돼 맨 아래에 고정(요청 4) — 목록이 길어져도 자리를 안 뺏긴다.
    왼쪽엔 내 아바타를 동그랗게(요청) — 지금 누구 이름으로 쓰는지 보여준다. */
 /* 입력줄 위 구분선은 두지 않는다(요청) — 목록 끝과 입력줄 사이는 여백만으로 나눈다. */
@@ -7881,22 +7823,22 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--post-b
 }
 .scr-comment-sheet-compose > .scr-avatar { flex-shrink: 0; border-radius: 50% !important; }
 /* 컴포저(입력칸+등록 버튼)가 남은 폭을 다 쓰게 — 기본은 자기 내용만큼만 차지한다. */
-.scr-comment-sheet-compose > .scr-mreq-compose-row { flex: 1 1 auto; min-width: 0; margin-top: 0; }
+.scr-comment-sheet-compose > .scr-comment-compose-row { flex: 1 1 auto; min-width: 0; margin-top: 0; }
 /* 글자 16px(요청). 카드 안 목록은 작은 폰트 그대로 두고 입력칸만 키운다. */
-.scr-comment-sheet-compose .scr-mreq-live-input { font-size: 16px; }
+.scr-comment-sheet-compose .scr-comment-input { font-size: 16px; }
 /* 포커스 링을 바깥이 아니라 안쪽으로(지적: "댓글창 포커싱하면 전체적으로 페이지가 살짝
    하단으로 내려감" — 이 입력칸이 시트 맨 아래 안전영역에 바짝 붙어 있어, 전역 포커스
    링의 outline-offset:2px가 입력칸 테두리 밖으로 튀어나오면 그만큼이 화면/시트 경계를
    넘어선 것으로 잡혀 브라우저가 포커스 대상을 보이게 하려고 스크롤을 보정했다). 링
    자체(두께·색)는 전역과 같고, 방향만 안쪽으로 돌려 입력칸 박스 밖으로 전혀 안 나가게 한다. */
-.scr-comment-sheet-compose .scr-mreq-live-input:focus-visible { outline-offset: -2px; }
+.scr-comment-sheet-compose .scr-comment-input:focus-visible { outline-offset: -2px; }
 /* 등록 버튼도 필드와 같은 40px 정사각으로 — .scr-feed-notes가 30px로 못박아 둔 값을
    덮는다(특이도 동일, 소스가 뒤라 이긴다). 아이콘도 한 단계 키운다. */
-.scr-comment-sheet-compose .scr-mreq-submit-btn {
+.scr-comment-sheet-compose .scr-comment-submit-btn {
   flex-basis: 40px; width: 40px; height: 40px;
   min-width: 40px; min-height: 40px; max-width: 40px; max-height: 40px;
 }
-.scr-comment-sheet-compose .scr-mreq-submit-btn svg { width: 17px; height: 17px; }
+.scr-comment-sheet-compose .scr-comment-submit-btn svg { width: 17px; height: 17px; }
 .scr-comment-sheet .scr-feed-note-err { margin: 6px 0 0; }
 
 /* 카드 안 미리보기 — 여기서는 읽기만 하고, 누르면 시트가 열린다(요청 2). */

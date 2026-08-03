@@ -419,8 +419,6 @@ export interface Challenge {
   canceledBy: { id: string; nickname: string; avatar: string | null } | null;
   // 확정 너 나와의 결과 — 아직 아무도 입력하지 않았으면 null.
   resultWinnerSide: ChallengeResult | null;
-  // "너 나와! 신청 들어주기"로 만들어졌으면 true — 카드에 "요청너 나와" 배지를 붙인다.
-  fromMatchRequest: boolean;
 }
 
 export interface ChallengeCreatePayload {
@@ -433,56 +431,6 @@ export interface ChallengeCreatePayload {
   targetMemberIds: string[];
   // 본인 제외 나머지 내 팀원(최대 3명, 본인 포함 최대 4명) — 안 넘기면 나 혼자.
   ownTeamMemberIds?: string[];
-  // "너 나와! 신청 들어주기"로 여는 도전장이면 true.
-  fromMatchRequest?: boolean;
-}
-
-// ===== 너 나와! 신청 코너 ("너 나와!" 최상단) =====
-// 본문에 @태그로 최소 2명을 지목하는 공개 요청글. 지목된 사람만 "들어주기"로 도전장을 보낼
-// 수 있고, 들어주면 목록에서 사라진다. 정렬은 추천 많은 순 → 먼저 등록된 순.
-export interface MatchRequestTarget {
-  memberId: string;
-  nickname: string;
-}
-
-export interface MatchRequest {
-  id: number;
-  text: string;
-  author: { memberId: string; nickname: string; avatar: string | null };
-  createdAt: string;
-  recommendCount: number;
-  // 내가 이미 추천을 눌렀는지(버튼 눌림 상태).
-  recommendedByMe: boolean;
-  // 추천한 사람 목록(PC 한정 마우스오버 팝오버용).
-  recommenders: { memberId: string; nickname: string; avatar: string | null }[];
-  // 내가 작성자인지 — 작성자/운영자만 "성사됨" 완료 처리를 할 수 있다.
-  mine: boolean;
-  // 언급된 회원들 — 카드에 "언급: A, B"로 표시(권한 등 다른 기능과는 연결 안 함).
-  targets: MatchRequestTarget[];
-}
-
-// 내가 언급된 안 읽은 요청 알림 — 앱 열 때 인박스 팝업으로 뜬다.
-export interface MatchRequestInboxItem {
-  requestId: number;
-  text: string;
-  author: { memberId: string; nickname: string; avatar: string | null };
-  createdAt: string;
-  // 이 요청에 함께 언급된 사람들(나 포함).
-  mentioned: MatchRequestTarget[];
-}
-
-export interface MatchRequestListResponse {
-  items: MatchRequest[];
-  page: number;
-  pageSize: number;
-  total: number;
-  hasMore: boolean;
-}
-
-export interface MatchRequestCreatePayload {
-  text: string;
-  // @태그 기능은 폐지했지만 언급된 사람(알림 대상)은 계속 보낸다. 최소 인원 제한 없음(0명 가능).
-  targetMemberIds: string[];
 }
 
 // 기간 필터 프리셋 — "custom"일 때만 실제로 from/to(직접 입력) 값을 사용하고, 나머지는

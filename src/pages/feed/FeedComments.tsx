@@ -13,8 +13,8 @@ import { attachPopover } from "../../utils/popover";
 import { formatWhen } from "../../utils/date";
 import type { Member, FeedComment, FeedTargetType } from "../../types";
 
-// 게시판 댓글처럼 한 줄(요청: 한글 50자 제한). 입력부·목록 디자인은 "너 나와!"(MatchRequestCorner)
-// 요청 입력의 CSS(scr-mreq-*)를 그대로 차용한다(요청: "기본 입력 테마로 사용").
+// 게시판 댓글처럼 한 줄(요청: 한글 50자 제한). 입력부·목록의 생김새는 공용 댓글
+// CSS(.scr-comment-*)가 맡는다 — 앱 안의 댓글은 어디서든 같은 양식이다(요청).
 const MESSAGE_MAX_LENGTH = 50;
 
 // 댓글 입력·수정은 평문 한 줄 입력이다(요청: "유저칩이 아니라 텍스트 @닉네임으로").
@@ -54,7 +54,7 @@ function renderInline(text: string, mentions: { nickname: string }[]) {
   let m: RegExpExecArray | null;
   while ((m = re.exec(text)) !== null) {
     if (m.index > last) out.push(<span key={`t${last}`}>{text.slice(last, m.index)}</span>);
-    out.push(<span key={`c${m.index}`} className="scr-mreq-chip-inline">@{m[1]}</span>);
+    out.push(<span key={`c${m.index}`} className="scr-comment-mention">@{m[1]}</span>);
     last = m.index + m[0].length;
   }
   if (last < text.length) out.push(<span key={`t${last}`}>{text.slice(last)}</span>);
@@ -195,10 +195,10 @@ function NoteComposer({
   };
 
   return (
-    <div className="scr-mreq-compose-row scr-feed-note-compose-row">
-      <div className="scr-mreq-input-wrap">
+    <div className="scr-comment-compose-row scr-feed-note-compose-row">
+      <div className="scr-comment-input-wrap">
         <div
-          className="scr-input scr-mreq-editor"
+          className="scr-input scr-comment-editor"
           onClick={() => {
             const el = inputRef.current;
             if (!el) return;
@@ -208,7 +208,7 @@ function NoteComposer({
         >
           <input
             ref={inputRef}
-            className="scr-mreq-live-input"
+            className="scr-comment-input"
             value={text}
             onChange={onChange}
             onSelect={onSelectCaret}
@@ -222,7 +222,7 @@ function NoteComposer({
         {!isEmpty && (
           <button
             type="button"
-            className="scr-mreq-clear-btn"
+            className="scr-comment-clear-btn"
             onMouseDown={(e) => e.preventDefault()}
             onClick={clear}
             aria-label="지우기"
@@ -235,13 +235,13 @@ function NoteComposer({
             {candidates.map((m, i) => (
               <button
                 key={m.id} type="button"
-                className={cx("scr-pv-opt scr-mreq-mention-opt", i === highlight && "scr-pv-opt-active")}
+                className={cx("scr-pv-opt scr-mention-opt", i === highlight && "scr-pv-opt-active")}
                 onMouseEnter={() => setHighlight(i)}
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => insertMention(m)}
               >
                 <Avatar member={m} size={22} />
-                <span className="scr-mreq-mention-name">{m.nickname}</span>
+                <span className="scr-mention-name">{m.nickname}</span>
               </button>
             ))}
           </div>,
@@ -253,7 +253,7 @@ function NoteComposer({
       {onCancel && (
         <button
           type="button"
-          className="scr-btn scr-mreq-submit-btn scr-mreq-cancel-btn"
+          className="scr-btn scr-comment-submit-btn scr-comment-cancel-btn"
           onMouseDown={(e) => e.preventDefault()}
           onClick={onCancel}
           aria-label="수정 취소"
@@ -263,7 +263,7 @@ function NoteComposer({
       )}
       <button
         type="button"
-        className="scr-btn scr-btn-primary scr-btn-primary-solid scr-mreq-submit-btn"
+        className="scr-btn scr-btn-primary scr-btn-primary-solid scr-comment-submit-btn"
         disabled={!canSubmit}
         onClick={doSubmit}
         aria-label="메모 등록"
@@ -306,8 +306,8 @@ export async function primeFeedComments(): Promise<void> {
   primedOnce = true;
 }
 
-// 펼쳐진 경기 로우 하단의 댓글(메모) 영역 — 게시판 댓글 스타일. 목록·입력은 "너 나와!" 요청
-// 입력의 CSS(scr-mreq-*)를 차용한다. 대댓글은 없다(요청). 로그인 회원만 작성할 수 있고
+// 펼쳐진 경기 로우 하단의 댓글(메모) 영역 — 게시판 댓글 스타일. 목록·입력은 공용 댓글
+// CSS(.scr-comment-*)를 쓴다. 대댓글은 없다(요청). 로그인 회원만 작성할 수 있고
 // 작성자 본인/운영자만 수정·삭제할 수 있다(comment.canEdit).
 export default function FeedComments({ targetType, targetId }: { targetType: FeedTargetType; targetId: number }) {
   // 작성 입력창 — 가운데의 + 댓글 아이콘을 누르면 트랜지션으로 입력창으로 바뀌며 바로
@@ -614,7 +614,7 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
   // interactive=false는 카드 안 미리보기용 — 수정/삭제는 시트에서만 한다(미리보기에서
   // 편집까지 되면 시트를 여는 탭과 버튼 탭이 같은 자리에서 겹친다).
   const renderNote = (c: FeedComment, interactive: boolean) => (
-    <li key={c.id} className="scr-mreq-item scr-feed-note-item">
+    <li key={c.id} className="scr-comment-item scr-feed-note-item">
       {/* 포스트 본문(너 나와/게임요약)보다 댓글이 더 중요해 보이면 안 된다는 지적으로
           아주 살짝만 줄인다(32 → 28) — 포스트 쪽 아바타는 반대로 키운다. */}
       <Avatar
@@ -623,9 +623,9 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
         className="scr-feed-note-avatar"
       />
       <div className="scr-feed-note-body">
-        <div className="scr-mreq-item-top">
-          <div className="scr-mreq-item-author">
-            <span className="scr-mreq-item-author-name">{c.author.nickname}</span>
+        <div className="scr-comment-item-top">
+          <div className="scr-comment-author">
+            <span className="scr-comment-author-name">{c.author.nickname}</span>
             {/* 이 앱의 "언제" 공통 포맷(formatWhen)을 그대로 쓴다(지적: 댓글 타임스탬프만
                 공통 양식이 안 적용되고 있었다) — 방금 전/N분 전/오늘/어제/이번주 요일 등
                 피드 타임스탬프·너 나와 일정과 같은 규칙으로 읽힌다. */}
@@ -647,10 +647,10 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
           // 아니라 내용이 끝나는 부분 옆으로) — 같은 <p> 안에 이어 붙여, 텍스트와 한
           // 흐름으로 줄바꿈되게 한다(글이 짧으면 글자 바로 뒤에, 길어서 꽉 차면 마지막
           // 줄로 자연스럽게 넘어간다). 별도 flex 줄로 두면 늘 오른쪽 끝에 떨어져 붙는다.
-          <p className="scr-mreq-item-text scr-feed-note-text">
+          <p className="scr-comment-text scr-feed-note-text">
             {renderInline(c.text, c.mentions)}
             {interactive && c.canEdit && (
-              <span className="scr-mreq-item-actions scr-feed-note-actions">
+              <span className="scr-comment-actions scr-feed-note-actions">
                 <button
                   type="button" className="scr-feed-note-icon-btn"
                   onClick={() => { setErr(null); setEditingId(c.id); }}
@@ -708,7 +708,7 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
               onClick={openSheet}
               onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openSheet(); } }}
             >
-              <ul className="scr-mreq-list scr-feed-notes-list">
+              <ul className="scr-comment-list scr-feed-notes-list">
                 {notes.map((c) => renderNote(c, false))}
               </ul>
             </div>
@@ -726,7 +726,7 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
       ) : (
         <>
           {notes.length > 0 && (
-            <ul className="scr-mreq-list scr-feed-notes-list">
+            <ul className="scr-comment-list scr-feed-notes-list">
               {notes.map((c) => renderNote(c, true))}
             </ul>
           )}
@@ -779,7 +779,7 @@ export default function FeedComments({ targetType, targetId }: { targetType: Fee
           </div>
           <div className="scr-comment-sheet-body scr-scroll" ref={sheetBodyRef}>
             {notes.length > 0 ? (
-              <ul className="scr-mreq-list scr-feed-notes-list">
+              <ul className="scr-comment-list scr-feed-notes-list">
                 {notes.map((c) => renderNote(c, true))}
               </ul>
             ) : (

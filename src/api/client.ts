@@ -9,7 +9,6 @@ import type {
   RatingHistoryResponse, RivalryPair,
   ReplayNameClassificationEntry, ReplayNameKind, ReplayNameMappingEntry, ReplayNameMappingKind,
   Challenge, ChallengeCreatePayload, ChallengeResult,
-  MatchRequest, MatchRequestCreatePayload, MatchRequestListResponse, MatchRequestInboxItem,
   League, LeagueListItem, LeagueCreatePayload, LeagueUpdatePayload, LeagueTeam,
   LeagueMatch, LeagueMatchSide, LeagueMatchResultPayload,
 } from "../types";
@@ -770,33 +769,6 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ winnerSide, scheduledDate }),
     });
-  },
-
-  // ===== 너 나와! 신청 코너 =====
-  async getMatchRequests(page = 0): Promise<MatchRequestListResponse> {
-    return request<MatchRequestListResponse>(`/api/match-requests?page=${page}`);
-  },
-  async createMatchRequest(payload: MatchRequestCreatePayload): Promise<MatchRequest> {
-    return request<MatchRequest>("/api/match-requests", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
-  },
-  // 추천 토글(누르면 추천, 다시 누르면 취소) — 갱신된 요청을 돌려준다.
-  async toggleMatchRequestRecommend(id: number): Promise<MatchRequest> {
-    return request<MatchRequest>(`/api/match-requests/${id}/recommend`, { method: "POST" });
-  },
-  // 너 나와가 성사되면 작성자 본인/운영자가 "성사됨"으로 완료 처리한다(목록에서 사라짐).
-  async completeMatchRequest(id: number): Promise<void> {
-    await request<{ ok: boolean }>(`/api/match-requests/${id}`, { method: "DELETE" });
-  },
-  // 내가 언급된 안 읽은 요청 알림(앱 열 때 인박스 팝업용).
-  async getMatchRequestInbox(): Promise<{ items: MatchRequestInboxItem[] }> {
-    return request<{ items: MatchRequestInboxItem[] }>("/api/match-requests/inbox");
-  },
-  // 인박스 팝업을 닫으면 내 안 읽은 알림을 모두 읽음 처리한다.
-  async markMatchRequestInboxRead(): Promise<void> {
-    await request<{ ok: boolean }>("/api/match-requests/inbox/read", { method: "POST" });
   },
 
   // 리그(League/Tournament) — 운영자 전용, 조회(GET) 포함 전부 CurrentAdmin 게이트.

@@ -3,7 +3,7 @@ import { api } from "../api/client";
 import { versionNumber } from "../utils/appVersion";
 import type {
   Member, GameResult, NewGameResult, MemberCreatePayload, MemberStatus, MemberRole, AppVersion,
-  AppVersionInfo, Challenge, MatchRequestInboxItem, ScreenKey,
+  AppVersionInfo, Challenge, ScreenKey,
 } from "../types";
 
 // 버전이 바뀐 걸 감지했을 때 AppUpdateNoticeModal에 넘기는 정보 — 변경 내용 문구(notes)는
@@ -95,10 +95,6 @@ interface AppState {
   // 다시 안 뜬다(요청: "결과 입력 팝업 확인 여부는 디비에 관리").
   resultInboxChallenges: Challenge[];
   dismissResultInboxChallenges: () => void;
-  // 너 나와! 신청에 언급된 나에게 온 알림 — 부트스트랩 시점에 안 읽은 것만 담겨 팝업으로 한 번
-  // 보여준다. 닫으면 서버에 읽음 처리해 다시 안 뜬다(요청: "읽으면 다시 안 뜸").
-  inboxMatchRequests: MatchRequestInboxItem[];
-  dismissInboxMatchRequests: () => void;
   // 운영자가 배포한 버전이 마지막으로 본 값과 다르면(부트스트랩 시점) 한 번만 채워진다 —
   // AppUpdateNoticeModal이 이 값을 보고 뜬다. 닫으면 다시 null로 돌아가 재등장하지 않는다.
   updateNotice: UpdateNotice | null;
@@ -192,12 +188,6 @@ export const useAppStore = create<AppState>()((set, get) => ({
   dismissInboxChallenges: () => set({ inboxChallenges: [] }),
   resultInboxChallenges: [],
   dismissResultInboxChallenges: () => set({ resultInboxChallenges: [] }),
-  inboxMatchRequests: [],
-  // 닫으면 화면에서 지우고, 서버에도 읽음 처리해 다음 접속 때 다시 안 뜨게 한다.
-  dismissInboxMatchRequests: () => {
-    set({ inboxMatchRequests: [] });
-    void api.markMatchRequestInboxRead().catch(() => {});
-  },
   updateNotice: null,
   dismissUpdateNotice: () => set({ updateNotice: null }),
 
@@ -228,7 +218,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
     try {
       const [
         members, { activeVersion, noticeEnabled }, appVersions, earliestGameResultDate,
-        { items: inboxChallenges }, { items: resultInboxChallenges }, { items: inboxMatchRequests },
+        { items: inboxChallenges }, { items: resultInboxChallenges },
       ] = await Promise.all([
         api.getMembers(),
         api.getAppVersion(),
@@ -236,11 +226,10 @@ export const useAppStore = create<AppState>()((set, get) => ({
         api.getEarliestGameResultDate(),
         api.getPendingChallengesForMe(),
         api.getResultPendingChallengesForMe(),
-        api.getMatchRequestInbox(),
       ]);
       set({
         members, appVersion: activeVersion, appVersions, noticeEnabled, earliestGameResultDate,
-        inboxChallenges, resultInboxChallenges, inboxMatchRequests,
+        inboxChallenges, resultInboxChallenges,
         updateNotice: computeUpdateNotice(activeVersion, noticeEnabled, appVersions),
       });
     } finally {

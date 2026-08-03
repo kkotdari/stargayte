@@ -275,18 +275,18 @@ export default function SearchFilterBar({
       </div>
       {suggestShown && createPortal(
         <div className="scr-pv-drop scr-scroll" ref={dropRef}>
-          {/* 프사를 함께 보여준다(요청: "프사 추가(동그랗게)") — 도전장 작성의 지목
-              드롭다운(MatchRequestCorner)과 같은 요소를 그대로 재사용한다. */}
+          {/* 프사를 함께 보여준다(요청: "프사 추가(동그랗게)") — 댓글의 @멘션 드롭다운과
+              같은 공용 요소(.scr-mention-opt)를 그대로 쓴다. */}
           {matchedSuggestions.map((s, i) => (
             <button
               type="button" key={s.member.id}
-              className={cx("scr-pv-opt scr-mreq-mention-opt", i === highlight && "scr-pv-opt-active")}
+              className={cx("scr-pv-opt scr-mention-opt", i === highlight && "scr-pv-opt-active")}
               onMouseEnter={() => setHighlight(i)}
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => pick(s.member.nickname)}
             >
               <Avatar member={s.member} size={22} />
-              <span className="scr-mreq-mention-name">{s.member.nickname}</span>
+              <span className="scr-mention-name">{s.member.nickname}</span>
             </button>
           ))}
         </div>,
