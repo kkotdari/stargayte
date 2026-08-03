@@ -2430,6 +2430,25 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     hubs[p.rawName] = [round1(cx), round1(cy)];
   }
 
+  /* 병력이 앞선 채로 흘려보낸 대목(요청) — 그 사이 상대가 확장을 늘렸으면 그것까지 말한다.
+     이름은 그 편에서 병력을 가장 많이 부은 사람으로 부른다(팀전에서는 문구 쪽이 팀으로
+     뭉뚱그린다 — replaySummaryText의 idle-lead 참고). */
+  const idle = idleLead(winnerPlayers, loserPlayers, totalFrames);
+  const idleBeat: Beat | null = idle && (() => {
+    const rep = (side: ParsedReplayPlayer[]): string[] => [...side]
+      .sort((x, y) => sumSupply(y) - sumSupply(x)).slice(0, 2).map((x) => x.rawName);
+    return {
+      k: "idle-lead",
+      won: idle.lead === winnerPlayers,
+      who: rep(idle.lead), whom: rep(idle.behind),
+      at: idle.at, weight: IDLE_LEAD_WEIGHT,
+      /* 문장에는 인구수 차이를 그대로 싣지 않는다 — 이 값은 '그때까지 뽑은 총량'의 차라
+         경기가 길수록 부풀고(실측 265), 읽는 사람에게 265가 무엇인지 뜻이 안 선다. 몇 배로
+         앞섰나만 말한다. */
+      p: { ratio: Math.round(idle.ratio * 10) / 10, exp: idle.exp, min: minutes(idle.at * SECONDS_PER_FRAME) },
+    } as Beat;
+  })();
+
   // 가장 크게 부딪친 대목 — 마법과 공격 명령이 한때 한곳에 몰린 자리다(요청: 마법 좌표로
   // 그 경기의 최대 교전 지점을 짚을 수 있겠다). 그 판의 절정이라 이야기에서 빠지면 안 된다.
   const clash = biggestClash(winnerPlayers, loserPlayers);
@@ -2572,6 +2591,7 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   const pool: Beat[] = [
     ...clashBeats,
     ...moveBeats,
+    ...(idleBeat ? [idleBeat] : []),
     ...(standoff ? [standoff] : []),
     ...(lateHold ? [lateHold] : []),
     ...(handsBeat ? [handsBeat] : []),
@@ -3035,6 +3055,123 @@ function clashPlace(xy: [number, number], bases: Record<string, [number, number]
 const CLASH_AT_BASE = 18;
 /** 시작 지점들의 한가운데에서 이 비율 안이면 센터로 본다. */
 const CLASH_AT_MID = 0.3;
+
+/* ── 병력이 앞선 채로 흘려보낸 시간(요청: 누가/어느 팀이 병력이 더 많았는데 공격하지
+   않고 타이밍을 놓친 부분 — 상대가 그 사이에 확장을 더 했다면 더 좋은 스토리) ──
+
+   리플레이에는 '지금 병력이 몇인가'가 안 남는다(전투도 죽음도 안 남는다). 대신 남는 건
+   그때까지 뽑은 총량이고, 그건 '한 번도 안 싸운 구간'에서는 실제 병력과 거의 같다 —
+   이 문장이 겨냥하는 구간이 정확히 그런 구간이라 이 어림이 성립한다. 그래서 판정은 늘
+   같은 순서다: ① 한쪽이 훨씬 많이 뽑았나 → ② 그러고도 상대 집에 안 갔나 → ③ 그 사이
+   상대는 무엇을 했나. */
+/** 이 시각 이전은 아직 '병력'이라 부를 게 없다(초). */
+const IDLE_FROM_SEC = 240;
+/** 끝나기 이만큼 전부터는 이미 결판이 난 뒤다(초). */
+const IDLE_TAIL_SEC = 120;
+/** 이만큼을 그냥 흘려보내야 '타이밍을 놓쳤다'고 한다(초). */
+const IDLE_WINDOW_SEC = 150;
+/** 상대의 이 배는 넘어야 '훨씬 많다'. */
+const IDLE_RATIO = 1.6;
+/** 그리고 인구수 차이가 이만큼은 나야 한다 — 초반의 4:2를 두 배라고 말하지 않기 위한 것. */
+const IDLE_GAP_MIN = 24;
+/** 그 창 동안 상대 집 근처에 이보다 많이 찍었으면 들어간 것이다(정찰은 몇 번으로 끝난다). */
+const IDLE_PUSH_MAX = 8;
+/** 상대 집이라 부르는 반경(가장 가까운 상대까지 거리 대비) — pushersOn과 같은 자. */
+const IDLE_HOME_RADIUS = 0.3;
+/** 앞서고도 흘려보낸 이야기의 무게 — '무엇을 했다'가 아니라 '안 했다'라 러시·교전보다
+ *  가볍지만, 그 판의 흐름을 설명하는 대목이라 생산담보다는 무겁다. */
+const IDLE_LEAD_WEIGHT = 17;
+
+/** 그 편이 프레임 f까지 뽑은 병력 인구수 — 일꾼·보급·건물은 빼고 전투 유닛만. */
+function armyCurve(players: ParsedReplayPlayer[]): { at: number; w: number }[] {
+  const made: { at: number; w: number }[] = [];
+  for (const p of players) {
+    for (const [unit, fs] of Object.entries(p.signals?.unitFrames ?? {})) {
+      if (NON_COMBAT_UNITS.has(unit) || WORKER_UNITS.has(unit)) continue;
+      for (const f of fs) made.push({ at: f, w: supplyOf(unit) });
+    }
+  }
+  return made.sort((a, b) => a.at - b.at);
+}
+const armyAt = (curve: { at: number; w: number }[], f: number): number =>
+  curve.reduce((n, m) => (m.at <= f ? n + m.w : n), 0);
+
+/** 그 편이 창 동안 상대 집 근처에 찍은 이동·공격 명령 수 — '들어갔나'의 근거다. */
+function ordersIntoFoes(
+  movers: ParsedReplayPlayer[],
+  foes: ParsedReplayPlayer[],
+  from: number,
+  to: number,
+): number {
+  const homes = foes
+    .filter((f) => f.startX !== null && f.startY !== null)
+    .map((f) => ({ x: f.startX as number, y: f.startY as number }));
+  const mine = movers
+    .filter((m) => m.startX !== null && m.startY !== null)
+    .map((m) => ({ x: m.startX as number, y: m.startY as number }));
+  if (homes.length === 0 || mine.length === 0) return 0;
+  let base = Infinity;
+  for (const h of homes) for (const m of mine) base = Math.min(base, Math.hypot(h.x - m.x, h.y - m.y));
+  if (!(base > 0) || !Number.isFinite(base)) return 0;
+  const r = base * IDLE_HOME_RADIUS;
+  let n = 0;
+  for (const p of movers) {
+    for (const o of p.signals?.orderPositions ?? []) {
+      if (o.frame < from || o.frame > to) continue;
+      if (homes.some((h) => Math.hypot(o.x - h.x, o.y - h.y) <= r)) n += 1;
+    }
+  }
+  return n;
+}
+
+/** 그 편이 창 동안 새로 앉힌 확장(본진 건물) 수. */
+function expansionsIn(players: ParsedReplayPlayer[], from: number, to: number): number {
+  let n = 0;
+  for (const p of players) {
+    for (const [b, fs] of Object.entries(p.signals?.buildingFrames ?? {})) {
+      if (!EXPANSION_BUILDINGS.has(b)) continue;
+      n += fs.filter((f) => f >= from && f <= to).length;
+    }
+  }
+  return n;
+}
+
+/** 병력이 앞선 채로 그냥 흘려보낸 대목 — 없으면 null.
+ *
+ *  창을 훑으며 '차이가 가장 벌어졌는데 안 들어간' 한 자리만 고른다. 여러 번 있을 수
+ *  있지만 요약은 한 줄이면 충분하고, 가장 벌어진 자리가 곧 가장 아까운 자리다. */
+function idleLead(
+  a: ParsedReplayPlayer[],
+  b: ParsedReplayPlayer[],
+  totalFrames: number | null,
+): { lead: ParsedReplayPlayer[]; behind: ParsedReplayPlayer[]; at: number; gap: number; ratio: number; exp: number } | null {
+  if (totalFrames === null || totalFrames <= 0) return null;
+  const curves = [armyCurve(a), armyCurve(b)];
+  if (curves[0].length === 0 || curves[1].length === 0) return null;
+  const win = IDLE_WINDOW_SEC / SECONDS_PER_FRAME;
+  const from = IDLE_FROM_SEC / SECONDS_PER_FRAME;
+  const to = totalFrames - IDLE_TAIL_SEC / SECONDS_PER_FRAME - win;
+  if (to <= from) return null;
+  const step = 30 / SECONDS_PER_FRAME;
+  let best: { lead: ParsedReplayPlayer[]; behind: ParsedReplayPlayer[]; at: number; gap: number; ratio: number; exp: number } | null = null;
+  for (let f = from; f <= to; f += step) {
+    const na = armyAt(curves[0], f);
+    const nb = armyAt(curves[1], f);
+    const leadIsA = na > nb;
+    const [hi, lo] = leadIsA ? [na, nb] : [nb, na];
+    const gap = hi - lo;
+    if (gap < IDLE_GAP_MIN || lo <= 0 || hi < lo * IDLE_RATIO) continue;
+    const lead = leadIsA ? a : b;
+    const behind = leadIsA ? b : a;
+    if (ordersIntoFoes(lead, behind, f, f + win) > IDLE_PUSH_MAX) continue;
+    if (best && gap <= best.gap) continue;
+    best = {
+      lead, behind, at: Math.round(f), gap: Math.round(gap),
+      ratio: hi / lo, exp: expansionsIn(behind, f, f + win),
+    };
+  }
+  return best;
+}
 
 /** 이사 문장의 무게 — 본진을 버리고 다시 편 것은 승부를 가르는 사건이라 무겁게 잡는다.
  *  다만 러시·돌파 같은 '그 경기만의 수'보다는 한 단계 아래다. */

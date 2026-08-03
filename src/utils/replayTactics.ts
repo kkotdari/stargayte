@@ -405,6 +405,10 @@ const PUSH_RADIUS = 0.3;
 /* 그 안에 이만큼은 찍혀야 '병력을 몰고 갔다'로 본다. 정찰 일꾼·오버로드도 상대 본진에
    가지만 그건 몇 번으로 끝난다 — 싸우러 간 쪽은 컨트롤하느라 훨씬 많이 찍는다. */
 const PUSH_ORDER_MIN = 12;
+/** 러시라고 부르려면 그 뒤 RUSH_GO_SEC 안에 상대 진영에 이만큼은 찍혀야 한다(위 wentAt). */
+const RUSH_GO_ORDERS = 12;
+/** 러시는 뽑자마자 가는 수다 — 첫 병력이 나온 뒤 이 안에 안 갔으면 러시가 아니라 빌드다. */
+const RUSH_GO_SEC = 180;
 
 /** 그 사람 진영으로 실제로 병력을 몰고 들어온 상대들의 이름(요청). from~to 프레임 사이만
  *  본다 — 경기 내내로 재면 결국 모두가 한 번씩은 들어가므로 아무 뜻이 없다.
@@ -720,6 +724,30 @@ function detectFor(c: Ctx): Tactic[] {
   const solo = armyTotal >= 12 && topArmy / armyTotal >= 0.8;
   /** 드랍은 수송선을 뽑은 것만으로는 알 수 없다 — 실제로 내린 커맨드가 있어야 드랍이다. */
   const dropped = s.unloadCount >= 2;
+  /** 그 무렵 실제로 상대 진영까지 병력을 몰고 갔나(지적: 3게이트를 갔지만 공격으로 안
+   *  이어진 경기도 "3게이트 질럿 러시를 했다"로 나온다).
+   *
+   *  러시의 근거는 빌드가 아니라 '갔다'는 사실이다. 게이트 셋을 세우고 질럿을 뽑는 것까지는
+   *  누구나 하는 빌드고, 그걸 들고 상대 집까지 갔을 때만 러시다. 리플레이에는 전투가 안
+   *  남지만 병력을 어디로 보냈는지는 명령에 그대로 남으므로(orderPositions) 그것으로 잰다.
+   *  정찰 일꾼도 상대 본진에 가지만 그건 몇 번으로 끝난다 — 싸우러 간 쪽은 컨트롤하느라
+   *  훨씬 많이 찍는다(pushersOn의 PUSH_ORDER_MIN과 같은 생각).
+   *
+   *  좌표를 못 읽는 리플레이(geo 없음)에서는 예전처럼 빌드만으로 통과시킨다 — 여기서 막으면
+   *  그런 판은 러시가 통째로 사라진다. */
+  const wentAt = (from: number | null, withinSec: number): boolean => {
+    if (!geo) return true;
+    if (from === null) return false;
+    const to = from + withinSec / SECONDS_PER_FRAME;
+    let n = 0;
+    for (const o of s.orderPositions) {
+      if (o.frame < from || o.frame > to) continue;
+      if (geo.enemyAt(o) === null) continue;
+      n += 1;
+      if (n >= RUSH_GO_ORDERS) return true;
+    }
+    return false;
+  };
   /** 그 구역에 지은 건물들(좌표를 못 읽으면 항상 빈 배열). */
   /** 그 마법을 실제로 쓴 지점 — 리플레이에 그대로 적힌 좌표라, 명령 뭉치를 어림하는
    *  것과 비교가 안 되게 정확하다(요청: 유닛 특정 로직을 다른 기술로 넓히면 요약이 정확해
@@ -961,7 +989,7 @@ function detectFor(c: Ctx): Tactic[] {
       && rushLings.length >= ZLING_RUSH_MIN && rushSpan >= ZLING_RUSH_SPAN_SEC
     ) {
       const drones = 4 + (s.unitFrames["Drone"] ?? []).filter((f) => f < pool).length;
-      if (drones >= 7 && drones <= 14) {
+      if (drones >= 7 && drones <= 14 && wentAt(ling, RUSH_GO_SEC)) {
         out.push({
           key: "zling-rush", ...target, weight: 12, at: ling,
           who, p: { drones, solo },
@@ -1222,7 +1250,7 @@ function detectFor(c: Ctx): Tactic[] {
     const zealot = firstU("Zealot");
     if (zealot !== null && sec(zealot) < 260 && u("Zealot") >= 6) {
       const gates = (s.buildingFrames["Gateway"] ?? []).filter((f) => f < zealot).length;
-      if (gates >= 2) {
+      if (gates >= 2 && wentAt(zealot, RUSH_GO_SEC)) {
         out.push({
           key: "zealot-rush", ...target, weight: 12, at: zealot,
           who, p: { gates, solo },

@@ -339,6 +339,9 @@ const escapeRe = (v: string): string => v.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 // 유리한가'를 말하지 않는 것들이다.
 const NEUTRAL_BEATS = new Set([
   "standoff", "attrition", "fast-hands", "power-unit", "mass-army", "expand", "prod-gap",
+  // '앞서고도 안 들어갔다'는 그 편이 잘한 것도 못한 것도 아니라 흐름 설명이다 — 앞뒤
+  // 문장을 "하지만"으로 잇지 않는다.
+  "idle-lead",
   "worker-gap", "tech", "vision", "no-detect", "revival", "clash",
   // 째기(greedy-build)도 여기다 — 자원을 먼저 챙긴 것은 공격이 아니라 준비라서, 그 뒤에
   // 상대의 러시가 오면 "하지만"이 아니라 "~했고"로 이어야 맞다(지적: 째기는 공격이 아니라
@@ -2034,6 +2037,34 @@ const TEMPLATES: Record<string, Tpl> = {
       `쉼 없이 병력이 갈려 나간 소모전으로 흘러감`,
       `${m}분 내내 병력을 계속 부딪친 소모전이 이어짐`,
     ]);
+  },
+
+  /* 병력이 앞선 채로 흘려보낸 대목(요청) — 한쪽이 훨씬 많이 뽑아 놓고도 들어가지 않았고,
+     그 사이 상대가 확장을 늘렸으면 그것까지 붙인다. 이 문장이 말하는 건 '한 일'이 아니라
+     '안 한 일'이라, 주어는 사람보다 편이 어울린다 — 팀전이면 팀으로 뭉뚱그린다(문장이
+     길어지는 것도 막는다). 개인전이면 그냥 그 사람 이름이다. */
+  "idle-lead": (c) => {
+    const ratio = num(c.p.ratio);
+    const much = ratio >= 2 ? "두 배가 넘는 병력을" : "훨씬 많은 병력을";
+    const exp = Number(c.p.exp ?? 0);
+    /** 팀전이면 "1팀/2팀", 개인전이거나 팀을 모르면 이름 그대로. */
+    const team = (names: string[], fallback: string): string => {
+      if (c.duel || names.length === 0) return fallback;
+      const t = names.map((n) => c.teamOfName(n)).find((v) => v !== undefined);
+      return t ? `${t}팀` : fallback;
+    };
+    const foeNames = (c.whom ?? "").split("·").filter(Boolean);
+    const me = team(c.whoList, c.who);
+    const foe = team(foeNames, c.whom || "상대");
+    return `${ga(me)} ${done(c, exp > 0 ? c.pick([
+      `${much} 쌓아 두고도 들어가지 않는 사이 ${ga(foe)} 멀티를 ${exp}개 더 늘림`,
+      `${much} 세워만 두는 동안 ${ga(foe)} 자원을 ${exp}군데 더 폄`,
+      `${much} 뽑아 놓고도 밀지 않았고, 그 틈에 ${ga(foe)} 멀티를 ${exp}개 더 앉힘`,
+    ]) : c.pick([
+      `${much} 쌓아 두고도 들어가지 않고 타이밍을 흘려보냄`,
+      `${much} 끝내 쓰지 못하고 때를 놓침`,
+      `${much} 뽑아 놓고도 밀 때를 잡지 못함`,
+    ]))}`;
   },
 
   // 아군 기지에 포토를 깔아 주는 것 — 제 이득이 아니라 팀을 위한 수라 따로 말한다(요청).
