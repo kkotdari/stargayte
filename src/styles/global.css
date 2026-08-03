@@ -7100,6 +7100,12 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 /* 줄 사이는 얇은 실선 하나로만 가른다 — 카드처럼 저마다 유리판을 두면 '목록'이 아니라
    '작은 카드 목록'이 되어 훑기가 다시 느려진다. */
 .scr-activity-row-wrap + .scr-activity-row-wrap { border-top: 1px solid var(--line-hair); }
+/* 맨 위와 맨 아래에도 같은 선을 긋는다(요청) — 사이만 그어 두면 목록이 어디서 시작해
+   어디서 끝나는지 첫 줄과 끝 줄만 한쪽이 트여 있어 흘러내리는 것처럼 보였다. */
+.scr-activity-rows {
+  border-top: 1px solid var(--line-hair);
+  border-bottom: 1px solid var(--line-hair);
+}
 .scr-activity-row {
   /* 칸을 줄 높이만큼 늘린다(stretch) — 가운데 정렬로 두면 칸이 제 글자 높이로 쪼그라들어
      세로 구분선이 글자 높이만큼만 그려지고 줄마다 뚝뚝 끊긴다(지적: 열 구분 없이 이어지게).
@@ -7141,7 +7147,7 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 }
 /* 가장 긴 제목("일일 랭크 변동")에 맞춘 고정폭이다 — 그래도 넘치면 트랙을 밀지 말고
    잘린다(실측: min-width 없이 두면 제목이 내용 칸을 덮어썼다). */
-.scr-activity-row-title { display: flex; align-items: center; min-width: 0; font-weight: 700; }
+.scr-activity-row-title { display: flex; align-items: center; min-width: 0; font-weight: 600; }
 .scr-activity-row-title-text {
   white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis;
 }
@@ -7168,7 +7174,10 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-activity-row-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .scr-activity-row-names { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 /* 이 칸에서 눈이 짚어야 하는 값 — 닉네임과 숫자다. */
-.scr-activity-row-em { color: var(--text); font-weight: 700; }
+/* 굵기는 600까지만(요청) — 색을 다 같게 둔 뒤로 이 목록의 강약은 굵기 하나가 지는데,
+   700이면 한 줄 걸러 한 줄이 제목처럼 굵어 목록 전체가 무거웠다. 600은 400과의 차이는
+   그대로 남기면서 눈에 덜 부딪힌다. */
+.scr-activity-row-em { color: var(--text); font-weight: 600; }
 /* 이름 사이 가운뎃점 — 좌우를 띄운다(요청). 붙여 두면 "Cheol·bob"이 한 낱말로 읽혔다. */
 .scr-activity-row-sep { margin: 0 5px; color: var(--row-dim); flex: none; }
 .scr-activity-row-arrow { color: var(--row-dim); flex: none; }
@@ -7205,9 +7214,13 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   .scr-activity-row-fold-open, .scr-activity-row-fold-closing { animation: none; }
 }
 /* 펼친 자리 — 원래 카드를 그대로 넣되 머리(시각·제목)는 감춘다(요청: 카드 바디와 댓글).
-   바로 위 줄이 이미 같은 말을 하고 있어, 그대로 두면 시각이 두 번 적힌다. */
+   바로 위 줄이 이미 같은 말을 하고 있어, 그대로 두면 시각이 두 번 적힌다.
+   단, 줄 바로 밑에 붙은 카드 한 장만 그렇다(자식 결합자) — 게임결과 묶음은 그 안에
+   경기 카드가 여러 장 들어 있고, 그 머리들은 줄이 한 번도 말한 적 없는 것(경기별 시각·
+   등록자)과 삭제 메뉴를 쥐고 있다. 싸잡아 감췄더니 목록에서만 시각·등록자가 사라지고
+   삭제가 아예 불가능했다(지적). */
 .scr-activity-row-body { padding: 0 var(--scr-row-pad-x) 12px; }
-.scr-activity-row-body .scr-activity-card-head { display: none; }
+.scr-activity-card-head-off > .scr-activity-card > .scr-activity-card-head { display: none; }
 /* 목록에서는 카드마다 따로 등장하지 않는다(요청: 열릴 때 게임결과 목록이 한 번에 뜨게).
    .scr-activity-card-stack-reveal은 카드를 translateY(8px)에서 0으로 끌어올리는데, 그 위에
    줄이 펼쳐지는 연출까지 겹치면 두 움직임이 서로 다른 속도로 붙어 "무언가 줄어들면서
@@ -7867,7 +7880,12 @@ html.scr-light-theme .scr-activity-card-comment .scr-comment-mention { color: #1
     bottom: calc(var(--scr-float-bottom) + (var(--mobile-footer-h) * 0.72 - 44px) / 2);
     left: 8px;
   }
-  html.scr-tabbar-mini .scr-activity-add-fab { width: 44px; height: 44px; }
+  /* 원이 44px로 줄면 글자도 같이 줄어야 한다(요청) — 크기만 줄이면 "등록"이 원 안을
+     꽉 채워, 줄어든 게 아니라 글자가 커진 것처럼 보였다. 52:44와 같은 비율의 한 단계
+     아래 토큰을 쓴다. */
+  html.scr-tabbar-mini .scr-activity-add-fab {
+    width: 44px; height: 44px; font-size: var(--fs-11);
+  }
 }
 /* 넓은 화면에서는 화면 왼쪽 끝이 아니라 본문 칸 바로 옆에 둔다(요청) — 본문은 가운데
    860px로 모여 있는데 버튼만 저 멀리 구석에 있으면 한 화면으로 안 읽힌다. 본문 왼쪽
@@ -7879,11 +7897,12 @@ html.scr-light-theme .scr-activity-card-comment .scr-comment-mention { color: #1
 @media (min-width: 1060px) {
   .scr-activity-add-fab-wrap { left: calc(50% - var(--content-max) / 2 - 68px); }
 }
-/* ＋ 아이콘 대신 "등록" 글자를 담는다(요청) — 동그란 원이 아니라 글자가 들어가는 알약이
-   되므로, 폭은 글자에 맡기고 높이만 예전 원과 같게 못 박는다(탭바와 나란히 서는 높이라
-   그 관계가 흐트러지면 안 된다). 로딩 스피너가 들어설 때도 폭이 튀지 않게 최소폭을 준다. */
+/* ＋ 아이콘 대신 "등록" 글자를 담되 모양은 정원이다(요청) — 글자 길이에 폭을 맡겼더니
+   알약이 되어, 같은 자리에 나란히 서는 탭바의 둥근 아이콘들과 결이 어긋났다. 폭을 높이와
+   같게 못 박고 좌우 패딩을 없앤다: "등록" 두 글자는 52px 원 안에 들어간다(실측 26px).
+   로딩 스피너가 들어설 때도 같은 원이라 폭이 튀지 않는다. */
 .scr-activity-add-fab {
-  min-width: 52px; height: 52px; border-radius: 26px; padding: 0 18px;
+  width: 52px; height: 52px; border-radius: 50%; padding: 0;
   display: inline-flex; align-items: center; justify-content: center;
   border: none; cursor: pointer; color: var(--text);
   font-family: inherit; font-size: var(--fs-caption); font-weight: 700; white-space: nowrap;

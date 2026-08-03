@@ -16,6 +16,7 @@ import { resolveSlotName } from "./GameResultSides";
 import { isComputerSlot } from "../../constants/computerSlot";
 import { isUnregisteredSlot } from "../../constants/unregisteredSlot";
 import { ChallengeCard, ChallengeTimeHeadEdit, challengeStatusInfo } from "../challenge/ChallengeScreen";
+import ReplayReviewModal from "../../modals/ReplayReviewModal";
 import ActivityComments, { primeActivityComments } from "./ActivityComments";
 import { primeReplayMaps } from "../../hooks/useReplayMap";
 import ScrollNavTimeline from "../../components/common/ScrollNavTimeline";
@@ -34,10 +35,9 @@ import {
   getScrollMetrics, getScrollTop, scrollRootTo,
 } from "../../utils/scrollRoot";
 import {
-  buildReplayDrafts, resolveUnmatchedAsUnregistered, validateReplayDraft, type ReplayDraft,
+  buildReplayDrafts, shortMatchHint, validateReplayDraft, type ReplayDraft,
 } from "../../utils/replayDraft";
 import { useLockBodyScroll } from "../../utils/bodyScrollLock";
-import { REPLAY_SUMMARY_VERSION } from "../../utils/replaySummaryData";
 import { hasAppUpdatePreloadErrorOccurred } from "../../utils/appUpdate";
 import type {
   Challenge, ActivityTargetType, GameOutcome, GameResult, GameResultSlot, Member, NewGameResult, RankingShift,
@@ -233,9 +233,28 @@ function rowTitleOf(it: DisplayItem): string {
     : it.kind === "rankingShift" ? RANK_SHIFT_TITLE : "게임결과";
 }
 
-/** 이름을 몇 개까지 부르고 나머지는 "외 N명"으로 넘길까 — 두 개까지다. 셋을 부르면 한 줄이
- *  이름으로만 차서, 정작 그 줄이 무엇에 대한 것인지가 밀린다. */
-const ROW_NAME_MAX = 2;
+/** 이 리플레이는 등록 전에 사람이 한 번 봐야 하나(요청) — 세 가지다.
+ *
+ *  · 선수를 회원과 못 이었다(unmatchedTeam*) — 그냥 넣으면 "모름"으로 박혀 그 사람 전적이
+ *    사라진다. 검토창에서 회원/컴퓨터/비회원 중 무엇인지 골라 줘야 한다.
+ *  · 승패를 못 가려냈다(result 없음) — 예전엔 무승부로 채워 넣고 카드에 빨간 글씨만 남겼는데,
+ *    그건 틀린 기록이 통계에 먼저 섞인 뒤 사람이 찾아오길 기다리는 순서다.
+ *  · 2분이 안 되는 짧은 판(shortMatchHint) — 진짜 경기일 수도, 맵만 켰다 끈 것일 수도 있다.
+ *    이건 데이터만 봐서는 못 가른다.
+ *
+ *  나머지(매핑 끝 + 승패 확실 + 정상 길이)는 사람이 볼 게 없으므로 그냥 등록한다. */
+function needsReview(d: ReplayDraft): boolean {
+  return d.unmatchedTeam1.length > 0
+    || d.unmatchedTeam2.length > 0
+    || !d.result
+    || shortMatchHint(d) !== null;
+}
+
+/** 이름을 몇 개까지 부르고 나머지는 "외 N명"으로 넘길까 — 한 명이다(요청). 두 명을 부르면
+ *  "Cheol · carol 외 1명"처럼 이름 사이 가운뎃점과 "외" 앞 띄어쓰기가 한 줄에 뒤엉켜,
+ *  누가 이름이고 어디부터 숫자인지가 오히려 흐려졌다. 한 명만 부르면 "Cheol 외 2명"으로
+ *  구조가 단순해진다 — 어차피 누가 다 있었는지는 펼쳐 봐야 안다. */
+const ROW_NAME_MAX = 1;
 
 /** 이름들을 부르는 한 가지 방식 — 닉네임만 진하게 두고, 사이의 가운뎃점은 흐리게 띄운다
  *  (요청: "· 좌우에 공백", "닉네임 볼드"). 붙여 쓴 "Cheol·bob"은 한 낱말로 읽혀서 몇
@@ -804,13 +823,20 @@ export default function ActivityScreen() {
     if (fabHidden) setAddMenuOpen(false);
   }, [fabHidden]);
 
-  // 리플레이 등록 — 파일 선택 → 분석(buildReplayDrafts) → 바로 등록(요청: "검토창이
-  // 너무 복잡해... 기존 리플레이 검토창은 이제 필요없음"). 사람이 매핑을 봐야 하던
-  // 자리는 등록 자체를 막지 않고, 대신 저장된 경기 카드에 빨간 글씨로 남긴다(아래
-  // GameResultCardBody의 이상 케이스 안내 참고) — 확인 후 지우는 건 그 카드의 기존
-  // 삭제(케밥) 버튼으로 충분하다.
+  // 리플레이 등록 — 파일 선택 → 분석(buildReplayDrafts) → 깨끗한 건 바로 등록.
+  //
+  // 검토창을 모두 없앴다가(요청: "검토창이 너무 복잡해") 다시 문제 있는 건에만 되살렸다
+  // (요청). 그냥 넣고 카드에 빨간 글씨만 남기는 방식은 '틀린 기록이 일단 들어간다'는 뜻이라,
+  // 확인하러 다시 들어오지 않으면 그대로 통계에 섞인다. 사람 손이 실제로 필요한 세 가지
+  // — 선수를 회원과 못 이었을 때, 승패를 못 가렸을 때, 2분이 안 되는 짧은 판일 때 —
+  // 만 검토창으로 보내고, 나머지는 예전처럼 조용히 등록한다.
   const replayInputRef = useRef<HTMLInputElement>(null);
   const [parsingReplays, setParsingReplays] = useState(false);
+  // 검토창에 올릴 드래프트 — 비어 있으면(null) 창을 안 연다.
+  const [reviewDrafts, setReviewDrafts] = useState<ReplayDraft[] | null>(null);
+  // 검토창이 닫힌 뒤에 띄울 안내(자동 등록분 결과) — 같은 배치에서 일부는 그냥 들어가고
+  // 일부는 검토가 필요할 때, 두 소식이 겹쳐 뜨지 않게 순서를 미뤄 둔다.
+  const pendingNoticeRef = useRef<{ text: string; kind: "success" | "error" } | null>(null);
   // 등록 결과 안내 — 인라인 토스트 대신 확인 버튼 있는 팝업으로 띄운다(지적: "저렇게
   // 토스트로 뜨지말고 내용과 확인버튼 있는 팝업으로"). 실패가 없으면 순수 안내, 하나라도
   // 있으면 확인이 필요하다는 뜻으로 제목만 다르게 단다 — 어느 쪽이든 사람이 "확인"을
@@ -965,13 +991,13 @@ export default function ActivityScreen() {
       ]);
       if (hasAppUpdatePreloadErrorOccurred()) return;
 
-      // 검토창 없이 바로 등록한다(요청) — 중복(이미 등록됨/병합됨)은 buildReplayDrafts가
-      // 이미 걸러 뒀으므로 조용히 넘어간다. 팀을 아예 못 나눴거나(teamSplitUncertain)
-      // 관전자 의심 인원이 있는 경우만 여전히 사람 눈이 필요해 등록하지 않고 실패로
-      // 남긴다 — 나머지(짧은 경기·승패 미확인·미확정 참가자)는 등록은 하되 활동 카드에
-      // 빨간 글씨로 남겨 확인/삭제를 유도한다.
+      // 중복(이미 등록됨/병합됨)은 buildReplayDrafts가 이미 걸러 뒀으므로 조용히 넘어간다.
+      // 팀을 아예 못 나눴거나(teamSplitUncertain) 관전자 의심 인원이 있는 건은 검토창도
+      // 손댈 수 없는 자리라(팀 편성 자체를 다시 짜야 한다) 여전히 실패로 남긴다.
+      // 그 밖에 사람 눈이 필요한 세 가지는 검토창으로 보낸다(요청) — 아래 needsReview.
       let registered = 0;
       const failed: string[] = [];
+      const review: ReplayDraft[] = [];
       for (const raw of drafts) {
         if (raw.excludeReason === "duplicate") continue;
         if (raw.parseError) { failed.push(`${raw.fileName}: ${raw.parseError}`); continue; }
@@ -983,28 +1009,26 @@ export default function ActivityScreen() {
           failed.push(`${raw.fileName}: 관전자로 의심되는 사람이 있어요(${raw.guessedObservers.join(", ")}).`);
           continue;
         }
-        // 승패를 못 가려낸 경기 — 등록은 하되(요청) 무승부로 채우고 그 사실을 summaryData에
-        // 남긴다(활동 카드가 이 표시를 보고 빨간 글씨를 낸다).
-        const resultUncertain = !raw.result;
-        const filled = resolveUnmatchedAsUnregistered(raw);
-        const d: ReplayDraft = resultUncertain ? { ...filled, result: "draw" } : filled;
-        const problem = validateReplayDraft(d);
-        if (problem) { failed.push(`${d.fileName}: ${problem}`); continue; }
+        if (needsReview(raw)) { review.push(raw); continue; }
+
+        // 여기까지 온 건 매핑도 끝났고 승패도 가려졌고 길이도 정상인 경기다 — 그냥 넣는다.
+        const problem = validateReplayDraft(raw);
+        if (problem) { failed.push(`${raw.fileName}: ${problem}`); continue; }
 
         const payload: NewGameResult = {
-          date: d.date, team1: d.team1, team2: d.team2, result: d.result as GameOutcome, matchType: d.matchType,
-          replay: d.replay,
-          mapName: d.mapName || null, gameStartedAt: d.gameStartedAt, durationSeconds: d.durationSeconds,
-          summaryData: resultUncertain
-            ? { ...(d.summaryData ?? { v: REPLAY_SUMMARY_VERSION, beats: [] }), resultUncertain: true }
-            : d.summaryData,
-          mapData: d.mapGrid,
+          date: raw.date, team1: raw.team1, team2: raw.team2,
+          result: raw.result as GameOutcome, matchType: raw.matchType,
+          replay: raw.replay,
+          mapName: raw.mapName || null, gameStartedAt: raw.gameStartedAt,
+          durationSeconds: raw.durationSeconds,
+          summaryData: raw.summaryData,
+          mapData: raw.mapGrid,
         };
         try {
           await addGameResult(payload);
           registered += 1;
         } catch (err) {
-          failed.push(`${d.fileName}: ${err instanceof Error ? err.message : "등록에 실패했어요."}`);
+          failed.push(`${raw.fileName}: ${err instanceof Error ? err.message : "등록에 실패했어요."}`);
         }
       }
 
@@ -1013,8 +1037,17 @@ export default function ActivityScreen() {
       if (truncated) parts.push(`한 번에 최대 ${MAX_REPLAY_FILES}개까지만 등록돼 처음 ${MAX_REPLAY_FILES}개만 처리했어요.`);
       if (registered > 0) parts.push(`${registered}개 등록했어요.`);
       if (failed.length > 0) parts.push(`${failed.length}개는 등록하지 못했어요 — ${failed.join(" / ")}`);
-      if (parts.length > 0) {
-        setReplayNotice({ text: parts.join(" "), kind: failed.length > 0 ? "error" : "success" });
+      // 검토할 게 있으면 안내창 대신 검토창을 바로 연다 — 안내를 먼저 띄우면 확인을 누른
+      // 뒤에야 검토창이 뜨는 두 단계가 되고, 그 사이에 무슨 일이 남았는지가 흐려진다.
+      // 자동 등록분 안내는 검토창을 닫은 뒤로 미룬다(아래 onClose/onSaved).
+      const notice = parts.length > 0
+        ? { text: parts.join(" "), kind: failed.length > 0 ? "error" as const : "success" as const }
+        : null;
+      if (review.length > 0) {
+        pendingNoticeRef.current = notice;
+        setReviewDrafts(review);
+      } else if (notice) {
+        setReplayNotice(notice);
       }
     } finally {
       setParsingReplays(false);
@@ -1287,11 +1320,18 @@ export default function ActivityScreen() {
   };
 
   /* 카드 한 장 — 카드 보기와 목록 보기의 펼침이 같은 것을 그리도록 한 곳에 둔다.
-     forceOpen은 목록 보기에서만 참이다: 게임결과 묶음은 요약(참가자 명단)을 건너뛰고
-     곧장 경기 목록을 편다(요청). */
-  const renderCard = (item: DisplayItem, forceOpen: boolean) => (
+     inList는 이 카드가 목록 줄 밑에 펼쳐진 것인가다. 두 가지가 달라진다:
+     ① 게임결과 묶음은 요약(참가자 명단)을 건너뛰고 곧장 경기 목록을 편다(요청).
+     ② 너 나와·랭크 변동은 카드 머리를 감춘다 — 바로 위 줄이 이미 같은 제목·시각을 말한다.
+        게임결과 묶음은 감추지 않는다: 그 안의 머리들은 줄이 한 번도 말한 적 없는 경기별
+        시각·등록자와 삭제 메뉴를 쥐고 있다(지적: 목록에서 시각·등록자가 사라지고 삭제 불가).
+        경기가 한 판뿐인 묶음도 마찬가지라, 카드가 몇 장인지로는 가를 수 없다. */
+  const renderCard = (item: DisplayItem, inList: boolean) => (
     item.kind === "rankingShift" ? (
-      <div className="scr-activity-card-stack-wrapper" key={`rs-${item.shift.id}`}>
+      <div
+        className={cx("scr-activity-card-stack-wrapper", inList && "scr-activity-card-head-off")}
+        key={`rs-${item.shift.id}`}
+      >
         <RankingShiftCard
           shift={item.shift}
           timeText={formatWhen(item.time, { clock: item.withClock })}
@@ -1306,7 +1346,10 @@ export default function ActivityScreen() {
         />
       </div>
     ) : item.kind === "challenge" ? (
-      <div className="scr-activity-card-stack-wrapper" key={`c-${item.challenge.id}`}>
+      <div
+        className={cx("scr-activity-card-stack-wrapper", inList && "scr-activity-card-head-off")}
+        key={`c-${item.challenge.id}`}
+      >
         <ActivityCard
           dateLabel={dateLabelOf(item)}
           // 너 나와!는 "호출"이니 수화기 아이콘으로(요청) — 등록 메뉴·호출 버튼과 통일.
@@ -1358,11 +1401,13 @@ export default function ActivityScreen() {
         dateLabel={sessionDateLabel(item.date)}
         highlightMemberIds={matchedIds}
         highlightTerms={searchTerms}
-        defaultOpen={forceOpen || filterActive}
+        defaultOpen={inList || filterActive}
         expanded={expandedStackKey === item.items[0].gameResult.id}
         onExpand={() => setExpandedStackKey(item.items[0].gameResult.id)}
       />
     ) : (
+      // 묶이지 않은 낱장 경기 — 머리는 목록에서도 남긴다. 줄이 말하지 않는 등록자와
+      // 삭제 메뉴가 거기 있어서, 묶음 안의 경기 카드와 같은 이유로 감추면 안 된다.
       <div className="scr-activity-card-stack-wrapper" key={`m-${item.gameResult.id}`}>
         <GameResultCard
           item={item}
@@ -1593,6 +1638,21 @@ export default function ActivityScreen() {
       {/* 리플레이 등록 결과 — 인라인 토스트 대신 확인 버튼 있는 팝업으로(지적). "취소"가
           아니라 순수 안내라 버튼은 "확인" 하나뿐이다 — ConfirmDialog는 항상 두 버튼을
           내므로 여기선 그 대신 같은 모양의 팝업을 직접 그린다. */}
+      {/* 문제 있는 건만 사람이 훑는 자리(요청) — 매핑이 덜 됐거나 승패를 못 가렸거나
+          짧은 판. 창을 닫으면(등록했든 그냥 닫았든) 미뤄 둔 자동 등록분 안내를 그때 띄운다. */}
+      {reviewDrafts && (
+        <ReplayReviewModal
+          drafts={reviewDrafts}
+          onClose={() => {
+            setReviewDrafts(null);
+            const pending = pendingNoticeRef.current;
+            pendingNoticeRef.current = null;
+            if (pending) setReplayNotice(pending);
+          }}
+          onSaved={handleReplaysSaved}
+        />
+      )}
+
       {replayNotice && createPortal(
         <div className="scr-modal-overlay">
           <div className="scr-modal scr-modal-sm scr-modal-confirm">
