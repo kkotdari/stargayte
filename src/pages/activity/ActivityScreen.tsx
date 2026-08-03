@@ -80,17 +80,9 @@ const ROW_CLOSE_MS = 200;
 /** 목록/타임라인 중 무엇을 보고 있었나 — 테마(LIGHT_THEME_KEY)와 같은 방식으로 남긴다. */
 const FEED_VIEW_KEY = "scr-activity-view";
 
-/** 지난 방문에서 어디까지 봤나 — 종류별 최대 id다. 시각이 아니라 id로 재는 이유: 활동는
- *  '일어난 때' 순인데 NEW는 '등록된 때'의 이야기라 둘이 다르다(지난주 경기를 오늘 올릴 수
- *  있다). id는 등록 순서 그대로라 그 물음에 정확히 답한다. */
-const FEED_SEEN_KEY = "scr-activity-seen";
-interface SeenMarks { gr: number; ch: number; rs: number }
-function readSeen(): SeenMarks | null {
-  try {
-    const v = JSON.parse(localStorage.getItem(FEED_SEEN_KEY) ?? "null");
-    return v && typeof v.gr === "number" ? v as SeenMarks : null;
-  } catch { return null; }
-}
+/** NEW로 볼 기간(요청: 24시간 내) — 지난 방문을 기억해 두던 방식에서 이 단순한 규칙으로
+ *  바꿨다. 누구에게나 같은 것이 보이고, 브라우저에 기억해 둘 것도 없다. */
+const NEW_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 // 활동 — 커뮤니티 활동(경기 결과, 너 나와! 일정)을 한 타임라인으로 보여주는 홈 화면.
 // 타임라인 기준: 너 나와!는 경기 예정 일시, 경기는 리플레이의 게임 시작 시각.
@@ -756,10 +748,6 @@ export default function ActivityScreen() {
     localStorage.setItem(FEED_VIEW_KEY, listMode ? "list" : "timeline");
   }, [listMode]);
   const [openRowKey, setOpenRowKey] = useState<string | null>(null);
-  /* NEW 배지의 기준선 — 마운트할 때 한 번만 읽는다. 곧바로 지금 최대값으로 덮어쓰므로
-     배지는 이번 방문 내내 그 자리에 있고 다음 방문에는 사라진다. 처음 온 사람에게는
-     기준선이 없어(null) 아무것도 새것으로 치지 않는다 — 전부 NEW면 아무 말도 아니다. */
-  const [seenMarks] = useState<SeenMarks | null>(readSeen);
   /* 접히는 모습을 보여 주려면(요청: 여닫을 때 트랜지션) 닫는 동안에도 그 줄의 카드가
      잠깐 더 붙어 있어야 한다 — 바로 언마운트하면 그냥 사라진다. 다른 줄을 펴서 밀려
      닫히는 경우도 같은 길을 탄다. */
@@ -1153,30 +1141,21 @@ export default function ActivityScreen() {
 
   // 같은 세션(sessionDateOf — 새벽 경기는 전날에 붙는다)의 게임결과가 2개 이상 연속이면
   // 겹침 스택으로 묶는다(요청).
-  /* 지금 화면에 온 것 중 종류별 최대 id를 기준선으로 저장한다 — 다음 방문에서 이보다 큰
-     것만 NEW다. 최대값은 커지기만 하므로 더 불러올 때마다 다시 써도 값이 흔들리지 않는다. */
-  useEffect(() => {
-    if (feed.length === 0) return;
-    const max: SeenMarks = { gr: 0, ch: 0, rs: 0 };
-    for (const it of feed) {
-      if (it.kind === "gameResult") max.gr = Math.max(max.gr, it.gameResult.id);
-      else if (it.kind === "challenge") max.ch = Math.max(max.ch, it.challenge.id);
-      else max.rs = Math.max(max.rs, it.shift.id);
-    }
-    const prev = readSeen();
-    localStorage.setItem(FEED_SEEN_KEY, JSON.stringify({
-      gr: Math.max(max.gr, prev?.gr ?? 0),
-      ch: Math.max(max.ch, prev?.ch ?? 0),
-      rs: Math.max(max.rs, prev?.rs ?? 0),
-    }));
-  }, [feed]);
-  /** 지난 방문 이후에 등록된 건인가 — 묶음은 그중 하나라도 새것이면 새것이다. */
+  /** 올라온 지 하루가 안 된 건인가(요청: 24시간 내) — 묶음은 그중 하나라도 새것이면
+   *  새것이다.
+   *
+   *  '언제 올라왔나'를 종류마다 아는 만큼만 쓴다. 너 나와와 랭크 변동은 등록 시각
+   *  (createdAt)이 그대로 있고, 게임결과에는 그 값이 없어(GameResult에 createdAt이 없다)
+   *  경기 시각으로 대신한다 — 대개 친 날 바로 올리므로 거의 같지만, 한참 지난 경기를
+   *  오늘 올리면 그 건에는 NEW가 안 붙는다. 앞으로의 일(예정된 너 나와)은 새것이 아니라
+   *  아직 안 온 것이라 제외한다. */
   const isNewItem = (it: DisplayItem): boolean => {
-    if (!seenMarks) return false;
-    if (it.kind === "challenge") return it.challenge.id > seenMarks.ch;
-    if (it.kind === "rankingShift") return it.shift.id > seenMarks.rs;
-    if (it.kind === "gameResultPost") return it.items.some((x) => x.gameResult.id > seenMarks.gr);
-    return it.gameResult.id > seenMarks.gr;
+    const now = Date.now();
+    const fresh = (ms: number) => now - ms >= 0 && now - ms <= NEW_WINDOW_MS;
+    if (it.kind === "challenge") return fresh(new Date(it.challenge.createdAt).getTime());
+    if (it.kind === "rankingShift") return fresh(new Date(it.shift.createdAt).getTime());
+    if (it.kind === "gameResultPost") return it.items.some((x) => fresh(x.time));
+    return fresh(it.time);
   };
 
   const displayFeed = useMemo<DisplayItem[]>(() => {

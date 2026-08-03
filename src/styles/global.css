@@ -7111,18 +7111,23 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 /* 세로 구분선(요청) — 가로줄(--line-hair)보다 더 흐리게 둔다. 표의 세로줄은 칸을 가르기만
    하면 되고, 가로줄만큼 진하면 격자가 글자보다 먼저 눈에 들어온다. 선 좌우로 같은 여백을
    두려고 gap 대신 각 칸의 패딩으로 자리를 만든다. */
-.scr-activity-row > * { display: flex; align-items: center; padding: 15px 10px 15px 0; }
+/* 칸 안에서는 가운데(요청) — 표의 칸처럼 읽히려면 글자가 칸의 한가운데 서야 한다. 폭이
+   고정인 제목·시각 칸은 남는 자리가 좌우로 반씩 갈리고, 늘어나는 내용 칸도 같은 규칙을
+   따라 한 덩어리로 가운데 앉는다. */
+.scr-activity-row > * {
+  display: flex; align-items: center; justify-content: center;
+  padding: 15px 10px 15px 0;
+}
 .scr-activity-row > * + * { border-left: 1px solid var(--line-faint); padding-left: 10px; }
-.scr-activity-row > *:last-child { padding-right: 0; justify-content: flex-end; }
+.scr-activity-row > *:last-child { padding-right: 0; }
 /* 고른 줄에 배경을 깔지 않는다(요청) — 아래에 카드가 펼쳐져 있는 것이 이미 '고른 줄'을
    말하고, 배경까지 깔면 그 줄만 다른 표처럼 보인다. 호버는 마우스가 어디 있는지 알려
    주는 것이라 그대로 둔다. */
 @media (hover: hover) { .scr-activity-row:hover { background: var(--lit-hover-bg); } }
-/* 시각은 맨 끝으로 갔다(요청) — 오른쪽 끝에 세로로 줄지어 서므로 오른쪽 정렬이라야
-   날짜 끝이 한 줄로 맞는다. */
+/* 시각은 맨 끝 칸이다 — 다른 칸과 같이 칸 가운데에 선다. */
 .scr-activity-row-time {
   color: var(--dim); font-variant-numeric: tabular-nums; white-space: nowrap;
-  text-align: right;
+  text-align: center;
   /* 한 스텝 작게(요청) — 시각은 줄을 가르는 기준일 뿐 읽을 값이 아니다. */
   font-size: var(--fs-11);
 }
