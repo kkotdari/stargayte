@@ -7089,7 +7089,11 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    바탕 대비 6.1). 제목 칸의 NEW 연두·UPDATE 하늘과는 OKLab ΔE 25.6 / 13.3이라 한 줄에
    나란히 떠도 갈린다. */
 .scr-activity-row-comment-fresh { color: var(--comment-badge); }
-.scr-activity-row-comment-fresh b { font-weight: 800; margin-left: 1px; }
+/* NEW만 살짝 띄운다(요청) — [n]은 밑선에 그대로 두고 이것만 올려서, 붙어 있으면서도
+   수에 얹힌 말로 읽히게 한다. relative라 자리는 안 밀리므로 옆 시각 칸도 안 움직인다. */
+.scr-activity-row-comment-fresh b {
+  position: relative; top: -2px; font-weight: 800; margin-left: 1px;
+}
 /* 내용은 한 줄로 끝난다 — 넘치면 말줄임이다. 여기서 두 줄이 되면 줄 높이가 흔들려
    목록의 리듬이 깨진다. */
 /* 바탕은 흐린 색이다(요청) — 이 칸의 글자 대부분("외 / 명 / 변동 / 경기")은 줄마다 똑같이
