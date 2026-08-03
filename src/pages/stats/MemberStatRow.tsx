@@ -125,64 +125,61 @@ export default function MemberStatRow({
           </button>
         </div>
       </div>
-      {/* 랭크와 포인트는 한 칸이다(요청: 통합) — 위에 랭크, 아래에 포인트 두 줄. 한때
-          두 컬럼으로 갈라 뒀는데, 둘은 사실 같은 값의 두 얼굴이라(포인트로 매긴 것이 랭크다)
-          칸을 둘 쓰면서 표만 넓어졌다. 누르는 자리는 여전히 둘이다 — 랭크는 순위변동
-          그래프, 포인트는 경기 이력. */}
-      {points !== undefined && (
-        <div className="scr-stat-rank-cell">
-          {rank == null && points === null ? (
-            <span className="scr-stat-points-empty">-</span>
-          ) : (
-            <>
-              <div className="scr-stat-rank-line">
-                {rank == null ? (
-                  <span className="scr-stat-points-empty">-</span>
-                ) : onRankClick ? (
-                  <button
-                    type="button" className="scr-stat-points-btn"
-                    onClick={onRankClick} aria-label={`${member.nickname} 순위변동`}
-                  >
-                    {rank}위
-                  </button>
-                ) : (
-                  <span className="scr-stat-rank-plain">{rank}위</span>
-                )}
-                {/* 변동은 방향이 곧 의미라 색과 화살표로만 짧게. 신규는 화살표 대신
-                    "신규" 글자로(요청). */}
-                {rankDelta === "new" ? (
-                  // 기존 피드 랭크변동 카드의 "신규" 배지와 같은 톤을 그대로 쓴다.
-                  <span className="scr-feed-shift-new">신규</span>
-                ) : rankDelta != null && rankDelta !== 0 && (
-                  <span className={rankDelta > 0 ? "scr-feed-shift-up" : "scr-feed-shift-down"}>
-                    {rankDelta > 0 ? `▲${rankDelta}` : `▼${-rankDelta}`}
-                  </span>
-                )}
-              </div>
-              <div className="scr-stat-rank-line scr-stat-rank-points">
-                {points === null ? (
-                  <span className="scr-stat-points-empty">-</span>
-                ) : (
-                  <>
+      {/* 게임수·승률·APM·커맨드는 한 칸이다(요청: 통합) — 넷 다 "막대 하나 + 수" 한 줄짜리라
+          칸을 넷 쓰면서 표만 넓어졌다. 랭크·포인트도 같은 칸으로 들어온다(요청: 랭킹과 기록
+          통합) — 셋 다 "그 사람이 얼마나 어떻게 뛰었나"라 한 덩어리로 읽는 편이 낫다.
+          칸 안은 [랭크·포인트] [게임수·승률] [APM·커맨드] 세 줄기이고 줄기 안에서만 세로로
+          쌓인다. 어느 막대인지는 왼쪽 이름이 말한다. */}
+      <div className="scr-stat-record-cell">
+        {points !== undefined && (
+          <div className="scr-stat-record-col scr-stat-rank-col">
+            {rank == null && points === null ? (
+              <span className="scr-stat-points-empty">-</span>
+            ) : (
+              <>
+                <div className="scr-stat-rank-line">
+                  {rank == null ? (
+                    <span className="scr-stat-points-empty">-</span>
+                  ) : onRankClick ? (
                     <button
                       type="button" className="scr-stat-points-btn"
-                      onClick={onPointsClick} aria-label={`${member.nickname} 포인트 상세`}
+                      onClick={onRankClick} aria-label={`${member.nickname} 순위변동`}
                     >
-                      {points.toLocaleString()}
+                      {rank}위
                     </button>
-                    {medals?.points && <span className="scr-stat-medal">{medals.points}</span>}
-                  </>
-                )}
-              </div>
-            </>
-          )}
-        </div>
-      )}
-      {/* 게임수·승률·APM·커맨드는 한 칸이다(요청: 통합) — 넷 다 "막대 하나 + 수" 한 줄짜리라
-          칸을 넷 쓰면서 표만 넓어졌다. 칸 안에서 [게임수·승률]과 [APM·커맨드] 두 줄기로
-          나눠 세로로 쌓고(요청), 어느 막대인지는 왼쪽 이름이 말한다. 메달이 각자의 막대 옆에 붙도록 항목마다 position:relative를 준다(칸에만
-          주면 넷이 같은 자리에 겹친다). */}
-      <div className="scr-stat-record-cell">
+                  ) : (
+                    <span className="scr-stat-rank-plain">{rank}위</span>
+                  )}
+                  {/* 변동은 방향이 곧 의미라 색과 화살표로만 짧게. 신규는 화살표 대신
+                      "신규" 글자로(요청). */}
+                  {rankDelta === "new" ? (
+                    // 기존 피드 랭크변동 카드의 "신규" 배지와 같은 톤을 그대로 쓴다.
+                    <span className="scr-feed-shift-new">신규</span>
+                  ) : rankDelta != null && rankDelta !== 0 && (
+                    <span className={rankDelta > 0 ? "scr-feed-shift-up" : "scr-feed-shift-down"}>
+                      {rankDelta > 0 ? `▲${rankDelta}` : `▼${-rankDelta}`}
+                    </span>
+                  )}
+                </div>
+                <div className="scr-stat-rank-line scr-stat-rank-points">
+                  {points === null ? (
+                    <span className="scr-stat-points-empty">-</span>
+                  ) : (
+                    <>
+                      <button
+                        type="button" className="scr-stat-points-btn"
+                        onClick={onPointsClick} aria-label={`${member.nickname} 포인트 상세`}
+                      >
+                        {points.toLocaleString()}
+                      </button>
+                      {medals?.points && <span className="scr-stat-medal">{medals.points}</span>}
+                    </>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        )}
         <div className="scr-stat-record-col">
           <div className="scr-stat-record-item">
             <span className="scr-stat-record-label">게임수</span>
