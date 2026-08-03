@@ -337,6 +337,8 @@ function ChallengeActionsMenu({ challenge, isAdmin, myId, onDeleted, onChanged }
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  // 삭제·취소가 실패했을 때 확인창 안에 남길 말 — 두 창이 동시에 뜨는 일은 없어 하나로 쓴다.
+  const [err, setErr] = useState<string | null>(null);
   /* 취소는 부른 사람(또는 운영자)이, 아직 안 끝난 것만(요청: "호출자가 취소도 가능함").
      삭제와 달리 기록은 남고 폐기로만 넘어간다 — 활동에 "취소"로 남는다. */
   const canCancel = (challenge.createdBy.id === myId || isAdmin)
@@ -358,24 +360,33 @@ function ChallengeActionsMenu({ challenge, isAdmin, myId, onDeleted, onChanged }
     };
   };
 
+  // 실패하면 창을 닫지 않고 그 자리에 이유를 남긴다 — 예전엔 catch 없이 finally에서
+  // 무조건 닫아서, 요청이 깨져도 창만 사라지고 아무 일도 안 일어난 것처럼 보였다
+  // (지적: "조용히 오류남"). 성공했을 때만 닫는다.
   const remove = async () => {
     setBusy(true);
+    setErr(null);
     try {
       await api.deleteChallenge(challenge.id);
       onDeleted(challenge.id);
+      setConfirmOpen(false);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "삭제하지 못했어요. 잠시 뒤 다시 시도해 주세요.");
     } finally {
       setBusy(false);
-      setConfirmOpen(false);
     }
   };
 
   const cancel = async () => {
     setBusy(true);
+    setErr(null);
     try {
       onChanged(await api.cancelChallenge(challenge.id));
+      setCancelOpen(false);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "취소하지 못했어요. 잠시 뒤 다시 시도해 주세요.");
     } finally {
       setBusy(false);
-      setCancelOpen(false);
     }
   };
 
@@ -424,8 +435,9 @@ function ChallengeActionsMenu({ challenge, isAdmin, myId, onDeleted, onChanged }
           title="너 나와! 삭제"
           message="이 너 나와!를 완전히 삭제할까요? 되돌릴 수 없어요."
           confirmLabel={busy ? "삭제 중..." : "삭제"}
+          error={err}
           onConfirm={() => void remove()}
-          onCancel={() => setConfirmOpen(false)}
+          onCancel={() => { setConfirmOpen(false); setErr(null); }}
         />
       )}
       {cancelOpen && (
@@ -435,8 +447,9 @@ function ChallengeActionsMenu({ challenge, isAdmin, myId, onDeleted, onChanged }
           confirmLabel={busy ? "취소 중..." : "취소하기"}
           // 기본 취소 버튼도 "취소"라 한 창에 취소가 둘이 된다 — 물러나는 쪽은 "그냥 둘래요"로.
           cancelLabel="그냥 둘래요"
+          error={err}
           onConfirm={() => void cancel()}
-          onCancel={() => setCancelOpen(false)}
+          onCancel={() => { setCancelOpen(false); setErr(null); }}
         />
       )}
     </div>

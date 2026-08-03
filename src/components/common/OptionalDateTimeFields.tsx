@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { X, Calendar, CalendarPlus } from "lucide-react";
 import { cx } from "../../utils/format";
-import { DATE_INPUT_MIN, DATE_INPUT_MAX, shortDateWithDow, isValidDateStr } from "../../utils/date";
+import { DATE_INPUT_MIN, DATE_INPUT_MAX, shortDate, isValidDateStr } from "../../utils/date";
 
 // 네이티브 달력 표시기를 CSS로 숨겼으므로, 데스크톱에서 입력칸을 눌렀을 때 피커가 열리게
 // showPicker를 직접 호출한다(모바일은 인풋 포커스만으로 네이티브 피커가 열려 이 호출이
@@ -66,12 +66,12 @@ export default function OptionalDateTimeFields({
           {/* 잠긴 칸은 type=date가 아니라 읽기 전용 텍스트다 — 네이티브 날짜 칸의 표기는
               브라우저 로케일이 정해서 "08/03/2026"처럼 이 앱에서 쓰지 않는 꼴이 나온다
               (지적: 날짜 표기법이 이상하다). 고칠 수 없는 값이라 피커도 필요 없으니,
-              앱이 날짜를 적는 유일한 꼴(shortDateWithDow — "8월 3일 (월)")로 그냥 적는다.
+              앱이 날짜를 적는 유일한 꼴(shortDate — "8월 3일")로 그냥 적는다.
               생김새는 클래스가 같아 그대로다. */}
           {dateLocked ? (
             <input
               type="text" className={cx(cls, "scr-datetime-locked")} readOnly tabIndex={-1}
-              value={isValidDateStr(dateStr) ? shortDateWithDow(dateStr) : dateStr}
+              value={isValidDateStr(dateStr) ? shortDate(dateStr) : dateStr}
             />
           ) : (
             <input

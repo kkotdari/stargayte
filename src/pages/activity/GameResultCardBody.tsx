@@ -168,16 +168,23 @@ export default function GameResultCardBody({
   const canDelete = !!user && isAdminRole(user.roles);
   const [deleteTarget, setDeleteTarget] = useState<GameResult | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [deleteErr, setDeleteErr] = useState<string | null>(null);
   // 카드 안에서 펼치던 상세(스탯 표)는 없앴다(요청) — 그래서 로우 자체의 펼침/접힘도
   // 통째로 사라졌다. 게임번호·등록자는 펼쳐야 보이던 걸 늘 보이는 자리로 올렸다(요청).
 
   const confirmDelete = async () => {
     if (!deleteTarget) return;
     setDeleting(true);
+    setDeleteErr(null);
     try {
       await deleteGameResultAction(deleteTarget.id);
       setDeleteTarget(null);
       onDeleted();
+    } catch (e) {
+      // 실패를 확인창 안에 남긴다 — 예전엔 catch가 없어 요청이 깨지면 오류가 그대로
+      // 밖으로 새고(unhandled rejection) 창은 그 자리에 그대로 떠 있었다. 누르는 쪽에서는
+      // 삭제 버튼이 죽은 것처럼 보였다(지적: "조용히 오류남 페이지가 멈춤").
+      setDeleteErr(e instanceof Error ? e.message : "삭제하지 못했어요. 잠시 뒤 다시 시도해 주세요.");
     } finally {
       setDeleting(false);
     }
@@ -219,8 +226,9 @@ export default function GameResultCardBody({
           message="삭제하면 되돌릴 수 없어요."
           confirmLabel={deleting ? "삭제 중..." : "삭제"}
           cancelLabel="취소"
+          error={deleteErr}
           onConfirm={confirmDelete}
-          onCancel={() => setDeleteTarget(null)}
+          onCancel={() => { setDeleteTarget(null); setDeleteErr(null); }}
         />
         </div>
       )}

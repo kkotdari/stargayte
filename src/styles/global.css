@@ -7185,6 +7185,9 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    도로 진하게 올린다. */
 .scr-activity-row-desc {
   display: flex; align-items: center; gap: 6px; min-width: 0;
+  /* 한 스텝 작게(요청) — 제목이 이 줄의 이름표고 내용은 그 부연이다. 같은 크기로 두면
+     둘이 같은 무게로 읽혀 어느 쪽부터 봐야 할지가 안 정해진다. */
+  font-size: var(--fs-micro);
   color: var(--row-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .scr-activity-row-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
@@ -7224,8 +7227,15 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    자리는 즉시 잡히고 내용만 스며들 듯 나타난다.
    애니메이션은 트랜지션과 달리 '붙자마자' 도는 것이라, 펼칠 때만 마운트하는 지금 구조에서도
    첫 프레임을 놓치지 않는다. 닫을 때는 ActivityScreen이 ROW_CLOSE_MS만큼 언마운트를 미뤄 준다. */
-.scr-activity-row-fold-open { animation: scr-row-open .2s ease-out both; }
-.scr-activity-row-fold-closing { animation: scr-row-close .18s ease-in both; }
+/* fill-mode가 both가 아니라 backwards인 이유(중요) — both는 끝난 뒤에도 마지막 키프레임을
+   붙들고 있는데, 그 키프레임의 transform: none이 계산값 matrix(1,0,0,1,0,0)로 남는다.
+   항등 행렬이어도 transform이 있는 요소는 position: fixed 자손의 담는 블록이 되므로,
+   펼친 줄 안에서 뜬 확인창이 화면 중앙이 아니라 이 줄 기준으로 앉았다(지적: 삭제 컨펌창이
+   카드 중앙에 뜸 — 실측 y 3494, 화면 중앙은 450).
+   backwards는 시작 전 상태만 미리 잡아 첫 프레임 튐을 막고, 끝난 뒤에는 아무것도 안 남긴다.
+   닫힘(closing)은 끝나면 언마운트되므로 어느 쪽이든 같지만, 짝을 맞춰 둔다. */
+.scr-activity-row-fold-open { animation: scr-row-open .2s ease-out backwards; }
+.scr-activity-row-fold-closing { animation: scr-row-close .18s ease-in backwards; }
 @keyframes scr-row-open { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
 @keyframes scr-row-close { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(-6px); } }
 @media (prefers-reduced-motion: reduce) {
@@ -7239,6 +7249,10 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    삭제가 아예 불가능했다(지적). */
 .scr-activity-row-body { padding: 0 var(--scr-row-pad-x) 12px; }
 .scr-activity-card-head-off > .scr-activity-card > .scr-activity-card-head { display: none; }
+/* 머리를 남기는 쪽(게임결과)도 제목만은 뗀다(요청) — 아이콘과 "게임결과"는 바로 위 줄이
+   이미 하고 있는 말이라, 묶음을 펼치면 같은 낱말이 경기 수만큼 되풀이됐다. 남는 건 줄이
+   말하지 않는 것들뿐이다: 경기별 시각, 등록자, 그리고 케밥(삭제·공유). */
+.scr-activity-row-body .scr-activity-card-head-title { display: none; }
 /* 목록에서는 카드마다 따로 등장하지 않는다(요청: 열릴 때 게임결과 목록이 한 번에 뜨게).
    .scr-activity-card-stack-reveal은 카드를 translateY(8px)에서 0으로 끌어올리는데, 그 위에
    줄이 펼쳐지는 연출까지 겹치면 두 움직임이 서로 다른 속도로 붙어 "무언가 줄어들면서

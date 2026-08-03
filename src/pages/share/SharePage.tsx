@@ -8,7 +8,7 @@ import RankingShiftCard from "../activity/RankingShiftCard";
 import {
   GameResultCard, GameResultPost, gameResultItem, sessionDateLabel, sessionDateOf, type GameResultPostItem,
 } from "../activity/ActivityScreen";
-import { formatWhen, shortDateWithDow } from "../../utils/date";
+import { formatWhen, shortDate } from "../../utils/date";
 import type { Challenge, GameResult, RankingShift } from "../../types";
 
 // 카카오톡으로 공유된 링크(?sv=gameResult|challenge|rankingShift&sid=…)가 여는, 그 한 장만 보이는
@@ -131,7 +131,7 @@ export default function SharePage({ target, onExit }: { target: ShareTarget; onE
           <div className="scr-activity-list">
             <GameResultCard
               item={gameResultItem(gameResult)} memberOf={memberOf} onDeleted={() => {}}
-              dateLabel={shortDateWithDow(gameResult.date)}
+              dateLabel={shortDate(gameResult.date)}
             />
           </div>
         ) : shift ? (

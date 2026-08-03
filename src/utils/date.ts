@@ -130,16 +130,17 @@ export function periodPresetRange(
 
 export const DOW = ["일", "월", "화", "수", "목", "금", "토"] as const;
 
-// "YYYY-MM-DD"를 사람 말로 — "7월 28일 (화)", 올해가 아니면 "25년 3월 4일 (화)"
-// (요청: 요일 병기, 전년도부터 두 자리 연도). 아래 formatWhen이 날짜만 남는 갈래에서
-// 이걸 부르므로, 날짜를 보여주는 곳은 결국 전부 이 한 꼴로 모인다.
-// new Date(dateStr)로 바로 파싱하면 UTC 자정으로 해석돼 시간대에 따라 요일이 하루 밀릴 수
-// 있어, 연/월/일을 직접 나눠 로컬 자정으로 만든다.
+// "YYYY-MM-DD"를 사람 말로 — "7월 28일", 올해가 아니면 "25년 3월 4일"
+// (요청: 전년도부터 두 자리 연도). 아래 formatWhen이 날짜만 남는 갈래에서 이걸 부르므로,
+// 날짜를 보여주는 곳은 결국 전부 이 한 꼴로 모인다.
+// 괄호 요일은 뺐다(요청) — 이 꼴이 나오는 건 일주일보다 오래된 날뿐인데, 그쯤 되면
+// 무슨 요일이었나는 알 일이 없다. 최근 일주일은 formatWhen이 아예 요일 이름으로 부른다
+// ("목요일"), 그러니 요일이 필요한 자리에는 이미 요일이 나와 있다.
 // (예전엔 "2026-07-28 (화)"처럼 숫자 날짜로 적는 dateWithDow도 있었는데, 그 꼴을 쓰던
 //  화면이 하나도 안 남아 걷어냈다 — 요청: 표기 통일.)
-export function shortDateWithDow(dateStr: string, now: Date = gameNow()): string {
+export function shortDate(dateStr: string, now: Date = gameNow()): string {
   const [y, m, d] = dateStr.split("-").map(Number);
-  return `${shortYearPrefix(y, now)}${m}월 ${d}일 (${DOW[new Date(y, m - 1, d).getDay()]})`;
+  return `${shortYearPrefix(y, now)}${m}월 ${d}일`;
 }
 
 const DOW_FULL = ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"] as const;
@@ -209,7 +210,7 @@ export function formatWhen(
   } else if (diffDays > -7) {
     return `${DOW_FULL[d.getDay()]}${time}`;
   }
-  return `${shortDateWithDow(fmt(d), now)}${time}`;
+  return `${shortDate(fmt(d), now)}${time}`;
 }
 
 // "너 나와!" 도전장의 예정 일정 — 이제 날짜 하나뿐이다(요청: 시간 필드 삭제). 시각 대신
