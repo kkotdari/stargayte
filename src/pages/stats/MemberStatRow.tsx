@@ -5,7 +5,7 @@ import StatBar from "../../components/common/StatBar";
 import ValueBar from "../../components/common/ValueBar";
 import DonutChart from "../../components/common/DonutChart";
 import { useAppStore } from "../../store/appStore";
-import { topEntries, type BuildMix } from "../../utils/replayBuildMix";
+import { topEntries, type BuildMix, type TopEntry } from "../../utils/replayBuildMix";
 import { BUILDING_KO, TECH_KO, UNIT_KO } from "../../utils/replaySummaryText";
 import type { Member, MemberStats } from "../../types";
 
@@ -49,15 +49,24 @@ function UpgradeGrid({ mix, plays }: { mix: BuildMix; plays: number | null | und
   );
 }
 
-/** 많이 나온 순 목록 한 칸. 값이 없으면 다른 칸과 같은 "-" 하나로 둔다. */
-function TopList({ items, unit }: { items: { name: string; count: number }[]; unit: string }) {
+/** 많이 나온 순 목록 한 칸. 값이 없으면 다른 칸과 같은 "-" 하나로 둔다.
+ *
+ *  괄호 안은 '그 이름이 나온 판당 평균'이다(요청) — 총합만 보면 많이 뛴 사람이 늘 큰 수라
+ *  한 판에 얼마나 쏟아붓는 사람인지가 안 보인다. 분모를 전체 게임수로 두지 않는 것도 같은
+ *  이유다: 안 쓴 판까지 세면 프로토스만 쓰는 기술의 값이 종족 비율만큼 깎여 버린다. */
+function TopList({ items, unit }: { items: TopEntry[]; unit: string }) {
   if (items.length === 0) return <span className="scr-stat-points-empty">-</span>;
   return (
     <ul className="scr-stat-toplist">
       {items.map((it) => (
         <li key={it.name}>
           <span className="scr-stat-toplist-name">{it.name}</span>
-          <span className="scr-stat-toplist-n">{it.count.toLocaleString()}{unit}</span>
+          <span className="scr-stat-toplist-n">
+            {it.count.toLocaleString()}{unit}
+            {it.plays > 0 && (
+              <span className="scr-stat-toplist-avg"> ({(it.count / it.plays).toFixed(1)})</span>
+            )}
+          </span>
         </li>
       ))}
     </ul>
@@ -171,6 +180,9 @@ export default function MemberStatRow({
                         onClick={onPointsClick} aria-label={`${member.nickname} 포인트 상세`}
                       >
                         {points.toLocaleString()}
+                        {/* 단위(요청) — 윗줄의 "1위"와 달리 이 줄은 맨숫자라 무엇의 수인지가
+                            칸 이름에만 기대고 있었다. */}
+                        <span className="scr-stat-points-unit"> 포인트</span>
                       </button>
                       {medals?.points && <span className="scr-stat-medal">{medals.points}</span>}
                     </>
@@ -218,7 +230,7 @@ export default function MemberStatRow({
                 ]}
               />
             </div>
-            <TopList items={topEntries(mix.buildings, BUILDING_KO, TOP_N)} unit="개" />
+            <TopList items={topEntries(mix.buildings, BUILDING_KO, TOP_N, mix.buildingPlays)} unit="개" />
           </>
         ) : (
           <span className="scr-stat-points-empty">-</span>
@@ -253,7 +265,7 @@ export default function MemberStatRow({
               <span className="scr-stat-worker5-label">5분 일꾼</span>
               <span className="scr-stat-worker5-n">{stats.avgWorker5 ?? "-"}</span>
             </div>
-            <TopList items={topEntries(mix.units, UNIT_KO, TOP_N)} unit="기" />
+            <TopList items={topEntries(mix.units, UNIT_KO, TOP_N, mix.unitPlays)} unit="기" />
           </>
         ) : (
           <span className="scr-stat-points-empty">-</span>
@@ -264,7 +276,7 @@ export default function MemberStatRow({
         {mix ? (
           <>
             <UpgradeGrid mix={mix} plays={stats.mixPlays} />
-            <TopList items={topEntries(mix.skills, TECH_KO, TOP_N)} unit="회" />
+            <TopList items={topEntries(mix.skills, TECH_KO, TOP_N, mix.skillPlays)} unit="회" />
           </>
         ) : (
           <span className="scr-stat-points-empty">-</span>

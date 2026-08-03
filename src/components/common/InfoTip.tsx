@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Info } from "lucide-react";
 import { swallowNextClick } from "../../utils/bodyScrollLock";
@@ -13,9 +13,14 @@ import { swallowNextClick } from "../../utils/bodyScrollLock";
 let closeOpenTip: (() => void) | null = null;
 
 // size — 트리거 아이콘(ⓘ) 크기. 통계 헤더처럼 크게 쓰고 싶은 자리만 넘긴다(기본 12).
+/** 말풍선이 화면 가장자리에서 남길 최소 여백. */
+const EDGE = 8;
+
 export default function InfoTip({ text, label, size = 12 }: { text: string; label?: string; size?: number }) {
-  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  // anchor는 아이콘의 자리 — 말풍선을 위로 뒤집을지 정하려면 아이콘의 위/아래가 다 필요하다.
+  const [pos, setPos] = useState<{ top: number; left: number; anchorTop: number } | null>(null);
   const ref = useRef<HTMLSpanElement>(null);
+  const bubbleRef = useRef<HTMLSpanElement>(null);
   const open = pos !== null;
 
   const toggle = (e: { stopPropagation: () => void; preventDefault: () => void }) => {
@@ -25,10 +30,29 @@ export default function InfoTip({ text, label, size = 12 }: { text: string; labe
     closeOpenTip?.(); // 다른 툴팁이 열려 있으면 먼저 닫는다(요청: 동시에 하나만).
     const r = ref.current?.getBoundingClientRect();
     if (r) {
-      setPos({ top: r.bottom + 6, left: r.left + r.width / 2 });
+      setPos({ top: r.bottom + 6, left: r.left + r.width / 2, anchorTop: r.top });
       closeOpenTip = () => setPos(null);
     }
   };
+
+  /* 말풍선을 화면 안으로 밀어 넣는다(지적: 화면 밖에 열린다) — 아이콘 중앙에 맞춰 띄우기만
+     하면, 아이콘이 화면 왼쪽 끝에 있을 때(통계 제목 옆처럼) 폭의 절반이 왼쪽 밖으로 나간다.
+     가로는 양옆 여백을 남기도록 좌우로 밀고, 세로는 아래로 넘칠 때만 아이콘 위로 뒤집는다.
+     그린 뒤에 재야 실제 크기를 알 수 있어서 layout effect다(그려지기 전에 자리를 잡아
+     한 프레임도 어긋난 자리에 안 보인다). */
+  useLayoutEffect(() => {
+    if (!open || !pos) return;
+    const el = bubbleRef.current;
+    if (!el) return;
+    const { width: w, height: h } = el.getBoundingClientRect();
+    const half = w / 2;
+    const left = Math.min(Math.max(pos.left, EDGE + half), window.innerWidth - EDGE - half);
+    const flip = pos.top + h > window.innerHeight - EDGE;
+    const top = flip ? Math.max(EDGE, pos.anchorTop - 6 - h) : pos.top;
+    if (Math.abs(left - pos.left) > 0.5 || Math.abs(top - pos.top) > 0.5) {
+      setPos({ ...pos, left, top });
+    }
+  }, [open, pos]);
 
   useEffect(() => {
     if (!open) return;
@@ -67,6 +91,7 @@ export default function InfoTip({ text, label, size = 12 }: { text: string; labe
       <Info size={size} />
       {open && pos && createPortal(
         <span
+          ref={bubbleRef}
           className="scr-infotip-bubble"
           role="tooltip"
           style={{ top: pos.top, left: pos.left }}
