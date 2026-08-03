@@ -300,7 +300,21 @@ const PER_KEY_CAP: Record<string, number> = {
   /* 물량은 둘까지 — 여덟 명이 붙는 판에서 서넛이 한꺼번에 걸리면 같은 모양의 문장이
      줄줄이 서서, 정작 그 판의 사건들이 밀려난다. 둘이면 "양쪽 다 물량전이었다"가 읽힌다. */
   "mass-army": 2,
+  /* 급습은 한 줄이면 된다 — 상대별로 살려 두지만(replayTactics의 scanTactics) 그건 '가장
+     큰 급습이 사람에 따라 묻히지 않게' 하려는 것이지, 급습 이야기를 여럿 늘어놓자는 게
+     아니다. 실제로 통한 급습은 raid-damage로 바뀌어 이 상한을 안 받는다. */
+  "base-raid": 1,
+  /* 급습이 통한 이야기(raid-damage로 바뀐 것)는 둘까지 — 8인전에서는 서로가 서로의 집을
+     헤집어서, 상대별로 살려 두면 같은 꼴의 문장이 넷씩 늘어선다(실측). 이름 있는 전술에서
+     온 raid-damage는 이 상한을 안 받는다(그건 저마다 다른 이야기다). */
+  "raid-damage:base": 2,
 };
+
+/** 갈래 상한을 잴 때 쓰는 키 — 대개 beat 키 그대로지만, 같은 raid-damage라도 이름 없는
+ *  급습에서 온 것만 따로 센다(위 PER_KEY_CAP 참고). */
+const capKeyOf = (b: { k: string; p?: Record<string, unknown> }): string => (
+  b.k === "raid-damage" && b.p?.k === "base-raid" ? "raid-damage:base" : b.k
+);
 
 /** 목표를 못 짚으면 뜻이 옅어지는 수들(요청) — 드랍은 '어디에 내렸나'가 그 수의 전부이고,
  *  병력을 뽑아 나갔다는 이야기는 '누구에게 갔나'가 없으면 생산 이야기와 다르지 않다.
@@ -365,6 +379,9 @@ const RAID_KEYS = new Set([
   "nydus", "recall", "bionic", "mech", "moka",
   // 빠른 테크·클로킹 레이스도 들이치는 수다 — 그 타이밍에 상대가 꺾였으면 그게 결과다(요청).
   "fast-tech", "cloak-wraith",
+  // 이름 없는 급습(replayTactics의 raidOn) — 뮤탈 여섯 기로 본진을 헤집는 것처럼 어느
+  // 전술 이름에도 안 걸리지만 상대가 실제로 꺾였으면 그게 이 판의 큰 사건이다(지적).
+  "base-raid",
 ]);
 
 interface Side {
@@ -1937,7 +1954,7 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   const tacticBeats = (won: boolean): Beat[] => {
     const foes = won ? loserPlayers : winnerPlayers;
     const mine = won ? winnerPlayers : loserPlayers;
-    return scanTactics({ sidePlayers: mine, foePlayers: foes, startSpots: replay.startSpots })
+    const list = scanTactics({ sidePlayers: mine, foePlayers: foes, startSpots: replay.startSpots })
       // GG는 진 편이 쳤을 때만 항복이다. 이긴 쪽도 마무리로 같이 치는 게 관례라, 채팅만
       // 보고 붙이면 "Sohee_Min이 GG 치고 나갔지만 결국 Sohee_Min이 이겼다"가 나온다
       // (실제 리플레이에서 이긴 사람이 끝나기 2초 전에 'ㅈㅈ'를 쳤다).
@@ -2043,6 +2060,17 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
       .filter((b) => !(RUSH_NEED_TARGET.has(b.k)
         && (b.whom?.length ?? 0) === 0
         && !Array.isArray(b.p?.xy) && typeof b.p?.spot !== "string"));
+    /* 같은 사람이 같은 상대를 헤집은 이야기는 한 번이면 된다 — 수가 여럿이면 그만큼
+       문장이 겹친다(실측: "패스트 다크템플러에 많은 타격을 입었다" 바로 뒤에 "질럿 급습에
+       많은 타격을 입었다"가 붙어 같은 말이 두 번 나갔다). 무거운 쪽만 남긴다. */
+    const seenHit = new Set<string>();
+    return list
+      .sort((a, b) => b.weight - a.weight)
+      .filter((b) => {
+        if (b.k !== "raid-damage") return true;
+        const key = `${b.who.join(",")}|${(b.whom ?? []).join(",")}`;
+        return seenHit.has(key) ? false : (seenHit.add(key), true);
+      });
   };
 
   // "유비의 바이오닉 한 방으로 관우의 저글링 성큰을 뚫음" — 이긴 편의 주력이 진 편의 누구를
@@ -2846,8 +2874,9 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     if (b.weight < (reserve === "cause" ? CAUSE_MIN_WEIGHT : MIN_WEIGHT)) return false;
     const sig = unitSig(b);
     if (sig && chosen.some((x) => unitSig(x) === sig)) return false;
-    const cap = PER_KEY_CAP[b.k];
-    if (cap !== undefined && chosen.filter((x) => x.k === b.k).length >= cap) return false;
+    const capKey = capKeyOf(b);
+    const cap = PER_KEY_CAP[capKey];
+    if (cap !== undefined && chosen.filter((x) => capKeyOf(x) === capKey).length >= cap) return false;
     if (capped && taken[phaseOf(b)] >= perPhaseMax) return false;
     if (b.dedupeOn && chosen.some((x) => renderReplaySummary(
       { v: REPLAY_SUMMARY_VERSION, beats: [strip(x)] }, (raw) => raw,
