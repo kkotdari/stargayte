@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowUp, ArrowDown, ArrowUpDown, RotateCcw } from "lucide-react";
+import { RotateCcw } from "lucide-react";
 import { Spinner } from "../../components/common/Feedback";
 import SearchFilterBar from "../../components/common/SearchFilterBar";
 import Select, { type SelectOption } from "../../components/common/Select";
@@ -51,61 +51,30 @@ const EMPTY_STATS: MemberStats = {
 // 정렬 가능한 칸 — 건설/유닛/스킬은 순위로 줄 세울 값이 아니라 그 사람의 색깔이라 뺐다
 // (요청). 랭크와 포인트는 한 칸이 되면서 정렬 키도 하나(points)로 합쳤다 — 포인트로 매긴
 // 것이 랭크라 두 정렬은 애초에 같은 순서였다.
+/* 정렬은 컬럼 머리를 누르는 대신 조건 문장의 드롭다운으로 고른다(요청). 그래서 기준과
+   방향을 따로 두지 않고 "무엇을 어느 쪽으로"를 한 낱말로 묶는다 — 게임수를 적은 순으로 보는
+   일은 없고, 이름은 가나다순 말고 볼 일이 없다. 고를 것이 하나면 잘못 고를 일도 없다. */
 type StatSortKey = "name" | "points" | "rate" | "plays" | "apm" | "cmd";
 type StatSortDir = "desc" | "asc";
 interface StatSort { key: StatSortKey; dir: StatSortDir }
 
-// 컬럼 헤더를 누르면 내림차순 → 오름차순 → 미설정(다시 누르기 전 상태로) 순서로 도는
-// 3단 토글 — 같은 컬럼을 다시 누르면 방향만 바뀌고, 다른 컬럼을 누르면 그 컬럼의
-// 내림차순부터 새로 시작한다(한 번에 하나의 정렬 기준만 유지).
-function nextSort(prev: StatSort | null, key: StatSortKey): StatSort | null {
-  // 유저(이름)만 오름차순부터 시작하는 게 자연스러워 시작 방향과 토글 순서를 반대로
-  // 둔다(asc -> desc -> null) — 가나다순이라. 나머지 지표는 desc -> asc -> null이고,
-  // 랭크 칸도 여기 들어간다: 포인트가 높은 사람이 1위라 내림차순이 곧 1위부터다.
-  const ascFirst = key === "name";
-  if (!prev || prev.key !== key) return { key, dir: ascFirst ? "asc" : "desc" };
-  if (ascFirst) return prev.dir === "asc" ? { key, dir: "desc" } : null;
-  if (prev.dir === "desc") return { key, dir: "asc" };
-  return null;
-}
+const SORT_OPTS: { value: StatSortKey; label: string; dir: StatSortDir }[] = [
+  { value: "points", label: "랭킹순", dir: "desc" },
+  { value: "plays", label: "게임수 많은순", dir: "desc" },
+  { value: "rate", label: "승률 높은순", dir: "desc" },
+  { value: "apm", label: "APM 높은순", dir: "desc" },
+  { value: "cmd", label: "커맨드 많은순", dir: "desc" },
+  { value: "name", label: "이름순", dir: "asc" },
+];
+const SORT_SELECT_OPTS = SORT_OPTS.map(({ value, label }) => ({ value, label }));
+const sortOf = (key: StatSortKey): StatSort =>
+  ({ key, dir: SORT_OPTS.find((o) => o.value === key)?.dir ?? "desc" });
 
-interface SortableHeadProps {
-  label: string;
-  sortKey: StatSortKey;
-  sort: StatSort | null;
-  onToggle: (key: StatSortKey) => void;
-  className?: string;
-  // 있으면 라벨 옆에 ⓘ를 띄우고 탭하면 이 설명 말풍선을 보여준다(요청: 컬럼 설명 툴팁).
-  tooltip?: string;
-}
-
-// 정렬 상태는 화살표 아이콘 하나로 말한다 — 이 컬럼이 지금 정렬
-// 기준이면 방향에 맞는 화살표 하나(오름차순=위, 내림차순=아래)만, 아직 정렬 기준이
-// 아니면(눌러본 적 없거나 다른 컬럼이 활성) 위아래 화살표가 같이 있는 중립 아이콘으로
-// "정렬 가능하지만 지금은 안 걸려 있다"는 걸 흐리게 보여준다.
-/** 정렬 대상이 아닌 컬럼 머리(요청: 유닛·스킬) — 정렬 화살표 없이 이름과 설명만 둔다.
- *  버튼이 아니라 span이라 눌러도 아무 일이 없고, 그것이 곧 "여긴 정렬 안 돼요"의 표시다. */
-function PlainHead({ label, tooltip }: { label: string; tooltip?: string }) {
-  return (
-    <span className="scr-stat-plain-head">
-      {label}
-      {tooltip && <InfoTip text={tooltip} label={label} size={14} />}
-    </span>
-  );
-}
-
-function SortableHead({ label, sortKey, sort, onToggle, className, tooltip }: SortableHeadProps) {
-  const active = sort?.key === sortKey;
-  return (
-    <button type="button" className={cx("scr-stat-sort-btn", className, active && "scr-stat-sort-btn-active")} onClick={() => onToggle(sortKey)}>
-      {label}
-      {/* 툴팁·정렬 아이콘은 1스텝 키워 14로 통일(요청 — 15는 안 쓰는 수치). */}
-      {tooltip && <InfoTip text={tooltip} label={label} size={14} />}
-      {active
-        ? (sort?.dir === "asc" ? <ArrowUp size={14} /> : <ArrowDown size={14} />)
-        : <ArrowUpDown size={14} className="scr-stat-sort-icon-idle" />}
-    </button>
-  );
+/** 컬럼 머리 — 이제 이름 하나뿐이다. 정렬은 드롭다운으로 갔고(요청), 칸마다 달려 있던
+ *  설명(ⓘ)도 타이틀 옆 한 자리로 합쳤다(요청) — 여섯 칸에 여섯 개가 흩어져 있으면 무엇을
+ *  눌러야 원하는 설명이 나오는지를 먼저 알아야 한다. */
+function PlainHead({ label, className }: { label: string; className?: string }) {
+  return <span className={cx("scr-stat-plain-head", className)}>{label}</span>;
 }
 
 // 경기결과/랭킹과 같은 공용 상단 모듈(SearchFilterBar)로 전적통계를 보여준다.
@@ -129,7 +98,7 @@ export default function StatsScreenV2() {
     () => (Math.random() < 0.5 ? "0101" : "0102"),
   );
   // 기본 정렬은 포인트(랭크 점수) 내림차순 — 랭킹을 통계에 통합한 기본 모습(요청).
-  const [sort, setSort] = useState<StatSort | null>({ key: "points", dir: "desc" });
+  const [sort, setSort] = useState<StatSort>(sortOf("points"));
   // 포인트를 누르면 그 회원의 포인트 상세(경기 이력)를 연다.
   const [pointMember, setPointMember] = useState<Member | null>(null);
   // 월간 랭크를 누르면 그 회원의 최근 다섯 달 순위변동 그래프를 연다(요청). 전체 기간을
@@ -137,7 +106,6 @@ export default function StatsScreenV2() {
   const [trendMember, setTrendMember] = useState<Member | null>(null);
   // 상성 관계 오버레이(타이틀 옆 "상성 보기" 버튼).
   const [rivalryOpen, setRivalryOpen] = useState(false);
-  const toggleSort = (key: StatSortKey) => setSort((prev) => nextSort(prev, key));
   // 기간은 "전체 기간" 아니면 특정 월("YYYY-MM") 하나 — 예전 단위 알약탭 + 월 선택기를
   // 드롭다운 하나로 합쳤다(요청). 기본값은 이번 달.
   const [period, setPeriod] = useState<string>(currentMonthValue);
@@ -384,10 +352,6 @@ export default function StatsScreenV2() {
       if (ta === 1) return nicknameTiebreak(a, b);
       return 0;
     };
-    if (!sort) {
-      sorted.sort(nicknameTiebreak);
-      return sorted;
-    }
     const dirSign = sort.dir === "desc" ? -1 : 1;
     // 데이터 칸(랭크·유저 제외) 하나를 비교한다 — 값이 없는 쪽은 방향과 무관하게 항상
     // 맨 아래(위 noPointsLast/noPlaysLast/noAvgLast), 있으면 지금 선택된 방향(dirSign)
@@ -491,6 +455,18 @@ export default function StatsScreenV2() {
       <div className="scr-v2-toolbar">
         <div className="scr-v2-toolbar-title-row">
           <h1 className="scr-title scr-v2-toolbar-title">통계</h1>
+          {/* 표 전체 설명 한 자리(요청) — 칸마다 달려 있던 ⓘ 여섯 개를 여기로 합쳐 요약했다. */}
+          <InfoTip
+            label="통계 표 보는 법"
+            text={"· 랭크 — 포인트로 매긴 순위 / 아랫줄은 그 포인트. 눌러서 상세\n"
+              + "· 기록 — 게임수·승률 / 경기당 APM·커맨드\n"
+              + "· 건설 — 생산·방어 비율, 가운데는 경기당 건물 수, 많이 지은 건물 5\n"
+              + "· 유닛 — 기본·고급·마법 / 지상·공중 비율, 5분 일꾼, 많이 뽑은 유닛 5\n"
+              + "· 스킬 — 공/방/실드 경기당 평균 단계, 많이 쓴 마법 5\n"
+              + "· 건설·유닛·스킬은 리플레이로 등록한 경기만\n"
+              + "· APM·커맨드는 개인전 3판, 팀전 10판을 채워야 나옴\n"
+              + "· 컴퓨터·비회원이 낀 경기는 포인트 0"}
+          />
           {/* 상성 보기 — 랭킹 화면이 없어지면서 진입점이 끊겼던 상성 관계 오버레이를 통계
               타이틀 옆에 다시 붙인다(요청). 기간은 이 화면의 현재 필터를 그대로 따른다
               (오버레이 자체 필터 없음 — RivalryOverlay 주석 참고). */}
@@ -540,14 +516,6 @@ export default function StatsScreenV2() {
               >
                 <RotateCcw size={14} aria-hidden />
               </button>
-              {/* 최소 게임수 규칙 설명(요청) — 표에 "-"가 왜 뜨는지는 컬럼별 툴팁만으로는
-                  안 보인다(그 컬럼을 눌러 봐야 나온다). 조건을 고르는 자리 옆에 한 번에
-                  일러 둔다. 판수는 지금 걸린 분류에 따라 달라지므로 둘 다 적는다. */}
-              <InfoTip
-                label="최소 게임수"
-                text={"생산·APM·커맨드는 개인전 3판, 팀전 10판을 채워야 나와요. 안 채우면 '-'예요.\n\n"
-                  + "컴퓨터·비회원이 한 명이라도 낀 경기는 포인트가 0이에요. 팀전은 한 자리만 그래도 전원 0이에요."}
-              />
             </span>
           </div>
         }
@@ -561,6 +529,15 @@ export default function StatsScreenV2() {
           보여준다. 필터를 바꿔 다시 받는 동안에는 지금 그려 둔 한 장을 그대로 둔 채 살짝
           흐리게만 하고, 새 값이 다 도착하면 통째로 갈아 끼운다 — 조건만 먼저 바뀌어 옛 값에
           새 잣대가 씌워지는 그림(엉뚱한 메달·뒤늦게 뜨는 순위 변동)이 여기서 사라진다. */}
+      {/* 정렬은 표 밖 우상단에 둔다(요청) — 예전엔 컬럼 머리를 눌러 바꿨는데, 칸을 통합하면서
+          한 칸이 여러 지표를 담게 돼(기록 칸의 게임수·승률·APM·커맨드) "이 칸을 누르면 무엇으로
+          정렬되는가"가 더는 하나로 안 정해진다. 기준을 한 자리에 모아 이름으로 고르게 한다. */}
+      <div className="scr-stat-sortbar">
+        <Select
+          className="scr-sentence-select" value={sort.key} options={SORT_SELECT_OPTS}
+          onChange={(v) => setSort(sortOf(v as StatSortKey))} minDropWidth={150}
+        />
+      </div>
       <div className={cx("scr-stats-list-panel-v2", refreshing && "scr-stats-list-panel-busy")}>
         {refreshing && (
           <div className="scr-stats-list-busy-mark" aria-hidden><Spinner size={18} /></div>
@@ -583,45 +560,24 @@ export default function StatsScreenV2() {
                   흔들려 보였다(실제로 지적받은 문제) — 같은 컨테이너 안에 두면 브라우저
                   네이티브 스크롤이 완벽히 동기화해서 그 흔들림 자체가 원천적으로 사라진다. */}
               <div className="scr-stat-row scr-stat-row-head">
-                <SortableHead label="유저" sortKey="name" sort={sort} onToggle={toggleSort} className="scr-stat-name-head" />
+                <PlainHead label="유저" className="scr-stat-name-head" />
                 {/* 랭크와 포인트는 한 칸이다(요청: 통합) — 칸 이름도 지금 고른 기간이
                     아니라 '지금 그려져 있는 한 장'의 기간을 말한다. 표는 아직 지난 조건의
                     값인데 이름만 먼저 바뀌면 그것도 어긋난 그림이다. */}
-                <SortableHead
-                  label={shownMonth ? "월간 랭크" : "누적 랭크"} sortKey="points" sort={sort} onToggle={toggleSort}
-                  tooltip={(shownMonth
-                    ? "이 달 이 분류·종족에서 포인트로 매긴 순위. 완전 동률이면 공동순위예요. 한 판도 안 뛰었으면 '-'고, 옆의 ▲▼는 전달 대비 몇 계단 움직였는지예요. 숫자를 누르면 최근 다섯 달 순위변동 그래프가 열려요."
-                    : "전체 기간 누적 포인트로 매긴 순위. 완전 동률이면 공동순위예요. 한 판도 안 뛰었으면 '-'예요. 견줄 전달이 없어 변동과 순위변동 그래프는 달을 골랐을 때만 나와요.")
-                    + "\n\n아랫줄은 그 순위를 매긴 랭크 포인트예요 — 이 기간·분류의 경기들로 산정한 레이팅 점수고, 최소 게임수를 안 따져요. 컴퓨터·비회원이 한 명이라도 낀 경기는 0점이에요(견줄 실력치가 없는 상대라 점수가 오르내릴 근거가 없어요). 숫자를 누르면 경기 이력이 열려요."}
+                <PlainHead
+                  label={shownMonth ? "월간 랭크" : "누적 랭크"}
                 />
-                <SortableHead label="게임수" sortKey="plays" sort={sort} onToggle={toggleSort} />
-                <SortableHead label="승률" sortKey="rate" sort={sort} onToggle={toggleSort} />
+                <PlainHead
+                  label="기록"
+                />
                 <PlainHead
                   label="건설"
-                  tooltip={"무엇을 지었나예요. 도넛은 생산(테크·확장 포함)과 방어의 비율이고, 가운데 숫자는 경기당 지은 건물 수예요. "
-                    + "그 아래는 가장 많이 지은 건물 다섯이에요(파일런·서플라이는 빼요 — 어느 판에서나 1위라 목록이 늘 같아지거든요).\n\n"
-                    + "비율은 기간 안의 경기를 통째로 더해서 내요 — 경기마다 비율을 내서 평균 내면 3분짜리 판 한 번이 그림을 통째로 흔들거든요. "
-                    + "리플레이로 등록한 경기만 들어가요. 정렬 기준은 아니에요."}
                 />
                 <PlainHead
                   label="유닛"
-                  tooltip={"무엇을 뽑았나예요. 왼쪽 도넛은 기본·고급·마법, 오른쪽은 지상·공중의 비율이에요.\n\n"
-                    + "그 아래는 경기당 초반 5분 일꾼 수와, 가장 많이 뽑은 유닛 다섯이에요(종족 무관, 일꾼 제외).\n\n"
-                    + "훈련·변태 커맨드를 센 값이라 실제 마릿수보다 적을 수 있어요 — 저그가 라바 여럿을 한 번에 변태시키면 커맨드는 하나거든요. 정렬 기준은 아니에요."}
                 />
                 <PlainHead
                   label="스킬"
-                  tooltip={"공/방/실드 업그레이드가 경기당 평균 몇 단계까지 올라갔는지(0~3)를 지상·공중으로 나눠 적어요. "
-                    + "테란처럼 지상이 보병·메카닉으로 갈리는 종족은 높은 쪽을 그 판의 지상 단계로 봐요. 실드는 프로토스에만 있어요.\n\n"
-                    + "그 아래는 가장 많이 쓴 마법·기술 다섯이에요(종족 무관). 연구만 하고 안 쓴 기술은 안 나와요 — 실제로 쓴 횟수만 세거든요. 정렬 기준은 아니에요."}
-                />
-                <SortableHead
-                  label="APM" sortKey="apm" sort={sort} onToggle={toggleSort}
-                  tooltip="분당 조작 수 — 리플레이에 기록된 명령을 분 단위로 나눈 값. 화면 이동이나 중복 클릭도 그대로 세므로 실제 손이 얼마나 바빴는지에 가깝다."
-                />
-                <SortableHead
-                  label="커맨드" sortKey="cmd" sort={sort} onToggle={toggleSort}
-                  tooltip="경기당 평균 명령 수 — 리플레이에 기록된 명령을 전부 센 값."
                 />
               </div>
               {cards.map((c) => (

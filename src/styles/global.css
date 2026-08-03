@@ -1771,12 +1771,10 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    글자, 막대 래퍼 등)에도 position을 줄 필요 없이 메달이 곧장 이 칸을 기준으로
    자리 잡는다(안 그러면 shifted 자식이 새 containing block이 돼버려 메달이 셀이 아닌
    그 자식 기준으로 어긋난다). */
-.scr-stat-plays-cell, .scr-stat-build-cell, .scr-stat-apm-cell, .scr-stat-cmd-cell {
-  justify-content: center; position: relative;
-}
+.scr-stat-build-cell { justify-content: center; position: relative; }
 /* 표 오른쪽 끝 칸 — 위 .scr-stat-table이 더는 오른쪽 패딩을 안 줘서, 마지막 칸이 직접
    여백을 책임진다(왼쪽은 이름 칸이 자기 padding-left로 책임지는 것과 대칭). */
-.scr-stat-cmd-cell { padding-right: 20px; }
+.scr-stat-skills-cell { padding-right: 20px; }
 
 /* ── 건설·유닛·스킬 칸(요청) ────────────────────────────────────────────────────
    셋 다 위에서 아래로 [그림 → 수치 → 많이 나온 다섯] 순으로 쌓인다. 총량 막대는 더 안
@@ -1792,7 +1790,8 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    둬서 선이 두 덩어리 한가운데에 선다. */
 .scr-stat-build-cell > * + *,
 .scr-stat-units-cell > * + *,
-.scr-stat-skills-cell > * + * {
+.scr-stat-skills-cell > * + *,
+.scr-stat-record-cell > * + * {
   border-left: 1px solid var(--line-hair); padding-left: 8px; align-self: stretch;
   display: flex; flex-direction: column; justify-content: center;
 }
@@ -1806,6 +1805,32 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 .scr-stat-units-cell > .scr-stat-points-empty,
 .scr-stat-skills-cell > .scr-stat-points-empty { flex: 1 1 auto; text-align: center; }
 .scr-stat-mix { display: flex; align-items: center; justify-content: center; gap: 10px; flex: none; }
+
+/* ── 기록 칸(요청: 게임수·승률·APM·커맨드 통합) ─────────────────────────────────
+   칸 안이 [게임수·승률] [APM·커맨드] 두 줄기이고, 줄기 안에서만 세로로 쌓인다. 막대 넷을
+   한 줄로 늘어놓으면 막대가 저마다 너무 짧아져 길이 차이를 못 읽는다. */
+.scr-stat-record-cell {
+  flex-direction: row; align-items: center; justify-content: center;
+  gap: 8px; position: relative;
+}
+.scr-stat-record-col {
+  display: flex; flex-direction: column; justify-content: center; gap: 4px;
+  flex: 1 1 0; min-width: 0;
+}
+/* 메달은 이 항목 기준으로 앉는다 — 칸에만 relative를 주면 넷이 같은 자리에 겹친다. */
+.scr-stat-record-item {
+  display: flex; align-items: center; gap: 6px; min-width: 0; position: relative;
+}
+/* 어느 막대인지는 왼쪽 이름이 말한다 — 칸 머리가 "기록" 하나가 되면서 이름을 잃었다. */
+.scr-stat-record-label {
+  flex: none; width: 42px; text-align: right;
+  font-size: var(--fs-11); color: var(--dim); white-space: nowrap;
+}
+.scr-stat-record-item .scr-value-bar,
+.scr-stat-record-item .scr-stat-bar { flex: 1 1 auto; min-width: 0; }
+
+/* 정렬 드롭다운 — 표 밖 우상단(요청). */
+.scr-stat-sortbar { display: flex; justify-content: flex-end; margin-bottom: 8px; }
 
 /* 경기당 초반(5분) 일꾼 수 — 도넛과 달리 비율이 아니라 그냥 수라 숫자를 그대로 적는다.
    도넛과 나란히 서므로 이름 위 / 수 아래로 포개, 도넛 하나만큼의 폭만 쓴다. */
@@ -1955,16 +1980,15 @@ html:not(.scr-light-theme) .scr-donut {
 /* v2 통계만 — 전체적으로 더 촘촘하게: 행 상하 패딩/막대 두께를 줄이고, 컬럼 기본폭도
    좁힌다. 유저 칸은 좌우 여백을 같게 맞추고, 배틀태그 캡슐은 더 각지게, 닉네임/배틀태그
    사이 간격은 프사(40px) 위아래 경계에 맞춰 벌린다. v1 통계 화면은 그대로 둔다. */
-/* 칸 트랙을 한 줄로 모아 둔다(요청: 생산 칸을 상당히 넓게) — 컬럼이 아홉인데 폭이
+/* 칸 트랙을 한 줄로 모아 둔다(요청: 생산 칸을 상당히 넓게) — 컬럼이 여섯인데 폭이
    똑같지 않다. 랭크는 두 줄, 건설·유닛·스킬은 도넛과 다섯 줄짜리 목록을 담으므로 저마다
    따로 넓은 트랙을 쓴다. 트랙을 이렇게 한 이름으로 묶는 이유는, 헤더 행과 데이터 행이
    각각 별개의 그리드 컨테이너라 네 군데에 같은 값을 적어야 하기 때문이다 — 예전에 한
    곳만 repeat(6)으로 남아 표가 두 줄로 접힌 적이 있다(브라우저로만 잡히는 어긋남이었다). */
 .scr-stats-list-panel-v2 .scr-stat-row {
   --scr-stat-tracks:
-    var(--scr-stat-name-w) var(--scr-stat-rank-w) repeat(2, var(--scr-stat-col-w))
-    var(--scr-stat-build-w) var(--scr-stat-unit-w) var(--scr-stat-skill-w)
-    repeat(2, var(--scr-stat-col-w));
+    var(--scr-stat-name-w) var(--scr-stat-rank-w) var(--scr-stat-record-w)
+    var(--scr-stat-build-w) var(--scr-stat-unit-w) var(--scr-stat-skill-w);
 }
 .scr-stats-list-panel-v2 .scr-stat-row > * { padding-top: 10px; padding-bottom: 10px; }
 /* 종족별 전적 칸을 없애서(대신 필터바 종족 라디오로 전체 칸 값 자체를 그 종족 기준으로
@@ -1983,6 +2007,7 @@ html:not(.scr-light-theme) .scr-donut {
      건설은 도넛 하나 + 건물 다섯 줄, 유닛은 도넛 둘 + 일꾼 한 줄 + 유닛 다섯 줄,
      스킬은 공/방 표 + 스킬 다섯 줄을 담는다. */
   --scr-stat-rank-w: 136px;
+  --scr-stat-record-w: 300px;
   --scr-stat-build-w: 306px;
   --scr-stat-unit-w: 378px;
   --scr-stat-skill-w: 306px;
@@ -2113,7 +2138,7 @@ html:not(.scr-light-theme) .scr-stats-list-panel-v2 .scr-stat-name-cell, html:no
 
 /* 종족별 전적 칸의 막대 세 줄(테/프/저) 사이 수직 간격을 더 좁혀서 그만큼 행 높이도 줄인다.
    메달이 이 칸 우상단에 절대배치되므로 position:relative가 필요하다. */
-.scr-stats-list-panel-v2 .scr-stat-bar-cell { gap: 1px; position: relative; }
+.scr-stats-list-panel-v2 .scr-stat-record-item .scr-stat-bar { gap: 1px; }
 /* 전적 칸을 다른 데이터 칸(ValueBar)과 똑같은 구성으로 맞춘다(지적: 승률 컬럼만 바
    두께/위치가 달라 어색) — ① 트랙 래퍼의 기본 min-height(14px) 때문에 6px 막대가 큰
    상자 안에 떠 있던 것을 래퍼 자체를 6px로, ② 숫자(승률)와 막대 사이 간격을 ValueBar와
@@ -2203,6 +2228,7 @@ html:not(.scr-light-theme) .scr-stats-list-panel-v2 .scr-stat-name-cell, html:no
        한다 — 그보다 넓으면 끝까지 밀어도 그 칸을 온전히 볼 수가 없다. */
     --scr-stat-col-w: 124px;
     --scr-stat-rank-w: 132px;
+    --scr-stat-record-w: 292px;
     --scr-stat-build-w: 290px;
     --scr-stat-unit-w: 356px;
     --scr-stat-skill-w: 294px;
@@ -6252,6 +6278,7 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
        PC 폭(1920) 안에 들어와 가로 스크롤이 안 생긴다. */
     --scr-stat-col-w: 100px;
     --scr-stat-rank-w: 130px;
+    --scr-stat-record-w: 296px;
     --scr-stat-build-w: 302px;
     --scr-stat-unit-w: 374px;
     --scr-stat-skill-w: 302px;
@@ -6273,7 +6300,7 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
   .scr-stats-list-panel-v2 .scr-stat-row-head > * { padding-left: 9px; padding-right: 9px; }
   .scr-stats-list-panel-v2 .scr-stat-name-cell,
   .scr-stats-list-panel-v2 .scr-stat-name-head { padding-left: 12px; padding-right: 12px; }
-  .scr-stats-list-panel-v2 .scr-stat-cmd-cell { padding-right: 12px; }
+  .scr-stats-list-panel-v2 .scr-stat-skills-cell { padding-right: 12px; }
   /* 컬럼명이 좁아진 칸에서 두 줄로 접히면 헤더만 높아지고 구분선 정렬이 흐트러진다.
      혹시 라벨이 더 길어져도 칸을 밀지 않고 잘리도록 min-width:0 + 말줄임을 함께 둔다. */
   .scr-stats-list-panel-v2 .scr-stat-row-head > * {

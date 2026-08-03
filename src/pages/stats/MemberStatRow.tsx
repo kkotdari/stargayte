@@ -178,11 +178,31 @@ export default function MemberStatRow({
           )}
         </div>
       )}
-      <div className="scr-stat-plays-cell">
-        <ValueBar value={stats.plays > 0 ? stats.plays : null} maxValue={maxOverallPlays} medal={medals?.plays} />
-      </div>
-      <div className="scr-stat-bar-cell">
-        <StatBar plays={stats.plays} wins={stats.wins} draws={stats.draws} losses={stats.losses} winRate={stats.winRate} compact={compact} medal={medals?.rate} />
+      {/* 게임수·승률·APM·커맨드는 한 칸이다(요청: 통합) — 넷 다 "막대 하나 + 수" 한 줄짜리라
+          칸을 넷 쓰면서 표만 넓어졌다. 칸 안에서 [게임수·승률]과 [APM·커맨드] 두 줄기로
+          나눠 세로로 쌓고(요청), 어느 막대인지는 왼쪽 이름이 말한다. 메달이 각자의 막대 옆에 붙도록 항목마다 position:relative를 준다(칸에만
+          주면 넷이 같은 자리에 겹친다). */}
+      <div className="scr-stat-record-cell">
+        <div className="scr-stat-record-col">
+          <div className="scr-stat-record-item">
+            <span className="scr-stat-record-label">게임수</span>
+            <ValueBar value={stats.plays > 0 ? stats.plays : null} maxValue={maxOverallPlays} medal={medals?.plays} />
+          </div>
+          <div className="scr-stat-record-item">
+            <span className="scr-stat-record-label">승률</span>
+            <StatBar plays={stats.plays} wins={stats.wins} draws={stats.draws} losses={stats.losses} winRate={stats.winRate} compact={compact} medal={medals?.rate} />
+          </div>
+        </div>
+        <div className="scr-stat-record-col">
+          <div className="scr-stat-record-item">
+            <span className="scr-stat-record-label">APM</span>
+            <ValueBar value={stats.avgApm} maxValue={maxApm} medal={medals?.apm} />
+          </div>
+          <div className="scr-stat-record-item">
+            <span className="scr-stat-record-label">커맨드</span>
+            <ValueBar value={stats.avgCmd} maxValue={maxCmd} medal={medals?.cmd} />
+          </div>
+        </div>
       </div>
       {/* 건설 — 그래프 하나(생산/방어), 경기당 평균 건설 수, 많이 지은 건물 다섯(요청).
           구성이 실린 경기가 하나도 없거나 표본이 모자라면 통째로 "-" — 빈 도넛이 서 있는
@@ -252,12 +272,6 @@ export default function MemberStatRow({
         ) : (
           <span className="scr-stat-points-empty">-</span>
         )}
-      </div>
-      <div className="scr-stat-apm-cell">
-        <ValueBar value={stats.avgApm} maxValue={maxApm} medal={medals?.apm} />
-      </div>
-      <div className="scr-stat-cmd-cell">
-        <ValueBar value={stats.avgCmd} maxValue={maxCmd} medal={medals?.cmd} />
       </div>
       {photoOpen && member.avatar && (
         <PhotoViewer src={member.avatar} alt={member.nickname} onClose={() => setPhotoOpen(false)} />
