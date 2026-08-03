@@ -442,16 +442,28 @@ export default function ReplayMinimap({
     const CAP_H = capH;
     const cx = [CAP_W / 2, 0.5, 1 - CAP_W / 2];
     const cy = [CAP_H / 2, 0.5, 1 - CAP_H / 2];
+    /** 지도 위 표시 하나가 차지하는 반지름(지도 대비) — 아바타 한 개 남짓. */
+    const SOFT_R = 0.05;
+    /** 그 표시가 자막 네모에 '얼마나' 덮이나(0~1) — 한 축의 겹침 비율이다.
+     *
+     *  예전에는 중심점이 네모 안이냐 밖이냐로만 갈랐는데(<=), 그러면 경계에 정확히 선 것이
+     *  양쪽 칸 모두에서 '온전히 덮인다'가 된다. 8인용 맵은 12시·6시 시작 지점이 정확히
+     *  가로 한가운데(x=0.5)에 있어서, 자막 폭이 지도의 절반일 때 그 아바타가 왼·가운데·
+     *  오른쪽 세 칸에 똑같이 7점씩 얹혔다 — 그 바람에 아무도 없는 구석보다 화살표만 지나는
+     *  한복판이 싸게 나왔다(지적: 11시나 5시에 놓이는 게 맞다). 가장자리에 걸친 것은 절반만
+     *  센다: 딱 경계면 0.5, 안쪽으로 반지름만큼 들어가면 1, 바깥으로 나가면 0. */
+    const cover = (d: number, half: number) =>
+      Math.min(1, Math.max(0, (half + SOFT_R - Math.abs(d)) / (2 * SOFT_R)));
     const inBox = (r: number, c: number, x: number, y: number) =>
-      Math.abs(x / grid.width - cx[c]) <= CAP_W / 2 && Math.abs(y / grid.height - cy[r]) <= CAP_H / 2;
+      cover(x / grid.width - cx[c], CAP_W / 2) * cover(y / grid.height - cy[r], CAP_H / 2);
     // 가운데 칸에 액션 이모지가 서 있나 — 화살표가 없을 때 가운데 고정 여부를 가른다.
     const markInMid = bases.some((m) => !m.ghost && m.mark
-      && inBox(1, 1, (m.markAt ?? [m.x, m.y])[0], (m.markAt ?? [m.x, m.y])[1]));
+      && inBox(1, 1, (m.markAt ?? [m.x, m.y])[0], (m.markAt ?? [m.x, m.y])[1]) > 0.5);
     if (geoms.length === 0 && !markInMid) return MID;
 
     const cost = Array.from({ length: 3 }, () => [0, 0, 0]);
     const add = (x: number, y: number, w: number) => {
-      for (let r = 0; r < 3; r += 1) for (let c = 0; c < 3; c += 1) if (inBox(r, c, x, y)) cost[r][c] += w;
+      for (let r = 0; r < 3; r += 1) for (let c = 0; c < 3; c += 1) cost[r][c] += w * inBox(r, c, x, y);
     };
     for (const m of bases) {
       // 버린 본진(흑백)은 이번 장면의 이야기가 아니라 배경이다.

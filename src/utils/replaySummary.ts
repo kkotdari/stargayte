@@ -2358,17 +2358,24 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     for (const m of draft.get(q.rawName) ?? []) if (m.at <= frame) h = m.spot;
     return h;
   };
-  // 2차: 그 순간 남이 살고 있는 자리는 뺀다(아군 자리도 남의 집이다) — 이미 버리고 떠난
-  // 자리에 들어가는 것은 이사가 맞다(요청: 그 땅의 지금 주인을 정확히 파악).
+  /* 2차: 그 순간 '상대'가 살고 있는 자리는 뺀다 — 그건 이사가 아니라 남의 집을 차지한
+     것이다. 이미 버리고 떠난 자리에 들어가는 것은 이사가 맞다(요청: 그 땅의 지금 주인을
+     정확히 파악).
+
+     한때는 아군 자리도 똑같이 막았다(팀원 시작점 언저리에 지은 것을 이사로 읽은 오판이
+     있었다). 그런데 팀전에서는 제 편 구석 쪽으로 살림을 펴는 게 아주 흔해서, 그 규칙이
+     진짜 이사까지 통째로 삼켰다(지적: 7시가 두들겨 맞고 본진을 버리고 옮겼는데 그 내용이
+     없다 — 옮겨 간 자리가 팀원의 시작 구역이라 걸렸다). 옛 오판은 그 뒤에 들어온 두 관문
+     (본진 생산 급감 + 실제로 그 집까지 밀고 들어온 상대)이 이미 막고 있으므로, 여기서는
+     상대 자리만 본다. */
   const moveList = new Map<string, [number, number, number][]>();
   /** 그 이사를 누가 만들었나 — 문장에서 "누구에게 내주고 옮겼는지"를 말하는 데 쓴다. */
   const moveBy = new Map<string, string>();
   const pushWindow = (RELOCATE_HIT_WINDOW_MIN * 60) / SECONDS_PER_FRAME;
   for (const p of replay.players) {
     const foes = foesOf(p);
-    const others = replay.players.filter((q) => q.rawName !== p.rawName);
     const m = relocations(p, mapSpots, (spot, frame) => (
-      others.some((f) => livesAt(f, frame) === spot)
+      foes.some((f) => livesAt(f, frame) === spot)
     ), totalFrames, hasOrderPositions
       // 이사 직전 그 창 안에 그 집까지 병력을 몰고 온 사람 — 없으면 이사가 아니다.
       ? (frame) => pushersOn(p, foes, Math.max(0, frame - pushWindow), frame)[0] ?? null
@@ -3067,6 +3074,9 @@ const DOWN_MIN_TAIL_FRAMES = 180 / 0.042;
 /** 건물을 시작 지점에 붙일 때, 그 자리에서 이 배수(가장 가까운 두 시작 지점 사이 거리 대비)
  *  안에 있어야 그 구역으로 본다 — 맵 가운데에 지은 것을 남의 본진으로 세지 않기 위한 것이다. */
 const SPOT_OWN_RATIO = 0.62;
+/** 이 안에 있는 두 시작 지점은 같은 자리로 본다(타일) — 맵 데이터에 같은 지점이 두 번
+ *  실려 있는 경우가 있어, 그걸 '바로 옆의 남의 자리'로 세면 안 된다. */
+const SPOT_SAME_MAX = 2;
 /** 새 자리에 이만큼은 지어야 살림을 옮긴 것으로 본다. */
 const MOVE_MIN_NEW = 4;
 /** 옮긴 뒤 옛 구역에 남는 것은 이 정도까지 — 그보다 많으면 아직 거기 산다. */
@@ -3105,7 +3115,13 @@ function spotRadii(spots: [number, number][]): number[] {
     let near = Infinity;
     spots.forEach(([ox, oy], j) => {
       if (i === j) return;
-      near = Math.min(near, Math.hypot(x - ox, y - oy));
+      const d = Math.hypot(x - ox, y - oy);
+      // 같은 자리가 두 번 실린 맵이 있다(실측: 8인용 한 맵의 StartLocations에 6시가 두 번).
+      // 그대로 재면 '가장 가까운 다른 자리'가 0이 되어 반경이 0이 되고, 그 구역은 자기
+      // 시작점 말고는 아무 건물도 못 담는다 — 그 근처에 새 살림을 편 사람이 통째로
+      // '구역 없음'이 되어 이사가 영영 안 잡혔다(지적). 겹친 자리는 남으로 안 센다.
+      if (d < SPOT_SAME_MAX) return;
+      near = Math.min(near, d);
     });
     return Number.isFinite(near) ? near * SPOT_OWN_RATIO : Infinity;
   });
