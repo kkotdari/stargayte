@@ -1311,7 +1311,12 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 /* 통계 "상성 보기" — 오른쪽 끝(actions)이 아니라 타이틀 바로 옆에 붙인다(요청).
    타이틀과 한 flex 줄로 묶어 타이틀 폭만큼 자연스럽게 비켜 앉게 한다. */
 .scr-v2-toolbar-title-row { grid-area: title; display: flex; align-items: center; gap: 10px; min-width: 0; }
-.scr-v2-toolbar-title-row .scr-v2-toolbar-title { grid-area: auto; }
+/* 제목만 위로 6px 당기던 보정(위 .scr-v2-toolbar-title)을 줄 전체로 옮긴다 — 제목에만
+   걸려 있으면 옆에 선 도움말·상성 보기가 제목보다 6px 아래에 앉아, 나란한 것들이
+   가운데선을 안 맞춘다(지적: 세로 가운데 정렬). 줄을 통째로 올리면 안쪽 정렬은
+   align-items:center 하나가 다 맡는다. */
+.scr-v2-toolbar-title-row { transform: translateY(-6px); }
+.scr-v2-toolbar-title-row .scr-v2-toolbar-title { grid-area: auto; transform: none; }
 /* 버튼 자체는 예전 랭킹 화면의 상성 보기 버튼(.scr-rank-rivalry-btn)을 그대로 복원(요청)
    — 프라이머리 알약(.scr-btn.scr-btn-primary)에 높이/패딩만 줄인 modifier다. 당시 함께
    붙던 .scr-btn-primary-solid는 그 뒤 "라이트 검정 버튼 전면 제거"에서 사라졌고 지금은
@@ -1321,8 +1326,8 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   flex: 0 0 auto; align-self: center;
   min-height: 0; height: 28px; padding: 0 12px;
   font-size: var(--fs-caption); font-weight: 800; border-radius: 999px;
-  /* 타이틀이 자기 글자 처짐 보정으로 -6px 떠 있으므로 같은 줄에서 함께 올린다. */
-  transform: translateY(-6px);
+  /* -6px 보정은 이제 줄 전체(.scr-v2-toolbar-title-row)가 진다 — 여기서 또 올리면 두 번
+     올라가 제목보다 6px 위에 앉는다(실측). */
 }
 /* 주요 등록/생성 버튼(도전장 쓰기/경기 등록/회원 생성) — 타이틀 줄 오른쪽이 아니라
    그 아래 별도 줄에 가운데 정렬, 1.2배 확대(요청: "타이틀 로우 아래 줄로 이동 및
@@ -2317,6 +2322,16 @@ html:not(.scr-light-theme) .scr-stats-list-panel-v2 .scr-stat-name-cell, html:no
 .scr-infotip {
   display: inline-flex; align-items: center; justify-content: center;
   color: var(--muted); cursor: pointer; opacity: 0.75; vertical-align: middle;
+}
+/* 아이콘 대신 글자로 부르는 트리거(요청: 통계 제목 옆은 ⓘ가 아니라 "도움말") — 자리가
+   넉넉한 제목 줄에서는 ⓘ 하나가 "무엇을 여는 버튼인지" 말하지 않는다. 누를 수 있다는
+   신호는 이 앱에서 이미 쓰는 관용구(점선 밑줄, .scr-stat-points-btn)를 그대로 빌린다.
+   line-height를 1로 눌러 글자 상자가 제목 줄의 가운데선을 그대로 따르게 한다. */
+.scr-infotip.scr-infotip-text {
+  font-size: var(--fs-caption); font-weight: 600; line-height: 1;
+  color: var(--muted); white-space: nowrap; opacity: 0.85;
+  text-decoration: underline dotted; text-underline-offset: 4px;
+  text-decoration-color: var(--dim);
 }
 /* 포커스(키보드·탭 오픈)는 입력장치와 무관하게 유지하고, :hover만 마우스 기기로 가둔다
    — 터치에서 툴팁 아이콘 탭 후 포인트색이 남지 않게. */

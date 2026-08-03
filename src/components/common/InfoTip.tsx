@@ -13,10 +13,15 @@ import { swallowNextClick } from "../../utils/bodyScrollLock";
 let closeOpenTip: (() => void) | null = null;
 
 // size — 트리거 아이콘(ⓘ) 크기. 통계 헤더처럼 크게 쓰고 싶은 자리만 넘긴다(기본 12).
+// trigger — 아이콘 대신 글자로 부르고 싶을 때(요청: 통계 제목 옆은 ⓘ가 아니라 "도움말").
+//   표 헤더처럼 자리가 없는 곳은 그대로 아이콘이고, 제목 옆처럼 자리가 있는 곳은 글자가
+//   무엇을 여는 버튼인지 그 자체로 말한다.
 /** 말풍선이 화면 가장자리에서 남길 최소 여백. */
 const EDGE = 8;
 
-export default function InfoTip({ text, label, size = 12 }: { text: string; label?: string; size?: number }) {
+export default function InfoTip(
+  { text, label, size = 12, trigger }: { text: string; label?: string; size?: number; trigger?: string },
+) {
   // anchor는 아이콘의 자리 — 말풍선을 위로 뒤집을지 정하려면 아이콘의 위/아래가 다 필요하다.
   const [pos, setPos] = useState<{ top: number; left: number; anchorTop: number } | null>(null);
   const ref = useRef<HTMLSpanElement>(null);
@@ -81,14 +86,14 @@ export default function InfoTip({ text, label, size = 12 }: { text: string; labe
   return (
     <span
       ref={ref}
-      className="scr-infotip"
+      className={`scr-infotip${trigger ? " scr-infotip-text" : ""}`}
       role="button"
       tabIndex={0}
       aria-label={label ? `${label} 설명 보기` : "설명 보기"}
       onClick={toggle}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") toggle(e); }}
     >
-      <Info size={size} />
+      {trigger ? trigger : <Info size={size} />}
       {open && pos && createPortal(
         <span
           ref={bubbleRef}
