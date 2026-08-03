@@ -3901,12 +3901,15 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 }
 /* 트리거 버튼 한 줄 — 결과 보기 재오픈 버튼은 없앴다(지적: 배치등록하면 생기는 결과
    보기 버튼 삭제). 버튼이 이 줄의 유일한 항목이라 다른 그리드 칸들과 같은 폭이면 된다. */
+/* 배치등록 버튼은 제 줄을 통째로 쓰지 않고 그리드 한 칸에 앉는다(요청: 배치등록 옆에
+   요약 재분석이 오게) — 예전에는 줄 전체를 차지하고 버튼만 왼쪽 절반에 두어, 오른쪽
+   절반이 늘 빈칸으로 남았다. 한 칸짜리가 되면 그 자리에 앞 칸(요약 재분석)과 나란히
+   선다. 이 컴포넌트의 나머지(옵션 체크박스·진행 숫자·오류)는 그대로 줄 전체를 쓴다. */
 .scr-admin-panel-batch-row {
-  grid-column: 1 / -1;
-  display: flex; align-items: center; gap: 14px;
+  display: flex; align-items: center; gap: 14px; min-width: 0;
 }
 .scr-admin-panel-batch-row .scr-btn {
-  flex: 0 0 calc(50% - 7px); min-width: 0;
+  flex: 1 1 auto; min-width: 0;
 }
 /* 도는 중의 '중단'은 '배치등록'과 같은 자리를 그대로 물려받는다 — 예전에는 옆에 켜고
    끄는 스위치가 있어 그 틈에 끼우느라 작은 알약으로 줄였는데, 스위치가 없어진 뒤로는
