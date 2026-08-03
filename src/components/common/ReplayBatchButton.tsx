@@ -3,7 +3,7 @@ import { Spinner } from "./Feedback";
 import ConfirmDialog from "./ConfirmDialog";
 import ReplayReviewModal from "../../modals/ReplayReviewModal";
 import { useAppStore } from "../../store/appStore";
-import { buildReplayDrafts, hasComputerSlot, resolveUnmatchedAsUnregistered, shortMatchHint, validateReplayDraft } from "../../utils/replayDraft";
+import { buildReplayDrafts, resolveUnmatchedAsUnregistered, shortMatchHint, validateReplayDraft } from "../../utils/replayDraft";
 import type { ReplayDraft } from "../../utils/replayDraft";
 import type { GameOutcome, NewGameResult } from "../../types";
 
@@ -32,11 +32,10 @@ interface BatchTally {
   done: number;
   registered: number;
   duplicate: number;
-  skipped: number;
   failed: number;
 }
 
-const EMPTY_TALLY: BatchTally = { total: 0, done: 0, registered: 0, duplicate: 0, skipped: 0, failed: 0 };
+const EMPTY_TALLY: BatchTally = { total: 0, done: 0, registered: 0, duplicate: 0, failed: 0 };
 
 // 제어판의 운영자 전용 버튼 — 누르면 바로 폴더 선택창이 뜨고, 고른 폴더의 하위(재귀)
 // 전체에서 리플레이(.rep)를 찾아 자동으로 등록한다(요청: 버튼 하나로).
@@ -52,7 +51,6 @@ export default function ReplayBatchButton() {
 
   const [tally, setTally] = useState<BatchTally>(EMPTY_TALLY);
   const [running, setRunning] = useState(false);
-  const [excludeComputer, setExcludeComputer] = useState(false);
   const [err, setErr] = useState("");
   // 폴더를 고른 직후 브라우저가 실제로 뭘 넘겨줬는지 — 진행이 아예 시작되지 않는 경우를
   // 구분하려면 이게 있어야 한다.
@@ -63,9 +61,8 @@ export default function ReplayBatchButton() {
   const [manualDrafts, setManualDrafts] = useState<ReplayDraft[]>([]);
   const [reviewOpen, setReviewOpen] = useState(false);
 
-  // 중단 요청과 고른 옵션들은 렌더와 무관하게 실행 중인 루프가 즉시 읽어야 해서 ref로 둔다.
+  // 중단 요청은 렌더와 무관하게 실행 중인 루프가 즉시 읽어야 해서 ref로 둔다.
   const abortRef = useRef(false);
-  const excludeComputerRef = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
   // 방금 연 선택창이 '폴더' 모드였나 — 폴더 업로드는 브라우저가 "N개 파일을 업로드합니다,
   // 이 사이트를 신뢰하는 경우에만…"을 스스로 물어본다. 파일 여러 개를 고르는 모바일에는
@@ -100,7 +97,6 @@ export default function ReplayBatchButton() {
   };
 
   const start = () => {
-    excludeComputerRef.current = excludeComputer;
     openPicker();
   };
 
@@ -140,7 +136,7 @@ export default function ReplayBatchButton() {
     /* 진행 숫자는 버튼 안에서만 흐른다(요청) — 화면에 남기는 것은 '몇 개째인가'뿐이고,
        무엇을 어떻게 처리했는지는 끝난 뒤 한 번에 알린다. */
     const done: BatchTally = { ...EMPTY_TALLY, total: files.length };
-    const record = (outcome: "registered" | "duplicate" | "skipped" | "failed") => {
+    const record = (outcome: "registered" | "duplicate" | "failed") => {
       done.done += 1;
       done[outcome] += 1;
       setTally({ ...done });
@@ -175,9 +171,6 @@ export default function ReplayBatchButton() {
           if (draft.parseError) { fail(draft); continue; }
           if (draft.excludeReason === "duplicate") { record("duplicate"); continue; }
 
-          // 컴퓨터(AI)가 한 자리라도 낀 경기는 클럽 전적으로 치기 애매해서 통째로 뺀다.
-          if (excludeComputerRef.current && hasComputerSlot(draft)) { record("skipped"); continue; }
-
           // 아래 넷은 전부 '사람이 봐야 하는' 경우다 — 승자를 못 가렸거나, 맵 한계로 팀이
           // 안 갈렸거나, 관전자로 의심되는 사람이 있거나, 2분도 안 되는 판이거나.
           // 조용히 틀린 기록을 남기지 않고 검토 화면으로 넘긴다.
@@ -211,7 +204,7 @@ export default function ReplayBatchButton() {
       const left = done.total - done.done;
       window.alert(
         `${left > 0 ? `배치를 중단했어요 (${left}개 남음).\n` : ""}`
-        + `등록 ${done.registered} · 중복 ${done.duplicate} · 제외 ${done.skipped} · 실패 ${done.failed}`
+        + `등록 ${done.registered} · 중복 ${done.duplicate} · 실패 ${done.failed}`
         + `${done.failed > 0 ? "\n실패한 것은 이어서 직접 등록할 수 있어요." : ""}`,
       );
     } catch (e) {
@@ -256,19 +249,6 @@ export default function ReplayBatchButton() {
           </button>
         )}
       </div>
-
-      {/* 함께 걸 옵션 — 버튼을 누르는 즉시 선택창이 뜨므로 반드시 버튼보다 위에 보여야
-          한다고 봤지만, 버튼이 하나로 줄어 줄 아래에 붙여도 먼저 눈에 들어온다. */}
-      {!running && (
-        <label className="scr-checkbox-field scr-admin-panel-batch-option">
-          <input
-            type="checkbox"
-            checked={excludeComputer}
-            onChange={(e) => setExcludeComputer(e.target.checked)}
-          />
-          컴퓨터 낀 경기 제외
-        </label>
-      )}
 
       {/* 진행이 아예 시작되지 않은 경우(리플레이를 하나도 못 찾음)에만 브라우저가 뭘 넘겨줬는지
           보여준다 — 돌기 시작하면 버튼 안의 숫자가 그 자리를 대신한다. */}

@@ -489,7 +489,7 @@ export default function StatsScreenV2() {
         suggestions={suggestions}
         // 필터창(분류/종족/기간 세 덩어리)은 없앴다(요청) — 그 셋을 목록 바로 위의 제목
         // 문장으로 옮겼다. 제목이 곧 지금 걸린 조건이라 따로 읽을 필터 UI가 없다.
-        heading={
+        heading={<>
           <div className="scr-grid-title">
             <Select
               className="scr-sentence-select" value={period} options={periodOpts}
@@ -518,7 +518,17 @@ export default function StatsScreenV2() {
               </button>
             </span>
           </div>
-        }
+          {/* 정렬은 필터 문장·건수와 한 줄에 선다(요청) — 표를 어떻게 볼지 정하는 것들이
+              전부 목록 바로 위 한 줄에 모인다. 예전엔 컬럼 머리를 눌러 바꿨는데, 칸을
+              통합하면서 한 칸이 여러 지표를 담게 돼(기록 칸) "이 칸을 누르면 무엇으로
+              정렬되는가"가 더는 하나로 안 정해진다. */}
+          <div className="scr-stat-sortbar">
+            <Select
+              className="scr-sentence-select" value={sort.key} options={SORT_SELECT_OPTS}
+              onChange={(v) => setSort(sortOf(v as StatSortKey))} minDropWidth={150}
+            />
+          </div>
+        </>}
       />
 
       {error && <div className="scr-err">{error}</div>}
@@ -529,15 +539,6 @@ export default function StatsScreenV2() {
           보여준다. 필터를 바꿔 다시 받는 동안에는 지금 그려 둔 한 장을 그대로 둔 채 살짝
           흐리게만 하고, 새 값이 다 도착하면 통째로 갈아 끼운다 — 조건만 먼저 바뀌어 옛 값에
           새 잣대가 씌워지는 그림(엉뚱한 메달·뒤늦게 뜨는 순위 변동)이 여기서 사라진다. */}
-      {/* 정렬은 표 밖 우상단에 둔다(요청) — 예전엔 컬럼 머리를 눌러 바꿨는데, 칸을 통합하면서
-          한 칸이 여러 지표를 담게 돼(기록 칸의 게임수·승률·APM·커맨드) "이 칸을 누르면 무엇으로
-          정렬되는가"가 더는 하나로 안 정해진다. 기준을 한 자리에 모아 이름으로 고르게 한다. */}
-      <div className="scr-stat-sortbar">
-        <Select
-          className="scr-sentence-select" value={sort.key} options={SORT_SELECT_OPTS}
-          onChange={(v) => setSort(sortOf(v as StatSortKey))} minDropWidth={150}
-        />
-      </div>
       <div className={cx("scr-stats-list-panel-v2", refreshing && "scr-stats-list-panel-busy")}>
         {refreshing && (
           <div className="scr-stats-list-busy-mark" aria-hidden><Spinner size={18} /></div>

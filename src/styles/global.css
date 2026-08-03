@@ -1829,8 +1829,11 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 .scr-stat-record-item .scr-value-bar,
 .scr-stat-record-item .scr-stat-bar { flex: 1 1 auto; min-width: 0; }
 
-/* 정렬 드롭다운 — 표 밖 우상단(요청). */
-.scr-stat-sortbar { display: flex; justify-content: flex-end; margin-bottom: 8px; }
+/* 정렬 드롭다운 — 필터 문장·건수와 한 줄, 건수 바로 왼쪽(요청). margin-left:auto로 남는
+   폭을 이쪽이 다 가져가고, 뒤따르는 건수의 같은 auto는 풀어 준다 — 둘 다 auto면 남는 폭을
+   반씩 나눠 가져 정렬이 줄 한가운데로 떠 버린다. */
+.scr-stat-sortbar { display: flex; align-items: baseline; margin-left: auto; }
+.scr-filter-head-row > .scr-stat-sortbar ~ .scr-filter-bar-count { margin-left: 0; }
 
 /* 경기당 초반(5분) 일꾼 수 — 도넛과 달리 비율이 아니라 그냥 수라 숫자를 그대로 적는다.
    도넛과 나란히 서므로 이름 위 / 수 아래로 포개, 도넛 하나만큼의 폭만 쓴다. */
