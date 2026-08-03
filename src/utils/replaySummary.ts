@@ -14,7 +14,7 @@ import {
   type ReplaySummaryBeat, type ReplaySummaryData,
 } from "./replaySummaryData";
 import {
-  DEFENSE_KO, EXPANSION_KO, PRODUCTION_KO, SPECTACLE_UNITS, SUPPORT_UNITS, UNIT_KO, UNIT_ROLE,
+  DEFENSE_KO, EXPANSION_KO, PRODUCTION_KO, SPECTACLE_RANK, SPECTACLE_UNITS, SUPPORT_UNITS, UNIT_KO, UNIT_ROLE,
   renderReplaySummary,
 } from "./replaySummaryText";
 
@@ -1088,11 +1088,12 @@ function defenseSurge(
   return null;
 }
 
-/** 그 편에서 가장 많이 뽑은 '한 방' 유닛(없으면 undefined). */
+/** 그 편의 '한 방' 유닛(없으면 undefined) — 많이 뽑은 순이 아니라 드문 순이다
+ *  (SPECTACLE_RANK 주석 참고). 같은 순위면 많이 뽑은 쪽. */
 function spectacleOf(side: Side): string | undefined {
   return [...side.combat.entries()]
     .filter(([u, n]) => SPECTACLE_UNITS[u] && n > 0)
-    .sort((a, b) => b[1] - a[1])[0]?.[0];
+    .sort((a, b) => (SPECTACLE_RANK[b[0]] ?? 0) - (SPECTACLE_RANK[a[0]] ?? 0) || b[1] - a[1])[0]?.[0];
 }
 
 /** 한 편의 전황을 '줄'들로 만든다. 이긴 편/진 편 모두 같은 재료(주력 조합·확장·방어·테크·
@@ -1704,9 +1705,12 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
 
   // ── 맺음말 머리 — 드문 사건이 있으면 그걸 앞세운다(경기마다 다른 문장이 나오도록).
   // 주력으로 이미 말할 유닛은 여기서 뺀다 — 안 그러면 "캐리어가 뜬 …캐리어로 승리"가 된다.
-  const spectacle = [...winner.combat.keys()].find(
-    (u) => SPECTACLE_UNITS[u] && (winner.combat.get(u) ?? 0) > 0 && !units.includes(u)
-  );
+  /* Map의 삽입 순서(=파서가 유닛을 훑은 순서)를 그대로 따르던 자리다 — 무엇이 먼저
+     나올지가 사실상 우연이라, 핵이 있어도 그 앞에 아무 유닛이나 걸리면 밀렸다. 위
+     spectacleOf와 같은 잣대(드문 순)로 고른다. */
+  const spectacle = [...winner.combat.entries()]
+    .filter(([u, n]) => SPECTACLE_UNITS[u] && n > 0 && !units.includes(u))
+    .sort((a, b) => (SPECTACLE_RANK[b[0]] ?? 0) - (SPECTACLE_RANK[a[0]] ?? 0) || b[1] - a[1])[0]?.[0];
   const lead =
     sec >= EPIC_GAME_SEC ? "epic" : spectacle ? "spectacle" : wasRush && sec > 0 ? "rush" : "";
   const mode = wasRush ? "rush" : comeback ? "comeback" : wentLate && !lead ? "late" : "plain";

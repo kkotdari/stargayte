@@ -13,7 +13,7 @@
 //
 // 목록은 screp(icza/screp)의 Techs/Upgrades enum에서 그대로 뽑았다.
 
-/** 기술 — screp Techs enum(35개) 그대로. */
+/** 요약이 말할 수 있는 능력 — screp Techs enum(0~34) + 핵 발사(아래 주석 참고). */
 export const TECH_NAMES = [
   "Stim Packs", "Lockdown", "EMP Shockwave", "Spider Mines", "Scanner Sweep",
   "Tank Siege Mode", "Defensive Matrix", "Irradiate", "Yamato Gun", "Cloaking Field",
@@ -22,6 +22,13 @@ export const TECH_NAMES = [
   "Hallucination", "Recall", "Stasis Field", "Archon Warp", "Restoration",
   "Disruption Web", "Mind Control", "Dark Archon Meld", "Feedback", "Optical Flare",
   "Maelstrom", "Lurker Aspect", "Healing",
+  /* 핵 발사 — screp의 Techs enum(0~34)에는 없다. 핵은 연구가 아니라 고스트가 내리는
+     명령(Order "CastNuclearStrike")이라 screp이 Tech로 세지 않기 때문이다(실측:
+     screp-js의 Techs 표에 Nuclear 항목이 없다). 그래서 여기 목록은 이제 "screp Techs
+     enum 그대로"가 아니라 "요약이 말할 수 있는 능력들"이고, 핵만 그 예외다 — 아래
+     CAST_ORDER_TO_TECH가 그 명령을 이 이름으로 받아 준다. 이렇게 두면 순위(TECH_RANK)·
+     한국어 이름·시전 좌표(castPositions)까지 다른 마법과 똑같은 길을 탄다. */
+  "Nuclear Strike",
 ] as const;
 export type TechName = (typeof TECH_NAMES)[number];
 
@@ -200,6 +207,8 @@ export const UPGRADE_RANK: Partial<Record<UpgradeName, number>> = {
  *  여기 없는 기술은 요약에 안 쓴다(스캐너·디펜시브 매트릭스처럼 연구가 아예 없는 것 포함). */
 export const TECH_RANK: Partial<Record<TechName, number>> = {
   // 나오면 그 경기의 하이라이트가 되는 것들.
+  // 핵은 한 경기에 한두 번 나올까 말까라 나오면 그 경기의 이야기다 — 가장 위에 둔다.
+  "Nuclear Strike": 10,
   "Mind Control": 10, Maelstrom: 9, "Spawn Broodlings": 9, "Disruption Web": 9,
   "Optical Flare": 8, Restoration: 8, Hallucination: 8,
   // 판을 가르는 주력 마법·능력.
@@ -313,6 +322,9 @@ export const CAST_ORDER_TO_TECH: Record<string, TechName> = {
   CastFeedback: "Feedback",
   CastMaelstrom: "Maelstrom",
   MedicHeal: "Healing",
+  // 핵 — 위 TECH_NAMES 주석 참고. 이 한 줄이 없어서 "핵 쐈다"가 요약에 통째로 안
+  // 나왔다(지적) — 연구가 아니라 명령이라 techNames로도 안 잡혔다.
+  CastNuclearStrike: "Nuclear Strike",
 };
 
 /** 마법이 아닌 능력 — 전용 커맨드 이름(screp Types)이 곧 사용 증거다. */
@@ -336,7 +348,14 @@ export function techUseCount(s: TechSignalsLike, name: TechName): number {
  *  드묾(TECH_RANK)만 보면 안 된다. 실제 리플레이에서 시즈모드를 49번 쓰고 마인을 2번 깐
  *  테란이 있었는데, 랭크만 보면 마인(2)이 시즈모드(1)를 이겨 "마인을 두 번 깔았다"가
  *  나간다 — 그 판의 그림은 시즈 49번 쪽이다. 그래서 많이 쓸수록 점수를 얹는다(10번마다
- *  1점, 최대 3점). 드문 마법은 한 번만 써도 여전히 이긴다(마인드컨트롤 10 > 시즈 1+3). */
+ *  1점).
+ *
+ *  다만 그 덤은 최상위(10)를 넘볼 수 없어야 한다. 예전 상한이 3이라 스톰 30번(7+3=10)이
+ *  핵 2발(10+0=10)과 동점이 됐고, 동점은 횟수로 갈리니 늘 스톰이 이겼다 — 그 판에서
+ *  유일하게 드문 일인 핵이 밀려났다(지적: 핵 쏜 게 요약에 안 나온다). 상한을 2로 낮추면
+ *  아무리 많이 써도 9가 최대라 10짜리(핵·마인드컨트롤)를 못 넘고, 원래 이 덤이 풀려던
+ *  문제(시즈 1+2=3 > 마인 2)는 그대로 풀린다. */
+const USE_BONUS_MAX = 2;
 export function topUsedTech(s: TechSignalsLike): TechName | null {
   let best: TechName | null = null;
   let bestScore = 0;
@@ -346,7 +365,7 @@ export function topUsedTech(s: TechSignalsLike): TechName | null {
     const name = raw as TechName;
     const rank = TECH_RANK[name] ?? 0;
     if (rank <= 0) continue;
-    const score = rank + Math.min(3, Math.floor(uses / 10));
+    const score = rank + Math.min(USE_BONUS_MAX, Math.floor(uses / 10));
     if (score > bestScore || (score === bestScore && uses > bestUses)) {
       bestScore = score;
       bestUses = uses;
@@ -371,7 +390,7 @@ export function topUsedTechs(s: TechSignalsLike, max: number): TechName[] {
     const name = raw as TechName;
     const rank = TECH_RANK[name] ?? 0;
     if (rank <= 0) continue;
-    scored.push({ name, score: rank + Math.min(3, Math.floor(uses / 10)), uses });
+    scored.push({ name, score: rank + Math.min(USE_BONUS_MAX, Math.floor(uses / 10)), uses });
   }
   scored.sort((a, b) => b.score - a.score || b.uses - a.uses);
   return scored
@@ -436,6 +455,7 @@ export const TECH_USE_PHRASE: Partial<Record<TechName, string[]>> = {
  *  두 유닛이 함께 쓰는 것(클로킹=고스트·레이스 등)은 여기 넣지 않는다 — 틀리게 짚느니
  *  모른 채로 두는 편이 낫다. */
 export const CAST_ORDER_TO_UNIT: Record<string, string> = {
+  CastNuclearStrike: "Ghost",
   CastPsionicStorm: "High Templar",
   CastHallucination: "High Templar",
   CastLockdown: "Ghost",

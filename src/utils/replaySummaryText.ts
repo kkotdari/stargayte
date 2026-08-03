@@ -45,6 +45,19 @@ export const SPECTACLE_UNITS: Record<string, string> = {
   "Dark Archon": "다크아콘이 나온",
 };
 
+/** 이 중 무엇을 앞세울 것인가 — 클수록 먼저 말한다(TECH_RANK와 같은 뜻).
+ *
+ *  예전에는 '많이 뽑은 순'으로 골랐다. 그런데 핵은 한 경기에 한두 발이고 아비터·울트라는
+ *  여남은 기씩 나오므로, 핵이 있는 경기에서도 늘 아비터가 이겼다 — 정작 그 판에서 유일하게
+ *  드문 일이 밀려나는 정렬이었다(지적: 핵 쏜 게 요약에 안 나온다). 수가 아니라 '얼마나 드문
+ *  일인가'로 고른다. */
+export const SPECTACLE_RANK: Record<string, number> = {
+  "Nuclear Missile": 9,
+  Battlecruiser: 6, Carrier: 6, "Dark Archon": 6,
+  Guardian: 5,
+  Arbiter: 4, Ultralisk: 3,
+};
+
 // 연구로 잡히는 기술 전부. 예전엔 절반쯤만 적혀 있었고, 그나마 "Cloaking"은 screp에 없는
 // 이름이라 늘 빈손이었다(지적) — 레이스 클로킹의 실제 이름은 "Cloaking Field"다.
 export const TECH_KO: Record<string, string> = {
@@ -61,6 +74,8 @@ export const TECH_KO: Record<string, string> = {
   "Psionic Storm": "스톰", Recall: "리콜", "Stasis Field": "스테이시스",
   Hallucination: "할루시네이션", "Disruption Web": "디스럽션 웹",
   "Mind Control": "마인드컨트롤", Maelstrom: "마엘스트롬",
+  // 종족 구분 밖 — 핵은 연구가 아니라 고스트의 명령이다(replayTechNames의 TECH_NAMES 주석).
+  "Nuclear Strike": "핵",
 };
 
 /** 방어 건물 — "질럿과 성큰으로 막아섰지만 실패"처럼 유닛과 함께 말한다. */
