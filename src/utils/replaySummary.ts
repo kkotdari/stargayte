@@ -3327,8 +3327,16 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   // 일들 안에서만 한다. 시점을 못 잡은 문장(올인처럼 한 순간이 아닌 것)은 맺음말 앞으로 밀린다.
   // 진 편의 맺음(stand)은 그중에서도 맨 뒤다 — 결론을 다른 사건들 사이에 끼워 넣으면
   // "역부족", "판을 뒤집지 못함" 같은 말이 초반 이야기보다 먼저 나온다(지적).
+  /* GG는 그 판의 마지막 사건이다(지적: GG를 치고도 뒤에 스냅이 두 개나 더 이어진다) —
+     시간만으로 세우면 시점을 못 잡은 문장(총 생산량·소모전 …)과 진 편의 맺음이 그 뒤로
+     밀려, 이미 항복한 사람이 그 뒤에 무언가를 한 것처럼 읽힌다. 실측(GG가 나온 14판):
+     GG 뒤에 스냅이 셋 이상인 판이 11판이었고 대부분 [stand → 맺음말 → 승패]였다.
+     GG를 꼬리의 맨 뒤로 보내면 그 뒤에는 맺음말과 승패만 남는다 — 그 둘은 요청으로
+     못 박은 결론 한 벌이다(결론 전투 내용과 승패를 나눠서 스냅으로). */
   const tailRank = (b: Beat): number =>
-    (b.k === "stand" && !b.won ? 2 : b.at === null || b.at === undefined ? 1 : 0);
+    (b.k === "gg" ? 3
+      : b.k === "stand" && !b.won ? 2
+        : b.at === null || b.at === undefined ? 1 : 0);
   chosen.sort((a, b) => tailRank(a) - tailRank(b) || (a.at ?? Infinity) - (b.at ?? Infinity));
   // 같은 편 두 문장 사이에 다른 편 문장 하나가 끼었는데 셋이 다 비슷한 때라면, 그건
   // 시간이 아니라 편이 갈라 놓은 것이라 붙여 준다. 창을 넘어가면 손대지 않는다.
