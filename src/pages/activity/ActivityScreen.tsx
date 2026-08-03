@@ -15,7 +15,7 @@ import { ActivityCard } from "./ActivityCard";
 import { resolveSlotName } from "./GameResultSides";
 import { isComputerSlot } from "../../constants/computerSlot";
 import { isUnregisteredSlot } from "../../constants/unregisteredSlot";
-import { ChallengeCard, ChallengeTimeHeadEdit, challengeStatusInfo } from "../challenge/ChallengeScreen";
+import { ChallengeCard, ChallengeTimeHeadEdit, challengeSideBadges, challengeStatusInfo } from "../challenge/ChallengeScreen";
 import ReplayReviewModal from "../../modals/ReplayReviewModal";
 import ActivityComments, { primeActivityComments } from "./ActivityComments";
 import { primeReplayMaps } from "../../hooks/useReplayMap";
@@ -1280,21 +1280,31 @@ export default function ActivityScreen() {
       const mine = [c.createdBy.nickname, ...c.ownMembers.map((m) => m.nickname)];
       const theirs = c.targets.map((t) => t.nickname);
       const status = challengeStatusInfo(c);
-      /* 배지(취소/거절/버림…)는 뺐다(요청) — 목록은 "무슨 일이 있었나"를 훑는 자리라
-         누가 누구를 불렀나까지가 한 줄의 몫이고, 그 끝이 어땠는지는 펼쳐 보면 카드가
-         말한다. 배지가 붙어 있으면 이름 자리가 그만큼 줄어 모바일에서 닉네임이 잘렸다. */
+      /* 상태는 줄에 끼우지 않고 닉네임 우상단에 얹는다(요청: 제목의 NEW 배지처럼, 자리
+         차지 없이). 흐름에 두면 그 폭만큼 이름 자리가 줄어 모바일에서 닉네임이 잘렸다.
+         어느 쪽 닉네임에 붙일지는 '누구의 이야기인가'로 정한다 — 수락·거절·버림·만료는
+         지목된 쪽이 한 일이니 오른쪽에, 부른 쪽이 거둬들인 취소만 왼쪽에 붙는다(요청).
+         그 판단은 카드가 손 이모지 양옆 배지를 놓을 때 쓰는 것과 같은 함수다
+         (challengeSideBadges) — 두 화면이 같은 걸 보고 같은 자리를 고르게. */
+      const onCreatorSide = challengeSideBadges(c).left !== null;
+      const badge = (
+        <span className={cx("scr-activity-row-state", `scr-challenge-avatar-badge-${status.tone}`)}>
+          {status.text}
+        </span>
+      );
       return (
         <>
-          <span className="scr-activity-row-name">{nameNodes(mine)}</span>
+          <span className="scr-activity-row-name">
+            <span className="scr-activity-row-name-main">
+              {nameNodes(mine)}{onCreatorSide && badge}
+            </span>
+          </span>
           <span className="scr-activity-row-arrow" aria-hidden>→</span>
-          <span className="scr-activity-row-name">{nameNodes(theirs)}</span>
-          {/* 어디까지 왔나(요청) — 이 줄에서 유일하게 '지금 상태'를 말하는 자리다. 색은
-              카드가 응답 배지에 쓰는 그 톤을 그대로 빌려 온다(요청: "본래 고유 색") —
-              같은 사실을 카드에선 초록, 목록에선 회색으로 말하면 둘이 다른 것처럼 읽힌다. */}
-          <span className={cx(
-            "scr-activity-row-note",
-            `scr-challenge-avatar-badge-${status.tone}`,
-          )}>{status.text}</span>
+          <span className="scr-activity-row-name">
+            <span className="scr-activity-row-name-main">
+              {nameNodes(theirs)}{!onCreatorSide && badge}
+            </span>
+          </span>
         </>
       );
     }
