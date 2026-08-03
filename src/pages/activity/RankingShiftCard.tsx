@@ -7,8 +7,8 @@ import { shareThumb, type KakaoShareContent } from "../../utils/kakaoShare";
 import type { RankingShiftEntry, RankingShift } from "../../types";
 import { ActivityCard } from "./ActivityCard";
 
-// 랭크 변동 카드 — 피드와 카카오톡 공유 페이지(?sv=rankingShift)가 같은 마크업을 쓰도록
-// 분리했다(요청: "순위변동 발생도 카톡공유 가능, 피드는 다 가능하게"). 헤더 오른쪽
+// 랭크 변동 카드 — 활동와 카카오톡 공유 페이지(?sv=rankingShift)가 같은 마크업을 쓰도록
+// 분리했다(요청: "순위변동 발생도 카톡공유 가능, 활동는 다 가능하게"). 헤더 오른쪽
 // 케밥(actions)과 하단(댓글, footer)은 쓰는 쪽이 끼워 넣는다.
 
 // 순위가 어디서 어디로 갔나 — "1 → 3위".
@@ -111,7 +111,7 @@ export default function RankingShiftCard({
   dateLabel?: string;
   actions?: React.ReactNode;
   footer?: React.ReactNode;
-  // 피드 검색어에 걸린 사람 — 순위변동 줄에도 로스터와 같은 하이라이트를 준다(지적).
+  // 활동 검색어에 걸린 사람 — 순위변동 줄에도 로스터와 같은 하이라이트를 준다(지적).
   highlightMemberIds?: Set<string>;
   highlightTerms?: string[];
 }) {

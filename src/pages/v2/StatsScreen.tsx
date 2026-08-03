@@ -92,7 +92,7 @@ export default function StatsScreenV2() {
   const [search, setSearch] = useState("");
   const [race, setRace] = useState<BaseRace | "all">("all");
   // 게임 유형(개인전/팀전) — 라디오이고 "전체"는 없다. 기본값은 랜덤(요청).
-  // (삭제) 피드의 랭크 변동 카드에서 유형을 미리 걸어 주는 연동이 있었는데, 그 입구였던
+  // (삭제) 활동의 랭크 변동 카드에서 유형을 미리 걸어 주는 연동이 있었는데, 그 입구였던
   // "실시간 랭크 확인" 링크를 걷어내면서(요청) 걸어 줄 사람이 없어졌다.
   const [matchType, setMatchType] = useState<GameType>(
     () => (Math.random() < 0.5 ? "0101" : "0102"),
@@ -210,7 +210,7 @@ export default function StatsScreenV2() {
     stats: Record<string, MemberStatsEntry>;
     /** 전달 같은 조건의 통계 — 포인트 옆 순위 변동(▲2)의 기준선이다.
      *
-     *  피드의 '랭크 변동 스냅샷'과는 다른 이야기다(지적): 저쪽은 "직전 순위표 대비 방금
+     *  활동의 '랭크 변동 스냅샷'과는 다른 이야기다(지적): 저쪽은 "직전 순위표 대비 방금
      *  무엇이 바뀌었나"이고, 이쪽은 "지난달 순위와 견주면 지금 몇 계단인가"다. 그래서
      *  스냅샷을 갖다 쓰지 않고, 조회할 때 그 달 통계를 한 번 더 받아 직접 계산한다.
      *  '전체 기간'을 보고 있으면 견줄 '전달'이 없어 아예 안 부른다. */

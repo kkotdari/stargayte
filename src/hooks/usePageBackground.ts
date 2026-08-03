@@ -11,7 +11,7 @@ import { useEffect } from "react";
 // 실제 적용 여부는 CSS(html.scr-page-bg …)가 결정한다.
 //
 // mobileUrl / lightUrl은 넘긴 화면에서만 그 자리에 배경이 깔린다 — 안 넘기면 그 자리는
-// 사진 없이 바탕색만 남는다(요청: 피드는 라이트 전체와 다크 모바일에서 배경을 뺀다).
+// 사진 없이 바탕색만 남는다(요청: 활동는 라이트 전체와 다크 모바일에서 배경을 뺀다).
 // 켜짐 여부를 변수 존재로 판단하면 CSS가 IACVT로 무너지므로 전용 클래스를 따로 붙인다.
 export function usePageBackground(
   desktopUrl: string | null | undefined,

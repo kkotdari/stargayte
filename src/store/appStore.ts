@@ -155,12 +155,12 @@ interface AppState {
   saveVersionNotes: (number: AppVersion, notes: string) => Promise<void>;
 
   // ----- 화면 간 이동 요청 -----
-  // 피드의 랭크 변동 카드 "상세" 버튼처럼 화면 컴포넌트가 다른 탭으로 보내고 싶을 때 쓴다 —
+  // 활동의 랭크 변동 카드 "상세" 버튼처럼 화면 컴포넌트가 다른 탭으로 보내고 싶을 때 쓴다 —
   // App이 구독해 실제 화면 전환을 수행하고 비운다.
   screenIntent: ScreenKey | null;
   requestScreen: (screen: ScreenKey) => void;
   clearScreenIntent: () => void;
-  // 통계 화면이 열릴 때 미리 걸어둘 게임 유형 — 피드 변동 카드 내용과 맞춘다(요청).
+  // 통계 화면이 열릴 때 미리 걸어둘 게임 유형 — 활동 변동 카드 내용과 맞춘다(요청).
   // 소비(마운트) 시점에 비워져, 이후 일반 진입은 다시 랜덤 기본값을 쓴다.
 
   // ----- 파생 셀렉터(헬퍼) -----

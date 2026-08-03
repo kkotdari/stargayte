@@ -39,7 +39,7 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
   // 지금 스크럽 중인 손가락의 식별자 — 드래그 도중 다른 손가락이 닿아도 안 흔들리게.
   const touchIdRef = useRef<number | null>(null);
   // 무한스크롤로 문서가 길어진 직후인지 — 그때만 thumb/날짜 알약을 애니메이션으로 옮긴다.
-  // 피드는 바닥에 닿을 때마다 한 페이지(100건)를 이어붙이는데, thumb 위치는
+  // 활동는 바닥에 닿을 때마다 한 페이지(100건)를 이어붙이는데, thumb 위치는
   // scrollTop/(문서높이-뷰포트)라 그 순간 분모가 확 커지며 위치가 뚝 떨어진다 —
   // 스크롤은 그대로인데 thumb만 위로 도약했다가 계속 스크롤하면 되돌아오는 게 "튐"의
   // 정체다(측정 방식 문제가 아니라 무한스크롤 구조 자체의 성질이라, 계산부를 아무리
@@ -131,12 +131,12 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
   };
 
   useEffect(() => {
-    /* 프로그램이 굴리는 스크롤(피드에 들어오며 "현재"로 내려가는 애니메이션 등) 동안에는
+    /* 프로그램이 굴리는 스크롤(활동에 들어오며 "현재"로 내려가는 애니메이션 등) 동안에는
        재지 않는다 — update()는 프레임마다 문서 전체의 날짜 머리를 훑고(querySelectorAll +
        머리마다 getBoundingClientRect) 상태를 네 개나 바꾼다. 손으로 굴릴 때는 브라우저가
        스크롤을 따로 처리해 티가 덜 나지만, 그 애니메이션은 매 프레임 우리가 scrollTo를
        부르는 것이라 여기서 쓴 시간이 곧바로 다음 프레임을 늦춰 스크롤이 끊겨 보인다
-       (지적: 피드 진입 시 스크롤이 부드럽지 않음). 애니메이션이 끝나면 scrollRoot가
+       (지적: 활동 진입 시 스크롤이 부드럽지 않음). 애니메이션이 끝나면 scrollRoot가
        스크롤 이벤트를 한 번 흘려 주므로 그때 제대로 잰다. */
     const onScroll = () => {
       if (isProgrammaticScroll()) return;
@@ -145,7 +145,7 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
     };
     const off = addRafScrollListener(onScroll);
     update();
-    // update()는 그동안 scroll 이벤트로만 다시 불렸다 — 피드 카드를 펼치거나 접을 때는
+    // update()는 그동안 scroll 이벤트로만 다시 불렸다 — 활동 카드를 펼치거나 접을 때는
     // 문서 높이가 바뀌는데도(WAAPI로 높이만 애니메이션하고 실제 스크롤은 안 일어난다)
     // 아무것도 다시 재지 않아 눈금·다이얼이 옛 문서 높이 그대로 굳어 있었다(지적: 펼침/
     // 접을 때도 무한스크롤처럼 타임라인 재계산 필요). 무한스크롤이 멀쩡했던 건 그게
@@ -181,9 +181,9 @@ export default function ScrollNavTimeline({ headSelector, topLabel, bottomLabel,
   //
   // 예전엔 f = (clientY - 트랙top) / 트랙높이로 손가락이 닿은 지점 자체를 위치로 삼았다.
   // 너 나와/경기 목록에선 문서가 몇 화면 높이라 손가락이 손잡이 중심에서 몇 px 어긋나도
-  // 스크롤은 수십 px만 움직여 티가 안 났다. 피드는 한 번에 100건씩 이어붙여 문서가 수만
+  // 스크롤은 수십 px만 움직여 티가 안 났다. 활동는 한 번에 100건씩 이어붙여 문서가 수만
   // px이라, 같은 몇 px 오차가 트랙 높이(≈600px) 대비 비율로 증폭돼 수백~수천 px 점프가
-  // 된다 — 이게 "피드로 도입하면서 안 되기 시작한" 튐의 정체다(마우스는 12px 점을 정확히
+  // 된다 — 이게 "활동로 도입하면서 안 되기 시작한" 튐의 정체다(마우스는 12px 점을 정확히
   // 겨냥해 눌러 오차가 1px 수준이라 늘 멀쩡해 보였고, 손가락은 접촉면 중심이 보고돼
   // 잡자마자 어긋난다). 시작 지점을 기준으로 삼으면 어디를 잡든 첫 프레임에 안 튄다.
   const dragRef = useRef<{ startY: number; startFraction: number; active: boolean } | null>(null);

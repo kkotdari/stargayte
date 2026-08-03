@@ -93,7 +93,7 @@ export function shareThumb(kind: ShareThumbKind): {
 }
 
 export interface KakaoShareContent {
-  // 카드 제목/설명 — 카카오 네이티브 공유(피드형)에 쓴다.
+  // 카드 제목/설명 — 카카오 네이티브 공유(활동형)에 쓴다.
   title: string;
   description?: string;
   // 카드 썸네일. 카카오가 서버에서 읽어가므로 반드시 공개 접근 가능한 절대 URL이어야 한다.

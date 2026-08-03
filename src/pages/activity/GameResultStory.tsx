@@ -194,7 +194,7 @@ const FLIGHT_BEAT_KEYS = new Set([
 const isFlight = (k: string, cause: unknown): boolean =>
   FLIGHT_BEAT_KEYS.has(k) || (typeof cause === "string" && FLIGHT_BEAT_KEYS.has(cause));
 
-/** 카드가 화면에 이만큼 들어와 있으면 재생한다 — 피드에 카드가 여럿인데 전부 동시에
+/** 카드가 화면에 이만큼 들어와 있으면 재생한다 — 활동에 카드가 여럿인데 전부 동시에
  *  돌아가면 어지럽고, 보이지도 않는 카드가 타이머를 물고 있을 이유도 없다. */
 const VISIBLE_RATIO = 0.4;
 
@@ -265,7 +265,7 @@ export default function GameResultStory({
   }, [gameResult.summaryData, nameByRaw, teamByName, slots]);
 
   const [index, setIndex] = useState(0);
-  // 자동재생은 꺼 둔다(요청) — 카드가 여럿 뜨는 피드에서 저마다 장면이 넘어가면 어지럽다.
+  // 자동재생은 꺼 둔다(요청) — 카드가 여럿 뜨는 활동에서 저마다 장면이 넘어가면 어지럽다.
   // 재생 버튼을 누르거나 그림 좌·우를 짚어 사람이 넘긴다.
   const [playing, setPlaying] = useState(false);
   const [visible, setVisible] = useState(false);
@@ -284,7 +284,7 @@ export default function GameResultStory({
   const last = sentences.length - 1;
   const finished = index >= last && !playing;
   // 이 문장에 머물 시간 — 아래 타이머의 의존값으로 쓴다. sentences 배열 자체를 의존값에
-  // 넣으면 안 된다: 피드 머리의 카운트다운 때문에 부모가 1초마다 다시 그려지고, 그때마다
+  // 넣으면 안 된다: 활동 머리의 카운트다운 때문에 부모가 1초마다 다시 그려지고, 그때마다
   // 이 배열이 새 객체로 만들어져 타이머가 매번 끊긴다 — 그래서 3초 뒤에 넘어가야 할 스냅이
   // 영원히 제자리였다(실측: 4.5초를 기다려도 1번째 장면). 숫자로 뽑아 두면 내용이 같은
   // 동안에는 같은 값이라 타이머가 살아남는다.
@@ -1209,7 +1209,7 @@ export default function GameResultStory({
   const showMapLine = grid === null && (mapName || minutes !== null);
 
   /* 미니맵·자막·타임라인을 눌러도 카드가 접히지 않게 한다(요청) — 이 카드는 눌러서 접는
-     동작을 갖고 있어서(피드 묶음), 그림을 짚어 장면을 넘기거나 자막을 읽으려고 누른 것이
+     동작을 갖고 있어서(활동 묶음), 그림을 짚어 장면을 넘기거나 자막을 읽으려고 누른 것이
      그대로 접기로 새어 나갔다. click만 막으면 pointerdown을 보고 접는 쪽이 먼저 반응하므로
      세 가지를 다 끊는다. */
   const stopBubble = {

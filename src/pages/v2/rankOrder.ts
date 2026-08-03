@@ -4,7 +4,7 @@ import type { MemberStatsEntry } from "../../types";
  *  완전 동률(tieGroup)은 공동순위(1,1,3)로 묶는다.
  *
  *  백엔드가 랭크 변동 스냅샷의 순위표를 만들 때 쓰는 규칙(feed/service.py의
- *  _compute_standings)과 같은 계산이다 — 그래서 통계표의 순위와 피드 카드의 순위가
+ *  _compute_standings)과 같은 계산이다 — 그래서 통계표의 순위와 활동 카드의 순위가
  *  어긋나지 않는다.
  *
  *  통계 화면과 순위변동 모달이 함께 쓴다. 예전에는 화면 안에 이 함수가 있었는데, 모달이

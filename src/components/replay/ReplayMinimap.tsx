@@ -716,7 +716,7 @@ export default function ReplayMinimap({
         ) : null))}
       </div>
       {/* 그림의 좌·우 절반을 누르면 이전/다음 장면으로 옮긴다(요청). 이 카드는 눌러서 접는
-          동작을 갖고 있어(피드 묶음) 여기서 이벤트를 반드시 끊어야 한다 — click만 막으면
+          동작을 갖고 있어(활동 묶음) 여기서 이벤트를 반드시 끊어야 한다 — click만 막으면
           pointerdown을 보고 접는 쪽이 먼저 반응한다(요청: 접기로 작동 안 하게 주의). */}
       {onStep && ([-1, 1] as const).map((d) => (
         <button

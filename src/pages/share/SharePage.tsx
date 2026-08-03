@@ -69,7 +69,7 @@ export default function SharePage({ target, onExit }: { target: ShareTarget; onE
           if (mine.length === 0) {
             setErr("공유된 게임결과를 찾을 수 없어요.");
           } else {
-            // 피드와 같은 순서(최신 → 과거)로 넘긴다.
+            // 활동와 같은 순서(최신 → 과거)로 넘긴다.
             mine.sort((a, b) => b.time - a.time);
             setStack({ kind: "gameResultPost", time: mine[0].time, date: target.day, items: mine });
           }
@@ -125,8 +125,8 @@ export default function SharePage({ target, onExit }: { target: ShareTarget; onE
         ) : err ? (
           <div className="scr-err">{err}</div>
         ) : gameResult ? (
-          // 경기 한 장 공유 — 묶음 공유와 마찬가지로 피드의 그 카드를 그대로 쓴다(요청).
-          // 예전엔 목록(GameResultCardBody)을 날것으로 얹어서, 피드에는 없는 숫자 날짜 머리글이
+          // 경기 한 장 공유 — 묶음 공유와 마찬가지로 활동의 그 카드를 그대로 쓴다(요청).
+          // 예전엔 목록(GameResultCardBody)을 날것으로 얹어서, 활동에는 없는 숫자 날짜 머리글이
           // 뜨고 카드 머리(시각·등록자·제목)는 없는 다른 모양이었다.
           <div className="scr-activity-list">
             <GameResultCard
@@ -135,13 +135,13 @@ export default function SharePage({ target, onExit }: { target: ShareTarget; onE
             />
           </div>
         ) : shift ? (
-          // 순위변동 공유 — 피드와 같은 카드 한 장(읽기 전용, 케밥/상세/댓글 없이).
+          // 순위변동 공유 — 활동와 같은 카드 한 장(읽기 전용, 케밥/상세/댓글 없이).
           <div className="scr-activity-list">
             <RankingShiftCard shift={shift} timeText={formatWhen(shift.createdAt, { clock: true })} />
           </div>
         ) : stack ? (
-          // 게임결과 묶음 공유 — 피드의 그 카드를 그대로 재사용한다(요청). 접힌 채로 뜨고
-          // 누르면 피드에서와 똑같이 펼쳐진다.
+          // 게임결과 묶음 공유 — 활동의 그 카드를 그대로 재사용한다(요청). 접힌 채로 뜨고
+          // 누르면 활동에서와 똑같이 펼쳐진다.
           <div className="scr-activity-list">
             <GameResultPost
               stack={stack} memberOf={memberOf} onDeleted={() => {}}

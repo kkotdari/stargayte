@@ -48,7 +48,7 @@ export function resolveSlotName(slot: GameResultSlot, players: GameResultSlot[],
       : (m?.nickname ?? slot.memberId);
 }
 
-// 매치업 한 편(피드 전용) — 너 나와! 카드의 팀 로스터(scr-challenge-side)와 같은 CSS로
+// 매치업 한 편(활동 전용) — 너 나와! 카드의 팀 로스터(scr-challenge-side)와 같은 CSS로
 // 세로 나열한다(요청: "게임결과의 팀로스터와 너 나와의 팀로스터를 맞출거야"). 프사를
 // 더하고, 종족 배지는 닉네임 오른쪽(기존 규칙 유지). 컴퓨터/비회원은 작은 아이콘으로 구분.
 export default function RosterSide({

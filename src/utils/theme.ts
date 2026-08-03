@@ -107,10 +107,10 @@ export function resampleSafariChrome(): void {
 const JIGGLE_RETRY_MS = 260;
 
 function jiggleScroll(): void {
-  /* 프로그램이 굴리는 스크롤(피드에 들어오며 "현재"로 내려가는 애니메이션 등)이 도는
+  /* 프로그램이 굴리는 스크롤(활동에 들어오며 "현재"로 내려가는 애니메이션 등)이 도는
      중이면 비켜선다 — 이 함수는 부른 시점의 y를 붙잡아 두었다가 다음 프레임에 그 자리로
      되돌리는데, 애니메이션 중에는 그 되돌리기가 그 프레임의 진행을 통째로 물어 스크롤이
-     턱 걸린다(지적: 피드 진입 시 스크롤이 부드럽지 않음). 넛지는 '언젠가 한 번' 돌기만
+     턱 걸린다(지적: 활동 진입 시 스크롤이 부드럽지 않음). 넛지는 '언젠가 한 번' 돌기만
      하면 목적(사파리 툴바 재샘플링)을 달성하므로, 끝난 뒤로 미루면 그만이다.
      isProgrammaticScroll은 애니메이션 길이만큼만 참이라 이 재시도는 반드시 끝난다. */
   if (isProgrammaticScroll()) { window.setTimeout(jiggleScroll, JIGGLE_RETRY_MS); return; }

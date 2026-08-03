@@ -198,7 +198,7 @@ export default function AdminPanelScreen({ isAdmin }: AdminPanelScreenProps) {
   };
 
   // 순위 기준선 적재 — 지금 순위표를 스냅샷으로 남겨 다음 아침 재집계의 비교 대상으로
-  // 삼는다. 변동 없이 저장돼 피드에는 안 뜨고, 여러 번 눌러도 이번 달 기준선을 덮어쓸
+  // 삼는다. 변동 없이 저장돼 활동에는 안 뜨고, 여러 번 눌러도 이번 달 기준선을 덮어쓸
   // 뿐 행이 쌓이지 않는다.
   const reseedRanks = async () => {
     setSeeding(true);

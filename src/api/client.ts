@@ -504,7 +504,7 @@ export const api = {
   },
 
   // 순위 기준선 다시 깔기(운영자) — 지금 데이터로 개인전/팀전 스냅샷을 새로 만든다.
-  // 변동 없이 저장돼 피드 목록에는 안 뜨고, 다음 아침 재집계가 이걸 기준으로 비교한다.
+  // 변동 없이 저장돼 활동 목록에는 안 뜨고, 다음 아침 재집계가 이걸 기준으로 비교한다.
   async reseedRankingShifts(): Promise<Record<string, number>> {
     return request<Record<string, number>>("/api/activity/ranking-shifts/seed", { method: "POST" });
   },
@@ -513,12 +513,12 @@ export const api = {
   // 수정·삭제한다. 본문에 @닉네임 언급 가능(targetMemberIds). 목록/상세 응답에 이미 comments가
   // 실려 오므로 별도 조회는 잘 안 쓰지만, 필요 시 이 경기 댓글만 다시 받아올 수도 있다.
   // 랭크 변동 이벤트 — 서버가 경기 등록/삭제 때마다 계산·저장한 스냅샷 중 실제 변동이
-  // 있었던 것만 내려준다(피드가 재계산하지 않는다).
+  // 있었던 것만 내려준다(활동가 재계산하지 않는다).
   async listRankingShifts(): Promise<RankingShift[]> {
     return request<RankingShift[]>("/api/activity/ranking-shifts");
   },
 
-  // 피드 댓글 — 경기/너 나와! 등 어떤 피드 요소에나 같은 API로 단다.
+  // 활동 댓글 — 경기/너 나와! 등 어떤 활동 요소에나 같은 API로 단다.
   // 너 나와! 완전 삭제 — 운영자 전용.
   async deleteChallenge(id: number): Promise<void> {
     await request<void>(`/api/challenges/${id}`, { method: "DELETE" });
@@ -533,7 +533,7 @@ export const api = {
   async listActivityComments(targetType: ActivityTargetType, targetId: number): Promise<ActivityComment[]> {
     return request<ActivityComment[]>(`/api/activity/comments?targetType=${targetType}&targetId=${targetId}`);
   },
-  /** 댓글 전부 — 피드가 목록을 부를 때 한 번에 같이 받아 온다(요청: 목록 조회 시 댓글도
+  /** 댓글 전부 — 활동가 목록을 부를 때 한 번에 같이 받아 온다(요청: 목록 조회 시 댓글도
    *  같이 조회). 카드마다 따로 부르면 답이 제각각 도착하며 카드 키가 뒤늦게 자라, 들어올
    *  때 맞춰 둔 스크롤 자리가 밀린다. 댓글은 한 줄짜리라 전부 합쳐도 가볍다. */
   async listAllActivityComments(): Promise<ActivityComment[]> {

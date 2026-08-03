@@ -156,7 +156,7 @@ export interface ActivityCommentAuthor {
 // 경기 하나에 달린 댓글(메모) 한 건 — 게시판 댓글처럼 작성자와 본문(최대 50자)으로 이뤄지고
 // 본인/운영자만 수정·삭제할 수 있다(canEdit). 본문에 @닉네임으로 언급 가능.
 // 랭크(포인트/순위) 변동 이벤트 — 서버가 경기 등록/삭제 때마다 스냅샷으로 계산·저장해 두고,
-// 실제 변동(shifts)이 있었던 것만 피드에 노출한다.
+// 실제 변동(shifts)이 있었던 것만 활동에 노출한다.
 export interface RankingShiftEntry {
   memberId: string;
   nickname: string;
@@ -181,7 +181,7 @@ export interface RankingShift {
   sections: RankingShiftSection[];
 }
 
-// 피드 댓글 — 대상(targetType, targetId)이 경기든 너 나와!든 순위변동 알림이든
+// 활동 댓글 — 대상(targetType, targetId)이 경기든 너 나와!든 순위변동 알림이든
 // 같은 API 하나로 달린다.
 export type ActivityTargetType = "gameResult" | "challenge" | "rankingShift";
 export interface ActivityComment {
@@ -432,7 +432,7 @@ export interface Challenge {
   // 폐기(휴지통)된 시각(ISO) — 폐기 상태가 아니면 null. 휴지통을 "최근 버려진 순"으로 정렬한다.
   discardedAt: string | null;
   /** 그 폐기가 '취소'였다면 취소한 사람 — 아니면 null(상대의 거절·버림, 무응답 만료,
-   *  미실시). 피드가 이 값으로 "취소"와 "만료"를 갈라 그 사람 자리에 적는다(요청). */
+   *  미실시). 활동가 이 값으로 "취소"와 "만료"를 갈라 그 사람 자리에 적는다(요청). */
   canceledBy: { id: string; nickname: string; avatar: string | null } | null;
   // 확정 너 나와의 결과 — 아직 아무도 입력하지 않았으면 null.
   resultWinnerSide: ChallengeResult | null;

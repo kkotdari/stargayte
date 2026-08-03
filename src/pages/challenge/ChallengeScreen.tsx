@@ -58,9 +58,26 @@ function aggregateTargetTone(targets: ChallengeTarget[]): PillTone {
 
 
 
+/** 지금 이 너 나와가 어떤 상태인가 — 한 줄에 곁들일 짧은 말(요청: 목록 내용 칸에 상태).
+ *  카드는 이 사실을 손 이모지 양옆 배지 두 개로 나눠 말하는데(누가 취소했나까지 자리로
+ *  보여 준다), 한 줄에는 그럴 자리가 없으니 '무슨 일까지 왔나' 하나로 합친다. 판단 근거는
+ *  아래 challengeSideBadges와 같다 — 서버가 확정해 준 status가 먼저고, 폐기된 건만
+ *  어떤 끝이었는지(challengeEnding)와 상대의 응답으로 갈린다. */
+export function challengeStatusText(c: Challenge): string {
+  if (c.status === "pending") return "응답 대기중";
+  if (c.status === "confirmed") return "응답(수락)";
+  if (c.status === "done") return "완료";
+  const ending = challengeEnding(c);
+  if (ending === "canceled") return "취소";
+  if (ending === "expired") return "만료";
+  const tone = aggregateTargetTone(c.targets);
+  // 응답이 하나도 없는데 폐기까지 간 건(미실시 등) — "응답(대기)"는 말이 안 된다.
+  return tone === "pending" ? "종료" : `응답(${PILL_LABEL[tone]})`;
+}
+
 /** 손 이모지 양옆에 붙는 배지 두 개 — 왼쪽이 부른 편, 오른쪽이 지목된 편이다. 카드가
  *  하던 판단(아래 ChallengeCard의 canceledByCreatorSide/targetSideTone과 승/무 배지)을
- *  그대로 한 곳에 모았다. 피드의 목록 보기가 같은 값을 써야 "카드에선 취소인데 목록에선
+ *  그대로 한 곳에 모았다. 활동의 목록 보기가 같은 값을 써야 "카드에선 취소인데 목록에선
  *  대기"처럼 한 도전장이 두 얼굴을 갖는 일이 안 생긴다. 빈 자리는 null이다. */
 export function challengeSideBadges(c: Challenge): { left: string | null; right: string | null } {
   const ending = challengeEnding(c);
@@ -95,8 +112,8 @@ export function challengeEnding(c: Challenge): "canceled" | "expired" | null {
   return c.targets.every((t) => t.response === "pending") ? "expired" : null;
 }
 
-/* (삭제) isCanceledChallenge — 아무 응답 없이 끝난 건을 피드에서 통째로 빼던 판정이다.
-   이제 피드가 그런 건도 싣고(요청: 거절/무응답거절/취소도 나오게), 취소와 만료를 갈라
+/* (삭제) isCanceledChallenge — 아무 응답 없이 끝난 건을 활동에서 통째로 빼던 판정이다.
+   이제 활동가 그런 건도 싣고(요청: 거절/무응답거절/취소도 나오게), 취소와 만료를 갈라
    보여주므로(위 challengeEnding) 이 함수가 하던 일이 없어졌다. */
 
 type SideMember = { id: string; nickname: string; avatar: string | null };
@@ -333,7 +350,7 @@ export function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, o
     <div className={cx("scr-challenge-card", isEnded ? "scr-challenge-card-ended" : "scr-challenge-card-active", challenge.matchType === "0102" && "scr-challenge-card-team", ending && "scr-challenge-card-canceled")}>
       {/* (삭제) 우상단 "취소" 라벨 — 예전엔 응답 없이 끝난 건을 카드 귀퉁이에 통째로 표시했다.
           이제 취소는 거둬들인 사람 자리에, 만료는 상대 응답 자리에 적히므로(요청) 같은 말을
-          두 번 하는 셈이고, 절대 배치라 헤더가 바깥에 있는 피드에서는 로스터 첫 줄 위에
+          두 번 하는 셈이고, 절대 배치라 헤더가 바깥에 있는 활동에서는 로스터 첫 줄 위에
           겹치기까지 했다. 끝난 티는 카드 자체를 흐리게 하는 것(-canceled)으로 충분하다. */}
       <div className="scr-challenge-card-body">
         {/* 약속한 "언제" — 로스터 바로 위에 그냥 글로 보여준다(요청: 인풋창이 아니라
@@ -585,7 +602,7 @@ export function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, o
 // 권한은 참가자 또는 운영자는 가능하게"). 같은 시각에 서로 다른 너 나와가 여럿 묶이면(드묾)
 // 어느 것을 수정할지 모호해지므로, 그 시각 그룹에 너 나와가 정확히 하나일 때만 연필을
 // 보여준다 — 호출부(groupByTime map)에서 tg.items.length===1일 때만 이 컴포넌트를 쓴다.
-// timeLabel을 null로 주면 시각 라벨 없이 연필(수정 진입)만 남는다 — 피드에선 헤더행이
+// timeLabel을 null로 주면 시각 라벨 없이 연필(수정 진입)만 남는다 — 활동에선 헤더행이
 // 이미 시각을 보여주므로 중복 표기를 피해 연필만 그 옆에 얹는다(요청: "시간이 중복 표시").
 //
 // 수정은 이 자리에서 펼치지 않고 팝업으로 넘긴다(요청: "인라인 폐기하고 팝업으로") — 여기는
@@ -606,7 +623,7 @@ export function ChallengeTimeHeadEdit({
 
   const [editing, setEditing] = useState(false);
 
-  // 라벨도 없고 수정 권한도 없으면 그릴 게 없다(피드의 연필 전용 모드에서 비참가자).
+  // 라벨도 없고 수정 권한도 없으면 그릴 게 없다(활동의 연필 전용 모드에서 비참가자).
   if (timeLabel === null && !canEdit) return null;
 
   return (

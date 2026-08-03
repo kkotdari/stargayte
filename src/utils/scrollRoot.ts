@@ -27,7 +27,7 @@ export function smoothScrollRootToTop(duration = 420, root: ScrollRoot = getScro
 
 /** 이징 — "out"은 처음부터 빠르게 출발해 끝에서 감속한다(탭을 눌러 맨 위로 갈 때처럼
  *  손짓에 바로 반응해야 하는 자리). "inOut"은 시작도 천천히라, 아무도 안 눌렀는데
- *  화면이 스스로 움직이는 자리에 맞다 — 갑자기 튀어나가는 느낌이 없다(요청: 피드 첫
+ *  화면이 스스로 움직이는 자리에 맞다 — 갑자기 튀어나가는 느낌이 없다(요청: 활동 첫
  *  자동 스크롤을 좀 더 부드럽게). */
 type ScrollEase = "out" | "inOut";
 const EASES: Record<ScrollEase, (t: number) => number> = {
@@ -35,7 +35,7 @@ const EASES: Record<ScrollEase, (t: number) => number> = {
   inOut: (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2),
 };
 
-/** 위와 같은 rAF 애니메이션으로 임의의 자리까지 — 피드에 들어올 때 "현재" 구분선으로
+/** 위와 같은 rAF 애니메이션으로 임의의 자리까지 — 활동에 들어올 때 "현재" 구분선으로
  *  부드럽게 내려가는 데 쓴다(요청). 위 함수와 한 몸이라 취소 규칙도 그대로다. */
 export function smoothScrollRootTo(
   target: number, duration = 420,
@@ -87,7 +87,7 @@ export function smoothScrollRootTo(
 /* 프로그램이 굴리는 스크롤이 도는 중인가 — 손으로 굴릴 때는 브라우저가 스크롤 자체를
    따로 처리해 주지만, 이 rAF 애니메이션은 매 프레임 우리가 scrollTo를 부르는 것이라
    구독자들이 그 프레임에 하는 일이 곧바로 다음 프레임을 늦춘다. 문서 전체를 훑어 재는
-   구독자(타임라인)는 그동안 쉬어야 스크롤이 끊기지 않는다(지적: 피드 진입 시 스크롤이
+   구독자(타임라인)는 그동안 쉬어야 스크롤이 끊기지 않는다(지적: 활동 진입 시 스크롤이
    부드럽지 않음). isScrollHideSuppressed와 창은 비슷하지만 뜻이 다르다 — 그쪽은
    "숨김 방향 판정을 하지 마라"이고, 이쪽은 "지금은 재지 마라"다. */
 let programmaticUntil = 0;

@@ -99,14 +99,14 @@ export default function App() {
   // 않는다(요청: "페이지 상태 유지 기능 삭제 — 페이지 이동시 항상 초기상태로 로딩").
   const navigate = (next: ScreenKey) => setScreen(next);
 
-  /* (삭제) 피드로 돌아오면 보던 자리로 되돌리던 장치 — 요청으로 걷어냈다. 스크롤 위치를
+  /* (삭제) 활동로 돌아오면 보던 자리로 되돌리던 장치 — 요청으로 걷어냈다. 스크롤 위치를
      기억해 뒀다가 돌아올 때 옮겨 놓는 방식이었는데, 실제로는 제자리를 못 찾는 일이 잦았다
      (이 앱의 스크롤은 window가 아니라 #scroll-root에서 일어나고, 돌아온 시점에는 목록이
-     아직 다시 그려지는 중이라 높이도 그때그때 달랐다). 피드도 다른 화면과 똑같이 떠날 때
+     아직 다시 그려지는 중이라 높이도 그때그때 달랐다). 활동도 다른 화면과 똑같이 떠날 때
      언마운트하고 돌아올 때 처음부터 새로 불러온다 — 어중간하게 기억하느니 늘 최신을
      보여주는 편이 낫다(요청). */
 
-  // 화면 컴포넌트발 이동 요청(스토어) — 피드의 랭크 변동 카드 "상세" 버튼이 통계 탭으로
+  // 화면 컴포넌트발 이동 요청(스토어) — 활동의 랭크 변동 카드 "상세" 버튼이 통계 탭으로
   // 보낼 때 쓴다. 처리 후 비워 다음 요청을 받을 수 있게 한다.
   const screenIntent = useAppStore((s) => s.screenIntent);
   const clearScreenIntent = useAppStore((s) => s.clearScreenIntent);
@@ -144,7 +144,7 @@ export default function App() {
     if (user) void bootstrap();
   }, [user?.id, bootstrap]);
 
-  // 로그인 폼으로 직접 로그인했으면(새로고침 세션 복원이 아니라) 항상 홈(피드)으로 보낸다.
+  // 로그인 폼으로 직접 로그인했으면(새로고침 세션 복원이 아니라) 항상 홈(활동)으로 보낸다.
   useEffect(() => {
     if (!justLoggedIn || booting) return;
     setScreen(HOME_SCREEN);
@@ -230,7 +230,7 @@ export default function App() {
     screen === "control" && !isAdmin ? "activity" :
     screen;
 
-  // 배경 사진이 있는 화면(지금은 통계뿐 — 피드 배경은 제거)에서는 헤더까지 사진이
+  // 배경 사진이 있는 화면(지금은 통계뿐 — 활동 배경은 제거)에서는 헤더까지 사진이
   // 이어져 보이게 — 헤더의 불투명 배경을 끄는 클래스를 앱 루트에 건다(CSS
   // .scr-app-hasbg 참고). 배경 있는 화면이 늘면 이 조건에 추가하면 된다.
   return (
@@ -265,7 +265,7 @@ export default function App() {
                 "페이지 상태 유지 기능 삭제 — 페이지 이동시 항상 초기상태로 로딩"). 접근
                 권한이 없는 화면(challenge/members 등)은 랭킹으로 대체되던
                 기존 동작과 같게, resolvedScreen으로 보여줄 화면만 고른다. */}
-            {/* 피드도 다른 화면과 같다 — 떠나면 언마운트하고 돌아오면 처음부터 새로
+            {/* 활동도 다른 화면과 같다 — 떠나면 언마운트하고 돌아오면 처음부터 새로
                 불러온다(요청: 상태 저장이 잘 안 되니 그 기능은 취소하고 매번 새로). */}
             {!booting && resolvedScreen === "activity" && <ActivityScreen />}
             {!booting && resolvedScreen === "stats" && <StatsScreen />}

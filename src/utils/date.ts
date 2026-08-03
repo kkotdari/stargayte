@@ -67,7 +67,7 @@ export const currentMonthValue = (): string => todayStr().slice(0, 7);
 // 날짜 표기 앞에 붙일 연도 — 올해면 없고, 다른 해면 두 자리로 붙인다(요청: "전년도부터는
 // 25년 이렇게"). 한때 "최근 12개월이면 생략"으로 뒀는데, 그러면 같은 "1월"이 작년 것인지
 // 올해 것인지 읽는 사람이 세어봐야 해서 헷갈린다는 피드백으로 해 경계로 되돌렸다.
-// 통계 제목의 월 라벨(monthLabel)과 피드 타임스탬프가 이 한 규칙을 같이 쓴다.
+// 통계 제목의 월 라벨(monthLabel)과 활동 타임스탬프가 이 한 규칙을 같이 쓴다.
 export function shortYearPrefix(year: number, now: Date = gameNow()): string {
   return year === now.getFullYear() ? "" : `${String(year).slice(2)}년 `;
 }
@@ -144,7 +144,7 @@ export function shortDateWithDow(dateStr: string, now: Date = gameNow()): string
 
 const DOW_FULL = ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"] as const;
 
-/** 이 앱에서 "언제"를 글로 적는 유일한 함수(요청: 하나의 유틸로 통합). 피드 타임스탬프,
+/** 이 앱에서 "언제"를 글로 적는 유일한 함수(요청: 하나의 유틸로 통합). 활동 타임스탬프,
  *  너 나와 일정과 날짜 그룹 머리글, 포인트 상세 경기 이력, 리그 대진표가 전부 여기를 거친다.
  *
  *  규칙(요청: 모두 통일)

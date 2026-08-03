@@ -297,12 +297,12 @@ function hiddenOffset(el: HTMLElement): number {
 const SWIPE_CLOSE_PX = 96;
 
 /* 목록을 부를 때 댓글도 한 번에 같이 받아 둔다(요청) — 카드마다 따로 부르면 답이 제각각
-   도착하며 카드 키가 뒤늦게 자라, 피드에 들어올 때 "현재"에 맞춰 둔 자리가 그만큼 밀린다
+   도착하며 카드 키가 뒤늦게 자라, 활동에 들어올 때 "현재"에 맞춰 둔 자리가 그만큼 밀린다
    (실측: 380px). 여기 채워 두면 아래 컴포넌트가 첫 렌더부터 최종 높이로 그려진다.
 
    프롭으로 내리지 않고 모듈 안의 표에 담는 건, 댓글 영역이 카드·묶음·스토리를 지나 깊이
    들어가 있어서다(미니맵 격자를 담아 두는 useReplayMap과 같은 방식). 표가 비어 있으면
-   예전처럼 카드마다 제 것만 불러온다 — 피드 밖에서 쓰이는 자리를 위한 길이다. */
+   예전처럼 카드마다 제 것만 불러온다 — 활동 밖에서 쓰이는 자리를 위한 길이다. */
 const primed = new Map<string, ActivityComment[]>();
 let primedOnce = false;
 const keyOf = (t: ActivityTargetType, id: number) => `${t}:${id}`;
@@ -640,7 +640,7 @@ export default function ActivityComments({ targetType, targetId }: { targetType:
             <span className="scr-comment-author-name">{c.author.nickname}</span>
             {/* 이 앱의 "언제" 공통 포맷(formatWhen)을 그대로 쓴다(지적: 댓글 타임스탬프만
                 공통 양식이 안 적용되고 있었다) — 방금 전/N분 전/오늘/어제/이번주 요일 등
-                피드 타임스탬프·너 나와 일정과 같은 규칙으로 읽힌다. */}
+                활동 타임스탬프·너 나와 일정과 같은 규칙으로 읽힌다. */}
             <span className="scr-activity-note-time">{formatWhen(c.createdAt, { clock: true })}</span>
           </div>
         </div>

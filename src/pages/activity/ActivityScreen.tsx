@@ -15,7 +15,7 @@ import { ActivityCard } from "./ActivityCard";
 import { resolveSlotName } from "./GameResultSides";
 import { isComputerSlot } from "../../constants/computerSlot";
 import { isUnregisteredSlot } from "../../constants/unregisteredSlot";
-import { ChallengeCard, ChallengeTimeHeadEdit } from "../challenge/ChallengeScreen";
+import { ChallengeCard, ChallengeTimeHeadEdit, challengeStatusText } from "../challenge/ChallengeScreen";
 import ActivityComments, { primeActivityComments } from "./ActivityComments";
 import { primeReplayMaps } from "../../hooks/useReplayMap";
 import ScrollNavTimeline from "../../components/common/ScrollNavTimeline";
@@ -80,7 +80,7 @@ const ROW_CLOSE_MS = 200;
 /** 목록/타임라인 중 무엇을 보고 있었나 — 테마(LIGHT_THEME_KEY)와 같은 방식으로 남긴다. */
 const FEED_VIEW_KEY = "scr-activity-view";
 
-/** 지난 방문에서 어디까지 봤나 — 종류별 최대 id다. 시각이 아니라 id로 재는 이유: 피드는
+/** 지난 방문에서 어디까지 봤나 — 종류별 최대 id다. 시각이 아니라 id로 재는 이유: 활동는
  *  '일어난 때' 순인데 NEW는 '등록된 때'의 이야기라 둘이 다르다(지난주 경기를 오늘 올릴 수
  *  있다). id는 등록 순서 그대로라 그 물음에 정확히 답한다. */
 const FEED_SEEN_KEY = "scr-activity-seen";
@@ -92,14 +92,14 @@ function readSeen(): SeenMarks | null {
   } catch { return null; }
 }
 
-// 피드 — 커뮤니티 활동(경기 결과, 너 나와! 일정)을 한 타임라인으로 보여주는 홈 화면.
+// 활동 — 커뮤니티 활동(경기 결과, 너 나와! 일정)을 한 타임라인으로 보여주는 홈 화면.
 // 타임라인 기준: 너 나와!는 경기 예정 일시, 경기는 리플레이의 게임 시작 시각.
 
 interface ChallengeItem {
   kind: "challenge";
   time: number;
   withClock: boolean;
-  /** 피드에서 꽂히는 자리 — 표시용 time과 다르다(challengeSortMs 주석 참고). */
+  /** 활동에서 꽂히는 자리 — 표시용 time과 다르다(challengeSortMs 주석 참고). */
   sortTime: number;
   challenge: Challenge;
 }
@@ -121,7 +121,7 @@ interface RankingShiftItem {
 
 type ActivityItem = ChallengeItem | GameResultItem | RankingShiftItem;
 
-// 같은 '세션'의 게임결과가 피드에서 2개 이상 연속되면 겹침 스택 하나로 묶는다.
+// 같은 '세션'의 게임결과가 활동에서 2개 이상 연속되면 겹침 스택 하나로 묶는다.
 export interface GameResultPostItem {
   kind: "gameResultPost";
   time: number;
@@ -132,7 +132,7 @@ export interface GameResultPostItem {
 
 type DisplayItem = ActivityItem | GameResultPostItem;
 
-/** 피드에서 이 항목이 꽂히는 자리(ms) — 너 나와만 표시용 시각과 다르다(challengeSortMs). */
+/** 활동에서 이 항목이 꽂히는 자리(ms) — 너 나와만 표시용 시각과 다르다(challengeSortMs). */
 function sortMsOf(it: ActivityItem): number {
   return it.kind === "challenge" ? it.sortTime : it.time;
 }
@@ -162,14 +162,14 @@ function challengeItem(c: Challenge): ChallengeItem {
   };
 }
 
-/** 아직 안 끝난(응답대기·성사) 너 나와인가 — 피드에서 "현재" 선보다 위(=앞으로 있을 일)에
+/** 아직 안 끝난(응답대기·성사) 너 나와인가 — 활동에서 "현재" 선보다 위(=앞으로 있을 일)에
  *  놓이는 것은 이것뿐이다. 경기결과·순위변동은 전부 이미 벌어진 일이다. */
 export function isUpcomingChallenge(it: { kind: string; challenge?: Challenge }): boolean {
   return it.kind === "challenge"
     && (it.challenge!.status === "pending" || it.challenge!.status === "confirmed");
 }
 
-// 너 나와가 피드 어디에 꽂히나 — 표시용 시각(time)과 따로 계산한다.
+// 너 나와가 활동 어디에 꽂히나 — 표시용 시각(time)과 따로 계산한다.
 //
 //  · 아직 안 끝난 것(응답대기·성사)은 "현재" 선 바로 위에 둔다(지적: 아직 안 열린 너 나와가
 //    현재보다 아래로 내려가면 안 된다). 약속한 날이 이미 지났어도 마찬가지다 — 결과가
@@ -241,19 +241,34 @@ function rowTitleOf(it: DisplayItem): string {
     : it.kind === "rankingShift" ? RANK_SHIFT_TITLE : "게임결과";
 }
 
-/** 게임결과 묶음에 실제로 몇 사람이 있었나 — 컴퓨터·비회원은 "누가 있었나"의 답이
- *  아니라서 뺀다(요약 카드의 참가자 명단과 같은 규칙). */
-function playerCountOf(items: GameResultItem[]): number {
-  const ids = new Set<string>();
+/** 이름을 몇 개까지 부르고 나머지는 "외 N명"으로 넘길까 — 두 개까지다. 셋을 부르면 한 줄이
+ *  이름으로만 차서, 정작 그 줄이 무엇에 대한 것인지가 밀린다. */
+const ROW_NAME_MAX = 2;
+
+/** "Cheol·bob 외 2명" — 목록 한 줄이 사람을 부르는 방식(요청). 아무도 없으면 빈 문자열. */
+function namesWithRest(names: string[]): string {
+  if (names.length === 0) return "";
+  const head = names.slice(0, ROW_NAME_MAX).join("·");
+  const rest = names.length - ROW_NAME_MAX;
+  return rest > 0 ? `${head} 외 ${rest}명` : head;
+}
+
+/** 게임결과 묶음에 있었던 사람들 — 컴퓨터·비회원은 "누가 있었나"의 답이 아니라서 뺀다
+ *  (요약 카드의 참가자 명단과 같은 규칙). 많이 나온 사람부터 부른다. */
+function playersOf(items: GameResultItem[], memberOf: (id: string) => Member | undefined): string[] {
+  const seen = new Map<string, { name: string; n: number }>();
   for (const it of items) {
     for (const side of ["team1", "team2"] as const) {
       for (const slot of it.gameResult[side]) {
         if (isComputerSlot(slot.memberId) || isUnregisteredSlot(slot.memberId)) continue;
-        ids.add(slot.memberId);
+        const cur = seen.get(slot.memberId)
+          ?? { name: resolveSlotName(slot, it.gameResult[side], memberOf), n: 0 };
+        cur.n += 1;
+        seen.set(slot.memberId, cur);
       }
     }
   }
-  return ids.size;
+  return [...seen.values()].sort((a, b) => b.n - a.n).map((x) => x.name);
 }
 
 export function sessionDateLabel(date: string): string {
@@ -402,15 +417,15 @@ function ChallengeActionsMenu({ challenge, isAdmin, myId, onDeleted, onChanged }
   );
 }
 
-// 피드 카드 하단 공통 댓글 영역 — 목록은 항상, 입력창은 아이콘 옆에서 열리고 닫힌다.
+// 활동 카드 하단 공통 댓글 영역 — 목록은 항상, 입력창은 아이콘 옆에서 열리고 닫힌다.
 // 래퍼(.scr-activity-card-comment)는 ActivityCard가 낸다 — 댓글이 있는 타입만 이 컴포넌트를
 // comment 슬롯에 넘긴다.
 function ActivityCardComments({ targetType, targetId }: { targetType: ActivityTargetType; targetId: number }) {
   return <ActivityComments targetType={targetType} targetId={targetId} />;
 }
 
-// 경기 카드 — 한 경기가 피드 카드 한 장. 기존 경기 로우(접힌 상태)를 카드 본문에 그대로
-// 앉히고(누르면 그 자리에서 펼쳐짐), 하단에 피드 댓글을 단다.
+// 경기 카드 — 한 경기가 활동 카드 한 장. 기존 경기 로우(접힌 상태)를 카드 본문에 그대로
+// 앉히고(누르면 그 자리에서 펼쳐짐), 하단에 활동 댓글을 단다.
 // memo — 스택 개폐(setOpen)는 GameResultPost만 다시 렌더하면 되는데, 그때마다 카드 전체
 // (경기 로우·댓글·아바타 이미지)까지 다시 렌더되면서 iOS에서 기존 카드들이 깜빡였다
 // (지적: "펼치기 접기 누를 때 기존 요소들도 다시 그리는 것 같아"). 개폐 때 카드 props는
@@ -510,7 +525,7 @@ function StackMenu({ content }: { content: KakaoShareContent }) {
 }
 
 // 게임결과 묶음 — 접힘은 그 세션의 참가자 전원을 담은 '요약 포스트'이고, "자세히 보기"를
-// 누르면 피드 안에서 그 자리가 게임결과 포스트 목록으로 바뀐다(요청). 한때 전체화면 모달로
+// 누르면 활동 안에서 그 자리가 게임결과 포스트 목록으로 바뀐다(요청). 한때 전체화면 모달로
 // 열어봤지만 다시 이 아코디언으로 돌아왔다.
 export function GameResultPost({
   stack, memberOf, onDeleted, dateLabel, highlightMemberIds, highlightTerms, defaultOpen = false,
@@ -540,7 +555,7 @@ export function GameResultPost({
   // (isExpanded) 열린다. 수동으로 접는 길은 없다(요청: "포스트 눌러서 요약보기 제거
   // 이제 한번 펴면 못접음") — 다른 묶음을 펼치면 여기는 꺼지며 저절로 접힌다.
   const open = defaultOpen || isExpanded;
-  // 최신 게임이 위로 오게 — 펼친 목록은 피드와 같은 시간 순서(최신 → 과거)를 따른다.
+  // 최신 게임이 위로 오게 — 펼친 목록은 활동와 같은 시간 순서(최신 → 과거)를 따른다.
   const orderedDesc = useMemo(() => [...stack.items].sort((a, b) => b.time - a.time), [stack.items]);
   // 요약에 나열할 참가자 — 이 세션의 모든 게임에 나온 사람을 중복 없이 모은다(요청).
   // 순서는 이 묶음 안에서의 게임수 많은 순 → 승리 많은 순 → 닉네임순(요청). 한때는
@@ -643,7 +658,7 @@ export function GameResultPost({
     <div ref={stackRef} className="scr-activity-card-stack-wrapper">
       {open ? (
         // 펼치면 이 자리에 승격된 포스트가 하나씩 나타난다(요청: 게임결과 카드도 하나의
-        // 피드 포스트로 승격) — 각 포스트가 실제 댓글 입력창을 갖게 되므로, 예전의
+        // 활동 포스트로 승격) — 각 포스트가 실제 댓글 입력창을 갖게 되므로, 예전의
         // "목록 아무 데나 눌러 접기"는 없앴다(요청) — 접기는 아래 전용 버튼으로만 한다.
         orderedDesc.map((it) => (
           <GameResultCard
@@ -717,11 +732,11 @@ export function GameResultPost({
 export default function ActivityScreen() {
   // 화면 배경 사진 — 이제 PC 다크에서만 깐다(요청: 라이트는 통째로, 다크는 모바일만 제거).
   // 그래서 모바일용·라이트용 사진은 넘기지 않는다(usePageBackground 주석 참고).
-  // 사진은 통계와 같은 것을 쓴다(원래 피드 배경이던 파일이 통계로 옮겨가며 이름만 stats_bg*가 됐다).
+  // 사진은 통계와 같은 것을 쓴다(원래 활동 배경이던 파일이 통계로 옮겨가며 이름만 stats_bg*가 됐다).
   usePageBackground("/images/bg/stats_bg.jpg");
-  // 검색/필터(기록실과 동일 구성) — 유저 검색, 경기유형, 게임번호. 불러온 피드 안에서 즉시 필터.
+  // 검색/필터(기록실과 동일 구성) — 유저 검색, 경기유형, 게임번호. 불러온 활동 안에서 즉시 필터.
   const [search, setSearch] = useState("");
-  // 피드 유형 필터(요청: 분류(개인전/팀전) 제거하고 유형 드롭다운 추가). 게임결과/너나와/
+  // 활동 유형 필터(요청: 분류(개인전/팀전) 제거하고 유형 드롭다운 추가). 게임결과/너나와/
   // 일정/랭크변동으로 거른다 — 너나와=시간 미확정 도전장, 일정=시간 확정 도전장.
   const [kindFilter, setKindFilter] = useState<"all" | "gameResult" | "call" | "schedule" | "rankingShift">("all");
 
@@ -868,8 +883,8 @@ export default function ActivityScreen() {
      한 번만 돌게 막아 놓은 자리라 그러면 안 된다: 프리페치가 끝나기 전에 gameResults가
      한 번만 바뀌어도(아래 무한스크롤이 한 페이지를 더 부르면 바뀐다) React가 앞선
      이펙트의 정리를 돌려 그 변수를 꺼 버리고, 새로 도는 이펙트는 ref 가드에 걸려 아무
-     일도 안 한다 — 그래서 setMapsLoading(false)가 영영 안 불려 피드가 로딩에서
-     멈췄다(지적: 가끔 피드 진입 시 무한로딩). */
+     일도 안 한다 — 그래서 setMapsLoading(false)가 영영 안 불려 활동가 로딩에서
+     멈췄다(지적: 가끔 활동 진입 시 무한로딩). */
   const aliveRef = useRef(true);
   // 다시 마운트되면 반드시 되살려 놔야 한다 — 정리에서 끄기만 하면 한 번 꺼진 뒤로는
   // 영영 꺼진 채다. StrictMode(개발)는 마운트→정리→마운트를 일부러 한 번 더 돌리므로
@@ -950,7 +965,7 @@ export default function ActivityScreen() {
       // 검토창 없이 바로 등록한다(요청) — 중복(이미 등록됨/병합됨)은 buildReplayDrafts가
       // 이미 걸러 뒀으므로 조용히 넘어간다. 팀을 아예 못 나눴거나(teamSplitUncertain)
       // 관전자 의심 인원이 있는 경우만 여전히 사람 눈이 필요해 등록하지 않고 실패로
-      // 남긴다 — 나머지(짧은 경기·승패 미확인·미확정 참가자)는 등록은 하되 피드 카드에
+      // 남긴다 — 나머지(짧은 경기·승패 미확인·미확정 참가자)는 등록은 하되 활동 카드에
       // 빨간 글씨로 남겨 확인/삭제를 유도한다.
       let registered = 0;
       const failed: string[] = [];
@@ -966,7 +981,7 @@ export default function ActivityScreen() {
           continue;
         }
         // 승패를 못 가려낸 경기 — 등록은 하되(요청) 무승부로 채우고 그 사실을 summaryData에
-        // 남긴다(피드 카드가 이 표시를 보고 빨간 글씨를 낸다).
+        // 남긴다(활동 카드가 이 표시를 보고 빨간 글씨를 낸다).
         const resultUncertain = !raw.result;
         const filled = resolveUnmatchedAsUnregistered(raw);
         const d: ReplayDraft = resultUncertain ? { ...filled, result: "draw" } : filled;
@@ -1201,7 +1216,7 @@ export default function ActivityScreen() {
 
   // "현재"(now) 경계 = 미래(위)와 오늘/과거(아래)가 갈리는 지점 = 위에서부터 첫 "오늘
   // 이하" 아이템. 그 위에 미래 아이템이 있을 때만(idx>0) 카드 사이에 "현재" 구분선을
-  // 넣는다(요청). 피드에 들어오면 이 지점이 화면 가운데 오도록 스크롤한다(요청) — 위로는
+  // 넣는다(요청). 활동에 들어오면 이 지점이 화면 가운데 오도록 스크롤한다(요청) — 위로는
   // 앞으로 있을 일, 아래로는 이미 벌어진 일이라 그 경계가 곧 "지금 어디쯤인가"다.
   // "현재" 선은 아직 안 끝난 너 나와 바로 아래에 둔다(지적: 당일에 잡혔지만 아직 안 한
   // 너 나와가 현재선 아래로 내려가면 안 된다). 예전엔 날짜로 갈랐는데, 오늘 잡힌 너 나와는
@@ -1214,8 +1229,8 @@ export default function ActivityScreen() {
   const showNowDivider = nowIndex > 0;
 
 
-  /* (삭제) 진입할 때 "현재" 구분선으로 한 번 스크롤하던 처리 — 없앴다(요청: 피드 진입시
-     스크롤 제거). 피드는 최신순이라 맨 위가 곧 가장 새 소식인데, 열자마자 화면이 아래로
+  /* (삭제) 진입할 때 "현재" 구분선으로 한 번 스크롤하던 처리 — 없앴다(요청: 활동 진입시
+     스크롤 제거). 활동는 최신순이라 맨 위가 곧 가장 새 소식인데, 열자마자 화면이 아래로
      한 번 뛰면 그 사이에 새로 올라온 것을 지나쳐 버린다. "현재" 구분선과 오른쪽 타임라인의
      눈금은 그대로라, 지금 자리로 가고 싶으면 그 눈금을 짚으면 된다. */
 
@@ -1237,15 +1252,26 @@ export default function ActivityScreen() {
           <span className="scr-activity-row-name">{mine}</span>
           <span className="scr-activity-row-arrow" aria-hidden>→</span>
           <span className="scr-activity-row-name">{theirs}</span>
+          {/* 어디까지 왔나(요청) — 이 줄에서 유일하게 '지금 상태'를 말하는 자리라 이름들과
+              시각적으로 갈라 둔다. */}
+          <span className="scr-activity-row-note">{challengeStatusText(c)}</span>
         </>
       );
     }
     if (item.kind === "rankingShift") {
-      const ids = new Set(item.shift.sections.flatMap((sec) => sec.shifts.map((e) => e.memberId)));
-      return `${ids.size}명 변동`;
+      // 같은 사람이 개인전·팀전에 다 올랐으면 한 번만 부른다.
+      const names: string[] = [];
+      const seen = new Set<string>();
+      for (const sec of item.shift.sections) {
+        for (const e of sec.shifts) {
+          if (seen.has(e.memberId)) continue;
+          seen.add(e.memberId); names.push(e.nickname);
+        }
+      }
+      return `${namesWithRest(names)} 변동`;
     }
     const items = item.kind === "gameResultPost" ? item.items : [item];
-    return `${playerCountOf(items)}명 ${items.length}경기`;
+    return `${namesWithRest(playersOf(items, memberOf))} · ${items.length}경기`;
   };
 
   /* 카드 한 장 — 카드 보기와 목록 보기의 펼침이 같은 것을 그리도록 한 곳에 둔다.
@@ -1343,7 +1369,7 @@ export default function ActivityScreen() {
       <div className="scr-v2-toolbar">
         <div className="scr-v2-toolbar-title-row">
           <h1 className="scr-title scr-v2-toolbar-title">활동</h1>
-          {/* 도움말이 있던 자리다(요청) — 카드 넉 장이면 한 화면인 피드에서 "무엇이 있었나"를
+          {/* 도움말이 있던 자리다(요청) — 카드 넉 장이면 한 화면인 활동에서 "무엇이 있었나"를
               훑으려면 한참을 굴려야 한다. 목록 보기는 그 훑기 전용이라 한 줄에 시각·제목·
               한 줄 요약만 남기고, 자세히 볼 것만 눌러서 펼친다.
               버튼 글자는 '지금 무엇인가'가 아니라 '누르면 무엇이 되는가'다 — 목록을 보고
@@ -1463,7 +1489,7 @@ export default function ActivityScreen() {
              반영되지 않아 두 화면이 서서히 어긋나기 때문이다. 머리(시각·제목)만 CSS로
              감춘다 — 바로 위 줄이 이미 같은 말을 하고 있다. */
           <div className="scr-activity-rows">
-            {displayFeed.map((item, i) => {
+            {displayFeed.map((item) => {
               const key = rowKeyOf(item);
               const open = openRowKey === key;
               const closing = closingRowKey === key;
@@ -1473,9 +1499,6 @@ export default function ActivityScreen() {
                     type="button" className="scr-activity-row" aria-expanded={open}
                     onClick={() => toggleRow(key)}
                   >
-                    {/* 번호(요청) — 역순이라 맨 아래(가장 오래된 것)가 1이다. 지금까지
-                        불러온 것 안에서 세므로, 더 불러오면 위쪽 번호가 그만큼 커진다. */}
-                    <span className="scr-activity-row-no">{displayFeed.length - i}</span>
                     <span className="scr-activity-row-title">
                       <span className="scr-activity-row-title-text">{rowTitleOf(item)}</span>
                       {/* 지난 방문 이후 새로 올라온 건(요청) — 색만으로 말하지 않도록 글자를
@@ -1524,7 +1547,7 @@ export default function ActivityScreen() {
       {!loading && loadingMore && <div className="scr-empty"><Spinner size={16} /></div>}
       {!loading && <div ref={sentinelRef} aria-hidden />}
 
-      {/* 우측 스크롤 타임라인 — 피드는 최신순(위=최근, 아래=과거). 무한스크롤과 함께 쓰면
+      {/* 우측 스크롤 타임라인 — 활동는 최신순(위=최근, 아래=과거). 무한스크롤과 함께 쓰면
           타임라인은 "지금까지 불러온 범위"를 나타내고, 더 불러올수록 아래(과거)가 늘어난다.
           목록 보기에서는 숨긴다(요청) — 타임라인은 카드 머리(.scr-activity-card-head)의 날짜를
           읽어 눈금을 세우는데 목록에는 그 머리가 없고, 한 화면에 훨씬 많이 들어와 굴릴
