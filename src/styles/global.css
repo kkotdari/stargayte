@@ -4680,9 +4680,24 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
   /* 탭바가 이제 흐름 안의 flex 형제라(fixed 아님) 콘텐츠 마지막 줄과 겹칠 일이 없어,
      탭바 몫 padding-bottom은 더 이상 필요 없다 — 자동 숨김(useAutoHideOnScroll) 중에도
      레이아웃 공간 자체는 그대로 유지되므로(transform만 움직임) 밀릴 걱정도 없다. */
-  /* 모바일은 이미 보고 있는 탭을 다시 누르면 맨 위로 스크롤되므로(MobileTabBar) 별도의
-     맨 위로 이동 버튼이 필요 없다 — PC(데스크톱 상단 네비)에는 이 패턴이 없어 그대로 둔다. */
-  .scr-scrolltop { display: none !important; }
+  /* 모바일에도 맨 위로 버튼을 낸다(요청). 한동안 감춰 뒀었다 — 이미 보고 있는 탭을 다시
+     누르면 맨 위로 가므로(MobileTabBar) 없어도 된다고 봤는데, 그건 아는 사람만 아는 길이라
+     실제로는 안 쓰였다.
+     자리는 등록 버튼(FAB)을 좌우로 뒤집은 곳이다 — 탭바 위, 오른쪽 끝. 탭바가 줄면 등록
+     버튼처럼 탭바 오른쪽에 생긴 빈자리로 내려앉아 화면 아래가 한 줄로 정리된다. */
+  .scr-scrolltop {
+    right: 20px;
+    bottom: calc(var(--scr-float-bottom) + var(--mobile-footer-h) + 12px);
+    transition: background .15s, bottom .26s cubic-bezier(0.16, 1, 0.3, 1),
+      right .26s cubic-bezier(0.7, 0, 0.84, 0);
+  }
+  html.scr-tabbar-mini .scr-scrolltop {
+    bottom: calc(var(--scr-float-bottom) + (var(--mobile-footer-h) * 0.72 - 44px) / 2);
+    right: 8px;
+    width: 44px; height: 44px;
+    transition: background .15s, bottom .28s cubic-bezier(0.7, 0, 0.84, 0),
+      right .26s cubic-bezier(0.16, 1, 0.3, 1);
+  }
 }
 /* 검색창/필터창은 더 이상 position:fixed 플로팅 오버레이가 아니라 타이틀 아래 문서
    흐름 안의 인라인 요소라(.scr-filter-bar), 마지막 줄을 가릴 일이 없다 — 그 몫으로
@@ -7095,28 +7110,25 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   /* 칸 패딩이 줄어든 만큼 딱지도 같이 당겨야 글자 자리 오른쪽 끝에 맞는다. */
   .scr-activity-row-flag { right: 8px; }
 }
-/* 여닫는 연출(요청) — 투명도와 이동만 쓴다.
-   처음에는 격자 트랙(0fr↔1fr)을 애니메이션해서 실제로 접었다 폈는데, 그러면 매 프레임마다
-   그 안의 카드 아홉 장을 통째로 다시 배치해야 해서 눈에 띄게 버벅였다(지적). 투명도와
-   transform은 배치를 건드리지 않아(합성 단계에서만 처리) 내용이 아무리 많아도 값이 같다.
-   자리는 즉시 잡히고 내용만 스며들 듯 나타난다.
+/* 여닫는 연출(요청: 페이드 없이, 아래 목록이 내려가고 올라가면서 자연스럽게 드러나기).
+   격자 트랙 하나(0fr↔1fr)를 여닫고 안쪽은 잘라 둔다 — 내용은 제자리에 가만히 있고
+   창처럼 열린 만큼만 보인다. 아래 줄들은 그만큼 밀려 내려갔다 올라오므로, 따로 움직이지
+   않아도 "목록이 벌어지며 드러나는" 모습이 된다.
+   한때 투명도+이동으로 바꿨던 적이 있다(배치를 안 건드려 가볍다는 이유) — 그러면 자리는
+   즉시 잡히고 내용만 스며들어, 아래 줄이 뚝 내려간 뒤에 카드가 뒤늦게 떠오르는 것처럼
+   보였다. 지금은 자리와 내용이 같은 속도로 열린다.
    애니메이션은 트랜지션과 달리 '붙자마자' 도는 것이라, 펼칠 때만 마운트하는 지금 구조에서도
    첫 프레임을 놓치지 않는다. 닫을 때는 ActivityScreen이 ROW_CLOSE_MS만큼 언마운트를 미뤄 준다. */
-/* fill-mode가 both가 아니라 backwards인 이유(중요) — both는 끝난 뒤에도 마지막 키프레임을
-   붙들고 있는데, 그 키프레임의 transform: none이 계산값 matrix(1,0,0,1,0,0)로 남는다.
-   항등 행렬이어도 transform이 있는 요소는 position: fixed 자손의 담는 블록이 되므로,
-   펼친 줄 안에서 뜬 확인창이 화면 중앙이 아니라 이 줄 기준으로 앉았다(지적: 삭제 컨펌창이
-   카드 중앙에 뜸 — 실측 y 3494, 화면 중앙은 450).
-   backwards는 시작 전 상태만 미리 잡아 첫 프레임 튐을 막고, 끝난 뒤에는 아무것도 안 남긴다.
-   닫힘(closing)은 끝나면 언마운트되므로 어느 쪽이든 같지만, 짝을 맞춰 둔다. */
-.scr-activity-row-fold-open { animation: scr-row-open .2s ease-out backwards; }
-/* 닫힘만 forwards다 — 애니메이션이 끝난 뒤에도 마지막 프레임(투명)을 붙들고 있어야 한다.
-   backwards로 두면 0.18초가 끝나는 순간 제 색으로 돌아왔다가 그 다음 렌더에 언마운트돼,
-   접히는 마지막에 카드가 한 번 번쩍인다(지적). 담는 블록 문제(위 주석)는 이쪽엔 없다 —
-   닫히는 줄은 곧 사라지고, 확인창은 펼쳐진 줄에서만 뜬다. */
-.scr-activity-row-fold-closing { animation: scr-row-close .18s ease-in forwards; }
-@keyframes scr-row-open { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
-@keyframes scr-row-close { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(-6px); } }
+.scr-activity-row-fold { display: grid; }
+/* 트랙이 0fr일 때 안쪽이 삐져나오지 않게 — 자르는 건 자식 몫이다(격자 항목이 제 콘텐츠
+   최소 크기보다 작아지려면 min-height: 0도 함께 있어야 한다). */
+.scr-activity-row-fold > * { overflow: hidden; min-height: 0; }
+.scr-activity-row-fold-open { animation: scr-row-open .22s ease-out backwards; }
+/* 닫힘만 forwards다 — 끝난 뒤에도 마지막 프레임(닫힌 상태)을 붙들고 있어야 한다.
+   backwards면 0.18초가 끝나는 순간 도로 펼쳐졌다가 다음 렌더에 언마운트돼 한 번 번쩍인다. */
+.scr-activity-row-fold-closing { animation: scr-row-close .2s ease-in forwards; }
+@keyframes scr-row-open { from { grid-template-rows: 0fr; } to { grid-template-rows: 1fr; } }
+@keyframes scr-row-close { from { grid-template-rows: 1fr; } to { grid-template-rows: 0fr; } }
 @media (prefers-reduced-motion: reduce) {
   .scr-activity-row-fold-open, .scr-activity-row-fold-closing { animation: none; }
 }
@@ -7294,47 +7306,6 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-activity-card-stack-wrapper > .scr-activity-card + .scr-activity-card {
   margin-top: var(--feed-card-gap);
 }
-/* 참가자 — 이름 길이가 달라도 열이 어긋나지 않게 균등 그리드를 쓴다(flex-wrap이면 이름
-   길이만큼 칸이 달라져 줄이 안 맞는다). 한 줄에 세 명이었는데, 아바타·닉네임을 키운
-   만큼(요청) 두 명으로 줄인다 — 안 그러면 세 칸에 커진 아바타+글자가 부대껴 보인다. */
-.scr-activity-card-stack-sum-players {
-  list-style: none; margin: 0;
-  /* 세미타이틀 줄("요약 정보")과 명단 사이 — 10 → 18px(지적: 너무 가깝다). 딸린 내용이라
-     바짝 붙였었는데, 아바타가 있는 줄이라 그 정도로는 두 덩이가 한 줄처럼 뭉쳐 보였다.
-     좌우 패딩은 이제 .scr-activity-card-body(공용)가 내므로 여기서는 뺐다 — 위쪽 18px은
-     세미타이틀과의 내부 간격이라 그대로 둔다. */
-  padding: 18px 0 0;
-  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 6px;
-}
-.scr-activity-card-stack-sum-player { display: flex; align-items: center; gap: 8px; min-width: 0; }
-/* 검색어에 걸린 사람은 요약 명단에서도 표시한다(지적) — 로스터와 같은 규칙(배경+글자색,
-   굵기는 그대로: 굵히면 폭이 늘어 없던 말줄임표가 생긴다). */
-.scr-activity-card-stack-sum-player-hl { background: var(--highlight-bg); padding: 2px 4px; margin: -2px -4px; }
-.scr-activity-card-stack-sum-player-hl .scr-activity-card-stack-sum-name { color: var(--bar-text); }
-.scr-activity-card-stack-sum-player .scr-avatar { flex-shrink: 0; border-radius: 50% !important; }
-.scr-activity-card-stack-sum-name {
-  /* 아바타 확대와 함께 한 단계 키운다(요청: "게임결과 요약에서... 아바타 크기 및
-     닉네임 등 모든 폰트 크기 확대"). */
-  font-size: var(--fs-body); font-weight: 600; color: var(--text);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-/* 요약의 세미타이틀 줄(요청) — 왼쪽에 "요약 정보", 오른쪽에 참가자 수. 카드 제목은
-   "이게 무슨 글인가"만 말하고, 그 아래 요약이 제 머리를 따로 갖는 구조다. */
-.scr-activity-card-stack-sum-head {
-  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
-  /* 좌우 패딩은 .scr-activity-card-body가 공용으로 낸다(위 .scr-activity-card-stack-sum-players와
-     같은 이유) — 위쪽 14px만 이 요소 몫(카드 머리와의 내부 간격). */
-  padding: 14px 0 0;
-}
-.scr-activity-card-stack-sum-title {
-  font-size: var(--fs-micro); font-weight: 800; color: var(--muted);
-  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-/* 참가자 수 — 자리가 모자라면 세미타이틀이 먼저 줄고(그쪽이 min-width:0) 이 값은 남는다. */
-.scr-activity-card-stack-sum-count {
-  white-space: nowrap; flex-shrink: 0;
-  font-size: var(--fs-micro); font-weight: 800; color: var(--dim);
-}
 /* 제목과 시각이 한 줄을 나눠 쓰게 되면서 이 규칙이 묶음 카드만의 것이 아니게 됐다 —
    "개인전 일일 랭크 변동 알림"처럼 긴 제목이 좁은 화면에 들어가면 제목이 두 줄로 접혀 머리가
    다시 두 층이 된다. 넘치면 말줄임표로 자른다(시각은 flex-shrink:0이라 안 줄어든다). */
@@ -7345,47 +7316,7 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
      320px에서 머리가 27 → 47px로 두 층이 됐다). */
   min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-/* 묶음 카드의 헤더 우상단에도 다른 카드와 똑같이 케밥이 앉는다(요청: 게임요약 통째로
-   카톡 공유를 케밥 메뉴 안에). 그만큼 오른쪽 자리를 비워 제목이 케밥 밑으로 흘러 들어가지
-   않게 한다 — 패딩이 아니라 변수를 바꿔야 제목 줄 음영의 음수 마진도 같이 따라온다.
-   케밥 자체의 자리와 드롭다운은 너 나와/순위변동 카드와 같은 규칙(.scr-activity-chal-menu)을
-   그대로 쓴다. */
-.scr-activity-card-stack-summary > .scr-activity-card-head { --card-head-pad-r: 44px; }
 
-/* 요약 바디 전체가 펼침/접힘 토글이다(요청) — 명단 어디를 눌러도 열리고 닫힌다. */
-/* 아래 여백은 펼침/접힘과 무관하게 '항상' 같아야 한다. 한때 펼쳤을 때만 줬는데(그림자가
-   명단에 바짝 붙는 걸 고치려고), 그러면 접는 순간 이 요약 블록의 높이가 그만큼 줄어
-   아래 내용이 위로 딸려 올라갔다(지적: "이게 있다 없다 그러니까 접을때 위로 당겨짐이
-   발생해"). 접힘 애니메이션은 이 블록 높이가 고정이라는 전제로 아래 기준점을 잡는다.
-   대신 그만큼 아래 토글 버튼의 위 패딩을 줄여, 접힌 모습의 간격은 예전 그대로 24px다
-   (14 + 10). 펼쳤을 때는 이 14px이 곧 명단과 그림자 사이의 숨통이 된다. */
-.scr-activity-card-stack-sum-body {
-  cursor: pointer; -webkit-tap-highlight-color: transparent;
-  /* 접힘 상태에서 명단과 안내글 사이 간격이 곧 이 값이다 — 펼치면 이 블록이 절대배치로
-     빠지므로 흐름에 관여하지 않는다(위 .scr-activity-card-stack-toggle 주석 참고).
-     2 → 14px(요청: 요약과 아래 버튼 사이에 여유를). 아래 버튼이 자기 위 패딩 10px을
-     따로 갖고 있으니 접힌 모습의 실제 간격은 24px이 된다. 버튼 쪽이 아니라 이쪽을 키우는
-     이유는, 버튼 패딩은 두 상태 모두 흐름에 남아 있어 건드리면 누르는 순간 카드가
-     움직이기 때문이다(위 주석). */
-  padding-bottom: 14px;
-}
-/* 펼치기 ↔ 접기 — 같은 자리에서 글자와 삼각형 방향만 바뀐다(요청). 예전에는 펼치면
-   원래 펼치기가 있던 자리에도 접기가 하나 더 생겼는데, 같은 일을 하는 버튼이 위아래로
-   둘이라 오히려 헷갈려서 없앴다(요청). */
-.scr-activity-card-stack-toggle {
-  display: flex; align-items: center; justify-content: center; gap: 5px; width: 100%;
-  /* 위 여백 24 → 10px. 나머지 14px은 요약 바디가 자기 padding-bottom으로 갖고 있다
-     (위 .scr-activity-card-stack-sum-body 주석 — 접었다 폈다 할 때 높이가 안 변해야 한다).
-     접힌 모습에서 명단↔펼치기 간격은 14 + 10 = 24px로 예전과 같다. */
-  padding: 10px 0 0; border: none; background: none;
-  font-family: inherit; font-size: var(--fs-micro); font-weight: 700; color: var(--dim);
-  cursor: pointer; -webkit-tap-highlight-color: transparent;
-}
-/* 안내글 위 여백을 접힘/펼침에 따라 다르게 주면 안 된다 — 이 버튼은 두 상태 모두 흐름에
-   남아 있어서, 누르는 순간 padding이 바뀌며 카드가 툭 움직인다(지적: 누르면 순간 움직임).
-   접힘 쪽만 좁히고 싶으면 위에 있는 요약 본문의 아래 여백을 줄인다(그쪽은 펼치면 절대배치로
-   빠져 흐름에 관여하지 않는다). */
-@media (hover: hover) { .scr-activity-card-stack-toggle:hover { color: var(--text); } }
 /* 예전에는 펼쳤을 때 요약과 목록의 경계에 그림자를 드리워 두 층이 겹쳐 있다는 걸
    보여 줬다. 이제 펼치면 요약 자체가 접히므로(요청) 나눌 두 층이 없어 걷어냈다. */
 
@@ -7759,11 +7690,14 @@ html.scr-light-theme .scr-activity-card-comment .scr-comment-mention { color: #1
      끝이 버튼 자리에 닿는 건 대략 0.1초쯤인데, 이 곡선이면 그때 이미 9할을 올라가 있다.
      크기(44→52)도 같이 물려 둔다. 위치만 움직이고 크기가 툭 바뀌면 올라가는 도중에
      버튼만 한 번 커졌다 가는 것처럼 보인다.
-     left도 함께 묶되 계단 함수로 둔다(step-end) — 커질 때 왼쪽 자리는 8px에서 20px로
-     '오른쪽으로' 옮겨 가는데, 그게 즉시 일어나면 버튼이 아직 탭바 높이에 있는 채로
-     탭바 쪽으로 12px 밀려 들어간다(실측: 이것 때문에 첫 두 프레임이 겹쳤다). 다 올라간
-     뒤에 옮기면 그 순간엔 이미 탭바 위라 부딪힐 것이 없다. */
-  transition: bottom .22s cubic-bezier(0.16, 1, 0.3, 1), left .22s step-end;
+     left도 함께 움직이되 곡선을 반대로 준다 — 세로는 앞이 급하고(expo-out), 가로는 앞이
+     느리다(expo-in). 그러면 버튼이 '먼저 위로, 그다음 오른쪽으로' 굽은 길을 그리며 한 번에
+     이어 움직인다. 탭바 왼쪽 끝이 버튼 자리에 닿는 0.1초쯤엔 이미 세로로 9할을 올라가 있고,
+     가로는 아직 거의 안 움직여서 부딪힐 것이 없다.
+     한때 여기를 계단 함수(step-end)로 뒀었다 — 겹치지는 않았지만 가로가 다 올라간 뒤에
+     '툭' 튀어서 세로와 가로가 따로 노는 것처럼 보였다(지적: 경계에서 뚝 끊기는 느낌). */
+  transition: bottom .26s cubic-bezier(0.16, 1, 0.3, 1),
+    left .26s cubic-bezier(0.7, 0, 0.84, 0);
 }
 /* 탭바가 0.8로 줄면 바닥 기준으로 그 높이의 20%만큼 자리가 빈다(축소 기준점이 50% 100%
    라 아래는 그대로고 위가 내려온다). FAB만 제자리에 있으면 탭바와의 간격이 그만큼 벌어져
@@ -7781,8 +7715,10 @@ html.scr-light-theme .scr-activity-card-comment .scr-comment-mention { color: #1
     left: 8px;
     /* 작아질 때는 반대로 탭바가 먼저 물러나야 한다 — 버튼이 먼저 내려가면 아직 넓은
        탭바 위로 들어간다. 탭바와 같은 곡선(.28s ease-in-out)에 살짝 늦게 출발시킨다. */
-    /* 작아질 때는 반대다 — 왼쪽으로 먼저 비켜서고(step-start) 그 다음에 내려간다. */
-    transition: bottom .28s ease-in-out .05s, left .05s step-start;
+    /* 작아질 때는 두 곡선을 맞바꾼다 — 가로가 앞서 왼쪽으로 비켜서고(expo-out) 세로가
+       뒤따라 내려간다(느린 시작). 커질 때와 같은 굽은 길을 거꾸로 되짚는 모양이다. */
+    transition: bottom .28s cubic-bezier(0.7, 0, 0.84, 0),
+      left .26s cubic-bezier(0.16, 1, 0.3, 1);
   }
   /* 원이 44px로 줄면 글자도 같이 줄어야 한다(요청) — 크기만 줄이면 "등록"이 원 안을
      꽉 채워, 줄어든 게 아니라 글자가 커진 것처럼 보였다. 52:44와 같은 비율의 한 단계
@@ -7825,8 +7761,8 @@ html.scr-light-theme .scr-activity-card-comment .scr-comment-mention { color: #1
     inset 0 1px 0 rgba(255, 255, 255, 0.1),
     0 2px 5px rgba(0, 0, 0, 0.2),
     0 6px 16px -8px rgba(0, 0, 0, 0.3);
-  transition: transform .12s ease, width .22s cubic-bezier(0.16, 1, 0.3, 1),
-    height .22s cubic-bezier(0.16, 1, 0.3, 1), font-size .22s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform .12s ease, width .26s cubic-bezier(0.16, 1, 0.3, 1),
+    height .26s cubic-bezier(0.16, 1, 0.3, 1), font-size .26s cubic-bezier(0.16, 1, 0.3, 1);
   -webkit-tap-highlight-color: transparent;
 }
 .scr-activity-add-fab:active { transform: scale(0.94); }

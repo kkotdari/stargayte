@@ -1,15 +1,14 @@
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import RankingShiftCard, { RankingShiftMenu, RANK_SHIFT_TITLE } from "./RankingShiftCard";
 import { CalendarPlus, ClipboardList, MoreHorizontal, Phone, Upload } from "lucide-react";
-import Avatar from "../../components/common/Avatar";
 import { Spinner } from "../../components/common/Feedback";
 import SearchFilterBar from "../../components/common/SearchFilterBar";
 import Select from "../../components/common/Select";
 import FilterItem from "../../components/common/FilterItem";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 import KakaoShareButton from "../../components/common/KakaoShareButton";
-import { shareThumb, type KakaoShareContent } from "../../utils/kakaoShare";
+import { shareThumb } from "../../utils/kakaoShare";
 import GameResultCardBody, { type SearchListRow } from "./GameResultCardBody";
 import { ActivityCard } from "./ActivityCard";
 import { resolveSlotName } from "./GameResultSides";
@@ -25,14 +24,10 @@ import { useAppStore } from "../../store/appStore";
 import { isAdminRole } from "../../constants/roles";
 import { activeMemberSearchTerms, memberMatchesTerm, normalizeSearchText, splitSearchTerms } from "../../utils/memberSearch";
 import { cx } from "../../utils/format";
-import { attachPopover } from "../../utils/popover";
 import { api } from "../../api/client";
 import { useCursorPagination } from "../../hooks/useCursorPagination";
 import { useEditableFocused } from "../../hooks/useEditableFocused";
 import { usePageBackground } from "../../hooks/usePageBackground";
-import {
-  getScrollMetrics, getScrollTop, scrollRootTo,
-} from "../../utils/scrollRoot";
 import {
   buildReplayDrafts, shortMatchHint, validateReplayDraft, type ReplayDraft,
 } from "../../utils/replayDraft";
@@ -46,31 +41,6 @@ const PAGE_SIZE = 100;
 const MAX_REPLAY_FILES = 20;
 
 
-
-// 펼칠 때 목록 맨 위와 화면 맨 위 사이에 남길 여백(요청: "정확히 위에 맞추지 말고 위쪽
-// 안전 여백을 줘야 해") — 딱 맞추면 첫 경기가 화면 모서리에 붙어 잘린 것처럼 보인다.
-// 여기에 노치/상태바 높이(--safe-top)를 더해 쓴다: 홈 화면에 추가한 웹앱은 상태바
-// 영역까지 그리므로, 스크롤 위치 0이 곧 노치 밑이 아니다.
-const STACK_EXPAND_MARGIN = 24;
-
-// --safe-top(노치/상태바 높이)의 실제 픽셀값. 이 값은 max()/env()로 적혀 있어
-// getComputedStyle로 읽으면 계산 전 문자열이 그대로 나온다 — 실제로 그 값을 높이로 쓰는
-// 요소를 잠깐 만들어 재는 것이 확실하다. 스크롤 한 번에 한 번만 부른다.
-function safeTopPx(): number {
-  const probe = document.createElement("div");
-  probe.style.cssText = "position:absolute;top:0;left:0;width:0;visibility:hidden;pointer-events:none;height:var(--safe-top)";
-  document.body.appendChild(probe);
-  const h = probe.getBoundingClientRect().height;
-  probe.remove();
-  return Number.isFinite(h) ? h : 0;
-}
-// 요약 ↔ 목록 전환 — 높이를 재서 애니메이션하는 대신, 보일 쪽만 조건부로 마운트하고
-// 각 카드가 개별적으로 살짝 아래에서 올라오며 페이드인한다(요청: "그냥 하나씩 순차적으로
-// hidden을 제거하면 자연스럽게 스크롤이 늘어날거잖아 — 한번에 영역 확보하는거만 없애면
-// 되는거지") — 래퍼가 몇 px로 커질지 계산할 필요 없이, 마운트된 만큼 문서가 자연히
-// 자란다. 이 값은 그 등장 애니메이션 길이이자, 애니메이션이 끝난 뒤 스크롤을 옮기기까지
-// 기다리는 시간이다.
-const REVEAL_MS = 220;
 
 /** 목록 줄이 접히는 데 걸리는 시간 — CSS의 scr-row-close 애니메이션과 같은 값이라야
  *  카드가 다 접힌 뒤에 사라진다(짧으면 접히다 말고 툭 없어진다). */
@@ -504,72 +474,11 @@ export const GameResultCard = memo(function GameResultCard({ item, memberOf, onD
   );
 });
 
-// 묶음 카드 우상단 케밥 — 지금은 카카오톡 공유 하나만 담는다(묶음은 DB 행이 아니라
-// 삭제/수정 개념이 없다). 경기결과 카드의 케밥(GameResultCardBody의 GameResultActionsMenu)과 같은
-// 방식으로 만든다 — 드롭다운을 body로 포털하고 자리는 attachPopover가 잡는다.
-//
-// 처음엔 순위변동 카드처럼 제자리에 그렸는데 세 가지가 어긋났다(지적: 다른 데를 눌러도
-// 안 닫힘 / 모양이 다름 / 클릭이 잘 안 됨). 원인은 전부 "어디에 그리느냐"였다.
-//  · 카드 판(.scr-activity-card)에 backdrop-filter가 걸려 있어 그 안의 position:fixed는
-//    화면이 아니라 그 카드를 기준으로 잡힌다 — 전체 화면을 덮어야 할 백드롭이 카드
-//    안에만 깔려서, 카드 밖을 누르면 아무 일도 안 일어났다.
-//  · 헤더(.scr-activity-card-head)는 isolation:isolate로 쌓임 맥락을 따로 만들고 글자
-//    크기·자간·대문자 변환도 자기 것을 물려준다 — 그 안에 그린 메뉴는 뒤 요소에 덮이고
-//    생김새도 다른 케밥과 달라진다.
-// 그래서 버튼만 카드 직계 자식으로 옮기고, 백드롭·드롭다운은 body로 포털한다.
-function StackMenu({ content }: { content: KakaoShareContent }) {
-  const [open, setOpen] = useState(false);
-  const anchorRef = useRef<HTMLButtonElement>(null);
-  const dropRef = useRef<HTMLDivElement>(null);
-  useLayoutEffect(() => {
-    if (!open || !anchorRef.current || !dropRef.current) return;
-    return attachPopover(anchorRef.current, dropRef.current, { growToContent: true, maxWidth: 200 });
-  }, [open]);
-
-  return (
-    // 카드 어디를 눌러도 펼침/접힘이 되므로 이 안의 클릭은 위로 안 새게 막는다 —
-    // 메뉴를 열자마자 카드가 같이 펼쳐지면 안 된다.
-    <div
-      className="scr-activity-chal-menu"
-      onClick={(e) => e.stopPropagation()}
-      onKeyDown={(e) => e.stopPropagation()}
-      role="presentation"
-    >
-      <button
-        type="button" ref={anchorRef} className="scr-activity-post-menu-btn scr-activity-kebab-btn"
-        onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
-        aria-label="더보기" aria-haspopup="menu" aria-expanded={open}
-      >
-        <MoreHorizontal size={16} />
-      </button>
-      {open && createPortal(
-        // 포털이라도 이벤트는 리액트 트리를 따라 올라간다 — 위 래퍼가 이미 끊지만,
-        // 백드롭 쪽은 '닫기'까지 하고 끝내야 하므로 여기서도 명시적으로 끊는다.
-        <>
-          <div
-            className="scr-activity-add-backdrop"
-            onClick={(e) => { e.stopPropagation(); setOpen(false); }}
-            aria-hidden
-          />
-          <div
-            className="scr-menu-pop-drop scr-activity-post-menu-drop scr-scroll" ref={dropRef} role="menu"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <KakaoShareButton variant="menu" content={content} onDone={() => setOpen(false)} />
-          </div>
-        </>,
-        document.body,
-      )}
-    </div>
-  );
-}
-
 // 게임결과 묶음 — 접힘은 그 세션의 참가자 전원을 담은 '요약 카드'이고, "자세히 보기"를
 // 누르면 활동 안에서 그 자리가 게임결과 카드 목록으로 바뀐다(요청). 한때 전체화면 모달로
 // 열어봤지만 다시 이 아코디언으로 돌아왔다.
 export function GameResultPost({
-  stack, memberOf, onDeleted, dateLabel, highlightMemberIds, highlightTerms, defaultOpen = false,
-  expanded, onExpand,
+  stack, memberOf, onDeleted, dateLabel, highlightMemberIds, highlightTerms,
 }: {
   stack: GameResultPostItem;
   memberOf: (id: string) => Member | undefined;
@@ -577,194 +486,24 @@ export function GameResultPost({
   dateLabel: string;
   highlightMemberIds?: Set<string>;
   highlightTerms?: string[];
-  /** 필터가 걸린 상태인가 — 그럴 땐 묶음을 펼친 채로 낸다(요청). */
-  defaultOpen?: boolean;
-  /** 이 묶음이 지금 펼쳐져 있어야 하는가 — ActivityScreen이 전역으로 하나만 관리한다
-   *  (요청: "다른 카드를 펴면 나머지는 자동으로 접힘"). 생략하면(SharePage의 단독
-   *  공유 화면처럼 이 묶음 하나뿐인 곳) 로컬 상태로 스스로 관리한다. */
-  expanded?: boolean;
-  /** 펼치기를 눌렀을 때 ActivityScreen에 알린다 — 이 값이 다른 묶음의 키로 바뀌면 그
-   *  묶음은 저절로 접힌다. */
-  onExpand?: () => void;
 }) {
-  // 아무도 안 넘겨주면(SharePage처럼 묶음이 하나뿐이라 다른 묶음과 자리를 다툴 일이
-  // 없는 곳) 로컬 상태로 대신한다.
-  const [localExpanded, setLocalExpanded] = useState(false);
-  const isExpanded = expanded ?? localExpanded;
-  // 실제 열림 상태 — 필터가 강제로 펼치거나(defaultOpen), 이 묶음이 선택돼 있으면
-  // (isExpanded) 열린다. 수동으로 접는 길은 없다(요청: "카드 눌러서 요약보기 제거
-  // 이제 한번 펴면 못접음") — 다른 묶음을 펼치면 여기는 꺼지며 저절로 접힌다.
-  const open = defaultOpen || isExpanded;
-  // 최신 게임이 위로 오게 — 펼친 목록은 활동와 같은 시간 순서(최신 → 과거)를 따른다.
+  /* 한 자리에서 이어 친 경기들을 그대로 늘어놓는다.
+     예전엔 접힌 '요약 카드'(참가자 명단 + 카카오 공유)가 먼저 뜨고 눌러야 펼쳐졌는데,
+     통째로 걷어냈다(요청: 묶음 공유가 더 이상 불가능해져 요약 카드도 필요 없음).
+     그와 함께 딸려 있던 것들도 같이 나갔다 — 펼침 상태, 펼친 뒤 스크롤 이동, 참가자
+     집계, 묶음 공유 메뉴. 목록에서는 어차피 줄을 누르면 바로 경기들이 나오고, 그 줄이
+     이미 "n명 n경기"로 요약을 말한다. */
+  // 최신 경기가 위로 — 펼친 목록은 활동과 같은 시간 순서(최신 → 과거)를 따른다.
   const orderedDesc = useMemo(() => [...stack.items].sort((a, b) => b.time - a.time), [stack.items]);
-  // 요약에 나열할 참가자 — 이 세션의 모든 게임에 나온 사람을 중복 없이 모은다(요청).
-  // 순서는 이 묶음 안에서의 게임수 많은 순 → 승리 많은 순 → 닉네임순(요청). 한때는
-  // 등장 순서를 그대로 썼는데, 그러면 그날 제일 많이 친 사람이 명단 끝에 가 있기도 했다.
-  // 3열 그리드가 행 우선으로 채우므로(grid-auto-flow: row) 읽는 순서도 1 2 3 / 4 5 6이다.
-  const participants = useMemo(() => {
-    const acc = new Map<string, { id: string; name: string; plays: number; wins: number }>();
-    for (const it of [...stack.items].sort((a, b) => a.time - b.time)) {
-      const m = it.gameResult;
-      for (const side of ["team1", "team2"] as const) {
-        for (const slot of m[side]) {
-          // 컴퓨터·비회원은 "누가 있었나"를 말하는 명단이 아니다(요청) — 빼고 센다.
-          // 참여 인원 집계도 이 목록 길이를 쓰므로 함께 맞는다.
-          if (isComputerSlot(slot.memberId) || isUnregisteredSlot(slot.memberId)) continue;
-          const cur = acc.get(slot.memberId)
-            ?? { id: slot.memberId, name: resolveSlotName(slot, m[side], memberOf), plays: 0, wins: 0 };
-          cur.plays += 1;
-          if (m.result === side) cur.wins += 1;
-          acc.set(slot.memberId, cur);
-        }
-      }
-    }
-    return [...acc.values()].sort((a, b) => (
-      b.plays - a.plays || b.wins - a.wins || a.name.localeCompare(b.name, "ko")
-    ));
-  }, [stack.items, memberOf]);
-
-  // 카카오톡 공유 내용(요청: 게임요약을 통째로 공유). 링크는 세션 날짜로 이 묶음을
-  // 가리킨다(sv=stack&sd=…) — 묶음에는 DB id가 없다(SharePage의 ShareTarget 주석).
-  const shareContent = useMemo(() => {
-    const label = `${sessionDateLabel(stack.date)} 게임결과 ${stack.items.length}건`;
-    const roster = participants.map((p) => p.name).join(", ");
-    return {
-      title: `스타게이트 · ${label}`,
-      description: `참가자 총 ${participants.length}명 — ${roster}`,
-      ...shareThumb("gameResultList"),
-      link: `${window.location.origin}/?sv=stack&sd=${stack.date}`,
-      fallbackText: `[스타게이트] ${label}\n참가자 총 ${participants.length}명 — ${roster}`,
-    };
-  }, [stack.date, stack.items.length, participants]);
-
-  // 카드는 한 장이다(요청). 접히면 요약 카드 하나, 펼치면 게임결과 카드 N개가 이
-  // 래퍼 안에 조건부로 마운트된다 — 높이를 재서 애니메이션하지 않는다(요청: "왜 높이
-  // 합산을 해야 하는거야? 하나씩 순차적으로 hidden을 제거하면 자연스럽게 스크롤이
-  // 늘어날거잖아 — 한번에 영역 확보하는거만 없애면 되는거지"). 보일 쪽만 렌더하고, 각
-  // 카드가 개별적으로 등장 애니메이션(아래 .scr-activity-card-stack-reveal)으로 나타나면,
-  // 래퍼의 높이는 마운트된 만큼 문서가 자연히 자라는 것뿐이다 — JS가 계산할 게 없다.
-  const stackRef = useRef<HTMLDivElement>(null);
-  // 펼치기가 실제 사용자 조작이었는지 — 필터 동기화나 다른 묶음이 펼쳐지며 자동으로
-  // 접히는 간접 변경(위 open 계산)에는 스크롤을 옮기지 않는다.
-  const toggledRef = useRef(false);
-  // 펼침 연출이 끝난 뒤에 할 일(요청: 애니메이션이 끝나고 스크롤 이동) — 카드가 나타나는
-  // 동안 스크롤까지 같이 움직이면 두 움직임이 겹쳐 어디를 보고 있는지 알기 어렵다.
-  const afterToggleRef = useRef<(() => void) | null>(null);
-  const runAfterToggle = () => {
-    const fn = afterToggleRef.current;
-    afterToggleRef.current = null;
-    fn?.();
-  };
-
-  // 펼칠 때는 목록 맨 위를 화면 위쪽에 둔다(요청) — 펼친 직후 읽기 시작하는 자리가 첫
-  // 경기이기 때문이다. 화면 맨 위에 딱 붙이지는 않는다(요청) — 노치/상태바 높이에
-  // 여백을 더해 띄운다. 수동으로 접는 길은 없으므로(요청) 접을 때 쓰던 스크롤·강조
-  // 표시(flash)는 이제 필요 없다 — 다른 묶음을 펼치면 여기는 그냥 조용히 접힌다.
-  const expandAndReveal = () => {
-    toggledRef.current = true;
-    afterToggleRef.current = () => {
-      // 목록이 아니라 카드 카드 전체를 기준으로 잡는다. 목록에 맞추면 그 위에 있는
-      // 카드 머리(시각·제목·케밥)만큼이 화면 위로 밀려 나가는데, 그 높이가 딱 상단
-      // 안전영역쯤이라 머리가 노치/상태바 밑에 깔렸다(지적: 펼칠 때 위 안전영역).
-      // 실측: 목록 기준일 때 카드 머리가 화면 위 24px — 안전영역(47px) 안이었다.
-      const card = stackRef.current;
-      if (!card) return;
-      const { clientHeight, scrollHeight } = getScrollMetrics();
-      const vh = Math.max(clientHeight, window.innerHeight || 0);
-      const top = getScrollTop() + card.getBoundingClientRect().top - (safeTopPx() + STACK_EXPAND_MARGIN);
-      scrollRootTo({ top: Math.min(Math.max(0, top), Math.max(0, scrollHeight - vh)), behavior: "smooth" });
-    };
-    if (onExpand) onExpand(); else setLocalExpanded(true);
-  };
-
-  // 카드가 개별적으로 나타나는 등장 애니메이션이 끝난 뒤에 스크롤을 옮긴다 — 실제 펼치기
-  // (사용자가 눌렀을 때)일 때만, 필터 동기화나 다른 묶음이 펼쳐지며 자동으로 접히는
-  // 간접 변경은 스크롤을 건드리지 않는다.
-  useEffect(() => {
-    const wasToggled = toggledRef.current;
-    toggledRef.current = false;
-    if (!wasToggled) { afterToggleRef.current = null; return; }
-    const t = window.setTimeout(runAfterToggle, REVEAL_MS);
-    // 다른 묶음이 펼쳐져 이 효과가 다시 돌기 전에 언마운트되면 예약을 버린다 — 그
-    // 스크롤은 이미 지난 의도다.
-    return () => window.clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
-
   return (
-    // 래퍼 한 장 — 접히면 요약 카드 1개, 펼치면 게임결과 카드 N개를 담는다(요청:
-    // "카드가 여러 개인 걸로"). 래퍼 자신은 헤더·글래스가 없는 순수 레이아웃이라 다른
-    // 타입의 래퍼와 CSS가 똑같다(요청: "다른 카드들과 css가 다르게 분기되고 있어").
-    <div ref={stackRef} className="scr-activity-card-stack-wrapper">
-      {open ? (
-        // 펼치면 이 자리에 승격된 카드가 하나씩 나타난다(요청: 게임결과 카드도 하나의
-        // 활동 카드로 승격) — 각 카드가 실제 댓글 입력창을 갖게 되므로, 예전의
-        // "목록 아무 데나 눌러 접기"는 없앴다(요청) — 접기는 아래 전용 버튼으로만 한다.
-        orderedDesc.map((it) => (
-          <GameResultCard
-            key={it.gameResult.id}
-            item={it} memberOf={memberOf} onDeleted={onDeleted} dateLabel={dateLabel}
-            highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms}
-            className="scr-activity-card-stack-reveal"
-          />
-        ))
-      ) : (
-        // 요약 쪽에 헤더("게임결과 N건"+케밥)까지 통째로 담아 두므로, 펼치면 이 카드
-        // 자체가 언마운트되면서 헤더도 함께 사라진다(요청: 펼치면 공유 헤더는 접힘에만
-        // 보이고 각 게임이 자기 헤더를 갖는다).
-        <ActivityCard
-          className="scr-activity-card-stack-summary scr-activity-card-stack-reveal"
-          dateLabel={dateLabel}
-          icon={<ClipboardList size={16} aria-hidden />}
-          label={`게임결과 ${stack.items.length}건`}
-          timeText={formatWhen(stack.date)}
-          // 묶음 통째로 카카오톡 공유(요청) — 다른 카드와 똑같이 우상단 케밥 안에
-          // 넣는다. 헤더 '안'이 아니라 카드 직계 자식으로 두는 이유는 StackMenu 주석 참고.
-          actions={<StackMenu content={shareContent} />}
-        >
-        {/* 명단 어디를 눌러도 펼쳐진다. button 안에는 목록을 넣을 수 없어(phrasing
-            content만 허용) role로 대신한다. */}
-        <div
-          className="scr-activity-card-stack-sum-body" role="button" tabIndex={0}
-          aria-expanded={false}
-          aria-label="게임결과 펼치기"
-          onClick={() => expandAndReveal()}
-          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); expandAndReveal(); } }}
-        >
-          <div className="scr-activity-card-stack-sum-head">
-            <span className="scr-activity-card-stack-sum-title">요약 정보</span>
-            <span className="scr-activity-card-stack-sum-count">참가자 총 {participants.length}명</span>
-          </div>
-          <ul className="scr-activity-card-stack-sum-players">
-            {participants.map((p) => (
-              <li
-                key={p.id}
-                className={cx(
-                  "scr-activity-card-stack-sum-player",
-                  (highlightMemberIds?.has(p.id)
-                    || highlightTerms?.some((t) => normalizeSearchText(p.name).includes(t)))
-                    && "scr-activity-card-stack-sum-player-hl",
-                )}
-              >
-                {/* 아바타·닉네임 확대(요청) — 한 줄에 3명이던 그리드는 2명으로 줄인다
-                    (아래 .scr-activity-card-stack-sum-players 참고). */}
-                <Avatar member={{ id: p.id, nickname: p.name, avatar: memberOf(p.id)?.avatar ?? null }} size={28} />
-                <span className="scr-activity-card-stack-sum-name">{p.name}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-        {/* 안내문(요청: 한번 펴면 못 접으므로 펼친 뒤에는 누를 일이 없다) — 카드 어디를
-            눌러도 펼쳐지므로, 방향 삼각형 대신 그 사실을 글자로 말한다. 버튼으로 남겨 두는
-            건 키보드로도 펼칠 수 있게 하려는 것.
-            카드 바깥(래퍼의 형제)이 아니라 카드 본문 안에 둔다(요청) — 밖에 있으면 안내문만
-            유리 본문 밖 배경 위에 떠서, 자기가 어느 카드 이야기인지가 안 읽혔다. 이 카드는
-            펼치는 순간 통째로 언마운트되므로 '접혔을 때만'이라는 조건은 따로 필요 없다. */}
-        <button type="button" className="scr-activity-card-stack-toggle" onClick={expandAndReveal}>
-          카드 눌러서 펼치기
-        </button>
-        </ActivityCard>
-      )}
+    <div className="scr-activity-card-stack-wrapper">
+      {orderedDesc.map((it) => (
+        <GameResultCard
+          key={it.gameResult.id}
+          item={it} memberOf={memberOf} onDeleted={onDeleted} dateLabel={dateLabel}
+          highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms}
+        />
+      ))}
     </div>
   );
 }
@@ -1411,9 +1150,6 @@ export default function ActivityScreen() {
         dateLabel={sessionDateLabel(item.date)}
         highlightMemberIds={matchedIds}
         highlightTerms={searchTerms}
-        /* 줄을 펼치면 요약(참가자 명단)을 건너뛰고 곧장 경기 목록이다(요청) — 줄이 이미
-           "n명 n경기"로 그 요약을 말했다. 접었다 폈다 하는 쪽은 공유 페이지만 쓴다. */
-        defaultOpen
       />
     ) : (
       // 묶이지 않은 낱장 경기 — 머리는 목록에서도 남긴다. 줄이 말하지 않는 등록자와
