@@ -1825,17 +1825,27 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   flex-direction: row; align-items: center; justify-content: center;
   gap: 10px; position: relative;
 }
+/* 한 줄기 안의 두 줄은 [이름 | 막대] 두 열을 나눠 쓴다 — 이름 열은 그 줄기에서 가장 긴
+   이름에 맞춰지고(auto), 각 이름은 그 안에서 가운데 정렬된다(요청: 세로로 배치된 두 요소의
+   라벨이 같은 폭을 갖고 그 안에서 가운데). 줄마다 따로 폭을 잡으면 "APM"과 "커맨드/10분"의
+   막대 시작점이 어긋난다. 줄(item)은 subgrid로 그 두 열을 물려받는다.
+   오른쪽 22px은 메달 자리다 — 줄기에 비워 두고 메달은 그 자리에 절대배치한다. */
 .scr-stat-record-col {
-  display: flex; flex-direction: column; justify-content: center; gap: 4px;
-  flex: 1 1 0; min-width: 0;
+  display: grid; grid-template-columns: auto minmax(0, 1fr);
+  align-content: center; gap: 4px 6px;
+  flex: 1 1 0; min-width: 0; padding-right: 22px;
 }
-/* 메달은 이 항목 기준으로 앉는다 — 칸에만 relative를 주면 넷이 같은 자리에 겹친다. */
 .scr-stat-record-item {
-  display: flex; align-items: center; gap: 6px; min-width: 0; position: relative;
+  display: grid; grid-column: 1 / -1; grid-template-columns: subgrid;
+  align-items: center; min-width: 0; position: relative;
 }
+.scr-stat-record-item .scr-stat-medal { right: -22px; }
+/* 랭크 줄기는 [이름 | 막대] 구조가 아니라 두 줄이 통째로 한 덩어리다 — 위 격자를 물려받지
+   않고 제 세로 배치를 쓴다. */
+.scr-stat-rank-col { display: flex; flex-direction: column; justify-content: center; gap: 2px; }
 /* 어느 막대인지는 왼쪽 이름이 말한다 — 칸 머리가 "기록" 하나가 되면서 이름을 잃었다. */
 .scr-stat-record-label {
-  flex: none; width: 42px; text-align: right;
+  text-align: center;
   font-size: var(--fs-11); color: var(--dim); white-space: nowrap;
 }
 .scr-stat-record-item .scr-value-bar,
@@ -1988,7 +1998,7 @@ html:not(.scr-light-theme) .scr-donut {
   position: absolute; right: 0; top: 50%; transform: translateY(-50%);
   font-size: var(--fs-subhead); line-height: 1; letter-spacing: 0;
 }
-.scr-stat-record-item, .scr-stat-rank-line { padding-right: 22px; }
+.scr-stat-rank-line { padding-right: 22px; }
 /* 트랙 배경을 채움 비율(--scr-value-fill, ValueBar.tsx 인라인 변수)까지는 진하게, 나머지는
    옅게 칠하는 그라디언트 한 장으로 그린다(요청: "배경 막대를 채우기 — 나머지는 반투명
    100%길이") — 예전엔 채운 만큼만 별도 DOM(.scr-value-bar-track)으로 그려서 나머지
@@ -2043,7 +2053,7 @@ html:not(.scr-light-theme) .scr-donut {
   /* 랭크 칸은 두 줄이다(요청: 랭크+포인트 통합) — "1위 ▲2" 한 줄과 포인트 한 줄.
      건설은 도넛 하나 + 건물 다섯 줄, 유닛은 도넛 둘 + 일꾼 한 줄 + 유닛 다섯 줄,
      스킬은 공/방 표 + 스킬 다섯 줄을 담는다. */
-  --scr-stat-record-w: 460px;
+  --scr-stat-record-w: 680px;
   --scr-stat-build-w: 204px;
   --scr-stat-unit-w: 366px;
   --scr-stat-skill-w: 246px;
@@ -2263,7 +2273,9 @@ html:not(.scr-light-theme) .scr-stats-list-panel-v2 .scr-stat-name-cell, html:no
        다만 어느 칸도 sticky 유저 칸(118px)을 뺀 나머지 폭(390-134=256px)을 넘지 않아야
        한다 — 그보다 넓으면 끝까지 밀어도 그 칸을 온전히 볼 수가 없다. */
     --scr-stat-col-w: 124px;
-    --scr-stat-record-w: 446px;
+    /* PC와 같은 이유로 넓힌다(막대에 남는 자리가 45px밖에 안 됐다) — 모바일은 어차피
+       가로로 스크롤하는 표라, 좁혀 봐야 막대만 못 읽게 될 뿐이다. */
+    --scr-stat-record-w: 620px;
     --scr-stat-build-w: 196px;
     --scr-stat-unit-w: 354px;
     --scr-stat-skill-w: 236px;
@@ -6312,7 +6324,11 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
     /* 막대 하나뿐인 칸은 좁혀 둔다 — 그만큼을 건설·유닛·스킬 칸이 가져가야 표 전체가
        PC 폭(1920) 안에 들어와 가로 스크롤이 안 생긴다. */
     --scr-stat-col-w: 100px;
-    --scr-stat-record-w: 456px;
+    /* 기록 칸은 안에 또 세 칸(랭크·포인트 / 게임수·승률 / APM·커맨드)이 들어간다. 각
+       칸이 라벨 열(가장 긴 라벨 폭)과 메달 자리를 따로 떼어 놓기 때문에, 456px에서는
+       막대에 45px밖에 안 남아 길이 비교가 아예 안 됐다(지적: "컬럼 최대값이 너무 작게").
+       막대가 150px 안팎이 되는 폭으로 올린다 — 표 합은 1634px이라 1920 안에 그대로 든다. */
+    --scr-stat-record-w: 680px;
     --scr-stat-build-w: 202px;
     --scr-stat-unit-w: 362px;
     --scr-stat-skill-w: 242px;
