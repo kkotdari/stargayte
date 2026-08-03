@@ -2820,7 +2820,7 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   const BEAT_BUILDING: Record<string, string[]> = {
     "cannon-rush": ["Photon Cannon"], "sunken-rush": ["Sunken Colony"],
     "sneak-rax": ["Barracks"], "center-photon": ["Photon Cannon"],
-    "side-tank": ["Siege Tank"], "ally-cannon": ["Photon Cannon"],
+    "side-tank": ["Siege Tank"], "center-tank": ["Siege Tank"], "ally-cannon": ["Photon Cannon"],
   };
   const sideOf = (raw: string): ParsedReplayPlayer[] | null =>
     (winnerPlayers.some((p) => p.rawName === raw) ? winnerPlayers

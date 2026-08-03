@@ -83,7 +83,7 @@ const BEAT_MARK: Record<string, string> = {
   // 옆탱은 이름과 달리 방어가 아니라 공격이지만(지적), 병력이 맞붙는 싸움과는 결이 달라
   // 칼 모양이 아니라 자리 잡고 쏘는 느낌으로 구분한다. 탑(🗼)은 건물 느낌만 나고 공격으로
   // 안 읽혀서(지적) 활(🏹)로 바꾼다 — 멀리서 쏘는 공격이라는 게 한눈에 보인다.
-  "side-tank": "🏹",
+  "side-tank": "🏹", "center-tank": "🏹",
   // 본진에서 한 일 — 화살표 없이 본진에 붙는다.
   // 현미경은 무슨 일인지 안 읽힌다(지적) — 테크는 결국 싸우려고 하는 일이라 검 대결로
   // 통일한다. 업그레이드만은 공격보다 연구 쪽이 어울려(지적) 따로 시험관을 준다.
@@ -128,7 +128,8 @@ const HOME_BEAT_KEYS = new Set([
   "expand", "upgrade", "upgrade-signature", "tech", "fast-tech", "vision", "no-detect",
   "mass-army",
   "greedy-build", "greedy-paid", "greedy-punished", "lodging", "relocate",
-  "defense", "front-defense", "late-defense", "wall-in", "side-tank", "revival", "fallen", "gg",
+  "defense", "front-defense", "late-defense", "wall-in", "side-tank", "center-tank",
+  "revival", "fallen", "gg",
   "stand", "result", "standoff", "attrition", "fast-hands", "pro-like", "worker-gap",
   "prod-gap", "long-run", "late-hold", "lift-off",
 ]);
@@ -140,7 +141,7 @@ const HOME_BEAT_KEYS = new Set([
 const BY_ATTACKER_KEYS = new Set(["fallen", "greedy-punished"]);
 
 /** 실제로 맵 가운데에서 벌어진 일 — 화살표를 센터로 보낸다(요청: 센터 내용은 실제 센터에). */
-const CENTER_BEAT_KEYS = new Set(["center", "center-photon"]);
+const CENTER_BEAT_KEYS = new Set(["center", "center-photon", "center-tank"]);
 
 /* 화살표 끝에는 '특별한 기술'일 때만 이모지를 얹는다(요청: 일반 공격과 방어, 헬프의
    화살표 끝에 칼 이모지 더는 안 붙이기). 칼·방패는 그 화살표가 이미 말하고 있는 것을

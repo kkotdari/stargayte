@@ -455,6 +455,13 @@ const RUSH_GO_SEC = 180;
 /** 본진 급습(위 raidOn) — 이 시간 안에 상대 본진에 이만큼 찍혔으면 들이친 것이다. */
 const RAID_WINDOW_SEC = 120;
 const RAID_ORDERS_MIN = 30;
+/* 중앙 장악(center-tank)의 문턱 — 센터에 찍힌 탱크 명령 수·그 사람 탱크 명령 중 비중·
+   처음과 마지막 사이의 폭(분). 셋을 함께 보는 이유는 각각이 다른 거짓을 막아서다:
+   수만 보면 대군이 한 번 지나간 것도 걸리고, 비중만 보면 탱크를 몇 번 안 굴린 사람이
+   걸리고, 폭만 보면 초반과 후반에 한 번씩 들른 것이 '내내 잡고 있었다'가 된다. */
+const TANK_HOLD_ORDERS = 60;
+const TANK_HOLD_SHARE = 0.3;
+const TANK_HOLD_MIN = 4;
 /** '무엇으로 갔나'를 그 직전 이 시간 안의 생산에서 짚는다. */
 const WENT_WITH_SEC = 240;
 /** 급습의 주인공이 될 수 없는 것들 — 일꾼·보급·정찰 유닛은 병력이 아니다. */
@@ -1396,7 +1403,46 @@ function detectFor(c: Ctx): Tactic[] {
       const mine = busiest(tankOrders.filter((o) => geo.spot(o) === "myFront"));
       return mine ? { ...mine, ally: null as string | null, foe: null as string | null } : null;
     })();
-    if (sideFactory.length > 0 && tanks >= 3) {
+    /* 중앙 장악 — 탱크를 센터에 박아 두고 그 자리를 오래 눌러앉은 그림(요청: 시즈한
+       좌표를 알 수 있으면 중앙 장악인지 어디를 장악한 건지도 알 수 있지 않나).
+       시즈 커맨드 자체에는 좌표가 없다 — 고른 유닛에게 걸리는 명령이라 자리가 안 적힌다
+       (실측한 원본이 {"Frame":14200,"PlayerID":1,"Type":{"Name":"Siege"}}뿐이다). 대신
+       시즈를 누른 그 선택 덕에 주인이 '탱크'로 짚인 이동·공격 명령이 남는다(위 tankPark와
+       같은 근거) — 그 명령이 센터에 몰려 있고 오래 이어졌으면 그 자리를 붙잡고 있던 것이다.
+
+       실측(172판, 센터에 탱크 명령이 하나라도 찍힌 103명): 센터 명령 수는 중앙 25개·
+       상위 10%가 78개였고, 탱크 명령 중 센터 비중은 중앙 14%·상위 10%가 44%, 머문 폭은
+       중앙 2.7분이었다. 아래 문턱(60개·30%·4분)을 넘는 사람은 172판에서 예닐곱뿐이다 —
+       '장악'은 그만큼 드물게 말해야 하는 말이다. */
+    const tankHold = (() => {
+      if (!geo || tanks < 3) return null;
+      const tankOrders = (s.orderPositions ?? []).filter((o) => o.by === "Siege Tank");
+      if (tankOrders.length === 0) return null;
+      const mid = tankOrders.filter((o) => geo.spot(o) === "mid");
+      if (mid.length < TANK_HOLD_ORDERS || mid.length / tankOrders.length < TANK_HOLD_SHARE) return null;
+      const frames = mid.map((o) => o.frame);
+      const span = (Math.max(...frames) - Math.min(...frames)) * SECONDS_PER_FRAME / 60;
+      if (span < TANK_HOLD_MIN) return null;
+      return {
+        at: Math.min(...frames), min: Math.round(span),
+        xy: [
+          Math.round((mid.reduce((a, o) => a + o.x, 0) / mid.length) * 10) / 10,
+          Math.round((mid.reduce((a, o) => a + o.y, 0) / mid.length) * 10) / 10,
+        ] as [number, number],
+      };
+    })();
+    if (tankHold) {
+      out.push({
+        key: "center-tank", weight: 12, at: tankHold.at, who,
+        p: { xy: tankHold.xy, min: tankHold.min },
+      });
+    }
+    /* 중앙을 잡은 이야기가 있으면 옆탱은 말하지 않는다 — 같은 사람의 같은 탱크가 어디에
+       자리 잡았나를 두 문장으로 말하는 셈이고(실측: 한 문장으로 이어져 "탱크를 박아
+       두었고 센터에 탱크를 박아"가 됐다), 둘 중 큰 이야기는 중앙 쪽이다. */
+    if (tankHold) {
+      // 아무것도 안 한다 — 위에서 이미 중앙 장악을 넣었다.
+    } else if (sideFactory.length > 0 && tanks >= 3) {
       const helped = geo?.allyAt(sideFactory[0]) ?? null;
       out.push({
         key: "side-tank", weight: 11, at: firstOf(sideFactory), who,
