@@ -1965,6 +1965,19 @@ const TEMPLATES: Record<string, Tpl> = {
   //
   // 시야(요청) — 오버로드·옵저버를 뿌려 판을 읽는 플레이.
   vision: (c) => {
+    /* 스캔은 띄워 두는 눈이 아니라 그때그때 여는 눈이라 말이 다르다(요청: 스캔·오버로드·
+       옵저버로 여기저기 정찰한 것도 묘사 포인트) — 몇 번 뿌렸는지와, 그중 상대의 집을
+       몇 곳이나 열어 봤는지를 말한다. 근거는 스캔을 쓴 좌표 그대로다(replaySummary). */
+    if (str(c.p.unit) === "Scanner Sweep") {
+      const n = num(c.p.n, 0);
+      const spots = num(c.p.spots, 0);
+      if (n <= 0) return null;
+      return `${ga(c.who)} ${done(c, c.pick([
+        ...(spots >= 2 ? [`스캔을 ${n}번 뿌려 상대 기지 ${spots}곳을 들여다봄`] : []),
+        `스캔을 ${n}번 뿌려 판 곳곳을 열어 봄`,
+        `스캔 ${n}번으로 상대의 움직임을 훑음`,
+      ]))}`;
+    }
     const u = unitWithUp(c);
     if (!u) return null;
     return `${ga(c.who)} ${done(c, c.pick([

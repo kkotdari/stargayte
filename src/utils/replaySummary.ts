@@ -1169,6 +1169,34 @@ function sideBeats(args: {
     });
   }
 
+  /* 스캔도 정찰이다(요청: 스캔·오버로드·옵저버로 여기저기 정찰한 것도 묘사 포인트).
+     테란은 옵저버처럼 띄워 두는 눈이 없어서 이 갈래가 통째로 빠져 있었는데, 스캔은
+     오히려 근거가 더 좋다 — 쓴 시각과 좌표가 그대로 남는다(castPositions). '몇 번
+     뿌렸나'와 '누구의 집을 열어 봤나'를 그 좌표에서 바로 센다.
+
+     실측(테란 225명): 스캔 횟수는 중앙 2회·75% 6회·90% 11회이고 아예 안 쓴 사람이 86명
+     이다. 여덟 번부터가 '판을 훑어봤다'고 할 만한 선이고(18%), 뿌린 폭은 중앙 74타일이라
+     한 자리만 들여다본 것이 아니다. */
+  const foeHomes = other.players
+    .map((q) => (typeof q.startX === "number" && typeof q.startY === "number"
+      ? { raw: q.rawName, x: q.startX, y: q.startY } : null))
+    .filter((v): v is { raw: string; x: number; y: number } => v !== null);
+  for (const p of players) {
+    const sg = p.signals;
+    if (!sg) continue;
+    const scans = (sg.castPositions ?? []).filter((c) => c.tech === "Scanner Sweep");
+    if (scans.length < SCAN_SCOUT_MIN) continue;
+    // 상대 기지를 열어 본 수 — 시작 지점 SCAN_BASE_TILES 안이면 그 사람 집을 본 것이다.
+    const peeked = foeHomes.filter(
+      (h) => scans.some((c) => Math.hypot(c.x - h.x, c.y - h.y) <= SCAN_BASE_TILES),
+    ).length;
+    beats.push({
+      k: "vision", won, who: who(p), weight: peeked >= 2 ? 9 : 8,
+      at: scans[0].frame,
+      p: { unit: "Scanner Sweep", n: scans.length, ...(peeked >= 2 ? { spots: peeked } : {}) },
+    });
+  }
+
   // ── 안 보이는 유닛에 대한 대비(요청) ── 상대가 러커·다크를 뽑았는데 이쪽에 탐지 수단이
   // 하나도 없었다면, 그건 왜 밀렸는지의 큰 부분이다. 저그는 오버로드가 곧 탐지기라 뺀다.
   // 탐지 여부는 '탐지기를 만들었나'가 아니라 '만들 건물조차 없었나'로 본다 — 스캔은
@@ -3166,9 +3194,13 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
      실제로 요약까지 간 물량 문장은 8건뿐이었고 큰 교전이 여러 번 나오게 되면서 0건이
      됐다. 한 판에 한 자리만 내준다 — 물량이 있던 판에서만 쓰이므로 다른 경기 길이는
      그대로다. */
-  const EXTRA_SLOTS = { cause: 2, tech: 2, clash: CLASH_BEATS_MAX - 1, mass: 1 } as const;
+  /* 정찰(스캔)도 같은 사연이다(요청: 스캔·오버로드·옵저버로 여기저기 정찰한 것도 묘사
+     포인트) — 무게 8~9로는 급습·교전(20 안팎)에 절대 못 이겨서 172판에서 0건이었다.
+     한 자리만 내주되, 근거가 확실한 것에만 준다(아래 SCAN_RESERVE_MIN) — 스캔 몇 번은
+     정찰이 아니라 그냥 탐지다. */
+  const EXTRA_SLOTS = { cause: 2, tech: 2, clash: CLASH_BEATS_MAX - 1, mass: 1, scout: 1 } as const;
   type Reserve = keyof typeof EXTRA_SLOTS;
-  const extraUsed: Record<Reserve, number> = { cause: 0, tech: 0, clash: 0, mass: 0 };
+  const extraUsed: Record<Reserve, number> = { cause: 0, tech: 0, clash: 0, mass: 0, scout: 0 };
   /** 예약 없이 들어간 수 — 예약석은 갈래마다 따로 세야 한다. 예전엔 chosen.length로
    *  방을 쟀는데, 갈래가 둘이 되면 한쪽이 쓴 예약석이 다른 쪽 방까지 먹어 버린다. */
   let plain = 0;
@@ -3258,12 +3290,18 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     if (b.k !== "tech" || (typeof b.p?.n === "number" ? b.p.n : 0) < TECH_RESERVE_MIN_USES) continue;
     consider(b, false, "tech");
   }
-  // 4차: 물량 예약석 — 파워 OO와 물량 중 무거운 쪽 하나만 태운다(위 EXTRA_SLOTS 주석).
+  // 4차: 정찰 예약석 — 판을 훑어본 스캔에만(위 EXTRA_SLOTS 주석).
+  for (const b of ranked) {
+    if (b.k !== "vision" || b.p?.unit !== "Scanner Sweep") continue;
+    if ((typeof b.p?.n === "number" ? b.p.n : 0) < SCAN_RESERVE_MIN) continue;
+    if (consider(b, false, "scout")) break;
+  }
+  // 5차: 물량 예약석 — 파워 OO와 물량 중 무거운 쪽 하나만 태운다(위 EXTRA_SLOTS 주석).
   for (const b of ranked) {
     if (b.k !== "power-unit" && b.k !== "mass-army") continue;
     if (consider(b, false, "mass")) break;
   }
-  // 5차: 큰 교전 예약석(요청: 큰 교전이 여러 번이면 여러 번 나오는 게 맞다) — 그 판의 절정
+  // 6차: 큰 교전 예약석(요청: 큰 교전이 여러 번이면 여러 번 나오는 게 맞다) — 그 판의 절정
   // 하나는 0차에서 이미 들어갔고, 여기서 태우는 건 그에 견줄 만한(CLASH_EXTRA_SHARE) 다른
   // 싸움들이다. 자리 다툼에서 정상적으로 이겼으면 이미 들어가 있어 예약분을 안 쓴다.
   for (const b of ranked) {
@@ -3492,6 +3530,13 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
 /** 큰 교전 문장의 무게 — 그 판의 절정이라 무겁게 잡되, 러시·돌파처럼 '누가 무엇을 했다'가
  *  분명한 이야기보다는 한 단계 아래다. */
 const CLASH_WEIGHT = 14;
+
+/** 스캔을 '정찰했다'고 말할 최소 횟수와, 그 좌표가 누구 집인지 볼 반경(타일).
+ *  위 vision 주석에 실측이 있다. */
+const SCAN_SCOUT_MIN = 8;
+/** 그중 '자리를 보장할 만큼' 판을 훑어본 선 — 실측 테란 225명의 상위 10%가 열두 번이다. */
+const SCAN_RESERVE_MIN = 12;
+const SCAN_BASE_TILES = 18;
 
 /** 화살표 굵기를 재는 창(초) — 그 직전 얼마 동안 뽑은 병력을 '그 무렵의 규모'로 볼 것인가.
  *  급습이 "무엇으로 갔나"를 재는 창(replayTactics의 WENT_WITH_SEC)과 같은 값이라야 자막의
