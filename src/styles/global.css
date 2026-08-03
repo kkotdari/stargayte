@@ -1661,6 +1661,24 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    다른 화면 카드까지 다 각져 버리므로, 이 표 전용 클래스로 네 모서리 전부 0으로 덮는다
    (아래 .scr-stat-table-clip 기본 규칙의 하단 두 모서리도 함께 이긴다). */
 .scr-stats-list-panel-v2 .scr-stat-table-clip { border-radius: 0; }
+/* 필터를 바꿔 새로 받는 동안(요청: 다 불러온 뒤 한 번에 짠 하고) — 지금 그려 둔 표를
+   그대로 둔 채 살짝 흐리게만 하고, 새 값이 다 도착하면 통째로 갈아 끼운다. 중간에 값이
+   하나씩 바뀌는 그림을 안 보여주는 것이 요점이라, 여기서는 '기다리는 중'이라는 표시만
+   맡는다. 표를 못 누르게 막아 두는 이유는 지금 보이는 값이 곧 사라질 값이어서다 —
+   그 숫자를 눌러 연 상세는 다음 순간의 조건과 어긋난다. */
+.scr-stats-list-panel-v2 { position: relative; }
+.scr-stats-list-panel-busy { pointer-events: none; }
+.scr-stats-list-panel-busy .scr-stat-table-clip, .scr-stats-list-panel-busy .scr-empty {
+  opacity: 0.45; transition: opacity .15s;
+}
+.scr-stats-list-busy-mark {
+  position: absolute; inset: 0; z-index: 3;
+  display: flex; align-items: flex-start; justify-content: center;
+  padding-top: 40px; pointer-events: none;
+}
+/* 표가 화면보다 길 때 스피너가 위쪽에만 붙어 있으면 아래를 보고 있는 사람에게는 안 보인다 —
+   보이는 자리에 따라오게 한다(sticky는 이 절대배치 안에서도 스크롤 컨테이너를 따른다). */
+.scr-stats-list-busy-mark > * { position: sticky; top: 40vh; }
 /* 라이트에서 표 바깥 경계가 배경에 묻히는 문제(지적) — 피드 카드와 같은 처방으로,
    얇은 림 1px + 아주 옅은 그림자 한 겹. 이 요소는 overflow:hidden이지만 그건 자기
    자식만 자르므로 자기 그림자는 그대로 밖에 그려진다. */

@@ -16,7 +16,7 @@ import { monthInputToRange, shiftMonthValue, currentMonthValue, monthLabel } fro
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import { usePageBackground } from "../../hooks/usePageBackground";
 import { cx } from "../../utils/format";
-import type { BaseRace, GameType, Member, MemberStats, MemberStatsEntry } from "../../types";
+import type { BaseRace, GameResultStatsResponse, GameType, Member, MemberStats, MemberStatsEntry } from "../../types";
 
 // 필터 셋은 이제 그리드 제목을 이루는 문장의 낱말이다(요청: "7월 개인전 전체종족"
 // 형태로 각각을 드롭다운으로) — 라벨도 문장 안에서 그대로 읽히는 말로 적는다("전체"가
@@ -193,76 +193,122 @@ export default function StatsScreenV2() {
       // 클라이언트가 종족별로 갈라낼 수 없다. 안 넘기면 종족을 골라도 포인트만 전체
       // 종족 기준으로 남아 표 안에서 기준이 어긋난다(지적).
       race,
+      // 기간 자체도 함께 담는다 — 값은 위 dateFrom/dateTo에 이미 들어 있지만, 받아 온
+      // 한 장(StatsView)이 '어느 달의 값인가'를 스스로 알고 있어야 메달·순위변동을
+      // 그 달 기준으로 그린다(아래 view 주석).
+      period,
       prevFrom: prevRange.from, prevTo: prevRange.to,
       memberIds: matchedMembers.map((m) => m.id).sort().join(","),
     }),
-    [effectiveFrom, effectiveTo, prevRange, matchType, race, matchedMembers],
+    [effectiveFrom, effectiveTo, prevRange, matchType, race, period, matchedMembers],
   );
   const queryKeySignature = useMemo(() => JSON.stringify(queryKey), [queryKey]);
   const debouncedSignature = useDebouncedValue(queryKeySignature, 300);
   const debouncedQuery = useMemo(() => JSON.parse(debouncedSignature) as typeof queryKey, [debouncedSignature]);
 
-  const [statsByMember, setStatsByMember] = useState<Record<string, MemberStatsEntry>>({});
-  const [loading, setLoading] = useState(true);
+  /* 화면이 그리는 '한 장' — 조건과 그 조건으로 받은 값이 한 몸이다.
+     예전에는 조건(기간·종족)은 state로 따로 있고 통계는 통계대로, 전달 통계는 또 그것대로
+     따로 들어왔다. 그래서 필터를 바꾸면 화면이 중간 단계를 그대로 내보였다(지적):
+       - 기간만 먼저 바뀌고 통계는 아직 지난 조건 것이라, 끝난 달에만 붙는 메달이 엉뚱한
+         값으로 매겨졌다("알 수 없는 순위 배지").
+       - 본 통계가 먼저 도착해 포인트·랭크가 한 번 바뀌고, 몇백 ms 뒤 전달 통계가 도착해
+         순위 변동(▲2·신규)이 또 한 번 바뀌었다.
+     이제 한 장을 통째로 갈아 끼운다 — 두 조회가 다 끝난 뒤 한 번만 그린다(요청).
+     메달·순위변동·종족 고르기까지 전부 이 안의 값으로만 계산하므로, 조건과 값이 어긋난
+     그림이 애초에 만들어지지 않는다. */
+  interface StatsView {
+    /** 이 한 장을 만든 조건(debouncedSignature) — 지금 조건과 다르면 갱신 중이라는 뜻이다. */
+    key: string;
+    race: BaseRace | "all";
+    /** "YYYY-MM", '전체 기간'이면 빈 문자열. */
+    periodMonth: string;
+    period: string;
+    /** 이 조건으로 물어본 회원들 — 검색으로 걸러진 목록도 한 장 안에 함께 얼어 있다. */
+    memberIds: string[];
+    stats: Record<string, MemberStatsEntry>;
+    /** 전달 같은 조건의 통계 — 포인트 옆 순위 변동(▲2)의 기준선이다.
+     *
+     *  피드의 '랭크 변동 스냅샷'과는 다른 이야기다(지적): 저쪽은 "직전 순위표 대비 방금
+     *  무엇이 바뀌었나"이고, 이쪽은 "지난달 순위와 견주면 지금 몇 계단인가"다. 그래서
+     *  스냅샷을 갖다 쓰지 않고, 조회할 때 그 달 통계를 한 번 더 받아 직접 계산한다.
+     *  '전체 기간'을 보고 있으면 견줄 '전달'이 없어 아예 안 부른다. */
+    prev: Record<string, MemberStatsEntry>;
+  }
+  const [view, setView] = useState<StatsView | null>(null);
   const [error, setError] = useState("");
-  // 전달 같은 조건의 통계 — 포인트 옆 순위 변동(▲2)의 기준선이다.
-  //
-  // 피드의 '랭크 변동 스냅샷'과는 다른 이야기다(지적): 저쪽은 "직전 순위표 대비 방금
-  // 무엇이 바뀌었나"이고, 이쪽은 "지난달 순위와 견주면 지금 몇 계단인가"다. 그래서
-  // 스냅샷을 갖다 쓰지 않고, 조회할 때 그 달 통계를 한 번 더 받아 직접 계산한다.
-  // '전체 기간'을 보고 있으면 견줄 '전달'이 없어 아예 안 부른다.
-  const [prevStatsByMember, setPrevStatsByMember] = useState<Record<string, MemberStatsEntry>>({});
+  /** 아직 한 장도 못 그렸나 / 새 조건의 한 장을 기다리는 중인가. */
+  const firstLoad = view === null;
+  const refreshing = view !== null && view.key !== debouncedSignature;
 
   useEffect(() => {
     const memberIds = debouncedQuery.memberIds ? debouncedQuery.memberIds.split(",") : [];
-    if (memberIds.length === 0) { setStatsByMember({}); setLoading(false); return; }
+    const blank = {
+      key: debouncedSignature,
+      race: debouncedQuery.race,
+      periodMonth: debouncedQuery.period === PERIOD_ALL ? "" : debouncedQuery.period,
+      period: debouncedQuery.period,
+      memberIds,
+    };
+    if (memberIds.length === 0) { setView({ ...blank, stats: {}, prev: {} }); return; }
     let cancelled = false;
-    setLoading(true);
     setError("");
-    api.getGameResultStats({
+    const byId = (res: GameResultStatsResponse) => {
+      const map: Record<string, MemberStatsEntry> = {};
+      res.members.forEach((entry) => { map[entry.memberId] = entry; });
+      return map;
+    };
+    const mine = api.getGameResultStats({
       memberIds,
       dateFrom: debouncedQuery.dateFrom,
       dateTo: debouncedQuery.dateTo,
       matchType: debouncedQuery.matchType,
       race: debouncedQuery.race,
-    }).then((res) => {
-      if (cancelled) return;
-      const map: Record<string, MemberStatsEntry> = {};
-      res.members.forEach((entry) => { map[entry.memberId] = entry; });
-      setStatsByMember(map);
-    }).catch((e) => {
-      if (cancelled) return;
-      setError(e instanceof Error ? e.message : "통계를 불러오지 못했어요.");
-    }).finally(() => {
-      if (!cancelled) setLoading(false);
     });
-    // 전달 순위 기준선 — 본 조회와 따로 간다. 실패하면 화살표만 안 나오고 표는 그대로다.
-    if (debouncedQuery.prevFrom) {
-      api.getGameResultStats({
+    // 전달 기준선은 없어도 표는 그대로다 — 실패하면 화살표만 안 나온다. 그래도 기다렸다가
+    // 함께 그린다: 늦게 도착해 순위 변동만 뒤늦게 뜨는 것이 바로 지적받은 그림이다.
+    const before = debouncedQuery.prevFrom
+      ? api.getGameResultStats({
         memberIds,
         dateFrom: debouncedQuery.prevFrom,
         dateTo: debouncedQuery.prevTo,
         matchType: debouncedQuery.matchType,
         race: debouncedQuery.race,
-      }).then((res) => {
-        if (cancelled) return;
-        const map: Record<string, MemberStatsEntry> = {};
-        res.members.forEach((entry) => { map[entry.memberId] = entry; });
-        setPrevStatsByMember(map);
-      }).catch(() => { if (!cancelled) setPrevStatsByMember({}); });
-    } else {
-      setPrevStatsByMember({});
-    }
+      }).catch(() => null)
+      : Promise.resolve(null);
+    Promise.all([mine, before]).then(([res, prevRes]) => {
+      if (cancelled) return;
+      setView({ ...blank, stats: byId(res), prev: prevRes ? byId(prevRes) : {} });
+    }).catch((e) => {
+      if (cancelled) return;
+      setError(e instanceof Error ? e.message : "통계를 불러오지 못했어요.");
+      // 조건이 바뀌었는데 새 값을 못 받았으면 옛 값을 그대로 두지 않는다 — 그게 바로
+      // '조건과 값이 어긋난 그림'이다. 빈 한 장으로 갈아 끼우고 오류 문구를 함께 보여준다.
+      setView({ ...blank, stats: {}, prev: {} });
+    });
     return () => { cancelled = true; };
-  }, [debouncedQuery]);
+  }, [debouncedQuery, debouncedSignature]);
 
   // 지금 몇 위인가 — 규칙은 rankOrder.ts에 있다(순위변동 모달이 달마다 같은 계산을
   // 다시 해야 해서 밖으로 뺐다). 표의 정렬(sort)과는 무관하다 — 순위는 정렬을 바꿔도
   // 그 사람의 순위 그대로여야 한다.
-  const rankPool = useMemo(() => matchedMembers.map((m) => m.id), [matchedMembers]);
+  /* 표에 늘어놓을 회원 — 지금 검색 결과(matchedMembers)가 아니라 '받아 온 한 장'이 물어본
+     회원들이다. 검색어도 조회 조건이라, 새 결과가 오기 전에 목록만 먼저 바뀌면 그 사람들
+     자리에 남의 통계가 잠깐 앉는다. 이름·아바타는 늘 지금 것으로 읽는다(회원 정보가 바뀌면
+     표도 바로 따라간다) — 얼려 두는 것은 '누구를 보여줄까'뿐이다. */
+  const viewMembers = useMemo(() => {
+    if (!view) return [];
+    const byId = new Map(members.map((m) => [m.id, m]));
+    return view.memberIds.map((id) => byId.get(id)).filter((m): m is Member => m !== undefined);
+  }, [view, members]);
+
+  /** 지금 표에 그려져 있는 한 장의 기간 — 칸 이름·순위변동처럼 '보이는 값'을 설명하는
+   *  자리에는 지금 고른 기간(periodMonth)이 아니라 이 값을 쓴다. */
+  const shownMonth = view?.periodMonth ?? "";
+
+  const rankPool = useMemo(() => view?.memberIds ?? [], [view]);
   const rankByMember = useMemo(
-    () => rankOf(statsByMember, rankPool),
-    [rankPool, statsByMember],
+    () => rankOf(view?.stats ?? {}, rankPool),
+    [rankPool, view],
   );
   // 전달 대비 몇 계단 움직였나(+면 상승, 요청) — 같은 규칙으로 전달 순위를 매겨 뺀다.
   // 지난달에 순위가 없던 사람(그 달에 안 뛴 사람)은 "new"로 표시한다(요청: "월간 랭크
@@ -270,24 +316,25 @@ export default function StatsScreenV2() {
   // 견줄 전달 데이터를 안 받으므로(prevStatsByMember 조회 자체를 건너뜀) periodMonth로
   // 한 번 더 막는다 — 안 막으면 누구나 "신규"로 보인다.
   const rankDeltaByMember = useMemo(() => {
-    const prevRank = rankOf(prevStatsByMember, rankPool);
+    const prevRank = rankOf(view?.prev ?? {}, rankPool);
     const out = new Map<string, number | "new">();
     for (const [id, now] of rankByMember) {
       const before = prevRank.get(id);
       if (before === undefined) {
-        if (periodMonth) out.set(id, "new");
+        if (view?.periodMonth) out.set(id, "new");
         continue;
       }
       if (before === now) continue;
       out.set(id, before - now);
     }
     return out;
-  }, [rankByMember, prevStatsByMember, rankPool, periodMonth]);
+  }, [rankByMember, view, rankPool]);
 
   const cards = useMemo(() => {
-    const list = matchedMembers.map((m) => {
-      const entry = statsByMember[m.id];
-      const stats = race === "all" ? (entry?.overall ?? EMPTY_STATS) : (entry?.byRace[race] ?? EMPTY_STATS);
+    const shown = view?.race ?? "all";
+    const list = viewMembers.map((m) => {
+      const entry = view?.stats[m.id];
+      const stats = shown === "all" ? (entry?.overall ?? EMPTY_STATS) : (entry?.byRace[shown] ?? EMPTY_STATS);
       // 포인트(랭크 점수) — 이 기간·유형에 한 판도 안 뛰었으면 null → "-"(최소 게임수는
       // 안 따진다. 백엔드 _apply_rank_order 주석 참고).
       const points = entry?.rankScore != null ? Math.round(entry.rankScore) : null;
@@ -382,7 +429,7 @@ export default function StatsScreenV2() {
     }
     sorted.sort(tiebreakChain(sort.key as DataKey));
     return sorted;
-  }, [matchedMembers, statsByMember, sort, race, rankByMember]);
+  }, [viewMembers, view, sort, rankByMember]);
 
 
   /* 이미 끝난 달을 볼 때는 각 칸의 1·2·3위에 메달을 붙인다(요청) — 그 달의 성적은 더
@@ -393,14 +440,17 @@ export default function StatsScreenV2() {
      (표본 미달·기록 없음)은 애초에 후보에서 뺀다. 같은 값이면 같은 메달을 나눠 갖는다. */
   const medalByMember = useMemo(() => {
     const out = new Map<string, StatColumnMedals>();
-    if (period === PERIOD_ALL || period >= currentMonthValue()) return out;
+    // 기간·종족도 지금 고른 값이 아니라 '받아 온 한 장'의 값으로 본다 — 값보다 조건이 먼저
+    // 바뀌면 지난달 통계에 이번 달 잣대로 메달이 붙는다(지적: 알 수 없는 순위 배지).
+    if (!view || view.period === PERIOD_ALL || view.period >= currentMonthValue()) return out;
+    const shown = view.race;
     const pool = members
       .filter((m) => m.status !== "withdrawn" && m.status !== "suspended")
       .map((m) => {
-        const entry = statsByMember[m.id];
-        const stats = race === "all"
+        const entry = view.stats[m.id];
+        const stats = shown === "all"
           ? (entry?.overall ?? EMPTY_STATS)
-          : (entry?.byRace[race] ?? EMPTY_STATS);
+          : (entry?.byRace[shown] ?? EMPTY_STATS);
         return {
           id: m.id, stats,
           points: entry?.rankScore != null ? Math.round(entry.rankScore) : null,
@@ -426,7 +476,7 @@ export default function StatsScreenV2() {
     give("apm", (c) => c.stats.avgApm);
     give("cmd", (c) => c.stats.avgCmd);
     return out;
-  }, [members, statsByMember, race, period]);
+  }, [members, view]);
 
   const maxOverallPlays = useMemo(
     () => Math.max(1, ...cards.map((c) => c.stats.plays)), [cards],
@@ -510,16 +560,22 @@ export default function StatsScreenV2() {
 
       {error && <div className="scr-err">{error}</div>}
 
-      <div className="scr-stats-list-panel-v2">
-        {/* 첫 로딩 때는 통계가 아직 없어 모든 회원의 게임수가 0 → 닉네임순으로 잠깐 정렬됐다가,
-            데이터가 도착하면 게임수순으로 재정렬되며 목록이 튀는 문제가 있었다(신고). 통계가
-            한 번도 안 들어온 상태(statsByMember 비어 있음)에서는 목록 대신 스피너만 보여줘서
-            그 중간 단계(닉네임순 배치)를 화면에 노출하지 않는다. 필터를 바꿔 재조회할 때는
-            이전 통계가 남아 있어 목록을 계속 보여준 채 갱신된다. */}
-        {loading && Object.keys(statsByMember).length === 0 ? (
+      {/* 표는 늘 '완성된 한 장'만 그린다(요청: 데이터를 다 불러온 뒤 한 번에 짠 하고).
+          첫 로딩 때는 통계가 아직 없어 모든 회원의 게임수가 0 → 닉네임순으로 잠깐 정렬됐다가
+          데이터가 도착하면 재정렬되며 목록이 튀었다(신고) — 그래서 한 장도 없을 때는 스피너만
+          보여준다. 필터를 바꿔 다시 받는 동안에는 지금 그려 둔 한 장을 그대로 둔 채 살짝
+          흐리게만 하고, 새 값이 다 도착하면 통째로 갈아 끼운다 — 조건만 먼저 바뀌어 옛 값에
+          새 잣대가 씌워지는 그림(엉뚱한 메달·뒤늦게 뜨는 순위 변동)이 여기서 사라진다. */}
+      <div className={cx("scr-stats-list-panel-v2", refreshing && "scr-stats-list-panel-busy")}>
+        {refreshing && (
+          <div className="scr-stats-list-busy-mark" aria-hidden><Spinner size={18} /></div>
+        )}
+        {firstLoad ? (
           <div className="scr-empty"><Spinner size={18} /></div>
         ) : cards.length === 0 ? (
-          <div className="scr-empty">조건에 맞는 회원이 없어요.</div>
+          // 못 받아 온 것과 받아 보니 없는 것은 다른 말이다 — 오류 문구가 이미 위에 있으면
+          // "조건에 맞는 회원이 없어요"를 겹쳐 놓지 않는다.
+          error ? null : <div className="scr-empty">조건에 맞는 회원이 없어요.</div>
         ) : (
           <div className="scr-stat-table-clip">
             <div className="scr-stat-table scr-scroll">
@@ -535,14 +591,16 @@ export default function StatsScreenV2() {
                 <SortableHead label="유저" sortKey="name" sort={sort} onToggle={toggleSort} className="scr-stat-name-head" />
                 {/* 랭크와 포인트는 별개의 칸이다(요청) — 이름도 지금 걸린 기간을 그대로
                     말한다: 전체 기간이면 "누적", 한 달이면 "월간". */}
+                {/* 칸 이름도 지금 고른 기간이 아니라 '지금 그려져 있는 한 장'의 기간을 말한다 —
+                    표는 아직 지난 조건의 값인데 이름만 먼저 바뀌면 그것도 어긋난 그림이다. */}
                 <SortableHead
-                  label={periodMonth ? "월간 랭크" : "누적 랭크"} sortKey="rank" sort={sort} onToggle={toggleSort}
-                  tooltip={periodMonth
+                  label={shownMonth ? "월간 랭크" : "누적 랭크"} sortKey="rank" sort={sort} onToggle={toggleSort}
+                  tooltip={shownMonth
                     ? "이 달 이 분류·종족에서 포인트로 매긴 순위. 완전 동률이면 공동순위예요. 한 판도 안 뛰었으면 '-'고, 옆의 ▲▼는 전달 대비 몇 계단 움직였는지예요. 숫자를 누르면 최근 다섯 달 순위변동 그래프가 열려요."
                     : "전체 기간 누적 포인트로 매긴 순위. 완전 동률이면 공동순위예요. 한 판도 안 뛰었으면 '-'예요. 견줄 전달이 없어 변동과 순위변동 그래프는 달을 골랐을 때만 나와요."}
                 />
                 <SortableHead
-                  label={periodMonth ? "월간 포인트" : "누적 포인트"} sortKey="points" sort={sort} onToggle={toggleSort}
+                  label={shownMonth ? "월간 포인트" : "누적 포인트"} sortKey="points" sort={sort} onToggle={toggleSort}
                   tooltip="랭크 포인트 — 이 기간·분류의 경기들로 산정한 레이팅 점수. 최소 게임수를 안 따져요. 컴퓨터·비회원이 한 명이라도 낀 경기는 0점이에요 — 견줄 실력치가 없는 상대라 점수가 오르내릴 근거가 없어요. 숫자를 누르면 경기 이력이 열려요."
                 />
                 <SortableHead label="게임수" sortKey="plays" sort={sort} onToggle={toggleSort} />
@@ -569,7 +627,7 @@ export default function StatsScreenV2() {
                   rank={rankByMember.get(c.member.id) ?? null}
                   rankDelta={rankDeltaByMember.get(c.member.id) ?? null}
                   onPointsClick={() => setPointMember(c.member)}
-                  onRankClick={periodMonth ? () => setTrendMember(c.member) : undefined}
+                  onRankClick={shownMonth ? () => setTrendMember(c.member) : undefined}
                   medals={medalByMember.get(c.member.id)}
                   compact
                   maxOverallPlays={maxOverallPlays}
@@ -596,11 +654,11 @@ export default function StatsScreenV2() {
 
       {/* 순위변동 — 최근 다섯 달의 순위를 그린다(요청). 순위는 그 달 표 전체에서 나오는
           값이라 회원 목록(rankPool)을 통째로 넘겨 화면과 같은 규칙으로 다시 매긴다. */}
-      {trendMember && periodMonth && (
+      {trendMember && shownMonth && (
         <RankTrendModal
           member={trendMember}
           memberIds={rankPool}
-          month={periodMonth}
+          month={shownMonth}
           matchType={matchType}
           race={race}
           onClose={() => setTrendMember(null)}
