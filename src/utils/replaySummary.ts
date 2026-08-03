@@ -2588,6 +2588,28 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
      없다 — 옮겨 간 자리가 팀원의 시작 구역이라 걸렸다). 옛 오판은 그 뒤에 들어온 두 관문
      (본진 생산 급감 + 실제로 그 집까지 밀고 들어온 상대)이 이미 막고 있으므로, 여기서는
      상대 자리만 본다. */
+  /** 옮겨 앉은 자리 — 그 구역의 '시작 지점'이 아니라 그 사람이 실제로 건물을 세운 자리다.
+   *
+   *  지적: 이사 간 자리는 저긴데 아바타가 엉뚱한 곳에 나온다. 이사 판정은 구역 단위로
+   *  하므로(relocations가 돌려주는 것도 구역 번호다) 지금까지 그 구역의 시작 지점을 그대로
+   *  아바타 자리로 썼는데, 빠른무한처럼 시작 지점에 바로 못 짓는 맵에서는 실제 살림이 그
+   *  자리에서 여러 타일 떨어져 앉는다(실측: 시작 지점 ↔ 그 자리에 지은 홀이 중앙 6.9타일).
+   *  그래서 옮겨 간 뒤 그 구역에 세운 건물들의 한가운데를 쓴다 — 그림에서 트럭이 멈추는
+   *  자리도, 아바타가 서는 자리도 그곳이라야 자막과 맞는다. 건물을 못 읽었으면 예전처럼
+   *  시작 지점으로 물러선다. */
+  const movedHome = (
+    p: ParsedReplayPlayer, spot: number, at: number,
+  ): [number, number] => {
+    const there = (p.signals?.buildPositions ?? []).filter(
+      (b) => b.frame !== null && b.frame >= at
+        && spotAt(b, mapSpots, spotRadiiAll) === spot,
+    );
+    if (there.length === 0) return [round1(mapSpots[spot][0]), round1(mapSpots[spot][1])];
+    const cx = there.reduce((n, b) => n + b.x, 0) / there.length;
+    const cy = there.reduce((n, b) => n + b.y, 0) / there.length;
+    return [round1(cx), round1(cy)];
+  };
+
   const moveList = new Map<string, [number, number, number][]>();
   /** 그 이사를 누가 만들었나 — 문장에서 "누구에게 내주고 옮겼는지"를 말하는 데 쓴다. */
   const moveBy = new Map<string, string>();
@@ -2601,9 +2623,10 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
       ? (frame) => pushersOn(p, foes, Math.max(0, frame - pushWindow), frame)[0] ?? null
       : undefined);
     if (m.length > 0) {
-      moveList.set(p.rawName, m.map((x) => (
-        [round1(mapSpots[x.spot][0]), round1(mapSpots[x.spot][1]), x.at] as [number, number, number]
-      )));
+      moveList.set(p.rawName, m.map((x) => {
+        const at = movedHome(p, x.spot, x.at);
+        return [at[0], at[1], x.at] as [number, number, number];
+      }));
       if (m[0].by) moveBy.set(p.rawName, m[0].by);
     }
   }
