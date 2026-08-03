@@ -329,7 +329,7 @@ export default function ReplayBatchButton() {
         {running ? (
           <button
             type="button"
-            className="scr-btn scr-btn-primary scr-admin-panel-batch-stop"
+            className="scr-btn scr-btn-primary"
             onClick={() => { abortRef.current = true; }}
           >
             <Spinner /> 중단
