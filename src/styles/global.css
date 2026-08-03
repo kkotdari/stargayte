@@ -7511,6 +7511,14 @@ html.scr-light-theme .scr-feed-card-comment .scr-comment-mention { color: #1d4ed
    둘 다 4.1:1(굵은 글씨라 충분하다). 한 색이 두 배경에서 낼 수 있는 최댓값이다. */
 .scr-sum-team1 { color: #2475cc; }
 .scr-sum-team2 { color: #cf3f55; }
+/* 다만 미니맵 위 자막에서는 그림과 같은 팀 색을 쓴다(요청) — 같은 화면에서 아바타 테두리와
+   화살표는 #2b9bff/#ff4d68인데 그 아래 문장의 이름만 다른 파랑·다른 빨강이면, 색이 편을
+   가리키는 표시라는 약속이 그 자리에서 깨진다. 자막판이 어두운 덕에(위 0.45) 대비도 오히려
+   이쪽이 낫다 — 회색 지형에서 1.68 → 3.64:1.
+   미니맵이 없는 경기의 요약 전문(.scr-game-result-trow-summary)은 카드 바탕에 그대로 놓여
+   라이트/다크를 다 견뎌야 하므로 위의 두 색을 그대로 쓴다. */
+.scr-story-cap .scr-sum-team1 { color: #2b9bff; }
+.scr-story-cap .scr-sum-team2 { color: #ff4d68; }
 
 
 /* 라벨(무엇인지)이 앞, 시간이 바로 옆(요청) — 라벨이 주, 시간은 흐리게 보조. */
@@ -8648,7 +8656,11 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   /* 불투명도를 낮춘다(요청) — 판을 완전히 덮기보다 지형이 비쳐 보이는 정도로만 깐다.
      글자 자체의 검은 테(위 text-shadow)가 대비를 이미 맡고 있어, 이 배경은 밝은 지형에서
      글자가 뜨는 것만 막아 주면 된다. */
-  background: rgba(0, 0, 0, 0.28); border-radius: 10px; padding: 6px 14px;
+  /* 0.28 → 0.45(실측) — 이름에 미니맵과 같은 팀 색을 쓰게 되면서(아래 .scr-story-cap의
+     .scr-sum-team*) 그 색이 앉을 바탕이 필요해졌다. 밝은 초록 지형(빠른무한 계열) 위
+     0.28에서는 파랑 이름이 1.83:1이라 사실상 안 읽혔다. 0.45면 회색 지형에서 3.64:1,
+     본문 흰 글씨는 7.84 → 10.58:1이 된다. 더 올리면 '지형이 비쳐 보이는' 성질을 잃는다. */
+  background: rgba(0, 0, 0, 0.45); border-radius: 10px; padding: 6px 14px;
   /* 안 보이는 문장도 자리는 차지해야 한다(그래서 display:none이 아니라 visibility) —
      칸 높이를 가장 긴 문장이 정하게 하는 것이 이 방식의 핵심이다. */
   visibility: hidden;
