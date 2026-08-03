@@ -3189,8 +3189,10 @@ function expansionsIn(players: ParsedReplayPlayer[], from: number, to: number): 
 
 /** 병력이 앞선 채로 그냥 흘려보낸 대목 — 없으면 null.
  *
- *  창을 훑으며 '차이가 가장 벌어졌는데 안 들어간' 한 자리만 고른다. 여러 번 있을 수
- *  있지만 요약은 한 줄이면 충분하고, 가장 벌어진 자리가 곧 가장 아까운 자리다. */
+ *  조건을 처음 채운 자리를 고른다. 한때 '차이가 가장 벌어진' 자리를 골랐는데, 그 차이는
+ *  그때까지 뽑은 총량의 차라 시간이 갈수록 저절로 커진다 — 그러니 늘 경기 막판이 뽑혔고,
+ *  정작 놓친 때는 한참 전이었다(지적: 그 경기가 타이밍을 놓친 건 후반이 아니라 초반이다).
+ *  이야기가 되는 자리는 '가장 벌어진 때'가 아니라 '앞서기 시작했는데 안 간 그때'다. */
 function idleLead(
   a: ParsedReplayPlayer[],
   b: ParsedReplayPlayer[],
@@ -3204,7 +3206,6 @@ function idleLead(
   const to = totalFrames - IDLE_TAIL_SEC / SECONDS_PER_FRAME - win;
   if (to <= from) return null;
   const step = 30 / SECONDS_PER_FRAME;
-  let best: { lead: ParsedReplayPlayer[]; behind: ParsedReplayPlayer[]; at: number; gap: number; ratio: number; exp: number } | null = null;
   for (let f = from; f <= to; f += step) {
     const na = armyAt(curves[0], f);
     const nb = armyAt(curves[1], f);
@@ -3215,13 +3216,12 @@ function idleLead(
     const lead = leadIsA ? a : b;
     const behind = leadIsA ? b : a;
     if (ordersIntoFoes(lead, behind, f, f + win) > IDLE_PUSH_MAX) continue;
-    if (best && gap <= best.gap) continue;
-    best = {
+    return {
       lead, behind, at: Math.round(f), gap: Math.round(gap),
       ratio: hi / lo, exp: expansionsIn(behind, f, f + win),
     };
   }
-  return best;
+  return null;
 }
 
 /** 이사 문장의 무게 — 본진을 버리고 다시 편 것은 승부를 가르는 사건이라 무겁게 잡는다.
