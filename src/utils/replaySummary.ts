@@ -1,5 +1,7 @@
 import type { ParsedReplay, ParsedReplayPlayer, ReplayPlayerSignals } from "./replayParser";
-import { pushersOn, scanTactics, producedFrames, windowPeak } from "./replayTactics";
+import {
+  pushersOn, scanTactics, producedFrames, windowPeak, fightersAt, FIGHT_TECHS,
+} from "./replayTactics";
 import {
   hasUpgrade, topUsedTech, topUsedTechs, TECH_RANK, UPGRADE_RANK, UNIT_UPGRADE_TAG, techUseCount, upgradeFrame, upgradeLevel,
   ARMOR_WEAPON_PAIRS, SIGNATURE_UPGRADE_KO, UPGRADE_LINE_KO,
@@ -262,7 +264,7 @@ const CAST_HOT_RADIUS = 20;
 const CAST_HOT_SHARE = 0.4;
 function castHotspot(
   sg: ReplayPlayerSignals, tech: string,
-): { xy: [number, number]; at: number; n: number } | null {
+): { xy: [number, number]; at: number; n: number; frames: number[] } | null {
   const pts = (sg.castPositions ?? []).filter((c) => c.tech === tech);
   if (pts.length === 0) return null;
   let best: typeof pts | null = null;
@@ -273,10 +275,17 @@ function castHotspot(
   if (!best || best.length < Math.ceil(pts.length * CAST_HOT_SHARE)) return null;
   const x = best.reduce((n, o) => n + o.x, 0) / best.length;
   const y = best.reduce((n, o) => n + o.y, 0) / best.length;
-  return { xy: [round1(x), round1(y)], at: Math.min(...best.map((o) => o.frame)), n: best.length };
+  return {
+    xy: [round1(x), round1(y)], at: Math.min(...best.map((o) => o.frame)), n: best.length,
+    // 그 뭉치가 터진 시각들 — '그 무렵 거기서 누구와 싸우고 있었나'를 묻는 창이다(fightersAt).
+    frames: best.map((o) => o.frame),
+  };
 }
 
 const TECH_BASE_WEIGHT = 9;
+/** 그 마법이 실제 교전 한복판에서 터졌을 때 얹는 무게 — 상대 이름과 무엇과 맞붙었는지까지
+ *  말할 수 있는 문장이라, 혼자 연습하듯 쓴 것보다 이야기가 한 단계 위다. */
+const TECH_FIGHT_BONUS = 2;
 const TECH_BEATS_PER_PLAYER = 2;
 /** 이야깃거리가 되는 기술만 문장이 된다 — 시즈(1)·스팀(1)·마인(2)·버로우(2)처럼 늘 나오는
  *  능력은 "썼다"고 말해 봐야 아무 소식이 아니다. */
@@ -800,6 +809,57 @@ function mergeMutual(list: Beat[]): Beat[] {
   return out;
 }
 
+/** '서로 주고받았다'고 말하려면 맞불을 놓은 쪽도 이만큼은 썼어야 한다. */
+const SPELL_TRADE_MIN = 3;
+
+/** 같은 마법을 서로 퍼부은 싸움은 한 문장이다 — 하이템플러 둘이 같은 자리에서 스톰을 27번,
+ *  24번 뿌린 대목을 양쪽에서 한 문장씩 말하면 같은 장면이 두 번 나온다(실측한 8인전에서
+ *  "[Jeong9]가 chris_sje의 하이템플러와 맞붙어 스톰을 27번", "chris_sje가 [Jeong9]의
+ *  하이템플러와 맞붙어 스톰을 24번"이 나란히 섰다). 많이 쓴 쪽을 주어로 남기고 상대의
+ *  횟수를 함께 실어, 문장이 "27번·24번 주고받았다"로 읽히게 한다. */
+function mergeSpellDuels(list: Beat[]): Beat[] {
+  /** 두 좌표가 같은 싸움터라 할 만큼 가까운가 — 둘 다 있어야 견줄 수 있다. */
+  const near = (a: unknown, b: unknown, r: number): boolean => {
+    const ok = (v: unknown): v is [number, number] =>
+      Array.isArray(v) && v.length === 2 && typeof v[0] === "number" && typeof v[1] === "number";
+    return ok(a) && ok(b) && Math.hypot(a[0] - b[0], a[1] - b[1]) <= r;
+  };
+  const spells = list.filter((b) => b.k === "tech" && b.p?.fight === true);
+  const drop = new Set<Beat>();
+  const out = new Map<Beat, Beat>();
+  for (const a of spells) {
+    if (drop.has(a) || out.has(a)) continue;
+    const foe = a.whom?.[0];
+    /* 같은 싸움이었나는 자리로 본다 — 서로를 상대로 짚었다는 것 자체가 이미 시간이
+       겹친다는 뜻이라(fightersAt이 그 창 안에서만 사람을 짚는다), 시각까지 다시 재면
+       오래 이어진 스톰 싸움이 갈라진다(실측: 한 8인전에서 두 뭉치의 시작이 3분 40초
+       벌어져 있었는데 자리는 7타일 차이였다). */
+    const mate = spells.find((b) => b !== a && !drop.has(b) && !out.has(b)
+      && b.who[0] === foe && b.whom?.[0] === a.who[0]
+      && b.p?.tech === a.p?.tech
+      && near(a.p?.xy, b.p?.xy, CAST_HOT_RADIUS));
+    if (!mate) continue;
+    const [keep, gone] = (a.p?.n as number ?? 0) >= (mate.p?.n as number ?? 0)
+      ? [a, mate] : [mate, a];
+    drop.add(gone);
+    const goneN = typeof gone.p?.n === "number" ? gone.p.n : 0;
+    // 한두 번 맞불을 놓은 것은 '주고받았다'가 아니다("15번·1번 퍼부으며 맞섰다"는 사실을
+    // 부풀린 말이다) — 그런 쪽은 수를 말하지 않고 조용히 덜어 내기만 한다.
+    if (goneN < SPELL_TRADE_MIN) continue;
+    out.set(keep, {
+      ...keep,
+      // 이야기의 시점은 그 싸움이 시작된 때다 — 많이 쓴 쪽이 늦게 합류했을 수도 있다.
+      at: [keep.at, gone.at].filter((v): v is number => typeof v === "number")
+        .reduce<number | null>((m, v) => (m === null ? v : Math.min(m, v)), null),
+      // 서로 퍼부은 싸움은 한쪽만 말할 때보다 더 그 판의 장면이다.
+      weight: Math.max(keep.weight, gone.weight) + 2,
+      p: { ...(keep.p ?? {}), vsN: goneN },
+    });
+  }
+  if (drop.size === 0) return list;
+  return list.filter((b) => !drop.has(b)).map((b) => out.get(b) ?? b);
+}
+
 /** 이름을 아는 유닛만 남긴다 — 하나도 없으면 조합을 말할 수 없다. */
 function nameableUnits(units: string[]): string[] {
   return units.filter((u) => UNIT_KO[u]);
@@ -1288,13 +1348,28 @@ function sideBeats(args: {
          시점도 첫 시전이 아니라 그 뭉치가 시작된 때로 잡는다: 문장이 말하는 것도 그림이
          가리키는 것도 그 대목이라, 첫 시전 시각을 쓰면 자막과 그림이 서로 다른 때를 말한다. */
       const hot = castHotspot(sg, t);
+      /* 마법은 혼자 쓰는 게 아니다(지적: 스톰을 지진 경우 거의 100% 적과 교전 중인데 혼자
+         스톰을 쓴 것처럼 묘사돼서 아쉽다) — 그 자리에서 그 무렵 누구와 엉켜 있었는지를
+         찾아 함께 말한다(replayTactics의 fightersAt). 이름이 붙으면 자막이 "누구의 무엇과
+         맞붙어 스톰을 퍼부었다"가 되고, 그림도 두 사람의 화살표가 그 자리에서 부딪친다
+         (GameResultStory의 p.fight). 근거가 없으면 예전처럼 혼자 쓴 대로만 말한다. */
+      const met = hot
+        ? fightersAt({ x: hot.xy[0], y: hot.xy[1] }, hot.frames, other.players)[0]
+        : undefined;
       beats.push({
         // 많이 쓴 마법일수록 그 경기의 그림에 가깝다 — 스톰 스무 번은 그 판의 주인공이고
         // 다섯 번은 곁들인 수다. 고르는 점수(topUsedTechs)와 같은 자로 잰다.
         k: "tech", won, who: who(p),
-        weight: TECH_BASE_WEIGHT + (TECH_RANK[t] ?? 0) + Math.min(3, Math.floor(n / 10)),
+        // 싸움터에서 터진 마법은 그 판의 장면이라 조금 무겁게 친다 — 아무도 없는 데서
+        // 연습하듯 쓴 것과 교전 한복판에서 퍼부은 것은 이야기의 무게가 다르다.
+        weight: TECH_BASE_WEIGHT + (TECH_RANK[t] ?? 0) + Math.min(3, Math.floor(n / 10))
+          + (met ? TECH_FIGHT_BONUS : 0),
         at: hot?.at ?? sg.firstTechUseFrame[t] ?? null,
-        p: { tech: t, n, ...(hot ? { xy: hot.xy } : {}) },
+        ...(met ? { whom: [met.raw] } : {}),
+        p: {
+          tech: t, n, ...(hot ? { xy: hot.xy } : {}),
+          ...(met ? { fight: true, ...(met.units.length > 0 ? { vs: met.units } : {}) } : {}),
+        },
       });
     }
   }
@@ -2328,7 +2403,7 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     return out;
   })();
 
-  const sideAll: Beat[] = [
+  const sideAll: Beat[] = mergeSpellDuels([
     ...sideBeats({
       side: winner, other: loser, players: winnerPlayers,
       won: true, sec, totalFrames, pressedEarly: false,
@@ -2337,7 +2412,7 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
       side: loser, other: winner, players: loserPlayers,
       won: false, sec, totalFrames, pressedEarly,
     }),
-  ];
+  ]);
 
   // 같은 방어 건물을 두 문장이 나눠 세지 않게 한 쪽으로 몰아준다. 누가 무엇을 몇 개
   // 지었나는 세 곳에서 말할 수 있다 — 뚫렸다(breakthrough)·지어서 막았다(defense)·
@@ -3430,12 +3505,10 @@ const CLASH_HOLD_RATIO = 2;
 /** 그래도 이만큼은 남아 있어야 '지켰다'고 말한다 — 둘 다 물러난 자리에서 한둘 차이로
  *  승패를 가르면 그건 근거가 아니라 잡음이다. */
 const CLASH_HOLD_MIN = 6;
-/** 교전으로 세는 마법 — 병력끼리 엉켰을 때만 쓰는 것들이다. 스캔·마인 심기처럼 혼자
- *  하는 것은 뺀다. */
-const CLASH_TECHS = new Set([
-  "Psionic Storm", "Dark Swarm", "Plague", "Irradiate", "EMP Shockwave", "Stasis Field",
-  "Maelstrom", "Ensnare", "Lockdown", "Disruption Web", "Spawn Broodlings", "Yamato Gun",
-]);
+/** 교전으로 세는 마법 — 병력끼리 엉켰을 때만 쓰는 것들이다(replayTactics의 FIGHT_TECHS).
+ *  '이 자리에서 누구와 싸우고 있었나'를 묻는 쪽과 같은 목록을 써야 두 판정이 어긋나지
+ *  않는다. */
+const CLASH_TECHS = FIGHT_TECHS;
 
 /** 그 경기에서 가장 크게 부딪친 때와 자리 — 없으면 null.
  *

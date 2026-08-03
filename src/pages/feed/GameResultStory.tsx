@@ -606,7 +606,11 @@ export default function GameResultStory({
          제 본진 바로 옆에 붙어 있었고, 커널 화살표는 자막이 부른 타센 쪽으로 가다 중간에
          멈췄다). 자막이 부른 상대가 있으면 그 사람 집이 목표다 — 출발 자리는 아래에서
          회오리·구멍 이모지로 따로 표시한다. */
-      if (WARP_BEAT_KEYS.has(b.k) && namedFoe) {
+      /* 다만 '싸우고 있는 자리에 부은' 리콜은 다르다(p.fight — replayTactics의 리콜 주석):
+         제 진영을 지키러 부른 것이거나 한복판 싸움에 병력을 쏟아 넣은 것이라, 상대 집을
+         가리키면 화살표가 자막과 정반대 방향으로 뻗는다. 그런 리콜은 아래 좌표 갈래로
+         내려가 그 싸움터를 가리키고, 상대 화살표도 같은 점으로 모인다. */
+      if (WARP_BEAT_KEYS.has(b.k) && namedFoe && b.p?.fight !== true) {
         const to = homeOf(namedFoe);
         /* 도착 자리를 정확히 아는 경우 — 상대 진영에 뚫은 커널의 좌표(replayTactics의
            nydus)다. 그 사람 진영 안쪽일 때만 쓴다: 자막이 부른 사람과 다른 곳에 찍힌
@@ -857,8 +861,18 @@ export default function GameResultStory({
         ? (Array.isArray(b.who2) ? b.who2 : typeof b.who2 === "string" ? [b.who2] : [])
         : byAttacker;
       const actors = who;
-      for (const raw of [...actors, ...helpers]) {
-        if (victims.has(raw)) continue;
+      /* 그 자리에서 맞붙은 상대(p.fight) — 마법도 리콜도 혼자 한 일이 아니다(지적: 스톰을
+         지진 경우 거의 100% 적과 교전 중인데 혼자 쓴 것처럼 묘사된다. 그 순간 교전 데이터를
+         찾아 화살표 2개가 부딪히게). 요약이 그 자리에서 실제로 싸우고 있던 사람을 whom으로
+         실어 주므로(replayTactics의 fightersAt), 그 사람도 같은 점으로 화살표를 낸다.
+         당한 사람으로 걸러지면 안 되는 유일한 whom이다 — 마주 싸운 쪽이라 화살표가 있다. */
+      // 그 싸움터의 좌표가 있어야 그릴 수 있는 화살표다 — 좌표를 못 믿는 옛 요약에서는
+      // 상대 쪽 화살표가 엉뚱한 방향(제 집 → 상대 집)으로 뻗으므로 아예 안 그린다.
+      const fightFoes = b.p?.fight === true && posTrusted && Array.isArray(b.p?.xy)
+        ? (b.whom ?? []).filter((v) => !actors.includes(v)) : [];
+      for (const raw of [...actors, ...helpers, ...fightFoes]) {
+        const inFight = fightFoes.includes(raw);
+        if (victims.has(raw) && !inFight) continue;
         // fallen·gg·greedy-punished는 주어(actors)가 사실 당한 쪽이다(위 표 참고) — 무기
         // 이모지·화살표 대상이 아니라 아바타 얼굴로만 알린다. result(맺음말)도 마찬가지로
         // 트로피는 아바타 얼굴 쪽에서만 준다(지적: 본진에 뜨는 트로피와 아바타 트로피가
@@ -869,8 +883,10 @@ export default function GameResultStory({
         // 아군 기지의 교전을 도우러 간 것(위에서 helper로 분류됨)은 화살표 끝 표시도
         // 공격(💥)이 아니라 방어(🛡️)로 바꾼다(지적: "정구의 화살표 끝은 공격이라기보다
         // 방어지 — 저렇게 하면 꼭 태섭을 공격한 거 같잖아").
-        const em = (b.k === "clash" && (helper.has(raw) || homeDefender.has(raw)))
-          ? "🛡️" : markOf(b);
+        // 맞붙은 상대의 표시는 그 사람이 쓴 마법이 아니라 '싸웠다'는 것뿐이다 — 스톰을
+        // 뿌린 쪽의 이모지를 그 사람에게도 주면 둘이 같은 마법을 쓴 것처럼 읽힌다.
+        const em = inFight ? "⚔️"
+          : (b.k === "clash" && (helper.has(raw) || homeDefender.has(raw))) ? "🛡️" : markOf(b);
         // 화살표를 못 그리는 경우(자리를 모름·너무 가까움)의 마지막 대비책 — 아래에서
         // hits가 하나도 화살표로 못 그려지면 이 값으로 본진에 이모지를 얹는다.
         mark.set(raw, em);
@@ -905,10 +921,14 @@ export default function GameResultStory({
         const list = hits.get(raw) ?? [];
         list.push({
           t, flight: flightVal, ...(label.length > 0 ? { label } : {}),
-          ...(PLAIN_TIP_MARKS.has(arrive) ? {} : { mark: arrive }),
-          ...(WARP_BEAT_KEYS.has(b.k) ? { fromMark: em } : {}),
-          // 양 팀이 부딪친 자리는 양쪽 화살표가 한 점에서 만나야 한다(요청).
-          ...(b.k === "clash" ? { converge: true } : {}),
+          // 부딪친 자리의 이모지는 하나면 된다 — 맞붙은 상대 화살표의 촉에까지 얹으면 한
+          // 점에 둘이 겹친다(아래 marked 정리와 같은 취지). 마법을 쓴 쪽 것만 남긴다.
+          ...(inFight || PLAIN_TIP_MARKS.has(arrive) ? {} : { mark: arrive }),
+          // 리콜의 출발 표시(회오리)는 리콜을 쓴 사람 자리에만 얹는다.
+          ...(WARP_BEAT_KEYS.has(b.k) && !inFight ? { fromMark: em } : {}),
+          // 양 팀이 부딪친 자리는 양쪽 화살표가 한 점에서 만나야 한다(요청) — 큰 싸움도,
+          // 마법·리콜이 터진 교전도 마찬가지다(p.fight).
+          ...(b.k === "clash" || b.p?.fight === true ? { converge: true } : {}),
         });
         hits.set(raw, list);
       }

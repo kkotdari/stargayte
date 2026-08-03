@@ -956,16 +956,46 @@ const TEMPLATES: Record<string, Tpl> = {
   },
   // 리콜은 병력을 통째로 상대 뒤에 떨구는 수라, 말도 그만큼의 무게로 한다(요청).
   //
-  // 다만 '뒤를 파고들었다'는 리콜을 상대 진영에 떨궜을 때만 할 수 있는 말이다 — 리콜은
-  // 병력을 모으거나 물리는 데도 쓴다(실측한 4:4에서 리콜 셋이 모두 제 쪽 빈 땅이었다).
-  // 어디에 떨궜는지는 좌표가 말해 주고(replayTactics의 castAt), 상대 진영이면 그 사람
-  // 이름이 whom으로 온다. 이름이 없으면 '옮겼다'까지만 말한다.
+  // 누구에게 떨궜는지는 늘 있다 — 리콜은 타겟을 확정하지 못하면 아예 beat가 되지 않기
+  // 때문이다(요청: 타겟 없는 리콜은 재미가 없으니 확정 못 하면 이야기에서 뺀다.
+  // replayTactics의 foeTurfAt). 그래서 여기서는 '어디에 떨궜나'를 늘 말한다.
+  //
+  // 같은 진입에서 두 번 이상 부른 것은 p.n으로, 그 판의 몇 번째 리콜인지는 p.nth로 온다
+  // (요청: 리콜을 여러 번 하면 여러 번 나오게) — 두 번째 리콜을 첫 번째와 똑같은 말로
+  // 하면 같은 문장이 두 번 나온 것처럼 읽힌다.
   recall: (c) => {
     const of = victimPhrase(c);
-    if (!c.whom) {
+    const n = num(c.p.n, 1);
+    const nth = num(c.p.nth, 0);
+    /* 상대 동네가 아니라 '싸우고 있는 자리'에 부은 리콜(p.fight) — 제 진영을 지키러
+       불러들인 것이거나 한복판 싸움에 병력을 쏟아 넣은 것이다. 그 자리에서 누구와
+       무엇으로 엉켜 있었는지가 곧 이 리콜의 뜻이라(replayTactics의 fightersAt),
+       "상대 진영에 떨궜다"고 말하면 방향이 정반대인 문장이 된다. */
+    if (c.p.fight === true && c.whom) {
+      const vs = list(c.p.vs).map((u) => UNIT_KO[u] ?? "").filter(Boolean);
+      const foe = vs.length > 0 ? `${c.whom}의 ${vs.join("·")}` : c.whom;
+      // "또 한 번 리콜을 3번 이어 붙여"는 말이 겹친다 — 몇 번째 리콜인지와 몇 번을 이어
+      // 붙였는지는 둘 다 수를 말하는 자리라, 한 문장에 하나만 쓴다.
+      const again = nth < 2 ? "" : n >= 2 ? "이번엔 " : "또 한 번 ";
+      const how = n >= 2 ? `리콜을 ${n}번 이어 붙여 ` : "리콜로 ";
       return `${ga(c.who)} ${done(c, c.pick([
-        "아비터를 띄워 리콜로 병력을 순식간에 옮김", "아비터 리콜로 병력을 통째로 불러냄",
-        "리콜로 병력을 한 번에 실어 나름",
+        `${wa(foe)} 엉킨 자리에 ${again}${how}병력을 쏟아부음`,
+        `${wa(foe)} 맞붙은 싸움터에 ${again}${how}병력을 통째로 실어 나름`,
+        `${again}${how}${wa(foe)} 붙은 자리에 병력을 몰아넣음`,
+      ]))}`;
+    }
+    if (n >= 2) {
+      return `${ga(c.who)} ${done(c, c.pick([
+        `아비터 리콜을 ${n}번 이어 붙여 ${of}병력을 쏟아부음`,
+        `${of}리콜을 ${n}번 연달아 떨궈 병력을 몰아넣음`,
+      ]))}`;
+    }
+    if (nth >= 2) {
+      const ord = nth === 2 ? "두 번째" : nth === 3 ? "세 번째" : `${nth}번째`;
+      return `${ga(c.who)} ${done(c, c.pick([
+        `${ord} 리콜로 ${of}또 병력을 떨굼`,
+        `${of}${ord} 리콜을 꽂아 넣음`,
+        `또 한 번 리콜로 ${of}파고듦`,
       ]))}`;
     }
     return `${ga(c.who)} ${done(c, c.pick([
@@ -1171,14 +1201,43 @@ const TEMPLATES: Record<string, Tpl> = {
        replaySummary의 withCastPlace가 실어 준다. 옛 요약과 한곳에 안 몰린 판에는 없고,
        그때는 예전처럼 자리 없이 횟수만 말한다. */
     const placeRaw = c.p.place;
-    const where = ((): string => {
+    /* 그 자리에서 누구와 엉켜 있었나(p.fight) — 마법은 혼자 쓰는 게 아니다(지적: 스톰을
+       지진 경우 거의 100% 적과 교전 중인데 혼자 쓴 것처럼 묘사된다). 상대 이름은 whom으로,
+       그 사람이 그 자리에서 움직인 병력은 p.vs로 온다(replaySummary의 fightersAt).
+       자리 이름이 곧 그 상대의 기지면 이름을 두 번 부르지 않는다 — "조조의 기지에서
+       조조의 히드라와"가 되면 안 된다. */
+    const fight = c.p.fight === true && !!c.whom;
+    const vs = list(c.p.vs).map((u) => UNIT_KO[u] ?? "").filter(Boolean);
+    const foeIsHost = fight && typeof placeRaw === "string" && c.names([placeRaw])[0] === c.whom;
+    /** 맞붙은 상대를 부르는 말 — 그 기지가 이미 그 사람 이름을 말했으면 병력만 부르고,
+     *  무엇으로 싸웠는지조차 모르면 아예 안 부른다("그 병력과 맞붙어"는 빈말이다). */
+    const foeWord = !fight ? ""
+      : vs.length > 0 ? (foeIsHost ? vs.join("·") : `${c.whom}의 ${vs.join("·")}`)
+        : foeIsHost ? "" : (c.whom ?? "");
+    const met = !fight ? "" : foeWord ? `${wa(foeWord)} 맞붙어 ` : "맞붙어 ";
+    const spot = ((): string => {
       if (typeof placeRaw !== "string") return "";
       if (placeRaw === "") return "센터에서 ";
       const owner = c.names([placeRaw])[0];
       if (!owner) return "";
       if (owner === c.who) return "제 진영을 지키며 ";
+      // 맞붙은 이야기를 할 때는 그 기지가 싸움터라는 뜻이라 '에'가 아니라 '에서'다.
+      if (fight) return `${owner}의 기지에서 `;
       return c.p.def === true ? `${owner}의 기지를 지키며 ` : `${owner}의 기지에 `;
     })();
+    const where = spot + met;
+    /* 서로 같은 마법을 주고받은 싸움(p.vsN — replaySummary의 mergeSpellDuels) — 하이템플러
+       둘이 스톰을 27번·24번 뿌린 대목을 양쪽에서 한 문장씩 말하면 같은 장면이 두 번 나온다.
+       한 문장으로 합치고 두 수를 나란히 놓는다. */
+    const vsN = num(c.p.vsN, 0);
+    if (fight && vsN > 0) {
+      const who2 = foeWord ? `${wa(foeWord)} ` : "";
+      return `${ga(c.who)} ${spot}${who2}${done(c, c.pick([
+        `${reul(t)} ${n}번·${vsN}번 주고받으며 맞붙음`,
+        `${t} 싸움을 ${n}번 대 ${vsN}번으로 주고받음`,
+        `${reul(t)} 서로 ${n}번·${vsN}번 퍼부으며 맞섬`,
+      ]), true)}`;
+    }
     // 시즈·마인처럼 '쓴다'는 말이 어색한 것들은 제 말투가 따로 있다(TECH_USE_PHRASE).
     const own = n >= 1 ? TECH_USE_PHRASE[str(c.p.tech) as keyof typeof TECH_USE_PHRASE] : undefined;
     if (own && own.length > 0) {

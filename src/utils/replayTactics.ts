@@ -241,6 +241,12 @@ const TOWN_HALLS = new Set(["Nexus", "Hatchery", "Command Center"]);
    방어 건물을 러시로 오판할 여지가 있었다(지적: 무조건 상대 본진에 가까울 때만).
    본진 덩어리에 붙은 자리만 남도록 좁힌다. */
 const ENEMY_RADIUS = 0.22;
+/* '그 사람 동네'라고 부를 수 있는 반경 — 본진 덩어리(ENEMY_RADIUS)보다 넉넉하다. 건물을
+   지은 자리를 가르는 데는 좁은 자가 맞지만(엉뚱한 러시 판정을 막아야 한다), 병력이 떨어진
+   자리를 두고 "누구를 친 것인가"를 물을 때는 앞마당·삼룡이·멀티까지 그 사람 동네다. 좁은
+   자로 재면 앞마당에 떨어진 리콜이 '주인 없는 자리'가 되어 이야기에서 통째로 빠진다.
+   내 기지·아군 기지가 더 가까우면 어차피 그 사람 동네가 아니다(foeTurfAt). */
+const TURF_RADIUS = 0.3;
 /* (삭제) '센터'를 내 본진↔가장 가까운 상대 본진의 중점 기준으로 재던 반경(MID_RADIUS=0.12).
    일대일에서는 그 중점이 맵 가운데와 같아서 잘 맞았고, 실측으로도 진짜 길목 포토는 0.04~0.15에
    몰려 있었다. 하지만 본진이 여덟 개인 팀전에서 이 기준이 무너졌다 — 아래 MID_MAP_RATIO. */
@@ -309,6 +315,14 @@ const ALLY_CANNON_MIN = 2;
 /** 자리만으로 옆탱을 말하려면 탱크가 이만큼은 있어야 한다 — 한두 기를 옮긴 것은 옆탱이 아니다. */
 /** 내린 자리를 찾을 때 언로드 시각에서 앞뒤로 보는 폭(프레임 ≒ 40초). */
 const DROP_WINDOW_FRAMES = 40 / 0.042;
+
+/** 같은 사람에게 이 안에 잇달아 떨어진 리콜은 '한 번 들이친 것'이다 — 아비터 둘이 번갈아
+ *  부르거나 병력을 나눠 넘기는 일이 흔한데, 그걸 두 문장으로 말하면 같은 장면이 두 번
+ *  나온다. 창을 넘어가면 다시 마음먹고 들어간 것이라 따로 말한다(요청: 리콜을 여러 번
+ *  하면 여러 번 나오게). */
+const RECALL_SAME_SEC = 60;
+/** 리콜 문장은 한 사람당 이만큼까지 — 여러 번 말하되 요약이 리콜로 도배되지는 않게. */
+const RECALL_MAX_BEATS = 3;
 const SIDE_TANK_MIN = 5;
 /** 그 자리로 이만큼은 몰아야 '세워 뒀다'고 본다 — 한두 번은 지나가며 찍은 것일 수 있다. */
 const SIDE_TANK_ORDERS = 4;
@@ -452,6 +466,77 @@ export function pushersOn(
     .map((f) => f.rawName);
 }
 
+/* ── 그 자리에서 누구와 부딪치고 있었나 ──────────────────────────────────────────
+   마법도 리콜도 혼자 하는 일이 아니다(지적: 스톰을 지진 경우 거의 100% 적과 교전 중인데
+   혼자 스톰을 쓴 것처럼 묘사된다). 리플레이에 전투는 안 남지만, 그 순간 그 자리에 누가
+   병력을 찍고 있었는지는 남는다 — 공격 명령의 좌표·시각(orderPositions)과 교전 마법의
+   좌표·시각(castPositions)이다. 그 둘이 곧 '거기서 싸우고 있었다'는 증거다.
+   replaySummary의 biggestClash가 그 판 전체에서 가장 큰 뭉치를 찾는 데 쓰는 것과 똑같은
+   근거를, 여기서는 '이 자리·이 순간'에 대고 묻는다. */
+/** 같은 싸움으로 볼 반경(타일)과 시간 창 — biggestClash와 같은 자다. */
+const FIGHT_RADIUS = 14;
+const FIGHT_WINDOW_SEC = 60;
+/** 이만큼은 찍혀야 '싸우고 있었다'고 말한다 — 한두 번은 옆을 지나간 것이다. */
+const FIGHT_MIN_ORDERS = 3;
+/** 교전 중에만 쓰는 마법 — 병력끼리 엉켰다는 가장 확실한 증거다. 스캔·마인 심기처럼
+ *  혼자 하는 것은 뺀다. */
+export const FIGHT_TECHS = new Set([
+  "Psionic Storm", "Dark Swarm", "Plague", "Irradiate", "EMP Shockwave", "Stasis Field",
+  "Maelstrom", "Ensnare", "Lockdown", "Disruption Web", "Spawn Broodlings", "Yamato Gun",
+]);
+
+/** 그 자리에서 그 무렵 실제로 싸우고 있던 사람들 — 많이 싸운 순으로.
+ *
+ *  frames는 '그 무렵'을 이루는 순간들이다(마법이 떨어진 시각들, 리콜을 쓴 시각). 그중
+ *  어느 하나와 FIGHT_WINDOW_SEC 안이고 자리가 FIGHT_RADIUS 안이면 같은 싸움으로 본다.
+ *  units는 그 사람이 그 자리에서 무엇을 움직였나다(명령마다 짚어 둔 주인 orderPositions.by)
+ *  — "무엇과 맞붙었나"를 말할 수 있는 유일한 근거다. */
+export function fightersAt(
+  at: { x: number; y: number },
+  frames: number[],
+  players: ParsedReplayPlayer[],
+): { raw: string; n: number; units: string[] }[] {
+  if (frames.length === 0) return [];
+  const window = FIGHT_WINDOW_SEC / SECONDS_PER_FRAME;
+  const moments = [...frames].sort((a, b) => a - b);
+  /** 그 시각이 '그 무렵'에 드나 — 가장 가까운 순간 하나만 보면 된다(이분 탐색). */
+  const inWindow = (f: number): boolean => {
+    let lo = 0;
+    let hi = moments.length - 1;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (moments[mid] < f) lo = mid + 1; else hi = mid;
+    }
+    return Math.abs(moments[lo] - f) <= window
+      || (lo > 0 && Math.abs(moments[lo - 1] - f) <= window);
+  };
+  const out: { raw: string; n: number; units: string[] }[] = [];
+  for (const p of players) {
+    const sg = p.signals;
+    if (!sg) continue;
+    let n = 0;
+    const tally = new Map<string, number>();
+    for (const o of sg.orderPositions ?? []) {
+      // 일꾼·건물이 낸 명령은 싸움의 근거가 못 된다(pushersOn과 같은 기준).
+      if (o.kind !== "attack" || o.by === "Worker" || o.by === "Building") continue;
+      if (dist(o, at) > FIGHT_RADIUS || !inWindow(o.frame)) continue;
+      n += 1;
+      if (o.by && o.by !== "Transport") tally.set(o.by, (tally.get(o.by) ?? 0) + 1);
+    }
+    for (const c of sg.castPositions ?? []) {
+      if (!FIGHT_TECHS.has(c.tech)) continue;
+      if (dist(c, at) > FIGHT_RADIUS || !inWindow(c.frame)) continue;
+      n += 1;
+    }
+    if (n < FIGHT_MIN_ORDERS) continue;
+    out.push({
+      raw: p.rawName, n,
+      units: [...tally].sort((a, b) => b[1] - a[1]).slice(0, 2).map(([u]) => u),
+    });
+  }
+  return out.sort((a, b) => b.n - a.n);
+}
+
 /** 자리로 알 수 있는 것들을 한 벌로 묶은 것. 좌표를 못 읽었거나 본진을 못 정하면 통째로
  *  null이고, 자리 기반 전술은 그냥 안 나온다(요청: 불확실한 건 빼기). */
 interface Geo {
@@ -462,6 +547,10 @@ interface Geo {
    *  전술의 내용인 경우. 팀전에서도 자리로는 확실히 짚힌다(요청). */
   /** 건물 자리뿐 아니라 마법·이동 명령 좌표도 넘길 수 있게 좌표만 받는다. */
   enemyAt: (b: { x: number; y: number }) => string | null;
+  /** 이 자리가 '어느 상대의 동네'인가 — enemyAt보다 넉넉한 반경(TURF_RADIUS)이라 상대의
+   *  앞마당·멀티까지 품는다. 내 기지나 아군 기지가 더 가까우면 null이다. 건물을 어디에
+   *  지었나가 아니라 '병력이 어디에 떨어졌나'를 묻는 쪽(리콜)에서 쓴다. */
+  foeTurfAt: (b: { x: number; y: number }) => string | null;
   /** 내 본진 안이면서 상대 쪽으로 나가 있는 자리인가 = 진출로(입구) 쪽. */
   front: (b: BuildPos) => boolean;
   /** 그 자리를 사람이 부르는 이름 — 내 기지/입구, 아군 기지/입구, 상대 본진/입구 앞, 센터. */
@@ -545,6 +634,22 @@ function geoOf(
       if (d < base * ENEMY_RADIUS && (!best || d < best.d)) best = { raw: f.raw, d };
     }
     return best?.raw ?? null;
+  };
+
+  /** 그 자리의 임자가 상대인가 — 넉넉한 반경으로 재되, 내 기지·아군 기지가 더 가까우면
+   *  아니다(위 Geo.foeTurfAt 주석). "누구를 친 것인가"를 자리로 확정하는 자리다. */
+  const foeTurfAt = (b: { x: number; y: number }): string | null => {
+    let best: { raw: string; d: number } | null = null;
+    for (const f of foeHomeOf) {
+      const d = dist(b, f.h);
+      if (d < base * TURF_RADIUS && (!best || d < best.d)) best = { raw: f.raw, d };
+    }
+    if (!best) return null;
+    const ours = Math.min(
+      ...myBases.map((h) => dist(b, h)),
+      ...allyHomes.map((a) => dist(b, a.h)),
+    );
+    return best.d < ours ? best.raw : null;
   };
 
   const allyAt = (b: BuildPos): string | null => {
@@ -682,7 +787,9 @@ function geoOf(
   const lodgingLost = lodging?.lost ?? false;
 
   // (삭제) 건물이 몇 군데에 흩어졌나(spread) — scatter 전술만 쓰던 값이라 함께 걷어냈다.
-  return { zone, allyAt, enemyAt, front, spot, allyFrontOf, lodgingHost, lodgingLost };
+  return {
+    zone, allyAt, enemyAt, foeTurfAt, front, spot, allyFrontOf, lodgingHost, lodgingLost,
+  };
 }
 
 interface Ctx {
@@ -699,6 +806,11 @@ interface Ctx {
   /** 팀전에서 '내 옆에 붙은' 상대 — 나머지 상대보다 뚜렷하게 가까운 한 사람이 먼저
    *  나가떨어졌을 때만 값이 있다. 탱크 방어의 근거다. */
   neighbor: { raw: string; fellAt: number } | null;
+  /** 그 자리·그 무렵에 거기서 싸우고 있던 상대 — 없으면 null(위 fightersAt).
+   *  자리만으로는 '누구를 친 것인가'가 안 잡히는 수(제 진영·센터에 떨어진 리콜)에서
+   *  타겟을 확정하는 마지막 근거다. */
+  foeFightingAt: (at: { x: number; y: number }, frames: number[])
+    => { raw: string; units: string[] } | null;
   /** 판이 끝난 프레임 — 큐에 남아 끝내 나오지 못한 생산을 걸러내는 데 쓴다(producedFrames). */
   endFrame: number;
 }
@@ -707,7 +819,7 @@ const sec = (frame: number) => frame * SECONDS_PER_FRAME;
 
 
 function detectFor(c: Ctx): Tactic[] {
-  const { rawName, s, race, foeRaces, soleFoe, geo, neighbor, endFrame } = c;
+  const { rawName, s, race, foeRaces, soleFoe, geo, neighbor, endFrame, foeFightingAt } = c;
   const out: Tactic[] = [];
   const u = (n: string) => s.unitCounts[n] ?? 0;
   const firstU = (n: string): number | null => s.firstUnitFrame[n] ?? null;
@@ -1273,19 +1385,63 @@ function detectFor(c: Ctx): Tactic[] {
         who, p: { ...spotOf(forward) },
       });
     }
-    const recall = castAt("Recall");
-    if (u("Arbiter") >= 1 && hasTech(s, "Recall")) {
-      out.push({
-        // 아비터 리콜은 전황을 통째로 뒤집는 수다(요청) — 다른 견제와 같은 무게로 두면
-        // 정작 판이 뒤집힌 대목이 요약에서 빠진다.
-        key: "recall", weight: 15,
-        // 누구한테 떨어뜨린 리콜인지는 그 좌표가 말해 준다 — 상대 진영 밖에서 쓴 리콜은
-        // 병력을 모으려고 부른 것이라 '누구를 쳤다'고 말하지 않는다(1:1이면 상대가 하나뿐).
-        ...(recall?.whom ? { whom: recall.whom } : target),
-        // 리콜은 아비터가 나온 때가 아니라 실제로 리콜을 쓴 때·자리다(지적: 리콜 화살표가
-        // 자기 기지를 가리킨다) — 마법 좌표가 있으면 그것부터 쓴다.
-        at: recall?.frame ?? firstU("Arbiter"),
-        who, ...(recall ? { p: { xy: recall.xy } } : {}),
+    /* 아비터 리콜 — '어디에 떨궜나'가 곧 '누구를 친 것인가'다(요청: 타겟이 없는 리콜은
+       재미가 없으니 반드시 확정하고, 확정 못 하면 이야기에서 뺀다). 예전에는 상대 진영
+       밖에서 쓴 리콜도 "리콜로 병력을 순식간에 옮김"으로 문장이 됐는데, 그건 병력을
+       모았다는 말과 다를 바 없고 그림에도 화살표가 안 그려졌다(실측한 4:4에서 리콜 셋이
+       모두 제 쪽 빈 땅이었다).
+
+       자리는 상대 본진 덩어리(ENEMY_RADIUS)보다 넉넉한 자로 잰다(TURF_RADIUS) — 리콜은
+       앞마당·멀티를 덮치는 데도 쓰는데 좁은 자로 재면 그런 리콜이 통째로 빠진다. 내
+       기지·아군 기지가 더 가까운 자리는 애초에 남의 동네가 아니라 걸러진다.
+
+       여러 번 썼으면 여러 번 말한다(요청). 다만 한 번 들이치면서 아비터 둘이 잇달아 부른
+       것은 한 수이므로, 같은 사람에게 RECALL_SAME_SEC 안에 떨어진 것들은 한 문장으로 묶고
+       몇 번이었는지를 수로 싣는다. */
+    if (geo && u("Arbiter") >= 1 && hasTech(s, "Recall")) {
+      /** 이 리콜의 임자 — 두 갈래로 확정한다. ①떨어진 자리가 누구의 동네인가(들이친 리콜)
+       *  ②그 자리에서 그때 누구와 싸우고 있었나(제 진영을 지키러, 또는 한복판 싸움에 부은
+       *  리콜). 둘 다 아니면 그 리콜은 병력을 모으려고 부른 것이라 이야기가 안 된다. */
+      const aimOf = (c: { x: number; y: number; frame: number }) => {
+        const turf = geo.foeTurfAt(c);
+        if (turf) return { whom: turf, into: true, units: [] as string[] };
+        const met = foeFightingAt(c, [c.frame]);
+        return met ? { whom: met.raw, into: false, units: met.units } : null;
+      };
+      const landed = (s.castPositions ?? [])
+        .filter((c) => c.tech === "Recall")
+        .sort((a, b) => a.frame - b.frame)
+        .map((c) => ({ c, aim: aimOf(c) }))
+        .filter((x): x is { c: typeof x.c; aim: NonNullable<ReturnType<typeof aimOf>> } =>
+          x.aim !== null);
+      const drops: {
+        whom: string; into: boolean; units: string[];
+        frame: number; xy: [number, number]; n: number;
+      }[] = [];
+      for (const { c, aim } of landed) {
+        const last = drops[drops.length - 1];
+        if (last && last.whom === aim.whom && sec(c.frame - last.frame) <= RECALL_SAME_SEC) {
+          last.n += 1;
+          continue;
+        }
+        drops.push({ ...aim, frame: c.frame, xy: [c.x, c.y], n: 1 });
+      }
+      drops.slice(0, RECALL_MAX_BEATS).forEach((d, i) => {
+        out.push({
+          // 아비터 리콜은 전황을 통째로 뒤집는 수다(요청) — 다른 견제와 같은 무게로 두면
+          // 정작 판이 뒤집힌 대목이 요약에서 빠진다. 두 번째·세 번째는 조금씩 가볍게 둔다:
+          // 같은 수가 줄줄이 서서 다른 사건을 밀어내지 않게 하는 자리다.
+          key: "recall", weight: 15 - i, whom: d.whom,
+          // 리콜은 아비터가 나온 때가 아니라 실제로 리콜을 쓴 때·자리다(지적: 리콜 화살표가
+          // 자기 기지를 가리킨다).
+          at: d.frame, who,
+          p: {
+            xy: d.xy, ...(d.n > 1 ? { n: d.n } : {}), ...(i > 0 ? { nth: i + 1 } : {}),
+            // 상대 동네에 떨군 것이 아니라 '싸우고 있는 자리'에 부은 리콜은 문장도 그림도
+            // 달라야 한다 — 화살표가 상대 집이 아니라 그 싸움터로 가야 한다(fight).
+            ...(d.into ? {} : { fight: true, ...(d.units.length > 0 ? { vs: d.units } : {}) }),
+          },
+        });
       });
     }
     // 캐리어 — 저그의 목동(울트라), 테란의 배틀크루저와 같은 자리인데 프로토스만 비어
@@ -1578,6 +1734,10 @@ export function scanTactics({ sidePlayers, foePlayers, startSpots }: TacticScanI
         rawName: p.rawName, s: p.signals, race: p.race, foeRaces, soleFoe,
         geo: geoOf(p, sidePlayers.filter((x) => x !== p), foePlayers, startSpots),
         neighbor: neighborOf(p, foePlayers, endFrame),
+        foeFightingAt: (at, frames) => {
+          const f = fightersAt(at, frames, foePlayers)[0];
+          return f ? { raw: f.raw, units: f.units } : null;
+        },
         endFrame,
       })
     );
@@ -1586,8 +1746,12 @@ export function scanTactics({ sidePlayers, foePlayers, startSpots }: TacticScanI
   return all
     .sort((a, b) => b.weight - a.weight)
     // gg는 사람마다 남긴다 — 팀원이 잇달아 친 걸 한 문장으로 묶으려면 전부 필요하다(요청).
+    // 리콜도 때마다 남긴다(요청: 여러 번 하면 여러 번 나오게) — 다른 때에 다시 떨군 것은
+    // 같은 전술의 중복이 아니라 그 판의 다른 사건이다.
     .filter((t) => {
-      const key = t.key === "gg" ? `gg|${t.who}` : t.key;
+      const key = t.key === "gg" ? `gg|${t.who}`
+        : t.key === "recall" ? `recall|${t.who}|${t.at}`
+          : t.key;
       return seen.has(key) ? false : (seen.add(key), true);
     });
 }
