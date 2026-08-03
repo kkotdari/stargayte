@@ -3386,6 +3386,94 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     return rep ? [rep] : [];
   })();
 
+  /* 마지막 싸움이 '이긴 편의 집'에서 벌어진 판(요청: 결론 전투 장소가 이긴 팀 본진인
+     경우가 많아 "정리했다"가 어색하다 — 이럴 땐 방어에 성공하고 그 후 역공하는 스냅까지
+     있어야 한다). 실측(169판): 마지막 싸움터가 진 편 기지 56% · 센터 33% · 이긴 편 기지
+     11%(18판)였고, 그 18판은 하나도 빠짐없이 그 뒤에 이긴 편이 진 편 진영으로 어택을
+     찍었다(중앙 121번). 즉 그 판들의 결말은 '몰아붙여 정리'가 아니라 '막아 내고 역공'이다.
+
+     그래서 두 장면을 따로 세운다 — 제 집에서 막아 낸 대목과, 그 뒤 상대 집으로 넘어간
+     대목. 맺음말은 그 둘을 이어받아 맺는다(p.held). */
+  const homeStand = (() => {
+    if (!finale || finaleFoes.length === 0) return null;
+    const homeOfRaw = (raw: string): [number, number] | null => bases[raw] ?? null;
+    const yards = Object.values(bases);
+    if (yards.length < 2) return null;
+    let near = Infinity;
+    for (let i = 0; i < yards.length; i += 1) {
+      for (let j = i + 1; j < yards.length; j += 1) {
+        near = Math.min(near, Math.hypot(yards[i][0] - yards[j][0], yards[i][1] - yards[j][1]));
+      }
+    }
+    const yard = Math.max(HOME_STAND_MIN_TILES, near * HOME_STAND_YARD);
+    // 그 싸움터가 이긴 편 누구의 집이었나.
+    const host = winnerPlayers.find((p2) => {
+      const h = homeOfRaw(p2.rawName);
+      return h !== null && Math.hypot(finale.xy[0] - h[0], finale.xy[1] - h[1]) <= yard;
+    });
+    if (!host) return null;
+    /* 막아 낸 뒤의 역공 — 그 싸움 뒤에 이긴 편이 진 편 진영에 찍은 어택 지정이다. 몇 번
+       찍혔나로 '정말 넘어갔나'를 가른다(위 실측: 중앙 121번). 가장 많이 두들긴 집을
+       목표로 삼고, 그 자리에 실제로 찍은 사람만 주어로 부른다. */
+    const tally = new Map<string, { n: number; by: Map<string, number> }>();
+    for (const p2 of winnerPlayers) {
+      for (const o of p2.signals?.orderPositions ?? []) {
+        if (o.kind !== "attack" || o.frame <= finale.at) continue;
+        for (const q of loserPlayers) {
+          const h = homeOfRaw(q.rawName);
+          if (!h || Math.hypot(o.x - h[0], o.y - h[1]) > yard) continue;
+          const cur = tally.get(q.rawName) ?? { n: 0, by: new Map<string, number>() };
+          cur.n += 1;
+          cur.by.set(p2.rawName, (cur.by.get(p2.rawName) ?? 0) + 1);
+          tally.set(q.rawName, cur);
+        }
+      }
+    }
+    const hit = [...tally].sort((a, b) => b[1].n - a[1].n)[0];
+    if (!hit || hit[1].n < COUNTER_MIN_ORDERS) return { host: host.rawName, counter: null };
+    const pushers = [...hit[1].by]
+      .filter(([, n]) => n >= COUNTER_MIN_EACH)
+      .sort((a, b) => b[1] - a[1])
+      .map(([raw]) => raw);
+    if (pushers.length === 0) return { host: host.rawName, counter: null };
+    // 역공이 시작된 때 — 그 집에 처음 어택을 찍은 순간이다.
+    let from = Infinity;
+    for (const raw of pushers) {
+      const p2 = winnerPlayers.find((x) => x.rawName === raw);
+      const h = homeOfRaw(hit[0]);
+      if (!p2 || !h) continue;
+      for (const o of p2.signals?.orderPositions ?? []) {
+        if (o.kind !== "attack" || o.frame <= finale.at) continue;
+        if (Math.hypot(o.x - h[0], o.y - h[1]) > yard) continue;
+        from = Math.min(from, o.frame);
+      }
+    }
+    return {
+      host: host.rawName,
+      counter: Number.isFinite(from)
+        ? { at: from, who: pushers, whom: hit[0], xy: bases[hit[0]] ?? null, n: hit[1].n }
+        : null,
+    };
+  })();
+  const standBeats: Beat[] = homeStand
+    ? [
+      {
+        k: "hold-off", won: true, at: finale!.at, weight: 24,
+        who: [homeStand.host], whom: finaleFoes,
+        p: { xy: finale!.xy, fight: true },
+      },
+      ...(homeStand.counter
+        ? [{
+          k: "counter", won: true, at: homeStand.counter.at, weight: 24,
+          who: homeStand.counter.who, whom: [homeStand.counter.whom],
+          p: {
+            ...(homeStand.counter.xy ? { xy: homeStand.counter.xy } : {}),
+          },
+        } as Beat]
+        : []),
+    ]
+    : [];
+
   // 결과는 이야기의 맺음말로 맨 뒤에 붙인다 — 앞에 먼저 요약을 놓으면 뒤의 이야기가
   // 이미 아는 결말의 부연이 되어버린다(요청: 맨 처음의 전체 요약은 빼기).
   // 앞선 문장들이 이미 그 조합을 말했으면 조합은 빼고 결과만 말한다. 판단은 실제로 만들어질
@@ -3473,7 +3561,12 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
          동일하게) — 경기를 끝낸 그 싸움터가 이 문장의 자리다. 마지막으로 부딪친 자리를
          찍어 두면 그림 쪽이 다른 교전 스냅과 똑같이 그린다: 양쪽 화살표가 그 한 점에서
          만나고(fight), 촉에는 전투 이모지가 붙는다. 못 찾으면 예전처럼 자리 없이 간다. */
-      ...(finale ? { xy: finale.xy, fight: true } : {}),
+      /* 제 집에서 막아 내고 역공으로 끝낸 판은 맺음말의 자리도 그 역공 쪽이다 — 마지막
+         싸움터(제 집)를 가리키면 "몰아붙여 끝냈다"와 그림이 정반대가 된다. */
+      ...(homeStand?.counter?.xy
+        ? { xy: homeStand.counter.xy, fight: true }
+        : finale ? { xy: finale.xy, fight: true } : {}),
+      ...(homeStand ? { held: true } : {}),
     },
     ...(useTeam
       ? (domUnit && dominant ? { who2: [dominant.rawName] } : {})
@@ -3499,6 +3592,16 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     k: "verdict", won: true, at: Number.POSITIVE_INFINITY, weight: 1001,
     who: winnerPlayers.map((p) => p.rawName),
   };
+
+  /* 막아 냄·역공은 자리 다툼을 거치지 않는다 — 맺음말과 한 벌인 결말 장면이라 늘 들어가야
+     한다(요청). 시간순 자리에 끼워 넣되 이미 잡힌 순서는 건드리지 않는다: 위 두 규칙이
+     같은 분 안에서 손봐 둔 앞뒤가 다시 흐트러지면 안 된다. */
+  for (const b of standBeats) {
+    const i = chosen.findIndex(
+      (x) => typeof x.at === "number" && typeof b.at === "number" && x.at > b.at,
+    );
+    if (i < 0) chosen.push(b); else chosen.splice(i, 0, b);
+  }
 
   const moves: Record<string, [number, number, number][]> = {};
   for (const [raw, list] of moveList) moves[raw] = list;
@@ -3530,6 +3633,17 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
 /** 큰 교전 문장의 무게 — 그 판의 절정이라 무겁게 잡되, 러시·돌파처럼 '누가 무엇을 했다'가
  *  분명한 이야기보다는 한 단계 아래다. */
 const CLASH_WEIGHT = 14;
+
+/* 마지막 싸움이 '이긴 편의 집'이었나를 가르는 값과, 그 뒤 역공으로 볼 어택 지정 수
+   (위 homeStand 주석에 실측이 있다). 집 마당은 가장 가까운 두 시작 지점 거리의 40%로
+   잡는다 — 화살표 쪽에서 쓰는 잣대(GameResultStory의 YARD)와 같은 생각이다. */
+const HOME_STAND_YARD = 0.4;
+const HOME_STAND_MIN_TILES = 10;
+/* 역공은 짧다 — 실측(제 집에서 막아 낸 19판): 막아 낸 뒤 경기가 끝나기까지 중앙 0.7분
+   뿐이고, 그 사이 상대 진영에 찍은 어택 지정이 중앙 8건이다. 막아 내자마자 넘어가 끝낸
+   그림이라, 문턱을 크게 잡으면 그 장면이 통째로 사라진다. */
+const COUNTER_MIN_ORDERS = 5;
+const COUNTER_MIN_EACH = 3;
 
 /** 스캔을 '정찰했다'고 말할 최소 횟수와, 그 좌표가 누구 집인지 볼 반경(타일).
  *  위 vision 주석에 실측이 있다. */
@@ -4095,6 +4209,8 @@ const POS_AWAY_MIN = 18;
 export const ATTACK_BEAT_KEYS = new Set([
   ...RAID_KEYS, ...HARASS_KEYS,
   "raid-damage", "gang-rush", "duel-rush", "harass-workers", "harass-long", "breakthrough",
+  // 막아 낸 뒤 상대 진영으로 넘어간 역공(요청) — 그 좌표로 화살표를 긋는다.
+  "counter",
 ]);
 
 /** 그 beat에 이름이 나오는 사람들이 그때 어디에 있었나 — 미니맵 스냅에 아바타를 놓는

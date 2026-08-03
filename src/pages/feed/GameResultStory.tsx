@@ -84,6 +84,8 @@ const BEAT_MARK: Record<string, string> = {
   // 칼 모양이 아니라 자리 잡고 쏘는 느낌으로 구분한다. 탑(🗼)은 건물 느낌만 나고 공격으로
   // 안 읽혀서(지적) 활(🏹)로 바꾼다 — 멀리서 쏘는 공격이라는 게 한눈에 보인다.
   "side-tank": "🏹", "center-tank": "🏹",
+  // 제 집에서 막아 냄 / 그 뒤 역공(요청) — 방패로 받아 내고, 넘어가서 두들긴다.
+  "hold-off": "🛡️", counter: "💥",
   // 본진에서 한 일 — 화살표 없이 본진에 붙는다.
   // 현미경은 무슨 일인지 안 읽힌다(지적) — 테크는 결국 싸우려고 하는 일이라 검 대결로
   // 통일한다. 업그레이드만은 공격보다 연구 쪽이 어울려(지적) 따로 시험관을 준다.
@@ -811,7 +813,7 @@ export default function GameResultStory({
     /** 막아낸 것 — 본인이 주어(who)고 버텼다. late-hold·standoff는 항상 승리 쪽 이야기라
      *  그대로 자신감이지만, stand는 진 편에도 붙는 beat라(지적: "…역부족"인데도 자신감
      *  얼굴이 붙었다) won을 봐야 한다. */
-    const DEFENDED_ALWAYS_KEYS = new Set(["late-hold", "standoff"]);
+    const DEFENDED_ALWAYS_KEYS = new Set(["late-hold", "standoff", "hold-off"]);
     /** 공격하는 얼굴을 붙일 대상 — 옆탱은 이름과 달리 공격이라(지적) 여기 더한다. */
     // 맺음말도 그 마지막 싸움 이야기라 공격하는 얼굴을 준다(요청: 결론은 전투니까 다른
     // 스냅과 동일하게) — 트로피는 그 뒤 승패 스냅이 따로 얹는다.
