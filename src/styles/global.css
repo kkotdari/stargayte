@@ -117,6 +117,10 @@
   /* 표 안쪽 그리드 선(세로 구분선/행 경계) 전용 — 패널 배경과 구분되도록 --line보다 밝다.
      예전 붉은 갈색(#443b3e)은 이제 안 쓰는 팔레트(요청) — 흰 계열로 통일. */
   --line-soft: rgba(255, 255, 255, 0.16);
+  /* 칸 '안'을 가르는 선 — 한 칸이 [그림 | 수치 | 목록]처럼 여러 덩어리로 나뉘면서 필요해졌다
+     (요청). 칸과 칸을 가르는 --line-soft보다 확실히 옅어야 한다: 같은 굵기로 그리면 안쪽
+     구분이 바깥 구분과 같은 무게로 읽혀 표의 칸 수가 갑자기 늘어난 것처럼 보인다. */
+  --line-hair: rgba(255, 255, 255, 0.08);
 
   /* 텍스트: 한 가지 색(거의 흰색)만 사용 — 대부분 기본색 그대로, 꼭 필요한 곳만 살짝 낮춘 투명도 */
   --text: #f5f6f7;
@@ -798,6 +802,7 @@ html.scr-light-theme {
   --input-bg: #ffffff;
   --line: #000000;
   --line-soft: #000000;
+  --line-hair: rgba(0, 0, 0, 0.12);
   --text: #000000;
   --muted: rgba(0, 0, 0, 0.68);
   --dim: rgba(0, 0, 0, 0.48);
@@ -1776,11 +1781,43 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 /* ── 건설·유닛·스킬 칸(요청) ────────────────────────────────────────────────────
    셋 다 위에서 아래로 [그림 → 수치 → 많이 나온 다섯] 순으로 쌓인다. 총량 막대는 더 안
    그린다 — 값은 그대로 저장되지만 화면에는 '무엇으로 그 총량이 됐나'만 남긴다(요청). */
+/* 속은 가로로 눕는다(요청: "가로로 길게") — 그림·수치·목록이 나란히 서고, 세로로 쌓이는
+   것은 목록 안쪽뿐이다. 세로로 쌓았을 때는 목록 다섯 줄이 그림 아래에 그대로 얹혀 행이
+   통째로 길어졌다(실측 251px). */
 .scr-stat-build-cell, .scr-stat-units-cell, .scr-stat-skills-cell {
-  flex-direction: column; align-items: center; justify-content: center;
-  gap: 6px; position: relative;
+  flex-direction: row; align-items: center; justify-content: center;
+  gap: 8px; position: relative;
 }
-.scr-stat-mix { display: flex; align-items: flex-start; justify-content: center; gap: 10px; }
+/* 덩어리 사이 실선(요청) — 칸 사이 구분선보다 옅은 --line-hair로, 좌우 여백을 갭과 같게
+   둬서 선이 두 덩어리 한가운데에 선다. */
+.scr-stat-build-cell > * + *,
+.scr-stat-units-cell > * + *,
+.scr-stat-skills-cell > * + * {
+  border-left: 1px solid var(--line-hair); padding-left: 8px; align-self: stretch;
+  display: flex; flex-direction: column; justify-content: center;
+}
+/* 남는 폭은 목록이 가져간다 — 그림·수치는 제 크기 그대로 둔다. */
+.scr-stat-build-cell .scr-stat-toplist,
+.scr-stat-units-cell .scr-stat-toplist,
+.scr-stat-skills-cell .scr-stat-toplist { flex: 1 1 auto; min-width: 0; }
+/* 값이 없어 "-" 하나만 있는 행에서도 그 하나가 칸 가운데 서게 한다 — 가로 배치라 남는 폭을
+   가져갈 목록이 없으면 "-"가 왼쪽으로 쏠린다. */
+.scr-stat-build-cell > .scr-stat-points-empty,
+.scr-stat-units-cell > .scr-stat-points-empty,
+.scr-stat-skills-cell > .scr-stat-points-empty { flex: 1 1 auto; text-align: center; }
+.scr-stat-mix { display: flex; align-items: center; justify-content: center; gap: 10px; flex: none; }
+
+/* 경기당 초반(5분) 일꾼 수 — 도넛과 달리 비율이 아니라 그냥 수라 숫자를 그대로 적는다.
+   도넛과 나란히 서므로 이름 위 / 수 아래로 포개, 도넛 하나만큼의 폭만 쓴다. */
+.scr-stat-worker5 {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  flex: none; white-space: nowrap;
+}
+.scr-stat-worker5-label { font-size: var(--fs-11); color: var(--dim); line-height: 1.1; }
+.scr-stat-worker5-n {
+  font-size: var(--fs-caption); font-weight: 700; color: var(--text);
+  font-variant-numeric: tabular-nums; line-height: 1.1;
+}
 
 /* 공/방/실드 단계 — 이름 열 하나에 수치 세 열(요청: 지상/공중을 한 열에 두 줄로).
    수치는 오른쪽 맞춤 + tabular-nums라 위아래 자릿수가 흔들리지 않는다. */
@@ -1788,7 +1825,7 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   display: grid; grid-template-columns: auto repeat(3, 1fr);
   gap: 1px 8px; align-items: baseline;
   font-size: var(--fs-11); color: var(--text);
-  font-variant-numeric: tabular-nums; text-align: right;
+  font-variant-numeric: tabular-nums; text-align: right; flex: none;
 }
 .scr-stat-upgrades > span { white-space: nowrap; }
 .scr-stat-up-head { color: var(--muted); }
@@ -1944,9 +1981,9 @@ html:not(.scr-light-theme) .scr-donut {
      건설은 도넛 하나 + 건물 다섯 줄, 유닛은 도넛 둘 + 일꾼 한 줄 + 유닛 다섯 줄,
      스킬은 공/방 표 + 스킬 다섯 줄을 담는다. */
   --scr-stat-rank-w: 136px;
-  --scr-stat-build-w: 168px;
-  --scr-stat-unit-w: 190px;
-  --scr-stat-skill-w: 172px;
+  --scr-stat-build-w: 306px;
+  --scr-stat-unit-w: 378px;
+  --scr-stat-skill-w: 306px;
   /* 도넛 지름 — MemberStatRow의 DONUT과 짝이다(svg 좌표계 크기라 그쪽이 실제 값을 정하고,
      여기서는 상자 폭을 그에 맞춘다). 한쪽만 고치면 어긋난다. */
   --scr-donut-size: 72px;
@@ -2164,9 +2201,9 @@ html:not(.scr-light-theme) .scr-stats-list-panel-v2 .scr-stat-name-cell, html:no
        한다 — 그보다 넓으면 끝까지 밀어도 그 칸을 온전히 볼 수가 없다. */
     --scr-stat-col-w: 124px;
     --scr-stat-rank-w: 132px;
-    --scr-stat-build-w: 152px;
-    --scr-stat-unit-w: 178px;
-    --scr-stat-skill-w: 160px;
+    --scr-stat-build-w: 290px;
+    --scr-stat-unit-w: 356px;
+    --scr-stat-skill-w: 294px;
     grid-template-columns: var(--scr-stat-tracks);
   }
 
@@ -6209,11 +6246,13 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
     /* 유저 칸 축소(요청) 176 → 148px. 프사 32 + 갭 8 + 좌우 패딩 24를 빼면 닉네임에
        84px이 남는다(12px 글자로 일곱 자쯤) — 넘치면 기존 말줄임이 처리한다. */
     --scr-stat-name-w: 148px;
-    --scr-stat-col-w: 112px;
+    /* 막대 하나뿐인 칸은 좁혀 둔다 — 그만큼을 건설·유닛·스킬 칸이 가져가야 표 전체가
+       PC 폭(1920) 안에 들어와 가로 스크롤이 안 생긴다. */
+    --scr-stat-col-w: 100px;
     --scr-stat-rank-w: 130px;
-    --scr-stat-build-w: 164px;
-    --scr-stat-unit-w: 186px;
-    --scr-stat-skill-w: 168px;
+    --scr-stat-build-w: 302px;
+    --scr-stat-unit-w: 374px;
+    --scr-stat-skill-w: 302px;
     /* 헤더 행과 데이터 행은 각각 별개의 그리드 컨테이너다. 트랙을 minmax(_,1fr)로 두면
        width:max-content인 이 행들이 '자기 내용이 원하는 폭'으로 따로 계산돼, 라벨+ⓘ+정렬
        아이콘이 든 헤더 행만 넓어진다 — 실측 873px vs 820px, 오른쪽으로 갈수록 최대 45px씩

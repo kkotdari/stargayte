@@ -230,8 +230,12 @@ export default function MemberStatRow({
                 ]}
               />
             </div>
-            {/* 일꾼은 비율이 아니라 그냥 수다(요청) — 5분 동안 몇 기 뽑았나. */}
-            <span className="scr-stat-worker5">5분 일꾼 {stats.avgWorker5 ?? "-"}</span>
+            {/* 일꾼은 비율이 아니라 그냥 수다(요청) — 5분 동안 몇 기 뽑았나. 도넛과 나란히
+                가로로 서므로(요청) 이름과 수를 위아래로 포개 도넛 한 칸만큼의 폭만 쓴다. */}
+            <div className="scr-stat-worker5">
+              <span className="scr-stat-worker5-label">5분 일꾼</span>
+              <span className="scr-stat-worker5-n">{stats.avgWorker5 ?? "-"}</span>
+            </div>
             <TopList items={topEntries(mix.units, UNIT_KO, TOP_N)} unit="기" />
           </>
         ) : (
