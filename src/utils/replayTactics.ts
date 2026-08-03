@@ -494,6 +494,8 @@ const FIGHT_RADIUS = 14;
 const FIGHT_WINDOW_SEC = 60;
 /** 이만큼은 찍혀야 '싸우고 있었다'고 말한다 — 한두 번은 옆을 지나간 것이다. */
 const FIGHT_MIN_ORDERS = 3;
+/** 병력 이름으로 부를 수 없는 꼬리표 — "무엇과 맞붙었나"의 답이 못 된다. */
+const FIGHT_UNIT_UNKNOWN = new Set(["Worker", "Building", "Transport"]);
 /** 교전 중에만 쓰는 마법 — 병력끼리 엉켰다는 가장 확실한 증거다. 스캔·마인 심기처럼
  *  혼자 하는 것은 뺀다. */
 export const FIGHT_TECHS = new Set([
@@ -533,11 +535,17 @@ export function fightersAt(
     let n = 0;
     const tally = new Map<string, number>();
     for (const o of sg.orderPositions ?? []) {
-      // 일꾼·건물이 낸 명령은 싸움의 근거가 못 된다(pushersOn과 같은 기준).
-      if (o.kind !== "attack" || o.by === "Worker" || o.by === "Building") continue;
+      /* 어택 지정만 센다. 건물이 낸 명령(랠리)은 싸움이 아니지만, '일꾼' 꼬리표는 여기서
+         버리지 않는다 — 그 꼬리표는 '저만 쓸 수 있는 커맨드'로 역추적해 붙이는 값이라
+         뮤탈처럼 그런 커맨드가 없는 유닛은 무리째로 Worker에 남는다(pushersOn 주석의
+         실측: 상대 본진을 헤집은 명령 117개가 전부 Worker였다). 진짜 일꾼이 어택을
+         지정하는 일은 드물고, 그걸 버리면 뮤탈·히드라가 엉킨 싸움이 통째로 안 잡힌다. */
+      if (o.kind !== "attack" || o.by === "Building") continue;
       if (dist(o, at) > FIGHT_RADIUS || !inWindow(o.frame)) continue;
       n += 1;
-      if (o.by && o.by !== "Transport") tally.set(o.by, (tally.get(o.by) ?? 0) + 1);
+      // 다만 이름은 확실할 때만 쓴다 — 못 짚은 명령이 몰리는 꼬리표(Worker)나 태우러 온
+      // 수송선을 "무엇과 맞붙었나"의 답으로 부를 수는 없다.
+      if (o.by && !FIGHT_UNIT_UNKNOWN.has(o.by)) tally.set(o.by, (tally.get(o.by) ?? 0) + 1);
     }
     for (const c of sg.castPositions ?? []) {
       if (!FIGHT_TECHS.has(c.tech)) continue;
