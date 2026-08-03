@@ -7090,7 +7090,7 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   display: grid; align-items: center; gap: 0; width: 100%;
   /* 시각은 가장 긴 값("8월 3일 23:59")에 맞춰 고정 — 줄마다 폭이 달라지면 제목이 들쭉
      날쭉해져 세로로 훑을 수가 없다. 제목도 고정폭이라 내용 칸이 늘 같은 x에서 시작한다. */
-  grid-template-columns: 106px 102px minmax(0, 1fr);
+  grid-template-columns: 34px 102px minmax(0, 1fr) 106px;
   padding: 11px var(--scr-row-pad-x); background: transparent; border: none; cursor: pointer;
   font-family: inherit; font-size: var(--fs-caption); color: var(--text); text-align: left;
   -webkit-tap-highlight-color: transparent;
@@ -7105,8 +7105,17 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    말하고, 배경까지 깔면 그 줄만 다른 표처럼 보인다. 호버는 마우스가 어디 있는지 알려
    주는 것이라 그대로 둔다. */
 @media (hover: hover) { .scr-feed-row:hover { background: var(--lit-hover-bg); } }
+/* 번호 — 읽는 값이 아니라 자리를 세는 값이라 가장 흐리게, 오른쪽 정렬(자릿수가 늘어도
+   숫자 끝이 한 줄로 선다). */
+.scr-feed-row-no {
+  color: var(--dim); font-variant-numeric: tabular-nums; text-align: right;
+  font-size: var(--fs-11);
+}
+/* 시각은 맨 끝으로 갔다(요청) — 오른쪽 끝에 세로로 줄지어 서므로 오른쪽 정렬이라야
+   날짜 끝이 한 줄로 맞는다. */
 .scr-feed-row-time {
   color: var(--dim); font-variant-numeric: tabular-nums; white-space: nowrap;
+  text-align: right;
   /* 한 스텝 작게(요청) — 시각은 줄을 가르는 기준일 뿐 읽을 값이 아니다. */
   font-size: var(--fs-11);
 }
@@ -7126,22 +7135,26 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-feed-row-arrow { color: var(--dim); flex: none; }
 /* 모바일은 가로가 좁아 앞 두 칸을 실제 최댓값("어제 00:32" / "랭크 변동")까지 조인다. */
 @media (max-width: 480px) {
-  .scr-feed-row { grid-template-columns: 84px 74px minmax(0, 1fr); }
+  /* 제목 84px — "랭크 변동"이 74px에서 "랭크 …"로 잘렸다(실측). 내용 칸은 "4명 9경기"
+     정도라 남는 폭을 앞뒤에 나눠 줘도 넉넉하다. */
+  .scr-feed-row { grid-template-columns: 26px 84px minmax(0, 1fr) 84px; }
   .scr-feed-row > * + * { padding-left: 8px; }
   .scr-feed-row > * { padding-right: 8px; }
   .scr-feed-row > *:last-child { padding-right: 0; }
 }
-/* 여닫는 연출(요청) — 높이를 재지 않고 격자 트랙 하나(0fr↔1fr)로 접었다 편다. 애니메이션은
-   트랜지션과 달리 '붙자마자' 도는 것이라, 펼칠 때만 마운트하는 지금 구조에서도 첫 프레임을
-   놓치지 않는다. 닫을 때는 FeedScreen이 ROW_CLOSE_MS만큼 언마운트를 미뤄 준다. */
-.scr-feed-row-fold { display: grid; overflow: hidden; }
-.scr-feed-row-fold > * { min-height: 0; }
-.scr-feed-row-fold-open { animation: scr-row-open .24s ease both; }
-.scr-feed-row-fold-closing { animation: scr-row-close .2s ease both; }
-@keyframes scr-row-open { from { grid-template-rows: 0fr; opacity: 0; } to { grid-template-rows: 1fr; opacity: 1; } }
-@keyframes scr-row-close { from { grid-template-rows: 1fr; opacity: 1; } to { grid-template-rows: 0fr; opacity: 0; } }
+/* 여닫는 연출(요청) — 투명도와 이동만 쓴다.
+   처음에는 격자 트랙(0fr↔1fr)을 애니메이션해서 실제로 접었다 폈는데, 그러면 매 프레임마다
+   그 안의 카드 아홉 장을 통째로 다시 배치해야 해서 눈에 띄게 버벅였다(지적). 투명도와
+   transform은 배치를 건드리지 않아(합성 단계에서만 처리) 내용이 아무리 많아도 값이 같다.
+   자리는 즉시 잡히고 내용만 스며들 듯 나타난다.
+   애니메이션은 트랜지션과 달리 '붙자마자' 도는 것이라, 펼칠 때만 마운트하는 지금 구조에서도
+   첫 프레임을 놓치지 않는다. 닫을 때는 FeedScreen이 ROW_CLOSE_MS만큼 언마운트를 미뤄 준다. */
+.scr-feed-row-fold-open { animation: scr-row-open .2s ease-out both; }
+.scr-feed-row-fold-closing { animation: scr-row-close .18s ease-in both; }
+@keyframes scr-row-open { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+@keyframes scr-row-close { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(-6px); } }
 @media (prefers-reduced-motion: reduce) {
-  .scr-feed-row-fold-open, .scr-feed-row-fold-closing { animation-duration: 1ms; }
+  .scr-feed-row-fold-open, .scr-feed-row-fold-closing { animation: none; }
 }
 /* 펼친 자리 — 원래 카드를 그대로 넣되 머리(시각·제목)는 감춘다(요청: 카드 바디와 댓글).
    바로 위 줄이 이미 같은 말을 하고 있어, 그대로 두면 시각이 두 번 적힌다. */

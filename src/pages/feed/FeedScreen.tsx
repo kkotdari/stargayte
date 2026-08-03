@@ -77,6 +77,9 @@ const REVEAL_MS = 220;
  *  카드가 다 접힌 뒤에 사라진다(짧으면 접히다 말고 툭 없어진다). */
 const ROW_CLOSE_MS = 200;
 
+/** 목록/타임라인 중 무엇을 보고 있었나 — 테마(LIGHT_THEME_KEY)와 같은 방식으로 남긴다. */
+const FEED_VIEW_KEY = "scr-feed-view";
+
 // 피드 — 커뮤니티 활동(경기 결과, 너 나와! 일정)을 한 타임라인으로 보여주는 홈 화면.
 // 타임라인 기준: 너 나와!는 경기 예정 일시, 경기는 리플레이의 게임 시작 시각.
 
@@ -718,8 +721,13 @@ export default function FeedScreen() {
   /* 목록 보기(요청) — 카드를 다 그리는 대신 한 줄짜리 목록으로 훑고, 볼 것만 눌러 편다.
      펼침은 한 번에 하나다: 여러 줄을 동시에 펴 두면 목록의 값어치(한 화면에 많이)가
      사라지고, 그럴 바에는 카드 보기가 낫다.
-     이쪽이 기본이다(요청) — 카드(타임라인)는 골라서 보는 쪽으로 바뀌었다. */
-  const [listMode, setListMode] = useState(true);
+     이쪽이 기본이다(요청) — 카드(타임라인)는 골라서 보는 쪽으로 바뀌었다.
+     고른 값은 테마와 같은 자리(localStorage)에 남긴다(요청) — 새로고침하거나 다른 탭에
+     다녀와도 방금 보던 모양 그대로여야 한다. 저장된 게 없으면 목록이 기본이다. */
+  const [listMode, setListMode] = useState(() => localStorage.getItem(FEED_VIEW_KEY) !== "timeline");
+  useEffect(() => {
+    localStorage.setItem(FEED_VIEW_KEY, listMode ? "list" : "timeline");
+  }, [listMode]);
   const [openRowKey, setOpenRowKey] = useState<string | null>(null);
   /* 접히는 모습을 보여 주려면(요청: 여닫을 때 트랜지션) 닫는 동안에도 그 줄의 카드가
      잠깐 더 붙어 있어야 한다 — 바로 언마운트하면 그냥 사라진다. 다른 줄을 펴서 밀려
@@ -1413,7 +1421,7 @@ export default function FeedScreen() {
              반영되지 않아 두 화면이 서서히 어긋나기 때문이다. 머리(시각·제목)만 CSS로
              감춘다 — 바로 위 줄이 이미 같은 말을 하고 있다. */
           <div className="scr-feed-rows">
-            {displayFeed.map((item) => {
+            {displayFeed.map((item, i) => {
               const key = rowKeyOf(item);
               const open = openRowKey === key;
               const closing = closingRowKey === key;
@@ -1423,13 +1431,18 @@ export default function FeedScreen() {
                     type="button" className="scr-feed-row" aria-expanded={open}
                     onClick={() => toggleRow(key)}
                   >
-                    <span className="scr-feed-row-time">
-                      {item.kind === "gameResultPost"
-                        ? sessionDateLabel(item.date)
-                        : formatWhen(item.time, { clock: item.withClock })}
-                    </span>
+                    {/* 번호(요청) — 역순이라 맨 아래(가장 오래된 것)가 1이다. 지금까지
+                        불러온 것 안에서 세므로, 더 불러오면 위쪽 번호가 그만큼 커진다. */}
+                    <span className="scr-feed-row-no">{displayFeed.length - i}</span>
                     <span className="scr-feed-row-title">{rowTitleOf(item)}</span>
                     <span className="scr-feed-row-desc">{rowDesc(item)}</span>
+                    {/* 시각은 종류를 안 가리고 한 가지로 적는다(요청) — 예전에는 너 나와는
+                        날짜만, 랭크 변동은 "12시간 전", 게임결과 묶음은 세션 날짜라 세 줄이
+                        저마다 다른 말투였다. 시각까지 넣으면 종류마다 있고 없고가 갈리므로
+                        (너 나와에는 시각 개념이 없다) 모두가 가진 날짜 하나로 맞춘다. */}
+                    <span className="scr-feed-row-time">
+                      {formatWhen(item.time, { clock: false })}
+                    </span>
                   </button>
                   {/* 게임결과는 요약(참가자 명단)을 건너뛰고 바로 경기 목록을 편다(요청) —
                       목록 줄이 이미 "n명 n경기"로 그 요약을 말했다. */}
