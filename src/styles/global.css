@@ -6846,7 +6846,14 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-feed-list { display: flex; flex-direction: column; gap: var(--feed-card-gap); }
 /* "현재"(now) 구분선 — 미래(위)와 오늘/과거(아래) 카드 사이에 위치 안내(요청). 포인트
    색 얇은 라인 + 가운데 "현재" 라벨. */
-.scr-feed-now-divider { display: flex; align-items: center; gap: 10px; margin: -2px 2px; }
+.scr-feed-now-divider {
+  display: flex; align-items: center; gap: 10px; margin: -2px 2px;
+  /* 위아래 여백을 맞춘다(지적: 현재 라인 위아래 갭이 달라 보인다). 포스트는 목록의
+     갭(--feed-card-gap) 말고도 제 꼬리 여백(margin-bottom: --post-pad-b)을 하나 더
+     달고 있어서, 이 선의 위쪽은 42+16, 아래쪽은 42로 16px이 어긋나 있었다. 이 선도
+     포스트와 같은 꼬리 여백을 달아 양쪽을 같게 만든다(-2px는 위와 같은 보정). */
+  margin-bottom: calc(var(--post-pad-b) - 2px);
+}
 /* 양쪽 끝이 흐려지는 그라데이션을 쓰다가 균일한 단색 선으로 바꿨다(요청) — 가운데만
    진하고 끝이 사라지는 선은 라벨 주변만 강조돼 "선"이 아니라 번짐처럼 보였다. */
 .scr-feed-now-divider::before, .scr-feed-now-divider::after {
