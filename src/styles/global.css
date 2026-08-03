@@ -121,6 +121,9 @@
      (요청). 칸과 칸을 가르는 --line-soft보다 확실히 옅어야 한다: 같은 굵기로 그리면 안쪽
      구분이 바깥 구분과 같은 무게로 읽혀 표의 칸 수가 갑자기 늘어난 것처럼 보인다. */
   --line-hair: rgba(255, 255, 255, 0.08);
+  /* 그보다 한 겹 더 옅은 선 — 표의 세로줄처럼 '칸을 가르기만 하면 되는' 자리에 쓴다.
+     가로줄과 같은 진하기면 격자가 글자보다 먼저 눈에 들어온다(요청: 행 구분선보다 흐리게). */
+  --line-faint: rgba(255, 255, 255, 0.045);
 
   /* 텍스트: 한 가지 색(거의 흰색)만 사용 — 대부분 기본색 그대로, 꼭 필요한 곳만 살짝 낮춘 투명도 */
   --text: #f5f6f7;
@@ -803,6 +806,7 @@ html.scr-light-theme {
   --line: #000000;
   --line-soft: #000000;
   --line-hair: rgba(0, 0, 0, 0.12);
+  --line-faint: rgba(0, 0, 0, 0.07);
   --text: #000000;
   --muted: rgba(0, 0, 0, 0.68);
   --dim: rgba(0, 0, 0, 0.48);
@@ -7068,28 +7072,41 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 }
 @media (hover: hover) { .scr-feed-listmode-btn:hover { color: var(--text); opacity: 1; } }
 
-.scr-feed-rows { display: flex; flex-direction: column; }
+/* 줄 구분선은 본문 칸 좌우 여백을 뚫고 끝까지 간다(요청: 양쪽 끝까지 꽉 차게) — 표의
+   가로줄은 칸 안쪽이 아니라 표 전체를 가르는 선이다. 여백만큼 밖으로 나갔다가 같은 값을
+   줄 안쪽 패딩으로 되돌려 글자 자리는 그대로 둔다(--post-bleed는 .scr-main이 자기
+   좌우 패딩과 같은 값으로 내려 준다). */
+.scr-feed-rows {
+  display: flex; flex-direction: column;
+  margin-inline: calc(-1 * var(--post-bleed)); --scr-row-pad-x: calc(var(--post-bleed) + 2px);
+}
 /* 줄 사이는 얇은 실선 하나로만 가른다 — 카드처럼 저마다 유리판을 두면 '목록'이 아니라
    '작은 카드 목록'이 되어 훑기가 다시 느려진다. */
 .scr-feed-row-wrap + .scr-feed-row-wrap { border-top: 1px solid var(--line-hair); }
 .scr-feed-row {
-  display: grid; align-items: center; gap: 10px; width: 100%;
+  display: grid; align-items: center; gap: 0; width: 100%;
   /* 시각은 가장 긴 값("8월 3일 23:59")에 맞춰 고정 — 줄마다 폭이 달라지면 제목이 들쭉
      날쭉해져 세로로 훑을 수가 없다. 제목도 고정폭이라 내용 칸이 늘 같은 x에서 시작한다. */
-  grid-template-columns: 30px 96px 92px minmax(0, 1fr);
-  padding: 11px 12px; background: transparent; border: none; cursor: pointer;
+  grid-template-columns: 106px 102px minmax(0, 1fr);
+  padding: 11px var(--scr-row-pad-x); background: transparent; border: none; cursor: pointer;
   font-family: inherit; font-size: var(--fs-caption); color: var(--text); text-align: left;
   -webkit-tap-highlight-color: transparent;
 }
+/* 세로 구분선(요청) — 가로줄(--line-hair)보다 더 흐리게 둔다. 표의 세로줄은 칸을 가르기만
+   하면 되고, 가로줄만큼 진하면 격자가 글자보다 먼저 눈에 들어온다. 선 좌우로 같은 여백을
+   두려고 gap 대신 각 칸의 패딩으로 자리를 만든다. */
+.scr-feed-row > * + * { border-left: 1px solid var(--line-faint); padding-left: 10px; }
+.scr-feed-row > * { padding-right: 10px; }
+.scr-feed-row > *:last-child { padding-right: 0; }
+/* 고른 줄에 배경을 깔지 않는다(요청) — 아래에 카드가 펼쳐져 있는 것이 이미 '고른 줄'을
+   말하고, 배경까지 깔면 그 줄만 다른 표처럼 보인다. 호버는 마우스가 어디 있는지 알려
+   주는 것이라 그대로 둔다. */
 @media (hover: hover) { .scr-feed-row:hover { background: var(--lit-hover-bg); } }
-.scr-feed-row-wrap-open .scr-feed-row { background: var(--lit-hover-bg); }
-/* 번호 — 읽는 값이 아니라 자리를 세는 값이라 가장 흐리게, 오른쪽 정렬(자릿수가 늘어도
-   숫자 끝이 한 줄로 선다). */
-.scr-feed-row-no {
-  color: var(--dim); font-variant-numeric: tabular-nums; text-align: right;
+.scr-feed-row-time {
+  color: var(--dim); font-variant-numeric: tabular-nums; white-space: nowrap;
+  /* 한 스텝 작게(요청) — 시각은 줄을 가르는 기준일 뿐 읽을 값이 아니다. */
   font-size: var(--fs-11);
 }
-.scr-feed-row-time { color: var(--dim); font-variant-numeric: tabular-nums; white-space: nowrap; }
 /* 가장 긴 제목("일일 랭크 변동")에 맞춘 고정폭이다 — 그래도 넘치면 트랙을 밀지 말고
    잘린다(실측: min-width 없이 두면 제목이 내용 칸을 덮어썼다). */
 .scr-feed-row-title {
@@ -7104,26 +7121,39 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 }
 .scr-feed-row-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .scr-feed-row-arrow { color: var(--dim); flex: none; }
-/* 상태 배지 — 카드의 손 이모지 양옆 배지와 같은 말을 글자만으로 옮긴 것이라 색을 쓰지
-   않는다(목록은 텍스트 위주라는 요청). 테두리만으로 '배지'임이 읽힌다. */
-.scr-feed-row-badge {
-  flex: none; padding: 1px 6px; border-radius: 999px;
-  border: 1px solid var(--line-hair); color: var(--text);
-  font-size: var(--fs-11); font-weight: 700; line-height: 1.5;
-}
-/* 모바일은 가로가 398px뿐이라 고정 트랙 셋(30+96+92)에 갭·패딩까지 빼면 내용 칸에 126px밖에
-   안 남아, "Cheol → 버림 bob"이 양쪽 다 말줄임으로 잘렸다(실측). 앞 세 칸을 실제 최댓값
-   ("16" / "어제 00:32" / "일일 랭크 변동")에 맞게 조이고 갭·패딩도 줄여 174px을 만든다. */
+/* 모바일은 가로가 좁아 앞 두 칸을 실제 최댓값("어제 00:32" / "랭크 변동")까지 조인다. */
 @media (max-width: 480px) {
-  .scr-feed-row {
-    grid-template-columns: 22px 74px 84px minmax(0, 1fr);
-    gap: 8px; padding: 11px 10px;
-  }
+  .scr-feed-row { grid-template-columns: 84px 74px minmax(0, 1fr); }
+  .scr-feed-row > * + * { padding-left: 8px; }
+  .scr-feed-row > * { padding-right: 8px; }
+  .scr-feed-row > *:last-child { padding-right: 0; }
+}
+/* 여닫는 연출(요청) — 높이를 재지 않고 격자 트랙 하나(0fr↔1fr)로 접었다 편다. 애니메이션은
+   트랜지션과 달리 '붙자마자' 도는 것이라, 펼칠 때만 마운트하는 지금 구조에서도 첫 프레임을
+   놓치지 않는다. 닫을 때는 FeedScreen이 ROW_CLOSE_MS만큼 언마운트를 미뤄 준다. */
+.scr-feed-row-fold { display: grid; overflow: hidden; }
+.scr-feed-row-fold > * { min-height: 0; }
+.scr-feed-row-fold-open { animation: scr-row-open .24s ease both; }
+.scr-feed-row-fold-closing { animation: scr-row-close .2s ease both; }
+@keyframes scr-row-open { from { grid-template-rows: 0fr; opacity: 0; } to { grid-template-rows: 1fr; opacity: 1; } }
+@keyframes scr-row-close { from { grid-template-rows: 1fr; opacity: 1; } to { grid-template-rows: 0fr; opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .scr-feed-row-fold-open, .scr-feed-row-fold-closing { animation-duration: 1ms; }
 }
 /* 펼친 자리 — 원래 카드를 그대로 넣되 머리(시각·제목)는 감춘다(요청: 카드 바디와 댓글).
    바로 위 줄이 이미 같은 말을 하고 있어, 그대로 두면 시각이 두 번 적힌다. */
-.scr-feed-row-body { padding: 0 0 12px; }
+.scr-feed-row-body { padding: 0 var(--scr-row-pad-x) 12px; }
 .scr-feed-row-body .scr-feed-card-head { display: none; }
+/* 목록 안에서는 카드가 유리판을 벗는다(요청) — 표 한 칸을 열어 본 것이지 새 카드가 뜬
+   것이 아니고, blur 요소가 줄마다 생기면 여닫는 연출도 그만큼 무거워진다.
+   글래스를 씌우는 쪽(.scr-feed-card > .scr-feed-card-body)이 자식 결합자라 여기도 같은
+   꼴로 맞춰야 이긴다. 라이트 테마 규칙은 앞에 .scr-light-theme가 하나 더 붙어 더 세므로
+   그쪽도 따로 벗겨 준다. */
+.scr-feed-row-body .scr-feed-card > .scr-feed-card-body,
+.scr-light-theme .scr-feed-row-body .scr-feed-card > .scr-feed-card-body {
+  background-color: transparent; background-image: none;
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+}
 /* "현재"(now) 구분선 — 미래(위)와 오늘/과거(아래) 카드 사이에 위치 안내(요청). 포인트
    색 얇은 라인 + 가운데 "현재" 라벨. */
 .scr-feed-now-divider {

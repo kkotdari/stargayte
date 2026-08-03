@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { createPortal } from "react-dom";
-import RankingShiftCard, { RankingShiftMenu } from "./RankingShiftCard";
+import RankingShiftCard, { RankingShiftMenu, RANK_SHIFT_TITLE } from "./RankingShiftCard";
 import { CalendarPlus, ClipboardList, MoreHorizontal, Phone, Plus, Upload } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
 import { Spinner } from "../../components/common/Feedback";
@@ -15,7 +15,7 @@ import { FeedCard } from "./FeedCard";
 import { resolveSlotName } from "./GameResultSides";
 import { isComputerSlot } from "../../constants/computerSlot";
 import { isUnregisteredSlot } from "../../constants/unregisteredSlot";
-import { ChallengeCard, ChallengeTimeHeadEdit, challengeSideBadges } from "../challenge/ChallengeScreen";
+import { ChallengeCard, ChallengeTimeHeadEdit } from "../challenge/ChallengeScreen";
 import FeedComments, { primeFeedComments } from "./FeedComments";
 import { primeReplayMaps } from "../../hooks/useReplayMap";
 import ScrollNavTimeline from "../../components/common/ScrollNavTimeline";
@@ -72,6 +72,10 @@ function safeTopPx(): number {
 // 자란다. 이 값은 그 등장 애니메이션 길이이자, 애니메이션이 끝난 뒤 스크롤을 옮기기까지
 // 기다리는 시간이다.
 const REVEAL_MS = 220;
+
+/** 목록 줄이 접히는 데 걸리는 시간 — CSS의 scr-row-close 애니메이션과 같은 값이라야
+ *  카드가 다 접힌 뒤에 사라진다(짧으면 접히다 말고 툭 없어진다). */
+const ROW_CLOSE_MS = 200;
 
 // 피드 — 커뮤니티 활동(경기 결과, 너 나와! 일정)을 한 타임라인으로 보여주는 홈 화면.
 // 타임라인 기준: 너 나와!는 경기 예정 일시, 경기는 리플레이의 게임 시작 시각.
@@ -155,9 +159,10 @@ export function isUpcomingChallenge(it: { kind: string; challenge?: Challenge })
 //  · 아직 안 끝난 것(응답대기·성사)은 "현재" 선 바로 위에 둔다(지적: 아직 안 열린 너 나와가
 //    현재보다 아래로 내려가면 안 된다). 약속한 날이 이미 지났어도 마찬가지다 — 결과가
 //    안 들어온 이상 그건 여전히 남은 일이다. 예정일이 더 먼 것일수록 위로 간다.
-//  · 끝난 것(완료·폐기)은 그날 경기들 아래로 내린다(요청: "전날 경기 목록과 당일 경기목록
-//    사이"). 세션 날짜의 시작(오전 8시 — sessionDateOf의 경계와 같은 값)에 앉히면 그날
-//    경기들(8시 이후)보다 아래, 전날 것들보다 위가 된다.
+//  · 취소·거절·버림·만료로 끝난 것은 '끝난 때'에 꽂는다 — 카드가 적는 시각과 같아야 한다.
+//  · 결과까지 들어온 것(완료)은 그날 경기들 아래로 내린다(요청: "전날 경기 목록과 당일
+//    경기목록 사이"). 세션 날짜의 시작(오전 8시 — sessionDateOf의 경계와 같은 값)에
+//    앉히면 그날 경기들(8시 이후)보다 아래, 전날 것들보다 위가 된다.
 function challengeSortMs(c: Challenge): number {
   const base = new Date(c.scheduledAt ?? c.createdAt).getTime();
   if (c.status === "pending" || c.status === "confirmed") {
@@ -168,7 +173,15 @@ function challengeSortMs(c: Challenge): number {
       : base;
     return Math.max(endOfDay, Date.now() + 1);
   }
+  /* 취소·거절·버림·만료로 끝난 것은 '끝난 때'에 꽂는다 — 카드가 적는 시각도 그때이기
+     때문이다(challengeItem의 iso). 예전에는 여기만 약속한 날(scheduledDate)을 봤는데,
+     그러면 8월 1일로 잡았다가 어제 취소한 건이 "어제"라고 적힌 채 8월 1일 자리에 끼어
+     들었다(지적: 취소/만료/거절 너 나와가 순서가 안 맞는 곳에 있다). 적는 시각과 꽂는
+     자리가 다르면 목록은 어느 쪽으로 읽어도 틀린 그림이 된다. */
+  if (c.status === "discarded" && c.discardedAt) return new Date(c.discardedAt).getTime();
   if (!c.scheduledDate) return base;
+  // 결과까지 들어온 건(완료)은 여전히 약속한 날의 이야기다 — 그날 경기들 아래(오전 8시,
+  // sessionDateOf의 경계와 같은 값)에 앉혀 전날 것들보다는 위가 되게 한다.
   return new Date(`${c.scheduledDate}T00:00:00`).getTime() + SESSION_DAY_START_HOUR * 3600_000;
 }
 
@@ -207,13 +220,10 @@ function rowKeyOf(it: DisplayItem): string {
         : `m-${it.gameResult.id}`;
 }
 
-/** 그 줄이 무엇에 대한 것인가.
- *  랭크 변동만 카드 제목(RANK_SHIFT_TITLE = "일일 랭크 변동")보다 짧게 부른다 — 모바일에서
- *  제목 칸이 84px이라 그대로 쓰면 "일일 랭크 …"로 잘렸다(실측). 유형 필터가 이미 쓰고 있는
- *  이름이라 새 말을 만드는 것도 아니다. */
+/** 그 줄이 무엇에 대한 것인가 — 카드 머리의 제목과 같은 말을 쓴다. */
 function rowTitleOf(it: DisplayItem): string {
   return it.kind === "challenge" ? "너 나와!"
-    : it.kind === "rankingShift" ? "랭크 변동" : "게임결과";
+    : it.kind === "rankingShift" ? RANK_SHIFT_TITLE : "게임결과";
 }
 
 /** 게임결과 묶음에 실제로 몇 사람이 있었나 — 컴퓨터·비회원은 "누가 있었나"의 답이
@@ -711,6 +721,27 @@ export default function FeedScreen() {
      이쪽이 기본이다(요청) — 카드(타임라인)는 골라서 보는 쪽으로 바뀌었다. */
   const [listMode, setListMode] = useState(true);
   const [openRowKey, setOpenRowKey] = useState<string | null>(null);
+  /* 접히는 모습을 보여 주려면(요청: 여닫을 때 트랜지션) 닫는 동안에도 그 줄의 카드가
+     잠깐 더 붙어 있어야 한다 — 바로 언마운트하면 그냥 사라진다. 다른 줄을 펴서 밀려
+     닫히는 경우도 같은 길을 탄다. */
+  const [closingRowKey, setClosingRowKey] = useState<string | null>(null);
+  const closeTimerRef = useRef<number | null>(null);
+  useEffect(() => () => { if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current); }, []);
+  const toggleRow = (key: string) => {
+    const prev = openRowKey;
+    const next = prev === key ? null : key;
+    setOpenRowKey(next);
+    if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current);
+    if (prev && prev !== next) {
+      setClosingRowKey(prev);
+      closeTimerRef.current = window.setTimeout(() => {
+        setClosingRowKey(null);
+        closeTimerRef.current = null;
+      }, ROW_CLOSE_MS);
+    } else {
+      setClosingRowKey(null);
+    }
+  };
 
   const user = useAppStore((s) => s.user);
   const isAdmin = !!user && isAdminRole(user.roles);
@@ -1148,13 +1179,13 @@ export default function FeedScreen() {
       const c = item.challenge;
       const mine = [c.createdBy.nickname, ...c.ownMembers.map((m) => m.nickname)].join("·");
       const theirs = c.targets.map((t) => t.nickname).join("·");
-      const { left, right } = challengeSideBadges(c);
+      /* 배지(취소/거절/버림…)는 뺐다(요청) — 목록은 "무슨 일이 있었나"를 훑는 자리라
+         누가 누구를 불렀나까지가 한 줄의 몫이고, 그 끝이 어땠는지는 펼쳐 보면 카드가
+         말한다. 배지가 붙어 있으면 이름 자리가 그만큼 줄어 모바일에서 닉네임이 잘렸다. */
       return (
         <>
           <span className="scr-feed-row-name">{mine}</span>
-          {left && <span className="scr-feed-row-badge">{left}</span>}
           <span className="scr-feed-row-arrow" aria-hidden>→</span>
-          {right && <span className="scr-feed-row-badge">{right}</span>}
           <span className="scr-feed-row-name">{theirs}</span>
         </>
       );
@@ -1382,17 +1413,16 @@ export default function FeedScreen() {
              반영되지 않아 두 화면이 서서히 어긋나기 때문이다. 머리(시각·제목)만 CSS로
              감춘다 — 바로 위 줄이 이미 같은 말을 하고 있다. */
           <div className="scr-feed-rows">
-            {displayFeed.map((item, i) => {
+            {displayFeed.map((item) => {
               const key = rowKeyOf(item);
               const open = openRowKey === key;
+              const closing = closingRowKey === key;
               return (
                 <div className={cx("scr-feed-row-wrap", open && "scr-feed-row-wrap-open")} key={key}>
                   <button
                     type="button" className="scr-feed-row" aria-expanded={open}
-                    onClick={() => setOpenRowKey(open ? null : key)}
+                    onClick={() => toggleRow(key)}
                   >
-                    {/* 번호(요청) — 위에서부터 몇 번째 소식인가. 최신순이라 1이 가장 새 것이다. */}
-                    <span className="scr-feed-row-no">{i + 1}</span>
                     <span className="scr-feed-row-time">
                       {item.kind === "gameResultPost"
                         ? sessionDateLabel(item.date)
@@ -1403,7 +1433,11 @@ export default function FeedScreen() {
                   </button>
                   {/* 게임결과는 요약(참가자 명단)을 건너뛰고 바로 경기 목록을 편다(요청) —
                       목록 줄이 이미 "n명 n경기"로 그 요약을 말했다. */}
-                  {open && <div className="scr-feed-row-body">{renderCard(item, true)}</div>}
+                  {(open || closing) && (
+                    <div className={cx("scr-feed-row-fold", open ? "scr-feed-row-fold-open" : "scr-feed-row-fold-closing")}>
+                      <div className="scr-feed-row-body">{renderCard(item, true)}</div>
+                    </div>
+                  )}
                 </div>
               );
             })}
