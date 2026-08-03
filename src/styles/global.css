@@ -7092,13 +7092,16 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   display: flex; flex-direction: column;
   margin-inline: calc(-1 * var(--card-bleed)); --scr-row-pad-x: calc(var(--card-bleed) + 2px);
   /* 이 목록의 '흐린 글자'(되풀이되는 말·시각·구분점)가 쓰는 색. 앱 전역 --dim을 그대로
-     쓰다가 라이트 테마에서 너무 옅었다(지적) — 흰 바탕 위 검정 48%는 대비 3.7:1이라
-     11px짜리 시각에는 모자란다. 라이트만 62%(6.2:1)로 눌러 둔다: 여전히 진한 글자
-     (검정 100%)보다는 확실히 뒤로 물러나면서, 읽으려 하면 읽힌다. 다크는 검정 바탕에
-     흰 68%라 이미 10:1을 넘으므로 그대로 둔다. */
+     쓰다가 라이트 테마에서 너무 옅었다(지적, 두 번) — 흰 바탕 위 검정 48%는 대비 3.7:1,
+     한 번 눌러 본 62%도 6.2:1이라 11px짜리 시각에는 여전히 모자랐다. 라이트만 76%
+     (10.7:1)로 둔다.
+     이만큼 진해져도 위계가 안 무너지는 건 이 목록이 색 하나로만 강약을 주는 게 아니라서다
+     — 진한 쪽은 검정 100%에 굵기 700까지 함께 쥐고 있어서, 색 차이가 좁아져도 굵기가
+     "여기가 읽을 값"을 계속 말해 준다. 다크는 검정 바탕에 흰 68%라 이미 8.5:1이므로
+     그대로 둔다. */
   --row-dim: var(--dim);
 }
-.scr-light-theme .scr-activity-rows { --row-dim: rgba(0, 0, 0, 0.62); }
+.scr-light-theme .scr-activity-rows { --row-dim: rgba(0, 0, 0, 0.76); }
 /* 줄 사이는 얇은 실선 하나로만 가른다 — 카드처럼 저마다 유리판을 두면 '목록'이 아니라
    '작은 카드 목록'이 되어 훑기가 다시 느려진다. */
 .scr-activity-row-wrap + .scr-activity-row-wrap { border-top: 1px solid var(--line-hair); }
