@@ -1355,16 +1355,16 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
     max-width: var(--list-content-max); margin-left: auto; margin-right: auto; width: 100%;
   }
 }
-/* 통계 화면만 PC에서 더 넓힌다(요청: 처음 1600 → 1280으로 조정) — 칸이 랭크·포인트까지
-   7개라 위 공용 --list-content-max(860px)로는 계속 좁았다. 다른 화면(회원 목록 등)은
+/* 통계 화면만 PC에서 더 넓힌다(요청: 1600 → 1280 → 다시 1920) — 건설·유닛·스킬 칸이
+   들어오며 표가 다시 길어졌다. 위 공용 --list-content-max(860px)로는 애초에 어림없다. 다른 화면(회원 목록 등)은
    위 공용 규칙을 그대로 쓰므로 이 화면 전용 클래스만 뒤에서 덮어쓴다. 처음 시도가
    "안 늘었다"(지적)로 실패한 이유: 이 화면도 다른 모든 화면처럼 .scr-main
    (--content-max=860px로 폭이 상한된 공통 부모, 아래 규칙) 안에 들어 있어서, 자식인
    .scr-stats-screen-v2를 아무리 넓혀도 부모가 먼저 860px로 잘라 실제로는 못 늘어났다 —
    부모도 이 화면을 담고 있을 때만 :has()로 같이 넓혀야 한다. */
 @media (min-width: 641px) {
-  .scr-stats-screen-v2 { max-width: 1280px; }
-  .scr-main:has(.scr-stats-screen-v2) { max-width: 1280px; }
+  .scr-stats-screen-v2 { max-width: 1920px; }
+  .scr-main:has(.scr-stats-screen-v2) { max-width: 1920px; }
 }
 
 /* 맨 위로 이동 플로팅 버튼 — 콘텐츠를 안 가리려고 페이지 하단에 큰 여백을 예약해뒀었는데,
@@ -1773,17 +1773,55 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    여백을 책임진다(왼쪽은 이름 칸이 자기 padding-left로 책임지는 것과 대칭). */
 .scr-stat-cmd-cell { padding-right: 20px; }
 
-/* ── 생산 칸(요청: 총량 유지 + 도넛 셋 + 초반 일꾼) ─────────────────────────────
-   총량 막대 하나만 있던 칸이라 다른 칸과 같은 가로 정렬이었는데, 이제 세로로 세 층이
-   쌓인다. 칸 자체를 세로 스택으로 바꾼다. */
-.scr-stat-build-cell {
-  flex-direction: column; align-items: center; gap: 6px;
+/* ── 건설·유닛·스킬 칸(요청) ────────────────────────────────────────────────────
+   셋 다 위에서 아래로 [그림 → 수치 → 많이 나온 다섯] 순으로 쌓인다. 총량 막대는 더 안
+   그린다 — 값은 그대로 저장되지만 화면에는 '무엇으로 그 총량이 됐나'만 남긴다(요청). */
+.scr-stat-build-cell, .scr-stat-units-cell, .scr-stat-skills-cell {
+  flex-direction: column; align-items: center; justify-content: center;
+  gap: 6px; position: relative;
 }
 .scr-stat-mix { display: flex; align-items: flex-start; justify-content: center; gap: 10px; }
-/* 경기당 초반(5분) 일꾼 수 — 도넛과 달리 비율이 아니라 그냥 수라, 숫자를 그대로 적는다. */
-.scr-stat-worker5 {
-  font-size: var(--fs-11); color: var(--dim); font-variant-numeric: tabular-nums;
-  white-space: nowrap;
+
+/* 공/방/실드 단계 — 이름 열 하나에 수치 세 열(요청: 지상/공중을 한 열에 두 줄로).
+   수치는 오른쪽 맞춤 + tabular-nums라 위아래 자릿수가 흔들리지 않는다. */
+.scr-stat-upgrades {
+  display: grid; grid-template-columns: auto repeat(3, 1fr);
+  gap: 1px 8px; align-items: baseline;
+  font-size: var(--fs-11); color: var(--text);
+  font-variant-numeric: tabular-nums; text-align: right;
+}
+.scr-stat-upgrades > span { white-space: nowrap; }
+.scr-stat-up-head { color: var(--muted); }
+.scr-stat-up-row { color: var(--dim); text-align: left; }
+
+/* 랭크 칸 — 위에 순위(+변동), 아래에 포인트(요청: 두 줄). 두 줄 다 가운데 정렬이고
+   각각 누를 수 있는 버튼을 품는다. */
+.scr-stat-rank-cell { flex-direction: column; gap: 2px; }
+.scr-stat-rank-line { display: flex; align-items: center; justify-content: center; gap: 4px; }
+.scr-stat-rank-points { color: var(--dim); }
+
+/* ── 유닛·스킬 칸(요청: Top5 목록, 정렬 없음) ───────────────────────────────────
+   이름은 왼쪽에 붙이고 수는 오른쪽 끝에 세로로 맞춘다 — 다섯 줄을 위아래로 훑을 때
+   자릿수가 흔들리면 큰 값과 작은 값이 한눈에 안 갈린다(그래서 tabular-nums도 함께). */
+.scr-stat-toplist {
+  list-style: none; margin: 0; padding: 0; width: 100%;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.scr-stat-toplist li {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+  line-height: 1.35; min-width: 0;
+}
+.scr-stat-toplist-name {
+  color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.scr-stat-toplist-n {
+  color: var(--dim); font-variant-numeric: tabular-nums; white-space: nowrap; flex: none;
+}
+/* 정렬 안 되는 컬럼 머리 — 정렬되는 머리(.scr-stat-sort-btn)와 같은 자리/크기로 앉히되
+   화살표가 없고 눌리지도 않는다. */
+.scr-stat-plain-head {
+  width: 100%; height: 100%; display: flex;
+  align-items: center; justify-content: center; gap: 4px;
 }
 
 /* ── 도넛(요청) ───────────────────────────────────────────────────────────────
@@ -1793,6 +1831,7 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    한쪽 값을 뒤집어 쓰지 않는다. */
 .scr-donut {
   display: flex; flex-direction: column; align-items: center; gap: 2px;
+  width: var(--scr-donut-size);
   --scr-donut-1: #2a78d6;
   --scr-donut-2: #eb6834;
   --scr-donut-3: #1baf7a;
@@ -1810,13 +1849,23 @@ html:not(.scr-light-theme) .scr-donut {
 .scr-donut-seg-1 { stroke: var(--scr-donut-1); }
 .scr-donut-seg-2 { stroke: var(--scr-donut-2); }
 .scr-donut-seg-3 { stroke: var(--scr-donut-3); }
-/* 이름은 늘 글자색으로 — 조각 색을 글자에 입히면 색이 곧 뜻이 되어, 색을 못 가르는
-   사람에게 이름까지 사라진다. 색은 그림에만 두고 글은 글자색을 지킨다. */
-.scr-donut-name { font-size: var(--fs-11); color: var(--dim); line-height: 1.1; }
-/* 가장 큰 조각을 글로 직접 적는 자리 — 이 줄이 있어야 색만으로 뜻을 전하지 않게 된다. */
-.scr-donut-lead {
-  font-size: var(--fs-11); color: var(--text); font-weight: 700; line-height: 1.1;
-  white-space: nowrap;
+/* 조각 띠 위에 얹는 이름(요청) — 조각 색은 여섯 값(라이트/다크 × 셋) 모두 어두운 잉크와
+   충분히 갈리므로, 테마와 무관하게 같은 잉크 하나를 쓴다. 색깔 위의 글씨는 밝은 잉크로
+   두면 주황·아쿠아에서 대비가 무너진다. */
+/* 조각 색 위에 얹는 글자는 테마와 무관하게 검정 하나다. 여섯 색(라이트/다크 × 셋) 모두
+   검정과 4.76:1 이상으로 갈리는데(가장 빡빡한 것이 라이트 파랑), 흰 글자로 두면 주황
+   2.9:1 · 아쿠아 2.6:1로 무너진다 — 바탕이 어둡든 밝든 조각 색은 그대로이므로 잉크도
+   테마를 따라가지 않는다. */
+.scr-donut-band-label { fill: #000; font-weight: 700; }
+/* 가운데 구멍 — 도넛 이름과(있으면) 값 한 줄. 조각 색을 글자에 입히지 않는다: 색이 곧
+   뜻이 되면 색을 못 가르는 사람에게 이름까지 사라진다. */
+.scr-donut-center-title { fill: var(--dim); font-weight: 600; }
+.scr-donut-center-note { fill: var(--text); font-weight: 700; font-variant-numeric: tabular-nums; }
+/* 띠가 좁아 이름을 못 얹은 조각 — 도넛 밑에서 이름을 되찾아 준다. */
+.scr-donut-rest {
+  width: 100%;
+  font-size: var(--fs-11); color: var(--dim); line-height: 1.2;
+  text-align: center; word-break: keep-all;
 }
 .scr-value-bar { display: flex; align-items: center; justify-content: center; width: 100%; }
 /* 게임수/생산/APM/커맨드 값(요청: "막대그래프 위에 텍스트 겹쳐서 표시") — 트랙 자신의
@@ -1867,18 +1916,16 @@ html:not(.scr-light-theme) .scr-donut {
 /* v2 통계만 — 전체적으로 더 촘촘하게: 행 상하 패딩/막대 두께를 줄이고, 컬럼 기본폭도
    좁힌다. 유저 칸은 좌우 여백을 같게 맞추고, 배틀태그 캡슐은 더 각지게, 닉네임/배틀태그
    사이 간격은 프사(40px) 위아래 경계에 맞춰 벌린다. v1 통계 화면은 그대로 둔다. */
-/* 칸 트랙을 한 줄로 모아 둔다(요청: 생산 칸을 상당히 넓게) — 컬럼이 일곱인데 폭이
-   똑같지 않다. 생산 칸만 총량 막대 + 도넛 셋 + 초반 일꾼까지 담으므로 따로 넓은 트랙을
-   쓴다. 트랙을 이렇게 한 이름으로 묶는 이유는, 헤더 행과 데이터 행이 각각 별개의 그리드
-   컨테이너라 네 군데에 같은 값을 적어야 하기 때문이다 — 예전에 한 곳만 repeat(6)으로
-   남아 표가 두 줄로 접힌 적이 있다(브라우저로만 잡히는 어긋남이었다). */
+/* 칸 트랙을 한 줄로 모아 둔다(요청: 생산 칸을 상당히 넓게) — 컬럼이 아홉인데 폭이
+   똑같지 않다. 랭크는 두 줄, 건설·유닛·스킬은 도넛과 다섯 줄짜리 목록을 담으므로 저마다
+   따로 넓은 트랙을 쓴다. 트랙을 이렇게 한 이름으로 묶는 이유는, 헤더 행과 데이터 행이
+   각각 별개의 그리드 컨테이너라 네 군데에 같은 값을 적어야 하기 때문이다 — 예전에 한
+   곳만 repeat(6)으로 남아 표가 두 줄로 접힌 적이 있다(브라우저로만 잡히는 어긋남이었다). */
 .scr-stats-list-panel-v2 .scr-stat-row {
   --scr-stat-tracks:
-    var(--scr-stat-name-w) repeat(4, var(--scr-stat-col-w))
-    var(--scr-stat-build-w) repeat(2, var(--scr-stat-col-w));
-  --scr-stat-tracks-fluid:
-    var(--scr-stat-name-w) repeat(4, minmax(var(--scr-stat-col-w), 1fr))
-    minmax(var(--scr-stat-build-w), 1.6fr) repeat(2, minmax(var(--scr-stat-col-w), 1fr));
+    var(--scr-stat-name-w) var(--scr-stat-rank-w) repeat(2, var(--scr-stat-col-w))
+    var(--scr-stat-build-w) var(--scr-stat-unit-w) var(--scr-stat-skill-w)
+    repeat(2, var(--scr-stat-col-w));
 }
 .scr-stats-list-panel-v2 .scr-stat-row > * { padding-top: 10px; padding-bottom: 10px; }
 /* 종족별 전적 칸을 없애서(대신 필터바 종족 라디오로 전체 칸 값 자체를 그 종족 기준으로
@@ -1893,12 +1940,20 @@ html:not(.scr-light-theme) .scr-donut {
      같이 참조해야 한다(요청: "아이폰 사파리 가로모드에서 통계의 내용들이 컬럼
      왼쪽으로 벗어나서 렌더링되는 버그"). */
   --scr-stat-col-w: 150px;
-  /* 생산 칸만 총량 + 도넛 셋 + 초반 일꾼을 담는다(요청) — 다른 칸의 갑절쯤. */
-  --scr-stat-build-w: 300px;
+  /* 랭크 칸은 두 줄이다(요청: 랭크+포인트 통합) — "1위 ▲2" 한 줄과 포인트 한 줄.
+     건설은 도넛 하나 + 건물 다섯 줄, 유닛은 도넛 둘 + 일꾼 한 줄 + 유닛 다섯 줄,
+     스킬은 공/방 표 + 스킬 다섯 줄을 담는다. */
+  --scr-stat-rank-w: 136px;
+  --scr-stat-build-w: 168px;
+  --scr-stat-unit-w: 190px;
+  --scr-stat-skill-w: 172px;
+  /* 도넛 지름 — MemberStatRow의 DONUT과 짝이다(svg 좌표계 크기라 그쪽이 실제 값을 정하고,
+     여기서는 상자 폭을 그에 맞춘다). 한쪽만 고치면 어긋난다. */
+  --scr-donut-size: 72px;
   /* 데이터 7칸(랭크/포인트/게임수/승률/생산/APM/커맨드) — 랭킹을 통계에 통합하며 6칸이
      됐고, 다시 랭크와 포인트를 갈라(요청) 7칸이 됐다. 모두 균등폭. v2는 구분선을 각 칸
      border-left로 그려 칸 폭이 어떻게 늘어나도 경계가 항상 맞다. */
-  grid-template-columns: var(--scr-stat-tracks-fluid);
+  grid-template-columns: var(--scr-stat-tracks);
   /* 데이터 글자 크기 — 모바일/PC 분기 없이 하나로 통일(요청). */
   font-size: var(--fs-micro);
   /* 세로 구분선은 background-gradient(계산된 위치) 대신 각 칸의 border-left로 그린다
@@ -1913,10 +1968,6 @@ html:not(.scr-light-theme) .scr-donut {
    1|2(유저|게임수) 경계는 이름 칸(.scr-stat-name-cell/head)의 border-right가 그린다.
    box-sizing:border-box라 border가 칸 폭을 바꾸지 않아 트랙 정렬에도 영향이 없다. */
 .scr-stats-list-panel-v2 .scr-stat-row > *:nth-child(n+3) { border-left: 1px solid var(--line-soft); }
-/* 포인트 칸 — 숫자 하나를 가운데에, 누르면 포인트 상세(경기 이력)가 열리는 버튼으로.
-   메달이 이 칸 우상단에 절대배치되므로 position:relative가 필요하다(위 .scr-stat-medal
-   참고). */
-.scr-stat-points-cell { justify-content: center; position: relative; }
 /* 글자 크기·굵기는 모바일/PC 분기 없이 하나로 통일(요청) — 예전엔 PC에서만 caption으로
    줄이는 규칙이 있고 모바일엔 없어(subhead=20px 그대로 남아) 모바일 값이 유독 커
    보였다. 굵기도 800 → 700으로 한 단계 낮춘다(요청: "데이터 폰트 웨이트 감소, 너무 볼드"). */
@@ -1936,10 +1987,12 @@ html:not(.scr-light-theme) .scr-donut {
   .scr-stat-points-btn:hover { background: var(--lit-hover-bg); box-shadow: var(--lit-hover-glow); }
 }
 .scr-stat-points-empty { color: var(--dim); }
-/* 랭크 칸 — 포인트와 같은 모양으로 가운데. 월을 보고 있으면 누를 수 있는 버튼이 되고
-   (최근 5개월 순위변동), 전체 기간이면 견줄 달이 없어 글자로만 둔다. 변동 화살표는 랭크
-   변동 카드와 같은 색 규칙(scr-feed-shift-up/down)을 그대로 쓴다. */
-.scr-stat-rank-cell { justify-content: center; gap: 2px; }
+/* 랭크 칸 — 순위와 포인트가 위아래 두 줄이다(요청: 통합, 세로 배치는 위 규칙). 월을 보고
+   있으면 순위가 누를 수 있는 버튼이 되고(최근 5개월 순위변동), 전체 기간이면 견줄 달이
+   없어 글자로만 둔다. 포인트는 늘 버튼이다(경기 이력). 변동 화살표는 피드의 랭크 변동
+   카드와 같은 색 규칙(scr-feed-shift-up/down)을 그대로 쓴다.
+   메달이 이 칸 우상단에 절대배치되므로 position:relative가 필요하다(.scr-stat-medal 참고). */
+.scr-stat-rank-cell { justify-content: center; gap: 2px; position: relative; }
 /* 클릭 가능한 랭크(.scr-stat-points-btn 재사용)와 글자 크기·굵기가 같아야 한다 —
    전체 기간(견줄 달 없음)에서만 이 non-button 버전이 쓰인다. */
 .scr-stat-rank-plain {
@@ -2105,11 +2158,15 @@ html:not(.scr-light-theme) .scr-stats-list-panel-v2 .scr-stat-name-cell, html:no
      패딩만큼 얹어 주면 글자 자리가 정확히 칸 폭이 되고, 진짜 긴 이름은 그대로 잘린다. */
   .scr-stats-list-panel-v2 .scr-stat-name-btn { max-width: calc(100% + 8px); }
   .scr-stats-list-panel-v2 .scr-stat-row {
-    /* 데이터 칸 폭 축소(요청): 150 → 120px. 칸 안은 막대+숫자뿐이라 150px은 남는 여백이
-       컸고, 6칸이라 그 여백이 가로 스크롤 길이로 그대로 쌓였다(6×30 = 180px 단축). */
-    --scr-stat-col-w: 120px;
-    --scr-stat-build-w: 240px;
-    /* 랭크·포인트 포함 7칸 균등폭(요청). */
+    /* 모바일 칸 폭도 넉넉히 잡는다(요청) — 좁혀 봐야 어차피 가로로 스크롤하는 표이고,
+       칸이 좁으면 "하이템플러 105기" 같은 줄이 말줄임으로 잘려 정보가 사라진다.
+       다만 어느 칸도 sticky 유저 칸(118px)을 뺀 나머지 폭(390-134=256px)을 넘지 않아야
+       한다 — 그보다 넓으면 끝까지 밀어도 그 칸을 온전히 볼 수가 없다. */
+    --scr-stat-col-w: 124px;
+    --scr-stat-rank-w: 132px;
+    --scr-stat-build-w: 152px;
+    --scr-stat-unit-w: 178px;
+    --scr-stat-skill-w: 160px;
     grid-template-columns: var(--scr-stat-tracks);
   }
 
@@ -2120,8 +2177,12 @@ html:not(.scr-light-theme) .scr-stats-list-panel-v2 .scr-stat-name-cell, html:no
      회원 행(승률 막대와 "승/전" 줄을 아예 안 그린다 — StatBar 참고)만 65 → 51px로 폭삭
      주저앉았다(지적). 내용이 다 있을 때의 실측 높이를 최소값으로 박아 어떤 행이든 같은
      높이가 되게 한다. 헤더 행은 막대가 없어 원래 낮으므로 PC와 마찬가지로 예외로 푼다. */
-  .scr-stats-list-panel-v2 .scr-stat-row { min-height: 65px; }
+  /* 행 최소높이 — 이제 가장 키가 큰 칸은 유닛·스킬의 다섯 줄 목록이다(요청: 생산 컬럼
+     변경에 맞춰 행 최소높이도 확보). 리플레이가 없어 "-" 하나만 있는 행도 같은 높이로
+     서야 표가 고르다. */
+  .scr-stats-list-panel-v2 .scr-stat-row { min-height: 112px; }
   .scr-stats-list-panel-v2 .scr-stat-row.scr-stat-row-head { min-height: 0; }
+  .scr-stat-mix { gap: 6px; }
   /* 컬럼명 ↔ ⓘ ↔ 정렬 화살표 간격도 이제 모바일/PC 분기 없이 하나(아래 공용 규칙)로 통일. */
 }
 .scr-stat-row-head span { text-align: center; justify-content: center; }
@@ -6149,16 +6210,20 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
        84px이 남는다(12px 글자로 일곱 자쯤) — 넘치면 기존 말줄임이 처리한다. */
     --scr-stat-name-w: 148px;
     --scr-stat-col-w: 112px;
-    --scr-stat-build-w: 232px;
+    --scr-stat-rank-w: 130px;
+    --scr-stat-build-w: 164px;
+    --scr-stat-unit-w: 186px;
+    --scr-stat-skill-w: 168px;
     /* 헤더 행과 데이터 행은 각각 별개의 그리드 컨테이너다. 트랙을 minmax(_,1fr)로 두면
        width:max-content인 이 행들이 '자기 내용이 원하는 폭'으로 따로 계산돼, 라벨+ⓘ+정렬
        아이콘이 든 헤더 행만 넓어진다 — 실측 873px vs 820px, 오른쪽으로 갈수록 최대 45px씩
        어긋났다(지적된 사진). 두 행 합이 정확히 셸 폭(932 = 148 + 112×7)이 되는 고정 트랙을
        쓰면 내용과 무관하게 항상 같은 폭이라 이 문제 자체가 없어진다. */
     grid-template-columns: var(--scr-stat-tracks);
-    /* 값은 "내용이 전부 있는 행"(승률 막대 + 승/전 줄까지)의 실측 높이 — 아래 헤더
-       행만 예외로 푼다. */
-    min-height: 70px;
+    /* 값은 "내용이 전부 있는 행"의 실측 높이 — 이제 그 기준은 승률 막대가 아니라 유닛·
+       스킬 칸의 다섯 줄 목록이다(요청: 생산 컬럼 변경에 맞춰 행 최소높이도 확보). 아래
+       헤더 행만 예외로 푼다. */
+    min-height: 116px;
   }
   /* 헤더 행은 막대가 없어 데이터 행보다 훨씬 낮다 — 최소높이를 물려받으면 제목줄만
      휑하게 커지므로 여기서 풀어준다(데이터 행에만 걸리는 규칙). */
@@ -6175,20 +6240,17 @@ html:not(.scr-light-theme) .scr-scroll-timeline-date {
   }
 }
 .scr-stat-row-head { font-size: var(--fs-body); }
-/* PC 전용 — 폭이 넉넉해 가로 스크롤이 필요 없는 지점부터는(요청: "PC에서 각 컬럼이 폭을
-   균등하게 가져가도록") 위 481px 블록의 고정폭 트랙 대신 minmax(_,1fr)로 남는 폭을 7칸에
-   똑같이 나눠 채운다. 고정폭이었던 이유(헤더/데이터 행이 각각 width:max-content로 따로
-   계산돼 어긋나는 문제, 위 481px 블록 주석 참고)는 화면이 이만큼 넓으면 행이 이미
-   min-width:100%로 패널 폭에 꽉 차 있어서(max-content가 이길 일이 없다) 걱정할 필요가
-   없다. 헤더 폰트·아이콘 크기도 여기서 모바일/PC 분기 없이 하나로 고정한다(요청 흐름:
+/* (한때 여기서 minmax(_,1fr)로 남는 폭을 나눠 갖게 했는데, 생산·유닛·스킬 칸이 들어오며
+   고정 트랙의 합(약 1400px)이 패널 최대폭(약 1240px)을 넘어섰다 — 그러면 행이
+   width:max-content로 계산되면서 1fr이 '남는 폭'이 아니라 '내용이 원하는 폭'이 되고, 가장
+   긴 칸 하나가 나머지 여섯 칸까지 같은 폭으로 끌어올려 표가 2158px까지 부풀었다(실측).
+   나눠 가질 남는 폭이 어차피 없으므로 어느 폭에서나 고정 트랙 하나만 쓴다.)
+   헤더 폰트·아이콘 크기는 여기서 모바일/PC 분기 없이 하나로 고정한다(요청 흐름:
    "16px로" → "폰트만 14로 축소", 아이콘은 16 유지) — 무조건 규칙(같은 파일 내 한
    클래스짜리라 특이도가 같아 소스 순서로만 이김)을 두 클래스 선택자로 확실히 이겨야 해서
    접속기록/메뉴권한 등 같은 .scr-stat-row-head를 쓰는 다른 표는 안 건드리도록 통계 그리드
    전용 클래스로 범위를 좁힌다. */
 @media (min-width: 641px) {
-  .scr-stats-list-panel-v2 .scr-stat-row {
-    grid-template-columns: var(--scr-stat-tracks-fluid);
-  }
   .scr-stats-list-panel-v2 .scr-stat-row-head { font-size: var(--fs-caption); }
   .scr-stats-list-panel-v2 .scr-stat-sort-btn svg,
   .scr-stats-list-panel-v2 .scr-stat-row-head .scr-infotip svg {

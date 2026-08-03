@@ -1,15 +1,17 @@
-// 그 판에서 '무엇을 지었고 무엇을 뽑았나'의 구성비(요청: 통계 생산 칸에 도넛 셋 + 초반
-// 일꾼 수).
+// 그 판에서 '무엇을 지었고 무엇을 뽑았고 무엇을 썼나'(요청: 통계의 건설·유닛·스킬 칸).
 //
 // 총량 하나(buildCount)로는 "많이 했다"까지밖에 못 말한다. 같은 300이라도 방어탑만 올린
 // 판과 병력만 뽑은 판은 전혀 다른 경기고, 기본 유닛만 굴린 사람과 마법 유닛까지 간 사람도
-// 다르다. 그래서 그 총량을 갈래별로 나눠 함께 저장한다 — 보는 쪽은 비율만 그리면 된다.
+// 다르다. 그래서 그 총량을 갈래별로 나눠, 그리고 이름별 원장(건물·유닛·스킬)과 공/방 단계까지
+// 함께 저장한다 — 보는 쪽은 비율을 그리고 많이 나온 다섯을 세기만 하면 된다.
 //
 // 세는 단위는 buildCount와 같은 '커맨드'다(replayParser의 buildCount 주석 참고). 저그 라바
 // 여러 마리를 한 번에 변태시키면 커맨드가 하나라 실제 수보다 적게 세지는 한계도 그대로다 —
 // 어차피 비율로 읽는 값이라 갈래마다 같은 자로 재는 것이 중요하지, 절대 수가 중요하지 않다.
 
 import type { ReplayPlayerSignals } from "./replayParser";
+import { BUILDING_KO, TECH_KO, UNIT_KO } from "./replaySummaryText";
+import { upgradeLevel, type UpgradeName } from "./replayTechNames";
 
 /** 초당 프레임(다른 파일들과 같은 값) — 초반 일꾼 수를 셀 때만 쓴다. */
 const SECONDS_PER_FRAME = 0.042;
@@ -63,45 +65,89 @@ export interface BuildMix {
   /** 병력 — 지상 / 공중. */
   uGround: number;
   uAir: number;
-  /** 초반(WORKER_EARLY_SEC)까지 뽑은 일꾼 수. */
+  /** 초반(WORKER_EARLY_SEC)까지 뽑은 일꾼 수 — 비율이 아니라 그냥 수다(요청). */
   worker5: number;
+  /** 공/방/실드 업그레이드가 몇 단계까지 올라갔나(0~3). 종족마다 이름이 다르지만 부르는
+   *  이름은 '지상/공중'과 '공/방' 넷이라, 종족 이름을 지우고 그 넷으로만 담는다(요청:
+   *  종족 무관). 테란처럼 지상이 보병·메카닉 둘로 갈리는 종족은 높은 쪽을 그 판의 지상
+   *  단계로 본다 — '얼마나 올렸나'를 말하는 값이라 낮은 쪽에 끌려 내려가면 뜻이 어긋난다.
+   *  실드는 프로토스에만 있어 나머지 종족은 늘 0이다. */
+  upGw: number;
+  upGa: number;
+  upAw: number;
+  upAa: number;
+  upSh: number;
+  /** 건물별 건설 커맨드 수(screp 영문명) — 통계 '건설' 칸의 Top5. 파일런·서플라이는 뺀다
+   *  (요청) — 보급을 대는 건물이라 어느 판에서나 압도적 1위가 돼 목록이 늘 같아진다. */
+  buildings: Record<string, number>;
+  /** 유닛별 생산 커맨드 수(screp 영문명) — 통계 '유닛' 칸이 여기서 Top5를 뽑는다. 일꾼·
+   *  보급·알은 빼고, 이름을 아는 유닛(UNIT_KO)만 남긴다 — UMS 맵의 영웅 유닛까지 새어
+   *  들어오면 목록이 엉망이 되고, 어차피 한국어 표기를 모르면 보여줄 수도 없다. */
+  units: Record<string, number>;
+  /** 실제로 '쓴' 마법·기술별 횟수(screp 영문명) — 통계 '스킬' 칸의 Top5. 연구만 하고 안
+   *  쓴 기술은 0이라 여기 안 들어온다(signals.techUses가 사용 증거만 센다). */
+  skills: Record<string, number>;
 }
 
-export const EMPTY_BUILD_MIX: BuildMix = {
-  bProd: 0, bDef: 0, uBasic: 0, uAdv: 0, uCaster: 0, uGround: 0, uAir: 0, worker5: 0,
+/** 새 값 하나. 상수를 spread 해서 쓰면 사전들이 같은 객체를 공유하므로 함수로 낸다. */
+export function emptyBuildMix(): BuildMix {
+  return {
+    bProd: 0, bDef: 0, uBasic: 0, uAdv: 0, uCaster: 0, uGround: 0, uAir: 0, worker5: 0,
+    upGw: 0, upGa: 0, upAw: 0, upAa: 0, upSh: 0,
+    buildings: {}, units: {}, skills: {},
+  };
+}
+
+/* 공/방/실드 — 종족별 이름을 '지상 공격 / 지상 방어 / 공중 공격 / 공중 방어 / 실드'
+   다섯 자리로 모은다. 한 자리에 이름이 여럿이면 그중 가장 높이 올라간 것을 쓴다. */
+const UP_LINES: Record<"upGw" | "upGa" | "upAw" | "upAa" | "upSh", UpgradeName[]> = {
+  upGw: ["Terran Infantry Weapons", "Terran Vehicle Weapons",
+         "Zerg Melee Attacks", "Zerg Missile Attacks", "Protoss Ground Weapons"],
+  upGa: ["Terran Infantry Armor", "Terran Vehicle Plating", "Zerg Carapace", "Protoss Ground Armor"],
+  upAw: ["Terran Ship Weapons", "Zerg Flyer Attacks", "Protoss Air Weapons"],
+  upAa: ["Terran Ship Plating", "Zerg Flyer Carapace", "Protoss Air Armor"],
+  upSh: ["Protoss Plasma Shields"],
 };
 
-/** 서버에서 온 값이 우리가 아는 형식인지 — JSON 컬럼이라 무엇이든 들어올 수 있다. */
-export function isBuildMix(v: unknown): v is BuildMix {
-  if (!v || typeof v !== "object") return false;
-  const m = v as Record<string, unknown>;
-  return (Object.keys(EMPTY_BUILD_MIX) as (keyof BuildMix)[])
-    .every((k) => typeof m[k] === "number" && Number.isFinite(m[k] as number));
-}
+/** 보급을 대는 건물 — 어느 판에서나 가장 많이 지어서 Top5의 1위를 늘 독차지한다(요청: 제외).
+ *  저그 오버로드는 유닛이라 애초에 건물 목록에 없다. */
+const SUPPLY_BUILDINGS = new Set(["Pylon", "Supply Depot"]);
 
-/** 여러 경기의 구성을 하나로 더한다 — 통계는 기간 안의 경기를 통째로 합쳐 비율을 낸다.
- *  경기마다 비율을 내서 평균 내지 않는 이유: 3분짜리 판과 40분짜리 판의 비율을 같은 무게로
- *  섞으면 짧은 판 한 번이 그 사람의 그림을 통째로 흔든다. */
-export function addBuildMix(a: BuildMix, b: BuildMix): BuildMix {
-  const out = { ...EMPTY_BUILD_MIX };
-  for (const k of Object.keys(EMPTY_BUILD_MIX) as (keyof BuildMix)[]) out[k] = a[k] + b[k];
-  return out;
-}
-
-export function buildMixTotals(m: BuildMix): { buildings: number; army: number; area: number } {
-  return {
-    buildings: m.bProd + m.bDef,
-    army: m.uBasic + m.uAdv + m.uCaster,
-    area: m.uGround + m.uAir,
-  };
+/** 많이 나온 순 Top N. 이름은 영문 키로 저장돼 있으므로 부르는 쪽이 한국어 표기 사전을
+ *  넘긴다 — 표기를 고치면 이미 등록된 경기도 다음 조회부터 새 표기로 읽히게 하기 위해서다
+ *  (요약 문장이 저장된 문장 대신 저장된 사실을 두는 것과 같은 이유).
+ *
+ *  옮긴 뒤에 합치는 것이 중요하다: 탱크는 시즈/언시즈 두 영문명으로 오지만 한국어로는 둘 다
+ *  "탱크"라, 먼저 순위를 매기면 "탱크"가 두 줄로 선다.
+ *
+ *  같은 수면 이름순으로 갈라 순서가 조회마다 흔들리지 않게 한다. */
+export function topEntries(
+  d: Record<string, number> | undefined, ko: Record<string, string>, n: number,
+): { name: string; count: number }[] {
+  const merged: Record<string, number> = {};
+  // 서버가 아직 이 갈래를 안 내려주는 사이(프론트만 먼저 배포된 순간)에도 칸이 깨지지
+  // 않아야 한다 — 없으면 그냥 빈 목록이다.
+  for (const [key, v] of Object.entries(d ?? {})) {
+    const name = ko[key];
+    if (!name || !(v > 0)) continue;
+    merged[name] = (merged[name] ?? 0) + v;
+  }
+  return Object.entries(merged)
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, n)
+    .map(([name, count]) => ({ name, count }));
 }
 
 /** 커맨드 스트림에서 모은 재료(signals)로 그 경기의 구성을 낸다. 재료가 없으면 null. */
 export function buildMixOf(s: ReplayPlayerSignals | null | undefined): BuildMix | null {
   if (!s) return null;
-  const out = { ...EMPTY_BUILD_MIX };
+  const out = emptyBuildMix();
   for (const [b, n] of Object.entries(s.buildingCounts)) {
     if (DEFENSE_BUILDINGS.has(b)) out.bDef += n; else out.bProd += n;
+    if (BUILDING_KO[b] && !SUPPLY_BUILDINGS.has(b)) out.buildings[b] = (out.buildings[b] ?? 0) + n;
+  }
+  for (const [line, names] of Object.entries(UP_LINES) as [keyof typeof UP_LINES, UpgradeName[]][]) {
+    out[line] = Math.max(...names.map((u) => upgradeLevel(s, u)));
   }
   for (const [u, n] of Object.entries(s.unitCounts)) {
     if (NOT_ARMY.has(u)) continue;
@@ -109,6 +155,10 @@ export function buildMixOf(s: ReplayPlayerSignals | null | undefined): BuildMix 
     else if (BASIC_UNITS.has(u)) out.uBasic += n;
     else out.uAdv += n;
     if (AIR_UNITS.has(u)) out.uAir += n; else out.uGround += n;
+    if (UNIT_KO[u]) out.units[u] = (out.units[u] ?? 0) + n;
+  }
+  for (const [t, n] of Object.entries(s.techUses)) {
+    if (TECH_KO[t] && n > 0) out.skills[t] = (out.skills[t] ?? 0) + n;
   }
   const early = WORKER_EARLY_SEC / SECONDS_PER_FRAME;
   for (const u of WORKER_UNITS) {

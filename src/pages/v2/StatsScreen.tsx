@@ -45,10 +45,13 @@ const MEDALS = ["🥇", "🥈", "🥉"];
 
 const EMPTY_STATS: MemberStats = {
   plays: 0, wins: 0, losses: 0, draws: 0, winRate: 0,
-  avgApm: null, avgEapm: null, avgCmd: null, avgEcmd: null, avgBuild: null, buildMix: null, avgWorker5: null,
+  avgApm: null, avgEapm: null, avgCmd: null, avgEcmd: null, avgBuild: null, buildMix: null, avgWorker5: null, mixPlays: null,
 };
 
-type StatSortKey = "name" | "rank" | "points" | "rate" | "plays" | "build" | "apm" | "cmd";
+// 정렬 가능한 칸 — 건설/유닛/스킬은 순위로 줄 세울 값이 아니라 그 사람의 색깔이라 뺐다
+// (요청). 랭크와 포인트는 한 칸이 되면서 정렬 키도 하나(points)로 합쳤다 — 포인트로 매긴
+// 것이 랭크라 두 정렬은 애초에 같은 순서였다.
+type StatSortKey = "name" | "points" | "rate" | "plays" | "apm" | "cmd";
 type StatSortDir = "desc" | "asc";
 interface StatSort { key: StatSortKey; dir: StatSortDir }
 
@@ -56,10 +59,10 @@ interface StatSort { key: StatSortKey; dir: StatSortDir }
 // 3단 토글 — 같은 컬럼을 다시 누르면 방향만 바뀌고, 다른 컬럼을 누르면 그 컬럼의
 // 내림차순부터 새로 시작한다(한 번에 하나의 정렬 기준만 유지).
 function nextSort(prev: StatSort | null, key: StatSortKey): StatSort | null {
-  // 유저(이름)와 랭크만 오름차순부터 시작하는 게 자연스러워 시작 방향과 토글 순서를
-  // 반대로 둔다(asc -> desc -> null) — 이름은 가나다순, 랭크는 숫자가 작을수록 좋은
-  // 성적이라 1위부터가 맨 위다. 나머지 지표는 그대로 desc -> asc -> null.
-  const ascFirst = key === "name" || key === "rank";
+  // 유저(이름)만 오름차순부터 시작하는 게 자연스러워 시작 방향과 토글 순서를 반대로
+  // 둔다(asc -> desc -> null) — 가나다순이라. 나머지 지표는 desc -> asc -> null이고,
+  // 랭크 칸도 여기 들어간다: 포인트가 높은 사람이 1위라 내림차순이 곧 1위부터다.
+  const ascFirst = key === "name";
   if (!prev || prev.key !== key) return { key, dir: ascFirst ? "asc" : "desc" };
   if (ascFirst) return prev.dir === "asc" ? { key, dir: "desc" } : null;
   if (prev.dir === "desc") return { key, dir: "asc" };
@@ -80,6 +83,17 @@ interface SortableHeadProps {
 // 기준이면 방향에 맞는 화살표 하나(오름차순=위, 내림차순=아래)만, 아직 정렬 기준이
 // 아니면(눌러본 적 없거나 다른 컬럼이 활성) 위아래 화살표가 같이 있는 중립 아이콘으로
 // "정렬 가능하지만 지금은 안 걸려 있다"는 걸 흐리게 보여준다.
+/** 정렬 대상이 아닌 컬럼 머리(요청: 유닛·스킬) — 정렬 화살표 없이 이름과 설명만 둔다.
+ *  버튼이 아니라 span이라 눌러도 아무 일이 없고, 그것이 곧 "여긴 정렬 안 돼요"의 표시다. */
+function PlainHead({ label, tooltip }: { label: string; tooltip?: string }) {
+  return (
+    <span className="scr-stat-plain-head">
+      {label}
+      {tooltip && <InfoTip text={tooltip} label={label} size={14} />}
+    </span>
+  );
+}
+
 function SortableHead({ label, sortKey, sort, onToggle, className, tooltip }: SortableHeadProps) {
   const active = sort?.key === sortKey;
   return (
@@ -352,7 +366,7 @@ export default function StatsScreenV2() {
     };
     // 값이 없는(null) 회원을 뒤로 보낸다 — 표본 미달 판정은 백엔드가 이미 null로 내려주므로
     // (요청: 프론트에서 경기수로 필터링하지 않음) 여기서는 그 null 여부만 본다.
-    const noAvgLast = (a: (typeof list)[number], b: (typeof list)[number], key: "avgApm" | "avgCmd" | "avgBuild") => {
+    const noAvgLast = (a: (typeof list)[number], b: (typeof list)[number], key: "avgApm" | "avgCmd") => {
       const aMissing = a.stats[key] === null;
       const bMissing = b.stats[key] === null;
       if (aMissing && bMissing) return nicknameTiebreak(a, b);
@@ -379,24 +393,23 @@ export default function StatsScreenV2() {
     // 맨 아래(위 noPointsLast/noPlaysLast/noAvgLast), 있으면 지금 선택된 방향(dirSign)
     // 그대로 크고 작음을 비교한다(요청: "오름차순인지 내림차순인지도 따져서" — 타이브레이크도
     // 반대로 뒤집힐 수 있다는 뜻).
-    type DataKey = "points" | "plays" | "rate" | "build" | "apm" | "cmd";
+    type DataKey = "points" | "plays" | "rate" | "apm" | "cmd";
     const compareData = (key: DataKey, a: (typeof list)[number], b: (typeof list)[number]) => {
       switch (key) {
         case "points": return noPointsLast(a, b) || dirSign * ((a.points ?? 0) - (b.points ?? 0));
         case "plays": return noPlaysLast(a, b) || dirSign * (a.stats.plays - b.stats.plays);
         case "rate": return noPlaysLast(a, b) || dirSign * (a.stats.winRate - b.stats.winRate);
-        case "build": return noAvgLast(a, b, "avgBuild") || dirSign * ((a.stats.avgBuild ?? 0) - (b.stats.avgBuild ?? 0));
         case "apm": return noAvgLast(a, b, "avgApm") || dirSign * ((a.stats.avgApm ?? 0) - (b.stats.avgApm ?? 0));
         case "cmd": return noAvgLast(a, b, "avgCmd") || dirSign * ((a.stats.avgCmd ?? 0) - (b.stats.avgCmd ?? 0));
       }
     };
-    // 타이브레이크 우선순위 — 표의 칸 순서 그대로(포인트 > 게임수 > 승률 > 생산 > APM >
+    // 타이브레이크 우선순위 — 표의 칸 순서 그대로(포인트 > 게임수 > 승률 > APM >
     // 커맨드, 요청: "타이인 경우 앞에서부터 순서대로 적용"). 지금 고른 칸은 이미 맨 앞으로
     // 당겨 첫 비교로 쓰고, 나머지는 이 순서 그대로 이어서 본다. 랭크는 포인트와 사실상
     // 같은 값이라(동점=공동순위) 별도 타이브레이크 칸으로 안 쓴다(요청) — 랭크가 갈리지
     // 않으면 포인트도 갈리지 않으므로 그대로 다음 칸(게임수)으로 자연히 넘어간다. 유저
     // 닉네임은 숫자 칸이 전부 같을 때만 쓰는 최후의 보루(요청: "닉네임이 마지막")다.
-    const DATA_ORDER: DataKey[] = ["points", "plays", "rate", "build", "apm", "cmd"];
+    const DATA_ORDER: DataKey[] = ["points", "plays", "rate", "apm", "cmd"];
     const tiebreakChain = (primary: DataKey | null) => {
       const order = primary ? [primary, ...DATA_ORDER.filter((k) => k !== primary)] : DATA_ORDER;
       return (a: (typeof list)[number], b: (typeof list)[number]) => {
@@ -409,22 +422,6 @@ export default function StatsScreenV2() {
     };
     if (sort.key === "name") {
       sorted.sort((a, b) => dirSign * a.member.nickname.localeCompare(b.member.nickname));
-      return sorted;
-    }
-    // 랭크 — 순위가 없는(한 판도 안 뛴) 회원은 방향과 무관하게 맨 아래. 공동순위(랭크가
-    // 갈리지 않음)는 포인트부터 시작하는 위 타이브레이크 체인으로 넘어간다(랭크=포인트라
-    // 포인트도 당연히 갈리지 않고 자연히 게임수로 넘어간다).
-    if (sort.key === "rank") {
-      const rankValue = (c: (typeof list)[number]) => rankByMember.get(c.member.id) ?? null;
-      const breakTie = tiebreakChain(null);
-      sorted.sort((a, b) => {
-        const ra = rankValue(a), rb = rankValue(b);
-        if (ra === null || rb === null) {
-          if (ra === null && rb === null) return nicknameTiebreak(a, b);
-          return ra === null ? 1 : -1;
-        }
-        return dirSign * (ra - rb) || breakTie(a, b);
-      });
       return sorted;
     }
     sorted.sort(tiebreakChain(sort.key as DataKey));
@@ -472,7 +469,8 @@ export default function StatsScreenV2() {
     give("points", (c) => c.points);
     give("plays", (c) => (c.stats.plays > 0 ? c.stats.plays : null));
     give("rate", (c) => (c.stats.plays === 0 ? null : c.stats.winRate));
-    give("build", (c) => c.stats.avgBuild);
+    // 생산은 수치를 화면에 안 그리게 됐으니(요청) 메달도 달지 않는다 — 숫자 없이 메달만
+    // 떠 있으면 무엇으로 1등인지 읽을 도리가 없다. 정렬은 그대로 이 값으로 된다.
     give("apm", (c) => c.stats.avgApm);
     give("cmd", (c) => c.stats.avgCmd);
     return out;
@@ -480,9 +478,6 @@ export default function StatsScreenV2() {
 
   const maxOverallPlays = useMemo(
     () => Math.max(1, ...cards.map((c) => c.stats.plays)), [cards],
-  );
-  const maxBuild = useMemo(
-    () => Math.max(1, ...cards.map((c) => c.stats.avgBuild ?? 0)), [cards],
   );
   const maxApm = useMemo(
     () => Math.max(1, ...cards.map((c) => c.stats.avgApm ?? 0)), [cards],
@@ -589,30 +584,36 @@ export default function StatsScreenV2() {
                   네이티브 스크롤이 완벽히 동기화해서 그 흔들림 자체가 원천적으로 사라진다. */}
               <div className="scr-stat-row scr-stat-row-head">
                 <SortableHead label="유저" sortKey="name" sort={sort} onToggle={toggleSort} className="scr-stat-name-head" />
-                {/* 랭크와 포인트는 별개의 칸이다(요청) — 이름도 지금 걸린 기간을 그대로
-                    말한다: 전체 기간이면 "누적", 한 달이면 "월간". */}
-                {/* 칸 이름도 지금 고른 기간이 아니라 '지금 그려져 있는 한 장'의 기간을 말한다 —
-                    표는 아직 지난 조건의 값인데 이름만 먼저 바뀌면 그것도 어긋난 그림이다. */}
+                {/* 랭크와 포인트는 한 칸이다(요청: 통합) — 칸 이름도 지금 고른 기간이
+                    아니라 '지금 그려져 있는 한 장'의 기간을 말한다. 표는 아직 지난 조건의
+                    값인데 이름만 먼저 바뀌면 그것도 어긋난 그림이다. */}
                 <SortableHead
-                  label={shownMonth ? "월간 랭크" : "누적 랭크"} sortKey="rank" sort={sort} onToggle={toggleSort}
-                  tooltip={shownMonth
+                  label={shownMonth ? "월간 랭크" : "누적 랭크"} sortKey="points" sort={sort} onToggle={toggleSort}
+                  tooltip={(shownMonth
                     ? "이 달 이 분류·종족에서 포인트로 매긴 순위. 완전 동률이면 공동순위예요. 한 판도 안 뛰었으면 '-'고, 옆의 ▲▼는 전달 대비 몇 계단 움직였는지예요. 숫자를 누르면 최근 다섯 달 순위변동 그래프가 열려요."
-                    : "전체 기간 누적 포인트로 매긴 순위. 완전 동률이면 공동순위예요. 한 판도 안 뛰었으면 '-'예요. 견줄 전달이 없어 변동과 순위변동 그래프는 달을 골랐을 때만 나와요."}
-                />
-                <SortableHead
-                  label={shownMonth ? "월간 포인트" : "누적 포인트"} sortKey="points" sort={sort} onToggle={toggleSort}
-                  tooltip="랭크 포인트 — 이 기간·분류의 경기들로 산정한 레이팅 점수. 최소 게임수를 안 따져요. 컴퓨터·비회원이 한 명이라도 낀 경기는 0점이에요 — 견줄 실력치가 없는 상대라 점수가 오르내릴 근거가 없어요. 숫자를 누르면 경기 이력이 열려요."
+                    : "전체 기간 누적 포인트로 매긴 순위. 완전 동률이면 공동순위예요. 한 판도 안 뛰었으면 '-'예요. 견줄 전달이 없어 변동과 순위변동 그래프는 달을 골랐을 때만 나와요.")
+                    + "\n\n아랫줄은 그 순위를 매긴 랭크 포인트예요 — 이 기간·분류의 경기들로 산정한 레이팅 점수고, 최소 게임수를 안 따져요. 컴퓨터·비회원이 한 명이라도 낀 경기는 0점이에요(견줄 실력치가 없는 상대라 점수가 오르내릴 근거가 없어요). 숫자를 누르면 경기 이력이 열려요."}
                 />
                 <SortableHead label="게임수" sortKey="plays" sort={sort} onToggle={toggleSort} />
                 <SortableHead label="승률" sortKey="rate" sort={sort} onToggle={toggleSort} />
-                <SortableHead
-                  label="생산" sortKey="build" sort={sort} onToggle={toggleSort}
-                  tooltip={"경기당 평균 '생산' — 유닛·건물을 얼마나 뽑고 지었나의 어림 지표예요.\n\n"
-                    + "그 아래 도넛 셋은 그 총량이 무엇으로 채워졌나예요. 건물은 생산(테크·확장 포함)과 방어로, "
-                    + "병력은 기본·고급·마법으로, 지형은 지상과 공중으로 나눠요. 도넛에 손을 올리면 실제 수치가 나와요.\n\n"
-                    + "맨 아래는 경기당 초반(5분) 일꾼 수예요.\n\n"
-                    + "기간 안의 경기를 통째로 더해서 비율을 내요 — 경기마다 비율을 내서 평균 내면 3분짜리 판 한 번이 "
-                    + "그림을 통째로 흔들거든요. 리플레이로 등록한 경기만 들어가요."}
+                <PlainHead
+                  label="건설"
+                  tooltip={"무엇을 지었나예요. 도넛은 생산(테크·확장 포함)과 방어의 비율이고, 가운데 숫자는 경기당 지은 건물 수예요. "
+                    + "그 아래는 가장 많이 지은 건물 다섯이에요(파일런·서플라이는 빼요 — 어느 판에서나 1위라 목록이 늘 같아지거든요).\n\n"
+                    + "비율은 기간 안의 경기를 통째로 더해서 내요 — 경기마다 비율을 내서 평균 내면 3분짜리 판 한 번이 그림을 통째로 흔들거든요. "
+                    + "리플레이로 등록한 경기만 들어가요. 정렬 기준은 아니에요."}
+                />
+                <PlainHead
+                  label="유닛"
+                  tooltip={"무엇을 뽑았나예요. 왼쪽 도넛은 기본·고급·마법, 오른쪽은 지상·공중의 비율이에요.\n\n"
+                    + "그 아래는 경기당 초반 5분 일꾼 수와, 가장 많이 뽑은 유닛 다섯이에요(종족 무관, 일꾼 제외).\n\n"
+                    + "훈련·변태 커맨드를 센 값이라 실제 마릿수보다 적을 수 있어요 — 저그가 라바 여럿을 한 번에 변태시키면 커맨드는 하나거든요. 정렬 기준은 아니에요."}
+                />
+                <PlainHead
+                  label="스킬"
+                  tooltip={"공/방/실드 업그레이드가 경기당 평균 몇 단계까지 올라갔는지(0~3)를 지상·공중으로 나눠 적어요. "
+                    + "테란처럼 지상이 보병·메카닉으로 갈리는 종족은 높은 쪽을 그 판의 지상 단계로 봐요. 실드는 프로토스에만 있어요.\n\n"
+                    + "그 아래는 가장 많이 쓴 마법·기술 다섯이에요(종족 무관). 연구만 하고 안 쓴 기술은 안 나와요 — 실제로 쓴 횟수만 세거든요. 정렬 기준은 아니에요."}
                 />
                 <SortableHead
                   label="APM" sortKey="apm" sort={sort} onToggle={toggleSort}
@@ -636,7 +637,6 @@ export default function StatsScreenV2() {
                   medals={medalByMember.get(c.member.id)}
                   compact
                   maxOverallPlays={maxOverallPlays}
-                  maxBuild={maxBuild}
                   maxApm={maxApm}
                   maxCmd={maxCmd}
                 />

@@ -265,6 +265,10 @@ export interface MemberStats {
   buildMix: BuildMix | null;
   /** 경기당 초반(5분) 일꾼 수(요청). 위와 같은 조건에서 null. */
   avgWorker5: number | null;
+  /** buildMix에 실제로 더해진 경기 수 — 합계를 경기당 값으로 되돌릴 때 쓴다(평균 건설 수,
+   *  공/방 평균 단계). 서버가 합계만 주고 나눗셈은 화면이 하는 이유는, 무엇을 무엇으로
+   *  나눌지가 칸마다 다르기 때문이다(비율은 합계 그대로, 수치는 경기당). */
+  mixPlays: number | null;
 }
 
 // 서버 집계(GET /api/game-results/stats) 응답 — 통계/랭킹 화면이 매치 원본을 직접 스캔하지 않고
