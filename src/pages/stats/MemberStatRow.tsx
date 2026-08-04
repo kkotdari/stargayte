@@ -65,32 +65,40 @@ const UPGRADE_MIN_MIN = 20;
    그래서 종족을 고른 경우에만(또는 주종족으로 볼 때) 그 종족의 줄로 그린다 — 전체종족은
    서로 다른 것을 한 표에 겹쳐 놓는 일이라 아예 안 그린다.
 
-   공유되는 줄(저그 갑각, 프로토스 실드)은 공/방 격자에 끼우지 않고 따로 한 줄로 뗀다 —
-   같은 값을 두 줄에 적으면 줄마다 따로 있는 것으로 오해한다. */
-type UpRow = { label: string; atk?: string; def?: string };
-const UP_TABLE: Record<BaseRace, { rows: UpRow[]; solo?: { label: string; key: string } }> = {
+   공유되는 줄(저그 갑각, 프로토스 플라즈마 실드)은 공/방 격자에 끼우지 않고 따로 한 줄로
+   뗀다 — 같은 값을 두 줄에 적으면 줄마다 따로 있는 것으로 오해한다.
+
+   이름은 게임에 있는 그대로 쓴다(요청: "지상방어 말고 갑각") — 뜻이 비슷하다고 내가 지어
+   붙이면(내가 "지상 방어"라 적었던 자리가 그랬다) 정작 게임에서 그 이름을 찾을 수가 없다.
+   그래서 줄 이름은 업그레이드 이름의 앞머리를 그대로 두고, 전체 이름은 그 줄에 title로
+   달아 둔다 — 칸이 좁아 다 적을 수는 없지만 확인할 길은 남겨 둔다.
+
+   테란만은 열 이름과 실제 이름이 어긋난다: 보병은 '방어구'인데 차량·함선은 '장갑'이다.
+   한 표에 두 낱말을 나란히 둘 수가 없어 열은 공/방으로 두고, 정확한 이름은 title에 있다. */
+type UpRow = { label: string; title: string; atk?: string; def?: string };
+const UP_TABLE: Record<BaseRace, { rows: UpRow[]; solo?: { label: string; title: string; key: string } }> = {
   테란: {
     rows: [
-      { label: "보병", atk: "tInfW", def: "tInfA" },
-      { label: "메카닉", atk: "tVehW", def: "tVehP" },
-      { label: "함선", atk: "tShipW", def: "tShipP" },
+      { label: "보병", title: "보병 공격력 / 보병 방어구", atk: "tInfW", def: "tInfA" },
+      { label: "차량", title: "차량 공격력 / 차량 장갑", atk: "tVehW", def: "tVehP" },
+      { label: "함선", title: "함선 공격력 / 함선 장갑", atk: "tShipW", def: "tShipP" },
     ],
   },
   저그: {
     rows: [
-      { label: "근접", atk: "zMelee" },
-      { label: "원거리", atk: "zMissile" },
-      { label: "공중", atk: "zFlyW", def: "zFlyA" },
+      { label: "근접", title: "근접 공격력", atk: "zMelee" },
+      { label: "원거리", title: "원거리 공격력", atk: "zMissile" },
+      { label: "비행", title: "비행 공격력 / 비행 갑각", atk: "zFlyW", def: "zFlyA" },
     ],
     // 갑각은 지상 전부가 나눠 쓴다 — 근접·원거리 줄에 같은 수를 두 번 적지 않는다.
-    solo: { label: "지상 방어", key: "zCara" },
+    solo: { label: "갑각", title: "갑각(지상 유닛 공통 방어)", key: "zCara" },
   },
   프로토스: {
     rows: [
-      { label: "지상", atk: "pGrdW", def: "pGrdA" },
-      { label: "공중", atk: "pAirW", def: "pAirA" },
+      { label: "지상", title: "지상 무기 / 지상 방어구", atk: "pGrdW", def: "pGrdA" },
+      { label: "공중", title: "공중 무기 / 공중 방어구", atk: "pAirW", def: "pAirA" },
     ],
-    solo: { label: "실드", key: "pShield" },
+    solo: { label: "플라즈마 실드", title: "플라즈마 실드(지상·공중 공통)", key: "pShield" },
   },
 };
 
@@ -115,14 +123,16 @@ function UpgradeGrid({ mix, race }: { mix: BuildMix; race: BaseRace | null | und
       <span className="scr-stat-up-head">방</span>
       {rows.map((r) => (
         <Fragment key={r.label}>
-          <span className="scr-stat-up-row">{r.label}</span>
+          <span className="scr-stat-up-row" title={r.title}>{r.label}</span>
           <span>{avg(r.atk) ?? "-"}</span>
           <span>{avg(r.def) ?? "-"}</span>
         </Fragment>
       ))}
       {table.solo && solo !== null && (
         <>
-          <span className="scr-stat-up-row scr-stat-up-solo-label">{table.solo.label}</span>
+          <span className="scr-stat-up-row scr-stat-up-solo-label" title={table.solo.title}>
+            {table.solo.label}
+          </span>
           <span className="scr-stat-up-solo">{solo}</span>
         </>
       )}
