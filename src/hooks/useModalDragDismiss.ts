@@ -23,16 +23,9 @@ const DECIDE_AT = 4;
 const FLICK_VELOCITY = 0.5;
 const FLICK_MIN_SHIFT = 22;
 
-/** 글을 쓰는 칸인가 — 그 안에서 시작한 터치는 이 훅이 조심해서 다룬다(위 onStart 주석). */
+/** 글을 쓰는 칸인가 — 그 안에서 시작한 터치는 이 훅이 건드리지 않는다(위 onStart 주석). */
 function isEditable(el: Element | null): boolean {
   return !!el?.closest("input, textarea, select, [contenteditable]:not([contenteditable=false])");
-}
-
-/** 여러 줄짜리 글칸인가 — 세로로 끄는 것도 '아랫줄까지 고르기'라 방향으로 가르면 안 된다
- *  (지적: 세로를 막으면 텍스트에리어에선 여러 줄을 어떻게 고르나). 한 줄짜리 input에서만
- *  "세로 = 시트를 끄는 것"이 참이다. */
-function isMultiline(el: Element | null): boolean {
-  return !!el?.closest("textarea, [contenteditable]:not([contenteditable=false])");
 }
 
 // 터치 지점에서 위로 올라가며 실제로 스크롤되는(overflow-y auto/scroll) 가장 가까운
@@ -77,9 +70,7 @@ export function useModalDragDismiss(): void {
     let velY = 0; // 최근 세로 속도(px/ms, +아래) — 마지막으로 실제 이동한 프레임 값 유지
     let startedAtTop = false; // 터치 시작 시 이미 최상단이었나(닫기 드래그 자격)
     let sheetShift = 0; // 시트 실제 이동량(저항 적용 후)
-    // "select"는 입력칸 안에서 가로로 끄는 것 — 글자를 고르는 동작이라 이 훅이 손대지 않는다.
-    let mode: "idle" | "undecided" | "drag" | "scroll" | "select" = "idle";
-    let startedInEditable = false;
+    let mode: "idle" | "undecided" | "drag" | "scroll" = "idle";
 
     const reset = () => { sheet = null; scroller = null; mode = "idle"; sheetShift = 0; velY = 0; };
 
@@ -90,16 +81,14 @@ export function useModalDragDismiss(): void {
     const onStart = (e: TouchEvent) => {
       if (e.touches.length !== 1) { reset(); return; }
       const target = e.target as HTMLElement | null;
-      /* 글을 쓰는 칸에서 시작했나 — 그러면 가로로 끄는 것은 글자를 고르는 동작이라
-         (아래 "select" 모드) 이 훅이 아예 손대지 않는다. 세로로 끄는 것은 여느 문지름과
-         같아 예전 그대로 다룬다. 통째로 손을 떼면 입력칸 위에서 위아래로 문질렀을 때
-         배경이 딸려 스크롤된다(지적). */
-      startedInEditable = isEditable(target);
+      /* 글을 쓰는 칸에서 시작한 터치에는 손대지 않는다 — 거기서 손가락을 끄는 건 시트를
+         닫으려는 게 아니라 글자를 고르는 것이고, 아래 onMove의 두 갈래(닫기 드래그·가장자리
+         리바운드 차단)가 다 preventDefault를 불러 네이티브 선택 드래그를 끊는다(지적).
+         그렇다고 시트나 페이지가 딸려 움직이지도 않는다: 글칸 자체에 touch-action을 줘서
+         브라우저가 애초에 패닝을 시작하지 않는다(global.css). */
+      if (isEditable(target)) { mode = "idle"; return; }
       const s = target?.closest<HTMLElement>(SHEET_SELECTOR) ?? null;
       if (!s) { mode = "idle"; return; }
-      // 여러 줄 칸에서 시작했으면 방향을 안 가리고 통째로 빠진다 — 아랫줄까지 고르는 동작이
-      // 세로라서, 세로를 '시트 끌기'로 채 가면 여러 줄 선택이 아예 안 된다(지적).
-      if (isMultiline(target)) { mode = "select"; return; }
       sheet = s;
       scroller = findScroller(target, s);
       startY = e.touches[0].clientY;
@@ -113,7 +102,7 @@ export function useModalDragDismiss(): void {
     };
 
     const onMove = (e: TouchEvent) => {
-      if (mode === "idle" || mode === "select" || !sheet) return;
+      if (mode === "idle" || !sheet) return;
       const y = e.touches[0].clientY;
       const dy = y - startY;
       const dx = e.touches[0].clientX - startX;
@@ -137,10 +126,6 @@ export function useModalDragDismiss(): void {
 
       if (mode === "undecided") {
         if (Math.abs(dy) < DECIDE_AT && Math.abs(dx) < DECIDE_AT) return;
-        /* 입력칸에서 시작해 가로로 끌고 있으면 글자를 고르는 중이다 — 이 훅은 여기서 빠진다.
-           아래 두 갈래(닫기 드래그·가장자리 리바운드 차단)가 다 preventDefault를 부르는데,
-           그 한 번이 브라우저의 네이티브 선택 드래그를 끊는다(지적). */
-        if (startedInEditable && Math.abs(dx) > Math.abs(dy)) { mode = "select"; return; }
         // 처음부터 최상단이었고 세로 아래로 끌면 닫기 드래그로 확정.
         if (startedAtTop && dy > 0 && Math.abs(dy) >= Math.abs(dx)) {
           mode = "drag";

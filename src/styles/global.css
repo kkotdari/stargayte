@@ -574,10 +574,22 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
    실제 입력 필드가 유독 커 보였던 원인. 그래서 입력 필드는 라벨(14px대)보다 한 단계
    낮춰서 시각적으로 맞춘다. */
 .scr-input { background: var(--input-bg); border: 1px solid var(--line); color: var(--text); padding: 9px 10px; font-size: var(--fs-body); font-family: var(--font-ui); width: 100%; min-height: var(--field-h); box-sizing: border-box; border-radius: var(--radius-sm); border-color: var(--line); }
-/* 글칸 안에서 굴린 스크롤이 바깥으로 새지 않게 한다 — 여러 줄 칸(textarea)의 끝까지 굴린
-   뒤에도 손가락을 더 밀면 브라우저가 그 스크롤을 부모로 넘겨(체이닝) 뒷 페이지가 따라
-   움직인다. 이 한 줄이면 그 넘김이 칸 안에서 멈추므로, 글자를 고르는 동작을 막지 않고도
-   "글칸 밖은 안 움직인다"가 지켜진다(요청: 인풋 포커스 중엔 인풋 밖 스크롤을 막기). */
+/* 글칸 위에서 손가락을 끌면 페이지가 따라 움직이던 것을 막는다(지적: 인풋 텍스트를 고르는
+   중에도 스크롤이 된다).
+
+   touch-action은 "이 요소에서 시작한 터치로 브라우저가 무엇을 해도 되는가"를 정한다 —
+   none이면 스크롤(패닝)을 아예 시작하지 않는다. 글자를 고르는 일은 패닝이 아니라서 그대로
+   된다: 자바스크립트로 touchmove를 막는 방법과 달리 네이티브 선택 드래그를 끊지 않는다.
+   그래서 '인풋 밖은 안 움직인다'가 이벤트 하나 가로채지 않고 지켜진다(요청).
+
+   여러 줄 칸은 제 안에서 위아래로 굴릴 것이 있으니 세로 패닝만 남기고(pan-y), 끝까지 굴린
+   뒤 더 미는 힘이 부모로 넘어가는 것(체이닝)은 overscroll-behavior가 칸 안에서 멈춘다.
+   체크박스·라디오·슬라이더는 제 나름의 터치 동작이 있어 건드리지 않는다. */
+input[type="text"], input[type="password"], input[type="search"], input[type="email"],
+input[type="number"], input[type="tel"], input[type="url"], input:not([type]) {
+  touch-action: none;
+}
+textarea { touch-action: pan-y; }
 textarea, .scr-input { overscroll-behavior: contain; }
 .scr-input::placeholder { color: var(--dim); }
 .scr-input:focus { border-color: var(--pipe-bright); outline: none; }

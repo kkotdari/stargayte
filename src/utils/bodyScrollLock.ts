@@ -50,40 +50,16 @@ function isEditableTarget(el: Element): boolean {
   return !!el.closest("input, textarea, select, [contenteditable]:not([contenteditable=false])");
 }
 
-/** 여러 줄짜리 글칸인가 — 여기서는 세로로 끄는 것도 '아랫줄까지 고르기'라, 방향으로 가르면
- *  안 된다(지적: 세로 스크롤을 막으면 텍스트에리어에선 어떻게 여러 줄을 고르나). 한 줄짜리
- *  input에서만 "세로 = 스크롤 의도"가 참이다 — 거기엔 아랫줄이 없다.
- *  여러 줄 칸 스스로 스크롤할 것이 있으면 아래 canScrollWithin이 이미 손을 떼므로, 배경이
- *  딸려 가는 문제도 여기서 새로 생기지 않는다. */
-function isMultilineTarget(el: Element): boolean {
-  return !!el.closest("textarea, [contenteditable]:not([contenteditable=false])");
-}
-
-/* 입력칸에서 시작한 터치의 방향 판정 — 가로면 '글자 고르기'(건드리지 않음), 세로면 여느
-   문지름과 같은 '스크롤 의도'(원래대로 막는다)로 본다. 입력칸이라고 통째로 손을 떼면
-   그 안에서 위아래로 문질렀을 때 배경 페이지가 딸려 스크롤된다(지적). 한 번 정한 뒤에는
-   바꾸지 않는다 — 선택을 끄는 도중 손가락이 위아래로 흔들려도 판정이 뒤집히면 그 순간
-   preventDefault가 끼어들어 선택이 끊긴다. */
-const DECIDE_PX = 4;
-let touchIntent: { x: number; y: number; mode: "undecided" | "select" | "scroll" } | null = null;
-
-function isSelectionDrag(e: Event): boolean {
-  if (!touchIntent) return false;
-  if (touchIntent.mode !== "undecided") return touchIntent.mode === "select";
-  // 여러 줄 칸은 방향을 안 가린다 — 세로로 끄는 것도 고르기다(위 isMultilineTarget).
-  const t = (e as TouchEvent).touches?.[0];
-  if (!t) return false;
-  const dx = Math.abs(t.clientX - touchIntent.x);
-  const dy = Math.abs(t.clientY - touchIntent.y);
-  if (dx < DECIDE_PX && dy < DECIDE_PX) return true; // 아직 모름 — 일단 선택 쪽에 유리하게
-  touchIntent.mode = dx > dy ? "select" : "scroll";
-  return touchIntent.mode === "select";
-}
-
 function onScrollIntent(e: Event) {
   const el = e.target instanceof Element ? e.target : null;
   if (!el) return;
-  if (e.type === "touchmove" && isSelectionDrag(e)) return;
+  /* 글칸에서 시작한 문지름에는 손대지 않는다 — 거기서 손가락을 끄는 건 글자를 고르는
+     동작이고, 여기서 preventDefault를 한 번이라도 부르면 브라우저의 네이티브 선택 드래그가
+     통째로 끊긴다(지적). 그렇다고 페이지가 딸려 스크롤되지도 않는다: 글칸 자체에
+     touch-action(none/pan-y)을 줘서 브라우저가 애초에 패닝을 시작하지 않는다(global.css).
+     한때 여기서 가로/세로 방향으로 갈라 세로만 막았는데, 그 방식은 여러 줄 칸에서 아랫줄
+     까지 끌어 고르는 동작을 막았고 선택 중 손가락이 흔들리면 판정이 뒤집혔다. */
+  if (e.type === "touchmove" && isEditableTarget(el)) return;
   if (isShieldedTarget(el)) { e.preventDefault(); return; }
   // 잠금 중엔 문서가 스크롤 주체가 될 일이 없다 — 안쪽에 스크롤 가능한 영역이 있으면
   // 그 스크롤은 브라우저에 맡기고(끝에서의 체이닝은 overscroll-behavior:contain이 차단),
@@ -103,14 +79,6 @@ export function swallowNextClick(): void {
 // touchstart까지 막아야 배경 요소의 :active/터치 하이라이트(눌린 시각 효과)가 아예 안
 // 생긴다 — pointerdown/click 차단만으로는 iOS가 시각 반응을 먼저 그려버린다.
 function onTouchStart(e: Event) {
-  // 입력칸에서 시작한 터치만 방향을 재 둔다(위 isSelectionDrag) — 그 밖은 예전 그대로다.
-  const el = e.target instanceof Element ? e.target : null;
-  const t = (e as TouchEvent).touches?.[0];
-  touchIntent = el && t && isEditableTarget(el)
-    // 여러 줄 칸은 방향을 안 가리고 처음부터 '고르기'로 못 박는다 — 아랫줄까지 끌어 고르는
-    // 동작이 세로라서, 방향으로 갈랐다가는 그게 통째로 막힌다(지적).
-    ? { x: t.clientX, y: t.clientY, mode: isMultilineTarget(el) ? "select" : "undecided" }
-    : null;
   if (isShieldedTarget(e.target)) e.preventDefault();
 }
 function onPointerDown(e: Event) {
