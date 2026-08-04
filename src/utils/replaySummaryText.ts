@@ -88,7 +88,7 @@ export const DEFENSE_KO: Record<string, string> = {
 /** 생산 건물 — 몇 개까지 늘렸나로 규모 차이를 말한다(요청: 팩토리/게이트웨이/해처리 비교). */
 export const PRODUCTION_KO: Record<string, string> = {
   Gateway: "게이트", Factory: "팩토리", Barracks: "배럭", Starport: "스타포트",
-  "Robotics Facility": "로보", Hatchery: "해처리",
+  "Robotics Facility": "로보틱스", Hatchery: "해처리",
 };
 
 /** 문장에 쓸 만한 건물 이름 — 여기 없는 건물은 그냥 '건물'이라고만 말한다. */
@@ -97,7 +97,7 @@ export const BUILDING_KO: Record<string, string> = {
   Pylon: "파일런", "Supply Depot": "서플라이", "Creep Colony": "크립 콜로니",
   Forge: "포지", Academy: "아카데미", Armory: "아머리", Observatory: "옵저버토리",
   "Evolution Chamber": "에볼루션", "Spawning Pool": "스포닝풀",
-  "Nydus Canal": "커널", "Engineering Bay": "엔지니어링 베이", Refinery: "리파이너리",
+  "Nydus Canal": "나이더스", "Engineering Bay": "엔지니어링 베이", Refinery: "리파이너리",
   Assimilator: "어시밀레이터", Extractor: "익스트랙터", Nexus: "넥서스",
   "Command Center": "커맨드", Hatchery: "해처리",
 };

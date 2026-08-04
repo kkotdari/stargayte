@@ -236,6 +236,10 @@ export interface MinimapMarker {
    *  본진에서 한 일이면 그 사람 본진 건물이 실제로 선 자리(요약의 hubs)가 들어온다.
    *  값이 없으면(옛 요약) 본진 자리(x, y) 그대로. */
   markAt?: [number, number];
+  /** 그 이모지가 '무엇으로 한 일'인가 — 유닛·건물 이름을 이모지 밑에 적는다(요청: 방패
+   *  이모지에도 캡션). 화살표가 있는 이야기는 기둥 위 이름표가 이 일을 하는데, 화살표
+   *  없이 본진·입구에 이모지만 서는 이야기에는 그 자리가 없었다. */
+  markText?: string;
   /** 아바타 위에 겹쳐 그리는 상태 얼굴 — 트로피·공격자·당한 정도·아군 헬프처럼 그 사람
    *  자체를 가리키는 표시에 쓴다(요청: 해골·트로피 말고도 아바타로 상태를 알려 달라). */
   face?: string;
@@ -672,6 +676,17 @@ export default function ReplayMinimap({
             style={markPlace(m)}
           >
             {m.mark}
+          </span>
+        ) : null))}
+        {/* 그 이모지가 무엇으로 한 일인가(요청: 방패 이모지에도 유닛명·건물명·기술명 캡션)
+            — 화살표가 있는 이야기는 기둥 위 이름표가 이 일을 하는데, 화살표 없이 이모지만
+            서는 이야기(방어·입구막기·생산)에는 그 자리가 없었다. 이모지 바로 밑이다. */}
+        {bases.map((m) => (m.mark && m.markText ? (
+          <span
+            key={`bmt-${m.key}`} className="scr-minimap-mark-caption"
+            style={markPlace(m)} aria-hidden
+          >
+            {m.markText}
           </span>
         ) : null))}
         {geoms.map(({ a, g }) => (a.markFrom ? (

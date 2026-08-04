@@ -583,11 +583,11 @@ export default function GameResultStory({
           나가는 화살표 — 진출하는 느낌만 준다(요청). 특정 지점을 찍지 않으므로 틀릴 것도
           없다. */
   const actions = useMemo<{
-    arrows: MinimapArrow[]; marks: Map<string, string>;
+    arrows: MinimapArrow[]; marks: Map<string, string>; markTexts: Map<string, string>;
     markSpots: Map<string, [number, number]>; faces: Map<string, string>;
   }>(() => {
     const empty = {
-      arrows: [], marks: new Map<string, string>(),
+      arrows: [], marks: new Map<string, string>(), markTexts: new Map<string, string>(),
       markSpots: new Map<string, [number, number]>(), faces: new Map<string, string>(),
     };
     const beats = gameResult.summaryData?.beats;
@@ -880,6 +880,11 @@ export default function GameResultStory({
     };
 
     const mark = new Map<string, string>();
+    /* 그 이모지가 '무엇으로 한 일'인가 — 화살표가 있으면 기둥 위 이름표가 말해 주는데,
+       화살표 없이 본진·입구에 이모지만 서는 이야기(방어·입구막기·생산)는 아무 말도 없었다
+       (지적: 방패 이모지에도 유닛명·건물명·기술명을 캡션으로). 같은 재료(요약이 사람별로
+       싣는 units)를 써서 이모지 아래에 그대로 붙인다. */
+    const markLabel = new Map<string, string>();
     /** 그 이모지를 어느 타일에 세울까 — 위 mark와 짝을 이뤄 같은 자리에서 채운다.
      *  본진에서 한 일은 값이 없고(본진 자리 그대로), 입구 이야기만 진짜 입구 좌표가 들어간다. */
     const markSpot = new Map<string, [number, number]>();
@@ -1075,6 +1080,9 @@ export default function GameResultStory({
         // 화살표를 못 그리는 경우(자리를 모름·너무 가까움)의 마지막 대비책 — 아래에서
         // hits가 하나도 화살표로 못 그려지면 이 값으로 본진에 이모지를 얹는다.
         mark.set(raw, em);
+        const emLabel = ((b as { units?: Record<string, string[]> }).units?.[raw] ?? [])
+          .map((u) => UNIT_KO[u] ?? BUILDING_KO[u] ?? "").filter(Boolean);
+        if (emLabel.length > 0) markLabel.set(raw, emLabel.join(" "));
         /* 입구막기·입구 방어는 본진 안이 아니라 나가는 길목의 이야기라, 이모지도 진짜
            입구 자리에 세운다(지적: "입구도 본진 입구를 말한 거야 아바타 위가 아니라").
            그 '입구'는 위 target()이 myFront에 쓰는 것과 똑같은 자리다 — 본진에서 가운데
@@ -1151,6 +1159,7 @@ export default function GameResultStory({
     // 화살표 끝(또는 화살표가 안 나올 만큼 가까우면 본진)에 붙는 무기 이모지 — "무엇으로
     // 쳤나/무엇을 했나"를 말한다. 아바타에 겹쳐 얹는 상태 얼굴(아래)과는 다른 자리다.
     const marks = new Map<string, string>();
+    const markTexts = new Map<string, string>();
     for (const s of slots) {
       // 이사 화살표를 이미 그렸으면 이모지는 그 끝에 있다 — 본진에 또 얹지 않는다.
       if (movers.has(s.raw)) continue;
@@ -1175,7 +1184,10 @@ export default function GameResultStory({
       });
       // 화살표로 그릴 만큼 먼 자리가 하나도 없으면(전부 본진 근처거나 자리를 모름) 본진에
       // 이모지 하나만 띄운다 — 마지막 것의 이모지를 쓴다(요청 이전과 같은 규칙).
-      if (drawn === 0 && mark.has(s.raw)) marks.set(s.raw, mark.get(s.raw)!);
+      if (drawn === 0 && mark.has(s.raw)) {
+        marks.set(s.raw, mark.get(s.raw)!);
+        if (markLabel.has(s.raw)) markTexts.set(s.raw, markLabel.get(s.raw)!);
+      }
     }
     /* 한 자리에 여러 화살표가 꽂히면 기둥 위 이름표가 한 점에 겹쳐 글자가 뭉친다(지적:
        "하히드라라 아비터"). 큰 교전은 이미 그런 표시(converge)를 달고 있어 이름표를 더
@@ -1230,7 +1242,7 @@ export default function GameResultStory({
       if (idling.has(s.raw)) { faces.set(s.raw, IDLE_FACE); continue; }
       if (busy.has(s.raw)) { faces.set(s.raw, BUSY_FACE); continue; }
     }
-    return { arrows, marks, markSpots: markSpot, faces };
+    return { arrows, marks, markTexts, markSpots: markSpot, faces };
   }, [gameResult.summaryData, sentences, index, slots, grid, moved, movedPair]);
   const arrows = actions.arrows;
 
@@ -1266,6 +1278,8 @@ export default function GameResultStory({
         featured: mentioned.has(s.raw), introBig,
         // 화살표가 없는 이야기(생산·테크·경제)는 그 사람 본진에 이모지를 붙인다(요청).
         mark: actions.marks.get(s.raw),
+        // 그 이모지가 무엇으로 한 일인지(요청) — 화살표 이름표와 같은 재료다.
+        markText: actions.markTexts.get(s.raw),
         markAt: actions.markSpots.get(s.raw),
         // 아바타에 겹쳐 얹는 상태 얼굴 — 트로피·공격자·당한 정도·아군 헬프(요청).
         face: actions.faces.get(s.raw),
