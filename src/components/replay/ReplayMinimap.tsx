@@ -217,7 +217,14 @@ function arrowGeom(a: MinimapArrow, w: number, h: number) {
       const shaft = Math.hypot(bx - x1, by - y1);
       const stagger = a.converge ? LABEL_BACK_STEP * (a.rank ?? 0) : 0;
       const back = Math.min((a.converge ? LABEL_BACK_CONVERGE : LABEL_BACK) + stagger, shaft / 2);
-      return { dir: [-hx, -hy] as [number, number], room: Math.max(0, shaft * LABEL_SLIDE_MAX - back) };
+      return {
+        dir: [-hx, -hy] as [number, number],
+        room: Math.max(0, shaft * LABEL_SLIDE_MAX - back),
+        /* 촉 쪽으로도 조금은 갈 수 있다 — 자막이 이름표 바로 아래에 앉으면 뒤로는 자막을
+           지나칠 만큼 기둥이 없고(실측: 76px 필요, 58px뿐), 앞으로 열댓 px이면 벗어난다.
+           촉에서 LABEL_BACK만큼은 남긴다: 그보다 붙으면 화살촉·이모지를 덮는다. */
+        fwd: Math.max(0, back - LABEL_BACK),
+      };
     })(),
   };
 }
@@ -409,6 +416,9 @@ export default function ReplayMinimap({
     const SLIDE_STEP = 6;
     /** 이만큼은 떨어져야 '안 겹친다'로 본다 — 글자끼리 딱 붙으면 붙은 대로 못 읽는다. */
     const GAP = 3;
+    /** 기둥에 직각으로 비켜설 수 있는 폭(px) — 이보다 크게 옮기면 이름표가 제 화살표에서
+     *  떨어져 나온다. 가운데(0)를 먼저 보므로, 안 겹치면 아예 안 비킨다. */
+    const SIDE_STEPS = [0, 8, -8, 16, -16, 24, -24];
     type Box = { left: number; right: number; top: number; bottom: number };
     const over = (a: Box, b: Box) => {
       const ow = Math.min(a.right, b.right) - Math.max(a.left, b.left) + GAP;
@@ -423,9 +433,14 @@ export default function ReplayMinimap({
          것이 된다. 실제로 글이 앉은 잎사귀만, 그것도 지금 보이는 것만 센다(장면이 바뀌어도
          지난 문장들은 투명도 0으로 그 자리에 남아 있다). */
       const blockers: Box[] = [];
+      /* '지금 보이는 줄'을 불투명도로 가리면 안 된다 — 장면이 바뀐 직후 이 계산이 도는
+         시점(useLayoutEffect)에는 새 줄이 아직 투명하고 옛 줄이 사라지는 중이라, 방금
+         지나간 문장을 피해 자리를 잡는다(실측: 자막을 문장으로 되돌리자 이름표가 다시
+         겹쳤다). aria-hidden은 React가 그 자리에서 바로 바꾸므로 전환에 흔들리지 않는다. */
       const visible = (el: Element) => {
         const st = getComputedStyle(el);
-        return Number(st.opacity) > 0.5 && st.visibility !== "hidden" && st.display !== "none";
+        return el.getAttribute("aria-hidden") !== "true"
+          && st.visibility !== "hidden" && st.display !== "none";
       };
       const collect = (el: Element) => {
         for (const kid of Array.from(el.children)) {
@@ -448,23 +463,37 @@ export default function ReplayMinimap({
         const nat: Box = { left: b.left - prev.x, right: b.right - prev.x, top: b.top - prev.y, bottom: b.bottom - prev.y };
         const [dxT, dyT] = (el.dataset.back ?? "0,0").split(",").map(Number);
         const roomT = Number(el.dataset.room ?? 0);
+        const fwdT = Number(el.dataset.fwd ?? 0);
         const vx = dxT * (fb.width / grid.width);
         const vy = dyT * (fb.height / grid.height);
         const perTile = Math.hypot(vx, vy);
         const maxPx = perTile > 0 ? roomT * perTile : 0;
+        const minPx = perTile > 0 ? -fwdT * perTile : 0;
         const ux = perTile > 0 ? vx / perTile : 0;
         const uy = perTile > 0 ? vy / perTile : 0;
-        let best = { t: 0, cost: Infinity };
-        for (let t = 0; t <= maxPx + 0.001; t += SLIDE_STEP) {
-          const cand: Box = { left: nat.left + ux * t, right: nat.right + ux * t, top: nat.top + uy * t, bottom: nat.bottom + uy * t };
-          // 지도 밖으로 나가면서까지 피하지는 않는다 — 처음 자리(t=0)는 늘 후보로 남긴다.
-          if (t > 0 && (cand.left < fb.left || cand.right > fb.right || cand.top < fb.top || cand.bottom > fb.bottom)) continue;
-          let cost = 0;
-          for (const bl of blockers) cost += over(cand, bl);
-          if (cost === 0) { best = { t, cost }; break; }
-          if (cost < best.cost) best = { t, cost };
+        /* 기둥을 따라 물리는 것만으로는 못 피하는 자리가 있다 — 아래에서 위로 꽂히는
+           화살표의 이름표가 두 줄짜리 자막에 걸리면, 자막을 지나칠 만큼 물리자니 기둥이
+           모자란다(실측). 그래서 기둥에 직각으로 아주 조금 비켜서는 것도 함께 본다:
+           옆으로 한 뼘이면 글줄을 벗어나고, 그만큼으로는 어느 화살표의 이름표인지가
+           흐려지지 않는다. 같은 값이면 덜 움직이는 쪽을 고른다(아래 비용의 뒷자리). */
+        const px = -uy;
+        const py = ux;
+        let best = { x: 0, y: 0, score: Infinity };
+        for (let t = minPx; t <= maxPx + 0.001; t += SLIDE_STEP) {
+          for (const u of SIDE_STEPS) {
+            const dx = ux * t + px * u;
+            const dy = uy * t + py * u;
+            const cand: Box = { left: nat.left + dx, right: nat.right + dx, top: nat.top + dy, bottom: nat.bottom + dy };
+            // 지도 밖으로 나가면서까지 피하지는 않는다 — 처음 자리는 늘 후보로 남긴다.
+            const moved = Math.hypot(dx, dy);
+            if (moved > 0 && (cand.left < fb.left || cand.right > fb.right || cand.top < fb.top || cand.bottom > fb.bottom)) continue;
+            let cost = 0;
+            for (const bl of blockers) cost += over(cand, bl);
+            const score = cost * 1000 + moved;
+            if (score < best.score) best = { x: dx, y: dy, score };
+          }
         }
-        const fix = { x: ux * best.t, y: uy * best.t };
+        const fix = { x: best.x, y: best.y };
         // 자리를 정한 이름표는 다음 이름표가 피해야 할 것이 된다 — 안 그러면 둘이 같은
         // 빈자리로 나란히 밀려가 그대로 다시 겹친다.
         blockers.push({ left: nat.left + fix.x, right: nat.right + fix.x, top: nat.top + fix.y, bottom: nat.bottom + fix.y });
@@ -842,6 +871,7 @@ export default function ReplayMinimap({
             /* 겹쳤을 때 밀어낼 방향(촉 → 출발점)과 남은 거리 — 실측 보정(labelSlide)이 읽는다. */
             data-back={`${g.slide.dir[0].toFixed(4)},${g.slide.dir[1].toFixed(4)}`}
             data-room={g.slide.room.toFixed(2)}
+            data-fwd={g.slide.fwd.toFixed(2)}
             style={{
               left: `${(g.label[0] / grid.width) * 100}%`,
               top: `${(g.label[1] / grid.height) * 100}%`,

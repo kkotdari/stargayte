@@ -10,9 +10,6 @@ import { ATTACK_BEAT_KEYS } from "../../utils/replaySummary";
 import { renderReplaySummarySentences, UNIT_KO, BUILDING_KO, TECH_KO } from "../../utils/replaySummaryText";
 import { SIGNATURE_UPGRADE_KO, UPGRADE_LINE_KO } from "../../utils/replayTechNames";
 import type { SummaryPart } from "../../utils/replaySummaryText";
-// 이름 뒤 조사는 받침에 따라 갈린다 — "carol가"가 아니라 "carol이"다. 요약 문장이 쓰는
-// 것과 같은 유틸을 쓴다(라틴 이름의 받침 판정까지 그쪽이 이미 다룬다).
-import { ga, reul } from "../../utils/korean";
 import type { GameResult, GameResultSlot, Member } from "../../types";
 
 // 경기 한 판을 '이야기'로 보여주는 부분 — 로스터/미니맵, 타임라인, 요약 문장이 한 상태를
@@ -122,45 +119,6 @@ const TECH_MARK: Record<string, string> = {
   "Disruption Web": "🚫", "Yamato Gun": "🎆", Restoration: "💊", "Optical Flare": "🕶️",
   "Defensive Matrix": "🔷", "Spider Mines": "🕷️", "Scanner Sweep": "📡",
   "Archon Warp": "🔱", "Dark Archon Meld": "🌑",
-};
-
-/* 스냅 자막을 문장 대신 아주 짧은 타이틀로 바꾼다(요청: "[11:27] 정구가 Rex를 공격" 식).
-   그림이 이미 대부분을 말하고 있어서다 — 누가 어디로 갔는지는 화살표가, 무엇으로 갔는지는
-   화살표 이름표가, 무슨 일인지는 이모지가 말한다. 거기에 문장까지 얹으면 같은 말을 두 번
-   하면서 그림의 절반을 덮는다. 붙일 타이틀이 없으면 시각만 남긴다(요청).
-
-   아래 다섯 갈래는 BEAT_MARK의 이모지 갈래와 같은 눈으로 나눈 것이다 — 창은 공격, 폭발은
-   교전, 과녁·낙하산은 견제, 방패는 방어, 나머지 본진 이야기는 살림이다. */
-const TITLE_ATTACK = new Set([
-  "raid-damage", "gang-rush", "duel-rush", "breakthrough", "zling-rush", "zealot-rush",
-  "cannon-rush", "sunken-rush", "sneak-rax", "allin", "counter", "greedy-punished",
-  "rush-backfire", "power-unit",
-]);
-const TITLE_CLASH = new Set(["clash", "result", "stand", "late-hold", "standoff"]);
-const TITLE_HARASS = new Set([
-  "harass-workers", "harass-long", "muta", "cloak-wraith", "valk-hunt", "infested",
-  "dropship", "shuttle", "shuttle-reaver", "templar-drop", "zerg-drop", "recall", "nydus",
-  "nuke", "mind-control",
-]);
-const TITLE_DEFEND = new Set([
-  "defense", "front-defense", "late-defense", "hold-off", "wall-in",
-]);
-const TITLE_SUPPORT = new Set(["ally-help", "ally-cannon"]);
-const TITLE_HOLD = new Set(["center", "center-photon", "center-tank", "side-tank"]);
-/** 본진에서 한 일 — 상대가 없는 이야기라 "누가 무엇을"로 끝난다. */
-const TITLE_SOLO: Record<string, string> = {
-  expand: "확장", upgrade: "업그레이드", "upgrade-signature": "업그레이드",
-  tech: "테크", "fast-tech": "테크", "mass-army": "물량", lodging: "이사", relocate: "이사",
-  greedy: "쨈", "greedy-build": "쨈", "greedy-paid": "쨈",
-  carrier: "캐리어", bc: "배틀크루저", guardian: "가디언", "lift-off": "띄우기",
-  revival: "부활", attrition: "장기전", "fast-hands": "손속", "pro-like": "프로급",
-  /* 나머지 갈래 — 예전에는 표에 없는 키가 그대로 null이 되어 자막 자리에 시각만 남았는데,
-     읽는 쪽에서는 "[07:12]"만 덩그러니 있으면 무슨 장면인지 알 수가 없다(지적: 시간만
-     나오는 건 불편하다 — 무조건 짧은 타이틀이라도 붙일 것). 그림이 이미 말하는 것을
-     되풀이하지 않는 선에서 한 마디씩 붙인다. */
-  fallen: "무너짐", gg: "GG", "idle-lead": "굳히기", "long-run": "물량",
-  vision: "시야 확보", "no-detect": "디텍터 없음",
-  "worker-gap": "일꾼 격차", "prod-gap": "생산 격차",
 };
 
 /** 저장된 자리(pos)·마법 좌표(p.xy)를 화살표 목표로 믿는 최소 요약 버전
@@ -358,74 +316,6 @@ export default function GameResultStory({
      지금 스냅까지의 beat를 시간순으로 훑어 쌓는다: 한 번 쓰러지면 그 뒤 스냅에서도
      쓰러진 채여야 한다(그 스냅의 beat에만 나온다고 그때만 해골을 띄우면, 다음 장면에서
      되살아난 것처럼 보인다). 이 계산은 이미 저장된 값만 쓰므로 옛 경기에도 그대로 붙는다. */
-  /* 그 스냅에 붙일 짧은 타이틀(요청) — 문장 대신 "정구가 Rex를 공격" 한 마디다.
-
-     한 스냅에 beat가 여럿이면 첫 번째(가장 이른 것)만 말한다 — 나머지는 그림이 같은
-     자리에 함께 그려 주고, 여기서 이어 붙이면 다시 문장이 된다. 갈래에 안 걸리는 beat는
-     null이라 자막 자리에 시각만 남는다(요청: 정 타이틀도 없으면 시간만). */
-  const sideName = (raws: string[] | undefined): { text: string; team: 1 | 2 | undefined } | null => {
-    const names = (raws ?? []).map((r) => nameByRaw.get(r) ?? r).filter(Boolean);
-    if (names.length === 0) return null;
-    const team = teamByName.get(names[0]);
-    // 여럿이 한 일은 이름을 늘어놓지 않고 편으로 부른다 — 짧아야 타이틀이다. 1:1에는
-    // 팀이라는 말을 안 쓰므로(카드와 같은 규칙) 그때는 첫 이름만 쓴다.
-    if (names.length > 1) {
-      const duel = gameResult.summaryData?.duel === true;
-      return { text: duel || !team ? names[0] : `${team}팀`, team };
-    }
-    return { text: names[0], team };
-  };
-  const titleOf = (sn: { beats: number[]; parts: SummaryPart[] }): SummaryPart[] => {
-    const beats = gameResult.summaryData?.beats ?? [];
-    const b = sn.beats.map((i) => beats[i]).find(Boolean);
-    // beat 없이 만든 자막(시작 인사·맺음의 승패 선언)은 원래 글이 곧 타이틀이다 — 여기서
-    // null을 돌려주던 탓에 마지막 "1팀 승리"가 통째로 빈 자막이 됐다(지적).
-    if (!b) return sn.parts;
-    const who = sideName(b.who);
-    const whom = sideName(b.whom);
-    const p = (text: string, team?: 1 | 2): SummaryPart => (team ? { text, team } : { text });
-    /* 조사는 이름 뒤에 붙지만 색은 이름에만 입힌다 — 조사까지 팀 색으로 칠하면 이름의
-       끝이 어디인지가 흐려진다. 그래서 조사만 떼어 다음 조각의 머리에 붙인다. */
-    const gaOf = (n: { text: string }) => ga(n.text).slice(n.text.length);
-    const reulOf = (n: { text: string }) => reul(n.text).slice(n.text.length);
-    if (TITLE_CLASH.has(b.k)) {
-      const duel = gameResult.summaryData?.duel === true;
-      /* 붙었다는 사실만으로는 장면의 절반만 말한 것이다(요청: 교전에서 결과까지 타이틀에 —
-         "양팀 교전" 대신 "1팀이 크게 이김"). 요약이 이미 그 답을 싣고 있다: p.hold가 싸움
-         뒤 그 자리를 지킨 쪽이고("a"는 who[0] 쪽, "b"는 who[1] 쪽), 편별 참가자 명단
-         (partsA/partsB)이 그 쪽이 누구누구인지를 말한다. 자리를 지킨 쪽이 없으면(draw)
-         비긴 싸움이라 이긴 편을 부르지 않는다. */
-      const hold = (b.p as { hold?: string } | undefined)?.hold;
-      const partsA = (b.p as { partsA?: string[] } | undefined)?.partsA;
-      const partsB = (b.p as { partsB?: string[] } | undefined)?.partsB;
-      const winnerRaws = hold === "a" ? (partsA ?? (b.who ?? []).slice(0, 1))
-        : hold === "b" ? (partsB ?? (b.who ?? []).slice(1, 2)) : null;
-      const win = winnerRaws ? sideName(winnerRaws) : null;
-      const head = duel ? "교전" : "양팀 교전";
-      if (hold === "draw" || !win) return [p(`${head} — 팽팽`)];
-      /* 큰 싸움이었나 — 여럿이 얽힌 난전(p.people)이면 "크게"를 붙인다. 둘이 부딪친 것과
-         일곱이 엉킨 것을 같은 말로 적으면 그 판의 절정이 어디였는지가 안 보인다. */
-      const big = ((b.p as { people?: number } | undefined)?.people ?? 0) >= 4;
-      return [p(`${head} — `), p(win.text, win.team), p(`${gaOf(win)} ${big ? "크게 " : ""}이김`)];
-    }
-    const verb = TITLE_ATTACK.has(b.k) ? "공격"
-      : TITLE_HARASS.has(b.k) ? "견제"
-        : TITLE_SUPPORT.has(b.k) ? "지원" : null;
-    if (verb && who) {
-      return whom
-        ? [p(who.text, who.team), p(`${gaOf(who)} `), p(whom.text, whom.team), p(`${reulOf(whom)} ${verb}`)]
-        : [p(who.text, who.team), p(`${gaOf(who)} ${verb}`)];
-    }
-    if (TITLE_DEFEND.has(b.k) && who) return [p(who.text, who.team), p(`${gaOf(who)} 방어`)];
-    if (TITLE_HOLD.has(b.k) && who) return [p(who.text, who.team), p(`${gaOf(who)} 센터 장악`)];
-    const solo = TITLE_SOLO[b.k];
-    if (solo && who) return [p(who.text, who.team), p(` ${solo}`)];
-    if (solo) return [p(solo)];
-    // 어느 갈래에도 안 걸리는 beat — 그래도 시각만 남기지는 않는다(요청). 원래 요약 글을
-    // 그대로 쓴다: 길더라도 "무슨 장면인지 모르겠다"보다는 낫다.
-    return sn.parts;
-  };
-
   /** 그 문장이 가리키는 시각(분) — 문장에 묶인 beat 가운데 가장 이른 것을 쓴다. 시각이
    *  없는 문장(맺음말 등)은 null이라 아무것도 안 붙는다. */
   const capMin = (sn: { beats: number[] }): string | null => {
@@ -1478,10 +1368,11 @@ export default function GameResultStory({
                 {/* 언제 있었던 일인지 앞에 붙인다(요청: [07:12]처럼 초까지). 시각을 모르는
                     문장(맺음말 등)은 아무것도 안 붙인다 — 0분이라고 적으면 거짓말이다. */}
                 {capMin(sn) !== null && <span className="scr-story-cap-time">[{capMin(sn)}]</span>}
-                {/* 문장이 아니라 타이틀 한 마디다(요청) — 그림이 이미 말하는 것을 글로
-                    되풀이하지 않는다. 시작 스냅("게임 시작!")처럼 beat 없이 만든 자막은
-                    타이틀이 없으니 원래 글을 그대로 쓴다. */}
-                {(i === introIdx ? sn.parts : titleOf(sn)).map((pt, j) => (pt.team
+                {/* 요약이 만든 문장을 그대로 쓴다(요청: 예전 자막 대사가 더 재밌으니 복원).
+                    한때 "정구가 Rex를 공격" 식의 한 마디 타이틀로 줄였는데, 짧아진 만큼
+                    말맛이 통째로 사라졌다 — 장황한 문장은 타이틀로 뭉개는 대신 템플릿
+                    자체를 짧게 고쳤다(replaySummaryText). */}
+                {sn.parts.map((pt, j) => (pt.team
                   ? <span key={j} className={pt.team === 1 ? "scr-sum-team1" : "scr-sum-team2"}>{pt.text}</span>
                   : <span key={j}>{pt.text}</span>))}
               </p>

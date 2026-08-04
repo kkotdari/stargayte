@@ -170,11 +170,17 @@ function teamPhrase(c: Ctx): string {
      '누가'만 말하면 된다. 그래서 같은 주력끼리 묶던 무리 짓기도 필요가 없어졌다. */
   // "4인 팀"은 쓰지 않는 말이다(지적) — 로스터에 있는 그대로 "1팀/2팀"이라 부른다.
   // 팀 번호를 모르면(옛 데이터) 이름을 늘어놓는 쪽으로 물러선다.
-  const team = c.team ? `${c.team}팀` : "";
-  if (names.length >= 4 && team) {
+  /* 렌더러가 c.team을 늘 0으로 넘기는 자리가 있어 팀 번호를 이름으로 되묻는다(clash의
+     teamWord와 같은 방법) — 안 되물으면 넷이 다 나와 "carol·Cheol·dave·carol이"가 된다. */
+  const team = c.team ? `${c.team}팀` : (() => {
+    const t = names.map((n) => c.teamOfName(n)).find((v) => v !== undefined);
+    return t ? `${t}팀` : "";
+  })();
+  if (names.length >= 3 && team) {
     return c.pick([`${team}이 힘을 모아`, `${team}이 함께 밀어붙여`, `${team}이 한꺼번에 몰아붙여`]);
   }
-  const who = names.join("·");
+  const who = names.length <= 2 ? names.join("·")
+    : `${names.slice(0, 2).join("·")} 외 ${names.length - 2}명`;
   return c.pick([`${ga(who)} 함께 몰아붙여`, `${ga(who)} 나란히 밀어붙여`, `${ga(who)} 한꺼번에 몰아붙여`]);
 }
 
@@ -355,6 +361,12 @@ const LINK_HEAD = () => `(?:${[...CONTRAST_LINKS, ...SEQUENCE_LINKS].join("|")}|
    문장으로 읽는 편이 자연스럽고, 그건 어차피 같은 사람의 같은 자리 이야기라 미니맵도
    헷갈리지 않는다. */
 const MAX_CHAIN = 0;
+/* 자막 한 장에 담을 글자 수의 목표(요청: 문장이 너무 장황하고 긴 것들은 간략화) — 자막은
+   그림 위에 얹혀 다음 장면으로 넘어가기 전까지만 보이는 글이라, 길면 다 읽기 전에 지나간다.
+   딱 잘라 버리는 값이 아니라 '문장을 더 길게 만드는 선택'을 그만두는 선이다: 앞 문장에 이어
+   붙일지, 활약 한 마디를 덧붙일지, 꾸밈말을 얹을지를 여기서 가른다. 실측한 자막을 길이순으로
+   늘어놓고 잡은 값이다 — 이보다 긴 문장은 PC에서도 두 줄이 된다. */
+const MAX_LINE = 46;
 /** 다른 문장과 한 스냅으로 합치지 않는 이야기들 — 저마다 제 그림(화살표·이모지)을 가진
  *  결말 장면이라, 합치면 요청한 장면 하나가 사라진다. */
 const NO_JOIN_KEYS = new Set(["hold-off", "counter"]);
@@ -722,7 +734,7 @@ const TEMPLATES: Record<string, Tpl> = {
     //     남아 "포토 2개뿐이던 버티지 못했다"가 됐다.
     // 그래서 이름에서 떼어 문장 앞마디로 세운다.
     const vdef = DEFENSE_KO[str(c.p.vdef)];
-    const thinAt = !vdef || !("vdefN" in c.p) ? ""
+    let thinAt = !vdef || !("vdefN" in c.p) ? ""
       : num(c.p.vdefN) === 0
         ? `${vdef} 하나 없는 상태에서 `
         : `${vdef} ${num(c.p.vdefN)}개뿐인 상태에서 `;
@@ -741,6 +753,10 @@ const TEMPLATES: Record<string, Tpl> = {
     // 이 수를 낸 사람 말고도 같이 덮친 사람이 있었으면 이름을 함께 부른다(지적: 한 사람한테만
     // 당한 게 아니다). 자리(이동·공격 명령이 그 사람 진영에 몰렸나)로 짚은 사람들이다.
     const also = num(c.p.gang) >= 2 && c.who2 ? `${c.who2}까지 달려들어 ` : "";
+    /* 앞마디("성큰 1개뿐인 상태에서")와 협공("bob까지 달려들어")은 둘 다 곁가지다 — 둘이
+       겹치면 본줄기까지 세 마디가 되어 자막이 예순 자를 넘는다(실측). 그때는 그 장면의
+       그림에 더 가까운 협공을 남기고 앞마디를 접는다. */
+    if (also && thinAt.length + also.length > MAX_LINE / 3) thinAt = "";
     // 한 사람이 여러 수에 잇달아 무너졌으면 한 문장으로 묶는다(지적: 같은 이야기가 두 번
     // 나옴). "Rex의 9드론 저글링 러시와 제롬의 4게이트 질럿 러시에 군범이 2분 만에 무너짐".
     const ks = list(c.p.ks);
@@ -1602,7 +1618,7 @@ const TEMPLATES: Record<string, Tpl> = {
       `본진 입구를 ${ro(what)} 단단히 막고 발전에 집중함`,
       `입구를 ${ro(what)} 걸어 잠그고 살림을 키움`,
       `본진 앞을 ${ro(what)} 틀어막고 그 뒤에서 덩치를 불림`,
-      `입구를 ${ro(what)} 막아 두고 병력 대신 확장과 테크에 투자함`,
+      `입구를 ${ro(what)} 막아 두고 확장에 투자함`,
     ]))}`;
   },
 
@@ -1655,7 +1671,9 @@ const TEMPLATES: Record<string, Tpl> = {
     const techN = num(c.p.techN, 0);
     /* 마법 이야기는 앞에 얹는다 — 문장을 평서형('-다')으로 펴는 일은 맨 끝의 명사형('-ㅁ')을
        보고 이루어지므로, 뒤에 붙이면 정작 본절이 "크게 부딪침"인 채로 남는다(실측). */
-    const spell = tech && techN >= 2 ? `${ga(tech)} ${techN}번 터지는 가운데 ` : "";
+    /* "…이 12번 터지는 가운데"는 그것만으로 열아홉 자다 — 참가자 이름까지 부르는 난전
+       문장에 얹으면 자막이 여든 자를 넘는다(실측). 같은 사실을 절반 길이로 말한다. */
+    const spell = tech && techN >= 2 ? `${tech} ${techN}번 속에 ` : "";
     /* 큰 교전은 한 판에 여러 번 나올 수 있다(요청: 큰 교전이 여러 번이면 여러 번 나오는 게
        맞다) — 그때 둘째부터는 "그 판의 가장 큰 싸움"이라고 말할 수 없다. 가장 큰 것은
        하나뿐이라, 그 말이 두 문장에 나오면 둘 중 하나는 거짓이 된다. nth가 없으면(옛
@@ -1681,14 +1699,23 @@ const TEMPLATES: Record<string, Tpl> = {
     /* 넷을 넘으면 이름을 다 부르지 않고 팀으로 뭉뚱그린다(요청) — 일곱 명을 늘어놓으면
        자막이 대여섯 줄이 되어 지도를 통째로 가린다. 팀 번호를 모르는 판(기록이 팀을 안
        가른 경우)에서는 "양 팀"으로 물러선다. */
-    const lumped = pa.length + pb.length > 4;
+    /* 사람 수가 아니라 '이름이 차지하는 길이'로 가른다 — 넷이어도 긴 닉네임 넷이면 그것만
+       스물두 자다(실측: "carol과 carol·bob·forge_saygay가"). 수로만 재던 때는 그 줄이 그대로
+       통과해 자막이 일흔 자가 됐다. */
+    const lumped = pa.length + pb.length > 4
+      || pa.join("·").length + pb.join("·").length > 16;
     const teamWord = (names: string[]): string => {
       const t = names.map((n) => c.teamOfName(n)).find((v) => v !== undefined);
       return t ? `${t}팀` : "";
     };
     const [la, lb] = [teamWord(pa), teamWord(pb)];
-    const sideA = lumped && la && lb ? la : pa.join("·");
-    const sideB = lumped && la && lb ? lb : pb.join("·");
+    /* 팀 번호를 모르는 기록에서는 팀으로 부를 수가 없다 — 그때는 대표 하나만 부르고 나머지는
+       수로 줄인다(맺음말 verdict가 이미 쓰는 방식). 이름을 다 부르는 것보다 훨씬 짧고,
+       "누가 얼마나 얽혔나"는 그대로 남는다. */
+    const few = (names: string[]): string =>
+      (names.length <= 1 ? names.join("") : `${names[0]} 외 ${names.length - 1}명`);
+    const sideA = lumped ? (la && lb ? la : few(pa)) : pa.join("·");
+    const sideB = lumped ? (la && lb ? lb : few(pb)) : pb.join("·");
     /* 그 싸움을 누가 이겼나(요청) — 리플레이에 전사자 수는 없다. 아는 것은 싸움이 끝난
        뒤 그 자리에 누가 남아 계속 명령을 내렸나뿐이라(replaySummary의 CLASH_AFTER_SEC),
        딱 그만큼만 "자리를 지켰다"로 말한다. 어느 쪽도 못 지켰으면 비긴 것으로 둔다. */
@@ -1700,7 +1727,7 @@ const TEMPLATES: Record<string, Tpl> = {
     const outcome = holder
       ? c.pick([
         `${ga(holder)} 그 자리를 지킴`,
-        `${ga(holder)} 끝내 밀어내고 자리를 차지함`,
+        `${ga(holder)} 끝내 밀어냄`,
         `${ga(holder)} 물러서지 않고 버팀`,
       ])
       /* "서로 물러섬" · "크게 갈림"은 쓰지 않는다(지적: 교전 문장이 어색하다) — 리플레이가
@@ -1709,13 +1736,18 @@ const TEMPLATES: Record<string, Tpl> = {
          "승부가 나지 않았다"와, 그 자리에 병력을 부어 넣은 사실만 말한다. */
       : c.pick([
         "승부가 나지 않음",
-        "양쪽 다 병력만 소모하고 승부가 나지 않음",
-        "어느 쪽도 자리를 지키지 못한 채 병력만 소모함",
+        "양쪽 다 병력만 소모함",
+        "서로 병력만 갈아 넣고 끝남",
       ]);
     if (roster) {
-      return `${where}${spell}${wa(sideA)} ${ga(sideB)} ${c.pick([
+      /* 자리·마법·참가자·결과가 다 들어가면 자막이 두 줄을 넘긴다(실측 87자). 넷 중 마법은
+         곁가지라(그 그림은 이모지가 이미 말한다) 넘칠 때 그것부터 접는다. c.pick은 같은
+         beat에 늘 같은 것을 고르므로 두 번 불러도 표현이 흔들리지 않는다. */
+      const build = (sp: string) => `${where}${sp}${wa(sideA)} ${ga(sideB)} ${c.pick([
         "맞붙어", "정면으로 부딪쳐", "한데 뒤엉켜",
       ])} ${done(c, outcome)}`;
+      const full = build(spell);
+      return spell && full.length > MAX_LINE ? build("") : full;
     }
     const owner = c.who2;
     const raider = owner ? c.whoList.find((n) => n !== owner) : undefined;
@@ -1736,12 +1768,15 @@ const TEMPLATES: Record<string, Tpl> = {
         `${owner}의 기지를 들이쳐 한판 크게 붙음`,
       ])))}`;
     }
-    return `${where}${spell}${both} ${done(c, c.pick(says(
+    // 여기서도 넘치면 마법 꾸밈부터 접는다(위 roster와 같은 규칙).
+    const plain = (sp: string) => `${where}${sp}${both} ${done(c, c.pick(says(
       named
         ? ["뒤엉켜 크게 부딪침", "맞부딪쳐 그 판의 가장 큰 싸움을 벌임",
           "정면으로 맞붙음", "한데 뒤엉켜 한판 크게 붙음"]
         : ["크게 부딪침", "정면으로 맞붙음", "한데 엉켜 크게 싸움", "가장 큰 싸움을 벌임"],
     )))}`;
+    const plainFull = plain(spell);
+    return spell && plainFull.length > MAX_LINE ? plain("") : plainFull;
   },
 
   /* 제 집에서 막아 냄 — 마지막 싸움이 이긴 편의 기지에서 벌어진 판의 첫 대목이다(요청:
@@ -2348,7 +2383,10 @@ const TEMPLATES: Record<string, Tpl> = {
             ])}`
         : null;
     const withHero = (main: string): string => {
-      if (!hero) return main;
+      /* 맺음말은 그 자체로 이미 한 문장이다 — 거기에 활약 한 마디를 또 이으면 "결국 35분을
+         끌고 간 끝에 …가 나란히 밀어붙여 판을 정리했고, …가 하이템플러 물량으로 경기를
+         캐리했다"처럼 여든 자가 된다(실측). 자리가 남을 때만 붙인다. */
+      if (!hero || main.length + hero.length + 2 > MAX_LINE) return main;
       // 앞마디를 연결형으로 바꿔야 "…뒤집었고, 조조가 …"처럼 읽힌다 — 명사형 그대로 두면
       // 문장 한가운데에 '-ㅁ'이 남는다.
       return `${toAnd(main) ?? main}, ${hero}`;
@@ -3021,7 +3059,12 @@ function renderLines(
     // 액션과 이어지면 같이 엮어서) — 나란히 벌어진 일을 뜻하는 '-고'가 아니라 '-ㄴ 뒤'로
     // 이어야 원인과 결과로 읽힌다. 잘 풀렸든 아니든 이어지는 건 마찬가지다(요청).
     const afterCause = sameSubject && prev?.k === "greedy-build" ? toAfter(prevLine) : null;
-    const chained: string | null = sameSubject
+    /* 두 마디를 한 문장으로 이으면 그만큼 길어진다 — 앞뒤가 저마다 마흔 자면 이은 문장은
+       여든 자다(실측: "…일꾼을 먼저 채우다 …공격에 노출됐고 …는 병력을 너무 늦추다 …그대로
+       무너졌다"). 자리가 남을 때만 잇는다: 넘치면 그냥 두 문장으로 놓아도 뜻은 그대로고,
+       스냅도 둘로 갈려 그림이 오히려 또렷해진다. */
+    const roomToJoin = prevLine.length + text.length <= MAX_LINE;
+    const chained: string | null = !roomToJoin ? null : sameSubject
       // 이어 붙일 마디가 이미 '-고'를 품고 있으면(맺음말+활약 한 마디처럼) 앞마디는
       // '-으며'로 바꾼다 — 안 그러면 한 문장에 "…고, …고,"가 연달아 나온다(지적).
       ? (afterCause ?? (chainCount === 0 && !/고, /.test(text) ? toAnd(prevLine) : toAlso(prevLine)))
@@ -3044,11 +3087,13 @@ function renderLines(
       const reversal = (prev?.whom ?? []).length > 0;
       const tightCause =
         prev?.k === "greedy-build" || (gapSec !== null && gapSec <= CAUSE_SEC);
-      const head = reversal
-        ? (toBut(prevLine) ? `${toBut(prevLine)} 반대로` : null)
-        // 여기는 하던 일이 상대의 수에 끊긴 자리다 — '-다가'가 맞는 몇 안 되는 자리라
-        // (지적) 그대로 쓴다. 아껴 쓰는 것은 tightCause로 자리를 좁혀서 한다.
-        : tightCause ? toWhile(prevLine) : null;
+      // 여기서 잇는 것도 문장을 길게 만드는 선택이다 — 위 roomToJoin과 같은 선을 본다.
+      const head = !roomToJoin ? null
+        : reversal
+          ? (toBut(prevLine) ? `${toBut(prevLine)} 반대로` : null)
+          // 여기는 하던 일이 상대의 수에 끊긴 자리다 — '-다가'가 맞는 몇 안 되는 자리라
+          // (지적) 그대로 쓴다. 아껴 쓰는 것은 tightCause로 자리를 좁혀서 한다.
+          : tightCause ? toWhile(prevLine) : null;
       // 앞마디가 이미 '-다가'로 이어 주므로 뒤 문장 머리의 이음말은 뗀다(지적:
       // "…실패하다가 게다가 …"처럼 접속사가 두 번 나온다).
       const tail = text
