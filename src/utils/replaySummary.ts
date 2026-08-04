@@ -1760,12 +1760,16 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
      몇 분에 찍었나)가 러시·교전 문장에 밀려 하나도 못 나온다 — 실제로 그랬다. 2분에 한
      문장 꼴로 바꾸고 상한도 함께 올린다. 아래 MIN_WEIGHT와 갈래별 상한(PER_KEY_CAP)이
      가벼운 사실로 자리를 채우는 것은 그대로 막는다. */
-  const SEC_PER_LINE = 120;
+  /* 자막을 문장이 아니라 한 마디 타이틀로 줄이면서(GameResultStory의 titleOf) 자리를 한 번
+     더 연다(요청: 자막을 숨기는 스냅이 많으니 스냅 자체를 늘려도 되겠다 — 그래야 스토리
+     라인이 더 잘 읽힌다). 문단으로 읽던 시절의 제약("길면 지친다")이 사라졌다: 이제
+     스냅 하나는 그림 한 장이고, 장면이 촘촘할수록 이야기가 이어져 읽힌다. */
+  const SEC_PER_LINE = 80;
   /* 상한을 올린다(요청: 경기시간에 비례해서 문장 최대개수 늘리기) — 2분에 한 문장 꼴로
      세어도 30분이 넘는 판은 상한(15)에 걸려 45분 경기와 35분 경기가 같은 길이였다.
      이제 긴 판은 스물까지 열린다. 자리가 늘어도 아래 MIN_WEIGHT와 갈래별 상한이 가벼운
      사실로 채우는 것은 그대로 막는다. */
-  const baseBudget = Math.max(3, Math.min(sec >= LONG_GAME_SEC ? 20 : 14, Math.round(sec / SEC_PER_LINE)));
+  const baseBudget = Math.max(3, Math.min(sec >= LONG_GAME_SEC ? 30 : 20, Math.round(sec / SEC_PER_LINE)));
   // 자리가 남아도 아무거나 채우지 않는다(요청: 승부에 중요한 이벤트만) — 이 무게 아래는
   // "그래서 뭐" 소리가 나오는 사실들이라, 문단을 짧게 끝내는 편이 낫다.
   // 6 → 8(요청: 중요하지 않은 내용은 숫자 채우려고 넣지 말 것). 자리가 남아도 "그래서 뭐"

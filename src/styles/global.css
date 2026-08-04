@@ -7162,11 +7162,12 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    때문이다: 댓글은 "게임결과"라는 종류가 아니라 그날 무슨 일이 있었는지에 달린 말이다.
    제목 칸에는 자리도 없다 — 글자 자리 62px 중 "#17"(15.6) + "UPDATE"(37.4)로 이미
    57px을 쓴다(실측).
-   딱지들보다 작게 둔다(요청): --fs-9 아래로는 토큰이 없어 여기만 8px을 직접 쓴다.
    flex 항목이라 줄지 않게 못박아 둔다 — 줄어야 하는 건 내용 글자 쪽이다. */
 .scr-activity-row-comment {
   flex: 0 0 auto; margin-left: 2px;
-  font-size: 8px; font-weight: 700; line-height: 1;
+  /* 8px에서 한 스텝 올렸다(지적: 리플 개수 텍스트가 너무 작다) — 딱지들보다 작게 두려던
+     값인데, 이건 딱지가 아니라 읽어야 하는 수다. */
+  font-size: var(--fs-9); font-weight: 700; line-height: 1;
   /* 수는 내용 칸의 기본색 그대로다(요청) — 흐리게 눌러 두면 "몇 개인가"가 읽히기 전에
      먼저 배경으로 물러난다. 색으로 알릴 것은 새것 여부(아래 NEW)뿐이다. */
   color: var(--row-dim); white-space: nowrap;
@@ -7225,11 +7226,10 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    색은 카드가 응답 배지에 쓰는 톤(.scr-challenge-avatar-badge-*)을 그대로 빌려 온다 —
    같은 사실을 카드에선 초록, 목록에선 회색으로 말하면 둘이 다른 것처럼 읽힌다. */
 .scr-activity-row-state {
-  /* 이름의 정좌측(요청) — 위에 얹던 것을 같은 줄로 내렸다. 카드가 손 이모지 옆에
-     배지를 두는 모양과 같아져, 목록과 카드가 같은 것을 같은 자리에서 말한다.
-     흐름에서 빼 둔 건 그대로다(absolute) — 배지가 있든 없든 이름 자리는 안 밀린다. */
-  position: absolute; right: 100%; top: 50%;
-  transform: translateY(-50%); margin: 0 3px 0 0;
+  /* 이름의 정좌측, 자리를 차지하는 채로(요청) — 띄워 두면 이름 왼쪽 바깥은 화살표가
+     이미 쓰는 자리라 둘이 겹쳤다(지적: 배지 겹침). 자리를 주면 그만큼 이름 칸이 줄지만,
+     줄어드는 법을 아는 건 이름 쪽이다(.scr-activity-row-em). */
+  flex: none; margin-right: 3px;
   font-size: var(--fs-9); font-weight: 800; line-height: 1; white-space: nowrap;
   pointer-events: none;
 }

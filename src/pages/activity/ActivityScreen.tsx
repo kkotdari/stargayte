@@ -1055,10 +1055,10 @@ export default function ActivityScreen() {
         <span className={cx("scr-activity-row-state", `scr-activity-row-state-${tone}`)}>{text}</span>
       );
       const status = challengeStatusInfo(c);
-      /* 상태는 줄에 끼우지 않고 닉네임 좌상단에 얹는다(요청: 자리 차지 없이, 그러면서
-         내용 칸 오른쪽 끝의 댓글 배지와 안 겹치게). 흐름에 두면 그 폭만큼 이름 자리가
-         줄어 모바일에서 닉네임이 잘린다. 한때 이름의 우상단이었는데, 오른쪽 편 이름은
-         내용 칸 끝에 가까워 거기 붙은 상태가 댓글 배지와 부딪혔다(지적).
+      /* 상태는 닉네임 바로 왼쪽에 선다(요청). 자리를 차지하는 흐름 안의 요소다 —
+         한때 자리를 안 차지하게 띄워 뒀는데, 그러면 이름 왼쪽 바깥은 화살표가 이미 쓰고
+         있는 자리라 둘이 겹쳤다(지적: 배지 겹침). 자리를 주면 그만큼 이름 칸이 줄지만,
+         이름은 제 안에서 줄어들 줄 알고(.scr-activity-row-em) 겹치는 것보다는 낫다.
          어느 쪽 닉네임에 붙일지는 '누구의 이야기인가'로 정한다 — 수락·거절·버림·만료는
          지목된 쪽이 한 일이니 오른쪽에, 부른 쪽이 거둬들인 취소만 왼쪽에 붙는다(요청).
          그 판단은 카드가 손 이모지 양옆 배지를 놓을 때 쓰는 것과 같은 함수다
@@ -1081,13 +1081,13 @@ export default function ActivityScreen() {
         <>
           <span className="scr-activity-row-name">
             <span className="scr-activity-row-name-main">
-              {nameNodes(mine)}{leftBadge}
+              {leftBadge}{nameNodes(mine)}
             </span>
           </span>
           <span className="scr-activity-row-arrow" aria-hidden>→</span>
           <span className="scr-activity-row-name">
             <span className="scr-activity-row-name-main">
-              {nameNodes(theirs)}{rightBadge}
+              {rightBadge}{nameNodes(theirs)}
             </span>
           </span>
         </>
