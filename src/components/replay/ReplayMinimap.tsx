@@ -115,6 +115,9 @@ const NECK_BACK = 3.4;
 const LABEL_BACK_CONVERGE = 22;
 /** 같은 점에 모인 화살표끼리 이름표를 어긋나게 앉히는 간격(순번마다 이만큼 더 뒤로). */
 const LABEL_BACK_STEP = 13;
+/** 겹친 이름표를 출발 쪽으로 밀어낼 수 있는 한계(기둥 길이 대비) — 그보다 뒤는 출발한
+ *  사람의 아바타·이름표 자리라, 거기까지 밀면 이번엔 그쪽과 겹친다. */
+const LABEL_SLIDE_MAX = 0.78;
 /* (삭제) 본진 이모지를 맵 가운데 쪽으로 멀리 띄우던 값(MARK_OUT/MARK_EDGE) — 이제 액션
    이모지는 아바타의 '위 안쪽' 슬롯에 고정으로 앉는다(아래 markPlace). 멀리 띄우면 본진이
    지도 어디에 있느냐에 따라 이름표·표정과 같은 칸에 몰리는 조합이 생겼다(지적). */
@@ -199,11 +202,22 @@ function arrowGeom(a: MinimapArrow, w: number, h: number) {
       /* 한 점으로 모이는 화살표들은 뒤로 물려도 서로 겹칠 수 있다 — 세 개가 거의 같은
          각도로 들어오면 같은 거리에서는 여전히 한 자리다(실측: "히히드라러커/아비터").
          그래서 물리는 거리를 화살표마다 조금씩 달리 준다(rank) — 부채처럼 벌어지는 효과에
-         더해, 아예 다른 높이에 앉아 글자가 안 포갠다. */
+         더해, 아예 다른 높이에 앉아 글자가 안 포갠다.
+         여기서 나온 자리는 어림값이다 — 글자가 실제로 얼마나 넓은지는 그려 보기 전엔
+         모르므로, 그래도 겹치면 그린 뒤 실측해서 출발 쪽으로 밀어낸다(아래 labelSlide). */
       const stagger = a.converge ? LABEL_BACK_STEP * (a.rank ?? 0) : 0;
       const back = Math.min((a.converge ? LABEL_BACK_CONVERGE : LABEL_BACK) + stagger,
         Math.hypot(bx - x1, by - y1) / 2);
       return [bx - hx * back, by - hy * back] as [number, number];
+    })(),
+    /** 이름표를 더 밀어낼 수 있는 방향(촉에서 출발점 쪽, 타일 단위 단위벡터)과 남은 거리
+     *  (타일) — 그린 뒤 글자끼리 겹쳤을 때 얼마나 물릴 수 있는지를 실측 보정이 여기서 읽는다.
+     *  기둥의 LABEL_SLIDE_MAX까지만 물러선다: 그보다 뒤는 출발한 사람 아바타·이름표 자리다. */
+    slide: (() => {
+      const shaft = Math.hypot(bx - x1, by - y1);
+      const stagger = a.converge ? LABEL_BACK_STEP * (a.rank ?? 0) : 0;
+      const back = Math.min((a.converge ? LABEL_BACK_CONVERGE : LABEL_BACK) + stagger, shaft / 2);
+      return { dir: [-hx, -hy] as [number, number], room: Math.max(0, shaft * LABEL_SLIDE_MAX - back) };
     })(),
   };
 }
@@ -378,6 +392,92 @@ export default function ReplayMinimap({
     return () => window.removeEventListener("resize", measure);
   }, [bases, grid]);
 
+  /* 기둥 위 유닛 이름표가 서로(또는 자막·본진 이름표와) 겹치면 출발 쪽으로 밀어낸다(요청:
+     "화살표 여러 개가 집중할 땐 좀 더 화살표 출발 쪽으로"). 자리를 계산으로만 잡으면 못 막는다
+     — 몇 글자짜리 유닛명이 몇 줄로 앉느냐에 따라 상자 크기가 제각각이고, 화살표가 몇 도로
+     들어오느냐에 따라 같은 거리도 겹치기도 안 겹치기도 한다. 그려진 것을 재서, 실제로 겹친
+     것만 겹치지 않을 만큼만 물린다(위 이름표 보정과 같은 방식).
+     밀어내는 방향·남은 거리는 화살표마다 다르므로 그리는 쪽에서 data-*로 얹어 둔다. */
+  const arrowLabelElsRef = useRef<Map<string, HTMLSpanElement>>(new Map());
+  const [labelSlide, setLabelSlide] = useState<Map<string, { x: number; y: number }>>(new Map());
+  const labelSlideRef = useRef(labelSlide);
+  labelSlideRef.current = labelSlide;
+  useLayoutEffect(() => {
+    const frame = frameRef.current;
+    if (!frame) return;
+    /** 한 번에 이만큼씩 물려 보며 빈자리를 찾는다(px). */
+    const SLIDE_STEP = 6;
+    /** 이만큼은 떨어져야 '안 겹친다'로 본다 — 글자끼리 딱 붙으면 붙은 대로 못 읽는다. */
+    const GAP = 3;
+    type Box = { left: number; right: number; top: number; bottom: number };
+    const over = (a: Box, b: Box) => {
+      const ow = Math.min(a.right, b.right) - Math.max(a.left, b.left) + GAP;
+      const oh = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) + GAP;
+      return ow > 0 && oh > 0 ? ow * oh : 0;
+    };
+    const measure = () => {
+      const fb = frame.getBoundingClientRect();
+      if (fb.width <= 0 || arrowLabelElsRef.current.size === 0) return;
+      /* 피해야 할 것 — 지금 보이는 자막 한 줄, 본진 이름표, 이모지 밑 캡션.
+         자막은 컨테이너가 지도를 통째로 덮는 정렬용 상자라 그걸 재면 어디로 밀어도 겹친
+         것이 된다. 실제로 글이 앉은 잎사귀만, 그것도 지금 보이는 것만 센다(장면이 바뀌어도
+         지난 문장들은 투명도 0으로 그 자리에 남아 있다). */
+      const blockers: Box[] = [];
+      const visible = (el: Element) => {
+        const st = getComputedStyle(el);
+        return Number(st.opacity) > 0.5 && st.visibility !== "hidden" && st.display !== "none";
+      };
+      const collect = (el: Element) => {
+        for (const kid of Array.from(el.children)) {
+          if (!visible(kid)) continue;
+          if (kid.children.length > 0) collect(kid);
+          else blockers.push(kid.getBoundingClientRect());
+        }
+      };
+      if (capRef.current) collect(capRef.current);
+      frame.querySelectorAll(".scr-minimap-mark-label-out, .scr-minimap-mark-caption")
+        .forEach((el) => blockers.push(el.getBoundingClientRect()));
+
+      let changed = false;
+      const next = new Map<string, { x: number; y: number }>();
+      arrowLabelElsRef.current.forEach((el, key) => {
+        // 이전 보정을 걷어낸 '있는 그대로'의 자리에서 다시 고른다 — 안 그러면 보정이
+        // 자기 자신 위에 쌓여 이름표가 렌더마다 뒤로 기어간다.
+        const prev = labelSlideRef.current.get(key) ?? { x: 0, y: 0 };
+        const b = el.getBoundingClientRect();
+        const nat: Box = { left: b.left - prev.x, right: b.right - prev.x, top: b.top - prev.y, bottom: b.bottom - prev.y };
+        const [dxT, dyT] = (el.dataset.back ?? "0,0").split(",").map(Number);
+        const roomT = Number(el.dataset.room ?? 0);
+        const vx = dxT * (fb.width / grid.width);
+        const vy = dyT * (fb.height / grid.height);
+        const perTile = Math.hypot(vx, vy);
+        const maxPx = perTile > 0 ? roomT * perTile : 0;
+        const ux = perTile > 0 ? vx / perTile : 0;
+        const uy = perTile > 0 ? vy / perTile : 0;
+        let best = { t: 0, cost: Infinity };
+        for (let t = 0; t <= maxPx + 0.001; t += SLIDE_STEP) {
+          const cand: Box = { left: nat.left + ux * t, right: nat.right + ux * t, top: nat.top + uy * t, bottom: nat.bottom + uy * t };
+          // 지도 밖으로 나가면서까지 피하지는 않는다 — 처음 자리(t=0)는 늘 후보로 남긴다.
+          if (t > 0 && (cand.left < fb.left || cand.right > fb.right || cand.top < fb.top || cand.bottom > fb.bottom)) continue;
+          let cost = 0;
+          for (const bl of blockers) cost += over(cand, bl);
+          if (cost === 0) { best = { t, cost }; break; }
+          if (cost < best.cost) best = { t, cost };
+        }
+        const fix = { x: ux * best.t, y: uy * best.t };
+        // 자리를 정한 이름표는 다음 이름표가 피해야 할 것이 된다 — 안 그러면 둘이 같은
+        // 빈자리로 나란히 밀려가 그대로 다시 겹친다.
+        blockers.push({ left: nat.left + fix.x, right: nat.right + fix.x, top: nat.top + fix.y, bottom: nat.bottom + fix.y });
+        if (Math.abs(fix.x - prev.x) > 0.5 || Math.abs(fix.y - prev.y) > 0.5) changed = true;
+        if (Math.abs(fix.x) > 0.5 || Math.abs(fix.y) > 0.5) next.set(key, fix);
+      });
+      if (changed || next.size !== labelSlideRef.current.size) setLabelSlide(next);
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [arrows, bases, grid, caption]);
+
   /* ── 아바타 둘레의 고정 슬롯(요청) ──
      닉네임은 아래 바깥쪽, 표정은 위 바깥쪽, 액션 이모지는 위 안쪽, 해골은 아래 안쪽.
      넷이 서로 다른 칸을 쓰므로 본진이 지도 어디에 있든 절대 포개지지 않는다.
@@ -522,6 +622,10 @@ export default function ReplayMinimap({
     for (const { a, g } of geoms) {
       add(g.tip[0], g.tip[1], 4);
       add(g.from[0], g.from[1], 2);
+      /* 기둥 위 이름표도 자막이 피해야 할 글자다 — 여태 한 번도 안 셌더니 자막이 그 위에
+         겹쳐 앉았다(지적 스크린샷: "1팀 교전 — 팽팽"이 "질럿·히드라"와 포개짐). 글자끼리
+         겹치면 둘 다 못 읽으므로 아바타보다 무겁게 본다. */
+      if ((a.label?.length ?? 0) > 0) add(g.label[0], g.label[1], 4);
       for (let i = 0; i <= BODY_SAMPLES; i += 1) {
         const t = i / BODY_SAMPLES;
         add(a.x1 + (a.x2 - a.x1) * t, a.y1 + (a.y2 - a.y1) * t, BODY_WEIGHT / BODY_SAMPLES);
@@ -729,9 +833,22 @@ export default function ReplayMinimap({
         {geoms.map(({ a, g }) => ((a.label?.length ?? 0) > 0 ? (
           <span
             key={`lbl-${a.key}`}
+            ref={(el) => {
+              if (el) arrowLabelElsRef.current.set(a.key, el);
+              else arrowLabelElsRef.current.delete(a.key);
+            }}
             className={cx("scr-minimap-arrow-label",
               a.team === 1 && "scr-minimap-mark-t1", a.team === 2 && "scr-minimap-mark-t2")}
-            style={{ left: `${(g.label[0] / grid.width) * 100}%`, top: `${(g.label[1] / grid.height) * 100}%` }}
+            /* 겹쳤을 때 밀어낼 방향(촉 → 출발점)과 남은 거리 — 실측 보정(labelSlide)이 읽는다. */
+            data-back={`${g.slide.dir[0].toFixed(4)},${g.slide.dir[1].toFixed(4)}`}
+            data-room={g.slide.room.toFixed(2)}
+            style={{
+              left: `${(g.label[0] / grid.width) * 100}%`,
+              top: `${(g.label[1] / grid.height) * 100}%`,
+              // transform 뒤에 얹히는 margin이라 자리 계산과 섞이지 않고 그 값에 더해진다.
+              marginLeft: `${labelSlide.get(a.key)?.x ?? 0}px`,
+              marginTop: `${labelSlide.get(a.key)?.y ?? 0}px`,
+            }}
           >
             {a.label!.map((u) => <span key={u}>{u}</span>)}
           </span>
