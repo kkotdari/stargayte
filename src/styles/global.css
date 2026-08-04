@@ -7269,17 +7269,17 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   /* 한 스텝 작게(요청) — 시각은 줄을 가르는 기준일 뿐 읽을 값이 아니다. */
   font-size: var(--fs-11);
 }
-/* 가장 긴 제목("일일 랭크 변동")에 맞춘 고정폭이다 — 그래도 넘치면 트랙을 밀지 말고
-   잘린다(실측: min-width 없이 두면 제목이 내용 칸을 덮어썼다). */
+/* 가장 긴 제목("랭크 변동")에 맞춘 고정폭이다 — 그래도 넘치면 트랙을 밀지 말고
+   잘린다(실측: min-width 없이 두면 제목이 내용 칸을 덮어썼다). 제목은 셋뿐이라
+   ("너 나와!" · "랭크 변동" · "게임결과") 14px에서도 모바일 70px 칸에 다 들어온다(실측). */
 .scr-activity-row-title {
   /* 이 칸 안에서는 왼쪽 정렬이다(요청: 공간 활용 최대로) — 가운데에 세우면 짧은 제목일수록
      좌우로 빈자리가 갈리는데, 그 위에 얹히는 번호·딱지 줄은 제목 글자를 기준으로 서므로
      (아래 .scr-activity-row-title-top) 그만큼 오른쪽으로 밀려 칸을 넘칠 뻔한다. 왼쪽에
      붙이면 그 줄이 쓸 자리가 오른쪽에 통째로 남는다. */
   display: flex; align-items: center; justify-content: flex-start; min-width: 0; font-weight: 600;
-  /* 제목은 한 스텝 작게(요청) — 줄마다 같은 낱말 몇 개가 되풀이되는 자리라, 한 번 익히면
-     크기가 작아도 모양만으로 읽힌다. 정작 매번 달라지는 건 내용 칸이다. */
-  font-size: var(--fs-micro);
+  /* 한 스텝 키운다(요청) — 작게 두었던 것을 되돌린다. 12 → 14px. */
+  font-size: var(--fs-caption);
   /* 딱지(.scr-activity-row-flag)가 이 칸을 기준으로 앉는다. */
   position: relative;
 }
@@ -7296,7 +7296,8 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    흐름에서 빼 두므로(absolute) 제목 자리는 번호가 있든 없든 그대로고, 늘어난 줄 위 여백
    안에 들어앉아 줄 높이도 안 건드린다. 색은 흐리게 — 읽을 값이 아니라 눈금이다. */
 .scr-activity-row-no {
-  font-size: var(--fs-9); font-weight: 700; color: var(--dim);
+  /* 제목 칸 글자를 한 스텝씩 키우면서(요청) 이 줄도 함께. 9 → 10px. */
+  font-size: var(--fs-10); font-weight: 700; color: var(--dim);
   font-variant-numeric: tabular-nums; line-height: 1; white-space: nowrap;
 }
 /* 번호와 딱지를 함께 쥐는 한 줄 — 제목 글자 위에 통째로 얹힌다(요청: 넘버링과 배지 사이
@@ -7329,7 +7330,8 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    세로로도 줄이 맞는다. 위 여백(24.5px) 안에 들어앉으므로 줄 높이도 안 건드린다. */
 .scr-activity-row-flag {
   margin-left: auto;
-  font-size: var(--fs-9); font-weight: 800; letter-spacing: 0.02em; white-space: nowrap;
+  /* 번호와 같은 줄이라 같이 키운다(요청). 9 → 10px. */
+  font-size: var(--fs-10); font-weight: 800; letter-spacing: 0.02em; white-space: nowrap;
 }
 /* 새것은 연두 라임(요청), 달라진 것은 그와 확실히 갈리는 하늘색으로 둔다 — 둘 다 눈에
    걸려야 하지만 서로는 한눈에 달라야 한다. 다크에서 검정 대비 연두 11.8:1 / 하늘 8.4:1. */
