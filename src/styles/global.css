@@ -3882,7 +3882,17 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
    된다 — 프사를 더 작게, 글자도 한 단계 줄이고 코딩 폰트(고정폭이 프로포셔널 폰트보다
    이런 영문+한글 섞인 짧은 이름을 더 촘촘히 담는다)로 바꾸는 것에 더해, 말줄임표 대신
    줄바꿈을 허용해(overflow-wrap) 좁은 화면에서도 절대 잘리지 않게 한다. */
+/* 매핑(검토창) 칩 — 아이콘 셋을 하나로 합치고 프사도 한 단계 줄인 만큼(요청) 나머지
+   치수도 함께 조인다. 목표는 좁은 화면에서도 두 편이 좌우로 서는 것이다. */
 .scr-chip-unresolved-mapping { gap: 4px; }
+.scr-replay-mapping-row .scr-chip {
+  gap: 5px; padding: 3px 4px 3px 6px; min-height: 30px;
+}
+.scr-replay-mapping-row .scr-chip-name { font-size: var(--fs-micro); }
+.scr-replay-mapping-row .scr-chip-name-mapping { font-size: var(--fs-9); }
+.scr-replay-mapping-row .scr-chip-race-static { font-size: var(--fs-micro); }
+.scr-replay-mapping-row .scr-chip-resolve-icon-btn { padding: 2px; }
+.scr-replay-mapping-row .scr-chip-resolve-icon-btn svg { width: 13px; height: 13px; }
 .scr-chip-name-mapping {
   font-size: var(--fs-caption); white-space: normal; overflow: visible; text-overflow: clip;
   overflow-wrap: anywhere; word-break: break-word;
@@ -4043,6 +4053,12 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
   .scr-team-grid { grid-template-areas: "b1 bd b2" "t1 t1 t1" "vs vs vs" "t2 t2 t2"; gap: 12px 8px; }
   .scr-team-grid-noresult { grid-template-areas: "t1 t1 t1" "vs vs vs" "t2 t2 t2"; }
   .scr-team-grid-vs { justify-self: center; padding: 2px 0; }
+  /* 검토창만은 모바일에서도 두 편을 좌우로 둔다(요청) — 칩이 작아져 자리가 나고, 이
+     화면에서 확인해야 하는 것이 곧 "누가 어느 편이냐"라 세로로 쌓으면 그 사실이 안 보인다.
+     쌓인 목록에서는 가운데 VS만이 편의 경계인데, 스크롤하면 그마저 화면 밖으로 나간다. */
+  .scr-replay-mapping-row .scr-team-grid-noresult {
+    grid-template-areas: "t1 vs t2"; gap: 8px 4px;
+  }
   
   
   /* 경기결과 등록/수정 폼의 참가자 칩은 모바일에서 프로필 사진을 아예 빼고,
@@ -4050,6 +4066,10 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
      보여주고 화살표도 없애서 최소 폭만 차지하게 한다. */
   .scr-chip { padding: 6px 8px; gap: 4px; }
   .scr-chip > .scr-avatar { display: none; }
+  /* 검토창의 칩만은 프사를 남긴다 — 이 화면에서 하는 일이 "이 게임 아이디가 누구냐"를
+     정하는 것이라, 얼굴이 곧 그 답을 확인하는 수단이다. 크기를 한 단계 줄여 뒀으므로
+     (CHIP_AVATAR_MAPPING) 자리도 난다. */
+  .scr-replay-mapping-row .scr-chip > .scr-avatar { display: inline-flex; }
   .scr-chip-name { font-size: var(--fs-body); }
   .scr-chip .scr-chip-race { width: 28px; flex-shrink: 0; }
   .scr-chip .scr-chip-race .scr-cselect-trigger { justify-content: center; padding: 6px 0; }

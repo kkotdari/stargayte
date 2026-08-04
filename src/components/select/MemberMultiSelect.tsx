@@ -12,6 +12,12 @@ import type { Member, GameResultSlot, Race } from "../../types";
 
 // 경기 참가자의 종족은 "랜덤"을 고를 수 없다 — 실제 종족(테란/프로토스/저그)만 저장한다.
 // 모바일에서는 좁은 칩 안에 넣어야 해서 종족명 첫 글자(테/프/저)만 보여준다.
+/* 매핑(리플레이 검토) 모드의 칩은 한 단계 작다(요청) — 회원·비회원·컴퓨터 아이콘 셋을
+   버튼 하나로 합치고 나니 칩이 짧아져, 이 크기면 좁은 화면에서도 두 편을 좌우로 놓을 수
+   있다. 그 배치가 곧 "누가 누구와 붙었나"라, 세로로 쌓아 두면 그 사실이 안 보인다. */
+const CHIP_AVATAR = 26;
+const CHIP_AVATAR_MAPPING = 20;
+
 const RACE_SELECT_OPTS = BASE_RACES.map((r) => ({ value: r, label: r, shortLabel: r[0] }));
 
 // 리플레이에서 배틀태그로 못 찾은 선수. key는 rawName과 같지만, 팀 안에서 유일함을
@@ -240,7 +246,7 @@ function UnresolvedChip({
       ref={anchorRef}
       title={suspected ? "조작량이 적어 실제로 뛰지 않았을 수 있어요 — 관전자면 컴퓨터/비회원 대신 그냥 제거해 주세요." : undefined}
     >
-      <Avatar member={undefined} size={26} />
+      <Avatar member={undefined} size={mappingMode ? CHIP_AVATAR_MAPPING : CHIP_AVATAR} />
       <span
         className={cx("scr-chip-name", mappingMode && "scr-mono scr-chip-name-mapping")}
         title="배틀태그로 회원을 찾지 못했어요 — 회원을 연결해 주세요."
@@ -623,11 +629,15 @@ export default function MemberMultiSelect({
               )}
               title={suspected ? "조작량이 적어 실제로 뛰지 않았을 수 있어요 — 관전자면 제거해 주세요." : undefined}
             >
-              {isComputer
-                ? <Avatar icon={<Monitor size={16} className="scr-chip-computer-icon" />} size={26} />
-                : isUnregistered
-                  ? <Avatar icon={<CircleHelp size={16} className="scr-chip-computer-icon" />} size={26} />
-                  : <Avatar member={m} size={26} />}
+              {(() => {
+                const av = mappingMode ? CHIP_AVATAR_MAPPING : CHIP_AVATAR;
+                const ic = mappingMode ? 13 : 16;
+                return isComputer
+                  ? <Avatar icon={<Monitor size={ic} className="scr-chip-computer-icon" />} size={av} />
+                  : isUnregistered
+                    ? <Avatar icon={<CircleHelp size={ic} className="scr-chip-computer-icon" />} size={av} />
+                    : <Avatar member={m} size={av} />;
+              })()}
               <span className="scr-chip-name">{name}</span>
               {/* 컴퓨터는 종족이 중요치 않아 고를 필요가 없다 — 리플레이로 등록된 컴퓨터는
                   파싱된 종족값이 이미 채워져 있고(자동), 수동으로 추가한 컴퓨터는 애초에
