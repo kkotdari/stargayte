@@ -3835,6 +3835,11 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
    자리(.scr-user-chip 등)와 같이 여기서도 !important로 덮어써야 동그랗게 통일된다
    (요청: "드롭다운의 아바타 동그랗게 통일"). */
 .scr-select-opt .scr-avatar { border-radius: 50% !important; }
+/* 회원이 아닌 두 갈래(비회원·컴퓨터) — 회원 목록 위에 먼저 서고, 아래로 실선 하나를 그어
+   "여기부터는 사람 목록"임을 나눈다(요청). 아바타 자리에 아이콘이 들어가 줄 높이는 같다. */
+.scr-select-opt-kind { color: var(--muted); font-weight: 600; }
+.scr-select-opt-kind + .scr-select-opt:not(.scr-select-opt-kind) { border-top: 1px solid var(--line-soft); }
+.scr-select-opt-kind svg { flex: none; width: 20px; }
 /* 호버는 배경을 반전해서(테마에 따라 뒤집히는 --text/--point-contrast 쌍) 옅은 틴트보다
    또렷하게 보이게 한다. */
 /* (호버/액티브 라이팅은 파일 뒤 "드롭다운 통일" 섹션 공통 규칙을 따른다.) */
@@ -3974,10 +3979,16 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
    접힌 줄에는 파일명과 판정뿐이다 — 그 둘만으로 "이 파일은 그냥 등록해도 되나"에 답한다.
    색과 배지가 같은 말을 두 번 하는 건 일부러다: 색은 목록을 훑을 때 한눈에 걸리고, 글자는
    색을 못 가르는 눈에도 뜻을 남긴다. */
-.scr-replay-review-head {
-  width: 100%; background: transparent; border: none; padding: 0;
+.scr-replay-review-head { width: 100%; }
+/* 파일명+배지를 쥔 여닫이 — 줄의 남는 폭을 다 가져가고, 파일명만 줄어든다. */
+.scr-replay-review-open {
+  flex: 1 1 auto; min-width: 0;
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  background: transparent; border: none; padding: 0;
   font-family: inherit; cursor: pointer; text-align: left;
 }
+/* 제외는 판정 배지 오른쪽에 못박힌다(요청) — 줄바꿈 없이 늘 같은 자리다. */
+.scr-replay-review-skip-btn { flex: none; }
 .scr-replay-review-head .scr-replay-mapping-row-name { font-weight: 700; }
 .scr-replay-review-ok .scr-replay-mapping-row-name { color: var(--new-badge); }
 .scr-replay-review-warn .scr-replay-mapping-row-name { color: var(--review-warn); }
@@ -4003,7 +4014,6 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
 .scr-replay-review-game {
   font-size: var(--fs-micro); color: var(--muted); font-variant-numeric: tabular-nums;
 }
-.scr-replay-review-actions { display: flex; justify-content: flex-end; }
 /* 등록을 막는 이유 — 버튼 바로 위다. 버튼이 왜 안 눌리는지를 버튼에서 가장 가까운
    자리에서 말해야 한다. */
 .scr-replay-review-block { margin: 0 var(--modal-pad, 16px) 8px; text-align: right; }

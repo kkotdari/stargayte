@@ -361,16 +361,32 @@ export default function ReplayReviewModal({
                   <div key={d.fileName + i} className={cx("scr-replay-mapping-row", d.excluded && "scr-replay-draft-body-excluded")}>
                     {/* 줄 하나 = 리플레이 하나. 파일명 색과 오른쪽 배지가 판정을 말하고,
                         누르면 그 아래로 게임정보와 손댈 거리가 펼쳐진다(요청). */}
-                    <button
-                      type="button"
+                    {/* 한 줄이다(요청) — 파일명이 길면 말줄임이고, 판정 배지와 제외 버튼은
+                        오른쪽에 못박혀 줄바꿈되지 않는다. 목록을 세로로 훑을 때 줄 높이가
+                        들쭉날쭉하면 그것만으로 읽기가 더뎌진다.
+                        제외는 줄 전체를 여닫는 클릭과 겹치면 안 되므로 버블링을 끊는다. */}
+                    <div
                       className={cx("scr-replay-mapping-row-head", "scr-replay-review-head",
                         `scr-replay-review-${v.level}`, open && "scr-replay-review-head-open")}
-                      onClick={() => setOpenIndex(open ? null : i)}
-                      aria-expanded={open}
                     >
-                      <span className="scr-mono scr-replay-mapping-row-name">{d.fileName}</span>
-                      <span className="scr-replay-review-badge">{v.badge}</span>
-                    </button>
+                      <button
+                        type="button" className="scr-replay-review-open"
+                        onClick={() => setOpenIndex(open ? null : i)}
+                        aria-expanded={open}
+                      >
+                        <span className="scr-mono scr-replay-mapping-row-name">{d.fileName}</span>
+                        <span className="scr-replay-review-badge">{v.badge}</span>
+                      </button>
+                      {d.excludeReason !== "duplicate" && (
+                        <button
+                          type="button" className="scr-btn scr-btn-ghost scr-btn-sm scr-replay-review-skip-btn"
+                          onClick={(e) => { e.stopPropagation(); toggleExcluded(i); }}
+                          disabled={submittedIndices.has(i)}
+                        >
+                          {d.excluded ? "제외 취소" : "제외"}
+                        </button>
+                      )}
+                    </div>
 
                     {open && (<>
                     {/* 손댈 거리와 알림은 맨 위다(요청: 검토필요·실패는 최상단에 상태 설명) —
@@ -386,19 +402,6 @@ export default function ReplayReviewModal({
 
                     {/* 언제 시작해 얼마나 걸린 무슨 경기였나(요청: 게임정보). */}
                     <div className="scr-replay-review-game">{gameLineOf(d)}</div>
-
-                    <div className="scr-replay-review-actions">
-                      {d.excludeReason === "duplicate" ? (
-                        <span className="scr-hint">{d.merged ? "기존 경기에 업데이트됐어요" : "이미 등록된 경기예요"}</span>
-                      ) : (
-                        <button
-                          type="button" className="scr-btn scr-btn-ghost scr-btn-sm"
-                          onClick={() => toggleExcluded(i)} disabled={submittedIndices.has(i)}
-                        >
-                          {d.excluded ? "제외 취소" : "제외"}
-                        </button>
-                      )}
-                    </div>
 
                     {/* (삭제) 요약 문단 미리보기 — 검토창에서는 뺐다(요청). 이 창이 답할
                         물음은 "그냥 등록해도 되나" 하나이고, 열 몇 줄짜리 문단은 그 물음과

@@ -84,16 +84,22 @@ interface MemberSearchDropProps {
   onPick: (m: Member) => void;
   // 미매칭 칩처럼 전용 검색창 슬롯이 없는 곳에서는 검색 입력창을 목록과 한 팝오버에 함께 넣는다.
   header?: React.ReactNode;
+  /** 회원 목록 위에 먼저 서는 고정 항목들(비회원·컴퓨터). */
+  top?: React.ReactNode;
 }
 
 // 회원 검색 드롭다운 목록 자체 — "참가자 추가" 슬롯과 미매칭 칩의 "회원 연결" 버튼 양쪽에서
 // 그대로 재사용한다(위치 계산은 각자 하고, 목록 렌더링만 공유). 비회원은 여기서 수동으로
 // 새로 만들지 않는다 — 리플레이에서 못 찾은 이름을 비회원으로 분류하는 것만 허용하고
 // (UnresolvedChip의 별도 버튼), 임의로 빈 비회원 슬롯을 추가하는 길은 없앴다.
-function MemberSearchDrop({ dropRef, candidates, highlight, onHighlight, onPick, header }: MemberSearchDropProps) {
+function MemberSearchDrop({ dropRef, candidates, highlight, onHighlight, onPick, header, top }: MemberSearchDropProps) {
   return createPortal(
     <div className="scr-select-drop scr-scroll" ref={dropRef}>
       {header}
+      {/* 회원이 아닌 두 갈래(비회원·컴퓨터)를 목록 맨 위에 함께 둔다(요청) — 이 자리에서
+          고르는 것은 결국 "이 게임 아이디가 누구냐" 하나이고, 답이 회원이냐 아니냐는
+          그다음 이야기다. 버튼을 따로 세우면 같은 물음에 입구가 셋이 된다. */}
+      {top}
       {candidates.map((m, i) => (
         <div
           key={m.id}
@@ -177,6 +183,10 @@ function UnresolvedChip({
     else if (e.key === "Enter") { e.preventDefault(); pick(filtered[Math.min(highlight, filtered.length - 1)]); }
   };
 
+  /* 회원·비회원·컴퓨터를 한 입구로 합친다(요청) — 아이콘 셋을 나란히 세워 두면 같은
+     물음("이 게임 아이디가 누구냐")에 답하는 길이 셋이라, 무엇을 먼저 눌러야 하는지를
+     사람이 매번 다시 정해야 했다. 이제 버튼은 하나이고, 열린 목록의 맨 위가 비회원·
+     컴퓨터, 그 아래가 회원 목록이다. */
   const resolveButtons = (
     <div className="scr-chip-resolve-icon-group">
       <button
@@ -184,35 +194,11 @@ function UnresolvedChip({
         className={cx("scr-chip-resolve-icon-btn", !disabled && "scr-chip-resolve-pulse")}
         onClick={toggleOpen}
         disabled={disabled}
-        title="회원으로 연결"
-        aria-label="회원으로 연결"
+        title="누구인지 연결"
+        aria-label="누구인지 연결"
       >
         <UserCheck size={14} />
       </button>
-      {onMarkUnregistered && (
-        <button
-          type="button"
-          className={cx("scr-chip-resolve-icon-btn", !disabled && "scr-chip-resolve-pulse")}
-          onClick={pickUnregistered}
-          disabled={disabled}
-          title="비회원으로 처리"
-          aria-label="비회원으로 처리"
-        >
-          <UserX size={14} />
-        </button>
-      )}
-      {onMarkComputer && (
-        <button
-          type="button"
-          className={cx("scr-chip-resolve-icon-btn", !disabled && "scr-chip-resolve-pulse")}
-          onClick={onMarkComputer}
-          disabled={disabled}
-          title="컴퓨터로 지정"
-          aria-label="컴퓨터로 지정"
-        >
-          <Monitor size={14} />
-        </button>
-      )}
       {/* 관전자로 의심되는 사람만 — 회원/비회원/컴퓨터 어디로도 확정하지 않고 로스터에서
           통째로 빼는 길. 확실한 참가자는(의심 표시가 없으면) 반드시 셋 중 하나로 확정해야
           하므로 이 버튼을 안 보여준다. */}
@@ -284,6 +270,25 @@ function UnresolvedChip({
           highlight={highlight}
           onHighlight={setHighlight}
           onPick={pick}
+          top={(onMarkUnregistered || onMarkComputer) ? (
+            <>
+              {onMarkUnregistered && (
+                <div className="scr-select-opt scr-select-opt-kind" onClick={pickUnregistered}>
+                  <UserX size={16} />
+                  <span>비회원</span>
+                </div>
+              )}
+              {onMarkComputer && (
+                <div
+                  className="scr-select-opt scr-select-opt-kind"
+                  onClick={() => { onMarkComputer(); setOpen(false); setQuery(""); }}
+                >
+                  <Monitor size={16} />
+                  <span>컴퓨터</span>
+                </div>
+              )}
+            </>
+          ) : undefined}
           header={
             <input
               className="scr-slot-search-input scr-chip-resolve-input"
