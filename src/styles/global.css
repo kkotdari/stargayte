@@ -3130,19 +3130,36 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
    무엇이 눌리는지도 흐릿해졌다. */
 .scr-stat-filters { display: flex; flex-direction: column; gap: 6px; width: 100%; margin: 6px 0 10px; }
 .scr-stat-filter-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
+/* PC는 넷을 한 줄에(요청). 유형·기간을 묶어 두던 줄은 display:contents로 풀어, 그 안의
+   덩어리들이 바깥 줄의 항목이 되게 한다 — 모바일에서는 그 묶음이 그대로 한 줄로 남는다.
+   자리가 모자라면 wrap이 알아서 접는다(좁은 노트북·창 반쪽). */
+@media (min-width: 861px) {
+  .scr-stat-filters { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 6px 16px; }
+  .scr-stat-filter-row { display: contents; }
+}
+/* 필터 한 덩어리 = 이름표 + 값. 이름표가 있어야 PC 한 줄에서 "전체"가 종족인지 유형인지
+   갈린다(요청: 필터에 각각 라벨). */
+.scr-stat-filter-group { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.scr-stat-filter-label {
+  font-size: var(--fs-micro); font-weight: 700; color: var(--dim);
+  white-space: nowrap; flex: none;
+}
 /* 알약탭은 원래 칸을 꽉 채우는 물건이지만(필터창 안), 여기서는 낱말 길이만큼만 차지해야
-   옆의 달력·초기화가 같은 줄에 선다. */
-.scr-stat-filter-row .scr-pill-tabs { width: max-content; max-width: 100%; height: 30px; }
-.scr-stat-filter-row .scr-pill-tab-btn { font-size: var(--fs-caption); padding: 0 12px; }
+   옆의 달력·초기화가 같은 줄에 선다.
+   선택자를 .scr-stat-filters(바깥 통)에 매다는 게 중요하다 — 종족 알약탭은 유형과 달리
+   .scr-stat-filter-row 밖에 있어서, 그 줄에 걸어 두면 종족만 규칙을 통째로 놓친다
+   (실측: 트랙이 남는 폭을 다 먹고 다크에서 낱말이 안 보였다). */
+.scr-stat-filters .scr-pill-tabs { width: max-content; max-width: 100%; height: 30px; }
+.scr-stat-filters .scr-pill-tab-btn { font-size: var(--fs-caption); padding: 0 12px; }
 /* 알약탭의 기본 글자색은 밝은 유리 필터창 안을 전제로 한 어두운 하드코딩이라, 맨 화면
    (다크 배경) 위에 놓으면 안 고른 낱말이 통째로 안 보인다(실측) — 테마를 따르게 뒤집는다.
    고른 낱말은 밝은 알약 위라 어두운 글자 그대로다. */
-.scr-stat-filter-row .scr-pill-tab-btn:not(.scr-pill-tab-btn-active) { color: var(--muted); }
+.scr-stat-filters .scr-pill-tab-btn:not(.scr-pill-tab-btn-active) { color: var(--muted); }
 @media (hover: hover) {
-  .scr-stat-filter-row .scr-pill-tab-btn:hover:not(.scr-pill-tab-btn-active) { color: var(--text); }
+  .scr-stat-filters .scr-pill-tab-btn:hover:not(.scr-pill-tab-btn-active) { color: var(--text); }
 }
-.scr-stat-filter-row .scr-pill-tabs { background: rgba(255,255,255,0.08); }
-.scr-light-theme .scr-stat-filter-row .scr-pill-tabs { background: rgba(0,0,0,0.06); }
+.scr-stat-filters .scr-pill-tabs { background: rgba(255,255,255,0.08); }
+.scr-light-theme .scr-stat-filters .scr-pill-tabs { background: rgba(0,0,0,0.06); }
 
 /* ===== 기간 달력(요청: 기간을 달력으로) =====
    고르는 단위는 여전히 달이라 날짜 격자가 아니라 한 해에 열두 칸이다. 트리거는 옆 알약탭과

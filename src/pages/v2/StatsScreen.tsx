@@ -84,13 +84,16 @@ type StatSortKey = "name" | "points" | "rate" | "plays" | "apm" | "cmd";
 type StatSortDir = "desc" | "asc";
 interface StatSort { key: StatSortKey; dir: StatSortDir }
 
+/* 라벨은 이름만 적는다(요청: "높은 순 빼고 랭킹 게임수 승률 apm ... 이런 식으로 이름만").
+   낱말을 나란히 늘어놓는 자리라 "높은순/많은순"이 여섯 번 되풀이되면 그것만 읽힌다 —
+   어느 쪽으로 서는지는 아래 dir이 늘 같은 쪽(이름만 가나다순)이라 굳이 적지 않아도 된다. */
 const SORT_OPTS: { value: StatSortKey; label: string; dir: StatSortDir }[] = [
-  { value: "points", label: "랭킹순", dir: "desc" },
-  { value: "plays", label: "게임수 많은순", dir: "desc" },
-  { value: "rate", label: "승률 높은순", dir: "desc" },
-  { value: "apm", label: "APM 높은순", dir: "desc" },
-  { value: "cmd", label: "커맨드 많은순", dir: "desc" },
-  { value: "name", label: "이름순", dir: "asc" },
+  { value: "points", label: "랭킹", dir: "desc" },
+  { value: "plays", label: "게임수", dir: "desc" },
+  { value: "rate", label: "승률", dir: "desc" },
+  { value: "apm", label: "APM", dir: "desc" },
+  { value: "cmd", label: "커맨드", dir: "desc" },
+  { value: "name", label: "이름", dir: "asc" },
 ];
 const sortOf = (key: StatSortKey): StatSort =>
   ({ key, dir: SORT_OPTS.find((o) => o.value === key)?.dir ?? "desc" });
@@ -100,6 +103,17 @@ const sortOf = (key: StatSortKey): StatSort =>
  *  눌러야 원하는 설명이 나오는지를 먼저 알아야 한다. */
 function PlainHead({ label, className }: { label: string; className?: string }) {
   return <span className={cx("scr-stat-plain-head", className)}>{label}</span>;
+}
+
+/** 필터 한 덩어리 — 이름표 + 그 값(요청: 필터에 각각 라벨). PC에서 넷이 한 줄에 서면
+ *  무엇이 무엇인지가 라디오 낱말만으로는 안 갈린다("전체"가 종족인지 유형인지). */
+function FilterGroup({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="scr-stat-filter-group">
+      <span className="scr-stat-filter-label">{label}</span>
+      {children}
+    </div>
+  );
 }
 
 // 경기결과/랭킹과 같은 공용 상단 모듈(SearchFilterBar)로 전적통계를 보여준다.
@@ -512,16 +526,23 @@ export default function StatsScreenV2() {
            라디오는 값이 몇 개 안 되고 늘 같은 자리에 있어, 지금 무엇이 걸렸는지를 열어 보지
            않고도 한눈에 읽는다. */
         heading={<div className="scr-stat-filters">
+          {/* 유형·기간은 모바일에서도 한 줄에 같이 둔다 — 둘 다 짧고, "언제 무엇을"이라
+              한 호흡으로 읽힌다. PC에서는 이 묶음이 display:contents로 풀려 나머지와
+              함께 한 줄에 선다(요청: PC에선 한 줄). */}
           <div className="scr-stat-filter-row">
-            <PillTabs
-              options={TYPE_TAB_OPTS} value={matchType}
-              onChange={(v) => setMatchType(v)} aria-label="경기 유형"
-            />
-            <MonthCalendar
-              value={period} onChange={setPeriod}
-              minMonth={firstMonth} maxMonth={currentMonthValue()}
-              allValue={PERIOD_ALL} allLabel="전체 기간"
-            />
+            <FilterGroup label="유형">
+              <PillTabs
+                options={TYPE_TAB_OPTS} value={matchType}
+                onChange={(v) => setMatchType(v)} aria-label="경기 유형"
+              />
+            </FilterGroup>
+            <FilterGroup label="기간">
+              <MonthCalendar
+                value={period} onChange={setPeriod}
+                minMonth={firstMonth} maxMonth={currentMonthValue()}
+                allValue={PERIOD_ALL} allLabel="전체 기간"
+              />
+            </FilterGroup>
             {/* 초기화(요청) — 기간·종족을 한 번에 되돌린다(유형은 보던 것을 유지).
                 이미 기본값이면 누를 게 없으니 흐리게 죽여 둔다. 검색어(유저)는 이 줄
                 밖의 별개 필터라 건드리지 않는다 — 칩마다 제 ×가 있다. */}
@@ -533,26 +554,28 @@ export default function StatsScreenV2() {
               <RotateCcw size={14} aria-hidden />
             </button>
           </div>
-          <div className="scr-stat-filter-row">
+          <FilterGroup label="종족">
             <PillTabs
               options={RACE_TAB_OPTS} value={race}
               onChange={(v) => setRace(v)} aria-label="종족"
             />
-          </div>
+          </FilterGroup>
           {/* 정렬은 드롭다운을 걷어내고 낱말을 그대로 늘어놓는다(요청) — 여섯 개뿐이라
               펼치지 않고도 다 보이고, 지금 무엇으로 줄 서 있는지가 한눈에 읽힌다. */}
-          <div className="scr-stat-sortbar" role="group" aria-label="정렬 기준">
-            {sortOpts.map((o) => (
-              <button
-                key={o.value} type="button"
-                className={cx("scr-stat-sortpick", o.value === sort.key && "scr-stat-sortpick-on")}
-                aria-pressed={o.value === sort.key}
-                onClick={() => setSort(sortOf(o.value))}
-              >
-                {o.label}
-              </button>
-            ))}
-          </div>
+          <FilterGroup label="정렬">
+            <div className="scr-stat-sortbar" role="group" aria-label="정렬 기준">
+              {sortOpts.map((o) => (
+                <button
+                  key={o.value} type="button"
+                  className={cx("scr-stat-sortpick", o.value === sort.key && "scr-stat-sortpick-on")}
+                  aria-pressed={o.value === sort.key}
+                  onClick={() => setSort(sortOf(o.value))}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          </FilterGroup>
         </div>}
       />
 
