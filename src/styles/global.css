@@ -6289,7 +6289,12 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
      plain input 한 줄보다 살짝 큼)이 있을 때/없을 때 박스 높이가 흔들리던 문제(실제로
      지적받은 문제 — "칩 있을때랑 없을때 높이가 흔들림")를 이렇게 막는다. */
   width: 100%; height: var(--field-h); box-sizing: border-box;
-  display: flex; align-items: center; flex-wrap: nowrap; gap: 4px;
+  /* 세로 여백을 걷고 항목을 세로로 늘린다 — 여백이 있으면 그만큼이 인풋 바깥이라, 글자
+     위아래를 짚은 클릭이 인풋이 아니라 이 상자에 떨어졌다(지적: 클릭한 자리가 아니라
+     문장 끝으로 커서가 감 / 모바일에서 선택 핸들이 안 움직임). 글자의 세로 가운데맞춤은
+     인풋 자신이 한다. 가로 여백(왼쪽 글자 자리, 오른쪽 X 버튼 자리)은 그대로 둔다. */
+  display: flex; align-items: stretch; flex-wrap: nowrap; gap: 4px;
+  padding-top: 0; padding-bottom: 0;
   padding-right: 30px; /* 지우기(X) 버튼 자리 */
   overflow-x: auto; scrollbar-width: none;
   cursor: text;
@@ -6327,7 +6332,21 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
    완전히 투명하게. */
 .scr-comment-input {
   flex: 1 0 40px; min-width: 40px; background: transparent; border: none; outline: none;
-  color: var(--text); font-family: inherit; font-size: var(--fs-body); padding: 0; line-height: 1;
+  color: var(--text); font-family: inherit; font-size: var(--fs-body); padding: 0;
+  /* 칸 높이를 통째로 차지한다(지적: PC에서 클릭하면 무조건 문장 끝에 커서가 가고, 모바일
+     에서는 선택 영역의 시작·끝을 못 옮긴다). line-height:1짜리 인풋은 38px 칸 한가운데
+     16px 남짓한 띠로만 존재해서, 글자 위아래를 짚으면 인풋이 아니라 그것을 감싼 상자에
+     클릭이 떨어졌다 — 그러면 캐럿을 짚은 자리에 놓는 브라우저 기본 동작이 아예 안 일어나고
+     (아래 .scr-comment-editor의 대비책이 끝으로 보냈다), 모바일에서는 선택 핸들을 끄는
+     터치가 인풋 밖에서 시작돼 선택이 그대로 풀렸다. 세로로 꽉 채우면 칸 안 어디를 짚어도
+     인풋이 받는다 — 글자는 인풋이 알아서 세로 가운데에 놓는다. */
+  align-self: stretch; height: 100%;
+  /* 글 줄 자체도 칸 높이만큼 키운다 — 상자만 늘리고 줄 높이를 그대로 두면 글자 줄 위아래에
+     빈 띠가 남는데, 한 줄짜리 인풋에서 그 띠를 짚으면 브라우저가 캐럿을 글 맨 앞/맨 끝으로
+     보낸다(실측: 위쪽을 짚으면 0, 아래쪽을 짚으면 끝). 줄이 칸을 꽉 채우면 어디를 짚어도
+     가로 위치만 보고 캐럿이 앉는다. --field-h는 이 칸(.scr-comment-editor)이 높이로 쓰는
+     바로 그 값이고, 화면마다 지역 재정의된 것까지 그대로 물려받는다. */
+  line-height: var(--field-h);
 }
 .scr-comment-input::placeholder { color: var(--muted); }
 /* 지우기 — 별도 버튼 대신 인풋 안의 X로(요청). */

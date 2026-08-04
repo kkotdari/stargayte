@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { CornerDownLeft, X, Pencil, Trash2 } from "lucide-react";
+import { CornerDownLeft, X, Trash2 } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
 import { Spinner } from "../../components/common/Feedback";
 import { useLockBodyScroll } from "../../utils/bodyScrollLock";
@@ -152,10 +152,11 @@ function NoteComposer({
     setText(v);
     detectQuery(v, e.target.selectionStart ?? v.length);
   };
-  const onSelectCaret = () => {
-    const el = inputRef.current;
-    if (el) detectQuery(el.value, el.selectionStart ?? el.value.length);
-  };
+  /* 캐럿이 움직였다는 것만으로는 자동완성을 띄우지 않는다(지적: "@닉네임"에서 @ 뒤를
+     클릭하면 무조건 목록이 뜬다) — 이미 다 쓴 멘션 뒤에 커서를 놓는 건 그 이름을 고르려는
+     것이 아니라 대개 그 자리에 글을 이어 쓰려는 것이다. 목록은 '지금 @를 치는 중'일 때만
+     뜬다(위 onChange). 겸사겸사 선택 조작도 편해진다: 예전에는 선택이 바뀔 때마다 이
+     핸들러가 상태를 건드려, 모바일에서 선택 핸들을 끄는 동안 계속 다시 그려졌다. */
   // 자동완성 선택 — 커서 앞 "@질의"를 "@닉네임 "(평문)으로 바꾼다.
   const insertMention = (member: Member) => {
     const el = inputRef.current;
@@ -215,15 +216,15 @@ function NoteComposer({
       <div className="scr-comment-input-wrap">
         <div
           className="scr-input scr-comment-editor"
-          /* 인풋을 감싼 테두리(패딩 자리)를 눌렀을 때만 포커스를 넘겨준다 — 예전엔 인풋
-             자체를 눌러도 이 핸들러가 같이 돌아(버블링) 커서를 늘 맨 끝으로 되돌려 놨다.
-             글 중간을 짚을 수도, 드래그로 고를 수도 없었다(지적: 커서 이동이 안 된다). */
+          /* 인풋을 감싼 테두리(패딩 자리)를 눌렀을 때만 포커스를 넘겨준다 — 인풋 자체를
+             누른 것까지 여기서 받으면 커서가 늘 맨 끝으로 되돌아가, 글 중간을 짚을 수도
+             드래그로 고를 수도 없었다(지적).
+             캐럿을 끝으로 옮기는 일은 하지 않는다 — 포커스만 주면 브라우저가 알아서
+             자리를 잡고, 여기서 한 번 더 밀어 놓으면 그 판단을 덮어써 같은 증상이 다시
+             난다(지적: PC에서 클릭한 자리가 아니라 무조건 문장 끝으로 감). */
           onClick={(e) => {
             if (e.target !== e.currentTarget) return;
-            const el = inputRef.current;
-            if (!el) return;
-            el.focus();
-            el.setSelectionRange(el.value.length, el.value.length);
+            inputRef.current?.focus();
           }}
         >
           <input
@@ -231,7 +232,6 @@ function NoteComposer({
             className="scr-comment-input"
             value={text}
             onChange={onChange}
-            onSelect={onSelectCaret}
             onKeyDown={onKeyDown}
             placeholder={placeholder}
             autoComplete="off"
@@ -690,13 +690,10 @@ export default function ActivityComments({ targetType, targetId }: { targetType:
             {renderInline(c.text, c.mentions)}
             {interactive && c.canEdit && (
               <span className="scr-comment-actions scr-activity-note-actions">
-                <button
-                  type="button" className="scr-activity-note-icon-btn"
-                  onClick={() => { setErr(null); setEditingId(c.id); }}
-                  aria-label="수정"
-                >
-                  <Pencil size={11} />
-                </button>
+                {/* 수정은 화면에서 감춘다(요청) — 남길 말은 다시 쓰면 되고, 고칠 수 있는
+                    댓글은 읽는 쪽에서 "내가 본 그 말이 맞나"를 흐린다. 뒤 배관(NoteComposer의
+                    수정 모드, update, PATCH)은 그대로 둔다: 되살릴 때 이 버튼만 도로 꺼내면
+                    되고, 지금도 운영 쪽에서 쓸 수 있다. */}
                 <button
                   type="button" className="scr-activity-note-icon-btn scr-activity-note-icon-danger"
                   onClick={() => setDeleteTarget(c)}
