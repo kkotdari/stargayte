@@ -562,9 +562,7 @@ export default function StatsScreenV2() {
           </FilterGroup>
           {/* 정렬은 드롭다운을 걷어내고 낱말을 그대로 늘어놓는다(요청) — 여섯 개뿐이라
               펼치지 않고도 다 보이고, 지금 무엇으로 줄 서 있는지가 한눈에 읽힌다. */}
-          {/* 정렬만은 이름표를 붙이지 않는다(요청) — 낱말 셋이 곧 "무엇으로 줄 세울까"라
-              앞에 이름을 하나 더 얹으면 되레 읽는 것이 늘어난다. */}
-          <div className="scr-stat-filter-group scr-stat-filter-group-bare">
+          <FilterGroup label="정렬">
             <div className="scr-stat-sortbar" role="group" aria-label="정렬 기준">
               {sortOpts.map((o) => (
                 <button
@@ -577,7 +575,7 @@ export default function StatsScreenV2() {
                 </button>
               ))}
             </div>
-          </div>
+          </FilterGroup>
         </div>}
       />
 

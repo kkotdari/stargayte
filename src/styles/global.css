@@ -3145,9 +3145,6 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
   font-size: var(--fs-micro); font-weight: 700; color: var(--dim);
   white-space: nowrap; padding-left: 2px;
 }
-/* 이름표가 없는 덩어리(정렬) — 이름표 높이만큼 아래로 내려 값끼리 한 줄에 맞춘다. 안 그러면
-   혼자 위로 붙어, 한 줄에 세운 PC에서 정렬만 다른 높이에 뜬다. */
-.scr-stat-filter-group-bare { justify-content: flex-end; }
 /* 알약탭은 원래 칸을 꽉 채우는 물건이지만(필터창 안), 여기서는 낱말 길이만큼만 차지해야
    옆의 달력·초기화가 같은 줄에 선다.
    선택자를 .scr-stat-filters(바깥 통)에 매다는 게 중요하다 — 종족 알약탭은 유형과 달리
