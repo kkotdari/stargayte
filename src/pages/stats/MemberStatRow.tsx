@@ -264,7 +264,10 @@ export default function MemberStatRow({
               {/* 10분당 몇 채를 지었나 — 도넛 가운데 구멍에 적던 것을 그림 위로 뺐다(요청).
                   구멍 안에서는 "건물"이라는 이름과 나란히 놓여 이 수가 무엇의 수인지가
                   섞여 읽혔고, 단위도 못 적었다(구멍이 좁다). 위로 빼면 단위까지 붙는다. */}
-              <PerMin value={perMin(mix.bProd + mix.bDef, stats.mixSeconds)} unit="채" />
+              {/* 분당 몇 채를 지었나 — 이 수만은 주요시간대 것으로 센다(요청). 도넛의
+                  구성비·아래 Top5는 경기 전체다: 마법처럼 드문 사건까지 담아야 목록이
+                  서고, 구성은 초·후반까지 넣어야 그 판의 그림이 된다. */}
+              <PerMin value={perMin(mix.coreBuild, stats.mixSeconds)} unit="채" />
               <div className="scr-stat-mix">
                 <DonutChart
                   title="건물"
@@ -290,7 +293,7 @@ export default function MemberStatRow({
               {/* 건설 칸과 같은 자리·같은 모양으로 10분당 뽑은 유닛 수(요청) — 두 도넛은
                   같은 유닛 무리를 두 가지로 갈라 본 것이라 수는 하나뿐이고, 그래서 둘
                   위쪽 가운데에 한 번만 적는다. */}
-              <PerMin value={perMin(mix.uBasic + mix.uAdv + mix.uCaster, stats.mixSeconds)} unit="기" />
+              <PerMin value={perMin(mix.coreUnit, stats.mixSeconds)} unit="기" />
               <div className="scr-stat-mix">
                 <DonutChart
                   title="병력"

@@ -99,8 +99,8 @@ export interface BuildMix {
   buildingSecs: Record<string, number>;
   unitSecs: Record<string, number>;
   skillSecs: Record<string, number>;
-  /** 이 경기의 '주요시간대' 길이(초) — 위 수들을 되돌릴 분모다(요청: 모든 시간관련 지표를
-   *  주요시간대 1분당으로).
+  /** 이 경기의 '주요시간대' 길이(초) — 아래 두 구간 커맨드 수(coreBuild·coreUnit·coreCmd)를
+   *  되돌릴 분모다(요청: 분당 건설수·생산수는 주요시간대 기준).
    *
    *  왜 경기 전체가 아닌가: 초반은 누구나 정해진 빌드를 따라가는 구간이라 사람 사이 차이가
    *  거의 없고, 끝은 이미 기울어 한쪽이 손을 놓은 구간이라 값이 바닥으로 끌려간다. 둘 다
@@ -111,6 +111,14 @@ export interface BuildMix {
   coreSeconds: number | null;
   /** 그 구간 안의 생산 커맨드 수 — '커맨드' 칸도 같은 자로 재기 위한 값이다. */
   coreCmd: number;
+  /* 주요시간대 안에서만 센 건물·유닛 커맨드 수 — 도넛 옆에 적는 "분당 몇 채/몇 기"가 이
+     값을 coreSeconds로 나눈 것이다(요청: 분당 지표는 주요시간대가 맞다).
+     위 도넛·Top5용 수들과 따로 두는 이유: 그쪽은 경기 전체로 세야 한다(요청) — 마법처럼
+     드문 사건은 주요시간대만 보면 대부분 잘려 나가 목록이 비고, 구성비도 초·후반을 뺀
+     반쪽 그림이 된다. 반면 '분당 얼마나 찍었나'는 초반의 정해진 빌드와 끝난 뒤 정리 구간이
+     끼면 값이 눌리므로 주요시간대라야 한다. 자를 둘로 나눠 각자 맞는 구간을 쓴다. */
+  coreBuild: number;
+  coreUnit: number;
 }
 
 /* ── 주요시간대 ────────────────────────────────────────────────────────────────
@@ -141,7 +149,7 @@ export function emptyBuildMix(): BuildMix {
     upGw: 0, upGa: 0, upAw: 0, upAa: 0, upSh: 0,
     buildings: {}, units: {}, skills: {},
     buildingSecs: {}, unitSecs: {}, skillSecs: {},
-    coreSeconds: null, coreCmd: 0,
+    coreSeconds: null, coreCmd: 0, coreBuild: 0, coreUnit: 0,
   };
 }
 
@@ -213,17 +221,20 @@ export function buildMixOf(
 ): BuildMix | null {
   if (!s) return null;
   const out = emptyBuildMix();
-  /* 세는 구간 — 주요시간대가 잡히면 그 안의 것만 센다(요청). 못 잡는 경기(길이를 모르거나
-     너무 짧은 판)는 예전처럼 전부 세되 coreSeconds가 null이라 집계에서 빠진다.
-     프레임 목록이 없는 옛 재료에서는 총합으로 돌아간다 — 없는 걸 0으로 세면 그 사람의
-     기록이 통째로 사라진다. */
+  /* 도넛·Top5에 들어갈 수는 경기 전체로 센다(요청) — 주요시간대만 보면 마법처럼 드문
+     사건이 대부분 잘려 목록이 비고, 구성비도 초·후반을 뺀 반쪽 그림이 된다.
+     주요시간대는 '분당 얼마나 찍었나'에만 쓴다(아래 coreBuild·coreUnit·coreCmd) —
+     초반의 정해진 빌드와 끝난 뒤 정리 구간이 분모에 끼면 그 값이 눌리기 때문이다.
+     못 잡는 경기(길이를 모르거나 너무 짧은 판)는 coreSeconds가 null이라 분당 집계에서
+     빠진다. 프레임 목록이 없는 옛 재료에서는 총합으로 돌아간다 — 없는 걸 0으로 세면 그
+     사람의 기록이 통째로 사라진다. */
   const core = coreWindowOf(totalFrames);
   const inCore = (f: number) => !core || (f >= core.from && f <= core.to);
   const countIn = (frames: number[] | undefined, total: number) =>
     (frames ? frames.filter(inCore).length : total);
 
   for (const [b, total] of Object.entries(s.buildingCounts)) {
-    const n = countIn(s.buildingFrames[b], total);
+    const n = total;
     if (n <= 0) continue;
     if (DEFENSE_BUILDINGS.has(b)) out.bDef += n; else out.bProd += n;
     if (BUILDING_KO[b] && !SUPPLY_BUILDINGS.has(b)) out.buildings[b] = (out.buildings[b] ?? 0) + n;
@@ -234,7 +245,7 @@ export function buildMixOf(
   }
   for (const [u, total] of Object.entries(s.unitCounts)) {
     if (NOT_ARMY.has(u)) continue;
-    const n = countIn(s.unitFrames[u], total);
+    const n = total;
     if (n <= 0) continue;
     if (CASTER_UNITS.has(u)) out.uCaster += n;
     else if (BASIC_UNITS.has(u)) out.uBasic += n;
@@ -243,8 +254,7 @@ export function buildMixOf(
     if (UNIT_KO[u]) out.units[u] = (out.units[u] ?? 0) + n;
   }
   for (const [t, total] of Object.entries(s.techUses)) {
-    const n = countIn(s.techFrames?.[t], total);
-    if (TECH_KO[t] && n > 0) out.skills[t] = (out.skills[t] ?? 0) + n;
+    if (TECH_KO[t] && total > 0) out.skills[t] = (out.skills[t] ?? 0) + total;
   }
   /* 초반 일꾼만은 정의 자체가 '초반 5분'이라 주요시간대와 무관하게 경기 앞쪽에서 센다. */
   const early = WORKER_EARLY_SEC / SECONDS_PER_FRAME;
@@ -254,7 +264,10 @@ export function buildMixOf(
   out.coreSeconds = core ? core.seconds : null;
   /* '생산 커맨드'는 유닛+건물 생산 커맨드의 합이다(buildCount와 같은 정의) — 여기서는
      주요시간대 것만 센 값이라 커맨드 칸도 다른 칸과 같은 자로 읽힌다. */
-  out.coreCmd = Object.entries(s.unitCounts).reduce((n, [u, t]) => n + countIn(s.unitFrames[u], t), 0)
-    + Object.entries(s.buildingCounts).reduce((n, [b, t]) => n + countIn(s.buildingFrames[b], t), 0);
+  out.coreBuild = Object.entries(s.buildingCounts)
+    .reduce((n, [b, t]) => n + countIn(s.buildingFrames[b], t), 0);
+  out.coreUnit = Object.entries(s.unitCounts)
+    .reduce((n, [u, t]) => n + countIn(s.unitFrames[u], t), 0);
+  out.coreCmd = out.coreBuild + out.coreUnit;
   return out;
 }
