@@ -1964,8 +1964,15 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    수치는 오른쪽 맞춤 + tabular-nums라 위아래 자릿수가 흔들리지 않는다. */
 .scr-stat-upgrades {
   /* 열은 이름 + 공/방 둘이다 — 실드 열이 사라졌다(요청: 종족마다 줄이 달라 종족별 표로).
-     프로토스 실드·저그 갑각처럼 여러 줄이 나눠 쓰는 값은 따로 한 줄로 뗀다(아래 solo). */
-  display: grid; grid-template-columns: auto repeat(2, 1fr);
+     프로토스 실드·저그 갑각처럼 여러 줄이 나눠 쓰는 값은 따로 한 줄로 뗀다(아래 solo).
+
+     폭을 못 박는다(지적: 종족별로 너비가 다르다) — 열을 내용에 맞추면 이름이 "보병"인
+     표와 "플라즈마 실드"인 표가 다른 폭이 되고, 수치 열도 그 종족에 "-"만 있으면 좁아진다.
+     가장 긴 이름(플라즈마 실드 64.7px)과 가장 넓은 수("0.0" 15.3px, 실측)를 담을 만큼
+     잡아 두면 세 종족이 같은 자리를 차지한다. 밑에 붙는 당구장 한 줄(87px)도 이 폭 안이다. */
+  --scr-up-num-w: 18px;
+  display: grid; grid-template-columns: 1fr var(--scr-up-num-w) var(--scr-up-num-w);
+  width: 120px;
   gap: 1px 8px; align-items: baseline;
   font-size: var(--fs-11); color: var(--text);
   font-variant-numeric: tabular-nums; text-align: right; flex: none;
