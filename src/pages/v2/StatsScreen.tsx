@@ -34,14 +34,15 @@ const RACE_TAB_OPTS: { value: RaceFilter; label: string }[] = [
   { value: "저그", label: "저그" },
 ];
 
-/** 서버에 넘길 종족 — "주종족"은 사람마다 달라 서버가 한 번에 걸 수 없다.
+/** 서버에 넘길 종족 — 값을 그대로 넘긴다("주종족"도 서버가 안다).
  *
- *  포인트·순위(rankScore·sortOrder)는 판을 시간순으로 누적해 만드는 값이라 사람마다 다른
- *  잣대로 나눌 수가 없다. 사람별로 제 주종족 랭킹의 점수를 긁어모아 한 표에 세우면 저그
- *  랭킹의 165점과 테란 랭킹의 150점을 나란히 놓고 견주는 꼴이 되어, 그 줄세우기 자체가
- *  뜻을 잃는다. 그래서 주종족을 볼 때 포인트·순위는 전체 종족 기준 그대로 두고, 한 사람
- *  안에서 갈리는 값(전적·APM·커맨드·생산)만 그 사람의 주종족 것으로 바꾼다. */
-const serverRaceOf = (r: RaceFilter): BaseRace | "all" => (r === "main" ? "all" : r);
+ *  한때는 "주종족"을 "전체"로 바꿔 보냈다: 포인트·순위는 판을 시간순으로 누적해 만드는
+ *  값이라 사람마다 다른 잣대로 나눌 수 없다고 봤기 때문이다. 실제로는 서버가 한 번의
+ *  재생으로 (회원, 종족) 조합 전부의 점수를 이미 만들어 두므로, 사람마다 제 주종족 칸을
+ *  집기만 하면 된다(요청: "주종족으로 했을 때 포인트를 다시 계산 못해?") — 조회가 늘지도
+ *  않는다. 집계(전적·APM·생산)는 여전히 전 종족으로 내려오고, 화면이 byRace에서 그 사람
+ *  것을 골라 쓴다. */
+const serverRaceOf = (r: RaceFilter): BaseRace | "all" | "main" => r;
 
 /** 이 회원의 주종족 — 서버가 종족 필터와 무관하게 늘 실제 참가 기록으로 뽑아 준다
  *  (game_results/service.py의 most_played_race). 한 판도 안 뛰었으면 null. */
@@ -80,7 +81,7 @@ const EMPTY_STATS: MemberStats = {
 /* 정렬은 컬럼 머리를 누르는 대신 필터 아랫줄에 낱말로 늘어놓고 고른다(요청). 그래서 기준과
    방향을 따로 두지 않고 "무엇을 어느 쪽으로"를 한 낱말로 묶는다 — 게임수를 적은 순으로 보는
    일은 없고, 이름은 가나다순 말고 볼 일이 없다. 고를 것이 하나면 잘못 고를 일도 없다. */
-type StatSortKey = "name" | "points" | "rate" | "plays" | "apm" | "cmd";
+type StatSortKey = "points" | "plays" | "rate";
 type StatSortDir = "desc" | "asc";
 interface StatSort { key: StatSortKey; dir: StatSortDir }
 
@@ -91,9 +92,6 @@ const SORT_OPTS: { value: StatSortKey; label: string; dir: StatSortDir }[] = [
   { value: "points", label: "랭킹", dir: "desc" },
   { value: "plays", label: "게임수", dir: "desc" },
   { value: "rate", label: "승률", dir: "desc" },
-  { value: "apm", label: "APM", dir: "desc" },
-  { value: "cmd", label: "커맨드", dir: "desc" },
-  { value: "name", label: "이름", dir: "asc" },
 ];
 const sortOf = (key: StatSortKey): StatSort =>
   ({ key, dir: SORT_OPTS.find((o) => o.value === key)?.dir ?? "desc" });
@@ -147,9 +145,9 @@ export default function StatsScreenV2() {
   // 드롭다운 하나로 합쳤다(요청). 기본값은 이번 달.
   const [period, setPeriod] = useState<string>(currentMonthValue);
   const periodMonth = period === PERIOD_ALL ? "" : period;
-  /* 주종족으로 볼 때도 랭크·포인트를 보여준다(요청) — 한때 감췄었다. 이 둘만은 전체 종족
-     기준으로 남지만(serverRaceOf 주석), 그렇다고 칸을 비워 두면 주종족으로 보는 내내
-     랭킹이 사라져 화면의 뼈대가 바뀐다. 잣대가 다르다는 것은 도움말이 말해 준다. */
+  /* 랭크·포인트는 어느 종족 필터에서나 보여준다. 한때 주종족일 때만 감췄는데, 그건 그 값이
+     혼자 전체 종족 기준으로 남아 옆 칸들과 잣대가 어긋났기 때문이다 — 이제 서버가 사람마다
+     제 주종족으로 다시 매기므로(serverRaceOf 주석) 어긋날 일이 없다. */
   const showRank = true;
   const sortOpts = SORT_OPTS.map(({ value, label }) => ({ value, label }));
 
@@ -169,6 +167,12 @@ export default function StatsScreenV2() {
   const { from: effectiveFrom, to: effectiveTo } = useMemo(
     () => (periodMonth ? monthInputToRange(periodMonth) : { from: "", to: "" }),
     [periodMonth],
+  );
+
+  /* 상세(포인트 이력·순위변동)를 열 때 넘길 종족 — 목록의 "주종족"은 사람마다 다른 값이라
+     그 회원의 실제 주종족 하나로 바꿔 넘긴다. 주종족을 못 고른 회원(0경기)은 전체로 둔다. */
+  const detailRaceOf = (memberId: string): BaseRace | "all" => (
+    race === "main" ? (mainRaceOf(view?.stats[memberId]) ?? "all") : race
   );
 
   // 초기화 버튼(요청) — 기간과 종족만 되돌리고 분류(개인전/팀전)는 지금 보고 있는
@@ -413,11 +417,7 @@ export default function StatsScreenV2() {
         return nicknameTiebreak(a, b);
       };
     };
-    if (sort.key === "name") {
-      sorted.sort((a, b) => dirSign * a.member.nickname.localeCompare(b.member.nickname));
-      return sorted;
-    }
-    sorted.sort(tiebreakChain(sort.key as DataKey));
+    sorted.sort(tiebreakChain(sort.key));
     return sorted;
   }, [viewMembers, view, sort, rankByMember]);
 
@@ -492,7 +492,7 @@ export default function StatsScreenV2() {
             label="통계 표 보는 법"
             text={"· APM·커맨드는 개인전 2판·팀전 5판부터\n"
               + "· 생산·건설·유닛·스킬은 '주요시간대'(초반 4분과 막판 1분을 뺀 구간) 1분당\n"
-              + "· 주종족으로 봐도 랭킹·포인트만은 전체 종족 기준\n"
+              + "· 주종족으로 보면 랭킹·포인트도 그 사람의 주종족 기준\n"
               + "· 컴퓨터·비회원이 낀 경기는 포인트 0"}
           />
           {/* 상성 보기 — 랭킹 화면이 없어지면서 진입점이 끊겼던 상성 관계 오버레이를 통계
@@ -562,7 +562,9 @@ export default function StatsScreenV2() {
           </FilterGroup>
           {/* 정렬은 드롭다운을 걷어내고 낱말을 그대로 늘어놓는다(요청) — 여섯 개뿐이라
               펼치지 않고도 다 보이고, 지금 무엇으로 줄 서 있는지가 한눈에 읽힌다. */}
-          <FilterGroup label="정렬">
+          {/* 정렬만은 이름표를 붙이지 않는다(요청) — 낱말 셋이 곧 "무엇으로 줄 세울까"라
+              앞에 이름을 하나 더 얹으면 되레 읽는 것이 늘어난다. */}
+          <div className="scr-stat-filter-group scr-stat-filter-group-bare">
             <div className="scr-stat-sortbar" role="group" aria-label="정렬 기준">
               {sortOpts.map((o) => (
                 <button
@@ -575,7 +577,7 @@ export default function StatsScreenV2() {
                 </button>
               ))}
             </div>
-          </FilterGroup>
+          </div>
         </div>}
       />
 
@@ -659,9 +661,9 @@ export default function StatsScreenV2() {
           member={pointMember}
           matchType={matchType}
           period={{ from: effectiveFrom, to: effectiveTo }}
-          // 주종족을 보고 있어도 포인트는 전체 종족 기준이다(serverRaceOf) — 상세도 같은
-          // 기준으로 열어야 표의 수와 그 안의 이력이 어긋나지 않는다.
-          race={serverRaceOf(race)}
+          // 상세는 그 회원의 실제 종족 하나로 연다 — "주종족"은 목록에서만 뜻이 있는 값이라
+          // (사람마다 다르다) 그대로 넘길 수 없다. 표의 포인트도 그 종족 기준이라 어긋나지 않는다.
+          race={detailRaceOf(pointMember.id)}
           onClose={() => setPointMember(null)}
         />
       )}
@@ -674,7 +676,7 @@ export default function StatsScreenV2() {
           memberIds={rankPool}
           month={shownMonth}
           matchType={matchType}
-          race={serverRaceOf(race)}
+          race={detailRaceOf(trendMember.id)}
           onClose={() => setTrendMember(null)}
         />
       )}

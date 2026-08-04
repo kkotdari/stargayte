@@ -80,7 +80,10 @@ export interface GameResultStatsParams {
   dateFrom?: string;
   dateTo?: string;
   matchType?: GameType | "all";
-  race?: Race | "all";
+  /* "main"은 종족이 아니라 "각자의 주종족"이다 — 집계(전적·APM·생산)는 전 종족으로 내려오고,
+     포인트·순위만 사람마다 제 주종족 기준으로 다시 매겨진다(요청). 목록 조회 전용이라
+     상세(레이팅 이력)는 여전히 종족 하나를 받는다. */
+  race?: Race | "all" | "main";
 }
 
 export interface TeamRankingParams {
