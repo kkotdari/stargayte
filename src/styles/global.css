@@ -1840,6 +1840,21 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 .scr-stat-units-cell > .scr-stat-points-empty,
 .scr-stat-skills-cell > .scr-stat-points-empty { flex: 1 1 auto; text-align: center; }
 .scr-stat-mix { display: flex; align-items: center; justify-content: center; gap: 10px; flex: none; }
+/* 도넛(들)과 그 위의 10분당 값을 한 덩어리로 — 값은 도넛 하나든 둘이든 그 무리의 위쪽
+   가운데에 한 번만 선다(요청). 한때 도넛 가운데 구멍에 적었는데, 구멍 안에서는 도넛
+   이름과 나란해 무엇의 수인지가 섞여 읽혔고 단위를 붙일 자리도 없었다. */
+.scr-stat-mix-block {
+  display: flex; flex-direction: column; align-items: center; gap: 3px; flex: none;
+}
+.scr-stat-per10 {
+  font-size: var(--fs-caption); font-weight: 700; color: var(--text);
+  font-variant-numeric: tabular-nums; line-height: 1.1; white-space: nowrap;
+}
+/* 단위는 수보다 한참 작고 흐리게 — 줄마다 똑같이 되풀이되는 말이라 읽을 값이 아니고,
+   수와 같은 무게로 두면 정작 다른 수를 훑는 눈이 매번 이 글자에 걸린다. */
+.scr-stat-per10-unit {
+  font-size: var(--fs-9); font-weight: 600; color: var(--dim); margin-left: 2px;
+}
 
 /* ── 기록 칸(요청: 게임수·승률·APM·커맨드 통합) ─────────────────────────────────
    칸 안이 [게임수·승률] [APM·커맨드] 두 줄기이고, 줄기 안에서만 세로로 쌓인다. 막대 넷을
@@ -2011,10 +2026,10 @@ html:not(.scr-light-theme) .scr-donut {
    2.9:1 · 아쿠아 2.6:1로 무너진다 — 바탕이 어둡든 밝든 조각 색은 그대로이므로 잉크도
    테마를 따라가지 않는다. */
 .scr-donut-band-label { fill: #000; font-weight: 700; }
-/* 가운데 구멍 — 도넛 이름과(있으면) 값 한 줄. 조각 색을 글자에 입히지 않는다: 색이 곧
-   뜻이 되면 색을 못 가르는 사람에게 이름까지 사라진다. */
+/* 가운데 구멍 — 도넛 이름 하나. 조각 색을 글자에 입히지 않는다: 색이 곧 뜻이 되면 색을
+   못 가르는 사람에게 이름까지 사라진다. (값 한 줄을 함께 적던 .scr-donut-center-note는
+   그 값이 그림 위로 나가면서 없앴다 — .scr-stat-per10 참고.) */
 .scr-donut-center-title { fill: var(--dim); font-weight: 600; }
-.scr-donut-center-note { fill: var(--text); font-weight: 700; font-variant-numeric: tabular-nums; }
 
 .scr-value-bar { display: flex; align-items: center; justify-content: center; width: 100%; }
 /* 게임수/생산/APM/커맨드 값(요청: "막대그래프 위에 텍스트 겹쳐서 표시") — 트랙 자신의

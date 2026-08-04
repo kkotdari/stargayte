@@ -28,6 +28,21 @@ function per10(total: number, seconds: number | null | undefined): string | unde
     : undefined;
 }
 
+/** 도넛 위에 얹는 10분당 값(요청) — 건설은 "채/10분", 유닛은 "기/10분".
+ *
+ *  단위를 붙이는 건 이 수가 총합이 아니라 환산값이기 때문이다: 단위 없이 "24.0"만 있으면
+ *  그 기간에 24채를 지었다는 말로 읽힌다. 값이 없는 경우(총 시간을 모르는 옛 응답)엔
+ *  자리째 비운다 — "-"를 세워 두면 0으로 읽힌다. */
+function Per10({ value, unit }: { value: string | undefined; unit: string }) {
+  if (!value) return null;
+  return (
+    <div className="scr-stat-per10">
+      {value}
+      <span className="scr-stat-per10-unit">{unit}/10분</span>
+    </div>
+  );
+}
+
 /** 공/방/실드 단계 — 지상·공중 두 줄, 공·방·실드 세 칸(요청). 소수 첫째 자리까지 적는다:
  *  경기마다 0~3인 값을 평균 낸 것이라 정수로 반올림하면 "2.4와 2.6이 똑같이 2"가 된다. */
 function UpgradeGrid({ mix, plays }: { mix: BuildMix; plays: number | null | undefined }) {
@@ -228,16 +243,21 @@ export default function MemberStatRow({
       <div className="scr-stat-build-cell">
         {mix ? (
           <>
-            <div className="scr-stat-mix">
-              <DonutChart
-                title="건물"
-                size={DONUT}
-                note={per10(mix.bProd + mix.bDef, stats.mixSeconds)}
-                slices={[
-                  { label: "생산", value: mix.bProd },
-                  { label: "방어", value: mix.bDef },
-                ]}
-              />
+            <div className="scr-stat-mix-block">
+              {/* 10분당 몇 채를 지었나 — 도넛 가운데 구멍에 적던 것을 그림 위로 뺐다(요청).
+                  구멍 안에서는 "건물"이라는 이름과 나란히 놓여 이 수가 무엇의 수인지가
+                  섞여 읽혔고, 단위도 못 적었다(구멍이 좁다). 위로 빼면 단위까지 붙는다. */}
+              <Per10 value={per10(mix.bProd + mix.bDef, stats.mixSeconds)} unit="채" />
+              <div className="scr-stat-mix">
+                <DonutChart
+                  title="건물"
+                  size={DONUT}
+                  slices={[
+                    { label: "생산", value: mix.bProd },
+                    { label: "방어", value: mix.bDef },
+                  ]}
+                />
+              </div>
             </div>
             <TopList items={topEntries(mix.buildings, BUILDING_KO, TOP_N, mix.buildingSecs)} unit="개" />
           </>
@@ -249,24 +269,30 @@ export default function MemberStatRow({
       <div className="scr-stat-units-cell">
         {mix ? (
           <>
-            <div className="scr-stat-mix">
-              <DonutChart
-                title="병력"
-                size={DONUT}
-                slices={[
-                  { label: "기본", value: mix.uBasic },
-                  { label: "고급", value: mix.uAdv },
-                  { label: "마법", value: mix.uCaster },
-                ]}
-              />
-              <DonutChart
-                title="지형"
-                size={DONUT}
-                slices={[
-                  { label: "지상", value: mix.uGround },
-                  { label: "공중", value: mix.uAir },
-                ]}
-              />
+            <div className="scr-stat-mix-block">
+              {/* 건설 칸과 같은 자리·같은 모양으로 10분당 뽑은 유닛 수(요청) — 두 도넛은
+                  같은 유닛 무리를 두 가지로 갈라 본 것이라 수는 하나뿐이고, 그래서 둘
+                  위쪽 가운데에 한 번만 적는다. */}
+              <Per10 value={per10(mix.uBasic + mix.uAdv + mix.uCaster, stats.mixSeconds)} unit="기" />
+              <div className="scr-stat-mix">
+                <DonutChart
+                  title="병력"
+                  size={DONUT}
+                  slices={[
+                    { label: "기본", value: mix.uBasic },
+                    { label: "고급", value: mix.uAdv },
+                    { label: "마법", value: mix.uCaster },
+                  ]}
+                />
+                <DonutChart
+                  title="지형"
+                  size={DONUT}
+                  slices={[
+                    { label: "지상", value: mix.uGround },
+                    { label: "공중", value: mix.uAir },
+                  ]}
+                />
+              </div>
             </div>
             {/* 일꾼은 비율이 아니라 그냥 수다(요청) — 5분 동안 몇 기 뽑았나. 도넛과 나란히
                 가로로 서므로(요청) 이름과 수를 위아래로 포개 도넛 한 칸만큼의 폭만 쓴다. */}

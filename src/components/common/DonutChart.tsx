@@ -22,8 +22,6 @@ export interface DonutSlice {
 interface DonutChartProps {
   /** 도넛 자체의 이름(건물/병력/지형/일꾼) — 가운데 구멍에 적힌다(요청). */
   title: string;
-  /** 이름 아래 한 줄 더(일꾼 칸의 실제 마릿수처럼, 비율이 아닌 값). */
-  note?: string;
   slices: DonutSlice[];
   /** 지름(px). 표 칸에 들어가는 값이라 부르는 쪽이 정한다. */
   size?: number;
@@ -40,7 +38,7 @@ const MAX_NUDGE = 2;
 /** 글자와 그림 테두리 사이에 남겨 둘 여백(px) — 도넛이 나란히 서기 때문에 필요하다. */
 const EDGE = 3;
 
-export default function DonutChart({ title, note, slices, size = 76 }: DonutChartProps) {
+export default function DonutChart({ title, slices, size = 76 }: DonutChartProps) {
   const total = slices.reduce((n, s) => n + s.value, 0);
 
   // 링의 굵기와 반지름 — 가운데 구멍이 이름을 담을 만큼 남으면서 띠도 글자를 담을 만큼
@@ -51,7 +49,6 @@ export default function DonutChart({ title, note, slices, size = 76 }: DonutChar
   const cx = size / 2;
   const labelFs = Math.max(9, Math.round(size * 0.125));
   const titleFs = Math.max(9, Math.round(size * 0.145));
-  const noteFs = Math.max(10, Math.round(size * 0.165));
   /* 조각 사이 2px 틈 — 붙여 그리면 비슷한 색끼리 한 덩어리로 읽힌다. 조각이 하나뿐이면
      틈을 낼 곳이 없으므로(원 하나가 잘려 보인다) 그때는 0으로 둔다. */
   const gap = slices.filter((s) => s.value > 0).length > 1 ? 2 : 0;
@@ -123,23 +120,16 @@ export default function DonutChart({ title, note, slices, size = 76 }: DonutChar
             {l.text}
           </text>
         ))}
-        {/* 가운데 구멍 — 도넛 이름(요청). note가 있으면 두 줄로 나눠 위아래로 앉힌다. */}
+        {/* 가운데 구멍 — 도넛 이름(요청). 한때 여기에 10분당 값도 함께 적었는데(note),
+            이름과 나란히 서서 무엇의 수인지가 섞여 읽혔고 단위를 붙일 자리도 없어
+            그림 위로 뺐다(.scr-stat-per10). */}
         <text
           className="scr-donut-center-title"
-          x={cx} y={note ? cx - noteFs * 0.42 : cx} fontSize={titleFs}
+          x={cx} y={cx} fontSize={titleFs}
           textAnchor="middle" dominantBaseline="central"
         >
           {title}
         </text>
-        {note && (
-          <text
-            className="scr-donut-center-note"
-            x={cx} y={cx + titleFs * 0.62} fontSize={noteFs}
-            textAnchor="middle" dominantBaseline="central"
-          >
-            {note}
-          </text>
-        )}
       </svg>
     </div>
   );
