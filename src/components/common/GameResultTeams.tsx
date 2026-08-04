@@ -1,4 +1,4 @@
-import { Monitor, CircleHelp } from "lucide-react";
+import { Monitor, User } from "lucide-react";
 import Avatar from "./Avatar";
 import RaceBadge from "./RaceBadge";
 import { cx } from "../../utils/format";
@@ -131,7 +131,7 @@ function TeamRoster({ side, players, memberOf, outcome, highlightMemberIds, high
                 {isComputer
                   ? <Avatar icon={<Monitor size={16} className="scr-chip-computer-icon" />} size={avatarSize} />
                   : isUnregistered
-                    ? <Avatar icon={<CircleHelp size={16} className="scr-chip-computer-icon" />} size={avatarSize} />
+                    ? <Avatar icon={<User size={16} className="scr-chip-computer-icon" />} size={avatarSize} />
                     : <Avatar member={m} size={avatarSize} />}
                 <RaceBadge
                   race={p.race} size={raceSize} circleLetter

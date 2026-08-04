@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { X, Plus, Monitor, CircleHelp, UserCheck, UserX, ArrowLeftRight } from "lucide-react";
+import { X, Plus, Monitor, UserX, ArrowLeftRight, User, UserRoundSearch } from "lucide-react";
 import Avatar from "../common/Avatar";
 import { BASE_RACES } from "../../constants/races";
 import Select from "../common/Select";
@@ -203,7 +203,7 @@ function UnresolvedChip({
         title="누구인지 연결"
         aria-label="누구인지 연결"
       >
-        <UserCheck size={14} />
+        <UserRoundSearch size={14} />
       </button>
       {/* 관전자로 의심되는 사람만 — 회원/비회원/컴퓨터 어디로도 확정하지 않고 로스터에서
           통째로 빼는 길. 확실한 참가자는(의심 표시가 없으면) 반드시 셋 중 하나로 확정해야
@@ -310,43 +310,10 @@ function UnresolvedChip({
   );
 }
 
-// 이미 리플레이 분석/배틀태그로 매핑이 끝난 칩 — 회원/비회원/컴퓨터 세 아이콘을 항상 함께
-// 보여주되(ReassignableChip과 같은 자리) 지금 분류만 활성 색으로 표시하는 순수 상태
-// 표시용이다. 여기서는 아무것도 클릭할 수 없다 — 수정은 아직 못 찾은(UnresolvedChip) 칩만
-// 가능하고, 이미 매핑된 칩은 데이터를 손댈 방법이 없어야 한다.
-function MappedTypeIcons({ isComputer, isUnregistered }: { isComputer: boolean; isUnregistered: boolean }) {
-  return (
-    <div className="scr-chip-resolve-icon-group">
-      <button
-        type="button"
-        className={cx("scr-chip-resolve-icon-btn", !isComputer && !isUnregistered && "scr-chip-resolve-icon-btn-active")}
-        disabled
-        title="회원"
-        aria-label="회원"
-      >
-        <UserCheck size={14} />
-      </button>
-      <button
-        type="button"
-        className={cx("scr-chip-resolve-icon-btn", isUnregistered && "scr-chip-resolve-icon-btn-active")}
-        disabled
-        title="비회원"
-        aria-label="비회원"
-      >
-        <UserX size={14} />
-      </button>
-      <button
-        type="button"
-        className={cx("scr-chip-resolve-icon-btn", isComputer && "scr-chip-resolve-icon-btn-active")}
-        disabled
-        title="컴퓨터"
-        aria-label="컴퓨터"
-      >
-        <Monitor size={14} />
-      </button>
-    </div>
-  );
-}
+/* (삭제) MappedTypeIcons — 이미 매핑된 칩에 회원/비회원/컴퓨터 아이콘 셋을 눌리지 않는
+   상태 표시로 늘어놓던 것이다(요청: 정리). 무엇으로 정해져 있는지는 왼쪽 프사가 이미
+   말하고 있어(사진·모니터·물음표) 같은 사실을 두 번 말하는 자리였고, 좁은 화면에서
+   칩 폭만 먹었다. */
 
 interface ReassignableChipProps {
   row: GameResultSlot;
@@ -362,11 +329,10 @@ interface ReassignableChipProps {
 }
 
 // 이미 저장된 경기 수정용 칩 — UnresolvedChip과 비슷하지만, "아직 못 찾은" 게 아니라
-// "이미 채워졌지만 잘못됐을 수 있는" 슬롯이다. 회원/비회원/컴퓨터 아이콘 세 개를 항상
-// 나란히 보여주고, 지금 이 슬롯이 어느 종류인지를 그중 하나를 활성 상태로 표시해서
-// 알려준다(라디오처럼) — 비회원/컴퓨터는 눌러 바로 그 종류로 바뀌고, 회원은 눌러
-// 검색 드롭다운을 열어 특정 회원을 고른다(이미 회원이어도 다른 회원으로 다시 고를 수
-// 있게 항상 눌린다).
+// "이미 채워졌지만 잘못됐을 수 있는" 슬롯이다. 버튼은 하나뿐이고, 그 드롭다운 하나가
+// 비회원/컴퓨터(맨 위)와 회원 목록(아래)을 모두 담는다 — 여기서 하는 일은 "이 자리가
+// 누구냐" 하나뿐이라 종류별로 버튼을 따로 둘 이유가 없다. 지금 무엇으로 정해져 있는지는
+// 왼쪽 프사가 말하고, 드롭다운 안에서는 해당 항목이 활성 표시된다.
 function ReassignableChip({
   row, name, member, isComputer, isUnregistered, candidates,
   onReassignMember, onReassignComputer, onReassignUnregistered, disabled = false,
@@ -415,36 +381,22 @@ function ReassignableChip({
       {isComputer
         ? <Avatar icon={<Monitor size={16} className="scr-chip-computer-icon" />} size={26} />
         : isUnregistered
-          ? <Avatar icon={<CircleHelp size={16} className="scr-chip-computer-icon" />} size={26} />
+          ? <Avatar icon={<User size={16} className="scr-chip-computer-icon" />} size={26} />
           : <Avatar member={member} size={26} />}
       <span className="scr-chip-name">{name}</span>
       {!isComputer && row.race && <span className="scr-chip-race-static">{row.race[0]}</span>}
+      {/* 버튼은 하나다(요청) — 매핑이 됐든 안 됐든 이 자리에서 하는 일은 "이 게임 아이디가
+          누구냐"를 정하는 것 하나뿐이라, 지금 무엇으로 정해져 있는지는 왼쪽 프사가 이미
+          말하고 있다(사진·모니터·물음표). 아이콘 셋을 라디오처럼 늘어놓으면 그 사실을
+          두 번 말하면서 칩 폭만 먹는다. */}
       <div className="scr-chip-resolve-icon-group">
         <button
           type="button"
-          className={cx("scr-chip-resolve-icon-btn", !isComputer && !isUnregistered && "scr-chip-resolve-icon-btn-active")}
+          className="scr-chip-resolve-icon-btn"
           onClick={toggleOpen} disabled={disabled}
-          title="회원으로 연결" aria-label="회원으로 연결"
+          title="누구인지 바꾸기" aria-label="누구인지 바꾸기"
         >
-          <UserCheck size={14} />
-        </button>
-        <button
-          type="button"
-          className={cx("scr-chip-resolve-icon-btn", isUnregistered && "scr-chip-resolve-icon-btn-active")}
-          onClick={() => { if (!isUnregistered) onReassignUnregistered(); setOpen(false); }}
-          disabled={disabled || isUnregistered}
-          title="비회원으로 변경" aria-label="비회원으로 변경"
-        >
-          <UserX size={14} />
-        </button>
-        <button
-          type="button"
-          className={cx("scr-chip-resolve-icon-btn", isComputer && "scr-chip-resolve-icon-btn-active")}
-          onClick={() => { if (!isComputer) onReassignComputer(); setOpen(false); }}
-          disabled={disabled || isComputer}
-          title="컴퓨터로 변경" aria-label="컴퓨터로 변경"
-        >
-          <Monitor size={14} />
+          <UserRoundSearch size={14} />
         </button>
       </div>
 
@@ -455,6 +407,24 @@ function ReassignableChip({
           highlight={highlight}
           onHighlight={setHighlight}
           onPick={pick}
+          top={
+            <>
+              <div
+                className={cx("scr-select-opt", "scr-select-opt-kind", isUnregistered && "scr-select-opt-active")}
+                onClick={() => { if (!isUnregistered) onReassignUnregistered(); setOpen(false); }}
+              >
+                <UserX size={16} />
+                <span>비회원</span>
+              </div>
+              <div
+                className={cx("scr-select-opt", "scr-select-opt-kind", isComputer && "scr-select-opt-active")}
+                onClick={() => { if (!isComputer) onReassignComputer(); setOpen(false); }}
+              >
+                <Monitor size={16} />
+                <span>컴퓨터</span>
+              </div>
+            </>
+          }
           header={
             <input
               className="scr-slot-search-input scr-chip-resolve-input"
@@ -635,7 +605,7 @@ export default function MemberMultiSelect({
                 return isComputer
                   ? <Avatar icon={<Monitor size={ic} className="scr-chip-computer-icon" />} size={av} />
                   : isUnregistered
-                    ? <Avatar icon={<CircleHelp size={ic} className="scr-chip-computer-icon" />} size={av} />
+                    ? <Avatar icon={<User size={ic} className="scr-chip-computer-icon" />} size={av} />
                     : <Avatar member={m} size={av} />;
               })()}
               <span className="scr-chip-name">{name}</span>
@@ -658,14 +628,11 @@ export default function MemberMultiSelect({
                   />
                 )
               )}
-              {/* 매핑 모드에서는 분석해서 들어온 데이터(이미 매칭된 팀 구성)는 바꿀 수 없다 —
-                  대신 제거 버튼 자리에 지금 분류(회원/비회원/컴퓨터)를 보여주는 상태 아이콘을
-                  둬서 ReassignableChip과 같은 자리·간격으로 통일한다(클릭은 안 됨). 다만
-                  관전자로 의심되는 사람만은 예외로 제거를 허용한다 — 안 그러면 진짜
-                  관전자였을 때 로스터에서 뺄 방법이 없다. */}
-              {mappingMode && !suspected ? (
-                <MappedTypeIcons isComputer={isComputer} isUnregistered={isUnregistered} />
-              ) : (
+              {/* 매핑 모드에서 이미 매칭된 칩에는 버튼을 아예 두지 않는다(요청) — 배틀태그로
+                  이미 회원을 찾아낸 자리라 사람이 다시 고를 일이 없고, 열어두면 잘못 바꾸는
+                  쪽으로만 쓰인다. 다만 관전자로 의심되는 사람만은 제거를 허용한다 — 안 그러면
+                  진짜 관전자였을 때 로스터에서 뺄 방법이 없다. */}
+              {(!mappingMode || suspected) && (
                 <button
                   type="button" className="scr-chip-x" onClick={() => removeMember(row.memberId)}
                   aria-label="관전자로 보고 제거" title={mappingMode ? "관전자로 보고 제거" : "제거"} disabled={disabled}>
