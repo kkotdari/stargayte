@@ -1991,6 +1991,9 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   font-size: var(--fs-caption); font-weight: 700; color: var(--text);
   font-variant-numeric: tabular-nums; line-height: 1.1;
 }
+/* 단위는 수보다 한 단계 작고 흐리게 — 포인트 칸(.scr-stat-points-unit)과 같은 규칙이라
+   표 안에서 "수 + 단위"의 생김새가 한 가지로 읽힌다. */
+.scr-stat-worker5-unit { font-size: var(--fs-11); font-weight: 600; color: var(--dim); margin-left: 1px; }
 
 /* 공/방/실드 단계 — 이름 열 하나에 수치 세 열(요청: 지상/공중을 한 열에 두 줄로).
    수치는 오른쪽 맞춤 + tabular-nums라 위아래 자릿수가 흔들리지 않는다. */
@@ -2047,6 +2050,10 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 }
 /* 수를 숨긴 동안에는 한 열짜리다 — 두 열로 두면 빈 열만큼 이름이 왼쪽으로 쏠린다. */
 .scr-stat-toplist-nameonly { grid-template-columns: auto; }
+/* 이름만 있을 때는 줄마다 가운데로(요청) — 열 폭이 가장 긴 이름에 맞춰 잡히는 탓에 짧은
+   이름들이 왼쪽에 몰려, 가운데 정렬인 다른 칸들 사이에서 이 칸만 왼쪽으로 쏠려 보였다.
+   수를 함께 보여줄 때(SHOW_TOP_VALUES)는 이름-수가 짝으로 읽혀야 해서 왼쪽 그대로다. */
+.scr-stat-toplist-nameonly .scr-stat-toplist-name { text-align: center; }
 .scr-stat-toplist li {
   display: grid; grid-column: 1 / -1; grid-template-columns: subgrid;
   align-items: baseline; line-height: 1.35; min-width: 0;
@@ -3155,6 +3162,15 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
    갈린다(요청: 필터에 각각 라벨). 이름표는 값 '위'에 올린다(요청, 다른 화면 필터와 같은
    모양) — 옆에 두면 라디오 낱말들과 같은 줄에 섞여 그것도 고르는 값처럼 읽힌다. */
 .scr-stat-filter-group { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; min-width: 0; }
+/* 정렬 덩어리만 오른쪽으로(요청) — 모바일에선 제 줄의 오른쪽 끝(align-self), PC에선 남는
+   폭을 전부 왼쪽 마진으로 먹어 줄 끝으로 밀린다(margin-left:auto).
+   이름표는 덩어리 안에서 왼쪽 그대로다(요청: 이름표까지 오른쪽으로 붙이면 안 된다) —
+   오른쪽으로 붙이면 앞의 셋과 이름표 자리가 어긋나 다른 종류의 것으로 읽힌다. */
+.scr-stat-filter-sort { align-self: flex-end; margin-left: auto; }
+/* 정렬 덩어리만 오른쪽으로 — 모바일에선 제 줄의 오른쪽 끝(align-self), PC에선 남는 폭을
+   전부 왼쪽 마진으로 먹어 줄 끝으로 밀린다(margin-left:auto). 이름표도 값과 같이 오른쪽에
+   맞춰야 덩어리가 통째로 오른쪽에 붙은 것으로 읽힌다. */
+.scr-stat-filter-sort { align-self: flex-end; align-items: flex-end; margin-left: auto; }
 .scr-stat-filter-label {
   font-size: var(--fs-micro); font-weight: 700; color: var(--dim);
   white-space: nowrap; padding-left: 2px;
@@ -3166,6 +3182,9 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
    (실측: 트랙이 남는 폭을 다 먹고 다크에서 낱말이 안 보였다). */
 .scr-stat-filters .scr-pill-tabs { width: max-content; max-width: 100%; height: 30px; }
 .scr-stat-filters .scr-pill-tab-btn { font-size: var(--fs-caption); padding: 0 12px; }
+/* 좁은 화면에서 셋이 다 안 들어가면 종족만 아래로 한 줄 내려간다(요청) — 줄 자체가
+   flex-wrap이라 따로 할 일은 없다. 한때 모바일에서 낱말 여백을 절반으로 줄여 억지로
+   한 줄에 넣어 봤는데, 낱말끼리 서로 붙어 버려서 되돌렸다. */
 /* 알약탭의 기본 글자색은 밝은 유리 필터창 안을 전제로 한 어두운 하드코딩이라, 맨 화면
    (다크 배경) 위에 놓으면 안 고른 낱말이 통째로 안 보인다(실측) — 테마를 따르게 뒤집는다.
    고른 낱말은 밝은 알약 위라 어두운 글자 그대로다. */
@@ -3183,7 +3202,7 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
 .scr-month-cal-trigger {
   display: inline-flex; align-items: center; gap: 5px;
   height: 30px; padding: 0 10px; box-sizing: border-box;
-  border: none; border-radius: 999px; cursor: pointer;
+  border: none; border-radius: var(--radius-sm); cursor: pointer;
   background: rgba(255,255,255,0.08); color: var(--text);
   font-family: inherit; font-size: var(--fs-caption); font-weight: 600; white-space: nowrap;
   transition: background .12s;

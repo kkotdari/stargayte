@@ -103,7 +103,16 @@ const UP_TABLE: Record<BaseRace, { rows: UpRow[]; solo?: { label: string; title:
 };
 
 function UpgradeGrid({ mix, race }: { mix: BuildMix; race: BaseRace | null | undefined }) {
-  if (!race) return null;
+  /* 전체종족으로 볼 때도 자리는 남기고 왜 안 그리는지만 적는다(요청). 종족마다 업그레이드
+     줄이 아예 달라(저그는 근접·원거리가 갈리고 테란은 보병·차량·함선이 갈린다) 한 표에
+     겹쳐 놓을 수가 없다 — 그냥 빼 버리면 옆 스킬 목록이 당겨지고, 없는 값처럼 읽힌다. */
+  if (!race) {
+    return (
+      <div className="scr-stat-upgrades scr-stat-upgrades-empty">
+        <span className="scr-stat-up-note">※ 종족을 골라야 표시</span>
+      </div>
+    );
+  }
   const table = UP_TABLE[race];
   /* 분모는 줄마다 따로다 — 종족이 섞인 기간에 하나로 세면 한 줄의 평균이 다른 종족 경기
      수만큼 눌린다. 서버가 줄별로 '그 줄이 실린 경기 수'를 세어 내려 준다. */
@@ -403,7 +412,12 @@ export default function MemberStatRow({
                 가로로 서므로(요청) 이름과 수를 위아래로 포개 도넛 한 칸만큼의 폭만 쓴다. */}
             <div className="scr-stat-worker5">
               <span className="scr-stat-worker5-label">5분 일꾼</span>
-              <span className="scr-stat-worker5-n">{stats.avgWorker5 ?? "-"}</span>
+              {/* 단위를 붙인다(요청) — 수만 있으면 옆 도넛의 퍼센트와 같은 자로 잰 값처럼
+                  읽힌다. 값이 없을 때(-)는 붙일 단위가 없다. */}
+              <span className="scr-stat-worker5-n">
+                {stats.avgWorker5 ?? "-"}
+                {stats.avgWorker5 !== null && <span className="scr-stat-worker5-unit">기</span>}
+              </span>
             </div>
             <TopList items={topEntries(mix.units, UNIT_KO, TOP_N, mix.unitSecs)} unit="기" />
           </>

@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { RotateCcw } from "lucide-react";
 import { Spinner } from "../../components/common/Feedback";
 import SearchFilterBar from "../../components/common/SearchFilterBar";
 import PillTabs from "../../components/common/PillTabs";
@@ -28,9 +27,9 @@ type RaceFilter = BaseRace | "all" | "main";
    다른 종족을 본다 — 종족을 바꿔 가며 하는 사람들의 "제일 잘하는 모습"을 견주는 자리다. */
 const RACE_TAB_OPTS: { value: RaceFilter; label: string }[] = [
   { value: "all", label: "전체" },
-  { value: "main", label: "주종족" },
+  { value: "main", label: "주종" },
   { value: "테란", label: "테란" },
-  { value: "프로토스", label: "프로토스" },
+  { value: "프로토스", label: "플토" },
   { value: "저그", label: "저그" },
 ];
 
@@ -58,8 +57,8 @@ function statsOf(entry: MemberStatsEntry | undefined, shown: RaceFilter): Member
   return (race && entry?.byRace[race]) ?? EMPTY_STATS;
 }
 const TYPE_TAB_OPTS: { value: GameType; label: string }[] = [
-  { value: "0101", label: "개인전" },
-  { value: "0102", label: "팀전" },
+  { value: "0101", label: "개인" },
+  { value: "0102", label: "팀" },
 ];
 // 기간 드롭다운에서 "전체 기간"을 가리키는 값 — 나머지 값은 전부 "YYYY-MM"이다.
 const PERIOD_ALL = "all";
@@ -105,9 +104,11 @@ function PlainHead({ label, className }: { label: string; className?: string }) 
 
 /** 필터 한 덩어리 — 이름표 + 그 값(요청: 필터에 각각 라벨). PC에서 넷이 한 줄에 서면
  *  무엇이 무엇인지가 라디오 낱말만으로는 안 갈린다("전체"가 종족인지 유형인지). */
-function FilterGroup({ label, children }: { label: string; children: React.ReactNode }) {
+function FilterGroup({ label, children, className }: {
+  label: string; children: React.ReactNode; className?: string;
+}) {
   return (
-    <div className="scr-stat-filter-group">
+    <div className={cx("scr-stat-filter-group", className)}>
       <span className="scr-stat-filter-label">{label}</span>
       {children}
     </div>
@@ -174,15 +175,6 @@ export default function StatsScreenV2() {
   const detailRaceOf = (memberId: string): BaseRace | "all" => (
     race === "main" ? (mainRaceOf(view?.stats[memberId]) ?? "all") : race
   );
-
-  // 초기화 버튼(요청) — 기간과 종족만 되돌리고 분류(개인전/팀전)는 지금 보고 있는
-  // 것을 그대로 둔다(요청). 분류는 "전체"가 없는 라디오라 되돌릴 중립값 자체가 없고,
-  // 개인전을 보다가 초기화를 눌렀는데 팀전으로 튀면 보던 화면을 잃는다.
-  const isDefaultFilter = period === currentMonthValue() && race === "all";
-  const resetFilters = () => {
-    setPeriod(currentMonthValue());
-    setRace("all");
-  };
 
   // SearchFilterBar가 이제 엔터를 눌러야만 onSearchChange를 부르므로(점프 방지), search
   // 자체가 이미 확정된 값이다 — 더 늦출 디바운스가 필요 없다.
@@ -526,9 +518,9 @@ export default function StatsScreenV2() {
            라디오는 값이 몇 개 안 되고 늘 같은 자리에 있어, 지금 무엇이 걸렸는지를 열어 보지
            않고도 한눈에 읽는다. */
         heading={<div className="scr-stat-filters">
-          {/* 유형·기간은 모바일에서도 한 줄에 같이 둔다 — 둘 다 짧고, "언제 무엇을"이라
-              한 호흡으로 읽힌다. PC에서는 이 묶음이 display:contents로 풀려 나머지와
-              함께 한 줄에 선다(요청: PC에선 한 줄). */}
+          {/* 유형·기간·종족은 한 줄에 둔다(요청) — 셋 다 "무엇을 볼까"라 한 호흡이고,
+              모바일에서도 줄을 나누지 않는다(넘치면 wrap이 접는다). PC에서는 이 묶음이
+              display:contents로 풀려 정렬까지 통째로 한 줄에 선다. */}
           <div className="scr-stat-filter-row">
             <FilterGroup label="유형">
               <PillTabs
@@ -540,29 +532,19 @@ export default function StatsScreenV2() {
               <MonthCalendar
                 value={period} onChange={setPeriod}
                 minMonth={firstMonth} maxMonth={currentMonthValue()}
-                allValue={PERIOD_ALL} allLabel="전체 기간"
+                allValue={PERIOD_ALL} allLabel="올타임"
               />
             </FilterGroup>
-            {/* 초기화(요청) — 기간·종족을 한 번에 되돌린다(유형은 보던 것을 유지).
-                이미 기본값이면 누를 게 없으니 흐리게 죽여 둔다. 검색어(유저)는 이 줄
-                밖의 별개 필터라 건드리지 않는다 — 칩마다 제 ×가 있다. */}
-            <button
-              type="button" className="scr-grid-title-reset"
-              onClick={resetFilters} disabled={isDefaultFilter}
-              aria-label="필터 초기화" title="필터 초기화"
-            >
-              <RotateCcw size={14} aria-hidden />
-            </button>
+            <FilterGroup label="종족">
+              <PillTabs
+                options={RACE_TAB_OPTS} value={race}
+                onChange={(v) => setRace(v)} aria-label="종족"
+              />
+            </FilterGroup>
           </div>
-          <FilterGroup label="종족">
-            <PillTabs
-              options={RACE_TAB_OPTS} value={race}
-              onChange={(v) => setRace(v)} aria-label="종족"
-            />
-          </FilterGroup>
-          {/* 정렬은 드롭다운을 걷어내고 낱말을 그대로 늘어놓는다(요청) — 여섯 개뿐이라
-              펼치지 않고도 다 보이고, 지금 무엇으로 줄 서 있는지가 한눈에 읽힌다. */}
-          <FilterGroup label="정렬">
+          {/* 정렬은 오른쪽 끝(요청) — 앞의 셋이 "무엇을 볼까"라면 이건 "어떻게 늘어놓을까"라
+              결이 다르다. 떨어뜨려 두면 그 차이가 자리로 읽힌다. */}
+          <FilterGroup label="정렬" className="scr-stat-filter-sort">
             <div className="scr-stat-sortbar" role="group" aria-label="정렬 기준">
               {sortOpts.map((o) => (
                 <button
