@@ -154,9 +154,6 @@ function UpgradeGrid({ mix, race }: { mix: BuildMix; race: BaseRace | null | und
           <span className="scr-stat-up-solo">{solo}</span>
         </>
       )}
-      {/* 어떤 경기만 셌는지 밑에 적어 둔다(요청) — 안 적으면 다른 칸과 같은 자로 잰 값처럼
-          읽힌다. 표에 걸치게 두면 칸이 밀리므로 격자 한 줄을 통째로 쓴다. */}
-      <span className="scr-stat-up-note">※ {UPGRADE_MIN_MIN}분 이상 경기 대상</span>
     </div>
   );
 }

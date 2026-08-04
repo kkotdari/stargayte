@@ -2013,12 +2013,15 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
      프로토스 실드·저그 갑각처럼 여러 줄이 나눠 쓰는 값은 따로 한 줄로 뗀다(아래 solo).
 
      폭을 못 박는다(지적: 종족별로 너비가 다르다) — 열을 내용에 맞추면 이름이 "보병"인
-     표와 "플라즈마 실드"인 표가 다른 폭이 되고, 수치 열도 그 종족에 "-"만 있으면 좁아진다.
-     가장 긴 이름(플라즈마 실드 64.7px)과 가장 넓은 수("0.0" 15.3px, 실측)를 담을 만큼
-     잡아 두면 세 종족이 같은 자리를 차지한다. 밑에 붙는 당구장 한 줄(87px)도 이 폭 안이다. */
+     표와 "원거리"인 표가 다른 폭이 되고, 수치 열도 그 종족에 "-"만 있으면 좁아진다.
+     가장 긴 이름(원거리 30.4px)과 가장 넓은 수("0.0" 15.3px, 실측)를 담을 만큼 잡아 두면
+     세 종족이 같은 자리를 차지한다.
+     실제 하한은 이름이 아니라 밑에 붙는 당구장 한 줄이다(87px, 격자 전체를 가로지른다) —
+     그래서 92px. "플라즈마 실드"를 담느라 120px이던 것을 이름을 "실드"로 줄이면서 함께
+     줄였다(요청: 줄인 만큼 자리도 줄이기). */
   --scr-up-num-w: 18px;
   display: grid; grid-template-columns: 1fr var(--scr-up-num-w) var(--scr-up-num-w);
-  width: 120px;
+  width: 92px;
   gap: 1px 8px; align-items: baseline;
   font-size: var(--fs-11); color: var(--text);
   font-variant-numeric: tabular-nums; text-align: right; flex: none;
@@ -2086,6 +2089,14 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 .scr-stat-plain-head {
   width: 100%; height: 100%; display: flex;
   align-items: center; justify-content: center; gap: 4px;
+}
+/* 칸 이름 아래 한 줄 — 그 칸 전체에 걸리는 단서(요청: 20분 이상 경기 대상을 줄마다
+   되풀이하지 말고 컬럼 헤더 아랫줄에 작게). 이름보다 두 스텝 작고 흐리게 둬서 이름이
+   먼저 읽히게 한다. */
+.scr-stat-plain-head:has(.scr-stat-plain-head-sub) { flex-direction: column; gap: 2px; }
+.scr-stat-plain-head-sub {
+  font-size: var(--fs-9); font-weight: 500; color: var(--dim);
+  line-height: 1.2; white-space: nowrap;
 }
 
 /* ── 도넛(요청) ───────────────────────────────────────────────────────────────

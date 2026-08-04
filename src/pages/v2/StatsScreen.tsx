@@ -97,8 +97,15 @@ const sortOf = (key: StatSortKey): StatSort =>
 /** 컬럼 머리 — 이제 이름 하나뿐이다. 정렬은 드롭다운으로 갔고(요청), 칸마다 달려 있던
  *  설명(ⓘ)도 타이틀 옆 한 자리로 합쳤다(요청) — 여섯 칸에 여섯 개가 흩어져 있으면 무엇을
  *  눌러야 원하는 설명이 나오는지를 먼저 알아야 한다. */
-function PlainHead({ label, className }: { label: string; className?: string }) {
-  return <span className={cx("scr-stat-plain-head", className)}>{label}</span>;
+function PlainHead({ label, sub, className }: { label: string; sub?: string; className?: string }) {
+  return (
+    <span className={cx("scr-stat-plain-head", className)}>
+      {label}
+      {/* 칸 전체에 걸리는 단서는 줄마다 되풀이하지 않고 여기 한 번만 적는다(요청) —
+          줄이 늘수록 같은 문장이 늘어나 그것만 눈에 밟힌다. */}
+      {sub && <span className="scr-stat-plain-head-sub">{sub}</span>}
+    </span>
+  );
 }
 
 /** 고를 값들을 낱말로 늘어놓는 한 줄 — 유형·종족·정렬이 같은 물건을 쓴다(요청: 유형·종족도
@@ -612,9 +619,7 @@ export default function StatsScreenV2() {
                 <PlainHead
                   label="유닛"
                 />
-                <PlainHead
-                  label="스킬"
-                />
+                <PlainHead label="스킬" sub="※ 공/방은 20분 이상 경기" />
               </div>
               {cards.map((c) => (
                 <MemberStatRow
