@@ -3,7 +3,7 @@
 // ============================================================
 import type { BuildMix } from "../utils/replayBuildMix";
 import type {
-  Member, GameResult, ActivityComment, ActivityTargetType, RankingShift, ActivityListOut, ActivityFeedPage, NewGameResult, SignupPayload, MemberCreatePayload, MemberStatus, MemberRole,
+  Member, GameResult, ActivityComment, ActivityTargetType, RankingShift, ActivityFeedPage, NewGameResult, SignupPayload, MemberCreatePayload, MemberStatus, MemberRole,
   ScreenKey, AppVersion, AppVersionStatus, AppVersionInfo,
   MapCatalog, MinimapImage,
   GameResultSlot, GameResultPage, GameResultStatsResponse, GameType, Race, TeamRankingResponse,
@@ -518,14 +518,6 @@ export const api = {
     return request<RankingShift[]>("/api/activities/ranking-shifts");
   },
 
-  // 활동 목록의 줄 번호 — 내용이 아니라 "그 줄이 전체에서 몇 번째인가"만 받는다.
-  // 화면이 직접 셀 수 없는 값이다: 목록은 세 곳(도전장·게임결과·랭크변동)을 시간순으로
-  // 섞어 만드는데 게임결과는 페이지 단위로 나눠 받으므로, 화면이 쥔 것만 세면 아직 안
-  // 받아온 과거만큼 번호가 통째로 어긋난다.
-  async listActivityRows(): Promise<ActivityListOut> {
-    return request<ActivityListOut>("/api/activities/list");
-  },
-
   /** 활동 목록 — 화면이 부르는 API는 이것 하나다(요청: API 딱 하나만 호출하게).
    *
    *  너 나와·랭크 변동·게임결과가 같은 아이템으로 오고, 내용도 댓글도 그 안에 있다.
@@ -553,12 +545,6 @@ export const api = {
 
   async listActivityComments(targetType: ActivityTargetType, targetId: number): Promise<ActivityComment[]> {
     return request<ActivityComment[]>(`/api/activities/comments?targetType=${targetType}&targetId=${targetId}`);
-  },
-  /** 댓글 전부 — 활동가 목록을 부를 때 한 번에 같이 받아 온다(요청: 목록 조회 시 댓글도
-   *  같이 조회). 카드마다 따로 부르면 답이 제각각 도착하며 카드 키가 뒤늦게 자라, 들어올
-   *  때 맞춰 둔 스크롤 자리가 밀린다. 댓글은 한 줄짜리라 전부 합쳐도 가볍다. */
-  async listAllActivityComments(): Promise<ActivityComment[]> {
-    return request<ActivityComment[]>("/api/activities/comments/all");
   },
   async createActivityComment(
     targetType: ActivityTargetType, targetId: number, text: string, targetMemberIds: string[],

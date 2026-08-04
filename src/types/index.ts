@@ -583,26 +583,6 @@ export interface MapCatalog {
   images: MinimapImage[];
 }
 
-/** 활동 목록 한 줄의 번호(GET /api/activities) — 내용은 없고 순서만 있다.
- *
- *  key는 ActivityScreen의 rowKeyOf와 같은 꼴이다: c-{도전장id} / rs-{스냅샷id} /
- *  ms-{묶음 첫 경기id}. 화면은 이 열쇠로 자기가 그린 줄에 번호를 얹는다. */
-export interface ActivityListRow {
-  key: string;
-  kind: "challenge" | "rankingShift" | "gameResultPost";
-  /** 가장 오래된 줄이 1 — 위에서 세면 새 활동 하나에 모든 번호가 밀린다. */
-  no: number;
-}
-
-/** 활동 목록을 그리는 데 필요한 것 한 벌 — 줄 번호와 댓글이 한 응답에 온다(요청: 단일
- *  API로 통합). 요청이 둘이면 하나가 늦거나 실패할 때 목록이 반쯤 그려진 채로 남는다. */
-export interface ActivityListOut {
-  total: number;
-  rows: ActivityListRow[];
-  /** 활동에 달린 댓글 전부. 옛 API가 답할 때는 없을 수 있다(배포가 어긋나는 순간). */
-  comments?: ActivityComment[];
-}
-
 /** 활동 목록의 아이템 하나 — 너 나와·랭크 변동·게임결과가 같은 것이다(요청).
  *
  *  화면의 한 줄이 곧 하나다. kind에 따라 채워지는 칸이 다를 뿐, 줄을 세우고 번호를 붙이고
