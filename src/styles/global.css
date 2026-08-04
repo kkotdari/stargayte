@@ -8722,16 +8722,25 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
      않는다. */
   width: calc((100% + var(--scr-cap-inset, 0px) * 2) / 2); max-width: 100%;
   justify-items: center; align-items: center;
-  /* 한 단계 축소(요청) — caption(14) → micro(12). 지도 위에 얹히는 글자라 본문만큼 클
-     이유가 없고, 작을수록 그림을 덜 가린다. */
-  font-size: var(--fs-micro); font-weight: 500; line-height: 1.6;
-  color: #fff; text-shadow: 0 0 3px #000, 0 0 6px #000, 0 1px 2px #000;
+  /* 모바일에서 한 단계 더 축소(요청) — micro(12) → 11. 좁은 지도 위에 얹히는 글자라
+     작을수록 그림을 덜 가린다. PC는 아래 미디어쿼리에서 그대로 body로 키운다. */
+  font-size: var(--fs-11); font-weight: 500; line-height: 1.6;
+  color: #fff;
+  /* 글자에 검은 테를 두른다(요청) — 겹쳐 깐 그림자(0 0 3px/6px …)는 글자 주위가 뿌옇게
+     번져 지도 위에서 지저분했다. 테는 윤곽이 딱 떨어져서 같은 두께라도 훨씬 깔끔하다.
+     paint-order가 핵심이다: 이게 없으면 테가 글자 한가운데를 기준으로 그려져 획을 절반쯤
+     파먹어 글자가 얇고 흐려진다. stroke를 먼저 칠하고 그 위에 글자를 얹어야 테가 바깥으로만
+     간다. em으로 잡아 두면 모바일(11px≈2.2px)과 PC(16px≈3.2px)가 알아서 같은 비율이 된다 —
+     시인성을 위해 조금 두껍게(요청). */
+  -webkit-text-stroke: 0.2em #000;
+  paint-order: stroke fill;
+  text-shadow: none;
   word-break: keep-all; text-align: center;
 }
 /* 자막 앞의 시각 — 본문보다 한 단계 작고 흐리게 둔다(요청: [5분]처럼 분까지만).
-   본문이 한 단계 내려간 만큼(caption → micro) 여기도 같이 내려 서열을 지킨다. */
+   본문이 한 단계 내려간 만큼 여기도 같이 내려 서열을 지킨다(11 → 10). */
 .scr-story-cap-time {
-  margin-right: 5px; font-size: var(--fs-11); font-weight: 700; opacity: 0.78;
+  margin-right: 5px; font-size: var(--fs-10); font-weight: 700; opacity: 0.78;
 }
 .scr-story-cap-line {
   grid-area: 1 / 1; margin: 0;
@@ -8739,16 +8748,12 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
      폭으로 잡히고 패딩이 그 바깥에 붙어서, 최대폭을 지도의 절반으로 좁히자 좌우 패딩
      28px만큼 그대로 삐져나왔다(실측 171px 칸에 193px 배경). */
   box-sizing: border-box; max-width: 100%;
-  /* 배경은 문장 자신의 폭만큼만(요청) — 바깥 칸(.scr-story-cap)에 배경을 주면 가장 긴
-     문장 크기 그대로 깔려, 짧은 문장일 때 양옆으로 빈 배경이 남는다. */
-  /* 불투명도를 낮춘다(요청) — 판을 완전히 덮기보다 지형이 비쳐 보이는 정도로만 깐다.
-     글자 자체의 검은 테(위 text-shadow)가 대비를 이미 맡고 있어, 이 배경은 밝은 지형에서
-     글자가 뜨는 것만 막아 주면 된다. */
-  /* 0.28 → 0.45(실측) — 이름에 미니맵과 같은 팀 색을 쓰게 되면서(아래 .scr-story-cap의
-     .scr-sum-team*) 그 색이 앉을 바탕이 필요해졌다. 밝은 초록 지형(빠른무한 계열) 위
-     0.28에서는 파랑 이름이 1.83:1이라 사실상 안 읽혔다. 0.45면 회색 지형에서 3.64:1,
-     본문 흰 글씨는 7.84 → 10.58:1이 된다. 더 올리면 '지형이 비쳐 보이는' 성질을 잃는다. */
-  background: rgba(0, 0, 0, 0.45); border-radius: 10px; padding: 6px 14px;
+  /* 배경 판을 걷어낸다(요청) — 대비는 이제 글자에 두른 검은 테(위 -webkit-text-stroke)가
+     혼자 맡는다. 판이 있던 동안은 그것이 지도를 가리는 가장 큰 물건이었다: 문장이 두세
+     줄이면 지도 한 칸을 통째로 덮었고, 그래서 자막이 앉을 칸을 고르는 계산까지 따로
+     필요했다. 테는 글자 획에만 붙으므로 사이사이로 지형이 그대로 보인다.
+     판이 없어지면서 좌우 여백(14px)도 뺀다 — 배경이 없으면 그건 그냥 문장 폭만 좁힌다. */
+  background: none; padding: 0;
   /* 안 보이는 문장도 자리는 차지해야 한다(그래서 display:none이 아니라 visibility) —
      칸 높이를 가장 긴 문장이 정하게 하는 것이 이 방식의 핵심이다. */
   visibility: hidden;
