@@ -525,7 +525,7 @@ export default function StatsScreenV2() {
         countLabel="명"
         searchValue={search}
         onSearchChange={setSearch}
-        searchPlaceholder="유저 검색"
+        searchPlaceholder="유저 입력 또는 @로 목록 띄우기"
         suggestions={suggestions}
         // 필터창(분류/종족/기간 세 덩어리)은 없앴다(요청) — 그 셋을 목록 바로 위의 제목
         // 문장으로 옮겼다. 제목이 곧 지금 걸린 조건이라 따로 읽을 필터 UI가 없다.

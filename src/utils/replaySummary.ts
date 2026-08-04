@@ -514,6 +514,34 @@ const UNIT_SUPPLY: Record<string, number> = {
 };
 const supplyOf = (unit: string): number => UNIT_SUPPLY[unit] ?? 2;
 
+/** 그 사람이 그 무렵 굴리던 주력 — 그때까지 뽑아 둔 전투 유닛을 인구수로 달아 상위부터.
+ *
+ *  화살표 이름표의 최후 보루다(요청: 모든 화살표에는 유닛이나 건물명이 꼭 들어가야 함).
+ *  1순위는 '그 자리에 실제로 찍은 명령의 주인'(forceAt)이지만, 명령에 주인이 안 잡히는
+ *  경우가 드물지 않아 — 화살표는 그려지는데 무엇으로 갔는지가 통째로 비었다(지적한
+ *  스크린샷: 폭발 이모지만 있고 유닛명이 없다). 그때는 '그 사람이 그때 갖고 있던 병력'으로
+ *  메운다. 그 자리에 간 것이 그중 무엇인지까지는 알 수 없지만, 적어도 그 사람 자신의
+ *  병력이라 틀린 이름이 붙지는 않는다. */
+function armyAtFrame(p: ParsedReplayPlayer, at: number | null): string[] {
+  const s = p.signals;
+  if (!s) return [];
+  const pick = (workers: boolean): string[] => {
+    const tally = new Map<string, number>();
+    for (const [unit, frames] of Object.entries(s.unitFrames)) {
+      if (NON_COMBAT_UNITS.has(unit)) continue;
+      if (WORKER_UNITS.has(unit) !== workers) continue;
+      if (!UNIT_KO[unit]) continue;
+      const n = at === null ? frames.length : frames.filter((f) => f <= at).length;
+      if (n > 0) tally.set(unit, n * supplyOf(unit));
+    }
+    return [...tally.entries()].sort((a, b) => b[1] - a[1]).map(([u]) => u);
+  };
+  const army = pick(false);
+  /* 전투 유닛이 아직 하나도 없는 이른 장면(2분 안쪽의 정찰·일꾼 싸움)에서는 일꾼이 답이다 —
+     그때 그 사람이 움직일 수 있는 것이 그것뿐이라, 억지로 끼워 맞춘 이름이 아니다. */
+  return army.length > 0 ? army : pick(true);
+}
+
 /** 그 편이 병력에 부은 인구수 — 유닛명 → 인구수 합. 주력 조합의 순위 기준이다. */
 function armyBySupply(players: ParsedReplayPlayer[]): Map<string, number> {
   const out = new Map<string, number>();
@@ -1769,7 +1797,10 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
      세어도 30분이 넘는 판은 상한(15)에 걸려 45분 경기와 35분 경기가 같은 길이였다.
      이제 긴 판은 스물까지 열린다. 자리가 늘어도 아래 MIN_WEIGHT와 갈래별 상한이 가벼운
      사실로 채우는 것은 그대로 막는다. */
-  const baseBudget = Math.max(3, Math.min(sec >= LONG_GAME_SEC ? 30 : 20, Math.round(sec / SEC_PER_LINE)));
+  /* 상한을 한 번 더 10% 올린다(요청) — 20 → 22, 긴 판은 30 → 33. 2분에 한 문장 꼴로 세는
+     기준(SEC_PER_LINE)은 그대로라, 짧은 판의 길이는 안 변하고 상한에 걸려 잘리던 긴 판만
+     그만큼 더 길어진다. */
+  const baseBudget = Math.max(3, Math.min(sec >= LONG_GAME_SEC ? 33 : 22, Math.round(sec / SEC_PER_LINE)));
   // 자리가 남아도 아무거나 채우지 않는다(요청: 승부에 중요한 이벤트만) — 이 무게 아래는
   // "그래서 뭐" 소리가 나오는 사실들이라, 문단을 짧게 끝내는 편이 낫다.
   // 6 → 8(요청: 중요하지 않은 내용은 숫자 채우려고 넣지 말 것). 자리가 남아도 "그래서 뭐"
@@ -2907,7 +2938,13 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
       const side = sideOf(raw);
       if (!side) continue;
       const us = forceAt(raw, b.at ?? null, side).slice(0, ARROW_LABEL_MAX);
-      if (us.length > 0) out[raw] = us;
+      if (us.length > 0) { out[raw] = us; continue; }
+      /* 명령의 주인이 안 잡히면 그 사람이 그때 갖고 있던 병력으로 메운다(요청: 모든
+         화살표에는 유닛이나 건물명이 꼭 들어가야 함) — 이름표가 통째로 비면 그림만 보고는
+         무엇으로 갔는지를 알 길이 없다. armyAtFrame 주석 참고. */
+      const me = side.find((p) => p.rawName === raw);
+      const army = me ? armyAtFrame(me, b.at ?? null).slice(0, ARROW_LABEL_MAX) : [];
+      if (army.length > 0) out[raw] = army;
     }
     /* 맺음말은 이제 자막에서 유닛을 아예 뺐다(요청) — "무엇으로 끝냈나"의 답이 오로지 이
        이름표뿐이다. 그런데 그 무렵 명령이 안 잡힌 사람은 forceAt이 비어 이름표가 통째로

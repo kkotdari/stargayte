@@ -1289,7 +1289,7 @@ export default function ActivityScreen() {
         countLabel="건"
         searchValue={search}
         onSearchChange={setSearch}
-        searchPlaceholder="유저 검색"
+        searchPlaceholder="유저 입력 또는 @로 목록 띄우기"
         suggestions={suggestions}
         filterPanel={
           <FilterItem label="유형">

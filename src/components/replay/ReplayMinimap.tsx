@@ -82,6 +82,12 @@ const GAP_FROM = 7;
 const GAP_TO = 3.5;
 /** 일대일에서 목표가 하나뿐일 때는 이만큼만 띄운다 — 적진에 더 붙여 그린다(요청). */
 const GAP_TO_DEEP = 2.5;
+/** PC에서 자막을 지도 가장자리로부터 얼마나 안쪽에 두나(지도 대비) — 고른 방향은 그대로
+ *  두되 가운데 언저리에서만 움직이게 한다(요청). CSS의 PC 규칙(.scr-minimap-caption-top 등)에
+ *  같은 값이 여백으로 들어가 있으니 둘을 함께 고쳐야 한다. 세로가 더 큰 건 지도에서 위아래
+ *  구석이 대체로 더 비어 있어서다 — 그만큼 더 들어와도 가릴 것이 없다. */
+const CAP_PULL_X = 0.12;
+const CAP_PULL_Y = 0.18;
 /** 이보다 짧은 화살표는 그리지 않는다 — 자기 본진 안에서 벌어진 일은 '어디로 갔다'가 아니다.
  *  부르는 쪽에서도 같은 기준으로 걸러 낼 수 있게 내보낸다. */
 export const ARROW_MIN_TILES = 8;
@@ -467,8 +473,15 @@ export default function ReplayMinimap({
      *  모바일 1/2). 높이는 그려진 것을 실측한 값이다(위 capH). */
     const CAP_W = wideCaption ? 2 / 3 : 1 / 2;
     const CAP_H = capH;
-    const cx = [CAP_W / 2, 0.5, 1 - CAP_W / 2];
-    const cy = [CAP_H / 2, 0.5, 1 - CAP_H / 2];
+    /* PC에서는 자막이 지도 가장자리까지 나가지 않는다(요청: 노출 부분을 중앙점 주변으로
+       제한 — 방향성은 유지하되 맵의 중앙부에서 조절되게). 고른 방향은 그대로 두고 그 방향으로
+       '조금만' 물러나게 CSS가 여백을 두는데(.scr-minimap-caption-* PC 규칙), 자리를 고르는
+       이 계산도 같은 자리를 봐야 한다 — 안 그러면 구석에 앉는다고 셈하고 실제로는 가운데
+       가까이 그려져, 정작 덮으면 안 되는 것을 덮는다. 값은 CSS의 여백과 같다. */
+    const PULL_X = wideCaption ? CAP_PULL_X : 0;
+    const PULL_Y = wideCaption ? CAP_PULL_Y : 0;
+    const cx = [CAP_W / 2 + PULL_X, 0.5, 1 - CAP_W / 2 - PULL_X];
+    const cy = [CAP_H / 2 + PULL_Y, 0.5, 1 - CAP_H / 2 - PULL_Y];
     /** 지도 위 표시 하나가 차지하는 반지름(지도 대비) — 아바타 한 개 남짓. */
     const SOFT_R = 0.05;
     /** 그 표시가 자막 네모에 '얼마나' 덮이나(0~1) — 한 축의 겹침 비율이다.

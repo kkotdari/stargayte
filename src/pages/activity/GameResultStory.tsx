@@ -7,7 +7,8 @@ import { cleanMapName } from "../../utils/mapName";
 import { cx } from "../../utils/format";
 import { normalizeSearchText } from "../../utils/memberSearch";
 import { ATTACK_BEAT_KEYS } from "../../utils/replaySummary";
-import { renderReplaySummarySentences, UNIT_KO, BUILDING_KO } from "../../utils/replaySummaryText";
+import { renderReplaySummarySentences, UNIT_KO, BUILDING_KO, TECH_KO } from "../../utils/replaySummaryText";
+import { SIGNATURE_UPGRADE_KO, UPGRADE_LINE_KO } from "../../utils/replayTechNames";
 import type { SummaryPart } from "../../utils/replaySummaryText";
 // 이름 뒤 조사는 받침에 따라 갈린다 — "carol가"가 아니라 "carol이"다. 요약 문장이 쓰는
 // 것과 같은 유틸을 쓴다(라틴 이름의 받침 판정까지 그쪽이 이미 다룬다).
@@ -153,6 +154,13 @@ const TITLE_SOLO: Record<string, string> = {
   greedy: "쨈", "greedy-build": "쨈", "greedy-paid": "쨈",
   carrier: "캐리어", bc: "배틀크루저", guardian: "가디언", "lift-off": "띄우기",
   revival: "부활", attrition: "장기전", "fast-hands": "손속", "pro-like": "프로급",
+  /* 나머지 갈래 — 예전에는 표에 없는 키가 그대로 null이 되어 자막 자리에 시각만 남았는데,
+     읽는 쪽에서는 "[07:12]"만 덩그러니 있으면 무슨 장면인지 알 수가 없다(지적: 시간만
+     나오는 건 불편하다 — 무조건 짧은 타이틀이라도 붙일 것). 그림이 이미 말하는 것을
+     되풀이하지 않는 선에서 한 마디씩 붙인다. */
+  fallen: "무너짐", gg: "GG", "idle-lead": "굳히기", "long-run": "물량",
+  vision: "시야 확보", "no-detect": "디텍터 없음",
+  "worker-gap": "일꾼 격차", "prod-gap": "생산 격차",
 };
 
 /** 저장된 자리(pos)·마법 좌표(p.xy)를 화살표 목표로 믿는 최소 요약 버전
@@ -367,24 +375,42 @@ export default function GameResultStory({
     }
     return { text: names[0], team };
   };
-  const titleOf = (sn: { beats: number[] }): SummaryPart[] | null => {
+  const titleOf = (sn: { beats: number[]; parts: SummaryPart[] }): SummaryPart[] => {
     const beats = gameResult.summaryData?.beats ?? [];
     const b = sn.beats.map((i) => beats[i]).find(Boolean);
-    if (!b) return null;
+    // beat 없이 만든 자막(시작 인사·맺음의 승패 선언)은 원래 글이 곧 타이틀이다 — 여기서
+    // null을 돌려주던 탓에 마지막 "1팀 승리"가 통째로 빈 자막이 됐다(지적).
+    if (!b) return sn.parts;
     const who = sideName(b.who);
     const whom = sideName(b.whom);
     const p = (text: string, team?: 1 | 2): SummaryPart => (team ? { text, team } : { text });
-    if (TITLE_CLASH.has(b.k)) {
-      const duel = gameResult.summaryData?.duel === true;
-      return [p(duel ? "교전" : "양팀 교전")];
-    }
-    const verb = TITLE_ATTACK.has(b.k) ? "공격"
-      : TITLE_HARASS.has(b.k) ? "견제"
-        : TITLE_SUPPORT.has(b.k) ? "지원" : null;
     /* 조사는 이름 뒤에 붙지만 색은 이름에만 입힌다 — 조사까지 팀 색으로 칠하면 이름의
        끝이 어디인지가 흐려진다. 그래서 조사만 떼어 다음 조각의 머리에 붙인다. */
     const gaOf = (n: { text: string }) => ga(n.text).slice(n.text.length);
     const reulOf = (n: { text: string }) => reul(n.text).slice(n.text.length);
+    if (TITLE_CLASH.has(b.k)) {
+      const duel = gameResult.summaryData?.duel === true;
+      /* 붙었다는 사실만으로는 장면의 절반만 말한 것이다(요청: 교전에서 결과까지 타이틀에 —
+         "양팀 교전" 대신 "1팀이 크게 이김"). 요약이 이미 그 답을 싣고 있다: p.hold가 싸움
+         뒤 그 자리를 지킨 쪽이고("a"는 who[0] 쪽, "b"는 who[1] 쪽), 편별 참가자 명단
+         (partsA/partsB)이 그 쪽이 누구누구인지를 말한다. 자리를 지킨 쪽이 없으면(draw)
+         비긴 싸움이라 이긴 편을 부르지 않는다. */
+      const hold = (b.p as { hold?: string } | undefined)?.hold;
+      const partsA = (b.p as { partsA?: string[] } | undefined)?.partsA;
+      const partsB = (b.p as { partsB?: string[] } | undefined)?.partsB;
+      const winnerRaws = hold === "a" ? (partsA ?? (b.who ?? []).slice(0, 1))
+        : hold === "b" ? (partsB ?? (b.who ?? []).slice(1, 2)) : null;
+      const win = winnerRaws ? sideName(winnerRaws) : null;
+      const head = duel ? "교전" : "양팀 교전";
+      if (hold === "draw" || !win) return [p(`${head} — 팽팽`)];
+      /* 큰 싸움이었나 — 여럿이 얽힌 난전(p.people)이면 "크게"를 붙인다. 둘이 부딪친 것과
+         일곱이 엉킨 것을 같은 말로 적으면 그 판의 절정이 어디였는지가 안 보인다. */
+      const big = ((b.p as { people?: number } | undefined)?.people ?? 0) >= 4;
+      return [p(`${head} — `), p(win.text, win.team), p(`${gaOf(win)} ${big ? "크게 " : ""}이김`)];
+    }
+    const verb = TITLE_ATTACK.has(b.k) ? "공격"
+      : TITLE_HARASS.has(b.k) ? "견제"
+        : TITLE_SUPPORT.has(b.k) ? "지원" : null;
     if (verb && who) {
       return whom
         ? [p(who.text, who.team), p(`${gaOf(who)} `), p(whom.text, whom.team), p(`${reulOf(whom)} ${verb}`)]
@@ -394,7 +420,10 @@ export default function GameResultStory({
     if (TITLE_HOLD.has(b.k) && who) return [p(who.text, who.team), p(`${gaOf(who)} 센터 장악`)];
     const solo = TITLE_SOLO[b.k];
     if (solo && who) return [p(who.text, who.team), p(` ${solo}`)];
-    return null;
+    if (solo) return [p(solo)];
+    // 어느 갈래에도 안 걸리는 beat — 그래도 시각만 남기지는 않는다(요청). 원래 요약 글을
+    // 그대로 쓴다: 길더라도 "무슨 장면인지 모르겠다"보다는 낫다.
+    return sn.parts;
   };
 
   /** 그 문장이 가리키는 시각(분) — 문장에 묶인 beat 가운데 가장 이른 것을 쓴다. 시각이
@@ -879,6 +908,50 @@ export default function GameResultStory({
       return BEAT_MARK[b.k] ?? (ATTACK_BEAT_KEYS.has(b.k) ? "⚔️" : "🏭");
     };
 
+    /* 그 표시가 '무엇으로 한 일'인가 — 화살표 기둥 위 이름표와 본진 이모지 밑 캡션이
+       똑같이 쓰는 답이다(요청: 모든 화살표에는 유닛이나 건물명이 꼭 들어가야 하고, 공장
+       이모지만 덩그러니 있으면 뭔지 모르겠고, 업그레이드에는 스킬 이름(공방업 포함)).
+
+       1순위는 요약이 사람별로 실어 주는 units다(그 자리에 실제로 움직인 것). 그게 비어 있는
+       옛 요약·명령의 주인이 안 잡힌 경우를 위해, 이미 저장돼 있는 다른 재료로 차례로 메운다:
+       업그레이드 이름 → 기술 이름 → 그 이야기의 건물 → 그 이야기에 실린 병력 목록. 그래도
+       못 채우면 빈 배열이고, 그때만 이름표 없이 그려진다. */
+    const labelOf = (b: (typeof beats)[number], raw: string): string[] => {
+      const ko = (list: unknown): string[] => (Array.isArray(list) ? list : [])
+        .map((u) => (typeof u === "string" ? UNIT_KO[u] ?? BUILDING_KO[u] ?? "" : ""))
+        .filter(Boolean);
+      const own = ko((b as { units?: Record<string, string[]> }).units?.[raw]);
+      if (own.length > 0) return own;
+      const p = b.p as Record<string, unknown> | undefined;
+      // 업그레이드는 유닛이 아니라 그 업그레이드 이름이 답이다 — 상징 업그레이드는 제 이름을,
+      // 공/방은 무엇을 몇 단계까지 올렸는지를 적는다("보병 3-3업").
+      const sig = typeof p?.upgrade === "string" ? SIGNATURE_UPGRADE_KO[p.upgrade as keyof typeof SIGNATURE_UPGRADE_KO] : undefined;
+      if (sig) return [sig];
+      if (b.k === "upgrade" && typeof p?.w === "number" && typeof p?.a === "number") {
+        const line = typeof p.line === "string" ? UPGRADE_LINE_KO[p.line] : undefined;
+        return [`${line ? `${line} ` : ""}${p.w}-${p.a}업`];
+      }
+      const tech = typeof p?.tech === "string" ? TECH_KO[p.tech] : undefined;
+      if (tech) return [tech];
+      const bs = typeof p?.bs === "string" ? ko(p.bs.split(","))
+        : typeof p?.b === "string" ? ko([p.b]) : [];
+      if (bs.length > 0) return bs;
+      /* 큰 싸움은 편별로 나뉘어 실린다 — forceA는 who[0](이긴 편) 쪽, forceB는 who[1] 쪽이다.
+         남의 편 병력을 제 이름표로 달면 안 되니 어느 쪽인지를 보고 고른다. */
+      if (b.k === "clash") {
+        const winSide = (b.p?.partsA as string[] | undefined) ?? [];
+        const loseSide = (b.p?.partsB as string[] | undefined) ?? [];
+        const pick = winSide.includes(raw) ? p?.forceA
+          : loseSide.includes(raw) ? p?.forceB
+            : (b.who ?? [])[0] === raw ? p?.forceA : (b.who ?? [])[1] === raw ? p?.forceB : undefined;
+        const side = ko(pick);
+        if (side.length > 0) return side;
+      }
+      const listed = ko(p?.units);
+      if (listed.length > 0) return listed;
+      return typeof p?.unit === "string" ? ko([p.unit]) : [];
+    };
+
     const mark = new Map<string, string>();
     /* 그 이모지가 '무엇으로 한 일'인가 — 화살표가 있으면 기둥 위 이름표가 말해 주는데,
        화살표 없이 본진·입구에 이모지만 서는 이야기(방어·입구막기·생산)는 아무 말도 없었다
@@ -1080,8 +1153,7 @@ export default function GameResultStory({
         // 화살표를 못 그리는 경우(자리를 모름·너무 가까움)의 마지막 대비책 — 아래에서
         // hits가 하나도 화살표로 못 그려지면 이 값으로 본진에 이모지를 얹는다.
         mark.set(raw, em);
-        const emLabel = ((b as { units?: Record<string, string[]> }).units?.[raw] ?? [])
-          .map((u) => UNIT_KO[u] ?? BUILDING_KO[u] ?? "").filter(Boolean);
+        const emLabel = labelOf(b, raw);
         if (emLabel.length > 0) markLabel.set(raw, emLabel.join(" "));
         /* 입구막기·입구 방어는 본진 안이 아니라 나가는 길목의 이야기라, 이모지도 진짜
            입구 자리에 세운다(지적: "입구도 본진 입구를 말한 거야 아바타 위가 아니라").
@@ -1109,8 +1181,7 @@ export default function GameResultStory({
         /* 무엇으로 갔나 — 화살표 기둥 위에 붙인다(요청: 모든 공격·포토러시·성큰러시·몰래
            배럭·방어타워·옆탱 등에 다 적용). 자막에서 유닛을 빼도 그림만 보고 파악되게 하는
            자리라, 이름은 그 사람 자신의 것이어야 한다(요약의 units가 사람별로 싣는다). */
-        const labelUnits = (b as { units?: Record<string, string[]> }).units?.[raw] ?? [];
-        const label = labelUnits.map((u) => UNIT_KO[u] ?? BUILDING_KO[u] ?? "").filter(Boolean);
+        const label = labelOf(b, raw);
         /* 병력이 클수록 기둥을 굵게(요청) — 요약이 사람마다 실어 준 규모(beat.sizes)를
            단계로 끊어 쓴다. 수치를 그대로 비례로 놓으면 몇백 기짜리 후반 화살표가 지도를
            덮어 버린다. 옛 요약에는 이 값이 없어 그때는 기본 굵기 그대로다. */
@@ -1403,7 +1474,7 @@ export default function GameResultStory({
                 {/* 문장이 아니라 타이틀 한 마디다(요청) — 그림이 이미 말하는 것을 글로
                     되풀이하지 않는다. 시작 스냅("게임 시작!")처럼 beat 없이 만든 자막은
                     타이틀이 없으니 원래 글을 그대로 쓴다. */}
-                {(i === introIdx ? sn.parts : titleOf(sn))?.map((pt, j) => (pt.team
+                {(i === introIdx ? sn.parts : titleOf(sn)).map((pt, j) => (pt.team
                   ? <span key={j} className={pt.team === 1 ? "scr-sum-team1" : "scr-sum-team2"}>{pt.text}</span>
                   : <span key={j}>{pt.text}</span>))}
               </p>

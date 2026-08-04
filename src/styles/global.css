@@ -2148,9 +2148,19 @@ html:not(.scr-light-theme) .scr-donut-band-label {
    각각 별개의 그리드 컨테이너라 네 군데에 같은 값을 적어야 하기 때문이다 — 예전에 한
    곳만 repeat(6)으로 남아 표가 두 줄로 접힌 적이 있다(브라우저로만 잡히는 어긋남이었다). */
 .scr-stats-list-panel-v2 .scr-stat-row {
+  /* 남는 폭은 칸마다 '제 기본폭에 비례해서' 나눠 갖는다(요청: 화면이 넓을 때 스킬 열만
+     너무 넓어진다 — 각 열이 컨텐츠에 비례해 균등하게 가져가게). 예전에는 다섯 트랙이 모두
+     고정폭이라, 패널이 트랙 합보다 넓어지면 남는 폭이 마지막 칸 하나로 몰렸다.
+     minmax(기본폭, N fr)의 N을 기본폭 숫자와 같게 두면 — 580:204:366:246 — 늘어나는 몫도
+     그 비율 그대로다. 좁은 화면에서는 min 쪽이 걸려 지금과 똑같이 기본폭 + 가로 스크롤이다
+     (width:max-content가 fr을 최솟값으로 재기 때문). 유저 칸만은 고정이다: 가로 스크롤에
+     대해 왼쪽에 붙어 있는 칸이라 폭이 흔들리면 그 아래 내용과 어긋난다. */
   --scr-stat-tracks:
-    var(--scr-stat-name-w) var(--scr-stat-record-w)
-    var(--scr-stat-build-w) var(--scr-stat-unit-w) var(--scr-stat-skill-w);
+    var(--scr-stat-name-w)
+    minmax(var(--scr-stat-record-w), 580fr)
+    minmax(var(--scr-stat-build-w), 204fr)
+    minmax(var(--scr-stat-unit-w), 366fr)
+    minmax(var(--scr-stat-skill-w), 246fr);
 }
 .scr-stats-list-panel-v2 .scr-stat-row > * { padding-top: 10px; padding-bottom: 10px; }
 /* 종족별 전적 칸을 없애서(대신 필터바 종족 라디오로 전체 칸 값 자체를 그 종족 기준으로
@@ -8938,6 +8948,18 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 .scr-minimap-caption-left { justify-content: flex-start; }
 .scr-minimap-caption-center { justify-content: center; }
 .scr-minimap-caption-right { justify-content: flex-end; }
+/* PC에서는 그 칸까지 끝까지 밀지 않고 가운데 언저리에서만 움직인다(요청: 자막 노출 부분을
+   중앙점 주변으로 제한 — 방향성은 유지하되 맵의 중앙부에서 조절되게). 화면이 넓으면 지도도
+   커져서, 구석에 붙은 자막은 그림에서 멀찍이 떨어져 나가 무엇에 대한 말인지 눈으로 잇기가
+   어려웠다. 방향(위/아래/좌/우)은 그대로 두고 그 방향으로 물러나는 거리만 줄인다.
+   값은 ReplayMinimap의 CAP_PULL_X/Y와 같아야 한다 — 자막이 앉을 칸을 고르는 계산이 이
+   자리를 기준으로 겹침을 재기 때문이다. */
+@media (min-width: 641px) {
+  .scr-minimap-caption-top .scr-story-cap { margin-top: 18%; }
+  .scr-minimap-caption-bottom .scr-story-cap { margin-bottom: 18%; }
+  .scr-minimap-caption-left .scr-story-cap { margin-left: 12%; }
+  .scr-minimap-caption-right .scr-story-cap { margin-right: 12%; }
+}
 /* 문장을 모두 같은 칸에 겹쳐 놓고(grid-area 하나) 지금 것만 보이게 한다 — 칸이 늘 가장
    긴 문장 높이로 잡히므로 재생하는 동안 자리가 위아래로 흔들리지 않는다. 문장마다 길이가
    달라 그냥 갈아 끼우면 매 스냅마다 자막 한가운데 자리가 흔들린다. */
