@@ -87,9 +87,9 @@ interface StatSort { key: StatSortKey; dir: StatSortDir }
    낱말을 나란히 늘어놓는 자리라 "높은순/많은순"이 여섯 번 되풀이되면 그것만 읽힌다 —
    어느 쪽으로 서는지는 아래 dir이 늘 같은 쪽(이름만 가나다순)이라 굳이 적지 않아도 된다. */
 const SORT_OPTS: { value: StatSortKey; label: string; dir: StatSortDir }[] = [
-  { value: "points", label: "랭킹", dir: "desc" },
-  { value: "plays", label: "게임수", dir: "desc" },
-  { value: "rate", label: "승률", dir: "desc" },
+  { value: "points", label: "랭킹순", dir: "desc" },
+  { value: "plays", label: "게임수순", dir: "desc" },
+  { value: "rate", label: "승률순", dir: "desc" },
 ];
 const sortOf = (key: StatSortKey): StatSort =>
   ({ key, dir: SORT_OPTS.find((o) => o.value === key)?.dir ?? "desc" });
@@ -561,10 +561,12 @@ export default function StatsScreenV2() {
             </FilterGroup>
           </div>
           {/* 정렬은 오른쪽 끝(요청) — 앞의 셋이 "무엇을 볼까"라면 이건 "어떻게 늘어놓을까"라
-              결이 다르다. 떨어뜨려 두면 그 차이가 자리로 읽힌다. */}
-          <FilterGroup label="정렬" className="scr-stat-filter-sort">
+              결이 다르다. 떨어뜨려 두면 그 차이가 자리로 읽힌다.
+              이름표는 없다(요청) — 낱말마다 "~순"이 붙어 그 자체가 이름표 노릇을 한다.
+              바깥(.scr-stat-filters)이 아래 맞춤이라 이름표가 없어도 앞의 셋과 같은 줄에 선다. */}
+          <div className="scr-stat-filter-group scr-stat-filter-sort">
             <PickRow options={sortOpts} value={sort.key} onChange={(k) => setSort(sortOf(k))} label="정렬 기준" />
-          </FilterGroup>
+          </div>
         </div>}
       />
 
