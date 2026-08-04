@@ -4099,7 +4099,8 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
   .scr-team-slot { min-height: 40px; }
   /* 헤더 높이 20% 축소(요청) — 위아래 패딩 13→10px. 모바일 헤더엔 로고만 남았으니
      가로도 정가운데 정렬(요청). */
-  .scr-header-inner { padding: 10px 12px 10px 16px; gap: 12px; justify-content: center; }
+    /* 본문 좌우 여백(12px)과 같은 값으로 맞춘다(요청). */
+  .scr-header-inner { padding: 10px 12px; gap: 12px; justify-content: center; }
   /* 우측 버튼 묶음(.scr-user)은 모바일에서 자식이 전부 숨김인데 margin-left:auto가 남아
      justify-content:center를 무력화했다(지적: 가로 가운데가 안 됨) — 묶음째 숨긴다. */
   .scr-user { display: none; }
@@ -4107,15 +4108,18 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
      제거) — 판은 --card-bleed만큼 나갔다가 같은 값을 되돌려 받으므로, 이 둘을 0으로 두면
      카드 안쪽 내용이 본문 패딩(16px)과 정확히 같은 자리에서 시작한다. PC는 위 .scr-main의
      값(본문 패딩 위에 한 겹 더)을 그대로 쓴다 — 화면이 넓어 한 단 들여쓰는 편이 읽기 좋다. */
+  /* 좌우 여백을 16 → 12px로 줄인다(요청) — 좁은 화면에서 이 여백은 모든 화면의 모든 줄에서
+     같은 만큼을 먹는데, 실제로 읽어야 하는 건 그 안쪽 내용이다. 이 값 하나가 --card-bleed
+     ·--card-pad-bx 등으로 퍼지므로 카드·목록·필터가 함께 따라온다. */
   .scr-main {
-    --main-pad-x: 16px; padding: 30px var(--main-pad-x) 48px;
+    --main-pad-x: 12px; padding: 30px var(--main-pad-x) 48px;
     --card-pad-bx: 0px; --card-head-pad-l: 0px;
   }
   /* 너나와 카드 좌우 내부 패딩 축소(요청: "모바일 좌우 패딩은 메인이 아니라 너나와 카드
      내부 패딩"). 예전엔 이 패딩 안에 좌우 이동 버튼(절대배치)이 들어가야 해서 넓게
      뒀는데(24px), 이동 버튼을 카드 하단 바로 옮긴 뒤로는 그럴 필요가 없어졌다 — 좁혀서
      로스터/메시지가 더 넓게 쓰게 한다. */
-  .scr-challenge-card { padding-left: 16px; padding-right: 16px; }
+  .scr-challenge-card { padding-left: 12px; padding-right: 12px; }
   /* 모바일은 타이틀 줄과 그 아래 컨텐츠(필터/목록) 사이 간격이 PC보다 더 헐렁하게
      느껴진다는 피드백 — 툴바 자체 여백(padding-bottom)과 .scr-screen의 형제간 gap을
      모바일에서만 줄인다. */
@@ -4321,7 +4325,9 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    앞에 정확히 놓인다(.scr-modal::before와 같은 원리). */
 /* 제어판은 모달이 아니라 정식 화면이다(요청) — 미니맵 화면과 같은 폭·여백을 쓰고,
    내용은 가운데 한 칸(420px)에 모은다. */
-.scr-admin-screen { display: flex; flex-direction: column; gap: 10px; padding: 0 20px 24px; }
+/* 좌우 패딩은 두지 않는다(요청: 제어판·미니맵의 추가 패딩 삭제) — 이 화면들도 본문
+   (.scr-main)의 좌우 여백 안에 들어 있어서, 여기서 또 주면 그만큼 두 겹으로 들여써진다. */
+.scr-admin-screen { display: flex; flex-direction: column; gap: 10px; padding: 0 0 24px; }
 /* 내용은 세로로 쌓는다 — 앞으로 붙을 요소가 많아(요청) 세로 간격을 넉넉히 잡아 둔다. */
 .scr-admin-panel-body {
   width: min(420px, 100%); margin-inline: auto;
@@ -8221,7 +8227,7 @@ html.scr-light-theme .scr-activity-add-fab, html.scr-light-theme .scr-scrolltop 
     width: auto; max-width: none; height: auto; max-height: none;
     border-radius: 0;
     /* 노치/홈 인디케이터를 피해 안쪽 여백을 준다(상성 오버레이와 같은 방식). */
-    padding: calc(10px + var(--safe-top)) 16px calc(12px + env(safe-area-inset-bottom, 0px));
+    padding: calc(10px + var(--safe-top)) 12px calc(12px + env(safe-area-inset-bottom, 0px));
     /* 화면을 다 덮으므로 그림자를 드리울 바깥이 없다 — 구분감은 이제 전면 자체가 맡는다. */
     box-shadow: none;
   }
@@ -9075,7 +9081,8 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   background: none; border: 0; padding: 0; text-align: left; cursor: pointer; color: inherit;
   font: inherit;
 }
-.scr-minimap-screen { display: flex; flex-direction: column; gap: 10px; padding: 0 20px 24px; }
+/* 좌우 패딩 없음 — 위 .scr-admin-screen과 같은 이유(요청). */
+.scr-minimap-screen { display: flex; flex-direction: column; gap: 10px; padding: 0 0 24px; }
 .scr-minimap-lead { color: var(--muted); font-size: var(--fs-caption); line-height: 1.5; margin: 0; }
 .scr-minimap-panel {
   display: flex; flex-direction: column; gap: 8px;
