@@ -1341,23 +1341,26 @@ export default function ActivityScreen() {
                     onClick={() => toggleRow(key)}
                   >
                     <span className="scr-activity-row-title">
-                      {/* 제목 글자 위에 얹히는 한 줄 — 번호는 왼쪽 끝, 딱지는 오른쪽 끝에
-                          서로 밀어내며 앉는다(요청: 넘버링과 배지 사이 벌리기). 둘을 따로
-                          띄웠을 때는 번호가 제목 글자를 따라다녀서, 제목이 짧은 줄에선
-                          가운데로 밀려 올라와 딱지와 겹쳤다(지적: 요소끼리 간섭).
-                          흐름에서 빼 두므로(absolute) 제목 자리는 이 둘이 있든 없든
-                          그대로고, 줄 위 여백 안에 들어앉아 줄 높이도 안 건드린다. */}
-                      <span className="scr-activity-row-title-top">
-                        {no !== undefined && <span className="scr-activity-row-no">#{no}</span>}
-                        {/* 하루 안에 올라왔거나(NEW) 달라진(UPDATE) 건 — 색만으로 말하지
-                            않도록 글자를 그대로 적는다. */}
-                        {flag && (
-                          <span className={cx("scr-activity-row-flag", `scr-activity-row-flag-${flag}`)}>
-                            {flag === "new" ? "NEW" : "UPDATE"}
-                          </span>
-                        )}
-                      </span>
+                      {/* 제목은 칸 가운데에 서고, 번호·딱지는 그 제목 글자 위에 한 줄로
+                          얹힌다(요청: 넘버링을 제목 왼쪽에 맞추기). 기준이 칸이 아니라 제목
+                          글자라, 제목이 길든 짧든 번호는 늘 글자 바로 위 왼쪽 끝이다.
+                          둘을 한 줄에 태우고 딱지를 오른쪽 끝으로 미는 건(margin-left:auto)
+                          겹치지 않게 하기 위해서다 — 따로 띄우면 기준이 서로 달라(번호는
+                          글자, 딱지는 칸 모서리) 짧은 제목에서 번호가 딱지 밑으로 파고든다
+                          (실측: 모바일 최악 -5px). flex 형제로 두면 그런 일이 없다.
+                          흐름에서 빼 두므로 제목 자리는 이 둘이 있든 없든 그대로고, 줄 위
+                          여백 안에 들어앉아 줄 높이도 안 건드린다. */}
                       <span className="scr-activity-row-title-main">
+                        <span className="scr-activity-row-title-top">
+                          {no !== undefined && <span className="scr-activity-row-no">#{no}</span>}
+                          {/* 하루 안에 올라왔거나(NEW) 달라진(UPDATE) 건 — 색만으로 말하지
+                              않도록 글자를 그대로 적는다. */}
+                          {flag && (
+                            <span className={cx("scr-activity-row-flag", `scr-activity-row-flag-${flag}`)}>
+                              {flag === "new" ? "NEW" : "UPDATE"}
+                            </span>
+                          )}
+                        </span>
                         <span className="scr-activity-row-title-text">{rowTitleOf(item)}</span>
                       </span>
                     </span>

@@ -23,9 +23,16 @@ const DECIDE_AT = 4;
 const FLICK_VELOCITY = 0.5;
 const FLICK_MIN_SHIFT = 22;
 
-/** 글을 쓰는 칸인가 — 그 안에서 시작한 터치는 이 훅이 건드리지 않는다(위 onStart 주석). */
+/** 글을 쓰는 칸인가 — 그 안에서 시작한 터치는 이 훅이 조심해서 다룬다(위 onStart 주석). */
 function isEditable(el: Element | null): boolean {
   return !!el?.closest("input, textarea, select, [contenteditable]:not([contenteditable=false])");
+}
+
+/** 여러 줄짜리 글칸인가 — 세로로 끄는 것도 '아랫줄까지 고르기'라 방향으로 가르면 안 된다
+ *  (지적: 세로를 막으면 텍스트에리어에선 여러 줄을 어떻게 고르나). 한 줄짜리 input에서만
+ *  "세로 = 시트를 끄는 것"이 참이다. */
+function isMultiline(el: Element | null): boolean {
+  return !!el?.closest("textarea, [contenteditable]:not([contenteditable=false])");
 }
 
 // 터치 지점에서 위로 올라가며 실제로 스크롤되는(overflow-y auto/scroll) 가장 가까운
@@ -90,6 +97,9 @@ export function useModalDragDismiss(): void {
       startedInEditable = isEditable(target);
       const s = target?.closest<HTMLElement>(SHEET_SELECTOR) ?? null;
       if (!s) { mode = "idle"; return; }
+      // 여러 줄 칸에서 시작했으면 방향을 안 가리고 통째로 빠진다 — 아랫줄까지 고르는 동작이
+      // 세로라서, 세로를 '시트 끌기'로 채 가면 여러 줄 선택이 아예 안 된다(지적).
+      if (isMultiline(target)) { mode = "select"; return; }
       sheet = s;
       scroller = findScroller(target, s);
       startY = e.touches[0].clientY;

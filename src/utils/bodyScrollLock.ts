@@ -50,6 +50,15 @@ function isEditableTarget(el: Element): boolean {
   return !!el.closest("input, textarea, select, [contenteditable]:not([contenteditable=false])");
 }
 
+/** 여러 줄짜리 글칸인가 — 여기서는 세로로 끄는 것도 '아랫줄까지 고르기'라, 방향으로 가르면
+ *  안 된다(지적: 세로 스크롤을 막으면 텍스트에리어에선 어떻게 여러 줄을 고르나). 한 줄짜리
+ *  input에서만 "세로 = 스크롤 의도"가 참이다 — 거기엔 아랫줄이 없다.
+ *  여러 줄 칸 스스로 스크롤할 것이 있으면 아래 canScrollWithin이 이미 손을 떼므로, 배경이
+ *  딸려 가는 문제도 여기서 새로 생기지 않는다. */
+function isMultilineTarget(el: Element): boolean {
+  return !!el.closest("textarea, [contenteditable]:not([contenteditable=false])");
+}
+
 /* 입력칸에서 시작한 터치의 방향 판정 — 가로면 '글자 고르기'(건드리지 않음), 세로면 여느
    문지름과 같은 '스크롤 의도'(원래대로 막는다)로 본다. 입력칸이라고 통째로 손을 떼면
    그 안에서 위아래로 문질렀을 때 배경 페이지가 딸려 스크롤된다(지적). 한 번 정한 뒤에는
@@ -61,6 +70,7 @@ let touchIntent: { x: number; y: number; mode: "undecided" | "select" | "scroll"
 function isSelectionDrag(e: Event): boolean {
   if (!touchIntent) return false;
   if (touchIntent.mode !== "undecided") return touchIntent.mode === "select";
+  // 여러 줄 칸은 방향을 안 가린다 — 세로로 끄는 것도 고르기다(위 isMultilineTarget).
   const t = (e as TouchEvent).touches?.[0];
   if (!t) return false;
   const dx = Math.abs(t.clientX - touchIntent.x);
@@ -97,7 +107,10 @@ function onTouchStart(e: Event) {
   const el = e.target instanceof Element ? e.target : null;
   const t = (e as TouchEvent).touches?.[0];
   touchIntent = el && t && isEditableTarget(el)
-    ? { x: t.clientX, y: t.clientY, mode: "undecided" } : null;
+    // 여러 줄 칸은 방향을 안 가리고 처음부터 '고르기'로 못 박는다 — 아랫줄까지 끌어 고르는
+    // 동작이 세로라서, 방향으로 갈랐다가는 그게 통째로 막힌다(지적).
+    ? { x: t.clientX, y: t.clientY, mode: isMultilineTarget(el) ? "select" : "undecided" }
+    : null;
   if (isShieldedTarget(e.target)) e.preventDefault();
 }
 function onPointerDown(e: Event) {
