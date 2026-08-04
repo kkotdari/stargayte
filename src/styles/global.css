@@ -8511,11 +8511,12 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 .scr-story-map { width: 100%; max-width: 100%; margin-inline: auto; }
 /* PC 상한을 240 → 440으로 크게 올린다(요청: 미니맵 크기 훨씬 크게, 좌우 로스터는 많이
    줄여도 됨) — 위 .scr-story-matchup-wide의 넓어진 폭이 이 상한을 뒷받침한다. */
-/* PC 상한 320px(요청) — 선택자를 .scr-story-mid 안쪽이 아니라 미니맵 자체로 바꾼다.
+/* PC 상한 400px — 선택자를 .scr-story-mid 안쪽이 아니라 미니맵 자체로 바꾼다.
    미니맵은 두 자리에 설 수 있는데(로스터 사이 = .scr-story-mid, 그리고 로스터 없이 홀로),
    실제로 지도가 있는 경기는 홀로 서는 쪽이라 예전 규칙이 한 번도 안 걸렸다 — PC에서
-   본문 폭을 그대로 다 써서 760px까지 커져 있었다(실측). 어느 자리에 서든 걸리게 둔다. */
-@media (min-width: 641px) { .scr-story-map { max-width: 320px; } }
+   본문 폭을 그대로 다 써서 760px까지 커져 있었다(실측). 어느 자리에 서든 걸리게 둔다.
+   (320px으로 줄였더니 너무 작아 400px으로 되돌린다 — 요청) */
+@media (min-width: 641px) { .scr-story-map { max-width: 400px; } }
 
 .scr-story-map-head {
   display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; justify-content: center;
