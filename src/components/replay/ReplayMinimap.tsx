@@ -1,5 +1,4 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import ReplayMapCanvas from "./ReplayMapCanvas";
 import Avatar from "../common/Avatar";
 import RaceBadge from "../common/RaceBadge";
 import { cx } from "../../utils/format";
@@ -8,12 +7,11 @@ import type { Race } from "../../types";
 
 // 경기 한 판의 미니맵 — 지형 그림 위에 본진 아바타·화살표를 얹는다.
 //
-// 지형 그림은 둘 중 하나다: 운영자가 올려 둔 실제 미니맵(운영 메뉴의 미니맵 화면), 또는 그게
-// 없을 때 리플레이의 타일 격자로 그린 개략도(ReplayMapCanvas). 그림이 무엇이든 마커·화살표는
-// 좌표를 맵 크기 비율로 얹으므로 같은 자리에 놓인다.
-//
-// 왜 실제 그림을 사람이 올리는지, 타일 번호만으로 물·풀·땅·벽을 갈라 보려던 네 번의 시도가
-// 어떻게 실패했는지는 ReplayMapCanvas 주석에 적어 뒀다.
+// 지형 그림은 운영자가 올려 둔 실제 미니맵 하나뿐이다(운영 > 미니맵). 그림이 없는 맵은
+// 이 컴포넌트를 아예 안 그리고 안내 문구만 띄운다(GameResultStory) — 한때 리플레이의 타일
+// 격자로 그린 개략도를 대신 깔았지만, 타일 번호만으로 물·풀·땅·벽을 갈라 보려던 네 번의
+// 시도가 다 실패해(ReplayMapCanvas 주석) 무슨 지형인지 못 읽는 그림만 남았다.
+// 마커·화살표는 좌표를 맵 크기 비율로 얹으므로 그림의 픽셀 크기와 무관하게 제자리에 놓인다.
 
 // 본진 아바타 크기 — 지금 문장의 주인공(ON)과 나머지(OFF). 차이를 크게 벌려 둔다(요청:
 // 언급된 유저는 더 확실하게 크게, 기본은 축소).
@@ -537,12 +535,12 @@ export default function ReplayMinimap({
           카드 자체의 바깥 패딩까지 넘어가면 안 되므로(지적) 이 여백은 부모 폭 안에서만
           늘어난다 — 지도가 그만큼 작아지는 대신 이름표가 늘 이 안에 머문다. */}
       <div className={cx("scr-minimap", className)} ref={frameRef}>
-        {/* 사람이 올려 둔 실제 미니맵 그림이 있으면 그것을, 없으면 타일 격자로 그린 개략도를
-            쓴다(요청: 물·풀·땅·벽을 실제와 비슷하게). 아바타·화살표는 좌표를 비율로 얹으므로
-            어느 쪽이든 같은 자리에 놓인다. */}
-      {grid.image
-        ? <img className="scr-minimap-canvas" src={grid.image} alt={`${grid.name} 미니맵`} />
-        : <ReplayMapCanvas grid={grid} />}
+        {/* 바탕은 사람이 올려 둔 실제 미니맵 그림뿐이다(요청). 그림이 없으면 이 컴포넌트를
+            아예 안 그린다(GameResultStory의 storyMap) — 한때 타일 격자로 그린 개략도를
+            대신 깔았는데, 타일 번호만으로는 게임과 같은 색을 못 만들어(ReplayMapCanvas
+            주석) 무슨 지형인지 못 읽는 그림 위에 아바타만 뜬 꼴이었다. 아바타·화살표는
+            좌표를 비율로 얹으므로 그림의 픽셀 크기와 상관없이 제자리에 놓인다. */}
+      <img className="scr-minimap-canvas" src={grid.image ?? ""} alt={`${grid.name} 미니맵`} />
       {/* 화살표 — 몸통은 지형 위·아바타 아래에 둔다. viewBox를 타일 격자와 같게 두어 좌표를
           그대로 쓰고, preserveAspectRatio를 끄면 아바타(퍼센트 위치)와 같은 자리에 놓인다.
           화살촉만은 아바타 위에 올린 별도 레이어에 그린다(아래) — 어디를 쳤는지가 이 그림에서

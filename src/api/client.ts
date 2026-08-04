@@ -3,7 +3,7 @@
 // ============================================================
 import type { BuildMix } from "../utils/replayBuildMix";
 import type {
-  Member, GameResult, ActivityComment, ActivityTargetType, RankingShift, ActivityFeedPage, NewGameResult, SignupPayload, MemberCreatePayload, MemberStatus, MemberRole,
+  Member, GameResult, ActivityComment, ActivityTargetType, RankingShift, ActivityFeedItem, ActivityFeedPage, NewGameResult, SignupPayload, MemberCreatePayload, MemberStatus, MemberRole,
   ScreenKey, AppVersion, AppVersionStatus, AppVersionInfo,
   MapCatalog, MinimapImage,
   GameResultSlot, GameResultPage, GameResultStatsResponse, GameType, Race, TeamRankingResponse,
@@ -36,6 +36,9 @@ function buildQuery(params: Record<string, string | number | boolean | undefined
 // 저장 왕복에서 통째로 유실됐다(실제로 지적받은 문제 — 게임아이디 화면에 안 뜸).
 type WireSlot = Omit<GameResultSlot, "rawName"> & { playerName?: string | null };
 type WireGameResult = Omit<GameResult, "team1" | "team2"> & { team1: WireSlot[]; team2: WireSlot[] };
+type WireActivityFeedPage = Omit<ActivityFeedPage, "items"> & {
+  items: (Omit<ActivityFeedItem, "gameResults"> & { gameResults: WireGameResult[] })[];
+};
 
 function slotToWire(slot: GameResultSlot): WireSlot {
   const { rawName, ...rest } = slot;
@@ -528,7 +531,19 @@ export const api = {
     if (params.cursor) q.set("cursor", params.cursor);
     if (params.limit) q.set("limit", String(params.limit));
     const qs = q.toString();
-    return request<ActivityFeedPage>(`/api/activities${qs ? `?${qs}` : ""}`);
+    const page = await request<WireActivityFeedPage>(`/api/activities${qs ? `?${qs}` : ""}`);
+    /* 이 목록 안의 경기도 다른 경기 조회와 똑같이 계약↔도메인 이름을 옮겨 준다(위
+       gameResultFromWire) — 목록을 하나로 합치면서 이걸 빠뜨렸더니, 슬롯의 rawName이
+       통째로 undefined가 되어 리플레이 이야기(미니맵의 아바타·이름표·화살표)가 자막만
+       남기고 전부 사라졌다(지적: "자막 말고 나머지 요소가 아무것도 안 나옴"). 요약은
+       원본 게임 아이디로 저장돼 있어서 그 이름이 없으면 사람과 좌표를 못 잇는다. */
+    return {
+      ...page,
+      items: page.items.map((it) => ({
+        ...it,
+        gameResults: (it.gameResults ?? []).map(gameResultFromWire),
+      })),
+    };
   },
 
   // 활동 댓글 — 경기/너 나와! 등 어떤 활동 요소에나 같은 API로 단다.

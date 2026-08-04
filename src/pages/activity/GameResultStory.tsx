@@ -1212,15 +1212,26 @@ export default function GameResultStory({
   // 미니맵에 넘겨 그만큼 더 키운다) — 편·종족은 미니맵의 색·표시가, 닉네임은 이제 지도
   // 가장자리에 붙는 이름표가 맡는다. 미니맵을 못 그리는 경기만 로스터가 유일한 표시라
   // 그대로 보여준다.
-  const showRoster = grid === null;
+  /* 이야기를 그릴 수 있는 경기인가 — 운영자가 그 맵에 실제 미니맵 그림을 연결해 둔
+     경우뿐이다(요청). 한동안은 그림이 없으면 리플레이의 타일 격자로 개략도를 그려 그
+     위에 얹었는데, 타일 번호만으로는 게임과 같은 색을 만들 수 없어(ReplayMapCanvas 주석)
+     결국 무슨 지형인지 못 읽는 그림 위에 아바타만 떠 있는 꼴이었다. 그림이 없으면 이야기
+     대신 "연결해 달라"는 안내 한 줄만 띄운다.
+     (격자 자체는 계속 저장한다 — 운영 > 미니맵 화면이 아직 연결 안 된 맵을 그 개략도
+     썸네일로 알아보게 해 준다.) */
+  const storyMap = grid?.image ? grid : null;
+  const showRoster = storyMap === null;
+  /* 맵은 읽었는데 그림만 아직 없는 경우 — 운영자가 연결해 주면 바로 이야기가 붙는다(요청).
+     맵 자체를 못 읽은 옛 경기(grid === null)에는 연결할 대상이 없어 안 띄운다. */
+  const needMapImage = grid !== null && !grid.image;
   /* 시작 스냅("게임 시작!") — 자막은 짧은 한 줄뿐이니, 그 대신 미니맵 쪽 아바타·닉네임을
      키워 로스터를 보여준다(요청). 소개 문장은 beat 없이 만들어 넣은 것이라 beats가 비어
      있는 것으로 가려낸다. */
   const introIdx = sentences.length > 1 && (sentences[0]?.beats?.length ?? 0) === 0 ? 0 : -1;
   // 자막으로 보여줄 수 있는 경기인가 — 미니맵이 있고 훑을 문장이 있을 때. 그림이 없으면
   // 자막만 남아 무엇을 보고 읽는 글인지 알 수 없다.
-  const caption = grid !== null && sentences.length > 0;
-  const showMapLine = grid === null && (mapName || minutes !== null);
+  const caption = storyMap !== null && sentences.length > 0;
+  const showMapLine = storyMap === null && (mapName || minutes !== null);
 
   /* 미니맵·자막·타임라인을 눌러도 카드가 접히지 않게 한다(요청) — 이 카드는 눌러서 접는
      동작을 갖고 있어서(활동 묶음), 그림을 짚어 장면을 넘기거나 자막을 읽으려고 누른 것이
@@ -1246,7 +1257,7 @@ export default function GameResultStory({
     </span>
   );
 
-  const mapBlock = grid && (
+  const mapBlock = storyMap && (
     <div className="scr-story-map" {...stopBubble}>
       <div className="scr-story-map-head">
         {mapName && <span className="scr-story-map-name">{mapName}</span>}
@@ -1269,7 +1280,7 @@ export default function GameResultStory({
         <div className="scr-story-map-hint">미니맵 좌우를 눌러 이전/다음 내용으로 이동</div>
       )}
       <ReplayMinimap
-        grid={grid} bases={bases} arrows={arrows}
+        grid={storyMap} bases={bases} arrows={arrows}
         onStep={sentences.length > 1 ? (d) => {
           // 그림 좌·우 절반으로 장면을 옮긴다(요청). 손으로 옮겼으면 자동재생은 멈춘다 —
           // 타임라인의 눈금을 짚었을 때와 같은 규칙이다.
@@ -1328,6 +1339,12 @@ export default function GameResultStory({
           {mapName && <span className="scr-game-result-trow-map">{mapName}</span>}
           {minutes !== null && <span className="scr-game-result-trow-dur">({minutes}분)</span>}
         </div>
+      )}
+      {/* 맵은 읽었는데 미니맵 그림이 아직 안 붙은 경우(요청) — 무엇이 빠졌는지, 어디서
+          채우는지를 그 자리에 적는다. 운영자가 운영 > 미니맵에서 한 번 연결하면 그
+          맵을 쓰는 옛 경기까지 한꺼번에 이야기가 붙는다. */}
+      {needMapImage && (
+        <div className="scr-story-map-missing">운영메뉴에서 미니맵 이미지를 연결해주세요</div>
       )}
       {/* 자막 — 요약을 문단으로 늘어놓는 대신 지금 스냅의 문장만 보여준다(요청). 미니맵
           바로 아래에 따로 두는 이유는 그림 위에 얹으면 지형과 아바타를 가리기 때문이다
