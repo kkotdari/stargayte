@@ -912,25 +912,27 @@ export default function GameResultStory({
        똑같이 쓰는 답이다(요청: 모든 화살표에는 유닛이나 건물명이 꼭 들어가야 하고, 공장
        이모지만 덩그러니 있으면 뭔지 모르겠고, 업그레이드에는 스킬 이름(공방업 포함)).
 
-       1순위는 요약이 사람별로 실어 주는 units다(그 자리에 실제로 움직인 것). 그게 비어 있는
-       옛 요약·명령의 주인이 안 잡힌 경우를 위해, 이미 저장돼 있는 다른 재료로 차례로 메운다:
-       업그레이드 이름 → 기술 이름 → 그 이야기의 건물 → 그 이야기에 실린 병력 목록. 그래도
-       못 채우면 빈 배열이고, 그때만 이름표 없이 그려진다. */
+       업그레이드 이야기는 업그레이드 이름이 먼저다(요청: "질럿 하이템플러"가 아니라 "질럿
+       속업 하이템플러 에너지업") — 그 장면에서 벌어진 일이 곧 그 연구라, 그때 굴리던 병력
+       이름을 적으면 무슨 업그레이드였는지가 통째로 사라진다. 나머지 이야기는 units가
+       1순위다(그 자리에 실제로 움직인 것). units가 비어 있는 옛 요약·명령의 주인이 안 잡힌
+       경우를 위해, 이미 저장돼 있는 다른 재료로 차례로 메운다: 기술 이름 → 그 이야기의 건물
+       → 그 이야기에 실린 병력 목록. 그래도 못 채우면 빈 배열이고, 그때만 이름표가 없다. */
     const labelOf = (b: (typeof beats)[number], raw: string): string[] => {
       const ko = (list: unknown): string[] => (Array.isArray(list) ? list : [])
         .map((u) => (typeof u === "string" ? UNIT_KO[u] ?? BUILDING_KO[u] ?? "" : ""))
         .filter(Boolean);
-      const own = ko((b as { units?: Record<string, string[]> }).units?.[raw]);
-      if (own.length > 0) return own;
       const p = b.p as Record<string, unknown> | undefined;
-      // 업그레이드는 유닛이 아니라 그 업그레이드 이름이 답이다 — 상징 업그레이드는 제 이름을,
-      // 공/방은 무엇을 몇 단계까지 올렸는지를 적는다("보병 3-3업").
+      // 업그레이드는 유닛이 아니라 그 업그레이드 이름이 답이다 — 상징 업그레이드는 제 이름을
+      // ("질럿 속업"), 공/방은 무엇을 몇 단계까지 올렸는지를 적는다("보병 3-3업").
       const sig = typeof p?.upgrade === "string" ? SIGNATURE_UPGRADE_KO[p.upgrade as keyof typeof SIGNATURE_UPGRADE_KO] : undefined;
       if (sig) return [sig];
       if (b.k === "upgrade" && typeof p?.w === "number" && typeof p?.a === "number") {
         const line = typeof p.line === "string" ? UPGRADE_LINE_KO[p.line] : undefined;
         return [`${line ? `${line} ` : ""}${p.w}-${p.a}업`];
       }
+      const own = ko((b as { units?: Record<string, string[]> }).units?.[raw]);
+      if (own.length > 0) return own;
       const tech = typeof p?.tech === "string" ? TECH_KO[p.tech] : undefined;
       if (tech) return [tech];
       const bs = typeof p?.bs === "string" ? ko(p.bs.split(","))
