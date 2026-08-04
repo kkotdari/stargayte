@@ -23,10 +23,39 @@ import type { BaseRace, GameResultStatsResponse, GameType, Member, MemberStats, 
 // 아니라 "전체종족").
 const RACE_SELECT_OPTS: SelectOption[] = [
   { value: "all", label: "전체종족" },
+  // 주종족(요청) — 고른 값 하나로 모두를 보는 다른 항목들과 달리, 사람마다 다른 종족을
+  // 본다. 종족을 바꿔 가며 하는 사람들의 "제일 잘하는 모습"을 한 표에서 견주는 자리다.
+  { value: "main", label: "주종족" },
   { value: "저그", label: "저그" },
   { value: "프로토스", label: "프로토스" },
   { value: "테란", label: "테란" },
 ];
+
+/** 종족 필터 값 — 실제 종족 셋에 "전체종족"과 "주종족"이 더해진다. */
+type RaceFilter = BaseRace | "all" | "main";
+
+/** 서버에 넘길 종족 — "주종족"은 사람마다 달라 서버가 한 번에 걸 수 없다.
+ *
+ *  포인트·순위(rankScore·sortOrder)는 판을 시간순으로 누적해 만드는 값이라 사람마다 다른
+ *  잣대로 나눌 수가 없다. 사람별로 제 주종족 랭킹의 점수를 긁어모아 한 표에 세우면 저그
+ *  랭킹의 165점과 테란 랭킹의 150점을 나란히 놓고 견주는 꼴이 되어, 그 줄세우기 자체가
+ *  뜻을 잃는다. 그래서 주종족을 볼 때 포인트·순위는 전체 종족 기준 그대로 두고, 한 사람
+ *  안에서 갈리는 값(전적·APM·커맨드·생산)만 그 사람의 주종족 것으로 바꾼다. */
+const serverRaceOf = (r: RaceFilter): BaseRace | "all" => (r === "main" ? "all" : r);
+
+/** 이 회원의 주종족 — 서버가 종족 필터와 무관하게 늘 실제 참가 기록으로 뽑아 준다
+ *  (game_results/service.py의 most_played_race). 한 판도 안 뛰었으면 null. */
+function mainRaceOf(entry: MemberStatsEntry | undefined): BaseRace | null {
+  const r = entry?.mostPlayedRace;
+  return r === "테란" || r === "프로토스" || r === "저그" ? r : null;
+}
+
+/** 표에 그릴 이 회원의 통계 한 벌 — 종족 필터가 "주종족"이면 사람마다 다른 칸을 집는다. */
+function statsOf(entry: MemberStatsEntry | undefined, shown: RaceFilter): MemberStats {
+  if (shown === "all") return entry?.overall ?? EMPTY_STATS;
+  const race = shown === "main" ? mainRaceOf(entry) : shown;
+  return (race && entry?.byRace[race]) ?? EMPTY_STATS;
+}
 const TYPE_SELECT_OPTS: SelectOption[] = [
   { value: "0101", label: "개인전" },
   { value: "0102", label: "팀전" },
@@ -90,7 +119,7 @@ export default function StatsScreenV2() {
   const suggestions = useMemo(() => activeMemberSearchTerms(members), [members]);
 
   const [search, setSearch] = useState("");
-  const [race, setRace] = useState<BaseRace | "all">("all");
+  const [race, setRace] = useState<RaceFilter>("all");
   // 게임 유형(개인전/팀전) — 라디오이고 "전체"는 없다. 기본값은 랜덤(요청).
   // (삭제) 활동의 랭크 변동 카드에서 유형을 미리 걸어 주는 연동이 있었는데, 그 입구였던
   // "실시간 랭크 확인" 링크를 걷어내면서(요청) 걸어 줄 사람이 없어졌다.
@@ -201,7 +230,7 @@ export default function StatsScreenV2() {
   interface StatsView {
     /** 이 한 장을 만든 조건(debouncedSignature) — 지금 조건과 다르면 갱신 중이라는 뜻이다. */
     key: string;
-    race: BaseRace | "all";
+    race: RaceFilter;
     /** "YYYY-MM", '전체 기간'이면 빈 문자열. */
     periodMonth: string;
     period: string;
@@ -244,7 +273,7 @@ export default function StatsScreenV2() {
       dateFrom: debouncedQuery.dateFrom,
       dateTo: debouncedQuery.dateTo,
       matchType: debouncedQuery.matchType,
-      race: debouncedQuery.race,
+      race: serverRaceOf(debouncedQuery.race),
     });
     // 전달 기준선은 없어도 표는 그대로다 — 실패하면 화살표만 안 나온다. 그래도 기다렸다가
     // 함께 그린다: 늦게 도착해 순위 변동만 뒤늦게 뜨는 것이 바로 지적받은 그림이다.
@@ -254,7 +283,7 @@ export default function StatsScreenV2() {
         dateFrom: debouncedQuery.prevFrom,
         dateTo: debouncedQuery.prevTo,
         matchType: debouncedQuery.matchType,
-        race: debouncedQuery.race,
+        race: serverRaceOf(debouncedQuery.race),
       }).catch(() => null)
       : Promise.resolve(null);
     Promise.all([mine, before]).then(([res, prevRes]) => {
@@ -316,7 +345,7 @@ export default function StatsScreenV2() {
     const shown = view?.race ?? "all";
     const list = viewMembers.map((m) => {
       const entry = view?.stats[m.id];
-      const stats = shown === "all" ? (entry?.overall ?? EMPTY_STATS) : (entry?.byRace[shown] ?? EMPTY_STATS);
+      const stats = statsOf(entry, shown);
       // 포인트(랭크 점수) — 이 기간·유형에 한 판도 안 뛰었으면 null → "-"(최소 게임수는
       // 안 따진다. 백엔드 _apply_rank_order 주석 참고).
       const points = entry?.rankScore != null ? Math.round(entry.rankScore) : null;
@@ -409,9 +438,7 @@ export default function StatsScreenV2() {
       .filter((m) => m.status !== "withdrawn" && m.status !== "suspended")
       .map((m) => {
         const entry = view.stats[m.id];
-        const stats = shown === "all"
-          ? (entry?.overall ?? EMPTY_STATS)
-          : (entry?.byRace[shown] ?? EMPTY_STATS);
+        const stats = statsOf(entry, shown);
         return {
           id: m.id, stats,
           points: entry?.rankScore != null ? Math.round(entry.rankScore) : null,
@@ -503,7 +530,7 @@ export default function StatsScreenV2() {
             <span className="scr-grid-title-tail">
               <Select
                 className="scr-sentence-select" value={race} options={RACE_SELECT_OPTS}
-                onChange={(v) => setRace(v as BaseRace | "all")} minDropWidth={130}
+                onChange={(v) => setRace(v as RaceFilter)} minDropWidth={130}
               />
               {/* 초기화(요청) — 문장 끝에 붙여 기간·종족을 한 번에 되돌린다(분류는 유지).
                   이미 기본값이면 누를 게 없으니 흐리게 죽여 둔다. 검색어(유저)는 이 문장
@@ -586,6 +613,9 @@ export default function StatsScreenV2() {
                   onPointsClick={() => setPointMember(c.member)}
                   onRankClick={shownMonth ? () => setTrendMember(c.member) : undefined}
                   medals={medalByMember.get(c.member.id)}
+                  // 주종족으로 볼 때만 — 줄마다 잣대가 다르니 그 종족을 닉네임 옆에
+                  // 적는다(요청). 다른 필터에서는 제목 문장이 이미 말하고 있다.
+                  race={view?.race === "main" ? mainRaceOf(c.entry) : null}
                   compact
                   maxOverallPlays={maxOverallPlays}
                   maxApm={maxApm}
@@ -603,7 +633,9 @@ export default function StatsScreenV2() {
           member={pointMember}
           matchType={matchType}
           period={{ from: effectiveFrom, to: effectiveTo }}
-          race={race}
+          // 주종족을 보고 있어도 포인트는 전체 종족 기준이다(serverRaceOf) — 상세도 같은
+          // 기준으로 열어야 표의 수와 그 안의 이력이 어긋나지 않는다.
+          race={serverRaceOf(race)}
           onClose={() => setPointMember(null)}
         />
       )}
@@ -616,7 +648,7 @@ export default function StatsScreenV2() {
           memberIds={rankPool}
           month={shownMonth}
           matchType={matchType}
-          race={race}
+          race={serverRaceOf(race)}
           onClose={() => setTrendMember(null)}
         />
       )}

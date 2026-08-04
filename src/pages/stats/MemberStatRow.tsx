@@ -4,11 +4,12 @@ import PhotoViewer from "../../components/common/PhotoViewer";
 import StatBar from "../../components/common/StatBar";
 import ValueBar from "../../components/common/ValueBar";
 import DonutChart from "../../components/common/DonutChart";
+import RaceBadge from "../../components/common/RaceBadge";
 import { useAppStore } from "../../store/appStore";
 import { cx } from "../../utils/format";
 import { PER_WINDOW_SECONDS, topEntries, type BuildMix, type TopEntry } from "../../utils/replayBuildMix";
 import { BUILDING_KO, TECH_KO, UNIT_KO } from "../../utils/replaySummaryText";
-import type { Member, MemberStats } from "../../types";
+import type { BaseRace, Member, MemberStats } from "../../types";
 
 /** 유닛·스킬 칸에 적는 줄 수(요청: Top5). */
 const TOP_N = 5;
@@ -131,12 +132,18 @@ interface MemberStatRowProps {
   onRankClick?: () => void;
   // 지난 기간을 볼 때만 온다 — 아직 안 끝난 달에는 메달을 안 단다(StatsScreen 참고).
   medals?: StatColumnMedals;
+  /** 이 줄의 값이 어느 종족 것인가 — 닉네임 옆 배지로 적는다(요청).
+   *
+   *  '주종족'으로 볼 때만 넘어온다. 다른 필터에서는 표 전체가 한 종족(또는 전체)이라
+   *  제목 문장이 이미 말하고 있어, 줄마다 같은 글자를 되풀이할 이유가 없다. 주종족일
+   *  때만은 줄마다 잣대가 달라서, 이 배지가 없으면 무엇끼리 견주는 표인지 알 수 없다. */
+  race?: BaseRace | null;
 }
 
 // 전적통계 목록의 테이블 한 행.
 export default function MemberStatRow({
   member, stats, maxOverallPlays, maxApm, maxCmd, avatar = true, compact = false,
-  points, rank, rankDelta, onPointsClick, onRankClick, medals,
+  points, rank, rankDelta, onPointsClick, onRankClick, medals, race,
 }: MemberStatRowProps) {
   const openMemberProfile = useAppStore((s) => s.openMemberProfile);
   const [photoOpen, setPhotoOpen] = useState(false);
@@ -151,10 +158,14 @@ export default function MemberStatRow({
           </button>
         )}
         <div className="scr-stat-name-stack">
-          {/* 배틀태그는 표시하지 않는다(요청) — 닉네임만. */}
-          <button type="button" className="scr-stat-name-btn" onClick={() => openMemberProfile(member.id)}>
-            {member.nickname}
-          </button>
+          {/* 배틀태그는 표시하지 않는다(요청) — 닉네임만. 주종족으로 볼 때만 그 종족이
+              한 글자 배지로 뒤에 붙는다(요청). */}
+          <span className="scr-stat-name-line">
+            <button type="button" className="scr-stat-name-btn" onClick={() => openMemberProfile(member.id)}>
+              {member.nickname}
+            </button>
+            {race && <RaceBadge race={race} circleLetter size={22} className="scr-stat-name-race" />}
+          </span>
         </div>
       </div>
       {/* 게임수·승률·APM·커맨드는 한 칸이다(요청: 통합) — 넷 다 "막대 하나 + 수" 한 줄짜리라

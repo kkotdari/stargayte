@@ -1766,6 +1766,11 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 .scr-stat-name-stack {
   display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1;
 }
+/* 닉네임과 그 옆 종족 배지 한 줄 — 배지는 '주종족'으로 볼 때만 붙는다(요청). 배지가
+   있어도 닉네임이 줄어드는 일은 없어야 해서, 줄어드는 쪽은 닉네임 글자로 못 박는다
+   (min-width: 0 + 배지 flex: none). */
+.scr-stat-name-line { display: inline-flex; align-items: center; gap: 3px; min-width: 0; }
+.scr-stat-name-race { flex: none; }
 .scr-stat-name-btn {
   /* 원래는 행의 다른 칸들과 같은 크기(상속)였는데, 닉네임을 눈에 잘 띄게 키웠다가(19px)
      너무 커 보인다는 피드백으로 그 값의 80%(20% 축소)로 다시 낮춘다. */
