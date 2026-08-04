@@ -82,15 +82,14 @@ function TeamSlotCard({
 // 가능해야해") — 실제로 치른 경기 결과(setsWonA가 있는 경기)만 확정 여부와 무관하게
 // 항상 잠긴다. 드래그앤드랍 편집은 폐기 — 이 드롭다운 방식으로 대체한다.
 function SlotCell({
-  league, match, team, teamRef, canEdit, busy, mode, compact, onAssign, onClear,
+  league, match, team, teamRef, editable, busy, mode, compact, onAssign, onClear,
 }: {
   league: League; match: LeagueMatch;
-  team: LeagueTeam | null; teamRef: { id: number } | null; canEdit: boolean; busy: boolean;
+  team: LeagueTeam | null; teamRef: { id: number } | null; editable: boolean; busy: boolean;
   mode: League["mode"]; compact: boolean;
   onAssign: (teamId: number) => void; onClear: () => void;
 }) {
   const decided = match.winnerTeamId !== null;
-  const editable = isEditableSlot(league, match, canEdit);
 
   if (!editable) {
     if (!team) {
@@ -164,33 +163,53 @@ function elbowPath(x1: number, y1: number, bendX: number, x2: number, y2: number
   ].join(" ");
 }
 
-// 로컬 시드 편집 상태 — 편집 가능한 1라운드 슬롯의 배정을 `${matchId}:${side}` → teamId(미지정
+// 로컬 시드 편집 상태 — 편집 가능한 자리의 배정을 `${matchId}:${side}` → teamId(미지정
 // null)로 담는다. 드롭다운을 만질 때마다 서버에 저장하지 않고 이 로컬 상태만 바꾼 뒤, '시드 저장'
 // 버튼을 눌러야 한 번에 서버로 보낸다(요청).
 type SeedMap = Record<string, number | null>;
 
-/* 이 칸에 지금 팀을 앉힐 수 있는지 — 라운드를 안 가린다(요청: 1라운드뿐 아니라 모든 칸에
-   대진을 넣을 수 있게). 3라운드 칸에 바로 앉히면 그 아래 가지는 확정할 때 사라진다.
-   확정 전에는 죽은 칸도 없다(어느 가지가 살지 그때 정해진다) — 결과가 들어간 경기와
-   확정된 대진만 잠긴다. */
-function isEditableSlot(league: League, match: LeagueMatch, canEdit: boolean): boolean {
-  return canEdit && match.setsWonA === null && !league.bracketLocked;
+/* 판은 꽉 찬 나무가 아니다 — 우승 자리에서 시작해 필요한 데만 왼쪽으로 가지를 친다(요청).
+   (r, s)의 a쪽을 먹이는 아래 경기는 (r-1, 2s), b쪽은 (r-1, 2s+1)이고, 그 칸이 없으면
+   그 자리는 팀을 직접 앉히는 자리다. */
+function childKey(match: LeagueMatch, side: LeagueMatchSide): string {
+  return `${match.round - 1}:${match.slotInRound * 2 + (side === "a" ? 0 : 1)}`;
 }
 
-// 서버가 내려준 현재 시드(편집 가능한 1라운드 슬롯만) → SeedMap. 로컬 편집의 시작점이자
+function indexMatches(league: League): Map<string, LeagueMatch> {
+  const by = new Map<string, LeagueMatch>();
+  league.matches.forEach((m) => by.set(`${m.round}:${m.slotInRound}`, m));
+  return by;
+}
+
+/* 이 자리에 지금 팀을 앉힐 수 있는지 — 라운드를 안 가린다(요청: 아무 데나 시드 배정).
+   단 가지가 달린 자리는 뺀다: 거긴 아래 경기에서 이기고 올라올 자리다. 결과가 들어간
+   경기와 확정된 대진도 잠긴다. */
+function isEditableSeat(
+  league: League, match: LeagueMatch, side: LeagueMatchSide, canEdit: boolean,
+  by: Map<string, LeagueMatch>,
+): boolean {
+  if (!canEdit || league.bracketLocked || match.setsWonA !== null) return false;
+  return !by.has(childKey(match, side));
+}
+
+// 서버가 내려준 현재 시드(편집 가능한 자리만) → SeedMap. 로컬 편집의 시작점이자
 // '변경됨(dirty)' 판정의 기준이다.
 function serverSeeding(league: League, canEdit: boolean): SeedMap {
+  const by = indexMatches(league);
   const m: SeedMap = {};
-  league.matches.filter((match) => isEditableSlot(league, match, canEdit)).forEach((match) => {
-    m[`${match.id}:a`] = match.teamA?.id ?? null;
-    m[`${match.id}:b`] = match.teamB?.id ?? null;
+  league.matches.forEach((match) => {
+    (["a", "b"] as const).forEach((side) => {
+      if (!isEditableSeat(league, match, side, canEdit, by)) return;
+      m[`${match.id}:${side}`] = (side === "a" ? match.teamA : match.teamB)?.id ?? null;
+    });
   });
   return m;
 }
 
-// 리그 대진표. canEdit이면 팀 수를 미리 정해 빈 대진표를 만들고, 각 칸에 팀을 직접
-// 배정할 수 있다(요청: "대진표 생성 누르면 빈 대진표가 생기고 각 칸에 누가 들어갈지
-// 정할 수 있는 시스템으로"). 아닌 경우(일반 회원/보기 모드)는 순수 읽기 전용.
+// 리그 대진표. canEdit이면 우승 자리에서 시작해 왼쪽으로 가지를 쳐 판을 짜고, 각 자리에
+// 팀을 직접 배정할 수 있다(요청: "최종 승리자 한 칸에서 역으로 시작해서 대진을 만드는
+// 거야... 그러면 내가 필요한 데만 가지를 늘릴 수 있어"). 아닌 경우(일반 회원/보기 모드)는
+// 순수 읽기 전용.
 //
 // 좌표 기반 배치 — CSS flexbox 중첩으로 "짝(pair) 커넥터 중심"을 근사하던 이전 방식은
 // 라운드마다 매치 수/카드 높이가 달라질 때마다 계속 어긋났다(요청: "브라켓 수정...
@@ -202,27 +221,14 @@ function serverSeeding(league: League, canEdit: boolean): SeedMap {
 export default function LeagueBracket({
   league, canEdit, onUpdated,
 }: { league: League; canEdit: boolean; onUpdated: (l: League) => void }) {
-  // 팀/대진표 규모는 상한이 없다(요청: "팀수 무제한 개인전 선수 무제한 대진표 슬롯
-  // 무제한") — 목록 형태 Select 대신 숫자 입력 하나로 받는다. 생성 전/후 UI를 하나로
-  // 통일해 항상 왼쪽 위에 "참가팀수(참가선수수) 인풋 + 확인"만 심플하게 둔다(요청:
-  // "왼쪽 상단에 참가팀수/참가선수수 인풋 확인 이렇게 심플하게 해줘 장대하게 하지말고",
-  // "규모변경 버튼 누를 필요 없이") — 이미 생성된 뒤에도 같은 자리에서 바로 숫자만
-  // 바꿔 다시 생성할 수 있다(요청: "팀수, 대진표 슬롯 수 다 수정가능해야돼"). 결과가
-  // 하나라도 입력된 뒤엔 서버가 거부하고 에러 메시지로 알려준다.
-  // 문자열로 들고 있어야 지우는 중간 상태(빈 문자열)를 허용할 수 있다 — 숫자로 바로
-  // clamp하면 지우자마자 2로 튀어버려 새 값을 타이핑할 수 없었다(요청: "참가팀수
-  // 지우면 2가 자동 입력되는 버그"). 실제 하한(2 이상) 보정은 저장 시점에만 한다.
-  /* 판 크기는 라운드 수로 직접 정한다(요청) — 어느 칸에나 팀을 앉힐 수 있게 되면서
-     "팀 수 → 판 크기"가 성립하지 않는다. 이미 판이 있으면 그 라운드 수를, 없으면 지금
-     팀 수가 들어갈 만한 최소 라운드를 처음 값으로 둔다. */
-  const roundsOfDraw = (n: number | null | undefined) => (n && n >= 2 ? Math.round(Math.log2(n)) : 0);
-  const [roundsInput, setRoundsInput] = useState(() => String(
-    roundsOfDraw(league.drawSize) || Math.max(1, Math.ceil(Math.log2(Math.max(2, league.teams.length || 2)))),
-  ));
-  const rounds = Math.min(10, Math.max(1, Number(roundsInput) || 1));
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [confirmingBracket, setConfirmingBracket] = useState(false);
+  /* 가지 지우기 확인 — matchId가 null이면 우승 자리, 즉 판 전체를 지운다. 되돌리기 수준의
+     작은 삭제(빈 경기 하나)는 묻지 않고 바로 지운다. */
+  const [cut, setCut] = useState<
+    { matchId: number | null; side: LeagueMatchSide; matches: number; teams: number } | null
+  >(null);
 
   // 시드 편집은 로컬 상태로만 하고 '시드 저장'을 눌러야 서버로 보낸다(요청: 그때그때
   // 저장하면 매번 왕복+리렌더로 느려서). league prop이 실제로 바뀔 때(생성/확정/저장/팀편집
@@ -243,17 +249,6 @@ export default function LeagueBracket({
     return false;
   }, [seeds, league, canEdit]);
 
-  const generate = async () => {
-    setErr("");
-    setBusy(true);
-    try {
-      onUpdated(await api.generateLeagueBracket(league.id, rounds));
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "대진표를 만들지 못했어요.");
-    } finally {
-      setBusy(false);
-    }
-  };
   // 대진 확정 — 배정을 잠그는 동시에 대진 모양을 굳힌다(요청: 확정을 누르면 필요 없는
   // 칸이 사라진다). 아무도 안 앉은 가지가 이때 죽고, 혼자 남은 팀이 다음 라운드로
   // 올라간다. 되돌릴 수 없는 조작이라 확인창을 거친다.
@@ -269,24 +264,59 @@ export default function LeagueBracket({
       setBusy(false);
     }
   };
-  const generateRow = canEdit && !league.bracketLocked && (
-    <div className="scr-league-bracket-generate-row">
-      {/* 라운드 수 — 3이면 8강, 4면 16강이다. 옆에 몇 칸짜리 판인지 적어 둔다. */}
-      <span className="scr-label">라운드</span>
-      <input
-        type="number" min={1} max={10} value={roundsInput}
-        onChange={(e) => setRoundsInput(e.target.value)}
-        onBlur={() => setRoundsInput(String(rounds))}
-        className="scr-input scr-league-bracket-count-input"
-      />
-      <span className="scr-league-bracket-rounds-hint">{2 ** rounds}강</span>
-      <button
-        type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm"
-        onClick={generate} disabled={busy}
-      >
-        {busy && <Spinner size={14} />} 적용
-      </button>
-    </div>
+
+  // '시드 저장' — 편집 가능한 자리 '전체'의 현재 로컬 배정을 한 번에 보낸다(서버가 비우고→
+  // 다시 배정→부전승 자동처리). 응답으로 온 리그로 화면이 갱신된다.
+  const postSeeding = () => {
+    const by = indexMatches(league);
+    const assignments: { matchId: number; side: LeagueMatchSide; teamId: number | null }[] = [];
+    league.matches.forEach((m) => {
+      (["a", "b"] as const).forEach((side) => {
+        if (!isEditableSeat(league, m, side, canEdit, by)) return;
+        assignments.push({ matchId: m.id, side, teamId: seeds[`${m.id}:${side}`] ?? null });
+      });
+    });
+    return api.setLeagueBracketSeeding(league.id, assignments);
+  };
+  const saveSeeding = async () => {
+    setErr("");
+    setBusy(true);
+    try {
+      onUpdated(await postSeeding());
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "시드를 저장하지 못했어요.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /* 가지 치기/지우기는 누르는 즉시 서버로 간다 — 새 칸의 id와 밀린 라운드 번호가 서버에서
+     오기 때문에 로컬로 흉내낼 수가 없다. 그래서 아직 저장 안 한 시드 편집이 있으면 먼저
+     보낸다: 안 그러면 응답으로 온 리그가 로컬 편집을 덮어써 방금 고른 팀들이 사라진다. */
+  const runShapeChange = async (fn: () => Promise<League>, fallback: string) => {
+    setErr("");
+    setBusy(true);
+    try {
+      if (dirty) await postSeeding();
+      onUpdated(await fn());
+      setCut(null);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : fallback);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const startBracket = () => runShapeChange(
+    () => api.startLeagueBracket(league.id), "대진표를 시작하지 못했어요.",
+  );
+  const branchSeat = (matchId: number, side: LeagueMatchSide) => runShapeChange(
+    () => api.branchLeagueSlot(league.id, matchId, side), "가지를 치지 못했어요.",
+  );
+  const cutSeat = (matchId: number | null, side: LeagueMatchSide) => runShapeChange(
+    () => (matchId === null
+      ? api.deleteLeagueBracket(league.id)
+      : api.unbranchLeagueSlot(league.id, matchId, side)),
+    "가지를 지우지 못했어요.",
   );
 
   if (league.drawSize === null) {
@@ -298,16 +328,29 @@ export default function LeagueBracket({
         </div>
       );
     }
+    /* 아직 아무것도 없을 때 — 우승 자리 한 칸만 놓고, 그 왼쪽 +로 시작한다(요청: "최종
+       승리자 한 칸에서 역으로 시작해서 대진을 만드는 거야"). */
     return (
       <div className="scr-league-bracket-panel">
         {err && <div className="scr-err">{err}</div>}
-        {generateRow}
+        <div className="scr-league-bracket-start">
+          <button
+            type="button" className="scr-league-bracket-branch" onClick={startBracket}
+            disabled={busy} title="여기서 갈라 대진표를 시작합니다" aria-label="대진표 시작"
+          >
+            {busy ? <Spinner size={12} /> : "+"}
+          </button>
+          <div className="scr-league-bracket-champ">우승</div>
+        </div>
+        <p className="scr-league-bracket-hint">
+          우승 자리 왼쪽의 +를 눌러 가지를 칩니다. 필요한 가지에서만 다시 +를 누르면
+          한쪽만 깊은 대진도 만들 수 있어요.
+        </p>
       </div>
     );
   }
 
-  const drawSize = league.drawSize;
-  const totalRounds = Math.round(Math.log2(drawSize));
+  const totalRounds = league.matches.reduce((n, m) => Math.max(n, m.round), 1);
   const compact = league.mode === "team";
 
   // 로컬 시드 편집 — 서버에 저장하지 않고 seeds 상태만 바꾼다. 같은 팀을 다른 편집 자리에
@@ -324,27 +367,6 @@ export default function LeagueBracket({
   const handleClear = (matchId: number, side: LeagueMatchSide) => {
     setSeeds((prev) => ({ ...prev, [`${matchId}:${side}`]: null }));
   };
-  // '시드 저장' — 편집 가능한 1라운드 슬롯 '전체'의 현재 로컬 배정을 한 번에 보낸다(서버가
-  // 비우고→다시 배정→부전승 자동처리). 응답으로 온 리그로 화면이 갱신되며 부전승/진출선도
-  // 이때 계산돼 반영된다.
-  const saveSeeding = async () => {
-    const assignments: { matchId: number; side: LeagueMatchSide; teamId: number | null }[] = [];
-    league.matches
-      .filter((m) => isEditableSlot(league, m, canEdit))
-      .forEach((m) => {
-        assignments.push({ matchId: m.id, side: "a", teamId: seeds[`${m.id}:a`] ?? null });
-        assignments.push({ matchId: m.id, side: "b", teamId: seeds[`${m.id}:b`] ?? null });
-      });
-    setErr("");
-    setBusy(true);
-    try {
-      onUpdated(await api.setLeagueBracketSeeding(league.id, assignments));
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "시드를 저장하지 못했어요.");
-    } finally {
-      setBusy(false);
-    }
-  };
 
   // 카드 높이는 로스터 인원수와 무관하게 고정한다 — 좌표 계산이 이 고정값을 전제로
   // 한다. 개인전은 로스터가 항상 1명이라 훨씬 짧게 잡는다.
@@ -352,101 +374,177 @@ export default function LeagueBracket({
   const ROW_GAP = 10;
   const COL_W = 180;
   const COL_GAP = 44;
+  // 왼쪽 여백 — 1라운드 카드 왼쪽에도 가지 버튼이 붙는다.
+  const PAD_L = 30;
   // 첫 꺾임(카드에서 나온 선이 꺾이는 곳)만 살짝 둥글게(요청). 두 가지가 만나는 지점은
   // elbowPath에서 직각으로 유지한다.
   const CORNER_R = 8;
 
-  const totalHeight = drawSize * CARD_H + (drawSize - 1) * ROW_GAP;
-  const totalWidth = totalRounds * COL_W + (totalRounds - 1) * COL_GAP;
-  // 마지막 라운드 매치의 점수/일정 배지가 놓일 여유 공간을 캔버스 폭에 더 확보한다 —
-  // 없으면 배지가 가로 스크롤 영역 바깥으로 밀려 잘려 보인다.
-  const canvasWidth = totalWidth + COL_GAP;
-  const slotsInRound = (r: number) => drawSize / 2 ** (r - 1);
-  const slotY = (index: number, count: number) => ((index + 0.5) / count) * totalHeight;
-  const colX = (r: number) => (r - 1) * (COL_W + COL_GAP);
+  const colX = (r: number) => PAD_L + (r - 1) * (COL_W + COL_GAP);
+  const byKey = indexMatches(league);
+  const rootMatch = byKey.get(`${totalRounds}:0`) ?? null;
+  const childOf = (m: LeagueMatch, side: LeagueMatchSide) => byKey.get(childKey(m, side)) ?? null;
 
-  const matchByRoundSlot = new Map<string, LeagueMatch>();
-  league.matches.forEach((m) => matchByRoundSlot.set(`${m.round}:${m.slotInRound}`, m));
+  /* 세로 배치 — 판이 꽉 찬 나무가 아니라서 "N라운드엔 칸이 2^k개"라는 계산을 못 쓴다.
+     대신 나무를 결승부터 훑어 내려가며, 아래 경기가 달린 자리는 그 경기의 한가운데에
+     맞추고 그렇지 않은 자리(=팀을 앉히는 자리)만 한 줄씩 차지하게 한다. 꽉 찬 판에서는
+     예전과 똑같은 결과가 나오고, 한쪽만 깊은 판에서도 선이 정확히 이어진다. */
+  const rowH = CARD_H + ROW_GAP;
+  const seatY = new Map<string, number>();   // `${matchId}:${side}` → 카드 중심 y
+  const mergeY = new Map<number, number>();  // matchId → 두 카드가 합쳐지는 y
+  let rows = 0;
+  const place = (m: LeagueMatch): number => {
+    const ys = (["a", "b"] as const).map((side) => {
+      const child = childOf(m, side);
+      const y = child ? place(child) : rows++ * rowH + CARD_H / 2;
+      seatY.set(`${m.id}:${side}`, y);
+      return y;
+    });
+    const mid = (ys[0] + ys[1]) / 2;
+    mergeY.set(m.id, mid);
+    return mid;
+  };
+  if (rootMatch) place(rootMatch);
+  const totalHeight = Math.max(1, rows) * CARD_H + Math.max(0, rows - 1) * ROW_GAP;
+  // 우승 자리가 맨 오른쪽 한 칸을 더 차지한다 — 판을 짤 때의 출발점이자, 다 끝나면
+  // 우승 팀이 앉는 자리다.
+  const champX = colX(totalRounds + 1);
+  const canvasWidth = champX + COL_W;
 
   const connectors: { path: string; won: boolean }[] = [];
-  for (let r = 1; r < totalRounds; r++) {
-    const count = slotsInRound(r);
-    const matchCount = count / 2;
-    for (let m = 0; m < matchCount; m++) {
-      const match = matchByRoundSlot.get(`${r}:${m}`);
-      if (!match) continue;
-      const sideAY = slotY(2 * m, count);
-      const sideBY = slotY(2 * m + 1, count);
-      const mergeY = (sideAY + sideBY) / 2;
-      const x1 = colX(r) + COL_W;
-      const bendX = x1 + COL_GAP / 2;
-      const x2 = colX(r + 1);
-      const winnerSide = match.winnerTeamId == null
-        ? null
-        : match.winnerTeamId === match.teamA?.id ? "a" : match.winnerTeamId === match.teamB?.id ? "b" : null;
-      connectors.push({ path: elbowPath(x1, sideAY, bendX, x2, mergeY, CORNER_R), won: winnerSide === "a" });
-      connectors.push({ path: elbowPath(x1, sideBY, bendX, x2, mergeY, CORNER_R), won: winnerSide === "b" });
+  league.matches.forEach((match) => {
+    const mid = mergeY.get(match.id);
+    if (mid === undefined) return;
+    const x1 = colX(match.round) + COL_W;
+    const bendX = x1 + COL_GAP / 2;
+    const x2 = colX(match.round + 1);
+    const winnerSide = match.winnerTeamId == null
+      ? null
+      : match.winnerTeamId === match.teamA?.id ? "a" : match.winnerTeamId === match.teamB?.id ? "b" : null;
+    (["a", "b"] as const).forEach((side) => {
+      const y = seatY.get(`${match.id}:${side}`);
+      if (y === undefined) return;
+      connectors.push({
+        path: elbowPath(x1, y, bendX, x2, mid, CORNER_R), won: winnerSide === side,
+      });
+    });
+  });
+
+  const teamOf = (id: number | null | undefined) => (id == null ? null : league.teams.find((t) => t.id === id) ?? null);
+  // 화면에 보이는 배정 — 편집 가능한 자리는 서버 값이 아니라 아직 저장 안 된 로컬 시드를 쓴다.
+  const seatTeamId = (m: LeagueMatch, side: LeagueMatchSide): number | null => (
+    isEditableSeat(league, m, side, canEdit, byKey)
+      ? seeds[`${m.id}:${side}`] ?? null
+      : (side === "a" ? m.teamA : m.teamB)?.id ?? null
+  );
+  // 이 자리에 매달린 가지의 규모 — 지우기 전에 얼마나 날아가는지 알려주려고 센다.
+  const subtreeStats = (m: LeagueMatch, side: LeagueMatchSide) => {
+    const stack = [childOf(m, side)].filter(Boolean) as LeagueMatch[];
+    let matches = 0;
+    let teams = 0;
+    while (stack.length) {
+      const n = stack.pop() as LeagueMatch;
+      matches += 1;
+      (["a", "b"] as const).forEach((s) => {
+        if (seatTeamId(n, s) !== null) teams += 1;
+        const c = childOf(n, s);
+        if (c) stack.push(c);
+      });
     }
-  }
+    return { matches, teams };
+  };
+  const askCut = (m: LeagueMatch | null, side: LeagueMatchSide) => {
+    if (m === null) {   // 우승 자리 — 판 전체가 날아간다
+      const teams = league.matches.reduce(
+        (n, x) => n + (["a", "b"] as const).filter((s) => seatTeamId(x, s) !== null).length, 0,
+      );
+      setCut({ matchId: null, side, matches: league.matches.length, teams });
+      return;
+    }
+    const st = subtreeStats(m, side);
+    // 방금 친 가지를 무르는 정도(빈 경기 하나)면 묻지 않는다 — 확인창이 더 성가시다.
+    if (st.matches <= 1 && st.teams === 0) {
+      void cutSeat(m.id, side);
+      return;
+    }
+    setCut({ matchId: m.id, side, ...st });
+  };
 
   const slots: { key: string; x: number; y: number; node: React.ReactNode }[] = [];
+  const branchButtons: { key: string; x: number; y: number; node: React.ReactNode }[] = [];
   const badges: { key: string; x: number; y: number; node: React.ReactNode }[] = [];
-  for (let r = 1; r <= totalRounds; r++) {
-    const count = slotsInRound(r);
-    const matchCount = count / 2;
-    for (let m = 0; m < matchCount; m++) {
-      const match = matchByRoundSlot.get(`${r}:${m}`);
-      if (!match) continue;
-      // 편집 가능한 1라운드 슬롯은 서버 값이 아니라 로컬 시드(아직 저장 안 된 편집)를 보여준다.
-      const editable = isEditableSlot(league, match, canEdit);
-      const teamOf = (id: number | null | undefined) => (id == null ? null : league.teams.find((t) => t.id === id) ?? null);
-      const teamA = editable ? teamOf(seeds[`${match.id}:a`]) : teamOf(match.teamA?.id);
-      const teamB = editable ? teamOf(seeds[`${match.id}:b`]) : teamOf(match.teamB?.id);
-      const isCompact = compact && r > 1;
-      const x = colX(r);
-      const sideAY = slotY(2 * m, count);
-      const sideBY = slotY(2 * m + 1, count);
+  const canShape = canEdit && !league.bracketLocked;
+  /* 자리 왼쪽의 +/− — 가지가 없으면 치고(+), 있으면 그 가지를 통째로 지운다(−, 요청). */
+  const pushBranchButton = (
+    key: string, x: number, y: number, hasChild: boolean,
+    onClick: () => void, what: string,
+  ) => {
+    if (!canShape) return;
+    branchButtons.push({
+      key, x: x - PAD_L + 4, y: y - 11,
+      node: (
+        <button
+          type="button" className="scr-league-bracket-branch" onClick={onClick} disabled={busy}
+          title={hasChild ? `${what}에 달린 가지를 지웁니다` : `${what} 왼쪽에 가지를 칩니다`}
+          aria-label={hasChild ? "가지 지우기" : "가지 치기"}
+        >
+          {hasChild ? "−" : "+"}
+        </button>
+      ),
+    });
+  };
+
+  league.matches.forEach((match) => {
+    const isCompact = compact && match.round > 1;
+    const x = colX(match.round);
+    (["a", "b"] as const).forEach((side) => {
+      const y = seatY.get(`${match.id}:${side}`);
+      if (y === undefined) return;
+      const editable = isEditableSeat(league, match, side, canEdit, byKey);
       slots.push({
-        key: `${match.id}-a`, x, y: sideAY - CARD_H / 2,
+        key: `${match.id}-${side}`, x, y: y - CARD_H / 2,
         node: (
           <SlotCell
-            league={league} match={match} team={teamA} teamRef={match.teamA}
-            canEdit={canEdit} busy={busy} mode={league.mode} compact={isCompact}
-            onAssign={(id) => handleAssign(match.id, "a", id)} onClear={() => handleClear(match.id, "a")}
+            league={league} match={match} team={teamOf(seatTeamId(match, side))}
+            teamRef={side === "a" ? match.teamA : match.teamB}
+            editable={editable} busy={busy} mode={league.mode} compact={isCompact}
+            onAssign={(id) => handleAssign(match.id, side, id)} onClear={() => handleClear(match.id, side)}
           />
         ),
       });
-      slots.push({
-        key: `${match.id}-b`, x, y: sideBY - CARD_H / 2,
+      const child = childOf(match, side);
+      pushBranchButton(
+        `${match.id}-${side}-branch`, x, y, child !== null,
+        () => (child ? askCut(match, side) : branchSeat(match.id, side)),
+        `${roundLabel(match.round, totalRounds)} ${side === "a" ? "위" : "아래"} 자리`,
+      );
+    });
+    if (match.setsWonA !== null || match.scheduledAt) {
+      // 두 카드 사이 세로 간격(ROW_GAP)이 배지 내용보다 좁을 수 있어, 카드 사이가
+      // 아니라 커넥터가 꺾이는 지점(라운드 오른쪽 여백)에 배지를 둔다 — 공간이
+      // 넉넉하고, 실제 브라켓 UI에서도 흔한 위치다.
+      badges.push({
+        key: `${match.id}-badge`, x: x + COL_W + COL_GAP / 2, y: mergeY.get(match.id) as number,
         node: (
-          <SlotCell
-            league={league} match={match} team={teamB} teamRef={match.teamB}
-            canEdit={canEdit} busy={busy} mode={league.mode} compact={isCompact}
-            onAssign={(id) => handleAssign(match.id, "b", id)} onClear={() => handleClear(match.id, "b")}
-          />
+          <>
+            {match.setsWonA !== null && match.setsWonB !== null && (
+              <div className="scr-league-bracket-score">{match.setsWonA} : {match.setsWonB}</div>
+            )}
+            {match.scheduledAt && (
+              <div className="scr-league-bracket-when">{formatWhen(match.scheduledAt, { clock: true })}</div>
+            )}
+          </>
         ),
       });
-      if (match.setsWonA !== null || match.scheduledAt) {
-        const mergeY = (sideAY + sideBY) / 2;
-        // 두 카드 사이 세로 간격(ROW_GAP)이 배지 내용보다 좁을 수 있어, 카드 사이가
-        // 아니라 커넥터가 꺾이는 지점(라운드 오른쪽 여백)에 배지를 둔다 — 공간이
-        // 넉넉하고, 실제 브라켓 UI에서도 흔한 위치다.
-        badges.push({
-          key: `${match.id}-badge`, x: x + COL_W + COL_GAP / 2, y: mergeY,
-          node: (
-            <>
-              {match.setsWonA !== null && match.setsWonB !== null && (
-                <div className="scr-league-bracket-score">{match.setsWonA} : {match.setsWonB}</div>
-              )}
-              {match.scheduledAt && (
-                <div className="scr-league-bracket-when">{formatWhen(match.scheduledAt, { clock: true })}</div>
-              )}
-            </>
-          ),
-        });
-      }
     }
-  }
+  });
+
+  /* 우승 자리 — 판을 짤 때의 출발점이고, 결승 승자가 여기 앉는다. 왼쪽 버튼은 늘 −다:
+     여기 달린 가지가 곧 판 전체라 지우면 대진표가 사라진다. */
+  const champY = rootMatch ? mergeY.get(rootMatch.id) as number : CARD_H / 2;
+  const champion = rootMatch ? teamOf(rootMatch.winnerTeamId) : null;
+  pushBranchButton("champ-branch", champX, champY, true, () => askCut(null, "a"), "우승 자리");
+
   const heads = Array.from({ length: totalRounds }, (_, i) => i + 1);
 
   return (
@@ -454,10 +552,12 @@ export default function LeagueBracket({
       {/* "대진표" 타이틀 생략(요청: "대진표 타이틀은 없어도 다 아니까 삭제") — 위 요약
           줄에 이미 "대진표 N강"이 있어 중복이었다. */}
       <div className="scr-league-bracket-toolbar">
-        {/* 시드수 입력(적용)과 '시드 저장'을 한 묶음으로 왼쪽에 나란히 둔다(요청: 시드저장을
-            시드수 입력 옆으로, 갭을 주고). '대진 확정'만 오른쪽에 남긴다. */}
         <div className="scr-league-bracket-seed-actions">
-          {generateRow}
+          {canShape && (
+            <span className="scr-league-bracket-rounds-hint">
+              {league.matches.length}경기 · 앉힐 자리 {league.plannedTeams ?? 0}
+            </span>
+          )}
           {/* 시드 편집은 로컬로만 하고 이 버튼으로 한 번에 저장한다(요청). 변경분이 있을 때만 활성화. */}
           {canEdit && !league.bracketLocked && (
             <button
@@ -480,12 +580,13 @@ export default function LeagueBracket({
       </div>
       {err && <div className="scr-err">{err}</div>}
       <div className="scr-league-bracket-scroll scr-scroll">
-        <div className="scr-league-bracket-heads" style={{ width: totalWidth }}>
+        <div className="scr-league-bracket-heads" style={{ width: canvasWidth, paddingLeft: PAD_L }}>
           {heads.map((r) => (
-            <div key={r} className="scr-league-bracket-col-head" style={{ width: COL_W, marginRight: r < totalRounds ? COL_GAP : 0 }}>
+            <div key={r} className="scr-league-bracket-col-head" style={{ width: COL_W, marginRight: COL_GAP }}>
               {roundLabel(r, totalRounds)}
             </div>
           ))}
+          <div className="scr-league-bracket-col-head" style={{ width: COL_W }}>우승</div>
         </div>
         <div className="scr-league-bracket-canvas" style={{ width: canvasWidth, height: totalHeight }}>
           <svg
@@ -501,6 +602,19 @@ export default function LeagueBracket({
               {s.node}
             </div>
           ))}
+          <div
+            className="scr-league-bracket-slot"
+            style={{ left: champX, top: champY - CARD_H / 2, width: COL_W, height: CARD_H }}
+          >
+            {champion
+              ? <TeamSlotCard team={champion} isWinner mode={league.mode} compact={compact} />
+              : <div className="scr-league-bracket-champ">우승</div>}
+          </div>
+          {branchButtons.map((b) => (
+            <div key={b.key} className="scr-league-bracket-branch-slot" style={{ left: b.x, top: b.y }}>
+              {b.node}
+            </div>
+          ))}
           {badges.map((b) => (
             <div key={b.key} className="scr-league-bracket-badge" style={{ left: b.x, top: b.y }}>
               {b.node}
@@ -508,6 +622,19 @@ export default function LeagueBracket({
           ))}
         </div>
       </div>
+      {cut && (
+        <ConfirmDialog
+          title={cut.matchId === null ? "대진표 지우기" : "가지 지우기"}
+          message={(cut.matchId === null
+            ? `대진표를 통째로 지웁니다. 경기 ${cut.matches}개가 사라져요.`
+            : `이 자리에 매달린 경기 ${cut.matches}개가 통째로 사라져요.`)
+            + (cut.teams > 0 ? `\n앉혀 둔 팀 ${cut.teams}팀의 배정도 함께 풀립니다(팀은 남아요).` : "")
+            + "\n계속할까요?"}
+          confirmLabel={busy ? "지우는 중..." : "지우기"}
+          onConfirm={() => cutSeat(cut.matchId, cut.side)}
+          onCancel={() => setCut(null)}
+        />
+      )}
       {confirmingBracket && (
         <ConfirmDialog
           title="대진 확정"

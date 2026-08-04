@@ -196,7 +196,9 @@ export default function LeagueScreen() {
             <span>{league.bestOf}전 {Math.floor(league.bestOf / 2) + 1}선승</span>
             <span>
               {league.teams.length}{league.mode === "individual" ? "명" : "팀"}
-              {league.drawSize ? ` · 대진표 ${league.drawSize}강` : ""}
+              {/* 판이 꽉 찬 나무가 아니라 "8강" 같은 이름이 안 맞는다(요청: 필요한 데만
+                  가지치기) — 실제 경기 수로 적는다. */}
+              {league.drawSize ? ` · 대진표 ${league.matches.length}경기` : ""}
             </span>
           </div>
           {canEdit && <LeagueTeamsPanel league={league} onUpdated={handleLeagueUpdated} />}

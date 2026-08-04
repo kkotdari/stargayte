@@ -6974,11 +6974,37 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 /* 빈 자리("미정"/"부전"/"공백")도 부모(.scr-league-bracket-slot)를 꽉 채운다 — 이제
    모든 라운드가 좌표로 정확히 배치되므로 카드-대-빈자리 높이를 굳이 맞출 필요가
    없다(고정 CARD_H를 부모가 이미 강제한다). */
-/* 판 크기를 라운드 수로 받으면서(요청) 그게 몇 강인지 옆에 적어 둔다 — "3"만 보고
-   8강인 줄 바로 알기는 어렵다. */
+/* 판을 가지치기로 짜면서(요청) 크기 입력이 없어졌다 — 대신 지금 몇 경기짜리 판인지,
+   팀을 몇 자리에 앉힐 수 있는지를 툴바에 적어 둔다. */
 .scr-league-bracket-rounds-hint {
   font-size: var(--fs-micro); color: var(--dim); white-space: nowrap; align-self: center;
 }
+/* 자리 왼쪽의 가지 버튼(+/−) — 카드에 붙지 않고 왼쪽 여백(PAD_L)에 뜬다. 좌표는 JS가
+   준다(.scr-league-bracket-branch-slot). 손가락으로도 눌리도록 22px를 확보한다. */
+.scr-league-bracket-branch-slot { position: absolute; z-index: 2; }
+.scr-league-bracket-branch {
+  display: flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; padding: 0; border-radius: 50%;
+  border: 1px solid rgba(var(--overlay-rgb), 0.4);
+  background: var(--surface); color: var(--muted);
+  font-size: var(--fs-caption); font-weight: 700; line-height: 1; cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+.scr-league-bracket-branch:hover:not(:disabled) {
+  border-color: var(--accent); color: var(--accent); background: var(--surface-2);
+}
+.scr-league-bracket-branch:disabled { opacity: 0.45; cursor: default; }
+/* 우승 자리 — 아직 아무도 못 앉은 상태의 빈 칸. 대진표를 시작하기 전에도 이 한 칸만
+   덩그러니 보여 주고, 그 왼쪽 +로 판을 시작한다(요청: "최종 승리자 한 칸에서 역으로"). */
+.scr-league-bracket-champ {
+  display: flex; align-items: center; justify-content: center;
+  width: 100%; height: 100%; min-height: 46px; box-sizing: border-box; padding: 6px 8px;
+  font-size: var(--fs-caption); font-weight: 700; color: var(--dim);
+  border: 1px dashed rgba(var(--overlay-rgb), 0.32); border-radius: 8px;
+}
+.scr-league-bracket-start { display: flex; align-items: center; gap: 8px; width: 180px; }
+.scr-league-bracket-start .scr-league-bracket-champ { flex: 1 1 auto; }
+.scr-league-bracket-hint { margin: 0; font-size: var(--fs-micro); color: var(--dim); line-height: 1.5; }
 .scr-league-bracket-team-empty {
   display: flex; align-items: center; justify-content: center;
   padding: 6px 8px; width: 100%; height: 100%; box-sizing: border-box;
@@ -7003,43 +7029,6 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
    버튼들보다 커 보였음, 지적됨) — 래퍼 안 버튼도 같은 28px/caption로 통일한다. */
 .scr-league-bracket-toolbar > .scr-btn-sm, .scr-league-bracket-seed-actions .scr-btn-sm {
   padding: 4px 8px; font-size: var(--fs-caption); height: 28px; min-height: 28px; box-sizing: border-box;
-}
-.scr-league-bracket-generate-row { display: flex; align-items: center; gap: 8px; }
-/* 팀수/대진표 규모는 상한이 없어(요청: "팀수 무제한... 대진표 슬롯 무제한") 목록형
-   Select 대신 숫자 입력 하나로 받는다 — 자리만 차지하지 않게 좁게 고정한다. 인풋과
-   버튼 둘 다 한 단계 더 작게, 높이는 서로 정확히 맞춘다(요청: "인풋창과 버튼 스텝
-   1씩 감소... 위아래 버튼 없애기"). */
-.scr-league-bracket-generate-row .scr-btn-sm {
-  padding: 4px 8px; font-size: var(--fs-caption); height: 28px; min-height: 28px; box-sizing: border-box;
-}
-/* 테두리 대신 반사광(inset)으로 정리하고(요청: "인풋창 테두리 제거하고 반사광 그림자
-   이용" — 팀 카드와 같은 기법), 데이터 폰트 대신 기본 폰트를 쓰고(요청: "기본 폰트
-   사용"), 네이티브 숫자 스피너(위아래 버튼)를 없앤다. min-height 대신 고정 height로
-   둬야 border 유무에 따른 미묘한 높이 차이 없이 버튼과 정확히 일치한다. */
-.scr-league-bracket-count-input {
-  /* .scr-input의 min-height(--field-h:38px)가 height:28px를 눌러버려 인풋만 옆 버튼(28px)보다
-     컸다 — min-height도 28px로 눌러 버튼과 정확히 같은 높이로 맞춘다(요청). */
-  width: 44px; flex: 0 0 auto; padding: 4px 5px; height: 28px; min-height: 28px; box-sizing: border-box;
-  border: none;
-  /* 예전엔 반사광이 너무 옅어 두 테마 모두 배경에 묻혀 인풋인지 안 보였다(요청) — 오목하게
-     파인 우물(안쪽 위 그림자) + 아래 반사광 + 얇은 테두리 링으로 확실히 떠 보이게 한다.
-     --overlay-rgb(다크=흰/라이트=검정)로 테두리·바닥틴트가 테마에 맞게 뒤집힌다. */
-  background: rgba(var(--overlay-rgb), 0.06);
-  box-shadow:
-    inset 0 1.5px 2px rgba(0,0,0,0.22),              /* 오목한 안쪽 그림자 */
-    inset 0 -1px 0 rgba(255,255,255,0.10),           /* 아래 반사광 */
-    inset 0 0 0 1px rgba(var(--overlay-rgb), 0.16);  /* 얇은 테두리 링 */
-  font-size: var(--fs-caption); font-family: 'Pretendard Variable', Pretendard, 'Noto Sans KR', sans-serif;
-  -moz-appearance: textfield; appearance: textfield;
-}
-.scr-league-bracket-count-input:focus {
-  outline: none;
-  box-shadow:
-    inset 0 1.5px 2px rgba(0,0,0,0.18),
-    inset 0 0 0 1px var(--pipe-bright);
-}
-.scr-league-bracket-count-input::-webkit-outer-spin-button, .scr-league-bracket-count-input::-webkit-inner-spin-button {
-  -webkit-appearance: none; margin: 0;
 }
 
 /* ===== 유저 상성 맵(운영 메뉴, 요청) ===== */

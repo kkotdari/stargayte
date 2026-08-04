@@ -189,7 +189,8 @@ function IndividualPlayerChip({
 // 한 번에 보낸다(요청: "팀구성 따로 배치 저장"). 저장하면 서버가 원자적으로 반영한 리그를
 // 돌려주고, 상위(LeagueScreen)가 그걸 반영하면서 대진표도 새 팀 구성으로 다시 로드된다
 // (요청: "팀구성 변경되면 대진표 다시로드"). 상한은 없다(요청: "팀수 무제한 개인전 선수
-// 무제한") — 단 대진표가 이미 있으면 예약된 자리(plannedTeams)만큼만.
+// 무제한") — 대진표의 자리 수로도 막지 않는다: 판이 우승 자리 하나에서 시작해 나중에
+// 자라므로(요청) 자리로 막으면 팀부터 짜는 순서가 통째로 막힌다.
 export default function LeagueTeamsPanel({ league, onUpdated }: { league: League; onUpdated: (l: League) => void }) {
   const members = useAppStore((s) => s.members);
   const isIndividual = league.mode === "individual";
@@ -208,7 +209,6 @@ export default function LeagueTeamsPanel({ league, onUpdated }: { league: League
   const keyCounter = useRef(0);
   const newKey = () => `new${keyCounter.current++}`;
 
-  const canAddTeam = league.drawSize === null || localTeams.length < (league.plannedTeams ?? 0);
 
   const dirty = useMemo(() => {
     const srv = toLocalTeams(league);
@@ -292,17 +292,15 @@ export default function LeagueTeamsPanel({ league, onUpdated }: { league: League
     <div className="scr-league-teams-panel">
       <div className="scr-league-teams-panel-head">
         <h2 className="scr-league-section-title">
-          {isIndividual ? "선수" : "팀"} ({localTeams.length}{league.drawSize !== null ? `/${league.plannedTeams}` : ""})
+          {isIndividual ? "선수" : "팀"} ({localTeams.length})
         </h2>
         <div className="scr-league-teams-panel-actions">
-          {canAddTeam && (
-            <button
-              type="button" className="scr-btn scr-btn-sm"
-              onClick={addTeam} disabled={busy}
-            >
-              <Plus size={14} /> {isIndividual ? "선수 추가" : "팀 추가"}
-            </button>
-          )}
+          <button
+            type="button" className="scr-btn scr-btn-sm"
+            onClick={addTeam} disabled={busy}
+          >
+            <Plus size={14} /> {isIndividual ? "선수 추가" : "팀 추가"}
+          </button>
           <button
             type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm"
             onClick={save} disabled={busy || !dirty}

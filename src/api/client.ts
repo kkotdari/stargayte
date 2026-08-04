@@ -856,11 +856,23 @@ export const api = {
       method: "PUT", body: JSON.stringify({ teams }),
     });
   },
-  /* 판 크기는 라운드 수로 직접 정한다(요청) — 어느 칸에나 팀을 앉힐 수 있게 되면서
-     "팀 수 → 판 크기"가 성립하지 않는다. 3이면 8강, 4면 16강이다. */
-  async generateLeagueBracket(leagueId: number, rounds: number): Promise<League> {
-    return request<League>(`/api/leagues/${leagueId}/bracket/generate`, {
-      method: "POST", body: JSON.stringify({ rounds }),
+  /* 판은 우승 자리 하나에서 시작해 왼쪽으로 가지를 쳐 나간다(요청) — 크기를 미리 정하지
+     않는다. 가지 하나를 치고 지울 때마다 판의 모양(라운드 번호까지)이 바뀌므로 매번 리그
+     전체를 다시 받는다. */
+  async startLeagueBracket(leagueId: number): Promise<League> {
+    return request<League>(`/api/leagues/${leagueId}/bracket`, { method: "POST" });
+  },
+  async deleteLeagueBracket(leagueId: number): Promise<League> {
+    return request<League>(`/api/leagues/${leagueId}/bracket`, { method: "DELETE" });
+  },
+  async branchLeagueSlot(leagueId: number, matchId: number, side: LeagueMatchSide): Promise<League> {
+    return request<League>(`/api/leagues/${leagueId}/bracket/matches/${matchId}/${side}/branch`, {
+      method: "POST",
+    });
+  },
+  async unbranchLeagueSlot(leagueId: number, matchId: number, side: LeagueMatchSide): Promise<League> {
+    return request<League>(`/api/leagues/${leagueId}/bracket/matches/${matchId}/${side}/branch`, {
+      method: "DELETE",
     });
   },
   async confirmLeagueBracket(leagueId: number): Promise<League> {
