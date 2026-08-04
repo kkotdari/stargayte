@@ -42,18 +42,38 @@ function canScrollWithin(start: Element): boolean {
   return false;
 }
 
-/** 글을 쓰는 칸인가 — 그 안에서 난 문지름은 스크롤 의도가 아니라 글자를 고르는 동작이다.
- *  실드 안(모달 등)의 입력칸에서 손가락을 끄는데 그 모달에 스크롤할 곳이 없으면 아래
- *  onScrollIntent가 touchmove를 막았고, 그 한 번이 브라우저의 네이티브 선택 드래그를 통째로
- *  끊었다(지적: 모바일에서 선택 영역의 시작·끝을 못 옮긴다). */
+/** 글을 쓰는 칸인가 — 그 안에서 가로로 끄는 것은 스크롤 의도가 아니라 글자를 고르는
+ *  동작이다. 실드 안(모달 등)의 입력칸에서 손가락을 끄는데 그 모달에 스크롤할 곳이 없으면
+ *  아래 onScrollIntent가 touchmove를 막았고, 그 한 번이 브라우저의 네이티브 선택 드래그를
+ *  통째로 끊었다(지적: 모바일에서 선택 영역의 시작·끝을 못 옮긴다). */
 function isEditableTarget(el: Element): boolean {
   return !!el.closest("input, textarea, select, [contenteditable]:not([contenteditable=false])");
+}
+
+/* 입력칸에서 시작한 터치의 방향 판정 — 가로면 '글자 고르기'(건드리지 않음), 세로면 여느
+   문지름과 같은 '스크롤 의도'(원래대로 막는다)로 본다. 입력칸이라고 통째로 손을 떼면
+   그 안에서 위아래로 문질렀을 때 배경 페이지가 딸려 스크롤된다(지적). 한 번 정한 뒤에는
+   바꾸지 않는다 — 선택을 끄는 도중 손가락이 위아래로 흔들려도 판정이 뒤집히면 그 순간
+   preventDefault가 끼어들어 선택이 끊긴다. */
+const DECIDE_PX = 4;
+let touchIntent: { x: number; y: number; mode: "undecided" | "select" | "scroll" } | null = null;
+
+function isSelectionDrag(e: Event): boolean {
+  if (!touchIntent) return false;
+  if (touchIntent.mode !== "undecided") return touchIntent.mode === "select";
+  const t = (e as TouchEvent).touches?.[0];
+  if (!t) return false;
+  const dx = Math.abs(t.clientX - touchIntent.x);
+  const dy = Math.abs(t.clientY - touchIntent.y);
+  if (dx < DECIDE_PX && dy < DECIDE_PX) return true; // 아직 모름 — 일단 선택 쪽에 유리하게
+  touchIntent.mode = dx > dy ? "select" : "scroll";
+  return touchIntent.mode === "select";
 }
 
 function onScrollIntent(e: Event) {
   const el = e.target instanceof Element ? e.target : null;
   if (!el) return;
-  if (isEditableTarget(el)) return;
+  if (e.type === "touchmove" && isSelectionDrag(e)) return;
   if (isShieldedTarget(el)) { e.preventDefault(); return; }
   // 잠금 중엔 문서가 스크롤 주체가 될 일이 없다 — 안쪽에 스크롤 가능한 영역이 있으면
   // 그 스크롤은 브라우저에 맡기고(끝에서의 체이닝은 overscroll-behavior:contain이 차단),
@@ -73,6 +93,11 @@ export function swallowNextClick(): void {
 // touchstart까지 막아야 배경 요소의 :active/터치 하이라이트(눌린 시각 효과)가 아예 안
 // 생긴다 — pointerdown/click 차단만으로는 iOS가 시각 반응을 먼저 그려버린다.
 function onTouchStart(e: Event) {
+  // 입력칸에서 시작한 터치만 방향을 재 둔다(위 isSelectionDrag) — 그 밖은 예전 그대로다.
+  const el = e.target instanceof Element ? e.target : null;
+  const t = (e as TouchEvent).touches?.[0];
+  touchIntent = el && t && isEditableTarget(el)
+    ? { x: t.clientX, y: t.clientY, mode: "undecided" } : null;
   if (isShieldedTarget(e.target)) e.preventDefault();
 }
 function onPointerDown(e: Event) {

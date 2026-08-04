@@ -70,7 +70,9 @@ export function useModalDragDismiss(): void {
     let velY = 0; // 최근 세로 속도(px/ms, +아래) — 마지막으로 실제 이동한 프레임 값 유지
     let startedAtTop = false; // 터치 시작 시 이미 최상단이었나(닫기 드래그 자격)
     let sheetShift = 0; // 시트 실제 이동량(저항 적용 후)
-    let mode: "idle" | "undecided" | "drag" | "scroll" = "idle";
+    // "select"는 입력칸 안에서 가로로 끄는 것 — 글자를 고르는 동작이라 이 훅이 손대지 않는다.
+    let mode: "idle" | "undecided" | "drag" | "scroll" | "select" = "idle";
+    let startedInEditable = false;
 
     const reset = () => { sheet = null; scroller = null; mode = "idle"; sheetShift = 0; velY = 0; };
 
@@ -81,12 +83,11 @@ export function useModalDragDismiss(): void {
     const onStart = (e: TouchEvent) => {
       if (e.touches.length !== 1) { reset(); return; }
       const target = e.target as HTMLElement | null;
-      /* 글을 쓰는 칸 안에서 시작한 터치에는 아예 손대지 않는다(지적: 모바일에서 선택 영역의
-         시작·끝을 못 옮긴다) — 거기서 손가락을 끄는 건 시트를 닫으려는 게 아니라 글자를
-         고르거나 선택 핸들을 옮기는 것이다. 아래 onMove는 스크롤 끝에서 리바운드를 막느라
-         touchmove를 preventDefault하는데, 그 한 번이 브라우저의 네이티브 선택 드래그를
-         통째로 끊어 버린다. 판정 자체를 안 하면 그런 일이 없다. */
-      if (isEditable(target)) { mode = "idle"; return; }
+      /* 글을 쓰는 칸에서 시작했나 — 그러면 가로로 끄는 것은 글자를 고르는 동작이라
+         (아래 "select" 모드) 이 훅이 아예 손대지 않는다. 세로로 끄는 것은 여느 문지름과
+         같아 예전 그대로 다룬다. 통째로 손을 떼면 입력칸 위에서 위아래로 문질렀을 때
+         배경이 딸려 스크롤된다(지적). */
+      startedInEditable = isEditable(target);
       const s = target?.closest<HTMLElement>(SHEET_SELECTOR) ?? null;
       if (!s) { mode = "idle"; return; }
       sheet = s;
@@ -102,7 +103,7 @@ export function useModalDragDismiss(): void {
     };
 
     const onMove = (e: TouchEvent) => {
-      if (mode === "idle" || !sheet) return;
+      if (mode === "idle" || mode === "select" || !sheet) return;
       const y = e.touches[0].clientY;
       const dy = y - startY;
       const dx = e.touches[0].clientX - startX;
@@ -126,6 +127,10 @@ export function useModalDragDismiss(): void {
 
       if (mode === "undecided") {
         if (Math.abs(dy) < DECIDE_AT && Math.abs(dx) < DECIDE_AT) return;
+        /* 입력칸에서 시작해 가로로 끌고 있으면 글자를 고르는 중이다 — 이 훅은 여기서 빠진다.
+           아래 두 갈래(닫기 드래그·가장자리 리바운드 차단)가 다 preventDefault를 부르는데,
+           그 한 번이 브라우저의 네이티브 선택 드래그를 끊는다(지적). */
+        if (startedInEditable && Math.abs(dx) > Math.abs(dy)) { mode = "select"; return; }
         // 처음부터 최상단이었고 세로 아래로 끌면 닫기 드래그로 확정.
         if (startedAtTop && dy > 0 && Math.abs(dy) >= Math.abs(dx)) {
           mode = "drag";

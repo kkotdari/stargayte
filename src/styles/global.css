@@ -7230,7 +7230,11 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 /* 가장 긴 제목("일일 랭크 변동")에 맞춘 고정폭이다 — 그래도 넘치면 트랙을 밀지 말고
    잘린다(실측: min-width 없이 두면 제목이 내용 칸을 덮어썼다). */
 .scr-activity-row-title {
-  display: flex; align-items: center; min-width: 0; font-weight: 600;
+  /* 제목은 칸 가운데가 아니라 왼쪽에 붙인다(요청: 넘버링과 제목 왼쪽 라인 맞추기) — 번호는
+     칸의 왼쪽 끝(.scr-activity-row-title-top의 left:0)에 서는데 제목만 가운데 서면 둘이
+     한 덩어리로 안 읽히고, 제목 길이에 따라 그 어긋난 폭까지 줄마다 달라졌다. 둘 다 왼쪽
+     끝에 세우면 세로로 훑을 때 번호와 제목이 같은 선에서 시작한다. */
+  display: flex; align-items: center; justify-content: flex-start; min-width: 0; font-weight: 600;
   /* 제목은 한 스텝 작게(요청) — 줄마다 같은 낱말 몇 개가 되풀이되는 자리라, 한 번 익히면
      크기가 작아도 모양만으로 읽힌다. 정작 매번 달라지는 건 내용 칸이다. */
   font-size: var(--fs-micro);
@@ -7293,9 +7297,9 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
      묶음으로 읽혀야 한다. inline-flex로 묶어 수와 NEW의 중심을 맞춘다. */
   display: inline-flex; align-items: center;
   flex: 0 0 auto; margin-left: 2px;
-  /* 8px에서 한 스텝 올렸다(지적: 리플 개수 텍스트가 너무 작다) — 딱지들보다 작게 두려던
-     값인데, 이건 딱지가 아니라 읽어야 하는 수다. */
-  font-size: var(--fs-9); font-weight: 700; line-height: 1;
+  /* 한 스텝씩 두 번 올렸다(지적: 리플 개수 텍스트가 너무 작다 → 한 스텝 더) — 딱지들보다
+     작게 두려던 값인데, 이건 딱지가 아니라 읽어야 하는 수다. */
+  font-size: var(--fs-10); font-weight: 700; line-height: 1;
   /* 수는 내용 칸의 기본색 그대로다(요청) — 흐리게 눌러 두면 "몇 개인가"가 읽히기 전에
      먼저 배경으로 물러난다. 색으로 알릴 것은 새것 여부(아래 NEW)뿐이다. */
   color: var(--row-dim); white-space: nowrap;
@@ -7383,10 +7387,13 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 @media (max-width: 480px) {
   /* 제목 84px — "랭크 변동"이 74px에서 "랭크 …"로 잘렸다(실측). 내용 칸은 "4명 9경기"
      정도라 남는 폭을 앞뒤에 나눠 줘도 넉넉하다. */
-  /* 제목 칸은 "#36"과 "UPDATE"가 사이를 두고 함께 설 만큼 — PC보다 6px 좁은 86px이면
-     글자 자리 78px에 둘(53px)이 들어가고 25px이 남는다. 내용 칸은 "4명 9경기" 정도라
-     그만큼 앞에 내줘도 넉넉하다. */
-  .scr-activity-row { grid-template-columns: 86px minmax(0, 1fr) 84px; }
+  /* 제목 칸을 86 → 70px로 조인다(요청: 모바일에서 제목 열 폭을 줄여 내용 열 폭 확보) —
+     내용 칸이 이 목록에서 줄마다 실제로 달라지는 유일한 칸인데, 좁은 화면에서 닉네임 둘과
+     상태 배지·댓글 수까지 담느라 늘 말줄임에 걸렸다. 제목은 되풀이되는 낱말 몇 개뿐이라
+     조금 잘려도 모양만으로 읽힌다.
+     번호와 딱지는 이제 제목 글자 위 한 줄에 함께 앉고("#36" 15.6 + "UPDATE" 37.4 = 53px)
+     그 사이는 남는 자리 전부라(margin-left:auto), 글자 자리 62px 안에서도 서로 안 붙는다. */
+  .scr-activity-row { grid-template-columns: 70px minmax(0, 1fr) 84px; }
   .scr-activity-row > * + * { padding-left: 8px; }
   .scr-activity-row > * { padding-right: 8px; }
   .scr-activity-row > *:last-child { padding-right: 0; }
