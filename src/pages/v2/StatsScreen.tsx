@@ -74,7 +74,7 @@ const MEDALS = ["🥇", "🥈", "🥉"];
 
 const EMPTY_STATS: MemberStats = {
   plays: 0, wins: 0, losses: 0, draws: 0, winRate: 0,
-  avgApm: null, avgEapm: null, avgCmd: null, avgEcmd: null, avgBuild: null, buildMix: null, avgWorker5: null, mixPlays: null, mixSeconds: null,
+  avgApm: null, avgEapm: null, avgCmd: null, avgEcmd: null, avgBuild: null, buildMix: null, avgWorker5: null, mixPlays: null, mixSeconds: null, upPlays: null,
 };
 
 // 정렬 가능한 칸 — 건설/유닛/스킬은 순위로 줄 세울 값이 아니라 그 사람의 색깔이라 뺐다

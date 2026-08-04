@@ -1971,6 +1971,13 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 .scr-stat-upgrades > span { white-space: nowrap; }
 .scr-stat-up-head { color: var(--muted); }
 .scr-stat-up-row { color: var(--dim); text-align: left; }
+/* 어떤 경기만 셌는지 표 밑에 한 줄로 달아 둔다(요청: 아래에 당구장표시로 "n분 이상 경기
+   대상") — 안 적으면 이 수만 다른 칸과 다른 자로 잰 것이 안 보인다. 격자 네 칸을 통째로
+   써서 위 숫자들의 자리를 안 건드리고, 표 안의 어느 값보다 흐리게 둬 곁말로 읽히게 한다. */
+.scr-stat-up-note {
+  grid-column: 1 / -1; margin-top: 3px;
+  font-size: var(--fs-9); color: var(--dim); text-align: left; white-space: nowrap;
+}
 
 /* 랭크 칸 — 위에 순위(+변동), 아래에 포인트(요청: 두 줄). 두 줄 다 가운데 정렬이고
    각각 누를 수 있는 버튼을 품는다. */

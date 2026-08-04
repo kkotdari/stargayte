@@ -49,6 +49,13 @@ function PerMin({ value, unit }: { value: string | undefined; unit: string }) {
 
 /** 공/방/실드 단계 — 지상·공중 두 줄, 공·방·실드 세 칸(요청). 소수 첫째 자리까지 적는다:
  *  경기마다 0~3인 값을 평균 낸 것이라 정수로 반올림하면 "2.4와 2.6이 똑같이 2"가 된다. */
+/* 분모는 mixPlays가 아니라 upPlays다 — 3단계까지 올리려면 일정 시간이 필요해서, 짧은 판은
+   구조적으로 3이 될 수 없다. 그런 판까지 세면 평균이 실제보다 낮게 나온다(지적: 공방업이
+   너무 낮게 나온다). 서버가 그 조건을 넘긴 판만 세어 이 분모로 내려 준다. */
+/** 공/방/실드 평균을 낼 때 세는 경기의 최소 길이(분) — 서버의 _MIN_UPGRADE_SECONDS와 같은
+ *  값이다. 화면은 이 값을 표시하기만 하고 거르는 일은 서버가 한다. */
+const UPGRADE_MIN_MIN = 20;
+
 function UpgradeGrid({ mix, plays }: { mix: BuildMix; plays: number | null | undefined }) {
   if (!plays || plays <= 0) return null;
   const avg = (n: number) => (n / plays).toFixed(1);
@@ -67,6 +74,9 @@ function UpgradeGrid({ mix, plays }: { mix: BuildMix; plays: number | null | und
       <span>{avg(mix.upAw)}</span>
       <span>{avg(mix.upAa)}</span>
       <span>{avg(mix.upSh)}</span>
+      {/* 어떤 경기만 셌는지 밑에 적어 둔다(요청) — 안 적으면 다른 칸과 같은 자로 잰 값처럼
+          읽힌다. 표에 걸치게 두면 칸이 밀리므로 격자 한 줄을 통째로 쓴다. */}
+      <span className="scr-stat-up-note">※ {UPGRADE_MIN_MIN}분 이상 경기 대상</span>
     </div>
   );
 }
@@ -330,7 +340,7 @@ export default function MemberStatRow({
       <div className="scr-stat-skills-cell">
         {mix ? (
           <>
-            <UpgradeGrid mix={mix} plays={stats.mixPlays} />
+            <UpgradeGrid mix={mix} plays={stats.upPlays} />
             <TopList items={topEntries(mix.skills, TECH_KO, TOP_N, mix.skillSecs)} unit="회" />
           </>
         ) : (

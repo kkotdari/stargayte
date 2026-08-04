@@ -274,6 +274,10 @@ export interface MemberStats {
    *  구간이 3분도 안 되는 짧은 경기는 아예 안 쌓인다(replayBuildMix의 coreWindowOf).
    *  옛 경기에는 없다 — 운영 > 제어판의 '경기 재분석'을 돌려야 채워진다. */
   mixSeconds: number | null;
+  /** 공/방/실드 평균 단계만의 분모 — 위 mixPlays와 따로 둔다. 3단계까지 올리려면 일정
+   *  시간이 필요해서, 그만큼 길지 않은 경기는 아예 세지 않는다(요청). 옛 기록처럼 업그레이드
+   *  값을 안 실은 경기도 여기서 빠진다 — 0으로 세면 평균이 그만큼 깎인다. */
+  upPlays: number | null;
 }
 
 // 서버 집계(GET /api/game-results/stats) 응답 — 통계/랭킹 화면이 매치 원본을 직접 스캔하지 않고
