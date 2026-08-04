@@ -823,8 +823,11 @@ html.scr-light-theme {
   /* 라이트에서는 같은 색이 흰 바탕에 떠 버려 어두운 쪽으로 내려 잡는다. 여기서는 파스텔로
      밝히면 대비가 깎이므로(흰 바탕) 밝기는 그대로 두고 채도만 25%/20%낮추고 색상을 다크와
      같은 만큼 파랑 쪽으로 돌렸다. 흰 바탕 대비 5.0 / 5.9. */
-  --new-badge: #237e4e;
-  --update-badge: #386890;
+  /* 한 단계 밝게(요청: 라이트에서 NEW/UPDATE 배지색이 너무 어둡다) — 5.0/5.9에서
+     3.5/3.9로 내려가지만, 이 딱지는 글자를 그대로 적는 표시라 색은 '눈에 걸리는' 일만
+     하면 된다(뜻은 글자가 진다). 그 아래로는 흰 바탕에서 회색기가 돌아 더 못 간다. */
+  --new-badge: #1a9d5f;
+  --update-badge: #2a86c8;
   --text: #000000;
   --muted: rgba(0, 0, 0, 0.68);
   --dim: rgba(0, 0, 0, 0.48);
@@ -2074,7 +2077,21 @@ html:not(.scr-light-theme) .scr-donut {
   position: absolute; right: var(--scr-medal-edge); top: 50%; transform: translateY(-50%);
   font-size: var(--fs-subhead); line-height: 1; letter-spacing: 0;
 }
+/* 라이트에서는 금·은·동이 흰 바탕에 묻혀 연해 보인다(지적) — 이모지는 색 글꼴이라
+   color가 안 먹으므로 필터로 채도·대비를 올리고 얇은 그림자로 가장자리를 세운다.
+   다크에서는 검은 바탕이 이미 그 일을 해 줘서 그대로 둔다. */
+.scr-light-theme .scr-stat-medal {
+  filter: saturate(1.35) contrast(1.12) drop-shadow(0 0 0.5px rgba(0, 0, 0, 0.45));
+}
 .scr-stat-rank-line { padding-right: var(--scr-medal-slot); }
+/* 랭크 줄기의 메달만은 칸 오른쪽 끝이 아니라 값 바로 옆에 붙인다(지적: 포인트와 사이가
+   너무 멀다). 여기엔 막대가 없어 '칸 끝에 줄 세운다'는 이유가 없고, 줄이 가운데 정렬이라
+   칸 끝에 두면 값과의 거리가 값 길이에 따라 들쭉날쭉해진다("165 포인트"는 19px, "82
+   포인트"는 그보다 더). 자리(padding)는 그대로 비워 둬 칸 폭은 안 흔들린다. */
+.scr-stat-rank-val { position: relative; display: inline-flex; align-items: center; min-width: 0; }
+.scr-stat-rank-val .scr-stat-medal {
+  right: auto; left: 100%; margin-left: var(--scr-medal-gap);
+}
 /* 트랙 배경을 채움 비율(--scr-value-fill, ValueBar.tsx 인라인 변수)까지는 진하게, 나머지는
    옅게 칠하는 그라디언트 한 장으로 그린다(요청: "배경 막대를 채우기 — 나머지는 반투명
    100%길이") — 예전엔 채운 만큼만 별도 DOM(.scr-value-bar-track)으로 그려서 나머지
@@ -3372,6 +3389,12 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
    (다크 테마 기준 0.88 vs 0.68), 그동안 타임스탬프가 닉네임보다 더 또렷해 보였다.
    --dim에 opacity를 얹어 두 테마 모두에서 "닉네임 색조 그대로, 살짝만 더 흐리게"가 되게 한다. */
 .scr-activity-note-time { font-size: 10px; color: var(--dim); opacity: 0.75; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+/* 하루 안에 달린 댓글(요청) — 시각 바로 뒤다. 목록 줄의 NEW와 같은 연두·같은 창이라,
+   줄에서 본 표시가 펼친 뒤에도 같은 색으로 이어진다. */
+.scr-comment-new {
+  margin-left: 4px; font-size: var(--fs-9); font-weight: 800; letter-spacing: 0.02em;
+  color: var(--new-badge); flex-shrink: 0; line-height: 1;
+}
 .scr-activity-note-text { font-size: var(--fs-micro); }
 /* 수정·삭제 버튼을 댓글 내용이 끝나는 자리에(지적: 오른쪽 끝이 아니라 내용이 끝나는
    부분 바로 옆으로) — 텍스트가 담긴 <p> 안에 이어 붙는 인라인 요소라, 글이 짧으면
@@ -5676,7 +5699,11 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 /* 아무 응답 없이 끝난 두 가지(요청) — 취소는 부른 쪽이 거둬들인 것이라 "버림"과 같은
    무채색으로, 만료는 대기가 그대로 시들어 버린 것이라 대기색을 눌러 흐리게 둔다. */
 .scr-challenge-avatar-badge-canceled { color: #9a97a3; }
-.scr-challenge-avatar-badge-expired { color: #8f8467; }
+/* 만료 — 대기(금색)가 시들어 버린 것이라 채도를 뺀 금색이다. 검정 대비 5.7이던 것을
+   10.2로 올린다(지적: 다크에서 너무 어두워 잘 안 보인다). 흰 바탕에서는 이 밝기가
+   그대로면 2.6까지 떨어지므로 라이트에만 어두운 짝을 따로 둔다. */
+.scr-challenge-avatar-badge-expired { color: #c4b489; }
+.scr-light-theme .scr-challenge-avatar-badge-expired { color: #7a6a35; }
 /* 결과 배지(.scr-challenge-inline-win)는 승/무를 원(20×20) 안에 담지만, 이 응답 상태는
    알약도 원도 아니라 글자만(요청: "대기 수락 거절 배지는 알약 모양말고 글자만 표시") —
    원 배지의 모양 관련 속성(크기·테두리·배경·패딩·둥근모서리)을 전부 지워 순수 텍스트로
@@ -7130,14 +7157,18 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-activity-row-comment {
   flex: 0 0 auto; margin-left: 2px;
   font-size: 8px; font-weight: 700; line-height: 1;
-  color: var(--dim); white-space: nowrap;
+  /* 수는 내용 칸의 기본색 그대로다(요청) — 흐리게 눌러 두면 "몇 개인가"가 읽히기 전에
+     먼저 배경으로 물러난다. 색으로 알릴 것은 새것 여부(아래 NEW)뿐이다. */
+  color: var(--row-dim); white-space: nowrap;
 }
 /* 하루 안에 새로 달린 게 있으면 수까지 통째로 색을 올린다 — 수와 새것 여부는 같은 것에
    대한 말이라 떨어뜨려 놓으면 둘을 이어 읽어야 한다. NEW는 한 번 더 굵게.
    색은 제목 칸의 NEW와 같은 연두다(요청) — 한때 분홍 계열로 갈라 놨었는데, 둘 다 "하루
    안에 새로 생긴 것"이라는 같은 말이라 색까지 다르면 서로 다른 뜻처럼 읽힌다. 무엇에
    대한 새것인지는 자리(제목 칸 / 내용 칸)와 [n]이 이미 말해 준다. */
-.scr-activity-row-comment-fresh { color: var(--new-badge); }
+/* 새것은 NEW 글자에만 색을 준다 — 수까지 물들이면 그 줄에서 색을 쓰는 자리가 둘이 되어
+   제목 칸의 딱지와 경쟁한다. 색은 제목 칸 NEW와 같은 연두다(요청). */
+.scr-activity-row-comment-fresh b { color: var(--new-badge); }
 /* NEW만 살짝 띄운다(요청) — [n]은 밑선에 그대로 두고 이것만 올려서, 붙어 있으면서도
    수에 얹힌 말로 읽히게 한다. relative라 자리는 안 밀리므로 옆 시각 칸도 안 움직인다. */
 .scr-activity-row-comment-fresh b {
@@ -7184,10 +7215,11 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    색은 카드가 응답 배지에 쓰는 톤(.scr-challenge-avatar-badge-*)을 그대로 빌려 온다 —
    같은 사실을 카드에선 초록, 목록에선 회색으로 말하면 둘이 다른 것처럼 읽힌다. */
 .scr-activity-row-state {
-  position: absolute; left: 0; bottom: 100%;
-  /* -5px에서 -2px로 — 이름 오른쪽 바깥에 있을 땐 겹쳐도 글자를 안 건드렸지만, 첫 글자
-     바로 위로 옮기고 나니 그만큼 파고들어 "승"과 "C"가 맞붙어 보였다(실측). */
-  margin: 0 0 -2px 0;
+  /* 이름의 정좌측(요청) — 위에 얹던 것을 같은 줄로 내렸다. 카드가 손 이모지 옆에
+     배지를 두는 모양과 같아져, 목록과 카드가 같은 것을 같은 자리에서 말한다.
+     흐름에서 빼 둔 건 그대로다(absolute) — 배지가 있든 없든 이름 자리는 안 밀린다. */
+  position: absolute; right: 100%; top: 50%;
+  transform: translateY(-50%); margin: 0 3px 0 0;
   font-size: var(--fs-9); font-weight: 800; line-height: 1; white-space: nowrap;
   pointer-events: none;
 }

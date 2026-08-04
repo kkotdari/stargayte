@@ -208,7 +208,10 @@ export default function MemberStatRow({
                   {points === null ? (
                     <span className="scr-stat-points-empty">-</span>
                   ) : (
-                    <>
+                    /* 값과 메달을 한 껍데기로 묶는다 — 메달이 값 바로 옆에 서려면 기준이
+                       값이어야 한다(지적: 포인트와 메달 사이가 너무 멀다). 줄 전체를 기준으로
+                       두면 가운데 정렬 때문에 값 길이만큼 거리가 들쭉날쭉해진다. */
+                    <span className="scr-stat-rank-val">
                       <button
                         type="button" className="scr-stat-points-btn"
                         onClick={onPointsClick} aria-label={`${member.nickname} 포인트 상세`}
@@ -219,7 +222,7 @@ export default function MemberStatRow({
                         <span className="scr-stat-points-unit"> 포인트</span>
                       </button>
                       {medals?.points && <span className="scr-stat-medal">{medals.points}</span>}
-                    </>
+                    </span>
                   )}
                 </div>
               </>

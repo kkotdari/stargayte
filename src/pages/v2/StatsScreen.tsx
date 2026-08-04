@@ -95,7 +95,6 @@ const SORT_OPTS: { value: StatSortKey; label: string; dir: StatSortDir }[] = [
   { value: "cmd", label: "커맨드 많은순", dir: "desc" },
   { value: "name", label: "이름순", dir: "asc" },
 ];
-const SORT_SELECT_OPTS = SORT_OPTS.map(({ value, label }) => ({ value, label }));
 const sortOf = (key: StatSortKey): StatSort =>
   ({ key, dir: SORT_OPTS.find((o) => o.value === key)?.dir ?? "desc" });
 
@@ -139,6 +138,20 @@ export default function StatsScreenV2() {
   // 드롭다운 하나로 합쳤다(요청). 기본값은 이번 달.
   const [period, setPeriod] = useState<string>(currentMonthValue);
   const periodMonth = period === PERIOD_ALL ? "" : period;
+  /* 주종족으로 볼 때는 랭크·포인트를 아예 안 보여준다(요청).
+     이 둘만은 전체 종족 기준으로 남기 때문이다(serverRaceOf 주석) — 옆 칸들은 그 사람의
+     주종족 것인데 여기만 다른 잣대의 값이 서 있으면, 같은 줄에 놓였다는 이유만으로 서로
+     견줄 수 있는 값처럼 읽힌다. 정렬 기준에서도 뺀다(아래 sortOpts). */
+  const showRank = race !== "main";
+  const sortOpts = useMemo(
+    () => SORT_OPTS.filter((o) => showRank || o.value !== "points").map(({ value, label }) => ({ value, label })),
+    [showRank],
+  );
+  /* 고를 수 없게 된 기준을 그대로 쥐고 있으면 표가 안 보이는 값으로 줄 서 있게 된다 —
+     주종족으로 넘어가는 순간 게임수순으로 옮긴다(목록에 늘 있는 값이다). */
+  useEffect(() => {
+    if (!showRank) setSort((prev) => (prev.key === "points" ? sortOf("plays") : prev));
+  }, [showRank]);
 
   // 기간 드롭다운에 늘어놓을 월의 하한 — 첫 경기가 있는 달. 그보다 과거는 어차피 빈
   // 표라서 목록에 둘 이유가 없다. 한 번만 물어보고, 실패하면 이번 달만 남는다.
@@ -550,7 +563,7 @@ export default function StatsScreenV2() {
               정렬되는가"가 더는 하나로 안 정해진다. */}
           <div className="scr-stat-sortbar">
             <Select
-              className="scr-sentence-select" value={sort.key} options={SORT_SELECT_OPTS}
+              className="scr-sentence-select" value={sort.key} options={sortOpts}
               onChange={(v) => setSort(sortOf(v as StatSortKey))} minDropWidth={150}
             />
           </div>
@@ -607,11 +620,11 @@ export default function StatsScreenV2() {
                   key={c.member.id}
                   member={c.member}
                   stats={c.stats}
-                  points={c.points}
-                  rank={rankByMember.get(c.member.id) ?? null}
-                  rankDelta={rankDeltaByMember.get(c.member.id) ?? null}
+                  points={showRank ? c.points : undefined}
+                  rank={showRank ? rankByMember.get(c.member.id) ?? null : null}
+                  rankDelta={showRank ? rankDeltaByMember.get(c.member.id) ?? null : null}
                   onPointsClick={() => setPointMember(c.member)}
-                  onRankClick={shownMonth ? () => setTrendMember(c.member) : undefined}
+                  onRankClick={showRank && shownMonth ? () => setTrendMember(c.member) : undefined}
                   medals={medalByMember.get(c.member.id)}
                   // 주종족으로 볼 때만 — 줄마다 잣대가 다르니 그 종족을 닉네임 옆에
                   // 적는다(요청). 다른 필터에서는 제목 문장이 이미 말하고 있다.

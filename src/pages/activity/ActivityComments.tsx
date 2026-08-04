@@ -11,6 +11,14 @@ import { api } from "../../api/client";
 import { cx } from "../../utils/format";
 import { attachPopover } from "../../utils/popover";
 import { formatWhen, serverMs } from "../../utils/date";
+
+/** 하루 안에 달린 댓글인가(요청: 타임스탬프 옆 NEW) — 목록 줄의 [n]NEW와 같은 창(24시간)을
+ *  쓴다. 두 곳이 다른 창을 쓰면 "줄에는 NEW가 붙었는데 안에는 새 댓글이 없다"가 된다. */
+const COMMENT_NEW_WINDOW_MS = 24 * 60 * 60 * 1000;
+function isFreshComment(createdAt: string): boolean {
+  const age = Date.now() - serverMs(createdAt);
+  return age >= 0 && age <= COMMENT_NEW_WINDOW_MS;
+}
 import type { Member, ActivityComment, ActivityTargetType } from "../../types";
 
 // 게시판 댓글처럼 한 줄(요청: 한글 50자 제한). 입력부·목록의 생김새는 공용 댓글
@@ -657,6 +665,10 @@ export default function ActivityComments({ targetType, targetId }: { targetType:
                 공통 양식이 안 적용되고 있었다) — 방금 전/N분 전/오늘/어제/이번주 요일 등
                 활동 타임스탬프·너 나와 일정과 같은 규칙으로 읽힌다. */}
             <span className="scr-activity-note-time">{formatWhen(c.createdAt, { clock: true })}</span>
+            {/* 하루 안에 달린 댓글(요청) — 목록 줄의 [n]NEW가 "이 줄에 새 말이 붙었다"까지
+                말해 주고 나면, 펼친 뒤에는 그중 어느 것이 그 새 말인지가 다음 물음이다.
+                기준(24시간)은 목록 딱지와 같은 값이라 둘이 늘 같은 것을 가리킨다. */}
+            {isFreshComment(c.createdAt) && <span className="scr-comment-new">NEW</span>}
           </div>
         </div>
         {interactive && editingId === c.id ? (
