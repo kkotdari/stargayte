@@ -23,6 +23,11 @@ const DECIDE_AT = 4;
 const FLICK_VELOCITY = 0.5;
 const FLICK_MIN_SHIFT = 22;
 
+/** 글을 쓰는 칸인가 — 그 안에서 시작한 터치는 이 훅이 건드리지 않는다(위 onStart 주석). */
+function isEditable(el: Element | null): boolean {
+  return !!el?.closest("input, textarea, select, [contenteditable]:not([contenteditable=false])");
+}
+
 // 터치 지점에서 위로 올라가며 실제로 스크롤되는(overflow-y auto/scroll) 가장 가까운
 // 조상을 찾는다 — 이 컨테이너의 scrollTop이 0(최상단)일 때만 닫기 드래그로 본다.
 function findScroller(from: Element | null, stopAt: Element): HTMLElement | null {
@@ -76,6 +81,12 @@ export function useModalDragDismiss(): void {
     const onStart = (e: TouchEvent) => {
       if (e.touches.length !== 1) { reset(); return; }
       const target = e.target as HTMLElement | null;
+      /* 글을 쓰는 칸 안에서 시작한 터치에는 아예 손대지 않는다(지적: 모바일에서 선택 영역의
+         시작·끝을 못 옮긴다) — 거기서 손가락을 끄는 건 시트를 닫으려는 게 아니라 글자를
+         고르거나 선택 핸들을 옮기는 것이다. 아래 onMove는 스크롤 끝에서 리바운드를 막느라
+         touchmove를 preventDefault하는데, 그 한 번이 브라우저의 네이티브 선택 드래그를
+         통째로 끊어 버린다. 판정 자체를 안 하면 그런 일이 없다. */
+      if (isEditable(target)) { mode = "idle"; return; }
       const s = target?.closest<HTMLElement>(SHEET_SELECTOR) ?? null;
       if (!s) { mode = "idle"; return; }
       sheet = s;

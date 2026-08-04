@@ -42,9 +42,18 @@ function canScrollWithin(start: Element): boolean {
   return false;
 }
 
+/** 글을 쓰는 칸인가 — 그 안에서 난 문지름은 스크롤 의도가 아니라 글자를 고르는 동작이다.
+ *  실드 안(모달 등)의 입력칸에서 손가락을 끄는데 그 모달에 스크롤할 곳이 없으면 아래
+ *  onScrollIntent가 touchmove를 막았고, 그 한 번이 브라우저의 네이티브 선택 드래그를 통째로
+ *  끊었다(지적: 모바일에서 선택 영역의 시작·끝을 못 옮긴다). */
+function isEditableTarget(el: Element): boolean {
+  return !!el.closest("input, textarea, select, [contenteditable]:not([contenteditable=false])");
+}
+
 function onScrollIntent(e: Event) {
   const el = e.target instanceof Element ? e.target : null;
   if (!el) return;
+  if (isEditableTarget(el)) return;
   if (isShieldedTarget(el)) { e.preventDefault(); return; }
   // 잠금 중엔 문서가 스크롤 주체가 될 일이 없다 — 안쪽에 스크롤 가능한 영역이 있으면
   // 그 스크롤은 브라우저에 맡기고(끝에서의 체이닝은 overscroll-behavior:contain이 차단),
