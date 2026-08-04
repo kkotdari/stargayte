@@ -133,6 +133,9 @@
      서로 헷갈리지 않는다. 승/패 막대의 초록(--bar-win)과는 여전히 다른 색이다:
      저쪽은 '이겼다', 이쪽은 '새것'이라 뜻이 겹치면 안 된다. */
   --new-badge: #81ed9c;
+  /* 검토필요 — 초록(정상)·빨강(실패) 사이의 '한 번 봐야 함'이라 노랑이다. 너 나와의
+     대기 배지와 같은 금색 계열을 쓴다(검정 대비 8.1). */
+  --review-warn: #e0b64a;
   --update-badge: #86c5ef;
   /* (삭제) --comment-badge — 새 댓글 NEW를 자주로 갈라 놨던 색이다. 제목 칸의 NEW와
      같은 연두로 되돌렸다(요청): 둘 다 "하루 안에 새로 생긴 것"이라는 같은 말이라, 색이
@@ -830,6 +833,8 @@ html.scr-light-theme {
      3.5/3.9로 내려가지만, 이 딱지는 글자를 그대로 적는 표시라 색은 '눈에 걸리는' 일만
      하면 된다(뜻은 글자가 진다). 그 아래로는 흰 바탕에서 회색기가 돌아 더 못 간다. */
   --new-badge: #1a9d5f;
+  /* 라이트에서는 같은 금색이 흰 바탕에 묻힌다 — 밝기를 내려 잡는다(흰 바탕 대비 4.0). */
+  --review-warn: #9a7412;
   --update-badge: #2a86c8;
   --text: #000000;
   --muted: rgba(0, 0, 0, 0.68);
@@ -3964,6 +3969,44 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
 }
 .scr-replay-mapping-row-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .scr-replay-mapping-row-name { font-size: var(--fs-caption); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ── 검토창 한 줄(요청: 최대한 단순한 형태) ────────────────────────────────────
+   접힌 줄에는 파일명과 판정뿐이다 — 그 둘만으로 "이 파일은 그냥 등록해도 되나"에 답한다.
+   색과 배지가 같은 말을 두 번 하는 건 일부러다: 색은 목록을 훑을 때 한눈에 걸리고, 글자는
+   색을 못 가르는 눈에도 뜻을 남긴다. */
+.scr-replay-review-head {
+  width: 100%; background: transparent; border: none; padding: 0;
+  font-family: inherit; cursor: pointer; text-align: left;
+}
+.scr-replay-review-head .scr-replay-mapping-row-name { font-weight: 700; }
+.scr-replay-review-ok .scr-replay-mapping-row-name { color: var(--new-badge); }
+.scr-replay-review-warn .scr-replay-mapping-row-name { color: var(--review-warn); }
+.scr-replay-review-error .scr-replay-mapping-row-name { color: var(--loss); }
+/* 중복이라 등록에서 빠지는 줄 — 판정이 아니라 '할 일 없음'이라 흐리게 둔다. */
+.scr-replay-review-skip .scr-replay-mapping-row-name { color: var(--dim); }
+.scr-replay-review-badge {
+  flex: none; font-size: var(--fs-9); font-weight: 800; letter-spacing: 0.02em;
+  padding: 2px 7px; border-radius: 999px; white-space: nowrap;
+  border: 1px solid currentColor;
+}
+.scr-replay-review-ok .scr-replay-review-badge { color: var(--new-badge); }
+.scr-replay-review-warn .scr-replay-review-badge { color: var(--review-warn); }
+.scr-replay-review-error .scr-replay-review-badge { color: var(--loss); }
+.scr-replay-review-skip .scr-replay-review-badge { color: var(--dim); }
+/* 펼친 줄 맨 위의 "무엇을 하라는 건가" — 목록에서 이 줄을 연 이유가 여기 적힌다. */
+.scr-replay-review-why {
+  margin: 0; padding: 8px 10px 8px 26px; list-style: disc;
+  border-radius: var(--radius-sm); font-size: var(--fs-micro); line-height: 1.5;
+  color: var(--review-warn); background: rgba(var(--overlay-rgb), 0.05);
+}
+.scr-replay-review-why-error { color: var(--loss); }
+.scr-replay-review-game {
+  font-size: var(--fs-micro); color: var(--muted); font-variant-numeric: tabular-nums;
+}
+.scr-replay-review-actions { display: flex; justify-content: flex-end; }
+/* 등록을 막는 이유 — 버튼 바로 위다. 버튼이 왜 안 눌리는지를 버튼에서 가장 가까운
+   자리에서 말해야 한다. */
+.scr-replay-review-block { margin: 0 var(--modal-pad, 16px) 8px; text-align: right; }
 /* 승패 선택 — 리플레이가 승자를 못 가려낸 행에만 나온다. 목록이라 행마다 버튼을 다 깔면
    훑어보기 어려워서, 필요한 행에만 안내 문구와 함께 붙인다. */
 .scr-replay-mapping-result { display: flex; flex-direction: column; gap: 6px; align-items: center; }
@@ -4101,6 +4144,16 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    맡는다. */
 .scr-modal-match { max-width: 640px; height: auto; }
 .scr-modal-match-compact { height: auto; }
+/* 모바일에서는 화면을 통째로 쓴다(요청) — 리플레이를 여러 건 훑고 그 안에서 로스터까지
+   손보는 창이라, 좁은 화면에서 88vh 카드 안에 다시 스크롤을 만들면 세로가 두 겹이 된다.
+   가장자리 여백·둥근 모서리를 걷어 화면 하나가 곧 이 창이 되게 한다. */
+@media (max-width: 640px) {
+  .scr-modal-overlay:has(> .scr-modal-match) { padding: 0; }
+  .scr-modal-match, .scr-modal-match-compact {
+    max-width: none; width: 100%; height: 100dvh; max-height: 100dvh;
+    border-radius: 0; border-left: none; border-right: none;
+  }
+}
 
 /* ===== 랭킹 상세(최근 순위 변동) 모달 ===== */
 /* 아래 경기 이력 목록이 세로 스크롤(스크롤바)이라 오른쪽만 여백이 더 넓어 보였다 — 모달
@@ -7194,6 +7247,9 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    수에 얹힌 말로 읽히게 한다. relative라 자리는 안 밀리므로 옆 시각 칸도 안 움직인다. */
 .scr-activity-row-comment-fresh b {
   position: relative; top: -2px; font-weight: 800; margin-left: 1px;
+  /* 수보다 한 단계 작게(요청) — 자리는 그대로 수 뒤 어깨다. 읽어야 하는 값은 수이고
+     NEW는 그 수에 얹힌 말이라, 둘이 같은 크기면 어느 쪽이 값인지가 흐려진다. */
+  font-size: 8px;
 }
 /* 내용은 한 줄로 끝난다 — 넘치면 말줄임이다. 여기서 두 줄이 되면 줄 높이가 흔들려
    목록의 리듬이 깨진다. */

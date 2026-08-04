@@ -27,6 +27,71 @@ function summaryTextOf(d: ReplayDraft, members: Member[]): string | null {
   return renderReplaySummary(d.summaryData, (raw) => nickByRaw.get(raw) ?? raw);
 }
 
+/** 리플레이 한 건의 판정(요청) — 초록(정상) / 노랑(검토필요) / 빨강(실패), 그리고 그 이유.
+ *
+ *  갈래를 셋으로만 두는 건 이 창이 답해야 하는 물음이 하나이기 때문이다: "지금 그냥 등록해도
+ *  되나?" 초록은 되고, 노랑은 사람이 한 번 손대야 하고, 빨강은 아예 못 쓴다.
+ *
+ *  issues는 사람이 손대야 풀리는 것들이라 하나라도 남아 있으면 등록을 막는다(요청). notes는
+ *  알려만 주는 것들이라 막지 않는다 — "관전자로 의심된다"는 사람이 확인만 하면 되는 일이고,
+ *  거기에 남길 상태가 없어 영영 안 풀린 것으로 남기 때문이다. */
+type ReviewLevel = "ok" | "warn" | "error" | "skip";
+
+interface ReviewVerdict {
+  level: ReviewLevel;
+  badge: string;
+  issues: string[];
+  notes: string[];
+}
+
+function reviewOf(d: ReplayDraft): ReviewVerdict {
+  if (d.excludeReason === "duplicate") {
+    return { level: "skip", badge: d.merged ? "업데이트됨" : "이미 등록됨", issues: [], notes: [] };
+  }
+  if (d.parseError) {
+    return { level: "error", badge: "실패", issues: [`리플레이를 읽지 못했어요 — ${d.parseError}`], notes: [] };
+  }
+  const issues: string[] = [];
+  const notes: string[] = [];
+  if (d.teamSplitUncertain) {
+    issues.push("팀을 자동으로 나누지 못했어요(맵 자체의 한계) — 아래에서 직접 편을 갈라 주세요.");
+  }
+  const unmatched = [...d.unmatchedTeam1, ...d.unmatchedTeam2].map((p) => p.rawName);
+  if (unmatched.length > 0) {
+    issues.push(`아직 연결되지 않은 참가자가 있어요: ${unmatched.join(", ")} — 회원·컴퓨터·비회원 중 하나로 연결해 주세요.`);
+  }
+  if (!d.result) {
+    issues.push("승자를 자동으로 판별하지 못했어요 — 아래에서 직접 골라 주세요.");
+  }
+  if (d.guessedObservers.length > 0) {
+    notes.push(`관전자로 의심되는 사람이 있어요(노란 표시): ${d.guessedObservers.join(", ")} — 실제로 안 뛰었다면 그 칩에서 빼 주세요.`);
+  }
+  const short = shortMatchHint(d);
+  if (short) notes.push(short);
+  if (issues.length > 0) return { level: "warn", badge: "검토필요", issues, notes };
+  return { level: "ok", badge: "정상", issues: [], notes };
+}
+
+/** 펼쳤을 때 맨 위에 적는 한 줄 — 언제 시작해 얼마나 걸린 무슨 경기였나(요청: 게임정보). */
+function gameLineOf(d: ReplayDraft): string {
+  const parts: string[] = [];
+  if (d.gameStartedAt) {
+    const t = new Date(d.gameStartedAt);
+    if (!Number.isNaN(t.getTime())) {
+      parts.push(`${t.getMonth() + 1}월 ${t.getDate()}일 `
+        + `${String(t.getHours()).padStart(2, "0")}:${String(t.getMinutes()).padStart(2, "0")}`);
+    }
+  } else if (d.date) parts.push(d.date);
+  if (d.mapName) parts.push(d.mapName);
+  if (d.durationSeconds != null) {
+    parts.push(`${Math.floor(d.durationSeconds / 60)}분 ${String(d.durationSeconds % 60).padStart(2, "0")}초`);
+  }
+  parts.push(d.matchType === "0101" ? "개인전" : "팀전");
+  const RESULT_KO: Record<string, string> = { team1: "1팀 승", team2: "2팀 승", draw: "무승부", not_held: "미실시" };
+  parts.push(d.result ? RESULT_KO[d.result] ?? d.result : "승패 미정");
+  return parts.join(" · ");
+}
+
 interface ReplayReviewModalProps {
   // 분석은 이 모달을 열기 전에 이미 끝나 있다(부모가 buildReplayDrafts로 미리 만들어 전달).
   drafts: ReplayDraft[];
@@ -66,6 +131,9 @@ export default function ReplayReviewModal({
   const [err, setErr] = useState("");
   const [confirmCloseOpen, setConfirmCloseOpen] = useState(false);
   const [excludeComputer, setExcludeComputer] = useState(false);
+  /* 목록은 접힌 채로 시작한다(요청: 누르면 아래로 펼쳐지며 게임정보) — 판정과 파일명만
+     쭉 훑고, 손댈 것이 있는 건만 열어 보는 흐름이다. */
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   const resolveDefaultRace = useDefaultRaceResolver(members);
 
@@ -209,9 +277,15 @@ export default function ReplayReviewModal({
   // 대신(되돌릴 방법이 없어 보임) 계속 목록에 남아 딤 처리만 되고, 제외를 다시 풀 수도
   // 있다 — 자동 제외(중복)는 애초에 되돌릴 수 없으므로(버튼 자체가 숨겨짐) 여기 남겨둘
   // 이유가 없어 뺀다. 등록이 끝난 건 사라진다.
-  const visibleIndices = drafts
-    .map((_, i) => i)
-    .filter((i) => !submittedIndices.has(i) && drafts[i].excludeReason !== "duplicate");
+  /* 검토 대상이 있건 없건 전부 보여준다(요청) — 중복이라 등록에서 빠지는 것도 목록에는
+     남는다. "왜 이 파일은 아무 데도 안 보이지"가 이 창에서 가장 자주 나오던 물음이었다. */
+  const visibleIndices = drafts.map((_, i) => i).filter((i) => !submittedIndices.has(i));
+
+  /* 사람이 손대야 풀리는 것이 남은 건들 — 하나라도 있으면 등록을 막는다(요청). 제외한
+     건은 애초에 등록에 안 들어가므로 세지 않는다. */
+  const blocked = visibleIndices
+    .map((i) => ({ i, v: reviewOf(drafts[i]) }))
+    .filter(({ i, v }) => !drafts[i].excluded && v.issues.length > 0);
 
   const pendingIndices = drafts.map((_, i) => i).filter((i) => !drafts[i].excluded && !submittedIndices.has(i));
   const nonExcludedCount = drafts.filter((d) => !d.excluded).length;
@@ -294,14 +368,41 @@ export default function ReplayReviewModal({
                 const candidates = members.filter((m) => m.status === "active" && !usedIds.has(m.id));
                 const suspectedSet = new Set(d.guessedObservers);
 
+                const v = reviewOf(d);
+                const open = openIndex === i;
                 return (
                   <div key={d.fileName + i} className={cx("scr-replay-mapping-row", d.excluded && "scr-replay-draft-body-excluded")}>
-                    <div className="scr-replay-mapping-row-head">
-                      <span className="scr-mono scr-replay-mapping-row-name">
-                        {d.fileName}{d.mapName ? ` · ${d.mapName}` : ""}
-                      </span>
+                    {/* 줄 하나 = 리플레이 하나. 파일명 색과 오른쪽 배지가 판정을 말하고,
+                        누르면 그 아래로 게임정보와 손댈 거리가 펼쳐진다(요청). */}
+                    <button
+                      type="button"
+                      className={cx("scr-replay-mapping-row-head", "scr-replay-review-head",
+                        `scr-replay-review-${v.level}`, open && "scr-replay-review-head-open")}
+                      onClick={() => setOpenIndex(open ? null : i)}
+                      aria-expanded={open}
+                    >
+                      <span className="scr-mono scr-replay-mapping-row-name">{d.fileName}</span>
+                      <span className="scr-replay-review-badge">{v.badge}</span>
+                    </button>
+
+                    {open && (<>
+                    {/* 손댈 거리와 알림은 맨 위다(요청: 검토필요·실패는 최상단에 상태 설명) —
+                        펼친 사람이 가장 먼저 알아야 하는 것이 "무엇을 하라는 건가"다. */}
+                    {v.issues.length > 0 && (
+                      <ul className={cx("scr-replay-review-why", v.level === "error" && "scr-replay-review-why-error")}>
+                        {v.issues.map((t) => <li key={t}>{t}</li>)}
+                      </ul>
+                    )}
+                    {v.notes.map((t) => (
+                      <div key={t} className="scr-hint scr-hint-left scr-hint-point">{t}</div>
+                    ))}
+
+                    {/* 언제 시작해 얼마나 걸린 무슨 경기였나(요청: 게임정보). */}
+                    <div className="scr-replay-review-game">{gameLineOf(d)}</div>
+
+                    <div className="scr-replay-review-actions">
                       {d.excludeReason === "duplicate" ? (
-                        <span className="scr-hint">{d.merged ? "기존 경기에 업데이트됨" : "이미 등록된 경기예요"}</span>
+                        <span className="scr-hint">{d.merged ? "기존 경기에 업데이트됐어요" : "이미 등록된 경기예요"}</span>
                       ) : (
                         <button
                           type="button" className="scr-btn scr-btn-ghost scr-btn-sm"
@@ -320,37 +421,11 @@ export default function ReplayReviewModal({
                       <div className="scr-replay-summary-preview">{summaryTextOf(d, members)}</div>
                     )}
 
-                    {d.parseError && <div className="scr-err">{d.parseError}</div>}
-
-                    {/* 2분도 안 되는 경기 — 자동으로 빼지 않고 여기서 알려만 준다(요청).
-                        진짜 짧게 끝난 판일 수도 있어서, 등록할지 제외할지는 사람이 정한다. */}
-                    {shortMatchHint(d) && (
-                      <div className="scr-replay-short-note">{shortMatchHint(d)}</div>
-                    )}
-
-                    {/* 일부 UMS 맵(슈퍼빨무 등)은 관전 슬롯이 섞이면 screp이 실제 참가자
-                        전원에게 같은 팀 번호를 매겨버려 자동으로 편을 못 나눈다 — 아래
-                        로스터에 전원이 1팀으로 몰려있고 2팀은 비어있을 거라고 미리 알려준다. */}
-                    {d.teamSplitUncertain && (
-                      <div className="scr-err">
-                        이 리플레이는 팀을 자동으로 나누지 못했어요(맵 자체의 한계) — 아래에서 직접 편을 갈라 주세요.
-                      </div>
-                    )}
-
-                    {/* 조작량이 적어 관전자로 의심되는 사람 — 로스터에서 빼지 않고 아래
-                        칩에 노란 글로우로 표시했다. 진짜 관전자면 그 칩에서 직접 빼면 된다. */}
-                    {d.guessedObservers.length > 0 && (
-                      <div className="scr-hint scr-hint-left scr-hint-point">
-                        관전자로 의심돼요(노란 표시): {d.guessedObservers.join(", ")} — 실제로 안 뛰었다면 그 칩에서 제거해 주세요.
-                      </div>
-                    )}
-
                     {/* 리플레이가 승자를 못 가려낸 경기만 승패 버튼이 나온다 — 판별된 경기는
-                        그 값을 그대로 쓰므로 굳이 고를 게 없다(이 모달은 목록이라 행마다
-                        버튼을 다 깔면 훑어보기 어렵다). */}
+                        그 값을 그대로 쓰므로 굳이 고를 게 없다. 왜 골라야 하는지는 위
+                        판정 설명이 이미 말했으므로 여기서는 버튼만 둔다. */}
                     {!d.result && !d.parseError && (
                       <div className="scr-replay-mapping-result">
-                        <span className="scr-hint scr-hint-point">승자를 자동으로 판별하지 못했어요 — 직접 선택해 주세요.</span>
                         <div className="scr-replay-mapping-result-btns">
                           {([
                             ["team1", "1팀승"], ["draw", "무"], ["team2", "2팀승"],
@@ -408,6 +483,7 @@ export default function ReplayReviewModal({
                         />
                       </div>
                     </div>
+                    </>)}
                   </div>
                 );
               })}
@@ -417,9 +493,19 @@ export default function ReplayReviewModal({
           {err && <div className="scr-err">{err}</div>}
 
         </div>
+        {/* 손볼 것이 남아 있으면 등록을 막는다(요청) — 무엇이 몇 건 남았는지까지 적어야
+            사람이 목록에서 그것들을 찾아 열어 볼 수 있다. */}
+        {blocked.length > 0 && (
+          <div className="scr-err scr-replay-review-block">
+            아직 손봐야 할 리플레이가 {blocked.length}건 있어요 — 노란 줄을 눌러 조치하거나 제외해 주세요.
+          </div>
+        )}
         <div className="scr-form-actions">
           <button type="button" className="scr-btn scr-btn-ghost" onClick={requestClose}>취소</button>
-          <button type="button" className="scr-btn scr-btn-primary" onClick={submitAll} disabled={busy}>
+          <button
+            type="button" className="scr-btn scr-btn-primary" onClick={submitAll}
+            disabled={busy || blocked.length > 0}
+          >
             {/* 활동 "게임결과 등록" 메뉴와 같은 업로드 아이콘으로 통일(요청). */}
             {busy ? <><Spinner /> 등록 중... ({submittedIndices.size}/{nonExcludedCount})</> : <><Upload size={14} /> 등록 ({pendingIndices.length})</>}
           </button>

@@ -3,9 +3,8 @@ import { Spinner } from "./Feedback";
 import ConfirmDialog from "./ConfirmDialog";
 import ReplayReviewModal from "../../modals/ReplayReviewModal";
 import { useAppStore } from "../../store/appStore";
-import { buildReplayDrafts, resolveUnmatchedAsUnregistered, shortMatchHint, validateReplayDraft } from "../../utils/replayDraft";
+import { buildReplayDrafts } from "../../utils/replayDraft";
 import type { ReplayDraft } from "../../utils/replayDraft";
-import type { GameOutcome, NewGameResult } from "../../types";
 
 // 한 번에 분석·등록하는 파일 묶음 크기 — 리플레이 하나당 첨부파일을 통째로 data URL로
 // 들고 있어서(등록 payload에 그대로 실려 간다), 폴더에 수백 개가 있으면 전부 한꺼번에
@@ -41,13 +40,11 @@ const EMPTY_TALLY: BatchTally = { total: 0, done: 0, registered: 0, duplicate: 0
 // 전체에서 리플레이(.rep)를 찾아 자동으로 등록한다(요청: 버튼 하나로).
 //
 // 리플레이를 사람이 훑어보는 검토 화면(ReplayReviewModal)과 달리 여기서는 사람이 개입하지 않는다:
-// 배틀태그로 회원을 못 찾은 선수는 전부 "비회원" 슬롯으로 채워 넣고(나중에 유저 매핑
-// 관리 화면에서 실제 회원으로 연결하면 된다), 이미 등록된 경기는 건너뛴다. 승패도 리플레이가
-// 판별한 값을 그대로 쓰되, 판별하지 못한 경기는 조용히 틀린 기록을 남기느니 실패로 남기고
-// 넘어간다 — 그런 것들만 모아 끝난 뒤 검토 화면을 자동으로 연다.
+// 이 버튼은 '읽어 오기'까지만 한다(요청) — 고른 파일을 전부 분석해 검토창으로 넘기고,
+// 무엇을 등록할지는 거기서 정한다. 예전에는 깨끗한 것만 여기서 조용히 등록되고 나머지만
+// 검토창으로 넘어가, 방금 무엇이 들어갔는지 사람이 볼 방법이 없었다.
 export default function ReplayBatchButton() {
   const members = useAppStore((s) => s.members);
-  const addGameResult = useAppStore((s) => s.addGameResult);
 
   const [tally, setTally] = useState<BatchTally>(EMPTY_TALLY);
   const [running, setRunning] = useState(false);
@@ -141,11 +138,6 @@ export default function ReplayBatchButton() {
       done[outcome] += 1;
       setTally({ ...done });
     };
-    // 실패한 리플레이는 검토 화면으로 넘길 수 있게 드래프트를 붙잡아둔다.
-    const fail = (draft: ReplayDraft) => {
-      record("failed");
-      setManualDrafts((prev) => (prev.length >= MAX_MANUAL_DRAFTS ? prev : [...prev, draft]));
-    };
 
     try {
       for (let start = 0; start < files.length; start += CHUNK_SIZE) {
@@ -165,48 +157,24 @@ export default function ReplayBatchButton() {
           continue;
         }
 
+        /* 등록은 여기서 하지 않는다(요청: 검토창에서 모든 리플레이를 목록으로 보고,
+           손볼 것이 남아 있으면 등록 불가) — 배치는 '읽어 오기'까지만 하고, 무엇을 등록할지는
+           검토창 한 곳에서 정한다. 예전에는 깨끗한 것만 조용히 등록되고 나머지만 검토창으로
+           넘어와, 방금 무엇이 들어갔는지 사람이 볼 방법이 없었다. */
         for (const draft of drafts) {
           if (abortRef.current) break;
-
-          if (draft.parseError) { fail(draft); continue; }
-          if (draft.excludeReason === "duplicate") { record("duplicate"); continue; }
-
-          // 아래 넷은 전부 '사람이 봐야 하는' 경우다 — 승자를 못 가렸거나, 맵 한계로 팀이
-          // 안 갈렸거나, 관전자로 의심되는 사람이 있거나, 2분도 안 되는 판이거나.
-          // 조용히 틀린 기록을 남기지 않고 검토 화면으로 넘긴다.
-          if (draft.winnerSide === null) { fail(draft); continue; }
-          if (draft.teamSplitUncertain) { fail(draft); continue; }
-          if (draft.guessedObservers.length > 0) { fail(draft); continue; }
-          if (shortMatchHint(draft)) { fail(draft); continue; }
-
-          const filled = resolveUnmatchedAsUnregistered(draft);
-          if (validateReplayDraft(filled)) { fail(draft); continue; }
-
-          const payload: NewGameResult = {
-            // winnerSide가 null인 드래프트는 위에서 이미 실패로 걸렀으므로 승패는 항상 채워져 있다.
-            date: filled.date, team1: filled.team1, team2: filled.team2, result: filled.result as GameOutcome,
-            matchType: filled.matchType, replay: filled.replay,
-            mapName: filled.mapName || null, gameStartedAt: filled.gameStartedAt,
-            durationSeconds: filled.durationSeconds,
-            summaryData: filled.summaryData,
-            mapData: filled.mapGrid,
-          };
-          try {
-            await addGameResult(payload);
-            record("registered");
-          } catch {
-            fail(draft);
-          }
+          record(draft.parseError ? "failed"
+            : draft.excludeReason === "duplicate" ? "duplicate" : "registered");
+          setManualDrafts((prev) => (prev.length >= MAX_MANUAL_DRAFTS ? prev : [...prev, draft]));
         }
       }
-      /* 끝나면 한 번에 알린다(요청: 경기 재분석처럼) — 도는 동안 로그를 지켜볼 필요가
-         없어진 만큼, 무엇이 어떻게 됐는지는 여기서 한 줄로 말해야 한다. */
+      /* 중단했을 때만 알린다 — 끝까지 다 읽었으면 바로 검토창이 열리므로, 그 앞에 알림을
+         한 겹 더 세우면 같은 말을 두 번 하는 셈이다. */
       const left = done.total - done.done;
-      window.alert(
-        `${left > 0 ? `배치를 중단했어요 (${left}개 남음).\n` : ""}`
-        + `등록 ${done.registered} · 중복 ${done.duplicate} · 실패 ${done.failed}`
-        + `${done.failed > 0 ? "\n실패한 것은 이어서 직접 등록할 수 있어요." : ""}`,
-      );
+      if (left > 0) window.alert(`배치를 중단했어요 (${left}개 남음).`);
+      /* 다 읽었으면 곧바로 검토창을 연다 — 이 버튼은 이제 '읽어 오기'까지만 하므로,
+         읽고 나서 아무것도 안 열리면 방금 한 일이 어디로 갔는지 알 수 없다. */
+      setReviewOpen(true);
     } catch (e) {
       // 여기까지 올라오는 건 위에서 안 잡은 예상 밖의 예외뿐이다 — 그냥 두면 배치가 아무
       // 메시지도 없이 조용히 끝나버려 무슨 일이 있었는지 알 길이 없다.
@@ -256,23 +224,23 @@ export default function ReplayBatchButton() {
 
       {err && <div className="scr-err">{err}</div>}
 
-      {/* 자동으로 처리하지 못한 것들(승자 미판별·팀 미분리·관전자 의심 등)은 사람이 직접
-          채워야 한다 — 다 끝난 뒤 그 리플레이만 모아 이 버튼 하나로 넘어간다. */}
+      {/* 검토창을 닫았다가 다시 열 수 있는 입구 — 읽어 온 것은 그대로 들고 있으므로
+          파일을 다시 고를 필요가 없다. */}
       {pendingReview && (
         <button
           type="button"
           className="scr-btn scr-btn-primary scr-admin-panel-batch-review"
           onClick={() => setReviewOpen(true)}
         >
-          직접 등록할 {manualDrafts.length}개 열기
+          읽어 온 {manualDrafts.length}개 다시 열기
         </button>
       )}
 
       {pendingFiles && (
         <ConfirmDialog
-          title={`리플레이 ${pendingFiles.length}개를 등록할까요?`}
-          message="고른 리플레이를 하나씩 분석해 자동으로 등록합니다. 이미 등록된 경기는 건너뛰고, 자동으로 처리하지 못한 것은 끝난 뒤 직접 등록할 수 있어요."
-          confirmLabel="등록"
+          title={`리플레이 ${pendingFiles.length}개를 읽어 올까요?`}
+          message="고른 리플레이를 하나씩 분석해 검토창에 늘어놓습니다. 등록할지 뺄지는 그 창에서 정합니다."
+          confirmLabel="읽어 오기"
           className="scr-admin-panel-batch-confirm"
           onConfirm={() => { const f = pendingFiles; setPendingFiles(null); void executeBatch(f); }}
           onCancel={() => setPendingFiles(null)}
