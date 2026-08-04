@@ -42,10 +42,6 @@ export default function AdminPanelScreen({ isAdmin }: AdminPanelScreenProps) {
   const [versionManageOpen, setVersionManageOpen] = useState(false);
   const [togglingNotice, setTogglingNotice] = useState(false);
   const [downloading, setDownloading] = useState(false);
-  // 순위 기준선 다시 깔기 — 눌러 놓고 결과를 바로 알려준다(운영자 1회용).
-  const [seeding, setSeeding] = useState(false);
-  const [recomputing, setRecomputing] = useState(false);
-  const [confirmSeed, setConfirmSeed] = useState(false);
   /* 경기 재분석 — 이미 등록된 경기의 리플레이를 다시 읽어, 리플레이에서 나오는 값을 전부
      새로 써 넣는다(요청). 파서와 규칙으로 뽑아내는 파생 데이터라 그쪽이 좋아지면 옛 경기도
      함께 좋아져야 하는데, 지금까지는 리플레이를 다시 올리는 수밖에 없었다. 진행 상황은
@@ -90,25 +86,6 @@ export default function AdminPanelScreen({ isAdmin }: AdminPanelScreenProps) {
       setErr(e instanceof Error ? e.message : "삭제하지 못했어요.");
     } finally {
       setBusy(false);
-    }
-  };
-
-  // 지금 집계 — 스케줄러가 아침에 하는 것과 똑같은 일을 손으로 돌린다(요청). 아침을
-  // 기다리지 않고 확인할 수 있고, 스케줄러가 정말 도는지 눈으로 보는 데도 쓴다.
-  // 여러 번 눌러도 순위표가 그대로면 아무것도 안 남는다(recompute_daily가 그렇게 만들어져
-  // 있다) — 그래서 확인창 없이 바로 돌린다.
-  const recomputeRanks = async () => {
-    setRecomputing(true);
-    setErr("");
-    try {
-      const { changed } = await api.recomputeRankingShifts();
-      window.alert(changed
-        ? "랭킹을 다시 집계했어요. 활동에 변동 카드가 올라갑니다."
-        : "랭킹을 다시 집계했어요. 순위가 그대로여서 남길 변동은 없었어요.");
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "집계하지 못했어요.");
-    } finally {
-      setRecomputing(false);
     }
   };
 
@@ -194,24 +171,6 @@ export default function AdminPanelScreen({ isAdmin }: AdminPanelScreenProps) {
     } finally {
       pool?.close();
       setRedo(null);
-    }
-  };
-
-  // 순위 기준선 적재 — 지금 순위표를 스냅샷으로 남겨 다음 아침 재집계의 비교 대상으로
-  // 삼는다. 변동 없이 저장돼 활동에는 안 뜨고, 여러 번 눌러도 이번 달 기준선을 덮어쓸
-  // 뿐 행이 쌓이지 않는다.
-  const reseedRanks = async () => {
-    setSeeding(true);
-    setErr("");
-    try {
-      const counts = await api.reseedRankingShifts();
-      window.alert(
-        `순위 기준선을 새로 깔았어요.\n개인전 ${counts["0101"] ?? 0}명 · 팀전 ${counts["0102"] ?? 0}명`,
-      );
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "기준선을 만들지 못했어요.");
-    } finally {
-      setSeeding(false);
     }
   };
 
@@ -373,27 +332,13 @@ export default function AdminPanelScreen({ isAdmin }: AdminPanelScreenProps) {
                   </button>
                 </div>
 
-                {/* 랭킹 관리 — 순위 스냅샷 쪽 일은 경기관리와 성격이 달라 소제목을 따로
-                    뒀다(요청). */}
-                <div className="scr-admin-panel-section-title">랭킹 관리</div>
-                <div className="scr-admin-panel-grid">
-                  {/* 현재 랭킹 집계하기 — 스케줄러(아침)와 같은 로직을 지금 돌린다(요청).
-                      순위가 그대로면 아무것도 안 남으므로 확인창 없이 바로 실행한다. */}
-                  <button
-                    type="button" className="scr-btn scr-btn-primary"
-                    onClick={() => void recomputeRanks()} disabled={recomputing}
-                  >
-                    {recomputing ? <Spinner /> : "현재 랭킹 집계"}
-                  </button>
-                  {/* 순위 기준선 적재 — 지금 데이터로 스냅샷을 남긴다(1회용). 되돌릴 수는
-                      없지만 파괴적이지도 않아서(덮어쓰기) 확인창만 한 번 거친다. */}
-                  <button
-                    type="button" className="scr-btn scr-btn-primary"
-                    onClick={() => setConfirmSeed(true)} disabled={seeding}
-                  >
-                    {seeding ? <Spinner /> : "순위 기준선"}
-                  </button>
-                </div>
+                {/* (삭제) 랭킹 관리 — "현재 랭킹 집계"와 "순위 기준선" 두 버튼이 있던
+                    자리다. 랭크 변동 기능을 멈춰 두면서(요청: 지금 구조가 깔끔하지 않아
+                    일단 기능을 멈춘다) 버튼과 그 핸들러·확인창까지 함께 걷어냈다 — 눌러도
+                    서버가 409로 막으므로(RANKING_SHIFT_ENABLED) 남겨 두면 못 쓰는 버튼만
+                    남는다. 다시 켤 때는 이 커밋을 되짚으면 된다. API 클라이언트의
+                    recomputeRankingShifts·reseedRankingShifts는 엔드포인트가 그대로라
+                    남겨 뒀다. */}
 
               </>
             )}
@@ -422,16 +367,6 @@ export default function AdminPanelScreen({ isAdmin }: AdminPanelScreenProps) {
           confirmLabel="다시 분석"
           onConfirm={() => { setConfirmRedo(false); void reanalyzeGames(); }}
           onCancel={() => setConfirmRedo(false)}
-        />
-      )}
-
-      {confirmSeed && (
-        <ConfirmDialog
-          title="지금 순위표를 기준선으로 저장할까요?"
-          message="개인전·팀전 순위표를 그대로 스냅샷으로 남깁니다. 활동에는 안 뜨고, 다음 아침 재집계가 이 기준선과 비교해 변동을 만듭니다."
-          confirmLabel="기준선 저장"
-          onConfirm={() => { setConfirmSeed(false); void reseedRanks(); }}
-          onCancel={() => setConfirmSeed(false)}
         />
       )}
 
