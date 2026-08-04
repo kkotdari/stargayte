@@ -7313,7 +7313,10 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
      왼쪽 끝 바로 위에 선다. bottom:100%는 글자 상자의 윗선 — 줄 위 여백 안에 들어앉아
      줄 높이를 안 건드린다. 딱지가 제목보다 길어 넘칠 때는 칸의 오른쪽 패딩(10px) 쪽으로
      삐져나가되, 번호와는 flex 형제라 절대 겹치지 않는다. */
-  position: absolute; left: 0; right: 0; bottom: 100%; margin-bottom: 2px;
+  /* 제목 글자 윗선에서 얼마나 띄우나 — 살짝 내린다(요청). 2px 띄우던 것을 1px 겹치게
+     둔다: 글자 상자는 글자 자체보다 위아래로 여유가 있어(line-height), 상자 기준으로 1px
+     겹쳐도 눈에 보이는 글자끼리는 여전히 떨어져 있다. */
+  position: absolute; left: 0; right: 0; bottom: 100%; margin-bottom: -3px;
   display: flex; align-items: center; gap: 6px; line-height: 1;
   /* 줄 전체가 버튼이라 여기서 클릭을 가로채면 안 된다. */
   pointer-events: none;
@@ -7346,10 +7349,12 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   /* 대괄호 안에 수와 NEW가 함께 들어간다(요청) — 둘은 같은 것("댓글")에 대한 말이라 한
      묶음으로 읽혀야 한다. inline-flex로 묶어 수와 NEW의 중심을 맞춘다. */
   display: inline-flex; align-items: center;
-  flex: 0 0 auto; margin-left: 2px;
-  /* 12px까지 올렸다(요청) — 8 → 9 → 10 → 12. 딱지들보다 작게 두려던 값인데, 이건 딱지가
-     아니라 읽어야 하는 수다. 이 칸의 본문(--fs-caption 14px) 바로 아래 단계다. */
-  font-size: var(--fs-micro); font-weight: 700; line-height: 1;
+  /* 내용 글에 더 붙인다(요청) — 칸의 공용 간격(.scr-activity-row-desc의 gap 6px)을 제
+     왼쪽에서만 되돌린다. 다른 조각들 사이는 그대로 6px이다. */
+  flex: 0 0 auto; margin-left: -3px;
+  /* 14px까지 올렸다(요청) — 8 → 9 → 10 → 12 → 14. 딱지들보다 작게 두려던 값인데, 이건
+     딱지가 아니라 읽어야 하는 수다. 이제 이 칸의 본문과 같은 크기다. */
+  font-size: var(--fs-caption); font-weight: 700; line-height: 1;
   /* 수는 내용 칸의 기본색 그대로다(요청) — 흐리게 눌러 두면 "몇 개인가"가 읽히기 전에
      먼저 배경으로 물러난다. 색으로 알릴 것은 새것 여부(아래 NEW)뿐이다. */
   color: var(--row-dim); white-space: nowrap;
