@@ -480,13 +480,8 @@ export default function ReplayReviewModal({
           {err && <div className="scr-err">{err}</div>}
 
         </div>
-        {/* 손볼 것이 남아 있으면 등록을 막는다(요청) — 무엇이 몇 건 남았는지까지 적어야
-            사람이 목록에서 그것들을 찾아 열어 볼 수 있다. */}
-        {blocked.length > 0 && (
-          <div className="scr-err scr-replay-review-block">
-            아직 손봐야 할 리플레이가 {blocked.length}건 있어요 — 노란 줄을 눌러 조치하거나 제외해 주세요.
-          </div>
-        )}
+        {/* (삭제) "아직 손봐야 할 리플레이가 N건" 안내 — 등록 버튼이 이미 꺼져 있고 목록의
+            노란 줄이 어느 것인지 말하고 있어, 같은 사실을 세 번째로 적는 자리였다(요청). */}
         <div className="scr-form-actions">
           <button type="button" className="scr-btn scr-btn-ghost" onClick={requestClose}>취소</button>
           <button

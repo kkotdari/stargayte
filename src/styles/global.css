@@ -363,7 +363,6 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
    문제 — body를 position:fixed로 바꿔도 해결 안 됐던 게 사실은 이 overflow였다).
    본 화면은 #scroll-root 하나만 스크롤 가능하면 충분하므로 아예 없앤다. */
 /* (문서 스크롤 전환 후 별도 안전망 스크롤이 필요 없어졌다 — 클래스는 마크업에 남아 있어 빈 규칙만 유지.) */
-.scr-app-fallback-scroll { }
 
 .scr-mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 .scr-spin { animation: scr-spin 0.9s linear infinite; }
@@ -673,7 +672,6 @@ html.scr-light-theme .scr-checkbox-field input[type="radio"]:not(:checked), html
    공유하므로 여기 한 번만 원형으로 강제하면 네 곳 모두 한꺼번에 적용된다(랭킹/경기결과
    v2와 같은 "원형 강제" 패턴 — Avatar가 크기별 각진 반경을 인라인 style로 계산해 넣으므로
    덮어쓰려면 !important가 필요하다). */
-.scr-avatar-pick .scr-avatar { border-radius: 50% !important; }
 /* 사진 변경/삭제 버튼 — 사진을 가리지 않도록 사진 밖(오른쪽)에 나란히 배치한다. */
 .scr-avatar-pick-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 /* 테두리 대신 그림자로 띄운 동그란 버튼 — 아바타 편집 버튼들과 같은 톤. 색은 위치가
@@ -1239,7 +1237,6 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 /* 다른 메뉴 탭(.scr-nav-tab)과 같은 호버 효과로 통일 — 배경 채움 대신 닉네임 글자색만
    밝아진다(평소엔 옅게, 호버 때 또렷하게). */
 .scr-user-chip { display: flex; align-items: center; gap: 8px; background: transparent; border: none; padding: 4px 10px 4px 4px; cursor: pointer; color: var(--muted); border-radius: var(--radius-sm); overflow: hidden; }
-.scr-user-chip .scr-avatar { border-radius: 50% !important; }
 @media (hover: hover) { .scr-user-chip:hover { background: transparent; color: var(--text); } }
 .scr-user-name { font-size: var(--fs-body); font-weight: 700; }
 
@@ -2302,7 +2299,6 @@ html:not(.scr-light-theme) .scr-stats-list-panel-v2 .scr-stat-name-cell, html:no
 /* 글자 크기는 모바일/PC 분기 없이 하나로 통일(요청) — 기본(subhead, 19px)보다 작게. */
 .scr-stats-list-panel-v2 .scr-stat-name-btn { text-align: center; font-size: var(--fs-caption); }
 /* 프사는 동그란 크롭(요청). */
-.scr-stats-list-panel-v2 .scr-stat-avatar-btn .scr-avatar { border-radius: 50% !important; }
 
 /* 종족별 전적 칸의 막대 세 줄(테/프/저) 사이 수직 간격을 더 좁혀서 그만큼 행 높이도 줄인다.
    메달이 이 칸 우상단에 절대배치되므로 position:relative가 필요하다. */
@@ -3282,7 +3278,6 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
 .scr-game-result-list-panel-v2 .scr-team-profile { gap: 10px; }
 /* 프사를 원형으로(Avatar.tsx는 인라인 style로 각진 래디우스를 계산해 넣으므로 스타일시트
    에서 override하려면 !important가 필요하다). */
-.scr-game-result-list-panel-v2 .scr-avatar { border-radius: 50% !important; }
 /* 간격/호버만으로는 경기별 구분이 잘 안 되어 구분선을 다시 그린다. 예전엔 PC에서
    날짜 그룹이 2열 그리드였어서(오른쪽 칸도 "왼쪽 칸 바로 다음"으로 매치돼 줄 중간에
    선이 뜨는 문제) 인접 형제 선택자 대신 :nth-child(n+2 of .scr-game-result-card)로 형제 중
@@ -3406,7 +3401,7 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
 /* border-radius:50% !important — 원래 회원 사진(size 기준 각진 정도)이든 닉네임 첫 글자
    폴백이든 무조건 동그랗게(다른 프사 원형 처리와 같은 규칙). 살짝 아래로 내려 첫 줄
    (닉네임) 글자 중심과 시각적으로 맞춘다. */
-.scr-activity-note-avatar { border-radius: 50% !important; flex-shrink: 0; margin-top: 1px; }
+.scr-activity-note-avatar { flex-shrink: 0; margin-top: 1px; }
 .scr-activity-note-body { flex: 1; min-width: 0; }
 .scr-activity-note-item .scr-comment-item-top { margin-bottom: 3px; }
 /* 닉네임(.scr-comment-author-name)과 같은 색(--dim)을 쓰되 더 연하게(지적: 타임스탬프
@@ -3834,7 +3829,6 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
 /* Avatar.tsx는 크기별로 각진 래디우스를 인라인 style로 계산해 넣어서, 다른 원형 프사
    자리(.scr-user-chip 등)와 같이 여기서도 !important로 덮어써야 동그랗게 통일된다
    (요청: "드롭다운의 아바타 동그랗게 통일"). */
-.scr-select-opt .scr-avatar { border-radius: 50% !important; }
 /* 회원이 아닌 두 갈래(비회원·컴퓨터) — 회원 목록 위에 먼저 서고, 아래로 실선 하나를 그어
    "여기부터는 사람 목록"임을 나눈다(요청). 아바타 자리에 아이콘이 들어가 줄 높이는 같다. */
 .scr-select-opt-kind { color: var(--muted); font-weight: 600; }
@@ -3878,7 +3872,6 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
 /* 프사는 어디서든 동그랗다(요청) — 이 앱의 디자인 랭귀지이자 라이팅 테마의 한 요소다.
    Avatar.tsx가 크기별로 각진 래디우스를 인라인 style로 계산해 넣기 때문에, 다른 원형
    프사 자리들(.scr-user-chip, .scr-select-opt …)과 같이 여기서도 !important로 덮는다. */
-.scr-chip .scr-avatar { border-radius: 50% !important; }
 .scr-chip-computer-icon { flex-shrink: 0; color: var(--dim); }
 .scr-chip-name { font-family: var(--font-ui); font-size: var(--fs-body); font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .scr-chip .scr-chip-race { width: 62px; flex-shrink: 0; }
@@ -3902,7 +3895,11 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
 }
 /* 리플레이 일괄등록에서 배틀태그로 못 찾은 선수 — .scr-chip-warn(종족 미선택)과 같은 빨간
    인셋 테두리로 눈에 띄게 하되, 배경도 살짝 물들여 미선택 경고보다 한 단계 더 강조한다. */
-.scr-chip-unresolved { box-shadow: inset 0 0 0 1px var(--loss); background: rgba(240,99,122,0.08); }
+/* 아직 누구인지 못 정한 칩 — '검토필요'와 같은 노란 테두리다(요청). 빨강은 '실패'(못 쓰는
+   리플레이)에만 남긴다: 여기는 사람이 한 번 손대면 풀리는 자리라 같은 신호를 쓰면 그 둘이
+   구별되지 않는다. 배경은 안 깐다 — 테두리만으로 충분히 걸리고, 칠까지 하면 그 칩 안의
+   이름·종족보다 칩 자체가 먼저 보인다. */
+.scr-chip-unresolved { box-shadow: inset 0 0 0 1px var(--review-warn); }
 /* 조작량이 적어 실제 플레이가 아닐 수 있다고 의심되는 사람 — 확정해서 로스터에서 빼버리지
    않고 그대로 두되 노란 글로우로 눈에 띄게 한다(빨간 미매칭 테두리와는 다른 신호라 둘이
    같이 걸려도 서로 안 가리도록 outer glow로만 얹는다). */
@@ -4018,9 +4015,7 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
 .scr-replay-review-game {
   font-size: var(--fs-micro); color: var(--muted); font-variant-numeric: tabular-nums;
 }
-/* 등록을 막는 이유 — 버튼 바로 위다. 버튼이 왜 안 눌리는지를 버튼에서 가장 가까운
-   자리에서 말해야 한다. */
-.scr-replay-review-block { margin: 0 var(--modal-pad, 16px) 8px; text-align: right; }
+
 /* 승패 선택 — 리플레이가 승자를 못 가려낸 행에만 나온다. 목록이라 행마다 버튼을 다 깔면
    훑어보기 어려워서, 필요한 행에만 안내 문구와 함께 붙인다. */
 .scr-replay-mapping-result { display: flex; flex-direction: column; gap: 6px; align-items: center; }
@@ -4193,7 +4188,6 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 .scr-rank-detail-who { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
 /* Avatar.tsx는 인라인 style로 각진 래디우스를 직접 계산해 넣어서, 다른 화면(랭킹 목록 등)
    과 마찬가지로 스타일시트에서 원형으로 덮어쓰려면 !important가 필요하다(요청: "동그랗게"). */
-.scr-rank-detail-who .scr-avatar { border-radius: 50% !important; }
 .scr-rank-detail-who-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .scr-rank-detail-name { font-size: var(--fs-subhead); font-weight: 700; color: var(--text); }
 /* 차트(svg)의 viewBox 비율(300:140)과 똑같은 aspect-ratio를 로딩/기록없음 상태에도
@@ -4775,7 +4769,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 }
 /* 프사/닉네임 2스텝씩 확대(요청) — 아바타 32→48px(8px 스텝 둘), 닉네임 body(16)→
    headline(24, 두 스텝). 배틀태그는 데이터 폰트 대신 기본 폰트(마크업에서 scr-mono 제거). */
-.scr-drawer-user .scr-avatar { border-radius: 50% !important; width: 48px !important; height: 48px !important; }
+.scr-drawer-user .scr-avatar { width: 48px !important; height: 48px !important; }
 /* 요청: 서랍 폭 20% 축소에 맞춰 닉네임도 1스텝 축소(headline→subhead). */
 .scr-drawer-user-name { font-weight: 700; font-size: var(--fs-subhead); }
 /* 메뉴 묶음을 서랍 하단으로 몰아 정렬(요청) — margin-top:auto로 남는 세로 공간을 위에서
@@ -4895,7 +4889,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 /* 트리거에 프사가 붙는 경우(옵션 avatar가 있을 때 — 개인리그 대진 수정 등) 아바타+이름을
    읽기전용 멤버 칩과 같은 가로 배치로 정렬한다. 프사는 다른 곳과 통일해 원형으로. */
 .scr-cselect-value:has(.scr-avatar) { display: inline-flex; align-items: center; gap: 5px; }
-.scr-cselect-value .scr-avatar { flex-shrink: 0; border-radius: 50% !important; }
+.scr-cselect-value .scr-avatar { flex-shrink: 0; }
 .scr-cselect-placeholder { color: var(--dim); }
 .scr-cselect-value-short { display: none; }
 .scr-cselect-caret { color: var(--dim); flex-shrink: 0; transition: transform .15s; }
@@ -4950,7 +4944,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 }
 /* 회원 선택 드롭다운처럼 옵션에 프사(SelectOption.avatar)를 붙인 경우, 다른 원형 프사
    자리와 동일하게 동그랗게 통일(요청: "드롭다운과 유저칩 모두 아바타는 동그랗게"). */
-.scr-cselect-opt .scr-avatar { flex-shrink: 0; border-radius: 50% !important; }
+.scr-cselect-opt .scr-avatar { flex-shrink: 0; }
 /* (호버/액티브 라이팅은 파일 뒤 "드롭다운 통일" 섹션 공통 규칙 — 지금 값 표시는 굵은
    글씨+체크 아이콘(Select.tsx). */
 .scr-cselect-opt-selected { font-weight: 700; }
@@ -5011,7 +5005,6 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 }
 /* Avatar가 인라인 style로 각진 래디우스를 계산해 넣으므로 원형으로 강제하려면
    !important가 필요하다(다른 화면의 원형 강제 오버라이드와 같은 패턴). */
-.scr-member-row .scr-avatar { border-radius: 50% !important; }
 .scr-member-row-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
 .scr-member-row-name { font-size: var(--fs-subhead); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .scr-member-row-tag { font-size: var(--fs-body); color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -5239,7 +5232,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
   display: flex; align-items: center; justify-content: flex-start; gap: 6px;
   background: var(--panel-raised); color: var(--text); border-radius: var(--radius-sm); padding: 8px 10px; font-size: var(--fs-body);
 }
-.scr-challenge-target-picked .scr-avatar { flex-shrink: 0; border-radius: 50% !important; }
+.scr-challenge-target-picked .scr-avatar { flex-shrink: 0; }
 .scr-challenge-target-picked-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* "+ 상대 추가" — 확정된 지목 칩과 오갈 때 블록 높이가 안 흔들리게(요청: "레이아웃 흔들림")
    세로 크기를 맞췄지만, 투명한 텍스트 링크라 실제로는 같은 46px여도 칩(채워진 박스)보다
@@ -5754,12 +5747,11 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 .scr-challenge-side-block {
   display: grid; grid-template-columns: auto 1fr; column-gap: 10px; row-gap: 2px; min-width: 0;
 }
-.scr-challenge-side-avatar { grid-column: 1; grid-row: 1; flex-shrink: 0; border-radius: 50% !important; }
+.scr-challenge-side-avatar { grid-column: 1; grid-row: 1; flex-shrink: 0; }
 .scr-challenge-side-row {
   grid-column: 2; grid-row: 1; align-self: center;
   display: flex; align-items: center; gap: 6px; min-width: 0;
 }
-.scr-challenge-side-row .scr-avatar { border-radius: 50% !important; }
 /* 프사+닉네임 묶음 — 평소엔 그냥 자리만 잡는 투명한 래퍼(row의 gap과 같은 간격을 안에서
    유지)고, 유저 검색에 걸리면 경기결과 로스터(.scr-team-player-highlight)와 똑같은
    반전색으로 프사까지 함께 칠한다(요청: "랭킹, 너 나와 유저 검색시 하이라이팅 추가 단!
@@ -6122,7 +6114,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
   }
 }
 .scr-challenge-party-tag { font-size: var(--fs-caption); font-weight: 800; color: var(--dim); line-height: 1; }
-.scr-challenge-party-av { border-radius: 50% !important; object-fit: cover; }
+.scr-challenge-party-av { object-fit: cover; }
 /* 편지지 본문(제목·일자·시간·한마디) — 요소 간 줄간격을 크게(요청). */
 .scr-challenge-letter .scr-challenge-inbox-body { flex: 0 1 auto; gap: 22px; }
 /* 버튼 줄 — 맨 아래(To. 아래). 위로 여유 간격. */
@@ -6330,7 +6322,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 /* 유저 멘션/추천 드롭다운(유저 검색·너나와 지목·메모 태그 공용) — .scr-pv-opt의
    데이터폰트 대신 기본 UI 폰트로(요청: 유저 드롭다운은 기본 폰트). */
 .scr-mention-opt { display: flex; align-items: center; gap: 8px; font-family: var(--font-ui); }
-.scr-mention-opt .scr-avatar { flex-shrink: 0; border-radius: 50% !important; }
+.scr-mention-opt .scr-avatar { flex-shrink: 0; }
 .scr-mention-name { font-size: var(--fs-body); font-weight: 600; }
 /* ── 공용 댓글 ── 목록·본문·입력이 전부 여기서 나온다. 댓글이 붙는 자리(경기 로우 아래,
    활동 카드, 모바일 시트)마다 크기만 자기 문맥에서 덧칠한다. */
@@ -6721,7 +6713,6 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 }
 /* 리그 로스터/개인전 선수 칩의 아바타는 대진표(.scr-league-bracket-team-card-member)와
    팀전 목록처럼 동그랗게(요청). Avatar는 인라인 style로 각진 래디우스를 주므로 !important로 덮는다. */
-.scr-league-roster-row .scr-avatar, .scr-league-player-chip .scr-avatar { border-radius: 50% !important; }
 /* 라이트 테마 — 흰 5% 반투명 배경은 밝은 배경/흰 팀카드 위에서 안 보인다(지적됨).
    팀 로스터 행은 흰 팀카드 안이라 옅은 회색조로 살짝 꺼진 느낌을, 개인전 선수 칩은
    화면 바탕 위에 바로 놓이므로 대진표 개인전 카드와 같은 흰 유리(림+그림자)로 띄운다. */
@@ -6870,7 +6861,6 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 }
 /* 대진표 로스터 프사는 동그랗게(요청: "대진표의 아바타 동그랗게 처리") — Avatar 기본은
    각진 사각형(size 비례 radius)이라 여기서만 원형으로 덮어쓴다. */
-.scr-league-bracket-team-card-member .scr-avatar { border-radius: 50% !important; }
 /* 모바일에서도 팀 로스터를 그대로 보여준다(요청) — 예전엔 모바일 2라운드부터 팀명만
    노출해 폭을 아꼈지만, 이제 라운드/화면폭과 무관하게 항상 로스터 전원을 표시한다. */
 /* 빈 자리("미정"/"부전"/"공백")도 부모(.scr-league-bracket-slot)를 꽉 채운다 — 이제
@@ -7040,7 +7030,7 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   background: rgba(255,255,255,0.55);
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.85), inset 0 0 0 1px rgba(0,0,0,0.07), 0 1px 3px rgba(0,0,0,0.08);
 }
-.scr-rivalry-card .scr-avatar { border-radius: 50% !important; flex-shrink: 0; }
+.scr-rivalry-card .scr-avatar { flex-shrink: 0; }
 .scr-rivalry-card-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .scr-rivalry-card:focus, .scr-rivalry-card:focus-visible { outline: none; }
 /* 선택 표시 — 노란 테두리 대신 칩 확대(요청). 원래 transform(중심 정렬)에 scale만 얹고,
@@ -8321,7 +8311,7 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   flex-shrink: 0; padding-top: 10px; margin-top: 2px;
   display: flex; align-items: center; gap: 8px;
 }
-.scr-comment-sheet-compose > .scr-avatar { flex-shrink: 0; border-radius: 50% !important; }
+.scr-comment-sheet-compose > .scr-avatar { flex-shrink: 0; }
 /* 컴포저(입력칸+등록 버튼)가 남은 폭을 다 쓰게 — 기본은 자기 내용만큼만 차지한다. */
 .scr-comment-sheet-compose > .scr-comment-compose-row { flex: 1 1 auto; min-width: 0; margin-top: 0; }
 /* 글자 16px(요청). 카드 안 목록은 작은 폰트 그대로 두고 입력칸만 키운다. */

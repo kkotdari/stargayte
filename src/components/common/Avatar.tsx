@@ -17,19 +17,16 @@ interface AvatarProps {
   icon?: ReactNode;
 }
 
-// 16px 칩부터 84px 프로필 큰 사진까지 크기 차이가 커서, 고정 래디우스 하나로는 작을 때
-// 사각형 느낌이 사라지거나 클 때 너무 둥글어진다 — size에 비례하게 계산한다. 경기결과
-// 로스터처럼 아주 작은(24px 이하) 프사는 각진 느낌을 그대로 두고(예전 비율), 그보다 큰
-// 프사(랭킹/전적통계/회원목록/프로필 등)만 더 둥글게 늘린다(실제로 지적받은 "너무 작은
-// 경기결과를 제외하고 늘려달라").
-function avatarRadius(size: number): number {
-  if (size <= 24) return Math.max(1, Math.round(size * 0.12));
-  return Math.min(14, Math.round(size * 0.22));
-}
+/* 프사는 어디서든 동그랗다 — 이 앱의 디자인 랭귀지이자 라이팅 테마의 한 요소다(요청).
+   한때는 크기에 비례해 각진 래디우스를 계산했는데, 그러다 보니 쓰는 자리마다 CSS에서
+   `border-radius: 50% !important`로 도로 덮는 규칙이 스물한 개까지 늘어났고, 새로 만든
+   자리는(유저칩) 그 규칙을 빠뜨려 혼자 각진 채로 남았다. 규칙이 하나라면 빠뜨릴 자리도
+   없다 — 컴포넌트가 원을 그리고, 덮어쓰던 규칙들은 전부 지웠다. */
+const AVATAR_RADIUS = "50%";
 
-// 프로필 사진 (없으면 닉네임 첫 글자 + 고정 색상). 기본은 사각형으로 통일.
+// 프로필 사진 (없으면 닉네임 첫 글자 + 고정 색상). 모양은 늘 원이다(위 AVATAR_RADIUS).
 export default function Avatar({ member, size = 28, className, icon }: AvatarProps) {
-  const radius = avatarRadius(size);
+  const radius = AVATAR_RADIUS;
   // 사진 URL은 있는데 실제로 못 불러오면(만료/삭제된 파일 등) 브라우저가 깨진 이미지
   // 아이콘 대신 alt 텍스트(닉네임 전체)를 작은 박스 안에 그대로 욱여넣어 글자가 줄바꿈
   // 되며 깨져 보인다(실제로 지적받은 문제) — 로드 실패하면 사진이 아예 없던 것처럼
