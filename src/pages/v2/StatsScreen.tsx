@@ -630,6 +630,10 @@ export default function StatsScreenV2() {
                   // 주종족으로 볼 때만 — 줄마다 잣대가 다르니 그 종족을 닉네임 옆에
                   // 적는다(요청). 다른 필터에서는 제목 문장이 이미 말하고 있다.
                   race={view?.race === "main" ? mainRaceOf(c.entry) : null}
+                  /* 업그레이드 표는 종족마다 줄이 달라 종족이 정해져야 그릴 수 있다(요청)
+                     — 주종족이면 그 사람 것, 종족을 고르면 그 종족, 전체종족이면 안 그린다. */
+                  upRace={view?.race === "main" ? mainRaceOf(c.entry)
+                    : view?.race === "all" ? null : (view?.race as BaseRace | undefined) ?? null}
                   compact
                   maxOverallPlays={maxOverallPlays}
                   maxApm={maxApm}

@@ -945,7 +945,7 @@ export async function parseReplayFile(file: File): Promise<ParsedReplay> {
         effectiveCmdCount: desc?.EffectiveCmdCount ?? null,
         buildCount: buildCountOf(p.ID),
         // 그 총량을 갈래별로 나눈 값(요청: 통계 생산 칸의 도넛 셋 + 초반 일꾼 수).
-        buildMix: buildMixOf(signalsOf(p.ID), totalFrames),
+        buildMix: buildMixOf(signalsOf(p.ID), totalFrames, RACE_NAME_MAP[p.Race?.Name ?? ""] ?? ""),
         isComputer: p.Type?.Name === "Computer",
         startX: startTileOf(p.SlotID)?.x ?? null,
         startY: startTileOf(p.SlotID)?.y ?? null,

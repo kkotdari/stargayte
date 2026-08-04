@@ -77,6 +77,18 @@ export interface BuildMix {
   upAw: number;
   upAa: number;
   upSh: number;
+  /** 업그레이드 줄별 단계(0~3) — 그 판에서 고른 종족의 줄만 담는다(아래 UP_BY_RACE).
+   *
+   *  위 다섯 자리(upGw…)는 종족을 지운 값이라 뜻이 어긋난다(지적) — 브루드워는 종족마다
+   *  줄이 다르다: 테란은 지상이 보병·메카닉 둘로 갈리고 함선 줄이 따로 있으며 실드가
+   *  아예 없다. 저그는 지상 공격이 근접·원거리로 갈리지만 방어(갑각)는 하나다. 다섯 자리는
+   *  그것들을 max로 뭉개서, 보병 3업 + 메카닉 0업이 그냥 "지상 3"이 됐다.
+   *  그래서 줄을 그대로 담는다 — 화면은 고른 종족의 줄만 골라 그린다. */
+  ups: Record<string, number>;
+  /** 줄마다 '그 줄이 실린 경기 수' — 집계에서만 채워진다(경기 하나짜리 값에는 빈 사전).
+   *  줄이 종족마다 달라 분모도 줄마다 따로여야 한다: 하나로 세면 종족이 섞인 기간에 한
+   *  줄의 평균이 다른 종족 경기 수만큼 눌린다. */
+  upCounts: Record<string, number>;
   /** 건물별 건설 커맨드 수(screp 영문명) — 통계 '건설' 칸의 Top5. 파일런·서플라이는 뺀다
    *  (요청) — 보급을 대는 건물이라 어느 판에서나 압도적 1위가 돼 목록이 늘 같아진다. */
   buildings: Record<string, number>;
@@ -146,7 +158,7 @@ export function coreWindowOf(totalFrames: number | null | undefined):
 export function emptyBuildMix(): BuildMix {
   return {
     bProd: 0, bDef: 0, uBasic: 0, uAdv: 0, uCaster: 0, uGround: 0, uAir: 0, worker5: 0,
-    upGw: 0, upGa: 0, upAw: 0, upAa: 0, upSh: 0,
+    upGw: 0, upGa: 0, upAw: 0, upAa: 0, upSh: 0, ups: {}, upCounts: {},
     buildings: {}, units: {}, skills: {},
     buildingSecs: {}, unitSecs: {}, skillSecs: {},
     coreSeconds: null, coreCmd: 0, coreBuild: 0, coreUnit: 0,
@@ -162,6 +174,30 @@ const UP_LINES: Record<"upGw" | "upGa" | "upAw" | "upAa" | "upSh", UpgradeName[]
   upAw: ["Terran Ship Weapons", "Zerg Flyer Attacks", "Protoss Air Weapons"],
   upAa: ["Terran Ship Plating", "Zerg Flyer Carapace", "Protoss Air Armor"],
   upSh: ["Protoss Plasma Shields"],
+};
+
+/* 종족별 업그레이드 줄 — 키는 저장·조회 내내 그대로 쓰는 짧은 이름이고, 값은 screp의
+   업그레이드 이름이다. 한 판에는 그 사람이 고른 종족의 줄만 담긴다(0단계도 담는다 —
+   "안 올렸다"도 평균에 들어가야 하는 사실이라, 빼면 평균이 위로 뜬다).
+
+   줄이 종족마다 다른 만큼 화면도 종족마다 다른 표를 그린다(요청). 눈여겨볼 두 곳:
+   저그는 근접·원거리가 갑각(zCara) 하나를 나눠 쓰고, 프로토스는 실드가 지상·공중 공통이다
+   — 그래서 그 둘은 표에서 따로 한 줄로 뗀다(같은 값을 두 줄에 적으면 따로인 줄 오해한다). */
+export const UP_BY_RACE: Record<"테란" | "저그" | "프로토스", Record<string, UpgradeName>> = {
+  테란: {
+    tInfW: "Terran Infantry Weapons", tInfA: "Terran Infantry Armor",
+    tVehW: "Terran Vehicle Weapons", tVehP: "Terran Vehicle Plating",
+    tShipW: "Terran Ship Weapons", tShipP: "Terran Ship Plating",
+  },
+  저그: {
+    zMelee: "Zerg Melee Attacks", zMissile: "Zerg Missile Attacks", zCara: "Zerg Carapace",
+    zFlyW: "Zerg Flyer Attacks", zFlyA: "Zerg Flyer Carapace",
+  },
+  프로토스: {
+    pGrdW: "Protoss Ground Weapons", pGrdA: "Protoss Ground Armor",
+    pAirW: "Protoss Air Weapons", pAirA: "Protoss Air Armor",
+    pShield: "Protoss Plasma Shields",
+  },
 };
 
 /** 보급을 대는 건물 — 어느 판에서나 가장 많이 지어서 Top5의 1위를 늘 독차지한다(요청: 제외).
@@ -218,6 +254,9 @@ export interface TopEntry { name: string; perMin: number | null }
 /** 커맨드 스트림에서 모은 재료(signals)로 그 경기의 구성을 낸다. 재료가 없으면 null. */
 export function buildMixOf(
   s: ReplayPlayerSignals | null | undefined, totalFrames?: number | null,
+  /** 그 판에서 고른 종족 — 업그레이드 줄이 종족마다 달라, 이 값이 있어야 어느 줄을
+   *  담을지 정할 수 있다(위 UP_BY_RACE). 모르면 줄별 값은 비운다. */
+  race?: string | null,
 ): BuildMix | null {
   if (!s) return null;
   const out = emptyBuildMix();
@@ -242,6 +281,12 @@ export function buildMixOf(
   for (const [line, names] of Object.entries(UP_LINES) as [keyof typeof UP_LINES, UpgradeName[]][]) {
     // 업그레이드 단계는 '얼마나 올렸나'라 구간과 무관하다 — 시간당으로 환산하는 값이 아니다.
     out[line] = Math.max(...names.map((u) => upgradeLevel(s, u)));
+  }
+  /* 줄별 값 — 그 판의 종족 줄만, 0단계도 그대로 담는다. 위 다섯 자리와 달리 뭉개지 않아서
+     "보병은 3업인데 메카닉은 안 갔다"가 그대로 남는다. */
+  const lines = race ? UP_BY_RACE[race as keyof typeof UP_BY_RACE] : undefined;
+  if (lines) {
+    for (const [key, name] of Object.entries(lines)) out.ups[key] = upgradeLevel(s, name);
   }
   for (const [u, total] of Object.entries(s.unitCounts)) {
     if (NOT_ARMY.has(u)) continue;

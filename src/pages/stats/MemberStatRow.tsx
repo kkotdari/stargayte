@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import Avatar from "../../components/common/Avatar";
 import PhotoViewer from "../../components/common/PhotoViewer";
 import StatBar from "../../components/common/StatBar";
@@ -56,24 +56,76 @@ function PerMin({ value, unit }: { value: string | undefined; unit: string }) {
  *  값이다. 화면은 이 값을 표시하기만 하고 거르는 일은 서버가 한다. */
 const UPGRADE_MIN_MIN = 20;
 
-function UpgradeGrid({ mix, plays }: { mix: BuildMix; plays: number | null | undefined }) {
-  if (!plays || plays <= 0) return null;
-  const avg = (n: number) => (n / plays).toFixed(1);
+/* 종족마다 업그레이드 줄이 다르다(지적: 각 종족의 업그레이드가 달라 저 표는 의미가 없다).
+   테란은 지상이 보병·메카닉으로 갈리고 함선 줄이 따로 있으며 실드가 없다. 저그는 지상
+   공격이 근접·원거리로 갈리지만 방어(갑각)는 하나다. 프로토스는 실드가 지상·공중 공통이다.
+   예전 표는 이 셋을 '지상/공중 × 공/방 + 실드' 하나로 뭉갰고, 그래서 보병 3업 + 메카닉
+   0업이 "지상 3"으로 보였다.
+
+   그래서 종족을 고른 경우에만(또는 주종족으로 볼 때) 그 종족의 줄로 그린다 — 전체종족은
+   서로 다른 것을 한 표에 겹쳐 놓는 일이라 아예 안 그린다.
+
+   공유되는 줄(저그 갑각, 프로토스 실드)은 공/방 격자에 끼우지 않고 따로 한 줄로 뗀다 —
+   같은 값을 두 줄에 적으면 줄마다 따로 있는 것으로 오해한다. */
+type UpRow = { label: string; atk?: string; def?: string };
+const UP_TABLE: Record<BaseRace, { rows: UpRow[]; solo?: { label: string; key: string } }> = {
+  테란: {
+    rows: [
+      { label: "보병", atk: "tInfW", def: "tInfA" },
+      { label: "메카닉", atk: "tVehW", def: "tVehP" },
+      { label: "함선", atk: "tShipW", def: "tShipP" },
+    ],
+  },
+  저그: {
+    rows: [
+      { label: "근접", atk: "zMelee" },
+      { label: "원거리", atk: "zMissile" },
+      { label: "공중", atk: "zFlyW", def: "zFlyA" },
+    ],
+    // 갑각은 지상 전부가 나눠 쓴다 — 근접·원거리 줄에 같은 수를 두 번 적지 않는다.
+    solo: { label: "지상 방어", key: "zCara" },
+  },
+  프로토스: {
+    rows: [
+      { label: "지상", atk: "pGrdW", def: "pGrdA" },
+      { label: "공중", atk: "pAirW", def: "pAirA" },
+    ],
+    solo: { label: "실드", key: "pShield" },
+  },
+};
+
+function UpgradeGrid({ mix, race }: { mix: BuildMix; race: BaseRace | null | undefined }) {
+  if (!race) return null;
+  const table = UP_TABLE[race];
+  /* 분모는 줄마다 따로다 — 종족이 섞인 기간에 하나로 세면 한 줄의 평균이 다른 종족 경기
+     수만큼 눌린다. 서버가 줄별로 '그 줄이 실린 경기 수'를 세어 내려 준다. */
+  const avg = (key?: string) => {
+    if (!key) return null;
+    const n = mix.upCounts?.[key] ?? 0;
+    if (n <= 0) return null;
+    return ((mix.ups?.[key] ?? 0) / n).toFixed(1);
+  };
+  const rows = table.rows.filter((r) => avg(r.atk) !== null || avg(r.def) !== null);
+  const solo = table.solo ? avg(table.solo.key) : null;
+  if (rows.length === 0 && solo === null) return null;
   return (
-    <div className="scr-stat-upgrades" title="공/방/실드 업그레이드 — 경기당 평균 단계(0~3)">
+    <div className="scr-stat-upgrades" title={`${race} 업그레이드 — 경기당 평균 단계(0~3)`}>
       <span />
       <span className="scr-stat-up-head">공</span>
       <span className="scr-stat-up-head">방</span>
-      <span className="scr-stat-up-head">실드</span>
-      <span className="scr-stat-up-row">지상</span>
-      <span>{avg(mix.upGw)}</span>
-      <span>{avg(mix.upGa)}</span>
-      {/* 실드는 프로토스 하나뿐이고 지상·공중 모두에 걸리는 값이라 두 줄에 같은 수가 선다. */}
-      <span>{avg(mix.upSh)}</span>
-      <span className="scr-stat-up-row">공중</span>
-      <span>{avg(mix.upAw)}</span>
-      <span>{avg(mix.upAa)}</span>
-      <span>{avg(mix.upSh)}</span>
+      {rows.map((r) => (
+        <Fragment key={r.label}>
+          <span className="scr-stat-up-row">{r.label}</span>
+          <span>{avg(r.atk) ?? "-"}</span>
+          <span>{avg(r.def) ?? "-"}</span>
+        </Fragment>
+      ))}
+      {table.solo && solo !== null && (
+        <>
+          <span className="scr-stat-up-row">{table.solo.label}</span>
+          <span className="scr-stat-up-solo">{solo}</span>
+        </>
+      )}
       {/* 어떤 경기만 셌는지 밑에 적어 둔다(요청) — 안 적으면 다른 칸과 같은 자로 잰 값처럼
           읽힌다. 표에 걸치게 두면 칸이 밀리므로 격자 한 줄을 통째로 쓴다. */}
       <span className="scr-stat-up-note">※ {UPGRADE_MIN_MIN}분 이상 경기 대상</span>
@@ -151,12 +203,16 @@ interface MemberStatRowProps {
    *  제목 문장이 이미 말하고 있어, 줄마다 같은 글자를 되풀이할 이유가 없다. 주종족일
    *  때만은 줄마다 잣대가 달라서, 이 배지가 없으면 무엇끼리 견주는 표인지 알 수 없다. */
   race?: BaseRace | null;
+  /** 업그레이드 표를 어느 종족 줄로 그릴까 — 종족을 고른 경우 그 종족, '주종족'이면 이
+   *  회원의 주종족, '전체종족'이면 null(안 그린다). 위 race와 달리 종족 필터에서도 온다:
+   *  이건 배지가 아니라 표의 내용 자체를 가르는 값이다. */
+  upRace?: BaseRace | null;
 }
 
 // 전적통계 목록의 테이블 한 행.
 export default function MemberStatRow({
   member, stats, maxOverallPlays, maxApm, maxCmd, avatar = true, compact = false,
-  points, rank, rankDelta, onPointsClick, onRankClick, medals, race,
+  points, rank, rankDelta, onPointsClick, onRankClick, medals, race, upRace,
 }: MemberStatRowProps) {
   const openMemberProfile = useAppStore((s) => s.openMemberProfile);
   const [photoOpen, setPhotoOpen] = useState(false);
@@ -340,7 +396,7 @@ export default function MemberStatRow({
       <div className="scr-stat-skills-cell">
         {mix ? (
           <>
-            <UpgradeGrid mix={mix} plays={stats.upPlays} />
+            <UpgradeGrid mix={mix} race={upRace} />
             <TopList items={topEntries(mix.skills, TECH_KO, TOP_N, mix.skillSecs)} unit="회" />
           </>
         ) : (

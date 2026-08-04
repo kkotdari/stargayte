@@ -1963,7 +1963,9 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 /* 공/방/실드 단계 — 이름 열 하나에 수치 세 열(요청: 지상/공중을 한 열에 두 줄로).
    수치는 오른쪽 맞춤 + tabular-nums라 위아래 자릿수가 흔들리지 않는다. */
 .scr-stat-upgrades {
-  display: grid; grid-template-columns: auto repeat(3, 1fr);
+  /* 열은 이름 + 공/방 둘이다 — 실드 열이 사라졌다(요청: 종족마다 줄이 달라 종족별 표로).
+     프로토스 실드·저그 갑각처럼 여러 줄이 나눠 쓰는 값은 따로 한 줄로 뗀다(아래 solo). */
+  display: grid; grid-template-columns: auto repeat(2, 1fr);
   gap: 1px 8px; align-items: baseline;
   font-size: var(--fs-11); color: var(--text);
   font-variant-numeric: tabular-nums; text-align: right; flex: none;
@@ -1974,6 +1976,9 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 /* 어떤 경기만 셌는지 표 밑에 한 줄로 달아 둔다(요청: 아래에 당구장표시로 "n분 이상 경기
    대상") — 안 적으면 이 수만 다른 칸과 다른 자로 잰 것이 안 보인다. 격자 네 칸을 통째로
    써서 위 숫자들의 자리를 안 건드리고, 표 안의 어느 값보다 흐리게 둬 곁말로 읽히게 한다. */
+/* 여러 줄이 나눠 쓰는 값(저그 갑각·프로토스 실드) — 공/방 두 칸을 걸쳐 하나로 적는다.
+   한쪽 칸에만 적으면 그게 '공격'이나 '방어' 중 하나인 것처럼 읽힌다. */
+.scr-stat-up-solo { grid-column: 2 / -1; }
 .scr-stat-up-note {
   grid-column: 1 / -1; margin-top: 3px;
   font-size: var(--fs-9); color: var(--dim); text-align: left; white-space: nowrap;
