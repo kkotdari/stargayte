@@ -253,6 +253,10 @@ function UnresolvedChip({
       >
         {entry.rawName}
       </span>
+      {/* 버튼은 종족이 아니라 이름 바로 옆에 붙는다(요청) — 이 버튼이 하는 일은 "이 이름이
+          누구냐"를 정하는 것이라 이름과 한 덩어리로 읽혀야 한다. 종족은 칩 오른쪽 끝으로
+          밀린다(CSS의 margin-left:auto). */}
+      {resolveButtons}
       {mappingMode ? (
         entry.race && <span className="scr-chip-race-static">{entry.race[0]}</span>
       ) : (
@@ -267,7 +271,6 @@ function UnresolvedChip({
           disabled={disabled}
         />
       )}
-      {resolveButtons}
 
       {open && (
         <MemberSearchDrop
@@ -377,18 +380,16 @@ function ReassignableChip({
   };
 
   return (
-    <div className={cx("scr-chip", isComputer && "scr-chip-computer", isUnregistered && "scr-chip-unregistered")} ref={anchorRef}>
+    <div className={cx("scr-chip", "scr-chip-reassign", isComputer && "scr-chip-computer", isUnregistered && "scr-chip-unregistered")} ref={anchorRef}>
       {isComputer
         ? <Avatar icon={<Monitor size={16} className="scr-chip-computer-icon" />} size={26} />
         : isUnregistered
           ? <Avatar icon={<User size={16} className="scr-chip-computer-icon" />} size={26} />
           : <Avatar member={member} size={26} />}
       <span className="scr-chip-name">{name}</span>
-      {!isComputer && row.race && <span className="scr-chip-race-static">{row.race[0]}</span>}
-      {/* 버튼은 하나다(요청) — 매핑이 됐든 안 됐든 이 자리에서 하는 일은 "이 게임 아이디가
-          누구냐"를 정하는 것 하나뿐이라, 지금 무엇으로 정해져 있는지는 왼쪽 프사가 이미
-          말하고 있다(사진·모니터·물음표). 아이콘 셋을 라디오처럼 늘어놓으면 그 사실을
-          두 번 말하면서 칩 폭만 먹는다. */}
+      {/* 버튼은 하나이고(요청), 종족이 아니라 이름 바로 옆에 붙는다(요청) — 이 자리에서 하는
+          일은 "이 게임 아이디가 누구냐"를 정하는 것 하나뿐이라 이름과 한 덩어리로 읽혀야
+          하고, 지금 무엇으로 정해져 있는지는 왼쪽 프사가 이미 말하고 있다. */}
       <div className="scr-chip-resolve-icon-group">
         <button
           type="button"
@@ -399,6 +400,7 @@ function ReassignableChip({
           <UserRoundSearch size={14} />
         </button>
       </div>
+      {!isComputer && row.race && <span className="scr-chip-race-static">{row.race[0]}</span>}
 
       {open && (
         <MemberSearchDrop

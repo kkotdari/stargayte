@@ -3878,6 +3878,15 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
 /* 매핑 모드(v2 리플레이 매핑) 전용 — 종족을 고칠 수 있는 드롭다운 대신 글자 하나만
    보여준다. 이름 옆에 붙는 작은 라벨이라 너비를 최소로만 잡는다. */
 .scr-chip-race-static { font-size: var(--fs-body); font-weight: 700; color: var(--muted); flex-shrink: 0; }
+/* "누구인지" 버튼이 달린 칩(연결 전 칩, 경기 수정 칩)에서는 그 버튼을 종족이 아니라 이름
+   바로 옆에 붙인다(요청) — 버튼이 하는 일이 "이 이름이 누구냐"라 이름과 한 덩어리로
+   읽혀야 한다. 그러려면 이름이 남은 폭을 다 먹으면 안 되므로(flex:1) 내용 크기로 되돌리고,
+   대신 종족을 오른쪽 끝으로 민다. */
+.scr-chip-unresolved > .scr-chip-name,
+.scr-chip-reassign > .scr-chip-name { flex: 0 1 auto; }
+.scr-chip-unresolved > .scr-chip-race-static,
+.scr-chip-unresolved > .scr-chip-race,
+.scr-chip-reassign > .scr-chip-race-static { margin-left: auto; }
 /* 리플레이 인게임 이름(rawName)이 이 사람이 누군지 알 수 있는 유일한 단서라 잘리면 안
    된다 — 프사를 더 작게, 글자도 한 단계 줄이고 코딩 폰트(고정폭이 프로포셔널 폰트보다
    이런 영문+한글 섞인 짧은 이름을 더 촘촘히 담는다)로 바꾸는 것에 더해, 말줄임표 대신
@@ -7251,6 +7260,9 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    57px을 쓴다(실측).
    flex 항목이라 줄지 않게 못박아 둔다 — 줄어야 하는 건 내용 글자 쪽이다. */
 .scr-activity-row-comment {
+  /* 대괄호 안에 수와 NEW가 함께 들어간다(요청) — 둘은 같은 것("댓글")에 대한 말이라 한
+     묶음으로 읽혀야 한다. inline-flex로 묶어 수와 NEW의 중심을 맞춘다. */
+  display: inline-flex; align-items: center;
   flex: 0 0 auto; margin-left: 2px;
   /* 8px에서 한 스텝 올렸다(지적: 리플 개수 텍스트가 너무 작다) — 딱지들보다 작게 두려던
      값인데, 이건 딱지가 아니라 읽어야 하는 수다. */
@@ -7267,13 +7279,13 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 /* 새것은 NEW 글자에만 색을 준다 — 수까지 물들이면 그 줄에서 색을 쓰는 자리가 둘이 되어
    제목 칸의 딱지와 경쟁한다. 색은 제목 칸 NEW와 같은 연두다(요청). */
 .scr-activity-row-comment-fresh b { color: var(--new-badge); }
-/* NEW만 살짝 띄운다(요청) — [n]은 밑선에 그대로 두고 이것만 올려서, 붙어 있으면서도
-   수에 얹힌 말로 읽히게 한다. relative라 자리는 안 밀리므로 옆 시각 칸도 안 움직인다. */
+/* 대괄호 안, 수 바로 뒤 어깨에 앉는다(요청) — 중심은 수와 맞추되 1px만 올려 "수에 얹힌
+   말"로 읽히게 한다. relative라 자리는 안 밀리므로 옆 시각 칸도 안 움직인다. */
 .scr-activity-row-comment-fresh b {
-  position: relative; top: -2px; font-weight: 800; margin-left: 1px;
-  /* 수보다 한 단계 작게(요청) — 자리는 그대로 수 뒤 어깨다. 읽어야 하는 값은 수이고
-     NEW는 그 수에 얹힌 말이라, 둘이 같은 크기면 어느 쪽이 값인지가 흐려진다. */
-  font-size: 8px;
+  position: relative; top: -1px; font-weight: 800; margin-left: 1px;
+  /* 수보다 두 단계 작게(요청: 더 축소) — 읽어야 하는 값은 수이고 NEW는 그 수에 얹힌
+     말이라, 크기가 비슷하면 어느 쪽이 값인지가 흐려진다. */
+  font-size: 7px;
 }
 /* 내용은 한 줄로 끝난다 — 넘치면 말줄임이다. 여기서 두 줄이 되면 줄 높이가 흔들려
    목록의 리듬이 깨진다. */
@@ -7281,6 +7293,10 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    되풀이되는 말이라 읽을 값이 아니다. 읽을 값(닉네임·사람 수·경기 수)만 아래 -em으로
    도로 진하게 올린다. */
 .scr-activity-row-desc {
+  /* 조각들의 세로 기준은 가운데다(요청: 보기 좋으려면 밑선이 아니라 중심). 밑선으로 맞추면
+     크기가 제각각인 조각(9px 배지 ~ 13px 닉네임)의 위쪽이 들쭉날쭉해 보인다. 한때 댓글 수만
+     떠 보였던 건 이 정렬 탓이 아니라 이름 상자의 밑선이 배지에 끌려간 탓이었고, 그건
+     .scr-activity-row-name-main에서 잡았다. */
   display: flex; align-items: center; gap: 6px; min-width: 0;
   /* 내용은 도로 키운다(요청) — 줄마다 실제로 달라지는 값이 여기 있어서, 훑을 때 눈이
      머무는 자리다. 대신 제목 쪽을 한 스텝 내려 위계를 만든다. */
@@ -7306,7 +7322,13 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-activity-row-arrow { color: var(--row-dim); flex: none; }
 /* 닉네임과 그 상태를 함께 쥐는 껍데기 — 상태가 이름의 오른쪽 끝에 맞춰 앉으려면 기준이
    이름이어야 한다. 이름 폭만큼만 차지한다. */
-.scr-activity-row-name-main { position: relative; display: inline-flex; min-width: 0; }
+/* inline-flex가 아니라 flex다 — inline 상자는 줄 안에서 제 밑선으로 앉는데, flex 상자의
+   밑선은 첫 항목의 밑선이라 앞에 상태 배지가 서면 9px/line-height:1인 그 배지의 밑선이
+   상자 전체의 밑선이 됐다. 그래서 배지 밑선을 줄 밑선에 맞추느라 정작 읽어야 할 닉네임이
+   아래로 내려갔고, 옆의 댓글 수만 위로 뜬 것처럼 보였다(지적). 블록 레벨 flex로 두면
+   줄 밑선 계산에서 아예 빠지고, 안에서는 배지와 닉네임의 중심을 맞춘다(요청: 배지도
+   닉네임과 수평). 이 칸의 다른 조각들도 같은 기준(중심)으로 선다. */
+.scr-activity-row-name-main { position: relative; display: flex; align-items: center; min-width: 0; }
 /* 너 나와의 상태(수락·거절·취소…) — 제목 칸의 번호와 같은 방식으로 닉네임 좌상단에
    얹는다(요청). 흐름에서 빼 두므로 이름 자리는 상태가 있든 없든 그대로다.
    한때 이름의 오른쪽 바깥(left:100%)이었는데, 오른쪽 편 이름은 내용 칸 끝에 가까워

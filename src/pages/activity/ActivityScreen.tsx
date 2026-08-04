@@ -1370,7 +1370,7 @@ export default function ActivityScreen() {
                           있으면 둘을 이어 읽어야 하기 때문이다. */}
                       {comments && (
                         <span className={cx("scr-activity-row-comment", comments.fresh && "scr-activity-row-comment-fresh")}>
-                          [{comments.count}]{comments.fresh && <b>NEW</b>}
+                          [{comments.count}{comments.fresh && <b>NEW</b>}]
                         </span>
                       )}
                     </span>
