@@ -884,6 +884,16 @@ export const api = {
       method: "PUT", body: JSON.stringify({ assignments }),
     });
   },
+  /* 부전승 자리를 한 번에 정한다(요청: 관리자가 고른다) — slots는 '전체' 부전승 자리이고,
+     개수는 drawSize - plannedTeams와 정확히 같아야 한다. 서버가 기존 배치를 지우고 이대로
+     다시 깔면서, 자리가 바뀐 칸에서 이미 올라갔던 부전승 진출도 함께 되돌린다. */
+  async setLeagueBracketByes(
+    leagueId: number, slots: { matchId: number; side: LeagueMatchSide }[],
+  ): Promise<League> {
+    return request<League>(`/api/leagues/${leagueId}/bracket/byes`, {
+      method: "PUT", body: JSON.stringify({ slots }),
+    });
+  },
   async setLeagueMatchSchedule(leagueId: number, matchId: number, scheduledAt: string | null): Promise<LeagueMatch> {
     return request<LeagueMatch>(`/api/leagues/${leagueId}/matches/${matchId}/schedule`, {
       method: "PATCH", body: JSON.stringify({ scheduledAt }),

@@ -81,16 +81,38 @@ function TeamSlotCard({
 // 가능해야해") — 실제로 치른 경기 결과(setsWonA가 있는 경기)만 확정 여부와 무관하게
 // 항상 잠긴다. 드래그앤드랍 편집은 폐기 — 이 드롭다운 방식으로 대체한다.
 function SlotCell({
-  league, match, team, teamRef, canEdit, busy, mode, compact, onAssign, onClear,
+  league, match, team, teamRef, canEdit, busy, mode, compact, isBye, byeEdit, onToggleBye,
+  onAssign, onClear,
 }: {
   league: League; match: LeagueMatch;
   team: LeagueTeam | null; teamRef: { id: number } | null; canEdit: boolean; busy: boolean;
   mode: League["mode"]; compact: boolean;
+  /** 이 자리가 부전승(영구 공백)인가 — 편집 중이면 로컬 값, 아니면 서버 값. */
+  isBye: boolean;
+  /** 부전승 자리를 고르는 중인가 — 그때는 모든 1라운드 자리가 누를 수 있는 칸이 된다. */
+  byeEdit: boolean;
+  onToggleBye: () => void;
   onAssign: (teamId: number) => void; onClear: () => void;
 }) {
   const decided = match.winnerTeamId !== null;
   const realResult = match.setsWonA !== null;
   const editable = canEdit && match.round === 1 && !match.isDead && !realResult && !league.bracketLocked;
+
+  /* 부전승 자리를 고르는 중 — 1라운드 자리를 눌러 켜고 끈다(요청: 관리자가 부전승 자리를
+     고른다). 어디에 두느냐로 대진 모양이 갈리므로, 팀 배정과 섞지 않고 따로 모드를 둔다. */
+  if (byeEdit && editable) {
+    return (
+      <button
+        type="button"
+        className={cx("scr-league-bracket-bye-pick", isBye && "scr-league-bracket-bye-pick-on")}
+        onClick={onToggleBye} disabled={busy}
+      >
+        {isBye ? "부전승" : team ? team.label : "빈칸"}
+      </button>
+    );
+  }
+  /* 부전승 자리는 팀을 앉힐 수 없다 — 앉혀 봐야 영원히 안 붙는다(서버도 막는다). */
+  if (isBye) return <div className="scr-league-bracket-team-empty">부전승</div>;
 
   if (!editable) {
     if (!team) {
@@ -186,6 +208,14 @@ function serverSeeding(league: League, canEdit: boolean): SeedMap {
   return m;
 }
 
+// 서버가 내려준 부전승 자리 — matchId → 'a' | 'b'. 로컬 편집의 시작점이자 '변경됨' 판정의
+// 기준이다(시드의 serverSeeding과 같은 자리).
+function serverByes(league: League): Record<number, LeagueMatchSide> {
+  const m: Record<number, LeagueMatchSide> = {};
+  league.matches.forEach((match) => { if (match.byeSide) m[match.id] = match.byeSide; });
+  return m;
+}
+
 // 리그 대진표. canEdit이면 팀 수를 미리 정해 빈 대진표를 만들고, 각 칸에 팀을 직접
 // 배정할 수 있다(요청: "대진표 생성 누르면 빈 대진표가 생기고 각 칸에 누가 들어갈지
 // 정할 수 있는 시스템으로"). 아닌 경우(일반 회원/보기 모드)는 순수 읽기 전용.
@@ -225,6 +255,23 @@ export default function LeagueBracket({
     setSeeds(serverSeeding(league, canEdit));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [league]);
+  /* 부전승 자리도 로컬로 고른 뒤 한 번에 저장한다(시드 저장과 같은 방식) — 개수가 맞아야
+     저장할 수 있어서, 하나 옮길 때마다 서버로 보내면 중간 상태가 늘 잘못된 개수가 된다. */
+  const [byeEdit, setByeEdit] = useState(false);
+  const [byes, setByes] = useState<Record<number, LeagueMatchSide>>(() => serverByes(league));
+  useEffect(() => {
+    setByes(serverByes(league));
+    setByeEdit(false);
+  }, [league]);
+  const byeNeed = (league.drawSize ?? 0) - (league.plannedTeams ?? 0);
+  const byeCount = Object.keys(byes).length;
+  const byesDirty = useMemo(() => {
+    const srv = serverByes(league);
+    const keys = new Set([...Object.keys(srv), ...Object.keys(byes)].map(Number));
+    for (const k of keys) if (srv[k] !== byes[k]) return true;
+    return false;
+  }, [byes, league]);
+
   const dirty = useMemo(() => {
     const srv = serverSeeding(league, canEdit);
     const keys = new Set([...Object.keys(srv), ...Object.keys(seeds)]);
@@ -311,6 +358,31 @@ export default function LeagueBracket({
   const handleClear = (matchId: number, side: LeagueMatchSide) => {
     setSeeds((prev) => ({ ...prev, [`${matchId}:${side}`]: null }));
   };
+  /* 부전승 자리 켜고 끄기 — 같은 경기의 반대쪽을 이미 골라 뒀으면 그쪽을 끄고 이쪽을 켠다
+     (한 경기에 부전승은 하나까지). 개수는 저장할 때 검사한다. */
+  const toggleBye = (matchId: number, side: LeagueMatchSide) => {
+    setByes((prev) => {
+      const next = { ...prev };
+      if (next[matchId] === side) delete next[matchId];
+      else next[matchId] = side;
+      return next;
+    });
+  };
+  const saveByes = async () => {
+    setErr("");
+    setBusy(true);
+    try {
+      onUpdated(await api.setLeagueBracketByes(
+        league.id, Object.entries(byes).map(([matchId, side]) => ({ matchId: Number(matchId), side })),
+      ));
+      setByeEdit(false);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "부전승 자리를 저장하지 못했어요.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   // '시드 저장' — 편집 가능한 1라운드 슬롯 '전체'의 현재 로컬 배정을 한 번에 보낸다(서버가
   // 비우고→다시 배정→부전승 자동처리). 응답으로 온 리그로 화면이 갱신되며 부전승/진출선도
   // 이때 계산돼 반영된다.
@@ -397,8 +469,9 @@ export default function LeagueBracket({
         key: `${match.id}-a`, x, y: sideAY - CARD_H / 2,
         node: (
           <SlotCell
-            league={league} match={match} team={teamA} teamRef={match.teamA} canEdit={canEdit} busy={busy}
-            mode={league.mode} compact={isCompact}
+            league={league} match={match} team={teamA} teamRef={match.teamA}
+            canEdit={canEdit} busy={busy} mode={league.mode} compact={isCompact}
+            isBye={byes[match.id] === "a"} byeEdit={byeEdit} onToggleBye={() => toggleBye(match.id, "a")}
             onAssign={(id) => handleAssign(match.id, "a", id)} onClear={() => handleClear(match.id, "a")}
           />
         ),
@@ -407,8 +480,9 @@ export default function LeagueBracket({
         key: `${match.id}-b`, x, y: sideBY - CARD_H / 2,
         node: (
           <SlotCell
-            league={league} match={match} team={teamB} teamRef={match.teamB} canEdit={canEdit} busy={busy}
-            mode={league.mode} compact={isCompact}
+            league={league} match={match} team={teamB} teamRef={match.teamB}
+            canEdit={canEdit} busy={busy} mode={league.mode} compact={isCompact}
+            isBye={byes[match.id] === "b"} byeEdit={byeEdit} onToggleBye={() => toggleBye(match.id, "b")}
             onAssign={(id) => handleAssign(match.id, "b", id)} onClear={() => handleClear(match.id, "b")}
           />
         ),
@@ -446,13 +520,45 @@ export default function LeagueBracket({
         <div className="scr-league-bracket-seed-actions">
           {generateRow}
           {/* 시드 편집은 로컬로만 하고 이 버튼으로 한 번에 저장한다(요청). 변경분이 있을 때만 활성화. */}
-          {canEdit && !league.bracketLocked && (
+          {canEdit && !league.bracketLocked && !byeEdit && (
             <button
               type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm"
               onClick={saveSeeding} disabled={busy || !dirty}
             >
               {busy && <Spinner size={14} />} 시드 저장
             </button>
+          )}
+          {/* 부전승 자리 고르기(요청) — 어디에 두느냐로 대진 모양이 갈린다. 앞쪽 두 칸에
+              두면 "두 팀이 4강 직행", 뒤쪽 두 칸에 두면 "네 팀 토너먼트 + 두 팀 단판"이다.
+              부전승이 있는 대진표에서만 뜬다. */}
+          {canEdit && !league.bracketLocked && byeNeed > 0 && !byeEdit && (
+            <button
+              type="button" className="scr-btn scr-btn-sm"
+              onClick={() => setByeEdit(true)} disabled={busy || dirty}
+              title={dirty ? "먼저 시드를 저장하세요" : "부전승 자리를 옮깁니다"}
+            >
+              부전승 자리
+            </button>
+          )}
+          {canEdit && !league.bracketLocked && byeEdit && (
+            <>
+              <span className="scr-league-bracket-bye-hint">
+                부전승 자리 {byeCount}/{byeNeed} — 칸을 눌러 고르세요
+              </span>
+              <button
+                type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm"
+                onClick={saveByes} disabled={busy || byeCount !== byeNeed || !byesDirty}
+                title={byeCount !== byeNeed ? `부전승 자리는 ${byeNeed}개여야 합니다` : undefined}
+              >
+                {busy && <Spinner size={14} />} 부전승 저장
+              </button>
+              <button
+                type="button" className="scr-btn scr-btn-sm"
+                onClick={() => { setByes(serverByes(league)); setByeEdit(false); }} disabled={busy}
+              >
+                취소
+              </button>
+            </>
           )}
         </div>
         {canEdit && !league.bracketLocked && (

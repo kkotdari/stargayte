@@ -6966,6 +6966,25 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 /* 빈 자리("미정"/"부전"/"공백")도 부모(.scr-league-bracket-slot)를 꽉 채운다 — 이제
    모든 라운드가 좌표로 정확히 배치되므로 카드-대-빈자리 높이를 굳이 맞출 필요가
    없다(고정 CARD_H를 부모가 이미 강제한다). */
+/* 부전승 자리 고르기(요청: 관리자가 부전승 자리를 고른다) — 그 모드에서는 1라운드 칸이
+   전부 누를 수 있는 버튼이 된다. 고른 칸은 카드처럼 채워 두어, 대진 모양이 한눈에 보이게
+   한다(앞쪽 두 칸이면 "두 팀 4강 직행", 뒤쪽 두 칸이면 "네 팀 토너먼트 + 두 팀 단판"). */
+.scr-league-bracket-bye-pick {
+  width: 100%; height: 100%; box-sizing: border-box;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px dashed var(--line); border-radius: var(--radius-sm);
+  background: transparent; color: var(--dim); cursor: pointer;
+  font-family: inherit; font-size: var(--fs-micro); font-weight: 700;
+}
+.scr-league-bracket-bye-pick:disabled { cursor: default; opacity: 0.6; }
+.scr-league-bracket-bye-pick-on {
+  border-style: solid; border-color: var(--point);
+  background: color-mix(in srgb, var(--point) 16%, transparent); color: var(--text);
+}
+/* 몇 개를 골랐는지 — 개수가 맞아야 저장할 수 있어서 늘 보이게 둔다. */
+.scr-league-bracket-bye-hint {
+  font-size: var(--fs-micro); color: var(--dim); white-space: nowrap; align-self: center;
+}
 .scr-league-bracket-team-empty {
   display: flex; align-items: center; justify-content: center;
   padding: 6px 8px; width: 100%; height: 100%; box-sizing: border-box;
