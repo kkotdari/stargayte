@@ -1978,6 +1978,9 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    써서 위 숫자들의 자리를 안 건드리고, 표 안의 어느 값보다 흐리게 둬 곁말로 읽히게 한다. */
 /* 여러 줄이 나눠 쓰는 값(저그 갑각·프로토스 실드) — 공/방 두 칸을 걸쳐 하나로 적는다.
    한쪽 칸에만 적으면 그게 '공격'이나 '방어' 중 하나인 것처럼 읽힌다. */
+/* 공/방 격자에서 한 칸 띄워 앉힌다(요청) — 이건 공도 방도 아닌 별개 줄이라, 붙여 두면
+   위 표의 마지막 행처럼 읽힌다. */
+.scr-stat-up-solo, .scr-stat-up-solo-label { margin-top: 5px; }
 .scr-stat-up-solo { grid-column: 2 / -1; }
 .scr-stat-up-note {
   grid-column: 1 / -1; margin-top: 3px;
@@ -6971,23 +6974,9 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 /* 빈 자리("미정"/"부전"/"공백")도 부모(.scr-league-bracket-slot)를 꽉 채운다 — 이제
    모든 라운드가 좌표로 정확히 배치되므로 카드-대-빈자리 높이를 굳이 맞출 필요가
    없다(고정 CARD_H를 부모가 이미 강제한다). */
-/* 부전승 자리 고르기(요청: 관리자가 부전승 자리를 고른다) — 그 모드에서는 1라운드 칸이
-   전부 누를 수 있는 버튼이 된다. 고른 칸은 카드처럼 채워 두어, 대진 모양이 한눈에 보이게
-   한다(앞쪽 두 칸이면 "두 팀 4강 직행", 뒤쪽 두 칸이면 "네 팀 토너먼트 + 두 팀 단판"). */
-.scr-league-bracket-bye-pick {
-  width: 100%; height: 100%; box-sizing: border-box;
-  display: flex; align-items: center; justify-content: center;
-  border: 1px dashed var(--line); border-radius: var(--radius-sm);
-  background: transparent; color: var(--dim); cursor: pointer;
-  font-family: inherit; font-size: var(--fs-micro); font-weight: 700;
-}
-.scr-league-bracket-bye-pick:disabled { cursor: default; opacity: 0.6; }
-.scr-league-bracket-bye-pick-on {
-  border-style: solid; border-color: var(--point);
-  background: color-mix(in srgb, var(--point) 16%, transparent); color: var(--text);
-}
-/* 몇 개를 골랐는지 — 개수가 맞아야 저장할 수 있어서 늘 보이게 둔다. */
-.scr-league-bracket-bye-hint {
+/* 판 크기를 라운드 수로 받으면서(요청) 그게 몇 강인지 옆에 적어 둔다 — "3"만 보고
+   8강인 줄 바로 알기는 어렵다. */
+.scr-league-bracket-rounds-hint {
   font-size: var(--fs-micro); color: var(--dim); white-space: nowrap; align-self: center;
 }
 .scr-league-bracket-team-empty {

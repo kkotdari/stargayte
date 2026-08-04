@@ -856,9 +856,11 @@ export const api = {
       method: "PUT", body: JSON.stringify({ teams }),
     });
   },
-  async generateLeagueBracket(leagueId: number, teamCount: number): Promise<League> {
+  /* 판 크기는 라운드 수로 직접 정한다(요청) — 어느 칸에나 팀을 앉힐 수 있게 되면서
+     "팀 수 → 판 크기"가 성립하지 않는다. 3이면 8강, 4면 16강이다. */
+  async generateLeagueBracket(leagueId: number, rounds: number): Promise<League> {
     return request<League>(`/api/leagues/${leagueId}/bracket/generate`, {
-      method: "POST", body: JSON.stringify({ teamCount }),
+      method: "POST", body: JSON.stringify({ rounds }),
     });
   },
   async confirmLeagueBracket(leagueId: number): Promise<League> {
@@ -882,16 +884,6 @@ export const api = {
   ): Promise<League> {
     return request<League>(`/api/leagues/${leagueId}/bracket/seeding`, {
       method: "PUT", body: JSON.stringify({ assignments }),
-    });
-  },
-  /* 부전승 자리를 한 번에 정한다(요청: 관리자가 고른다) — slots는 '전체' 부전승 자리이고,
-     개수는 drawSize - plannedTeams와 정확히 같아야 한다. 서버가 기존 배치를 지우고 이대로
-     다시 깔면서, 자리가 바뀐 칸에서 이미 올라갔던 부전승 진출도 함께 되돌린다. */
-  async setLeagueBracketByes(
-    leagueId: number, slots: { matchId: number; side: LeagueMatchSide }[],
-  ): Promise<League> {
-    return request<League>(`/api/leagues/${leagueId}/bracket/byes`, {
-      method: "PUT", body: JSON.stringify({ slots }),
     });
   },
   async setLeagueMatchSchedule(leagueId: number, matchId: number, scheduledAt: string | null): Promise<LeagueMatch> {

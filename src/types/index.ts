@@ -506,12 +506,9 @@ export interface LeagueMatch {
   slotInRound: number;
   teamA: LeagueMatchTeamRef | null;
   teamB: LeagueMatchTeamRef | null;
-  // 대진판이 2의 거듭제곱이 아니라 생기는, 구조적으로 영원히 안 열리는 칸.
+  /** 확정할 때 죽은 칸 — 아무도 안 앉은 가지다(요청: 확정을 누르면 필요 없는 칸이
+   *  사라진다). 확정 전에는 늘 false다: 어느 가지가 살아남을지는 확정 순간에 정해진다. */
   isDead: boolean;
-  /** 이 1라운드 칸의 어느 쪽이 부전승(영구 공백)인가 — 'a' | 'b' | null.
-   *  isDead가 칸 전체의 공백이라면 이쪽은 반쪽만의 공백이다. 어디에 두느냐로 대진 모양이
-   *  갈려서(관리자가 고른다, 요청) 화면이 그 자리를 표시하고 옮길 수 있어야 한다. */
-  byeSide: LeagueMatchSide | null;
   scheduledAt: string | null;
   setsWonA: number | null;
   setsWonB: number | null;

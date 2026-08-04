@@ -122,7 +122,7 @@ function UpgradeGrid({ mix, race }: { mix: BuildMix; race: BaseRace | null | und
       ))}
       {table.solo && solo !== null && (
         <>
-          <span className="scr-stat-up-row">{table.solo.label}</span>
+          <span className="scr-stat-up-row scr-stat-up-solo-label">{table.solo.label}</span>
           <span className="scr-stat-up-solo">{solo}</span>
         </>
       )}
