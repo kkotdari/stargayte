@@ -3875,6 +3875,10 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
    아바타(26px) + 위아래 패딩(5px씩) 기준. */
 .scr-chip { display: flex; align-items: center; gap: 6px; background: var(--panel-raised); border: none; padding: 5px 6px 5px 9px; min-height: 36px; transition: background-color .12s, opacity .12s, transform .12s, box-shadow .12s;  border-radius: var(--radius-sm); min-width: 0; max-width: 100%; box-sizing: border-box; }
 .scr-chip-warn { box-shadow: inset 0 0 0 1px var(--loss); }
+/* 프사는 어디서든 동그랗다(요청) — 이 앱의 디자인 랭귀지이자 라이팅 테마의 한 요소다.
+   Avatar.tsx가 크기별로 각진 래디우스를 인라인 style로 계산해 넣기 때문에, 다른 원형
+   프사 자리들(.scr-user-chip, .scr-select-opt …)과 같이 여기서도 !important로 덮는다. */
+.scr-chip .scr-avatar { border-radius: 50% !important; }
 .scr-chip-computer-icon { flex-shrink: 0; color: var(--dim); }
 .scr-chip-name { font-family: var(--font-ui); font-size: var(--fs-body); font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .scr-chip .scr-chip-race { width: 62px; flex-shrink: 0; }
