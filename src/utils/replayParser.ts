@@ -145,6 +145,9 @@ export interface ReplayPlayerSignals {
    *  (지적: "연구한 것만으로는 아무것도 아니야"). 무엇이 사용 증거인지는 기술마다 달라서
    *  replayTechNames의 CAST_ORDER_TO_TECH / USE_CMD_TO_TECH / PLACE_MINE_ORDER가 정한다. */
   techUses: Record<string, number>;
+  /** 기술을 쓴 프레임 목록 — 지표를 '주요시간대'로 좁혀 세는 데 쓴다(요청). 유닛·건물은
+   *  unitFrames/buildingFrames가 이미 그 일을 하고 있었는데 기술만 총합뿐이었다. */
+  techFrames: Record<string, number[]>;
   /** 마법을 실제로 '어디에' 썼나 — 리콜·스톰·다크스웜·이레디에이트처럼 좌표를 갖는 마법은
    *  그 좌표가 곧 그 장면의 자리다(요청: 유닛 특정 로직을 다른 기술로도 넓히기). 이동
    *  명령 뭉치의 중심을 어림하는 것과 달리 이건 게임이 실제로 받은 지점이라 정확하다.
@@ -419,7 +422,7 @@ function emptySignals(): ReplayPlayerSignals {
     buildingCounts: {}, firstBuildingFrame: {},
     unitFrames: {}, buildingFrames: {}, buildPositions: [], orderPositions: [], hits: [],
     techNames: [], upgradeNames: [], firstTechFrame: {}, firstUpgradeFrame: {},
-    techUses: {}, firstTechUseFrame: {}, castPositions: [], chats: [],
+    techUses: {}, techFrames: {}, firstTechUseFrame: {}, castPositions: [], chats: [],
     unloadCount: 0, firstUnloadFrame: null, liftOffCount: 0, firstLiftOffFrame: null,
     leaveFrame: null, leaveReason: null,
     firstCmdFrame: null, lastCmdFrame: null, cmdCountByThird: [0, 0, 0],
@@ -709,6 +712,7 @@ function collectSignals(
       : (!wasted && cmdName ? USE_CMD_TO_TECH[cmdName] ?? null : null);
     if (usedTech) {
       s.techUses[usedTech] = (s.techUses[usedTech] ?? 0) + 1;
+      if (frame !== null) (s.techFrames[usedTech] ??= []).push(frame);
       // 좌표를 갖는 마법은 그 지점을 그대로 남긴다(위 castPositions 주석).
       const castAt = posOf(c.Pos);
       if (castAt && frame !== null && s.castPositions.length < ORDER_POS_CAP) {
@@ -941,7 +945,7 @@ export async function parseReplayFile(file: File): Promise<ParsedReplay> {
         effectiveCmdCount: desc?.EffectiveCmdCount ?? null,
         buildCount: buildCountOf(p.ID),
         // 그 총량을 갈래별로 나눈 값(요청: 통계 생산 칸의 도넛 셋 + 초반 일꾼 수).
-        buildMix: buildMixOf(signalsOf(p.ID)),
+        buildMix: buildMixOf(signalsOf(p.ID), totalFrames),
         isComputer: p.Type?.Name === "Computer",
         startX: startTileOf(p.SlotID)?.x ?? null,
         startY: startTileOf(p.SlotID)?.y ?? null,

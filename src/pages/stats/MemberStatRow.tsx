@@ -21,25 +21,28 @@ const TOP_N = 5;
    값은 global.css의 --scr-donut-size와 짝이다 — 한쪽만 고치면 칸 폭이 어긋난다. */
 const DONUT = 72;
 
-/** 합계를 10분당 값으로(요청) — 원장은 기간 안의 경기를 통째로 더한 값이라 그대로 적으면
- *  "오래 뛴 사람일수록 큰 수"가 된다. 총 시간을 모르면(옛 응답) 아무것도 안 적는다. */
-function per10(total: number, seconds: number | null | undefined): string | undefined {
+/** 합계를 주요시간대 1분당 값으로(요청) — 원장은 기간 안의 경기를 통째로 더한 값이라
+ *  그대로 적으면 "오래 뛴 사람일수록 큰 수"가 된다. 분모는 경기 전체가 아니라 초반·막판을
+ *  뺀 주요시간대의 합이고(replayBuildMix의 coreWindowOf), 분자도 같은 구간 것만 세어
+ *  저장돼 있다. 그 구간을 못 잡는 짧은 경기는 분모가 아예 안 쌓여 여기가 undefined가
+ *  되고, 화면은 그 자리를 비운다. */
+function perMin(total: number, seconds: number | null | undefined): string | undefined {
   return seconds && seconds > 0
     ? (total / seconds * PER_WINDOW_SECONDS).toFixed(1)
     : undefined;
 }
 
-/** 도넛 위에 얹는 10분당 값(요청) — 건설은 "채/10분", 유닛은 "기/10분".
+/** 도넛 위에 얹는 주요시간대 1분당 값(요청) — 건설은 "채/분", 유닛은 "기/분".
  *
  *  단위를 붙이는 건 이 수가 총합이 아니라 환산값이기 때문이다: 단위 없이 "24.0"만 있으면
  *  그 기간에 24채를 지었다는 말로 읽힌다. 값이 없는 경우(총 시간을 모르는 옛 응답)엔
  *  자리째 비운다 — "-"를 세워 두면 0으로 읽힌다. */
-function Per10({ value, unit }: { value: string | undefined; unit: string }) {
+function PerMin({ value, unit }: { value: string | undefined; unit: string }) {
   if (!value) return null;
   return (
     <div className="scr-stat-per10">
       {value}
-      <span className="scr-stat-per10-unit">{unit}/10분</span>
+      <span className="scr-stat-per10-unit">{unit}/분</span>
     </div>
   );
 }
@@ -75,9 +78,9 @@ const SHOW_TOP_VALUES = false;
 
 /** 많이 나온 순 목록 한 칸. 값이 없으면 다른 칸과 같은 "-" 하나로 둔다.
  *
- *  적는 수는 총합이 아니라 10분당 값이다(요청) — 총합은 오래 뛴 사람이 늘 크다. 분모를 전체
- *  경기시간으로 두지 않는 것도 같은 이유다: 안 쓴 판의 시간까지 세면 프로토스만 쓰는 기술의
- *  값이 종족 비율만큼 깎인다. 다만 목록의 '순서'는 총합으로 매긴다(topEntries 참고). */
+ *  적는 수는 총합이 아니라 주요시간대 1분당 값이다(요청) — 총합은 오래 뛴 사람이 늘 크다.
+ *  분모를 전체 경기시간으로 두지 않는 것도 같은 이유다: 안 쓴 판의 시간까지 세면 프로토스만
+ *  쓰는 기술의 값이 종족 비율만큼 깎인다. 다만 목록의 '순서'는 총합으로 매긴다. */
 function TopList({ items, unit }: { items: TopEntry[]; unit: string }) {
   void unit; // 수를 숨긴 동안에는 안 쓰인다(SHOW_TOP_VALUES 참고).
   if (items.length === 0) return <span className="scr-stat-points-empty">-</span>;
@@ -88,7 +91,7 @@ function TopList({ items, unit }: { items: TopEntry[]; unit: string }) {
           <span className="scr-stat-toplist-name">{it.name}</span>
           {SHOW_TOP_VALUES && (
             <span className="scr-stat-toplist-n">
-              {it.per10 === null ? "-" : `${it.per10.toFixed(1)}${unit}`}
+              {it.perMin === null ? "-" : `${it.perMin.toFixed(1)}${unit}`}
             </span>
           )}
         </li>
@@ -246,7 +249,7 @@ export default function MemberStatRow({
           </div>
           <div className="scr-stat-record-item">
             {/* 10분당임을 라벨에 적는다(요청) — APM은 원래 분당이라 라벨 그대로. */}
-            <span className="scr-stat-record-label">커맨드<span className="scr-stat-record-per">/10분</span></span>
+            <span className="scr-stat-record-label">커맨드<span className="scr-stat-record-per">/분</span></span>
             <ValueBar value={stats.avgCmd} maxValue={maxCmd} medal={medals?.cmd} />
           </div>
         </div>
@@ -261,7 +264,7 @@ export default function MemberStatRow({
               {/* 10분당 몇 채를 지었나 — 도넛 가운데 구멍에 적던 것을 그림 위로 뺐다(요청).
                   구멍 안에서는 "건물"이라는 이름과 나란히 놓여 이 수가 무엇의 수인지가
                   섞여 읽혔고, 단위도 못 적었다(구멍이 좁다). 위로 빼면 단위까지 붙는다. */}
-              <Per10 value={per10(mix.bProd + mix.bDef, stats.mixSeconds)} unit="채" />
+              <PerMin value={perMin(mix.bProd + mix.bDef, stats.mixSeconds)} unit="채" />
               <div className="scr-stat-mix">
                 <DonutChart
                   title="건물"
@@ -287,7 +290,7 @@ export default function MemberStatRow({
               {/* 건설 칸과 같은 자리·같은 모양으로 10분당 뽑은 유닛 수(요청) — 두 도넛은
                   같은 유닛 무리를 두 가지로 갈라 본 것이라 수는 하나뿐이고, 그래서 둘
                   위쪽 가운데에 한 번만 적는다. */}
-              <Per10 value={per10(mix.uBasic + mix.uAdv + mix.uCaster, stats.mixSeconds)} unit="기" />
+              <PerMin value={perMin(mix.uBasic + mix.uAdv + mix.uCaster, stats.mixSeconds)} unit="기" />
               <div className="scr-stat-mix">
                 <DonutChart
                   title="병력"

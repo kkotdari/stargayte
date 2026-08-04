@@ -99,6 +99,39 @@ export interface BuildMix {
   buildingSecs: Record<string, number>;
   unitSecs: Record<string, number>;
   skillSecs: Record<string, number>;
+  /** 이 경기의 '주요시간대' 길이(초) — 위 수들을 되돌릴 분모다(요청: 모든 시간관련 지표를
+   *  주요시간대 1분당으로).
+   *
+   *  왜 경기 전체가 아닌가: 초반은 누구나 정해진 빌드를 따라가는 구간이라 사람 사이 차이가
+   *  거의 없고, 끝은 이미 기울어 한쪽이 손을 놓은 구간이라 값이 바닥으로 끌려간다. 둘 다
+   *  분모에는 들어가면서 분자에는 별로 안 들어와, 오래 끈 판일수록 모든 지표가 낮아졌다.
+   *  구간이 CORE_MIN_SEC보다 짧으면(=짧은 경기) 아예 null이라 집계에서 자동으로 빠진다.
+   *
+   *  분자도 같은 구간 것만 센다 — 한쪽만 좁히면 그게 바로 값이 부푸는 길이다. */
+  coreSeconds: number | null;
+  /** 그 구간 안의 생산 커맨드 수 — '커맨드' 칸도 같은 자로 재기 위한 값이다. */
+  coreCmd: number;
+}
+
+/* ── 주요시간대 ────────────────────────────────────────────────────────────────
+   초반 4분과 마지막 1분을 뺀 가운데 구간. 앞을 4분으로 자른 건 브루드워에서 그때까지가
+   대체로 '정해진 빌드'라 사람 사이에 차이가 안 생기는 구간이기 때문이고, 뒤를 1분 자른
+   건 결과가 이미 정해진 뒤의 정리 구간을 빼기 위해서다.
+   남는 구간이 3분 미만이면 값을 안 낸다 — 8분도 안 되는 판에서 '주요시간대'라고 부를 만한
+   구간이 없고, 짧은 판이 통계에 끼어드는 문제도 여기서 함께 막힌다(요청: 짧은 경기는
+   자동으로 안 들어가겠지). */
+const CORE_HEAD_SEC = 240;
+const CORE_TAIL_SEC = 60;
+const CORE_MIN_SEC = 180;
+
+/** 그 경기의 주요시간대 — 프레임 구간과 길이(초). 낼 수 없으면 null. */
+export function coreWindowOf(totalFrames: number | null | undefined):
+  { from: number; to: number; seconds: number } | null {
+  if (!totalFrames || totalFrames <= 0) return null;
+  const from = CORE_HEAD_SEC / SECONDS_PER_FRAME;
+  const to = totalFrames - CORE_TAIL_SEC / SECONDS_PER_FRAME;
+  const seconds = (to - from) * SECONDS_PER_FRAME;
+  return seconds >= CORE_MIN_SEC ? { from, to, seconds: Math.round(seconds) } : null;
 }
 
 /** 새 값 하나. 상수를 spread 해서 쓰면 사전들이 같은 객체를 공유하므로 함수로 낸다. */
@@ -108,6 +141,7 @@ export function emptyBuildMix(): BuildMix {
     upGw: 0, upGa: 0, upAw: 0, upAa: 0, upSh: 0,
     buildings: {}, units: {}, skills: {},
     buildingSecs: {}, unitSecs: {}, skillSecs: {},
+    coreSeconds: null, coreCmd: 0,
   };
 }
 
@@ -159,41 +193,68 @@ export function topEntries(
     .slice(0, n)
     .map(([name, count]) => ({
       name,
-      per10: mergedSecs[name] > 0 ? (count / mergedSecs[name]) * PER_WINDOW_SECONDS : null,
+      perMin: mergedSecs[name] > 0 ? (count / mergedSecs[name]) * PER_WINDOW_SECONDS : null,
     }));
 }
 
-/** 10분(초) — 경기당 총합을 이 길이로 환산한다(서버의 PER_WINDOW_SECONDS와 같은 값). */
-export const PER_WINDOW_SECONDS = 600;
+/** 1분(초) — 주요시간대 합계를 이 길이로 환산한다(요청: 모든 시간관련 지표를 주요시간대
+ *  1분당으로, 단위 표시는 "단위/분"). 예전에는 10분이었는데, 경기 전체를 분모로 쓸 때는
+ *  분당 값이 너무 잘아 자릿수 차이가 안 읽혔다 — 주요시간대만 세면 값 자체가 커져서
+ *  분당으로도 충분히 갈린다(서버의 PER_WINDOW_SECONDS와 같은 값). */
+export const PER_WINDOW_SECONDS = 60;
 
-/** 목록 한 줄 — 이름과 10분당 값. 길이를 모르면(옛 응답) null이라 화면이 그 줄의 수를 뺀다. */
-export interface TopEntry { name: string; per10: number | null }
+/** 목록 한 줄 — 이름과 분당 값. 주요시간대를 못 잡은 경기뿐이면(짧은 판·옛 응답) null이라
+ *  화면이 그 줄의 수를 뺀다. */
+export interface TopEntry { name: string; perMin: number | null }
 
 /** 커맨드 스트림에서 모은 재료(signals)로 그 경기의 구성을 낸다. 재료가 없으면 null. */
-export function buildMixOf(s: ReplayPlayerSignals | null | undefined): BuildMix | null {
+export function buildMixOf(
+  s: ReplayPlayerSignals | null | undefined, totalFrames?: number | null,
+): BuildMix | null {
   if (!s) return null;
   const out = emptyBuildMix();
-  for (const [b, n] of Object.entries(s.buildingCounts)) {
+  /* 세는 구간 — 주요시간대가 잡히면 그 안의 것만 센다(요청). 못 잡는 경기(길이를 모르거나
+     너무 짧은 판)는 예전처럼 전부 세되 coreSeconds가 null이라 집계에서 빠진다.
+     프레임 목록이 없는 옛 재료에서는 총합으로 돌아간다 — 없는 걸 0으로 세면 그 사람의
+     기록이 통째로 사라진다. */
+  const core = coreWindowOf(totalFrames);
+  const inCore = (f: number) => !core || (f >= core.from && f <= core.to);
+  const countIn = (frames: number[] | undefined, total: number) =>
+    (frames ? frames.filter(inCore).length : total);
+
+  for (const [b, total] of Object.entries(s.buildingCounts)) {
+    const n = countIn(s.buildingFrames[b], total);
+    if (n <= 0) continue;
     if (DEFENSE_BUILDINGS.has(b)) out.bDef += n; else out.bProd += n;
     if (BUILDING_KO[b] && !SUPPLY_BUILDINGS.has(b)) out.buildings[b] = (out.buildings[b] ?? 0) + n;
   }
   for (const [line, names] of Object.entries(UP_LINES) as [keyof typeof UP_LINES, UpgradeName[]][]) {
+    // 업그레이드 단계는 '얼마나 올렸나'라 구간과 무관하다 — 시간당으로 환산하는 값이 아니다.
     out[line] = Math.max(...names.map((u) => upgradeLevel(s, u)));
   }
-  for (const [u, n] of Object.entries(s.unitCounts)) {
+  for (const [u, total] of Object.entries(s.unitCounts)) {
     if (NOT_ARMY.has(u)) continue;
+    const n = countIn(s.unitFrames[u], total);
+    if (n <= 0) continue;
     if (CASTER_UNITS.has(u)) out.uCaster += n;
     else if (BASIC_UNITS.has(u)) out.uBasic += n;
     else out.uAdv += n;
     if (AIR_UNITS.has(u)) out.uAir += n; else out.uGround += n;
     if (UNIT_KO[u]) out.units[u] = (out.units[u] ?? 0) + n;
   }
-  for (const [t, n] of Object.entries(s.techUses)) {
+  for (const [t, total] of Object.entries(s.techUses)) {
+    const n = countIn(s.techFrames?.[t], total);
     if (TECH_KO[t] && n > 0) out.skills[t] = (out.skills[t] ?? 0) + n;
   }
+  /* 초반 일꾼만은 정의 자체가 '초반 5분'이라 주요시간대와 무관하게 경기 앞쪽에서 센다. */
   const early = WORKER_EARLY_SEC / SECONDS_PER_FRAME;
   for (const u of WORKER_UNITS) {
     out.worker5 += (s.unitFrames[u] ?? []).filter((f) => f <= early).length;
   }
+  out.coreSeconds = core ? core.seconds : null;
+  /* '생산 커맨드'는 유닛+건물 생산 커맨드의 합이다(buildCount와 같은 정의) — 여기서는
+     주요시간대 것만 센 값이라 커맨드 칸도 다른 칸과 같은 자로 읽힌다. */
+  out.coreCmd = Object.entries(s.unitCounts).reduce((n, [u, t]) => n + countIn(s.unitFrames[u], t), 0)
+    + Object.entries(s.buildingCounts).reduce((n, [b, t]) => n + countIn(s.buildingFrames[b], t), 0);
   return out;
 }

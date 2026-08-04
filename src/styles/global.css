@@ -2083,6 +2083,10 @@ html:not(.scr-light-theme) .scr-donut-band-label { fill: #fff; }
 .scr-stat-medal {
   position: absolute; right: var(--scr-medal-edge); top: 50%; transform: translateY(-50%);
   font-size: var(--fs-subhead); line-height: 1; letter-spacing: 0;
+  /* 글자색을 도로 세운다 — 포인트 줄(.scr-stat-rank-points)이 제 글자를 흐리게 두는데,
+     그 색이 이모지에도 얹혀 그 자리의 메달만 탁해 보였다(지적). 막대 쪽 메달은 흐린 줄
+     안에 있지 않아 멀쩡했고, 그래서 같은 이모지가 자리마다 다르게 보였다. */
+  color: var(--text);
 }
 /* (삭제) 라이트에서 메달이 연해 보인다는 지적에 필터로 채도를 올려 봤는데, 원인은 색이
    아니라 옆 칸에 덮인 것이었다(위 .scr-stat-rank-val). 덮인 것을 걷어내면 막대 쪽 메달과
