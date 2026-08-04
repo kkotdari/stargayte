@@ -27,7 +27,7 @@ import type { GameResult, GameResultSlot, Member } from "../../types";
 // 읽기 전에 넘어간다). 이제 자막이 그 문장을 담는 유일한 자리라, 넘어가기 전에 충분히
 // 읽을 수 있어야 한다(요청) — 아래 문단에 전문이 함께 있던 때보다 넉넉하게 잡았다.
 // 글자 하나당 0.11초는 초당 아홉 자 남짓 읽는 속도다.
-/** 프레임 → 초. 자막 앞에 붙이는 "[5분]"을 계산한다(요청: 분까지만). */
+/** 프레임 → 초. 자막 앞에 붙이는 "[07:12]"를 계산한다(요청: 분에 초까지). */
 const SECONDS_PER_FRAME = 0.042;
 
 const DWELL_BASE_MS = 1800;
@@ -317,14 +317,18 @@ export default function GameResultStory({
      되살아난 것처럼 보인다). 이 계산은 이미 저장된 값만 쓰므로 옛 경기에도 그대로 붙는다. */
   /** 그 문장이 가리키는 시각(분) — 문장에 묶인 beat 가운데 가장 이른 것을 쓴다. 시각이
    *  없는 문장(맺음말 등)은 null이라 아무것도 안 붙는다. */
-  const capMin = (sn: { beats: number[] }): number | null => {
+  const capMin = (sn: { beats: number[] }): string | null => {
     const beats = gameResult.summaryData?.beats ?? [];
     let at: number | null = null;
     for (const i of sn.beats) {
       const v = beats[i]?.at;
       if (typeof v === "number" && (at === null || v < at)) at = v;
     }
-    return at === null ? null : Math.max(0, Math.round((at * SECONDS_PER_FRAME) / 60));
+    if (at === null) return null;
+    /* 분까지만 적던 것을 초까지 적는다(요청) — 한 분 안에 장면이 둘씩 들어가는 구간에서는
+       "[12분]"이 연달아 나와 어느 쪽이 먼저인지 시각으로는 알 수 없었다. */
+    const sec = Math.max(0, Math.round(at * SECONDS_PER_FRAME));
+    return `${String(Math.floor(sec / 60)).padStart(2, "0")}:${String(sec % 60).padStart(2, "0")}`;
   };
 
   /** 지금 스냅이 가리키는 시점(프레임) — 여기까지 지나온 beat 가운데 가장 늦은 시각. 저장된
@@ -1297,9 +1301,9 @@ export default function GameResultStory({
                 className={cx("scr-story-cap-line", i === introIdx && "scr-story-cap-intro")}
                 aria-hidden={i !== index} data-on={i === index}
               >
-                {/* 언제 있었던 일인지 앞에 붙인다(요청: [5분]처럼 분까지만). 시각을 모르는
+                {/* 언제 있었던 일인지 앞에 붙인다(요청: [07:12]처럼 초까지). 시각을 모르는
                     문장(맺음말 등)은 아무것도 안 붙인다 — 0분이라고 적으면 거짓말이다. */}
-                {capMin(sn) !== null && <span className="scr-story-cap-time">[{capMin(sn)}분]</span>}
+                {capMin(sn) !== null && <span className="scr-story-cap-time">[{capMin(sn)}]</span>}
                 {sn.parts.map((pt, j) => (pt.team
                   ? <span key={j} className={pt.team === 1 ? "scr-sum-team1" : "scr-sum-team2"}>{pt.text}</span>
                   : <span key={j}>{pt.text}</span>))}
