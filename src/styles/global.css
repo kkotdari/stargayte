@@ -8511,7 +8511,8 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 .scr-story-map { width: 100%; max-width: 100%; margin-inline: auto; }
 /* PC 상한을 240 → 440으로 크게 올린다(요청: 미니맵 크기 훨씬 크게, 좌우 로스터는 많이
    줄여도 됨) — 위 .scr-story-matchup-wide의 넓어진 폭이 이 상한을 뒷받침한다. */
-@media (min-width: 641px) { .scr-story-mid .scr-story-map { max-width: 440px; } }
+/* PC 상한을 440 → 400으로 조금 줄인다(요청). */
+@media (min-width: 641px) { .scr-story-mid .scr-story-map { max-width: 400px; } }
 
 .scr-story-map-head {
   display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; justify-content: center;
@@ -8565,6 +8566,11 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   overflow: visible;
   background: #101418;
 }
+/* 아직 그림을 안 올린 맵 — 바탕을 한 톤 올린 회색으로 둔다(요청: 미니맵만 비어 있는
+   회색으로). 지형이 없다는 게 한눈에 보이면서, 그 위에 얹히는 아바타·화살표·자막은
+   그대로 읽힌다. 무엇이 빠졌는지는 카드 아래 안내 줄이 말한다(scr-story-map-missing). */
+.scr-minimap-noimage { background: #2a2f36; }
+.scr-light-theme .scr-minimap-noimage { background: rgba(0, 0, 0, 0.10); }
 /* 캔버스(격자 개략도)와 img(사람이 올린 실제 미니맵)가 같은 자리를 쓴다. 둥근 모서리는
    여기에 준다 — 바깥(.scr-minimap)은 표시가 삐져나올 수 있게 자르지 않는다. */
 .scr-minimap-canvas {

@@ -29,13 +29,13 @@ import { useCursorPagination } from "../../hooks/useCursorPagination";
 import { useEditableFocused } from "../../hooks/useEditableFocused";
 import { usePageBackground } from "../../hooks/usePageBackground";
 import {
-  buildReplayDrafts, shortMatchHint, validateReplayDraft, type ReplayDraft,
+  buildReplayDrafts, type ReplayDraft,
 } from "../../utils/replayDraft";
 import { useLockBodyScroll } from "../../utils/bodyScrollLock";
 import { hasAppUpdatePreloadErrorOccurred } from "../../utils/appUpdate";
 import type {
-  ActivityFeedItem, Challenge, ActivityTargetType, GameOutcome, GameResult, GameResultSlot, Member,
-  NewGameResult, RankingShift,
+  ActivityFeedItem, Challenge, ActivityTargetType, GameResult, GameResultSlot, Member,
+  RankingShift,
 } from "../../types";
 
 const PAGE_SIZE = 100;
@@ -205,22 +205,10 @@ function rowTitleOf(it: DisplayItem): string {
     : it.kind === "rankingShift" ? RANK_SHIFT_TITLE : "게임결과";
 }
 
-/** 이 리플레이는 등록 전에 사람이 한 번 봐야 하나(요청) — 세 가지다.
- *
- *  · 선수를 회원과 못 이었다(unmatchedTeam*) — 그냥 넣으면 "모름"으로 박혀 그 사람 전적이
- *    사라진다. 검토창에서 회원/컴퓨터/비회원 중 무엇인지 골라 줘야 한다.
- *  · 승패를 못 가려냈다(result 없음) — 예전엔 무승부로 채워 넣고 카드에 빨간 글씨만 남겼는데,
- *    그건 틀린 기록이 통계에 먼저 섞인 뒤 사람이 찾아오길 기다리는 순서다.
- *  · 2분이 안 되는 짧은 판(shortMatchHint) — 진짜 경기일 수도, 맵만 켰다 끈 것일 수도 있다.
- *    이건 데이터만 봐서는 못 가른다.
- *
- *  나머지(매핑 끝 + 승패 확실 + 정상 길이)는 사람이 볼 게 없으므로 그냥 등록한다. */
-function needsReview(d: ReplayDraft): boolean {
-  return d.unmatchedTeam1.length > 0
-    || d.unmatchedTeam2.length > 0
-    || !d.result
-    || shortMatchHint(d) !== null;
-}
+/* (삭제) needsReview — '사람 눈이 꼭 필요한 건'만 골라 검토창으로 보내던 판정이다.
+   이제 중복만 빼고 전부 검토창으로 보내므로(요청) 고를 일이 없다. 무엇이 문제인지는
+   검토창이 줄마다 판정해 배지로 말한다(ReplayReviewModal의 reviewOf). */
+
 
 /** 이름을 몇 개까지 부르고 나머지는 "외 N명"으로 넘길까 — 한 명이다(요청). 두 명을 부르면
  *  "Cheol · carol 외 1명"처럼 이름 사이 가운뎃점과 "외" 앞 띄어쓰기가 한 줄에 뒤엉켜,
@@ -553,7 +541,6 @@ export default function ActivityScreen() {
   const isAdmin = !!user && isAdminRole(user.roles);
   const memberOf = useAppStore((s) => s.memberOf);
   const members = useAppStore((s) => s.members);
-  const addGameResult = useAppStore((s) => s.addGameResult);
 
   // + 등록 메뉴(리플레이/너 나와!/일정) — 버튼 아래 작은 팝오버로 연다.
   const [addMenuOpen, setAddMenuOpen] = useState(false);
@@ -743,63 +730,31 @@ export default function ActivityScreen() {
       ]);
       if (hasAppUpdatePreloadErrorOccurred()) return;
 
-      // 중복(이미 등록됨/병합됨)은 buildReplayDrafts가 이미 걸러 뒀으므로 조용히 넘어간다.
-      // 팀을 아예 못 나눴거나(teamSplitUncertain) 관전자 의심 인원이 있는 건은 검토창도
-      // 손댈 수 없는 자리라(팀 편성 자체를 다시 짜야 한다) 여전히 실패로 남긴다.
-      // 그 밖에 사람 눈이 필요한 세 가지는 검토창으로 보낸다(요청) — 아래 needsReview.
-      let registered = 0;
-      const failed: string[] = [];
+      /* 읽어 온 것은 중복만 빼고 전부 검토창으로 보낸다(요청: 검토 화면은 모두 중복인
+         경우만 빼고는 정상만 있어도 나와야 한다). 예전에는 깨끗한 건 여기서 조용히
+         등록하고 문제 있는 것만 검토창으로 보냈는데, 그러면 방금 무엇이 들어갔는지 사람이
+         볼 방법이 없었다 — 배치등록(ReplayBatchButton)은 이미 같은 규칙으로 돈다.
+         읽지 못한 것·팀을 못 나눈 것도 검토창이 실패/검토필요로 제 자리에 세워 준다
+         (ReplayReviewModal의 reviewOf). 중복만은 사람이 할 일이 없어 건너뛰고 숫자로만
+         알린다. */
+      let duplicates = 0;
       const review: ReplayDraft[] = [];
       for (const raw of drafts) {
-        if (raw.excludeReason === "duplicate") continue;
-        if (raw.parseError) { failed.push(`${raw.fileName}: ${raw.parseError}`); continue; }
-        if (raw.teamSplitUncertain) {
-          failed.push(`${raw.fileName}: 팀을 자동으로 나누지 못했어요.`);
-          continue;
-        }
-        if (raw.guessedObservers.length > 0) {
-          failed.push(`${raw.fileName}: 관전자로 의심되는 사람이 있어요(${raw.guessedObservers.join(", ")}).`);
-          continue;
-        }
-        if (needsReview(raw)) { review.push(raw); continue; }
-
-        // 여기까지 온 건 매핑도 끝났고 승패도 가려졌고 길이도 정상인 경기다 — 그냥 넣는다.
-        const problem = validateReplayDraft(raw);
-        if (problem) { failed.push(`${raw.fileName}: ${problem}`); continue; }
-
-        const payload: NewGameResult = {
-          date: raw.date, team1: raw.team1, team2: raw.team2,
-          result: raw.result as GameOutcome, matchType: raw.matchType,
-          replay: raw.replay,
-          mapName: raw.mapName || null, gameStartedAt: raw.gameStartedAt,
-          durationSeconds: raw.durationSeconds,
-          summaryData: raw.summaryData,
-          mapData: raw.mapGrid,
-        };
-        try {
-          await addGameResult(payload);
-          registered += 1;
-        } catch (err) {
-          failed.push(`${raw.fileName}: ${err instanceof Error ? err.message : "등록에 실패했어요."}`);
-        }
+        if (raw.excludeReason === "duplicate") { duplicates += 1; continue; }
+        review.push(raw);
       }
 
-      if (registered > 0) await handleReplaysSaved();
       const parts: string[] = [];
       if (truncated) parts.push(`한 번에 최대 ${MAX_REPLAY_FILES}개까지만 등록돼 처음 ${MAX_REPLAY_FILES}개만 처리했어요.`);
-      if (registered > 0) parts.push(`${registered}개 등록했어요.`);
-      if (failed.length > 0) parts.push(`${failed.length}개는 등록하지 못했어요 — ${failed.join(" / ")}`);
-      // 검토할 게 있으면 안내창 대신 검토창을 바로 연다 — 안내를 먼저 띄우면 확인을 누른
-      // 뒤에야 검토창이 뜨는 두 단계가 되고, 그 사이에 무슨 일이 남았는지가 흐려진다.
-      // 자동 등록분 안내는 검토창을 닫은 뒤로 미룬다(아래 onClose/onSaved).
-      const notice = parts.length > 0
-        ? { text: parts.join(" "), kind: failed.length > 0 ? "error" as const : "success" as const }
-        : null;
+      if (duplicates > 0) parts.push(`${duplicates}개는 이미 등록된 경기라 건너뛰었어요.`);
+      // 안내는 검토창을 닫은 뒤로 미룬다 — 먼저 띄우면 확인을 누른 뒤에야 검토창이 뜨는
+      // 두 단계가 되고, 그 사이에 무슨 일이 남았는지가 흐려진다.
+      const notice = parts.length > 0 ? { text: parts.join(" "), kind: "success" as const } : null;
       if (review.length > 0) {
         pendingNoticeRef.current = notice;
         setReviewDrafts(review);
-      } else if (notice) {
-        setReplayNotice(notice);
+      } else {
+        setReplayNotice(notice ?? { text: "등록할 리플레이가 없어요.", kind: "error" as const });
       }
     } finally {
       setParsingReplays(false);

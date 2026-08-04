@@ -551,13 +551,17 @@ export default function ReplayMinimap({
           는 그대로 두고, 그 바깥에 자막 패널(.scr-story-cap)과 같은 톤의 여백을 두른다.
           카드 자체의 바깥 패딩까지 넘어가면 안 되므로(지적) 이 여백은 부모 폭 안에서만
           늘어난다 — 지도가 그만큼 작아지는 대신 이름표가 늘 이 안에 머문다. */}
-      <div className={cx("scr-minimap", className)} ref={frameRef}>
-        {/* 바탕은 사람이 올려 둔 실제 미니맵 그림뿐이다(요청). 그림이 없으면 이 컴포넌트를
-            아예 안 그린다(GameResultStory의 storyMap) — 한때 타일 격자로 그린 개략도를
-            대신 깔았는데, 타일 번호만으로는 게임과 같은 색을 못 만들어(ReplayMapCanvas
-            주석) 무슨 지형인지 못 읽는 그림 위에 아바타만 뜬 꼴이었다. 아바타·화살표는
-            좌표를 비율로 얹으므로 그림의 픽셀 크기와 상관없이 제자리에 놓인다. */}
-      <img className="scr-minimap-canvas" src={grid.image ?? ""} alt={`${grid.name} 미니맵`} />
+      <div className={cx("scr-minimap", !grid.image && "scr-minimap-noimage", className)} ref={frameRef}>
+        {/* 바탕은 사람이 올려 둔 실제 미니맵 그림뿐이다(요청). 아직 안 올린 맵이면 그림
+            자리를 빈 회색으로 두고 그 위에 이야기를 그대로 그린다(요청) — 예전에는 이럴 때
+            컴포넌트를 통째로 안 그려서 옛 로스터+요약 문단으로 되돌아갔는데, 같은 경기가
+            맵 연결 여부에 따라 다른 화면으로 보이는 게 더 헷갈렸다. 아바타·화살표는 좌표를
+            비율로 얹으므로 바탕 그림이 없어도 제자리에 놓인다.
+            타일 격자로 그린 개략도를 깔지 않는 건, 타일 번호만으로는 게임과 같은 색을 못
+            만들어(ReplayMapCanvas 주석) 무슨 지형인지 못 읽는 그림이 되기 때문이다. */}
+      {grid.image && (
+        <img className="scr-minimap-canvas" src={grid.image} alt={`${grid.name} 미니맵`} />
+      )}
       {/* 화살표 — 몸통은 지형 위·아바타 아래에 둔다. viewBox를 타일 격자와 같게 두어 좌표를
           그대로 쓰고, preserveAspectRatio를 끄면 아바타(퍼센트 위치)와 같은 자리에 놓인다.
           화살촉만은 아바타 위에 올린 별도 레이어에 그린다(아래) — 어디를 쳤는지가 이 그림에서

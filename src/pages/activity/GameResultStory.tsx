@@ -1392,7 +1392,12 @@ export default function GameResultStory({
      대신 "연결해 달라"는 안내 한 줄만 띄운다.
      (격자 자체는 계속 저장한다 — 운영 > 미니맵 화면이 아직 연결 안 된 맵을 그 개략도
      썸네일로 알아보게 해 준다.) */
-  const storyMap = grid?.image ? grid : null;
+  /* 그림이 아직 없어도 이야기 형식 그대로 그린다(요청) — 미니맵 자리만 빈 회색으로 두고
+     (ReplayMinimap의 scr-minimap-noimage) 아바타·화살표·자막은 평소처럼 얹는다. 예전에는
+     그림이 없으면 옛 로스터+요약 문단으로 되돌아갔는데, 같은 경기가 맵 연결 여부에 따라
+     아예 다른 화면으로 보였다. 맵 자체를 못 읽은 옛 경기(grid === null)만 예전 형식이다 —
+     좌표계가 없어 아무것도 제자리에 못 놓는다. */
+  const storyMap = grid;
   const showRoster = storyMap === null;
   /* 맵은 읽었는데 그림만 아직 없는 경우 — 운영자가 연결해 주면 바로 이야기가 붙는다(요청).
      맵 자체를 못 읽은 옛 경기(grid === null)에는 연결할 대상이 없어 안 띄운다. */
