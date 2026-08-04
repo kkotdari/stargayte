@@ -163,9 +163,10 @@ export default function StatsScreenV2() {
   const [trendMember, setTrendMember] = useState<Member | null>(null);
   // 상성 관계 오버레이(타이틀 옆 "상성 보기" 버튼).
   const [rivalryOpen, setRivalryOpen] = useState(false);
-  // 기간은 "전체 기간" 아니면 특정 월("YYYY-MM") 하나 — 예전 단위 알약탭 + 월 선택기를
-  // 드롭다운 하나로 합쳤다(요청). 기본값은 이번 달.
-  const [period, setPeriod] = useState<string>(currentMonthValue);
+  // 기간은 올타임 아니면 특정 월("YYYY-MM") 하나 — 예전 단위 알약탭 + 월 선택기를 달력
+  // 하나로 합쳤다(요청). 기본값은 올타임(요청) — 한때 이번 달이었는데, 달 초에는 표가
+  // 거의 비어 있어 기록이 없는 것처럼 보였다.
+  const [period, setPeriod] = useState<string>(PERIOD_ALL);
   const periodMonth = period === PERIOD_ALL ? "" : period;
   /* 랭크·포인트는 어느 종족 필터에서나 보여준다. 한때 주종족일 때만 감췄는데, 그건 그 값이
      혼자 전체 종족 기준으로 남아 옆 칸들과 잣대가 어긋났기 때문이다 — 이제 서버가 사람마다

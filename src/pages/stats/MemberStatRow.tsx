@@ -65,7 +65,7 @@ const UPGRADE_MIN_MIN = 20;
    그래서 종족을 고른 경우에만(또는 주종족으로 볼 때) 그 종족의 줄로 그린다 — 전체종족은
    서로 다른 것을 한 표에 겹쳐 놓는 일이라 아예 안 그린다.
 
-   공유되는 줄(저그 갑각, 프로토스 플라즈마 실드)은 공/방 격자에 끼우지 않고 따로 한 줄로
+   공유되는 줄(저그 갑각, 프로토스 실드)은 공/방 격자에 끼우지 않고 따로 한 줄로
    뗀다 — 같은 값을 두 줄에 적으면 줄마다 따로 있는 것으로 오해한다.
 
    이름은 게임에 있는 그대로 쓴다(요청: "지상방어 말고 갑각") — 뜻이 비슷하다고 내가 지어
@@ -98,7 +98,7 @@ const UP_TABLE: Record<BaseRace, { rows: UpRow[]; solo?: { label: string; title:
       { label: "지상", title: "지상 무기 / 지상 방어구", atk: "pGrdW", def: "pGrdA" },
       { label: "공중", title: "공중 무기 / 공중 방어구", atk: "pAirW", def: "pAirA" },
     ],
-    solo: { label: "플라즈마 실드", title: "플라즈마 실드(지상·공중 공통)", key: "pShield" },
+    solo: { label: "실드", title: "플라즈마 실드(지상·공중 공통)", key: "pShield" },
   },
 };
 
