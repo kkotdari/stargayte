@@ -1949,12 +1949,14 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 /* 정렬 드롭다운 — 필터 문장·건수와 한 줄, 건수 바로 왼쪽(요청). margin-left:auto로 남는
    폭을 이쪽이 다 가져가고, 뒤따르는 건수의 같은 auto는 풀어 준다 — 둘 다 auto면 남는 폭을
    반씩 나눠 가져 정렬이 줄 한가운데로 떠 버린다. */
-/* 정렬은 제 줄을 쓰고(요청) 낱말을 그대로 늘어놓는다 — 드롭다운을 열지 않아도 무엇으로
-   줄 서 있는지가 바로 읽힌다. 이름이 sortpick인 건 .scr-stat-sort-btn을 옛 컬럼 머리
-   정렬(지금은 안 쓰지만 규칙이 아래 남아 있다)이 이미 쓰고 있어서다 — 같은 이름을 쓰면
-   그쪽 width:100%가 이겨서 낱말들이 한 줄에 안 서고 세로로 쌓인다(실측). */
-.scr-stat-sortbar { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; }
-.scr-stat-sortpick {
+/* 고를 값을 낱말로 늘어놓는 한 줄 — 유형·종족·정렬이 함께 쓴다(요청: 유형·종족도 정렬과
+   같은 스타일로). 알약 트랙을 두르던 때보다 폭이 훨씬 덜 든다: 트랙과 그 좌우 여백이
+   사라지고 고른 낱말 하나만 배경을 갖는다.
+   이름이 sort~가 아닌 건 .scr-stat-sort-btn을 옛 컬럼 머리 정렬(지금은 안 쓰지만 규칙이
+   아래 남아 있다)이 이미 쓰고 있어서다 — 같은 이름을 쓰면 그쪽 width:100%가 이겨서
+   낱말들이 한 줄에 안 서고 세로로 쌓인다(실측). */
+.scr-stat-pickrow { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; }
+.scr-stat-pick {
   padding: 3px 7px; border: none; border-radius: var(--radius-sm); background: none;
   font-family: inherit; font-size: var(--fs-caption); font-weight: 600;
   color: var(--dim); cursor: pointer; white-space: nowrap;
@@ -1965,17 +1967,16 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   -webkit-tap-highlight-color: transparent;
 }
 @media (hover: hover) {
-  .scr-stat-sortpick:not(.scr-stat-sortpick-on):hover { color: var(--text); background: rgba(255,255,255,0.10); }
-  .scr-light-theme .scr-stat-sortpick:not(.scr-stat-sortpick-on):hover { background: rgba(0,0,0,0.06); }
+  .scr-stat-pick:not(.scr-stat-pick-on):hover { color: var(--text); background: rgba(255,255,255,0.10); }
+  .scr-light-theme .scr-stat-pick:not(.scr-stat-pick-on):hover { background: rgba(0,0,0,0.06); }
 }
 /* 고른 것 하나만 또렷하게 — 알약탭과 같은 라이팅(다크=흰 알약, 라이트=하늘 알약)이라
    같은 화면 안에서 "지금 켜진 것"의 생김새가 하나로 읽힌다. */
-.scr-stat-sortpick-on {
+.scr-stat-pick-on {
   color: #10151a; background: var(--lit-pill-bg); box-shadow: var(--lit-pill-glow);
 }
 /* 알약탭·달력도 같은 이유로 끈다 — 같은 줄에 선 것들끼리 누를 때의 반응이 달라 보이면
    그 자체가 흠으로 읽힌다. */
-.scr-stat-filters .scr-pill-tab-btn,
 .scr-month-cal-trigger, .scr-month-cal-cell, .scr-month-cal-all, .scr-month-cal-nav {
   -webkit-tap-highlight-color: transparent;
 }
@@ -3167,10 +3168,6 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
    이름표는 덩어리 안에서 왼쪽 그대로다(요청: 이름표까지 오른쪽으로 붙이면 안 된다) —
    오른쪽으로 붙이면 앞의 셋과 이름표 자리가 어긋나 다른 종류의 것으로 읽힌다. */
 .scr-stat-filter-sort { align-self: flex-end; margin-left: auto; }
-/* 정렬 덩어리만 오른쪽으로 — 모바일에선 제 줄의 오른쪽 끝(align-self), PC에선 남는 폭을
-   전부 왼쪽 마진으로 먹어 줄 끝으로 밀린다(margin-left:auto). 이름표도 값과 같이 오른쪽에
-   맞춰야 덩어리가 통째로 오른쪽에 붙은 것으로 읽힌다. */
-.scr-stat-filter-sort { align-self: flex-end; align-items: flex-end; margin-left: auto; }
 .scr-stat-filter-label {
   font-size: var(--fs-micro); font-weight: 700; color: var(--dim);
   white-space: nowrap; padding-left: 2px;
@@ -3180,20 +3177,14 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
    선택자를 .scr-stat-filters(바깥 통)에 매다는 게 중요하다 — 종족 알약탭은 유형과 달리
    .scr-stat-filter-row 밖에 있어서, 그 줄에 걸어 두면 종족만 규칙을 통째로 놓친다
    (실측: 트랙이 남는 폭을 다 먹고 다크에서 낱말이 안 보였다). */
-.scr-stat-filters .scr-pill-tabs { width: max-content; max-width: 100%; height: 30px; }
-.scr-stat-filters .scr-pill-tab-btn { font-size: var(--fs-caption); padding: 0 12px; }
-/* 좁은 화면에서 셋이 다 안 들어가면 종족만 아래로 한 줄 내려간다(요청) — 줄 자체가
-   flex-wrap이라 따로 할 일은 없다. 한때 모바일에서 낱말 여백을 절반으로 줄여 억지로
-   한 줄에 넣어 봤는데, 낱말끼리 서로 붙어 버려서 되돌렸다. */
-/* 알약탭의 기본 글자색은 밝은 유리 필터창 안을 전제로 한 어두운 하드코딩이라, 맨 화면
-   (다크 배경) 위에 놓으면 안 고른 낱말이 통째로 안 보인다(실측) — 테마를 따르게 뒤집는다.
-   고른 낱말은 밝은 알약 위라 어두운 글자 그대로다. */
-.scr-stat-filters .scr-pill-tab-btn:not(.scr-pill-tab-btn-active) { color: var(--muted); }
-@media (hover: hover) {
-  .scr-stat-filters .scr-pill-tab-btn:hover:not(.scr-pill-tab-btn-active) { color: var(--text); }
+/* 모바일 필터 줄의 기본은 스페이스비트윈, 덩어리가 하나뿐인 줄은 가운데다(요청 — 이 화면의
+   기본 규칙). 정렬만은 그와 무관하게 늘 오른쪽 끝이다(.scr-stat-filter-sort).
+   좁아서 다 안 들어가면 뒤엣것부터 아래로 내려간다 — 줄 자체가 flex-wrap이라 따로 할 일은
+   없다(한때 낱말 여백을 절반으로 줄여 억지로 한 줄에 넣어 봤는데 서로 붙어 버려 되돌렸다). */
+@media (max-width: 860px) {
+  .scr-stat-filter-row { justify-content: space-between; }
+  .scr-stat-filter-row:has(> .scr-stat-filter-group:only-child) { justify-content: center; }
 }
-.scr-stat-filters .scr-pill-tabs { background: rgba(255,255,255,0.08); }
-.scr-light-theme .scr-stat-filters .scr-pill-tabs { background: rgba(0,0,0,0.06); }
 
 /* ===== 기간 달력(요청: 기간을 달력으로) =====
    고르는 단위는 여전히 달이라 날짜 격자가 아니라 한 해에 열두 칸이다. 트리거는 옆 알약탭과

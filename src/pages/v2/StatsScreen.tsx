@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Spinner } from "../../components/common/Feedback";
 import SearchFilterBar from "../../components/common/SearchFilterBar";
-import PillTabs from "../../components/common/PillTabs";
 import MonthCalendar from "../../components/common/MonthCalendar";
 import MemberStatRow, { type StatColumnMedals } from "../stats/MemberStatRow";
 import PointDetailModal from "./PointDetailModal";
@@ -102,8 +101,30 @@ function PlainHead({ label, className }: { label: string; className?: string }) 
   return <span className={cx("scr-stat-plain-head", className)}>{label}</span>;
 }
 
+/** 고를 값들을 낱말로 늘어놓는 한 줄 — 유형·종족·정렬이 같은 물건을 쓴다(요청: 유형·종족도
+ *  정렬과 같은 스타일로). 알약 트랙을 두르던 때보다 폭이 훨씬 덜 든다: 트랙과 좌우 여백이
+ *  사라지고 고른 낱말 하나만 배경을 갖는다. */
+function PickRow<T extends string>({ options, value, onChange, label }: {
+  options: { value: T; label: string }[]; value: T; onChange: (v: T) => void; label: string;
+}) {
+  return (
+    <div className="scr-stat-pickrow" role="group" aria-label={label}>
+      {options.map((o) => (
+        <button
+          key={o.value} type="button"
+          className={cx("scr-stat-pick", o.value === value && "scr-stat-pick-on")}
+          aria-pressed={o.value === value}
+          onClick={() => onChange(o.value)}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 /** 필터 한 덩어리 — 이름표 + 그 값(요청: 필터에 각각 라벨). PC에서 넷이 한 줄에 서면
- *  무엇이 무엇인지가 라디오 낱말만으로는 안 갈린다("전체"가 종족인지 유형인지). */
+ *  무엇이 무엇인지가 낱말만으로는 안 갈린다("전체"가 종족인지 유형인지). */
 function FilterGroup({ label, children, className }: {
   label: string; children: React.ReactNode; className?: string;
 }) {
@@ -424,7 +445,11 @@ export default function StatsScreenV2() {
     const out = new Map<string, StatColumnMedals>();
     // 기간·종족도 지금 고른 값이 아니라 '받아 온 한 장'의 값으로 본다 — 값보다 조건이 먼저
     // 바뀌면 지난달 통계에 이번 달 잣대로 메달이 붙는다(지적: 알 수 없는 순위 배지).
-    if (!view || view.period === PERIOD_ALL || view.period >= currentMonthValue()) return out;
+    if (!view) return out;
+    /* 올타임에는 늘 단다(요청) — 여기엔 '아직 안 끝난 기간'이라는 개념이 자체가 없다.
+       달로 볼 때만 이번 달(진행 중)을 뺀다: 아직 뒤집힐 순위에 메달을 달면 그게 확정인
+       것처럼 읽힌다. */
+    if (view.period !== PERIOD_ALL && view.period >= currentMonthValue()) return out;
     const shown = view.race;
     const pool = members
       .filter((m) => m.status !== "withdrawn" && m.status !== "suspended")
@@ -518,15 +543,14 @@ export default function StatsScreenV2() {
            라디오는 값이 몇 개 안 되고 늘 같은 자리에 있어, 지금 무엇이 걸렸는지를 열어 보지
            않고도 한눈에 읽는다. */
         heading={<div className="scr-stat-filters">
-          {/* 유형·기간·종족은 한 줄에 둔다(요청) — 셋 다 "무엇을 볼까"라 한 호흡이고,
-              모바일에서도 줄을 나누지 않는다(넘치면 wrap이 접는다). PC에서는 이 묶음이
-              display:contents로 풀려 정렬까지 통째로 한 줄에 선다. */}
+          {/* 유형·종족·기간 순으로 한 줄에(요청) — 고르는 낱말끼리 붙여 두고 달력을 끝에
+              둔다. 좁아서 다 안 들어가면 wrap이 뒤엣것부터 아래로 내린다. */}
           <div className="scr-stat-filter-row">
             <FilterGroup label="유형">
-              <PillTabs
-                options={TYPE_TAB_OPTS} value={matchType}
-                onChange={(v) => setMatchType(v)} aria-label="경기 유형"
-              />
+              <PickRow options={TYPE_TAB_OPTS} value={matchType} onChange={setMatchType} label="경기 유형" />
+            </FilterGroup>
+            <FilterGroup label="종족">
+              <PickRow options={RACE_TAB_OPTS} value={race} onChange={setRace} label="종족" />
             </FilterGroup>
             <FilterGroup label="기간">
               <MonthCalendar
@@ -535,28 +559,11 @@ export default function StatsScreenV2() {
                 allValue={PERIOD_ALL} allLabel="올타임"
               />
             </FilterGroup>
-            <FilterGroup label="종족">
-              <PillTabs
-                options={RACE_TAB_OPTS} value={race}
-                onChange={(v) => setRace(v)} aria-label="종족"
-              />
-            </FilterGroup>
           </div>
           {/* 정렬은 오른쪽 끝(요청) — 앞의 셋이 "무엇을 볼까"라면 이건 "어떻게 늘어놓을까"라
               결이 다르다. 떨어뜨려 두면 그 차이가 자리로 읽힌다. */}
           <FilterGroup label="정렬" className="scr-stat-filter-sort">
-            <div className="scr-stat-sortbar" role="group" aria-label="정렬 기준">
-              {sortOpts.map((o) => (
-                <button
-                  key={o.value} type="button"
-                  className={cx("scr-stat-sortpick", o.value === sort.key && "scr-stat-sortpick-on")}
-                  aria-pressed={o.value === sort.key}
-                  onClick={() => setSort(sortOf(o.value))}
-                >
-                  {o.label}
-                </button>
-              ))}
-            </div>
+            <PickRow options={sortOpts} value={sort.key} onChange={(k) => setSort(sortOf(k))} label="정렬 기준" />
           </FilterGroup>
         </div>}
       />
