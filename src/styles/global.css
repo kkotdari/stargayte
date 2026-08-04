@@ -1794,7 +1794,11 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 /* 닉네임과 그 옆 종족 배지 한 줄 — 배지는 '주종족'으로 볼 때만 붙는다(요청). 배지가
    있어도 닉네임이 줄어드는 일은 없어야 해서, 줄어드는 쪽은 닉네임 글자로 못 박는다
    (min-width: 0 + 배지 flex: none). */
-.scr-stat-name-line { display: inline-flex; align-items: center; gap: 3px; min-width: 0; }
+/* max-width가 반드시 있어야 한다 — 스택이 align-items:center라 이 줄의 폭이 내용 크기
+   (max-content)로 잡히고, 그러면 안쪽 닉네임의 max-width:100%도 그 내용 크기를 가리켜
+   말줄임이 영영 안 걸린다. 좁은 모바일 유저 칸에서 긴 닉네임이 칸 밖으로 넘치고, 칸이
+   가운데 정렬이라 왼쪽으로도 흘러 프사 위에 글자가 겹쳐 보였다(지적). */
+.scr-stat-name-line { display: inline-flex; align-items: center; gap: 3px; min-width: 0; max-width: 100%; }
 .scr-stat-name-race { flex: none; }
 .scr-stat-name-btn {
   /* 원래는 행의 다른 칸들과 같은 크기(상속)였는데, 닉네임을 눈에 잘 띄게 키웠다가(19px)
@@ -1951,10 +1955,14 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    그쪽 width:100%가 이겨서 낱말들이 한 줄에 안 서고 세로로 쌓인다(실측). */
 .scr-stat-sortbar { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; }
 .scr-stat-sortpick {
-  padding: 3px 7px; border: none; border-radius: 999px; background: none;
+  padding: 3px 7px; border: none; border-radius: var(--radius-sm); background: none;
   font-family: inherit; font-size: var(--fs-caption); font-weight: 600;
   color: var(--dim); cursor: pointer; white-space: nowrap;
   transition: color .12s, background .12s;
+  /* 모바일에서 누를 때 네모난 회색이 번쩍이는 것(지적) — 네이티브 탭 하이라이트다.
+     둥근 모서리를 무시한 사각형이라 버튼 밖으로도 비어져 보인다. 눌림 표시는 아래
+     선택 상태가 이미 하므로 끈다. */
+  -webkit-tap-highlight-color: transparent;
 }
 @media (hover: hover) {
   .scr-stat-sortpick:not(.scr-stat-sortpick-on):hover { color: var(--text); background: rgba(255,255,255,0.10); }
@@ -1964,6 +1972,12 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    같은 화면 안에서 "지금 켜진 것"의 생김새가 하나로 읽힌다. */
 .scr-stat-sortpick-on {
   color: #10151a; background: var(--lit-pill-bg); box-shadow: var(--lit-pill-glow);
+}
+/* 알약탭·달력도 같은 이유로 끈다 — 같은 줄에 선 것들끼리 누를 때의 반응이 달라 보이면
+   그 자체가 흠으로 읽힌다. */
+.scr-stat-filters .scr-pill-tab-btn,
+.scr-month-cal-trigger, .scr-month-cal-cell, .scr-month-cal-all, .scr-month-cal-nav {
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* 경기당 초반(5분) 일꾼 수 — 도넛과 달리 비율이 아니라 그냥 수라 숫자를 그대로 적는다.
@@ -3229,6 +3243,10 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
   color: #10151a; background: var(--lit-pill-bg); box-shadow: var(--lit-pill-glow);
 }
 .scr-month-cal-all { width: 100%; margin-top: 2px; }
+
+/* 업그레이드를 잴 만한 경기가 없는 줄 — 표 대신 설명 한 줄만 두되 폭은 그대로 지킨다
+   (요청: 자리는 비워 놓고 설명 표시). 안 그리면 옆 스킬 목록이 그 줄에서만 당겨진다. */
+.scr-stat-upgrades-empty { align-content: center; }
 
 /* 경기번호·메모 검색 필드(경기 화면 전용) — 유저 검색창 바로 아래에 한 줄로 나란히 두고,
    모바일에서도 한 줄을 유지한다(요청). 라벨 없이 플레이스홀더로만 힌트를 준다(요청). 인풋

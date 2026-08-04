@@ -115,7 +115,16 @@ function UpgradeGrid({ mix, race }: { mix: BuildMix; race: BaseRace | null | und
   };
   const rows = table.rows.filter((r) => avg(r.atk) !== null || avg(r.def) !== null);
   const solo = table.solo ? avg(table.solo.key) : null;
-  if (rows.length === 0 && solo === null) return null;
+  /* 잴 만한 경기가 없으면 표는 안 그리되 자리는 남기고 왜 비었는지만 적는다(요청) —
+     통째로 빼 버리면 옆의 스킬 목록이 그 줄에서만 왼쪽으로 당겨져 열이 어긋나고, 무엇보다
+     "이 사람은 업글을 안 한다"로 읽힌다. 잰 적이 없다는 것과는 다른 말이다. */
+  if (rows.length === 0 && solo === null) {
+    return (
+      <div className="scr-stat-upgrades scr-stat-upgrades-empty">
+        <span className="scr-stat-up-note">※ {UPGRADE_MIN_MIN}분 이상 경기 없음</span>
+      </div>
+    );
+  }
   return (
     <div className="scr-stat-upgrades" title={`${race} 업그레이드 — 경기당 평균 단계(0~3)`}>
       <span />
