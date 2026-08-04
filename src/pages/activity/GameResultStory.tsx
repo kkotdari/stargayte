@@ -126,14 +126,18 @@ const POS_TRUSTED_VERSION = 2;
 
 /** 집에서 한 일 — 병력이 나간 자리가 있어도 화살표를 긋지 않는다. 테크·경제·방어·이사처럼
  *  '어디로 갔다'가 이야기의 뼈대가 아닌 것들이다. */
+/* 집에서 한 일 — 화살표 없이 본진에 이모지만 붙는다.
+   물량(mass-army)과 '끝까지 뽑은 유닛'(long-run)은 여기서 뺐다(요청: 진출한 생산에는
+   좌표에 화살표를 그릴 것). 이제 그 문장들은 그 사람이 실제로 나간 것이 확인됐을 때만
+   남고(replaySummary의 진출 판정), 요약이 나간 자리까지 실어 준다 — 그런 이야기를 계속
+   '집에서 한 일'로 묶어 두면 그 자리가 있어도 화살표를 안 그린다. */
 const HOME_BEAT_KEYS = new Set([
   "expand", "upgrade", "upgrade-signature", "tech", "fast-tech", "vision", "no-detect",
-  "mass-army",
   "greedy-build", "greedy-paid", "greedy-punished", "lodging", "relocate",
   "defense", "front-defense", "late-defense", "wall-in", "side-tank", "center-tank",
   "revival", "fallen", "gg",
   "stand", "result", "standoff", "attrition", "fast-hands", "pro-like", "worker-gap",
-  "prod-gap", "long-run", "late-hold", "lift-off",
+  "prod-gap", "late-hold", "lift-off",
 ]);
 
 /** 주어(who)가 당한 쪽이고, 때린 사람은 p.by에 실린 문장들 — whom에 넣으면 그림이
@@ -159,6 +163,11 @@ const arrowWidth = (n: number): number => (n >= 55 ? 3 : n >= 35 ? 2.4 : n >= 15
 
 /** 실제로 맵 가운데에서 벌어진 일 — 화살표를 센터로 보낸다(요청: 센터 내용은 실제 센터에). */
 const CENTER_BEAT_KEYS = new Set(["center", "center-photon", "center-tank"]);
+
+/** 맵 한가운데로 볼 반경(타일) — 요약이 진출을 판정할 때 쓰는 값과 같다
+ *  (replaySummary의 SORTIE_RADIUS). 두 곳이 갈리면 "나갔다고 판정해 문장은 남겼는데
+ *  화살표는 안 그린다"가 된다. */
+const CENTER_TILES = 25;
 
 /* 화살표 끝에는 '특별한 기술'일 때만 이모지를 얹는다(요청: 일반 공격과 방어, 헬프의
    화살표 끝에 칼 이모지 더는 안 붙이기). 칼·방패는 그 화살표가 이미 말하고 있는 것을
@@ -589,7 +598,12 @@ export default function GameResultStory({
         if (h) best = Math.min(best, dist(at, h));
       }
       // 상대를 못 찾는 판(팀을 못 가른 기록)에서는 막지 않는다 — 근거가 없으면 예전대로 둔다.
-      return best === Infinity || best <= dist(at, home);
+      if (best === Infinity || best <= dist(at, home)) return true;
+      /* 맵 한가운데도 나간 것으로 본다(요청: 진출은 센터도 진출한 걸로) — 센터 싸움은
+         제 본진보다 상대 본진에 더 가깝지 않은 경우가 흔하다. 대칭 맵에서 가운데는 양쪽에서
+         같은 거리라, 위 비교만으로는 아슬아슬하게 떨어져 화살표가 통째로 안 그려졌다.
+         반경은 요약이 진출을 판정할 때 쓴 것과 같은 값이다(replaySummary의 SORTIE_RADIUS). */
+      return dist(at, center) < CENTER_TILES;
     };
 
     /** 그 집의 '앞마당 안쪽'을 재는 자 — 가장 가까운 다른 본진까지 거리의 이만큼. */

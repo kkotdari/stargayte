@@ -3160,8 +3160,11 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
       y: bases.reduce((s, q) => s + (q.startY as number), 0) / bases.length,
     };
   })();
-  /** 이 사람이 `from` 무렵 이후로 적진이나 중앙까지 나간 적이 있나. 잴 근거가 없으면 null. */
-  const wentOut = (name: string, from: number | null): boolean | null => {
+  /** 이 사람이 `from` 무렵 이후로 적진·중앙에서 실제로 친 자리들. 잴 근거가 없으면 null.
+   *
+   *  나갔는지(아래 wentOut)와 어디로 나갔는지(아래 sortiePos)가 같은 목록에서 나온다 —
+   *  판정과 그림이 갈리면 "나갔다고 해놓고 화살표는 딴 데"가 되기 때문이다. */
+  const sortieHits = (name: string, from: number | null): { frame: number; x: number; y: number }[] | null => {
     const p = replay.players.find((q) => q.rawName === name);
     const sg = p?.signals;
     if (!sg || !p || p.startX === null || p.startY === null) return null;
@@ -3175,11 +3178,29 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
       // 적진에 들어갔거나, 맵 한가운데서 붙었거나.
       return foes.some((e) => near(o, e)) || (mapCenter !== null && near(o, mapCenter));
     };
-    let n = sg.hits.filter(over).length;
-    if (n < SORTIE_MIN_HITS) {
-      n += sg.orderPositions.filter((o) => o.kind === "attack" && o.by !== "Worker" && over(o)).length;
+    const pick = (o: { frame: number; x: number; y: number }) => ({ frame: o.frame, x: o.x, y: o.y });
+    const out = sg.hits.filter(over).map(pick);
+    if (out.length < SORTIE_MIN_HITS) {
+      out.push(...sg.orderPositions
+        .filter((o) => o.kind === "attack" && o.by !== "Worker" && over(o)).map(pick));
     }
-    return n >= SORTIE_MIN_HITS;
+    return out;
+  };
+  /** 이 사람이 `from` 무렵 이후로 적진이나 중앙까지 나간 적이 있나. 잴 근거가 없으면 null. */
+  const wentOut = (name: string, from: number | null): boolean | null => {
+    const pts = sortieHits(name, from);
+    return pts === null ? null : pts.length >= SORTIE_MIN_HITS;
+  };
+  /** 나간 사람이 '어디로' 갔나 — 위 목록에서 가장 붐비는 자리 하나.
+   *
+   *  화살표를 그으려면 자리가 있어야 한다(지적: "지금은 화살표도 없는 게 문제"). 생산담의
+   *  기본 자리(beatPositions)는 그 무렵 명령이 가장 몰린 곳이라 대개 제 본진이고, 그러면
+   *  화살표를 그릴 만큼 멀지가 않아 본진 이모지 하나로 끝난다. 나간 것이 확인된 이야기는
+   *  '나간 자리'가 그 이야기의 자리다. */
+  const sortiePos = (name: string, from: number | null): [number, number] | null => {
+    const pts = sortieHits(name, from);
+    if (!pts || pts.length < SORTIE_MIN_HITS) return null;
+    return clusterOf(pts, from ?? pts[0].frame, null);
   };
   /* 안 나갔으면 빼는 것은 물량(mass-army)에도 건다 — 요청이 "고급유닛/많이뽑아도"라
      둘 다를 짚고 있다. 무게를 낮추는 위 표에 물량이 빠져 있는 것과는 별개다: 저건
@@ -3756,13 +3777,29 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     ...(Object.keys(downs).length > 0 ? { downs } : {}),
     beats: [...chosen, ending, verdict].map(strip).map(withCastPlace).map((b) => {
       const pos = beatPositions(b, byName);
+      /* 나간 것이 확인된 생산담은 '나간 자리'를 그 이야기의 자리로 덮어쓴다(요청: 센터도
+         진출로 보고 그 좌표에 화살표를 표시). 기본 자리는 그 무렵 명령이 가장 몰린 곳이라
+         생산 중에는 거의 늘 제 본진이고, 그러면 화살표를 그릴 만큼 멀지 않아 본진 이모지
+         하나로 끝난다 — 실제로 나간 이야기인데 그림에는 아무 움직임이 없었다.
+         이미 자리를 아는 이야기(whom·p.xy)는 위 게이트에서 걸러져 여기 안 온다. */
+      const sortie = SORTIE_GATE_KEYS.has(b.k)
+        ? Object.fromEntries(
+          (b.who ?? []).map((w) => [w, sortiePos(w, b.at ?? null)] as const)
+            .filter((e): e is readonly [string, [number, number]] => e[1] !== null),
+        )
+        : {};
       /* 화살표 기둥의 이름표는 '그 무렵 무엇을 움직였나'라 시각이 있어야 한다. 맺음말은
          '늘 마지막'이라는 뜻으로 시각을 비워 두므로(strip), 그 대신 경기를 끝낸 싸움의
          시각을 넘겨 준다 — 그래야 다른 교전 스냅처럼 화살표에 병력 이름이 붙는다(요청). */
       const forArrow = b.k === "result" && finale ? { ...b, at: finale.at } : b;
       const units = arrowUnits(forArrow);
       const sizes = arrowSizes(forArrow, units);
-      return { ...b, ...(pos ? { pos } : {}), ...(units ? { units } : {}), ...(sizes ? { sizes } : {}) };
+      const finalPos = { ...(pos ?? {}), ...sortie };
+      return {
+        ...b,
+        ...(Object.keys(finalPos).length > 0 ? { pos: finalPos } : {}),
+        ...(units ? { units } : {}), ...(sizes ? { sizes } : {}),
+      };
     }),
   };
 }
