@@ -12,20 +12,7 @@ import { api } from "../api/client";
 import { newComputerSlotId } from "../constants/computerSlot";
 import { newUnregisteredSlotId } from "../constants/unregisteredSlot";
 import { useDefaultRaceResolver } from "../hooks/useDefaultRaceResolver";
-import { renderReplaySummary } from "../utils/replaySummaryText";
 import type { GameResultSlot, GameOutcome, NewGameResult, Race, Member } from "../types";
-
-// 요약 미리보기 — 이 드래프트에서 그 게임 아이디가 회원으로 연결돼 있으면 닉네임을, 아니면
-// 원본 이름을 그대로 쓴다. 저장되는 건 원본 이름이라, 나중에 연결이 바뀌면 그때의 연결로
-// 다시 읽힌다(그래서 여기 보이는 이름과 등록 뒤 이름이 다를 수 있다 — 의도한 동작이다).
-function summaryTextOf(d: ReplayDraft, members: Member[]): string | null {
-  const nickByRaw = new Map<string, string>();
-  [...d.team1, ...d.team2].forEach((slot) => {
-    const m = members.find((x) => x.id === slot.memberId);
-    if (slot.rawName && m) nickByRaw.set(slot.rawName, m.nickname);
-  });
-  return renderReplaySummary(d.summaryData, (raw) => nickByRaw.get(raw) ?? raw);
-}
 
 /** 리플레이 한 건의 판정(요청) — 초록(정상) / 노랑(검토필요) / 빨강(실패), 그리고 그 이유.
  *
@@ -413,13 +400,10 @@ export default function ReplayReviewModal({
                       )}
                     </div>
 
-                    {/* 리플레이에서 규칙으로 뽑은 경기 요약 — 등록 전에 문장이 말이 되는지
-                        여기서 눈으로 확인한다. 저장되는 건 문장이 아니라 데이터라, 여기서
-                        보이는 것도 그 데이터를 지금 문구로 옮긴 결과다. 재료가 모자라
-                        못 만들면 아예 안 보인다. */}
-                    {summaryTextOf(d, members) && (
-                      <div className="scr-replay-summary-preview">{summaryTextOf(d, members)}</div>
-                    )}
+                    {/* (삭제) 요약 문단 미리보기 — 검토창에서는 뺐다(요청). 이 창이 답할
+                        물음은 "그냥 등록해도 되나" 하나이고, 열 몇 줄짜리 문단은 그 물음과
+                        상관없이 줄을 통째로 밀어내 판정과 로스터를 화면 밖으로 보냈다.
+                        요약이 말이 되는지는 등록 뒤 활동 카드에서 그대로 보인다. */}
 
                     {/* 리플레이가 승자를 못 가려낸 경기만 승패 버튼이 나온다 — 판별된 경기는
                         그 값을 그대로 쓰므로 굳이 고를 게 없다. 왜 골라야 하는지는 위
