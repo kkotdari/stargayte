@@ -46,8 +46,9 @@ export interface SearchListRow {
 interface GameResultCardBodyProps {
   rows: SearchListRow[];
   memberOf: (id: string) => Member | undefined;
-  // 삭제 성공 후 목록을 새로고침하기 위한 콜백(호출부가 이미 쓰는 reload를 그대로 넘겨준다).
-  onDeleted: () => void;
+  /** 지운 경기의 id — 부르는 쪽이 목록에서 그 한 판만 빼낸다(요청: 새로고침 말고).
+   *  API가 성공한 뒤에만 부른다. */
+  onDeleted: (id: number) => void;
   // 유저 검색 중이면 그 회원(들)을 로스터에서 하이라이트 표시한다
   highlightMemberIds?: Set<string>;
   // memberId 매칭에 더해 표시 이름을 검색어로도 매칭해 하이라이트한다(별칭/비회원 보완).
@@ -178,8 +179,11 @@ export default function GameResultCardBody({
     setDeleteErr(null);
     try {
       await deleteGameResultAction(deleteTarget.id);
+      // 서버가 실제로 지운 뒤에만 알린다(요청) — 실패하면 아래 catch로 떨어져 목록은
+      // 그대로 남는다. 목록 전체를 다시 받지 않고 이 한 판만 빠지게 하려고 id를 넘긴다.
+      const deletedId = deleteTarget.id;
       setDeleteTarget(null);
-      onDeleted();
+      onDeleted(deletedId);
     } catch (e) {
       // 실패를 확인창 안에 남긴다 — 예전엔 catch가 없어 요청이 깨지면 오류가 그대로
       // 밖으로 새고(unhandled rejection) 창은 그 자리에 그대로 떠 있었다. 누르는 쪽에서는

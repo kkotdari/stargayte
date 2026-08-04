@@ -432,7 +432,7 @@ function ActivityCardComments({ targetType, targetId }: { targetType: ActivityTa
 export const GameResultCard = memo(function GameResultCard({ item, memberOf, onDeleted, dateLabel, highlightMemberIds, highlightTerms, active = true, className }: {
   item: GameResultItem;
   memberOf: (id: string) => Member | undefined;
-  onDeleted: () => void;
+  onDeleted: (id: number) => void;
   dateLabel: string;
   highlightMemberIds?: Set<string>;
   highlightTerms?: string[];
@@ -471,7 +471,7 @@ export function GameResultPost({
 }: {
   stack: GameResultPostItem;
   memberOf: (id: string) => Member | undefined;
-  onDeleted: () => void;
+  onDeleted: (id: number) => void;
   dateLabel: string;
   highlightMemberIds?: Set<string>;
   highlightTerms?: string[];
@@ -703,10 +703,11 @@ export default function ActivityScreen() {
     return () => io.disconnect();
   }, [hasMore, loading, feedLoading, loadingMore, loadMore]);
 
-  // 저장/삭제 완료 — 목록을 처음부터 다시 받는다. 랭크 변동도 같은 응답에 실려 오므로
+  // 저장 완료 — 목록을 처음부터 다시 받는다. 랭크 변동도 같은 응답에 실려 오므로
   // 따로 갱신할 것이 없다(서버가 이미 저장·재집계를 끝냈다).
   const handleReplaysSaved = useCallback(async () => { reload(); }, [reload]);
-  const handleGameResultDeleted = useCallback(() => { reload(); }, [reload]);
+  /* 게임결과 삭제 반영(handleGameResultDeleted)은 displayFeed가 만들어진 뒤에 정의한다
+     (아래) — 펼쳐 둔 줄의 열쇠를 옮기려면 지금 화면이 어떻게 묶여 있는지를 봐야 한다. */
 
   const handleReplayFilesChosen = async (e: ChangeEvent<HTMLInputElement>) => {
     const picked = Array.from(e.target.files ?? []);
@@ -961,6 +962,34 @@ export default function ActivityScreen() {
     }
     return out;
   }, [filteredFeed]);
+
+  /* 지운 경기 한 판만 목록에서 빼낸다(요청: 새로고침 말고 그 부분만 사라지게) — 예전에는
+     통째로 다시 받아서, 스크롤을 내려 둔 자리가 사라지고 펼쳐 둔 카드도 다 접혔다.
+     한 줄이 여러 판을 묶고 있을 수 있으므로 그 줄에서 그 판만 빼고, 그래서 줄이 텅 비면
+     줄째로 뺀다. 호출·랭크 변동을 품은 줄은 남긴다. API가 성공한 뒤에만 불린다. */
+  const handleGameResultDeleted = useCallback((id: number) => {
+    /* 펼쳐 둔 줄의 열쇠를 따라 옮긴다 — 같은 날 경기를 묶은 줄의 열쇠는 그 묶음의 첫 판
+       id다(rowKeyOf). 하필 그 첫 판을 지우면 열쇠가 바뀌어 펼쳐 둔 줄이 통째로 접혔다
+       (실측: 카드 여덟 장이 0장으로). 남은 것 중 다음 판으로 갈아 끼우면 펼친 상태가
+       그대로 이어진다. 지운 것이 그 줄의 마지막 판이었으면 줄 자체가 사라지므로 접는다. */
+    setOpenRowKey((key) => {
+      if (!key) return key;
+      const row = displayFeed.find((it) => rowKeyOf(it) === key);
+      if (!row) return key;
+      if (row.kind === "gameResultPost") {
+        if (row.items[0].gameResult.id !== id) return key; // 첫 판이 아니면 열쇠는 그대로다
+        const heir = row.items.find((x) => x.gameResult.id !== id);
+        return heir ? `ms-${heir.gameResult.id}` : null;
+      }
+      if (row.kind === "gameResult" && row.gameResult.id === id) return null;
+      return key;
+    });
+    patchFeed((prev) => prev
+      .map((it) => (it.gameResults.some((g) => g.id === id)
+        ? { ...it, gameResults: it.gameResults.filter((g) => g.id !== id) }
+        : it))
+      .filter((it) => !!it.challenge || !!it.rankingShift || it.gameResults.length > 0));
+  }, [patchFeed, displayFeed]);
 
   /* 번호를 받아는 왔는데 한 줄도 못 붙는 경우 — 서버가 센 줄과 화면이 그린 줄의 열쇠가
      어긋났다는 뜻이라 원인이 전혀 다르다(양쪽 묶음 규칙이 갈라졌을 때 이렇게 된다).
