@@ -607,13 +607,10 @@ export default function ActivityScreen() {
   /* 댓글도 목록과 함께 한 번에 받아 둔다(요청) — 카드마다 따로 부르면 답이 제각각 도착하며
      카드 키가 뒤늦게 자라, 들어올 때 "현재"에 맞춰 둔 자리가 그만큼 밀린다. 이게 끝나야
      목록을 그린다: 그래야 첫 렌더의 카드 높이가 곧 최종 높이다.
-     실패해도 목록까지 막지는 않는다 — 그때는 카드가 예전처럼 제 것만 따로 불러온다. */
+     실패해도 목록까지 막지는 않는다 — 그때는 카드가 예전처럼 제 것만 따로 불러온다.
+     받아 오는 자리는 아래 reloadRankingShifts다 — 줄 번호와 같은 응답에 실려 온다
+     (요청: 목록·댓글 단일 API로 통합). */
   const [commentsLoading, setCommentsLoading] = useState(true);
-  useEffect(() => {
-    let alive = true;
-    primeActivityComments().catch(() => {}).finally(() => { if (alive) setCommentsLoading(false); });
-    return () => { alive = false; };
-  }, []);
 
   // 카드의 카운트다운/마감 파생 상태를 1분마다 갱신한다.
   const [, setTick] = useState(0);
@@ -705,12 +702,21 @@ export default function ActivityScreen() {
     api.listRankingShifts()
       .then(setRankShifts)
       .catch(() => {});
+    /* 줄 번호와 댓글이 한 응답에 온다(요청: 단일 API로 통합) — 목록 하나를 그리는 데
+       필요한 값이라 따로 받을 이유가 없고, 둘로 나뉘어 있으면 하나가 늦거나 실패할 때
+       목록이 반쯤 그려진 채로 남는다(운영에서 실제로 둘이 나란히 500이었다).
+       댓글이 안 실려 온 응답(옛 API가 답한 경우)에는 primeActivityComments가 옛 경로로
+       한 번 더 물어본다 — 그때만 요청이 둘이 된다. */
     api.listActivityRows()
-      .then((res) => setRowNos(new Map(res.rows.map((r) => [r.key, r.no]))))
-      // 못 받아 와도 화면은 그대로 돌아간다(번호만 안 붙는다) — 다만 조용히 삼키지는
-      // 않는다. 한 번 그렇게 뒀다가 운영에서 번호가 통째로 안 나오는데 왜인지 알 길이
-      // 없었다(지적). 콘솔에 남겨 두면 무엇이 끊겼는지가 한눈에 보인다.
-      .catch((e) => console.error("[활동] 줄 번호를 못 받아 왔습니다 — /api/activity/list", e));
+      .then((res) => {
+        setRowNos(new Map(res.rows.map((r) => [r.key, r.no])));
+        return primeActivityComments(res.comments);
+      })
+      // 못 받아 와도 화면은 그대로 돌아간다(번호만 안 붙고 댓글은 카드가 제 것을 따로
+      // 불러온다) — 다만 조용히 삼키지는 않는다. 한 번 그렇게 뒀다가 운영에서 번호가
+      // 통째로 안 나오는데 왜인지 알 길이 없었다(지적).
+      .catch((e) => console.error("[활동] 목록 한 벌을 못 받아 왔습니다 — /api/activity/list", e))
+      .finally(() => setCommentsLoading(false));
   }, []);
   useEffect(() => reloadRankingShifts(), [reloadRankingShifts]);
 

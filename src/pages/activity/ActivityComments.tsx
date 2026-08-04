@@ -321,13 +321,19 @@ export function commentStatOf(
   return { count: list.length, latestMs: Math.max(...list.map((c) => serverMs(c.createdAt))) };
 }
 
-export async function primeActivityComments(): Promise<void> {
-  const items = await api.listAllActivityComments();
+/** 미리 받아 둔 댓글을 표에 담는다 — 목록 응답이 함께 실어 준 것을 그대로 받는다
+ *  (요청: 목록·댓글 단일 API로 통합). 부르는 쪽이 목록과 같은 응답에서 꺼내 오므로,
+ *  여기서는 따로 요청하지 않는다.
+ *
+ *  옛 API가 답해서 댓글이 안 실려 온 경우(배포가 어긋나는 순간)를 위해, 넘겨받은 것이
+ *  없으면 옛 경로로 한 번 더 물어본다 — 그때만 요청이 둘이 된다. */
+export async function primeActivityComments(items?: ActivityComment[]): Promise<void> {
+  const list = items ?? await api.listAllActivityComments();
   primed.clear();
-  for (const c of items) {
+  for (const c of list) {
     const k = keyOf(c.targetType, c.targetId);
-    const list = primed.get(k);
-    if (list) list.push(c); else primed.set(k, [c]);
+    const at = primed.get(k);
+    if (at) at.push(c); else primed.set(k, [c]);
   }
   primedOnce = true;
 }
