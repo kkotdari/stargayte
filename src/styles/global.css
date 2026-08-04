@@ -1852,17 +1852,22 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    이름에 맞춰지고(auto), 각 이름은 그 안에서 가운데 정렬된다(요청: 세로로 배치된 두 요소의
    라벨이 같은 폭을 갖고 그 안에서 가운데). 줄마다 따로 폭을 잡으면 "APM"과 "커맨드/10분"의
    막대 시작점이 어긋난다. 줄(item)은 subgrid로 그 두 열을 물려받는다.
-   오른쪽 22px은 메달 자리다 — 줄기에 비워 두고 메달은 그 자리에 절대배치한다. */
+   오른쪽 --scr-medal-slot은 메달 자리다 — 줄기에 비워 두고 메달은 그 자리에 절대배치한다
+   (자리 계산은 .scr-stat-medal 참고). */
 .scr-stat-record-col {
   display: grid; grid-template-columns: auto minmax(0, 1fr);
   align-content: center; gap: 4px 6px;
-  flex: 1 1 0; min-width: 0; padding-right: 22px;
+  flex: 1 1 0; min-width: 0; padding-right: var(--scr-medal-slot);
 }
 .scr-stat-record-item {
   display: grid; grid-column: 1 / -1; grid-template-columns: subgrid;
   align-items: center; min-width: 0; position: relative;
 }
-.scr-stat-record-item .scr-stat-medal { right: -22px; }
+/* 이 줄은 줄기의 안쪽(padding 안)이라, 줄기가 비워 둔 메달 자리로 나가려면 그만큼
+   음수로 밀어야 한다 — 나간 끝에서 --scr-medal-edge만큼은 남긴다. */
+.scr-stat-record-item .scr-stat-medal {
+  right: calc(var(--scr-medal-edge) - var(--scr-medal-slot));
+}
 /* 랭크 줄기는 [이름 | 막대] 구조가 아니라 두 줄이 통째로 한 덩어리다 — 위 격자를 물려받지
    않고 제 세로 배치를 쓴다.
    폭도 남는 자리를 나눠 갖지 않는다(요청: 순위·포인트 칸이 지나치게 넓다) — 여기 들어가는
@@ -1874,7 +1879,7 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   /* 폭을 못 박는다(요청: 로우 사이 인셀 컬럼끼리 줄이 안 맞음 — 테이블처럼).
      내용 폭(flex:0 0 auto)으로 두면 "132 포인트"인 줄과 "82 포인트"인 줄의 이 칸 폭이
      달라, 뒤따르는 막대 줄기와 그 사이 구분선이 줄마다 다른 x에 섰다(지적 사진: 1행만
-     오른쪽으로 밀려 있다). 값은 가장 긴 내용("132 포인트" + 메달 자리 22px)에 맞췄다 —
+     오른쪽으로 밀려 있다). 값은 가장 긴 내용("132 포인트" + 메달 자리 --scr-medal-slot)에 맞췄다 —
      칸이 고정이면 남는 폭은 막대 두 줄기가 똑같이 나눠 가지므로 모든 줄이 같은 격자가
      된다. 메달 자리는 줄(.scr-stat-rank-line)이 제 오른쪽에 이미 비워 둔다. */
   flex: 0 0 var(--scr-stat-rank-w); width: var(--scr-stat-rank-w); padding-right: 0;
@@ -2030,11 +2035,26 @@ html:not(.scr-light-theme) .scr-donut {
    안으로 옮겼는데, 이번엔 메달이 있는 줄만 막대가 그만큼 짧아졌다(지적된 사진: 76의 막대가
    69보다 짧다) — 막대 길이가 곧 값의 크기인 표에서 그건 값을 왜곡한다. 메달 자리를 줄마다
    늘 비워 두고 메달은 그 자리에 절대배치해, 메달이 있든 없든 막대 길이가 같게 한다. */
+/* 메달 자리는 한 곳에서만 정한다 — 비워 두는 쪽(padding)과 앉히는 쪽(right)이 따로 적혀
+   있으면 한쪽만 고쳐져 어긋난다. 실제로 22px을 비워 두고 25px짜리 메달을 놓는 바람에
+   메달이 3px씩 옆 칸으로 새어 나갔고, 옆 칸은 제 배경(반투명 유리)을 가진 positioned
+   요소라 나중에 그려지면서 새어 나간 만큼을 덮었다 — 메달에 딤이 씌워진 것처럼 보였다
+   (지적: "여기 메달까지 딤처리가 됐어").
+   자리 = 메달 폭 + 막대와의 간격 + 오른쪽 여백. 막대와 메달 사이는 살짝 띄운다(요청) —
+   붙여 두면 메달이 막대의 끝동처럼 읽힌다. */
+:root {
+  --scr-medal-w: 26px;
+  /* 막대·글자와 메달 사이 */
+  --scr-medal-gap: 6px;
+  /* 메달과 칸 경계 사이 — 0이면 옆 칸 구분선에 딱 붙는다. */
+  --scr-medal-edge: 3px;
+  --scr-medal-slot: calc(var(--scr-medal-w) + var(--scr-medal-gap) + var(--scr-medal-edge));
+}
 .scr-stat-medal {
-  position: absolute; right: 0; top: 50%; transform: translateY(-50%);
+  position: absolute; right: var(--scr-medal-edge); top: 50%; transform: translateY(-50%);
   font-size: var(--fs-subhead); line-height: 1; letter-spacing: 0;
 }
-.scr-stat-rank-line { padding-right: 22px; }
+.scr-stat-rank-line { padding-right: var(--scr-medal-slot); }
 /* 트랙 배경을 채움 비율(--scr-value-fill, ValueBar.tsx 인라인 변수)까지는 진하게, 나머지는
    옅게 칠하는 그라디언트 한 장으로 그린다(요청: "배경 막대를 채우기 — 나머지는 반투명
    100%길이") — 예전엔 채운 만큼만 별도 DOM(.scr-value-bar-track)으로 그려서 나머지
@@ -2090,8 +2110,10 @@ html:not(.scr-light-theme) .scr-donut {
      건설은 도넛 하나 + 건물 다섯 줄, 유닛은 도넛 둘 + 일꾼 한 줄 + 유닛 다섯 줄,
      스킬은 공/방 표 + 스킬 다섯 줄을 담는다. */
   --scr-stat-record-w: 580px;
-  /* 랭크·포인트 줄기의 고정폭(위 .scr-stat-rank-col 주석). */
-  --scr-stat-rank-w: 108px;
+  /* 랭크·포인트 줄기의 고정폭(위 .scr-stat-rank-col 주석). 메달 자리를 22→35px로
+     넓히면서(.scr-stat-medal) 이 폭도 그만큼 따라 늘린다 — 안 늘리면 넓힌 만큼을
+     "132 포인트"가 뺏겨 글자가 줄어든다. */
+  --scr-stat-rank-w: 121px;
   --scr-stat-build-w: 204px;
   --scr-stat-unit-w: 366px;
   --scr-stat-skill-w: 246px;
