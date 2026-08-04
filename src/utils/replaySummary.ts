@@ -3099,11 +3099,108 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     // 그 자체다(요청: "프로토스들의 질럿 드라군 물량 이야기도 없네" — 실제로 이 표에
     // 넣어 봤더니 그 이야기가 그대로 잘려 나갔다).
   ]);
-  for (let i = 0; i < pool.length; i += 1) {
+  /* 무게를 낮추는 것으로는 모자란 갈래가 하나 있다: 뽑아 놓고 끝내 안 나간 병력(요청:
+     "진출 안 한 생산은 이제 제외 — 고급유닛이든 많이 뽑았든"). 캐리어를 열두 기 띄웠어도
+     그 병력이 집을 안 벗어났으면 그 판에서 아무 일도 안 한 것이라, 무게가 아무리 낮아도
+     자리가 남으면 문장이 되어 "○○이 캐리어를 띄웠다"가 그날의 장면인 양 실린다.
+     그래서 이 갈래만은 낮추는 게 아니라 뺀다.
+
+     '나갔나'는 싸운 자리로 잰다 — 적진에 들어갔거나, 맵 한가운데서 붙었거나(요청:
+     적진 기준으로 하되 중앙 교전을 놓치지 말 것). 제 진영에서 싸운 것은 나간 게 아니라
+     막은 것이라 안 센다.
+
+     세는 것은 둘이다. ①hits — 상대 유닛·건물을 직접 찍은 순간(파서가 대상의 임자까지
+     확인한 기록이라 어림이 아니다). ②kind가 "attack"인 명령 — 어택땅처럼 대상 없이 땅을
+     찍은 공격은 hits에 안 남으므로 이것으로 받는다.
+
+     기준을 여러 개 놓고 표본 113명에게 재 봤다(3개 이상이면 '나감').
+       ⓐ 내 본진에서 18타일 밖   → 0개인 사람 7명(나머지 106명은 열 개 이상)
+       ⓑ 상대 본진에 더 가까움   → 0개 8명 · 1~2개 1명
+       ⓒ 상대 본진 25타일 안     → 0개 16명 · 1~2개 2명 · 3~9개 7명
+       ⓓ ⓒ 또는 맵 중앙 25타일 안 → 0개 7명 · 1~2개 1명
+     ⓐ는 못 쓴다 — 넓은 맵에서는 제 앞마당만 오가도 18타일이 넘어, 사실상 전원이 '나감'이
+     된다(첫 판에서 이 기준으로 짰다가 113명 전원 통과했다). ⓒ 하나로는 너무 좁다:
+     센터 싸움만 하고 끝낸 사람이 통째로 '안 나감'이 되어 버린다(9명이 그렇게 걸렸다).
+     그래서 ⓓ다 — 적진을 기준으로 삼되 중앙을 함께 센다.
+     실제로 갈린 예: SamKim86은 ⓐ가 111개인데 ⓓ는 1개였다 — 집 밖에서 내내 싸웠지만
+     끝까지 제 쪽이었다. 중앙 반경을 30으로 늘리면 이 사람도 3개로 통과해 버려서, 적진과
+     같은 25로 맞췄다(반경 하나가 곧 '누군가의 자리' 크기라 읽기에도 낫다).
+
+     맵 한가운데는 시작 자리들의 무게중심으로 잡는다 — 맵 크기를 따로 안 읽어도 되고,
+     3시·9시만 쓰는 판처럼 자리가 치우친 경기에서도 그 판의 실제 가운데가 나온다.
+
+     세 가지를 조심했다. ①그 생산 뒤에 나갔는지를 본다 — 5분에 질럿으로 한 번 나갔다가
+     20분부터 집에서 캐리어만 모은 사람의 캐리어 이야기는 여전히 안 나간 생산이다(살짝
+     앞까지는 봐 준다: 뽑기 시작한 시점과 나간 시점이 딱 맞아떨어지진 않는다).
+     ②본진 좌표를 못 읽은 판은 거리를 잴 수 없으므로 그대로 둔다 — 못 재는 것을 '안
+     나갔다'로 읽으면 그런 판의 요약이 통째로 비어 버린다.
+     ③이미 위에서 걸러진 공격 이야기(whom·p.xy가 붙은 것)는 여기 오지도 않는다.
+
+     남는 한계 하나는 적어 둔다: 어느 유닛이 나갔는지는 리플레이에 안 남는다. 그래서
+     "캐리어는 집에 두고 질럿만 내보냈다"는 못 가른다 — 여기서 거르는 것은 그 사람이
+     그 생산 뒤로 아예 상대 쪽에 발을 안 들인 경우다. */
+  const SORTIE_GRACE_FRAMES = Math.round(60 / SECONDS_PER_FRAME);
+  /** 나갔다고 볼 최소 횟수 — 한두 번은 정찰이거나 지나가다 찍은 것일 수 있다. */
+  const SORTIE_MIN_HITS = 3;
+  /** '누군가의 자리'로 볼 반경(타일) — 적진에도 맵 한가운데에도 같은 값을 쓴다. */
+  const SORTIE_RADIUS = 25;
+  /** 이 사람의 상대편 본진들 — '적진'을 가르는 기준점이다. */
+  const foeBasesOf = (p: ParsedReplayPlayer): { x: number; y: number }[] => {
+    const foes = replay.team1.includes(p) ? replay.team2
+      : replay.team2.includes(p) ? replay.team1 : [];
+    return foes.filter((q) => q.startX !== null && q.startY !== null)
+      .map((q) => ({ x: q.startX as number, y: q.startY as number }));
+  };
+  /** 맵 한가운데 — 시작 자리들의 무게중심(위 주석). 자리를 하나도 못 읽으면 null. */
+  const mapCenter = ((): { x: number; y: number } | null => {
+    const bases = replay.players.filter((q) => q.startX !== null && q.startY !== null);
+    if (bases.length === 0) return null;
+    return {
+      x: bases.reduce((s, q) => s + (q.startX as number), 0) / bases.length,
+      y: bases.reduce((s, q) => s + (q.startY as number), 0) / bases.length,
+    };
+  })();
+  /** 이 사람이 `from` 무렵 이후로 적진이나 중앙까지 나간 적이 있나. 잴 근거가 없으면 null. */
+  const wentOut = (name: string, from: number | null): boolean | null => {
+    const p = replay.players.find((q) => q.rawName === name);
+    const sg = p?.signals;
+    if (!sg || !p || p.startX === null || p.startY === null) return null;
+    const foes = foeBasesOf(p);
+    if (foes.length === 0) return null;
+    const since = from === null ? -Infinity : from - SORTIE_GRACE_FRAMES;
+    const near = (o: { x: number; y: number }, t: { x: number; y: number }): boolean =>
+      Math.hypot(o.x - t.x, o.y - t.y) < SORTIE_RADIUS;
+    const over = (o: { frame: number; x: number; y: number }): boolean => {
+      if (o.frame < since) return false;
+      // 적진에 들어갔거나, 맵 한가운데서 붙었거나.
+      return foes.some((e) => near(o, e)) || (mapCenter !== null && near(o, mapCenter));
+    };
+    let n = sg.hits.filter(over).length;
+    if (n < SORTIE_MIN_HITS) {
+      n += sg.orderPositions.filter((o) => o.kind === "attack" && o.by !== "Worker" && over(o)).length;
+    }
+    return n >= SORTIE_MIN_HITS;
+  };
+  /* 안 나갔으면 빼는 것은 물량(mass-army)에도 건다 — 요청이 "고급유닛/많이뽑아도"라
+     둘 다를 짚고 있다. 무게를 낮추는 위 표에 물량이 빠져 있는 것과는 별개다: 저건
+     "분당 스무 기를 찍어냈다"가 그 판의 그림이라 자리를 뺏지 말자는 것이고, 여기서
+     막는 건 그 물량이 끝내 집 밖으로 안 나간 경우다. */
+  const SORTIE_GATE_KEYS = new Set([...PROD_ONLY_KEYS, "mass-army"]);
+  for (let i = pool.length - 1; i >= 0; i -= 1) {
     const b = pool[i];
-    if (!PROD_ONLY_KEYS.has(b.k)) continue;
+    if (!SORTIE_GATE_KEYS.has(b.k)) continue;
     if ((b.whom ?? []).length > 0 || Array.isArray(b.p?.xy)) continue;
-    pool[i] = { ...b, weight: Math.max(1, b.weight - PROD_ONLY_PENALTY) };
+    const actors = b.who ?? [];
+    const verdicts = actors.map((w) => wentOut(w, b.at ?? null));
+    // 한 사람이라도 나갔으면 남긴다. 다 '안 나갔다'로 판정났을 때만 뺀다 — 판단 근거가
+    // 없는 사람(null)이 섞여 있으면 그건 '안 나갔다'가 아니므로 빼지 않는다.
+    if (verdicts.length > 0 && verdicts.every((v) => v === false)) {
+      pool.splice(i, 1);
+      continue;
+    }
+    if (PROD_ONLY_KEYS.has(b.k)) {
+      pool[i] = { ...b, weight: Math.max(1, b.weight - PROD_ONLY_PENALTY) };
+    }
   }
 
   // 이미 무너진 사람의 활약담은 말하지 않는다(지적: 해골이 붙었는데 "병력을 뽑았다"가
