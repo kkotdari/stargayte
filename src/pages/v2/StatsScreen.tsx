@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { RotateCcw } from "lucide-react";
 import { Spinner } from "../../components/common/Feedback";
 import SearchFilterBar from "../../components/common/SearchFilterBar";
-import Select, { type SelectOption } from "../../components/common/Select";
+import PillTabs from "../../components/common/PillTabs";
+import MonthCalendar from "../../components/common/MonthCalendar";
 import MemberStatRow, { type StatColumnMedals } from "../stats/MemberStatRow";
 import PointDetailModal from "./PointDetailModal";
 import RankTrendModal from "./RankTrendModal";
@@ -12,27 +13,26 @@ import InfoTip from "../../components/common/InfoTip";
 import { useAppStore } from "../../store/appStore";
 import { api } from "../../api/client";
 import { activeMemberSearchTerms, memberMatchesQuery } from "../../utils/memberSearch";
-import { monthInputToRange, shiftMonthValue, currentMonthValue, monthLabel } from "../../utils/date";
+import { monthInputToRange, shiftMonthValue, currentMonthValue } from "../../utils/date";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import { usePageBackground } from "../../hooks/usePageBackground";
 import { cx } from "../../utils/format";
 import type { BaseRace, GameResultStatsResponse, GameType, Member, MemberStats, MemberStatsEntry } from "../../types";
 
-// 필터 셋은 이제 그리드 제목을 이루는 문장의 낱말이다(요청: "7월 개인전 전체종족"
-// 형태로 각각을 드롭다운으로) — 라벨도 문장 안에서 그대로 읽히는 말로 적는다("전체"가
-// 아니라 "전체종족").
-const RACE_SELECT_OPTS: SelectOption[] = [
-  { value: "all", label: "전체종족" },
-  // 주종족(요청) — 고른 값 하나로 모두를 보는 다른 항목들과 달리, 사람마다 다른 종족을
-  // 본다. 종족을 바꿔 가며 하는 사람들의 "제일 잘하는 모습"을 한 표에서 견주는 자리다.
-  { value: "main", label: "주종족" },
-  { value: "저그", label: "저그" },
-  { value: "프로토스", label: "프로토스" },
-  { value: "테란", label: "테란" },
-];
-
-/** 종족 필터 값 — 실제 종족 셋에 "전체종족"과 "주종족"이 더해진다. */
+/** 종족 필터 값 — 실제 종족 셋에 "전체"와 "주종족"이 더해진다. */
 type RaceFilter = BaseRace | "all" | "main";
+
+/* 필터는 드롭다운이 아니라 라디오다(요청) — 값이 몇 개 안 되고 늘 같은 자리에 있어,
+   지금 무엇이 걸렸는지를 열어 보지 않고도 한눈에 읽는다. 라벨도 그만큼 짧게 적는다
+   ("전체종족" → "전체"). 주종족은 고른 값 하나로 모두를 보는 다른 항목들과 달리 사람마다
+   다른 종족을 본다 — 종족을 바꿔 가며 하는 사람들의 "제일 잘하는 모습"을 견주는 자리다. */
+const RACE_TAB_OPTS: { value: RaceFilter; label: string }[] = [
+  { value: "all", label: "전체" },
+  { value: "main", label: "주종족" },
+  { value: "테란", label: "테란" },
+  { value: "프로토스", label: "프로토스" },
+  { value: "저그", label: "저그" },
+];
 
 /** 서버에 넘길 종족 — "주종족"은 사람마다 달라 서버가 한 번에 걸 수 없다.
  *
@@ -56,15 +56,12 @@ function statsOf(entry: MemberStatsEntry | undefined, shown: RaceFilter): Member
   const race = shown === "main" ? mainRaceOf(entry) : shown;
   return (race && entry?.byRace[race]) ?? EMPTY_STATS;
 }
-const TYPE_SELECT_OPTS: SelectOption[] = [
+const TYPE_TAB_OPTS: { value: GameType; label: string }[] = [
   { value: "0101", label: "개인전" },
   { value: "0102", label: "팀전" },
 ];
 // 기간 드롭다운에서 "전체 기간"을 가리키는 값 — 나머지 값은 전부 "YYYY-MM"이다.
 const PERIOD_ALL = "all";
-// 기간 드롭다운이 늘어놓을 월의 상한 — 첫 경기 조회가 이상한 값을 주더라도 목록이
-// 무한정 길어지지 않게 막는 안전장치일 뿐, 정상 상황에서는 걸리지 않는다.
-const MAX_PERIOD_MONTHS = 240;
 /* 세부 지표(승률·APM·커맨드·포인트·순위) 표본 미달 판정은 백엔드가 전담한다(요청: 프론트에서
    경기수로 필터링하는 것 자체를 없앰) — 프론트는 그 값을 그대로 보여주고, null이면 "-"로만
    바꾼다. 최소 판수 기준(game_results/service.py의 _MIN_PLAYS_FOR_RANK)이 바뀌어도 여기는
@@ -80,7 +77,7 @@ const EMPTY_STATS: MemberStats = {
 // 정렬 가능한 칸 — 건설/유닛/스킬은 순위로 줄 세울 값이 아니라 그 사람의 색깔이라 뺐다
 // (요청). 랭크와 포인트는 한 칸이 되면서 정렬 키도 하나(points)로 합쳤다 — 포인트로 매긴
 // 것이 랭크라 두 정렬은 애초에 같은 순서였다.
-/* 정렬은 컬럼 머리를 누르는 대신 조건 문장의 드롭다운으로 고른다(요청). 그래서 기준과
+/* 정렬은 컬럼 머리를 누르는 대신 필터 아랫줄에 낱말로 늘어놓고 고른다(요청). 그래서 기준과
    방향을 따로 두지 않고 "무엇을 어느 쪽으로"를 한 낱말로 묶는다 — 게임수를 적은 순으로 보는
    일은 없고, 이름은 가나다순 말고 볼 일이 없다. 고를 것이 하나면 잘못 고를 일도 없다. */
 type StatSortKey = "name" | "points" | "rate" | "plays" | "apm" | "cmd";
@@ -106,10 +103,9 @@ function PlainHead({ label, className }: { label: string; className?: string }) 
 }
 
 // 경기결과/랭킹과 같은 공용 상단 모듈(SearchFilterBar)로 전적통계를 보여준다.
-// 조건은 필터창 대신 목록 바로 위의 제목 한 줄이 통째로 맡는다(요청) — "7월 개인전
-// 전체종족"처럼 읽히는 문장인데, 그 낱말 셋(기간/유형/종족)이 각각 드롭다운이라
-// 제목을 읽는 것이 곧 지금 걸린 조건을 읽는 것이고, 고치는 자리도 같은 자리다. 검색창
-// (유저)과 정렬(컬럼 헤더)은 그대로 둔다.
+// 조건은 필터창 대신 목록 바로 위의 세 줄이 맡는다(요청) — 유형·기간 / 종족 / 정렬 순으로
+// 늘어놓고, 앞의 둘은 라디오라 지금 걸린 값이 열어 보지 않아도 그대로 보인다. 검색창
+// (유저)은 그 아래 별개 줄이다.
 export default function StatsScreenV2() {
   // 사진 배경은 통계 화면 전용이고, 이제 다크에서만 쓴다(요청: "라이트 테마 통계 배경
   // 제거") — 밝은 바탕에서는 사진이 표/글씨와 경쟁만 해서 읽기를 방해했다.
@@ -119,12 +115,11 @@ export default function StatsScreenV2() {
 
   const [search, setSearch] = useState("");
   const [race, setRace] = useState<RaceFilter>("all");
-  // 게임 유형(개인전/팀전) — 라디오이고 "전체"는 없다. 기본값은 랜덤(요청).
+  // 게임 유형(개인전/팀전) — 라디오이고 "전체"는 없다. 기본값은 팀전(요청) — 한때
+  // 랜덤이었는데, 열 때마다 다른 표가 나오는 것이 득보다 실이 컸다.
   // (삭제) 활동의 랭크 변동 카드에서 유형을 미리 걸어 주는 연동이 있었는데, 그 입구였던
   // "실시간 랭크 확인" 링크를 걷어내면서(요청) 걸어 줄 사람이 없어졌다.
-  const [matchType, setMatchType] = useState<GameType>(
-    () => (Math.random() < 0.5 ? "0101" : "0102"),
-  );
+  const [matchType, setMatchType] = useState<GameType>("0102");
   // 기본 정렬은 포인트(랭크 점수) 내림차순 — 랭킹을 통계에 통합한 기본 모습(요청).
   const [sort, setSort] = useState<StatSort>(sortOf("points"));
   // 포인트를 누르면 그 회원의 포인트 상세(경기 이력)를 연다.
@@ -138,20 +133,11 @@ export default function StatsScreenV2() {
   // 드롭다운 하나로 합쳤다(요청). 기본값은 이번 달.
   const [period, setPeriod] = useState<string>(currentMonthValue);
   const periodMonth = period === PERIOD_ALL ? "" : period;
-  /* 주종족으로 볼 때는 랭크·포인트를 아예 안 보여준다(요청).
-     이 둘만은 전체 종족 기준으로 남기 때문이다(serverRaceOf 주석) — 옆 칸들은 그 사람의
-     주종족 것인데 여기만 다른 잣대의 값이 서 있으면, 같은 줄에 놓였다는 이유만으로 서로
-     견줄 수 있는 값처럼 읽힌다. 정렬 기준에서도 뺀다(아래 sortOpts). */
-  const showRank = race !== "main";
-  const sortOpts = useMemo(
-    () => SORT_OPTS.filter((o) => showRank || o.value !== "points").map(({ value, label }) => ({ value, label })),
-    [showRank],
-  );
-  /* 고를 수 없게 된 기준을 그대로 쥐고 있으면 표가 안 보이는 값으로 줄 서 있게 된다 —
-     주종족으로 넘어가는 순간 게임수순으로 옮긴다(목록에 늘 있는 값이다). */
-  useEffect(() => {
-    if (!showRank) setSort((prev) => (prev.key === "points" ? sortOf("plays") : prev));
-  }, [showRank]);
+  /* 주종족으로 볼 때도 랭크·포인트를 보여준다(요청) — 한때 감췄었다. 이 둘만은 전체 종족
+     기준으로 남지만(serverRaceOf 주석), 그렇다고 칸을 비워 두면 주종족으로 보는 내내
+     랭킹이 사라져 화면의 뼈대가 바뀐다. 잣대가 다르다는 것은 도움말이 말해 준다. */
+  const showRank = true;
+  const sortOpts = SORT_OPTS.map(({ value, label }) => ({ value, label }));
 
   // 기간 드롭다운에 늘어놓을 월의 하한 — 첫 경기가 있는 달. 그보다 과거는 어차피 빈
   // 표라서 목록에 둘 이유가 없다. 한 번만 물어보고, 실패하면 이번 달만 남는다.
@@ -166,25 +152,12 @@ export default function StatsScreenV2() {
     return () => { cancelled = true; };
   }, []);
 
-  const periodOpts = useMemo<SelectOption[]>(() => {
-    const now = currentMonthValue();
-    const opts: SelectOption[] = [{ value: PERIOD_ALL, label: "전체 기간" }];
-    // 최근순(요청) — 이번 달에서 시작해 첫 경기가 있는 달까지 한 달씩 거슬러 내려간다.
-    // "YYYY-MM"은 사전순 비교가 곧 시간순 비교라 문자열 비교로 충분하다.
-    const stop = firstMonth && firstMonth < now ? firstMonth : now;
-    for (let m = now, i = 0; i < MAX_PERIOD_MONTHS; m = shiftMonthValue(m, -1), i += 1) {
-      opts.push({ value: m, label: monthLabel(m) });
-      if (m <= stop) break;
-    }
-    return opts;
-  }, [firstMonth]);
-
   const { from: effectiveFrom, to: effectiveTo } = useMemo(
     () => (periodMonth ? monthInputToRange(periodMonth) : { from: "", to: "" }),
     [periodMonth],
   );
 
-  // 문장 끝 초기화 버튼(요청) — 기간과 종족만 되돌리고 분류(개인전/팀전)는 지금 보고 있는
+  // 초기화 버튼(요청) — 기간과 종족만 되돌리고 분류(개인전/팀전)는 지금 보고 있는
   // 것을 그대로 둔다(요청). 분류는 "전체"가 없는 라디오라 되돌릴 중립값 자체가 없고,
   // 개인전을 보다가 초기화를 눌렀는데 팀전으로 튀면 보던 화면을 잃는다.
   const isDefaultFilter = period === currentMonthValue() && race === "all";
@@ -503,8 +476,9 @@ export default function StatsScreenV2() {
           <InfoTip
             trigger="도움말"
             label="통계 표 보는 법"
-            text={"· APM·커맨드는 개인전 3판·팀전 10판부터\n"
+            text={"· APM·커맨드는 개인전 2판·팀전 5판부터\n"
               + "· 생산·건설·유닛·스킬은 '주요시간대'(초반 4분과 막판 1분을 뺀 구간) 1분당\n"
+              + "· 주종족으로 봐도 랭킹·포인트만은 전체 종족 기준\n"
               + "· 컴퓨터·비회원이 낀 경기는 포인트 0"}
           />
           {/* 상성 보기 — 랭킹 화면이 없어지면서 진입점이 끊겼던 상성 관계 오버레이를 통계
@@ -523,52 +497,63 @@ export default function StatsScreenV2() {
       <SearchFilterBar
         count={cards.length}
         countLabel="명"
+        // 건수는 뺀다(요청) — 회원 수는 표를 읽는 데 쓰는 값이 아니고, 필터 줄이 세 줄로
+        // 늘면서 그 오른쪽 끝에 홀로 떠 있는 숫자가 더 눈에 걸렸다.
+        showCount={false}
         searchValue={search}
         onSearchChange={setSearch}
         searchPlaceholder="유저 입력 또는 @로 목록 띄우기"
         suggestions={suggestions}
-        // 필터창(분류/종족/기간 세 덩어리)은 없앴다(요청) — 그 셋을 목록 바로 위의 제목
-        // 문장으로 옮겼다. 제목이 곧 지금 걸린 조건이라 따로 읽을 필터 UI가 없다.
-        heading={<>
-          <div className="scr-grid-title">
-            <Select
-              className="scr-sentence-select" value={period} options={periodOpts}
-              onChange={setPeriod} minDropWidth={150}
+        /* 조건은 목록 위 세 줄이 맡는다(요청) — 예전엔 "8월 개인전 전체종족"처럼 한 문장에
+           드롭다운을 섞어 놨는데, 고를 것이 늘면서 문장이 길어지고 무엇이 눌리는지도 흐릿해졌다.
+             ① 유형(라디오) + 기간(달력)
+             ② 종족(라디오)
+             ③ 정렬(텍스트 버튼 나열)
+           라디오는 값이 몇 개 안 되고 늘 같은 자리에 있어, 지금 무엇이 걸렸는지를 열어 보지
+           않고도 한눈에 읽는다. */
+        heading={<div className="scr-stat-filters">
+          <div className="scr-stat-filter-row">
+            <PillTabs
+              options={TYPE_TAB_OPTS} value={matchType}
+              onChange={(v) => setMatchType(v)} aria-label="경기 유형"
             />
-            <Select
-              className="scr-sentence-select" value={matchType} options={TYPE_SELECT_OPTS}
-              onChange={(v) => setMatchType(v as GameType)} minDropWidth={120}
+            <MonthCalendar
+              value={period} onChange={setPeriod}
+              minMonth={firstMonth} maxMonth={currentMonthValue()}
+              allValue={PERIOD_ALL} allLabel="전체 기간"
             />
-            {/* 마지막 낱말과 초기화는 한 덩어리로 — 줄이 좁아 넘칠 때 초기화만 다음 줄에
-                외따로 떨어지지 않게 한다. */}
-            <span className="scr-grid-title-tail">
-              <Select
-                className="scr-sentence-select" value={race} options={RACE_SELECT_OPTS}
-                onChange={(v) => setRace(v as RaceFilter)} minDropWidth={130}
-              />
-              {/* 초기화(요청) — 문장 끝에 붙여 기간·종족을 한 번에 되돌린다(분류는 유지).
-                  이미 기본값이면 누를 게 없으니 흐리게 죽여 둔다. 검색어(유저)는 이 문장
-                  밖의 별개 필터라 건드리지 않는다 — 칩마다 제 ×가 있다. */}
+            {/* 초기화(요청) — 기간·종족을 한 번에 되돌린다(유형은 보던 것을 유지).
+                이미 기본값이면 누를 게 없으니 흐리게 죽여 둔다. 검색어(유저)는 이 줄
+                밖의 별개 필터라 건드리지 않는다 — 칩마다 제 ×가 있다. */}
+            <button
+              type="button" className="scr-grid-title-reset"
+              onClick={resetFilters} disabled={isDefaultFilter}
+              aria-label="필터 초기화" title="필터 초기화"
+            >
+              <RotateCcw size={14} aria-hidden />
+            </button>
+          </div>
+          <div className="scr-stat-filter-row">
+            <PillTabs
+              options={RACE_TAB_OPTS} value={race}
+              onChange={(v) => setRace(v)} aria-label="종족"
+            />
+          </div>
+          {/* 정렬은 드롭다운을 걷어내고 낱말을 그대로 늘어놓는다(요청) — 여섯 개뿐이라
+              펼치지 않고도 다 보이고, 지금 무엇으로 줄 서 있는지가 한눈에 읽힌다. */}
+          <div className="scr-stat-sortbar" role="group" aria-label="정렬 기준">
+            {sortOpts.map((o) => (
               <button
-                type="button" className="scr-grid-title-reset"
-                onClick={resetFilters} disabled={isDefaultFilter}
-                aria-label="필터 초기화" title="필터 초기화"
+                key={o.value} type="button"
+                className={cx("scr-stat-sortpick", o.value === sort.key && "scr-stat-sortpick-on")}
+                aria-pressed={o.value === sort.key}
+                onClick={() => setSort(sortOf(o.value))}
               >
-                <RotateCcw size={14} aria-hidden />
+                {o.label}
               </button>
-            </span>
+            ))}
           </div>
-          {/* 정렬은 필터 문장·건수와 한 줄에 선다(요청) — 표를 어떻게 볼지 정하는 것들이
-              전부 목록 바로 위 한 줄에 모인다. 예전엔 컬럼 머리를 눌러 바꿨는데, 칸을
-              통합하면서 한 칸이 여러 지표를 담게 돼(기록 칸) "이 칸을 누르면 무엇으로
-              정렬되는가"가 더는 하나로 안 정해진다. */}
-          <div className="scr-stat-sortbar">
-            <Select
-              className="scr-sentence-select" value={sort.key} options={sortOpts}
-              onChange={(v) => setSort(sortOf(v as StatSortKey))} minDropWidth={150}
-            />
-          </div>
-        </>}
+        </div>}
       />
 
       {error && <div className="scr-err">{error}</div>}

@@ -1945,8 +1945,26 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 /* 정렬 드롭다운 — 필터 문장·건수와 한 줄, 건수 바로 왼쪽(요청). margin-left:auto로 남는
    폭을 이쪽이 다 가져가고, 뒤따르는 건수의 같은 auto는 풀어 준다 — 둘 다 auto면 남는 폭을
    반씩 나눠 가져 정렬이 줄 한가운데로 떠 버린다. */
-.scr-stat-sortbar { display: flex; align-items: baseline; margin-left: auto; }
-.scr-filter-head-row > .scr-stat-sortbar ~ .scr-filter-bar-count { margin-left: 0; }
+/* 정렬은 제 줄을 쓰고(요청) 낱말을 그대로 늘어놓는다 — 드롭다운을 열지 않아도 무엇으로
+   줄 서 있는지가 바로 읽힌다. 이름이 sortpick인 건 .scr-stat-sort-btn을 옛 컬럼 머리
+   정렬(지금은 안 쓰지만 규칙이 아래 남아 있다)이 이미 쓰고 있어서다 — 같은 이름을 쓰면
+   그쪽 width:100%가 이겨서 낱말들이 한 줄에 안 서고 세로로 쌓인다(실측). */
+.scr-stat-sortbar { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; }
+.scr-stat-sortpick {
+  padding: 3px 7px; border: none; border-radius: 999px; background: none;
+  font-family: inherit; font-size: var(--fs-caption); font-weight: 600;
+  color: var(--dim); cursor: pointer; white-space: nowrap;
+  transition: color .12s, background .12s;
+}
+@media (hover: hover) {
+  .scr-stat-sortpick:not(.scr-stat-sortpick-on):hover { color: var(--text); background: rgba(255,255,255,0.10); }
+  .scr-light-theme .scr-stat-sortpick:not(.scr-stat-sortpick-on):hover { background: rgba(0,0,0,0.06); }
+}
+/* 고른 것 하나만 또렷하게 — 알약탭과 같은 라이팅(다크=흰 알약, 라이트=하늘 알약)이라
+   같은 화면 안에서 "지금 켜진 것"의 생김새가 하나로 읽힌다. */
+.scr-stat-sortpick-on {
+  color: #10151a; background: var(--lit-pill-bg); box-shadow: var(--lit-pill-glow);
+}
 
 /* 경기당 초반(5분) 일꾼 수 — 도넛과 달리 비율이 아니라 그냥 수라 숫자를 그대로 적는다.
    도넛과 나란히 서므로 이름 위 / 수 아래로 포개, 도넛 하나만큼의 폭만 쓴다. */
@@ -3106,6 +3124,94 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
 }
 .scr-sentence-select .scr-cselect-open { border-color: transparent; background: rgba(255,255,255,0.14); }
 .scr-light-theme .scr-sentence-select .scr-cselect-open { background: rgba(0,0,0,0.08); }
+/* ===== 통계 필터 세 줄(요청) =====
+   ① 유형(라디오) + 기간(달력) ② 종족(라디오) ③ 정렬(텍스트 버튼).
+   문장 하나에 드롭다운을 섞어 놓던 것을 대신한다 — 고를 것이 늘면서 문장이 길어지고
+   무엇이 눌리는지도 흐릿해졌다. */
+.scr-stat-filters { display: flex; flex-direction: column; gap: 6px; width: 100%; margin: 6px 0 10px; }
+.scr-stat-filter-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
+/* 알약탭은 원래 칸을 꽉 채우는 물건이지만(필터창 안), 여기서는 낱말 길이만큼만 차지해야
+   옆의 달력·초기화가 같은 줄에 선다. */
+.scr-stat-filter-row .scr-pill-tabs { width: max-content; max-width: 100%; height: 30px; }
+.scr-stat-filter-row .scr-pill-tab-btn { font-size: var(--fs-caption); padding: 0 12px; }
+/* 알약탭의 기본 글자색은 밝은 유리 필터창 안을 전제로 한 어두운 하드코딩이라, 맨 화면
+   (다크 배경) 위에 놓으면 안 고른 낱말이 통째로 안 보인다(실측) — 테마를 따르게 뒤집는다.
+   고른 낱말은 밝은 알약 위라 어두운 글자 그대로다. */
+.scr-stat-filter-row .scr-pill-tab-btn:not(.scr-pill-tab-btn-active) { color: var(--muted); }
+@media (hover: hover) {
+  .scr-stat-filter-row .scr-pill-tab-btn:hover:not(.scr-pill-tab-btn-active) { color: var(--text); }
+}
+.scr-stat-filter-row .scr-pill-tabs { background: rgba(255,255,255,0.08); }
+.scr-light-theme .scr-stat-filter-row .scr-pill-tabs { background: rgba(0,0,0,0.06); }
+
+/* ===== 기간 달력(요청: 기간을 달력으로) =====
+   고르는 단위는 여전히 달이라 날짜 격자가 아니라 한 해에 열두 칸이다. 트리거는 옆 알약탭과
+   같은 높이·톤으로 둬서 한 줄이 하나의 띠로 읽힌다. */
+.scr-month-cal { position: relative; display: inline-flex; }
+.scr-month-cal-trigger {
+  display: inline-flex; align-items: center; gap: 5px;
+  height: 30px; padding: 0 10px; box-sizing: border-box;
+  border: none; border-radius: 999px; cursor: pointer;
+  background: rgba(255,255,255,0.08); color: var(--text);
+  font-family: inherit; font-size: var(--fs-caption); font-weight: 600; white-space: nowrap;
+  transition: background .12s;
+}
+.scr-light-theme .scr-month-cal-trigger { background: rgba(0,0,0,0.06); }
+.scr-month-cal-trigger svg { color: var(--muted); }
+@media (hover: hover) {
+  .scr-month-cal-trigger:hover { background: rgba(255,255,255,0.14); }
+  .scr-light-theme .scr-month-cal-trigger:hover { background: rgba(0,0,0,0.09); }
+}
+.scr-month-cal-open { background: rgba(255,255,255,0.16); }
+.scr-light-theme .scr-month-cal-open { background: rgba(0,0,0,0.10); }
+
+/* 팝오버 몸통 — 배경/블러/그림자는 드롭다운 공통 유리 규칙이 준다(테마별 한 벌).
+   여기선 기하와 속만 정한다. */
+.scr-month-cal-pop {
+  z-index: 210; width: 248px; padding: 8px; border-radius: 12px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.scr-month-cal-head { display: flex; align-items: center; justify-content: space-between; gap: 4px; }
+.scr-month-cal-year { font-size: var(--fs-caption); font-weight: 700; color: var(--text); }
+.scr-month-cal-nav {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; padding: 0; border: none; border-radius: 8px;
+  background: none; color: var(--muted); cursor: pointer;
+}
+.scr-month-cal-nav:disabled { opacity: 0.28; cursor: default; }
+@media (hover: hover) {
+  .scr-month-cal-nav:not(:disabled):hover { color: var(--text); background: rgba(255,255,255,0.12); }
+  .scr-light-theme .scr-month-cal-nav:not(:disabled):hover { background: rgba(0,0,0,0.07); }
+}
+.scr-month-cal-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.scr-month-cal-cell, .scr-month-cal-all {
+  height: 30px; padding: 0; border: none; border-radius: 8px;
+  background: rgba(255,255,255,0.06); color: var(--text);
+  font-family: inherit; font-size: var(--fs-caption); font-weight: 600; cursor: pointer;
+  transition: background .12s, color .12s;
+}
+.scr-light-theme .scr-month-cal-cell, .scr-light-theme .scr-month-cal-all {
+  background: rgba(0,0,0,0.05);
+}
+/* 아직 경기가 없던 달, 아직 오지 않은 달 — 눌러 봐야 빈 표라 아예 죽여 둔다. */
+.scr-month-cal-cell:disabled { opacity: 0.25; cursor: default; background: none; }
+@media (hover: hover) {
+  .scr-month-cal-cell:not(:disabled):not(.scr-month-cal-cell-on):hover,
+  .scr-month-cal-all:not(.scr-month-cal-cell-on):hover { background: rgba(255,255,255,0.14); }
+  .scr-light-theme .scr-month-cal-cell:not(:disabled):not(.scr-month-cal-cell-on):hover,
+  .scr-light-theme .scr-month-cal-all:not(.scr-month-cal-cell-on):hover { background: rgba(0,0,0,0.09); }
+}
+/* 지금 고른 달 — 알약탭·정렬 버튼과 같은 라이팅으로 "켜진 것"의 생김새를 하나로 맞춘다.
+   라이트 선택자를 함께 적는 건 특이도 때문이다: 바로 위 `.scr-light-theme .scr-month-cal-cell`
+   (0,2,0)이 이 규칙(0,1,0)을 이겨서, 라이트에서는 고른 달의 알약 배경이 통째로 회색에
+   덮이고 글로우만 남았다(실측 — 어느 달을 골랐는지 거의 안 보였다). */
+.scr-month-cal-cell-on,
+.scr-light-theme .scr-month-cal-cell-on,
+.scr-light-theme .scr-month-cal-all.scr-month-cal-cell-on {
+  color: #10151a; background: var(--lit-pill-bg); box-shadow: var(--lit-pill-glow);
+}
+.scr-month-cal-all { width: 100%; margin-top: 2px; }
+
 /* 경기번호·메모 검색 필드(경기 화면 전용) — 유저 검색창 바로 아래에 한 줄로 나란히 두고,
    모바일에서도 한 줄을 유지한다(요청). 라벨 없이 플레이스홀더로만 힌트를 준다(요청). 인풋
    톤은 유저 검색창과 같은 옅은 반투명. */
@@ -6643,7 +6749,8 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
    radius/padding/레이아웃만 더한다. 새 팝오버가 생기면 이 선택자 목록에만 추가하면 된다.
    블러+채도를 세게 줘서, 반투명해도 글자가 또렷하게 읽히면서 뒤 콘텐츠가 유리처럼
    은은히 비친다(라이팅 테마의 핵심). */
-.scr-select-drop, .scr-cselect-drop, .scr-pv-drop, .scr-menu-pop-drop, .scr-infotip-bubble {
+.scr-select-drop, .scr-cselect-drop, .scr-pv-drop, .scr-menu-pop-drop, .scr-infotip-bubble,
+.scr-month-cal-pop {
   border: none;
   background: var(--dd-panel-bg);
   -webkit-backdrop-filter: blur(18px) saturate(1.3);
@@ -6664,7 +6771,8 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
   backdrop-filter: blur(22px) saturate(1.35);
 }
 /* 라이트는 밝은 배경이라 위쪽 반사광을 또렷하게, 그림자는 옅게. */
-.scr-light-theme .scr-select-drop, .scr-light-theme .scr-cselect-drop, .scr-light-theme .scr-pv-drop, .scr-light-theme .scr-menu-pop-drop, .scr-light-theme .scr-infotip-bubble {
+.scr-light-theme .scr-select-drop, .scr-light-theme .scr-cselect-drop, .scr-light-theme .scr-pv-drop, .scr-light-theme .scr-menu-pop-drop, .scr-light-theme .scr-infotip-bubble,
+.scr-light-theme .scr-month-cal-pop {
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,0.7),
     0 6px 18px rgba(0,0,0,0.12);
