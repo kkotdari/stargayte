@@ -500,13 +500,13 @@ export const api = {
   // 지금 바로 하루치 랭킹 집계를 돌린다(운영자) — 스케줄러가 아침에 하는 것과 같은 일이다.
   // 순위표가 그대로면 아무 카드도 안 남는 게 정상이라, 남았는지(changed)를 함께 돌려준다.
   async recomputeRankingShifts(): Promise<{ changed: boolean }> {
-    return request<{ changed: boolean }>("/api/activity/ranking-shifts/recompute", { method: "POST" });
+    return request<{ changed: boolean }>("/api/activities/ranking-shifts/recompute", { method: "POST" });
   },
 
   // 순위 기준선 다시 깔기(운영자) — 지금 데이터로 개인전/팀전 스냅샷을 새로 만든다.
   // 변동 없이 저장돼 활동 목록에는 안 뜨고, 다음 아침 재집계가 이걸 기준으로 비교한다.
   async reseedRankingShifts(): Promise<Record<string, number>> {
-    return request<Record<string, number>>("/api/activity/ranking-shifts/seed", { method: "POST" });
+    return request<Record<string, number>>("/api/activities/ranking-shifts/seed", { method: "POST" });
   },
 
   // 경기 댓글(메모) — 게시판 댓글처럼 회원 누구나 한 줄(최대 50자)을 남기고 본인/운영자만
@@ -515,7 +515,7 @@ export const api = {
   // 랭크 변동 이벤트 — 서버가 경기 등록/삭제 때마다 계산·저장한 스냅샷 중 실제 변동이
   // 있었던 것만 내려준다(활동가 재계산하지 않는다).
   async listRankingShifts(): Promise<RankingShift[]> {
-    return request<RankingShift[]>("/api/activity/ranking-shifts");
+    return request<RankingShift[]>("/api/activities/ranking-shifts");
   },
 
   // 활동 목록의 줄 번호 — 내용이 아니라 "그 줄이 전체에서 몇 번째인가"만 받는다.
@@ -523,7 +523,7 @@ export const api = {
   // 섞어 만드는데 게임결과는 페이지 단위로 나눠 받으므로, 화면이 쥔 것만 세면 아직 안
   // 받아온 과거만큼 번호가 통째로 어긋난다.
   async listActivityRows(): Promise<ActivityListOut> {
-    return request<ActivityListOut>("/api/activity/list");
+    return request<ActivityListOut>("/api/activities/list");
   },
 
   /** 활동 목록 — 화면이 부르는 API는 이것 하나다(요청: API 딱 하나만 호출하게).
@@ -536,7 +536,7 @@ export const api = {
     if (params.cursor) q.set("cursor", params.cursor);
     if (params.limit) q.set("limit", String(params.limit));
     const qs = q.toString();
-    return request<ActivityFeedPage>(`/api/activity/feed${qs ? `?${qs}` : ""}`);
+    return request<ActivityFeedPage>(`/api/activities${qs ? `?${qs}` : ""}`);
   },
 
   // 활동 댓글 — 경기/너 나와! 등 어떤 활동 요소에나 같은 API로 단다.
@@ -552,18 +552,18 @@ export const api = {
   },
 
   async listActivityComments(targetType: ActivityTargetType, targetId: number): Promise<ActivityComment[]> {
-    return request<ActivityComment[]>(`/api/activity/comments?targetType=${targetType}&targetId=${targetId}`);
+    return request<ActivityComment[]>(`/api/activities/comments?targetType=${targetType}&targetId=${targetId}`);
   },
   /** 댓글 전부 — 활동가 목록을 부를 때 한 번에 같이 받아 온다(요청: 목록 조회 시 댓글도
    *  같이 조회). 카드마다 따로 부르면 답이 제각각 도착하며 카드 키가 뒤늦게 자라, 들어올
    *  때 맞춰 둔 스크롤 자리가 밀린다. 댓글은 한 줄짜리라 전부 합쳐도 가볍다. */
   async listAllActivityComments(): Promise<ActivityComment[]> {
-    return request<ActivityComment[]>("/api/activity/comments/all");
+    return request<ActivityComment[]>("/api/activities/comments/all");
   },
   async createActivityComment(
     targetType: ActivityTargetType, targetId: number, text: string, targetMemberIds: string[],
   ): Promise<ActivityComment> {
-    return request<ActivityComment>("/api/activity/comments", {
+    return request<ActivityComment>("/api/activities/comments", {
       method: "POST",
       body: JSON.stringify({ targetType, targetId, text, targetMemberIds }),
     });
@@ -571,13 +571,13 @@ export const api = {
   async updateActivityComment(
     commentId: number, text: string, targetMemberIds: string[],
   ): Promise<ActivityComment> {
-    return request<ActivityComment>(`/api/activity/comments/${commentId}`, {
+    return request<ActivityComment>(`/api/activities/comments/${commentId}`, {
       method: "PATCH",
       body: JSON.stringify({ text, targetMemberIds }),
     });
   },
   async deleteActivityComment(commentId: number): Promise<void> {
-    await request<void>(`/api/activity/comments/${commentId}`, { method: "DELETE" });
+    await request<void>(`/api/activities/comments/${commentId}`, { method: "DELETE" });
   },
 
 

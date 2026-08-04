@@ -583,7 +583,7 @@ export interface MapCatalog {
   images: MinimapImage[];
 }
 
-/** 활동 목록 한 줄의 번호(GET /api/activity/list) — 내용은 없고 순서만 있다.
+/** 활동 목록 한 줄의 번호(GET /api/activities) — 내용은 없고 순서만 있다.
  *
  *  key는 ActivityScreen의 rowKeyOf와 같은 꼴이다: c-{도전장id} / rs-{스냅샷id} /
  *  ms-{묶음 첫 경기id}. 화면은 이 열쇠로 자기가 그린 줄에 번호를 얹는다. */
