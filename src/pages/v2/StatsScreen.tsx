@@ -7,7 +7,6 @@ import PointDetailModal from "./PointDetailModal";
 import RankTrendModal from "./RankTrendModal";
 import { rankOf } from "./rankOrder";
 import RivalryOverlay from "../rivalry/RivalryOverlay";
-import InfoTip from "../../components/common/InfoTip";
 import { useAppStore } from "../../store/appStore";
 import { api } from "../../api/client";
 import { activeMemberSearchTerms, memberMatchesQuery } from "../../utils/memberSearch";
@@ -507,19 +506,10 @@ export default function StatsScreenV2() {
       <div className="scr-v2-toolbar">
         <div className="scr-v2-toolbar-title-row">
           <h1 className="scr-title scr-v2-toolbar-title">통계</h1>
-          {/* 칸마다 달려 있던 ⓘ 여섯 개를 여기 하나로 합쳤고, 그 뒤로 네 번 쳐냈다(요청).
-              화면에 이미 적혀 있는 말(칸 이름, 막대 라벨, 도넛 띠, "커맨드/분")도,
-              집계에서 뭘 뺐는지도 다 지웠다. 마지막 두 줄만 남는데, 둘 다 "왜 여기가
-              비어 있나 / 왜 0점인가"에 답한다 — 화면이 아무 말도 안 해 주는데 그냥 두면
-              버그로 읽히는 자리다. */}
-          <InfoTip
-            trigger="도움말"
-            label="통계 표 보는 법"
-            text={"· APM·커맨드는 개인전 2판·팀전 5판부터\n"
-              + "· 생산·건설·유닛·스킬은 '주요시간대'(초반 4분과 막판 1분을 뺀 구간) 1분당\n"
-              + "· 주종족으로 보면 랭킹·포인트도 그 사람의 주종족 기준\n"
-              + "· 컴퓨터·비회원이 낀 경기는 포인트 0"}
-          />
+          {/* 도움말은 없앴다(요청). 칸마다 달려 있던 ⓘ 여섯 개를 하나로 합친 뒤 다섯 번
+              쳐내다가 결국 통째로 지웠다 — 남아 있던 줄의 절반은 판수 문턱 이야기였는데
+              그 문턱 자체가 사라졌고, 나머지도 화면이 이미 말하고 있다(칸 이름, 막대 라벨,
+              "커맨드/분", 스킬 머리의 20분 단서). */}
           {/* 상성 보기 — 랭킹 화면이 없어지면서 진입점이 끊겼던 상성 관계 오버레이를 통계
               타이틀 옆에 다시 붙인다(요청). 기간은 이 화면의 현재 필터를 그대로 따른다
               (오버레이 자체 필터 없음 — RivalryOverlay 주석 참고). */}

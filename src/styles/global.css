@@ -1371,8 +1371,10 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    클래스 이름만 화면 이름을 안 타게 scr-rivalry-open-btn으로 둔다. */
 .scr-rivalry-open-btn {
   flex: 0 0 auto; align-self: center;
-  min-height: 0; height: 28px; padding: 0 12px;
-  font-size: var(--fs-caption); font-weight: 800; border-radius: 999px;
+  /* 한 스텝 축소(요청) — 28→24px, caption(14)→micro(12). 옆 도움말이 사라져 이 버튼만
+     제목 옆에 남으면서 전보다 커 보였다. */
+  min-height: 0; height: 24px; padding: 0 10px;
+  font-size: var(--fs-micro); font-weight: 800; border-radius: 999px;
   /* -6px 보정은 이제 줄 전체(.scr-v2-toolbar-title-row)가 진다 — 여기서 또 올리면 두 번
      올라가 제목보다 6px 위에 앉는다(실측). */
 }
