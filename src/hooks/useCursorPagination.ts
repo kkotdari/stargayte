@@ -21,6 +21,11 @@ interface UseCursorPaginationResult<T> {
   // 같은 필터 조건의 전체 건수 — 로드된 items.length가 아니라 서버가 첫 페이지에서
   // 알려준 값을 그대로 들고 있는다(무한스크롤 중에도 안 바뀜). 아직 첫 응답 전이면 null.
   total: number | null;
+  /** 이미 받아 둔 것 중 한 건만 제자리에서 갈아 끼운다 — 목록 전체를 다시 받지 않는다.
+   *
+   *  카드에서 바로 바뀌는 값(너 나와 수락·거절 등)을 위한 자리다. 그런 것까지 reload로
+   *  처리하면 페이지를 처음부터 다시 받아, 스크롤을 내려 둔 자리가 통째로 사라진다. */
+  patch: (updater: (items: T[]) => T[]) => void;
 }
 
 // 커서 기반 무한스크롤 공용 훅 — deps(필터/정렬 값들)가 바뀌면 첫 페이지부터 다시 불러오고,
@@ -37,6 +42,8 @@ export function useCursorPagination<T>(
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [total, setTotal] = useState<number | null>(null);
+
+  const patch = useCallback((updater: (prev: T[]) => T[]) => setItems(updater), []);
 
   const generationRef = useRef(0);
   const fetchPageRef = useRef(fetchPage);
@@ -90,5 +97,5 @@ export function useCursorPagination<T>(
     load(null, false);
   }, [load]);
 
-  return { items, loading, loadingMore, error, hasMore, loadMore, reload, total };
+  return { items, loading, loadingMore, error, hasMore, loadMore, reload, total, patch };
 }

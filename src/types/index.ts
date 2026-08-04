@@ -602,3 +602,29 @@ export interface ActivityListOut {
   /** 활동에 달린 댓글 전부. 옛 API가 답할 때는 없을 수 있다(배포가 어긋나는 순간). */
   comments?: ActivityComment[];
 }
+
+/** 활동 목록의 아이템 하나 — 너 나와·랭크 변동·게임결과가 같은 것이다(요청).
+ *
+ *  화면의 한 줄이 곧 하나다. kind에 따라 채워지는 칸이 다를 뿐, 줄을 세우고 번호를 붙이고
+ *  댓글을 다는 규칙은 셋이 똑같다. 게임결과만 여럿인 것은 한 자리에서 이어 친 경기가
+ *  한 줄이기 때문이다. */
+export interface ActivityFeedItem {
+  key: string;
+  kind: "challenge" | "rankingShift" | "gameResultPost";
+  /** 가장 오래된 줄이 1 — 서버가 전체를 놓고 센 값이다. */
+  no: number;
+  challenge?: Challenge | null;
+  rankingShift?: RankingShift | null;
+  gameResults: GameResult[];
+  /** 이 줄에 달린 댓글 전부. 각 댓글이 제 대상을 들고 있어 카드가 자기 것을 찾아 붙는다. */
+  comments: ActivityComment[];
+}
+
+export interface ActivityFeedPage {
+  /** 목록 전체의 줄 수. */
+  total: number;
+  /** 활동 낱개의 수 — 줄이 아니라 '건'(묶인 경기는 그 안의 판 수만큼). */
+  totalActivities: number;
+  items: ActivityFeedItem[];
+  nextCursor: string | null;
+}

@@ -34,7 +34,8 @@ import {
 import { useLockBodyScroll } from "../../utils/bodyScrollLock";
 import { hasAppUpdatePreloadErrorOccurred } from "../../utils/appUpdate";
 import type {
-  Challenge, ActivityTargetType, GameOutcome, GameResult, GameResultSlot, Member, NewGameResult, RankingShift,
+  ActivityFeedItem, Challenge, ActivityTargetType, GameOutcome, GameResult, GameResultSlot, Member,
+  NewGameResult, RankingShift,
 } from "../../types";
 
 const PAGE_SIZE = 100;
@@ -591,26 +592,7 @@ export default function ActivityScreen() {
   // 너 나와! 등록 폼.
   const [challengeFormOpen, setChallengeFormOpen] = useState(false);
 
-  // 너 나와! 목록
-  const [challenges, setChallenges] = useState<Challenge[]>([]);
-  const [challengesLoading, setChallengesLoading] = useState(true);
   const [error, setError] = useState("");
-
-  const loadChallenges = useCallback(() => {
-    api.getChallenges()
-      .then((res) => setChallenges(res.items))
-      .catch((e) => setError(e instanceof Error ? e.message : "목록을 불러오지 못했어요."))
-      .finally(() => setChallengesLoading(false));
-  }, []);
-  useEffect(loadChallenges, [loadChallenges]);
-
-  /* 댓글도 목록과 함께 한 번에 받아 둔다(요청) — 카드마다 따로 부르면 답이 제각각 도착하며
-     카드 키가 뒤늦게 자라, 들어올 때 "현재"에 맞춰 둔 자리가 그만큼 밀린다. 이게 끝나야
-     목록을 그린다: 그래야 첫 렌더의 카드 높이가 곧 최종 높이다.
-     실패해도 목록까지 막지는 않는다 — 그때는 카드가 예전처럼 제 것만 따로 불러온다.
-     받아 오는 자리는 아래 reloadRankingShifts다 — 줄 번호와 같은 응답에 실려 온다
-     (요청: 목록·댓글 단일 API로 통합). */
-  const [commentsLoading, setCommentsLoading] = useState(true);
 
   // 카드의 카운트다운/마감 파생 상태를 1분마다 갱신한다.
   const [, setTick] = useState(0);
@@ -619,25 +601,69 @@ export default function ActivityScreen() {
     return () => clearInterval(t);
   }, []);
 
-  // 응답/결과입력 등 카드 액션의 결과를 목록에 반영한다.
-  const upsertChallenge = (updated: Challenge) => {
-    setChallenges((prev) => (
-      prev.some((c) => c.id === updated.id)
-        ? prev.map((c) => (c.id === updated.id ? updated : c))
-        : [updated, ...prev]
-    ));
-  };
-
-  // 경기 전체 — 최신순 커서 페이지를 끝까지 이어붙여 한 번에 다 불러온다.
+  /* 활동 목록 — 화면이 부르는 API는 이것 하나다(요청: API 딱 하나만 호출하게).
+     너 나와·랭크 변동·게임결과가 같은 아이템으로 오고, 내용도 댓글도 그 안에 있다.
+     예전에는 세 곳(/challenges, /game-results, /activity/ranking-shifts)을 따로 받아
+     여기서 섞고 번호는 또 /activity/list에서 받아 열쇠로 맞춰 얹었다 — 섞는 규칙이
+     서버와 화면 양쪽에 있어야 했고, 한쪽만 고쳐지는 순간 번호가 줄과 어긋났다. */
   const fetchPage = useCallback(
-    (cursor: string | null) =>
-      api.getGameResultsPage({ cursor: cursor ?? undefined, limit: PAGE_SIZE, sort: "latest" }),
+    async (cursor: string | null): Promise<{
+      items: ActivityFeedItem[]; nextCursor: string | null; hasMore: boolean; total: number;
+    }> => {
+      const page = await api.listActivityFeed({ cursor: cursor ?? undefined, limit: PAGE_SIZE });
+      // 공용 무한스크롤 훅의 모양(hasMore)에 맞춘다 — 서버는 다음 커서만 준다.
+      return { ...page, hasMore: page.nextCursor !== null, total: page.totalActivities };
+    },
     [],
   );
   const {
-    items: gameResults, loading: matchesLoading, loadingMore, hasMore, loadMore, reload,
-    total: gameResultTotal,
+    items: feedItems, loading: feedLoading, loadingMore, hasMore, loadMore, reload,
+    total: activityTotal, patch: patchFeed,
   } = useCursorPagination(fetchPage, []);
+
+  /* 아이템 하나가 화면의 한 줄이지만, 걸러내기(유형·검색)는 여전히 낱개 활동 위에서 한다 —
+     아홉 판이 묶인 줄에서 검색어에 걸리는 판만 남겨야 하기 때문이다. 그래서 받은 아이템을
+     종류별로 도로 펴서 예전 파이프라인에 넣고, 화면에 세울 때 다시 묶는다(displayFeed).
+     서버가 묶은 규칙과 여기서 묶는 규칙이 같아야 줄 열쇠가 맞는다. */
+  const challenges = useMemo(
+    () => feedItems.flatMap((it) => (it.challenge ? [it.challenge] : [])),
+    [feedItems],
+  );
+  const gameResults = useMemo(() => feedItems.flatMap((it) => it.gameResults), [feedItems]);
+  const rankShifts = useMemo(
+    () => feedItems.flatMap((it) => (it.rankingShift ? [it.rankingShift] : [])),
+    [feedItems],
+  );
+  // 줄 번호는 서버가 전체를 놓고 센 값을 그대로 쓴다 — 화면이 쥔 것만 세면 아직 안 받아온
+  // 과거만큼 통째로 어긋난다.
+  const rowNos = useMemo(
+    () => new Map(feedItems.map((it) => [it.key, it.no] as const)),
+    [feedItems],
+  );
+  /* 댓글도 같은 응답에 실려 온다 — 카드마다 따로 부르면 답이 제각각 도착하며 카드 키가
+     뒤늦게 자라, 들어올 때 "현재"에 맞춰 둔 자리가 그만큼 밀린다. 페이지를 이어 받을
+     때마다 다시 담는다(표는 통째로 새로 만든다). */
+  useEffect(() => {
+    if (feedItems.length === 0) return;
+    void primeActivityComments(feedItems.flatMap((it) => it.comments));
+  }, [feedItems]);
+
+  // 응답/결과입력 등 카드 액션의 결과를 목록에 반영한다 — 목록을 처음부터 다시 받지
+  // 않는다(그러면 스크롤을 내려 둔 자리가 통째로 사라진다).
+  const upsertChallenge = (updated: Challenge) => {
+    patchFeed((prev) => {
+      const hit = prev.some((it) => it.challenge?.id === updated.id);
+      if (hit) {
+        return prev.map((it) => (it.challenge?.id === updated.id ? { ...it, challenge: updated } : it));
+      }
+      // 새로 부른 호출은 맨 위에 세운다. 번호는 다음 새로고침 때 서버 값으로 맞춰진다 —
+      // 지금 여기서 세면 아직 안 받아온 과거만큼 어긋난다.
+      return [{
+        key: `c-${updated.id}`, kind: "challenge" as const, no: 0,
+        challenge: updated, gameResults: [], comments: [],
+      }, ...prev];
+    });
+  };
 
   // 무한스크롤 — 목록 끝 센티널이 보이면 다음 페이지를 불러온다(전체 일괄 로드 대신).
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -664,16 +690,16 @@ export default function ActivityScreen() {
     return () => { aliveRef.current = false; };
   }, []);
   useEffect(() => {
-    if (matchesLoading || didPrimeMapsRef.current) return;
+    if (feedLoading || didPrimeMapsRef.current) return;
     didPrimeMapsRef.current = true;
     primeReplayMaps(gameResults.map((g) => g.mapHash))
       .catch(() => {}).finally(() => { if (aliveRef.current) setMapsLoading(false); });
-  }, [matchesLoading, gameResults]);
+  }, [feedLoading, gameResults]);
 
-  const loading = challengesLoading || matchesLoading || commentsLoading || mapsLoading;
+  const loading = feedLoading || mapsLoading;
 
   /* 무한스크롤 관측 — 목록이 실제로 그려진 뒤에만 건다. 이 판단은 경기 목록의 로딩
-     (matchesLoading)이 아니라 화면 전체의 loading이어야 한다(지적: 로딩바가 두 개 뜬다).
+     (feedLoading)이 아니라 화면 전체의 loading이어야 한다(지적: 로딩바가 두 개 뜬다).
      경기 목록만 먼저 도착하고 댓글·격자 프리페치가 아직인 구간에서는 목록 자리에 스피너
      하나만 있어 화면이 짧으니, 맨 아래 센티널이 처음부터 보인다 — 그러면 사용자가 스크롤을
      하기도 전에 다음 페이지를 부르고, 스피너가 하나 더 붙어 두 개가 됐다. 딸려온 문제가 더
@@ -682,53 +708,18 @@ export default function ActivityScreen() {
     const el = sentinelRef.current;
     if (!el || !hasMore || loading) return;
     const io = new IntersectionObserver((entries) => {
-      if (entries.some((e) => e.isIntersecting) && hasMore && !matchesLoading && !loadingMore) {
+      if (entries.some((e) => e.isIntersecting) && hasMore && !feedLoading && !loadingMore) {
         loadMore();
       }
     }, { rootMargin: "600px 0px" });
     io.observe(el);
     return () => io.disconnect();
-  }, [hasMore, loading, matchesLoading, loadingMore, loadMore]);
+  }, [hasMore, loading, feedLoading, loadingMore, loadMore]);
 
-  // 랭크(포인트/순위) 변동 이벤트 — 서버가 경기 등록/삭제 때마다 계산·저장한 스냅샷을
-  // 그대로 읽는다(클라이언트는 더 이상 아무것도 계산하지 않는다).
-  const [rankShifts, setRankShifts] = useState<RankingShift[]>([]);
-  /* 줄 번호 — 서버가 센 값을 그대로 쓴다(요청: "api에서 보내주는 값이어야 한다").
-     화면이 직접 셀 수 없는 값이다: 목록은 세 곳을 시간순으로 섞어 만드는데 게임결과는
-     페이지 단위로 나눠 받으므로, 화면이 쥔 것만 세면 아직 안 받아온 과거만큼 번호가
-     통째로 어긋난다. 열쇠(rowKeyOf와 같은 꼴)로 자기 줄에 얹는다. */
-  const [rowNos, setRowNos] = useState<Map<string, number>>(new Map());
-  const reloadRankingShifts = useCallback(() => {
-    api.listRankingShifts()
-      .then(setRankShifts)
-      .catch(() => {});
-    /* 줄 번호와 댓글이 한 응답에 온다(요청: 단일 API로 통합) — 목록 하나를 그리는 데
-       필요한 값이라 따로 받을 이유가 없고, 둘로 나뉘어 있으면 하나가 늦거나 실패할 때
-       목록이 반쯤 그려진 채로 남는다(운영에서 실제로 둘이 나란히 500이었다).
-       댓글이 안 실려 온 응답(옛 API가 답한 경우)에는 primeActivityComments가 옛 경로로
-       한 번 더 물어본다 — 그때만 요청이 둘이 된다. */
-    api.listActivityRows()
-      .then((res) => {
-        setRowNos(new Map(res.rows.map((r) => [r.key, r.no])));
-        return primeActivityComments(res.comments);
-      })
-      // 못 받아 와도 화면은 그대로 돌아간다(번호만 안 붙고 댓글은 카드가 제 것을 따로
-      // 불러온다) — 다만 조용히 삼키지는 않는다. 한 번 그렇게 뒀다가 운영에서 번호가
-      // 통째로 안 나오는데 왜인지 알 길이 없었다(지적).
-      .catch((e) => console.error("[활동] 목록 한 벌을 못 받아 왔습니다 — /api/activity/list", e))
-      .finally(() => setCommentsLoading(false));
-  }, []);
-  useEffect(() => reloadRankingShifts(), [reloadRankingShifts]);
-
-  // 저장/삭제 완료 — 경기 목록과 함께 변동 이벤트도 갱신한다(서버가 이미 저장을 끝냈다).
-  const handleReplaysSaved = useCallback(async () => {
-    reload();
-    reloadRankingShifts();
-  }, [reload, reloadRankingShifts]);
-  const handleGameResultDeleted = useCallback(() => {
-    reload();
-    reloadRankingShifts();
-  }, [reload, reloadRankingShifts]);
+  // 저장/삭제 완료 — 목록을 처음부터 다시 받는다. 랭크 변동도 같은 응답에 실려 오므로
+  // 따로 갱신할 것이 없다(서버가 이미 저장·재집계를 끝냈다).
+  const handleReplaysSaved = useCallback(async () => { reload(); }, [reload]);
+  const handleGameResultDeleted = useCallback(() => { reload(); }, [reload]);
 
   const handleReplayFilesChosen = async (e: ChangeEvent<HTMLInputElement>) => {
     const picked = Array.from(e.target.files ?? []);
@@ -831,14 +822,12 @@ export default function ActivityScreen() {
     return items.sort((a, b) => sortMsOf(b) - sortMsOf(a));
   }, [challenges, gameResults, rankShifts]);
 
-  // 경기가 아직 더 남아 있으면(hasMore), 이미 불러온 가장 오래된 경기보다 더 과거의
-  // 너나와/변동 카드는 보류한다 — 페이지가 이어질 때 시간순이 뒤섞여 보이지 않게.
-  const visibleFeed = useMemo(() => {
-    if (!hasMore || gameResults.length === 0) return feed;
-    const oldest = Math.min(...gameResults.map((m) => gameResultItem(m).time));
-    return feed.filter((item) => item.time >= oldest);
-  }, [feed, hasMore, gameResults]);
-
+  /* 예전에는 여기서 "이미 불러온 가장 오래된 경기보다 과거인 너나와·변동"을 보류했다 —
+     경기만 페이지로 나눠 받고 나머지는 통째로 받았기에, 아직 안 받은 경기 자리에 옛
+     너나와가 먼저 내려와 시간순이 뒤섞여 보였기 때문이다. 이제 셋을 한 목록으로 함께
+     나눠 받으므로 받은 것은 늘 위에서부터 이어져 있고, 보류할 것이 없다. 오히려 남겨
+     두면 문제가 된다: 너 나와는 표시 시각과 꽂히는 자리가 달라(challengeSortMs) 제대로
+     실려 온 카드가 그 잣대에 걸려 사라질 수 있다. */
   const suggestions = useMemo(() => activeMemberSearchTerms(members), [members]);
   const searchTerms = useMemo(() => splitSearchTerms(search), [search]);
   const matchedIds = useMemo(() => {
@@ -866,9 +855,9 @@ export default function ActivityScreen() {
 
   // 필터 바에 적을 건수(요청: 무한스크롤이면 미리 전체 건수를 조회해서 써야 한다).
   //
-  // 경기결과만 커서 페이지로 나눠 받고(나머지는 한 번에 다 받는다), 그 전체 건수는 서버가
-  // 첫 페이지 응답에 담아 준다(GameResultPage.total) — 그래서 아무 필터도 안 걸렸을 때는
-  // "서버가 센 경기 수 + 이미 다 받아 둔 너나와/순위변동 수"가 곧 진짜 전체 건수다.
+  // 아무 필터도 안 걸렸을 때는 서버가 첫 페이지에 담아 준 값(totalActivities)이 곧 전체
+  // 건수다 — 줄이 아니라 '건'이라, 한 자리에서 이어 친 아홉 판은 아홉으로 센다(지적: 묶는
+  // 건 보여주는 방식일 뿐이고 그 안의 판도 각각 한 건이다).
   // 화면에 몇 장이 그려졌는지(filteredFeed.length)와 무관하게 처음부터 이 값을 보여준다.
   //
   // 필터(유형/검색)가 걸리면 이 값을 쓸 수 없다 — 걸러내기는 전부 이미 받아 둔 것들
@@ -876,10 +865,6 @@ export default function ActivityScreen() {
   // 페이지의 건수를 알 방법이 없다. 그때는 지금까지 받은 것 중 걸러진 수를 그대로 쓴다 —
   // 목록도 딱 그만큼만 보여주고 있으므로 화면과 숫자가 어긋나지는 않는다.
   const filterActiveForCount = kindFilter !== "all" || searchTerms.length > 0;
-  const nonGameResultCount = useMemo(
-    () => feed.filter((it) => it.kind !== "gameResult").length,
-    [feed],
-  );
 
   // 필터 판정 — filteredFeed와 아래 건수 계산이 같은 규칙을 쓰도록 함수로 빼 둔다.
   const passesFilter = useCallback(
@@ -912,8 +897,8 @@ export default function ActivityScreen() {
     [kindFilter, searchTerms, members],
   );
   const filteredFeed = useMemo<ActivityItem[]>(
-    () => visibleFeed.filter(passesFilter),
-    [visibleFeed, passesFilter],
+    () => feed.filter(passesFilter),
+    [feed, passesFilter],
   );
   // 필터가 걸린 상태의 경기 건수는 서버에 조용히 다시 물어 채운다(요청: "필터시 정확한
   // 건수도 필요해 조용히 비동기적으로 업데이트해줘"). 걸러내기는 이미 받아 둔 페이지
@@ -1166,8 +1151,8 @@ export default function ActivityScreen() {
               challenge={item.challenge}
               isAdmin={isAdmin}
               myId={user?.id ?? ""}
-              onDeleted={(id) => setChallenges((prev) => prev.filter((c) => c.id !== id))}
-              onChanged={(c) => setChallenges((prev) => prev.map((x) => (x.id === c.id ? c : x)))}
+              onDeleted={(id) => patchFeed((prev) => prev.filter((it) => it.challenge?.id !== id))}
+              onChanged={upsertChallenge}
             />
           }
           comment={<ActivityCardComments targetType="challenge" targetId={item.challenge.id} />}
@@ -1274,7 +1259,7 @@ export default function ActivityScreen() {
         // 보여주는 방식일 뿐이라(지적) 그 묶음 안의 판도 각각 한 건이다.
         count={
           !filterActiveForCount
-            ? (gameResultTotal !== null ? gameResultTotal + nonGameResultCount : filteredFeed.length)
+            ? (activityTotal ?? filteredFeed.length)
             // 서버 답이 오기 전에는 지금 보이는 수를 그대로 둔다.
             : (filteredGameResultTotal !== null
               ? filteredGameResultTotal + filteredNonGameResultCount

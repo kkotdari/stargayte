@@ -3,7 +3,7 @@
 // ============================================================
 import type { BuildMix } from "../utils/replayBuildMix";
 import type {
-  Member, GameResult, ActivityComment, ActivityTargetType, RankingShift, ActivityListOut, NewGameResult, SignupPayload, MemberCreatePayload, MemberStatus, MemberRole,
+  Member, GameResult, ActivityComment, ActivityTargetType, RankingShift, ActivityListOut, ActivityFeedPage, NewGameResult, SignupPayload, MemberCreatePayload, MemberStatus, MemberRole,
   ScreenKey, AppVersion, AppVersionStatus, AppVersionInfo,
   MapCatalog, MinimapImage,
   GameResultSlot, GameResultPage, GameResultStatsResponse, GameType, Race, TeamRankingResponse,
@@ -524,6 +524,19 @@ export const api = {
   // 받아온 과거만큼 번호가 통째로 어긋난다.
   async listActivityRows(): Promise<ActivityListOut> {
     return request<ActivityListOut>("/api/activity/list");
+  },
+
+  /** 활동 목록 — 화면이 부르는 API는 이것 하나다(요청: API 딱 하나만 호출하게).
+   *
+   *  너 나와·랭크 변동·게임결과가 같은 아이템으로 오고, 내용도 댓글도 그 안에 있다.
+   *  예전에는 세 곳을 따로 받아 화면이 제 손으로 섞었는데, 그러면 섞는 규칙이 서버(번호를
+   *  세니까)와 화면 양쪽에 있어야 하고 한쪽만 고쳐지는 순간 번호가 줄과 어긋났다. */
+  async listActivityFeed(params: { cursor?: string; limit?: number } = {}): Promise<ActivityFeedPage> {
+    const q = new URLSearchParams();
+    if (params.cursor) q.set("cursor", params.cursor);
+    if (params.limit) q.set("limit", String(params.limit));
+    const qs = q.toString();
+    return request<ActivityFeedPage>(`/api/activity/feed${qs ? `?${qs}` : ""}`);
   },
 
   // 활동 댓글 — 경기/너 나와! 등 어떤 활동 요소에나 같은 API로 단다.

@@ -193,7 +193,13 @@ export const useAppStore = create<AppState>()((set, get) => ({
 
   login: async (id, password) => {
     const { user } = await api.login(id, password);
-    set({ user, justLoggedIn: true });
+    /* booting을 여기서 켠다 — bootstrap()이 시작되기 전에 이미 화면이 뜨는 것을 막는다.
+       user가 채워지는 순간 App은 곧바로 첫 화면을 그리는데, bootstrap()은 그 뒤 이펙트에서
+       시작하며 booting을 true로 올린다. 그러면 방금 뜬 화면이 통째로 언마운트됐다가 다시
+       마운트되고, 그 화면이 처음에 부르는 것들이 두 번씩 나간다(실측: 활동 목록 요청이
+       로그인 한 번에 두 벌). 로그인 성공은 곧 "이제 기초 데이터를 받는다"는 뜻이므로
+       그 순간부터 booting이 맞다. */
+    set({ user, justLoggedIn: true, booting: true });
   },
 
   logout: () => {
