@@ -1046,9 +1046,19 @@ export default function ActivityScreen() {
       const c = item.challenge;
       const mine = [c.createdBy.nickname, ...c.ownMembers.map((m) => m.nickname)];
       const theirs = c.targets.map((t) => t.nickname);
+      /* 결과까지 들어온 건은 "완료"라고 적지 않고 양쪽에 승/무/패를 단다(요청). "완료"는
+         무슨 일이 있었는지를 하나도 말해 주지 않는 낱말이라, 줄을 펼쳐 카드를 봐야 누가
+         이겼는지 알 수 있었다. 이긴 편에만 승을 다는 카드와 달리 양쪽 다 적는 건, 목록엔
+         손 이모지 같은 가운데 기준이 없어 한쪽만 칠하면 그게 누구 것인지가 흐려서다. */
+      const won = c.resultWinnerSide;
+      const sideBadge = (text: string, tone: "win" | "loss" | "draw") => (
+        <span className={cx("scr-activity-row-state", `scr-activity-row-state-${tone}`)}>{text}</span>
+      );
       const status = challengeStatusInfo(c);
-      /* 상태는 줄에 끼우지 않고 닉네임 우상단에 얹는다(요청: 제목의 NEW 배지처럼, 자리
-         차지 없이). 흐름에 두면 그 폭만큼 이름 자리가 줄어 모바일에서 닉네임이 잘렸다.
+      /* 상태는 줄에 끼우지 않고 닉네임 좌상단에 얹는다(요청: 자리 차지 없이, 그러면서
+         내용 칸 오른쪽 끝의 댓글 배지와 안 겹치게). 흐름에 두면 그 폭만큼 이름 자리가
+         줄어 모바일에서 닉네임이 잘린다. 한때 이름의 우상단이었는데, 오른쪽 편 이름은
+         내용 칸 끝에 가까워 거기 붙은 상태가 댓글 배지와 부딪혔다(지적).
          어느 쪽 닉네임에 붙일지는 '누구의 이야기인가'로 정한다 — 수락·거절·버림·만료는
          지목된 쪽이 한 일이니 오른쪽에, 부른 쪽이 거둬들인 취소만 왼쪽에 붙는다(요청).
          그 판단은 카드가 손 이모지 양옆 배지를 놓을 때 쓰는 것과 같은 함수다
@@ -1059,17 +1069,25 @@ export default function ActivityScreen() {
           {status.text}
         </span>
       );
+      const leftBadge = won
+        ? won === "draw" ? sideBadge("무", "draw")
+          : won === "creator" ? sideBadge("승", "win") : sideBadge("패", "loss")
+        : onCreatorSide && badge;
+      const rightBadge = won
+        ? won === "draw" ? sideBadge("무", "draw")
+          : won === "target" ? sideBadge("승", "win") : sideBadge("패", "loss")
+        : !onCreatorSide && badge;
       return (
         <>
           <span className="scr-activity-row-name">
             <span className="scr-activity-row-name-main">
-              {nameNodes(mine)}{onCreatorSide && badge}
+              {nameNodes(mine)}{leftBadge}
             </span>
           </span>
           <span className="scr-activity-row-arrow" aria-hidden>→</span>
           <span className="scr-activity-row-name">
             <span className="scr-activity-row-name-main">
-              {nameNodes(theirs)}{!onCreatorSide && badge}
+              {nameNodes(theirs)}{rightBadge}
             </span>
           </span>
         </>
@@ -1323,21 +1341,25 @@ export default function ActivityScreen() {
                     onClick={() => toggleRow(key)}
                   >
                     <span className="scr-activity-row-title">
-                      <span className="scr-activity-row-title-main">
-                        {/* 몇 번째 활동인가 — 제목 글자 바로 위, 왼쪽 끝을 맞춰 세운다
-                            (요청: 좌상단, 대각선 아님). 흐름에서 빼 두므로 제목 자리는
-                            번호가 있든 없든 그대로다. */}
+                      {/* 제목 글자 위에 얹히는 한 줄 — 번호는 왼쪽 끝, 딱지는 오른쪽 끝에
+                          서로 밀어내며 앉는다(요청: 넘버링과 배지 사이 벌리기). 둘을 따로
+                          띄웠을 때는 번호가 제목 글자를 따라다녀서, 제목이 짧은 줄에선
+                          가운데로 밀려 올라와 딱지와 겹쳤다(지적: 요소끼리 간섭).
+                          흐름에서 빼 두므로(absolute) 제목 자리는 이 둘이 있든 없든
+                          그대로고, 줄 위 여백 안에 들어앉아 줄 높이도 안 건드린다. */}
+                      <span className="scr-activity-row-title-top">
                         {no !== undefined && <span className="scr-activity-row-no">#{no}</span>}
+                        {/* 하루 안에 올라왔거나(NEW) 달라진(UPDATE) 건 — 색만으로 말하지
+                            않도록 글자를 그대로 적는다. */}
+                        {flag && (
+                          <span className={cx("scr-activity-row-flag", `scr-activity-row-flag-${flag}`)}>
+                            {flag === "new" ? "NEW" : "UPDATE"}
+                          </span>
+                        )}
+                      </span>
+                      <span className="scr-activity-row-title-main">
                         <span className="scr-activity-row-title-text">{rowTitleOf(item)}</span>
                       </span>
-                      {/* 하루 안에 올라왔거나(NEW) 달라진(UPDATE) 건 — 색만으로 말하지
-                          않도록 글자를 그대로 적는다. 배지는 안 줄고, 자리가 모자라면
-                          제목이 줄어든다. */}
-                      {flag && (
-                        <span className={cx("scr-activity-row-flag", `scr-activity-row-flag-${flag}`)}>
-                          {flag === "new" ? "NEW" : "UPDATE"}
-                        </span>
-                      )}
                     </span>
                     <span className="scr-activity-row-desc">
                       {rowDesc(item)}
