@@ -7,7 +7,7 @@ import { cleanMapName } from "../../utils/mapName";
 import { cx } from "../../utils/format";
 import { normalizeSearchText } from "../../utils/memberSearch";
 import { ATTACK_BEAT_KEYS } from "../../utils/replaySummary";
-import { renderReplaySummarySentences, UNIT_KO, BUILDING_KO, TECH_KO } from "../../utils/replaySummaryText";
+import { renderReplaySummarySentences, UNIT_KO, BUILDING_KO, TECH_KO, DEFENSE_KO } from "../../utils/replaySummaryText";
 import { SIGNATURE_UPGRADE_KO, UPGRADE_LINE_KO } from "../../utils/replayTechNames";
 import type { SummaryPart } from "../../utils/replaySummaryText";
 import type { GameResult, GameResultSlot, Member } from "../../types";
@@ -863,6 +863,12 @@ export default function GameResultStory({
       const bs = typeof p?.bs === "string" ? ko(p.bs.split(","))
         : typeof p?.b === "string" ? ko([p.b]) : [];
       if (bs.length > 0) return bs;
+      /* 방어 이야기의 답은 방어 건물이다(지적: 상관없는 유닛 라벨이 얹힌다 — "성큰을
+         도배해서 방어했다"인데 이름표에는 뮤탈이 붙었다). 이 갈래의 p.unit은 그 사람이
+         그 판에서 가장 많이 뽑은 유닛이라 그 장면의 병력이 아니고, 초반 장면에서는 아직
+         뽑지도 않은 이름이 그대로 올라온다. 지은 것은 확실하니 그걸 적는다. */
+      const dk = typeof p?.def === "string" ? DEFENSE_KO[p.def] : undefined;
+      if (dk) return [dk];
       /* 큰 싸움은 편별로 나뉘어 실린다 — forceA는 who[0](이긴 편) 쪽, forceB는 who[1] 쪽이다.
          남의 편 병력을 제 이름표로 달면 안 되니 어느 쪽인지를 보고 고른다. */
       if (b.k === "clash") {

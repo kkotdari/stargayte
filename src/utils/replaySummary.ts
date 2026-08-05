@@ -2188,10 +2188,20 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   const forceAt = (who: string, at: number | null, side: ParsedReplayPlayer[]): string[] => {
     if (at === null) return [];
     const me = side.find((p) => p.rawName === who);
+    /* 그 사람이 실제로 뽑은 유닛만 이름표가 될 수 있다(지적: 자꾸 상관없는 유닛 라벨이
+       얹힌다 — 뽑지도 않은 것). 이름의 출처는 명령의 주인(orderPositions.by)인데 그 값은
+       파서가 화면 선택 상태로 짚어 내는 것이라, 드물게 그 사람이 가진 적 없는 유닛이
+       섞인다. 생산 기록(unitCounts)에 없는 이름은 그 자리에서 걸러 낸다 — 생산 기록이
+       아예 없는 옛 리플레이에서는 예전처럼 다 통과시킨다(거를 근거가 없다). */
+    const made = me?.signals?.unitCounts;
+    const built = made && Object.keys(made).length > 0
+      ? (u: string) => (made[u] ?? 0) > 0
+      : () => true;
     const tally = new Map<string, number>();
     for (const o of me?.signals?.orderPositions ?? []) {
       if (o.kind !== "attack" && o.kind !== "move") continue;
       if (!o.by || FORCE_EXCLUDE.has(o.by)) continue;
+      if (!built(o.by)) continue;
       if (Math.abs(o.frame - at) * SECONDS_PER_FRAME > STRIKE_ZONE_WINDOW_SEC) continue;
       tally.set(o.by, (tally.get(o.by) ?? 0) + 1);
     }
