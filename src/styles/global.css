@@ -8010,6 +8010,14 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 /* 트랙이 0fr일 때 안쪽이 삐져나오지 않게 — 자르는 건 자식 몫이다(격자 항목이 제 콘텐츠
    최소 크기보다 작아지려면 min-height: 0도 함께 있어야 한다). */
 .scr-activity-row-fold > * { overflow: hidden; min-height: 0; }
+/* 닫는 동안에는 이 칸의 아래 여백까지 걷는다(지적: 닫을 때 목록의 아래 패딩이 한 번
+   줄어드는 게 보인다) — 트랙을 0fr로 눌러도 격자 항목의 padding은 트랙 밖의 값이라
+   그대로 남는다. 실측: 닫은 뒤 언마운트까지 200ms 동안 12px이 남아 있다가 사라지면서
+   아래 줄들이 통째로 한 번 더 뛰었다(그 12px이 .scr-activity-row-body의 padding-bottom
+   이다). 닫기 시작할 때 함께 걷으면 그 두 번째 점프가 없어진다.
+   .scr-activity-row-body가 이 규칙보다 파일 뒤에 있어 같은 특이도로는 못 이긴다 —
+   클래스를 겹쳐 무겁게 만든다. */
+.scr-activity-row-fold.scr-activity-row-fold-closing > * { padding-bottom: 0; }
 .scr-activity-row-fold-open { animation: scr-row-open .22s ease-out backwards; }
 /* 닫힘만 forwards다 — 끝난 뒤에도 마지막 프레임(닫힌 상태)을 붙들고 있어야 한다.
    backwards면 0.18초가 끝나는 순간 도로 펼쳐졌다가 다음 렌더에 언마운트돼 한 번 번쩍인다. */
