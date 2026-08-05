@@ -95,7 +95,10 @@ const BEAT_MARK: Record<string, string> = {
   // 째다 응징당한 문장에서 표시를 받는 건 당한 사람이 아니라 때린 사람(p.by)뿐이라
   // (BY_ATTACKER_KEYS) 검 대결이 맞다 — 당한 사람은 얼굴로만 알린다.
   "greedy-punished": "⚔️",
-  carrier: "🛩️", bc: "🛩️", guardian: "🛩️", "lift-off": "🛩️", vision: "👁️", "no-detect": "🙈",
+  carrier: "🛩️", bc: "🛩️", guardian: "🛩️", "lift-off": "🛩️",
+  // 정찰은 눈보다 돋보기다(요청) — 눈은 '보고 있다'는 상태에 가깝고, 스캔·정찰은
+  // '찾아본다'는 행동이라 돋보기 쪽이 그 그림에 맞는다.
+  vision: "🔍", "no-detect": "🙈",
   attrition: "⏳", "fast-hands": "⚡", "pro-like": "🌟", revival: "🔥",
   "worker-gap": "📉", "prod-gap": "📉",
   /* 맺음말(result)은 경기를 끝낸 그 싸움 이야기다(요청: 결론은 전투니까 화살표와 액션

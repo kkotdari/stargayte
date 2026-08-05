@@ -840,10 +840,10 @@ const TEMPLATES: Record<string, Tpl> = {
         // 거기까지만 말한다. 실제로 이 자리에서 얻어맞고도 45분 뒤에 이긴 경기가 있었다.
         return c.p.out
           ? say(
-            [`${all}에 ${when}탈락함`, `${all}에 ${when}그대로 실패함`,
+            [`${all}에 ${when}무너짐`, `${all}에 ${when}그대로 쓰러짐`,
               `${all}에 ${when}크게 실패함`, `${all}에 ${when}그대로 끝장남`],
-            [`${all}에 ${ga(foe)} ${when}탈락함`, `${all}에 ${when}${ga(foe)} 그대로 실패함`],
-            [`${ro(all)} ${when}${ga(foe)} 탈락함`, `${ro(all)} ${when}${reul(foe)} 끝냄`],
+            [`${all}에 ${ga(foe)} ${when}무너짐`, `${all}에 ${when}${ga(foe)} 그대로 쓰러짐`],
+            [`${ro(all)} ${when}${reul(foe)} 엘리시킴`, `${ro(all)} ${when}${reul(foe)} 끝냄`],
           )
           : say(
             [`${all}에 ${when}큰 타격을 입음`, `${all}에 ${when}많은 타격을 입음`, `${all}에 ${when}적잖은 피해를 입음`],
@@ -899,9 +899,9 @@ const TEMPLATES: Record<string, Tpl> = {
       const when = m > 0 ? `${m}분 만에 ` : "";
       return c.p.out
         ? say(
-          [`${blow} ${also}${when}탈락함`, `${blow} ${also}${when}그대로 실패함`,
+          [`${blow} ${also}${when}무너짐`, `${blow} ${also}${when}그대로 쓰러짐`,
             `${blow} ${also}${when}그대로 끝장남`, `${blow} ${also}${when}크게 실패함`],
-          [`${blow} ${also}${when}${ga(foe)} 탈락함`],
+          [`${blow} ${also}${when}${ga(foe)} 무너짐`],
           [`${blow} ${also}${when}${reul(foe)} 판에서 지움`, `${blow} ${also}${when}${reul(foe)} 끝냄`],
         )
         // 탈락이 아니면 '버티지 못함'까지 가지 않는다(위 ks 갈래와 같은 이유).
@@ -927,8 +927,8 @@ const TEMPLATES: Record<string, Tpl> = {
       /* "N분경"은 안 적는다(요청) — 자막 맨 앞에 시각이 늘 붙으므로 같은 말이 두 번이다. */
       const when = "";
       return say(
-        [`${blow} ${when}탈락함`, `${blow} ${when}그대로 실패함`],
-        [`${blow} ${when}${ga(foe)} 탈락함`],
+        [`${blow} ${when}엘리당함`, `${blow} ${when}그대로 무너짐`],
+        [`${blow} ${when}${ga(foe)} 엘리당함`],
         [`${ro(by)} ${when}${reul(foe)} 엘리시킴`, `${ro(by)} ${when}${reul(foe)} 끝냄`],
       );
     }
@@ -1183,11 +1183,19 @@ const TEMPLATES: Record<string, Tpl> = {
         `${phrase} 후반을 노렸지만 역부족`, `${phrase} 길게 갔지만 미치지 못함`,
       ])}`;
     }
+    /* 공격한 쪽을 앞에 세운다(요청: 공격자가 앞, 수비자가 뒤라야 자연스럽다) —
+       "○○의 히드라 공격을 △△가 탱크·벌처로 막아 봤지만 역부족이었다". 넘어선 상대와
+       그 주력을 아는 경기에서만 이렇게 쓰고(wall), 모르면 아래 예전 문장 그대로다. */
+    if (wall) {
+      return c.pick([
+        `${reul(wall)} ${neun(c.who)} ${phrase} 막아 봤지만 역부족`,
+        `${wall} 공격을 ${neun(c.who)} ${phrase} 받아 냈지만 끝내 모자랐음`,
+        `${reul(wall)} ${neun(c.who)} ${phrase} 끝까지 막았지만 넘지 못함`,
+        ...(c.p.team ? [`${reul(wall)} ${neun(c.who)} ${phrase} 팀원과 함께 막아섰으나 역부족`] : []),
+      ]);
+    }
     return `${neun(c.who)} ${c.pick(wall ? [
       `${phrase} 맞섰지만 ${block}역부족`,
-      `${phrase} 버텼지만 ${block}모자랐음`,
-      `${phrase} 끝까지 붙었지만 ${block}부족했음`,
-      ...(c.p.team ? [`${phrase} 팀원과 함께 막아섰으나 ${block}역부족`] : []),
     ] : [
       `${phrase} 맞섰지만 역부족`, `${phrase} 버텼지만 모자랐음`, `${phrase} 받아쳤지만 밀림`,
       `${phrase} 끝까지 붙었지만 넘지 못함`, `${phrase} 싸웠지만 한 끗이 모자랐음`,
@@ -2497,7 +2505,7 @@ const TEMPLATES: Record<string, Tpl> = {
       // "길게 끌어"는 쓰지 않는다(지적) — 장기전이었다는 말로 바꾼다.
       const t = mode === "late" ? c.pick(["후반 ", "장기전 끝에 ", "긴 대치 끝에 "]) : "";
       // 막아 낸 갈래는 teamPhrase가 이미 맺어 놓았다(위 주석).
-      const body2 = head + (teamHeld ? `${t}${team}` : `${t}${team} ${c.pick(["경기를 끝냄", "판을 정리함"])}`);
+      const body2 = head + (teamHeld ? `${t}${team}` : `${t}${team} ${c.pick(["경기를 끝냄", "GG를 받아냄"])}`);
       return withHero(body2);
     }
     if (spectacle) {
@@ -2512,8 +2520,8 @@ const TEMPLATES: Record<string, Tpl> = {
     let body: string;
     if (mode === "rush") {
       body = phrase
-        ? `${who} ${c.pick([`초반 ${p}그대로 끝냄`, `초반 ${p}경기를 끝냄`, `초반 ${p}판을 정리함`])}`
-        : `${who} ${c.pick(["그대로 끝냄", "초반에 그대로 판을 정리함"])}`;
+        ? `${who} ${c.pick([`초반 ${p}그대로 끝냄`, `초반 ${p}경기를 끝냄`, `초반 ${p}GG를 받아냄`])}`
+        : `${who} ${c.pick(["그대로 끝냄", "초반에 그대로 GG를 받아냄"])}`;
     } else if (mode === "comeback") {
       const late = c.p.wentLate ? "후반에 " : "";
       // 전반과 후반이 아예 뒤집힌 경기는 그냥 '역전'이 아니라 대역전이다(요청).
@@ -2526,7 +2534,7 @@ const TEMPLATES: Record<string, Tpl> = {
         : `${who} ${c.pick([`초반 열세이다가 ${late}${p}역전`, `밀리다가 ${late}${p}뒤집음`])}`;
     } else if (mode === "late") {
       body = `${who} ${c.pick([
-        `후반 ${p}경기를 끝냄`, `장기전 끝에 ${p}판을 정리함`, `긴 대치 끝에 ${p}경기를 끝냄`,
+        `후반 ${p}경기를 끝냄`, `장기전 끝에 ${p}GG를 받아냄`, `긴 대치 끝에 ${p}경기를 끝냄`,
       ])}`;
     } else {
       // 주력을 부대 단위로 뽑았으면 그 규모 자체가 그림이다(요청) — 12기를 한 부대로 센다.
@@ -2542,11 +2550,11 @@ const TEMPLATES: Record<string, Tpl> = {
       const held = c.p.held === true || c.atHome;
       body = held
         ? `${who} ${c.pick([
-          `${p}받아쳐 경기를 끝냄`, `막아 낸 기세 그대로 ${p}판을 정리함`, `${p}되받아치며 끝냄`,
+          `${p}받아쳐 경기를 끝냄`, `막아 낸 기세 그대로 ${p}GG를 받아냄`, `${p}되받아치며 끝냄`,
         ])}`
         : phrase
-          ? `${who} ${c.pick([`${p}몰아붙임`, `${p}경기를 끝냄`, `${p}판을 정리함`, ...bulk])}`
-          : `${who} ${c.pick(["그대로 굳힘", "그대로 판을 정리함"])}`;
+          ? `${who} ${c.pick([`${p}몰아붙임`, `${p}경기를 끝냄`, `${p}GG를 받아냄`, ...bulk])}`
+          : `${who} ${c.pick(["그대로 굳힘", "그대로 GG를 받아냄"])}`;
     }
 
     // 맺음말은 "결국 …"으로 열어도 좋다(요청) — 앞의 흐름을 받아 마무리한다는 신호가 된다.
