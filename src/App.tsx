@@ -213,8 +213,11 @@ export default function App() {
   }, [screen]);
 
   if (restoringSession) {
+    // 세션을 확인하는 동안은 아무것도 띄우지 않는다(요청) — 대개 한 호흡 만에 끝나는
+    // 일이라, 워드마크를 켰다 껐다 하면 그게 더 눈에 걸린다. 워드마크는 실제로 기다림이
+    // 생기는 데이터 로딩(booting) 때만 나온다.
     return (
-        <div className="scr-app scr-app-fallback-scroll" id="scr-app"><BootMark /></div>
+        <div className="scr-app scr-app-fallback-scroll" id="scr-app" />
     );
   }
 

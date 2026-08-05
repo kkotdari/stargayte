@@ -52,7 +52,7 @@ const ROW_CLOSE_MS = 200;
 const NEW_WINDOW_MS = 24 * 60 * 60 * 1000;
 /** 알약을 반투명으로 눌러 둘 상태(요청) — 이미 끝나서 더 손댈 것이 없는 것들이다.
  *  대기·수락은 아직 살아 있는 이야기라 또렷하게 남는다. */
-const STATUS_FADED = new Set(["거절", "만료", "취소", "완료"]);
+const STATUS_FADED = new Set(["거절", "버림", "만료", "취소", "완료"]);
 /** 등록 시각과 수정 시각이 이만큼 넘게 벌어져야 "손댄 것"으로 본다 — 등록 순간에는
  *  둘이 같게 찍히지만, 같은 트랜잭션 안에서도 초 단위 아래로는 어긋날 수 있다. */
 const TOUCHED_SLACK_MS = 5000;
@@ -119,11 +119,13 @@ function rankShiftItem(shift: RankingShift): RankingShiftItem {
 }
 
 function challengeItem(c: Challenge): ChallengeItem {
-  /* 표시 시각 — 취소·거절·만료로 끝난 건은 그 끝난 때다(요청: 시간은 취소/거절/만료
-     시간으로). 약속 날짜를 그대로 쓰면 "8월 3일 대결"이라 적힌 채 카드에는 취소라고
-     쓰여 있는, 서로 어긋난 머리가 된다. 성사·완료는 예전대로 약속한 날이다. */
+  /* 표시 시각 — 약속한 날이 있으면 무조건 그 날이다(요청). 거절·버림·수락·만료 같은
+     응답 처리 시각으로 목록의 시각이 바뀌면 안 된다: 그 너 나와가 가리키는 것은 언제
+     붙기로 했느냐이지 언제 답이 왔느냐가 아니다.
+     날짜가 미정인 건만 응답 처리 시각(끝난 때)이 기준이 되고, 그마저도 나중에 날짜가
+     정해지는 순간 그 날짜가 다시 이긴다 — 그래서 scheduledAt을 먼저 본다. */
   const ended = c.status === "discarded" && c.discardedAt;
-  const iso = ended ? c.discardedAt! : (c.scheduledAt ?? c.createdAt);
+  const iso = c.scheduledAt ?? (ended ? c.discardedAt! : c.createdAt);
   return {
     kind: "challenge",
     time: serverMs(iso),
@@ -169,13 +171,16 @@ function challengeSortMs(c: Challenge): number {
     const endOfDay = new Date(`${c.scheduledDate}T23:59:59`).getTime();
     return Math.max(endOfDay, Date.now() + 1);
   }
-  /* 취소·거절·버림·만료로 끝난 것은 '끝난 때'에 꽂는다 — 카드가 적는 시각도 그때이기
-     때문이다(challengeItem의 iso). 예전에는 여기만 약속한 날(scheduledDate)을 봤는데,
-     그러면 8월 1일로 잡았다가 어제 취소한 건이 "어제"라고 적힌 채 8월 1일 자리에 끼어
-     들었다(지적: 취소/만료/거절 너 나와가 순서가 안 맞는 곳에 있다). 적는 시각과 꽂는
-     자리가 다르면 목록은 어느 쪽으로 읽어도 틀린 그림이 된다. */
-  if (c.status === "discarded" && c.discardedAt) return serverMs(c.discardedAt);
-  if (!c.scheduledDate) return base;
+  /* 끝난 것(취소·거절·버림·만료)도 약속한 날이 있으면 그 날에 꽂는다 — 적는 시각과 꽂는
+     자리는 반드시 같아야 한다(challengeItem의 iso와 한 쌍이다). 다르면 목록은 어느 쪽으로
+     읽어도 틀린 그림이 된다.
+     한때 여기만 '끝난 때'를 봤는데, 그건 그때 표시 시각도 끝난 때였기 때문이다. 이제
+     약속한 날이 늘 먼저이므로(요청) 자리도 그 날을 따른다. 날짜가 미정인 건만 끝난 때에
+     꽂힌다 — 그것 말고는 시간축에 놓을 자리가 없다. */
+  if (!c.scheduledDate) {
+    if (c.status === "discarded" && c.discardedAt) return serverMs(c.discardedAt);
+    return base;
+  }
   // 결과까지 들어온 건(완료)은 여전히 약속한 날의 이야기다 — 그날 경기들 아래(오전 8시,
   // sessionDateOf의 경계와 같은 값)에 앉혀 전날 것들보다는 위가 되게 한다.
   return new Date(`${c.scheduledDate}T00:00:00`).getTime() + SESSION_DAY_START_HOUR * 3600_000;
@@ -1310,34 +1315,30 @@ export default function ActivityScreen() {
                     onClick={() => toggleRow(key)}
                   >
                     <span className="scr-activity-row-title">
-                      {/* 줄 번호(#17 …)는 걷어냈다(요청: "별 의미 없는 듯") — 그 자리를
-                          딱지가 물려받아 이제 제목 글자 왼쪽 끝에 맞춰 선다. 기준이 칸이
-                          아니라 제목 글자라, 제목이 길든 짧든 늘 글자 바로 위 왼쪽이다.
-                          흐름에서 빼 두므로(absolute) 제목 자리는 딱지가 있든 없든 그대로고,
-                          줄 위 여백 안에 들어앉아 줄 높이도 안 건드린다. */}
+                      {/* 제목 위에 얹혀 있던 NEW/UPDATE 딱지는 걷었다(요청) — 제목 칸은
+                          이제 제목 글자뿐이라 그만큼 좁아진다. 그 딱지는 내용 칸 오른쪽으로
+                          옮겨 갔다(아래). */}
                       <span className="scr-activity-row-title-main">
-                        <span className="scr-activity-row-title-top">
-                          {/* 하루 안에 올라왔거나(NEW) 달라진(UPDATE) 건 — 색만으로 말하지
-                              않도록 글자를 그대로 적는다. 오늘 올라와서 오늘 답까지 온 건
-                              둘 다 참이라 둘 다 세운다(요청). */}
-                          {flags.map((f) => (
-                            <span key={f} className={cx("scr-activity-row-flag", `scr-activity-row-flag-${f}`)}>
-                              {f === "new" ? "NEW" : "UPDATE"}
-                            </span>
-                          ))}
-                        </span>
                         <span className="scr-activity-row-title-text">{rowTitleOf(item)}</span>
                       </span>
                     </span>
                     <span className="scr-activity-row-desc">
-                      {/* 상태 알약 자리 — 너 나와만 채워지고 나머지 줄은 빈 채로 남는다.
-                          자리를 늘 잡아 둬야 줄 종류가 섞여도 닉네임이 같은 x에서 시작한다. */}
-                      <span className="scr-activity-row-status-slot">{rowStatusOf(item)}</span>
+                      {/* 상태 알약 — 내용의 맨 왼쪽이다. 너 나와에만 붙고 나머지 줄은
+                          아예 그리지 않는다(요청: 자리 예약 취소) — 빈 칸을 늘 잡아 두면
+                          알약 없는 줄만 왼쪽이 휑하게 비어 오히려 눈에 걸렸다. */}
+                      {rowStatusOf(item)}
                       {rowDesc(item)}
                       {/* 댓글 수는 내용 옆이다(요청) — 댓글은 제목이 아니라 그날 무슨 일이
                           있었는지에 붙는 말이다. 없으면 아예 안 그린다. 하루 안에 새로
                           달린 게 있으면 수 자체를 밝은 색으로 올린다 — 여기 붙어 있던
                           NEW 글자는 걷었다(요청). */}
+                      {/* 새것(NEW)이거나 달라진 것(UPDATE) — 둘 다 참이어도 하나만 세운다
+                          (요청: NEW 우선). 내용 칸의 오른쪽 끝, 댓글 수보다는 왼쪽이다. */}
+                      {flags.length > 0 && (
+                        <span className={cx("scr-activity-row-flag", `scr-activity-row-flag-${flags[0]}`)}>
+                          {flags[0] === "new" ? "NEW" : "UPDATE"}
+                        </span>
+                      )}
                       {comments && (
                         <span className={cx("scr-activity-row-comment", comments.fresh && "scr-activity-row-comment-fresh")}>
                           [{comments.count}]

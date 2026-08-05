@@ -967,7 +967,8 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-boot-mark {
   display: flex; align-items: baseline;
   font-family: 'Orbitron', var(--font-ui); font-weight: 900;
-  font-size: 24px; letter-spacing: 0.34em;
+  /* 살짝 줄인다(요청) — 24 → 21px. */
+  font-size: 21px; letter-spacing: 0.34em;
   /* 자간이 글자 오른쪽에만 붙어 덩어리가 왼쪽으로 치우친다 — 그 한 칸을 되돌려 가운데를 맞춘다. */
   margin-left: 0.34em;
   color: #fff;
@@ -7737,11 +7738,11 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   display: grid; align-items: stretch; gap: 0; width: 100%;
   /* 시각은 가장 긴 값("8월 3일 23:59")에 맞춰 고정 — 줄마다 폭이 달라지면 제목이 들쭉
      날쭉해져 세로로 훑을 수가 없다. 제목도 고정폭이라 내용 칸이 늘 같은 x에서 시작한다. */
-  /* 제목 칸을 72에서 92px로 넓혔다(요청) — 글자 자리 62px에 "#36"(15.6)과 "UPDATE"
-     (37.4)를 나란히 세우면 사이가 9px밖에 안 남아 둘이 붙어 버렸다(지적: 요소끼리 간섭).
-     92px이면 글자 자리가 82px이라 둘 사이에 29px이 남고, 제목("일일 랭크 변동")도 덜
-     잘린다. 늘어난 20px은 내용 칸(1fr)에서 나온다. */
-  grid-template-columns: 92px minmax(0, 1fr) 106px;
+  /* 제목 칸은 딱지가 빠진 만큼 도로 좁힌다(요청) — 92 → 76px. 92px은 제목 위에 얹혀
+     있던 "UPDATE"(37.4px)가 쓰던 폭이었고, 그 딱지가 내용 칸으로 옮겨 간 지금은 제목
+     글자만 남는다. 가장 긴 제목("일일 랭크 변동")이 66px 자리에 그대로 들어온다. 내준
+     16px은 내용 칸(1fr)이 가져간다. */
+  grid-template-columns: 76px minmax(0, 1fr) 106px;
   /* 위아래 여백은 줄이 아니라 각 칸이 낸다(아래 규칙) — 줄이 내면 그 여백이 격자 밖이라
      칸 높이가 글자 높이(18px)에 그치고, 세로 구분선도 딱 그만큼만 그려진다(실측). 칸이
      내면 칸이 줄 높이를 통째로 채워 선이 위아래 줄과 맞닿는다. */
@@ -7779,10 +7780,8 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    잘린다(실측: min-width 없이 두면 제목이 내용 칸을 덮어썼다). 제목은 셋뿐이라
    ("너 나와!" · "랭크 변동" · "게임결과") 14px에서도 모바일 70px 칸에 다 들어온다(실측). */
 .scr-activity-row-title {
-  /* 이 칸 안에서는 왼쪽 정렬이다(요청: 공간 활용 최대로) — 가운데에 세우면 짧은 제목일수록
-     좌우로 빈자리가 갈리는데, 그 위에 얹히는 번호·딱지 줄은 제목 글자를 기준으로 서므로
-     (아래 .scr-activity-row-title-top) 그만큼 오른쪽으로 밀려 칸을 넘칠 뻔한다. 왼쪽에
-     붙이면 그 줄이 쓸 자리가 오른쪽에 통째로 남는다. */
+  /* 이 칸 안에서는 왼쪽 정렬이다(요청: 공간 활용 최대로) — 가운데에 세우면 줄마다 제목
+     길이가 달라 시작점이 흔들려, 세로로 훑을 때 눈이 매번 자리를 다시 찾는다. */
   display: flex; align-items: center; justify-content: flex-start; min-width: 0; font-weight: 600;
   /* 한 스텝 키운다(요청) — 작게 두었던 것을 되돌린다. 12 → 14px. */
   font-size: var(--fs-caption);
@@ -7796,36 +7795,16 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-activity-row-title-text {
   white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis;
 }
-/* 딱지를 쥐는 한 줄 — 제목 글자 위에 통째로 얹힌다. 한때 여기 줄 번호(#17 …)가 함께
-   있었지만 걷어냈고(요청: "별 의미 없는 듯"), 딱지가 그 왼쪽 자리를 물려받았다. */
-.scr-activity-row-title-top {
-  /* 기준은 칸이 아니라 제목 글자다(요청: 넘버링을 제목 왼쪽에 맞추기) — 제목은 칸 가운데에
-     서므로, 칸의 왼쪽 끝에 번호를 두면 짧은 제목일수록 멀찍이 떨어져 어느 줄 번호인지가
-     흐려진다. left/right 0이면 이 줄이 제목 글자와 정확히 같은 폭이라, 번호는 늘 글자
-     왼쪽 끝 바로 위에 선다. bottom:100%는 글자 상자의 윗선 — 줄 위 여백 안에 들어앉아
-     줄 높이를 안 건드린다. 딱지가 제목보다 길어 넘칠 때는 칸의 오른쪽 패딩(10px) 쪽으로
-     삐져나가되, 번호와는 flex 형제라 절대 겹치지 않는다. */
-  /* 제목 글자 윗선에서 얼마나 띄우나 — 내렸다가 4px 되올린다(요청: 제목과 안 겹치게).
-     겹침 3px → 띄움 1px. */
-  /* bottom:100%가 제목 글자 윗선이고, 여기서 얼마나 더 띄우느냐가 margin-bottom이다 —
-     줄이면 딱지가 그만큼 내려온다. 1px에서 0으로(요청: "1px 내리고"). */
-  position: absolute; left: 0; right: 0; bottom: 100%; margin-bottom: 0;
-  /* 딱지가 둘일 수 있다(NEW + UPDATE) — 왼쪽부터 나란히 세우고 사이만 띄운다(요청). */
-  display: flex; align-items: center; gap: 5px; line-height: 1;
-  /* 줄 전체가 버튼이라 여기서 클릭을 가로채면 안 된다. */
-  pointer-events: none;
-}
 /* NEW / UPDATE — 이 목록에서 유일하게 색을 쓰는 자리다. 새것·달라진 것이 몇 개 안 되기
    때문에 색 하나가 눈에 바로 걸리고, 그게 이 딱지가 하는 일 전부다. 글자를 그대로 적으므로
    색을 못 보는 눈에도 뜻이 남는다.
-   제목 옆이 아니라 칸의 대각선 우상단에 띄운다(요청) — 줄에 끼여 있으면 딱지가 붙은
-   줄만 제목이 그 폭만큼 왼쪽으로 밀려, 세로로 훑을 때 제목이 들쭉날쭉했다. 흐름에서 뺀
-   윗줄(.scr-activity-row-title-top)에 태우므로 제목은 딱지가 있든 없든 늘 같은 자리다.
-   왼쪽 끝(제목 글자의 왼쪽)에 맞춘다(요청: "NEW/UPDATE 배지 왼쪽에 맞춰서 이동") —
-   예전엔 번호와 겹치지 않으려고 오른쪽 끝으로 밀어 뒀는데, 그 번호가 사라졌으니 딱지가
-   제목과 한 덩어리로 읽히는 왼쪽이 제자리다. 위 여백(24.5px) 안에 들어앉으므로 줄
-   높이는 그대로다. */
+   제목 칸 위에 얹혀 있던 것을 내용 칸의 오른쪽 끝으로 옮겼다(요청) — 댓글 수보다는
+   왼쪽이다. 둘 다 참이어도 하나만 세운다(NEW 우선, JSX에서 고른다).
+   칸의 오른쪽 끝이 아니라 내용 글 바로 뒤에 붙는다(요청) — 오른쪽 끝으로 밀어 두면
+   줄마다 글 길이가 달라 딱지와 글 사이가 들쭉날쭉 벌어져, 어느 줄에 붙은 딱지인지가
+   한 박자 늦게 읽혔다. */
 .scr-activity-row-flag {
+  flex: 0 0 auto; margin-left: -1px;
   /* 번호와 한 줄일 때 그에 맞춰 10px로 키웠던 것을, 번호가 사라진 뒤 한 스텝 되돌린다
      (요청). 10 → 9px. */
   font-size: var(--fs-9); font-weight: 800; letter-spacing: 0.02em; white-space: nowrap;
@@ -7843,8 +7822,8 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   /* 대괄호 안에 수와 NEW가 함께 들어간다(요청) — 둘은 같은 것("댓글")에 대한 말이라 한
      묶음으로 읽혀야 한다. inline-flex로 묶어 수와 NEW의 중심을 맞춘다. */
   display: inline-flex; align-items: center;
-  /* 내용 글에 더 붙인다(요청) — 칸의 공용 간격(.scr-activity-row-desc의 gap 6px)을 제
-     왼쪽에서만 되돌린다. 다른 조각들 사이는 그대로 6px이다. */
+  /* 내용 글(또는 그 뒤 딱지) 바로 옆이다(요청) — 칸의 공용 간격(6px)을 제 왼쪽에서만
+     되돌려 좁힌다. 다른 조각들 사이는 그대로 6px이다. */
   flex: 0 0 auto; margin-left: -3px;
   /* 14px까지 올렸다(요청) — 8 → 9 → 10 → 12 → 14. 딱지들보다 작게 두려던 값인데, 이건
      딱지가 아니라 읽어야 하는 수다. 이제 이 칸의 본문과 같은 크기다.
@@ -7872,13 +7851,9 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 /* 내용은 칸 가운데가 아니라 왼쪽에 붙고, 칸 경계에서 한 뼘 띄운다(요청) — 가운데로
    두면 줄마다 글 길이가 달라 시작점이 흔들려, 세로로 훑을 때 눈이 매번 자리를 다시 찾는다.
    `> * + *`(0,1,0)의 padding-left를 이기려면 이 선택자가 더 무거워야 한다. */
-.scr-activity-row > .scr-activity-row-desc { justify-content: flex-start; padding-left: 16px; }
-/* 상태 알약이 앉을 자리 — 너 나와만 채워지고 나머지 줄은 빈 채로 남지만, 폭은 늘 잡아
-   둔다(지적: "너 나와 말고는 배지가 없잖아"). 안 그러면 게임결과 줄만 닉네임이 왼쪽으로
-   당겨져 목록의 세로줄이 어긋난다. 폭은 두 글자 알약 실측(38px)에 맞췄다. */
-/* 폭은 두 글자 알약 실측(10px 글자 + 좌우 4px 패딩 = 26px)에 맞춘다. 뒤따르는 이름과의 사이는 칸의
-   공용 간격(6px)에서 제 오른쪽만 되돌려 좁힌다(요청) — 다른 조각들 사이는 그대로 6px이다. */
-.scr-activity-row-status-slot { flex: 0 0 26px; display: flex; align-items: center; }
+.scr-activity-row > .scr-activity-row-desc { justify-content: flex-start; padding-left: 10px; }
+/* (삭제) 상태 알약 자리를 예약하던 빈 칸 — 걷었다(요청). 알약은 이제 내용의 첫 조각으로
+   그냥 놓이고, 없는 줄에서는 이름이 칸의 왼쪽 끝에서 시작한다. */
 /* 알약 자체 — 둥근 네모, 다크는 흰 바탕에 검은 글자(요청). 라이트는 그 반대라야 같은
    무게로 읽힌다. 글자는 이 칸 본문(caption 14)에서 두 스텝 아래(11px, 요청). */
 .scr-activity-row-status {
@@ -7888,10 +7863,10 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
      위아래 패딩은 반 픽셀씩 어긋나게 준다(요청: 글자를 아주 살짝 위로) — 한글 글자는
      제 상자 안에서 아래쪽에 앉아 있어, 위아래를 똑같이 주면 눈에는 글자가 내려앉아
      보인다. 합(2px)은 그대로라 알약 높이는 안 변한다. */
-  padding: 0.5px 4px 1.5px; border-radius: 5px;
+  padding: 0.5px 3px 1.5px; border-radius: 4px;
   background: #fff; color: #111;
-  /* 글자는 한 스텝 더(요청) — 11 → 10px. */
-  font-size: var(--fs-10); font-weight: 700; line-height: 1.3; white-space: nowrap;
+  /* 글자는 또 한 스텝(요청: "더 줄이고") — 11 → 10 → 9px. */
+  font-size: var(--fs-9); font-weight: 700; line-height: 1.3; white-space: nowrap;
 }
 .scr-light-theme .scr-activity-row-status { background: #16181d; color: #fff; }
 /* 끝난 상태(거절·만료·취소·완료)는 알약째로 반투명하게 눌러 둔다(요청) — 배경만 흐리면
@@ -7964,8 +7939,10 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
      내용 칸이 이 목록에서 줄마다 실제로 달라지는 유일한 칸인데, 좁은 화면에서 닉네임 둘과
      상태 배지·댓글 수까지 담느라 늘 말줄임에 걸렸다. 제목은 되풀이되는 낱말 몇 개뿐이라
      조금 잘려도 모양만으로 읽힌다.
-     번호와 딱지는 이제 제목 글자 위 한 줄에 함께 앉고("#36" 15.6 + "UPDATE" 37.4 = 53px)
-     그 사이는 남는 자리 전부라(margin-left:auto), 글자 자리 62px 안에서도 서로 안 붙는다. */
+     딱지가 내용 칸으로 옮겨 간 뒤 더 조여 보려다 되돌렸다(62px 시도 → 실측: 글자 자리
+     54px에서 "랭크 변동"(60)과 "게임결과"(56)가 둘 다 잘렸다). 모바일의 70px은 애초에
+     딱지가 아니라 가장 긴 제목이 정한 값이라 내줄 폭이 없다 — 딱지는 제목 글자 위 별도
+     줄에 얹혀 있어 칸 폭을 쓰지 않았다. 폭이 줄어든 건 PC 쪽(92 → 76px)뿐이다. */
   .scr-activity-row { grid-template-columns: 70px minmax(0, 1fr) 84px; }
   .scr-activity-row > * + * { padding-left: 8px; }
   .scr-activity-row > * { padding-right: 8px; }
