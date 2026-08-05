@@ -7803,10 +7803,10 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
      칸 높이가 글자 높이(18px)에 그치고, 세로 구분선도 딱 그만큼만 그려진다(실측). 칸이
      내면 칸이 줄 높이를 통째로 채워 선이 위아래 줄과 맞닿는다. */
   padding: 0 var(--scr-row-pad-x); background: transparent; border: none; cursor: pointer;
-  /* 제목 배지의 고정폭 — 가장 긴 제목("랭크 변동" 51.3px 실측)에 좌우 여백(4px씩)을
-     더한 값이다. 66 → 60px로 조인다(요청) — 여백을 6에서 4px로 줄인 만큼이 그대로
-     남아 있었다. 여기가 바닥이라 더 줄이면 "랭크 변동"이 잘린다. */
-  --scr-row-title-w: 60px;
+  /* 제목 배지의 고정폭 — 가장 긴 제목("랭크 변동" 51.35px 실측)에 좌우 여백을 더한 값이다.
+     60 → 56px로 한 번 더 조인다(요청): 여백을 4에서 2px로 줄인 만큼이다(51.35 + 4 = 55.35).
+     이 글자 크기(12px)에서는 여기가 진짜 바닥이다 — 더 줄이면 "랭크 변동"이 잘린다. */
+  --scr-row-title-w: 56px;
   font-family: inherit; font-size: var(--fs-caption); color: var(--text); text-align: left;
   -webkit-tap-highlight-color: transparent;
 }
@@ -7849,9 +7849,10 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   display: inline-flex; align-items: center; justify-content: center;
   /* 위아래는 같은 값이다(요청) — 상태 알약(9px)에서는 한글 글자가 상자 아래쪽에 앉아
      보여 반 픽셀을 어긋나게 줬는데, 12px에서는 그 차이가 눈에 안 걸린다. */
-  /* 모서리와 좌우 여백을 조금씩 줄인다(요청) — 7 → 6px, 6 → 4px. 폭은 못박아 뒀으므로
-     (--scr-row-title-w) 좌우를 줄여도 배지가 좁아지지 않고 글자가 쓸 자리만 넓어진다. */
-  padding: 2px 4px; border-radius: 6px; margin-right: 6px;
+  /* 모서리와 좌우 여백을 조금씩 줄인다(요청) — 7 → 6px, 6 → 4 → 2px. 폭을 더 줄이려면
+     (--scr-row-title-w) 여백부터 내줘야 한다 — 가장 긴 제목이 51.35px이라 그 아래로는
+     글자가 잘린다. */
+  padding: 2px 2px; border-radius: 6px; margin-right: 6px;
   background: var(--line-faint); color: var(--text);
   font-size: var(--fs-micro); font-weight: 700; line-height: 1.25; white-space: nowrap;
 }
