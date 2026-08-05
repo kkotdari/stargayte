@@ -2,7 +2,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState, type ChangeEve
 import { createPortal } from "react-dom";
 import RankingShiftCard, { RankingShiftMenu, RANK_SHIFT_TITLE } from "./RankingShiftCard";
 import { CalendarPlus, ClipboardList, MoreHorizontal, Phone, Upload } from "lucide-react";
-import { Spinner } from "../../components/common/Feedback";
+import { Spinner, LoadingMark } from "../../components/common/Feedback";
 import SearchFilterBar from "../../components/common/SearchFilterBar";
 import FilterItem from "../../components/common/FilterItem";
 import PickRow from "../../components/common/PickRow";
@@ -1271,7 +1271,7 @@ export default function ActivityScreen() {
       {error && <div className="scr-err">{error}</div>}
 
       {loading ? (
-        <div className="scr-empty"><Spinner size={18} /></div>
+        <LoadingMark />
       ) : displayFeed.length === 0 ? (
         <div className="scr-empty">아직 표시할 활동이 없어요.</div>
       ) : (
@@ -1337,7 +1337,7 @@ export default function ActivityScreen() {
       {/* 스피너는 화면에 하나뿐이어야 한다 — 위 목록 자리의 것과 여기 '더 불러오는 중'이
           동시에 뜨면 로딩바가 두 개로 보인다(지적). 센티널도 목록이 그려진 뒤에만 둔다:
           없으면 관측할 것 자체가 없어 조기 loadMore가 원천적으로 안 생긴다. */}
-      {!loading && loadingMore && <div className="scr-empty"><Spinner size={16} /></div>}
+      {!loading && loadingMore && <LoadingMark />}
       {!loading && <div ref={sentinelRef} aria-hidden />}
 
       {challengeFormOpen && (

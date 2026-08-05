@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Plus, Trash2, Pencil, X, Save } from "lucide-react";
 import Select from "../../components/common/Select";
-import { Spinner } from "../../components/common/Feedback";
+import { Spinner, LoadingMark } from "../../components/common/Feedback";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 import LeagueCreateModal from "../../modals/LeagueCreateModal";
 import LeagueTeamsPanel from "./LeagueTeamsPanel";
@@ -175,11 +175,11 @@ export default function LeagueScreen() {
       </div>
 
       {loadingList ? (
-        <div className="scr-empty"><Spinner size={18} /></div>
+        <LoadingMark />
       ) : leagues.length === 0 ? (
         <div className="scr-empty">아직 만들어진 리그가 없어요</div>
       ) : loadingDetail || !league ? (
-        <div className="scr-empty"><Spinner size={18} /></div>
+        <LoadingMark />
       ) : (
         <div className="scr-league-summary-card">
           <div className="scr-league-summary-row">

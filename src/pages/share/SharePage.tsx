@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Spinner } from "../../components/common/Feedback";
+import { LoadingMark } from "../../components/common/Feedback";
 import ChallengeInboxModal from "../../modals/ChallengeInboxModal";
 import { api } from "../../api/client";
 import { useAppStore } from "../../store/appStore";
@@ -110,7 +110,7 @@ export default function SharePage({ target, onExit }: { target: ShareTarget; onE
   // 버튼을 보고, 아니면 읽기 전용이며 "스타게이트로"로 앱에 들어간다. 인박스 모달이
   // 전체 화면 오버레이라 별도 상단바 없이 그것만 띄운다.
   if (target.type === "challenge" || target.type === "challengeReply") {
-    if (loading) return <div className="scr-share-page"><div className="scr-share-body"><Spinner size={18} /></div></div>;
+    if (loading) return <div className="scr-share-page"><div className="scr-share-body"><LoadingMark /></div></div>;
     if (challenge) {
       return (
         <ChallengeInboxModal
@@ -131,7 +131,7 @@ export default function SharePage({ target, onExit }: { target: ShareTarget; onE
     <div className="scr-share-page">
       <div className="scr-share-body">
         {loading ? (
-          <div className="scr-empty"><Spinner size={18} /></div>
+          <LoadingMark />
         ) : err ? (
           <div className="scr-err">{err}</div>
         ) : gameResult ? (

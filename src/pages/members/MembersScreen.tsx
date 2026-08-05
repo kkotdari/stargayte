@@ -7,7 +7,7 @@ import PillTabs from "../../components/common/PillTabs";
 import FilterItem from "../../components/common/FilterItem";
 import Select from "../../components/common/Select";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
-import { Spinner } from "../../components/common/Feedback";
+import { LoadingMark } from "../../components/common/Feedback";
 import MemberDetailModal from "../../modals/MemberDetailModal";
 import CreateMemberModal from "../../modals/CreateMemberModal";
 import { cx } from "../../utils/format";
@@ -255,7 +255,7 @@ export default function MembersScreen() {
                       )}
                     </div>
                     {mapLoading ? (
-                      <div className="scr-empty"><Spinner size={16} /></div>
+                      <LoadingMark />
                     ) : ids.length === 0 ? (
                       <div className="scr-member-gameids-empty">연결된 게임아이디가 없어요.</div>
                     ) : (

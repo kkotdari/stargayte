@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Spinner } from "../../components/common/Feedback";
+import { LoadingMark } from "../../components/common/Feedback";
 import SearchFilterBar from "../../components/common/SearchFilterBar";
 import MonthCalendar from "../../components/common/MonthCalendar";
 import PickRow from "../../components/common/PickRow";
@@ -560,10 +560,10 @@ export default function StatsScreenV2() {
           새 잣대가 씌워지는 그림(엉뚱한 메달·뒤늦게 뜨는 순위 변동)이 여기서 사라진다. */}
       <div className={cx("scr-stats-list-panel-v2", refreshing && "scr-stats-list-panel-busy")}>
         {refreshing && (
-          <div className="scr-stats-list-busy-mark" aria-hidden><Spinner size={18} /></div>
+          <div className="scr-stats-list-busy-mark" aria-hidden><LoadingMark /></div>
         )}
         {firstLoad ? (
-          <div className="scr-empty"><Spinner size={18} /></div>
+          <LoadingMark />
         ) : cards.length === 0 ? (
           // 못 받아 온 것과 받아 보니 없는 것은 다른 말이다 — 오류 문구가 이미 위에 있으면
           // "조건에 맞는 회원이 없어요"를 겹쳐 놓지 않는다.
