@@ -2910,9 +2910,11 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
    (외워 둔 규칙: 모바일 필터 한 줄은 기본 스페이스비트윈, 하나뿐이면 가운데). */
 .scr-activity-screen .scr-filter-inline-stack {
   flex-wrap: wrap;
-  /* 줄 간격은 라벨("유형") 높이만큼 벌린다 — 라벨이 컨트롤 위에 절대배치로 떠 있어서
-     (.scr-filter-item-label) 좁게 두면 윗줄 검색창 밑동에 겹쳐 붙는다. */
-  row-gap: 20px;
+  /* 줄 간격 = 라벨이 떠 있는 높이(실측 17px: 글자 높이 + margin-bottom 6px) + 통계 화면과
+     같은 숨 쉴 틈 24px. 라벨("유형")이 흐름 밖에 있어서(.scr-filter-item-label의
+     position:absolute; bottom:100%) 그 몫까지 이 간격이 내야 한다 — 20px일 때는 라벨이
+     윗줄 검색창 밑동에서 3px 아래에 딱 붙어, 통계(24px)와 눈에 띄게 달랐다(지적). */
+  row-gap: 41px;
 }
 .scr-activity-screen .scr-search-filter-float { flex: 50 1 220px; }
 .scr-filter-inline-tail {
