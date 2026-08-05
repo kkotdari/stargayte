@@ -11,8 +11,8 @@ interface StatBarProps {
   // v2 전용 — 승률 숫자를 막대 위에 겹쳐 그린다(ValueBar와 같은 방식). 기본(false, v1)은
   // 기존처럼 라벨/전적/승률을 막대 위 별도 줄에 풀어서 보여준다.
   compact?: boolean;
-  // 이미 끝난 기간에서 승률 1·2·3위에 붙는 메달(요청) — 칸 좌상단에 절대배치된다
-  // (CSS의 .scr-stat-medal 참고).
+  // 이미 끝난 기간에서 승률 1·2·3위에 붙는 메달(요청) — 막대 위의 승률 바로 옆에
+  // 흐름으로 선다(ValueBar와 같다).
   medal?: string;
 }
 
@@ -44,8 +44,8 @@ export default function StatBar({ label, plays, wins, draws, losses, winRate, co
       >
         {/* 승률도 다른 막대(게임수/생산/APM/커맨드)처럼 막대 위에 겹쳐 그린다(요청). */}
         {compact && <span className="scr-stat-bar-rate scr-stat-bar-rate-overlay">{rateText}</span>}
+        {medal && <span className="scr-stat-medal">{medal}</span>}
       </div>
-      {medal && <span className="scr-stat-medal">{medal}</span>}
     </div>
   );
 }

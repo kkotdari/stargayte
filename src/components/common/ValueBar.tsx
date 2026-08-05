@@ -5,8 +5,8 @@ interface ValueBarProps {
   // 이 목록에서 가장 높은 값(=100%) — 전적 막대와 같은 원칙으로, 값이 없으면(리플레이로
   // 등록된 경기가 하나도 없는 회원) 막대 없이 "-"만 보여준다.
   maxValue: number;
-  // 이미 끝난 기간에서 이 칸의 1·2·3위에 붙는 메달(요청) — 칸 우상단에 절대배치된다
-  // (CSS의 .scr-stat-medal 참고, 이 칸의 다른 요소 정렬에는 영향을 주지 않는다).
+  // 이미 끝난 기간에서 이 칸의 1·2·3위에 붙는 메달(요청) — 막대 위의 수 바로 옆에
+  // 흐름으로 선다(요청: 데이터 텍스트 옆에 붙이기. 수의 길이에 따라 자리가 달라져도 된다).
   medal?: string;
 }
 
@@ -27,8 +27,11 @@ export default function ValueBar({ value, maxValue, medal }: ValueBarProps) {
         style={trackStyle}
       >
         <span className="scr-value-bar-num">{value ?? "-"}</span>
+        {/* 수 바로 옆이다(요청) — 칸 우상단에 절대배치하던 것을 걷었다. 그 자리를 비워
+            두느라 칸마다 오른쪽 여백이 왼쪽보다 훨씬 넓었고(지적), 값이 짧은 줄에서는
+            메달이 저 혼자 멀찍이 떨어져 어느 값의 메달인지도 흐렸다. */}
+        {medal && <span className="scr-stat-medal">{medal}</span>}
       </div>
-      {medal && <span className="scr-stat-medal">{medal}</span>}
     </div>
   );
 }
