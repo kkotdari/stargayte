@@ -219,15 +219,17 @@
   --radius-chip: 6px;
   /* 드롭다운 통일(요청) — 패널은 반투명 유리(테마별 값). 호버/액티브는 --lit-* 라이팅
      토큰(아래)으로 넘어가 예전 --dd-hover/--dd-active 반전 변수는 제거했다. */
-  /* 드롭다운 패널도 탭바 아일랜드처럼 확실히 반투명한 라이팅 글라스로(요청: "드롭다운
-     패널에 탭바 같은 투명함이 라이팅 테마의 중요한 특징인데 빠졌다") — 알파를 크게
-     낮추고 아래 패널 규칙에서 블러/채도를 올려 뒤가 은은히 비치게 한다. */
-  --dd-panel-bg: rgba(20, 25, 31, 0.55);
+  /* 드롭다운 패널도 탭바 아일랜드처럼 반투명한 라이팅 글라스로(요청: "드롭다운 패널에
+     탭바 같은 투명함이 라이팅 테마의 중요한 특징인데 빠졌다").
+     다만 투명함을 강한 블러로 떠받치던 것을 그만둔다(요청: 블러 없거나 거의 없는
+     반투명) — blur(18px)+saturate가 뒤에 무엇이 깔리든 뿌옇게 문질러, 반투명이라기보다
+     '흰 끼가 낀 유리'로 보였다. 블러를 걷은 만큼 알파를 올려 글자 가독성을 지킨다. */
+  --dd-panel-bg: rgba(20, 25, 31, 0.86);
   /* 툴팁형 팝오버(InfoTip·산정 방식·리플레이 위치) 표준 패널 배경 — 드롭다운(선택 메뉴)보다
      더 투명하게(요청: "모든 툴팁형식 팝오버 투명도 높여, 라이팅 유리 툴팁패널을 표준으로
      통일"). 선택 메뉴는 가독성이 우선이라 --dd-panel-bg 톤을 유지하고, 순수 안내용 툴팁만
      이 토큰으로 더 비치게 한다. 블러/채도는 공통 패널 규칙이 담당해 글자는 또렷하다. */
-  --tip-panel-bg: rgba(20, 25, 31, 0.34);
+  --tip-panel-bg: rgba(20, 25, 31, 0.78);
 
   /* "라이팅 테마"(요청 용어) — 패널은 블러 유리, 액티브/호버 강조는 은은한 라이팅.
      탭바 액티브 알약(.scr-mobile-tab-glow)의 값을 전역 토큰으로 승격해서 라디오알약
@@ -894,9 +896,9 @@ html.scr-light-theme {
   --info: #93b3e0;
   --divider-tint: 0, 0, 0;
   --overlay-rgb: 0, 0, 0;
-  --dd-panel-bg: rgba(255, 255, 255, 0.62);
+  --dd-panel-bg: rgba(255, 255, 255, 0.88);
   /* 툴팁형 팝오버 표준 패널 배경(라이트) — 드롭다운보다 더 투명하게. */
-  --tip-panel-bg: rgba(255, 255, 255, 0.46);
+  --tip-panel-bg: rgba(255, 255, 255, 0.82);
   /* 라이팅 테마 토큰 — 라이트는 탭바 라이트 알약과 같은 하늘색 빛. */
   --lit-rgb: 140, 190, 255;
   --lit-pill-bg: rgba(140, 190, 255, 0.34);
@@ -1081,6 +1083,15 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
     inset 0 1px 0 rgba(255,255,255,0.12),
     inset 0 -1px 0 rgba(255,255,255,0.04);
 }
+/* 확인창은 '스몰 팝업'이라 툴팁·팝오버와 같은 기준을 쓴다(요청: 컨펌창도 블러 없거나
+   거의 없는 반투명) — 전면으로 펴지지 않고 본문 위에 작게 뜨는 창이라, 뒤가 살짝
+   비쳐야 무엇을 확인하는 중인지가 보인다. 큰 모달은 화면을 덮는 판이라 그대로 둔다. */
+.scr-modal-confirm::before {
+  background: var(--dd-panel-bg);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+}
 .scr-light-theme .scr-modal {
   border: none;
   box-shadow:
@@ -1091,6 +1102,12 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 .scr-light-theme .scr-modal::before {
   background: rgba(255,255,255,0.72);
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.7);
+}
+/* 라이트의 확인창도 스몰 팝업 기준으로 — 바로 위 라이트 모달 규칙(0,2,0)이 더 세서
+   앞의 .scr-modal-confirm::before(0,1,0)를 덮어쓴다. 같은 자리에서 다시 못 박는다. */
+.scr-light-theme .scr-modal-confirm::before {
+  background: var(--dd-panel-bg);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.5);
 }
 /* 헤더 아래 여백을 줄여 제목 바로 밑에 본문이 붙게 한다 — X 버튼(38px)이 헤더 행 높이를
    잡고 있어 제목 위아래 여백은 이미 충분하므로, 예전의 padding-bottom 12 + margin-bottom
@@ -3464,7 +3481,7 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
     0 4px 14px rgba(0,0,0,0.18);
 }
 .scr-light-theme .scr-pv-drop {
-  border: none; background: rgba(255,255,255,0.97);
+  border: none; background: var(--dd-panel-bg);
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.7), 0 1px 3px rgba(0,0,0,0.06), 0 4px 10px rgba(0,0,0,0.08);
 }
 /* 안에 든 항목 중 가장 긴 값만큼 자연스럽게 넓어지되(width 지정 없음, 내용 기준
@@ -5369,10 +5386,12 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
   z-index: 200;
   border-radius: var(--radius);
   padding: 8px;
-  backdrop-filter: blur(5px);
+  /* 다른 팝오버와 같은 기준으로(요청) — 블러는 흔적만, 배경은 공통 패널 토큰. */
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
   overflow-y: auto; overscroll-behavior: none; touch-action: pan-y;
   border: none;
-  background: rgba(20,25,31,0.94);
+  background: var(--dd-panel-bg);
   /* 다크모드 팝업 공통 원칙(요청: "팝업/모달/드롭다운 모두 다크모드에서 아래쪽에도
      반사광") — 옆 팝오버들(.scr-pv-drop/.scr-select-drop 등)과 같은 위/아래 반사광. */
   box-shadow:
@@ -7172,11 +7191,14 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 .scr-month-cal-pop {
   border: none;
   background: var(--dd-panel-bg);
-  -webkit-backdrop-filter: blur(18px) saturate(1.3);
-  backdrop-filter: blur(18px) saturate(1.3);
+  /* 블러는 흔적만(요청: 블러 없거나 거의 없는 반투명) — 뒤가 '비치는' 것과 뒤를
+     '문지르는' 것은 다르다. saturate도 걷는다: 뒤의 색을 끌어올려 패널 위에 얹는 탓에
+     흰 끼의 절반은 여기서 왔다. */
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+  /* 흰 반사광도 한 겹만 옅게 — 위아래 두 겹이 뿌연 테를 만들었다. */
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.10),
-    inset 0 -1px 0 rgba(255,255,255,0.05),
+    inset 0 1px 0 rgba(255,255,255,0.06),
     0 6px 18px rgba(0,0,0,0.30);
 }
 /* 툴팁형 팝오버 표준(요청: "모든 툴팁형식 팝오버 투명도 높이고, 라이팅 유리 툴팁 패널을
@@ -7186,8 +7208,8 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
    그대로 물려받는다. 드롭다운(선택 메뉴)은 가독성 우선이라 여기서 제외한다. */
 .scr-infotip-bubble {
   background: var(--tip-panel-bg);
-  -webkit-backdrop-filter: blur(22px) saturate(1.35);
-  backdrop-filter: blur(22px) saturate(1.35);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
 }
 /* 라이트는 밝은 배경이라 위쪽 반사광을 또렷하게, 그림자는 옅게. */
 .scr-light-theme .scr-select-drop, .scr-light-theme .scr-cselect-drop, .scr-light-theme .scr-pv-drop, .scr-light-theme .scr-menu-pop-drop, .scr-light-theme .scr-infotip-bubble,
@@ -8723,15 +8745,20 @@ html.scr-light-theme .scr-activity-add-fab, html.scr-light-theme .scr-scrolltop 
   z-index: 90; min-width: 180px; padding: 6px;
   display: flex; flex-direction: column; gap: 2px;
   border-radius: 12px;
-  /* 하얀 끼를 걷는다(요청) — 반투명 흰 배경(0.14)에 흰 안쪽 하이라이트를 두 겹 더 얹고
+  /* 하얀 끼를 걷는다(요청) — 반투명 '흰' 배경(0.14)에 흰 안쪽 하이라이트를 두 겹 더 얹고
      saturate까지 올려 두니, 뒤에 무엇이 깔리든 그 위에 뿌연 흰 막이 한 장 씌워진 것처럼
-     보였다. 불투명한 패널 색으로 바꾸고 테두리는 앱의 선 색 한 겹만 남긴다 — 블러도
-     필요 없다(뒤가 안 비친다). */
-  background: var(--panel-solid);
+     보였다.
+     그 뒤 불투명한 패널 색으로 바꿨더니 이번엔 아예 안 비쳤다(지적) — 흰 끼의 원인은
+     반투명 자체가 아니라 '흰색 + 강한 블러 + saturate'였다. 다른 팝오버와 같은 패널
+     토큰(--dd-panel-bg: 어두운 패널색 반투명)에 블러는 흔적만 주고, 테두리는 앱의 선 색
+     한 겹만 남긴다 — 흰 반사광은 아예 안 쓴다. */
+  background: var(--dd-panel-bg);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
   box-shadow: inset 0 0 0 1px var(--line), 0 8px 24px rgba(0, 0, 0, 0.35);
 }
 .scr-light-theme .scr-activity-add-menu {
-  background: var(--panel-solid);
+  background: var(--dd-panel-bg);
   box-shadow: inset 0 0 0 1px var(--line), 0 8px 24px rgba(0, 0, 0, 0.14);
 }
 /* FAB용 — 메뉴를 버튼 위로 펼친다(아래엔 탭바). base .scr-activity-add-menu 뒤에 와야
