@@ -151,7 +151,28 @@ const BY_ATTACKER_KEYS = new Set([
      액션으로 담겨야 한다) — 자막은 민 사람의 이름을 부르는데 그림에는 이삿짐 화살표만
      있어 '누가 밀었나'가 통째로 빠져 있었다. */
   "relocate",
+  /* 진 편의 맺음말도 같은 꼴이다(지적: "자막엔 공격을 크리스한테 받았다는데 화살표가
+     없음") — "정구는 리버로 후반을 노렸지만 크리스의 히드라·러커를 막기엔 늦었다"에서
+     주어는 당한 쪽이고 넘어선 사람은 p.foe에 실린다. 이름을 부르는 문장에 그 사람의
+     화살표가 없으면 글과 그림이 다른 이야기를 한다. */
+  "stand",
 ]);
+
+/** 이 문장에서 '민 사람'은 누구인가 — 주어(who)가 당한 쪽인 문장들의 공격자다.
+ *
+ *  같은 뜻이 두 이름으로 실려 있다: fallen·이사·째다 응징당함은 p.by, 진 편 맺음말(stand)은
+ *  p.foe다(replaySummary의 stand 주석 — 어느 쪽도 whom에 넣을 수 없다. 그림은 whom을
+ *  '당한 사람'으로 읽어서 화살표가 통째로 뒤집힌다). 세 자리(공격자 목록·화살표 목표·촉
+ *  이모지)가 같은 답을 봐야 하므로 여기 한 곳에서만 고른다. */
+function pusherOf(b: { k: string; p?: Record<string, unknown> }): string | null {
+  if (!BY_ATTACKER_KEYS.has(b.k)) return null;
+  const v = typeof b.p?.by === "string" ? b.p.by
+    : typeof b.p?.foe === "string" ? b.p.foe : "";
+  return v || null;
+}
+
+/** 두 화살표가 '같은 곳'인가 — 이만큼 안이면 그려 놓고 보면 한 줄이라, 하나로 합친다. */
+const ARROW_SAME_TILES = 3;
 
 /** 병력 규모 → 화살표 기둥 굵기(요청: 병력 규모에 따라 화살표 두께도 다르게).
  *
@@ -628,7 +649,7 @@ export default function GameResultStory({
       // 때린 사람이 whom이 아니라 p.by에 실린 문장들(replaySummary의 by 주석 — whom으로
       // 실으면 '이 사람이 당했다'가 뒤집힌다) — 그래서 여기서 따로 잡는다. 목표는 당한
       // 사람(who[0])의 집이다.
-      if (BY_ATTACKER_KEYS.has(b.k) && b.p?.by === raw) {
+      if (pusherOf(b) === raw) {
         const victim = (b.who ?? [])[0] ?? "";
         /* 이사는 '옮기기 전 집'이 두들겨 맞은 자리다 — 지금 집(hubOf)은 밀려나서 새로
            편 살림이라, 그리로 화살표를 그으면 아직 벌어지지도 않은 일을 가리킨다. */
@@ -809,9 +830,15 @@ export default function GameResultStory({
        경우를 위해, 이미 저장돼 있는 다른 재료로 차례로 메운다: 기술 이름 → 그 이야기의 건물
        → 그 이야기에 실린 병력 목록. 그래도 못 채우면 빈 배열이고, 그때만 이름표가 없다. */
     const labelOf = (b: (typeof beats)[number], raw: string): string[] => {
-      const ko = (list: unknown): string[] => (Array.isArray(list) ? list : [])
-        .map((u) => (typeof u === "string" ? UNIT_KO[u] ?? BUILDING_KO[u] ?? "" : ""))
-        .filter(Boolean);
+      /* 같은 이름은 한 번만 — 한 화살표 이름표에 "질럿 / 질럿"이 두 줄로 섰다(지적).
+         까닭은 두 갈래다: 요약이 실어 준 목록에 같은 키가 두 번 들어가기도 하고, 서로 다른
+         영문 키가 같은 한국어 이름으로 풀리기도 한다(예: 종족별 일꾼 표기). 어느 쪽이든
+         읽는 사람에게는 한 줄이 맞으므로, 한국어로 푼 뒤 순서를 지키며 중복을 없앤다. */
+      const ko = (list: unknown): string[] => [...new Set(
+        (Array.isArray(list) ? list : [])
+          .map((u) => (typeof u === "string" ? UNIT_KO[u] ?? BUILDING_KO[u] ?? "" : ""))
+          .filter(Boolean),
+      )];
       const p = b.p as Record<string, unknown> | undefined;
       // 업그레이드는 유닛이 아니라 그 업그레이드 이름이 답이다 — 상징 업그레이드는 제 이름을
       // ("질럿 속업"), 공/방은 무엇을 몇 단계까지 올렸는지를 적는다("보병 3-3업").
@@ -823,6 +850,11 @@ export default function GameResultStory({
       }
       const own = ko((b as { units?: Record<string, string[]> }).units?.[raw]);
       if (own.length > 0) return own;
+      /* 민 사람(p.foe/p.by)의 이름표는 그 사람 것이어야 한다 — 이 문장이 싣는 p.units·
+         p.unit·p.b는 주어, 즉 당한 쪽의 병력이라 그대로 쓰면 남의 병력이 제 화살표에
+         붙는다. 진 편 맺음말은 넘어선 상대의 주력을 따로 싣는다(p.foeUnits). 못 찾으면
+         이름표 없이 간다 — 틀린 이름을 다는 것보다 낫다. */
+      if (pusherOf(b) === raw) return ko(p?.foeUnits);
       const tech = typeof p?.tech === "string" ? TECH_KO[p.tech] : undefined;
       if (tech) return [tech];
       const bs = typeof p?.bs === "string" ? ko(p.bs.split(","))
@@ -996,7 +1028,8 @@ export default function GameResultStory({
       // 왜 화살표가 없지?" — 자막은 p.by/p.theirs 이름을 쓰는데 그림에는 그 사람이 아예
       // 없었다). 공격자로 잡아 helpers에 끼워 넣는다 — target()에서 "fallen의 by는 무너진
       // 사람 집이 목표"로 따로 잡아 준다.
-      const byAttacker = BY_ATTACKER_KEYS.has(b.k) && typeof b.p?.by === "string" ? [b.p.by] : [];
+      const pusher = pusherOf(b);
+      const byAttacker = pusher ? [pusher] : [];
       if (byAttacker.length > 0) byAttacker.forEach((r) => attacker.add(r));
       // 같이 덮친 사람(who2)도 공격자다(지적: "누구도 가세하여 같이 공격한 것"에 화살표가
       // 없다) — 문장은 "○○까지 달려들어"로 이름을 부르는데 그림에는 아무것도 없었다.
@@ -1036,7 +1069,7 @@ export default function GameResultStory({
           : (b.k === "clash" && (helper.has(raw) || homeDefender.has(raw))) ? "🛡️"
             /* 민 사람의 화살표에는 그 이야기의 이모지를 그대로 주면 안 된다 — 이사의
                이모지는 이삿짐차라, 밀어낸 사람 화살표 끝에 트럭이 붙는다. */
-            : (BY_ATTACKER_KEYS.has(b.k) && b.p?.by === raw) ? "💥" : markOf(b);
+            : (pusherOf(b) === raw) ? "💥" : markOf(b);
         /* 팀원을 도우러 간 화살표에는 목에 천사 날개를 단다(요청) — 촉의 방패는 '그 자리에
            방어를 보탰다'는 뜻이고, 날개는 '이 길이 도우러 간 길'이라는 뜻이라 자리가 다르다.
            집주인 자신(homeDefender)은 도우러 간 것이 아니라 제 집을 지킨 것이라 뺀다. */
@@ -1080,6 +1113,19 @@ export default function GameResultStory({
         const size = (b as { sizes?: Record<string, number> }).sizes?.[raw];
         const width = size === undefined ? undefined : arrowWidth(size);
         const list = hits.get(raw) ?? [];
+        /* 한 스냅 안에서 같은 자리를 두 번 친 이야기는 화살표 하나다(지적: "같은 화살표에
+           질럿이 두번이나 들어감") — 같은 사람이 같은 곳으로 낸 화살표는 좌표가 같아
+           겹쳐 그려지고, 그 위의 이름표만 두 줄로 쌓여 보인다. 겹치는 것을 찾아 이름표를
+           합치고 굵기는 큰 쪽을 쓴다. */
+        const twin = list.find((h) => dist(h.t, t) <= ARROW_SAME_TILES);
+        if (twin) {
+          const merged = [...new Set([...(twin.label ?? []), ...label])];
+          if (merged.length > 0) twin.label = merged;
+          if (width !== undefined) twin.width = Math.max(twin.width ?? 0, width);
+          if (wing) twin.wing = true;
+          if (b.k === "clash" || b.p?.fight === true) twin.converge = true;
+          continue;
+        }
         list.push({
           t, flight: flightVal, ...(label.length > 0 ? { label } : {}),
           ...(width !== undefined ? { width } : {}),

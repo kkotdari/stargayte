@@ -156,7 +156,7 @@ export function unitPhrase(units: string[]): string {
 
 /** "유비의 마린, 관우의 저글링으로" / "유비·관우의 마린으로" / "2인 팀의 마린 몰아치기로".
  *  팀 승리를 한 사람 몫으로 돌리지 않기 위한 것이다(요청). 재료가 모자라면 빈 문자열. */
-function teamPhrase(c: Ctx): string {
+function teamPhrase(c: Ctx, held: boolean): string {
   const names = c.whoList;
   const leads = list(c.p.teamUnits);
   // teamUnits가 있다는 것 자체가 '편 전체가 끝낸 판'이라는 표시다 — 유닛 이름은 더 이상
@@ -176,6 +176,24 @@ function teamPhrase(c: Ctx): string {
     const t = names.map((n) => c.teamOfName(n)).find((v) => v !== undefined);
     return t ? `${t}팀` : "";
   })();
+  /* 제 집에서 막아 낸 판은 방향이 반대다(지적: "격전지가 2팀 렉스의 본진이면 2팀이
+     몰아쳤다기보다는 정구가 렉스를 공격했으나 2팀이 함께 막아냈다가 맞아"). 마지막
+     싸움터가 이긴 편의 집이면 맺음말도 그렇게 서야 한다 — 같은 장면을 글은 공격으로,
+     그림은 제 집에서 맞부딪는 것으로 그리면 둘이 정반대가 된다. */
+  if (held) {
+    /* 막아 낸 갈래는 그 자체로 맺는다 — 뒤에 "판을 정리함"을 이으면 "막아 내 판을
+       정리했다"처럼 두 마디가 겉돈다. 부르는 쪽이 이 값에 아무것도 안 붙인다. */
+    const guard = names.length >= 3 && team
+      ? c.pick([`${team}이 함께 막아 냄`, `${team}이 힘을 모아 지켜 냄`])
+      : (() => {
+        const w = names.length <= 2 ? names.join("·")
+          : `${names.slice(0, 2).join("·")} 외 ${names.length - 2}명`;
+        return c.pick([`${ga(w)} 함께 막아 냄`, `${ga(w)} 나란히 버텨 냄`]);
+      })();
+    // 누가 쳐들어왔는지를 아는 판은 그 이름부터 세운다 — 막아 냈다는 말은 상대가 있어야
+    // 그림이 된다. 못 짚었으면(옛 요약) 막아 냈다는 말만 남긴다.
+    return c.whom ? `${ga(c.whom)} 몰아쳤지만 ${guard}` : guard;
+  }
   if (names.length >= 3 && team) {
     return c.pick([`${team}이 힘을 모아`, `${team}이 함께 밀어붙여`, `${team}이 한꺼번에 몰아붙여`]);
   }
@@ -2074,16 +2092,17 @@ const TEMPLATES: Record<string, Tpl> = {
     return `${c.who}의 ${push} ${c.whom}의 ${reul(wall)} ${c.pick(["뚫음", "밀어버림", "걷어냄"])}`;
   },
 
-  // 병력을 늦게까지 안 뽑고 자원부터 챙긴 것. 얻어맞았으면 그 이야기가 되고, 무사히
-  // 넘겼으면 그 뒤의 물량이 이야기가 된다. '째다'라는 말은 쓰지 않는다(요청) — 무엇을
-  // 먼저 했는지 그대로 말하는 편이 읽는 사람에게 더 분명하다.
+  /* 병력을 늦게까지 안 뽑고 째다가 어떻게 됐나 — 얻어맞았으면 그 이야기가 되고, 무사히
+     넘겼으면 그 뒤의 물량이 이야기가 된다.
+     한때는 '째다'를 피해 "자원부터 챙기다가"로 풀어 썼는데, 이 판에서 쓰는 말이 따로 있는
+     데도 굳이 설명체로 바꿔 부를 이유가 없다(요청: 그 표현들을 걷어내고 '째기'로). */
   "greedy-punished": (c) => {
     const m = num(c.p.min);
     const when = m > 0 ? `${m}분까지 ` : "";
     // 때린 사람은 by다(whom이 아니다) — replaySummary의 greedy-punished 주석 참고.
     const foe = c.by ? `${c.by}의 ` : c.whom ? `${c.whom}의 ` : "상대의 ";
     return `${ga(c.who)} ${done(c, c.pick([
-      `무리하게 자원부터 챙기다가 ${foe}공격에 노출됨`,
+      `무리하게 째다가 ${foe}공격에 노출됨`,
       `초반에 병력을 미루다가 ${foe}공격에 무너짐`,
       `${when}병력보다 일꾼을 먼저 채우다 ${foe}공격에 노출됨`,
       `병력을 너무 늦추다 ${foe}공격에 그대로 무너짐`,
@@ -2096,10 +2115,10 @@ const TEMPLATES: Record<string, Tpl> = {
     // 마지막 꼴은 주어를 문장 안에서 만든다 — 다른 곳에서 싸움이 나는 동안 조용히 컸다는
     // 그림이라(요청) 앞머리가 '그 사이'로 시작해야 읽힌다.
     return done(c, c.pick([
-      `${ga(c.who)} 자원을 먼저 챙긴 덕에 ${unit} 물량이 폭발함`,
+      `${ga(c.who)} 초반에 쨌던 것이 ${unit} 물량으로 돌아옴`,
       `${ga(c.who)} 초반을 무사히 넘기고 ${unit} 물량이 폭발함`,
       `${ga(c.who)} ${when}일꾼부터 채운 뒤 ${reul(unit)} 쏟아냄`,
-      `${ga(c.who)} 자원을 넉넉히 벌어 ${unit} 물량으로 밀어붙임`,
+      `${ga(c.who)} 쨌던 만큼 ${unit} 물량으로 밀어붙임`,
       `그 사이 조용히 몸집을 불린 ${ga(c.who)} ${unit} 물량을 뽑아냄`,
     ]));
   },
@@ -2315,10 +2334,14 @@ const TEMPLATES: Record<string, Tpl> = {
   "greedy-build": (c) => {
     const kind = str(c.p.kind);
     const what = kind === "hatch" ? "해처리" : kind === "nexus" ? "투넥서스" : "투커맨드";
+    /* 말은 '초반 째기'로 고정한다(요청: "자원을 앞세웠다. 자원부터 모았다. 해처리로 쨌다.
+       이런 표현 제거하고 초반 째기를 시도했다. 이런 자연스러운 문장을 사용해줘").
+       무엇으로 쨌는지는 목적어가 아니라 곁가지로 붙인다 — "해처리로 쨌다"처럼 건물을
+       조사로 받으면 이 판에서 쓰지 않는 말투가 된다. */
     return `${ga(c.who)} ${done(c, c.pick([
-      `${ro(what)} 째기를 시도함`,
-      `초반부터 ${ro(what)} 자원을 앞세움`,
-      `${ro(what)} 째고 자원부터 모음`,
+      "초반 째기를 시도함",
+      `${reul(what)} 늘리며 초반 째기를 시도함`,
+      "초반부터 째고 들어감",
     ]))}`;
   },
 
@@ -2417,11 +2440,13 @@ const TEMPLATES: Record<string, Tpl> = {
         `${neun(foeLabel)} 다 잡았던 경기를 ${by}내주고 말았음`,
       ]));
     }
-    const team = teamPhrase(c);
+    const teamHeld = c.p.held === true;
+    const team = teamPhrase(c, teamHeld);
     if (team && (mode === "plain" || mode === "late")) {
       // "길게 끌어"는 쓰지 않는다(지적) — 장기전이었다는 말로 바꾼다.
       const t = mode === "late" ? c.pick(["후반 ", "장기전 끝에 ", "긴 대치 끝에 "]) : "";
-      const body2 = head + `${t}${team} ${c.pick(["경기를 끝냄", "판을 정리함"])}`;
+      // 막아 낸 갈래는 teamPhrase가 이미 맺어 놓았다(위 주석).
+      const body2 = head + (teamHeld ? `${t}${team}` : `${t}${team} ${c.pick(["경기를 끝냄", "판을 정리함"])}`);
       return withHero(body2);
     }
     if (spectacle) {
