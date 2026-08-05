@@ -10,7 +10,7 @@ import MemberPickBlock from "../components/common/MemberPickBlock";
 import { useAppStore } from "../store/appStore";
 import { api } from "../api/client";
 import { useLockBodyScroll } from "../utils/bodyScrollLock";
-import { shareThumb, shareThumbUrl, type KakaoShareContent } from "../utils/kakaoShare";
+import { challengePhoto, shareThumb, shareThumbUrl, type KakaoShareContent } from "../utils/kakaoShare";
 import { buildChallengeBackdrop, type ChallengeBackdrop } from "../utils/image";
 import type { Challenge } from "../types";
 
@@ -159,7 +159,7 @@ export default function ChallengeFormModal({ onClose, onCreated, presetTargetIds
       description: "누가 호출됐을까요? 👀 탭해서 확인하기",
       // 배경 사진을 올린 호출이면 그 사진으로 앉힌 판을 쓴다(요청: "공유시 썸네일
       // 배경으로 쓰임") — 로고·문구는 그대로 얹혀 있고 흰 바탕만 사진으로 바뀐 판이다.
-      ...shareThumb("challengeCall", challenge.backdropShareUrl),
+      ...shareThumb("challengeCall", challengePhoto(challenge)),
       link: `${window.location.origin}/?sv=challenge&sid=${challenge.id}`,
       fallbackText: `[스타게이트] ${caller ? `${caller}님` : "누군가"}의 호출이 도착했어요! 열어서 확인해보세요.`,
     };

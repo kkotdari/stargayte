@@ -41,14 +41,19 @@ export function loadImage(src: string): Promise<HTMLImageElement> {
 export const BACKDROP_MAX_SIDE = 1440;
 export const BACKDROP_QUALITY = 0.82;
 
-/** 카카오 공유 카드의 그림 자리 — 2:1로 고정이다. */
-const SHARE_W = 1200;
-const SHARE_H = 600;
+/** 공유 카드판의 긴 변 — 카카오 대화창에 뜨는 크기라 이 정도면 넉넉하다. 비율은 사진이
+ *  정한다(요청: "카톡 미리보기에선 원래 그림 비율로") — 예전엔 2:1(1200×600)로 잘랐는데,
+ *  그러면 세로로 긴 사진이 위아래가 잘린 채 나갔다. */
+const SHARE_MAX_SIDE = 1200;
 /** 사진 위에 덧대는 흰 물의 진하기. 공유 카드 판(share_thumb_*.png)은 흰 바탕에 검은
  *  워드마크·문구라, 그걸 곱하기(multiply)로 얹으면 흰 바탕은 사진을 그대로 통과시키고
  *  검은 글자만 남는다 — 디자인을 다시 그리지 않고 배경만 사진으로 갈아 끼우는 방법이다.
  *  대신 사진이 어두우면 검은 글자가 묻히므로, 곱하기 전에 이만큼 희게 눌러 둔다. */
 const SHARE_WASH = 0.45;
+/** 그 판의 바탕색(실측 #f2f4f7). 판을 사진 비율에 맞춰 넓힐 때 남는 위아래를 이 색으로
+ *  메운 뒤 통째로 곱한다 — 곱하기에서 이 색은 사진을 거의 그대로 통과시키므로, 판이
+ *  닿는 자리와 안 닿는 자리 사이에 이음매가 생기지 않는다. */
+const SHARE_PLATE_BG = "#f2f4f7";
 
 export interface ChallengeBackdrop {
   /** 편지지에 깔 사진(JPEG data URL). */
@@ -67,15 +72,18 @@ function paint(w: number, h: number, draw: (ctx: CanvasRenderingContext2D) => vo
   return canvas.toDataURL("image/jpeg", BACKDROP_QUALITY);
 }
 
-/** 비율을 지킨 채 틀을 꽉 채우도록(넘치는 쪽은 잘라내고 가운데 정렬) 그릴 자리. */
-function coverBox(iw: number, ih: number, tw: number, th: number) {
-  const s = Math.max(tw / iw, th / ih);
-  const w = iw * s;
-  const h = ih * s;
-  return { x: (tw - w) / 2, y: (th - h) / 2, w, h };
+/** 긴 변을 max 이하로 맞춘 크기(비율 그대로, 원본보다 키우지는 않는다). */
+function fitBox(iw: number, ih: number, max: number) {
+  const s = Math.min(1, max / Math.max(iw, ih));
+  return { w: Math.max(1, Math.round(iw * s)), h: Math.max(1, Math.round(ih * s)) };
 }
 
-/** 고른 사진 한 장으로 편지지용·공유 카드용 두 장을 만든다.
+/** 고른 사진 한 장으로 편지지용·공유 카드용 두 장을 만든다. 둘 다 사진의 원래 비율이고,
+ *  자르는 것은 편지지 쪽 CSS(background-size:cover)가 화면에서 한다.
+ *
+ *  같은 비율인데 왜 두 장이냐면, 공유 카드판에는 로고와 "너 나와! 호출"이 구워져 있어서다 —
+ *  그걸 편지지 배경으로 깔면 그 글자들이 편지 안에 비친다.
+ *
  *  @param overlayUrl 공유 카드에 얹을 판(같은 출처여야 캔버스가 오염되지 않는다). */
 export async function buildChallengeBackdrop(file: File, overlayUrl: string): Promise<ChallengeBackdrop> {
   const img = await loadImage(await readAsDataUrl(file));
@@ -83,19 +91,27 @@ export async function buildChallengeBackdrop(file: File, overlayUrl: string): Pr
   const ih = img.naturalHeight;
   if (!iw || !ih) throw new Error("이미지를 불러오지 못했어요.");
 
-  const scale = Math.min(1, BACKDROP_MAX_SIDE / Math.max(iw, ih));
-  const backdrop = paint(Math.round(iw * scale), Math.round(ih * scale), (ctx) => {
-    ctx.drawImage(img, 0, 0, Math.round(iw * scale), Math.round(ih * scale));
-  });
+  const big = fitBox(iw, ih, BACKDROP_MAX_SIDE);
+  const backdrop = paint(big.w, big.h, (ctx) => { ctx.drawImage(img, 0, 0, big.w, big.h); });
 
   const overlay = await loadImage(overlayUrl);
-  const share = paint(SHARE_W, SHARE_H, (ctx) => {
-    const box = coverBox(iw, ih, SHARE_W, SHARE_H);
-    ctx.drawImage(img, box.x, box.y, box.w, box.h);
+  const card = fitBox(iw, ih, SHARE_MAX_SIDE);
+  // 판(2:1)을 카드 폭에 맞춰 늘리고 세로 가운데에 둔다 — 폭에만 맞추므로 로고가 찌그러지지
+  // 않는다. 남는 위아래는 판의 바탕색으로 메워, 곱하기 한 번으로 카드 전체를 덮는다.
+  const plateH = Math.round((card.w * overlay.naturalHeight) / overlay.naturalWidth);
+  const plate = paint(card.w, card.h, (ctx) => {
+    ctx.fillStyle = SHARE_PLATE_BG;
+    ctx.fillRect(0, 0, card.w, card.h);
+    ctx.drawImage(overlay, 0, Math.round((card.h - plateH) / 2), card.w, plateH);
+  });
+  const plateImg = await loadImage(plate);
+
+  const share = paint(card.w, card.h, (ctx) => {
+    ctx.drawImage(img, 0, 0, card.w, card.h);
     ctx.fillStyle = `rgba(255,255,255,${SHARE_WASH})`;
-    ctx.fillRect(0, 0, SHARE_W, SHARE_H);
+    ctx.fillRect(0, 0, card.w, card.h);
     ctx.globalCompositeOperation = "multiply";
-    ctx.drawImage(overlay, 0, 0, SHARE_W, SHARE_H);
+    ctx.drawImage(plateImg, 0, 0);
   });
 
   return { backdrop, share };

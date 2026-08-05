@@ -6492,9 +6492,11 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
    사진만 깔면 어떤 사진이 올라오든 글자가 살아남지 못하므로 두 겹으로 받친다.
    (1) 테마 색 막 한 겹 — 다크는 어둡게, 라이트는 밝게 눌러 그 테마의 글자색이 설 바닥을
        만든다. 사진은 여기서 완전히 안 가려지고 무늬로만 비친다.
-   (2) 글자마다 글자색의 반대색 테두리(다크=검정, 라이트=흰색) — 막을 뚫고 올라온 얼룩
-       위에서도 획이 끊기지 않는다(요청: "글자들이 잘 보이도록 편지지색에 반대되는 흰/검
-       테두리"). paint-order로 테두리를 글자 뒤에 깔아야 획이 굵어 보이지 않는다. */
+   (2) 글자마다 글자색의 반대색 음영(다크=검정, 라이트=흰색, 알파 0.8) — 막을 뚫고 올라온
+       얼룩 위에서도 글자가 제 바닥을 갖는다(요청: "테두리 대신 글자에 흰색 음영, 반투명
+       80% 정도로"). 처음엔 테두리(-webkit-text-stroke)였는데, 획을 따라 딱 붙은 선이라
+       사진의 잔무늬와 같은 굵기로 얽혀 오히려 지저분했다 — 번지는 음영이 글자와 배경
+       사이에 거리를 만든다. 반경이 다른 세 겹을 겹쳐야 얇은 획에도 바닥이 끊기지 않는다. */
 .scr-challenge-letter-photo .scr-challenge-letter-bg {
   position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none;
   background-image: var(--letter-photo);
@@ -6507,8 +6509,10 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 .scr-light-theme .scr-challenge-letter-photo .scr-challenge-letter-bg::after {
   background: rgba(255, 255, 255, 0.62);
 }
-.scr-challenge-letter-photo { --letter-edge: rgba(0, 0, 0, 0.9); }
-.scr-light-theme .scr-challenge-letter-photo { --letter-edge: rgba(255, 255, 255, 0.92); }
+/* 사진 위 글자의 음영색 — 글자색의 반대다. 편지지와 활동 카드가 같은 값을 쓴다. */
+.scr-challenge-letter-photo, .scr-challenge-card-body-photo { --photo-ink-glow: rgba(0, 0, 0, 0.8); }
+.scr-light-theme .scr-challenge-letter-photo,
+.scr-light-theme .scr-challenge-card-body-photo { --photo-ink-glow: rgba(255, 255, 255, 0.8); }
 .scr-challenge-letter-photo .scr-challenge-inbox-title,
 .scr-challenge-letter-photo .scr-label,
 .scr-challenge-letter-photo .scr-challenge-inbox-err-text,
@@ -6520,12 +6524,40 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 .scr-challenge-letter-photo .scr-challenge-inbox-message,
 .scr-challenge-letter-photo .scr-challenge-reply-verdict,
 .scr-challenge-letter-photo .scr-challenge-reply-word,
-.scr-challenge-letter-photo .scr-challenge-reply-who {
-  -webkit-text-stroke: 3px var(--letter-edge);
-  paint-order: stroke fill;
+.scr-challenge-letter-photo .scr-challenge-reply-who,
+.scr-challenge-card-body-photo .scr-challenge-person-name,
+.scr-challenge-card-body-photo .scr-challenge-side-msg-text,
+.scr-challenge-card-body-photo .scr-challenge-when-note,
+.scr-challenge-card-body-photo .scr-challenge-inline-win,
+.scr-challenge-card-body-photo .scr-challenge-arrow {
+  text-shadow:
+    0 0 3px var(--photo-ink-glow),
+    0 0 7px var(--photo-ink-glow),
+    0 0 14px var(--photo-ink-glow);
 }
 /* 답장을 가르는 점선 — 사진 위에서는 원래의 옅은 남색이 통째로 사라진다. */
 .scr-challenge-letter-photo .scr-challenge-reply { border-top-color: rgba(var(--overlay-rgb), 0.4); }
+
+/* ── 활동 목록 너 나와! 카드의 배경 사진(요청) ─────────────────────────────────
+   편지지와 같은 사진을 카드에도 깐다. 비율은 그대로 두고 잘라 채우고(cover), 바디의
+   패딩 안쪽에만 앉힌다(요청: "바디의 패딩까지 채우진 않고 그 안쪽으로만") — 절대배치의
+   기준이 패딩 상자라 위쪽 케밥 자리만 따로 비켜 준다.
+
+   isolation:isolate가 없으면 z-index:-1이 이 바디를 빠져나가 카드 배경 뒤로 가라앉는다
+   (position:relative만으로는 쌓임 맥락이 안 생긴다). */
+.scr-challenge-card-body-photo { isolation: isolate; --card-photo-top: 0px; }
+.scr-activity-card-head-off .scr-challenge-card-body-photo { --card-photo-top: var(--card-kebab-lane); }
+.scr-challenge-card-photo {
+  position: absolute; inset: var(--card-photo-top) 0 0 0; z-index: -1;
+  border-radius: 10px; pointer-events: none;
+  background-image: var(--card-photo); background-size: cover; background-position: center;
+}
+/* 편지지와 같은 이유의 막 한 겹 — 사진은 무늬로만 비치고 글자가 설 바닥을 만든다. */
+.scr-challenge-card-photo::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit;
+  background: rgba(16, 21, 26, 0.58);
+}
+.scr-light-theme .scr-challenge-card-photo::after { background: rgba(255, 255, 255, 0.66); }
 /* 모달이 align-items:center라 그냥 두면 편지지 본문이 내용 폭만큼만 좁게 가운데 모여
    붙어 모달 폭을 못 채웠다(요청: "모달 안의 내용들을 넓히라고") — 본문을 full-width로
    펴서 행/입력칸이 모달 폭을 꽉 채우게 한다. 줄 사이 갭은 조금 넉넉하게(요청). */

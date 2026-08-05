@@ -447,8 +447,11 @@ export interface Challenge {
   resultWinnerSide: ChallengeResult | null;
   /** 부른 사람이 올린 편지지 배경 사진 — 없으면 null이고 편지지는 평소의 유리 그대로다. */
   backdropUrl: string | null;
-  /** 같은 사진을 카카오 공유 카드 자리(1200×600)에 앉힌 판 — 없으면 종류별 기본 썸네일을 쓴다. */
+  /** 같은 사진에 로고·문구를 얹은 카카오 공유 카드판(사진의 원래 비율) — 없으면 종류별 기본 썸네일. */
   backdropShareUrl: string | null;
+  /** 그 판의 실제 크기 — 카카오에 함께 넘겨야 원래 비율로 앉는다. */
+  backdropShareWidth: number | null;
+  backdropShareHeight: number | null;
 }
 
 export interface ChallengeCreatePayload {
@@ -463,7 +466,7 @@ export interface ChallengeCreatePayload {
   ownTeamMemberIds?: string[];
   /** 편지지 배경 사진(선택) — 브라우저에서 줄인 JPEG data URL(utils/image.ts). */
   backdrop?: string | null;
-  /** 같은 사진의 공유 카드(1200×600)판 — 배경만 사진으로 갈아 끼운 완성본. */
+  /** 같은 사진에 로고·문구를 얹은 공유 카드판 — 사진의 원래 비율 그대로다. */
   backdropShare?: string | null;
 }
 

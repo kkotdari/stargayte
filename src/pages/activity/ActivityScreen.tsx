@@ -8,7 +8,7 @@ import FilterItem from "../../components/common/FilterItem";
 import PickRow from "../../components/common/PickRow";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 import KakaoShareButton from "../../components/common/KakaoShareButton";
-import { shareThumb } from "../../utils/kakaoShare";
+import { challengePhoto, shareThumb } from "../../utils/kakaoShare";
 import GameResultCardBody, { type SearchListRow } from "./GameResultCardBody";
 import { ActivityCard } from "./ActivityCard";
 import { resolveSlotName } from "./GameResultSides";
@@ -325,7 +325,10 @@ function ChallengeActionsMenu({ challenge, isAdmin, myId, onDeleted, onChanged }
     return {
       title: `${caller ? `${caller}님` : "누군가"}의 호출`,
       description: "누가 호출됐을까요? 👀 탭해서 확인하기",
-      ...shareThumb("challengeCall"),
+      // 편지지 배경 사진을 올린 호출이면 여기서도 그 사진의 공유 카드판을 쓴다(요청:
+      // "활동 목록에서 공유한 경우에도 편지지를 카톡 미리보기로" — 통일성). 보낼 때 뜨는
+      // 확인창과 같은 그림이어야, 어디서 공유하든 같은 카드가 나간다.
+      ...shareThumb("challengeCall", challengePhoto(challenge)),
       link: `${window.location.origin}/?sv=challenge&sid=${challenge.id}`,
       fallbackText: `[스타게이트] ${caller ? `${caller}님` : "누군가"}의 호출이 도착했어요! 열어서 확인해보세요.`,
     };

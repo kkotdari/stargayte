@@ -87,16 +87,43 @@ export function shareThumbUrl(kind: ShareThumbKind): string {
   return `${window.location.origin}/images/share/${SHARE_THUMBS[kind]}`;
 }
 
+/** 그 글이 제 그림을 갖고 있을 때 넘기는 것 — 너 나와! 편지지 배경 사진의 공유 카드판이다.
+ *  크기를 함께 들고 다니는 이유는 사진마다 비율이 달라서다(요청: "카톡 미리보기에선 원래
+ *  그림 비율로") — 카카오는 이 값을 안 주면 제 자리 비율(2:1)에 맞춰 잘라 버린다. */
+export interface SharePhoto {
+  url: string | null;
+  width: number | null;
+  height: number | null;
+}
+
 /** 그 종류의 썸네일을 KakaoShareContent에 그대로 펼쳐 넣을 수 있는 꼴로 돌려준다.
- *  @param override 그 글이 제 그림을 갖고 있으면(너 나와! 편지지 배경 사진) 그걸 쓴다 —
- *                  이미 1200×600으로 앉혀 둔 판이라 크기는 그대로다. */
-export function shareThumb(kind: ShareThumbKind, override?: string | null): {
+ *  @param photo 그 글이 제 그림을 갖고 있으면 그걸 쓴다 — 크기까지 갖춰졌을 때만이다.
+ *               (크기를 모르는 그림을 넘기면 기본 판보다 못한, 제멋대로 잘린 카드가 된다.) */
+export function shareThumb(kind: ShareThumbKind, photo?: SharePhoto | null): {
   imageUrl: string; imageWidth: number; imageHeight: number;
 } {
+  if (photo?.url && photo.width && photo.height) {
+    return { imageUrl: photo.url, imageWidth: photo.width, imageHeight: photo.height };
+  }
   return {
-    imageUrl: override || shareThumbUrl(kind),
+    imageUrl: shareThumbUrl(kind),
     imageWidth: SHARE_THUMB_W,
     imageHeight: SHARE_THUMB_H,
+  };
+}
+
+/** 너 나와! 한 건에서 공유 카드 그림을 뽑아 낸다 — 편지지 배경 사진을 올린 호출이면 그
+ *  사진의 공유 카드판, 아니면 null(종류별 기본 썸네일로 떨어진다). 호출 완료 확인창과
+ *  활동 목록의 공유 버튼이 같은 그림을 쓰도록(요청: 통일성) 한 곳에서 만든다. */
+export function challengePhoto(challenge: {
+  backdropShareUrl: string | null;
+  backdropShareWidth: number | null;
+  backdropShareHeight: number | null;
+}): SharePhoto {
+  return {
+    url: challenge.backdropShareUrl,
+    width: challenge.backdropShareWidth,
+    height: challenge.backdropShareHeight,
   };
 }
 
