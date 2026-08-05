@@ -1299,7 +1299,7 @@ export default function ActivityScreen() {
                           종류는 셋뿐("너 나와!" · "랭크 변동" · "게임결과")이라 한 칸을
                           통째로 내주기엔 늘 같은 말이 되풀이됐고, 그 칸이 가져가던 66~72px은
                           줄마다 실제로 달라지는 내용 쪽에 훨씬 요긴하다. */}
-                      <span className="scr-activity-row-title-inline">[{rowTitleOf(item)}]</span>
+                      <span className="scr-activity-row-title-badge">{rowTitleOf(item)}</span>
                       {/* 상태 알약 — 내용의 맨 왼쪽이다. 너 나와에만 붙고 나머지 줄은
                           아예 그리지 않는다(요청: 자리 예약 취소) — 빈 칸을 늘 잡아 두면
                           알약 없는 줄만 왼쪽이 휑하게 비어 오히려 눈에 걸렸다. */}

@@ -1882,9 +1882,11 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    자리 잡는다(안 그러면 shifted 자식이 새 containing block이 돼버려 메달이 셀이 아닌
    그 자식 기준으로 어긋난다). */
 .scr-stat-build-cell { justify-content: center; position: relative; }
-/* 표 오른쪽 끝 칸 — 위 .scr-stat-table이 더는 오른쪽 패딩을 안 줘서, 마지막 칸이 직접
-   여백을 책임진다(왼쪽은 이름 칸이 자기 padding-left로 책임지는 것과 대칭). */
-.scr-stat-skills-cell { padding-right: 20px; }
+/* (삭제) 표 오른쪽 끝 칸에만 더 주던 여백 — 걷었다(지적: 왼쪽 셀 여백과 가운데 구분선이
+   안 맞는다). 이 칸은 속이 [업그레이드 | 구분선 | 목록]이고 그 묶음이 칸 가운데에 서는데,
+   좌우 패딩이 8/12로 어긋나 있으면 묶음째 2px 왼쪽으로 밀린다 — 그만큼 구분선도 칸의
+   가운데에서 벗어난다. 다른 두 칸(건설·유닛)은 좌우가 같아 이 문제가 없었다.
+   표 오른쪽 끝의 숨 쉴 자리는 이 칸의 패딩이 아니라 패널이 낸다. */
 
 /* ── 건설·유닛·스킬 칸(요청) ────────────────────────────────────────────────────
    셋 다 위에서 아래로 [그림 → 수치 → 많이 나온 다섯] 순으로 쌓인다. 총량 막대는 더 안
@@ -7022,7 +7024,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
   .scr-stats-list-panel-v2 .scr-stat-row-head > * { padding-left: 9px; padding-right: 9px; }
   .scr-stats-list-panel-v2 .scr-stat-name-cell,
   .scr-stats-list-panel-v2 .scr-stat-name-head { padding-left: 12px; padding-right: 12px; }
-  .scr-stats-list-panel-v2 .scr-stat-skills-cell { padding-right: 12px; }
+  /* (모바일도 같다 — 위 주석) */
   /* 컬럼명이 좁아진 칸에서 두 줄로 접히면 헤더만 높아지고 구분선 정렬이 흐트러진다.
      혹시 라벨이 더 길어져도 칸을 밀지 않고 잘리도록 min-width:0 + 말줄임을 함께 둔다. */
   .scr-stats-list-panel-v2 .scr-stat-row-head > * {
@@ -7770,6 +7772,8 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
      칸 높이가 글자 높이(18px)에 그치고, 세로 구분선도 딱 그만큼만 그려진다(실측). 칸이
      내면 칸이 줄 높이를 통째로 채워 선이 위아래 줄과 맞닿는다. */
   padding: 0 var(--scr-row-pad-x); background: transparent; border: none; cursor: pointer;
+  /* 제목 배지의 고정폭 — 가장 긴 제목("랭크 변동")에 맞춘 실측값이다. */
+  --scr-row-title-w: 66px;
   font-family: inherit; font-size: var(--fs-caption); color: var(--text); text-align: left;
   -webkit-tap-highlight-color: transparent;
 }
@@ -7800,14 +7804,20 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   font-size: var(--fs-11);
 }
 /* (삭제) 제목 전용 칸 — 걷었다(요청: "제목 | 내용"). 아래 인라인 제목이 대신한다. */
-/* 내용 칸 맨 앞의 제목 — 대괄호로 묶어 뒤따르는 내용과 가른다(요청). 줄지 않게 못박아 둔다
-   (줄어야 하는 건 닉네임 쪽이다). 색은 한 단계 눌러 둔다 — 셋뿐이라 되풀이되는 말이고,
-   눈이 짚어야 하는 값은 그 뒤의 이름·수다. */
-.scr-activity-row-title-inline {
-  flex: none; font-weight: 600; color: var(--row-dim); white-space: nowrap;
+/* 내용 칸 맨 앞의 제목 — 둥근 네모 배지다(요청: 대괄호에서 배지로).
+   폭을 못박는 것이 이 배지의 핵심이다(요청: 타이틀 길이와 무관하게 똑같게) — 제목마다
+   글자 폭이 달라(51 / 56 / 60px 실측) 내용에 맞춰 늘어나면 뒤따르는 이름의 시작점이 줄마다
+   흔들린다. 폭을 고정하면 제목 칸을 없앤 뒤에도 이름이 늘 같은 x에서 시작한다.
+   글자는 상태 알약(9px)보다 크고 본문(14px) 바로 아래인 12px이다(요청: 너 나와 배지보다는
+   크게, 텍스트 크기 정도). 뒤따르는 내용과는 두 칸쯤 띄운다(요청) — 칸의 공용 갭 6px에
+   제 오른쪽에서 6px을 더 준다. */
+.scr-activity-row-title-badge {
+  flex: none; width: var(--scr-row-title-w); box-sizing: border-box;
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 2px 6px 3px; border-radius: 7px; margin-right: 6px;
+  background: var(--line-faint); color: var(--text);
+  font-size: var(--fs-micro); font-weight: 700; line-height: 1.25; white-space: nowrap;
 }
-/* (삭제) 가르는 세로 막대 — 대괄호로 바꿨다(요청). 괄호가 제 스스로 경계라 막대가 없어도
-   "[너 나와!] 수락"이 두 덩어리로 읽힌다. */
 /* (삭제) 제목 칸 안의 껍데기·글자 — 제목이 내용 칸으로 들어오며 함께 걷혔다. */
 /* NEW / UPDATE — 이 목록에서 유일하게 색을 쓰는 자리다. 새것·달라진 것이 몇 개 안 되기
    때문에 색 하나가 눈에 바로 걸리고, 그게 이 딱지가 하는 일 전부다. 글자를 그대로 적으므로
@@ -7833,15 +7843,17 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 /* 바탕은 흐린 색이다(요청) — 이 칸의 글자 대부분("외 / 명 / 변동 / 경기")은 줄마다 똑같이
    되풀이되는 말이라 읽을 값이 아니다. 읽을 값(닉네임·사람 수·경기 수)만 아래 -em으로
    도로 진하게 올린다. */
-/* 내용은 칸 가운데가 아니라 왼쪽에 붙고, 칸 경계에서 한 뼘 띄운다(요청) — 가운데로
-   두면 줄마다 글 길이가 달라 시작점이 흔들려, 세로로 훑을 때 눈이 매번 자리를 다시 찾는다.
-   `> * + *`(0,1,0)의 padding-left를 이기려면 이 선택자가 더 무거워야 한다. */
-/* 좌우 여백은 칸의 공용 값(10px)보다 넉넉히 둔다(요청: 너무 작다) — 이 칸만 글이 길고
-   양끝(상태 알약 / 딱지)이 구분선에 바짝 붙어, 같은 10px이라도 다른 칸보다 좁아 보였다.
-   앞의 두 칸을 조여 얻은 폭을 여기 여백으로 돌려준다. */
+/* 내용은 칸 가운데가 아니라 왼쪽에 붙는다(요청) — 가운데로 두면 줄마다 글 길이가 달라
+   시작점이 흔들려, 세로로 훑을 때 눈이 매번 자리를 다시 찾는다.
+   오른쪽 여백은 거의 없앤다(요청) — 시각 칸과의 구분선을 걷은 자리라 띄울 이유가 사라졌고,
+   그만큼이 내용이 쓸 폭이 된다. 왼쪽만 제 여백을 지킨다(줄의 시작이라 벽에 붙으면 안 된다). */
 .scr-activity-row > .scr-activity-row-desc {
-  justify-content: flex-start; padding-left: 16px; padding-right: 16px;
+  justify-content: flex-start; padding-left: 16px; padding-right: 4px;
 }
+/* 내용과 시각 사이 구분선을 걷는다(요청) — 칸이 둘뿐이라 이 선 하나가 표를 반으로 가르는
+   꼴이었는데, 시각은 내용에 딸린 값이지 다른 갈래가 아니다. 선과 그 좌우 여백이 통째로
+   내용 칸으로 넘어간다. */
+.scr-activity-row > .scr-activity-row-time { border-left: none; padding-left: 4px; }
 /* (삭제) 상태 알약 자리를 예약하던 빈 칸 — 걷었다(요청). 알약은 이제 내용의 첫 조각으로
    그냥 놓이고, 없는 줄에서는 이름이 칸의 왼쪽 끝에서 시작한다. */
 /* 알약 자체 — 둥근 네모, 다크는 흰 바탕에 검은 글자(요청). 라이트는 그 반대라야 같은
