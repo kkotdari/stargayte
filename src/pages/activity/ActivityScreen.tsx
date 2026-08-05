@@ -16,7 +16,7 @@ import { isComputerSlot } from "../../constants/computerSlot";
 import { isUnregisteredSlot } from "../../constants/unregisteredSlot";
 import { ChallengeCard, ChallengeTimeHeadEdit, challengeStatusInfo } from "../challenge/ChallengeScreen";
 import ReplayReviewModal from "../../modals/ReplayReviewModal";
-import ActivityComments, { commentStatOf, primeActivityComments } from "./ActivityComments";
+import ActivityComments, { primeActivityComments } from "./ActivityComments";
 import { primeReplayMaps } from "../../hooks/useReplayMap";
 import ChallengeFormModal from "../../modals/ChallengeFormModal";
 import { formatWhen, formatAgo, serverMs } from "../../utils/date";
@@ -935,27 +935,8 @@ export default function ActivityScreen() {
     return fresh(it.time) ? ["new"] : [];
   };
 
-  /** 이 줄에 댓글이 몇 개 달렸나, 그중 하루 안에 달린 게 있나(요청).
-   *
-   *  내용 칸 옆에 선다 — 댓글은 제목("게임결과")이 아니라 그날 무슨 일이 있었는지에
-   *  붙는 말이라, 그 내용 바로 옆이 제자리다(지적). 없으면 아무것도 안 그린다.
-   *
-   *  위 rowFlagOf와 나란히 서지만 세는 것이 다르다: 저건 그 건 자체가 새것이냐를 보고,
-   *  이건 그 건에 새 말이 붙었느냐를 본다. 사흘 전 경기에 오늘 댓글이 달리면 줄 자체는
-   *  아무 딱지도 없는데 볼 것은 생긴 상태라, 그 경우가 딱 이 딱지가 있어야 하는 자리다.
-   *  게임결과 묶음은 안의 경기들 것을 다 더한다 — 접힌 채로는 안이 안 보이므로 줄이
-   *  묶음 전체를 대신 말해야 한다. */
-  const commentBadgeOf = (it: DisplayItem): { count: number; fresh: boolean } | null => {
-    const now = Date.now();
-    const isFresh = (ms: number) => now - ms >= 0 && now - ms <= NEW_WINDOW_MS;
-    const stats = it.kind === "challenge" ? [commentStatOf("challenge", it.challenge.id)]
-      : it.kind === "rankingShift" ? [commentStatOf("rankingShift", it.shift.id)]
-        : it.kind === "gameResultPost" ? it.items.map((x) => commentStatOf("gameResult", x.gameResult.id))
-          : [commentStatOf("gameResult", it.gameResult.id)];
-    const count = stats.reduce((sum, s) => sum + s.count, 0);
-    if (count === 0) return null;
-    return { count, fresh: stats.some((s) => isFresh(s.latestMs)) };
-  };
+  /* (삭제) 줄에 달린 댓글 수 — 걷었다(요청). 댓글이 몇 개인지는 카드를 펴면 댓글
+     자리가 직접 말하고, 목록 줄에서는 그 수가 무슨 일이 있었는지보다 먼저 읽혔다. */
 
   const displayFeed = useMemo<DisplayItem[]>(() => {
     const out: DisplayItem[] = [];
@@ -1307,7 +1288,6 @@ export default function ActivityScreen() {
               const open = openRowKey === key;
               const closing = closingRowKey === key;
               const flags = rowFlagsOf(item);
-              const comments = commentBadgeOf(item);
               return (
                 <div className={cx("scr-activity-row-wrap", open && "scr-activity-row-wrap-open")} key={key}>
                   <button
@@ -1328,20 +1308,11 @@ export default function ActivityScreen() {
                           알약 없는 줄만 왼쪽이 휑하게 비어 오히려 눈에 걸렸다. */}
                       {rowStatusOf(item)}
                       {rowDesc(item)}
-                      {/* 댓글 수는 내용 옆이다(요청) — 댓글은 제목이 아니라 그날 무슨 일이
-                          있었는지에 붙는 말이다. 없으면 아예 안 그린다. 하루 안에 새로
-                          달린 게 있으면 수 자체를 밝은 색으로 올린다 — 여기 붙어 있던
-                          NEW 글자는 걷었다(요청). */}
                       {/* 새것(NEW)이거나 달라진 것(UPDATE) — 둘 다 참이어도 하나만 세운다
                           (요청: NEW 우선). 내용 칸의 오른쪽 끝, 댓글 수보다는 왼쪽이다. */}
                       {flags.length > 0 && (
                         <span className={cx("scr-activity-row-flag", `scr-activity-row-flag-${flags[0]}`)}>
                           {flags[0] === "new" ? "NEW" : "UPDATE"}
-                        </span>
-                      )}
-                      {comments && (
-                        <span className={cx("scr-activity-row-comment", comments.fresh && "scr-activity-row-comment-fresh")}>
-                          [{comments.count}]
                         </span>
                       )}
                     </span>
