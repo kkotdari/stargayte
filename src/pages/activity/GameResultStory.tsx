@@ -374,27 +374,42 @@ export default function GameResultStory({
     return at;
   }, [gameResult.summaryData, sentences, index, last]);
 
-  const downed: Set<string> = useMemo(() => {
+  /** 해골(💀·흑백)과 회복 반창고(❤️‍🩹)를 가른다(요청: 큰 타격이나 빈사 상태는 해골까지
+   *  붙이지 말고 반창고만, 해골은 완전 엘리나 GG·생산 0일 때만. 흑백도 마찬가지).
+   *
+   *  예전에는 둘을 한 자루(downed)에 담아 전부 해골이었다 — 저장된 '망함' 시점(downs)이
+   *  실제 탈락과 '생산이 무너져 못 일어섬'을 함께 담고 있었고, 큰 타격(raid-damage의
+   *  early)까지 같은 자루에 들어갔다. 이제 요약이 탈락만 따로 실어 주므로(elims) 그것과
+   *  GG·궤멸만 해골이고, 나머지는 반창고다. */
+  const { downed, hurt } = useMemo(() => {
     const beats = gameResult.summaryData?.beats ?? [];
     const upto = Math.max(-1, ...(sentences[index]?.beats ?? []));
-    const out = new Set<string>();
-    // 크게 망한 사람 — 건물·유닛 생산이 현저히 떨어져 끝까지 회복하지 못한 시점부터다
-    // (요청). 저장된 값이라 beat로 이야기되지 않은 사람도 그림에는 제대로 나온다.
+    const dead = new Set<string>();
+    const sore = new Set<string>();
+    const elims = gameResult.summaryData?.elims;
     for (const [raw, f] of Object.entries(gameResult.summaryData?.downs ?? {})) {
-      if (f <= nowAt) out.add(raw);
+      if (f > nowAt) continue;
+      // 옛 요약(elims 없음)은 가릴 근거가 없다 — 그때는 예전처럼 전부 해골이다.
+      if (!elims) dead.add(raw);
+      else if (elims[raw] !== undefined && elims[raw] <= nowAt) dead.add(raw);
+      else sore.add(raw);
     }
     for (let i = 0; i <= upto && i < beats.length; i += 1) {
       const b = beats[i];
       const who = b.who ?? [];
       const whom = b.whom ?? [];
-      if (b.k === "fallen" || b.k === "gg") who.forEach((n) => out.add(n));
-      else if (b.k === "raid-damage" && (b.p?.out === true || b.p?.early === true)) {
-        whom.forEach((n) => out.add(n));
-      // 다시 일어선 사람은 해골을 뗀다(요청: 부활한 거라면 해골을 없애고 부활한 내용이
+      if (b.k === "fallen" || b.k === "gg") who.forEach((n) => { dead.add(n); sore.delete(n); });
+      else if (b.k === "raid-damage" && b.p?.out === true) {
+        // 그 자리에서 실제로 나간(Leave Game) 것 — 이건 탈락이다.
+        whom.forEach((n) => { dead.add(n); sore.delete(n); });
+      } else if (b.k === "raid-damage" && b.p?.early === true) {
+        // 초반에 크게 얻어맞은 것 — 아직 끝난 게 아니라 다친 것이다.
+        whom.forEach((n) => { if (!dead.has(n)) sore.add(n); });
+      // 다시 일어선 사람은 표시를 뗀다(요청: 부활한 거라면 해골을 없애고 부활한 내용이
       // 들어가야 한다) — beat로 붙은 것뿐 아니라 저장된 '망함' 시점으로 붙은 것도 지운다.
-      } else if (b.k === "revival") who.forEach((n) => out.delete(n));
+      } else if (b.k === "revival") who.forEach((n) => { dead.delete(n); sore.delete(n); });
     }
-    return out;
+    return { downed: dead, hurt: sore };
   }, [gameResult.summaryData, sentences, index, nowAt]);
 
   /** 지금 문장에 이름이 나온 사람들 — 그 사람 본진 아바타를 크게 키운다(요청). 스냅마다
@@ -1315,7 +1330,7 @@ export default function GameResultStory({
       out.push({
         ...common, key: s.raw,
         x: at ? at[0] : spots[s.raw][0], y: at ? at[1] : spots[s.raw][1],
-        withName: true, highlight: hit, downed: downed.has(s.raw),
+        withName: true, highlight: hit, downed: downed.has(s.raw), hurt: hurt.has(s.raw),
         featured: mentioned.has(s.raw), introBig,
         // 화살표가 없는 이야기(생산·테크·경제)는 그 사람 본진에 이모지를 붙인다(요청).
         mark: actions.marks.get(s.raw),
@@ -1329,7 +1344,7 @@ export default function GameResultStory({
       });
     }
     return out;
-  }, [gameResult.summaryData, slots, memberOf, highlightMemberIds, highlightTerms, downed, mentioned,
+  }, [gameResult.summaryData, slots, memberOf, highlightMemberIds, highlightTerms, downed, hurt, mentioned,
     actions, moved, grid, index, sentences]);
 
   const o1 = outcomeFor("team1", result);

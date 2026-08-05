@@ -2728,12 +2728,19 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   // 실제로 판을 떠난 기록이 있으면 그게 먼저다. 되살아난 경우는 productionCollapse가
   // 애초에 잡지 않는다('끝까지 회복하지 못한' 구간만 본다).
   const downs: Record<string, number> = {};
+  /* 그중에서도 '완전히 끝난' 사람만 따로 센다(요청: 해골은 완전 엘리나 GG, 생산 0일
+     때만. 큰 타격·빈사는 해골까지 붙이지 말 것) — downs는 실제 탈락과 '생산이 무너져
+     끝내 못 일어섬'을 한 자루에 담고 있어서, 그림 쪽에서 둘을 가릴 수가 없었다.
+     프레임만으로는 어느 쪽인지 알 수 없으므로 탈락 쪽을 따로 실어 보낸다. */
+  const elims: Record<string, number> = {};
   for (const p of replay.players) {
-    const f = eliminatedFrame(p) ?? productionCollapse(p, totalFrames);
+    const gone = eliminatedFrame(p);
+    const f = gone ?? productionCollapse(p, totalFrames);
     // 끝나기 직전에 멈춘 것은 '망한' 것이 아니라 경기가 끝난 것이다 — 마지막 몇 분은
     // 누구나 손을 놓으므로, 그 상태로 이만큼은 더 끌려가야 망한 것으로 본다.
     if (f === null || (totalFrames !== null && totalFrames - f < DOWN_MIN_TAIL_FRAMES)) continue;
     downs[p.rawName] = f;
+    if (gone !== null) elims[p.rawName] = gone;
   }
 
   // 이사 — 짓는 구역(시작 지점 기준)이 바뀌면 살림을 옮긴 것이다(요청). 본진을 잃고
@@ -3932,6 +3939,7 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     ...(Object.keys(hubs).length > 0 ? { hubs } : {}),
     ...(Object.keys(moves).length > 0 ? { moves } : {}),
     ...(Object.keys(downs).length > 0 ? { downs } : {}),
+    ...(Object.keys(elims).length > 0 ? { elims } : {}),
     /* 마지막 몰아붙임(ending)은 GG보다 앞이다(지적: 브래드가 GG를 친 뒤에 브래드 기지로
        쳐들어간 모양새가 부자연스럽다) — GG는 그 싸움에 밀려 친 것이므로 순서가 뒤집히면
        이미 항복한 사람을 다시 치는 그림이 된다. chosen 안에서는 GG가 꼬리의 맨 뒤인데

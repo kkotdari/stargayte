@@ -255,6 +255,9 @@ export interface MinimapMarker {
   highlight: boolean;
   /** 그 시점에 궤멸됐거나 빈사 상태인가 — 본진에 해골을 얹는다(요청). */
   downed?: boolean;
+  /** 크게 다쳤지만 아직 끝난 건 아닌 상태(요청: 큰 타격·빈사는 해골 말고 반창고만) —
+   *  해골과 같은 자리에 ❤️‍🩹만 얹고 아바타는 흑백으로 안 누른다. */
+  hurt?: boolean;
   /** 지금 문장에 이름이 나온 사람인가 — 아바타를 크게 키운다(요청). */
   featured?: boolean;
   /** 버리고 떠난 옛 본진인가 — 흑백으로만 남긴다(요청: 본진을 버리고 이동한 경우 본진은
@@ -755,6 +758,16 @@ export default function ReplayMinimap({
               style={shoulder(m, "skull")}
             >
               💀
+            </span>
+          )}
+          {/* 크게 다친 상태 — 해골과 같은 어깨 자리에 반창고만 얹는다(요청). 해골이 이미
+              붙은 사람에게는 안 붙인다(둘이 한 자리에 겹친다). */}
+          {!m.downed && m.hurt && (
+            <span
+              className="scr-minimap-mark-skull scr-minimap-mark-hurt" role="img" aria-label="큰 타격"
+              style={shoulder(m, "skull")}
+            >
+              ❤️‍🩹
             </span>
           )}
           {/* 트로피·공격자·당한 정도·아군 헬프 같은 상태 얼굴 — 해골과 같은 자리·크기로

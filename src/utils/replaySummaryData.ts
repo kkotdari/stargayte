@@ -93,6 +93,9 @@ export interface ReplaySummaryData {
    *  못한 지점(또는 실제 탈락 시점)이다(요청) — 그때부터 본진에 해골을 얹는다.
    *  옛 데이터에는 없어 생략 가능하다. */
   downs?: Record<string, number>;
+  /** 그중 '완전히 끝난'(탈락) 시점만 — 해골은 이쪽에만 붙고, 생산이 무너진 빈사는
+   *  회복 반창고(❤️‍🩹)로 간다(요청). 옛 요약에는 없어서 그때는 downs를 그대로 쓴다. */
+  elims?: Record<string, number>;
   beats: ReplaySummaryBeat[];
 }
 
