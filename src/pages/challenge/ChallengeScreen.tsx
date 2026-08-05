@@ -12,7 +12,7 @@ import { useAppStore } from "../../store/appStore";
 import { api } from "../../api/client";
 import { cx } from "../../utils/format";
 import {
-  formatWhen, pad,
+  formatWhen, pad, scheduledInstantMs, serverMs,
   DATE_INPUT_MIN, DATE_INPUT_MAX, gameNow,
 } from "../../utils/date";
 import type { Challenge, ChallengeResult, ChallengeSide, ChallengeTarget } from "../../types";
@@ -206,6 +206,30 @@ interface ChallengeCardProps {
   onResponded: (updated: Challenge) => void;
 }
 
+/** 응답 마감 = 부른 때 + 72시간, 다만 예정 시각이 그보다 먼저면 그 시각(백엔드와 같은 기준).
+ *  아직 답을 기다리는 호출에만 뜬다 — 성사·완료·폐기된 건에는 셀 것이 없다. */
+const CHALLENGE_EXPIRE_MS = 72 * 60 * 60 * 1000;
+
+/** 카드 윗줄 가운데의 "17시간 후 응답 마감"(요청).
+ *
+ *  초 단위로 줄어드는 시계는 걷었다(요청: 실시간 변동 X) — 목록에 카드가 여럿이면 그 수만큼
+ *  1초짜리 타이머가 돌고, 그때마다 그 줄이 다시 그려진다. 남은 시간을 시간 단위로 적으면
+ *  1초는커녕 1분이 지나도 글자가 그대로라, 그 비용을 낼 이유가 없다. 한 시간이 안 남았을
+ *  때만 분으로 적는다 — 그때는 "0시간 후"가 되어 버려서 말이 안 된다. */
+function ChallengeDeadline({ challenge }: { challenge: Challenge }) {
+  if (challenge.status !== "pending") return null;
+  // serverMs로 읽는다 — 서버가 주는 시각 문자열에는 시간대 표시가 없어서, 그대로
+  // new Date에 넣으면 브라우저가 제 지역시(한국이면 UTC+9)로 읽어 마감이 9시간
+  // 앞당겨진다(실측: 방금 부른 호출이 71시간이 아니라 62시간으로 떴다).
+  const base = serverMs(challenge.createdAt) + CHALLENGE_EXPIRE_MS;
+  const scheduled = scheduledInstantMs(challenge);
+  const remain = (scheduled !== null ? Math.min(base, scheduled) : base) - Date.now();
+  if (remain <= 0) return null;
+  const minutes = Math.floor(remain / 60000);
+  const left = minutes >= 60 ? `${Math.floor(minutes / 60)}시간` : `${Math.max(1, minutes)}분`;
+  return <div className="scr-challenge-deadline">{left} 후 응답 마감</div>;
+}
+
 export function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, onResponded }: ChallengeCardProps) {
   const memberOf = useAppStore((s) => s.memberOf);
   const user = useAppStore((s) => s.user);
@@ -364,6 +388,9 @@ export function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, o
           이제 취소는 거둬들인 사람 자리에, 만료는 상대 응답 자리에 적히므로(요청) 같은 말을
           두 번 하는 셈이고, 절대 배치라 헤더가 바깥에 있는 활동에서는 로스터 첫 줄 위에
           겹치기까지 했다. 끝난 티는 카드 자체를 흐리게 하는 것(-canceled)으로 충분하다. */}
+      {/* 응답 마감까지 얼마나 남았나 — 카드 윗줄 가운데(요청). 케밥과 같은 띠에 앉으므로
+          본문을 밀지 않고, 케밥은 그 오른쪽 끝에 그대로 있다. */}
+      <ChallengeDeadline challenge={challenge} />
       {/* 편지지 배경 사진은 이 카드가 아니라 이 카드를 담은 활동 카드의 본문
           (.scr-activity-card-body)에 깔린다(요청) — ActivityScreen 참고. 여기 깔면
           로스터 폭만큼만 덮여, 카드가 아니라 로스터에 붙은 그림처럼 보인다. */}

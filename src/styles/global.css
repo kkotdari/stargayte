@@ -6540,6 +6540,17 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 /* 답장을 가르는 점선 — 사진 위에서는 원래의 옅은 남색이 통째로 사라진다. */
 .scr-challenge-letter-photo .scr-challenge-reply { border-top-color: rgba(var(--overlay-rgb), 0.4); }
 
+/* 응답 마감까지 — 카드 윗줄 가운데(요청). 케밥과 같은 띠(--card-kebab-lane) 안에 절대배치로
+   앉히므로 본문을 아래로 밀지 않고, 케밥은 그 오른쪽 끝에 그대로 있다. 케밥 자리(오른쪽
+   10px + 버튼 26px)만큼 좌우로 여백을 두어, 글자가 길어져도 그 밑으로 들어가지 않는다.
+   pointer-events는 끈다 — 줄 전체가 누르는 자리다. */
+.scr-challenge-deadline {
+  position: absolute; top: var(--card-kebab-top, 10px); left: 44px; right: 44px; z-index: 1;
+  display: flex; align-items: center; justify-content: center; min-height: 26px;
+  font-size: var(--fs-micro); font-weight: 700; color: var(--muted);
+  line-height: 1; white-space: nowrap; pointer-events: none;
+}
+
 /* ── 활동 목록 너 나와! 카드의 배경 사진(요청) ─────────────────────────────────
    편지지와 같은 사진을 카드 본문에 깐다. 비율은 그대로 두고 잘라 채우되(cover), 본문
    상자를 통째로 채운다(요청: "저 초록색 영역에 사진이 꽉 차는거야") — 절대배치의 기준이
@@ -8400,7 +8411,6 @@ html.scr-light-theme .scr-activity-card-comment .scr-comment-mention { color: #1
    시각 옆에 얹는다(요청: 시간 중복 표기 제거). 수정 폼이 열리면 헤더행의 남은 폭을 쓴다. */
 .scr-activity-card-head .scr-challenge-time-head { margin-bottom: 0; }
 /* 응답 마감 실시간 카운트다운 — 헤더행 폰트 크기를 그대로 상속(요청: 폰트 크기 맞추기). */
-.scr-activity-chal-countdown { font-weight: 600; color: var(--dim); font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 /* + 댓글 아이콘 ↔ 입력창 전환(요청) — 아이콘을 누르면 입력창이 트랜지션으로 가로로
    펼쳐지며 포커스되고, 포커스를 잃으면 다시 아이콘으로 줄어든다. 입력창은 늘 마운트된

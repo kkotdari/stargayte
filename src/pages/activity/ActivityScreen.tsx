@@ -19,7 +19,7 @@ import ReplayReviewModal from "../../modals/ReplayReviewModal";
 import ActivityComments, { commentStatOf, primeActivityComments } from "./ActivityComments";
 import { primeReplayMaps } from "../../hooks/useReplayMap";
 import ChallengeFormModal from "../../modals/ChallengeFormModal";
-import { scheduledInstantMs, formatWhen, formatAgo, serverMs } from "../../utils/date";
+import { formatWhen, formatAgo, serverMs } from "../../utils/date";
 import { useAppStore } from "../../store/appStore";
 import { isAdminRole } from "../../constants/roles";
 import { activeMemberSearchTerms, memberMatchesTerm, normalizeSearchText, splitSearchTerms } from "../../utils/memberSearch";
@@ -276,27 +276,10 @@ export function sessionDateLabel(date: string): string {
   return `${Number(m)}월 ${Number(d)}일`;
 }
 
-// 응답 마감 = 요청일 + 72시간(예정 시각이 그보다 먼저면 예정 시각) — 백엔드와 동일 기준.
-// 헤더행의 날짜 옆에서 1초마다 실시간으로 줄어든다(요청: "응답마감까지 72:32:31" 형식).
-const CHALLENGE_EXPIRE_MS = 72 * 60 * 60 * 1000;
-function ChallengeCountdown({ challenge }: { challenge: Challenge }) {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(t);
-  }, []);
-  if (challenge.status !== "pending") return null;
-  const base = new Date(challenge.createdAt).getTime() + CHALLENGE_EXPIRE_MS;
-  const scheduled = scheduledInstantMs(challenge);
-  const deadline = scheduled !== null ? Math.min(base, scheduled) : base;
-  const remain = deadline - now;
-  if (remain <= 0) return null;
-  const total = Math.floor(remain / 1000);
-  const hh = String(Math.floor(total / 3600)).padStart(2, "0");
-  const mm = String(Math.floor((total % 3600) / 60)).padStart(2, "0");
-  const ss = String(total % 60).padStart(2, "0");
-  return <span className="scr-activity-chal-countdown">응답마감까지 {hh}:{mm}:{ss}</span>;
-}
+/* (삭제) ChallengeCountdown — 카드 머리의 "응답마감까지 72:32:31" 시계다. 목록 보기에서는
+   카드 머리 자체가 감춰져 있어(.scr-activity-card-head-off) 아무에게도 안 보이던 채로
+   1초마다 돌고 있었다(지적: 카운트다운이 없어졌다). 이제 그 말은 카드 윗줄 가운데에서
+   ChallengeDeadline이 하고, 초 단위로 뛰지도 않는다(요청: 실시간 변동 X). */
 
 // 너 나와 카드 우상단 케밥 — 카카오 공유(전체) + 삭제(운영자만).
 function ChallengeActionsMenu({ challenge, isAdmin, myId, onDeleted, onChanged }: {
@@ -1155,8 +1138,6 @@ export default function ActivityScreen() {
           timeText={item.undated ? "미정" : formatWhen(item.time, { clock: item.withClock })}
           // 시각·마감·일시수정은 전부 '언제'에 대한 것이라 제목 바로 옆에 함께 둔다(요청).
           headMeta={<>
-            {/* 응답 마감 실시간 카운트다운 — 날짜 옆, 헤더와 같은 폰트 크기(요청). */}
-            <ChallengeCountdown challenge={item.challenge} />
             {/* 일시(시간) 수정 — 시각은 헤더가 이미 보여주므로 연필만 얹는다(중복 표기
                 제거, 요청). 참가자만 연필이 보인다(컴포넌트가 판정). */}
             <ChallengeTimeHeadEdit
