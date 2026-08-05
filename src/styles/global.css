@@ -6540,9 +6540,10 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 .scr-challenge-letter-photo .scr-challenge-reply { border-top-color: rgba(var(--overlay-rgb), 0.4); }
 
 /* ── 활동 목록 너 나와! 카드의 배경 사진(요청) ─────────────────────────────────
-   편지지와 같은 사진을 카드 본문에도 깐다. 비율은 그대로 두고 잘라 채우고(cover), 본문의
-   패딩 안쪽에만 앉힌다(요청: "바디의 패딩까지 채우진 않고 그 안쪽으로만") — 절대배치의
-   기준이 패딩 상자라 그 패딩만큼 안으로 들여야 한다.
+   편지지와 같은 사진을 카드 본문에 깐다. 비율은 그대로 두고 잘라 채우되(cover), 본문
+   상자를 통째로 채운다(요청: "저 초록색 영역에 사진이 꽉 차는거야") — 절대배치의 기준이
+   패딩 상자라 inset:0이 곧 본문의 패딩까지 덮은 전면이고, 케밥도 그 사진 위에 얹힌다.
+   좌우 끝은 카드의 투명 블리드 테두리 안쪽이라 카드 폭과 정확히 맞는다.
 
    안쪽 로스터 카드(.scr-challenge-card-body)가 아니라 여기(.scr-activity-card-body)에
    붙인다(요청) — 안쪽에 깔면 로스터 폭만큼만 덮여 카드가 아니라 로스터에 붙은 그림처럼
@@ -6550,16 +6551,12 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
    가라앉는다(position:relative만으로는 쌓임 맥락이 안 생긴다). */
 .scr-activity-card-body-photo { position: relative; isolation: isolate; }
 .scr-activity-card-photo {
-  position: absolute; z-index: -1; pointer-events: none;
-  /* .scr-activity-card > .scr-activity-card-body의 패딩과 같은 값 — 그 한 곳만 바뀌면
-     여기도 함께 바뀌도록 같은 변수를 쓴다. */
-  inset: var(--card-row-gap) calc(var(--card-pad-bx) + 8px);
-  border-radius: 10px;
+  position: absolute; inset: 0; z-index: -1; pointer-events: none;
   background-image: var(--card-photo); background-size: cover; background-position: center;
 }
 /* 편지지와 같은 이유의 막 한 겹 — 사진은 무늬로만 비치고 글자가 설 바닥을 만든다. */
 .scr-activity-card-photo::after {
-  content: ""; position: absolute; inset: 0; border-radius: inherit;
+  content: ""; position: absolute; inset: 0;
   background: rgba(16, 21, 26, 0.58);
 }
 .scr-light-theme .scr-activity-card-photo::after { background: rgba(255, 255, 255, 0.66); }
