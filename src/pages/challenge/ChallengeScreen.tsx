@@ -497,7 +497,10 @@ export function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, o
             className="scr-btn scr-challenge-accept-btn scr-btn-sm" disabled={busy}
             onClick={acceptWithSchedule}
           >
-            {busy ? <Spinner /> : ((challenge.scheduledDate ?? dateStr) ? "승락" : "시간 미정 승락")}
+            {/* 날짜를 안 정한 채 받아도 버튼 글자는 그냥 "승락"이다(요청) — "시간 미정
+                승락"은 무엇을 누르는지가 아니라 지금 상태를 적은 말이라, 버튼 하나가
+                두 이름으로 오갔다. 일정이 비었다는 사실은 위 입력칸이 이미 말한다. */}
+            {busy ? <Spinner /> : "승락"}
           </button>
           </div>
         </div>

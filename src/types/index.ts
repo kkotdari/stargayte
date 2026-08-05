@@ -598,8 +598,8 @@ export interface MapCatalog {
 export interface ActivityFeedItem {
   key: string;
   kind: "challenge" | "rankingShift" | "gameResultPost";
-  /** 가장 오래된 줄이 1 — 서버가 전체를 놓고 센 값이다. */
-  no: number;
+  /* 줄 번호(no)는 화면에서 걷어냈다(요청: "별 의미 없는 듯") — 서버는 아직 실어 보내지만
+     쓰는 곳이 없어 여기서도 받지 않는다. */
   challenge?: Challenge | null;
   rankingShift?: RankingShift | null;
   gameResults: GameResult[];

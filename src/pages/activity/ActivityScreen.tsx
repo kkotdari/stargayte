@@ -50,6 +50,9 @@ const ROW_CLOSE_MS = 200;
 /** NEW로 볼 기간(요청: 24시간 내) — 지난 방문을 기억해 두던 방식에서 이 단순한 규칙으로
  *  바꿨다. 누구에게나 같은 것이 보이고, 브라우저에 기억해 둘 것도 없다. */
 const NEW_WINDOW_MS = 24 * 60 * 60 * 1000;
+/** 등록 시각과 수정 시각이 이만큼 넘게 벌어져야 "손댄 것"으로 본다 — 등록 순간에는
+ *  둘이 같게 찍히지만, 같은 트랜잭션 안에서도 초 단위 아래로는 어긋날 수 있다. */
+const TOUCHED_SLACK_MS = 5000;
 
 // 활동 — 커뮤니티 활동(경기 결과, 너 나와! 일정)을 한 타임라인으로 보여주는 홈 화면.
 // 타임라인 기준: 너 나와!는 경기 예정 일시, 경기는 리플레이의 게임 시작 시각.
@@ -647,12 +650,6 @@ export default function ActivityScreen() {
     () => feedItems.flatMap((it) => (it.rankingShift ? [it.rankingShift] : [])),
     [feedItems],
   );
-  // 줄 번호는 서버가 전체를 놓고 센 값을 그대로 쓴다 — 화면이 쥔 것만 세면 아직 안 받아온
-  // 과거만큼 통째로 어긋난다.
-  const rowNos = useMemo(
-    () => new Map(feedItems.map((it) => [it.key, it.no] as const)),
-    [feedItems],
-  );
   /* 댓글도 같은 응답에 실려 온다 — 카드마다 따로 부르면 답이 제각각 도착하며 카드 키가
      뒤늦게 자라, 들어올 때 "현재"에 맞춰 둔 자리가 그만큼 밀린다. 페이지를 이어 받을
      때마다 다시 담는다(표는 통째로 새로 만든다). */
@@ -669,10 +666,9 @@ export default function ActivityScreen() {
       if (hit) {
         return prev.map((it) => (it.challenge?.id === updated.id ? { ...it, challenge: updated } : it));
       }
-      // 새로 부른 호출은 맨 위에 세운다. 번호는 다음 새로고침 때 서버 값으로 맞춰진다 —
-      // 지금 여기서 세면 아직 안 받아온 과거만큼 어긋난다.
+      // 새로 부른 호출은 맨 위에 세운다.
       return [{
-        key: `c-${updated.id}`, kind: "challenge" as const, no: 0,
+        key: `c-${updated.id}`, kind: "challenge" as const,
         challenge: updated, gameResults: [], comments: [],
       }, ...prev];
     });
@@ -929,16 +925,23 @@ export default function ActivityScreen() {
    *  없어(GameResult에 createdAt이 없다) 경기 시각으로 대신한다 — 대개 친 날 바로
    *  올리므로 거의 같지만, 한참 지난 경기를 오늘 올리면 그 건에는 아무 딱지도 안 붙는다.
    *  앞으로의 일(예정된 너 나와)은 새것이 아니라 아직 안 온 것이라 제외한다. */
-  const rowFlagOf = (it: DisplayItem): "new" | "update" | null => {
+  const rowFlagsOf = (it: DisplayItem): ("new" | "update")[] => {
     const now = Date.now();
     const fresh = (ms: number) => now - ms >= 0 && now - ms <= NEW_WINDOW_MS;
     if (it.kind === "challenge") {
-      if (fresh(serverMs(it.challenge.createdAt))) return "new";
-      return fresh(serverMs(it.challenge.updatedAt)) ? "update" : null;
+      const created = serverMs(it.challenge.createdAt);
+      const updated = serverMs(it.challenge.updatedAt);
+      const flags: ("new" | "update")[] = [];
+      if (fresh(created)) flags.push("new");
+      // 손댄 적이 있어야 UPDATE다 — 등록하는 순간엔 두 시각이 같게 찍혀서, 그냥 비교하면
+      // 새로 올라온 줄마다 NEW와 UPDATE가 나란히 붙는다. 같은 트랜잭션 안에서도 초 단위
+      // 아래로는 어긋날 수 있어 몇 초의 여유를 둔다.
+      if (updated - created > TOUCHED_SLACK_MS && fresh(updated)) flags.push("update");
+      return flags;
     }
-    if (it.kind === "rankingShift") return fresh(serverMs(it.shift.createdAt)) ? "new" : null;
-    if (it.kind === "gameResultPost") return it.items.some((x) => fresh(x.time)) ? "new" : null;
-    return fresh(it.time) ? "new" : null;
+    if (it.kind === "rankingShift") return fresh(serverMs(it.shift.createdAt)) ? ["new"] : [];
+    if (it.kind === "gameResultPost") return it.items.some((x) => fresh(x.time)) ? ["new"] : [];
+    return fresh(it.time) ? ["new"] : [];
   };
 
   /** 이 줄에 댓글이 몇 개 달렸나, 그중 하루 안에 달린 게 있나(요청).
@@ -1016,19 +1019,6 @@ export default function ActivityScreen() {
         : it))
       .filter((it) => !!it.challenge || !!it.rankingShift || it.gameResults.length > 0));
   }, [patchFeed, displayFeed]);
-
-  /* 번호를 받아는 왔는데 한 줄도 못 붙는 경우 — 서버가 센 줄과 화면이 그린 줄의 열쇠가
-     어긋났다는 뜻이라 원인이 전혀 다르다(양쪽 묶음 규칙이 갈라졌을 때 이렇게 된다).
-     둘을 구분해 두지 않으면 "번호가 안 나온다" 하나로 보여 어디를 봐야 할지 알 수 없다. */
-  useEffect(() => {
-    if (rowNos.size === 0 || displayFeed.length === 0) return;
-    if (displayFeed.some((it) => rowNos.has(rowKeyOf(it)))) return;
-    console.error(
-      "[활동] 서버가 준 줄 번호가 화면의 어느 줄과도 안 맞습니다 — 묶음 규칙이 갈라졌을 수 있어요.",
-      { 서버열쇠: [...rowNos.keys()].slice(0, 5), 화면열쇠: displayFeed.slice(0, 5).map(rowKeyOf) },
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rowNos, displayFeed]);
 
   const dateLabelOf = (item: { time: number }) => {
     const d = new Date(item.time);
@@ -1344,9 +1334,8 @@ export default function ActivityScreen() {
               const key = rowKeyOf(item);
               const open = openRowKey === key;
               const closing = closingRowKey === key;
-              const flag = rowFlagOf(item);
+              const flags = rowFlagsOf(item);
               const comments = commentBadgeOf(item);
-              const no = rowNos.get(key);
               return (
                 <div className={cx("scr-activity-row-wrap", open && "scr-activity-row-wrap-open")} key={key}>
                   <button
@@ -1354,25 +1343,21 @@ export default function ActivityScreen() {
                     onClick={() => toggleRow(key)}
                   >
                     <span className="scr-activity-row-title">
-                      {/* 제목은 칸 가운데에 서고, 번호·딱지는 그 제목 글자 위에 한 줄로
-                          얹힌다(요청: 넘버링을 제목 왼쪽에 맞추기). 기준이 칸이 아니라 제목
-                          글자라, 제목이 길든 짧든 번호는 늘 글자 바로 위 왼쪽 끝이다.
-                          둘을 한 줄에 태우고 딱지를 오른쪽 끝으로 미는 건(margin-left:auto)
-                          겹치지 않게 하기 위해서다 — 따로 띄우면 기준이 서로 달라(번호는
-                          글자, 딱지는 칸 모서리) 짧은 제목에서 번호가 딱지 밑으로 파고든다
-                          (실측: 모바일 최악 -5px). flex 형제로 두면 그런 일이 없다.
-                          흐름에서 빼 두므로 제목 자리는 이 둘이 있든 없든 그대로고, 줄 위
-                          여백 안에 들어앉아 줄 높이도 안 건드린다. */}
+                      {/* 줄 번호(#17 …)는 걷어냈다(요청: "별 의미 없는 듯") — 그 자리를
+                          딱지가 물려받아 이제 제목 글자 왼쪽 끝에 맞춰 선다. 기준이 칸이
+                          아니라 제목 글자라, 제목이 길든 짧든 늘 글자 바로 위 왼쪽이다.
+                          흐름에서 빼 두므로(absolute) 제목 자리는 딱지가 있든 없든 그대로고,
+                          줄 위 여백 안에 들어앉아 줄 높이도 안 건드린다. */}
                       <span className="scr-activity-row-title-main">
                         <span className="scr-activity-row-title-top">
-                          {no !== undefined && <span className="scr-activity-row-no">#{no}</span>}
                           {/* 하루 안에 올라왔거나(NEW) 달라진(UPDATE) 건 — 색만으로 말하지
-                              않도록 글자를 그대로 적는다. */}
-                          {flag && (
-                            <span className={cx("scr-activity-row-flag", `scr-activity-row-flag-${flag}`)}>
-                              {flag === "new" ? "NEW" : "UPDATE"}
+                              않도록 글자를 그대로 적는다. 오늘 올라와서 오늘 답까지 온 건
+                              둘 다 참이라 둘 다 세운다(요청). */}
+                          {flags.map((f) => (
+                            <span key={f} className={cx("scr-activity-row-flag", `scr-activity-row-flag-${f}`)}>
+                              {f === "new" ? "NEW" : "UPDATE"}
                             </span>
-                          )}
+                          ))}
                         </span>
                         <span className="scr-activity-row-title-text">{rowTitleOf(item)}</span>
                       </span>

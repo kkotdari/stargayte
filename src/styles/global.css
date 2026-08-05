@@ -528,6 +528,11 @@ button, a, [role="button"], summary, label, select { touch-action: manipulation;
    넘어 옆칸을 덮는다(요청: "겹침 아직 해결 안됨"). 네이티브 외형을 벗기면 일반 박스처럼
    width:100%/min-width:0 을 지켜 트랙 안에 들어온다. 어차피 표시기·피커는 우리 아이콘 +
    showPicker로 대체했으므로 네이티브 외형이 필요 없다. */
+/* 오른쪽 한 자리(아이콘/×)는 반드시 비워 둬야 한다. 이 규칙만으로는 부족해서 위
+   .scr-datetime-stack …(클래스 셋) 규칙의 padding 단축이 이걸 10px로 덮어썼고, 값이
+   × 밑으로 파고들었다(지적: "x 버튼이 놓일 위치가 모자라서 겹침"). 같은 무게의 선택자를
+   함께 적어 그 자리를 되찾는다 — 나머지 세 방향 패딩은 그대로 그 규칙이 낸다. */
+.scr-datetime-stack .scr-datetime-input .scr-datetime-input-wrap > .scr-input,
 .scr-datetime-input-wrap > .scr-input {
   width: 100%; min-width: 0; padding-right: 30px;
   -webkit-appearance: none; appearance: none;
@@ -2157,12 +2162,10 @@ html:not(.scr-light-theme) .scr-donut {
    글자로는 대비가 2.9까지 떨어져 다크에서만 흰 글자로 뒤집는다(7.3). 라이트는 채움이
    파스텔이라 검은 글자가 10.0으로 훨씬 잘 읽힌다. */
 .scr-donut-band-label { fill: #000; font-weight: 700; }
-html:not(.scr-light-theme) .scr-donut-band-label {
-  fill: #fff;
-  /* 채움을 밝히면 흰 글자와의 대비가 깎인다 — 미니맵 이름표와 같은 방식으로 검은 테두리를
-     둘러, 어느 조각 색 위에서나 같은 무게로 읽히게 한다. */
-  paint-order: stroke fill; stroke: rgba(0, 0, 0, 0.65); stroke-width: 2.4px;
-}
+/* 다크에서 흰 글자에 두르던 검은 테두리는 걷었다(요청) — 띠가 좁아 글자도 작은데, 그
+   획을 따라 붙은 선이 글자 속을 메워 오히려 뭉개 보였다. 흰 글자만으로도 이 세 조각
+   색(다크 기준)과는 충분히 갈린다. */
+html:not(.scr-light-theme) .scr-donut-band-label { fill: #fff; }
 /* 가운데 구멍 — 도넛 이름 하나. 조각 색을 글자에 입히지 않는다: 색이 곧 뜻이 되면 색을
    못 가르는 사람에게 이름까지 사라진다. (값 한 줄을 함께 적던 .scr-donut-center-note는
    그 값이 그림 위로 나가면서 없앴다 — .scr-stat-per10 참고.) */
@@ -5697,12 +5700,10 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
      안에 확실히 걸치는 자리다. 위쪽은 꼬리(아래 ::before, 5px) 자리까지만 살짝 띄운다. */
   margin-top: 4px; margin-left: var(--scr-chal-msg-x);
 }
-/* 한 줄까지만 보여주고 그 뒤는 말줄임(요청) — 한마디가 길면 말풍선이 세로로 자라 로스터
-   줄 간격이 사람마다 달라진다. 자르기는 안쪽 글자 상자에서 한다(바깥 말풍선에 걸면
-   overflow:hidden이 꼬리까지 지운다 — ChallengeScreen 주석 참고). */
-.scr-challenge-side-msg-text {
-  display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
+/* 한마디는 자르지 않고 전부 보여준다(요청) — 한 줄에서 말줄임하던 것을 걷었다.
+   말풍선이 세로로 자라 사람마다 로스터 줄 높이가 달라지지만, 하려던 말이 "저의 디딤돌이
+   되…"에서 끊기는 것보다는 낫다. 말줄임을 안 하므로 줄바꿈만 허용해 주면 된다. */
+.scr-challenge-side-msg-text { display: block; white-space: normal; word-break: break-word; }
 /* 한마디가 없는 사람 몫 — 자리(그리드 2행 높이)만 예약하고 실제로는 안 보여야 한다(요청:
    "말풍선 공간만 예약하는거고 입력 안했으면 보이면 안돼"). display:none은 그리드 트랙
    자체를 없애 자리가 도로 줄어드니 안 되고, visibility:hidden이라야 박스는 그대로 두고
@@ -7711,22 +7712,8 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-activity-row-title-text {
   white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis;
 }
-/* 몇 번째 활동인가 — 제목 글자 바로 위, 왼쪽 끝을 맞춰 세운다. NEW/UPDATE와 달리
-   비스듬히 밀지 않는다(요청: 대각선 아님): 이건 그 줄의 자리를 짚는 눈금이라 제목과 한
-   덩어리로 읽혀야 하고, 딱지처럼 멀리 떨어지면 어느 줄 번호인지가 흐려진다.
-   흐름에서 빼 두므로(absolute) 제목 자리는 번호가 있든 없든 그대로고, 늘어난 줄 위 여백
-   안에 들어앉아 줄 높이도 안 건드린다. 색은 흐리게 — 읽을 값이 아니라 눈금이다. */
-.scr-activity-row-no {
-  /* 제목 칸 글자를 한 스텝씩 키우면서(요청) 이 줄도 함께. 9 → 10px. */
-  font-size: var(--fs-10); font-weight: 700; color: var(--dim);
-  font-variant-numeric: tabular-nums; line-height: 1; white-space: nowrap;
-}
-/* 번호와 딱지를 함께 쥐는 한 줄 — 제목 글자 위에 통째로 얹힌다(요청: 넘버링과 배지 사이
-   벌리기). 둘을 각각 띄웠을 때는 기준이 서로 달라서(번호는 제목 글자, 딱지는 칸 모서리)
-   제목이 짧은 줄일수록 번호가 가운데로 밀려 올라와 딱지 밑으로 파고들었다.
-   한 줄에 같이 태우고 딱지를 오른쪽 끝으로 밀면(아래 margin-left: auto) 둘 사이는 남는
-   자리 전부가 되어, 제목 길이와 상관없이 절대 안 붙는다. 번호 없는 줄에서도 딱지는
-   그대로 오른쪽에 선다. */
+/* 딱지를 쥐는 한 줄 — 제목 글자 위에 통째로 얹힌다. 한때 여기 줄 번호(#17 …)가 함께
+   있었지만 걷어냈고(요청: "별 의미 없는 듯"), 딱지가 그 왼쪽 자리를 물려받았다. */
 .scr-activity-row-title-top {
   /* 기준은 칸이 아니라 제목 글자다(요청: 넘버링을 제목 왼쪽에 맞추기) — 제목은 칸 가운데에
      서므로, 칸의 왼쪽 끝에 번호를 두면 짧은 제목일수록 멀찍이 떨어져 어느 줄 번호인지가
@@ -7737,7 +7724,8 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   /* 제목 글자 윗선에서 얼마나 띄우나 — 내렸다가 4px 되올린다(요청: 제목과 안 겹치게).
      겹침 3px → 띄움 1px. */
   position: absolute; left: 0; right: 0; bottom: 100%; margin-bottom: 1px;
-  display: flex; align-items: center; gap: 6px; line-height: 1;
+  /* 딱지가 둘일 수 있다(NEW + UPDATE) — 왼쪽부터 나란히 세우고 사이만 띄운다(요청). */
+  display: flex; align-items: center; gap: 5px; line-height: 1;
   /* 줄 전체가 버튼이라 여기서 클릭을 가로채면 안 된다. */
   pointer-events: none;
 }
@@ -7747,12 +7735,11 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    제목 옆이 아니라 칸의 대각선 우상단에 띄운다(요청) — 줄에 끼여 있으면 딱지가 붙은
    줄만 제목이 그 폭만큼 왼쪽으로 밀려, 세로로 훑을 때 제목이 들쭉날쭉했다. 흐름에서 뺀
    윗줄(.scr-activity-row-title-top)에 태우므로 제목은 딱지가 있든 없든 늘 같은 자리다.
-   그 안에서 오른쪽 끝으로 미는 건 폭 때문이다: "UPDATE"는 37px인데 제목 칸의 글자
-   자리는 82px이고 "랭크 변동"만 해도 60px을 쓴다 — 제목 글자에 매달면 칸을 넘어 옆 칸
-   구분선을 넘어간다. 칸 모서리에 붙이면 어떤 딱지든 안에 들어오고, 줄마다 같은 x에 서서
-   세로로도 줄이 맞는다. 위 여백(24.5px) 안에 들어앉으므로 줄 높이도 안 건드린다. */
+   왼쪽 끝(제목 글자의 왼쪽)에 맞춘다(요청: "NEW/UPDATE 배지 왼쪽에 맞춰서 이동") —
+   예전엔 번호와 겹치지 않으려고 오른쪽 끝으로 밀어 뒀는데, 그 번호가 사라졌으니 딱지가
+   제목과 한 덩어리로 읽히는 왼쪽이 제자리다. 위 여백(24.5px) 안에 들어앉으므로 줄
+   높이는 그대로다. */
 .scr-activity-row-flag {
-  margin-left: auto;
   /* 번호와 같은 줄이라 같이 키운다(요청). 9 → 10px. */
   font-size: var(--fs-10); font-weight: 800; letter-spacing: 0.02em; white-space: nowrap;
 }
