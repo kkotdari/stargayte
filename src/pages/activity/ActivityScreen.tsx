@@ -53,6 +53,9 @@ const NEW_WINDOW_MS = 24 * 60 * 60 * 1000;
 /** 알약을 반투명으로 눌러 둘 상태(요청) — 이미 끝나서 더 손댈 것이 없는 것들이다.
  *  대기·수락은 아직 살아 있는 이야기라 또렷하게 남는다. */
 const STATUS_FADED = new Set(["거절", "버림", "만료", "취소", "완료"]);
+/** 끝내 실제 게임으로 이어지지 않은 너 나와(요청: 제목·내용·날짜 모두 연하게) — 줄 전체를
+ *  눌러 둔다. "완료"는 여기 없다: 그건 실제로 붙은 판이라 다른 줄과 같은 무게로 읽혀야 한다. */
+const ROW_VOID = new Set(["거절", "버림", "만료", "취소"]);
 /** 등록 시각과 수정 시각이 이만큼 넘게 벌어져야 "손댄 것"으로 본다 — 등록 순간에는
  *  둘이 같게 찍히지만, 같은 트랜잭션 안에서도 초 단위 아래로는 어긋날 수 있다. */
 const TOUCHED_SLACK_MS = 5000;
@@ -1014,6 +1017,11 @@ export default function ActivityScreen() {
   /** 내용 칸 맨 왼쪽의 상태 알약 — 너 나와만 값이 있고 나머지(게임결과·랭크 변동)는
    *  비운다. 비어도 자리는 CSS가 늘 예약하므로(.scr-activity-row-status-slot) 줄 종류가
    *  섞여도 닉네임이 시작하는 x가 흔들리지 않는다(지적: "너나와 말고는 배지가 없잖아"). */
+  /** 이 줄이 '없던 일'인가 — 위 ROW_VOID 참고. */
+  const rowVoid = (item: DisplayItem): boolean => (
+    item.kind === "challenge" && ROW_VOID.has(challengeStatusInfo(item.challenge).text)
+  );
+
   const rowStatusOf = (item: DisplayItem) => {
     if (item.kind !== "challenge") return null;
     const s = challengeStatusInfo(item.challenge);
@@ -1290,7 +1298,8 @@ export default function ActivityScreen() {
               return (
                 <div className={cx("scr-activity-row-wrap", open && "scr-activity-row-wrap-open")} key={key}>
                   <button
-                    type="button" className="scr-activity-row" aria-expanded={open}
+                    type="button" aria-expanded={open}
+                    className={cx("scr-activity-row", rowVoid(item) && "scr-activity-row-void")}
                     onClick={() => toggleRow(key)}
                   >
                     <span className="scr-activity-row-desc">

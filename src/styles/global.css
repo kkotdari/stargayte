@@ -7933,6 +7933,15 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    '끝난 일'로 물러나 보인다. 0.74로 올렸던 것을 0.45까지 내린다 — 그때는 요청을 이
    알약으로 잘못 읽었고, 진하게 해야 했던 것은 카드 쪽 응답 글자색이었다(그건 따로 고쳤다). */
 .scr-light-theme .scr-activity-row-status-faded { opacity: 0.45; }
+/* 끝내 게임으로 안 이어진 너 나와(거절·버림·만료·취소) — 줄 전체를 눌러 둔다(요청: 제목·
+   내용·날짜 모두 연하게). 칸마다 색을 따로 손대는 대신 줄 하나에 opacity를 주는 이유는,
+   이 줄에 들어가는 것이 제목 배지·닉네임·화살표·NEW 딱지·시각까지 제각각 다른 색을 쓰기
+   때문이다 — 전부를 한 번에 같은 만큼 물러나게 하는 건 opacity뿐이다.
+   알약이 제 몫으로 갖고 있던 반투명은 여기서 되돌린다: 겹치면 0.45×0.55라 글자가 아예
+   안 보인다. */
+.scr-activity-row-void { opacity: 0.55; }
+.scr-activity-row-void .scr-activity-row-status-faded,
+.scr-light-theme .scr-activity-row-void .scr-activity-row-status-faded { opacity: 1; }
 .scr-activity-row-desc {
   /* 조각들의 세로 기준은 가운데다(요청: 보기 좋으려면 밑선이 아니라 중심). 밑선으로 맞추면
      크기가 제각각인 조각(9px 배지 ~ 13px 닉네임)의 위쪽이 들쭉날쭉해 보인다. 한때 댓글 수만

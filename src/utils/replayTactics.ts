@@ -1921,7 +1921,15 @@ function detectFor(c: Ctx): Tactic[] {
   // 오타·장난까지 잡으려 들면 오탐이 늘어서, 통용되는 항복 표현만 좁게 본다.
   // gg / ㅈㅈ / ww — 셋 다 같은 말이다(지적). ww는 한글 자판에서 ㅈㅈ을 영문 상태로 친 것이고,
   // ㅈㅈ은 그 반대다. ㅎㅎ은 웃음이라 넣지 않는다.
-  const gg = s.chats.find((c) => /^\s*(g{2,}|w{2,}|ㅈ{2,}|지지|잘{1,2}했|잘하시네)/i.test(c.text));
+  /* 문장 어디에 있든 찾는다(지적: gg·노엘 모두 문장 안에 섞여 있는 경우가 많아 잘 찾아야
+     한다 — "ㅈㅈ요", "노엘이여", "ㄴㅇ~~"). 예전에는 문장 첫머리만 봐서 이런 것들이 통째로
+     빠졌다. 대신 갈래마다 오탐을 막는 울타리를 따로 둔다:
+      · gg·ww는 앞뒤가 알파벳이 아닐 때만 — 안 그러면 영어 낱말 속 gg가 걸린다.
+      · ㅈㅈ은 자모라 낱말 속에 섞일 일이 없어 그냥 본다.
+      · 지지·쥐쥐는 앞이 한글이 아닐 때만 — "무지지"처럼 낱말 꼬리에 걸리지 않게.
+      · 뒤에 ".영문"이 오면 뺀다 — "wwww.naver" 같은 주소가 유일한 오탐이었다. */
+  const GG_RE = /(^|[^a-z])(g{2,}|w{2,})(?!\.[a-z])([^a-z]|$)|ㅈ{2,}|(^|[^가-힣])(지지|쥐쥐)|잘{1,2}했|잘하시네/i;
+  const gg = s.chats.find((c) => GG_RE.test(c.text));
   if (gg) {
     out.push({ key: "gg", weight: 6, at: gg.frame, who });
   }
@@ -1930,8 +1938,8 @@ function detectFor(c: Ctx): Tactic[] {
      대사를 넣으면 좋겠다). GG와 달리 문장 어디에 나와도 잡는다 — "야 노엘 ㄱㄱ"처럼 앞에
      다른 말이 붙는 게 보통이다. 대신 'ㄴㅇ'은 두 글자뿐이라 다른 말에 우연히 섞이기 쉬워
      앞뒤가 한글이 아닐 때만 센다. */
-  const noElim = s.chats.find((c) => /노\s*엘/.test(c.text)
-    || /(^|[^가-힣])ㄴ\s*ㅇ([^가-힣]|$)/.test(c.text));
+  const NO_ELIM_RE = /노\s*엘|(^|[^가-힣])ㄴ\s*ㅇ(ㄹ)?([^가-힣]|$)/;
+  const noElim = s.chats.find((c) => NO_ELIM_RE.test(c.text));
   if (noElim) {
     out.push({ key: "no-elim", weight: 6, at: noElim.frame, who });
   }
