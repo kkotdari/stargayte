@@ -101,6 +101,12 @@ const HEAD_WIDE = 2.6;
 const MARK_ROOM = 12;
 /** 그 자리 안에서 이모지를 화살촉보다 이만큼 앞에 둔다. */
 const MARK_AHEAD = 5;
+/** 한 점에 모이는 화살표(큰 싸움)를 만나는 점에서 이만큼 못 미쳐 끝낸다 — 그 점 위에는
+ *  교전 이모지가 서 있어서, 여백 없이 정확히 닿게 두면 화살촉들이 이모지 밑에 통째로
+ *  깔린다(지적: "화살표 끝에서 교전 표시할 때 폭발 이모지에 화살촉들이 가려짐. 화살표 끝
+ *  위치를 좀 당겨서 보이게 하자"). 이모지가 차지하는 자리(MARK_ROOM)의 반지름만큼 물리면
+ *  촉이 그 가장자리 바로 밖에 선다 — 여전히 한 점을 둘러싸고 모이는 그림이다. */
+const CONVERGE_GAP = MARK_ROOM / 2 + 1;
 /** 유닛 이름표를 화살촉에서 이만큼 뒤(기둥 쪽)에 둔다(요청: 촉 위가 아니라 기둥 위,
  *  촉에 좀 가까운 쪽). 촉 위에 얹으면 촉을 덮고, 기둥 한가운데에 두면 어느 화살표의
  *  이름표인지 헷갈린다 — 촉 바로 뒤가 둘 다 피하는 자리다. */
@@ -139,10 +145,10 @@ function arrowGeom(a: MinimapArrow, w: number, h: number) {
   const gapFrom = Math.min(GAP_FROM, len * 0.2);
   // 이모지를 붙일 화살표는 그 자리만큼 더 짧게 끝낸다 — 안 그러면 이모지가 화살촉·목표
   // 아바타와 겹쳐 뭉친다(지적).
-  // 한 점에 모이는 화살표는 여백 없이 목표에 정확히 닿는다 — 그래야 여럿이 같은 자리에서
-  // 만난다(요청). 이모지 자리(MARK_ROOM)도 비우지 않는다: 그 이모지는 촉 앞이 아니라
-  // 만나는 점 위에 하나만 서기 때문이다(아래 tip).
-  const gapTo = a.converge ? 0
+  // 한 점에 모이는 화살표는 그 점을 조금 못 미쳐 끝낸다 — 점 위에 선 교전 이모지에 촉이
+  // 가리지 않을 만큼만(CONVERGE_GAP). 이모지 자리(MARK_ROOM)를 통째로 비우지는 않는다:
+  // 그 이모지는 촉 앞이 아니라 만나는 점 위에 하나만 서기 때문이다(아래 tip).
+  const gapTo = a.converge ? Math.min(CONVERGE_GAP, len * 0.3)
     : Math.min(a.deep ? GAP_TO_DEEP : GAP_TO, len * 0.22) + (a.mark ? MARK_ROOM : 0);
   const headLen = Math.min(HEAD_LEN, len * 0.3);
   const headWide = HEAD_WIDE * (headLen / HEAD_LEN);
