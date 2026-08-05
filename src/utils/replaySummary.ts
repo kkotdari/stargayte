@@ -1248,10 +1248,31 @@ function sideBeats(args: {
     const peeked = foeHomes.filter(
       (h) => scans.some((c) => Math.hypot(c.x - h.x, c.y - h.y) <= SCAN_BASE_TILES),
     ).length;
+    /* 어디를 열어 봤나 — 그 자리들을 그대로 실어 보낸다(지적: 스캔을 본진에 찍어 놓으면
+       어쩌나, 스캔한 곳들을 표시해야지). 그림 쪽은 이 좌표가 없으면 '그 사람이 그 무렵
+       명령을 낸 자리'로 대신 그리는데, 스캔은 커맨드센터가 제자리에서 쏘는 것이라 그
+       자리가 늘 제 본진이었다.
+       가까운 것끼리는 한 자리로 본다 — 한 곳을 두세 번 이어 찍은 것은 한 번 들여다본
+       것이고, 화살표도 겹쳐 그려진다. 시간순으로 훑으며 이미 잡은 자리와 SCAN_SPOT_TILES
+       안쪽이면 건너뛰고, 지도가 화살표로 덮이지 않게 SCAN_SPOT_MAX까지만 싣는다. */
+    /* 좌표는 [x1,y1,x2,y2,…] 한 줄로 편다 — beat의 p에 담을 수 있는 것이 스칼라와
+       그 배열뿐이라(ReplaySummaryBeat), 짝지어 담을 자리가 없다. 읽는 쪽이 둘씩 끊는다. */
+    const spotsXY: number[] = [];
+    const taken: [number, number][] = [];
+    for (const c of scans) {
+      if (taken.some((q) => Math.hypot(q[0] - c.x, q[1] - c.y) <= SCAN_SPOT_TILES)) continue;
+      taken.push([c.x, c.y]);
+      spotsXY.push(Math.round(c.x), Math.round(c.y));
+      if (taken.length >= SCAN_SPOT_MAX) break;
+    }
     beats.push({
       k: "vision", won, who: who(p), weight: peeked >= 2 ? 9 : 8,
       at: scans[0].frame,
-      p: { unit: "Scanner Sweep", n: scans.length, ...(peeked >= 2 ? { spots: peeked } : {}) },
+      p: {
+        unit: "Scanner Sweep", n: scans.length,
+        ...(peeked >= 2 ? { spots: peeked } : {}),
+        ...(spotsXY.length > 0 ? { spotsXY } : {}),
+      },
     });
   }
 
@@ -3963,6 +3984,10 @@ const COUNTER_MIN_EACH = 3;
 
 /** 스캔을 '정찰했다'고 말할 최소 횟수와, 그 좌표가 누구 집인지 볼 반경(타일).
  *  위 vision 주석에 실측이 있다. */
+/** 스캔 자리를 한 곳으로 묶는 반경(타일)과, 한 문장에 그릴 자리 수의 상한.
+ *  맵이 128×128이라 16타일은 '같은 진영 안'쯤이고, 다섯이면 지도가 안 덮인다. */
+const SCAN_SPOT_TILES = 16;
+const SCAN_SPOT_MAX = 5;
 const SCAN_SCOUT_MIN = 8;
 /** 그중 '자리를 보장할 만큼' 판을 훑어본 선 — 실측 테란 225명의 상위 10%가 열두 번이다. */
 const SCAN_RESERVE_MIN = 12;

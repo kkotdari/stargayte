@@ -1096,6 +1096,29 @@ export default function GameResultStory({
         else if (hubs[raw] && !moved.has(raw)) markSpot.set(raw, [hubs[raw][0], hubs[raw][1]]);
         else markSpot.delete(raw);
         if (ATTACKER_FACE_KEYS.has(b.k)) attacker.add(raw);
+        /* 스캔은 '어디를 열어 봤나'가 곧 그 이야기다(지적: 스캔에 웬 탱크, 그리고 스캔을
+           본진에 해? 스캔한 곳들을 표시해야지) — 요약이 실어 준 자리마다 화살표를 하나씩
+           낸다. 이름표는 안 붙인다: 스캔은 유닛으로 한 일이 아니라 커맨드센터가 쏘는
+           것이라, 그때 굴리던 병력 이름을 적으면 "스캔을 탱크로 했다"처럼 읽힌다.
+           좌표가 없는 옛 요약은 아래 예전 길(그 무렵 명령이 몰린 자리)로 간다. */
+        // 좌표는 [x1,y1,x2,y2,…] 한 줄로 실려 온다(replaySummary 주석) — 둘씩 끊는다.
+        const scanSpots: [number, number][] = [];
+        if (b.k === "vision" && Array.isArray(b.p?.spotsXY)) {
+          const flat = (b.p.spotsXY as unknown[]).filter((v): v is number => typeof v === "number");
+          for (let i = 0; i + 1 < flat.length; i += 2) scanSpots.push([flat[i], flat[i + 1]]);
+        }
+        if (scanSpots.length > 0 && actors.includes(raw)) {
+          const list = hits.get(raw) ?? [];
+          for (const sp of scanSpots) {
+            if (list.some((h) => dist(h.t, sp) <= ARROW_SAME_TILES)) continue;
+            list.push({ t: sp, flight: true, mark: em });
+          }
+          hits.set(raw, list);
+          // 본진에 얹히던 이모지의 이름표도 걷는다 — 화살표 쪽에 이름표를 안 붙이는 것과
+          // 같은 이유다.
+          markLabel.delete(raw);
+          continue;
+        }
         const t = target(b, raw);
         if (!t) continue;
         // 화살표 모양은 그 사람이 무엇으로 갔느냐다 — 협공 문장은 도와준 사람을 이름으로만
