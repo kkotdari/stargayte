@@ -34,7 +34,6 @@ interface AdminItem {
 export default function AdminMenu({ screen, onNavigate, variant, onOpenChange }: AdminMenuProps) {
   const items: AdminItem[] = [
     { key: "members", label: "회원", isActive: screen === "members", onSelect: () => onNavigate("members") },
-    { key: "leagues", label: "리그", isActive: screen === "leagues", onSelect: () => onNavigate("leagues") },
     // 상성맵은 운영 메뉴에서 뺐다(요청) — 이제 랭킹 화면(개인전)의 "상성맵" 버튼이
     // 오버레이(RivalryOverlay)로 띄운다. 운영 전용 화면(RivalryScreen) 자체는 남아 있다.
     // 제어판은 반대로 여기로 들어왔다(요청) — 예전엔 상성 범례의 "누르면" 글자를 연타해야

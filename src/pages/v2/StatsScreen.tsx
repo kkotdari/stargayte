@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Spinner } from "../../components/common/Feedback";
 import SearchFilterBar from "../../components/common/SearchFilterBar";
 import MonthCalendar from "../../components/common/MonthCalendar";
+import PickRow from "../../components/common/PickRow";
 import MemberStatRow, { type StatColumnMedals } from "../stats/MemberStatRow";
 import PointDetailModal from "./PointDetailModal";
 import RankTrendModal from "./RankTrendModal";
@@ -110,25 +111,6 @@ function PlainHead({ label, sub, className }: { label: string; sub?: string; cla
 /** 고를 값들을 낱말로 늘어놓는 한 줄 — 유형·종족·정렬이 같은 물건을 쓴다(요청: 유형·종족도
  *  정렬과 같은 스타일로). 알약 트랙을 두르던 때보다 폭이 훨씬 덜 든다: 트랙과 좌우 여백이
  *  사라지고 고른 낱말 하나만 배경을 갖는다. */
-function PickRow<T extends string>({ options, value, onChange, label }: {
-  options: { value: T; label: string }[]; value: T; onChange: (v: T) => void; label: string;
-}) {
-  return (
-    <div className="scr-stat-pickrow" role="group" aria-label={label}>
-      {options.map((o) => (
-        <button
-          key={o.value} type="button"
-          className={cx("scr-stat-pick", o.value === value && "scr-stat-pick-on")}
-          aria-pressed={o.value === value}
-          onClick={() => onChange(o.value)}
-        >
-          {o.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
 /** 필터 한 덩어리 — 이름표 + 그 값(요청: 필터에 각각 라벨). PC에서 넷이 한 줄에 서면
  *  무엇이 무엇인지가 낱말만으로는 안 갈린다("전체"가 종족인지 유형인지). */
 function FilterGroup({ label, children, className }: {

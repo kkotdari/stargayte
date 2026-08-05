@@ -165,12 +165,24 @@ export default function App() {
     scrollRootTo({ top: 0, left: 0, behavior: "instant" });
   }, [screen]);
 
-  // 화면이 바뀔 때마다 접속 기록에 "언제 어떤 화면을 봤는지" 남긴다(로그인 전이면 의미가
-  // 없으니 건너뛴다). 실패해도 화면 전환 자체를 막을 이유는 없어 결과를 기다리지 않는다.
+  /* 화면이 바뀔 때마다 접속 기록에 "언제 어떤 화면을 봤는지" 남긴다(로그인 전이면 의미가
+     없으니 건너뛴다). 실패해도 화면 전환 자체를 막을 이유는 없어 결과를 기다리지 않는다.
+
+     공유 링크(?sv=…)로 들어왔으면 그게 곧 본 화면이다(요청: "접속로그에 공유페이지
+     열어본거도 표시(어떤 페이지인지도)") — 그때는 screen이 URL에 남아 있던 옛 값이라
+     그대로 남기면 활동을 본 것처럼 기록된다. 화면은 "share"로, 무엇을 열었는지는
+     detail("gameResult#12" 꼴)로 따로 적는다. */
   useEffect(() => {
     if (!user) return;
+    if (shareTarget) {
+      const detail = shareTarget.type === "stack"
+        ? `stack#${shareTarget.day}`
+        : `${shareTarget.type}#${shareTarget.id}`;
+      void api.pingAccess("share", detail);
+      return;
+    }
     void api.pingAccess(screen);
-  }, [user, screen]);
+  }, [user, screen, shareTarget]);
 
   // 현재 화면을 URL에 반영 — 새로고침해도 같은 화면으로 돌아오도록.
   useEffect(() => {
@@ -225,7 +237,6 @@ export default function App() {
   // 접근 권한이 없는 화면으로 들어온 경우(예: URL 직접 조작) 실제로 보여줄 화면 —
   const resolvedScreen: ScreenKey =
     screen === "members" && !isAdmin ? "activity" :
-    screen === "leagues" && !isAdmin ? "activity" :
     screen === "minimaps" && !isAdmin ? "activity" :
     screen === "control" && !isAdmin ? "activity" :
     screen;
@@ -271,8 +282,9 @@ export default function App() {
             {!booting && resolvedScreen === "stats" && <StatsScreen />}
             {isAdmin && !booting && resolvedScreen === "members" && <MembersScreen />}
             {/* 운영자 전용 메뉴로 변경(요청) — 회원/이미지 설정과 같은 기준으로 운영자만 접근. */}
-            {/* 공식 리그 대진/결과 관리 — 다음 버전에서 열 예정, 지금은 운영자만(요청). */}
-            {isAdmin && !booting && resolvedScreen === "leagues" && <LeagueScreen />}
+            {/* 공식 리그 — 대진표는 회원 누구나 보고, 고치는 건 화면 안의 '수정' 토글이
+                운영자에게만 열어 준다(요청: 탭바로 옮기며 전체 공개). */}
+            {!booting && resolvedScreen === "leagues" && <LeagueScreen />}
             {/* 미니맵 — 맵마다 실제 미니맵 그림을 올려 두는 운영 화면(요청). */}
             {isAdmin && !booting && resolvedScreen === "minimaps" && <MinimapScreen />}
             {/* 제어판 — 모달이 아니라 정식 화면이다(요청). 들어오면 비밀번호부터 묻는다. */}

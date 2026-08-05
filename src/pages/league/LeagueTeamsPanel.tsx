@@ -1,8 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Plus, Trash2, UserPlus, X } from "lucide-react";
 import Select from "../../components/common/Select";
 import Avatar from "../../components/common/Avatar";
-import { Spinner } from "../../components/common/Feedback";
 import { useAppStore } from "../../store/appStore";
 import { api } from "../../api/client";
 import type { League } from "../../types";
@@ -191,7 +190,13 @@ function IndividualPlayerChip({
 // (요청: "팀구성 변경되면 대진표 다시로드"). 상한은 없다(요청: "팀수 무제한 개인전 선수
 // 무제한") — 대진표의 자리 수로도 막지 않는다: 판이 우승 자리 하나에서 시작해 나중에
 // 자라므로(요청) 자리로 막으면 팀부터 짜는 순서가 통째로 막힌다.
-export default function LeagueTeamsPanel({ league, onUpdated }: { league: League; onUpdated: (l: League) => void }) {
+export default function LeagueTeamsPanel({ league, onRegisterSave }: {
+  league: League;
+  /** 저장을 상위(LeagueScreen)의 '저장' 버튼 하나로 모은다(요청: "리그 저장 버튼 누르면
+   *  같이 저장") — 지금 고칠 게 있는지(dirty)와 실제로 보내는 함수(commit)를 넘겨 두면
+   *  상위가 팀구성 → 대진표 순서로 이어 부른다. 응답은 상위가 반영한다. */
+  onRegisterSave: (entry: { dirty: boolean; commit: () => Promise<League> } | null) => void;
+}) {
   const members = useAppStore((s) => s.members);
   const isIndividual = league.mode === "individual";
 
@@ -203,8 +208,6 @@ export default function LeagueTeamsPanel({ league, onUpdated }: { league: League
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [league]);
 
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState("");
   const [chainKey, setChainKey] = useState<string | null>(null);
   const keyCounter = useRef(0);
   const newKey = () => `new${keyCounter.current++}`;
@@ -275,18 +278,18 @@ export default function LeagueTeamsPanel({ league, onUpdated }: { league: League
     deleteTeam(key);
   };
 
-  const save = async () => {
-    setErr("");
-    setBusy(true);
-    try {
-      const payload = localTeams.map((t) => ({ id: t.id, roster: t.roster.map((r) => r.memberId) }));
-      onUpdated(await api.setLeagueTeamComposition(league.id, payload));
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "팀구성을 저장하지 못했어요.");
-    } finally {
-      setBusy(false);
-    }
-  };
+  /* 지금 화면의 팀 구성을 통째로 보낸다 — 부르는 쪽(상위의 '저장')이 응답을 반영한다.
+     useCallback으로 신원을 고정해 두지 않으면 아래 등록 effect가 매 렌더마다 다시 돈다. */
+  const commit = useCallback(
+    () => api.setLeagueTeamComposition(
+      league.id, localTeams.map((t) => ({ id: t.id, roster: t.roster.map((r) => r.memberId) })),
+    ),
+    [league.id, localTeams],
+  );
+  useEffect(() => {
+    onRegisterSave({ dirty, commit });
+    return () => onRegisterSave(null);
+  }, [dirty, commit, onRegisterSave]);
 
   return (
     <div className="scr-league-teams-panel">
@@ -297,20 +300,12 @@ export default function LeagueTeamsPanel({ league, onUpdated }: { league: League
         <div className="scr-league-teams-panel-actions">
           <button
             type="button" className="scr-btn scr-btn-sm"
-            onClick={addTeam} disabled={busy}
+            onClick={addTeam}
           >
             <Plus size={14} /> {isIndividual ? "선수 추가" : "팀 추가"}
           </button>
-          <button
-            type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm"
-            onClick={save} disabled={busy || !dirty}
-          >
-            {busy && <Spinner size={14} />} 팀구성 저장
-          </button>
         </div>
       </div>
-
-      {err && <div className="scr-err">{err}</div>}
 
       {localTeams.length === 0 ? (
         <div className="scr-empty">아직 {isIndividual ? "선수가" : "팀이"} 없어요</div>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { Spinner } from "../../components/common/Feedback";
@@ -360,8 +360,14 @@ function MatchEditModal({
 // 인원수와 무관하게 카드 높이를 통일해서(CARD_H) 쓰므로, 아래 두 칸의 정중앙에 위 칸이
 // 오도록 수학적으로 보장된다.
 export default function LeagueBracket({
-  league, canEdit, onUpdated,
-}: { league: League; canEdit: boolean; onUpdated: (l: League) => void }) {
+  league, canEdit, onUpdated, onRegisterSave,
+}: {
+  league: League; canEdit: boolean; onUpdated: (l: League) => void;
+  /** 저장은 상위(LeagueScreen)의 '저장' 버튼 하나로 모은다(요청: "리그 저장 버튼 누르면
+   *  같이 저장") — 팀구성과 함께 한 번에 나간다. 일시·결과 입력은 팝업이 그 자리에서
+   *  바로 보내므로(확정 뒤의 일이라 모아 둘 이유가 없다) 여기 안 걸린다. */
+  onRegisterSave: (entry: { dirty: boolean; commit: () => Promise<League> } | null) => void;
+}) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [confirmingBracket, setConfirmingBracket] = useState(false);
@@ -408,25 +414,23 @@ export default function LeagueBracket({
     }
   };
 
-  /* '대진표 저장' — 지금 화면의 모양과 배정을 통째로 한 번에 보낸다(요청). 서버가 그
-     목록대로 판을 다시 맞춘다: 그대로인 칸은 행을 그대로 두고, 없어진 칸은 지우고, 새
-     칸만 만든다. 비운 자리(null)는 서버가 어차피 전부 비우고 시작하므로 안 보낸다. */
-  const saveBracket = async () => {
-    setErr("");
-    setBusy(true);
-    try {
-      const assignments = Object.entries(seats)
-        .filter(([key, teamId]) => teamId !== null && inShape.has(pathOfSeat(key)))
-        .map(([key, teamId]) => ({
-          path: pathOfSeat(key), side: key.slice(-1) as LeagueMatchSide, teamId,
-        }));
-      onUpdated(await api.setLeagueBracket(league.id, shape, assignments));
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "대진표를 저장하지 못했어요.");
-    } finally {
-      setBusy(false);
-    }
-  };
+  /* 저장 — 지금 화면의 모양과 배정을 통째로 한 번에 보낸다(요청). 서버가 그 목록대로 판을
+     다시 맞춘다: 그대로인 칸은 행을 그대로 두고, 없어진 칸은 지우고, 새 칸만 만든다.
+     비운 자리(null)는 서버가 어차피 전부 비우고 시작하므로 안 보낸다.
+     부르는 쪽(상위의 '저장')이 응답을 반영한다 — 여기서 반영해 버리면 같은 버튼으로 이어
+     저장되는 팀구성 응답과 서로를 덮는다. */
+  const commit = useCallback(() => {
+    const assignments = Object.entries(seats)
+      .filter(([key, teamId]) => teamId !== null && inShape.has(pathOfSeat(key)))
+      .map(([key, teamId]) => ({
+        path: pathOfSeat(key), side: key.slice(-1) as LeagueMatchSide, teamId,
+      }));
+    return api.setLeagueBracket(league.id, shape, assignments);
+  }, [league.id, shape, seats, inShape]);
+  useEffect(() => {
+    onRegisterSave(canShape ? { dirty, commit } : null);
+    return () => onRegisterSave(null);
+  }, [canShape, dirty, commit, onRegisterSave]);
 
   /* 가지 치기/지우기 — 서버를 안 부르고 로컬 나무만 고친다. 가지를 치면 그 자리는 이제
      아래 경기 승자가 올라올 자리라 앉아 있던 팀이 풀리고, 지우면 반대로 다시 앉힐 수 있는
@@ -695,21 +699,12 @@ export default function LeagueBracket({
               {shape.length}경기 · 앉힐 자리 {Object.keys(seats).filter((k) => inShape.has(pathOfSeat(k))).length}
             </span>
           )}
-          {/* 모양도 배정도 로컬로만 고치고 이 버튼으로 한 번에 저장한다(요청). */}
-          {canShape && (
-            <button
-              type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid scr-btn-sm"
-              onClick={saveBracket} disabled={busy || !dirty}
-            >
-              {busy && <Spinner size={14} />} 대진표 저장
-            </button>
-          )}
         </div>
         {canShape && shape.length > 0 && (
           <button
             type="button" className="scr-btn scr-btn-sm"
             onClick={() => setConfirmingBracket(true)} disabled={busy || dirty}
-            title={dirty ? "먼저 대진표를 저장하세요" : undefined}
+            title={dirty ? "먼저 저장하세요" : undefined}
           >
             대진 확정
           </button>
@@ -731,7 +726,7 @@ export default function LeagueBracket({
           </div>
           <p className="scr-league-bracket-hint">
             우승 자리 왼쪽의 +를 눌러 가지를 칩니다. 필요한 가지에서만 다시 +를 누르면
-            한쪽만 깊은 대진도 만들 수 있어요. 다 짠 다음 '대진표 저장'을 누르세요.
+            한쪽만 깊은 대진도 만들 수 있어요. 다 짠 다음 위의 '저장'을 누르세요.
           </p>
         </>
       ) : (

@@ -697,12 +697,17 @@ export const api = {
     return request<Member>(`/api/members/${id}/withdraw`, { method: "POST" });
   },
 
-  // 화면을 전환할 때마다 호출 — 접속 기록에 "언제 어떤 화면을 봤는지" 남긴다.
-  // 실패해도 화면 전환 자체를 막을 이유는 없으므로 호출부에서 실패를 무시한다.
-  async pingAccess(screen: ScreenKey): Promise<void> {
+  /* 화면을 전환할 때마다 호출 — 접속 기록에 "언제 어떤 화면을 봤는지" 남긴다.
+     실패해도 화면 전환 자체를 막을 이유는 없으므로 호출부에서 실패를 무시한다.
+
+     detail은 그 화면 안에서 정확히 무엇을 봤는지다 — 지금은 공유 링크로 열린 카드
+     ("gameResult#12" 꼴)를 적는 데만 쓴다(요청: "접속로그에 공유페이지 열어본거도
+     표시(어떤 페이지인지도)"). 공유는 화면 코드가 다 같은 "share"라, 이게 없으면
+     무엇을 열어 봤는지가 통째로 안 남는다. */
+  async pingAccess(screen: ScreenKey | "share", detail?: string): Promise<void> {
     await request<void>("/api/auth/access-ping", {
       method: "POST",
-      body: JSON.stringify({ screen }),
+      body: JSON.stringify({ screen, detail: detail ?? null }),
     });
   },
 

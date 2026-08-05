@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Plus, Trash2, Pencil, Check, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Plus, Trash2, Pencil, Check, X, Save } from "lucide-react";
 import Select from "../../components/common/Select";
 import { Spinner } from "../../components/common/Feedback";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
@@ -60,6 +60,49 @@ export default function LeagueScreen() {
       .catch((e) => setError(e instanceof Error ? e.message : "리그 정보를 불러오지 못했어요."))
       .finally(() => setLoadingDetail(false));
   }, [selectedId]);
+
+  /* 저장 버튼 하나로 모은다(요청: "리그 저장 버튼 누르면 같이 저장") — 팀 패널과 대진표가
+     각자 "지금 고칠 게 있는지(dirty) + 실제로 보내는 함수(commit)"를 여기 등록해 두고,
+     이 화면이 팀구성 → 대진표 순서로 이어 부른다.
+
+     순서가 중요하다: 새 팀은 팀구성을 보내야 id가 생기고, 대진표 배정은 그 id를 가리킨다.
+     중간 응답(팀구성 결과)은 일부러 화면에 반영하지 않는다 — 반영하면 대진표 패널이 그
+     새 리그로 로컬 상태를 되돌리면서 아직 안 보낸 편집이 통째로 날아간다. 마지막 응답
+     하나만 반영하면 두 저장이 서로를 덮지 않는다. */
+  const saversRef = useRef<Record<string, { dirty: boolean; commit: () => Promise<League> }>>({});
+  const [dirtyCount, setDirtyCount] = useState(0);
+  const [saving, setSaving] = useState(false);
+  const recountDirty = () => setDirtyCount(
+    Object.values(saversRef.current).filter((e) => e.dirty).length,
+  );
+  const registerTeamsSave = useCallback(
+    (entry: { dirty: boolean; commit: () => Promise<League> } | null) => {
+      if (entry) saversRef.current.teams = entry; else delete saversRef.current.teams;
+      recountDirty();
+    }, [],
+  );
+  const registerBracketSave = useCallback(
+    (entry: { dirty: boolean; commit: () => Promise<League> } | null) => {
+      if (entry) saversRef.current.bracket = entry; else delete saversRef.current.bracket;
+      recountDirty();
+    }, [],
+  );
+  const saveAll = async () => {
+    setError("");
+    setSaving(true);
+    try {
+      let latest: League | null = null;
+      for (const key of ["teams", "bracket"] as const) {
+        const entry = saversRef.current[key];
+        if (entry?.dirty) latest = await entry.commit();
+      }
+      if (latest) handleLeagueUpdated(latest);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "저장하지 못했어요.");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleCreated = (created: League) => {
     setLeagues((prev) => [
@@ -152,7 +195,8 @@ export default function LeagueScreen() {
               들어가는 연필은 다시 누르면 닫히는 걸 막으려(요청) 편집 중엔 감추고, 나가는
               건 완료(체크)/취소(X)로만 한다. 둘 다 편집 모드를 벗어난다 — 하위 패널(팀/
               대진)은 각자 저장 버튼으로 즉시 반영하므로, 취소는 아직 저장 안 한 로컬
-              편집(예: 시드 이동)을 버리고 나가는 의미가 된다. */}
+              편집(예: 시드 이동)을 버리고 나가는 의미가 된다 — 저장은 이 줄의 저장
+              버튼 하나가 팀구성과 대진표를 함께 맡는다(요청). */}
           {isAdmin && (
             <div className="scr-league-btn-row">
               {!editMode ? (
@@ -165,6 +209,14 @@ export default function LeagueScreen() {
                 </button>
               ) : (
                 <>
+                  {/* 저장은 여기 하나뿐이다(요청) — 팀구성과 대진표를 한 번에 보낸다. */}
+                  <button
+                    type="button" className="scr-icon-btn scr-league-save-btn"
+                    onClick={saveAll} disabled={saving || dirtyCount === 0}
+                    aria-label="저장" title={dirtyCount === 0 ? "바뀐 게 없어요" : "저장"}
+                  >
+                    {saving ? <Spinner size={14} /> : <Save size={15} />}
+                  </button>
                   <button
                     type="button" className="scr-icon-btn"
                     onClick={() => setEditMode(false)}
@@ -201,8 +253,11 @@ export default function LeagueScreen() {
               {league.drawSize ? ` · 대진표 ${league.matches.length}경기` : ""}
             </span>
           </div>
-          {canEdit && <LeagueTeamsPanel league={league} onUpdated={handleLeagueUpdated} />}
-          <LeagueBracket league={league} canEdit={canEdit} onUpdated={handleLeagueUpdated} />
+          {canEdit && <LeagueTeamsPanel league={league} onRegisterSave={registerTeamsSave} />}
+          <LeagueBracket
+            league={league} canEdit={canEdit}
+            onUpdated={handleLeagueUpdated} onRegisterSave={registerBracketSave}
+          />
         </div>
       )}
 

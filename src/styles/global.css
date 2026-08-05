@@ -1967,8 +1967,8 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    이름이 sort~가 아닌 건 .scr-stat-sort-btn을 옛 컬럼 머리 정렬(지금은 안 쓰지만 규칙이
    아래 남아 있다)이 이미 쓰고 있어서다 — 같은 이름을 쓰면 그쪽 width:100%가 이겨서
    낱말들이 한 줄에 안 서고 세로로 쌓인다(실측). */
-.scr-stat-pickrow { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; }
-.scr-stat-pick {
+.scr-pickrow { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; }
+.scr-pick {
   padding: 3px 7px; border: none; border-radius: var(--radius-sm); background: none;
   font-family: inherit; font-size: var(--fs-caption); font-weight: 600;
   color: var(--dim); cursor: pointer; white-space: nowrap;
@@ -1979,12 +1979,12 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   -webkit-tap-highlight-color: transparent;
 }
 @media (hover: hover) {
-  .scr-stat-pick:not(.scr-stat-pick-on):hover { color: var(--text); background: rgba(255,255,255,0.10); }
-  .scr-light-theme .scr-stat-pick:not(.scr-stat-pick-on):hover { background: rgba(0,0,0,0.06); }
+  .scr-pick:not(.scr-pick-on):hover { color: var(--text); background: rgba(255,255,255,0.10); }
+  .scr-light-theme .scr-pick:not(.scr-pick-on):hover { background: rgba(0,0,0,0.06); }
 }
 /* 고른 것 하나만 또렷하게 — 알약탭과 같은 라이팅(다크=흰 알약, 라이트=하늘 알약)이라
    같은 화면 안에서 "지금 켜진 것"의 생김새가 하나로 읽힌다. */
-.scr-stat-pick-on {
+.scr-pick-on {
   color: #10151a; background: var(--lit-pill-bg); box-shadow: var(--lit-pill-glow);
 }
 /* 알약탭·달력도 같은 이유로 끈다 — 같은 줄에 선 것들끼리 누를 때의 반응이 달라 보이면
@@ -2886,6 +2886,19 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
 }
 .scr-search-filter-float { flex: 1 1 auto; min-width: 0; }
 
+/* 활동만 순서가 다르다 — 유저 검색이 먼저, 유형이 그 다음이다(요청: "순서는 유저 다음으로
+   이동"). DOM은 공용 부품(SearchFilterBar)이 필터→검색 순으로 그리므로 order로만 바꾼다.
+   좁아져서 둘이 한 줄에 못 서면 유형이 아래로 내려가고, 그 줄엔 그것 하나뿐이라 가운데에
+   선다(요청: "줄당 필터 1개씩이므로 가운데 정렬") — flex의 justify-content는 줄마다 따로
+   먹으므로, 검색이 있는 첫 줄은 flex:1로 폭을 다 채워 가운데 정렬의 영향을 안 받는다. */
+.scr-activity-screen .scr-filter-inline-stack {
+  /* 줄 간격은 라벨("유형") 높이만큼 벌린다 — 라벨이 컨트롤 위에 절대배치로 떠 있어서
+     (.scr-filter-item-label) 좁게 두면 윗줄 검색창 밑동에 겹쳐 붙는다. */
+  flex-wrap: wrap; justify-content: center; row-gap: 20px;
+}
+.scr-activity-screen .scr-search-filter-float { order: 1; flex: 1 1 220px; }
+.scr-activity-screen .scr-filter-panel { order: 2; }
+
 /* ===== 필터창(FilterPanel) — 검색창과 같은 자리에 뜨는 반투명 글라스 패널 =====
    요청: "반투명 글라스 플레이트에 화이트 폰트, 라디오는 액티브 알약탭" — 검색창정도의
    크기로. 화면마다(랭킹/경기/전적통계) 안에 들어가는 내용(PillTabs, 월 선택 등)만
@@ -3086,11 +3099,13 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
      폭 가득 찬 줄에 혼자 왼쪽으로 쏠려 보여서(지적됨) 이땐 가운데로 둔다. */
   .scr-filter-panel:has(> .scr-filter-item:only-child) { justify-content: center; }
   .scr-search-filter-float { width: 100%; }
-  /* 활동는 모바일에서도 유형+유저검색을 한 줄에(요청) — 세로 스택/폭 100% 규칙을 되돌려
-     유형(내용 폭)은 왼쪽, 유저검색은 남는 폭을 채운다. */
-  .scr-activity-screen .scr-filter-inline-stack { flex-direction: row; align-items: center; gap: 8px; }
-  .scr-activity-screen .scr-filter-panel { width: auto; justify-content: flex-start; }
-  .scr-activity-screen .scr-search-filter-float { width: auto; flex: 1 1 auto; min-width: 0; }
+  /* 활동는 모바일에서도 유저검색+유형을 한 줄에(요청) — 세로 스택/폭 100% 규칙을 되돌려
+     유저검색이 남는 폭을 채우고 유형(내용 폭)이 그 오른쪽에 붙는다. 폭이 모자라면 유형만
+     아래 줄로 내려가 가운데에 선다(위 base 규칙의 flex-wrap + justify-content). */
+  .scr-activity-screen .scr-filter-inline-stack {
+    flex-direction: row; align-items: center; column-gap: 8px;
+  }
+  .scr-activity-screen .scr-filter-panel { width: auto; justify-content: center; }
   /* (통계는 필터창 자체가 없어졌다 — 조건은 목록 위 제목 문장이 맡는다. .scr-grid-title 참고.) */
   .scr-filter-item-label { font-size: var(--fs-caption); }
   /* 모바일에서도 필터 요소(알약/달력/종족)를 base(PC)와 같은 크기 — 검색창 높이(34px)에 맞춘다
@@ -3197,14 +3212,14 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
    색은 라이트 테마가 알약에 쓰는 하늘색을 다크의 글자색으로 가져오고, 라이트는
    밝은 바탕에 얹히므로 그보다 진한 파랑을 쓴다 — 같은 하늘색을 쓰면 흰 바탕에 묻힌다.
    글자도 한 스텝 작다(요청) — 곁가지라는 것이 크기로도 읽힌다. */
-.scr-stat-filter-sort .scr-stat-pick { font-size: var(--fs-micro); }
-.scr-stat-filter-sort .scr-stat-pick-on {
+.scr-stat-filter-sort .scr-pick { font-size: var(--fs-micro); }
+.scr-stat-filter-sort .scr-pick-on {
   background: none; box-shadow: none; font-weight: 800;
   /* 값을 그대로 적는다 — var(--lit-rgb)는 테마마다 뒤집히는 토큰이라 다크에서는 흰색이
      되어 버린다(실측). 여기서 원하는 건 "라이트 테마의 하늘색"이라는 고정된 색이다. */
   color: rgb(140, 190, 255);
 }
-.scr-light-theme .scr-stat-filter-sort .scr-stat-pick-on { color: #2360c8; }
+.scr-light-theme .scr-stat-filter-sort .scr-pick-on { color: #2360c8; }
 /* 크기는 활동 화면 필터 라벨(.scr-filter-item-label)과 같은 값이다(요청: 활동보다 커서
    맞춰 달라) — 화면이 달라도 같은 자리의 글자는 같은 크기여야 한다. */
 .scr-stat-filter-label {
@@ -6969,6 +6984,10 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 .scr-league-summary-name { font-size: var(--fs-subhead); font-weight: 800; display: inline-flex; align-items: center; gap: 4px; }
 /* 리그명 아랫줄 — 수정/완료/취소/삭제 아이콘 버튼을 한 줄에 모은다(요청). */
 .scr-league-btn-row { display: flex; align-items: center; gap: 4px; margin-top: -2px; }
+/* 저장 하나로 모았다(요청: "리그 저장 버튼 누르면 같이 저장") — 같은 줄의 다른 아이콘
+   버튼과 달리 실제로 뭔가를 보내는 버튼이라, 고칠 게 있을 때만 포인트 색으로 켜진다. */
+.scr-league-save-btn:not(:disabled) { color: var(--accent); }
+.scr-league-save-btn:disabled { opacity: 0.4; cursor: default; }
 /* 완전한 알약(999px) 대신 평평한(광택 없이) 둥근 네모 — 정확한 스퀴클 곡률을 맞추기
    어려워 단순한 고정값 라운드로 정리한다(요청: "유튜브 로고 같은 형태를 만들기
    어려우면 그냥 둥근 네모로"). */

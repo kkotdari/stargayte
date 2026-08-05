@@ -4,8 +4,8 @@ import RankingShiftCard, { RankingShiftMenu, RANK_SHIFT_TITLE } from "./RankingS
 import { CalendarPlus, ClipboardList, MoreHorizontal, Phone, Upload } from "lucide-react";
 import { Spinner } from "../../components/common/Feedback";
 import SearchFilterBar from "../../components/common/SearchFilterBar";
-import Select from "../../components/common/Select";
 import FilterItem from "../../components/common/FilterItem";
+import PickRow from "../../components/common/PickRow";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 import KakaoShareButton from "../../components/common/KakaoShareButton";
 import { shareThumb } from "../../utils/kakaoShare";
@@ -60,6 +60,8 @@ interface ChallengeItem {
   withClock: boolean;
   /** 활동에서 꽂히는 자리 — 표시용 time과 다르다(challengeSortMs 주석 참고). */
   sortTime: number;
+  /** 날짜를 아직 안 정한 너 나와 — 목록 맨 위에 서고 시각 칸엔 "미정"이 적힌다(요청). */
+  undated: boolean;
   challenge: Challenge;
 }
 
@@ -122,6 +124,8 @@ function challengeItem(c: Challenge): ChallengeItem {
     // 시각 개념이 없어졌다(요청: 너 나와는 날짜만) — 헤더는 늘 날짜만 적는다.
     withClock: false,
     sortTime: challengeSortMs(c),
+    // 아직 안 끝난 것만 '미정'이다 — 끝난 건은 끝난 때가 있어 그 시각으로 적힌다.
+    undated: !c.scheduledDate && !ended,
     challenge: c,
   };
 }
@@ -132,6 +136,10 @@ export function isUpcomingChallenge(it: { kind: string; challenge?: Challenge })
   return it.kind === "challenge"
     && (it.challenge!.status === "pending" || it.challenge!.status === "confirmed");
 }
+
+/* 날짜 미정인 너 나와가 앉는 자리 — 실제 시각(ms, 지금 ≈1.8e12)보다 한참 크고 안전한
+   정수 범위(9e15) 안이라, 어떤 날짜와 견줘도 항상 위에 선다. */
+const UNDATED_SORT_BASE = 4e15;
 
 // 너 나와가 활동 어디에 꽂히나 — 표시용 시각(time)과 따로 계산한다.
 //
@@ -145,11 +153,14 @@ export function isUpcomingChallenge(it: { kind: string; challenge?: Challenge })
 function challengeSortMs(c: Challenge): number {
   const base = serverMs(c.scheduledAt ?? c.createdAt);
   if (c.status === "pending" || c.status === "confirmed") {
+    /* 날짜를 아직 안 정한 건 무조건 맨 위다(요청) — "언제 할지 정하자"가 목록에서 가장
+       먼저 눈에 띄어야 하는 일이고, 예정일이 없으니 시간축 어디에도 꽂을 자리가 없다.
+       실제 날짜들(≈1.8e12)보다 한참 큰 자리에 앉히고, 그 안에서는 늦게 올린 것이 위로
+       오게 등록 시각으로 줄을 세운다. */
+    if (!c.scheduledDate) return UNDATED_SORT_BASE + serverMs(c.createdAt);
     // 그날 끝(23:59:59)을 기준으로 잡아 같은 날 경기들보다 위에 서게 하고, 이미 지난
     // 약속이면 "지금 바로 위"까지 끌어올린다.
-    const endOfDay = c.scheduledDate
-      ? new Date(`${c.scheduledDate}T23:59:59`).getTime()
-      : base;
+    const endOfDay = new Date(`${c.scheduledDate}T23:59:59`).getTime();
     return Math.max(endOfDay, Date.now() + 1);
   }
   /* 취소·거절·버림·만료로 끝난 것은 '끝난 때'에 꽂는다 — 카드가 적는 시각도 그때이기
@@ -497,6 +508,20 @@ export function GameResultPost({
   );
 }
 
+/* 활동 유형 필터(요청: "전체/너 나와!/게임결과/리그 네 개") — 나열선택형이라 넷이 그대로
+   한 줄에 늘어선다. 랭크 변동은 목록에는 그대로 나오되 거르는 대상에서는 뺐다(요청이 넷을
+   못박았다) — '전체'에 포함되므로 안 보이게 되는 것은 없다.
+   리그는 아직 활동에 꽂히는 항목이 없어 지금은 늘 빈 목록이다 — 리그 경기가 활동으로
+   올라오기 시작하면 이 필터가 그대로 그걸 거른다. */
+type ActivityKindFilter = "all" | "call" | "gameResult" | "league";
+
+const KIND_OPTS: { value: ActivityKindFilter; label: string }[] = [
+  { value: "all", label: "전체" },
+  { value: "call", label: "너 나와!" },
+  { value: "gameResult", label: "게임결과" },
+  { value: "league", label: "리그" },
+];
+
 export default function ActivityScreen() {
   // 화면 배경 사진 — 이제 PC 다크에서만 깐다(요청: 라이트는 통째로, 다크는 모바일만 제거).
   // 그래서 모바일용·라이트용 사진은 넘기지 않는다(usePageBackground 주석 참고).
@@ -504,9 +529,7 @@ export default function ActivityScreen() {
   usePageBackground("/images/bg/stats_bg.jpg");
   // 검색/필터(기록실과 동일 구성) — 유저 검색, 경기유형, 게임번호. 불러온 활동 안에서 즉시 필터.
   const [search, setSearch] = useState("");
-  // 활동 유형 필터(요청: 분류(개인전/팀전) 제거하고 유형 드롭다운 추가). 게임결과/너나와/
-  // 일정/랭크변동으로 거른다 — 너나와=시간 미확정 도전장, 일정=시간 확정 도전장.
-  const [kindFilter, setKindFilter] = useState<"all" | "gameResult" | "call" | "schedule" | "rankingShift">("all");
+  const [kindFilter, setKindFilter] = useState<ActivityKindFilter>("all");
 
   /* 목록 한 줄을 눌러 펼친다 — 펼침은 한 번에 하나다. 여러 줄을 동시에 펴 두면 목록의
      값어치(한 화면에 많이)가 사라진다.
@@ -826,11 +849,11 @@ export default function ActivityScreen() {
   const passesFilter = useCallback(
     (item: ActivityItem): boolean => {
       if (kindFilter !== "all") {
-        // 도전장(시간 확정이든 아니든)은 전부 너나와(call)로 본다(요청). 일정은 추후
-        // 별도 아이템이 생기면 채워진다.
+        // 도전장은 전부 너나와(call)로 본다. 리그는 아직 활동에 꽂히는 항목이 없어
+        // 어떤 줄도 안 걸린다 — 생기면 여기에 그 종류를 더한다.
         const kind = item.kind === "gameResult" ? "gameResult"
-          : item.kind === "rankingShift" ? "rankingShift"
-          : "call";
+          : item.kind === "challenge" ? "call"
+          : null;
         if (kind !== kindFilter) return false;
       }
       if (searchTerms.length > 0) {
@@ -868,7 +891,7 @@ export default function ActivityScreen() {
   useEffect(() => {
     if (!filterActiveForCount) { setFilteredGameResultTotal(null); return; }
     // 게임결과가 아예 대상이 아닌 유형 필터는 물어볼 것도 없다.
-    if (kindFilter === "call" || kindFilter === "rankingShift") { setFilteredGameResultTotal(0); return; }
+    if (kindFilter !== "gameResult" && kindFilter !== "all") { setFilteredGameResultTotal(0); return; }
     let alive = true;
     setFilteredGameResultTotal(null);
     // 검색어는 글자마다 바뀌므로 잠깐 묵혔다 보낸다 — 타자 한 번에 한 번씩 묻지 않게.
@@ -1130,11 +1153,13 @@ export default function ActivityScreen() {
         key={`c-${item.challenge.id}`}
       >
         <ActivityCard
-          dateLabel={dateLabelOf(item)}
+          dateLabel={item.undated ? "미정" : dateLabelOf(item)}
           // 너 나와!는 "호출"이니 수화기 아이콘으로(요청) — 등록 메뉴·호출 버튼과 통일.
           icon={<Phone size={16} aria-hidden />}
           label="너 나와!"
-          timeText={formatWhen(item.time, { clock: item.withClock })}
+          // 날짜를 아직 안 정한 건 적을 시각이 없다 — 등록한 때를 적으면 그게 약속한
+          // 날인 것처럼 읽힌다(요청: 타임스탬프는 미정으로).
+          timeText={item.undated ? "미정" : formatWhen(item.time, { clock: item.withClock })}
           // 시각·마감·일시수정은 전부 '언제'에 대한 것이라 제목 바로 옆에 함께 둔다(요청).
           headMeta={<>
             {/* 응답 마감 실시간 카운트다운 — 날짜 옆, 헤더와 같은 폰트 크기(요청). */}
@@ -1277,21 +1302,10 @@ export default function ActivityScreen() {
         suggestions={suggestions}
         filterPanel={
           <FilterItem label="유형">
-            {/* 필터 패널 표준 드롭다운(.scr-filter-select, global.css) — 통계 종족
-                필터와 공유하는 공통 스타일(요청: 화면별 클래스 대신 표준화). */}
-            <Select
-              value={kindFilter}
-              onChange={(v) => setKindFilter(v as typeof kindFilter)}
-              size="sm"
-              minDropWidth={120}
-              className="scr-filter-select"
-              options={[
-                { value: "all", label: "전체" },
-                { value: "gameResult", label: "게임결과" },
-                { value: "call", label: "너 나와!" },
-                { value: "schedule", label: "일정" },
-                { value: "rankingShift", label: "랭크 변동" },
-              ]}
+            {/* 통계의 유형·종족 필터와 같은 나열선택형(요청) — 넷뿐이고 낱말이 짧아
+                드롭다운보다 좁고, 무엇을 고를 수 있는지도 열어 보지 않아도 보인다. */}
+            <PickRow
+              options={KIND_OPTS} value={kindFilter} onChange={setKindFilter} label="활동 유형"
             />
           </FilterItem>
         }
@@ -1365,7 +1379,9 @@ export default function ActivityScreen() {
                         "N일 전", 그보다 오래된 것만 날짜. 종류를 안 가리고 한 가지로 적는다
                         (예전에는 너 나와는 날짜만, 랭크 변동은 "12시간 전", 게임결과 묶음은
                         세션 날짜라 세 줄이 저마다 다른 말투였다). */}
-                    <span className="scr-activity-row-time">{formatAgo(item.time)}</span>
+                    <span className="scr-activity-row-time">
+                      {item.kind === "challenge" && item.undated ? "미정" : formatAgo(item.time)}
+                    </span>
                   </button>
                   {/* 게임결과는 요약(참가자 명단)을 건너뛰고 바로 경기 목록을 편다(요청) —
                       목록 줄이 이미 "n명 n경기"로 그 요약을 말했다. */}
