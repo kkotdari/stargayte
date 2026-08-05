@@ -2253,7 +2253,13 @@ html:not(.scr-light-theme) .scr-donut-band-label { fill: #fff; }
    길면 그만큼 밀려 서는 것이 맞고(요청: 자리가 변해도 된다), 그래야 어느 값의 메달인지가
    붙어 읽힌다. 자리를 비워 두지 않으니 칸의 오른쪽 여백도 왼쪽과 같아진다. */
 .scr-stat-medal {
-  margin-left: var(--scr-medal-gap); flex: none;
+  /* 값 글자의 오른쪽 끝에 매달린다 — 흐름에서 빼는 것이 핵심이다(지적: 메달 때문에 글자가
+     왼쪽으로 치우치거나 글자와 겹친다). 흐름에 두면 [값+메달]이 한 덩어리로 가운데에 서서
+     값 자체가 왼쪽으로 밀리고, 승률처럼 글자 쪽이 따로 절대배치된 자리에서는 둘이 서로를
+     모른 채 겹쳤다. left:100%는 값 글자의 오른쪽 끝이라, 값이 길든 짧든 메달이 그 끝을
+     따라가면서(요청) 값의 가운데 정렬은 건드리지 않는다. */
+  position: absolute; left: 100%; top: 50%; transform: translateY(-50%);
+  margin-left: var(--scr-medal-gap); pointer-events: none;
   /* 20 → 14px — 막대 위(트랙 안)에 앉으려면 트랙 높이(20px)를 넘으면 안 되고(트랙은
      overflow:hidden이라 잘린다), 같은 표의 메달이 자리마다 다른 크기인 것도 이상하다.
      포인트 줄의 메달도 같은 값을 쓴다. */
@@ -2267,11 +2273,16 @@ html:not(.scr-light-theme) .scr-donut-band-label { fill: #fff; }
    아니라 옆 칸에 덮인 것이었다(위 .scr-stat-rank-val). 덮인 것을 걷어내면 막대 쪽 메달과
    똑같이 보이므로, 자리마다 다른 그림이 되지 않게 필터는 도로 뺀다. */
 .scr-stat-rank-line { padding-right: 0; }
-.scr-stat-rank-val { display: inline-flex; align-items: center; min-width: 0; }
+.scr-stat-rank-val { position: relative; display: inline-flex; align-items: center; min-width: 0; }
+/* 승률 글자 — 메달이 이 글자의 오른쪽 끝에 매달리려면 기준이 글자 자신이어야 한다.
+   바깥 상자(.scr-stat-bar-rate-overlay)는 트랙 전체(inset:0)라 그걸 기준으로 두면
+   메달이 트랙 오른쪽 끝으로 날아간다. */
+.scr-stat-bar-rate-val { position: relative; display: inline-flex; align-items: center; }
 /* 여기서는 제 여백을 안 준다(지적: 단위까지 고려해서 자리를 잡아야 한다) — 메달 왼쪽에
    있는 것이 값이 아니라 버튼이고, 그 버튼이 이미 오른쪽에 6px을 물고 있다("포인트" 글자와
    버튼 경계 사이). 여기서 6px을 또 주면 눈에 보이는 사이가 12px이 되어, 막대 위 메달
-   (수와 6px)보다 두 배로 벌어진다(실측: 12px vs 6px). */
+   (수와 6px)보다 두 배로 벌어진다(실측: 12px vs 6px). 기준(left:100%)도 값 글자가 아니라
+   버튼의 오른쪽 끝이다. */
 .scr-stat-rank-val .scr-stat-medal { margin-left: 0; }
 /* (삭제) 랭크 줄기만 흐름으로 돌려 두던 예외 — 이제 모든 메달이 흐름이라 규칙 하나면 된다. */
 /* 트랙 배경을 채움 비율(--scr-value-fill, ValueBar.tsx 인라인 변수)까지는 진하게, 나머지는
@@ -2353,10 +2364,12 @@ html:not(.scr-light-theme) .scr-donut-band-label { fill: #fff; }
   --scr-stat-record-w: 580px;
   /* 랭크·포인트 줄기의 고정폭(위 .scr-stat-rank-col 주석) — 121 → 108px(요청: 너무 넓다).
      121px은 오른쪽에 메달 자리를 통째로 비워 두던 시절의 값이다. 메달이 값 옆으로 들어온
-     지금 이 줄기가 정말 필요한 폭은 101px이다(실측: 네 자리 포인트 "1,342 포인트"에
-     메달까지 붙였을 때. 실제 데이터의 세 자리면 89px이면 된다). 1px만 남기고 조인다 —
-     내준 19px은 막대 두 줄기가 나눠 갖는다. */
-  --scr-stat-rank-w: 102px;
+     102px까지 조였다가 120px로 되돌린다 — 메달을 값의 오른쪽에 매달되 값의 가운데 정렬은
+     건드리지 않기로 하면서(요청), 메달이 칸 안에 들어오려면 값 좌우로 그만큼씩 자리가
+     있어야 하기 때문이다: 값 83.1 + 2×(간격 6 + 메달 17.5) = 119px(실측, 네 자리 포인트
+     기준). 예전의 121px과 값이 비슷하지만 이유는 다르다 — 그때는 오른쪽에만 메달 자리를
+     비워 둔 값이었고, 지금은 값이 칸 한가운데에 서기 위한 최소폭이다. */
+  --scr-stat-rank-w: 120px;
   --scr-stat-build-w: 204px;
   --scr-stat-unit-w: 366px;
   --scr-stat-skill-w: 246px;

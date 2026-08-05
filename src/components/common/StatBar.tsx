@@ -43,8 +43,17 @@ export default function StatBar({ label, plays, wins, draws, losses, winRate, co
         style={trackStyle}
       >
         {/* 승률도 다른 막대(게임수/생산/APM/커맨드)처럼 막대 위에 겹쳐 그린다(요청). */}
-        {compact && <span className="scr-stat-bar-rate scr-stat-bar-rate-overlay">{rateText}</span>}
-        {medal && <span className="scr-stat-medal">{medal}</span>}
+        {/* 메달은 승률 글자 안이다(ValueBar와 같은 이유) — 여기선 더 나빴다: 승률 글자는
+            트랙 전체에 걸친 절대배치 상자(inset:0)가 가운데로 세우는데 메달만 흐름에
+            있어서, 둘이 서로를 모른 채 겹쳤다(지적한 스크린샷의 "70%"). */}
+        {compact && (
+          <span className="scr-stat-bar-rate scr-stat-bar-rate-overlay">
+            <span className="scr-stat-bar-rate-val">
+              {rateText}
+              {medal && <span className="scr-stat-medal">{medal}</span>}
+            </span>
+          </span>
+        )}
       </div>
     </div>
   );

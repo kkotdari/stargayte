@@ -26,11 +26,15 @@ export default function ValueBar({ value, maxValue, medal }: ValueBarProps) {
         className={value === null ? "scr-value-bar-track-wrap scr-value-bar-track-wrap-empty" : "scr-value-bar-track-wrap"}
         style={trackStyle}
       >
-        <span className="scr-value-bar-num">{value ?? "-"}</span>
-        {/* 수 바로 옆이다(요청) — 칸 우상단에 절대배치하던 것을 걷었다. 그 자리를 비워
-            두느라 칸마다 오른쪽 여백이 왼쪽보다 훨씬 넓었고(지적), 값이 짧은 줄에서는
-            메달이 저 혼자 멀찍이 떨어져 어느 값의 메달인지도 흐렸다. */}
-        {medal && <span className="scr-stat-medal">{medal}</span>}
+        {/* 메달은 수 '안'에 있다 — 수의 오른쪽 끝에 매달리되 자리를 차지하지 않는다
+            (지적: 메달 때문에 글자가 왼쪽으로 치우친다). 흐름에 두면 [수+메달]이 한
+            덩어리로 가운데에 서므로 수 자체는 그만큼 왼쪽으로 밀린다 — 막대 위의 수는
+            트랙 한가운데에 있어야 한다. 절대배치라 수의 가운데 정렬은 그대로고, 메달은
+            수가 길든 짧든 그 오른쪽 끝을 따라간다(요청). */}
+        <span className="scr-value-bar-num">
+          {value ?? "-"}
+          {medal && <span className="scr-stat-medal">{medal}</span>}
+        </span>
       </div>
     </div>
   );
