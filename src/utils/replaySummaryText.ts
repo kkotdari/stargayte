@@ -254,6 +254,15 @@ interface Ctx {
   /** 그 닉네임이 몇 팀인가 — 사람이 너무 많아 이름을 다 부를 수 없을 때 "1팀/2팀"으로
    *  뭉뚱그리는 데 쓴다(요청). 팀을 모르면 undefined. */
   teamOfName: (name: string) => 1 | 2 | undefined;
+  /** 이 문장이 가리키는 자리(p.xy)가 주어(who) 편의 집이었나 — 맺음말이 "몰아붙여"라고
+   *  말해도 되는지를 가른다(지적: "아군 기지에 몰아붙일 일이 없잖아").
+   *
+   *  판정을 여기서 하는 까닭은 그려 낼 때 이미 재료가 다 있어서다: 요약에는 사람마다
+   *  본진 자리(bases)가 실려 있고 맺음말에는 마지막 싸움터(p.xy)가 실려 있다. 분석 단계의
+   *  표시(p.held)에 기대면 이미 등록된 경기는 재분석해야 바뀌는데, 실제로 여러 번 재분석
+   *  해도 그 표시가 안 붙는 판이 있었다(신고). 그리는 쪽에서 재면 재분석이 필요 없고
+   *  판정이 하나라 어긋날 일도 없다. */
+  atHome: boolean;
   /** 여러 표현 중 하나를 고른다 — 같은 경기는 늘 같은 것이 나온다(아래 variantSeed 참고). */
   pick: (opts: string[]) => string;
 }
@@ -2440,7 +2449,9 @@ const TEMPLATES: Record<string, Tpl> = {
         `${neun(foeLabel)} 다 잡았던 경기를 ${by}내주고 말았음`,
       ]));
     }
-    const teamHeld = c.p.held === true;
+    // 분석 단계의 표시(p.held)와 그릴 때 재는 값(atHome) 중 하나만 맞아도 '제 집'이다 —
+    // 저장된 표시가 없는 옛 경기도 그림만 보고 바로 갈린다(위 atHomeOf 주석).
+    const teamHeld = c.p.held === true || c.atHome;
     const team = teamPhrase(c, teamHeld);
     if (team && (mode === "plain" || mode === "late")) {
       // "길게 끌어"는 쓰지 않는다(지적) — 장기전이었다는 말로 바꾼다.
@@ -2488,7 +2499,7 @@ const TEMPLATES: Record<string, Tpl> = {
       /* 제 집에서 막아 내고 끝낸 판은 "몰아붙였다"가 아니다(지적: 결론 전투 장소가 이긴
          팀 본진인 경우가 많은데 "정리했다"는 말이 어색하다) — 앞에 막아 냄·역공 스냅이
          따로 서 있으므로(replaySummary의 homeStand) 맺음말은 그 둘을 받아 맺는다. */
-      const held = c.p.held === true;
+      const held = c.p.held === true || c.atHome;
       body = held
         ? `${who} ${c.pick([
           `${p}받아쳐 경기를 끝냄`, `막아 낸 기세 그대로 ${p}판을 정리함`, `${p}되받아치며 끝냄`,
@@ -2556,6 +2567,10 @@ export function renderReplaySummary(
   return r ? r.lines.join(". ") : null;
 }
 
+/* 가장 가까운 집이 그다음 집보다 이만큼 이상 가까우면 '그 집 자리'로 본다 — 절반이면
+   충분히 뚜렷하고, 센터 싸움은 어느 집과도 거리가 비슷해 절대 걸리지 않는다. */
+const HOME_GROUND_CLEAR = 0.5;
+
 /** 문장 하나와 그 문장이 담고 있는 beat들. 타임라인이 문장 단위로 움직이므로(요청: 요약
  *  문장 하나당 스냅 하나) 문단을 이어 붙이기 전 단계가 필요하다 — 한 문장에 여러 beat가
  *  들어가는 일이 흔해서(같은 사람 이야기를 "…했고 …했다"로 잇는다), 문장을 다 만든 뒤
@@ -2574,6 +2589,30 @@ function renderLines(
   if (!isReplaySummaryData(data)) return null;
   // 개인전에서는 팀 용어("1팀의 …", "양 팀이 …")를 아예 쓰지 않는다(요청).
   const duel = data.duel === true;
+
+  /* 그 자리가 주어 편의 집이었나 — 맺음말이 "몰아붙여"라고 말해도 되는지를 가른다.
+     제 집에서 벌어진 싸움을 두고 몰아붙였다고 할 수는 없다(지적: "격전지가 이긴 편 본진인
+     게 중요한 게 아니라, 아군 기지에 몰아붙일 일이 없잖아").
+
+     재는 법은 '가장 가까운 집이 누구 것인가' 하나다. 반경으로 자르지 않는 이유: 반경은
+     맵 크기와 본진 간격에 흔들리고, 실제로 그것 때문에 본진 코앞의 싸움을 '아무의 집도
+     아님'으로 놓쳤다. 어느 집에 제일 가까운지는 그런 잣대가 필요 없다 — 센터 싸움은
+     어느 집과도 거리가 비슷해 어느 쪽으로도 기울지 않으므로, 두 번째로 가까운 집과
+     견줘 뚜렷하게 가까울 때만 '그 집 자리'로 본다. */
+  const bases = data.bases ?? {};
+  const atHomeOf = (b: ReplaySummaryBeat): boolean => {
+    const xy = b.p?.xy;
+    if (!Array.isArray(xy) || xy.length !== 2
+      || typeof xy[0] !== "number" || typeof xy[1] !== "number") return false;
+    const ranked = Object.entries(bases)
+      .map(([raw, h]) => ({ raw, d: Math.hypot(xy[0] - h[0], xy[1] - h[1]) }))
+      .sort((x, y) => x.d - y.d);
+    const nearest = ranked[0];
+    const runnerUp = ranked[1];
+    if (!nearest || !runnerUp) return false;
+    if (nearest.d > runnerUp.d * HOME_GROUND_CLEAR) return false;
+    return (b.who ?? []).includes(nearest.raw);
+  };
   const out: string[] = [];
   // out과 나란히 가는 '이 문장은 어느 beat들로 만들어졌나'. 아래 문장을 새로 놓는 자리와
   // 앞 문장에 이어 붙이는 자리가 여러 군데라, 그 두 가지를 함께 처리하는 자리를 하나 둔다.
@@ -2940,6 +2979,7 @@ function renderLines(
         p: b.p ?? {},
         names: (v) => list(v).map(resolveName).filter(Boolean),
         teamOfName: (name) => teamOf?.(name),
+        atHome: atHomeOf(b),
         pick: (opts) => {
           const t = opts[(seed + offset) % opts.length];
           if (!lead || !firstPick) return t;
