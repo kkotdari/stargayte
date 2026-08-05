@@ -958,7 +958,37 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
 @media (hover: hover) { .scr-photo-close:hover { background: var(--panel); color: var(--text); } }
 
 /* ===== boot ===== */
-.scr-boot { min-height: 40vh; display: flex; align-items: center; justify-content: center; gap: 10px; color: var(--muted); font-size: var(--fs-subhead); }
+/* 기다리는 자리 — 화면 한가운데에 워드마크만 뜬다(요청: 글과 스피너 대신). 높이를
+   화면의 큰 몫으로 잡아야 "가운데"가 화면 가운데로 읽힌다. */
+.scr-boot {
+  min-height: 68vh; min-height: 68dvh;
+  display: flex; align-items: center; justify-content: center;
+}
+.scr-boot-mark {
+  display: flex; align-items: baseline;
+  font-family: 'Orbitron', var(--font-ui); font-weight: 900;
+  font-size: 24px; letter-spacing: 0.34em;
+  /* 자간이 글자 오른쪽에만 붙어 덩어리가 왼쪽으로 치우친다 — 그 한 칸을 되돌려 가운데를 맞춘다. */
+  margin-left: 0.34em;
+  color: #fff;
+}
+/* 왼쪽부터 한 글자씩 켜졌다가 다 켜지면 함께 사라지고 다시 시작한다. 글자마다 시작만
+   어긋나게 두면(인라인 animation-delay) 순서가 저절로 생긴다. */
+.scr-boot-mark-ch {
+  opacity: 0;
+  animation: scr-boot-letter 2.6s ease-in-out infinite;
+}
+@keyframes scr-boot-letter {
+  0% { opacity: 0; }
+  14% { opacity: 1; }
+  72% { opacity: 1; }
+  86%, 100% { opacity: 0; }
+}
+/* 움직임을 줄여 달라고 한 기기에서는 켜진 채로 둔다 — 기다리는 중이라는 사실은 워드마크가
+   떠 있는 것만으로 충분하다. */
+@media (prefers-reduced-motion: reduce) {
+  .scr-boot-mark-ch { opacity: 1; animation: none; }
+}
 
 /* ===== modal ===== */
 /* touch-action: none — 배경(오버레이) 쪽 터치는 브라우저가 아예 스크롤 제스처 대상으로
@@ -7846,14 +7876,18 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 /* 상태 알약이 앉을 자리 — 너 나와만 채워지고 나머지 줄은 빈 채로 남지만, 폭은 늘 잡아
    둔다(지적: "너 나와 말고는 배지가 없잖아"). 안 그러면 게임결과 줄만 닉네임이 왼쪽으로
    당겨져 목록의 세로줄이 어긋난다. 폭은 두 글자 알약 실측(38px)에 맞췄다. */
-.scr-activity-row-status-slot { flex: 0 0 38px; display: flex; align-items: center; }
+/* 폭은 두 글자 알약 실측(10px 글자 기준 30px)에 맞춘다. 뒤따르는 이름과의 사이는 칸의
+   공용 간격(6px)에서 제 오른쪽만 되돌려 좁힌다(요청) — 다른 조각들 사이는 그대로 6px이다. */
+.scr-activity-row-status-slot { flex: 0 0 30px; display: flex; align-items: center; margin-right: -2px; }
 /* 알약 자체 — 둥근 네모, 다크는 흰 바탕에 검은 글자(요청). 라이트는 그 반대라야 같은
    무게로 읽힌다. 글자는 이 칸 본문(caption 14)에서 두 스텝 아래(11px, 요청). */
 .scr-activity-row-status {
   display: inline-flex; align-items: center; justify-content: center;
-  padding: 2px 6px; border-radius: 6px;
+  /* 높이는 살짝 낮춘다(요청) — 위아래 패딩과 줄높이를 한 번씩 줄인다. */
+  padding: 1px 5px; border-radius: 6px;
   background: #fff; color: #111;
-  font-size: var(--fs-11); font-weight: 700; line-height: 1.35; white-space: nowrap;
+  /* 글자는 한 스텝 더(요청) — 11 → 10px. */
+  font-size: var(--fs-10); font-weight: 700; line-height: 1.3; white-space: nowrap;
 }
 .scr-light-theme .scr-activity-row-status { background: #16181d; color: #fff; }
 .scr-activity-row-desc {

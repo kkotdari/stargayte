@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useAppStore } from "./store/appStore";
 import { isAdminRole } from "./constants/roles";
-import { Spinner } from "./components/common/Feedback";
 import ScrollTopButton from "./components/common/ScrollTopButton";
 import { api } from "./api/client";
 import { useBottomViewportInset } from "./hooks/useBottomViewportInset";
@@ -59,6 +58,25 @@ function shareTargetFromUrl(): ShareTarget | null {
     return { type: sv, id };
   }
   return null;
+}
+
+/** 기다리는 동안 화면 한가운데에 뜨는 것 — 워드마크를 왼쪽부터 한 글자씩 흰 글씨로
+ *  띄운다(요청). "세션 확인 중"·"데이터 불러오는 중" 글과 스피너를 대신한다.
+ *
+ *  글자마다 같은 애니메이션을 걸고 시작 시각만 어긋나게(animation-delay) 주면 왼쪽부터
+ *  차례로 켜진다 — 자바스크립트 타이머가 없으니 기다림이 길어져도 부담이 없고, 무한
+ *  반복이라 얼마나 걸릴지 몰라도 화면이 멈춘 것처럼 보이지 않는다. */
+const BOOT_MARK = "STARGAYTE";
+function BootMark() {
+  return (
+    <div className="scr-boot" role="status" aria-label="불러오는 중">
+      <span className="scr-boot-mark" aria-hidden>
+        {[...BOOT_MARK].map((ch, i) => (
+          <span key={i} className="scr-boot-mark-ch" style={{ animationDelay: `${i * 0.11}s` }}>{ch}</span>
+        ))}
+      </span>
+    </div>
+  );
 }
 
 export default function App() {
@@ -196,7 +214,7 @@ export default function App() {
 
   if (restoringSession) {
     return (
-        <div className="scr-app scr-app-fallback-scroll" id="scr-app"><div className="scr-boot"><Spinner size={22} /> 세션 확인 중...</div></div>
+        <div className="scr-app scr-app-fallback-scroll" id="scr-app"><BootMark /></div>
     );
   }
 
@@ -229,7 +247,7 @@ export default function App() {
           <div className="scr-bg-grid" />
           <InAppBrowserNotice />
           {booting
-            ? <div className="scr-boot"><Spinner size={22} /> 데이터 불러오는 중...</div>
+            ? <BootMark />
             : <SharePage target={shareTarget} onExit={exitShare} />}
         </div>
     );
@@ -271,7 +289,7 @@ export default function App() {
           />
           <main className="scr-main">
             {booting && (
-              <div className="scr-boot"><Spinner size={22} /> 데이터 불러오는 중...</div>
+              <BootMark />
             )}
             {/* 화면을 옮기면 이전 화면은 언마운트한다 — 필터/검색/스크롤 등 화면별 상태를
                 더 이상 기억하지 않고, 돌아올 때마다 항상 처음 상태로 새로 불러온다(요청:
