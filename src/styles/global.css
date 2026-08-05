@@ -3336,8 +3336,12 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
    같은 높이·톤으로 둬서 한 줄이 하나의 띠로 읽힌다. */
 .scr-month-cal { position: relative; display: inline-flex; }
 .scr-month-cal-trigger {
-  display: inline-flex; align-items: center; gap: 5px;
-  height: 30px; padding: 0 10px; box-sizing: border-box;
+  /* 크기와 자리는 옆의 필터 낱말(.scr-pick)과 똑같이 맞춘다(요청) — 한 줄에 나란히 서는
+     같은 결의 조각인데 이것만 30px이라 6px 더 높았고, 그만큼 위로 삐져나와 줄이 어긋나
+     보였다. 고정 높이 대신 같은 패딩(3px 7px)을 줘서 글자가 높이를 정하게 한다 —
+     둘 다 14px 글자라 자연히 같은 24px이 된다. 아이콘(14px)은 그 안에 들어온다. */
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 7px; box-sizing: border-box;
   border: none; border-radius: var(--radius-sm); cursor: pointer;
   background: rgba(255,255,255,0.08); color: var(--text);
   font-family: inherit; font-size: var(--fs-caption); font-weight: 600; white-space: nowrap;
