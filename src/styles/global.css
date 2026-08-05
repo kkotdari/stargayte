@@ -7743,8 +7743,9 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   /* 제목 칸은 딱지가 빠진 만큼 도로 좁힌다(요청) — 92 → 76px. 92px은 제목 위에 얹혀
      있던 "UPDATE"(37.4px)가 쓰던 폭이었고, 그 딱지가 내용 칸으로 옮겨 간 지금은 제목
      글자만 남는다. 가장 긴 제목("일일 랭크 변동")이 66px 자리에 그대로 들어온다. 내준
-     16px은 내용 칸(1fr)이 가져간다. */
-  grid-template-columns: 76px minmax(0, 1fr) 106px;
+     16px은 내용 칸(1fr)이 가져간다. 오른쪽 여백을 6px로 좁힌 만큼 한 번 더 조인다
+     (요청) — 76 → 72px, 글자 자리는 66px 그대로다. */
+  grid-template-columns: 72px minmax(0, 1fr) 106px;
   /* 위아래 여백은 줄이 아니라 각 칸이 낸다(아래 규칙) — 줄이 내면 그 여백이 격자 밖이라
      칸 높이가 글자 높이(18px)에 그치고, 세로 구분선도 딱 그만큼만 그려진다(실측). 칸이
      내면 칸이 줄 높이를 통째로 채워 선이 위아래 줄과 맞닿는다. */
@@ -7790,6 +7791,11 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   /* 딱지(.scr-activity-row-flag)가 이 칸을 기준으로 앉는다. */
   position: relative;
 }
+/* 오른쪽 여백만 좁힌다(요청) — 칸의 공용 값(10px)은 글자와 글자 사이를 띄우라고 있는
+   건데, 이 칸의 오른쪽은 글자가 아니라 세로 구분선이 받는다. 선까지 10px을 띄우면 그만큼
+   제목이 쓸 자리가 줄고, 그 자리가 아쉬워 칸 폭을 못 줄이고 있었다. `> *`(0,1,0)을
+   이기려면 이 선택자가 더 무거워야 한다. */
+.scr-activity-row > .scr-activity-row-title { padding-right: 6px; }
 /* 제목 글자와 번호를 함께 쥐는 껍데기 — 번호가 글자의 왼쪽 끝에 맞춰 앉으려면 기준이
    글자여야 한다(칸이 기준이면 칸 모서리로 가서 제목과 떨어진다). 글자 폭만큼만 차지하고
    칸 안에서 가운데 선다. */
@@ -7833,10 +7839,14 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   display: inline-flex; align-items: center; justify-content: center;
   /* 높이는 살짝 낮춘다(요청) — 위아래 패딩과 줄높이를 한 번씩 줄인다.
      좌우 패딩과 모서리도 아주 살짝(요청): 5 → 4px, 6 → 5px.
-     위아래 패딩은 반 픽셀씩 어긋나게 준다(요청: 글자를 아주 살짝 위로) — 한글 글자는
-     제 상자 안에서 아래쪽에 앉아 있어, 위아래를 똑같이 주면 눈에는 글자가 내려앉아
-     보인다. 합(2px)은 그대로라 알약 높이는 안 변한다. */
-  padding: 0.5px 3px 1.5px; border-radius: 4px;
+     위아래를 어긋나게 줘 글자를 살짝 올렸었는데(0.5/1.5px), 글자를 9px로 한 번 더
+     줄인 뒤로는 그 어긋남이 과했다(지적: "글자가 너무 올라감") — 같은 1px씩으로
+     되돌린다. 합(2px)은 그대로라 알약 높이는 안 변한다.
+     여기가 이 알약에서 고를 수 있는 가장 가운데다(잉크를 스크린샷 픽셀로 실측:
+     1/1은 위 2.50 / 아래 3.17, 1.5/0.5는 위 3.50 / 아래 2.17). 0.25px 같은 소수는
+     렌더에서 반올림돼 아무 일도 안 일어나고, 0.5px을 옮기면 잉크가 통째로 1px
+     내려가 반대쪽으로 더 치우친다. */
+  padding: 1px 3px; border-radius: 4px;
   background: #fff; color: #111;
   /* 글자는 또 한 스텝(요청: "더 줄이고") — 11 → 10 → 9px. */
   font-size: var(--fs-9); font-weight: 700; line-height: 1.3; white-space: nowrap;
@@ -7912,14 +7922,20 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
      내용 칸이 이 목록에서 줄마다 실제로 달라지는 유일한 칸인데, 좁은 화면에서 닉네임 둘과
      상태 배지·댓글 수까지 담느라 늘 말줄임에 걸렸다. 제목은 되풀이되는 낱말 몇 개뿐이라
      조금 잘려도 모양만으로 읽힌다.
-     딱지가 내용 칸으로 옮겨 간 뒤 더 조여 보려다 되돌렸다(62px 시도 → 실측: 글자 자리
-     54px에서 "랭크 변동"(60)과 "게임결과"(56)가 둘 다 잘렸다). 모바일의 70px은 애초에
-     딱지가 아니라 가장 긴 제목이 정한 값이라 내줄 폭이 없다 — 딱지는 제목 글자 위 별도
-     줄에 얹혀 있어 칸 폭을 쓰지 않았다. 폭이 줄어든 건 PC 쪽(92 → 76px)뿐이다. */
-  .scr-activity-row { grid-template-columns: 70px minmax(0, 1fr) 84px; }
+     딱지가 내용 칸으로 옮겨 간 뒤 더 조여 보려다 한 번 되돌렸다(62px 시도 → 실측: 글자
+     자리 54px에서 "랭크 변동"(60)과 "게임결과"(56)가 둘 다 잘렸다). 모바일의 70px은
+     제목 글자가 정한 값이라 그냥은 내줄 폭이 없었다.
+     오른쪽 여백을 8 → 4px로 좁혀(요청) 글자 자리를 62 → 66px로 벌린 뒤, 그 여유만큼
+     칸을 66px로 조인다 — 글자 자리는 62px 그대로다. */
+  .scr-activity-row { grid-template-columns: 66px minmax(0, 1fr) 82px; }
   .scr-activity-row > * + * { padding-left: 8px; }
   .scr-activity-row > * { padding-right: 8px; }
   .scr-activity-row > *:last-child { padding-right: 0; }
+  .scr-activity-row > .scr-activity-row-title { padding-right: 4px; }
+  /* 시각 칸도 줄인다(요청) — 84 → 82px. 구분선과 글자 사이를 8 → 6px로 좁혀 글자 자리는
+     그대로다. 가장 긴 값은 "다음주 화요일"이 아니라 해가 바뀐 날짜("20년 12월 30일")고,
+     80px에서는 그게 1px 모자라 잘렸다(실측) — 두 칸을 합쳐 내용 칸이 8px을 가져간다. */
+  .scr-activity-row > .scr-activity-row-time { padding-left: 6px; }
   /* (윗줄은 이제 칸이 아니라 제목 글자를 기준으로 서므로 칸 패딩과 무관하다.) */
 }
 /* 여닫는 연출(요청: 페이드 없이, 아래 목록이 내려가고 올라가면서 자연스럽게 드러나기).
