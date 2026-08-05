@@ -137,6 +137,37 @@ export function burstsOf(frames: number[]): { from: number; to: number; n: numbe
 const UNIT_BUILD_FRAMES: Record<string, { frames: number; from: string }> = {
   Carrier: { frames: 2100, from: "Stargate" },
   Battlecruiser: { frames: 2000, from: "Starport" },
+  /* 커맨드는 '큐에 넣은 명령'이라 연타·큐 쌓기가 그대로 유닛 수가 된다(위 주석의 캐리어
+     실측). 초반 러시 수에서도 똑같이 터졌다(지적: "1분대에 웬 질럿수가 저렇게 많아") —
+     실측한 경기는 3게이트인데 첫 질럿 뒤 90초 안에 질럿 커맨드가 21개였다. 게이트 셋으로
+     90초면 아무리 잘해야 여섯 기다.
+     그래서 건물이 병목인 종족(프로토스·테란)의 주력 생산 유닛을 표에 올린다. 저그는
+     라바가 병목이라 이 모델이 안 맞아 넣지 않는다 — 그쪽은 손대지 않고 커맨드를 그대로
+     쓴다. 프레임은 실제 생산시간(초) ÷ SECONDS_PER_FRAME. */
+  Zealot: { frames: 952, from: "Gateway" },
+  Dragoon: { frames: 1190, from: "Gateway" },
+  "High Templar": { frames: 1190, from: "Gateway" },
+  "Dark Templar": { frames: 1190, from: "Gateway" },
+  Marine: { frames: 571, from: "Barracks" },
+  Firebat: { frames: 571, from: "Barracks" },
+  Medic: { frames: 714, from: "Barracks" },
+  Ghost: { frames: 1190, from: "Barracks" },
+  Vulture: { frames: 714, from: "Factory" },
+  "Siege Tank (Tank Mode)": { frames: 1190, from: "Factory" },
+  Goliath: { frames: 952, from: "Factory" },
+  Wraith: { frames: 1428, from: "Starport" },
+  Valkyrie: { frames: 1190, from: "Starport" },
+  Dropship: { frames: 1190, from: "Starport" },
+  "Science Vessel": { frames: 1904, from: "Starport" },
+  Scout: { frames: 1904, from: "Stargate" },
+  Corsair: { frames: 952, from: "Stargate" },
+  Arbiter: { frames: 3809, from: "Stargate" },
+};
+
+/* 생산 건물도 지어지는 데 시간이 걸린다 — buildingFrames에 남는 건 '짓기 시작한' 프레임이라,
+   그대로 쓰면 게이트를 누른 그 순간부터 질럿이 나오는 셈이 된다. 표에 없는 건물은 0이다. */
+const BUILDING_BUILD_FRAMES: Record<string, number> = {
+  Gateway: 1428, Barracks: 1904, Factory: 1904, Starport: 1666, Stargate: 1666,
 };
 
 /** 그 유닛이 실제로 완성됐을 프레임들 — 생산 건물 수를 상한으로 큐를 흉내 내고, 판이
@@ -152,7 +183,8 @@ export function producedFrames(
   if (!spec || cmds.length === 0) return cmds;
   const producers = s.buildingFrames[spec.from] ?? [];
   if (producers.length === 0) return cmds;
-  const freeAt = [...producers].sort((a, b) => a - b);
+  const ready = BUILDING_BUILD_FRAMES[spec.from] ?? 0;
+  const freeAt = producers.map((f) => f + ready).sort((a, b) => a - b);
   const out: number[] = [];
   for (const f of cmds) {
     // 가장 먼저 비는 생산 건물에 넣는다 — 비어 있으면 곧바로, 아니면 그 건물이 빌 때까지 줄을 선다.
@@ -894,8 +926,17 @@ function detectFor(c: Ctx): Tactic[] {
    *  세는 창이 +180초면 중앙 20기가 된다 — 그건 러시 병력이 아니라 3분 동안의 생산량이다.
    *  +90초면 중앙 12기(닿을 무렵 뽑아 둔 것 + 곧바로 따라붙은 것)이고, 닿은 순간까지만
    *  세면 중앙 3기로 이번엔 너무 적다(뒤따라 들어간 병력이 통째로 빠진다). */
-  const rushSize = (unit: string, from: number): number =>
-    (s.unitFrames[unit] ?? []).filter((f) => f <= from + RUSH_SIZE_SEC / SECONDS_PER_FRAME).length;
+  /* 러시에 실린 수 — 커맨드가 아니라 '그때까지 실제로 나올 수 있었던 수'다(지적: 1분대에
+     질럿 수가 말이 안 된다). 생산 건물 수와 생산시간으로 줄을 세워 센다(producedFrames).
+     저그처럼 표에 없는 유닛은 예전대로 커맨드를 그대로 센다. */
+  const rushSize = (unit: string, from: number): number => {
+    const made = producedFrames(s, unit, endFrame);
+    if (made.length === 0) return 0;
+    // 창의 기준은 '첫 유닛이 나온 때'다 — 커맨드를 누른 때부터 재면 생산시간만큼이 창에서
+    // 그냥 깎여 나간다(from은 커맨드 프레임이다).
+    const start = Math.max(from, Math.min(...made));
+    return made.filter((f) => f <= start + RUSH_SIZE_SEC / SECONDS_PER_FRAME).length;
+  };
   const firstB = (n: string): number | null => s.firstBuildingFrame[n] ?? null;
   const tanks = u("Siege Tank (Tank Mode)") + u("Siege Tank (Siege Mode)");
   const who = rawName;
@@ -925,8 +966,11 @@ function detectFor(c: Ctx): Tactic[] {
   const wentWith = (at: number): { unit: string; n: number } | null => {
     const from = at - WENT_WITH_SEC / SECONDS_PER_FRAME;
     let best: { unit: string; n: number } | null = null;
-    for (const [unit, fs] of Object.entries(s.unitFrames)) {
+    for (const unit of Object.keys(s.unitFrames)) {
       if (RAID_UNIT_EXCLUDE.has(unit)) continue;
+      // 커맨드가 아니라 실제로 나올 수 있었던 수다 — 큐를 쌓아 둔 만큼이 그대로 병력 수가
+      // 되면 "질럿 69기를 몰고 들이침" 같은 수가 나온다(위 producedFrames 주석).
+      const fs = producedFrames(s, unit, endFrame);
       const n = fs.filter((f) => f >= from && f <= at).length;
       if (n > 0 && (!best || n > best.n)) best = { unit, n };
     }
@@ -1128,17 +1172,24 @@ function detectFor(c: Ctx): Tactic[] {
     // 시점은 '가장 크게 몰아 뽑은 묶음'에 건다. 예전엔 총량 이야기라며 시점을 안 뒀는데,
     // 시점 없는 문장은 맺음말 바로 앞으로 밀려서 정작 그 물량이 쏟아진 때와 한참 어긋난
     // 자리에 놓였다(지적). 나눠 뽑았으면 그중 가장 큰 묶음이 곧 그 이야기의 시점이다.
+    /* 다만 묶음의 '시작'이 아니라 '절반쯤 뽑았을 때'다(mass-army와 같은 이유) — 쉬지 않고
+       뽑는 그림이면 묶음 하나가 경기 전체이고, 그 시작은 첫 유닛이 나온 순간이다. 그러면
+       "[01:49] 질럿을 총 107기나 뽑아냄"처럼 1분대에 경기 전체의 수가 실린다(지적). */
     const frames = power.keys.flatMap((k) => s.unitFrames[k] ?? []).sort((a, b) => a - b);
     const burst = biggestBurst(frames);
+    const inBurst = burst ? frames.filter((f) => f >= burst.from && f <= burst.to) : [];
+    const mid = inBurst.length > 0 ? inBurst[Math.floor(inBurst.length / 2)] : null;
     out.push({
-      key: "power-unit", weight: 11, at: burst ? burst.from : null, who,
+      key: "power-unit", weight: 11, at: mid, who,
       p: {
         unit: power.unit, n: power.n,
         // 비중이 아니라 수로 걸린 경우 — 문장이 "OO만 뽑았다"고 말하면 안 된다(그 사람은
         // 다른 병력도 함께 굴렸다). 어느 쪽인지를 문장 쪽에 알려 준다.
         ...(power.solo ? { solo: true } : {}),
         // 한 묶음에 다 뽑았으면 굳이 나눠 말하지 않는다 — 총량 문장 그대로다.
-        ...(burst && burst.n < power.n ? { burst: burst.n, min: Math.round((burst.from * SECONDS_PER_FRAME) / 60) } : {}),
+        ...(burst && burst.n < power.n && mid !== null
+          ? { burst: burst.n, min: Math.round((mid * SECONDS_PER_FRAME) / 60) }
+          : {}),
       },
     });
   };

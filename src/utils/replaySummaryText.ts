@@ -1009,6 +1009,25 @@ const TEMPLATES: Record<string, Tpl> = {
       `드랍십을 계속 돌려 ${of}병력을 떨굼`, `드랍십으로 ${of}거듭 파고듦`,
     ]))}`;
   },
+  /* 이름 없는 급습(replayTactics의 raidOn) — 여태 문장이 아예 없었다. 대개 raid-damage에
+     묶여 그쪽 문장의 이름표로만 쓰이는데, 상대 생산이 안 끊겨 묶일 곳이 없으면 홀로
+     남는다. 그러면 미니맵에 화살표만 뜨고 자막이 통째로 비었다(지적: 첫 문장이 안 나옴). */
+  "base-raid": (c) => {
+    // "조조의 진영으로 " — 1:1이 아니면 누구 집인지 알 수 없어 "상대 진영으로"가 된다.
+    const of = c.whom ? `${c.whom}의 진영으로 ` : "상대 진영으로 ";
+    const unit = UNIT_KO[str(c.p.unit)] ?? "";
+    const n = num(c.p.n, 0);
+    if (unit && n >= RAID_UNIT_SHOW) {
+      return `${ga(c.who)} ${done(c, c.pick([
+        `${unit} ${n}기를 몰고 ${of}들이침`,
+        `${of}${unit} ${n}기를 몰아넣음`,
+      ]))}`;
+    }
+    return `${ga(c.who)} ${done(c, c.pick([
+      ...(unit ? [`${reul(unit)} 몰고 ${of}들이침`] : []),
+      `${of}병력을 몰아 들이침`, `${of}치고 들어감`,
+    ]))}`;
+  },
   "zealot-rush": (c) => {
     const g = num(c.p.gates, 2);
     const label = g === 2 ? "투게이트" : `${g}게이트`;
