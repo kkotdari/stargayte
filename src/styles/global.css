@@ -1425,6 +1425,14 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   .scr-stats-screen-v2 { max-width: 1920px; }
   .scr-main:has(.scr-stats-screen-v2) { max-width: 1920px; }
 }
+/* 리그 화면도 통계와 같은 폭으로 편다(요청: "리그 화면도 PC에서 통계만큼 넓게"). 대진표는
+   라운드가 늘수록 옆으로 자라는 그림이라, 공용 폭(860px)에 갇히면 8강만 넘어가도 가로
+   스크롤 안에서만 볼 수 있었다. 통계와 똑같이 부모(.scr-main)까지 :has()로 함께 넓혀야
+   실제로 늘어난다 — 자식만 넓히면 부모가 먼저 잘라 아무 일도 안 일어난다. */
+@media (min-width: 641px) {
+  .scr-league-screen { max-width: 1920px; margin-left: auto; margin-right: auto; width: 100%; }
+  .scr-main:has(.scr-league-screen) { max-width: 1920px; }
+}
 
 /* 맨 위로 이동 플로팅 버튼 — 콘텐츠를 안 가리려고 페이지 하단에 큰 여백을 예약해뒀었는데,
    차지하는 공간 대비 실제로 누르는 일은 드문 보조 버튼이라 낭비가 컸다. 작고 가볍게 줄이고,
@@ -5608,6 +5616,22 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
   background: var(--panel-raised); color: var(--muted);
   border-color: rgba(255, 255, 255, 0.18); opacity: 1;
 }
+/* 편지지 배경 사진 고르기(요청) — 한마디 토글과 같은 알약이라 "덧붙이는 것들"이 한
+   덩어리로 읽힌다. 고른 사진은 바로 아래에 낮은 띠로 한 장 보여 주고(무엇을 골랐는지
+   확인), 오른쪽 위 ×로 뺀다. 사진 자체는 아직 서버로 안 갔으므로 빼는 건 그냥 잊는 것이다. */
+.scr-challenge-photo { display: flex; flex-direction: column; gap: 8px; }
+.scr-challenge-photo-preview {
+  position: relative; width: 100%; height: 84px; border-radius: 10px; overflow: hidden;
+  background: rgba(var(--overlay-rgb), 0.06);
+}
+.scr-challenge-photo-preview img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* × — 사진 위라 어떤 색이 깔릴지 몰라서, 검은 알약 위 흰 아이콘으로 못 박는다. */
+.scr-challenge-photo-clear {
+  position: absolute; top: 6px; right: 6px; width: 24px; height: 24px; border: none;
+  border-radius: 50%; background: rgba(0, 0, 0, 0.55); color: #fff;
+}
+@media (hover: hover) { .scr-challenge-photo-clear:hover { background: rgba(0, 0, 0, 0.72); } }
+
 /* 호출 한마디 — 아이콘 토글 버튼 + 높이 트랜지션 입력창(요청). grid-rows 0fr↔1fr 트릭으로
    내용 높이를 몰라도 부드럽게 열고 닫는다. */
 .scr-challenge-msg { display: flex; flex-direction: column; gap: 8px; }
@@ -6455,6 +6479,53 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 .scr-challenge-letter-actions { margin-top: 0; }
 /* 본문(제목·내용)은 아바타보다 앞에 오게 relative + 양수 z-index로 올린다. */
 .scr-challenge-inbox-modal .scr-challenge-inbox-title, .scr-challenge-inbox-modal .scr-challenge-inbox-body { position: relative; z-index: 1; }
+
+/* ── 편지지 배경 사진(요청) ────────────────────────────────────────────────────
+   부른 사람이 호출할 때 올린 사진이 편지지 바닥에 깔린다.
+
+   유리 패널(::before)과 같은 z-index:-1에 둔다 — 같은 층에서는 DOM 순서가 앞뒤를 정하고
+   ::before는 언제나 첫 자식이라, 사진이 유리 위에 얹힌다. z-index:0으로 뒀다가 한 번
+   덴 자리다: 그러면 사진이 "위치 잡힌 층"으로 올라가, 제 층이 없는 평범한 내용(버튼 줄
+   .scr-form-actions 등)보다 나중에 그려져 그것들을 통째로 덮었다. 마우스만 그대로 통과해
+   (pointer-events:none) 버튼이 눌리긴 하는데 보이지는 않는, 알아채기 고약한 모양이었다.
+
+   사진만 깔면 어떤 사진이 올라오든 글자가 살아남지 못하므로 두 겹으로 받친다.
+   (1) 테마 색 막 한 겹 — 다크는 어둡게, 라이트는 밝게 눌러 그 테마의 글자색이 설 바닥을
+       만든다. 사진은 여기서 완전히 안 가려지고 무늬로만 비친다.
+   (2) 글자마다 글자색의 반대색 테두리(다크=검정, 라이트=흰색) — 막을 뚫고 올라온 얼룩
+       위에서도 획이 끊기지 않는다(요청: "글자들이 잘 보이도록 편지지색에 반대되는 흰/검
+       테두리"). paint-order로 테두리를 글자 뒤에 깔아야 획이 굵어 보이지 않는다. */
+.scr-challenge-letter-photo .scr-challenge-letter-bg {
+  position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none;
+  background-image: var(--letter-photo);
+  background-size: cover; background-position: center;
+}
+.scr-challenge-letter-photo .scr-challenge-letter-bg::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit;
+  background: rgba(16, 21, 26, 0.55);
+}
+.scr-light-theme .scr-challenge-letter-photo .scr-challenge-letter-bg::after {
+  background: rgba(255, 255, 255, 0.62);
+}
+.scr-challenge-letter-photo { --letter-edge: rgba(0, 0, 0, 0.9); }
+.scr-light-theme .scr-challenge-letter-photo { --letter-edge: rgba(255, 255, 255, 0.92); }
+.scr-challenge-letter-photo .scr-challenge-inbox-title,
+.scr-challenge-letter-photo .scr-label,
+.scr-challenge-letter-photo .scr-challenge-inbox-err-text,
+.scr-challenge-letter-photo .scr-challenge-party-tag,
+.scr-challenge-letter-photo .scr-challenge-team-label,
+.scr-challenge-letter-photo .scr-challenge-team-names,
+.scr-challenge-letter-photo .scr-challenge-inbox-date,
+.scr-challenge-letter-photo .scr-challenge-inbox-time,
+.scr-challenge-letter-photo .scr-challenge-inbox-message,
+.scr-challenge-letter-photo .scr-challenge-reply-verdict,
+.scr-challenge-letter-photo .scr-challenge-reply-word,
+.scr-challenge-letter-photo .scr-challenge-reply-who {
+  -webkit-text-stroke: 3px var(--letter-edge);
+  paint-order: stroke fill;
+}
+/* 답장을 가르는 점선 — 사진 위에서는 원래의 옅은 남색이 통째로 사라진다. */
+.scr-challenge-letter-photo .scr-challenge-reply { border-top-color: rgba(var(--overlay-rgb), 0.4); }
 /* 모달이 align-items:center라 그냥 두면 편지지 본문이 내용 폭만큼만 좁게 가운데 모여
    붙어 모달 폭을 못 채웠다(요청: "모달 안의 내용들을 넓히라고") — 본문을 full-width로
    펴서 행/입력칸이 모달 폭을 꽉 채우게 한다. 줄 사이 갭은 조금 넉넉하게(요청). */

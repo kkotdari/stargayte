@@ -80,13 +80,21 @@ const SHARE_THUMBS = {
 
 export type ShareThumbKind = keyof typeof SHARE_THUMBS;
 
+/** 그 종류의 썸네일 그림 주소(절대경로) — 카카오가 자기 서버에서 읽어가므로 절대경로여야
+ *  한다. 너 나와! 편지지 배경 사진은 이 판을 캔버스로 불러와 사진 위에 얹는다
+ *  (utils/image.ts의 buildChallengeBackdrop). */
+export function shareThumbUrl(kind: ShareThumbKind): string {
+  return `${window.location.origin}/images/share/${SHARE_THUMBS[kind]}`;
+}
+
 /** 그 종류의 썸네일을 KakaoShareContent에 그대로 펼쳐 넣을 수 있는 꼴로 돌려준다.
- *  URL이 절대경로여야 하는 것은 카카오가 자기 서버에서 이 그림을 읽어가기 때문이다. */
-export function shareThumb(kind: ShareThumbKind): {
+ *  @param override 그 글이 제 그림을 갖고 있으면(너 나와! 편지지 배경 사진) 그걸 쓴다 —
+ *                  이미 1200×600으로 앉혀 둔 판이라 크기는 그대로다. */
+export function shareThumb(kind: ShareThumbKind, override?: string | null): {
   imageUrl: string; imageWidth: number; imageHeight: number;
 } {
   return {
-    imageUrl: `${window.location.origin}/images/share/${SHARE_THUMBS[kind]}`,
+    imageUrl: override || shareThumbUrl(kind),
     imageWidth: SHARE_THUMB_W,
     imageHeight: SHARE_THUMB_H,
   };

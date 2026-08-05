@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { Spinner } from "../components/common/Feedback";
 import Avatar from "../components/common/Avatar";
@@ -175,6 +175,15 @@ export default function ChallengeInboxModal({
   // 제목이 뜬다.
   const letterTitle = ourTeam.length > 0 ? `${ourTeam.join(", ")} 너 나와!` : "너 나와!";
 
+  /* 부른 사람이 올린 편지지 배경 사진(요청) — 있으면 편지지의 유리 패널 대신 이 사진이
+     깔린다. 사진 위에는 테마에 맞는 얇은 막을 한 겹 덮고 글자마다 반대색 테두리를
+     두르는데(요청: "글자들이 잘 보이도록 편지지색에 반대되는 흰/검 테두리"), 어떤 사진이
+     올라올지 모르니 그 둘이 없으면 밝은 사진에서 흰 글자가 통째로 사라진다. */
+  const backdrop = current.backdropUrl;
+  const letterStyle = backdrop
+    ? ({ "--letter-photo": `url("${backdrop}")` } as CSSProperties)
+    : undefined;
+
   // 응답 확인창 — 최종 확정된 일시(요청자가 안 정했으면 내가 방금 고른 값)로 공유 내용을 만든다.
   const acceptedEffDate = current.scheduledDate ?? (dateStr || null);
   const acceptedEffNote = current.scheduledTimeNote.trim() || (acceptedEffDate ? noteStr.trim() : "");
@@ -229,7 +238,15 @@ export default function ChallengeInboxModal({
           봉투가 사라지는 순간 그 자리에 애니메이션 없이 그냥 나타난다(요청: "편지지 확대
           페이드인 제거 그냥 나오기"). */}
       {!replyDiscarded && stage === "letter" && (
-        <div className="scr-modal scr-modal-sm scr-challenge-inbox-modal scr-challenge-letter">
+        <div
+          className={`scr-modal scr-modal-sm scr-challenge-inbox-modal scr-challenge-letter${
+            backdrop ? " scr-challenge-letter-photo" : ""}`}
+          style={letterStyle}
+        >
+          {/* 배경 사진 — 유리 패널(.scr-modal::before)보다 위, 내용보다 아래에 깔린다.
+              둘은 같은 z-index:-1이라 DOM 순서로 앞뒤가 갈린다: ::before가 항상 첫 자식
+              이므로 이 칸은 반드시 첫 '진짜' 자식이어야 사진이 유리 위에 얹힌다. */}
+          {backdrop && <div className="scr-challenge-letter-bg" aria-hidden="true" />}
           {/* 보낸 사람(From.) — 좌상단, 받는 사람(To.) — 우하단. 라벨과 아바타는 겹치지 않게
               나란히 두고(배경 칩 없음), 카드 모서리에 최소 여백을 둔다(요청). */}
           <div className="scr-challenge-party scr-challenge-party-from" aria-hidden="true">

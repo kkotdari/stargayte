@@ -445,6 +445,10 @@ export interface Challenge {
   canceledBy: { id: string; nickname: string; avatar: string | null } | null;
   // 확정 너 나와의 결과 — 아직 아무도 입력하지 않았으면 null.
   resultWinnerSide: ChallengeResult | null;
+  /** 부른 사람이 올린 편지지 배경 사진 — 없으면 null이고 편지지는 평소의 유리 그대로다. */
+  backdropUrl: string | null;
+  /** 같은 사진을 카카오 공유 카드 자리(1200×600)에 앉힌 판 — 없으면 종류별 기본 썸네일을 쓴다. */
+  backdropShareUrl: string | null;
 }
 
 export interface ChallengeCreatePayload {
@@ -457,6 +461,10 @@ export interface ChallengeCreatePayload {
   targetMemberIds: string[];
   // 본인 제외 나머지 내 팀원(최대 3명, 본인 포함 최대 4명) — 안 넘기면 나 혼자.
   ownTeamMemberIds?: string[];
+  /** 편지지 배경 사진(선택) — 브라우저에서 줄인 JPEG data URL(utils/image.ts). */
+  backdrop?: string | null;
+  /** 같은 사진의 공유 카드(1200×600)판 — 배경만 사진으로 갈아 끼운 완성본. */
+  backdropShare?: string | null;
 }
 
 // 기간 필터 프리셋 — "custom"일 때만 실제로 from/to(직접 입력) 값을 사용하고, 나머지는

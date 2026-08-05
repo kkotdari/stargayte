@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { X, Phone, MessageSquarePlus } from "lucide-react";
+import { X, Phone, MessageSquarePlus, ImagePlus } from "lucide-react";
 import { cx } from "../utils/format";
 import Avatar from "../components/common/Avatar";
 import OptionalDateTimeFields from "../components/common/OptionalDateTimeFields";
@@ -10,7 +10,8 @@ import MemberPickBlock from "../components/common/MemberPickBlock";
 import { useAppStore } from "../store/appStore";
 import { api } from "../api/client";
 import { useLockBodyScroll } from "../utils/bodyScrollLock";
-import { shareThumb, type KakaoShareContent } from "../utils/kakaoShare";
+import { shareThumb, shareThumbUrl, type KakaoShareContent } from "../utils/kakaoShare";
+import { buildChallengeBackdrop, type ChallengeBackdrop } from "../utils/image";
 import type { Challenge } from "../types";
 
 // 상대는 최대 4명까지 지목할 수 있고(팀전), 내 팀은 본인 자동 포함이라 "본인 제외"
@@ -53,6 +54,12 @@ export default function ChallengeFormModal({ onClose, onCreated, presetTargetIds
   // 호출 한마디(선택) — 아이콘 버튼을 눌러야 입력창이 트랜지션으로 열린다(요청).
   const [message, setMessage] = useState("");
   const [messageOpen, setMessageOpen] = useState(false);
+  // 편지지 배경 사진(선택) — 고르는 즉시 브라우저가 두 장(편지지용·공유 카드용)으로
+  // 줄여서 들고 있다가 호출할 때 함께 올린다(요청: "용량 줄여서 업로드"). 서버로
+  // 올라가기 전이라 취소하면 그냥 사라진다.
+  const [photo, setPhoto] = useState<ChallengeBackdrop | null>(null);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   // 호출을 보내고 나면(성공) 이 확인창으로 넘어가 카카오톡 공유 버튼을 보여준다(요청). 여기서
@@ -91,6 +98,23 @@ export default function ChallengeFormModal({ onClose, onCreated, presetTargetIds
       : `${targetNames[0]} 외 ${targetNames.length - 1}명`;
   const modalTitle = titleName ? `${titleName} 호출하기` : "호출하기";
 
+  // 사진을 고르면 그 자리에서 편지지용·공유 카드용 두 장을 만든다. 공유 카드는 미리
+  // 만들어 둔 판(share_thumb_challenge_call.png)을 사진 위에 얹어 완성한다.
+  const pickPhoto = async (file: File | undefined) => {
+    if (!file) return;
+    setErr("");
+    setPhotoBusy(true);
+    try {
+      setPhoto(await buildChallengeBackdrop(file, shareThumbUrl("challengeCall")));
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "사진을 불러오지 못했어요.");
+    } finally {
+      setPhotoBusy(false);
+      // 같은 파일을 다시 골라도 change가 뜨게 값을 비운다.
+      if (photoInputRef.current) photoInputRef.current.value = "";
+    }
+  };
+
   const submit = async () => {
     if (!canSubmit) return;
     setErr("");
@@ -104,6 +128,8 @@ export default function ChallengeFormModal({ onClose, onCreated, presetTargetIds
         scheduledDate: dateStr || null,
         scheduledTimeNote: dateStr ? noteStr.trim() : "",
         message: message.trim(),
+        backdrop: photo?.backdrop ?? null,
+        backdropShare: photo?.share ?? null,
       });
       // 바로 닫지 않고 확인창(카카오 공유)으로 넘어간다.
       setSentChallenge(challenge);
@@ -131,7 +157,9 @@ export default function ChallengeFormModal({ onClose, onCreated, presetTargetIds
     return {
       title: `${caller ? `${caller}님` : "누군가"}의 호출`,
       description: "누가 호출됐을까요? 👀 탭해서 확인하기",
-      ...shareThumb("challengeCall"),
+      // 배경 사진을 올린 호출이면 그 사진으로 앉힌 판을 쓴다(요청: "공유시 썸네일
+      // 배경으로 쓰임") — 로고·문구는 그대로 얹혀 있고 흰 바탕만 사진으로 바뀐 판이다.
+      ...shareThumb("challengeCall", challenge.backdropShareUrl),
       link: `${window.location.origin}/?sv=challenge&sid=${challenge.id}`,
       fallbackText: `[스타게이트] ${caller ? `${caller}님` : "누군가"}의 호출이 도착했어요! 열어서 확인해보세요.`,
     };
@@ -212,6 +240,35 @@ export default function ChallengeFormModal({ onClose, onCreated, presetTargetIds
             dateStr={dateStr} onDateChange={setDateStr}
             noteStr={noteStr} onNoteChange={setNoteStr}
           />
+
+          {/* 편지지 배경 사진(선택, 요청) — 상대가 봉투를 열었을 때 편지지에 깔리고,
+              카카오로 공유할 때 카드 그림의 배경으로도 쓰인다. 아래 한마디 버튼과 같은
+              알약이라 "덧붙이는 것들"이 한 줄로 나란히 읽힌다. */}
+          <div className="scr-challenge-photo">
+            <input
+              ref={photoInputRef} type="file" accept="image/*" hidden
+              onChange={(e) => void pickPhoto(e.target.files?.[0])}
+            />
+            <button
+              type="button"
+              className={cx("scr-challenge-msg-toggle", photo && "scr-challenge-msg-toggle-on")}
+              onClick={() => photoInputRef.current?.click()}
+              disabled={photoBusy}
+            >
+              {photoBusy ? <Spinner /> : <ImagePlus size={14} />} 편지지 배경{photo ? " 바꾸기" : ""}
+            </button>
+            {photo && (
+              <div className="scr-challenge-photo-preview">
+                <img src={photo.backdrop} alt="고른 편지지 배경 사진" />
+                <button
+                  type="button" className="scr-icon-btn scr-challenge-photo-clear"
+                  onClick={() => setPhoto(null)} aria-label="배경 사진 빼기"
+                >
+                  <X size={13} />
+                </button>
+              </div>
+            )}
+          </div>
 
           {/* 호출 한마디(선택) — 아이콘 버튼을 누르면 입력창이 높이 트랜지션으로 열린다(요청). */}
           <div className="scr-challenge-msg">
