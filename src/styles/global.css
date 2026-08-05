@@ -6201,14 +6201,18 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 .scr-challenge-avatar-badge-expired { color: #d09a63; }
 /* 라이트 — 흰 바탕에서 읽히는 짝. 수락·거절·버림은 쓰던 값 그대로 두고(이번 요청은 다크
    밝기였다), 색상각을 옮긴 대기·만료만 흰 바탕용으로 다시 잡는다. */
-.scr-light-theme .scr-challenge-avatar-badge-accepted { color: #5cae83; }
-.scr-light-theme .scr-challenge-avatar-badge-rejected { color: #d1888a; }
+/* 라이트에서 한 단계 더 진하게(요청: 초록·빨강 같은 색이 흰 바탕에서 옅다) — 색상각은
+   그대로 두고 밝기만 내려 채도를 세운다. 흰 바탕 대비(실측): 수락 2.68 → 4.04,
+   거절 2.76 → 4.94, 버림·취소 2.87 → 5.13, 대기 3.30 → 4.38, 만료 5.87 → 7.69.
+   다크 쪽은 안 건드린다 — 검은 바탕에서는 이미 또렷하다. */
+.scr-light-theme .scr-challenge-avatar-badge-accepted { color: #2f8f5b; }
+.scr-light-theme .scr-challenge-avatar-badge-rejected { color: #c2454c; }
 .scr-light-theme .scr-challenge-avatar-badge-discarded,
-.scr-light-theme .scr-challenge-avatar-badge-canceled { color: #9a97a3; }
+.scr-light-theme .scr-challenge-avatar-badge-canceled { color: #6f6c79; }
 /* 흰 바탕의 노랑은 밝을수록 묻힌다 — 색상각(46°)과 채도(100%)로 노랑을 지키고 밝기만
    낮춘다. 대비 2.2 → 3.3으로 오히려 나아진다. */
-.scr-light-theme .scr-challenge-avatar-badge-pending { color: #b08800; }
-.scr-light-theme .scr-challenge-avatar-badge-expired { color: #8a5a2b; }
+.scr-light-theme .scr-challenge-avatar-badge-pending { color: #967400; }
+.scr-light-theme .scr-challenge-avatar-badge-expired { color: #75491f; }
 /* 결과 배지(.scr-challenge-inline-win)는 승/무를 원(20×20) 안에 담지만, 이 응답 상태는
    알약도 원도 아니라 글자만(요청: "대기 수락 거절 배지는 알약 모양말고 글자만 표시") —
    원 배지의 모양 관련 속성(크기·테두리·배경·패딩·둥근모서리)을 전부 지워 순수 텍스트로
