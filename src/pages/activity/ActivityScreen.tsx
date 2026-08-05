@@ -1186,7 +1186,17 @@ export default function ActivityScreen() {
             />
           }
           comment={<ActivityCardComments targetType="challenge" targetId={item.challenge.id} />}
+          bodyClassName={item.challenge.backdropUrl ? "scr-activity-card-body-photo" : undefined}
         >
+          {/* 편지지 배경 사진을 올린 호출이면 카드 본문에도 같은 사진이 깔린다(요청).
+              비율은 그대로 두고 잘라 채우며(cover), 본문의 패딩 안쪽에만 앉는다(요청:
+              "바디의 패딩까지 채우진 않고 그 안쪽으로만"). */}
+          {item.challenge.backdropUrl && (
+            <div
+              className="scr-activity-card-photo" aria-hidden="true"
+              style={{ "--card-photo": `url("${item.challenge.backdropUrl}")` } as CSSProperties}
+            />
+          )}
           <ChallengeCard
             challenge={item.challenge}
             myId={user?.id}

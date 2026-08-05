@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from "react";
+import { useState } from "react";
 import { createPortal } from "react-dom";
 import { Pencil, MessageSquarePlus } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
@@ -364,16 +364,10 @@ export function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, o
           이제 취소는 거둬들인 사람 자리에, 만료는 상대 응답 자리에 적히므로(요청) 같은 말을
           두 번 하는 셈이고, 절대 배치라 헤더가 바깥에 있는 활동에서는 로스터 첫 줄 위에
           겹치기까지 했다. 끝난 티는 카드 자체를 흐리게 하는 것(-canceled)으로 충분하다. */}
-      <div className={cx("scr-challenge-card-body", challenge.backdropUrl && "scr-challenge-card-body-photo")}>
-        {/* 편지지 배경 사진을 올린 호출이면 카드에도 같은 사진이 깔린다(요청). 비율은
-            그대로 두고 잘라 채우며(cover), 카드 바깥까지 번지지 않게 바디의 패딩 안쪽에만
-            앉는다(요청: "바디의 패딩까지 채우진 않고 그 안쪽으로만"). */}
-        {challenge.backdropUrl && (
-          <div
-            className="scr-challenge-card-photo" aria-hidden="true"
-            style={{ "--card-photo": `url("${challenge.backdropUrl}")` } as CSSProperties}
-          />
-        )}
+      {/* 편지지 배경 사진은 이 카드가 아니라 이 카드를 담은 활동 카드의 본문
+          (.scr-activity-card-body)에 깔린다(요청) — ActivityScreen 참고. 여기 깔면
+          로스터 폭만큼만 덮여, 카드가 아니라 로스터에 붙은 그림처럼 보인다. */}
+      <div className="scr-challenge-card-body">
         {/* 약속한 "언제" — 로스터 바로 위에 그냥 글로 보여준다(요청: 인풋창이 아니라
             텍스트로). 안 적었으면 줄 자체를 안 만든다. */}
             {challenge.scheduledTimeNote.trim() && (
