@@ -1926,6 +1926,11 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 .scr-stat-build-cell > .scr-stat-points-empty,
 .scr-stat-units-cell > .scr-stat-points-empty,
 .scr-stat-skills-cell > .scr-stat-points-empty { flex: 1 1 auto; text-align: center; }
+/* 랭크 줄기도 같다(지적: 왜 왼쪽 정렬이야) — 이 줄기는 세로 flex라 자식이 폭을 통째로
+   늘려 받고(align-items 기본값 stretch), 그 안에서 글자는 왼쪽에 선다. 값이 있는 줄은
+   제 줄(.scr-stat-rank-line)이 가운데로 세우지만 "-"는 그 줄 없이 홀로 놓여 그대로 왼쪽에
+   붙어 있었다. */
+.scr-stat-rank-col > .scr-stat-points-empty { text-align: center; }
 .scr-stat-mix { display: flex; align-items: center; justify-content: center; gap: 10px; flex: none; }
 /* 도넛(들)과 그 위의 10분당 값을 한 덩어리로 — 값은 도넛 하나든 둘이든 그 무리의 위쪽
    가운데에 한 번만 선다(요청). 한때 도넛 가운데 구멍에 적었는데, 구멍 안에서는 도넛
@@ -2253,6 +2258,11 @@ html:not(.scr-light-theme) .scr-donut-band-label { fill: #fff; }
    똑같이 보이므로, 자리마다 다른 그림이 되지 않게 필터는 도로 뺀다. */
 .scr-stat-rank-line { padding-right: 0; }
 .scr-stat-rank-val { display: inline-flex; align-items: center; min-width: 0; }
+/* 여기서는 제 여백을 안 준다(지적: 단위까지 고려해서 자리를 잡아야 한다) — 메달 왼쪽에
+   있는 것이 값이 아니라 버튼이고, 그 버튼이 이미 오른쪽에 6px을 물고 있다("포인트" 글자와
+   버튼 경계 사이). 여기서 6px을 또 주면 눈에 보이는 사이가 12px이 되어, 막대 위 메달
+   (수와 6px)보다 두 배로 벌어진다(실측: 12px vs 6px). */
+.scr-stat-rank-val .scr-stat-medal { margin-left: 0; }
 /* (삭제) 랭크 줄기만 흐름으로 돌려 두던 예외 — 이제 모든 메달이 흐름이라 규칙 하나면 된다. */
 /* 트랙 배경을 채움 비율(--scr-value-fill, ValueBar.tsx 인라인 변수)까지는 진하게, 나머지는
    옅게 칠하는 그라디언트 한 장으로 그린다(요청: "배경 막대를 채우기 — 나머지는 반투명
@@ -2333,10 +2343,10 @@ html:not(.scr-light-theme) .scr-donut-band-label { fill: #fff; }
   --scr-stat-record-w: 580px;
   /* 랭크·포인트 줄기의 고정폭(위 .scr-stat-rank-col 주석) — 121 → 108px(요청: 너무 넓다).
      121px은 오른쪽에 메달 자리를 통째로 비워 두던 시절의 값이다. 메달이 값 옆으로 들어온
-     지금 이 줄기가 정말 필요한 폭은 107px이다(실측: 네 자리 포인트 "1,342 포인트"에
-     메달까지 붙였을 때. 실제 데이터의 세 자리면 95px이면 된다). 1px만 남기고 조인다 —
-     내준 13px은 막대 두 줄기가 나눠 갖는다. */
-  --scr-stat-rank-w: 108px;
+     지금 이 줄기가 정말 필요한 폭은 101px이다(실측: 네 자리 포인트 "1,342 포인트"에
+     메달까지 붙였을 때. 실제 데이터의 세 자리면 89px이면 된다). 1px만 남기고 조인다 —
+     내준 19px은 막대 두 줄기가 나눠 갖는다. */
+  --scr-stat-rank-w: 102px;
   --scr-stat-build-w: 204px;
   --scr-stat-unit-w: 366px;
   --scr-stat-skill-w: 246px;
