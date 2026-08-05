@@ -7793,8 +7793,10 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
      칸 높이가 글자 높이(18px)에 그치고, 세로 구분선도 딱 그만큼만 그려진다(실측). 칸이
      내면 칸이 줄 높이를 통째로 채워 선이 위아래 줄과 맞닿는다. */
   padding: 0 var(--scr-row-pad-x); background: transparent; border: none; cursor: pointer;
-  /* 제목 배지의 고정폭 — 가장 긴 제목("랭크 변동")에 맞춘 실측값이다. */
-  --scr-row-title-w: 66px;
+  /* 제목 배지의 고정폭 — 가장 긴 제목("랭크 변동" 51.3px 실측)에 좌우 여백(4px씩)을
+     더한 값이다. 66 → 60px로 조인다(요청) — 여백을 6에서 4px로 줄인 만큼이 그대로
+     남아 있었다. 여기가 바닥이라 더 줄이면 "랭크 변동"이 잘린다. */
+  --scr-row-title-w: 60px;
   font-family: inherit; font-size: var(--fs-caption); color: var(--text); text-align: left;
   -webkit-tap-highlight-color: transparent;
 }
