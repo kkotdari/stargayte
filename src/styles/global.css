@@ -7876,15 +7876,19 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 /* 상태 알약이 앉을 자리 — 너 나와만 채워지고 나머지 줄은 빈 채로 남지만, 폭은 늘 잡아
    둔다(지적: "너 나와 말고는 배지가 없잖아"). 안 그러면 게임결과 줄만 닉네임이 왼쪽으로
    당겨져 목록의 세로줄이 어긋난다. 폭은 두 글자 알약 실측(38px)에 맞췄다. */
-/* 폭은 두 글자 알약 실측(10px 글자 기준 30px)에 맞춘다. 뒤따르는 이름과의 사이는 칸의
+/* 폭은 두 글자 알약 실측(10px 글자 + 좌우 4px 패딩 = 26px)에 맞춘다. 뒤따르는 이름과의 사이는 칸의
    공용 간격(6px)에서 제 오른쪽만 되돌려 좁힌다(요청) — 다른 조각들 사이는 그대로 6px이다. */
-.scr-activity-row-status-slot { flex: 0 0 30px; display: flex; align-items: center; margin-right: -2px; }
+.scr-activity-row-status-slot { flex: 0 0 26px; display: flex; align-items: center; }
 /* 알약 자체 — 둥근 네모, 다크는 흰 바탕에 검은 글자(요청). 라이트는 그 반대라야 같은
    무게로 읽힌다. 글자는 이 칸 본문(caption 14)에서 두 스텝 아래(11px, 요청). */
 .scr-activity-row-status {
   display: inline-flex; align-items: center; justify-content: center;
-  /* 높이는 살짝 낮춘다(요청) — 위아래 패딩과 줄높이를 한 번씩 줄인다. */
-  padding: 1px 5px; border-radius: 6px;
+  /* 높이는 살짝 낮춘다(요청) — 위아래 패딩과 줄높이를 한 번씩 줄인다.
+     좌우 패딩과 모서리도 아주 살짝(요청): 5 → 4px, 6 → 5px.
+     위아래 패딩은 반 픽셀씩 어긋나게 준다(요청: 글자를 아주 살짝 위로) — 한글 글자는
+     제 상자 안에서 아래쪽에 앉아 있어, 위아래를 똑같이 주면 눈에는 글자가 내려앉아
+     보인다. 합(2px)은 그대로라 알약 높이는 안 변한다. */
+  padding: 0.5px 4px 1.5px; border-radius: 5px;
   background: #fff; color: #111;
   /* 글자는 한 스텝 더(요청) — 11 → 10px. */
   font-size: var(--fs-10); font-weight: 700; line-height: 1.3; white-space: nowrap;
