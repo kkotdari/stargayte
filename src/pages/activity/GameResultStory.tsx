@@ -1117,6 +1117,12 @@ export default function GameResultStory({
         else if (hubs[raw] && !moved.has(raw)) markSpot.set(raw, [hubs[raw][0], hubs[raw][1]]);
         else markSpot.delete(raw);
         if (ATTACKER_FACE_KEYS.has(b.k)) attacker.add(raw);
+        /* 타이밍을 흘려보낸 이야기에는 화살표를 안 그린다(지적: 자막에는 타이밍을 놓쳤다는데
+           화살표는 왜 공격이냐) — 이 스냅이 말하는 것은 '한 일'이 아니라 '안 한 일'이다.
+           그런데 자리 찾기(target)는 그 무렵 명령이 몰린 곳을 그냥 집어 오므로, 쌓아 둔
+           병력을 모아 놓은 자리가 목표처럼 잡혀 상대 기지로 뻗는 붉은 화살표가 됐다.
+           아바타의 자는 얼굴(😴)과 열심인 얼굴(🔥)이 이 스냅의 그림 전부다. */
+        if (b.k === "idle-lead") continue;
         /* 스캔은 '어디를 열어 봤나'가 곧 그 이야기다(지적: 스캔에 웬 탱크, 그리고 스캔을
            본진에 해? 스캔한 곳들을 표시해야지) — 요약이 실어 준 자리마다 화살표를 하나씩
            낸다. 이름표는 안 붙인다: 스캔은 유닛으로 한 일이 아니라 커맨드센터가 쏘는
