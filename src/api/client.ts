@@ -11,7 +11,7 @@ import type {
   ReplayNameClassificationEntry, ReplayNameKind, ReplayNameMappingEntry, ReplayNameMappingKind,
   Challenge, ChallengeCreatePayload, ChallengeResult,
   League, LeagueListItem, LeagueCreatePayload, LeagueUpdatePayload, LeagueTeam,
-  LeagueMatch, LeagueMatchSide, LeagueMatchResultPayload,
+  LeagueMatchSide,
 } from "../types";
 import type { ReplaySummaryData } from "../utils/replaySummaryData";
 import type { ReplayMapGrid } from "../utils/replayParser";
@@ -859,36 +859,23 @@ export const api = {
       method: "PUT", body: JSON.stringify({ teams }),
     });
   },
-  /* 판은 우승 자리 하나에서 시작해 왼쪽으로 가지를 쳐 나간다(요청) — 크기를 미리 정하지
-     않는다. 가지 하나를 치고 지울 때마다 판의 모양(라운드 번호까지)이 바뀌므로 매번 리그
-     전체를 다시 받는다. */
-  async startLeagueBracket(leagueId: number): Promise<League> {
-    return request<League>(`/api/leagues/${leagueId}/bracket`, { method: "POST" });
-  },
-  async deleteLeagueBracket(leagueId: number): Promise<League> {
-    return request<League>(`/api/leagues/${leagueId}/bracket`, { method: "DELETE" });
-  },
-  async branchLeagueSlot(leagueId: number, matchId: number, side: LeagueMatchSide): Promise<League> {
-    return request<League>(`/api/leagues/${leagueId}/bracket/matches/${matchId}/${side}/branch`, {
-      method: "POST",
-    });
-  },
-  async unbranchLeagueSlot(leagueId: number, matchId: number, side: LeagueMatchSide): Promise<League> {
-    return request<League>(`/api/leagues/${leagueId}/bracket/matches/${matchId}/${side}/branch`, {
-      method: "DELETE",
+  /* 대진표의 모양과 배정을 한 번에 저장한다(요청: "바로바로 저장이 아닌 마지막 저장 버튼
+     누를때 저장"). paths는 '지금 있는 경기 전부'를 뿌리(결승=빈 문자열)에서의 길로 적은
+     목록이고, assignments는 그 자리들의 최종 배정이다. 길로 가리키는 이유는 화면에서 방금
+     친 가지에는 아직 id가 없어서다 — id로 주고받으려면 조작마다 서버를 다녀와야 했다.
+     빈 목록을 보내면 대진표를 통째로 지운다. 판의 모양(라운드 번호까지)이 바뀌므로 응답은
+     리그 전체다. */
+  async setLeagueBracket(
+    leagueId: number,
+    paths: string[],
+    assignments: { path: string; side: LeagueMatchSide; teamId: number | null }[],
+  ): Promise<League> {
+    return request<League>(`/api/leagues/${leagueId}/bracket`, {
+      method: "PUT", body: JSON.stringify({ paths, assignments }),
     });
   },
   async confirmLeagueBracket(leagueId: number): Promise<League> {
     return request<League>(`/api/leagues/${leagueId}/bracket/confirm`, { method: "POST" });
-  },
-  // 슬롯에 팀을 배정하면 반대쪽이 구조적으로 영원히 비는 자리일 때 그 즉시 부전승이
-  // 연쇄될 수 있어(서버가 처리), 매치 하나가 아니라 리그 전체를 다시 받는다.
-  async setLeagueMatchSlot(
-    leagueId: number, matchId: number, side: LeagueMatchSide, teamId: number | null,
-  ): Promise<League> {
-    return request<League>(`/api/leagues/${leagueId}/matches/${matchId}/slot`, {
-      method: "PATCH", body: JSON.stringify({ side, teamId }),
-    });
   },
   // 1라운드 시드 전체를 한 번에 저장한다(요청: "대진표 수정 시 그때그때 저장해서 느림 —
   // 화면만 수정하고 저장 버튼 누르면 그때 한 번에 저장"). assignments는 편집 가능한 1라운드
@@ -901,17 +888,20 @@ export const api = {
       method: "PUT", body: JSON.stringify({ assignments }),
     });
   },
-  async setLeagueMatchSchedule(leagueId: number, matchId: number, scheduledAt: string | null): Promise<LeagueMatch> {
-    return request<LeagueMatch>(`/api/leagues/${leagueId}/matches/${matchId}/schedule`, {
-      method: "PATCH", body: JSON.stringify({ scheduledAt }),
+  // 경기 일시(요청: "리그에 일시 추가") — null이면 지운다. 대진 확정 전에도 적을 수 있다.
+  async setLeagueMatchSchedule(leagueId: number, matchId: number, scheduledAt: string | null): Promise<League> {
+    return request<League>(`/api/leagues/${leagueId}/matches/${matchId}/schedule`, {
+      method: "PUT", body: JSON.stringify({ scheduledAt }),
     });
   },
-  async enterLeagueMatchResult(leagueId: number, matchId: number, payload: LeagueMatchResultPayload): Promise<League> {
+  /* 세트 스코어(요청: "결과는 몇 대 몇 입력") — 이긴 쪽은 스코어가 말해 주므로 따로 고르지
+     않는다. 둘 다 null이면 결과를 지운다. 승자가 다음 라운드로 올라가(거나 내려와) 판
+     전체가 바뀌므로 응답은 리그 전체다. */
+  async setLeagueMatchResult(
+    leagueId: number, matchId: number, setsWonA: number | null, setsWonB: number | null,
+  ): Promise<League> {
     return request<League>(`/api/leagues/${leagueId}/matches/${matchId}/result`, {
-      method: "POST", body: JSON.stringify(payload),
+      method: "PUT", body: JSON.stringify({ setsWonA, setsWonB }),
     });
-  },
-  async clearLeagueMatchResult(leagueId: number, matchId: number): Promise<League> {
-    return request<League>(`/api/leagues/${leagueId}/matches/${matchId}/result`, { method: "DELETE" });
   },
 };
