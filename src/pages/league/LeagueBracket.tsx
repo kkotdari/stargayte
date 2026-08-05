@@ -639,11 +639,15 @@ export default function LeagueBracket({
       );
     });
     /* 일시·결과 배지 — 두 카드 사이 세로 간격(ROW_GAP)이 배지 내용보다 좁을 수 있어,
-       카드 사이가 아니라 커넥터가 꺾이는 지점(라운드 오른쪽 여백)에 둔다. 운영자에겐
-       이게 곧 입력 버튼이다(요청: 일시 추가 + 결과 입력) — 아직 저장 안 한 새 칸에는
-       달 게 없으므로 서버에 있는 경기에만 붙는다. */
+       카드 사이가 아니라 커넥터가 꺾이는 지점(라운드 오른쪽 여백)에 둔다.
+
+       회원 누구에게나 이게 곧 입력 버튼이다(요청: "일정등록과 결과입력은 아무나 가능하게
+       열어주고 수정은 불가") — 판을 짜는 일과 달리 일시·결과는 그 자리에 있던 사람이 적는
+       게 가장 빠르고, 적을 수 있는 자리 자체는 이미 운영자가 정해 뒀다. 아직 저장 안 한
+       새 칸에는 달 게 없으므로 서버에 있는 경기에만 붙는다. */
+    const canFillIn = match !== null && !match.isDead;
     const hasBadge = match !== null && (match.setsWonA !== null || match.scheduledAt !== null);
-    if (!hasBadge && !(canEdit && match !== null && !match.isDead)) return;
+    if (!hasBadge && !canFillIn) return;
     const content = (
       <>
         {match?.setsWonA !== null && match?.setsWonB !== null && (
@@ -657,7 +661,7 @@ export default function LeagueBracket({
     );
     badges.push({
       key: `${p}-badge`, x: x + COL_W + COL_GAP / 2, y: mergeY.get(p) as number,
-      node: canEdit && match !== null && !match.isDead ? (
+      node: canFillIn ? (
         <button
           type="button" className="scr-league-bracket-badge-btn" onClick={() => setEditingPath(p)}
           title="일시와 결과를 적습니다"
