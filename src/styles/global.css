@@ -8421,6 +8421,14 @@ html.scr-light-theme .scr-activity-card-comment .scr-comment-mention { color: #1
 /* 시각 바로 옆 등록자(요청: "브래드 등록") — 크기·굵기·색을 시각과 똑같이 맞춰 한 줄로
    읽히게 한다. 글꼴 크기는 이 줄(.scr-activity-card-head-meta)에서 물려받는다. */
 .scr-activity-card-by { font-weight: 600; color: var(--dim); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 누가 올린 경기인가 — 미니맵 재생 바 아래다(요청). 카드 머리의 시각 옆에 있을 때는 그
+   둘이 한 덩어리로 읽혀 '등록 시각'처럼 보였다(지적). 여기서는 그림을 다 본 뒤 눈이
+   닿는 자리라, 작고 흐리게 오른쪽에 붙여 둔다. */
+.scr-story-by {
+  margin-top: 4px; text-align: right;
+  font-size: var(--fs-11); font-weight: 600; color: var(--dim);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 /* 카드 제목 — 활동에서 가장 큰 글자. 크기는 그대로 두되 굵기만 한 단계 낮춘다
    (요청: 800이 너무 강했다). 크기·색만으로도 제목으로 읽힌다. */
 .scr-activity-card-label {

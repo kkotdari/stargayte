@@ -460,9 +460,8 @@ export const GameResultCard = memo(function GameResultCard({ item, memberOf, onD
       icon={<ClipboardList size={16} aria-hidden />}
       label="게임결과"
       timeText={formatWhen(item.time, { clock: item.withClock })}
-      headMeta={item.gameResult.createdBy && (
-        <span className="scr-activity-card-by">{item.gameResult.createdBy.nickname} 등록</span>
-      )}
+      // (삭제) 카드 머리의 "○○ 등록" — 미니맵 재생 바 아래로 옮겼다(요청). 경기 시각
+      // 바로 옆에 나란히 서니 둘이 한 덩어리로 읽혀 '등록한 시각'처럼 보였다(지적).
       bodyClassName="scr-activity-game-result-body"
       comment={<ActivityCardComments targetType="gameResult" targetId={item.gameResult.id} />}
     >

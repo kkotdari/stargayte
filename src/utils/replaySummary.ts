@@ -391,6 +391,16 @@ const capKeyOf = (b: { k: string; p?: Record<string, unknown> }): string => (
 /** 그 beat가 곧 '이 유닛 이야기'인 키들 — 위 unitSig가 같은 사람의 같은 유닛 이야기를
  *  한 번으로 줄이는 데 쓴다. 여기 없는 키는 p.unit이 있으면 그 값을 쓴다(패스트 OO,
  *  파워 OO, 끝까지 뽑은 유닛 …). */
+/** 그 이야기가 어느 유닛의 이야기인가 — 수(p.k)의 이름에 유닛이 박혀 있는 것들이다.
+ *  p.unit을 따로 싣지 않는 갈래라(러시는 '몇 게이트에서 몇 기'가 본론이다) 아래
+ *  UNIT_STORY_KEYS·p.unit만 보던 중복 판정이 이 이야기들을 못 걸렀다(지적: 같은 내용이
+ *  두 번 연속 — "브래드가 Rex에게 3게이트 질럿 러시를 했다" 바로 뒤에 "브래드가 질럿을
+ *  118기나 뽑아내며 물량으로 몰아쳤다"가 같은 시각으로 붙었다). */
+const TACTIC_UNIT: Record<string, string> = {
+  "zealot-rush": "Zealot", "zling-rush": "Zergling", "duel-rush": "Zealot",
+  "hydra-rush": "Hydralisk", "marine-rush": "Marine", "vulture-rush": "Vulture",
+};
+
 const UNIT_STORY_KEYS: Record<string, string> = {
   carrier: "Carrier", bc: "Battlecruiser", guardian: "Guardian", devourer: "Devourer",
   valkyrie: "Valkyrie", muta: "Mutalisk", ultra: "Ultralisk", moka: "Ultralisk",
@@ -3405,7 +3415,11 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
    *  같은 말이 세 번이다. 무게가 큰 것 하나만 남긴다(맺음말은 경기 전체를 요약하는
    *  자리라 여기 안 걸린다). */
   const unitSig = (b: Beat): string | null => {
-    const unit = UNIT_STORY_KEYS[b.k] ?? (typeof b.p?.unit === "string" ? b.p.unit : null);
+    const unit = UNIT_STORY_KEYS[b.k]
+      ?? (typeof b.p?.unit === "string" ? b.p.unit : null)
+      // 수 이름에 유닛이 박혀 있는 갈래(위 TACTIC_UNIT) — "3게이트 질럿 러시"와 "질럿 물량"은
+      // 같은 사람의 같은 유닛 이야기라 한 번이면 된다.
+      ?? (typeof b.p?.k === "string" ? TACTIC_UNIT[b.p.k] ?? null : null);
     return unit && b.who[0] ? `${b.who[0]}|${unit}` : null;
   };
   /** 인과 문장(이사·궤멸의 '왜')에만 내주는 여유 자리 — 요청: 문장 수를 늘리더라도
@@ -3887,7 +3901,19 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     ...(Object.keys(hubs).length > 0 ? { hubs } : {}),
     ...(Object.keys(moves).length > 0 ? { moves } : {}),
     ...(Object.keys(downs).length > 0 ? { downs } : {}),
-    beats: [...chosen, ending, verdict].map(strip).map(withCastPlace).map((b) => {
+    /* 마지막 몰아붙임(ending)은 GG보다 앞이다(지적: 브래드가 GG를 친 뒤에 브래드 기지로
+       쳐들어간 모양새가 부자연스럽다) — GG는 그 싸움에 밀려 친 것이므로 순서가 뒤집히면
+       이미 항복한 사람을 다시 치는 그림이 된다. chosen 안에서는 GG가 꼬리의 맨 뒤인데
+       (tailRank) 맺음말·승패는 그 뒤에 따로 붙여 왔던 탓이다.
+       ending에 GG와 같은 시각을 준다 — 타임라인은 눈금 자리를 at으로 잡으므로, 시각이
+       없는 채로 GG 앞에 서면 눈금만 거꾸로 간다(시각 없는 문장은 맨 오른쪽에 놓인다).
+       실제로도 그 싸움이 끝나는 순간이 GG라 지어낸 시각이 아니다. */
+    beats: (() => {
+      const i = chosen.findIndex((b) => b.k === "gg" && typeof b.at === "number");
+      if (i < 0) return [...chosen, ending, verdict];
+      const [gg] = chosen.splice(i, 1);
+      return [...chosen, { ...ending, at: gg.at }, gg, verdict];
+    })().map(strip).map(withCastPlace).map((b) => {
       const pos = beatPositions(b, byName);
       /* 나간 것이 확인된 생산담은 '나간 자리'를 그 이야기의 자리로 덮어쓴다(요청: 센터도
          진출로 보고 그 좌표에 화살표를 표시). 기본 자리는 그 무렵 명령이 가장 몰린 곳이라

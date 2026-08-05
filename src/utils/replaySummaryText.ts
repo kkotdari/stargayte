@@ -924,8 +924,8 @@ const TEMPLATES: Record<string, Tpl> = {
     }
     // 그 창 안에 실제로 탈락했으면(Leave Game) 짐작이 아니라 사실이다 — 그렇게 말한다.
     if (c.p.out) {
-      const min = num(c.p.outMin);
-      const when = min > 0 ? `${min}분경 ` : "";
+      /* "N분경"은 안 적는다(요청) — 자막 맨 앞에 시각이 늘 붙으므로 같은 말이 두 번이다. */
+      const when = "";
       return say(
         [`${blow} ${when}탈락함`, `${blow} ${when}그대로 실패함`],
         [`${blow} ${when}${ga(foe)} 탈락함`],
@@ -1262,11 +1262,13 @@ const TEMPLATES: Record<string, Tpl> = {
        이음말까지 붙어서, 시각이 한 줄에 세 번 나온다(실측: "5분 뒤 …가 14분에 템플러
        에너지업부터 챙겼다"). 대신 이르게 찍었을 때만 그 사실을 말로 표시한다. */
     const early = num(c.p.min, 0) > 0 && num(c.p.min, 0) <= EARLY_UPGRADE_MIN;
+    /* "~부터 챙겼다"는 안 쓴다(요청) — 업그레이드는 '완료했다/했다'로 담백하게 말한다.
+       이르게 찍었다는 사실은 '서둘러·일찌감치·남보다 먼저'라는 꾸밈이 그대로 전한다. */
     return `${ga(c.who)} ${done(c, c.pick(early ? [
-      `${reul(ko)} 서둘러 올림`, `${reul(ko)} 일찌감치 마침`, `${ko}부터 챙김`,
-      `${reul(ko)} 남보다 먼저 찍음`,
+      `${reul(ko)} 서둘러 완료함`, `${reul(ko)} 일찌감치 마침`, `${reul(ko)} 남보다 먼저 함`,
+      `${reul(ko)} 서둘러 함`,
     ] : [
-      `${reul(ko)} 올림`, `${ko}까지 챙김`, `${reul(ko)} 마저 올림`, `${reul(ko)} 더함`,
+      `${reul(ko)} 완료함`, `${reul(ko)} 함`, `${reul(ko)} 마저 완료함`, `${reul(ko)} 더함`,
     ]), true)}`;
   },
 
@@ -1405,32 +1407,30 @@ const TEMPLATES: Record<string, Tpl> = {
   "late-defense": (c) => {
     const def = DEFENSE_KO[str(c.p.def)];
     const n = num(c.p.n);
-    const min = num(c.p.min);
-    const hit = num(c.p.hitMin);
     if (!def || n <= 0) return null;
     // 맞은 얘기는 다른 문장이 이미 했다 — 여기서는 지은 것만 말한다(quiet).
     if (c.p.quiet === true) {
       return `${ga(c.who)} ${done(c, c.p.warned === true
         ? c.pick([
-          `공격을 예감하고 ${min}분경 ${def} ${n}개를 몰아 지음`,
-          `${min}분경 ${def} ${n}개를 급히 올려 진영을 조임`,
+          `공격을 예감하고 ${def} ${n}개를 몰아 지음`,
+          `${def} ${n}개를 급히 올려 진영을 조임`,
         ])
         : c.pick([
-          `${min}분경에야 ${def} ${n}개를 부랴부랴 늘림`,
-          `뒤늦게 ${min}분경 ${def} ${n}개를 몰아 지음`,
+          `뒤늦게야 ${def} ${n}개를 부랴부랴 늘림`,
+          `뒤늦게 ${def} ${n}개를 몰아 지음`,
         ]))}`;
     }
     if (c.p.warned === true) {
       return `${ga(c.who)} ${done(c, c.pick([
-        `${min}분경 ${def} ${n}개를 급히 올렸지만 그대로 큰 타격을 입음`,
-        `공격을 예감하고 ${min}분경 ${def} ${n}개를 몰아 지었지만 ${hit}분에 많은 타격을 입음`,
-        `${def} ${n}개를 부랴부랴 세우고도 ${hit}분에 적잖은 피해를 입음`,
+        `${def} ${n}개를 급히 올렸지만 그대로 큰 타격을 입음`,
+        `공격을 예감하고 ${def} ${n}개를 몰아 지었지만 그대로 많은 타격을 입음`,
+        `${def} ${n}개를 부랴부랴 세우고도 적잖은 피해를 입음`,
       ]))}`;
     }
     return `${ga(c.who)} ${done(c, c.pick([
-      `큰 타격을 입고 나서야 ${min}분경 ${def} ${n}개를 몰아 지음`,
-      `얻어맞은 뒤에야 ${min}분경 ${def} ${n}개를 한꺼번에 올림`,
-      `${hit}분에 한 대 맞고 ${min}분경에야 ${def} ${n}개를 부랴부랴 늘림`,
+      `큰 타격을 입고 나서야 ${def} ${n}개를 몰아 지음`,
+      `얻어맞은 뒤에야 ${def} ${n}개를 한꺼번에 올림`,
+      `한 대 맞고 나서야 ${def} ${n}개를 부랴부랴 늘림`,
     ]))}`;
   },
 
@@ -1632,8 +1632,8 @@ const TEMPLATES: Record<string, Tpl> = {
      같은 '입구막기'라도 배럭에 벙커를 얹은 것과 해처리에 성큰을 붙인 것은 그림이 전혀
      다르다. 판정 쪽이 가장 많이 쓴 두 종류를 p.bs에 콤마로 실어 보낸다. */
   "wall-in": (c) => {
-    const min = num(c.p.min, 0);
-    const when = min > 0 ? `${min}분경 ` : "";
+    /* "N분경"은 안 적는다(요청) — 자막 맨 앞의 시각이 이미 그 말을 한다. */
+    const when = "";
     const kinds = str(c.p.bs).split(",").map((b) => BUILDING_KO[b]).filter(Boolean);
     // 이름을 못 부르는 건물뿐이면 그냥 "건물"이라고만 한다 — 근거 없는 이름은 안 붙인다.
     const what = kinds.length >= 2 ? `${wa(kinds[0])} ${kinds[1]}` : kinds.length === 1 ? kinds[0] : "건물";
@@ -1643,8 +1643,8 @@ const TEMPLATES: Record<string, Tpl> = {
        놓았는지 조마조마했는지는 어디에도 안 적혀 있다. */
     return `${ga(c.who)} ${when}${done(c, c.pick([
       `본진 입구를 ${ro(what)} 단단히 막고 발전에 집중함`,
-      `입구를 ${ro(what)} 걸어 잠그고 살림을 키움`,
-      `본진 앞을 ${ro(what)} 틀어막고 그 뒤에서 덩치를 불림`,
+      `입구를 ${ro(what)} 걸어 잠그고 발전함`,
+      `본진 앞을 ${ro(what)} 틀어막고 그 뒤에서 테크를 탐`,
       `입구를 ${ro(what)} 막아 두고 확장에 투자함`,
     ]))}`;
   },
@@ -1751,27 +1751,67 @@ const TEMPLATES: Record<string, Tpl> = {
     // 팀으로 뭉뚱그린 문장에서는 "1팀이"로 끝난다 — "1팀 쪽이"는 겹말이다.
     const holder = holderSide
       ? (lumped && la && lb ? holderSide : `${holderSide.split("·")[0]} 쪽`) : "";
+    /* "그 자리를 지켰다"는 안 쓴다(지적: 그런 표현은 안 쓴다) — 싸움의 결과는 그냥 이겼다고
+       말하는 것이 우리 말투다. 근거는 그대로 '싸움이 끝난 뒤 그 자리에 남아 명령을 이어간
+       쪽'이고(replaySummary의 CLASH_AFTER_SEC), 그걸 부르는 말만 바꾼다. */
     const outcome = holder
       ? c.pick([
-        `${ga(holder)} 그 자리를 지킴`,
-        `${ga(holder)} 끝내 밀어냄`,
-        `${ga(holder)} 물러서지 않고 버팀`,
+        `${ga(holder)} 전투를 이김`,
+        `${ga(holder)} 싸움을 가져감`,
+        `${ga(holder)} 우세했음`,
+        `${ga(holder)} 병력을 남기고 이김`,
       ])
       /* "서로 물러섬" · "크게 갈림"은 쓰지 않는다(지적: 교전 문장이 어색하다) — 리플레이가
          실제로 아는 건 "그 자리를 지킨 쪽이 없다"뿐인데, 물러섰다는 말은 안 본 움직임을
          지어내는 것이고 '갈리다'는 병력 손실을 뜻하는 은어라 문장체와 겉돈다. 아는 그대로
          "승부가 나지 않았다"와, 그 자리에 병력을 부어 넣은 사실만 말한다. */
+      /* "승부가 나지 않았다"도 안 쓴다(요청) — 결말이 없었다는 말이 아니라 팽팽했다는
+         말이라야 그 장면이 읽힌다. */
+      /* 승부가 안 난 싸움도 좋은 말로 쓴다(요청: "병력만 소모했다"·"갈렸다" 같은 부정적
+         표현은 빼고) — 어느 쪽도 물러서지 않았다는 뜻이지 아무 일도 없었다는 뜻이 아니다. */
       : c.pick([
-        "승부가 나지 않음",
-        "양쪽 다 병력만 소모함",
-        "서로 병력만 갈아 넣고 끝남",
+        "용호상박의 전투를 벌임",
+        "팽팽하게 맞섬",
+        "양보 없이 싸움",
+        "일진일퇴의 공방을 벌임",
       ]);
     if (roster) {
+      /* 누군가의 기지에서 벌어진 싸움은 '누가 치고 누가 도우러 왔나'로 말한다(지적:
+         "○○의 기지에서 A와 B가 맞붙어"는 누가 쳐들어간 건지가 안 보인다. 정구가 공격하고
+         크리스·군범이 도우러 온 것인데 서로 마주 선 것처럼 읽힌다).
+         집주인의 편이 곧 막은 쪽이다 — 편을 아는 기록에서만 이렇게 쓰고, 모르면 아래 예전
+         표현으로 물러선다. */
+      const ownerTeam = c.who2 ? c.teamOfName(c.who2) : undefined;
+      const teamA = pa.map((n) => c.teamOfName(n)).find((v) => v !== undefined);
+      const teamB = pb.map((n) => c.teamOfName(n)).find((v) => v !== undefined);
+      const aIsRaider = ownerTeam !== undefined && teamA !== undefined && teamB !== undefined
+        && teamA !== teamB ? teamA !== ownerTeam : undefined;
+      if (c.who2 && aIsRaider !== undefined) {
+        const atk = aIsRaider ? sideA : sideB;
+        const def = aIsRaider ? sideB : sideA;
+        const atkHeld = hold === (aIsRaider ? "a" : "b");
+        const defHeld = hold === (aIsRaider ? "b" : "a");
+        // 도우러 온 쪽이 막아 냈으면 "…지만"이 아니라 "…" 로 이어야 앞뒤가 맞는다.
+        const joined = atkHeld
+          ? c.pick(["헬프에 나섰지만", "막아섰지만", "수비에 나섰지만"])
+          : c.pick(["헬프에 나섰고", "막아섰고", "수비에 나섰고"]);
+        const tail = atkHeld
+          ? c.pick([`${ga(atk)} 전투를 이김`, `${ga(atk)} 싸움을 가져감`, `${ga(atk)} 우세했음`])
+          : defHeld
+            ? c.pick([`${ga(def)} 막아 냄`, `${ga(def)} 끝내 걷어 냄`, `${ga(def)} 지켜 냄`])
+            : c.pick([
+              "용호상박의 전투를 벌임", "팽팽한 전투를 함", "일진일퇴의 공방을 벌임",
+            ]);
+        const mk = (sp: string) =>
+          `${sp}${ga(atk)} ${c.who2}의 기지를 치고 ${ga(def)} ${joined} ${done(c, tail)}`;
+        const one = mk(spell);
+        return spell && one.length > MAX_LINE ? mk("") : one;
+      }
       /* 자리·마법·참가자·결과가 다 들어가면 자막이 두 줄을 넘긴다(실측 87자). 넷 중 마법은
          곁가지라(그 그림은 이모지가 이미 말한다) 넘칠 때 그것부터 접는다. c.pick은 같은
          beat에 늘 같은 것을 고르므로 두 번 불러도 표현이 흔들리지 않는다. */
       const build = (sp: string) => `${where}${sp}${wa(sideA)} ${ga(sideB)} ${c.pick([
-        "맞붙어", "정면으로 부딪쳐", "한데 뒤엉켜",
+        "한데 싸웠고", "맞붙었고", "정면으로 부딪쳤고",
       ])} ${done(c, outcome)}`;
       const full = build(spell);
       return spell && full.length > MAX_LINE ? build("") : full;
@@ -2281,7 +2321,7 @@ const TEMPLATES: Record<string, Tpl> = {
     const m = num(c.p.min);
     return c.pick([
       `${c.duel ? "둘이" : "양 팀이"} ${m}분 동안 병력 ${n}기를 쏟아부은 소모전이었음`,
-      `쉼 없이 병력이 갈려 나간 소모전으로 흘러감`,
+      `쉼 없이 병력을 주고받은 소모전으로 흘러감`,
       `${m}분 내내 병력을 계속 부딪친 소모전이 이어짐`,
     ]);
   },
@@ -3286,6 +3326,11 @@ function renderLines(
         ...(b.who ?? []), ...(b.who2 ?? []), ...(b.whom ?? []),
         ...(typeof b.p?.by === "string" ? [b.p.by] : []),
         ...(typeof b.p?.foe === "string" ? [b.p.foe] : []),
+        /* 큰 싸움에 이름이 불린 참가자들(지적: 군범에 팀 색이 안 입혀진다) — 이 사람들은
+           who/whom에는 없고 partsA·partsB에만 있어서, 문장에는 이름이 나오는데 색을 입힐
+           목록에는 빠져 있었다. 그래서 같은 문장 안에서 크리스는 색이 있고 군범은 없었다. */
+        ...(Array.isArray(b.p?.partsA) ? (b.p.partsA as unknown[]).filter((x): x is string => typeof x === "string") : []),
+        ...(Array.isArray(b.p?.partsB) ? (b.p.partsB as unknown[]).filter((x): x is string => typeof x === "string") : []),
       ])
       .map(resolveName)
       .filter(Boolean),
