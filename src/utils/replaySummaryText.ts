@@ -2567,10 +2567,6 @@ export function renderReplaySummary(
   return r ? r.lines.join(". ") : null;
 }
 
-/* 가장 가까운 집이 그다음 집보다 이만큼 이상 가까우면 '그 집 자리'로 본다 — 절반이면
-   충분히 뚜렷하고, 센터 싸움은 어느 집과도 거리가 비슷해 절대 걸리지 않는다. */
-const HOME_GROUND_CLEAR = 0.5;
-
 /** 문장 하나와 그 문장이 담고 있는 beat들. 타임라인이 문장 단위로 움직이므로(요청: 요약
  *  문장 하나당 스냅 하나) 문단을 이어 붙이기 전 단계가 필요하다 — 한 문장에 여러 beat가
  *  들어가는 일이 흔해서(같은 사람 이야기를 "…했고 …했다"로 잇는다), 문장을 다 만든 뒤
@@ -2594,11 +2590,17 @@ function renderLines(
      제 집에서 벌어진 싸움을 두고 몰아붙였다고 할 수는 없다(지적: "격전지가 이긴 편 본진인
      게 중요한 게 아니라, 아군 기지에 몰아붙일 일이 없잖아").
 
-     재는 법은 '가장 가까운 집이 누구 것인가' 하나다. 반경으로 자르지 않는 이유: 반경은
-     맵 크기와 본진 간격에 흔들리고, 실제로 그것 때문에 본진 코앞의 싸움을 '아무의 집도
-     아님'으로 놓쳤다. 어느 집에 제일 가까운지는 그런 잣대가 필요 없다 — 센터 싸움은
-     어느 집과도 거리가 비슷해 어느 쪽으로도 기울지 않으므로, 두 번째로 가까운 집과
-     견줘 뚜렷하게 가까울 때만 '그 집 자리'로 본다. */
+     재는 법은 "그 자리가 한복판보다 어느 집에 더 가까운가" 하나다. 가장 가까운 집까지의
+     거리를 본진들의 한가운데(=맵 한복판)까지의 거리와 견주기만 하면 된다 — 문턱도 반경도
+     없어서 맵 크기·본진 간격·인원수에 흔들리지 않는다.
+
+     앞서 두 번 헛짚었다. 반경(마당)으로 자르니 본진 코앞의 싸움을 '아무의 집도 아님'으로
+     놓쳤고, 그다음엔 '두 번째로 가까운 집보다 절반 이하'로 바꿨는데 그것도 놓쳤다 —
+     신고된 판을 캡처에서 재 보니 렉스까지 22타일·그다음 집까지 31.6타일(비 0.70)이라
+     절반 기준에 걸렸다. 본진이 한 줄로 늘어선 맵에서는 제 집 앞이어도 이웃집이 그리
+     멀지 않다. 한복판과 견주면 그 판은 22 대 65.5로 명확히 갈린다.
+
+     센터 싸움은 반대로 한복판이 훨씬 가까워 어느 집 자리도 아니게 된다(그게 목적이다). */
   const bases = data.bases ?? {};
   const atHomeOf = (b: ReplaySummaryBeat): boolean => {
     const raw_xy = b.p?.xy;
@@ -2606,13 +2608,17 @@ function renderLines(
     // 좁힌 타입이 map 콜백까지 따라오지 않아(배열 첨자 접근이라) 지역 숫자로 꺼내 둔다.
     const [ax, ay] = raw_xy;
     if (typeof ax !== "number" || typeof ay !== "number") return false;
-    const ranked = Object.entries(bases)
+    const spots = Object.entries(bases);
+    if (spots.length < 2) return false;
+    const nearest = spots
       .map(([raw, h]) => ({ raw, d: Math.hypot(ax - h[0], ay - h[1]) }))
-      .sort((x, y) => x.d - y.d);
-    const nearest = ranked[0];
-    const runnerUp = ranked[1];
-    if (!nearest || !runnerUp) return false;
-    if (nearest.d > runnerUp.d * HOME_GROUND_CLEAR) return false;
+      .sort((x, y) => x.d - y.d)[0];
+    if (!nearest) return false;
+    // 본진들의 한가운데 = 그 맵의 한복판. 시작 지점은 맵에 고르게 흩어져 있으므로 이만한
+    // 근사가 없고, 무엇보다 이 요약이 이미 들고 있는 값만으로 구해진다.
+    const mx = spots.reduce((n, [, h]) => n + h[0], 0) / spots.length;
+    const my = spots.reduce((n, [, h]) => n + h[1], 0) / spots.length;
+    if (nearest.d >= Math.hypot(ax - mx, ay - my)) return false;
     return (b.who ?? []).includes(nearest.raw);
   };
   const out: string[] = [];
