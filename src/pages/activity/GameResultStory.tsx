@@ -967,7 +967,7 @@ export default function GameResultStory({
        그 사이 살림을 편 쪽에는 열심인 얼굴을 준다(요청). 이 스냅은 화살표가 없는 이야기라
        (아무도 어디로 가지 않았다) 아바타 얼굴이 유일한 그림이다. */
     const IDLE_FACE = "😴";
-    const BUSY_FACE = "🔥";
+    const BUSY_FACE = "💦";
     const severe = new Set<string>();
     const moderate = new Set<string>();
     const defended = new Set<string>();

@@ -697,6 +697,63 @@ function ownCombat(p: ParsedReplayPlayer): Map<string, number> {
   return out;
 }
 
+/** 그 사람이 '그 시점까지' 뽑아 둔 전투 유닛 — ownCombat의 시간 제한판.
+ *
+ *  시점이 박힌 장면의 문장은 그 시점의 것만 말해야 한다(지적: 초반 설명에 말도 안 되는 후반
+ *  유닛이 나온다). 실측한 예: 2분 26초에 걸린 포토러시 돌파 문장이 "캐리어 포토 70개를
+ *  걷어냈다"로 나갔다 — 캐리어는 20분 넘어 나왔고 포토도 그때까지 두어 개였다. 경기 전체
+ *  누계(unitCounts)를 그대로 쓴 탓이다. 프레임이 안 잡히면(at===null) 원래대로 전체를 본다. */
+function combatBetween(
+  p: ParsedReplayPlayer,
+  from: number | null,
+  to: number | null
+): Map<string, number> {
+  if (from === null && (to === null || !Number.isFinite(to))) return ownCombat(p);
+  const out = new Map<string, number>();
+  const s = p.signals;
+  if (!s) return out;
+  const lo = from ?? Number.NEGATIVE_INFINITY;
+  const hi = to === null || !Number.isFinite(to) ? Number.POSITIVE_INFINITY : to;
+  for (const [unit, fs] of Object.entries(s.unitFrames)) {
+    if (NON_COMBAT_UNITS.has(unit)) continue;
+    if (!UNIT_KO[unit]) continue;
+    const n = fs.reduce((acc, f) => (f >= lo && f <= hi ? acc + 1 : acc), 0);
+    if (n > 0) out.set(unit, n);
+  }
+  return out;
+}
+
+/** 그 시점의 주력 한 종류 — 없으면(아직 아무것도 안 뽑은 이른 장면) null이다. */
+function topCombatAt(p: ParsedReplayPlayer, at: number | null): string | null {
+  return [...combatBetween(p, null, at).entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+}
+
+/** 그 뒤로 이만큼 동안 뽑은 것까지가 '그 수로 얻은 것'이다 — 확장 문장처럼 원인이 앞에,
+ *  결과가 뒤에 오는 이야기에 쓴다. */
+const PAYOFF_SEC = 360;
+
+function topCombatAfter(p: ParsedReplayPlayer, at: number | null): string | null {
+  if (at === null || !Number.isFinite(at)) return topCombatAt(p, null);
+  const to = at + PAYOFF_SEC / SECONDS_PER_FRAME;
+  /* 뒤 창에서 가장 많이 쏟아낸 것을 고르되, 그 시점에 이미 굴리던 것 중에서 고른다 —
+     문장 앞에 시각이 붙어 있으므로 그때 없던 유닛을 말하면 그대로 어긋난다(지적). */
+  const already = combatBetween(p, null, at);
+  const win = [...combatBetween(p, at, to).entries()]
+    .filter(([u]) => already.has(u))
+    .sort((a, b) => b[1] - a[1])[0]?.[0];
+  // 뒤 창에 아무것도 없으면 그때까지 굴리던 것으로 말한다.
+  return win ?? topCombatAt(p, at);
+}
+
+/** 그 건물을 n개까지 올린 시점 — "포토 70개로 막았다"는 70번째 포토가 선 뒤의 이야기다.
+ *  프레임이 안 남은 건물이면 첫 건물 프레임으로 물러선다(예전 동작). */
+function nthBuildingFrame(p: ParsedReplayPlayer, b: string, n: number): number | null {
+  const fs = p.signals?.buildingFrames[b];
+  if (!fs || fs.length === 0) return p.signals?.firstBuildingFrame[b] ?? null;
+  const sorted = [...fs].sort((x, y) => x - y);
+  return sorted[Math.min(n, sorted.length) - 1] ?? sorted[sorted.length - 1];
+}
+
 /** "○○의 하이템플러 견제로 승기를 잡음"에 쓸 유닛 하나 — 그 사람을 특징짓는 카드를 고른다.
  *  팀 동료가 거의 안 뽑은 유닛일수록 그 사람의 몫이 뚜렷하므로 우선한다.
  *  avoid는 본문이 이미 말한 유닛 — "저글링으로 역전, 저글링 물량으로 밀어붙임"처럼 같은
@@ -1406,14 +1463,17 @@ function sideBeats(args: {
       .filter(([k]) => !(k === "Photon Cannon" && cannonIsRush(p)));
     const def = usable.filter(([, n]) => n >= DEFENSE_MIN).sort((a, b) => b[1] - a[1])[0];
     if (!def) continue;
-    const unit = [...ownCombat(p).entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+    /* 시점은 '첫 건물'이 아니라 '말하려는 개수가 다 선 때'다 — 첫 포토에 시점을 걸고 개수는
+       경기 전체 누계로 말하면, 2분짜리 장면에 40분치 숫자가 실린다(지적). */
+    const at = nthBuildingFrame(p, def[0], def[1]);
+    const unit = topCombatAt(p, at);
     if (!unit) continue;
     // 방어 건물 총합이 일정 수준을 넘으면 '막을 준비'가 아니라 웅크린 것이라, 그 자체가
     // 이야깃거리다(요청) — 문장에 개수를 싣고 무게도 올린다.
     const total = usable.reduce((acc, [, n]) => acc + n, 0);
     beats.push({
       k: "defense", won, who: who(p), weight: total >= TURTLE_MIN ? 10 : 7,
-      at: sg.firstBuildingFrame[def[0]] ?? null,
+      at,
       p: { unit, def: def[0], n: def[1], total },
       // 입구 방어(front-defense)가 이미 같은 건물을 말했으면 두 번 말하지 않는다.
       dedupeOn: DEFENSE_KO[def[0]],
@@ -1434,12 +1494,14 @@ function sideBeats(args: {
         .sort((a, b) => b[1] - a[1])[0]?.[0];
       if (kind) {
         const frames = buildFramesOf(top.p, EXPANSION_BUILDINGS);
+        const at = frames[2] ?? frames[frames.length - 1] ?? null;
         // 확장을 몇 개까지 늘렸나에 더해 그걸로 무엇을 뽑았나까지 말한다(요청) —
-        // 확장은 그 자체가 목적이 아니라 생산량으로 이어지는 수다.
-        const unit = [...ownCombat(top.p).entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+        // 확장은 그 자체가 목적이 아니라 생산량으로 이어지는 수다. 그래서 세는 구간은
+        // 확장 '뒤'다: 경기 전체에서 고르면 10분짜리 장면에 40분에 나온 유닛이 실린다(지적).
+        const unit = topCombatAfter(top.p, at);
         beats.push({
           k: "expand", won, who: who(top.p), weight: 8,
-          at: frames[2] ?? frames[frames.length - 1] ?? null,
+          at,
           p: { n: top.n, kind, ...(unit ? { unit } : {}) },
         });
       }
@@ -2428,11 +2490,14 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
         .filter(([k, n]) => k === wallKey && n >= DEFENSE_MIN)
         .filter(([k]) => !(k === "Photon Cannon" && cannonIsRush(p)))[0];
       if (!def) continue;
-      const unit = [...ownCombat(p).entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+      /* defense와 같은 이유로 시점은 '그 개수가 다 선 때'다 — 첫 포토(2분)에 걸어 두고
+         "캐리어 포토 70개를 걷어냈다"가 나갔다(지적: 초반 설명에 후반 유닛·유닛수). */
+      const at = nthBuildingFrame(p, def[0], def[1]);
+      const unit = topCombatAt(p, at);
       if (!unit) continue;
       return {
         k: "breakthrough", won: true, who: subject, whom: [p.rawName], weight: 14,
-        at: sg.firstBuildingFrame[def[0]] ?? null,
+        at,
         p: { units, unit, def: def[0], n: def[1] },
       } as Beat;
     }
