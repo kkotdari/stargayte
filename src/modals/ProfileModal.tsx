@@ -126,11 +126,15 @@ export default function ProfileModal({ onClose }: ProfileModalProps) {
               </button>
               <input ref={fileRef} type="file" accept="image/*" hidden onChange={handleFile} />
             </div>
-            <label className="scr-field scr-avatar-pick-id">
-              <span className="scr-label">아이디</span>
-              <input className="scr-input" value={id} onChange={(e) => setId(e.target.value)} placeholder="영문/숫자, 최대 12자" />
-            </label>
           </div>
+
+          {/* 아이디는 아바타 줄 아래다(요청) — 사진 옆에 끼여 있을 때는 칸 폭이 아바타와
+              버튼이 쓰고 남은 자리뿐이라 다른 입력칸들보다 눈에 띄게 좁았고, 그 줄만 층이
+              달라 보였다. 아래로 내리면 닉네임·배틀태그와 같은 폭으로 나란히 선다. */}
+          <label className="scr-field">
+            <span className="scr-label">아이디</span>
+            <input className="scr-input" value={id} onChange={(e) => setId(e.target.value)} placeholder="영문/숫자, 최대 12자" />
+          </label>
 
           <label className="scr-field">
             <span className="scr-label">닉네임</span>

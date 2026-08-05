@@ -711,7 +711,7 @@ html.scr-light-theme .scr-checkbox-field input[type="radio"]:not(:checked), html
 /* 사진이 없을 땐 지우기 버튼을 DOM에서 떼어내지 않고 안 보이게만 한다 — 조건부 렌더링으로
    버튼이 붙었다 떨어졌다 하면서 옆 버튼이 자리를 옮기는 것처럼 보였던 문제 원천 차단. */
 .scr-avatar-pick-btn-hidden { visibility: hidden; pointer-events: none; }
-.scr-avatar-pick-id { flex: 1; min-width: 0; }
+/* (삭제) 아바타 줄 안에 끼어 있던 아이디 칸 — 아래 줄로 내렸다(요청). */
 .scr-profile-danger { display: flex; justify-content: flex-end; padding-top: 4px; }
 /* 필드 하나짜리 작은 폼(예: 비밀번호 변경) 버튼을 왼쪽에 붙이는 공용 정렬 래퍼 */
 .scr-field-actions { display: flex; justify-content: flex-start; }
@@ -1039,7 +1039,8 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
      기준)에선 100vw와 같아 좌우 16px 여백이 되고, 다른 모달 '안'에 인라인으로 뜬
      중첩 모달(컨펌 등)에선 부모 박스 폭으로 잡혀 부모(overflow:hidden) 밖으로 안 넘친다. */
   position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 100;
-  width: min(calc(100vw - 32px), 100%); max-width: 420px; padding: 13px 18px 0; max-height: 88vh; max-height: 88dvh;
+  /* 좌우 패딩 18 → 16px(요청) — 본문 좌우 패딩(--main-pad-x 16px)과 같은 값으로 맞춘다. */
+  width: min(calc(100vw - 32px), 100%); max-width: 420px; padding: 13px 16px 0; max-height: 88vh; max-height: 88dvh;
   display: flex; flex-direction: column; overflow: hidden; border-radius: var(--radius);
   border: none;
   /* 배경/블러는 아래 ::before 자식 레이어로(탭바·서랍과 같은 이유 — iOS 26 사파리는
@@ -1099,7 +1100,9 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    오른쪽만 좁힐 필요가 없다. */
 /* overscroll-behavior:contain — 본문이 끝까지 스크롤된 뒤 제스처가 문서(뒷 페이지)로
    체이닝되는 것을 끊는다(실드의 canScrollWithin 차단과 한 세트). */
-.scr-modal-body { display: flex; flex-direction: column; gap: 14px; flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; margin: 0 -18px; padding: 0 18px; scrollbar-gutter: stable; touch-action: pan-y; overscroll-behavior: none; }
+/* 본문은 모달의 좌우 패딩을 음수 마진으로 물렸다가 제 패딩으로 되돌린다 — 스크롤바가
+   모달 안쪽 벽에 붙게 하려는 것이라, 두 값은 늘 모달의 좌우 패딩과 같아야 한다(16px). */
+.scr-modal-body { display: flex; flex-direction: column; gap: 14px; flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; margin: 0 -16px; padding: 0 16px; scrollbar-gutter: stable; touch-action: pan-y; overscroll-behavior: none; }
 
 /* 이미지 타입일 때: URL 입력칸 대신 업로드 버튼 + (값이 있으면) 삭제 버튼을 나란히.
    min-width:0도 함께 둬서 버튼 자체가 칸보다 좁게 줄어들 수 있게(같은 이유). */
@@ -5650,7 +5653,14 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 /* 타이틀 줄 — 라벨(왼쪽) + "선수 추가" 버튼(오른쪽)을 한 줄에 둔다(요청: "선수 추가 버튼을
    동료/상대 타이틀 옆에 인라인 배치"). 슬롯이 비어 있어도 추가 버튼이 별도 행을 안 만든다. */
 /* 추가 버튼을 오른쪽 끝이 아니라 "동료"/"상대" 글자 바로 옆에 붙인다(요청). */
-.scr-challenge-pick-head { display: flex; align-items: center; justify-content: flex-start; gap: 8px; }
+/* 라벨 줄의 높이를 못박는다(지적: 추가 버튼이 글자보다 높아서, 버튼이 있고 없고에 따라
+   레이아웃이 흔들린다) — 버튼은 지목이 다 차면 사라지고 인원 상한이 1인 칸에서는 처음부터
+   없다. 줄 높이를 버튼 높이(패딩 3px×2 + 아이콘 15px = 21px)에 맞춰 두면 버튼이 있든
+   없든 같은 자리다. */
+.scr-challenge-pick-head {
+  display: flex; align-items: center; justify-content: flex-start; gap: 8px;
+  min-height: 23px;
+}
 /* 인라인 배치용 — 전폭 점선 박스(위 기본형)가 아니라 타이틀 옆에 얹히는 작은 아이콘 버튼. */
 .scr-challenge-add-target-inline {
   width: auto; min-height: 0; padding: 3px 9px; border-radius: 999px;
@@ -8006,8 +8016,15 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-activity-row-fold-closing { animation: scr-row-close .2s ease-in forwards; }
 @keyframes scr-row-open { from { grid-template-rows: 0fr; } to { grid-template-rows: 1fr; } }
 @keyframes scr-row-close { from { grid-template-rows: 1fr; } to { grid-template-rows: 0fr; } }
-@media (prefers-reduced-motion: reduce) {
-  .scr-activity-row-fold-open, .scr-activity-row-fold-closing { animation: none; }
+/* 여닫이를 즉시로 — 모바일과 '동작 줄이기'를 켠 환경(요청: 트랜지션 때문에 버벅이는 듯,
+   즉시 열림·닫힘).
+   animation을 끄는 것만으로는 모자라다: 닫힘 쪽은 forwards로 마지막 프레임(닫힌 상태)을
+   붙들고 있다가 ActivityScreen이 ROW_CLOSE_MS 뒤에 언마운트하는 구조라, 애니메이션만
+   끄면 그 시간 동안 카드가 활짝 펼쳐진 채로 남아 한 번 번쩍인다. 트랙을 직접 0fr로
+   못박아 그 틈을 없앤다. */
+@media (prefers-reduced-motion: reduce), (max-width: 480px) {
+  .scr-activity-row-fold-open { animation: none; }
+  .scr-activity-row-fold-closing { animation: none; grid-template-rows: 0fr; }
 }
 /* 펼친 자리 — 원래 카드를 그대로 넣되 머리(시각·제목)는 감춘다(요청: 카드 바디와 댓글).
    바로 위 줄이 이미 같은 말을 하고 있어, 그대로 두면 시각이 두 번 적힌다.
@@ -8679,20 +8696,16 @@ html.scr-light-theme .scr-activity-add-fab, html.scr-light-theme .scr-scrolltop 
   z-index: 90; min-width: 180px; padding: 6px;
   display: flex; flex-direction: column; gap: 2px;
   border-radius: 12px;
-  background: rgba(var(--overlay-rgb), 0.14);
-  backdrop-filter: blur(14px) saturate(1.2);
-  -webkit-backdrop-filter: blur(14px) saturate(1.2);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.12),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
-    0 8px 24px rgba(0, 0, 0, 0.35);
+  /* 하얀 끼를 걷는다(요청) — 반투명 흰 배경(0.14)에 흰 안쪽 하이라이트를 두 겹 더 얹고
+     saturate까지 올려 두니, 뒤에 무엇이 깔리든 그 위에 뿌연 흰 막이 한 장 씌워진 것처럼
+     보였다. 불투명한 패널 색으로 바꾸고 테두리는 앱의 선 색 한 겹만 남긴다 — 블러도
+     필요 없다(뒤가 안 비친다). */
+  background: var(--panel-solid);
+  box-shadow: inset 0 0 0 1px var(--line), 0 8px 24px rgba(0, 0, 0, 0.35);
 }
 .scr-light-theme .scr-activity-add-menu {
-  background: rgba(255, 255, 255, 0.85);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.9),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.6),
-    0 8px 24px rgba(0, 0, 0, 0.14);
+  background: var(--panel-solid);
+  box-shadow: inset 0 0 0 1px var(--line), 0 8px 24px rgba(0, 0, 0, 0.14);
 }
 /* FAB용 — 메뉴를 버튼 위로 펼친다(아래엔 탭바). base .scr-activity-add-menu 뒤에 와야
    base의 top(아래로 펼침)을 확실히 덮는다. 좌측 정렬. */
@@ -8823,11 +8836,16 @@ html.scr-light-theme .scr-activity-add-fab, html.scr-light-theme .scr-scrolltop 
     width: auto; max-width: none; height: auto; max-height: none;
     border-radius: 0;
     /* 노치/홈 인디케이터를 피해 안쪽 여백을 준다(상성 오버레이와 같은 방식). */
-    padding: calc(10px + var(--safe-top)) 12px calc(12px + env(safe-area-inset-bottom, 0px));
+    /* 좌우 16px(요청) — 본문(--main-pad-x)과 같은 값이라 전면 모달과 화면이 같은 여백을
+       쓴다. 위아래는 노치/홈 인디케이터를 피해 그대로 둔다. */
+    padding: calc(10px + var(--safe-top)) 16px calc(12px + env(safe-area-inset-bottom, 0px));
     /* 화면을 다 덮으므로 그림자를 드리울 바깥이 없다 — 구분감은 이제 전면 자체가 맡는다. */
     box-shadow: none;
   }
   .scr-modal:not(.scr-modal-confirm)::before { border-radius: 0; }
+  /* 본문은 모달의 좌우 패딩을 음수 마진으로 물렸다가 제 패딩으로 되돌리는 구조라
+     (스크롤바를 안쪽 벽에 붙이려는 것), 전면 모달의 16px에도 같이 맞춰야 한다. */
+  .scr-modal:not(.scr-modal-confirm) > .scr-modal-body { margin: 0 -16px; padding: 0 16px; }
 
   /* 배치 결과 창만 좌우 여백을 줄인다 — 파일명이 아주 길어서 한 글자라도 더 담는 편이
      낫다(지적: 오른쪽은 넓게 비었는데 목록은 비좁게 쓴다). 위 전면 규칙과 같은 특이도라

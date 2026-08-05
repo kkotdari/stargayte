@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { X, Phone, MessageSquarePlus, ImagePlus } from "lucide-react";
+import { X, Phone, ImagePlus } from "lucide-react";
 import { cx } from "../utils/format";
 import Avatar from "../components/common/Avatar";
 import OptionalDateTimeFields from "../components/common/OptionalDateTimeFields";
@@ -51,9 +51,9 @@ export default function ChallengeFormModal({ onClose, onCreated, presetTargetIds
   // 둘 다 필수는 아니다 — 날짜도 안 정하면 상대가 정하기로 한 것이다.
   const [dateStr, setDateStr] = useState("");
   const [noteStr, setNoteStr] = useState("");
-  // 호출 한마디(선택) — 아이콘 버튼을 눌러야 입력창이 트랜지션으로 열린다(요청).
+  // 호출 한마디(선택) — 처음부터 인풋으로 열려 있다(요청). 예전엔 아이콘 버튼을 눌러야
+  // 트랜지션으로 열렸는데, 그 여닫이가 폼 높이를 바꿔 다른 칸까지 흔들었다.
   const [message, setMessage] = useState("");
-  const [messageOpen, setMessageOpen] = useState(false);
   // 편지지 배경 사진(선택) — 고르는 즉시 브라우저가 두 장(편지지용·공유 카드용)으로
   // 줄여서 들고 있다가 호출할 때 함께 올린다(요청: "용량 줄여서 업로드"). 서버로
   // 올라가기 전이라 취소하면 그냥 사라진다.
@@ -241,6 +241,22 @@ export default function ChallengeFormModal({ onClose, onCreated, presetTargetIds
             noteStr={noteStr} onNoteChange={setNoteStr}
           />
 
+          {/* 신청 메시지(선택) — 처음부터 인풋으로 열어 둔다(요청: 버튼식으로 안 해도 될 듯,
+              선택인 것만 라벨에 표시). 눌러야 나오는 칸은 폼 높이를 눌렀나 안 눌렀나에 따라
+              바꿔 놓았고, "(선택)" 라벨이면 안 적어도 된다는 것이 그대로 읽힌다. */}
+          <label className="scr-field">
+            <span className="scr-label">
+              신청 메시지 <span className="scr-label-optional">(선택)</span>
+            </span>
+            <input
+              className="scr-input"
+              value={message}
+              onChange={(e) => setMessage(e.target.value.slice(0, 50))}
+              placeholder="최대 50자"
+              maxLength={50}
+            />
+          </label>
+
           {/* 편지지 배경 사진(선택, 요청) — 상대가 봉투를 열었을 때 편지지에 깔리고,
               카카오로 공유할 때 카드 그림의 배경으로도 쓰인다. 아래 한마디 버튼과 같은
               알약이라 "덧붙이는 것들"이 한 줄로 나란히 읽힌다. */}
@@ -268,29 +284,6 @@ export default function ChallengeFormModal({ onClose, onCreated, presetTargetIds
                 </button>
               </div>
             )}
-          </div>
-
-          {/* 호출 한마디(선택) — 아이콘 버튼을 누르면 입력창이 높이 트랜지션으로 열린다(요청). */}
-          <div className="scr-challenge-msg">
-            <button
-              type="button"
-              className={cx("scr-challenge-msg-toggle", messageOpen && "scr-challenge-msg-toggle-on")}
-              onClick={() => setMessageOpen((v) => !v)}
-              aria-expanded={messageOpen}
-            >
-              <MessageSquarePlus size={14} /> 신청 메시지{message.trim() && !messageOpen ? ` · ${message.trim()}` : ""}
-            </button>
-            <div className={cx("scr-challenge-msg-wrap", messageOpen && "scr-challenge-msg-wrap-open")}>
-              <div className="scr-challenge-msg-inner">
-                <input
-                  className="scr-input"
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value.slice(0, 50))}
-                  placeholder="신청 메시지 (선택, 최대 50자)"
-                  maxLength={50}
-                />
-              </div>
-            </div>
           </div>
 
           {err && <div className="scr-err">{err}</div>}

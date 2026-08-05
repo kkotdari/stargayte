@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { X, Calendar, CalendarPlus } from "lucide-react";
+import { X, Calendar } from "lucide-react";
 import { cx } from "../../utils/format";
 import { DATE_INPUT_MIN, DATE_INPUT_MAX, shortDate, isValidDateStr } from "../../utils/date";
 
@@ -47,10 +46,10 @@ export default function OptionalDateTimeFields({
   dateLocked = false, noteLocked = false, invalid = false,
 }: OptionalDateTimeFieldsProps) {
   const cls = `scr-input${invalid ? " scr-input-invalid" : ""}`;
-  // 이미 적힌 값이 있으면(수정/응답 화면) 접어 둘 이유가 없으므로 펼친 채로 시작한다.
-  const [noteOpen, setNoteOpen] = useState(noteStr.length > 0);
-  // 잠긴 칸(요청자가 이미 적어 보낸 값)은 접을 수 없다 — 읽을 값이 있으니 늘 보여준다.
-  const showNote = noteLocked || noteOpen || noteStr.length > 0;
+  /* "언제"는 처음부터 인풋으로 열어 둔다(요청: 버튼식으로 안 해도 될 듯, 선택인 것만
+     라벨에 표시) — 버튼을 눌러야 칸이 나오는 구조는 칸 하나를 감추는 대가로 줄 높이가
+     눌렀나 안 눌렀나에 따라 달라져 폼이 흔들렸고, "(선택)"이라는 라벨만으로도 안 적어도
+     된다는 것은 충분히 읽힌다. */
   // 잠긴 칸이 하나라도 있으면 지금 화면은 '응답'이다 — 잠금은 요청자가 정해서 보낸 값을
   // 응답자가 못 바꾸게 할 때만 걸린다(도전장 쓰기·일시 수정 팝업은 아무것도 안 잠근다).
   // 그때는 "(선택)"이 거짓말이 된다(고를 수 있는 게 아니라 이미 정해진 값이다) — 라벨을
@@ -100,8 +99,7 @@ export default function OptionalDateTimeFields({
           ))}
         </span>
       </label>
-      {showNote ? (
-        <label className="scr-field scr-datetime-input">
+      <label className="scr-field scr-datetime-input">
           <span className="scr-label">언제{optional && <> {optional}</>}</span>
           <span className="scr-datetime-input-wrap">
             <input
@@ -117,23 +115,14 @@ export default function OptionalDateTimeFields({
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={(e) => {
                   e.preventDefault(); e.stopPropagation();
-                  onNoteChange(""); setNoteOpen(false);
+                  onNoteChange("");
                 }}
               >
                 <X size={12} />
               </button>
             )}
-          </span>
-        </label>
-      ) : (
-        <button
-          type="button" className="scr-challenge-msg-toggle scr-datetime-note-add"
-          onClick={() => setNoteOpen(true)}
-        >
-          <CalendarPlus size={13} aria-hidden />
-          언제
-        </button>
-      )}
+        </span>
+      </label>
       {/* 잠긴 칸을 보고 "왜 못 고치지?" 하고 멈추지 않게, 수락한 뒤에 고칠 수 있다는 것을
           알려 준다(요청) — 실제로 성사된 뒤에는 시각 옆 연필로 일시 수정 팝업이 열린다
           (ChallengeTimeEditModal). */}
