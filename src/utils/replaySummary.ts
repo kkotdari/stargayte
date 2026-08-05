@@ -287,6 +287,22 @@ const CLASH_BEATS_MAX = 3;
  *      30% 이상 → 중앙 6개 · 50% 이상 → 중앙 3개 · 70% 이상 → 중앙 2개(75%가 3개)
  *  70%면 대개 한 판단이 더 붙고, 큰 싸움이 정말 여러 번이던 판만 셋이 된다. */
 const CLASH_EXTRA_SHARE = 0.7;
+/** 큰 싸움과 급습이 '같은 사건'으로 보이는 간격(초)과 거리(타일).
+ *
+ *  급습이 그대로 큰 싸움으로 번지는 일은 흔하다 — 몰려간 병력을 상대가 받아치면 그
+ *  자리가 곧 그 판의 절정이 된다. 그런데 둘은 갈래가 달라(raid-damage / clash) 서로를
+ *  안 보고, 결과가 한 요약에 같은 장면 두 번이다(지적한 스크린샷: 04:31 "…본진 급습에
+ *  [Jeong9]가 적잖은 피해를 입었다" / 04:42 "[Jeong9]의 기지에서 양 팀 병력이 가장 큰
+ *  싸움을 벌였다" — 11초 차이에 좌표는 1.3타일 차이라 미니맵 화살표까지 똑같았다).
+ *
+ *  같은 피해자가 그 싸움에 있었고, 때와 자리가 이만큼 가까우면 한 사건으로 보고 급습
+ *  문장을 덜어 낸다. 남기는 쪽은 큰 싸움이다 — 그게 그 판의 절정이고, 급습 문장은 그
+ *  절정으로 가는 길목을 한 번 더 말하는 것뿐이다.
+ *
+ *  값은 좁게 잡는다: 30초·20타일이면 "그 급습이 곧 그 싸움"인 경우만 걸리고, 한 사람을
+ *  두 번 따로 친 이야기(급습하고 1분 뒤 중앙에서 붙은 것 같은)는 그대로 둘 다 남는다. */
+const CLASH_RAID_SEC = 30;
+const CLASH_RAID_TILES = 20;
 /* 기술을 실제로 쓴 이야기의 무게 — 기본값에 그 기술의 이야깃거리 점수(TECH_RANK)를 얹는다.
    사람마다 몇 개까지 말할지도 여기서 정한다(요청: 다양한 세부 기술 사용 진술). */
 /** 마법이 가장 많이 떨어진 자리(타일 좌표)와 그 무렵 — 없거나 한곳에 안 몰렸으면 null.
@@ -3291,6 +3307,45 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     const b = pool[i];
     if (b.k !== "late-defense" || !b.who.some((w) => hitNarrated.has(w))) continue;
     pool[i] = { ...b, p: { ...(b.p ?? {}), quiet: true } };
+  }
+
+  /* 급습이 그대로 큰 싸움으로 번진 자리는 두 사건이 아니라 한 사건이다(지적: 거의 같은
+     시간대의 유사한 내용이 두 번 들어갔다) — 큰 싸움만 남기고 급습 문장을 덜어 낸다.
+     맞은 사람이 그 싸움에 있었고 때와 자리가 CLASH_RAID_SEC·CLASH_RAID_TILES 안쪽일
+     때만이다(위 주석). 위 hitNarrated보다 뒤에 두는 이유는, 덜어 낸 급습도 '맞았다'는
+     사실 자체는 있었던 일이라 방어 문장의 quiet 판단은 그대로 서야 하기 때문이다. */
+  const xyOf = (b: Beat): [number, number] | null => {
+    const xy = b.p?.xy;
+    return Array.isArray(xy) && xy.length === 2
+      && typeof xy[0] === "number" && typeof xy[1] === "number" ? [xy[0], xy[1]] : null;
+  };
+  const clashSpots = pool
+    .filter((b) => b.k === "clash" && typeof b.at === "number")
+    .map((b) => ({ at: b.at as number, xy: xyOf(b), b }))
+    .filter((c): c is { at: number; xy: [number, number]; b: Beat } => c.xy !== null);
+  if (clashSpots.length > 0) {
+    /** 그 사람이 이 싸움에 있었나 — 양쪽 대표(who)와 이름을 부를 만큼 싸운 사람들(parts). */
+    const fought = (c: Beat, who: string): boolean => {
+      if ((c.who ?? []).includes(who)) return true;
+      for (const key of ["partsA", "partsB"]) {
+        const xs = c.p?.[key];
+        if (Array.isArray(xs) && xs.some((x) => x === who)) return true;
+      }
+      return false;
+    };
+    for (let i = pool.length - 1; i >= 0; i -= 1) {
+      const b = pool[i];
+      if (b.k !== "raid-damage" && b.k !== "gang-rush") continue;
+      const victim = b.whom?.[0];
+      const xy = xyOf(b);
+      const at = b.at;
+      if (!victim || !xy || typeof at !== "number") continue;
+      const merged = clashSpots.some((c) =>
+        fought(c.b, victim)
+        && Math.abs(c.at - at) * SECONDS_PER_FRAME <= CLASH_RAID_SEC
+        && Math.hypot(c.xy[0] - xy[0], c.xy[1] - xy[1]) <= CLASH_RAID_TILES);
+      if (merged) pool.splice(i, 1);
+    }
   }
 
   // 전술·돌파·합공처럼 '그 경기에서만 있었던 일'이 자리보다 많으면 그만큼 더 쓴다
