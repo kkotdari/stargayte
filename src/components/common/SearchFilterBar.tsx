@@ -30,6 +30,10 @@ interface SearchFilterBarProps {
   // false면 건수 표시를 이 바에서 안 그린다 — 경기 화면처럼 건수를 다른 자리(목록 바로
   // 위)에 직접 그리고 싶을 때(요청: "목록 건수는 조회 버튼 아래 목록 위에"). 기본 true.
   showCount?: boolean;
+  /** 건수를 아래 줄이 아니라 필터+검색과 같은 줄에 세운다(요청: "활동 목록 유저/유형/건수
+   *  같은 라인에 배치"). 필터창과 한 덩어리로 묶이므로, 좁아서 줄이 넘칠 때 그 둘이 함께
+   *  아랫줄로 내려간다 — 건수만 따로 떨어지면 "유저+유형 / 건수"가 되어 요청과 다르다. */
+  countInline?: boolean;
   // 건수와 같은 줄의 왼쪽에 오는 목록 제목(요청: 통계의 문장형 필터 겸 그리드 제목) —
   // 넘기면 그 줄이 "제목 ......... 건수" 한 행이 되고, 안 넘기면 예전처럼 건수만 오른쪽에.
   heading?: ReactNode;
@@ -58,6 +62,7 @@ export default function SearchFilterBar({
   trailing,
   showSearch = true,
   showCount = true,
+  countInline = false,
   heading,
 }: SearchFilterBarProps) {
   const [suggestOpen, setSuggestOpen] = useState(false);
@@ -302,20 +307,28 @@ export default function SearchFilterBar({
     </span>
   ) : null;
 
+  const panelItem = filterPanel ? <div className="scr-filter-panel">{filterPanel}</div> : null;
+
   // 필터창(있으면)이 위, 검색창이 아래로 세로로 쌓인다(요청: "필터가 위 검색이 아래").
   // 타이틀 아래 문서 흐름 안에 그대로 있어, 스크롤하면 목록과 함께 자연스럽게 올라간다.
+  //
+  // countInline이면 그 대신 필터창+건수를 한 덩어리로 묶어 검색창 옆에 세운다 — 줄이
+  // 넘칠 때 둘이 함께 내려가야 해서 형제로 늘어놓지 않고 감싼다(위 prop 주석).
   return (
     <div className="scr-filter-bar">
       <div className="scr-filter-inline-stack">
-        {filterPanel && <div className="scr-filter-panel">{filterPanel}</div>}
+        {!countInline && panelItem}
         {showSearch && <div className="scr-search-filter-float">{searchItem}</div>}
+        {countInline && (panelItem || countItem) && (
+          <div className="scr-filter-inline-tail">{panelItem}{countItem}</div>
+        )}
         {trailing}
       </div>
       {/* 제목이 있으면 건수와 한 줄을 나눠 쓴다 — 없으면 예전 그대로 건수만(오른쪽 정렬은
           .scr-filter-bar-count 자신의 align-self가 맡는다). */}
-      {heading ? (
+      {!countInline && (heading ? (
         <div className="scr-filter-head-row">{heading}{countItem}</div>
-      ) : countItem}
+      ) : countItem)}
     </div>
   );
 }

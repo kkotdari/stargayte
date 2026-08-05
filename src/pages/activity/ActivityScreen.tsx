@@ -1296,6 +1296,8 @@ export default function ActivityScreen() {
         // 보이는 값은 아직 화면에 그려진 수라 곧 바뀔 수 있다는 표시다.
         countLoading={filterActiveForCount && filteredGameResultTotal === null}
         countLabel="건"
+        // 유저·유형·건수를 한 줄에(요청) — 좁아지면 유형+건수가 함께 아랫줄로 내려간다.
+        countInline
         searchValue={search}
         onSearchChange={setSearch}
         searchPlaceholder="유저 입력 또는 @로 목록 띄우기"
