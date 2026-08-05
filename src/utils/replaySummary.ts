@@ -1878,7 +1878,7 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   ]);
   const LATE_AGAINST_ACTOR = new Set([
     "rush-backfire", "greedy-punished", "fallen", "lodging", "relocate", "lift-off", "gg", "stand",
-    "late-defense",
+    "late-defense", "no-elim",
   ]);
 
   // ── 문장 수 ──
@@ -2796,8 +2796,25 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   /* 그중에서도 '완전히 끝난' 사람만 따로 센다(요청: 해골은 완전 엘리나 GG, 생산 0일
      때만. 큰 타격·빈사는 해골까지 붙이지 말 것) — downs는 실제 탈락과 '생산이 무너져
      끝내 못 일어섬'을 한 자루에 담고 있어서, 그림 쪽에서 둘을 가릴 수가 없었다.
-     프레임만으로는 어느 쪽인지 알 수 없으므로 탈락 쪽을 따로 실어 보낸다. */
+     프레임만으로는 어느 쪽인지 알 수 없으므로 끝난 쪽을 따로 실어 보낸다.
+
+     '끝났다'는 두 가지다.
+      ① 판을 떠난 기록(Leave Game)이 있다.
+      ② 엘리는 안 됐지만 생산이 0이 됐다 — 가스 같은 건물만 남기고 그 뒤로 유닛도 건물도
+         하나 안 냈다(지적: 노엘리로 가스 같은 것만 남기고 생산이 끊긴 경우도 해골이다).
+     ①은 실전에서 거의 안 잡힌다: 퇴장 기록은 남지만 전원이 경기가 끝난 뒤에 나가므로
+     아래 꼬리 조건에서 통째로 걸러진다(실측: 리플레이 21개 중 20개에 퇴장 기록이 있는데
+     ①로 잡힌 사람은 0명). 그래서 ②가 사실상 이 판정의 본체다. */
   const elims: Record<string, number> = {};
+  /** 마지막으로 무언가를 낸 프레임 — 유닛이든 건물이든. 이 뒤로는 아무것도 안 냈다. */
+  const lastProductionFrame = (p: ParsedReplayPlayer): number | null => {
+    const s = p.signals;
+    if (!s) return null;
+    let last = -1;
+    for (const fs of Object.values(s.unitFrames)) for (const f of fs) if (f > last) last = f;
+    for (const fs of Object.values(s.buildingFrames)) for (const f of fs) if (f > last) last = f;
+    return last < 0 ? null : last;
+  };
   for (const p of replay.players) {
     const gone = eliminatedFrame(p);
     const f = gone ?? productionCollapse(p, totalFrames);
@@ -2805,7 +2822,13 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     // 누구나 손을 놓으므로, 그 상태로 이만큼은 더 끌려가야 망한 것으로 본다.
     if (f === null || (totalFrames !== null && totalFrames - f < DOWN_MIN_TAIL_FRAMES)) continue;
     downs[p.rawName] = f;
-    if (gone !== null) elims[p.rawName] = gone;
+    if (gone !== null) { elims[p.rawName] = gone; continue; }
+    // ② 생산 0 — 꼬리 조건은 위와 같다. 마지막으로 낸 것이 끝보다 이만큼 앞서야 '끊긴'
+    //    것이고, 그렇지 않으면 그냥 경기가 끝나서 손을 놓은 것이다.
+    const last = lastProductionFrame(p);
+    if (last !== null && totalFrames !== null && totalFrames - last >= DOWN_MIN_TAIL_FRAMES) {
+      elims[p.rawName] = Math.max(f, last);
+    }
   }
 
   // 이사 — 짓는 구역(시작 지점 기준)이 바뀌면 살림을 옮긴 것이다(요청). 본진을 잃고
@@ -3179,6 +3202,8 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     .slice(0, CLASH_BEATS_MAX)
     .map((c, i) => clashBeatOf(c, i));
 
+  /** 노엘이 진짜였던 사람 — 아래 pool 조립 중에 채워지고, 곧바로 그 사람의 GG를 거르는 데 쓴다. */
+  const noElimReal = new Set<string>();
   const pool: Beat[] = [
     ...clashBeats,
     ...moveBeats,
@@ -3199,6 +3224,25 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     )),
   ]
     .filter((b) => !(b.k === "fallen" && b.who.some((w) => pickedOff.has(w))))
+    /* 노엘은 말만으로는 이야기가 안 된다 — 실제로 그 사람 살림이 끝났을 때만 남긴다.
+       기준을 '진 편인가'로 두지 않는 이유는 이긴 편에도 끝난 사람이 있기 때문이다(지적:
+       이긴 팀 일부가 해골이 될 수도 있어 — 노엘로 가스 같은 것만 남기고 생산이 끊긴 경우).
+       거꾸로 이긴 사람이 농담처럼 던진 노엘은 downs에 없으므로 여기서 걸린다(실측: 4:4
+       한 판에서 이긴 편 100000g가 "노엘여"를 쳤는데 생산은 끝까지 이어졌다).
+       남는 것은 그 판의 큰 사건이라, 잘려 나가지 않게 무게도 함께 올린다(GG와 같은 6은
+       붐비는 팀전에서 늘 밀렸다). */
+    .flatMap((b, _i, arr) => {
+      if (b.k !== "no-elim") return [b];
+      const raw = b.who[0];
+      if (raw === undefined) return [];
+      // 살림이 끝났거나(downs) GG까지 쳤으면 진짜 손을 든 것이다.
+      const gaveUp = arr.some((x) => x.k === "gg" && x.who.includes(raw));
+      if (downs[raw] === undefined && !gaveUp) return [];
+      noElimReal.add(raw);
+      return [{ ...b, weight: 15 }];
+    })
+    // 같은 사람의 GG는 겹치는 말이라 뺀다 — 노엘 쪽이 더 그 사람다운 한마디다.
+    .filter((b) => !(b.k === "gg" && b.who.every((w) => noElimReal.has(w))))
     // 돌파 문장이 이미 "조조의 저글링 성큰 5개를 밀어버렸다"고 말했으면, 같은 사람의
     // 무너짐에 "성큰 5개와 함께 버텼지만"을 또 붙이지 않는다 — 같은 방어 건물이 한
     // 요약에 두 번 나온다. 문장은 남기고 그 대목만 덜어 낸다.
@@ -3397,7 +3441,7 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   // 이미 무너진 사람의 활약담은 말하지 않는다(지적: 해골이 붙었는데 "병력을 뽑았다"가
   // 나온다) — 생산이 끊긴 뒤의 이야기는 그림과 앞뒤가 안 맞는다. 무너짐 자체를 말하는
   // 문장(궤멸·GG·맺음·부활·이사)은 당연히 남긴다.
-  const DOWN_KEEP = new Set(["fallen", "gg", "stand", "result", "revival", "relocate", "lodging"]);
+  const DOWN_KEEP = new Set(["fallen", "gg", "no-elim", "stand", "result", "revival", "relocate", "lodging"]);
   for (let i = pool.length - 1; i >= 0; i -= 1) {
     const b = pool[i];
     if (DOWN_KEEP.has(b.k) || b.at === null || b.at === undefined) continue;
@@ -3550,9 +3594,15 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
      포인트) — 무게 8~9로는 급습·교전(20 안팎)에 절대 못 이겨서 172판에서 0건이었다.
      한 자리만 내주되, 근거가 확실한 것에만 준다(아래 SCAN_RESERVE_MIN) — 스캔 몇 번은
      정찰이 아니라 그냥 탐지다. */
-  const EXTRA_SLOTS = { cause: 2, tech: 2, clash: CLASH_BEATS_MAX - 1, mass: 1, scout: 1 } as const;
+  /* 노엘도 같은 사연이다(요청: 노엘을 외쳤다는 대사를 넣으면 좋겠다) — 무게를 15까지
+     올려 봐도 급습·교전(20 안팎)에 밀려 붐비는 팀전에서는 늘 '자리 없음'으로 잘렸다
+     (실측: 4:4 한 판에서 두 번 다 no room). 한 판에 한 자리만 내준다 — 노엘이 나온
+     판에서만 쓰이므로 다른 경기 길이는 그대로다. */
+  const EXTRA_SLOTS = {
+    cause: 2, tech: 2, clash: CLASH_BEATS_MAX - 1, mass: 1, scout: 1, giveup: 1,
+  } as const;
   type Reserve = keyof typeof EXTRA_SLOTS;
-  const extraUsed: Record<Reserve, number> = { cause: 0, tech: 0, clash: 0, mass: 0, scout: 0 };
+  const extraUsed: Record<Reserve, number> = { cause: 0, tech: 0, clash: 0, mass: 0, scout: 0, giveup: 0 };
   /** 예약 없이 들어간 수 — 예약석은 갈래마다 따로 세야 한다. 예전엔 chosen.length로
    *  방을 쟀는데, 갈래가 둘이 되면 한쪽이 쓴 예약석이 다른 쪽 방까지 먹어 버린다. */
   let plain = 0;
@@ -3658,6 +3708,11 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     if (b.k !== "vision" || b.p?.unit !== "Scanner Sweep") continue;
     if ((typeof b.p?.n === "number" ? b.p.n : 0) < SCAN_RESERVE_MIN) continue;
     if (consider(b, false, "scout")) break;
+  }
+  // 4.5차: 노엘 예약석 — 그 판에 하나뿐인 한마디라 자리 다툼에 맡기지 않는다.
+  for (const b of ranked) {
+    if (b.k !== "no-elim") continue;
+    if (consider(b, false, "giveup")) break;
   }
   // 5차: 물량 예약석 — 파워 OO와 물량 중 무거운 쪽 하나만 태운다(위 EXTRA_SLOTS 주석).
   for (const b of ranked) {
@@ -4013,6 +4068,17 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
        없는 채로 GG 앞에 서면 눈금만 거꾸로 간다(시각 없는 문장은 맨 오른쪽에 놓인다).
        실제로도 그 싸움이 끝나는 순간이 GG라 지어낸 시각이 아니다. */
     beats: (() => {
+      /* 노엘을 외치고도 끝내 다 털린 경우를 표시해 둔다(요청: 그게 웃음 포인트) —
+         '털렸다'의 근거는 elims다: 판을 떠난 기록이거나, 그 뒤로 유닛도 건물도 하나
+         안 낸 것(생산 0). 외친 뒤에 그렇게 됐을 때만이다. */
+      for (let i = 0; i < chosen.length; i += 1) {
+        const b = chosen[i];
+        if (b.k !== "no-elim") continue;
+        const raw = b.who?.[0];
+        const end = raw === undefined ? undefined : elims[raw];
+        if (end === undefined || (typeof b.at === "number" && end < b.at)) continue;
+        chosen[i] = { ...b, p: { ...(b.p ?? {}), out: true } };
+      }
       const i = chosen.findIndex((b) => b.k === "gg" && typeof b.at === "number");
       if (i < 0) return [...chosen, ending, verdict];
       const [gg] = chosen.splice(i, 1);

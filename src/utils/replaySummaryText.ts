@@ -347,7 +347,7 @@ const COMPARATIVE_LINKS = new Set(["반면", "반대로", "역으로", "이에 �
  *  '한편'은 딴 데서 벌어지는 소식을 곁들일 때 쓰는 말이라, 누가 무너진 자리에는 어울리지
  *  않는다. 이 자리에서는 결말을 향하는 말로 받는다. */
 const WEAK_LINKS = new Set(["한편", "그와 동시에", "여기에", "그리고", "게다가", "다른 쪽에서는"]);
-const HEAVY_BEATS = new Set(["fallen", "gg", "relocate", "lift-off", "lodging", "rush-backfire"]);
+const HEAVY_BEATS = new Set(["fallen", "gg", "no-elim", "relocate", "lift-off", "lodging", "rush-backfire"]);
 const HEAVY_LINKS = ["결국", "그러는 사이"];
 // 정규식에 이름을 그대로 넣기 전에 특수문자를 막는다 — 닉네임에 무엇이 들어올지 모른다.
 const escapeRe = (v: string): string => v.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -375,6 +375,8 @@ const AGAINST_ACTOR = new Set([
   "rush-backfire", "greedy-punished", "fallen", "lodging", "relocate", "lift-off", "gg", "stand",
   // 얻어맞고 나서야 방어를 올린 것도 그 사람의 일이지만 국면은 상대 쪽이다.
   "late-defense",
+  // 노엘을 외친 것도 마찬가지 — 사실상 손을 든 말이다.
+  "no-elim",
 ]);
 // 문장 앞에 붙는 이음말을 알아보는 조각 — 고정된 말들에 더해 "8분 뒤"처럼 그때그때
 // 만들어지는 시간 표현도 함께 본다(요청: 시간이 많이 벌어지면 몇 분 후라고 적기).
@@ -2156,6 +2158,16 @@ const TEMPLATES: Record<string, Tpl> = {
     c.p.all
       ? `${c.whoList.join("·")}${c.duel ? "가" : " 팀이"} ${c.pick(["결국 GG 선언", "결국 GG를 치고 물러남", "결국 GG 치고 끝냄"])}`
       : `${ga(c.who)} ${c.pick(["결국 GG 선언", "GG를 침", "GG 치고 나감", "일찌감치 GG", "손 놓고 GG"])}`,
+
+  /* 노엘(노엘리) — "다 부수지 말고 그냥 끝내 달라". 외친 것만으로도 사실상 끝난 것이지만,
+     그러고도 끝내 다 털린 경우(p.out)가 이 판의 웃음 포인트다(요청). */
+  "no-elim": (c) => (c.p.out === true
+    ? `${ga(c.who)} ${c.pick([
+      "노엘을 외쳤지만 끝내 엘리당함",
+      "노엘을 외쳤는데도 끝내 싹 털림",
+      "노엘을 외쳤으나 받아들여지지 않음",
+    ])}`
+    : `${ga(c.who)} ${c.pick(["노엘을 외침", "노엘을 부름", "노엘 한마디로 손을 듦"])}`),
 
   // "유비의 바이오닉 한 방으로 관우의 저글링 성큰을 뚫음"(요청) — 양쪽을 한 문장에 담는다.
   breakthrough: (c) => {
