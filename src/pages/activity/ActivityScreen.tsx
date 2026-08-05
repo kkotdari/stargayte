@@ -14,7 +14,7 @@ import { ActivityCard } from "./ActivityCard";
 import { resolveSlotName } from "./GameResultSides";
 import { isComputerSlot } from "../../constants/computerSlot";
 import { isUnregisteredSlot } from "../../constants/unregisteredSlot";
-import { ChallengeCard, ChallengeTimeHeadEdit, challengeSideBadges, challengeStatusInfo } from "../challenge/ChallengeScreen";
+import { ChallengeCard, ChallengeTimeHeadEdit, challengeStatusInfo } from "../challenge/ChallengeScreen";
 import ReplayReviewModal from "../../modals/ReplayReviewModal";
 import ActivityComments, { commentStatOf, primeActivityComments } from "./ActivityComments";
 import { primeReplayMaps } from "../../hooks/useReplayMap";
@@ -1020,58 +1020,36 @@ export default function ActivityScreen() {
      눈금은 그대로라, 지금 자리로 가고 싶으면 그 눈금을 짚으면 된다. */
 
   /* 목록 한 줄의 '내용' 칸(요청) — 종류마다 한 줄로 줄이면 무엇이 남나.
-       · 너 나와  — 누가 누구를 불렀나. 이름 사이 배지는 카드의 손 이모지 양옆 배지와
-                    같은 값이다(challengeSideBadges) — 왼쪽이 부른 편, 오른쪽이 지목된 편.
+       · 너 나와  — 누가 누구를 불렀나(이름뿐이다 — 상태는 위 rowStatusOf가 맡는다).
        · 게임결과 — 몇 사람이 몇 판을 쳤나.
        · 랭크변동 — 몇 사람의 순위가 움직였나(개인전·팀전에 다 오른 사람은 한 번만 센다). */
+  /** 내용 칸 맨 왼쪽의 상태 알약 — 너 나와만 값이 있고 나머지(게임결과·랭크 변동)는
+   *  비운다. 비어도 자리는 CSS가 늘 예약하므로(.scr-activity-row-status-slot) 줄 종류가
+   *  섞여도 닉네임이 시작하는 x가 흔들리지 않는다(지적: "너나와 말고는 배지가 없잖아"). */
+  const rowStatusOf = (item: DisplayItem) => {
+    if (item.kind !== "challenge") return null;
+    const s = challengeStatusInfo(item.challenge);
+    // 이 알약은 두 글자 자리다 — "대기중"만 셋이라 여기서 줄인다(요청의 낱말도 "대기").
+    return <span className="scr-activity-row-status">{s.text === "대기중" ? "대기" : s.text}</span>;
+  };
+
   const rowDesc = (item: DisplayItem) => {
     if (item.kind === "challenge") {
       const c = item.challenge;
       const mine = [c.createdBy.nickname, ...c.ownMembers.map((m) => m.nickname)];
       const theirs = c.targets.map((t) => t.nickname);
-      /* 결과까지 들어온 건은 "완료"라고 적지 않고 양쪽에 승/무/패를 단다(요청). "완료"는
-         무슨 일이 있었는지를 하나도 말해 주지 않는 낱말이라, 줄을 펼쳐 카드를 봐야 누가
-         이겼는지 알 수 있었다. 이긴 편에만 승을 다는 카드와 달리 양쪽 다 적는 건, 목록엔
-         손 이모지 같은 가운데 기준이 없어 한쪽만 칠하면 그게 누구 것인지가 흐려서다. */
-      const won = c.resultWinnerSide;
-      const sideBadge = (text: string, tone: "win" | "loss" | "draw") => (
-        <span className={cx("scr-activity-row-state", `scr-activity-row-state-${tone}`)}>{text}</span>
-      );
-      const status = challengeStatusInfo(c);
-      /* 상태는 닉네임 바로 왼쪽에 선다(요청). 자리를 차지하는 흐름 안의 요소다 —
-         한때 자리를 안 차지하게 띄워 뒀는데, 그러면 이름 왼쪽 바깥은 화살표가 이미 쓰고
-         있는 자리라 둘이 겹쳤다(지적: 배지 겹침). 자리를 주면 그만큼 이름 칸이 줄지만,
-         이름은 제 안에서 줄어들 줄 알고(.scr-activity-row-em) 겹치는 것보다는 낫다.
-         어느 쪽 닉네임에 붙일지는 '누구의 이야기인가'로 정한다 — 수락·거절·버림·만료는
-         지목된 쪽이 한 일이니 오른쪽에, 부른 쪽이 거둬들인 취소만 왼쪽에 붙는다(요청).
-         그 판단은 카드가 손 이모지 양옆 배지를 놓을 때 쓰는 것과 같은 함수다
-         (challengeSideBadges) — 두 화면이 같은 걸 보고 같은 자리를 고르게. */
-      const onCreatorSide = challengeSideBadges(c).left !== null;
-      const badge = (
-        <span className={cx("scr-activity-row-state", `scr-challenge-avatar-badge-${status.tone}`)}>
-          {status.text}
-        </span>
-      );
-      const leftBadge = won
-        ? won === "draw" ? sideBadge("무", "draw")
-          : won === "creator" ? sideBadge("승", "win") : sideBadge("패", "loss")
-        : onCreatorSide && badge;
-      const rightBadge = won
-        ? won === "draw" ? sideBadge("무", "draw")
-          : won === "target" ? sideBadge("승", "win") : sideBadge("패", "loss")
-        : !onCreatorSide && badge;
+      /* 내용 칸의 배지는 전부 걷었다(요청) — 승/무/패도, 닉네임 옆에 붙던 상태도 없다.
+         닉네임 사이사이에 색 조각이 끼면 정작 읽어야 할 이름이 그만큼 밀리고, 어느 쪽
+         사람의 것인지도 줄마다 달라 눈이 한 번씩 멈췄다. 상태는 칸 맨 왼쪽의 제 자리
+         (아래 rowStatusOf)로 옮겼다. */
       return (
         <>
           <span className="scr-activity-row-name">
-            <span className="scr-activity-row-name-main">
-              {leftBadge}{nameNodes(mine)}
-            </span>
+            <span className="scr-activity-row-name-main">{nameNodes(mine)}</span>
           </span>
           <span className="scr-activity-row-arrow" aria-hidden>→</span>
           <span className="scr-activity-row-name">
-            <span className="scr-activity-row-name-main">
-              {rightBadge}{nameNodes(theirs)}
-            </span>
+            <span className="scr-activity-row-name-main">{nameNodes(theirs)}</span>
           </span>
         </>
       );
@@ -1344,15 +1322,17 @@ export default function ActivityScreen() {
                       </span>
                     </span>
                     <span className="scr-activity-row-desc">
+                      {/* 상태 알약 자리 — 너 나와만 채워지고 나머지 줄은 빈 채로 남는다.
+                          자리를 늘 잡아 둬야 줄 종류가 섞여도 닉네임이 같은 x에서 시작한다. */}
+                      <span className="scr-activity-row-status-slot">{rowStatusOf(item)}</span>
                       {rowDesc(item)}
                       {/* 댓글 수는 내용 옆이다(요청) — 댓글은 제목이 아니라 그날 무슨 일이
                           있었는지에 붙는 말이다. 없으면 아예 안 그린다. 하루 안에 새로
-                          달린 게 있으면 그 자리에 NEW를 덧붙인다 — 딱지를 따로 세우지
-                          않는 건, 수와 새것 여부가 같은 것("댓글")에 대한 말이라 떨어져
-                          있으면 둘을 이어 읽어야 하기 때문이다. */}
+                          달린 게 있으면 수 자체를 밝은 색으로 올린다 — 여기 붙어 있던
+                          NEW 글자는 걷었다(요청). */}
                       {comments && (
                         <span className={cx("scr-activity-row-comment", comments.fresh && "scr-activity-row-comment-fresh")}>
-                          [{comments.count}{comments.fresh && <b>NEW</b>}]
+                          [{comments.count}]
                         </span>
                       )}
                     </span>
