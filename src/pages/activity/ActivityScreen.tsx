@@ -50,6 +50,9 @@ const ROW_CLOSE_MS = 200;
 /** NEW로 볼 기간(요청: 24시간 내) — 지난 방문을 기억해 두던 방식에서 이 단순한 규칙으로
  *  바꿨다. 누구에게나 같은 것이 보이고, 브라우저에 기억해 둘 것도 없다. */
 const NEW_WINDOW_MS = 24 * 60 * 60 * 1000;
+/** 알약을 반투명으로 눌러 둘 상태(요청) — 이미 끝나서 더 손댈 것이 없는 것들이다.
+ *  대기·수락은 아직 살아 있는 이야기라 또렷하게 남는다. */
+const STATUS_FADED = new Set(["거절", "만료", "취소", "완료"]);
 /** 등록 시각과 수정 시각이 이만큼 넘게 벌어져야 "손댄 것"으로 본다 — 등록 순간에는
  *  둘이 같게 찍히지만, 같은 트랜잭션 안에서도 초 단위 아래로는 어긋날 수 있다. */
 const TOUCHED_SLACK_MS = 5000;
@@ -1030,7 +1033,12 @@ export default function ActivityScreen() {
     if (item.kind !== "challenge") return null;
     const s = challengeStatusInfo(item.challenge);
     // 이 알약은 두 글자 자리다 — "대기중"만 셋이라 여기서 줄인다(요청의 낱말도 "대기").
-    return <span className="scr-activity-row-status">{s.text === "대기중" ? "대기" : s.text}</span>;
+    const text = s.text === "대기중" ? "대기" : s.text;
+    return (
+      <span className={cx("scr-activity-row-status", STATUS_FADED.has(text) && "scr-activity-row-status-faded")}>
+        {text}
+      </span>
+    );
   };
 
   const rowDesc = (item: DisplayItem) => {
