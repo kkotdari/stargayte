@@ -1294,15 +1294,12 @@ export default function ActivityScreen() {
                     type="button" className="scr-activity-row" aria-expanded={open}
                     onClick={() => toggleRow(key)}
                   >
-                    <span className="scr-activity-row-title">
-                      {/* 제목 위에 얹혀 있던 NEW/UPDATE 딱지는 걷었다(요청) — 제목 칸은
-                          이제 제목 글자뿐이라 그만큼 좁아진다. 그 딱지는 내용 칸 오른쪽으로
-                          옮겨 갔다(아래). */}
-                      <span className="scr-activity-row-title-main">
-                        <span className="scr-activity-row-title-text">{rowTitleOf(item)}</span>
-                      </span>
-                    </span>
                     <span className="scr-activity-row-desc">
+                      {/* 제목은 제 칸을 안 쓴다(요청: 제목 칸 없애고 "제목 | 내용"으로) —
+                          종류는 셋뿐("너 나와!" · "랭크 변동" · "게임결과")이라 한 칸을
+                          통째로 내주기엔 늘 같은 말이 되풀이됐고, 그 칸이 가져가던 66~72px은
+                          줄마다 실제로 달라지는 내용 쪽에 훨씬 요긴하다. */}
+                      <span className="scr-activity-row-title-inline">[{rowTitleOf(item)}]</span>
                       {/* 상태 알약 — 내용의 맨 왼쪽이다. 너 나와에만 붙고 나머지 줄은
                           아예 그리지 않는다(요청: 자리 예약 취소) — 빈 칸을 늘 잡아 두면
                           알약 없는 줄만 왼쪽이 휑하게 비어 오히려 눈에 걸렸다. */}
