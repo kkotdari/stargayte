@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Plus, Trash2, Pencil, Check, X, Save } from "lucide-react";
+import { Plus, Trash2, Pencil, X, Save } from "lucide-react";
 import Select from "../../components/common/Select";
 import { Spinner } from "../../components/common/Feedback";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
@@ -192,11 +192,13 @@ export default function LeagueScreen() {
           </div>
 
           {/* 액션 버튼 줄 — 리그명 아랫줄에 아이콘 버튼으로 모은다(요청). 수정 모드로
-              들어가는 연필은 다시 누르면 닫히는 걸 막으려(요청) 편집 중엔 감추고, 나가는
-              건 완료(체크)/취소(X)로만 한다. 둘 다 편집 모드를 벗어난다 — 하위 패널(팀/
-              대진)은 각자 저장 버튼으로 즉시 반영하므로, 취소는 아직 저장 안 한 로컬
-              편집(예: 시드 이동)을 버리고 나가는 의미가 된다 — 저장은 이 줄의 저장
-              버튼 하나가 팀구성과 대진표를 함께 맡는다(요청). */}
+             들어가는 연필은 다시 누르면 닫히는 걸 막으려(요청) 편집 중엔 감추고, 나가는
+             문은 X 하나다(요청: "X 하나만 남기기(닫기)").
+
+             한때 완료(체크)와 취소(X)가 나란히 있었는데 둘 다 편집 모드를 벗어나기만 할
+             뿐 하는 일이 똑같았다(지적: "체크 버튼과 x 버튼 차이가 뭐야?"). 취소가
+             '되돌리기'였던 적이 없고, 저장이 이 줄의 저장 버튼 하나로 모이면서 둘을
+             가를 근거도 사라졌다. */}
           {isAdmin && (
             <div className="scr-league-btn-row">
               {!editMode ? (
@@ -220,14 +222,7 @@ export default function LeagueScreen() {
                   <button
                     type="button" className="scr-icon-btn"
                     onClick={() => setEditMode(false)}
-                    aria-label="수정 완료" title="수정 완료"
-                  >
-                    <Check size={16} />
-                  </button>
-                  <button
-                    type="button" className="scr-icon-btn"
-                    onClick={() => setEditMode(false)}
-                    aria-label="수정 취소" title="수정 취소"
+                    aria-label="수정 닫기" title="수정 닫기"
                   >
                     <X size={16} />
                   </button>
