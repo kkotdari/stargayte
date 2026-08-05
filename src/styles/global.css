@@ -7837,7 +7837,9 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   display: inline-flex; align-items: center; justify-content: center;
   /* 위아래는 같은 값이다(요청) — 상태 알약(9px)에서는 한글 글자가 상자 아래쪽에 앉아
      보여 반 픽셀을 어긋나게 줬는데, 12px에서는 그 차이가 눈에 안 걸린다. */
-  padding: 2px 6px; border-radius: 7px; margin-right: 6px;
+  /* 모서리와 좌우 여백을 조금씩 줄인다(요청) — 7 → 6px, 6 → 4px. 폭은 못박아 뒀으므로
+     (--scr-row-title-w) 좌우를 줄여도 배지가 좁아지지 않고 글자가 쓸 자리만 넓어진다. */
+  padding: 2px 4px; border-radius: 6px; margin-right: 6px;
   background: var(--line-faint); color: var(--text);
   font-size: var(--fs-micro); font-weight: 700; line-height: 1.25; white-space: nowrap;
 }
