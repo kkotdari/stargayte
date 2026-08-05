@@ -170,7 +170,18 @@ const SHOW_TOP_VALUES = false;
  *  쓰는 기술의 값이 종족 비율만큼 깎인다. 다만 목록의 '순서'는 총합으로 매긴다. */
 function TopList({ items, unit }: { items: TopEntry[]; unit: string }) {
   void unit; // 수를 숨긴 동안에는 안 쓰인다(SHOW_TOP_VALUES 참고).
-  if (items.length === 0) return <span className="scr-stat-points-empty">-</span>;
+  /* 하나도 없어도 껍데기는 그대로 세운다(지적: 스킬이 없을 때 다른 클래스가 들어가서
+     생기는 문제) — 예전엔 여기서 <span>만 돌려줬는데, 그러면 목록의 고정폭
+     (--scr-toplist-w 90px)이 통째로 사라져 그 줄만 칸 속 묶음이 줄어들고, 묶음이 칸
+     가운데에 서므로 가운데 구분선까지 딴 자리로 갔다. 같은 <ul>에 "-" 한 줄이면 폭이
+     같아 줄마다 구분선이 한 x에 선다. */
+  if (items.length === 0) {
+    return (
+      <ul className={cx("scr-stat-toplist", !SHOW_TOP_VALUES && "scr-stat-toplist-nameonly")}>
+        <li><span className="scr-stat-toplist-name scr-stat-points-empty">-</span></li>
+      </ul>
+    );
+  }
   return (
     <ul className={cx("scr-stat-toplist", !SHOW_TOP_VALUES && "scr-stat-toplist-nameonly")}>
       {items.map((it) => (

@@ -7814,7 +7814,9 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-activity-row-title-badge {
   flex: none; width: var(--scr-row-title-w); box-sizing: border-box;
   display: inline-flex; align-items: center; justify-content: center;
-  padding: 2px 6px 3px; border-radius: 7px; margin-right: 6px;
+  /* 위아래는 같은 값이다(요청) — 상태 알약(9px)에서는 한글 글자가 상자 아래쪽에 앉아
+     보여 반 픽셀을 어긋나게 줬는데, 12px에서는 그 차이가 눈에 안 걸린다. */
+  padding: 2px 6px; border-radius: 7px; margin-right: 6px;
   background: var(--line-faint); color: var(--text);
   font-size: var(--fs-micro); font-weight: 700; line-height: 1.25; white-space: nowrap;
 }
@@ -7848,7 +7850,10 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    오른쪽 여백은 거의 없앤다(요청) — 시각 칸과의 구분선을 걷은 자리라 띄울 이유가 사라졌고,
    그만큼이 내용이 쓸 폭이 된다. 왼쪽만 제 여백을 지킨다(줄의 시작이라 벽에 붙으면 안 된다). */
 .scr-activity-row > .scr-activity-row-desc {
-  justify-content: flex-start; padding-left: 16px; padding-right: 4px;
+  /* 왼쪽 여백은 없앤다(요청) — 줄 자체가 이미 좌우 패딩(--scr-row-pad-x)을 물고 있어
+     글자가 벽에 붙지 않고, 이 칸이 줄의 첫 칸이 된 뒤로는 그 위에 여백을 한 겹 더 쌓을
+     이유가 없다. 오른쪽도 더 줄인다 — 구분선을 걷어 띄울 상대가 없다. */
+  justify-content: flex-start; padding-left: 0; padding-right: 2px;
 }
 /* 내용과 시각 사이 구분선을 걷는다(요청) — 칸이 둘뿐이라 이 선 하나가 표를 반으로 가르는
    꼴이었는데, 시각은 내용에 딸린 값이지 다른 갈래가 아니다. 선과 그 좌우 여백이 통째로
@@ -7950,8 +7955,7 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
      "다음주 화요일"(69.1)이 아니라 해가 바뀐 날짜 "20년 12월 30일"(75.8)이고, 더 줄이면
      그게 잘린다(실측). */
   .scr-activity-row > .scr-activity-row-time { padding-left: 4px; }
-  /* 내용 칸 여백은 좁은 화면에 맞춰 PC(16px)보다 한 단계 작게 */
-  .scr-activity-row > .scr-activity-row-desc { padding-left: 12px; padding-right: 12px; }
+  /* (내용 칸 여백은 이제 PC/모바일 공통 — 위 규칙 하나뿐이다.) */
   /* (윗줄은 이제 칸이 아니라 제목 글자를 기준으로 서므로 칸 패딩과 무관하다.) */
 }
 /* 여닫는 연출(요청: 페이드 없이, 아래 목록이 내려가고 올라가면서 자연스럽게 드러나기).
