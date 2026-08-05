@@ -2601,11 +2601,13 @@ function renderLines(
      견줘 뚜렷하게 가까울 때만 '그 집 자리'로 본다. */
   const bases = data.bases ?? {};
   const atHomeOf = (b: ReplaySummaryBeat): boolean => {
-    const xy = b.p?.xy;
-    if (!Array.isArray(xy) || xy.length !== 2
-      || typeof xy[0] !== "number" || typeof xy[1] !== "number") return false;
+    const raw_xy = b.p?.xy;
+    if (!Array.isArray(raw_xy) || raw_xy.length !== 2) return false;
+    // 좁힌 타입이 map 콜백까지 따라오지 않아(배열 첨자 접근이라) 지역 숫자로 꺼내 둔다.
+    const [ax, ay] = raw_xy;
+    if (typeof ax !== "number" || typeof ay !== "number") return false;
     const ranked = Object.entries(bases)
-      .map(([raw, h]) => ({ raw, d: Math.hypot(xy[0] - h[0], xy[1] - h[1]) }))
+      .map(([raw, h]) => ({ raw, d: Math.hypot(ax - h[0], ay - h[1]) }))
       .sort((x, y) => x.d - y.d);
     const nearest = ranked[0];
     const runnerUp = ranked[1];
