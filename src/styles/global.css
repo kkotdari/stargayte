@@ -6461,6 +6461,40 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
   margin: 0; font-size: var(--fs-body); font-style: italic;
   color: var(--text); text-align: center; line-height: 1.35; word-break: keep-all;
 }
+/* ── 응답 공유(?sv=challengeReply) ─────────────────────────────────────────────
+   요청: "응답했으면 열기 > 편지지에 응답 상태와 응답자의 한마디를 크게 표시".
+   위쪽은 호출 내용 그대로이고 이 아래가 그 호출에 돌아온 답이라, 가는 선 하나로 갈라
+   둔다 — 편지 안에 답장이 덧붙은 모양이다. */
+.scr-challenge-reply {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  width: 100%; margin-top: 4px; padding-top: 14px;
+  border-top: 1px dashed rgba(16, 21, 26, 0.18);
+}
+/* 수락인지 거절인지 — 이 화면이 열린 이유라 가장 크게 선다. */
+.scr-challenge-reply-verdict {
+  font-size: var(--fs-title); font-weight: 800; line-height: 1.1; letter-spacing: -0.01em;
+}
+.scr-challenge-reply-accepted { color: #1f8a4c; }
+.scr-challenge-reply-rejected { color: #c8395a; }
+/* 응답자가 남긴 한마디 — 상태 다음으로 크게. 호출의 한마디(.scr-challenge-inbox-message)와
+   같은 기울임체라 "주고받은 말"로 나란히 읽힌다. */
+.scr-challenge-reply-word {
+  margin: 0; font-size: var(--fs-subhead); font-style: italic; font-weight: 700;
+  color: var(--text); text-align: center; line-height: 1.35; word-break: keep-all;
+}
+.scr-challenge-reply-who { font-size: var(--fs-caption); color: var(--muted); }
+
+/* 버림 — 봉투도 편지지도 없이 이 한 장이다(요청: "버림의 경우 편지봉투 씬 없이 OO님이
+   편지를 버림 나오고 끝"). 열어 볼 답이 없는데 봉투를 흔들어 보여줄 이유가 없다. */
+.scr-challenge-discarded .scr-challenge-inbox-body {
+  align-items: center; justify-content: center; gap: 10px; min-height: 180px;
+}
+.scr-challenge-discarded-art { font-size: 54px; line-height: 1; }
+.scr-challenge-discarded-title {
+  font-size: var(--fs-headline); font-weight: 800; color: var(--text);
+  text-align: center; word-break: keep-all;
+}
+
 /* 일자·시간 — 각각 한 줄, 가운데 정렬. 둘은 붙여(작은 음수 gap 보정) 한 덩어리처럼 보이게. */
 .scr-challenge-inbox-date, .scr-challenge-inbox-time {
   margin: 0; font-size: var(--fs-body); font-weight: 700;

@@ -18,7 +18,10 @@ import type { Challenge, GameResult, RankingShift } from "../../types";
 // '같은 자리에서 이어 친 판들'을 화면에서 묶어 보여주는 것뿐이라 가리킬 id가 없다(요청:
 // "카드뭉치는 UI적으로만 뭉쳐보이는거니까"). 그 자리를 정하는 값이 곧 세션 날짜다.
 export type ShareTarget =
-  | { type: "gameResult" | "challenge" | "rankingShift"; id: number }
+  /* challenge는 호출("OO 너 나와!"), challengeReply는 그 호출에 돌아온 답이다 — 같은
+     도전장을 가리키지만 보여줄 이야기가 다르다(지적: 응답 공유가 호출 공유와 똑같은
+     화면으로 연결됨). */
+  | { type: "gameResult" | "challenge" | "challengeReply" | "rankingShift"; id: number }
   | { type: "stack"; day: string };
 
 export default function SharePage({ target, onExit }: { target: ShareTarget; onExit: () => void }) {
@@ -106,9 +109,16 @@ export default function SharePage({ target, onExit }: { target: ShareTarget; onE
   // 너 나와 공유는 인박스(편지봉투→편지지)를 그대로 재사용한다(요청). 지목된 대상만 응답
   // 버튼을 보고, 아니면 읽기 전용이며 "스타게이트로"로 앱에 들어간다. 인박스 모달이
   // 전체 화면 오버레이라 별도 상단바 없이 그것만 띄운다.
-  if (target.type === "challenge") {
+  if (target.type === "challenge" || target.type === "challengeReply") {
     if (loading) return <div className="scr-share-page"><div className="scr-share-body"><Spinner size={18} /></div></div>;
-    if (challenge) return <ChallengeInboxModal challenges={[challenge]} onClose={onExit} closeLabel="스타게이트로" shareBackdrop />;
+    if (challenge) {
+      return (
+        <ChallengeInboxModal
+          challenges={[challenge]} onClose={onExit} closeLabel="스타게이트로" shareBackdrop
+          reply={target.type === "challengeReply"}
+        />
+      );
+    }
     return (
       <div className="scr-share-page">
         <div className="scr-share-body"><div className="scr-err">{err || "찾을 수 없어요."}</div></div>

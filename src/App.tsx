@@ -40,7 +40,8 @@ function screenFromUrl(): ScreenKey {
   return (SCREEN_KEYS as string[]).includes(s ?? "") ? (s as ScreenKey) : "activity";
 }
 
-// 카카오톡 공유 링크(?sv=gameResult|challenge|rankingShift&sid=123) — 있으면 그 한 장만 보이는
+// 카카오톡 공유 링크(?sv=gameResult|challenge|challengeReply|rankingShift&sid=123) — 있으면
+// 그 한 장만 보이는
 // 공유 화면을 연다.
 // 게임결과 묶음(?sv=stack&sd=2026-07-29)만 sid가 아니라 sd를 쓴다 — 묶음은 DB 행이 아니라
 // '같은 자리에서 이어 친 판들'이라 가리킬 id가 없고, 그 자리를 나타내는 세션 날짜가 곧 열쇠다.
@@ -53,7 +54,8 @@ function shareTargetFromUrl(): ShareTarget | null {
     return SESSION_DAY_RE.test(day) ? { type: "stack", day } : null;
   }
   const id = Number(params.get("sid"));
-  if ((sv === "gameResult" || sv === "challenge" || sv === "rankingShift") && Number.isFinite(id) && id > 0) {
+  if ((sv === "gameResult" || sv === "challenge" || sv === "challengeReply" || sv === "rankingShift")
+    && Number.isFinite(id) && id > 0) {
     return { type: sv, id };
   }
   return null;
