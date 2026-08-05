@@ -387,11 +387,26 @@ export default function GameResultStory({
     const dead = new Set<string>();
     const sore = new Set<string>();
     const elims = gameResult.summaryData?.elims;
+    /* 이긴 편은 downs만으로 표시를 붙이지 않는다(지적: 12분 경기에서 이긴 사람이 8분부터
+       해골이 됐다). downs는 '탈락'과 '생산이 꺾여 끝내 못 일어섬'을 한 자루에 담는데,
+       이겼다는 것 자체가 안 무너졌다는 뜻이다 — 중간에 생산이 한 번 주춤한 것을 죽은
+       것으로 읽으면 안 된다. 실측: 리플레이 21개 중 11개에서 이긴 사람이 downs에 들었다.
+       팀전에서 이긴 편의 누군가가 정말 탈락했다면 그건 fallen·gg 비트로 따로 들어온다. */
+    const winners = new Set<string>();
+    const vd = beats.find((b) => b.k === "verdict");
+    if (vd) {
+      const team = slots.find((x) => (vd.who ?? []).includes(x.raw))?.team;
+      if (team) slots.filter((x) => x.team === team).forEach((x) => winners.add(x.raw));
+    }
     for (const [raw, f] of Object.entries(gameResult.summaryData?.downs ?? {})) {
-      if (f > nowAt) continue;
-      // 옛 요약(elims 없음)은 가릴 근거가 없다 — 그때는 예전처럼 전부 해골이다.
-      if (!elims) dead.add(raw);
-      else if (elims[raw] !== undefined && elims[raw] <= nowAt) dead.add(raw);
+      if (f > nowAt || winners.has(raw)) continue;
+      /* 탈락이라는 증거(elims)가 있을 때만 해골이다 — 없으면 다친 것으로 둔다(요청: 해골은
+         완전 엘리나 GG, 생산 0일 때만). 예전에는 반대로 '증거가 없으면 전부 해골'이었는데,
+         실제 리플레이에서 elims는 거의 늘 비어 있다: 퇴장 기록(Leave Game)은 남지만 전원이
+         경기가 끝난 뒤에 나가므로 '끝나기 3분 전' 조건에서 통째로 걸러진다(실측: 21개 중
+         20개에 퇴장 기록이 있는데 elims는 0개). 그래서 이 갈래가 사실상 유일한 길이었고,
+         downs에 든 사람은 예외 없이 해골이 됐다. */
+      if (elims?.[raw] !== undefined && elims[raw] <= nowAt) dead.add(raw);
       else sore.add(raw);
     }
     for (let i = 0; i <= upto && i < beats.length; i += 1) {
@@ -410,7 +425,7 @@ export default function GameResultStory({
       } else if (b.k === "revival") who.forEach((n) => { dead.delete(n); sore.delete(n); });
     }
     return { downed: dead, hurt: sore };
-  }, [gameResult.summaryData, sentences, index, nowAt]);
+  }, [gameResult.summaryData, sentences, index, nowAt, slots]);
 
   /** 지금 문장에 이름이 나온 사람들 — 그 사람 본진 아바타를 크게 키운다(요청). 스냅마다
    *  주인공이 바뀌는 것을 아바타 크기로 보여 주는 자리다. */
