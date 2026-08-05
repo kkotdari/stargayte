@@ -4,6 +4,7 @@ import { Spinner } from "../components/common/Feedback";
 import Avatar from "../components/common/Avatar";
 import OptionalDateTimeFields from "../components/common/OptionalDateTimeFields";
 import KakaoShareButton from "../components/common/KakaoShareButton";
+import ActivityComments from "../pages/activity/ActivityComments";
 import { api } from "../api/client";
 import { useAppStore } from "../store/appStore";
 import { useLockBodyScroll } from "../utils/bodyScrollLock";
@@ -210,6 +211,19 @@ export default function ChallengeInboxModal({
     };
   };
 
+  /* 이 호출에 달린 댓글 — 활동 목록의 그것과 같은 하나다(요청: "활동 댓글하고 같은 거").
+     장면(편지봉투·편지지·버림·응답 확인)마다 이 덩어리를 하나씩 두므로, 어디서 달아도
+     같은 자리에 쌓이고 인박스·활동 목록에서도 그대로 보인다. 앞으로 들어올 일정·리그
+     공유도 카드 모양이 무엇이든 이 줄만 얹으면 된다(요청).
+
+     모달 안이라 overModal을 켠다 — 모바일 댓글 시트가 이 모달(z-index:100) 위로 올라와야
+     한다. 클릭이 바깥으로 새지 않게 감싸는 것은 컴포넌트가 이미 한다. */
+  const comments = (
+    <div className="scr-challenge-scene-comments">
+      <ActivityComments targetType="challenge" targetId={current.id} overModal />
+    </div>
+  );
+
   return createPortal(
     <div className={`scr-modal-overlay${shareBackdrop ? " scr-challenge-share" : ""}`}>
       {/* 카톡 공유로 열렸을 때만 뒤에 흰 벽지("너 나와~" 반복)를 깐다(요청). 봉투/편지지보다
@@ -232,6 +246,7 @@ export default function ChallengeInboxModal({
               {closeLabel}
             </button>
           </div>
+          {comments}
         </div>
       )}
       {/* 편지지(letter) — 봉투와는 완전히 별개인 카드다(요청: "봉투랑 편지지는 별도 모달").
@@ -369,6 +384,7 @@ export default function ChallengeInboxModal({
               </button>
             </div>
           )}
+          {comments}
         </div>
       )}
 
@@ -383,6 +399,7 @@ export default function ChallengeInboxModal({
               <button type="button" className="scr-btn scr-btn-primary scr-btn-primary-solid" onClick={advance}>확인</button>
             </div>
           </div>
+          {comments}
         </div>
       )}
 
@@ -423,6 +440,7 @@ export default function ChallengeInboxModal({
                 </button>
               )}
             </div>
+            {comments}
           </div>
         </div>
       )}

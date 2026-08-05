@@ -6540,6 +6540,47 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 /* 답장을 가르는 점선 — 사진 위에서는 원래의 옅은 남색이 통째로 사라진다. */
 .scr-challenge-letter-photo .scr-challenge-reply { border-top-color: rgba(var(--overlay-rgb), 0.4); }
 
+/* ── 공유 장면 안의 댓글(요청) ────────────────────────────────────────────────
+   편지봉투·편지지·버림·응답 확인 — 어느 장면에나 같은 덩어리 하나가 붙는다. 대상이
+   같으니(challenge + id) 어디서 달아도 같은 자리에 쌓이고, 인박스와 활동 목록에서도
+   그대로 보인다. 앞으로 들어올 일정·리그 공유도 카드 모양이 무엇이든 이 줄만 얹으면 된다.
+
+   봉투 단계는 카드가 아니라 어두운 스크림 위라, 여기서만 제 판을 깔아 글자가 뜨게 한다. */
+.scr-challenge-scene-comments {
+  width: 100%; max-width: 460px; margin-top: 12px;
+  /* 편지지 카드는 안쪽을 통째로 가운데 정렬한다(.scr-challenge-inbox-modal) — 댓글은
+     글이라 그 정렬을 물려받으면 안 된다(실측: 작성자·본문이 줄마다 가운데로 흩어졌다). */
+  text-align: left;
+  /* 댓글이 길어지면 이 안에서만 스크롤한다 — 장면(편지지)이 화면 밖으로 자라면 안 된다. */
+  max-height: 34vh; overflow-y: auto; overscroll-behavior: contain;
+}
+.scr-challenge-letter .scr-challenge-scene-comments,
+.scr-challenge-inbox-modal .scr-challenge-scene-comments {
+  /* 카드 좌우 패딩(18px)을 상쇄해 댓글 줄이 카드 폭을 그대로 쓰게 한다 — 활동 카드에서와
+     같은 폭 감각이다. 위로는 가는 선 하나로 본문과 끊는다. */
+  margin-inline: -18px; padding: 12px 18px 0;
+  border-top: 1px solid rgba(var(--overlay-rgb), 0.12);
+}
+.scr-challenge-envelope-inner .scr-challenge-scene-comments {
+  margin-top: 16px; padding: 12px 14px;
+  border-radius: 14px; background: rgba(16, 21, 26, 0.55);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+}
+.scr-light-theme .scr-challenge-envelope-inner .scr-challenge-scene-comments {
+  background: rgba(255, 255, 255, 0.72);
+}
+/* 카톡 공유의 흰 벽지 위에 뜨는 봉투 단계는 늘 라이트 톤이다(SharePage가 라이트를 강제한다). */
+.scr-challenge-share .scr-challenge-envelope-inner .scr-challenge-scene-comments {
+  background: rgba(255, 255, 255, 0.86); color: #111;
+}
+/* 모바일 댓글 시트는 평소 모달(100)보다 아래(90)에 서지만, 그 모달 안에서 열렸다면
+   위로 올라와야 한다 — 안 그러면 시트가 편지지 뒤에 깔려 아무것도 안 보인다.
+   시트에서 띄우는 삭제 확인창은 그보다 또 한 층 위다. */
+/* 두 선택자를 겹쳐 쓴다 — .scr-comment-sheet(z-index:90)가 이 파일에서 아래에 있어,
+   클래스 하나로는 같은 무게에서 뒤에 온 그쪽이 이긴다(실측: 켜도 90 그대로였다). */
+.scr-comment-sheet.scr-comment-sheet-over-modal { z-index: 110; }
+.scr-comment-confirm-over-modal .scr-modal { z-index: 120; }
+
 /* 응답 마감까지 — 카드 윗줄 가운데(요청). 케밥과 같은 띠(--card-kebab-lane) 안에 절대배치로
    앉히므로 본문을 아래로 밀지 않고, 케밥은 그 오른쪽 끝에 그대로 있다. 케밥 자리(오른쪽
    10px + 버튼 26px)만큼 좌우로 여백을 두어, 글자가 길어져도 그 밑으로 들어가지 않는다.

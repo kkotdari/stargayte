@@ -344,7 +344,14 @@ export async function primeActivityComments(items: ActivityComment[]): Promise<v
 // 펼쳐진 경기 로우 하단의 댓글(메모) 영역 — 게시판 댓글 스타일. 목록·입력은 공용 댓글
 // CSS(.scr-comment-*)를 쓴다. 대댓글은 없다(요청). 로그인 회원만 작성할 수 있고
 // 작성자 본인/운영자만 수정·삭제할 수 있다(comment.canEdit).
-export default function ActivityComments({ targetType, targetId }: { targetType: ActivityTargetType; targetId: number }) {
+export default function ActivityComments({ targetType, targetId, overModal = false }: {
+  targetType: ActivityTargetType;
+  targetId: number;
+  /** 모달(공유 편지봉투/편지지 등) 안에 앉을 때 켠다 — 모바일 댓글 시트와 그 삭제
+   *  확인창을 그 모달(z-index:100)보다 위로 올린다. 기본값(false)은 활동 카드 안이라
+   *  시트가 모달보다 아래(90)에 있어야 이 컴포넌트가 띄우는 확인창이 안 가린다. */
+  overModal?: boolean;
+}) {
   // 작성 입력창 — 가운데의 + 댓글 아이콘을 누르면 트랜지션으로 입력창으로 바뀌며 바로
   // 포커스되고, 포커스를 잃으면 다시 아이콘으로 돌아간다(요청). 입력창은 늘 마운트해 두고
   // CSS(max-width/opacity)로만 접었다 편다 — 닫혀도 쓰던 내용이 남는다.
@@ -802,7 +809,7 @@ export default function ActivityComments({ targetType, targetId }: { targetType:
       {mobile && sheetOpen && createPortal(
         <div
           ref={sheetRef}
-          className={cx("scr-comment-sheet scr-activity-card-comment scr-activity-notes", typing && "scr-comment-sheet-typing")}
+          className={cx("scr-comment-sheet scr-activity-card-comment scr-activity-notes", typing && "scr-comment-sheet-typing", overModal && "scr-comment-sheet-over-modal")}
           role="dialog" aria-label="댓글"
           onFocus={() => setTyping(true)}
           onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setTyping(false); }}
@@ -838,14 +845,19 @@ export default function ActivityComments({ targetType, targetId }: { targetType:
           가진 쌓임맥락을 만들어, 안에서 z-index를 아무리 올려도 body 직속인 시트(z-index 90)
           위로 못 올라간다(지적: 컨펌창이 모달 뒤에 뜬다). */}
       {deleteTarget && createPortal(
-        <ConfirmDialog
-          title="메모를 삭제할까요?"
-          message="삭제하면 되돌릴 수 없어요."
-          confirmLabel={busy ? "삭제 중..." : "삭제"}
-          cancelLabel="취소"
-          onConfirm={() => void remove(deleteTarget.id)}
-          onCancel={() => setDeleteTarget(null)}
-        />,
+        // overModal이면 시트가 모달보다 위로 올라가 있으므로, 그 위 확인창은 한 층 더
+        // 올려야 한다. 껍데기 div는 position이 없어 쌓임맥락을 안 만든다 — 안의
+        // 확인창은 여전히 body 직속인 것처럼 겨룬다.
+        <div className={overModal ? "scr-comment-confirm-over-modal" : undefined}>
+          <ConfirmDialog
+            title="메모를 삭제할까요?"
+            message="삭제하면 되돌릴 수 없어요."
+            confirmLabel={busy ? "삭제 중..." : "삭제"}
+            cancelLabel="취소"
+            onConfirm={() => void remove(deleteTarget.id)}
+            onCancel={() => setDeleteTarget(null)}
+          />
+        </div>,
         document.body,
       )}
     </div>
