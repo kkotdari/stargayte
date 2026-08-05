@@ -7754,6 +7754,16 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    맞는다(지적). 카드 보기 시절의 24px은 큰 제목 아래를 받치던 값이다. */
 .scr-activity-row-body .scr-activity-card > .scr-activity-card-body { padding-top: 14px; }
 .scr-activity-card-head-off > .scr-activity-card > .scr-activity-card-head { display: none; }
+/* 머리를 감춘 카드(목록에서 펼친 것)는 케밥이 곧바로 본문 첫 줄 위에 얹힌다 — 케밥은
+   카드 기준 절대배치라 머리가 있든 없든 같은 자리(--card-kebab-top)에 뜨기 때문이다.
+   그래서 본문을 케밥 아래에서 시작하게 한 줄만큼 내린다(지적: "언제 입력 안한경우 케밥이
+   닉네임과 겹쳐짐" → "케밥과 닉네임 사이 세로 갭이 있어야지, 닉네임을 줄일 게 아니라").
+
+   가로로 자리를 비우는 방법도 있었지만 그건 이름을 깎는다 — 좁은 화면에서 "미친마법사"가
+   "미친…"이 됐다(실측). 세로로 비켜 주면 이름은 그대로 두고 겹침만 없어진다. 언제를 적은
+   카드는 그 줄이 먼저 와서 이미 이렇게 되어 있었고(그래서 그때는 안 겹쳤다), 이제 안 적은
+   카드도 같은 자리에서 시작한다. */
+.scr-activity-card-head-off .scr-challenge-card-body { padding-top: var(--card-kebab-lane); }
 /* 머리를 남기는 쪽(게임결과)도 제목만은 뗀다(요청) — 아이콘과 "게임결과"는 바로 위 줄이
    이미 하고 있는 말이라, 묶음을 펼치면 같은 낱말이 경기 수만큼 되풀이됐다. 남는 건 줄이
    말하지 않는 것들뿐이다: 경기별 시각, 등록자, 그리고 케밥(삭제·공유). */
@@ -7814,6 +7824,9 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
      위에서 시작한다 — 제목 줄 가운데가 머리 위끝에서 18.5px(위 패딩 9 + 줄 19의 절반)이니
      버튼 상자 위끝은 18.5 - 13 = 5.5px, 여기에 그 4px을 더해 10px이다. */
   --card-kebab-top: 10px;
+  /* 케밥이 통째로 차지하는 세로 띠 — 위 좌표(10) + 버튼 높이(26) + 아래 여유(6). 머리를
+     감춘 카드에서 본문을 이만큼 내려 케밥과 겹치지 않게 한다(아래 head-off 규칙). */
+  --card-kebab-lane: 42px;
   --card-pad-y: 24px;
   /* 카드 판이 본문 좌우 패딩 '밖으로' 나가는 양(요청: 판을 본문폭 최대로, 좌우 패딩 없이).
      판은 이만큼 음수 마진으로 나가고 같은 값을 자기 패딩으로 되돌려 받으므로, 안에 든

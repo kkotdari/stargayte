@@ -3605,11 +3605,27 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
       }
     }
     const yard = Math.max(HOME_STAND_MIN_TILES, near * HOME_STAND_YARD);
-    // 그 싸움터가 이긴 편 누구의 집이었나.
-    const host = winnerPlayers.find((p2) => {
-      const h = homeOfRaw(p2.rawName);
-      return h !== null && Math.hypot(finale.xy[0] - h[0], finale.xy[1] - h[1]) <= yard;
-    });
+    /* 그 싸움터가 누구의 집이었나 — 가장 가까운 집 하나만 본다.
+
+       한때는 "이긴 편 누군가의 마당(yard) 안인가"만 물었다. 절대 반경 하나라, 마당 원
+       바깥으로 조금만 벗어나면 다른 어떤 집보다 두 배 가까운 자리인데도 '아무의 집도
+       아님'이 됐다(지적: 격전지가 2팀 렉스의 본진 바로 앞인데 자막은 "2팀이 한꺼번에
+       몰아붙여 판을 정리했다"였다 — 화면상 렉스까지가 다음 집까지의 절반도 안 됐다).
+
+       그래서 두 잣대 중 하나만 맞으면 그 집으로 본다: 마당 안이거나, 다른 어떤 집보다
+       뚜렷하게 가깝거나. 뒤엣것은 반경이 없는 비교라 맵 크기·본진 간격에 안 흔들린다.
+       센터 싸움은 어느 집과도 거리가 비슷해 둘 다 안 맞는다(그게 이 판정의 목적이다). */
+    const ranked = Object.entries(bases)
+      .map(([raw, h]) => ({ raw, d: Math.hypot(finale.xy[0] - h[0], finale.xy[1] - h[1]) }))
+      .sort((a, b) => a.d - b.d);
+    const nearest = ranked[0];
+    const runnerUp = ranked[1];
+    const atSomeonesBase = nearest !== undefined
+      && (nearest.d <= yard
+        || (runnerUp !== undefined && nearest.d <= runnerUp.d * HOME_STAND_CLEAR));
+    const host = atSomeonesBase
+      ? winnerPlayers.find((p2) => p2.rawName === nearest.raw)
+      : undefined;
     if (!host) return null;
     /* 막아 낸 뒤의 역공 — 그 싸움 뒤에 이긴 편이 진 편 진영에 찍은 어택 지정이다. 몇 번
        찍혔나로 '정말 넘어갔나'를 가른다(위 실측: 중앙 121번). 가장 많이 두들긴 집을
@@ -3854,6 +3870,10 @@ const CLASH_WEIGHT = 14;
    잡는다 — 화살표 쪽에서 쓰는 잣대(GameResultStory의 YARD)와 같은 생각이다. */
 const HOME_STAND_YARD = 0.4;
 const HOME_STAND_MIN_TILES = 10;
+/* 마당 밖이어도 '그 집 자리'로 보는 잣대 — 가장 가까운 집이 그다음 집보다 이만큼 이상
+   가까우면 그 집 쪽에서 벌어진 싸움이다. 절반이면 충분히 뚜렷하고, 센터 싸움은 어느
+   집과도 거리가 비슷해 절대 걸리지 않는다. */
+const HOME_STAND_CLEAR = 0.5;
 /* 역공은 짧다 — 실측(제 집에서 막아 낸 19판): 막아 낸 뒤 경기가 끝나기까지 중앙 0.7분
    뿐이고, 그 사이 상대 진영에 찍은 어택 지정이 중앙 8건이다. 막아 내자마자 넘어가 끝낸
    그림이라, 문턱을 크게 잡으면 그 장면이 통째로 사라진다. */

@@ -137,11 +137,11 @@ export default function StatsScreenV2() {
 
   const [search, setSearch] = useState("");
   const [race, setRace] = useState<RaceFilter>("all");
-  // 게임 유형(개인전/팀전) — 라디오이고 "전체"는 없다. 기본값은 팀전(요청) — 한때
-  // 랜덤이었는데, 열 때마다 다른 표가 나오는 것이 득보다 실이 컸다.
+  // 게임 유형(개인전/팀전) — 라디오이고 "전체"는 없다. 기본값은 개인전(요청) — 팀전이던
+  // 것을 옮겼다. 한때 랜덤이었는데, 열 때마다 다른 표가 나오는 것이 득보다 실이 컸다.
   // (삭제) 활동의 랭크 변동 카드에서 유형을 미리 걸어 주는 연동이 있었는데, 그 입구였던
   // "실시간 랭크 확인" 링크를 걷어내면서(요청) 걸어 줄 사람이 없어졌다.
-  const [matchType, setMatchType] = useState<GameType>("0102");
+  const [matchType, setMatchType] = useState<GameType>("0101");
   // 기본 정렬은 포인트(랭크 점수) 내림차순 — 랭킹을 통계에 통합한 기본 모습(요청).
   const [sort, setSort] = useState<StatSort>(sortOf("points"));
   // 포인트를 누르면 그 회원의 포인트 상세(경기 이력)를 연다.
@@ -152,9 +152,9 @@ export default function StatsScreenV2() {
   // 상성 관계 오버레이(타이틀 옆 "상성 보기" 버튼).
   const [rivalryOpen, setRivalryOpen] = useState(false);
   // 기간은 올타임 아니면 특정 월("YYYY-MM") 하나 — 예전 단위 알약탭 + 월 선택기를 달력
-  // 하나로 합쳤다(요청). 기본값은 올타임(요청) — 한때 이번 달이었는데, 달 초에는 표가
-  // 거의 비어 있어 기록이 없는 것처럼 보였다.
-  const [period, setPeriod] = useState<string>(PERIOD_ALL);
+  // 하나로 합쳤다(요청). 기본값은 당월(요청) — 올타임이던 것을 되돌렸다. 달 초에는 표가
+  // 거의 비어 보이지만, 지금 이 달의 판세를 먼저 보여주는 쪽이 통계를 여는 이유에 가깝다.
+  const [period, setPeriod] = useState<string>(() => currentMonthValue());
   const periodMonth = period === PERIOD_ALL ? "" : period;
   /* 랭크·포인트는 어느 종족 필터에서나 보여준다. 한때 주종족일 때만 감췄는데, 그건 그 값이
      혼자 전체 종족 기준으로 남아 옆 칸들과 잣대가 어긋났기 때문이다 — 이제 서버가 사람마다
