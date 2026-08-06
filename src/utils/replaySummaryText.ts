@@ -2211,22 +2211,29 @@ const TEMPLATES: Record<string, Tpl> = {
     ]));
   },
 
-  // 패스트 OO(요청) — 보통 나오는 때보다 이르게 뽑아 상대가 준비하기 전에 들이대는 수.
+  /* 패스트 OO(요청) — 보통 나오는 때보다 이르게 뽑아 상대가 준비하기 전에 들이대는 수.
+     이건 '전략'이라고 부른다(요청: "패스트 드라군 전략을 시도했다 / 전략을 썼다 / 전략으로
+     갔다" 같은 말이 좋다) — "타이밍을 크게 당겼다"는 표현은 안 쓴다. 업그레이드 이름은
+     떼고 유닛만 부른다(요청: 그냥 패스트 드라군): "패스트 사업 드라군 전략"은 이름이 너무
+     길어지고, 이 문장이 말하려는 것은 무슨 업그레이드를 했나가 아니라 그 유닛으로 일찍
+     갔다는 빌드 자체다. 업그레이드는 제 문장(upgrade-signature)이 따로 말한다. */
   "fast-tech": (c) => {
-    const unit = unitWithUp(c);
+    const unit = UNIT_KO[str(c.p.unit)];
     if (!unit) return null;
+    const fast = `패스트 ${unit}`;
+    // "패스트 드라군 전략을 썼다"처럼 '전략'까지 붙여 부른다(요청의 말 그대로).
+    const build = `${fast} 전략`;
     const m = num(c.p.min);
     const when = m > 0 ? `${m}분 만에 ` : "";
     const at = targetPhrase(c);
     /* 어디로 갔는지 모르면 갔다고 말하지 않는다(지적: "일찍 뽑아서 어딜 갔는지가 없네").
        예전에는 목표가 없어도 "상대가 준비하기 전에 들이댐"·"승부를 걸음"·"허를 찌름"이
        나왔는데, 그건 리플레이에 없는 이야기다 — 확인된 건 그 유닛이 이르게 나왔다는 것뿐이다.
-       그럴 때는 타이밍만 말하고 끝낸다. */
+       그럴 때는 무슨 전략이었나만 말하고 끝낸다. */
     if (!c.whom) {
       return `${ga(c.who)} ${done(c, c.pick([
-        `${when}${reul(unit)} 뽑아 ${unit} 타이밍을 크게 당김`,
-        `${unit} 타이밍을 크게 당김`,
-        `남들보다 이르게 ${reul(unit)} 확보함`,
+        `${reul(build)} 시도함`, `${reul(build)} 씀`, `${ro(build)} 감`,
+        `${when}${reul(unit)} 뽑는 ${reul(build)} 씀`,
       ]))}`;
     }
     // 언제 닿았는지까지 알면 그것도 말한다(withStrike의 landMin) — 뽑은 때와 부딪친 때가
@@ -2236,14 +2243,14 @@ const TEMPLATES: Record<string, Tpl> = {
       return `${ga(c.who)} ${done(c, c.pick([
         `${when}${reul(unit)} 뽑아 ${land}분에 ${reul(c.whom)} 덮침`,
         `${when}${reul(unit)} 확보해 ${land}분에 ${c.whom}에게 들이댐`,
-        `${ira(`패스트 ${unit}`)} ${land}분에 ${reul(c.whom)} 찌름`,
+        `${ira(fast)} ${land}분에 ${reul(c.whom)} 찌름`,
       ]))}`;
     }
     return `${ga(c.who)} ${at}${done(c, c.pick([
-      `${ro(`패스트 ${unit}`)} 승부를 걸음`,
-      `${ira(`패스트 ${unit}`)} 날카로운 빌드로 허를 찌름`,
+      `${ro(build)} 승부를 걸음`,
+      `${ira(fast)} 날카로운 빌드로 허를 찌름`,
       `${when}${reul(unit)} 뽑아 상대가 준비하기 전에 들이댐`,
-      `${unit} 타이밍을 크게 당김`,
+      `${reul(build)} 씀`,
     ]))}`;
   },
   // 파워 OO(요청) — 한 유닛만 압도적으로 뽑아 그 물량으로 밀어붙이는 그림.
