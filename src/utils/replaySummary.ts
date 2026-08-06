@@ -1113,7 +1113,6 @@ function strip({ weight: _w, dedupeOn: _d, keep: _k, ...b }: Beat): ReplaySummar
    전체챗이 확실하다 — 판정 자체는 맞다. 그런데 그 판정은 한쪽으로만 선다(지적): 저장자
    팀이 대고 한 말은 팀챗과 못 갈라 빠지고, 상대 팀 것만 실린다. 그러면 같은 성격의 말이
    한쪽만 화면에 뜨는 그림이 되어, 없느니만 못하다. 그래서 걷어냈다. */
-const CHAT_NEAR_SEC = 30;
 const CHAT_MERGE_SEC = 12;
 /** 한 스냅에 띄울 말주머니 수 — 지도 위에 뜨는 것이라 더 늘면 지도를 덮는다. */
 const CHAT_BUBBLE_MAX = 3;
@@ -1150,22 +1149,25 @@ function chatLines(replay: ParsedReplay): ChatLine[] {
   return out.sort((a, b) => a.at - b.at);
 }
 
-/** 각 대사를 가장 가까운 스냅 하나에 붙인다 — 그 스냅의 주인공 것을 먼저 태운다. */
+/** 각 대사를 가장 가까운 스냅 하나에 붙인다 — 그 스냅의 주인공 것을 먼저 태운다.
+ *
+ *  여기까지 오는 것은 GG와 노엘뿐이라(위 전체챗 거르기) 한 판에 많아야 서너 마디다.
+ *  그래서 '얼마나 가까운가'는 안 따진다 — 예전엔 30초 안에 스냅이 없으면 버렸는데,
+ *  버려지는 것이 하필 그 판의 GG였다(실측 22판: 스물여덟 중 셋이 그렇게 사라졌다). */
 function withChat<T extends { k: string; at?: number | null; who?: string[]; whom?: string[] }>(
   replay: ParsedReplay, beats: T[],
 ): T[] {
   const lines = chatLines(replay);
   if (lines.length === 0) return beats;
-  const near = CHAT_NEAR_SEC / SECONDS_PER_FRAME;
   const picked = new Map<number, { who: string; text: string; at: number }[]>();
   for (const line of lines) {
     if (line.all !== true) continue;   // 전체챗만(위 주석)
     let best = -1;
     let gap = Infinity;
     beats.forEach((b, i) => {
-      if (typeof b.at !== "number") return;
+      if (typeof b.at !== "number" || !Number.isFinite(b.at)) return;
       const d = Math.abs(b.at - line.at);
-      if (d <= near && d < gap) { gap = d; best = i; }
+      if (d < gap) { gap = d; best = i; }
     });
     if (best < 0) continue;
     (picked.get(best) ?? picked.set(best, []).get(best)!).push({
@@ -4271,7 +4273,7 @@ const SCAN_BASE_TILES = 18;
 /** 화살표 굵기를 재는 창(초) — 그 직전 얼마 동안 뽑은 병력을 '그 무렵의 규모'로 볼 것인가.
  *  급습이 "무엇으로 갔나"를 재는 창(replayTactics의 WENT_WITH_SEC)과 같은 값이라야 자막의
  *  "질럿 13기"와 화살표 굵기가 같은 것을 말한다. */
-const ARROW_SIZE_SEC = 240;
+const ARROW_SIZE_SEC = 120;
 
 /** 화살표 기둥 이름표에 실을 최대 가짓수 — 지도 위 글이라 길면 그림을 가린다. */
 const ARROW_LABEL_MAX = 2;
