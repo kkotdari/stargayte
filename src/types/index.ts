@@ -595,23 +595,37 @@ export interface MapCatalog {
  *  화면의 한 줄이 곧 하나다. kind에 따라 채워지는 칸이 다를 뿐, 줄을 세우고 번호를 붙이고
  *  댓글을 다는 규칙은 셋이 똑같다. 게임결과만 여럿인 것은 한 자리에서 이어 친 경기가
  *  한 줄이기 때문이다. */
+/** 리그 팀 로스터 한 사람 — 프사는 회원 목록에서 찾아 붙인다(닉네임만 오면 충분). */
+export interface LeagueMatchMember {
+  memberId: string;
+  nickname: string;
+}
+
+/** 맞붙는 한 편 — 로스터가 사람 단위로 온다(카드가 세로로 한 줄씩 쌓기 때문). 로스터가
+ *  비어 있는 팀은 라벨(A·B)만 남는다. */
+export interface LeagueMatchTeam {
+  label: string;
+  members: LeagueMatchMember[];
+}
+
 /** 활동 목록에 뜨는 리그 경기 하나 — 일정이 적힌 경기만 온다(요청: 리그 매치에 일정
  *  등록 시 활동에 띄움). 대진표의 좌표(round·slot)나 대타 명단은 여기 없다: 활동 목록이
  *  알아야 하는 건 '언제 누가 붙나, 결과가 나왔나'뿐이다.
  *
- *  팀 이름은 로스터 닉네임을 이어 붙인 것이다 — 라벨(A·B)은 대진표 밖에서는 뜻이 없다. */
+ *  팀은 로스터로 부른다 — 라벨(A·B)은 대진표 밖에서는 뜻이 없다. */
 export interface LeagueMatchActivity {
   id: number;
   leagueId: number;
   leagueName: string;
   /** "8강"처럼 사람이 부르는 라운드 이름. */
   roundName: string;
-  teamA: string | null;
-  teamB: string | null;
+  teamA: LeagueMatchTeam | null;
+  teamB: LeagueMatchTeam | null;
   scheduledAt: string | null;
   setsWonA: number | null;
   setsWonB: number | null;
-  winnerTeam: string | null;
+  /** 어느 쪽이 이겼나 — 팀 이름으로 견주면 두 팀 이름이 같을 때 어긋난다. */
+  winnerSide: "a" | "b" | null;
   /** 일정을 처음 적어 둔 때 — NEW의 기준. */
   postedAt: string;
   /** 마지막으로 손댄 때(일정 수정·결과 입력) — UPDATE의 기준. */

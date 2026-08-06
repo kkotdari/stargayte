@@ -1,6 +1,38 @@
 import { Swords } from "lucide-react";
-import type { LeagueMatchActivity } from "../../types";
+import Avatar from "../../components/common/Avatar";
+import { cx } from "../../utils/format";
+import { useAppStore } from "../../store/appStore";
+import type { LeagueMatchActivity, LeagueMatchTeam } from "../../types";
 import { ActivityCard } from "./ActivityCard";
+
+/** 맞붙는 한 편 — 로스터를 세로로 쌓는다(요청). 너 나와 카드의 편과 같은 방식이다:
+ *  사람마다 프사 한 장과 닉네임 한 줄, 그게 위에서 아래로 쌓인다. 팀원이 늘어도 줄이
+ *  아래로 자랄 뿐이라 가운데의 점수 자리가 흔들리지 않는다.
+ *
+ *  로스터가 아직 안 짜인 팀은 라벨(A·B)만 남는다 — 대진표에서 부르던 이름이다. */
+function LeagueSide({ team, won }: { team: LeagueMatchTeam | null; won: boolean }) {
+  const memberOf = useAppStore((s) => s.memberOf);
+  if (team === null) {
+    return <div className="scr-league-match-side"><span className="scr-league-match-tbd">미정</span></div>;
+  }
+  if (team.members.length === 0) {
+    return (
+      <div className={cx("scr-league-match-side", won && "scr-league-match-side-won")}>
+        <span className="scr-league-match-label">{team.label}</span>
+      </div>
+    );
+  }
+  return (
+    <div className={cx("scr-league-match-side", won && "scr-league-match-side-won")}>
+      {team.members.map((p) => (
+        <div className="scr-league-match-person" key={p.memberId}>
+          <Avatar member={memberOf(p.memberId)} size={34} />
+          <span className="scr-league-match-name">{p.nickname}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 /** 리그 경기 카드 — 일정이 적힌 경기가 활동에 뜰 때 펼치면 나오는 본문(요청: 리그 매치에
  *  일정 등록 시 활동에 띄움).
@@ -20,8 +52,6 @@ export default function LeagueMatchCard({
   footer?: React.ReactNode;
 }) {
   const played = match.setsWonA !== null && match.setsWonB !== null;
-  const wonA = played && match.winnerTeam !== null && match.winnerTeam === match.teamA;
-  const wonB = played && match.winnerTeam !== null && match.winnerTeam === match.teamB;
   return (
     <ActivityCard
       dateLabel={dateLabel}
@@ -30,16 +60,12 @@ export default function LeagueMatchCard({
       timeText={timeText}
       comment={footer}
     >
-      <div className="scr-league-match-card">
-        <div className={`scr-league-match-side${wonA ? " scr-league-match-side-won" : ""}`}>
-          <span className="scr-league-match-team">{match.teamA ?? "미정"}</span>
-        </div>
+      <div className={cx("scr-league-match-card", played && "scr-league-match-card-played")}>
+        <LeagueSide team={match.teamA} won={played && match.winnerSide === "a"} />
         <div className="scr-league-match-score">
           {played ? `${match.setsWonA}:${match.setsWonB}` : "vs"}
         </div>
-        <div className={`scr-league-match-side${wonB ? " scr-league-match-side-won" : ""}`}>
-          <span className="scr-league-match-team">{match.teamB ?? "미정"}</span>
-        </div>
+        <LeagueSide team={match.teamB} won={played && match.winnerSide === "b"} />
       </div>
     </ActivityCard>
   );

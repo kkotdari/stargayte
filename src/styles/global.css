@@ -8798,18 +8798,32 @@ html.scr-light-theme .scr-activity-add-fab, html.scr-light-theme .scr-scrolltop 
   display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center; column-gap: 10px;
 }
-.scr-league-match-side { min-width: 0; text-align: center; }
-/* 두 번째 칸(오른쪽 팀)만 오른쪽으로 — 가운데 점수를 사이에 두고 마주 보게 한다. */
-.scr-league-match-side:first-child { text-align: right; }
-.scr-league-match-side:last-child { text-align: left; }
-.scr-league-match-team {
-  display: inline-block; max-width: 100%;
-  font-size: var(--fs-body); font-weight: 700; color: var(--text);
-  overflow-wrap: anywhere;
+/* 한 편 — 로스터를 세로로 쌓는다(요청: 본문은 로스터 세로로 배치). 팀원이 늘면 줄이
+   아래로 자랄 뿐이라 가운데 점수 자리는 그대로 가운데에 남는다(align-items: center). */
+.scr-league-match-side {
+  min-width: 0; display: flex; flex-direction: column; gap: 6px;
 }
-/* 이긴 편만 또렷하게 — 진 편을 붉게 칠하는 대신 이긴 편을 세운다(승패는 점수가 이미 말한다). */
-.scr-league-match-side-won .scr-league-match-team { color: var(--accent, var(--text)); }
-.scr-league-match-side:not(.scr-league-match-side-won) .scr-league-match-team { color: var(--dim); }
+/* 왼쪽 편은 오른쪽에, 오른쪽 편은 왼쪽에 붙어 가운데 점수를 사이에 두고 마주 본다. */
+.scr-league-match-side:first-child { align-items: flex-end; }
+.scr-league-match-side:last-child { align-items: flex-start; }
+/* 한 사람 — 프사와 닉네임이 한 줄. 마주 보도록 왼쪽 편은 이름이 프사 왼쪽에 온다. */
+.scr-league-match-person {
+  display: flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%;
+}
+.scr-league-match-side:first-child .scr-league-match-person { flex-direction: row-reverse; }
+.scr-league-match-name {
+  min-width: 0; font-size: var(--fs-caption); font-weight: 700; color: var(--text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+/* 로스터가 아직 안 짜인 팀은 대진표에서 부르던 라벨(A·B)만, 아예 안 정해진 자리는 "미정". */
+.scr-league-match-label,
+.scr-league-match-tbd {
+  font-size: var(--fs-caption); font-weight: 700; color: var(--dim);
+}
+/* 이긴 편만 또렷하게 — 진 편을 붉게 칠하는 대신 진 편을 물린다(승패는 점수가 이미 말한다).
+   결과가 나오기 전에는 어느 쪽도 안 물린다: 아직 아무도 지지 않았다. */
+.scr-league-match-card-played
+  .scr-league-match-side:not(.scr-league-match-side-won) .scr-league-match-name { color: var(--dim); }
 /* 결과가 없으면 "vs"만 남는다 — 0:0으로 채우면 '아직 안 함'과 '0:0으로 끝남'이 같아진다. */
 .scr-league-match-score {
   font-size: var(--fs-caption); font-weight: 800; color: var(--muted);

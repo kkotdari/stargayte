@@ -888,9 +888,9 @@ export default function ActivityScreen() {
         }
         // 리그 경기는 두 팀 이름(로스터 닉네임을 이은 것)으로 걸린다.
         if (item.kind === "leagueMatch") {
-          const text = normalizeSearchText(
-            [item.match.teamA, item.match.teamB, item.match.leagueName].filter(Boolean).join(" "),
-          );
+          const names = [item.match.teamA, item.match.teamB]
+            .flatMap((t) => (t ? t.members.map((x) => x.nickname) : []));
+          const text = normalizeSearchText([...names, item.match.leagueName].join(" "));
           return searchTerms.every((term) => text.includes(term));
         }
         // 좌우 두 칸(개인전·팀전)을 함께 훑는다 — 어느 칸에 걸리든 그 카드는 검색에 맞다.
@@ -1110,14 +1110,19 @@ export default function ActivityScreen() {
          한 줄에 다 넣으면 이름이 잘리고 화살표가 밀려 사라졌다(실측 390px). 어느 리그의
          몇 강인지는 줄을 펴면 카드 머리가 "여름 리그 8강"으로 말한다. */
       const m = item.match;
+      /* 줄에서는 두 편을 콜론으로 가른다(요청) — 너 나와의 화살표는 "누가 누구를 불렀나"라
+         방향이 있지만, 리그 대진은 이미 짜인 자리라 방향이 없다. */
+      const sideText = (t: typeof m.teamA) => (
+        t === null ? "미정" : t.members.length > 0 ? t.members.map((x) => x.nickname).join("·") : t.label
+      );
       return (
         <>
           <span className="scr-activity-row-name">
-            <span className="scr-activity-row-name-main">{m.teamA ?? "미정"}</span>
+            <span className="scr-activity-row-name-main">{sideText(m.teamA)}</span>
           </span>
-          <span className="scr-activity-row-arrow" aria-hidden>→</span>
+          <span className="scr-activity-row-arrow" aria-hidden>:</span>
           <span className="scr-activity-row-name">
-            <span className="scr-activity-row-name-main">{m.teamB ?? "미정"}</span>
+            <span className="scr-activity-row-name-main">{sideText(m.teamB)}</span>
           </span>
           {m.setsWonA !== null && m.setsWonB !== null && (
             <>
