@@ -1554,7 +1554,7 @@ export default function GameResultStory({
   return (
     <div className="scr-story" ref={rootRef}>
       {showRoster && (
-        <div className={cx("scr-challenge-matchup", "scr-activity-game-result-matchup", grid && "scr-story-matchup-wide")}>
+        <div className={cx("scr-roster-matchup", "scr-activity-game-result-matchup", grid && "scr-story-matchup-wide")}>
           <RosterSide
             team={team1} memberOf={memberOf}
             highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms}

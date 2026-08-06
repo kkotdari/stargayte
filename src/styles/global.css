@@ -3928,7 +3928,7 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
 /* 목록 화면용 2열 그리드 로스터(.scr-game-result-trow-grid/-team/-roster, .scr-mt-*)는
    걷어냈다 — 그걸 쓰던 마지막 화면(카톡 단일 경기 공유)이 활동 카드를 그대로 쓰게
    바뀌면서 그리는 곳이 없어졌다(요청: 잘못 쓰이지 않게 제거). 지금 로스터는 너 나와!와
-   같은 매치업 한 벌(.scr-challenge-matchup)뿐이다. */
+   같은 매치업 한 벌(.scr-roster-matchup)뿐이다. */
 /* 예전엔 여기 사람별 총합 스탯 표(.scr-game-result-stats-table*)와, 그걸 띄우는 전체화면
    시트(시간축 그래프 포함)가 있었다 — 통째로 걷어냈다(요청: 기능 삭제). */
 
@@ -5782,7 +5782,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 .scr-challenge-msg-inner .scr-input { width: 100%; }
 /* 응답 영역 — 한마디 토글/입력 + 버튼 행을 세로로 쌓는다. */
 .scr-challenge-respond { display: flex; flex-direction: column; gap: 8px; }
-/* (삭제) 로스터 아래 흰 말풍선(.scr-challenge-side-msg) — 카드가 편지지를 쓰게 되면서
+/* (삭제) 로스터 아래 흰 말풍선(.scr-roster-msg) — 카드가 편지지를 쓰게 되면서
    한마디는 편지지 가운데(.scr-challenge-words)에서 말한다(요청). */
 .scr-light-theme .scr-challenge-submit-btn:disabled { border-color: rgba(0, 0, 0, 0.14); }
 /* "호출" 버튼 — 활성화 시 각 테마의 라이팅 프라이머리(요청: 핑크 고유색 대신 공통
@@ -6046,7 +6046,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
    align-items:center인 이 flex 행 안에서 자연히 위아래 가운데로 온다(요청: "손가락
    이모티콘을 좀더 도전자와 상대 가운데 느낌에 배치") — 팀전이라 어느 한쪽이 세로로
    길어져도 항상 그 사이 세로 중앙에 위치한다. */
-/* width:100%가 핵심이다 — .scr-challenge-matchup은 flex 컬럼(.scr-challenge-card-body)의
+/* width:100%가 핵심이다 — .scr-roster-matchup은 flex 컬럼(.scr-challenge-card-body)의
    자식인데, 아래 PC 규칙처럼 margin:0 auto로 가운데 정렬하면 flex의 기본 stretch가
    꺼지고 대신 내용 크기만큼만(shrink-to-fit) 잡힌 뒤 남는 공간을 auto 마진이 나눠
    가진다 — max-width는 상한선일 뿐 실제로 그 폭까지 채워주지 않아서, 안의
@@ -6062,15 +6062,15 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
    별개로 매치업 내용 자체를 좁게 다시 캡(560px)해서 카드 가운데로 모은다. */
 /* flex-start로 되돌린다 — center를 한 번 써봤지만(요청: "아바타가 닉네임 및 손 이모지,
    응답 배지와 세로로 가운데 정렬") 한마디 자리를 항상 예약하게 되면서(요청: "한마디가
-   있건 없건 레이아웃 유지되게") .scr-challenge-side의 전체 높이가 늘어나 버렸고,
+   있건 없건 레이아웃 유지되게") .scr-roster-side의 전체 높이가 늘어나 버렸고,
    align-items:center는 그 늘어난 전체 높이의 한가운데를 기준으로 삼아 오히려 화살표 줄이
    아래로 처져 버렸다(지적: "손이모지랑 배지 영역도 한마디만큼 위로 올려서"). 화살표
    줄만 아바타(34px) 첫 줄에 맞춰 고정 오프셋(아래 .scr-challenge-arrow-row의 margin-top)
    으로 직접 맞추는 편이, 나중에 팀전처럼 사람이 여럿이라 전체 높이가 또 달라져도
    깨지지 않는다. */
-.scr-challenge-matchup { display: flex; align-items: flex-start; width: 100%; }
+.scr-roster-matchup { display: flex; align-items: flex-start; width: 100%; }
 @media (min-width: 641px) {
-  .scr-challenge-matchup { max-width: 560px; margin: 0 auto; }
+  .scr-roster-matchup { max-width: 560px; margin: 0 auto; }
 }
 /* 손가락은 팀 전체 블록(메시지까지 포함해 세로로 길어질 수 있는)의 한가운데가 아니라
    맨 윗줄(프사+닉네임 줄)에만 자리를 차지하면 된다(요청: "손가락 이모지는 윗 라인에만
@@ -6079,7 +6079,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
    그대로 좌우 margin으로 유지한다 — 비대칭 간격은 PC 전용이다(요청: "pc만이야
    모바일은 아니야"). */
 /* 가운데 묶음(승 배지 — vs/손가락 — 승 배지) 안팎 간격을 조금씩 벌린다(요청: 살짝씩).
-   부모(.scr-challenge-matchup)는 align-items:flex-start라 이 행도 첫 줄(y=0)에
+   부모(.scr-roster-matchup)는 align-items:flex-start라 이 행도 첫 줄(y=0)에
    붙는데, 아바타(34px)에 맞춰 커진 로스터 1행과 달리 이 행 자신의 높이는 20px 그대로라
    (요청: "손이모지랑 배지 영역도 한마디만큼 위로 올려서 다른 요소들과 수평정렬") 위쪽에
    그 차이의 절반(34-20)/2=7px만큼 margin-top을 줘서 로스터 1행 중심에 맞춘다. 아바타
@@ -6125,18 +6125,24 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
    닉네임 최대한 나오게"). 처음엔 4:6까지 벌렸다가 이번엔 도전자편이 너무 좁아져(요청:
    "이제 모바일에서 도전자쪽이 너무 좁아") 격차를 완만하게 줄였다. */
 /* (유저 사이 세로 간격은 6px 그대로 — 한때 9px로 벌렸다가 원복 요청. 가로 간격만 벌린다.) */
-.scr-challenge-side { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+/* ── 공용 로스터(scr-roster-*) ─────────────────────────────────────────────────
+   양편을 좌우로 세우고 사람마다 아바타+닉네임을 쌓는 배치. 원래는 너 나와! 카드
+   전용(scr-challenge-side / scr-challenge-person-name)이었는데, 그 카드가 편지지로
+   바뀌면서(요청) 지금 이 CSS를 쓰는 것은 게임결과 매치업뿐이다. 이름이 쓰는 곳과
+   어긋나 있어 공통 이름으로 바꿨다(요청: "scr-challenge-side/person-name 이름 공통화").
+   ────────────────────────────────────────────────────────────────────────────── */
+.scr-roster-side { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
 /* 모바일은 상대편이 요소(응답 알약)가 더 많아 폭을 조금 더 준다 — PC는 아래 미디어
    쿼리에서 1:1 대칭으로 되돌린다(양쪽이 화살표를 가운데 두고 마주 보는 배치라 폭이
    같아야 화살표가 정확히 중앙에 온다). */
-.scr-challenge-side-target { flex: 1.15 1 0; }
+.scr-roster-side-target { flex: 1.15 1 0; }
 @media (min-width: 641px) {
-  .scr-challenge-side-target { flex: 1 1 0; }
+  .scr-roster-side-target { flex: 1 1 0; }
 }
 /* 인스타그램식 배치(요청: "아바타를 왼쪽에 정렬하고 오른쪽에 닉네임, 응답상태, 한마디를
    한 영역에 세로로 배치") — 아바타가 왼쪽 칸, 닉네임 줄은 그 오른쪽, 한마디는 그 밑에.
    RosterSide(게임결과 로스터, GameResultSides.tsx)는 이 블록을 안 쓰고 여전히
-   .scr-challenge-person(아바타+닉네임 한 줄)을 그대로 쓴다 — 그쪽은 응답상태·한마디가
+   .scr-roster-person(아바타+닉네임 한 줄)을 그대로 쓴다 — 그쪽은 응답상태·한마디가
    없어 굳이 세로로 쌓을 게 없다.
    그리드로 짠다(요청: "아바타가 닉네임 및 손 이모지, 응답 배지와 세로로 가운데 정렬되게,
    말풍선은 아래쪽에 위치하는 느낌으로") — 아바타는 1행에만 놓여 그 행의 트랙 높이를
@@ -6145,11 +6151,11 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
    flex(행 전체를 align-items:center)였다면 한마디까지 포함한 전체 높이 기준으로
    가운데 잡혀 아바타가 오히려 아래로 처졌을 것이다 — 그리드는 행이 갈려 있어 1행(닉네임)
    만 따로 기준 삼을 수 있다. */
-.scr-challenge-side-block {
+.scr-roster-block {
   display: grid; grid-template-columns: auto 1fr; column-gap: 10px; row-gap: 2px; min-width: 0;
 }
-.scr-challenge-side-avatar { grid-column: 1; grid-row: 1; flex-shrink: 0; }
-.scr-challenge-side-row {
+.scr-roster-avatar { grid-column: 1; grid-row: 1; flex-shrink: 0; }
+.scr-roster-row {
   grid-column: 2; grid-row: 1; align-self: center;
   display: flex; align-items: center; gap: 6px; min-width: 0;
 }
@@ -6157,8 +6163,8 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
    유지)고, 유저 검색에 걸리면 경기결과 로스터(.scr-team-player-highlight)와 똑같은
    반전색으로 프사까지 함께 칠한다(요청: "랭킹, 너 나와 유저 검색시 하이라이팅 추가 단!
    닉네임뿐 아니라 프사까지 하이라이팅 주고 경기 하이라이트랑 똑같은 css"). 너 나와
-   (ChallengeSide)는 이제 아바타가 .scr-challenge-person 밖으로 나와 있어, 같은
-   .scr-challenge-person-hit 클래스를 그 대신 .scr-challenge-side-block(아바타+정보 칸
+   (ChallengeSide)는 이제 아바타가 .scr-roster-person 밖으로 나와 있어, 같은
+   .scr-roster-hit 클래스를 그 대신 .scr-roster-block(아바타+정보 칸
    전체)에 얹는다 — 여전히 프사까지 함께 칠해진다. */
 /* 응답 배지 — 수락/거절/대기 세 가지로만 구분한다. 아바타에 겹쳐도 보고(→ 뒤 블러
    처리도) 해봤지만, 그다음엔 닉네임 옆 인라인으로 옮겼었다(요청: "응답 배지는 수락/
@@ -6211,19 +6217,19 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
   width: auto; height: auto; min-width: 0; box-sizing: content-box;
   border: none; background: none; padding: 0; border-radius: 0; font-weight: 700;
 }
-.scr-challenge-person { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.scr-roster-person { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
 /* 모서리는 각지게(래디우스 제거), 좌우 패딩은 원복(요청). */
-.scr-challenge-person-hit {
+.scr-roster-hit {
   background: var(--highlight-bg); border-radius: 0;
   padding: 2px 4px; margin: -2px -4px;
 }
-.scr-challenge-person-hit .scr-challenge-person-name { color: var(--bar-text); }
+.scr-roster-hit .scr-roster-name { color: var(--bar-text); }
 /* flex:1 1 auto로 남는 공간을 다 먹게 뒀더니, 응답 알약이 그 뒤로 밀려 줄 맨 끝에
    고정된 열처럼 보였다(요청: "상대 상태알약은 닉네임 바로 옆에 붙여서 배치(고정
    컬럼X)") — flex-grow를 0으로 바꿔 이름이 자기 내용 크기만큼만 차지하게 하면, 알약이
    바로 뒤에 붙어 따라온다. 이름이 길 때 줄어드는(말줄임) 동작은 flex-shrink 기본값(1)
    그대로라 변화 없다. */
-.scr-challenge-person-name {
+.scr-roster-name {
   /* 목록에 반복되는 일반 텍스트라 지나치게 두껍지 않게(요청: "목록성 데이터에 너무
      두꺼운 글씨체를 많이 쓰는거 같아"). */
   font-size: var(--fs-body); font-weight: 600; color: var(--text); min-width: 0;
@@ -6233,11 +6239,11 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
    양쪽이 화살표를 사이에 두고 마주 보게 한다(요청: "pc에서 좀 예쁘게"). 트랙 하나를
    오른쪽에 앵커하고(justify-content:end) 그 안의 아이템은 왼쪽 정렬(justify-items:start). */
 @media (min-width: 641px) {
-  .scr-challenge-side:not(.scr-challenge-side-target) {
+  .scr-roster-side:not(.scr-roster-side-target) {
     display: grid; grid-template-columns: 100%;
     justify-content: end; justify-items: start; row-gap: 6px;
   }
-  .scr-challenge-side:not(.scr-challenge-side-target) .scr-challenge-person { max-width: 100%; }
+  .scr-roster-side:not(.scr-roster-side-target) .scr-roster-person { max-width: 100%; }
 }
 /* 승락/거절 버튼 줄이 카드 높이에 영향을 주는 건 문제 없다(요청: "거절 승락 버튼이
    높이에 영향주는건 괜찮아") — 아무것도 안 뜨는 카드에까지 빈 자리를 예약해두진
@@ -6621,7 +6627,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 .scr-activity-card-body-photo .scr-challenge-inbox-time,
 .scr-activity-card-body-photo .scr-challenge-word-text,
 .scr-activity-card-body-photo .scr-challenge-word-who,
-.scr-activity-card-body-photo .scr-challenge-person-name,
+.scr-activity-card-body-photo .scr-roster-name,
 .scr-activity-card-body-photo .scr-challenge-inline-win,
 .scr-activity-card-body-photo .scr-challenge-arrow {
   text-shadow:
@@ -6977,7 +6983,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
      않던 원인(지적된 버그: "안 줄어드는데?"). 축소 요청이 확대 요청을 대체했으므로 삭제. */
   .scr-drawer-actions .scr-btn { font-size: var(--fs-body); }
   /* 도전장(너나와) 팀전 카드만 로스터 텍스트 추가 두 단계 축소(16→12) */
-  .scr-challenge-card-team .scr-challenge-person-name { font-size: var(--fs-micro); }
+  .scr-challenge-card-team .scr-roster-name { font-size: var(--fs-micro); }
   /* 경기 이력 팀2 로스터(와 뒤따르는 '팀에게')를 왼쪽으로 8px 이동(요청, 모바일). 모든 카드가
      같은 값이라 연결어 위치 통일은 유지된다. */
   .scr-rank-detail-history .scr-game-result-row-team-tail .scr-team-block-team2 { margin-left: -8px; }
@@ -6988,10 +6994,10 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
      도전자 칸을 0.85로 넓혀(승 배지가 오른쪽으로 조금 이동) 도전자 닉네임 폭을 확보하고,
      동시에 가운데 화살표 묶음의 좌우 여백을 12→6px로 줄여 그 절약분을 양쪽 로스터가 나눠
      가져 상대 닉네임 폭도 함께 넓힌다. */
-  .scr-challenge-matchup .scr-challenge-side:not(.scr-challenge-side-target) { flex: 0.85 1 0; }
+  .scr-roster-matchup .scr-roster-side:not(.scr-roster-side-target) { flex: 0.85 1 0; }
   /* 5px/3px → 8px/6px(요청: 살짝씩 벌리기). 원래 12px에서 5px까지 줄였던 건 도전자
      닉네임 폭을 확보하려던 것인데, 3px씩만 돌려줘도 그때 아낀 폭의 절반 이상은 남는다. */
-  .scr-challenge-matchup .scr-challenge-arrow-row { margin-left: 8px; margin-right: 8px; gap: 6px; }
+  .scr-roster-matchup .scr-challenge-arrow-row { margin-left: 8px; margin-right: 8px; gap: 6px; }
   /* 경기 이력 팀전 카드: 양 팀 덩어리는 기본(base)의 균등폭(flex:1 1 0)을 그대로 쓴다 —
      한때 내용폭(flex:0 1 auto)으로 바꿨더니 팀1(짧은 닉네임)쪽 영역이 팀2보다 눈에 띄게
      좁아졌다(신고). 균등폭이면 팀1/팀2가 같은 폭을 가져 좌우가 대칭이 된다. */
@@ -7109,7 +7115,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 .scr-member-row-name { font-size: var(--fs-caption); }
 .scr-member-row-tag { font-size: var(--fs-micro); }
 .scr-drawer-actions .scr-btn { font-size: var(--fs-body); }
-.scr-challenge-card-team .scr-challenge-person-name { font-size: var(--fs-micro); }
+.scr-challenge-card-team .scr-roster-name { font-size: var(--fs-micro); }
 .scr-team-outcome { font-size: var(--fs-body); }
 /* 한 스텝 더 축소(요청) — 다이얼 위로 올라가면서 더 작아도 읽힌다. */
 .scr-challenge-form-modal .scr-hint { font-size: var(--fs-caption); }
@@ -8341,13 +8347,13 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-activity-chal-menu { position: absolute; top: var(--card-kebab-top); right: 10px; z-index: 3; display: flex; }
 /* 아이템 내 폰트 전부 1스텝 축소(요청) — 로스터/닉네임 caption, 헤더 micro 등.
    로스터와 너나와 닉네임은 같은 크기 유지(둘 다 caption). */
-.scr-activity-card .scr-challenge-person-name { font-size: var(--fs-caption); }
+.scr-activity-card .scr-roster-name { font-size: var(--fs-caption); }
 /* 너 나와 카드만 한 단계 더 키운다(요청: "너 나와... 아바타 크기 및 닉네임 등 모든
    폰트 크기 확대") — 위 규칙(로스터에도 걸리는 공용 규칙)보다 특이도를 올려 카드
    스코프(.scr-challenge-card)에서만 이긴다. 게임결과 로스터(RosterSide)는 이 클래스가
    없어 그대로 caption 유지 — "로스터와 너나와 닉네임은 같은 크기" 원칙은 로스터 쪽은
    건드리지 않았으니 그대로다. */
-.scr-activity-card .scr-challenge-card .scr-challenge-person-name { font-size: var(--fs-body); }
+.scr-activity-card .scr-challenge-card .scr-roster-name { font-size: var(--fs-body); }
 /* 응답상태(대기/수락/거절)도 닉네임과 같이 한 단계 키운다 — 옆에 나란히 붙는 짝이라
    커진 닉네임 옆에서 유독 작아 보이면 안 된다. */
 .scr-activity-card .scr-challenge-card .scr-challenge-avatar-badge { font-size: var(--fs-body); }
@@ -8399,7 +8405,7 @@ html.scr-light-theme .scr-activity-card-comment .scr-comment-mention { color: #1
 .scr-story-cap-intro { font-weight: 700; text-align: center; }
 /* 활동에선 양편 flex를 똑같이 둬서 가운데(손가락/vs) 묶음이 카드 가로 정중앙에 온다
    (요청: "손가락, vs 세로 정렬" — 원본 화면의 비대칭 flex(0.85/1.15)가 중앙을 밀고 있었다). */
-.scr-activity-card .scr-challenge-matchup .scr-challenge-side { flex: 1 1 0; }
+.scr-activity-card .scr-roster-matchup .scr-roster-side { flex: 1 1 0; }
 /* 종족 배지 — 기록실의 절대배치(.scr-team-name-wrap 기준 right:-8px) 대신, 매치업
    로스터에선 닉네임 바로 오른쪽 인라인으로 흐르게 한다(기준 래퍼가 없는 자리라
    절대배치를 그대로 두면 카드 밖으로 튄다). */
@@ -9145,18 +9151,18 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 /* 미니맵이 들어오면 가운데 열이 폭을 먹으므로 매치업을 조금 넓게 쓴다 — 그러지 않으면
    양쪽 로스터가 닉네임 한 줄도 못 담을 만큼 눌린다(기본 max-width는 560px).
    PC에서는 미니맵을 훨씬 크게 보여 달라는 요청이 있어 620 → 820으로 더 넓힌다 — 로스터는
-   flex: 1 1 0(아래 .scr-challenge-side)라 가운데 열(.scr-story-map)이 커진 만큼 자동으로
+   flex: 1 1 0(아래 .scr-roster-side)라 가운데 열(.scr-story-map)이 커진 만큼 자동으로
    줄어든다(요청: 좌우 로스터는 많이 줄여도 됨). */
 @media (min-width: 641px) {
-  .scr-challenge-matchup.scr-story-matchup-wide { max-width: 820px; }
+  .scr-roster-matchup.scr-story-matchup-wide { max-width: 820px; }
   /* 좌우 로스터가 미니맵에서 같은 거리에 오게 한다(지적: 좌우대칭이 안 맞음). 두 열은 폭이
      같지만 둘 다 왼쪽 정렬이라, 왼쪽 로스터는 미니맵에서 멀고 오른쪽 로스터는 딱 붙어
      보였다(실측: 왼쪽 79px, 오른쪽 0px). 프사는 늘 닉네임 왼쪽이라는 규칙은 그대로 두고
      (요청) 열 정렬만 안쪽으로 모은다. */
-  .scr-story-matchup-wide > .scr-challenge-side:first-child {
+  .scr-story-matchup-wide > .scr-roster-side:first-child {
     justify-items: end; padding-right: 12px;
   }
-  .scr-story-matchup-wide > .scr-challenge-side:last-child {
+  .scr-story-matchup-wide > .scr-roster-side:last-child {
     justify-items: start; padding-left: 12px;
   }
 }

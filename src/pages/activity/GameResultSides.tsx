@@ -48,7 +48,7 @@ export function resolveSlotName(slot: GameResultSlot, players: GameResultSlot[],
       : (m?.nickname ?? slot.memberId);
 }
 
-// 매치업 한 편(활동 전용) — 너 나와! 카드의 팀 로스터(scr-challenge-side)와 같은 CSS로
+// 매치업 한 편(활동 전용) — 공용 로스터 CSS(scr-roster-*)로
 // 세로 나열한다(요청: "게임결과의 팀로스터와 너 나와의 팀로스터를 맞출거야"). 프사를
 // 더하고, 종족 배지는 닉네임 오른쪽(기존 규칙 유지). 컴퓨터/비회원은 작은 아이콘으로 구분.
 export default function RosterSide({
@@ -58,7 +58,7 @@ export default function RosterSide({
   highlightMemberIds?: Set<string>; highlightTerms?: string[];
 }) {
   return (
-    <div className="scr-challenge-side">
+    <div className="scr-roster-side">
       {team.map((s, i) => {
         const name = resolveSlotName(s, team, memberOf);
         const m = memberOf(s.memberId);
@@ -67,9 +67,9 @@ export default function RosterSide({
         const isComputer = isComputerSlot(s.memberId);
         const isUnreg = isUnregisteredSlot(s.memberId);
         return (
-          <div key={`${s.memberId}-${i}`} className="scr-challenge-side-block">
-            <div className="scr-challenge-side-row">
-              <span className={cx("scr-challenge-person", hl && "scr-challenge-person-hit")}>
+          <div key={`${s.memberId}-${i}`} className="scr-roster-block">
+            <div className="scr-roster-row">
+              <span className={cx("scr-roster-person", hl && "scr-roster-hit")}>
                 {/* 컴퓨터/비회원은 프사 자리에 아이콘 — 팀과 무관하게 항상 닉네임 왼쪽
                     (요청). 비회원은 사람 아이콘. */}
                 {isComputer || isUnreg ? (
@@ -79,7 +79,7 @@ export default function RosterSide({
                 ) : (
                   <Avatar member={{ id: s.memberId, nickname: name, avatar: m?.avatar ?? null }} size={20} />
                 )}
-                <span className="scr-challenge-person-name">{name}</span>
+                <span className="scr-roster-name">{name}</span>
                 <RaceBadge race={s.race} size={13} circleLetter className="scr-team-name-race" />
               </span>
             </div>

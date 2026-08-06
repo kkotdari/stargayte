@@ -60,7 +60,7 @@ export function PartySide({ tag, members, highlight }: {
           {members.map((m, i) => (
             <Fragment key={m.id}>
               {i > 0 && ", "}
-              <span className={cx(highlight?.has(m.id) && "scr-challenge-person-hit")}>{m.nickname}</span>
+              <span className={cx(highlight?.has(m.id) && "scr-roster-hit")}>{m.nickname}</span>
             </Fragment>
           ))}
         </span>
