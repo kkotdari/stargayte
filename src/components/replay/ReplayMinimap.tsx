@@ -236,6 +236,64 @@ function arrowGeom(a: MinimapArrow, w: number, h: number) {
 }
 
 /** 미니맵 위에 놓을 표시 하나. */
+/* ── 아바타 밑 체력바(요청) ────────────────────────────────────────────────────
+   "체력바의 길이는 계산된 현재 건물/병력 규모를 뜻하며, 시간에 비례하여 적정치 기준이
+   올라가고, 기준 충족시 녹색 기준에 못미치면 색이 붉은색쪽으로 점점 변함."
+
+   적정치(par)는 지어낸 값이 아니라 실측한 중앙값이다 — 리플레이 22판 131명의 전투력을
+   2분 간격으로 재서 그 중앙값을 표로 옮겼다(아래 POWER_PAR. 그 분에 아직 경기가 이어지던
+   사람만 센다 — 끝난 판까지 함께 세면 그 값이 그대로 눌러앉아 후반 기준이 헐거워진다).
+   직선 하나로는 안 맞는다: 초반은 분당 8 남짓으로 시작해 중반에 13까지 가팔라졌다가
+   20분을 넘기면 다시 완만해진다. 2분에 중앙값이 9인데 중반 기울기로 그은 직선은 22를
+   요구한다 — 그러면 모두가 초반에 붉게 뜬다. 표 사이는 직선으로 잇고, 표 밖(30분 이후)은
+   마지막 구간의 기울기를 이어 간다. */
+const POWER_PAR: readonly [number, number][] = [
+  [0, 0], [2, 9], [4, 25], [6, 45], [8, 71], [10, 103], [12, 129], [14, 147],
+  [16, 181], [18, 199], [20, 222], [22, 242], [24, 250], [26, 263], [28, 288], [30, 319],
+];
+/** 바가 가득 차는 규모 — 실측 30분 상위 25%(521)를 어림한 값이다. */
+const POWER_FULL = 500;
+
+function parAt(min: number): number {
+  const n = POWER_PAR.length;
+  const last = POWER_PAR[n - 1];
+  if (min >= last[0]) {
+    const prev = POWER_PAR[n - 2];
+    const slope = (last[1] - prev[1]) / (last[0] - prev[0]);
+    return last[1] + slope * (min - last[0]);
+  }
+  for (let i = 1; i < n; i += 1) {
+    const [x1, y1] = POWER_PAR[i];
+    if (min <= x1) {
+      const [x0, y0] = POWER_PAR[i - 1];
+      return y0 + (y1 - y0) * ((min - x0) / (x1 - x0));
+    }
+  }
+  return last[1];
+}
+
+/** 닉네임 밑 체력바 — 길이는 규모, 색은 적정치 대비다.
+ *
+ *  길이에 제곱근을 씌운다: 규모는 후반에 수백까지 가는데 그대로 비례시키면 초반 십여 분이
+ *  전부 보이지 않는 실선이 된다. 제곱근은 순서를 뒤집지 않으므로 '누가 더 큰가'는 그대로
+ *  읽히고, 작은 값들만 눈에 보이게 벌려 준다. */
+function PowerBar({ power, atSec }: { power: number; atSec: number }) {
+  const par = parAt(atSec / 60);
+  const ratio = par > 0 ? power / par : 1;
+  const len = Math.max(0.06, Math.min(1, Math.sqrt(power / POWER_FULL)));
+  /* 적정치에 닿으면 녹색(120°), 모자랄수록 붉은쪽(0°)으로 내려간다. 절반 이하는 완전한
+     빨강으로 눕혀 둔다 — 그 아래를 더 갈라 봐야 읽는 사람에게 다른 뜻이 되지 않는다. */
+  const t = Math.max(0, Math.min(1, (ratio - 0.5) / 0.5));
+  return (
+    <span className="scr-minimap-hp" aria-hidden>
+      <span
+        className="scr-minimap-hp-fill"
+        style={{ width: `${len * 100}%`, background: `hsl(${Math.round(t * 120)} 78% 46%)` }}
+      />
+    </span>
+  );
+}
+
 export interface MinimapMarker {
   /** 리플레이 원본 게임 아이디 — 목록 키로도 쓴다. */
   key: string;
@@ -287,6 +345,11 @@ export interface MinimapMarker {
   /** 이 사람이 그 무렵 한 말 — 아바타 위에 말주머니로 띄운다(요청: 스냅으로 선정한 부근의
    *  채팅만 말주머니로). 양쪽이 다 본 말(전체챗)만 온다(요청: 팀챗 없애고 전체챗만). */
   bubble?: string;
+  /** 그 시각까지 갖춘 규모(병력 + 건물 몫; 요약의 hp). 닉네임 밑 체력바가 쓴다 —
+   *  길이는 규모, 색은 같은 시각의 적정치에 견준 상태다(요청). 없으면 바를 안 그린다. */
+  power?: number;
+  /** 그 스냅의 시각(초) — 적정치가 시간에 비례해 오르므로 색을 정하려면 필요하다. */
+  powerAtSec?: number;
 }
 
 export default function ReplayMinimap({
@@ -824,9 +887,15 @@ export default function ReplayMinimap({
             marginTop: `${labelFix.get(m.key)?.y ?? 0}px`,
           }}
         >
-          <span className="scr-minimap-mark-name">{m.name}</span>
-          {/* 로스터를 감춘 모바일에서 종족이 통째로 사라지지 않게 여기 함께 붙인다. */}
-          <RaceBadge race={m.race} size={11} circleLetter className="scr-minimap-mark-race" />
+          <span className="scr-minimap-mark-line">
+            <span className="scr-minimap-mark-name">{m.name}</span>
+            {/* 로스터를 감춘 모바일에서 종족이 통째로 사라지지 않게 여기 함께 붙인다. */}
+            <RaceBadge race={m.race} size={11} circleLetter className="scr-minimap-mark-race" />
+          </span>
+          {/* 닉네임 밑 체력바(요청) — 그 시각의 규모와 적정치 대비 상태. */}
+          {typeof m.power === "number" && typeof m.powerAtSec === "number" && (
+            <PowerBar power={m.power} atSec={m.powerAtSec} />
+          )}
         </span>
       ) : null))}
       {/* 말주머니 — 그 무렵 그 사람이 한 말을 아바타 위에 띄운다(요청: 스냅으로 선정한

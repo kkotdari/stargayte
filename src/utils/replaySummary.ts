@@ -3150,6 +3150,40 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   /** 화살표 굵기의 근거 — 그 사람이 그 무렵 굴린 병력의 크기(요청). 문장 시각 직전
    *  ARROW_SIZE_SEC 동안 뽑은 전투 유닛 수다. 화살표에 이름표(units)가 붙는 사람만 센다 —
    *  굵기는 그 화살표의 성질이라 화살표가 없으면 쓸 데가 없다. */
+  /* 그 시각 그 사람이 갖춘 규모 — 미니맵 아바타 밑 체력바가 쓴다(요청: "체력바의 길이는
+     계산된 현재 건물/병력 규모를 뜻하며 … 길이와 색으로 플레이어의 현재 전투력 상태를
+     표시"). 병력은 커맨드가 아니라 실제로 나올 수 있었던 수로 세고(producedFrames), 건물은
+     방어탑·생산건물·본진에 저마다 몫을 준다 — 본진은 첫 채가 buildingFrames에 없으므로
+     하나를 더한다.
+     리플레이에는 죽음이 없어 '지금 살아 있는 병력'은 알 수 없다. 그래서 이 값은 정확히는
+     '여기까지 쌓아 올린 것'이고, 화면에서도 절대 수치가 아니라 같은 시각의 적정치에 견준
+     상태로만 읽힌다(색). */
+  const powerAt = (raw: string, at: number): number => {
+    const pl = replay.players.find((x: ParsedReplayPlayer) => x.rawName === raw);
+    const sg = pl?.signals;
+    if (!sg) return 0;
+    let troops = 0;
+    for (const unit of Object.keys(sg.unitFrames)) {
+      if (POWER_PEACE.has(unit)) continue;
+      troops += producedFrames(sg, unit, totalFrames).filter((f) => f < at).length;
+    }
+    const built = (names: readonly string[]) => names.reduce(
+      (n, b) => n + (sg.buildingFrames[b] ?? []).filter((f) => f < at).length, 0,
+    );
+    return troops
+      + built(POWER_DEF) * POWER_DEF_WORTH
+      + built(POWER_PROD) * POWER_PROD_WORTH
+      + (built(POWER_BASE) + 1) * POWER_BASE_WORTH;
+  };
+  /** 그 스냅 시각의 전 참가자 전투력 — 아바타는 스냅에 안 나오는 사람도 늘 떠 있으므로
+   *  전원 몫을 담는다. 시각이 없는 문장(맺음말 앞의 총평 등)에는 붙이지 않는다. */
+  const powersAt = (at: number | null | undefined): Record<string, number> | null => {
+    if (typeof at !== "number" || !Number.isFinite(at)) return null;
+    const out: Record<string, number> = {};
+    for (const pl of replay.players) out[pl.rawName] = powerAt(pl.rawName, at);
+    return Object.keys(out).length > 0 ? out : null;
+  };
+
   const arrowSizes = (b: Omit<Beat, "weight">, units: Record<string, string[]> | null): Record<string, number> | null => {
     if (!units || typeof b.at !== "number") return null;
     const out: Record<string, number> = {};
@@ -4231,10 +4265,12 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
       const units = arrowUnits(forArrow);
       const sizes = arrowSizes(forArrow, units);
       const finalPos = { ...(pos ?? {}), ...sortie };
+      const hp = powersAt(forArrow.at);
       return {
         ...b,
         ...(Object.keys(finalPos).length > 0 ? { pos: finalPos } : {}),
         ...(units ? { units } : {}), ...(sizes ? { sizes } : {}),
+        ...(hp ? { hp } : {}),
       };
     })),
   };
@@ -4269,6 +4305,26 @@ const SCAN_SCOUT_MIN = 8;
 /** 그중 '자리를 보장할 만큼' 판을 훑어본 선 — 실측 테란 225명의 상위 10%가 열두 번이다. */
 const SCAN_RESERVE_MIN = 12;
 const SCAN_BASE_TILES = 18;
+
+/* 전투력(미니맵 체력바)을 셀 때 쓰는 몫. 병력 한 기를 1로 두고, 건물은 그 한 채가
+   대신하는 병력만큼 얹는다 — 방어탑은 병력 둘 몫(replayTactics의 GREEDY_DEF_WORTH와 같은
+   생각), 생산건물도 둘 몫(그 자리에서 병력이 계속 나온다), 본진은 셋 몫(그 위에 나머지가
+   선다). 첫 본진은 지은 것이 아니라 처음부터 서 있어 buildingFrames에 없으므로 하나를 더한다. */
+const POWER_DEF_WORTH = 2;
+const POWER_PROD_WORTH = 2;
+const POWER_BASE_WORTH = 3;
+const POWER_DEF = [
+  "Creep Colony", "Sunken Colony", "Spore Colony", "Photon Cannon", "Bunker", "Missile Turret",
+] as const;
+const POWER_PROD = [
+  "Gateway", "Robotics Facility", "Stargate", "Barracks", "Factory", "Starport",
+] as const;
+const POWER_BASE = ["Nexus", "Command Center", "Hatchery"] as const;
+/** 병력으로 세지 않는 것 — 일꾼·수송·정찰, 그리고 알 단계. */
+const POWER_PEACE = new Set([
+  "SCV", "Probe", "Drone", "Larva", "Egg", "Overlord", "Cocoon", "Mutalisk Cocoon", "Lurker Egg",
+  "Observer", "Shuttle", "Dropship", "Overlord (Transport)", "Medic", "Scanner Sweep",
+]);
 
 /** 화살표 굵기를 재는 창(초) — 그 직전 얼마 동안 뽑은 병력을 '그 무렵의 규모'로 볼 것인가.
  *  급습이 "무엇으로 갔나"를 재는 창(replayTactics의 WENT_WITH_SEC)과 같은 값이라야 자막의

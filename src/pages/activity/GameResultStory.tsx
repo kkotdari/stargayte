@@ -1375,6 +1375,21 @@ export default function GameResultStory({
   }, [gameResult.summaryData, sentences, index, slots, grid, moved, movedPair]);
   const arrows = actions.arrows;
 
+  /* 지금 스냅의 전투력과 그 시각(요청: 아바타 닉네임 밑 체력바) — 한 문장이 여러 beat를
+     묶기도 하므로, 그중 시각이 있는 마지막 beat를 쓴다(가장 나중 상태가 지금 그림이다). */
+  const snapPower = useMemo(() => {
+    const beats = gameResult.summaryData?.beats;
+    const idx = sentences[index]?.beats;
+    if (!beats || !idx) return null;
+    for (let i = idx.length - 1; i >= 0; i -= 1) {
+      const b = beats[idx[i]];
+      if (b?.hp && typeof b.at === "number" && Number.isFinite(b.at)) {
+        return { hp: b.hp, sec: b.at * SECONDS_PER_FRAME };
+      }
+    }
+    return null;
+  }, [gameResult.summaryData, sentences, index]);
+
   // 미니맵 표시 — 본진 아바타는 늘 떠 있고, 지금 문장의 주인공만 커진다(요청).
   const bases: MinimapMarker[] = useMemo(() => {
     const spots = gameResult.summaryData?.bases;
@@ -1416,11 +1431,14 @@ export default function GameResultStory({
         faceIsTrophy: actions.faces.get(s.raw) === "🏆",
         // 그 무렵 이 사람이 한 말(요청) — 아바타 위 말주머니.
         bubble: actions.bubbles.get(s.raw),
+        // 닉네임 밑 체력바(요청) — 그 시각까지 갖춘 규모와, 그 시각의 적정치.
+        power: snapPower?.hp?.[s.raw],
+        powerAtSec: snapPower?.sec,
       });
     }
     return out;
   }, [gameResult.summaryData, slots, memberOf, highlightMemberIds, highlightTerms, downed, hurt, mentioned,
-    actions, moved, grid, index, sentences]);
+    actions, moved, grid, index, sentences, snapPower]);
 
   const o1 = outcomeFor("team1", result);
   const o2 = outcomeFor("team2", result);

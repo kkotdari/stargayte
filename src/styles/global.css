@@ -9438,7 +9438,9 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    z-index를 높여 다른 레이어에 덮이지 않게 한다. */
 .scr-minimap-mark-label-out {
   position: absolute; z-index: 5; transform: translate(-50%, -50%);
-  display: inline-flex; align-items: center; gap: 2px;
+  /* 이름줄 아래에 체력바가 한 줄 더 붙는다(요청) — 세로로 쌓되 가로 가운데를 맞춘다.
+     이름과 종족 배지는 그 안에서 한 줄(.scr-minimap-mark-line)로 나란히 선다. */
+  display: inline-flex; flex-direction: column; align-items: center; gap: 2px;
   /* 요청: 지도가 로스터 자리까지 커져 이름표 자리가 빠듯해졌으니 글자를 한 단계 줄인다. */
   font-size: 9px; font-weight: 700; line-height: 1; white-space: nowrap;
   /* 모바일은 카드 폭 자체가 좁다(지적: 닉네임 크기 축소 필요) — 아래 @media(max-width:640px)
@@ -9503,6 +9505,19 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 }
 /* 닉네임 글자 크기는 PC/모바일, 아바타 확대 여부와 무관하게 늘 고정이다(요청: "닉네임
    크기 확대 제거 — 아바타 확대되도 확대 안함"). */
+/* 이름 + 종족 배지 한 줄. */
+.scr-minimap-mark-line { display: inline-flex; align-items: center; gap: 2px; }
+/* 체력바 — 닉네임 밑에 얇게. 길이는 그 사람의 규모, 색은 같은 시각의 적정치 대비다
+   (요청: "길이와 색으로 플레이어의 현재 전투력 상태를 표시"). 어떤 지형 색 위에서도
+   바가 보이도록 검은 홈을 깔고 그 안을 채운다. */
+.scr-minimap-hp {
+  display: block; width: 34px; height: 3px; border-radius: 2px;
+  background: rgba(0, 0, 0, 0.55); box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+.scr-minimap-hp-fill { display: block; height: 100%; border-radius: inherit; }
+/* 궤멸한 사람의 바는 이름과 같이 눌러 둔다 — 이름표 전체가 흐려지는 규칙에 얹힌다. */
+
 .scr-minimap-mark-label-out { font-size: 11px; }
 /* (삭제) 모바일 전용 max-width: 56px — 프레임 밖으로 잘리는 걸 막으려 닉네임 폭을
    좁혔었는데, 특이도가 introBig(140px) 규칙보다 낮아 시작 스냅에서만 안 먹히고 다음

@@ -62,6 +62,13 @@ export interface ReplaySummaryBeat {
    *  양쪽이 다 본 말(전체챗)만 담는다(요청: 팀챗 없애고 전체챗만) — 가르는 근거는
    *  replaySummary의 withChat 주석. 옛 요약에는 없다. */
   chat?: { who: string; text: string; at: number }[];
+  /** 원본 게임 아이디 → 그 시각까지 그 사람이 갖춘 규모(병력 + 건물 몫). 미니맵이 아바타
+   *  닉네임 밑에 체력바로 그린다(요청: "길이와 색으로 플레이어의 현재 전투력 상태를 표시").
+   *  스냅에 안 나오는 사람도 아바타는 늘 떠 있으므로 전원 몫이 들어 있고, 시각이 없는
+   *  문장에는 붙지 않는다. 리플레이에 죽음이 없어 '지금 살아 있는 병력'이 아니라 '여기까지
+   *  쌓아 올린 것'이다 — 그래서 화면에서도 절대 수치가 아니라 같은 시각의 적정치에 견준
+   *  상태로만 읽힌다(replaySummary의 powerAt). 옛 요약에는 없다. */
+  hp?: Record<string, number>;
 }
 
 export interface ReplaySummaryData {
