@@ -224,12 +224,17 @@
      다만 투명함을 강한 블러로 떠받치던 것을 그만둔다(요청: 블러 없거나 거의 없는
      반투명) — blur(18px)+saturate가 뒤에 무엇이 깔리든 뿌옇게 문질러, 반투명이라기보다
      '흰 끼가 낀 유리'로 보였다. 블러를 걷은 만큼 알파를 올려 글자 가독성을 지킨다. */
-  --dd-panel-bg: rgba(20, 25, 31, 0.86);
+  /* 색은 앱의 패널색(--panel-solid)에서만 뽑는다 — 예전엔 rgb(20,25,31)이라는 값을
+     여기 직접 적어 뒀는데, 그건 앱 어디에도 없는 청회색이었다(파랑이 빨강보다 11 높다).
+     그래서 같은 화면에서 탭바·FAB 패널(--panel-solid #101011을 섞어 쓴다)만 무채색이고
+     등록 팝오버·드롭다운만 푸르스름하게 떠 보였다(지적: "등록 패널과 fab 탭바의 패널
+     색이 너무 다르다"). 이제 셋이 같은 색에서 갈라져 나오고, 투명도만 쓰임새대로 다르다. */
+  --dd-panel-bg: color-mix(in srgb, var(--panel-solid) 86%, transparent);
   /* 툴팁형 팝오버(InfoTip·산정 방식·리플레이 위치) 표준 패널 배경 — 드롭다운(선택 메뉴)보다
      더 투명하게(요청: "모든 툴팁형식 팝오버 투명도 높여, 라이팅 유리 툴팁패널을 표준으로
      통일"). 선택 메뉴는 가독성이 우선이라 --dd-panel-bg 톤을 유지하고, 순수 안내용 툴팁만
      이 토큰으로 더 비치게 한다. 블러/채도는 공통 패널 규칙이 담당해 글자는 또렷하다. */
-  --tip-panel-bg: rgba(20, 25, 31, 0.78);
+  --tip-panel-bg: color-mix(in srgb, var(--panel-solid) 78%, transparent);
 
   /* "라이팅 테마"(요청 용어) — 패널은 블러 유리, 액티브/호버 강조는 은은한 라이팅.
      탭바 액티브 알약(.scr-mobile-tab-glow)의 값을 전역 토큰으로 승격해서 라디오알약
@@ -896,9 +901,10 @@ html.scr-light-theme {
   --info: #93b3e0;
   --divider-tint: 0, 0, 0;
   --overlay-rgb: 0, 0, 0;
-  --dd-panel-bg: rgba(255, 255, 255, 0.88);
+  /* 다크와 같은 문법 — 라이트의 --panel-solid는 #ffffff라 값 자체는 예전과 같다. */
+  --dd-panel-bg: color-mix(in srgb, var(--panel-solid) 88%, transparent);
   /* 툴팁형 팝오버 표준 패널 배경(라이트) — 드롭다운보다 더 투명하게. */
-  --tip-panel-bg: rgba(255, 255, 255, 0.82);
+  --tip-panel-bg: color-mix(in srgb, var(--panel-solid) 82%, transparent);
   /* 라이팅 테마 토큰 — 라이트는 탭바 라이트 알약과 같은 하늘색 빛. */
   --lit-rgb: 140, 190, 255;
   --lit-pill-bg: rgba(140, 190, 255, 0.34);
@@ -2940,7 +2946,20 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
 /* 화면마다 다른 부모 글자 크기를 상속하지 않도록 크기를 직접 고정해서, 어느 목록이든
    같은 무게로 보이게 한다. 모바일에서는 어차피 목록을 스크롤하면 덜 중요해지는 정보라
    자리를 아끼려 숨긴다. */
-.scr-list-count { color: var(--dim); font-weight: 400; font-size: var(--fs-body); margin-left: auto; min-width: max-content; }
+/* 건수 자리는 미리 잡아 둔다(요청: "건수의 폭이 변해서 다른 요소들의 폭도 변한다 —
+   고정값을 갖게, 로딩시에도"). 이 칸은 같은 줄의 필터와 space-between으로 자리를
+   나눠 쓰기 때문에, 숫자가 0건 → 179건으로 채워지는 것만으로 왼쪽 필터가 통째로
+   밀렸다. 세 자리 숫자 + 단위 + 스피너까지 들어가는 폭(실측 ≈53px)을 처음부터
+   비워 두고 오른쪽 정렬로 채운다 — 그러면 로딩 중 스피너가 붙어도, 자릿수가 늘어도
+   바깥 폭은 그대로다. 숫자는 tabular-nums로 폭이 같은 자형을 쓴다(1과 8이 다른 폭이면
+   같은 자릿수 안에서도 미세하게 흔들린다).
+   62px은 실측값이다 — 네 자리 + 단위 + 스피너(1234건⟳)까지가 61.2px이라 거기까지는
+   폭이 안 변한다. 그보다 길어지면 그때는 늘어난다(잘리지는 않는다). */
+:root { --scr-count-w: 62px; }
+.scr-list-count {
+  color: var(--dim); font-weight: 400; font-size: var(--fs-body); margin-left: auto;
+  min-width: var(--scr-count-w); text-align: right; font-variant-numeric: tabular-nums;
+}
 @media (max-width: 640px) {
   .scr-list-count { display: none; }
 }
@@ -3247,6 +3266,9 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
   /* 건수를 다시 세는 동안 옆에 작은 스피너가 붙는다(요청) — 숫자와 한 줄로 나란히
      서야 하므로 block이 아니라 inline-flex다. 스피너가 없을 때의 자리·여백은 그대로. */
   display: inline-flex; align-items: center; gap: 5px;
+  /* 미리 잡아 둔 폭(--scr-count-w) 안에서 오른쪽에 붙는다(요청: 정렬은 우측정렬) —
+     inline-flex라 text-align이 안 먹으므로 주축 정렬로 같은 결과를 낸다. */
+  justify-content: flex-end;
   align-self: flex-end; font-size: var(--fs-caption);
   margin-top: 6px; margin-left: 0; margin-bottom: 10px; position: relative; top: 1px;
 }
