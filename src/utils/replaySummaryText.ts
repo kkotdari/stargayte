@@ -891,7 +891,7 @@ const TEMPLATES: Record<string, Tpl> = {
       return say(
         [`${blow} ${also}일꾼 줄이 통째로 지워짐`, `${blow} ${also}일꾼이 크게 줄어듦`],
         [`${blow} ${also}${of}일꾼이 크게 줄어듦`, `${blow} ${also}${of}일꾼 줄이 지워짐`],
-        [`${ro(by)} ${also}${of}일꾼을 쓸어 담음`, `${ro(by)} ${also}${of}일꾼 줄을 지움`],
+        [`${ro(by)} ${also}${of}일꾼을 잡음`, `${ro(by)} ${also}${of}일꾼을 줄임`],
       );
     }
     // 여럿이 함께 덮친 그림 — 누가 무슨 수를 냈는지(blow)에 나머지 이름을 이어 붙인다.
@@ -1000,7 +1000,7 @@ const TEMPLATES: Record<string, Tpl> = {
   ]),
   valkyrie: act([
     "발키리를 뽑아 오버로드를 사냥함", "발키리를 모아 제공권 싸움에 나섬",
-    "예상치 못한 발키리로 하늘을 노림", "발키리를 띄워 하늘을 정리하려 함",
+    "발키리를 뽑음", "발키리로 공중을 잡음",
   ]),
   // 드랍이 있었다는 것까지만 — "피해를 줌"은 확인된 게 아니다(지적: 드랍으로 피해를 줌도
   // 가정이니 고쳐 달라). 실제로 상대가 흔들렸으면 그건 raid-damage/harass-workers가
@@ -1177,7 +1177,7 @@ const TEMPLATES: Record<string, Tpl> = {
     }
     if (mode === "nothing") {
       return `${neun(c.who)} ${c.pick([
-        "제대로 싸워보지 못하고 무너짐", "손 쓸 새도 없이 무너짐", "허무하게 당함",
+        "제대로 싸워보지 못하고 무너짐", "손 쓸 새도 없이 무너짐", "그대로 당함",
         "싸워보지도 못하고 끝남", "시작하자마자 정리됨",
         // 요청: "할 수 있는 게 없었다"·"크게 망했다" 표현이 재밌으니 살려 줄 것.
         // 아무것도 못 해보고 끝난 자리라 이 말이 가장 정확하기도 하다.
@@ -1292,12 +1292,12 @@ const TEMPLATES: Record<string, Tpl> = {
        에너지업부터 챙겼다"). 대신 이르게 찍었을 때만 그 사실을 말로 표시한다. */
     const early = num(c.p.min, 0) > 0 && num(c.p.min, 0) <= EARLY_UPGRADE_MIN;
     /* "~부터 챙겼다"는 안 쓴다(요청) — 업그레이드는 '완료했다/했다'로 담백하게 말한다.
-       이르게 찍었다는 사실은 '서둘러·일찌감치·남보다 먼저'라는 꾸밈이 그대로 전한다. */
+       이르게 찍었다는 사실은 '일찍'이라는 말 하나로 족하다(요청: "일찌감치 마쳤다"가 아니라
+       그냥 "완료했다"). 서둘러·일찌감치·남보다 먼저 같은 꾸밈은 걷었다. */
     return `${ga(c.who)} ${done(c, c.pick(early ? [
-      `${reul(ko)} 서둘러 완료함`, `${reul(ko)} 일찌감치 마침`, `${reul(ko)} 남보다 먼저 함`,
-      `${reul(ko)} 서둘러 함`,
+      `${reul(ko)} 일찍 완료함`, `${reul(ko)} 완료함`,
     ] : [
-      `${reul(ko)} 완료함`, `${reul(ko)} 함`, `${reul(ko)} 마저 완료함`, `${reul(ko)} 더함`,
+      `${reul(ko)} 완료함`, `${reul(ko)} 함`,
     ]), true)}`;
   },
 
@@ -1418,8 +1418,7 @@ const TEMPLATES: Record<string, Tpl> = {
         : c.p.team
           ? ["먼저 무너지며 한 축이 빠짐", "먼저 정리되며 한 명이 빠짐", "먼저 나가떨어짐",
             "먼저 망함"]
-          : ["일찍 손을 놓음", "일찍 무너짐", "허무하게 먼저 정리됨", "일찌감치 실패함",
-            "일찌감치 망함"]
+          : ["일찍 손을 놓음", "일찍 무너짐", "먼저 정리됨", "일찍 실패함", "일찍 망함"]
     )}`;
   },
 
@@ -1586,7 +1585,7 @@ const TEMPLATES: Record<string, Tpl> = {
           `${b} ${n}개를 지어서 센터를 걸어 잠금`,
           `센터에 ${reul(b)} 지어 길을 끊음`,
           `센터 길목에 ${reul(b)} 박아 진출로를 막음`,
-          `센터를 ${ro(b)} 끊어 ${foe} 고립시켜 놓음`,
+          `센터를 ${ro(b)} 끊어 ${foe} 막음`,
           `${ro(b)} 길목을 잠가 ${foe} 제 자리에 묶어 놓음`,
         ]
     ))}`;
@@ -1623,7 +1622,7 @@ const TEMPLATES: Record<string, Tpl> = {
       // 옆탱은 남의 집 '진출로'가 아니라 상대와 맞닿은 '벽 쪽'에 세우는 것이다(지적).
       const foe = c.whom ? `${c.whom} 쪽을 ` : "길목을 ";
       return `${ga(c.who)} ${c.who2}의 기지 벽 쪽에 탱크를 세워 ${done(c, c.pick([
-        `${foe}눌러 둠`, `${foe}틀어막음`, `${foe}견제함`,
+        `${foe}막음`, `${foe}견제함`,
       ]))}`;
     }
     if (str(c.p.at) === "front") {
@@ -1648,8 +1647,8 @@ const TEMPLATES: Record<string, Tpl> = {
     const n = num(c.p.n, 2);
     return `${ga(c.who)} ${done(c, c.pick([
       `입구 쪽에 ${def} ${n}개를 지어서 방어함`,
-      `본진 앞을 ${def} ${n}개로 막아 세움`,
-      `진출로 쪽에 ${def} ${n}개를 지어 길을 좁힘`,
+      `본진 앞을 ${def} ${n}개로 막음`,
+      `진출로 쪽에 ${def} ${n}개를 지어 막음`,
     ]))}`;
   },
   /* 입구막기(요청: "본진 입구를 막고 발전한거도 좋은 묘사 포인트임") — 이 수의 값어치는
@@ -1671,9 +1670,9 @@ const TEMPLATES: Record<string, Tpl> = {
        '입구를 무엇으로 막았나'와 '그 뒤로 확장·생산을 이어갔다'까지고, 그 사람이 마음을
        놓았는지 조마조마했는지는 어디에도 안 적혀 있다. */
     return `${ga(c.who)} ${when}${done(c, c.pick([
-      `본진 입구를 ${ro(what)} 단단히 막고 발전에 집중함`,
-      `입구를 ${ro(what)} 걸어 잠그고 발전함`,
-      `본진 앞을 ${ro(what)} 틀어막고 그 뒤에서 테크를 탐`,
+      `본진 입구를 ${ro(what)} 막고 발전함`,
+      `입구를 ${ro(what)} 막고 자원을 챙김`,
+      `본진 앞을 ${ro(what)} 막고 테크를 탐`,
       `입구를 ${ro(what)} 막아 두고 확장에 투자함`,
     ]))}`;
   },
@@ -1950,7 +1949,7 @@ const TEMPLATES: Record<string, Tpl> = {
   carrier: (c) => {
     const n = num(c.p.n, 4);
     return `${ga(c.who)} ${done(c, c.pick([
-      `캐리어를 ${n}기까지 띄워 하늘을 노림`,
+      `캐리어를 ${n}기까지 띄움`,
       `캐리어 ${n}기를 띄워 올림`,
       `캐리어 ${n}기로 승부를 걺`,
       // 수가 적을 때만 '끝내 올렸다'로 말한다 — 열 기 넘게 띄운 경기에서 수를 빼면
@@ -1965,7 +1964,7 @@ const TEMPLATES: Record<string, Tpl> = {
     return `${ga(c.who)} ${done(c, c.pick([
       `가디언 ${n}기를 띄워 지상을 두들김`,
       `뮤탈을 가디언으로 변태시켜 밀고 들어감`,
-      `가디언을 띄워 자리를 하나씩 걷어냄`,
+      `가디언을 띄움`,
     ]))}`;
   },
 
@@ -2023,7 +2022,7 @@ const TEMPLATES: Record<string, Tpl> = {
     return done(c, c.pick([
       `${ga(c.who)} ${ro(label)} ${foe}일꾼을 잡아냄`,
       `${ga(c.who)} ${ro(label)} ${foe}일꾼을 계속 잡음`,
-      `${ga(c.who)} ${ro(label)} ${foe}일꾼을 쓸어담음`,
+      `${ga(c.who)} ${ro(label)} ${foe}일꾼을 잡음`,
       `${foe}일꾼이 ${c.who}의 ${label}에 계속 잡혀 다시 뽑기 바쁨`,
     ]));
   },
@@ -2057,9 +2056,9 @@ const TEMPLATES: Record<string, Tpl> = {
   revival: (c) =>
     `${ga(c.who)} ${done(c, c.pick([
       "무너졌다가 다시 일어섬",
-      "다 밀리고도 살림을 다시 세움",
+      "다 밀리고도 다시 일어섬",
       "끝난 줄 알았던 자리에서 되살아남",
-      "생산을 다시 돌리며 판에 복귀함",
+      "생산을 다시 시작함",
     ]))}`,
 
   // 팽팽한 대치(요청) — 주어가 없는 문장이다. 양쪽 얘기라 누구를 앞세울 수 없다.
@@ -2109,7 +2108,7 @@ const TEMPLATES: Record<string, Tpl> = {
       if (n <= 0) return null;
       return `${ga(c.who)} ${done(c, c.pick([
         ...(spots >= 2 ? [`스캔을 ${n}번 뿌려 상대 기지 ${spots}곳을 들여다봄`] : []),
-        `스캔을 ${n}번 뿌려 판 곳곳을 열어 봄`,
+        `스캔을 ${n}번 뿌려 여기저기 정찰함`,
         `스캔 ${n}번으로 상대의 움직임을 훑음`,
       ]))}`;
     }
@@ -2148,7 +2147,7 @@ const TEMPLATES: Record<string, Tpl> = {
     const whom = c.whom ? `${reul(c.whom)} ` : "";
     return `${ga(c.who)} ${cnt} ${done(c, c.pick([
       `초반부터 몰아쳐 ${whom}먼저 무너뜨림`,
-      `함께 붙어 ${whom}일찌감치 정리함`,
+      `함께 붙어 ${whom}일찍 정리함`,
       `초반에 달라붙어 ${whom}그대로 지워버림`,
     ]))}`;
   },
@@ -2157,7 +2156,7 @@ const TEMPLATES: Record<string, Tpl> = {
   gg: (c) =>
     c.p.all
       ? `${c.whoList.join("·")}${c.duel ? "가" : " 팀이"} ${c.pick(["결국 GG 선언", "결국 GG를 치고 물러남", "결국 GG 치고 끝냄"])}`
-      : `${ga(c.who)} ${c.pick(["결국 GG 선언", "GG를 침", "GG 치고 나감", "일찌감치 GG", "손 놓고 GG"])}`,
+      : `${ga(c.who)} ${c.pick(["결국 GG 선언", "GG를 침", "GG 치고 나감", "일찍 GG", "손 놓고 GG"])}`,
 
   /* 노엘(노엘리) — "다 부수지 말고 그냥 끝내 달라". 외친 것만으로도 사실상 끝난 것이지만,
      그러고도 끝내 다 털린 경우(p.out)가 이 판의 웃음 포인트다(요청). */
@@ -2248,7 +2247,7 @@ const TEMPLATES: Record<string, Tpl> = {
     }
     return `${ga(c.who)} ${at}${done(c, c.pick([
       `${ro(build)} 승부를 걸음`,
-      `${ira(fast)} 날카로운 빌드로 허를 찌름`,
+      `${reul(build)} 시도함`,
       `${when}${reul(unit)} 뽑아 상대가 준비하기 전에 들이댐`,
       `${reul(build)} 씀`,
     ]))}`;
@@ -2270,7 +2269,7 @@ const TEMPLATES: Record<string, Tpl> = {
     if (c.p.solo === true) {
       return `${ga(c.who)} ${done(c, c.pick([
         `${reul(unit)} 총 ${n}기나 뽑아내며 물량으로 몰아침`,
-        `${reul(unit)} ${n}기까지 찍어내며 수로 눌러 감`,
+        `${reul(unit)} ${n}기까지 뽑음`,
         `경기 내내 ${reul(unit)} ${n}기나 굴림`,
       ]))}`;
     }
@@ -2287,7 +2286,7 @@ const TEMPLATES: Record<string, Tpl> = {
       `${unit}만 경기 내내 총 ${n}기를 뽑아 물량으로 승부함`,
       `${reul(unit)} 총 ${n}기나 뽑아내며 물량으로 몰아침`,
       `경기 내내 ${unit} 물량을 많이 뽑아냄`,
-      `${unit} 물량 하나로 판을 끌고 감`,
+      `${unit} 물량으로 밀어붙임`,
     ]))}`;
   },
   /* 물량(요청: "프로토스들의 질럿 드라군 물량 이야기도 없네") — 위 '파워 OO'는 한 유닛이
