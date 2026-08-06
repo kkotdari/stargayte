@@ -7827,7 +7827,9 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    딱지와 번호가 앉을 윗자리도 이 여백에서 나온다. */
 .scr-activity-row > * {
   display: flex; align-items: center; justify-content: center;
-  padding: 17px 10px 17px 0;
+  /* 줄 높이를 20% 키웠다(요청) — 높이를 정하는 것은 위아래 여백이라 그쪽을 손본다.
+     글자 줄이 19px이므로 53px이던 줄이 64px이 된다(17 → 22.5px). */
+  padding: 22.5px 10px 22.5px 0;
 }
 .scr-activity-row > * + * { border-left: 1px solid var(--line-faint); padding-left: 10px; }
 .scr-activity-row > *:last-child { padding-right: 0; }
