@@ -1,6 +1,6 @@
 import type { ParsedReplay, ParsedReplayPlayer, ReplayPlayerSignals } from "./replayParser";
 import {
-  pushersOn, scanTactics, producedFrames, windowPeak, fightersAt, FIGHT_TECHS,
+  pushersOn, scanTactics, producedFrames, windowPeak, fightersAt, FIGHT_TECHS, GG_RE, NO_ELIM_RE,
 } from "./replayTactics";
 import {
   hasUpgrade, topUsedTech, topUsedTechs, TECH_RANK, UPGRADE_RANK, UNIT_UPGRADE_TAG, techUseCount, upgradeFrame, upgradeLevel,
@@ -1078,6 +1078,103 @@ interface Beat extends ReplaySummaryBeat {
  *  묶기(mergeSameFate)에서 시점을 모르는 것끼리 합쳐질 때 생기는 Infinity도 여기서 걸린다. */
 function strip({ weight: _w, dedupeOn: _d, keep: _k, ...b }: Beat): ReplaySummaryBeat {
   return typeof b.at === "number" && !Number.isFinite(b.at) ? { ...b, at: null } : b;
+}
+
+/* 스냅에 붙일 대사(요청: "모든 채팅을 다 보여줄 필욘 없을거 같아 — 우리가 스냅으로 선정한
+   부근의 채팅만 말주머니로") — 한 판의 채팅은 대부분 짧고 띄엄띄엄이라, 따로 채팅창을 두는
+   것보다 그 장면 옆에 붙여 두는 편이 "그때 무슨 말이 오갔나"로 읽힌다.
+
+   창은 ±30초다. 실측(리플레이 22판): 고른 스냅 사이 간격이 중앙 53초라 그 절반쯤이면 한
+   대사가 앞뒤 두 스냅에 걸릴 일이 드물고, 그래도 걸리면 가장 가까운 스냅 하나가 가져간다 —
+   같은 말이 두 장면에 나오면 두 번 한 말처럼 읽힌다.
+
+   이어 친 말은 한 방울로 묶는다("포토" "지으세요" → "포토 지으세요"). 스타 채팅은 엔터를
+   자주 눌러 한 문장이 서너 줄로 쪼개진다(실측: 한 사람이 12초 안에 "7시" "아래" "포 지으세요"
+   를 따로 쳤다) — 그대로 두면 말주머니 세 개가 겹쳐 뜬다.
+
+   팀챗/전체챗은 리플레이에 안 담기지만(Chat 커맨드 필드가 다섯뿐), 한쪽은 확실히 안다:
+   리플레이는 저장한 사람이 '들은' 말만 담고 팀챗은 같은 편에게만 들리므로, 저장자와 다른
+   편의 말이 남아 있다면 그건 전체챗이다(replayParser의 chats.toAll 주석). 거기에 GG·노엘을
+   더한다 — 상대에게 하는 말이라 정의상 전체챗이다. 그 둘에 안 걸리는 말은 '우리 편에서
+   나온 말'로 두고 그 사람의 팀 색으로 칠한다(요청: 팀챗은 팀 컬러, 공개는 흰색). */
+const CHAT_NEAR_SEC = 30;
+const CHAT_MERGE_SEC = 12;
+/** 한 스냅에 띄울 말주머니 수 — 지도 위에 뜨는 것이라 더 늘면 지도를 덮는다. */
+const CHAT_BUBBLE_MAX = 3;
+/** 말주머니 한 개의 글자 수 — 넘치면 잘라 …를 붙인다. */
+const CHAT_TEXT_MAX = 40;
+
+type ChatLine = { who: string; text: string; at: number; all?: boolean };
+
+/** 그 말이 '양쪽이 다 본 말'인가 — 저장자가 들은 다른 편의 말이거나, GG·노엘이면 그렇다. */
+const saidToAll = (c: { text: string; toAll?: boolean }): boolean =>
+  c.toAll === true || GG_RE.test(c.text) || NO_ELIM_RE.test(c.text);
+
+/** 사람마다의 채팅을 '이어 친 것끼리 묶어' 한 줄로 늘어놓는다(시간순). */
+function chatLines(replay: ParsedReplay): ChatLine[] {
+  const merge = CHAT_MERGE_SEC / SECONDS_PER_FRAME;
+  const out: ChatLine[] = [];
+  for (const p of replay.players) {
+    let last: ChatLine | null = null;
+    let lastAt = 0;
+    for (const c of p.signals?.chats ?? []) {
+      const text = c.text.trim();
+      if (typeof c.frame !== "number" || !text) continue;
+      if (last !== null && c.frame - lastAt <= merge) {
+        last.text = `${last.text} ${text}`;
+        // 묶은 말 중 하나라도 전체챗이면 그 방울은 전체챗이다(가장 흔한 꼴이 "고생하셨습니다 ㅈㅈ").
+        if (saidToAll(c)) last.all = true;
+      } else {
+        last = { who: p.rawName, text, at: c.frame, ...(saidToAll(c) ? { all: true } : {}) };
+        out.push(last);
+      }
+      lastAt = c.frame;
+    }
+  }
+  return out.sort((a, b) => a.at - b.at);
+}
+
+/** 각 대사를 가장 가까운 스냅 하나에 붙인다 — 그 스냅의 주인공 것을 먼저 태운다. */
+function withChat<T extends { k: string; at?: number | null; who?: string[]; whom?: string[] }>(
+  replay: ParsedReplay, beats: T[],
+): T[] {
+  const lines = chatLines(replay);
+  if (lines.length === 0) return beats;
+  const near = CHAT_NEAR_SEC / SECONDS_PER_FRAME;
+  const picked = new Map<number, { who: string; text: string; at: number }[]>();
+  for (const line of lines) {
+    let best = -1;
+    let gap = Infinity;
+    beats.forEach((b, i) => {
+      if (typeof b.at !== "number") return;
+      const d = Math.abs(b.at - line.at);
+      if (d <= near && d < gap) { gap = d; best = i; }
+    });
+    if (best < 0) continue;
+    (picked.get(best) ?? picked.set(best, []).get(best)!).push({
+      ...line,
+      text: line.text.length > CHAT_TEXT_MAX ? `${line.text.slice(0, CHAT_TEXT_MAX)}…` : line.text,
+    });
+  }
+  return beats.map((b, i) => {
+    const mine = picked.get(i);
+    if (mine === undefined) return b;
+    /* 사람마다 한 방울까지 — 말주머니는 그 사람 아바타에 붙으므로 둘이면 같은 자리에
+       겹친다. 이어 친 말은 이미 묶여 있고(chatLines), 그래도 두 방울이 남으면 그 장면에
+       더 가까운 쪽을 남긴다. */
+    const one = new Map<string, ChatLine>();
+    for (const c of mine) {
+      const kept = one.get(c.who);
+      const at = b.at as number;
+      if (kept === undefined || Math.abs(c.at - at) < Math.abs(kept.at - at)) one.set(c.who, c);
+    }
+    /* 그 장면의 주인공(who·whom)을 먼저 태운다 — 자리가 모자랄 때 남길 말을 고르는 순서일
+       뿐이고, 스냅에 안 나오는 사람의 말도 그대로 붙는다(요청). */
+    const cast = new Set([...(b.who ?? []), ...(b.whom ?? [])]);
+    const lines = [...one.values()];
+    const ordered = [...lines.filter((c) => cast.has(c.who)), ...lines.filter((c) => !cast.has(c.who))];
+    return { ...b, chat: ordered.slice(0, CHAT_BUBBLE_MAX).sort((x, y) => x.at - y.at) };
+  });
 }
 
 /** 방어 건물의 한국어 이름 — "질럿과 성큰으로 막아섰지만 실패"처럼 유닛과 함께 말한다(요청). */
@@ -4067,7 +4164,7 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
        ending에 GG와 같은 시각을 준다 — 타임라인은 눈금 자리를 at으로 잡으므로, 시각이
        없는 채로 GG 앞에 서면 눈금만 거꾸로 간다(시각 없는 문장은 맨 오른쪽에 놓인다).
        실제로도 그 싸움이 끝나는 순간이 GG라 지어낸 시각이 아니다. */
-    beats: (() => {
+    beats: withChat(replay, (() => {
       /* 노엘을 외치고도 끝내 다 털린 경우를 표시해 둔다(요청: 그게 웃음 포인트) —
          '털렸다'의 근거는 elims다: 판을 떠난 기록이거나, 그 뒤로 유닛도 건물도 하나
          안 낸 것(생산 0). 외친 뒤에 그렇게 됐을 때만이다. */
@@ -4108,7 +4205,7 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
         ...(Object.keys(finalPos).length > 0 ? { pos: finalPos } : {}),
         ...(units ? { units } : {}), ...(sizes ? { sizes } : {}),
       };
-    }),
+    })),
   };
 }
 

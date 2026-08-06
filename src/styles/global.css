@@ -9634,6 +9634,40 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 /* 화살표 위 유닛 이름표도 같은 편 색을 쓴다 — 글을 안 읽어도 어느 쪽 병력인지 보인다. */
 .scr-minimap-arrow-label.scr-minimap-mark-t1 { color: #8fcaff; }
 .scr-minimap-arrow-label.scr-minimap-mark-t2 { color: #ffa3b1; }
+/* 말주머니(요청: 스냅 부근의 채팅을 말주머니로) — 말한 사람 아바타 위에 뜬다.
+   이름표와 달리 배경 판을 둔다: 대사는 한 낱말이 아니라 문장이라, 글자만 띄우면 지형
+   위에서 줄이 어디서 끝나는지가 안 읽힌다. 꼬리는 ::after로 아래를 가리킨다. */
+.scr-minimap-bubble {
+  position: absolute; z-index: 6; pointer-events: none;
+  /* width:max-content가 없으면 짧은 대사가 세로로 쪼개진다(실측: "ㄴㅇ"이 'ㄴ/ㅇ' 두 줄로
+     섰다) — 절대 배치 요소는 shrink-to-fit이라, 아무 데서나 끊을 수 있으면 최소폭이 한
+     글자가 되기 때문이다. 그래서 폭은 내용만큼 잡고 긴 것만 max-width에서 접는다. */
+  width: max-content; max-width: 118px; padding: 3px 6px; border-radius: 9px;
+  font-size: 9px; font-weight: 600; line-height: 1.25;
+  /* 한 줄로 못 담는 대사가 흔하므로 줄바꿈은 허용하되, 길면 두 줄에서 자른다 — 세 줄이
+     넘어가면 말주머니가 지도의 한 칸을 통째로 덮는다. */
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
+  /* break-word는 min-content 폭을 안 건드린다(break-all·anywhere과 다른 점) — 위 max-content
+     와 짝이 맞아야 짧은 말은 한 줄, 긴 말만 접힌다. */
+  word-break: keep-all; overflow-wrap: break-word;
+  color: #101010;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+.scr-minimap-bubble::after {
+  content: ""; position: absolute; left: 50%; top: 100%; transform: translateX(-50%);
+  border: 4px solid transparent; border-top-color: inherit;
+}
+/* 팀챗은 그 편 색, 양쪽이 다 본 말은 흰색(요청: 팀챗은 팀 컬러(연한 분홍·연한 하늘색),
+   공개는 흰색). 꼬리가 border-top-color: inherit로 몸통 색을 따라가도록 색을 여기서 정한다. */
+.scr-minimap-bubble-t1 { background: #cbe6ff; color: #0d2540; }
+.scr-minimap-bubble-t2 { background: #ffd4dc; color: #40121c; }
+.scr-minimap-bubble-all { background: #ffffff; color: #101010; }
+.scr-minimap-bubble-t1::after { border-top-color: #cbe6ff; }
+.scr-minimap-bubble-t2::after { border-top-color: #ffd4dc; }
+.scr-minimap-bubble-all::after { border-top-color: #ffffff; }
+@media (min-width: 641px) {
+  .scr-minimap-bubble { font-size: 11px; max-width: 160px; padding: 4px 8px; border-radius: 11px; }
+}
 /* 검색으로 짚은 사람 — 로스터를 감춘 모바일에서는 여기가 유일한 표시 자리다. */
 /* 색을 테마 토큰(--point)에서 떼어 고정값으로 둔다 — 라이트 테마의 --point는 검정이라
    어두운 지형 위의 검은 이름표가 되어 강조가 아예 안 보였다(지적: 다크는 괜찮은데

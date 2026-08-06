@@ -589,10 +589,12 @@ export default function GameResultStory({
   const actions = useMemo<{
     arrows: MinimapArrow[]; marks: Map<string, string>; markTexts: Map<string, string>;
     markSpots: Map<string, [number, number]>; faces: Map<string, string>;
+    bubbles: Map<string, { text: string; all: boolean }>;
   }>(() => {
     const empty = {
       arrows: [], marks: new Map<string, string>(), markTexts: new Map<string, string>(),
       markSpots: new Map<string, [number, number]>(), faces: new Map<string, string>(),
+      bubbles: new Map<string, { text: string; all: boolean }>(),
     };
     const beats = gameResult.summaryData?.beats;
     const idx = sentences[index]?.beats;
@@ -1358,7 +1360,18 @@ export default function GameResultStory({
       if (idling.has(s.raw)) { faces.set(s.raw, IDLE_FACE); continue; }
       if (busy.has(s.raw)) { faces.set(s.raw, BUSY_FACE); continue; }
     }
-    return { arrows, marks, markTexts, markSpots: markSpot, faces };
+    /* 이 장면 무렵에 오간 말(요청: 스냅으로 선정한 부근의 채팅만 말주머니로) — 요약이
+       스냅마다 골라 실어 준 것을 그대로 말한 사람 아바타에 붙인다. 그 장면에 이름이
+       안 나오는 사람의 말도 붙는다(요청) — 말은 그 사람이 한 것이지 그 사건의 일부가
+       아니고, 옆에서 오간 말이 그 장면의 분위기이기도 하다.
+       이 판에 없는 이름(관전자 등)은 아바타가 없어 자연히 안 그려진다. */
+    const bubbles = new Map<string, { text: string; all: boolean }>();
+    for (const i of idx) {
+      for (const c of beats[i]?.chat ?? []) {
+        if (!bubbles.has(c.who)) bubbles.set(c.who, { text: c.text, all: c.all === true });
+      }
+    }
+    return { arrows, marks, markTexts, markSpots: markSpot, faces, bubbles };
   }, [gameResult.summaryData, sentences, index, slots, grid, moved, movedPair]);
   const arrows = actions.arrows;
 
@@ -1401,6 +1414,8 @@ export default function GameResultStory({
         face: actions.faces.get(s.raw),
         // 트로피는 다른 얼굴들과 크기·바운스가 다르다(요청: 28px 확대 + 계속 바운스).
         faceIsTrophy: actions.faces.get(s.raw) === "🏆",
+        // 그 무렵 이 사람이 한 말(요청) — 아바타 위 말주머니.
+        bubble: actions.bubbles.get(s.raw),
       });
     }
     return out;

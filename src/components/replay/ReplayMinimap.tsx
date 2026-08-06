@@ -284,6 +284,10 @@ export interface MinimapMarker {
   /** 시작 스냅인가 — 로스터 없이 "게임 시작!"만 보여주는 자리라, 닉네임 글자도 아바타만큼
    *  키운다(요청: 시작시 로스터 대신 아바타·닉네임 확대). */
   introBig?: boolean;
+  /** 이 사람이 그 무렵 한 말 — 아바타 위에 말주머니로 띄운다(요청: 스냅으로 선정한 부근의
+   *  채팅만 말주머니로). all이면 양쪽이 다 본 말이라 흰 주머니, 아니면 그 사람 팀 색이다
+   *  (요청: 팀챗은 팀 컬러(연한 분홍·연한 하늘색), 공개는 흰색). */
+  bubble?: { text: string; all: boolean };
 }
 
 export default function ReplayMinimap({
@@ -587,6 +591,14 @@ export default function ReplayMinimap({
       transform: `translate(calc(${anchorX} + ${ox.toFixed(1)}px), ${LABEL_OUT_Y}px)`,
     };
   };
+  /** 말주머니 = 아바타 위. 닉네임이 아래에 붙으므로(labelPlace) 반대쪽으로 올려 서로
+   *  안 겹치게 두고, 지도 밖으로 나가면 아래 실측 보정(labelFix)이 안으로 되돌린다. */
+  const BUBBLE_UP_Y = -30;
+  const bubblePlace = (m: MinimapMarker) => ({
+    left: `${(m.x / grid.width) * 100}%`,
+    top: `${(m.y / grid.height) * 100}%`,
+    transform: `translate(-50%, ${BUBBLE_UP_Y}px)`,
+  });
   // 그릴 화살표만 미리 계산한다 — 몸통 레이어와 머리 레이어가 같은 값을 쓴다.
   const geoms = arrows
     .map((a) => ({ a, g: arrowGeom(a, grid.width, grid.height) }))
@@ -812,6 +824,28 @@ export default function ReplayMinimap({
           <span className="scr-minimap-mark-name">{m.name}</span>
           {/* 로스터를 감춘 모바일에서 종족이 통째로 사라지지 않게 여기 함께 붙인다. */}
           <RaceBadge race={m.race} size={11} circleLetter className="scr-minimap-mark-race" />
+        </span>
+      ) : null))}
+      {/* 말주머니 — 그 무렵 그 사람이 한 말을 아바타 위에 띄운다(요청: 스냅으로 선정한
+          부근의 채팅만). 이름표와 같은 실측 보정을 타서 지도 밖으로 안 나간다. */}
+      {bases.map((m) => (m.bubble ? (
+        <span
+          key={`bub-${m.key}`}
+          ref={(el) => {
+            if (el) labelElsRef.current.set(`bub-${m.key}`, el);
+            else labelElsRef.current.delete(`bub-${m.key}`);
+          }}
+          className={cx("scr-minimap-bubble",
+            m.bubble.all ? "scr-minimap-bubble-all"
+              : m.team === 1 ? "scr-minimap-bubble-t1"
+                : m.team === 2 ? "scr-minimap-bubble-t2" : "scr-minimap-bubble-all")}
+          style={{
+            ...bubblePlace(m),
+            marginLeft: `${labelFix.get(`bub-${m.key}`)?.x ?? 0}px`,
+            marginTop: `${labelFix.get(`bub-${m.key}`)?.y ?? 0}px`,
+          }}
+        >
+          {m.bubble.text}
         </span>
       ) : null))}
       {/* 화살촉 — 아바타·이름표 위에 올린다(지적: 화살촉이 다른 요소들에 가려짐). 몸통까지
