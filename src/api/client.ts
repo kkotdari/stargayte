@@ -794,7 +794,7 @@ export const api = {
   // 지목된 쪽의 응답 — 수락/거절/버림. 날짜/"언제"는 요청자가 그걸 안 정하고 보낸 도전장을
   // 승락할 때만 의미가 있다(둘 다 선택) — 이미 정해진 값은 서버가 무시한다.
   async respondToChallenge(
-    id: number, response: "accepted" | "rejected" | "discarded",
+    id: number, response: "accepted" | "rejected",
     schedule?: { scheduledDate?: string | null; scheduledTimeNote?: string }, message?: string,
   ): Promise<Challenge> {
     return request<Challenge>(`/api/challenges/${id}/respond`, {

@@ -6472,16 +6472,11 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
      안 그러면 다크의 흰 알약이 흰 벽지에 묻힌다. */
   --lit-rgb: 140, 190, 255; --lit-pill-bg: rgba(140, 190, 255, 0.5); --lit-pill-text: var(--text);
 }
-.scr-share-login-envelope {
-  position: absolute; top: 44%; left: 50%; transform: translate(-50%, -50%);
-  width: min(86vw, 360px); pointer-events: none;
-}
-.scr-share-login-envelope .scr-challenge-envelope-img { display: block; width: 100%; height: auto; border-radius: var(--radius); }
 .scr-share-login-panel {
   position: relative; z-index: 2; width: min(calc(100vw - 40px), 330px);
   padding: 20px 18px; border-radius: var(--radius);
   display: flex; flex-direction: column; gap: 4px;
-  /* 거의 완전 투명 + 살짝 블러만 — 뒤 봉투/벽지가 비친다. */
+  /* 거의 완전 투명 + 살짝 블러만 — 뒤 벽지가 비친다. */
   background: rgba(255, 255, 255, 0.1);
   -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
@@ -6535,26 +6530,6 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 }
 @media (hover: hover) {
   .scr-challenge-envelope-open:hover { filter: brightness(1.04); }
-}
-/* "버리기"는 배경을 확실히 채운다(요청: "투명 X") — 반투명이면 뒤 배경이 비쳐 버튼처럼
-   안 보였다. 다크에선 스크림보다 밝은 불투명 회색 면으로 버튼임을 드러내고 흰 글자. */
-.scr-challenge-envelope-discard {
-  color: #fff; border-color: rgba(255, 255, 255, 0.5); background: rgba(48, 52, 60, 0.96);
-}
-@media (hover: hover) {
-  .scr-challenge-envelope-discard:hover {
-    color: #fff; border-color: rgba(255, 255, 255, 0.85); background: rgba(62, 67, 77, 0.98);
-  }
-}
-/* 공유(라이트) 봉투는 흰 벽지 위라 어두운 스크림용 "버리기"(흰 글자)가 묻힌다 — 라이트
-   테마에선 어두운 글자 + 어두운 외곽선 + 불투명 흰 채움으로 뒤집어 또렷하게. */
-.scr-light-theme .scr-challenge-envelope-discard {
-  color: var(--text); border-color: rgba(0, 0, 0, 0.3); background: rgba(255, 255, 255, 0.96);
-}
-@media (hover: hover) {
-  .scr-light-theme .scr-challenge-envelope-discard:hover {
-    color: var(--text); border-color: rgba(0, 0, 0, 0.5); background: #ffffff;
-  }
 }
 /* 연출 1단계 — 봉투가 뜨고 잠깐(0.4s) 가만히 있다가 흔들린다(요청: "애니메이션이 안보여
    약간만 대기했다가 쉐이킹" — 딜레이 0이면 마운트와 동시에 흔들려 첫 프레임이 안 보였다).

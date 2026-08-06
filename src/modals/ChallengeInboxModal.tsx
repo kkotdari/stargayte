@@ -22,20 +22,26 @@ interface ChallengeInboxModalProps {
   // 카톡 공유 링크로 열렸을 때(SharePage) 뒤에 깔 흰 벽지 배경("너 나와~" 반복). 앱 안에서
   // 뜨는 평소 인박스 팝업에선 앱 배경을 그대로 두므로 false(기본).
   shareBackdrop?: boolean;
+  /** 편지봉투를 건너뛰고 편지지부터 보여주나 — 공유로 열린 화면은 늘 이쪽이다(요청:
+   *  "너 나와 공유에서 편지봉투씬을 다 제거… 어떤 경우라도 편지지만 바로"). 봉투를 흔들어
+   *  궁금증을 만드는 것은 인박스에서 제 편지를 받아 보는 사람의 몫이고, 링크를 타고 온
+   *  사람에게는 이미 카카오톡 카드가 그 몫을 했다. */
+  skipEnvelope?: boolean;
   /** 응답 공유(?sv=challengeReply)로 열렸나 — 그러면 이 화면이 말하는 것은 호출이 아니라
    *  '그 호출에 누가 어떻게 답했나'다(요청: "응답은 응답을 한 내용을 보여줘야 되는데").
    *  봉투 문구가 "OO님의 응답"이 되고, 편지지에는 응답 상태와 응답자의 한마디가 크게 선다.
-   *  버림은 아예 봉투를 안 거치고 "OO님이 편지를 버림" 한 장으로 끝난다(요청). 읽기 전용
-   *  이라 응답 버튼은 나오지 않는다 — 이미 끝난 이야기다. */
+   *  읽기 전용이라 응답 버튼은 나오지 않는다 — 이미 끝난 이야기다. */
   reply?: boolean;
 }
 
 // 다음 접속 때 뜨는 도전장 팝업 — 한 번에 하나씩만 보여주고, 응답하거나 닫으면 큐의
 // 다음 도전장으로 넘어간다. 전부 처리되면 onClose로 부모가 닫는다. 공유 링크가 여는 화면
-// (SharePage)에서도 그대로 재사용한다 — 편지봉투부터 시작하되, 지목된 대상(targets)만
-// 거절/승락/고민중 버튼을 볼 수 있고, 대상이 아니면 읽기 전용으로만 보여준다(요청).
+// (SharePage)에서도 그대로 재사용한다 — 그쪽은 봉투 없이 편지지부터 열고(skipEnvelope),
+// 지목된 대상(targets)만 거절/승락/고민중 버튼을 볼 수 있고, 대상이 아니면 읽기 전용으로만
+// 보여준다(요청).
 export default function ChallengeInboxModal({
   challenges, onClose, closeLabel = "닫기", shareBackdrop = false, reply = false,
+  skipEnvelope = false,
 }: ChallengeInboxModalProps) {
   useLockBodyScroll();
   // 편지지 제목("야 OO, 나와!")에 쓸 받는 사람(나) 닉네임.
@@ -49,16 +55,16 @@ export default function ChallengeInboxModal({
   // 오류가 어느 입력칸 것인지 — 그 칸에 에러 테두리(scr-input-invalid)를 함께 준다.
   // 남은 입력은 일정(날짜/시간)뿐이라 일정 오류만 있다.
   const [errField, setErrField] = useState<"schedule" | "">("");
-  // 처음엔 편지봉투(envelope)만 보여준다 — 잠깐 대기했다가 흔들리고(요청: "약간만 대기했다가
-  // 쉐이킹"), 흔들림이 끝나면 "열기/버리기" 버튼이 뜬다(요청: "버튼 다시 살릴게 버튼은
-  // 열기/버리기"). 열기를 누르면 "letter"(편지지: 제목/내용/응답 폼)로 넘어가고, 버리기를
-  // 누르면 응답 없이 다음 도전장으로 넘긴다(고민중과 같은 취급 — 다음 접속 때 다시 뜬다).
+  // 인박스에서는 편지봉투(envelope)부터 보여준다 — 잠깐 대기했다가 흔들리고(요청: "약간만
+  // 대기했다가 쉐이킹"), 흔들림이 끝나면 "열기" 버튼이 뜬다. 열기를 누르면 "letter"(편지지:
+  // 제목/내용/응답 폼)로 넘어간다. 공유로 열린 화면은 봉투 없이 곧장 편지지다(skipEnvelope).
   // "responded"는 승락/거절 성공 뒤 뜨는 확인창 — 카카오톡 공유 버튼을 보여준다(요청: 수락
   // 뿐 아니라 거절도 공유 가능). 확인을 누르면 다음 도전장으로 넘어간다(advance).
-  const [stage, setStage] = useState<"envelope" | "letter" | "responded">("envelope");
+  const first = skipEnvelope ? "letter" : "envelope";
+  const [stage, setStage] = useState<"envelope" | "letter" | "responded">(first);
   // 방금 보낸 응답 종류 — 확인창 제목/공유 문구를 수락/거절에 맞춰 바꾼다.
   const [respondedAs, setRespondedAs] = useState<"accepted" | "rejected" | null>(null);
-  // 봉투 흔들림이 끝난 뒤에만 열기/버리기 버튼을 띄운다.
+  // 봉투 흔들림이 끝난 뒤에만 열기 버튼을 띄운다.
   const [envReady, setEnvReady] = useState(false);
   // 요청자가 "시간 지정"을 끄고 보낸(scheduledAt 없음) 도전장은 "상대가 정해도 된다"는
   // 뜻이다 — 승락하는 이 시점에 상대가 직접 정하게 한다(요청: "도전자/상대 모두 시간을
@@ -70,7 +76,7 @@ export default function ChallengeInboxModal({
   const current = challenges[idx];
 
   // 봉투가 뜨면 잠깐 대기(0.4s) 후 흔들리고(CSS animation-delay), 흔들림(0.6s×3회 = 1.8s)이
-  // 끝나는 ≈2.2초 뒤에 열기/버리기 버튼을 띄운다. idx가 바뀌어 새 봉투가 뜰 때마다 버튼을
+  // 끝나는 ≈2.2초 뒤에 열기 버튼을 띄운다. idx가 바뀌어 새 봉투가 뜰 때마다 버튼을
   // 다시 숨겼다가(setEnvReady(false)) 같은 타이밍으로 재노출한다.
   useEffect(() => {
     if (!current || stage !== "envelope") return;
@@ -95,7 +101,8 @@ export default function ChallengeInboxModal({
       ?? current.targets.find((t) => t.response !== "pending")
       ?? null);
   const replyKind = responder?.response ?? null;
-  /** 버림은 열어 볼 편지가 없다 — 봉투도 편지지도 없이 그 사실 한 줄로 끝낸다(요청). */
+  /** 버림은 열어 볼 편지가 없다 — 그 사실 한 줄로 끝낸다. 버리기 기능은 없앴지만(요청)
+   *  예전에 버려진 기록은 그대로 남아 있어, 그것을 여는 공유 링크를 위해 이 갈래는 둔다. */
   const replyDiscarded = reply && replyKind === "discarded";
 
   // 지목된 대상(targets)만 응답 버튼을 볼 수 있다(요청: "대상만 거절/수락/고민중 버튼").
@@ -104,7 +111,7 @@ export default function ChallengeInboxModal({
   const canRespond = !reply && !!user && current.targets.some((t) => t.memberId === user.id);
 
   const advance = () => {
-    setStage("envelope");
+    setStage(first);
     setRespondedAs(null);
     setDateStr("");
     setNoteStr("");
@@ -139,20 +146,6 @@ export default function ChallengeInboxModal({
     } catch (e) {
       setErr(e instanceof Error ? e.message : "응답하지 못했어요.");
     } finally {
-      setBusy(false);
-    }
-  };
-
-  // 편지봉투 "버리기" — 열어보지 않고 사유 없이 완전히 폐기(휴지통)로 보낸다(요청: "완전히
-  // 휴지통행이고 사유 없음"). 응답은 'discarded'(버림)로 기록돼 거절(rejected)과 구분 표시된다.
-  // 성공하면 다음 도전장으로 넘어간다.
-  const discard = async () => {
-    setBusy(true);
-    try {
-      await api.respondToChallenge(current.id, "discarded");
-      advance();
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "버리지 못했어요.");
       setBusy(false);
     }
   };
@@ -406,17 +399,17 @@ export default function ChallengeInboxModal({
       {/* 편지봉투 — 편지지 카드와 한 몸이 아니라(요청) 오버레이 위에 겹치는 별도 레이어다.
           패널 배경은 투명(요청: "편지봉투 패널 배경은 투명알지?")이라 배경이 투명한 봉투
           그림 + 제목 + 버튼만 스크림 위에 뜬다. 잠깐 대기 후 흔들리고, 흔들림이 끝나면
-          열기/버리기 버튼이 나타난다. */}
+          열기 버튼이 나타난다. 버리기는 없앴다(요청: "버리기 기능은 이제 없는 걸로"). */}
       {!replyDiscarded && stage === "envelope" && (
         // key로 도전장마다 봉투를 새로 마운트해 흔들림 애니메이션이 매번 다시 재생되게 한다
-        // (버리기로 envelope→envelope 넘어갈 때도 확실히 replay).
+        // (다음 도전장으로 넘어갈 때도 확실히 replay).
         <div key={current.id} className="scr-challenge-envelope-layer">
           <div className="scr-challenge-envelope-inner">
             <div className="scr-challenge-inbox-title">{envelopeTitle}</div>
             <div className="scr-challenge-envelope scr-challenge-envelope-full scr-challenge-envelope-shake">
               <img src="/images/challenge/challenge_envelope.png" alt="" className="scr-challenge-envelope-img" />
             </div>
-            {/* 열기/버리기 — 흔들림이 끝나면(envReady) 페이드 인으로 나타난다. 단, 처음부터
+            {/* 열기 — 흔들림이 끝나면(envReady) 페이드 인으로 나타난다. 단, 처음부터
                 이 자리를(높이를) 항상 차지하게 두어(조건부 렌더 대신 클래스 토글), 버튼이
                 생길 때 봉투가 위로 밀려 올라가지 않고 제자리에 있고 버튼만 아래에 스르륵
                 떠오르게 한다(요청). 준비 전엔 클릭도 막는다(pointer-events/disabled). */}
@@ -430,15 +423,6 @@ export default function ChallengeInboxModal({
               >
                 열기
               </button>
-              {/* 버리기(휴지통행)는 응답의 일종이라 지목된 대상만 — 구경만 하는 사람에겐 안 뜬다. */}
-              {canRespond && (
-                <button
-                  type="button" className="scr-btn scr-btn-ghost scr-challenge-envelope-discard"
-                  onClick={discard} disabled={busy || !envReady}
-                >
-                  버리기
-                </button>
-              )}
             </div>
             {comments}
           </div>

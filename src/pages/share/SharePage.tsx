@@ -106,15 +106,17 @@ export default function SharePage({ target, onExit }: { target: ShareTarget; onE
     // eslint-disable-next-line react-hooks/exhaustive-deps -- target은 type+targetKey로 충분히 표현된다
   }, [target.type, targetKey]);
 
-  // 너 나와 공유는 인박스(편지봉투→편지지)를 그대로 재사용한다(요청). 지목된 대상만 응답
-  // 버튼을 보고, 아니면 읽기 전용이며 "스타게이트로"로 앱에 들어간다. 인박스 모달이
-  // 전체 화면 오버레이라 별도 상단바 없이 그것만 띄운다.
+  // 너 나와 공유는 인박스의 편지지를 그대로 재사용한다(요청). 지목된 대상만 응답 버튼을
+  // 보고, 아니면 읽기 전용이며 "스타게이트로"로 앱에 들어간다. 인박스 모달이 전체 화면
+  // 오버레이라 별도 상단바 없이 그것만 띄운다.
+  // 봉투 장면은 없다(요청: "공유는 호출완료시·응답완료시·활동목록에서 어떤 경우라도
+  // 편지지만 바로") — 링크를 타고 온 사람에겐 카카오톡 카드가 이미 봉투 노릇을 했다.
   if (target.type === "challenge" || target.type === "challengeReply") {
     if (loading) return <div className="scr-share-page"><div className="scr-share-body"><LoadingMark /></div></div>;
     if (challenge) {
       return (
         <ChallengeInboxModal
-          challenges={[challenge]} onClose={onExit} closeLabel="스타게이트로" shareBackdrop
+          challenges={[challenge]} onClose={onExit} closeLabel="스타게이트로" shareBackdrop skipEnvelope
           reply={target.type === "challengeReply"}
         />
       );
