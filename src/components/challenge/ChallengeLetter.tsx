@@ -114,6 +114,42 @@ export function ChallengeWhen({ challenge }: { challenge: Challenge }) {
   );
 }
 
+
+/** 상대가 답했나 — 한마디들 바로 아래 한 줄(요청: "수락 거절을 v/x로만 끝내서 안 와닿아.
+ *  상대 한마디들 아래에 응답 상태 표시하자").
+ *
+ *  1:1은 "수락함 / 거절함 / 응답 기다리는 중" 하나로 끝나고, 팀전은 사람마다 답이 달라
+ *  "1명 수락함 · 2명 기다리는 중 · 1명 거절함"처럼 센 수로 말한다. 0명인 갈래는 아예
+ *  안 적는다 — "0명 거절함"은 말이 아니다.
+ *
+ *  버림(discarded)은 거절 쪽으로 센다 — 버리기 기능은 없앴지만(요청) 예전 기록이 남아
+ *  있고, 그 기록 역시 '답이 왔고 대결은 없다'는 점에서 거절과 같은 뜻이다. */
+export function ChallengeReplyState({ targets }: { targets: Challenge["targets"] }) {
+  if (targets.length === 0) return null;
+  const yes = targets.filter((t) => t.response === "accepted").length;
+  const no = targets.filter((t) => t.response === "rejected" || t.response === "discarded").length;
+  const wait = targets.length - yes - no;
+  const parts: { k: string; text: string }[] = targets.length === 1
+    ? [yes > 0 ? { k: "accepted", text: "수락함" }
+      : no > 0 ? { k: "rejected", text: "거절함" }
+        : { k: "pending", text: "응답 기다리는 중" }]
+    : [
+      ...(yes > 0 ? [{ k: "accepted", text: `${yes}명 수락함` }] : []),
+      ...(wait > 0 ? [{ k: "pending", text: `${wait}명 기다리는 중` }] : []),
+      ...(no > 0 ? [{ k: "rejected", text: `${no}명 거절함` }] : []),
+    ];
+  return (
+    <div className="scr-challenge-replystate">
+      {parts.map((x, i) => (
+        <Fragment key={x.k}>
+          {i > 0 && <span className="scr-challenge-replystate-sep">·</span>}
+          <span className={`scr-challenge-replystate-part scr-challenge-replystate-${x.k}`}>{x.text}</span>
+        </Fragment>
+      ))}
+    </div>
+  );
+}
+
 /** 한 통의 편지지 — From. / 제목·일시·한마디 / To.
  *
  *  일시는 한마디보다 위다(요청, 스크린샷) — 약속이 이 편지의 용건이고 한마디는 그에
@@ -159,6 +195,7 @@ export function ChallengeLetter({
           message={challenge.message}
           replies={said}
         />
+        <ChallengeReplyState targets={challenge.targets} />
         {foot}
       </div>
       <PartySide tag="To." members={toSide} highlight={highlight} />

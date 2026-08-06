@@ -6622,6 +6622,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 .scr-challenge-letter-photo .scr-challenge-inbox-time,
 .scr-challenge-letter-photo .scr-challenge-word-text,
 .scr-challenge-letter-photo .scr-challenge-word-who,
+.scr-challenge-letter-photo .scr-challenge-replystate,
 /* 활동 카드 안의 편지지도 같은 음영을 받는다 — 배경 사진 위에 그대로 얹히기 때문이다
    (요청: 카드도 편지지 양식). 글자 종류가 편지지와 같으니 목록도 같이 적는다. */
 .scr-activity-card-body-photo .scr-challenge-inbox-title,
@@ -6631,6 +6632,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 .scr-activity-card-body-photo .scr-challenge-inbox-time,
 .scr-activity-card-body-photo .scr-challenge-word-text,
 .scr-activity-card-body-photo .scr-challenge-word-who,
+.scr-activity-card-body-photo .scr-challenge-replystate,
 .scr-activity-card-body-photo .scr-roster-name,
 .scr-activity-card-body-photo .scr-challenge-inline-win,
 .scr-activity-card-body-photo .scr-challenge-arrow {
@@ -6766,6 +6768,16 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 }
 .scr-challenge-word-accepted { color: #146b39; background: rgba(31, 138, 76, 0.16); }
 .scr-challenge-word-rejected { color: #9c2842; background: rgba(200, 57, 90, 0.16); }
+/* 상대가 답했나 — 한마디들 바로 아래 한 줄(요청: "v/x로만 끝내서 안 와닿아"). 세는 말이라
+   글자는 작게, 갈래마다 색만 달리해 훑어보기 좋게. */
+.scr-challenge-replystate {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px;
+  font-size: var(--fs-caption); font-weight: 700; line-height: 1.2;
+}
+.scr-challenge-replystate-sep { color: var(--dim); font-weight: 400; }
+.scr-challenge-replystate-accepted { color: #1f8a4c; }
+.scr-challenge-replystate-rejected { color: #c8395a; }
+.scr-challenge-replystate-pending { color: var(--dim); }
 
 /* 버림 — 봉투도 편지지도 없이 이 한 장이다(요청: "버림의 경우 편지봉투 씬 없이 OO님이
    편지를 버림 나오고 끝"). 열어 볼 답이 없는데 봉투를 흔들어 보여줄 이유가 없다. */
@@ -9255,8 +9267,10 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 .scr-minimap-frame { width: 100%; }
 .scr-minimap {
   position: relative; width: 100%; aspect-ratio: 1 / 1;
-  /* 둥근 모서리를 없앤다(요청) — 아래 자막이 딱 붙어 있어 각진 편이 한 덩어리로 읽힌다. */
-  border-radius: 0;
+  /* 모서리를 살짝만 굴린다(요청) — 아래 자막이 딱 붙어 있어 많이 굴리면 따로 놀지만,
+     한 겹만 둥글려도 판이 화면에 얹힌 느낌이 난다. 자르지는 않으므로(overflow:visible)
+     이 값은 배경(아래 background)에만 먹고, 그림은 캔버스/이미지 쪽에서 같이 굴린다. */
+  border-radius: var(--radius-chip);
   /* 테두리 없음(요청) — 지도 자체가 곧 경계라 선을 한 겹 더 두르면 액자처럼 보인다. */
   /* 자르지 않는다(지적: 미니맵 경계에서 표시가 잘린다) — 가장자리 본진의 아바타·해골은
      그림 밖으로 조금 삐져나오는 것이 정상이고, 그게 잘리면 누구인지 못 읽는다. 이름표는
@@ -9272,7 +9286,7 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 /* 캔버스(격자 개략도)와 img(사람이 올린 실제 미니맵)가 같은 자리를 쓴다. 둥근 모서리는
    여기에 준다 — 바깥(.scr-minimap)은 표시가 삐져나올 수 있게 자르지 않는다. */
 .scr-minimap-canvas {
-  display: block; width: 100%; height: 100%; object-fit: fill; border-radius: 0;
+  display: block; width: 100%; height: 100%; object-fit: fill; border-radius: var(--radius-chip);
 }
 /* 본진 → 공격 자리 화살표 — 지형 위, 아바타 아래. 스냅이 바뀌면 갈아 끼워지므로 부드럽게
    들어오게 한다(갑자기 선이 튀어나오면 그림이 깜빡이는 것처럼 보인다). */
