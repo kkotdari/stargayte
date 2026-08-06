@@ -174,6 +174,44 @@ function pusherOf(b: { k: string; p?: Record<string, unknown> }): string | null 
   return v || null;
 }
 
+/** 자막이 주어의 유닛 하나를 그대로 부르는 갈래들 — "뮤탈 5기 급습", "속업 질럿을 73기 더
+ *  추가", "패스트 다크템플러 전략", "아비터까지 꺼냈지만". 이 갈래에서는 beat.p.unit이 곧
+ *  자막에 실린 이름이라, 화살표 이름표도 그것이어야 한다.
+ *
+ *  여기 없는 갈래는 p.unit의 뜻이 다르다: defense의 p.unit은 그 판의 주력일 뿐이고(답은
+ *  방어 건물), breakthrough의 p.unit은 뚫린 쪽의 방어선이며, no-detect의 p.unit은 못 잡은
+ *  상대 유닛이다. 남의 것을 제 이름표로 달면 안 되니 넣지 않는다. */
+const SAID_UNIT_KEYS = new Set([
+  "raid-damage", "base-raid", "power-unit", "fast-tech",
+  "long-run", "stand", "vision", "greedy-paid", "zerg-drop",
+]);
+
+/** 자막이 raw에 대해 부른 이름 — 없으면 빈 배열이라 화살표는 예전 재료로 넘어간다. */
+function saidBy(
+  b: { k: string; who?: string[]; p?: Record<string, unknown> },
+  raw: string,
+  ko: (list: unknown) => string[],
+): string[] {
+  const p = b.p;
+  const who = b.who ?? [];
+  /* 방어 이야기의 답은 방어 건물이다 — "성큰 22개를 지어서 본진을 도배했다"인데 이름표에는
+     디파일러가 붙었다. 이 갈래의 p.unit은 그 안에서 웅크린 병력이라 곁가지다. */
+  if (b.k === "defense") {
+    const d = typeof p?.def === "string" ? DEFENSE_KO[p.def] : undefined;
+    return d ? [d] : [];
+  }
+  /* 뚫은 이야기는 한 문장에 둘이 들어 있다 — 민 쪽의 병력(p.units)과 뚫린 쪽의 방어선
+     (p.unit + p.def). 주어는 민 쪽이므로 제 병력을 단다("질럿과 드라군 조합으로 …"). */
+  if (b.k === "breakthrough") return who.includes(raw) ? ko(p?.units) : [];
+  if (!SAID_UNIT_KEYS.has(b.k)) return [];
+  /* 주어가 둘 이상인 문장(여러 급습을 하나로 묶어 적은 것)은 그 한 이름이 누구 것인지
+     알 수 없다 — 자막도 그때는 유닛을 안 부르고 "본진 급습"으로만 말한다. 손대지 않는다. */
+  if (who.length !== 1 || who[0] !== raw) return [];
+  // 스캔은 유닛이 아니라 그때그때 여는 눈이라 이름 표에도 없다 — 자막이 부르는 말을 쓴다.
+  if (p?.unit === "Scanner Sweep") return ["스캔"];
+  return typeof p?.unit === "string" ? ko([p.unit]) : [];
+}
+
 /** 두 화살표가 '같은 곳'인가 — 이만큼 안이면 그려 놓고 보면 한 줄이라, 하나로 합친다. */
 const ARROW_SAME_TILES = 3;
 
@@ -874,6 +912,14 @@ export default function GameResultStory({
         const line = typeof p.line === "string" ? UPGRADE_LINE_KO[p.line] : undefined;
         return [`${line ? `${line} ` : ""}${p.w}-${p.a}업`];
       }
+      /* 자막이 그 사람에 대해 이름을 댄 것이 있으면 그게 곧 이름표다(지적: 자막은 뮤탈
+         급습인데 화살표엔 히드라, 자막은 속업 질럿인데 화살표엔 하이템플러).
+         화살표는 그 문장의 그림이라 둘이 다른 이름을 달면 무엇을 본 건지 알 수 없다.
+         units는 '그 무렵 명령을 받은 병력'이라 늘 그 판의 주력이 뽑히는데, 급습하러 간
+         소수나 이제 막 꺼낸 카드는 거기 안 잡힌다 — 그래서 자막과 어긋났다. 자막이
+         무엇을 부르는지는 갈래마다 정해져 있으니(replaySummaryText의 템플릿) 옮겨 적는다. */
+      const said = saidBy(b, raw, ko);
+      if (said.length > 0) return said;
       const own = ko((b as { units?: Record<string, string[]> }).units?.[raw]);
       if (own.length > 0) return own;
       /* 민 사람(p.foe/p.by)의 이름표는 그 사람 것이어야 한다 — 이 문장이 싣는 p.units·
