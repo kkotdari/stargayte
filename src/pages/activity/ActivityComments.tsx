@@ -12,9 +12,10 @@ import { cx } from "../../utils/format";
 import { attachPopover } from "../../utils/popover";
 import { formatWhen, serverMs } from "../../utils/date";
 
-/** 하루 안에 달린 댓글인가(요청: 타임스탬프 옆 NEW) — 목록 줄의 [n]NEW와 같은 창(24시간)을
- *  쓴다. 두 곳이 다른 창을 쓰면 "줄에는 NEW가 붙었는데 안에는 새 댓글이 없다"가 된다. */
-const COMMENT_NEW_WINDOW_MS = 24 * 60 * 60 * 1000;
+/** 최근에 달린 댓글인가(요청: 타임스탬프 옆 NEW) — 목록 줄의 [n]NEW와 같은 창(12시간,
+ *  요청으로 하루에서 줄였다)을 쓴다. 두 곳이 다른 창을 쓰면 "줄에는 NEW가 붙었는데 안에는
+ *  새 댓글이 없다"가 된다(ActivityScreen의 NEW_WINDOW_MS와 같은 값이어야 한다). */
+const COMMENT_NEW_WINDOW_MS = 12 * 60 * 60 * 1000;
 function isFreshComment(createdAt: string): boolean {
   const age = Date.now() - serverMs(createdAt);
   return age >= 0 && age <= COMMENT_NEW_WINDOW_MS;
