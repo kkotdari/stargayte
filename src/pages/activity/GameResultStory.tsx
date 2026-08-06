@@ -589,12 +589,12 @@ export default function GameResultStory({
   const actions = useMemo<{
     arrows: MinimapArrow[]; marks: Map<string, string>; markTexts: Map<string, string>;
     markSpots: Map<string, [number, number]>; faces: Map<string, string>;
-    bubbles: Map<string, { text: string; all: boolean }>;
+    bubbles: Map<string, string>;
   }>(() => {
     const empty = {
       arrows: [], marks: new Map<string, string>(), markTexts: new Map<string, string>(),
       markSpots: new Map<string, [number, number]>(), faces: new Map<string, string>(),
-      bubbles: new Map<string, { text: string; all: boolean }>(),
+      bubbles: new Map<string, string>(),
     };
     const beats = gameResult.summaryData?.beats;
     const idx = sentences[index]?.beats;
@@ -1365,10 +1365,10 @@ export default function GameResultStory({
        안 나오는 사람의 말도 붙는다(요청) — 말은 그 사람이 한 것이지 그 사건의 일부가
        아니고, 옆에서 오간 말이 그 장면의 분위기이기도 하다.
        이 판에 없는 이름(관전자 등)은 아바타가 없어 자연히 안 그려진다. */
-    const bubbles = new Map<string, { text: string; all: boolean }>();
+    const bubbles = new Map<string, string>();
     for (const i of idx) {
       for (const c of beats[i]?.chat ?? []) {
-        if (!bubbles.has(c.who)) bubbles.set(c.who, { text: c.text, all: c.all === true });
+        if (!bubbles.has(c.who)) bubbles.set(c.who, c.text);
       }
     }
     return { arrows, marks, markTexts, markSpots: markSpot, faces, bubbles };

@@ -879,9 +879,8 @@ function tacticParam(key: string, p: Record<string, unknown> | undefined): strin
 // (sceneWindowSec — 초반엔 좁게, 후반엔 넓게. 요청).
 const RAID_MERGE_SEC = 90;
 
-// 같은 편 이야기를 붙여 읽어도 될 만큼 '거의 같은 때'로 보는 간격. 이걸 넘으면 시간이 먼저다(지적).
-// 더 촘촘히 나눠 달라는 지적에 따라 40초까지 좁혔다 — 이 안의 일만 '같은 때'로 본다.
-const CLUSTER_SEC = 40;
+// (삭제) CLUSTER_SEC — 같은 편 이야기를 붙여 읽으려고 시간순을 조금 어기던 창. 자막이
+// 초까지 적게 되면서 그 규칙 자체를 걷어냈다(위 정렬 아래 주석).
 
 /** 한 사람이 여러 수에 잇달아 무너진 걸 두 문장으로 말하지 않는다(지적) — "Rex의 9드론
  *  저글링 러시와 제롬의 4게이트 질럿 러시에 군범이 2분 만에 무너짐"으로 묶는다. */
@@ -1092,11 +1091,18 @@ function strip({ weight: _w, dedupeOn: _d, keep: _k, ...b }: Beat): ReplaySummar
    자주 눌러 한 문장이 서너 줄로 쪼개진다(실측: 한 사람이 12초 안에 "7시" "아래" "포 지으세요"
    를 따로 쳤다) — 그대로 두면 말주머니 세 개가 겹쳐 뜬다.
 
-   팀챗/전체챗은 리플레이에 안 담기지만(Chat 커맨드 필드가 다섯뿐), 한쪽은 확실히 안다:
-   리플레이는 저장한 사람이 '들은' 말만 담고 팀챗은 같은 편에게만 들리므로, 저장자와 다른
-   편의 말이 남아 있다면 그건 전체챗이다(replayParser의 chats.toAll 주석). 거기에 GG·노엘을
-   더한다 — 상대에게 하는 말이라 정의상 전체챗이다. 그 둘에 안 걸리는 말은 '우리 편에서
-   나온 말'로 두고 그 사람의 팀 색으로 칠한다(요청: 팀챗은 팀 컬러, 공개는 흰색). */
+   양쪽이 다 본 말(전체챗)만 싣는다(요청: 팀챗 없애고 전체챗만). 팀끼리 주고받는 말은
+   그 판의 이야기가 아니라 그 편의 작전 지시라("3시 너무쨈", "오버조심", "더블넥 포 갈까여?")
+   옆에서 읽을 이야기가 못 된다.
+
+   가르는 근거는 '말의 내용'뿐이다 — GG(gg·ㅈㅈ·ww·지지…)와 노엘. 둘 다 상대에게 하는
+   말이라 정의상 전체챗이고, 누가 어느 편이든 똑같이 걸린다.
+
+   한때는 여기에 리플레이 구조로 짚는 근거를 하나 더 뒀다: 리플레이는 저장한 사람이 '들은'
+   말만 담고 팀챗은 같은 편에게만 들리니, 저장자와 다른 편의 말이 남아 있으면 그건
+   전체챗이 확실하다 — 판정 자체는 맞다. 그런데 그 판정은 한쪽으로만 선다(지적): 저장자
+   팀이 대고 한 말은 팀챗과 못 갈라 빠지고, 상대 팀 것만 실린다. 그러면 같은 성격의 말이
+   한쪽만 화면에 뜨는 그림이 되어, 없느니만 못하다. 그래서 걷어냈다. */
 const CHAT_NEAR_SEC = 30;
 const CHAT_MERGE_SEC = 12;
 /** 한 스냅에 띄울 말주머니 수 — 지도 위에 뜨는 것이라 더 늘면 지도를 덮는다. */
@@ -1106,9 +1112,9 @@ const CHAT_TEXT_MAX = 40;
 
 type ChatLine = { who: string; text: string; at: number; all?: boolean };
 
-/** 그 말이 '양쪽이 다 본 말'인가 — 저장자가 들은 다른 편의 말이거나, GG·노엘이면 그렇다. */
-const saidToAll = (c: { text: string; toAll?: boolean }): boolean =>
-  c.toAll === true || GG_RE.test(c.text) || NO_ELIM_RE.test(c.text);
+/** 그 말이 '양쪽이 다 본 말'인가 — 내용으로만 짚는다(위 주석). 어느 편이든 잣대가 같다. */
+const saidToAll = (c: { text: string }): boolean =>
+  GG_RE.test(c.text) || NO_ELIM_RE.test(c.text);
 
 /** 사람마다의 채팅을 '이어 친 것끼리 묶어' 한 줄로 늘어놓는다(시간순). */
 function chatLines(replay: ParsedReplay): ChatLine[] {
@@ -1143,6 +1149,7 @@ function withChat<T extends { k: string; at?: number | null; who?: string[]; who
   const near = CHAT_NEAR_SEC / SECONDS_PER_FRAME;
   const picked = new Map<number, { who: string; text: string; at: number }[]>();
   for (const line of lines) {
+    if (line.all !== true) continue;   // 전체챗만(위 주석)
     let best = -1;
     let gap = Infinity;
     beats.forEach((b, i) => {
@@ -1173,7 +1180,12 @@ function withChat<T extends { k: string; at?: number | null; who?: string[]; who
     const cast = new Set([...(b.who ?? []), ...(b.whom ?? [])]);
     const lines = [...one.values()];
     const ordered = [...lines.filter((c) => cast.has(c.who)), ...lines.filter((c) => !cast.has(c.who))];
-    return { ...b, chat: ordered.slice(0, CHAT_BUBBLE_MAX).sort((x, y) => x.at - y.at) };
+    return {
+      ...b,
+      chat: ordered.slice(0, CHAT_BUBBLE_MAX).sort((x, y) => x.at - y.at)
+        // all은 여기까지 오는 모든 줄이 true라(위 전체챗 거르기) 저장할 것이 없다.
+        .map(({ who, text, at }) => ({ who, text, at })),
+    };
   });
 }
 
@@ -3839,59 +3851,20 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
       : b.k === "stand" && !b.won ? 2
         : b.at === null || b.at === undefined ? 1 : 0);
   chosen.sort((a, b) => tailRank(a) - tailRank(b) || (a.at ?? Infinity) - (b.at ?? Infinity));
-  // 같은 편 두 문장 사이에 다른 편 문장 하나가 끼었는데 셋이 다 비슷한 때라면, 그건
-  // 시간이 아니라 편이 갈라 놓은 것이라 붙여 준다. 창을 넘어가면 손대지 않는다.
-  /** 자리를 바꿔도 자막에 적히는 '분'이 거꾸로 가지 않나 — 이야기 순서를 손보는 두 아래
-   *  규칙의 공통 안전장치다(지적: 가끔 시간이 역순으로 나온다, 7분과 8분이 바뀐 경우).
-   *  자막은 시각을 분까지만 적으므로, 같은 분 안에서 자리를 바꾸는 것은 눈에 안 보인다 —
-   *  거기까지만 허용한다. 초 단위로 몇십 초 차이는 같은 장면이고, 분이 넘어가면 읽는
-   *  사람에게는 그냥 시간이 뒤집힌 글이다. */
-  const sameLabel = (a: Beat, b: Beat): boolean => {
-    if (typeof a.at !== "number" || typeof b.at !== "number") return false;
-    return minutes(a.at * SECONDS_PER_FRAME) === minutes(b.at * SECONDS_PER_FRAME);
-  };
-  for (let i = 1; i + 1 < chosen.length; i += 1) {
-    const before = chosen[i - 1];
-    const cut = chosen[i];
-    const after = chosen[i + 1];
-    if (before.won === cut.won || before.won !== after.won) continue;
-    if (typeof before.at !== "number" || typeof after.at !== "number") continue;
-    if (Math.abs(after.at - before.at) * SECONDS_PER_FRAME
-      > sceneWindowSec(CLUSTER_SEC, before.at)) continue;
-    // 바꾸면 자막의 분이 거꾸로 가는 자리는 그냥 둔다(위 sameLabel).
-    if (!sameLabel(cut, after)) continue;
-    chosen[i] = after;
-    chosen[i + 1] = cut;
-  }
-  // 같은 편끼리 묶다 보면 "무너짐"이 그 사람의 "3게이트를 감"보다 앞에 오는 일이 생긴다 —
-  // 무너진 사람이 그 뒤에 무언가를 갔다는 말은 될 수 없다(지적). 비슷한 때(3분 안)에
-  // 벌어진 일들 사이에서만, 당한 문장을 그 사람의 제 문장 뒤로 민다. 시간이 멀면 건드리지
-  // 않는다 — 그건 정말로 무너지고 한참 뒤의 이야기라 순서가 맞다.
-  for (let pass = 0; pass < chosen.length; pass += 1) {
-    let moved = false;
-    for (let i = 0; i < chosen.length - 1; i += 1) {
-      const hit = chosen[i];
-      const act = chosen[i + 1];
-      const victims = hit.whom ?? [];
-      if (victims.length === 0) continue;
-      if (!(act.who ?? []).some((w) => victims.includes(w))) continue;
-      if ((act.whom ?? []).some((w) => (hit.who ?? []).includes(w))) continue; // 맞받아친 것
-      /* 뒤엣것도 그 사람이 '당한' 이야기(이사·궤멸·GG 등)면 밀지 않는다 — 이 규칙은
-         "무너진 사람이 그 뒤에 무언가를 갔다"를 막으려는 것인데, 당한 이야기 둘을 맞바꾸면
-         결과가 원인 앞으로 온다(실측: 10.3분 급습 → 11.3분 이사가 뒤집혀 이사가 먼저
-         나왔다). 그건 고치는 게 아니라 새로 만드는 어긋남이다. */
-      if (LATE_AGAINST_ACTOR.has(act.k)) continue;
-      if (typeof hit.at !== "number" || typeof act.at !== "number") continue;
-      if (Math.abs(hit.at - act.at) * SECONDS_PER_FRAME
-        > sceneWindowSec(RAID_MERGE_SEC, hit.at)) continue;
-      // 바꾸면 자막의 분이 거꾸로 가는 자리는 그냥 둔다(위 sameLabel).
-      if (!sameLabel(hit, act)) continue;
-      chosen[i] = act;
-      chosen[i + 1] = hit;
-      moved = true;
-    }
-    if (!moved) break;
-  }
+  /* (삭제) 시간순을 조금 어기면서까지 이야기를 다듬던 두 규칙 — ① 같은 편 문장 사이에
+     낀 다른 편 문장을 비켜 세우기, ② 당한 문장을 그 사람의 제 문장 뒤로 밀기.
+     둘 다 "자막에 적히는 분이 거꾸로 가지 않을 때만" 바꾼다는 안전장치를 달고 있었는데,
+     그 판정(sameLabel)이 minutes() = Math.round(초/60)을 썼다. 자막이 "5분 만에"처럼
+     분만 적던 시절의 잣대다.
+
+     지금 자막은 [02:44]처럼 초까지 적는다. 그래서 2분 44초(round → 3)와 3분 09초
+     (round → 3)가 '같은 분'으로 통과해 자리가 바뀌었고, 화면에는 03:09 다음에 02:44가
+     떴다(지적: "그 직후"까지 붙었는데 그 스냅이 오히려 시간이 반대다). 타임라인 눈금도
+     같은 값을 쓰므로 스크럽이 거꾸로 갔다.
+
+     초까지 적는 자막에서는 시각이 다른 두 문장을 바꾸면 무조건 눈에 보인다 — 즉 이 두
+     규칙은 안전하게 쓸 수 있는 자리가 없다. 잣대를 초 단위로 좁히면 사실상 한 번도 안
+     도는 죽은 코드가 되므로 규칙 자체를 걷어낸다. 이야기의 뼈대는 시간이다(위 정렬). */
 
   /* 경기를 끝낸 마지막 싸움 — 맺음말이 가리킬 자리다(요청: 결론은 전투니까 화살표와 액션
      이모지도 다른 스냅과 동일하게). 근거는 그 판 최대 교전을 찾을 때와 같고(마법과 어택
@@ -4177,8 +4150,21 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
         chosen[i] = { ...b, p: { ...(b.p ?? {}), out: true } };
       }
       const i = chosen.findIndex((b) => b.k === "gg" && typeof b.at === "number");
-      if (i < 0) return [...chosen, ending, verdict];
-      const [gg] = chosen.splice(i, 1);
+      const lastAt = Math.max(
+        ...chosen.map((b) => (typeof b.at === "number" && Number.isFinite(b.at) ? b.at : -1)),
+      );
+      if (i < 0) {
+        return [...chosen, ...(lastAt >= 0 ? [{ ...ending, at: lastAt }] : [ending]), verdict];
+      }
+      const gg = chosen[i];
+      /* GG를 친 뒤에도 일이 더 있었던 판 — 이긴 쪽이 몇십 초 더 밀고 들어간 그림이다
+         (실측: GG 42:17 뒤에 역공 42:38). 이런 판에서 GG를 꼬리로 옮기면 자막의 시각이
+         거꾸로 간다(지적: 스냅 시간이 반대로 간다). 그때는 GG를 제자리에 두고 맺음말만
+         마지막 시각으로 받는다 — 어차피 "GG를 치고도 더 맞았다"가 실제 그림이다. */
+      if (typeof gg.at === "number" && gg.at < lastAt) {
+        return [...chosen, { ...ending, at: lastAt }, verdict];
+      }
+      chosen.splice(i, 1);
       return [...chosen, { ...ending, at: gg.at }, gg, verdict];
     })().map(strip).map(withCastPlace).map((b) => {
       const pos = beatPositions(b, byName);

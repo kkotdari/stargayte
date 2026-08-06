@@ -285,9 +285,8 @@ export interface MinimapMarker {
    *  키운다(요청: 시작시 로스터 대신 아바타·닉네임 확대). */
   introBig?: boolean;
   /** 이 사람이 그 무렵 한 말 — 아바타 위에 말주머니로 띄운다(요청: 스냅으로 선정한 부근의
-   *  채팅만 말주머니로). all이면 양쪽이 다 본 말이라 흰 주머니, 아니면 그 사람 팀 색이다
-   *  (요청: 팀챗은 팀 컬러(연한 분홍·연한 하늘색), 공개는 흰색). */
-  bubble?: { text: string; all: boolean };
+   *  채팅만 말주머니로). 양쪽이 다 본 말(전체챗)만 온다(요청: 팀챗 없애고 전체챗만). */
+  bubble?: string;
 }
 
 export default function ReplayMinimap({
@@ -660,6 +659,10 @@ export default function ReplayMinimap({
       if (m.ghost) continue;
       add(m.x, m.y, m.featured || m.introBig ? 3 : 1);
       if (m.mark) add((m.markAt ?? [m.x, m.y])[0], (m.markAt ?? [m.x, m.y])[1], 4);
+      /* 말주머니도 자막이 피해야 할 글자다(실측: "ㅈㅈ" 주머니가 맺음말 자막 위에 앉았다).
+         글자끼리 겹치면 둘 다 못 읽으므로 기둥 이름표와 같은 무게로 본다. 자리는 아바타
+         바로 위라 아바타 좌표에서 살짝 올려 잡는다 — 칸 판정에는 이 정도면 충분하다. */
+      if (m.bubble) add(m.x, m.y - grid.height * 0.04, 4);
     }
     /** 화살표 몸통이 지나가는 자리 — 곡선을 직선으로 어림해 훑는다(칸 판정에는 충분하다).
      *  한 화살표가 칸을 온전히 가로지르면 BODY_WEIGHT만큼 든다. 예전엔 이 값이 1이라
@@ -835,17 +838,14 @@ export default function ReplayMinimap({
             if (el) labelElsRef.current.set(`bub-${m.key}`, el);
             else labelElsRef.current.delete(`bub-${m.key}`);
           }}
-          className={cx("scr-minimap-bubble",
-            m.bubble.all ? "scr-minimap-bubble-all"
-              : m.team === 1 ? "scr-minimap-bubble-t1"
-                : m.team === 2 ? "scr-minimap-bubble-t2" : "scr-minimap-bubble-all")}
+          className="scr-minimap-bubble"
           style={{
             ...bubblePlace(m),
             marginLeft: `${labelFix.get(`bub-${m.key}`)?.x ?? 0}px`,
             marginTop: `${labelFix.get(`bub-${m.key}`)?.y ?? 0}px`,
           }}
         >
-          {m.bubble.text}
+          {m.bubble}
         </span>
       ) : null))}
       {/* 화살촉 — 아바타·이름표 위에 올린다(지적: 화살촉이 다른 요소들에 가려짐). 몸통까지

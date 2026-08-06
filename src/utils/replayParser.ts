@@ -156,17 +156,10 @@ export interface ReplayPlayerSignals {
   firstTechUseFrame: Record<string, number>;
   /** 이 사람이 친 채팅(앞쪽 일부). GG 선언처럼 승부를 말해주는 게 여기 있다.
    *
-   *  toAll: 양쪽이 다 본 말(전체챗)이 확실한가. 리플레이에는 팀챗/전체챗 구분이 안 담기지만
-   *  (Chat 커맨드 필드가 Frame·PlayerID·Type·SenderSlotID·Message 다섯뿐), 한 가지는
-   *  확실하게 안다: 리플레이는 '저장한 사람이 들은 말'만 담고 팀챗은 같은 편에게만 들린다.
-   *  그러니 저장자와 다른 편 사람의 말이 여기 남아 있다면 그건 저장자에게 들렸다는 뜻이고,
-   *  곧 전체챗이다. 같은 편의 말은 둘 중 어느 쪽인지 못 가르므로 이 표시가 안 붙는다.
-   *  실측(22판)이 이 해석과 맞아떨어진다 — 저장자와 같은 편의 말은 "3시 너무쨈", "오버조심",
-   *  "더블넥 포 갈까여?"처럼 전략 지시(=팀챗)이고, 다른 편의 말은 "ㅈㅈ", "GG", "노엘여",
-   *  "제가 저그하고 리겜?"처럼 양쪽에 대고 하는 말뿐이다(같은편 127건 / 다른편 43건).
-   *  저장자를 못 찾는 리플레이(채팅 커맨드의 PlayerID가 로스터에 없는 경우)에서는 아무
-   *  말에도 안 붙는다. */
-  chats: { frame: number | null; text: string; toAll?: boolean }[];
+   *  팀챗/전체챗 구분은 여기 없다 — 리플레이가 안 담는다(Chat 커맨드 필드가 Frame·
+   *  PlayerID·Type·SenderSlotID·Message 다섯뿐). 말주머니 쪽은 말의 내용으로만 전체챗을
+   *  짚는다(replaySummary의 saidToAll). */
+  chats: { frame: number | null; text: string }[];
   /** 수송선에서 유닛을 내린 커맨드 수와 첫 시점 — 드랍이 '실제로 있었나'의 유일한 증거다.
    *  셔틀·드랍십을 뽑았다는 것만으로는 드랍을 갔는지 알 수 없다(정찰·병력 수송일 수도 있다). */
   unloadCount: number;
@@ -534,18 +527,6 @@ function collectSignals(
   const idOfSlot = new Map(
     (roster ?? []).filter((p) => p.slot !== undefined).map((p) => [p.slot as number, p.id]),
   );
-  /* 이 리플레이를 저장한 사람 — 채팅 커맨드의 PlayerID다(화자가 아니라 그 커맨드 묶음의
-     임자라, 한 판의 채팅이 죄다 한 사람 번호를 달고 온다). 로스터에 없는 번호(128 같은
-     것)면 저장자를 모르는 판이라 undefined로 둔다. 전체챗 판정에만 쓴다(chats 주석). */
-  const saverTeam = (() => {
-    const tally = new Map<number, number>();
-    for (const c of cmds) {
-      if (c.Type?.Name !== "Chat") continue;
-      tally.set(c.PlayerID, (tally.get(c.PlayerID) ?? 0) + 1);
-    }
-    const top = [...tally].sort((a, b) => b[1] - a[1])[0];
-    return top === undefined ? undefined : teamOf.get(top[0]);
-  })();
   const tagOwner = roster ? ownerOfTags(cmds, observers) : new Map<number, number>();
   const out = new Map<number, ReplayPlayerSignals>();
   const at = (id: number) => {
@@ -746,12 +727,7 @@ function collectSignals(
       const speaker = typeof c.SenderSlotID === "number" ? idOfSlot.get(c.SenderSlotID) : undefined;
       if (speaker !== undefined) {
         const cs = at(speaker);
-        // 저장자와 다른 편의 말이 리플레이에 남아 있다 = 저장자에게 들렸다 = 전체챗이다.
-        const mine = teamOf.get(speaker);
-        const toAll = saverTeam !== undefined && mine !== undefined && mine !== saverTeam;
-        if (cs.chats.length < CHAT_CAP) {
-          cs.chats.push({ frame, text: c.Message.trim(), ...(toAll ? { toAll: true } : {}) });
-        }
+        if (cs.chats.length < CHAT_CAP) cs.chats.push({ frame, text: c.Message.trim() });
       }
     }
     // ── 기술을 실제로 썼나 ──

@@ -59,11 +59,9 @@ export interface ReplaySummaryBeat {
   /** 그 무렵 오간 대사 — 미니맵이 말한 사람 옆에 말주머니로 띄운다(요청: 스냅으로 선정한
    *  부근의 채팅만). who는 원본 게임 아이디, at은 프레임. 이어 친 말은 한 줄로 묶여 있고,
    *  한 대사는 가장 가까운 스냅 하나에만 붙는다(replaySummary의 withChat).
-   *  all이 true면 양쪽이 다 본 말(전체챗)이 확실하다 — 저장자가 들은 상대 편의 말이거나
-   *  GG·노엘이다. 없으면 '우리 편에서 나온 말'이라 팀 색으로 칠한다(요청: 팀챗은 팀 컬러,
-   *  공개는 흰색). 리플레이 자체에는 이 구분이 안 담긴다(replayParser의 chats.toAll 주석).
-   *  옛 요약에는 없다. */
-  chat?: { who: string; text: string; at: number; all?: boolean }[];
+   *  양쪽이 다 본 말(전체챗)만 담는다(요청: 팀챗 없애고 전체챗만) — 가르는 근거는
+   *  replaySummary의 withChat 주석. 옛 요약에는 없다. */
+  chat?: { who: string; text: string; at: number }[];
 }
 
 export interface ReplaySummaryData {

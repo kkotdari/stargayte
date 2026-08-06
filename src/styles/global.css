@@ -9650,21 +9650,16 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   /* break-word는 min-content 폭을 안 건드린다(break-all·anywhere과 다른 점) — 위 max-content
      와 짝이 맞아야 짧은 말은 한 줄, 긴 말만 접힌다. */
   word-break: keep-all; overflow-wrap: break-word;
-  color: #101010;
+  /* 흰 주머니 하나뿐이다 — 양쪽이 다 본 말만 띄우기로 해서(요청: 팀챗 없애고 전체챗만)
+     색으로 갈라 둘 것이 없어졌다. 누가 한 말인지는 그 사람 아바타 위에 뜨는 자리가
+     말해 준다. */
+  background: #ffffff; color: #101010;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
 }
 .scr-minimap-bubble::after {
   content: ""; position: absolute; left: 50%; top: 100%; transform: translateX(-50%);
-  border: 4px solid transparent; border-top-color: inherit;
+  border: 4px solid transparent; border-top-color: #ffffff;
 }
-/* 팀챗은 그 편 색, 양쪽이 다 본 말은 흰색(요청: 팀챗은 팀 컬러(연한 분홍·연한 하늘색),
-   공개는 흰색). 꼬리가 border-top-color: inherit로 몸통 색을 따라가도록 색을 여기서 정한다. */
-.scr-minimap-bubble-t1 { background: #cbe6ff; color: #0d2540; }
-.scr-minimap-bubble-t2 { background: #ffd4dc; color: #40121c; }
-.scr-minimap-bubble-all { background: #ffffff; color: #101010; }
-.scr-minimap-bubble-t1::after { border-top-color: #cbe6ff; }
-.scr-minimap-bubble-t2::after { border-top-color: #ffd4dc; }
-.scr-minimap-bubble-all::after { border-top-color: #ffffff; }
 @media (min-width: 641px) {
   .scr-minimap-bubble { font-size: 11px; max-width: 160px; padding: 4px 8px; border-radius: 11px; }
 }

@@ -326,9 +326,6 @@ const CONTRAST_LINKS = new Set(["한편", "그와 동시에", "반면", "그러�
 // 판이 여러 곳에서 동시에 벌어진다는 전제를 깔고 있는 이음말 — 일대일에서는 쓰지 않는다
 // (지적). 두 사람뿐인 경기에 '다른 쪽'도, 딴 데서 벌어지는 '한편'도 없다.
 const TEAM_ONLY_LINKS = new Set(["한편", "다른 쪽에서는"]);
-// 그 자체에 이미 '-는'이 붙어 있는 이음말 — 뒤따르는 주어까지 '-는'으로 세우면
-// "다른 쪽에서는 조조는 …"처럼 겹친다(지적). 이런 자리에서는 주어를 '-이/가'로 둔다.
-const TOPIC_MARKED_LINKS = new Set(["다른 쪽에서는"]);
 // 시간 순서를 짚는 이음말 — 위 대비 이음말과 함께 문장 앞머리를 알아보는 데 쓴다.
 /** 서로 바꿔 써도 뜻이 같은 역접 이음말 — 잇달아 같은 말이 나올 때 갈아 끼운다.
  *  '한편'·'다른 쪽에서는'(일대일에서 못 쓰는 말)과 '그와 동시에'(동시성이라 반전을 지운다)는
@@ -2725,14 +2722,6 @@ function renderLines(
   let prev: ReplaySummaryBeat | null = null;
   // 바로 앞 문장에 쓴 이음말 — 같은 말이 연달아 나오면 어색하다(지적). 다음 것으로 민다.
   let lastLink = "";
-  // 문단의 리듬(요청: 접속사 없이 뚝뚝 끊기는 것도, 남발하는 것도 이상하다).
-  //   linkRun  = 이음말로 시작한 문장이 잇달아 몇 개인가
-  //   plainRun = 잇지도 않고 이음말도 없이 그냥 놓인 문장이 잇달아 몇 개인가
-  // 둘 다 셋을 넘지 않게 잡아 준다 — 위는 덜어 내고, 아래는 채워 넣는다.
-  let linkRun = 0;
-  let plainRun = 0;
-  // 바로 앞 문장이 쓴 이음말의 '결' — 같은 결이 두 문장 잇달아 열리면 두 번째는 덜어 낸다.
-  let lastLinkFamily = "";
   // 바로 앞 문장의 주어 — 같은 주어가 이어지면 한 문장으로 합친다(지적).
   let lastSubject = "";
   // 그 주어의 이름(조사 없이) — 앞 문장이 "…가"로 시작했든 "…는"으로 시작했든 알아보려면
@@ -2808,13 +2797,6 @@ function renderLines(
       lastLink = t;
       return t;
     };
-    /** 시간이 얼마나 벌어졌는지에 맞는 이음말 후보(요청: 곧이어 / 잠시 후 / N분 뒤 / 한참 후). */
-    const byTime = (g: number): string[] =>
-      g <= 60 ? ["곧이어", "그 직후"]
-      : g <= 3 * 60 ? ["잠시 후", "이어서", "곧이어"]
-      : g <= STANDOFF_SEC ? ["잠시 후", `${Math.round(g / 60)}분 뒤`]
-      : g <= 10 * 60 ? [`${Math.round(g / 60)}분 뒤`, `${Math.round(g / 60)}분 후`, "소강상태 후"]
-      : [`${Math.round(g / 60)}분 뒤`, "한참 후", "소강상태 후"];
     const gapSec = prev && typeof prev.at === "number" && typeof b.at === "number"
       ? Math.abs(prev.at - b.at) * SECONDS_PER_FRAME
       : null;
@@ -2896,29 +2878,10 @@ function renderLines(
     let joinPrev = false;
     // 전황이 뒤집히는 자리를 한 문장으로 이을 것인가(아래 참고).
     let flipJoin = false;
-    // "2팀에서는" — 팀전에서 흐름이 어느 편으로 넘어갔는지 짚는 말(요청).
-    let teamTag = "";
-    // 문장 앞에 붙인 이음말 — 만들어진 문장과 겹치면 도로 떼어낸다(아래 참고).
-    let linkWord = "";
-    // 팀전에서 흐름이 어느 편으로 넘어갔는지 짚는 말(요청: "하지만 1팀에서는 …") —
-    // 앞 문장과 다른 팀일 때만 붙인다(crossTeam은 위에서 구해 둔다).
     // 앞 문장에서 맞은 쪽이 이번엔 때리는 쪽인가 — 같은 두 사람이 주고받은 이야기다.
     const headToHead =
       (b.who ?? []).some((w) => (prev?.whom ?? []).includes(w))
       || (b.whom ?? []).some((w) => (prev?.who ?? []).includes(w));
-    /** 양쪽이 똑같은 짓을 한 자리인가 — 실제로 "100000g가 빠른 3게이트 질럿 러시를 했지만
-     *  ○○가 3게이트 질럿 러시를 했다"가 나왔다(지적). 전황(tide)만 보면 서로 반대편이라
-     *  반전으로 잡히지만, 읽는 사람에게는 반전이 아니라 맞불이다. 이런 자리는 '-지만'으로
-     *  잇지 않고 "이에 질세라"로 받는다. */
-    const mirrored = !!prev && prev.k === b.k && !!prev.won !== !!b.won
-      && !AGAINST_ACTOR.has(b.k) && !AGAINST_ACTOR.has(prev.k);
-    /** 예전에는 흐름이 다른 편으로 넘어가는 자리에 "1팀의 누구는"처럼 팀 번호를 붙였다.
-     *  이제 안 붙인다(요청: 요약 문장에서 팀 언급은 빼도 되겠다) — 카드에서 로스터를
-     *  걷어내고 편을 미니맵의 색으로 나타내기로 했으니, 글 속의 팀 번호는 대조해 볼 데가
-     *  없어졌다. 이름의 색은 그대로 팀을 따라간다(아래 splitNames).
-     *  자리 표시로 남겨 둔 이유는 이 값이 '팀이 갈렸다'는 판단(crossTeam)과 한 벌로
-     *  여러 갈래에서 쓰이는데, 그 판단 자체는 이음말을 고르는 데 여전히 필요해서다. */
-    const teamTagFor = (): string => "";
     // 같은 사람이 주인공인 이야기가 잇달아 나오면 문장을 나누지 말고 한 문장으로 잇는다
     // (요청: 세 문장까지는 합치기). 이음말을 앞에 붙이면 문장이 그 말로 시작해 이어 붙일
     // 수 없으므로, 이을 참이면 이음말 고르기 자체를 건너뛴다 — 아래 sameSubject가 받는다.
@@ -2927,40 +2890,23 @@ function renderLines(
       && lastSubject === subject && prevLedBy(lastBaseWho) && !!toAnd(prevLine);
     if (subjectRun) {
       // 아무것도 붙이지 않는다.
-    } else if (
-      prev && b.k !== "result"
-      // 진 편의 맺음("…까지 꺼냈지만 판을 뒤집지 못함")은 기세를 이어받은 다음 수가 아니라
-      // 결말이다 — "그 기세로"를 달면 앞말과 앞뒤가 안 맞는다(지적).
-      && b.k !== "stand"
-      && (prev.k === "raid-damage" || prev.k === "gang-rush")
-      && sameTide
-      && sharesWho
-      // "그 기세로"는 바로 이어졌을 때만 쓸 수 있다 — 몇 분 뒤 일에 붙이면 거짓이 된다.
-      && closeEnough
-    ) {
-      // 앞 문장과 주어가 같으면 이음말을 붙이는 대신 한 문장으로 잇는다(지적: 같은 이름이
-      // 두 번 나오지 않게) — 이음말을 붙이면 문장이 그 말로 시작해 이어 붙일 수 없다.
-      if (!(lastSubject === subject && prevLedBy(lastBaseWho) && chainCount < MAX_CHAIN)) {
-        who = `${link(["그 기세로", "여세를 몰아", "그 기세를 이어간"])} ${who}`;
-      }
+    /* (삭제) "그 기세로 / 여세를 몰아 / 그 기세를 이어간" — 크게 한 방 먹인 바로 다음에
+       같은 사람이 또 무언가를 한 자리에 달던 말. 이것도 앞뒤를 잇는 군더더기라 함께
+       걷어냈다(요청). 22판에서 딱 한 번 걸렸는데 그 한 번이 하필 주어가 문장 가운데
+       오는 틀이라 "[Jeong9]의 오버로드가 그 기세를 이어간 Taschen_Ever의 발키리에…"로
+       엉뚱한 자리에 붙었다. */
     } else if (linkable && gapSec !== null && gapSec <= sameTimeMax) {
       // 주어가 다른데도 절반 확률로 이어 붙이던 자리를 껐다(요청: 최대한 나눠서 스냅으로) —
       // 서로 다른 사람의 서로 다른 장면이 한 스냅에 묶이면 미니맵 화살표도 겹쳐 그려진다.
       if (flipped) {
         // 맞불(양쪽이 똑같은 짓)은 반전이 아니다 — mirrored 주석 참고.
-        if (mirrored) { linkWord = link(["이에 질세라", "그와 동시에"]); teamTag = teamTagFor(); }
-        // 비슷한 두 문장은 "하지만 …"으로 갈라 놓지 말고 "…했지만 …했다"로 바로
-        // 잇는다(지적). 못 이을 때만 대비를 뜻하는 말을 앞에 단다.
-        else if (canFlipJoin()) flipJoin = true;
-        else {
-          linkWord = link(["반면", "하지만", "그러나"]);
-          teamTag = teamTagFor();
-        }
+        // 반전은 "…했지만 …했다"로 바로 잇는다(지적). 못 이으면 그냥 끊는다 — 앞에
+        // 다는 역접 이음말은 이제 안 쓴다(요청).
+        if (canFlipJoin()) flipJoin = true;
       } else if (sameTide) {
         // 대등한 두 이야기는 "…했고 …했다"로 바로 잇는다(요청). 못 이을 때만 동시성을
         // 짚는 말을 앞에 단다.
         if (canAndJoin()) joinPrev = true;
-        else linkWord = link(["그와 동시에", "한편"]);
       }
     // 째기(greedy-build) 다음은 늘 나란히 잇는다 — 째기는 공격이 아니라 준비이고 한동안
     // 이어지는 상태라, 그 뒤에 상대의 수가 와도 반전이 아니다(지적: "째기는 공격은 아니라
@@ -2968,7 +2914,6 @@ function renderLines(
     // 째기와 상대의 11드론 러시가 2분 남짓 떨어져 있었다. 못 이을 때만 동시성을 짚는 말로 받는다.
     } else if (linkable && prev!.k === "greedy-build" && closeEnough) {
       if (canAndJoin()) joinPrev = true;
-      else { linkWord = link(["그와 동시에", "한편"]); teamTag = teamTagFor(); }
     // 시간이 많이 벌어진 자리는 반드시 짚는다 — 안 짚으면 바로 이어진 일로 읽힌다(요청).
     } else if (
       // 같은 편이 몰아치는 내용이 이어지면 문장을 나누지 말고 "…했고 …했다"로 잇는다(요청)
@@ -2992,53 +2937,12 @@ function renderLines(
         // 있으면 그때만 이음말을 쓴다.
         // 앞 문장이 이미 이음말로 시작하거나 반전을 품고 있으면 또 잇지 않는다 —
         // "그러나 …했지만 …"처럼 접속이 두 번 겹친다(지적).
-        if (mirrored) { linkWord = link(["이에 질세라", "그와 동시에"]); teamTag = teamTagFor(); }
-        else if ((closeEnough || sameKind) && canFlipJoin()) flipJoin = true;
-        else {
-          // "다른 쪽에서는"은 판이 갈라져 딴 데서 벌어진 일일 때만 맞는 말이다(지적) —
-          // 같은 두 사람이 서로 주고받은 이야기면 "반대로 / 역으로 / 그와 동시에"가 맞다.
-          // '그와 동시에'는 여기서 뺐다(지적: 앞 문장과 반대 전황인데 동시성을 뜻하는 말이
-          // 붙었다) — 같은 순간에 벌어졌다는 뜻일 뿐이라, 전황이 넘어가는 자리에서는
-          // 반전을 지운다. 서로 주고받은 그림은 '반대로 / 역으로'가 받는다.
-          linkWord = link(crossTeam
-            ? (headToHead
-              ? ["하지만", "그러나", "그렇지만", "반대로", "역으로"]
-              : ["하지만", "그러나", "그렇지만", "반면", "이에 질세라", "다른 쪽에서는"])
-            : ["하지만", "그러나", "그렇지만", "반면"]);
-          teamTag = teamTagFor();
-        }
-      } else {
-        // 얼마나 벌어졌느냐에 따라 말이 달라야 한다(요청: 곧이어 / 그 직후 / 잠시 후 /
-        // 소강상태 후 / 한참 후 / 몇 분 후). 붙어 일어난 일에 "한참 후"를 쓰거나 십수 분
-        // 뒤 일에 "곧이어"를 쓰면 그 자체가 틀린 말이 된다.
-        // 같은 편이 몰아치는 흐름이고 사이가 짧으면 '쌓인다'는 말도 함께 후보에 둔다.
-        linkWord = link(
-          sameTide && gapSec <= 3 * 60
-            ? ["여기에", "게다가", "설상가상으로", "그리고", ...byTime(gapSec)]
-            : byTime(gapSec),
-        );
+        if ((closeEnough || sameKind) && canFlipJoin()) flipJoin = true;
       }
     }
-    // ── 리듬 보정(요청) ──
-    // 위: 이음말이 두 번 잇달았으면 세 번째는 덜어 낸다. 다만 전황이 실제로 뒤집히는
-    // 자리는 예외다 — 그건 꾸밈이 아니라 뜻이라 빼면 앞뒤가 거꾸로 읽힌다.
-    if (linkWord && linkRun >= 2 && !flipped) { linkWord = ""; teamTag = ""; }
-    // 같은 결이 잇달아 나오는 것도 남발이다(지적: "6분 후 … 9분 뒤", "한참 후 … 소강상태
-    // 후"). 반전을 짚는 자리만 예외로 둔다 — 거기서 빼면 뜻이 달라진다.
-    if (linkWord && !flipped && lastLinkFamily !== "" && linkFamily(linkWord) === lastLinkFamily) {
-      linkWord = "";
-      teamTag = "";
-    }
-    // 아래: 아무 말 없이 두 문장이 지나갔는데 이번에도 그냥 놓일 참이면 한 마디 넣는다.
-    // 이을 관계가 있는데 표시만 안 된 것이라, 여기서 채워야 문단이 뚝뚝 끊기지 않는다.
-    if (!linkWord && !joinPrev && !flipJoin && linkable && plainRun >= 2 && b.k !== "result") {
-      // 시점을 모르는 문장(총 생산량처럼 경기 전체를 두고 하는 말)에는 시간 표현을 쓸 수
-      // 없다 — 그때는 흐름만 짚는 말로 잇는다.
-      const pool = gapSec === null
-        ? (sameTide ? ["여기에", "그리고", "한편"] : ["한편", "그리고"])
-        : (sameTide ? ["여기에", "그리고", "한편", ...byTime(gapSec)] : byTime(gapSec));
-      linkWord = link(pool);
-    }
+    /* (삭제) 리듬 보정 — 이음말이 잇달으면 덜어 내고, 밋밋하게 두 문장이 지나가면 한
+       마디 채워 넣던 규칙. 문장 앞에 다는 이음말 자체를 안 쓰기로 해서(요청) 조절할
+       대상이 없어졌다. */
     let lead = "";
     if (mutual) lead = "서로 ";
     else if (both) {
@@ -3046,10 +2950,6 @@ function renderLines(
       if (seed % 2 === 0 && !duel) who = `양 팀의 ${who}`;
       else lead = duel ? "둘 다 " : "모두 ";
     }
-    // 양쪽이 다 한 일에는 한 팀 딱지를 붙일 수 없다 — "하지만 2팀의 양 팀의 Rex와 정구가"가
-    // 나왔다(지적). 팀 딱지(teamTagFor)는 '앞 문장과 다른 팀 이야기로 넘어간다'는 표시라,
-    // 주체가 양 팀에 걸쳐 있으면 애초에 가리킬 팀이 없다. '서로'/'모두'도 마찬가지다.
-    if (mutual || both) teamTag = "";
     if (!who) continue;
     const render = (offset: number): string | null => {
       let firstPick = true;
@@ -3113,35 +3013,6 @@ function renderLines(
     // 크리스의 3게이트 질럿 러시 한 방에 …”)에서는 이 말이 맨 앞으로 밀려 나와 어색하다
     // (지적: 서로는 없어야 됨). 문장 첫머리에 붙었으면 그냥 뗀다.
     if (lead && text.startsWith(lead)) text = text.slice(lead.length);
-    // "그러나 …했지만 모자랐음"처럼 문장 자체가 이미 반전을 품고 있으면 앞의 이음말은
-    // 군더더기다(지적) — 만들어진 문장을 보고 판단해 아예 붙이지 않는다.
-    if (
-      linkWord !== ""
-      // 문장 안에 이미 이어 주는 어미가 있으면 앞의 이음말은 군더더기다(지적: 중복되는
-      // 접속사가 너무 많다) — 대비를 뜻하는 말이든 같은 전황을 잇는 말이든 마찬가지다.
-      && (CONTRAST_LINKS.has(linkWord) || sameTide)
-      && /지만|으나|다가/.test(text)
-    ) {
-      linkWord = "";
-      teamTag = "";
-      lastLink = "";
-    }
-    if (linkWord) {
-      // 대비를 뜻하는 이음말 뒤의 주어는 주제격이라야 읽힌다(지적: "반면 Rex는 …").
-      // 다만 이음말 자체에 '-는'이 들어 있으면 그대로 둔다 — "다른 쪽에서는 조조는"이
-      // 아니라 "다른 쪽에서는 조조가"가 맞다(지적).
-      const body = CONTRAST_LINKS.has(linkWord) && !TOPIC_MARKED_LINKS.has(linkWord)
-        ? toTopic(text, baseWho)
-        : text;
-      // 팀 딱지는 그 이름 바로 앞에서만 뜻이 통한다 — 문장이 이름으로 시작하지 않으면
-      // (당한 쪽을 주어로 세운 raid-damage처럼 "포토 하나 없는 상태에서 팍규가 …") 딱지가
-      // 엉뚱한 말 앞에 붙어 그 사람이 그 팀인 것처럼 읽힌다(지적). 그럴 땐 그냥 뗀다.
-      // "2팀의 netan의 …"은 '의'가 겹쳐 어색하다(지적) — 뒤 이름이 소유격이면 "2팀 netan의".
-      const tag = !body.startsWith(baseWho) ? ""
-        : teamTag && body.startsWith(`${baseWho}의 `) ? teamTag.replace("팀의 ", "팀 ")
-          : teamTag;
-      text = `${linkWord} ${tag}${body}`;
-    }
     // 한 문장에 반전이 두 번 들어가면 어색하다(지적: "…무너졌지만 …갔으나 막힘").
     // 이어 붙일 문장이 이미 반전을 품고 있으면 잇지 않고 끊은 뒤, 이음말만 앞에 붙인다.
     if (flipJoin && /지만|으나/.test(text)) {
@@ -3264,9 +3135,6 @@ function renderLines(
         if (reversal) lastLink = "반대로";
       } else put(text, false, i);
       chainCount = head ? chainCount + 1 : 0;
-      // 이어 붙였으면 이음말도 아니고 그냥 놓인 것도 아니다 — 둘 다 초기화한다.
-      if (head) { linkRun = 0; plainRun = 0; } else { linkRun = 0; plainRun += 1; }
-      lastLinkFamily = "";
       lastSubject = subject;
       lastBaseWho = baseWho;
       lastWho = b.who ?? [];
@@ -3319,14 +3187,6 @@ function renderLines(
     }
     else put(text, false, i);
     chainCount = chained ? chainCount + 1 : 0;
-    // 리듬 셈 — 이어 붙였으면 둘 다 0, 이음말로 열었으면 linkRun만 쌓고, 아무 표시도
-    // 없이 그냥 놓였으면 plainRun을 쌓는다. 맺음말은 문단의 끝이라 세지 않는다.
-    if (b.k !== "result") {
-      if (chained) { linkRun = 0; plainRun = 0; }
-      else if (linkWord) { linkRun += 1; plainRun = 0; }
-      else { linkRun = 0; plainRun += 1; }
-      lastLinkFamily = !chained && linkWord ? linkFamily(linkWord) : "";
-    }
     lastSubject = subject;
     lastBaseWho = baseWho;
     lastWho = b.who ?? [];
