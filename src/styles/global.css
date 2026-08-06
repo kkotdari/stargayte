@@ -6554,7 +6554,11 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
   position: relative; display: flex; flex-direction: column;
   padding: 4px 2px 2px; background: none; box-shadow: none;
 }
-.scr-challenge-letter-inline .scr-challenge-inbox-body { padding: 0; }
+/* 모달 본문(.scr-modal-body)의 좌우 -16px은 스크롤 영역을 모달 가장자리까지 넓히려고 둔
+   장치다. 모달 안에서는 좌우가 대칭이라 가운데가 그대로지만, 카드 안에서는 부모가 그
+   여백을 상쇄해 주지 않아 본문이 통째로 왼쪽으로 16px 밀렸다(지적: 왜 가운데가 아니라
+   왼쪽에 붙어 있지). 카드에서는 스크롤할 일이 없으니 좌우 여백을 둘 다 지운다. */
+.scr-challenge-letter-inline .scr-challenge-inbox-body { margin-inline: 0; padding-inline: 0; }
 /* 카드에서는 From.도 흐름 안에 둔다 — 절대 배치는 모달처럼 넉넉한 여백이 있을 때 이야기고,
    목록 카드에서는 헤더 줄과 겹친다(모바일 편지지가 이미 같은 이유로 흐름에 있다). */
 .scr-challenge-letter-inline .scr-challenge-party-from {
@@ -7792,6 +7796,10 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   border-bottom: 1px solid var(--line-hair);
 }
 .scr-activity-row {
+  /* 줄을 펼치면 그 줄이 화면 맨 위로 올라온다(ActivityScreen의 scrollRowToTop) — 그때
+     화면 꼭대기에 딱 붙지 않게 여유를 남긴다(요청: "위에 안전공간은 확보"). 노치·상태바
+     높이(--safe-top)까지 함께 세야 아이폰에서도 같은 만큼 떨어져 보인다. */
+  scroll-margin-top: calc(var(--safe-top, 0px) + 12px);
   /* 칸을 줄 높이만큼 늘린다(stretch) — 가운데 정렬로 두면 칸이 제 글자 높이로 쪼그라들어
      세로 구분선이 글자 높이만큼만 그려지고 줄마다 뚝뚝 끊긴다(지적: 열 구분 없이 이어지게).
      늘려 두면 위아래 줄의 선이 서로 맞닿아 목록 전체를 관통하는 한 줄이 된다. 글자를

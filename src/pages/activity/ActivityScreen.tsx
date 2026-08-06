@@ -572,6 +572,16 @@ export default function ActivityScreen() {
   const [closingRowKey, setClosingRowKey] = useState<string | null>(null);
   const closeTimerRef = useRef<number | null>(null);
   useEffect(() => () => { if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current); }, []);
+  /** 줄 버튼들 — 펼칠 때 그 줄로 스크롤하려면 실제 DOM이 필요하다. */
+  const rowElsRef = useRef(new Map<string, HTMLButtonElement>());
+  /* 펼친 줄을 화면 맨 위로 올린다(요청: "목록 클릭시 클릭한 카드 제목에 스크롤") —
+     목록 아래쪽 줄을 누르면 카드가 화면 밖으로 열려 아무것도 안 보이던 자리다.
+     위에 남길 여유는 CSS가 정한다(.scr-activity-row의 scroll-margin-top, 요청: "위에
+     안전공간은 확보") — 상단 안전영역(노치)까지 함께 세는 값이라 여기서 계산하지 않는다. */
+  const scrollRowToTop = (key: string) => {
+    rowElsRef.current.get(key)?.scrollIntoView({ block: "start", behavior: "smooth" });
+  };
+
   const toggleRow = (key: string) => {
     const prev = openRowKey;
     const next = prev === key ? null : key;
@@ -586,6 +596,12 @@ export default function ActivityScreen() {
     } else {
       setClosingRowKey(null);
     }
+    if (!next) return;
+    // 카드는 줄 아래로 열리므로 줄 자체는 안 움직인다 — 다음 프레임이면 자리가 잡힌다.
+    requestAnimationFrame(() => scrollRowToTop(next));
+    /* 다만 위에 있던 줄이 접히면 이 줄이 그만큼 위로 딸려 올라온다 — 접힘이 끝난 뒤
+       한 번 더 맞춘다. 이미 제자리면 0px 스크롤이라 눈에 안 띈다. */
+    if (prev && prev !== next) window.setTimeout(() => scrollRowToTop(next), ROW_CLOSE_MS + 20);
   };
 
   const user = useAppStore((s) => s.user);
@@ -1408,6 +1424,10 @@ export default function ActivityScreen() {
                 <div className={cx("scr-activity-row-wrap", open && "scr-activity-row-wrap-open")} key={key}>
                   <button
                     type="button" aria-expanded={open}
+                    ref={(el) => {
+                      if (el) rowElsRef.current.set(key, el);
+                      else rowElsRef.current.delete(key);
+                    }}
                     className={cx("scr-activity-row", rowVoid(item) && "scr-activity-row-void")}
                     onClick={() => toggleRow(key)}
                   >
