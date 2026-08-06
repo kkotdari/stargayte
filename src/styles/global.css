@@ -5782,80 +5782,8 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 .scr-challenge-msg-inner .scr-input { width: 100%; }
 /* 응답 영역 — 한마디 토글/입력 + 버튼 행을 세로로 쌓는다. */
 .scr-challenge-respond { display: flex; flex-direction: column; gap: 8px; }
-/* 카드에 보여주는 한마디(호출/응답) — 예전 너 나와 때처럼 로스터의 그 사람 줄 바로
-   아래에, 줄을 맞춰 붙인다(지적: 로스터 아래 별도 목록이 아니라 해당 유저 아랫줄에).
-   글자 크기는 한 단계 작았다가(요청) 다시 한 단계 키웠다(지적: 다시 1스텝 확대) —
-   지금은 닉네임과 같은 크기다. 처음엔 옅은 배경 알약으로 뒀는데(지적: 알약 말고
-   말주머니 느낌, 배경은 아예 흰색에 검정 글씨) — 테마와 무관하게 늘 흰 배경 + 검정
-   글자로 고정하고, 위쪽에 작은 꼬리를 달아 실제 말풍선처럼
-   보이게 한다. display:inline-block이라 글자 길이만큼만 배경이 붙는다. */
-.scr-challenge-side-msg {
-  /* 그리드 2행(요청: "말풍선은 아래쪽에 위치하는 느낌으로") — 1행(아바타·닉네임)과는
-     독립적으로 아바타 밑에 걸치듯 놓인다.
-     두 칸을 다 깔고(1 / -1) 왼쪽 여백으로 시작점을 잡는다(요청: 아바타 중앙보다 살짝
-     오른쪽에서 나오게, 공간도 더). 닉네임 칸(2)에만 놓여 있던 예전에는 아바타 칸 34px과
-     열 간격 10px을 통째로 비워 두고 그 오른쪽에서야 시작해, 정작 말풍선이 쓸 폭이 그만큼
-     좁았다. 이제 꼬리가 아바타 중앙 바로 옆에서 나오고 폭은 24px 넓어진다. */
-  grid-column: 1 / -1; grid-row: 2;
-  /* 시작 자리(아래 margin-left)를 변수로 둬 max-width에서도 같은 값을 뺀다 — 퍼센트
-     max-width는 마진을 안 세므로, 100%로 두면 왼쪽으로 민 만큼 오른쪽으로 삐져나간다
-     (실측: 칸이 121px인데 말풍선이 26px 지점에서 시작해 121px을 그대로 차지했다). */
-  --scr-chal-msg-x: 26px;
-  display: inline-block; position: relative; line-height: 1.3;
-  max-width: calc(100% - var(--scr-chal-msg-x));
-  word-break: break-word;
-  /* 글자 길이만큼만 배경이 붙어야 하는데, 그리드 아이템도 기본 justify-self:stretch가
-     가로폭을 꽉 채워 버린다(지적: 말풍선이 남는 이슈 — 글자수에 맞춰야지) — inline-block의
-     "글자만큼만" 크기는 그리드 아이템이 되는 순간 stretch에 밀린다. justify-self로
-     이 아이템만 stretch를 빼서 제 내용 크기로 되돌린다. */
-  justify-self: start;
-  /* 모양은 몇 차례 오갔다 — 10→14→999(알약)→50%(진짜 타원, 럭비공처럼 뾰족해져 롤백)
-     →999(알약)→16(절반 높이에 맞먹어 여전히 알약 같음)→6px(둥근네모 확정). 글자는
-     닉네임과 같은 크기까지 키웠다가(지적) 패딩과 함께 한 단계씩 다시 줄인다(지적:
-     말풍선 패딩 살짝 축소, 글자 1스텝 축소) — 아래 각 문맥별 font-size 규칙도 함께.
-     좌우 패딩은 한 번 더 줄였다(지적: 좌우 패딩 줄이고) 7→5px. 왼쪽 위 모서리만 각지게
-     (요청: "말풍선꼬리 아래 비어있는 부분 채우기") — 꼬리(아래 ::before)가 완전히 왼쪽에
-     붙어 있는데 이 모서리가 둥글면 꼬리와 말풍선 사이에 삼각형 빈틈이 생겼다. */
-  font-size: var(--fs-micro); /* 닉네임(body)보다 두 단계 아래 — 한 번 더 1스텝 축소(요청) */
-  background: #fff; color: #24272d; border-radius: 0 6px 6px 6px; padding: 4px 5px 3px;
-  /* 그림자는 box-shadow가 아니라 filter로 준다 — box-shadow는 '이 상자'의 네모만 따라
-     그려서 꼬리(아래 ::before, 테두리로 만든 삼각형)는 그림자가 없었다. 다크에서는 어두운
-     바탕이라 티가 안 났지만, 라이트에서는 그림자가 곧 말풍선의 윤곽이라 꼬리 자리에서
-     윤곽이 뚝 끊겨 보였다(지적). drop-shadow는 그려진 모양(자식인 꼬리까지)의 실루엣을
-     따라가므로 말풍선과 꼬리에 하나로 이어진 그림자가 생긴다. 배경이 불투명한 흰색이라
-     안쪽 글자에는 그림자가 안 붙는다. */
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.18)) drop-shadow(0 0 0.5px rgba(0, 0, 0, 0.12));
-  /* 아바타(34px) 한가운데가 17px, 거기서 9px 더 오른쪽 — 20px으로 뒀더니 꼬리가 거의
-     한가운데라 아직 왼쪽으로 보였다(지적: 좀 더 오른쪽에서 시작). 아바타 오른쪽 절반
-     안에 확실히 걸치는 자리다. 위쪽은 꼬리(아래 ::before, 5px) 자리까지만 살짝 띄운다. */
-  margin-top: 4px; margin-left: var(--scr-chal-msg-x);
-}
-/* 한마디는 자르지 않고 전부 보여준다(요청) — 한 줄에서 말줄임하던 것을 걷었다.
-   말풍선이 세로로 자라 사람마다 로스터 줄 높이가 달라지지만, 하려던 말이 "저의 디딤돌이
-   되…"에서 끊기는 것보다는 낫다. 말줄임을 안 하므로 줄바꿈만 허용해 주면 된다. */
-.scr-challenge-side-msg-text { display: block; white-space: normal; word-break: break-word; }
-/* 한마디가 없는 사람 몫 — 자리(그리드 2행 높이)만 예약하고 실제로는 안 보여야 한다(요청:
-   "말풍선 공간만 예약하는거고 입력 안했으면 보이면 안돼"). display:none은 그리드 트랙
-   자체를 없애 자리가 도로 줄어드니 안 되고, visibility:hidden이라야 박스는 그대로 두고
-   내용(흰 배경·글자·꼬리 전부)만 안 보이게 지운다. */
-.scr-challenge-side-msg-empty { visibility: hidden; }
-/* 말풍선 꼬리 — 완전히 왼쪽으로 옮기고(요청), 좌우 대칭 삼각형 대신 왼쪽은 수직으로
-   떨어지고 오른쪽은 사선인 모양으로(요청). top(0)/left(0) 테두리는 안 그려(0폭) 대칭
-   미터링이 안 생기므로 왼쪽 변이 그대로 수직선이 되고, bottom(색)과 right(투명)만 만나는
-   대각선이 오른쪽 사선이 된다 — 아래쪽 변(색이 칠해진 가로선)은 말풍선 윗변과 같은 흰색이라
-   그대로 이어져 안 보인다. */
-.scr-challenge-side-msg::before {
-  content: ""; position: absolute; top: -5px; left: 0; width: 0; height: 0;
-  border-style: solid; border-width: 0 5px 5px 0;
-  border-color: transparent transparent #fff transparent;
-}
-/* 팀전 닉네임(micro)의 한 단계 아래. */
-.scr-challenge-card-team .scr-challenge-side-msg { font-size: var(--fs-11); }
-/* 활동에서 아바타·닉네임을 키운 만큼(요청: "너 나와... 모든 폰트 크기 확대") 한마디도
-   같이 한 단계 키웠다가, 다시 1스텝 축소(요청) — 팀전보다 뒤에 둬서(활동+팀전이 겹쳐도)
-   활동 쪽 기준이 이긴다(아래 .scr-activity-card .scr-challenge-card .scr-challenge-person-name
-   과 같은 순서). */
-.scr-activity-card .scr-challenge-side-msg { font-size: var(--fs-micro); }
+/* (삭제) 로스터 아래 흰 말풍선(.scr-challenge-side-msg) — 카드가 편지지를 쓰게 되면서
+   한마디는 편지지 가운데(.scr-challenge-words)에서 말한다(요청). */
 .scr-light-theme .scr-challenge-submit-btn:disabled { border-color: rgba(0, 0, 0, 0.14); }
 /* "호출" 버튼 — 활성화 시 각 테마의 라이팅 프라이머리(요청: 핑크 고유색 대신 공통
    라이팅 테마). 다크=거의 흰 알약, 라이트=하늘빛 알약 + 윤곽 글로우. 비활성은 위
@@ -6612,6 +6540,29 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 }
 /* 편지지 본문(제목·일자·시간·한마디) — 요소 간 줄간격을 크게(요청). */
 .scr-challenge-letter .scr-challenge-inbox-body { flex: 0 1 auto; gap: 22px; }
+/* ── 활동·너 나와 목록 카드 안의 편지지(요청: "카드만의 디자인을 걷어내고 편지지 양식을
+   카드에 보여주는걸로", "압축없이 똑같이") ──────────────────────────────────────
+   모달이 아니라 카드 안이라 유리 패널도 최소 높이도 없다. From.을 좌상단에 절대 배치하는
+   규칙이 기준으로 삼을 위치 맥락만 여기서 만들어 준다. */
+.scr-challenge-letter-inline {
+  position: relative; display: flex; flex-direction: column;
+  padding: 4px 2px 2px; background: none; box-shadow: none;
+}
+.scr-challenge-letter-inline .scr-challenge-inbox-body { padding: 0; }
+/* 카드에서는 From.도 흐름 안에 둔다 — 절대 배치는 모달처럼 넉넉한 여백이 있을 때 이야기고,
+   목록 카드에서는 헤더 줄과 겹친다(모바일 편지지가 이미 같은 이유로 흐름에 있다). */
+.scr-challenge-letter-inline .scr-challenge-party-from {
+  position: static; align-self: flex-start; margin-bottom: 6px;
+}
+
+/* 이 대결이 어떻게 끝났나 — 승패·거둬들임·만료. 수락/거절은 To. 아바타의 배지가 말하므로
+   여기 오는 것은 그 위 이야기뿐이다. */
+.scr-challenge-verdict {
+  align-self: center; font-size: var(--fs-caption); font-weight: 800; line-height: 1;
+  padding: 5px 10px; border-radius: 999px;
+}
+.scr-challenge-verdict-win { color: #146b39; background: rgba(31, 138, 76, 0.16); }
+.scr-challenge-verdict-draw { color: var(--dim); background: rgba(var(--overlay-rgb), 0.14); }
 /* 버튼 줄 — 맨 아래(To. 아래). 위로 여유 간격. */
 /* 위쪽 간격은 이제 .scr-modal > .scr-form-actions의 padding-top이 준다(예전엔 이 줄만
    본문 밖 형제라 스스로 띄웠다) — 그대로 두면 두 번 띄워진다. */
@@ -6661,10 +6612,16 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 .scr-challenge-letter-photo .scr-challenge-inbox-time,
 .scr-challenge-letter-photo .scr-challenge-word-text,
 .scr-challenge-letter-photo .scr-challenge-word-who,
-/* 한마디(.scr-challenge-side-msg)는 뺀다 — 불투명한 흰 말주머니가 이미 제 바닥을
-   갖고 있어서, 음영까지 얹으면 말주머니 안쪽 글자에 까닭 없는 그림자만 진다(지적). */
+/* 활동 카드 안의 편지지도 같은 음영을 받는다 — 배경 사진 위에 그대로 얹히기 때문이다
+   (요청: 카드도 편지지 양식). 글자 종류가 편지지와 같으니 목록도 같이 적는다. */
+.scr-activity-card-body-photo .scr-challenge-inbox-title,
+.scr-activity-card-body-photo .scr-challenge-party-tag,
+.scr-activity-card-body-photo .scr-challenge-party-names,
+.scr-activity-card-body-photo .scr-challenge-inbox-date,
+.scr-activity-card-body-photo .scr-challenge-inbox-time,
+.scr-activity-card-body-photo .scr-challenge-word-text,
+.scr-activity-card-body-photo .scr-challenge-word-who,
 .scr-activity-card-body-photo .scr-challenge-person-name,
-.scr-activity-card-body-photo .scr-challenge-when-note,
 .scr-activity-card-body-photo .scr-challenge-inline-win,
 .scr-activity-card-body-photo .scr-challenge-arrow {
   text-shadow:
@@ -6817,19 +6774,6 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
   color: var(--text); text-align: center; line-height: 1.35;
 }
 .scr-challenge-inbox-time { margin-top: -12px; }
-/* 약속한 "언제"(자유 텍스트) — 로스터 바로 위에 글로만 보여준다(요청: 인풋창이 아니라
-   텍스트로). 날짜는 이미 헤더/날짜 그룹이 말하고 있으므로 여기선 그 한마디만 얹는다.
-   길게 적어도 카드 폭을 뚫지 않게 줄바꿈을 허용한다. */
-.scr-challenge-when-note {
-  margin: 0; text-align: center;
-  font-size: var(--fs-caption); color: var(--muted);
-  overflow-wrap: anywhere; line-height: 1.4;
-}
-/* "언제" 라벨 — 연하고 작게, 본문보다 흐린 색으로 앞에 붙인다(요청). */
-.scr-challenge-when-label {
-  font-size: var(--fs-9); font-weight: 700; color: var(--dim);
-  margin-right: 5px;
-}
 /* 값 span(종류/일시 오른쪽)은 클래스가 없어 색을 명시 안 하면 앱 루트의 테마 글자색(다크
    테마에선 흰색)을 그대로 물려받아 밝은 편지지 배경 위에서 거의 안 보였다(요청: "결과
    입력창 글자가 안보이는데 다크테마 색깔 문제인가?" — 스샷의 '일대일'/'7월 13일…' 값) —

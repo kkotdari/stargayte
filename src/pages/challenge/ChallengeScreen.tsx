@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Pencil, MessageSquarePlus } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
@@ -11,11 +11,12 @@ import { shareThumb, type KakaoShareContent } from "../../utils/kakaoShare";
 import { useAppStore } from "../../store/appStore";
 import { api } from "../../api/client";
 import { cx } from "../../utils/format";
+import { ChallengeLetter, ChallengeWhen } from "../../components/challenge/ChallengeLetter";
 import {
   formatWhen, pad, scheduledInstantMs, serverMs,
   DATE_INPUT_MIN, DATE_INPUT_MAX, gameNow,
 } from "../../utils/date";
-import type { Challenge, ChallengeResult, ChallengeSide, ChallengeTarget } from "../../types";
+import type { Challenge, ChallengeResult, ChallengeTarget } from "../../types";
 
 // 화면 표시 상태는 서버 status를 그대로 쓴다 — 서버가 4개(응답대기 pending/성사 confirmed/
 // 완료 done/폐기 discarded)로 확정해 내려준다. 예정 시간이 지나도 결과가 없으면 계속 성사
@@ -129,69 +130,6 @@ export function challengeEnding(c: Challenge): "canceled" | "expired" | null {
    보여주므로(위 challengeEnding) 이 함수가 하던 일이 없어졌다. */
 
 type SideMember = { id: string; nickname: string; avatar: string | null };
-
-// 팀 구성 한 편(도전자편/상대편)을 세로로 쌓는다(요청: "각팀을 세로로 배치") — 1:1이든
-// 팀전이든 모양은 같고, 인원이 하나든 여럿이든 그냥 줄 수만 늘어난다.
-function ChallengeSide({
-  people, targets, highlightMemberIds, messageOf,
-}: {
-  people: SideMember[];
-  targets?: { target: ChallengeTarget }[];
-  // 유저 검색에 걸린 사람 — 경기결과 로스터와 같은 반전색으로 프사+닉네임을 함께 칠한다
-  // (요청: "랭킹, 너 나와 유저 검색시 하이라이팅 추가 단! 닉네임뿐 아니라 프사까지").
-  highlightMemberIds?: Set<string>;
-  // 그 사람의 한마디(호출자의 challenge.message / 지목자의 responseMessage) — 있으면
-  // 그 사람 줄 바로 아래에 붙인다(지적: 예전 너 나와 때처럼 로스터의 해당 유저 아랫줄에
-  // 줄 맞춰서). 없으면 아무것도 안 그린다.
-  messageOf?: (personId: string) => string | null | undefined;
-}) {
-  return (
-    <div className={cx("scr-challenge-side", targets && "scr-challenge-side-target")}>
-      {people.map((p) => {
-        const msg = messageOf?.(p.id);
-        // 인스타그램식 배치(요청) — 아바타를 왼쪽 칸에 크게 두고, 닉네임·한마디는 전부
-        // 오른쪽 칸에 세로로 쌓는다. 예전엔 아바타가 닉네임과 한 줄(scr-challenge-person)에
-        // 나란히 있어 아바타를 키우기 어려웠고, 한마디도 그 줄 밑에 아바타 폭만큼
-        // margin-left로 억지로 들여써야 했다.
-        //
-        // 응답 배지(대기/수락/거절)는 더 이상 여기(사람 옆)에 안 찍는다(요청: "응답 상태를
-        // 결과 배지 부분과 공유해서 사용 — 결과 배지가 들어가면 응답 상태는 불필요") — 손
-        // 이모지 옆 공용 슬롯(ChallengeCard의 scr-challenge-arrow-row) 하나가 결과 입력
-        // 전에는 응답 상태를, 입력 후에는 승/무 결과를 보여준다.
-        //
-        // 그리드로 짠다(요청: "아바타가 닉네임 및 손 이모지, 응답 배지와 세로로 가운데
-        // 정렬되게") — 아바타는 1행에만 놓여 그 행의 트랙 높이를 자기 크기(34px)만큼
-        // 밀어 올리고, 닉네임 줄은 그 행 안에서 align-self:center로 가운데 앉는다(=아바타와
-        // 같은 중심선). 한마디는 2행으로 따로 떨어져(요청: "말풍선은 아래쪽에 위치하는
-        // 느낌으로") 아바타 높이와 무관하게 밑에 붙는다. flex였다면 아바타 높이가
-        // 그대로 전체 블록 정렬 기준이 돼(align-items:center) 한마디까지 포함한 전체
-        // 높이 기준으로 가운데 잡혀버렸을 것이다 — 그리드는 행이 갈려 있어 1행(닉네임)만
-        // 따로 기준 삼을 수 있다.
-        return (
-          <div
-            key={p.id}
-            className={cx("scr-challenge-side-block", highlightMemberIds?.has(p.id) && "scr-challenge-person-hit")}
-          >
-            <Avatar member={p} size={34} className="scr-challenge-side-avatar" />
-            <div className="scr-challenge-side-row">
-              <span className="scr-challenge-person-name">{p.nickname}</span>
-            </div>
-            {/* 한마디 — 따옴표 없이, 닉네임보다 한 단계 작은 글자로(요청). 있든 없든 항상
-                이 자리를 그린다(요청: "한마디가 있건 없건 레이아웃 유지되게 자리를 예약")
-                — 없으면 보이지만 않게(visibility:hidden) 하고 자리는 그대로 차지해서,
-                같은 편 안에서 어떤 사람은 한마디가 있고 어떤 사람은 없어도 줄 높이가
-                들쭉날쭉해지지 않는다. */}
-            {/* 글자는 한 겹 안쪽에 둔다 — 한 줄 넘김 자르기는 overflow:hidden을 요구하는데
-                그걸 말풍선 자신에 걸면 상자 밖으로 나가 있는 꼬리(::before)까지 잘려 나간다. */}
-            <span className={cx("scr-challenge-side-msg", !msg && "scr-challenge-side-msg-empty")}>
-              <span className="scr-challenge-side-msg-text">{msg || " "}</span>
-            </span>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
 
 // 카드가 지금 어떤 인라인 폼을 펼치고 있는지 — 한 번에 하나만 열린다. result는 결과 입력 폼이다.
 type CardMode = "none" | "result";
@@ -350,6 +288,34 @@ export function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, o
   ];
   const targetSideMembers: SideMember[] = challenge.targets.map((t) => ({ id: t.memberId, nickname: t.nickname, avatar: t.avatar }));
 
+  /* 편지지가 말하지 않는 것 하나 — 이 대결이 어떻게 끝났나. 수락·거절은 To. 아바타의
+     배지가 말하지만, 승패와 취소·만료는 그 위 이야기라 본문 맨 아래에 한 줄로 둔다.
+     예전 카드의 손 이모지 양옆 배지 자리가 하던 일이다. */
+  const verdict = ((): ReactNode => {
+    if (canceledByCreatorSide) {
+      return <span className="scr-challenge-verdict scr-challenge-avatar-badge-canceled">거둬들임</span>;
+    }
+    if (challenge.resultWinnerSide === "draw") {
+      return <span className="scr-challenge-verdict scr-challenge-verdict-draw">무승부</span>;
+    }
+    if (challenge.resultWinnerSide === "creator" || challenge.resultWinnerSide === "target") {
+      const won = challenge.resultWinnerSide === "creator" ? creatorSideMembers : targetSideMembers;
+      return (
+        <span className="scr-challenge-verdict scr-challenge-verdict-win">
+          {won.map((p) => p.nickname).join(", ")} 승리
+        </span>
+      );
+    }
+    if (targetSideTone === "expired" || targetSideTone === "canceled") {
+      return (
+        <span className={`scr-challenge-verdict scr-challenge-avatar-badge-${targetSideTone}`}>
+          {PILL_LABEL[targetSideTone]}
+        </span>
+      );
+    }
+    return null;
+  })();
+
   // 확인창을 닫을 때 비로소 목록을 갱신한다.
   const dismissShare = () => {
     const p = sharePrompt;
@@ -377,8 +343,6 @@ export function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, o
     };
   };
 
-  const activeTargetInfos = challenge.targets.map((t) => ({ target: t }));
-
   // 이미 종료된 너 나와!(완료/미실시 등 status=done·discarded)은 패널을 더 어둡게, 아직 진행
   // 중인(응답대기·성사) 너 나와는 더 밝게 해서 목록에서 한눈에 구분되게 한다(요청).
   const isEnded = challenge.status === "done" || challenge.status === "discarded";
@@ -395,86 +359,18 @@ export function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, o
       {/* 편지지 배경 사진은 이 카드가 아니라 이 카드를 담은 활동 카드의 본문
           (.scr-activity-card-body)에 깔린다(요청) — ActivityScreen 참고. 여기 깔면
           로스터 폭만큼만 덮여, 카드가 아니라 로스터에 붙은 그림처럼 보인다. */}
-      <div className="scr-challenge-card-body">
-        {/* 약속한 "언제" — 로스터 바로 위에 그냥 글로 보여준다(요청: 인풋창이 아니라
-            텍스트로). 안 적었으면 줄 자체를 안 만든다. */}
-            {challenge.scheduledTimeNote.trim() && (
-              <div className="scr-challenge-when-note">
-                <span className="scr-challenge-when-label">언제</span>
-                {challenge.scheduledTimeNote}
-              </div>
-            )}
-
-            <div className="scr-challenge-matchup">
-              <ChallengeSide
-                people={creatorSideMembers} highlightMemberIds={highlightMemberIds}
-                // 호출자의 한마디(challenge.message)는 호출자 본인 줄에만 붙는다 — 같은 편
-                // 팀원(ownMembers)에게는 없다.
-                messageOf={(id) => (id === challenge.createdBy.id ? challenge.message : null)}
-              />
-              {/* 승/무 배지 — 이긴 편 쪽으로(손 이모지 기준 이긴 편이 있는 방향에) 붙인다
-                  (요청: "승리배지는 손 이모지 옆에 표시(이긴쪽에)"). 자리가 좁아 "승리"
-                  대신 한 글자만(요청: "좁아서 그냥 승/무 한글자 배지로 표시해야할듯").
-                  무승부는 어느 한쪽 편이 아니라 양쪽 다 표시한다. 도전자편은 개별 응답이
-                  없어(ChallengeOwnMember 참고) 결과가 나오기 전엔 항상 자리만 예약해 두고
-                  투명하게 비운다(visibility:hidden) — 안 그러면 페이지를 넘길 때 배지
-                  유무에 따라 손 이모지가 좌우로 흔들린다(요청: "손이모지 양옆에도 승리/
-                  무승부 배지 넣을 공간 예약해야함"). 상대편은 개별 응답이 있으므로, 결과가
-                  나오기 전엔 그 자리에 응답 상태(대기/수락/거절/버림)를 대신 보여준다
-                  (요청: "응답 상태를 결과 배지 부분과 공유해서 사용 — 결과 배지가 들어가면
-                  응답 상태는 불필요하므로"). */}
-              <span className="scr-challenge-arrow-row">
-                {canceledByCreatorSide ? (
-                  // 부른 쪽이 거둬들인 것 — 그 사람 자리에 "취소"라고 적는다(요청).
-                  <span className="scr-challenge-inline-win scr-challenge-inline-status scr-challenge-avatar-badge-canceled">
-                    {PILL_LABEL.canceled}
-                  </span>
-                ) : (
-                  <span
-                    className={cx(
-                      "scr-challenge-inline-win",
-                      challenge.resultWinnerSide === "draw" && "scr-challenge-inline-draw",
-                      challenge.resultWinnerSide !== "creator" && challenge.resultWinnerSide !== "draw"
-                        && "scr-challenge-inline-win-hidden",
-                    )}
-                  >
-                    {challenge.resultWinnerSide === "draw" ? "무" : "승"}
-                  </span>
-                )}
-                <span className="scr-challenge-arrow" aria-hidden="true">👉🏻</span>
-                {challenge.resultWinnerSide ? (
-                  <span
-                    className={cx(
-                      "scr-challenge-inline-win",
-                      challenge.resultWinnerSide === "draw" && "scr-challenge-inline-draw",
-                      challenge.resultWinnerSide !== "target" && challenge.resultWinnerSide !== "draw"
-                        && "scr-challenge-inline-win-hidden",
-                    )}
-                  >
-                    {challenge.resultWinnerSide === "draw" ? "무" : "승"}
-                  </span>
-                ) : (
-                  <span
-                    className={cx(
-                      "scr-challenge-inline-win", "scr-challenge-inline-status",
-                      `scr-challenge-avatar-badge-${targetSideTone}`,
-                      // 부른 쪽이 거둬들인 건은 상대가 답할 기회 자체가 없었다 — 끝난 카드에
-                      // "대기"는 아직 기다리는 것처럼 읽히므로 자리만 비워 둔다(우상단
-                      // "취소" 라벨과 부른 쪽 배지가 이미 무슨 일이었는지 말한다).
-                      canceledByCreatorSide && targetSideTone === "pending"
-                        && "scr-challenge-inline-win-hidden",
-                    )}
-                  >
-                    {PILL_LABEL[targetSideTone]}
-                  </span>
-                )}
-              </span>
-              <ChallengeSide
-                people={targetSideMembers} targets={activeTargetInfos} highlightMemberIds={highlightMemberIds}
-                // 지목된 상대의 응답 한마디 — 그 사람 줄 아래에(위 messageOf 참고).
-                messageOf={(id) => challenge.targets.find((t) => t.memberId === id)?.responseMessage}
-              />
-            </div>
+      {/* 카드 본문은 편지지 그대로다(요청: "활동 카드만의 너 나와! 디자인도 걷어내고 지금
+          쓰고 있는 편지지양식을 카드에 보여주는걸로", "압축없이 똑같이") — 인박스·공유와
+          같은 한 벌이라 한 군데만 고치면 어디서나 같이 바뀐다.
+          편지지 배경 사진은 이 카드가 아니라 이 카드를 담은 활동 카드의 본문
+          (.scr-activity-card-body)에 깔린다(요청) — ActivityScreen 참고. */}
+      <div className="scr-challenge-card-body scr-challenge-letter scr-challenge-letter-inline">
+        <ChallengeLetter
+          challenge={challenge}
+          highlight={highlightMemberIds}
+          schedule={<ChallengeWhen challenge={challenge} />}
+          foot={verdict}
+        />
       </div>
 
       {err && <div className="scr-err">{err}</div>}
