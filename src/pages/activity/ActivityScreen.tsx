@@ -292,19 +292,25 @@ function namesWithRest(names: string[]): ReactNode {
 /** 게임결과 묶음에 있었던 사람들 — 컴퓨터·비회원은 "누가 있었나"의 답이 아니라서 뺀다
  *  (요약 카드의 참가자 명단과 같은 규칙). 많이 나온 사람부터 부른다. */
 function playersOf(items: GameResultItem[], memberOf: (id: string) => Member | undefined): string[] {
-  const seen = new Map<string, { name: string; n: number }>();
+  const seen = new Map<string, { name: string; n: number; won: number }>();
   for (const it of items) {
     for (const side of ["team1", "team2"] as const) {
       for (const slot of it.gameResult[side]) {
         if (isComputerSlot(slot.memberId) || isUnregisteredSlot(slot.memberId)) continue;
         const cur = seen.get(slot.memberId)
-          ?? { name: resolveSlotName(slot, it.gameResult[side], memberOf), n: 0 };
+          ?? { name: resolveSlotName(slot, it.gameResult[side], memberOf), n: 0, won: 0 };
         cur.n += 1;
+        if (it.gameResult.result === side) cur.won += 1;
         seen.set(slot.memberId, cur);
       }
     }
   }
-  return [...seen.values()].sort((a, b) => b.n - a.n).map((x) => x.name);
+  /* 많이 친 사람이 앞이고, 같으면 많이 이긴 사람이 앞이다(요청) — 묶음 제목에 이름을
+     둘까지만 적으므로 그 두 자리를 누가 가져가는지가 곧 이 줄이 누구 이야기인지가 된다.
+     예전엔 앞자리가 판수만으로 정해져, 같은 판수면 목록에 먼저 걸린 순서였다. */
+  return [...seen.values()]
+    .sort((a, b) => b.n - a.n || b.won - a.won)
+    .map((x) => x.name);
 }
 
 export function sessionDateLabel(date: string): string {
