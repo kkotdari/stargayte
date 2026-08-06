@@ -396,6 +396,16 @@ const capKeyOf = (b: { k: string; p?: Record<string, unknown> }): string => (
  *  UNIT_STORY_KEYS·p.unit만 보던 중복 판정이 이 이야기들을 못 걸렀다(지적: 같은 내용이
  *  두 번 연속 — "브래드가 Rex에게 3게이트 질럿 러시를 했다" 바로 뒤에 "브래드가 질럿을
  *  118기나 뽑아내며 물량으로 몰아쳤다"가 같은 시각으로 붙었다). */
+/** '들이친 이야기' — 같은 사람이 한 장면 안에서 같은 상대에게 이 갈래로 두 번 걸리면
+ *  그건 한 번의 진격이다(위 sameEvent). 건물을 박은 수(포토러시·성큰러시·몰래 배럭)는
+ *  넣지 않는다 — 병력을 몰고 간 것과 같은 때에 벌어져도 서로 다른 일이다. */
+const PUSH_STORY_KEYS = new Set([
+  "zealot-rush", "zling-rush", "duel-rush", "hydra-rush", "marine-rush", "vulture-rush",
+  "gang-rush", "base-raid", "raid-damage",
+  "shuttle-reaver", "templar-drop", "zerg-drop", "dropship", "shuttle",
+  "harass-workers", "harass-long",
+]);
+
 const TACTIC_UNIT: Record<string, string> = {
   "zealot-rush": "Zealot", "zling-rush": "Zergling", "duel-rush": "Zealot",
   "hydra-rush": "Hydralisk", "marine-rush": "Marine", "vulture-rush": "Vulture",
@@ -3662,7 +3672,30 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   };
   const pickWeight = (b: Beat): number =>
     b.weight + (phaseOf(b) === 2 && favorsWinner(b) ? LATE_WINNER_BONUS : 0);
-  const ranked = [...pool].sort((x, y) => pickWeight(y) - pickWeight(x));
+  /* 이름 없는 급습은 '무엇으로 갔는지 이름을 못 붙인 진격'이다(replaySummaryText의
+     tacticLabel). 그러니 같은 사람의 이름 있는 진격이 가까이에 있으면 그건 별개의 급습이
+     아니라 그 진격이 도착한 것이고, 이름이 있는 쪽만 남기면 된다.
+
+     무게를 겨루기 전에 걸러야 한다 — 자리 다툼에 맡기면 무게가 큰 쪽이 이기는데, 실제로
+     이름 없는 급습이 이겨서 "3게이트에서 질럿 8기로 러시를 했다" 대신 "병력을 몰아
+     들이쳤다"만 남았다(실측). 어느 쪽이 더 나은 문장인지는 무게가 아니라 이름의 유무가
+     정한다.
+
+     창(120초)은 '나가서 닿는 데 걸리는 시간'이라 경기 시간대에 따라 늘고 줄지 않는 고정값이다.
+     실측으로 잡았다(22판, 같은 사람이 같은 상대에게 들이친 문장 쌍 10개): 64초짜리 한 쌍만
+     실제로 같은 사건이었고 나머지 아홉 쌍은 139초 이상 떨어진 서로 다른 사건이라, 그 사이에서
+     끊는다. */
+  const NAMELESS_RAID_SEC = 120;
+  const namelessRaid = (b: Beat): boolean =>
+    b.k === "base-raid" || (b.k === "raid-damage" && b.p?.k === "base-raid");
+  const namedPush = pool.filter((b) => PUSH_STORY_KEYS.has(b.k) && !namelessRaid(b));
+  const ranked = [...pool]
+    .filter((b) => !(namelessRaid(b) && namedPush.some((n) => (
+      n.who[0] === b.who[0]
+      && typeof n.at === "number" && typeof b.at === "number"
+      && Math.abs(n.at - b.at) * SECONDS_PER_FRAME <= NAMELESS_RAID_SEC
+    ))))
+    .sort((x, y) => pickWeight(y) - pickWeight(x));
   /** '누가 무슨 유닛으로' — 같은 사람의 같은 유닛 이야기는 요약에 한 번이면 된다.
    *
    *  실측한 리플레이에서 한 사람의 캐리어 이야기가 셋이나 나왔다: "10분부터 26분까지
@@ -3677,6 +3710,32 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
       // 같은 사람의 같은 유닛 이야기라 한 번이면 된다.
       ?? (typeof b.p?.k === "string" ? TACTIC_UNIT[b.p.k] ?? null : null);
     return unit && b.who[0] ? `${b.who[0]}|${unit}` : null;
+  };
+  /** 두 문장이 사실은 한 사건인가 — 같은 사람이, 한 장면 안에서, 같은 상대에게 들이친
+   *  이야기면 갈래가 달라도 벌어진 일은 한 번의 진격이다.
+   *
+   *  위 unitSig가 이걸 하려다 놓친 자리다(지적: 거의 같은 내용이 두 스냅으로 들어간다 —
+   *  "[01:47] 3게이트에서 질럿 8기로 러시를 했다"와 "[01:52] 상대 진영으로 병력을 몰아
+   *  들이쳤다"). unitSig는 사건의 동일성을 '유닛 이름'으로 판정하는데, 유닛을 못 짚은
+   *  갈래(이름 없는 급습은 무엇으로 갔는지 모를 때 "병력"이라고만 말한다)에서는 키 자체가
+   *  안 만들어져 그대로 통과한다. 유닛은 사건의 속성일 뿐이라 동일성의 근거가 못 된다 —
+   *  사건을 가리키는 것은 '누가, 언제, 누구에게'다.
+   *
+   *  창은 한 장면 폭(RAID_MERGE_SEC)을 그대로 쓴다 — 같은 사람이 같은 상대에게 이 안에서
+   *  두 번 들이쳤다면 그건 한 번의 진격을 두 각도로 본 것이다. 무게순으로 고르므로
+   *  살아남는 쪽은 늘 더 구체적인 문장이다("3게이트에서 질럿 8기로" > "병력을 몰아"). */
+  const sameEvent = (a: Beat, b: Beat): boolean => {
+    if (!PUSH_STORY_KEYS.has(a.k) || !PUSH_STORY_KEYS.has(b.k)) return false;
+    const who = a.who[0];
+    if (!who || who !== b.who[0]) return false;
+    if (typeof a.at !== "number" || typeof b.at !== "number") return false;
+    if (Math.abs(a.at - b.at) * SECONDS_PER_FRAME > sceneWindowSec(RAID_MERGE_SEC, a.at)) return false;
+    // 상대를 짚은 문장끼리는 같은 상대여야 한 사건이다 — 한쪽이 상대를 모르면 시간과
+    // 사람만으로 본다(그 갈래는 애초에 '누구에게'를 못 싣는다).
+    const av = a.whom ?? [];
+    const bv = b.whom ?? [];
+    if (av.length > 0 && bv.length > 0 && !av.some((w) => bv.includes(w))) return false;
+    return true;
   };
   /** 인과 문장(이사·궤멸의 '왜')에만 내주는 여유 자리 — 요청: 문장 수를 늘리더라도
    *  스토리텔링이 잘 되게. 자리 다툼에 맡기면 앞이야기가 늘 먼저 잘려 나가, 해골이
@@ -3722,6 +3781,7 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     if (b.weight < (reserve === "cause" ? CAUSE_MIN_WEIGHT : MIN_WEIGHT)) return false;
     const sig = unitSig(b);
     if (sig && chosen.some((x) => unitSig(x) === sig)) return false;
+    if (chosen.some((x) => sameEvent(x, b))) return false;
     const capKey = capKeyOf(b);
     const cap = PER_KEY_CAP[capKey];
     if (cap !== undefined && chosen.filter((x) => capKeyOf(x) === capKey).length >= cap) return false;

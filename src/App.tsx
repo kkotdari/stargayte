@@ -97,9 +97,14 @@ export default function App() {
   // 공유 링크로 들어왔으면 그 카드만 보이는 화면을 띄운다(로그인 뒤). "앱 열기"로 해제한다.
   const [shareTarget, setShareTarget] = useState<ShareTarget | null>(shareTargetFromUrl);
   const [profileOpen, setProfileOpen] = useState(false);
-  // 로그인 직후 최초 진입 화면에서는 bootstrap()이 이미 방금 다 불러온 상태라, 그 화면으로
-  // "이동"한 게 아닌데도 아래 새로고침 effect가 곧바로 또 중복 조회하지 않도록 건너뛴다.
-  const skipNextRefresh = useRef(true);
+  /* 지금 화면에 떠 있는 것이 무엇인가 — 아래 '탭 이동 새로고침'이 정말로 화면이 바뀌었을
+     때만 돌게 하는 기준이다. 한때는 "다음 한 번은 건너뛴다"는 플래그였는데, 그 플래그는
+     로그인 전 첫 렌더에서 이미 소모돼 정작 필요한 순간(세션 복원으로 user가 채워지는
+     렌더)에는 비어 있었다 — 그래서 새로고침 한 번에 bootstrap()과 refreshAll()이 같이
+     돌아 /api/members·/api/app-version이 두 번씩 나갔다(지적, 프로덕션 빌드 실측).
+     '무엇이 바뀌어서 이 이펙트가 돌았나'를 짐작하지 않고, 직전에 무슨 화면이었는지를
+     들고 있다가 실제로 달라졌을 때만 부른다. */
+  const shownScreen = useRef<ScreenKey | null>(null);
   // 화면을 옮기면 항상 처음 상태로 — 이전 화면의 스크롤 위치/필터/검색 등은 기억하지
   // 않는다(요청: "페이지 상태 유지 기능 삭제 — 페이지 이동시 항상 초기상태로 로딩").
   const navigate = (next: ScreenKey) => setScreen(next);
@@ -160,8 +165,11 @@ export default function App() {
   // 등록/수정한 경기결과·회원 정보를 수동으로 새로고침 버튼을 눌러야만 보는 게 아니라
   // 탭을 옮기는 것만으로 항상 최신으로 보이게 한다.
   useEffect(() => {
-    if (skipNextRefresh.current) { skipNextRefresh.current = false; return; }
-    if (!user) return;
+    if (!user) { shownScreen.current = null; return; }
+    const before = shownScreen.current;
+    shownScreen.current = screen;
+    // 로그인·세션 복원 뒤 첫 화면은 bootstrap()이 방금 다 불러왔다 — 이동이 아니다.
+    if (before === null || before === screen) return;
     void refreshAll();
   }, [screen, user?.id, refreshAll]);
 
@@ -276,9 +284,10 @@ export default function App() {
             onLogout={logout}
           />
           <main className="scr-main">
-            {booting && (
-              <LoadingMark full />
-            )}
+            {/* (삭제) 처음 뜰 때 화면을 덮던 큰 워드마크(요청: 새로고침할 때 나오는 큰
+                워드마크 제거) — 헤더가 이미 떠 있어 화면이 멈춘 것처럼 보이지 않고,
+                기다림도 짧다. 워드마크는 목록 안에서 기다리는 자리(LoadingMark)와 앱
+                크롬이 아예 없는 공유 화면에만 남는다. */}
             {/* 화면을 옮기면 이전 화면은 언마운트한다 — 필터/검색/스크롤 등 화면별 상태를
                 더 이상 기억하지 않고, 돌아올 때마다 항상 처음 상태로 새로 불러온다(요청:
                 "페이지 상태 유지 기능 삭제 — 페이지 이동시 항상 초기상태로 로딩"). 접근
