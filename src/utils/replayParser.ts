@@ -322,6 +322,10 @@ interface ScrepCmd {
   HotkeyType?: { Name?: string } | string;
   /** 채팅 커맨드의 본문(Type.Name === "Chat"). */
   Message?: string;
+  /** 채팅을 친 사람의 '슬롯' 번호 — Header.Players[].SlotID와 짝지어야 화자를 안다.
+   *  이 커맨드의 PlayerID는 화자가 아니다(collectSignals의 Chat 주석). 팀챗인지
+   *  전체챗인지는 리플레이에 안 담긴다 — 필드가 이것과 Message뿐이다(실측). */
+  SenderSlotID?: number;
   /** "Leave Game" 커맨드의 사유(Quit / Defeat / Dropped …). 버전에 따라 열거형 객체다. */
   Reason?: { Name?: string } | string;
   /** screp이 매긴 '헛친 커맨드' 종류 — 실제로 아무 일도 안 일어난 커맨드에만 붙는다.
@@ -507,12 +511,18 @@ function collectSignals(
   cmds: ScrepCmd[],
   totalFrames: number | null,
   /** 누가 어느 편이고 누가 관전자인가 — '상대의 유닛을 찍었다'를 가리는 데만 쓴다.
-   *  없으면 hits는 빈 배열로 남는다(옛 리플레이·헤더를 못 읽은 경우). */
-  roster?: { id: number; team: number; obs: boolean; raw: string }[],
+   *  없으면 hits는 빈 배열로 남는다(옛 리플레이·헤더를 못 읽은 경우).
+   *  slot은 채팅의 화자를 찾는 데 쓴다(아래 Chat 주석). */
+  roster?: { id: number; slot: number | undefined; team: number; obs: boolean; raw: string }[],
 ): Map<number, ReplayPlayerSignals> {
   const observers = new Set((roster ?? []).filter((p) => p.obs).map((p) => p.id));
   const teamOf = new Map((roster ?? []).map((p) => [p.id, p.team]));
   const rawOf = new Map((roster ?? []).map((p) => [p.id, p.raw]));
+  /* 채팅을 친 사람은 커맨드의 PlayerID가 아니라 SenderSlotID로 찾는다 — 슬롯 번호는
+     ID와 다른 체계라(ScrepPlayer.SlotID 주석) 여기서 되짚어야 한다. */
+  const idOfSlot = new Map(
+    (roster ?? []).filter((p) => p.slot !== undefined).map((p) => [p.slot as number, p.id]),
+  );
   const tagOwner = roster ? ownerOfTags(cmds, observers) : new Map<number, number>();
   const out = new Map<number, ReplayPlayerSignals>();
   const at = (id: number) => {
@@ -701,8 +711,20 @@ function collectSignals(
       s.leaveFrame = frame;
       s.leaveReason = nameOf(c.Reason);
     }
+    /* 채팅은 커맨드 스트림의 임자(PlayerID)가 아니라 SenderSlotID가 말한 사람이다.
+       PlayerID는 그 커맨드 묶음을 들고 있는 사람 — 채팅에서는 대개 '리플레이를 저장한
+       사람'이거나, 아예 로스터에 없는 값(128 같은 관전/시스템 번호)이다. 그걸 그대로
+       임자로 쓰면 한 판의 모든 대사가 저장자 한 명에게 몰린다.
+       실측(리플레이 22판·채팅 355건): 화자가 맞은 건 62건뿐이고, 108건은 남의 입에
+       붙었고, 185건은 임자가 로스터에 없어 통째로 사라졌다. 그래서 이 채팅을 근거로
+       삼는 GG·노엘 판정도 엉뚱한 사람에게 붙거나 아예 안 잡히고 있었다.
+       슬롯이 로스터에 없으면(관전자 채팅, 실측 92건) 버린다 — 경기한 사람의 말이 아니다. */
     if (cmdName === "Chat" && typeof c.Message === "string" && c.Message.trim()) {
-      if (s.chats.length < CHAT_CAP) s.chats.push({ frame, text: c.Message.trim() });
+      const speaker = typeof c.SenderSlotID === "number" ? idOfSlot.get(c.SenderSlotID) : undefined;
+      if (speaker !== undefined) {
+        const cs = at(speaker);
+        if (cs.chats.length < CHAT_CAP) cs.chats.push({ frame, text: c.Message.trim() });
+      }
     }
     // ── 기술을 실제로 썼나 ──
     // 마법은 표적 명령의 Order로, 시즈/버로우/클로킹/스팀은 전용 커맨드로 온다.
@@ -904,7 +926,7 @@ export async function parseReplayFile(file: File): Promise<ParsedReplay> {
     : null;
   const signalsByPlayerId = cmds
     ? collectSignals(cmds, totalFrames, res.Header.Players.map((p) => ({
-      id: p.ID, team: p.Team, obs: p.Observer === true, raw: p.Name,
+      id: p.ID, slot: p.SlotID, team: p.Team, obs: p.Observer === true, raw: p.Name,
     })))
     : null;
   const signalsOf = (playerId: number): ReplayPlayerSignals | null =>
