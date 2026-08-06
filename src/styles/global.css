@@ -8789,6 +8789,32 @@ html.scr-light-theme .scr-activity-add-fab, html.scr-light-theme .scr-scrolltop 
    위치를 직접 잡을 수 있어야 한다.
    1fr 1fr이 아니라 minmax(0, 1fr)인 이유 — 긴 닉네임 한 줄이 칸을 밀어 좌우 반반이
    깨지는 것을 막는다(그리드 기본 min-width는 auto라 내용이 칸을 넓힌다). */
+/* 리그 경기 카드 본문 — 두 팀을 좌우로 세우고 가운데에 점수(또는 vs)를 둔다.
+   대진표에서 보는 그림과 같은 배치라, 두 화면을 오가며 봐도 같은 것으로 읽힌다. */
+/* 리그 줄의 점수("2:1") — 이름은 좁아지면 줄여도 되지만 점수는 아니다. 두 글자가 잘려
+   "2…"가 되면 뜻이 통째로 사라진다(실측 390px). 절대 안 줄어들게 못박는다. */
+.scr-activity-row-score { flex: none; white-space: nowrap; }
+.scr-league-match-card {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center; column-gap: 10px;
+}
+.scr-league-match-side { min-width: 0; text-align: center; }
+/* 두 번째 칸(오른쪽 팀)만 오른쪽으로 — 가운데 점수를 사이에 두고 마주 보게 한다. */
+.scr-league-match-side:first-child { text-align: right; }
+.scr-league-match-side:last-child { text-align: left; }
+.scr-league-match-team {
+  display: inline-block; max-width: 100%;
+  font-size: var(--fs-body); font-weight: 700; color: var(--text);
+  overflow-wrap: anywhere;
+}
+/* 이긴 편만 또렷하게 — 진 편을 붉게 칠하는 대신 이긴 편을 세운다(승패는 점수가 이미 말한다). */
+.scr-league-match-side-won .scr-league-match-team { color: var(--accent, var(--text)); }
+.scr-league-match-side:not(.scr-league-match-side-won) .scr-league-match-team { color: var(--dim); }
+/* 결과가 없으면 "vs"만 남는다 — 0:0으로 채우면 '아직 안 함'과 '0:0으로 끝남'이 같아진다. */
+.scr-league-match-score {
+  font-size: var(--fs-caption); font-weight: 800; color: var(--muted);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
 .scr-activity-shift-split {
   position: relative;
   display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);

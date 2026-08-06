@@ -1,6 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import RankingShiftCard, { RankingShiftMenu, RANK_SHIFT_TITLE } from "./RankingShiftCard";
+import LeagueMatchCard from "./LeagueMatchCard";
 import { CalendarPlus, ClipboardList, MoreHorizontal, Phone, Upload } from "lucide-react";
 import { Spinner, LoadingMark } from "../../components/common/Feedback";
 import SearchFilterBar from "../../components/common/SearchFilterBar";
@@ -34,8 +35,8 @@ import {
 import { useLockBodyScroll } from "../../utils/bodyScrollLock";
 import { hasAppUpdatePreloadErrorOccurred } from "../../utils/appUpdate";
 import type {
-  ActivityFeedItem, Challenge, ActivityTargetType, GameResult, GameResultSlot, Member,
-  RankingShift,
+  ActivityFeedItem, Challenge, ActivityTargetType, GameResult, GameResultSlot,
+  LeagueMatchActivity, Member, RankingShift,
 } from "../../types";
 
 const PAGE_SIZE = 100;
@@ -89,7 +90,19 @@ interface RankingShiftItem {
   shift: RankingShift;
 }
 
-type ActivityItem = ChallengeItem | GameResultItem | RankingShiftItem;
+/** 일정이 적힌 리그 경기 하나(요청: 리그 매치에 일정 등록 시 활동에 띄움).
+ *
+ *  너 나와와 같은 자리에 꽂힌다 — 결과가 아직 없으면 '앞으로 있을 일'이라 지금 위에,
+ *  결과가 들어오면 그 경기가 열린 때에. 그 판단은 서버가 이미 순서로 내려주므로 여기서는
+ *  표시용 시각(약속한 때)만 들고 있으면 된다. */
+interface LeagueMatchItem {
+  kind: "leagueMatch";
+  time: number;
+  withClock: boolean;
+  match: LeagueMatchActivity;
+}
+
+type ActivityItem = ChallengeItem | GameResultItem | RankingShiftItem | LeagueMatchItem;
 
 // 같은 '세션'의 게임결과가 활동에서 2개 이상 연속되면 겹침 스택 하나로 묶는다.
 export interface GameResultPostItem {
@@ -189,6 +202,16 @@ function challengeSortMs(c: Challenge): number {
   return new Date(`${c.scheduledDate}T00:00:00`).getTime() + SESSION_DAY_START_HOUR * 3600_000;
 }
 
+function leagueMatchItem(m: LeagueMatchActivity): LeagueMatchItem {
+  return {
+    kind: "leagueMatch",
+    // 일정이 없으면 목록에 안 오지만, 만에 하나 비어 오면 등록 시각으로 물러선다.
+    time: serverMs(m.scheduledAt ?? m.postedAt),
+    withClock: true,
+    match: m,
+  };
+}
+
 export function gameResultItem(m: GameResult): GameResultItem {
   const started = m.gameStartedAt ? serverMs(m.gameStartedAt) : null;
   return {
@@ -220,14 +243,16 @@ export function sessionDateOf(it: GameResultItem): string {
 function rowKeyOf(it: DisplayItem): string {
   return it.kind === "challenge" ? `c-${it.challenge.id}`
     : it.kind === "rankingShift" ? `rs-${it.shift.id}`
-      : it.kind === "gameResultPost" ? `ms-${it.items[0].gameResult.id}`
-        : `m-${it.gameResult.id}`;
+      : it.kind === "leagueMatch" ? `lm-${it.match.id}`
+        : it.kind === "gameResultPost" ? `ms-${it.items[0].gameResult.id}`
+          : `m-${it.gameResult.id}`;
 }
 
 /** 그 줄이 무엇에 대한 것인가 — 카드 머리의 제목과 같은 말을 쓴다. */
 function rowTitleOf(it: DisplayItem): string {
   return it.kind === "challenge" ? "너 나와!"
-    : it.kind === "rankingShift" ? RANK_SHIFT_TITLE : "게임결과";
+    : it.kind === "rankingShift" ? RANK_SHIFT_TITLE
+      : it.kind === "leagueMatch" ? "리그" : "게임결과";
 }
 
 /* (삭제) needsReview — '사람 눈이 꼭 필요한 건'만 골라 검토창으로 보내던 판정이다.
@@ -643,6 +668,10 @@ export default function ActivityScreen() {
     () => feedItems.flatMap((it) => (it.rankingShift ? [it.rankingShift] : [])),
     [feedItems],
   );
+  const leagueMatches = useMemo(
+    () => feedItems.flatMap((it) => (it.leagueMatch ? [it.leagueMatch] : [])),
+    [feedItems],
+  );
   /* 댓글도 같은 응답에 실려 온다 — 카드마다 따로 부르면 답이 제각각 도착하며 카드 키가
      뒤늦게 자라, 들어올 때 "현재"에 맞춰 둔 자리가 그만큼 밀린다. 페이지를 이어 받을
      때마다 다시 담는다(표는 통째로 새로 만든다). */
@@ -787,11 +816,12 @@ export default function ActivityScreen() {
       ...challenges.map(challengeItem),
       ...gameResults.map(gameResultItem),
       ...rankShifts.map(rankShiftItem),
+      ...leagueMatches.map(leagueMatchItem),
     ];
     // 정렬 기준은 time이 아니라 sortTime이다 — 너 나와만 표시용 시각과 꽂히는 자리가
     // 다르다(위 challengeSortMs). 나머지는 sortTime이 없어 time을 그대로 쓴다.
     return items.sort((a, b) => sortMsOf(b) - sortMsOf(a));
-  }, [challenges, gameResults, rankShifts]);
+  }, [challenges, gameResults, rankShifts, leagueMatches]);
 
   /* 예전에는 여기서 "이미 불러온 가장 오래된 경기보다 과거인 너나와·변동"을 보류했다 —
      경기만 페이지로 나눠 받고 나머지는 통째로 받았기에, 아직 안 받은 경기 자리에 옛
@@ -855,6 +885,13 @@ export default function ActivityScreen() {
         }
         if (item.kind === "challenge") {
           return searchTerms.every((term) => challengeMatchesTerm(item.challenge, term));
+        }
+        // 리그 경기는 두 팀 이름(로스터 닉네임을 이은 것)으로 걸린다.
+        if (item.kind === "leagueMatch") {
+          const text = normalizeSearchText(
+            [item.match.teamA, item.match.teamB, item.match.leagueName].filter(Boolean).join(" "),
+          );
+          return searchTerms.every((term) => text.includes(term));
         }
         // 좌우 두 칸(개인전·팀전)을 함께 훑는다 — 어느 칸에 걸리든 그 카드는 검색에 맞다.
         const names = item.shift.sections
@@ -930,6 +967,17 @@ export default function ActivityScreen() {
       // 새로 올라온 줄마다 NEW와 UPDATE가 나란히 붙는다. 같은 트랜잭션 안에서도 초 단위
       // 아래로는 어긋날 수 있어 몇 초의 여유를 둔다.
       if (updated - created > TOUCHED_SLACK_MS && fresh(updated)) flags.push("update");
+      return flags;
+    }
+    if (it.kind === "leagueMatch") {
+      /* 일정 등록이 NEW, 그 뒤의 일정 수정·결과 입력이 UPDATE다(요청) — 너 나와와 같은
+         규칙이라 판정도 같다. 서버가 두 시각을 따로 내려주므로(postedAt·updatedAt) 여기서는
+         비교만 한다: 등록하는 순간엔 둘이 같게 찍혀 몇 초의 여유를 둔다. */
+      const posted = serverMs(it.match.postedAt);
+      const updated = serverMs(it.match.updatedAt);
+      const flags: ("new" | "update")[] = [];
+      if (fresh(posted)) flags.push("new");
+      if (updated - posted > TOUCHED_SLACK_MS && fresh(updated)) flags.push("update");
       return flags;
     }
     if (it.kind === "rankingShift") return fresh(serverMs(it.shift.createdAt)) ? ["new"] : [];
@@ -1055,6 +1103,33 @@ export default function ActivityScreen() {
         </>
       );
     }
+    if (item.kind === "leagueMatch") {
+      /* 리그 경기 한 줄 — 너 나와와 같은 "A → B" 꼴로 두 팀을 세운다. 앞에는 어느
+         리그의 몇 강인지, 뒤에는 결과가 있으면 점수까지. */
+      /* 라운드 이름("8강")은 줄에 안 적는다 — 좁은 화면에서 재어 보니 배지·두 팀·점수까지
+         한 줄에 다 넣으면 이름이 잘리고 화살표가 밀려 사라졌다(실측 390px). 어느 리그의
+         몇 강인지는 줄을 펴면 카드 머리가 "여름 리그 8강"으로 말한다. */
+      const m = item.match;
+      return (
+        <>
+          <span className="scr-activity-row-name">
+            <span className="scr-activity-row-name-main">{m.teamA ?? "미정"}</span>
+          </span>
+          <span className="scr-activity-row-arrow" aria-hidden>→</span>
+          <span className="scr-activity-row-name">
+            <span className="scr-activity-row-name-main">{m.teamB ?? "미정"}</span>
+          </span>
+          {m.setsWonA !== null && m.setsWonB !== null && (
+            <>
+              <span className="scr-activity-row-sep">·</span>
+              <span className="scr-activity-row-em scr-activity-row-score">
+                {m.setsWonA}:{m.setsWonB}
+              </span>
+            </>
+          )}
+        </>
+      );
+    }
     if (item.kind === "rankingShift") {
       // 같은 사람이 개인전·팀전에 다 올랐으면 한 번만 부른다.
       const names: string[] = [];
@@ -1084,7 +1159,19 @@ export default function ActivityScreen() {
      사라지고 삭제 불가). 경기가 한 판뿐인 묶음도 마찬가지라, 카드가 몇 장인지로는 가를 수
      없어서 어느 쪽인지를 여기서 표시한다. */
   const renderCard = (item: DisplayItem) => (
-    item.kind === "rankingShift" ? (
+    item.kind === "leagueMatch" ? (
+      <div
+        className="scr-activity-card-stack-wrapper scr-activity-card-head-off"
+        key={`lm-${item.match.id}`}
+      >
+        <LeagueMatchCard
+          match={item.match}
+          timeText={formatWhen(item.time, { clock: item.withClock })}
+          dateLabel={dateLabelOf(item)}
+          footer={<ActivityCardComments targetType="leagueMatch" targetId={item.match.id} />}
+        />
+      </div>
+    ) : item.kind === "rankingShift" ? (
       <div
         className="scr-activity-card-stack-wrapper scr-activity-card-head-off"
         key={`rs-${item.shift.id}`}

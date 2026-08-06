@@ -183,7 +183,7 @@ export interface RankingShift {
 
 // 활동 댓글 — 대상(targetType, targetId)이 경기든 너 나와!든 순위변동 알림이든
 // 같은 API 하나로 달린다.
-export type ActivityTargetType = "gameResult" | "challenge" | "rankingShift";
+export type ActivityTargetType = "gameResult" | "challenge" | "rankingShift" | "leagueMatch";
 export interface ActivityComment {
   id: number;
   targetType: ActivityTargetType;
@@ -595,14 +595,38 @@ export interface MapCatalog {
  *  화면의 한 줄이 곧 하나다. kind에 따라 채워지는 칸이 다를 뿐, 줄을 세우고 번호를 붙이고
  *  댓글을 다는 규칙은 셋이 똑같다. 게임결과만 여럿인 것은 한 자리에서 이어 친 경기가
  *  한 줄이기 때문이다. */
+/** 활동 목록에 뜨는 리그 경기 하나 — 일정이 적힌 경기만 온다(요청: 리그 매치에 일정
+ *  등록 시 활동에 띄움). 대진표의 좌표(round·slot)나 대타 명단은 여기 없다: 활동 목록이
+ *  알아야 하는 건 '언제 누가 붙나, 결과가 나왔나'뿐이다.
+ *
+ *  팀 이름은 로스터 닉네임을 이어 붙인 것이다 — 라벨(A·B)은 대진표 밖에서는 뜻이 없다. */
+export interface LeagueMatchActivity {
+  id: number;
+  leagueId: number;
+  leagueName: string;
+  /** "8강"처럼 사람이 부르는 라운드 이름. */
+  roundName: string;
+  teamA: string | null;
+  teamB: string | null;
+  scheduledAt: string | null;
+  setsWonA: number | null;
+  setsWonB: number | null;
+  winnerTeam: string | null;
+  /** 일정을 처음 적어 둔 때 — NEW의 기준. */
+  postedAt: string;
+  /** 마지막으로 손댄 때(일정 수정·결과 입력) — UPDATE의 기준. */
+  updatedAt: string;
+}
+
 export interface ActivityFeedItem {
   key: string;
-  kind: "challenge" | "rankingShift" | "gameResultPost";
+  kind: "challenge" | "rankingShift" | "gameResultPost" | "leagueMatch";
   /* 줄 번호(no)는 화면에서 걷어냈다(요청: "별 의미 없는 듯") — 서버는 아직 실어 보내지만
      쓰는 곳이 없어 여기서도 받지 않는다. */
   challenge?: Challenge | null;
   rankingShift?: RankingShift | null;
   gameResults: GameResult[];
+  leagueMatch?: LeagueMatchActivity | null;
   /** 이 줄에 달린 댓글 전부. 각 댓글이 제 대상을 들고 있어 카드가 자기 것을 찾아 붙는다. */
   comments: ActivityComment[];
 }
