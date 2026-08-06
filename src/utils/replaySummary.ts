@@ -3895,22 +3895,19 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     if (b.k !== "clash") continue;
     consider(b, false, "clash");
   }
-  // 이야기의 뼈대는 시간이다(지적) — 편끼리 묶는다고 시간을 넘나들면 앞뒤가 뒤집혀 읽힌다.
-  // 그래서 먼저 시간순으로 세우고, 같은 편 이야기를 붙이는 건 '거의 같은 때'에 벌어진
-  // 일들 안에서만 한다. 시점을 못 잡은 문장(올인처럼 한 순간이 아닌 것)은 맺음말 앞으로 밀린다.
-  // 진 편의 맺음(stand)은 그중에서도 맨 뒤다 — 결론을 다른 사건들 사이에 끼워 넣으면
-  // "역부족", "판을 뒤집지 못함" 같은 말이 초반 이야기보다 먼저 나온다(지적).
-  /* GG는 그 판의 마지막 사건이다(지적: GG를 치고도 뒤에 스냅이 두 개나 더 이어진다) —
-     시간만으로 세우면 시점을 못 잡은 문장(총 생산량·소모전 …)과 진 편의 맺음이 그 뒤로
-     밀려, 이미 항복한 사람이 그 뒤에 무언가를 한 것처럼 읽힌다. 실측(GG가 나온 14판):
-     GG 뒤에 스냅이 셋 이상인 판이 11판이었고 대부분 [stand → 맺음말 → 승패]였다.
-     GG를 꼬리의 맨 뒤로 보내면 그 뒤에는 맺음말과 승패만 남는다 — 그 둘은 요청으로
-     못 박은 결론 한 벌이다(결론 전투 내용과 승패를 나눠서 스냅으로). */
-  const tailRank = (b: Beat): number =>
-    (b.k === "gg" ? 3
-      : b.k === "stand" && !b.won ? 2
-        : b.at === null || b.at === undefined ? 1 : 0);
-  chosen.sort((a, b) => tailRank(a) - tailRank(b) || (a.at ?? Infinity) - (b.at ?? Infinity));
+  /* 이야기의 뼈대는 시간이다 — 후보를 모두 시간순으로 세우고, 그 순서는 이 뒤로 절대
+     바꾸지 않는다(요청). 이 줄 뒤에 남은 일은 '그중 무엇을 태울까'뿐이다.
+
+     예전에는 여기서 꼬리를 따로 세웠다(GG를 맨 뒤로, 진 편의 맺음을 그 앞으로). 이유는
+     "이미 항복한 사람 뒤에 다른 일이 이어지면 이상하다"였는데, 자막이 [42:17]처럼 초까지
+     적는 지금은 순서를 손대는 쪽이 훨씬 더 이상하게 읽힌다 — 실제로 GG 42:17 뒤에 역공
+     42:38이 있던 판에서 시각이 거꾸로 갔다(지적). GG를 치고도 더 맞았으면 그게 그 판의
+     그림이다. 시점을 못 잡은 문장(올인처럼 한 순간이 아닌 것)만 시각이 없어 뒤로 간다.
+
+     정렬은 안정 정렬이라 시각이 같은 것들끼리는 넣은 차례가 그대로 남는다. */
+  const timeOf = (b: Beat): number =>
+    (typeof b.at === "number" ? b.at : Number.POSITIVE_INFINITY);
+  chosen.sort((a, b) => timeOf(a) - timeOf(b));
   /* (삭제) 시간순을 조금 어기면서까지 이야기를 다듬던 두 규칙 — ① 같은 편 문장 사이에
      낀 다른 편 문장을 비켜 세우기, ② 당한 문장을 그 사람의 제 문장 뒤로 밀기.
      둘 다 "자막에 적히는 분이 거꾸로 가지 않을 때만" 바꾼다는 안전장치를 달고 있었는데,
@@ -4166,14 +4163,9 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   };
 
   /* 막아 냄·역공은 자리 다툼을 거치지 않는다 — 맺음말과 한 벌인 결말 장면이라 늘 들어가야
-     한다(요청). 시간순 자리에 끼워 넣되 이미 잡힌 순서는 건드리지 않는다: 위 두 규칙이
-     같은 분 안에서 손봐 둔 앞뒤가 다시 흐트러지면 안 된다. */
-  for (const b of standBeats) {
-    const i = chosen.findIndex(
-      (x) => typeof x.at === "number" && typeof b.at === "number" && x.at > b.at,
-    );
-    if (i < 0) chosen.push(b); else chosen.splice(i, 0, b);
-  }
+     한다(요청). 넣는 자리는 다른 후보와 똑같이 제 시각이 정한다. */
+  chosen.push(...standBeats);
+  chosen.sort((a, b) => timeOf(a) - timeOf(b));
 
   const moves: Record<string, [number, number, number][]> = {};
   for (const [raw, list] of moveList) moves[raw] = list;
@@ -4209,23 +4201,14 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
         if (end === undefined || (typeof b.at === "number" && end < b.at)) continue;
         chosen[i] = { ...b, p: { ...(b.p ?? {}), out: true } };
       }
-      const i = chosen.findIndex((b) => b.k === "gg" && typeof b.at === "number");
+      /* 맺음말과 승패는 사건이 아니라 이야기의 맺음이라 늘 맨 뒤 한 벌이다(요청: 결론
+         전투 내용과 승패를 나눠서 스냅으로). 앞의 사건들은 시간순 그대로 두고 여기에만
+         붙인다 — 맺음말에 마지막 사건의 시각을 주는 건 타임라인 눈금이 at을 쓰기
+         때문이다(시각이 없으면 눈금만 맨 오른쪽으로 튄다). */
       const lastAt = Math.max(
         ...chosen.map((b) => (typeof b.at === "number" && Number.isFinite(b.at) ? b.at : -1)),
       );
-      if (i < 0) {
-        return [...chosen, ...(lastAt >= 0 ? [{ ...ending, at: lastAt }] : [ending]), verdict];
-      }
-      const gg = chosen[i];
-      /* GG를 친 뒤에도 일이 더 있었던 판 — 이긴 쪽이 몇십 초 더 밀고 들어간 그림이다
-         (실측: GG 42:17 뒤에 역공 42:38). 이런 판에서 GG를 꼬리로 옮기면 자막의 시각이
-         거꾸로 간다(지적: 스냅 시간이 반대로 간다). 그때는 GG를 제자리에 두고 맺음말만
-         마지막 시각으로 받는다 — 어차피 "GG를 치고도 더 맞았다"가 실제 그림이다. */
-      if (typeof gg.at === "number" && gg.at < lastAt) {
-        return [...chosen, { ...ending, at: lastAt }, verdict];
-      }
-      chosen.splice(i, 1);
-      return [...chosen, { ...ending, at: gg.at }, gg, verdict];
+      return [...chosen, ...(lastAt >= 0 ? [{ ...ending, at: lastAt }] : [ending]), verdict];
     })().map(strip).map(withCastPlace).map((b) => {
       const pos = beatPositions(b, byName);
       /* 나간 것이 확인된 생산담은 '나간 자리'를 그 이야기의 자리로 덮어쓴다(요청: 센터도

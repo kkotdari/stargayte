@@ -1330,7 +1330,11 @@ const TEMPLATES: Record<string, Tpl> = {
       if (placeRaw === "") return "센터에서 ";
       const owner = c.names([placeRaw])[0];
       if (!owner) return "";
-      if (owner === c.who) return "제 진영을 지키며 ";
+      /* 제 기지에서 마법을 썼다는 건 상대가 그 안까지 들어왔다는 뜻이다 — '지키며'로
+         뭉뚱그리면 공격받았다는 사실이 문장에서 사라진다(지적: 사실상 공격당한 건데
+         이상하다. 공격자 우선 원칙에도 안 맞는다). 누가 들어왔는지 알면 그 사람을
+         앞세우고, 그 자리에 상대가 있었는지까지는 모르는 판에서는 자리만 말한다. */
+      if (owner === c.who) return fight && foeWord ? "제 진영에 들어온 " : "제 진영에서 ";
       // 맞붙은 이야기를 할 때는 그 기지가 싸움터라는 뜻이라 '에'가 아니라 '에서'다.
       if (fight) return `${owner}의 기지에서 `;
       return c.p.def === true ? `${owner}의 기지를 지키며 ` : `${owner}의 기지에 `;

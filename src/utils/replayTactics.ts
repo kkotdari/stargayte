@@ -134,7 +134,7 @@ export function burstsOf(frames: number[]): { from: number; to: number; n: numbe
    한계: 리플레이에는 파괴가 없어 부서진 생산 건물도 계속 뽑는 것으로 계산되고, 건물은
    건설 커맨드 시점부터 쓸 수 있다고 본다(완성까지의 시간만큼 조금 넉넉하다). 둘 다 수를
    부풀리는 쪽이라, 여기서 나온 값은 '많아야 이만큼'이다. */
-const UNIT_BUILD_FRAMES: Record<string, { frames: number; from: string }> = {
+const UNIT_BUILD_FRAMES: Record<string, { frames: number; from?: string }> = {
   Carrier: { frames: 2100, from: "Stargate" },
   Battlecruiser: { frames: 2000, from: "Starport" },
   /* 커맨드는 '큐에 넣은 명령'이라 연타·큐 쌓기가 그대로 유닛 수가 된다(위 주석의 캐리어
@@ -162,39 +162,123 @@ const UNIT_BUILD_FRAMES: Record<string, { frames: number; from: string }> = {
   Scout: { frames: 1904, from: "Stargate" },
   Corsair: { frames: 952, from: "Stargate" },
   Arbiter: { frames: 3809, from: "Stargate" },
+  Shuttle: { frames: 1428, from: "Robotics Facility" },
+  Reaver: { frames: 1666, from: "Robotics Facility" },
+  Observer: { frames: 952, from: "Robotics Facility" },
+  /* 일꾼도 마찬가지로 큐가 쌓인다 — 넥서스 하나로 1분 30초에 프로브 서른여덟은 나올 수
+     없는데 커맨드로만 세면 그렇게 나온다(째기 판정을 만들며 실측). */
+  Probe: { frames: 476, from: "Nexus" },
+  SCV: { frames: 476, from: "Command Center" },
+  /* 저그도 같은 자로 잰다(요청: 단일 로직으로 통일) — 다만 저그는 자리 다툼이 없다.
+     라바 변태는 라바 한 마리에 커맨드 하나라 큐를 쌓을 수가 없다(게이트웨이처럼 다섯 개를
+     미리 눌러 둘 방법이 없다). 즉 커맨드 프레임이 곧 '실제로 뽑기 시작한' 시각이고, 라바가
+     모자랐다는 사실은 이미 커맨드가 안 찍힌 것으로 기록에 남아 있다. 그래서 from 없이
+     생산시간만 더한다 — 자리 다툼을 흉내 내면 이미 반영된 제약을 두 번 거는 셈이 된다
+     (실측: 라바를 자리로 모형화했더니 55초에 드론 다섯이 셋으로 줄었다).
+     럴커·가디언처럼 이미 있는 유닛을 다시 변태시키는 것은 어미 유닛 수가 이미 상한이라
+     표에 올리지 않는다. */
+  Drone: { frames: 476 },
+  Zergling: { frames: 667 },
+  Hydralisk: { frames: 667 },
+  Scourge: { frames: 714 },
+  Overlord: { frames: 952 },
+  Mutalisk: { frames: 952 },
+  Queen: { frames: 1190 },
+  Defiler: { frames: 1190 },
+  Ultralisk: { frames: 1428 },
 };
 
-/* 생산 건물도 지어지는 데 시간이 걸린다 — buildingFrames에 남는 건 '짓기 시작한' 프레임이라,
-   그대로 쓰면 게이트를 누른 그 순간부터 질럿이 나오는 셈이 된다. 표에 없는 건물은 0이다. */
-const BUILDING_BUILD_FRAMES: Record<string, number> = {
-  Gateway: 1428, Barracks: 1904, Factory: 1904, Starport: 1666, Stargate: 1666,
+/** 생산 건물 한 채의 성질 — 다 지어지기까지(ready)와, 판을 시작할 때 이미 한 채가 서
+ *  있는지(start; buildingFrames에는 '지은' 것만 남아 첫 본진이 통째로 빠진다).
+ *
+ *  buildingFrames에 남는 건 '짓기 시작한' 프레임이라 ready를 안 더하면 게이트를 누른 그
+ *  순간부터 질럿이 나오는 셈이 된다. 표에 없는 건물은 ready 0이다. */
+const PRODUCERS: Record<string, { ready: number; start?: true }> = {
+  Gateway: { ready: 1428 },
+  Barracks: { ready: 1904 },
+  Factory: { ready: 1904 },
+  Starport: { ready: 1666 },
+  Stargate: { ready: 1666 },
+  "Robotics Facility": { ready: 1904 },
+  Nexus: { ready: 2857, start: true },
+  "Command Center": { ready: 2857, start: true },
 };
 
-/** 그 유닛이 실제로 완성됐을 프레임들 — 생산 건물 수를 상한으로 큐를 흉내 내고, 판이
- *  끝나기 전에 나오지 못한 것은 버린다. 표에 없는 유닛이나 생산 건물을 못 읽은 경우엔
- *  손대지 않고 커맨드 프레임을 그대로 돌려준다. */
+const producedCache = new WeakMap<ReplayPlayerSignals, Map<number, Map<string, number[]>>>();
+
+/** 그 사람이 실제로 뽑아낼 수 있었던 유닛들의 완성 프레임 — 유닛마다 따로가 아니라 한
+ *  번에 계산한다(요청: 단일 로직으로 통일).
+ *
+ *  따로 계산하면 게이트웨이를 질럿과 드라군이 각자 통째로 쓰는 것이 되고, 라바를 드론과
+ *  저글링이 각자 통째로 쓰는 것이 된다. 실제로는 한 생산 자리를 모두가 나눠 쓰므로, 모든
+ *  생산 커맨드를 시간순으로 한 줄로 세워 가장 먼저 비는 자리에 넣는다.
+ *
+ *  한계: 리플레이에는 파괴가 없어 부서진 생산 건물도 계속 뽑는 것으로 계산된다. 수를
+ *  부풀리는 쪽이라 여기서 나온 값은 '많아야 이만큼'이다. */
+function producedAll(s: ReplayPlayerSignals, endFrame: number | null): Map<string, number[]> {
+  const key = endFrame ?? -1;
+  let byEnd = producedCache.get(s);
+  if (!byEnd) { byEnd = new Map(); producedCache.set(s, byEnd); }
+  const hit = byEnd.get(key);
+  if (hit) return hit;
+
+  const pools = new Map<string, number[]>();
+  const poolOf = (from: string): number[] => {
+    const seen = pools.get(from);
+    if (seen) return seen;
+    const spec = PRODUCERS[from];
+    const ready = spec?.ready ?? 0;
+    const starts = [...(s.buildingFrames[from] ?? [])];
+    // 첫 본진은 지은 것이 아니라 처음부터 서 있다 — 프레임 0에 다 지어진 것으로 둔다.
+    if (spec?.start) starts.push(-ready);
+    const free = starts.map((f) => f + ready);
+    pools.set(from, free);
+    return free;
+  };
+
+  const jobs: { f: number; unit: string }[] = [];
+  for (const [unit, fs] of Object.entries(s.unitFrames)) {
+    if (!UNIT_BUILD_FRAMES[unit]) continue;
+    for (const f of fs) jobs.push({ f, unit });
+  }
+  jobs.sort((a, b) => a.f - b.f);
+
+  const out = new Map<string, number[]>();
+  const put = (unit: string, f: number) => {
+    const at = out.get(unit);
+    if (at) at.push(f); else out.set(unit, [f]);
+  };
+  for (const j of jobs) {
+    const spec = UNIT_BUILD_FRAMES[j.unit];
+    const free = spec.from === undefined ? null : poolOf(spec.from);
+    // 자리 다툼이 없는 유닛(저그)과, 생산 건물을 하나도 못 읽은 기록은 커맨드 시각에서
+    // 곧바로 뽑기 시작한 것으로 본다 — 뒤쪽을 여기서 걸러 버리면 그 유닛이 통째로 사라진다.
+    let start = j.f;
+    if (free !== null && free.length > 0) {
+      // 가장 먼저 비는 생산 건물에 넣는다 — 비어 있으면 곧바로, 아니면 빌 때까지 줄을 선다.
+      let idx = 0;
+      for (let i = 1; i < free.length; i += 1) if (free[i] < free[idx]) idx = i;
+      start = Math.max(j.f, free[idx]);
+      free[idx] = start + spec.frames;
+    }
+    const at = start + spec.frames;
+    // 판이 끝나기 전에 나오지 못한 것은 버린다 — 큐에 쌓아 두고 끝난 생산이다.
+    if (endFrame === null || at <= endFrame) put(j.unit, at);
+  }
+  byEnd.set(key, out);
+  return out;
+}
+
+/** 그 유닛이 실제로 완성됐을 프레임들. 표에 없는 유닛은 손대지 않고 커맨드 프레임을 그대로
+ *  돌려준다(producedAll). */
 export function producedFrames(
   s: ReplayPlayerSignals,
   unit: string,
   endFrame: number | null
 ): number[] {
   const cmds = [...(s.unitFrames[unit] ?? [])].sort((a, b) => a - b);
-  const spec = UNIT_BUILD_FRAMES[unit];
-  if (!spec || cmds.length === 0) return cmds;
-  const producers = s.buildingFrames[spec.from] ?? [];
-  if (producers.length === 0) return cmds;
-  const ready = BUILDING_BUILD_FRAMES[spec.from] ?? 0;
-  const freeAt = producers.map((f) => f + ready).sort((a, b) => a - b);
-  const out: number[] = [];
-  for (const f of cmds) {
-    // 가장 먼저 비는 생산 건물에 넣는다 — 비어 있으면 곧바로, 아니면 그 건물이 빌 때까지 줄을 선다.
-    let idx = 0;
-    for (let i = 1; i < freeAt.length; i += 1) if (freeAt[i] < freeAt[idx]) idx = i;
-    const at = Math.max(f, freeAt[idx]) + spec.frames;
-    freeAt[idx] = at;
-    if (endFrame === null || at <= endFrame) out.push(at);
-  }
-  return out;
+  if (!UNIT_BUILD_FRAMES[unit] || cmds.length === 0) return cmds;
+  return producedAll(s, endFrame).get(unit) ?? [];
 }
 
 /* '한때 몇 기나 함께 떠 있었나'를 재는 창 — 캐리어(약 1분 반)·배틀크루저(약 2분)의
@@ -325,16 +409,55 @@ const GREEDY_MASS_SEC = GREEDY_BUILD_SEC;
  *  2면 해처리 셋이다(요청). 다른 종족은 하나만 늘려도(생더블) 순서가 곧 증거다. */
 const GREEDY_BARE_EXPANDS_Z = 2;
 /** 병력 건물이 있는데도 째기로 보려면 늘린 본진이 이만큼은 돼야 한다 — 첫 본진을 뺀
- *  수라 4면 해처리 다섯이다(요청: 풀이 있어도 병력·성큰 없이 해처리 다섯이면 째기). */
-const GREEDY_MIN_EXPANDS = 4;
+ *  수라 4면 해처리 다섯이다(요청: 풀이 있어도 병력·성큰 없이 해처리 다섯이면 째기).
+ *  저그만 이렇게 높다. 원래 해처리를 여러 개 가는 종족이라 수만 세면 정상적인 운영이 죄다
+ *  째기가 된다. 프로토스·테란은 초반에 본진을 둘씩 늘리는 것 자체가 이미 짼 것이다. */
+const GREEDY_MIN_EXPANDS_Z = 4;
+const GREEDY_MIN_EXPANDS = 2;
 /** 늘린 몫 하나당 이만큼의 병력(생산 명령 수)은 있어야 '막으면서 늘렸다'로 본다. */
 const GREEDY_ARMY_PER_BASE = 2;
+/** 확장을 올린 뒤 이만큼 지켜보고 판정한다(지적: 째기 판정 기준이 허술하다).
+ *
+ *  째기는 '순간'이 아니라 '구간'의 성질이다 — 확장을 올린 그 순간에는 누구나 병력이 없다.
+ *  예전엔 확장 프레임에서 그대로 병력을 셌는데, 그러면 성큰을 열 개 박고 째지 않은 저그도
+ *  (성큰이 아직 안 올라간 시점이라) 째기로 잡혔다. 확장 뒤 이만큼 동안 병력과 방어탑이
+ *  따라 올라왔는지를 보면 '막으면서 늘렸다'와 '째고 늘렸다'가 갈린다. */
+const GREEDY_SPAN_SEC = 90;
+/** 같은 구간에 일꾼이 이만큼은 늘어야 째기다(요청: 째기는 일꾼과 건물 수가 증가하는 것).
+ *
+ *  병력도 일꾼도 안 늘어난 구간은 째는 것이 아니라 그냥 눌려 있는 것이다 — 실측한
+ *  리플레이에도 확장은 다섯인데 90초 동안 일꾼이 한 기 늘어난(= 계속 얻어맞은) 판이
+ *  째기로 잡혀 있었다. */
+const GREEDY_WORKER_GROW = 4;
 /** 방어탑 하나를 병력 몇 몫으로 셀지 — 성큰·포토·벙커는 병력을 대신한다. */
 const GREEDY_DEF_WORTH = 2;
 /** 방어탑으로 세는 건물. 성큰·스포어는 크립 콜로니로 지어지므로 그것도 함께 본다. */
 const DEF_BUILDINGS = [
   "Creep Colony", "Sunken Colony", "Spore Colony", "Photon Cannon", "Bunker", "Missile Turret",
 ];
+/** 테크 건물 — 병력을 뽑는 대신 자원을 부은 곳이다(요청: 방어건물·병력에 견줘 기지건물과
+ *  테크건물의 비중이 높아야 짼 것이다). 레어·하이브도 테크 투자라 함께 센다. */
+const TECH_BUILDINGS: Record<string, string[]> = {
+  저그: [
+    "Lair", "Hive", "Evolution Chamber", "Hydralisk Den", "Spire", "Greater Spire",
+    "Queen's Nest", "Defiler Mound", "Ultralisk Cavern", "Nydus Canal",
+  ],
+  // 생산 건물(게이트·배럭·팩토리·스타포트·로보·스타게이트)은 prod로 이미 세므로 여기서는
+  // 뺀다 — 두 번 세면 그쪽으로만 저울이 기운다.
+  프로토스: [
+    "Forge", "Cybernetics Core", "Citadel of Adun", "Templar Archives",
+    "Robotics Support Bay", "Observatory", "Fleet Beacon", "Arbiter Tribunal",
+  ],
+  테란: [
+    "Engineering Bay", "Academy", "Armory", "Science Facility",
+    "Machine Shop", "Control Tower", "Covert Ops", "Physics Lab",
+  ],
+};
+/** 테크 건물 한 채를 늘린 몫 몇으로 셀지 — 본진 한 채보다는 가볍다. */
+const GREEDY_TECH_WORTH = 0.5;
+/** 저그는 해처리가 기지이면서 생산 건물이라 수만으로는 짼 것인지 알 수 없다(요청) —
+ *  해처리가 진짜 많고 테크 건물까지 올렸을 때만 짼 것이다. */
+const GREEDY_TECH_MIN_Z = 1;
 /** 병력으로 세지 않는 것 — 일꾼과 수송·정찰용, 그리고 알 단계. */
 const PEACE_UNITS = new Set([
   "SCV", "Probe", "Drone", "Larva", "Egg", "Overlord", "Cocoon", "Mutalisk Cocoon", "Lurker Egg",
@@ -1112,28 +1235,52 @@ function detectFor(c: Ctx): Tactic[] {
     return f.length > 0 ? Math.max(...f) : null;
   };
 
-  // 째기의 기준은 하나다 — 병력과 방어탑에 견줘 본진(가장 중요)이나 생산건물을 늘렸나(요청).
-  // 저그는 원래 해처리를 여러 개 가는 종족이라, 수만 세면 정상적인 운영이 죄다 째기가 된다
-  // (지적: 너무 째기가 잘 나온다). 그래서 두 갈래로만 본다.
-  //  ① 병력 건물도 없이 늘렸을 때 — 저그는 스포닝풀 없이 해처리 셋, 프로토스·테란은
-  //     게이트·배럭 없는 더블. 순서 자체가 증거다.
-  //  ② 병력 건물은 있어도 병력도 방어탑도 없이 늘리기만 했을 때 — 늘린 수에 견줘 본다.
+  // 째기 — 병력이나 방어탑 비율이 낮은 채로 일꾼과 건물 수가 늘어나는 것(요청).
+  //
+  // 확장 한 채를 올린 그 순간을 보는 것이 아니라, 올린 뒤 GREEDY_SPAN_SEC 동안을 본다.
+  // 그 구간에 ① 일꾼이 늘었고 ② 늘린 본진·생산건물에 견줘 병력과 방어탑이 안 따라왔으면
+  // 째기다. 확장 순간만 보던 예전 기준은 아직 성큰이 안 올라간 시점을 집어 '막으면서 늘린'
+  // 쪽까지 째기로 읽었고, 얻어맞느라 일꾼이 못 늘어난 판도 째기로 읽었다(지적).
+  //
+  // 몇 채부터 볼지는 순서가 정한다 — 병력 건물보다 먼저 늘렸으면(저그는 스포닝풀 없이
+  // 해처리 셋, 나머지는 게이트·배럭 없는 더블) 그 자체가 증거라 문턱이 낮고, 병력 건물을
+  // 먼저 지었으면 늘린 수가 GREEDY_MIN_EXPANDS는 돼야 한다(저그는 원래 해처리를 여러 개
+  // 가는 종족이라 수만 세면 정상적인 운영이 죄다 째기가 된다).
   {
     const base = race === "저그" ? "Hatchery" : race === "프로토스" ? "Nexus" : "Command Center";
     const military = race === "저그" ? "Spawning Pool" : race === "프로토스" ? "Gateway" : "Barracks";
     const prod = race === "저그" ? [] : race === "프로토스"
       ? ["Gateway", "Robotics Facility", "Stargate"] : ["Barracks", "Factory", "Starport"];
     const before = (b: string, f: number) => (s.buildingFrames[b] ?? []).filter((x) => x < f).length;
+    // 커맨드가 아니라 실제로 나올 수 있었던 수로 센다 — 큐를 쌓아 둔 만큼이 그대로 수가
+    // 되면 넥서스 하나로 1분 반에 프로브 서른여덟이 나온다(producedFrames 주석).
+    const made = new Map<string, number[]>();
+    const madeOf = (unit: string): number[] => {
+      const hit = made.get(unit);
+      if (hit) return hit;
+      const fs = producedFrames(s, unit, endFrame);
+      made.set(unit, fs);
+      return fs;
+    };
+    const upto = (unit: string, f: number) => madeOf(unit).filter((x) => x < f).length;
     /** 그때까지 갖춘 방어력 — 뽑은 병력에 방어탑을 몇 몫으로 얹어 센다. */
     const guarded = (f: number) => {
-      const troops = Object.entries(s.unitFrames)
-        .filter(([n]) => !PEACE_UNITS.has(n))
-        .reduce((n, [, fs]) => n + fs.filter((x) => x < f).length, 0);
+      const troops = Object.keys(s.unitFrames)
+        .filter((n) => !PEACE_UNITS.has(n))
+        .reduce((n, u) => n + upto(u, f), 0);
       return troops + DEF_BUILDINGS.reduce((n, b) => n + before(b, f), 0) * GREEDY_DEF_WORTH;
     };
-    /** 그때까지 늘린 정도 — 본진이 가장 무겁고 생산 건물은 절반 몫이다(요청). */
+    /** 그때까지 올린 테크 건물 수 — 병력 대신 자원을 부은 곳이다(요청). */
+    const teched = (f: number) =>
+      (TECH_BUILDINGS[race] ?? []).reduce((n, b) => n + before(b, f), 0);
+    /** 그때까지 늘린 정도 — 본진이 가장 무겁고, 생산 건물과 테크 건물이 절반 몫이다(요청:
+     *  방어건물·병력에 견줘 기지건물과 테크건물의 비중이 높아야 짼 것이다). */
     const grown = (f: number, i: number) =>
-      i + 1 + Math.max(0, prod.reduce((n, b) => n + before(b, f), 0) - 1) * 0.5;
+      i + 1
+      + Math.max(0, prod.reduce((n, b) => n + before(b, f), 0) - 1) * 0.5
+      + teched(f) * GREEDY_TECH_WORTH;
+    /** 그때까지 뽑은 일꾼 수 — 째기의 본체다(요청: 일꾼과 건물 수가 증가). */
+    const workers = (f: number) => [...WORKER_OF.keys()].reduce((n, w) => n + upto(w, f), 0);
 
     // 병력 건물이 아예 안 보이는 기록은 '늦게 지었다'가 아니라 '기록이 없다'로 봐야 한다 —
     // 그걸 째기로 세면 커맨드만 늘린 판이 죄다 째기가 된다.
@@ -1141,10 +1288,20 @@ function detectFor(c: Ctx): Tactic[] {
     const expands = [...(s.buildingFrames[base] ?? [])].sort((a, b) => a - b);
     const bareFrom = race === "저그" ? GREEDY_BARE_EXPANDS_Z : 1;
     const greedy = expands.find((f, i) => {
-      if (milFrame !== null && milFrame > f) return i + 1 >= bareFrom && sec(f) < GREEDY_BUILD_SEC;
-      return i + 1 >= GREEDY_MIN_EXPANDS
-        && sec(f) < GREEDY_MASS_SEC
-        && guarded(f) < grown(f, i) * GREEDY_ARMY_PER_BASE;
+      if (sec(f) >= GREEDY_MASS_SEC) return false;
+      const bare = milFrame !== null && milFrame > f;
+      const least = bare ? bareFrom
+        : race === "저그" ? GREEDY_MIN_EXPANDS_Z : GREEDY_MIN_EXPANDS;
+      if (i + 1 < least) return false;
+      const to = f + GREEDY_SPAN_SEC / SECONDS_PER_FRAME;
+      // 일꾼이 안 늘었으면 째는 중이 아니다 — 얻어맞고 있는 것이다.
+      if (workers(to) - workers(f) < GREEDY_WORKER_GROW) return false;
+      // 저그의 해처리는 기지이면서 생산 건물이라, '몇 채인가'만으로는 짼 것인지 병력을
+      // 뽑으려고 늘린 것인지 알 수 없다 — 그래서 수로 볼 때는 테크 건물(레어 포함)까지
+      // 올렸을 때만 짼 것으로 본다(요청). 스포닝풀도 없이 늘린 쪽(bare)은 순서가 곧
+      // 증거라 이 잣대를 대지 않는다.
+      if (race === "저그" && !bare && teched(to) < GREEDY_TECH_MIN_Z) return false;
+      return guarded(to) < grown(to, i) * GREEDY_ARMY_PER_BASE;
     }) ?? null;
     if (greedy !== null) {
       out.push({
