@@ -291,6 +291,11 @@ function namesWithRest(names: string[]): ReactNode {
 
 /** 게임결과 묶음에 있었던 사람들 — 컴퓨터·비회원은 "누가 있었나"의 답이 아니라서 뺀다
  *  (요약 카드의 참가자 명단과 같은 규칙). 많이 나온 사람부터 부른다. */
+/** 그 줄이 깔 배경 사진 — 지금은 편지지 배경을 올린 "너 나와!"뿐이다. */
+function rowPhoto(item: DisplayItem): string | null {
+  return item.kind === "challenge" ? item.challenge.backdropUrl : null;
+}
+
 function playersOf(items: GameResultItem[], memberOf: (id: string) => Member | undefined): string[] {
   const seen = new Map<string, { name: string; n: number; won: number }>();
   for (const it of items) {
@@ -1462,7 +1467,20 @@ export default function ActivityScreen() {
                       목록 줄이 이미 "n명 n경기"로 그 요약을 말했다. */}
                   {(open || closing) && (
                     <div className={cx("scr-activity-row-fold", open ? "scr-activity-row-fold-open" : "scr-activity-row-fold-closing")}>
-                      <div className="scr-activity-row-body">{renderCard(item)}</div>
+                      {/* 배경 사진은 카드 본문이 아니라 이 자리에 깐다(요청: "편지지와
+                          똑같이 댓글창까지 배경 넣을 수 있나") — 카드 본문에만 깔면 편지지
+                          아래 댓글부터는 사진이 뚝 끊겨, 한 장의 편지지가 아니라 사진 붙인
+                          카드 + 별개의 댓글창으로 읽힌다. 줄 본문은 카드와 댓글을 함께
+                          담고 있으므로 여기 깔면 둘이 같은 종이 위에 앉는다. */}
+                      <div
+                        className={cx("scr-activity-row-body", rowPhoto(item) && "scr-activity-row-body-photo")}
+                        {...(rowPhoto(item)
+                          ? { style: { "--card-photo": `url("${rowPhoto(item)}")` } as CSSProperties }
+                          : {})}
+                      >
+                        {rowPhoto(item) && <div className="scr-activity-card-photo" aria-hidden="true" />}
+                        {renderCard(item)}
+                      </div>
                     </div>
                   )}
                 </div>
