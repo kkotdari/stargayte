@@ -2276,7 +2276,7 @@ html:not(.scr-light-theme) .scr-donut-band-label { fill: #fff; }
    세 문제가 한꺼번에 풀리는 자리다. */
 :root {
   /* 값 글자와 메달 사이 */
-  --scr-medal-gap: 6px;
+  --scr-medal-gap: 3px;
 }
 /* 메달은 값 바로 옆이다(요청) — 칸 우상단에 절대배치하던 것을 흐름으로 돌렸다. 값이
    길면 그만큼 밀려 서는 것이 맞고(요청: 자리가 변해도 된다), 그래야 어느 값의 메달인지가
@@ -2391,14 +2391,15 @@ html:not(.scr-light-theme) .scr-donut-band-label { fill: #fff; }
      건설은 도넛 하나 + 건물 다섯 줄, 유닛은 도넛 둘 + 일꾼 한 줄 + 유닛 다섯 줄,
      스킬은 공/방 표 + 스킬 다섯 줄을 담는다. */
   --scr-stat-record-w: 580px;
-  /* 랭크·포인트 줄기의 고정폭(위 .scr-stat-rank-col 주석) — 121 → 108px(요청: 너무 넓다).
-     121px은 오른쪽에 메달 자리를 통째로 비워 두던 시절의 값이다. 메달이 값 옆으로 들어온
-     102px까지 조였다가 120px로 되돌린다 — 메달을 값의 오른쪽에 매달되 값의 가운데 정렬은
-     건드리지 않기로 하면서(요청), 메달이 칸 안에 들어오려면 값 좌우로 그만큼씩 자리가
-     있어야 하기 때문이다: 값 83.1 + 2×(간격 6 + 메달 17.5) = 119px(실측, 네 자리 포인트
-     기준). 예전의 121px과 값이 비슷하지만 이유는 다르다 — 그때는 오른쪽에만 메달 자리를
-     비워 둔 값이었고, 지금은 값이 칸 한가운데에 서기 위한 최소폭이다. */
-  --scr-stat-rank-w: 120px;
+  /* 랭크·포인트 줄기의 고정폭 — 120 → 100px(요청: 너무 넓다).
+     이 칸에 실제로 들어가는 가장 긴 것은 "1234 포인트" 79.2px과 "1위 ▲12" 71.4px이다
+     (실측, 버튼 좌우 패딩 포함). 100px이면 값 좌우로 10px씩 남는다.
+     120px이던 것은 메달까지 칸 '안'에 넣으려던 값이었다 — 값을 가운데 두고 그 오른쪽에
+     메달을 매달면 칸은 값 + 2×(간격 + 메달)만큼 필요해서 126px이라야 하고, 그래서 120px
+     에서도 이미 조금 넘쳐 있었다. 이 칸은 overflow가 visible이라 메달이 잘리지 않으므로,
+     칸은 값에 맞추고 메달은 옆 칸의 빈 자리로 조금 넘어가게 둔다 — 대신 간격을 6 → 3px로
+     좁혀 넘치는 양을 절반으로 줄인다. 메달은 지난 기간의 1~3위에만 붙는다. */
+  --scr-stat-rank-w: 100px;
   --scr-stat-build-w: 204px;
   --scr-stat-unit-w: 366px;
   --scr-stat-skill-w: 246px;
@@ -7979,6 +7980,14 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    함께 잘려 아예 안 보인다(실제로 그랬다: DOM에는 있는데 화면에 없었다). 긴 닉네임을
    줄이는 일은 이름 글자 자신(.scr-activity-row-em)에게 넘긴다. */
 .scr-activity-row-name { min-width: 0; }
+/* 자리가 모자라면 잘라 낸다 — 기본 이름 칸은 일부러 안 자르는데(바로 아래 주석: 위에 얹은
+   상태 배지까지 함께 잘려 사라진다), 리그 줄의 이름에는 얹힌 배지가 없다. 안 자르면 줄이
+   꽉 찰 때 두 팀 이름이 서로 겹쳐 그려진다(실측: "정구·크리스"의 끝 글자 위에 상대 팀
+   첫 글자가 포개졌다). */
+.scr-activity-row-name-clip,
+.scr-activity-row-name-clip > .scr-activity-row-name-main {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block;
+}
 .scr-activity-row-names { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 /* 이 칸에서 눈이 짚어야 하는 값 — 닉네임과 숫자다. */
 /* 굵기는 600까지만(요청) — 색을 다 같게 둔 뒤로 이 목록의 강약은 굵기 하나가 지는데,
@@ -7992,6 +8001,10 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 /* 이름 사이 가운뎃점 — 좌우를 띄운다(요청). 붙여 두면 "Cheol·bob"이 한 낱말로 읽혔다. */
 .scr-activity-row-sep { margin: 0 5px; color: var(--row-dim); flex: none; }
 .scr-activity-row-arrow { color: var(--row-dim); flex: none; }
+/* 리그 줄의 콜론 — 화살표(→)를 대신하지만 글자 폭이 4px밖에 안 돼, 칸의 공용 갭(6px)만으로는
+   두 팀 이름이 붙어 보였다(실측: "정구·크리스ː태섭·조조"로 읽힘). 가운뎃점 구분자와 같은
+   만큼(5px) 좌우를 벌려 준다. */
+.scr-activity-row-colon { margin: 0 5px; }
 /* 닉네임과 그 상태를 함께 쥐는 껍데기 — 상태가 이름의 오른쪽 끝에 맞춰 앉으려면 기준이
    이름이어야 한다. 이름 폭만큼만 차지한다. */
 /* inline-flex가 아니라 flex다 — inline 상자는 줄 안에서 제 밑선으로 앉는데, flex 상자의
@@ -8750,16 +8763,18 @@ html.scr-light-theme .scr-activity-add-fab, html.scr-light-theme .scr-scrolltop 
      보였다.
      그 뒤 불투명한 패널 색으로 바꿨더니 이번엔 아예 안 비쳤다(지적) — 흰 끼의 원인은
      반투명 자체가 아니라 '흰색 + 강한 블러 + saturate'였다. 다른 팝오버와 같은 패널
-     토큰(--dd-panel-bg: 어두운 패널색 반투명)에 블러는 흔적만 주고, 테두리는 앱의 선 색
-     한 겹만 남긴다 — 흰 반사광은 아예 안 쓴다. */
+     토큰(--dd-panel-bg: 어두운 패널색 반투명)에 블러는 흔적만 준다.
+     테두리는 아예 안 두른다(지적: 부자연스러운 테두리가 생겼다) — 반투명이 되면서 선
+     한 겹이 패널 안쪽에 또렷한 상자를 그려, 이 메뉴만 다른 팝오버와 다른 물건처럼 보였다.
+     다른 팝오버와 같은 방식으로 위쪽 반사광 한 겹과 부양 그림자로만 경계를 만든다. */
   background: var(--dd-panel-bg);
   -webkit-backdrop-filter: blur(2px);
   backdrop-filter: blur(2px);
-  box-shadow: inset 0 0 0 1px var(--line), 0 8px 24px rgba(0, 0, 0, 0.35);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 8px 24px rgba(0, 0, 0, 0.35);
 }
 .scr-light-theme .scr-activity-add-menu {
   background: var(--dd-panel-bg);
-  box-shadow: inset 0 0 0 1px var(--line), 0 8px 24px rgba(0, 0, 0, 0.14);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 6px 18px rgba(0, 0, 0, 0.12);
 }
 /* FAB용 — 메뉴를 버튼 위로 펼친다(아래엔 탭바). base .scr-activity-add-menu 뒤에 와야
    base의 top(아래로 펼침)을 확실히 덮는다. 좌측 정렬. */

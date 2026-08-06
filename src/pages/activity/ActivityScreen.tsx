@@ -1071,6 +1071,18 @@ export default function ActivityScreen() {
   );
 
   const rowStatusOf = (item: DisplayItem) => {
+    /* 리그도 같은 자리에 상태를 단다(요청) — 아직 안 붙은 경기(Ready)와 결과까지 들어온
+       경기(Finish). 너 나와의 '완료'와 같은 뜻이라 Finish도 같은 방식으로 눌러 둔다.
+       가르는 잣대는 점수다: 승자만 정해진 부전승은 점수가 안 적히므로 Ready로 남는데,
+       그건 맞다 — 그 경기는 실제로 치러지지 않았다. */
+    if (item.kind === "leagueMatch") {
+      const done = item.match.setsWonA !== null && item.match.setsWonB !== null;
+      return (
+        <span className={cx("scr-activity-row-status", done && "scr-activity-row-status-faded")}>
+          {done ? "Finish" : "Ready"}
+        </span>
+      );
+    }
     if (item.kind !== "challenge") return null;
     const s = challengeStatusInfo(item.challenge);
     // 이 알약은 두 글자 자리다 — "대기중"만 셋이라 여기서 줄인다(요청의 낱말도 "대기").
@@ -1112,26 +1124,27 @@ export default function ActivityScreen() {
       const m = item.match;
       /* 줄에서는 두 편을 콜론으로 가른다(요청) — 너 나와의 화살표는 "누가 누구를 불렀나"라
          방향이 있지만, 리그 대진은 이미 짜인 자리라 방향이 없다. */
+      /* 팀전이면 이름을 다 늘어놓지 않고 "A팀"으로 부른다(요청: 팀이면 a팀:b팀으로) —
+         네 명씩 붙는 판에서 여덟 명을 한 줄에 적으면 어차피 다 잘린다. 누가 나오는지는
+         줄을 펴면 카드의 로스터가 세로로 다 보여준다. 혼자면 그 사람 이름이 곧 팀 이름이다. */
       const sideText = (t: typeof m.teamA) => (
-        t === null ? "미정" : t.members.length > 0 ? t.members.map((x) => x.nickname).join("·") : t.label
+        t === null ? "미정"
+          : t.members.length === 1 ? t.members[0].nickname
+            : t.members.length > 1 ? `${t.label}팀`
+              : t.label
       );
+      /* 점수는 줄에 안 적는다 — 상태 알약(Ready·Finish)이 생기면서 줄이 꽉 찼고, 실측하니
+         (390px) 두 팀 이름이 줄어들다 못해 서로 겹쳐 그려졌다. 알약이 이미 "붙었나"를
+         말하므로 몇 대 몇인지는 줄을 펴면 카드가 말한다. */
       return (
         <>
-          <span className="scr-activity-row-name">
+          <span className="scr-activity-row-name scr-activity-row-name-clip">
             <span className="scr-activity-row-name-main">{sideText(m.teamA)}</span>
           </span>
-          <span className="scr-activity-row-arrow" aria-hidden>:</span>
-          <span className="scr-activity-row-name">
+          <span className="scr-activity-row-arrow scr-activity-row-colon" aria-hidden>:</span>
+          <span className="scr-activity-row-name scr-activity-row-name-clip">
             <span className="scr-activity-row-name-main">{sideText(m.teamB)}</span>
           </span>
-          {m.setsWonA !== null && m.setsWonB !== null && (
-            <>
-              <span className="scr-activity-row-sep">·</span>
-              <span className="scr-activity-row-em scr-activity-row-score">
-                {m.setsWonA}:{m.setsWonB}
-              </span>
-            </>
-          )}
         </>
       );
     }
