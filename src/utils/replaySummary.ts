@@ -3306,6 +3306,21 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     ].slice(0, CLASH_FORCE_MAX);
     const tech = clashTechOf(c);
     const place = clashPlace(c.xy, bases);
+    /* 잘 싸운 전투인가(요청: "잘 싸운 전투 가려내서 실어주고 누가 잘 싸웠다는 내용 추가") —
+       근거는 두 가지가 겹칠 때뿐이다: ① 싸움 뒤 그 자리에 남아 명령을 이어간 쪽이 있고
+       (hold), ② 그 쪽이 상대보다 눈에 띄게 작았다. 규모는 체력바가 쓰는 것과 같은 값이라
+       (powerAt) 화면의 바와 자막이 같은 사실을 말한다.
+       한쪽이 작다는 것만으로는 잘 싸웠다고 할 수 없고(그냥 진 싸움일 수 있다), 이겼다는
+       것만으로도 안 된다(더 큰 쪽이 이기는 건 당연하다) — 둘이 겹쳐야 이야기가 된다. */
+    const sidePower = (parts: string[], rep: string): number => {
+      const names = parts.length > 0 ? parts : [rep];
+      return names.reduce((n, raw) => n + powerAt(raw, c.at), 0);
+    };
+    const powA = sidePower(clashPartsOf(c, winnerPlayers), c.who[0]);
+    const powB = sidePower(clashPartsOf(c, loserPlayers), c.who[1]);
+    const held = c.hold === "a" ? { mine: powA, theirs: powB } : c.hold === "b" ? { mine: powB, theirs: powA } : null;
+    const wellFought = held !== null && held.theirs > 0
+      && held.mine <= held.theirs * WELL_FOUGHT_ODDS;
     return {
       k: "clash",
       who: c.who,
@@ -3320,6 +3335,13 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
       ...(place ? { who2: [place] } : {}),
       p: {
         xy: c.xy, n: c.n,
+        /* 열세를 딛고 이긴 싸움(위 wellFought) — 문장이 "잘 싸웠다"고 말할 근거다.
+           몇 배 차이였는지도 함께 싣는다(소수 한 자리) — "두 배 가까운 병력을 상대로"처럼
+           말할 수 있어야 그 장면이 읽힌다. */
+        ...(wellFought && held ? {
+          well: true,
+          odds: Math.round((held.theirs / Math.max(1, held.mine)) * 10) / 10,
+        } : {}),
         /* 그 판에서 몇 번째로 큰 싸움인가 — 둘째부터만 싣는다. 문장이 "그 판의 가장 큰
            싸움"이라고 말할 수 있는 건 하나뿐이라, 나머지는 그 말을 안 쓴다. 값이 없으면
            가장 큰 싸움이다(옛 요약도 하나뿐이었으므로 그대로 읽힌다). */
@@ -4275,6 +4297,11 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     })),
   };
 }
+
+/** 이긴 쪽이 이만큼 이하로 작았으면 '잘 싸웠다'로 본다(요청) — 규모(powerAt)로 잰다.
+ *  0.75면 사분의 삼, 즉 넷에 하나쯤 모자란 병력으로 이긴 싸움부터다. 이보다 느슨하게
+ *  잡으면 엇비슷한 싸움까지 다 잘 싸운 것이 되어 그 말이 값을 잃는다. */
+const WELL_FOUGHT_ODDS = 0.75;
 
 /** 큰 교전 문장의 무게 — 그 판의 절정이라 무겁게 잡되, 러시·돌파처럼 '누가 무엇을 했다'가
  *  분명한 이야기보다는 한 단계 아래다. */

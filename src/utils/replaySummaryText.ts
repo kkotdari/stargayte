@@ -1315,7 +1315,11 @@ const TEMPLATES: Record<string, Tpl> = {
        그 사람이 그 자리에서 움직인 병력은 p.vs로 온다(replaySummary의 fightersAt).
        자리 이름이 곧 그 상대의 기지면 이름을 두 번 부르지 않는다 — "조조의 기지에서
        조조의 히드라와"가 되면 안 된다. */
-    const fight = c.p.fight === true && !!c.whom;
+    /* 맞붙었다고 말하려면 '누구와'가 있어야 한다 — 상대가 자기 자신으로 실려 온 판이
+       있었고(실측: "제 진영에서 맞붙어 스톰을 7번 뿌렸다"), 그러면 이름을 못 불러 그냥
+       "맞붙어"만 남는데 그림에는 화살표가 하나뿐이라 자막과 어긋난다(지적: 교전이고
+       자막도 교전인데 화살표가 하나만 있다). 상대를 못 짚으면 그 말을 아예 안 쓴다. */
+    const fight = c.p.fight === true && !!c.whom && c.whom !== c.who;
     const vs = list(c.p.vs).map((u) => UNIT_KO[u] ?? "").filter(Boolean);
     const foeIsHost = fight && typeof placeRaw === "string" && c.names([placeRaw])[0] === c.whom;
     /** 맞붙은 상대를 부르는 말 — 이름만 부른다(요청: 자막에는 유닛 나열을 자제하고
@@ -1783,7 +1787,21 @@ const TEMPLATES: Record<string, Tpl> = {
     /* "그 자리를 지켰다"는 안 쓴다(지적: 그런 표현은 안 쓴다) — 싸움의 결과는 그냥 이겼다고
        말하는 것이 우리 말투다. 근거는 그대로 '싸움이 끝난 뒤 그 자리에 남아 명령을 이어간
        쪽'이고(replaySummary의 CLASH_AFTER_SEC), 그걸 부르는 말만 바꾼다. */
-    const outcome = holder
+    /* 열세를 딛고 이긴 싸움(요청: "잘 싸운 전투 가려내서 … 누가 잘 싸웠다는 내용 추가") —
+       요약이 규모까지 재서 실어 준다(replaySummary의 wellFought). 미니맵 체력바가 쓰는
+       것과 같은 값이라, 바가 짧은 쪽이 이긴 장면과 자막이 같은 사실을 말한다.
+       배수는 두 배부터만 말한다 — "1.2배 병력을 상대로"는 열세라 부를 만한 차이가 아니고,
+       그 자리는 이미 '적은 병력으로'가 말하고 있다. */
+    const well = c.p.well === true && !!holder;
+    const odds = num(c.p.odds, 0);
+    const gap = well && odds >= 2 ? `${Math.round(odds)}배 가까운 병력을 상대로 ` : "";
+    const outcome = well && holder
+      ? c.pick([
+        `${gap}${ga(holder)} 잘 싸워 이김`,
+        `${gap}${ga(holder)} 적은 병력으로 전투를 잘함`,
+        `${gap}${ga(holder)} 열세를 딛고 싸움을 가져감`,
+      ])
+      : holder
       ? c.pick([
         `${ga(holder)} 전투를 이김`,
         `${ga(holder)} 싸움을 가져감`,

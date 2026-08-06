@@ -977,6 +977,8 @@ export default function GameResultStory({
       /** 기둥 위에 붙일 유닛·건물 이름(요청) — 요약이 사람마다 실어 준다(beat.units).
        *  한 줄에 하나씩 쌓이므로 이어 붙이지 않고 목록 그대로 넘긴다(요청). */
       label?: string[];
+      /** 맞붙은 싸움인가 — 그렇다면 길이가 안 나와도 화살표를 그린다(아래 stepBack). */
+      fight?: boolean;
     }
     const hits = new Map<string, RawHit[]>();
     const hit = new Set<string>();
@@ -1246,7 +1248,7 @@ export default function GameResultStory({
           ...(WARP_BEAT_KEYS.has(b.k) && !inFight ? { fromMark: em } : {}),
           // 양 팀이 부딪친 자리는 양쪽 화살표가 한 점에서 만나야 한다(요청) — 큰 싸움도,
           // 마법·리콜이 터진 교전도 마찬가지다(p.fight).
-          ...(b.k === "clash" || b.p?.fight === true ? { converge: true } : {}),
+          ...(b.k === "clash" || b.p?.fight === true ? { converge: true, fight: true } : {}),
         });
         hits.set(raw, list);
       }
@@ -1256,6 +1258,19 @@ export default function GameResultStory({
     for (const r of hit) if (!severe.has(r)) moderate.add(r);
     // 화살표로 그릴 수 있는 것(자기 집에서 충분히 멀리 간 것)과, 화살표 없이 본진에만 이모지가
     // 붙는 것(생산·테크·경제, 그리고 목표가 자기 집 안인 것)으로 나눈다.
+    /** 싸움터에서 ARROW_MIN_TILES만큼 물러난 자리 — 그 방향은 그 사람 집 쪽이다. 집과
+     *  싸움터가 사실상 같은 점이면 방향이 없으므로 맵 가운데의 반대쪽으로 물린다(그래야
+     *  화살표가 밖에서 안으로 들어오는 그림이 된다). */
+    const stepBack = (t: [number, number], home: [number, number]): [number, number] => {
+      const to = (dx: number, dy: number): [number, number] => {
+        const d = Math.hypot(dx, dy);
+        return d > 0.01 ? [t[0] + (dx / d) * ARROW_MIN_TILES, t[1] + (dy / d) * ARROW_MIN_TILES] : t;
+      };
+      const back = to(home[0] - t[0], home[1] - t[1]);
+      if (dist(back, t) > 0.01) return back;
+      const away = to(home[0] - center[0], home[1] - center[1]);
+      return dist(away, t) > 0.01 ? away : [t[0], t[1] - ARROW_MIN_TILES];
+    };
     const arrows: MinimapArrow[] = [];
     // 이사는 옛 자리에서 새 자리로 가는 하얀 점선 화살표다(요청) — 팀 색을 주지 않아 공격
     // 화살표와 한눈에 갈리고, 끝에는 이삿짐차를 얹는다. 본진 이모지 자리는 비워 둔다.
@@ -1287,9 +1302,17 @@ export default function GameResultStory({
       // 화살표 하나씩, 키는 자리 순번을 붙여 갈라 둔다.
       let drawn = 0;
       list.forEach((h, i) => {
-        if (!home || dist(home, h.t) < ARROW_MIN_TILES) return;
+        if (!home) return;
+        /* 싸움은 두 화살표가 맞부딪쳐야 그림이 된다(지적: 교전이고 자막도 교전인데 화살표가
+           하나만 있는 경우가 있다) — 싸움터가 제 집이면 길이가 안 나와 그 사람 화살표만
+           통째로 사라진다(실측 12개 교전 스냅 중 2개: "제 진영에서 맞붙어", "OO의 기지에서
+           맞붙어"). 그때는 집 바깥으로 조금 물러난 자리에서 짧게 그어, 지키는 쪽도 그
+           자리에 있었다는 것이 보이게 한다. */
+        const far = dist(home, h.t);
+        if (far < ARROW_MIN_TILES && !h.fight) return;
+        const from = far < ARROW_MIN_TILES ? stepBack(h.t, home) : home;
         arrows.push({
-          key: `${s.raw}-${i}`, x1: home[0], y1: home[1], x2: h.t[0], y2: h.t[1],
+          key: `${s.raw}-${i}`, x1: from[0], y1: from[1], x2: h.t[0], y2: h.t[1],
           team: s.team, flight: h.flight, deep,
           ...(h.mark ? { mark: h.mark } : {}),
           ...(h.label?.length ? { label: h.label } : {}),
