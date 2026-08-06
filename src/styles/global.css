@@ -7958,7 +7958,11 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    때문이다 — 전부를 한 번에 같은 만큼 물러나게 하는 건 opacity뿐이다.
    알약이 제 몫으로 갖고 있던 반투명은 여기서 되돌린다: 겹치면 0.45×0.55라 글자가 아예
    안 보인다. */
-.scr-activity-row-void { opacity: 0.55; }
+/* 눌러 두는 정도를 두 테마 모두 한 단계 더 내린다(요청: 더 연하게) — 0.55는 '조금 흐린
+   줄'이라 성사된 줄과 나란히 놓이면 여전히 눈을 끌었다. 흰 바탕은 같은 값이라도 글자가
+   또렷한 회색으로 남아, 라이트를 조금 더 내려야 두 테마가 같은 만큼 물러나 보인다. */
+.scr-activity-row-void { opacity: 0.4; }
+.scr-light-theme .scr-activity-row-void { opacity: 0.34; }
 .scr-activity-row-void .scr-activity-row-status-faded,
 .scr-light-theme .scr-activity-row-void .scr-activity-row-status-faded { opacity: 1; }
 .scr-activity-row-desc {
