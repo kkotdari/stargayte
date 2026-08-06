@@ -532,17 +532,15 @@ export function GameResultPost({
   );
 }
 
-/* 활동 유형 필터(요청: "전체/너 나와!/게임결과/리그 네 개") — 나열선택형이라 넷이 그대로
-   한 줄에 늘어선다. 랭크 변동은 목록에는 그대로 나오되 거르는 대상에서는 뺐다(요청이 넷을
-   못박았다) — '전체'에 포함되므로 안 보이게 되는 것은 없다.
-   리그는 아직 활동에 꽂히는 항목이 없어 지금은 늘 빈 목록이다 — 리그 경기가 활동으로
-   올라오기 시작하면 이 필터가 그대로 그걸 거른다. */
-type ActivityKindFilter = "all" | "call" | "gameResult" | "league";
+/* 활동 유형 필터 — 나열선택형이라 넷이 그대로 한 줄에 늘어선다. 랭크 변동은 목록에는
+   그대로 나오되 거르는 대상에서는 뺐다(요청이 넷을 못박았다) — '전체'에 포함되므로 안
+   보이게 되는 것은 없다. 차례는 요청대로 전체/게임결과/너 나와!/리그다. */
+type ActivityKindFilter = "all" | "gameResult" | "call" | "league";
 
 const KIND_OPTS: { value: ActivityKindFilter; label: string }[] = [
   { value: "all", label: "전체" },
-  { value: "call", label: "너 나와!" },
   { value: "gameResult", label: "게임결과" },
+  { value: "call", label: "너 나와!" },
   { value: "league", label: "리그" },
 ];
 
@@ -871,10 +869,10 @@ export default function ActivityScreen() {
   const passesFilter = useCallback(
     (item: ActivityItem): boolean => {
       if (kindFilter !== "all") {
-        // 도전장은 전부 너나와(call)로 본다. 리그는 아직 활동에 꽂히는 항목이 없어
-        // 어떤 줄도 안 걸린다 — 생기면 여기에 그 종류를 더한다.
+        // 도전장은 전부 너나와(call)로 본다. 랭크 변동은 어느 갈래도 아니라 '전체'에만 든다.
         const kind = item.kind === "gameResult" ? "gameResult"
           : item.kind === "challenge" ? "call"
+          : item.kind === "leagueMatch" ? "league"
           : null;
         if (kind !== kindFilter) return false;
       }

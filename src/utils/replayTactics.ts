@@ -1883,6 +1883,19 @@ function detectFor(c: Ctx): Tactic[] {
       if (!best || best.n < RAID_ORDERS_MIN) continue;
       const burst = list.slice(best.i, best.i + best.n);
       const at = burst[0].frame;
+      /* 그때까지 뽑은 전투 유닛이 하나도 없으면 급습이 아니다(지적: 초반에 병력을
+         밀어붙였다는 내용이 안 맞는다) — 실측한 경기에서 저그가 2분 55초에 "병력을 몰아
+         들이쳤다"로 잡혔는데, 그 시점까지 뽑은 전투 유닛이 0이었다. 상대 본진을 맴돌던
+         정찰 일꾼이 명령 수만 채운 것이다. 이 판정이 그 사람 이야기의 첫 문장이 되는 바람에,
+         뒤따르는 '초반부터 째고 들어갔다'가 공격하고 나서 쨌다는 앞뒤 안 맞는 순서가 됐다.
+         잣대를 '직전 4분'이 아니라 '그때까지 한 번이라도'로 두는 이유: 인구를 꽉 채우고
+         생산을 멈춘 채 밀고 나가는 후반 진출이 그 창에 안 걸려 통째로 사라졌다(실측:
+         29분 급습 두 건). 잡으려는 것은 '아직 병력이 없는데 들어갔다'는 경우뿐이다. */
+      const armed = Object.entries(s.unitFrames).some(([unit, fs]) => (
+        !RAID_UNIT_EXCLUDE.has(unit) && fs.some((f) => f <= at)
+      ));
+      if (!armed) continue;
+      const went = wentWith(at);
       res.push({
         // 크게 들이칠수록 무겁다 — 서른 번 찍고 지나간 것과 이백 번을 쏟아부은 것은 다르다.
         key: "base-raid", weight: 10 + Math.min(4, Math.floor(best.n / RAID_ORDERS_MIN)),
@@ -1897,7 +1910,7 @@ function detectFor(c: Ctx): Tactic[] {
              수다 — 총량으로 세면 후반 급습이 "질럿 171기 급습"이 되어, 그 병력을 다
              몰고 간 것처럼 읽힌다(실측). */
           ...(() => {
-            const w = wentWith(at);
+            const w = went;
             return (w ? { unit: w.unit, n: w.n } : {}) as Record<string, string | number>;
           })(),
         },
