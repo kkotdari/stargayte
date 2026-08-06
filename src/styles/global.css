@@ -6581,6 +6581,35 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 }
 .scr-challenge-party-tag { font-size: var(--fs-caption); font-weight: 800; color: var(--dim); line-height: 1; }
 .scr-challenge-party-av { object-fit: cover; }
+/* 아바타 묶음과 그 밑의 닉네임(요청: "겹쳐서 보여줘", "아바타 밑에 닉네임도 작게"). */
+.scr-challenge-party-who { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+/* 팀 전원을 왼쪽으로 조금씩 물려 쌓는다 — 겹친 자리를 편지지 색 테두리 한 겹으로 가른다.
+   1:1이면 한 장이라 겹칠 것이 없고 테두리만 은은하게 남는다. */
+.scr-challenge-party-stack { display: flex; align-items: center; }
+.scr-challenge-party-slot { position: relative; display: inline-flex; border-radius: 999px; }
+.scr-challenge-party-stack > * { box-shadow: 0 0 0 2px var(--panel-solid); border-radius: 999px; }
+.scr-challenge-party-stack > * + * { margin-left: -14px; }
+/* 수락·거절 배지(요청) — 아바타 오른쪽 아래에 작은 동그라미로 얹는다. 겹쳐 쌓인 아바타
+   위에서도 보이도록 편지지 색 테두리를 둘러 제 자리를 만든다. */
+.scr-challenge-party-badge {
+  position: absolute; right: -2px; bottom: -2px;
+  width: 17px; height: 17px; border-radius: 999px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 900; line-height: 1; color: #fff;
+  box-shadow: 0 0 0 2px var(--panel-solid);
+}
+.scr-challenge-party-badge-accepted { background: #1f8a4c; }
+.scr-challenge-party-badge-rejected { background: #c8395a; }
+/* 뒤에 오는 아바타가 위로 올라오면 앞사람이 가려진다 — 앞에서부터 위로 쌓는다. */
+.scr-challenge-party-stack > :nth-child(1) { z-index: 4; }
+.scr-challenge-party-stack > :nth-child(2) { z-index: 3; }
+.scr-challenge-party-stack > :nth-child(3) { z-index: 2; }
+.scr-challenge-party-stack > :nth-child(4) { z-index: 1; }
+.scr-challenge-party-names {
+  font-size: var(--fs-micro, 11px); font-weight: 700; color: var(--dim);
+  line-height: 1.2; text-align: center; max-width: 140px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 /* 편지지 본문(제목·일자·시간·한마디) — 요소 간 줄간격을 크게(요청). */
 .scr-challenge-letter .scr-challenge-inbox-body { flex: 0 1 auto; gap: 22px; }
 /* 버튼 줄 — 맨 아래(To. 아래). 위로 여유 간격. */
@@ -6627,14 +6656,11 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 .scr-challenge-letter-photo .scr-label,
 .scr-challenge-letter-photo .scr-challenge-inbox-err-text,
 .scr-challenge-letter-photo .scr-challenge-party-tag,
-.scr-challenge-letter-photo .scr-challenge-team-label,
-.scr-challenge-letter-photo .scr-challenge-team-names,
+.scr-challenge-letter-photo .scr-challenge-party-names,
 .scr-challenge-letter-photo .scr-challenge-inbox-date,
 .scr-challenge-letter-photo .scr-challenge-inbox-time,
-.scr-challenge-letter-photo .scr-challenge-inbox-message,
-.scr-challenge-letter-photo .scr-challenge-reply-verdict,
-.scr-challenge-letter-photo .scr-challenge-reply-word,
-.scr-challenge-letter-photo .scr-challenge-reply-who,
+.scr-challenge-letter-photo .scr-challenge-word-text,
+.scr-challenge-letter-photo .scr-challenge-word-who,
 /* 한마디(.scr-challenge-side-msg)는 뺀다 — 불투명한 흰 말주머니가 이미 제 바닥을
    갖고 있어서, 음영까지 얹으면 말주머니 안쪽 글자에 까닭 없는 그림자만 진다(지적). */
 .scr-activity-card-body-photo .scr-challenge-person-name,
@@ -6647,7 +6673,9 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
     0 0 14px var(--photo-ink-glow);
 }
 /* 답장을 가르는 점선 — 사진 위에서는 원래의 옅은 남색이 통째로 사라진다. */
-.scr-challenge-letter-photo .scr-challenge-reply { border-top-color: rgba(var(--overlay-rgb), 0.4); }
+.scr-challenge-letter-photo .scr-challenge-word:not(.scr-challenge-word-reply) + .scr-challenge-word-reply {
+  border-top-color: rgba(var(--overlay-rgb), 0.4);
+}
 
 /* ── 공유 장면 안의 댓글(요청) ────────────────────────────────────────────────
    편지봉투·편지지·버림·응답 확인 — 어느 장면에나 같은 덩어리 하나가 붙는다. 대상이
@@ -6742,28 +6770,35 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
   margin: 0; font-size: var(--fs-body); font-style: italic;
   color: var(--text); text-align: center; line-height: 1.35; word-break: keep-all;
 }
-/* ── 응답 공유(?sv=challengeReply) ─────────────────────────────────────────────
-   요청: "응답했으면 열기 > 편지지에 응답 상태와 응답자의 한마디를 크게 표시".
-   위쪽은 호출 내용 그대로이고 이 아래가 그 호출에 돌아온 답이라, 가는 선 하나로 갈라
-   둔다 — 편지 안에 답장이 덧붙은 모양이다. */
-.scr-challenge-reply {
-  display: flex; flex-direction: column; align-items: center; gap: 6px;
-  width: 100%; margin-top: 4px; padding-top: 14px;
-  border-top: 1px dashed rgba(16, 21, 26, 0.18);
+/* ── 편지지 가운데의 한마디들 ─────────────────────────────────────────────────
+   요청: "가운데는 보낸사람 한마디, 그 밑에 응답자 한마디들 쭉(이건 일대일 요청도
+   마찬가지). 한마디를 남긴 사람꺼만 보여주면 돼."
+   부른 사람의 말이 먼저 서고 그 아래 답이 쌓인다 — 편지를 주고받은 모양 그대로다. */
+.scr-challenge-words {
+  display: flex; flex-direction: column; align-items: center; gap: 14px; width: 100%;
 }
-/* 수락인지 거절인지 — 이 화면이 열린 이유라 가장 크게 선다. */
-.scr-challenge-reply-verdict {
-  font-size: var(--fs-title); font-weight: 800; line-height: 1.1; letter-spacing: -0.01em;
+.scr-challenge-word { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 100%; }
+/* 답한 말은 부른 말과 갈리도록 가는 선 하나로 가른다 — 부른 말 바로 다음 답에만 붙인다
+   (:first-of-type은 클래스가 아니라 태그로 세므로 여기선 못 쓴다). */
+.scr-challenge-word:not(.scr-challenge-word-reply) + .scr-challenge-word-reply {
+  padding-top: 14px; border-top: 1px dashed rgba(16, 21, 26, 0.18);
 }
-.scr-challenge-reply-accepted { color: #1f8a4c; }
-.scr-challenge-reply-rejected { color: #c8395a; }
-/* 응답자가 남긴 한마디 — 상태 다음으로 크게. 호출의 한마디(.scr-challenge-inbox-message)와
-   같은 기울임체라 "주고받은 말"로 나란히 읽힌다. */
-.scr-challenge-reply-word {
-  margin: 0; font-size: var(--fs-subhead); font-style: italic; font-weight: 700;
+.scr-challenge-word-text {
+  margin: 0; font-size: var(--fs-body); font-style: italic;
   color: var(--text); text-align: center; line-height: 1.35; word-break: keep-all;
 }
-.scr-challenge-reply-who { font-size: var(--fs-caption); color: var(--muted); }
+.scr-challenge-word-who {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: var(--fs-caption); color: var(--muted);
+}
+/* 수락/거절 — 이름 옆에 작은 알약으로. 예전엔 이것만 크게 세웠는데, 이제 여러 사람의
+   답이 나란히 서므로 누가 무엇이라 했는지가 이름과 붙어 있어야 읽힌다. */
+.scr-challenge-word-verdict {
+  font-size: var(--fs-micro, 11px); font-weight: 800; line-height: 1;
+  padding: 3px 7px; border-radius: 999px;
+}
+.scr-challenge-word-accepted { color: #146b39; background: rgba(31, 138, 76, 0.16); }
+.scr-challenge-word-rejected { color: #9c2842; background: rgba(200, 57, 90, 0.16); }
 
 /* 버림 — 봉투도 편지지도 없이 이 한 장이다(요청: "버림의 경우 편지봉투 씬 없이 OO님이
    편지를 버림 나오고 끝"). 열어 볼 답이 없는데 봉투를 흔들어 보여줄 이유가 없다. */
@@ -6804,14 +6839,6 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 /* 팀전에서 상대팀/우리팀을 한눈에 구분하게(요청: "팀전의 경우 상대팀원과 우리팀 확인하기
    좋게") — 라벨은 색으로 편을 가르고(상대=붉은 톤, 우리=파란 톤) 이름은 굵게 왼쪽으로
    길게 늘어놓아 잘 읽히게 한다. 이름이 많으면 줄바꿈해서 다 보이게. */
-.scr-challenge-inbox-team-row { align-items: flex-start; }
-.scr-challenge-team-label { font-weight: 800; flex-shrink: 0; }
-/* 상대팀/우리팀을 산뜻한 색으로 구분한다(요청: "컬러 좀더 산뜻하게") — 칙칙한 벽돌색/
-   남색 대신 밝고 맑은 코랄 레드와 시원한 스카이 블루로. 아이보리 편지지 위에서도 굵은
-   글자라 또렷하게 읽힌다. */
-.scr-challenge-team-label-them { color: #f2555a; }
-.scr-challenge-team-label-us { color: #1aa3d6; }
-.scr-challenge-team-names { font-weight: 700; text-align: right; }
 
 /* ===== 카카오톡 공유 + 호출/수락 완료 확인창 ===== */
 /* 노란 카카오 버튼(확인창의 full 변형) — 카카오 브랜드색(#fee500) 위에 진한 갈색 글자. */

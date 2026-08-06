@@ -34,6 +34,77 @@ interface ChallengeInboxModalProps {
   reply?: boolean;
 }
 
+/** 편지지 모서리의 한 편 — From./To. 라벨과 그 편 전원의 아바타(겹쳐 쌓음), 그 밑에 작은
+ *  닉네임(요청: "겹쳐서 보여줘", "아바타 밑에 닉네임도 작게 붙여줘 누군지 모르겠어").
+ *
+ *  1:1이면 한 장이라 겹칠 것이 없고, 팀전이면 두세 장이 왼쪽으로 조금씩 물려 쌓인다 —
+ *  겹친 자리가 구분되도록 아바타마다 편지지 색 테두리를 한 겹 두른다(CSS).
+ *
+ *  지목된 쪽(To.)은 아바타마다 수락·거절 배지를 단다(요청) — 누가 답했는지는 사람마다
+ *  다른데 그것을 말할 자리가 아바타뿐이다. 아직 답이 없으면 배지도 없다. */
+function PartySide({ tag, members }: {
+  tag: string;
+  members: { id: string; nickname: string; avatar: string | null; response?: string }[];
+}) {
+  if (members.length === 0) return null;
+  return (
+    <div className={`scr-challenge-party scr-challenge-party-${tag === "From." ? "from" : "to"}`}>
+      <span className="scr-challenge-party-tag">{tag}</span>
+      <div className="scr-challenge-party-who">
+        <div className="scr-challenge-party-stack">
+          {members.map((m) => {
+            const mark = m.response === "accepted" ? "수락" : m.response === "rejected" ? "거절" : null;
+            return (
+              <span key={m.id} className="scr-challenge-party-slot">
+                <Avatar size={44} className="scr-challenge-party-av" member={m} />
+                {mark && (
+                  <span
+                    className={`scr-challenge-party-badge scr-challenge-party-badge-${m.response}`}
+                    title={mark} aria-label={mark} role="img"
+                  >
+                    {m.response === "accepted" ? "✓" : "✕"}
+                  </span>
+                )}
+              </span>
+            );
+          })}
+        </div>
+        <span className="scr-challenge-party-names">{members.map((m) => m.nickname).join(", ")}</span>
+      </div>
+    </div>
+  );
+}
+
+/** 편지지 가운데의 본론 — 부른 사람의 한마디와 그 아래 답한 사람들의 한마디(요청).
+ *  팀전이든 1:1이든 같은 모양이고, 아무도 한마디를 안 남겼으면 통째로 빠진다. */
+function ChallengeWords({ from, message, replies }: {
+  from: string;
+  message: string;
+  replies: { memberId: string; nickname: string; responseMessage: string }[];
+}) {
+  const mine = message.trim();
+  if (!mine && replies.length === 0) return null;
+  return (
+    <div className="scr-challenge-words">
+      {mine && (
+        <div className="scr-challenge-word">
+          <p className="scr-challenge-word-text">{mine}</p>
+          <div className="scr-challenge-word-who">— {from}</div>
+        </div>
+      )}
+      {replies.map((t) => (
+        <div key={t.memberId} className="scr-challenge-word scr-challenge-word-reply">
+          {t.responseMessage.trim() && (
+            <p className="scr-challenge-word-text">{t.responseMessage}</p>
+          )}
+          {/* 수락·거절은 To. 아바타의 배지가 말한다(요청) — 여기선 이름만 밝힌다. */}
+          <div className="scr-challenge-word-who">— {t.nickname}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // 다음 접속 때 뜨는 도전장 팝업 — 한 번에 하나씩만 보여주고, 응답하거나 닫으면 큐의
 // 다음 도전장으로 넘어간다. 전부 처리되면 onClose로 부모가 닫는다. 공유 링크가 여는 화면
 // (SharePage)에서도 그대로 재사용한다 — 그쪽은 봉투 없이 편지지부터 열고(skipEnvelope),
@@ -150,12 +221,24 @@ export default function ChallengeInboxModal({
     }
   };
 
-  // 팀전(0102)이면 양 팀을 한눈에 확인할 수 있게 나눠 보여준다(요청: "팀전의 경우 상대팀원과
-  // 우리팀 확인하기 좋게"). 상대팀(도전한 쪽) = 도전자(createdBy) + 그 팀원(ownMembers),
-  // 우리팀(지목된 쪽) = targets(나 포함).
-  const isTeamMatch = current.matchType === "0102";
-  const opposingTeam = [current.createdBy.nickname, ...current.ownMembers.map((m) => m.nickname)];
+  /* 양 편 — 보낸 쪽(From.) = 도전자 + 그 팀원, 받는 쪽(To.) = 지목된 사람들.
+     팀전이라도 가운데에 "상대팀/우리팀" 두 줄을 따로 두지 않는다(요청) — From./To.가
+     양 편 전원을 아바타로 겹쳐 보여주고 그 밑에 닉네임이 붙으므로 같은 말이 두 번 된다. */
+  const fromSide = [
+    { id: current.createdBy.id, nickname: current.createdBy.nickname, avatar: current.createdBy.avatar },
+    ...current.ownMembers.map((m) => ({ id: m.memberId, nickname: m.nickname, avatar: m.avatar })),
+  ];
+  const toSide = current.targets.map((t) => ({
+    id: t.memberId, nickname: t.nickname, avatar: t.avatar, response: t.response,
+  }));
   const ourTeam = current.targets.map((t) => t.nickname);
+  /* 오간 한마디 — 부른 사람 것이 먼저, 그 아래 답한 사람들 것(요청). 한마디를 남긴
+     사람만 싣는다. 다만 응답 공유(reply)에서는 답했다는 사실 자체가 이 화면이 열린
+     이유라, 한마디가 없어도 수락/거절은 한 줄로 선다. */
+  const saidWords = current.targets.filter((t) => (
+    t.responseMessage.trim() !== ""
+    || (reply && t.response !== "pending" && t.response !== "discarded")
+  ));
   // 편지봉투 위 문구 — 누가 지목됐는지는 감추고 "누구님의 호출"만 보여 궁금증을 유발한다
   // (요청). 지목 대상은 열어야(편지지) 드러난다.
   const envelopeTitle = reply && responder
@@ -256,30 +339,21 @@ export default function ChallengeInboxModal({
               이므로 이 칸은 반드시 첫 '진짜' 자식이어야 사진이 유리 위에 얹힌다. */}
           {backdrop && <div className="scr-challenge-letter-bg" aria-hidden="true" />}
           {/* 보낸 사람(From.) — 좌상단, 받는 사람(To.) — 우하단. 라벨과 아바타는 겹치지 않게
-              나란히 두고(배경 칩 없음), 카드 모서리에 최소 여백을 둔다(요청). */}
-          <div className="scr-challenge-party scr-challenge-party-from" aria-hidden="true">
-            <span className="scr-challenge-party-tag">From.</span>
-            <Avatar
-              size={44}
-              className="scr-challenge-party-av"
-              member={{ id: current.createdBy.id, nickname: current.createdBy.nickname, avatar: current.createdBy.avatar }}
-            />
-          </div>
+              나란히 두고(배경 칩 없음), 카드 모서리에 최소 여백을 둔다(요청).
+              팀전이면 그 편 전원을 겹쳐 쌓고 아바타 밑에 닉네임을 작게 붙인다(요청:
+              "겹쳐서 보여줘", "아바타 밑에 닉네임도 작게 붙여줘 누군지 모르겠어"). */}
+          <PartySide tag="From." members={fromSide} />
           {/* 가운데 그룹: 제목·일자·시간·한마디(+팀행·일정입력·오류) — 세로 가운데 정렬. */}
           <div className="scr-modal-body scr-challenge-inbox-body">
             <div className="scr-challenge-inbox-title">{letterTitle}</div>
-            {isTeamMatch && (
-              <>
-                <div className="scr-challenge-inbox-row scr-challenge-inbox-team-row">
-                  <span className="scr-label scr-challenge-team-label scr-challenge-team-label-them">상대팀</span>
-                  <span className="scr-challenge-team-names">{opposingTeam.join(", ")}</span>
-                </div>
-                <div className="scr-challenge-inbox-row scr-challenge-inbox-team-row">
-                  <span className="scr-label scr-challenge-team-label scr-challenge-team-label-us">우리팀</span>
-                  <span className="scr-challenge-team-names">{ourTeam.join(", ")}</span>
-                </div>
-              </>
-            )}
+            {/* 오간 말 — 제목 바로 아래가 이 편지의 본론이다(요청: "가운데는 보낸사람 한마디,
+                그 밑에 응답자 한마디들 쭉"). 팀전이든 1:1이든 같다. 팀 구성은 From./To.
+                아바타가 말하므로 여기서 다시 늘어놓지 않는다. */}
+            <ChallengeWords
+              from={current.createdBy.nickname}
+              message={current.message}
+              replies={saidWords}
+            />
             {/* 날짜·"언제" — 응답자에겐 입력칸 형태로 보여준다(요청: "텍스트가 아니라 인풋창
                 그대로"). 이미 정해져 온 값은 잠긴(수정불가) 입력칸으로, 비어 있는 쪽은 지금 채울
                 수 있다(날짜만 온 도전장은 "언제"만 덧붙일 수 있다). 응답 대상이 아닌 구경
@@ -308,25 +382,6 @@ export default function ChallengeInboxModal({
                 )}
               </>
             )}
-            {current.message.trim() && (
-              <p className="scr-challenge-inbox-message">{current.message}</p>
-            )}
-
-            {/* 응답 공유의 본론(요청: "응답 상태와 응답자의 한마디를 크게 표시") — 위쪽은
-                호출 내용 그대로이고, 이 아래가 그 호출에 돌아온 답이다. 한마디를 안 남겼으면
-                상태만 선다(빈 자리를 만들지 않는다). */}
-            {reply && responder && replyKind !== "discarded" && (
-              <div className="scr-challenge-reply">
-                <div className={`scr-challenge-reply-verdict scr-challenge-reply-${replyKind}`}>
-                  {replyKind === "accepted" ? "수락" : "거절"}
-                </div>
-                {responder.responseMessage.trim() && (
-                  <p className="scr-challenge-reply-word">{responder.responseMessage}</p>
-                )}
-                <div className="scr-challenge-reply-who">— {responder.nickname}</div>
-              </div>
-            )}
-
             {/* 일정을 안 정하고 승락을 누르면 여기 오류가 뜬다 — 뜰 때 아래 버튼 줄이
                 크게 밀리지 않게 작은 한 줄 자리만 미리 예약하고, 박스/테두리 없이 작은 글씨만
                 띄운다(요청: "예약공간을 12정도로 하고 그만한 글씨만 띄우자(테두리 없이)"). */}
@@ -335,17 +390,8 @@ export default function ChallengeInboxModal({
             </div>
           </div>
 
-          {/* 받는 사람(To.) — 우하단, 버튼 바로 위(요청). */}
-          {current.targets[0] && (
-            <div className="scr-challenge-party scr-challenge-party-to" aria-hidden="true">
-              <span className="scr-challenge-party-tag">To.</span>
-              <Avatar
-                size={44}
-                className="scr-challenge-party-av"
-                member={{ id: current.targets[0].memberId, nickname: current.targets[0].nickname, avatar: current.targets[0].avatar }}
-              />
-            </div>
-          )}
+          {/* 받는 사람(To.) — 우하단, 버튼 바로 위(요청). 지목된 사람 전원이다. */}
+          {toSide.length > 0 && <PartySide tag="To." members={toSide} />}
 
           {/* 버튼 — 맨 아래(To. 아바타 아래, 요청). 지목된 대상만 응답 버튼을 보고, 대상이
               아니면(공유 링크 구경) 마무리 버튼 하나만. */}
