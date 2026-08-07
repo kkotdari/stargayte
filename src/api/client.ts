@@ -12,6 +12,7 @@ import type {
   Challenge, ChallengeCreatePayload, ChallengeResult,
   League, LeagueListItem, LeagueCreatePayload, LeagueUpdatePayload, LeagueTeam,
   LeagueMatchSide,
+  Schedule, ScheduleWrite,
 } from "../types";
 import type { ReplaySummaryData } from "../utils/replaySummaryData";
 import type { ReplayMapGrid } from "../utils/replayParser";
@@ -547,6 +548,29 @@ export const api = {
         gameResults: (it.gameResults ?? []).map(gameResultFromWire),
       })),
     };
+  },
+
+  /* 모임 일정(요청: "일정 등록") — 등록·수정이 같은 모양이라 폼도 API도 하나다.
+     목록은 활동 화면이 따로 안 부른다(활동 목록에 실려 온다) — 나중에 달력 같은 화면이
+     생기면 그때 쓸 자리다. */
+  async listSchedules(): Promise<Schedule[]> {
+    const res = await request<{ items: Schedule[] }>("/api/schedules");
+    return res.items;
+  },
+  async createSchedule(payload: ScheduleWrite): Promise<Schedule> {
+    return request<Schedule>("/api/schedules", { method: "POST", body: JSON.stringify(payload) });
+  },
+  async updateSchedule(id: number, payload: ScheduleWrite): Promise<Schedule> {
+    return request<Schedule>(`/api/schedules/${id}`, { method: "PATCH", body: JSON.stringify(payload) });
+  },
+  /** 참가표시 — null이면 표시 자체를 거둔다(다시 '아직 답 안 함'). */
+  async attendSchedule(id: number, response: "going" | "notGoing" | null): Promise<Schedule> {
+    return request<Schedule>(`/api/schedules/${id}/attend`, {
+      method: "POST", body: JSON.stringify({ response }),
+    });
+  },
+  async deleteSchedule(id: number): Promise<void> {
+    await request<void>(`/api/schedules/${id}`, { method: "DELETE" });
   },
 
   // 활동 댓글 — 경기/너 나와! 등 어떤 활동 요소에나 같은 API로 단다.

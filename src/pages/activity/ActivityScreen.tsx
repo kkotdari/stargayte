@@ -20,6 +20,8 @@ import ReplayReviewModal from "../../modals/ReplayReviewModal";
 import ActivityComments, { primeActivityComments } from "./ActivityComments";
 import { primeReplayMaps } from "../../hooks/useReplayMap";
 import ChallengeFormModal from "../../modals/ChallengeFormModal";
+import ScheduleFormModal from "../../modals/ScheduleFormModal";
+import ScheduleCard from "./ScheduleCard";
 import { formatWhen, formatAgo, serverMs } from "../../utils/date";
 import { useAppStore } from "../../store/appStore";
 import { isAdminRole } from "../../constants/roles";
@@ -36,7 +38,7 @@ import { useLockBodyScroll } from "../../utils/bodyScrollLock";
 import { hasAppUpdatePreloadErrorOccurred } from "../../utils/appUpdate";
 import type {
   ActivityFeedItem, Challenge, ActivityTargetType, GameResult, GameResultSlot,
-  LeagueMatchActivity, Member, RankingShift,
+  LeagueMatchActivity, Member, RankingShift, Schedule,
 } from "../../types";
 
 const PAGE_SIZE = 100;
@@ -104,7 +106,21 @@ interface LeagueMatchItem {
   match: LeagueMatchActivity;
 }
 
-type ActivityItem = ChallengeItem | GameResultItem | RankingShiftItem | LeagueMatchItem;
+/** 모임 일정 하나(요청: "일정 등록").
+ *
+ *  리그 경기와 같은 자리에 꽂힌다 — 아직 안 지난 일정은 '앞으로 있을 일'이라 지금 위에,
+ *  지난 일정은 그날에. 그 판단은 서버가 순서로 내려주고(_schedule_rows) 여기서는 같은
+ *  규칙을 한 번 더 계산한다(줄 열쇠가 맞아야 한다 — ActivityListService 주석 참고). */
+interface ScheduleItem {
+  kind: "schedule";
+  time: number;
+  withClock: boolean;
+  /** 아직 안 온 일정이 지금 위에 서게 하는 자리 — 표시용 time과 다르다. */
+  sortTime: number;
+  schedule: Schedule;
+}
+
+type ActivityItem = ChallengeItem | GameResultItem | RankingShiftItem | LeagueMatchItem | ScheduleItem;
 
 // 같은 '세션'의 게임결과가 활동에서 2개 이상 연속되면 겹침 스택 하나로 묶는다.
 export interface GameResultPostItem {
@@ -119,7 +135,7 @@ type DisplayItem = ActivityItem | GameResultPostItem;
 
 /** 활동에서 이 항목이 꽂히는 자리(ms) — 너 나와만 표시용 시각과 다르다(challengeSortMs). */
 function sortMsOf(it: ActivityItem): number {
-  return it.kind === "challenge" ? it.sortTime : it.time;
+  return it.kind === "challenge" || it.kind === "schedule" ? it.sortTime : it.time;
 }
 
 /* 서버 시각을 읽을 때는 반드시 serverMs를 거친다(new Date(문자열) 금지).
@@ -204,6 +220,19 @@ function challengeSortMs(c: Challenge): number {
   return new Date(`${c.scheduledDate}T00:00:00`).getTime() + SESSION_DAY_START_HOUR * 3600_000;
 }
 
+function scheduleItem(s: Schedule): ScheduleItem {
+  // 시각을 안 정한 일정은 그날 끝으로 잡는다 — 자정으로 잡으면 그날 열린 경기들 아래로
+  // 내려가, 아직 안 온 일이 이미 끝난 일 밑에 깔린다(서버의 _schedule_rows와 같은 규칙).
+  const at = new Date(`${s.scheduledDate}T${s.scheduledTime || "23:59:59"}`).getTime();
+  return {
+    kind: "schedule",
+    time: at,
+    withClock: !!s.scheduledTime,
+    sortTime: at > Date.now() ? Math.max(at, Date.now() + 1) : at,
+    schedule: s,
+  };
+}
+
 function leagueMatchItem(m: LeagueMatchActivity): LeagueMatchItem {
   return {
     kind: "leagueMatch",
@@ -246,15 +275,17 @@ function rowKeyOf(it: DisplayItem): string {
   return it.kind === "challenge" ? `c-${it.challenge.id}`
     : it.kind === "rankingShift" ? `rs-${it.shift.id}`
       : it.kind === "leagueMatch" ? `lm-${it.match.id}`
-        : it.kind === "gameResultPost" ? `ms-${it.items[0].gameResult.id}`
-          : `m-${it.gameResult.id}`;
+        : it.kind === "schedule" ? `sc-${it.schedule.id}`
+          : it.kind === "gameResultPost" ? `ms-${it.items[0].gameResult.id}`
+            : `m-${it.gameResult.id}`;
 }
 
 /** 그 줄이 무엇에 대한 것인가 — 카드 머리의 제목과 같은 말을 쓴다. */
 function rowTitleOf(it: DisplayItem): string {
   return it.kind === "challenge" ? "너 나와!"
     : it.kind === "rankingShift" ? RANK_SHIFT_TITLE
-      : it.kind === "leagueMatch" ? "리그" : "게임결과";
+      : it.kind === "leagueMatch" ? "리그"
+        : it.kind === "schedule" ? "일정" : "게임결과";
 }
 
 /* (삭제) needsReview — '사람 눈이 꼭 필요한 건'만 골라 검토창으로 보내던 판정이다.
@@ -652,6 +683,10 @@ export default function ActivityScreen() {
 
   // 너 나와! 등록 폼.
   const [challengeFormOpen, setChallengeFormOpen] = useState(false);
+  /* 일정 등록·수정 폼 — 창이 하나라 상태도 하나다. null이면 닫힘, "new"면 등록,
+     일정이면 그것을 고치는 중이다(요청: 등록과 수정이 같은 모달). */
+  const [scheduleForm, setScheduleForm] = useState<Schedule | "new" | null>(null);
+  const setScheduleEditing = (s: Schedule) => setScheduleForm(s);
 
   const [error, setError] = useState("");
 
@@ -699,6 +734,10 @@ export default function ActivityScreen() {
     () => feedItems.flatMap((it) => (it.leagueMatch ? [it.leagueMatch] : [])),
     [feedItems],
   );
+  const schedules = useMemo(
+    () => feedItems.flatMap((it) => (it.schedule ? [it.schedule] : [])),
+    [feedItems],
+  );
   /* 댓글도 같은 응답에 실려 온다 — 카드마다 따로 부르면 답이 제각각 도착하며 카드 키가
      뒤늦게 자라, 들어올 때 "현재"에 맞춰 둔 자리가 그만큼 밀린다. 페이지를 이어 받을
      때마다 다시 담는다(표는 통째로 새로 만든다). */
@@ -719,6 +758,21 @@ export default function ActivityScreen() {
       return [{
         key: `c-${updated.id}`, kind: "challenge" as const,
         challenge: updated, gameResults: [], comments: [],
+      }, ...prev];
+    });
+  };
+
+  // 참가표시·수정처럼 카드에서 벌어진 일을 목록에 반영한다 — 너 나와의 upsertChallenge와
+  // 같은 이유다(목록을 처음부터 다시 받으면 스크롤을 내려 둔 자리가 통째로 사라진다).
+  const upsertSchedule = (updated: Schedule) => {
+    patchFeed((prev) => {
+      const hit = prev.some((it) => it.schedule?.id === updated.id);
+      if (hit) {
+        return prev.map((it) => (it.schedule?.id === updated.id ? { ...it, schedule: updated } : it));
+      }
+      return [{
+        key: `sc-${updated.id}`, kind: "schedule" as const,
+        schedule: updated, gameResults: [], comments: [],
       }, ...prev];
     });
   };
@@ -844,11 +898,12 @@ export default function ActivityScreen() {
       ...gameResults.map(gameResultItem),
       ...rankShifts.map(rankShiftItem),
       ...leagueMatches.map(leagueMatchItem),
+      ...schedules.map(scheduleItem),
     ];
     // 정렬 기준은 time이 아니라 sortTime이다 — 너 나와만 표시용 시각과 꽂히는 자리가
     // 다르다(위 challengeSortMs). 나머지는 sortTime이 없어 time을 그대로 쓴다.
     return items.sort((a, b) => sortMsOf(b) - sortMsOf(a));
-  }, [challenges, gameResults, rankShifts, leagueMatches]);
+  }, [challenges, gameResults, rankShifts, leagueMatches, schedules]);
 
   /* 예전에는 여기서 "이미 불러온 가장 오래된 경기보다 과거인 너나와·변동"을 보류했다 —
      경기만 페이지로 나눠 받고 나머지는 통째로 받았기에, 아직 안 받은 경기 자리에 옛
@@ -902,6 +957,8 @@ export default function ActivityScreen() {
         const kind = item.kind === "gameResult" ? "gameResult"
           : item.kind === "challenge" ? "call"
           : item.kind === "leagueMatch" ? "league"
+          // 랭크 변동과 일정은 어느 갈래도 아니라 '전체'에만 든다 — 필터를 넷으로 못박은
+          // 요청이 있어 갈래를 늘리지 않는다.
           : null;
         if (kind !== kindFilter) return false;
       }
@@ -912,6 +969,13 @@ export default function ActivityScreen() {
         }
         if (item.kind === "challenge") {
           return searchTerms.every((term) => challengeMatchesTerm(item.challenge, term));
+        }
+        // 일정은 제목·내용과 올린 사람으로 걸린다 — 참가표시한 사람은 검색어에 안 넣는다:
+        // 손을 들었다는 것이 "그 사람 이야기"는 아니라, 이름으로 훑을 때 남의 일정이 딸려온다.
+        if (item.kind === "schedule") {
+          const s = item.schedule;
+          const text = normalizeSearchText([s.title, s.content, s.createdBy.nickname].join(" "));
+          return searchTerms.every((term) => text.includes(term));
         }
         // 리그 경기는 두 팀 이름(로스터 닉네임을 이은 것)으로 걸린다.
         if (item.kind === "leagueMatch") {
@@ -1005,6 +1069,15 @@ export default function ActivityScreen() {
       const flags: ("new" | "update")[] = [];
       if (fresh(posted)) flags.push("new");
       if (updated - posted > TOUCHED_SLACK_MS && fresh(updated)) flags.push("update");
+      return flags;
+    }
+    if (it.kind === "schedule") {
+      // 너 나와·리그와 같은 규칙 — 올린 때가 NEW, 그 뒤에 고친 때가 UPDATE다.
+      const created = serverMs(it.schedule.createdAt);
+      const updated = serverMs(it.schedule.updatedAt);
+      const flags: ("new" | "update")[] = [];
+      if (fresh(created)) flags.push("new");
+      if (updated - created > TOUCHED_SLACK_MS && fresh(updated)) flags.push("update");
       return flags;
     }
     if (it.kind === "rankingShift") return fresh(serverMs(it.shift.createdAt)) ? ["new"] : [];
@@ -1175,6 +1248,16 @@ export default function ActivityScreen() {
         </>
       );
     }
+    if (item.kind === "schedule") {
+      /* 일정 줄은 제목 하나다 — 그게 이 줄이 무엇에 대한 것인지의 전부다. 참가 인원을
+         함께 적어 볼까 했는데, 좁은 화면에서 재어 보니 제목이 그만큼 잘렸다: 몇 명이
+         손들었는지는 줄을 펴면 프사가 곧바로 말한다. */
+      return (
+        <span className="scr-activity-row-names scr-activity-row-name-clip">
+          <span className="scr-activity-row-em">{item.schedule.title}</span>
+        </span>
+      );
+    }
     if (item.kind === "rankingShift") {
       // 같은 사람이 개인전·팀전에 다 올랐으면 한 번만 부른다.
       const names: string[] = [];
@@ -1204,7 +1287,25 @@ export default function ActivityScreen() {
      사라지고 삭제 불가). 경기가 한 판뿐인 묶음도 마찬가지라, 카드가 몇 장인지로는 가를 수
      없어서 어느 쪽인지를 여기서 표시한다. */
   const renderCard = (item: DisplayItem) => (
-    item.kind === "leagueMatch" ? (
+    item.kind === "schedule" ? (
+      <div
+        className="scr-activity-card-stack-wrapper scr-activity-card-head-off"
+        key={`sc-${item.schedule.id}`}
+      >
+        <ScheduleCard
+          schedule={item.schedule}
+          timeText={formatWhen(item.time, { clock: item.withClock })}
+          dateLabel={dateLabelOf(item)}
+          myId={user?.id}
+          // 올린 사람 또는 운영자만 — 서버도 같은 잣대로 한 번 더 막는다.
+          canEdit={!!user && (item.schedule.createdBy.id === user.id || isAdmin)}
+          onEdit={() => setScheduleEditing(item.schedule)}
+          onChanged={upsertSchedule}
+          onDeleted={(id) => patchFeed((prev) => prev.filter((it) => it.schedule?.id !== id))}
+          footer={<ActivityCardComments targetType="schedule" targetId={item.schedule.id} />}
+        />
+      </div>
+    ) : item.kind === "leagueMatch" ? (
       <div
         className="scr-activity-card-stack-wrapper scr-activity-card-head-off"
         key={`lm-${item.match.id}`}
@@ -1361,8 +1462,11 @@ export default function ActivityScreen() {
               >
                 <Phone size={14} aria-hidden /> 너 나와! 등록
               </button>
-              <button type="button" role="menuitem" disabled title="추후 제공">
-                <CalendarPlus size={14} aria-hidden /> 일정 등록 <span className="scr-activity-add-soon">추후</span>
+              <button
+                type="button" role="menuitem"
+                onClick={() => { setAddMenuOpen(false); setScheduleForm("new"); }}
+              >
+                <CalendarPlus size={14} aria-hidden /> 일정 등록
               </button>
             </div>
           </>
@@ -1509,6 +1613,16 @@ export default function ActivityScreen() {
         <ChallengeFormModal
           onClose={() => setChallengeFormOpen(false)}
           onCreated={(c) => { upsertChallenge(c); setChallengeFormOpen(false); }}
+        />
+      )}
+
+      {/* 일정 등록·수정 — 창 하나가 둘을 다 한다(요청). "new"면 빈 폼, 일정이면 그 값이
+          채워진 폼이다. */}
+      {scheduleForm && (
+        <ScheduleFormModal
+          initial={scheduleForm === "new" ? null : scheduleForm}
+          onClose={() => setScheduleForm(null)}
+          onSaved={upsertSchedule}
         />
       )}
 

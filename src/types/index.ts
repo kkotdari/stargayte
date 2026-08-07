@@ -183,7 +183,7 @@ export interface RankingShift {
 
 // 활동 댓글 — 대상(targetType, targetId)이 경기든 너 나와!든 순위변동 알림이든
 // 같은 API 하나로 달린다.
-export type ActivityTargetType = "gameResult" | "challenge" | "rankingShift" | "leagueMatch";
+export type ActivityTargetType = "gameResult" | "challenge" | "rankingShift" | "leagueMatch" | "schedule";
 export interface ActivityComment {
   id: number;
   targetType: ActivityTargetType;
@@ -634,15 +634,66 @@ export interface LeagueMatchActivity {
   updatedAt: string;
 }
 
+/** 일정에 붙은 첨부파일 한 개 — 내려받을 주소와 사람이 붙인 이름. */
+export interface ScheduleFile {
+  name: string;
+  url: string;
+  /** 바이트 수 — 카드에 "1.2MB"처럼 적는 데만 쓴다. */
+  size: number;
+}
+
+/** 참가표시를 한 사람 — 아직 답 안 한 사람은 아예 목록에 없다. */
+export interface ScheduleAttendee {
+  memberId: string;
+  nickname: string;
+  avatar: string | null;
+  response: "going" | "notGoing";
+}
+
+/** 모임 일정 하나(요청: "일정 등록").
+ *
+ *  너 나와!와 나란히 서지만 성격이 다르다 — 지목한 상대도 성사 조건도 없어서 상태 개념이
+ *  통째로 없다. 참가표시는 성사 조건이 아니라 "나 갈게"라는 손들기다. */
+export interface Schedule {
+  id: number;
+  title: string;
+  /** YYYY-MM-DD — 필수다(요청: "일정 일시(시간은 선택)도 필수값"). */
+  scheduledDate: string;
+  /** HH:MM — 안 정했으면 null. */
+  scheduledTime: string | null;
+  content: string;
+  linkUrl: string;
+  files: ScheduleFile[];
+  attendees: ScheduleAttendee[];
+  createdBy: { id: string; nickname: string; avatar: string | null };
+  createdAt: string;
+  /** 마지막으로 손댄 때 — 활동 목록의 UPDATE 판정에 쓴다. */
+  updatedAt: string;
+}
+
+/** 일정 등록/수정 폼이 보내는 것 — 두 경우가 같은 모양이다(폼이 하나라서다).
+ *
+ *  files는 '최종 목록'이다: 이미 올라가 있는 파일은 url만, 새로 고른 파일은 data까지
+ *  담는다. 여기 없는 파일은 지운 것으로 본다. */
+export interface ScheduleWrite {
+  title: string;
+  scheduledDate: string;
+  scheduledTime: string | null;
+  content: string;
+  linkUrl: string;
+  files: (ScheduleFile | { name: string; data: string })[];
+}
+
 export interface ActivityFeedItem {
   key: string;
-  kind: "challenge" | "rankingShift" | "gameResultPost" | "leagueMatch";
+  kind: "challenge" | "rankingShift" | "gameResultPost" | "leagueMatch" | "schedule";
   /* 줄 번호(no)는 화면에서 걷어냈다(요청: "별 의미 없는 듯") — 서버는 아직 실어 보내지만
      쓰는 곳이 없어 여기서도 받지 않는다. */
   challenge?: Challenge | null;
   rankingShift?: RankingShift | null;
   gameResults: GameResult[];
   leagueMatch?: LeagueMatchActivity | null;
+  schedule?: Schedule | null;
   /** 이 줄에 달린 댓글 전부. 각 댓글이 제 대상을 들고 있어 카드가 자기 것을 찾아 붙는다. */
   comments: ActivityComment[];
 }
