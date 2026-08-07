@@ -75,7 +75,7 @@ export function ChallengeWords({ from, message }: { from: string; message: strin
   if (!mine) return null;
   return (
     <div className="scr-challenge-words">
-      <div className="scr-challenge-word">
+      <div className="scr-challenge-word scr-challenge-word-call">
         <p className="scr-challenge-word-text">{mine}</p>
         <div className="scr-challenge-word-who">— {from}</div>
       </div>
@@ -180,9 +180,9 @@ export function ChallengeLetter({
     <>
       <PartySide tag="From." members={fromSide} highlight={highlight} />
       <div className="scr-modal-body scr-challenge-inbox-body">
+        <ChallengeWords from={challenge.createdBy.nickname} message={challenge.message} />
         <div className="scr-challenge-inbox-title">{title}</div>
         {schedule}
-        <ChallengeWords from={challenge.createdBy.nickname} message={challenge.message} />
         <ChallengeReplies targets={challenge.targets} />
         {foot}
       </div>

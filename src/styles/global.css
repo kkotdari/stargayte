@@ -6503,7 +6503,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 /* 제목은 봉투/편지지 두 단계 모두에서 카드 맨 위에 먼저 온다. 편지지 카드 안에서는 각
    테마 글자색(--text)을 따르고(라이팅 글라스), 봉투 단계는 어두운 스크림 위라 아래 전용
    규칙이 흰색으로 뒤집는다. */
-.scr-challenge-inbox-title { font-weight: 800; font-size: var(--fs-subhead); margin: 6px 0 10px; color: var(--text); }
+.scr-challenge-inbox-title { font-weight: 800; font-size: var(--fs-subhead); color: var(--text); }
 /* 편지지(letter)를 열었을 때의 "OO 너 나와!" 제목만 2스텝 키운다(요청) — subhead→title.
    봉투 단계 제목(.scr-challenge-envelope-layer 안)은 그대로 subhead. */
 .scr-challenge-inbox-modal .scr-challenge-inbox-title { font-size: var(--fs-headline); }
@@ -6558,7 +6558,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 /* 편지지 본문(제목·일자·시간·한마디) — 요소 간 줄간격을 크게(요청). */
-.scr-challenge-letter .scr-challenge-inbox-body { flex: 0 1 auto; gap: 22px; }
+.scr-challenge-letter .scr-challenge-inbox-body { flex: 0 1 auto; gap: 20px; }
 /* ── 활동·너 나와 목록 카드 안의 편지지(요청: "카드만의 디자인을 걷어내고 편지지 양식을
    카드에 보여주는걸로", "압축없이 똑같이") ──────────────────────────────────────
    모달이 아니라 카드 안이라 유리 패널도 최소 높이도 없다. From.을 좌상단에 절대 배치하는
@@ -6760,9 +6760,11 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
   display: flex; flex-direction: column; align-items: center; gap: 14px; width: 100%;
 }
 .scr-challenge-word { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 100%; }
+.scr-challenge-word-call { align-items: start; padding-left: 20px; }
 /* 답한 말은 상태 줄에 딸린 목록이라 조금 작게, 상태 줄 바로 아래 붙인다. */
 .scr-challenge-words-reply { gap: 10px; margin-top: 6px; }
 .scr-challenge-words-reply .scr-challenge-word-text { font-size: var(--fs-caption); }
+.scr-challenge-word-reply { align-items: end; padding-right: 20px; }
 .scr-challenge-word-text {
   margin: 0; font-size: var(--fs-body); font-style: italic;
   color: var(--text); text-align: center; line-height: 1.35; word-break: keep-all;
@@ -6783,7 +6785,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
   padding-top: 12px; border-top: 1px dashed rgba(16, 21, 26, 0.18);
 }
 .scr-challenge-replystate {
-  display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px;
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: end; padding-right: 20px; gap: 6px;
   font-size: var(--fs-caption); font-weight: 700; line-height: 1.2;
 }
 .scr-challenge-replystate-accepted { color: #1f8a4c; }
