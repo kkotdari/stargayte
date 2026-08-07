@@ -311,7 +311,7 @@ export function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, o
         <ChallengeLetter
           challenge={challenge}
           highlight={highlightMemberIds}
-          schedule={<ChallengeWhen challenge={challenge} />}
+          when={<ChallengeWhen challenge={challenge} />}
         />
       </div>
 

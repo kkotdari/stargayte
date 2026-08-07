@@ -3,7 +3,6 @@ import { LoadingMark } from "../../components/common/Feedback";
 import ChallengeInboxModal from "../../modals/ChallengeInboxModal";
 import { api } from "../../api/client";
 import { useAppStore } from "../../store/appStore";
-import { useForceLightTheme } from "../../utils/theme";
 import RankingShiftCard from "../activity/RankingShiftCard";
 import ScheduleCard from "../activity/ScheduleCard";
 import {
@@ -26,8 +25,10 @@ export type ShareTarget =
   | { type: "stack"; day: string };
 
 export default function SharePage({ target, onExit }: { target: ShareTarget; onExit: () => void }) {
-  // 카톡 공유 링크로 열린 화면(공유 인박스/편지지)은 라이트 테마 강제(요청).
-  useForceLightTheme();
+  /* 테마는 보는 사람이 고른 그대로다(요청: "공유페이지의 라이트 테마 기본 적용 없애고
+     사용자 선택중인 테마 사용"). 예전에는 여기서 라이트로 못박았는데, 그러면 다크로 쓰는
+     사람이 링크를 열 때만 화면이 하얗게 튀었다 — 링크를 타고 왔다는 것이 테마를 바꿀
+     이유는 아니다. */
   const memberOf = useAppStore((s) => s.memberOf);
   const myId = useAppStore((s) => s.user?.id);
   const [gameResult, setGameResult] = useState<GameResult | null>(null);

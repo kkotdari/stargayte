@@ -87,27 +87,27 @@ export function ChallengeWords({ from, message }: { from: string; message: strin
   );
 }
 
-/** 약속한 일시 — 날짜와 "언제"를 한 줄에(요청). 라벨은 작고 흐리게 값 앞에 붙는다.
- *  좁은 화면에서 한 줄에 안 들어가면 "언제" 묶음째 다음 줄로 접힌다(낱말이 쪼개지지 않게
- *  각 묶음이 통으로 움직인다).
+/** 약속한 일시 — 제목 줄 오른쪽에 값만 적는다(요청: "날짜 언제 라벨 제거하고 제목줄로
+ *  이동, 글자 1스텝 축소").
  *
- *  응답할 수 있는 사람에게는 이 자리에 입력칸이 대신 들어간다(부르는 쪽이 안 정했으면
- *  답하는 쪽이 정한다) — 그건 호출부가 넣는다. */
+ *  라벨을 뗀 이유는 그 자리가 제목 옆이라서다. 편지 한가운데에 홀로 있을 때는 "날짜"·"언제"가
+ *  무엇을 가리키는지 말해 줘야 했지만, "팍규 너 나와!" 바로 옆에 붙은 "오늘 · 오후 8시 30분
+ *  이후"는 그 자체로 언제 붙자는 말로 읽힌다.
+ *
+ *  응답할 수 있는 사람에게는 이 자리 대신 본문에 입력칸이 들어간다(부르는 쪽이 안 정했으면
+ *  답하는 쪽이 정한다) — 그건 호출부가 schedule로 넣는다. */
 export function ChallengeWhen({ challenge }: { challenge: Challenge }) {
   const note = challenge.scheduledTimeNote.trim();
   return (
     <div className="scr-challenge-when">
-      <span className="scr-challenge-when-pair">
-        <span className="scr-challenge-when-label">날짜</span>
-        <span className="scr-challenge-when-value">
-          {formatWhen(challenge.scheduledDate, { empty: "일정 미정" })}
-        </span>
+      <span className="scr-challenge-when-value">
+        {formatWhen(challenge.scheduledDate, { empty: "일정 미정" })}
       </span>
       {note && (
-        <span className="scr-challenge-when-pair">
-          <span className="scr-challenge-when-label">언제</span>
+        <>
+          <span className="scr-challenge-when-sep" aria-hidden>·</span>
           <span className="scr-challenge-when-value">{note}</span>
-        </span>
+        </>
       )}
     </div>
   );
@@ -202,11 +202,13 @@ export function ChallengeOutcome({ challenge }: { challenge: Challenge }) {
  *  일시는 한마디보다 위다(요청, 스크린샷) — 약속이 이 편지의 용건이고 한마디는 그에
  *  붙는 말이라, 용건이 먼저 눈에 들어와야 한다. */
 export function ChallengeLetter({
-  challenge, schedule, foot, highlight,
+  challenge, schedule, when, foot, highlight,
 }: {
   challenge: Challenge;
-  /** 일시 자리 — 인박스는 입력칸, 카드·구경은 그냥 글. */
+  /** 일시 입력칸 — 답할 수 있는 사람에게만. 제목 아래 본문에 그대로 놓인다. */
   schedule?: ReactNode;
+  /** 이미 정해진 일시 — 제목 줄 오른쪽에 값만 붙는다(요청). 보통 <ChallengeWhen/>이다. */
+  when?: ReactNode;
   /** 본문 맨 아래에 덧붙일 것 — 카드의 승/무·취소 표시, 인박스의 오류 줄. */
   foot?: ReactNode;
   highlight?: Set<string>;
@@ -227,7 +229,11 @@ export function ChallengeLetter({
     <>
       <div className="scr-modal-body scr-challenge-inbox-body">
         <PartySide tag="From." members={fromSide} highlight={highlight} />
-        <div className="scr-challenge-inbox-title">{title}</div>
+        {/* 제목과 일시가 한 줄이다(요청) — 좁아서 못 들어가면 일시가 통째로 다음 줄로 접힌다. */}
+        <div className="scr-challenge-title-row">
+          <div className="scr-challenge-inbox-title">{title}</div>
+          {when}
+        </div>
         <ChallengeWords from={challenge.createdBy.nickname} message={challenge.message} />
         {schedule}
         <PartySide tag="To." members={toSide} highlight={highlight} />

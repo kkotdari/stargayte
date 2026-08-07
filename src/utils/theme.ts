@@ -142,18 +142,6 @@ export function useLightTheme(): [boolean, Dispatch<SetStateAction<boolean>>] {
   return [on, setOn];
 }
 
-// 카카오톡 공유 링크로 들어온 화면(공유 인박스/편지지)에서만 라이트 테마를 강제한다(요청) —
-// localStorage(사용자 선택)는 건드리지 않고, 이 화면이 떠 있는 동안만 .scr-light-theme를
-// 얹었다가 벗는다. 이미 라이트였다면 아무 것도 안 하고(그대로), 다크였을 때만 잠시 라이트로.
-export function useForceLightTheme(): void {
-  useEffect(() => {
-    const root = document.documentElement;
-    if (root.classList.contains("scr-light-theme")) return;
-    root.classList.add("scr-light-theme");
-    applyThemeColor(true);
-    return () => {
-      root.classList.remove("scr-light-theme");
-      applyThemeColor(false);
-    };
-  }, []);
-}
+/* (삭제) useForceLightTheme — 카카오톡 공유 링크로 들어온 화면만 라이트로 못박던 훅이다.
+   이제 공유 화면도 보는 사람이 고른 테마를 그대로 쓴다(요청) — 링크를 타고 왔다는 것이
+   테마를 바꿀 이유는 아니고, 다크로 쓰는 사람만 그 순간 화면이 하얗게 튀었다. */

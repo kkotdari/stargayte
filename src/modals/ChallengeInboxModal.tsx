@@ -248,6 +248,7 @@ export default function ChallengeInboxModal({
               양식). 일시는 이 편지의 용건이라 한마디보다 위다(요청). */}
           <ChallengeLetter
             challenge={current}
+            when={canRespond ? null : <ChallengeWhen challenge={current} />}
             schedule={canRespond ? (
               /* 응답자에겐 입력칸으로 보여준다(요청: "텍스트가 아니라 인풋창 그대로").
                  이미 정해져 온 값은 잠긴 칸으로, 비어 있는 쪽은 지금 채울 수 있다.
@@ -267,9 +268,7 @@ export default function ChallengeInboxModal({
                 noteLocked={noteLocked}
                 invalid={errField === "schedule"}
               />
-            ) : (
-              <ChallengeWhen challenge={current} />
-            )}
+            ) : null}
             foot={(
               /* 일정을 안 정하고 승락을 누르면 여기 오류가 뜬다 — 뜰 때 아래 버튼 줄이
                  크게 밀리지 않게 작은 한 줄 자리만 미리 예약하고, 박스/테두리 없이

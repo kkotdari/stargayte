@@ -6517,19 +6517,12 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
   z-index: 0; pointer-events: none;
   display: flex; align-items: center; gap: 7px;
 }
-/* From.은 좌상단 절대 위치, To.는 흐름 안(본문 아래·버튼 위)에서 오른쪽 정렬(요청: 버튼이
-   To. 아바타보다 아래). */
-.scr-challenge-party-from { position: absolute; top: 26px; left: 20px; }
+/* From.은 편지지 맨 위 왼쪽, To.는 본문 아래 오른쪽(요청: 버튼이 To. 아바타보다 아래).
+   둘 다 흐름 안이다 — 한때 From.만 좌상단에 절대배치했는데, 편지지 본문이 세로 가운데로
+   모이면서 그 자리가 본문과 겹쳤다(지적: 공유 화면 레이아웃 깨짐 — From.이 제목과 한마디
+   위에 포개져 글자가 서로 뭉갰다). 모바일과 활동 카드는 이미 같은 이유로 흐름에 있었다. */
+.scr-challenge-party-from { align-self: flex-start; margin-bottom: 6px; }
 .scr-challenge-party-to { align-self: flex-end; margin: 10px 4px 0 0; }
-/* 모바일에서는 편지지가 화면을 꽉 채우므로(파일 끝 전면 모달 블록) '편지지의 좌상단'이 곧
-   화면 좌상단이다 — 내용을 세로 가운데로 옮긴 뒤(요청)에는 From.만 저 위 구석에 홀로
-   남아 내용과 끊겨 보였다. 여기서는 흐름에 넣어 내용과 함께 움직이게 한다: From. 위,
-   To. 아래로 읽는 순서(요청: From. 좌상단 / To. 우하단)는 그대로다. */
-@media (max-width: 640px) {
-  .scr-challenge-letter .scr-challenge-party-from {
-    position: static; align-self: flex-start; margin-bottom: 6px;
-  }
-}
 .scr-challenge-party-tag { font-size: var(--fs-caption); font-weight: 800; color: var(--dim); line-height: 1; }
 .scr-challenge-party-av { object-fit: cover; }
 /* 아바타 묶음과 그 밑의 닉네임(요청: "겹쳐서 보여줘", "아바타 밑에 닉네임도 작게"). */
@@ -6603,11 +6596,6 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
   margin-inline: 0; padding-inline: 0;
   overflow: visible; scrollbar-gutter: auto;
 }
-/* 카드에서는 From.도 흐름 안에 둔다 — 절대 배치는 모달처럼 넉넉한 여백이 있을 때 이야기고,
-   목록 카드에서는 헤더 줄과 겹친다(모바일 편지지가 이미 같은 이유로 흐름에 있다). */
-.scr-challenge-letter-inline .scr-challenge-party-from {
-  position: static; align-self: flex-start; margin-bottom: 6px;
-}
 
 /* 이 대결이 어떻게 끝났나 — 승패·거둬들임·만료. 수락/거절은 To. 아바타의 배지가 말하므로
    여기 오는 것은 그 위 이야기뿐이다. */
@@ -6623,7 +6611,12 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 .scr-challenge-letter-actions { margin-top: 0; }
 /* 본문(제목·내용)은 아바타보다 앞에 오게 relative + 양수 z-index로 올린다. */
 .scr-challenge-inbox-modal .scr-challenge-inbox-title, .scr-challenge-inbox-modal .scr-challenge-inbox-body { position: relative; z-index: 1; }
-.scr-modal-body.scr-challenge-inbox-body .scr-challenge-inbox-title { align-self: start; padding-left: 20px; }
+/* 제목 줄의 왼쪽 들여쓰기 — 이제 제목이 아니라 줄(.scr-challenge-title-row)이 진다.
+   제목에 그대로 걸어 두면 옆에 붙은 일시는 안 밀려 둘이 다른 선에서 시작하고, 세로
+   정렬(align-self:start)이 그 줄의 글줄 맞춤(baseline)까지 깨뜨린다. */
+.scr-modal-body.scr-challenge-inbox-body > .scr-challenge-title-row {
+  align-self: stretch; padding-left: 20px;
+}
 
 /* ── 편지지 배경 사진(요청) ────────────────────────────────────────────────────
    부른 사람이 호출할 때 올린 사진이 편지지 바닥에 깔린다.
@@ -6670,18 +6663,20 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
   background-repeat: repeat, no-repeat;
 }
 .scr-light-theme .scr-challenge-letter-photo .scr-challenge-letter-bg::after {
-  background-image: linear-gradient(rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.62)), var(--letter-photo);
+  background-image: linear-gradient(rgba(255, 255, 255, 0.74), rgba(255, 255, 255, 0.74)), var(--letter-photo);
 }
-/* 사진 위 글자의 음영색 — 글자색의 반대다. 편지지와 활동 카드가 같은 값을 쓴다. */
-.scr-challenge-letter-photo, .scr-activity-card-body-photo { --photo-ink-glow: rgba(0, 0, 0, 0.8); }
+/* 사진 위 글자의 음영색 — 글자색의 반대다. 편지지와 활동 카드가 같은 값을 쓴다.
+   0.8에서 올린다(지적: 사진 위 글자 시인성이 안 좋다, 특히 라이트) — 라이트는 글자가
+   검정이라 흰 음영이 사진의 밝은 부분에 묻히기 쉬워 한 단계 더 진하다. */
+.scr-challenge-letter-photo, .scr-activity-card-body-photo { --photo-ink-glow: rgba(0, 0, 0, 0.92); }
 .scr-light-theme .scr-challenge-letter-photo,
-.scr-light-theme .scr-activity-card-body-photo { --photo-ink-glow: rgba(255, 255, 255, 0.8); }
+.scr-light-theme .scr-activity-card-body-photo { --photo-ink-glow: rgba(255, 255, 255, 0.98); }
 .scr-challenge-letter-photo .scr-challenge-inbox-title,
 .scr-challenge-letter-photo .scr-label,
 .scr-challenge-letter-photo .scr-challenge-inbox-err-text,
 .scr-challenge-letter-photo .scr-challenge-party-tag,
 .scr-challenge-letter-photo .scr-challenge-party-names,
-.scr-challenge-letter-photo .scr-challenge-when-label,
+.scr-challenge-letter-photo .scr-challenge-when-sep,
 .scr-challenge-letter-photo .scr-challenge-when-value,
 .scr-challenge-letter-photo .scr-challenge-word-text,
 .scr-challenge-letter-photo .scr-challenge-word-who,
@@ -6691,7 +6686,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 .scr-activity-card-body-photo .scr-challenge-inbox-title,
 .scr-activity-card-body-photo .scr-challenge-party-tag,
 .scr-activity-card-body-photo .scr-challenge-party-names,
-.scr-activity-card-body-photo .scr-challenge-when-label,
+.scr-activity-card-body-photo .scr-challenge-when-sep,
 .scr-activity-card-body-photo .scr-challenge-when-value,
 .scr-activity-card-body-photo .scr-challenge-word-text,
 .scr-activity-card-body-photo .scr-challenge-word-who,
@@ -6699,10 +6694,15 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 .scr-activity-card-body-photo .scr-roster-name,
 .scr-activity-card-body-photo .scr-challenge-inline-win,
 .scr-activity-card-body-photo .scr-challenge-arrow {
+  /* 겹을 늘려 글자에 실제로 테두리가 생기게 한다(요청: 테두리 강화). 첫 두 겹(1~2px)이
+     획에 딱 붙는 테두리, 뒤 두 겹이 사진의 무늬를 눌러 주는 번짐이다. 번짐만 크게 키우면
+     글자는 뿌예지기만 하고 획의 윤곽은 그대로 흐리다. */
   text-shadow:
-    0 0 3px var(--photo-ink-glow),
-    0 0 7px var(--photo-ink-glow),
-    0 0 14px var(--photo-ink-glow);
+    0 0 1px var(--photo-ink-glow),
+    0 0 2px var(--photo-ink-glow),
+    0 0 5px var(--photo-ink-glow),
+    0 0 11px var(--photo-ink-glow),
+    0 0 20px var(--photo-ink-glow);
 }
 
 
@@ -6789,7 +6789,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
   background-repeat: repeat, no-repeat;
 }
 .scr-light-theme .scr-activity-card-photo::after {
-  background-image: linear-gradient(rgba(255, 255, 255, 0.66), rgba(255, 255, 255, 0.66)), var(--card-photo);
+  background-image: linear-gradient(rgba(255, 255, 255, 0.76), rgba(255, 255, 255, 0.76)), var(--card-photo);
 }
 /* 모달이 align-items:center라 그냥 두면 편지지 본문이 내용 폭만큼만 좁게 가운데 모여
    붙어 모달 폭을 못 채웠다(요청: "모달 안의 내용들을 넓히라고") — 본문을 full-width로
@@ -6864,21 +6864,26 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
   text-align: center; word-break: keep-all;
 }
 
-/* 일자·시간 — 한 줄에 나란히(요청: "날짜와 언제를 한줄에 넣어줘"). 라벨은 작고 흐리게
-   값 앞에 붙고, 좁아서 한 줄에 못 들어가면 "언제" 묶음째 다음 줄로 접힌다(낱말이 쪼개지지
-   않게 각 묶음이 통으로 움직인다). 예전엔 두 칸 격자로 두 줄이었다. */
+/* 제목과 일시가 한 줄이다(요청: "날짜 언제를 라벨 제거하고 제목줄로 이동"). 제목이 왼쪽,
+   일시가 그 오른쪽 끝이고, 좁아서 못 들어가면 일시가 통째로 다음 줄로 접힌다.
+   글줄(baseline)로 맞춘다 — 크기가 서로 달라(제목 headline / 일시 caption) 상자로 맞추면
+   글자가 어긋나 보인다. */
+.scr-challenge-title-row {
+  display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 10px; row-gap: 2px;
+  width: 100%; min-width: 0;
+}
+/* 일자·시간 — 이제 라벨 없이 값만이다(요청). 두 값 사이는 가운뎃점으로 가른다.
+   예전에는 편지 한가운데에 "날짜 …  언제 …"로 홀로 서 있었다 — 제목 옆으로 오면서 그
+   라벨들이 할 일이 없어졌다("팍규 너 나와!" 옆의 "오늘"은 그 자체로 약속한 날이다). */
 .scr-challenge-when {
   display: flex; flex-wrap: wrap; align-items: baseline;
-  justify-content: center; column-gap: 14px; row-gap: 2px;
-  max-width: 100%; margin-inline: auto;
+  column-gap: 6px; row-gap: 2px; min-width: 0;
 }
-.scr-challenge-when-pair { display: inline-flex; align-items: baseline; gap: 6px; min-width: 0; }
-.scr-challenge-when-label {
-  font-size: var(--fs-caption); font-weight: 700; color: var(--dim);
-  line-height: 1.35; white-space: nowrap;
-}
+.scr-challenge-when-sep { color: var(--dim); }
+/* 글자는 한 스텝 아래로(요청) — body(16) → caption(14). 제목 옆에 붙는 곁말이라
+   제목과 크기를 다투면 어느 쪽을 먼저 읽어야 할지가 흐려진다. */
 .scr-challenge-when-value {
-  margin: 0; font-size: var(--fs-body); font-weight: 700;
+  margin: 0; font-size: var(--fs-caption); font-weight: 700;
   color: var(--text); text-align: left; line-height: 1.35; word-break: keep-all;
 }
 /* 값 span(종류/일시 오른쪽)은 클래스가 없어 색을 명시 안 하면 앱 루트의 테마 글자색(다크
