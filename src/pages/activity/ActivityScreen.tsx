@@ -1474,14 +1474,21 @@ export default function ActivityScreen() {
                           아래 댓글부터는 사진이 뚝 끊겨, 한 장의 편지지가 아니라 사진 붙인
                           카드 + 별개의 댓글창으로 읽힌다. 줄 본문은 카드와 댓글을 함께
                           담고 있으므로 여기 깔면 둘이 같은 종이 위에 앉는다. */}
-                      <div
-                        className={cx("scr-activity-row-body", rowPhoto(item) && "scr-activity-row-body-photo")}
-                        {...(rowPhoto(item)
-                          ? { style: { "--card-photo": `url("${rowPhoto(item)}")` } as CSSProperties }
-                          : {})}
-                      >
-                        {rowPhoto(item) && <div className="scr-activity-card-photo" aria-hidden="true" />}
-                        {renderCard(item)}
+                      {/* 자르는 칸을 한 겹 따로 둔다 — 여닫는 건 이 칸의 높이고, 안쪽 본문은
+                          처음부터 끝까지 제 크기 그대로다. 본문이 직접 줄었다 늘었다 하면 거기
+                          맞춰 깔린 배경 사진도 같이 커졌다 작아진다(지적: "카드 여닫을 때 편지지
+                          배경이 같이 확대/축소 되는데 처음부터 완성된 상태로 그려져서 드러나고
+                          숨겨지는 건 안 되나"). 이제 다 그려 둔 것이 창처럼 드러났다 가려진다. */}
+                      <div className="scr-activity-row-fold-clip">
+                        <div
+                          className={cx("scr-activity-row-body", rowPhoto(item) && "scr-activity-row-body-photo")}
+                          {...(rowPhoto(item)
+                            ? { style: { "--card-photo": `url("${rowPhoto(item)}")` } as CSSProperties }
+                            : {})}
+                        >
+                          {rowPhoto(item) && <div className="scr-activity-card-photo" aria-hidden="true" />}
+                          {renderCard(item)}
+                        </div>
                       </div>
                     </div>
                   )}
