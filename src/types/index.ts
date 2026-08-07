@@ -312,8 +312,9 @@ export interface MemberStatsEntry {
   provisional: boolean | null;
 }
 
-// GET /api/game-results/rating-history — 랭킹 상세의 '경기당 레이팅 변화(Δ)'. deltas는 이 회원이
-// 뛴 경기의 matchNo → μ 증감(양수=상승). 레이팅은 시간순 누적이라 백엔드가 계산해 준다.
+// GET /api/game-results/rating-history — 랭킹 상세의 '경기당 점수'. deltas는 이 회원이 뛴
+// 경기의 matchNo → 그 판에서 얻거나 잃은 점수(양수=승). 값을 정하는 레이팅(μ·σ)이 시간순
+// 누적이라 백엔드가 계산해 준다. conservative는 그 합, 즉 카드에 뜨는 점수다.
 export interface RatingHistoryResponse {
   deltas: Record<string, number>;
   mu: number | null;

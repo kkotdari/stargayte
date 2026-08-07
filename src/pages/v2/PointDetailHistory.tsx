@@ -14,11 +14,13 @@ interface PointDetailHistoryProps {
   members: Member[];
   memberOf: (id: string) => Member | undefined;
   loading: boolean;
-  // 경기당 보수레이팅(μ−3σ, 카드에 보이는 그 점수) 변화 — matchNo로 조회한다. 레이팅은
-  // 시간순 누적이라 클라이언트가 재구성할 수 없어 서버(rating-history)가 계산해 준다.
-  // 이 Δ들의 합은 카드 점수와 정확히 일치한다 — 카드 점수 자체가 "조회한 기간에 번 Δ의
-  // 합"으로 정의돼 있기 때문이다. 레이팅(μ·σ)은 지난달까지의 것을 그대로 들고 시작하지만
-  // (game_results/service.py의 _replay_ratings), 점수를 세는 것은 이 기간부터다.
+  // 경기당 점수 — matchNo로 조회한다. 한 판의 값은 "이변이었을수록 크게"로 정해지는데
+  // (센 상대를 이기면 27점, 비슷하면 20점, 약한 상대면 13점, 같은 상대와 자꾸 붙으면 감쇠),
+  // 그 '센가'를 판단하는 레이팅이 시간순 누적이라 클라이언트가 재구성할 수 없어
+  // 서버(rating-history)가 계산해 준다. 이 Δ들의 합은 카드 점수와 정확히 일치한다 —
+  // 카드 점수 자체가 "조회한 기간에 번 Δ의 합"으로 정의돼 있기 때문이다. 레이팅은 지난달
+  // 까지의 것을 그대로 들고 시작하지만(service.py의 _replay_ratings), 점수를 세는 것은
+  // 이 기간부터다.
   deltaByMatchNo: Map<string, number>;
   // 팀전 이력이면 "우리팀 대 상대팀"을 함께 보여준다(요청) — 개인전이면 "VS 상대 + 승패"만.
   bothTeams?: boolean;
