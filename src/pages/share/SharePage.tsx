@@ -5,11 +5,12 @@ import { api } from "../../api/client";
 import { useAppStore } from "../../store/appStore";
 import { useForceLightTheme } from "../../utils/theme";
 import RankingShiftCard from "../activity/RankingShiftCard";
+import ScheduleCard from "../activity/ScheduleCard";
 import {
   GameResultCard, GameResultPost, gameResultItem, sessionDateLabel, sessionDateOf, type GameResultPostItem,
 } from "../activity/ActivityScreen";
 import { formatWhen, shortDate } from "../../utils/date";
-import type { Challenge, GameResult, RankingShift } from "../../types";
+import type { Challenge, GameResult, RankingShift, Schedule } from "../../types";
 
 // 카카오톡으로 공유된 링크(?sv=gameResult|challenge|rankingShift&sid=…)가 여는, 그 한 장만 보이는
 // 화면(요청: "너나와/경기 공유시 해당 카드만 있는 화면" + "순위변동도 카톡공유 가능").
@@ -21,17 +22,19 @@ export type ShareTarget =
   /* challenge는 호출("OO 너 나와!"), challengeReply는 그 호출에 돌아온 답이다 — 같은
      도전장을 가리키지만 보여줄 이야기가 다르다(지적: 응답 공유가 호출 공유와 똑같은
      화면으로 연결됨). */
-  | { type: "gameResult" | "challenge" | "challengeReply" | "rankingShift"; id: number }
+  | { type: "gameResult" | "challenge" | "challengeReply" | "rankingShift" | "schedule"; id: number }
   | { type: "stack"; day: string };
 
 export default function SharePage({ target, onExit }: { target: ShareTarget; onExit: () => void }) {
   // 카톡 공유 링크로 열린 화면(공유 인박스/편지지)은 라이트 테마 강제(요청).
   useForceLightTheme();
   const memberOf = useAppStore((s) => s.memberOf);
+  const myId = useAppStore((s) => s.user?.id);
   const [gameResult, setGameResult] = useState<GameResult | null>(null);
   const [challenge, setChallenge] = useState<Challenge | null>(null);
   const [shift, setShift] = useState<RankingShift | null>(null);
   const [stack, setStack] = useState<GameResultPostItem | null>(null);
+  const [schedule, setSchedule] = useState<Schedule | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
   // 목적지 값(id 또는 세션 날짜) 하나로 아래 useEffect의 의존성을 잡는다.
@@ -45,6 +48,7 @@ export default function SharePage({ target, onExit }: { target: ShareTarget; onE
     setChallenge(null);
     setShift(null);
     setStack(null);
+    setSchedule(null);
     void (async () => {
       try {
         if (target.type === "stack") {
@@ -79,6 +83,14 @@ export default function SharePage({ target, onExit }: { target: ShareTarget; onE
         } else if (target.type === "gameResult") {
           const m = await api.getGameResult(target.id);
           if (alive) setGameResult(m);
+        } else if (target.type === "schedule") {
+          // 단건 조회 엔드포인트가 없어 목록에서 골라낸다(너 나와·순위변동과 같은 방식).
+          const items = await api.listSchedules();
+          const s = items.find((it) => it.id === target.id) ?? null;
+          if (alive) {
+            setSchedule(s);
+            if (!s) setErr("공유된 일정을 찾을 수 없어요.");
+          }
         } else if (target.type === "rankingShift") {
           // 단건 조회 엔드포인트가 없어 목록에서 골라낸다(너 나와와 같은 방식).
           const snaps = await api.listRankingShifts();
@@ -150,6 +162,20 @@ export default function SharePage({ target, onExit }: { target: ShareTarget; onE
           // 순위변동 공유 — 활동와 같은 카드 한 장(읽기 전용, 케밥/상세/댓글 없이).
           <div className="scr-activity-list">
             <RankingShiftCard shift={shift} timeText={formatWhen(shift.createdAt, { clock: true })} />
+          </div>
+        ) : schedule ? (
+          // 일정 공유 — 활동의 그 카드를 그대로 쓴다. 링크를 타고 온 사람도 참가표시는
+          // 할 수 있게 두되(그게 이 링크를 보내는 이유다), 고치고 지우는 건 앱에서다.
+          <div className="scr-activity-list">
+            <ScheduleCard
+              schedule={schedule}
+              timeText={formatWhen(schedule.scheduledDate)}
+              myId={myId}
+              canEdit={false}
+              onEdit={() => {}}
+              onChanged={setSchedule}
+              onDeleted={() => {}}
+            />
           </div>
         ) : stack ? (
           // 게임결과 묶음 공유 — 활동의 그 카드를 그대로 재사용한다(요청). 접힌 채로 뜨고

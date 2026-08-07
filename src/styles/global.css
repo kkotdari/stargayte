@@ -8938,21 +8938,26 @@ html.scr-light-theme .scr-activity-add-fab, html.scr-light-theme .scr-scrolltop 
    구조인데 텍스트 형식") — 제목 → 일시 → 내용 → 링크 → 첨부 → 참가표시 → 올린 사람.
    그래서 여기서 정할 것은 '무엇을 어디에'가 아니라 '서로 얼마나 떨어져 있나'뿐이다.
    사방 패딩은 .scr-activity-card-body(공용)가 이미 내므로 여기서 또 내지 않는다. */
-.scr-schedule-card { display: flex; flex-direction: column; gap: 10px; }
+/* 덩어리 사이는 넉넉하게(요청: 줄간격 좀 시원하게) — 이 카드는 성격이 다른 것들이 위아래로
+   쌓인다(제목·일시 / 본문 / 링크·첨부 / 참가표시 / 올린 사람). 촘촘하면 어디까지가 한
+   덩어리인지가 안 보여, 안 그래도 글만 있는 카드가 통째로 한 문단처럼 읽힌다. */
+.scr-schedule-card { display: flex; flex-direction: column; gap: 16px; }
 /* 제목만 한 단계 크다 — 줄을 펴서 이 카드를 볼 때 가장 먼저 읽어야 하는 것이다. */
 .scr-schedule-title {
   margin: 0; font-size: var(--fs-subhead); font-weight: 800; color: var(--text);
   line-height: 1.35; word-break: break-word;
 }
-/* 일시는 제목 바로 아래에 붙는다 — 둘이 한 덩어리로 읽혀야 해서 위 갭을 걷는다. */
+/* 일시는 제목 바로 아래에 붙는다 — 둘이 한 덩어리로 읽혀야 하므로 갭을 걷고 조금만 띄운다.
+   덩어리 사이가 16px로 벌어진 만큼, 이 둘만은 반대로 더 좁혀야 짝으로 보인다. */
 .scr-schedule-when-line {
-  margin-top: -5px;
+  margin-top: -10px;
   font-size: var(--fs-caption); font-weight: 700; color: var(--point);
 }
-/* 본문은 적은 그대로 — 줄바꿈을 살리고(pre-line) 긴 낱말은 접는다. */
+/* 본문은 적은 그대로 — 줄바꿈을 살리고(pre-line) 긴 낱말은 접는다. 여러 줄이 흔한
+   자리라 줄 사이도 함께 넓힌다(요청). */
 .scr-schedule-content {
   margin: 0; font-size: var(--fs-caption); color: var(--muted);
-  line-height: 1.6; white-space: pre-line; word-break: break-word;
+  line-height: 1.75; white-space: pre-line; word-break: break-word;
 }
 /* 링크와 첨부는 같은 알약 한 줄이다 — 둘 다 "눌러서 밖으로 나가는 것"이라 생김새를
    가르면 하나는 글, 하나는 버튼처럼 읽혀 무게가 달라진다. */
@@ -8975,14 +8980,14 @@ html.scr-light-theme .scr-activity-add-fab, html.scr-light-theme .scr-scrolltop 
 }
 .scr-schedule-files {
   list-style: none; margin: 0; padding: 0;
-  display: flex; flex-wrap: wrap; gap: 6px;
+  display: flex; flex-wrap: wrap; gap: 8px;
 }
 .scr-schedule-file-size { font-size: var(--fs-caption); color: var(--dim); flex-shrink: 0; }
 
 /* 참가표시 — 두 버튼과, 손든 사람의 프사 줄. */
 .scr-schedule-attend {
-  display: flex; flex-direction: column; gap: 8px;
-  padding-top: 10px; border-top: 1px solid var(--line-hair);
+  display: flex; flex-direction: column; gap: 10px;
+  padding-top: 14px; border-top: 1px solid var(--line-hair);
 }
 .scr-schedule-attend-btns { display: flex; gap: 8px; }
 .scr-schedule-attend-btn {

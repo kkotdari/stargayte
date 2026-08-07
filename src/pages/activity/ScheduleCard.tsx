@@ -2,6 +2,8 @@ import { useState } from "react";
 import { CalendarDays, Check, ExternalLink, MoreHorizontal, Paperclip, X } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
+import KakaoShareButton from "../../components/common/KakaoShareButton";
+import { shareThumb, type KakaoShareContent } from "../../utils/kakaoShare";
 import { cx } from "../../utils/format";
 import { formatWhen } from "../../utils/date";
 import { api } from "../../api/client";
@@ -20,7 +22,23 @@ function whenText(schedule: Schedule): string {
   return schedule.scheduledTime ? `${day} ${schedule.scheduledTime}` : `${day} · 시간 미정`;
 }
 
-/** 일정 카드의 케밥 — 올린 사람(또는 운영자)만 고치고 지운다. */
+/** 카카오톡으로 내보낼 내용 — 제목과 일시가 카드의 전부이므로 그대로 카드 앞뒤에 앉힌다.
+ *
+ *  너 나와!와 달리 감출 것이 없다(그쪽은 "누가 불렸을까"가 재미라 대진을 숨긴다) — 일정은
+ *  받는 사람이 링크를 안 열어도 언제 무슨 모임인지는 알아야 하는 글이다. 그림은 종류별
+ *  기본 판을 쓴다: 일정에는 제 사진이 없다. */
+function shareContentOf(schedule: Schedule): KakaoShareContent {
+  const when = whenText(schedule);
+  return {
+    title: schedule.title,
+    description: when,
+    ...shareThumb("schedule"),
+    link: `${window.location.origin}/?sv=schedule&sid=${schedule.id}`,
+    fallbackText: `[스타게이트] ${schedule.title} — ${when}`,
+  };
+}
+
+/** 일정 카드의 케밥 — 공유는 누구나, 고치고 지우는 건 올린 사람(또는 운영자)만. */
 function ScheduleActionsMenu({ schedule, canEdit, onEdit, onDeleted }: {
   schedule: Schedule;
   canEdit: boolean;
@@ -31,7 +49,6 @@ function ScheduleActionsMenu({ schedule, canEdit, onEdit, onDeleted }: {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  if (!canEdit) return null;
 
   const remove = async () => {
     setBusy(true);
@@ -66,19 +83,26 @@ function ScheduleActionsMenu({ schedule, canEdit, onEdit, onDeleted }: {
             aria-hidden
           />
           <div className="scr-menu-pop-drop scr-activity-chal-menu-drop" role="menu">
-            <button
-              type="button" role="menuitem" className="scr-menu-pop-opt"
-              onClick={() => { setOpen(false); onEdit(); }}
-            >
-              수정
-            </button>
-            <button
-              type="button" role="menuitem"
-              className={cx("scr-menu-pop-opt", "scr-activity-post-menu-opt-danger")}
-              onClick={() => { setOpen(false); setConfirmOpen(true); }}
-            >
-              삭제
-            </button>
+            <KakaoShareButton
+              variant="menu" content={() => shareContentOf(schedule)} onDone={() => setOpen(false)}
+            />
+            {canEdit && (
+              <button
+                type="button" role="menuitem" className="scr-menu-pop-opt"
+                onClick={() => { setOpen(false); onEdit(); }}
+              >
+                수정
+              </button>
+            )}
+            {canEdit && (
+              <button
+                type="button" role="menuitem"
+                className={cx("scr-menu-pop-opt", "scr-activity-post-menu-opt-danger")}
+                onClick={() => { setOpen(false); setConfirmOpen(true); }}
+              >
+                삭제
+              </button>
+            )}
           </div>
         </>
       )}

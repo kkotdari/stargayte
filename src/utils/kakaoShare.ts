@@ -76,6 +76,8 @@ const SHARE_THUMBS = {
   gameResult: "share_thumb_game_result.png",
   /** 랭크 변동 알림. */
   rankShift: "share_thumb_rank_shift.png",
+  /** 모임 일정. */
+  schedule: "share_thumb_schedule.png",
 } as const;
 
 export type ShareThumbKind = keyof typeof SHARE_THUMBS;
