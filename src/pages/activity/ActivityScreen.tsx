@@ -1544,24 +1544,29 @@ export default function ActivityScreen() {
                     className={cx("scr-activity-row", rowVoid(item) && "scr-activity-row-void")}
                     onClick={() => toggleRow(key)}
                   >
-                    <span className="scr-activity-row-desc">
-                      {/* 제목은 제 칸을 안 쓴다(요청: 제목 칸 없애고 "제목 | 내용"으로) —
-                          종류는 셋뿐("너 나와!" · "랭크 변동" · "게임결과")이라 한 칸을
-                          통째로 내주기엔 늘 같은 말이 되풀이됐고, 그 칸이 가져가던 66~72px은
-                          줄마다 실제로 달라지는 내용 쪽에 훨씬 요긴하다. */}
-                      <span className="scr-activity-row-title-badge">{rowTitleOf(item)}</span>
-                      {/* 상태 알약 — 내용의 맨 왼쪽이다. 너 나와에만 붙고 나머지 줄은
-                          아예 그리지 않는다(요청: 자리 예약 취소) — 빈 칸을 늘 잡아 두면
-                          알약 없는 줄만 왼쪽이 휑하게 비어 오히려 눈에 걸렸다. */}
-                      {rowStatusOf(item)}
-                      {rowDesc(item)}
-                      {/* 새것(NEW)이거나 달라진 것(UPDATE) — 둘 다 참이어도 하나만 세운다
-                          (요청: NEW 우선). 내용 칸의 오른쪽 끝, 댓글 수보다는 왼쪽이다. */}
-                      {flags.length > 0 && (
-                        <span className={cx("scr-activity-row-flag", `scr-activity-row-flag-${flags[0]}`)}>
-                          {flags[0] === "new" ? "NEW" : "UPDATE"}
-                        </span>
-                      )}
+                    {/* 배지 줄과 제목 줄, 두 줄이다(요청: "유형배지를 제목 위줄로 배치하고
+                        너 나와 배지를 유형배지 오른쪽에"). 한 줄에 다 늘어놓던 시절에는
+                        배지 둘이 앞자리를 먹어 정작 읽을 이름이 그만큼 밀렸다. */}
+                    <span className="scr-activity-row-main">
+                      <span className="scr-activity-row-badges">
+                        {/* 무슨 종류인가 — 늘 있다. */}
+                        <span className="scr-activity-row-title-badge">{rowTitleOf(item)}</span>
+                        {/* 상태 알약 — 너 나와·리그에만 붙고 나머지 줄은 아예 그리지 않는다
+                            (요청: 자리 예약 취소). 빈 칸을 늘 잡아 두면 알약 없는 줄만
+                            왼쪽이 휑하게 비어 오히려 눈에 걸렸다. */}
+                        {rowStatusOf(item)}
+                      </span>
+                      <span className="scr-activity-row-desc">
+                        {rowDesc(item)}
+                        {/* 새것(NEW)이거나 달라진 것(UPDATE) — 둘 다 참이어도 하나만 세운다
+                            (요청: NEW 우선). 배지 줄이 아니라 제목 글 바로 뒤다: 이 딱지가
+                            말하는 건 종류가 아니라 이 줄의 내용이 새롭다는 것이다. */}
+                        {flags.length > 0 && (
+                          <span className={cx("scr-activity-row-flag", `scr-activity-row-flag-${flags[0]}`)}>
+                            {flags[0] === "new" ? "NEW" : "UPDATE"}
+                          </span>
+                        )}
+                      </span>
                     </span>
                     {/* 얼마나 지났나(요청) — 하루까지는 "N분 전/N시간 전", 일주일까지는
                         "N일 전", 그보다 오래된 것만 날짜. 종류를 안 가리고 한 가지로 적는다

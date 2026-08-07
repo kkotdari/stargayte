@@ -7887,15 +7887,20 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
      정작 굵기 차이(700 vs 400)만으로도 "여기가 읽을 값"은 충분히 드러났다. 그래서 모든
      글자가 같은 색(--text)을 쓰고, 위계는 굵기 하나가 진다. */
   --row-dim: var(--text);
+  /* 줄 사이 선(요청: 좀 더 진하게/밝게) — 앱 공용 --line-hair(다크 0.08 / 라이트 0.12)는
+     이 목록에서 너무 옅어 줄이 갈리는 게 아니라 번져 보였다. 여기서만 쓰는 값으로 따로
+     둔다: 공용 토큰을 올리면 표·카드·모달의 모든 실선이 같이 진해진다. */
+  --scr-row-line: rgba(255, 255, 255, 0.18);
 }
+.scr-light-theme .scr-activity-rows { --scr-row-line: rgba(0, 0, 0, 0.22); }
 /* 줄 사이는 얇은 실선 하나로만 가른다 — 카드처럼 저마다 유리판을 두면 '목록'이 아니라
    '작은 카드 목록'이 되어 훑기가 다시 느려진다. */
-.scr-activity-row-wrap + .scr-activity-row-wrap { border-top: 1px solid var(--line-hair); }
+.scr-activity-row-wrap + .scr-activity-row-wrap { border-top: 1px solid var(--scr-row-line); }
 /* 맨 위와 맨 아래에도 같은 선을 긋는다(요청) — 사이만 그어 두면 목록이 어디서 시작해
    어디서 끝나는지 첫 줄과 끝 줄만 한쪽이 트여 있어 흘러내리는 것처럼 보였다. */
 .scr-activity-rows {
-  border-top: 1px solid var(--line-hair);
-  border-bottom: 1px solid var(--line-hair);
+  border-top: 1px solid var(--scr-row-line);
+  border-bottom: 1px solid var(--scr-row-line);
 }
 .scr-activity-row {
   /* 줄을 펼치면 그 줄이 화면 맨 위로 올라온다(ActivityScreen의 scrollRowToTop) — 그때
@@ -7937,9 +7942,9 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    딱지와 번호가 앉을 윗자리도 이 여백에서 나온다. */
 .scr-activity-row > * {
   display: flex; align-items: center; justify-content: center;
-  /* 줄 높이를 20% 키웠다(요청) — 높이를 정하는 것은 위아래 여백이라 그쪽을 손본다.
-     글자 줄이 19px이므로 53px이던 줄이 64px이 된다(17 → 22.5px). */
-  padding: 22.5px 10px 22.5px 0;
+  /* 줄 높이를 한 번 더 키운다(요청) — 22.5 → 26px. 줄이 두 줄이 되면서 이미 높아졌지만,
+     그만큼 위아래 여백도 같이 늘어야 배지 줄이 위 칸 선에 붙어 보이지 않는다. */
+  padding: 26px 10px 26px 0;
 }
 .scr-activity-row > * + * { border-left: 1px solid var(--line-faint); padding-left: 10px; }
 .scr-activity-row > *:last-child { padding-right: 0; }
@@ -7970,7 +7975,8 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   /* 모서리와 좌우 여백을 조금씩 줄인다(요청) — 7 → 6px, 6 → 4 → 2px. 폭을 더 줄이려면
      (--scr-row-title-w) 여백부터 내줘야 한다 — 가장 긴 제목이 51.35px이라 그 아래로는
      글자가 잘린다. */
-  padding: 2px 2px; border-radius: 6px; margin-right: 6px;
+  /* 오른쪽 여백은 걷었다 — 배지 줄의 갭(6px)이 상태 알약과의 사이를 대신 벌린다. */
+  padding: 2px 2px; border-radius: 6px;
   background: var(--line-faint); color: var(--text);
   font-size: var(--fs-micro); font-weight: 700; line-height: 1.25; white-space: nowrap;
 }
@@ -8003,11 +8009,16 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    시작점이 흔들려, 세로로 훑을 때 눈이 매번 자리를 다시 찾는다.
    오른쪽 여백은 거의 없앤다(요청) — 시각 칸과의 구분선을 걷은 자리라 띄울 이유가 사라졌고,
    그만큼이 내용이 쓸 폭이 된다. 왼쪽만 제 여백을 지킨다(줄의 시작이라 벽에 붙으면 안 된다). */
-.scr-activity-row > .scr-activity-row-desc {
-  /* 왼쪽 여백은 없앤다(요청) — 줄 자체가 이미 좌우 패딩(--scr-row-pad-x)을 물고 있어
-     글자가 벽에 붙지 않고, 이 칸이 줄의 첫 칸이 된 뒤로는 그 위에 여백을 한 겹 더 쌓을
-     이유가 없다. 오른쪽도 더 줄인다 — 구분선을 걷어 띄울 상대가 없다. */
-  justify-content: flex-start; padding-left: 0; padding-right: 2px;
+/* 내용 칸 — 이제 두 줄이다(요청): 위가 배지 줄, 아래가 제목 줄.
+   왼쪽 여백은 없앤다 — 줄 자체가 이미 좌우 패딩(--scr-row-pad-x)을 물고 있어 글자가 벽에
+   붙지 않는다. 오른쪽도 거의 없앤다 — 구분선을 걷어 띄울 상대가 없다. */
+.scr-activity-row > .scr-activity-row-main {
+  flex-direction: column; align-items: flex-start; justify-content: center; gap: 5px;
+  min-width: 0; padding-left: 0; padding-right: 2px;
+}
+/* 배지 줄 — 유형이 먼저, 그 오른쪽에 상태(요청). 상태가 없는 줄은 유형만 남는다. */
+.scr-activity-row-badges {
+  display: flex; align-items: center; gap: 6px; min-width: 0;
 }
 /* 내용과 시각 사이 구분선을 걷는다(요청) — 칸이 둘뿐이라 이 선 하나가 표를 반으로 가르는
    꼴이었는데, 시각은 내용에 딸린 값이지 다른 갈래가 아니다. 선과 그 좌우 여백이 통째로
@@ -8061,9 +8072,10 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
      떠 보였던 건 이 정렬 탓이 아니라 이름 상자의 밑선이 배지에 끌려간 탓이었고, 그건
      .scr-activity-row-name-main에서 잡았다. */
   display: flex; align-items: center; gap: 6px; min-width: 0;
-  /* 내용은 도로 키운다(요청) — 줄마다 실제로 달라지는 값이 여기 있어서, 훑을 때 눈이
-     머무는 자리다. 대신 제목 쪽을 한 스텝 내려 위계를 만든다. */
-  font-size: var(--fs-caption);
+  /* 한 스텝 더 키운다(요청: 제목 텍스트 1스텝 확대) — caption(14) → body(16). 배지가
+     윗줄로 올라가 이 줄이 통째로 제목이 된 만큼, 줄에서 유일하게 읽을 값이 그에 맞는
+     무게를 갖는다. */
+  font-size: var(--fs-body);
   color: var(--row-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 /* overflow를 걷었다 — 이 상자가 잘라 내면 그 위로 얹은 상태 배지(.scr-activity-row-state)가
