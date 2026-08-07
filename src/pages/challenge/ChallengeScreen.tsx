@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { createPortal } from "react-dom";
 import { Pencil, MessageSquarePlus } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
@@ -195,19 +195,11 @@ export function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, o
   const schedulePassed = !!challenge.scheduledAt && new Date(challenge.scheduledAt).getTime() < Date.now();
   const resultInputOpen = schedulePassed || !challenge.scheduledAt;
   const canEnterResult = isParticipant && challenge.status === "confirmed" && resultInputOpen && challenge.resultWinnerSide === null;
-  /* 아무 응답 없이 끝난 두 가지(요청) — 취소는 취소한 사람 자리에, 만료는 상대 응답
-     자리에 적는다. 손 이모지 양옆의 배지 자리를 그대로 쓴다: 왼쪽이 부른 편, 오른쪽이
-     지목된 편이라, 누가 거둬들였는지가 자리만으로 읽힌다. */
+  /* 아무 응답 없이 끝난 건인가 — 카드 껍데기를 흐리게 칠할 때만 쓴다.
+     (삭제) 취소·만료를 어느 편 자리에 적을지 가르던 판단 — 편지지가 아바타마다 제 배지를
+     달고(수락/거절/대기), 이 건이 어떻게 됐나는 맨 아랫줄이 말하므로(ChallengeOutcome)
+     카드가 따로 셀 것이 없어졌다. */
   const ending = challengeEnding(challenge);
-  const canceledById = challenge.canceledBy?.id ?? null;
-  const canceledByCreatorSide = ending === "canceled" && canceledById !== null
-    && (canceledById === challenge.createdBy.id
-      || challenge.ownMembers.some((m) => m.memberId === canceledById));
-  const canceledByTargetSide = ending === "canceled" && !canceledByCreatorSide;
-  /* 지목된 편 배지 — 결과가 나오기 전에는 응답 상태를 보여주는 자리다. 아무도 응답 못 한
-     채 끝났으면 그 사실("만료")이 "대기"보다 정확하다(요청: 무응답 거절은 만료로 표시). */
-  const targetSideTone: PillTone = canceledByTargetSide ? "canceled"
-    : ending === "expired" ? "expired" : aggregateTargetTone(challenge.targets);
 
   const [mode, setMode] = useState<CardMode>("none");
   const [dateStr, setDateStr] = useState("");
@@ -288,33 +280,8 @@ export function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, o
   ];
   const targetSideMembers: SideMember[] = challenge.targets.map((t) => ({ id: t.memberId, nickname: t.nickname, avatar: t.avatar }));
 
-  /* 편지지가 말하지 않는 것 하나 — 이 대결이 어떻게 끝났나. 수락·거절은 To. 아바타의
-     배지가 말하지만, 승패와 취소·만료는 그 위 이야기라 본문 맨 아래에 한 줄로 둔다.
-     예전 카드의 손 이모지 양옆 배지 자리가 하던 일이다. */
-  const verdict = ((): ReactNode => {
-    if (canceledByCreatorSide) {
-      return <span className="scr-challenge-verdict scr-challenge-avatar-badge-canceled">거둬들임</span>;
-    }
-    if (challenge.resultWinnerSide === "draw") {
-      return <span className="scr-challenge-verdict scr-challenge-verdict-draw">무승부</span>;
-    }
-    if (challenge.resultWinnerSide === "creator" || challenge.resultWinnerSide === "target") {
-      const won = challenge.resultWinnerSide === "creator" ? creatorSideMembers : targetSideMembers;
-      return (
-        <span className="scr-challenge-verdict scr-challenge-verdict-win">
-          {won.map((p) => p.nickname).join(", ")} 승리
-        </span>
-      );
-    }
-    if (targetSideTone === "expired" || targetSideTone === "canceled") {
-      return (
-        <span className={`scr-challenge-verdict scr-challenge-avatar-badge-${targetSideTone}`}>
-          {PILL_LABEL[targetSideTone]}
-        </span>
-      );
-    }
-    return null;
-  })();
+  /* (삭제) 카드가 따로 그리던 승패·취소 줄 — 이제 편지지가 맨 아랫줄에 제 손으로 적는다
+     (ChallengeLetter의 ChallengeOutcome). 같은 판단을 두 군데서 하면 어긋난다. */
 
   // 확인창을 닫을 때 비로소 목록을 갱신한다.
   const dismissShare = () => {
@@ -369,7 +336,6 @@ export function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, o
           challenge={challenge}
           highlight={highlightMemberIds}
           schedule={<ChallengeWhen challenge={challenge} />}
-          foot={verdict}
         />
       </div>
 

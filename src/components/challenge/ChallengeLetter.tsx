@@ -11,11 +11,16 @@ import type { Challenge } from "../../types";
 
    카드에서도 줄이지 않고 그대로 보여준다(요청: "압축없이 똑같이"). */
 
+/** 지목된 사람의 응답을 아바타 배지에 적을 낱말. */
+const RESPONSE_LABEL: Record<string, string> = {
+  accepted: "수락", rejected: "거절", discarded: "버림", pending: "대기",
+};
+
 export type LetterPerson = {
   id: string;
   nickname: string;
   avatar: string | null;
-  /** 지목된 쪽만 — 아바타에 수락(✓)·거절(✕) 배지를 단다. */
+  /** 지목된 쪽만 — 아바타에 "수락/거절/대기" 배지를 단다. */
   response?: string;
 };
 
@@ -25,8 +30,10 @@ export type LetterPerson = {
  *  1:1이면 한 장이라 겹칠 것이 없고, 팀전이면 두세 장이 왼쪽으로 조금씩 물려 쌓인다 —
  *  겹친 자리가 구분되도록 아바타마다 편지지 색 테두리를 한 겹 두른다(CSS).
  *
- *  지목된 쪽(To.)은 아바타마다 수락·거절 배지를 단다(요청) — 누가 답했는지는 사람마다
- *  다른데 그것을 말할 자리가 아바타뿐이다. 아직 답이 없으면 배지도 없다. */
+ *  지목된 쪽(To.)은 아바타마다 배지를 단다(요청) — 누가 어떻게 답했는지는 사람마다 다른데
+ *  그것을 말할 자리가 아바타뿐이다. 예전엔 ✓/✕ 기호였는데 안 와닿는다는 지적으로 낱말을
+ *  넣고 배지를 조금 키웠다(요청: "v/x 대신 수락/거절/대기"). 아직 답이 없는 사람도 "대기"로
+ *  적는다 — 빈자리로 두면 '이 사람은 뭐지'가 된다. */
 export function PartySide({ tag, members, highlight }: {
   tag: "From." | "To.";
   members: LetterPerson[];
@@ -40,16 +47,13 @@ export function PartySide({ tag, members, highlight }: {
       <div className="scr-challenge-party-who">
         <div className="scr-challenge-party-stack">
           {members.map((m) => {
-            const mark = m.response === "accepted" ? "수락" : m.response === "rejected" ? "거절" : null;
+            const mark = m.response ? RESPONSE_LABEL[m.response] : undefined;
             return (
               <span key={m.id} className="scr-challenge-party-slot">
                 <Avatar size={44} className="scr-challenge-party-av" member={m} />
                 {mark && (
-                  <span
-                    className={`scr-challenge-party-badge scr-challenge-party-badge-${m.response}`}
-                    title={mark} aria-label={mark} role="img"
-                  >
-                    {m.response === "accepted" ? "✓" : "✕"}
+                  <span className={`scr-challenge-party-badge scr-challenge-party-badge-${m.response}`}>
+                    {mark}
                   </span>
                 )}
               </span>
@@ -83,8 +87,9 @@ export function ChallengeWords({ from, message }: { from: string; message: strin
   );
 }
 
-/** 약속한 일시 — 왼쪽에 작고 흐린 라벨, 오른쪽에 값(요청). 값이 두 줄로 넘어가도 라벨은
- *  제 칸 맨 위에 붙어 있는다(요청: "세로는 자기 칸에서 위로 정렬").
+/** 약속한 일시 — 날짜와 "언제"를 한 줄에(요청). 라벨은 작고 흐리게 값 앞에 붙는다.
+ *  좁은 화면에서 한 줄에 안 들어가면 "언제" 묶음째 다음 줄로 접힌다(낱말이 쪼개지지 않게
+ *  각 묶음이 통으로 움직인다).
  *
  *  응답할 수 있는 사람에게는 이 자리에 입력칸이 대신 들어간다(부르는 쪽이 안 정했으면
  *  답하는 쪽이 정한다) — 그건 호출부가 넣는다. */
@@ -92,62 +97,71 @@ export function ChallengeWhen({ challenge }: { challenge: Challenge }) {
   const note = challenge.scheduledTimeNote.trim();
   return (
     <div className="scr-challenge-when">
-      <span className="scr-challenge-when-label">날짜</span>
-      <span className="scr-challenge-when-value">
-        {formatWhen(challenge.scheduledDate, { empty: "일정 미정" })}
+      <span className="scr-challenge-when-pair">
+        <span className="scr-challenge-when-label">날짜</span>
+        <span className="scr-challenge-when-value">
+          {formatWhen(challenge.scheduledDate, { empty: "일정 미정" })}
+        </span>
       </span>
       {note && (
-        <>
+        <span className="scr-challenge-when-pair">
           <span className="scr-challenge-when-label">언제</span>
           <span className="scr-challenge-when-value">{note}</span>
-        </>
+        </span>
       )}
     </div>
   );
 }
 
-/** 답한 사람들 — 상태 한 줄이 먼저 서고 그 아래 그 상태인 사람들의 한마디가 딸린다
- *  (요청: "응답상태를 피호출자 한마디 위로 옮기고, 팀전에서는 각 응답상태 아래에 해당하는
- *  한마디들을 세로 목록식으로 배치 — 한마디와 응답을 연결해서 볼 수 있도록").
+/** 답한 사람들이 남긴 한마디 — 그것만 세로로 늘어놓는다(요청: "응답자 아바타 밑에는 기존
+ *  응답 상태 다 제거하고 등록된 응답 한마디들만 표시").
  *
- *  1:1은 "수락함 / 거절함 / 응답 기다리는 중" 하나로 끝나고, 팀전은 사람마다 답이 달라
- *  "1명 수락함"처럼 센 수로 말한다. 0명인 갈래는 아예 안 적는다 — "0명 거절함"은 말이
- *  아니다. 한마디를 남긴 사람만 그 아래 줄을 얻는다(요청).
- *
- *  버림(discarded)은 거절 쪽으로 센다 — 버리기 기능은 없앴지만(요청) 예전 기록이 남아
- *  있고, 그 기록 역시 '답이 왔고 대결은 없다'는 점에서 거절과 같은 뜻이다. */
+ *  예전엔 "1명 수락함" 같은 상태 줄이 무리마다 서고 그 아래 한마디가 딸렸는데, 누가 어떻게
+ *  답했는지는 이제 To. 아바타의 배지가 사람마다 직접 말하고, 이 대결이 어떻게 됐는지는 맨
+ *  아랫줄이 말한다. 같은 사실을 세 군데서 말할 이유가 없다. */
 export function ChallengeReplies({ targets }: { targets: Challenge["targets"] }) {
-  if (targets.length === 0) return null;
-  const solo = targets.length === 1;
-  const groups = [
-    { k: "accepted", solo: "수락함", many: "수락함", of: targets.filter((t) => t.response === "accepted") },
-    { k: "pending", solo: "응답 기다리는 중", many: "기다리는 중", of: targets.filter((t) => t.response === "pending") },
-    {
-      k: "rejected", solo: "거절함", many: "거절함",
-      of: targets.filter((t) => t.response === "rejected" || t.response === "discarded"),
-    },
-  ].filter((g) => g.of.length > 0);
+  const said = targets.filter((t) => t.responseMessage.trim() !== "");
+  if (said.length === 0) return null;
   return (
-    <div className="scr-challenge-replies">
-      {groups.map((g) => (
-        <div key={g.k} className="scr-challenge-reply-group">
-          <div className={`scr-challenge-replystate scr-challenge-replystate-${g.k}`}>
-            {solo ? g.solo : `${g.of.length}명 ${g.many}`}
-          </div>
-          {g.of.some((t) => t.responseMessage.trim()) && (
-            <div className="scr-challenge-words scr-challenge-words-reply">
-              {g.of.filter((t) => t.responseMessage.trim()).map((t) => (
-                <div key={t.memberId} className="scr-challenge-word scr-challenge-word-reply">
-                  <p className="scr-challenge-word-text">{t.responseMessage}</p>
-                  <div className="scr-challenge-word-who">— {t.nickname}</div>
-                </div>
-              ))}
-            </div>
-          )}
+    <div className="scr-challenge-words scr-challenge-words-reply">
+      {said.map((t) => (
+        <div key={t.memberId} className="scr-challenge-word scr-challenge-word-reply">
+          <p className="scr-challenge-word-text">{t.responseMessage}</p>
+          <div className="scr-challenge-word-who">— {t.nickname}</div>
         </div>
       ))}
     </div>
   );
+}
+
+/** 이 대결이 지금 어디까지 왔나 — 편지지 맨 아랫줄 한 줄(요청: "응답 기다리는 중/만료/취소/
+ *  준비중/누구 승(또는 무승부)/미실시 — 이건 경기 최종 상태니까 맨 아랫줄에 표시하는 걸로
+ *  하고, 배지 아니고 텍스트로 통일").
+ *
+ *  아바타 배지가 '사람마다 어떻게 답했나'를 말한다면 이 줄은 '이 건이 어떻게 됐나'를 말한다.
+ *  그래서 둘은 겹치지 않는다 — 셋이 다 수락해도 이 줄은 "준비중"이고, 결과가 들어오면
+ *  "OO 승"으로 바뀐다. */
+export function challengeOutcome(c: Challenge): { text: string; tone: string } {
+  if (c.resultWinnerSide === "draw") return { text: "무승부", tone: "draw" };
+  if (c.resultWinnerSide === "not_held") return { text: "미실시", tone: "expired" };
+  if (c.resultWinnerSide === "creator" || c.resultWinnerSide === "target") {
+    const won = c.resultWinnerSide === "creator"
+      ? [c.createdBy.nickname, ...c.ownMembers.map((m) => m.nickname)]
+      : c.targets.map((t) => t.nickname);
+    return { text: `${won.join(", ")} 승`, tone: "win" };
+  }
+  if (c.status === "pending") return { text: "응답 기다리는 중", tone: "pending" };
+  if (c.status === "confirmed") return { text: "준비중", tone: "accepted" };
+  // 여기부터는 폐기(휴지통)된 건이다. 부른 사람이 거둬들였으면 취소, 아무도 답하지 않은
+  // 채 마감이 지났으면 만료, 그 밖(누군가 거절·버림)은 그냥 성사되지 않은 것이다.
+  if (c.canceledBy) return { text: "취소", tone: "canceled" };
+  if (c.targets.every((t) => t.response === "pending")) return { text: "만료", tone: "expired" };
+  return { text: "성사 안 됨", tone: "rejected" };
+}
+
+export function ChallengeOutcome({ challenge }: { challenge: Challenge }) {
+  const { text, tone } = challengeOutcome(challenge);
+  return <div className={`scr-challenge-outcome scr-challenge-outcome-${tone}`}>{text}</div>;
 }
 
 /** 한 통의 편지지 — From. / 제목·일시·한마디 / To.
@@ -186,6 +200,8 @@ export function ChallengeLetter({
         <PartySide tag="To." members={toSide} highlight={highlight} />
         <ChallengeReplies targets={challenge.targets} />
         {foot}
+        {/* 맨 아랫줄 — 이 건이 어떻게 됐나(요청). foot(인박스의 오류 줄 등)보다도 아래다. */}
+        <ChallengeOutcome challenge={challenge} />
       </div>
     </>
   );

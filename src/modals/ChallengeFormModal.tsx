@@ -10,7 +10,7 @@ import MemberPickBlock from "../components/common/MemberPickBlock";
 import { useAppStore } from "../store/appStore";
 import { api } from "../api/client";
 import { useLockBodyScroll } from "../utils/bodyScrollLock";
-import { challengePhoto, shareThumb, shareThumbUrl, type KakaoShareContent } from "../utils/kakaoShare";
+import { challengePhoto, shareThumb, type KakaoShareContent } from "../utils/kakaoShare";
 import { buildChallengeBackdrop, type ChallengeBackdrop } from "../utils/image";
 import type { Challenge } from "../types";
 
@@ -98,14 +98,14 @@ export default function ChallengeFormModal({ onClose, onCreated, presetTargetIds
       : `${targetNames[0]} 외 ${targetNames.length - 1}명`;
   const modalTitle = titleName ? `${titleName} 호출하기` : "호출하기";
 
-  // 사진을 고르면 그 자리에서 편지지용·공유 카드용 두 장을 만든다. 공유 카드는 미리
-  // 만들어 둔 판(share_thumb_challenge_call.png)을 사진 위에 얹어 완성한다.
+  // 사진을 고르면 그 자리에서 한 장으로 줄인다 — 편지지와 카카오 공유 카드가 같은 장을
+  // 쓴다(요청: 사진을 올린 호출은 로고·문구를 안 얹는다).
   const pickPhoto = async (file: File | undefined) => {
     if (!file) return;
     setErr("");
     setPhotoBusy(true);
     try {
-      setPhoto(await buildChallengeBackdrop(file, shareThumbUrl("challengeCall")));
+      setPhoto(await buildChallengeBackdrop(file));
     } catch (e) {
       setErr(e instanceof Error ? e.message : "사진을 불러오지 못했어요.");
     } finally {
@@ -157,8 +157,8 @@ export default function ChallengeFormModal({ onClose, onCreated, presetTargetIds
     return {
       title: `${caller ? `${caller}님` : "누군가"}의 호출`,
       description: "누가 호출됐을까요? 👀 탭해서 확인하기",
-      // 배경 사진을 올린 호출이면 그 사진으로 앉힌 판을 쓴다(요청: "공유시 썸네일
-      // 배경으로 쓰임") — 로고·문구는 그대로 얹혀 있고 흰 바탕만 사진으로 바뀐 판이다.
+      // 배경 사진을 올린 호출이면 그 사진을 그대로 쓴다(요청) — 로고도 "너 나와! 호출"도
+      // 안 얹는다. 안 올렸으면 종류별 기본 판(로고 있는 그것)이 나간다.
       ...shareThumb("challengeCall", challengePhoto(challenge)),
       link: `${window.location.origin}/?sv=challenge&sid=${challenge.id}`,
       fallbackText: `[스타게이트] ${caller ? `${caller}님` : "누군가"}의 호출이 도착했어요! 열어서 확인해보세요.`,
