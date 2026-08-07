@@ -536,7 +536,7 @@ export default function StatsScreenV2() {
               <MonthCalendar
                 value={period} onChange={setPeriod}
                 minMonth={firstMonth} maxMonth={currentMonthValue()}
-                allValue={PERIOD_ALL} allLabel="올타임"
+                allValue={PERIOD_ALL} allLabel="전체"
               />
             </FilterGroup>
           </div>
