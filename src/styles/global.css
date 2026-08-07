@@ -2969,8 +2969,12 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
    62px은 실측값이다 — 네 자리 + 단위 + 스피너(1234건⟳)까지가 61.2px이라 거기까지는
    폭이 안 변한다. 그보다 길어지면 그때는 늘어난다(잘리지는 않는다). */
 :root { --scr-count-w: 62px; }
+/* 크기는 한 스텝 내린 micro로 못박는다(요청: "건수 폰트 축소 — 모든 페이지에서 축소하고
+   크기 통일"). 활동·통계·회원이 전부 SearchFilterBar의 같은 요소를 쓰지만 그 요소가 이
+   클래스와 .scr-filter-bar-count를 함께 달고 있어, 값이 서로 다르면 파일 뒤쪽이 이기는
+   우연에 크기가 달렸다 — 두 자리를 같은 값으로 맞춰 그 우연을 없앤다. */
 .scr-list-count {
-  color: var(--dim); font-weight: 400; font-size: var(--fs-body); margin-left: auto;
+  color: var(--dim); font-weight: 400; font-size: var(--fs-micro); margin-left: auto;
   min-width: var(--scr-count-w); text-align: right; font-variant-numeric: tabular-nums;
 }
 @media (max-width: 640px) {
@@ -3282,7 +3286,7 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
   /* 미리 잡아 둔 폭(--scr-count-w) 안에서 오른쪽에 붙는다(요청: 정렬은 우측정렬) —
      inline-flex라 text-align이 안 먹으므로 주축 정렬로 같은 결과를 낸다. */
   justify-content: flex-end;
-  align-self: flex-end; font-size: var(--fs-caption);
+  align-self: flex-end; font-size: var(--fs-micro);
   margin-top: 6px; margin-left: 0; margin-bottom: 10px; position: relative; top: 1px;
 }
 /* 목록 제목 + 건수 한 줄(SearchFilterBar의 heading prop) — 제목은 왼쪽, 건수는 오른쪽
@@ -6543,21 +6547,23 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 /* 배지가 아바타 아래로 9px 내려와 앉으므로(요청), 지목된 쪽 이름줄은 그만큼 비켜 준다 —
    안 그러면 배지가 닉네임 위에 걸린다(실측 스크린샷). 부른 쪽은 배지가 없어 그대로다. */
 .scr-challenge-party-to .scr-challenge-party-names { margin-top: 9px; }
-/* 응답 배지(요청) — 아바타 오른쪽 아래에 얹는다. 겹쳐 쌓인 아바타 위에서도 보이도록
-   편지지 색 테두리를 둘러 제 자리를 만든다. 배지는 아바타 위 층이라(z-index) 뒷사람
+/* 응답 배지(요청) — 아바타 오른쪽 아래에 얹는다. 배지는 아바타 위 층이라(z-index) 뒷사람
    아바타에 가리지 않는다.
    ✓/✕ 기호를 넣던 17px 동그라미였는데 안 와닿는다는 지적으로 낱말("수락/거절/대기/버림")을
    넣었다(요청: "응답 배지 크기를 약간 키우고 그 안에 v/x 대신").
-   낱말이 들어가도 동그라미다(요청: "응답상태 배지 원형으로 변경") — 두 글자가 들어갈
-   지름(30px)으로 키우고 아바타 아래쪽으로 더 내려 앉힌다(요청: "아래로 좀 내려와서
-   겹쳐져도 됨"). 겹침을 허락하니 지목된 쪽 아바타도 다시 겹쳐 쌓을 수 있다. */
+   낱말이 들어가도 동그라미다(요청: "응답상태 배지 원형으로 변경") — 아바타 아래쪽으로
+   내려 앉혀 겹치게 둔다(요청: "아래로 좀 내려와서 겹쳐져도 됨").
+   테두리(편지지 색 링)는 걷고 지름도 한 스텝 줄인다(요청) — 30→26px. 링이 없어지면 낱말이
+   설 자리가 그만큼 좁아지므로 글자도 한 스텝(12→11px) 내린다.
+   오른쪽으로 튀어나오지 않게 아바타 오른쪽 끝에 맞춘다 — 5px 내밀어 두었더니 편지지
+   본문의 자르는 선(.scr-modal-body의 overflow-x)에 배지 오른쪽이 잘렸다(지적). 아래로만
+   내려가면 겹침은 그대로다. */
 .scr-challenge-party-badge {
-  position: absolute; right: -5px; bottom: -9px;
-  width: 30px; height: 30px; border-radius: 999px;
+  position: absolute; right: 0; bottom: -9px;
+  width: 26px; height: 26px; border-radius: 999px;
   display: inline-flex; align-items: center; justify-content: center;
-  font-size: var(--fs-micro, 11px); font-weight: 800; line-height: 1; color: #fff;
+  font-size: 11px; font-weight: 800; line-height: 1; color: #fff;
   letter-spacing: -0.04em; white-space: nowrap;
-  box-shadow: 0 0 0 2px var(--panel-solid);
 }
 .scr-challenge-party-badge-accepted { background: #1f8a4c; }
 .scr-challenge-party-badge-rejected { background: #c8395a; }
@@ -6588,7 +6594,15 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
    장치다. 모달 안에서는 좌우가 대칭이라 가운데가 그대로지만, 카드 안에서는 부모가 그
    여백을 상쇄해 주지 않아 본문이 통째로 왼쪽으로 16px 밀렸다(지적: 왜 가운데가 아니라
    왼쪽에 붙어 있지). 카드에서는 스크롤할 일이 없으니 좌우 여백을 둘 다 지운다. */
-.scr-challenge-letter-inline .scr-challenge-inbox-body { margin-inline: 0; padding-inline: 0; }
+/* 같은 이유로 자르는 것도 끈다. 카드 안의 편지지는 스크롤하지 않는데 .scr-modal-body를
+   함께 달고 있어 그쪽의 overflow-x:hidden과 scrollbar-gutter:stable이 따라온다 — 자르는
+   선은 스크롤바 자리를 뺀 안쪽이라, 오른쪽 끝에 앉은 To. 아바타의 응답 배지가 거기 걸려
+   오른쪽이 잘렸다(지적: "응답자 아바타의 응답 배지 오른쪽 끝 잘림"). 실측(393px): 자르는
+   선이 350px인데 아바타 오른쪽 끝이 351px이라 아바타 테두리부터 이미 깎이고 있었다. */
+.scr-challenge-letter-inline .scr-challenge-inbox-body {
+  margin-inline: 0; padding-inline: 0;
+  overflow: visible; scrollbar-gutter: auto;
+}
 /* 카드에서는 From.도 흐름 안에 둔다 — 절대 배치는 모달처럼 넉넉한 여백이 있을 때 이야기고,
    목록 카드에서는 헤더 줄과 겹친다(모바일 편지지가 이미 같은 이유로 흐름에 있다). */
 .scr-challenge-letter-inline .scr-challenge-party-from {

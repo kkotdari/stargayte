@@ -576,16 +576,18 @@ export function GameResultPost({
   );
 }
 
-/* 활동 유형 필터 — 나열선택형이라 넷이 그대로 한 줄에 늘어선다. 랭크 변동은 목록에는
-   그대로 나오되 거르는 대상에서는 뺐다(요청이 넷을 못박았다) — '전체'에 포함되므로 안
-   보이게 되는 것은 없다. 차례는 요청대로 전체/게임결과/너 나와!/리그다. */
-type ActivityKindFilter = "all" | "gameResult" | "call" | "league";
+/* 활동 유형 필터 — 나열선택형이라 다섯이 그대로 한 줄에 늘어선다. 랭크 변동은 목록에는
+   그대로 나오되 거르는 대상에서는 뺐다 — '전체'에 포함되므로 안 보이게 되는 것은 없다.
+   차례는 요청대로 전체/일정/너 나와!/리그/게임결과다(일정이 새로 들어오며 게임결과가
+   맨 뒤로 갔다). */
+type ActivityKindFilter = "all" | "schedule" | "call" | "league" | "gameResult";
 
 const KIND_OPTS: { value: ActivityKindFilter; label: string }[] = [
   { value: "all", label: "전체" },
-  { value: "gameResult", label: "게임결과" },
+  { value: "schedule", label: "일정" },
   { value: "call", label: "너 나와!" },
   { value: "league", label: "리그" },
+  { value: "gameResult", label: "게임결과" },
 ];
 
 export default function ActivityScreen() {
@@ -957,8 +959,8 @@ export default function ActivityScreen() {
         const kind = item.kind === "gameResult" ? "gameResult"
           : item.kind === "challenge" ? "call"
           : item.kind === "leagueMatch" ? "league"
-          // 랭크 변동과 일정은 어느 갈래도 아니라 '전체'에만 든다 — 필터를 넷으로 못박은
-          // 요청이 있어 갈래를 늘리지 않는다.
+          : item.kind === "schedule" ? "schedule"
+          // 랭크 변동만 어느 갈래도 아니라 '전체'에만 든다.
           : null;
         if (kind !== kindFilter) return false;
       }
