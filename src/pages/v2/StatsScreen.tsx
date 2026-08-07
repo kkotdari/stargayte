@@ -154,7 +154,7 @@ export default function StatsScreenV2() {
   // 기간은 올타임 아니면 특정 월("YYYY-MM") 하나 — 예전 단위 알약탭 + 월 선택기를 달력
   // 하나로 합쳤다(요청). 기본값은 당월(요청) — 올타임이던 것을 되돌렸다. 달 초에는 표가
   // 거의 비어 보이지만, 지금 이 달의 판세를 먼저 보여주는 쪽이 통계를 여는 이유에 가깝다.
-  const [period, setPeriod] = useState<string>(() => currentMonthValue());
+  const [period, setPeriod] = useState<string>(PERIOD_ALL);
   const periodMonth = period === PERIOD_ALL ? "" : period;
   /* 랭크·레이팅는 어느 종족 필터에서나 보여준다. 한때 주종족일 때만 감췄는데, 그건 그 값이
      혼자 전체 종족 기준으로 남아 옆 칸들과 잣대가 어긋났기 때문이다 — 이제 서버가 사람마다
@@ -543,11 +543,11 @@ export default function StatsScreenV2() {
             <FilterGroup label="종족">
               <PickRow options={RACE_TAB_OPTS} value={race} onChange={setRace} label="종족" />
             </FilterGroup>
-            <FilterGroup label="기간">
+            <FilterGroup label="과거 기록 보기">
               <MonthCalendar
                 value={period} onChange={setPeriod}
                 minMonth={firstMonth} maxMonth={currentMonthValue()}
-                allValue={PERIOD_ALL} allLabel="전체"
+                allValue={PERIOD_ALL} allLabel="현재"
               />
             </FilterGroup>
           </div>
