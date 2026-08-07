@@ -69,82 +69,82 @@ export function PartySide({ tag, members, highlight }: {
   );
 }
 
-/** 편지지 가운데의 본론 — 부른 사람의 한마디와 그 아래 답한 사람들의 한마디(요청).
- *  팀전이든 1:1이든 같은 모양이고, 아무도 한마디를 안 남겼으면 통째로 빠진다. */
-export function ChallengeWords({ from, message, replies }: {
-  from: string;
-  message: string;
-  replies: { memberId: string; nickname: string; responseMessage: string }[];
-}) {
+/** 부른 사람의 한마디 — 편지지 가운데 맨 위. 안 남겼으면 통째로 빠진다. */
+export function ChallengeWords({ from, message }: { from: string; message: string }) {
   const mine = message.trim();
-  if (!mine && replies.length === 0) return null;
+  if (!mine) return null;
   return (
     <div className="scr-challenge-words">
-      {mine && (
-        <div className="scr-challenge-word">
-          <p className="scr-challenge-word-text">{mine}</p>
-          <div className="scr-challenge-word-who">— {from}</div>
-        </div>
-      )}
-      {replies.map((t) => (
-        <div key={t.memberId} className="scr-challenge-word scr-challenge-word-reply">
-          {t.responseMessage.trim() && (
-            <p className="scr-challenge-word-text">{t.responseMessage}</p>
-          )}
-          {/* 수락·거절은 To. 아바타의 배지가 말한다(요청) — 여기선 이름만 밝힌다. */}
-          <div className="scr-challenge-word-who">— {t.nickname}</div>
-        </div>
-      ))}
+      <div className="scr-challenge-word">
+        <p className="scr-challenge-word-text">{mine}</p>
+        <div className="scr-challenge-word-who">— {from}</div>
+      </div>
     </div>
   );
 }
 
-/** 약속한 일시 — 날짜와 "언제"를 글로. 응답할 수 있는 사람에게는 이 자리에 입력칸이
- *  대신 들어간다(부르는 쪽이 안 정했으면 답하는 쪽이 정한다). */
+/** 약속한 일시 — 왼쪽에 작고 흐린 라벨, 오른쪽에 값(요청). 값이 두 줄로 넘어가도 라벨은
+ *  제 칸 맨 위에 붙어 있는다(요청: "세로는 자기 칸에서 위로 정렬").
+ *
+ *  응답할 수 있는 사람에게는 이 자리에 입력칸이 대신 들어간다(부르는 쪽이 안 정했으면
+ *  답하는 쪽이 정한다) — 그건 호출부가 넣는다. */
 export function ChallengeWhen({ challenge }: { challenge: Challenge }) {
+  const note = challenge.scheduledTimeNote.trim();
   return (
-    <>
-      <div className="scr-challenge-inbox-date">
+    <div className="scr-challenge-when">
+      <span className="scr-challenge-when-label">날짜</span>
+      <span className="scr-challenge-when-value">
         {formatWhen(challenge.scheduledDate, { empty: "일정 미정" })}
-      </div>
-      {challenge.scheduledTimeNote.trim() && (
-        <div className="scr-challenge-inbox-time">{challenge.scheduledTimeNote}</div>
+      </span>
+      {note && (
+        <>
+          <span className="scr-challenge-when-label">언제</span>
+          <span className="scr-challenge-when-value">{note}</span>
+        </>
       )}
-    </>
+    </div>
   );
 }
 
-
-/** 상대가 답했나 — 한마디들 바로 아래 한 줄(요청: "수락 거절을 v/x로만 끝내서 안 와닿아.
- *  상대 한마디들 아래에 응답 상태 표시하자").
+/** 답한 사람들 — 상태 한 줄이 먼저 서고 그 아래 그 상태인 사람들의 한마디가 딸린다
+ *  (요청: "응답상태를 피호출자 한마디 위로 옮기고, 팀전에서는 각 응답상태 아래에 해당하는
+ *  한마디들을 세로 목록식으로 배치 — 한마디와 응답을 연결해서 볼 수 있도록").
  *
  *  1:1은 "수락함 / 거절함 / 응답 기다리는 중" 하나로 끝나고, 팀전은 사람마다 답이 달라
- *  "1명 수락함 · 2명 기다리는 중 · 1명 거절함"처럼 센 수로 말한다. 0명인 갈래는 아예
- *  안 적는다 — "0명 거절함"은 말이 아니다.
+ *  "1명 수락함"처럼 센 수로 말한다. 0명인 갈래는 아예 안 적는다 — "0명 거절함"은 말이
+ *  아니다. 한마디를 남긴 사람만 그 아래 줄을 얻는다(요청).
  *
  *  버림(discarded)은 거절 쪽으로 센다 — 버리기 기능은 없앴지만(요청) 예전 기록이 남아
  *  있고, 그 기록 역시 '답이 왔고 대결은 없다'는 점에서 거절과 같은 뜻이다. */
-export function ChallengeReplyState({ targets }: { targets: Challenge["targets"] }) {
+export function ChallengeReplies({ targets }: { targets: Challenge["targets"] }) {
   if (targets.length === 0) return null;
-  const yes = targets.filter((t) => t.response === "accepted").length;
-  const no = targets.filter((t) => t.response === "rejected" || t.response === "discarded").length;
-  const wait = targets.length - yes - no;
-  const parts: { k: string; text: string }[] = targets.length === 1
-    ? [yes > 0 ? { k: "accepted", text: "수락함" }
-      : no > 0 ? { k: "rejected", text: "거절함" }
-        : { k: "pending", text: "응답 기다리는 중" }]
-    : [
-      ...(yes > 0 ? [{ k: "accepted", text: `${yes}명 수락함` }] : []),
-      ...(wait > 0 ? [{ k: "pending", text: `${wait}명 기다리는 중` }] : []),
-      ...(no > 0 ? [{ k: "rejected", text: `${no}명 거절함` }] : []),
-    ];
+  const solo = targets.length === 1;
+  const groups = [
+    { k: "accepted", solo: "수락함", many: "수락함", of: targets.filter((t) => t.response === "accepted") },
+    { k: "pending", solo: "응답 기다리는 중", many: "기다리는 중", of: targets.filter((t) => t.response === "pending") },
+    {
+      k: "rejected", solo: "거절함", many: "거절함",
+      of: targets.filter((t) => t.response === "rejected" || t.response === "discarded"),
+    },
+  ].filter((g) => g.of.length > 0);
   return (
-    <div className="scr-challenge-replystate">
-      {parts.map((x, i) => (
-        <Fragment key={x.k}>
-          {i > 0 && <span className="scr-challenge-replystate-sep">·</span>}
-          <span className={`scr-challenge-replystate-part scr-challenge-replystate-${x.k}`}>{x.text}</span>
-        </Fragment>
+    <div className="scr-challenge-replies">
+      {groups.map((g) => (
+        <div key={g.k} className="scr-challenge-reply-group">
+          <div className={`scr-challenge-replystate scr-challenge-replystate-${g.k}`}>
+            {solo ? g.solo : `${g.of.length}명 ${g.many}`}
+          </div>
+          {g.of.some((t) => t.responseMessage.trim()) && (
+            <div className="scr-challenge-words scr-challenge-words-reply">
+              {g.of.filter((t) => t.responseMessage.trim()).map((t) => (
+                <div key={t.memberId} className="scr-challenge-word scr-challenge-word-reply">
+                  <p className="scr-challenge-word-text">{t.responseMessage}</p>
+                  <div className="scr-challenge-word-who">— {t.nickname}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       ))}
     </div>
   );
@@ -155,11 +155,9 @@ export function ChallengeReplyState({ targets }: { targets: Challenge["targets"]
  *  일시는 한마디보다 위다(요청, 스크린샷) — 약속이 이 편지의 용건이고 한마디는 그에
  *  붙는 말이라, 용건이 먼저 눈에 들어와야 한다. */
 export function ChallengeLetter({
-  challenge, reply = false, schedule, foot, highlight,
+  challenge, schedule, foot, highlight,
 }: {
   challenge: Challenge;
-  /** 응답 공유(?sv=challengeReply) — 한마디를 안 남기고 답만 한 사람도 한 줄로 세운다. */
-  reply?: boolean;
   /** 일시 자리 — 인박스는 입력칸, 카드·구경은 그냥 글. */
   schedule?: ReactNode;
   /** 본문 맨 아래에 덧붙일 것 — 카드의 승/무·취소 표시, 인박스의 오류 줄. */
@@ -173,12 +171,6 @@ export function ChallengeLetter({
   const toSide: LetterPerson[] = challenge.targets.map((t) => ({
     id: t.memberId, nickname: t.nickname, avatar: t.avatar, response: t.response,
   }));
-  /* 오간 한마디 — 한마디를 남긴 사람만 싣는다(요청). 다만 응답 공유에서는 답했다는 사실
-     자체가 이 화면이 열린 이유라, 한마디가 없어도 그 사람 줄은 남긴다. */
-  const said = challenge.targets.filter((t) => (
-    t.responseMessage.trim() !== ""
-    || (reply && t.response !== "pending" && t.response !== "discarded")
-  ));
   /* 제목은 실제로 지목된 사람(들)의 닉네임을 쓴다 — 지금 보고 있는 사람(user)을 쓰면,
      요청자 본인이 제 공유 카드를 열었을 때 자기 닉네임이 "OO 너 나와!"로 뜬다(지적). */
   const names = toSide.map((m) => m.nickname);
@@ -190,12 +182,8 @@ export function ChallengeLetter({
       <div className="scr-modal-body scr-challenge-inbox-body">
         <div className="scr-challenge-inbox-title">{title}</div>
         {schedule}
-        <ChallengeWords
-          from={challenge.createdBy.nickname}
-          message={challenge.message}
-          replies={said}
-        />
-        <ChallengeReplyState targets={challenge.targets} />
+        <ChallengeWords from={challenge.createdBy.nickname} message={challenge.message} />
+        <ChallengeReplies targets={challenge.targets} />
         {foot}
       </div>
       <PartySide tag="To." members={toSide} highlight={highlight} />

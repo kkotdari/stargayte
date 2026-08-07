@@ -248,7 +248,6 @@ export default function ChallengeInboxModal({
               양식). 일시는 이 편지의 용건이라 한마디보다 위다(요청). */}
           <ChallengeLetter
             challenge={current}
-            reply={reply}
             schedule={canRespond ? (
               /* 응답자에겐 입력칸으로 보여준다(요청: "텍스트가 아니라 인풋창 그대로").
                  이미 정해져 온 값은 잠긴 칸으로, 비어 있는 쪽은 지금 채울 수 있다.
