@@ -543,11 +543,11 @@ export default function StatsScreenV2() {
             <FilterGroup label="종족">
               <PickRow options={RACE_TAB_OPTS} value={race} onChange={setRace} label="종족" />
             </FilterGroup>
-            <FilterGroup label="과거 기록 보기">
+            <FilterGroup label="월별/누적">
               <MonthCalendar
                 value={period} onChange={setPeriod}
                 minMonth={firstMonth} maxMonth={currentMonthValue()}
-                allValue={PERIOD_ALL} allLabel="현재"
+                allValue={PERIOD_ALL} allLabel="전체 누적"
               />
             </FilterGroup>
           </div>
