@@ -2033,7 +2033,11 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
      달라, 뒤따르는 막대 줄기와 그 사이 구분선이 줄마다 다른 x에 섰다(지적 사진: 1행만
      오른쪽으로 밀려 있다). 값은 가장 긴 내용("132 포인트" + 메달)에 맞춘다 — 칸이 고정이면
      남는 폭은 막대 두 줄기가 똑같이 나눠 가지므로 모든 줄이 같은 격자가 된다. */
-  flex: 0 0 var(--scr-stat-rank-w); width: var(--scr-stat-rank-w); padding-right: 0;
+  flex: 0 0 var(--scr-stat-rank-w); width: var(--scr-stat-rank-w);
+  /* 메달이 값 오른쪽 끝에 매달리므로(.scr-stat-medal) 그 몫만큼은 칸 안에 남겨 둔다 —
+     레이팅이 네 자리("1,008 레이팅")가 되면서 값+메달이 칸 폭을 넘어 메달이 옆 줄기와
+     맞닿았다(지적: "메달이 너무 경계선에 붙었어"). */
+  padding-right: var(--scr-stat-rank-pad); padding-left: var(--scr-stat-rank-pad);
 }
 /* 어느 막대인지는 왼쪽 이름이 말한다 — 칸 머리가 "기록" 하나가 되면서 이름을 잃었다. */
 .scr-stat-record-label {
@@ -2140,6 +2144,12 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 .scr-stat-rank-cell { flex-direction: column; gap: 2px; }
 .scr-stat-rank-line { display: flex; align-items: center; justify-content: center; gap: 4px; position: relative; }
 .scr-stat-rank-points { color: var(--dim); }
+/* 언제 기준인가(요청: "얘는 좀 작고 연한 글씨야") — 값이 아니라 값에 붙는 단서라, 위아래
+   두 줄보다 한 단계 작고 흐리게. 줄 사이 여백도 좁혀 세 줄이 한 덩어리로 읽히게 한다. */
+.scr-stat-rank-asof {
+  font-size: var(--fs-micro, 11px); line-height: 1.2; color: var(--dim);
+  text-align: center; opacity: 0.72; letter-spacing: -0.01em;
+}
 
 /* ── 유닛·스킬 칸(요청: Top5 목록, 정렬 없음) ───────────────────────────────────
    이름은 왼쪽에 붙이고 수는 오른쪽 끝에 세로로 맞춘다 — 다섯 줄을 위아래로 훑을 때
@@ -2402,10 +2412,13 @@ html:not(.scr-light-theme) .scr-donut-band-label { fill: #fff; }
      (실측, 버튼 좌우 패딩 포함). 100px이면 값 좌우로 10px씩 남는다.
      120px이던 것은 메달까지 칸 '안'에 넣으려던 값이었다 — 값을 가운데 두고 그 오른쪽에
      메달을 매달면 칸은 값 + 2×(간격 + 메달)만큼 필요해서 126px이라야 하고, 그래서 120px
-     에서도 이미 조금 넘쳐 있었다. 이 칸은 overflow가 visible이라 메달이 잘리지 않으므로,
-     칸은 값에 맞추고 메달은 옆 칸의 빈 자리로 조금 넘어가게 둔다 — 대신 간격을 6 → 3px로
-     좁혀 넘치는 양을 절반으로 줄인다. 메달은 지난 기간의 1~3위에만 붙는다. */
-  --scr-stat-rank-w: 100px;
+     에서도 이미 조금 넘쳐 있었다.
+     레이팅이 네 자리가 되면서(1000 기준) 값이 83px로 늘어, 100px 칸에서는 메달이 9px 넘쳐
+     옆 줄기와 맞닿았다(지적: "레이팅 자릿수 늘면서 메달이 너무 경계선에 붙었어"). 이제는
+     메달까지 칸 안에 넣는다: 값(83) + 2×(간격 3 + 메달 17) + 좌우 여유 10 = 138px.
+     실측으로 메달 오른쪽에 10px이 남는다. */
+  --scr-stat-rank-w: 138px;
+  --scr-stat-rank-pad: 8px;
   --scr-stat-build-w: 204px;
   --scr-stat-unit-w: 366px;
   --scr-stat-skill-w: 246px;

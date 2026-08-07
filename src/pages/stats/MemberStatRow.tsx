@@ -227,6 +227,8 @@ interface MemberStatRowProps {
   // 신규 표시") — null이면 변동 없음이거나 애초에 견줄 전달이 없는 경우(전체 기간 등)라
   // 아무것도 안 보여준다.
   rankDelta?: number | "new" | null;
+  // 레이팅이 어느 날짜 기준인가 — "7.31"처럼 짧게. 안 넘기면 그 줄을 안 그린다.
+  asOf?: string;
   // 레이팅을 누르면 레이팅 상세(경기 이력)를 연다.
   onPointsClick?: () => void;
   // 랭크를 누르면 최근 5개월 순위변동 그래프를 연다(요청) — 월을 보고 있을 때만 넘어온다.
@@ -249,7 +251,7 @@ interface MemberStatRowProps {
 // 전적통계 목록의 테이블 한 행.
 export default function MemberStatRow({
   member, stats, maxOverallPlays, maxApm, maxCmd, avatar = true, compact = false,
-  points, rank, rankDelta, onPointsClick, onRankClick, medals, race, upRace,
+  points, rank, rankDelta, asOf, onPointsClick, onRankClick, medals, race, upRace,
 }: MemberStatRowProps) {
   const openMemberProfile = useAppStore((s) => s.openMemberProfile);
   const [photoOpen, setPhotoOpen] = useState(false);
@@ -286,6 +288,31 @@ export default function MemberStatRow({
               <span className="scr-stat-points-empty">-</span>
             ) : (
               <>
+                <div className="scr-stat-rank-line scr-stat-rank-points">
+                  {points === null ? (
+                    <span className="scr-stat-points-empty">-</span>
+                  ) : (
+                    /* 값과 메달을 한 껍데기로 묶는다 — 메달이 값 바로 옆에 서려면 기준이
+                       값이어야 한다(지적: 레이팅과 메달 사이가 너무 멀다). 줄 전체를 기준으로
+                       두면 가운데 정렬 때문에 값 길이만큼 거리가 들쭉날쭉해진다. */
+                    <span className="scr-stat-rank-val">
+                      <button
+                        type="button" className="scr-stat-points-btn"
+                        onClick={onPointsClick} aria-label={`${member.nickname} 레이팅 상세`}
+                      >
+                        {points.toLocaleString()}
+                        {/* 단위(요청) — 아랫줄의 "1위"와 달리 이 줄은 맨숫자라 무엇의 수인지가
+                            칸 이름에만 기대고 있었다. */}
+                        <span className="scr-stat-points-unit"> 레이팅</span>
+                      </button>
+                      {medals?.points && <span className="scr-stat-medal">{medals.points}</span>}
+                    </span>
+                  )}
+                </div>
+                {/* 언제 기준인가(요청) — 레이팅은 '그 기간에 번 값'이 아니라 '그 날짜까지의
+                    기록으로 본 값'이라, 그 날짜를 안 적으면 달을 바꿨을 때 값이 왜 달라지는지
+                    읽을 길이 없다. 값이 아니라 값에 붙는 단서라 작고 연하게. */}
+                {asOf && <div className="scr-stat-rank-asof">{asOf} 기준</div>}
                 <div className="scr-stat-rank-line">
                   {rank == null ? (
                     <span className="scr-stat-points-empty">-</span>
@@ -307,27 +334,6 @@ export default function MemberStatRow({
                   ) : rankDelta != null && rankDelta !== 0 && (
                     <span className={rankDelta > 0 ? "scr-activity-shift-up" : "scr-activity-shift-down"}>
                       {rankDelta > 0 ? `▲${rankDelta}` : `▼${-rankDelta}`}
-                    </span>
-                  )}
-                </div>
-                <div className="scr-stat-rank-line scr-stat-rank-points">
-                  {points === null ? (
-                    <span className="scr-stat-points-empty">-</span>
-                  ) : (
-                    /* 값과 메달을 한 껍데기로 묶는다 — 메달이 값 바로 옆에 서려면 기준이
-                       값이어야 한다(지적: 레이팅과 메달 사이가 너무 멀다). 줄 전체를 기준으로
-                       두면 가운데 정렬 때문에 값 길이만큼 거리가 들쭉날쭉해진다. */
-                    <span className="scr-stat-rank-val">
-                      <button
-                        type="button" className="scr-stat-points-btn"
-                        onClick={onPointsClick} aria-label={`${member.nickname} 레이팅 상세`}
-                      >
-                        {points.toLocaleString()}
-                        {/* 단위(요청) — 윗줄의 "1위"와 달리 이 줄은 맨숫자라 무엇의 수인지가
-                            칸 이름에만 기대고 있었다. */}
-                        <span className="scr-stat-points-unit"> 레이팅</span>
-                      </button>
-                      {medals?.points && <span className="scr-stat-medal">{medals.points}</span>}
                     </span>
                   )}
                 </div>

@@ -180,6 +180,17 @@ export default function StatsScreenV2() {
     [periodMonth],
   );
 
+  /* 레이팅이 어느 날짜 기준인가 — 그 기간의 마지막 날이되, 아직 안 온 날은 오늘로 자른다
+     (이번 달을 보면 "8.31 기준"이 아니라 "8.7 기준"이라야 맞다). '전체'는 오늘이다.
+     레이팅은 '그 기간에 번 값'이 아니라 '그 날짜까지의 기록으로 본 값'이라(요청), 이 날짜를
+     안 적으면 달을 바꿨을 때 값이 왜 달라지는지 읽을 길이 없다. */
+  const asOf = useMemo(() => {
+    const today = new Date();
+    const end = effectiveTo ? new Date(`${effectiveTo}T00:00:00`) : today;
+    const at = end > today ? today : end;
+    return `${at.getMonth() + 1}.${at.getDate()}`;
+  }, [effectiveTo]);
+
   /* 상세(레이팅 이력·순위변동)를 열 때 넘길 종족 — 목록의 "주종족"은 사람마다 다른 값이라
      그 회원의 실제 주종족 하나로 바꿔 넘긴다. 주종족을 못 고른 회원(0경기)은 전체로 둔다. */
   const detailRaceOf = (memberId: string): BaseRace | "all" => (
@@ -601,6 +612,7 @@ export default function StatsScreenV2() {
                   points={showRank ? c.points : undefined}
                   rank={showRank ? rankByMember.get(c.member.id) ?? null : null}
                   rankDelta={showRank ? rankDeltaByMember.get(c.member.id) ?? null : null}
+                  asOf={showRank ? asOf : undefined}
                   onPointsClick={() => setPointMember(c.member)}
                   onRankClick={showRank && shownMonth ? () => setTrendMember(c.member) : undefined}
                   medals={medalByMember.get(c.member.id)}
