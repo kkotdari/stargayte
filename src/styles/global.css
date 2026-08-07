@@ -6592,6 +6592,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 .scr-challenge-letter-actions { margin-top: 0; }
 /* 본문(제목·내용)은 아바타보다 앞에 오게 relative + 양수 z-index로 올린다. */
 .scr-challenge-inbox-modal .scr-challenge-inbox-title, .scr-challenge-inbox-modal .scr-challenge-inbox-body { position: relative; z-index: 1; }
+.scr-modal-body.scr-challenge-inbox-body .scr-challenge-inbox-title { align-self: start; padding-left: 20px; }
 
 /* ── 편지지 배경 사진(요청) ────────────────────────────────────────────────────
    부른 사람이 호출할 때 올린 사진이 편지지 바닥에 깔린다.

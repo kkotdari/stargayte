@@ -178,15 +178,15 @@ export function ChallengeLetter({
 
   return (
     <>
-      <PartySide tag="From." members={fromSide} highlight={highlight} />
       <div className="scr-modal-body scr-challenge-inbox-body">
-        <ChallengeWords from={challenge.createdBy.nickname} message={challenge.message} />
+        <PartySide tag="From." members={fromSide} highlight={highlight} />
         <div className="scr-challenge-inbox-title">{title}</div>
+        <ChallengeWords from={challenge.createdBy.nickname} message={challenge.message} />
         {schedule}
+        <PartySide tag="To." members={toSide} highlight={highlight} />
         <ChallengeReplies targets={challenge.targets} />
         {foot}
       </div>
-      <PartySide tag="To." members={toSide} highlight={highlight} />
     </>
   );
 }
