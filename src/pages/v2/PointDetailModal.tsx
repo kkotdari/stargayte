@@ -52,7 +52,7 @@ export default function PointDetailModal({
   useEffect(() => reload(), [reload]);
 
   // 경기당 포인트 변화(Δ) — 레이팅은 시간순 누적이라 클라이언트가 재구성할 수 없어 서버가
-  // 계산해 준다. 목록과 같은 기간/종족 기준으로 받아야 합이 어긋나지 않는다.
+  // 계산해 준다. 목록과 같은 기간/종족 기준으로 받아야 같은 경기에 같은 값이 붙는다.
   const [deltaByMatchNo, setDeltaByMatchNo] = useState<Map<string, number>>(new Map());
   useEffect(() => {
     let cancelled = false;

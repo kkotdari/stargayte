@@ -217,8 +217,9 @@ interface MemberStatRowProps {
   avatar?: boolean;
   // 전적 막대 캡션을 "승/전" 짧은 표기로 줄인다(StatBar의 compact 참고).
   compact?: boolean;
-  // 랭크 포인트(TrueSkill 보수추정, 표시 스케일) — undefined면 랭크·포인트 두 컬럼을
+  // 랭크 포인트(실력 추정치를 화면용으로 옮긴 값) — undefined면 랭크·포인트 두 컬럼을
   // 통째로 안 그린다(통계 화면 전용). null이면 이 기간 순위 대상이 아니라 "-".
+  // 기간을 걸면 '그 기간에 번 점수'가 아니라 '그 시점까지의 기록으로 본 점수'다(요청).
   points?: number | null;
   // 지금 몇 위인가(공동순위 포함) — 포인트와 나란한 제 컬럼이다(요청: 랭크·포인트 분리).
   rank?: number | null;
