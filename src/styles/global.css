@@ -6630,28 +6630,33 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
        사이에 거리를 만든다. 반경이 다른 세 겹을 겹쳐야 얇은 획에도 바닥이 끊기지 않는다. */
 /* 사진은 잘리지 않고 통째로 들어간다(요청: "크롭하지 말고 최대크기로 채울 수 있어?
    좌우나 상하 필러박스를 넣어야 할 듯"). contain이라 편지지보다 가로로 넓은 사진은 위아래에,
-   세로로 긴 사진은 좌우에 빈 띠가 생긴다 — 그 띠는 아래 필러가 메운다. */
+   세로로 긴 사진은 좌우에 빈 띠가 생기고, 그 띠는 같은 사진을 크게 흐린 필러가 메운다.
+
+   층은 세 겹이고 순서가 까다롭다. z-index가 음수인 요소는 제가 쌓임 맥락을 만드는데, 그
+   안에서 음수 z-index 자식은 '부모 배경보다 뒤'가 아니라 '부모 배경 위'에 그려진다 —
+   그래서 필러를 ::before에 두고 사진을 제 배경에 두면 흐린 것이 선명한 것을 덮는다(지적:
+   "편지지 배경에 왜 갑자기 블러가 들어갔지"). 아래 순서라야 맞다:
+     제 배경(비움) → ::before 흐린 필러 → ::after [막 + 선명한 사진]
+   막(글자가 설 바닥)은 ::after의 첫 배경 층으로 얹어, 사진과 같은 겹에서 함께 올라간다. */
 .scr-challenge-letter-photo .scr-challenge-letter-bg {
   position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none;
-  background-image: var(--letter-photo);
-  background-size: contain; background-position: center; background-repeat: no-repeat;
+  overflow: hidden;
 }
-/* 필러박스 — 같은 사진을 잘라 채운 뒤 크게 흐려서 깐다. 단색으로 메우면 사진과 띠 사이에
-   선이 생기고, 검게 두면 편지지 모서리가 뭉텅 잘린 것처럼 보인다. 흐린 같은 사진이면
-   색이 이어져 띠가 '여백'이 아니라 사진의 번짐으로 읽힌다.
-   z-index는 사진(-1)보다 한 겹 더 뒤다. */
 .scr-challenge-letter-photo .scr-challenge-letter-bg::before {
-  content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit;
+  content: ""; position: absolute; inset: 0; z-index: -1;
   background-image: var(--letter-photo);
   background-size: cover; background-position: center;
   filter: blur(22px) saturate(1.15); transform: scale(1.12);
 }
 .scr-challenge-letter-photo .scr-challenge-letter-bg::after {
   content: ""; position: absolute; inset: 0; border-radius: inherit;
-  background: rgba(16, 21, 26, 0.55);
+  background-image: linear-gradient(rgba(16, 21, 26, 0.55), rgba(16, 21, 26, 0.55)), var(--letter-photo);
+  background-size: auto, contain;
+  background-position: center, center;
+  background-repeat: repeat, no-repeat;
 }
 .scr-light-theme .scr-challenge-letter-photo .scr-challenge-letter-bg::after {
-  background: rgba(255, 255, 255, 0.62);
+  background-image: linear-gradient(rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.62)), var(--letter-photo);
 }
 /* 사진 위 글자의 음영색 — 글자색의 반대다. 편지지와 활동 카드가 같은 값을 쓴다. */
 .scr-challenge-letter-photo, .scr-activity-card-body-photo { --photo-ink-glow: rgba(0, 0, 0, 0.8); }
@@ -6750,12 +6755,11 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
    보인다. isolation:isolate가 없으면 z-index:-1이 이 본문을 빠져나가 카드 배경 뒤로
    가라앉는다(position:relative만으로는 쌓임 맥락이 안 생긴다). */
 .scr-activity-card-body-photo { position: relative; isolation: isolate; }
-/* 활동 카드의 배경 사진도 편지지와 같은 규칙 — 잘라내지 않고 통째로 넣고, 남는 띠는
-   같은 사진을 흐리게 깐 필러가 메운다(요청). */
+/* 활동 카드의 배경 사진도 편지지와 같은 규칙 — 잘라내지 않고 통째로 넣고, 남는 띠는 같은
+   사진을 흐리게 깐 필러가 메운다(요청). 층 순서가 왜 이런지는 위 .scr-challenge-letter-bg
+   주석 참고(흐린 것이 선명한 것을 덮지 않으려면 사진이 ::after라야 한다). */
 .scr-activity-card-photo {
   position: absolute; inset: 0; z-index: -1; pointer-events: none; overflow: hidden;
-  background-image: var(--card-photo);
-  background-size: contain; background-position: center; background-repeat: no-repeat;
 }
 .scr-activity-card-photo::before {
   content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit;
@@ -6764,10 +6768,15 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 }
 /* 편지지와 같은 이유의 막 한 겹 — 사진은 무늬로만 비치고 글자가 설 바닥을 만든다. */
 .scr-activity-card-photo::after {
-  content: ""; position: absolute; inset: 0;
-  background: rgba(16, 21, 26, 0.58);
+  content: ""; position: absolute; inset: 0; border-radius: inherit;
+  background-image: linear-gradient(rgba(16, 21, 26, 0.58), rgba(16, 21, 26, 0.58)), var(--card-photo);
+  background-size: auto, contain;
+  background-position: center, center;
+  background-repeat: repeat, no-repeat;
 }
-.scr-light-theme .scr-activity-card-photo::after { background: rgba(255, 255, 255, 0.66); }
+.scr-light-theme .scr-activity-card-photo::after {
+  background-image: linear-gradient(rgba(255, 255, 255, 0.66), rgba(255, 255, 255, 0.66)), var(--card-photo);
+}
 /* 모달이 align-items:center라 그냥 두면 편지지 본문이 내용 폭만큼만 좁게 가운데 모여
    붙어 모달 폭을 못 채웠다(요청: "모달 안의 내용들을 넓히라고") — 본문을 full-width로
    펴서 행/입력칸이 모달 폭을 꽉 채우게 한다. 줄 사이 갭은 조금 넉넉하게(요청). */
