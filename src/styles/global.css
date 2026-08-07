@@ -6534,23 +6534,29 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
    1:1이면 한 장이라 겹칠 것이 없고 테두리만 은은하게 남는다. */
 .scr-challenge-party-stack { display: flex; align-items: center; }
 .scr-challenge-party-slot { position: relative; display: inline-flex; border-radius: 999px; }
+.scr-challenge-party-badge { z-index: 5; }
 .scr-challenge-party-stack > * { box-shadow: 0 0 0 2px var(--panel-solid); border-radius: 999px; }
 .scr-challenge-party-stack > * + * { margin-left: -14px; }
-/* 지목된 쪽만 겹치지 않는다 — 배지에 ✓/✕ 대신 낱말이 들어가며 폭이 커져(요청), 겹쳐 두면
-   뒷사람 배지가 앞사람 얼굴과 배지를 통째로 덮었다(실측 스크린샷). 부른 쪽은 배지가 없어
-   그대로 겹쳐 쌓인다(요청: "겹쳐서 보여줘"). */
-.scr-challenge-party-to .scr-challenge-party-stack > * + * { margin-left: 6px; }
+/* 지목된 쪽은 배지가 붙어 그만큼만 덜 겹친다 — 배지가 동그라미로 돌아오며 폭이 줄어
+   겹쳐도 앞사람 배지가 안 가려진다(요청: "겹쳐져도 됨"). */
+.scr-challenge-party-to .scr-challenge-party-stack > * + * { margin-left: -8px; }
+/* 배지가 아바타 아래로 9px 내려와 앉으므로(요청), 지목된 쪽 이름줄은 그만큼 비켜 준다 —
+   안 그러면 배지가 닉네임 위에 걸린다(실측 스크린샷). 부른 쪽은 배지가 없어 그대로다. */
+.scr-challenge-party-to .scr-challenge-party-names { margin-top: 9px; }
 /* 응답 배지(요청) — 아바타 오른쪽 아래에 얹는다. 겹쳐 쌓인 아바타 위에서도 보이도록
-   편지지 색 테두리를 둘러 제 자리를 만든다.
+   편지지 색 테두리를 둘러 제 자리를 만든다. 배지는 아바타 위 층이라(z-index) 뒷사람
+   아바타에 가리지 않는다.
    ✓/✕ 기호를 넣던 17px 동그라미였는데 안 와닿는다는 지적으로 낱말("수락/거절/대기/버림")을
-   넣고 그만큼 키웠다(요청: "응답 배지 크기를 약간 키우고 그 안에 v/x 대신"). 두 글자가
-   들어가야 하므로 동그라미가 아니라 알약이고, 폭은 글자가 정한다. */
+   넣었다(요청: "응답 배지 크기를 약간 키우고 그 안에 v/x 대신").
+   낱말이 들어가도 동그라미다(요청: "응답상태 배지 원형으로 변경") — 두 글자가 들어갈
+   지름(30px)으로 키우고 아바타 아래쪽으로 더 내려 앉힌다(요청: "아래로 좀 내려와서
+   겹쳐져도 됨"). 겹침을 허락하니 지목된 쪽 아바타도 다시 겹쳐 쌓을 수 있다. */
 .scr-challenge-party-badge {
-  position: absolute; right: -4px; bottom: -5px;
-  min-width: 22px; height: 19px; padding: 0 6px; border-radius: 999px;
+  position: absolute; right: -5px; bottom: -9px;
+  width: 30px; height: 30px; border-radius: 999px;
   display: inline-flex; align-items: center; justify-content: center;
   font-size: var(--fs-micro, 11px); font-weight: 800; line-height: 1; color: #fff;
-  letter-spacing: -0.02em; white-space: nowrap;
+  letter-spacing: -0.04em; white-space: nowrap;
   box-shadow: 0 0 0 2px var(--panel-solid);
 }
 .scr-challenge-party-badge-accepted { background: #1f8a4c; }
@@ -6818,6 +6824,11 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 .scr-challenge-outcome-rejected { color: #c8395a; }
 .scr-challenge-outcome-canceled { color: var(--dim); }
 .scr-challenge-outcome-expired { color: var(--dim); }
+/* 응답 마감까지 남은 시간 — 같은 줄 뒤에 작고 흐리게(요청: "응답 마감 시간 표시를 너 나와
+   상태 표시하는 줄에 같이 표시"). 상태가 본문이고 이건 그에 붙는 단서다. */
+.scr-challenge-outcome-deadline {
+  margin-left: 8px; font-size: var(--fs-caption); font-weight: 700; color: var(--dim);
+}
 
 /* 버림 — 봉투도 편지지도 없이 이 한 장이다(요청: "버림의 경우 편지봉투 씬 없이 OO님이
    편지를 버림 나오고 끝"). 열어 볼 답이 없는데 봉투를 흔들어 보여줄 이유가 없다. */
@@ -8161,16 +8172,9 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    맞는다(지적). 카드 보기 시절의 24px은 큰 제목 아래를 받치던 값이다. */
 .scr-activity-row-body .scr-activity-card > .scr-activity-card-body { padding-top: 14px; }
 .scr-activity-card-head-off > .scr-activity-card > .scr-activity-card-head { display: none; }
-/* 머리를 감춘 카드(목록에서 펼친 것)는 케밥이 곧바로 본문 첫 줄 위에 얹힌다 — 케밥은
-   카드 기준 절대배치라 머리가 있든 없든 같은 자리(--card-kebab-top)에 뜨기 때문이다.
-   그래서 본문을 케밥 아래에서 시작하게 한 줄만큼 내린다(지적: "언제 입력 안한경우 케밥이
-   닉네임과 겹쳐짐" → "케밥과 닉네임 사이 세로 갭이 있어야지, 닉네임을 줄일 게 아니라").
-
-   가로로 자리를 비우는 방법도 있었지만 그건 이름을 깎는다 — 좁은 화면에서 "미친마법사"가
-   "미친…"이 됐다(실측). 세로로 비켜 주면 이름은 그대로 두고 겹침만 없어진다. 언제를 적은
-   카드는 그 줄이 먼저 와서 이미 이렇게 되어 있었고(그래서 그때는 안 겹쳤다), 이제 안 적은
-   카드도 같은 자리에서 시작한다. */
-.scr-activity-card-head-off .scr-challenge-card-body { padding-top: var(--card-kebab-lane); }
+/* (삭제) 머리를 감춘 카드에서 본문을 한 줄만큼 내리던 보정 — 케밥과 겹치던 것이 카드 윗줄
+   가운데의 "응답 마감" 표시였는데, 그 줄이 편지지 맨 아래로 내려가면서(요청) 비켜 줄 이유가
+   없어졌다. */
 /* 머리를 남기는 쪽(게임결과)도 제목만은 뗀다(요청) — 아이콘과 "게임결과"는 바로 위 줄이
    이미 하고 있는 말이라, 묶음을 펼치면 같은 낱말이 경기 수만큼 되풀이됐다. 남는 건 줄이
    말하지 않는 것들뿐이다: 경기별 시각, 등록자, 그리고 케밥(삭제·공유). */

@@ -1,7 +1,7 @@
 import { Fragment, type ReactNode } from "react";
 import Avatar from "../common/Avatar";
 import { cx } from "../../utils/format";
-import { formatWhen } from "../../utils/date";
+import { formatWhen, scheduledInstantMs, serverMs } from "../../utils/date";
 import type { Challenge } from "../../types";
 
 /* "너 나와!"의 생김새는 한 벌이다(요청: "활동 카드만의 너 나와! 디자인도 걷어내고 지금 쓰고
@@ -159,9 +159,41 @@ export function challengeOutcome(c: Challenge): { text: string; tone: string } {
   return { text: "성사 안 됨", tone: "rejected" };
 }
 
+/** 응답 마감 = 부른 때 + 24시간, 다만 예정 시각이 그보다 먼저면 그 시각(백엔드와 같은 기준).
+ *  아직 답을 기다리는 호출에만 셀 것이 있다. */
+const CHALLENGE_EXPIRE_MS = 24 * 60 * 60 * 1000;
+
+/** "17시간 후 마감" — 남은 시간이 없거나 이미 답이 온 건이면 null.
+ *
+ *  serverMs로 읽는다 — 서버가 주는 시각 문자열에는 시간대 표시가 없어서, 그대로 new Date에
+ *  넣으면 브라우저가 제 지역시(한국이면 UTC+9)로 읽어 마감이 9시간 앞당겨진다.
+ *
+ *  초 단위 시계는 안 돌린다(요청: 실시간 변동 X) — 한 시간이 안 남았을 때만 분으로 적는다.
+ *  그때는 "0시간 후"가 되어 버려서 말이 안 된다. */
+function deadlineLeft(c: Challenge): string | null {
+  if (c.status !== "pending") return null;
+  const base = serverMs(c.createdAt) + CHALLENGE_EXPIRE_MS;
+  const scheduled = scheduledInstantMs(c);
+  const remain = (scheduled !== null ? Math.min(base, scheduled) : base) - Date.now();
+  if (remain <= 0) return null;
+  const minutes = Math.floor(remain / 60000);
+  return minutes >= 60 ? `${Math.floor(minutes / 60)}시간` : `${Math.max(1, minutes)}분`;
+}
+
+/** 맨 아랫줄 — 이 건이 어떻게 됐나, 그리고 아직 기다리는 중이면 언제까지인가.
+ *
+ *  마감은 예전에 카드 윗줄 가운데에 따로 떠 있었는데, 그 줄이 케밥과 같은 띠에 앉느라
+ *  본문을 한 줄만큼 밀어 두어야 했다. 둘 다 '이 건이 지금 어디쯤인가'라 같은 줄에 두는 편이
+ *  읽기도 낫다(요청: "응답 마감 시간 표시를 너 나와 상태 표시하는 줄에 같이 표시"). */
 export function ChallengeOutcome({ challenge }: { challenge: Challenge }) {
   const { text, tone } = challengeOutcome(challenge);
-  return <div className={`scr-challenge-outcome scr-challenge-outcome-${tone}`}>{text}</div>;
+  const left = deadlineLeft(challenge);
+  return (
+    <div className={`scr-challenge-outcome scr-challenge-outcome-${tone}`}>
+      {text}
+      {left && <span className="scr-challenge-outcome-deadline">{left} 후 마감</span>}
+    </div>
+  );
 }
 
 /** 한 통의 편지지 — From. / 제목·일시·한마디 / To.
