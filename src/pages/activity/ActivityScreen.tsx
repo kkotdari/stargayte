@@ -578,15 +578,15 @@ export function GameResultPost({
 
 /* 활동 유형 필터 — 나열선택형이라 다섯이 그대로 한 줄에 늘어선다. 랭크 변동은 목록에는
    그대로 나오되 거르는 대상에서는 뺐다 — '전체'에 포함되므로 안 보이게 되는 것은 없다.
-   차례는 요청대로 전체/일정/너 나와!/리그/게임결과다(일정이 새로 들어오며 게임결과가
+   차례는 요청대로 전체/일정/리그/너 나와!/게임결과다(일정이 새로 들어오며 게임결과가
    맨 뒤로 갔다). */
-type ActivityKindFilter = "all" | "schedule" | "call" | "league" | "gameResult";
+type ActivityKindFilter = "all" | "schedule" | "league" | "call" | "gameResult";
 
 const KIND_OPTS: { value: ActivityKindFilter; label: string }[] = [
   { value: "all", label: "전체" },
   { value: "schedule", label: "일정" },
-  { value: "call", label: "너 나와!" },
   { value: "league", label: "리그" },
+  { value: "call", label: "너 나와!" },
   { value: "gameResult", label: "게임결과" },
 ];
 
