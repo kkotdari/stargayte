@@ -15,7 +15,7 @@ interface PointDetailModalProps {
   member: Member;
   // 개인전이면 "0101"(1:1 경기), 팀전이면 "0102"(팀경기) 이력을 보여준다.
   matchType: GameType;
-  // 통계 화면에서 보고 있던 기간 — 이력과 경기당 포인트(Δ)를 같은 기준으로 좁힌다.
+  // 통계 화면에서 보고 있던 기간 — 이력과 경기당 레이팅(Δ)를 같은 기준으로 좁힌다.
   // 전체 기간이면 빈 문자열.
   period: { from: string; to: string };
   // 목록에 걸린 종족 필터 — "all"이 아니면 그 종족 레이팅 기준의 경기당 Δ만 병기한다.
@@ -23,8 +23,8 @@ interface PointDetailModalProps {
   onClose: () => void;
 }
 
-// 포인트 상세 — 통계의 포인트를 눌렀을 때 뜨는 모달(예전 "랭킹 상세"를 대체, 요청).
-// 순위변동 그래프와 소제목 없이, 그 회원의 경기 이력(경기당 포인트 변화 병기)만 보여준다.
+// 레이팅 상세 — 통계의 레이팅을 눌렀을 때 뜨는 모달(예전 "랭킹 상세"를 대체, 요청).
+// 순위변동 그래프와 소제목 없이, 그 회원의 경기 이력(경기당 레이팅 변화 병기)만 보여준다.
 export default function PointDetailModal({
   member, matchType, period, race, onClose,
 }: PointDetailModalProps) {
@@ -51,7 +51,7 @@ export default function PointDetailModal({
 
   useEffect(() => reload(), [reload]);
 
-  // 경기당 포인트 변화(Δ) — 레이팅은 시간순 누적이라 클라이언트가 재구성할 수 없어 서버가
+  // 경기당 레이팅 변화(Δ) — 레이팅은 시간순 누적이라 클라이언트가 재구성할 수 없어 서버가
   // 계산해 준다. 목록과 같은 기간/종족 기준으로 받아야 같은 경기에 같은 값이 붙는다.
   const [deltaByMatchNo, setDeltaByMatchNo] = useState<Map<string, number>>(new Map());
   useEffect(() => {
@@ -68,7 +68,7 @@ export default function PointDetailModal({
     <div className="scr-modal-overlay">
       <div className="scr-modal scr-modal-sm scr-modal-rank-detail">
         <div className="scr-modal-head">
-          <span>포인트 상세</span>
+          <span>레이팅 상세</span>
           <button className="scr-icon-btn" onClick={onClose} aria-label="닫기"><X size={14} /></button>
         </div>
         <div className="scr-modal-body">

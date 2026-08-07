@@ -34,7 +34,7 @@ const RACE_TAB_OPTS: { value: RaceFilter; label: string }[] = [
 
 /** 서버에 넘길 종족 — 값을 그대로 넘긴다("주종족"도 서버가 안다).
  *
- *  한때는 "주종족"을 "전체"로 바꿔 보냈다: 포인트·순위는 판을 시간순으로 누적해 만드는
+ *  한때는 "주종족"을 "전체"로 바꿔 보냈다: 레이팅·순위는 판을 시간순으로 누적해 만드는
  *  값이라 사람마다 다른 잣대로 나눌 수 없다고 봤기 때문이다. 실제로는 서버가 한 번의
  *  재생으로 (회원, 종족) 조합 전부의 점수를 이미 만들어 두므로, 사람마다 제 주종족 칸을
  *  집기만 하면 된다(요청: "주종족으로 했을 때 포인트를 다시 계산 못해?") — 조회가 늘지도
@@ -61,7 +61,7 @@ const TYPE_TAB_OPTS: { value: GameType; label: string }[] = [
 ];
 // 기간 드롭다운에서 "전체 기간"을 가리키는 값 — 나머지 값은 전부 "YYYY-MM"이다.
 const PERIOD_ALL = "all";
-/* 세부 지표(승률·APM·커맨드·포인트·순위) 표본 미달 판정은 백엔드가 전담한다(요청: 프론트에서
+/* 세부 지표(승률·APM·커맨드·레이팅·순위) 표본 미달 판정은 백엔드가 전담한다(요청: 프론트에서
    경기수로 필터링하는 것 자체를 없앰) — 프론트는 그 값을 그대로 보여주고, null이면 "-"로만
    바꾼다. 최소 판수 기준(game_results/service.py의 _MIN_PLAYS_FOR_RANK)이 바뀌어도 여기는
    손댈 게 없다. */
@@ -74,7 +74,7 @@ const EMPTY_STATS: MemberStats = {
 };
 
 // 정렬 가능한 칸 — 건설/유닛/스킬은 순위로 줄 세울 값이 아니라 그 사람의 색깔이라 뺐다
-// (요청). 랭크와 포인트는 한 칸이 되면서 정렬 키도 하나(points)로 합쳤다 — 포인트로 매긴
+// (요청). 랭크와 레이팅는 한 칸이 되면서 정렬 키도 하나(points)로 합쳤다 — 레이팅로 매긴
 // 것이 랭크라 두 정렬은 애초에 같은 순서였다.
 /* 정렬은 컬럼 머리를 누르는 대신 필터 아랫줄에 낱말로 늘어놓고 고른다(요청). 그래서 기준과
    방향을 따로 두지 않고 "무엇을 어느 쪽으로"를 한 낱말로 묶는다 — 게임수를 적은 순으로 보는
@@ -142,9 +142,9 @@ export default function StatsScreenV2() {
   // (삭제) 활동의 랭크 변동 카드에서 유형을 미리 걸어 주는 연동이 있었는데, 그 입구였던
   // "실시간 랭크 확인" 링크를 걷어내면서(요청) 걸어 줄 사람이 없어졌다.
   const [matchType, setMatchType] = useState<GameType>("0101");
-  // 기본 정렬은 포인트(랭크 점수) 내림차순 — 랭킹을 통계에 통합한 기본 모습(요청).
+  // 기본 정렬은 레이팅(랭크 점수) 내림차순 — 랭킹을 통계에 통합한 기본 모습(요청).
   const [sort, setSort] = useState<StatSort>(sortOf("points"));
-  // 포인트를 누르면 그 회원의 포인트 상세(경기 이력)를 연다.
+  // 레이팅을 누르면 그 회원의 레이팅 상세(경기 이력)를 연다.
   const [pointMember, setPointMember] = useState<Member | null>(null);
   // 월간 랭크를 누르면 그 회원의 최근 다섯 달 순위변동 그래프를 연다(요청). 전체 기간을
   // 볼 때는 견줄 달이 없어 열 게 없다 — 그래서 아래에서 월일 때만 클릭을 붙인다.
@@ -156,7 +156,7 @@ export default function StatsScreenV2() {
   // 거의 비어 보이지만, 지금 이 달의 판세를 먼저 보여주는 쪽이 통계를 여는 이유에 가깝다.
   const [period, setPeriod] = useState<string>(() => currentMonthValue());
   const periodMonth = period === PERIOD_ALL ? "" : period;
-  /* 랭크·포인트는 어느 종족 필터에서나 보여준다. 한때 주종족일 때만 감췄는데, 그건 그 값이
+  /* 랭크·레이팅는 어느 종족 필터에서나 보여준다. 한때 주종족일 때만 감췄는데, 그건 그 값이
      혼자 전체 종족 기준으로 남아 옆 칸들과 잣대가 어긋났기 때문이다 — 이제 서버가 사람마다
      제 주종족으로 다시 매기므로(serverRaceOf 주석) 어긋날 일이 없다. */
   const showRank = true;
@@ -180,7 +180,7 @@ export default function StatsScreenV2() {
     [periodMonth],
   );
 
-  /* 상세(포인트 이력·순위변동)를 열 때 넘길 종족 — 목록의 "주종족"은 사람마다 다른 값이라
+  /* 상세(레이팅 이력·순위변동)를 열 때 넘길 종족 — 목록의 "주종족"은 사람마다 다른 값이라
      그 회원의 실제 주종족 하나로 바꿔 넘긴다. 주종족을 못 고른 회원(0경기)은 전체로 둔다. */
   const detailRaceOf = (memberId: string): BaseRace | "all" => (
     race === "main" ? (mainRaceOf(view?.stats[memberId]) ?? "all") : race
@@ -206,8 +206,8 @@ export default function StatsScreenV2() {
     () => ({
       dateFrom: effectiveFrom, dateTo: effectiveTo, matchType,
       // 종족도 서버에 넘긴다 — 승률/APM 같은 전적은 응답의 byRace로 골라 쓰면 되지만,
-      // 포인트(rankScore)와 순위(sortOrder)는 레이팅을 시간순으로 누적해 만든 값이라
-      // 클라이언트가 종족별로 갈라낼 수 없다. 안 넘기면 종족을 골라도 포인트만 전체
+      // 레이팅(rankScore)과 순위(sortOrder)는 판을 시간순으로 재생해 만든 값이라
+      // 클라이언트가 종족별로 갈라낼 수 없다. 안 넘기면 종족을 골라도 레이팅만 전체
       // 종족 기준으로 남아 표 안에서 기준이 어긋난다(지적).
       race,
       // 기간 자체도 함께 담는다 — 값은 위 dateFrom/dateTo에 이미 들어 있지만, 받아 온
@@ -228,7 +228,7 @@ export default function StatsScreenV2() {
      따로 들어왔다. 그래서 필터를 바꾸면 화면이 중간 단계를 그대로 내보였다(지적):
        - 기간만 먼저 바뀌고 통계는 아직 지난 조건 것이라, 끝난 달에만 붙는 메달이 엉뚱한
          값으로 매겨졌다("알 수 없는 순위 배지").
-       - 본 통계가 먼저 도착해 포인트·랭크가 한 번 바뀌고, 몇백 ms 뒤 전달 통계가 도착해
+       - 본 통계가 먼저 도착해 레이팅·랭크가 한 번 바뀌고, 몇백 ms 뒤 전달 통계가 도착해
          순위 변동(▲2·신규)이 또 한 번 바뀌었다.
      이제 한 장을 통째로 갈아 끼운다 — 두 조회가 다 끝난 뒤 한 번만 그린다(요청).
      메달·순위변동·종족 고르기까지 전부 이 안의 값으로만 계산하므로, 조건과 값이 어긋난
@@ -243,7 +243,7 @@ export default function StatsScreenV2() {
     /** 이 조건으로 물어본 회원들 — 검색으로 걸러진 목록도 한 장 안에 함께 얼어 있다. */
     memberIds: string[];
     stats: Record<string, MemberStatsEntry>;
-    /** 전달 같은 조건의 통계 — 포인트 옆 순위 변동(▲2)의 기준선이다.
+    /** 전달 같은 조건의 통계 — 레이팅 옆 순위 변동(▲2)의 기준선이다.
      *
      *  활동의 '랭크 변동 스냅샷'과는 다른 이야기다(지적): 저쪽은 "직전 순위표 대비 방금
      *  무엇이 바뀌었나"이고, 이쪽은 "지난달 순위와 견주면 지금 몇 계단인가"다. 그래서
@@ -352,7 +352,7 @@ export default function StatsScreenV2() {
     const list = viewMembers.map((m) => {
       const entry = view?.stats[m.id];
       const stats = statsOf(entry, shown);
-      // 포인트(랭크 점수) — 이 기간·유형에 한 판도 안 뛰었으면 null → "-"(최소 게임수는
+      // 레이팅 — 이 기간·유형에 한 판도 안 뛰었으면 null → "-"(최소 게임수는
       // 안 따진다. 백엔드 _apply_rank_order 주석 참고).
       const points = entry?.rankScore != null ? Math.round(entry.rankScore) : null;
       return { member: m, stats, points, entry };
@@ -377,8 +377,8 @@ export default function StatsScreenV2() {
       if (bMissing) return -1;
       return 0;
     };
-    // 포인트 정렬 보조 — 포인트가 없는(순위 대상이 아닌) 회원만 항상 맨 아래로 보낸다.
-    // 0점을 따로 맨 아래로 내리던 보정은 없앴다(요청): 포인트가 승점이던 시절에는 0이
+    // 레이팅 정렬 보조 — 레이팅가 없는(순위 대상이 아닌) 회원만 항상 맨 아래로 보낸다.
+    // 0점을 따로 맨 아래로 내리던 보정은 없앴다(요청): 레이팅가 승점이던 시절에는 0이
     // "아직 없음"과 같은 뜻이었지만, 지금은 레이팅이라 음수도 나온다 — 그때 0만 -14보다
     // 아래로 가면 목록 순서와 옆의 순위 뱃지가 서로 어긋나 보인다.
     const noPointsLast = (a: (typeof list)[number], b: (typeof list)[number]) => {
@@ -402,11 +402,11 @@ export default function StatsScreenV2() {
         case "cmd": return noAvgLast(a, b, "avgCmd") || dirSign * ((a.stats.avgCmd ?? 0) - (b.stats.avgCmd ?? 0));
       }
     };
-    // 타이브레이크 우선순위 — 표의 칸 순서 그대로(포인트 > 게임수 > 승률 > APM >
+    // 타이브레이크 우선순위 — 표의 칸 순서 그대로(레이팅 > 게임수 > 승률 > APM >
     // 커맨드, 요청: "타이인 경우 앞에서부터 순서대로 적용"). 지금 고른 칸은 이미 맨 앞으로
-    // 당겨 첫 비교로 쓰고, 나머지는 이 순서 그대로 이어서 본다. 랭크는 포인트와 사실상
+    // 당겨 첫 비교로 쓰고, 나머지는 이 순서 그대로 이어서 본다. 랭크는 레이팅와 사실상
     // 같은 값이라(동점=공동순위) 별도 타이브레이크 칸으로 안 쓴다(요청) — 랭크가 갈리지
-    // 않으면 포인트도 갈리지 않으므로 그대로 다음 칸(게임수)으로 자연히 넘어간다. 유저
+    // 않으면 레이팅도 갈리지 않으므로 그대로 다음 칸(게임수)으로 자연히 넘어간다. 유저
     // 닉네임은 숫자 칸이 전부 같을 때만 쓰는 최후의 보루(요청: "닉네임이 마지막")다.
     const DATA_ORDER: DataKey[] = ["points", "plays", "rate", "apm", "cmd"];
     const tiebreakChain = (primary: DataKey | null) => {
@@ -581,7 +581,7 @@ export default function StatsScreenV2() {
                   네이티브 스크롤이 완벽히 동기화해서 그 흔들림 자체가 원천적으로 사라진다. */}
               <div className="scr-stat-row scr-stat-row-head">
                 <PlainHead label="유저" className="scr-stat-name-head" />
-                {/* 랭크·포인트·게임수·승률·APM·커맨드가 다 이 한 칸에 있다(요청: 랭킹과
+                {/* 랭크·레이팅·게임수·승률·APM·커맨드가 다 이 한 칸에 있다(요청: 랭킹과
                     기록 통합) — 어느 한 가지를 가리키는 이름이 없어 '주요 지표'로 부른다
                     (요청). 기간은 필터 줄이 이미 말하고 있어 칸 이름에서 뺐다. */}
                 <PlainHead label="주요 지표" />
@@ -622,14 +622,14 @@ export default function StatsScreenV2() {
         )}
       </div>
 
-      {/* 포인트 상세 — 그래프/소제목 없이 경기 이력만(요청, 예전 랭킹 상세 대체). */}
+      {/* 레이팅 상세 — 그래프/소제목 없이 경기 이력만(요청, 예전 랭킹 상세 대체). */}
       {pointMember && (
         <PointDetailModal
           member={pointMember}
           matchType={matchType}
           period={{ from: effectiveFrom, to: effectiveTo }}
           // 상세는 그 회원의 실제 종족 하나로 연다 — "주종족"은 목록에서만 뜻이 있는 값이라
-          // (사람마다 다르다) 그대로 넘길 수 없다. 표의 포인트도 그 종족 기준이라 어긋나지 않는다.
+          // (사람마다 다르다) 그대로 넘길 수 없다. 표의 레이팅도 그 종족 기준이라 어긋나지 않는다.
           race={detailRaceOf(pointMember.id)}
           onClose={() => setPointMember(null)}
         />

@@ -14,8 +14,8 @@ interface PointDetailHistoryProps {
   members: Member[];
   memberOf: (id: string) => Member | undefined;
   loading: boolean;
-  // 경기당 점수 변화 — matchNo로 조회한다. 카드에 뜨는 포인트는 '그 시점까지의 기록으로 본
-  // 실력'이고, 여기 값은 그 포인트를 이 경기가 얼마나 움직였나다(같은 단위). 레이팅이
+  // 경기당 점수 변화 — matchNo로 조회한다. 카드에 뜨는 레이팅은 '그 시점까지의 기록으로 본
+  // 실력'이고, 여기 값은 그 레이팅을 이 경기가 얼마나 움직였나다(같은 단위). 레이팅이
   // 시간순 누적이라 클라이언트가 재구성할 수 없어 서버(rating-history)가 계산해 준다.
   //
   // 이 값들의 합은 카드 점수와 다르다 — 카드는 쌓은 값이 아니라 지금의 실력 점수이고, 이

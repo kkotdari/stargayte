@@ -313,8 +313,8 @@ export interface MemberStatsEntry {
 }
 
 // GET /api/game-results/rating-history — 랭킹 상세의 '경기당 점수 변화'. deltas는 이 회원이
-// 뛴 경기의 matchNo → 그 판이 포인트를 움직인 폭(양수=승). 레이팅(μ·σ)이 시간순 누적이라
-// 백엔드가 계산해 준다. conservative는 카드에 뜨는 포인트 자체(그 시점까지의 실력 점수)로,
+// 뛴 경기의 matchNo → 그 판이 레이팅을 움직인 폭(양수=승). 레이팅(μ·σ)이 시간순 누적이라
+// 백엔드가 계산해 준다. conservative는 카드에 뜨는 레이팅 자체(그 시점까지의 실력 점수)로,
 // deltas의 합과는 다른 값이다.
 export interface RatingHistoryResponse {
   deltas: Record<string, number>;

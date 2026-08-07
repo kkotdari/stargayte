@@ -217,17 +217,17 @@ interface MemberStatRowProps {
   avatar?: boolean;
   // 전적 막대 캡션을 "승/전" 짧은 표기로 줄인다(StatBar의 compact 참고).
   compact?: boolean;
-  // 랭크 포인트(실력 추정치를 화면용으로 옮긴 값) — undefined면 랭크·포인트 두 컬럼을
-  // 통째로 안 그린다(통계 화면 전용). null이면 이 기간 순위 대상이 아니라 "-".
-  // 기간을 걸면 '그 기간에 번 점수'가 아니라 '그 시점까지의 기록으로 본 점수'다(요청).
+  // 레이팅(실력 추정치를 화면용으로 옮긴 값, 새 회원 1000 기준) — undefined면 랭크·레이팅 두
+  // 칸을 통째로 안 그린다(통계 화면 전용). null이면 이 기간 순위 대상이 아니라 "-".
+  // 기간을 걸면 '그 기간에 번 점수'가 아니라 '그 시점까지의 기록으로 본 값'이다(요청).
   points?: number | null;
-  // 지금 몇 위인가(공동순위 포함) — 포인트와 나란한 제 컬럼이다(요청: 랭크·포인트 분리).
+  // 지금 몇 위인가(공동순위 포함) — 레이팅과 나란한 제 컬럼이다(요청: 랭크·레이팅 분리).
   rank?: number | null;
   // 전달 대비 몇 계단 움직였나(+면 상승). "new"면 전달엔 순위가 없던 신규(요청: "신규면
   // 신규 표시") — null이면 변동 없음이거나 애초에 견줄 전달이 없는 경우(전체 기간 등)라
   // 아무것도 안 보여준다.
   rankDelta?: number | "new" | null;
-  // 포인트를 누르면 포인트 상세(경기 이력)를 연다.
+  // 레이팅을 누르면 레이팅 상세(경기 이력)를 연다.
   onPointsClick?: () => void;
   // 랭크를 누르면 최근 5개월 순위변동 그래프를 연다(요청) — 월을 보고 있을 때만 넘어온다.
   // 안 넘기면 랭크는 그냥 글자로만 그려진다.
@@ -275,9 +275,9 @@ export default function MemberStatRow({
         </div>
       </div>
       {/* 게임수·승률·APM·커맨드는 한 칸이다(요청: 통합) — 넷 다 "막대 하나 + 수" 한 줄짜리라
-          칸을 넷 쓰면서 표만 넓어졌다. 랭크·포인트도 같은 칸으로 들어온다(요청: 랭킹과 기록
+          칸을 넷 쓰면서 표만 넓어졌다. 랭크·레이팅도 같은 칸으로 들어온다(요청: 랭킹과 기록
           통합) — 셋 다 "그 사람이 얼마나 어떻게 뛰었나"라 한 덩어리로 읽는 편이 낫다.
-          칸 안은 [랭크·포인트] [게임수·승률] [APM·커맨드] 세 줄기이고 줄기 안에서만 세로로
+          칸 안은 [랭크·레이팅] [게임수·승률] [APM·커맨드] 세 줄기이고 줄기 안에서만 세로로
           쌓인다. 어느 막대인지는 왼쪽 이름이 말한다. */}
       <div className="scr-stat-record-cell">
         {points !== undefined && (
@@ -315,17 +315,17 @@ export default function MemberStatRow({
                     <span className="scr-stat-points-empty">-</span>
                   ) : (
                     /* 값과 메달을 한 껍데기로 묶는다 — 메달이 값 바로 옆에 서려면 기준이
-                       값이어야 한다(지적: 포인트와 메달 사이가 너무 멀다). 줄 전체를 기준으로
+                       값이어야 한다(지적: 레이팅과 메달 사이가 너무 멀다). 줄 전체를 기준으로
                        두면 가운데 정렬 때문에 값 길이만큼 거리가 들쭉날쭉해진다. */
                     <span className="scr-stat-rank-val">
                       <button
                         type="button" className="scr-stat-points-btn"
-                        onClick={onPointsClick} aria-label={`${member.nickname} 포인트 상세`}
+                        onClick={onPointsClick} aria-label={`${member.nickname} 레이팅 상세`}
                       >
                         {points.toLocaleString()}
                         {/* 단위(요청) — 윗줄의 "1위"와 달리 이 줄은 맨숫자라 무엇의 수인지가
                             칸 이름에만 기대고 있었다. */}
-                        <span className="scr-stat-points-unit"> 포인트</span>
+                        <span className="scr-stat-points-unit"> 레이팅</span>
                       </button>
                       {medals?.points && <span className="scr-stat-medal">{medals.points}</span>}
                     </span>
