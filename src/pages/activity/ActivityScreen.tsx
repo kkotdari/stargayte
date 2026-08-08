@@ -288,25 +288,18 @@ function rowTitleOf(it: DisplayItem): string {
         : it.kind === "schedule" ? "일정" : "게임";
 }
 
-/** 그 줄의 갈래 색 — 배지가 제 색을 입는 데 쓴다(요청: 일정 그린 / 리그 블루 /
- *  너 나와 붉은 오렌지 / 게임 흰색). 목록 줄과 유형 필터가 같은 클래스를 쓰므로 색이
- *  한 곳(CSS의 --kind-*)에서만 정해지고 둘이 어긋날 수 없다.
+/** 그 줄의 갈래 색 — 배지가 제 바탕색을 입는 데 쓴다(요청: 일정 그린 / 리그 보라 /
+ *  너 나와 핑크 / 게임 파랑). 색 자체는 CSS의 --kind-*가 한 곳에서 정한다.
  *  랭크 변동은 요청에 없다 — 사람이 올린 글이 아니라 서버가 남긴 알림이라, 색을 받지 않고
- *  기본(흐린 회색)으로 남는다. */
+ *  기본(무채색)으로 남는다.
+ *
+ *  (삭제) filterKindClass — 유형 필터에도 같은 색 배지를 입히던 짝이다. 필터는 알약도
+ *  색도 없는 글자로 되돌렸다(요청: "필터에서 색배지는 제거"). */
 function kindClassOf(kind: string): string | undefined {
   return kind === "challenge" ? "scr-kind-call"
     : kind === "leagueMatch" ? "scr-kind-league"
       : kind === "schedule" ? "scr-kind-schedule"
         : kind === "gameResultPost" || kind === "gameResult" ? "scr-kind-game"
-          : undefined;
-}
-
-/** 유형 필터의 갈래 색 — 위와 같은 클래스를 필터 값(KIND_OPTS)에 맞춰 고른다. */
-function filterKindClass(v: ActivityKindFilter): string | undefined {
-  return v === "call" ? "scr-kind-call"
-    : v === "league" ? "scr-kind-league"
-      : v === "schedule" ? "scr-kind-schedule"
-        : v === "gameResult" ? "scr-kind-game"
           : undefined;
 }
 
@@ -1529,12 +1522,11 @@ export default function ActivityScreen() {
           <FilterItem label="유형">
             {/* 통계의 유형·종족 필터와 같은 나열선택형(요청) — 넷뿐이고 낱말이 짧아
                 드롭다운보다 좁고, 무엇을 고를 수 있는지도 열어 보지 않아도 보인다. */}
-            {/* 목록 줄의 배지와 같은 모양·같은 색이다(요청) — 필터에서 고른 낱말과 줄 앞의
-                배지가 한눈에 같은 것으로 읽혀야 거르는 일이 한 번에 끝난다. 고른 것만
-                또렷하고 나머지는 눌러 둔다. */}
+            {/* 목록 줄의 갈래 이름과 같이 알약도 색도 없는 글자다(요청) — 필터에서 고른
+                낱말과 줄 앞의 낱말이 한눈에 같은 것으로 읽혀야 거르는 일이 한 번에 끝난다.
+                고른 것만 또렷하고 나머지는 눌러 둔다. */}
             <PickRow
               className="scr-pickrow-kind"
-              optionClass={filterKindClass}
               options={KIND_OPTS} value={kindFilter} onChange={setKindFilter} label="활동 유형"
             />
           </FilterItem>

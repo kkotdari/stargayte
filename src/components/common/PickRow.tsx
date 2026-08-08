@@ -11,7 +11,7 @@ import { cx } from "../../utils/format";
  *  흐리게 둔다 — 같은 화면의 알약탭과 같은 라이팅이라 "지금 켜진 것"의 생김새가 하나로
  *  읽힌다. */
 export default function PickRow<T extends string>({
-  options, value, onChange, label, className, optionClass,
+  options, value, onChange, label, className,
 }: {
   options: { value: T; label: string }[];
   value: T;
@@ -19,17 +19,13 @@ export default function PickRow<T extends string>({
   /** 스크린리더용 이 줄의 이름 — 화면에 보이는 이름표는 부르는 쪽이 따로 붙인다. */
   label: string;
   className?: string;
-  /** 낱말마다 다른 클래스를 붙일 때(활동 유형 필터가 갈래마다 제 색을 쓴다) — 색·모양을
-   *  여기서 정하지 않고 부르는 쪽이 클래스로 얹게 둔다. 이 부품은 세 화면이 함께 쓰므로
-   *  한쪽 사정을 여기 넣으면 나머지까지 따라 바뀐다. */
-  optionClass?: (value: T) => string | undefined;
 }) {
   return (
     <div className={cx("scr-pickrow", className)} role="group" aria-label={label}>
       {options.map((o) => (
         <button
           key={o.value} type="button"
-          className={cx("scr-pick", optionClass?.(o.value), o.value === value && "scr-pick-on")}
+          className={cx("scr-pick", o.value === value && "scr-pick-on")}
           aria-pressed={o.value === value}
           onClick={() => onChange(o.value)}
         >
