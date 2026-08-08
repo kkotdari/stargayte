@@ -2058,7 +2058,25 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   /* 상한을 한 번 더 10% 올린다(요청) — 20 → 22, 긴 판은 30 → 33. 2분에 한 문장 꼴로 세는
      기준(SEC_PER_LINE)은 그대로라, 짧은 판의 길이는 안 변하고 상한에 걸려 잘리던 긴 판만
      그만큼 더 길어진다. */
-  const baseBudget = Math.max(3, Math.min(sec >= LONG_GAME_SEC ? 33 : 22, Math.round(sec / SEC_PER_LINE)));
+  /* 자리를 시간만으로 세면 안 된다(지적: 헌터 판의 "정구 15기도 들어가야 해"). 13분짜리
+     4:4는 13분짜리 1:1과 같은 아홉 자리를 받고 있었는데, 사람이 넷 배면 그 판에서 벌어진
+     일도 그만큼 많다 — 실측한 그 판에서 자리는 아홉인데 무게 8을 넘긴 이야기가 열넷이었고,
+     뮤탈 열다섯 기(무게 21)가 "자리 없음"으로 잘렸다. 애초에 자리싸움에서 진 게 아니라
+     자리를 세는 자에 사람 수가 빠져 있었다.
+
+     1:1을 기준으로 사람이 둘 늘 때마다 한 자리씩 더 준다(아래 crowdBonus 주석). 자리가
+     늘어도 아래 MIN_WEIGHT(8)와 갈래별 상한(PER_KEY_CAP)이 그대로라, 가벼운 사실로
+     채워지지는 않는다 — 늘어난 자리는 채울 이야기가 실제로 있을 때만 쓰인다. */
+  const headcount = replay.players.filter((p: ParsedReplayPlayer) => p.signals).length;
+  /* 사람 하나에 한 자리씩 얹으니 8인 판이 여섯 자리나 늘어 "질럿 속업을 완료했다" 같은
+     가벼운 줄까지 딸려 들어왔다(실측: 새로 붙은 41줄 중 아홉이 업그레이드 한 줄짜리).
+     예전 지적("중요하지 않은 내용은 숫자 채우려고 넣지 말 것")을 되돌리는 셈이라 반 자리
+     씩으로 줄인다 — 8인 판은 세 자리가 는다. */
+  const crowdBonus = Math.ceil(Math.max(0, headcount - 2) / 2);
+  const baseBudget = Math.max(3, Math.min(
+    (sec >= LONG_GAME_SEC ? 33 : 22) + crowdBonus,
+    Math.round(sec / SEC_PER_LINE) + crowdBonus,
+  ));
   // 자리가 남아도 아무거나 채우지 않는다(요청: 승부에 중요한 이벤트만) — 이 무게 아래는
   // "그래서 뭐" 소리가 나오는 사실들이라, 문단을 짧게 끝내는 편이 낫다.
   // 6 → 8(요청: 중요하지 않은 내용은 숫자 채우려고 넣지 말 것). 자리가 남아도 "그래서 뭐"
