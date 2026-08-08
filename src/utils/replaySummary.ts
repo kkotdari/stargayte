@@ -3695,6 +3695,54 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     if (!pts || pts.length < SORTIE_MIN_HITS) return null;
     return clusterOf(pts, from ?? pts[0].frame, null);
   };
+  /** 한 자리로 세려면 그 자리에 이만큼은 찍혔어야 한다 — 지나가다 한 번 스친 것은 '찔렀다'가
+   *  아니다. 전체 문턱(SORTIE_MIN_HITS)보다 낮은 이유는 이쪽이 이미 '나간 사람'만 보기
+   *  때문이다: 나간 것은 확정이고 여기서는 그 안을 몇 갈래로 나눌지만 정한다. */
+  const SPOT_MIN_HITS = 2;
+  /** 한 문장이 그릴 화살표 수의 상한 — 그 이상은 미니맵이 실타래가 된다. */
+  const SPOT_MAX = 4;
+  /** 나간 사람이 '어디어디를' 갔나(지적: "사방을 찔렀으면 사방에 이모지가 있어야 할 듯").
+   *
+   *  위 sortiePos는 가장 붐비는 한 곳만 골라 준다. 그래서 여러 곳을 헤집은 이야기도 화살표가
+   *  하나뿐이었고, 문장은 "사방을 찔렀다"는데 그림은 한 방향만 가리켰다.
+   *
+   *  자리를 나누는 기준은 상대 본진이다 — 맵 위의 점을 임의로 뭉치면 같은 집 앞뜰과 뒷마당이
+   *  두 곳으로 갈리는데, 사람이 '몇 군데를 쳤나'로 세는 단위는 집이다. 어느 집에도 안 붙는
+   *  가운데 싸움은 따로 한 자리로 둔다(맵 한가운데는 그 자체가 하나의 목적지다).
+   *
+   *  순서는 시간순이다 — 먼저 친 곳부터 그려야 화살표가 이야기의 차례대로 읽힌다. */
+  const sortieSpots = (name: string, from: number | null): [number, number][] | null => {
+    const pts = sortieHits(name, from);
+    if (!pts || pts.length < SORTIE_MIN_HITS) return null;
+    const me = replay.players.find((q) => q.rawName === name);
+    if (!me) return null;
+    const anchors: { x: number; y: number }[] = [
+      ...foeBasesOf(me), ...(mapCenter !== null ? [mapCenter] : []),
+    ];
+    if (anchors.length === 0) return null;
+    const buckets = new Map<number, { frame: number; x: number; y: number }[]>();
+    for (const o of pts) {
+      let best = -1;
+      let bestD = Infinity;
+      anchors.forEach((a2, i) => {
+        const d = Math.hypot(o.x - a2.x, o.y - a2.y);
+        if (d < bestD) { bestD = d; best = i; }
+      });
+      // 어느 자리에도 안 붙을 만큼 멀면 셈에서 뺀다 — 그 점은 무엇을 쳤는지 말해 주지 않는다.
+      if (best < 0 || bestD >= SORTIE_RADIUS) continue;
+      const list = buckets.get(best);
+      if (list) list.push(o); else buckets.set(best, [o]);
+    }
+    const spots = [...buckets.values()]
+      .filter((list) => list.length >= SPOT_MIN_HITS)
+      .sort((x, y) => Math.min(...x.map((o) => o.frame)) - Math.min(...y.map((o) => o.frame)))
+      .slice(0, SPOT_MAX)
+      .map((list) => [
+        Math.round((list.reduce((t, o) => t + o.x, 0) / list.length) * 10) / 10,
+        Math.round((list.reduce((t, o) => t + o.y, 0) / list.length) * 10) / 10,
+      ] as [number, number]);
+    return spots.length > 0 ? spots : null;
+  };
   /* 안 나갔으면 빼는 것은 물량(mass-army)에도 건다 — 요청이 "고급유닛/많이뽑아도"라
      둘 다를 짚고 있다. 무게를 낮추는 위 표에 물량이 빠져 있는 것과는 별개다: 저건
      "분당 스무 기를 찍어냈다"가 그 판의 그림이라 자리를 뺏지 말자는 것이고, 여기서
@@ -4384,6 +4432,17 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
             .filter((e): e is readonly [string, [number, number]] => e[1] !== null),
         )
         : {};
+      /* 여러 곳을 헤집은 이야기는 자리를 여럿 싣는다(위 sortieSpots) — 한 곳뿐이면 위
+         sortie가 이미 그 자리를 말하고 있으므로 싣지 않는다. 문장도 이 수를 보고 '사방'
+         이라 말할지 말지를 정하므로(replaySummaryText) 주어의 수를 p에도 남긴다. */
+      const spots = SORTIE_GATE_KEYS.has(b.k)
+        ? Object.fromEntries(
+          (b.who ?? []).map((w) => [w, sortieSpots(w, b.at ?? null)] as const)
+            .filter((e): e is readonly [string, [number, number][]] =>
+              e[1] !== null && e[1].length >= 2),
+        )
+        : {};
+      const spotN = spots[(b.who ?? [])[0]]?.length ?? (sortie[(b.who ?? [])[0]] ? 1 : 0);
       /* 화살표 기둥의 이름표는 '그 무렵 무엇을 움직였나'라 시각이 있어야 한다. 맺음말은
          '늘 마지막'이라는 뜻으로 시각을 비워 두므로(strip), 그 대신 경기를 끝낸 싸움의
          시각을 넘겨 준다 — 그래야 다른 교전 스냅처럼 화살표에 병력 이름이 붙는다(요청). */
@@ -4394,7 +4453,9 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
       const hp = powersAt(forArrow.at);
       return {
         ...b,
+        ...(spotN > 0 ? { p: { ...(b.p ?? {}), spotN } } : {}),
         ...(Object.keys(finalPos).length > 0 ? { pos: finalPos } : {}),
+        ...(Object.keys(spots).length > 0 ? { spots } : {}),
         ...(units ? { units } : {}), ...(sizes ? { sizes } : {}),
         ...(hp ? { hp } : {}),
       };

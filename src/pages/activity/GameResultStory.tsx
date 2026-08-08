@@ -709,6 +709,24 @@ export default function GameResultStory({
       return Number.isFinite(near) ? Math.max(ARROW_MIN_TILES, near * YARD) : ARROW_MIN_TILES;
     };
 
+    /** 이 문장에서 그 사람이 그은 화살표들의 도착 자리. 대개 한 곳이지만, 여러 곳을 헤집은
+     *  이야기는 요약이 자리를 여럿 실어 준다(replaySummary의 sortieSpots) — 그때는 자리마다
+     *  화살표를 하나씩 긋는다(지적: "사방을 찔렀으면 사방에 이모지가 있어야 할 듯").
+     *  집에서 화살표를 그릴 만큼 떨어진 자리만 센다 — 제 집 앞마당은 '찔렀다'가 아니다. */
+    const targets = (b: (typeof beats)[number], raw: string): [number, number][] => {
+      const home = homeOf(raw);
+      const many = posTrusted && !HOME_BEAT_KEYS.has(b.k)
+        ? (b as { spots?: Record<string, [number, number][]> }).spots?.[raw]
+        : undefined;
+      if (home && Array.isArray(many) && many.length >= 2) {
+        const far = many.filter((t) => Array.isArray(t) && t.length === 2
+          && dist(home, [t[0], t[1]]) >= ARROW_MIN_TILES);
+        if (far.length >= 2) return far.map((t) => [t[0], t[1]] as [number, number]);
+      }
+      const one = target(b, raw);
+      return one ? [one] : [];
+    };
+
     const target = (b: (typeof beats)[number], raw: string): [number, number] | null => {
       const home = homeOf(raw);
       if (!home) return null;
@@ -1204,8 +1222,8 @@ export default function GameResultStory({
           markLabel.delete(raw);
           continue;
         }
-        const t = target(b, raw);
-        if (!t) continue;
+        const ts = targets(b, raw);
+        if (ts.length === 0) continue;
         // 화살표 모양은 그 사람이 무엇으로 갔느냐다 — 협공 문장은 도와준 사람을 이름으로만
         // 부를 뿐 '무엇으로' 왔는지는 담고 있지 않아, 예전에는 주공격자의 모양을 그대로
         // 복사해 썼다(지적: 여러 명이 협공하면 점선·실선·곡선·직선이 전부 똑같이 그려진다).
@@ -1224,32 +1242,35 @@ export default function GameResultStory({
         const size = (b as { sizes?: Record<string, number> }).sizes?.[raw];
         const width = size === undefined ? undefined : arrowWidth(size);
         const list = hits.get(raw) ?? [];
-        /* 한 스냅 안에서 같은 자리를 두 번 친 이야기는 화살표 하나다(지적: "같은 화살표에
-           질럿이 두번이나 들어감") — 같은 사람이 같은 곳으로 낸 화살표는 좌표가 같아
-           겹쳐 그려지고, 그 위의 이름표만 두 줄로 쌓여 보인다. 겹치는 것을 찾아 이름표를
-           합치고 굵기는 큰 쪽을 쓴다. */
-        const twin = list.find((h) => dist(h.t, t) <= ARROW_SAME_TILES);
-        if (twin) {
-          const merged = [...new Set([...(twin.label ?? []), ...label])];
-          if (merged.length > 0) twin.label = merged;
-          if (width !== undefined) twin.width = Math.max(twin.width ?? 0, width);
-          if (wing) twin.wing = true;
-          if (b.k === "clash" || b.p?.fight === true) twin.converge = true;
-          continue;
+        for (const t of ts) {
+          /* 한 스냅 안에서 같은 자리를 두 번 친 이야기는 화살표 하나다(지적: "같은 화살표에
+             질럿이 두번이나 들어감") — 같은 사람이 같은 곳으로 낸 화살표는 좌표가 같아
+             겹쳐 그려지고, 그 위의 이름표만 두 줄로 쌓여 보인다. 겹치는 것을 찾아 이름표를
+             합치고 굵기는 큰 쪽을 쓴다. 여러 자리를 그리는 이야기에서도 같다 — 상대 본진이
+             서로 가까이 붙은 맵에서는 두 자리가 한 점으로 겹쳐 들어올 수 있다. */
+          const twin = list.find((h) => dist(h.t, t) <= ARROW_SAME_TILES);
+          if (twin) {
+            const merged = [...new Set([...(twin.label ?? []), ...label])];
+            if (merged.length > 0) twin.label = merged;
+            if (width !== undefined) twin.width = Math.max(twin.width ?? 0, width);
+            if (wing) twin.wing = true;
+            if (b.k === "clash" || b.p?.fight === true) twin.converge = true;
+            continue;
+          }
+          list.push({
+            t, flight: flightVal, ...(label.length > 0 ? { label } : {}),
+            ...(width !== undefined ? { width } : {}),
+            ...(wing ? { wing: true } : {}),
+            // 부딪친 자리의 이모지는 하나면 된다 — 맞붙은 상대 화살표의 촉에까지 얹으면 한
+            // 점에 둘이 겹친다(아래 marked 정리와 같은 취지). 마법을 쓴 쪽 것만 남긴다.
+            ...(inFight || PLAIN_TIP_MARKS.has(arrive) ? {} : { mark: arrive }),
+            // 리콜의 출발 표시(회오리)는 리콜을 쓴 사람 자리에만 얹는다.
+            ...(WARP_BEAT_KEYS.has(b.k) && !inFight ? { fromMark: em } : {}),
+            // 양 팀이 부딪친 자리는 양쪽 화살표가 한 점에서 만나야 한다(요청) — 큰 싸움도,
+            // 마법·리콜이 터진 교전도 마찬가지다(p.fight).
+            ...(b.k === "clash" || b.p?.fight === true ? { converge: true, fight: true } : {}),
+          });
         }
-        list.push({
-          t, flight: flightVal, ...(label.length > 0 ? { label } : {}),
-          ...(width !== undefined ? { width } : {}),
-          ...(wing ? { wing: true } : {}),
-          // 부딪친 자리의 이모지는 하나면 된다 — 맞붙은 상대 화살표의 촉에까지 얹으면 한
-          // 점에 둘이 겹친다(아래 marked 정리와 같은 취지). 마법을 쓴 쪽 것만 남긴다.
-          ...(inFight || PLAIN_TIP_MARKS.has(arrive) ? {} : { mark: arrive }),
-          // 리콜의 출발 표시(회오리)는 리콜을 쓴 사람 자리에만 얹는다.
-          ...(WARP_BEAT_KEYS.has(b.k) && !inFight ? { fromMark: em } : {}),
-          // 양 팀이 부딪친 자리는 양쪽 화살표가 한 점에서 만나야 한다(요청) — 큰 싸움도,
-          // 마법·리콜이 터진 교전도 마찬가지다(p.fight).
-          ...(b.k === "clash" || b.p?.fight === true ? { converge: true, fight: true } : {}),
-        });
         hits.set(raw, list);
       }
     }
