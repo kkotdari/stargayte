@@ -6666,11 +6666,13 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 .scr-challenge-letter-actions { margin-top: 0; }
 /* 본문(제목·내용)은 아바타보다 앞에 오게 relative + 양수 z-index로 올린다. */
 .scr-challenge-inbox-modal .scr-challenge-inbox-title, .scr-challenge-inbox-modal .scr-challenge-inbox-body { position: relative; z-index: 1; }
-/* 제목 줄의 왼쪽 들여쓰기 — 이제 제목이 아니라 줄(.scr-challenge-title-row)이 진다.
-   제목에 그대로 걸어 두면 옆에 붙은 일시는 안 밀려 둘이 다른 선에서 시작하고, 세로
-   정렬(align-self:start)이 그 줄의 글줄 맞춤(baseline)까지 깨뜨린다. */
+/* 제목 줄의 왼쪽 들여쓰기를 걷는다(요청: "누구 너 나와 타이틀 왼쪽과 From 왼쪽 맞추기").
+   20px을 주던 자리인데, 제목이 From. 위로 올라오면서 그 들여쓰기가 곧 두 줄의 어긋남이
+   됐다 — 제목만 한 칸 안으로 들어가 서 있으면 편지지의 왼쪽 선이 두 개가 된다.
+   들여쓰기를 줄이 지고 있는 것은 그대로다(제목에 걸면 옆에 붙은 일시는 안 밀려 둘이 다른
+   선에서 시작하고, 세로 정렬이 그 줄의 글줄 맞춤까지 깨뜨린다). */
 .scr-modal-body.scr-challenge-inbox-body > .scr-challenge-title-row {
-  align-self: stretch; padding-left: 20px;
+  align-self: stretch; padding-left: 0;
 }
 /* 카드 안에서는 이 줄이 편지지 맨 윗줄이라 케밥(⋯)과 같은 띠에 앉는다 — 그 버튼은
    절대배치라(.scr-activity-chal-menu: right 10px, 26px) 글자가 그 밑으로 파고든다.
