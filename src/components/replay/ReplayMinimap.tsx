@@ -259,14 +259,21 @@ function arrowGeom(a: MinimapArrow, w: number, h: number) {
 function PowerBar({ power, peak }: { power: number; peak: number }) {
   const ratio = peak > 0 ? Math.max(0, Math.min(1, power / peak)) : 0;
   const len = Math.max(0.08, Math.sqrt(ratio));
-  /* 1등이 녹색(120°), 뒤질수록 붉은쪽(0°)으로 내려간다. 절반 이하는 완전한 빨강으로 눕혀
-     둔다 — 그 아래를 더 갈라 봐야 읽는 사람에게 다른 뜻이 되지 않는다. */
-  const t = Math.max(0, Math.min(1, (ratio - 0.5) / 0.5));
+  /* 색은 세 지점을 못박고 그 사이를 잇는다(요청: 50%는 노랑, 20%는 빨강) —
+     1등 100%가 녹색(120°) · 절반이 노랑(60°) · 5분의 1이 빨강(0°)이다.
+     한때는 50%를 빨강으로 두고 그 아래를 전부 빨강으로 눕혔는데, 그러면 절반쯤 뒤진 사람과
+     거의 지워진 사람이 같은 색이라 막대가 둘을 못 갈랐다. 노랑을 가운데에 세우면 '뒤졌다'와
+     '무너졌다' 사이에 눈에 보이는 단계가 하나 생긴다.
+     두 구간의 기울기가 다른 것은 그래서다 — 위쪽 절반(50~100%)에 60°를, 아래쪽 30%p
+     (20~50%)에 나머지 60°를 몰아 준다. 아래로 갈수록 같은 차이가 더 크게 벌어져 보인다. */
+  const hue = ratio >= 0.5
+    ? 60 + ((Math.min(1, ratio) - 0.5) / 0.5) * 60
+    : Math.max(0, (ratio - 0.2) / 0.3) * 60;
   return (
     <span className="scr-minimap-hp" aria-hidden>
       <span
         className="scr-minimap-hp-fill"
-        style={{ width: `${len * 100}%`, background: `hsl(${Math.round(t * 120)} 82% 48%)` }}
+        style={{ width: `${len * 100}%`, background: `hsl(${Math.round(hue)} 82% 48%)` }}
       />
     </span>
   );
