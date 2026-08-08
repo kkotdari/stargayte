@@ -285,7 +285,29 @@ function rowTitleOf(it: DisplayItem): string {
   return it.kind === "challenge" ? "너 나와!"
     : it.kind === "rankingShift" ? RANK_SHIFT_TITLE
       : it.kind === "leagueMatch" ? "리그"
-        : it.kind === "schedule" ? "일정" : "게임결과";
+        : it.kind === "schedule" ? "일정" : "게임";
+}
+
+/** 그 줄의 갈래 색 — 배지가 제 색을 입는 데 쓴다(요청: 일정 그린 / 리그 블루 /
+ *  너 나와 붉은 오렌지 / 게임 흰색). 목록 줄과 유형 필터가 같은 클래스를 쓰므로 색이
+ *  한 곳(CSS의 --kind-*)에서만 정해지고 둘이 어긋날 수 없다.
+ *  랭크 변동은 요청에 없다 — 사람이 올린 글이 아니라 서버가 남긴 알림이라, 색을 받지 않고
+ *  기본(흐린 회색)으로 남는다. */
+function kindClassOf(kind: string): string | undefined {
+  return kind === "challenge" ? "scr-kind-call"
+    : kind === "leagueMatch" ? "scr-kind-league"
+      : kind === "schedule" ? "scr-kind-schedule"
+        : kind === "gameResultPost" || kind === "gameResult" ? "scr-kind-game"
+          : undefined;
+}
+
+/** 유형 필터의 갈래 색 — 위와 같은 클래스를 필터 값(KIND_OPTS)에 맞춰 고른다. */
+function filterKindClass(v: ActivityKindFilter): string | undefined {
+  return v === "call" ? "scr-kind-call"
+    : v === "league" ? "scr-kind-league"
+      : v === "schedule" ? "scr-kind-schedule"
+        : v === "gameResult" ? "scr-kind-game"
+          : undefined;
 }
 
 /* (삭제) needsReview — '사람 눈이 꼭 필요한 건'만 골라 검토창으로 보내던 판정이다.
@@ -587,7 +609,7 @@ const KIND_OPTS: { value: ActivityKindFilter; label: string }[] = [
   { value: "schedule", label: "일정" },
   { value: "league", label: "리그" },
   { value: "call", label: "너 나와!" },
-  { value: "gameResult", label: "게임결과" },
+  { value: "gameResult", label: "게임" },
 ];
 
 export default function ActivityScreen() {
@@ -1507,7 +1529,12 @@ export default function ActivityScreen() {
           <FilterItem label="유형">
             {/* 통계의 유형·종족 필터와 같은 나열선택형(요청) — 넷뿐이고 낱말이 짧아
                 드롭다운보다 좁고, 무엇을 고를 수 있는지도 열어 보지 않아도 보인다. */}
+            {/* 목록 줄의 배지와 같은 모양·같은 색이다(요청) — 필터에서 고른 낱말과 줄 앞의
+                배지가 한눈에 같은 것으로 읽혀야 거르는 일이 한 번에 끝난다. 고른 것만
+                또렷하고 나머지는 눌러 둔다. */}
             <PickRow
+              className="scr-pickrow-kind"
+              optionClass={filterKindClass}
               options={KIND_OPTS} value={kindFilter} onChange={setKindFilter} label="활동 유형"
             />
           </FilterItem>
@@ -1550,7 +1577,9 @@ export default function ActivityScreen() {
                     <span className="scr-activity-row-main">
                       <span className="scr-activity-row-badges">
                         {/* 무슨 종류인가 — 늘 있다. */}
-                        <span className="scr-activity-row-title-badge">{rowTitleOf(item)}</span>
+                        <span className={cx("scr-activity-row-title-badge", kindClassOf(item.kind))}>
+                          {rowTitleOf(item)}
+                        </span>
                         {/* 상태 알약 — 너 나와·리그에만 붙고 나머지 줄은 아예 그리지 않는다
                             (요청: 자리 예약 취소). 빈 칸을 늘 잡아 두면 알약 없는 줄만
                             왼쪽이 휑하게 비어 오히려 눈에 걸렸다. */}
