@@ -6566,8 +6566,12 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
    겹치지 않게 나란히(배경 칩 없음), 카드 모서리에서 최소 여백을 둔다. 절대 위치·z-index:0. */
 .scr-challenge-party {
   z-index: 0; pointer-events: none;
-  display: flex; align-items: center; gap: 7px;
+  /* 라벨은 아바타 한가운데가 아니라 윗머리에 맞춘다(요청) — 아바타 아래에는 닉네임이
+     매달려 있어서 가운데 정렬을 하면 라벨이 그 무게에 딸려 내려가, From.과 To.가 각각
+     제 무리의 어디를 가리키는지가 흐려진다. 2px은 글자 상자 위쪽 여백만큼의 눈맞춤이다. */
+  display: flex; align-items: flex-start; gap: 7px;
 }
+.scr-challenge-party-tag { margin-top: 2px; }
 /* From.은 편지지 맨 위 왼쪽, To.는 본문 아래 오른쪽(요청: 버튼이 To. 아바타보다 아래).
    둘 다 흐름 안이다 — 한때 From.만 좌상단에 절대배치했는데, 편지지 본문이 세로 가운데로
    모이면서 그 자리가 본문과 겹쳤다(지적: 공유 화면 레이아웃 깨짐 — From.이 제목과 한마디
@@ -6667,6 +6671,41 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
    정렬(align-self:start)이 그 줄의 글줄 맞춤(baseline)까지 깨뜨린다. */
 .scr-modal-body.scr-challenge-inbox-body > .scr-challenge-title-row {
   align-self: stretch; padding-left: 20px;
+}
+/* 카드 안에서는 이 줄이 편지지 맨 윗줄이라 케밥(⋯)과 같은 띠에 앉는다 — 그 버튼은
+   절대배치라(.scr-activity-chal-menu: right 10px, 26px) 글자가 그 밑으로 파고든다.
+   버튼 자리에 여백 두 칸을 더해 비켜 준다. 모달·공유 화면에는 케밥이 없어 안 건다. */
+.scr-challenge-letter-inline .scr-challenge-title-row { padding-right: 44px; }
+
+/* 영역 구분선(요청: "각 영역별 구분선 넣기 양옆 패딩") — 편지지는 성격이 다른 토막이
+   차례로 쌓인 글이다: 용건(제목·일시) → 부른 사람과 그 한마디 → 지목된 사람과 그 답 →
+   이 건이 어떻게 됐나. 선이 없으면 어디까지가 한 토막인지 글자 크기만으로 가려야 한다.
+
+   선은 좌우로 물러나 앉는다(요청: 양옆 패딩) — 카드 가장자리까지 그으면 편지지가 표처럼
+   보이고, 편지지 사진 배경 위에서는 그 선이 액자 테두리처럼 읽힌다.
+
+   위쪽에만 긋는 이유: 아래쪽에도 그으면 이웃한 두 토막 사이에 선이 두 겹으로 겹친다. */
+.scr-challenge-inbox-body > .scr-challenge-party-to,
+.scr-challenge-inbox-body > .scr-challenge-outcome {
+  border-top: 1px solid var(--line-hair);
+  margin-top: 14px; padding-top: 14px;
+}
+/* 편지지 본문은 세로 flex라 자식이 제 내용만큼만 넓다 — 그대로 선을 그으면 To.는 아바타
+   폭만큼, 맺음말은 낱말 폭만큼 짧은 토막이 된다(실측 스크린샷: "준비중" 글자 길이의 선).
+   선을 그을 칸은 줄 전체로 늘리고, 안쪽 내용만 제자리로 다시 민다. */
+.scr-challenge-inbox-body > .scr-challenge-party-to {
+  align-self: stretch; justify-content: flex-end;
+  margin-right: 0; padding-right: 4px;
+}
+.scr-challenge-inbox-body > .scr-challenge-outcome { align-self: stretch; }
+/* 좌우로 물러난 선 — 편지지 안쪽 여백(20px)에 맞춘다. */
+.scr-challenge-inbox-body > .scr-challenge-party-to,
+.scr-challenge-inbox-body > .scr-challenge-outcome {
+  margin-inline: 20px;
+}
+.scr-challenge-letter-inline .scr-challenge-inbox-body > .scr-challenge-party-to,
+.scr-challenge-letter-inline .scr-challenge-inbox-body > .scr-challenge-outcome {
+  margin-inline: 12px;
 }
 
 /* ── 편지지 배경 사진(요청) ────────────────────────────────────────────────────

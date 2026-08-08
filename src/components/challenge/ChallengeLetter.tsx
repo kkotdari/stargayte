@@ -228,12 +228,14 @@ export function ChallengeLetter({
   return (
     <>
       <div className="scr-modal-body scr-challenge-inbox-body">
-        <PartySide tag="From." members={fromSide} highlight={highlight} />
-        {/* 제목과 일시가 한 줄이다(요청) — 좁아서 못 들어가면 일시가 통째로 다음 줄로 접힌다. */}
+        {/* 제목과 일시가 한 줄이고(요청), 그 줄이 From.보다 위다(요청: "제목하고 일시는
+            호출자 아바타 옆이 아니라 그 윗줄") — 편지지에서 먼저 읽어야 하는 것은 용건이고,
+            누가 불렀는지는 그 다음이다. 좁아서 못 들어가면 일시가 통째로 다음 줄로 접힌다. */}
         <div className="scr-challenge-title-row">
           <div className="scr-challenge-inbox-title">{title}</div>
           {when}
         </div>
+        <PartySide tag="From." members={fromSide} highlight={highlight} />
         <ChallengeWords from={challenge.createdBy.nickname} message={challenge.message} />
         {schedule}
         <PartySide tag="To." members={toSide} highlight={highlight} />
