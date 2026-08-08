@@ -3290,6 +3290,20 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     "sneak-rax": ["Barracks"], "center-photon": ["Photon Cannon"],
     "side-tank": ["Siege Tank"], "center-tank": ["Siege Tank"], "ally-cannon": ["Photon Cannon"],
   };
+  /* 그 문장의 주인공이 유닛 자체인 갈래 — 이름표는 그 유닛으로 못박는다(지적: "정구 뮤탈
+     인데 웬 저글링"). 아래 forceAt은 '그 무렵 명령을 받은 유닛'이라 문장이 말하는 것과
+     얼마든지 다를 수 있다: 뮤탈을 다 모아 놓고 그 순간에는 저글링을 움직이고 있었으면
+     뮤탈 문장에 저글링 이름표가 붙는다. 문장이 이미 무엇인지 말하고 있는데 그림이 다른
+     것을 가리키면 둘 중 하나는 거짓말이 된다.
+     건물 표(위)와 같은 자리이고, p.unit(파워 OO·빠른 테크처럼 유닛을 값으로 실은 갈래)이
+     있으면 그쪽이 먼저다. */
+  const BEAT_UNIT: Record<string, string[]> = {
+    muta: ["Mutalisk"], guardian: ["Guardian"], carrier: ["Carrier"],
+    "cloak-wraith": ["Wraith"], bc: ["Battlecruiser"], valkyrie: ["Valkyrie"],
+    devourer: ["Devourer"], lurker: ["Lurker"], infested: ["Infested Terran"],
+    "shuttle-reaver": ["Shuttle", "Reaver"], "templar-drop": ["Shuttle", "High Templar"],
+    shuttle: ["Shuttle"], dropship: ["Dropship"], "zerg-drop": ["Overlord"],
+  };
   const sideOf = (raw: string): ParsedReplayPlayer[] | null =>
     (winnerPlayers.some((p) => p.rawName === raw) ? winnerPlayers
       : loserPlayers.some((p) => p.rawName === raw) ? loserPlayers : null);
@@ -3311,9 +3325,17 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     const bs = typeof b.p?.bs === "string" ? b.p.bs.split(",").filter(Boolean)
       : typeof b.p?.b === "string" ? [b.p.b]
         : BEAT_BUILDING[b.k] ?? null;
+    /* 이 문장이 말하는 유닛 — 있으면 주인공(who)의 이름표는 이것으로 못박는다. who2·p.by
+       처럼 곁들이로 화살표를 받는 사람은 제 병력이 따로 있으므로 아래 forceAt로 간다. */
+    const mine = new Set(b.who ?? []);
+    const us0 = typeof b.p?.unit === "string" ? [b.p.unit]
+      : Array.isArray(b.p?.units) && b.p.units.every((v) => typeof v === "string")
+        ? (b.p.units as string[])
+        : BEAT_UNIT[b.k] ?? null;
     const out: Record<string, string[]> = {};
     for (const raw of people) {
       if (bs) { out[raw] = bs.slice(0, ARROW_LABEL_MAX); continue; }
+      if (us0 && mine.has(raw)) { out[raw] = us0.slice(0, ARROW_LABEL_MAX); continue; }
       const side = sideOf(raw);
       if (!side) continue;
       const us = forceAt(raw, b.at ?? null, side).slice(0, ARROW_LABEL_MAX);
