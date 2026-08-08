@@ -7985,8 +7985,10 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-activity-row > * {
   display: flex; align-items: center; justify-content: center;
   /* 줄 높이를 한 번 더 키운다(요청) — 22.5 → 26px. 줄이 두 줄이 되면서 이미 높아졌지만,
-     그만큼 위아래 여백도 같이 늘어야 배지 줄이 위 칸 선에 붙어 보이지 않는다. */
-  padding: 26px 10px 26px 0;
+     그만큼 위아래 여백도 같이 늘어야 배지 줄이 위 칸 선에 붙어 보이지 않는다.
+     그 뒤 26 → 23px로 살짝 되돌린다(요청) — 줄 높이의 10%쯤이다. 배지 줄이 위 칸 선에
+     붙어 보이지 않는 선은 그대로 지킨다. */
+  padding: 23px 10px 23px 0;
 }
 .scr-activity-row > * + * { border-left: 1px solid var(--line-faint); padding-left: 10px; }
 .scr-activity-row > *:last-child { padding-right: 0; }
