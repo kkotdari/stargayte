@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Avatar from "../common/Avatar";
 import RaceBadge from "../common/RaceBadge";
 import { cx } from "../../utils/format";
@@ -237,58 +237,36 @@ function arrowGeom(a: MinimapArrow, w: number, h: number) {
 
 /** 미니맵 위에 놓을 표시 하나. */
 /* ── 아바타 밑 체력바(요청) ────────────────────────────────────────────────────
-   "체력바의 길이는 계산된 현재 건물/병력 규모를 뜻하며, 시간에 비례하여 적정치 기준이
-   올라가고, 기준 충족시 녹색 기준에 못미치면 색이 붉은색쪽으로 점점 변함."
+   기준은 그 시점의 1등이다(요청: "기준은 그 시점 가장 높은 사람이 100이고 녹색, 그거에
+   비례해서 색깔 정하기"). 그 순간 규모가 가장 큰 사람이 꽉 찬 녹색이고, 나머지는 그에 대한
+   비율만큼 짧아지고 붉어진다.
 
-   적정치(par)는 지어낸 값이 아니라 실측한 중앙값이다 — 리플레이 22판 131명의 전투력을
-   2분 간격으로 재서 그 중앙값을 표로 옮겼다(아래 POWER_PAR. 그 분에 아직 경기가 이어지던
-   사람만 센다 — 끝난 판까지 함께 세면 그 값이 그대로 눌러앉아 후반 기준이 헐거워진다).
-   직선 하나로는 안 맞는다: 초반은 분당 8 남짓으로 시작해 중반에 13까지 가팔라졌다가
-   20분을 넘기면 다시 완만해진다. 2분에 중앙값이 9인데 중반 기울기로 그은 직선은 22를
-   요구한다 — 그러면 모두가 초반에 붉게 뜬다. 표 사이는 직선으로 잇고, 표 밖(30분 이후)은
-   마지막 구간의 기울기를 이어 간다. */
-const POWER_PAR: readonly [number, number][] = [
-  [0, 0], [2, 9], [4, 25], [6, 45], [8, 71], [10, 103], [12, 129], [14, 147],
-  [16, 181], [18, 199], [20, 222], [22, 242], [24, 250], [26, 263], [28, 288], [30, 319],
-];
-/** 바가 가득 차는 규모 — 실측 30분 상위 25%(521)를 어림한 값이다. */
-const POWER_FULL = 500;
+   예전에는 실측 중앙값 표(POWER_PAR)를 적정치로 두고 거기 대는 방식이었다. 표를 걷은 이유는
+   그 값이 '이 판'과 무관해서다 — 맵마다 자원 수급이 아예 다르다(지적: "헌터 같은 유한맵과
+   빨무 같은 무한맵은 자원 수급이 달라서 똑같은 잣대로 판단하면 안 된다"). 무한맵에서는
+   모두가 표준을 훌쩍 넘겨 나란히 초록이라 누가 앞서는지가 안 보였고, 자원이 마른 유한맵
+   후반에는 나란히 붉어 둘 다 못하는 판처럼 읽혔다. 어느 쪽이든 막대가 맵을 말하고 있었지
+   사람을 말하지 않았다.
 
-function parAt(min: number): number {
-  const n = POWER_PAR.length;
-  const last = POWER_PAR[n - 1];
-  if (min >= last[0]) {
-    const prev = POWER_PAR[n - 2];
-    const slope = (last[1] - prev[1]) / (last[0] - prev[0]);
-    return last[1] + slope * (min - last[0]);
-  }
-  for (let i = 1; i < n; i += 1) {
-    const [x1, y1] = POWER_PAR[i];
-    if (min <= x1) {
-      const [x0, y0] = POWER_PAR[i - 1];
-      return y0 + (y1 - y0) * ((min - x0) / (x1 - x0));
-    }
-  }
-  return last[1];
-}
+   보는 사람이 이 막대에서 알고 싶은 건 "지금 누가 앞서나"다. 같은 판·같은 시각의 1등을
+   기준으로 두면 맵이 무엇이든 그 물음에만 답한다 — 잣대가 판 안에서 만들어지므로 판 밖의
+   사정(맵·자원·경기 길이)이 끼어들 자리가 없다.
 
-/** 닉네임 밑 체력바 — 길이는 규모, 색은 적정치 대비다.
- *
- *  길이에 제곱근을 씌운다: 규모는 후반에 수백까지 가는데 그대로 비례시키면 초반 십여 분이
- *  전부 보이지 않는 실선이 된다. 제곱근은 순서를 뒤집지 않으므로 '누가 더 큰가'는 그대로
- *  읽히고, 작은 값들만 눈에 보이게 벌려 준다. */
-function PowerBar({ power, atSec }: { power: number; atSec: number }) {
-  const par = parAt(atSec / 60);
-  const ratio = par > 0 ? power / par : 1;
-  const len = Math.max(0.06, Math.min(1, Math.sqrt(power / POWER_FULL)));
-  /* 적정치에 닿으면 녹색(120°), 모자랄수록 붉은쪽(0°)으로 내려간다. 절반 이하는 완전한
-     빨강으로 눕혀 둔다 — 그 아래를 더 갈라 봐야 읽는 사람에게 다른 뜻이 되지 않는다. */
+   길이에 제곱근을 씌운다: 규모 차이는 후반에 몇 배로 벌어지는데 그대로 비례시키면 뒤진 쪽이
+   보이지 않는 실선이 된다. 제곱근은 순서를 뒤집지 않으므로 '누가 더 큰가'는 그대로 읽히고,
+   작은 값들만 눈에 보이게 벌려 준다. 색은 비율 그대로 쓴다 — 색까지 부풀리면 두 배 차이가
+   나는데도 둘 다 초록으로 보인다. */
+function PowerBar({ power, peak }: { power: number; peak: number }) {
+  const ratio = peak > 0 ? Math.max(0, Math.min(1, power / peak)) : 0;
+  const len = Math.max(0.08, Math.sqrt(ratio));
+  /* 1등이 녹색(120°), 뒤질수록 붉은쪽(0°)으로 내려간다. 절반 이하는 완전한 빨강으로 눕혀
+     둔다 — 그 아래를 더 갈라 봐야 읽는 사람에게 다른 뜻이 되지 않는다. */
   const t = Math.max(0, Math.min(1, (ratio - 0.5) / 0.5));
   return (
     <span className="scr-minimap-hp" aria-hidden>
       <span
         className="scr-minimap-hp-fill"
-        style={{ width: `${len * 100}%`, background: `hsl(${Math.round(t * 120)} 78% 46%)` }}
+        style={{ width: `${len * 100}%`, background: `hsl(${Math.round(t * 120)} 82% 48%)` }}
       />
     </span>
   );
@@ -473,6 +451,14 @@ export default function ReplayMinimap({
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
   }, [bases, grid]);
+
+  /* 그 시점의 1등 규모 — 체력바의 100이다(요청). 지금 지도에 선 사람들 중 가장 큰 값이고,
+     같은 스냅 안에서만 견준다: 맵마다 자원 수급이 달라 판 밖의 잣대를 들이대면 막대가
+     사람이 아니라 맵을 말하게 된다(위 PowerBar 주석). */
+  const powerPeak = useMemo(
+    () => bases.reduce((mx, m) => (typeof m.power === "number" && m.power > mx ? m.power : mx), 0),
+    [bases],
+  );
 
   /* 기둥 위 유닛 이름표가 서로(또는 자막·본진 이름표와) 겹치면 출발 쪽으로 밀어낸다(요청:
      "화살표 여러 개가 집중할 땐 좀 더 화살표 출발 쪽으로"). 자리를 계산으로만 잡으면 못 막는다
@@ -892,9 +878,9 @@ export default function ReplayMinimap({
             {/* 로스터를 감춘 모바일에서 종족이 통째로 사라지지 않게 여기 함께 붙인다. */}
             <RaceBadge race={m.race} size={11} circleLetter className="scr-minimap-mark-race" />
           </span>
-          {/* 닉네임 밑 체력바(요청) — 그 시각의 규모와 적정치 대비 상태. */}
-          {typeof m.power === "number" && typeof m.powerAtSec === "number" && (
-            <PowerBar power={m.power} atSec={m.powerAtSec} />
+          {/* 닉네임 밑 체력바(요청) — 그 시각의 1등 대비 규모. */}
+          {typeof m.power === "number" && powerPeak > 0 && (
+            <PowerBar power={m.power} peak={powerPeak} />
           )}
         </span>
       ) : null))}

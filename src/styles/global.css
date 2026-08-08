@@ -7991,9 +7991,9 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    한 박자 늦게 읽혔다. */
 .scr-activity-row-flag {
   flex: 0 0 auto; margin-left: -1px;
-  /* 번호와 한 줄일 때 그에 맞춰 10px로 키웠던 것을, 번호가 사라진 뒤 되돌린다(요청).
-     내용 칸으로 옮겨 온 뒤 한 스텝 더 — 10 → 9 → 8px. */
-  font-size: var(--fs-8); font-weight: 800; letter-spacing: 0.02em; white-space: nowrap;
+  /* 제목이 커진 만큼 이 딱지도 키운다(요청) — 8 → 10px. 8px은 제목이 caption(14)이던
+     시절의 값이라, 제목만 body(16)로 오르자 딱지가 그 옆에서 부스러기처럼 보였다. */
+  font-size: var(--fs-10); font-weight: 800; letter-spacing: 0.02em; white-space: nowrap;
 }
 /* 새것은 연두 라임(요청), 달라진 것은 그와 확실히 갈리는 하늘색으로 둔다 — 둘 다 눈에
    걸려야 하지만 서로는 한눈에 달라야 한다. 다크에서 검정 대비 연두 11.8:1 / 하늘 8.4:1. */
@@ -9724,15 +9724,19 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    크기 확대 제거 — 아바타 확대되도 확대 안함"). */
 /* 이름 + 종족 배지 한 줄. */
 .scr-minimap-mark-line { display: inline-flex; align-items: center; gap: 2px; }
-/* 체력바 — 닉네임 밑에 얇게. 길이는 그 사람의 규모, 색은 같은 시각의 적정치 대비다
-   (요청: "길이와 색으로 플레이어의 현재 전투력 상태를 표시"). 어떤 지형 색 위에서도
-   바가 보이도록 검은 홈을 깔고 그 안을 채운다. */
+/* 체력바 — 닉네임 밑. 길이와 색이 함께 '그 시점 1등 대비 규모'를 말한다(요청).
+   더 굵고 또렷하게, 모서리는 없이(요청: "더 굵고 가시성 높여주고 래디우스 없게") —
+   3 → 6px. 모서리를 죽인 이유는 두께 때문이다: 6px에 반경 2px이면 짧은 막대가 알약처럼
+   보여 길이 차이가 실제보다 작게 읽힌다. 각지면 끝이 어디인지가 그대로 보인다.
+   어떤 지형 색 위에서도 보이도록 검은 홈을 깔고, 바깥에 검은 테두리를 한 겹 두른다 —
+   밝은 지형 위에서는 홈만으로는 채움색과 배경의 경계가 흐렸다. */
 .scr-minimap-hp {
-  display: block; width: 34px; height: 3px; border-radius: 2px;
-  background: rgba(0, 0, 0, 0.55); box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.5);
+  display: block; width: 38px; height: 6px; border-radius: 0;
+  background: rgba(0, 0, 0, 0.62);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.75), 0 1px 2px rgba(0, 0, 0, 0.5);
   overflow: hidden;
 }
-.scr-minimap-hp-fill { display: block; height: 100%; border-radius: inherit; }
+.scr-minimap-hp-fill { display: block; height: 100%; border-radius: 0; }
 /* 궤멸한 사람의 바는 이름과 같이 눌러 둔다 — 이름표 전체가 흐려지는 규칙에 얹힌다. */
 
 .scr-minimap-mark-label-out { font-size: 11px; }
