@@ -929,14 +929,18 @@ html.scr-light-theme {
   --dd-panel-bg: color-mix(in srgb, var(--panel-solid) 88%, transparent);
   /* 툴팁형 팝오버 표준 패널 배경(라이트) — 드롭다운보다 더 투명하게. */
   --tip-panel-bg: color-mix(in srgb, var(--panel-solid) 82%, transparent);
-  /* 라이팅 테마 토큰 — 라이트는 탭바 라이트 알약과 같은 하늘색 빛. */
-  --lit-rgb: 140, 190, 255;
-  --lit-pill-bg: rgba(140, 190, 255, 0.34);
+  /* 라이팅 테마 토큰 — 라이트는 탭바 라이트 알약과 같은 하늘빛.
+     파란기를 절반으로 덜어 냈다(요청: "버튼들 전체적으로 파란기를 줄이기") — 140,190,255
+     에서 168,193,225로. 밝기는 그대로 두고 채도만 반으로 줄인 값이라(제 밝기의 무채색과
+     반씩 섞었다) 버튼이 흐려지거나 커 보이지 않고 색만 빠진다. 이 토큰 한 벌이 앱의 모든
+     라이팅 버튼(채움·글로우·호버·눌림)을 먹이므로 여기만 고치면 전체가 함께 내려간다. */
+  --lit-rgb: 168, 193, 225;
+  --lit-pill-bg: rgba(168, 193, 225, 0.34);
   --lit-pill-text: var(--text);
-  --lit-pill-glow: 0 0 10px rgba(140, 190, 255, 0.18), 0 0 24px rgba(140, 190, 255, 0.08);
-  --lit-hover-bg: rgba(140, 190, 255, 0.18);
-  --lit-hover-glow: 0 0 8px rgba(140, 190, 255, 0.14), 0 0 16px rgba(140, 190, 255, 0.06);
-  --lit-press-glow: 0 0 10px rgba(140, 190, 255, 0.18), 0 0 22px rgba(140, 190, 255, 0.08);
+  --lit-pill-glow: 0 0 10px rgba(168, 193, 225, 0.18), 0 0 24px rgba(168, 193, 225, 0.08);
+  --lit-hover-bg: rgba(168, 193, 225, 0.18);
+  --lit-hover-glow: 0 0 8px rgba(168, 193, 225, 0.14), 0 0 16px rgba(168, 193, 225, 0.06);
+  --lit-press-glow: 0 0 10px rgba(168, 193, 225, 0.18), 0 0 22px rgba(168, 193, 225, 0.08);
   --bar-winrate: #34c759;
   --bar-plays: #2f7cf0;
   /* 승률 그래프 채움색 — 이제 승만 초록으로 채우고 나머지는 빈칸이다(요청: "승만 초록색
@@ -3433,7 +3437,7 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
   background: none; box-shadow: none; font-weight: 800;
   /* 값을 그대로 적는다 — var(--lit-rgb)는 테마마다 뒤집히는 토큰이라 다크에서는 흰색이
      되어 버린다(실측). 여기서 원하는 건 "라이트 테마의 하늘색"이라는 고정된 색이다. */
-  color: rgb(140, 190, 255);
+  color: rgb(168, 193, 225);
 }
 .scr-light-theme .scr-stat-filter-sort .scr-pick-on { color: #2360c8; }
 /* 크기는 활동 화면 필터 라벨(.scr-filter-item-label)과 같은 값이다(요청: 활동보다 커서
@@ -6477,7 +6481,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
   --input-bg: rgba(255, 255, 255, 0.55); --line: rgba(0, 0, 0, 0.2); --line-soft: rgba(0, 0, 0, 0.14);
   /* 벽지가 흰색이라 다크 뷰어에서도 라이팅 버튼(로그인)을 라이트 톤 하늘빛 알약으로 고정 —
      안 그러면 다크의 흰 알약이 흰 벽지에 묻힌다. */
-  --lit-rgb: 140, 190, 255; --lit-pill-bg: rgba(140, 190, 255, 0.5); --lit-pill-text: var(--text);
+  --lit-rgb: 168, 193, 225; --lit-pill-bg: rgba(168, 193, 225, 0.5); --lit-pill-text: var(--text);
 }
 .scr-share-login-panel {
   position: relative; z-index: 2; width: min(calc(100vw - 40px), 330px);
