@@ -544,6 +544,10 @@ const POWER_SOLO: { unit: string; min: number; keys?: string[] }[] = [
    실측 열 판에서 분당 생산량은 대개 3~15기였고, 사람이 물량이라 부른 그 판의 두 사람만
    26·31기로 뚜렷이 떨어져 있었다 — 그 사이에 선을 긋는다. */
 const MASS_RATE_MIN = 20;
+/** 그리고 같은 판 사람들의 분당 생산량보다 이만큼 앞서야 한다(지적: 맵마다 자원 사정이
+ *  달라 절대 수로 가르면 안 된다) — 빨무처럼 다 같이 쏟아붓는 판에서는 분당 25기가 평범
+ *  하고, 마른 맵에서는 그 절반도 이야깃거리다. 위 절대 바닥과 둘 중 높은 쪽을 쓴다. */
+const MASS_RATE_RATIO = 1.6;
 /** 그래도 총량이 이만큼은 돼야 한다 — 짧은 경기의 한순간 폭발은 물량이 아니다. */
 const MASS_TOTAL_MIN = 200;
 /** 상위 두 유닛이 이만큼을 차지해야 "OO·OO 물량"이라 이름 붙여 부른다 — 그보다 흩어져
@@ -1060,13 +1064,30 @@ interface Ctx {
     => { raw: string; units: string[] } | null;
   /** 판이 끝난 프레임 — 큐에 남아 끝내 나오지 못한 생산을 걸러내는 데 쓴다(producedFrames). */
   endFrame: number;
+  /** '물량'이라 부를 분당 생산량 — 같은 판 사람들의 가운데치에서 뽑는다(MASS_RATE_RATIO).
+   *  절대 수로 가르면 자원 넉넉한 맵에서는 전원이 물량이 된다(지적). */
+  massRateBar: number;
 }
 
 const sec = (frame: number) => frame * SECONDS_PER_FRAME;
 
+/** 이 판의 잣대(가운데치) — '많다/적다'를 절대 수로 가르지 않기 위한 기준값이다.
+ *  맵마다 자원 사정이 달라서(지적: "헌터/빅헌터도 다르고 맵마다 자원상태가 달라서
+ *  상대적으로 해야 한다") 같은 20기라도 어떤 판에서는 전군이고 어떤 판에서는 정찰대다.
+ *  평균이 아니라 가운데치를 쓰는 이유는, 한 사람이 유난히 많이 뽑은 판에서는 평균이 그
+ *  사람을 따라 올라가 정작 그 사람만 기준을 못 넘기는 일이 생기기 때문이다. */
+export function midOf(values: number[]): number {
+  const v = values.filter((x) => Number.isFinite(x)).sort((a, b) => a - b);
+  if (v.length === 0) return 0;
+  const h = Math.floor(v.length / 2);
+  return v.length % 2 === 1 ? v[h] : (v[h - 1] + v[h]) / 2;
+}
+
 
 function detectFor(c: Ctx): Tactic[] {
-  const { rawName, s, race, foeRaces, soleFoe, geo, neighbor, endFrame, foeFightingAt } = c;
+  const {
+    rawName, s, race, foeRaces, soleFoe, geo, neighbor, endFrame, foeFightingAt, massRateBar,
+  } = c;
   const out: Tactic[] = [];
   const u = (n: string) => s.unitCounts[n] ?? 0;
   const firstU = (n: string): number | null => s.firstUnitFrame[n] ?? null;
@@ -1386,7 +1407,7 @@ function detectFor(c: Ctx): Tactic[] {
   if (!out.some((t) => t.key === "power-unit")) {
     const mins = sec(endFrame) / 60;
     const rate = mins > 0 ? armyTotal / mins : 0;
-    if (armyTotal >= MASS_TOTAL_MIN && rate >= MASS_RATE_MIN) {
+    if (armyTotal >= MASS_TOTAL_MIN && rate >= massRateBar) {
       const top = [...army].sort((a, b) => b[1] - a[1]).slice(0, 2);
       const pair = top.length === 2 && (top[0][1] + top[1][1]) / armyTotal >= MASS_PAIR_SHARE
         ? top : null;
@@ -2189,6 +2210,21 @@ export function scanTactics({ sidePlayers, foePlayers, startSpots }: TacticScanI
     ...[...sidePlayers, ...foePlayers].map((p) => p.signals?.lastCmdFrame ?? 0)
   );
 
+  /* '물량'의 잣대는 같은 판 사람들이다(지적: 헌터/빅헌터도 다르고 맵마다 자원 상태가
+     달라서 상대적으로 봐야 한다). 절대 바닥(MASS_RATE_MIN)은 남긴다 — 다 같이 안 뽑은
+     판에서 제일 많이 뽑은 사람을 물량이라 부를 수는 없다. */
+  const mins = sec(endFrame) / 60;
+  const rateOf = (p: ParsedReplayPlayer) => {
+    const n = Object.entries(p.signals?.unitCounts ?? {})
+      .filter(([u]) => !SOLO_EXCLUDE.has(u))
+      .reduce((a, [, v]) => a + v, 0);
+    return mins > 0 ? n / mins : 0;
+  };
+  const massRateBar = Math.max(
+    MASS_RATE_MIN,
+    midOf([...sidePlayers, ...foePlayers].map(rateOf)) * MASS_RATE_RATIO,
+  );
+
   const all: Tactic[] = [];
   for (const p of sidePlayers) {
     if (!p.signals) continue;
@@ -2201,7 +2237,7 @@ export function scanTactics({ sidePlayers, foePlayers, startSpots }: TacticScanI
           const f = fightersAt(at, frames, foePlayers)[0];
           return f ? { raw: f.raw, units: f.units } : null;
         },
-        endFrame,
+        endFrame, massRateBar,
       })
     );
   }

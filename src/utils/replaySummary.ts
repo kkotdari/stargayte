@@ -1,6 +1,7 @@
 import type { ParsedReplay, ParsedReplayPlayer, ReplayPlayerSignals } from "./replayParser";
 import {
-  pushersOn, scanTactics, producedFrames, windowPeak, fightersAt, FIGHT_TECHS, GG_RE, NO_ELIM_RE,
+  pushersOn, scanTactics, producedFrames, windowPeak, fightersAt, midOf,
+  FIGHT_TECHS, GG_RE, NO_ELIM_RE,
 } from "./replayTactics";
 import {
   hasUpgrade, topUsedTech, topUsedTechs, TECH_RANK, UPGRADE_RANK, UNIT_UPGRADE_TAG, techUseCount, upgradeFrame, upgradeLevel,
@@ -92,7 +93,10 @@ const LIFT_OFF_MIN = 3;
 const DEFENSE_MIN = 3;
 // 여기부터는 준비가 아니라 아예 '도배'다 — 그 자체가 전황이라 더 무겁게 친다(요청).
 // 여섯 채로는 도배라고 하기 민망해서 기준을 올렸다(지적).
-const TURTLE_MIN = 10;
+// 웅크렸다고 말하려면 같은 판의 다른 사람들보다 방어 건물이 이만큼 많아야 한다(지적) —
+// 방어탑 열 채는 어떤 맵에서는 기본이고 어떤 맵에서는 이례적이다.
+const TURTLE_RATIO = 1.8;
+const TURTLE_FLOOR = 5;
 
 // 마지막 커맨드가 경기 끝보다 이만큼(비율) 앞서면 "일찍 무너졌다"로 본다.
 const EARLY_OUT_RATIO = 0.7;
@@ -105,7 +109,10 @@ const ENDING_ALIVE_RATIO = 0.5;
 const GANG_RUSH_SEC = 9 * 60;
 // 그 시점까지 이만큼은 뽑았어야 '달려든 사람'으로 센다 — 뒤에서 확장만 하고 있던 사람까지
 // 합공에 넣으면 숫자가 거짓말이 된다.
-const GANG_MIN_UNITS = 8;
+// '떼로 몰려갔다'로 세려면 그 사람이 당한 쪽보다 병력이 앞서 있어야 한다 — 절대 8기가
+// 아니라 상대 대비다(지적). 맵이 넉넉하면 8기는 시작 병력이고, 마르면 8기가 전군이다.
+const GANG_ARMED_RATIO = 1.2;
+const GANG_ARMED_FLOOR = 4;
 /** 급습 하나에 '함께 덮친 사람'으로 셀 앞뒤 시간(초) — 이 밖의 공격은 같은 집을 쳤어도
  *  다른 이야기다(raid-damage의 gang 주석에 실측이 있다). 교전을 '같은 순간'으로 보는
  *  다른 창들과 같은 값이다(리콜을 한 수로 묶는 RECALL_SAME_SEC, 그 자리에서 누구와
@@ -120,18 +127,27 @@ const GANG_NEAR_SEC = 60;
 // '째기'는 시계로 재는 것이 아니라 무엇을 먼저 뽑았느냐로 갈린다(지적: 일꾼 뽑는 속도
 // 대비 병력 뽑는 속도를 비교). 초반 구간에서 일꾼이 병력보다 이만큼 앞서면 째기로 본다.
 const GREEDY_RATIO = 3;
-// 견줄 만큼은 뽑았어야 한다 — 서너 기 차이는 아무 뜻도 아니다.
-const GREEDY_MIN_WORKERS = 12;
+// 견줄 만큼은 뽑았어야 한다 — 서너 기 차이는 아무 뜻도 아니다. 다만 '얼마나'는 절대 수로
+// 못 박지 않고 같은 판 사람들의 가운데치에 견준다(지적: "헌터/빅헌터도 다르고 맵마다 자원
+// 상태가 달라서 상대적으로 해야 한다"). 자원이 넉넉한 판에서는 일꾼 12기가 아무것도 아니고,
+// 마른 판에서는 12기가 째고도 남는 수다.
+const GREEDY_WORKER_SHARE = 0.9;
+// 그래도 아무도 아무것도 안 뽑은 판에서 헛말이 나오지 않게 바닥은 남긴다.
+const GREEDY_WORKER_FLOOR = 6;
 // 어디까지를 '초반'으로 볼 것인가 — 경기 길이에 대비해 잡는다.
 const GREEDY_WINDOW_RATIO = 0.3;
 // 그래도 경기 앞쪽 이야기여야 한다 — 후반 이야기를 째기라 부르면 말이 안 된다.
 const GREEDY_MAX_SEC = 8 * 60;
-// 경기 전체로 이만큼은 뽑아야 견줄 거리가 된다(관전 슬롯·즉시 탈락 제외).
-const GREEDY_MIN_UNITS = 6;
+// 경기 전체로 이만큼은 뽑아야 견줄 거리가 된다(관전 슬롯·즉시 탈락 제외) — 이것도 같은
+// 판의 가운데치 대비다. 바닥은 '한 판이라고 부를 수 있는 최소'로만 남긴다.
+const GREEDY_UNITS_SHARE = 0.35;
+const GREEDY_UNITS_FLOOR = 3;
 // 째기 구간 뒤 이 안에 생산이 꺾였으면 째다가 얻어맞은 것이다.
 const GREEDY_PUNISH_SEC = 4 * 60;
-// 째고 나서 이만큼 뽑아냈으면 '물량이 폭발했다'고 말할 만하다.
-const GREEDY_PAYOFF_UNITS = 30;
+// 째고 나서 '물량이 폭발했다'고 말하려면 같은 판의 다른 사람들이 한 종류로 뽑은 수보다
+// 이만큼 앞서야 한다 — 30기라는 절대 수는 맵이 바뀌면 뜻이 달라진다(지적).
+const GREEDY_PAYOFF_RATIO = 1.6;
+const GREEDY_PAYOFF_FLOOR = 12;
 
 // 이만큼 길어진 경기는 문장을 두 줄 더 쓴다(요청) — 국면 자체가 더 많다.
 const LONG_GAME_SEC = 30 * 60;
@@ -147,7 +163,8 @@ const HANDS_ELITE = 300;
 // 소모전 — 이만큼은 길어야 하고,
 const ATTRITION_MIN_SEC = 12 * 60;
 // 양쪽이 분당 이만큼씩 병력을 쏟아부었으면 한 방 싸움이 아니라 소모전이다(요청).
-const ATTRITION_PER_MIN = 14;
+// 사람 수로 나눈 뒤의 값이다 — 총량으로 재면 4:4가 1:1보다 늘 소모전이 된다.
+const ATTRITION_PER_MIN = 7;
 
 // 팽팽한 대치로 볼 최소 길이 — 이보다 짧으면 그냥 한쪽이 밀어붙인 경기다.
 const STANDOFF_MIN_SEC = 15 * 60;
@@ -831,7 +848,10 @@ function gangRush(
   for (const v of victims) {
     const fell = fellFrame(v, totalFrames);
     if (fell === null || fell * SECONDS_PER_FRAME > GANG_RUSH_SEC) continue;
-    const armed = attackers.filter((a) => combatBefore(a, fell) >= GANG_MIN_UNITS);
+    // '달려든 사람'의 잣대는 당한 쪽이다 — 그 시점까지 당한 사람보다 병력이 앞서 있어야
+    // 몰려간 것이지, 절대 몇 기냐로는 맵마다 뜻이 달라진다(지적).
+    const bar = Math.max(GANG_ARMED_FLOOR, combatBefore(v, fell) * GANG_ARMED_RATIO);
+    const armed = attackers.filter((a) => combatBefore(a, fell) >= bar);
     const pushed = new Set(pushersOn(v, attackers, 0, fell));
     // 자리로 짚힌 사람이 둘 이상이면 그쪽이 답이다. 하나도 못 짚었으면(좌표 없음) 예전 기준.
     const by = pushed.size >= 2 ? armed.filter((a) => pushed.has(a.rawName)) : armed;
@@ -1576,12 +1596,20 @@ function sideBeats(args: {
   }
 
   // ── 유닛 + 방어 건물로 막아선 그림(요청: "질럿과 성큰으로 방어했지만 실패") ──
+  /** 그 사람이 세운 방어 건물 목록 — '러시용 포토'는 방어가 아니라 공격이라 뺀다. */
+  const defenseList = (p: ParsedReplayPlayer): [string, number][] =>
+    Object.entries(p.signals?.buildingCounts ?? {})
+      .filter(([k]) => DEFENSE_KO[k])
+      .filter(([k]) => !(k === "Photon Cannon" && cannonIsRush(p)));
+  /* 웅크렸다고 말하려면 같은 판 사람들보다 많이 지었어야 한다(지적) — 방어탑 열 채는
+     어떤 맵에서는 기본이고 어떤 맵에서는 이례적이라 절대 수로는 가를 수 없다. */
+  const turtleBar = Math.max(TURTLE_FLOOR, midOf(
+    [...side.players, ...other.players].map((q) => defenseList(q).reduce((a, [, n]) => a + n, 0)),
+  ) * TURTLE_RATIO);
   for (const p of players) {
     const sg = p.signals;
     if (!sg) continue;
-    const usable = Object.entries(sg.buildingCounts)
-      .filter(([k]) => DEFENSE_KO[k])
-      .filter(([k]) => !(k === "Photon Cannon" && cannonIsRush(p)));
+    const usable = defenseList(p);
     const def = usable.filter(([, n]) => n >= DEFENSE_MIN).sort((a, b) => b[1] - a[1])[0];
     if (!def) continue;
     /* 시점은 '첫 건물'이 아니라 '말하려는 개수가 다 선 때'다 — 첫 포토에 시점을 걸고 개수는
@@ -1593,7 +1621,7 @@ function sideBeats(args: {
     // 이야깃거리다(요청) — 문장에 개수를 싣고 무게도 올린다.
     const total = usable.reduce((acc, [, n]) => acc + n, 0);
     beats.push({
-      k: "defense", won, who: who(p), weight: total >= TURTLE_MIN ? 10 : 7,
+      k: "defense", won, who: who(p), weight: total >= turtleBar ? 10 : 7,
       at,
       p: { unit, def: def[0], n: def[1], total },
       // 입구 방어(front-defense)가 이미 같은 건물을 말했으면 두 번 말하지 않는다.
@@ -2730,11 +2758,14 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   // 양쪽이 병력을 쉬지 않고 쏟아부은 경기 — 그건 한 방 싸움이 아니라 소모전이다(요청).
   const attritionBeat: Beat | null = (() => {
     if (sec < ATTRITION_MIN_SEC) return null;
-    const troops = [...winnerPlayers, ...loserPlayers].reduce((acc, x) => acc + Object.entries(
+    const all = [...winnerPlayers, ...loserPlayers];
+    const troops = all.reduce((acc, x) => acc + Object.entries(
       x.signals?.unitCounts ?? {},
     ).filter(([k]) => !NON_COMBAT_UNITS.has(k)).reduce((a, [, n]) => a + n, 0), 0);
-    // 분당 몇 기를 뽑았나로 본다 — 총량만 보면 긴 경기는 전부 소모전이 된다.
-    if (troops / (sec / 60) < ATTRITION_PER_MIN) return null;
+    // 한 사람이 분당 몇 기를 뽑았나로 본다 — 총량만 보면 긴 경기는 전부 소모전이 되고,
+    // 사람 수로 안 나누면 4:4는 늘 1:1보다 소모전으로 읽힌다.
+    if (all.length === 0) return null;
+    if (troops / all.length / (sec / 60) < ATTRITION_PER_MIN) return null;
     return {
       k: "attrition", won: true, who: winnerPlayers.map((x) => x.rawName),
       at: null, weight: 10, p: { n: troops, min: minutes(sec) },
@@ -2822,22 +2853,48 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   const greedyBeats: Beat[] = (() => {
     if (!totalFrames) return [];
     const out: Beat[] = [];
+    // 어디까지가 '초반'인가 — 사람마다 다를 이유가 없어 판 하나에 하나로 잡는다.
+    const bar = Math.min(totalFrames * GREEDY_WINDOW_RATIO, GREEDY_MAX_SEC / SECONDS_PER_FRAME);
+    const combatFramesOf = (q: ParsedReplayPlayer): number[] =>
+      Object.entries(q.signals?.unitFrames ?? {})
+        .filter(([u]) => !NON_COMBAT_UNITS.has(u))
+        .flatMap(([, f]) => f);
+    const dronesOf = (q: ParsedReplayPlayer): number => [...WORKER_UNITS]
+      .flatMap((u) => q.signals?.unitFrames[u] ?? [])
+      .filter((f) => f <= bar).length;
+    /** 그 사람이 제일 많이 뽑은 병력 한 종류 — [이름, 수]. */
+    const topUnitOf = (q: ParsedReplayPlayer): readonly [string, number] | undefined =>
+      Object.entries(q.signals?.unitFrames ?? {})
+        .filter(([u]) => !NON_COMBAT_UNITS.has(u))
+        .map(([u, f]) => [u, f.length] as const)
+        .sort((a, b) => b[1] - a[1])[0];
+    /* '많다/적다'는 모두 같은 판 사람들의 가운데치에 견준다(지적: "맵마다 자원상태가
+       달라서 유닛수 많고 적음도, 째기 판단도 상대적으로 해야 한다"). 바닥값은 아무도
+       아무것도 안 뽑은 판에서 헛말이 나오지 않게 하는 안전선일 뿐이다. */
+    const everyone = [...winnerPlayers, ...loserPlayers];
+    const unitsBar = Math.max(
+      GREEDY_UNITS_FLOOR,
+      midOf(everyone.map((q) => combatFramesOf(q).length)) * GREEDY_UNITS_SHARE,
+    );
+    const workerBar = Math.max(
+      GREEDY_WORKER_FLOOR,
+      midOf(everyone.map(dronesOf)) * GREEDY_WORKER_SHARE,
+    );
+    const payoffBar = Math.max(
+      GREEDY_PAYOFF_FLOOR,
+      midOf(everyone.map((q) => topUnitOf(q)?.[1] ?? 0)) * GREEDY_PAYOFF_RATIO,
+    );
     for (const won of [true, false]) {
       const mine = won ? winnerPlayers : loserPlayers;
       const foes = won ? loserPlayers : winnerPlayers;
       for (const p of mine) {
         const sg = p.signals;
         if (!sg) continue;
-        const combat = Object.entries(sg.unitFrames)
-          .filter(([u]) => !NON_COMBAT_UNITS.has(u))
-          .flatMap(([, f]) => f);
-        if (combat.length < GREEDY_MIN_UNITS) continue;
+        const combat = combatFramesOf(p);
+        if (combat.length < unitsBar) continue;
         // 초반 구간에서 일꾼과 병력을 나란히 센다 — 절대 수가 아니라 둘의 비가 째기다(지적).
-        const bar = Math.min(totalFrames * GREEDY_WINDOW_RATIO, GREEDY_MAX_SEC / SECONDS_PER_FRAME);
-        const drones = [...WORKER_UNITS]
-          .flatMap((u) => sg.unitFrames[u] ?? [])
-          .filter((f) => f <= bar).length;
-        if (drones < GREEDY_MIN_WORKERS) continue;
+        const drones = dronesOf(p);
+        if (drones < workerBar) continue;
         const troops = combat.filter((f) => f <= bar).length;
         if (drones < Math.max(1, troops) * GREEDY_RATIO) continue;
         const first = bar;
@@ -2858,10 +2915,7 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
           return best?.raw ?? null;
         })();
         // 무엇이 폭발했나 — 째고 나서 가장 많이 뽑은 병력 한 종류.
-        const top = Object.entries(sg.unitFrames)
-          .filter(([u]) => !NON_COMBAT_UNITS.has(u))
-          .map(([u, f]) => [u, f.length] as const)
-          .sort((a, b) => b[1] - a[1])[0];
+        const top = topUnitOf(p);
         if (hurtBy) {
           out.push({
             /* 때린 사람은 whom이 아니라 p.by다(지적: 태섭이 공격한 건데 화살표가 없고
@@ -2873,7 +2927,7 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
             at: first, weight: 15,
             p: { min: minutes(first * SECONDS_PER_FRAME), by: hurtBy },
           } as Beat);
-        } else if (top && top[1] >= GREEDY_PAYOFF_UNITS) {
+        } else if (top && top[1] >= payoffBar) {
           out.push({
             k: "greedy-paid", won, who: [p.rawName],
             at: first, weight: 13, p: { unit: top[0], min: minutes(first * SECONDS_PER_FRAME) },
