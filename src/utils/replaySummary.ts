@@ -3537,8 +3537,16 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
      붙어 있으면 그건 이미 생산 이야기가 아니라 공격 이야기라 그대로 둔다. 자리(b.pos)는
      여기서 못 쓴다 — 그건 고르기가 끝난 뒤에 붙는 값이다(아래 beatPositions). */
   const PROD_ONLY_KEYS = new Set([
-    "carrier", "guardian", "bc", "valkyrie", "muta", "power-unit", "arbiter", "ultra",
+    "carrier", "guardian", "bc", "valkyrie", "power-unit", "arbiter", "ultra",
     "long-run", "unit-mass", "devourer", "lurker", "infested", "scout", "reaver", "queen",
+    /* 뮤탈(muta)도 여기서 뺐다. 이 표의 근거는 "무엇을 몇 기 뽑았다는 건 어느 경기에나
+       있는 사실"이라는 것인데, 뮤탈 문턱이 '36기 고정'에서 '이 판 한 사람 몫의 0.15배'로
+       바뀌면서(replayTactics의 MUTA_MASS_SHARE) 그 전제가 깨졌다 — 이제는 그 판에서
+       뮤탈이 실제로 주력이었을 때만 뜬다(실측 11판에서 세 번, 그중 둘이 헌터 13분 판의
+       15기·10기로 그 판의 병력 자체였다). 벌점 9를 그대로 물리면 무게가 MIN_WEIGHT 아래로
+       떨어져 어떤 판에서도 문장이 될 수 없었다(실측: 옛 무게 9에서도 마찬가지라, 이 갈래는
+       사실상 죽어 있었다). 위 SORTIE_GATE_KEYS로 '안 나간 뮤탈'은 여전히 걸러진다.
+       (지적: "기준값이 왜 필요해? 이런 경기도 있다구" — 그 헌터 판 이야기다.) */
     // mass-army는 여기 없다 — 이 표가 낮추려는 것은 "캐리어 네 기 띄웠다"처럼 그 자체로는
     // 그날의 장면이 아닌 생산담인데, 분당 스무 기 넘게 찍어낸 물량은 그 판이 어떤 판이었나
     // 그 자체다(요청: "프로토스들의 질럿 드라군 물량 이야기도 없네" — 실제로 이 표에
@@ -3651,7 +3659,9 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
      둘 다를 짚고 있다. 무게를 낮추는 위 표에 물량이 빠져 있는 것과는 별개다: 저건
      "분당 스무 기를 찍어냈다"가 그 판의 그림이라 자리를 뺏지 말자는 것이고, 여기서
      막는 건 그 물량이 끝내 집 밖으로 안 나간 경우다. */
-  const SORTIE_GATE_KEYS = new Set([...PROD_ONLY_KEYS, "mass-army"]);
+  /* 뮤탈은 위 표에서 뺐지만(아래 이유) 이 문은 그대로 지난다 — 뽑아 놓고 집에 세워
+     둔 뮤탈은 여전히 그 판의 장면이 아니다. */
+  const SORTIE_GATE_KEYS = new Set([...PROD_ONLY_KEYS, "mass-army", "muta"]);
   for (let i = pool.length - 1; i >= 0; i -= 1) {
     const b = pool[i];
     if (!SORTIE_GATE_KEYS.has(b.k)) continue;

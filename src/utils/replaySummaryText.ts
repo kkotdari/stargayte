@@ -2024,11 +2024,15 @@ const TEMPLATES: Record<string, Tpl> = {
 
   // 대규모 뮤탈(요청) — 몇 부대까지 모았는지가 곧 그림이다.
   muta: (c) => {
-    const q = num(c.p.squads, 3);
+    /* 문턱이 '이 판 한 사람 몫'에 따라 움직이면서(replayTactics의 MUTA_MASS_SHARE) 한
+       부대가 안 되는 뮤탈도 이야기가 된다 — 헌터 13분 판의 15기처럼. 그런 수를 부대로
+       말하면 "1부대"·"0부대"가 되어 말이 안 되니, 두 부대부터만 부대로 센다. */
+    const squads = num(c.p.squads, 0);
+    const q = squads >= 2 ? `${squads}부대` : `${num(c.p.n, 12)}기`;
     return `${ga(c.who)} ${done(c, c.pick([
-      `뮤탈을 ${q}부대까지 모아 흔듦`,
-      `${q}부대 뮤탈로 하늘을 뒤덮음`,
-      `뮤탈 ${q}부대를 굴리며 사방을 찌름`,
+      `뮤탈을 ${q}까지 모아 흔듦`,
+      `${q} 뮤탈로 하늘을 뒤덮음`,
+      `뮤탈 ${q}를 굴리며 사방을 찌름`,
     ]))}`;
   },
 

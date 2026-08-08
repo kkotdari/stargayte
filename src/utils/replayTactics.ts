@@ -386,8 +386,8 @@ const FRONT_COS = 0.5;
 // 몰래 배럭에 딸려 나오면 그 자체가 러시의 증거가 되는 파이어뱃 수 — 방어용으로는 이만큼
 // 뽑지 않는다.
 const FIREBAT_RUSH_MIN = 6;
-// '대규모 뮤탈'로 볼 수 — 한 부대 12기 기준 세 부대(지적: 3~4부대).
-const MUTA_MASS_MIN = 36;
+/* (이동) '대규모 뮤탈'로 볼 수는 아래 잣대 쪽으로 옮겼다 — 36기(세 부대) 고정으로는
+   손에 있는 11판에서 한 번도 안 떴다. MUTA_MASS_SHARE 참고. */
 
 // 저글링 러시라 부르려면 초반에 이만큼은 뽑았어야 한다 — 성큰러시에 딸린 두어 기와 가른다.
 const ZLING_RUSH_MIN = 6;
@@ -501,9 +501,13 @@ const FAST_UNITS: [string, number][] = [
 // 한 기만 뽑고 만 것은 '전략'이 아니라 사고다 — 최소한 이만큼은 이어 뽑아야 한다.
 const FAST_MIN_UNITS = 3;
 // '파워 OO' — 이만큼 뽑고, 그게 병력의 이 비율을 넘으면 그 유닛 하나로 간 것이다(요청).
+/* 값은 '이 판 한 사람 몫의 몇 곱절'이다(위 잣대 주석) — 예전의 고정 수(드라군 30 ·
+   히드라 40 · 질럿 40 · 마린 50 · 벌처 30 · 저글링 60)를 실측 11판의 병력 가운데치
+   180으로 나눈 자리에서 시작했다. 유닛마다 값이 다른 것은 싼 유닛일수록 같은 '물량'이
+   더 큰 수로 나타나기 때문이다. */
 const POWER_UNITS: [string, number][] = [
-  ["Dragoon", 30], ["Hydralisk", 40], ["Zealot", 40], ["Marine", 50],
-  ["Vulture", 30], ["Zergling", 60],
+  ["Dragoon", 0.17], ["Hydralisk", 0.22], ["Zealot", 0.22], ["Marine", 0.28],
+  ["Vulture", 0.17], ["Zergling", 0.33],
 ];
 const POWER_SHARE = 0.6;
 /* 비중은 안 되지만 '그 유닛 하나만으로도 어마어마한' 수(지적: 탱크를 135기나 뽑아 중앙을
@@ -520,20 +524,20 @@ const POWER_SHARE = 0.6;
    이미 제 이야기를 가진 유닛(캐리어·리버·다크템플러·아비터·러커·가디언·울트라·발키리·
    레이스)은 여기 안 넣는다 — 같은 물량을 두 문장이 말하게 된다. */
 const POWER_SOLO: { unit: string; min: number; keys?: string[] }[] = [
-  { unit: "Zealot", min: 220 },
-  { unit: "Marine", min: 180 },
-  { unit: "Dragoon", min: 110 },
-  { unit: "Hydralisk", min: 100 },
+  { unit: "Zealot", min: 1.2 },
+  { unit: "Marine", min: 1 },
+  { unit: "Dragoon", min: 0.6 },
+  { unit: "Hydralisk", min: 0.55 },
   // 탱크는 시즈/탱크 모드가 따로 세어져 둘을 합쳐야 '몇 기 뽑았나'가 된다.
   {
-    unit: "Siege Tank (Tank Mode)", min: 90,
+    unit: "Siege Tank (Tank Mode)", min: 0.5,
     keys: ["Siege Tank (Tank Mode)", "Siege Tank (Siege Mode)"],
   },
-  { unit: "Goliath", min: 80 },
-  { unit: "Scout", min: 60 },
-  { unit: "Vulture", min: 50 },
-  { unit: "Zergling", min: 40 },
-  { unit: "Mutalisk", min: 30 },
+  { unit: "Goliath", min: 0.45 },
+  { unit: "Scout", min: 0.33 },
+  { unit: "Vulture", min: 0.28 },
+  { unit: "Zergling", min: 0.22 },
+  { unit: "Mutalisk", min: 0.17 },
 ];
 /* ── 물량(요청: "프로토스들의 질럿 드라군 물량 이야기도 없네") ──
    위 '파워 OO'는 한 유닛이 병력의 60%를 넘겨야 나온다. 그런데 실제로 사람들이 물량이라
@@ -561,27 +565,40 @@ const CARRIER_MIN = 4;
 // 가디언 — 뮤탈을 변태시켜야 나오는 유닛이라 몇 기만 있어도 그림이 된다.
 const GUARDIAN_MIN = 4;
 
-/* ── 유닛 수 문턱의 판별 잣대(지적: "뮤탈 캐리어 레이스 등의 숫자도 상대화") ──
-   위 문턱들(뮤탈 36 · 캐리어 4 · 레이스 4 · 가디언 4 · 옆탱 5 · POWER_UNITS ·
-   POWER_SOLO)은 전부 '경기 전체로 몇 기를 뽑았나'다. 그런데 같은 4기라도 마른 맵의
-   짧은 판에서는 판을 가른 카드이고, 빠른무한 35분 판에서는 지나가는 숫자다.
+/* ── 유닛 수 문턱의 잣대(지적: "기준값이 왜 필요해? 헌터 같은 경기도 있다구") ──
+   맞는 지적이라 기준값을 걷어냈다. 한때 '보통 판은 한 사람이 몇 기'라는 값을 두고 이 판이
+   그 몇 배인가로 문턱을 늘였다 줄였는데, 그건 절대 수를 한 겹 숨겨 놓은 것뿐이라 맵이
+   바뀌면 같이 틀린다. 지금은 문턱 자체를 '이 판 한 사람 몫의 몇 곱절'로 적는다 — 아래
+   값들은 전부 몫(비)이라 단위가 없고, 맵이 넉넉하든 마르든 다시 잴 것이 없다.
 
-   그래서 이 판이 '보통 판'보다 얼마나 크게 굴러갔나를 배율로 만들어 문턱에 곱한다.
-   잣대는 그 판 사람들이 뽑은 병력의 가운데치다(midOf) — 맵의 자원 사정과 경기 길이가
-   함께 녹아 있는 유일한 값이다.
+       문턱 = max(구조적 바닥, 이 판 병력 가운데치 × 몫)
 
-   ARMY_SCALE_REF는 '보통 판 한 사람의 병력'이다. 위 POWER_SOLO 주석의 실측(972명)에서
-   종족별 주력 조합의 중앙값을 합치면 대략 이 언저리이고(프로토스 질럿 90+드라군 30,
-   테란 마린 66+탱크 26+골리앗 22+벌처 18), 손에 있는 리플레이 네 판(전부 빠른무한)의
-   가운데치가 111~305로 이 값을 감싼다. 더 넓은 표본이 생기면 다시 재야 하는 값이다.
+   바닥은 '많다/적다'와 상관없는 최소치다. 캐리어 한두 기는 어느 맵에서든 띄워 본 것이지
+   굴린 것이 아니고, 판이 통째로 일찍 끝나 가운데치가 한 자리 수인 판에서 몫만 보면 무엇
+   이든 이야기가 되어 버린다.
 
-   제곱근을 씌우는 이유: 병력이 두 배로 늘었다고 '대단하다'의 문턱까지 두 배가 되지는
-   않는다. 판이 커지면 한 사람이 굴리는 유닛 종류도 늘어서 한 종류에 몰리는 몫은 그만큼
-   자라지 않기 때문이다. 양끝은 잘라 둔다 — 아무리 마르거나 넉넉해도 문턱이 뜻을 잃을
-   만큼 움직이면 안 된다. */
-const ARMY_SCALE_REF = 130;
-const ARMY_SCALE_MIN = 0.7;
-const ARMY_SCALE_MAX = 2;
+   실측(리플레이 11판, 병력 가운데치 42~305 — 헌터 13분 8인부터 빠른무한 35분 8인까지):
+     뮤탈  헌터 15기(가운데치 42 → 0.357)·10기(0.238) · r7 32기(186 → 0.172)
+           r6 19기(209 → 0.091) · r3 12기(103 → 0.117) · r9 11기(278 → 0.040)
+     캐리어 r3 17·19 · r9 20 · 56c 17 · r6 8 (묶음 최대치 기준)
+     레이스 r9 78기(278 → 0.281) · r6 6기(209 → 0.029)
+     가디언 r7 9기(186 → 0.048) · r3 4기(103 → 0.039)
+   뮤탈은 예전 문턱(36기 고정)으로는 이 11판에서 한 번도 안 떴다 — 헌터 판의 15기처럼
+   그 판을 통째로 끌고 간 뮤탈이 아무 말도 못 얻었다는 뜻이라, 몫으로 바꾸면서 지난 요청
+   ("3~4부대")의 고정 바닥도 함께 내렸다. 대신 문장이 부대 수가 아니라 기 수로도 말할 수
+   있게 고쳤다(replaySummaryText의 muta) — 한 부대가 안 되는데 "1부대"라고 할 수는 없다. */
+const MUTA_MASS_SHARE = 0.15;
+const MUTA_MASS_FLOOR = 8;
+const CARRIER_SHARE = 0.03;
+const WRAITH_SHARE = 0.03;
+const GUARDIAN_SHARE = 0.03;
+const SIDE_TANK_SHARE = 0.02;
+/** '파워 OO'·단독 물량의 바닥 — 두 부대(24기)는 돼야 '그 유닛으로 밀었다'는 말이 나온다.
+ *  12기로 내려 봤더니 헌터 판에서 드라군 15기가 '파워 드라군'으로 떴다(실측) — 그 판이
+ *  작아서 비중은 넘겼지만, 15기는 어느 판에서도 물량이 아니다. 그 위는 아래 표의 몫이
+ *  정한다. */
+const POWER_FLOOR = 24;
+const POWER_SOLO_FLOOR = 24;
 // 일꾼은 종족을 그대로 드러낸다 — 제 종족이 아닌 일꾼을 뽑았다면 뺏어 온 것이다(요청).
 const WORKER_OF = new Map<string, string>([
   ["Probe", "프로토스"], ["Drone", "저그"], ["SCV", "테란"],
@@ -1091,8 +1108,8 @@ interface Ctx {
   /** '물량'이라 부를 분당 생산량 — 같은 판 사람들의 가운데치에서 뽑는다(MASS_RATE_RATIO).
    *  절대 수로 가르면 자원 넉넉한 맵에서는 전원이 물량이 된다(지적). */
   massRateBar: number;
-  /** 유닛 수로 그은 문턱들에 곱할 이 판의 배율 — 위 ARMY_SCALE_REF 참고. */
-  armyScale: number;
+  /** 이 판 한 사람의 병력(가운데치) — 유닛 수 문턱의 잣대다. 위 잣대 주석 참고. */
+  armyMid: number;
 }
 
 const sec = (frame: number) => frame * SECONDS_PER_FRAME;
@@ -1113,12 +1130,12 @@ export function midOf(values: number[]): number {
 function detectFor(c: Ctx): Tactic[] {
   const {
     rawName, s, race, foeRaces, soleFoe, geo, neighbor, endFrame, foeFightingAt, massRateBar,
-    armyScale,
+    armyMid,
   } = c;
-  /** 유닛 수 문턱을 이 판 크기에 맞춘다(위 ARMY_SCALE_REF) — base는 '보통 판' 기준값,
-   *  floor는 아무리 마른 판이어도 그 아래로는 그 전략이라 부를 수 없는 최소치다. */
-  const unitBar = (base: number, floor: number) =>
-    Math.max(floor, Math.round(base * armyScale));
+  /** 유닛 수 문턱 — '이 판 한 사람 몫의 share 곱절', 단 floor 아래로는 안 내려간다.
+   *  기준값 없이 이 판 하나로 닫힌다(위 잣대 주석). */
+  const unitBar = (share: number, floor: number) =>
+    Math.max(floor, Math.round(armyMid * share));
   const out: Tactic[] = [];
   const u = (n: string) => s.unitCounts[n] ?? 0;
   const firstU = (n: string): number | null => s.firstUnitFrame[n] ?? null;
@@ -1400,7 +1417,7 @@ function detectFor(c: Ctx): Tactic[] {
   // 비중으로 못 잡히지만 수 자체가 압도적인 경우도 함께 본다(위 POWER_SOLO).
   const dominant = (() => {
     for (const [unit, min] of POWER_UNITS) {
-      if (u(unit) >= unitBar(min, Math.round(min * ARMY_SCALE_MIN))
+      if (u(unit) >= unitBar(min, POWER_FLOOR)
         && armyTotal > 0 && u(unit) / armyTotal >= POWER_SHARE) {
         return { unit, keys: [unit], n: u(unit), solo: false };
       }
@@ -1466,7 +1483,7 @@ function detectFor(c: Ctx): Tactic[] {
     for (const e of POWER_SOLO) {
       const keys = e.keys ?? [e.unit];
       const n = keys.reduce((sum, k) => sum + u(k), 0);
-      const min = unitBar(e.min, Math.round(e.min * ARMY_SCALE_MIN));
+      const min = unitBar(e.min, POWER_SOLO_FLOOR);
       if (n >= min && (!best || n > best.n)) best = { unit: e.unit, keys, n, solo: true };
     }
     if (best) pushPower(best);
@@ -1587,14 +1604,18 @@ function detectFor(c: Ctx): Tactic[] {
     // 뮤탈 대규모 — 한두 부대로는 '대규모'가 아니다(지적: 3~4부대). 한 부대 12기 기준으로
     // 세 부대부터 본다. 견제의 대명사라 상대 일꾼 생산이 치솟았는지와 짝지어 볼 수 있다(요청).
     const mutas = u("Mutalisk");
-    if (mutas >= unitBar(MUTA_MASS_MIN, MUTA_MASS_MIN)) {
+    if (mutas >= unitBar(MUTA_MASS_SHARE, MUTA_MASS_FLOOR)) {
       out.push({
-        key: "muta", weight: 9, at: firstU("Mutalisk"), who,
-        p: { squads: Math.floor(mutas / 12) },
+        /* 무게를 9 → 11로(파워 OO와 같은 자리). 문턱이 '36기 고정'이던 때는 뜨기만 하면
+           엄청난 수라 낮은 무게로도 됐는데, 실제로는 한 번도 안 떴다. 이제 판 대비로
+           재니까 뜨는 일 자체가 "이 판에서는 이게 뮤탈 물량이었다"는 뜻이라, 8인 판의
+           빽빽한 자리싸움(replaySummary의 baseBudget)에서 밀려 사라지면 안 된다. */
+        key: "muta", weight: 11, at: firstU("Mutalisk"), who,
+        p: { n: mutas, squads: Math.floor(mutas / 12) },
       });
     }
     // 가디언 — 뮤탈을 변태시켜 지상을 두들기는 그림. 나오는 것 자체가 드물어 이야깃거리다(요청).
-    if (u("Guardian") >= unitBar(GUARDIAN_MIN, 3)) {
+    if (u("Guardian") >= unitBar(GUARDIAN_SHARE, GUARDIAN_MIN - 1)) {
       out.push({
         key: "guardian", weight: 10, at: firstU("Guardian"), who,
         p: { n: u("Guardian") },
@@ -1674,7 +1695,7 @@ function detectFor(c: Ctx): Tactic[] {
      *  이동 명령만 추린다. 탱크는 한 번 자리를 잡으면 눌러앉으므로 같은 자리에 여러 번
      *  찍힌다 — 그만큼 몰렸을 때만 '세워 뒀다'고 말한다. */
     const tankPark = (() => {
-      if (!geo || tanks < unitBar(SIDE_TANK_MIN, 4)) return null;
+      if (!geo || tanks < unitBar(SIDE_TANK_SHARE, SIDE_TANK_MIN)) return null;
       const tankOrders = (s.orderPositions ?? []).filter((o) => o.by === "Siege Tank");
       /** 그 자리들 중 가장 붐빈 한 점 — 탱크를 세운 지점을 그대로 찍어야지, 본진 한가운데를
        *  가리키면 옆탱이라는 말이 무색해진다(요청: 옆탱한 지점을 정확히). */
@@ -1782,7 +1803,7 @@ function detectFor(c: Ctx): Tactic[] {
   // 클로킹 레이스(요청) — 레이스만으로는 정찰일 수 있고, 클로킹까지 올려야 전략이다.
   // 레이스 클로킹은 '기술(Tech)'이다 — 예전엔 upgradeNames에서 찾고 있어서 이 전술이
   // 한 번도 안 떴다(지적). 이름을 타입으로 좁힌 hasTech로 바꿔 같은 실수를 막는다.
-  if (race === "테란" && u("Wraith") >= unitBar(WRAITH_MIN, 3) && hasTech(s, "Cloaking Field")) {
+  if (race === "테란" && u("Wraith") >= unitBar(WRAITH_SHARE, WRAITH_MIN) && hasTech(s, "Cloaking Field")) {
     out.push({
       key: "cloak-wraith", ...target, weight: 12,
       at: firstU("Wraith"), who, p: { n: u("Wraith") },
@@ -1896,7 +1917,7 @@ function detectFor(c: Ctx): Tactic[] {
     // 스무 분에 걸쳐 넷을 뽑은 것은 캐리어를 굴린 게 아니라 한두 기씩 갈아 넣은 것이다.
     const carriers = producedFrames(s, "Carrier", endFrame);
     const carrierPeak = windowPeak(carriers);
-    if (carrierPeak >= unitBar(CARRIER_MIN, 3)) {
+    if (carrierPeak >= unitBar(CARRIER_SHARE, CARRIER_MIN)) {
       const burst = biggestBurst(carriers);
       out.push({
         key: "carrier", weight: 13, at: burst ? burst.from : firstU("Carrier"),
@@ -2255,12 +2276,8 @@ export function scanTactics({ sidePlayers, foePlayers, startSpots }: TacticScanI
     midOf([...sidePlayers, ...foePlayers].map((p) => (mins > 0 ? armyOf(p) / mins : 0)))
       * MASS_RATE_RATIO,
   );
-  /* 유닛 수 문턱에 곱할 이 판의 배율 — 위 ARMY_SCALE_REF 참고. 아무도 아무것도 안 뽑은
-     판(가운데치 0)에서는 배율을 1로 두고 예전 값 그대로 간다. */
+  /* 유닛 수 문턱의 잣대 — 이 판 한 사람의 병력(가운데치). 위 잣대 주석 참고. */
   const armyMid = midOf([...sidePlayers, ...foePlayers].map(armyOf));
-  const armyScale = armyMid > 0
-    ? Math.min(ARMY_SCALE_MAX, Math.max(ARMY_SCALE_MIN, Math.sqrt(armyMid / ARMY_SCALE_REF)))
-    : 1;
 
   const all: Tactic[] = [];
   for (const p of sidePlayers) {
@@ -2274,7 +2291,7 @@ export function scanTactics({ sidePlayers, foePlayers, startSpots }: TacticScanI
           const f = fightersAt(at, frames, foePlayers)[0];
           return f ? { raw: f.raw, units: f.units } : null;
         },
-        endFrame, massRateBar, armyScale,
+        endFrame, massRateBar, armyMid,
       })
     );
   }
