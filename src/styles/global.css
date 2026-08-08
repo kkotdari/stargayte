@@ -167,14 +167,27 @@
   /* 결과 표시(승/패)만 최소한으로 색 사용 — 흰색을 섞어 파스텔 톤으로 옅게 */
   --win: #a3d693;
   --loss: #c07a86;
-  /* 활동 갈래 색(요청: 일정 그린 / 리그 블루 / 너 나와 핑크 / 게임 흰색) — 목록 줄의
-     유형 배지와 유형 필터가 같은 값을 쓴다. '게임'은 하양이 아니라 그냥 글자색이다: 라이트
-     테마에서 하양은 안 보이므로, 색을 안 주는 갈래로 두고 테마의 기본 잉크를 그대로 쓴다.
-     (랭크 변동은 색을 안 받는다 — 사람이 올린 글이 아니라 서버가 남긴 알림이다.) */
-  --kind-schedule: #3ecf8e;
-  --kind-league: #5aa9f6;
-  --kind-call: #ff6fae;
-  --kind-game: var(--text);
+  /* 활동 갈래 색(요청: 일정 그린 / 리그 보라 / 너 나와 핑크 / 게임 파랑) — 목록 줄의
+     유형 배지와 유형 필터가 같은 값을 쓴다.
+
+     이 값은 글자색이 아니라 '배지 바탕색'이다(요청: "폰트 색은 다 똑같고 배지 배경색만
+     다른 거야"). 예전에는 갈래 색을 글자에 입히고 바탕은 그 색을 아주 옅게 깔았는데,
+     그러면 낱말마다 글자색이 달라 줄을 훑을 때 색이 먼저 읽혔다. 이제 글자는 넷 다 흰색
+     이고 바탕만 갈라진다.
+
+     그래서 값도 다시 골랐다 — 흰 글자를 얹을 바탕이라 밝은 파스텔로는 안 되고, 흰 글자
+     대비가 4.5:1을 넘어야 한다(실측: 그린 5.38 · 보라 5.37 · 핑크 4.85 · 파랑 5.17).
+     넷의 대비를 5 언저리로 맞춰 둔 것은 한 벌로 읽히게 하려는 것이다.
+
+     다크·라이트가 같은 값이다 — 바탕을 제 색으로 꽉 채우므로 뒤에 무엇이 있든 상관없고,
+     테마마다 다른 값을 두면 같은 배지가 테마를 옮길 때 다른 색으로 보인다.
+     (랭크 변동은 갈래 색이 없다 — 사람이 올린 글이 아니라 서버가 남긴 알림이라, 아래
+     --kind-none의 무채색으로 간다.) */
+  --kind-schedule: #157a47;
+  --kind-league: #7c4dd8;
+  --kind-call: #d81b74;
+  --kind-game: #2563eb;
+  --kind-none: #4b5563;
   /* 전적통계 게임수/생산/APM/커맨드 막대(ValueBar) 채움색 — 이제 이 막대 위에 흰 글자가
      겹쳐 얹히므로(요청: "막대그래프 위에 텍스트 겹쳐서 표시"), 옅은 파스텔 톤이면 흰
      글자와 명도 차가 거의 없어 잘 안 읽힌다는 지적으로 낮춘다. 채도를 높였다 낮췄다 하다
@@ -903,12 +916,9 @@ html.scr-light-theme {
      요청은 아니었음). */
   --win: #34c759;
   --loss: #f2637a;
-  /* 흰 바탕에서 읽히도록 같은 계열을 한 단계 어둡게 — 다크의 값을 그대로 쓰면 배지 글자가
-     흰 종이 위에서 형광펜처럼 뜬다. */
-  --kind-schedule: #18a05f;
-  --kind-league: #2478d4;
-  --kind-call: #d81b74;
-  --kind-game: var(--text);
+  /* (삭제) 라이트 전용 갈래 색 — 갈래 색이 글자에 입히는 값이던 때는 흰 종이 위에서
+     형광펜처럼 뜨지 않게 한 단계 어둡게 잡아야 했다. 이제는 배지 바탕색이라 뒤에 무엇이
+     있든 그대로 보이고, 테마마다 값을 나누면 같은 배지가 테마를 옮길 때 다른 색이 된다. */
   /* 통계 그래프(막대/차트) 채움색. 한때 진하고 채도 강한 파랑(#2f7cf0)까지 갔다가 "눈이
      아프다"는 지적으로 채도를 낮춘 파스텔로 되돌렸고, 그 뒤 "라이트는 더 밝게"라는
      지적으로 명도를 한 번 더 올린다(다크 테마 --info는 반대로 더 어둡게). */
@@ -2104,23 +2114,27 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 .scr-pickrow-kind .scr-pick {
   padding: 2px 8px; border-radius: 6px;
   font-size: var(--fs-micro); font-weight: 700; line-height: 1.25;
-  background: color-mix(in srgb, transparent 86%, var(--kind, var(--dim)) 14%);
-  color: var(--kind, var(--dim));
-  opacity: 0.45;
+  /* 목록 줄 배지와 같다 — 갈래는 바탕으로만 말하고 글자는 흰색이다(요청).
+     안 고른 것을 죽이는 방법이 투명도가 아니라 '색을 무채색 쪽으로 섞기'인 이유: 투명도로
+     누르면 라이트 테마에서 바탕이 흰 종이 쪽으로 옅어져 흰 글자가 그 위에서 사라진다
+     (실측: 0.45로 눌렀더니 연둣빛 위 흰 글자가 안 읽혔다). 무채색으로 섞으면 밝기가
+     그대로라 흰 글자 대비가 오히려 올라가고(딤 6.6~7.3 : 고른 것 4.9~5.4), 색만 빠져
+     '눌러 둔' 것으로 읽힌다 — 두 테마에서 똑같이. */
+  background: color-mix(in srgb, var(--kind, var(--kind-none)) 42%, var(--kind-none));
+  /* 글자는 갈래마다 같은 흰색이고(요청), 고르고 안 고르고만 진하기로 가른다. 바탕의 채도
+     만으로는 '전체'를 못 가른다 — 그 알약은 갈래 색이 없어 고른 것과 안 고른 것의 바탕이
+     같은 무채색이기 때문이다. */
+  color: rgba(255, 255, 255, 0.7);
 }
 /* 고른 것 — 알약 라이팅(흰 배경 + 글로우)을 걷고 제 색을 온전히 되찾는다. */
 .scr-pickrow-kind .scr-pick-on {
-  opacity: 1; box-shadow: none;
-  background: color-mix(in srgb, transparent 80%, var(--kind, var(--dim)) 20%);
-  color: var(--kind, var(--text));
+  box-shadow: none;
+  background: var(--kind, var(--kind-none));
+  color: #fff;
 }
 @media (hover: hover) {
   .scr-pickrow-kind .scr-pick:not(.scr-pick-on):hover {
-    opacity: 0.75; color: var(--kind, var(--dim));
-    background: color-mix(in srgb, transparent 86%, var(--kind, var(--dim)) 14%);
-  }
-  .scr-light-theme .scr-pickrow-kind .scr-pick:not(.scr-pick-on):hover {
-    background: color-mix(in srgb, transparent 86%, var(--kind, var(--dim)) 14%);
+    background: color-mix(in srgb, var(--kind, var(--kind-none)) 68%, var(--kind-none));
   }
 }
 /* 알약탭·달력도 같은 이유로 끈다 — 같은 줄에 선 것들끼리 누를 때의 반응이 달라 보이면
@@ -8025,8 +8039,10 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   /* 갈래 색(요청) — 글자는 그 색, 바탕은 같은 색을 아주 옅게 깐 것이다. 바탕을 색으로 꽉
      채우면 배지 넷이 줄마다 원색 덩어리로 서서 정작 읽어야 할 제목보다 먼저 눈에 들어온다.
      --kind가 없는 갈래(랭크 변동)는 예전 그대로 흐린 회색이다. */
-  background: color-mix(in srgb, transparent 86%, var(--kind, var(--dim)) 14%);
-  color: var(--kind, var(--dim));
+  /* 갈래는 바탕으로만 말한다 — 글자는 넷 다 흰색이다(요청). 갈래 색이 없는 줄(랭크 변동)
+     은 무채색 바탕으로 간다. */
+  background: var(--kind, var(--kind-none));
+  color: #fff;
   font-size: var(--fs-micro); font-weight: 700; line-height: 1.25; white-space: nowrap;
 }
 .scr-kind-schedule { --kind: var(--kind-schedule); }
