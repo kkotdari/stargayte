@@ -1640,9 +1640,19 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   /* 메뉴는 세로로 쌓이고 기둥 한가운데에 선다. 가로 띠일 때의 flex:1 + 가로 스크롤은 남는
      폭을 나눠 갖기 위한 것이었는데, 세로에서는 그 값이 메뉴를 기둥 아래까지 늘려 버린다. */
   .scr-nav {
-    order: 2; flex-direction: column; flex: 0 0 auto; gap: 2px; overflow: visible;
-    align-items: flex-start; margin-top: auto; margin-bottom: auto;
+    order: 3; flex-direction: column; flex: 0 0 auto; gap: 2px; overflow: visible;
+    align-items: flex-start;
   }
+  /* 남는 자리를 위 2 : 아래 3으로 갈라 메뉴를 정중앙보다 살짝 위에 세운다(요청: "메뉴
+     위치를 좀 위로 올려야 할 듯, 균형감을 위해"). 자와 눈은 다르다 — 아래쪽이 프로필
+     하나로 가벼운 기둥에서 메뉴를 수학적 정중앙에 두면 눈에는 아래로 처져 보인다.
+     위아래 auto 마진(1:1)으로는 이 비를 못 만든다. 대신 기둥 자신의 ::before/::after를
+     늘어나는 빈 칸으로 세우고 flex 값으로 비를 준다 — order로 자리를 지정하므로 메뉴
+     위(2)와 아래(4)에 정확히 하나씩 선다. */
+  .scr-header-inner::before,
+  .scr-header-inner::after { content: ""; flex-basis: 0; min-height: 0; }
+  .scr-header-inner::before { order: 2; flex-grow: 2; }
+  .scr-header-inner::after { order: 4; flex-grow: 3; }
   .scr-nav-tab { justify-content: flex-start; padding: 9px 10px; border-radius: 6px; margin-left: -10px; }
   /* 지금 보고 있는 화면 — 가로 띠에서는 글자 굵기만으로 갈렸지만(넷이 나란히 서 있어
      비교가 쉬웠다) 세로로 쌓이면 그 차이가 눈에 잘 안 걸린다. 옅은 판을 한 겹 깐다.
@@ -1653,7 +1663,7 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
      그릴 필요가 없었다. */
   /* 칩은 왼쪽 패딩이 4px이라(프사가 붙는 자리) 그만큼만 물린다 — 프사의 왼쪽이 로고·
      메뉴 글자와 한 줄에 선다. */
-  .scr-user-chip { order: 3; justify-content: flex-start; border-radius: 6px; margin-left: -4px; }
+  .scr-user-chip { order: 5; justify-content: flex-start; border-radius: 6px; margin-left: -4px; }
 }
 @media (min-width: 1160px) and (hover: hover) {
   .scr-nav-desktop .scr-nav-tab:hover,
@@ -3442,6 +3452,18 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
 }
 
 .scr-search-filter-float .scr-list-search-wrap { width: 100%; }
+/* 유저 검색 앞의 갈래 드롭다운("모두 포함 / 이 사람들만") — 낱말 폭이면 된다.
+   공용 셀렉트(.scr-cselect)는 폼 칸에 쓰라고 만든 것이라 기본이 width:100%인데, 그대로
+   두면 검색칸의 절반을 먹어 정작 검색창이 "유저 입력 또…"에서 잘렸다(실측 1440px).
+   글자 폭으로 줄이고, 대신 칸 자체를 그만큼 넓혀 검색창이 예전 폭을 되찾게 한다. */
+/* .scr-cselect를 함께 붙여 범위를 트리거 쪽으로 못박는다 — Select는 className을 포털로
+   띄우는 드롭다운(.scr-cselect-drop)에도 그대로 붙이므로, 클래스 하나만 쓰면 여기서 준
+   width:auto가 드롭다운까지 오그라뜨려 옵션을 못 누른다(실측: 클릭이 뒤의 유형 알약에
+   가로채였다). */
+.scr-cselect.scr-user-mode-select { flex: 0 0 auto; width: auto; }
+.scr-cselect.scr-user-mode-select .scr-cselect-trigger { width: auto; gap: 4px; }
+.scr-list-search-wrap:has(> .scr-user-mode-select) { width: clamp(280px, 34vw, 420px); }
+.scr-search-filter-float .scr-list-search-wrap:has(> .scr-user-mode-select) { width: 100%; }
 /* 플로팅이라 라벨("유저")은 군더더기 — 뺀다. */
 .scr-search-filter-float .scr-list-search-wrap > .scr-field-label-text { display: none; }
 /* 인풋 자신이 곧 떠 있는 검색창 전체다 — 흰 배경(다크 테마도 동일, 유저 칩과 통일감 —
@@ -8488,6 +8510,33 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    두 팀 이름이 붙어 보였다(실측: "정구·크리스ː태섭·조조"로 읽힘). 가운뎃점 구분자와 같은
    만큼(5px) 좌우를 벌려 준다. */
 .scr-activity-row-colon { margin: 0 5px; }
+/* 경기 줄의 "vs" — 리그의 콜론과 같은 자리를 맡는다. 낱말이라 콜론보다 넓어 좌우 여백은
+   덜 준다. 두 편 이름과 같은 크기면 그것도 이름처럼 읽히므로 한 스텝 작게, 흐리게 둔다. */
+.scr-activity-row-vs {
+  margin: 0 6px; font-size: var(--fs-11); font-weight: 700; letter-spacing: 0.04em;
+}
+/* 경기 줄의 이름들만 글자를 좁힌다(요청: "너무 기니까 폰트 폭을 줄이는 거지") — 한 판은
+   최대 여덟 명이라, 이름을 넉 자로 잘라도(shortName) 가운뎃점까지 여든 자 가까이 된다.
+   다른 갈래(너 나와·리그)는 양편이 한둘이라 이 문제가 없어 건드리지 않는다.
+
+   줄이는 것은 세 가지다. 글자 크기 한 스텝(14 → 12), 자간(사람 이름은 낱말이라 -0.01em
+   쯤은 읽는 데 지장이 없다), 그리고 이름 사이 가운뎃점의 좌우 여백(5 → 3px) — 여덟
+   이름이면 점이 여섯 개라 그 여백만 24px이다.
+
+   폭을 실제로 눌러 찌그러뜨리지는(transform: scaleX) 않는다 — 한글은 가로로 눌리면
+   획 간격이 무너져 대여섯 자만 되어도 읽기가 확 나빠진다. */
+.scr-activity-row-name-game .scr-activity-row-name-main {
+  font-size: var(--fs-micro); letter-spacing: -0.01em;
+}
+.scr-activity-row-name-game .scr-activity-row-sep { margin: 0 3px; }
+/* 좁은 화면에서는 한 스텝 더 — 여기가 여덟 이름이 실제로 넘치는 자리다. */
+@media (max-width: 1159px) {
+  .scr-activity-row-name-game .scr-activity-row-name-main {
+    font-size: var(--fs-11); letter-spacing: -0.02em;
+  }
+  .scr-activity-row-name-game .scr-activity-row-sep { margin: 0 2px; }
+  .scr-activity-row-vs { margin: 0 4px; font-size: var(--fs-10); }
+}
 /* 닉네임과 그 상태를 함께 쥐는 껍데기 — 상태가 이름의 오른쪽 끝에 맞춰 앉으려면 기준이
    이름이어야 한다. 이름 폭만큼만 차지한다. */
 /* inline-flex가 아니라 flex다 — inline 상자는 줄 안에서 제 밑선으로 앉는데, flex 상자의

@@ -25,6 +25,10 @@ interface SearchFilterBarProps {
   // 검색창 뒤에 같은 인라인 줄에 붙는 추가 필드(경기 화면의 경기번호/메모 검색) — PC에선
   // 유저 검색과 한 줄에, 모바일에선 줄바꿈으로 아래에 놓이게 CSS가 처리한다(요청).
   trailing?: ReactNode;
+  /** 유저 라벨 앞에 붙는 것 — 지금은 활동의 "모두 포함 / 이 사람들만" 드롭다운뿐이다
+   *  (요청: "유저 필터 앞에 드롭다운"). 검색어를 어떻게 읽을지를 정하는 값이라 검색창
+   *  안쪽이 아니라 그 앞에 선다: 무엇을 찾을지보다 어떻게 찾을지가 먼저다. */
+  searchLeading?: ReactNode;
   // false면 검색창 자체를 안 그린다(요청: "랭킹/회원 검색창 제거") — 필터창 + 건수만 남는다.
   showSearch?: boolean;
   // false면 건수 표시를 이 바에서 안 그린다 — 경기 화면처럼 건수를 다른 자리(목록 바로
@@ -60,6 +64,7 @@ export default function SearchFilterBar({
   suggestions,
   filterPanel,
   trailing,
+  searchLeading,
   showSearch = true,
   showCount = true,
   countInline = false,
@@ -212,6 +217,7 @@ export default function SearchFilterBar({
 
   const searchItem = (
     <div className="scr-list-search-wrap" ref={wrapRef}>
+      {searchLeading}
       <span className="scr-field-label-text">유저</span>
       {/* 완성된 검색어는 둥근네모 칩으로, 지금 타이핑 중인 마지막 단어만 실제 인풋
           값이다 — 클릭하면 인풋에 포커스를 준다(칩들 사이 빈 자리를 눌러도 바로

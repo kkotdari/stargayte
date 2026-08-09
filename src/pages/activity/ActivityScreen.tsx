@@ -12,6 +12,7 @@ import KakaoShareButton from "../../components/common/KakaoShareButton";
 import { challengePhoto, shareThumb } from "../../utils/kakaoShare";
 import GameResultCardBody, { type SearchListRow } from "./GameResultCardBody";
 import { ActivityCard } from "./ActivityCard";
+import Select from "../../components/common/Select";
 import { resolveSlotName } from "./GameResultSides";
 import { isComputerSlot } from "../../constants/computerSlot";
 import { isUnregisteredSlot } from "../../constants/unregisteredSlot";
@@ -344,6 +345,18 @@ function rowPhoto(item: DisplayItem): string | null {
   return item.kind === "challenge" ? item.challenge.backdropUrl : null;
 }
 
+/* 경기 줄에서 닉네임을 자르는 길이(요청: "닉네임을 최대 4자까지 표시") — 한 판은 최대
+   여덟 명이라 이름을 그대로 다 적으면 어느 화면에서도 뒷사람부터 잘려 나간다. 넉 자면
+   "개포동불"·"미친마법"처럼 대부분의 닉네임이 누구인지 알아볼 만큼은 남는다.
+   말줄임표(…)는 안 붙인다 — 여덟 자리에 점 세 개씩이 더 붙으면 그 자체가 한 사람 몫이다.
+   자모가 아니라 글자 수로 센다(Array.from) — 이모지가 든 닉네임을 slice로 자르면 글자가
+   반 토막 나 깨진다. */
+const ROW_SLOT_NAME_MAX = 4;
+function shortName(name: string): string {
+  const cs = Array.from(name);
+  return cs.length <= ROW_SLOT_NAME_MAX ? name : cs.slice(0, ROW_SLOT_NAME_MAX).join("");
+}
+
 function playersOf(items: GameResultItem[], memberOf: (id: string) => Member | undefined): string[] {
   const seen = new Map<string, { name: string; n: number; won: number }>();
   for (const it of items) {
@@ -613,6 +626,17 @@ export default function ActivityScreen() {
   // 검색/필터(기록실과 동일 구성) — 유저 검색, 경기유형, 게임번호. 불러온 활동 안에서 즉시 필터.
   const [search, setSearch] = useState("");
   const [kindFilter, setKindFilter] = useState<ActivityKindFilter>("all");
+  /* 고른 사람들을 어떻게 읽을 것인가(요청: "선택된 사람들이 모두 포함된 경우 / 선택된
+     사람만 있는 경우 둘로 나누고 싶다").
+
+       all  — 모두 포함 : 고른 사람이 다 나온 판이면 된다. 다른 사람이 더 껴 있어도 걸린다.
+       only — 이 사람들만 : 그 판에 나온 사람이 고른 사람들뿐이어야 한다.
+
+     둘의 차이가 드러나는 자리는 팀전이다. "정구 · 태섭"으로 훑을 때 모두 포함은 둘이 낀
+     4:4까지 다 걸리지만, 이 사람들만은 딱 그 둘이 붙은 판만 남는다. 사람을 하나만 골랐을
+     때는 이 사람들만이 사실상 아무것도 안 남기므로(혼자 하는 경기는 없다) 그때는 값이
+     있어도 모두 포함과 같게 둔다 — 아래 passesFilter 참고. */
+  const [userMode, setUserMode] = useState<"all" | "only">("all");
 
   /* 목록 한 줄을 눌러 펼친다 — 펼침은 한 번에 하나다. 여러 줄을 동시에 펴 두면 목록의
      값어치(한 화면에 많이)가 사라진다.
@@ -1006,12 +1030,26 @@ export default function ActivityScreen() {
         if (kind !== kindFilter) return false;
       }
       if (searchTerms.length > 0) {
+        /* '이 사람들만'은 사람이 둘 이상일 때만 뜻이 있다 — 하나만 골라 놓고 그 사람만 나온
+           판을 찾으면 답은 늘 없다(혼자 하는 경기가 없으니까). 그때는 조용히 모두 포함으로
+           읽는다: 고른 사람이 하나뿐인데 목록이 텅 비면 그건 필터가 고장 난 것으로 읽힌다. */
+        const onlyThese = userMode === "only" && searchTerms.length >= 2;
         if (item.kind === "gameResult") {
           const slots = [...item.gameResult.team1, ...item.gameResult.team2];
-          return searchTerms.every((term) => slots.some((slot) => slotMatchesTerm(slot, term)));
+          if (!searchTerms.every((term) => slots.some((slot) => slotMatchesTerm(slot, term)))) return false;
+          /* 컴퓨터는 세지 않는다 — "이 사람들만"에서 묻는 것은 사람이라, 컴퓨터가 한 자리
+             차지했다고 그 판이 빠지면 오히려 뜻과 어긋난다. */
+          return !onlyThese || slots.every((slot) => isComputerSlot(slot.memberId)
+            || searchTerms.some((term) => slotMatchesTerm(slot, term)));
         }
         if (item.kind === "challenge") {
-          return searchTerms.every((term) => challengeMatchesTerm(item.challenge, term));
+          if (!searchTerms.every((term) => challengeMatchesTerm(item.challenge, term))) return false;
+          if (!onlyThese) return true;
+          const c = item.challenge;
+          const everyone = [
+            c.createdBy.nickname, ...c.ownMembers.map((m) => m.nickname), ...c.targets.map((t) => t.nickname),
+          ];
+          return everyone.every((n) => searchTerms.some((term) => normalizeSearchText(n).includes(term)));
         }
         // 일정은 제목·내용과 올린 사람으로 걸린다 — 참가표시한 사람은 검색어에 안 넣는다:
         // 손을 들었다는 것이 "그 사람 이야기"는 아니라, 이름으로 훑을 때 남의 일정이 딸려온다.
@@ -1025,7 +1063,9 @@ export default function ActivityScreen() {
           const names = [item.match.teamA, item.match.teamB]
             .flatMap((t) => (t ? t.members.map((x) => x.nickname) : []));
           const text = normalizeSearchText([...names, item.match.leagueName].join(" "));
-          return searchTerms.every((term) => text.includes(term));
+          if (!searchTerms.every((term) => text.includes(term))) return false;
+          return !onlyThese
+            || names.every((n) => searchTerms.some((term) => normalizeSearchText(n).includes(term)));
         }
         // 좌우 두 칸(개인전·팀전)을 함께 훑는다 — 어느 칸에 걸리든 그 카드는 검색에 맞다.
         const names = item.shift.sections
@@ -1036,7 +1076,7 @@ export default function ActivityScreen() {
       return true;
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- slotMatchesTerm/challengeMatchesTerm은 members로 충분히 표현됨
-    [kindFilter, searchTerms, members],
+    [kindFilter, searchTerms, members, userMode],
   );
   const filteredFeed = useMemo<ActivityItem[]>(
     () => feed.filter(passesFilter),
@@ -1131,31 +1171,15 @@ export default function ActivityScreen() {
   /* (삭제) 줄에 달린 댓글 수 — 걷었다(요청). 댓글이 몇 개인지는 카드를 펴면 댓글
      자리가 직접 말하고, 목록 줄에서는 그 수가 무슨 일이 있었는지보다 먼저 읽혔다. */
 
-  const displayFeed = useMemo<DisplayItem[]>(() => {
-    const out: DisplayItem[] = [];
-    let i = 0;
-    while (i < filteredFeed.length) {
-      const it = filteredFeed[i];
-      if (it.kind === "gameResult") {
-        const day = sessionDateOf(it);
-        let j = i + 1;
-        while (
-          j < filteredFeed.length
-          && filteredFeed[j].kind === "gameResult"
-          && sessionDateOf(filteredFeed[j] as GameResultItem) === day
-        ) j++;
-        // 한 판짜리도 요약 카드로 낸다(요청) — 게임결과는 판 수와 상관없이 늘 "누가
-        // 있었는지"부터 보여주고, 자세히 보기로 카드를 편다. 예전엔 2판 이상만 묶어서
-        // 한 판일 때만 카드가 통째로 펼쳐진 채 나와 생김새가 갈렸다.
-        out.push({ kind: "gameResultPost", time: it.time, date: day, items: filteredFeed.slice(i, j) as GameResultItem[] });
-        i = j;
-        continue;
-      }
-      out.push(it);
-      i++;
-    }
-    return out;
-  }, [filteredFeed]);
+  /* 목록은 이제 경기를 안 묶는다(요청: "활동에서 경기 묶음 컨셉 제거하고 한 경기 한 경기
+     다 별도 목록으로 보여주기"). 예전에는 한 자리에서 이어 친 판들을 하루 단위로 한 줄에
+     모아 "누가 있었나 · N경기"로 적었는데, 그러면 목록에서 읽을 수 있는 것이 '그날 누가
+     모였나'뿐이라 정작 각 판이 누구 대 누구였는지는 줄을 펴야만 알 수 있었다. 다른 갈래
+     (너 나와·리그·일정)는 모두 한 건이 한 줄인데 게임만 규칙이 달랐다는 점도 있다.
+
+     묶음 자체(GameResultPost)는 지운 게 아니라 공유 화면(SharePage)이 계속 쓴다 — 거기서는
+     '그날 한 자리'를 통째로 보여주는 것이 그 화면의 용건이다. */
+  const displayFeed = useMemo<DisplayItem[]>(() => filteredFeed, [filteredFeed]);
 
   /* 지운 경기 한 판만 목록에서 빼낸다(요청: 새로고침 말고 그 부분만 사라지게) — 예전에는
      통째로 다시 받아서, 스크롤을 내려 둔 자리가 사라지고 펼쳐 둔 카드도 다 접혔다.
@@ -1237,6 +1261,10 @@ export default function ActivityScreen() {
     );
   };
 
+  /** 그 편에 나온 사람들 — 이름은 넉 자까지만(요청). */
+  const sideNames = (slots: GameResultSlot[]): string[] =>
+    slots.map((s) => shortName(resolveSlotName(s, slots, memberOf)));
+
   const rowDesc = (item: DisplayItem) => {
     if (item.kind === "challenge") {
       const c = item.challenge;
@@ -1313,13 +1341,34 @@ export default function ActivityScreen() {
       }
       return <span className="scr-activity-row-names">{namesWithRest(names)}{" 변동"}</span>;
     }
-    const items = item.kind === "gameResultPost" ? item.items : [item];
+    if (item.kind === "gameResultPost") {
+      // 묶음은 이제 목록에 안 뜬다(위 displayFeed) — 공유 화면 전용이라 여기 올 일이 없다.
+      return (
+        <span className="scr-activity-row-names">
+          {namesWithRest(playersOf(item.items, memberOf))}
+          <span className="scr-activity-row-sep">·</span>
+          <span className="scr-activity-row-em">{item.items.length}</span>{"경기"}
+        </span>
+      );
+    }
+    /* 경기 한 판 — 누가 누구와 붙었나(요청):
+         브래드 · 조조 · 개포동불 · 홍빵(최  vs  정구 · 군범 · Rex · 미친마법
+
+       한때 팀전을 "대표팀 4명"으로 줄여 봤는데, 그러면 목록에서 누가 낀 판인지가 대표 한
+       사람으로 뭉개져 정작 찾던 사람이 안 보였다. 여덟을 다 부르되 이름을 넉 자로 자르고
+       (shortName) 좁은 화면에서는 글자 자체를 좁힌다(CSS의 .scr-activity-row-name-game) —
+       길이는 줄이는 방향이 두 가지인데, 사람을 지우는 쪽보다 글자를 줄이는 쪽이 낫다. */
+    const g = item.gameResult;
     return (
-      <span className="scr-activity-row-names">
-        {namesWithRest(playersOf(items, memberOf))}
-        <span className="scr-activity-row-sep">·</span>
-        <span className="scr-activity-row-em">{items.length}</span>{"경기"}
-      </span>
+      <>
+        <span className="scr-activity-row-name scr-activity-row-name-clip scr-activity-row-name-game">
+          <span className="scr-activity-row-name-main">{nameNodes(sideNames(g.team1))}</span>
+        </span>
+        <span className="scr-activity-row-arrow scr-activity-row-vs" aria-hidden>vs</span>
+        <span className="scr-activity-row-name scr-activity-row-name-clip scr-activity-row-name-game">
+          <span className="scr-activity-row-name-main">{nameNodes(sideNames(g.team2))}</span>
+        </span>
+      </>
     );
   };
 
@@ -1544,6 +1593,22 @@ export default function ActivityScreen() {
         onSearchChange={setSearch}
         searchPlaceholder="유저 입력 또는 @로 목록 띄우기"
         suggestions={suggestions}
+        /* 고른 사람들을 어떻게 읽을지 — 검색창 앞에 선다(요청). 낱말은 짧게 둘로만 갈랐다:
+           "모두 포함"은 고른 사람이 다 나왔으면 되고, "이 사람들만"은 그 사람들 말고는
+           아무도 없어야 한다. */
+        searchLeading={(
+          <Select
+            className="scr-user-mode-select"
+            size="sm"
+            value={userMode}
+            options={[
+              { value: "all", label: "모두 포함" },
+              { value: "only", label: "이 사람들만" },
+            ]}
+            onChange={(v) => setUserMode(v === "only" ? "only" : "all")}
+            minDropWidth={128}
+          />
+        )}
         filterPanel={
           <FilterItem label="유형">
             {/* 통계의 유형·종족 필터와 같은 나열선택형(요청) — 넷뿐이고 낱말이 짧아
