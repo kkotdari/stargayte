@@ -1291,9 +1291,19 @@ export default function ActivityScreen() {
   };
 
   /** 그 편에 나온 사람들 — 이름은 자르지 않는다(요청: "닉네임 풀로 표시"). 길이는
-   *  자르기가 아니라 눌러서 맞춘다(위 FlatLine). */
-  const sideNames = (slots: GameResultSlot[]): string[] =>
-    slots.map((s) => resolveSlotName(s, slots, memberOf));
+   *  자르기가 아니라 눌러서 맞춘다(위 FlatLine).
+   *
+   *  MVP인 사람 닉네임 뒤에는 작은 배지를 붙인다(요청) — 줄만 보고도 그 판의 주인공을
+   *  알 수 있게. 누가 MVP인지는 원본 게임 아이디로 가른다(요약이 그 값을 들고 있고,
+   *  닉네임은 같은 것이 둘일 수 있다). */
+  const sideNodes = (slots: GameResultSlot[], mvpRaw: string | undefined): ReactNode[] =>
+    slots.flatMap((s, i) => [
+      ...(i > 0 ? [<span className="scr-activity-row-sep" key={`s${i}`}>·</span>] : []),
+      <span className="scr-activity-row-em" key={`n${i}`}>
+        {resolveSlotName(s, slots, memberOf)}
+        {!!mvpRaw && s.rawName === mvpRaw && <span className="scr-mvp-mini">MVP</span>}
+      </span>,
+    ]);
 
   const rowDesc = (item: DisplayItem) => {
     if (item.kind === "challenge") {
@@ -1395,11 +1405,11 @@ export default function ActivityScreen() {
             한눈에 안 들어온다. 색은 미니맵의 팀 색(1팀 파랑 · 2팀 붉음)과 같은 갈래라,
             줄에서 본 편과 지도에서 본 편이 같은 색으로 이어진다. */}
         <span className="scr-activity-row-name">
-          <span className="scr-activity-row-name-main scr-activity-row-t1">{nameNodes(sideNames(g.team1))}</span>
+          <span className="scr-activity-row-name-main scr-activity-row-t1">{sideNodes(g.team1, g.summaryData?.mvp)}</span>
         </span>
         <span className="scr-activity-row-arrow scr-activity-row-vs" aria-hidden>vs</span>
         <span className="scr-activity-row-name">
-          <span className="scr-activity-row-name-main scr-activity-row-t2">{nameNodes(sideNames(g.team2))}</span>
+          <span className="scr-activity-row-name-main scr-activity-row-t2">{sideNodes(g.team2, g.summaryData?.mvp)}</span>
         </span>
       </FlatLine>
     );

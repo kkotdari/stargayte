@@ -1649,6 +1649,7 @@ export default function GameResultStory({
           <RosterSide
             team={team1} memberOf={memberOf}
             highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms}
+            mvpRaw={gameResult.summaryData?.mvp}
           />
           {/* 가운데 — 승/무 배지와 vs, 그리고 PC에서는 그 아래 미니맵(요청: PC에서는
               로스터 사이에). */}
@@ -1659,6 +1660,7 @@ export default function GameResultStory({
           <RosterSide
             team={team2} memberOf={memberOf}
             highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms}
+            mvpRaw={gameResult.summaryData?.mvp}
           />
         </div>
       )}
