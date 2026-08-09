@@ -387,6 +387,18 @@ html {
     calc(var(--vv-bottom-inset, 0px) + 6px),
     calc(env(safe-area-inset-bottom, 0px) * 0.45 + 6px)
   );
+  /* PC 배치에서 뜨는 두 버튼(등록 · 맨위로)이 바닥에서 뜨는 높이(요청: "PC 모드에서 등록이랑
+     탑버튼 안전패딩 없이 바닥에서 살짝만 띄우기").
+
+     위 --scr-float-bottom과 별개로 두는 이유: 그 값은 주소창(--vv-bottom-inset)과 홈
+     인디케이터(safe-area)를 비켜서려고 재는 값인데, PC 브라우저에는 둘 다 없다. 게다가 두
+     버튼은 거기에 탭바 높이(--mobile-footer-h 69px)까지 더해 앉아 있어서, 탭바가 없는 PC
+     에서는 아무것도 없는 자리를 87px이나 비워 두고 떠 있었다.
+
+     20px은 등록 버튼이 모바일에서 화면 왼쪽에서 떨어져 있는 값(left: 20px)과 같다 —
+     가로로 20px 떨어진 버튼이 세로로도 같은 만큼 떨어지면 화면 모서리에서 대각선으로
+     같은 자리에 앉는다. */
+  --scr-float-bottom-pc: 20px;
   /* 러버밴드는 CSS로 막는다(Safari 16+) — 한때 다크 검은 띠의 원인으로 의심해 빼봤지만
      무관함이 확인돼(지적) 원복. 진짜 원인은 위의 color-scheme 미선언이었다.
      scroll-behavior/scrollbar-gutter는 예전 #scroll-root에서 문서 스크롤 주체인 여기로. */
@@ -6240,7 +6252,10 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
   /* 기둥이 뷰포트 왼쪽을 먹으므로 본문 한가운데는 화면 한가운데가 아니라 그보다
      기둥 반폭만큼 오른쪽이다 — 그 자리를 안 더해 주면 버튼 둘이 본문에서 같은 만큼
      왼쪽으로 밀린다(기둥이 없는 폭에서는 --rail-w가 0이라 예전 식 그대로다). */
-  .scr-scrolltop { right: calc(50% - var(--content-max) / 2 - 68px - var(--rail-w) / 2); }
+  .scr-scrolltop {
+    right: calc(50% - var(--content-max) / 2 - 68px - var(--rail-w) / 2);
+    bottom: var(--scr-float-bottom-pc);
+  }
 }
 
 
@@ -9153,7 +9168,10 @@ html.scr-light-theme .scr-activity-card-comment .scr-comment-mention { color: #1
    그보다 좁으면 예전처럼 화면 왼쪽에 띄운다 — 어설프게 옮기면 채움이 생긴 카드 판 위로
    버튼이 올라앉는다. */
 @media (min-width: 1160px) {
-  .scr-activity-add-fab-wrap { left: calc(50% - var(--content-max) / 2 - 68px + var(--rail-w) / 2); }
+  .scr-activity-add-fab-wrap {
+    left: calc(50% - var(--content-max) / 2 - 68px + var(--rail-w) / 2);
+    bottom: var(--scr-float-bottom-pc);
+  }
 }
 /* ＋ 아이콘 대신 "등록" 글자를 담되 모양은 정원이다(요청) — 글자 길이에 폭을 맡겼더니
    알약이 되어, 같은 자리에 나란히 서는 탭바의 둥근 아이콘들과 결이 어긋났다. 폭을 높이와
