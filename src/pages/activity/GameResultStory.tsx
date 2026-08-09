@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type MouseEvent, type PointerEven
 import ReplayMinimap, { ARROW_MIN_TILES, type MinimapArrow, type MinimapMarker } from "../../components/replay/ReplayMinimap";
 import ReplayStoryTimeline from "../../components/replay/ReplayStoryTimeline";
 import RosterSide, { outcomeFor, resolveSlotName } from "./GameResultSides";
+import RaceBadge from "../../components/common/RaceBadge";
 import { useReplayMap } from "../../hooks/useReplayMap";
 import { cleanMapName } from "../../utils/mapName";
 import { cx } from "../../utils/format";
@@ -1508,10 +1509,11 @@ export default function GameResultStory({
   /* 그 판의 MVP(요청: 승 표시 옆에 누가 MVP인지) — 요약이 원본 게임 아이디로 들고 있어서
      여기서 지금의 회원 연결로 이름을 푼다. 팀전에만 있고(replaySummary의 mvpOf), 옛
      요약에는 없다. */
-  const mvpName = (() => {
+  const mvp = (() => {
     const raw = gameResult.summaryData?.mvp;
     if (!raw || result === "draw" || result === "not_held") return null;
-    return nameByRaw.get(raw) ?? raw;
+    const s = slots.find((x) => x.raw === raw);
+    return { name: s?.name ?? nameByRaw.get(raw) ?? raw, race: s?.slot.race ?? "" };
   })();
   const mapName = cleanMapName(gameResult.mapName);
   const minutes = gameResult.durationSeconds != null
@@ -1589,10 +1591,13 @@ export default function GameResultStory({
         )}
         {/* 그 판의 MVP — 이긴 편 표시 바로 옆이다(요청). 누가 이겼나 다음으로 궁금한 것이
             "그래서 누가 잘했나"라, 두 표시는 한 벌로 읽힌다. */}
-        {!showRoster && mvpName && (
+        {!showRoster && mvp && (
           <span className="scr-story-mvp">
             <span className="scr-story-mvp-tag">MVP</span>
-            {mvpName}
+            {mvp.name}
+            {/* 종족 배지(요청: MVP 옆에 배지) — 미니맵 이름표·로스터가 이름에 늘 종족을
+                달고 다니는데, 로스터를 접은 자리에서는 이 이름만 맨몸이었다. */}
+            <RaceBadge race={mvp.race} size={11} circleLetter className="scr-story-mvp-race" />
           </span>
         )}
       </div>

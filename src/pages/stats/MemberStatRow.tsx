@@ -359,25 +359,26 @@ export default function MemberStatRow({
             )}
           </div>
         )}
-        {/* 막대 넷을 한 줄로(요청) — 이름은 막대 왼쪽이 아니라 위에 얹는다. 넷이 나란히
-            서면 칸 하나가 그만큼 좁아지는데, 거기서 이름 열까지 가로로 떼면 정작 막대에
-            남는 폭이 이름보다 짧아진다. */}
-        <div className="scr-stat-record-item">
-          <span className="scr-stat-record-label">게임수</span>
-          <ValueBar value={stats.plays > 0 ? stats.plays : null} maxValue={maxOverallPlays} medal={medals?.plays} />
-        </div>
-        <div className="scr-stat-record-item">
-          <span className="scr-stat-record-label">승률</span>
-          <StatBar plays={stats.plays} wins={stats.wins} draws={stats.draws} losses={stats.losses} winRate={stats.winRate} compact={compact} medal={medals?.rate} />
-        </div>
-        <div className="scr-stat-record-item">
-          <span className="scr-stat-record-label">APM</span>
-          <ValueBar value={stats.avgApm} maxValue={maxApm} medal={medals?.apm} />
-        </div>
-        <div className="scr-stat-record-item">
-          {/* 분당임을 라벨에 적는다(요청) — APM은 원래 분당이라 라벨 그대로. */}
-          <span className="scr-stat-record-label">커맨드<span className="scr-stat-record-per">/분</span></span>
-          <ValueBar value={stats.avgCmd} maxValue={maxCmd} medal={medals?.cmd} />
+        {/* 막대 넷이 세로로 한 줄기(요청) — 줄기를 둘로 나누지 않으므로 넷이 같은 폭을
+            나눠 갖고, 이름은 왼쪽 한 열에 모여 막대 시작점이 넷 다 같은 x에 선다. */}
+        <div className="scr-stat-record-col">
+          <div className="scr-stat-record-item">
+            <span className="scr-stat-record-label">게임수</span>
+            <ValueBar value={stats.plays > 0 ? stats.plays : null} maxValue={maxOverallPlays} medal={medals?.plays} />
+          </div>
+          <div className="scr-stat-record-item">
+            <span className="scr-stat-record-label">승률</span>
+            <StatBar plays={stats.plays} wins={stats.wins} draws={stats.draws} losses={stats.losses} winRate={stats.winRate} compact={compact} medal={medals?.rate} />
+          </div>
+          <div className="scr-stat-record-item">
+            <span className="scr-stat-record-label">APM</span>
+            <ValueBar value={stats.avgApm} maxValue={maxApm} medal={medals?.apm} />
+          </div>
+          <div className="scr-stat-record-item">
+            {/* 분당임을 라벨에 적는다(요청) — APM은 원래 분당이라 라벨 그대로. */}
+            <span className="scr-stat-record-label">커맨드<span className="scr-stat-record-per">/분</span></span>
+            <ValueBar value={stats.avgCmd} maxValue={maxCmd} medal={medals?.cmd} />
+          </div>
         </div>
       </div>
       {/* 건설 — 그래프 하나(생산/방어), 경기당 평균 건설 수, 많이 지은 건물 다섯(요청).
