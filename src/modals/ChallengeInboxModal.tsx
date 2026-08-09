@@ -248,7 +248,11 @@ export default function ChallengeInboxModal({
               양식). 일시는 이 편지의 용건이라 한마디보다 위다(요청). */}
           <ChallengeLetter
             challenge={current}
-            when={canRespond ? null : <ChallengeWhen challenge={current} />}
+            /* 일시는 응답자에게도 제목 옆에 적는다(요청: "인박스 편지지에도 날짜 언제를
+               타이틀 옆으로") — 아래 입력칸은 '고칠 수 있다'를 말하는 자리고, 이 값은
+               '지금 언제로 와 있나'를 말하는 자리다. 부른 사람이 안 정하고 보냈으면
+               "일정 미정"이라 적히는데, 그것도 답하는 사람이 알아야 하는 사실이다. */
+            when={<ChallengeWhen challenge={current} />}
             schedule={canRespond ? (
               /* 응답자에겐 입력칸으로 보여준다(요청: "텍스트가 아니라 인풋창 그대로").
                  이미 정해져 온 값은 잠긴 칸으로, 비어 있는 쪽은 지금 채울 수 있다.

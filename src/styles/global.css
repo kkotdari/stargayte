@@ -6690,7 +6690,10 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 .scr-challenge-inbox-body > .scr-challenge-party-to,
 .scr-challenge-inbox-body > .scr-challenge-outcome {
   border-top: 1px solid var(--line-hair);
-  margin-top: 14px; padding-top: 14px;
+  /* 선 위에는 여백을 따로 주지 않는다(지적: 구분선 위 여백이 넓음) — 본문이 세로 flex라
+     칸 사이가 이미 gap(모달 20px · 카드 12px)만큼 벌어져 있고, 거기에 margin을 더하면 그
+     둘이 겹쳐 쌓여 선이 아래 토막 쪽으로 딸려 내려간다. 선은 두 토막 사이에 서야 한다. */
+  margin-top: 0; padding-top: 14px;
 }
 /* 편지지 본문은 세로 flex라 자식이 제 내용만큼만 넓다 — 그대로 선을 그으면 To.는 아바타
    폭만큼, 맺음말은 낱말 폭만큼 짧은 토막이 된다(실측 스크린샷: "준비중" 글자 길이의 선).
@@ -6910,12 +6913,17 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 .scr-challenge-words {
   display: flex; flex-direction: column; align-items: center; gap: 14px; width: 100%;
 }
-.scr-challenge-word { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 100%; }
-.scr-challenge-word-call { align-items: start; padding-left: 20px; }
+/* 한마디와 그 지은이는 한 줄이다(요청: "한마디는 전부 가운데 정렬, 한마디와 작성자를
+   한 줄로"). 부른 쪽은 왼쪽에, 답한 쪽은 오른쪽에 붙여 두었던 것도 함께 걷었다 — 편지지에
+   말이 오갈수록 좌우로 갈린 글이 계단처럼 쌓여, 정작 가운데인 제목·아바타와 어느 것도
+   같은 선에 서지 않았다. 길어서 한 줄에 못 담기면 지은이만 다음 줄로 접힌다. */
+.scr-challenge-word {
+  display: flex; flex-wrap: wrap; align-items: baseline; justify-content: center;
+  column-gap: 8px; row-gap: 2px; width: 100%;
+}
 /* 답한 말은 상태 줄에 딸린 목록이라 조금 작게, 상태 줄 바로 아래 붙인다. */
 .scr-challenge-words-reply { gap: 10px; margin-top: 6px; }
 .scr-challenge-words-reply .scr-challenge-word-text { font-size: var(--fs-caption); }
-.scr-challenge-word-reply { align-items: end; padding-right: 20px; }
 .scr-challenge-word-text {
   margin: 0; font-size: var(--fs-body); font-style: italic;
   color: var(--text); text-align: center; line-height: 1.35; word-break: keep-all;
