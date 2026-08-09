@@ -183,7 +183,7 @@ export default function Header({
   // 별도 클래스(.scr-menu-pop-drop-mobile)를 쓴다 — 이 프로필 드롭다운은 화면폭과
   // 무관하게 헤더에 항상 하나만 있어서 그 변형을 자동으로 못 받았다(요청: "내정보
   // 로그아웃 드롭다운의 크기를 운영과 똑같이 수정") — 같은 폭 기준으로 직접 판단한다.
-  const isNarrowHeader = useIsNarrow(640);
+  const isNarrowHeader = useIsNarrow(1159);
   // useLayoutEffect(페인트 전)로 위치를 잡아 프로필 드롭다운이 즉시 제자리에 뜨게 한다(요청).
   useLayoutEffect(() => {
     if (!profileMenuOpen || !profileAnchorRef.current || !profileDropRef.current) return;

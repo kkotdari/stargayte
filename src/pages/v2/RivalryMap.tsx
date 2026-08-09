@@ -125,7 +125,7 @@ export default function RivalryMap({
   // 유지하도록(요청: "PC라고 특별히 키우지 않기") 화살표 치수만 560/760으로 되돌린다.
   const [arrowScale, setArrowScale] = useState(1);
   useEffect(() => {
-    const mq = window.matchMedia("(min-width: 768px)");
+    const mq = window.matchMedia("(min-width: 1160px)");
     const update = () => setArrowScale(mq.matches ? 560 / 760 : 1);
     update();
     mq.addEventListener("change", update);

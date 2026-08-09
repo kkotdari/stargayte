@@ -17,6 +17,29 @@
        url('https://cdn.jsdelivr.net/gh/fonts-archive/D2Coding/D2Coding-Regular.woff') format('woff');
 }
 
+/* ══ 폭 경계는 하나뿐이다 ═══════════════════════════════════════════════════════
+   요청: "모두 한 문턱으로 맞춰줘, 딱 2개만 있게".
+
+     @media (max-width: 1159px) — 서랍 + 하단 탭바. 이 앱의 '모바일 배치'.
+     @media (min-width: 1160px) — 왼쪽 기둥. 이 앱의 'PC 배치'.
+
+   이 파일에 다른 폭 조건을 새로 만들지 말 것. 한때 480 / 640 / 641 / 720 / 768 / 860 /
+   861 / 900 / 1060으로 아홉 갈래였는데, 값마다 뜻이 조금씩 달라(어떤 건 폰트 스케일,
+   어떤 건 셸, 어떤 건 플로팅 버튼 자리) 화면 하나를 손볼 때마다 대여섯 폭을 다 열어 봐야
+   했고, 그 사이 구간에서만 어긋나는 자리가 계속 나왔다(예: 맨위로 버튼은 860에서, 등록
+   버튼은 640에서 모양이 바뀌어 1060~1159에서 둘이 좌우로 어긋나 있었다).
+
+   지금은 폭이 하나라 확인할 것도 둘뿐이다. 어떤 요소가 "이 폭에서만 조금 다르면 좋겠다"
+   싶으면, 새 문턱을 만들지 말고 그 요소 자체를 두 배치 안에서 유연하게(min()/clamp()/
+   flex-wrap 등) 풀 것.
+
+   JS 쪽에도 같은 값이 있다 — hooks/useIsMobile.ts, utils/useIsNarrow 호출부,
+   ReplayMinimap의 자막 폭, RivalryMap의 화살표 배율. 여기를 옮기면 그쪽도 함께 옮겨야
+   한 폭에서 배치와 동작이 갈리지 않는다.
+   (예외 하나: components/common/ReplayBatchButton.tsx의 480px은 배치가 아니라 '폴더를
+    고를 수 있는 기기인가'를 폭으로 어림하는 값이라 그대로 둔다.)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 /* ===== tokens (STARCRAFT 심플 테마) ===== */
 :root {
   /* ── 폰트 크기 스케일(역할 기반). PC/모바일을 각각 pc-/mobile- 접두사로 따로 관리한다
@@ -24,7 +47,7 @@
      세트 값이 같아 PC=모바일로 통일돼 있고, 나중에 --pc-fs-* 만 키우면 PC만 커진다.
      미세12 / 라벨·캡션14 / 본문16 / 소제목20 / 타이틀28 / 히어로36·40·52, 타임라인 극소용 11.
      실제 요소는 활성 변수 --fs-* 만 쓴다. 아래 :root는 기본(PC)이고, 모바일 폭에서는
-     --fs-* 가 --mobile-fs-* 로 스위칭된다(파일 하단 @media (max-width: 640px) :root). */
+     --fs-* 가 --mobile-fs-* 로 스위칭된다(파일 하단 @media (max-width: 1159px) :root). */
   /* PC 기준 */
   /* 스케일 하단 확장 — PC 통계 그리드를 "3스텝씩" 낮추라는 요청을 그대로 적용하면
      캡션(14)·미세(12)에서 시작하는 글자들이 기존 바닥(11)보다 아래로 내려가야 한다.
@@ -85,7 +108,7 @@
   --list-content-max: 860px;
   /* PC 왼쪽 기둥이 뷰포트에서 떼어 가는 폭 — 기둥이 없는 폭에서는 0이라, 이 값을 쓰는
      자리(본문 가운데를 기준으로 잡는 플로팅 버튼·모달)가 조건 없이 한 식으로 끝난다.
-     실제 값은 아래 @media (min-width: 1100px)가 넣는다. */
+     실제 값은 아래 @media (min-width: 1160px)가 넣는다. */
   --rail-w: 0px;
 
   /* 배경: 반투명 유리 패널 — 예전엔 미세하게 붉은기가 도는 톤(#2b2427 계열)이었는데,
@@ -1273,7 +1296,7 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 }
 /* PC에서 로고가 중심선보다 낮아 보인다(지적) — 로고 이미지 자체의 아래쪽 여백 탓이라
    버튼째 살짝 올려 보정한다(모바일은 아래 블록의 translateY가 따로 정한다). */
-@media (min-width: 641px) {
+@media (min-width: 1160px) {
   .scr-brand { transform: translateY(-6px); }
 }
 .scr-brand-text { font-size: var(--fs-body); color: var(--muted); letter-spacing: 0.02em; white-space: nowrap; }
@@ -1596,7 +1619,7 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    범위를 좁힌다, 같은 .scr-screen을 쓰는 다른 운영 화면 등은 영향받지 않는다) 자체를
    프레임으로 좁혀서 그 안의 모든 자식(타이틀/버튼줄/검색창/힌트/목록)이 자동으로 같은
    폭을 물려받게 한다 — 이제 화면마다 안쪽 요소를 따로 맞출 필요가 없다. */
-@media (min-width: 641px) {
+@media (min-width: 1160px) {
   .scr-members-screen-v2, .scr-stats-screen-v2 {
     max-width: var(--list-content-max); margin-left: auto; margin-right: auto; width: 100%;
   }
@@ -1611,7 +1634,7 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 /* 1920 → 1440(요청: "화면의 최대폭을 나눠 써야 하니까 1920인 화면들 → 1440으로 축소")
    — 왼쪽 기둥(--rail-w)이 뷰포트에서 제 몫을 떼어 가므로, 넓은 화면들이 예전 값을 그대로
    들고 있으면 1920 모니터에서도 기둥만큼 넘쳐 가로 스크롤이 생긴다. */
-@media (min-width: 641px) {
+@media (min-width: 1160px) {
   .scr-stats-screen-v2 { max-width: 1440px; }
   .scr-main:has(.scr-stats-screen-v2) { max-width: 1440px; }
 }
@@ -1619,7 +1642,7 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    라운드가 늘수록 옆으로 자라는 그림이라, 공용 폭(860px)에 갇히면 8강만 넘어가도 가로
    스크롤 안에서만 볼 수 있었다. 통계와 똑같이 부모(.scr-main)까지 :has()로 함께 넓혀야
    실제로 늘어난다 — 자식만 넓히면 부모가 먼저 잘라 아무 일도 안 일어난다. */
-@media (min-width: 641px) {
+@media (min-width: 1160px) {
   .scr-league-screen { max-width: 1440px; margin-left: auto; margin-right: auto; width: 100%; }
   .scr-main:has(.scr-league-screen) { max-width: 1440px; }
 }
@@ -1879,7 +1902,7 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    나눠 채운다 — 이 폭에서는 행 너비가 이미 패널 폭(min-width:100%)으로 확정돼 있어서
    (width:max-content가 이길 일이 없다) 다섯 칸이 항상 똑같이 나뉜다(헤더/데이터 행
    내용과 무관). */
-@media (min-width: 900px) {
+@media (min-width: 1160px) {
   .scr-stat-row { grid-template-columns: var(--scr-stat-name-w) repeat(5, minmax(190px, 1fr)); }
 }
 /* 이름 칸(세로 타이틀)만 가로 스크롤에 대해 왼쪽에 고정한다(헤더 행의 위쪽 고정은
@@ -2718,7 +2741,7 @@ html:not(.scr-light-theme) .scr-stats-list-panel-v2 .scr-stat-name-cell, html:no
    그대로 둬 모든 막대가 세로 중앙에 오게 한다 — 이 칸들에서 따로 덮어쓸 필요가 없다. */
 /* 위 8px는 모바일 기준 — PC는 화면/행 자체가 넓어 여유가 있으니 위아래 패딩을 더
    넉넉하게 되돌린다(경기결과 카드와 같은 원칙: PC만 증가, 모바일은 컴팩트 유지). */
-@media (min-width: 720px) {
+@media (min-width: 1160px) {
   .scr-stats-list-panel-v2 .scr-stat-row > * { padding-top: 16px; padding-bottom: 16px; }
 }
 /* 기본(PC) 이름 칸 폭은 200px 고정인데, 닉네임/배틀태그가 그보다 훨씬 짧으면 남는 칸만큼
@@ -2727,7 +2750,7 @@ html:not(.scr-light-theme) .scr-stats-list-panel-v2 .scr-stat-name-cell, html:no
    아래로 세로 배치하고 배틀태그는 숨김, 프사는 1.5배 더 크게, 안쪽 여백은 80%로 더
    좁게)으로 고정한다. 헤더 행도 같은 이유로 글자 크기/행 높이를 모바일에서만 처음부터
    80%로 줄여서 시작한다(둘 다 스크롤과 무관하게 항상 이 모습). */
-@media (max-width: 480px) {
+@media (max-width: 1159px) {
   /* 프사(60px = 40px*1.5) + 좌우 여백(11px씩 = 14px*0.8)만 넉넉히 담을 폭. */
   .scr-stat-row { --scr-stat-name-w: 82px; }
   .scr-stat-name-cell {
@@ -2987,7 +3010,7 @@ html:not(.scr-light-theme) .scr-stats-list-panel-v2 .scr-stat-name-cell, html:no
    라이트 테마는 흰 배경이라 흰 선이 안 보이므로 원래 톤(검정 계열)을 그대로 쓴다.
    좌우 패딩을 없앤 만큼(위) 구분선도 양 끝까지 꽉 채운다(요청: "구분선도 맞춰서 확장"). */
 
-@media (max-width: 640px) {
+@media (max-width: 1159px) {
   /* 좌우 패딩은 모바일도 제거(요청) — 위아래는 14px였다가 카드가 더 많이 보이도록
      추가로 줄인다(요청: "모바일 - 랭킹 카드의 위아래 패딩을 줄여서 더 많이 나오게").
      행 높이를 조금 줄였다가(10→8px), 다시 8~10%만 키운다(요청) — 세로 패딩 8→10px. */
@@ -3053,7 +3076,7 @@ html.scr-page-bg:not(.scr-light-theme) .scr-main::before {
     var(--page-bg-image) center / cover no-repeat,
     var(--void);
 }
-@media (max-width: 860px) {
+@media (max-width: 1159px) {
   /* 모바일 배경은 모바일용 사진을 넘긴 화면에서만 깔린다(.scr-page-bg-mobile) — 안 넘기면
      사진 없이 바탕색만 둔다(요청: 다크 활동는 모바일에서만 배경 제거). 통계는 넘기므로
      예전 그대로다. */
@@ -3130,7 +3153,7 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
   color: var(--dim); font-weight: 400; font-size: var(--fs-micro); margin-left: auto;
   min-width: var(--scr-count-w); text-align: right; font-variant-numeric: tabular-nums;
 }
-@media (max-width: 640px) {
+@media (max-width: 1159px) {
   .scr-list-count { display: none; }
 }
 /* 경기 화면 — 건수를 필터 바가 아니라 조회 버튼 아래, 목록 바로 위에 직접 그린다(요청). */
@@ -3170,7 +3193,7 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
    항목이 여럿이면 양 끝 정렬, 하나뿐이면 가운데. 패널이 검색창과 한 줄을 나눠 쓰는
    화면(경기 등)에서는 패널이 내용폭(flex:0 0 auto)이라 나눌 여백이 없어 그대로고,
    패널이 줄을 독차지하는 화면(랭킹 등 width:100%)에서만 실제로 벌어진다. */
-@media (min-width: 641px) {
+@media (min-width: 1160px) {
   .scr-filter-panel { justify-content: space-between; }
   .scr-filter-panel:has(> .scr-filter-item:only-child) { justify-content: center; }
   
@@ -3395,7 +3418,7 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
 .scr-search-filter-float .scr-list-search-input .scr-search-chip-input::placeholder { color: var(--muted); font-size: var(--fs-caption); }
 .scr-search-filter-float .scr-search-chip-box { padding-top: 4px; padding-bottom: 4px; }
 .scr-search-filter-float .scr-search-chip { font-size: var(--fs-micro); padding: 3px 3px 3px 7px; }
-@media (max-width: 640px) {
+@media (max-width: 1159px) {
   /* 모바일은 필터(위) + 검색(아래)으로 세로로 쌓는다(요청: "모바일에서 필터아래검색") —
      PC는 한 줄 나란히. 둘 다 화면 폭 가득, 라벨 폰트만 좁은 폭에 맞춰 조금 줄인다.
      둘 사이 간격은 PC(가로 배치, 8px)의 두 배(요청: "모바일에서 필터랑 검색 사이 갭을
@@ -3506,7 +3529,7 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
 /* PC는 넷을 한 줄에(요청). 유형·기간을 묶어 두던 줄은 display:contents로 풀어, 그 안의
    덩어리들이 바깥 줄의 항목이 되게 한다 — 모바일에서는 그 묶음이 그대로 한 줄로 남는다.
    자리가 모자라면 wrap이 알아서 접는다(좁은 노트북·창 반쪽). */
-@media (min-width: 861px) {
+@media (min-width: 1160px) {
   .scr-stat-filters { flex-direction: row; flex-wrap: wrap; align-items: flex-end; gap: 6px 16px; }
   .scr-stat-filter-row { display: contents; }
 }
@@ -3548,7 +3571,7 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
    기본 규칙). 정렬만은 그와 무관하게 늘 오른쪽 끝이다(.scr-stat-filter-sort).
    좁아서 다 안 들어가면 뒤엣것부터 아래로 내려간다 — 줄 자체가 flex-wrap이라 따로 할 일은
    없다(한때 낱말 여백을 절반으로 줄여 억지로 한 줄에 넣어 봤는데 서로 붙어 버려 되돌렸다). */
-@media (max-width: 860px) {
+@media (max-width: 1159px) {
   .scr-stat-filter-row { justify-content: space-between; }
   .scr-stat-filter-row:has(> .scr-stat-filter-group:only-child) { justify-content: center; }
 }
@@ -3887,7 +3910,7 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
 /* PC 폭에서도 카드는 한 줄에 하나씩 — 카드 자체 폭은 넓어지니(위 헐렁해 보이는 문제)
    팀 칸 폭/간격만 좁혀서 내용을 수평으로 바짝 모은다("N경기" 태그와의 연결감은 정렬을
    맞추는 대신 태그 자체를 더 또렷하게 보이도록 색을 밝힌다, 아래 .scr-game-result-seq). */
-@media (min-width: 720px) {
+@media (min-width: 1160px) {
   .scr-game-result-list-panel-v2 .scr-game-result-row {
     grid-template-columns: 148px auto 148px; gap: 4px 10px;
   }
@@ -3931,7 +3954,7 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
    기본값보다 앞에 있어서 적용이 안 됐던 문제). 구분선(::before)은 내용과 달리 원래
    폭(8px 인셋) 그대로 유지한다(요청: "구분선은 원래 폭대로 표시해야지") — absolute
    위치라 이 행의 패딩이 아무리 커져도 그대로 padding box 기준 8px에 머문다. */
-@media (min-width: 720px) {
+@media (min-width: 1160px) {
   .scr-game-result-list-panel-v2 .scr-game-result-trow { padding-left: 100px; padding-right: 100px; }
 }
 /* 맵 이름 줄 — 머리줄 아래 별도 줄(요청: 맵이름이 길어서). 플레이시간을 그 옆에 나란히. */
@@ -3963,7 +3986,7 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
 .scr-game-result-trow-topmeta { position: absolute; top: 12px; right: 12px; z-index: 2; display: flex; align-items: center; gap: 8px; font-size: var(--fs-caption); }
 /* 모바일에선 오른쪽 가장자리의 스크롤 타임라인(32px 터치존)과 겹치지 않게 살짝만 왼쪽으로
    — 예전(margin 22px)엔 너무 왼쪽으로 갔다는 피드백으로 조금 더 오른쪽에 붙인다(요청). */
-@media (max-width: 860px) {
+@media (max-width: 1159px) {
   .scr-game-result-trow-topmeta { right: 20px; }
 }
 /* 게임번호는 화면에서 감췄다(요청) — 값 자체는 데이터에 그대로 있고, 보여주는 자리만
@@ -4633,13 +4656,13 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
 /* ===== responsive ===== */
 /* 데스크톱은 공간이 넉넉하니 프로필 사진/닉네임을 좀 더 키운다 — 작게 나오면 오히려
    저해상도 티가 나서 깨져 보이므로. Avatar가 인라인 style로 크기를 정해서 !important 필요. */
-@media (min-width: 768px) {
+@media (min-width: 1160px) {
   .scr-avatar-pick .scr-avatar { width: 84px !important; height: 84px !important; }
   .scr-avatar-pick .scr-avatar-fallback { font-size: var(--fs-hero-1) !important; }
   .scr-member-detail-name { font-size: var(--fs-subhead); }
   .scr-member-detail-tag { font-size: var(--fs-body); }
 }
-@media (max-width: 720px) {
+@media (max-width: 1159px) {
   /* 팀1/팀2를 세로로 쌓는다 — 세로로 쌓으면 각 팀이 모달 폭을 그대로 다 쓸 수 있다.
      결과 버튼(1팀승/무/2팀승) 행은 버튼 자체가 작아 굳이 쌓을 필요 없이 그대로 3칸
      유지, 팀 패널(t1/vs/t2)만 각각 그 3칸 폭 전체를 차지하는 한 칸짜리 행으로 편다. */
@@ -4719,7 +4742,7 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
   /* 정가운데 정렬(요청) — 세로 보정 트랜스폼 제거. */
   .scr-brand { transform: none; }
 }
-@media (max-width: 480px) {
+@media (max-width: 1159px) {
   .scr-title { font-size: var(--fs-title); }
 
   
@@ -4758,7 +4781,7 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    옮겨진 뒤로 html의 스크롤바를 숨기는 건 더 이상 의미가 없어졌다(실제로 보이는 건
    #scroll-root 자신의 스크롤바 — 실제로 지적받은 문제: "세로 스크롤 안 보이게 해달라고
    했는데 보이네"). html은 혹시 몰라 그대로 두고 실제 스크롤 컨테이너에도 같이 건다. */
-@media (max-width: 860px) {
+@media (max-width: 1159px) {
   html, #scroll-root { scrollbar-width: none; }
   html::-webkit-scrollbar, #scroll-root::-webkit-scrollbar { width: 0; }
 }
@@ -4774,7 +4797,7 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 /* 모바일에서는 화면을 통째로 쓴다(요청) — 리플레이를 여러 건 훑고 그 안에서 로스터까지
    손보는 창이라, 좁은 화면에서 88vh 카드 안에 다시 스크롤을 만들면 세로가 두 겹이 된다.
    가장자리 여백·둥근 모서리를 걷어 화면 하나가 곧 이 창이 되게 한다. */
-@media (max-width: 640px) {
+@media (max-width: 1159px) {
   .scr-modal-overlay:has(> .scr-modal-match) { padding: 0; }
   .scr-modal-match, .scr-modal-match-compact {
     max-width: none; width: 100%; height: 100dvh; max-height: 100dvh;
@@ -4792,7 +4815,7 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 /* PC에선 차트/경기목록이 더 여유롭게 보이도록 랭킹 상세 모달 폭을 키운다(요청).
    이 모달은 .scr-modal-sm(max-width:360px)도 같이 달고 있고 그 규칙이 소스 뒤쪽이라
    동일 특이도(0,1,0)로는 못 이긴다 — .scr-modal 동반(0,2,0)으로 특이도를 올려 덮는다. */
-@media (min-width: 768px) { .scr-modal.scr-modal-rank-detail { max-width: 520px; } }
+@media (min-width: 1160px) { .scr-modal.scr-modal-rank-detail { max-width: 520px; } }
 .scr-modal.scr-modal-rank-detail { padding-right: 8px; }
 /* .scr-modal-body는 기본적으로 위/아래 패딩이 0이라(모달 하단에 폼 버튼이 있는 화면은
    그 버튼 자신이 padding-bottom을 책임진다) 이 모달처럼 버튼 없이 차트로 끝나면 바닥에
@@ -4838,7 +4861,7 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 /* 순위변동 모달(월간 랭크 클릭) — 아바타 한 줄과 그래프뿐이라 랭킹 상세처럼 높이를
    크게 고정하지 않고 내용만큼만 연다. 폭만 PC에서 조금 넓혀 다섯 달 라벨이 붙지 않게
    한다(.scr-modal-sm이 소스 뒤쪽이라 .scr-modal 동반으로 특이도를 올려 덮는다). */
-@media (min-width: 768px) { .scr-modal.scr-modal-rank-trend { max-width: 460px; } }
+@media (min-width: 1160px) { .scr-modal.scr-modal-rank-trend { max-width: 460px; } }
 /* .scr-modal-body는 위/아래 패딩이 0이라(하단 버튼이 제 몫을 책임지는 구조) 버튼 없이
    그래프로 끝나는 이 모달은 바닥에 바로 붙어 보인다 — 다른 패딩과 같은 값으로 마무리한다. */
 .scr-modal-rank-trend .scr-modal-body { padding-bottom: 18px; }
@@ -4993,7 +5016,7 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    이 블록은 반드시 위 기본값들 "다음"에 와야 한다 — 앞서 기본값들보다 먼저 선언했더니
    같은 특정도(단일 클래스)에서 나중에 나오는 기본 규칙이 이겨버려 모바일에서도 축소가
    전혀 적용되지 않았다(실제로 겪은 문제 — 소스 순서 실수). */
-@media (max-width: 480px) {
+@media (max-width: 1159px) {
   .scr-admin-panel-section-title { font-size: var(--fs-caption); }
   .scr-admin-panel-grid { gap: 12px; margin-top: 10px; }
   .scr-admin-panel-grid .scr-btn { font-size: var(--fs-caption); padding: 8px 4px; }
@@ -5452,7 +5475,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
   .scr-user-name { max-width: 50vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .scr-mobile-tabbar { display: flex; }
 }
-@media (max-width: 860px) {
+@media (max-width: 1159px) {
   /* 탭바가 이제 흐름 안의 flex 형제라(fixed 아님) 콘텐츠 마지막 줄과 겹칠 일이 없어,
      탭바 몫 padding-bottom은 더 이상 필요 없다 — 자동 숨김(useAutoHideOnScroll) 중에도
      레이아웃 공간 자체는 그대로 유지되므로(transform만 움직임) 밀릴 걱정도 없다. */
@@ -5488,7 +5511,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
    잡아뒀던 여백은 이제 아무것도 가리지 않는 빈 자리만 남기는 죽은 코드였다(요청:
    "모든 페이지 하단에 검색필터아이콘 영역 남겼던것 다시 삭제"). 탭바(고정 오버레이라
    여전히 몫이 필요한 --mobile-footer-h)와 모바일 브라우저 주소창 여유분만 남긴다. */
-@media (max-width: 640px) {
+@media (max-width: 1159px) {
   .scr-main {
     /* 탭바가 주소창 위로 뜨는 만큼 하단 여백도 예약한다. 예전엔 주소창 최대 높이를 통째로
        잡은 64px 고정 예약이었는데, 콘텐츠가 딱 맞는 화면에서도 사파리에 불필요한 세로
@@ -5614,7 +5637,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 /* 좁은 화면(모바일)에서는 트리거(달력 아이콘 등) 기준 왼쪽 정렬 대신, 화면 가로 중앙에
    뜨게 한다 — 트리거가 필터 줄 한쪽에 치우쳐 있으면 팝오버도 그쪽에 붙어 화면 폭을 다
    못 쓰고 반대쪽으로 잘려 보이는 문제가 있었다. 세로 위치(top)는 그대로 Floating UI 계산값을 쓴다. */
-@media (max-width: 640px) {
+@media (max-width: 1159px) {
   .scr-df-pop { left: 50% !important; transform: translateX(-50%); }
   @keyframes scr-pop-in { from { opacity: 0; transform: translateX(-50%) scale(0.98); } to { opacity: 1; transform: translateX(-50%) scale(1); } }
 }
@@ -5707,7 +5730,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 /* 하단 목록의 정적 행도 wrap 없이 자체 구분선을 그대로 쓴다(.scr-member-row 기본). */
 /* 모바일에서 게임아이디(배틀태그)가 닉네임 옆에서 너무 도드라져 보인다는 요청으로
    25% 축소한다(요청: "모바일에서 게임아이디 컬럼 폰트 크기 25% 축소") — PC는 그대로. */
-@media (max-width: 640px) {
+@media (max-width: 1159px) {
   .scr-member-row-tag { font-size: var(--fs-caption); }
 }
 
@@ -5765,7 +5788,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
    (특히 .scr-chip-race/.scr-cselect-sm처럼 이미 더 구체적인 선택자로 작게 고정된 것들)까지
    전부 맞추긴 어려워서 결국 맵 이름/달력처럼 실제 input인 필드만 유난히 커 보였다 — 작고
    통일된 크기를 우선해 전부 작게 유지한다(iOS 자동확대 재발 가능성은 감수). */
-@media (max-width: 720px) {
+@media (max-width: 1159px) {
   .scr-label { font-size: var(--fs-caption); }
 }
 
@@ -6213,7 +6236,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
    그보다 좁으면 그 자리가 안 나와 둘 다 화면 가장자리에 붙는다.
    (예전에는 여기만 다른 변수(--list-content-max)와 다른 간격(16)을 써서, 등록 버튼과
     좌우로 어긋난 자리에 서 있었다.) */
-@media (min-width: 1060px) {
+@media (min-width: 1160px) {
   /* 기둥이 뷰포트 왼쪽을 먹으므로 본문 한가운데는 화면 한가운데가 아니라 그보다
      기둥 반폭만큼 오른쪽이다 — 그 자리를 안 더해 주면 버튼 둘이 본문에서 같은 만큼
      왼쪽으로 밀린다(기둥이 없는 폭에서는 --rail-w가 0이라 예전 식 그대로다). */
@@ -6250,7 +6273,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
    으로 직접 맞추는 편이, 나중에 팀전처럼 사람이 여럿이라 전체 높이가 또 달라져도
    깨지지 않는다. */
 .scr-roster-matchup { display: flex; align-items: flex-start; width: 100%; }
-@media (min-width: 641px) {
+@media (min-width: 1160px) {
   .scr-roster-matchup { max-width: 560px; margin: 0 auto; }
 }
 /* 손가락은 팀 전체 블록(메시지까지 포함해 세로로 길어질 수 있는)의 한가운데가 아니라
@@ -6317,7 +6340,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
    쿼리에서 1:1 대칭으로 되돌린다(양쪽이 화살표를 가운데 두고 마주 보는 배치라 폭이
    같아야 화살표가 정확히 중앙에 온다). */
 .scr-roster-side-target { flex: 1.15 1 0; }
-@media (min-width: 641px) {
+@media (min-width: 1160px) {
   .scr-roster-side-target { flex: 1 1 0; }
 }
 /* 인스타그램식 배치(요청: "아바타를 왼쪽에 정렬하고 오른쪽에 닉네임, 응답상태, 한마디를
@@ -6419,7 +6442,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 /* PC에서 도전자편(프사+닉네임 줄)을 자기 칸의 오른쪽 끝 — 가운데 화살표 쪽 — 으로 붙여
    양쪽이 화살표를 사이에 두고 마주 보게 한다(요청: "pc에서 좀 예쁘게"). 트랙 하나를
    오른쪽에 앵커하고(justify-content:end) 그 안의 아이템은 왼쪽 정렬(justify-items:start). */
-@media (min-width: 641px) {
+@media (min-width: 1160px) {
   .scr-roster-side:not(.scr-roster-side-target) {
     display: grid; grid-template-columns: 100%;
     justify-content: end; justify-items: start; row-gap: 6px;
@@ -7365,7 +7388,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 .scr-comment-actions { flex-shrink: 0; display: flex; flex-direction: row; align-items: center; gap: 6px; }
 
 /* ===== 요청: 모바일 전용 크기/폭 조정 (데스크톱은 그대로) ===== */
-@media (max-width: 640px) {
+@media (max-width: 1159px) {
   /* 회원 목록 텍스트 두 단계 축소(배틀태그 기본 폰트는 아래 전역 규칙에서 처리) */
   .scr-member-row-name { font-size: var(--fs-caption); }
   .scr-member-row-tag { font-size: var(--fs-micro); }
@@ -7416,7 +7439,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
    ③ 높이 — 승률 칸은 경기가 없으면 막대와 "승/전" 줄을 아예 안 그려서(StatBar) 그 행만
       낮아졌다. 내용이 다 있을 때의 높이를 행 최소높이로 박아 어떤 행이든 같은 높이가
       되게 한다(칸들은 stretch라 최소높이를 그대로 나눠 갖는다). */
-@media (min-width: 481px) {
+@media (min-width: 1160px) {
   .scr-stats-list-panel-v2 .scr-stat-row {
     /* 유저 칸 축소(요청) 176 → 148px. 프사 32 + 갭 8 + 좌우 패딩 24를 빼면 닉네임에
        84px이 남는다(12px 글자로 일곱 자쯤) — 넘치면 기존 말줄임이 처리한다. */
@@ -7476,7 +7499,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
    클래스짜리라 특이도가 같아 소스 순서로만 이김)을 두 클래스 선택자로 확실히 이겨야 해서
    접속기록/메뉴권한 등 같은 .scr-stat-row-head를 쓰는 다른 표는 안 건드리도록 통계 그리드
    전용 클래스로 범위를 좁힌다. */
-@media (min-width: 641px) {
+@media (min-width: 1160px) {
   .scr-stats-list-panel-v2 .scr-stat-row-head { font-size: var(--fs-caption); }
   .scr-stats-list-panel-v2 .scr-stat-sort-btn svg,
   .scr-stats-list-panel-v2 .scr-stat-row-head .scr-infotip svg {
@@ -7498,7 +7521,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 /* 헤더 닉네임 — 파일 끝의 이 무조건 규칙이 모바일 블록(640px)을 덮어 닉네임이 안
    줄어드는 제약이었어서 PC에서만 적용한다. PC 크기는 옆 '테마' 텍스트 버튼
    (.scr-header-text-btn, caption)과 동일하게 — 같은 줄에서 세로 중심도 맞는다(요청). */
-@media (min-width: 641px) {
+@media (min-width: 1160px) {
   .scr-user-name { font-size: var(--fs-caption); }
 }
 .scr-title { font-size: var(--fs-title); }
@@ -7518,7 +7541,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 
 /* ═══ 모바일 폭에서 활성 스케일을 모바일 세트로 스위칭. 지금은 PC/모바일 값이 같아
    차이가 없지만, --mobile-fs-* 만 바꾸면 모바일만 따로 조절된다(요청: pc/mobile 분리 관리). */
-@media (max-width: 640px) {
+@media (max-width: 1159px) {
   :root {
     --fs-8: var(--mobile-fs-8);
     --fs-9: var(--mobile-fs-9);
@@ -7539,7 +7562,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 
 /* 모바일 대타이틀(.scr-title) 폰트를 28→24px로 축소(요청). 통일 블록(위)이 .scr-title을
    전 폭에서 title(28)로 고정하므로, 그 뒤에서 모바일 폭만 24px로 덮어쓴다. */
-@media (max-width: 640px) {
+@media (max-width: 1159px) {
   .scr-title { font-size: 24px; }
   /* (한때 여기서 아바타 24px/닉네임 body로 재축소했는데, 앞의 헤더 확대 블록을 소리 없이
      덮어쓰는 '제약'이었다(지적) — 크기는 앞 블록 한 곳에서만 정한다.) */
@@ -8019,7 +8042,7 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-rivalry-overlay-body { width: min(560px, 100%); }
 /* PC에선 상성 오버레이(랭킹 화면에서 열리는 상성맵)도 셸 확장에 맞춰 더 크게 — 안쪽
    정사각(.scr-rivalry-wrap)이 760까지 커질 수 있게 부모 폭 상한을 같이 올린다(요청). */
-@media (min-width: 768px) { .scr-rivalry-overlay-body { width: min(760px, 100%); } }
+@media (min-width: 1160px) { .scr-rivalry-overlay-body { width: min(760px, 100%); } }
 .scr-rivalry-overlay-head {
   display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;
 }
@@ -8048,7 +8071,7 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-rivalry-wrap { position: relative; width: 100%; max-width: 560px; margin: 0 auto; aspect-ratio: 1; }
 /* PC에선 셸이 넓어졌으니(1280px) 상성 정사각도 더 크게 — 로딩 플레이스홀더와 값을 맞춰
    로드 전후 높이 튐을 막는다(요청: PC에서 상성 더 넓게). */
-@media (min-width: 768px) {
+@media (min-width: 1160px) {
   .scr-rivalry-wrap, .scr-rivalry-overlay-loading { max-width: 760px; }
 }
 .scr-rivalry-svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
@@ -8104,7 +8127,7 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 /* PC에선 지도가 넓어진 만큼(560→760) 유저 칩도 키운다(요청). 칩은 인라인 스타일로
    폰트/아바타/패딩이 정해져 CSS로 각각 덮기 번거로워, 칩 전체를 transform scale로 키운다
    — 선택 칩 배율(×1.18)도 이 배수를 곱해 함께 커진다. */
-@media (min-width: 768px) { .scr-rivalry-wrap { --rivalry-chip-mult: 1.5; } }
+@media (min-width: 1160px) { .scr-rivalry-wrap { --rivalry-chip-mult: 1.5; } }
 /* 범례 — 화살표/점선 견본 + 사용 힌트. */
 .scr-rivalry-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; justify-content: center; font-size: var(--fs-micro); color: var(--muted); }
 .scr-rivalry-legend-item { display: inline-flex; align-items: center; }
@@ -8440,7 +8463,7 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-activity-row-state-loss { color: var(--loss); }
 .scr-activity-row-state-draw { color: var(--muted); }
 /* 모바일은 가로가 좁아 시각 칸을 실제 최댓값까지 조인다. */
-@media (max-width: 480px) {
+@media (max-width: 1159px) {
   /* 제목 칸이 사라져(요청: "제목 | 내용") 칸은 둘뿐이다 — 제목이 쓰던 66px이 통째로 내용
      칸에 붙는다. 좁은 화면에서 닉네임 둘과 상태 알약을 담느라 늘 말줄임에 걸리던 칸이다. */
   .scr-activity-row { grid-template-columns: minmax(0, 1fr) 80px; }
@@ -8488,7 +8511,7 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    붙들고 있다가 ActivityScreen이 ROW_CLOSE_MS 뒤에 언마운트하는 구조라, 애니메이션만
    끄면 그 시간 동안 카드가 활짝 펼쳐진 채로 남아 한 번 번쩍인다. 트랙을 직접 0fr로
    못박아 그 틈을 없앤다. */
-@media (prefers-reduced-motion: reduce), (max-width: 480px) {
+@media (prefers-reduced-motion: reduce), (max-width: 1159px) {
   .scr-activity-row-fold-open { animation: none; }
   .scr-activity-row-fold-closing { animation: none; grid-template-rows: 0fr; }
 }
@@ -8601,7 +8624,7 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 /* 모바일은 본문 좌우 여백(--main-pad-x)이 16px로 줄어드니 카드 들여쓰기도 같이 줄인다.
    이 블록은 위 :root와 특이도가 같아서, 반드시 뒤에 와야 이긴다(720px 쪽 모바일 블록에
    넣으면 소스상 앞이라 무시된다). */
-@media (max-width: 720px) {
+@media (max-width: 1159px) {
   :root { --card-pad-x: 0px; --card-pad-bx: 0px; --card-head-pad-l: 0px; }
 }
 /* 카드(활동 카드) = 머리(떠 있음, 글래스 없음) + 본문(.scr-activity-card-body, 글래스는
@@ -8960,7 +8983,7 @@ html.scr-light-theme .scr-activity-card-comment .scr-comment-mention { color: #1
    좌우 패딩은 이제 .scr-activity-card-body(공용, 이 요소 자신에 함께 붙어 있다)가 낸다 —
    여기서 또 내면 이중으로 겹친다. */
 .scr-activity-game-result-body { --feed-trow-pad-x: 8px; }
-@media (min-width: 720px) { .scr-activity-game-result-body { --feed-trow-pad-x: 0px; } }
+@media (min-width: 1160px) { .scr-activity-game-result-body { --feed-trow-pad-x: 0px; } }
 .scr-activity-game-result-body .scr-game-result-list-panel-v2 .scr-game-result-trow, .scr-light-theme .scr-activity-game-result-body .scr-game-result-list-panel-v2 .scr-game-result-trow {
   background: transparent; border: none; box-shadow: none;
   backdrop-filter: none; -webkit-backdrop-filter: none;
@@ -9104,7 +9127,7 @@ html.scr-light-theme .scr-activity-card-comment .scr-comment-mention { color: #1
    순수 스크롤 방향으로만 토글되는 클래스(useHideOnScrollDown)라 화면 폭과 무관하게 붙는데,
    미디어쿼리 없이 걸면 PC에서도 스크롤만으로 버튼 크기·위치가 바뀌었다(지적: "PC에서
    스크롤 다운하면... 이건 모바일용 로직이라 PC에선 빼야돼"). */
-@media (max-width: 640px) {
+@media (max-width: 1159px) {
   html.scr-tabbar-mini .scr-activity-add-fab-wrap {
     bottom: calc(var(--scr-float-bottom) + (var(--mobile-footer-h) * 0.72 - 44px) / 2);
     left: 8px;
@@ -9129,7 +9152,7 @@ html.scr-light-theme .scr-activity-card-comment .scr-comment-mention { color: #1
    간격(16) = 88px는 돼야 하므로 860 + 176 = 1036px, 세로 스크롤바 몫까지 보면 1060px부터.
    그보다 좁으면 예전처럼 화면 왼쪽에 띄운다 — 어설프게 옮기면 채움이 생긴 카드 판 위로
    버튼이 올라앉는다. */
-@media (min-width: 1060px) {
+@media (min-width: 1160px) {
   .scr-activity-add-fab-wrap { left: calc(50% - var(--content-max) / 2 - 68px + var(--rail-w) / 2); }
 }
 /* ＋ 아이콘 대신 "등록" 글자를 담되 모양은 정원이다(요청) — 글자 길이에 폭을 맡겼더니
@@ -9374,7 +9397,7 @@ html.scr-light-theme .scr-activity-add-fab, html.scr-light-theme .scr-scrolltop 
 /* 모바일에서는 화면을 통째로 쓴다(요청: "모바일 전체 모달") — 본문·링크·첨부까지 담는
    창이라 좁은 화면에서 88vh 카드 안에 다시 스크롤을 만들면 세로가 두 겹이 된다.
    리플레이 검토창(.scr-modal-match)과 같은 방식이다. */
-@media (max-width: 640px) {
+@media (max-width: 1159px) {
   .scr-modal-overlay:has(> .scr-schedule-form-modal) { padding: 0; }
   .scr-modal.scr-schedule-form-modal {
     max-width: none; width: 100%; height: 100dvh; max-height: 100dvh;
@@ -9477,7 +9500,7 @@ html.scr-light-theme .scr-activity-add-fab, html.scr-light-theme .scr-scrolltop 
 
    확인창(.scr-modal-confirm)은 제외한다 — 전면 모달 위에 또 전면이 겹치면 무엇을
    확인하는 중인지 맥락이 통째로 가려진다. 작은 가운데 정렬 그대로 위에 뜬다. */
-@media (max-width: 640px) {
+@media (max-width: 1159px) {
   .scr-modal.scr-modal:not(.scr-modal-confirm) {
     inset: 0; transform: none;
     width: auto; max-width: none; height: auto; max-height: none;
@@ -9520,7 +9543,7 @@ html.scr-light-theme .scr-activity-add-fab, html.scr-light-theme .scr-scrolltop 
    폭(860px 이하)에서만 실제로 숨긴다: PC에도 이 버튼이 뜨지만 거기선 키보드가 화면을
    가리지 않으므로 검색창에 포커스했다고 사라지면 안 된다. 연출은 넣지 않는다 —
    페이드/슬라이드로 숨기면 키보드가 오르내리는 동안 잔상처럼 보였다(지적). */
-@media (max-width: 860px) {
+@media (max-width: 1159px) {
   .scr-activity-add-fab-wrap-hidden { visibility: hidden; pointer-events: none; }
 }
 
@@ -9717,7 +9740,7 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    PC에서는 미니맵을 훨씬 크게 보여 달라는 요청이 있어 620 → 820으로 더 넓힌다 — 로스터는
    flex: 1 1 0(아래 .scr-roster-side)라 가운데 열(.scr-story-map)이 커진 만큼 자동으로
    줄어든다(요청: 좌우 로스터는 많이 줄여도 됨). */
-@media (min-width: 641px) {
+@media (min-width: 1160px) {
   .scr-roster-matchup.scr-story-matchup-wide { max-width: 820px; }
   /* 좌우 로스터가 미니맵에서 같은 거리에 오게 한다(지적: 좌우대칭이 안 맞음). 두 열은 폭이
      같지만 둘 다 왼쪽 정렬이라, 왼쪽 로스터는 미니맵에서 멀고 오른쪽 로스터는 딱 붙어
@@ -9753,7 +9776,7 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    실제로 지도가 있는 경기는 홀로 서는 쪽이라 예전 규칙이 한 번도 안 걸렸다 — PC에서
    본문 폭을 그대로 다 써서 760px까지 커져 있었다(실측). 어느 자리에 서든 걸리게 둔다.
    (320 → 400 → 480 → 560px, 요청에 따라 키워 왔다) */
-@media (min-width: 641px) { .scr-story-map { max-width: 560px; } }
+@media (min-width: 1160px) { .scr-story-map { max-width: 560px; } }
 
 .scr-story-map-head {
   display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; justify-content: center;
@@ -9761,7 +9784,7 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 }
 /* 미니맵이 커진 PC에서는 그 위 요소(맵 이름·시간, 승/무 배지)도 같이 키운다(요청: 미니맵
    위 요소 알맞게 확대) — 작은 미니맵 시절 크기 그대로면 위아래 균형이 안 맞는다. */
-@media (min-width: 641px) {
+@media (min-width: 1160px) {
   .scr-story-mid .scr-story-map-head { font-size: var(--fs-body); gap: 8px; }
   .scr-story-mid .scr-challenge-arrow-row { transform: scale(1.15); margin-bottom: 2px; }
 }
@@ -9993,7 +10016,7 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   color: #fff; text-shadow: 0 0 2px #000, 0 0 2px #000, 0 1px 1px #000;
   pointer-events: none;
 }
-@media (min-width: 641px) { .scr-minimap-arrow-label { font-size: 15px; } }
+@media (min-width: 1160px) { .scr-minimap-arrow-label { font-size: 15px; } }
 /* 이모지 밑 캡션(요청) — 화살표 없이 이모지만 서는 이야기(방어·입구막기·생산)가 무엇으로
    한 일인지 말한다. 화살표 기둥 이름표와 같은 글자·같은 테두리라 둘이 한 종류로 읽힌다.
    자리는 이모지와 같은 타일이고, 이모지 아래로 한 칸 내려 겹치지 않게 한다. */
@@ -10003,7 +10026,7 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   color: #fff; text-shadow: 0 0 2px #000, 0 0 2px #000, 0 1px 1px #000;
   pointer-events: none;
 }
-@media (min-width: 641px) {
+@media (min-width: 1160px) {
   .scr-minimap-mark-caption { font-size: 15px; transform: translate(-50%, 18px); }
 }
 .scr-minimap-mark-name { max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
@@ -10059,7 +10082,7 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    얼굴 표시(해골·상태 얼굴)·이름표·본진/화살촉 이모지도 함께 키운다. 화살표 몸통·촉
    (.scr-minimap-arrow*)은 여기서 손대지 않는다. 기본(주인공 아님) 아바타는 정확히
    1.5배로(지적), 주인공은 이미 커서(AVATAR_ON) 조금만 더 키운다. */
-@media (min-width: 641px) {
+@media (min-width: 1160px) {
   /* 비확대 아바타를 한 번 더 1.2배(요청) — 1.5 * 1.2 = 1.8. 주인공 배율은 이 값에
      묶여 있어(위) 여기서 따로 적지 않는다. */
   .scr-minimap-mark-base { --scr-mm-av: 2; }
@@ -10088,7 +10111,7 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 /* 트로피도 PC에서는 다른 상태 얼굴(30px)만큼 커야 한다(지적: "PC에서 트로피 크기
    안커짐 — 다른 이모지들만큼 커야 함") — 위 고정값(28px)은 모바일 기준이라 PC에서
    따로 올려 준다. 위 규칙 뒤에 둬야(동률 특이도) 실제로 이긴다. */
-@media (min-width: 641px) {
+@media (min-width: 1160px) {
   .scr-minimap-mark-face.scr-minimap-mark-face-trophy { font-size: 30px; }
 }
 .scr-minimap-mark-label-out.scr-minimap-mark-downed { opacity: 0.72; }
@@ -10132,7 +10155,7 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    맨 뒤에 두는 이유는 이 파일의 기본값 규칙들이 PC 미디어쿼리(641px)보다 뒤에 있어서,
    기본값을 직접 줄이면 PC까지 같이 줄어들기 때문이다(실측으로 확인). 여기서 화면 폭으로
    가르면 PC는 지금 크기를 그대로 유지한다. */
-@media (max-width: 640px) {
+@media (max-width: 1159px) {
   /* (삭제) 주인공 아바타 20% 축소 — 그때는 주인공만 크고 나머지가 작던 시절이라 맞는
      보정이었는데, 그 뒤 "평상시 아바타 확대"로 비확대 쪽이 1.5·2배가 되면서 둘의 크기가
      사실상 같아져 버렸다(실측 31 vs 28.5px). 이제 주인공 배율은 비확대의 1.5배로 묶여
@@ -10197,7 +10220,7 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   content: ""; position: absolute; left: 50%; top: 100%; transform: translateX(-50%);
   border: 4px solid transparent; border-top-color: #ffffff;
 }
-@media (min-width: 641px) {
+@media (min-width: 1160px) {
   .scr-minimap-bubble { font-size: 11px; max-width: 160px; padding: 4px 8px; border-radius: 11px; }
 }
 /* 검색으로 짚은 사람 — 로스터를 감춘 모바일에서는 여기가 유일한 표시 자리다. */
@@ -10312,7 +10335,7 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
    어려웠다. 방향(위/아래/좌/우)은 그대로 두고 그 방향으로 물러나는 거리만 줄인다.
    값은 ReplayMinimap의 CAP_PULL_X/Y와 같아야 한다 — 자막이 앉을 칸을 고르는 계산이 이
    자리를 기준으로 겹침을 재기 때문이다. */
-@media (min-width: 641px) {
+@media (min-width: 1160px) {
   .scr-minimap-caption-top .scr-story-cap { margin-top: 18%; }
   .scr-minimap-caption-bottom .scr-story-cap { margin-bottom: 18%; }
   .scr-minimap-caption-left .scr-story-cap { margin-left: 12%; }
@@ -10386,7 +10409,7 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
    micro(12) → body(16), 앞의 시각은 서열 그대로 11 → caption(14). 지도가 큰 만큼
    같은 12px라도 화면에서 차지하는 비중이 모바일보다 훨씬 작아 보인다. 모바일은
    지도가 좁아 키우면 자막이 그림을 덮으므로 그대로 둔다. */
-@media (min-width: 641px) {
+@media (min-width: 1160px) {
   .scr-story-cap { width: calc((100% + var(--scr-cap-inset, 0px) * 2) * 2 / 3); font-size: var(--fs-body); }
   .scr-story-cap-time { font-size: var(--fs-caption); }
 }
@@ -10465,7 +10488,7 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 .scr-minimap-mark-base.scr-minimap-mark-introbig .scr-avatar {
   transform: translate(-50%, -50%) scale(1.08);
 }
-@media (min-width: 641px) {
+@media (min-width: 1160px) {
   .scr-minimap-mark-base.scr-minimap-mark-introbig .scr-avatar {
     transform: translate(-50%, -50%) scale(1.3);
   }

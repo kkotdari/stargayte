@@ -433,12 +433,12 @@ export default function ReplayMinimap({
   const capRef = useRef<HTMLDivElement>(null);
   const [capH, setCapH] = useState(1 / 3);
   /* 자막 폭이 지도의 2/3인가(PC) 1/2인가(모바일) — 아래 자막 자리 고르기가 '자막이 덮을
-     네모'로 겹침을 재는데, 그 네모의 폭이 곧 이 값이다. CSS와 같은 경계(641px)를 본다. */
+     네모'로 겹침을 재는데, 그 네모의 폭이 곧 이 값이다. CSS와 같은 경계(1160px)를 본다. */
   const [wideCaption, setWideCaption] = useState(
-    () => typeof window !== "undefined" && window.matchMedia("(min-width: 641px)").matches,
+    () => typeof window !== "undefined" && window.matchMedia("(min-width: 1160px)").matches,
   );
   useEffect(() => {
-    const mq = window.matchMedia("(min-width: 641px)");
+    const mq = window.matchMedia("(min-width: 1160px)");
     const sync = () => setWideCaption(mq.matches);
     sync();
     mq.addEventListener("change", sync);
