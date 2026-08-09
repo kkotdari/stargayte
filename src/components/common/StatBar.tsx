@@ -52,12 +52,13 @@ export default function StatBar({ label, plays, wins, draws, losses, winRate, co
           <span className="scr-stat-bar-rate scr-stat-bar-rate-overlay">
             <span className="scr-stat-bar-rate-val">
               {rateText}
-              {delta}
               {medal && <span className="scr-stat-medal">{medal}</span>}
             </span>
           </span>
         )}
       </div>
+      {/* 변동은 늘 수치 아래(요청) — ValueBar와 같은 자리·같은 규칙이다. */}
+      {delta && <span className="scr-bar-delta">{delta}</span>}
     </div>
   );
 }

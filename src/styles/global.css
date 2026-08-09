@@ -2231,7 +2231,9 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    (.scr-stat-medal). */
 .scr-stat-record-col {
   display: grid; grid-template-columns: var(--scr-stat-rlabel-w, 52px) minmax(0, 1fr);
-  align-content: center; gap: 2px 6px;
+  /* 줄 사이를 벌린다(요청: 막대들 줄간격 증가) — 막대 밑에 변동 한 줄이 붙으면서 위아래
+     막대가 서로 붙어 어느 변동이 어느 막대의 것인지가 흐려졌다. */
+  align-content: center; gap: 8px 6px;
   flex: 1 1 0; min-width: 0; padding-right: 0;
 }
 .scr-stat-record-item {
@@ -2297,15 +2299,37 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    승률 막대는 라벨줄과 막대를 위아래로 쌓는 구조라(.scr-stat-bar-row가 column) 메달이
    막대 밑으로 떨어졌던 것도 여기서 함께 눕힌다. */
 /* 클래스를 두 번 적어 특이도만 한 단계 올린다 — v2 통계 블록의 gap 규칙이 같은
-   특이도(0-2-0)에 소스 뒤라, 그러지 않으면 gap만 그쪽이 이긴다. */
+   특이도(0-2-0)에 소스 뒤라, 그러지 않으면 gap만 그쪽이 이긴다.
+   막대와 그 아래 변동을 세로로 쌓으므로 껍데기는 column이다(아래 .scr-bar-delta) —
+   트랙의 가운데 정렬은 justify-content가 아니라 align-items가 맡는다. */
+.scr-stat-record-item .scr-value-bar,
 .scr-stat-record-item .scr-stat-bar-row.scr-stat-bar-row {
-  flex-direction: row; align-items: center; justify-content: center; gap: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0;
 }
-.scr-stat-record-item .scr-stat-bar-row .scr-stat-bar-track-wrap {
-  flex: 1 1 auto; min-width: 0; height: 15px; min-height: 0;
+.scr-stat-record-item .scr-stat-bar-row .scr-stat-bar-track-wrap,
+.scr-stat-record-item .scr-value-bar .scr-value-bar-track-wrap {
+  flex: none; width: 100%; min-width: 0; height: 15px; min-height: 0;
 }
 /* 값도 ValueBar의 숫자와 같은 자로 — 자릿수 폭을 고정해 줄마다 흔들리지 않게 한다. */
 .scr-stat-record-item .scr-stat-bar-rate { font-variant-numeric: tabular-nums; }
+/* 승률도 나머지 셋과 같은 파랑으로(요청: 색까지 통일) — 승만 초록으로 채우던 규칙을
+   이 표에서만 걷는다. 넷을 나란히 세워 길이로 견주는 자리라, 하나만 색이 다르면 그
+   색이 '다른 종류의 값'이라는 뜻으로 읽힌다. 승률이라는 것은 왼쪽 이름이 이미 말한다. */
+.scr-stat-record-item .scr-stat-bar-track-wrap {
+  background-image: linear-gradient(
+    to right,
+    var(--info) var(--scr-value-fill, 0%),
+    color-mix(in srgb, var(--info) 12%, transparent) var(--scr-value-fill, 0%)
+  );
+}
+.scr-stat-record-item .scr-stat-bar-track-wrap.scr-value-bar-track-wrap-empty { background-image: none; }
+/* 막대 아래 한 줄짜리 변동 자리(요청: 변동량은 무조건 수치 아래) — 값이 트랙 한가운데에
+   서므로 이 줄도 가운데 정렬이면 수치 바로 밑이 된다. */
+/* 값과 변동 사이는 바짝 붙인다(요청: 데이터와 변동 사이 세로 갭은 넓지 않게) — 둘은 한
+   덩어리로 읽혀야 하고, 벌어야 하는 것은 막대와 막대 사이다(.scr-stat-record-col의 gap). */
+.scr-bar-delta { display: block; line-height: 1; margin-top: 0; text-align: center; }
+.scr-bar-delta:empty { display: none; }
+.scr-bar-delta .scr-stat-delta { margin-left: 0; }
 
 /* 정렬 드롭다운 — 필터 문장·건수와 한 줄, 건수 바로 왼쪽(요청). margin-left:auto로 남는
    폭을 이쪽이 다 가져가고, 뒤따르는 건수의 같은 auto는 풀어 준다 — 둘 다 auto면 남는 폭을
@@ -2425,9 +2449,11 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   margin-left: 3px; font-size: var(--fs-9); font-weight: 600; color: var(--dim);
   font-variant-numeric: tabular-nums; white-space: nowrap;
 }
-/* 막대 위에 겹쳐 앉는 값(게임수·승률·APM·커맨드) 옆의 변동 — 트랙 안이라 더 눌러 둔다. */
-.scr-value-bar-num .scr-stat-delta,
-.scr-stat-bar-rate-val .scr-stat-delta { margin-left: 2px; opacity: 0.85; }
+/* 변동은 어디서든 수치 아래 제 줄이다(요청) — 그래서 왼쪽 여백도 필요 없다. 줄로 서면
+   값과 세로로 겹쳐 읽히므로 가운데 정렬이 곧 '그 수치의 변동'이라는 표시가 된다. */
+.scr-stat-rank-delta { line-height: 1; }
+.scr-stat-rank-delta:empty { display: none; }
+.scr-stat-rank-delta .scr-stat-delta { margin-left: 0; }
 /* 도넛 위 '몇 채/분' 밑에 한 줄로 놓이는 자리 — 빈 줄이 자리를 먹지 않게 비면 접힌다. */
 .scr-stat-per10-delta { display: block; line-height: 1; }
 .scr-stat-per10-delta:empty { display: none; }
@@ -8643,15 +8669,18 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    이어진다. 미니맵은 늘 어두운 지형 위라 밝은 값 하나면 되지만, 이 줄은 두 테마를 다
    지나므로 라이트에서는 같은 색상각의 진한 쪽으로 뒤집는다(밝은 파랑은 흰 종이 위에서
    글자로 못 쓴다).
-   닉네임에만 입힌다 — 사이의 가운뎃점까지 물들면 색 덩어리가 되어 이름 수가 안 세어진다.
-   색은 눅여 둔다(요청: 팀 컬러 좀 연하게) — 이 목록은 줄마다 색 있는 유형 배지를 이미
-   달고 있어서, 제목까지 또렷한 파랑·분홍이면 한 줄 안에서 색이 둘씩 다툰다. 편을 가르는
-   데는 '어느 쪽 색인가'만 알면 되지 색이 셀 필요는 없다. 두 테마 모두 바탕 쪽으로 한
-   걸음 물린 값이다(다크는 흰색을, 라이트는 먹색을 섞은 자리). */
-.scr-activity-row-t1 .scr-activity-row-em { color: #a8cfe8; }
-.scr-activity-row-t2 .scr-activity-row-em { color: #e8b2ba; }
-.scr-light-theme .scr-activity-row-t1 .scr-activity-row-em { color: #4d7ba8; }
-.scr-light-theme .scr-activity-row-t2 .scr-activity-row-em { color: #a86775; }
+   닉네임에만 입혔고, 색을 한 번 눅였다가(요청) 결국 통째로 걷었다(요청: 로스터 컬러 삭제).
+   어디까지가 한 편인지는 이제 줄바꿈이 말한다 — 한 편은 두 명씩 제 줄에 서고 두 편 사이에
+   vs가 있어, 색 없이도 편이 갈린다. 색이 사라진 만큼 줄마다 있는 유형 배지가 그 줄에서
+   유일한 색이 되어 훑기도 쉬워졌다. */
+/* 한 편의 이름 줄 — 두 명씩 끊어 세로로 쌓는다(요청: 각 팀당 한 줄 최대 2명). 눌러 맞추는
+   폭(FlatLine)이 가로 한 줄에만 걸리므로, 줄을 나누면 같은 카드 폭에서 글자가 덜 눌린다. */
+.scr-activity-row-name-main {
+  display: inline-flex; flex-direction: column; align-items: center; gap: 1px;
+}
+.scr-activity-row-name-line { display: inline-flex; align-items: center; white-space: nowrap; }
+.scr-activity-row-side-a { align-items: flex-end; }
+.scr-activity-row-side-b { align-items: flex-start; }
 .scr-activity-row-em {
   color: var(--text); font-weight: 600;
   /* 자리가 모자라면 이름이 줄어든다 — 바깥 상자가 아니라 여기서 자른다(위 주석). */
@@ -10102,6 +10131,10 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   margin-left: 3px; font-size: var(--fs-9); font-weight: 800; letter-spacing: 0.03em;
   color: var(--gold-ink); vertical-align: 1px; white-space: nowrap;
 }
+/* 목록 줄 제목에서는 이름 글자 위쪽에 붙인다(요청: 세로 위로 정렬) — 밑선에 맞추면
+   이름과 같은 줄에 선 또 하나의 낱말처럼 읽혀 이름 수를 셀 때 걸린다. 어깨에 얹히면
+   '그 이름에 달린 표'로 읽힌다. */
+.scr-activity-row-em .scr-mvp-mini { vertical-align: top; line-height: 1.05; }
 
 /* ── 미니맵 그림 ── */
 /* 이름표는 이제 지도 안에 들어간다(요청: 테두리 제거하고 이름표는 미니맵 안에서

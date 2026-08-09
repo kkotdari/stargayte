@@ -36,12 +36,13 @@ export default function ValueBar({ value, maxValue, medal, delta }: ValueBarProp
             수가 길든 짧든 그 오른쪽 끝을 따라간다(요청). */}
         <span className="scr-value-bar-num">
           {value ?? "-"}
-          {/* 변동은 흐름에 둔다 — 메달과 달리 이건 값의 일부처럼 읽혀야 해서, [값 +3]이
-              한 덩어리로 트랙 가운데에 서는 편이 맞다. */}
-          {delta}
           {medal && <span className="scr-stat-medal">{medal}</span>}
         </span>
       </div>
+      {/* 변동은 늘 수치 아래다(요청) — 트랙은 overflow:hidden에 두께가 얇아 그 안에 두 줄을
+          담을 수 없으므로, 트랙 밖 아래에 한 줄로 붙인다. 값이 트랙 한가운데에 서므로
+          같은 가운데 정렬이면 수치 바로 밑이 된다. 빈 줄이 자리를 먹지 않게 비면 접힌다. */}
+      {delta && <span className="scr-bar-delta">{delta}</span>}
     </div>
   );
 }

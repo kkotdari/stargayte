@@ -383,9 +383,6 @@ export default function MemberStatRow({
                         {/* 단위(요청) — 아랫줄의 "1위"와 달리 이 줄은 맨숫자라 무엇의 수인지가
                             칸 이름에만 기대고 있었다. */}
                         <span className="scr-stat-points-unit"> 레이팅</span>
-                        {/* 레이팅은 '그 날짜까지의 기록으로 본 값'이라, 전달 같은 날짜의
-                            값과 견주면 그 달에 얼마나 올랐나가 그대로 나온다. */}
-                        <Delta now={points} prev={prevPoints} />
                       </button>
                       {/* 메달 자리는 없는 줄에도 비워 둔다(지적: 메달이 구분선에 딱 붙는다).
                           메달을 흐름 밖(절대배치)에 두면 값만 가운데에 서고 메달은 그 오른쪽으로
@@ -398,6 +395,12 @@ export default function MemberStatRow({
                         : <span className="scr-stat-medal scr-stat-medal-hole" aria-hidden />}
                     </span>
                   )}
+                </div>
+                {/* 레이팅의 전달 대비 변동 — 값 바로 아래 제 줄에(요청: 변동량은 무조건
+                    수치 아래). 레이팅은 '그 날짜까지의 기록으로 본 값'이라, 전달 같은
+                    자리의 값과 견주면 그 달에 얼마나 올랐나가 그대로 나온다. */}
+                <div className="scr-stat-rank-line scr-stat-rank-delta">
+                  <Delta now={points} prev={prevPoints} />
                 </div>
                 {/* 언제 기준인가(요청) — 레이팅은 '그 기간에 번 값'이 아니라 '그 날짜까지의
                     기록으로 본 값'이라, 그 날짜를 안 적으면 달을 바꿨을 때 값이 왜 달라지는지
@@ -428,16 +431,16 @@ export default function MemberStatRow({
                   )}
                 </div>
                 {/* MVP 횟수(요청: 몇 위 아래에) — 순위·레이팅과 같은 '그 사람이 어디쯤인가'
-                    묶음이라 이 줄기에 붙인다. 한 번도 못 받았으면 아예 안 적는다: 0을
-                    적어 봐야 리플레이 없는 옛 경기만 뛴 사람과 구별이 안 되고, 줄마다
-                    "MVP 0"이 늘어서면 정작 받은 사람의 표시가 묻힌다. */}
-                {stats.mvps > 0 && (
-                  <div className="scr-stat-rank-line scr-stat-rank-mvp">
-                    <span className="scr-stat-mvp-tag">MVP</span>
-                    <span className="scr-stat-mvp-n">{stats.mvps}</span>
-                    <Delta now={stats.mvps} prev={prev?.mvps} />
-                  </div>
-                )}
+                    묶음이라 이 줄기에 붙인다. 0도 적는다(요청) — 한때 받은 적 없으면
+                    감췄는데, 그러면 줄마다 이 자리가 있었다 없었다 해서 아래 칸들이
+                    들쭉날쭉해지고, 무엇보다 '0회'와 '이 표에 없는 값'이 같아 보였다. */}
+                <div className="scr-stat-rank-line scr-stat-rank-mvp">
+                  <span className="scr-stat-mvp-tag">MVP</span>
+                  <span className="scr-stat-mvp-n">{stats.mvps}</span>
+                </div>
+                <div className="scr-stat-rank-line scr-stat-rank-delta">
+                  <Delta now={stats.mvps} prev={prev?.mvps} />
+                </div>
               </>
             )}
           </div>
@@ -561,6 +564,9 @@ export default function MemberStatRow({
               <span className="scr-stat-worker5-n">
                 {stats.avgWorker5 ?? "-"}
                 {stats.avgWorker5 !== null && <span className="scr-stat-worker5-unit">기</span>}
+              </span>
+              {/* 변동은 수치 아래 한 줄로(요청). */}
+              <span className="scr-bar-delta">
                 <Delta now={stats.avgWorker5} prev={prev?.avgWorker5} digits={1} />
               </span>
             </div>
