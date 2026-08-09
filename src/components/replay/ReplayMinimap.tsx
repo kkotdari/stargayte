@@ -362,6 +362,9 @@ export interface MinimapMarker {
   face?: string;
   /** face가 승리 트로피인가 — 다른 상태 얼굴과 달리 더 크고 계속 바운스한다(요청). */
   faceIsTrophy?: boolean;
+  /** 그 판의 MVP인가 — 승패 스냅에서만 세운다(요청: 결론 장면 아바타에 MVP 표시).
+   *  이긴 편 전원이 트로피를 받는 자리라, 그중 한 사람을 가리키는 표시가 따로 필요하다. */
+  mvp?: boolean;
   /** 시작 스냅인가 — 로스터 없이 "게임 시작!"만 보여주는 자리라, 닉네임 글자도 아바타만큼
    *  키운다(요청: 시작시 로스터 대신 아바타·닉네임 확대). */
   introBig?: boolean;
@@ -845,6 +848,7 @@ export default function ReplayMinimap({
             m.downed && "scr-minimap-mark-downed",
             m.ghost && "scr-minimap-mark-ghost",
             m.featured && "scr-minimap-mark-on",
+            m.mvp && "scr-minimap-mark-mvp",
             m.introBig && "scr-minimap-mark-introbig")}
           style={place(m)}
         >
@@ -922,6 +926,9 @@ export default function ReplayMinimap({
             <span className="scr-minimap-mark-name">{m.name}</span>
             {/* 로스터를 감춘 모바일에서 종족이 통째로 사라지지 않게 여기 함께 붙인다. */}
             <RaceBadge race={m.race} size={11} circleLetter className="scr-minimap-mark-race" />
+            {/* MVP — 아바타 금테(scr-minimap-mark-mvp)만으로는 무슨 뜻인지 알 길이 없어
+                이름 옆에 넉 자로 못 박는다(요청). 승패 스냅에서만 붙는다. */}
+            {m.mvp && <span className="scr-minimap-mark-mvp-tag">MVP</span>}
           </span>
           {/* 닉네임 밑 기세 눈금(요청) — 그 시각의 1등 대비 규모. */}
           {typeof m.power === "number" && powerPeak > 0 && (

@@ -1933,6 +1933,56 @@ function sideBeats(args: {
   return beats;
 }
 
+/* ── MVP ──────────────────────────────────────────────────────────────────────
+   요청: 팀전 한 판마다 MVP를 뽑는다.
+
+   근거는 '그 판의 이야기에 몇 번 주인공으로 섰나'다. 새 잣대(킬 수 같은 것)를 지어내지
+   않는 이유는 리플레이에 그런 값이 아예 없기 때문이다 — 죽음이 안 남는다
+   (replaySummaryData의 hp 주석). 반면 요약의 beats는 이미 그 판에서 무슨 일이 있었는지를
+   가려낸 결과라, 러시를 갔고 교전을 이겼고 상대 본진을 헤집은 사람은 자연히 여러 번
+   이름이 오른다 — 화면이 보여준 이야기와 MVP가 어긋나지 않는다는 것도 이 방식의 몫이다.
+
+   who(그 일을 한 사람) 2점 · who2(거들었거나 특히 활약한 사람) 1점.
+   다만 이긴 편을 통째로 부르는 문장(승패·팀 전체의 맺음말)은 아무도 가려 주지 못하므로
+   세지 않고, 자기가 당한 쪽(whom)으로 이름이 걸린 문장도 공으로 치지 않는다.
+
+   동점이면 그 판에서 뽑은 전투 유닛 보급(sumSupply)으로, 그래도 같으면 유효 APM으로
+   가른다 — 이야기에 안 걸린 사람들끼리도 아무나 뽑지 않게 하는 마지막 잣대다. */
+const MVP_WHO = 2;
+const MVP_WHO2 = 1;
+
+/** 이긴 편의 MVP(원본 게임 아이디) — 개인전이면 undefined.
+ *
+ *  컴퓨터는 후보가 아니다 — 사람들 사이의 상이라, 낄 자리가 아니다. 이긴 편이 컴퓨터
+ *  뿐이면 아무도 안 뽑는다. 다만 '팀전인가'는 컴퓨터를 빼기 전 인원으로 본다(그 판은
+ *  분명 팀전이었다). */
+function mvpOf(beats: ReplaySummaryBeat[], winners: ParsedReplayPlayer[]): string | undefined {
+  if (winners.length < 2) return undefined;
+  const people = winners.filter((p) => !p.isComputer);
+  if (people.length === 0) return undefined;
+  const names = people.map((p) => p.rawName);
+  const score = new Map(names.map((n) => [n, 0]));
+  const add = (raw: string, n: number) => {
+    const cur = score.get(raw);
+    if (cur !== undefined) score.set(raw, cur + n);
+  };
+  for (const b of beats) {
+    const who = b.who ?? [];
+    const whom = b.whom ?? [];
+    // 이긴 편 전원을 한꺼번에 부르는 문장은 누구도 가려 주지 못한다.
+    if (!names.every((n) => who.includes(n))) {
+      for (const w of who) if (!whom.includes(w)) add(w, MVP_WHO);
+    }
+    for (const w of b.who2 ?? []) if (!whom.includes(w)) add(w, MVP_WHO2);
+  }
+  const supply = new Map(people.map((p) => [p.rawName, sumSupply(p)]));
+  const eapm = new Map(people.map((p) => [p.rawName, p.eapm ?? 0]));
+  return [...names].sort((a, b) =>
+    (score.get(b)! - score.get(a)!)
+    || (supply.get(b)! - supply.get(a)!)
+    || (eapm.get(b)! - eapm.get(a)!))[0];
+}
+
 /**
  * 경기 요약. 재료가 모자라면(커맨드 스트림 없음/승자 미확정/유닛 이름 못 읽음) null.
  * 돌려주는 건 문장이 아니라 저장할 데이터다 — 문장은 renderReplaySummary가 만든다.
@@ -4392,85 +4442,92 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   for (const [raw, list] of moveList) moves[raw] = list;
 
   const byName = new Map(replay.players.map((p) => [p.rawName, p]));
+  /* 마지막 몰아붙임(ending)은 GG보다 앞이다(지적: 브래드가 GG를 친 뒤에 브래드 기지로
+     쳐들어간 모양새가 부자연스럽다) — GG는 그 싸움에 밀려 친 것이므로 순서가 뒤집히면
+     이미 항복한 사람을 다시 치는 그림이 된다. chosen 안에서는 GG가 꼬리의 맨 뒤인데
+     (tailRank) 맺음말·승패는 그 뒤에 따로 붙여 왔던 탓이다.
+     ending에 GG와 같은 시각을 준다 — 타임라인은 눈금 자리를 at으로 잡으므로, 시각이
+     없는 채로 GG 앞에 서면 눈금만 거꾸로 간다(시각 없는 문장은 맨 오른쪽에 놓인다).
+     실제로도 그 싸움이 끝나는 순간이 GG라 지어낸 시각이 아니다. */
+  const finalBeats = withChat(replay, (() => {
+    /* 노엘을 외치고도 끝내 다 털린 경우를 표시해 둔다(요청: 그게 웃음 포인트) —
+       '털렸다'의 근거는 elims다: 판을 떠난 기록이거나, 그 뒤로 유닛도 건물도 하나
+       안 낸 것(생산 0). 외친 뒤에 그렇게 됐을 때만이다. */
+    for (let i = 0; i < chosen.length; i += 1) {
+      const b = chosen[i];
+      if (b.k !== "no-elim") continue;
+      const raw = b.who?.[0];
+      const end = raw === undefined ? undefined : elims[raw];
+      if (end === undefined || (typeof b.at === "number" && end < b.at)) continue;
+      chosen[i] = { ...b, p: { ...(b.p ?? {}), out: true } };
+    }
+    /* 맺음말과 승패는 사건이 아니라 이야기의 맺음이라 늘 맨 뒤 한 벌이다(요청: 결론
+       전투 내용과 승패를 나눠서 스냅으로). 앞의 사건들은 시간순 그대로 두고 여기에만
+       붙인다 — 맺음말에 마지막 사건의 시각을 주는 건 타임라인 눈금이 at을 쓰기
+       때문이다(시각이 없으면 눈금만 맨 오른쪽으로 튄다). */
+    const lastAt = Math.max(
+      ...chosen.map((b) => (typeof b.at === "number" && Number.isFinite(b.at) ? b.at : -1)),
+    );
+    return [...chosen, ...(lastAt >= 0 ? [{ ...ending, at: lastAt }] : [ending]), verdict];
+  })().map(strip).map(withCastPlace).map((b) => {
+    const pos = beatPositions(b, byName);
+    /* 나간 것이 확인된 생산담은 '나간 자리'를 그 이야기의 자리로 덮어쓴다(요청: 센터도
+       진출로 보고 그 좌표에 화살표를 표시). 기본 자리는 그 무렵 명령이 가장 몰린 곳이라
+       생산 중에는 거의 늘 제 본진이고, 그러면 화살표를 그릴 만큼 멀지 않아 본진 이모지
+       하나로 끝난다 — 실제로 나간 이야기인데 그림에는 아무 움직임이 없었다.
+       이미 자리를 아는 이야기(whom·p.xy)는 위 게이트에서 걸러져 여기 안 온다. */
+    const sortie = SORTIE_GATE_KEYS.has(b.k)
+      ? Object.fromEntries(
+        (b.who ?? []).map((w) => [w, sortiePos(w, b.at ?? null)] as const)
+          .filter((e): e is readonly [string, [number, number]] => e[1] !== null),
+      )
+      : {};
+    /* 여러 곳을 헤집은 이야기는 자리를 여럿 싣는다(위 sortieSpots) — 한 곳뿐이면 위
+       sortie가 이미 그 자리를 말하고 있으므로 싣지 않는다. 문장도 이 수를 보고 '사방'
+       이라 말할지 말지를 정하므로(replaySummaryText) 주어의 수를 p에도 남긴다. */
+    const spots = SORTIE_GATE_KEYS.has(b.k)
+      ? Object.fromEntries(
+        (b.who ?? []).map((w) => [w, sortieSpots(w, b.at ?? null)] as const)
+          .filter((e): e is readonly [string, [number, number][]] =>
+            e[1] !== null && e[1].length >= 2),
+      )
+      : {};
+    const spotN = spots[(b.who ?? [])[0]]?.length ?? (sortie[(b.who ?? [])[0]] ? 1 : 0);
+    /* 화살표 기둥의 이름표는 '그 무렵 무엇을 움직였나'라 시각이 있어야 한다. 맺음말은
+       '늘 마지막'이라는 뜻으로 시각을 비워 두므로(strip), 그 대신 경기를 끝낸 싸움의
+       시각을 넘겨 준다 — 그래야 다른 교전 스냅처럼 화살표에 병력 이름이 붙는다(요청). */
+    const forArrow = b.k === "result" && finale ? { ...b, at: finale.at } : b;
+    const units = arrowUnits(forArrow);
+    const sizes = arrowSizes(forArrow, units);
+    const finalPos = { ...(pos ?? {}), ...sortie };
+    const hp = powersAt(forArrow.at);
+    return {
+      ...b,
+      ...(spotN > 0 ? { p: { ...(b.p ?? {}), spotN } } : {}),
+      ...(Object.keys(finalPos).length > 0 ? { pos: finalPos } : {}),
+      ...(Object.keys(spots).length > 0 ? { spots } : {}),
+      ...(units ? { units } : {}), ...(sizes ? { sizes } : {}),
+      ...(hp ? { hp } : {}),
+    };
+  }));
+
+  /* MVP는 이야기가 다 짜인 뒤에 뽑는다 — 근거가 그 이야기 자체라(위 mvpOf 주석), 자리
+     다툼에서 잘려 나간 후보들까지 세면 화면에 안 나온 일로 뽑는 셈이 된다. */
+  const mvp = mvpOf(finalBeats, winnerPlayers);
+
   return {
     v: REPLAY_SUMMARY_VERSION,
     // '초반'을 재려면 경기가 얼마나 길었는지를 알아야 한다(지적).
     ...(totalFrames ? { end: totalFrames } : {}),
     // 개인전에서는 팀 용어를 쓰지 않는다(요청).
     ...(duel ? { duel: true } : {}),
+    ...(mvp ? { mvp } : {}),
     ...(Object.keys(bases).length > 0 ? { bases } : {}),
     ...(Object.keys(hubs).length > 0 ? { hubs } : {}),
     ...(Object.keys(moves).length > 0 ? { moves } : {}),
     ...(Object.keys(downs).length > 0 ? { downs } : {}),
     ...(Object.keys(elims).length > 0 ? { elims } : {}),
-    /* 마지막 몰아붙임(ending)은 GG보다 앞이다(지적: 브래드가 GG를 친 뒤에 브래드 기지로
-       쳐들어간 모양새가 부자연스럽다) — GG는 그 싸움에 밀려 친 것이므로 순서가 뒤집히면
-       이미 항복한 사람을 다시 치는 그림이 된다. chosen 안에서는 GG가 꼬리의 맨 뒤인데
-       (tailRank) 맺음말·승패는 그 뒤에 따로 붙여 왔던 탓이다.
-       ending에 GG와 같은 시각을 준다 — 타임라인은 눈금 자리를 at으로 잡으므로, 시각이
-       없는 채로 GG 앞에 서면 눈금만 거꾸로 간다(시각 없는 문장은 맨 오른쪽에 놓인다).
-       실제로도 그 싸움이 끝나는 순간이 GG라 지어낸 시각이 아니다. */
-    beats: withChat(replay, (() => {
-      /* 노엘을 외치고도 끝내 다 털린 경우를 표시해 둔다(요청: 그게 웃음 포인트) —
-         '털렸다'의 근거는 elims다: 판을 떠난 기록이거나, 그 뒤로 유닛도 건물도 하나
-         안 낸 것(생산 0). 외친 뒤에 그렇게 됐을 때만이다. */
-      for (let i = 0; i < chosen.length; i += 1) {
-        const b = chosen[i];
-        if (b.k !== "no-elim") continue;
-        const raw = b.who?.[0];
-        const end = raw === undefined ? undefined : elims[raw];
-        if (end === undefined || (typeof b.at === "number" && end < b.at)) continue;
-        chosen[i] = { ...b, p: { ...(b.p ?? {}), out: true } };
-      }
-      /* 맺음말과 승패는 사건이 아니라 이야기의 맺음이라 늘 맨 뒤 한 벌이다(요청: 결론
-         전투 내용과 승패를 나눠서 스냅으로). 앞의 사건들은 시간순 그대로 두고 여기에만
-         붙인다 — 맺음말에 마지막 사건의 시각을 주는 건 타임라인 눈금이 at을 쓰기
-         때문이다(시각이 없으면 눈금만 맨 오른쪽으로 튄다). */
-      const lastAt = Math.max(
-        ...chosen.map((b) => (typeof b.at === "number" && Number.isFinite(b.at) ? b.at : -1)),
-      );
-      return [...chosen, ...(lastAt >= 0 ? [{ ...ending, at: lastAt }] : [ending]), verdict];
-    })().map(strip).map(withCastPlace).map((b) => {
-      const pos = beatPositions(b, byName);
-      /* 나간 것이 확인된 생산담은 '나간 자리'를 그 이야기의 자리로 덮어쓴다(요청: 센터도
-         진출로 보고 그 좌표에 화살표를 표시). 기본 자리는 그 무렵 명령이 가장 몰린 곳이라
-         생산 중에는 거의 늘 제 본진이고, 그러면 화살표를 그릴 만큼 멀지 않아 본진 이모지
-         하나로 끝난다 — 실제로 나간 이야기인데 그림에는 아무 움직임이 없었다.
-         이미 자리를 아는 이야기(whom·p.xy)는 위 게이트에서 걸러져 여기 안 온다. */
-      const sortie = SORTIE_GATE_KEYS.has(b.k)
-        ? Object.fromEntries(
-          (b.who ?? []).map((w) => [w, sortiePos(w, b.at ?? null)] as const)
-            .filter((e): e is readonly [string, [number, number]] => e[1] !== null),
-        )
-        : {};
-      /* 여러 곳을 헤집은 이야기는 자리를 여럿 싣는다(위 sortieSpots) — 한 곳뿐이면 위
-         sortie가 이미 그 자리를 말하고 있으므로 싣지 않는다. 문장도 이 수를 보고 '사방'
-         이라 말할지 말지를 정하므로(replaySummaryText) 주어의 수를 p에도 남긴다. */
-      const spots = SORTIE_GATE_KEYS.has(b.k)
-        ? Object.fromEntries(
-          (b.who ?? []).map((w) => [w, sortieSpots(w, b.at ?? null)] as const)
-            .filter((e): e is readonly [string, [number, number][]] =>
-              e[1] !== null && e[1].length >= 2),
-        )
-        : {};
-      const spotN = spots[(b.who ?? [])[0]]?.length ?? (sortie[(b.who ?? [])[0]] ? 1 : 0);
-      /* 화살표 기둥의 이름표는 '그 무렵 무엇을 움직였나'라 시각이 있어야 한다. 맺음말은
-         '늘 마지막'이라는 뜻으로 시각을 비워 두므로(strip), 그 대신 경기를 끝낸 싸움의
-         시각을 넘겨 준다 — 그래야 다른 교전 스냅처럼 화살표에 병력 이름이 붙는다(요청). */
-      const forArrow = b.k === "result" && finale ? { ...b, at: finale.at } : b;
-      const units = arrowUnits(forArrow);
-      const sizes = arrowSizes(forArrow, units);
-      const finalPos = { ...(pos ?? {}), ...sortie };
-      const hp = powersAt(forArrow.at);
-      return {
-        ...b,
-        ...(spotN > 0 ? { p: { ...(b.p ?? {}), spotN } } : {}),
-        ...(Object.keys(finalPos).length > 0 ? { pos: finalPos } : {}),
-        ...(Object.keys(spots).length > 0 ? { spots } : {}),
-        ...(units ? { units } : {}), ...(sizes ? { sizes } : {}),
-        ...(hp ? { hp } : {}),
-      };
-    })),
+    beats: finalBeats,
   };
 }
 

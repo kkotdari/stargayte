@@ -283,7 +283,7 @@ export default function MemberStatRow({
           쌓인다. 어느 막대인지는 왼쪽 이름이 말한다. */}
       <div className="scr-stat-record-cell">
         {points !== undefined && (
-          <div className="scr-stat-record-col scr-stat-rank-col">
+          <div className="scr-stat-rank-col">
             {rank == null && points === null ? (
               <span className="scr-stat-points-empty">-</span>
             ) : (
@@ -345,30 +345,39 @@ export default function MemberStatRow({
                     </span>
                   )}
                 </div>
+                {/* MVP 횟수(요청: 몇 위 아래에) — 순위·레이팅과 같은 '그 사람이 어디쯤인가'
+                    묶음이라 이 줄기에 붙인다. 한 번도 못 받았으면 아예 안 적는다: 0을
+                    적어 봐야 리플레이 없는 옛 경기만 뛴 사람과 구별이 안 되고, 줄마다
+                    "MVP 0"이 늘어서면 정작 받은 사람의 표시가 묻힌다. */}
+                {stats.mvps > 0 && (
+                  <div className="scr-stat-rank-line scr-stat-rank-mvp">
+                    <span className="scr-stat-mvp-tag">MVP</span>
+                    <span className="scr-stat-mvp-n">{stats.mvps}</span>
+                  </div>
+                )}
               </>
             )}
           </div>
         )}
-        <div className="scr-stat-record-col">
-          <div className="scr-stat-record-item">
-            <span className="scr-stat-record-label">게임수</span>
-            <ValueBar value={stats.plays > 0 ? stats.plays : null} maxValue={maxOverallPlays} medal={medals?.plays} />
-          </div>
-          <div className="scr-stat-record-item">
-            <span className="scr-stat-record-label">승률</span>
-            <StatBar plays={stats.plays} wins={stats.wins} draws={stats.draws} losses={stats.losses} winRate={stats.winRate} compact={compact} medal={medals?.rate} />
-          </div>
+        {/* 막대 넷을 한 줄로(요청) — 이름은 막대 왼쪽이 아니라 위에 얹는다. 넷이 나란히
+            서면 칸 하나가 그만큼 좁아지는데, 거기서 이름 열까지 가로로 떼면 정작 막대에
+            남는 폭이 이름보다 짧아진다. */}
+        <div className="scr-stat-record-item">
+          <span className="scr-stat-record-label">게임수</span>
+          <ValueBar value={stats.plays > 0 ? stats.plays : null} maxValue={maxOverallPlays} medal={medals?.plays} />
         </div>
-        <div className="scr-stat-record-col">
-          <div className="scr-stat-record-item">
-            <span className="scr-stat-record-label">APM</span>
-            <ValueBar value={stats.avgApm} maxValue={maxApm} medal={medals?.apm} />
-          </div>
-          <div className="scr-stat-record-item">
-            {/* 10분당임을 라벨에 적는다(요청) — APM은 원래 분당이라 라벨 그대로. */}
-            <span className="scr-stat-record-label">커맨드<span className="scr-stat-record-per">/분</span></span>
-            <ValueBar value={stats.avgCmd} maxValue={maxCmd} medal={medals?.cmd} />
-          </div>
+        <div className="scr-stat-record-item">
+          <span className="scr-stat-record-label">승률</span>
+          <StatBar plays={stats.plays} wins={stats.wins} draws={stats.draws} losses={stats.losses} winRate={stats.winRate} compact={compact} medal={medals?.rate} />
+        </div>
+        <div className="scr-stat-record-item">
+          <span className="scr-stat-record-label">APM</span>
+          <ValueBar value={stats.avgApm} maxValue={maxApm} medal={medals?.apm} />
+        </div>
+        <div className="scr-stat-record-item">
+          {/* 분당임을 라벨에 적는다(요청) — APM은 원래 분당이라 라벨 그대로. */}
+          <span className="scr-stat-record-label">커맨드<span className="scr-stat-record-per">/분</span></span>
+          <ValueBar value={stats.avgCmd} maxValue={maxCmd} medal={medals?.cmd} />
         </div>
       </div>
       {/* 건설 — 그래프 하나(생산/방어), 경기당 평균 건설 수, 많이 지은 건물 다섯(요청).
