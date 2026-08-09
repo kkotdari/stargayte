@@ -6571,7 +6571,16 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
      제 무리의 어디를 가리키는지가 흐려진다. 2px은 글자 상자 위쪽 여백만큼의 눈맞춤이다. */
   display: flex; align-items: flex-start; gap: 7px;
 }
-.scr-challenge-party-tag { margin-top: 2px; }
+/* 라벨이 아바타에 반쯤 걸친다(요청) — From./To.는 그 무리의 이름표라 떨어져 서면 둘이
+   따로 놓인 것으로 읽힌다. 겹쳐 놓으면 이름표가 아바타에 달린 꼬리표가 된다.
+   라벨이 위층이라 글자는 그대로 다 읽힌다 — 아래로 깔면 "Fro"만 남는다. */
+/* 아바타 묶음이 제 층을 갖고 있어(아래 .scr-challenge-party-stack > :nth-child(n)의
+   z-index 1~4, 응답 배지 5) 그보다 위여야 라벨이 안 가린다 — 2로 뒀더니 "Fro"만 남았다. */
+.scr-challenge-party-tag { margin-top: 2px; position: relative; z-index: 6; }
+/* -24px에서 칸 사이 갭(7px)을 빼면 17px이 겹친다 — 아바타 지름 44px의 40%쯤이라
+   '반쯤 걸친' 그림이 되면서 라벨 글자는 온전히 남는다. */
+.scr-challenge-party-from .scr-challenge-party-tag { margin-right: -24px; }
+.scr-challenge-party-to .scr-challenge-party-tag { margin-right: -24px; }
 /* From.은 편지지 맨 위 왼쪽, To.는 본문 아래 오른쪽(요청: 버튼이 To. 아바타보다 아래).
    둘 다 흐름 안이다 — 한때 From.만 좌상단에 절대배치했는데, 편지지 본문이 세로 가운데로
    모이면서 그 자리가 본문과 겹쳤다(지적: 공유 화면 레이아웃 깨짐 — From.이 제목과 한마디
@@ -6704,11 +6713,16 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
    폭만큼, 맺음말은 낱말 폭만큼 짧은 토막이 된다(실측 스크린샷: "준비중" 글자 길이의 선).
    선을 그을 칸은 줄 전체로 늘리고, 안쪽 내용만 제자리로 다시 민다. */
 .scr-challenge-inbox-body > .scr-challenge-party-to {
-  /* 오른쪽 끝에 딱 붙인다(지적: "To 아바타쪽은 오른쪽에 정렬되는 게 낫지") — 4px 여백을
-     두었더니 아바타가 제 구분선 끝보다 안쪽에 서서, 오른쪽 정렬이 아니라 어중간하게
-     떠 있는 것으로 보였다. 선의 오른쪽 끝과 같은 자리에 세운다. */
+  /* 오른쪽 끝에 딱 붙인다(지적: "응답 아바타 우측 여백 없애야 함") — 아바타는 편지지
+     오른쪽 끝까지 나가고, 구분선만 제자리(안쪽으로 물러난 자리)에 남는다. 선까지 끝으로
+     끌어내면 아래 맺음말 선과 길이가 어긋나 둘이 다른 선처럼 보인다. 그래서 줄은 그대로
+     두고 그 안의 아바타 칸만 여백만큼 밖으로 내민다. */
   align-self: stretch; justify-content: flex-end;
   margin-right: 0; padding-right: 0;
+}
+.scr-challenge-inbox-body > .scr-challenge-party-to > .scr-challenge-party-who { margin-right: -20px; }
+.scr-challenge-letter-inline .scr-challenge-inbox-body > .scr-challenge-party-to > .scr-challenge-party-who {
+  margin-right: -12px;
 }
 .scr-challenge-inbox-body > .scr-challenge-outcome { align-self: stretch; }
 /* 좌우로 물러난 선 — 편지지 안쪽 여백(20px)에 맞춘다. */
@@ -7001,6 +7015,37 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
   display: flex; flex-wrap: wrap; align-items: baseline;
   column-gap: 6px; row-gap: 2px; min-width: 0;
 }
+
+/* 아직 안 정해진 일시를 그 자리에서 적는 버튼과 팝오버(요청: "아직 입력 안 된 경우 날짜
+   입력·언제 입력 버튼 표시하고 팝오버로 입력되게").
+
+   버튼은 값이 들어갈 자리에 그대로 서 있는다 — 알약이나 테두리를 두르면 제목 줄에 버튼
+   하나가 새로 생긴 것처럼 보이고, 값이 채워진 뒤의 글자와 자리도 어긋난다. 지금은 흐린
+   글자에 점선 밑줄만 둘러 '여기 눌러 적는 자리'라는 것만 알린다. */
+.scr-when-pop { display: inline-flex; }
+.scr-when-pop-trigger {
+  padding: 0; border: none; background: none; cursor: pointer; font-family: inherit;
+  font-size: var(--fs-caption); font-weight: 700; line-height: 1.25;
+  color: var(--dim); border-bottom: 1px dashed var(--line);
+  -webkit-tap-highlight-color: transparent;
+}
+.scr-when-pop-open, .scr-when-pop-trigger:focus-visible { color: var(--text); border-bottom-color: var(--text); }
+/* 값이 채워진 뒤에도 버튼으로 남지만(적는 도중에 사라지지 않게), 생김새는 옆에 선 다른
+   값과 같아야 한다 — 점선만 아주 흐리게 남겨 '누르면 고칠 수 있다'만 알린다. */
+.scr-when-pop-filled { color: var(--text); border-bottom-color: var(--line-faint); }
+@media (hover: hover) { .scr-when-pop-trigger:hover { color: var(--text); } }
+/* 일정을 안 정하고 승락을 눌렀을 때 — 빈 자리에만 붉은 밑줄로 알린다. */
+.scr-challenge-when-invalid .scr-when-pop-trigger { color: var(--loss); border-bottom-color: var(--loss); }
+/* 팝오버 본체 — 드롭다운 패널과 같은 유리 톤에 입력칸 하나만 담는다. 자리는 Floating UI가
+   잡으므로 여기서는 위치를 건드리지 않는다(top/left는 그쪽이 써 넣는다). */
+.scr-when-pop-panel {
+  position: absolute; z-index: 1400; box-sizing: border-box;
+  padding: 8px; border-radius: var(--radius-sm);
+  background: var(--dd-panel-bg); border: 1px solid var(--line-soft);
+  box-shadow: var(--shadow-pop, 0 8px 24px rgba(0, 0, 0, 0.35));
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+}
+.scr-when-pop-panel .scr-input { width: 100%; box-sizing: border-box; }
 .scr-challenge-when-sep { color: var(--dim); }
 /* 글자는 한 스텝 아래로(요청) — body(16) → caption(14). 제목 옆에 붙는 곁말이라
    제목과 크기를 다투면 어느 쪽을 먼저 읽어야 할지가 흐려진다. */

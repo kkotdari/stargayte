@@ -1,10 +1,10 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { Spinner } from "../components/common/Feedback";
-import OptionalDateTimeFields from "../components/common/OptionalDateTimeFields";
 import KakaoShareButton from "../components/common/KakaoShareButton";
 import ActivityComments from "../pages/activity/ActivityComments";
 import { ChallengeLetter, ChallengeWhen } from "../components/challenge/ChallengeLetter";
+import ChallengeWhenInput from "../components/challenge/ChallengeWhenInput";
 import { api } from "../api/client";
 import { useAppStore } from "../store/appStore";
 import { useLockBodyScroll } from "../utils/bodyScrollLock";
@@ -248,22 +248,19 @@ export default function ChallengeInboxModal({
               양식). 일시는 이 편지의 용건이라 한마디보다 위다(요청). */}
           <ChallengeLetter
             challenge={current}
-            /* 일시는 응답자에게도 제목 옆에 적는다(요청: "인박스 편지지에도 날짜 언제를
-               타이틀 옆으로") — 아래 입력칸은 '고칠 수 있다'를 말하는 자리고, 이 값은
-               '지금 언제로 와 있나'를 말하는 자리다. 부른 사람이 안 정하고 보냈으면
-               "일정 미정"이라 적히는데, 그것도 답하는 사람이 알아야 하는 사실이다. */
-            when={<ChallengeWhen challenge={current} />}
-            schedule={canRespond ? (
-              /* 응답자에겐 입력칸으로 보여준다(요청: "텍스트가 아니라 인풋창 그대로").
-                 이미 정해져 온 값은 잠긴 칸으로, 비어 있는 쪽은 지금 채울 수 있다.
-                 구경하는 사람에겐 입력이 의미 없어 글로만 보여준다. */
-              <OptionalDateTimeFields
-                dateStr={dateLocked ? current.scheduledDate! : dateStr}
+            /* 일시는 제목 옆 한 자리에서 끝난다(요청: "밑에 중복 표시하지 말고 맨 위에만
+               표시하고, 아직 입력 안 된 경우 날짜 입력·언제 입력 버튼을 팝오버로").
+               답할 수 있는 사람에게는 그 자리가 곧 입력칸이고(빈 칸은 버튼으로 서 있다가
+               눌리면 팝오버가 열린다), 구경하는 사람에게는 글로만 보인다. */
+            when={canRespond ? (
+              <ChallengeWhenInput
+                challenge={current}
+                dateStr={dateStr}
                 onDateChange={(v) => {
                   setDateStr(v);
                   if (errField === "schedule") { setErr(""); setErrField(""); }
                 }}
-                noteStr={noteLocked ? current.scheduledTimeNote : noteStr}
+                noteStr={noteStr}
                 onNoteChange={(v) => {
                   setNoteStr(v);
                   if (errField === "schedule") { setErr(""); setErrField(""); }
@@ -272,7 +269,7 @@ export default function ChallengeInboxModal({
                 noteLocked={noteLocked}
                 invalid={errField === "schedule"}
               />
-            ) : null}
+            ) : <ChallengeWhen challenge={current} />}
             foot={(
               /* 일정을 안 정하고 승락을 누르면 여기 오류가 뜬다 — 뜰 때 아래 버튼 줄이
                  크게 밀리지 않게 작은 한 줄 자리만 미리 예약하고, 박스/테두리 없이
