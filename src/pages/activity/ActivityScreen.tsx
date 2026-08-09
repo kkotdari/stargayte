@@ -632,8 +632,24 @@ export default function ActivityScreen() {
   /* 펼친 줄을 화면 맨 위로 올린다(요청: "목록 클릭시 클릭한 카드 제목에 스크롤") —
      목록 아래쪽 줄을 누르면 카드가 화면 밖으로 열려 아무것도 안 보이던 자리다.
      위에 남길 여유는 CSS가 정한다(.scr-activity-row의 scroll-margin-top, 요청: "위에
-     안전공간은 확보") — 상단 안전영역(노치)까지 함께 세는 값이라 여기서 계산하지 않는다. */
+     안전공간은 확보") — 상단 안전영역(노치)까지 함께 세는 값이라 여기서 계산하지 않는다.
+
+     다만 늘 올리지는 않는다(요청: "만약 카드가 아래가 잘리는 경우만 적용") — 화면 위쪽
+     줄을 눌러 카드가 이미 통째로 보이는데도 그 줄을 꼭대기까지 끌어올리면, 보고 있던
+     자리가 이유 없이 흔들린다. 올리는 값어치는 '안 보이던 것을 보이게 한다'는 것뿐이라,
+     이미 다 보이면 아무 값어치가 없다. */
+  const cardBottomOf = (key: string): number | null => {
+    const row = rowElsRef.current.get(key);
+    if (!row) return null;
+    /* 여는 연출이 도는 동안(grid-template-rows 0fr → 1fr) 칸의 실제 높이는 0에서 자라는
+       중이라, 그 높이로 재면 어떤 카드든 "다 보인다"가 나온다. 다 열렸을 때의 높이는
+       잘려 있는 쪽(overflow:hidden인 격자 항목)의 scrollHeight가 이미 알고 있다. */
+    const clip = row.parentElement?.querySelector<HTMLElement>(".scr-activity-row-fold > *");
+    return row.getBoundingClientRect().bottom + (clip?.scrollHeight ?? 0);
+  };
   const scrollRowToTop = (key: string) => {
+    const bottom = cardBottomOf(key);
+    if (bottom === null || bottom <= window.innerHeight) return;
     rowElsRef.current.get(key)?.scrollIntoView({ block: "start", behavior: "smooth" });
   };
 
@@ -655,8 +671,18 @@ export default function ActivityScreen() {
     // 카드는 줄 아래로 열리므로 줄 자체는 안 움직인다 — 다음 프레임이면 자리가 잡힌다.
     requestAnimationFrame(() => scrollRowToTop(next));
     /* 다만 위에 있던 줄이 접히면 이 줄이 그만큼 위로 딸려 올라온다 — 접힘이 끝난 뒤
-       한 번 더 맞춘다. 이미 제자리면 0px 스크롤이라 눈에 안 띈다. */
-    if (prev && prev !== next) window.setTimeout(() => scrollRowToTop(next), ROW_CLOSE_MS + 20);
+       화면 위로 넘어가 버렸으면 되돌린다.
+       여기서는 '잘리나'를 다시 묻지 않는다(scrollRowToTop을 안 쓴다) — 이건 새로 판단하는
+       자리가 아니라 접힘이 흐트러뜨린 자리를 되돌리는 보정이다. 카드가 짧아 다 보이더라도
+       줄 제목이 화면 위로 사라졌으면 그건 되돌려야 한다. */
+    if (prev && prev !== next) {
+      window.setTimeout(() => {
+        const row = rowElsRef.current.get(next);
+        if (row && row.getBoundingClientRect().top < 0) {
+          row.scrollIntoView({ block: "start", behavior: "smooth" });
+        }
+      }, ROW_CLOSE_MS + 20);
+    }
   };
 
   const user = useAppStore((s) => s.user);

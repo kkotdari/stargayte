@@ -83,6 +83,10 @@
      (요청: "PC에서 모든 화면의 컨텐츠부분 폭을 동일하게 수정할거야 추천 px
      제시해줘" → "800px로 적용" → 이후 "800 제한을 1280까지 풀어줘"로 셸 폭과 동일화). */
   --list-content-max: 860px;
+  /* PC 왼쪽 기둥이 뷰포트에서 떼어 가는 폭 — 기둥이 없는 폭에서는 0이라, 이 값을 쓰는
+     자리(본문 가운데를 기준으로 잡는 플로팅 버튼·모달)가 조건 없이 한 식으로 끝난다.
+     실제 값은 아래 @media (min-width: 1100px)가 넣는다. */
+  --rail-w: 0px;
 
   /* 배경: 반투명 유리 패널 — 예전엔 미세하게 붉은기가 도는 톤(#2b2427 계열)이었는데,
      이제 붉은 톤을 앱 전체에서 걷어내는 방향으로 정해서(요청: "기존 따뜻한 갈색 테마의
@@ -1521,6 +1525,65 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 }
 /* 휴지통/도전장 보내기는 이제 다른 화면들처럼 타이틀 툴바(.scr-v2-toolbar-actions) 안에
    들어간다(요청) — 별도 래퍼(.scr-challenge-float-actions)는 없앴다. */
+/* ── PC: 로고와 메뉴를 왼쪽 기둥에 고정(요청) ─────────────────────────────────
+   "PC에서 로고랑 메뉴 리스트 좌측에 고정하고" — 여태 이 셋(로고 · 메뉴 · 내 계정)은 본문
+   위에 가로로 누운 띠였다. 띠는 스크롤과 함께 밀려 올라가므로, 다른 화면으로 가려면 늘
+   맨 위까지 되돌아가야 했다. 세로로 세워 붙박아 두면 어디까지 내려가 있든 메뉴가 늘 거기
+   있고, 띠가 먹던 한 줄 높이(약 76px)는 그대로 본문 몫이 된다.
+
+   기둥을 세우는 문턱은 1160px이다 — 본문이 제 폭(--content-max 860)을 온전히 쓰려면
+   860 + 기둥 224 = 1084px이 필요하고, 거기에 세로 스크롤바(약 15px)와 기둥·본문이 맞닿지
+   않을 만큼의 숨 쉴 자리를 더한 값이다. 딱 1084로 잡아 보니 본문 왼쪽 모서리가 기둥 선에
+   그대로 붙었다(실측 1px). 그보다 좁은 창에서는 기둥을 세우는 순간 본문이 눌리므로 거기서는
+   지금까지의 가로 띠를 그대로 쓴다. 860 아래는 원래 서랍+하단 탭바다(별도 블록).
+
+   기둥 폭 224px의 근거: 로고 이미지가 2847×327이라 높이 22px이면 폭이 192px이고, 좌우
+   여백 16px씩을 두면 정확히 224px이 된다. 로고가 이 기둥에서 가장 넓은 것이라 나머지
+   (메뉴 낱말·닉네임)는 저절로 들어간다. */
+@media (min-width: 1160px) {
+  :root { --rail-w: 224px; }
+  /* 셸에 건 padding-left는 :root의 변수 변경만으로는 안 걸린다 — 아래 규칙들이 직접
+     읽어야 한다. */
+  /* 기둥이 흐름에서 빠졌으므로(fixed) 그 자리를 본문 쪽에서 비워 준다 — 셸에 패딩을
+     주면 그 안의 모든 화면이 한꺼번에 비켜서고, 화면마다 따로 맞출 일이 없다. */
+  .scr-app { padding-left: var(--rail-w); }
+  .scr-header {
+    position: fixed; left: 0; top: 0; bottom: 0; width: var(--rail-w); z-index: 30;
+    /* 세로로 짧은 창에서 메뉴가 잘리는 대신 기둥 안에서만 스크롤한다. */
+    overflow-y: auto; scrollbar-width: none;
+    border-right: 1px solid var(--line-soft);
+  }
+  .scr-header::-webkit-scrollbar { display: none; }
+  .scr-header-inner {
+    max-width: none; margin: 0; padding: 24px 16px 20px;
+    flex-direction: column; align-items: stretch; flex-wrap: nowrap; gap: 20px;
+    /* 내 계정 묶음을 기둥 바닥으로 내리려면(margin-top:auto) 기둥 높이를 다 받아야 한다. */
+    min-height: 100%;
+  }
+  /* 가로 띠에서 로고를 중심선에 맞추려고 걸어 둔 보정(min-width:641px의 translateY)은
+     여기서 뜻이 없다 — 옆에 나란히 설 것이 없으니 맞출 중심선도 없다. */
+  .scr-brand { justify-content: flex-start; transform: none; }
+  .scr-brand-logo-img { height: 22px; }
+  /* 메뉴는 세로로 쌓인다. 가로 띠일 때의 flex:1 + 가로 스크롤은 남는 폭을 나눠 갖기 위한
+     것이었는데, 세로에서는 그 값이 메뉴를 기둥 아래까지 늘려 버린다. */
+  .scr-nav { flex-direction: column; flex: 0 0 auto; gap: 2px; overflow: visible; }
+  .scr-nav-tab { justify-content: flex-start; padding: 9px 10px; border-radius: 6px; }
+  /* 지금 보고 있는 화면 — 가로 띠에서는 글자 굵기만으로 갈렸지만(넷이 나란히 서 있어
+     비교가 쉬웠다) 세로로 쌓이면 그 차이가 눈에 잘 안 걸린다. 옅은 판을 한 겹 깐다. */
+  .scr-nav-desktop .scr-nav-tab-active { background: rgba(var(--overlay-rgb), 0.10); }
+  /* 앱 설치 · 테마 · 내 계정 — 기둥 바닥에 모은다. 가로 띠일 때는 오른쪽 끝으로 밀어
+     두던(margin-left:auto) 묶음이라, 세로에서는 같은 뜻이 '아래 끝'이다. */
+  .scr-user {
+    flex-direction: column; align-items: stretch; gap: 2px;
+    margin-left: 0; margin-top: auto;
+  }
+  .scr-user .scr-header-text-btn { text-align: left; padding: 9px 10px; }
+  .scr-user-chip { justify-content: flex-start; }
+  /* 모달은 뷰포트가 아니라 본문의 한가운데에 뜬다 — 뷰포트 기준으로 두면 기둥 폭의
+     절반(112px)만큼 왼쪽으로 치우쳐, 열 때마다 화면이 한쪽으로 쏠린 것처럼 보인다. */
+  .scr-modal { left: calc(50% + var(--rail-w) / 2); }
+}
+
 /* PC 화면 폭 통일(위 --list-content-max 주석 참고) — 처음엔 목록 패널/타이틀줄/검색창/
    힌트 문구를 화면마다 자식 요소 하나하나 따로 좁혔는데("PC에서 컨텐츠 영역을 800으로
    맞추는 만큼 그냥 가장 바깥쪽 부분에서 프레임을 주면 될거 같은데 왜 하나하나
@@ -1541,17 +1604,20 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    (--content-max=860px로 폭이 상한된 공통 부모, 아래 규칙) 안에 들어 있어서, 자식인
    .scr-stats-screen-v2를 아무리 넓혀도 부모가 먼저 860px로 잘라 실제로는 못 늘어났다 —
    부모도 이 화면을 담고 있을 때만 :has()로 같이 넓혀야 한다. */
+/* 1920 → 1440(요청: "화면의 최대폭을 나눠 써야 하니까 1920인 화면들 → 1440으로 축소")
+   — 왼쪽 기둥(--rail-w)이 뷰포트에서 제 몫을 떼어 가므로, 넓은 화면들이 예전 값을 그대로
+   들고 있으면 1920 모니터에서도 기둥만큼 넘쳐 가로 스크롤이 생긴다. */
 @media (min-width: 641px) {
-  .scr-stats-screen-v2 { max-width: 1920px; }
-  .scr-main:has(.scr-stats-screen-v2) { max-width: 1920px; }
+  .scr-stats-screen-v2 { max-width: 1440px; }
+  .scr-main:has(.scr-stats-screen-v2) { max-width: 1440px; }
 }
 /* 리그 화면도 통계와 같은 폭으로 편다(요청: "리그 화면도 PC에서 통계만큼 넓게"). 대진표는
    라운드가 늘수록 옆으로 자라는 그림이라, 공용 폭(860px)에 갇히면 8강만 넘어가도 가로
    스크롤 안에서만 볼 수 있었다. 통계와 똑같이 부모(.scr-main)까지 :has()로 함께 넓혀야
    실제로 늘어난다 — 자식만 넓히면 부모가 먼저 잘라 아무 일도 안 일어난다. */
 @media (min-width: 641px) {
-  .scr-league-screen { max-width: 1920px; margin-left: auto; margin-right: auto; width: 100%; }
-  .scr-main:has(.scr-league-screen) { max-width: 1920px; }
+  .scr-league-screen { max-width: 1440px; margin-left: auto; margin-right: auto; width: 100%; }
+  .scr-main:has(.scr-league-screen) { max-width: 1440px; }
 }
 
 /* 맨 위로 이동 플로팅 버튼 — 콘텐츠를 안 가리려고 페이지 하단에 큰 여백을 예약해뒀었는데,
@@ -6136,7 +6202,10 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
    (예전에는 여기만 다른 변수(--list-content-max)와 다른 간격(16)을 써서, 등록 버튼과
     좌우로 어긋난 자리에 서 있었다.) */
 @media (min-width: 1060px) {
-  .scr-scrolltop { right: calc(50% - var(--content-max) / 2 - 68px); }
+  /* 기둥이 뷰포트 왼쪽을 먹으므로 본문 한가운데는 화면 한가운데가 아니라 그보다
+     기둥 반폭만큼 오른쪽이다 — 그 자리를 안 더해 주면 버튼 둘이 본문에서 같은 만큼
+     왼쪽으로 밀린다(기둥이 없는 폭에서는 --rail-w가 0이라 예전 식 그대로다). */
+  .scr-scrolltop { right: calc(50% - var(--content-max) / 2 - 68px - var(--rail-w) / 2); }
 }
 
 
@@ -7347,10 +7416,14 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
        에서는 막대에 45px밖에 안 남아 길이 비교가 아예 안 됐고(지적), 680px까지 올렸다.
        그 뒤 랭크 줄기가 남는 폭을 안 먹게 되면서(위 .scr-stat-rank-col) 막대가 207px까지
        늘어 이번엔 반대로 헐거워졌다 — 막대 160px 안팎이 되는 폭으로 되돌린다. */
-    --scr-stat-record-w: 520px;
-    --scr-stat-build-w: 190px;
-    --scr-stat-unit-w: 350px;
-    --scr-stat-skill-w: 230px;
+    /* 다섯 트랙의 합을 1400px에 맞춘다 — 통계 화면의 상한이 1440px이고(위 .scr-stats-screen-v2)
+       본문이 좌우 20px씩 물러나 앉으므로, 표가 가로 스크롤 없이 다 보이는 폭이 정확히
+       그만큼이다. 148 + 500 + 186 + 340 + 226 = 1400. 왼쪽 기둥이 생기며 화면 상한이
+       1920에서 1440으로 내려온 만큼(요청) 표도 그 안에 들어와야 한다. */
+    --scr-stat-record-w: 500px;
+    --scr-stat-build-w: 186px;
+    --scr-stat-unit-w: 340px;
+    --scr-stat-skill-w: 226px;
     /* 헤더 행과 데이터 행은 각각 별개의 그리드 컨테이너다. 트랙을 minmax(_,1fr)로 두면
        width:max-content인 이 행들이 '자기 내용이 원하는 폭'으로 따로 계산돼, 라벨+ⓘ+정렬
        아이콘이 든 헤더 행만 넓어진다 — 실측 873px vs 820px, 오른쪽으로 갈수록 최대 45px씩
@@ -8413,14 +8486,17 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    경기 카드가 여러 장 들어 있고, 그 머리들은 줄이 한 번도 말한 적 없는 것(경기별 시각·
    등록자)과 삭제 메뉴를 쥐고 있다. 싸잡아 감췄더니 목록에서만 시각·등록자가 사라지고
    삭제가 아예 불가능했다(지적). */
-.scr-activity-row-body { padding: 0 var(--scr-row-pad-x) 12px; }
+/* 아래 여백도 위처럼 0이다(요청: "하단 패딩 상단 패딩처럼 없애기") — 카드 자신이 이미
+   제 안쪽 여백을 들고 있고, 카드 밑에는 곧바로 줄 구분선이 온다. 카드 여백과 이 12px이
+   겹쳐 쌓여 펼친 줄만 아래가 유독 헐렁했다. */
+.scr-activity-row-body { padding: 0 var(--scr-row-pad-x); }
 /* 배경 사진을 깐 줄 — 편지지와 댓글이 한 장의 종이 위에 앉는다(요청: "편지지와 똑같이
    댓글창까지 배경 넣을 수 있나"). 사진은 카드가 앉은 자리에 딱 맞춰 깔아(패딩 안쪽) 카드
    모서리와 어긋나지 않게 한다. isolation:isolate가 없으면 z-index:-1이 이 칸을 빠져나가
    줄 배경 뒤로 가라앉는다(position:relative만으로는 쌓임 맥락이 안 생긴다). */
 .scr-activity-row-body-photo { position: relative; isolation: isolate; }
 .scr-activity-row-body-photo > .scr-activity-card-photo {
-  inset: 0 var(--scr-row-pad-x) 12px; border-radius: var(--radius);
+  inset: 0 var(--scr-row-pad-x); border-radius: var(--radius);
 }
 /* 카드 본문 안에 있던 사진은 줄에서는 끈다 — 같은 사진이 두 겹으로 깔리면 막(::after)도
    두 번 얹혀 그 칸만 유독 어두워진다. 글자 음영 규칙이 붙는 -photo 클래스는 그대로 둔다. */
@@ -9042,7 +9118,7 @@ html.scr-light-theme .scr-activity-card-comment .scr-comment-mention { color: #1
    그보다 좁으면 예전처럼 화면 왼쪽에 띄운다 — 어설프게 옮기면 채움이 생긴 카드 판 위로
    버튼이 올라앉는다. */
 @media (min-width: 1060px) {
-  .scr-activity-add-fab-wrap { left: calc(50% - var(--content-max) / 2 - 68px); }
+  .scr-activity-add-fab-wrap { left: calc(50% - var(--content-max) / 2 - 68px + var(--rail-w) / 2); }
 }
 /* ＋ 아이콘 대신 "등록" 글자를 담되 모양은 정원이다(요청) — 글자 길이에 폭을 맡겼더니
    알약이 되어, 같은 자리에 나란히 서는 탭바의 둥근 아이콘들과 결이 어긋났다. 폭을 높이와
