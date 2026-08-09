@@ -2206,7 +2206,12 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    막대 시작점이 어긋난다. 줄(item)은 subgrid로 그 두 열을 물려받는다.
    메달은 줄기가 자리를 비워 주지 않는다 — 막대 트랙 안, 수 바로 옆에 선다(.scr-stat-medal). */
 .scr-stat-record-col {
-  display: grid; grid-template-columns: auto minmax(0, 1fr);
+  /* 이름 열을 못 박는다(요청: "게임수/승률 막대와 APM/커맨드 막대 길이 일치") — auto로
+     두면 그 줄기에서 가장 긴 이름에 맞춰지는데, 왼쪽 줄기는 "게임수"(3자)이고 오른쪽은
+     "커맨드/분"(5자)이라 이름 열이 14px 어긋났고 그만큼 막대가 짧아졌다(실측 121 vs 107).
+     막대는 길이로 값을 말하는 그림이라, 나란히 선 넷의 100%가 서로 다르면 그 견줌 자체가
+     틀린다. 값은 가장 긴 이름이 들어가는 폭이다. */
+  display: grid; grid-template-columns: var(--scr-stat-rlabel-w, 52px) minmax(0, 1fr);
   align-content: center; gap: 4px 6px;
   /* 오른쪽에 메달 자리를 비워 두던 것을 걷었다(요청: 오른쪽 여백을 왼쪽과 똑같이) —
      메달이 이제 막대 위의 수 바로 옆에 흐름으로 서므로 비워 둘 자리가 없다. 그 44px은
@@ -2267,9 +2272,13 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    이름이 sort~가 아닌 건 .scr-stat-sort-btn을 옛 컬럼 머리 정렬(지금은 안 쓰지만 규칙이
    아래 남아 있다)이 이미 쓰고 있어서다 — 같은 이름을 쓰면 그쪽 width:100%가 이겨서
    낱말들이 한 줄에 안 서고 세로로 쌓인다(실측). */
-.scr-pickrow { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; }
+/* 낱말 사이를 좁힌다(요청: "나열형 필터에서 옵션 간 갭 축소") — 눈에 보이는 사이는
+   gap(2) + 양쪽 칸의 좌우 패딩(7+7)이라 실제로는 16px이었다. 셋 중 큰 쪽인 패딩을 줄이고
+   gap은 0으로 두면 10px이 된다 — 알약(고른 것)이 낱말에 붙는 정도는 그대로면서 낱말끼리는
+   한 덩어리로 읽힌다. gap을 남겨 두면 알약 사이가 벌어져 그것들이 따로 놓인 단추로 보인다. */
+.scr-pickrow { display: flex; flex-wrap: wrap; align-items: center; gap: 0; }
 .scr-pick {
-  padding: 3px 7px; border: none; border-radius: var(--radius-sm); background: none;
+  padding: 3px 5px; border: none; border-radius: var(--radius-sm); background: none;
   font-family: inherit; font-size: var(--fs-caption); font-weight: 600;
   color: var(--dim); cursor: pointer; white-space: nowrap;
   transition: color .12s, background .12s;
@@ -2834,7 +2843,10 @@ html:not(.scr-light-theme) .scr-stats-list-panel-v2 .scr-stat-name-cell, html:no
   /* 폰트 크기는 모바일/PC 분기 없이 통일한다(요청: "CSS는 모바일과 PC 통일, 컬럼 폭과
      표 폭만 차별") — 여기서 폭(--scr-stat-name-w)만 정하고, 글자 크기는 아래 공용
      규칙(브레이크포인트 밖) 하나만 따른다. */
-  .scr-stats-list-panel-v2 .scr-stat-row { --scr-stat-name-w: 118px; }
+  /* 118 → 96px(요청: "모바일 통계 유저 컬럼 폭 축소") — 프사와 닉네임을 한 스텝씩 줄인
+     만큼 칸도 같이 줄인다. 그러지 않으면 줄인 내용 둘레에 빈자리만 남아, 좁혀서 벌어 온
+     22px이 표의 다른 칸으로 안 간다. */
+  .scr-stats-list-panel-v2 .scr-stat-row { --scr-stat-name-w: 96px; }
   .scr-stats-list-panel-v2 .scr-stat-name-cell {
     flex-direction: row; align-items: center; justify-content: center; gap: 7px;
     padding-left: 7px; padding-right: 7px;
@@ -2842,9 +2854,12 @@ html:not(.scr-light-theme) .scr-stats-list-panel-v2 .scr-stat-name-cell, html:no
        말줄임되게 한다(flex 자식이 줄어들 수 있도록 min-width:0). */
     min-width: 0; overflow: hidden;
   }
-  /* 모바일 프사 — 한 번 더 1스텝 축소(요청): 28px → 24px. 좁아진 유저 칸에
-     [프사|닉네임]이 들어가게. */
-  .scr-stats-list-panel-v2 .scr-stat-avatar-btn .scr-avatar { width: 24px !important; height: 24px !important; }
+  /* 모바일 프사 — 또 1스텝(요청): 24 → 20px. 닉네임도 같이 한 스텝 내린다(caption 14 →
+     micro 12) — 둘 중 하나만 줄이면 그 하나가 유독 작아 보인다. */
+  .scr-stats-list-panel-v2 .scr-stat-avatar-btn .scr-avatar { width: 20px !important; height: 20px !important; }
+  .scr-stats-list-panel-v2 .scr-stat-name-btn { font-size: var(--fs-micro); }
+  /* 프사와 닉네임 사이도 그만큼 좁힌다 — 둘이 작아졌는데 사이만 그대로면 한 덩어리로 안 읽힌다. */
+  .scr-stats-list-panel-v2 .scr-stat-name-cell { gap: 5px; padding-left: 5px; padding-right: 5px; }
   /* flex: 0 1 auto + min-width:0 — 줄어들 수는 있어야(안쪽 닉네임의 말줄임이 실제로
      작동하려면 min-width가 0이어야 한다) 하지만 늘어나선 안 된다. 한때 1 1 auto를 줬더니
      스택이 남는 폭을 다 먹어 프사만 왼쪽 끝으로 밀리고 닉네임 혼자 가운데로 떨어졌다
