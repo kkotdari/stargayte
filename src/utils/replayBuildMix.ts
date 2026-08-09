@@ -241,6 +241,27 @@ export function topEntries(
     }));
 }
 
+/** 이름 → 그 목록에서 몇 번째였나(1부터) — Top5 옆의 전달 대비 순위 화살표에 쓴다(요청).
+ *
+ *  topEntries와 같은 순서를 매기되 자르지 않는다: 지난달 6위였던 것이 이번 달 3위로 올라온
+ *  경우, Top5만 들고 견주면 그 사실을 알 수가 없어 '새로 등장'으로 보인다. 값은 목록에
+ *  실제로 실린 것만 담기므로, 여기 없는 이름은 지난달에 아예 안 나온 것이다. */
+export function topRanks(
+  d: Record<string, number> | undefined, ko: Record<string, string>,
+): Map<string, number> {
+  const merged: Record<string, number> = {};
+  for (const [key, v] of Object.entries(d ?? {})) {
+    const name = ko[key];
+    if (!name || !(v > 0)) continue;
+    merged[name] = (merged[name] ?? 0) + v;
+  }
+  const out = new Map<string, number>();
+  Object.entries(merged)
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .forEach(([name], i) => out.set(name, i + 1));
+  return out;
+}
+
 /** 1분(초) — 주요시간대 합계를 이 길이로 환산한다(요청: 모든 시간관련 지표를 주요시간대
  *  1분당으로, 단위 표시는 "단위/분"). 예전에는 10분이었는데, 경기 전체를 분모로 쓸 때는
  *  분당 값이 너무 잘아 자릿수 차이가 안 읽혔다 — 주요시간대만 세면 값 자체가 커져서

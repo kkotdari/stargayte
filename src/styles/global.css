@@ -1983,6 +1983,12 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    모바일 전용 축소는 아래 미디어쿼리에서 화면 폭 기준으로만 한다(스크롤과 무관하게
    항상 같은 모습). */
 .scr-stat-row > * { display: flex; align-items: center; padding: 14px 14px; box-sizing: border-box; }
+/* 지금 로그인한 사람의 줄(요청: 살짝 반투명 배경) — 회원이 늘수록 표에서 제 줄을 찾는
+   것이 일이라, 눈이 먼저 걸릴 자리 하나를 만든다. 칸마다 배경을 깔지 않고 줄에 한 겹만
+   얹는 이유는 칸 배경이 세로 구분선(.scr-stat-row의 background-image)을 덮기 때문이다.
+   색은 포인트가 아니라 오버레이(--overlay-rgb)다: 두 테마 모두 바탕보다 한 겹 밝거나
+   어두워지기만 하면 되고, 색을 입히면 그 줄만 다른 뜻이 있는 것처럼 읽힌다. */
+.scr-stat-row-me { background-color: rgba(var(--overlay-rgb), 0.055); }
 .scr-stat-row-head {
   /* 이 행 색은 계속 불투명하게 둔다 — 가로 스크롤 중 옆에서 지나가는 막대 그래프
      색이 반투명 유리(--panel) 사이로 비치면 산만해 보인다.
@@ -2395,6 +2401,25 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 }
 /* MVP 횟수(요청: 순위 아래) — 순위·레이팅과 달리 없는 사람이 대부분이라, 있을 때만 서고
    그때는 확실히 눈에 띄어야 한다. 활동 카드의 MVP 표시와 같은 금색을 쓴다. */
+/* ── 전달 대비 변동 ────────────────────────────────────────────────────────────
+   요청: 모든 수치에 화살표 말고 +/-로, 연하고 작은 글씨. 값 옆에 붙는 단서라 값보다 한
+   단계 작고 흐리다. 오르내림을 색으로 가르지 않는 것도 일부러다 — 이 표에서 '큰 쪽이
+   좋은 것'이라 단정할 수 없는 값이 섞여 있고(구성비·업그레이드 단계), 무엇보다 줄마다
+   지표마다 초록·빨강이 켜지면 표가 신호등이 된다. 부호가 이미 방향을 말한다. */
+.scr-stat-delta {
+  margin-left: 3px; font-size: var(--fs-9); font-weight: 600; color: var(--dim);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+/* 막대 위에 겹쳐 앉는 값(게임수·승률·APM·커맨드) 옆의 변동 — 트랙 안이라 더 눌러 둔다. */
+.scr-value-bar-num .scr-stat-delta,
+.scr-stat-bar-rate-val .scr-stat-delta { margin-left: 2px; opacity: 0.85; }
+/* 도넛 위 '몇 채/분' 밑에 한 줄로 놓이는 자리 — 빈 줄이 자리를 먹지 않게 비면 접힌다. */
+.scr-stat-per10-delta { display: block; line-height: 1; }
+.scr-stat-per10-delta:empty { display: none; }
+.scr-stat-per10-delta .scr-stat-delta { margin-left: 0; }
+/* 업그레이드 표의 한 칸 — 평균 밑에 변동을 한 줄로 놓는다(옆에 붙이면 세 열이 밀린다). */
+.scr-stat-up-cell { display: inline-flex; flex-direction: column; align-items: center; line-height: 1.15; }
+.scr-stat-up-cell .scr-stat-delta { margin-left: 0; }
 .scr-stat-rank-mvp { gap: 3px; color: var(--gold-ink); }
 .scr-stat-mvp-tag {
   font-size: var(--fs-9); font-weight: 800; letter-spacing: 0.03em;
@@ -2429,6 +2454,14 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 .scr-stat-toplist-name {
   color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+/* Top5 줄의 전달 대비 순위 화살표(요청: 여기만은 +- 말고 화살표로) — 오르내림만 말하면
+   되는 자리라 색으로 뜻을 지지 않는다. 잉크는 이름과 같은 것을 흐리게 눌러 쓰고, 내려간
+   줄만 조금 더 눌러 둔다: 목록에서 눈에 먼저 들어와야 하는 건 올라온 쪽이다. */
+.scr-stat-toplist-move {
+  margin-left: 2px; font-size: var(--fs-9); color: var(--text); opacity: 0.7;
+  vertical-align: 1px;
+}
+.scr-stat-toplist-move-down { opacity: 0.45; }
 .scr-stat-toplist-n {
   color: var(--dim); font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right;
 }
@@ -2513,6 +2546,10 @@ html:not(.scr-light-theme) .scr-donut {
    획을 따라 붙은 선이 글자 속을 메워 오히려 뭉개 보였다. 흰 글자만으로도 이 세 조각
    색(다크 기준)과는 충분히 갈린다. */
 html:not(.scr-light-theme) .scr-donut-band-label { fill: #fff; }
+/* 조각 이름 밑의 전달 대비 구성비 변동(요청) — 이름과 같은 잉크를 쓰되 흐리게 눌러
+   '값에 붙는 단서'로 읽히게 한다. 조각 색을 입히지 않는 이유는 이름과 같다. */
+.scr-donut-band-delta { fill: #000; font-weight: 700; opacity: 0.6; }
+html:not(.scr-light-theme) .scr-donut-band-delta { fill: #fff; opacity: 0.66; }
 /* 가운데 구멍 — 도넛 이름 하나. 조각 색을 글자에 입히지 않는다: 색이 곧 뜻이 되면 색을
    못 가르는 사람에게 이름까지 사라진다. (값 한 줄을 함께 적던 .scr-donut-center-note는
    그 값이 그림 위로 나가면서 없앴다 — .scr-stat-per10 참고.) */

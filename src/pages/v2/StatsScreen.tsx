@@ -69,7 +69,7 @@ const PERIOD_ALL = "all";
 const MEDALS = ["🥇", "🥈", "🥉"];
 
 const EMPTY_STATS: MemberStats = {
-  plays: 0, wins: 0, losses: 0, draws: 0, winRate: 0,
+  plays: 0, wins: 0, losses: 0, draws: 0, winRate: 0, mvps: 0,
   avgApm: null, avgEapm: null, avgCmd: null, avgEcmd: null, avgBuild: null, buildMix: null, avgWorker5: null, mixPlays: null, mixSeconds: null, upPlays: null,
 };
 
@@ -133,6 +133,8 @@ export default function StatsScreenV2() {
   // 제거") — 밝은 바탕에서는 사진이 표/글씨와 경쟁만 해서 읽기를 방해했다.
   usePageBackground("/images/bg/stats_bg.jpg", "/images/bg/stats_bg_mobile.png");
   const members = useAppStore((s) => s.members);
+  // 표에서 제 줄을 바로 찾게 배경을 깔아 줄 사람(요청).
+  const user = useAppStore((s) => s.user);
   const suggestions = useMemo(() => activeMemberSearchTerms(members), [members]);
 
   const [search, setSearch] = useState("");
@@ -154,7 +156,7 @@ export default function StatsScreenV2() {
   // 기간은 올타임 아니면 특정 월("YYYY-MM") 하나 — 예전 단위 알약탭 + 월 선택기를 달력
   // 하나로 합쳤다(요청). 기본값은 당월(요청) — 올타임이던 것을 되돌렸다. 달 초에는 표가
   // 거의 비어 보이지만, 지금 이 달의 판세를 먼저 보여주는 쪽이 통계를 여는 이유에 가깝다.
-  const [period, setPeriod] = useState<string>(PERIOD_ALL);
+  const [period, setPeriod] = useState<string>(() => currentMonthValue());
   const periodMonth = period === PERIOD_ALL ? "" : period;
   /* 랭크·레이팅는 어느 종족 필터에서나 보여준다. 한때 주종족일 때만 감췄는데, 그건 그 값이
      혼자 전체 종족 기준으로 남아 옆 칸들과 잣대가 어긋났기 때문이다 — 이제 서버가 사람마다
@@ -366,7 +368,15 @@ export default function StatsScreenV2() {
       // 레이팅 — 이 기간·유형에 한 판도 안 뛰었으면 null → "-"(최소 게임수는
       // 안 따진다. 백엔드 _apply_rank_order 주석 참고).
       const points = entry?.rankScore != null ? Math.round(entry.rankScore) : null;
-      return { member: m, stats, points, entry };
+      /* 전달 같은 조건의 값 — 줄마다 모든 수치 옆에 붙는 변동의 기준선이다(요청).
+         '전체 기간'을 보고 있으면 애초에 전달을 안 받아 오므로(view.prev가 빈 객체)
+         여기서 undefined가 되고, 그러면 화면은 변동을 아예 안 그린다.
+         종족 필터는 지금 보는 것과 같은 잣대로 골라야 한다 — 전체로 견주면 종족을 바꾼
+         달에 엉뚱한 수가 나온다. */
+      const prevEntry = view?.prev[m.id];
+      const prev = prevEntry ? statsOf(prevEntry, shown) : undefined;
+      const prevPoints = prevEntry?.rankScore != null ? Math.round(prevEntry.rankScore) : null;
+      return { member: m, stats, points, entry, prev, prevPoints };
     });
 
     const sorted = [...list];
@@ -609,6 +619,11 @@ export default function StatsScreenV2() {
                   key={c.member.id}
                   member={c.member}
                   stats={c.stats}
+                  prev={c.prev}
+                  prevPoints={showRank ? c.prevPoints : undefined}
+                  // 자기 줄에 살짝 배경을 깐다(요청) — 회원이 늘수록 표에서 제 줄을 찾는
+                  // 것이 일이 된다.
+                  me={c.member.id === user?.id}
                   points={showRank ? c.points : undefined}
                   rank={showRank ? rankByMember.get(c.member.id) ?? null : null}
                   rankDelta={showRank ? rankDeltaByMember.get(c.member.id) ?? null : null}

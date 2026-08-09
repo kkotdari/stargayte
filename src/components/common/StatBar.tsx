@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 interface StatBarProps {
   // 없으면(전체 전적처럼 칸 제목이 이미 있는 경우) 라벨 줄 자체를 생략한다.
@@ -14,12 +14,14 @@ interface StatBarProps {
   // 이미 끝난 기간에서 승률 1·2·3위에 붙는 메달(요청) — 막대 위의 승률 바로 옆에
   // 흐름으로 선다(ValueBar와 같다).
   medal?: string;
+  /** 전달 대비 변동(요청) — 승률 바로 뒤에 흐름으로 붙는다(ValueBar의 delta와 같다). */
+  delta?: ReactNode;
 }
 
 // 승률만 막대 안에 초록으로 채워 보여준다(요청: "승만 초록색 표시, 나머지는 빈칸으로" —
 // 무/패를 각각 회색·붉은색으로 구분해 그리던 것을 없앴다). 게임수/생산/APM/커맨드
 // (ValueBar)와 같은 원리로, 채운 만큼만 진하고 나머지는 반투명 그라디언트 한 장이다.
-export default function StatBar({ label, plays, wins, draws, losses, winRate, compact = false, medal }: StatBarProps) {
+export default function StatBar({ label, plays, wins, draws, losses, winRate, compact = false, medal, delta }: StatBarProps) {
   const rateText = plays > 0 ? `${winRate}%` : "-";
   const trackStyle: CSSProperties = plays > 0 ? { ["--scr-value-fill" as string]: `${winRate}%` } : {};
   return (
@@ -50,6 +52,7 @@ export default function StatBar({ label, plays, wins, draws, losses, winRate, co
           <span className="scr-stat-bar-rate scr-stat-bar-rate-overlay">
             <span className="scr-stat-bar-rate-val">
               {rateText}
+              {delta}
               {medal && <span className="scr-stat-medal">{medal}</span>}
             </span>
           </span>

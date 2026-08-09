@@ -1,7 +1,10 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 interface ValueBarProps {
   value: number | null;
+  /** 전달 대비 변동(요청) — 수 바로 뒤에 흐름으로 붙는다. 부르는 쪽이 만들어 넘기는 이유는
+   *  견줄 값이 있는지, 어떤 자릿수로 적을지가 칸마다 다르기 때문이다(MemberStatRow의 Delta). */
+  delta?: ReactNode;
   // 이 목록에서 가장 높은 값(=100%) — 전적 막대와 같은 원칙으로, 값이 없으면(리플레이로
   // 등록된 경기가 하나도 없는 회원) 막대 없이 "-"만 보여준다.
   maxValue: number;
@@ -15,7 +18,7 @@ interface ValueBarProps {
 // 그린다(요청) — 채움 비율은 별도 DOM 없이 트랙 배경의 그라디언트 경계(--scr-value-fill)로
 // 표현해, 숫자가 항상 트랙 자신의 배경 위(자식보다 먼저 그려짐)에 자연스럽게 얹히고
 // 별도 stacking-context 트릭이 필요 없다.
-export default function ValueBar({ value, maxValue, medal }: ValueBarProps) {
+export default function ValueBar({ value, maxValue, medal, delta }: ValueBarProps) {
   const fillPercent = value !== null && maxValue > 0 ? (value / maxValue) * 100 : 0;
   // 값이 없어("-") 채울 비율 자체가 없는 경우, 그래도 그라디언트를 그리면 0% 채운
   // 막대(실제 0점)와 구분이 안 간다(지적) — 이때는 배경 자체를 안 그린다.
@@ -33,6 +36,9 @@ export default function ValueBar({ value, maxValue, medal }: ValueBarProps) {
             수가 길든 짧든 그 오른쪽 끝을 따라간다(요청). */}
         <span className="scr-value-bar-num">
           {value ?? "-"}
+          {/* 변동은 흐름에 둔다 — 메달과 달리 이건 값의 일부처럼 읽혀야 해서, [값 +3]이
+              한 덩어리로 트랙 가운데에 서는 편이 맞다. */}
+          {delta}
           {medal && <span className="scr-stat-medal">{medal}</span>}
         </span>
       </div>

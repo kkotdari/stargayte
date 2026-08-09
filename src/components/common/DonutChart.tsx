@@ -18,6 +18,11 @@ export interface DonutSlice {
   /** 조각 이름 — 글로 적히는 값이라 색과 별개로 뜻을 진다. */
   label: string;
   value: number;
+  /** 견줄 기간(전달)의 같은 조각 값 — 있으면 조각 이름 밑에 구성비 변동을 적는다(요청).
+   *  적는 값은 원값의 차가 아니라 '몇 %p 움직였나'다: 원값은 그 달에 얼마나 뛰었느냐에
+   *  통째로 끌려다녀서, 똑같이 절반씩 뽑아도 판수만 늘면 큰 수가 된다. 도넛이 말하는 것도
+   *  구성비 하나뿐이라 변동도 같은 자로 재야 한다. */
+  prev?: number;
 }
 
 interface DonutChartProps {
@@ -52,9 +57,15 @@ export default function DonutChart({ title, slices, size = 76 }: DonutChartProps
      틈을 낼 곳이 없으므로(원 하나가 잘려 보인다) 그때는 0으로 둔다. */
   const gap = slices.filter((s) => s.value > 0).length > 1 ? 2 : 0;
 
+  /* 견줄 기간의 합 — 구성비 변동을 재려면 그쪽도 제 전체로 나눠야 한다. 한 조각이라도
+     prev가 오면 그 도넛은 변동을 그리는 도넛이다(안 온 조각은 0으로 친다 — 그 달에 아예
+     안 나온 것이니 실제로 0이 맞다). 전달이 통째로 비었으면(합 0) 견줄 것이 없어 안 그린다. */
+  const hasPrev = slices.some((s) => typeof s.prev === "number");
+  const prevTotal = slices.reduce((n, s) => n + (s.prev ?? 0), 0);
+
   // 조각을 돌면서 그릴 것(호)과 적을 것(띠 위 글자 / 아래로 뺀 글자)을 한 번에 정한다.
   const segs: { key: string; idx: number; dash: number; offset: number }[] = [];
-  const onBand: { key: string; x: number; y: number; text: string }[] = [];
+  const onBand: { key: string; x: number; y: number; text: string; delta: string | null }[] = [];
   let acc = 0;
   slices.slice(0, SEG_MAX).forEach((s, i) => {
     if (total <= 0 || s.value <= 0) return;
@@ -80,7 +91,16 @@ export default function DonutChart({ title, slices, size = 76 }: DonutChartProps
     const py = cx + r * Math.sin(th);
     const fx = Math.min(Math.max(px, w / 2 + EDGE), size - w / 2 - EDGE);
     const fy = Math.min(Math.max(py, h / 2 + EDGE), size - h / 2 - EDGE);
-    onBand.push({ key: s.label, x: fx, y: fy, text: s.label });
+    /* 구성비가 지난달보다 몇 %p 움직였나(요청) — 1%p도 안 되게 움직인 것은 안 적는다.
+       반올림해서 0이 되는 값에 "+0"을 달면 '안 변했다'와 구별이 안 되는 데다, 도넛마다
+       조각마다 0이 늘어서면 정작 크게 움직인 조각이 묻힌다. */
+    const dPt = hasPrev && prevTotal > 0
+      ? Math.round(f * 100) - Math.round(((s.prev ?? 0) / prevTotal) * 100)
+      : 0;
+    onBand.push({
+      key: s.label, x: fx, y: fy, text: s.label,
+      delta: dPt === 0 ? null : `${dPt > 0 ? "+" : ""}${dPt}`,
+    });
     acc += len;
   });
 
@@ -114,6 +134,19 @@ export default function DonutChart({ title, slices, size = 76 }: DonutChartProps
             {l.text}
           </text>
         ))}
+        {/* 이름 바로 밑에 전달 대비 구성비 변동(요청) — 이름과 한 덩어리로 읽히도록 같은
+            x에 한 줄 아래로 놓고, 값이 아니라 값에 붙는 단서라 더 작고 흐리게 그린다.
+            띠 밖으로 반쯤 나가도 그대로 둔다(이름과 같은 규칙) — 나간 쪽은 구멍이나 바탕이라
+            아무것도 안 가린다. */}
+        {onBand.map((l) => (l.delta ? (
+          <text
+            key={`d-${l.key}`} className="scr-donut-band-delta"
+            x={l.x} y={l.y + labelFs * 0.95} fontSize={labelFs * 0.82}
+            textAnchor="middle" dominantBaseline="central"
+          >
+            {l.delta}
+          </text>
+        ) : null))}
         {/* 가운데 구멍 — 도넛 이름(요청). 한때 여기에 10분당 값도 함께 적었는데(note),
             이름과 나란히 서서 무엇의 수인지가 섞여 읽혔고 단위를 붙일 자리도 없어
             그림 위로 뺐다(.scr-stat-per10). */}

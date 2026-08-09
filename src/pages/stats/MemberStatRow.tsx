@@ -7,7 +7,7 @@ import DonutChart from "../../components/common/DonutChart";
 import RaceBadge from "../../components/common/RaceBadge";
 import { useAppStore } from "../../store/appStore";
 import { cx } from "../../utils/format";
-import { PER_WINDOW_SECONDS, topEntries, type BuildMix, type TopEntry } from "../../utils/replayBuildMix";
+import { PER_WINDOW_SECONDS, topEntries, topRanks, type BuildMix, type TopEntry } from "../../utils/replayBuildMix";
 import { BUILDING_KO, TECH_KO, UNIT_KO } from "../../utils/replaySummaryText";
 import type { BaseRace, Member, MemberStats } from "../../types";
 
@@ -32,17 +32,49 @@ function perMin(total: number, seconds: number | null | undefined): string | und
     : undefined;
 }
 
+/* ── 전달 대비 변동 ────────────────────────────────────────────────────────────
+   요청: 통계의 모든 수치에 전월 대비 변동을 화살표 말고 +/-로, 연하고 작은 글씨로.
+
+   순위(랭크)만은 예전처럼 ▲▼를 그대로 쓴다 — 순위는 '작을수록 좋다'라 +3이 오른 것인지
+   내린 것인지가 읽는 사람마다 갈리지만, 나머지 수치는 큰 쪽이 큰 값이라 부호가 곧 방향이다.
+
+   견줄 값이 없으면(전체 기간을 보는 중이거나, 지난달에 한 판도 안 뛰었거나) 아무것도 안
+   적는다. 0도 안 적는다 — 줄마다 "+0"이 늘어서면 정작 움직인 값이 묻힌다. */
+function Delta({ now, prev, digits = 0, unit = "" }: {
+  now: number | null | undefined;
+  prev: number | null | undefined;
+  /** 소수 몇 자리까지 — 승률·업그레이드처럼 정수로 반올림하면 뜻이 사라지는 값에 쓴다. */
+  digits?: number;
+  unit?: string;
+}) {
+  if (typeof now !== "number" || typeof prev !== "number") return null;
+  const d = now - prev;
+  // 표시할 자릿수에서 0이면 안 움직인 것으로 본다 — 반올림해 0이 되는 값에 "+0"을
+  // 다는 것은 거짓말에 가깝다.
+  const text = d.toFixed(digits);
+  if (Number(text) === 0) return null;
+  return (
+    <span className="scr-stat-delta">{d > 0 ? `+${text}` : text}{unit}</span>
+  );
+}
+
 /** 도넛 위에 얹는 주요시간대 1분당 값(요청) — 건설은 "채/분", 유닛은 "기/분".
  *
  *  단위를 붙이는 건 이 수가 총합이 아니라 환산값이기 때문이다: 단위 없이 "24.0"만 있으면
  *  그 기간에 24채를 지었다는 말로 읽힌다. 값이 없는 경우(총 시간을 모르는 옛 응답)엔
  *  자리째 비운다 — "-"를 세워 두면 0으로 읽힌다. */
-function PerMin({ value, unit }: { value: string | undefined; unit: string }) {
+function PerMin({ value, prev, unit }: { value: string | undefined; prev?: string | undefined; unit: string }) {
   if (!value) return null;
   return (
     <div className="scr-stat-per10">
       {value}
       <span className="scr-stat-per10-unit">{unit}/분</span>
+      {/* 전달 대비 변동은 수 아래 한 줄로(요청) — 옆에 붙이면 단위와 뒤엉켜 "24.0채/분+1.2"가
+          한 덩어리로 읽힌다. */}
+      <span className="scr-stat-per10-delta">
+        <Delta now={value === undefined ? null : Number(value)}
+          prev={prev === undefined ? null : Number(prev)} digits={1} />
+      </span>
     </div>
   );
 }
@@ -102,7 +134,9 @@ const UP_TABLE: Record<BaseRace, { rows: UpRow[]; solo?: { label: string; title:
   },
 };
 
-function UpgradeGrid({ mix, race }: { mix: BuildMix; race: BaseRace | null | undefined }) {
+function UpgradeGrid({ mix, prev, race }: {
+  mix: BuildMix; prev?: BuildMix | null; race: BaseRace | null | undefined;
+}) {
   /* 전체종족으로 볼 때도 자리는 남기고 왜 안 그리는지만 적는다(요청). 종족마다 업그레이드
      줄이 아예 달라(저그는 근접·원거리가 갈리고 테란은 보병·차량·함선이 갈린다) 한 표에
      겹쳐 놓을 수가 없다 — 그냥 빼 버리면 옆 스킬 목록이 당겨지고, 없는 값처럼 읽힌다. */
@@ -116,12 +150,23 @@ function UpgradeGrid({ mix, race }: { mix: BuildMix; race: BaseRace | null | und
   const table = UP_TABLE[race];
   /* 분모는 줄마다 따로다 — 종족이 섞인 기간에 하나로 세면 한 줄의 평균이 다른 종족 경기
      수만큼 눌린다. 서버가 줄별로 '그 줄이 실린 경기 수'를 세어 내려 준다. */
-  const avg = (key?: string) => {
-    if (!key) return null;
-    const n = mix.upCounts?.[key] ?? 0;
+  const avgOf = (m: BuildMix | null | undefined, key?: string): number | null => {
+    if (!key || !m) return null;
+    const n = m.upCounts?.[key] ?? 0;
     if (n <= 0) return null;
-    return ((mix.ups?.[key] ?? 0) / n).toFixed(1);
+    return (m.ups?.[key] ?? 0) / n;
   };
+  const avg = (key?: string) => {
+    const v = avgOf(mix, key);
+    return v === null ? null : v.toFixed(1);
+  };
+  /** 값 한 칸 — 평균과 그 밑의 전달 대비 변동. 0~3짜리 값이라 소수 첫째 자리까지 본다. */
+  const cell = (key?: string) => (
+    <span className="scr-stat-up-cell">
+      {avg(key) ?? "-"}
+      <Delta now={avgOf(mix, key)} prev={avgOf(prev, key)} digits={1} />
+    </span>
+  );
   const rows = table.rows.filter((r) => avg(r.atk) !== null || avg(r.def) !== null);
   const solo = table.solo ? avg(table.solo.key) : null;
   /* 잴 만한 경기가 없으면 표는 안 그리되 자리는 남기고 왜 비었는지만 적는다(요청) —
@@ -142,8 +187,8 @@ function UpgradeGrid({ mix, race }: { mix: BuildMix; race: BaseRace | null | und
       {rows.map((r) => (
         <Fragment key={r.label}>
           <span className="scr-stat-up-row" title={r.title}>{r.label}</span>
-          <span>{avg(r.atk) ?? "-"}</span>
-          <span>{avg(r.def) ?? "-"}</span>
+          {cell(r.atk)}
+          {cell(r.def)}
         </Fragment>
       ))}
       {table.solo && solo !== null && (
@@ -151,7 +196,7 @@ function UpgradeGrid({ mix, race }: { mix: BuildMix; race: BaseRace | null | und
           <span className="scr-stat-up-row scr-stat-up-solo-label" title={table.solo.title}>
             {table.solo.label}
           </span>
-          <span className="scr-stat-up-solo">{solo}</span>
+          <span className="scr-stat-up-solo">{cell(table.solo.key)}</span>
         </>
       )}
     </div>
@@ -168,8 +213,24 @@ const SHOW_TOP_VALUES = false;
  *  적는 수는 총합이 아니라 주요시간대 1분당 값이다(요청) — 총합은 오래 뛴 사람이 늘 크다.
  *  분모를 전체 경기시간으로 두지 않는 것도 같은 이유다: 안 쓴 판의 시간까지 세면 프로토스만
  *  쓰는 기술의 값이 종족 비율만큼 깎인다. 다만 목록의 '순서'는 총합으로 매긴다. */
-function TopList({ items, unit }: { items: TopEntry[]; unit: string }) {
+function TopList({ items, unit, prevRanks }: {
+  items: TopEntry[]; unit: string;
+  /** 전달 같은 목록의 이름 → 순위(replayBuildMix의 topRanks) — 줄 옆 화살표의 기준선이다.
+   *  '전체 기간'을 보는 중이면 안 넘어온다. */
+  prevRanks?: Map<string, number>;
+}) {
   void unit; // 수를 숨긴 동안에는 안 쓰인다(SHOW_TOP_VALUES 참고).
+  /* 전달 대비 순위 변동(요청: Top5 옆에는 +- 말고 흰 화살표로) — 다른 수치와 달리 여기는
+     '몇 계단'이라는 크기보다 올랐나 내렸나가 전부라 화살표 하나로 족하다. 지난달에 아예
+     없던 이름은 화살표를 안 단다: 견줄 자리가 없어 '올랐다'고 말할 수 없고, 그런 줄이
+     목록의 절반이면 화살표가 그냥 장식이 된다. */
+  const arrow = (name: string, i: number): "up" | "down" | null => {
+    if (!prevRanks) return null;
+    const before = prevRanks.get(name);
+    if (before === undefined) return null;
+    const now = i + 1;
+    return before === now ? null : before > now ? "up" : "down";
+  };
   /* 하나도 없어도 껍데기는 그대로 세운다(지적: 스킬이 없을 때 다른 클래스가 들어가서
      생기는 문제) — 예전엔 여기서 <span>만 돌려줬는데, 그러면 목록의 고정폭
      (--scr-toplist-w 90px)이 통째로 사라져 그 줄만 칸 속 묶음이 줄어들고, 묶음이 칸
@@ -184,9 +245,18 @@ function TopList({ items, unit }: { items: TopEntry[]; unit: string }) {
   }
   return (
     <ul className={cx("scr-stat-toplist", !SHOW_TOP_VALUES && "scr-stat-toplist-nameonly")}>
-      {items.map((it) => (
+      {items.map((it, i) => (
         <li key={it.name}>
-          <span className="scr-stat-toplist-name">{it.name}</span>
+          <span className="scr-stat-toplist-name">
+            {it.name}
+            {arrow(it.name, i) && (
+              <span className={cx("scr-stat-toplist-move",
+                arrow(it.name, i) === "down" && "scr-stat-toplist-move-down")}
+              >
+                {arrow(it.name, i) === "up" ? "▲" : "▼"}
+              </span>
+            )}
+          </span>
           {SHOW_TOP_VALUES && (
             <span className="scr-stat-toplist-n">
               {it.perMin === null ? "-" : `${it.perMin.toFixed(1)}${unit}`}
@@ -207,6 +277,13 @@ export type StatColumnMedals = Partial<Record<
 interface MemberStatRowProps {
   member: Member;
   stats: MemberStats;
+  /** 전달 같은 조건의 통계 — 이 줄의 모든 수치 옆(또는 아래)에 붙는 변동의 기준선이다(요청).
+   *  '전체 기간'을 보고 있으면 견줄 달이 없어 안 넘어온다. */
+  prev?: MemberStats;
+  /** 이 줄이 지금 로그인한 사람인가 — 배경을 살짝 깔아 제 줄을 바로 찾게 한다(요청). */
+  me?: boolean;
+  /** 레이팅의 전달 값 — points와 같은 자리에서 온다(entry.rankScore). */
+  prevPoints?: number | null;
   // 게임수 칸(ValueBar)의 기준값(이 목록에서 가장 많이 뛴 사람 = 100%).
   maxOverallPlays: number;
   // APM/커맨드 막대의 기준값(이 목록에서 가장 높은 값) — 게임수 막대와 같은 원칙.
@@ -250,15 +327,17 @@ interface MemberStatRowProps {
 
 // 전적통계 목록의 테이블 한 행.
 export default function MemberStatRow({
-  member, stats, maxOverallPlays, maxApm, maxCmd, avatar = true, compact = false,
+  member, stats, prev, me = false, prevPoints, maxOverallPlays, maxApm, maxCmd,
+  avatar = true, compact = false,
   points, rank, rankDelta, asOf, onPointsClick, onRankClick, medals, race, upRace,
 }: MemberStatRowProps) {
   const openMemberProfile = useAppStore((s) => s.openMemberProfile);
   const [photoOpen, setPhotoOpen] = useState(false);
   const mix = stats.buildMix;
+  const pmix = prev?.buildMix ?? null;
 
   return (
-    <div className="scr-stat-row">
+    <div className={cx("scr-stat-row", me && "scr-stat-row-me")}>
       <div className="scr-stat-name-cell">
         {avatar && (
           <button type="button" className="scr-stat-avatar-btn" onClick={() => setPhotoOpen(true)} aria-label={`${member.nickname} 사진 보기`}>
@@ -304,6 +383,9 @@ export default function MemberStatRow({
                         {/* 단위(요청) — 아랫줄의 "1위"와 달리 이 줄은 맨숫자라 무엇의 수인지가
                             칸 이름에만 기대고 있었다. */}
                         <span className="scr-stat-points-unit"> 레이팅</span>
+                        {/* 레이팅은 '그 날짜까지의 기록으로 본 값'이라, 전달 같은 날짜의
+                            값과 견주면 그 달에 얼마나 올랐나가 그대로 나온다. */}
+                        <Delta now={points} prev={prevPoints} />
                       </button>
                       {/* 메달 자리는 없는 줄에도 비워 둔다(지적: 메달이 구분선에 딱 붙는다).
                           메달을 흐름 밖(절대배치)에 두면 값만 가운데에 서고 메달은 그 오른쪽으로
@@ -353,6 +435,7 @@ export default function MemberStatRow({
                   <div className="scr-stat-rank-line scr-stat-rank-mvp">
                     <span className="scr-stat-mvp-tag">MVP</span>
                     <span className="scr-stat-mvp-n">{stats.mvps}</span>
+                    <Delta now={stats.mvps} prev={prev?.mvps} />
                   </div>
                 )}
               </>
@@ -364,20 +447,37 @@ export default function MemberStatRow({
         <div className="scr-stat-record-col">
           <div className="scr-stat-record-item">
             <span className="scr-stat-record-label">게임수</span>
-            <ValueBar value={stats.plays > 0 ? stats.plays : null} maxValue={maxOverallPlays} medal={medals?.plays} />
+            <ValueBar
+              value={stats.plays > 0 ? stats.plays : null} maxValue={maxOverallPlays} medal={medals?.plays}
+              delta={<Delta now={stats.plays} prev={prev?.plays} />}
+            />
           </div>
           <div className="scr-stat-record-item">
             <span className="scr-stat-record-label">승률</span>
-            <StatBar plays={stats.plays} wins={stats.wins} draws={stats.draws} losses={stats.losses} winRate={stats.winRate} compact={compact} medal={medals?.rate} />
+            <StatBar
+              plays={stats.plays} wins={stats.wins} draws={stats.draws} losses={stats.losses}
+              winRate={stats.winRate} compact={compact} medal={medals?.rate}
+              /* 승률만은 소수 첫째 자리까지 — 정수로 반올림하면 47.6 → 48.1처럼 실제로
+                 움직인 값이 "+0"으로 사라진다. 단위(%p)까지는 안 붙인다: 옆의 값이 이미
+                 %라 부호와 수만으로 무슨 자인지 읽힌다. */
+              delta={prev && prev.plays > 0 && stats.plays > 0
+                ? <Delta now={stats.winRate} prev={prev.winRate} digits={1} /> : null}
+            />
           </div>
           <div className="scr-stat-record-item">
             <span className="scr-stat-record-label">APM</span>
-            <ValueBar value={stats.avgApm} maxValue={maxApm} medal={medals?.apm} />
+            <ValueBar
+              value={stats.avgApm} maxValue={maxApm} medal={medals?.apm}
+              delta={<Delta now={stats.avgApm} prev={prev?.avgApm} />}
+            />
           </div>
           <div className="scr-stat-record-item">
             {/* 분당임을 라벨에 적는다(요청) — APM은 원래 분당이라 라벨 그대로. */}
             <span className="scr-stat-record-label">커맨드<span className="scr-stat-record-per">/분</span></span>
-            <ValueBar value={stats.avgCmd} maxValue={maxCmd} medal={medals?.cmd} />
+            <ValueBar
+              value={stats.avgCmd} maxValue={maxCmd} medal={medals?.cmd}
+              delta={<Delta now={stats.avgCmd} prev={prev?.avgCmd} />}
+            />
           </div>
         </div>
       </div>
@@ -394,19 +494,26 @@ export default function MemberStatRow({
               {/* 분당 몇 채를 지었나 — 이 수만은 주요시간대 것으로 센다(요청). 도넛의
                   구성비·아래 Top5는 경기 전체다: 마법처럼 드문 사건까지 담아야 목록이
                   서고, 구성은 초·후반까지 넣어야 그 판의 그림이 된다. */}
-              <PerMin value={perMin(mix.coreBuild, stats.mixSeconds)} unit="채" />
+              <PerMin
+                value={perMin(mix.coreBuild, stats.mixSeconds)}
+                prev={pmix ? perMin(pmix.coreBuild, prev?.mixSeconds) : undefined}
+                unit="채"
+              />
               <div className="scr-stat-mix">
                 <DonutChart
                   title="건물"
                   size={DONUT}
                   slices={[
-                    { label: "생산", value: mix.bProd },
-                    { label: "방어", value: mix.bDef },
+                    { label: "생산", value: mix.bProd, prev: pmix?.bProd },
+                    { label: "방어", value: mix.bDef, prev: pmix?.bDef },
                   ]}
                 />
               </div>
             </div>
-            <TopList items={topEntries(mix.buildings, BUILDING_KO, TOP_N, mix.buildingSecs)} unit="개" />
+            <TopList
+              items={topEntries(mix.buildings, BUILDING_KO, TOP_N, mix.buildingSecs)} unit="개"
+              prevRanks={pmix ? topRanks(pmix.buildings, BUILDING_KO) : undefined}
+            />
           </>
         ) : (
           <span className="scr-stat-points-empty">-</span>
@@ -420,23 +527,27 @@ export default function MemberStatRow({
               {/* 건설 칸과 같은 자리·같은 모양으로 10분당 뽑은 유닛 수(요청) — 두 도넛은
                   같은 유닛 무리를 두 가지로 갈라 본 것이라 수는 하나뿐이고, 그래서 둘
                   위쪽 가운데에 한 번만 적는다. */}
-              <PerMin value={perMin(mix.coreUnit, stats.mixSeconds)} unit="기" />
+              <PerMin
+                value={perMin(mix.coreUnit, stats.mixSeconds)}
+                prev={pmix ? perMin(pmix.coreUnit, prev?.mixSeconds) : undefined}
+                unit="기"
+              />
               <div className="scr-stat-mix">
                 <DonutChart
                   title="병력"
                   size={DONUT}
                   slices={[
-                    { label: "기본", value: mix.uBasic },
-                    { label: "고급", value: mix.uAdv },
-                    { label: "마법", value: mix.uCaster },
+                    { label: "기본", value: mix.uBasic, prev: pmix?.uBasic },
+                    { label: "고급", value: mix.uAdv, prev: pmix?.uAdv },
+                    { label: "마법", value: mix.uCaster, prev: pmix?.uCaster },
                   ]}
                 />
                 <DonutChart
                   title="지형"
                   size={DONUT}
                   slices={[
-                    { label: "지상", value: mix.uGround },
-                    { label: "공중", value: mix.uAir },
+                    { label: "지상", value: mix.uGround, prev: pmix?.uGround },
+                    { label: "공중", value: mix.uAir, prev: pmix?.uAir },
                   ]}
                 />
               </div>
@@ -450,9 +561,13 @@ export default function MemberStatRow({
               <span className="scr-stat-worker5-n">
                 {stats.avgWorker5 ?? "-"}
                 {stats.avgWorker5 !== null && <span className="scr-stat-worker5-unit">기</span>}
+                <Delta now={stats.avgWorker5} prev={prev?.avgWorker5} digits={1} />
               </span>
             </div>
-            <TopList items={topEntries(mix.units, UNIT_KO, TOP_N, mix.unitSecs)} unit="기" />
+            <TopList
+              items={topEntries(mix.units, UNIT_KO, TOP_N, mix.unitSecs)} unit="기"
+              prevRanks={pmix ? topRanks(pmix.units, UNIT_KO) : undefined}
+            />
           </>
         ) : (
           <span className="scr-stat-points-empty">-</span>
@@ -462,8 +577,11 @@ export default function MemberStatRow({
       <div className="scr-stat-skills-cell">
         {mix ? (
           <>
-            <UpgradeGrid mix={mix} race={upRace} />
-            <TopList items={topEntries(mix.skills, TECH_KO, TOP_N, mix.skillSecs)} unit="회" />
+            <UpgradeGrid mix={mix} prev={pmix} race={upRace} />
+            <TopList
+              items={topEntries(mix.skills, TECH_KO, TOP_N, mix.skillSecs)} unit="회"
+              prevRanks={pmix ? topRanks(pmix.skills, TECH_KO) : undefined}
+            />
           </>
         ) : (
           <span className="scr-stat-points-empty">-</span>
