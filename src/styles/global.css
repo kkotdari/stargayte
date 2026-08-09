@@ -2556,8 +2556,14 @@ html:not(.scr-light-theme) .scr-donut-band-label { fill: #fff; }
    막대 위의 메달들은 그대로 절대배치다 — 거기는 트랙 안이라 삐져나갈 밖이 없다. */
 .scr-stat-rank-val { gap: 3px; }
 .scr-stat-rank-points .scr-stat-medal {
-  position: static; transform: none; margin-left: 0; flex: none;
+  position: static; transform: none; margin-left: 0;
+  /* 메달 이모지의 실제 폭은 기기마다 다르다(안드로이드·iOS·크롬이 저마다 다른 글꼴로
+     그린다) — 자리를 픽셀로 못 박아, 어느 기기에서 보든 줄기 안에 드는 폭이 같게 한다.
+     글리프가 이 상자보다 크면 좌우로 조금 넘치는데, 줄기 여백 안이라 부딪힐 것이 없다. */
+  flex: none; width: 16px; display: inline-flex; justify-content: center;
 }
+/* 값 덩어리는 안 눌린다 — 눌리면 그 안의 값이 접히거나 메달이 밀려난다. */
+.scr-stat-rank-points .scr-stat-rank-val { flex: none; min-width: 0; }
 .scr-stat-medal-hole { visibility: hidden; }
 /* (삭제) 랭크 줄기만 흐름으로 돌려 두던 예외 — 이제 모든 메달이 흐름이라 규칙 하나면 된다. */
 /* 트랙 배경을 채움 비율(--scr-value-fill, ValueBar.tsx 인라인 변수)까지는 진하게, 나머지는
@@ -2671,7 +2677,7 @@ html:not(.scr-light-theme) .scr-donut-band-label { fill: #fff; }
   /* 값(83) + 간격(3) + 메달 자리(14) = 100px에 좌우 여백을 더한 폭. 메달이 흐름으로
      들어오면서 줄기가 실제로 담아야 할 것이 그만큼 늘었다 — 이보다 좁으면 메달이 다시
      구분선 쪽으로 밀린다. */
-  --scr-stat-rank-w: 116px;
+  --scr-stat-rank-w: 124px;
   --scr-stat-rank-pad: 6px;
   /* 셋 다 12px씩 줄었다(요청) — 칸 바깥 좌우 여백을 14 → 8px로 조인 만큼이다(아래
      .scr-stat-row > .scr-stat-build-cell). 속에 든 것(도넛·목록)은 그대로이고 그 둘레의
@@ -2706,6 +2712,10 @@ html:not(.scr-light-theme) .scr-donut-band-label { fill: #fff; }
 .scr-stat-points-btn {
   background: transparent; border: none; padding: 4px 6px; border-radius: var(--radius-sm); cursor: pointer;
   font-family: inherit; font-size: var(--fs-caption); font-weight: 700; color: var(--text);
+  /* 절대 접히지 않는다(지적: "1,067 레이 / 팅"으로 줄바꿈됨) — 이 값은 한 낱말이라
+     두 줄로 나뉘면 뜻이 깨진다. 메달을 흐름으로 들이면서 값이 밀려 좁아질 수 있게 됐는데,
+     그때 기본값(normal)이면 폭이 모자란 만큼 글자가 접힌다. */
+  white-space: nowrap;
   font-variant-numeric: tabular-nums;
   text-decoration: underline dotted; text-underline-offset: 4px; text-decoration-color: var(--dim);
   -webkit-tap-highlight-color: transparent;
@@ -10381,7 +10391,18 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    라이트에서 하이라이팅이 안 된다). 미니맵 그림은 어느 테마에서나 어둡다. */
 .scr-minimap-mark-label-out.scr-minimap-mark-hit {
   background: #e6a23e; color: #101010;
+  /* 검은 테는 반드시 걷는다(지적: "하이라이팅 시 폰트색이 바뀌고 번져 보임") — 기본
+     이름표는 어두운 지형 위의 흰 글자라 검은 글로우로 대비를 만드는데, 여기서는 글자가
+     먹색으로 뒤집힌다. 먹색 글자에 검은 글로우를 그대로 씌우면 획 둘레가 번져 글자가
+     뭉갠 것처럼 보인다. 이 자리는 주황 판이 이미 대비를 다 만들어 주므로(먹색 대비 8:1)
+     테가 할 일이 없다. */
+  text-shadow: none;
+  /* 판이 글자에 딱 붙어 있으면 강조가 아니라 얼룩으로 읽힌다 — 좌우로만 살짝 띄운다. */
+  padding: 1px 4px; border-radius: 3px;
 }
+/* 종족 글자도 같은 먹색으로 — 종족 색(분홍·보라)은 어두운 지형 위에서 쓰라고 고른 값이라
+   주황 판 위에서는 탁해진다. 판 안에서는 무슨 종족인지가 글자 모양으로 남으면 된다. */
+.scr-minimap-mark-label-out.scr-minimap-mark-hit .scr-race-badge { color: inherit; }
 /* (삭제) 스냅 주인공을 그 자리에 아바타로 띄우던 표시 — 이제 화살표가 그 일을 하고,
    주인공은 본진 아바타가 커지는 것으로 나타낸다(요청). */
 
