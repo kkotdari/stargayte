@@ -8357,7 +8357,10 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
      그 66px은 줄마다 실제로 달라지는 내용 쪽에 훨씬 요긴하다.
      시각 칸은 106 → 88px로 조여 뒀다 — 글자 자리 96px인데 가장 긴 값("20년 12월 30일"
      75.8px 실측)이 그보다 20px 짧았다. 88px이면 78px 자리에 2px만 남는다. */
-  grid-template-columns: minmax(0, 1fr) 88px;
+  /* 칸은 하나다(요청: 시각을 배지 줄로 옮기고 그만큼 제목 자리를 늘림) — 시각이 물고
+     있던 88px이 통째로 내용 쪽으로 넘어온다. 여덟 이름이 서는 경기 줄에서 그 88px은
+     눌러 맞추는 비율로 곧장 환산돼(FlatLine), 같은 화면에서 글자가 덜 납작해진다. */
+  grid-template-columns: minmax(0, 1fr);
   /* 위아래 여백은 줄이 아니라 각 칸이 낸다(아래 규칙) — 줄이 내면 그 여백이 격자 밖이라
      칸 높이가 글자 높이(18px)에 그치고, 세로 구분선도 딱 그만큼만 그려진다(실측). 칸이
      내면 칸이 줄 높이를 통째로 채워 선이 위아래 줄과 맞닿는다. */
@@ -8396,7 +8399,9 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 /* 시각은 맨 끝 칸이다 — 다른 칸과 같이 칸 가운데에 선다. */
 .scr-activity-row-time {
   color: var(--row-dim); font-variant-numeric: tabular-nums; white-space: nowrap;
-  text-align: center;
+  /* 가운데 정렬은 제 칸(88px)을 갖고 있던 시절의 값이다 — 이제 배지 줄 오른쪽 끝에
+     흐름으로 서므로 정렬할 여백 자체가 없다. */
+  text-align: right; flex: none;
   /* 한 스텝 작게(요청) — 시각은 줄을 가르는 기준일 뿐 읽을 값이 아니다. */
   font-size: var(--fs-11);
 }
@@ -8473,13 +8478,12 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    배지 줄은 그대로 둔다 — 짧고, 왼쪽에 붙어 있어야 한다. */
 .scr-activity-row > .scr-activity-row-main > .scr-activity-row-desc { align-self: stretch; }
 /* 배지 줄 — 유형이 먼저, 그 오른쪽에 상태(요청). 상태가 없는 줄은 유형만 남는다. */
+/* 배지 줄은 [유형][상태] … [시각]이다. 시각이 오른쪽 끝으로 가려면 이 줄이 칸 폭을 다
+   받아야 한다 — 부모가 align-items:flex-start인 세로 flex라 그냥 두면 낱말 폭만큼만 넓다. */
 .scr-activity-row-badges {
-  display: flex; align-items: center; gap: 6px; min-width: 0;
+  display: flex; align-items: center; gap: 6px; min-width: 0; align-self: stretch;
 }
-/* 내용과 시각 사이 구분선을 걷는다(요청) — 칸이 둘뿐이라 이 선 하나가 표를 반으로 가르는
-   꼴이었는데, 시각은 내용에 딸린 값이지 다른 갈래가 아니다. 선과 그 좌우 여백이 통째로
-   내용 칸으로 넘어간다. */
-.scr-activity-row > .scr-activity-row-time { border-left: none; padding-left: 4px; }
+.scr-activity-row-badges > .scr-activity-row-time { margin-left: auto; padding-left: 8px; }
 /* (삭제) 상태 알약 자리를 예약하던 빈 칸 — 걷었다(요청). 알약은 이제 내용의 첫 조각으로
    그냥 놓이고, 없는 줄에서는 이름이 칸의 왼쪽 끝에서 시작한다. */
 /* 알약 자체 — 둥근 네모, 다크는 흰 바탕에 검은 글자(요청). 라이트는 그 반대라야 같은
@@ -8551,6 +8555,15 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 /* 굵기는 600까지만(요청) — 색을 다 같게 둔 뒤로 이 목록의 강약은 굵기 하나가 지는데,
    700이면 한 줄 걸러 한 줄이 제목처럼 굵어 목록 전체가 무거웠다. 600은 400과의 차이는
    그대로 남기면서 눈에 덜 부딪힌다. */
+/* 경기 줄의 편 색(요청) — 미니맵의 팀 색과 같은 갈래라, 줄에서 본 편과 지도에서 본 편이
+   이어진다. 미니맵은 늘 어두운 지형 위라 밝은 값 하나면 되지만, 이 줄은 두 테마를 다
+   지나므로 라이트에서는 같은 색상각의 진한 쪽으로 뒤집는다(밝은 파랑은 흰 종이 위에서
+   글자로 못 쓴다).
+   닉네임에만 입힌다 — 사이의 가운뎃점까지 물들면 색 덩어리가 되어 이름 수가 안 세어진다. */
+.scr-activity-row-t1 .scr-activity-row-em { color: #8fcaff; }
+.scr-activity-row-t2 .scr-activity-row-em { color: #ffa3b1; }
+.scr-light-theme .scr-activity-row-t1 .scr-activity-row-em { color: #1f5fbf; }
+.scr-light-theme .scr-activity-row-t2 .scr-activity-row-em { color: #c03a58; }
 .scr-activity-row-em {
   color: var(--text); font-weight: 600;
   /* 자리가 모자라면 이름이 줄어든다 — 바깥 상자가 아니라 여기서 자른다(위 주석). */
@@ -8630,15 +8643,14 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 @media (max-width: 1159px) {
   /* 제목 칸이 사라져(요청: "제목 | 내용") 칸은 둘뿐이다 — 제목이 쓰던 66px이 통째로 내용
      칸에 붙는다. 좁은 화면에서 닉네임 둘과 상태 알약을 담느라 늘 말줄임에 걸리던 칸이다. */
-  .scr-activity-row { grid-template-columns: minmax(0, 1fr) 80px; }
+  /* (삭제) 좁은 화면의 시각 칸 80px — 시각이 배지 줄로 올라가며 칸 자체가 없어졌다(요청).
+     여기만 남겨 두면 내용이 계속 80px을 비켜서서, 정작 좁은 화면에서 벌어 온 자리를
+     못 쓴다(실측 390px: 내용 274px에 갇혀 있었다). 위 공용 규칙의 한 칸을 그대로 쓴다. */
   .scr-activity-row > * + * { padding-left: 8px; }
   .scr-activity-row > * { padding-right: 8px; }
   .scr-activity-row > *:last-child { padding-right: 0; }
-  /* 시각 칸도 줄인다(요청) — 84 → 82 → 80px. 구분선과 글자 사이를 8 → 6 → 4px로 좁히는
-     것으로 줄인 것이라 글자 자리(76px)는 내내 그대로다. 여기가 바닥이다: 가장 긴 값은
-     "다음주 화요일"(69.1)이 아니라 해가 바뀐 날짜 "20년 12월 30일"(75.8)이고, 더 줄이면
-     그게 잘린다(실측). */
-  .scr-activity-row > .scr-activity-row-time { padding-left: 4px; }
+  /* (삭제) 시각 칸의 폭·여백 — 시각이 제 칸을 잃고 배지 줄로 올라가며(요청) 조일 폭
+     자체가 없어졌다. 이제 글자 폭만큼만 차지한다. */
   /* (내용 칸 여백은 이제 PC/모바일 공통 — 위 규칙 하나뿐이다.) */
   /* (윗줄은 이제 칸이 아니라 제목 글자를 기준으로 서므로 칸 패딩과 무관하다.) */
 }

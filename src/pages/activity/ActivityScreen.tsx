@@ -1391,12 +1391,15 @@ export default function ActivityScreen() {
     const g = item.gameResult;
     return (
       <FlatLine>
+        {/* 편마다 색을 입힌다(요청) — 이름이 여덟이면 "vs" 하나로는 어디까지가 한 편인지가
+            한눈에 안 들어온다. 색은 미니맵의 팀 색(1팀 파랑 · 2팀 붉음)과 같은 갈래라,
+            줄에서 본 편과 지도에서 본 편이 같은 색으로 이어진다. */}
         <span className="scr-activity-row-name">
-          <span className="scr-activity-row-name-main">{nameNodes(sideNames(g.team1))}</span>
+          <span className="scr-activity-row-name-main scr-activity-row-t1">{nameNodes(sideNames(g.team1))}</span>
         </span>
         <span className="scr-activity-row-arrow scr-activity-row-vs" aria-hidden>vs</span>
         <span className="scr-activity-row-name">
-          <span className="scr-activity-row-name-main">{nameNodes(sideNames(g.team2))}</span>
+          <span className="scr-activity-row-name-main scr-activity-row-t2">{nameNodes(sideNames(g.team2))}</span>
         </span>
       </FlatLine>
     );
@@ -1699,6 +1702,16 @@ export default function ActivityScreen() {
                             (요청: 자리 예약 취소). 빈 칸을 늘 잡아 두면 알약 없는 줄만
                             왼쪽이 휑하게 비어 오히려 눈에 걸렸다. */}
                         {rowStatusOf(item)}
+                        {/* 얼마나 지났나(요청: "타임스탬프를 유형 배지랑 같은 줄 오른쪽
+                            끝에 배치") — 하루까지는 "N분 전/N시간 전", 일주일까지는
+                            "N일 전", 그보다 오래된 것만 날짜.
+                            제 칸을 따로 갖고 있던 값인데, 그 칸이 줄 오른쪽에서 88px을
+                            늘 물고 있어 정작 줄마다 달라지는 제목이 그만큼 좁았다. 배지
+                            줄은 낱말 두엇뿐이라 오른쪽이 통째로 비어 있었고, 시각은 거기
+                            얹혀도 아무것도 밀어내지 않는다. */}
+                        <span className="scr-activity-row-time">
+                          {item.kind === "challenge" && item.undated ? "미정" : formatAgo(item.time)}
+                        </span>
                       </span>
                       <span className="scr-activity-row-desc">
                         {rowDesc(item)}
@@ -1711,13 +1724,6 @@ export default function ActivityScreen() {
                           </span>
                         )}
                       </span>
-                    </span>
-                    {/* 얼마나 지났나(요청) — 하루까지는 "N분 전/N시간 전", 일주일까지는
-                        "N일 전", 그보다 오래된 것만 날짜. 종류를 안 가리고 한 가지로 적는다
-                        (예전에는 너 나와는 날짜만, 랭크 변동은 "12시간 전", 게임결과 묶음은
-                        세션 날짜라 세 줄이 저마다 다른 말투였다). */}
-                    <span className="scr-activity-row-time">
-                      {item.kind === "challenge" && item.undated ? "미정" : formatAgo(item.time)}
                     </span>
                   </button>
                   {/* 게임결과는 요약(참가자 명단)을 건너뛰고 바로 경기 목록을 편다(요청) —
