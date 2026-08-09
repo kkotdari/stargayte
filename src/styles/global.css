@@ -190,9 +190,15 @@
      테마마다 다른 값을 두면 같은 배지가 테마를 옮길 때 다른 색으로 보인다.
      (랭크 변동은 갈래 색이 없다 — 사람이 올린 글이 아니라 서버가 남긴 알림이라, 아래
      --kind-none의 무채색으로 간다.) */
-  --kind-schedule: #4fd18b;
+  /* 일정은 청록 쪽으로 한 뼘 옮겼다(요청: "일정을 살짝 블루 강화") — 색상각 148 → 160°.
+     명도·채도는 그대로라 다섯 배지의 밝기 한 벌은 흐트러지지 않고, 초록기만 덜어져
+     나머지 넷(보라·노랑·파랑·무채색) 사이에서 제 자리를 더 또렷이 잡는다. */
+  --kind-schedule: #4fd1a6;
   --kind-league: #c4aef8;
-  --kind-call: #f2e550;
+  /* 레몬은 한 번 더 옅어졌다(요청: "더 레몬파스텔톤") — 채도를 86 → 78%로 덜고 명도를
+     63 → 76%로 올린다. 파스텔은 '흰 물감을 탄 색'이라 두 값이 같이 움직여야 한다:
+     채도만 덜면 겨자에 가까워지고, 명도만 올리면 형광 노랑이 된다. */
+  --kind-call: #f1ec93;
   --kind-game: #87c0f8;
   --kind-none: #b6bcc4;
   /* 배지 글자는 다섯이 같은 먹색이다(요청) — 갈래는 바탕만으로 말한다. 값을 앱의 기본
@@ -2082,6 +2088,14 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 }
 .scr-stat-record-item .scr-value-bar,
 .scr-stat-record-item .scr-stat-bar-row { flex: 1 1 auto; min-width: 0; }
+/* 막대는 제 트랙을 다 채우지 않는다(요청: "막대 길이 줄이고") — 값이 100%인 줄이 칸 벽에
+   그대로 닿으면 막대가 어디서 끝나는지가 안 보여, 그 줄만 '칸이 곧 막대'처럼 읽힌다.
+   칸을 좁힌 것(--scr-stat-record-w 580→520)과 함께 걸어야 뜻이 있다: 칸만 줄이면 막대는
+   여전히 벽에서 벽까지고, 이것만 걸면 표 폭은 그대로인 채 빈자리만 는다.
+   가운데 정렬(.scr-value-bar의 justify-content:center)이라 좁힌 만큼 좌우로 고르게 남고,
+   네 막대가 같은 최대폭을 쓰므로 길이를 견주는 일은 그대로다. */
+.scr-stat-record-item .scr-value-bar-track-wrap,
+.scr-stat-record-item .scr-stat-bar-track-wrap { max-width: 168px; }
 /* 승률 막대는 라벨줄과 막대를 위아래로 쌓는 구조라(.scr-stat-bar-row가 column) 메달이
    막대 밑으로 떨어졌다(실측) — 이 표는 compact 모드라 그 줄을 안 그리므로 안에 남는 것이
    막대와 메달뿐이다. 가로로 눕혀 다른 막대들과 같이 "값 오른쪽에 메달"이 되게 한다. */
@@ -2424,10 +2438,10 @@ html:not(.scr-light-theme) .scr-donut-band-label { fill: #fff; }
      대해 왼쪽에 붙어 있는 칸이라 폭이 흔들리면 그 아래 내용과 어긋난다. */
   --scr-stat-tracks:
     var(--scr-stat-name-w)
-    minmax(var(--scr-stat-record-w), 580fr)
-    minmax(var(--scr-stat-build-w), 204fr)
-    minmax(var(--scr-stat-unit-w), 366fr)
-    minmax(var(--scr-stat-skill-w), 246fr);
+    minmax(var(--scr-stat-record-w), 520fr)
+    minmax(var(--scr-stat-build-w), 192fr)
+    minmax(var(--scr-stat-unit-w), 354fr)
+    minmax(var(--scr-stat-skill-w), 234fr);
   /* 행의 폭을 '내용이 원하는 만큼'이 아니라 '늘 같은 값'으로 잡는다(지적 사진: 칸 경계가
      행마다 어긋난다). 바탕 규칙(.scr-stat-row)은 width:max-content인데, 그건 행마다 제
      내용을 재는 값이라 다섯 줄짜리 TOP5가 든 행과 "-" 하나뿐인 행이 서로 다른 폭이 된다 —
@@ -2442,6 +2456,17 @@ html:not(.scr-light-theme) .scr-donut-band-label { fill: #fff; }
     + var(--scr-stat-unit-w) + var(--scr-stat-skill-w));
 }
 .scr-stats-list-panel-v2 .scr-stat-row > * { padding-top: 10px; padding-bottom: 10px; }
+/* 건설·유닛·스킬 칸의 좌우 여백을 14 → 8px로 조인다(요청: "건물·유닛·스킬의 좌우 여백
+   좀 줄이면 줄일 수 있음"). 이 셋은 속이 [그림 | 선 | 목록] 가로 배치라 이미 제 안에
+   갭(10px)과 선 좌우 여백을 들고 있다 — 칸 여백까지 14px이면 도넛 왼쪽에 24px, 목록
+   오른쪽에 14px이 그냥 빈다(지적 스크린샷의 노란 상자). 8px이면 칸 경계선에 내용이
+   붙지 않을 만큼은 남으면서 칸마다 12px씩 표가 좁아진다.
+   기록 칸(10px)과 유저 칸은 안 건드린다 — 기록 칸은 이미 한 번 조인 값이다. */
+.scr-stats-list-panel-v2 .scr-stat-row > .scr-stat-build-cell,
+.scr-stats-list-panel-v2 .scr-stat-row > .scr-stat-units-cell,
+.scr-stats-list-panel-v2 .scr-stat-row > .scr-stat-skills-cell {
+  padding-left: 8px; padding-right: 8px;
+}
 /* 종족별 전적 칸을 없애서(대신 필터바 종족 라디오로 전체 칸 값 자체를 그 종족 기준으로
    바꿔치기) 이제 게임수/전적/APM/커맨드 네 칸만 남았다 — 다들 라벨 없는 단순한
    막대+숫자뿐이라 너비 차등을 줄 이유가 없어져 다시 4등분 균등폭으로 돌아간다. 구분선도
@@ -2457,7 +2482,11 @@ html:not(.scr-light-theme) .scr-donut-band-label { fill: #fff; }
   /* 랭크 칸은 두 줄이다(요청: 랭크+포인트 통합) — "1위 ▲2" 한 줄과 포인트 한 줄.
      건설은 도넛 하나 + 건물 다섯 줄, 유닛은 도넛 둘 + 일꾼 한 줄 + 유닛 다섯 줄,
      스킬은 공/방 표 + 스킬 다섯 줄을 담는다. */
-  --scr-stat-record-w: 580px;
+  /* 580 → 520px(요청: "막대 길이 줄이고 건물·유닛·스킬의 좌우 여백 좀 줄이면 줄일 수
+     있음") — 이 칸에서 폭을 먹는 것은 막대뿐인데, 막대가 말하는 것은 길이 자체가 아니라
+     넷을 나란히 놓고 견주는 그림이다. 다 같이 짧아지면 그 견줌은 그대로 남는다.
+     아래 .scr-value-bar의 max-width와 짝이다 — 칸만 줄이면 막대는 여전히 칸을 꽉 채운다. */
+  --scr-stat-record-w: 520px;
   /* 랭크·포인트 줄기의 고정폭 — 120 → 100px(요청: 너무 넓다).
      이 칸에 실제로 들어가는 가장 긴 것은 "1234 포인트" 79.2px과 "1위 ▲12" 71.4px이다
      (실측, 버튼 좌우 패딩 포함). 100px이면 값 좌우로 10px씩 남는다.
@@ -2470,9 +2499,12 @@ html:not(.scr-light-theme) .scr-donut-band-label { fill: #fff; }
      실측으로 메달 오른쪽에 10px이 남는다. */
   --scr-stat-rank-w: 138px;
   --scr-stat-rank-pad: 8px;
-  --scr-stat-build-w: 204px;
-  --scr-stat-unit-w: 366px;
-  --scr-stat-skill-w: 246px;
+  /* 셋 다 12px씩 줄었다(요청) — 칸 바깥 좌우 여백을 14 → 8px로 조인 만큼이다(아래
+     .scr-stat-row > .scr-stat-build-cell). 속에 든 것(도넛·목록)은 그대로이고 그 둘레의
+     빈자리만 걷혔으므로, 좁아져도 읽는 것은 하나도 안 줄어든다. */
+  --scr-stat-build-w: 192px;
+  --scr-stat-unit-w: 354px;
+  --scr-stat-skill-w: 234px;
   /* 도넛 지름 — MemberStatRow의 DONUT과 짝이다(svg 좌표계 크기라 그쪽이 실제 값을 정하고,
      여기서는 상자 폭을 그에 맞춘다). 한쪽만 고치면 어긋난다. */
   --scr-donut-size: 72px;
@@ -2690,10 +2722,10 @@ html:not(.scr-light-theme) .scr-stats-list-panel-v2 .scr-stat-name-cell, html:no
     --scr-stat-col-w: 124px;
     /* PC와 같은 이유로 넓힌다(막대에 남는 자리가 45px밖에 안 됐다) — 모바일은 어차피
        가로로 스크롤하는 표라, 좁혀 봐야 막대만 못 읽게 될 뿐이다. */
-    --scr-stat-record-w: 540px;
-    --scr-stat-build-w: 196px;
-    --scr-stat-unit-w: 354px;
-    --scr-stat-skill-w: 236px;
+    --scr-stat-record-w: 490px;
+    --scr-stat-build-w: 184px;
+    --scr-stat-unit-w: 342px;
+    --scr-stat-skill-w: 224px;
     grid-template-columns: var(--scr-stat-tracks);
   }
 
@@ -6577,10 +6609,14 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 /* 아바타 묶음이 제 층을 갖고 있어(아래 .scr-challenge-party-stack > :nth-child(n)의
    z-index 1~4, 응답 배지 5) 그보다 위여야 라벨이 안 가린다 — 2로 뒀더니 "Fro"만 남았다. */
 .scr-challenge-party-tag { margin-top: 2px; position: relative; z-index: 6; }
-/* -24px에서 칸 사이 갭(7px)을 빼면 17px이 겹친다 — 아바타 지름 44px의 40%쯤이라
-   '반쯤 걸친' 그림이 되면서 라벨 글자는 온전히 남는다. */
-.scr-challenge-party-from .scr-challenge-party-tag { margin-right: -24px; }
-.scr-challenge-party-to .scr-challenge-party-tag { margin-right: -24px; }
+/* 겹치는 양은 둘이 다르다(요청: "From.은 글자가 기니까 더 겹치고 To.는 덜 겹치게") —
+   같은 -24px을 주면 겹친 '길이'는 같아도 겹친 '몫'이 다르다: From.(약 36px)은 그 절반이
+   안 걸리는데 To.(약 20px)는 대부분이 아바타에 올라타, 짧은 쪽만 아바타에 파묻혀 보인다.
+   여기서 뺀 값에서 칸 사이 갭(7px)을 빼면 실제로 겹치는 길이다 — From. 23px(글자의
+   64%), To. 11px(55%). 두 이름표가 아바타에 걸친 정도가 눈으로 같아진다.
+   라벨이 위층이라(z-index) 어느 쪽이든 글자는 온전히 다 읽힌다. */
+.scr-challenge-party-from .scr-challenge-party-tag { margin-right: -30px; }
+.scr-challenge-party-to .scr-challenge-party-tag { margin-right: -18px; }
 /* From.은 편지지 맨 위 왼쪽, To.는 본문 아래 오른쪽(요청: 버튼이 To. 아바타보다 아래).
    둘 다 흐름 안이다 — 한때 From.만 좌상단에 절대배치했는데, 편지지 본문이 세로 가운데로
    모이면서 그 자리가 본문과 겹쳤다(지적: 공유 화면 레이아웃 깨짐 — From.이 제목과 한마디
@@ -6700,19 +6736,24 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
    선은 좌우로 물러나 앉는다(요청: 양옆 패딩) — 카드 가장자리까지 그으면 편지지가 표처럼
    보이고, 편지지 사진 배경 위에서는 그 선이 액자 테두리처럼 읽힌다.
 
-   위쪽에만 긋는 이유: 아래쪽에도 그으면 이웃한 두 토막 사이에 선이 두 겹으로 겹친다. */
-.scr-challenge-inbox-body > .scr-challenge-party-to,
-.scr-challenge-inbox-body > .scr-challenge-outcome {
-  border-top: 1px solid var(--line-hair);
-  /* 선 위에는 여백을 따로 주지 않는다(지적: 구분선 위 여백이 넓음) — 본문이 세로 flex라
-     칸 사이가 이미 gap(모달 20px · 카드 12px)만큼 벌어져 있고, 거기에 margin을 더하면 그
-     둘이 겹쳐 쌓여 선이 아래 토막 쪽으로 딸려 내려간다. 선은 두 토막 사이에 서야 한다. */
-  margin-top: 0; padding-top: 14px;
+   선은 아래 토막의 border-top이 아니라 제 칸 하나다(요청: "구분선도 보더가 아닌 하나의
+   div로 처리해서 위아래 gap이 들어가게 해서 자연스레 처리하기"). border로 그리던 때는 한
+   선의 위아래를 서로 다른 두 값이 나눠 맡았다 — 위쪽 여백은 본문의 gap이, 아래쪽 여백은
+   그 토막이 따로 든 padding-top이. 그 둘을 눈으로 맞춰 놓아도 gap이 다른 자리(모달 20px ·
+   카드 12px)로 가면 다시 어긋나, 선이 아래 토막 쪽으로 딸려 붙었다. 칸으로 세우면 위아래
+   모두 같은 gap이 벌려 줘서 어디서든 저절로 두 토막 한가운데에 선다.
+
+   빈 칸이라 늘려 주지 않으면 폭이 0이다 — 세로 flex 자식은 제 내용만큼만 넓다. */
+.scr-challenge-inbox-body > .scr-challenge-rule {
+  align-self: stretch; flex: none;
+  height: 1px; background: var(--line-hair);
 }
-/* 편지지 본문은 세로 flex라 자식이 제 내용만큼만 넓다 — 그대로 선을 그으면 To.는 아바타
-   폭만큼, 맺음말은 낱말 폭만큼 짧은 토막이 된다(실측 스크린샷: "준비중" 글자 길이의 선).
-   선을 그을 칸은 줄 전체로 늘리고, 안쪽 내용만 제자리로 다시 민다. */
+/* 편지지 본문은 세로 flex라 자식이 제 내용만큼만 넓다 — 지목된 쪽 칸은 아바타 폭만큼,
+   맺음말은 낱말 폭만큼이다. 오른쪽 끝에 붙이려면 줄 전체로 늘려 둬야 한다. */
 .scr-challenge-inbox-body > .scr-challenge-party-to {
+  /* 위 여백은 이제 gap 하나가 준다(요청: padding-top 없애기) — 선이 제 칸을 갖게 되면서
+     이 칸이 선 아래 여백까지 맡을 이유가 없어졌다. 밑변 margin(base의 10px)도 함께 걷는다. */
+  margin-top: 0; padding-top: 0;
   /* 오른쪽 끝에 딱 붙인다(지적: "응답 아바타 우측 여백 없애야 함") — 아바타는 편지지
      오른쪽 끝까지 나가고, 구분선만 제자리(안쪽으로 물러난 자리)에 남는다. 선까지 끝으로
      끌어내면 아래 맺음말 선과 길이가 어긋나 둘이 다른 선처럼 보인다. 그래서 줄은 그대로
@@ -6725,27 +6766,24 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
   margin-right: -12px;
 }
 .scr-challenge-inbox-body > .scr-challenge-outcome { align-self: stretch; }
-/* 좌우로 물러난 선 — 편지지 안쪽 여백(20px)에 맞춘다. */
+/* 좌우로 물러난 선 — 편지지 안쪽 여백(20px)에 맞춘다. 선이 물러나 앉는 이유(요청: 양옆
+   패딩): 카드 가장자리까지 그으면 편지지가 표처럼 보이고, 사진 배경 위에서는 그 선이
+   액자 테두리처럼 읽힌다. 선과 나란히 서는 칸들도 같은 자리에서 시작해야 줄이 맞는다. */
+.scr-challenge-inbox-body > .scr-challenge-rule,
 .scr-challenge-inbox-body > .scr-challenge-party-to,
 .scr-challenge-inbox-body > .scr-challenge-words-reply,
 .scr-challenge-inbox-body > .scr-challenge-outcome {
   margin-inline: 20px;
 }
+.scr-challenge-letter-inline .scr-challenge-inbox-body > .scr-challenge-rule,
 .scr-challenge-letter-inline .scr-challenge-inbox-body > .scr-challenge-party-to,
 .scr-challenge-letter-inline .scr-challenge-inbox-body > .scr-challenge-words-reply,
 .scr-challenge-letter-inline .scr-challenge-inbox-body > .scr-challenge-outcome {
   margin-inline: 12px;
 }
 /* 답한 말은 지목된 쪽 토막의 첫 줄이다 — 그 사람 아바타 위에 놓이므로(요청) 토막을 여는
-   선도 이 줄 위로 올라간다. 선을 To. 위에 그대로 두면 답한 말만 위쪽 토막(부른 쪽)에
-   딸려 붙어, 지목된 사람이 한 말이 부른 사람 이야기처럼 읽힌다.
-   두 줄이 잇달아 서므로 아래쪽 선은 걷는다 — 안 그러면 한 토막 안에 선이 두 겹이다. */
-.scr-challenge-inbox-body > .scr-challenge-words-reply {
-  border-top: 1px solid var(--line-hair); padding-top: 14px;
-}
-.scr-challenge-inbox-body > .scr-challenge-words-reply + .scr-challenge-party-to {
-  border-top: none; padding-top: 0;
-}
+   선도 이 줄 위로 올라간다. 이제 선은 JSX가 그 앞에 칸으로 한 번만 세우므로(ChallengeLetter),
+   여기서 border를 따로 그리지 않는다 — 한 토막에 선이 두 겹이 될 일이 아예 없다. */
 
 /* ── 편지지 배경 사진(요청) ────────────────────────────────────────────────────
    부른 사람이 호출할 때 올린 사진이 편지지 바닥에 깔린다.
@@ -7309,10 +7347,10 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
        에서는 막대에 45px밖에 안 남아 길이 비교가 아예 안 됐고(지적), 680px까지 올렸다.
        그 뒤 랭크 줄기가 남는 폭을 안 먹게 되면서(위 .scr-stat-rank-col) 막대가 207px까지
        늘어 이번엔 반대로 헐거워졌다 — 막대 160px 안팎이 되는 폭으로 되돌린다. */
-    --scr-stat-record-w: 580px;
-    --scr-stat-build-w: 202px;
-    --scr-stat-unit-w: 362px;
-    --scr-stat-skill-w: 242px;
+    --scr-stat-record-w: 520px;
+    --scr-stat-build-w: 190px;
+    --scr-stat-unit-w: 350px;
+    --scr-stat-skill-w: 230px;
     /* 헤더 행과 데이터 행은 각각 별개의 그리드 컨테이너다. 트랙을 minmax(_,1fr)로 두면
        width:max-content인 이 행들이 '자기 내용이 원하는 폭'으로 따로 계산돼, 라벨+ⓘ+정렬
        아이콘이 든 헤더 행만 넓어진다 — 실측 873px vs 820px, 오른쪽으로 갈수록 최대 45px씩
@@ -8144,7 +8182,10 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   /* 좌우 여백이 배지의 폭을 통째로 정한다 — 고정폭이 사라졌으니 2px로는 글자가 테두리에
      붙는다. 8 → 5px로 조인다(요청) — 글자를 한 스텝 줄인 만큼 여백도 같이 줄어야 배지가
      글자에 비해 헐렁해 보이지 않는다. */
-  padding: 2px 5px; border-radius: 6px;
+  /* 위아래를 3/1로 어긋나게 준다(요청: "유형 라벨 폰트 살짝 아래로") — 배지 높이는 그대로
+     두고 글자만 1px 내려앉는다. line-height로 내리면 배지가 같이 커지고, translate로
+     내리면 글자만 상자를 벗어나 밑변에 붙는다. */
+  padding: 3px 5px 1px; border-radius: 6px;
   /* 갈래 색이 없는 줄(랭크 변동)은 무채색 바탕으로 간다. */
   background: var(--kind, var(--kind-none));
   color: var(--kind-ink);

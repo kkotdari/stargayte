@@ -1838,10 +1838,22 @@ const TEMPLATES: Record<string, Tpl> = {
         const def = aIsRaider ? sideB : sideA;
         const atkHeld = hold === (aIsRaider ? "a" : "b");
         const defHeld = hold === (aIsRaider ? "b" : "a");
+        /* '헬프'는 남을 도우러 간 사람에게만 쓴다(지적: "곰세마리는 자기 자신이 공격당했으니
+           헬프를 간 게 아님" — "정구가 곰세마리의 기지를 치고 Rex·곰세마리가 헬프에 나섰고"로
+           나왔다). 막은 무리에 집주인이 끼어 있으면 그건 제 집을 지킨 것이지 도우러 온 것이
+           아니다. 팀으로 뭉뚱그린 문장도 마찬가지다 — 그 팀이 곧 집주인의 편이라 집주인이
+           그 안에 들어 있다. 막았다·수비했다는 집주인에게도 도우러 온 사람에게도 참이라,
+           가릴 수 없을 때는 그쪽으로 물러선다. */
+        const defNames = aIsRaider ? pb : pa;
+        const helpOnly = !lumped && !!c.who2 && !defNames.includes(c.who2);
         // 도우러 온 쪽이 막아 냈으면 "…지만"이 아니라 "…" 로 이어야 앞뒤가 맞는다.
         const joined = atkHeld
-          ? c.pick(["헬프에 나섰지만", "막아섰지만", "수비에 나섰지만"])
-          : c.pick(["헬프에 나섰고", "막아섰고", "수비에 나섰고"]);
+          ? c.pick(helpOnly
+            ? ["헬프에 나섰지만", "막아섰지만", "수비에 나섰지만"]
+            : ["막아섰지만", "수비에 나섰지만", "맞섰지만"])
+          : c.pick(helpOnly
+            ? ["헬프에 나섰고", "막아섰고", "수비에 나섰고"]
+            : ["막아섰고", "수비에 나섰고", "맞섰고"]);
         const tail = atkHeld
           ? c.pick([`${ga(atk)} 전투를 이김`, `${ga(atk)} 싸움을 가져감`, `${ga(atk)} 우세했음`])
           : defHeld

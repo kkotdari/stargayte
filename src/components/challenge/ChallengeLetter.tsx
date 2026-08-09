@@ -224,6 +224,16 @@ export function ChallengeLetter({
      요청자 본인이 제 공유 카드를 열었을 때 자기 닉네임이 "OO 너 나와!"로 뜬다(지적). */
   const names = toSide.map((m) => m.nickname);
   const title = names.length > 0 ? `${names.join(", ")} 너 나와!` : "너 나와!";
+  /* 구분선은 이제 제 몫의 칸 하나다(요청: "구분선도 보더가 아닌 하나의 div로 처리해서
+     위아래 gap이 들어가게") — 예전에는 아래 토막의 border-top이었고, 그러면 선 위쪽은
+     본문의 gap이 벌려 주는데 선 아래쪽은 그 토막이 padding-top을 따로 들고 있어야 했다.
+     한 선을 두 규칙이 나눠 맡으니 값이 어긋날 때마다 선이 위나 아래로 딸려 붙었다.
+     선을 칸으로 세우면 위아래 모두 같은 gap이 벌려 줘서 저절로 한가운데에 선다.
+
+     선을 그을 자리를 여기서 미리 세는 이유: 아래 토막들은 비면 통째로 null을 뱉는데
+     (PartySide·ChallengeReplies), 그때 선만 남으면 편지지 끝에 뜬금없는 줄이 그어진다. */
+  const hasReplies = challenge.targets.some((t) => t.responseMessage.trim() !== "");
+  const rule = <div className="scr-challenge-rule" aria-hidden />;
 
   return (
     <>
@@ -238,12 +248,15 @@ export function ChallengeLetter({
         <PartySide tag="From." members={fromSide} highlight={highlight} />
         <ChallengeWords from={challenge.createdBy.nickname} message={challenge.message} />
         {schedule}
-        {/* 답한 말이 그 사람 아바타보다 위다(요청) — 부른 쪽이 '한마디 → 아바타' 차례로
-            읽히는데 답한 쪽만 '아바타 → 한마디'라 두 편의 차례가 서로 뒤집혀 있었다. */}
+        {/* 지목된 쪽 토막이 여기서 열린다 — 그 첫 줄은 답한 말이고(요청: 부른 쪽이
+            '한마디 → 아바타'로 읽히는데 답한 쪽만 뒤집혀 있었다), 그 뒤가 아바타다.
+            선은 토막 하나에 한 번만 긋는다. */}
+        {(hasReplies || toSide.length > 0) && rule}
         <ChallengeReplies targets={challenge.targets} />
         <PartySide tag="To." members={toSide} highlight={highlight} />
         {foot}
         {/* 맨 아랫줄 — 이 건이 어떻게 됐나(요청). foot(인박스의 오류 줄 등)보다도 아래다. */}
+        {rule}
         <ChallengeOutcome challenge={challenge} />
       </div>
     </>

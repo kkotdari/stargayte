@@ -184,6 +184,64 @@ function arrowGeom(a: MinimapArrow, w: number, h: number) {
   const hy = ty / tl;
   const bx = x2 - hx * headLen;
   const by = y2 - hy * headLen;
+  /* 기둥 위의 한 점을 '촉에서 얼마나 뒤'로 재서 집는다.
+
+     여태 이 계산은 촉의 접선(hx,hy)을 따라 곧게 되짚었다 — 곧은 화살표(공중·워프)에서는
+     그게 곧 기둥이지만, 지상 화살표는 휘어 있어서(위 Q 제어점) 되짚은 직선이 곡선에서
+     점점 벌어진다. 많이 휜 화살표일수록 이름표가 선에서 멀리 떨어져 앉았다(지적 스크린샷:
+     태섭 본진으로 모이는 파란 화살표들의 "저글링/질럿/마린"이 선 밖에 떠 있다).
+
+     그래서 직선이 아니라 곡선 자신을 되짚는다. 2차 베지에는 닫힌 호길이 식이 없으므로
+     끝에서부터 잘게 나눠 재고, 재던 거리를 넘어서는 토막 안에서 선형으로 끊는다.
+     스물네 토막이면 이 지도 크기(128타일)에서 오차가 눈에 안 띈다(실측). */
+  const at = (t: number): [number, number] => {
+    const u = 1 - t;
+    return [u * u * x1 + 2 * u * t * cx0 + t * t * bx, u * u * y1 + 2 * u * t * cy0 + t * t * by];
+  };
+  const STEPS = 24;
+  /** 촉 밑동에서 기둥을 따라 dist(타일)만큼 물러선 점. 기둥보다 멀면 출발점에서 멈춘다. */
+  const backOnCurve = (dist: number): [number, number] => {
+    let prev = at(1);
+    let acc = 0;
+    for (let i = STEPS - 1; i >= 0; i--) {
+      const p = at(i / STEPS);
+      const seg = Math.hypot(p[0] - prev[0], p[1] - prev[1]);
+      if (acc + seg >= dist) {
+        const k = seg > 0 ? (dist - acc) / seg : 0;
+        return [prev[0] + (p[0] - prev[0]) * k, prev[1] + (p[1] - prev[1]) * k];
+      }
+      acc += seg;
+      prev = p;
+    }
+    return prev;
+  };
+  /** 기둥의 실제 길이(호길이) — 이름표를 얼마나 물릴 수 있나가 이 값에 매인다. 현(직선
+   *  거리)으로 재던 값은 휜 화살표에서 실제보다 짧아, 물릴 자리가 있는데도 안 물렸다. */
+  const shaft = (() => {
+    let acc = 0;
+    let prev = at(0);
+    for (let i = 1; i <= STEPS; i++) {
+      const p = at(i / STEPS);
+      acc += Math.hypot(p[0] - prev[0], p[1] - prev[1]);
+      prev = p;
+    }
+    return acc;
+  })();
+  /** 그 점에서 '출발점 쪽'을 가리키는 접선 — 겹친 이름표를 밀어낼 방향이다. 곡선에서는
+   *  촉의 접선과 다르므로, 미는 방향도 그 자리의 기울기를 따라야 선 위에 남는다. */
+  const slideDir = (dist: number): [number, number] => {
+    const p = backOnCurve(dist);
+    const q = backOnCurve(Math.min(shaft, dist + 4));
+    const dxx = q[0] - p[0];
+    const dyy = q[1] - p[1];
+    const l = Math.hypot(dxx, dyy);
+    return l > 0 ? [dxx / l, dyy / l] : [-hx, -hy];
+  };
+  /** 이름표가 촉에서 물러설 거리 — label과 slide가 같은 값을 봐야 둘이 어긋나지 않는다. */
+  const labelBack = Math.min(
+    (a.converge ? LABEL_BACK_CONVERGE : LABEL_BACK) + (a.converge ? LABEL_BACK_STEP * (a.rank ?? 0) : 0),
+    shaft / 2,
+  );
   return {
     // 기둥은 화살촉 끝(x2,y2)이 아니라 촉의 밑동(bx,by)에서 멈춘다(지적: "화살촉 밑으로
     // 기둥 끝이 보임") — 촉 전체를 기둥이 관통해 그리면, 촉이 뾰족해지는 자리에서 굵은
@@ -197,10 +255,7 @@ function arrowGeom(a: MinimapArrow, w: number, h: number) {
     from: [x1, y1] as [number, number],
     /** 화살표 '목' — 촉 바로 뒤 기둥 위(요청). 촉에 붙는 이모지(tip)와 달리 목표를 덮지
      *  않아서, 그 화살표 자체의 성질(아군을 도우러 간 길이라는 표시)을 얹기에 맞다. */
-    neck: (() => {
-      const back = Math.min(NECK_BACK, Math.hypot(bx - x1, by - y1) / 2);
-      return [bx - hx * back, by - hy * back] as [number, number];
-    })(),
+    neck: backOnCurve(Math.min(NECK_BACK, shaft / 2)),
     /* 유닛 이름표 자리 — 촉의 밑동에서 기둥 쪽으로 조금 물러선 점(요청). 짧은 화살표에서는
        그만큼 물러설 기둥이 없어 출발점을 지나쳐 버리므로, 기둥 길이의 절반을 넘지 않게
        묶는다. */
@@ -211,20 +266,17 @@ function arrowGeom(a: MinimapArrow, w: number, h: number) {
          더해, 아예 다른 높이에 앉아 글자가 안 포갠다.
          여기서 나온 자리는 어림값이다 — 글자가 실제로 얼마나 넓은지는 그려 보기 전엔
          모르므로, 그래도 겹치면 그린 뒤 실측해서 출발 쪽으로 밀어낸다(아래 labelSlide). */
-      const stagger = a.converge ? LABEL_BACK_STEP * (a.rank ?? 0) : 0;
-      const back = Math.min((a.converge ? LABEL_BACK_CONVERGE : LABEL_BACK) + stagger,
-        Math.hypot(bx - x1, by - y1) / 2);
-      return [bx - hx * back, by - hy * back] as [number, number];
+      return backOnCurve(labelBack);
     })(),
     /** 이름표를 더 밀어낼 수 있는 방향(촉에서 출발점 쪽, 타일 단위 단위벡터)과 남은 거리
      *  (타일) — 그린 뒤 글자끼리 겹쳤을 때 얼마나 물릴 수 있는지를 실측 보정이 여기서 읽는다.
      *  기둥의 LABEL_SLIDE_MAX까지만 물러선다: 그보다 뒤는 출발한 사람 아바타·이름표 자리다. */
     slide: (() => {
-      const shaft = Math.hypot(bx - x1, by - y1);
-      const stagger = a.converge ? LABEL_BACK_STEP * (a.rank ?? 0) : 0;
-      const back = Math.min((a.converge ? LABEL_BACK_CONVERGE : LABEL_BACK) + stagger, shaft / 2);
+      const back = labelBack;
       return {
-        dir: [-hx, -hy] as [number, number],
+        /* 미는 방향은 촉의 접선이 아니라 이름표가 앉은 자리의 기울기다 — 휜 화살표에서
+           촉 접선으로 밀면 밀수록 선에서 멀어진다(이름표를 곡선 위로 옮긴 것과 같은 이유). */
+        dir: slideDir(back),
         room: Math.max(0, shaft * LABEL_SLIDE_MAX - back),
         /* 촉 쪽으로도 조금은 갈 수 있다 — 자막이 이름표 바로 아래에 앉으면 뒤로는 자막을
            지나칠 만큼 기둥이 없고(실측: 76px 필요, 58px뿐), 앞으로 열댓 px이면 벗어난다.
