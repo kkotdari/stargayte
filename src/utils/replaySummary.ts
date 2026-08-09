@@ -3227,18 +3227,29 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
      표시"). 병력은 커맨드가 아니라 실제로 나올 수 있었던 수로 세고(producedFrames), 건물은
      방어탑·생산건물·본진에 저마다 몫을 준다 — 본진은 첫 채가 buildingFrames에 없으므로
      하나를 더한다.
-     리플레이에는 죽음이 없어 '지금 살아 있는 병력'은 알 수 없다. 그래서 이 값은 정확히는
-     '여기까지 쌓아 올린 것'이고, 화면에서도 절대 수치가 아니라 같은 시각의 적정치에 견준
-     상태로만 읽힌다(색). */
+     리플레이에는 죽음이 없다 — 그래서 처음부터 다 더하면 그 값은 한 번도 안 줄어드는
+     '누적'이 된다(지적: "죽었는지 살았는지 파괴됐는지 모르니까 그 시점만 계산해야 할 듯").
+     전멸한 사람의 막대가 그대로 길게 남아 있으면 그건 전투력이 아니라 지금까지 뽑은 총량이다.
+
+     병력은 창(POWER_WINDOW_SEC)으로 자른다 — 그 시각 직전 얼마 동안 나온 것만 센다.
+     여전히 죽음을 아는 건 아니지만, 창이 짧으면 '그 무렵 손에 있던 수'에 훨씬 가깝다
+     (replayTactics의 CONCURRENT_WINDOW_SEC이 같은 이유로 쓰는 방법이다). 오래전에 뽑아
+     이미 사라졌을 것들이 빠지므로, 크게 진 싸움 뒤에는 막대가 실제로 짧아진다. */
   const powerAt = (raw: string, at: number): number => {
     const pl = replay.players.find((x: ParsedReplayPlayer) => x.rawName === raw);
     const sg = pl?.signals;
     if (!sg) return 0;
+    const from = at - POWER_WINDOW_SEC / SECONDS_PER_FRAME;
     let troops = 0;
     for (const unit of Object.keys(sg.unitFrames)) {
       if (POWER_PEACE.has(unit)) continue;
-      troops += producedFrames(sg, unit, totalFrames).filter((f) => f < at).length;
+      troops += producedFrames(sg, unit, totalFrames).filter((f) => f < at && f >= from).length;
     }
+    /* 건물만은 창을 안 씌우고 그때까지 세운 것을 다 센다. 건물도 부서지는 줄은 알지만,
+       창을 씌우면 값의 뜻이 '서 있는 기반'에서 '최근에 지은 속도'로 바뀐다 — 3분 전에 편
+       멀티와 지어 둔 게이트가 통째로 0이 되어, 자리를 다 잡고 병력만 뽑는 사람이 아무것도
+       없는 사람으로 읽힌다. 병력과 달리 건물은 한 판에 몇 채 안 부서지므로, 누적이 실제와
+       더 가깝다. */
     const built = (names: readonly string[]) => names.reduce(
       (n, b) => n + (sg.buildingFrames[b] ?? []).filter((f) => f < at).length, 0,
     );
@@ -4502,6 +4513,13 @@ const SCAN_BASE_TILES = 18;
    대신하는 병력만큼 얹는다 — 방어탑은 병력 둘 몫(replayTactics의 GREEDY_DEF_WORTH와 같은
    생각), 생산건물도 둘 몫(그 자리에서 병력이 계속 나온다), 본진은 셋 몫(그 위에 나머지가
    선다). 첫 본진은 지은 것이 아니라 처음부터 서 있어 buildingFrames에 없으므로 하나를 더한다. */
+/* 병력을 셀 창(초) — 이 창 안에 나온 것만 '그 무렵 손에 있던 것'으로 본다.
+   replayTactics의 CONCURRENT_WINDOW_SEC(150)과 같은 값이다: 거기서 캐리어·배틀크루저를
+   '한때 몇 기나 함께 띄웠나'로 셀 때 쓴 창이고, 여기서 묻는 것도 같은 물음이라 잣대가
+   둘로 갈릴 이유가 없다. 가장 오래 걸리는 유닛의 생산시간(약 2분)보다 살짝 넉넉해,
+   한 창 안에서 뽑은 것은 대체로 아직 함께 살아 있다.
+   (건물은 이 창을 안 쓴다 — 아래 주석 참고.) */
+const POWER_WINDOW_SEC = 150;
 const POWER_DEF_WORTH = 2;
 const POWER_PROD_WORTH = 2;
 const POWER_BASE_WORTH = 3;

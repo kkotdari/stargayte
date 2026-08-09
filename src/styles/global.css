@@ -1593,31 +1593,72 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
     border-right: 1px solid var(--line-soft);
   }
   .scr-header::-webkit-scrollbar { display: none; }
+  /* 기둥에 세로로 서는 차례(요청, 손그림):
+
+       로고
+       (앱 설치 ·) 테마
+            ↕ 남는 자리
+       메뉴1 / 메뉴2 / …
+            ↕ 남는 자리
+       프로필
+
+     세 덩어리가 위·가운데·아래로 나뉜다. 위는 이 앱이 무엇인가(로고)와 보는 방식(테마)
+     이고, 가운데가 실제로 오가는 메뉴이며, 아래가 나 자신이다. 메뉴가 기둥 한가운데
+     있으면 눈이 화면 세로 중앙에서 가장 적게 움직인다 — 맨 위나 맨 아래에 몰아 두면
+     본문을 보다가 메뉴로 갈 때마다 시선이 끝까지 갔다 와야 한다.
+
+     칸을 자르는 방법은 auto 마진 하나다. 메뉴에만 위아래 auto를 주면 남는 자리가 정확히
+     반씩 갈려 메뉴가 가운데 서고, 그 위아래 덩어리는 저절로 양 끝에 붙는다. 덩어리마다
+     spacer를 넣거나 셋을 각각 auto로 밀면 자리가 1/3씩 나뉘어 가운데가 안 맞는다. */
   .scr-header-inner {
     max-width: none; margin: 0; padding: 24px 16px 20px;
-    flex-direction: column; align-items: stretch; flex-wrap: nowrap; gap: 20px;
-    /* 내 계정 묶음을 기둥 바닥으로 내리려면(margin-top:auto) 기둥 높이를 다 받아야 한다. */
+    flex-direction: column; flex-wrap: nowrap; gap: 4px;
+    /* 칸을 글자 폭에 맞춘다(요청: "호버/클릭 영역 글자수에 맞춰서 줄이고") — stretch면
+       버튼이 기둥 폭을 통째로 먹어, 메뉴 낱말에서 한참 떨어진 빈자리를 눌러도 눌린다.
+       누를 수 있는 자리와 눌러야 할 것처럼 보이는 자리가 어긋나면 그 자체가 잘못이다. */
+    align-items: flex-start;
+    /* auto 마진이 나눌 남는 자리가 있으려면 기둥 높이를 다 받아야 한다. */
     min-height: 100%;
   }
-  /* 가로 띠에서 로고를 중심선에 맞추려고 걸어 둔 보정(min-width:641px의 translateY)은
-     여기서 뜻이 없다 — 옆에 나란히 설 것이 없으니 맞출 중심선도 없다. */
-  .scr-brand { justify-content: flex-start; transform: none; }
+  /* 가로 띠에서 로고를 중심선에 맞추려고 걸어 둔 보정(translateY)은 여기서 뜻이 없다 —
+     옆에 나란히 설 것이 없으니 맞출 중심선도 없다. */
+  .scr-brand { justify-content: flex-start; transform: none; margin-bottom: 4px; }
   .scr-brand-logo-img { height: 22px; }
-  /* 메뉴는 세로로 쌓인다. 가로 띠일 때의 flex:1 + 가로 스크롤은 남는 폭을 나눠 갖기 위한
-     것이었는데, 세로에서는 그 값이 메뉴를 기둥 아래까지 늘려 버린다. */
-  .scr-nav { flex-direction: column; flex: 0 0 auto; gap: 2px; overflow: visible; }
-  .scr-nav-tab { justify-content: flex-start; padding: 9px 10px; border-radius: 6px; }
-  /* 지금 보고 있는 화면 — 가로 띠에서는 글자 굵기만으로 갈렸지만(넷이 나란히 서 있어
-     비교가 쉬웠다) 세로로 쌓이면 그 차이가 눈에 잘 안 걸린다. 옅은 판을 한 겹 깐다. */
-  .scr-nav-desktop .scr-nav-tab-active { background: rgba(var(--overlay-rgb), 0.10); }
-  /* 앱 설치 · 테마 · 내 계정 — 기둥 바닥에 모은다. 가로 띠일 때는 오른쪽 끝으로 밀어
-     두던(margin-left:auto) 묶음이라, 세로에서는 같은 뜻이 '아래 끝'이다. */
-  .scr-user {
-    flex-direction: column; align-items: stretch; gap: 2px;
-    margin-left: 0; margin-top: auto;
+  /* .scr-user는 가로 띠에서 [앱 설치 · 테마 · 프로필]을 오른쪽 끝에 함께 밀어 두려고
+     묶어 둔 상자다. 기둥에서는 이 셋이 위(테마)와 아래(프로필)로 갈라져야 하는데, 묶음이
+     한 덩어리로 남아 있으면 그럴 수가 없다. display:contents로 상자만 걷어 내면 세
+     버튼이 기둥의 직계 자식이 되어 저마다 제 자리(order)를 갖는다. 상자는 선택자
+     트리에는 그대로 남아 있어 아래 .scr-user … 규칙들은 계속 걸린다. */
+  .scr-user { display: contents; }
+  /* 칸의 좌우 여백만큼 밖으로 물린다 — 그래야 '글자'의 왼쪽이 로고의 왼쪽과 한 줄에
+     선다. 안 물리면 누를 자리를 만드는 padding(10px) 때문에 로고만 혼자 왼쪽으로 튀어
+     나온 것처럼 보인다. 배경(호버·활성)은 그만큼 글자보다 넓게 깔리는데, 그건 세로
+     메뉴에서 흔한 모양이고 눌리는 자리가 글자보다 조금 넉넉한 편이 낫다. */
+  .scr-user .scr-header-text-btn {
+    order: 1; text-align: left; padding: 7px 10px; border-radius: 6px; margin-left: -10px;
   }
-  .scr-user .scr-header-text-btn { text-align: left; padding: 9px 10px; }
-  .scr-user-chip { justify-content: flex-start; }
+  /* 메뉴는 세로로 쌓이고 기둥 한가운데에 선다. 가로 띠일 때의 flex:1 + 가로 스크롤은 남는
+     폭을 나눠 갖기 위한 것이었는데, 세로에서는 그 값이 메뉴를 기둥 아래까지 늘려 버린다. */
+  .scr-nav {
+    order: 2; flex-direction: column; flex: 0 0 auto; gap: 2px; overflow: visible;
+    align-items: flex-start; margin-top: auto; margin-bottom: auto;
+  }
+  .scr-nav-tab { justify-content: flex-start; padding: 9px 10px; border-radius: 6px; margin-left: -10px; }
+  /* 지금 보고 있는 화면 — 가로 띠에서는 글자 굵기만으로 갈렸지만(넷이 나란히 서 있어
+     비교가 쉬웠다) 세로로 쌓이면 그 차이가 눈에 잘 안 걸린다. 옅은 판을 한 겹 깐다.
+     판이 글자 폭이라(align-items:flex-start) 어느 낱말이 켜져 있는지가 그대로 보인다. */
+  .scr-nav-desktop .scr-nav-tab-active { background: rgba(var(--overlay-rgb), 0.10); }
+  /* 누를 수 있는 자리를 눈에 보이게 — 기둥에서는 칸이 글자 폭이라 배경 한 겹이 곧 그
+     경계다. 가로 띠에서는 글자색만 밝혔는데, 거기서는 칸이 서로 붙어 있어 경계를 따로
+     그릴 필요가 없었다. */
+  /* 칩은 왼쪽 패딩이 4px이라(프사가 붙는 자리) 그만큼만 물린다 — 프사의 왼쪽이 로고·
+     메뉴 글자와 한 줄에 선다. */
+  .scr-user-chip { order: 3; justify-content: flex-start; border-radius: 6px; margin-left: -4px; }
+}
+@media (min-width: 1160px) and (hover: hover) {
+  .scr-nav-desktop .scr-nav-tab:hover,
+  .scr-header-inner .scr-header-text-btn:hover,
+  .scr-user-chip:hover { background: rgba(var(--overlay-rgb), 0.06); }
   /* 모달은 뷰포트가 아니라 본문의 한가운데에 뜬다 — 뷰포트 기준으로 두면 기둥 폭의
      절반(112px)만큼 왼쪽으로 치우쳐, 열 때마다 화면이 한쪽으로 쏠린 것처럼 보인다. */
   .scr-modal { left: calc(50% + var(--rail-w) / 2); }
