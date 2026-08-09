@@ -629,13 +629,17 @@ export default function ActivityScreen() {
   /* 고른 사람들을 어떻게 읽을 것인가(요청: "선택된 사람들이 모두 포함된 경우 / 선택된
      사람만 있는 경우 둘로 나누고 싶다").
 
-       all  — 모두 포함 : 고른 사람이 다 나온 판이면 된다. 다른 사람이 더 껴 있어도 걸린다.
-       only — 이 사람들만 : 그 판에 나온 사람이 고른 사람들뿐이어야 한다.
+       all  — 포함 : 고른 사람이 다 나온 판이면 된다. 다른 사람이 더 껴 있어도 걸린다.
+       only — 일치 : 그 판에 나온 사람이 고른 사람들과 정확히 같아야 한다.
 
-     둘의 차이가 드러나는 자리는 팀전이다. "정구 · 태섭"으로 훑을 때 모두 포함은 둘이 낀
-     4:4까지 다 걸리지만, 이 사람들만은 딱 그 둘이 붙은 판만 남는다. 사람을 하나만 골랐을
-     때는 이 사람들만이 사실상 아무것도 안 남기므로(혼자 하는 경기는 없다) 그때는 값이
-     있어도 모두 포함과 같게 둔다 — 아래 passesFilter 참고. */
+     둘의 차이가 드러나는 자리는 팀전이다. "정구 · 태섭"으로 훑을 때 포함은 둘이 낀 4:4까지
+     다 걸리지만, 일치는 딱 그 둘이 붙은 판만 남는다.
+
+     사람이 하나뿐일 때도 일치는 일치 그대로다(요청: "한 명에도 그대로 적용해줘, 모르게
+     바뀌면 오히려 헷갈릴 듯"). 한때 그때만 조용히 포함으로 읽었는데, 고른 값과 실제로
+     걸리는 규칙이 어긋나면 왜 이게 나오는지를 화면 어디서도 알 수가 없다. 결과가 비면
+     비는 것이 맞는 답이다 — 실제로 늘 비는 것도 아니다: 상대가 컴퓨터인 판은 사람이
+     그 하나뿐이라 일치로 걸린다. */
   const [userMode, setUserMode] = useState<"all" | "only">("all");
 
   /* 목록 한 줄을 눌러 펼친다 — 펼침은 한 번에 하나다. 여러 줄을 동시에 펴 두면 목록의
@@ -1030,10 +1034,8 @@ export default function ActivityScreen() {
         if (kind !== kindFilter) return false;
       }
       if (searchTerms.length > 0) {
-        /* '이 사람들만'은 사람이 둘 이상일 때만 뜻이 있다 — 하나만 골라 놓고 그 사람만 나온
-           판을 찾으면 답은 늘 없다(혼자 하는 경기가 없으니까). 그때는 조용히 모두 포함으로
-           읽는다: 고른 사람이 하나뿐인데 목록이 텅 비면 그건 필터가 고장 난 것으로 읽힌다. */
-        const onlyThese = userMode === "only" && searchTerms.length >= 2;
+        // 고른 사람 수와 무관하게 고른 그대로 건다(요청) — 조건이 몰래 바뀌지 않는다.
+        const onlyThese = userMode === "only";
         if (item.kind === "gameResult") {
           const slots = [...item.gameResult.team1, ...item.gameResult.team2];
           if (!searchTerms.every((term) => slots.some((slot) => slotMatchesTerm(slot, term)))) return false;
@@ -1593,20 +1595,22 @@ export default function ActivityScreen() {
         onSearchChange={setSearch}
         searchPlaceholder="유저 입력 또는 @로 목록 띄우기"
         suggestions={suggestions}
-        /* 고른 사람들을 어떻게 읽을지 — 검색창 앞에 선다(요청). 낱말은 짧게 둘로만 갈랐다:
-           "모두 포함"은 고른 사람이 다 나왔으면 되고, "이 사람들만"은 그 사람들 말고는
-           아무도 없어야 한다. */
+        /* 고른 사람들을 어떻게 읽을지 — 검색창 앞에 선다(요청). 낱말은 두 자씩이다(요청:
+           "옵션명은 일치/포함으로") — 검색창 앞의 좁은 자리라 짧을수록 좋고, 이 둘은
+           집합을 다루는 말로 이미 뜻이 굳어 있어 길게 풀어 쓸 이유가 없다.
+           기본은 포함이다: 덜 좁히는 쪽이 기본이라야 처음 들어온 사람이 뭔가 사라진 목록을
+           보지 않는다. */
         searchLeading={(
           <Select
             className="scr-user-mode-select"
             size="sm"
             value={userMode}
             options={[
-              { value: "all", label: "모두 포함" },
-              { value: "only", label: "이 사람들만" },
+              { value: "all", label: "포함" },
+              { value: "only", label: "일치" },
             ]}
             onChange={(v) => setUserMode(v === "only" ? "only" : "all")}
-            minDropWidth={128}
+            minDropWidth={92}
           />
         )}
         filterPanel={
