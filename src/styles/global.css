@@ -3494,12 +3494,15 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
    띄우는 드롭다운(.scr-cselect-drop)에도 그대로 붙이므로, 클래스 하나만 쓰면 여기서 준
    width:auto가 드롭다운까지 오그라뜨려 옵션을 못 누른다(실측: 클릭이 뒤의 유형 알약에
    가로채였다). */
-.scr-cselect.scr-user-mode-select { flex: 0 0 auto; width: auto; }
+/* 높이는 옆 검색칸을 따라간다(지적: "인풋칸이랑 왼쪽 필터 높이 맞추기") — 숫자를 베껴
+   적지 않고 stretch로 줄 높이를 받는다. 줄 높이는 검색칸(min-height 30px)이 정하므로,
+   나중에 그쪽이 바뀌어도 여기가 저절로 따라간다. 베껴 두면 그때 한쪽만 남는다. */
+.scr-cselect.scr-user-mode-select { flex: 0 0 auto; width: auto; align-self: stretch; }
 /* 요소 자체를 한 급 줄인다(요청) — 이건 값을 적는 폼 칸이 아니라 검색어를 어떻게 읽을지
    고르는 곁가지라, 옆의 검색창과 같은 키로 서 있으면 그것도 입력칸처럼 보인다.
    공용 sm(9px 패딩 · body 글자 · field-h-sm 높이)에서 한 단계 더 내린다. */
 .scr-cselect.scr-user-mode-select .scr-cselect-trigger {
-  width: auto; gap: 3px; padding: 3px 6px; min-height: 0;
+  width: auto; height: 100%; gap: 3px; padding: 3px 6px; min-height: 0;
   font-size: var(--fs-micro); border-radius: var(--radius-sm);
 }
 .scr-cselect.scr-user-mode-select .scr-cselect-caret { width: 12px; height: 12px; }
