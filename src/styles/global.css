@@ -6576,7 +6576,9 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
    둘 다 흐름 안이다 — 한때 From.만 좌상단에 절대배치했는데, 편지지 본문이 세로 가운데로
    모이면서 그 자리가 본문과 겹쳤다(지적: 공유 화면 레이아웃 깨짐 — From.이 제목과 한마디
    위에 포개져 글자가 서로 뭉갰다). 모바일과 활동 카드는 이미 같은 이유로 흐름에 있었다. */
-.scr-challenge-party-from { align-self: flex-start; margin-bottom: 6px; }
+/* 아래 덧여백(6px)은 걷었다(지적) — 칸 사이 gap이 이미 벌려 주는데 거기에 겹쳐 쌓여
+   From. 무리와 한마디 사이만 유독 넓었다. */
+.scr-challenge-party-from { align-self: flex-start; }
 .scr-challenge-party-to { align-self: flex-end; margin: 10px 4px 0 0; }
 .scr-challenge-party-tag { font-size: var(--fs-caption); font-weight: 800; color: var(--dim); line-height: 1; }
 .scr-challenge-party-av { object-fit: cover; }
@@ -6629,7 +6631,10 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 /* 편지지 본문(제목·일자·시간·한마디) — 요소 간 줄간격을 크게(요청). */
-.scr-challenge-letter .scr-challenge-inbox-body { flex: 0 1 auto; gap: 20px; }
+/* 칸 사이 20 → 12px(지적: 여백이 과함). 편지지는 토막마다 구분선이 따로 서 있어서
+   빈자리까지 넓게 두면 한 통이 화면 두 장으로 늘어난다 — 선이 이미 토막을 가르므로
+   여백은 선이 숨 쉴 만큼만 있으면 된다. */
+.scr-challenge-letter .scr-challenge-inbox-body { flex: 0 1 auto; gap: 12px; }
 /* ── 활동·너 나와 목록 카드 안의 편지지(요청: "카드만의 디자인을 걷어내고 편지지 양식을
    카드에 보여주는걸로", "압축없이 똑같이") ──────────────────────────────────────
    모달이 아니라 카드 안이라 유리 패널도 최소 높이도 없다. From.을 좌상단에 절대 배치하는
@@ -6699,18 +6704,33 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
    폭만큼, 맺음말은 낱말 폭만큼 짧은 토막이 된다(실측 스크린샷: "준비중" 글자 길이의 선).
    선을 그을 칸은 줄 전체로 늘리고, 안쪽 내용만 제자리로 다시 민다. */
 .scr-challenge-inbox-body > .scr-challenge-party-to {
+  /* 오른쪽 끝에 딱 붙인다(지적: "To 아바타쪽은 오른쪽에 정렬되는 게 낫지") — 4px 여백을
+     두었더니 아바타가 제 구분선 끝보다 안쪽에 서서, 오른쪽 정렬이 아니라 어중간하게
+     떠 있는 것으로 보였다. 선의 오른쪽 끝과 같은 자리에 세운다. */
   align-self: stretch; justify-content: flex-end;
-  margin-right: 0; padding-right: 4px;
+  margin-right: 0; padding-right: 0;
 }
 .scr-challenge-inbox-body > .scr-challenge-outcome { align-self: stretch; }
 /* 좌우로 물러난 선 — 편지지 안쪽 여백(20px)에 맞춘다. */
 .scr-challenge-inbox-body > .scr-challenge-party-to,
+.scr-challenge-inbox-body > .scr-challenge-words-reply,
 .scr-challenge-inbox-body > .scr-challenge-outcome {
   margin-inline: 20px;
 }
 .scr-challenge-letter-inline .scr-challenge-inbox-body > .scr-challenge-party-to,
+.scr-challenge-letter-inline .scr-challenge-inbox-body > .scr-challenge-words-reply,
 .scr-challenge-letter-inline .scr-challenge-inbox-body > .scr-challenge-outcome {
   margin-inline: 12px;
+}
+/* 답한 말은 지목된 쪽 토막의 첫 줄이다 — 그 사람 아바타 위에 놓이므로(요청) 토막을 여는
+   선도 이 줄 위로 올라간다. 선을 To. 위에 그대로 두면 답한 말만 위쪽 토막(부른 쪽)에
+   딸려 붙어, 지목된 사람이 한 말이 부른 사람 이야기처럼 읽힌다.
+   두 줄이 잇달아 서므로 아래쪽 선은 걷는다 — 안 그러면 한 토막 안에 선이 두 겹이다. */
+.scr-challenge-inbox-body > .scr-challenge-words-reply {
+  border-top: 1px solid var(--line-hair); padding-top: 14px;
+}
+.scr-challenge-inbox-body > .scr-challenge-words-reply + .scr-challenge-party-to {
+  border-top: none; padding-top: 0;
 }
 
 /* ── 편지지 배경 사진(요청) ────────────────────────────────────────────────────
@@ -6922,7 +6942,9 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
   column-gap: 8px; row-gap: 2px; width: 100%;
 }
 /* 답한 말은 상태 줄에 딸린 목록이라 조금 작게, 상태 줄 바로 아래 붙인다. */
-.scr-challenge-words-reply { gap: 10px; margin-top: 6px; }
+/* 덧여백(6px)은 걷었다 — 답한 말이 To. 아바타 위로 올라오면서(요청) 위아래 모두 칸
+   사이 gap이 맡는 자리가 됐다. */
+.scr-challenge-words-reply { gap: 10px; }
 .scr-challenge-words-reply .scr-challenge-word-text { font-size: var(--fs-caption); }
 .scr-challenge-word-text {
   margin: 0; font-size: var(--fs-body); font-style: italic;
@@ -8552,6 +8574,11 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    케밥은 절대배치라 flex 항목이 아니고, 댓글은 이 로우 밖(카드 직계)이라 같은 값을
    따로 물려준다(아래 .scr-activity-card-comment). */
 .scr-activity-card { --card-row-gap: 24px; }
+/* 너 나와 카드만 칸 사이를 조인다(지적: 편지지 아래 여백이 과함) — 이 카드의 본문은 이미
+   구분선으로 토막이 갈린 편지지 한 통이라, 그 아래 댓글과의 사이까지 24px로 벌리면 카드가
+   끝난 자리가 어디인지보다 빈자리가 먼저 보인다. 다른 카드(게임결과·일정)는 본문이 표나
+   글 한 덩이라 그 여백이 제 몫을 한다. */
+.scr-activity-card:has(.scr-challenge-card) { --card-row-gap: 14px; }
 .scr-activity-game-result-body .scr-game-result-trow {
   position: static;
   display: flex; flex-direction: column; gap: var(--card-row-gap);

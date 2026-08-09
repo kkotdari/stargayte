@@ -238,8 +238,10 @@ export function ChallengeLetter({
         <PartySide tag="From." members={fromSide} highlight={highlight} />
         <ChallengeWords from={challenge.createdBy.nickname} message={challenge.message} />
         {schedule}
-        <PartySide tag="To." members={toSide} highlight={highlight} />
+        {/* 답한 말이 그 사람 아바타보다 위다(요청) — 부른 쪽이 '한마디 → 아바타' 차례로
+            읽히는데 답한 쪽만 '아바타 → 한마디'라 두 편의 차례가 서로 뒤집혀 있었다. */}
         <ChallengeReplies targets={challenge.targets} />
+        <PartySide tag="To." members={toSide} highlight={highlight} />
         {foot}
         {/* 맨 아랫줄 — 이 건이 어떻게 됐나(요청). foot(인박스의 오류 줄 등)보다도 아래다. */}
         <ChallengeOutcome challenge={challenge} />
