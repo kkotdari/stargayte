@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type CSSProperties, type ReactNode } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import RankingShiftCard, { RankingShiftMenu, RANK_SHIFT_TITLE } from "./RankingShiftCard";
 import LeagueMatchCard from "./LeagueMatchCard";
@@ -345,16 +345,43 @@ function rowPhoto(item: DisplayItem): string | null {
   return item.kind === "challenge" ? item.challenge.backdropUrl : null;
 }
 
-/* 경기 줄에서 닉네임을 자르는 길이(요청: "닉네임을 최대 4자까지 표시") — 한 판은 최대
-   여덟 명이라 이름을 그대로 다 적으면 어느 화면에서도 뒷사람부터 잘려 나간다. 넉 자면
-   "개포동불"·"미친마법"처럼 대부분의 닉네임이 누구인지 알아볼 만큼은 남는다.
-   말줄임표(…)는 안 붙인다 — 여덟 자리에 점 세 개씩이 더 붙으면 그 자체가 한 사람 몫이다.
-   자모가 아니라 글자 수로 센다(Array.from) — 이모지가 든 닉네임을 slice로 자르면 글자가
-   반 토막 나 깨진다. */
-const ROW_SLOT_NAME_MAX = 4;
-function shortName(name: string): string {
-  const cs = Array.from(name);
-  return cs.length <= ROW_SLOT_NAME_MAX ? name : cs.slice(0, ROW_SLOT_NAME_MAX).join("");
+/* 눌러도 더는 못 읽는 한계 — 이 아래로는 안 누르고 넘치는 만큼 잘라 낸다. 한글은 가로로
+   눌리면 획 사이가 먼저 무너져서, 0.5 아래로는 무엇을 해도 안 읽힌다(실측). */
+const FLAT_MIN = 0.5;
+
+/* 글자 크기는 그대로 두고 가로로만 눌러 한 줄에 맞춘다(요청: "닉네임 풀로 표시하되 길이가
+   안 넘치게 알맞게 스퀴징").
+
+   얼마나 누를지는 줄마다 다르다 — 1:1 두 사람이면 안 눌러도 남고, 여덟이 붙은 판은 많이
+   눌러야 들어간다. 고정 비율을 쓰면 둘 중 하나는 늘 틀린다: 짧은 줄은 이유 없이 납작하고
+   긴 줄은 그래도 넘친다. 그래서 그린 뒤 실측해서 그 줄에 맞는 비율을 준다.
+
+   재는 법: 안쪽을 width:max-content로 두어 자연스러운 폭(natural)을 얻고, 칸이 실제로 가진
+   폭(avail)과의 비를 그대로 쓴다. scaleX는 offsetWidth를 안 건드리므로 눌린 뒤에도 natural은
+   그대로다 — 그래서 눌렀다 폈다 하는 되먹임이 안 생긴다. 칸 폭은 ResizeObserver가 본다. */
+function FlatLine({ children }: { children: ReactNode }) {
+  const boxRef = useRef<HTMLSpanElement>(null);
+  const inRef = useRef<HTMLSpanElement>(null);
+  useLayoutEffect(() => {
+    const box = boxRef.current;
+    const inner = inRef.current;
+    if (!box || !inner) return;
+    const fit = () => {
+      const avail = box.clientWidth;
+      const natural = inner.offsetWidth;
+      const k = natural > 0 ? Math.min(1, avail / natural) : 1;
+      box.style.setProperty("--flat", Math.max(FLAT_MIN, Math.round(k * 1000) / 1000).toString());
+    };
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(box);
+    return () => ro.disconnect();
+  });
+  return (
+    <span className="scr-activity-row-flat" ref={boxRef}>
+      <span className="scr-activity-row-flat-in" ref={inRef}>{children}</span>
+    </span>
+  );
 }
 
 function playersOf(items: GameResultItem[], memberOf: (id: string) => Member | undefined): string[] {
@@ -1263,9 +1290,10 @@ export default function ActivityScreen() {
     );
   };
 
-  /** 그 편에 나온 사람들 — 이름은 넉 자까지만(요청). */
+  /** 그 편에 나온 사람들 — 이름은 자르지 않는다(요청: "닉네임 풀로 표시"). 길이는
+   *  자르기가 아니라 눌러서 맞춘다(위 FlatLine). */
   const sideNames = (slots: GameResultSlot[]): string[] =>
-    slots.map((s) => shortName(resolveSlotName(s, slots, memberOf)));
+    slots.map((s) => resolveSlotName(s, slots, memberOf));
 
   const rowDesc = (item: DisplayItem) => {
     if (item.kind === "challenge") {
@@ -1362,15 +1390,15 @@ export default function ActivityScreen() {
        길이는 줄이는 방향이 두 가지인데, 사람을 지우는 쪽보다 글자를 줄이는 쪽이 낫다. */
     const g = item.gameResult;
     return (
-      <>
-        <span className="scr-activity-row-name scr-activity-row-name-clip scr-activity-row-name-game">
+      <FlatLine>
+        <span className="scr-activity-row-name">
           <span className="scr-activity-row-name-main">{nameNodes(sideNames(g.team1))}</span>
         </span>
         <span className="scr-activity-row-arrow scr-activity-row-vs" aria-hidden>vs</span>
-        <span className="scr-activity-row-name scr-activity-row-name-clip scr-activity-row-name-game">
+        <span className="scr-activity-row-name">
           <span className="scr-activity-row-name-main">{nameNodes(sideNames(g.team2))}</span>
         </span>
-      </>
+      </FlatLine>
     );
   };
 
