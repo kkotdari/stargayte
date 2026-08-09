@@ -305,7 +305,15 @@ export default function MemberStatRow({
                             칸 이름에만 기대고 있었다. */}
                         <span className="scr-stat-points-unit"> 레이팅</span>
                       </button>
-                      {medals?.points && <span className="scr-stat-medal">{medals.points}</span>}
+                      {/* 메달 자리는 없는 줄에도 비워 둔다(지적: 메달이 구분선에 딱 붙는다).
+                          메달을 흐름 밖(절대배치)에 두면 값만 가운데에 서고 메달은 그 오른쪽으로
+                          삐져나가, 왼쪽엔 빈자리가 남고 오른쪽에선 구분선에 닿았다. 흐름으로
+                          들이면 [값+메달]이 한 덩어리로 가운데 서서 그 둘이 다 풀리는데, 이번엔
+                          메달이 있는 줄만 값이 왼쪽으로 밀려 줄마다 숫자가 어긋난다. 자리를 늘
+                          비워 두면 어느 줄이든 덩어리 폭이 같아 숫자가 한 줄로 선다. */}
+                      {medals?.points
+                        ? <span className="scr-stat-medal">{medals.points}</span>
+                        : <span className="scr-stat-medal scr-stat-medal-hole" aria-hidden />}
                     </span>
                   )}
                 </div>

@@ -2549,6 +2549,16 @@ html:not(.scr-light-theme) .scr-donut-band-label { fill: #fff; }
    (수와 6px)보다 두 배로 벌어진다(실측: 12px vs 6px). 기준(left:100%)도 값 글자가 아니라
    버튼의 오른쪽 끝이다. */
 .scr-stat-rank-val .scr-stat-medal { margin-left: 0; }
+/* 레이팅 줄의 메달만 흐름으로 돌린다(지적: "오른쪽은 메달 있는 경우 구분선과 딱 붙어") —
+   절대배치는 값의 가운데 정렬을 안 건드리려던 것이었는데, 그 대가로 메달이 줄기 밖으로
+   삐져나가 구분선에 닿았고 왼쪽에는 그만큼 빈자리가 남았다. 빈 자리(-hole)를 늘 함께
+   세우므로 덩어리 폭이 줄마다 같고, 그래서 흐름으로 들여도 숫자는 여전히 한 줄로 선다.
+   막대 위의 메달들은 그대로 절대배치다 — 거기는 트랙 안이라 삐져나갈 밖이 없다. */
+.scr-stat-rank-val { gap: 3px; }
+.scr-stat-rank-points .scr-stat-medal {
+  position: static; transform: none; margin-left: 0; flex: none;
+}
+.scr-stat-medal-hole { visibility: hidden; }
 /* (삭제) 랭크 줄기만 흐름으로 돌려 두던 예외 — 이제 모든 메달이 흐름이라 규칙 하나면 된다. */
 /* 트랙 배경을 채움 비율(--scr-value-fill, ValueBar.tsx 인라인 변수)까지는 진하게, 나머지는
    옅게 칠하는 그라디언트 한 장으로 그린다(요청: "배경 막대를 채우기 — 나머지는 반투명
@@ -2658,7 +2668,10 @@ html:not(.scr-light-theme) .scr-donut-band-label { fill: #fff; }
      빈자리였고, 줄기가 가운데 정렬이라 그게 좌우로 27px씩 갈려 앉았다(실측).
      이제는 가장 긴 줄("1,055 레이팅🥇" 83px)에 좌우 여백만 더한 폭이다. 줄기가 좁아진
      만큼은 옆의 막대 두 줄기가 가져간다. */
-  --scr-stat-rank-w: 106px;
+  /* 값(83) + 간격(3) + 메달 자리(14) = 100px에 좌우 여백을 더한 폭. 메달이 흐름으로
+     들어오면서 줄기가 실제로 담아야 할 것이 그만큼 늘었다 — 이보다 좁으면 메달이 다시
+     구분선 쪽으로 밀린다. */
+  --scr-stat-rank-w: 116px;
   --scr-stat-rank-pad: 6px;
   /* 셋 다 12px씩 줄었다(요청) — 칸 바깥 좌우 여백을 14 → 8px로 조인 만큼이다(아래
      .scr-stat-row > .scr-stat-build-cell). 속에 든 것(도넛·목록)은 그대로이고 그 둘레의
@@ -10129,7 +10142,7 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    z-index를 높여 다른 레이어에 덮이지 않게 한다. */
 .scr-minimap-mark-label-out {
   position: absolute; z-index: 5; transform: translate(-50%, -50%);
-  /* 이름줄 아래에 체력바가 한 줄 더 붙는다(요청) — 세로로 쌓되 가로 가운데를 맞춘다.
+  /* 이름줄 아래에 기세 눈금이 한 줄 더 붙는다(요청) — 세로로 쌓되 가로 가운데를 맞춘다.
      이름과 종족 배지는 그 안에서 한 줄(.scr-minimap-mark-line)로 나란히 선다. */
   display: inline-flex; flex-direction: column; align-items: center; gap: 2px;
   /* 요청: 지도가 로스터 자리까지 커져 이름표 자리가 빠듯해졌으니 글자를 한 단계 줄인다. */
@@ -10198,20 +10211,18 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    크기 확대 제거 — 아바타 확대되도 확대 안함"). */
 /* 이름 + 종족 배지 한 줄. */
 .scr-minimap-mark-line { display: inline-flex; align-items: center; gap: 2px; }
-/* 체력바 — 닉네임 밑. 길이와 색이 함께 '그 시점 1등 대비 규모'를 말한다(요청).
-   더 굵고 또렷하게, 모서리는 없이(요청: "더 굵고 가시성 높여주고 래디우스 없게") —
-   3 → 6px. 모서리를 죽인 이유는 두께 때문이다: 6px에 반경 2px이면 짧은 막대가 알약처럼
-   보여 길이 차이가 실제보다 작게 읽힌다. 각지면 끝이 어디인지가 그대로 보인다.
-   어떤 지형 색 위에서도 보이도록 검은 홈을 깔고, 바깥에 검은 테두리를 한 겹 두른다 —
-   밝은 지형 위에서는 홈만으로는 채움색과 배경의 경계가 흐렸다. */
-.scr-minimap-hp {
-  display: block; width: 38px; height: 6px; border-radius: 0;
-  background: rgba(0, 0, 0, 0.62);
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.75), 0 1px 2px rgba(0, 0, 0, 0.5);
-  overflow: hidden;
+/* 기세 눈금 — 다섯 칸(ReplayMinimap의 VigorPips). 색은 하나다: 켜진 칸은 밝고 꺼진 칸은
+   눌러 둔다. 초록↔빨강처럼 색이 뜻을 지면 그 뜻은 늘 '안전↔위험'으로 읽히는데, 이 값은
+   위험을 재는 값이 아니다(그래서 체력바를 걷었다 — 컴포넌트 주석 참고).
+   지도(사진) 위에 앉으므로 칸마다 검은 테두리 한 겹을 둘러 어떤 지형 위에서도 경계가 산다. */
+.scr-minimap-vigor { display: flex; gap: 2px; }
+.scr-minimap-vigor-pip {
+  display: block; width: 6px; height: 6px;
+  background: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.75);
 }
-.scr-minimap-hp-fill { display: block; height: 100%; border-radius: 0; }
-/* 궤멸한 사람의 바는 이름과 같이 눌러 둔다 — 이름표 전체가 흐려지는 규칙에 얹힌다. */
+.scr-minimap-vigor-pip-on { background: rgba(255, 255, 255, 0.95); }
+/* 궤멸한 사람의 눈금은 이름과 같이 눌러 둔다 — 이름표 전체가 흐려지는 규칙에 얹힌다. */
 
 .scr-minimap-mark-label-out { font-size: 11px; }
 /* (삭제) 모바일 전용 max-width: 56px — 프레임 밖으로 잘리는 걸 막으려 닉네임 폭을
