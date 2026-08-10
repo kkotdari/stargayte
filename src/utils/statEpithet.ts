@@ -607,20 +607,15 @@ export function epithetsOf(pool: EpithetSubject[]): Map<string, Epithet> {
     if (title.min !== undefined && top < title.min) return;
     const med = median(vals.map((x) => x.v));
     if (top < med * (title.edge ?? CROWN_EDGE)) return;
-    /* 1등만 후보로 두지 않는다(지적: 포토러시는 저 사람이 더 어울린다) — 1등이 다른 칭호를
-       가져가 버리면 그 칭호는 통째로 사라졌다. 실제로 포토러시를 두 번 한 사람이 핵 칭호를
-       받자, 한 번 한 사람은 아무 전술 칭호도 못 받고 유닛 이름으로 밀렸다.
-       대신 아무나 물려받지는 못한다: 전술은 제 힘으로 최소 횟수를 넘겨야 하고, 수치는
-       무리 한가운데보다 확실히 위여야 한다(아래 bar). 순서는 어차피 점수가 정한다. */
-    /* 물려받는 사람도 제 힘으로 문턱(min)을 넘어야 한다(지적: 마법 유닛 비중이 0인
-       사람에게 "마법의 화신"이 붙었다).
-       버그였다: min을 1등 값에만 걸고, 물려받을 자격은 '한가운데보다 위'로만 봤다.
-       마법처럼 대부분이 0에 가까운 값에서는 한가운데가 거의 0이라, 2%짜리도 그 잣대를
-       가볍게 넘었다 — 그 사람은 마법을 안 쓴 사람인데도 화신이 됐다. 둘 다 넘어야 한다. */
-    const bar = title.scale === "count"
-      ? (title.min ?? 1)
-      : Math.max(title.min ?? 0, med * (title.edge ?? CROWN_EDGE));
-    const winners = vals.filter((x) => x.v >= bar);
+    /* 1등에게만 준다(지적: 포토러시가 더 많은 사람이 있는데 그다음 사람이 퀸이 됐다).
+       한때는 1등이 다른 칭호를 가져가면 다음 사람에게 물려줬는데, 그러면 "퀸"·"절대자"처럼
+       1위를 뜻하는 말이 1위가 아닌 사람에게 붙는다 — 그 말이 거짓이 되는 순간 나머지 칭호도
+       같이 못 믿을 말이 된다. 임자가 다른 칭호로 가면 이 칭호는 그냥 안 나간다.
+       공동 1위는 그대로 후보이고, 그중 먼저 걸린 한 사람이 가져간다. */
+    const winners = vals.filter((x) => x.v === top);
+    // 2등 값 — 1위가 얼마나 벌렸나(아래 leadBonus). 뒤가 아무도 없으면 null.
+    const belows = vals.map((x) => x.v).filter((v) => v < top);
+    const second = belows.length ? Math.max(...belows) : null;
     // 그 무리의 절반이 넘게 걸리면 그건 특징이 아니라 평균이다(수치 칭호에만 해당한다 —
     // 전술은 여럿이 같은 횟수인 것이 흔하고, 그래도 '한 칭호는 한 사람'은 아래에서 지킨다).
     if ((title.pool ?? MIN_POOL) > 1 && winners.length > vals.length / 2) return;
@@ -632,13 +627,17 @@ export function epithetsOf(pool: EpithetSubject[]): Map<string, Epithet> {
       // 전술은 횟수 그대로, 수치는 '한가운데의 몇 배'로 바꿔 곱한다(Title.scale 주석).
       const base = title.scale === "count" ? w.v : (med > 0 ? w.v / med : 1);
       const boost = TIER_BOOST[title.tier ?? 2] ?? 1;
-      const first = w.v === top;
-      // sticky 칭호는 1등에게만, 그리고 무엇보다 먼저 간다(0급). 2등 이하는 평소대로 겨룬다.
-      if (title.sticky && !first) continue;
+      /* 1위라는 사실 자체에 웃돈을 얹는다(요청) — 다만 '겨우 1위'와 '독보적 1위'는 다른
+         말이라, 2등과 얼마나 벌렸는지로 크기를 정한다. 뒤가 없으면(혼자만 한 일) 최대다.
+         이 웃돈이 있어야 어중간한 여러 칭호가 아니라 그 사람이 확실히 앞서는 하나가
+         고른다 — 압도적인 자리는 그 사람을 부르는 말로 제일 알맞다. */
+      const gap = second === null ? 1 : (second > 0 ? Math.min(1, (top - second) / second) : 1);
+      const leadBonus = 1 + gap;
       claims.push({
-        title, id: w.id, label, raw: w.v, score: (title.weight ?? 0) * base * boost, order,
+        title, id: w.id, label, raw: w.v,
+        score: (title.weight ?? 0) * base * boost * leadBonus, order,
         // sticky만 절대 우선이다(참여수 1위) — 나머지는 급을 웃돈으로 받아 점수로 겨룬다.
-        first, rank: title.sticky && first ? 0 : 1,
+        first: true, rank: title.sticky ? 0 : 1,
       });
     }
   });
