@@ -8900,7 +8900,7 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    space-between은 자식이 둘일 때의 규칙이다). 제목이 잡아 주던 높이도 없어졌으므로
    아래 여백은 X 버튼(32px)만큼만 남는다. */
 .scr-activity-detail-head { justify-content: flex-end; margin-bottom: 0; }
-.scr-activity-detail-body { padding-bottom: 16px; }
+.scr-activity-detail-body { padding-bottom: var(--scr-detail-pad-y); }
 
 /* 케밥은 X와 같은 줄 왼쪽 끝이다(요청) — 카드 오른쪽 위에 있으면 바로 위 X와 층이 갈려
    "닫기"와 "이 항목으로 할 일"이 서로 다른 줄에서 따로 논다. 한 줄에 [케밥 … X]로 세우면
@@ -8913,19 +8913,31 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
      · 케밥을 그 패딩 띠로 끌어올린다(패딩 안쪽은 스크롤 상자에 안 잘린다).
    왼쪽 끝이 정확히 맞는 것은 본문 글자와 머리가 같은 x(팝업 좌우 패딩 16px)에서 시작하기
    때문이다 — 카드 기준 left:0이 곧 X의 왼쪽 짝이다. */
-.scr-activity-detail-modal { --scr-detail-head-h: 32px; --scr-detail-pad-x: 16px; }
+/* 위아래 여백은 좌우와 비례로 맞춘다(요청: 위아래 패딩 줄여도 될 듯, 양옆과 비례를) —
+   좌우가 8px(모바일)·16px(PC)인데 위는 13px 고정이라 모바일에서만 위가 유독 두툼했다.
+   좌우보다 한 뼘 적게 잡는다: 위에는 X 버튼(32px)이, 아래에는 카드 제 여백이 이미 서 있어
+   같은 값을 주면 그만큼 더 비어 보인다. */
+.scr-activity-detail-modal {
+  --scr-detail-head-h: 32px; --scr-detail-pad-x: 16px; --scr-detail-pad-y: 12px;
+  padding-top: var(--scr-detail-pad-y);
+}
 .scr-activity-detail-modal > .scr-activity-detail-head {
-  position: absolute; top: 13px; z-index: 3;
+  position: absolute; top: var(--scr-detail-pad-y); z-index: 3;
   left: var(--scr-detail-pad-x); right: var(--scr-detail-pad-x);
   padding: 0; margin: 0;
 }
+/* 시각(카드 머리)이 판 왼쪽 벽에 붙어 있었다(지적: 살짝 오른쪽으로, 본문과 패딩이 다른지)
+   — 실측으로 본문(경기 그림·타임라인)은 창 안쪽에서 16px, 시각은 8px이었다. 그 차이는
+   경기 한 판이 제 안에 두는 여백(.scr-game-result-trow의 8px)에서 온 것이라, 머리도 같은
+   값을 왼쪽에 둬 둘의 시작선을 맞춘다. */
+.scr-activity-detail-modal .scr-activity-card { --card-head-pad-l: 8px; }
 /* 모바일 — 창 바깥은 좌우 12px, 안쪽은 8px이다(요청). 바깥 12px은 본문 여백(8px)보다
    4px 더 물러선 값이라, 그 차이가 곧 "이건 화면이 아니라 그 위에 뜬 창"이라는 표시다.
    안쪽은 8px까지 조여 내용 폭을 최대한 남긴다 — 이 창은 카드 한 장을 보여주는 자리라
    여백보다 카드가 넓은 편이 낫다. */
 @media (max-width: 1159px) {
   .scr-activity-detail-modal {
-    --scr-detail-pad-x: 8px;
+    --scr-detail-pad-x: 8px; --scr-detail-pad-y: 8px;
     /* 창 바깥 좌우 16px(요청) — 본문 여백(8px)의 두 배라 그 차이가 눈에 잡힌다. */
     width: calc(100vw - 32px); max-width: none;
     padding-left: var(--scr-detail-pad-x); padding-right: var(--scr-detail-pad-x);
@@ -10682,8 +10694,13 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
      아니라 '첫 글자의 밑선'을 맞추는 것이라, 안에 든 글자 크기가 다른 두 알약(승패는
      14px 한 덩이, BEST는 12px 태그 + 14px 이름)은 상자 위아래가 서로 어긋나 앉는다.
      높이를 같게 못 박아도 이 정렬이 남아 있으면 그 어긋남은 그대로다. */
-  display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: center;
+  /* 두 줄이다(요청: 맵 이름·경기시간 / 승패·베스트) — 바깥은 줄을 쌓고, 줄 안에서
+     가운데 정렬과 배지 정렬(중심 맞춤)을 그대로 이어받는다. */
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
   font-size: var(--fs-caption); line-height: 1.2;
+}
+.scr-story-map-head-line {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: center;
 }
 /* 미니맵이 커진 PC에서는 그 위 요소(맵 이름·시간, 승/무 배지)도 같이 키운다(요청: 미니맵
    위 요소 알맞게 확대) — 작은 미니맵 시절 크기 그대로면 위아래 균형이 안 맞는다. */
@@ -10691,13 +10708,7 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   .scr-story-mid .scr-story-map-head { font-size: var(--fs-body); gap: 8px; --scr-story-pill-h: 24px; }
   .scr-story-mid .scr-challenge-arrow-row { transform: scale(1.15); margin-bottom: 2px; }
 }
-/* 미니맵 조작 안내(요청: 미니맵 위에 작게 "좌우를 눌러 이전/다음 장면으로 이동") —
-   그림 자체에는 누를 자리를 알리는 표시가 없어서 한 줄로 일러 둔다. 맵 이름 줄보다
-   한 단계 더 작고 흐리게 둬 정보가 아니라 안내로 읽히게 한다. */
-.scr-story-map-hint {
-  text-align: center; color: var(--muted); opacity: 0.75;
-  font-size: calc(var(--fs-caption) - 1px); line-height: 1.2; margin: 2px 0 3px;
-}
+/* (이동) 미니맵 조작 안내 — 재생 버튼 아래로 내렸다(요청). 규칙은 .scr-story-hint에 있다. */
 /* 미니맵 그림이 아직 안 붙은 맵(요청) — 그림 자리에 안내 한 줄만 둔다. 큰 빈 상자를
    그려 두지 않는 건, 그러면 "무언가 깨졌다"로 읽히기 때문이다. 채울 수 있는 사람에게
    하는 말이라 눈에 띌 필요는 없고, 어디서 채우는지만 정확하면 된다. */
@@ -11293,9 +11304,24 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   background: var(--text); border-color: #fff;
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--text) 34%, transparent);
 }
+/* 재생 버튼 줄 — 버튼은 줄 한가운데를 지키고(요청: 아래 단독 배치), 시각은 그 줄 오른쪽
+   끝에 절대배치로 비켜 앉는다. 흐름에 두면 버튼의 가운데가 시각 폭만큼 왼쪽으로 밀린다. */
+.scr-story-controls {
+  position: relative; width: 100%;
+  display: flex; align-items: center; justify-content: center;
+}
 .scr-story-time {
+  position: absolute; right: 0; top: 50%; transform: translateY(-50%);
   flex-shrink: 0; font-size: 11px; font-variant-numeric: tabular-nums;
-  color: var(--muted); min-width: 34px; text-align: right;
+  color: var(--muted); text-align: right; white-space: nowrap;
+}
+/* 지금 지점은 또렷하게, 전체 길이는 그 곁말로(요청: 현재시각/전체시간). */
+.scr-story-time-now { color: var(--text); font-weight: 700; }
+.scr-story-time-total { color: var(--dim); }
+/* 그림 넘기는 법 — 재생 버튼 아래 작은 딤 글씨 한 줄(요청). */
+.scr-story-hint {
+  text-align: center; color: var(--muted); opacity: 0.75;
+  font-size: var(--fs-11); line-height: 1.2; margin-top: 2px;
 }
 
 /* ── 자막 ── */

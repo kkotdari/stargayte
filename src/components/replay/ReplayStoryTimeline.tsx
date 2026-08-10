@@ -33,7 +33,7 @@ export function snapPositions(snaps: StorySnap[], end: number | null): number[] 
 }
 
 export default function ReplayStoryTimeline({
-  snaps, end, index, playing, finished, onSeek, onToggle,
+  snaps, end, index, playing, finished, hint, onSeek, onToggle,
 }: {
   snaps: StorySnap[];
   end: number | null;
@@ -41,6 +41,8 @@ export default function ReplayStoryTimeline({
   playing: boolean;
   /** 마지막 스냅까지 다 지나갔나 — 그때 버튼은 '다시 보기'가 된다. */
   finished: boolean;
+  /** 재생 버튼 아래에 붙는 안내 한 줄(요청) — 그림을 어떻게 넘기는지. */
+  hint?: string;
   onSeek: (i: number) => void;
   onToggle: () => void;
 }) {
@@ -104,26 +106,38 @@ export default function ReplayStoryTimeline({
           />
         ))}
       </div>
-      {/* 지금 지점의 시각 — 눈금만으로는 몇 분 이야기인지 알 수 없다. */}
-      <span className="scr-story-time">
-        {snaps[index]?.at == null ? "끝" : mmss(snaps[index].at as number)}
-      </span>
     </div>
     {/* 재생 버튼은 트랙 옆이 아니라 그 아래 홀로 선다(요청) — 옆에 있을 때는 트랙과 같은
         띠에 끼여 눈금 하나처럼 보였고, 정작 이 카드에서 사람이 제일 먼저 누를 것이 이
         버튼이다. 크기도 훨씬 키우고 삼각형은 속을 채운다(요청) — 선으로만 그린 삼각형은
-        커질수록 속이 빈 표지판처럼 읽힌다. */}
-    <button
-      type="button" className="scr-story-play"
-      onClick={(e) => { e.stopPropagation(); onToggle(); }}
-      aria-label={label} title={label}
-    >
-      {playing
-        ? <Pause size={26} fill="currentColor" />
-        : finished
-          ? <RotateCcw size={26} />
-          : <Play size={26} fill="currentColor" />}
-    </button>
+        커질수록 속이 빈 표지판처럼 읽힌다.
+        시각도 트랙 줄에서 이 줄로 내려온다(요청) — 트랙 오른쪽 끝에 붙어 있을 때는 그
+        자리가 '트랙의 끝'인지 '지금 지점'인지가 헷갈렸다. 버튼은 줄 한가운데를 지키고
+        (절대배치로 비켜 앉은 시각이 가운데를 안 흔든다), 시각은 오른쪽 끝이다. */}
+    <div className="scr-story-controls">
+      <button
+        type="button" className="scr-story-play"
+        onClick={(e) => { e.stopPropagation(); onToggle(); }}
+        aria-label={label} title={label}
+      >
+        {playing
+          ? <Pause size={26} fill="currentColor" />
+          : finished
+            ? <RotateCcw size={26} />
+            : <Play size={26} fill="currentColor" />}
+      </button>
+      {/* 지금 지점 / 경기 전체 길이(요청) — 지금 값만 있으면 그게 얼마쯤 온 것인지가 안
+          보인다. 경기 길이를 모르는 옛 요약은 지금 값만 적는다. */}
+      <span className="scr-story-time">
+        <span className="scr-story-time-now">
+          {snaps[index]?.at == null ? "끝" : mmss(snaps[index].at as number)}
+        </span>
+        {end != null && end > 0 && (
+          <span className="scr-story-time-total">{` / ${mmss(end)}`}</span>
+        )}
+      </span>
+    </div>
+    {hint && <div className="scr-story-hint">{hint}</div>}
     </div>
   );
 }

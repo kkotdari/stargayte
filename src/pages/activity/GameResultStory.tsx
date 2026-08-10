@@ -1661,37 +1661,43 @@ export default function GameResultStory({
 
   const mapBlock = storyMap && (
     <div className="scr-story-map" {...stopBubble}>
+      {/* 머리는 두 줄이다(요청) — 윗줄은 그 판이 벌어진 자리(맵·경기 시간), 아랫줄은 그
+          판의 결말(승패·BEST PLAYER). 한 줄에 넷을 늘어놓으면 "어디서 몇 분"과 "누가 이겼나"가
+          한 문장처럼 이어져, 좁은 화면에서는 어디서 끊어 읽어야 할지가 매번 달라졌다. */}
       <div className="scr-story-map-head">
-        {mapName && <span className="scr-story-map-name">{mapName}</span>}
-        {minutes !== null && <span className="scr-story-map-dur">{minutes}분</span>}
-        {/* 로스터를 감춘 자리(모바일)에서는 승패를 여기서 알려야 한다 — vs 양옆의 승/무
-            배지가 로스터와 함께 사라지기 때문이다. 색이 곧 이긴 편이다. */}
-        {!showRoster && result !== "not_held" && (
-          <span
-            className={cx("scr-story-win",
-              result === "draw" ? "scr-story-win-draw"
-                : o1 === "win" ? "scr-story-win-t1" : "scr-story-win-t2")}
-          >
-            {winLabel}
-          </span>
-        )}
-        {/* 그 판의 BEST PLAYER — 이긴 편 표시 바로 옆이다(요청). 누가 이겼나 다음으로 궁금한 것이
-            "그래서 누가 잘했나"라, 두 표시는 한 벌로 읽힌다. */}
-        {!showRoster && mvp && (
-          <span className="scr-story-best">
-            <span className="scr-story-best-tag">BEST</span>
-            {mvp.name}
-            {/* 종족 배지(요청: 이름 옆에 배지) — 미니맵 이름표·로스터가 이름에 늘 종족을
-                달고 다니는데, 로스터를 접은 자리에서는 이 이름만 맨몸이었다. */}
-            <RaceBadge race={mvp.race} size={11} circleLetter className="scr-story-best-race" />
-          </span>
+        <div className="scr-story-map-head-line">
+          {mapName && <span className="scr-story-map-name">{mapName}</span>}
+          {minutes !== null && <span className="scr-story-map-dur">{minutes}분</span>}
+        </div>
+        {!showRoster && (result !== "not_held" || mvp) && (
+          <div className="scr-story-map-head-line">
+            {/* 로스터를 감춘 자리(모바일)에서는 승패를 여기서 알려야 한다 — vs 양옆의 승/무
+                배지가 로스터와 함께 사라지기 때문이다. 색이 곧 이긴 편이다. */}
+            {result !== "not_held" && (
+              <span
+                className={cx("scr-story-win",
+                  result === "draw" ? "scr-story-win-draw"
+                    : o1 === "win" ? "scr-story-win-t1" : "scr-story-win-t2")}
+              >
+                {winLabel}
+              </span>
+            )}
+            {/* 그 판의 BEST PLAYER — 이긴 편 표시 바로 옆이다(요청). 누가 이겼나 다음으로
+                궁금한 것이 "그래서 누가 잘했나"라, 두 표시는 한 벌로 읽힌다. */}
+            {mvp && (
+              <span className="scr-story-best">
+                <span className="scr-story-best-tag">BEST</span>
+                {mvp.name}
+                {/* 종족 배지(요청: 이름 옆에 배지) — 미니맵 이름표·로스터가 이름에 늘 종족을
+                    달고 다니는데, 로스터를 접은 자리에서는 이 이름만 맨몸이었다. */}
+                <RaceBadge race={mvp.race} size={11} circleLetter className="scr-story-best-race" />
+              </span>
+            )}
+          </div>
         )}
       </div>
-      {/* 그림을 어떻게 넘기는지 한 줄로 일러 둔다(요청) — 좌·우 절반이 누르는 자리라는 건
-          보이는 표시가 없어 아무도 모른다. 넘길 장면이 둘 이상일 때만 띄운다. */}
-      {sentences.length > 1 && (
-        <div className="scr-story-map-hint">미니맵 좌우를 눌러 이전/다음 장면으로 이동</div>
-      )}
+      {/* (이동) "미니맵 좌우를 눌러…" 안내 — 재생 버튼 아래로 내렸다(요청). 그림 바로 위에
+          있을 때는 제목과 그림 사이를 갈라 놓아, 정작 읽어야 할 머리 두 줄이 안내에 밀렸다. */}
       <ReplayMinimap
         grid={storyMap} bases={bases} arrows={arrows}
         onStep={sentences.length > 1 ? (d) => {
@@ -1778,6 +1784,9 @@ export default function GameResultStory({
         <ReplayStoryTimeline
           snaps={sentences} end={gameResult.summaryData?.end ?? null}
           index={index} playing={playing} finished={finished}
+          /* 그림을 어떻게 넘기는지 한 줄로 일러 둔다(요청: 재생 버튼 아래에 작은 딤 글씨로)
+             — 좌·우 절반이 누르는 자리라는 건 보이는 표시가 없어 아무도 모른다. */
+          hint="미니맵 좌우를 눌러 이전/다음 장면으로 이동"
           onSeek={(i) => { setIndex(i); setPlaying(false); }}
           onToggle={() => {
             if (finished) { setIndex(0); setPlaying(true); return; }
