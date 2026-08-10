@@ -2378,8 +2378,10 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    줄 높이는 안에 든 8px 글자가 아니라 줄 자신의 font-size(둘레에서 물려받은 11~14px)로
    잡히던 탓에, line-height를 1로 눌러도 3px 남짓이 늘 남았다. 줄과 글자가 같은 크기면
    그 남은 몫이 사라진다. 아래 랭크·분당 변동 줄도 같은 까닭으로 함께 못 박는다. */
+/* 사이는 1px 되돌린다(요청: 살짝만 늘리기) — 줄 높이를 글자에 맞춘 뒤로는 둘이 거의
+   맞닿아, 이번엔 변동이 값의 아랫동아리처럼 붙어 보였다. */
 .scr-bar-delta {
-  display: block; line-height: 1; margin-top: -1px; text-align: center; position: relative;
+  display: block; line-height: 1; margin-top: 1px; text-align: center; position: relative;
   font-size: calc(var(--fs-9) - 1px);
 }
 .scr-bar-delta .scr-stat-delta { margin-left: 0; }
@@ -2579,6 +2581,10 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 }
 /* (삭제) 내려간 줄만 더 눌러 두던 규칙 — 요청으로 걷었다. 오르내림은 화살표 방향과 그
    옆의 수가 이미 말하고, 톤까지 갈라 두면 내려간 사실만 반쯤 지운 것처럼 읽힌다. */
+/* 지난달에 없던 이름의 "신규"(요청) — 목록의 다른 표시와 같은 크기지만 색은 앱이 신규에
+   늘 쓰는 파랑 그대로다(.scr-activity-shift-new). 화살표를 눌러 둔 잉크(opacity .7)까지
+   물려받으면 그 파랑이 탁해져, 여기서만 도로 세운다. */
+.scr-stat-toplist-move.scr-activity-shift-new { opacity: 1; }
 .scr-stat-toplist-n {
   color: var(--dim); font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right;
 }
@@ -2805,9 +2811,13 @@ html:not(.scr-light-theme) .scr-donut-band-delta { fill: #fff; opacity: 0.66; }
      그 비율 그대로다. 좁은 화면에서는 min 쪽이 걸려 지금과 똑같이 기본폭 + 가로 스크롤이다
      (width:max-content가 fr을 최솟값으로 재기 때문). 유저 칸만은 고정이다: 가로 스크롤에
      대해 왼쪽에 붙어 있는 칸이라 폭이 흔들리면 그 아래 내용과 어긋난다. */
+  /* 기록 칸만은 남는 폭을 안 가져간다(요청: 세 칸이 있든 없든 이 칸의 길이가 같아야 한다)
+     — fr을 주면 화면이 넓을 때 이 칸이 혼자 40px씩 늘어, 종족 필터만 바꿔도 막대 길이가
+     달라진다. 안에 든 것(막대 180px 상한)이 고정이라 늘어난 폭은 어차피 빈자리다.
+     남는 폭은 목록이 든 세 칸이 나눠 갖는다. */
   --scr-stat-tracks:
     var(--scr-stat-name-w)
-    minmax(var(--scr-stat-record-w), 430fr)
+    var(--scr-stat-record-w)
     minmax(var(--scr-stat-build-w), 192fr)
     minmax(var(--scr-stat-unit-w), 354fr)
     minmax(var(--scr-stat-skill-w), 234fr);
@@ -2827,27 +2837,44 @@ html:not(.scr-light-theme) .scr-donut-band-delta { fill: #fff; opacity: 0.66; }
 /* 종족을 안 골라 세 칸이 빠진 표(요청) — 트랙과 최소폭을 남은 두 칸으로 다시 적는다.
    빠진 칸의 트랙을 그대로 두면 격자가 여전히 다섯 칸이라, 두 칸짜리 행이 왼쪽 두 칸에만
    들어차고 오른쪽 세 칸 자리가 통째로 빈 채 구분선만 그어진다. */
+/* 두 칸은 세 칸이 있을 때와 똑같은 폭이다(요청: 컬럼이 둘만 남는다고 늘리지 말고 표
+   전체의 폭을 줄여라) — minmax(_, 1fr)로 두면 남는 폭을 기록 칸이 통째로 먹어, 같은 표를
+   종족 필터만 바꿔 보는데 막대 길이가 달라진다. 트랙을 못 박고 표 자신이 좁아진다. */
 .scr-stats-list-panel-v2 .scr-stat-table-row-slim .scr-stat-row {
-  --scr-stat-tracks: var(--scr-stat-name-w) minmax(var(--scr-stat-record-w), 1fr);
+  --scr-stat-tracks: var(--scr-stat-name-w) var(--scr-stat-record-w);
+  width: max-content;
   min-width: calc(var(--scr-stat-name-w) + var(--scr-stat-record-w));
 }
-/* 표와 안내를 나란히(요청: 표 바깥 오른쪽에 안내) — 표는 제 내용만큼만 차지하고 남는
-   폭을 안내가 가져간다. 좁은 화면에서는 접혀 안내가 표 아래로 내려간다(wrap): 640px짜리
-   표 옆에 억지로 끼우면 안내가 한 글자씩 세로로 서게 된다. */
+/* 표와 안내를 나란히(요청: 표 바깥 오른쪽에 안내, 모바일에서도) — 표는 제 내용만큼만
+   차지하고(flex-basis auto) 안내는 못 박은 폭을 갖는다. 줄바꿈은 안 한다: 접히면 안내가
+   표 아래로 내려가 '다음 칸'이 아니라 '다음 덩어리'처럼 읽힌다(지적). 좁은 화면에서는
+   표 쪽이 눌리고, 표는 원래 가로로 스크롤하는 물건이라 눌려도 읽는 데 지장이 없다. */
 .scr-stat-table-row-slim {
-  display: flex; align-items: flex-start; flex-wrap: wrap; gap: 12px;
+  display: flex; align-items: flex-start; flex-wrap: nowrap; gap: 12px;
 }
-.scr-stat-table-row-slim > .scr-stat-table-clip { flex: 1 1 auto; min-width: 0; max-width: 100%; }
+.scr-stat-table-row-slim > .scr-stat-table-clip { flex: 0 1 auto; min-width: 0; }
 /* 왜 세 칸이 없는지, 어떻게 하면 보이는지(요청) — 표 옆에 붙는 곁말이라 표의 어느 글자보다
    작고 흐리게 둔다. 상자를 두르지 않는 것도 일부러다: 테두리를 주면 이것도 표의 한 칸처럼
    읽힌다. 왼쪽 실선 하나만으로 '표에 달린 말'이라는 것이 충분히 보인다. */
 .scr-stat-mix-hint {
-  flex: 1 1 150px; max-width: 260px; margin: 0;
+  /* 폭은 못 박는다 — 남는 폭을 다 가져가게 두면 화면이 넓을 때 이 곁말이 표만큼 넓어져
+     본문처럼 읽힌다. 좁은 화면에서도 같은 자리를 지키도록 줄어들지도 않는다(flex: none). */
+  flex: none; width: 150px; margin: 0;
   display: flex; flex-direction: column; gap: 4px;
   padding: 12px 0 12px 12px; border-left: 1px solid var(--line-hair);
   font-size: var(--fs-11); line-height: 1.5; color: var(--dim);
 }
 .scr-stat-mix-hint b { font-size: var(--fs-caption); font-weight: 700; color: var(--text); }
+/* 좁은 화면에서는 안내가 더 좁아진다(지적: 표가 보일 자리를 안내가 너무 많이 먹는다) —
+   150px은 390px짜리 화면에서 표가 볼 수 있는 창의 40%였다. 104px + 한 단계 작은 글자면
+   같은 말이 다섯 줄쯤으로 서고, 표에는 그만큼이 돌아간다. */
+@media (max-width: 1159px) {
+  .scr-stat-mix-hint {
+    width: 104px; font-size: var(--fs-9); padding-left: 8px; padding-top: 10px;
+  }
+  .scr-stat-mix-hint b { font-size: var(--fs-11); }
+  .scr-stat-table-row-slim { gap: 8px; }
+}
 /* 어떻게 하면 보이는지 — 이 문장만은 흐리게 두지 않는다. 안내에서 실제로 할 일을 말하는
    유일한 줄이라, 나머지 설명과 같은 톤이면 읽고도 무엇을 해야 하는지가 안 남는다. */
 .scr-stat-mix-hint em { font-style: normal; color: var(--text); }
@@ -2882,11 +2909,11 @@ html:not(.scr-light-theme) .scr-donut-band-delta { fill: #fff; opacity: 0.66; }
      있음") — 이 칸에서 폭을 먹는 것은 막대뿐인데, 막대가 말하는 것은 길이 자체가 아니라
      넷을 나란히 놓고 견주는 그림이다. 다 같이 짧아지면 그 견줌은 그대로 남는다.
      아래 .scr-value-bar의 max-width와 짝이다 — 칸만 줄이면 막대는 여전히 칸을 꽉 채운다. */
-  /* 520 → 430px — 막대를 240 → 180px으로 줄이고(요청) 랭크 줄기도 156 → 124px이 되면서
-     이 칸에 90px 남짓이 순수한 빈자리로 남았다. 안에 든 것이 줄어든 만큼 칸도 줄인다.
-     들어가야 하는 것: 랭크 줄기(124) + 줄기 사이(12) + [이름 52 + 막대 180] + 칸 여백(20)
-     = 388. 430이면 막대 좌우로 20px씩 숨 쉴 자리가 남는다. */
-  --scr-stat-record-w: 430px;
+  /* 520 → 390px — 막대를 240 → 180px으로 줄이고(요청) 랭크 줄기도 156 → 84px이 되면서
+     이 칸에 130px 남짓이 순수한 빈자리로 남았다. 안에 든 것이 줄어든 만큼 칸도 줄인다.
+     들어가야 하는 것: 랭크 줄기(84) + 줄기 사이(12) + [이름 52 + 막대 180] + 칸 여백(20)
+     = 348. 390이면 막대 좌우로 20px씩 숨 쉴 자리가 남는다. */
+  --scr-stat-record-w: 390px;
   /* 랭크·포인트 줄기의 고정폭 — 120 → 100px(요청: 너무 넓다).
      이 칸에 실제로 들어가는 가장 긴 것은 "1234 포인트" 79.2px과 "1위 ▲12" 71.4px이다
      (실측, 버튼 좌우 패딩 포함). 100px이면 값 좌우로 10px씩 남는다.
@@ -2904,14 +2931,15 @@ html:not(.scr-light-theme) .scr-donut-band-delta { fill: #fff; opacity: 0.66; }
      이제는 가장 긴 줄("1,055 레이팅🥇" 83px)에 좌우 여백만 더한 폭이다. 줄기가 좁아진
      만큼은 옆의 막대 두 줄기가 가져간다. */
   /* 수 자체가 줄기 한가운데에 서고, 단위는 오른쪽·메달은 왼쪽 바깥에 매달린다(요청) —
-     줄기가 담아야 할 폭은 '가운데에서 먼 쪽 끝까지'의 두 배다: 오른쪽이 수의 절반(21) +
-     버튼 안여백(6) - 되당김(3) + 단위("레이팅" 33) = 57, 왼쪽은 21 + 3 + 메달(16) = 40이라
-     오른쪽이 정한다. 57×2 = 114에 좌우 여백을 더해 124px.
-     둘을 다 오른쪽에 매달았을 때는 156px이 필요했고 그 몫이 왼쪽에서 통째로 빈자리로
-     보였다(지적) — 좌우로 갈라 매다는 것만으로 32px이 준다.
-     여백도 6 → 2px(요청: 좌우 여백 축소) — 줄기 안의 것들은 이미 가운데에 서 있어, 이
-     여백은 무엇을 밀어내지도 지키지도 않는 순수한 빈자리였다. */
-  --scr-stat-rank-w: 124px;
+     줄기가 담아야 할 폭은 '가운데에서 먼 쪽 끝까지'의 두 배다:
+       왼쪽 = 수의 절반(20) + 버튼 안여백(6) - 되당김(3) + 메달(16) = 39
+       오른쪽 = 20 + 6 - 3 + 단위("R" 8) = 31
+     먼 쪽인 39를 두 배 한 78에 좌우 여백(2씩)을 더해 84px.
+     124 → 84px이 된 것은 단위를 "레이팅"에서 "R" 한 자로 줄인 덕이다(요청) — 그 세 글자가
+     오른쪽에서만 25px을 먹었고, 줄기는 가운데 정렬이라 그만큼을 왼쪽에도 비워 두고 있었다.
+     여백도 6 → 2px(요청) — 줄기 안의 것들은 이미 가운데에 서 있어, 이 여백은 무엇을
+     밀어내지도 지키지도 않는 순수한 빈자리였다. */
+  --scr-stat-rank-w: 84px;
   --scr-stat-rank-pad: 2px;
   /* 셋 다 12px씩 줄었다(요청) — 칸 바깥 좌우 여백을 14 → 8px로 조인 만큼이다(아래
      .scr-stat-row > .scr-stat-build-cell). 속에 든 것(도넛·목록)은 그대로이고 그 둘레의
@@ -3148,8 +3176,12 @@ html:not(.scr-light-theme) .scr-stats-list-panel-v2 .scr-stat-name-cell, html:no
        한다 — 그보다 넓으면 끝까지 밀어도 그 칸을 온전히 볼 수가 없다. */
     --scr-stat-col-w: 124px;
     /* PC와 같은 이유로 넓혔던 값(490)을 막대 축소(240 → 180px)와 랭크 줄기 축소
-       (156 → 124px)만큼 되돌린다 — 남은 몫은 순수한 빈자리였다. */
-    --scr-stat-record-w: 400px;
+       (156 → 84px)만큼 되돌린다 — 남은 몫은 순수한 빈자리였다.
+       모바일만 한 단계 더 줄인다(360 → 300px, 지적: 종족 전체일 때 이 칸이 너무 좁다) —
+       좁아 보이는 것은 칸이 아니라 '보이는 만큼'이다. 표는 원래 화면보다 넓어 가로로
+       스크롤하는데, 오른쪽에 안내까지 서면서 창이 더 줄었다. 칸을 줄이면 같은 창에
+       더 많이 들어온다: 84(랭크) + 12 + [52 이름 + 132 막대] + 20 = 300. */
+    --scr-stat-record-w: 300px;
     --scr-stat-build-w: 184px;
     --scr-stat-unit-w: 342px;
     --scr-stat-skill-w: 224px;
@@ -3172,6 +3204,8 @@ html:not(.scr-light-theme) .scr-stats-list-panel-v2 .scr-stat-name-cell, html:no
      도넛이 통째로 없는데 112px을 그대로 두면 줄마다 위아래로 빈자리가 남는다. 남은 것 중
      가장 큰 것(막대 넷이 세로로 선 기록 칸)이 알아서 높이를 정한다. */
   .scr-stats-list-panel-v2 .scr-stat-table-row-slim .scr-stat-row { min-height: 0; }
+  /* 화면이 넓으면 안내도 그만큼 넉넉하게 — 표가 1310 → 560px으로 줄어 남는 자리가 많다. */
+  .scr-stat-mix-hint { width: 240px; }
   .scr-stat-mix { gap: 6px; }
   /* 컬럼명 ↔ ⓘ ↔ 정렬 화살표 간격도 이제 모바일/PC 분기 없이 하나(아래 공용 규칙)로 통일. */
 }
@@ -3884,7 +3918,10 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
    ① 유형(라디오) + 기간(달력) ② 종족(라디오) ③ 정렬(텍스트 버튼).
    문장 하나에 드롭다운을 섞어 놓던 것을 대신한다 — 고를 것이 늘면서 문장이 길어지고
    무엇이 눌리는지도 흐릿해졌다. */
-.scr-stat-filters { display: flex; flex-direction: column; gap: 6px; width: 100%; margin: 6px 0 10px; }
+/* 아래 여백을 10 → 2px(요청: 정렬과 그리드 사이 갭 팍 줄이기) — 이 줄은 표를 설명하는
+   말이라 표에 붙어 있어야 '이 표의 조건'으로 읽힌다. 떨어져 있으면 그 자체로 따로 노는
+   한 덩어리가 된다. 위(6px)는 그대로다: 그쪽은 검색창과의 사이라 붙으면 안 된다. */
+.scr-stat-filters { display: flex; flex-direction: column; gap: 6px; width: 100%; margin: 6px 0 2px; }
 .scr-stat-filter-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px; min-width: 0; }
 /* PC는 넷을 한 줄에(요청). 유형·기간을 묶어 두던 줄은 display:contents로 풀어, 그 안의
    덩어리들이 바깥 줄의 항목이 되게 한다 — 모바일에서는 그 묶음이 그대로 한 줄로 남는다.
@@ -7818,10 +7855,10 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
        그 뒤 랭크 줄기가 남는 폭을 안 먹게 되면서(위 .scr-stat-rank-col) 막대가 207px까지
        늘어 이번엔 반대로 헐거워졌다 — 막대 160px 안팎이 되는 폭으로 되돌린다. */
     /* 다섯 트랙의 합을 1400px에 맞췄던 값(148 + 500 + 186 + 340 + 226) — 상한은 그대로고
-       기록 칸만 500 → 410px으로 줄인다(요청: 막대가 너무 길다). 막대를 240 → 180px으로,
-       랭크 줄기를 156 → 124px으로 줄인 만큼이라 안에 든 것은 하나도 안 잘린다. 표는
-       1310px이 되어 상한(1400) 안에 더 여유 있게 들어간다. */
-    --scr-stat-record-w: 410px;
+       기록 칸만 500 → 370px으로 줄인다(요청: 막대가 너무 길다). 막대를 240 → 180px으로,
+       랭크 줄기를 156 → 84px으로 줄인 만큼이라 안에 든 것은 하나도 안 잘린다. 표는
+       1270px이 되어 상한(1400) 안에 더 여유 있게 들어간다. */
+    --scr-stat-record-w: 370px;
     --scr-stat-build-w: 186px;
     --scr-stat-unit-w: 340px;
     --scr-stat-skill-w: 226px;
@@ -8850,6 +8887,10 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    (FlatLine) 여기서 미리 좁혀 두면 잴 것이 없어진다. --flat은 그 계산이 넣어 주고, 값이
    아직 없는 첫 프레임에는 1(안 누름)로 그린다. */
 .scr-activity-row-flat-in {
+  /* 줄 높이를 조금 키워 글자 위에 빈 띠를 만든다 — MVP 배지가 앉을 자리다(위
+     .scr-mvp-mini). 흐름에서 뺀 배지는 이 줄 상자 밖으로 나가면 바로 잘리므로
+     (.scr-activity-row-desc의 overflow), 자리는 상자 '안'에 있어야 한다. */
+  line-height: 1.75;
   display: flex; align-items: center; width: max-content;
   transform: scaleX(var(--flat, 1));
   transform-origin: left center;
@@ -10269,13 +10310,16 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    줄만 다른 줄보다 글자가 납작해지는 셈이라, 정작 MVP를 알리려던 표시가 그 줄을 읽기
    어렵게 만들었다. 흐름 밖으로 빼면 이름 여덟의 자리는 MVP가 있든 없든 같다.
    left:100%는 이름 글자의 오른쪽 끝이라, 이름이 길든 짧든 어깨를 따라간다. */
-/* 이름의 오른쪽 '바깥'이 아니라 오른쪽 '끝 위'다 — 바깥으로 내밀면 줄이 꽉 찬 판
-   (MVP가 붙는 팀전이 늘 그렇다)에서 마지막 이름의 배지가 눌린 줄의 오른쪽 끝을 넘어
-   잘려 나간다(.scr-activity-row-flat의 overflow). 글자 위로 올려 얹으면 이름 폭 안에
-   머물러 어느 자리에서도 안 잘린다. */
+/* 이름의 오른쪽 '바깥'이 아니라 오른쪽 '끝 위'다 — 바깥으로 내밀면 두 가지가 깨진다:
+   줄이 꽉 찬 판(MVP가 붙는 팀전이 늘 그렇다)에서 마지막 이름의 배지가 눌린 줄의 오른쪽
+   끝을 넘어 잘리고(.scr-activity-row-flat의 overflow), 가운데 이름의 배지는 바로 뒤에
+   오는 빗금·다음 이름 위에 겹친다. 이름 폭 안(right:0)에 두면 둘 다 없다.
+   글자와도 안 겹친다(요청) — 아래 .scr-activity-row-flat-in이 줄 높이를 조금 키워 글자
+   위에 빈 띠를 만들고, 배지는 정확히 그 띠에 앉는다(bottom 72% = 대문자 윗선 언저리).
+   그래서 이 배지만은 한 스텝 더 작다: 9px이면 그 띠보다 커서 다시 글자를 파고든다. */
 .scr-activity-row-em .scr-mvp-mini {
-  position: absolute; right: -1px; bottom: 62%;
-  margin-left: 0; line-height: 1; pointer-events: none;
+  position: absolute; right: 0; bottom: 72%;
+  font-size: var(--fs-8); margin-left: 0; line-height: 1; pointer-events: none;
 }
 /* 배지가 기준으로 삼을 상자 — 이름 글자 자신이다. 넘쳐도 안 자른다: 자르면 어깨 위로
    올라간 배지가 통째로 사라진다(이름은 이미 글자 수로 잘라 두므로 여기서 또 자를 일이

@@ -230,17 +230,19 @@ function TopList({ items, unit, prevRanks }: {
 }) {
   void unit; // 수를 숨긴 동안에는 안 쓰인다(SHOW_TOP_VALUES 참고).
   /* 전달 대비 순위 변동(요청: Top5 옆에는 +- 말고 흰 화살표로, 몇 계단인지 수도 함께) —
-     방향은 화살표가, 크기는 그 옆의 수가 말한다. 지난달에 아예 없던 이름은 아무것도 안
-     단다: 견줄 자리가 없어 '올랐다'고 말할 수 없고, 그런 줄이 목록의 절반이면 화살표가
-     그냥 장식이 된다. */
+     방향은 화살표가, 크기는 그 옆의 수가 말한다. */
   /** 몇 계단 움직였나 — +면 올라온 것. 화살표 옆에 그 수도 적는다(요청): 한 계단과 네
-   *  계단이 같은 그림이면 목록에서 실제로 무엇이 뒤집혔는지가 안 보인다. */
-  const move = (name: string, i: number): number | null => {
+   *  계단이 같은 그림이면 목록에서 실제로 무엇이 뒤집혔는지가 안 보인다.
+   *
+   *  세 가지가 다른 말이다(요청): 지난달에 아예 없던 이름은 "신규"(견줄 자리가 없어
+   *  '올랐다'고 말할 수 없다), 있었는데 제자리면 "-", 견줄 달 자체가 없으면(전체 기간)
+   *  아무것도 안 적는다 — 마지막 경우에 "-"를 적으면 '안 움직였다'는 뜻이 되어 버린다. */
+  const move = (name: string, i: number): number | "new" | "same" | null => {
     if (!prevRanks) return null;
     const before = prevRanks.get(name);
-    if (before === undefined) return null;
+    if (before === undefined) return "new";
     const d = before - (i + 1);
-    return d === 0 ? null : d;
+    return d === 0 ? "same" : d;
   };
   /* 하나도 없어도 껍데기는 그대로 세운다(지적: 스킬이 없을 때 다른 클래스가 들어가서
      생기는 문제) — 예전엔 여기서 <span>만 돌려줬는데, 그러면 목록의 고정폭
@@ -263,8 +265,14 @@ function TopList({ items, unit, prevRanks }: {
             <span className="scr-stat-toplist-name">
               {it.name}
               {/* 오른 줄과 내린 줄을 같은 톤으로 둔다(요청) — 내린 쪽을 눌러 두면 그것만
-                  '덜 중요한 사실'이 되는데, 목록에서 빠질 뻔한 쪽이 오히려 눈에 걸려야 한다. */}
-              {d !== null && (
+                  '덜 중요한 사실'이 되는데, 목록에서 빠질 뻔한 쪽이 오히려 눈에 걸려야 한다.
+                  새로 든 이름만은 색으로 갈라 둔다(요청): 화살표가 말하는 '몇 계단'과는
+                  아예 다른 종류의 사실이라, 같은 톤에 두면 목록에서 섞여 읽힌다. */}
+              {d === "new" ? (
+                <span className="scr-stat-toplist-move scr-activity-shift-new">신규</span>
+              ) : d === "same" ? (
+                <span className="scr-stat-toplist-move scr-stat-delta-none">-</span>
+              ) : d !== null && (
                 <span className="scr-stat-toplist-move">
                   {d > 0 ? `▲${d}` : `▼${-d}`}
                 </span>
@@ -413,8 +421,10 @@ export default function MemberStatRow({
                         {medals?.points && <span className="scr-stat-medal">{medals.points}</span>}
                         <span className="scr-stat-points-side">
                           {/* 단위(요청) — 아랫줄의 "1위"와 달리 이 줄은 맨숫자라 무엇의 수인지가
-                              칸 이름에만 기대고 있었다. */}
-                          <span className="scr-stat-points-unit">레이팅</span>
+                              칸 이름에만 기대고 있었다. "레이팅" 세 글자를 R 한 자로 줄였다
+                              (요청) — 이 글자는 줄마다 똑같이 되풀이되는 말이라 한 번 읽으면
+                              그다음부터는 자리만 먹고, 그 자리가 곧 줄기 폭이었다. */}
+                          <span className="scr-stat-points-unit">R</span>
                         </span>
                       </button>
                     </span>
