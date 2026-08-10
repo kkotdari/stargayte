@@ -409,7 +409,9 @@ const TITLES: Title[] = [
        따질 것이 없다(pool 1, edge 1). 한때 기본값을 그대로 뒀더니, 종족 승률이 무리
        한가운데의 1.15배를 못 넘는다는 이유로 아무에게도 안 나갔다. 문턱은 그 종족으로
        충분히 뛰었나(MIN_PLAYS_MODE) 하나면 된다. */
-    label: "{n}", weight: 4, pool: 1, edge: 1, why: "그 종족 승률", unit: "%",
+    // 승률 70% 이상만(요청: 진짜 승률이 높은 경우만) — 그 종족으로 열두 판을 뛰고도 승률이
+    // 반반이면 "절대군주"라는 말이 거짓이 된다.
+    label: "{n}", weight: 4, pool: 1, edge: 1, min: 70, why: "그 종족 승률", unit: "%",
     value: (_s, of) => bestRace(of)?.rate ?? null,
     name: (_s, of) => { const best = bestRace(of); return best ? racePhrase(best.race) : null; },
   },
@@ -701,6 +703,15 @@ export function epithetsOf(pool: EpithetSubject[]): Map<string, Epithet> {
     if (vals.length < (title.pool ?? MIN_POOL)) return;
     const top = Math.max(...vals.map((x) => x.v));
     if (title.min !== undefined && top < title.min) return;
+    /* 이름이 들어가는 칭호는 사람마다 임자가 따로 서므로(아래 winners) 문턱도 사람마다
+       걸어야 한다(요청: 종족별 승률 퀸은 진짜 승률이 높은 경우만) — 1등 값만 보고 통과시키면
+       그 아래 사람들이 문턱을 한참 밑돌아도 함께 딸려 나간다. */
+    if (title.name && title.min !== undefined) {
+      const kept = vals.filter((x) => x.v >= title.min!);
+      vals.length = 0;
+      vals.push(...kept);
+      if (vals.length === 0) return;
+    }
     const med = median(vals.map((x) => x.v));
     if (top < med * (title.edge ?? CROWN_EDGE)) return;
     /* 1등에게만 준다(지적: 포토러시가 더 많은 사람이 있는데 그다음 사람이 퀸이 됐다).
