@@ -364,7 +364,7 @@ const TITLES: Title[] = [
     /* 방어 건물(포토·성큰·터렛·벙커)을 유독 많이 올린 사람(요청: 철옹성 퀸).
        "철벽의 수호자" → "방어탑 사랑꾼"을 거쳐 온 이름이다 — 재는 것은 '잘 막았다'가 아니라
        '지은 건물 중 방어 건물의 비중'이고, 막아냈는지 아닌지는 리플레이가 말해 주지 않는다. */
-    label: "철옹성 퀸", weight: 1.5, why: "건물 중 방어 건물 비중", unit: "",
+    label: "차가운 철옹성의 여왕", weight: 1.5, why: "건물 중 방어 건물 비중", unit: "",
     value: (s) => (s.buildMix ? share(s.buildMix.bDef, s.buildMix.bProd, 20) : null),
     min: 0.12,
   },
