@@ -3288,10 +3288,11 @@ html:not(.scr-light-theme) .scr-stats-list-panel-v2 .scr-stat-name-cell, html:no
   /* 폰트 크기는 모바일/PC 분기 없이 통일한다(요청: "CSS는 모바일과 PC 통일, 컬럼 폭과
      표 폭만 차별") — 여기서 폭(--scr-stat-name-w)만 정하고, 글자 크기는 아래 공용
      규칙(브레이크포인트 밖) 하나만 따른다. */
-  /* 118 → 96px(요청: "모바일 통계 유저 컬럼 폭 축소") — 프사와 닉네임을 한 스텝씩 줄인
-     만큼 칸도 같이 줄인다. 그러지 않으면 줄인 내용 둘레에 빈자리만 남아, 좁혀서 벌어 온
-     22px이 표의 다른 칸으로 안 간다. */
-  .scr-stats-list-panel-v2 .scr-stat-row { --scr-stat-name-w: 96px; }
+  /* 118 → 96 → 108px. 한 번 줄였던 칸을 조금 되돌린다(요청: 살짝만 늘리기) — 그때는 프사와
+     닉네임뿐이었지만 지금은 그 아래 칭호가 한 줄 더 서고, 96px에서는 "개인전의 여왕" 같은
+     말이 두세 줄로 접혀 줄 높이를 밀어 올렸다. 118px까지 되돌리지 않는 것은 그 폭이
+     통째로 표의 다른 칸에서 온 자리이기 때문이다. */
+  .scr-stats-list-panel-v2 .scr-stat-row { --scr-stat-name-w: 108px; }
   .scr-stats-list-panel-v2 .scr-stat-name-cell {
     flex-direction: row; align-items: center; justify-content: center; gap: 7px;
     padding-left: 7px; padding-right: 7px;
