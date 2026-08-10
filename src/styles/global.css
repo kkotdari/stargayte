@@ -186,6 +186,13 @@
      이것만 바꾸면 옅은 배경색들도 같이 따라가게). */
   --point: #e6a23e;
   --point-rgb: 230, 162, 62;
+  /* 통계 표에서 "내 줄"에 까는 한 겹(요청: 다크는 흰 기운의 반투명, 라이트는 검은 기운의
+     반투명). 포인트색을 쓰다가 무채로 되돌린 까닭은 세기 조절이 안 돼서다 — 다크의
+     --point는 밝은 주황이라 어두운 바탕에 옅게 깔면 티가 안 나고, 라이트의 --point는
+     검정이라 같은 알파가 회색 띠처럼 무겁게 내려앉았다(둘 다 지적). 무채로 두면 "바탕을
+     한 칸 들어 올린다/내린다"는 뜻만 남아 두 테마에서 같은 세기로 읽힌다.
+     쓰는 곳이 줄과 유저 칸 둘이라, 둘이 어긋나지 않도록 값 자체를 공유한다. */
+  --stat-me-tint: rgba(255, 255, 255, 0.10);
   /* --point가 버튼처럼 "채워진 배경"으로 쓰일 때 그 위에 얹는 글자색. 기본(다크) 테마는
      포인트가 밝은색이라 어두운 글자가 맞지만, 라이트 테마에서는 포인트 자체가 어두운
      색으로 바뀌므로 이 값도 같이 흰색으로 뒤집어야 버튼 글자가 안 보이는 문제가 안 생긴다. */
@@ -985,6 +992,9 @@ html.scr-light-theme {
   --point: #000000;
   --point-rgb: 0, 0, 0;
   --point-contrast: #ffffff;
+  /* 위 --stat-me-tint 주석 참고 — 흰 바탕에 얹는 검정은 같은 알파라도 더 무겁게 보여
+     다크(흰색 0.10)보다 얕게 깐다. */
+  --stat-me-tint: rgba(0, 0, 0, 0.055);
   /* 흰 바탕에서는 백금을 한참 어둡게 내린다 — 밝은 금속은 종이 위에서 글자로 안 읽힌다.
      어둡게 내리되 색상은 그대로 따뜻한 쪽에 둔다(지적: 은이 아니라 백금) — 회색으로
      내려 버리면 흰 바탕에서는 그냥 진회색 글자가 된다.
@@ -2029,13 +2039,13 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    같은 값이 연회색으로 떨어지는데, 흰 바탕에서는 그쪽이 오히려 또렷하다.
    줄에 한 겹만 얹는 이유는 칸 배경이 세로 구분선(.scr-stat-row의 background-image)을
    덮기 때문이다 — 다만 유저 칸만은 예외다(바로 아래). */
-.scr-stat-row-me { background-color: rgba(var(--point-rgb), 0.14); }
+.scr-stat-row-me { background-color: var(--stat-me-tint); }
 /* 유저 칸까지 같은 배경(요청) — 이 칸은 가로 스크롤에 왼쪽 고정이라 제 불투명 배경을
    갖고 있어서, 줄에 깐 색이 이 칸에서만 가려졌다(그 줄만 이름 칸이 뚝 끊겨 보였다).
    고정 칸의 배경 위에 같은 색을 한 겹 더 얹어 줄 전체가 이어지게 한다. */
 .scr-stat-row-me .scr-stat-name-cell {
   background-image:
-    linear-gradient(rgba(var(--point-rgb), 0.14), rgba(var(--point-rgb), 0.14)),
+    linear-gradient(var(--stat-me-tint), var(--stat-me-tint)),
     linear-gradient(var(--panel-raised), var(--panel-raised));
 }
 .scr-stat-row-head {
@@ -3095,6 +3105,16 @@ html:not(.scr-light-theme) .scr-stats-list-panel-v2 .scr-stat-name-cell, html:no
    다크(78%)보다 조금만 더 준다. */
 .scr-light-theme .scr-stats-list-panel-v2 .scr-stat-name-cell, .scr-light-theme .scr-stats-list-panel-v2 .scr-stat-name-head {
   background-color: color-mix(in srgb, var(--panel-solid) 80%, transparent);
+}
+/* 내 줄의 유저 칸(지적: 유저 칸만 배경색이 다르다). 원인은 위 background-image:none이다 —
+   v2는 유저 칸을 반투명 유리로 되돌리면서 배경 이미지를 지우는데, 그 규칙이 파일 뒤에 있어
+   앞쪽 .scr-stat-row-me .scr-stat-name-cell의 한 겹까지 같이 지워졌다. 그래서 이 칸만
+   색이 안 얹혀 옆 칸들과 다른 톤으로 떠 있었다.
+   여기서는 v1처럼 --panel-raised를 깔지 않고 같은 색 한 겹만 얹는다 — v2 유저 칸의 바탕은
+   위에서 정한 반투명 --panel-solid이고, 그 위에 줄과 똑같은 --stat-me-tint를 올려야 줄
+   전체가 한 색으로 이어진다. */
+.scr-stats-list-panel-v2 .scr-stat-row-me .scr-stat-name-cell {
+  background-image: linear-gradient(var(--stat-me-tint), var(--stat-me-tint));
 }
 /* flex:none — 기본 규칙의 flex:1이 남은 폭을 스택이 다 차지해 프사만 왼쪽에 붙고
    닉네임 혼자 가운데로 떨어졌다(가운데 정렬 요청과 어긋남) — 프사+닉네임을 한 덩어리로
