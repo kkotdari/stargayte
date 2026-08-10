@@ -165,6 +165,11 @@ export default function AdminPanelScreen({ isAdmin }: AdminPanelScreenProps) {
       // 일꾼이 없는 환경에서도 내려받기·올리기는 겹칠 수 있으므로 여러 갈래로 굴린다.
       await runLanes(ids, (pool?.size ?? 2) * 2, one);
 
+      /* 마지막 한 건이 세어지는 것을 보고 나서 알림을 띄운다(지적: 끝수가 안 세어진 채로
+         완료가 뜬다) — window.alert는 그 자리에서 화면을 멈춰 세우는데, 바로 위에서 부른
+         setRedo는 아직 그려지기 전이라 39/40에서 멈춘 채로 알림이 덮였다. 값이 틀린 게
+         아니라 그릴 틈을 안 준 것이라, 한 프레임만 양보하면 된다. */
+      await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
       window.alert(`경기 ${done - failed}건을 다시 분석했어요.${failed > 0 ? `\n${failed}건은 리플레이를 읽지 못해 그대로 뒀어요.` : ""}`);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "경기를 다시 분석하지 못했어요.");
