@@ -151,14 +151,16 @@ const TITLES: Title[] = [
      꺾어 놓는다. 그래서 다른 어떤 전술보다 그 사람의 성향을 잘 말한다. */
   tactic("일꾼 사냥꾼", ["harass-workers"], 1),
   tactic("지긋지긋한 견제러", ["harass-long"], 1),
+  /* 드랍도 같은 무리로 올린다(요청: 견제도 가중치 높이기) — 병력을 실어 상대 뒤로 넘기는
+     일은 앞마당에 병력을 세워 두는 것과 달리 판을 두 곳에서 동시에 굴려야 한다.
+     종족마다 키가 달라 하나로 묶는다: 그래야 "드랍 잘하는 사람"이라는 한 말이 된다. */
+  tactic("드랍의 여신", ["dropship", "shuttle", "zerg-drop", "templar-drop", "shuttle-reaver"], 1),
 
   // ── 전술(리플레이 자막이 말하던 그 사실) ────────────────────────────────────
   tactic("옆탱의 여왕", ["side-tank"]),
   tactic("센포의 지배자", ["center-photon"]),
   tactic("포토러시의 퀸", ["cannon-rush"]),
   tactic("성큰러시의 절대자", ["sunken-rush"]),
-  // 드랍은 종족마다 키가 다르다 — 하나로 묶어야 "드랍 잘하는 사람"이라는 말이 된다.
-  tactic("드랍의 여신", ["dropship", "shuttle", "zerg-drop", "templar-drop", "shuttle-reaver"]),
   tactic("남의 집 헤집기 장인", ["base-raid"]),
   /* 핵은 커널보다 앞이다(요청) — 한 판에 한 번 떨어질까 말까 한 것이고, 떨어뜨리려면
      고스트를 살려 상대 진영까지 데려가야 한다. 커널은 뚫어 두기만 해도 한 줄이 된다. */
