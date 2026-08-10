@@ -624,6 +624,9 @@ export default function StatsScreenV2() {
                   // 자기 줄에 살짝 배경을 깐다(요청) — 회원이 늘수록 표에서 제 줄을 찾는
                   // 것이 일이 된다.
                   me={c.member.id === user?.id}
+                  // MVP는 팀전에만 붙는 값이라 개인전 표에서는 안 그린다(요청) — 어느 줄이나
+                  // 0이고, 그 0이 "한 번도 못 받았다"로 잘못 읽힌다.
+                  showMvp={matchType !== "0101"}
                   points={showRank ? c.points : undefined}
                   rank={showRank ? rankByMember.get(c.member.id) ?? null : null}
                   rankDelta={showRank ? rankDeltaByMember.get(c.member.id) ?? null : null}

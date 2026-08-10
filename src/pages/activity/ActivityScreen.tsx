@@ -1296,28 +1296,21 @@ export default function ActivityScreen() {
    *  MVP인 사람 닉네임 뒤에는 작은 배지를 붙인다(요청) — 줄만 보고도 그 판의 주인공을
    *  알 수 있게. 누가 MVP인지는 원본 게임 아이디로 가른다(요약이 그 값을 들고 있고,
    *  닉네임은 같은 것이 둘일 수 있다). */
-  const sideNodes = (all: GameResultSlot[], part: GameResultSlot[], mvpRaw: string | undefined): ReactNode[] =>
-    part.flatMap((s, i) => [
-      ...(i > 0 ? [<span className="scr-activity-row-sep" key={`s${i}`}>·</span>] : []),
-      <span className="scr-activity-row-em" key={`n${i}`}>
-        {/* 이름 규칙은 그 편 전체를 봐야 정해진다(컴퓨터 슬롯 번호 매기기) — 줄로 잘라
-            넘기면 같은 사람이 줄마다 다른 이름이 된다. */}
-        {resolveSlotName(s, all, memberOf)}
+  /** 한 편을 칸에 담아 늘어놓는다(요청: 딱 네 칸을 만들어 거기에 이름이 들어가 줄이 맞게).
+   *
+   *  한 줄에 두 칸씩, 팀전 최대 넷이면 2×2다. 칸을 격자로 두는 것이 핵심이다 — 이름을
+   *  가운뎃점으로 이어 놓으면 이름 길이에 따라 두 줄의 글자 시작점이 제각각이라, 같은
+   *  편인데도 위아래 줄이 어긋나 보인다. 칸 폭을 열 단위로 맞추면 이름이 길든 짧든 줄이
+   *  선다. 칸이 곧 구분이라 가운뎃점도 뺐다. */
+  const SIDE_COLS = 2;
+  const sideCells = (slots: GameResultSlot[], mvpRaw: string | undefined): ReactNode =>
+    slots.map((s, i) => (
+      <span className="scr-activity-row-em" key={i}>
+        {/* 이름 규칙은 그 편 전체를 봐야 정해진다(컴퓨터 슬롯 번호 매기기). */}
+        {resolveSlotName(s, slots, memberOf)}
         {!!mvpRaw && s.rawName === mvpRaw && <span className="scr-mvp-mini">MVP</span>}
-      </span>,
-    ]);
-
-  /** 한 편을 두 명씩 끊어 줄로 나눈다(요청: 각 팀당 한 줄 최대 2명, 넘치면 줄바꿈).
-   *  여덟이 한 줄에 서면 눌러 맞추는 폭(FlatLine)이 절반 아래까지 내려가 글자가 뭉갠다 —
-   *  줄을 나누면 같은 카드 폭에서 글자가 제 크기를 되찾는다. */
-  const SIDE_PER_LINE = 2;
-  const sideLines = (slots: GameResultSlot[], mvpRaw: string | undefined): ReactNode => {
-    const lines: GameResultSlot[][] = [];
-    for (let i = 0; i < slots.length; i += SIDE_PER_LINE) lines.push(slots.slice(i, i + SIDE_PER_LINE));
-    return lines.map((part, i) => (
-      <span className="scr-activity-row-name-line" key={i}>{sideNodes(slots, part, mvpRaw)}</span>
+      </span>
     ));
-  };
 
   const rowDesc = (item: DisplayItem) => {
     if (item.kind === "challenge") {
@@ -1418,14 +1411,24 @@ export default function ActivityScreen() {
         {/* 편 색은 걷었다(요청) — 한동안 1팀 파랑·2팀 붉음으로 칠했는데, 이제 한 편이
             제 줄(들)로 묶여 서므로 어디까지가 한 편인지는 줄바꿈이 말한다. 색까지 얹으면
             줄마다 있는 유형 배지와 한 줄 안에서 서로 다툰다. */}
-        {/* 두 편은 vs 쪽 가장자리를 맞춰 선다 — 줄이 여럿이면 가운데 정렬로는 vs 양옆이
-            들쭉날쭉해 두 편이 마주 본다는 그림이 흐려진다. */}
+        {/* 칸 수는 그 편 인원만큼이되 한 줄에 둘까지 — 인라인 style로 넘기는 이유는
+            1:1(한 칸)까지 같은 규칙으로 담기 위해서다. 네 칸이면 2×2가 된다. */}
         <span className="scr-activity-row-name">
-          <span className="scr-activity-row-name-main scr-activity-row-side-a">{sideLines(g.team1, g.summaryData?.mvp)}</span>
+          <span
+            className="scr-activity-row-name-main scr-activity-row-side-a"
+            style={{ gridTemplateColumns: `repeat(${Math.min(SIDE_COLS, g.team1.length)}, 1fr)` }}
+          >
+            {sideCells(g.team1, g.summaryData?.mvp)}
+          </span>
         </span>
         <span className="scr-activity-row-arrow scr-activity-row-vs" aria-hidden>vs</span>
         <span className="scr-activity-row-name">
-          <span className="scr-activity-row-name-main scr-activity-row-side-b">{sideLines(g.team2, g.summaryData?.mvp)}</span>
+          <span
+            className="scr-activity-row-name-main scr-activity-row-side-b"
+            style={{ gridTemplateColumns: `repeat(${Math.min(SIDE_COLS, g.team2.length)}, 1fr)` }}
+          >
+            {sideCells(g.team2, g.summaryData?.mvp)}
+          </span>
         </span>
       </FlatLine>
     );
@@ -1728,6 +1731,17 @@ export default function ActivityScreen() {
                             (요청: 자리 예약 취소). 빈 칸을 늘 잡아 두면 알약 없는 줄만
                             왼쪽이 휑하게 비어 오히려 눈에 걸렸다. */}
                         {rowStatusOf(item)}
+                        {/* 새것(NEW)이거나 달라진 것(UPDATE) — 둘 다 참이어도 하나만
+                            세운다(요청: NEW 우선). 자리는 유형 배지 바로 오른쪽이다(요청)
+                            — 한동안 제목 글 뒤에 뒀는데, 게임 줄의 제목은 폭에 맞춰 눌리는
+                            덩어리라(FlatLine) 그 뒤에 붙은 딱지가 줄마다 다른 자리에서
+                            줄 오른쪽 끝까지 밀려났다. 배지 줄에 두면 어느 줄에서나 같은
+                            자리에 서서 훑을 때 눈이 한 x만 보면 된다. */}
+                        {flags.length > 0 && (
+                          <span className={cx("scr-activity-row-flag", `scr-activity-row-flag-${flags[0]}`)}>
+                            {flags[0] === "new" ? "NEW" : "UPDATE"}
+                          </span>
+                        )}
                         {/* 얼마나 지났나(요청: "타임스탬프를 유형 배지랑 같은 줄 오른쪽
                             끝에 배치") — 하루까지는 "N분 전/N시간 전", 일주일까지는
                             "N일 전", 그보다 오래된 것만 날짜.
@@ -1741,14 +1755,6 @@ export default function ActivityScreen() {
                       </span>
                       <span className="scr-activity-row-desc">
                         {rowDesc(item)}
-                        {/* 새것(NEW)이거나 달라진 것(UPDATE) — 둘 다 참이어도 하나만 세운다
-                            (요청: NEW 우선). 배지 줄이 아니라 제목 글 바로 뒤다: 이 딱지가
-                            말하는 건 종류가 아니라 이 줄의 내용이 새롭다는 것이다. */}
-                        {flags.length > 0 && (
-                          <span className={cx("scr-activity-row-flag", `scr-activity-row-flag-${flags[0]}`)}>
-                            {flags[0] === "new" ? "NEW" : "UPDATE"}
-                          </span>
-                        )}
                       </span>
                     </span>
                   </button>

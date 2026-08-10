@@ -1983,12 +1983,23 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    모바일 전용 축소는 아래 미디어쿼리에서 화면 폭 기준으로만 한다(스크롤과 무관하게
    항상 같은 모습). */
 .scr-stat-row > * { display: flex; align-items: center; padding: 14px 14px; box-sizing: border-box; }
-/* 지금 로그인한 사람의 줄(요청: 살짝 반투명 배경) — 회원이 늘수록 표에서 제 줄을 찾는
-   것이 일이라, 눈이 먼저 걸릴 자리 하나를 만든다. 칸마다 배경을 깔지 않고 줄에 한 겹만
-   얹는 이유는 칸 배경이 세로 구분선(.scr-stat-row의 background-image)을 덮기 때문이다.
-   색은 포인트가 아니라 오버레이(--overlay-rgb)다: 두 테마 모두 바탕보다 한 겹 밝거나
-   어두워지기만 하면 되고, 색을 입히면 그 줄만 다른 뜻이 있는 것처럼 읽힌다. */
-.scr-stat-row-me { background-color: rgba(var(--overlay-rgb), 0.055); }
+/* 지금 로그인한 사람의 줄 — 회원이 늘수록 표에서 제 줄을 찾는 것이 일이라, 눈이 먼저
+   걸릴 자리 하나를 만든다.
+   색은 무채 오버레이에서 포인트색으로 올렸다(요청: 포인트 배경으로, 반투명 컬러는 좀 더
+   눈에 띄게) — 흰색 5.5%는 마우스 hover와 구별이 안 될 만큼 옅었다. 포인트를 쓰면 그
+   한 줄만 다른 계열이 되어 훑는 중에도 걸린다. 라이트 테마에서 --point는 검정이라
+   같은 값이 연회색으로 떨어지는데, 흰 바탕에서는 그쪽이 오히려 또렷하다.
+   줄에 한 겹만 얹는 이유는 칸 배경이 세로 구분선(.scr-stat-row의 background-image)을
+   덮기 때문이다 — 다만 유저 칸만은 예외다(바로 아래). */
+.scr-stat-row-me { background-color: rgba(var(--point-rgb), 0.14); }
+/* 유저 칸까지 같은 배경(요청) — 이 칸은 가로 스크롤에 왼쪽 고정이라 제 불투명 배경을
+   갖고 있어서, 줄에 깐 색이 이 칸에서만 가려졌다(그 줄만 이름 칸이 뚝 끊겨 보였다).
+   고정 칸의 배경 위에 같은 색을 한 겹 더 얹어 줄 전체가 이어지게 한다. */
+.scr-stat-row-me .scr-stat-name-cell {
+  background-image:
+    linear-gradient(rgba(var(--point-rgb), 0.14), rgba(var(--point-rgb), 0.14)),
+    linear-gradient(var(--panel-raised), var(--panel-raised));
+}
 .scr-stat-row-head {
   /* 이 행 색은 계속 불투명하게 둔다 — 가로 스크롤 중 옆에서 지나가는 막대 그래프
      색이 반투명 유리(--panel) 사이로 비치면 산만해 보인다.
@@ -2280,14 +2291,22 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    66px씩 벌어진다(실측). 240이면 좌우로 30px씩 남아 '칸이 곧 막대'로 읽히지도 않는다. */
 .scr-stat-record-item .scr-value-bar-track-wrap,
 .scr-stat-record-item .scr-stat-bar-track-wrap { max-width: 240px; }
-/* 줄 수가 둘에서 넷으로 늘었으니 글자와 막대 두께를 함께 줄인다(요청) — 안 줄이면 이 칸
-   혼자 세로로 자라 도넛이 있는 옆 칸들보다 줄 높이를 더 먹는다. 두께는 20 → 15px,
-   그 안에 겹쳐 앉는 값 글자(ValueBar의 숫자·승률)는 한 단계 작게. 값이 트랙 안에 얹히는
-   구조라 두 값은 같이 움직여야 한다 — 두께만 줄이면 글자가 트랙을 넘는다. */
+/* 값과 변동을 막대 '안'에 두 줄로 담는다(요청) — 그만큼 트랙을 두껍게 잡는다(15 → 24px).
+   한동안 변동을 트랙 밖 아래에 뒀는데, 그러면 막대와 막대 사이 여백을 이 줄이 먹어
+   어느 막대의 변동인지가 흐려졌다. 값 11px + 변동 8px + 위아래 여백이 24px이다.
+   줄 수가 넷이라 이 이상 두꺼워지면 이 칸 혼자 도넛 칸보다 세로로 커진다. */
 .scr-stat-record-item .scr-value-bar-track-wrap,
-.scr-stat-record-item .scr-stat-bar-track-wrap { height: 15px; min-height: 0; }
+.scr-stat-record-item .scr-stat-bar-track-wrap {
+  height: 24px; min-height: 0;
+  flex-direction: column; justify-content: center; gap: 0;
+}
+/* 승률은 값이 트랙 전체를 덮는 절대배치 상자 안에 있다(.scr-stat-bar-rate-overlay) —
+   그 상자도 같이 세로로 세워야 변동이 값 밑에 앉는다. */
+.scr-stat-record-item .scr-stat-bar-rate-overlay {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0;
+}
 .scr-stat-record-item .scr-value-bar-num,
-.scr-stat-record-item .scr-stat-bar-rate { font-size: var(--fs-11); }
+.scr-stat-record-item .scr-stat-bar-rate { font-size: var(--fs-11); line-height: 1.1; }
 /* ── 승률 막대를 나머지 셋과 완전히 같게(요청: "승률막대도 다른것들과 css 똑같이 맞추기")
    승률만 다른 컴포넌트(StatBar)라, 이 칸 안에서 세 가지가 어긋나 있었다(실측):
      ① 트랙 두께 20px — 위에서 15px로 눌렀는데 v2 통계 블록의 같은 특이도 규칙
@@ -2308,7 +2327,7 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 }
 .scr-stat-record-item .scr-stat-bar-row .scr-stat-bar-track-wrap,
 .scr-stat-record-item .scr-value-bar .scr-value-bar-track-wrap {
-  flex: none; width: 100%; min-width: 0; height: 15px; min-height: 0;
+  flex: none; width: 100%; min-width: 0; height: 24px; min-height: 0;
 }
 /* 값도 ValueBar의 숫자와 같은 자로 — 자릿수 폭을 고정해 줄마다 흔들리지 않게 한다. */
 .scr-stat-record-item .scr-stat-bar-rate { font-variant-numeric: tabular-nums; }
@@ -2327,8 +2346,7 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    서므로 이 줄도 가운데 정렬이면 수치 바로 밑이 된다. */
 /* 값과 변동 사이는 바짝 붙인다(요청: 데이터와 변동 사이 세로 갭은 넓지 않게) — 둘은 한
    덩어리로 읽혀야 하고, 벌어야 하는 것은 막대와 막대 사이다(.scr-stat-record-col의 gap). */
-.scr-bar-delta { display: block; line-height: 1; margin-top: 0; text-align: center; }
-.scr-bar-delta:empty { display: none; }
+.scr-bar-delta { display: block; line-height: 1; margin-top: 0; text-align: center; position: relative; }
 .scr-bar-delta .scr-stat-delta { margin-left: 0; }
 
 /* 정렬 드롭다운 — 필터 문장·건수와 한 줄, 건수 바로 왼쪽(요청). margin-left:auto로 남는
@@ -2445,18 +2463,23 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    단계 작고 흐리다. 오르내림을 색으로 가르지 않는 것도 일부러다 — 이 표에서 '큰 쪽이
    좋은 것'이라 단정할 수 없는 값이 섞여 있고(구성비·업그레이드 단계), 무엇보다 줄마다
    지표마다 초록·빨강이 켜지면 표가 신호등이 된다. 부호가 이미 방향을 말한다. */
+/* 글자는 값보다 확실히 작다(요청) — 값이 11px인 자리에서 9px은 차이가 안 읽혀 두 수가
+   같은 무게로 보였다. 한 단계 더 내린다. */
 .scr-stat-delta {
-  margin-left: 3px; font-size: var(--fs-9); font-weight: 600; color: var(--dim);
+  margin-left: 3px; font-size: calc(var(--fs-9) - 1px); font-weight: 600; color: var(--dim);
   font-variant-numeric: tabular-nums; white-space: nowrap;
 }
+/* 안 움직였거나 견줄 값이 없는 자리 — 자리는 지키되 읽을 값이 아니라는 것이 보이게. */
+.scr-stat-delta-none { opacity: 0.45; }
 /* 변동은 어디서든 수치 아래 제 줄이다(요청) — 그래서 왼쪽 여백도 필요 없다. 줄로 서면
    값과 세로로 겹쳐 읽히므로 가운데 정렬이 곧 '그 수치의 변동'이라는 표시가 된다. */
 .scr-stat-rank-delta { line-height: 1; }
 .scr-stat-rank-delta:empty { display: none; }
 .scr-stat-rank-delta .scr-stat-delta { margin-left: 0; }
-/* 도넛 위 '몇 채/분' 밑에 한 줄로 놓이는 자리 — 빈 줄이 자리를 먹지 않게 비면 접힌다. */
-.scr-stat-per10-delta { display: block; line-height: 1; }
-.scr-stat-per10-delta:empty { display: none; }
+/* 도넛 위 '몇 채/분' 밑의 변동 — 갭이 다른 자리보다 유독 넓었다(지적): 이 수는 line-height
+   1.1짜리 큰 글자(caption)라 그 줄 자체가 높고, 그 아래에 또 제 줄이 서면서 벌어졌다.
+   위로 당겨 값에 붙인다 — 다른 자리(막대 안)와 같은 간격으로 보이게. */
+.scr-stat-per10-delta { display: block; line-height: 1; margin-top: -2px; }
 .scr-stat-per10-delta .scr-stat-delta { margin-left: 0; }
 /* 업그레이드 표의 한 칸 — 평균 밑에 변동을 한 줄로 놓는다(옆에 붙이면 세 열이 밀린다). */
 .scr-stat-up-cell { display: inline-flex; flex-direction: column; align-items: center; line-height: 1.15; }
@@ -8673,14 +8696,25 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    어디까지가 한 편인지는 이제 줄바꿈이 말한다 — 한 편은 두 명씩 제 줄에 서고 두 편 사이에
    vs가 있어, 색 없이도 편이 갈린다. 색이 사라진 만큼 줄마다 있는 유형 배지가 그 줄에서
    유일한 색이 되어 훑기도 쉬워졌다. */
-/* 한 편의 이름 줄 — 두 명씩 끊어 세로로 쌓는다(요청: 각 팀당 한 줄 최대 2명). 눌러 맞추는
-   폭(FlatLine)이 가로 한 줄에만 걸리므로, 줄을 나누면 같은 카드 폭에서 글자가 덜 눌린다. */
-.scr-activity-row-name-main {
-  display: inline-flex; flex-direction: column; align-items: center; gap: 1px;
+/* 한 편의 이름 칸들(요청: 딱 네 칸을 만들어 거기에 이름이 들어가 줄이 맞게) — 한 줄에
+   두 칸, 최대 2×2다. 열 수는 인원에 맞춰 인라인 style로 온다(ActivityScreen).
+   격자로 두는 것이 핵심이다: 이름을 가운뎃점으로 이어 놓으면 이름 길이에 따라 두 줄의
+   글자 시작점이 제각각이라 같은 편인데도 줄이 어긋나 보인다. 열 폭을 1fr로 두면 그 열의
+   가장 긴 이름에 맞춰 통일되므로 위아래가 한 자에 선다.
+   눌러 맞추는 폭(FlatLine)은 가로 한 줄에만 걸리므로, 줄을 나눈 만큼 글자가 덜 눌린다. */
+/* 클래스를 둘 겹쳐 특이도를 올린다(0-2-0) — 이 파일 뒤쪽에 .scr-activity-row-name-main을
+   flex로 두는 규칙이 하나 더 있어서(제목 칸 공용), 같은 특이도로는 그쪽이 이긴다.
+   격자는 경기 줄에만 필요하므로 편 클래스(side-a/b)에 함께 얹는다.
+   두 편은 vs 쪽 가장자리를 맞춰 선다 — 칸 안에서도 그쪽으로 글자를 붙여야 두 편이
+   마주 본다는 그림이 산다. */
+.scr-activity-row-name-main.scr-activity-row-side-a,
+.scr-activity-row-name-main.scr-activity-row-side-b {
+  display: inline-grid; gap: 1px 10px; align-items: center;
 }
-.scr-activity-row-name-line { display: inline-flex; align-items: center; white-space: nowrap; }
-.scr-activity-row-side-a { align-items: flex-end; }
-.scr-activity-row-side-b { align-items: flex-start; }
+/* 이름은 제 칸 한가운데에 앉는다 — 칸에 담겼다는 것이 그렇게 읽히고, 이름 길이가 제각각
+   이어도 좌우가 고르다. 격자 자체는 내용폭(inline-grid)이라 vs 옆에 바짝 선다. */
+.scr-activity-row-name-main.scr-activity-row-side-a,
+.scr-activity-row-name-main.scr-activity-row-side-b { justify-items: center; text-align: center; }
 .scr-activity-row-em {
   color: var(--text); font-weight: 600;
   /* 자리가 모자라면 이름이 줄어든다 — 바깥 상자가 아니라 여기서 자른다(위 주석). */

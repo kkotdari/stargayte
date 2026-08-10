@@ -47,14 +47,18 @@ function Delta({ now, prev, digits = 0, unit = "" }: {
   digits?: number;
   unit?: string;
 }) {
-  if (typeof now !== "number" || typeof prev !== "number") return null;
-  const d = now - prev;
+  const d = typeof now === "number" && typeof prev === "number" ? now - prev : null;
   // 표시할 자릿수에서 0이면 안 움직인 것으로 본다 — 반올림해 0이 되는 값에 "+0"을
   // 다는 것은 거짓말에 가깝다.
-  const text = d.toFixed(digits);
-  if (Number(text) === 0) return null;
+  const text = d === null ? null : d.toFixed(digits);
+  /* 움직이지 않았거나 견줄 값이 없으면 "-"다(요청: 아예 비우지 말고 - 표시) — 자리를
+     늘 채워야 값이 있는 줄과 없는 줄의 높이가 같고, 빈칸이 '아직 안 그려진 것'으로
+     읽히지도 않는다. 다만 읽을 값이 아니므로 더 눌러 둔다. */
+  if (text === null || Number(text) === 0) {
+    return <span className="scr-stat-delta scr-stat-delta-none">-</span>;
+  }
   return (
-    <span className="scr-stat-delta">{d > 0 ? `+${text}` : text}{unit}</span>
+    <span className="scr-stat-delta">{d! > 0 ? `+${text}` : text}{unit}</span>
   );
 }
 
@@ -282,6 +286,9 @@ interface MemberStatRowProps {
   prev?: MemberStats;
   /** 이 줄이 지금 로그인한 사람인가 — 배경을 살짝 깔아 제 줄을 바로 찾게 한다(요청). */
   me?: boolean;
+  /** MVP 줄을 그릴까 — 개인전만 보고 있으면 안 그린다(요청). MVP는 팀전에만 붙는 값이라
+   *  개인전 표에서는 어느 줄이나 0이고, 그 0이 "한 번도 못 받았다"로 잘못 읽힌다. */
+  showMvp?: boolean;
   /** 레이팅의 전달 값 — points와 같은 자리에서 온다(entry.rankScore). */
   prevPoints?: number | null;
   // 게임수 칸(ValueBar)의 기준값(이 목록에서 가장 많이 뛴 사람 = 100%).
@@ -327,7 +334,7 @@ interface MemberStatRowProps {
 
 // 전적통계 목록의 테이블 한 행.
 export default function MemberStatRow({
-  member, stats, prev, me = false, prevPoints, maxOverallPlays, maxApm, maxCmd,
+  member, stats, prev, me = false, showMvp = true, prevPoints, maxOverallPlays, maxApm, maxCmd,
   avatar = true, compact = false,
   points, rank, rankDelta, asOf, onPointsClick, onRankClick, medals, race, upRace,
 }: MemberStatRowProps) {
@@ -434,13 +441,19 @@ export default function MemberStatRow({
                     묶음이라 이 줄기에 붙인다. 0도 적는다(요청) — 한때 받은 적 없으면
                     감췄는데, 그러면 줄마다 이 자리가 있었다 없었다 해서 아래 칸들이
                     들쭉날쭉해지고, 무엇보다 '0회'와 '이 표에 없는 값'이 같아 보였다. */}
-                <div className="scr-stat-rank-line scr-stat-rank-mvp">
-                  <span className="scr-stat-mvp-tag">MVP</span>
-                  <span className="scr-stat-mvp-n">{stats.mvps}</span>
-                </div>
-                <div className="scr-stat-rank-line scr-stat-rank-delta">
-                  <Delta now={stats.mvps} prev={prev?.mvps} />
-                </div>
+                {showMvp && (
+                  <>
+                    <div className="scr-stat-rank-line scr-stat-rank-mvp">
+                      <span className="scr-stat-mvp-tag">MVP</span>
+                      <span className="scr-stat-mvp-n">{stats.mvps}</span>
+                    </div>
+                    {/* 변동은 여기서도 수치 아래다(요청) — 레이팅이 그렇게 서 있으므로
+                        이 줄만 옆에 달면 같은 줄기 안에서 규칙이 갈린다. */}
+                    <div className="scr-stat-rank-line scr-stat-rank-delta">
+                      <Delta now={stats.mvps} prev={prev?.mvps} />
+                    </div>
+                  </>
+                )}
               </>
             )}
           </div>
@@ -463,8 +476,11 @@ export default function MemberStatRow({
               /* 승률만은 소수 첫째 자리까지 — 정수로 반올림하면 47.6 → 48.1처럼 실제로
                  움직인 값이 "+0"으로 사라진다. 단위(%p)까지는 안 붙인다: 옆의 값이 이미
                  %라 부호와 수만으로 무슨 자인지 읽힌다. */
-              delta={prev && prev.plays > 0 && stats.plays > 0
-                ? <Delta now={stats.winRate} prev={prev.winRate} digits={1} /> : null}
+              delta={<Delta
+                now={stats.plays > 0 ? stats.winRate : null}
+                prev={prev && prev.plays > 0 ? prev.winRate : null}
+                digits={1}
+              />}
             />
           </div>
           <div className="scr-stat-record-item">

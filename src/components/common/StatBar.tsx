@@ -54,11 +54,11 @@ export default function StatBar({ label, plays, wins, draws, losses, winRate, co
               {rateText}
               {medal && <span className="scr-stat-medal">{medal}</span>}
             </span>
+            {/* 변동은 값 밑, 막대 안(요청) — ValueBar와 같은 자리·같은 규칙이다. */}
+            {delta && <span className="scr-bar-delta">{delta}</span>}
           </span>
         )}
       </div>
-      {/* 변동은 늘 수치 아래(요청) — ValueBar와 같은 자리·같은 규칙이다. */}
-      {delta && <span className="scr-bar-delta">{delta}</span>}
     </div>
   );
 }

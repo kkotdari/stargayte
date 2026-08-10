@@ -38,11 +38,11 @@ export default function ValueBar({ value, maxValue, medal, delta }: ValueBarProp
           {value ?? "-"}
           {medal && <span className="scr-stat-medal">{medal}</span>}
         </span>
+        {/* 변동은 값 바로 밑, 막대 안이다(요청) — 트랙을 그만큼 두껍게 잡아 두 줄을 담는다.
+            트랙 밖에 두면 막대와 막대 사이 여백이 이 줄에 먹혀 어느 막대의 변동인지가
+            흐려졌다. 자리는 값이 없어도 늘 지킨다(Delta가 "-"를 그린다). */}
+        {delta && <span className="scr-bar-delta">{delta}</span>}
       </div>
-      {/* 변동은 늘 수치 아래다(요청) — 트랙은 overflow:hidden에 두께가 얇아 그 안에 두 줄을
-          담을 수 없으므로, 트랙 밖 아래에 한 줄로 붙인다. 값이 트랙 한가운데에 서므로
-          같은 가운데 정렬이면 수치 바로 밑이 된다. 빈 줄이 자리를 먹지 않게 비면 접힌다. */}
-      {delta && <span className="scr-bar-delta">{delta}</span>}
     </div>
   );
 }
