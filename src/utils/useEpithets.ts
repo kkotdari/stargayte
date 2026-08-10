@@ -66,9 +66,13 @@ async function load(key: string): Promise<void> {
         // 종족별은 이미 응답에 실려 온다(byRace) — 따로 부를 것이 없다.
         races: byId[id]?.byRace,
         rise: riseOf(id),
+        registered: byId[id]?.registered,
       }))
       .flatMap((x) => (x.stats
-        ? [{ id: x.id, stats: x.stats, solo: x.solo, team: x.team, races: x.races, rise: x.rise }]
+        ? [{
+          id: x.id, stats: x.stats, solo: x.solo, team: x.team,
+          races: x.races, rise: x.rise, registered: x.registered,
+        }]
         : [])));
     cachedKey = key;
     /* 계산한 한 벌을 서버에 알린다 — 달라진 사람이 있으면 활동에 알림 한 줄이 남는다(요청).
