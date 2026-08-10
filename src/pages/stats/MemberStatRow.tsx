@@ -250,7 +250,9 @@ function RaceMixCell({ race, stats }: { race: BaseRace; stats?: MemberStats }) {
       <div className="scr-stat-mix-row">
         {/* 일꾼은 비율이 아니라 그냥 수다(요청) — 5분 동안 몇 기 뽑았나. */}
         <div className="scr-stat-worker5">
-          <span className="scr-stat-worker5-label">일꾼(5분)</span>
+          {/* 여섯 캡션이 같은 클래스를 쓴다(요청: 라벨 위치·아랫줄과의 간격 통일) —
+              한때 이 하나만 제 클래스를 갖고 있어 크기도 간격도 따로 놀았다. */}
+          <span className="scr-stat-mix-list-cap">일꾼(5분)</span>
           {/* 단위를 붙인다(요청) — 수만 있으면 옆 도넛의 퍼센트와 같은 자로 잰 값처럼
               읽힌다. 값이 없을 때(-)는 붙일 단위가 없다. */}
           <span className="scr-stat-worker5-n">

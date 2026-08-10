@@ -31,7 +31,6 @@ import { cx } from "../../utils/format";
 import { api } from "../../api/client";
 import { useCursorPagination } from "../../hooks/useCursorPagination";
 import { useEditableFocused } from "../../hooks/useEditableFocused";
-import { usePageBackground } from "../../hooks/usePageBackground";
 import {
   buildReplayDrafts, type ReplayDraft,
 } from "../../utils/replayDraft";
@@ -813,10 +812,9 @@ function ActivityGroupModal({
 }
 
 export default function ActivityScreen() {
-  // 화면 배경 사진 — 이제 PC 다크에서만 깐다(요청: 라이트는 통째로, 다크는 모바일만 제거).
-  // 그래서 모바일용·라이트용 사진은 넘기지 않는다(usePageBackground 주석 참고).
-  // 사진은 통계와 같은 것을 쓴다(원래 활동 배경이던 파일이 통계로 옮겨가며 이름만 stats_bg*가 됐다).
-  usePageBackground("/images/bg/stats_bg.jpg");
+  /* (삭제) 화면 배경 사진 — 통째로 걷었다(요청). 유형별 덩어리마다 테두리를 두른 뒤로는
+     목록 자체가 화면의 뼈대가 됐고, 그 뒤에 깔린 사진은 테두리 안팎을 함께 흐려 묶음의
+     경계를 도로 지웠다. */
   /* 유저 검색은 이제 이 화면에 없다(요청: "유형 필터, 유저필터 제거하고 유저필터는 리그,
      너나와, 게임목록 전체보기에 넣음") — 리그·너 나와·게임 "전체 보기" 팝업
      (ActivityGroupModal)이 각자 제 목록 안에서만 검색한다. 포함/일치 두 갈래(요청: "선택된

@@ -8,7 +8,6 @@ import { api } from "../../api/client";
 import { activeMemberSearchTerms, memberMatchesQuery } from "../../utils/memberSearch";
 // (삭제) 기간 유틸(monthInputToRange 등) — 이 화면에 고를 기간이 없다(요청).
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
-import { usePageBackground } from "../../hooks/usePageBackground";
 import { cx } from "../../utils/format";
 import type { GameResultStatsResponse, GameType, Member, MemberStats, MemberStatsEntry } from "../../types";
 
@@ -66,9 +65,9 @@ function PlainHead({ label, sub, className }: { label: string; sub?: string; cla
 // 내전(팀전) 통계 — 유저 검색 하나만 걸고 전체 누적을 본다(요청). 표는 [유저][주요 지표]
 // [테란][프로토스][저그] 다섯 칸이다.
 export default function ClanStatsScreen() {
-  // 사진 배경은 통계 화면 전용이고, 이제 다크에서만 쓴다(요청: "라이트 테마 통계 배경
-  // 제거") — 밝은 바탕에서는 사진이 표/글씨와 경쟁만 해서 읽기를 방해했다.
-  usePageBackground("/images/bg/stats_bg.jpg", "/images/bg/stats_bg_mobile.png");
+  /* (삭제) 사진 배경 — 다크에서도 걷었다(요청). 라이트에서 먼저 뺐던 이유가 여기서도
+     그대로였다: 이 화면은 표가 화면을 통째로 덮고, 그 표는 도넛·막대·다섯 줄짜리 목록으로
+     이미 색과 선이 빽빽하다. 뒤에 사진이 깔리면 그 위를 한 겹 더 읽어야 한다. */
   const members = useAppStore((s) => s.members);
   // 표에서 제 줄을 바로 찾게 배경을 깔아 줄 사람(요청).
   const user = useAppStore((s) => s.user);

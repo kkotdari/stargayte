@@ -29,8 +29,10 @@ import type { GameResultStatsResponse, GameType, Member, MemberStatsEntry } from
 
 /** 일대일. 이 화면은 이 유형 하나만 본다. */
 const LADDER_TYPE: GameType = "0101";
-// 기간 달력에서 "전체 누적"을 가리키는 값 — 나머지는 전부 "YYYY-MM"이다.
-const PERIOD_ALL = "all";
+/* (삭제) "전체 누적" — 달력에서 걷었다(요청). 이 화면의 값은 늘 한 달치다: 레이팅은 '그
+   날짜까지의 기록으로 본 값'이라 전체 누적이 곧 '오늘 기준'이고, 그건 이번 달을 고른 것과
+   같은 수다. 옆의 경기수·승률만 기간에 따라 달라졌는데, 그 둘을 통째로 누적해 보는 자리는
+   내전 통계다. 고르는 값은 이제 늘 "YYYY-MM" 하나다. */
 /** 끝난 달의 1·2·3위에 붙는 메달 — 순서가 곧 등수다. */
 const MEDALS = ["🥇", "🥈", "🥉"];
 
@@ -59,7 +61,6 @@ export default function LadderScreen() {
 
   const [period, setPeriod] = useState<string>(() => currentMonthValue());
   const [rivalryOpen, setRivalryOpen] = useState(false);
-  const periodMonth = period === PERIOD_ALL ? "" : period;
 
   // 달력에 늘어놓을 월의 하한 — 첫 경기가 있는 달. 그보다 과거는 어차피 빈 표다.
   const [firstMonth, setFirstMonth] = useState<string | null>(null);
@@ -71,22 +72,18 @@ export default function LadderScreen() {
     return () => { cancelled = true; };
   }, []);
 
-  const { from, to } = useMemo(
-    () => (periodMonth ? monthInputToRange(periodMonth) : { from: "", to: "" }),
-    [periodMonth],
-  );
+  const { from, to } = useMemo(() => monthInputToRange(period), [period]);
   const prevRange = useMemo(
-    () => (periodMonth ? monthInputToRange(shiftMonthValue(periodMonth, -1)) : { from: "", to: "" }),
-    [periodMonth],
+    () => monthInputToRange(shiftMonthValue(period, -1)), [period],
   );
 
   /* 레이팅이 어느 날짜 기준인가 — 그 기간의 마지막 날이되, 아직 안 온 날은 오늘로 자른다
-     (이번 달을 보면 "8.31 기준"이 아니라 "8.10 기준"이라야 맞다). '전체 누적'은 오늘이다.
+     (이번 달을 보면 "8.31 기준"이 아니라 "8.10 기준"이라야 맞다).
      레이팅은 '그 기간에 번 값'이 아니라 '그 날짜까지의 기록으로 본 값'이라, 이 날짜를 안
      적으면 달을 바꿨을 때 값이 왜 달라지는지 읽을 길이 없다. */
   const asOf = useMemo(() => {
     const today = new Date();
-    const end = to ? new Date(`${to}T00:00:00`) : today;
+    const end = new Date(`${to}T00:00:00`);
     const at = end > today ? today : end;
     return `${at.getMonth() + 1}.${at.getDate()}`;
   }, [to]);
@@ -112,8 +109,7 @@ export default function LadderScreen() {
      몇백 ms 늦게 따라 바뀌는 그림이 나온다. */
   interface LadderView {
     key: string;
-    /** "YYYY-MM", '전체 누적'이면 빈 문자열. */
-    periodMonth: string;
+    /** 이 한 장이 어느 달인가 — "YYYY-MM". */
     period: string;
     ids: string[];
     stats: Record<string, MemberStatsEntry>;
@@ -128,7 +124,6 @@ export default function LadderScreen() {
     const ids = q.ids ? q.ids.split(",") : [];
     const blank = {
       key: debouncedSignature,
-      periodMonth: q.period === PERIOD_ALL ? "" : q.period,
       period: q.period,
       ids,
     };
@@ -174,13 +169,13 @@ export default function LadderScreen() {
         const p = view.prev[m.id];
         const now = rank.get(m.id) ?? null;
         const before = prevRank.get(m.id);
-        /* 세 가지가 다른 말이다: 지난달에 순위가 없던 사람은 "신규", 있었는데 제자리면
-           변동 없음(null), 견줄 달 자체가 없으면(전체 누적) 역시 null이다. 전체 누적에서는
-           애초에 전달을 안 받아 오므로 periodMonth로 한 번 더 막는다 — 안 막으면 누구나
-           "신규"로 보인다. */
+        /* 셋이 다른 말이다: 지난달에 순위가 없던 사람은 "신규", 있었는데 제자리면 변동
+           없음(null), 애초에 순위가 없으면(한 판도 안 뛴) 역시 null이다. 견줄 달은 늘
+           있다 — 이 화면에 '전체 누적'이 없어졌으므로(위 주석) 전달을 안 받아 오는 경우
+           자체가 사라졌다. */
         const move: number | "new" | null =
           now === null ? null
-            : before === undefined ? (view.periodMonth ? "new" : null)
+            : before === undefined ? "new"
               : before === now ? null : before - now;
         return {
           member: m,
@@ -206,8 +201,9 @@ export default function LadderScreen() {
   }, [view, members]);
 
   /* 이미 끝난 달에만 1·2·3위에 메달을 붙인다 — 그 달의 성적은 더 바뀌지 않으니 그렇게 못
-     박아도 된다. 이번 달과 '전체 누적'은 아직 진행 중이라 안 붙인다(내전 화면과 같은 규칙). */
-  const medalOn = view !== null && view.period !== PERIOD_ALL && view.period < currentMonthValue();
+     박아도 된다. 이번 달은 아직 진행 중이라 안 붙인다: 뒤집힐 순위에 메달을 달면 그게
+     확정인 것처럼 읽힌다. */
+  const medalOn = view !== null && view.period < currentMonthValue();
 
   return (
     <div className="scr-screen scr-ladder-screen">
@@ -244,7 +240,6 @@ export default function LadderScreen() {
               <MonthCalendar
                 value={period} onChange={setPeriod}
                 minMonth={firstMonth} maxMonth={currentMonthValue()}
-                allValue={PERIOD_ALL} allLabel="전체 누적"
               />
             </div>
             {/* 레이팅이 어느 날짜 기준인가 — 줄의 오른쪽 끝이다(요청). 달력 바로 아래에

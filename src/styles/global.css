@@ -2298,9 +2298,19 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 /* 목록에 이름표를 단다 — 무엇의 목록인지는 칸 머리가 안 말해 준다(그쪽은 종족 이름이다).
    왼쪽으로 붙인다(요청) — 캡션·순번 붙은 목록·공방업 표 모두 칸 왼쪽부터 읽는 편이
    가운데보다 표답다. */
-.scr-stat-mix-list { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+.scr-stat-mix-list { display: flex; flex-direction: column; align-items: flex-start; gap: 0; }
+/* 여섯 덩어리(일꾼·건물·병력·유닛·스킬·공방업)의 이름표는 한 클래스다(요청: 라벨 위치와
+   아랫줄과의 간격을 통일). 두 가지를 함께 못 박는다:
+     자리 — 덩어리가 제 내용을 가운데 세우든(도넛·일꾼) 왼쪽부터 세우든(목록·표), 이름표만은
+       늘 덩어리의 왼쪽 끝이다. align-self:stretch로 덩어리 폭을 통째로 받아 그 안에서
+       왼쪽 정렬하므로, 내용의 정렬 방식과 무관하게 여섯이 같은 x에서 시작한다.
+     간격 — 아랫줄과의 사이는 이 margin 하나가 정한다. 덩어리마다 갖고 있던 gap(2·3·2px)을
+       0으로 걷은 것이 짝이다: 둘이 겹치면 덩어리마다 합이 달라져 이름표만 제각각 떠 보인다. */
 .scr-stat-mix-list-cap {
+  align-self: stretch; text-align: left;
+  margin-bottom: 4px;
   font-size: var(--fs-9); font-weight: 700; color: var(--muted); letter-spacing: 0.03em;
+  line-height: 1.1;
 }
 /* 여기도 같은 이유로 고정폭 대신 상한만(위 .scr-stat-upgrades 주석 참고) — 칸이 좁아지면
    목록도 함께 좁아져야지, 고정폭을 고집하면 옆 칸을 덮어쓴다. */
@@ -2317,7 +2327,7 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    가운데에 한 번만 선다(요청). 한때 도넛 가운데 구멍에 적었는데, 구멍 안에서는 도넛
    이름과 나란해 무엇의 수인지가 섞여 읽혔고 단위를 붙일 자리도 없었다. */
 .scr-stat-mix-block {
-  display: flex; flex-direction: column; align-items: center; gap: 3px; flex: none;
+  display: flex; flex-direction: column; align-items: center; gap: 0; flex: none;
 }
 .scr-stat-per10 {
   font-size: var(--fs-caption); font-weight: 700; color: var(--text);
@@ -2548,12 +2558,11 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 /* 경기당 초반(5분) 일꾼 수 — 도넛과 달리 비율이 아니라 그냥 수라 숫자를 그대로 적는다.
    도넛과 나란히 서므로 이름 위 / 수 아래로 포개, 도넛 하나만큼의 폭만 쓴다. */
 .scr-stat-worker5 {
-  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  display: flex; flex-direction: column; align-items: center; gap: 0;
   flex: none; white-space: nowrap;
 }
-/* 다른 다섯 캡션(.scr-stat-mix-list-cap)과 같은 크기로(지적: "일꾼(5분)만 폰트 크기가
-   다르네") — fs-11(11) → fs-9(9). */
-.scr-stat-worker5-label { font-size: var(--fs-9); font-weight: 700; letter-spacing: 0.03em; color: var(--muted); line-height: 1.1; }
+/* (삭제) .scr-stat-worker5-label — 일꾼만 제 이름표 클래스를 갖고 있어 크기도 간격도 따로
+   놀았다(지적). 이제 여섯이 다 .scr-stat-mix-list-cap 하나를 쓴다. */
 .scr-stat-worker5-n {
   position: relative;
   font-size: var(--fs-caption); font-weight: 700; color: var(--text);
