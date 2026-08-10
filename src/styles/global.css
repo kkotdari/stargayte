@@ -10915,6 +10915,13 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   /* 자막을 지도 선에서 띄우는 여백. 아래 최대폭이 '지도 폭'을 기준으로 잡히려면 이 값을
      되더해야 해서(퍼센트는 이 여백을 뺀 안쪽 폭에 걸린다) 변수로 뽑아 둔다. */
   --scr-cap-inset: 16px;
+  /* 고른 방향으로 '얼마나만' 물러날까 — 자막이 앉을 수 있는 범위를 가운데 언저리로
+     좁히는 값이다(요청). 좁은 화면에서도 같은 규칙을 쓰되 값만 작다(아래 미디어쿼리) —
+     지도가 작아 같은 비율로 당기면 세 칸이 사실상 한 칸이 된다.
+     ReplayMinimap의 CAP_PULL_*와 짝이다: 자리를 고르는 계산이 이 값으로 겹침을 재므로
+     한쪽만 고치면 '구석에 앉는다고 셈하고 실제로는 가운데에 그리는' 어긋남이 생긴다. */
+  --scr-cap-pull-x: 8%;
+  --scr-cap-pull-y: 12%;
   padding: var(--scr-cap-inset); pointer-events: none;
 }
 /* 자막이 앉는 칸 — 지도를 아홉 칸으로 나눠 그 스냅의 표시·화살표와 가장 덜 겹치는 칸을
@@ -10925,17 +10932,19 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 .scr-minimap-caption-left { justify-content: flex-start; }
 .scr-minimap-caption-center { justify-content: center; }
 .scr-minimap-caption-right { justify-content: flex-end; }
-/* PC에서는 그 칸까지 끝까지 밀지 않고 가운데 언저리에서만 움직인다(요청: 자막 노출 부분을
-   중앙점 주변으로 제한 — 방향성은 유지하되 맵의 중앙부에서 조절되게). 화면이 넓으면 지도도
-   커져서, 구석에 붙은 자막은 그림에서 멀찍이 떨어져 나가 무엇에 대한 말인지 눈으로 잇기가
-   어려웠다. 방향(위/아래/좌/우)은 그대로 두고 그 방향으로 물러나는 거리만 줄인다.
-   값은 ReplayMinimap의 CAP_PULL_X/Y와 같아야 한다 — 자막이 앉을 칸을 고르는 계산이 이
-   자리를 기준으로 겹침을 재기 때문이다. */
+/* 고른 칸까지 끝까지 밀지 않고 가운데 언저리에서만 움직인다(요청: 자막 노출 부분을 중앙점
+   주변으로 제한 — 방향성은 유지하되 맵의 중앙부에서 조절되게). 구석에 붙은 자막은 그림에서
+   멀찍이 떨어져 나가 무엇에 대한 말인지 눈으로 잇기가 어렵고, 좁은 화면에서는 구석마다
+   아바타가 서 있어 그 위에 그대로 얹힌다(요청: 모바일도 같은 방식으로).
+   방향(위/아래/좌/우)은 그대로 두고 물러나는 거리만 줄이는 것이 전부라, 규칙은 한 벌이고
+   화면 크기에 따라 달라지는 것은 값(--scr-cap-pull-*)뿐이다. */
+.scr-minimap-caption-top .scr-story-cap { margin-top: var(--scr-cap-pull-y); }
+.scr-minimap-caption-bottom .scr-story-cap { margin-bottom: var(--scr-cap-pull-y); }
+.scr-minimap-caption-left .scr-story-cap { margin-left: var(--scr-cap-pull-x); }
+.scr-minimap-caption-right .scr-story-cap { margin-right: var(--scr-cap-pull-x); }
+/* PC는 지도가 커서 더 깊이 들어와도 세 칸이 서로 구별된다 — 그만큼 더 당긴다. */
 @media (min-width: 1160px) {
-  .scr-minimap-caption-top .scr-story-cap { margin-top: 18%; }
-  .scr-minimap-caption-bottom .scr-story-cap { margin-bottom: 18%; }
-  .scr-minimap-caption-left .scr-story-cap { margin-left: 12%; }
-  .scr-minimap-caption-right .scr-story-cap { margin-right: 12%; }
+  .scr-minimap-caption { --scr-cap-pull-x: 12%; --scr-cap-pull-y: 18%; }
 }
 /* 문장을 모두 같은 칸에 겹쳐 놓고(grid-area 하나) 지금 것만 보이게 한다 — 칸이 늘 가장
    긴 문장 높이로 잡히므로 재생하는 동안 자리가 위아래로 흔들리지 않는다. 문장마다 길이가

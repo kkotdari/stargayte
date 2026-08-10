@@ -676,6 +676,10 @@ export default function GameResultStory({
        더 입구 쪽으로) — 화살표의 FRONT는 '이 언저리를 쳤다'는 넉넉한 겨냥이지만, 이쪽은
        거기 벽이 서 있다는 표시라 본진 살림에서 확실히 떨어져야 벽으로 읽힌다. */
     const MARK_FRONT = 0.38;
+    /** 본진 표시를 시작 지점에서 지도 가운데 쪽으로 얼마나 들이나 — 아바타를 안 덮을
+     *  만큼만이다(요청: 아바타 쪽 말고 본진 가운데에). 살림 무게중심(hubs)이 있으면 그쪽이
+     *  더 정확하므로 이 값은 그게 없을 때의 대비책이다. */
+    const MARK_HOME_IN = 0.12;
 
     /* 그 자리가 '상대 쪽'인가 — 내 집보다 상대 집에 가까워야 공격으로 읽는다.
        자리 값만으로는 진출과 멀티·집결이 안 갈린다(지적: 견제·드랍인데 화살표가 내 기지
@@ -1063,6 +1067,17 @@ export default function GameResultStory({
      *  때린 쪽 화살표가 이미 그 자리에 💥를 찍으므로, 집주인에게도 💥를 주면 같은 자리에
      *  같은 표시가 둘 겹친다. */
     const homeDefender = new Set<string>();
+    /* 이 스냅이 '타이밍을 흘려보낸' 이야기라면 흘려보낸 쪽이 누구인지 미리 모아 둔다 —
+       아래 화살표 만들기가 그 사람들을 건너뛴다(요청: 뽑은 병력은 본진 가운데에 표시).
+       한 스냅에는 여러 beat가 묶이므로, 같은 사람의 생산담(mass-army 등)이 그 자리에서
+       '나갔다'로 판정돼 상대 쪽으로 화살표를 뻗는 일이 있었다 — 자막은 "세워만 뒀다"인데
+       그림은 진격이라 서로 반대말을 했다. 명단을 먼저 만드는 건 beat 순서 때문이다:
+       생산담이 idle-lead보다 앞에 오면 그때는 아직 명단이 비어 있다. */
+    const idleSide = new Set<string>();
+    for (const n of idx) {
+      const b = beats[n];
+      if (b?.k === "idle-lead") (b.who ?? []).forEach((r) => idleSide.add(r));
+    }
     for (const n of idx) {
       const b = beats[n];
       if (!b) continue;
@@ -1196,6 +1211,11 @@ export default function GameResultStory({
            거기에 그대로 얹으면 얼굴을 덮는다. hubs는 그 사람 살림의 무게중심이다
            (replaySummary). 살림을 옮긴 사람은 그 값이 옛 자리를 가리키므로 쓰지 않는다. */
         else if (hubs[raw] && !moved.has(raw)) markSpot.set(raw, [hubs[raw][0], hubs[raw][1]]);
+        /* 살림 무게중심을 못 쓰는 경우(옛 요약·이사한 사람)에도 아바타 위로는 떨어뜨리지
+           않는다(요청: 아바타 쪽 말고 본진 가운데에) — 시작 지점에서 지도 가운데 쪽으로
+           조금만 들이면 그 자리가 곧 그 사람 본진 안이다. 입구(MARK_FRONT)보다는 훨씬
+           얕게 — 그건 나가는 길목이지 본진이 아니다. */
+        else if (myHome) markSpot.set(raw, lerp(myHome, center, MARK_HOME_IN));
         else markSpot.delete(raw);
         if (ATTACKER_FACE_KEYS.has(b.k)) attacker.add(raw);
         /* 타이밍을 흘려보낸 이야기에는 화살표를 안 그린다(지적: 자막에는 타이밍을 놓쳤다는데
@@ -1204,6 +1224,10 @@ export default function GameResultStory({
            병력을 모아 놓은 자리가 목표처럼 잡혀 상대 기지로 뻗는 붉은 화살표가 됐다.
            아바타의 자는 얼굴(😴)과 열심인 얼굴(🔥)이 이 스냅의 그림 전부다. */
         if (b.k === "idle-lead") continue;
+        /* 그 스냅에서 흘려보낸 쪽은 어느 beat로도 화살표를 안 낸다(요청) — 뽑은 병력은
+           집에 세워 둔 것이라, 그 사실은 본진 가운데의 표시와 이름표(위 markSpot)로 족하다.
+           화살표를 함께 그리면 "세워만 뒀다"는 자막과 정반대 그림이 된다. */
+        if (idleSide.has(raw)) continue;
         /* 스캔은 '어디를 열어 봤나'가 곧 그 이야기다(지적: 스캔에 웬 탱크, 그리고 스캔을
            본진에 해? 스캔한 곳들을 표시해야지) — 요약이 실어 준 자리마다 화살표를 하나씩
            낸다. 이름표는 안 붙인다: 스캔은 유닛으로 한 일이 아니라 커맨드센터가 쏘는
