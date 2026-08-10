@@ -335,6 +335,15 @@ export default function StatsScreenV2() {
    *  자리에는 지금 고른 기간(periodMonth)이 아니라 이 값을 쓴다. */
   const shownMonth = view?.periodMonth ?? "";
 
+  /* 건설·유닛·스킬 세 칸은 종족이 정해져야 그린다(요청) — 종족마다 짓는 건물도 뽑는 유닛도
+     아예 달라, 여러 종족의 판을 한 칸에 겹치면 그 도넛·목록은 무엇의 비율인지가 없는
+     그림이 된다(업그레이드 표는 이미 같은 이유로 그렇게 하고 있었다 — UP_TABLE 주석).
+     '주종족'도 고른 것으로 친다: 줄마다 잣대는 다르지만 한 줄 안에서는 한 종족이고, 어느
+     종족인지는 닉네임 옆 배지가 말한다. 안 고른 것은 '전체종족' 하나뿐이다.
+     그려져 있는 한 장을 따른다(view.race) — 필터만 먼저 바뀌는 사이에 칸이 나타났다
+     사라지면 표가 두 번 갈아 끼워지는 것처럼 보인다. */
+  const showMix = (view?.race ?? "all") !== "all";
+
   const rankPool = useMemo(() => view?.memberIds ?? [], [view]);
   const rankByMember = useMemo(
     () => rankOf(view?.stats ?? {}, rankPool),
@@ -590,67 +599,84 @@ export default function StatsScreenV2() {
           // "조건에 맞는 회원이 없어요"를 겹쳐 놓지 않는다.
           error ? null : <div className="scr-empty">조건에 맞는 회원이 없어요.</div>
         ) : (
-          <div className="scr-stat-table-clip">
-            <div className="scr-stat-table scr-scroll">
-              {/* 헤더도 데이터 행과 같은 가로 스크롤 컨테이너 안의 평범한 첫 행이다 —
-                  더 이상 sticky가 아니라서(요청으로 제거) 페이지 스크롤 기준으로 따로
-                  띄워둘 이유가 없어졌고, 그 덕에 이름 칸의 position:sticky;left:0도
-                  브라우저가 알아서 처리해준다. 예전엔 헤더가 이 컨테이너 밖에 따로
-                  있어서 가로 스크롤때마다 JS(requestAnimationFrame)로 위치를 흉내
-                  내야 했는데, 그 흉내가 완벽히 매끈하지 않아 스크롤 중 미세하게
-                  흔들려 보였다(실제로 지적받은 문제) — 같은 컨테이너 안에 두면 브라우저
-                  네이티브 스크롤이 완벽히 동기화해서 그 흔들림 자체가 원천적으로 사라진다. */}
-              <div className="scr-stat-row scr-stat-row-head">
-                <PlainHead label="유저" className="scr-stat-name-head" />
-                {/* 랭크·레이팅·게임수·승률·APM·커맨드가 다 이 한 칸에 있다(요청: 랭킹과
-                    기록 통합) — 어느 한 가지를 가리키는 이름이 없어 '주요 지표'로 부른다
-                    (요청). 기간은 필터 줄이 이미 말하고 있어 칸 이름에서 뺐다. */}
-                {/* 레이팅이 어느 날짜 기준인가는 여기 한 번만 적는다(요청) — 줄마다 달던
-                    것을 걷었다. 레이팅은 '그 기간에 번 값'이 아니라 '그 날짜까지의 기록으로
-                    본 값'이라 이 날짜가 없으면 달을 바꿨을 때 값이 왜 달라지는지 읽을 길이
-                    없는데, 그 사정은 칸 전체에 한 번 걸리는 단서지 줄마다 다른 값이 아니다. */}
-                <PlainHead label="주요 지표" sub={showRank ? `레이팅 ${asOf} 기준` : undefined} />
-                <PlainHead
-                  label="건설"
-                />
-                <PlainHead
-                  label="유닛"
-                />
-                <PlainHead label="스킬" sub="※ 공/방은 20분 이상 경기" />
+          /* 종족을 안 고르면 건설·유닛·스킬 세 칸을 통째로 뺀다(요청) — 종족마다 짓는 것도
+             뽑는 것도 아예 달라서, 여러 종족의 판을 한 칸에 겹쳐 놓으면 그 도넛과 목록은
+             '무엇의 비율'인지가 없는 그림이 된다. 자리만 비워 두는 것과도 다른 말이다:
+             칸을 남겨 두면 그 안의 "-"가 '이 사람은 안 지었다'로 읽힌다.
+             대신 표 오른쪽에 왜 없는지와 어떻게 보는지를 한 줄로 적어 둔다(요청). */
+          <div className={cx("scr-stat-table-row", !showMix && "scr-stat-table-row-slim")}>
+            <div className="scr-stat-table-clip">
+              <div className="scr-stat-table scr-scroll">
+                {/* 헤더도 데이터 행과 같은 가로 스크롤 컨테이너 안의 평범한 첫 행이다 —
+                    더 이상 sticky가 아니라서(요청으로 제거) 페이지 스크롤 기준으로 따로
+                    띄워둘 이유가 없어졌고, 그 덕에 이름 칸의 position:sticky;left:0도
+                    브라우저가 알아서 처리해준다. 예전엔 헤더가 이 컨테이너 밖에 따로
+                    있어서 가로 스크롤때마다 JS(requestAnimationFrame)로 위치를 흉내
+                    내야 했는데, 그 흉내가 완벽히 매끈하지 않아 스크롤 중 미세하게
+                    흔들려 보였다(실제로 지적받은 문제) — 같은 컨테이너 안에 두면 브라우저
+                    네이티브 스크롤이 완벽히 동기화해서 그 흔들림 자체가 원천적으로 사라진다. */}
+                <div className="scr-stat-row scr-stat-row-head">
+                  <PlainHead label="유저" className="scr-stat-name-head" />
+                  {/* 랭크·레이팅·게임수·승률·APM·커맨드가 다 이 한 칸에 있다(요청: 랭킹과
+                      기록 통합) — 어느 한 가지를 가리키는 이름이 없어 '주요 지표'로 부른다
+                      (요청). 기간은 필터 줄이 이미 말하고 있어 칸 이름에서 뺐다. */}
+                  {/* 레이팅이 어느 날짜 기준인가는 여기 한 번만 적는다(요청) — 줄마다 달던
+                      것을 걷었다. 레이팅은 '그 기간에 번 값'이 아니라 '그 날짜까지의 기록으로
+                      본 값'이라 이 날짜가 없으면 달을 바꿨을 때 값이 왜 달라지는지 읽을 길이
+                      없는데, 그 사정은 칸 전체에 한 번 걸리는 단서지 줄마다 다른 값이 아니다. */}
+                  <PlainHead label="주요 지표" sub={showRank ? `레이팅 ${asOf} 기준` : undefined} />
+                  {showMix && (
+                    <>
+                      <PlainHead label="건설" />
+                      <PlainHead label="유닛" />
+                      <PlainHead label="스킬" sub="※ 공/방은 20분 이상 경기" />
+                    </>
+                  )}
+                </div>
+                {cards.map((c) => (
+                  <MemberStatRow
+                    key={c.member.id}
+                    member={c.member}
+                    stats={c.stats}
+                    prev={c.prev}
+                    prevPoints={showRank ? c.prevPoints : undefined}
+                    // 자기 줄에 살짝 배경을 깐다(요청) — 회원이 늘수록 표에서 제 줄을 찾는
+                    // 것이 일이 된다.
+                    me={c.member.id === user?.id}
+                    // MVP는 팀전에만 붙는 값이라 개인전 표에서는 안 그린다(요청) — 어느 줄이나
+                    // 0이고, 그 0이 "한 번도 못 받았다"로 잘못 읽힌다.
+                    showMvp={matchType !== "0101"}
+                    points={showRank ? c.points : undefined}
+                    rank={showRank ? rankByMember.get(c.member.id) ?? null : null}
+                    rankDelta={showRank ? rankDeltaByMember.get(c.member.id) ?? null : null}
+                    onPointsClick={() => setPointMember(c.member)}
+                    onRankClick={showRank && shownMonth ? () => setTrendMember(c.member) : undefined}
+                    medals={medalByMember.get(c.member.id)}
+                    // 주종족으로 볼 때만 — 줄마다 잣대가 다르니 그 종족을 닉네임 옆에
+                    // 적는다(요청). 다른 필터에서는 제목 문장이 이미 말하고 있다.
+                    race={view?.race === "main" ? mainRaceOf(c.entry) : null}
+                    /* 업그레이드 표는 종족마다 줄이 달라 종족이 정해져야 그릴 수 있다(요청)
+                       — 주종족이면 그 사람 것, 종족을 고르면 그 종족, 전체종족이면 안 그린다. */
+                    upRace={view?.race === "main" ? mainRaceOf(c.entry)
+                      : view?.race === "all" ? null : (view?.race as BaseRace | undefined) ?? null}
+                    showMix={showMix}
+                    compact
+                    maxOverallPlays={maxOverallPlays}
+                    maxApm={maxApm}
+                    maxCmd={maxCmd}
+                  />
+                ))}
               </div>
-              {cards.map((c) => (
-                <MemberStatRow
-                  key={c.member.id}
-                  member={c.member}
-                  stats={c.stats}
-                  prev={c.prev}
-                  prevPoints={showRank ? c.prevPoints : undefined}
-                  // 자기 줄에 살짝 배경을 깐다(요청) — 회원이 늘수록 표에서 제 줄을 찾는
-                  // 것이 일이 된다.
-                  me={c.member.id === user?.id}
-                  // MVP는 팀전에만 붙는 값이라 개인전 표에서는 안 그린다(요청) — 어느 줄이나
-                  // 0이고, 그 0이 "한 번도 못 받았다"로 잘못 읽힌다.
-                  showMvp={matchType !== "0101"}
-                  points={showRank ? c.points : undefined}
-                  rank={showRank ? rankByMember.get(c.member.id) ?? null : null}
-                  rankDelta={showRank ? rankDeltaByMember.get(c.member.id) ?? null : null}
-                  onPointsClick={() => setPointMember(c.member)}
-                  onRankClick={showRank && shownMonth ? () => setTrendMember(c.member) : undefined}
-                  medals={medalByMember.get(c.member.id)}
-                  // 주종족으로 볼 때만 — 줄마다 잣대가 다르니 그 종족을 닉네임 옆에
-                  // 적는다(요청). 다른 필터에서는 제목 문장이 이미 말하고 있다.
-                  race={view?.race === "main" ? mainRaceOf(c.entry) : null}
-                  /* 업그레이드 표는 종족마다 줄이 달라 종족이 정해져야 그릴 수 있다(요청)
-                     — 주종족이면 그 사람 것, 종족을 고르면 그 종족, 전체종족이면 안 그린다. */
-                  upRace={view?.race === "main" ? mainRaceOf(c.entry)
-                    : view?.race === "all" ? null : (view?.race as BaseRace | undefined) ?? null}
-                  compact
-                  maxOverallPlays={maxOverallPlays}
-                  maxApm={maxApm}
-                  maxCmd={maxCmd}
-                />
-              ))}
             </div>
+            {/* 왜 세 칸이 없는지, 어떻게 하면 보이는지 — 표 바깥 오른쪽에 한 줄로(요청).
+                표 안에 두면 그것도 한 칸처럼 읽히고, 줄마다 되풀이할 수도 없는 말이다. */}
+            {!showMix && (
+              <p className="scr-stat-mix-hint">
+                <b>건설 · 유닛 · 스킬</b>
+                종족마다 짓고 뽑는 것이 아예 달라, 섞어 놓으면 비율이 뜻을 잃습니다.
+                <em>종족 필터에서 종족이나 주종족을 고르면 세 칸이 함께 열립니다.</em>
+              </p>
+            )}
           </div>
         )}
       </div>

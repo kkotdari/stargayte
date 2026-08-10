@@ -339,13 +339,17 @@ interface MemberStatRowProps {
    *  회원의 주종족, '전체종족'이면 null(안 그린다). 위 race와 달리 종족 필터에서도 온다:
    *  이건 배지가 아니라 표의 내용 자체를 가르는 값이다. */
   upRace?: BaseRace | null;
+  /** 건설·유닛·스킬 세 칸을 그릴까(요청) — 종족을 안 고르면(전체종족) 세 칸을 통째로
+   *  뺀다. 자리를 비워 두는 것과는 다른 말이다: 칸을 남기면 그 안의 "-"가 '이 사람은 안
+   *  지었다'로 읽힌다. 왜 없는지는 표 바깥 안내가 말한다(StatsScreen). */
+  showMix?: boolean;
 }
 
 // 전적통계 목록의 테이블 한 행.
 export default function MemberStatRow({
   member, stats, prev, me = false, showMvp = true, prevPoints, maxOverallPlays, maxApm, maxCmd,
   avatar = true, compact = false,
-  points, rank, rankDelta, onPointsClick, onRankClick, medals, race, upRace,
+  points, rank, rankDelta, onPointsClick, onRankClick, medals, race, upRace, showMix = true,
 }: MemberStatRowProps) {
   const openMemberProfile = useAppStore((s) => s.openMemberProfile);
   const [photoOpen, setPhotoOpen] = useState(false);
@@ -402,11 +406,15 @@ export default function MemberStatRow({
                             밀려 아래 변동과 어긋난다. 자리를 안 먹으니 메달이 있는 줄만 수가
                             밀리던 일도 함께 사라져, 자리를 비워 두던 빈 메달(-hole)도 걷었다.
                             그만큼 줄기는 넓어야 한다 — --scr-stat-rank-w 참고. */}
+                        {/* 메달만은 수의 왼쪽 바깥이다(요청: 줄기 좌우 여백 축소) — 단위와
+                            같은 쪽에 세우면 줄기가 담아야 할 폭이 [수 절반 + 단위 + 메달]의
+                            두 배라 그만큼 벌어지고, 그 폭은 왼쪽에서 통째로 빈자리가 된다.
+                            좌우로 갈라 매달면 두 쪽이 서로를 채운다. */}
+                        {medals?.points && <span className="scr-stat-medal">{medals.points}</span>}
                         <span className="scr-stat-points-side">
                           {/* 단위(요청) — 아랫줄의 "1위"와 달리 이 줄은 맨숫자라 무엇의 수인지가
                               칸 이름에만 기대고 있었다. */}
                           <span className="scr-stat-points-unit">레이팅</span>
-                          {medals?.points && <span className="scr-stat-medal">{medals.points}</span>}
                         </span>
                       </button>
                     </span>
@@ -434,15 +442,23 @@ export default function MemberStatRow({
                   ) : (
                     <span className="scr-stat-rank-plain">{rank}위</span>
                   )}
-                  {/* 변동은 방향이 곧 의미라 색과 화살표로만 짧게. 신규는 화살표 대신
-                      "신규" 글자로(요청). */}
+                </div>
+                {/* 순위 변동도 수치 아래 제 줄이다(요청: 크기 줄이고 아래에) — 옆에 붙이면
+                    [순위+변동]이 한 덩어리로 가운데에 서서 정작 순위가 왼쪽으로 밀리고,
+                    이 줄기의 다른 값들(레이팅·MVP)과 규칙도 갈린다. 방향은 색과 화살표가
+                    이미 말하므로 글자는 다른 변동들과 같은 크기까지 내린다. */}
+                <div className="scr-stat-rank-line scr-stat-rank-move">
                   {rankDelta === "new" ? (
                     // 기존 활동 랭크변동 카드의 "신규" 배지와 같은 톤을 그대로 쓴다.
                     <span className="scr-activity-shift-new">신규</span>
-                  ) : rankDelta != null && rankDelta !== 0 && (
+                  ) : rankDelta != null && rankDelta !== 0 ? (
                     <span className={rankDelta > 0 ? "scr-activity-shift-up" : "scr-activity-shift-down"}>
                       {rankDelta > 0 ? `▲${rankDelta}` : `▼${-rankDelta}`}
                     </span>
+                  ) : (
+                    /* 안 움직였거나 견줄 달이 없으면 다른 변동 자리와 같은 "-" 하나 — 자리를
+                       늘 지켜야 줄마다 아래 칸들의 높이가 같다. */
+                    <span className="scr-stat-delta scr-stat-delta-none">-</span>
                   )}
                 </div>
                 {/* MVP 횟수(요청: 몇 위 아래에) — 순위·레이팅과 같은 '그 사람이 어디쯤인가'
@@ -508,6 +524,9 @@ export default function MemberStatRow({
           </div>
         </div>
       </div>
+      {/* 종족을 안 골랐으면 세 칸을 통째로 안 그린다(요청) — 여러 종족을 겹쳐 놓은 도넛과
+          목록은 무엇의 비율인지가 없는 그림이다. 칸 머리도 함께 빠진다(StatsScreen). */}
+      {showMix && <>
       {/* 건설 — 그래프 하나(생산/방어), 경기당 평균 건설 수, 많이 지은 건물 다섯(요청).
           구성이 실린 경기가 하나도 없거나 표본이 모자라면 통째로 "-" — 빈 도넛이 서 있는
           것보다 정직하다. */}
@@ -619,6 +638,7 @@ export default function MemberStatRow({
           <span className="scr-stat-points-empty">-</span>
         )}
       </div>
+      </>}
       {photoOpen && member.avatar && (
         <PhotoViewer src={member.avatar} alt={member.nickname} onClose={() => setPhotoOpen(false)} />
       )}

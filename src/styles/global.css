@@ -1590,7 +1590,10 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    여백 16px씩을 두면 정확히 224px이 된다. 로고가 이 기둥에서 가장 넓은 것이라 나머지
    (메뉴 낱말·닉네임)는 저절로 들어간다. */
 @media (min-width: 1160px) {
-  :root { --rail-w: 224px; }
+  /* 224 → 176px(요청: 로고를 줄인 만큼 기둥도) — 이 폭은 애초에 로고 하나가 정한 값이었다:
+     워드마크 192px + 좌우 여백 16px씩. 로고가 75%(144px)가 됐으니 같은 셈으로 176px이다.
+     기둥에 서는 나머지(메뉴 낱말·프로필 한 줄)는 원래 이보다 한참 좁다. */
+  :root { --rail-w: 176px; }
   /* 셸에 건 padding-left는 :root의 변수 변경만으로는 안 걸린다 — 아래 규칙들이 직접
      읽어야 한다. */
   /* 기둥이 흐름에서 빠졌으므로(fixed) 그 자리를 본문 쪽에서 비워 준다 — 셸에 패딩을
@@ -1637,12 +1640,13 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   /* 가로 띠에서 로고를 중심선에 맞추려고 걸어 둔 보정(translateY)은 여기서 뜻이 없다 —
      옆에 나란히 설 것이 없으니 맞출 중심선도 없다. */
   .scr-brand { justify-content: flex-start; transform: none; margin-bottom: 4px; }
-  /* 폭을 2/3로(요청) — 22px 높이면 워드마크가 192px이라 기둥 안폭(224-32)을 정확히 꽉
-     채웠고, 그래서 로고가 기둥의 제목이 아니라 배너처럼 보였다.
+  /* 원래 크기의 75%로(요청) — 22px 높이면 워드마크가 192px이라 기둥 안폭(224-32)을 정확히
+     꽉 채웠고, 그래서 로고가 기둥의 제목이 아니라 배너처럼 보였다. 2/3까지 줄였다가 그건
+     너무 작다는 지적으로 한 단계 되돌린 값이다.
      폭만 눌러 줄이지 않고 높이로 줄인다 — 별(.scr-brand-logo-star)은 워드마크에 대한
      %로 얹혀 있어 같은 비율로 줄면 자리가 그대로지만, 폭만 누르면 별의 가로 위치·모양이
      함께 일그러진다(요청: 별 심볼 위치 안 흐트러지게). */
-  .scr-brand-logo-img { height: calc(22px * 2 / 3); }
+  .scr-brand-logo-img { height: calc(22px * 0.75); }
   /* .scr-user는 가로 띠에서 [앱 설치 · 테마 · 프로필]을 오른쪽 끝에 함께 밀어 두려고
      묶어 둔 상자다. 기둥에서는 이 셋이 위(테마)와 아래(프로필)로 갈라져야 하는데, 묶음이
      한 덩어리로 남아 있으면 그럴 수가 없다. display:contents로 상자만 걷어 내면 세
@@ -1673,6 +1677,11 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   .scr-header-inner::before { order: 2; flex-grow: 2; }
   .scr-header-inner::after { order: 4; flex-grow: 3; }
   .scr-nav-tab { justify-content: flex-start; padding: 9px 10px; border-radius: 6px; margin-left: -10px; }
+  /* 기둥에서는 메뉴 글자를 두 스텝 키운다(요청): body(16) → headline(24). 가로 띠에서
+     16px인 건 옆에 로고·프로필과 나란히 서느라 눌러 둔 값인데, 기둥에서는 이 넷이 화면
+     왼쪽에서 유일하게 읽는 글자라 그만큼 커도 된다. 로고가 작아진 뒤로는 오히려 기둥의
+     무게중심이 메뉴로 옮겨 왔다. */
+  .scr-nav-desktop .scr-nav-tab { font-size: var(--fs-headline); }
   /* 지금 보고 있는 화면 — 가로 띠에서는 글자 굵기만으로 갈렸지만(넷이 나란히 서 있어
      비교가 쉬웠다) 세로로 쌓이면 그 차이가 눈에 잘 안 걸린다. 옅은 판을 한 겹 깐다.
      판이 글자 폭이라(align-items:flex-start) 어느 낱말이 켜져 있는지가 그대로 보인다. */
@@ -2303,8 +2312,11 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 /* 넷이 세로로 서면서 줄기가 하나가 됐으니 그만큼 늘린다(168 → 240px) — 168은 줄기가
    둘이라 한 줄기가 180px밖에 안 되던 시절의 값이라, 그대로 두면 이름과 막대 사이가
    66px씩 벌어진다(실측). 240이면 좌우로 30px씩 남아 '칸이 곧 막대'로 읽히지도 않는다. */
+/* 240 → 180px(요청: 막대가 너무 길다) — 넷을 세로로 세운 뒤로 이 칸은 '막대밭'이라, 240px은
+   길이를 견주는 데 필요한 것보다 길어 칸이 통째로 파랗게 읽혔다. 180px이면 가장 긴 값과
+   가장 짧은 값의 차이는 그대로 보이면서 좌우로 숨 쉴 자리가 남는다. */
 .scr-stat-record-item .scr-value-bar-track-wrap,
-.scr-stat-record-item .scr-stat-bar-track-wrap { max-width: 240px; }
+.scr-stat-record-item .scr-stat-bar-track-wrap { max-width: 180px; }
 /* 값과 변동을 막대 '안'에 두 줄로 담는다(요청) — 그만큼 트랙을 두껍게 잡는다(15 → 24px).
    한동안 변동을 트랙 밖 아래에 뒀는데, 그러면 막대와 막대 사이 여백을 이 줄이 먹어
    어느 막대의 변동인지가 흐려졌다. 값 11px + 변동 8px + 위아래 여백이 24px이다.
@@ -2362,7 +2374,14 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    서므로 이 줄도 가운데 정렬이면 수치 바로 밑이 된다. */
 /* 값과 변동 사이는 바짝 붙인다(요청: 데이터와 변동 사이 세로 갭은 넓지 않게) — 둘은 한
    덩어리로 읽혀야 하고, 벌어야 하는 것은 막대와 막대 사이다(.scr-stat-record-col의 gap). */
-.scr-bar-delta { display: block; line-height: 1; margin-top: -1px; text-align: center; position: relative; }
+/* 이 줄의 글자 크기를 변동 글자와 같게 못 박는다(요청: 값과 변동 줄 사이가 아직 넓다) —
+   줄 높이는 안에 든 8px 글자가 아니라 줄 자신의 font-size(둘레에서 물려받은 11~14px)로
+   잡히던 탓에, line-height를 1로 눌러도 3px 남짓이 늘 남았다. 줄과 글자가 같은 크기면
+   그 남은 몫이 사라진다. 아래 랭크·분당 변동 줄도 같은 까닭으로 함께 못 박는다. */
+.scr-bar-delta {
+  display: block; line-height: 1; margin-top: -1px; text-align: center; position: relative;
+  font-size: calc(var(--fs-9) - 1px);
+}
 .scr-bar-delta .scr-stat-delta { margin-left: 0; }
 
 /* 정렬 드롭다운 — 필터 문장·건수와 한 줄, 건수 바로 왼쪽(요청). margin-left:auto로 남는
@@ -2489,7 +2508,7 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 .scr-stat-delta-none { opacity: 0.45; }
 /* 변동은 어디서든 수치 아래 제 줄이다(요청) — 그래서 왼쪽 여백도 필요 없다. 줄로 서면
    값과 세로로 겹쳐 읽히므로 가운데 정렬이 곧 '그 수치의 변동'이라는 표시가 된다. */
-.scr-stat-rank-delta { line-height: 1; }
+.scr-stat-rank-delta { line-height: 1; font-size: calc(var(--fs-9) - 1px); }
 .scr-stat-rank-delta:empty { display: none; }
 .scr-stat-rank-delta .scr-stat-delta { margin-left: 0; }
 /* 레이팅 값과 그 변동 사이(요청: 더 붙게) — 눈에 보이는 사이는 셋이 겹친 값이었다:
@@ -2497,10 +2516,22 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    줄기 갭은 이 줄에서만 되당긴다 — 갭 자체를 줄이면 아래 순위·MVP 줄까지 함께 붙는다. */
 .scr-stat-rank-points .scr-stat-points-btn { padding-top: 2px; padding-bottom: 2px; }
 .scr-stat-rank-points + .scr-stat-rank-delta { margin-top: -2px; }
+/* 순위 변동 줄(요청: 크기 줄이고 순위 아래로) — 다른 변동들과 같은 크기·같은 간격이다.
+   화살표·"신규"는 예전에 micro(12px)였는데, 그때는 순위 옆에 나란히 서서 그 정도는 돼야
+   읽혔다. 제 줄로 내려온 지금은 레이팅·MVP의 변동과 한 열에 서므로 그것들과 같아야 한다. */
+.scr-stat-rank-move { line-height: 1; margin-top: -2px; }
+.scr-stat-rank-move .scr-activity-shift-up,
+.scr-stat-rank-move .scr-activity-shift-down,
+.scr-stat-rank-move .scr-activity-shift-new {
+  font-size: calc(var(--fs-9) - 1px); font-weight: 700; line-height: 1;
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
 /* 도넛 위 '몇 채/분' 밑의 변동 — 갭이 다른 자리보다 유독 넓었다(지적): 이 수는 line-height
    1.1짜리 큰 글자(caption)라 그 줄 자체가 높고, 그 아래에 또 제 줄이 서면서 벌어졌다.
    위로 당겨 값에 붙인다 — 다른 자리(막대 안)와 같은 간격으로 보이게. */
-.scr-stat-per10-delta { display: block; line-height: 1; margin-top: -2px; }
+.scr-stat-per10-delta {
+  display: block; line-height: 1; margin-top: -2px; font-size: calc(var(--fs-9) - 1px);
+}
 .scr-stat-per10-delta .scr-stat-delta { margin-left: 0; }
 /* 업그레이드 표의 한 칸 — 평균 밑에 변동을 한 줄로 놓는다(옆에 붙이면 세 열이 밀린다). */
 .scr-stat-up-cell { display: inline-flex; flex-direction: column; align-items: center; line-height: 1.15; }
@@ -2710,20 +2741,23 @@ html:not(.scr-light-theme) .scr-donut-band-delta { fill: #fff; opacity: 0.66; }
    세우므로 덩어리 폭이 줄마다 같고, 그래서 흐름으로 들여도 숫자는 여전히 한 줄로 선다.
    막대 위의 메달들은 그대로 절대배치다 — 거기는 트랙 안이라 삐져나갈 밖이 없다. */
 .scr-stat-rank-val { gap: 3px; }
-/* 단위·메달이 함께 매달리는 자리 — 수(버튼)의 오른쪽 바깥이고, 흐름에서 빠져 있어 자리를
-   안 먹는다(요청: 단위를 뺀 숫자와 변동이 줄을 맞추고 가운데에). 버튼이 기준이라 수가
-   길든 짧든 그 끝을 따라간다. 버튼의 오른쪽 안여백(6px)만큼 되당겨 수와 3px을 띄운다. */
+/* 단위가 매달리는 자리 — 수(버튼)의 오른쪽 바깥이고, 흐름에서 빠져 있어 자리를 안 먹는다
+   (요청: 단위를 뺀 숫자와 변동이 줄을 맞추고 가운데에). 버튼이 기준이라 수가 길든 짧든
+   그 끝을 따라간다. 버튼의 오른쪽 안여백(6px)만큼 되당겨 수와 3px을 띄운다. */
 .scr-stat-points-side {
   position: absolute; left: 100%; top: 50%; transform: translateY(-50%);
   margin-left: -3px; display: inline-flex; align-items: center; gap: 3px;
   white-space: nowrap; pointer-events: none;
 }
+/* 메달은 반대쪽, 수의 왼쪽 바깥이다(요청: 랭크 줄기 좌우 여백 축소) — 단위와 같은 쪽에
+   두면 줄기 폭이 [수 절반 + 단위 + 메달]의 두 배(156px)여야 하고, 그 폭은 왼쪽에서 통째로
+   빈자리가 된다. 좌우로 갈라 매달면 필요한 폭이 124px로 줄고 빈자리도 사라진다. */
 .scr-stat-rank-points .scr-stat-medal {
-  position: static; transform: none; margin-left: 0;
+  left: auto; right: 100%; margin: 0 -3px 0 0;
   /* 메달 이모지의 실제 폭은 기기마다 다르다(안드로이드·iOS·크롬이 저마다 다른 글꼴로
      그린다) — 자리를 픽셀로 못 박아, 어느 기기에서 보든 줄기 안에 드는 폭이 같게 한다.
      글리프가 이 상자보다 크면 좌우로 조금 넘치는데, 줄기 여백 안이라 부딪힐 것이 없다. */
-  flex: none; width: 16px; display: inline-flex; justify-content: center;
+  width: 16px; display: inline-flex; justify-content: center;
 }
 /* 값 덩어리는 안 눌린다 — 눌리면 그 안의 값이 접히거나 메달이 밀려난다. */
 .scr-stat-rank-points .scr-stat-rank-val { flex: none; min-width: 0; }
@@ -2773,7 +2807,7 @@ html:not(.scr-light-theme) .scr-donut-band-delta { fill: #fff; opacity: 0.66; }
      대해 왼쪽에 붙어 있는 칸이라 폭이 흔들리면 그 아래 내용과 어긋난다. */
   --scr-stat-tracks:
     var(--scr-stat-name-w)
-    minmax(var(--scr-stat-record-w), 520fr)
+    minmax(var(--scr-stat-record-w), 430fr)
     minmax(var(--scr-stat-build-w), 192fr)
     minmax(var(--scr-stat-unit-w), 354fr)
     minmax(var(--scr-stat-skill-w), 234fr);
@@ -2790,6 +2824,33 @@ html:not(.scr-light-theme) .scr-donut-band-delta { fill: #fff; opacity: 0.66; }
     var(--scr-stat-name-w) + var(--scr-stat-record-w) + var(--scr-stat-build-w)
     + var(--scr-stat-unit-w) + var(--scr-stat-skill-w));
 }
+/* 종족을 안 골라 세 칸이 빠진 표(요청) — 트랙과 최소폭을 남은 두 칸으로 다시 적는다.
+   빠진 칸의 트랙을 그대로 두면 격자가 여전히 다섯 칸이라, 두 칸짜리 행이 왼쪽 두 칸에만
+   들어차고 오른쪽 세 칸 자리가 통째로 빈 채 구분선만 그어진다. */
+.scr-stats-list-panel-v2 .scr-stat-table-row-slim .scr-stat-row {
+  --scr-stat-tracks: var(--scr-stat-name-w) minmax(var(--scr-stat-record-w), 1fr);
+  min-width: calc(var(--scr-stat-name-w) + var(--scr-stat-record-w));
+}
+/* 표와 안내를 나란히(요청: 표 바깥 오른쪽에 안내) — 표는 제 내용만큼만 차지하고 남는
+   폭을 안내가 가져간다. 좁은 화면에서는 접혀 안내가 표 아래로 내려간다(wrap): 640px짜리
+   표 옆에 억지로 끼우면 안내가 한 글자씩 세로로 서게 된다. */
+.scr-stat-table-row-slim {
+  display: flex; align-items: flex-start; flex-wrap: wrap; gap: 12px;
+}
+.scr-stat-table-row-slim > .scr-stat-table-clip { flex: 1 1 auto; min-width: 0; max-width: 100%; }
+/* 왜 세 칸이 없는지, 어떻게 하면 보이는지(요청) — 표 옆에 붙는 곁말이라 표의 어느 글자보다
+   작고 흐리게 둔다. 상자를 두르지 않는 것도 일부러다: 테두리를 주면 이것도 표의 한 칸처럼
+   읽힌다. 왼쪽 실선 하나만으로 '표에 달린 말'이라는 것이 충분히 보인다. */
+.scr-stat-mix-hint {
+  flex: 1 1 150px; max-width: 260px; margin: 0;
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 12px 0 12px 12px; border-left: 1px solid var(--line-hair);
+  font-size: var(--fs-11); line-height: 1.5; color: var(--dim);
+}
+.scr-stat-mix-hint b { font-size: var(--fs-caption); font-weight: 700; color: var(--text); }
+/* 어떻게 하면 보이는지 — 이 문장만은 흐리게 두지 않는다. 안내에서 실제로 할 일을 말하는
+   유일한 줄이라, 나머지 설명과 같은 톤이면 읽고도 무엇을 해야 하는지가 안 남는다. */
+.scr-stat-mix-hint em { font-style: normal; color: var(--text); }
 .scr-stats-list-panel-v2 .scr-stat-row > * { padding-top: 10px; padding-bottom: 10px; }
 /* 건설·유닛·스킬 칸의 좌우 여백을 14 → 8px로 조인다(요청: "건물·유닛·스킬의 좌우 여백
    좀 줄이면 줄일 수 있음"). 이 셋은 속이 [그림 | 선 | 목록] 가로 배치라 이미 제 안에
@@ -2821,7 +2882,11 @@ html:not(.scr-light-theme) .scr-donut-band-delta { fill: #fff; opacity: 0.66; }
      있음") — 이 칸에서 폭을 먹는 것은 막대뿐인데, 막대가 말하는 것은 길이 자체가 아니라
      넷을 나란히 놓고 견주는 그림이다. 다 같이 짧아지면 그 견줌은 그대로 남는다.
      아래 .scr-value-bar의 max-width와 짝이다 — 칸만 줄이면 막대는 여전히 칸을 꽉 채운다. */
-  --scr-stat-record-w: 520px;
+  /* 520 → 430px — 막대를 240 → 180px으로 줄이고(요청) 랭크 줄기도 156 → 124px이 되면서
+     이 칸에 90px 남짓이 순수한 빈자리로 남았다. 안에 든 것이 줄어든 만큼 칸도 줄인다.
+     들어가야 하는 것: 랭크 줄기(124) + 줄기 사이(12) + [이름 52 + 막대 180] + 칸 여백(20)
+     = 388. 430이면 막대 좌우로 20px씩 숨 쉴 자리가 남는다. */
+  --scr-stat-record-w: 430px;
   /* 랭크·포인트 줄기의 고정폭 — 120 → 100px(요청: 너무 넓다).
      이 칸에 실제로 들어가는 가장 긴 것은 "1234 포인트" 79.2px과 "1위 ▲12" 71.4px이다
      (실측, 버튼 좌우 패딩 포함). 100px이면 값 좌우로 10px씩 남는다.
@@ -2838,14 +2903,16 @@ html:not(.scr-light-theme) .scr-donut-band-delta { fill: #fff; opacity: 0.66; }
      빈자리였고, 줄기가 가운데 정렬이라 그게 좌우로 27px씩 갈려 앉았다(실측).
      이제는 가장 긴 줄("1,055 레이팅🥇" 83px)에 좌우 여백만 더한 폭이다. 줄기가 좁아진
      만큼은 옆의 막대 두 줄기가 가져간다. */
-  /* 수 자체가 줄기 한가운데에 서고 단위·메달은 그 오른쪽 바깥에 매달린다(요청) — 그러면
-     줄기가 담아야 할 폭은 '가운데에서 오른쪽 끝까지'의 두 배다: 수의 절반(20) + 버튼
-     안여백(6) + 단위("레이팅" 29) + 간격(3) + 메달(16) ≈ 74, 두 배로 148에 좌우 여백까지.
-     124px이던 시절은 단위·메달이 흐름에 있어 [수+단위+메달] 덩어리를 가운데 세우면 되던
-     때의 값이라, 그대로 두면 메달이 구분선을 넘는다. 늘어난 몫은 막대 두 줄기가 내준다 —
-     막대는 어차피 240px에서 멈춘다(.scr-stat-record-item의 max-width). */
-  --scr-stat-rank-w: 156px;
-  --scr-stat-rank-pad: 6px;
+  /* 수 자체가 줄기 한가운데에 서고, 단위는 오른쪽·메달은 왼쪽 바깥에 매달린다(요청) —
+     줄기가 담아야 할 폭은 '가운데에서 먼 쪽 끝까지'의 두 배다: 오른쪽이 수의 절반(21) +
+     버튼 안여백(6) - 되당김(3) + 단위("레이팅" 33) = 57, 왼쪽은 21 + 3 + 메달(16) = 40이라
+     오른쪽이 정한다. 57×2 = 114에 좌우 여백을 더해 124px.
+     둘을 다 오른쪽에 매달았을 때는 156px이 필요했고 그 몫이 왼쪽에서 통째로 빈자리로
+     보였다(지적) — 좌우로 갈라 매다는 것만으로 32px이 준다.
+     여백도 6 → 2px(요청: 좌우 여백 축소) — 줄기 안의 것들은 이미 가운데에 서 있어, 이
+     여백은 무엇을 밀어내지도 지키지도 않는 순수한 빈자리였다. */
+  --scr-stat-rank-w: 124px;
+  --scr-stat-rank-pad: 2px;
   /* 셋 다 12px씩 줄었다(요청) — 칸 바깥 좌우 여백을 14 → 8px로 조인 만큼이다(아래
      .scr-stat-row > .scr-stat-build-cell). 속에 든 것(도넛·목록)은 그대로이고 그 둘레의
      빈자리만 걷혔으므로, 좁아져도 읽는 것은 하나도 안 줄어든다. */
@@ -3080,9 +3147,9 @@ html:not(.scr-light-theme) .scr-stats-list-panel-v2 .scr-stat-name-cell, html:no
        다만 어느 칸도 sticky 유저 칸(118px)을 뺀 나머지 폭(390-134=256px)을 넘지 않아야
        한다 — 그보다 넓으면 끝까지 밀어도 그 칸을 온전히 볼 수가 없다. */
     --scr-stat-col-w: 124px;
-    /* PC와 같은 이유로 넓힌다(막대에 남는 자리가 45px밖에 안 됐다) — 모바일은 어차피
-       가로로 스크롤하는 표라, 좁혀 봐야 막대만 못 읽게 될 뿐이다. */
-    --scr-stat-record-w: 490px;
+    /* PC와 같은 이유로 넓혔던 값(490)을 막대 축소(240 → 180px)와 랭크 줄기 축소
+       (156 → 124px)만큼 되돌린다 — 남은 몫은 순수한 빈자리였다. */
+    --scr-stat-record-w: 400px;
     --scr-stat-build-w: 184px;
     --scr-stat-unit-w: 342px;
     --scr-stat-skill-w: 224px;
@@ -3101,6 +3168,10 @@ html:not(.scr-light-theme) .scr-stats-list-panel-v2 .scr-stat-name-cell, html:no
      서야 표가 고르다. */
   .scr-stats-list-panel-v2 .scr-stat-row { min-height: 112px; }
   .scr-stats-list-panel-v2 .scr-stat-row.scr-stat-row-head { min-height: 0; }
+  /* 세 칸이 빠진 표(종족 미선택)에서는 그 최소높이를 푼다 — 키를 정하던 다섯 줄 목록과
+     도넛이 통째로 없는데 112px을 그대로 두면 줄마다 위아래로 빈자리가 남는다. 남은 것 중
+     가장 큰 것(막대 넷이 세로로 선 기록 칸)이 알아서 높이를 정한다. */
+  .scr-stats-list-panel-v2 .scr-stat-table-row-slim .scr-stat-row { min-height: 0; }
   .scr-stat-mix { gap: 6px; }
   /* 컬럼명 ↔ ⓘ ↔ 정렬 화살표 간격도 이제 모바일/PC 분기 없이 하나(아래 공용 규칙)로 통일. */
 }
@@ -7746,11 +7817,11 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
        에서는 막대에 45px밖에 안 남아 길이 비교가 아예 안 됐고(지적), 680px까지 올렸다.
        그 뒤 랭크 줄기가 남는 폭을 안 먹게 되면서(위 .scr-stat-rank-col) 막대가 207px까지
        늘어 이번엔 반대로 헐거워졌다 — 막대 160px 안팎이 되는 폭으로 되돌린다. */
-    /* 다섯 트랙의 합을 1400px에 맞춘다 — 통계 화면의 상한이 1440px이고(위 .scr-stats-screen-v2)
-       본문이 좌우 20px씩 물러나 앉으므로, 표가 가로 스크롤 없이 다 보이는 폭이 정확히
-       그만큼이다. 148 + 500 + 186 + 340 + 226 = 1400. 왼쪽 기둥이 생기며 화면 상한이
-       1920에서 1440으로 내려온 만큼(요청) 표도 그 안에 들어와야 한다. */
-    --scr-stat-record-w: 500px;
+    /* 다섯 트랙의 합을 1400px에 맞췄던 값(148 + 500 + 186 + 340 + 226) — 상한은 그대로고
+       기록 칸만 500 → 410px으로 줄인다(요청: 막대가 너무 길다). 막대를 240 → 180px으로,
+       랭크 줄기를 156 → 124px으로 줄인 만큼이라 안에 든 것은 하나도 안 잘린다. 표는
+       1310px이 되어 상한(1400) 안에 더 여유 있게 들어간다. */
+    --scr-stat-record-w: 410px;
     --scr-stat-build-w: 186px;
     --scr-stat-unit-w: 340px;
     --scr-stat-skill-w: 226px;
