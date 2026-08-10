@@ -300,9 +300,6 @@ export interface MemberStatsEntry {
   overall: MemberStats;
   byRace: Record<BaseRace, MemberStats>;
   mostPlayedRace: Race | null;
-  /** 이 사람이 등록한 경기 수(요청: 기록 퀸) — 뛴 것이 아니라 올린 것이라 참가 전적과는
-   *  아예 다른 값이다. 서버가 새 필드를 안 내려주는 사이에도 안 깨지게 선택 항목이다. */
-  registered?: number;
   // 랭킹 순서 — 서버가 사람단위 점수(참가+우열) → 상대 강함(SoS) 순으로 가른 결과다.
   // 이 값(자리번호)으로만 클라이언트가 줄세운다. 0경기 회원도 모두 순위가 매겨진다(0점, 맨 아래).
   sortOrder: number | null;
