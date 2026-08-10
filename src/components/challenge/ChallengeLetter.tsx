@@ -153,11 +153,13 @@ export function challengeOutcome(c: Challenge): { text: string; tone: string } {
   if (c.status === "pending") return { text: "응답 기다리는 중", tone: "pending" };
   if (c.status === "confirmed") return { text: "준비중", tone: "accepted" };
   // 여기부터는 폐기(휴지통)된 건이다. 부른 사람이 거둬들였으면 취소, 아무도 답하지 않은
-  // 채 마감이 지났으면 만료, 그 밖은 누군가 거절하거나 버린 것이다(요청: "성사 안 됨 →
-  // 거절함" — 무슨 일이 있었는지를 말하는 다른 값들과 달리 혼자만 결과를 에둘러 말했다).
+  // 채 마감이 지났으면 만료, 그 밖은 누군가 거절하거나 버린 것이다.
+  // 그 마지막을 "거절함"이 아니라 "성사 안 됨"으로 되돌린다(요청) — 이 줄이 말하는 것은
+  // 사람의 행동이 아니라 이 건의 끝이고("만료"·"취소"와 같은 층), 누가 거절했는지는 바로
+  // 위 To. 아바타의 배지가 사람마다 이미 말한다.
   if (c.canceledBy) return { text: "취소", tone: "canceled" };
   if (c.targets.every((t) => t.response === "pending")) return { text: "만료", tone: "expired" };
-  return { text: "거절함", tone: "rejected" };
+  return { text: "성사 안 됨", tone: "rejected" };
 }
 
 /** 응답 마감 = 부른 때 + 24시간, 다만 예정 시각이 그보다 먼저면 그 시각(백엔드와 같은 기준).

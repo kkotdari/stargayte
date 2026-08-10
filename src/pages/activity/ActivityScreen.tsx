@@ -1811,6 +1811,14 @@ export default function ActivityScreen() {
           createPortal을 쓰고 있던 것이 같은 이유다. */}
       {detailItem && createPortal(
         <div className="scr-modal-overlay">
+          {/* 창 뒤를 덮는 투명 판 — 이 창은 전면이 아니라 작게 뜨는 탓에 뒤에 떠 있는
+              탭바·등록 버튼·맨 위로 버튼이 그대로 눌렸다(지적). 딤은 안 씌우고 눌림만
+              막으며, 그 누름은 닫기로 받는다. */}
+          <div
+            className="scr-activity-detail-backdrop"
+            onClick={() => setDetailItem(null)}
+            aria-hidden
+          />
           {/* 편지지 배경은 카드가 아니라 창 전체가 입는다(요청) — 창이 곧 편지 한 통이라,
               카드 자리에만 깔면 그 위아래(머리 줄·여백)만 딴 종이가 된다. 사진 층을 창의
               첫 자식으로 두면 창의 둥근 모서리(overflow:hidden)에 맞춰 잘리고, 유리판
