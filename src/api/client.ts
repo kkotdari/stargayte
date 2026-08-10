@@ -530,6 +530,17 @@ export const api = {
    *  너 나와·랭크 변동·게임결과가 같은 아이템으로 오고, 내용도 댓글도 그 안에 있다.
    *  예전에는 세 곳을 따로 받아 화면이 제 손으로 섞었는데, 그러면 섞는 규칙이 서버(번호를
    *  세니까)와 화면 양쪽에 있어야 하고 한쪽만 고쳐지는 순간 번호가 줄과 어긋났다. */
+  /** 지금 칭호 한 벌을 서버에 알린다 — 달라진 사람이 있으면 활동에 알림 한 줄이 남는다
+   *  (요청). 계산은 화면이 하고(statEpithet.ts) 서버는 견주기만 한다. 응답은 바뀐 사람 수.
+   *  실패해도 화면은 그대로다 — 부르는 쪽이 조용히 넘긴다. */
+  async reportEpithets(epithets: { memberId: string; label: string; why: string }[]): Promise<number> {
+    const res = await request<{ changed: number }>("/api/activities/epithets", {
+      method: "PUT",
+      body: JSON.stringify({ epithets }),
+    });
+    return res.changed;
+  },
+
   async listActivityFeed(params: { cursor?: string; limit?: number } = {}): Promise<ActivityFeedPage> {
     const q = new URLSearchParams();
     if (params.cursor) q.set("cursor", params.cursor);

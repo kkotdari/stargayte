@@ -1,5 +1,6 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import NoticeCard, { noticeLine } from "./NoticeCard";
 import RankingShiftCard, { RankingShiftMenu, RANK_SHIFT_TITLE } from "./RankingShiftCard";
 import LeagueMatchCard from "./LeagueMatchCard";
 import { CalendarPlus, ClipboardList, MoreHorizontal, Phone, Upload } from "lucide-react";
@@ -39,7 +40,7 @@ import {
 import { useLockBodyScroll } from "../../utils/bodyScrollLock";
 import { hasAppUpdatePreloadErrorOccurred } from "../../utils/appUpdate";
 import type {
-  ActivityFeedItem, Challenge, ActivityTargetType, GameResult, GameResultSlot,
+  ActivityFeedItem, ActivityNotice, Challenge, ActivityTargetType, GameResult, GameResultSlot,
   LeagueMatchActivity, Member, RankingShift, Schedule,
 } from "../../types";
 
@@ -122,7 +123,17 @@ interface ScheduleItem {
   schedule: Schedule;
 }
 
-type ActivityItem = ChallengeItem | GameResultItem | RankingShiftItem | LeagueMatchItem | ScheduleItem;
+/** 서버가 남긴 알림 한 줄(요청: 활동 피드에 알림 유형) — 지금은 칭호 변경뿐이지만,
+ *  앞으로 다른 알림도 같은 자리로 들어온다. 무엇을 그릴지는 notice.kind가 정한다. */
+interface NoticeItem {
+  kind: "notice";
+  time: number;
+  withClock: boolean;
+  notice: ActivityNotice;
+}
+
+type ActivityItem =
+  | ChallengeItem | GameResultItem | RankingShiftItem | LeagueMatchItem | ScheduleItem | NoticeItem;
 
 // 같은 '세션'의 게임결과가 활동에서 2개 이상 연속되면 겹침 스택 하나로 묶는다.
 export interface GameResultPostItem {
@@ -152,6 +163,10 @@ function rankShiftItem(shift: RankingShift): RankingShiftItem {
     withClock: true,
     shift,
   };
+}
+
+function noticeItem(n: ActivityNotice): NoticeItem {
+  return { kind: "notice", time: serverMs(n.createdAt), withClock: true, notice: n };
 }
 
 function challengeItem(c: Challenge): ChallengeItem {
@@ -275,7 +290,8 @@ export function sessionDateOf(it: GameResultItem): string {
  *  접두어로 갈라 둔다(게임결과 3번과 너 나와 3번이 같은 줄이 되면 안 된다). */
 function rowKeyOf(it: DisplayItem): string {
   return it.kind === "challenge" ? `c-${it.challenge.id}`
-    : it.kind === "rankingShift" ? `rs-${it.shift.id}`
+    : it.kind === "notice" ? `nt-${it.notice.id}`
+      : it.kind === "rankingShift" ? `rs-${it.shift.id}`
       : it.kind === "leagueMatch" ? `lm-${it.match.id}`
         : it.kind === "schedule" ? `sc-${it.schedule.id}`
           : it.kind === "gameResultPost" ? `ms-${it.items[0].gameResult.id}`
@@ -285,7 +301,8 @@ function rowKeyOf(it: DisplayItem): string {
 /** 그 줄이 무엇에 대한 것인가 — 카드 머리의 제목과 같은 말을 쓴다. */
 function rowTitleOf(it: DisplayItem): string {
   return it.kind === "challenge" ? "너 나와!"
-    : it.kind === "rankingShift" ? RANK_SHIFT_TITLE
+    : it.kind === "notice" ? "알림"
+      : it.kind === "rankingShift" ? RANK_SHIFT_TITLE
       : it.kind === "leagueMatch" ? "리그"
         : it.kind === "schedule" ? "일정" : "게임";
 }
@@ -298,7 +315,8 @@ function rowTitleOf(it: DisplayItem): string {
  *  (삭제) filterKindClass — 유형 필터에도 같은 색 배지를 입히던 짝이다. 필터는 알약도
  *  색도 없는 글자로 되돌렸다(요청: "필터에서 색배지는 제거"). */
 function kindClassOf(kind: string): string | undefined {
-  return kind === "challenge" ? "scr-kind-call"
+  return kind === "notice" ? "scr-kind-notice"
+    : kind === "challenge" ? "scr-kind-call"
     : kind === "leagueMatch" ? "scr-kind-league"
       : kind === "schedule" ? "scr-kind-schedule"
         : kind === "gameResultPost" || kind === "gameResult" ? "scr-kind-game"
@@ -837,6 +855,10 @@ export default function ActivityScreen() {
     () => feedItems.flatMap((it) => (it.schedule ? [it.schedule] : [])),
     [feedItems],
   );
+  const notices = useMemo(
+    () => feedItems.flatMap((it) => (it.notice ? [it.notice] : [])),
+    [feedItems],
+  );
   /* 댓글도 같은 응답에 실려 온다 — 카드마다 따로 부르면 답이 제각각 도착하며 카드 키가
      뒤늦게 자라, 들어올 때 "현재"에 맞춰 둔 자리가 그만큼 밀린다. 페이지를 이어 받을
      때마다 다시 담는다(표는 통째로 새로 만든다). */
@@ -998,11 +1020,12 @@ export default function ActivityScreen() {
       ...rankShifts.map(rankShiftItem),
       ...leagueMatches.map(leagueMatchItem),
       ...schedules.map(scheduleItem),
+      ...notices.map(noticeItem),
     ];
     // 정렬 기준은 time이 아니라 sortTime이다 — 너 나와만 표시용 시각과 꽂히는 자리가
     // 다르다(위 challengeSortMs). 나머지는 sortTime이 없어 time을 그대로 쓴다.
     return items.sort((a, b) => sortMsOf(b) - sortMsOf(a));
-  }, [challenges, gameResults, rankShifts, leagueMatches, schedules]);
+  }, [challenges, gameResults, rankShifts, leagueMatches, schedules, notices]);
 
   /* 예전에는 여기서 "이미 불러온 가장 오래된 경기보다 과거인 너나와·변동"을 보류했다 —
      경기만 페이지로 나눠 받고 나머지는 통째로 받았기에, 아직 안 받은 경기 자리에 옛
@@ -1096,6 +1119,12 @@ export default function ActivityScreen() {
           if (!searchTerms.every((term) => text.includes(term))) return false;
           return !onlyThese
             || names.every((n) => searchTerms.some((term) => normalizeSearchText(n).includes(term)));
+        }
+        // 알림은 그 안에서 이름이 불린 사람으로 걸린다 — 칭호가 바뀐 사람이다.
+        if (item.kind === "notice") {
+          const names = (item.notice.payload?.changes ?? [])
+            .map((c) => normalizeSearchText(memberOf(c.memberId)?.nickname ?? ""));
+          return searchTerms.every((term) => names.some((n) => n.includes(term)));
         }
         // 좌우 두 칸(개인전·팀전)을 함께 훑는다 — 어느 칸에 걸리든 그 카드는 검색에 맞다.
         const names = item.shift.sections
@@ -1425,6 +1454,13 @@ export default function ActivityScreen() {
         </span>
       );
     }
+    if (item.kind === "notice") {
+      return (
+        <span className="scr-activity-row-names">
+          {noticeLine(item.notice, (id) => memberOf(id)?.nickname ?? id)}
+        </span>
+      );
+    }
     if (item.kind === "rankingShift") {
       // 같은 사람이 개인전·팀전에 다 올랐으면 한 번만 부른다.
       const names: string[] = [];
@@ -1507,6 +1543,19 @@ export default function ActivityScreen() {
           timeText={formatWhen(item.time, { clock: item.withClock })}
           dateLabel={dateLabelOf(item)}
           footer={<ActivityCardComments targetType="leagueMatch" targetId={item.match.id} />}
+        />
+      </div>
+    ) : item.kind === "notice" ? (
+      <div
+        className="scr-activity-card-stack-wrapper scr-activity-card-head-off"
+        key={`nt-${item.notice.id}`}
+      >
+        <NoticeCard
+          notice={item.notice}
+          timeText={formatWhen(item.time, { clock: item.withClock })}
+          dateLabel={dateLabelOf(item)}
+          memberOf={memberOf}
+          footer={<ActivityCardComments targetType="notice" targetId={item.notice.id} />}
         />
       </div>
     ) : item.kind === "rankingShift" ? (

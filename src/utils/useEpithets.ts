@@ -32,6 +32,13 @@ async function load(key: string): Promise<void> {
       (x): x is { id: string; stats: NonNullable<typeof x.stats> } => x.stats !== undefined,
     ));
     cachedKey = key;
+    /* 계산한 한 벌을 서버에 알린다 — 달라진 사람이 있으면 활동에 알림 한 줄이 남는다(요청).
+       여기서 부르는 이유: 칭호가 만들어지는 자리가 여기 하나뿐이라, 다른 데서 부르면
+       화면이 보여주는 값과 알림이 갈릴 수 있다. 한 세션에 한 번만 도는 자리이기도 하다.
+       실패는 조용히 넘긴다 — 알림은 곁다리고, 못 남겼다고 통계 화면이 멈추면 안 된다. */
+    void api.reportEpithets(
+      [...cached].map(([memberId, e]) => ({ memberId, label: e.label, why: e.why })),
+    ).catch(() => { /* 다음에 누가 통계를 열 때 다시 올라간다 */ });
   } catch {
     // 칭호가 없어도 화면은 그대로다 — 한 줄이 안 붙을 뿐이라 오류를 띄우지 않는다.
     cached = EMPTY;

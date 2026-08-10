@@ -183,7 +183,8 @@ export interface RankingShift {
 
 // 활동 댓글 — 대상(targetType, targetId)이 경기든 너 나와!든 순위변동 알림이든
 // 같은 API 하나로 달린다.
-export type ActivityTargetType = "gameResult" | "challenge" | "rankingShift" | "leagueMatch" | "schedule";
+export type ActivityTargetType =
+  | "gameResult" | "challenge" | "rankingShift" | "leagueMatch" | "schedule" | "notice";
 export interface ActivityComment {
   id: number;
   targetType: ActivityTargetType;
@@ -695,9 +696,29 @@ export interface ScheduleWrite {
   files: (ScheduleFile | { name: string; data: string })[];
 }
 
+/** 활동에 뜨는 알림 하나(요청: 활동 피드에 알림 유형) — 지금은 칭호 변경뿐이지만,
+ *  앞으로 랭킹 변동 같은 것도 같은 그릇으로 들어온다. 무엇을 그릴지는 kind가 정한다. */
+export interface ActivityNotice {
+  id: number;
+  /** "epithet" 등. 모르는 종류는 화면이 조용히 건너뛴다. */
+  kind: string;
+  /** 그 종류가 쓰는 값. 칭호 변경은 { changes: [{ memberId, from, to, why }] }.
+   *  닉네임은 안 담겨 있다 — 이름은 바뀌므로 볼 때 지금 회원 정보로 푼다. */
+  payload: { changes?: EpithetChange[] };
+  createdAt: string;
+}
+
+export interface EpithetChange {
+  memberId: string;
+  /** 없다가 생긴 칭호면 null. */
+  from: string | null;
+  to: string;
+  why?: string;
+}
+
 export interface ActivityFeedItem {
   key: string;
-  kind: "challenge" | "rankingShift" | "gameResultPost" | "leagueMatch" | "schedule";
+  kind: "challenge" | "rankingShift" | "gameResultPost" | "leagueMatch" | "schedule" | "notice";
   /* 줄 번호(no)는 화면에서 걷어냈다(요청: "별 의미 없는 듯") — 서버는 아직 실어 보내지만
      쓰는 곳이 없어 여기서도 받지 않는다. */
   challenge?: Challenge | null;
@@ -705,6 +726,7 @@ export interface ActivityFeedItem {
   gameResults: GameResult[];
   leagueMatch?: LeagueMatchActivity | null;
   schedule?: Schedule | null;
+  notice?: ActivityNotice | null;
   /** 이 줄에 달린 댓글 전부. 각 댓글이 제 대상을 들고 있어 카드가 자기 것을 찾아 붙는다. */
   comments: ActivityComment[];
 }
