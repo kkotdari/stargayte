@@ -12,13 +12,18 @@
 // 감수하고(그래서 title에 정확한 수치가 그대로 남아 있다), 그림 밖으로 나가 잘리는 것만
 // 막는다.
 //
-// 색은 조각 순서에 고정으로 붙는다 — 도넛들이 같은 순서를 쓰므로 첫 조각(생산·기본·지상·
-// 초반)은 어느 도넛에서나 같은 색이다. 남는 색을 돌려 쓰지 않는다.
+// 색은 조각 이름에 붙는다(요청: "색깔은 고유색, 마법이 보라") — 부르는 쪽이 tone으로
+// 못 박는다. 한때는 그린 순서(값 큰 것부터)에 색을 붙였는데, 그러면 같은 "마법"이 그 달에
+// 많이 뽑았느냐 아니냐에 따라 판마다 다른 색이 됐다. 색이 뜻을 지려면 뜻에 고정돼야 한다.
+// 남는 색을 돌려 쓰지 않는 것은 그대로다.
 
 export interface DonutSlice {
   /** 조각 이름 — 글로 적히는 값이라 색과 별개로 뜻을 진다. */
   label: string;
   value: number;
+  /** 이 조각이 쓸 색 슬롯(1·2·3) — 이름에 고정된 고유색이다(요청). 안 주면 그린 순서를
+   *  따른다(조각이 하나뿐인 도넛처럼 뜻이 갈리지 않는 자리를 위한 기본값). */
+  tone?: number;
   /** 견줄 기간(전달)의 같은 조각 값 — 있으면 조각 이름 밑에 구성비 변동을 적는다(요청).
    *  적는 값은 원값의 차가 아니라 '몇 %p 움직였나'다: 원값은 그 달에 얼마나 뛰었느냐에
    *  통째로 끌려다녀서, 똑같이 절반씩 뽑아도 판수만 늘면 큰 수가 된다. 도넛이 말하는 것도
@@ -35,8 +40,8 @@ interface DonutChartProps {
   size?: number;
 }
 
-/** 조각 색은 순서에 고정이다(dataviz 팔레트 슬롯 1·2·3). 라이트/다크 값은 CSS 변수로
- *  갈아 끼운다(.scr-donut-seg-N) — 여기서는 순번만 정한다. */
+/** 색 슬롯은 셋이다(dataviz 팔레트 슬롯 1·2·3). 라이트/다크 값은 CSS 변수로 갈아 끼운다
+ *  (.scr-donut-seg-N) — 여기서는 어느 슬롯을 쓸지만 정한다. */
 const SEG_MAX = 3;
 /** 한글 글자 하나의 폭은 대략 글자 크기와 같다(정사각 글립) — 띠에 담기는지 재는 어림자다.
  *  숫자·기호는 이보다 좁으니 이 어림은 늘 안전한 쪽으로 틀린다. */
@@ -47,10 +52,8 @@ const EDGE = 3;
 export default function DonutChart({ title, slices, size = 76 }: DonutChartProps) {
   const total = slices.reduce((n, s) => n + s.value, 0);
   /* 큰 조각부터 반시계로(요청) — 12시에서 시작해 반시계로 도는 방향은 그대로 두고, 어느
-     조각이 먼저 서는지만 값 내림차순으로 바꾼다. 색은 조각 이름이 아니라 자리(첫 조각·
-     둘째·셋째)에 고정이라(아래 idx), 그 결과 "가장 많이 쓴 것"은 어느 도넛에서나 같은
-     색(첫 자리색)으로 읽힌다 — 조각마다 뜻이 달라도(생산/방어, 기본/고급/마법…) "제일
-     많이 한 일"이라는 잣대는 도넛마다 같기 때문이다. */
+     조각이 먼저 서는지만 값 내림차순으로 바꾼다. 자리는 이렇게 값이 정하지만 색은 안
+     따라간다(요청: 색은 고유색) — 아래 tone 참고. */
   const ordered = [...slices].sort((a, b) => b.value - a.value);
 
   // 링의 굵기와 반지름 — 가운데 구멍이 이름을 담을 만큼 남으면서 띠도 글자를 담을 만큼
@@ -71,16 +74,16 @@ export default function DonutChart({ title, slices, size = 76 }: DonutChartProps
   const prevTotal = slices.reduce((n, s) => n + (s.prev ?? 0), 0);
 
   // 조각을 돌면서 그릴 것(호)과 적을 것(띠 위 글자 / 아래로 뺀 글자)을 한 번에 정한다.
-  const segs: { key: string; idx: number; dash: number; offset: number }[] = [];
+  const segs: { key: string; tone: number; dash: number; offset: number }[] = [];
   const onBand: { key: string; x: number; y: number; text: string; delta: string | null }[] = [];
   let acc = 0;
   ordered.slice(0, SEG_MAX).forEach((s, i) => {
     if (total <= 0 || s.value <= 0) return;
     const f = s.value / total;
     const len = f * c;
-    // 색은 그린 순서가 아니라 조각 순서를 따른다 — 값이 0이라 안 그려진 조각이 있어도
-    // 남은 조각의 색이 밀리면 안 된다(기본이 0인 판에서 고급이 파랑이 돼 버린다).
-    segs.push({ key: s.label, idx: i, dash: Math.max(0, len - gap), offset: -acc });
+    // 색은 그린 순서가 아니라 그 조각이 무엇이냐가 정한다(요청) — 부르는 쪽이 준 tone을
+    // 그대로 쓴다. 안 준 도넛만 옛 방식(그린 순서)으로 물러난다.
+    segs.push({ key: s.label, tone: s.tone ?? i + 1, dash: Math.max(0, len - gap), offset: -acc });
     // 조각 한가운데 각도 — 12시에서 재되, 각도 자체는 호와 같은 셈(시계방향)으로 두고
     // 자리를 놓을 때만 거울로 뒤집는다(아래 px). 두 곳이 같은 식을 쓰는 편이 어긋나지 않는다.
     const th = 2 * Math.PI * (acc / c + f / 2) - Math.PI / 2;
@@ -132,7 +135,7 @@ export default function DonutChart({ title, slices, size = 76 }: DonutChartProps
         {segs.map((s) => (
           <circle
             key={s.key}
-            className={`scr-donut-seg scr-donut-seg-${s.idx + 1}`}
+            className={`scr-donut-seg scr-donut-seg-${s.tone}`}
             cx={cx} cy={cx} r={r} strokeWidth={stroke} fill="none"
             strokeDasharray={`${s.dash} ${c - s.dash}`}
             // 12시부터 반시계방향(요청: 기본→고급→마법, 생산→방어, 지상→공중 순으로

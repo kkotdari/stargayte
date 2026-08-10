@@ -1794,7 +1794,7 @@ export default function ActivityScreen() {
           createPortal을 쓰고 있던 것이 같은 이유다. */}
       {detailItem && createPortal(
         <div className="scr-modal-overlay">
-          <div className="scr-modal scr-modal-page scr-activity-detail-modal">
+          <div className="scr-modal scr-modal-page scr-modal-fit scr-activity-detail-modal">
             <div className="scr-modal-head">
               {/* 제목은 그 항목이 속한 갈래 이름 — 목록에서 눌러 들어온 창이라, 어디서
                   왔는지를 그대로 이어 적는다. 묶음 줄(gameResultPost)은 groupKeyOf가 안 받는
@@ -1804,12 +1804,10 @@ export default function ActivityScreen() {
               <button type="button" className="scr-icon-btn scr-modal-close-x" onClick={() => setDetailItem(null)} aria-label="닫기">
                 <X aria-hidden />
               </button>
-              {/* 모바일은 X 대신 돌아가기다(요청) — 전체화면으로 뜨는 창이라 X 하나로는
-                  "닫는다"보다 "이 화면을 벗어난다"에 가깝고, 그러면 어디로 가는지를 적어
-                  주는 편이 맞다. */}
-              <button type="button" className="scr-modal-back" onClick={() => setDetailItem(null)}>
-                <ChevronLeft size={14} aria-hidden />활동으로 돌아가기
-              </button>
+              {/* (삭제) "활동으로 돌아가기" — 이 창은 이제 모바일에서도 전체화면이 아니라
+                  제 내용만 한 크기로 가운데 뜬다(요청). 뒤가 그대로 보이므로 "화면을
+                  벗어난다"가 아니라 "이 창을 닫는다"이고, 그러면 X가 맞다. 전체화면으로
+                  뜨는 "전체 보기"(.scr-modal-page)만 돌아가기를 그대로 쓴다. */}
             </div>
             <div className="scr-modal-body scr-activity-detail-body scr-scroll">
               <div

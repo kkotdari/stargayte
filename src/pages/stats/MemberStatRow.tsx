@@ -272,9 +272,11 @@ function RaceMixCell({ race, stats }: { race: BaseRace; stats?: MemberStats }) {
             <DonutChart
               title="건물"
               size={DONUT}
+              /* 색은 이름에 고정이다(요청: 고유색) — 값이 커서 먼저 그려지느냐와 무관하게
+                 생산은 늘 초록, 방어는 늘 파랑이다. */
               slices={[
-                { label: "생산", value: mix.bProd },
-                { label: "방어", value: mix.bDef },
+                { label: "생산", value: mix.bProd, tone: 1 },
+                { label: "방어", value: mix.bDef, tone: 2 },
               ]}
             />
           </div>
@@ -286,10 +288,12 @@ function RaceMixCell({ race, stats }: { race: BaseRace; stats?: MemberStats }) {
             <DonutChart
               title="병력"
               size={DONUT}
+              /* 마법은 늘 보라다(요청) — 마법 유닛은 어느 종족이든 드물어 조각이 작고,
+                 그래서 값 순서로 색을 주면 이 조각만 판마다 색이 바뀌었다. */
               slices={[
-                { label: "기본", value: mix.uBasic },
-                { label: "고급", value: mix.uAdv },
-                { label: "마법", value: mix.uCaster },
+                { label: "기본", value: mix.uBasic, tone: 1 },
+                { label: "고급", value: mix.uAdv, tone: 2 },
+                { label: "마법", value: mix.uCaster, tone: 3 },
               ]}
             />
           </div>
