@@ -8851,6 +8851,43 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-activity-detail-head { justify-content: flex-end; margin-bottom: 0; }
 .scr-activity-detail-body { padding-bottom: 16px; }
 
+/* 케밥은 X와 같은 줄 왼쪽 끝이다(요청) — 카드 오른쪽 위에 있으면 바로 위 X와 층이 갈려
+   "닫기"와 "이 항목으로 할 일"이 서로 다른 줄에서 따로 논다. 한 줄에 [케밥 … X]로 세우면
+   그 줄이 곧 이 창의 도구 줄이 된다.
+
+   케밥은 카드 컴포넌트가 제 안에 절대배치로 들고 있어(카드의 backdrop-filter 때문에 머리
+   안쪽에 둘 수 없다) DOM에서 머리로 옮길 수가 없다. 그래서 자리만 옮긴다:
+     · 머리(X)를 흐름에서 빼 팝업 맨 위에 겹쳐 두고,
+     · 본문 위쪽에 머리 높이만큼 패딩을 줘 그 자리를 비우고,
+     · 케밥을 그 패딩 띠로 끌어올린다(패딩 안쪽은 스크롤 상자에 안 잘린다).
+   왼쪽 끝이 정확히 맞는 것은 본문 글자와 머리가 같은 x(팝업 좌우 패딩 16px)에서 시작하기
+   때문이다 — 카드 기준 left:0이 곧 X의 왼쪽 짝이다. */
+.scr-activity-detail-modal { --scr-detail-head-h: 32px; }
+.scr-activity-detail-modal > .scr-activity-detail-head {
+  position: absolute; top: 13px; left: 16px; right: 16px; z-index: 3;
+  padding: 0; margin: 0;
+}
+.scr-activity-detail-body { padding-top: var(--scr-detail-head-h); }
+/* 경기 케밥만 기준면이 다르다 — 카드가 아니라 그 안의 경기 한 판(.scr-game-result-trow)에
+   매달려 있어서, 같은 값을 줘도 카드 머리(날짜 줄)만큼 아래에 떨어졌다(실측 y=45, 목표 16).
+   이 창에서만 그 기준면을 걷어 카드에 매달리게 한다 — 그러면 아래 한 규칙이 네 갈래
+   (너 나와·일정·순위변동·경기)에 똑같이 듣는다. */
+.scr-activity-detail-modal .scr-game-result-list-panel-v2 .scr-game-result-trow { position: static; }
+/* 26px 케밥을 32px 줄 한가운데에 — (32 - 26) / 2 = 3px. 왼쪽은 X의 오른쪽 여백(16px)과
+   같은 값으로 맞춘다(카드가 제 판을 본문 패딩 밖으로 4px 빼내 앉아 있어 left:0이 12px이다). */
+/* 경기 쪽은 선택자를 한 겹 더 무겁게 — 뒤쪽(.scr-activity-game-result-body …)에 같은
+   특이도로 top/right을 다시 박는 규칙이 있어 소스 순서로 진다. */
+.scr-activity-detail-modal .scr-activity-chal-menu,
+.scr-activity-detail-modal .scr-activity-game-result-body .scr-game-result-trow-topmeta {
+  top: calc(7px - var(--scr-detail-head-h)); left: 4px; right: auto;
+}
+/* 케밥이 왼쪽으로 갔으니 메뉴도 오른쪽으로 펼친다 — 오른쪽 끝에 매달린 채로 두면 창 밖
+   왼쪽으로 빠져나간다(실측 x=-86). */
+.scr-activity-detail-modal .scr-activity-chal-menu-drop,
+.scr-activity-detail-modal .scr-activity-post-menu-drop {
+  left: 0; right: auto;
+}
+
 /* ── 페이지처럼 보이는 팝업(요청: 전체보기와 상세는 페이지 느낌으로 거의 불투명하게) ──
    기본 팝업은 뒤가 비치는 유리다 — 잠깐 떴다 사라지는 확인창·폼에는 그 편이 맞다. 그런데
    이 둘은 '뒤로 돌아갈 수 있는 다른 화면'에 가깝다: 목록을 통째로 담고, 스크롤하고, 그
