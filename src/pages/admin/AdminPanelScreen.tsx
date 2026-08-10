@@ -363,7 +363,11 @@ export default function AdminPanelScreen({ isAdmin }: AdminPanelScreenProps) {
       {confirmRedo && (
         <ConfirmDialog
           title="등록된 경기를 모두 다시 분석할까요?"
-          message="리플레이가 붙은 경기를 하나씩 다시 읽어 전황 요약·미니맵과 맵 이름·시작 시각·경기 길이, 참가자별 지표(종족·APM·커맨드·생산)를 새로 씁니다. 등록자·등록 시각·경기번호·날짜·분류·승패·회원 연결은 그대로입니다. 건수가 많으면 몇 분 걸립니다."
+          /* 안내는 두 줄이면 된다(요청: 설명이 너무 길다) — 무엇이 바뀌고 무엇이 안 바뀌는지,
+             그리고 오래 걸린다는 것. 어느 값이 어떻게 다시 써지는지는 여기서 읽을 일이
+             아니다(그건 reanalyzeGames 주석에 있다) — 누르기 전에 알아야 하는 건
+             "내가 손으로 넣은 것은 안 건드린다"뿐이다. */
+          message="리플레이가 붙은 경기를 다시 읽어 분석 결과를 새로 씁니다. 직접 입력한 값(날짜·승패·회원 연결 등)은 그대로예요. 건수가 많으면 몇 분 걸립니다."
           confirmLabel="다시 분석"
           onConfirm={() => { setConfirmRedo(false); void reanalyzeGames(); }}
           onCancel={() => setConfirmRedo(false)}
