@@ -202,29 +202,28 @@ const TIER1_KEYS = new Set([
 
 const TACTIC_WEIGHT: Record<string, number> = {
   "Nuclear Strike": 8,
-  "cannon-rush": 3.5, "sunken-rush": 3.5, "mind-control": 3.5,
 
-  /* 개성이 드러나는 쪽을 올린다(요청) — 그 판을 어떤 틀로 굴렸나(운영)와 무엇으로 풀었나
-     (주력 유닛)는 그 사람의 색이 그대로 남는 값이다. 반대로 '한 번 도우러 갔다'는 좋은
-     일이지만 누구나 하는 일이라, 자주 나오는 만큼 그 사람을 덜 말해 준다. */
-  bionic: 4, mech: 4, moka: 4, "fast-tech": 4,
-  "center-tank": 4,
-  /* 입구막기는 내린다(요청) — 막고 크는 것은 안전하게 두는 흔한 시작이라, 판마다 나오면
-     그 사람의 색이라기보다 그 종족의 기본기에 가깝다. 조이기(센터 탱크)는 남의 자리를
-     뺏으러 나간 수라 무게가 다르다. */
-  "wall-in": 2,
-  carrier: 3, lurker: 3, "cloak-wraith": 3, guardian: 3, bc: 3,
+  /* 경기 운영이 맨 위다(요청: 단순 기술·유닛보다 운영이 먼저) — 어떤 틀로 판을 굴렸나
+     (바이오닉·메카닉·목동 저그·빠른 테크), 어디를 잠갔나(조이기), 어떻게 벌었나(째기·확장)는
+     그 사람이 게임을 보는 눈이다. 무엇을 뽑았나(캐리어·러커·가디언)는 그 눈이 고른 결과이지
+     눈 자체가 아니라, 한 단계 아래에 둔다. */
+  bionic: 6, mech: 6, moka: 6, "fast-tech": 6, "center-tank": 6,
+  "greedy-paid": 4, expand: 4, "greedy-build": 3.5,
+  "worker-gap": 3, "prod-gap": 3, "long-run": 3,
+
+  "cannon-rush": 3.5, "sunken-rush": 3.5, "mind-control": 3.5,
   nydus: 3, recall: 3, infested: 3, swarm: 3,
-  /* 밀리고도 끝까지 앉아 있던 이야기들(요청: 가중치 높이기) — 이사·셋방살이·노엘은 판이
-     기운 뒤에야 나오는 장면이라 흔치 않고, 그 한 번이 그 판을 통째로 말한다. 이기고 지고와
-     상관없이 그 사람이 어떤 사람인지를 보여 주는 자리라 앞줄에 세운다. */
+  /* 밀리고도 끝까지 앉아 있던 이야기 — 판이 기운 뒤에야 나오는 장면이라 흔치 않고,
+     그 한 번이 그 판을 통째로 말한다. */
   lodging: 5, relocate: 5, "no-elim": 5,
-  "center-photon": 2.5, "sneak-rax": 2.5, valkyrie: 2.5, "valk-hunt": 2.5,
+
+  "center-photon": 2.5, "sneak-rax": 2.5, "wall-in": 2,
   "side-tank": 2, "harass-workers": 2, "harass-long": 2, "ally-cannon": 2,
-  dropship: 1.5, "duel-rush": 1.5, "base-raid": 1.5,
-  /* 헬프·협공은 내린다(요청) — 팀전에서는 흔한 장면이라 한 사람의 표식이 되기 어렵고,
-     그 판을 함께 굴렸다는 사실은 상대 쪽에도 똑같이 남는다. 없애지는 않는다: 자주 나오는
-     사람은 횟수가 쌓여 결국 이 칭호로 불린다. */
+  // 주력 유닛으로 부르는 것들 — 운영보다 한 단계 아래(위 주석).
+  carrier: 2, lurker: 2, "cloak-wraith": 2, guardian: 2, bc: 2,
+  valkyrie: 1.5, "valk-hunt": 1.5, dropship: 1.5, "duel-rush": 1.5, "base-raid": 1.5,
+  /* 헬프는 내린다(요청) — 팀전에서는 흔한 장면이라 한 사람의 표식이 되기 어렵고, 그 판을
+     함께 굴렸다는 사실은 상대 쪽에도 똑같이 남는다. 자주 가는 사람은 횟수로 결국 불린다. */
   "ally-help": 1.5,
 };
 
