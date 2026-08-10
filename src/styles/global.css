@@ -2322,7 +2322,14 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 /* 위정렬(요청) — 칸이 제 내용보다 늘어나 있어도(align-self:stretch) 남는 자리는
    아래로 밀리고, 목록/표 자신은 위에 붙는다. */
 .scr-stat-toplist, .scr-stat-upgrades { align-content: start; }
-.scr-stat-mix { display: flex; align-items: center; justify-content: center; gap: 10px; flex: none; }
+/* 도넛만은 칸 가운데다(요청: "도넛그래프와 구분선은 왼쪽 정렬 아니고 가운데 정렬") —
+   이름표와 수는 여섯 덩어리가 같은 x에서 시작해야 격자가 서지만(그래서 왼쪽), 도넛은
+   글줄이 아니라 그림이라 시작선을 맞출 것이 없다. 왼쪽에 붙여 두면 도넛과 오른쪽
+   구분선 사이만 넓게 비어(실측 26px vs 10px) 선이 한쪽으로 밀려 보였다. */
+.scr-stat-mix {
+  display: flex; align-items: center; justify-content: center; gap: 10px; flex: none;
+  align-self: center;
+}
 /* 도넛(들)과 그 위의 10분당 값을 한 덩어리로 — 값은 도넛 하나든 둘이든 그 무리의 위쪽
    가운데에 한 번만 선다(요청). 한때 도넛 가운데 구멍에 적었는데, 구멍 안에서는 도넛
    이름과 나란해 무엇의 수인지가 섞여 읽혔고 단위를 붙일 자리도 없었다. */
@@ -2600,9 +2607,11 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
      이 표가 제 칸을 넘어 옆 목록(유닛)까지 덮어썼다). max로 상한만 두고 실제 폭은 칸이
      주는 만큼(100%) 따라가게 한다 — 좁아지면 이 표도 함께 좁아진다. */
   width: 100%; max-width: 92px;
-  /* 열 사이 간격을 한 번 더 줄인다(지적: "갭을 줄여야해 글자가 삐져나가고 있다고") —
-     4 → 2px. */
-  gap: 1px 2px; align-items: baseline;
+  /* 공/방 두 수 사이는 다시 벌린다(요청: "공방 사이 간격좀 벌리기") — 2px에서는 "2.3"과
+     "2.3"이 "2.32.3" 한 덩어리로 읽혀 두 수인 줄을 몰랐다(실측). 한때 4 → 2px로 줄였던 건
+     칸이 92px보다 좁아져 글자가 삐져나가던 때의 대응인데, 그 뒤 표 폭이 칸을 따라가게
+     바뀌어(width:100%) 그 이유가 없어졌다. */
+  gap: 1px 6px; align-items: baseline;
   font-size: var(--fs-11); color: var(--text);
   font-variant-numeric: tabular-nums; text-align: right; flex: none;
 }
@@ -3316,7 +3325,12 @@ html:not(.scr-light-theme) .scr-stats-list-panel-v2 .scr-stat-name-cell, html:no
      닉네임뿐이었지만 지금은 그 아래 칭호가 한 줄 더 서고, 96px에서는 "개인전의 여왕" 같은
      말이 두세 줄로 접혀 줄 높이를 밀어 올렸다. 118px까지 되돌리지 않는 것은 그 폭이
      통째로 표의 다른 칸에서 온 자리이기 때문이다. */
-  .scr-stats-list-panel-v2 .scr-stat-row { --scr-stat-name-w: 108px; }
+  /* 108 → 119px(요청: 모바일 유저 칸 폭 10% 확대). 칭호가 두세 줄로 접히던 것을 한 줄에
+     더 담기 위한 자리다 — 아래 칭호 글자를 한 단계 줄인 것과 한 짝이다. */
+  .scr-stats-list-panel-v2 .scr-stat-row { --scr-stat-name-w: 119px; }
+  /* 칭호만 한 단계 작게(요청) — caption(14) → micro(12). 닉네임보다 아래에 붙는 곁말이고,
+     이 칸에서 줄바꿈을 가장 많이 일으키는 것도 이 줄이다. PC는 그대로 둔다. */
+  .scr-stats-list-panel-v2 .scr-stat-name-epithet { font-size: var(--fs-micro); }
   /* 모바일도 세로 두 줄이다(지적: 칭호가 옆이 아니라 아바타+닉네임 전체 아래로) — 여기서
      row로 되돌리고 있던 탓에 폰에서만 칭호가 닉네임 옆에 붙어 있었다. 가로로 서는 몫은
      안쪽 덩어리(.scr-stat-name-main)가 맡는다. */
