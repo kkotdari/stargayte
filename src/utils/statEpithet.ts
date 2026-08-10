@@ -208,7 +208,11 @@ const TACTIC_WEIGHT: Record<string, number> = {
   "wall-in": 2, "side-tank": 2, "harass-workers": 2, "harass-long": 2,
   "ally-cannon": 2, carrier: 2, bc: 2,
   dropship: 1.5, lurker: 1.5, guardian: 1.5, valkyrie: 1.5, "valk-hunt": 1.5,
-  "duel-rush": 1.5, "base-raid": 1.5, bionic: 1.5, mech: 1.5, moka: 1.5,
+  "duel-rush": 1.5, "base-raid": 1.5,
+  /* 운영은 한 번 더 올린다(요청) — 바이오닉·메카닉·목동 저그·빠른 테크는 유닛 이름이
+     아니라 그 판을 굴린 틀의 이름이라, 한 번 잡히면 그 사람의 게임 전체가 그려진다.
+     한 유닛을 여러 번 뽑은 것과는 무게가 다르다. 1.5 → 2.5. */
+  bionic: 2.5, mech: 2.5, moka: 2.5, "fast-tech": 2.5,
 };
 
 /* 근거 문장에 적을 '그 수의 이름'(요청: "자막에 잡힌 횟수 3회" 말고 무엇이 몇 번인지
