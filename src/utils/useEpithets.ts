@@ -13,6 +13,7 @@ import { useEffect, useMemo, useState } from "react";
 import { api } from "../api/client";
 import { useAppStore } from "../store/appStore";
 import { epithetsOf, type Epithet } from "./statEpithet";
+import { currentMonthValue, monthInputToRange, shiftMonthValue } from "./date";
 import type { MemberStatsEntry } from "../types";
 
 const EMPTY = new Map<string, Epithet>();
@@ -28,10 +29,17 @@ async function load(key: string): Promise<void> {
     /* 셋을 함께 받는다 — 전체 한 벌과 유형별 두 벌(요청: 개인전 퀸·팀전 퀸).
        유형별은 전체 한 벌로는 절대 못 가르는 값이다: 팀전만 뛴 사람과 개인전만 뛴 사람의
        승률이 한 수에 섞여 있다. 셋 다 같은 기간(전체 누적)이라 잣대는 어긋나지 않는다. */
-    const [all, solo, team] = await Promise.all([
+    /* 이번 달과 지난달도 함께 받는다(요청: 최근 급상승 → 떠오르는 샛별). 레이팅은 '그 날짜
+       까지의 기록으로 본 값'이라, 두 달 것의 차이가 곧 그 달에 오른 폭이다(통계 표의 레이팅
+       변동과 같은 계산). 다섯을 나란히 부르므로 한 번의 왕복만큼만 더 든다. */
+    const thisMonth = monthInputToRange(currentMonthValue());
+    const lastMonth = monthInputToRange(shiftMonthValue(currentMonthValue(), -1));
+    const [all, solo, team, now, before] = await Promise.all([
       api.getGameResultStats({ memberIds: ids, dateFrom: "", dateTo: "" }),
       api.getGameResultStats({ memberIds: ids, dateFrom: "", dateTo: "", matchType: "0101" }),
       api.getGameResultStats({ memberIds: ids, dateFrom: "", dateTo: "", matchType: "0102" }),
+      api.getGameResultStats({ memberIds: ids, dateFrom: thisMonth.from, dateTo: thisMonth.to }),
+      api.getGameResultStats({ memberIds: ids, dateFrom: lastMonth.from, dateTo: lastMonth.to }),
     ]);
     const index = (res: typeof all) => {
       const byId: Record<string, MemberStatsEntry> = {};
@@ -41,6 +49,14 @@ async function load(key: string): Promise<void> {
     const byId = index(all);
     const soloById = index(solo);
     const teamById = index(team);
+    const nowById = index(now);
+    const beforeById = index(before);
+    /** 이번 달에 오른 폭 — 두 달 중 한쪽이라도 순위 대상이 아니면 잴 수 없다. */
+    const riseOf = (id: string): number | undefined => {
+      const a = nowById[id]?.rankScore;
+      const b = beforeById[id]?.rankScore;
+      return a != null && b != null ? Math.round(a - b) : undefined;
+    };
     cached = epithetsOf(ids
       .map((id) => ({
         id,
@@ -49,9 +65,10 @@ async function load(key: string): Promise<void> {
         team: teamById[id]?.overall,
         // 종족별은 이미 응답에 실려 온다(byRace) — 따로 부를 것이 없다.
         races: byId[id]?.byRace,
+        rise: riseOf(id),
       }))
       .flatMap((x) => (x.stats
-        ? [{ id: x.id, stats: x.stats, solo: x.solo, team: x.team, races: x.races }]
+        ? [{ id: x.id, stats: x.stats, solo: x.solo, team: x.team, races: x.races, rise: x.rise }]
         : [])));
     cachedKey = key;
     /* 계산한 한 벌을 서버에 알린다 — 달라진 사람이 있으면 활동에 알림 한 줄이 남는다(요청).
