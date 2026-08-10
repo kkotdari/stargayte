@@ -296,21 +296,10 @@ function rowKeyOf(it: DisplayItem): string {
             : `m-${it.gameResult.id}`;
 }
 
-/** 그 줄의 갈래 색 — 배지가 제 바탕색을 입는 데 쓴다(요청: 일정 그린 / 리그 보라 /
- *  너 나와 핑크 / 게임 파랑). 색 자체는 CSS의 --kind-*가 한 곳에서 정한다.
- *  랭크 변동은 요청에 없다 — 사람이 올린 글이 아니라 서버가 남긴 알림이라, 색을 받지 않고
- *  기본(무채색)으로 남는다.
- *
- *  (삭제) filterKindClass — 유형 필터에도 같은 색 배지를 입히던 짝이다. 필터는 알약도
- *  색도 없는 글자로 되돌렸다(요청: "필터에서 색배지는 제거"). */
-function kindClassOf(kind: string): string | undefined {
-  return kind === "notice" ? "scr-kind-notice"
-    : kind === "challenge" ? "scr-kind-call"
-    : kind === "leagueMatch" ? "scr-kind-league"
-      : kind === "schedule" ? "scr-kind-schedule"
-        : kind === "gameResultPost" || kind === "gameResult" ? "scr-kind-game"
-          : undefined;
-}
+/* (삭제) kindClassOf — 줄의 갈래 색(일정 그린 / 리그 보라 / 너 나와 핑크 / 게임 파랑)을
+   배지에 입히던 함수다. 유형 배지를 어느 줄에서도 안 그리게 되면서(요청) 색을 입힐 자리가
+   없어졌다 — 갈래는 이제 덩어리 제목이 말한다. 색 자체(CSS의 --kind-*)는 다른 곳에서
+   그대로 쓴다. */
 
 /* (삭제) needsReview — '사람 눈이 꼭 필요한 건'만 골라 검토창으로 보내던 판정이다.
    이제 중복만 빼고 전부 검토창으로 보내므로(요청) 고를 일이 없다. 무엇이 문제인지는
@@ -1714,9 +1703,7 @@ export default function ActivityScreen() {
         >
           <span className="scr-activity-row-main">
             <span className="scr-activity-row-badges">
-              {/* 상태 알약 — 너 나와·리그에만 붙고 나머지 줄은 아예 그리지 않는다(요청:
-                  자리 예약 취소). */}
-              {rowStatusOf(item)}
+              {/* (이동) 상태 알약 — 제목 왼쪽으로 갔다(요청). 아래 .scr-activity-row-desc 참고. */}
               {/* 새것(NEW)이거나 달라진 것(UPDATE) — 둘 다 참이어도 하나만 세운다(요청:
                   NEW 우선). */}
               {flags.length > 0 && (
@@ -1729,15 +1716,15 @@ export default function ActivityScreen() {
               </span>
             </span>
             <span className="scr-activity-row-desc">
-              {/* 유형 배지는 이제 줄마다 안 그린다(요청: 그룹 제목이 이미 갈래를 말한다) —
-                  너 나와만 예외로 제 배지를 제목 왼쪽에 다시 단다(요청: "너나와 배지도
-                  제목 왼쪽으로 복귀"). 스타일은 예전 유형 배지(.scr-activity-row-title-badge)
-                  그대로 재사용한다. */}
-              {item.kind === "challenge" && (
-                <span className={cx("scr-activity-row-title-badge", kindClassOf("challenge"))}>
-                  너 나와!
-                </span>
-              )}
+              {/* 유형 배지는 이제 어느 줄에도 안 그린다(요청: 너 나와도 제거) — 그룹 제목이
+                  이미 갈래를 말하고 있어서, 줄마다 "너 나와!"를 되풀이하면 다섯 줄이 같은
+                  글자로 시작한다. 그 자리를 상태 알약이 이어받는다(요청: 너 나와 상태배지를
+                  제목 왼쪽에).
+                  자리를 바꾼 것이 요점이다 — 상태는 윗줄 오른쪽(시각·NEW 딱지 옆)에 있었는데,
+                  거기서는 "언제"를 말하는 것들과 섞여 읽혔다. 제목 왼쪽은 원래 "이게 무엇인가"를
+                  말하던 자리이고, 갈래가 칸 이름으로 올라간 지금 그 자리가 말할 것은 상태다.
+                  값이 있는 줄은 너 나와와 리그뿐이고 나머지는 아예 안 그린다. */}
+              {rowStatusOf(item)}
               {rowDesc(item)}
             </span>
           </span>

@@ -4115,6 +4115,9 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
    하나로 고정하며 필터 자체를 걷었다(요청). */
 /* 크기는 활동 화면 필터 라벨(.scr-filter-item-label)과 같은 값이다(요청: 활동보다 커서
    맞춰 달라) — 화면이 달라도 같은 자리의 글자는 같은 크기여야 한다. */
+/* 기준일자는 줄의 오른쪽 끝(요청) — 남는 폭을 왼쪽 마진으로 통째로 먹는다. 달력이 왼쪽,
+   기준일이 오른쪽으로 갈라서면 "고르는 값"과 "그 결과로 정해지는 값"이 한 덩어리로 안 읽힌다. */
+.scr-ladder-asof { margin-left: auto; align-self: flex-end; padding-bottom: 4px; }
 .scr-stat-filter-label {
   font-size: var(--fs-11); font-weight: 700; color: var(--dim);
   white-space: nowrap; padding-left: 2px;
@@ -8904,36 +8907,10 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   font-size: var(--fs-11);
 }
 /* (삭제) 제목 전용 칸 — 걷었다(요청: "제목 | 내용"). 아래 인라인 제목이 대신한다. */
-/* 내용 칸 맨 앞의 갈래 배지 — 갈래는 바탕색으로 말하고 글자는 넷 다 흰색이다(요청).
-   폭은 글자수가 정한다(요청) — 고정폭이던 때는 "게임" 두 글자도 "랭크 변동" 자리를
-   차지해 배지 안이 반쯤 빈 칸이었다.
-   글자는 상태 알약(9px)보다 크고 본문(14px) 바로 아래인 12px이다(요청: 너 나와 배지보다는
-   크게, 텍스트 크기 정도).
-   유형 필터는 이 배지를 따라오지 않는다(요청: "필터에서 색배지는 제거") — 거기는 알약도
-   색도 없는 글자다. 줄 앞에서는 배지가 갈래를 한눈에 갈라 주는 값이지만, 필터에서는
-   낱말 넷이 나란히 서 있어 색이 없어도 무엇을 고르는지가 이미 보인다. */
-.scr-activity-row-title-badge {
-  flex: none; box-sizing: border-box;
-  display: inline-flex; align-items: center; justify-content: center;
-  /* 좌우 여백이 배지의 폭을 통째로 정한다 — 고정폭이 사라졌으니 2px로는 글자가 테두리에
-     붙는다. 8 → 5px로 조인다(요청) — 글자를 한 스텝 줄인 만큼 여백도 같이 줄어야 배지가
-     글자에 비해 헐렁해 보이지 않는다. */
-  /* 위아래를 3/1로 어긋나게 준다(요청: "유형 라벨 폰트 살짝 아래로") — 배지 높이는 그대로
-     두고 글자만 1px 내려앉는다. line-height로 내리면 배지가 같이 커지고, translate로
-     내리면 글자만 상자를 벗어나 밑변에 붙는다. */
-  padding: 3px 5px 1px; border-radius: 6px;
-  /* 갈래 색이 없는 줄(랭크 변동)은 무채색 바탕으로 간다. */
-  background: var(--kind, var(--kind-none));
-  color: var(--kind-ink);
-  /* 한 스텝 아래로(요청) — micro 12 → 11px. 갈래는 줄을 고를 때 훑는 값이라 닉네임보다
-     작아야 하고, 바탕색이 이미 갈래를 말하므로 글자가 클 이유가 없다. */
-  font-size: var(--fs-11); font-weight: 700; line-height: 1.25; white-space: nowrap;
-}
-.scr-kind-schedule { --kind: var(--kind-schedule); }
-.scr-kind-league { --kind: var(--kind-league); }
-.scr-kind-call { --kind: var(--kind-call); }
-.scr-kind-game { --kind: var(--kind-game); }
-.scr-kind-notice { --kind: var(--kind-notice); }
+/* (삭제) 내용 칸 맨 앞의 갈래 배지(.scr-activity-row-title-badge)와 그 색 클래스
+   (.scr-kind-*) — 유형 배지를 어느 줄에서도 안 그리게 되면서(요청: 너 나와도 제거)
+   입힐 자리가 없어졌다. 갈래는 이제 덩어리 제목이 말한다. 색 토큰(--kind-*)은 그대로
+   남는다 — 다른 자리에서 쓴다. */
 /* (삭제) 제목 칸 안의 껍데기·글자 — 제목이 내용 칸으로 들어오며 함께 걷혔다. */
 /* NEW / UPDATE — 이 목록에서 유일하게 색을 쓰는 자리다. 새것·달라진 것이 몇 개 안 되기
    때문에 색 하나가 눈에 바로 걸리고, 그게 이 딱지가 하는 일 전부다. 글자를 그대로 적으므로
@@ -9002,6 +8979,9 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   background: #fff; color: #111;
   /* 글자는 또 한 스텝(요청: "더 줄이고") — 11 → 10 → 9px. */
   font-size: var(--fs-9); font-weight: 700; line-height: 1.3; white-space: nowrap;
+  /* 제목 왼쪽으로 자리를 옮기면서(요청) 줄어들지 않게 못 박는다 — 제목 칸은 남는 폭을
+     나눠 갖는 flex라, 긴 로스터가 들어오면 이 알약부터 눌려 글자가 잘린다. */
+  flex: none;
 }
 .scr-light-theme .scr-activity-row-status { background: #16181d; color: #fff; }
 /* 끝난 상태(거절·만료·취소·완료)는 알약째로 반투명하게 눌러 둔다(요청) — 배경만 흐리면
@@ -11408,20 +11388,29 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 .scr-ladder-rank-head, .scr-ladder-name-head { text-align: center; }
 .scr-ladder-name-head { text-align: left; padding-left: 36px; }
 
-/* 랭크 칸 — 수와 그 변동이 한 줄이다. 수 자체는 칸 가운데에 그대로 서고 변동만 오른쪽
-   바깥에 매달린다(통계표의 순위 줄과 같은 규칙) — 흐름에 두면 변동이 있는 줄만 수가
-   왼쪽으로 밀려 줄마다 순위의 x가 흔들린다. */
-.scr-ladder-rank { display: flex; align-items: center; justify-content: center; }
+/* 랭크 칸 — 위에 [메달 수], 아래에 변동 한 줄이다.
+   한때 셋을 한 줄에 두었다가 메달과 변동이 그대로 포개졌다(지적) — 둘 다 '수의 바깥에
+   매다는' 절대배치였고, 1·2·3위에서는 수 대신 메달을 그려 기준이 될 글자마저 없었다.
+   이제 수는 늘 흐름에 있고(칸 가운데), 메달만 그 왼쪽 바깥에 매달리며, 변동은 아랫줄이다.
+   메달이 자리를 안 먹으므로 순위 수의 x는 메달이 있든 없든 같다. */
+.scr-ladder-rank {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+}
 .scr-ladder-rank-val { position: relative; display: inline-flex; align-items: center; }
+/* 메달은 수의 왼쪽 바깥 — 오른쪽에 두면 아래 변동과 같은 쪽에 몰려 칸이 한쪽으로 쏠린다.
+   통계표의 .scr-stat-medal을 안 쓰는 이유는 그쪽이 left:100%(오른쪽)로 못 박혀 있어서다. */
+.scr-ladder-medal {
+  position: absolute; right: 100%; top: 50%; transform: translateY(-50%);
+  margin-right: 3px; font-size: var(--fs-caption); line-height: 1; pointer-events: none;
+}
 .scr-ladder-rank-n {
   /* 한 스텝 확대(요청: "래더 보드 아바타 및 폰트 크기 1스텝 확대") — subhead(20) → headline(24). */
   font-size: var(--fs-headline); font-weight: 800; color: var(--text);
   font-variant-numeric: tabular-nums; line-height: 1;
 }
-.scr-ladder-move {
-  position: absolute; left: 100%; top: 50%; transform: translateY(-50%);
-  margin-left: 4px; line-height: 1; white-space: nowrap;
-}
+/* 변동은 아랫줄이다 — 자리를 늘 지킨다(없으면 "-"): 변동이 있는 줄만 순위가 위로 밀리면
+   줄마다 순위의 y가 흔들린다. */
+.scr-ladder-move { line-height: 1; white-space: nowrap; }
 .scr-ladder-move .scr-activity-shift-up,
 .scr-ladder-move .scr-activity-shift-down,
 .scr-ladder-move .scr-activity-shift-new {

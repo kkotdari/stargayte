@@ -246,11 +246,12 @@ export default function LadderScreen() {
                 minMonth={firstMonth} maxMonth={currentMonthValue()}
                 allValue={PERIOD_ALL} allLabel="전체 누적"
               />
-              {/* 레이팅이 어느 날짜 기준인가 — 컬럼 머리 아랫줄 대신 월 필터 옆에 적는다
-                  (요청: "기준 일은 월 필터 옆에 표시"). 기준일은 그 필터가 정하는 값이라
-                  필터 곁에 있는 편이 "무엇에 대한 기준인가"가 더 잘 붙는다. */}
-              <span className="scr-stat-plain-head-sub scr-ladder-asof">{asOf} 기준</span>
             </div>
+            {/* 레이팅이 어느 날짜 기준인가 — 줄의 오른쪽 끝이다(요청). 달력 바로 아래에
+                두었더니 트리거와 한 덩어리로 읽혀, 고르는 값("7월")과 그 결과로 정해지는
+                값("7.31 기준")이 같은 것으로 보였다. 반대쪽 끝으로 떼면 둘의 관계가
+                "이 줄이 정한 기준"으로 읽힌다. */}
+            <span className="scr-stat-plain-head-sub scr-ladder-asof">{asOf} 기준</span>
           </div>
         </div>}
       />
@@ -282,15 +283,25 @@ export default function LadderScreen() {
                   className={cx("scr-ladder-row", r.member.id === user?.id && "scr-stat-row-me")}
                 >
                   {/* 랭크는 맨 왼쪽 제 칸이다(요청) — 리더보드에서 제일 먼저 읽는 값이라
-                      유저 칸 안에 딸려 있으면 안 된다. 변동은 그 옆에 매단다. */}
+                      유저 칸 안에 딸려 있으면 안 된다.
+
+                      순위 수는 늘 적는다(지적: 순위가 없고 메달하고 델타가 겹침) — 1·2·3위만
+                      메달로 갈아 끼웠더니 정작 "몇 위"가 사라졌고, 통계표에서 빌려 온 메달
+                      (.scr-stat-medal)이 절대배치라 같은 자리에 매달린 변동과 그대로 포개졌다.
+                      이제 메달은 수의 왼쪽 바깥에 따로 매달고(자리를 안 먹으므로 수는 칸
+                      가운데 그대로), 변동은 그 아래 제 줄로 내린다 — 셋이 서로의 자리를
+                      침범하지 않는다. */}
                   <span className="scr-ladder-rank">
                     {r.rank === null ? (
                       <span className="scr-stat-points-empty">-</span>
                     ) : (
-                      <span className="scr-ladder-rank-val">
-                        {medalOn && r.rank <= MEDALS.length
-                          ? <span className="scr-stat-medal">{MEDALS[r.rank - 1]}</span>
-                          : <span className="scr-ladder-rank-n">{r.rank}</span>}
+                      <>
+                        <span className="scr-ladder-rank-val">
+                          {medalOn && r.rank <= MEDALS.length && (
+                            <span className="scr-ladder-medal">{MEDALS[r.rank - 1]}</span>
+                          )}
+                          <span className="scr-ladder-rank-n">{r.rank}</span>
+                        </span>
                         <span className="scr-ladder-move">
                           {r.move === "new" ? (
                             <span className="scr-activity-shift-new">신규</span>
@@ -302,7 +313,7 @@ export default function LadderScreen() {
                             <span className="scr-stat-delta scr-stat-delta-none">-</span>
                           )}
                         </span>
-                      </span>
+                      </>
                     )}
                   </span>
                   <span className="scr-ladder-name">
