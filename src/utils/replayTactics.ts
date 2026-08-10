@@ -44,6 +44,10 @@ const WALL_MAX = 6;
  *  엔지니어링 베이부터 10.0분 팩토리까지 4.4분에 걸쳐 지은 본진 건물들이 하나의 벽으로
  *  잡혔다(지적: "팩토리와 엔지니어링베이는 입구를 막은 게 아니라 그냥 본진에 지은 것"). */
 const WALL_BURST_SEC = 180;
+/** 벽을 세운 뒤 이만큼(초) 안에 일어난 변태까지 '그 벽의 일부'로 본다 — 크립 콜로니는
+ *  심자마자 바꾸는 것이라 이 정도면 넉넉하고, 후반에 딴 데 올린 스포어까지 끌어오지는
+ *  않는다(위 tally 주석의 실측 참고). */
+const WALL_MORPH_SEC = 90;
 /** 막은 뒤에 늘린 본진 + 새로 올린 테크 건물이 몇부터 '발전했다'인가. */
 const WALL_IN_GROW_MIN = 2;
 
@@ -2062,15 +2066,25 @@ function detectFor(c: Ctx): Tactic[] {
        저그만 사정이 다르다: 리플레이에 자리가 남는 건 크립 콜로니뿐이고, 성큰·스포어로의
        변태는 자리 없이 개수로만 남는다(실측한 판에서 크립 19, 스포어 15, 성큰 1). 그래서
        그 자리를 "크립 콜로니"라 부르면 이야기가 어색하고, 무턱대고 "성큰"이라 부르면
-       열에 아홉이 스포어였던 판에서 거짓이 된다. 그 사람이 실제로 무엇으로 바꿨는지가
-       한쪽으로 확실히 기울 때만(두 배 이상) 그 이름을 쓰고, 아니면 크립 그대로 둔다. */
+       열에 아홉이 스포어였던 판에서 거짓이 된다.
+
+       무엇으로 바꿨는지는 '그 무렵'만 본다(지적: 성큰으로 입구를 막았는데 스포어로 나온다).
+       한때 경기 전체의 개수로 골랐는데, 그러면 8분에 입구를 막은 크립이 21분 뒤에 뒤늦게
+       올린 스포어 열한 채에 끌려간다(실측한 판이 그랬다 — 그 자리의 변태는 아예 없었고
+       스포어는 후반 대공용이었다). 벽이 올라간 창 안에서 일어난 변태만 세고, 그마저
+       한쪽으로 확실히 기울 때만(두 배 이상) 이름을 바꾼다. 창 안에 아무 변태도 없으면
+       크립 그대로 둔다 — 실제로 크립 콜로니로 길을 막아 놓기만 한 판이 그렇다. */
     const tally = new Map<string, number>();
     for (const b of wall) tally.set(b.unit, (tally.get(b.unit) ?? 0) + 1);
     if (tally.has("Sunken Colony") || tally.has("Spore Colony")) tally.delete("Creep Colony");
     const creep = tally.get("Creep Colony");
     if (creep !== undefined) {
-      const sunk = s.buildingCounts["Sunken Colony"] ?? 0;
-      const spore = s.buildingCounts["Spore Colony"] ?? 0;
+      const from = Math.min(...wall.map((b) => b.frame ?? 0));
+      const to = closed + WALL_MORPH_SEC / SECONDS_PER_FRAME;
+      const morphed = (name: string): number =>
+        (s.buildingFrames[name] ?? []).filter((f) => f >= from && f <= to).length;
+      const sunk = morphed("Sunken Colony");
+      const spore = morphed("Spore Colony");
       const grown = sunk >= spore * 2 && sunk > 0 ? "Sunken Colony"
         : spore >= sunk * 2 && spore > 0 ? "Spore Colony" : null;
       if (grown) { tally.delete("Creep Colony"); tally.set(grown, creep); }
