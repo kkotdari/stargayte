@@ -122,6 +122,20 @@ const tactic = (label: string, keys: string[], min = 2): Title => ({
 const rare = (label: string, keys: string[]): Title => tactic(label, keys, 1);
 
 const TITLES: Title[] = [
+  /* ── 사람 노릇(요청: 꼭 넣을 것) ────────────────────────────────────────────
+     맨 위에 둔다 — 혼자 잘하는 것보다 판을 함께 굴린 쪽이 먼저 불릴 자격이 있다.
+     헬프(ally-help)는 제 살림을 놔두고 남의 집으로 병력을 돌린 대목이라, 이기고 지는
+     것과 상관없이 그 사람이 어떤 사람인지를 가장 잘 말해 준다. */
+  tactic("헬프 퀸", ["ally-help"]),
+  tactic("동맹의 수호신", ["ally-cannon"]),
+  /* 입구막기는 '막았다'가 아니라 '막아 놓고 뒤에서 컸다'가 값어치다(판정도 발전까지 함께
+     본다 — replayTactics의 WALL_IN_GROW_MIN). 그래서 칭호도 막은 쪽이 아니라 그다음을
+     부른다(요청: 후반 도모 퀸). */
+  tactic("후반 도모 퀸", ["wall-in"]),
+  /* 조이기(요청) — 센터에 탱크를 박아 길목을 잠근 대목이다. 자막에서도 "중앙을 걸어
+     잠그고 그 자리를 내주지 않았다"로 말하는 그 수다. */
+  tactic("조이기의 달인", ["center-tank"]),
+
   // ── 전술(리플레이 자막이 말하던 그 사실) ────────────────────────────────────
   tactic("옆탱의 여왕", ["side-tank"]),
   tactic("센포의 지배자", ["center-photon"]),
@@ -129,31 +143,61 @@ const TITLES: Title[] = [
   tactic("성큰러시의 절대자", ["sunken-rush"]),
   // 드랍은 종족마다 키가 다르다 — 하나로 묶어야 "드랍 잘하는 사람"이라는 말이 된다.
   tactic("드랍의 여신", ["dropship", "shuttle", "zerg-drop", "templar-drop", "shuttle-reaver"]),
-  tactic("일꾼 파괴자", ["base-raid"]),
+  tactic("일꾼 사냥꾼", ["harass-workers"]),
+  tactic("지긋지긋한 견제러", ["harass-long"]),
+  tactic("남의 집 헤집기 장인", ["base-raid"]),
   rare("땅굴의 설계자", ["nydus"]),
   rare("리콜의 마술사", ["recall"]),
   rare("마인드 컨트롤러", ["mind-control"]),
-  tactic("닥치고 캐리어", ["carrier"]),
+  tactic("캐리어 퀸", ["carrier"]),
   tactic("공포의 독거미 부대", ["lurker"]),
   tactic("보이지 않는 손", ["cloak-wraith"]),
   tactic("뮤탈 조련사", ["muta"]),
+  tactic("오버로드 사냥꾼", ["valk-hunt"]),
   tactic("몰래 배럭의 대가", ["sneak-rax"]),
   tactic("저글링 폭풍", ["zling-rush"]),
   tactic("질럿 돌격대장", ["zealot-rush"]),
+  tactic("맞러시 승부사", ["duel-rush"]),
+  tactic("협공의 선봉", ["gang-rush"]),
   rare("다크스웜의 여신", ["swarm"]),
   rare("감염술사", ["infested"]),
   tactic("가디언 함대 사령관", ["guardian"]),
-  tactic("배틀크루저 함장", ["bc"]),
+  tactic("배틀 퀸", ["bc"]),
   tactic("발키리 지휘관", ["valkyrie"]),
   tactic("목동 저그", ["moka"]),
-  tactic("센터 점령군", ["center-tank"]),
-  tactic("동맹의 수호신", ["ally-cannon"]),
-  tactic("입구 봉인술사", ["wall-in"]),
   tactic("우리 집 문지기", ["front-defense"]),
   tactic("메카닉 진격대장", ["mech"]),
   tactic("바이오닉 지휘관", ["bionic"]),
   tactic("테크의 연금술사", ["fast-tech"]),
+
+  /* ── 판을 어떻게 끌고 갔나 ──────────────────────────────────────────────────
+     여기부터는 '무엇을 뽑았나'가 아니라 '어떤 판을 만들었나'다. 지는 쪽으로 읽히는 키
+     (rush-backfire·greedy-punished·fallen 같은 것)는 아예 안 쓴다 — 칭호는 놀리는
+     자리가 아니다. 반대로 밀리고도 버틴 이야기(revival·relocate·lodging·lift-off)는
+     쓴다: 그건 진 이야기가 아니라 끝까지 앉아 있었다는 이야기다. */
+  tactic("수성의 여왕", ["hold-off"]),
+  tactic("받아치기의 정석", ["counter"]),
+  tactic("벽을 뚫는 자", ["breakthrough"]),
+  tactic("한타의 지배자", ["clash"]),
+  tactic("올인의 화신", ["allin"]),
+  tactic("째기의 달인", ["greedy-paid"]),
   tactic("배짱의 화신", ["greedy-build"]),
+  tactic("멀티 부동산왕", ["expand"]),
+  tactic("자원 부자", ["worker-gap"]),
+  tactic("생산 공장장", ["prod-gap"]),
+  tactic("한 방 병력의 주인", ["power-unit"]),
+  tactic("병력 사재기", ["mass-army"]),
+  tactic("업글 덕후", ["upgrade-signature"]),
+  tactic("소모전의 화신", ["attrition"]),
+  tactic("눈치 싸움의 강자", ["standoff"]),
+  tactic("지구전의 화신", ["long-run"]),
+  tactic("끝까지 버티는 사람", ["late-hold", "late-defense", "stand"]),
+  rare("좀비 모드", ["revival"]),
+  rare("이사 퀸", ["relocate"]),
+  rare("셋방살이 전문", ["lodging"]),
+  rare("공중부양 마스터", ["lift-off"]),
+  rare("노엘을 외치는 자", ["no-elim"]),
+  rare("프로 지망생", ["pro-like"]),
 
   // ── 맵 ─────────────────────────────────────────────────────────────────────
   {
@@ -223,19 +267,25 @@ const sub = (w: string) => (hasFinal(w) ? "은" : "는");
 
 /* "~를 부르는 자"는 뺐다(지적: 뜻이 명확하지 않다) — 부른다는 말이 '많이 쓴다'인지 '불러
    낸다'인지 읽는 사람마다 갈렸다. 대신 무엇을 했는지가 바로 읽히는 말만 남긴다. */
+/* 그냥 "많이 뽑았다"는 재미가 없다(지적) — 수가 아니라 그 사람의 고집으로 읽히는 말만
+   남긴다. "닥치고 ○○"·"○○ 없인 못 산다"처럼 한 유닛만 파는 그림이 이 자리의 웃음이다. */
 const UNIT_SAYS: ((n: string) => string)[] = [
-  (n) => `공포의 ${n} 부대`,
   (n) => `닥치고 ${n}`,
+  (n) => `공포의 ${n} 부대`,
   (n) => `난 ${n}만 뽑는다`,
+  (n) => `${n} 없인 못 산다`,
+  (n) => `${n} 중독`,
+  (n) => `${n}${sub(n)} 내 운명`,
+  (n) => `${n} 사재기`,
+  (n) => `${n}밖에 몰라`,
   (n) => `${n}${sub(n)} 나의 것`,
-  (n) => `${n}의 화신`,
-  (n) => `${n}의 아이콘`,
   (n) => `${n} 하나로 간다`,
 ];
 const SKILL_SAYS: ((n: string) => string)[] = [
+  (n) => `${n} 한 방의 여왕`,
   (n) => `${n}의 대가`,
   (n) => `${n} 장인`,
-  (n) => `${n} 한 방의 여왕`,
+  (n) => `${n} 없으면 손이 떨림`,
 ];
 const BUILD_SAYS: ((n: string) => string)[] = [
   (n) => `${n} 애호가`,
@@ -279,18 +329,21 @@ function signature(id: string, s: MemberStats, used: Set<string>): string | null
   const seed = seedOf(id);
   const m = s.buildMix;
   if (m) {
-    /* 병력의 4분의 1을 한 유닛이 차지하면 그건 취향이 아니라 그 사람의 전술이다.
-       일꾼·보급은 애초에 이 원장에 없다(replayBuildMix) — 그래서 이 비율이 곧 병력 구성이다. */
-    const unit = topOf(m.units, UNIT_KO);
-    if (unit && unit.share >= 0.25 && unit.count >= 10) {
-      const t = pick(UNIT_SAYS, unit.name, seed, used);
-      if (t) return t;
-    }
-    /* 마법은 한 번 쓰기도 어려운 것이라 비중을 안 따진다 — 가장 많이 쓴 것 하나면 충분히
-       그 사람다운 말이 된다. */
+    /* 마법을 유닛보다 먼저 본다(지적: 단순히 많이 뽑은 유닛은 재미가 없다) — 스톰·리콜처럼
+       쓰기 어려운 것은 한 번만 나와도 그 사람 이야기가 되지만, 많이 뽑은 유닛은 대개 그
+       종족의 주력이라 종족이 같으면 다 같은 말이 된다.
+       비중을 안 따지는 것도 그래서다 — 가장 많이 쓴 것 하나면 충분하다. */
     const skill = topOf(m.skills, TECH_KO);
     if (skill && skill.count >= 5) {
       const t = pick(SKILL_SAYS, skill.name, seed, used);
+      if (t) return t;
+    }
+    /* 병력의 3분의 1을 한 유닛이 차지하면 그건 주력이 아니라 고집이다 — 4분의 1에서 올렸다:
+       그 정도는 어느 종족에나 있는 주력 비중이라 "닥치고 ○○"이라 부를 만한 그림이 아니다.
+       일꾼·보급은 애초에 이 원장에 없다(replayBuildMix) — 그래서 이 비율이 곧 병력 구성이다. */
+    const unit = topOf(m.units, UNIT_KO);
+    if (unit && unit.share >= 0.33 && unit.count >= 10) {
+      const t = pick(UNIT_SAYS, unit.name, seed, used);
       if (t) return t;
     }
     /* 건물은 마지막이다 — 종족이 정해지면 짓는 것도 대체로 정해져서, 유닛·마법만큼 그
