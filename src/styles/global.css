@@ -9000,9 +9000,12 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   display: flex; flex-direction: column;
   --scr-row-pad-x: 14px;
   border: 1px solid var(--scr-row-line);
-  border-radius: var(--radius);
-  /* 첫 줄·끝 줄이 둥근 모서리 밖으로 삐져나오지 않게 — 줄에 배경(펼침·hover)이 깔릴 때
-     그 네모가 모서리를 덮는다. */
+  /* 모서리는 각지게(요청) — 둥근 모서리는 이 상자를 카드처럼 보이게 하는데, 이건 카드가
+     아니라 줄들을 담은 판이다. 대신 아주 옅은 채움을 한 겹 깔아(요청: 아주 살짝 반투명)
+     테두리만으로 버티던 경계를 면으로도 말한다. */
+  border-radius: 0;
+  background: rgba(var(--overlay-rgb), 0.028);
+  /* 줄에 배경(hover)이 깔릴 때 그 네모가 판 밖으로 새지 않게. */
   overflow: hidden;
   /* 이 목록은 글자를 흐리게 해서 강약을 주지 않는다(요청) — 색을 두 단계로 나눠 봤지만
      흐린 쪽이 얼마나 진해야 하는지가 테마마다 달라 계속 어긋났고(라이트에서 두 번 지적),
@@ -9066,8 +9069,11 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
      그만큼 위아래 여백도 같이 늘어야 배지 줄이 위 칸 선에 붙어 보이지 않는다.
      그 뒤 26 → 23px로 살짝 되돌리고(요청), 다시 23 → 14px로 줄인다(요청: 행 높이 20%
      축소). 줄 높이는 글자(42px) + 위아래 여백이라, 88px의 20%인 70px에 맞추려면 여백이
-     14px여야 한다 — 줄어드는 18px이 전부 여백에서 나온다. */
-  padding: 14px 10px 14px 0;
+     14px여야 한다 — 줄어드는 18px이 전부 여백에서 나온다.
+     이제 줄이 한 줄이다(시각·딱지가 제목 옆으로 갔다) — 글자가 42 → 20px으로 줄었으니
+     여백도 그만큼은 아니어도 한 단 조인다(요청: 줄 하나 없어진 만큼 살짝 줄이기).
+     14 → 11px. */
+  padding: 11px 10px 11px 0;
 }
 .scr-activity-row > * + * { border-left: 1px solid var(--line-faint); padding-left: 10px; }
 .scr-activity-row > *:last-child { padding-right: 0; }
@@ -9078,11 +9084,13 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 /* 시각은 맨 끝 칸이다 — 다른 칸과 같이 칸 가운데에 선다. */
 .scr-activity-row-time {
   color: var(--row-dim); font-variant-numeric: tabular-nums; white-space: nowrap;
-  /* 가운데 정렬은 제 칸(88px)을 갖고 있던 시절의 값이다 — 이제 배지 줄 오른쪽 끝에
+  /* 가운데 정렬은 제 칸(88px)을 갖고 있던 시절의 값이다 — 이제 제목 줄 오른쪽 끝에
      흐름으로 서므로 정렬할 여백 자체가 없다. */
   text-align: right; flex: none;
-  /* 한 스텝 작게(요청) — 시각은 줄을 가르는 기준일 뿐 읽을 값이 아니다. */
-  font-size: var(--fs-11);
+  /* 한 스텝 작게(요청) — 시각은 줄을 가르는 기준일 뿐 읽을 값이 아니다.
+     줄간격은 바짝(1.05) — 위의 딱지와 포개져 한 덩어리가 되므로, 둘을 합친 키가 제목
+     한 줄을 넘으면 줄이 도로 두 줄만큼 높아진다. */
+  font-size: var(--fs-11); line-height: 1.05;
 }
 /* (삭제) 제목 전용 칸 — 걷었다(요청: "제목 | 내용"). 아래 인라인 제목이 대신한다. */
 /* (삭제) 내용 칸 맨 앞의 갈래 배지(.scr-activity-row-title-badge)와 그 색 클래스
@@ -9099,10 +9107,11 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    줄마다 글 길이가 달라 딱지와 글 사이가 들쭉날쭉 벌어져, 어느 줄에 붙은 딱지인지가
    한 박자 늦게 읽혔다. */
 .scr-activity-row-flag {
-  flex: 0 0 auto; margin-left: -1px;
-  /* 제목이 커진 만큼 이 딱지도 키운다(요청) — 8 → 10px. 8px은 제목이 caption(14)이던
-     시절의 값이라, 제목만 body(16)로 오르자 딱지가 그 옆에서 부스러기처럼 보였다. */
-  font-size: var(--fs-10); font-weight: 800; letter-spacing: 0.02em; white-space: nowrap;
+  flex: 0 0 auto;
+  /* 시각 위에 포개지므로 한 단 더 작고 줄간격도 바짝이다 — 둘을 합친 키가 제목 한 줄과
+     비슷해야 한다(요청). 10 → 9px. */
+  font-size: var(--fs-9); font-weight: 800; letter-spacing: 0.02em; white-space: nowrap;
+  line-height: 1.05;
 }
 /* 새것은 연두 라임(요청), 달라진 것은 그와 확실히 갈리는 하늘색으로 둔다 — 둘 다 눈에
    걸려야 하지만 서로는 한눈에 달라야 한다. 다크에서 검정 대비 연두 11.8:1 / 하늘 8.4:1. */
@@ -9121,23 +9130,22 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 /* 내용 칸 — 이제 두 줄이다(요청): 위가 배지 줄, 아래가 제목 줄.
    왼쪽 여백은 없앤다 — 줄 자체가 이미 좌우 패딩(--scr-row-pad-x)을 물고 있어 글자가 벽에
    붙지 않는다. 오른쪽도 거의 없앤다 — 구분선을 걷어 띄울 상대가 없다. */
+/* 한 줄이다(요청) — [제목 …………… NEW/시각]. 예전에는 세로 두 줄(윗줄 딱지·시각, 아랫줄
+   제목)이었는데, 줄에서 읽을 값은 제목인데 시각이 그보다 먼저 읽히는 자리에 있었다. */
 .scr-activity-row > .scr-activity-row-main {
-  flex-direction: column; align-items: flex-start; justify-content: center; gap: 5px;
+  flex-direction: row; align-items: center; justify-content: flex-start; gap: 10px;
   min-width: 0; padding-left: 0; padding-right: 2px;
 }
-/* 내용 줄은 칸 폭을 다 받는다. 위 부모가 align-items:flex-start인 세로 flex라 그냥 두면
-   자식이 제 내용만큼만 넓어지고, 그러면 긴 줄이 칸 밖으로 흘러도 아무도 잘라 주지 않는다
-   (실측 390px: 칸이 274px인데 내용 줄은 401px으로 그려졌다 — 옆 시각 칸 위로 넘어간다).
-   폭을 받아야 안쪽의 말줄임도, 눌러 맞추기(FlatLine)도 잰 값을 기준으로 돈다.
-   배지 줄은 그대로 둔다 — 짧고, 왼쪽에 붙어 있어야 한다. */
-.scr-activity-row > .scr-activity-row-main > .scr-activity-row-desc { align-self: stretch; }
-/* 배지 줄 — 유형이 먼저, 그 오른쪽에 상태(요청). 상태가 없는 줄은 유형만 남는다. */
-/* 배지 줄은 [유형][상태] … [시각]이다. 시각이 오른쪽 끝으로 가려면 이 줄이 칸 폭을 다
-   받아야 한다 — 부모가 align-items:flex-start인 세로 flex라 그냥 두면 낱말 폭만큼만 넓다. */
+/* 제목이 남는 폭을 다 먹고, 넘치는 만큼은 제 안에서 줄인다(말줄임·FlatLine). 폭을 안 받으면
+   긴 줄이 칸 밖으로 흘러도 아무도 잘라 주지 않는다(실측 390px: 칸 274px에 내용 401px). */
+.scr-activity-row > .scr-activity-row-main > .scr-activity-row-desc { flex: 1 1 0; min-width: 0; }
+/* 딱지와 시각을 세로로 포갠 오른쪽 끝 덩어리(요청: NEW·UPDATE는 타임스탬프 위에).
+   둘을 합친 높이가 제목 한 줄과 비슷해야 줄 높이가 안 늘어난다(요청) — 그래서 줄간격을
+   1.05로 바짝 조이고 사이 여백을 두지 않는다(실측 20.5px vs 제목 19.2px). */
 .scr-activity-row-badges {
-  display: flex; align-items: center; gap: 6px; min-width: 0; align-self: stretch;
+  display: flex; flex-direction: column; align-items: flex-end; justify-content: center;
+  gap: 0; flex: none; text-align: right;
 }
-.scr-activity-row-badges > .scr-activity-row-time { margin-left: auto; padding-left: 8px; }
 /* (삭제) 상태 알약 자리를 예약하던 빈 칸 — 걷었다(요청). 알약은 이제 내용의 첫 조각으로
    그냥 놓이고, 없는 줄에서는 이름이 칸의 왼쪽 끝에서 시작한다. */
 /* 알약 자체 — 둥근 네모, 다크는 흰 바탕에 검은 글자(요청). 라이트는 그 반대라야 같은

@@ -1644,19 +1644,6 @@ export default function ActivityScreen() {
           onClick={() => setDetailItem(item)}
         >
           <span className="scr-activity-row-main">
-            <span className="scr-activity-row-badges">
-              {/* (이동) 상태 알약 — 제목 왼쪽으로 갔다(요청). 아래 .scr-activity-row-desc 참고. */}
-              {/* 새것(NEW)이거나 달라진 것(UPDATE) — 둘 다 참이어도 하나만 세운다(요청:
-                  NEW 우선). */}
-              {flags.length > 0 && (
-                <span className={cx("scr-activity-row-flag", `scr-activity-row-flag-${flags[0]}`)}>
-                  {flags[0] === "new" ? "NEW" : "UPDATE"}
-                </span>
-              )}
-              <span className="scr-activity-row-time">
-                {item.kind === "challenge" && item.undated ? "미정" : formatAgo(item.time)}
-              </span>
-            </span>
             <span className="scr-activity-row-desc">
               {/* 유형 배지는 이제 어느 줄에도 안 그린다(요청: 너 나와도 제거) — 그룹 제목이
                   이미 갈래를 말하고 있어서, 줄마다 "너 나와!"를 되풀이하면 다섯 줄이 같은
@@ -1668,6 +1655,22 @@ export default function ActivityScreen() {
                   값이 있는 줄은 너 나와와 리그뿐이고 나머지는 아예 안 그린다. */}
               {rowStatusOf(item)}
               {rowDesc(item)}
+            </span>
+            {/* 시각은 제목과 같은 줄 오른쪽 끝이다(요청) — 줄이 둘일 때는 시각이 제목보다
+                먼저 읽히는 자리(윗줄)에 있었는데, 줄에서 읽을 값은 제목이다. 딱지(NEW·
+                UPDATE)는 그 시각 위에 얹는다(요청): 둘 다 "언제"에 대한 말이라 한 덩어리로
+                묶이고, 두 줄을 합쳐도 제목 한 줄 높이라 줄이 도로 두 줄로 늘지 않는다. */}
+            <span className="scr-activity-row-badges">
+              {/* 새것(NEW)이거나 달라진 것(UPDATE) — 둘 다 참이어도 하나만 세운다(요청:
+                  NEW 우선). */}
+              {flags.length > 0 && (
+                <span className={cx("scr-activity-row-flag", `scr-activity-row-flag-${flags[0]}`)}>
+                  {flags[0] === "new" ? "NEW" : "UPDATE"}
+                </span>
+              )}
+              <span className="scr-activity-row-time">
+                {item.kind === "challenge" && item.undated ? "미정" : formatAgo(item.time)}
+              </span>
             </span>
           </span>
         </button>
