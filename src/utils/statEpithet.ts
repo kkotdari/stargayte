@@ -129,6 +129,13 @@ interface Title {
   unit?: string;
   /** 칭호끼리 겨룰 때의 무게 — 없으면 표의 차례대로 나간다. */
   weight?: number;
+  /** 그 값의 1등에게는 급·무게를 제치고 무조건 준다(요청: 참여수 1위는 개근의 여왕이 맞다).
+   *
+   *  칭호는 대개 "무엇을 했나"라 드문 쪽이 이기지만, 몇 가지는 순위 그 자체가 곧 이야기다 —
+   *  클럽에서 제일 많이 나온 사람을 두고 다른 말로 부르면, 정작 그 사실을 아무도 안 부르게
+   *  된다(그 사람의 1위는 다른 누구도 대신 가질 수 없는 자리다). 2등에게는 안 물려준다:
+   *  1위라서 주는 칭호라 2등이 받는 순간 뜻이 사라진다. */
+  sticky?: boolean;
   /** 칭호의 급 — 무게보다 먼저 본다(요청: 표 차례 개념도 들어가야 한다, 클래스가 다른 것).
    *
    *  같은 급 안에서만 무게·횟수로 겨룬다. 급을 따로 두는 까닭은 어떤 칭호는 아무리 여러 번
@@ -358,7 +365,7 @@ const TITLES: Title[] = [
   { label: "승률의 정점", weight: 3.5, why: "승률", unit: "%", value: (s) => (s.plays >= MIN_PLAYS_RATE ? s.winRate : null) },
   { label: "BEST 수집가", weight: 3, why: "BEST PLAYER", unit: "회", value: (s) => (s.bests > 0 ? s.bests : null) },
   { label: "쉬지 않는 손가락", weight: 2, why: "분당 커맨드", unit: "", value: (s) => s.avgCmd },
-  { label: "개근의 여왕", weight: 3, why: "경기 수", unit: "판", value: (s) => s.plays },
+  { label: "개근의 여왕", weight: 3, sticky: true, why: "경기 수", unit: "판", value: (s) => s.plays },
 ];
 
 /* ── 특징 ──────────────────────────────────────────────────────────────────────
@@ -577,8 +584,10 @@ export function epithetsOf(pool: EpithetSubject[]): Map<string, Epithet> {
     /** 겨룰 점수(무게 × 횟수 또는 무게 × 한가운데 대비 배수). 무게가 없으면 0이라 표 차례로 간다. */
     score: number;
     order: number;
-    /** 이 사람이 그 값의 1등인가 — 근거 문장에만 쓴다. */
+    /** 이 사람이 그 값의 1등인가 — 근거 문장과 아래 sticky 판정에 쓴다. */
     first: boolean;
+    /** 나눠 줄 때의 급 — sticky 칭호의 1등만 0급으로 앞당겨진다(Title.sticky 주석). */
+    rank: number;
   }
   const claims: Claim[] = [];
   TITLES.forEach((title, order) => {
@@ -598,9 +607,14 @@ export function epithetsOf(pool: EpithetSubject[]): Map<string, Epithet> {
        받자, 한 번 한 사람은 아무 전술 칭호도 못 받고 유닛 이름으로 밀렸다.
        대신 아무나 물려받지는 못한다: 전술은 제 힘으로 최소 횟수를 넘겨야 하고, 수치는
        무리 한가운데보다 확실히 위여야 한다(아래 bar). 순서는 어차피 점수가 정한다. */
+    /* 물려받는 사람도 제 힘으로 문턱(min)을 넘어야 한다(지적: 마법 유닛 비중이 0인
+       사람에게 "마법의 화신"이 붙었다).
+       버그였다: min을 1등 값에만 걸고, 물려받을 자격은 '한가운데보다 위'로만 봤다.
+       마법처럼 대부분이 0에 가까운 값에서는 한가운데가 거의 0이라, 2%짜리도 그 잣대를
+       가볍게 넘었다 — 그 사람은 마법을 안 쓴 사람인데도 화신이 됐다. 둘 다 넘어야 한다. */
     const bar = title.scale === "count"
       ? (title.min ?? 1)
-      : med * (title.edge ?? CROWN_EDGE);
+      : Math.max(title.min ?? 0, med * (title.edge ?? CROWN_EDGE));
     const winners = vals.filter((x) => x.v >= bar);
     // 그 무리의 절반이 넘게 걸리면 그건 특징이 아니라 평균이다(수치 칭호에만 해당한다 —
     // 전술은 여럿이 같은 횟수인 것이 흔하고, 그래도 '한 칭호는 한 사람'은 아래에서 지킨다).
@@ -612,9 +626,12 @@ export function epithetsOf(pool: EpithetSubject[]): Map<string, Epithet> {
       if (!label || label.includes("{n}")) continue;
       // 전술은 횟수 그대로, 수치는 '한가운데의 몇 배'로 바꿔 곱한다(Title.scale 주석).
       const base = title.scale === "count" ? w.v : (med > 0 ? w.v / med : 1);
+      const first = w.v === top;
+      // sticky 칭호는 1등에게만, 그리고 무엇보다 먼저 간다(0급). 2등 이하는 평소대로 겨룬다.
+      if (title.sticky && !first) continue;
       claims.push({
         title, id: w.id, label, raw: w.v, score: (title.weight ?? 0) * base, order,
-        first: w.v === top,
+        first, rank: title.sticky && first ? 0 : (title.tier ?? 2),
       });
     }
   });
@@ -624,7 +641,7 @@ export function epithetsOf(pool: EpithetSubject[]): Map<string, Epithet> {
      한 사람은 한 칭호, 한 칭호는 한 사람 — 먼저 걸린 쪽이 가져간다.
      맵 칭호(name이 있는 줄)만은 사람마다 맵 이름이 달라 서로 다른 칭호로 친다. */
   claims.sort((a, b) =>
-    ((a.title.tier ?? 2) - (b.title.tier ?? 2))
+    (a.rank - b.rank)
     || (b.score - a.score) || (a.order - b.order) || a.id.localeCompare(b.id));
   for (const c of claims) {
     if (out.has(c.id) || used.has(c.label)) continue;
