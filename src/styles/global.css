@@ -2589,6 +2589,12 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    화살표·"신규"는 예전에 micro(12px)였는데, 그때는 순위 옆에 나란히 서서 그 정도는 돼야
    읽혔다. 제 줄로 내려온 지금은 레이팅·BEST의 변동과 한 열에 서므로 그것들과 같아야 한다. */
 .scr-stat-rank-move { line-height: 1; margin-top: 0; }
+/* 덩어리 사이는 벌리고 덩어리 안은 붙인다(요청: 세 요소 사이를 띄워 달라) — 이 줄기에는
+   [레이팅+변동] [순위+변동] [BEST+변동] 셋이 세로로 서는데, 줄 간격이 하나뿐이면 값과
+   제 변동 사이나 남의 덩어리와의 사이나 똑같아서 어디까지가 한 덩어리인지가 안 보인다.
+   변동 줄 다음에 오는 줄이 곧 새 덩어리의 첫 줄이라, 그 자리에만 사이를 준다. */
+.scr-stat-rank-delta + .scr-stat-rank-line,
+.scr-stat-rank-move + .scr-stat-rank-line { margin-top: 7px; }
 .scr-stat-rank-move .scr-activity-shift-up,
 .scr-stat-rank-move .scr-activity-shift-down,
 .scr-stat-rank-move .scr-activity-shift-new {
