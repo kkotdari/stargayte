@@ -502,7 +502,12 @@ export default function MemberStatRow({
                         격자로 두면 세 덩어리가 제 폭을 갖고 통째로 칸 가운데에 선다. */}
                     <div className="scr-stat-rank-line scr-stat-rank-best">
                       <span className="scr-stat-best-tag">BEST</span>
-                      <span className="scr-stat-best-n">{stats.bests}</span>
+                      <span className="scr-stat-best-n">
+                        {stats.bests}
+                        {/* 단위(요청) — 수의 오른쪽에 매달되 자리는 안 차지한다. 레이팅의 "R",
+                            일꾼의 "기"와 같은 규칙이라, 수 자체는 아래 변동과 세로로 맞는다. */}
+                        <span className="scr-stat-best-unit">회</span>
+                      </span>
                       {/* 변동은 여기서도 수치 아래다(요청) — 레이팅이 그렇게 서 있으므로
                           이 줄만 옆에 달면 같은 줄기 안에서 규칙이 갈린다. */}
                       <span className="scr-stat-best-delta">

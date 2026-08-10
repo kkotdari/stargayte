@@ -2653,15 +2653,24 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 }
 /* 채움이 있는 배지는 메탈 그라데이션을 못 쓴다 — background-clip:text는 배경 전부를
    글자 모양으로 오려서, 알약의 채움까지 함께 사라진다. 여기서는 백금 한 색으로 둔다. */
+/* 알약이 아니라 글자다(요청) — 테두리와 채움을 걷고 색만 남긴다. 이 줄기에는 레이팅·순위도
+   함께 서는데, 그 둘은 맨 글자라 배지 하나만 도드라져 다른 종류의 값처럼 보였다. 색(금)이
+   이미 "이건 BEST"라고 말하므로 껍데기까지 씌울 필요가 없다.
+   배지는 왼쪽 열, 수와 변동은 오른쪽 열 — 그래야 수 아래에 변동이 곧바로 선다(요청). */
 .scr-stat-best-tag {
-  font-size: var(--fs-9); font-weight: 800; letter-spacing: 0.03em;
-  padding: 1px 3px; border-radius: 3px; line-height: 1;
-  border: 1px solid var(--best-line); background: var(--best-bg);
-  /* 배지는 왼쪽 열, 수와 변동은 오른쪽 열 — 그래야 수 아래에 변동이 곧바로 선다(요청).
-     배지가 두 줄 높이의 왼쪽 칸에서 위쪽 줄에 맞춰 서야 수와 나란히 읽힌다. */
+  font-size: var(--fs-9); font-weight: 800; letter-spacing: 0.03em; line-height: 1;
   grid-column: 1; grid-row: 1;
 }
-.scr-stat-best-n { grid-column: 2; grid-row: 1; font-weight: 700; font-variant-numeric: tabular-nums; }
+.scr-stat-best-n {
+  grid-column: 2; grid-row: 1; position: relative;
+  font-weight: 700; font-variant-numeric: tabular-nums;
+}
+/* 단위는 수의 오른쪽에 매달되 자리는 안 차지한다 — 레이팅의 "R"과 같은 규칙이라 수 자체가
+   아래 변동과 세로로 맞는다. 색은 이 줄의 금색을 그대로 물려받되 한 단계 눌러 둔다. */
+.scr-stat-best-unit {
+  position: absolute; left: 100%; top: 50%; transform: translateY(-50%);
+  margin-left: 1px; font-size: var(--fs-11); font-weight: 600; opacity: 0.7;
+}
 .scr-stat-best-delta {
   grid-column: 2; grid-row: 2; line-height: 1; margin-top: 1px;
   font-size: calc(var(--fs-9) - 1px);
