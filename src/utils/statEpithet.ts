@@ -475,7 +475,13 @@ const TITLES: Title[] = [
   },
 
   // ── 양(얼마나 했나) ────────────────────────────────────────────────────────
-  { label: "승률의 정점", weight: 3.5, why: "승률", unit: "%", value: (s) => (s.plays >= MIN_PLAYS_RATE ? s.winRate : null) },
+  /* 종족·유형 안 가리고 전체 승률이 높은 사람(요청: 종족 무관 승률 70% → 승리의 여신).
+     "승률의 정점"에서 이름과 문턱을 함께 바꿨다 — 1등이라도 5할대면 정점이라 부를 수 없고,
+     7할을 넘긴 사람이 여럿이어도 그중 가장 높은 한 사람만 이 말을 듣는다. */
+  {
+    label: "승리의 여신", weight: 3.5, min: 70, why: "승률", unit: "%",
+    value: (s) => (s.plays >= MIN_PLAYS_RATE ? s.winRate : null),
+  },
   { label: "BEST 수집가", weight: 3, why: "BEST PLAYER", unit: "회", value: (s) => (s.bests > 0 ? s.bests : null) },
   { label: "쉬지 않는 손가락", weight: 2, why: "분당 커맨드", unit: "", value: (s) => s.avgCmd },
   { label: "개근의 여왕", weight: 3, sticky: true, why: "경기 수", unit: "판", value: (s) => s.plays },
