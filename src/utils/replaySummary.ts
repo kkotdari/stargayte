@@ -4836,6 +4836,14 @@ const SPOT_SAME_MAX = 2;
 const MOVE_MIN_NEW = 4;
 /** 옮긴 뒤 옛 구역에 남는 것은 이 정도까지 — 그보다 많으면 아직 거기 산다. */
 const MOVE_BACK_MAX = 1;
+/* '돌아갔다'를 셀 때 빼는 건물 — 옛 자리에 이것들만 다시 올린 것은 거기서 다시 사는 게
+   아니다(지적: 3시에서 몰래 살다가 걸려 죽고 12시로 옮겼는데 그 이야기가 없다).
+   실측한 그 판에서 타센이 12시로 옮긴 뒤 옛 자리(3시)에 올린 것은 가스 셋·크립 하나·
+   해처리 하나였다 — 그 다섯을 그대로 세니 '거의 안 돌아갔다'(최대 1)에 걸려 이사 자체가
+   통째로 사라졌다. 가스는 남은 간헐천을 뒤늦게 빨아먹는 것이고 크립 콜로니는 그 자체로는
+   아무것도 아닌 주춧돌이라, 둘 다 '거기 산다'는 증거가 못 된다. 살림을 말하는 건물
+   (해처리·병영·테크 건물)만 센다 — 그것도 하나까지는 봐준다(MOVE_BACK_MAX). */
+const MOVE_BACK_SKIP = new Set(["Extractor", "Assimilator", "Refinery", "Creep Colony"]);
 /** 한 사람이 이사한 것으로 볼 수 있는 최대 횟수. */
 const MOVE_MAX = 3;
 /** 이사로 보려면 그 전에 본진 생산이 꺾인 적이 있어야 한다(지적: 자리만으로는 크게
@@ -4951,9 +4959,17 @@ function relocations(
       const z = zone[i];
       if (z < 0 || z === home || taken(z, pts[i].frame)) continue;
       if (pts[i].frame > lastMoveFrame) continue;
-      const late = zone.slice(i);
-      if (late.filter((x) => x === z).length < MOVE_MIN_NEW) continue;
-      if (late.filter((x) => x === home).length > MOVE_BACK_MAX) continue;
+      /* 이 자리 뒤로 새 구역에 몇 채나 짓나 / 옛 구역으로 몇 번이나 돌아가나.
+         돌아간 쪽만 부속물을 빼고 센다(위 MOVE_BACK_SKIP) — 새 구역 쪽은 무엇을 짓든
+         '거기서 시작했다'는 증거라 그대로 센다. */
+      let newN = 0;
+      let backN = 0;
+      for (let j = i; j < pts.length; j += 1) {
+        if (zone[j] === z) newN += 1;
+        else if (zone[j] === home && !MOVE_BACK_SKIP.has(pts[j].unit)) backN += 1;
+      }
+      if (newN < MOVE_MIN_NEW) continue;
+      if (backN > MOVE_BACK_MAX) continue;
       // 본진이 그 무렵 실제로 얻어맞았어야 이사다(위 RELOCATE_HIT_WINDOW_MIN 주석) — 아니면
       // 자리는 바뀌었어도 아직 멀쩡한 본진을 두고 그냥 멀티를 늘린 것일 수 있다.
       if (!wasHitBefore(pts[i].frame)) continue;

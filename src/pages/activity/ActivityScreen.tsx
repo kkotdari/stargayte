@@ -1312,8 +1312,16 @@ export default function ActivityScreen() {
      같은 넉 자라도 "브래드왕"과 "Brad"는 자리를 두 배로 다르게 먹는다. 한글·한자·이모지를
      두 칸, 나머지를 한 칸으로 세면 두 이름이 같은 잣대 위에 선다.
      자를 때 코드포인트로 훑는 건 이모지가 든 닉네임을 반 토막 내지 않기 위해서다. */
-  const TITLE_UNITS_KEEP = 8;  // 여기까지는 손대지 않는다 — 한글 4 = 영문 8
-  const TITLE_UNITS_CLIP = 6;  // 넘치면 여기까지만 — 한글 3 = 영문 6
+  /* 한글과 영문에 다른 한도를 준다(요청: 한글 6·영문 8까지 그대로, 넘치면 한글 5·영문 7).
+     칸으로 환산하면 한글 6 = 12칸, 영문 8 = 8칸이라 한도가 서로 다르다 — 한글이 두 배
+     넓다고 해서 같은 칸 수로 자르면 넉 자밖에 못 적는데, 한글 이름은 넉 자로 자르면 누구인지
+     알아보기 어렵다(영문은 여덟 자면 대개 다 읽힌다).
+     이름에 넓은 글자가 하나라도 있으면 한글 잣대로 본다 — 섞인 이름("한글Ab")도 한글
+     이름처럼 읽히고, 실제로 차지하는 자리도 그쪽에 가깝다. */
+  const TITLE_UNITS_KEEP_WIDE = 12;  // 한글 6자
+  const TITLE_UNITS_KEEP_NARROW = 8; // 영문 8자
+  const TITLE_UNITS_CLIP_WIDE = 10;  // 넘치면 한글 5자
+  const TITLE_UNITS_CLIP_NARROW = 7; // 넘치면 영문 7자
   /** 한 글자가 먹는 칸 — 넓은 글자(한글·한자·가나·전각·이모지)는 둘, 나머지는 하나. */
   const charUnits = (ch: string): number => (
     /[ᄀ-ᅟ⺀-〾ぁ-㏿㐀-䶿一-鿿ꥠ-꥿가-힣豈-﫿︰-﹯＀-｠￠-￦]/u.test(ch)
@@ -1321,13 +1329,16 @@ export default function ActivityScreen() {
   );
   const clipName = (name: string): string => {
     const chars = Array.from(name);
+    const wide = chars.some((c) => charUnits(c) === 2);
+    const keep = wide ? TITLE_UNITS_KEEP_WIDE : TITLE_UNITS_KEEP_NARROW;
+    const clip = wide ? TITLE_UNITS_CLIP_WIDE : TITLE_UNITS_CLIP_NARROW;
     const total = chars.reduce((n, c) => n + charUnits(c), 0);
-    if (total <= TITLE_UNITS_KEEP) return name;
+    if (total <= keep) return name;
     let used = 0;
     const kept: string[] = [];
     for (const c of chars) {
       const w = charUnits(c);
-      if (used + w > TITLE_UNITS_CLIP) break;
+      if (used + w > clip) break;
       kept.push(c); used += w;
     }
     return `${kept.join("")}…`;
