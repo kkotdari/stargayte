@@ -1335,11 +1335,18 @@ export default function ActivityScreen() {
   const sideNodes = (slots: GameResultSlot[], bestRaw: string | undefined): ReactNode[] =>
     slots.flatMap((s, i) => [
       ...(i > 0 ? [<span className="scr-activity-row-slash" key={`s${i}`} aria-hidden>/</span>] : []),
-      <span className="scr-activity-row-em" key={`n${i}`}>
+      /* BEST PLAYER는 배지 대신 닉네임 자체를 백금 메탈로 적는다(요청) — 여덟 이름이 한
+         줄에 눌려 서는 자리라, 배지는 그 줄에서 유일하게 '이름이 아닌 것'이 되어 눈이 먼저
+         거기 걸렸다. 이름 색만 달라지면 줄의 생김새는 그대로면서 누가 뽑혔는지는 그대로
+         보인다. 자리도 안 먹으므로 눌리는 비율(FlatLine)도 안 건드린다. */
+      <span
+        className={cx("scr-activity-row-em", !!bestRaw && s.rawName === bestRaw && "scr-activity-row-em-best")}
+        key={`n${i}`}
+        title={!!bestRaw && s.rawName === bestRaw ? "BEST PLAYER" : undefined}
+      >
         {/* 이름 규칙은 그 편 전체를 봐야 정해진다(컴퓨터 슬롯 번호 매기기) — 자르는 건
             그렇게 정해진 이름을 적을 때다. */}
         {clipName(resolveSlotName(s, slots, memberOf))}
-        {!!bestRaw && s.rawName === bestRaw && <span className="scr-best-mini">BEST</span>}
       </span>,
     ]);
 

@@ -10392,18 +10392,18 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   position: absolute; left: 2px; bottom: 100%; margin-bottom: 1px;
   font-size: var(--fs-8); margin-left: 0; line-height: 1; pointer-events: none;
 }
-/* 글자 위의 빈 띠 — BEST 배지가 앉을 자리다(위 .scr-best-mini). 흐름에서 뺀 배지는 줄
-   상자 밖으로 나가면 바로 잘리므로(.scr-activity-row-desc의 overflow) 자리는 상자 '안'에
-   있어야 하는데, 그 자리를 line-height로 만들었더니 위아래로 똑같이 벌어져 아래쪽 8px이
-   아무것도 없는 빈자리로 남았다(지적). 위쪽 안여백이면 필요한 쪽에만 생긴다.
-   줄의 세 조각(양편 이름·vs)에 다 걸어야 한다 — 하나에만 주면 그 조각만 아래로 내려앉아
-   글자 밑선이 어긋난다(가운데 정렬이라 상자가 커진 만큼 속이 내려간다). */
-.scr-activity-row-flat-in > * { padding-top: 9px; }
-/* 배지가 기준으로 삼을 상자 — 이름 글자 자신이다. 넘쳐도 안 자른다: 자르면 어깨 위로
-   올라간 배지가 통째로 사라진다(이름은 이미 글자 수로 잘라 두므로 여기서 또 자를 일이
-   없다 — ActivityScreen의 clipName). 경기 줄에만 건다(FlatLine 안) — 너 나와·리그 줄의
-   이름은 안 자른 원본이라 넘칠 때 말줄임이 필요하다. */
-.scr-activity-row-flat-in .scr-activity-row-em { position: relative; overflow: visible; }
+/* (삭제) 제목의 BEST 배지가 앉던 빈 띠와 그 기준 상자 — 배지 대신 닉네임 자체를 백금으로
+   적으면서(요청, 아래 .scr-activity-row-em-best) 흐름 밖에 얹을 것이 없어졌다. 줄 위에
+   자리를 비워 둘 이유도, 이름 상자가 넘침을 열어 둘 이유도 함께 사라진다. */
+/* BEST PLAYER의 닉네임(요청: 배지 말고 이름을 백금 메탈로) — 여덟 이름이 한 줄에 눌려
+   서는 자리라, 배지는 그 줄에서 유일하게 '이름이 아닌 것'이 되어 눈이 먼저 거기 걸렸다.
+   색만 달라지면 줄의 생김새는 그대로면서 누가 뽑혔는지는 그대로 보인다.
+   글자에 그라데이션을 오려 넣는 방식이라 색을 transparent로 비워야 한다 — 바탕이 비치는
+   것이 아니라 그 자리에 그라데이션이 그려진다(.scr-best-mini와 같은 처방). */
+.scr-activity-row-em-best {
+  background-image: var(--best-metal);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
 
 /* ── 미니맵 그림 ── */
 /* 이름표는 이제 지도 안에 들어간다(요청: 테두리 제거하고 이름표는 미니맵 안에서
@@ -10674,6 +10674,12 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    VigorPips 참고). 칸(6px)보다 조금 큰 8px까지만 키우고 흐리게 눌러 둔다: 이름표가 정작
    읽어야 할 칸보다 눈에 먼저 들어오면 안 된다. 이모지라 글꼴이 제 색을 그리므로
    opacity로만 낮춘다. */
+/* 모바일에서는 머리표를 감춘다(요청: 이모지만 빼고 눈금은 그대로) — 지도가 좁아 이름표가
+   서로 가까이 붙는데, 18px짜리 그림이 이름 아래마다 하나씩 더 서면 그 자체로 지도를
+   가린다. 눈금은 6px 다섯 칸이라 그 걱정이 없다. */
+@media (max-width: 1159px) {
+  .scr-minimap-vigor-icon { display: none; }
+}
 .scr-minimap-vigor-icon {
   /* 8 → 11 → 12 → 18px(요청: 1.5배) — 칸(6px)보다 한참 크지만, 이 그림은 '칸 다섯'을 한
      덩어리로 읽게 하는 머리표라 그 덩어리 높이가 아니라 이름표 글자와 견주는 편이 맞다.
@@ -10995,7 +11001,10 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   justify-items: center; align-items: center;
   /* 모바일에서 한 단계 더 축소(요청) — micro(12) → 11. 좁은 지도 위에 얹히는 글자라
      작을수록 그림을 덜 가린다. PC는 아래 미디어쿼리에서 그대로 body로 키운다. */
-  font-size: var(--fs-11); font-weight: 500; line-height: 1.6;
+  /* 다시 한 스텝 올린다(요청: 모바일에서 자막 폰트 확대) — 11 → micro(12). 그림을 덜
+     가리려 내렸던 값인데, 실제로 읽어 보면 지도 위 흰 글자는 검은 테를 두르고 있어
+     한 스텝 정도는 그림을 더 가리지 않고도 또렷해진다. */
+  font-size: var(--fs-micro); font-weight: 500; line-height: 1.6;
   color: #fff;
   /* 글자에 검은 테를 두른다(요청) — 겹쳐 깐 그림자(0 0 3px/6px …)는 글자 주위가 뿌옇게
      번져 지도 위에서 지저분했다. 테는 윤곽이 딱 떨어져서 같은 두께라도 훨씬 깔끔하다.
@@ -11011,7 +11020,8 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 /* 자막 앞의 시각 — 본문보다 한 단계 작고 흐리게 둔다(요청: [5분]처럼 분까지만).
    본문이 한 단계 내려간 만큼 여기도 같이 내려 서열을 지킨다(11 → 10). */
 .scr-story-cap-time {
-  margin-right: 5px; font-size: var(--fs-10); font-weight: 700; opacity: 0.78;
+  /* 문장보다 한 단계 아래라는 서열은 그대로 두고 함께 한 스텝 올린다(요청) — 10 → 11. */
+  margin-right: 5px; font-size: var(--fs-11); font-weight: 700; opacity: 0.78;
 }
 .scr-story-cap-line {
   grid-area: 1 / 1; margin: 0;
