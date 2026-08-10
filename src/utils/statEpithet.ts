@@ -405,7 +405,11 @@ const TITLES: Title[] = [
      전체 승률은 종족이 섞인 값이라 "무엇을 잘하는가"는 안 말해 준다. 이름이 말에 들어가므로
      종족마다 임자가 따로 선다(위 winners 주석). */
   {
-    label: "{n}", weight: 4, why: "그 종족 승률", unit: "%",
+    /* 맵 칭호와 같은 조건이다 — 사람마다 다른 칭호라 '겨룰 사람 수'도 '한가운데와의 차이'도
+       따질 것이 없다(pool 1, edge 1). 한때 기본값을 그대로 뒀더니, 종족 승률이 무리
+       한가운데의 1.15배를 못 넘는다는 이유로 아무에게도 안 나갔다. 문턱은 그 종족으로
+       충분히 뛰었나(MIN_PLAYS_MODE) 하나면 된다. */
+    label: "{n}", weight: 4, pool: 1, edge: 1, why: "그 종족 승률", unit: "%",
     value: (_s, of) => bestRace(of)?.rate ?? null,
     name: (_s, of) => { const best = bestRace(of); return best ? racePhrase(best.race) : null; },
   },
