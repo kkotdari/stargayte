@@ -242,6 +242,10 @@
      사이에 섞인 '서버가 남긴 한 줄'이 색만으로 바로 갈린다. 명도·채도는 나머지 파스텔과
      같은 눈금에 맞췄다(밝기 한 벌이 흐트러지면 그 배지만 튀어 보인다). */
   --kind-notice: #f9b48c;
+  /* 알림 카드 본문에서 '지금 부르는 말'에 쓰는 색 — 배지(--kind-notice)는 바탕을 꽉 채우는
+     파스텔이라 글자로 쓰면 배경에 녹는다. 어두운 바탕에서는 그 파스텔 그대로가 잘 읽히고,
+     흰 바탕에서는 같은 색상각을 유지한 채 명도를 내려 잡는다(.scr-light-theme). */
+  --notice-ink: #f9b48c;
   --kind-none: #b6bcc4;
   /* 배지 글자는 다섯이 같은 먹색이다(요청) — 갈래는 바탕만으로 말한다. 값을 앱의 기본
      잉크(--text)가 아니라 먹색 하나로 못박는 이유: 배지 바탕은 테마를 안 타는데 --text는
@@ -970,6 +974,7 @@ html.scr-light-theme {
   --input-bg: #ffffff;
   --line: #000000;
   --line-soft: #000000;
+  --notice-ink: #c0592c;
   /* 흰 바탕에서 순검정 손잡이는 화면에서 제일 진한 물체가 된다(지적) — 알파로 내려 잡는다. */
   --scroll-thumb: rgba(0, 0, 0, 0.20);
   --scroll-thumb-hover: rgba(0, 0, 0, 0.34);
@@ -11241,16 +11246,28 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
    지금은 칭호 변경뿐이라 줄 하나가 [프사·닉네임·옛 칭호 → 새 칭호·근거]다. 랭크 변동
    카드처럼 표를 짜지 않는 이유는 담는 것이 적어서다 — 세 낱말짜리 줄에 격자를 씌우면
    빈 칸만 늘어난다. 넘치면 줄바꿈으로 흐르게 두고, 자리만 맞춰 둔다. */
-.scr-notice-list { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.scr-notice-list { display: flex; flex-direction: column; gap: 12px; margin: 0; padding: 0; list-style: none; }
 .scr-notice-row {
   display: flex; align-items: center; flex-wrap: wrap; gap: 2px 6px;
-  font-size: var(--fs-body); line-height: 1.3;
+  font-size: var(--fs-body); line-height: 1.4;
 }
 .scr-notice-name { font-weight: 700; }
-/* 옛 칭호는 지나간 말이라 눌러 두고, 새 칭호가 이 줄의 주인공이다 — 화살표를 사이에 두고
-   무게가 같으면 어느 쪽이 지금인지를 매번 세어 봐야 한다(랭크 변동에서 겪은 그 문제). */
-.scr-notice-from { color: var(--dim); text-decoration: line-through; }
-.scr-notice-arrow { color: var(--dim); }
-.scr-notice-to { font-weight: 700; color: var(--point); }
+/* 옛 칭호와 새 칭호는 색으로만 가른다(요청: 취소선 같은 꾸밈 없이 글자색으로) —
+   지나간 말은 눌러 두고 지금 부르는 말에 알림 색을 입힌다. 화살표를 사이에 두고 무게가
+   같으면 어느 쪽이 지금인지 매번 세어 봐야 한다(랭크 변동에서 겪은 그 문제).
+   색은 이 카드의 배지와 같은 자몽 계열이라, 줄만 봐도 어느 카드에서 온 말인지 이어진다. */
+/* 옛 칭호는 한 단계 작게도 둔다(요청) — 색만으로 가르면 두 낱말이 같은 크기라 여전히
+   한 덩어리로 읽힌다. 크기와 색이 함께 움직여야 '지나간 말'과 '지금 부르는 말'이 갈린다. */
+.scr-notice-from { color: var(--dim); font-size: var(--fs-11); }
+.scr-notice-arrow { color: var(--dim); font-size: var(--fs-11); }
+.scr-notice-to { font-weight: 700; color: var(--notice-ink); }
+/* 칭호에 따옴표를 씌운다(요청) — 닉네임과 칭호가 굵기만 다른 채 붙어 있어서 "군범 개근의
+   여왕"이 한 사람 이름처럼 읽혔다. 따옴표가 그 경계를 대신 긋는다. 마크업이 아니라 여기서
+   붙이는 까닭: 따옴표는 값이 아니라 표시 방식이고, 옛 칭호는 취소선이 따옴표까지 함께
+   지나가야 '지워진 말'로 보인다(::before/::after는 그 줄을 물려받는다). */
+.scr-notice-from::before,
+.scr-notice-to::before { content: "\201C"; }
+.scr-notice-from::after,
+.scr-notice-to::after { content: "\201D"; }
 /* 근거는 한 단계 더 아래 — 통계 표의 칭호 툴팁과 같은 문장이다. */
 .scr-notice-why { font-size: var(--fs-11); color: var(--dim); }
