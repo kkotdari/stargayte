@@ -681,22 +681,20 @@ export default function ReplayMinimap({
     };
   };
 
-  /** 닉네임 = 아래 바깥쪽. 아바타를 CSS scale로 키우면서 세로 간격이 빡빡해져(지적)
-   *  아래로 26px 띄운다. 가로로는 살짝만 — 크게 밀면 지도를 쉽게 벗어난다. */
+  /** 닉네임 = 아바타 바로 아래, 가로는 한가운데(요청). 아바타를 CSS scale로 키우면서 세로
+   *  간격이 빡빡해져(지적) 아래로 26px 띄운다.
+   *
+   *  한때 바깥쪽(지도 가장자리 쪽)으로 8px 밀고 그 방향으로 자라게 뒀다 — 이름표가 아바타를
+   *  덮지 않게 하려던 것이었는데, 이 값은 아래로 26px 내려간 뒤에는 하는 일이 없다(그 자리는
+   *  이미 아바타 밖이다). 남은 것은 이름이 아바타 옆으로 비켜 앉는 그림뿐이었다(지적).
+   *  가장자리를 넘는 것은 실측 보정(labelFix)이 도로 안으로 당긴다 — 미리 밀어 둘 이유가
+   *  없는 것도 그래서다. */
   const LABEL_OUT_Y = 26;
-  const LABEL_OUT_X = 8;
-  const labelPlace = (m: MinimapMarker) => {
-    const dx = m.x - grid.width / 2;
-    const ox = Math.abs(dx) < CENTER_EPS ? 0 : outwardX(m) * LABEL_OUT_X;
-    // 이름표는 밀려난 방향과 같은 쪽으로 자라야 한다 — 반대로 자라면 그 길이만큼
-    // 도로 아바타를 덮는다(지적: 아바타·닉네임은 겹치면 안 된다).
-    const anchorX = ox < -0.5 ? "-100%" : ox > 0.5 ? "0%" : "-50%";
-    return {
-      left: `${(m.x / grid.width) * 100}%`,
-      top: `${(m.y / grid.height) * 100}%`,
-      transform: `translate(calc(${anchorX} + ${ox.toFixed(1)}px), ${LABEL_OUT_Y}px)`,
-    };
-  };
+  const labelPlace = (m: MinimapMarker) => ({
+    left: `${(m.x / grid.width) * 100}%`,
+    top: `${(m.y / grid.height) * 100}%`,
+    transform: `translate(-50%, ${LABEL_OUT_Y}px)`,
+  });
   /** 말주머니 = 아바타 위. 닉네임이 아래에 붙으므로(labelPlace) 반대쪽으로 올려 서로
    *  안 겹치게 두고, 지도 밖으로 나가면 아래 실측 보정(labelFix)이 안으로 되돌린다. */
   const BUBBLE_UP_Y = -30;
