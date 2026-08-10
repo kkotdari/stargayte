@@ -208,7 +208,11 @@ const TACTIC_WEIGHT: Record<string, number> = {
      (주력 유닛)는 그 사람의 색이 그대로 남는 값이다. 반대로 '한 번 도우러 갔다'는 좋은
      일이지만 누구나 하는 일이라, 자주 나오는 만큼 그 사람을 덜 말해 준다. */
   bionic: 4, mech: 4, moka: 4, "fast-tech": 4,
-  "wall-in": 4, "center-tank": 4,
+  "center-tank": 4,
+  /* 입구막기는 내린다(요청) — 막고 크는 것은 안전하게 두는 흔한 시작이라, 판마다 나오면
+     그 사람의 색이라기보다 그 종족의 기본기에 가깝다. 조이기(센터 탱크)는 남의 자리를
+     뺏으러 나간 수라 무게가 다르다. */
+  "wall-in": 2,
   carrier: 3, lurker: 3, "cloak-wraith": 3, guardian: 3, bc: 3,
   nydus: 3, recall: 3, infested: 3, swarm: 3,
   /* 밀리고도 끝까지 앉아 있던 이야기들(요청: 가중치 높이기) — 이사·셋방살이·노엘은 판이
