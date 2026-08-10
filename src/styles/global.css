@@ -10304,7 +10304,7 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   .scr-story-mid .scr-story-map-head { font-size: var(--fs-body); gap: 8px; --scr-story-pill-h: 24px; }
   .scr-story-mid .scr-challenge-arrow-row { transform: scale(1.15); margin-bottom: 2px; }
 }
-/* 미니맵 조작 안내(요청: 미니맵 위에 작게 "좌우를 눌러 이전/다음 내용으로 이동") —
+/* 미니맵 조작 안내(요청: 미니맵 위에 작게 "좌우를 눌러 이전/다음 장면으로 이동") —
    그림 자체에는 누를 자리를 알리는 표시가 없어서 한 줄로 일러 둔다. 맵 이름 줄보다
    한 단계 더 작고 흐리게 둬 정보가 아니라 안내로 읽히게 한다. */
 .scr-story-map-hint {

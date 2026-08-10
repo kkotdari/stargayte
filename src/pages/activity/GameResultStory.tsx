@@ -1045,13 +1045,12 @@ export default function GameResultStory({
     const ALLY_HELP_KEYS = new Set(["ally-help", "ally-cannon"]);
     const HELPER_FACE = "😇";
     const HELPED_FACE = "🥹";
-    /* 타이밍을 흘려보낸 스냅(idle-lead) — 병력을 쌓아 두고도 안 들어간 쪽에는 자는 얼굴을,
-       그 사이 살림을 편 쪽에는 열심인 표시를 준다(요청). 이 스냅은 화살표가 없는 이야기라
-       (아무도 어디로 가지 않았다) 아바타 얼굴이 유일한 그림이다.
-       열심인 쪽은 땀(💦)이 아니라 불이다(요청) — 땀은 몰려서 쩔쩔맨다는 뜻으로 읽히는데,
-       이 스냅에서 그쪽은 쫓기는 게 아니라 상대가 안 들어온 틈에 제 할 일을 실컷 한
-       사람이다. 불은 그 '잘 굴러가고 있다'를 그대로 말한다. */
-    const IDLE_FACE = "😴";
+    /* 타이밍을 흘려보낸 스냅(idle-lead) — 그 사이 살림을 편 쪽에는 열심인 표시를 준다(요청).
+       땀(💦)이 아니라 불이다(요청) — 땀은 몰려서 쩔쩔맨다는 뜻으로 읽히는데, 이 스냅에서
+       그쪽은 쫓기는 게 아니라 상대가 안 들어온 틈에 제 할 일을 실컷 한 사람이다.
+       흘려보낸 쪽에는 얼굴을 안 붙인다(요청: 자는 표정 삭제) — 대신 잠 표시(💤)를 그 사람이
+       뽑아 놓고 세워 둔 병력 쪽에 붙인다(아래 markOf 자리). 자고 있는 것은 사람이 아니라
+       그 병력이고, 그림도 그 자리에 있어야 자막("세워만 두는 동안")과 같은 것을 가리킨다. */
     const BUSY_FACE = "🔥";
     const severe = new Set<string>();
     const moderate = new Set<string>();
@@ -1060,8 +1059,7 @@ export default function GameResultStory({
     const attacker = new Set<string>();
     const helper = new Set<string>();
     const helped = new Set<string>();
-    /** 타이밍을 놓친 쪽 / 그 사이 발전한 쪽(위 IDLE_FACE·BUSY_FACE). */
-    const idling = new Set<string>();
+    /** 그 사이 발전한 쪽(위 BUSY_FACE) — 흘려보낸 쪽은 얼굴 대신 병력에 잠 표시가 붙는다. */
     const busy = new Set<string>();
     /** 제 기지가 싸움터가 된 사람 — 그 자리에 얹는 표시는 공격(💥)이 아니라 방어(🛡️)다.
      *  때린 쪽 화살표가 이미 그 자리에 💥를 찍으므로, 집주인에게도 💥를 주면 같은 자리에
@@ -1106,7 +1104,6 @@ export default function GameResultStory({
          늘린 쪽이다(replaySummary의 idleLead). 당한/때린 이야기가 아니라서 아래 표들에는
          안 걸린다 — 여기서 따로 잡는다. */
       if (b.k === "idle-lead") {
-        who.forEach((r) => idling.add(r));
         (b.whom ?? []).forEach((r) => busy.add(r));
       }
       if (SEVERE_SUBJECT_KEYS.has(b.k)) who.forEach((r) => severe.add(r));
@@ -1185,11 +1182,15 @@ export default function GameResultStory({
         // 방어지 — 저렇게 하면 꼭 태섭을 공격한 거 같잖아").
         // 맞붙은 상대의 표시는 그 사람이 쓴 마법이 아니라 '싸웠다'는 것뿐이다 — 스톰을
         // 뿌린 쪽의 이모지를 그 사람에게도 주면 둘이 같은 마법을 쓴 것처럼 읽힌다.
-        const em = inFight ? "⚔️"
-          : (b.k === "clash" && (helper.has(raw) || homeDefender.has(raw))) ? "🛡️"
-            /* 민 사람의 화살표에는 그 이야기의 이모지를 그대로 주면 안 된다 — 이사의
-               이모지는 이삿짐차라, 밀어낸 사람 화살표 끝에 트럭이 붙는다. */
-            : (pusherOf(b) === raw) ? "💥" : markOf(b);
+        /* 흘려보낸 쪽의 표시는 잠(💤)이다(요청: 자는 얼굴을 지우고 대신 뽑아 놓은 병력에
+           붙이기) — 이 표시는 본진 가운데, 그 사람이 세워 둔 병력 자리에 선다(아래 markSpot).
+           얼굴에 붙일 때는 '사람이 존다'였는데, 실제로 자고 있는 건 나가지 않은 병력이다. */
+        const em = idleSide.has(raw) ? "💤"
+          : inFight ? "⚔️"
+            : (b.k === "clash" && (helper.has(raw) || homeDefender.has(raw))) ? "🛡️"
+              /* 민 사람의 화살표에는 그 이야기의 이모지를 그대로 주면 안 된다 — 이사의
+                 이모지는 이삿짐차라, 밀어낸 사람 화살표 끝에 트럭이 붙는다. */
+              : (pusherOf(b) === raw) ? "💥" : markOf(b);
         /* 팀원을 도우러 간 화살표에는 목에 천사 날개를 단다(요청) — 촉의 방패는 '그 자리에
            방어를 보탰다'는 뜻이고, 날개는 '이 길이 도우러 간 길'이라는 뜻이라 자리가 다르다.
            집주인 자신(homeDefender)은 도우러 간 것이 아니라 제 집을 지킨 것이라 뺀다. */
@@ -1422,7 +1423,6 @@ export default function GameResultStory({
          붙는다) — 이 스냅의 자막이 곧 그 이야기라, 같은 장면에 약한 신호가 하나 더 걸렸다고
          해서 그쪽 얼굴을 주면 그림과 글이 어긋난다. 크게 무너진 것(😭)만은 그보다 앞이다:
          그건 자막이 무엇을 말하든 그 사람에게 그 순간 일어난 가장 큰 일이다. */
-      if (idling.has(s.raw)) { faces.set(s.raw, IDLE_FACE); continue; }
       if (busy.has(s.raw)) { faces.set(s.raw, BUSY_FACE); continue; }
       if (moderate.has(s.raw)) { faces.set(s.raw, MODERATE_FACE); continue; }
       if (struggling.has(s.raw)) { faces.set(s.raw, STRUGGLE_FACE); continue; }
@@ -1646,7 +1646,7 @@ export default function GameResultStory({
       {/* 그림을 어떻게 넘기는지 한 줄로 일러 둔다(요청) — 좌·우 절반이 누르는 자리라는 건
           보이는 표시가 없어 아무도 모른다. 넘길 장면이 둘 이상일 때만 띄운다. */}
       {sentences.length > 1 && (
-        <div className="scr-story-map-hint">미니맵 좌우를 눌러 이전/다음 내용으로 이동</div>
+        <div className="scr-story-map-hint">미니맵 좌우를 눌러 이전/다음 장면으로 이동</div>
       )}
       <ReplayMinimap
         grid={storyMap} bases={bases} arrows={arrows}
