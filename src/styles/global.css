@@ -2891,20 +2891,23 @@ html:not(.scr-light-theme) .scr-donut-band-delta { fill: #fff; opacity: 0.66; }
    작고 흐리게 둔다. 상자를 두르지 않는 것도 일부러다: 테두리를 주면 이것도 표의 한 칸처럼
    읽힌다. 왼쪽 실선 하나만으로 '표에 달린 말'이라는 것이 충분히 보인다. */
 .scr-stat-mix-hint {
-  /* 폭은 못 박는다 — 남는 폭을 다 가져가게 두면 화면이 넓을 때 이 곁말이 표만큼 넓어져
-     본문처럼 읽힌다. 좁은 화면에서도 같은 자리를 지키도록 줄어들지도 않는다(flex: none). */
-  flex: none; width: 150px; margin: 0;
+  /* 폭은 남는 만큼 쓰되 읽기 좋은 선에서 멈춘다(지적: 굳이 좁혀서 줄바꿈을 만들 필요 없다).
+     한동안 150px으로 못 박았는데, 그러면 두세 낱말마다 줄이 바뀌어 한 문장이 다섯 줄이
+     됐다. 반대로 아무 상한이 없으면 화면이 넓을 때 이 곁말이 표만큼 넓어져 본문처럼
+     읽히므로, 최대폭 하나만 둔다. */
+  flex: 1 1 auto; min-width: 0; max-width: 460px; margin: 0;
   display: flex; flex-direction: column; gap: 4px;
   padding: 12px 0 12px 12px; border-left: 1px solid var(--line-hair);
   font-size: var(--fs-11); line-height: 1.5; color: var(--dim);
 }
 .scr-stat-mix-hint b { font-size: var(--fs-caption); font-weight: 700; color: var(--text); }
-/* 좁은 화면에서는 안내가 더 좁아진다(지적: 표가 보일 자리를 안내가 너무 많이 먹는다) —
-   150px은 390px짜리 화면에서 표가 볼 수 있는 창의 40%였다. 104px + 한 단계 작은 글자면
-   같은 말이 다섯 줄쯤으로 서고, 표에는 그만큼이 돌아간다. */
+/* 좁은 화면에서는 글자만 한 단계 줄인다 — 폭은 위 규칙대로 남는 만큼 쓴다(지적: 좁혀서
+   줄바꿈을 만들 필요 없다). 한때 여기서 104px으로 더 못 박았는데, 그건 표 옆에 나란히
+   세우던 시절의 값이다: 지금은 폰 폭에서 아예 표 위로 올라가므로(아래 max-width: 719px)
+   좁힐 이유가 없다. */
 @media (max-width: 1159px) {
   .scr-stat-mix-hint {
-    width: 104px; font-size: var(--fs-9); padding-left: 8px; padding-top: 10px;
+    font-size: var(--fs-9); padding-left: 8px; padding-top: 10px;
   }
   .scr-stat-mix-hint b { font-size: var(--fs-11); }
   .scr-stat-table-row-slim { gap: 8px; }
@@ -2925,7 +2928,7 @@ html:not(.scr-light-theme) .scr-donut-band-delta { fill: #fff; opacity: 0.66; }
 @media (max-width: 719px) {
   .scr-stat-table-row-slim { flex-wrap: wrap; }
   .scr-stat-mix-hint {
-    order: -1; width: 100%;
+    order: -1; width: 100%; max-width: none;
     flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 2px 8px;
     border-left: none; padding: 0 0 8px;
   }
@@ -3259,8 +3262,8 @@ html:not(.scr-light-theme) .scr-stats-list-panel-v2 .scr-stat-name-cell, html:no
      도넛이 통째로 없는데 112px을 그대로 두면 줄마다 위아래로 빈자리가 남는다. 남은 것 중
      가장 큰 것(막대 넷이 세로로 선 기록 칸)이 알아서 높이를 정한다. */
   .scr-stats-list-panel-v2 .scr-stat-table-row-slim .scr-stat-row { min-height: 0; }
-  /* 화면이 넓으면 안내도 그만큼 넉넉하게 — 표가 1310 → 560px으로 줄어 남는 자리가 많다. */
-  .scr-stat-mix-hint { width: 240px; }
+  /* (삭제) PC 전용 폭 240px — 폭은 이제 한 곳(.scr-stat-mix-hint의 flex + max-width)에서만
+     정한다. 화면이 넓을수록 남는 자리를 쓰다가 460px에서 멈춘다. */
   .scr-stat-mix { gap: 6px; }
   /* 컬럼명 ↔ ⓘ ↔ 정렬 화살표 간격도 이제 모바일/PC 분기 없이 하나(아래 공용 규칙)로 통일. */
 }
