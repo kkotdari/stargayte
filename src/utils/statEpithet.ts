@@ -210,7 +210,11 @@ const TACTIC_WEIGHT: Record<string, number> = {
   bionic: 4, mech: 4, moka: 4, "fast-tech": 4,
   "wall-in": 4, "center-tank": 4,
   carrier: 3, lurker: 3, "cloak-wraith": 3, guardian: 3, bc: 3,
-  nydus: 3, recall: 3, infested: 3, lodging: 3, swarm: 3,
+  nydus: 3, recall: 3, infested: 3, swarm: 3,
+  /* 밀리고도 끝까지 앉아 있던 이야기들(요청: 가중치 높이기) — 이사·셋방살이·노엘은 판이
+     기운 뒤에야 나오는 장면이라 흔치 않고, 그 한 번이 그 판을 통째로 말한다. 이기고 지고와
+     상관없이 그 사람이 어떤 사람인지를 보여 주는 자리라 앞줄에 세운다. */
+  lodging: 5, relocate: 5, "no-elim": 5,
   "center-photon": 2.5, "sneak-rax": 2.5, valkyrie: 2.5, "valk-hunt": 2.5,
   "side-tank": 2, "harass-workers": 2, "harass-long": 2, "ally-cannon": 2,
   dropship: 1.5, "duel-rush": 1.5, "base-raid": 1.5,
