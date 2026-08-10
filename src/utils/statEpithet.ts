@@ -1,13 +1,21 @@
-// 통계 표의 닉네임 아래에 붙는 한 줄 칭호(요청) — "물량 끝판왕", "번개같은 손놀림",
-// "공포의 럴커 부대"처럼 그 사람이 어떻게 게임하는지를 한마디로 부르는 별명이다.
+// 통계 표와 회원 프로필의 닉네임에 붙는 칭호 한 줄(요청) — "물량퀸", "옆탱의 여왕",
+// "공포의 독거미 부대", "닥치고 캐리어"처럼 그 사람이 어떻게 게임하는지를 한마디로 부르는 말.
 //
 // 규칙 하나만 지킨다: 칭호는 반드시 그 사람의 기록에서 나와야 한다. 무작위로 돌리거나
 // 돌아가며 나눠 주면 재미는 잠깐이고 그다음부터는 아무도 안 읽는 글자가 된다 — 읽는 사람이
-// "왜 저게 붙었지?"하고 표를 다시 보게 만드는 것이 이 줄의 값어치다.
+// "왜 저게 붙었지?" 하고 표를 다시 보게 만드는 것이 이 줄의 값어치다.
 //
-// 두 단계로 뽑는다.
-//   1) 왕관 — 그 무리에서 어떤 값의 1등인 사람에게. 한 칭호는 한 사람만, 한 사람은 한 칭호만.
-//   2) 특징 — 왕관을 못 받은 사람은 제 기록에서 가장 튀는 것(많이 뽑은 유닛, 많이 쓴 마법)으로.
+// 재료는 셋이다.
+//   1) 전술 — 리플레이 요약이 자막으로 말하던 그 사실 그대로다(요청: 자막에서 강조되는
+//      옆탱·센포 같은 것들을 칭호에도). 서버가 요약의 문장 틀 키를 사람별로 세어 준다.
+//   2) 맵 — 유독 잘하는 맵이 있으면 "○○의 지배자"(요청).
+//   3) 수치 — 물량·APM·공중 비중처럼 표에 이미 있는 값들.
+//
+// 뽑는 차례는 두 단계다.
+//   왕관: 아래 TITLES를 위에서부터 훑어 그 값의 1등에게 하나씩. 한 칭호는 한 사람만,
+//         한 사람은 한 칭호만. 위쪽에 있을수록 '그 사람다움'을 많이 말하는 칭호다.
+//   특징: 왕관을 못 받은 사람은 남과 견주지 않고 제 기록에서 가장 튀는 것(많이 뽑은
+//         유닛, 많이 쓴 마법)으로 짓는다 — 이름이 들어가는 말이라 사람마다 저절로 갈린다.
 // 둘 다 못 잡으면 전적만 보고 무난한 말 하나를 준다. 한 판도 안 뛴 사람은 아예 안 붙인다 —
 // 없는 사실로 별명을 지을 수는 없다.
 
@@ -19,10 +27,10 @@ import type { MemberStats } from "../types";
 const MIN_PLAYS = 3;
 /** 승률만은 더 본다 — 3판 3승이 곧 "정점"이 되면 그 칭호는 아무 말도 안 하는 것과 같다. */
 const MIN_PLAYS_RATE = 8;
-/** 왕관은 겨룰 사람이 이만큼은 있어야 뜻이 선다 — 둘 중 1등은 1등이 아니다. */
+/** 수치 칭호는 겨룰 사람이 이만큼은 있어야 뜻이 선다 — 둘 중 1등은 1등이 아니다. */
 const MIN_POOL = 3;
-/** 1등 값이 무리 한가운데보다 이만큼은 커야 왕관이다. 다들 비슷한데 소수점이 조금 컸을
- *  뿐인 1등에 "끝판왕"을 씌우면, 그 표의 모든 칭호가 같이 거짓말이 된다. */
+/** 수치 칭호의 1등 값이 무리 한가운데보다 이만큼은 커야 왕관이다. 다들 비슷한데 소수점이
+ *  조금 컸을 뿐인 1등에 "끝판왕"을 씌우면, 그 표의 모든 칭호가 같이 거짓말이 된다. */
 const CROWN_EDGE = 1.15;
 
 export interface EpithetSubject {
@@ -41,36 +49,125 @@ function share(a: number, b: number, min: number): number | null {
   return total >= min ? a / total : null;
 }
 
+/** 전술 횟수 — 여러 키를 한 칭호로 묶을 때가 있다(드랍은 종족마다 키가 다르다). */
+function did(s: MemberStats, ...keys: string[]): number | null {
+  const t = s.tactics;
+  if (!t) return null;
+  const n = keys.reduce((sum, k) => sum + (t[k] ?? 0), 0);
+  return n > 0 ? n : null;
+}
+
 function median(vals: number[]): number {
   const s = [...vals].sort((x, y) => x - y);
   const m = Math.floor(s.length / 2);
   return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
 }
 
-/* ── 왕관 ──────────────────────────────────────────────────────────────────────
-   값이 클수록 좋은 것만 담는다 — 작을수록 좋은 값(예: 패배)으로 별명을 지으면 놀리는 말이
-   된다. 순서가 곧 우선순위다: 여러 값에서 1등인 사람은 앞에 있는 칭호를 가져가고, 그 사람이
-   가져간 칭호의 나머지는 2등에게 물려주지 않고 그냥 안 쓴다 — 2등에게 "끝판왕"을 붙이는
-   순간 이 줄은 순위표가 아니라 참가상이 된다.
-   앞쪽에 '어떻게 하는가'(스타일)를, 뒤쪽에 '얼마나 했는가'(양)를 둔다: 같은 1등이라도
-   앞쪽이 그 사람을 더 많이 말해 준다. */
-interface Crown {
-  label: string;
-  value: (s: MemberStats) => number | null;
-  /** 1등이라도 이 값은 넘어야 씌운다 — 비율로 재는 칭호에만 있다.
-   *
-   *  이 문턱을 value 안에서 걸면 안 된다(초기 구현의 버그): 문턱에 못 미치는 사람을 null로
-   *  떨어뜨리면 후보 수가 줄어 아래 MIN_POOL을 못 넘기고, 그러면 공중 비중 89%짜리 한 명이
-   *  있어도 "하늘의 지배자"가 아예 안 나간다. 겨룰 사람이 몇인가(MIN_POOL)와 1등이 그럴
-   *  만한가(min)는 서로 다른 질문이라 따로 물어야 한다. */
-  min?: number;
+/* ── 유독 잘하는 맵 ──────────────────────────────────────────────────────────── */
+/** 한 맵을 '잘한다'고 부르려면 이만큼은 뛰어야 한다 — 두 판 다 이겼다고 지배자는 아니다. */
+const MAP_MIN_PLAYS = 5;
+/** 그리고 이만큼은 이겨야 한다. */
+const MAP_MIN_RATE = 0.6;
+
+/** 그 사람이 가장 잘하는 맵과 그 승수. 문턱을 못 넘으면 null.
+ *  값(승수)으로 겨루는 이유: 승률만 보면 딱 문턱만큼 뛴 사람이 늘 이긴다. */
+function bestMap(s: MemberStats): { name: string; wins: number } | null {
+  let best: { name: string; wins: number } | null = null;
+  for (const [name, record] of Object.entries(s.maps ?? {})) {
+    const [plays, wins] = record;
+    if (plays < MAP_MIN_PLAYS || wins / plays < MAP_MIN_RATE) continue;
+    if (!best || wins > best.wins) best = { name, wins };
+  }
+  return best;
 }
 
-const CROWNS: Crown[] = [
-  { label: "물량 끝판왕", value: (s) => (s.buildMix ? perMin(s.buildMix.coreUnit, s.mixSeconds) : null) },
+/* ── 칭호 표 ──────────────────────────────────────────────────────────────────
+   위에 있을수록 먼저 나간다. 차례를 이렇게 잡은 이유:
+
+     전술 → 맵 → 스타일(무엇을 어떻게 뽑나) → 양(얼마나 했나)
+
+   전술이 맨 위인 것은 그것이 '그 판에서 실제로 벌인 일'이라 사람을 가장 많이 말해 주기
+   때문이다(요청: 자막에서 강조되는 것들). 게임 수·APM 같은 양은 누구나 시간을 들이면
+   올라가는 값이라 맨 뒤에 둔다.
+
+   전술·맵 칭호는 겨룰 사람 수(MIN_POOL)도, 한가운데와의 차이(CROWN_EDGE)도 안 따진다 —
+   성큰러시를 한 사람이 클럽에 혼자뿐이라면 그게 바로 그 사람의 칭호다. 대신 min으로
+   "한 번은 우연"을 걸러 낸다. */
+interface Title {
+  /** 화면에 적히는 말. name이 있는 줄은 {n} 자리에 그 이름이 들어간다. */
+  label: string;
+  /** 클수록 이 칭호에 가깝다. null이면 후보 아님. */
+  value: (s: MemberStats) => number | null;
+  /** 1등이라도 이 값은 넘어야 씌운다.
+   *
+   *  이 문턱을 value 안에서 걸면 안 된다(초기 구현의 버그): 문턱에 못 미치는 사람을 null로
+   *  떨어뜨리면 후보 수가 줄어 pool을 못 넘기고, 그러면 공중 비중 89%짜리 한 명이 있어도
+   *  "하늘의 여전사"가 아예 안 나간다. 겨룰 사람이 몇인가와 1등이 그럴 만한가는 서로 다른
+   *  질문이라 따로 물어야 한다. */
+  min?: number;
+  /** 후보가 이만큼은 돼야 매긴다(기본 MIN_POOL). 전술·맵은 1. */
+  pool?: number;
+  /** 1등이 한가운데의 몇 배는 돼야 하나(기본 CROWN_EDGE). 전술·맵은 1(안 따짐). */
+  edge?: number;
+  /** {n}에 꽂을 이름 — 맵 칭호처럼 말 자체에 그 사람의 값이 들어가는 경우. */
+  name?: (s: MemberStats) => string | null;
+}
+
+/** 전술 칭호 한 줄 — 겨룰 사람 수도 한가운데와의 차이도 안 따지고(위 주석), 최소 횟수만
+ *  본다. 여러 키를 묶는 것은 종족마다 이름이 다른 전술 때문이다(드랍이 그렇다). */
+const tactic = (label: string, keys: string[], min = 2): Title => ({
+  label, value: (s) => did(s, ...keys), pool: 1, edge: 1, min,
+});
+/** 어지간해선 두 번 나오기 어려운 것들 — 한 번으로도 그 사람의 표식이 된다. */
+const rare = (label: string, keys: string[]): Title => tactic(label, keys, 1);
+
+const TITLES: Title[] = [
+  // ── 전술(리플레이 자막이 말하던 그 사실) ────────────────────────────────────
+  tactic("옆탱의 여왕", ["side-tank"]),
+  tactic("센포의 지배자", ["center-photon"]),
+  tactic("포토러시의 퀸", ["cannon-rush"]),
+  tactic("성큰러시의 절대자", ["sunken-rush"]),
+  // 드랍은 종족마다 키가 다르다 — 하나로 묶어야 "드랍 잘하는 사람"이라는 말이 된다.
+  tactic("드랍의 여신", ["dropship", "shuttle", "zerg-drop", "templar-drop", "shuttle-reaver"]),
+  tactic("일꾼 파괴자", ["base-raid"]),
+  rare("땅굴의 설계자", ["nydus"]),
+  rare("리콜의 마술사", ["recall"]),
+  rare("마인드 컨트롤러", ["mind-control"]),
+  tactic("닥치고 캐리어", ["carrier"]),
+  tactic("공포의 독거미 부대", ["lurker"]),
+  tactic("보이지 않는 손", ["cloak-wraith"]),
+  tactic("뮤탈 조련사", ["muta"]),
+  tactic("몰래 배럭의 대가", ["sneak-rax"]),
+  tactic("저글링 폭풍", ["zling-rush"]),
+  tactic("질럿 돌격대장", ["zealot-rush"]),
+  rare("다크스웜의 여신", ["swarm"]),
+  rare("감염술사", ["infested"]),
+  tactic("가디언 함대 사령관", ["guardian"]),
+  tactic("배틀크루저 함장", ["bc"]),
+  tactic("발키리 지휘관", ["valkyrie"]),
+  tactic("목동 저그", ["moka"]),
+  tactic("센터 점령군", ["center-tank"]),
+  tactic("동맹의 수호신", ["ally-cannon"]),
+  tactic("입구 봉인술사", ["wall-in"]),
+  tactic("우리 집 문지기", ["front-defense"]),
+  tactic("메카닉 진격대장", ["mech"]),
+  tactic("바이오닉 지휘관", ["bionic"]),
+  tactic("테크의 연금술사", ["fast-tech"]),
+  tactic("배짱의 화신", ["greedy-build"]),
+
+  // ── 맵 ─────────────────────────────────────────────────────────────────────
+  {
+    label: "{n}의 지배자",
+    pool: 1, edge: 1,
+    value: (s) => bestMap(s)?.wins ?? null,
+    name: (s) => bestMap(s)?.name ?? null,
+  },
+
+  // ── 스타일(무엇을 어떻게 뽑나) ─────────────────────────────────────────────
+  { label: "물량퀸", value: (s) => (s.buildMix ? perMin(s.buildMix.coreUnit, s.mixSeconds) : null) },
   { label: "번개같은 손놀림", value: (s) => s.avgApm },
   {
-    label: "하늘의 지배자",
+    label: "하늘의 여전사",
     // 공중 비중은 30%를 넘어야 '탄다'고 할 수 있다 — 드랍십 한 기로 하늘을 지배할 수는 없다.
     value: (s) => (s.buildMix ? share(s.buildMix.uAir, s.buildMix.uGround, 20) : null),
     min: 0.3,
@@ -82,16 +179,17 @@ const CROWNS: Crown[] = [
     min: 0.05,
   },
   {
+    label: "고급 유닛 수집가",
+    value: (s) => (s.buildMix ? share(s.buildMix.uAdv, s.buildMix.uBasic, 30) : null),
+    min: 0.45,
+  },
+  {
     label: "철벽의 수호자",
     value: (s) => (s.buildMix ? share(s.buildMix.bDef, s.buildMix.bProd, 20) : null),
     min: 0.12,
   },
-  { label: "자원 캐기의 왕", value: (s) => s.avgWorker5 },
-  { label: "승률의 정점", value: (s) => (s.plays >= MIN_PLAYS_RATE ? s.winRate : null) },
-  { label: "BEST의 단골", value: (s) => (s.bests > 0 ? s.bests : null) },
-  { label: "쉬지 않는 손", value: (s) => s.avgCmd },
+  { label: "다산의 아이콘", value: (s) => s.avgWorker5 },
   { label: "쉴 새 없이 짓는 자", value: (s) => (s.buildMix ? perMin(s.buildMix.coreBuild, s.mixSeconds) : null) },
-  { label: "개근의 아이콘", value: (s) => s.plays },
   {
     label: "풀업 신봉자",
     value: (s) => {
@@ -102,33 +200,42 @@ const CROWNS: Crown[] = [
       return Object.values(m.ups ?? {}).reduce((a, b) => a + b, 0) / n;
     },
   },
+
+  // ── 양(얼마나 했나) ────────────────────────────────────────────────────────
+  { label: "승률의 정점", value: (s) => (s.plays >= MIN_PLAYS_RATE ? s.winRate : null) },
+  { label: "BEST 수집가", value: (s) => (s.bests > 0 ? s.bests : null) },
+  { label: "쉬지 않는 손가락", value: (s) => s.avgCmd },
+  { label: "개근의 여왕", value: (s) => s.plays },
 ];
 
 /* ── 특징 ──────────────────────────────────────────────────────────────────────
    왕관을 못 받은 사람은 남과 견주지 않고 제 기록에서만 뽑는다 — 무리에서 1등이 아니어도
    "이 사람 하면 저것"은 있다. 이름(럴커·스톰)이 들어가는 말이라 사람마다 저절로 달라진다. */
 
-/** 한국어 받침 — 조사(은/는, 을/를)를 고른다. 유닛·기술 이름은 사전(UNIT_KO 등)이 한국어로
- *  옮긴 값이라 여기서 한글만 보면 된다. */
+/** 한국어 받침 — 조사(은/는)를 고른다. 유닛·기술 이름은 사전(UNIT_KO 등)이 한국어로 옮긴
+ *  값이라 여기서 한글만 보면 된다. */
 function hasFinal(word: string): boolean {
   const code = word.charCodeAt(word.length - 1);
   if (code < 0xac00 || code > 0xd7a3) return false;
   return (code - 0xac00) % 28 !== 0;
 }
-const obj = (w: string) => (hasFinal(w) ? "을" : "를");
 const sub = (w: string) => (hasFinal(w) ? "은" : "는");
 
+/* "~를 부르는 자"는 뺐다(지적: 뜻이 명확하지 않다) — 부른다는 말이 '많이 쓴다'인지 '불러
+   낸다'인지 읽는 사람마다 갈렸다. 대신 무엇을 했는지가 바로 읽히는 말만 남긴다. */
 const UNIT_SAYS: ((n: string) => string)[] = [
   (n) => `공포의 ${n} 부대`,
+  (n) => `닥치고 ${n}`,
+  (n) => `난 ${n}만 뽑는다`,
   (n) => `${n}${sub(n)} 나의 것`,
   (n) => `${n}의 화신`,
   (n) => `${n}의 아이콘`,
   (n) => `${n} 하나로 간다`,
 ];
 const SKILL_SAYS: ((n: string) => string)[] = [
-  (n) => `${n}${obj(n)} 부르는 자`,
   (n) => `${n}의 대가`,
   (n) => `${n} 장인`,
+  (n) => `${n} 한 방의 여왕`,
 ];
 const BUILD_SAYS: ((n: string) => string)[] = [
   (n) => `${n} 애호가`,
@@ -152,7 +259,7 @@ function topOf(d: Record<string, number> | undefined, ko: Record<string, string>
 }
 
 /** 같은 글자가 표에 두 번 서지 않도록 문틀을 하나씩 밀어 가며 고른다 — 두 사람이 똑같이
- *  럴커를 모아도 한 명은 "공포의 럴커 부대", 다른 한 명은 "럴커는 나의 것"이 된다.
+ *  럴커를 모아도 한 명은 "공포의 럴커 부대", 다른 한 명은 "닥치고 럴커"가 된다.
  *  시작 자리는 회원 id로 정해 조회할 때마다 말이 바뀌지 않게 한다. */
 function pick(says: ((n: string) => string)[], name: string, seed: number, used: Set<string>): string | null {
   for (let i = 0; i < says.length; i++) {
@@ -210,25 +317,29 @@ export function epithetsOf(pool: EpithetSubject[]): Map<string, string> {
   const used = new Set<string>();
   const ranked = pool.filter((p) => p.stats.plays >= MIN_PLAYS);
 
-  if (ranked.length >= MIN_POOL) {
-    for (const crown of CROWNS) {
-      const vals = ranked
-        .map((p) => ({ id: p.id, v: crown.value(p.stats) }))
-        .filter((x): x is { id: string; v: number } => x.v !== null && x.v > 0);
-      if (vals.length < MIN_POOL) continue;
-      const top = Math.max(...vals.map((x) => x.v));
-      if (crown.min !== undefined && top < crown.min) continue;
-      if (top < median(vals.map((x) => x.v)) * CROWN_EDGE) continue;
-      const winners = vals.filter((x) => x.v === top);
-      // 공동 1위가 절반을 넘으면 그건 그 사람의 특징이 아니라 그 무리의 평균이다.
-      if (winners.length > vals.length / 2) continue;
-      let given = false;
-      for (const w of winners) {
-        if (out.has(w.id)) continue;
-        out.set(w.id, crown.label);
-        given = true;
-      }
-      if (given) used.add(crown.label);
+  for (const title of TITLES) {
+    const vals = ranked
+      .map((p) => ({ id: p.id, v: title.value(p.stats), stats: p.stats }))
+      .filter((x): x is { id: string; v: number; stats: MemberStats } => x.v !== null && x.v > 0);
+    if (vals.length < (title.pool ?? MIN_POOL)) continue;
+    const top = Math.max(...vals.map((x) => x.v));
+    if (title.min !== undefined && top < title.min) continue;
+    if (top < median(vals.map((x) => x.v)) * (title.edge ?? CROWN_EDGE)) continue;
+    const winners = vals.filter((x) => x.v === top);
+    // 공동 1위가 절반을 넘으면 그건 그 사람의 특징이 아니라 그 무리의 평균이다(수치 칭호에만
+    // 해당한다 — 전술은 여럿이 같은 횟수인 것이 흔하고, 그래도 '한 사람만'은 아래에서 지킨다).
+    if ((title.pool ?? MIN_POOL) > 1 && winners.length > vals.length / 2) continue;
+    for (const w of winners) {
+      if (out.has(w.id)) continue;
+      const label = title.name
+        ? title.label.replace("{n}", title.name(w.stats) ?? "")
+        : title.label;
+      if (!label || label.includes("{n}") || used.has(label)) continue;
+      out.set(w.id, label);
+      used.add(label);
+      // 한 칭호는 한 사람만 — 공동 1위여도 먼저 걸린 사람이 가져간다(맵 칭호는 사람마다
+      // 맵이 달라 이 줄에 걸리지 않는다: 이름이 다르면 다른 칭호다).
+      if (!title.name) break;
     }
   }
 

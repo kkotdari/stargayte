@@ -1650,7 +1650,10 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
      순검정인데, 표의 짧은 칸 경계에서는 그 세기가 맞아도 화면 높이를 통째로 가로지르는
      이 선에서는 얘기가 다르다. 선은 길어질수록 무겁게 읽혀서, 같은 색이 여기서는 벽이 된다.
      토큰 자체를 바꾸지 않는 이유가 그것이다 — 짧은 선들까지 같이 흐려진다. */
-  .scr-light-theme .scr-header { border-right-color: var(--line-faint); }
+  /* 13% → 22%: 너무 연해졌다는 지적. 이 선은 화면을 세로로 가르는 유일한 경계라, 표
+     안쪽 선들처럼 흐려 두면 기둥이 배경에 붙어 버린다. 순검정(--line-soft)과 눈에 겨우
+     걸리는 값 사이를 잡는다. */
+  .scr-light-theme .scr-header { border-right-color: rgba(0, 0, 0, 0.22); }
   .scr-header::-webkit-scrollbar { display: none; }
   /* 기둥에 세로로 서는 차례(요청, 손그림):
 
@@ -2605,8 +2608,18 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   font-size: var(--fs-9); font-weight: 800; letter-spacing: 0.03em;
   padding: 1px 3px; border-radius: 3px; line-height: 1;
   border: 1px solid var(--best-line); background: var(--best-bg);
+  /* 수의 왼쪽 바깥에 매달린다 — 자리를 안 먹어야 수가 줄 가운데에 서고, 그래야 바로 아래
+     변동과 세로선이 맞는다(요청). 기준은 줄이 아니라 수 자신이다: 줄을 기준으로 두면
+     한 자리 수와 두 자리 수에서 배지와 수 사이가 달라진다. */
+  position: absolute; right: 100%; top: 50%; transform: translateY(-50%); margin-right: 4px;
 }
-.scr-stat-best-n { font-weight: 700; font-variant-numeric: tabular-nums; }
+.scr-stat-best-n { position: relative; font-weight: 700; font-variant-numeric: tabular-nums; }
+/* 이 줄의 변동만은 무채가 아니라 제 줄의 색(금)을 옅게 쓴다(요청) — 다른 변동은 바로 위
+   값도 무채라 한 덩어리로 읽히는데, 여기만 값이 금색이라 회색 변동이 남의 줄에서 온 글자처럼
+   떠 보였다. 색상은 그대로 두고 세기만 내린다. */
+.scr-stat-rank-best + .scr-stat-rank-delta .scr-stat-delta {
+  color: color-mix(in srgb, var(--best-ink) 62%, transparent);
+}
 
 /* ── 유닛·스킬 칸(요청: Top5 목록, 정렬 없음) ───────────────────────────────────
    이름은 왼쪽에 붙이고 수는 오른쪽 끝에 세로로 맞춘다 — 다섯 줄을 위아래로 훑을 때
@@ -6250,6 +6263,13 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 .scr-status-withdrawn { color: var(--dim); border-color: var(--line); }
 .scr-status-admin { color: var(--point); border-color: var(--point); }
 
+/* 칭호 — 닉네임 위 한 줄(요청, statEpithet.ts). 통계 표의 것과 같은 톤(작고 옅게)이되
+   여기서는 이름보다 먼저 읽히는 자리라 자간을 조금 벌린다: 짧은 말 한 줄이 큰 이름 위에
+   붙을 때는 글자가 뭉쳐 보여 수식어가 아니라 이름의 일부처럼 읽힌다. */
+.scr-member-detail-epithet {
+  font-size: var(--fs-micro); color: var(--dim);
+  letter-spacing: 0.04em; margin-bottom: 2px; word-break: keep-all;
+}
 .scr-member-detail-name { font-size: var(--fs-subhead); font-weight: 700; }
 .scr-member-detail-tag { font-size: var(--fs-body); color: var(--dim); margin-top: 2px; }
 .scr-member-detail-resize { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-caption); margin-top: 6px; }

@@ -486,9 +486,15 @@ export default function MemberStatRow({
                     들쭉날쭉해지고, 무엇보다 '0회'와 '이 표에 없는 값'이 같아 보였다. */}
                 {showBest && (
                   <>
+                    {/* 배지는 수의 왼쪽에 매달되 자리는 안 차지한다(요청: 변동이 값과 같은
+                        세로선에) — 흐름에 두면 [배지+수]가 한 덩어리로 가운데에 서서, 정작
+                        수는 배지 폭의 절반만큼 오른쪽으로 밀려 아래 변동과 어긋난다.
+                        레이팅의 메달·단위와 같은 처방이다. */}
                     <div className="scr-stat-rank-line scr-stat-rank-best">
-                      <span className="scr-stat-best-tag">BEST</span>
-                      <span className="scr-stat-best-n">{stats.bests}</span>
+                      <span className="scr-stat-best-n">
+                        <span className="scr-stat-best-tag">BEST</span>
+                        {stats.bests}
+                      </span>
                     </div>
                     {/* 변동은 여기서도 수치 아래다(요청) — 레이팅이 그렇게 서 있으므로
                         이 줄만 옆에 달면 같은 줄기 안에서 규칙이 갈린다. */}
