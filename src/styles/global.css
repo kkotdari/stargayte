@@ -2575,7 +2575,10 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    좌우 안여백도 6 → 4px(지적: 줄기 왼쪽이 너무 남는다) — 이 버튼의 여백은 누를 자리를
    넓히려던 것인데, 그 몫이 메달·단위가 매달리는 기준선을 좌우로 밀어 줄기 폭을 그만큼
    키우고 있었다. 누를 자리는 줄 높이가 이미 만들어 준다. */
-.scr-stat-rank-points .scr-stat-points-btn { padding: 2px 4px; }
+/* 이 줄기의 버튼은 레이팅이든 순위든 같은 안여백이다(지적: 레이팅과 순위의 변동 줄간격이
+   다르다) — 한때 레이팅 줄에만 줄여 놨더니, 순위 버튼만 아래 안여백이 2px 더 남아 그
+   아래 변동이 그만큼 떨어져 보였다. 값과 변동 사이는 표 어디서나 같아야 한다. */
+.scr-stat-rank-line .scr-stat-points-btn { padding: 2px 4px; }
 .scr-stat-rank-points + .scr-stat-rank-delta { margin-top: -2px; }
 /* 순위 변동 줄(요청: 크기 줄이고 순위 아래로) — 다른 변동들과 같은 크기·같은 간격이다.
    화살표·"신규"는 예전에 micro(12px)였는데, 그때는 순위 옆에 나란히 서서 그 정도는 돼야

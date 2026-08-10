@@ -135,6 +135,11 @@ const TITLES: Title[] = [
   /* 조이기(요청) — 센터에 탱크를 박아 길목을 잠근 대목이다. 자막에서도 "중앙을 걸어
      잠그고 그 자리를 내주지 않았다"로 말하는 그 수다. */
   tactic("조이기의 달인", ["center-tank"]),
+  /* 일꾼 견제는 위로 올린다(요청: 일꾼 견제도 강화) — 상대 일꾼을 잡는 일은 병력을 뽑아
+     쌓아 두는 것과 달리 그 순간 손이 가야만 되는 것이고, 그 판의 자원 곡선을 실제로
+     꺾어 놓는다. 그래서 다른 어떤 전술보다 그 사람의 성향을 잘 말한다. */
+  tactic("일꾼 사냥꾼", ["harass-workers"], 1),
+  tactic("지긋지긋한 견제러", ["harass-long"], 1),
 
   // ── 전술(리플레이 자막이 말하던 그 사실) ────────────────────────────────────
   tactic("옆탱의 여왕", ["side-tank"]),
@@ -143,8 +148,6 @@ const TITLES: Title[] = [
   tactic("성큰러시의 절대자", ["sunken-rush"]),
   // 드랍은 종족마다 키가 다르다 — 하나로 묶어야 "드랍 잘하는 사람"이라는 말이 된다.
   tactic("드랍의 여신", ["dropship", "shuttle", "zerg-drop", "templar-drop", "shuttle-reaver"]),
-  tactic("일꾼 사냥꾼", ["harass-workers"]),
-  tactic("지긋지긋한 견제러", ["harass-long"]),
   tactic("남의 집 헤집기 장인", ["base-raid"]),
   /* 나이더스 커널이다(버로우가 아니다). "땅굴"이라 부르니 버로우 이야기로 읽힌다는 지적 —
      자막이 이 수를 부르는 이름(커널)을 그대로 쓴다. */
@@ -324,9 +327,46 @@ const SPELL_SPECIAL: Record<string, string[]> = {
   리스토레이션: ["응급처치반"],
   다크스웜: ["모래폭풍 술사"],
 };
-/** 위 사전에 없는 기술로 "○○의 대가"를 부르려면 이만큼은 쌓여야 한다(요청: 그런 칭호는
- *  재미가 없으니 빈도를 낮춘다) — 다섯 번은 그냥 그 종족을 했다는 뜻에 가깝다. */
-const SKILL_PLAIN_MIN = 20;
+/* 마법마다 '한 번 쓰는 것이 얼마나 어려운가'(요청: 기술도 어려운 것에 가중치를) — 횟수에
+   이 값을 곱한 점수로 그 사람의 대표 마법을 고른다.
+
+   횟수만 보면 스톰만 주구장창 나온다(지적). 스톰은 프로토스가 한 판에 열 번도 쓰는 흔한
+   마법이라, 어느 프로토스를 세워도 1위가 스톰이다. 반대로 핵·마엘스트롬·디스럽션 웹은
+   판마다 한두 번 나올까 말까 한 것이라, 그 사람이 그걸 썼다는 사실 자체가 이야기다.
+   그래서 기준선(1.0)을 스톰에 두고, 드물수록 값을 올린다. 마인은 벌처가 지나가며 뿌리는
+   것에 가까워 1 아래다 — 200개를 깔아도 "마인 잘 쓰는 사람"이라는 뜻은 아니다. */
+const SPELL_WEIGHT: Record<string, number> = {
+  마인: 0.4,
+  스톰: 1,
+  다크스웜: 1.2,
+  컨슘: 1.5,
+  플레이그: 2, 인스네어: 2, EMP: 2, 이레디에이트: 2, 락다운: 2,
+  브루들링: 2.5,
+  야마토: 3, "옵티컬 플레어": 3, 리스토레이션: 3, 할루시네이션: 3, 스테이시스: 3, 리콜: 3,
+  마엘스트롬: 4, "디스럽션 웹": 4,
+  마인드컨트롤: 5, 핵: 5,
+};
+const SPELL_WEIGHT_DEFAULT = 2;
+/** 대표 마법으로 부르려면 이 점수(횟수 × 가중치)는 넘어야 한다 — 핵 두 방이면 되고,
+ *  마인은 스물다섯 개를 깔아야 한다. */
+const SKILL_MIN_SCORE = 8;
+/** 사전에 없는 기술로 "○○의 대가"를 부르려면 이만큼(요청: 그런 칭호는 재미가 없으니 빈도를
+ *  낮춘다) — 흔한 마법을 다섯 번 쓴 것은 그냥 그 종족을 했다는 뜻에 가깝다. */
+const SKILL_PLAIN_SCORE = 30;
+
+/** 그 사람의 대표 마법 — 횟수가 아니라 위 가중치를 곱한 점수로 고른다. */
+function topSpell(d: Record<string, number> | undefined) {
+  const merged: Record<string, number> = {};
+  for (const [key, v] of Object.entries(d ?? {})) {
+    const name = SPELL_KO[key];
+    if (!name || !(v > 0)) continue;
+    merged[name] = (merged[name] ?? 0) + v;
+  }
+  const scored = Object.entries(merged).map(([name, count]) => ({
+    name, count, score: count * (SPELL_WEIGHT[name] ?? SPELL_WEIGHT_DEFAULT),
+  }));
+  return scored.sort((a, b) => b.score - a.score || a.name.localeCompare(b.name))[0] ?? null;
+}
 
 /* 마법으로 안 치는 것들(지적: 버로우는 기술로 보기 힘들다) — 원장(techUses)에는 '쓴 기술'이
    전부 들어오지만, 칭호가 부를 만한 것은 '그걸 잘 써서 판을 바꾸는' 마법뿐이다. 버로우·
@@ -386,14 +426,14 @@ function signature(id: string, s: MemberStats, used: Set<string>): string | null
        쓰기 어려운 것은 한 번만 나와도 그 사람 이야기가 되지만, 많이 뽑은 유닛은 대개 그
        종족의 주력이라 종족이 같으면 다 같은 말이 된다.
        비중을 안 따지는 것도 그래서다 — 가장 많이 쓴 것 하나면 충분하다. */
-    const skill = topOf(m.skills, SPELL_KO);
-    if (skill && skill.count >= 5) {
+    const skill = topSpell(m.skills);
+    if (skill && skill.score >= SKILL_MIN_SCORE) {
       const special = SPELL_SPECIAL[skill.name];
       /* 사전에 있으면 그 말들을 먼저 쓰고, 없거나 다 쓰였으면 문틀로 내려간다 — 다만
-         문틀은 아주 많이 쓴 기술에만(SKILL_PLAIN_MIN). 그 문턱에 못 미치면 이 줄은 건너뛰고
-         아래 유닛 쪽에서 칭호를 찾는다: 심심한 말을 억지로 붙이느니 다른 재료가 낫다. */
+         문틀은 아주 많이 쌓였을 때만(SKILL_PLAIN_SCORE). 그 문턱에 못 미치면 이 줄은
+         건너뛰고 아래 유닛 쪽에서 찾는다: 심심한 말을 억지로 붙이느니 다른 재료가 낫다. */
       const t = (special && pick(special.map((label) => () => label), skill.name, seed, used))
-        || (skill.count >= SKILL_PLAIN_MIN ? pick(SKILL_SAYS, skill.name, seed, used) : null);
+        || (skill.score >= SKILL_PLAIN_SCORE ? pick(SKILL_SAYS, skill.name, seed, used) : null);
       if (t) return t;
     }
     /* 병력의 3분의 1을 한 유닛이 차지하면 그건 주력이 아니라 고집이다 — 4분의 1에서 올렸다:
