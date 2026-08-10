@@ -297,7 +297,7 @@ const TITLES: Title[] = [
   /* 한 번으로도 자격이 있다 — 남의 집 앞에 건물을 박는 것은 손이 미끄러져서 되는 일이
      아니다(다른 전술의 기본 문턱 2회는 "한 번은 우연"을 거르려는 것이다). */
   tactic("포토러시의 퀸", ["cannon-rush"], 1),
-  tactic("무시무시한 성큰러시의 절대자", ["sunken-rush"], 1),
+  tactic("성큰러시의 절대자", ["sunken-rush"], 1),
   tactic("센포의 지배자", ["center-photon"]),
   tactic("남의 집 헤집기 장인", ["base-raid"]),
   /* 나이더스 커널이다(버로우가 아니다). "땅굴"이라 부르니 버로우 이야기로 읽힌다는 지적 —
@@ -307,12 +307,12 @@ const TITLES: Title[] = [
   rare("정신을 훔치는 마인드 컨트롤러", ["mind-control"]),
   tactic("아름다운 캐리어 퀸", ["carrier"]),
   tactic("공포의 독거미 부대", ["lurker"]),
-  tactic("밤의 보이지 않는 손", ["cloak-wraith"]),
+  tactic("보이지 않는 손", ["cloak-wraith"]),
   tactic("하늘을 나는 뮤탈 조련사", ["muta"]),
   tactic("오버로드 사냥꾼", ["valk-hunt"]),
-  tactic("소리없는 몰래 배럭의 대가", ["sneak-rax"]),
+  tactic("몰래 배럭의 대가", ["sneak-rax"]),
   tactic("끝없는 저글링 폭풍", ["zling-rush"]),
-  tactic("돌진하는 질럿 돌격대장", ["zealot-rush"]),
+  tactic("질럿 돌격대장", ["zealot-rush"]),
   tactic("맞러시 승부사", ["duel-rush"]),
   tactic("협공의 선봉", ["gang-rush"]),
   rare("다크스웜의 여신", ["swarm"]),
@@ -352,7 +352,7 @@ const TITLES: Title[] = [
   tactic("업글 덕후", ["upgrade-signature"]),
   tactic("지구전의 화신", ["long-run"]),
   tactic("끝까지 버티는 사람", ["late-hold", "late-defense", "stand"]),
-  rare("죽지 않는 좀비 모드", ["revival"]),
+  rare("좀비 모드", ["revival"]),
   rare("이사 퀸", ["relocate"]),
   /* 본진을 잃고 아군 기지에 얹혀산 대목(lodging) — 흔치 않은 데다 그 판을 통째로 말하는
      그림이라 무게를 높였다(요청). 진 이야기가 아니라 끝까지 앉아 있었다는 이야기다. */
