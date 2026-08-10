@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Trash2, Upload, Link2Off } from "lucide-react";
+import { Trash2, Upload, Link2Off, ImageUp } from "lucide-react";
 import ReplayMapCanvas from "../../components/replay/ReplayMapCanvas";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 import Select from "../../components/common/Select";
@@ -119,6 +119,12 @@ export default function MinimapScreen() {
   /** 매핑된 맵 목록을 펼쳐 둔 미니맵들 — 기본은 접힘(요청). */
   const [openIds, setOpenIds] = useState<Set<number>>(new Set());
   const fileRef = useRef<HTMLInputElement>(null);
+  /* 그림을 바꿀 미니맵 — 파일 고르기는 창을 하나만 두고 이 값으로 대상을 기억한다(요청:
+     미니맵 메뉴에서 그림 변경). 줄마다 <input type=file>을 두면 미니맵 수만큼 숨은 입력이
+     생기고, 어느 줄에서 골랐는지도 그 입력이 알아야 한다 — 대상을 상태로 들면 창은 하나면
+     된다. */
+  const [swapId, setSwapId] = useState<number | null>(null);
+  const swapRef = useRef<HTMLInputElement>(null);
 
   const load = async () => {
     try {
@@ -198,6 +204,23 @@ export default function MinimapScreen() {
       await load();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "해제하지 못했어요.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /* ③ 그림만 갈아 끼운다(요청) — 지웠다 다시 올리는 길밖에 없었는데, 그러면 그 그림에
+     붙어 있던 맵 매핑이 통째로 풀린다. 더 나은 그림으로 바꾸는 일이 매핑을 처음부터 다시
+     하는 일이 돼서는 안 된다. 이름은 그대로 다시 보낸다 — 서버가 이름을 늘 요구한다. */
+  const swap = async (image: MinimapImage, file: File) => {
+    setErr("");
+    setBusy(true);
+    try {
+      const next = await toDataUrl(file);
+      await api.updateMinimapImage(image.id, { name: image.name, image: next });
+      await load();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "그림을 바꾸지 못했어요.");
     } finally {
       setBusy(false);
     }
@@ -333,6 +356,17 @@ export default function MinimapScreen() {
                     매핑된 맵 {mapped.length}개 {open ? "▲" : "▼"}
                   </span>
                 </button>
+                {/* 그림 변경 — 지우기 왼쪽에 둔다(요청). 매핑을 지키면서 그림만 바꾸는
+                    일이라, 되돌릴 수 없는 지우기와 나란히 있되 확인창은 없다. */}
+                <button
+                  type="button" className="scr-icon-btn"
+                  onClick={() => { setSwapId(i.id); swapRef.current?.click(); }}
+                  disabled={busy}
+                  aria-label={`${i.name} 그림 변경`}
+                  title="그림 변경"
+                >
+                  <ImageUp size={14} />
+                </button>
                 <button
                   type="button" className="scr-icon-btn"
                   onClick={() => setConfirmDelete(i)} disabled={busy}
@@ -356,6 +390,18 @@ export default function MinimapScreen() {
           );
         })}
       </div>
+
+      {/* 그림 변경용 파일 창 하나 — 어느 미니맵의 것인지는 swapId가 기억한다(위 주석). */}
+      <input
+        ref={swapRef} type="file" accept="image/*" hidden
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          e.target.value = "";
+          const target = images.find((i) => i.id === swapId);
+          setSwapId(null);
+          if (f && target) void swap(target, f);
+        }}
+      />
 
       {confirmDelete && (
         <ConfirmDialog
