@@ -1648,16 +1648,23 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
     position: fixed; left: 0; top: 0; bottom: 0; width: var(--rail-w); z-index: 30;
     /* 세로로 짧은 창에서 메뉴가 잘리는 대신 기둥 안에서만 스크롤한다. */
     overflow-y: auto; scrollbar-width: none;
-    border-right: 1px solid var(--line-soft);
+    /* 기둥과 본문을 가르는 유일한 선이라 얇고 또렷해야 한다(요청) — 두께와 진하기는 서로
+       바꿔 쓸 수 있는 값이다: 굵고 흐린 선은 번져 보이고, 얇고 진한 선은 그어 놓은 티가
+       난다. 그래서 색은 올리고(아래 두 테마) 두께는 화면이 허락하는 만큼 줄인다. */
+    border-right: 1px solid rgba(255, 255, 255, 0.26);
+  }
+  /* 고해상도 화면에서는 반 픽셀까지 내린다 — 1px은 그런 화면에서 물리적으로 두 픽셀이라
+     실제보다 굵게 보인다. 못 그리는 화면은 위 1px 그대로다. */
+  @media (min-resolution: 2dppx) {
+    .scr-header { border-right-width: 0.5px; }
   }
   /* 라이트에서는 이 선만 따로 내려 잡는다(지적: 검정이라 튄다) — --line-soft는 라이트에서
      순검정인데, 표의 짧은 칸 경계에서는 그 세기가 맞아도 화면 높이를 통째로 가로지르는
      이 선에서는 얘기가 다르다. 선은 길어질수록 무겁게 읽혀서, 같은 색이 여기서는 벽이 된다.
      토큰 자체를 바꾸지 않는 이유가 그것이다 — 짧은 선들까지 같이 흐려진다. */
-  /* 13% → 22%: 너무 연해졌다는 지적. 이 선은 화면을 세로로 가르는 유일한 경계라, 표
-     안쪽 선들처럼 흐려 두면 기둥이 배경에 붙어 버린다. 순검정(--line-soft)과 눈에 겨우
-     걸리는 값 사이를 잡는다. */
-  .scr-light-theme .scr-header { border-right-color: rgba(0, 0, 0, 0.22); }
+  /* 13% → 22% → 30%. 흰 바탕에서는 같은 알파라도 더 흐려 보여 다크(흰색 26%)보다 조금
+     더 준다. 순검정(--line-soft)까지 가면 벽이 되고, 20% 아래로는 기둥이 배경에 붙는다. */
+  .scr-light-theme .scr-header { border-right-color: rgba(0, 0, 0, 0.30); }
   .scr-header::-webkit-scrollbar { display: none; }
   /* 기둥에 세로로 서는 차례(요청, 손그림):
 
