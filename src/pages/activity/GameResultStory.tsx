@@ -1424,14 +1424,27 @@ export default function GameResultStory({
   }, [gameResult.summaryData, sentences, index, slots, grid, moved, movedPair]);
   const arrows = actions.arrows;
 
-  /* 지금 스냅의 전투력과 그 시각(요청: 아바타 닉네임 밑 체력바) — 한 문장이 여러 beat를
-     묶기도 하므로, 그중 시각이 있는 마지막 beat를 쓴다(가장 나중 상태가 지금 그림이다). */
+  /* 지금 스냅의 활성도와 그 시각(요청: 아바타 닉네임 밑 눈금) — 한 문장이 여러 beat를
+     묶기도 하므로, 그중 시각이 있는 마지막 beat를 쓴다(가장 나중 상태가 지금 그림이다).
+
+     그 문장 안에서 못 찾으면 앞으로 거슬러 올라간다(지적: 눈금이 갑자기 안 나오는 스냅이
+     있다) — 이 값은 '그 순간에 일어난 일'이 아니라 '그 무렵 그 사람이 어떤 상태인가'라,
+     이번 문장이 그 값을 안 실었다고 해서 사라질 것이 아니다. 요약은 자리(화살표)가 잡힌
+     beat에만 hp를 실으므로, 자리 없이 말만 있는 문장(선언·기권·짧은 맺음말 등)은 그
+     자체로 비어 있는 것이 정상이다. 그때는 마지막으로 알던 상태를 그대로 이어 보여준다.
+     시작 스냅만은 예외로 아무것도 안 그린다 — 그 앞에 알던 상태가 아예 없다. */
   const snapPower = useMemo(() => {
     const beats = gameResult.summaryData?.beats;
-    const idx = sentences[index]?.beats;
-    if (!beats || !idx) return null;
-    for (let i = idx.length - 1; i >= 0; i -= 1) {
-      const b = beats[idx[i]];
+    if (!beats) return null;
+    // 이 문장까지의 마지막 beat 번호 — beats는 시간순이라 이 번호부터 거슬러 올라가면
+    // '지금보다 앞선 것 중 가장 나중'이 된다.
+    let last = -1;
+    for (let i = index; i >= 0 && last < 0; i -= 1) {
+      for (const n of sentences[i]?.beats ?? []) if (n > last) last = n;
+    }
+    if (last < 0) return null;
+    for (let i = last; i >= 0; i -= 1) {
+      const b = beats[i];
       if (b?.hp && typeof b.at === "number" && Number.isFinite(b.at)) {
         return { hp: b.hp, sec: b.at * SECONDS_PER_FRAME };
       }
