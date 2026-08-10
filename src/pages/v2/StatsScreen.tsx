@@ -606,7 +606,11 @@ export default function StatsScreenV2() {
              대신 표 오른쪽에 왜 없는지와 어떻게 보는지를 한 줄로 적어 둔다(요청). */
           <div className={cx("scr-stat-table-row", !showMix && "scr-stat-table-row-slim")}>
             <div className="scr-stat-table-clip">
-              <div className="scr-stat-table scr-scroll">
+              {/* 메달이 하나도 없는 한 장(진행 중인 달·전체 누적)에서는 랭크 줄기가 메달
+                  자리를 비워 둘 이유가 없다(지적: 왼쪽이 너무 남는다) — 메달은 수의 왼쪽
+                  바깥에 매달리는데, 그 자리는 흐름을 안 먹는 대신 줄기 폭으로 잡혀 있다.
+                  없는 달에는 그 폭을 걷는다(--scr-stat-rank-w). */}
+              <div className={cx("scr-stat-table scr-scroll", medalByMember.size === 0 && "scr-stat-table-nomedal")}>
                 {/* 헤더도 데이터 행과 같은 가로 스크롤 컨테이너 안의 평범한 첫 행이다 —
                     더 이상 sticky가 아니라서(요청으로 제거) 페이지 스크롤 기준으로 따로
                     띄워둘 이유가 없어졌고, 그 덕에 이름 칸의 position:sticky;left:0도
