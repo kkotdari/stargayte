@@ -384,12 +384,15 @@ const TITLES: Title[] = [
   /* ── 유형(요청: 개인전 퀸 · 팀전 퀸) ───────────────────────────────────────
      "이 사람은 개인전에서 강하다"는 전체 승률로는 절대 안 나오는 말이다 — 두 유형이 한 수에
      섞여 있어서다. 그 유형을 실제로 여러 판 뛴 사람들끼리만 견준다(MIN_PLAYS_MODE). */
+  /* 무게는 전체 승률(승률의 정점 3.5)보다 위다(요청) — 같은 승률이라도 "어느 판에서
+     강한가"까지 말하는 쪽이 그 사람을 더 정확히 부른다. 전체 승률은 두 유형이 섞인 값이라
+     정작 무엇을 잘하는지는 안 말한다. */
   {
-    label: "개인전 퀸", weight: 3, why: "개인전 승률", unit: "%",
+    label: "개인전의 여왕", weight: 4.5, why: "개인전 승률", unit: "%",
     value: (_s, of) => (of.solo && of.solo.plays >= MIN_PLAYS_MODE ? of.solo.winRate : null),
   },
   {
-    label: "팀전 퀸", weight: 3, why: "팀전 승률", unit: "%",
+    label: "팀전의 절대 퀸", weight: 4.5, why: "팀전 승률", unit: "%",
     value: (_s, of) => (of.team && of.team.plays >= MIN_PLAYS_MODE ? of.team.winRate : null),
   },
 
