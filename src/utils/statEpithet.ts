@@ -466,7 +466,7 @@ const TITLES: Title[] = [
   { label: "승률의 정점", weight: 3.5, why: "승률", unit: "%", value: (s) => (s.plays >= MIN_PLAYS_RATE ? s.winRate : null) },
   { label: "BEST 수집가", weight: 3, why: "BEST PLAYER", unit: "회", value: (s) => (s.bests > 0 ? s.bests : null) },
   { label: "쉬지 않는 손가락", weight: 2, why: "분당 커맨드", unit: "", value: (s) => s.avgCmd },
-  { label: "성실한 개근의 여왕", weight: 3, sticky: true, why: "경기 수", unit: "판", value: (s) => s.plays },
+  { label: "개근의 여왕", weight: 3, sticky: true, why: "경기 수", unit: "판", value: (s) => s.plays },
 ];
 
 /* ── 특징 ──────────────────────────────────────────────────────────────────────
