@@ -3293,19 +3293,25 @@ html:not(.scr-light-theme) .scr-stats-list-panel-v2 .scr-stat-name-cell, html:no
      말이 두세 줄로 접혀 줄 높이를 밀어 올렸다. 118px까지 되돌리지 않는 것은 그 폭이
      통째로 표의 다른 칸에서 온 자리이기 때문이다. */
   .scr-stats-list-panel-v2 .scr-stat-row { --scr-stat-name-w: 108px; }
+  /* 모바일도 세로 두 줄이다(지적: 칭호가 옆이 아니라 아바타+닉네임 전체 아래로) — 여기서
+     row로 되돌리고 있던 탓에 폰에서만 칭호가 닉네임 옆에 붙어 있었다. 가로로 서는 몫은
+     안쪽 덩어리(.scr-stat-name-main)가 맡는다. */
   .scr-stats-list-panel-v2 .scr-stat-name-cell {
-    flex-direction: row; align-items: center; justify-content: center; gap: 7px;
+    flex-direction: column; align-items: center; justify-content: center; gap: 3px;
     padding-left: 7px; padding-right: 7px;
     /* 칸이 좁아 프사+닉네임 덩어리가 칸을 넘칠 수 있다 — 넘침은 잘라내고 닉네임이
        말줄임되게 한다(flex 자식이 줄어들 수 있도록 min-width:0). */
     min-width: 0; overflow: hidden;
   }
+  .scr-stats-list-panel-v2 .scr-stat-name-main { gap: 7px; min-width: 0; max-width: 100%; }
   /* 모바일 프사 — 또 1스텝(요청): 24 → 20px. 닉네임도 같이 한 스텝 내린다(caption 14 →
      micro 12) — 둘 중 하나만 줄이면 그 하나가 유독 작아 보인다. */
   .scr-stats-list-panel-v2 .scr-stat-avatar-btn .scr-avatar { width: 20px !important; height: 20px !important; }
   .scr-stats-list-panel-v2 .scr-stat-name-btn { font-size: var(--fs-micro); }
-  /* 프사와 닉네임 사이도 그만큼 좁힌다 — 둘이 작아졌는데 사이만 그대로면 한 덩어리로 안 읽힌다. */
-  .scr-stats-list-panel-v2 .scr-stat-name-cell { gap: 5px; padding-left: 5px; padding-right: 5px; }
+  /* 프사와 닉네임 사이도 그만큼 좁힌다 — 둘이 작아졌는데 사이만 그대로면 한 덩어리로 안
+     읽힌다. 칸 자체의 gap은 이제 위아래(이름줄↔칭호줄) 사이라 건드리지 않는다. */
+  .scr-stats-list-panel-v2 .scr-stat-name-main { gap: 5px; }
+  .scr-stats-list-panel-v2 .scr-stat-name-cell { padding-left: 5px; padding-right: 5px; }
   /* flex: 0 1 auto + min-width:0 — 줄어들 수는 있어야(안쪽 닉네임의 말줄임이 실제로
      작동하려면 min-width가 0이어야 한다) 하지만 늘어나선 안 된다. 한때 1 1 auto를 줬더니
      스택이 남는 폭을 다 먹어 프사만 왼쪽 끝으로 밀리고 닉네임 혼자 가운데로 떨어졌다
