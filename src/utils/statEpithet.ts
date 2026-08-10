@@ -643,9 +643,13 @@ const BUILD_SAYS: ((n: string) => string)[] = [
   (n) => `${n}의 주인`,
 ];
 
-/** 원장에서 가장 많이 나온 이름과 그 비중. 이름은 한국어 사전을 거친 뒤에 합친다 —
- *  탱크처럼 영문명 둘이 한국어 하나인 경우가 있어 먼저 세면 제 몫이 갈린다. */
-function topOf(d: Record<string, number> | undefined, ko: Record<string, string>) {
+/** 원장에서 많이 나온 순 목록(이름·수·비중) — 이름은 한국어 사전을 거친 뒤에 합친다.
+ *  탱크처럼 영문명 둘이 한국어 하나인 경우가 있어 먼저 세면 제 몫이 갈린다.
+ *
+ *  1등 하나만 보지 않는 이유(지적: 다들 "묵묵히 한 판 더"만 나온다): 그 이름의 임자가 이미
+ *  딴 칭호를 받았으면 이 사람은 아무 말도 못 듣는다. 두세 번째까지 훑으면 "히드라가 병력의
+ *  28%"처럼 여전히 사실인 다른 말이 남아 있다. */
+function topList(d: Record<string, number> | undefined, ko: Record<string, string>, n = 3) {
   const merged: Record<string, number> = {};
   let total = 0;
   for (const [key, v] of Object.entries(d ?? {})) {
@@ -654,9 +658,11 @@ function topOf(d: Record<string, number> | undefined, ko: Record<string, string>
     merged[name] = (merged[name] ?? 0) + v;
     total += v;
   }
-  const best = Object.entries(merged).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0];
-  if (!best || total <= 0) return null;
-  return { name: best[0], count: best[1], share: best[1] / total };
+  if (total <= 0) return [];
+  return Object.entries(merged)
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, n)
+    .map(([name, count]) => ({ name, count, share: count / total }));
 }
 
 /** 같은 글자가 표에 두 번 서지 않도록 문틀을 하나씩 밀어 가며 고른다 — 두 사람이 똑같이
@@ -741,15 +747,19 @@ function signature(
     /* 병력의 3분의 1을 한 유닛이 차지하면 그건 주력이 아니라 고집이다 — 4분의 1에서 올렸다:
        그 정도는 어느 종족에나 있는 주력 비중이라 "닥치고 ○○"이라 부를 만한 그림이 아니다.
        일꾼·보급은 애초에 이 원장에 없다(replayBuildMix) — 그래서 이 비율이 곧 병력 구성이다. */
-    const unit = topOf(m.units, UNIT_KO);
-    if (unit && owners.unit.get(unit.name) === id && unit.share >= 0.33 && unit.count >= 10) {
+    for (const unit of topList(m.units, UNIT_KO)) {
+      if (owners.unit.get(unit.name) !== id) continue;
+      // 두 번째·세 번째 유닛은 비중이 낮게 마련이라 문턱도 낮춘다 — 그래도 넷 중 하나는
+      // 되어야 "그 유닛으로 푸는 사람"이라 부를 수 있다.
+      if (unit.count < 10 || unit.share < (unit === topList(m.units, UNIT_KO)[0] ? 0.33 : 0.25)) continue;
       const t = pick(UNIT_SAYS, unit.name, seed, used);
       if (t) return { label: t, why: `${unit.name}${ga(unit.name)} 병력의 ${Math.round(unit.share * 100)}%` };
     }
     /* 건물은 마지막이다 — 종족이 정해지면 짓는 것도 대체로 정해져서, 유닛·마법만큼 그
        사람을 가르지 못한다. */
-    const build = topOf(m.buildings, BUILDING_KO);
-    if (build && owners.build.get(build.name) === id && build.share >= 0.3 && build.count >= 10) {
+    for (const build of topList(m.buildings, BUILDING_KO)) {
+      if (owners.build.get(build.name) !== id) continue;
+      if (build.count < 10 || build.share < 0.25) continue;
       const t = pick(BUILD_SAYS, build.name, seed, used);
       if (t) return { label: t, why: `${build.name}${ga(build.name)} 건물의 ${Math.round(build.share * 100)}%` };
     }
@@ -762,9 +772,19 @@ function signature(
      이 자리가 비면 그 줄만 닉네임이 위로 떠 표가 들쭉날쭉해 보인다. 지는 쪽에도 놀리는
      말은 안 쓴다: 여기 이름이 오르는 것은 계속 나오고 있다는 뜻이다. */
   const record = `${s.plays}판 승률 ${s.winRate.toFixed(1)}%`;
-  if (s.plays >= MIN_PLAYS_RATE && s.winRate >= 60) return { label: "이기는 맛을 아는 사람", why: record };
-  if (s.winRate <= 35) return { label: "다음 판을 노리는 자", why: record };
-  return { label: "묵묵히 한 판 더", why: record };
+  /* 마지막 자리도 여러 말로 나눈다(지적: 다들 "묵묵히 한 판 더"만 나온다) — 리플레이가
+     없거나 제 이름을 못 집은 사람이 여럿이면 같은 글자가 표에 줄줄이 선다. 뜻이 같은 말을
+     여러 벌 두고 문틀 고르듯 하나씩 밀어 가며 쓴다(pick). 승률로 갈래를 나누되 어느 쪽에도
+     놀리는 말은 안 쓴다: 여기 이름이 오르는 것은 계속 나오고 있다는 뜻이다. */
+  const says = s.plays >= MIN_PLAYS_RATE && s.winRate >= 60
+    ? ["이기는 맛을 아는 사람", "조용한 강자", "이길 줄 아는 사람", "승리의 단골손님"]
+    : s.winRate <= 35
+      ? ["다음 판을 노리는 자", "복수를 준비하는 자", "칼을 가는 중", "곧 터질 사람"]
+      : ["묵묵히 한 판 더", "꾸준함이 무기", "한 판 더의 사람", "성실한 출석부", "늘 자리를 지키는 사람"];
+  const t = pick(says.map((label) => () => label), id, seedOf(id), used);
+  // 그 말들마저 다 나갔으면 아무 말도 안 만든다(요청: 도저히 줄 게 없으면 칭호 없음) —
+  // 같은 글자를 두 번 세우느니 비워 두는 편이 낫다. 화면이 그 자리를 "칭호 없음"으로 적는다.
+  return t ? { label: t, why: record } : null;
 }
 
 /** 회원 → 칭호. 왕관은 넘겨받은 무리 안에서만 매기므로, 부르는 쪽이 '검색에 걸린 목록'이

@@ -11334,3 +11334,7 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
    그만큼 길어지는데, 이 카드는 한 줄에 이름·옛 칭호·새 칭호·근거가 이미 다 들어간다. */
 /* 근거는 한 단계 더 아래 — 통계 표의 칭호 툴팁과 같은 문장이다. */
 .scr-notice-why { font-size: var(--fs-11); color: var(--dim); }
+
+/* 칭호가 없는 줄(요청: 도저히 줄 게 없으면 칭호 없음) — 있는 칭호보다 더 눌러 둔다.
+   자리를 지키는 것이 목적이라 읽으라고 적는 글자가 아니다. */
+.scr-stat-name-epithet-none { opacity: 0.45; }

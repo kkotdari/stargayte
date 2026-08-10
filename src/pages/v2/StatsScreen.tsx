@@ -680,6 +680,7 @@ export default function StatsScreenV2() {
                     medals={medalByMember.get(c.member.id)}
                     // 닉네임 아래 한 줄 — 위 epithetByMember 참고(늘 전체 누적 기준).
                     epithet={epithetByMember.get(c.member.id)}
+                    epithetReady={epithetByMember.size > 0}
                     // 주종족으로 볼 때만 — 줄마다 잣대가 다르니 그 종족을 닉네임 옆에
                     // 적는다(요청). 다른 필터에서는 제목 문장이 이미 말하고 있다.
                     race={view?.race === "main" ? mainRaceOf(c.entry) : null}

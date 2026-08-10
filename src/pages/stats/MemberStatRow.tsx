@@ -355,6 +355,9 @@ interface MemberStatRowProps {
    *  부대"처럼 그 사람의 기록에서 뽑은 말이다. 기준은 늘 전체 누적이라 기간을 바꿔도
    *  안 흔들린다(StatsScreen). 한 판도 안 뛴 사람에게는 안 온다. */
   epithet?: { label: string; why: string };
+  /** 칭호 한 벌을 이미 받아 왔나 — 아직 받는 중이면 "칭호 없음"을 적으면 안 된다(없는 것과
+   *  아직 모르는 것은 다른 말이다). */
+  epithetReady?: boolean;
 }
 
 // 전적통계 목록의 테이블 한 행.
@@ -362,7 +365,7 @@ export default function MemberStatRow({
   member, stats, prev, me = false, showBest = true, prevPoints, maxOverallPlays, maxApm, maxCmd,
   avatar = true, compact = false,
   points, rank, rankDelta, onPointsClick, onRankClick, medals, race, upRace, showMix = true,
-  epithet,
+  epithet, epithetReady = false,
 }: MemberStatRowProps) {
   const openMemberProfile = useAppStore((s) => s.openMemberProfile);
   const [photoOpen, setPhotoOpen] = useState(false);
@@ -396,8 +399,12 @@ export default function MemberStatRow({
             훑을 때 두 이름이 겹쳐 읽혀 정작 누구 줄인지가 늦게 잡힌다.
             자리는 프사+닉네임 덩어리의 아래다(요청) — 칸 폭을 통째로 쓰므로 긴 칭호도
             닉네임 폭에 갇히지 않는다. */}
-        {epithet && (
+        {epithet ? (
           <span className="scr-stat-name-epithet" data-why={epithet.why}>{epithet.label}</span>
+        ) : epithetReady && (
+          /* 줄 게 없으면 그렇다고 적는다(요청) — 자리를 통째로 비우면 그 줄만 이름이 아래로
+             내려와 표가 들쭉날쭉해지고, 아직 안 받아온 것인지 없는 것인지도 구분이 안 된다. */
+          <span className="scr-stat-name-epithet scr-stat-name-epithet-none">칭호 없음</span>
         )}
       </div>
       {/* 게임수·승률·APM·커맨드는 한 칸이다(요청: 통합) — 넷 다 "막대 하나 + 수" 한 줄짜리라
