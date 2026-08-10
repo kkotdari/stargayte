@@ -368,7 +368,10 @@ const TITLES: Title[] = [
     value: (s) => (s.buildMix ? share(s.buildMix.bDef, s.buildMix.bProd, 20) : null),
     min: 0.12,
   },
-  { label: "다산의 아이콘", weight: 2, why: "초반 5분 일꾼", unit: "기", value: (s) => s.avgWorker5 },
+  /* 무게를 2 → 1.2로 내렸다(요청) — 초반 일꾼은 그 판의 빌드가 정하는 값에 가깝다.
+     같은 종족·같은 빌드면 누구나 비슷하게 나오므로, 1등이라고 그 사람을 말해 주는 몫이
+     다른 칭호들보다 작다. */
+  { label: "일꾼 뽑기 퀸", weight: 1.2, why: "초반 5분 일꾼", unit: "기", value: (s) => s.avgWorker5 },
   { label: "쉴 새 없이 짓는 자", weight: 1.5, why: "분당 지은 채수", unit: "채", value: (s) => (s.buildMix ? perMin(s.buildMix.coreBuild, s.mixSeconds) : null) },
   {
     label: "풀업 신봉자", weight: 1.5, why: "공/방 평균 단계", unit: "",
