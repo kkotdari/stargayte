@@ -203,20 +203,21 @@ const TIER1_KEYS = new Set([
 const TACTIC_WEIGHT: Record<string, number> = {
   "Nuclear Strike": 8,
   "cannon-rush": 3.5, "sunken-rush": 3.5, "mind-control": 3.5,
-  /* '사람 노릇'은 한 단계 더 올린다(요청) — 헬프·아군 포토는 제 살림을 놔두고 남의 집을
-     받쳐 준 대목이고, 입구막기와 조이기는 그 판을 통째로 설계한 수다. 혼자 잘한 것보다
-     판을 함께 굴린 쪽이 먼저 불릴 자격이 있다는 것이 이 표의 첫 줄에 적힌 생각이다. */
-  "ally-help": 5, "ally-cannon": 4, "wall-in": 4, "center-tank": 4,
-  nydus: 3, recall: 3, infested: 3, lodging: 3,
-  "center-photon": 2.5, "sneak-rax": 2.5, swarm: 2.5,
-  "side-tank": 2, "harass-workers": 2, "harass-long": 2,
-  carrier: 2, bc: 2,
-  dropship: 1.5, lurker: 1.5, guardian: 1.5, valkyrie: 1.5, "valk-hunt": 1.5,
-  "duel-rush": 1.5, "base-raid": 1.5,
-  /* 운영은 한 번 더 올린다(요청) — 바이오닉·메카닉·목동 저그·빠른 테크는 유닛 이름이
-     아니라 그 판을 굴린 틀의 이름이라, 한 번 잡히면 그 사람의 게임 전체가 그려진다.
-     한 유닛을 여러 번 뽑은 것과는 무게가 다르다. 1.5 → 2.5. */
-  bionic: 2.5, mech: 2.5, moka: 2.5, "fast-tech": 2.5,
+
+  /* 개성이 드러나는 쪽을 올린다(요청) — 그 판을 어떤 틀로 굴렸나(운영)와 무엇으로 풀었나
+     (주력 유닛)는 그 사람의 색이 그대로 남는 값이다. 반대로 '한 번 도우러 갔다'는 좋은
+     일이지만 누구나 하는 일이라, 자주 나오는 만큼 그 사람을 덜 말해 준다. */
+  bionic: 4, mech: 4, moka: 4, "fast-tech": 4,
+  "wall-in": 4, "center-tank": 4,
+  carrier: 3, lurker: 3, "cloak-wraith": 3, guardian: 3, bc: 3,
+  nydus: 3, recall: 3, infested: 3, lodging: 3, swarm: 3,
+  "center-photon": 2.5, "sneak-rax": 2.5, valkyrie: 2.5, "valk-hunt": 2.5,
+  "side-tank": 2, "harass-workers": 2, "harass-long": 2, "ally-cannon": 2,
+  dropship: 1.5, "duel-rush": 1.5, "base-raid": 1.5,
+  /* 헬프·협공은 내린다(요청) — 팀전에서는 흔한 장면이라 한 사람의 표식이 되기 어렵고,
+     그 판을 함께 굴렸다는 사실은 상대 쪽에도 똑같이 남는다. 없애지는 않는다: 자주 나오는
+     사람은 횟수가 쌓여 결국 이 칭호로 불린다. */
+  "ally-help": 1.5, "gang-rush": 0.8,
 };
 
 /* 근거 문장에 적을 '그 수의 이름'(요청: "자막에 잡힌 횟수 3회" 말고 무엇이 몇 번인지
