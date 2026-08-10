@@ -303,6 +303,17 @@ function arrowGeom(a: MinimapArrow, w: number, h: number) {
    약속하므로 아는 만큼만 말하는 셈이다. 여덟이 나란히 서도 칸 수만 세면 견줘지고, 색이
    하나뿐이라(채움/빔) 위험 신호로 읽힐 여지도 없다. */
 const VIGOR_PIPS = 5;
+/* 머리표는 눈금과 같은 말을 다른 그림으로 한 번 더 한다(요청: 좀 낮으면 걷기, 더 낮으면
+   앉음) — 칸 수를 세지 않고 훑기만 해도 그 사람이 지금 달리는 중인지 앉아 있는지가 보인다.
+   경계는 다섯 칸을 셋으로 나눈 자리다: 넷 이상이면 달리기, 둘·셋이면 걷기, 하나 이하면
+   앉음. 방향까지 정해진 글자(➡️가 붙은 쪽)를 쓰는 것은 눈금이 오른쪽으로 차오르기
+   때문이다 — 그냥 🏃·🚶는 글꼴마다 왼쪽을 보기도 한다. 앉은 그림만 방향이 없다(가만히
+   있는 것이라 갈 곳도 없다). */
+function vigorIcon(on: number): string {
+  if (on >= 4) return "🏃‍➡️";
+  if (on >= 2) return "🚶‍➡️";
+  return "🧘";
+}
 function VigorPips({ power, peak }: { power: number; peak: number }) {
   const ratio = peak > 0 ? Math.max(0, Math.min(1, power / peak)) : 0;
   /* 반올림하되 0이 아니면 한 칸은 남긴다 — 아주 뒤진 사람도 '거기 있다'는 것 자체는
@@ -310,13 +321,12 @@ function VigorPips({ power, peak }: { power: number; peak: number }) {
   const on = ratio <= 0 ? 0 : Math.max(1, Math.round(ratio * VIGOR_PIPS));
   return (
     <span className="scr-minimap-vigor" aria-hidden>
-      {/* 눈금 앞에 오른쪽으로 달리는 사람 하나(요청) — 칸 다섯만 놓여 있으면 그것이 무엇을
-          재는 눈금인지 그림 안에서 알 길이 없다(체력으로 읽힌 적도 있다, 위 주석). 달리는
+      {/* 눈금 앞에 사람 하나(요청) — 칸 다섯만 놓여 있으면 그것이 무엇을 재는 눈금인지
+          그림 안에서 알 길이 없다(체력으로 읽힌 적도 있다, 위 주석). 달리는/걷는/앉은
           사람은 '얼마나 굴리고 있나'와 곧바로 이어지는 그림이라, 글자 한 줄 없이도 이
-          눈금의 이름표 노릇을 한다(톱니바퀴로 뒀다가 바꿨다 — 요청).
-          방향까지 정해진 글자를 쓴다(🏃‍➡️) — 그냥 🏃는 글꼴마다 왼쪽을 보기도 해서, 눈금이
-          오른쪽으로 차오르는 그림과 방향이 어긋난다. */}
-      <span className="scr-minimap-vigor-icon">🏃‍➡️</span>
+          눈금의 이름표 노릇을 한다(톱니바퀴로 뒀다가 바꿨다 — 요청). 어느 그림인지는
+          칸 수가 정한다(위 vigorIcon). */}
+      <span className="scr-minimap-vigor-icon">{vigorIcon(on)}</span>
       {Array.from({ length: VIGOR_PIPS }, (_, i) => (
         <span key={i} className={cx("scr-minimap-vigor-pip", i < on && "scr-minimap-vigor-pip-on")} />
       ))}
