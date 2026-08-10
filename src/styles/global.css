@@ -2206,28 +2206,13 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
      이미 닉네임과의 무게 차이를 만들고 있으므로 색까지 눌러 둘 이유가 없다. */
   font-size: var(--fs-micro); line-height: 1.3; color: var(--muted);
   word-break: keep-all;
-  position: relative;
-  /* 눌러서 까닭을 펼치는 자리라 button이다(아래 ::after) — 기본 꾸밈을 걷어 예전 span과
-     똑같이 보이게 한다. 칭호가 없어 "칭호 없음"만 적는 줄은 여전히 span이고, 그쪽은
-     이 규칙 중 글자 관련만 받는다. */
-  background: none; border: none; padding: 0; margin: 0;
-  font-family: inherit; font-weight: inherit; text-align: inherit;
+  /* 눌러서 까닭을 펼치는 자리다(InfoTip의 트리거) — 겉모습은 예전 span 그대로 두고 손 모양만
+     얹는다. 까닭 말풍선 자체는 여기서 안 그린다: 이 칸의 조상들이 하나같이 잘라 내서
+     (overflow:hidden/auto, sticky) ::after로는 어떻게 해도 갇힌다(지적: 툴팁이 유저 컬럼
+     안으로 제한돼). InfoTip이 body로 포털해 띄운다 — .scr-infotip-bubble 참고.
+     칭호가 없어 "칭호 없음"만 적는 줄은 이 규칙 중 글자 관련만 받는다. */
+  cursor: pointer;
 }
-button.scr-stat-name-epithet { cursor: pointer; }
-/* 그 칭호가 붙은 까닭 — 눌렀을 때만 뜬다(요청).
-   얹어 뜨는 툴팁(hover)은 손가락으로는 아예 안 뜨고, 늘 한 줄로 적어 두면 줄마다 두 줄이
-   되어 표가 길어진다. 누름은 마우스와 손가락 양쪽에서 똑같이 되는 동작이라 이 자리에 맞는다.
-   한 번 더 누르거나 다른 데를 누르면 닫힌다(MemberStatRow의 whyOpen). */
-.scr-stat-name-epithet[data-why]::after {
-  content: attr(data-why);
-  position: absolute; left: 50%; top: calc(100% + 4px); transform: translateX(-50%);
-  white-space: nowrap; font-size: var(--fs-9); line-height: 1.2;
-  padding: 3px 6px; border-radius: 4px;
-  background: var(--panel-raised); color: var(--text);
-  border: 1px solid var(--line-hair); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
-  opacity: 0; pointer-events: none; z-index: 5;
-}
-.scr-stat-name-epithet-open[data-why]::after { opacity: 1; }
 .scr-stat-name-btn {
   /* 원래는 행의 다른 칸들과 같은 크기(상속)였는데, 닉네임을 눈에 잘 띄게 키웠다가(19px)
      너무 커 보인다는 피드백으로 그 값의 80%(20% 축소)로 다시 낮춘다. */
@@ -3443,6 +3428,9 @@ html:not(.scr-light-theme) .scr-stats-list-panel-v2 .scr-stat-name-cell, html:no
   /* 줄바꿈을 살린다 — 여러 갈래를 설명하는 툴팁(최소 게임수 등)은 항목마다 줄을 나눠야
      읽힌다. 한 줄짜리 툴팁은 개행이 없으니 pre-line이어도 지금과 똑같이 그려진다. */
   white-space: pre-line;
+  /* 낱말 가운데서는 안 자른다 — 좁은 화면에서 "클럽 최다"가 "최 / 다"로 갈렸다. 이 앱의
+     한글 문장은 어디서나 이 규칙이다(칭호·Top5 목록 등). */
+  word-break: keep-all;
 }
 /* "유저" 헤더도 정렬 버튼(.scr-stat-sort-btn)이 되면서, 그 규칙의 background:none이
    이름 칸의 불투명 배경(.scr-stat-name-head, 가로 스크롤 중 옆 칸이 이 sticky 칸
@@ -6377,7 +6365,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 /* 그 칭호가 붙은 까닭 — 칭호보다 한 단계 더 눌러 둔다. 같은 굵기로 적으면 둘이 한 문장으로
    읽혀 정작 부르는 말이 어디까지인지가 흐려진다. */
 /* (삭제) .scr-member-detail-epithet-why — 팝업에서 근거를 걷었다(요청). 그 말은 이제
-   표의 유저 칸이 칭호 밑에 적는다(.scr-stat-name-epithet-why). */
+   표의 칭호를 눌렀을 때 말풍선으로 뜬다(.scr-stat-name-epithet → InfoTip). */
 .scr-member-detail-name { font-size: var(--fs-subhead); font-weight: 700; }
 .scr-member-detail-tag { font-size: var(--fs-body); color: var(--dim); margin-top: 2px; }
 .scr-member-detail-resize { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-caption); margin-top: 6px; }

@@ -16,11 +16,16 @@ let closeOpenTip: (() => void) | null = null;
 // trigger — 아이콘 대신 글자로 부르고 싶을 때(요청: 통계 제목 옆은 ⓘ가 아니라 "도움말").
 //   표 헤더처럼 자리가 없는 곳은 그대로 아이콘이고, 제목 옆처럼 자리가 있는 곳은 글자가
 //   무엇을 여는 버튼인지 그 자체로 말한다.
+// triggerClassName — 트리거의 겉모습을 부르는 쪽이 통째로 정하고 싶을 때(통계 표의 칭호).
+//   그런 자리는 이미 제 글자 규칙(크기·줄바꿈·정렬)을 갖고 있어서 여기 기본 꾸밈
+//   (.scr-infotip의 inline-flex·muted·opacity)을 얹으면 그쪽이 어긋난다. 말풍선을 띄우는
+//   일과 트리거가 어떻게 생겼는가는 서로 상관이 없으므로, 겉모습만 갈아 끼우게 열어 둔다.
 /** 말풍선이 화면 가장자리에서 남길 최소 여백. */
 const EDGE = 8;
 
 export default function InfoTip(
-  { text, label, size = 12, trigger }: { text: string; label?: string; size?: number; trigger?: string },
+  { text, label, size = 12, trigger, triggerClassName }:
+  { text: string; label?: string; size?: number; trigger?: string; triggerClassName?: string },
 ) {
   // anchor는 아이콘의 자리 — 말풍선을 위로 뒤집을지 정하려면 아이콘의 위/아래가 다 필요하다.
   const [pos, setPos] = useState<{ top: number; left: number; anchorTop: number } | null>(null);
@@ -86,7 +91,7 @@ export default function InfoTip(
   return (
     <span
       ref={ref}
-      className={`scr-infotip${trigger ? " scr-infotip-text" : ""}`}
+      className={triggerClassName ?? `scr-infotip${trigger ? " scr-infotip-text" : ""}`}
       role="button"
       tabIndex={0}
       aria-label={label ? `${label} 설명 보기` : "설명 보기"}

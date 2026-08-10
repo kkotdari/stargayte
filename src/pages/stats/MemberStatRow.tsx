@@ -1,5 +1,6 @@
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useState } from "react";
 import Avatar from "../../components/common/Avatar";
+import InfoTip from "../../components/common/InfoTip";
 import PhotoViewer from "../../components/common/PhotoViewer";
 import StatBar from "../../components/common/StatBar";
 import ValueBar from "../../components/common/ValueBar";
@@ -369,16 +370,6 @@ export default function MemberStatRow({
 }: MemberStatRowProps) {
   const openMemberProfile = useAppStore((s) => s.openMemberProfile);
   const [photoOpen, setPhotoOpen] = useState(false);
-  /* 칭호를 눌러 펼친 상태(요청) — 다른 데를 누르면 닫힌다. 줄마다 따로 열리므로 두 줄이
-     동시에 열려 있지는 않게: 문서 클릭 한 번이면 열려 있던 줄이 다 닫힌다(칭호 버튼 자신은
-     클릭을 멈춰 세우므로 제 토글만 산다). */
-  const [whyOpen, setWhyOpen] = useState(false);
-  useEffect(() => {
-    if (!whyOpen) return;
-    const close = () => setWhyOpen(false);
-    document.addEventListener("click", close);
-    return () => document.removeEventListener("click", close);
-  }, [whyOpen]);
   const mix = stats.buildMix;
   const pmix = prev?.buildMix ?? null;
 
@@ -409,20 +400,24 @@ export default function MemberStatRow({
             훑을 때 두 이름이 겹쳐 읽혀 정작 누구 줄인지가 늦게 잡힌다.
             자리는 프사+닉네임 덩어리의 아래다(요청) — 칸 폭을 통째로 쓰므로 긴 칭호도
             닉네임 폭에 갇히지 않는다. */}
+        {/* 왜 그 칭호인가는 눌렀을 때만 띄운다(요청) — 늘 적어 두면 줄마다 두 줄이 되어
+            표가 길어지고, 마우스를 얹어야 뜨는 방식은 손가락으로는 아예 안 뜬다.
+
+            말풍선은 표 컬럼 헤더의 ⓘ와 같은 부품(InfoTip)을 그대로 쓴다 — 그쪽이 이미 같은
+            문제를 풀어 놨기 때문이다(지적: 툴팁이 유저 컬럼 안으로 제한돼). 칭호가 앉은
+            유저 칸은 조상마다 잘라 낸다: .scr-stat-table-clip이 overflow:hidden(둥근 모서리),
+            .scr-stat-table이 가로 스크롤용 overflow-x:auto, 칸 자신은 position:sticky. CSS
+            ::after로 그리면 무엇을 해도 그 셋 중 하나에 잘린다. InfoTip은 말풍선만 body로
+            포털해 화면 좌표(fixed)로 띄우므로 자르는 조상이 아예 없고, 화면 가장자리 밀어넣기
+            ·아래가 좁으면 위로 뒤집기·바깥 탭으로 닫기·한 번에 하나만 열기까지 딸려 온다.
+            겉모습만 이 표의 칭호 규칙으로 갈아 끼운다(triggerClassName). */}
         {epithet ? (
-          /* 왜 그 칭호인가는 눌렀을 때만 띄운다(요청) — 늘 적어 두면 줄마다 두 줄이 되어
-             표가 길어지고, 마우스를 얹어야 뜨는 방식은 손가락으로는 아예 안 뜬다.
-             누르는 동작이라 span이 아니라 button이다: 키보드로도 열리고, 스크린 리더가
-             '눌러서 펼치는 것'으로 읽는다. */
-          <button
-            type="button"
-            className={cx("scr-stat-name-epithet", whyOpen && "scr-stat-name-epithet-open")}
-            data-why={epithet.why}
-            aria-expanded={whyOpen}
-            onClick={(e) => { e.stopPropagation(); setWhyOpen((v) => !v); }}
-          >
-            {epithet.label}
-          </button>
+          <InfoTip
+            text={epithet.why}
+            label={epithet.label}
+            trigger={epithet.label}
+            triggerClassName="scr-stat-name-epithet"
+          />
         ) : epithetReady && (
           /* 줄 게 없으면 그렇다고 적는다(요청) — 자리를 통째로 비우면 그 줄만 이름이 아래로
              내려와 표가 들쭉날쭉해지고, 아직 안 받아온 것인지 없는 것인지도 구분이 안 된다. */
