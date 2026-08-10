@@ -1,4 +1,4 @@
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import Avatar from "../../components/common/Avatar";
 import PhotoViewer from "../../components/common/PhotoViewer";
 import StatBar from "../../components/common/StatBar";
@@ -369,6 +369,16 @@ export default function MemberStatRow({
 }: MemberStatRowProps) {
   const openMemberProfile = useAppStore((s) => s.openMemberProfile);
   const [photoOpen, setPhotoOpen] = useState(false);
+  /* 칭호를 눌러 펼친 상태(요청) — 다른 데를 누르면 닫힌다. 줄마다 따로 열리므로 두 줄이
+     동시에 열려 있지는 않게: 문서 클릭 한 번이면 열려 있던 줄이 다 닫힌다(칭호 버튼 자신은
+     클릭을 멈춰 세우므로 제 토글만 산다). */
+  const [whyOpen, setWhyOpen] = useState(false);
+  useEffect(() => {
+    if (!whyOpen) return;
+    const close = () => setWhyOpen(false);
+    document.addEventListener("click", close);
+    return () => document.removeEventListener("click", close);
+  }, [whyOpen]);
   const mix = stats.buildMix;
   const pmix = prev?.buildMix ?? null;
 
@@ -400,14 +410,19 @@ export default function MemberStatRow({
             자리는 프사+닉네임 덩어리의 아래다(요청) — 칸 폭을 통째로 쓰므로 긴 칭호도
             닉네임 폭에 갇히지 않는다. */}
         {epithet ? (
-          <>
-            <span className="scr-stat-name-epithet">{epithet.label}</span>
-            {/* 왜 그 칭호인가 — 칭호 바로 밑에 흐린 한 줄로 적는다(요청). 툴팁(data-why)만
-                두던 자리인데, 툴팁은 마우스를 1초쯤 얹고 있어야 뜨고 손가락으로는 아예 안
-                뜬다. 이 줄이 생기면서 회원 팝업 쪽 같은 설명은 걷었다 — 한 사실은 한 자리에서
-                만 말한다(MemberProfileModal). */}
-            <span className="scr-stat-name-epithet-why">{epithet.why}</span>
-          </>
+          /* 왜 그 칭호인가는 눌렀을 때만 띄운다(요청) — 늘 적어 두면 줄마다 두 줄이 되어
+             표가 길어지고, 마우스를 얹어야 뜨는 방식은 손가락으로는 아예 안 뜬다.
+             누르는 동작이라 span이 아니라 button이다: 키보드로도 열리고, 스크린 리더가
+             '눌러서 펼치는 것'으로 읽는다. */
+          <button
+            type="button"
+            className={cx("scr-stat-name-epithet", whyOpen && "scr-stat-name-epithet-open")}
+            data-why={epithet.why}
+            aria-expanded={whyOpen}
+            onClick={(e) => { e.stopPropagation(); setWhyOpen((v) => !v); }}
+          >
+            {epithet.label}
+          </button>
         ) : epithetReady && (
           /* 줄 게 없으면 그렇다고 적는다(요청) — 자리를 통째로 비우면 그 줄만 이름이 아래로
              내려와 표가 들쭉날쭉해지고, 아직 안 받아온 것인지 없는 것인지도 구분이 안 된다. */
