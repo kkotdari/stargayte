@@ -369,9 +369,18 @@ function FlatLine({ children }: { children: ReactNode }) {
       box.style.setProperty("--flat", Math.max(FLAT_MIN, Math.round(k * 1000) / 1000).toString());
     };
     fit();
+    /* 눌리는 과정이 보이면 안 된다(요청: "스퀴즈가 보여서 문제, 처음부터 스퀴즈된 상태로")
+       — 첫 값은 그리기 전(useLayoutEffect)에 넣지만, 그 값이 전환(transition)을 타면
+       줄이 안 눌린 상태에서 눌린 상태로 0.12초 동안 미끄러진다. 목록이 통째로 그렇게
+       움직이니 화면이 한 번 출렁였다. 그래서 전환은 첫 그림을 넘긴 뒤에 켠다 — 창을 끌어
+       폭이 바뀔 때의 부드러움(그게 이 전환의 원래 목적이다)은 그대로 남는다. */
+    const raf = window.requestAnimationFrame(() => { box.dataset.flatReady = "1"; });
     const ro = new ResizeObserver(fit);
     ro.observe(box);
-    return () => ro.disconnect();
+    /* 웹폰트가 늦게 오면 글자 폭이 바뀐다 — 대체 글꼴로 잰 비율은 그 순간 틀린 값이 되고,
+       바깥 칸 폭은 안 변해 ResizeObserver도 안 깨어난다. 폰트가 앉는 대로 한 번 더 잰다. */
+    document.fonts?.ready.then(fit).catch(() => {});
+    return () => { window.cancelAnimationFrame(raf); ro.disconnect(); };
   });
   return (
     <span className="scr-activity-row-flat" ref={boxRef}>

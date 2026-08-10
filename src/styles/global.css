@@ -9164,7 +9164,12 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   display: flex; align-items: center; width: max-content;
   transform: scaleX(var(--flat, 1));
   transform-origin: left center;
-  /* 누르는 정도가 바뀔 때 글자가 툭 튀지 않게 — 창 크기를 끌 때 자연스럽다. */
+}
+/* 누르는 정도가 바뀔 때 글자가 툭 튀지 않게 — 창 크기를 끌 때 자연스럽다. 다만 첫 값에는
+   안 건다(요청: "스퀴즈가 보여서 문제, 처음부터 스퀴즈된 상태로") — 처음 재서 넣는 값까지
+   전환을 타면 목록의 모든 줄이 안 눌린 상태에서 눌린 상태로 미끄러져, 화면이 뜨자마자 한 번
+   출렁였다. FlatLine이 첫 그림을 넘긴 다음 프레임에 data-flat-ready를 달아 그때부터 켠다. */
+.scr-activity-row-flat[data-flat-ready] > .scr-activity-row-flat-in {
   transition: transform .12s ease-out;
 }
 /* 한계(FLAT_MIN)까지 눌러도 안 들어가는 줄은 오른쪽이 잘린다 — 바깥 칸의 overflow가
