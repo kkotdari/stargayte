@@ -277,15 +277,18 @@
      --best-metal은 옛 랭킹 닉네임의 메탈 그라데이션과 같은 짜임이다(가장자리는 어둡고
      가운데 50%에 하이라이트 — 글자 윤곽이 살아난다). 다만 색은 은이 아니라 백금이다
      (지적): 은은 푸른기가 도는 회색인데 백금은 그보다 따뜻하고 흰 쪽이라, 회색을 그대로
-     쓰면 그냥 은반지가 된다. 그래서 색상을 노란 쪽으로 돌렸고, 세 번에 걸쳐 조금씩 더
-     돌렸다(요청) — 지금은 순금에 꽤 가깝다. 그래도 예전 메달 금색(#f0c060)과 같은 값은
-     아니다: 그쪽은 채도가 높은 한 색이고 이쪽은 가장자리가 어두운 그라데이션이라, 나란히
-     놓이면 '칠한 색'과 '금속'으로 갈려 읽힌다. 8px짜리 배지에도 쓰이므로 본체가 밝아야 하는 것도 같은 방향이다 — 어두운
+     쓰면 그냥 은반지가 된다. 그래서 색상을 노란 쪽으로 돌렸고, 네 번에 걸쳐 조금씩 더
+     돌렸다(요청). 마지막 한 걸음은 채도였다(지적: 탁하다) — 가운데 톤이 크림색(#efd894)
+     이라 금이 아니라 바랜 놋쇠로 보였다. 가운데를 순금 쪽 노랑으로 올리고 가장자리도
+     갈색기를 뺀 어두운 금(#b8860b)으로 바꿨다.
+     그래도 예전 메달 금색(#f0c060)과 같은 값은 아니다: 그쪽은 한 색으로 칠한 것이고
+     이쪽은 가장자리가 어두운 그라데이션이라, 나란히 놓이면 '칠한 색'과 '금속'으로 갈려
+     읽힌다. 8px짜리 배지에도 쓰이므로 본체가 밝아야 하는 것도 같은 방향이다 — 어두운
      금속은 작은 글자에서 그냥 회색으로 보인다. */
-  --best-ink: #f0deaa;
-  --best-line: rgba(240, 222, 170, 0.5);
-  --best-bg: rgba(240, 222, 170, 0.12);
-  --best-metal: linear-gradient(115deg, #a8873c 0%, #efd894 40%, #fff6d2 50%, #efd894 60%, #a8873c 100%);
+  --best-ink: #ffd95e;
+  --best-line: rgba(255, 217, 94, 0.5);
+  --best-bg: rgba(255, 217, 94, 0.12);
+  --best-metal: linear-gradient(115deg, #b8860b 0%, #ffd95e 40%, #fffbe6 50%, #ffd95e 60%, #b8860b 100%);
   /* 어두운 패널 위에 옅게 얹는 hover/active 배경(흰색 오버레이)용 rgb 트리플릿 — 라이트
      테마에서는 패널이 밝아지므로 검은색 오버레이로 뒤집어야 hover 효과가 보인다. */
   --overlay-rgb: 255, 255, 255;
@@ -986,10 +989,10 @@ html.scr-light-theme {
      어둡게 내리되 색상은 그대로 따뜻한 쪽에 둔다(지적: 은이 아니라 백금) — 회색으로
      내려 버리면 흰 바탕에서는 그냥 진회색 글자가 된다.
      가운데 하이라이트도 순백이 아니라 그 금속의 옅은 톤이다(옛 메탈 규칙과 같은 처방). */
-  --best-ink: #8a6a1c;
-  --best-line: rgba(138, 106, 28, 0.42);
-  --best-bg: rgba(138, 106, 28, 0.10);
-  --best-metal: linear-gradient(115deg, #7d6219 0%, #b8934a 40%, #caa65c 50%, #b8934a 60%, #7d6219 100%);
+  --best-ink: #8a6600;
+  --best-line: rgba(138, 102, 0, 0.42);
+  --best-bg: rgba(138, 102, 0, 0.10);
+  --best-metal: linear-gradient(115deg, #7a5a00 0%, #c9a227 40%, #dcb63a 50%, #c9a227 60%, #7a5a00 100%);
   /* 승/패 텍스트, 순위 변동 화살표, 랭킹 막대(승률/경기수) — 전부 검정으로 눌러뒀던 걸
      흰 배경에서도 잘 보이도록 진하게 채도를 살린 색으로 되돌린다(다크 테마의 파스텔
      톤과 같은 색 계열이지만, 흰 배경 대비를 위해 훨씬 진하게). */
@@ -2910,6 +2913,22 @@ html:not(.scr-light-theme) .scr-donut-band-delta { fill: #fff; opacity: 0.66; }
      넓어 가로로 스크롤하는 자리라, 줄인 만큼이 곧 '한 화면에 보이는 칸'이 된다. */
   .scr-stat-record-item .scr-value-bar-track-wrap,
   .scr-stat-record-item .scr-stat-bar-track-wrap { max-width: 120px; }
+}
+/* 폰 폭에서는 안내를 표 위로 올린다(지적: 모바일에서 통계가 이렇게 나온다 — 유저 칸과
+   레이팅 한 자락만 보이고 나머지는 안내가 먹었다).
+   한동안 좁은 화면에서도 오른쪽에 세웠는데(요청), 실제로 재어 보니 그 자리가 없다:
+   표가 담아야 할 최소가 [유저 96 + 주요 지표 268] = 364px이고 폰은 390~440px이라, 안내를
+   가장 좁게(104) 잡아도 표에 남는 창이 250px 남짓 — 유저 칸을 빼면 실제로 보이는 지표가
+   150px뿐이다. 옆에 세우는 그림이 뜻이 있으려면 표가 먼저 보여야 한다.
+   위로 올리면 안내는 한 줄짜리 띠가 되고(가로로 눕는다) 표는 화면 폭을 온전히 쓴다 —
+   '왜 세 칸이 없나'를 먼저 읽고 표로 내려가는 순서라 읽는 차례도 자연스럽다. */
+@media (max-width: 719px) {
+  .scr-stat-table-row-slim { flex-wrap: wrap; }
+  .scr-stat-mix-hint {
+    order: -1; width: 100%;
+    flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 2px 8px;
+    border-left: none; padding: 0 0 8px;
+  }
 }
 /* 어떻게 하면 보이는지 — 이 문장만은 흐리게 두지 않는다. 안내에서 실제로 할 일을 말하는
    유일한 줄이라, 나머지 설명과 같은 톤이면 읽고도 무엇을 해야 하는지가 안 남는다. */
@@ -10657,13 +10676,13 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    내려가(그 값은 흰 바닥용이다) 지도 위에서 안 읽힌다. 같은 이유로 이름표 하이라이트도
    값을 박아 두고 있다(.scr-minimap-mark-hit). */
 .scr-minimap-mark-best .scr-avatar {
-  border-color: #f0deaa;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6), 0 0 8px 2px rgba(240, 222, 170, 0.65);
+  border-color: #ffd95e;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6), 0 0 8px 2px rgba(255, 217, 94, 0.65);
 }
 .scr-minimap-mark-best-tag {
   flex-shrink: 0; font-size: 8px; font-weight: 800; letter-spacing: 0.03em; line-height: 1;
   padding: 1px 3px; border-radius: 3px;
-  background: #f0deaa; color: #101010; text-shadow: none;
+  background: #ffd95e; color: #101010; text-shadow: none;
 }
 /* 기세 눈금 — 다섯 칸(ReplayMinimap의 VigorPips). 색은 하나다: 켜진 칸은 밝고 꺼진 칸은
    눌러 둔다. 초록↔빨강처럼 색이 뜻을 지면 그 뜻은 늘 '안전↔위험'으로 읽히는데, 이 값은

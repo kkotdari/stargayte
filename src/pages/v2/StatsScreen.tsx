@@ -562,7 +562,10 @@ export default function StatsScreenV2() {
             <FilterGroup label="종족">
               <PickRow options={RACE_TAB_OPTS} value={race} onChange={setRace} label="종족" />
             </FilterGroup>
-            <FilterGroup label="월별/누적">
+            {/* 이름표는 "월"이다(요청) — 고르는 것이 달이고, '전체 누적'은 그 달력 안의
+                한 선택지라 이름표까지 두 가지를 다 이고 있을 필요가 없다. 옆의 유형·종족과
+                글자 수가 비슷해져 세 이름표가 한 줄에서 고르게 보이기도 한다. */}
+            <FilterGroup label="월">
               <MonthCalendar
                 value={period} onChange={setPeriod}
                 minMonth={firstMonth} maxMonth={currentMonthValue()}
