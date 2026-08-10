@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import NoticeCard, { noticeLine } from "./NoticeCard";
+import NoticeCard, { noticeLine, NoticeMenu } from "./NoticeCard";
 import RankingShiftCard, { RankingShiftMenu } from "./RankingShiftCard";
 import LeagueMatchCard from "./LeagueMatchCard";
 import { CalendarPlus, ChevronLeft, ClipboardList, MoreHorizontal, Phone, Upload, X } from "lucide-react";
@@ -1526,6 +1526,8 @@ export default function ActivityScreen() {
           timeText={formatWhen(item.time, { clock: item.withClock })}
           dateLabel={dateLabelOf(item)}
           memberOf={memberOf}
+          /* 알림도 공유한다(요청) — 케밥 하나에 카카오 공유만 들어 있다. */
+          actions={<NoticeMenu notice={item.notice} nameOf={(id) => memberOf(id)?.nickname ?? id} />}
           footer={<ActivityCardComments targetType="notice" targetId={item.notice.id} />}
         />
       </div>
@@ -1809,7 +1811,20 @@ export default function ActivityScreen() {
           createPortal을 쓰고 있던 것이 같은 이유다. */}
       {detailItem && createPortal(
         <div className="scr-modal-overlay">
-          <div className="scr-modal scr-modal-page scr-modal-fit scr-activity-detail-modal">
+          {/* 편지지 배경은 카드가 아니라 창 전체가 입는다(요청) — 창이 곧 편지 한 통이라,
+              카드 자리에만 깔면 그 위아래(머리 줄·여백)만 딴 종이가 된다. 사진 층을 창의
+              첫 자식으로 두면 창의 둥근 모서리(overflow:hidden)에 맞춰 잘리고, 유리판
+              (::before)과 내용 사이에 정확히 한 겹으로 앉는다. */}
+          <div
+            className={cx(
+              "scr-modal scr-modal-page scr-modal-fit scr-activity-detail-modal",
+              rowPhoto(detailItem) && "scr-activity-detail-photo",
+            )}
+            {...(rowPhoto(detailItem)
+              ? { style: { "--card-photo": `url("${rowPhoto(detailItem)}")` } as CSSProperties }
+              : {})}
+          >
+            {rowPhoto(detailItem) && <div className="scr-activity-card-photo" aria-hidden="true" />}
             <div className="scr-modal-head scr-activity-detail-head">
               {/* (삭제) 갈래 이름 제목 — 안 넣어도 된다(요청). 카드 자신이 이미 무엇인지를
                   말하고("bob 너 나와!", 게임 로스터, 칭호 목록…), 그 위에 "너 나와!"를 한 번
@@ -1823,13 +1838,9 @@ export default function ActivityScreen() {
                   뜨는 "전체 보기"(.scr-modal-page)만 돌아가기를 그대로 쓴다. */}
             </div>
             <div className="scr-modal-body scr-activity-detail-body scr-scroll">
-              <div
-                className={cx("scr-activity-row-body", rowPhoto(detailItem) && "scr-activity-row-body-photo")}
-                {...(rowPhoto(detailItem)
-                  ? { style: { "--card-photo": `url("${rowPhoto(detailItem)}")` } as CSSProperties }
-                  : {})}
-              >
-                {rowPhoto(detailItem) && <div className="scr-activity-card-photo" aria-hidden="true" />}
+              {/* 사진은 이 껍데기가 아니라 창이 깐다(바로 위) — 여기서는 사진 위 글자에
+                  테두리를 주는 규칙만 물려받으면 되므로 클래스만 남긴다. */}
+              <div className="scr-activity-row-body">
                 {renderCard(detailItem)}
               </div>
             </div>

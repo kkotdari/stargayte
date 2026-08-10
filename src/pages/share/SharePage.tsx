@@ -4,12 +4,13 @@ import ChallengeInboxModal from "../../modals/ChallengeInboxModal";
 import { api } from "../../api/client";
 import { useAppStore } from "../../store/appStore";
 import RankingShiftCard from "../activity/RankingShiftCard";
+import NoticeCard from "../activity/NoticeCard";
 import ScheduleCard from "../activity/ScheduleCard";
 import {
   GameResultCard, GameResultPost, gameResultItem, sessionDateLabel, sessionDateOf, type GameResultPostItem,
 } from "../activity/ActivityScreen";
 import { formatWhen, shortDate } from "../../utils/date";
-import type { Challenge, GameResult, RankingShift, Schedule } from "../../types";
+import type { ActivityNotice, Challenge, GameResult, RankingShift, Schedule } from "../../types";
 
 // 카카오톡으로 공유된 링크(?sv=gameResult|challenge|rankingShift&sid=…)가 여는, 그 한 장만 보이는
 // 화면(요청: "너나와/경기 공유시 해당 카드만 있는 화면" + "순위변동도 카톡공유 가능").
@@ -21,7 +22,7 @@ export type ShareTarget =
   /* challenge는 호출("OO 너 나와!"), challengeReply는 그 호출에 돌아온 답이다 — 같은
      도전장을 가리키지만 보여줄 이야기가 다르다(지적: 응답 공유가 호출 공유와 똑같은
      화면으로 연결됨). */
-  | { type: "gameResult" | "challenge" | "challengeReply" | "rankingShift" | "schedule"; id: number }
+  | { type: "gameResult" | "challenge" | "challengeReply" | "rankingShift" | "schedule" | "notice"; id: number }
   | { type: "stack"; day: string };
 
 export default function SharePage({ target, onExit }: { target: ShareTarget; onExit: () => void }) {
@@ -36,6 +37,7 @@ export default function SharePage({ target, onExit }: { target: ShareTarget; onE
   const [shift, setShift] = useState<RankingShift | null>(null);
   const [stack, setStack] = useState<GameResultPostItem | null>(null);
   const [schedule, setSchedule] = useState<Schedule | null>(null);
+  const [notice, setNotice] = useState<ActivityNotice | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
   // 목적지 값(id 또는 세션 날짜) 하나로 아래 useEffect의 의존성을 잡는다.
@@ -50,6 +52,7 @@ export default function SharePage({ target, onExit }: { target: ShareTarget; onE
     setShift(null);
     setStack(null);
     setSchedule(null);
+    setNotice(null);
     void (async () => {
       try {
         if (target.type === "stack") {
@@ -91,6 +94,14 @@ export default function SharePage({ target, onExit }: { target: ShareTarget; onE
           if (alive) {
             setSchedule(s);
             if (!s) setErr("공유된 일정을 찾을 수 없어요.");
+          }
+        } else if (target.type === "notice") {
+          // 알림만은 단건 조회가 있다(요청: 알림도 공유) — 목록은 시간이 갈수록 아래로
+          // 밀려나므로, 한참 뒤에 열린 링크도 그 한 건을 찾을 수 있어야 한다.
+          const n = await api.getActivityNotice(target.id).catch(() => null);
+          if (alive) {
+            setNotice(n);
+            if (!n) setErr("공유된 알림을 찾을 수 없어요.");
           }
         } else if (target.type === "rankingShift") {
           // 단건 조회 엔드포인트가 없어 목록에서 골라낸다(너 나와와 같은 방식).
@@ -176,6 +187,15 @@ export default function SharePage({ target, onExit }: { target: ShareTarget; onE
               onEdit={() => {}}
               onChanged={setSchedule}
               onDeleted={() => {}}
+            />
+          </div>
+        ) : notice ? (
+          // 알림 공유 — 활동의 그 카드 한 장(케밥·댓글 없이 읽기 전용).
+          <div className="scr-activity-list">
+            <NoticeCard
+              notice={notice}
+              timeText={formatWhen(notice.createdAt, { clock: true })}
+              memberOf={memberOf}
             />
           </div>
         ) : stack ? (

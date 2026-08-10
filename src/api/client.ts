@@ -3,7 +3,7 @@
 // ============================================================
 import type { BuildMix } from "../utils/replayBuildMix";
 import type {
-  Member, GameResult, ActivityComment, ActivityTargetType, RankingShift, ActivityFeedItem, ActivityFeedPage, NewGameResult, SignupPayload, MemberCreatePayload, MemberStatus, MemberRole,
+  Member, GameResult, ActivityComment, ActivityTargetType, RankingShift, ActivityNotice, ActivityFeedItem, ActivityFeedPage, NewGameResult, SignupPayload, MemberCreatePayload, MemberStatus, MemberRole,
   ScreenKey, AppVersion, AppVersionStatus, AppVersionInfo,
   MapCatalog, MinimapImage,
   GameResultSlot, GameResultPage, GameResultStatsResponse, GameType, Race, TeamRankingResponse,
@@ -523,6 +523,12 @@ export const api = {
   // 있었던 것만 내려준다(활동가 재계산하지 않는다).
   async listRankingShifts(): Promise<RankingShift[]> {
     return request<RankingShift[]>("/api/activities/ranking-shifts");
+  },
+
+  /** 알림 한 건 — 카카오 공유 링크(?sv=notice&sid=…)가 여는 화면이 쓴다(요청: 알림도 공유).
+   *  목록에서 골라내지 않는 이유는 알림이 시간이 갈수록 아래로 밀려나기 때문이다. */
+  async getActivityNotice(id: number): Promise<ActivityNotice> {
+    return request<ActivityNotice>(`/api/activities/notices/${id}`);
   },
 
   /** 활동 목록 — 화면이 부르는 API는 이것 하나다(요청: API 딱 하나만 호출하게).

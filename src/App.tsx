@@ -56,7 +56,7 @@ function shareTargetFromUrl(): ShareTarget | null {
   }
   const id = Number(params.get("sid"));
   if ((sv === "gameResult" || sv === "challenge" || sv === "challengeReply" || sv === "rankingShift"
-    || sv === "schedule")
+    || sv === "schedule" || sv === "notice")
     && Number.isFinite(id) && id > 0) {
     return { type: sv, id };
   }

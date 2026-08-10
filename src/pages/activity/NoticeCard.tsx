@@ -1,5 +1,8 @@
-import { Bell } from "lucide-react";
+import { useState } from "react";
+import { Bell, MoreHorizontal } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
+import KakaoShareButton from "../../components/common/KakaoShareButton";
+import { shareThumb, type KakaoShareContent } from "../../utils/kakaoShare";
 import type { ActivityNotice, Member } from "../../types";
 import { ActivityCard } from "./ActivityCard";
 
@@ -26,13 +29,72 @@ export function noticeLine(notice: ActivityNotice, nameOf: (id: string) => strin
   return NOTICE_TITLE;
 }
 
+/** 카카오로 내보낼 한 장 — 랭크 변동(rankShiftShareContent)과 같은 얼개다(요청: 알림도 공유).
+ *  본문은 바뀐 사람 둘까지만 적는다: 카카오 카드가 두 줄 남짓이라 그 이상은 어차피 잘리고,
+ *  전부 보려고 링크를 여는 것이 이 카드가 하는 일이다.
+ *  썸네일은 랭크 변동 것을 함께 쓴다 — 둘 다 사람이 올린 글이 아니라 서버가 남긴 알림이라
+ *  같은 그림이 어색하지 않고, 알림 전용 그림은 아직 없다. */
+export function noticeShareContent(
+  notice: ActivityNotice, nameOf: (id: string) => string,
+): KakaoShareContent {
+  const changes = notice.payload?.changes ?? [];
+  const summary = changes
+    .slice(0, 2)
+    .map((c) => `${nameOf(c.memberId)} ${c.to}`)
+    .join(" · ") + (changes.length > 2 ? ` 외 ${changes.length - 2}명` : "");
+  return {
+    title: "칭호 변경",
+    description: summary,
+    ...shareThumb("rankShift"),
+    link: `${window.location.origin}/?sv=notice&sid=${notice.id}`,
+    fallbackText: `[스타게이트] 칭호 변경\n${summary}`,
+  };
+}
+
+/** 카드 케밥 — 카카오 공유 하나뿐이다(알림은 사람이 지울 것이 아니다). 너 나와·랭크 변동
+ *  케밥과 같은 CSS(scr-activity-chal-menu)를 그대로 쓴다. */
+export function NoticeMenu({
+  notice, nameOf,
+}: { notice: ActivityNotice; nameOf: (id: string) => string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="scr-activity-chal-menu">
+      <button
+        type="button" className="scr-activity-post-menu-btn scr-activity-kebab-btn"
+        onClick={() => setOpen((v) => !v)}
+        aria-label="더보기" aria-haspopup="menu" aria-expanded={open}
+      >
+        <MoreHorizontal size={16} />
+      </button>
+      {open && (
+        <>
+          {/* 백드롭 클릭은 '메뉴 닫기'에서 끝난다 — 안 끊으면 그 클릭이 카드 본체까지 올라간다. */}
+          <div
+            className="scr-activity-add-backdrop"
+            onClick={(e) => { e.stopPropagation(); setOpen(false); }}
+            aria-hidden
+          />
+          <div className="scr-menu-pop-drop scr-activity-chal-menu-drop" role="menu">
+            <KakaoShareButton
+              variant="menu"
+              content={() => noticeShareContent(notice, nameOf)}
+              onDone={() => setOpen(false)}
+            />
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function NoticeCard({
-  notice, timeText, dateLabel, memberOf, footer,
+  notice, timeText, dateLabel, memberOf, actions, footer,
 }: {
   notice: ActivityNotice;
   timeText: string;
   dateLabel?: string;
   memberOf: (id: string) => Member | undefined;
+  actions?: React.ReactNode;
   footer?: React.ReactNode;
 }) {
   const changes = notice.payload?.changes ?? [];
@@ -45,6 +107,7 @@ export default function NoticeCard({
       icon={<Bell size={14} />}
       label="칭호 변경"
       timeText={timeText}
+      actions={actions}
       comment={footer}
     >
       <ul className="scr-notice-list">
