@@ -2575,8 +2575,7 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 .scr-stat-rank-line { display: flex; align-items: center; justify-content: center; gap: 4px; position: relative; }
 .scr-stat-rank-points { color: var(--dim); }
 /* (삭제) 줄마다 달던 레이팅 기준일자 — 칸 머리 아랫줄로 옮겼다(요청, .scr-stat-plain-head-sub). */
-/* BEST PLAYER 횟수(요청: 순위 아래) — 순위·레이팅과 달리 없는 사람이 대부분이라, 있을 때만
-   서고 그때는 확실히 눈에 띄어야 한다. 활동 카드의 같은 표시와 같은 금색을 쓴다. */
+/* (삭제) BEST PLAYER 횟수 줄 — 표에서 걷었다(요청). */
 /* ── 전달 대비 변동 ────────────────────────────────────────────────────────────
    요청: 모든 수치에 화살표 말고 +/-로, 연하고 작은 글씨. 값 옆에 붙는 단서라 값보다 한
    단계 작고 흐리다. 오르내림을 색으로 가르지 않는 것도 일부러다 — 이 표에서 '큰 쪽이
@@ -2601,26 +2600,25 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    좌우 안여백도 6 → 4px(지적: 줄기 왼쪽이 너무 남는다) — 이 버튼의 여백은 누를 자리를
    넓히려던 것인데, 그 몫이 메달·단위가 매달리는 기준선을 좌우로 밀어 줄기 폭을 그만큼
    키우고 있었다. 누를 자리는 줄 높이가 이미 만들어 준다. */
-/* 이 줄기의 버튼은 레이팅이든 순위든 같은 안여백이다(지적: 레이팅과 순위의 변동 줄간격이
-   다르다) — 한때 레이팅 줄에만 줄여 놨더니, 순위 버튼만 아래 안여백이 2px 더 남아 그
-   아래 변동이 그만큼 떨어져 보였다. 값과 변동 사이는 표 어디서나 같아야 한다. */
+/* 레이팅 값의 안여백 — 껍데기(.scr-stat-points-btn)는 눌리지 않는 맨 글자가 된 뒤에도
+   그대로 쓴다(자리·크기·안여백이 거기 걸려 있다). 버튼 티만 걷는 것은 아래
+   .scr-stat-points-plain이 한다. */
 .scr-stat-rank-line .scr-stat-points-btn { padding: 2px 4px; }
-/* 값과 그 아래 변동 사이 — 줄기 안의 셋(레이팅·순위·BEST)이 같아야 한다(요청: BEST 쪽
-   여백으로 통일). BEST의 수는 버튼이 아니라 맨 글자라 아래 안여백이 없고, 그래서 이 둘만
-   음수 마진으로 당겨 두면 BEST보다 2px씩 붙어 보였다. 당기는 것을 걷어 낸다 —
-   버튼의 아래 안여백(2px)이 BEST 격자의 행 사이(margin-top 1px + 글자 아랫여백)와
-   맞물려 셋이 같은 크기로 읽힌다. */
+/* 값과 그 아래 변동 사이 — 버튼의 아래 안여백(2px)이 이미 벌려 주므로 더 당기지 않는다. */
 .scr-stat-rank-points + .scr-stat-rank-delta { margin-top: 0; }
-/* 순위 변동 줄(요청: 크기 줄이고 순위 아래로) — 다른 변동들과 같은 크기·같은 간격이다.
-   화살표·"신규"는 예전에 micro(12px)였는데, 그때는 순위 옆에 나란히 서서 그 정도는 돼야
-   읽혔다. 제 줄로 내려온 지금은 레이팅·BEST의 변동과 한 열에 서므로 그것들과 같아야 한다. */
-.scr-stat-rank-move { line-height: 1; margin-top: 0; }
-/* 덩어리 사이는 벌리고 덩어리 안은 붙인다(요청: 세 요소 사이를 띄워 달라) — 이 줄기에는
-   [레이팅+변동] [순위+변동] [BEST+변동] 셋이 세로로 서는데, 줄 간격이 하나뿐이면 값과
-   제 변동 사이나 남의 덩어리와의 사이나 똑같아서 어디까지가 한 덩어리인지가 안 보인다.
-   변동 줄 다음에 오는 줄이 곧 새 덩어리의 첫 줄이라, 그 자리에만 사이를 준다. */
-.scr-stat-rank-delta + .scr-stat-rank-line,
-.scr-stat-rank-move + .scr-stat-rank-line { margin-top: 7px; }
+/* 순위 줄 — [n위] [변동]이 한 줄이다(요청: 순위 변동 자리 복귀).
+   순위 자체는 줄기 가운데에 그대로 서야 한다: 변동을 흐름에 두면 [순위+변동] 덩어리가
+   가운데에 서면서 정작 "n위"가 변동 폭의 절반만큼 왼쪽으로 밀리고, 변동이 없는 줄과
+   있는 줄의 x가 달라진다. 그래서 변동만 값의 오른쪽 바깥에 매단다 — 레이팅의 단위 "R"과
+   메달이 쓰는 것과 같은 규칙이고, 기준도 같은 껍데기(.scr-stat-rank-val)다. */
+.scr-stat-rank-move {
+  position: absolute; left: 100%; top: 50%; transform: translateY(-50%);
+  margin-left: 3px; line-height: 1; white-space: nowrap;
+}
+/* 덩어리 사이는 벌리고 덩어리 안은 붙인다(요청) — 이 줄기에는 [레이팅+변동] [순위] 둘이
+   세로로 서는데, 줄 간격이 하나뿐이면 값과 제 변동 사이나 남의 덩어리와의 사이나 똑같아서
+   어디까지가 한 덩어리인지가 안 보인다. 변동 줄 다음이 곧 새 덩어리의 첫 줄이다. */
+.scr-stat-rank-delta + .scr-stat-rank-line { margin-top: 7px; }
 .scr-stat-rank-move .scr-activity-shift-up,
 .scr-stat-rank-move .scr-activity-shift-down,
 .scr-stat-rank-move .scr-activity-shift-new {
@@ -2641,46 +2639,9 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 /* 업그레이드 표의 한 칸 — 평균 밑에 변동을 한 줄로 놓는다(옆에 붙이면 세 열이 밀린다). */
 .scr-stat-up-cell { display: inline-flex; flex-direction: column; align-items: center; line-height: 1.15; }
 .scr-stat-up-cell .scr-stat-delta { margin-left: 0; }
-/* 배지·수·변동 세 덩어리를 한 격자로 — 수(1행 2열)와 변동(2행 2열)이 같은 열에 서야
-   세로선이 맞고(요청), 배지는 왼쪽 열에서 제 자리를 차지한다. 격자 자체는 칸 가운데다.
-   flex(줄) 대신 grid를 쓰는 이유는 두 줄로 쓰면 변동이 [배지+수] 덩어리 기준으로 가운데에
-   서서 정작 수와는 어긋나기 때문이다 — 그렇다고 배지를 흐름 밖으로 띄우면 좁은 줄기를
-   넘어 왼쪽 구분선까지 삐져나간다(지적). */
-.scr-stat-rank-best {
-  display: grid; grid-template-columns: auto auto; justify-content: center;
-  align-items: center; column-gap: 3px; color: var(--best-ink);
-}
-/* 채움이 있는 배지는 메탈 그라데이션을 못 쓴다 — background-clip:text는 배경 전부를
-   글자 모양으로 오려서, 알약의 채움까지 함께 사라진다. 여기서는 백금 한 색으로 둔다. */
-/* 알약이 아니라 글자다(요청) — 테두리와 채움을 걷고 색만 남긴다. 이 줄기에는 레이팅·순위도
-   함께 서는데, 그 둘은 맨 글자라 배지 하나만 도드라져 다른 종류의 값처럼 보였다. 색(금)이
-   이미 "이건 BEST"라고 말하므로 껍데기까지 씌울 필요가 없다.
-   배지는 왼쪽 열, 수와 변동은 오른쪽 열 — 그래야 수 아래에 변동이 곧바로 선다(요청). */
-.scr-stat-best-tag {
-  font-size: var(--fs-9); font-weight: 800; letter-spacing: 0.03em; line-height: 1;
-  grid-column: 1; grid-row: 1;
-}
-.scr-stat-best-n {
-  grid-column: 2; grid-row: 1; position: relative;
-  font-weight: 700; font-variant-numeric: tabular-nums;
-}
-/* 단위는 수의 오른쪽에 매달되 자리는 안 차지한다 — 레이팅의 "R"과 같은 규칙이라 수 자체가
-   아래 변동과 세로로 맞는다. 색은 이 줄의 금색을 그대로 물려받되 한 단계 눌러 둔다. */
-.scr-stat-best-unit {
-  position: absolute; left: 100%; top: 50%; transform: translateY(-50%);
-  margin-left: 1px; font-size: var(--fs-11); font-weight: 600; opacity: 0.7;
-}
-.scr-stat-best-delta {
-  grid-column: 2; grid-row: 2; line-height: 1; margin-top: 1px;
-  font-size: calc(var(--fs-9) - 1px);
-}
-.scr-stat-best-delta .scr-stat-delta { margin-left: 0; }
-/* 이 줄의 변동만은 무채가 아니라 제 줄의 색(금)을 옅게 쓴다(요청) — 다른 변동은 바로 위
-   값도 무채라 한 덩어리로 읽히는데, 여기만 값이 금색이라 회색 변동이 남의 줄에서 온 글자처럼
-   떠 보였다. 색상은 그대로 두고 세기만 내린다. */
-.scr-stat-best-delta .scr-stat-delta {
-  color: color-mix(in srgb, var(--best-ink) 62%, transparent);
-}
+/* (삭제) BEST PLAYER 줄 한 벌(.scr-stat-rank-best / -best-tag / -best-n / -best-unit /
+   -best-delta) — 표에서 걷었다(요청: 통계 그리드 베스트 표시 없애기). 값은 서버가 계속
+   세고(summary_data의 best), 그 판의 BEST가 누구인지는 경기 결과 쪽이 말한다. */
 
 /* ── 유닛·스킬 칸(요청: Top5 목록, 정렬 없음) ───────────────────────────────────
    이름은 왼쪽에 붙이고 수는 오른쪽 끝에 세로로 맞춘다 — 다섯 줄을 위아래로 훑을 때
@@ -3137,15 +3098,22 @@ html:not(.scr-light-theme) .scr-donut-band-delta { fill: #fff; opacity: 0.66; }
 @media (hover: hover) {
   .scr-stat-points-btn:hover { background: var(--lit-hover-bg); box-shadow: var(--lit-hover-glow); }
 }
+/* 레이팅은 이제 눌리지 않는다(요청: 레이팅 상세 페이지 삭제) — 껍데기는 그대로 쓰되
+   '누를 수 있다'는 신호(점선 밑줄·손 모양·호버 반응)를 전부 걷는다. 그 신호를 남겨 두면
+   눌러도 아무 일이 없는 글자가 되어, 표에서 제일 눈에 띄는 값이 곧 제일 답답한 값이 된다.
+   호버 규칙(위, 0-2-0)을 이겨야 하므로 클래스를 겹쳐 특이도를 맞춘다. */
+.scr-stat-points-btn.scr-stat-points-plain {
+  cursor: default; text-decoration: none;
+  background: none; box-shadow: none;
+}
 .scr-stat-points-empty { color: var(--dim); }
-/* 랭크 칸 — 순위와 포인트가 위아래 두 줄이다(요청: 통합, 세로 배치는 위 규칙). 월을 보고
-   있으면 순위가 누를 수 있는 버튼이 되고(최근 5개월 순위변동), 전체 기간이면 견줄 달이
-   없어 글자로만 둔다. 포인트는 늘 버튼이다(경기 이력). 변동 화살표는 활동의 랭크 변동
-   카드와 같은 색 규칙(scr-activity-shift-up/down)을 그대로 쓴다.
+/* 랭크 칸 — 순위와 레이팅이 위아래 두 줄이다(요청: 통합, 세로 배치는 위 규칙). 둘 다 이제
+   맨 글자다(요청: 상세 페이지 삭제). 변동 화살표는 활동의 랭크 변동 카드와 같은 색
+   규칙(scr-activity-shift-up/down)을 그대로 쓴다.
    메달이 이 칸 우상단에 절대배치되므로 position:relative가 필요하다(.scr-stat-medal 참고). */
 .scr-stat-rank-cell { justify-content: center; gap: 2px; position: relative; }
-/* 클릭 가능한 랭크(.scr-stat-points-btn 재사용)와 글자 크기·굵기가 같아야 한다 —
-   전체 기간(견줄 달 없음)에서만 이 non-button 버전이 쓰인다. */
+/* 레이팅 값(.scr-stat-points-btn)과 글자 크기·굵기가 같아야 한다 — 한 줄기에 세로로 서는
+   두 값이라 무게가 다르면 하나가 다른 하나의 부속처럼 읽힌다. */
 .scr-stat-rank-plain {
   font-size: var(--fs-caption); font-weight: 700; color: var(--text);
   font-variant-numeric: tabular-nums;
@@ -4113,25 +4081,8 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
    갈린다(요청: 필터에 각각 라벨). 이름표는 값 '위'에 올린다(요청, 다른 화면 필터와 같은
    모양) — 옆에 두면 라디오 낱말들과 같은 줄에 섞여 그것도 고르는 값처럼 읽힌다. */
 .scr-stat-filter-group { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; min-width: 0; }
-/* 정렬 덩어리만 오른쪽으로(요청) — 모바일에선 제 줄의 오른쪽 끝(align-self), PC에선 남는
-   폭을 전부 왼쪽 마진으로 먹어 줄 끝으로 밀린다(margin-left:auto).
-   이름표는 덩어리 안에서 왼쪽 그대로다(요청: 이름표까지 오른쪽으로 붙이면 안 된다) —
-   오른쪽으로 붙이면 앞의 셋과 이름표 자리가 어긋나 다른 종류의 것으로 읽힌다. */
-.scr-stat-filter-sort { align-self: flex-end; margin-left: auto; }
-/* 정렬만 다른 옷을 입는다(요청) — 배경을 없애고 굵기와 글자색으로만 고른 것을 보인다.
-   앞의 셋(유형·종족)은 "무엇을 볼까"라 지금 걸린 값이 한눈에 잡혀야 해서 채운 알약이지만,
-   정렬은 표의 내용을 바꾸지 않는 곁가지라 같은 무게로 서면 셋과 경쟁한다.
-   색은 라이트 테마가 알약에 쓰는 하늘색을 다크의 글자색으로 가져오고, 라이트는
-   밝은 바탕에 얹히므로 그보다 진한 파랑을 쓴다 — 같은 하늘색을 쓰면 흰 바탕에 묻힌다.
-   글자도 한 스텝 작다(요청) — 곁가지라는 것이 크기로도 읽힌다. */
-.scr-stat-filter-sort .scr-pick { font-size: var(--fs-micro); }
-.scr-stat-filter-sort .scr-pick-on {
-  background: none; box-shadow: none; font-weight: 800;
-  /* 값을 그대로 적는다 — var(--lit-rgb)는 테마마다 뒤집히는 토큰이라 다크에서는 흰색이
-     되어 버린다(실측). 여기서 원하는 건 "라이트 테마의 하늘색"이라는 고정된 색이다. */
-  color: rgb(168, 193, 225);
-}
-.scr-light-theme .scr-stat-filter-sort .scr-pick-on { color: #2360c8; }
+/* (삭제) 정렬 덩어리 한 벌(.scr-stat-filter-sort와 그 안의 낱말 스타일) — 정렬을 랭킹순
+   하나로 고정하며 필터 자체를 걷었다(요청). */
 /* 크기는 활동 화면 필터 라벨(.scr-filter-item-label)과 같은 값이다(요청: 활동보다 커서
    맞춰 달라) — 화면이 달라도 같은 자리의 글자는 같은 크기여야 한다. */
 .scr-stat-filter-label {
@@ -4144,8 +4095,7 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
    .scr-stat-filter-row 밖에 있어서, 그 줄에 걸어 두면 종족만 규칙을 통째로 놓친다
    (실측: 트랙이 남는 폭을 다 먹고 다크에서 낱말이 안 보였다). */
 /* 모바일 필터 줄의 기본은 스페이스비트윈, 덩어리가 하나뿐인 줄은 가운데다(요청 — 이 화면의
-   기본 규칙). 정렬만은 그와 무관하게 늘 오른쪽 끝이다(.scr-stat-filter-sort).
-   좁아서 다 안 들어가면 뒤엣것부터 아래로 내려간다 — 줄 자체가 flex-wrap이라 따로 할 일은
+   기본 규칙). 좁아서 다 안 들어가면 뒤엣것부터 아래로 내려간다 — 줄 자체가 flex-wrap이라 따로 할 일은
    없다(한때 낱말 여백을 절반으로 줄여 억지로 한 줄에 넣어 봤는데 서로 붙어 버려 되돌렸다). */
 @media (max-width: 1159px) {
   .scr-stat-filter-row { justify-content: space-between; }

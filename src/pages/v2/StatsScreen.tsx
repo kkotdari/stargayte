@@ -5,8 +5,6 @@ import MonthCalendar from "../../components/common/MonthCalendar";
 import PickRow from "../../components/common/PickRow";
 import MemberStatRow, { type StatColumnMedals } from "../stats/MemberStatRow";
 import { useEpithets } from "../../utils/useEpithets";
-import PointDetailModal from "./PointDetailModal";
-import RankTrendModal from "./RankTrendModal";
 import { rankOf } from "./rankOrder";
 import RivalryOverlay from "../rivalry/RivalryOverlay";
 import { useAppStore } from "../../store/appStore";
@@ -74,26 +72,13 @@ const EMPTY_STATS: MemberStats = {
   avgApm: null, avgEapm: null, avgCmd: null, avgEcmd: null, avgBuild: null, buildMix: null, avgWorker5: null, mixPlays: null, mixSeconds: null, upPlays: null,
 };
 
-// 정렬 가능한 칸 — 건설/유닛/스킬은 순위로 줄 세울 값이 아니라 그 사람의 색깔이라 뺐다
-// (요청). 랭크와 레이팅는 한 칸이 되면서 정렬 키도 하나(points)로 합쳤다 — 레이팅로 매긴
-// 것이 랭크라 두 정렬은 애초에 같은 순서였다.
-/* 정렬은 컬럼 머리를 누르는 대신 필터 아랫줄에 낱말로 늘어놓고 고른다(요청). 그래서 기준과
-   방향을 따로 두지 않고 "무엇을 어느 쪽으로"를 한 낱말로 묶는다 — 게임수를 적은 순으로 보는
-   일은 없고, 이름은 가나다순 말고 볼 일이 없다. 고를 것이 하나면 잘못 고를 일도 없다. */
-type StatSortKey = "points" | "plays" | "rate";
-type StatSortDir = "desc" | "asc";
-interface StatSort { key: StatSortKey; dir: StatSortDir }
-
-/* 라벨은 이름만 적는다(요청: "높은 순 빼고 랭킹 게임수 승률 apm ... 이런 식으로 이름만").
-   낱말을 나란히 늘어놓는 자리라 "높은순/많은순"이 여섯 번 되풀이되면 그것만 읽힌다 —
-   어느 쪽으로 서는지는 아래 dir이 늘 같은 쪽(이름만 가나다순)이라 굳이 적지 않아도 된다. */
-const SORT_OPTS: { value: StatSortKey; label: string; dir: StatSortDir }[] = [
-  { value: "points", label: "랭킹순", dir: "desc" },
-  { value: "plays", label: "게임수순", dir: "desc" },
-  { value: "rate", label: "승률순", dir: "desc" },
-];
-const sortOf = (key: StatSortKey): StatSort =>
-  ({ key, dir: SORT_OPTS.find((o) => o.value === key)?.dir ?? "desc" });
+/* 정렬은 늘 랭킹순 하나다(요청: 정렬 필터 삭제, 랭킹순만) — 고를 것을 없앴다.
+   게임수순·승률순도 있었지만, 이 표는 그 값들을 이미 막대로 나란히 그려서 누가 많이 뛰고
+   누가 잘 이겼는지가 순서를 바꾸지 않아도 보인다. 남은 것은 "이 표를 어느 순서로 읽을까"
+   하나이고, 그 답은 랭킹뿐이다 — 옆에 순위가 적혀 있는 표에서 순위 아닌 순서로 줄을
+   세우면 두 값이 서로 어긋나 보인다.
+   내림차순 고정이라 방향(dir)도 함께 걷었다. */
+const SORT_KEY = "points" as const;
 
 /** 컬럼 머리 — 이제 이름 하나뿐이다. 정렬은 드롭다운으로 갔고(요청), 칸마다 달려 있던
  *  설명(ⓘ)도 타이틀 옆 한 자리로 합쳤다(요청) — 여섯 칸에 여섯 개가 흩어져 있으면 무엇을
@@ -145,13 +130,7 @@ export default function StatsScreenV2() {
   // (삭제) 활동의 랭크 변동 카드에서 유형을 미리 걸어 주는 연동이 있었는데, 그 입구였던
   // "실시간 랭크 확인" 링크를 걷어내면서(요청) 걸어 줄 사람이 없어졌다.
   const [matchType, setMatchType] = useState<GameType>("0101");
-  // 기본 정렬은 레이팅(랭크 점수) 내림차순 — 랭킹을 통계에 통합한 기본 모습(요청).
-  const [sort, setSort] = useState<StatSort>(sortOf("points"));
-  // 레이팅을 누르면 그 회원의 레이팅 상세(경기 이력)를 연다.
-  const [pointMember, setPointMember] = useState<Member | null>(null);
-  // 월간 랭크를 누르면 그 회원의 최근 다섯 달 순위변동 그래프를 연다(요청). 전체 기간을
-  // 볼 때는 견줄 달이 없어 열 게 없다 — 그래서 아래에서 월일 때만 클릭을 붙인다.
-  const [trendMember, setTrendMember] = useState<Member | null>(null);
+  // (삭제) 레이팅 상세·순위변동 그래프를 여는 상태 — 두 상세 화면을 걷어냈다(요청).
   // 상성 관계 오버레이(타이틀 옆 "상성 보기" 버튼).
   const [rivalryOpen, setRivalryOpen] = useState(false);
   // 기간은 올타임 아니면 특정 월("YYYY-MM") 하나 — 예전 단위 알약탭 + 월 선택기를 달력
@@ -163,7 +142,6 @@ export default function StatsScreenV2() {
      혼자 전체 종족 기준으로 남아 옆 칸들과 잣대가 어긋났기 때문이다 — 이제 서버가 사람마다
      제 주종족으로 다시 매기므로(serverRaceOf 주석) 어긋날 일이 없다. */
   const showRank = true;
-  const sortOpts = SORT_OPTS.map(({ value, label }) => ({ value, label }));
 
   // 기간 드롭다운에 늘어놓을 월의 하한 — 첫 경기가 있는 달. 그보다 과거는 어차피 빈
   // 표라서 목록에 둘 이유가 없다. 한 번만 물어보고, 실패하면 이번 달만 남는다.
@@ -193,12 +171,6 @@ export default function StatsScreenV2() {
     const at = end > today ? today : end;
     return `${at.getMonth() + 1}.${at.getDate()}`;
   }, [effectiveTo]);
-
-  /* 상세(레이팅 이력·순위변동)를 열 때 넘길 종족 — 목록의 "주종족"은 사람마다 다른 값이라
-     그 회원의 실제 주종족 하나로 바꿔 넘긴다. 주종족을 못 고른 회원(0경기)은 전체로 둔다. */
-  const detailRaceOf = (memberId: string): BaseRace | "all" => (
-    race === "main" ? (mainRaceOf(view?.stats[memberId]) ?? "all") : race
-  );
 
   // SearchFilterBar가 이제 엔터를 눌러야만 onSearchChange를 부르므로(점프 방지), search
   // 자체가 이미 확정된 값이다 — 더 늦출 디바운스가 필요 없다.
@@ -332,9 +304,8 @@ export default function StatsScreenV2() {
     return view.memberIds.map((id) => byId.get(id)).filter((m): m is Member => m !== undefined);
   }, [view, members]);
 
-  /** 지금 표에 그려져 있는 한 장의 기간 — 칸 이름·순위변동처럼 '보이는 값'을 설명하는
-   *  자리에는 지금 고른 기간(periodMonth)이 아니라 이 값을 쓴다. */
-  const shownMonth = view?.periodMonth ?? "";
+  /* (삭제) shownMonth — 순위변동 그래프를 열 수 있는 달인지 가리던 값이라, 그 화면을
+     걷어내며(요청) 쓸 곳이 없어졌다. */
 
   /* 건설·유닛·스킬 세 칸은 종족이 정해져야 그린다(요청) — 종족마다 짓는 건물도 뽑는 유닛도
      아예 달라, 여러 종족의 판을 한 칸에 겹치면 그 도넛·목록은 무엇의 비율인지가 없는
@@ -418,11 +389,10 @@ export default function StatsScreenV2() {
       if (ta === 1) return nicknameTiebreak(a, b);
       return 0;
     };
-    const dirSign = sort.dir === "desc" ? -1 : 1;
-    // 데이터 칸(랭크·유저 제외) 하나를 비교한다 — 값이 없는 쪽은 방향과 무관하게 항상
-    // 맨 아래(위 noPointsLast/noPlaysLast/noAvgLast), 있으면 지금 선택된 방향(dirSign)
-    // 그대로 크고 작음을 비교한다(요청: "오름차순인지 내림차순인지도 따져서" — 타이브레이크도
-    // 반대로 뒤집힐 수 있다는 뜻).
+    // 늘 내림차순이다(요청: 랭킹순만) — 고를 방향이 없어졌으니 부호도 상수다.
+    const dirSign = -1;
+    // 데이터 칸(랭크·유저 제외) 하나를 비교한다 — 값이 없는 쪽은 항상 맨 아래
+    // (위 noPointsLast/noPlaysLast/noAvgLast), 있으면 큰 쪽이 위로 온다.
     type DataKey = "points" | "plays" | "rate" | "apm" | "cmd";
     const compareData = (key: DataKey, a: (typeof list)[number], b: (typeof list)[number]) => {
       switch (key) {
@@ -433,26 +403,22 @@ export default function StatsScreenV2() {
         case "cmd": return noAvgLast(a, b, "avgCmd") || dirSign * ((a.stats.avgCmd ?? 0) - (b.stats.avgCmd ?? 0));
       }
     };
-    // 타이브레이크 우선순위 — 표의 칸 순서 그대로(레이팅 > 게임수 > 승률 > APM >
-    // 커맨드, 요청: "타이인 경우 앞에서부터 순서대로 적용"). 지금 고른 칸은 이미 맨 앞으로
-    // 당겨 첫 비교로 쓰고, 나머지는 이 순서 그대로 이어서 본다. 랭크는 레이팅와 사실상
-    // 같은 값이라(동점=공동순위) 별도 타이브레이크 칸으로 안 쓴다(요청) — 랭크가 갈리지
-    // 않으면 레이팅도 갈리지 않으므로 그대로 다음 칸(게임수)으로 자연히 넘어간다. 유저
-    // 닉네임은 숫자 칸이 전부 같을 때만 쓰는 최후의 보루(요청: "닉네임이 마지막")다.
-    const DATA_ORDER: DataKey[] = ["points", "plays", "rate", "apm", "cmd"];
-    const tiebreakChain = (primary: DataKey | null) => {
-      const order = primary ? [primary, ...DATA_ORDER.filter((k) => k !== primary)] : DATA_ORDER;
-      return (a: (typeof list)[number], b: (typeof list)[number]) => {
-        for (const key of order) {
-          const c = compareData(key, a, b);
-          if (c) return c;
-        }
-        return nicknameTiebreak(a, b);
-      };
-    };
-    sorted.sort(tiebreakChain(sort.key));
+    /* 비교 순서 — 표의 칸 순서 그대로(레이팅 > 게임수 > 승률 > APM > 커맨드, 요청:
+       "타이인 경우 앞에서부터 순서대로 적용"). 정렬 기준이 랭킹 하나로 고정되면서
+       (SORT_KEY) 고른 칸을 맨 앞으로 당기던 재배열도 걷었다 — 그 칸이 이미 이 목록의
+       첫 번째다. 랭크는 레이팅과 사실상 같은 값이라(동점=공동순위) 별도 칸으로 안
+       쓴다(요청): 랭크가 안 갈리면 레이팅도 안 갈려 자연히 다음 칸으로 넘어간다.
+       유저 닉네임은 숫자 칸이 전부 같을 때만 쓰는 최후의 보루(요청: "닉네임이 마지막")다. */
+    const DATA_ORDER: DataKey[] = [SORT_KEY, "plays", "rate", "apm", "cmd"];
+    sorted.sort((a, b) => {
+      for (const key of DATA_ORDER) {
+        const c = compareData(key, a, b);
+        if (c) return c;
+      }
+      return nicknameTiebreak(a, b);
+    });
     return sorted;
-  }, [viewMembers, view, sort, rankByMember]);
+  }, [viewMembers, view, rankByMember]);
 
 
   /* 이미 끝난 달을 볼 때는 각 칸의 1·2·3위에 메달을 붙인다(요청) — 그 달의 성적은 더
@@ -551,13 +517,11 @@ export default function StatsScreenV2() {
         onSearchChange={setSearch}
         searchPlaceholder="유저 입력 또는 @로 목록 띄우기"
         suggestions={suggestions}
-        /* 조건은 목록 위 세 줄이 맡는다(요청) — 예전엔 "8월 개인전 전체종족"처럼 한 문장에
+        /* 조건은 목록 위 한 줄이 맡는다(요청) — 예전엔 "8월 개인전 전체종족"처럼 한 문장에
            드롭다운을 섞어 놨는데, 고를 것이 늘면서 문장이 길어지고 무엇이 눌리는지도 흐릿해졌다.
-             ① 유형(라디오) + 기간(달력)
-             ② 종족(라디오)
-             ③ 정렬(텍스트 버튼 나열)
-           라디오는 값이 몇 개 안 되고 늘 같은 자리에 있어, 지금 무엇이 걸렸는지를 열어 보지
-           않고도 한눈에 읽는다. */
+           지금은 유형(라디오) · 종족(라디오) · 월(달력) 셋뿐이다 — 정렬은 랭킹순으로
+           고정되면서 통째로 걷었다(요청). 라디오는 값이 몇 개 안 되고 늘 같은 자리에 있어,
+           지금 무엇이 걸렸는지를 열어 보지 않고도 한눈에 읽는다. */
         heading={<div className="scr-stat-filters">
           {/* 유형·종족·기간 순으로 한 줄에(요청) — 고르는 낱말끼리 붙여 두고 달력을 끝에
               둔다. 좁아서 다 안 들어가면 wrap이 뒤엣것부터 아래로 내린다. */}
@@ -579,13 +543,7 @@ export default function StatsScreenV2() {
               />
             </FilterGroup>
           </div>
-          {/* 정렬은 오른쪽 끝(요청) — 앞의 셋이 "무엇을 볼까"라면 이건 "어떻게 늘어놓을까"라
-              결이 다르다. 떨어뜨려 두면 그 차이가 자리로 읽힌다.
-              이름표는 없다(요청) — 낱말마다 "~순"이 붙어 그 자체가 이름표 노릇을 한다.
-              바깥(.scr-stat-filters)이 아래 맞춤이라 이름표가 없어도 앞의 셋과 같은 줄에 선다. */}
-          <div className="scr-stat-filter-group scr-stat-filter-sort">
-            <PickRow options={sortOpts} value={sort.key} onChange={(k) => setSort(sortOf(k))} label="정렬 기준" />
-          </div>
+          {/* (삭제) 오른쪽 끝의 정렬 줄 — 랭킹순으로 고정하며 걷었다(요청). */}
         </div>}
       />
 
@@ -669,14 +627,9 @@ export default function StatsScreenV2() {
                     // 자기 줄에 살짝 배경을 깐다(요청) — 회원이 늘수록 표에서 제 줄을 찾는
                     // 것이 일이 된다.
                     me={c.member.id === user?.id}
-                    // BEST PLAYER는 팀전에만 붙는 값이라 개인전 표에서는 안 그린다(요청) — 어느 줄이나
-                    // 0이고, 그 0이 "한 번도 못 받았다"로 잘못 읽힌다.
-                    showBest={matchType !== "0101"}
                     points={showRank ? c.points : undefined}
                     rank={showRank ? rankByMember.get(c.member.id) ?? null : null}
                     rankDelta={showRank ? rankDeltaByMember.get(c.member.id) ?? null : null}
-                    onPointsClick={() => setPointMember(c.member)}
-                    onRankClick={showRank && shownMonth ? () => setTrendMember(c.member) : undefined}
                     medals={medalByMember.get(c.member.id)}
                     // 닉네임 아래 한 줄 — 위 epithetByMember 참고(늘 전체 누적 기준).
                     epithet={epithetByMember.get(c.member.id)}
@@ -701,31 +654,8 @@ export default function StatsScreenV2() {
         )}
       </div>
 
-      {/* 레이팅 상세 — 그래프/소제목 없이 경기 이력만(요청, 예전 랭킹 상세 대체). */}
-      {pointMember && (
-        <PointDetailModal
-          member={pointMember}
-          matchType={matchType}
-          period={{ from: effectiveFrom, to: effectiveTo }}
-          // 상세는 그 회원의 실제 종족 하나로 연다 — "주종족"은 목록에서만 뜻이 있는 값이라
-          // (사람마다 다르다) 그대로 넘길 수 없다. 표의 레이팅도 그 종족 기준이라 어긋나지 않는다.
-          race={detailRaceOf(pointMember.id)}
-          onClose={() => setPointMember(null)}
-        />
-      )}
-
-      {/* 순위변동 — 최근 다섯 달의 순위를 그린다(요청). 순위는 그 달 표 전체에서 나오는
-          값이라 회원 목록(rankPool)을 통째로 넘겨 화면과 같은 규칙으로 다시 매긴다. */}
-      {trendMember && shownMonth && (
-        <RankTrendModal
-          member={trendMember}
-          memberIds={rankPool}
-          month={shownMonth}
-          matchType={matchType}
-          race={detailRaceOf(trendMember.id)}
-          onClose={() => setTrendMember(null)}
-        />
-      )}
+      {/* (삭제) 레이팅 상세(PointDetailModal)와 순위변동 그래프(RankTrendModal) — 둘 다
+          걷어냈다(요청). 두 화면 파일도 함께 지웠다: 이 표가 유일한 입구였다. */}
 
       {/* 상성 관계 — 기간은 이 화면의 현재 필터를 그대로 쓴다(개인전 고정). */}
       {rivalryOpen && (

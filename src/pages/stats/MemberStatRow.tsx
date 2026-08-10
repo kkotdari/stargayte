@@ -305,9 +305,6 @@ interface MemberStatRowProps {
   prev?: MemberStats;
   /** 이 줄이 지금 로그인한 사람인가 — 배경을 살짝 깔아 제 줄을 바로 찾게 한다(요청). */
   me?: boolean;
-  /** BEST PLAYER 줄을 그릴까 — 개인전만 보고 있으면 안 그린다(요청). 팀전에만 붙는 값이라
-   *  개인전 표에서는 어느 줄이나 0이고, 그 0이 "한 번도 못 받았다"로 잘못 읽힌다. */
-  showBest?: boolean;
   /** 레이팅의 전달 값 — points와 같은 자리에서 온다(entry.rankScore). */
   prevPoints?: number | null;
   // 게임수 칸(ValueBar)의 기준값(이 목록에서 가장 많이 뛴 사람 = 100%).
@@ -331,11 +328,8 @@ interface MemberStatRowProps {
   // 아무것도 안 보여준다.
   rankDelta?: number | "new" | null;
   // (삭제) 레이팅 기준일자 — 줄마다 적던 것을 칸 머리 한 곳으로 옮겼다(요청, StatsScreen).
-  // 레이팅을 누르면 레이팅 상세(경기 이력)를 연다.
-  onPointsClick?: () => void;
-  // 랭크를 누르면 최근 5개월 순위변동 그래프를 연다(요청) — 월을 보고 있을 때만 넘어온다.
-  // 안 넘기면 랭크는 그냥 글자로만 그려진다.
-  onRankClick?: () => void;
+  // (삭제) onPointsClick / onRankClick — 레이팅 상세와 순위변동 그래프를 걷어냈다(요청).
+  // 두 값 다 이제 눌리지 않는 맨 글자다.
   // 지난 기간을 볼 때만 온다 — 아직 안 끝난 달에는 메달을 안 단다(StatsScreen 참고).
   medals?: StatColumnMedals;
   /** 이 줄의 값이 어느 종족 것인가 — 닉네임 옆 배지로 적는다(요청).
@@ -363,9 +357,9 @@ interface MemberStatRowProps {
 
 // 전적통계 목록의 테이블 한 행.
 export default function MemberStatRow({
-  member, stats, prev, me = false, showBest = true, prevPoints, maxOverallPlays, maxApm, maxCmd,
+  member, stats, prev, me = false, prevPoints, maxOverallPlays, maxApm, maxCmd,
   avatar = true, compact = false,
-  points, rank, rankDelta, onPointsClick, onRankClick, medals, race, upRace, showMix = true,
+  points, rank, rankDelta, medals, race, upRace, showMix = true,
   epithet, epithetReady = false,
 }: MemberStatRowProps) {
   const openMemberProfile = useAppStore((s) => s.openMemberProfile);
@@ -444,10 +438,11 @@ export default function MemberStatRow({
                        값이어야 한다(지적: 레이팅과 메달 사이가 너무 멀다). 줄 전체를 기준으로
                        두면 가운데 정렬 때문에 값 길이만큼 거리가 들쭉날쭉해진다. */
                     <span className="scr-stat-rank-val">
-                      <button
-                        type="button" className="scr-stat-points-btn"
-                        onClick={onPointsClick} aria-label={`${member.nickname} 레이팅 상세`}
-                      >
+                      {/* 눌러서 여는 상세는 없앴다(요청: 레이팅·순위 상세 페이지 삭제) —
+                          맨 글자다. 껍데기 클래스(.scr-stat-points-btn)는 그대로 쓴다:
+                          이 줄기의 자리·크기·안여백이 전부 거기 걸려 있고, 버튼이 아닌
+                          자리에서는 점선 밑줄과 손 모양만 걷힌다(-plain). */}
+                      <span className="scr-stat-points-btn scr-stat-points-plain">
                         {points.toLocaleString()}
                         {/* 단위와 메달은 수의 오른쪽에 매달되 자리는 안 차지한다(요청: 단위를
                             뺀 숫자와 변동이 줄을 맞추고 가운데에) — 흐름에 두면 [수+단위+메달]이
@@ -472,7 +467,7 @@ export default function MemberStatRow({
                               여전히 줄기 가운데에 선다. */}
                           {medals?.points && <span className="scr-stat-medal">{medals.points}</span>}
                         </span>
-                      </button>
+                      </span>
                     </span>
                   )}
                 </div>
@@ -485,66 +480,42 @@ export default function MemberStatRow({
                 {/* 언제 기준인가는 칸 머리에 한 번만 적는다(요청) — 줄마다 같은 날짜가
                     되풀이되면 그 글자만 표에서 눈에 밟힌다. StatsScreen의 '주요 지표' 머리
                     아랫줄 참고. */}
+                {/* 순위 변동은 순위 옆이다(요청: 자리 복귀) — 한때 제 줄로 내려 다른 변동들과
+                    한 열에 세웠는데, 이 값만은 성격이 다르다. 나머지 변동은 "얼마가 늘었나"라
+                    위 수치와 단위가 같지만, ▲2는 순위를 읽는 순간 함께 읽는 말이라 한 줄로
+                    붙어 있어야 "3위였다가 1위"가 한눈에 잡힌다.
+                    자리는 늘 잡아 둔다 — 변동이 없는 줄만 순위가 옆으로 밀리면 줄마다
+                    "n위"의 x가 흔들린다. */}
                 <div className="scr-stat-rank-line">
-                  {rank == null ? (
-                    <span className="scr-stat-points-empty">-</span>
-                  ) : onRankClick ? (
-                    <button
-                      type="button" className="scr-stat-points-btn"
-                      onClick={onRankClick} aria-label={`${member.nickname} 순위변동`}
-                    >
-                      {rank}위
-                    </button>
-                  ) : (
-                    <span className="scr-stat-rank-plain">{rank}위</span>
-                  )}
-                </div>
-                {/* 순위 변동도 수치 아래 제 줄이다(요청: 크기 줄이고 아래에) — 옆에 붙이면
-                    [순위+변동]이 한 덩어리로 가운데에 서서 정작 순위가 왼쪽으로 밀리고,
-                    이 줄기의 다른 값들(레이팅·BEST)과 규칙도 갈린다. 방향은 색과 화살표가
-                    이미 말하므로 글자는 다른 변동들과 같은 크기까지 내린다. */}
-                <div className="scr-stat-rank-line scr-stat-rank-move">
-                  {rankDelta === "new" ? (
-                    // 기존 활동 랭크변동 카드의 "신규" 배지와 같은 톤을 그대로 쓴다.
-                    <span className="scr-activity-shift-new">신규</span>
-                  ) : rankDelta != null && rankDelta !== 0 ? (
-                    <span className={rankDelta > 0 ? "scr-activity-shift-up" : "scr-activity-shift-down"}>
-                      {rankDelta > 0 ? `▲${rankDelta}` : `▼${-rankDelta}`}
+                  {/* 변동이 매달리는 기준은 줄 전체가 아니라 '값'이다 — 레이팅의 단위 R·메달이
+                      쓰는 것과 같은 껍데기(.scr-stat-rank-val)를 그대로 쓴다. 줄에 매달면
+                      기준이 줄기 폭(--scr-stat-rank-w)이라 변동이 줄기 오른쪽 바깥으로
+                      나가 옆의 막대 칸을 침범한다(실측 11px). */}
+                  <span className="scr-stat-rank-val">
+                    {rank == null ? (
+                      <span className="scr-stat-points-empty">-</span>
+                    ) : (
+                      <span className="scr-stat-rank-plain">{rank}위</span>
+                    )}
+                    <span className="scr-stat-rank-move">
+                      {rankDelta === "new" ? (
+                        // 기존 활동 랭크변동 카드의 "신규" 배지와 같은 톤을 그대로 쓴다.
+                        <span className="scr-activity-shift-new">신규</span>
+                      ) : rankDelta != null && rankDelta !== 0 ? (
+                        <span className={rankDelta > 0 ? "scr-activity-shift-up" : "scr-activity-shift-down"}>
+                          {rankDelta > 0 ? `▲${rankDelta}` : `▼${-rankDelta}`}
+                        </span>
+                      ) : (
+                        /* 안 움직였거나 견줄 달이 없으면 다른 변동 자리와 같은 "-" 하나. */
+                        <span className="scr-stat-delta scr-stat-delta-none">-</span>
+                      )}
                     </span>
-                  ) : (
-                    /* 안 움직였거나 견줄 달이 없으면 다른 변동 자리와 같은 "-" 하나 — 자리를
-                       늘 지켜야 줄마다 아래 칸들의 높이가 같다. */
-                    <span className="scr-stat-delta scr-stat-delta-none">-</span>
-                  )}
+                  </span>
                 </div>
-                {/* BEST PLAYER 횟수(요청: 몇 위 아래에) — 순위·레이팅과 같은 '그 사람이 어디쯤인가'
-                    묶음이라 이 줄기에 붙인다. 0도 적는다(요청) — 한때 받은 적 없으면
-                    감췄는데, 그러면 줄마다 이 자리가 있었다 없었다 해서 아래 칸들이
-                    들쭉날쭉해지고, 무엇보다 '0회'와 '이 표에 없는 값'이 같아 보였다. */}
-                {showBest && (
-                  <>
-                    {/* 배지·수·변동이 한 격자다 — 수와 변동이 같은 열에 서야 세로선이 맞고
-                        (요청), 배지는 그 왼쪽 열에 흐름 그대로 놓인다.
-                        한때 배지를 절대배치로 띄워 수만 가운데 세웠는데, 그러면 배지가 칸
-                        밖으로 삐져나가 왼쪽 구분선을 넘었다(지적: 레이아웃 깨짐) — 줄기 폭
-                        (--scr-stat-rank-w)은 [수+단위] 기준이라 배지가 앉을 자리가 없다.
-                        격자로 두면 세 덩어리가 제 폭을 갖고 통째로 칸 가운데에 선다. */}
-                    <div className="scr-stat-rank-line scr-stat-rank-best">
-                      <span className="scr-stat-best-tag">BEST</span>
-                      <span className="scr-stat-best-n">
-                        {stats.bests}
-                        {/* 단위(요청) — 수의 오른쪽에 매달되 자리는 안 차지한다. 레이팅의 "R",
-                            일꾼의 "기"와 같은 규칙이라, 수 자체는 아래 변동과 세로로 맞는다. */}
-                        <span className="scr-stat-best-unit">회</span>
-                      </span>
-                      {/* 변동은 여기서도 수치 아래다(요청) — 레이팅이 그렇게 서 있으므로
-                          이 줄만 옆에 달면 같은 줄기 안에서 규칙이 갈린다. */}
-                      <span className="scr-stat-best-delta">
-                        <Delta now={stats.bests} prev={prev?.bests} />
-                      </span>
-                    </div>
-                  </>
-                )}
+                {/* (삭제) BEST PLAYER 횟수 — 표에서 걷었다(요청). 값 자체는 서버가 여전히
+                    세고(summary_data의 best), 그 판의 BEST가 누구인지는 경기 결과 쪽이
+                    말한다. 이 표에서는 개인전에 안 뜨는 줄이 하나 더 있는 셈이라, 줄기의
+                    높이가 유형에 따라 들쭉날쭉해지는 값을 치웠다. */}
               </>
             )}
           </div>
