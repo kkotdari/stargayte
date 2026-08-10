@@ -1042,10 +1042,13 @@ export default function GameResultStory({
     const HELPER_FACE = "😇";
     const HELPED_FACE = "🥹";
     /* 타이밍을 흘려보낸 스냅(idle-lead) — 병력을 쌓아 두고도 안 들어간 쪽에는 자는 얼굴을,
-       그 사이 살림을 편 쪽에는 열심인 얼굴을 준다(요청). 이 스냅은 화살표가 없는 이야기라
-       (아무도 어디로 가지 않았다) 아바타 얼굴이 유일한 그림이다. */
+       그 사이 살림을 편 쪽에는 열심인 표시를 준다(요청). 이 스냅은 화살표가 없는 이야기라
+       (아무도 어디로 가지 않았다) 아바타 얼굴이 유일한 그림이다.
+       열심인 쪽은 땀(💦)이 아니라 불이다(요청) — 땀은 몰려서 쩔쩔맨다는 뜻으로 읽히는데,
+       이 스냅에서 그쪽은 쫓기는 게 아니라 상대가 안 들어온 틈에 제 할 일을 실컷 한
+       사람이다. 불은 그 '잘 굴러가고 있다'를 그대로 말한다. */
     const IDLE_FACE = "😴";
-    const BUSY_FACE = "💦";
+    const BUSY_FACE = "🔥";
     const severe = new Set<string>();
     const moderate = new Set<string>();
     const defended = new Set<string>();

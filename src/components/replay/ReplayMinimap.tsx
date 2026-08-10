@@ -310,6 +310,11 @@ function VigorPips({ power, peak }: { power: number; peak: number }) {
   const on = ratio <= 0 ? 0 : Math.max(1, Math.round(ratio * VIGOR_PIPS));
   return (
     <span className="scr-minimap-vigor" aria-hidden>
+      {/* 눈금 앞에 톱니바퀴 하나(요청) — 칸 다섯만 놓여 있으면 그것이 무엇을 재는 눈금인지
+          그림 안에서 알 길이 없다(체력으로 읽힌 적도 있다, 위 주석). 돌아가는 톱니는
+          '얼마나 굴리고 있나'와 곧바로 이어지는 그림이라, 글자 한 줄 없이도 이 눈금의
+          이름표 노릇을 한다. 칸보다 크면 눈금을 잡아먹으므로 한 단계 작게 둔다. */}
+      <span className="scr-minimap-vigor-icon">⚙</span>
       {Array.from({ length: VIGOR_PIPS }, (_, i) => (
         <span key={i} className={cx("scr-minimap-vigor-pip", i < on && "scr-minimap-vigor-pip-on")} />
       ))}

@@ -8931,9 +8931,9 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-activity-row-flat-in {
   /* 줄 높이를 키워 글자 위에 빈 띠를 만든다 — BEST 배지가 앉을 자리다(위 .scr-best-mini).
      흐름에서 뺀 배지는 이 줄 상자 밖으로 나가면 바로 잘리므로(.scr-activity-row-desc의
-     overflow), 자리는 상자 '안'에 있어야 한다. 1.75에서 2로 한 번 더 키웠다(요청: 배지를
-     닉네임에서 좀 더 띄우기) — 띄울 자리를 만드는 것이 곧 줄 높이다. */
-  line-height: 2;
+     overflow), 자리는 상자 '안'에 있어야 한다. 1.75 → 2 → 2.25로 두 번 더 키웠다(요청:
+     배지를 닉네임에서 좀 더 띄우기) — 띄울 자리를 만드는 것이 곧 줄 높이다. */
+  line-height: 2.25;
   display: flex; align-items: center; width: max-content;
   transform: scaleX(var(--flat, 1));
   transform-origin: left center;
@@ -10384,13 +10384,14 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    빈 띠를 만들고, 배지는 그 띠에 앉는다. 그래서 이 배지만은 한 스텝 더 작다: 9px이면 그
    띠보다 커서 다시 글자를 파고든다.
 
-   bottom은 88%까지 올렸다가 72%로 되돌린 값이다(지적: 배지 윗부분이 잘린다) — 줄 상자
-   (line-height 2 = 32px) 밖으로 나간 만큼은 그대로 잘린다(.scr-activity-row-desc의
-   overflow). 8px짜리 배지가 상자 안에 온전히 들기로는 (32-8)/32 = 75%가 천장이고, 72%면
-   윗변이 1px 남는다. 글자와의 사이는 그래도 남는다: 32px 줄에서 글자는 가운데 19px만
-   차지해 위쪽 6.5px가 통째로 비어 있다. */
+   bottom은 '줄 상자 안에 온전히 드는 천장'에서 정한다 — 밖으로 나간 만큼은 그대로 잘린다
+   (.scr-activity-row-desc의 overflow). 8px 배지가 36px 줄(line-height 2.25)에 들기로는
+   (36-8)/36 = 78%가 천장이고, 76%면 윗변이 1px 남는다. 88%까지 올렸다가 잘려서 되돌렸고
+   (지적), 줄 높이를 2 → 2.25로 키우면서 다시 조금 올린 값이다(요청: 조금 더 띄우기) —
+   글자와의 사이를 벌리는 길은 배지를 올리는 것이 아니라 그 위의 빈 띠를 넓히는 것이다.
+   36px 줄에서 글자는 가운데 19px만 차지해 위쪽 8.5px가 통째로 비어 있다. */
 .scr-activity-row-em .scr-best-mini {
-  position: absolute; left: 0; bottom: 72%;
+  position: absolute; left: 0; bottom: 76%;
   font-size: var(--fs-8); margin-left: 0; line-height: 1; pointer-events: none;
 }
 /* 배지가 기준으로 삼을 상자 — 이름 글자 자신이다. 넘쳐도 안 자른다: 자르면 어깨 위로
@@ -10663,7 +10664,15 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    눌러 둔다. 초록↔빨강처럼 색이 뜻을 지면 그 뜻은 늘 '안전↔위험'으로 읽히는데, 이 값은
    위험을 재는 값이 아니다(그래서 체력바를 걷었다 — 컴포넌트 주석 참고).
    지도(사진) 위에 앉으므로 칸마다 검은 테두리 한 겹을 둘러 어떤 지형 위에서도 경계가 산다. */
-.scr-minimap-vigor { display: flex; gap: 2px; }
+.scr-minimap-vigor { display: flex; align-items: center; gap: 2px; }
+/* 눈금 앞의 톱니바퀴(요청) — 이 눈금이 무엇을 재는지 말하는 이름표다(ReplayMinimap의
+   VigorPips 참고). 칸(6px)보다 조금 큰 8px까지만 키우고 흐리게 눌러 둔다: 이름표가 정작
+   읽어야 할 칸보다 눈에 먼저 들어오면 안 된다. 이모지라 글꼴이 제 색을 그리므로
+   opacity로만 낮춘다. */
+.scr-minimap-vigor-icon {
+  font-size: 8px; line-height: 1; opacity: 0.8; margin-right: 1px;
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.9);
+}
 .scr-minimap-vigor-pip {
   display: block; width: 6px; height: 6px;
   background: rgba(255, 255, 255, 0.18);
