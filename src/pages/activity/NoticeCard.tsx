@@ -52,14 +52,13 @@ export default function NoticeCard({
           const member = memberOf(c.memberId);
           return (
             <li className="scr-notice-row" key={c.memberId}>
-              {/* 누구인가가 첫 줄, 무엇으로 바뀌었나가 그 아래다(요청) — 한 줄에 이어 붙이면
-                  "Rex 핵보유국"이 한 사람 이름처럼 읽힌다. 가운뎃점으로 끊어도 봤지만,
-                  줄을 바꾸는 편이 부호 하나보다 확실하다. */}
+              {/* 첫 줄은 누가 무엇이 되었나까지 한 번에 읽힌다(요청) — 이름과 칭호 사이는
+                  긴 줄표(—)로 끊는다. 가운뎃점으로 끊어도 봤지만 이 줄에는 화살표(→)가
+                  이미 있어서, 점만 한 짧은 부호로는 이름의 경계가 안 섰다. */}
               <div className="scr-notice-who">
                 {member && <Avatar member={member} size={24} />}
                 <span className="scr-notice-name">{member?.nickname ?? c.memberId}</span>
-              </div>
-              <div className="scr-notice-change">
+                <span className="scr-notice-sep">—</span>
                 {/* 옛 칭호는 있을 때만 — 없다가 생긴 것은 화살표를 붙일 데가 없다(랭크 변동의
                     '진입'과 같은 생각). 그럴 때는 새 칭호 하나만 적는다. */}
                 {c.from && (
@@ -69,9 +68,10 @@ export default function NoticeCard({
                   </>
                 )}
                 <span className="scr-notice-to">{c.to}</span>
-                {/* 무엇 때문에 바뀌었나 — 통계 표의 칭호에 달리는 근거와 같은 문장이다. */}
-                {c.why && <span className="scr-notice-why">{c.why}</span>}
               </div>
+              {/* 무엇 때문에 바뀌었나는 아랫줄이다(요청) — 첫 줄이 알리는 말이고 이건 그
+                  근거라, 같은 줄에 두면 정작 바뀐 칭호가 문장 가운데에 묻힌다. */}
+              {c.why && <div className="scr-notice-why">{c.why}</div>}
             </li>
           );
         })}
