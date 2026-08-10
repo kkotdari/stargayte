@@ -54,6 +54,10 @@ export default function NoticeCard({
             <li className="scr-notice-row" key={c.memberId}>
               {member && <Avatar member={member} size={24} />}
               <span className="scr-notice-name">{member?.nickname ?? c.memberId}</span>
+              {/* 이름과 칭호 사이는 가운뎃점으로 끊는다(요청) — 굵기만 다른 채 붙어 있으면
+                  "군범 개근의 여왕"이 한 사람 이름처럼 읽힌다. 목록 줄에서 쓰는 것과 같은
+                  부호라(scr-activity-row-sep) 앱 안에서 뜻이 이어진다. */}
+              <span className="scr-notice-sep">·</span>
               {/* 옛 칭호는 있을 때만 — 없다가 생긴 것은 화살표를 붙일 데가 없다(랭크 변동의
                   '진입'과 같은 생각). 그럴 때는 새 칭호 하나만 적는다. */}
               {c.from && (
