@@ -92,6 +92,17 @@ const MAP_MIN_PLAYS = 5;
 /** 그리고 이만큼은 이겨야 한다. */
 const MAP_MIN_RATE = 0.6;
 
+/* 맵 이름 뒤에 붙는 말(요청: 맵 이름 뒤에 붙여서 재밌게) — "헌터의 여주인", "빨무의
+   안주인", "투혼의 황녀"처럼 맵마다 다른 말이 붙는다. 고르는 자는 맵 이름이다: 같은 맵은
+   늘 같은 말이라 조회할 때마다 바뀌지 않고, 맵이 다르면 저절로 갈린다. */
+const MAP_SAYS = ["여주인", "안주인", "황녀", "터줏대감", "지배자", "여왕"];
+
+function mapPhrase(name: string): string {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return `${name}의 ${MAP_SAYS[h % MAP_SAYS.length]}`;
+}
+
 /** 그 사람이 가장 잘하는 맵과 그 승수. 문턱을 못 넘으면 null.
  *  값(승수)으로 겨루는 이유: 승률만 보면 딱 문턱만큼 뛴 사람이 늘 이긴다. */
 function bestMap(s: MemberStats): { name: string; wins: number } | null {
@@ -334,10 +345,11 @@ const TITLES: Title[] = [
 
   // ── 맵 ─────────────────────────────────────────────────────────────────────
   {
-    label: "{n}의 여주인",
+    // 말 전체를 name이 만든다(위 mapPhrase) — 맵마다 다른 꼬리가 붙어야 해서다.
+    label: "{n}",
     pool: 1, edge: 1, weight: 2.5, why: "그 맵 승수", unit: "승",
     value: (s) => bestMap(s)?.wins ?? null,
-    name: (s) => bestMap(s)?.name ?? null,
+    name: (s) => { const best = bestMap(s); return best ? mapPhrase(best.name) : null; },
   },
 
   // ── 스타일(무엇을 어떻게 뽑나) ─────────────────────────────────────────────
