@@ -676,10 +676,22 @@ export default function GameResultStory({
        더 입구 쪽으로) — 화살표의 FRONT는 '이 언저리를 쳤다'는 넉넉한 겨냥이지만, 이쪽은
        거기 벽이 서 있다는 표시라 본진 살림에서 확실히 떨어져야 벽으로 읽힌다. */
     const MARK_FRONT = 0.38;
-    /** 본진 표시를 시작 지점에서 지도 가운데 쪽으로 얼마나 들이나 — 아바타를 안 덮을
-     *  만큼만이다(요청: 아바타 쪽 말고 본진 가운데에). 살림 무게중심(hubs)이 있으면 그쪽이
-     *  더 정확하므로 이 값은 그게 없을 때의 대비책이다. */
-    const MARK_HOME_IN = 0.12;
+    /** 본진 표시를 아바타에서 지도 가운데 쪽으로 얼마나 밀어내나(타일) — 아바타가 그리는
+     *  동그라미(지름 28px + 이름표)를 확실히 벗어날 만큼이다(지적: 병력·업그레이드 표시가
+     *  아직도 아바타에 겹친다).
+     *
+     *  비율(거리의 몇 %)이 아니라 타일 수로 잡는다 — 아바타 크기는 지도 픽셀 크기에 매인
+     *  값이라 '본진에서 가운데까지 거리'와는 아무 상관이 없다. 비율로 두면 구석 자리는
+     *  많이, 12시·6시 자리는 적게 밀려 어떤 사람은 여전히 얼굴에 겹친다.
+     *  살림 무게중심(hubs)도 시작 지점 언저리라 그대로 두면 아바타 밑이다 — 그쪽도 같은
+     *  만큼 밀어낸다. */
+    const MARK_HOME_TILES = 13;
+    /** p에서 지도 가운데 쪽으로 tiles만큼 간 자리 — 가운데를 지나치지는 않는다. */
+    const pushIn = (p: [number, number], tiles: number): [number, number] => {
+      const d = dist(p, center);
+      if (d <= 0) return p;
+      return lerp(p, center, Math.min(1, tiles / d));
+    };
 
     /* 그 자리가 '상대 쪽'인가 — 내 집보다 상대 집에 가까워야 공격으로 읽는다.
        자리 값만으로는 진출과 멀티·집결이 안 갈린다(지적: 견제·드랍인데 화살표가 내 기지
@@ -1211,12 +1223,14 @@ export default function GameResultStory({
            아바타가 아니라 본진 건물 자리에) — 아바타는 시작 지점에 선 사람 표시라,
            거기에 그대로 얹으면 얼굴을 덮는다. hubs는 그 사람 살림의 무게중심이다
            (replaySummary). 살림을 옮긴 사람은 그 값이 옛 자리를 가리키므로 쓰지 않는다. */
-        else if (hubs[raw] && !moved.has(raw)) markSpot.set(raw, [hubs[raw][0], hubs[raw][1]]);
-        /* 살림 무게중심을 못 쓰는 경우(옛 요약·이사한 사람)에도 아바타 위로는 떨어뜨리지
-           않는다(요청: 아바타 쪽 말고 본진 가운데에) — 시작 지점에서 지도 가운데 쪽으로
-           조금만 들이면 그 자리가 곧 그 사람 본진 안이다. 입구(MARK_FRONT)보다는 훨씬
-           얕게 — 그건 나가는 길목이지 본진이 아니다. */
-        else if (myHome) markSpot.set(raw, lerp(myHome, center, MARK_HOME_IN));
+        /* 본진 표시는 아바타에서 지도 가운데 쪽으로 한 뼘 밀어낸 자리에 선다(요청: 아바타
+           쪽 말고 본진 가운데로, 아직도 겹친다) — 살림 무게중심(hubs)이 있으면 그 자리에서,
+           없으면(옛 요약·이사한 사람) 시작 지점에서 민다. 무게중심도 시작 지점 언저리라
+           그대로 두면 아바타 밑이다. 입구(MARK_FRONT)까지는 안 나간다 — 그건 나가는
+           길목이지 본진이 아니다. */
+        else if (hubs[raw] && !moved.has(raw)) {
+          markSpot.set(raw, pushIn([hubs[raw][0], hubs[raw][1]], MARK_HOME_TILES));
+        } else if (myHome) markSpot.set(raw, pushIn(myHome, MARK_HOME_TILES));
         else markSpot.delete(raw);
         if (ATTACKER_FACE_KEYS.has(b.k)) attacker.add(raw);
         /* 타이밍을 흘려보낸 이야기에는 화살표를 안 그린다(지적: 자막에는 타이밍을 놓쳤다는데
