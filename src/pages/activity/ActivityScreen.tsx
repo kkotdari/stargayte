@@ -742,8 +742,12 @@ function ActivityGroupPage({
   }, [items, searchTerms, userMode, searchable, memberOf]);
 
   /* 페이지로 들어온 것이니 맨 위에서 시작한다 — 활동 목록을 한참 내려보다 눌렀을 때 그
-     스크롤 위치를 그대로 물려받으면, 새 화면이 중간부터 열린 것처럼 보인다. */
-  useEffect(() => { window.scrollTo({ top: 0 }); }, [groupKey]);
+     스크롤 위치를 그대로 물려받으면, 새 화면이 중간부터 열린 것처럼 보인다.
+     instant를 못 박는 것이 요점이다(요청: "스크롤 이동이 아니라 페이지 즉시 전환") —
+     문서 루트에 scroll-behavior:smooth가 걸려 있어서 그냥 scrollTo하면 새 화면이 뜬 채로
+     맨 위까지 주르륵 굴러 올라간다. 화면이 바뀐 것이 아니라 같은 화면을 스크롤한 것처럼
+     보인다. 그리는 것과 같은 프레임에 끝내야 하므로 useLayoutEffect다. */
+  useLayoutEffect(() => { window.scrollTo({ top: 0, behavior: "instant" }); }, [groupKey]);
 
   return (
     <div className="scr-activity-group-page">
@@ -804,11 +808,25 @@ export default function ActivityScreen() {
      경계를 도로 지웠다. */
   /* 유저 검색은 이제 이 화면에 없다(요청: "유형 필터, 유저필터 제거하고 유저필터는 리그,
      너나와, 게임목록 전체보기에 넣음") — 리그·너 나와·게임 "전체 보기" 팝업
-     (ActivityGroupModal)이 각자 제 목록 안에서만 검색한다. 포함/일치 두 갈래(요청: "선택된
-     사람들이 모두 포함된 경우 / 선택된 사람만 있는 경우 둘로 나누고 싶다")도 그 팝업
+     (ActivityGroupPage)이 각자 제 목록 안에서만 검색한다. 포함/일치 두 갈래(요청: "선택된
+     사람들이 모두 포함된 경우 / 선택된 사람만 있는 경우 둘로 나누고 싶다")도 그 화면
      안에서 관리한다.
-     지금 펼쳐 본 "전체 보기" 덩어리 — null이면 팝업이 안 떠 있다. */
+     지금 들어와 있는 "전체 보기" 갈래 — null이면 활동 목록(홈)이다. */
   const [openGroupKey, setOpenGroupKey] = useState<ActivityGroupKey | null>(null);
+  /* 들어갈 때 두고 온 활동 목록의 스크롤 자리 — 돌아오면 그 자리로 되돌린다. 같은 문서를
+     스크롤해 오갔으므로 안 되돌리면 전체 보기에서 내려 본 만큼 활동 목록도 내려가 있다.
+     되돌리는 것도 instant다(요청: 즉시 전환) — 문서 루트의 smooth를 그대로 두면 돌아오자마자
+     화면이 스스로 굴러간다. */
+  const homeScrollRef = useRef(0);
+  const openGroup = (key: ActivityGroupKey) => {
+    homeScrollRef.current = window.scrollY;
+    setOpenGroupKey(key);
+  };
+  useLayoutEffect(() => {
+    if (openGroupKey === null && homeScrollRef.current > 0) {
+      window.scrollTo({ top: homeScrollRef.current, behavior: "instant" });
+    }
+  }, [openGroupKey]);
 
   /* 목록 한 줄을 눌러 펼친다 — 펼침은 한 번에 하나다. 여러 줄을 동시에 펴 두면 목록의
      값어치(한 화면에 많이)가 사라진다.
@@ -1756,7 +1774,7 @@ export default function ActivityScreen() {
                 <h2 className="scr-activity-group-title">{section.label}</h2>
                 <button
                   type="button" className="scr-activity-group-viewall"
-                  onClick={() => setOpenGroupKey(section.key)}
+                  onClick={() => openGroup(section.key)}
                 >
                   전체 보기
                 </button>
@@ -1792,12 +1810,10 @@ export default function ActivityScreen() {
       {detailItem && createPortal(
         <div className="scr-modal-overlay">
           <div className="scr-modal scr-modal-page scr-modal-fit scr-activity-detail-modal">
-            <div className="scr-modal-head">
-              {/* 제목은 그 항목이 속한 갈래 이름 — 목록에서 눌러 들어온 창이라, 어디서
-                  왔는지를 그대로 이어 적는다. 묶음 줄(gameResultPost)은 groupKeyOf가 안 받는
-                  갈래라 게임으로 못 박는다. */}
-              <span>{detailItem.kind === "gameResultPost" ? "게임"
-                : GROUP_DEFS.find((g) => g.key === groupKeyOf(detailItem))?.label ?? "활동"}</span>
+            <div className="scr-modal-head scr-activity-detail-head">
+              {/* (삭제) 갈래 이름 제목 — 안 넣어도 된다(요청). 카드 자신이 이미 무엇인지를
+                  말하고("bob 너 나와!", 게임 로스터, 칭호 목록…), 그 위에 "너 나와!"를 한 번
+                  더 얹으면 같은 말이 두 줄로 겹친다. 남는 것은 닫는 X 하나다. */}
               <button type="button" className="scr-icon-btn scr-modal-close-x" onClick={() => setDetailItem(null)} aria-label="닫기">
                 <X aria-hidden />
               </button>
