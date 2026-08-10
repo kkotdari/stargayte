@@ -322,9 +322,19 @@ export const CAST_ORDER_TO_TECH: Record<string, TechName> = {
   CastFeedback: "Feedback",
   CastMaelstrom: "Maelstrom",
   MedicHeal: "Healing",
-  // 핵 — 위 TECH_NAMES 주석 참고. 이 한 줄이 없어서 "핵 쐈다"가 요약에 통째로 안
-  // 나왔다(지적) — 연구가 아니라 명령이라 techNames로도 안 잡혔다.
+  /* 핵 — 위 TECH_NAMES 주석 참고. 이 줄이 없어서 "핵 쐈다"가 요약에 통째로 안
+     나왔다(지적) — 연구가 아니라 명령이라 techNames로도 안 잡혔다.
+
+     이름을 하나만 받지 않는 이유(지적: 고친 뒤에도 요약에서 핵을 본 적이 없다): screp의
+     Orders 표에는 핵과 얽힌 이름이 여섯이나 있고(CastNuclearStrike·NukePaint·NukeLaunch·
+     NukeUnit·NukeGround·NukeTrack), 그중 무엇이 '플레이어가 친 명령'으로 실려 오는지는
+     리플레이마다 확인해 봐야 안다. 여섯 다 받아 두면 어느 쪽이 오든 잡힌다 — 한 발에 명령은
+     하나라 겹쳐 세질 일도 없다(우리가 읽는 건 유닛의 내부 오더가 아니라 커맨드 스트림이다). */
   CastNuclearStrike: "Nuclear Strike",
+  NukePaint: "Nuclear Strike",
+  NukeLaunch: "Nuclear Strike",
+  NukeUnit: "Nuclear Strike",
+  NukeGround: "Nuclear Strike",
 };
 
 /** 마법이 아닌 능력 — 전용 커맨드 이름(screp Types)이 곧 사용 증거다. */
