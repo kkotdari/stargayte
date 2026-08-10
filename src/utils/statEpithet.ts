@@ -306,10 +306,13 @@ const TITLES: Title[] = [
      (rush-backfire·greedy-punished·fallen 같은 것)는 아예 안 쓴다 — 칭호는 놀리는
      자리가 아니다. 반대로 밀리고도 버틴 이야기(revival·relocate·lodging·lift-off)는
      쓴다: 그건 진 이야기가 아니라 끝까지 앉아 있었다는 이야기다. */
+  /* (삭제) 한타의 지배자·소모전의 화신·눈치 싸움의 강자·한 방 병력의 주인 — 뺐다(지적:
+     의미가 구체적이지 않다). 넷 다 "큰 싸움이 있었다"·"오래 버텼다"처럼 어느 판에나 붙는
+     말이라, 그 사람이 무엇을 했는지가 안 남는다. 칭호는 읽는 사람이 "왜 저게 붙었지?" 하고
+     표를 다시 보게 만드는 값이어야 하는데, 이런 말은 다시 봐도 짚을 것이 없다. */
   tactic("수성의 여왕", ["hold-off"]),
   tactic("받아치기의 정석", ["counter"]),
   tactic("벽을 뚫는 자", ["breakthrough"]),
-  tactic("한타의 지배자", ["clash"]),
   tactic("올인의 화신", ["allin"]),
   tactic("째기의 달인", ["greedy-paid"]),
   /* 빠른 테크는 아래로 내렸다(지적: 그렇게 중요하진 않다) — 고급 유닛으로 곧장 올라간
@@ -324,11 +327,8 @@ const TITLES: Title[] = [
   /* 상대보다 일꾼을 훨씬 많이 굴린 대목(worker-gap) — 자원을 많이 캤다는 말이다. */
   tactic("자원 부자", ["worker-gap"]),
   tactic("생산 공장장", ["prod-gap"]),
-  tactic("한 방 병력의 주인", ["power-unit"]),
   tactic("병력 사재기", ["mass-army"]),
   tactic("업글 덕후", ["upgrade-signature"]),
-  tactic("소모전의 화신", ["attrition"]),
-  tactic("눈치 싸움의 강자", ["standoff"]),
   tactic("지구전의 화신", ["long-run"]),
   tactic("끝까지 버티는 사람", ["late-hold", "late-defense", "stand"]),
   rare("좀비 모드", ["revival"]),
