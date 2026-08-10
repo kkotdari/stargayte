@@ -51,6 +51,9 @@ export interface EpithetSubject {
    *  따로 받아 온다(useEpithets). 옛 화면·조회 실패로 안 넘어오면 그 칭호만 안 나간다. */
   solo?: MemberStats;
   team?: MemberStats;
+  /** 종족별 전적 — 종족 칭호("저그의 절대군주")가 쓰는 값(요청: 종족 강자).
+   *  통계 응답의 byRace 그대로다. 안 넘어오면 그 칭호만 안 나간다. */
+  races?: Partial<Record<string, MemberStats>>;
 }
 
 /** 칭호 한 벌 — 부르는 말과 그 근거. 근거를 함께 두는 이유는 이 줄이 "기록에서 나온 말"이라고
@@ -146,7 +149,7 @@ interface Title {
   /** 1등이 한가운데의 몇 배는 돼야 하나(기본 CROWN_EDGE). 전술·맵은 1(안 따짐). */
   edge?: number;
   /** {n}에 꽂을 이름 — 맵 칭호처럼 말 자체에 그 사람의 값이 들어가는 경우. */
-  name?: (s: MemberStats) => string | null;
+  name?: (s: MemberStats, of: EpithetSubject) => string | null;
   /** 툴팁에 적을 근거의 앞머리("자막에 잡힌 횟수" 등)와 단위. */
   why?: string;
   unit?: string;
@@ -398,6 +401,15 @@ const TITLES: Title[] = [
     },
   },
 
+  /* 종족 강자(요청) — 그 종족으로 가장 잘 이긴 사람. 유형(개인전·팀전)과 같은 생각이다:
+     전체 승률은 종족이 섞인 값이라 "무엇을 잘하는가"는 안 말해 준다. 이름이 말에 들어가므로
+     종족마다 임자가 따로 선다(위 winners 주석). */
+  {
+    label: "{n}", weight: 4, why: "그 종족 승률", unit: "%",
+    value: (_s, of) => bestRace(of)?.rate ?? null,
+    name: (_s, of) => { const best = bestRace(of); return best ? racePhrase(best.race) : null; },
+  },
+
   /* ── 유형(요청: 개인전 퀸 · 팀전 퀸) ───────────────────────────────────────
      "이 사람은 개인전에서 강하다"는 전체 승률로는 절대 안 나오는 말이다 — 두 유형이 한 수에
      섞여 있어서다. 그 유형을 실제로 여러 판 뛴 사람들끼리만 견준다(MIN_PLAYS_MODE). */
@@ -433,6 +445,26 @@ function hasFinal(word: string): boolean {
 }
 const sub = (w: string) => (hasFinal(w) ? "은" : "는");
 const ga = (w: string) => (hasFinal(w) ? "이" : "가");
+
+/* 종족마다 부르는 말이 따로다(요청: 저그의 절대군주 · 프로토스의 전설 · 테란의 영웅) —
+   셋뿐이라 표 하나면 되고, 그편이 종족의 색을 살린다. 여기 없는 값은 무난한 말로 받는다. */
+const RACE_SAYS: Record<string, string> = {
+  저그: "저그의 절대군주",
+  프로토스: "프로토스의 전설",
+  테란: "테란의 영웅",
+};
+const racePhrase = (race: string): string => RACE_SAYS[race] ?? `${race}${sub(race)} 나의 것`;
+
+/** 그 사람이 가장 잘 이긴 종족과 그 승률 — 그 종족으로 충분히 뛴 경우만(MIN_PLAYS_MODE).
+ *  여럿 하는 사람도 가장 잘한 하나만 본다: 셋을 다 부르면 그건 칭호가 아니라 표다. */
+function bestRace(of: EpithetSubject): { race: string; rate: number } | null {
+  let best: { race: string; rate: number } | null = null;
+  for (const [race, st] of Object.entries(of.races ?? {})) {
+    if (!st || st.plays < MIN_PLAYS_MODE) continue;
+    if (!best || st.winRate > best.rate) best = { race, rate: st.winRate };
+  }
+  return best;
+}
 
 /* "~를 부르는 자"는 뺐다(지적: 뜻이 명확하지 않다) — 부른다는 말이 '많이 쓴다'인지 '불러
    낸다'인지 읽는 사람마다 갈렸다. 대신 무엇을 했는지가 바로 읽히는 말만 남긴다. */
@@ -659,8 +691,9 @@ export function epithetsOf(pool: EpithetSubject[]): Map<string, Epithet> {
     const need = MIN_PLAYS_TIER[title.tier ?? 2] ?? MIN_PLAYS;
     const vals = ranked
       .filter((p) => p.stats.plays >= need)
-      .map((p) => ({ id: p.id, v: title.value(p.stats, p), stats: p.stats }))
-      .filter((x): x is { id: string; v: number; stats: MemberStats } => x.v !== null && x.v > 0);
+      .map((p) => ({ id: p.id, v: title.value(p.stats, p), stats: p.stats, of: p }))
+      .filter((x): x is { id: string; v: number; stats: MemberStats; of: EpithetSubject } =>
+        x.v !== null && x.v > 0);
     if (vals.length < (title.pool ?? MIN_POOL)) return;
     const top = Math.max(...vals.map((x) => x.v));
     if (title.min !== undefined && top < title.min) return;
@@ -671,7 +704,10 @@ export function epithetsOf(pool: EpithetSubject[]): Map<string, Epithet> {
        1위를 뜻하는 말이 1위가 아닌 사람에게 붙는다 — 그 말이 거짓이 되는 순간 나머지 칭호도
        같이 못 믿을 말이 된다. 임자가 다른 칭호로 가면 이 칭호는 그냥 안 나간다.
        공동 1위는 그대로 후보이고, 그중 먼저 걸린 한 사람이 가져간다. */
-    const winners = vals.filter((x) => x.v === top);
+    /* 이름이 말에 들어가는 칭호(맵·종족)는 사람마다 다른 칭호다 — "헌터스의 여주인"과
+       "투혼의 황녀"는 서로 겨룰 일이 없다. 그래서 1등만 뽑지 않고 문턱을 넘은 사람 모두가
+       후보다(지적: 맵 칭호가 한 명한테만 나왔다). 나머지 칭호는 그대로 1등에게만 간다. */
+    const winners = title.name ? vals : vals.filter((x) => x.v === top);
     // 2등 값 — 1위가 얼마나 벌렸나(아래 leadBonus). 뒤가 아무도 없으면 null.
     const belows = vals.map((x) => x.v).filter((v) => v < top);
     const second = belows.length ? Math.max(...belows) : null;
@@ -680,7 +716,7 @@ export function epithetsOf(pool: EpithetSubject[]): Map<string, Epithet> {
     if ((title.pool ?? MIN_POOL) > 1 && winners.length > vals.length / 2) return;
     for (const w of winners) {
       const label = title.name
-        ? title.label.replace("{n}", title.name(w.stats) ?? "")
+        ? title.label.replace("{n}", title.name(w.stats, w.of) ?? "")
         : title.label;
       if (!label || label.includes("{n}")) continue;
       // 전술은 횟수 그대로, 수치는 '한가운데의 몇 배'로 바꿔 곱한다(Title.scale 주석).
@@ -696,7 +732,7 @@ export function epithetsOf(pool: EpithetSubject[]): Map<string, Epithet> {
         title, id: w.id, label, raw: w.v,
         score: (title.weight ?? 0) * base * boost * leadBonus, order,
         // sticky만 절대 우선이다(참여수 1위) — 나머지는 급을 웃돈으로 받아 점수로 겨룬다.
-        first: true, rank: title.sticky ? 0 : 1,
+        first: w.v === top, rank: title.sticky ? 0 : 1,
       });
     }
   });
