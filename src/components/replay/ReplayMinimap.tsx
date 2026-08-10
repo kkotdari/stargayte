@@ -363,8 +363,10 @@ export interface MinimapMarker {
   markAt?: [number, number];
   /** 그 이모지가 '무엇으로 한 일'인가 — 유닛·건물 이름을 이모지 밑에 적는다(요청: 방패
    *  이모지에도 캡션). 화살표가 있는 이야기는 기둥 위 이름표가 이 일을 하는데, 화살표
-   *  없이 본진·입구에 이모지만 서는 이야기에는 그 자리가 없었다. */
-  markText?: string;
+   *  없이 본진·입구에 이모지만 서는 이야기에는 그 자리가 없었다.
+   *  목록으로 받아 한 줄에 하나씩 쌓는다(지적: 여러 건물이 한 줄에 붙어 보기 나쁘다) —
+   *  화살표 기둥 이름표(arrow.label)가 이미 그렇게 하고 있어 규칙도 하나가 된다. */
+  markText?: string[];
   /** 아바타 위에 겹쳐 그리는 상태 얼굴 — 트로피·공격자·당한 정도·아군 헬프처럼 그 사람
    *  자체를 가리키는 표시에 쓴다(요청: 해골·트로피 말고도 아바타로 상태를 알려 달라). */
   face?: string;
@@ -999,12 +1001,12 @@ export default function ReplayMinimap({
         {/* 그 이모지가 무엇으로 한 일인가(요청: 방패 이모지에도 유닛명·건물명·기술명 캡션)
             — 화살표가 있는 이야기는 기둥 위 이름표가 이 일을 하는데, 화살표 없이 이모지만
             서는 이야기(방어·입구막기·생산)에는 그 자리가 없었다. 이모지 바로 밑이다. */}
-        {bases.map((m) => (m.mark && m.markText ? (
+        {bases.map((m) => (m.mark && (m.markText?.length ?? 0) > 0 ? (
           <span
             key={`bmt-${m.key}`} className="scr-minimap-mark-caption"
             style={markPlace(m)} aria-hidden
           >
-            {m.markText}
+            {m.markText!.map((t) => <span key={t}>{t}</span>)}
           </span>
         ) : null))}
         {geoms.map(({ a, g }) => (a.markFrom ? (

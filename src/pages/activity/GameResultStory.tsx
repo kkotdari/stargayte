@@ -188,6 +188,26 @@ const SAID_UNIT_KEYS = new Set([
   "long-run", "stand", "vision", "greedy-paid", "zerg-drop",
 ]);
 
+/* 자막이 늘 같은 이름을 부르는 갈래들 — 그 이름이 곧 이름표다(지적: 자막은 클로킹 레이스인데
+   화살표에는 벌처가 붙었다).
+   위 SAID_UNIT_KEYS는 요약이 실어 준 p.unit을 그대로 옮기는 갈래들인데, 이쪽 갈래들은 그
+   값을 아예 안 싣는다 — 무엇으로 한 일인지가 갈래 이름 자체에 박혀 있어서다(cloak-wraith가
+   레이스가 아닐 수는 없다). 그래서 요약을 고치지 않고 여기서 이름을 붙인다.
+   이름이 없으면 예전처럼 '그 무렵 명령을 받은 병력'으로 넘어가는데, 그 값은 늘 그 판의
+   주력이 뽑혀서(그래서 벌처였다) 자막과 어긋난다. */
+const SAID_FIXED_UNIT: Record<string, string> = {
+  "cloak-wraith": "레이스",
+  "valk-hunt": "발키리",
+  "shuttle-reaver": "리버",
+  "templar-drop": "하이템플러",
+  "zling-rush": "저글링",
+  "zealot-rush": "질럿",
+  "cannon-rush": "포토",
+  "sunken-rush": "성큰",
+  "sneak-rax": "배럭",
+  "mind-control": "다크아콘",
+};
+
 /** 자막이 raw에 대해 부른 이름 — 없으면 빈 배열이라 화살표는 예전 재료로 넘어간다. */
 function saidBy(
   b: { k: string; who?: string[]; p?: Record<string, unknown> },
@@ -205,6 +225,10 @@ function saidBy(
   /* 뚫은 이야기는 한 문장에 둘이 들어 있다 — 민 쪽의 병력(p.units)과 뚫린 쪽의 방어선
      (p.unit + p.def). 주어는 민 쪽이므로 제 병력을 단다("질럿과 드라군 조합으로 …"). */
   if (b.k === "breakthrough") return who.includes(raw) ? ko(p?.units) : [];
+  /* 갈래 이름에 무엇으로 한 일인지가 박혀 있는 것들 — 주어에게만 단다(위 SAID_FIXED_UNIT).
+     당한 쪽 화살표에까지 붙이면 "레이스에 당한 사람도 레이스를 썼다"가 된다. */
+  const fixed = SAID_FIXED_UNIT[b.k];
+  if (fixed) return who.includes(raw) ? [fixed] : [];
   if (!SAID_UNIT_KEYS.has(b.k)) return [];
   /* 주어가 둘 이상인 문장(여러 급습을 하나로 묶어 적은 것)은 그 한 이름이 누구 것인지
      알 수 없다 — 자막도 그때는 유닛을 안 부르고 "본진 급습"으로만 말한다. 손대지 않는다. */
@@ -589,12 +613,12 @@ export default function GameResultStory({
           나가는 화살표 — 진출하는 느낌만 준다(요청). 특정 지점을 찍지 않으므로 틀릴 것도
           없다. */
   const actions = useMemo<{
-    arrows: MinimapArrow[]; marks: Map<string, string>; markTexts: Map<string, string>;
+    arrows: MinimapArrow[]; marks: Map<string, string>; markTexts: Map<string, string[]>;
     markSpots: Map<string, [number, number]>; faces: Map<string, string>;
     bubbles: Map<string, string>;
   }>(() => {
     const empty = {
-      arrows: [], marks: new Map<string, string>(), markTexts: new Map<string, string>(),
+      arrows: [], marks: new Map<string, string>(), markTexts: new Map<string, string[]>(),
       markSpots: new Map<string, [number, number]>(), faces: new Map<string, string>(),
       bubbles: new Map<string, string>(),
     };
@@ -997,7 +1021,7 @@ export default function GameResultStory({
        화살표 없이 본진·입구에 이모지만 서는 이야기(방어·입구막기·생산)는 아무 말도 없었다
        (지적: 방패 이모지에도 유닛명·건물명·기술명을 캡션으로). 같은 재료(요약이 사람별로
        싣는 units)를 써서 이모지 아래에 그대로 붙인다. */
-    const markLabel = new Map<string, string>();
+    const markLabel = new Map<string, string[]>();
     /** 그 이모지를 어느 타일에 세울까 — 위 mark와 짝을 이뤄 같은 자리에서 채운다.
      *  본진에서 한 일은 값이 없고(본진 자리 그대로), 입구 이야기만 진짜 입구 좌표가 들어간다. */
     const markSpot = new Map<string, [number, number]>();
@@ -1214,7 +1238,10 @@ export default function GameResultStory({
         // hits가 하나도 화살표로 못 그려지면 이 값으로 본진에 이모지를 얹는다.
         mark.set(raw, em);
         const emLabel = labelOf(b, raw);
-        if (emLabel.length > 0) markLabel.set(raw, emLabel.join(" "));
+        /* 이름은 목록 그대로 넘긴다(지적: 여러 건물이 한 줄에 붙어 보기 나쁘다) —
+           한 줄로 이어 붙이면 두세 가지만 돼도 띠가 길어져 지도를 가리고, 옆 사람 표시와도
+           겹친다. 그리는 쪽이 한 줄에 하나씩 쌓는다(ReplayMinimap의 markText). */
+        if (emLabel.length > 0) markLabel.set(raw, emLabel);
         /* 입구막기·입구 방어는 본진 안이 아니라 나가는 길목의 이야기라, 이모지도 진짜
            입구 자리에 세운다(지적: "입구도 본진 입구를 말한 거야 아바타 위가 아니라").
            그 '입구'는 위 target()이 myFront에 쓰는 것과 똑같은 자리다 — 본진에서 가운데
@@ -1359,7 +1386,7 @@ export default function GameResultStory({
     // 화살표 끝(또는 화살표가 안 나올 만큼 가까우면 본진)에 붙는 무기 이모지 — "무엇으로
     // 쳤나/무엇을 했나"를 말한다. 아바타에 겹쳐 얹는 상태 얼굴(아래)과는 다른 자리다.
     const marks = new Map<string, string>();
-    const markTexts = new Map<string, string>();
+    const markTexts = new Map<string, string[]>();
     for (const s of slots) {
       // 이사 화살표를 이미 그렸으면 이모지는 그 끝에 있다 — 본진에 또 얹지 않는다.
       if (movers.has(s.raw)) continue;

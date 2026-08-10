@@ -96,7 +96,9 @@ export const BUILDING_KO: Record<string, string> = {
   ...DEFENSE_KO, ...PRODUCTION_KO,
   Pylon: "파일런", "Supply Depot": "서플라이", "Creep Colony": "크립 콜로니",
   Forge: "포지", Academy: "아카데미", Armory: "아머리", Observatory: "옵저버토리",
-  "Evolution Chamber": "에볼루션", "Spawning Pool": "스포닝풀",
+  // 저그 유저들은 에볼루션 챔버를 "챔버"라고 부른다(요청) — 앞자리를 줄인 "에볼루션"은
+  // 이 바닥에서 안 쓰는 말이라 낯설게 걸린다.
+  "Evolution Chamber": "챔버", "Spawning Pool": "스포닝풀",
   "Nydus Canal": "나이더스", "Engineering Bay": "엔지니어링 베이", Refinery: "리파이너리",
   Assimilator: "어시밀레이터", Extractor: "익스트랙터", Nexus: "넥서스",
   "Command Center": "커맨드", Hatchery: "해처리",

@@ -10609,6 +10609,10 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    자리는 이모지와 같은 타일이고, 이모지 아래로 한 칸 내려 겹치지 않게 한다. */
 .scr-minimap-mark-caption {
   position: absolute; transform: translate(-50%, 14px); z-index: 6;
+  /* 이름마다 한 줄씩(지적: 여러 건물이 한 줄에 붙어 보기 나쁘다) — 화살표 기둥 이름표
+     (.scr-minimap-arrow-label)와 같은 규칙이다. 가로로 이으면 두세 가지만 돼도 띠가
+     지도를 가로지르고, 가까이 선 다른 표시와 겹친다. */
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
   font-size: 10px; font-weight: 800; line-height: 1.1; white-space: nowrap;
   color: #fff; text-shadow: 0 0 2px #000, 0 0 2px #000, 0 1px 1px #000;
   pointer-events: none;
