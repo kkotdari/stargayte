@@ -46,9 +46,9 @@ const MAX_REPLAY_FILES = 20;
 
 
 
-/** 목록 줄이 접히는 데 걸리는 시간 — CSS의 scr-row-close 애니메이션과 같은 값이라야
- *  카드가 다 접힌 뒤에 사라진다(짧으면 접히다 말고 툭 없어진다). */
-const ROW_CLOSE_MS = 200;
+/* (삭제) ROW_CLOSE_MS — 줄을 그 자리에서 펴던 시절의 접힘 시간. 상세가 팝업이 된 뒤로는
+   접히는 줄 자체가 없어졌고, "전체 보기"가 화면이 되면서 마지막으로 남아 있던 자리
+   (그 창만의 열림 상태)까지 걷혔다. */
 
 /** NEW·UPDATE로 볼 기간(요청: 12시간으로 축소) — 지난 방문을 기억해 두던 방식에서 이
  *  단순한 규칙으로 바꿨다. 누구에게나 같은 것이 보이고, 브라우저에 기억해 둘 것도 없다.
@@ -660,14 +660,15 @@ const GROUP_PREVIEW_MAX = 5;
  *  갈래라 검색창을 둘 이유가 없다. */
 const SEARCHABLE_GROUPS = new Set<ActivityGroupKey>(["league", "call", "gameResult"]);
 
-/** "전체 보기" 팝업 — 한 덩어리의 전체 목록을 보여준다. 리그·너 나와·게임(SEARCHABLE_GROUPS)
- *  만 유저 검색이 있다(요청: "유저필터는 리그, 너나와, 게임목록 전체보기에 넣음") — 알림·
- *  일정은 사람으로 거를 일이 없는 갈래라 검색창 없이 목록만 보여준다.
- *  줄 렌더는 부르는 쪽(ActivityScreen)의 renderRow를 그대로 받아 쓴다 — 미리보기와 팝업이
- *  같은 함수를 쓰면 카드 쪽 수정이 한 곳만 고치면 양쪽에 반영된다. 열림 상태는 이 팝업만의
- *  것이다(부모의 openRowKey와 분리) — 같은 항목이 미리보기와 팝업에 동시에 보일 수 있어서,
- *  하나의 열림 상태를 공유하면 한쪽에서 편 줄이 다른 쪽에서도 편 것처럼 보인다. */
-function ActivityGroupModal({
+/** "전체 보기" 화면 — 한 덩어리의 전체 목록을 보여준다. 팝업이 아니라 활동 화면을 갈아
+ *  끼우는 페이지다(요청: "활동 전체보기시 모달이 아닌 페이지로 이동하게") — 목록 하나를
+ *  통째로 담고, 그 안에서 검색하고, 다시 그 안에서 상세를 여는 자리라 잠깐 떴다 사라지는
+ *  창보다 화면이 맞다. 돌아가는 길은 제목 왼쪽 ←다.
+ *  리그·너 나와·게임(SEARCHABLE_GROUPS)만 유저 검색이 있다(요청: "유저필터는 리그, 너나와,
+ *  게임목록 전체보기에 넣음") — 알림·일정은 사람으로 거를 일이 없는 갈래라 목록만 보여준다.
+ *  줄 렌더는 부르는 쪽(ActivityScreen)의 renderRow를 그대로 받아 쓴다 — 미리보기와 이 화면이
+ *  같은 함수를 쓰면 카드 쪽 수정이 한 곳만 고치면 양쪽에 반영된다. */
+function ActivityGroupPage({
   groupKey, label, items, memberOf, members, renderRow, onClose,
 }: {
   groupKey: ActivityGroupKey;
@@ -675,13 +676,9 @@ function ActivityGroupModal({
   items: ActivityItem[];
   memberOf: (id: string) => Member | undefined;
   members: Member[];
-  renderRow: (
-    item: DisplayItem, open: boolean, closing: boolean,
-    onToggle: () => void, registerRef: (el: HTMLButtonElement | null) => void,
-  ) => ReactNode;
+  renderRow: (item: DisplayItem) => ReactNode;
   onClose: () => void;
 }) {
-  useLockBodyScroll();
   const searchable = SEARCHABLE_GROUPS.has(groupKey);
   const [search, setSearch] = useState("");
   /* 고른 사람들을 어떻게 읽을 것인가 — 활동 목록이 전에 쓰던 것과 같은 두 갈래다.
@@ -735,79 +732,60 @@ function ActivityGroupModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- slotMatchesTerm/challengeMatchesTerm은 memberOf로 충분히 표현됨
   }, [items, searchTerms, userMode, searchable, memberOf]);
 
-  // 이 팝업 안에서만 쓰는 열림 상태 — 부모 목록의 openRowKey와는 별개다(위 주석).
-  const [openKey, setOpenKey] = useState<string | null>(null);
-  const [closingKey, setClosingKey] = useState<string | null>(null);
-  const closeTimerRef = useRef<number | null>(null);
-  useEffect(() => () => { if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current); }, []);
-  const toggle = (key: string) => {
-    const prev = openKey;
-    const next = prev === key ? null : key;
-    setOpenKey(next);
-    if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current);
-    if (prev && prev !== next) {
-      setClosingKey(prev);
-      closeTimerRef.current = window.setTimeout(() => { setClosingKey(null); closeTimerRef.current = null; }, ROW_CLOSE_MS);
-    } else {
-      setClosingKey(null);
-    }
-  };
+  /* 페이지로 들어온 것이니 맨 위에서 시작한다 — 활동 목록을 한참 내려보다 눌렀을 때 그
+     스크롤 위치를 그대로 물려받으면, 새 화면이 중간부터 열린 것처럼 보인다. */
+  useEffect(() => { window.scrollTo({ top: 0 }); }, [groupKey]);
 
-  return createPortal(
-    <div className="scr-modal-overlay">
-      <div className="scr-modal scr-modal-page scr-activity-group-modal">
-        <div className="scr-modal-head">
-          {/* 제목은 갈래 이름 하나다(요청: "전체 보기" 빼기) — 이 창을 여는 버튼이 이미
-              "전체 보기"라, 열고 나서까지 같은 말을 이고 있을 이유가 없다. */}
-          <span>{label}</span>
-          <button type="button" className="scr-icon-btn scr-modal-close-x" onClick={onClose} aria-label="닫기">
-            <X aria-hidden />
+  return (
+    <div className="scr-activity-group-page">
+      <div className="scr-v2-toolbar">
+        <div className="scr-v2-toolbar-title-row">
+          {/* 돌아가기는 제목 왼쪽이다 — 창이 아니라 화면이라, 닫는 X가 아니라 이전 화면으로
+              가는 ←가 맞다(요청: 팝업이 아닌 페이지로 이동). */}
+          <button
+            type="button" className="scr-activity-group-back"
+            onClick={onClose} aria-label="활동으로 돌아가기"
+          >
+            <ChevronLeft size={18} aria-hidden />
           </button>
-          {/* 모바일은 X 대신 돌아가기다(요청) — 위 상세 팝업과 같은 이유. */}
-          <button type="button" className="scr-modal-back" onClick={onClose}>
-            <ChevronLeft size={14} aria-hidden />활동으로 돌아가기
-          </button>
-        </div>
-        {searchable && (
-          <SearchFilterBar
-            count={filtered.length}
-            countLabel="건"
-            searchValue={search}
-            onSearchChange={setSearch}
-            searchPlaceholder="유저 입력 또는 @로 목록 띄우기"
-            suggestions={suggestions}
-            searchLeading={(
-              <Select
-                className="scr-user-mode-select"
-                size="sm"
-                value={userMode}
-                options={[
-                  { value: "all", label: "포함" },
-                  { value: "only", label: "일치" },
-                ]}
-                onChange={(v) => setUserMode(v === "only" ? "only" : "all")}
-                minDropWidth={92}
-              />
-            )}
-          />
-        )}
-        {/* 이 창에서는 목록을 묶지 않는다(요청: 전체보기 팝업 페이지에선 묶을 필요 없다) —
-            창 하나가 곧 한 갈래라, 그 안에서 다시 테두리를 두르면 같은 말을 두 번 하는 셈이다.
-            테두리를 걷으면 스크롤도 상자 안이 아니라 창 가장자리에서 일어난다(요청: 스크롤바가
-            안쪽에 나오지 않게) — 아래 CSS에서 창 좌우 패딩만큼 밖으로 물린다. */}
-        <div className="scr-activity-rows scr-activity-group-modal-rows scr-scroll">
-          {filtered.length === 0 ? (
-            <div className="scr-empty">조건에 맞는 항목이 없어요.</div>
-          ) : (
-            filtered.map((item) => {
-              const key = rowKeyOf(item);
-              return renderRow(item, openKey === key, closingKey === key, () => toggle(key), () => {});
-            })
-          )}
+          {/* 제목은 갈래 이름 하나다(요청: "전체 보기" 빼기) — 이 화면을 여는 버튼이 이미
+              "전체 보기"라, 들어와서까지 같은 말을 이고 있을 이유가 없다. */}
+          <h1 className="scr-title scr-v2-toolbar-title">{label}</h1>
         </div>
       </div>
-    </div>,
-    document.body,
+      {searchable && (
+        <SearchFilterBar
+          count={filtered.length}
+          countLabel="건"
+          searchValue={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="유저 입력 또는 @로 목록 띄우기"
+          suggestions={suggestions}
+          searchLeading={(
+            <Select
+              className="scr-user-mode-select"
+              size="sm"
+              value={userMode}
+              options={[
+                { value: "all", label: "포함" },
+                { value: "only", label: "일치" },
+              ]}
+              onChange={(v) => setUserMode(v === "only" ? "only" : "all")}
+              minDropWidth={92}
+            />
+          )}
+        />
+      )}
+      {/* 이 화면에서는 목록을 묶지 않는다(요청) — 화면 하나가 곧 한 갈래라, 그 안에서 다시
+          테두리를 두르면 같은 말을 두 번 하는 셈이다. */}
+      <div className="scr-activity-rows scr-activity-group-page-rows">
+        {filtered.length === 0 ? (
+          <div className="scr-empty">조건에 맞는 항목이 없어요.</div>
+        ) : (
+          filtered.map((item) => renderRow(item))
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -1668,8 +1646,32 @@ export default function ActivityScreen() {
     );
   };
 
+  /* "전체 보기"는 이제 창이 아니라 화면이다(요청) — 활동 목록 자리를 그 갈래의 전체
+     목록으로 갈아 끼운다. 목록 위에 겹쳐 띄우던 때와 달리 뒤에 남는 화면이 없으므로,
+     아래 본문(제목·등록 버튼·덩어리 미리보기)은 통째로 그리지 않는다. 상세 팝업과 등록
+     폼들은 이 화면에서도 그대로 떠야 해서 바깥에 남는다. */
+  const groupPage = openGroupKey
+    ? {
+      def: GROUP_DEFS.find((g) => g.key === openGroupKey)!,
+      items: groupedSections.find((s) => s.key === openGroupKey)?.items ?? [],
+    }
+    : null;
+
   return (
     <div className="scr-screen scr-activity-screen">
+      {groupPage && openGroupKey && (
+        <ActivityGroupPage
+          groupKey={openGroupKey}
+          label={groupPage.def.label}
+          items={groupPage.items}
+          memberOf={memberOf}
+          members={members}
+          renderRow={renderRow}
+          onClose={() => setOpenGroupKey(null)}
+        />
+      )}
+      {!groupPage && (
+      <>
       <div className="scr-v2-toolbar">
         <div className="scr-v2-toolbar-title-row">
           <h1 className="scr-title scr-v2-toolbar-title">활동</h1>
@@ -1763,22 +1765,8 @@ export default function ActivityScreen() {
           없으면 관측할 것 자체가 없어 조기 loadMore가 원천적으로 안 생긴다. */}
       {!loading && loadingMore && <LoadingMark />}
       {!loading && <div ref={sentinelRef} aria-hidden />}
-
-      {openGroupKey && (() => {
-        const section = groupedSections.find((s) => s.key === openGroupKey);
-        const def = GROUP_DEFS.find((g) => g.key === openGroupKey)!;
-        return (
-          <ActivityGroupModal
-            groupKey={openGroupKey}
-            label={def.label}
-            items={section?.items ?? []}
-            memberOf={memberOf}
-            members={members}
-            renderRow={renderRow}
-            onClose={() => setOpenGroupKey(null)}
-          />
-        );
-      })()}
+      </>
+      )}
 
       {/* 상세 — 줄을 누르면 그 자리에서 펴는 대신 팝업으로 뜬다(요청). 카드 본문은 예전
           접힘 칸에 있던 것과 같은 껍데기(.scr-activity-row-body)를 그대로 쓴다: 카드의

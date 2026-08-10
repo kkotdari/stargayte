@@ -8813,11 +8813,21 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 }
 @media (hover: hover) { .scr-activity-group-viewall:hover { color: var(--text); } }
 
-/* "전체 보기" 팝업 — 폭은 목록 카드와 비슷한 최대폭으로, 모바일에서는 다른 모달과
-   같이(요청 없이도 기존 규칙 자동 적용, global.css의 min-width:1159px 아래 fullscreen
-   규칙 참고) 전체화면이 된다. */
-.scr-activity-group-modal { max-width: 640px; display: flex; flex-direction: column; }
-.scr-activity-group-modal .scr-filter-bar { margin-bottom: 8px; }
+/* "전체 보기"는 화면이다(요청: 팝업이 아닌 페이지로 이동) — 활동 화면 자리를 그대로
+   갈아 끼우므로 제 폭도 배경도 없다. 창이던 시절의 최대폭(640px)·세로 flex·안쪽 스크롤은
+   전부 걷혔다: 스크롤은 이제 페이지가 한다. */
+.scr-activity-group-page { display: contents; }
+/* 제목 왼쪽 ← — 창을 닫는 X가 아니라 이전 화면으로 가는 길이라 제목 앞에 선다. 아이콘만
+   있는 버튼이라 이름은 aria-label이 진다. */
+.scr-activity-group-back {
+  flex: none; display: inline-flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; margin-left: -8px;
+  background: none; border: none; border-radius: 50%;
+  color: var(--muted); cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+@media (hover: hover) {
+  .scr-activity-group-back:hover { color: var(--text); background: rgba(var(--overlay-rgb),0.1); }
+}
 /* 상세 팝업 — 카드 한 장이라 폭은 카드 폭에 맞춘다. "전체 보기" 위에도 뜨므로 더 위에 선다
    (그 창 안의 줄을 눌러도 이 창이다). */
 .scr-activity-detail-modal { max-width: 560px; z-index: 130; }
@@ -8848,17 +8858,14 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   .scr-modal-page:not(.scr-modal-fit) .scr-modal-back { display: inline-flex; }
   .scr-modal-page:not(.scr-modal-fit) .scr-modal-close-x { display: none; }
 }
-/* 팝업 안에서는 목록을 묶지 않는다(요청: 전체보기 팝업 페이지에선 묶을 필요 없다) — 창
-   하나가 곧 한 갈래라, 그 안에서 다시 테두리를 두르면 같은 말을 두 번 하는 셈이다.
-   테두리를 걷으면 스크롤도 상자 안이 아니라 창 가장자리에서 일어난다(요청: 스크롤바가
-   안쪽에 나오지 않게) — 창 좌우 패딩(16px)만큼 밖으로 물려 목록이 창 폭을 꽉 채우고,
-   같은 값을 줄 안쪽 패딩으로 되돌려 글자 자리는 그대로 둔다.
+/* "전체 보기" 화면에서는 목록을 묶지 않는다(요청) — 화면 하나가 곧 한 갈래라, 그 안에서
+   다시 테두리를 두르면 같은 말을 두 번 하는 셈이다. 스크롤도 상자 안이 아니라 페이지가
+   한다(요청: 스크롤바가 안쪽에 나오지 않게) — 안쪽 스크롤을 만들지 않으니 테두리만 걷으면
+   된다.
    클래스를 겹쳐 특이도를 올린다(0-2-0) — 위 .scr-activity-rows가 소스에서 뒤에 있어
-   같은 특이도로는 진다(실제로 져서 팝업 목록이 통째로 안 넘어갔다: 내용 1607px, 상자 650px). */
-.scr-activity-rows.scr-activity-group-modal-rows {
-  overflow-x: hidden; overflow-y: auto; flex: 1 1 auto; min-height: 0;
-  border: none; border-radius: 0;
-  margin-inline: -16px; --scr-row-pad-x: 16px;
+   같은 특이도로는 진다(창이던 시절, 그래서 목록이 통째로 안 넘어갔다: 내용 1607px, 상자 650px). */
+.scr-activity-rows.scr-activity-group-page-rows {
+  border: none; border-radius: 0; overflow: visible;
 }
 
 /* 한 덩어리가 하나의 상자다(요청: 소그룹별로 묶인 느낌 더 나게, 묶음 테두리에 좌우 패딩).
