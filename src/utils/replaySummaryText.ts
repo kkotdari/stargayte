@@ -2448,13 +2448,14 @@ const TEMPLATES: Record<string, Tpl> = {
     const me = team(c.whoList, c.who);
     const foe = team(foeNames, c.whom || "상대");
     /** 그 틈에 상대가 한 일 — 멀티·테크 중 있는 것만 잇는다. */
+    /* "멀티를 앉히다"는 뺐다(요청) — 스타에서 쓰는 말이 아니라 어색하게 걸린다.
+       멀티는 '늘리다·펴다'로만 말한다. */
     const gain = exp > 0 && tech > 0 ? c.pick([
       `${ga(foe)} 멀티를 ${exp}개 더 늘리고 테크를 탐`,
-      `${ga(foe)} 멀티 ${exp}개를 앉히고 테크까지 올림`,
+      `${ga(foe)} 멀티를 ${exp}군데 더 펴고 테크까지 올림`,
     ]) : exp > 0 ? c.pick([
       `${ga(foe)} 멀티를 ${exp}개 더 늘림`,
       `${ga(foe)} 멀티를 ${exp}군데 더 폄`,
-      `${ga(foe)} 멀티 ${exp}개를 더 앉힘`,
     ]) : tech > 0 ? c.pick([
       // 바깥 문장이 이미 "…동안 / …사이 / 그 틈에"로 때를 말한다 — 여기서 또 "그 사이"를
       // 붙이면 한 문장에 같은 말이 두 번이다.
