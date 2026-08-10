@@ -244,6 +244,16 @@ export default function Header({
         </nav>
 
         <div className="scr-user">
+          {/* 테마 전환 — 아이콘 대신 텍스트로(요청). 앱 설치보다 앞이다(요청: 기둥 순서
+              테마 → 앱 설치) — 늘 있는 것이 먼저 서야 자리가 안 흔들린다. 앱 설치는
+              설치하고 나면 사라지는 버튼이라, 뒤에 두면 그 아래 것들이 안 밀린다. */}
+          <button
+            type="button"
+            className={cx("scr-header-text-btn", lightTheme && "scr-header-text-btn-active")}
+            onClick={() => setLightTheme((v) => !v)}
+          >
+            테마
+          </button>
           {/* 앱 설치(홈 화면에 추가) — 데스크톱엔 드로어가 없어 헤더에 텍스트로 노출한다(요청).
               이미 설치(standalone)면 canInstall=false라 안 뜬다. iOS는 안내 모달, 그 외는
               네이티브 설치 창을 연다. */}
@@ -252,14 +262,6 @@ export default function Header({
               앱 설치
             </button>
           )}
-          {/* 테마 전환 — 아이콘 대신 텍스트로(요청). 프로필 왼쪽. */}
-          <button
-            type="button"
-            className={cx("scr-header-text-btn", lightTheme && "scr-header-text-btn-active")}
-            onClick={() => setLightTheme((v) => !v)}
-          >
-            테마
-          </button>
           <button
             className="scr-user-chip" ref={profileAnchorRef}
             onClick={() => setProfileMenuOpen((v) => !v)}
@@ -320,21 +322,27 @@ export default function Header({
               {isAdmin && <AdminMenu screen={screen} onNavigate={go} variant="drawer" />}
             </nav>
 
+            {/* 서랍의 낱말과 차례를 기둥(왼쪽 세로 메뉴)과 맞춘다(요청): 테마 → 앱 설치 →
+                내 정보 → 로그아웃 → 메뉴 닫기. 같은 일을 부르는 이름이 화면마다 다르면
+                ("테마 바꾸기"와 "테마", "홈 화면에 추가"와 "앱 설치") 그게 서로 다른
+                기능인지부터 헷갈린다. 차례도 같은 이유다 — 하나만 익히면 어느 쪽에서든
+                손이 같은 자리로 간다. 닫기는 끝에 둔다: 이 서랍에서 나가는 문이라
+                다른 것들과 성격이 다르고, 잘못 눌러도 잃는 것이 없어야 한다. */}
             <div className="scr-drawer-actions">
               <button className="scr-btn scr-btn-ghost scr-btn-sm" onClick={() => setLightTheme((v) => !v)}>
-                테마 바꾸기
+                테마
               </button>
+              {!installed && (
+                <button className="scr-btn scr-btn-ghost scr-btn-sm" onClick={onInstallClick}>
+                  앱 설치
+                </button>
+              )}
               <button className="scr-btn scr-btn-ghost scr-btn-sm" onClick={() => { onOpenProfile(); setMenuOpen(false); }}>
                 내 정보
               </button>
               <button className="scr-btn scr-btn-ghost scr-btn-sm" onClick={() => { onLogout(); setMenuOpen(false); }}>
                 로그아웃
               </button>
-              {!installed && (
-                <button className="scr-btn scr-btn-ghost scr-btn-sm" onClick={onInstallClick}>
-                  홈 화면에 추가
-                </button>
-              )}
               <button className="scr-btn scr-btn-ghost scr-btn-sm" onClick={() => setMenuOpen(false)}>
                 메뉴 닫기
               </button>
