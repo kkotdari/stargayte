@@ -9281,6 +9281,16 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    끝난 자리가 어디인지보다 빈자리가 먼저 보인다. 다른 카드(게임결과·일정)는 본문이 표나
    글 한 덩이라 그 여백이 제 몫을 한다. */
 .scr-activity-card:has(.scr-challenge-card) { --card-row-gap: 14px; }
+/* 게임결과 본문의 위아래 안여백은 같은 값이고, 그 값도 줄인다(요청) — 공용 규칙은 위아래를
+   --card-row-gap(24px)으로 두는데, 목록에서 펼친 카드만 위를 14px로 따로 눌러 놓아 위아래가
+   서로 달랐다(그 값은 큰 제목을 받치던 시절의 보정이다). 이 카드는 머리에 제목이 없고 본문
+   첫 줄이 곧 시각·등록자라, 위아래 모두 그만큼 벌릴 이유가 없다.
+   안쪽 줄 사이(로스터·맵·요약)는 --card-row-gap 그대로다 — 여기서 줄이는 것은 카드
+   테두리와 내용 사이뿐이다. */
+.scr-activity-card > .scr-activity-card-body.scr-activity-game-result-body,
+.scr-activity-row-body .scr-activity-card > .scr-activity-card-body.scr-activity-game-result-body {
+  padding-top: 12px; padding-bottom: 12px;
+}
 .scr-activity-game-result-body .scr-game-result-trow {
   position: static;
   display: flex; flex-direction: column; gap: var(--card-row-gap);
