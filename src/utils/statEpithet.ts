@@ -192,28 +192,25 @@ interface Title {
 /** 급마다 점수에 곱하는 웃돈(Title.tier 주석) — 1급 한 번은 2급 세 번쯤의 값어치다. */
 const TIER_BOOST: Record<number, number> = { 1: 3, 2: 1 };
 
-/** 1급 칭호 — 아무나 못 하고, 한 번으로도 그 사람의 표식이 되는 것들. */
-const TIER1 = new Set([
-  "공포의 핵 보유국", "포토러시의 퀸", "성큰러시의 절대자", "마인드 컨트롤러",
-  "커널 개통사", "리콜의 마술사", "감염술사", "다크스웜의 여신", "몰래 배럭의 대가",
-  "헬프 퀸",
+/* 1급 전술 — 아무나 못 하고, 한 번으로도 그 사람의 표식이 되는 것들.
+   표의 열쇠는 칭호 이름이 아니라 전술 키다(요청으로 이름이 자주 바뀐다) — 이름으로 걸면
+   문구를 다듬을 때마다 이 표와 어긋나 무게가 조용히 1로 떨어진다(실제로 그럴 뻔했다). */
+const TIER1_KEYS = new Set([
+  "Nuclear Strike", "cannon-rush", "sunken-rush", "mind-control",
+  "nydus", "recall", "infested", "swarm", "sneak-rax", "ally-help",
 ]);
 
 const TACTIC_WEIGHT: Record<string, number> = {
-  "공포의 핵 보유국": 8,
-  "포토러시의 퀸": 3.5, "성큰러시의 절대자": 3.5, "마인드 컨트롤러": 3.5,
-  "헬프 퀸": 3, "커널 개통사": 3, "리콜의 마술사": 3, "감염술사": 3,
-  "조이기의 달인": 2.5, "센포의 지배자": 2.5, "몰래 배럭의 대가": 2.5, "다크스웜의 여신": 2.5,
-  "후반 도모 퀸": 2, "옆탱의 여왕": 2, "일꾼 사냥꾼": 2, "지긋지긋한 견제러": 2,
-  "동맹의 수호신": 2, "캐리어 퀸": 2, "배틀 퀸": 2,
-  "셋방살이 전문가": 3, "드랍의 여신": 1.5, "공포의 독거미 부대": 1.5, "가디언 함대 사령관": 1.5,
-  "발키리 지휘관": 1.5, "오버로드 사냥꾼": 1.5, "맞러시 승부사": 1.5,
-  "남의 집 헤집기 장인": 1.5, "바이오닉의 권위자": 1.5, "메카닉을 호령하는 자": 1.5,
-  "공포의 목동저그": 1.5,
+  "Nuclear Strike": 8,
+  "cannon-rush": 3.5, "sunken-rush": 3.5, "mind-control": 3.5,
+  "ally-help": 3, nydus: 3, recall: 3, infested: 3, lodging: 3,
+  "center-tank": 2.5, "center-photon": 2.5, "sneak-rax": 2.5, swarm: 2.5,
+  "wall-in": 2, "side-tank": 2, "harass-workers": 2, "harass-long": 2,
+  "ally-cannon": 2, carrier: 2, bc: 2,
+  dropship: 1.5, lurker: 1.5, guardian: 1.5, valkyrie: 1.5, "valk-hunt": 1.5,
+  "duel-rush": 1.5, "base-raid": 1.5, bionic: 1.5, mech: 1.5, moka: 1.5,
 };
 
-/** 전술 칭호 한 줄 — 겨룰 사람 수도 한가운데와의 차이도 안 따지고(위 주석), 최소 횟수만
- *  본다. 여러 키를 묶는 것은 종족마다 이름이 다른 전술 때문이다(드랍이 그렇다). */
 /* 근거 문장에 적을 '그 수의 이름'(요청: "자막에 잡힌 횟수 3회" 말고 무엇이 몇 번인지
    구체적으로) — 칭호는 멋을 부린 말이라 그것만으로는 무엇을 세었는지가 안 남는다.
    "커널 개통사"와 "경기 요약에 커널 3번"이 나란히 있어야 읽는 사람이 둘을 이어 붙인다.
@@ -239,8 +236,8 @@ const TACTIC_NOUN: Record<string, string> = {
 const tactic = (label: string, keys: string[], min = 2): Title => ({
   label, value: (s) => did(s, ...keys), pool: 1, edge: 1, min,
   why: `경기 요약에 ${TACTIC_NOUN[keys[0]] ?? "이 수"}`, unit: "번",
-  weight: TACTIC_WEIGHT[label] ?? 1, scale: "count",
-  tier: TIER1.has(label) ? 1 : 2,
+  weight: TACTIC_WEIGHT[keys[0]] ?? 1, scale: "count",
+  tier: TIER1_KEYS.has(keys[0]) ? 1 : 2,
 });
 /** 어지간해선 두 번 나오기 어려운 것들 — 한 번으로도 그 사람의 표식이 된다. */
 const rare = (label: string, keys: string[]): Title => tactic(label, keys, 1);
@@ -254,7 +251,7 @@ const spell = (label: string, key: string, min = 1): Title => ({
     return n > 0 ? n : null;
   },
   pool: 1, edge: 1, min, why: `경기에서 ${TECH_KO[key] ?? "이 기술"} 사용`, unit: "번",
-  weight: TACTIC_WEIGHT[label] ?? 1, scale: "count", tier: TIER1.has(label) ? 1 : 2,
+  weight: TACTIC_WEIGHT[key] ?? 1, scale: "count", tier: TIER1_KEYS.has(key) ? 1 : 2,
 });
 
 const TITLES: Title[] = [
@@ -262,7 +259,7 @@ const TITLES: Title[] = [
      떨어질까 말까 한 것이고, 떨어뜨리려면 고스트를 뽑아 살려 두고 상대 진영까지 데려가
      지목한 뒤 그 자리를 버텨야 한다. 아래 어떤 칭호도 이만큼 드물지 않다.
      (버섯구름 배달부 → 핵 투하 전문가 → 핵보유국으로 다듬었다.) */
-  spell("공포의 핵 보유국", "Nuclear Strike"),
+  spell("엄청난 핵 마스터", "Nuclear Strike"),
 
   /* ── 사람 노릇(요청: 꼭 넣을 것) ────────────────────────────────────────────
      맨 위에 둔다 — 혼자 잘하는 것보다 판을 함께 굴린 쪽이 먼저 불릴 자격이 있다.
@@ -280,7 +277,7 @@ const TITLES: Title[] = [
   /* 일꾼 견제는 위로 올린다(요청: 일꾼 견제도 강화) — 상대 일꾼을 잡는 일은 병력을 뽑아
      쌓아 두는 것과 달리 그 순간 손이 가야만 되는 것이고, 그 판의 자원 곡선을 실제로
      꺾어 놓는다. 그래서 다른 어떤 전술보다 그 사람의 성향을 잘 말한다. */
-  tactic("일꾼 사냥꾼", ["harass-workers"], 1),
+  tactic("무자비한 일꾼 사냥꾼", ["harass-workers"], 1),
   tactic("지긋지긋한 견제러", ["harass-long"], 1),
   /* 드랍도 같은 무리로 올린다(요청: 견제도 가중치 높이기) — 병력을 실어 상대 뒤로 넘기는
      일은 앞마당에 병력을 세워 두는 것과 달리 판을 두 곳에서 동시에 굴려야 한다.
@@ -300,22 +297,22 @@ const TITLES: Title[] = [
   /* 한 번으로도 자격이 있다 — 남의 집 앞에 건물을 박는 것은 손이 미끄러져서 되는 일이
      아니다(다른 전술의 기본 문턱 2회는 "한 번은 우연"을 거르려는 것이다). */
   tactic("포토러시의 퀸", ["cannon-rush"], 1),
-  tactic("성큰러시의 절대자", ["sunken-rush"], 1),
+  tactic("무시무시한 성큰러시의 절대자", ["sunken-rush"], 1),
   tactic("센포의 지배자", ["center-photon"]),
   tactic("남의 집 헤집기 장인", ["base-raid"]),
   /* 나이더스 커널이다(버로우가 아니다). "땅굴"이라 부르니 버로우 이야기로 읽힌다는 지적 —
      자막이 이 수를 부르는 이름(커널)을 그대로 쓴다. */
-  rare("커널 개통사", ["nydus"]),
+  rare("땅속을 여는 커널 개통사", ["nydus"]),
   rare("리콜의 마술사", ["recall"]),
-  rare("마인드 컨트롤러", ["mind-control"]),
-  tactic("캐리어 퀸", ["carrier"]),
+  rare("정신을 훔치는 마인드 컨트롤러", ["mind-control"]),
+  tactic("아름다운 캐리어 퀸", ["carrier"]),
   tactic("공포의 독거미 부대", ["lurker"]),
-  tactic("보이지 않는 손", ["cloak-wraith"]),
-  tactic("뮤탈 조련사", ["muta"]),
+  tactic("밤의 보이지 않는 손", ["cloak-wraith"]),
+  tactic("하늘을 나는 뮤탈 조련사", ["muta"]),
   tactic("오버로드 사냥꾼", ["valk-hunt"]),
-  tactic("몰래 배럭의 대가", ["sneak-rax"]),
-  tactic("저글링 폭풍", ["zling-rush"]),
-  tactic("질럿 돌격대장", ["zealot-rush"]),
+  tactic("소리없는 몰래 배럭의 대가", ["sneak-rax"]),
+  tactic("끝없는 저글링 폭풍", ["zling-rush"]),
+  tactic("돌진하는 질럿 돌격대장", ["zealot-rush"]),
   tactic("맞러시 승부사", ["duel-rush"]),
   tactic("협공의 선봉", ["gang-rush"]),
   rare("다크스웜의 여신", ["swarm"]),
@@ -323,7 +320,7 @@ const TITLES: Title[] = [
   tactic("가디언 함대 사령관", ["guardian"]),
   tactic("배틀 퀸", ["bc"]),
   tactic("발키리 지휘관", ["valkyrie"]),
-  tactic("우리 집 문지기", ["front-defense"]),
+  tactic("철통같은 우리 집 문지기", ["front-defense"]),
 
   /* ── 판을 어떻게 끌고 갔나 ──────────────────────────────────────────────────
      여기부터는 '무엇을 뽑았나'가 아니라 '어떤 판을 만들었나'다. 지는 쪽으로 읽히는 키
@@ -334,10 +331,10 @@ const TITLES: Title[] = [
      의미가 구체적이지 않다). 넷 다 "큰 싸움이 있었다"·"오래 버텼다"처럼 어느 판에나 붙는
      말이라, 그 사람이 무엇을 했는지가 안 남는다. 칭호는 읽는 사람이 "왜 저게 붙었지?" 하고
      표를 다시 보게 만드는 값이어야 하는데, 이런 말은 다시 봐도 짚을 것이 없다. */
-  tactic("수성의 여왕", ["hold-off"]),
+  tactic("흔들리지 않는 수성의 여왕", ["hold-off"]),
   tactic("받아치기의 정석", ["counter"]),
-  tactic("벽을 뚫는 자", ["breakthrough"]),
-  tactic("올인의 화신", ["allin"]),
+  tactic("벽을 부수는 자", ["breakthrough"]),
+  tactic("물러섬 없는 올인의 화신", ["allin"]),
   tactic("째기의 달인", ["greedy-paid"]),
   /* 빠른 테크는 아래로 내렸다(지적: 그렇게 중요하진 않다) — 고급 유닛으로 곧장 올라간
      것은 흔한 선택이고, 그 자체로 판이 갈리지도 않는다. 문구도 "테크의 연금술사"에서
@@ -350,12 +347,12 @@ const TITLES: Title[] = [
   tactic("멀티 부동산왕", ["expand"]),
   /* 상대보다 일꾼을 훨씬 많이 굴린 대목(worker-gap) — 자원을 많이 캤다는 말이다. */
   tactic("자원 부자", ["worker-gap"]),
-  tactic("생산 공장장", ["prod-gap"]),
+  tactic("쉼 없는 생산 공장장", ["prod-gap"]),
   tactic("병력 사재기", ["mass-army"]),
   tactic("업글 덕후", ["upgrade-signature"]),
   tactic("지구전의 화신", ["long-run"]),
   tactic("끝까지 버티는 사람", ["late-hold", "late-defense", "stand"]),
-  rare("좀비 모드", ["revival"]),
+  rare("죽지 않는 좀비 모드", ["revival"]),
   rare("이사 퀸", ["relocate"]),
   /* 본진을 잃고 아군 기지에 얹혀산 대목(lodging) — 흔치 않은 데다 그 판을 통째로 말하는
      그림이라 무게를 높였다(요청). 진 이야기가 아니라 끝까지 앉아 있었다는 이야기다. */
@@ -459,7 +456,7 @@ const TITLES: Title[] = [
   { label: "승률의 정점", weight: 3.5, why: "승률", unit: "%", value: (s) => (s.plays >= MIN_PLAYS_RATE ? s.winRate : null) },
   { label: "BEST 수집가", weight: 3, why: "BEST PLAYER", unit: "회", value: (s) => (s.bests > 0 ? s.bests : null) },
   { label: "쉬지 않는 손가락", weight: 2, why: "분당 커맨드", unit: "", value: (s) => s.avgCmd },
-  { label: "개근의 여왕", weight: 3, sticky: true, why: "경기 수", unit: "판", value: (s) => s.plays },
+  { label: "성실한 개근의 여왕", weight: 3, sticky: true, why: "경기 수", unit: "판", value: (s) => s.plays },
 ];
 
 /* ── 특징 ──────────────────────────────────────────────────────────────────────
