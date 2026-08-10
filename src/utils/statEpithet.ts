@@ -27,6 +27,11 @@ import type { MemberStats } from "../types";
 const MIN_PLAYS = 3;
 /** 승률만은 더 본다 — 3판 3승이 곧 "정점"이 되면 그 칭호는 아무 말도 안 하는 것과 같다. */
 const MIN_PLAYS_RATE = 8;
+/* 좋은 칭호일수록 뛴 판이 있어야 한다(요청: 경기를 많이 안 했는데 재밌는 칭호를 가져가면
+   안 된다) — 세 판 나와서 그중 한 판에 포토러시를 한 사람이 "포토러시의 퀸"이 되면, 그
+   칭호는 클럽에서 그 사람을 부르는 말이 아니라 우연히 찍힌 도장이 된다.
+   급마다 다르게 잡는 이유는 급 자체가 '얼마나 그 사람다운가'의 눈금이라서다. */
+const MIN_PLAYS_TIER: Record<number, number> = { 1: 12, 2: 6 };
 /** 수치 칭호는 겨룰 사람이 이만큼은 있어야 뜻이 선다 — 둘 중 1등은 1등이 아니다. */
 const MIN_POOL = 3;
 /** 수치 칭호의 1등 값이 무리 한가운데보다 이만큼은 커야 왕관이다. 다들 비슷한데 소수점이
@@ -124,6 +129,13 @@ interface Title {
   unit?: string;
   /** 칭호끼리 겨룰 때의 무게 — 없으면 표의 차례대로 나간다. */
   weight?: number;
+  /** 칭호의 급 — 무게보다 먼저 본다(요청: 표 차례 개념도 들어가야 한다, 클래스가 다른 것).
+   *
+   *  같은 급 안에서만 무게·횟수로 겨룬다. 급을 따로 두는 까닭은 어떤 칭호는 아무리 여러 번
+   *  해도 다른 칭호 한 번을 못 이기기 때문이다 — 저글링 러시 열 번이 핵 한 발과 겨룰 수는
+   *  없다. 점수 하나로 다 뭉개면 무게를 아무리 손봐도 그 경계가 흐려진다.
+   *  1급은 드물어서 그 자체로 표식이 되는 것들, 2급은 나머지(흔한 전술·운영·수치)다. */
+  tier?: number;
   /** 무게에 무엇을 곱할까.
    *
    *  "count"(전술)는 횟수 그대로다 — 포토러시 세 번은 한 번의 세 배다.
@@ -141,8 +153,15 @@ interface Title {
    값은 "이 한 번이 얼마나 드문가"다. 1이 예사로 나오는 일(드랍 한 번, 저글링 러시 한 번),
    3 언저리가 아무나 안 하는 일(포토·성큰러시, 커널, 리콜), 그 위가 판을 통째로 말하는 일
    (핵)이다. 여기 없는 칭호는 1이다. */
+/** 1급 칭호 — 아무나 못 하고, 한 번으로도 그 사람의 표식이 되는 것들. */
+const TIER1 = new Set([
+  "핵보유국", "포토러시의 퀸", "성큰러시의 절대자", "마인드 컨트롤러",
+  "커널 개통사", "리콜의 마술사", "감염술사", "다크스웜의 여신", "몰래 배럭의 대가",
+  "헬프 퀸",
+]);
+
 const TACTIC_WEIGHT: Record<string, number> = {
-  "핵 투하 전문가": 8,
+  "핵보유국": 8,
   "포토러시의 퀸": 3.5, "성큰러시의 절대자": 3.5, "마인드 컨트롤러": 3.5,
   "헬프 퀸": 3, "커널 개통사": 3, "리콜의 마술사": 3, "감염술사": 3,
   "조이기의 달인": 2.5, "센포의 지배자": 2.5, "몰래 배럭의 대가": 2.5, "다크스웜의 여신": 2.5,
@@ -159,6 +178,7 @@ const TACTIC_WEIGHT: Record<string, number> = {
 const tactic = (label: string, keys: string[], min = 2): Title => ({
   label, value: (s) => did(s, ...keys), pool: 1, edge: 1, min,
   why: "자막에 잡힌 횟수", unit: "회", weight: TACTIC_WEIGHT[label] ?? 1, scale: "count",
+  tier: TIER1.has(label) ? 1 : 2,
 });
 /** 어지간해선 두 번 나오기 어려운 것들 — 한 번으로도 그 사람의 표식이 된다. */
 const rare = (label: string, keys: string[]): Title => tactic(label, keys, 1);
@@ -172,15 +192,15 @@ const spell = (label: string, key: string, min = 1): Title => ({
     return n > 0 ? n : null;
   },
   pool: 1, edge: 1, min, why: "사용", unit: "회",
-  weight: TACTIC_WEIGHT[label] ?? 1, scale: "count",
+  weight: TACTIC_WEIGHT[label] ?? 1, scale: "count", tier: TIER1.has(label) ? 1 : 2,
 });
 
 const TITLES: Title[] = [
   /* 핵은 이 표에서 가장 앞이다(지적: 핵을 쐈는데 빠른 테크가 나온다) — 한 판에 한 번
      떨어질까 말까 한 것이고, 떨어뜨리려면 고스트를 뽑아 살려 두고 상대 진영까지 데려가
      지목한 뒤 그 자리를 버텨야 한다. 아래 어떤 칭호도 이만큼 드물지 않다.
-     ("버섯구름 배달부"에서 바꿨다 — 빗대지 않고 한 일을 그대로 적는다.) */
-  spell("핵 투하 전문가", "Nuclear Strike"),
+     (버섯구름 배달부 → 핵 투하 전문가 → 핵보유국으로 다듬었다.) */
+  spell("핵보유국", "Nuclear Strike"),
 
   /* ── 사람 노릇(요청: 꼭 넣을 것) ────────────────────────────────────────────
      맨 위에 둔다 — 혼자 잘하는 것보다 판을 함께 굴린 쪽이 먼저 불릴 자격이 있다.
@@ -215,8 +235,10 @@ const TITLES: Title[] = [
 
   // ── 전술(리플레이 자막이 말하던 그 사실) ────────────────────────────────────
   tactic("옆탱의 여왕", ["side-tank"]),
-  tactic("포토러시의 퀸", ["cannon-rush"]),
-  tactic("성큰러시의 절대자", ["sunken-rush"]),
+  /* 한 번으로도 자격이 있다 — 남의 집 앞에 건물을 박는 것은 손이 미끄러져서 되는 일이
+     아니다(다른 전술의 기본 문턱 2회는 "한 번은 우연"을 거르려는 것이다). */
+  tactic("포토러시의 퀸", ["cannon-rush"], 1),
+  tactic("성큰러시의 절대자", ["sunken-rush"], 1),
   tactic("센포의 지배자", ["center-photon"]),
   tactic("남의 집 헤집기 장인", ["base-raid"]),
   /* 나이더스 커널이다(버로우가 아니다). "땅굴"이라 부르니 버로우 이야기로 읽힌다는 지적 —
@@ -552,23 +574,36 @@ export function epithetsOf(pool: EpithetSubject[]): Map<string, Epithet> {
     id: string;
     label: string;
     raw: number;
-    /** 전술끼리 겨룰 점수(무게 × 횟수). 무게가 없는 칭호는 0이라 표 차례로 간다. */
+    /** 겨룰 점수(무게 × 횟수 또는 무게 × 한가운데 대비 배수). 무게가 없으면 0이라 표 차례로 간다. */
     score: number;
     order: number;
+    /** 이 사람이 그 값의 1등인가 — 근거 문장에만 쓴다. */
+    first: boolean;
   }
   const claims: Claim[] = [];
   TITLES.forEach((title, order) => {
+    // 급마다 뛴 판 문턱이 다르다(MIN_PLAYS_TIER) — 못 넘긴 사람은 후보에서 아예 빠진다.
+    const need = MIN_PLAYS_TIER[title.tier ?? 2] ?? MIN_PLAYS;
     const vals = ranked
+      .filter((p) => p.stats.plays >= need)
       .map((p) => ({ id: p.id, v: title.value(p.stats), stats: p.stats }))
       .filter((x): x is { id: string; v: number; stats: MemberStats } => x.v !== null && x.v > 0);
     if (vals.length < (title.pool ?? MIN_POOL)) return;
     const top = Math.max(...vals.map((x) => x.v));
     if (title.min !== undefined && top < title.min) return;
-    if (top < median(vals.map((x) => x.v)) * (title.edge ?? CROWN_EDGE)) return;
     const med = median(vals.map((x) => x.v));
-    const winners = vals.filter((x) => x.v === top);
-    // 공동 1위가 절반을 넘으면 그건 그 사람의 특징이 아니라 그 무리의 평균이다(수치 칭호에만
-    // 해당한다 — 전술은 여럿이 같은 횟수인 것이 흔하고, 그래도 '한 사람만'은 아래에서 지킨다).
+    if (top < med * (title.edge ?? CROWN_EDGE)) return;
+    /* 1등만 후보로 두지 않는다(지적: 포토러시는 저 사람이 더 어울린다) — 1등이 다른 칭호를
+       가져가 버리면 그 칭호는 통째로 사라졌다. 실제로 포토러시를 두 번 한 사람이 핵 칭호를
+       받자, 한 번 한 사람은 아무 전술 칭호도 못 받고 유닛 이름으로 밀렸다.
+       대신 아무나 물려받지는 못한다: 전술은 제 힘으로 최소 횟수를 넘겨야 하고, 수치는
+       무리 한가운데보다 확실히 위여야 한다(아래 bar). 순서는 어차피 점수가 정한다. */
+    const bar = title.scale === "count"
+      ? (title.min ?? 1)
+      : med * (title.edge ?? CROWN_EDGE);
+    const winners = vals.filter((x) => x.v >= bar);
+    // 그 무리의 절반이 넘게 걸리면 그건 특징이 아니라 평균이다(수치 칭호에만 해당한다 —
+    // 전술은 여럿이 같은 횟수인 것이 흔하고, 그래도 '한 칭호는 한 사람'은 아래에서 지킨다).
     if ((title.pool ?? MIN_POOL) > 1 && winners.length > vals.length / 2) return;
     for (const w of winners) {
       const label = title.name
@@ -577,14 +612,20 @@ export function epithetsOf(pool: EpithetSubject[]): Map<string, Epithet> {
       if (!label || label.includes("{n}")) continue;
       // 전술은 횟수 그대로, 수치는 '한가운데의 몇 배'로 바꿔 곱한다(Title.scale 주석).
       const base = title.scale === "count" ? w.v : (med > 0 ? w.v / med : 1);
-      claims.push({ title, id: w.id, label, raw: w.v, score: (title.weight ?? 0) * base, order });
+      claims.push({
+        title, id: w.id, label, raw: w.v, score: (title.weight ?? 0) * base, order,
+        first: w.v === top,
+      });
     }
   });
 
-  /* 나눠 주는 차례: 전술은 무게 × 횟수가 큰 것부터(요청), 그다음이 표에 적힌 차례다.
+  /* 나눠 주는 차례: 급이 먼저고(Title.tier), 같은 급 안에서 무게 × 횟수가 큰 것부터,
+     그마저 같으면 표에 적힌 차례다.
      한 사람은 한 칭호, 한 칭호는 한 사람 — 먼저 걸린 쪽이 가져간다.
      맵 칭호(name이 있는 줄)만은 사람마다 맵 이름이 달라 서로 다른 칭호로 친다. */
-  claims.sort((a, b) => (b.score - a.score) || (a.order - b.order) || a.id.localeCompare(b.id));
+  claims.sort((a, b) =>
+    ((a.title.tier ?? 2) - (b.title.tier ?? 2))
+    || (b.score - a.score) || (a.order - b.order) || a.id.localeCompare(b.id));
   for (const c of claims) {
     if (out.has(c.id) || used.has(c.label)) continue;
     /* 근거를 함께 남긴다(지적: "왜 이 칭호가 나오지?") — 칭호는 기록에서 나온다고 말은
@@ -595,7 +636,7 @@ export function epithetsOf(pool: EpithetSubject[]): Map<string, Epithet> {
       : `${Math.round(c.raw * 100)}%`;
     out.set(c.id, {
       label: c.label,
-      why: `${c.title.why ?? "기록"} ${shown}${c.title.unit ?? ""} — 클럽 1위`,
+      why: `${c.title.why ?? "기록"} ${shown}${c.title.unit ?? ""}${c.first ? " — 클럽 1위" : ""}`,
     });
     used.add(c.label);
   }
