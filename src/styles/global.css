@@ -10675,12 +10675,13 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    읽어야 할 칸보다 눈에 먼저 들어오면 안 된다. 이모지라 글꼴이 제 색을 그리므로
    opacity로만 낮춘다. */
 .scr-minimap-vigor-icon {
-  /* 8 → 11 → 12px(요청) — 칸(6px)보다 크지만, 이 그림은 '칸 다섯'을 한 덩어리로 읽게 하는
-     머리표라 그 덩어리 높이(6px)가 아니라 이름표 글자와 견주는 편이 맞다. 대신 흐리게
-     눌러 눈이 칸보다 먼저 이쪽에 가지 않게 한다.
+  /* 8 → 11 → 12 → 18px(요청: 1.5배) — 칸(6px)보다 한참 크지만, 이 그림은 '칸 다섯'을 한
+     덩어리로 읽게 하는 머리표라 그 덩어리 높이가 아니라 이름표 글자와 견주는 편이 맞다.
+     이 크기부터는 달리기·걷기·꿇음이 한눈에 갈린다 — 12px에서는 셋이 다 '작은 사람'이었다.
+     대신 흐리게 눌러 눈이 칸보다 먼저 이쪽에 가지 않게 한다.
      사이는 0이다(요청: 간격은 줄여도 될 듯) — 이모지 글자 자체가 좌우에 제 여백을 물고
      있어, 여기서 또 띄우면 머리표와 눈금이 따로 놓인 둘로 보인다. */
-  font-size: 12px; line-height: 1; opacity: 0.8; margin-right: 0;
+  font-size: 18px; line-height: 1; opacity: 0.8; margin-right: 0;
   text-shadow: 0 0 2px rgba(0, 0, 0, 0.9);
 }
 .scr-minimap-vigor-pip {
