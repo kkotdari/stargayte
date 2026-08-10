@@ -295,9 +295,8 @@ const TITLES: Title[] = [
      통한 째기(greedy-paid)는 위의 "째기의 달인"이고, 이쪽은 그냥 늘 그렇게 시작하는 사람이다. */
   tactic("일단 째고 본다", ["greedy-build"]),
   tactic("멀티 부동산왕", ["expand"]),
-  /* 상대보다 일꾼을 훨씬 많이 굴린 대목(worker-gap) — 자원을 많이 캤다는 말이라
-     그 판에서 쓰는 말로 부른다(요청). */
-  tactic("돈보갈", ["worker-gap"]),
+  /* 상대보다 일꾼을 훨씬 많이 굴린 대목(worker-gap) — 자원을 많이 캤다는 말이다. */
+  tactic("자원 부자", ["worker-gap"]),
   tactic("생산 공장장", ["prod-gap"]),
   tactic("한 방 병력의 주인", ["power-unit"]),
   tactic("병력 사재기", ["mass-army"]),

@@ -650,14 +650,15 @@ export function GameResultPost({
   );
 }
 
-/* 활동 유형 필터 — 나열선택형이라 다섯이 그대로 한 줄에 늘어선다. 랭크 변동은 목록에는
-   그대로 나오되 거르는 대상에서는 뺐다 — '전체'에 포함되므로 안 보이게 되는 것은 없다.
-   차례는 요청대로 전체/일정/리그/너 나와!/게임결과다(일정이 새로 들어오며 게임결과가
-   맨 뒤로 갔다). */
-type ActivityKindFilter = "all" | "schedule" | "league" | "call" | "gameResult";
+/* 활동 유형 필터 — 나열선택형이라 그대로 한 줄에 늘어선다. 차례는 요청대로
+   전체/알림/일정/리그/너 나와!/게임결과다(알림이 '전체' 바로 다음).
+   알림은 랭크 변동까지 함께 든다 — 둘 다 사람이 올린 글이 아니라 서버가 남긴 한 줄이고,
+   화면에서도 같은 카드 자리에 선다(요청: 표시만 통합). */
+type ActivityKindFilter = "all" | "notice" | "schedule" | "league" | "call" | "gameResult";
 
 const KIND_OPTS: { value: ActivityKindFilter; label: string }[] = [
   { value: "all", label: "전체" },
+  { value: "notice", label: "알림" },
   { value: "schedule", label: "일정" },
   { value: "league", label: "리그" },
   { value: "call", label: "너 나와!" },
@@ -843,8 +844,20 @@ export default function ActivityScreen() {
     [feedItems],
   );
   const gameResults = useMemo(() => feedItems.flatMap((it) => it.gameResults), [feedItems]);
+  /* 랭크 변동은 이제 알림으로 실려 온다(요청: 표시만 통합) — 저장도 카드도 그대로라,
+     받는 자리에서 스냅샷 모양으로 되돌려 예전 파이프라인에 그대로 흘린다. */
   const rankShifts = useMemo(
-    () => feedItems.flatMap((it) => (it.rankingShift ? [it.rankingShift] : [])),
+    () => feedItems.flatMap((it) => (
+      it.notice && it.notice.kind === "rankingShift"
+        ? [{
+          id: it.notice.id,
+          reason: it.notice.payload.reason ?? "daily",
+          createdAt: it.notice.createdAt,
+          matchIds: it.notice.payload.matchIds ?? [],
+          sections: it.notice.payload.sections ?? [],
+        } as RankingShift]
+        : []
+    )),
     [feedItems],
   );
   const leagueMatches = useMemo(
@@ -855,8 +868,10 @@ export default function ActivityScreen() {
     () => feedItems.flatMap((it) => (it.schedule ? [it.schedule] : [])),
     [feedItems],
   );
+  /* 랭크 변동은 위에서 스냅샷으로 돌려 그리므로 여기서는 뺀다 — 안 그러면 같은 줄이
+     알림 카드와 랭크 변동 카드로 두 번 선다. */
   const notices = useMemo(
-    () => feedItems.flatMap((it) => (it.notice ? [it.notice] : [])),
+    () => feedItems.flatMap((it) => (it.notice && it.notice.kind !== "rankingShift" ? [it.notice] : [])),
     [feedItems],
   );
   /* 댓글도 같은 응답에 실려 온다 — 카드마다 따로 부르면 답이 제각각 도착하며 카드 키가
@@ -1075,12 +1090,12 @@ export default function ActivityScreen() {
   const passesFilter = useCallback(
     (item: ActivityItem): boolean => {
       if (kindFilter !== "all") {
-        // 도전장은 전부 너나와(call)로 본다. 랭크 변동은 어느 갈래도 아니라 '전체'에만 든다.
+        // 도전장은 전부 너나와(call)로 본다. 랭크 변동은 알림과 한 갈래다(요청: 통합).
         const kind = item.kind === "gameResult" ? "gameResult"
           : item.kind === "challenge" ? "call"
           : item.kind === "leagueMatch" ? "league"
           : item.kind === "schedule" ? "schedule"
-          // 랭크 변동만 어느 갈래도 아니라 '전체'에만 든다.
+          : item.kind === "notice" || item.kind === "rankingShift" ? "notice"
           : null;
         if (kind !== kindFilter) return false;
       }
@@ -1265,7 +1280,7 @@ export default function ActivityScreen() {
       .map((it) => (it.gameResults.some((g) => g.id === id)
         ? { ...it, gameResults: it.gameResults.filter((g) => g.id !== id) }
         : it))
-      .filter((it) => !!it.challenge || !!it.rankingShift || it.gameResults.length > 0));
+      .filter((it) => !!it.challenge || !!it.notice || it.gameResults.length > 0));
   }, [patchFeed, displayFeed]);
 
   const dateLabelOf = (item: { time: number }) => {

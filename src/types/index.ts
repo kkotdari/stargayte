@@ -704,7 +704,17 @@ export interface ActivityNotice {
   kind: string;
   /** 그 종류가 쓰는 값. 칭호 변경은 { changes: [{ memberId, from, to, why }] }.
    *  닉네임은 안 담겨 있다 — 이름은 바뀌므로 볼 때 지금 회원 정보로 푼다. */
-  payload: { changes?: EpithetChange[] };
+  /** 그 종류가 쓰는 값.
+   *  - epithet: { changes: [{ memberId, from, to, why }] }
+   *  - rankingShift: 스냅샷 그대로({ reason, matchIds, sections }) — 저장은 여전히
+   *    제 테이블에 있고 활동에서만 알림으로 감싸 나온다(요청: 표시만 통합).
+   *  닉네임은 안 담겨 있다 — 이름은 바뀌므로 볼 때 지금 회원 정보로 푼다. */
+  payload: {
+    changes?: EpithetChange[];
+    reason?: RankingShift["reason"];
+    matchIds?: number[];
+    sections?: RankingShiftSection[];
+  };
   createdAt: string;
 }
 
@@ -718,11 +728,13 @@ export interface EpithetChange {
 
 export interface ActivityFeedItem {
   key: string;
-  kind: "challenge" | "rankingShift" | "gameResultPost" | "leagueMatch" | "schedule" | "notice";
+  /* 랭크 변동은 제 종류를 안 갖는다(요청: rankingShift 제거하고 알림 유형으로 통합) —
+     서버가 남기는 한 줄이라는 점에서 칭호 변경과 같은 것이라, 화면에서도 같은 자리에 선다.
+     저장은 그대로라 댓글 대상(targetType)은 예전처럼 rankingShift다. */
+  kind: "challenge" | "gameResultPost" | "leagueMatch" | "schedule" | "notice";
   /* 줄 번호(no)는 화면에서 걷어냈다(요청: "별 의미 없는 듯") — 서버는 아직 실어 보내지만
      쓰는 곳이 없어 여기서도 받지 않는다. */
   challenge?: Challenge | null;
-  rankingShift?: RankingShift | null;
   gameResults: GameResult[];
   leagueMatch?: LeagueMatchActivity | null;
   schedule?: Schedule | null;
