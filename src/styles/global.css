@@ -143,6 +143,10 @@
   --edge-glow: var(--pipe-bright);
 
   --line: rgba(255, 255, 255, 0.16);          /* 내부 구분선 — 흰 톤 */
+  /* 스크롤바 손잡이(파일 뒤 "unified scrollbar" 참고). 다크는 구분선과 같은 세기로 둬도
+     어두운 바탕에서 옅은 흰 막대라 튀지 않는다. */
+  --scroll-thumb: rgba(255, 255, 255, 0.16);
+  --scroll-thumb-hover: rgba(255, 255, 255, 0.34);
   /* 헤더/서랍의 구분선을 파이프(붉은 강조) 대신 중립 톤으로 쓸 때의 색(요청: "포인트가 아닌
      기본 컬러"). 어두운 테마는 옅은 흰색, 라이트는 옅은 검정. */
   --divider-soft: rgba(255, 255, 255, 0.32);
@@ -962,6 +966,9 @@ html.scr-light-theme {
   --input-bg: #ffffff;
   --line: #000000;
   --line-soft: #000000;
+  /* 흰 바탕에서 순검정 손잡이는 화면에서 제일 진한 물체가 된다(지적) — 알파로 내려 잡는다. */
+  --scroll-thumb: rgba(0, 0, 0, 0.20);
+  --scroll-thumb-hover: rgba(0, 0, 0, 0.34);
   --line-hair: rgba(0, 0, 0, 0.12);
   --line-faint: rgba(0, 0, 0, 0.13);
   /* 라이트에서는 같은 색이 흰 바탕에 떠 버려 어두운 쪽으로 내려 잡는다. 여기서는 파스텔로
@@ -1639,6 +1646,11 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
     overflow-y: auto; scrollbar-width: none;
     border-right: 1px solid var(--line-soft);
   }
+  /* 라이트에서는 이 선만 따로 내려 잡는다(지적: 검정이라 튄다) — --line-soft는 라이트에서
+     순검정인데, 표의 짧은 칸 경계에서는 그 세기가 맞아도 화면 높이를 통째로 가로지르는
+     이 선에서는 얘기가 다르다. 선은 길어질수록 무겁게 읽혀서, 같은 색이 여기서는 벽이 된다.
+     토큰 자체를 바꾸지 않는 이유가 그것이다 — 짧은 선들까지 같이 흐려진다. */
+  .scr-light-theme .scr-header { border-right-color: var(--line-faint); }
   .scr-header::-webkit-scrollbar { display: none; }
   /* 기둥에 세로로 서는 차례(요청, 손그림):
 
@@ -5205,18 +5217,22 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
 /* 앱 전역 스크롤바 톤 통일 (Firefox). 모달/드로어/탭바/날짜 팝오버는 document.body에
    포털링돼서 .scr-app의 자손이 아니므로, .scr-app이 아니라 body 기준으로 잡아야
    포털된 곳도 빠짐없이 커스텀 스크롤바가 적용된다 (안 그러면 브라우저 기본 스크롤바로 보임). */
-body * { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+/* 손잡이 색은 --line을 그대로 쓰지 않고 제 토큰(--scroll-thumb)을 둔다 — 라이트에서
+   --line은 순검정이라 흰 바탕 위 8px 막대가 화면에서 제일 진한 물체가 돼 버렸다(지적:
+   통계 그리드 스크롤바가 튄다). 스크롤바는 "여기 더 있다"는 신호일 뿐 읽을 것이 아니라,
+   구분선과 같은 세기까지 갈 이유가 없다. 테마별 값은 :root/.scr-light-theme 참고. */
+body * { scrollbar-width: thin; scrollbar-color: var(--scroll-thumb) transparent; }
 /* WebKit(Chrome/Safari/Edge) */
 body *::-webkit-scrollbar { width: 8px; height: 8px; }
 body *::-webkit-scrollbar-track { background: transparent; }
-body *::-webkit-scrollbar-thumb { background: var(--line); border: 2px solid var(--panel-raised); border-radius: 0; }
-body *::-webkit-scrollbar-thumb:hover { background: var(--dim); }
+body *::-webkit-scrollbar-thumb { background: var(--scroll-thumb); border: 2px solid var(--panel-raised); border-radius: 0; }
+body *::-webkit-scrollbar-thumb:hover { background: var(--scroll-thumb-hover); }
 body *::-webkit-scrollbar-corner { background: transparent; }
 /* 드롭다운 등 명시적으로 스크롤을 쓰는 영역 */
-.scr-scroll { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+.scr-scroll { scrollbar-width: thin; scrollbar-color: var(--scroll-thumb) transparent; }
 .scr-scroll::-webkit-scrollbar { width: 8px; }
-.scr-scroll::-webkit-scrollbar-thumb { background: var(--line); border: 2px solid var(--panel-raised); }
-.scr-scroll::-webkit-scrollbar-thumb:hover { background: var(--dim); }
+.scr-scroll::-webkit-scrollbar-thumb { background: var(--scroll-thumb); border: 2px solid var(--panel-raised); }
+.scr-scroll::-webkit-scrollbar-thumb:hover { background: var(--scroll-thumb-hover); }
 /* 가로 네비게이션은 스크롤바 숨김 유지 (예외) */
 .scr-nav { scrollbar-width: none; }
 .scr-nav::-webkit-scrollbar { display: none; }
