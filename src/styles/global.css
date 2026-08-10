@@ -7443,10 +7443,9 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 .scr-modal-body.scr-challenge-inbox-body > .scr-challenge-title-row {
   align-self: stretch; padding-left: 0;
 }
-/* 카드 안에서는 이 줄이 편지지 맨 윗줄이라 케밥(⋯)과 같은 띠에 앉는다 — 그 버튼은
-   절대배치라(.scr-activity-chal-menu: right 10px, 26px) 글자가 그 밑으로 파고든다.
-   버튼 자리에 여백 두 칸을 더해 비켜 준다. 모달·공유 화면에는 케밥이 없어 안 건다. */
-.scr-challenge-letter-inline .scr-challenge-title-row { padding-right: 44px; }
+/* (삭제) 카드 안에서 케밥(⋯) 자리를 비켜 주던 오른쪽 여백 44px — 케밥이 상세 팝업의 머리
+   줄로 올라가면서(요청) 이 줄과 같은 띠에 앉는 일이 없어졌고, 여백만 남으면 가운데 정렬된
+   제목이 그만큼 왼쪽으로 밀린다. */
 
 /* 영역 구분선(요청: "각 영역별 구분선 넣기 양옆 패딩") — 편지지는 성격이 다른 토막이
    차례로 쌓인 글이다: 용건(제목·일시) → 부른 사람과 그 한마디 → 지목된 사람과 그 답 →
@@ -7763,9 +7762,16 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
    일시가 그 오른쪽 끝이고, 좁아서 못 들어가면 일시가 통째로 다음 줄로 접힌다.
    글줄(baseline)로 맞춘다 — 크기가 서로 달라(제목 headline / 일시 caption) 상자로 맞추면
    글자가 어긋나 보인다. */
+/* 용건 줄(제목 + 일시) — 가로 가운데다(요청). 편지지의 다른 토막이 좌우 모서리에 붙어
+   서는 것(From. 왼쪽 위 / To. 오른쪽 아래)과 달리 이 줄은 어느 편의 것도 아니라, 왼쪽에
+   붙여 두면 From. 쪽 머리글처럼 읽혔다.
+   아래 여백을 넉넉히 벌린다(요청) — 본문 gap(12px)만으로는 제목이 바로 아래 From. 아바타에
+   붙어 한 덩어리로 보였다. 이 줄은 편지의 첫머리라 그 아래가 비어야 첫머리로 읽힌다. */
 .scr-challenge-title-row {
-  display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 10px; row-gap: 2px;
-  width: 100%; min-width: 0;
+  display: flex; flex-wrap: wrap; align-items: baseline; justify-content: center;
+  column-gap: 10px; row-gap: 2px;
+  width: 100%; min-width: 0; text-align: center;
+  margin-bottom: 26px;
 }
 /* 일자·시간 — 이제 라벨 없이 값만이다(요청). 두 값 사이는 가운뎃점으로 가른다.
    예전에는 편지 한가운데에 "날짜 …  언제 …"로 홀로 서 있었다 — 제목 옆으로 오면서 그
