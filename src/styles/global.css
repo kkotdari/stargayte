@@ -8780,7 +8780,10 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-activity-groups { display: flex; flex-direction: column; gap: 36px; }
 .scr-activity-group-head {
   display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
-  padding: 0 var(--scr-row-pad-x, 0) 10px;
+  /* 소제목은 묶음 상자 '밖'이다(요청: 소제목 아래부터 목록을 묶는다) — 상자 안에 넣으면
+     제목까지 목록의 한 줄처럼 읽힌다. 대신 좌우는 상자와 같은 x에 맞춘다: 제목과 상자가
+     서로 다른 선에서 시작하면 둘이 한 덩어리라는 것이 안 보인다. */
+  padding: 0 4px 8px;
 }
 .scr-activity-group-title { margin: 0; font-size: var(--fs-subhead); font-weight: 800; color: var(--text); }
 .scr-activity-group-viewall {
@@ -8795,15 +8798,31 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    규칙 참고) 전체화면이 된다. */
 .scr-activity-group-modal { max-width: 640px; display: flex; flex-direction: column; }
 .scr-activity-group-modal .scr-filter-bar { margin-bottom: 8px; }
-.scr-activity-group-modal-rows { overflow-y: auto; flex: 1 1 auto; min-height: 0; }
+/* 클래스를 겹쳐 특이도를 올린다(0-2-0) — 아래 .scr-activity-rows가 둥근 모서리 때문에
+   overflow:hidden을 걸고 그 규칙이 소스에서 뒤에 있어, 같은 특이도로는 이 auto가 진다.
+   실제로 그렇게 져서 팝업 목록이 통째로 안 넘어갔다(실측: 내용 1607px, 상자 650px).
+   가로만 잘라 두면 모서리 밖으로 줄 배경이 안 삐져나오면서 세로는 그대로 넘어간다. */
+.scr-activity-rows.scr-activity-group-modal-rows {
+  overflow-x: hidden; overflow-y: auto; flex: 1 1 auto; min-height: 0;
+}
 
-/* 줄 구분선은 본문 칸 좌우 여백을 뚫고 끝까지 간다(요청: 양쪽 끝까지 꽉 차게) — 표의
-   가로줄은 칸 안쪽이 아니라 표 전체를 가르는 선이다. 여백만큼 밖으로 나갔다가 같은 값을
-   줄 안쪽 패딩으로 되돌려 글자 자리는 그대로 둔다(--card-bleed는 .scr-main이 자기
-   좌우 패딩과 같은 값으로 내려 준다). */
+/* 한 덩어리가 하나의 상자다(요청: 소그룹별로 묶인 느낌 더 나게, 묶음 테두리에 좌우 패딩).
+   예전에는 줄 구분선이 본문 칸 좌우 여백을 뚫고 화면 끝까지 갔다(요청: 양쪽 끝까지 꽉 차게)
+   — 목록이 하나뿐이던 시절에는 그게 맞았다: 표의 가로줄은 칸 안쪽이 아니라 표 전체를
+   가르는 선이니까. 그런데 유형별로 다섯 덩어리가 되면서(위 .scr-activity-groups) 끝까지
+   뻗은 선은 반대로 덩어리의 경계를 지웠다 — 모든 줄이 같은 폭으로 화면을 가르니 어디까지가
+   한 갈래인지가 사이 갭 하나에만 걸려 있었다.
+
+   이제 덩어리마다 테두리를 두르고 좌우로 물러난다. 물러난 만큼(양옆 여백)이 곧 "여기부터
+   저기까지가 한 묶음"이라는 표시다. 안쪽 패딩은 그대로 둬서 글자 자리는 안 바뀐다. */
 .scr-activity-rows {
   display: flex; flex-direction: column;
-  margin-inline: calc(-1 * var(--card-bleed)); --scr-row-pad-x: calc(var(--card-bleed) + 2px);
+  --scr-row-pad-x: 14px;
+  border: 1px solid var(--scr-row-line);
+  border-radius: var(--radius);
+  /* 첫 줄·끝 줄이 둥근 모서리 밖으로 삐져나오지 않게 — 줄에 배경(펼침·hover)이 깔릴 때
+     그 네모가 모서리를 덮는다. */
+  overflow: hidden;
   /* 이 목록은 글자를 흐리게 해서 강약을 주지 않는다(요청) — 색을 두 단계로 나눠 봤지만
      흐린 쪽이 얼마나 진해야 하는지가 테마마다 달라 계속 어긋났고(라이트에서 두 번 지적),
      정작 굵기 차이(700 vs 400)만으로도 "여기가 읽을 값"은 충분히 드러났다. 그래서 모든
@@ -8818,12 +8837,7 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 /* 줄 사이는 얇은 실선 하나로만 가른다 — 카드처럼 저마다 유리판을 두면 '목록'이 아니라
    '작은 카드 목록'이 되어 훑기가 다시 느려진다. */
 .scr-activity-row-wrap + .scr-activity-row-wrap { border-top: 1px solid var(--scr-row-line); }
-/* 맨 위와 맨 아래에도 같은 선을 긋는다(요청) — 사이만 그어 두면 목록이 어디서 시작해
-   어디서 끝나는지 첫 줄과 끝 줄만 한쪽이 트여 있어 흘러내리는 것처럼 보였다. */
-.scr-activity-rows {
-  border-top: 1px solid var(--scr-row-line);
-  border-bottom: 1px solid var(--scr-row-line);
-}
+/* (통합) 맨 위·맨 아래 선 — 이제 네 변을 두르는 테두리 한 벌이 그 몫까지 한다(위 규칙). */
 .scr-activity-row {
   /* 줄을 펼치면 그 줄이 화면 맨 위로 올라온다(ActivityScreen의 scrollRowToTop) — 그때
      화면 꼭대기에 딱 붙지 않게 여유를 남긴다(요청: "위에 안전공간은 확보"). 노치·상태바
