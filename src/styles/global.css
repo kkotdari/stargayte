@@ -8801,12 +8801,45 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    규칙 참고) 전체화면이 된다. */
 .scr-activity-group-modal { max-width: 640px; display: flex; flex-direction: column; }
 .scr-activity-group-modal .scr-filter-bar { margin-bottom: 8px; }
-/* 클래스를 겹쳐 특이도를 올린다(0-2-0) — 아래 .scr-activity-rows가 둥근 모서리 때문에
-   overflow:hidden을 걸고 그 규칙이 소스에서 뒤에 있어, 같은 특이도로는 이 auto가 진다.
-   실제로 그렇게 져서 팝업 목록이 통째로 안 넘어갔다(실측: 내용 1607px, 상자 650px).
-   가로만 잘라 두면 모서리 밖으로 줄 배경이 안 삐져나오면서 세로는 그대로 넘어간다. */
+/* 상세 팝업 — 카드 한 장이라 폭은 카드 폭에 맞춘다. "전체 보기" 위에도 뜨므로 더 위에 선다
+   (그 창 안의 줄을 눌러도 이 창이다). */
+.scr-activity-detail-modal { max-width: 560px; z-index: 130; }
+.scr-activity-detail-body { padding-bottom: 16px; }
+
+/* ── 페이지처럼 보이는 팝업(요청: 전체보기와 상세는 페이지 느낌으로 거의 불투명하게) ──
+   기본 팝업은 뒤가 비치는 유리다 — 잠깐 떴다 사라지는 확인창·폼에는 그 편이 맞다. 그런데
+   이 둘은 '뒤로 돌아갈 수 있는 다른 화면'에 가깝다: 목록을 통째로 담고, 스크롤하고, 그
+   안에서 또 다른 창을 연다. 뒤가 비치면 그 스크롤이 배경 페이지의 글자와 겹쳐 읽혀 어지럽다.
+   그래서 거의 불투명하게 덮는다 — 블러는 남겨 둔다(가장자리 한 줄이 유리 톤을 유지해야
+   다른 팝업들과 한 벌로 보인다). */
+.scr-modal-page::before { background: rgba(16,21,26,0.965); }
+.scr-light-theme .scr-modal-page::before { background: rgba(252,252,253,0.975); }
+
+/* 모바일에서는 X 대신 "활동으로 돌아가기"다(요청) — 전체화면으로 뜨는 창이라 X 하나로는
+   "닫는다"보다 "이 화면을 벗어난다"에 가깝고, 그러면 어디로 가는지를 적어 주는 편이 맞다.
+   PC는 창이 화면 가운데 떠 있어 뒤가 그대로 보이므로 X가 맞다 — 둘을 다 그려 두고 폭으로
+   고른다. */
+.scr-modal-back {
+  display: none; align-items: center; gap: 2px;
+  background: none; border: none; padding: 4px 2px; margin: -4px -2px;
+  font-family: inherit; font-size: var(--fs-caption); font-weight: 600; color: var(--muted);
+  cursor: pointer; white-space: nowrap; -webkit-tap-highlight-color: transparent;
+}
+@media (max-width: 1159px) {
+  .scr-modal-page .scr-modal-back { display: inline-flex; }
+  .scr-modal-page .scr-modal-close-x { display: none; }
+}
+/* 팝업 안에서는 목록을 묶지 않는다(요청: 전체보기 팝업 페이지에선 묶을 필요 없다) — 창
+   하나가 곧 한 갈래라, 그 안에서 다시 테두리를 두르면 같은 말을 두 번 하는 셈이다.
+   테두리를 걷으면 스크롤도 상자 안이 아니라 창 가장자리에서 일어난다(요청: 스크롤바가
+   안쪽에 나오지 않게) — 창 좌우 패딩(16px)만큼 밖으로 물려 목록이 창 폭을 꽉 채우고,
+   같은 값을 줄 안쪽 패딩으로 되돌려 글자 자리는 그대로 둔다.
+   클래스를 겹쳐 특이도를 올린다(0-2-0) — 위 .scr-activity-rows가 소스에서 뒤에 있어
+   같은 특이도로는 진다(실제로 져서 팝업 목록이 통째로 안 넘어갔다: 내용 1607px, 상자 650px). */
 .scr-activity-rows.scr-activity-group-modal-rows {
   overflow-x: hidden; overflow-y: auto; flex: 1 1 auto; min-height: 0;
+  border: none; border-radius: 0;
+  margin-inline: -16px; --scr-row-pad-x: 16px;
 }
 
 /* 한 덩어리가 하나의 상자다(요청: 소그룹별로 묶인 느낌 더 나게, 묶음 테두리에 좌우 패딩).

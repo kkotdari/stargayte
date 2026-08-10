@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import NoticeCard, { noticeLine } from "./NoticeCard";
 import RankingShiftCard, { RankingShiftMenu } from "./RankingShiftCard";
 import LeagueMatchCard from "./LeagueMatchCard";
-import { CalendarPlus, ClipboardList, MoreHorizontal, Phone, Upload, X } from "lucide-react";
+import { CalendarPlus, ChevronLeft, ClipboardList, MoreHorizontal, Phone, Upload, X } from "lucide-react";
 import { Spinner, LoadingMark } from "../../components/common/Feedback";
 import SearchFilterBar from "../../components/common/SearchFilterBar";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
@@ -756,11 +756,17 @@ function ActivityGroupModal({
 
   return createPortal(
     <div className="scr-modal-overlay">
-      <div className="scr-modal scr-activity-group-modal">
+      <div className="scr-modal scr-modal-page scr-activity-group-modal">
         <div className="scr-modal-head">
-          <span>{label} 전체 보기</span>
-          <button type="button" className="scr-icon-btn" onClick={onClose} aria-label="닫기">
+          {/* 제목은 갈래 이름 하나다(요청: "전체 보기" 빼기) — 이 창을 여는 버튼이 이미
+              "전체 보기"라, 열고 나서까지 같은 말을 이고 있을 이유가 없다. */}
+          <span>{label}</span>
+          <button type="button" className="scr-icon-btn scr-modal-close-x" onClick={onClose} aria-label="닫기">
             <X aria-hidden />
+          </button>
+          {/* 모바일은 X 대신 돌아가기다(요청) — 위 상세 팝업과 같은 이유. */}
+          <button type="button" className="scr-modal-back" onClick={onClose}>
+            <ChevronLeft size={14} aria-hidden />활동으로 돌아가기
           </button>
         </div>
         {searchable && (
@@ -786,6 +792,10 @@ function ActivityGroupModal({
             )}
           />
         )}
+        {/* 이 창에서는 목록을 묶지 않는다(요청: 전체보기 팝업 페이지에선 묶을 필요 없다) —
+            창 하나가 곧 한 갈래라, 그 안에서 다시 테두리를 두르면 같은 말을 두 번 하는 셈이다.
+            테두리를 걷으면 스크롤도 상자 안이 아니라 창 가장자리에서 일어난다(요청: 스크롤바가
+            안쪽에 나오지 않게) — 아래 CSS에서 창 좌우 패딩만큼 밖으로 물린다. */}
         <div className="scr-activity-rows scr-activity-group-modal-rows scr-scroll">
           {filtered.length === 0 ? (
             <div className="scr-empty">조건에 맞는 항목이 없어요.</div>
@@ -821,70 +831,13 @@ export default function ActivityScreen() {
       통째로 걷어냈다(요청) — 목록이 기본이 된 뒤로는 아무도 그쪽으로 넘어가지 않았고,
       같은 카드를 두 가지 배치로 그리느라 카드 쪽 수정마다 양쪽을 다 확인해야 했다.
       보던 모양을 기억하던 localStorage 자리도 함께 없앴다.) */
-  const [openRowKey, setOpenRowKey] = useState<string | null>(null);
-  /* 접히는 모습을 보여 주려면(요청: 여닫을 때 트랜지션) 닫는 동안에도 그 줄의 카드가
-     잠깐 더 붙어 있어야 한다 — 바로 언마운트하면 그냥 사라진다. 다른 줄을 펴서 밀려
-     닫히는 경우도 같은 길을 탄다. */
-  const [closingRowKey, setClosingRowKey] = useState<string | null>(null);
-  const closeTimerRef = useRef<number | null>(null);
-  useEffect(() => () => { if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current); }, []);
-  /** 줄 버튼들 — 펼칠 때 그 줄로 스크롤하려면 실제 DOM이 필요하다. */
-  const rowElsRef = useRef(new Map<string, HTMLButtonElement>());
-  /* 펼친 줄을 화면 맨 위로 올린다(요청: "목록 클릭시 클릭한 카드 제목에 스크롤") —
-     목록 아래쪽 줄을 누르면 카드가 화면 밖으로 열려 아무것도 안 보이던 자리다.
-     위에 남길 여유는 CSS가 정한다(.scr-activity-row의 scroll-margin-top, 요청: "위에
-     안전공간은 확보") — 상단 안전영역(노치)까지 함께 세는 값이라 여기서 계산하지 않는다.
-
-     다만 늘 올리지는 않는다(요청: "만약 카드가 아래가 잘리는 경우만 적용") — 화면 위쪽
-     줄을 눌러 카드가 이미 통째로 보이는데도 그 줄을 꼭대기까지 끌어올리면, 보고 있던
-     자리가 이유 없이 흔들린다. 올리는 값어치는 '안 보이던 것을 보이게 한다'는 것뿐이라,
-     이미 다 보이면 아무 값어치가 없다. */
-  const cardBottomOf = (key: string): number | null => {
-    const row = rowElsRef.current.get(key);
-    if (!row) return null;
-    /* 여는 연출이 도는 동안(grid-template-rows 0fr → 1fr) 칸의 실제 높이는 0에서 자라는
-       중이라, 그 높이로 재면 어떤 카드든 "다 보인다"가 나온다. 다 열렸을 때의 높이는
-       잘려 있는 쪽(overflow:hidden인 격자 항목)의 scrollHeight가 이미 알고 있다. */
-    const clip = row.parentElement?.querySelector<HTMLElement>(".scr-activity-row-fold > *");
-    return row.getBoundingClientRect().bottom + (clip?.scrollHeight ?? 0);
-  };
-  const scrollRowToTop = (key: string) => {
-    const bottom = cardBottomOf(key);
-    if (bottom === null || bottom <= window.innerHeight) return;
-    rowElsRef.current.get(key)?.scrollIntoView({ block: "start", behavior: "smooth" });
-  };
-
-  const toggleRow = (key: string) => {
-    const prev = openRowKey;
-    const next = prev === key ? null : key;
-    setOpenRowKey(next);
-    if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current);
-    if (prev && prev !== next) {
-      setClosingRowKey(prev);
-      closeTimerRef.current = window.setTimeout(() => {
-        setClosingRowKey(null);
-        closeTimerRef.current = null;
-      }, ROW_CLOSE_MS);
-    } else {
-      setClosingRowKey(null);
-    }
-    if (!next) return;
-    // 카드는 줄 아래로 열리므로 줄 자체는 안 움직인다 — 다음 프레임이면 자리가 잡힌다.
-    requestAnimationFrame(() => scrollRowToTop(next));
-    /* 다만 위에 있던 줄이 접히면 이 줄이 그만큼 위로 딸려 올라온다 — 접힘이 끝난 뒤
-       화면 위로 넘어가 버렸으면 되돌린다.
-       여기서는 '잘리나'를 다시 묻지 않는다(scrollRowToTop을 안 쓴다) — 이건 새로 판단하는
-       자리가 아니라 접힘이 흐트러뜨린 자리를 되돌리는 보정이다. 카드가 짧아 다 보이더라도
-       줄 제목이 화면 위로 사라졌으면 그건 되돌려야 한다. */
-    if (prev && prev !== next) {
-      window.setTimeout(() => {
-        const row = rowElsRef.current.get(next);
-        if (row && row.getBoundingClientRect().top < 0) {
-          row.scrollIntoView({ block: "start", behavior: "smooth" });
-        }
-      }, ROW_CLOSE_MS + 20);
-    }
-  };
+  /* 줄을 누르면 그 자리에서 펼치던 것을 팝업으로 바꿨다(요청: 목록 클릭시 펼치기가 아니라
+     또 한 번 팝업으로). 함께 사라진 것들:
+       · 열림/닫힘 상태와 접힘 연출 타이머(openRowKey·closingRowKey·ROW_CLOSE_MS)
+       · 펼친 줄을 화면 맨 위로 올리던 보정(scrollRowToTop·cardBottomOf·rowElsRef)
+     그 보정은 '카드가 줄 아래로 열려 화면 밖으로 나가는' 문제를 푸는 것이었는데, 팝업은
+     애초에 화면 가운데에 뜨므로 풀 문제가 없다. 목록도 안 밀린다 — 뒤에 그대로 있다. */
+  const [detailItem, setDetailItem] = useState<DisplayItem | null>(null);
 
   const user = useAppStore((s) => s.user);
   const isAdmin = !!user && isAdminRole(user.roles);
@@ -1271,18 +1224,11 @@ export default function ActivityScreen() {
      한 줄이 여러 판을 묶고 있을 수 있으므로 그 줄에서 그 판만 빼고, 그래서 줄이 텅 비면
      줄째로 뺀다. 호출·랭크 변동을 품은 줄은 남긴다. API가 성공한 뒤에만 불린다. */
   const handleGameResultDeleted = useCallback((id: number) => {
-    /* 펼쳐 둔 줄의 열쇠를 따라 옮긴다 — 같은 날 경기를 묶은 줄의 열쇠는 그 묶음의 첫 판
-       id다(rowKeyOf). 하필 그 첫 판을 지우면 열쇠가 바뀌어 펼쳐 둔 줄이 통째로 접혔다
-       (실측: 카드 여덟 장이 0장으로). 남은 것 중 다음 판으로 갈아 끼우면 펼친 상태가
-       그대로 이어진다. 지운 것이 그 줄의 마지막 판이었으면 줄 자체가 사라지므로 접는다. */
-    setOpenRowKey((key) => {
-      if (!key) return key;
-      const row = displayFeed.find((it) => rowKeyOf(it) === key);
-      if (!row) return key;
-      // 묶음(gameResultPost)은 이 목록에 안 뜬다(위 displayFeed 주석) — 낱장 경기 줄만 본다.
-      if (row.kind === "gameResult" && row.gameResult.id === id) return null;
-      return key;
-    });
+    /* 보고 있던 상세 팝업이 그 경기였으면 닫는다 — 지운 판의 카드를 계속 띄워 둘 수는 없다.
+       예전에는 '펼쳐 둔 줄의 열쇠를 따라 옮기는' 보정이 여기 있었는데(묶음 줄의 열쇠가 첫
+       판 id라 그 판을 지우면 열쇠가 바뀌어 줄이 통째로 접혔다), 상세가 팝업이 되면서 열쇠가
+       아니라 항목 자체를 들고 있게 돼 그 문제가 사라졌다. */
+    setDetailItem((it) => (it && it.kind === "gameResult" && it.gameResult.id === id ? null : it));
     patchFeed((prev) => prev
       .map((it) => (it.gameResults.some((g) => g.id === id)
         ? { ...it, gameResults: it.gameResults.filter((g) => g.id !== id) }
@@ -1675,31 +1621,22 @@ export default function ActivityScreen() {
   );
 
   /* 목록 줄 하나 — 그룹 미리보기(최대 5줄)와 "전체 보기" 팝업이 똑같이 이 함수를 쓴다
-   *  (요청과 무관하게, 카드 쪽 수정이 두 자리에 따로 반영되는 걸 피하려는 renderCard와
-   *  같은 이유). 열림 상태(open/closing)와 그 상태를 바꾸는 방법(onToggle)은 부르는 쪽이
-   *  각자의 것을 넘긴다 — 그룹 미리보기와 팝업이 같은 항목을 동시에 보여줄 수 있어서
-   *  (전체 보기를 열어도 뒤의 미리보기 5줄은 그대로 남는다), 열림 상태를 하나로 공유하면
-   *  한쪽에서 펼친 줄이 다른 쪽에서도 펼쳐진 것처럼 보이는 문제가 생긴다.
+   *  (카드 쪽 수정이 두 자리에 따로 반영되는 걸 피하려는 renderCard와 같은 이유).
    *
-   *  유형 배지(게임/알림/…)는 이제 줄마다 안 그린다 — 그룹 제목이 이미 그 갈래를 말한다
-   *  (요청: "유형 배지는 이제 필요없고"). 너 나와만 예외로, 제 배지를 제목(desc) 왼쪽에
-   *  다시 단다(요청: "너나와 배지도 제목 왼쪽으로 복귀") — 그룹이 갈려도 "이건 부른
-   *  것/불린 것"이라는 성격 자체는 한눈에 남아야 한다는 판단이다. */
-  const renderRow = (
-    item: DisplayItem,
-    open: boolean, closing: boolean,
-    onToggle: () => void,
-    registerRef: (el: HTMLButtonElement | null) => void,
-  ) => {
+   *  누르면 그 자리에서 펼치는 게 아니라 상세 팝업이 뜬다(요청) — 그래서 열림 상태도,
+   *  그 상태를 오가는 방법도, 줄마다 붙어 있던 접힘 칸도 다 없다. 두 자리가 같은 항목을
+   *  동시에 보여 줄 수 있어(전체 보기를 열어도 뒤의 미리보기 5줄은 그대로 남는다) 열림
+   *  상태를 따로 들고 있어야 했는데, 열리는 곳이 화면에 하나뿐인 팝업이 되면서 그 걱정도
+   *  같이 사라졌다. */
+  const renderRow = (item: DisplayItem) => {
     const key = rowKeyOf(item);
     const flags = rowFlagsOf(item);
     return (
-      <div className={cx("scr-activity-row-wrap", open && "scr-activity-row-wrap-open")} key={key}>
+      <div className="scr-activity-row-wrap" key={key}>
         <button
-          type="button" aria-expanded={open}
-          ref={registerRef}
+          type="button"
           className={cx("scr-activity-row", rowVoid(item) && "scr-activity-row-void")}
-          onClick={onToggle}
+          onClick={() => setDetailItem(item)}
         >
           <span className="scr-activity-row-main">
             <span className="scr-activity-row-badges">
@@ -1729,21 +1666,6 @@ export default function ActivityScreen() {
             </span>
           </span>
         </button>
-        {(open || closing) && (
-          <div className={cx("scr-activity-row-fold", open ? "scr-activity-row-fold-open" : "scr-activity-row-fold-closing")}>
-            <div className="scr-activity-row-fold-clip">
-              <div
-                className={cx("scr-activity-row-body", rowPhoto(item) && "scr-activity-row-body-photo")}
-                {...(rowPhoto(item)
-                  ? { style: { "--card-photo": `url("${rowPhoto(item)}")` } as CSSProperties }
-                  : {})}
-              >
-                {rowPhoto(item) && <div className="scr-activity-card-photo" aria-hidden="true" />}
-                {renderCard(item)}
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     );
   };
@@ -1831,17 +1753,7 @@ export default function ActivityScreen() {
                 </button>
               </div>
               <div className="scr-activity-rows">
-                {section.items.slice(0, GROUP_PREVIEW_MAX).map((item) => {
-                  const key = rowKeyOf(item);
-                  return renderRow(
-                    item, openRowKey === key, closingRowKey === key,
-                    () => toggleRow(key),
-                    (el) => {
-                      if (el) rowElsRef.current.set(key, el);
-                      else rowElsRef.current.delete(key);
-                    },
-                  );
-                })}
+                {section.items.slice(0, GROUP_PREVIEW_MAX).map((item) => renderRow(item))}
               </div>
             </div>
           ))}
@@ -1869,6 +1781,53 @@ export default function ActivityScreen() {
           />
         );
       })()}
+
+      {/* 상세 — 줄을 누르면 그 자리에서 펴는 대신 팝업으로 뜬다(요청). 카드 본문은 예전
+          접힘 칸에 있던 것과 같은 껍데기(.scr-activity-row-body)를 그대로 쓴다: 카드의
+          여백·사진 배경이 그 클래스에 걸려 있어서, 다른 껍데기에 담으면 같은 카드가 두 가지
+          모습이 된다.
+          "전체 보기" 팝업 위에도 뜰 수 있으므로(그 안의 줄을 눌러도 이 팝업이다) 더 위에
+          선다 — .scr-activity-detail-modal의 z-index. */}
+      {/* body로 포털한다 — 화면 안(.scr-main, z-index:1)에 그대로 두면 헤더(z-index:2)가
+          만든 쌓임 맥락에 진다. 모달 자신의 z-index가 130이어도 소용없다: 비교는 조상 맥락
+          끼리 먼저 이뤄지고, .scr-main(1) < .scr-header(2)에서 이미 갈린다.
+          실제로 모바일에서 헤더 로고가 "활동으로 돌아가기" 위에 그려져 그 버튼이 눌리지도
+          않았다(실측: elementFromPoint가 .scr-header-inner). 옆의 "전체 보기" 팝업이 처음부터
+          createPortal을 쓰고 있던 것이 같은 이유다. */}
+      {detailItem && createPortal(
+        <div className="scr-modal-overlay">
+          <div className="scr-modal scr-modal-page scr-activity-detail-modal">
+            <div className="scr-modal-head">
+              {/* 제목은 그 항목이 속한 갈래 이름 — 목록에서 눌러 들어온 창이라, 어디서
+                  왔는지를 그대로 이어 적는다. 묶음 줄(gameResultPost)은 groupKeyOf가 안 받는
+                  갈래라 게임으로 못 박는다. */}
+              <span>{detailItem.kind === "gameResultPost" ? "게임"
+                : GROUP_DEFS.find((g) => g.key === groupKeyOf(detailItem))?.label ?? "활동"}</span>
+              <button type="button" className="scr-icon-btn scr-modal-close-x" onClick={() => setDetailItem(null)} aria-label="닫기">
+                <X aria-hidden />
+              </button>
+              {/* 모바일은 X 대신 돌아가기다(요청) — 전체화면으로 뜨는 창이라 X 하나로는
+                  "닫는다"보다 "이 화면을 벗어난다"에 가깝고, 그러면 어디로 가는지를 적어
+                  주는 편이 맞다. */}
+              <button type="button" className="scr-modal-back" onClick={() => setDetailItem(null)}>
+                <ChevronLeft size={14} aria-hidden />활동으로 돌아가기
+              </button>
+            </div>
+            <div className="scr-modal-body scr-activity-detail-body scr-scroll">
+              <div
+                className={cx("scr-activity-row-body", rowPhoto(detailItem) && "scr-activity-row-body-photo")}
+                {...(rowPhoto(detailItem)
+                  ? { style: { "--card-photo": `url("${rowPhoto(detailItem)}")` } as CSSProperties }
+                  : {})}
+              >
+                {rowPhoto(detailItem) && <div className="scr-activity-card-photo" aria-hidden="true" />}
+                {renderCard(detailItem)}
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
 
       {challengeFormOpen && (
         <ChallengeFormModal
