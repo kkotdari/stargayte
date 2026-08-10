@@ -11241,7 +11241,10 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
    지금은 칭호 변경뿐이라 줄 하나가 [프사·닉네임·옛 칭호 → 새 칭호·근거]다. 랭크 변동
    카드처럼 표를 짜지 않는 이유는 담는 것이 적어서다 — 세 낱말짜리 줄에 격자를 씌우면
    빈 칸만 늘어난다. 넘치면 줄바꿈으로 흐르게 두고, 자리만 맞춰 둔다. */
-.scr-notice-list { display: flex; flex-direction: column; gap: 12px; margin: 0; padding: 0; list-style: none; }
+/* 줄 사이는 18px(요청: 더 넓게 — 8 → 12 → 18) — 한 줄이 길어서 좁으면 위아래 글자가
+   서로 이어 읽힌다. 프사 지름(24px)의 3/4쯤 되어야 줄마다 제 덩어리로 끊긴다.
+   이 카드는 줄이 몇 개 안 되므로 넉넉히 벌려도 카드가 길어지지 않는다. */
+.scr-notice-list { display: flex; flex-direction: column; gap: 18px; margin: 0; padding: 0; list-style: none; }
 .scr-notice-row {
   display: flex; align-items: center; flex-wrap: wrap; gap: 2px 6px;
   font-size: var(--fs-body); line-height: 1.4;
