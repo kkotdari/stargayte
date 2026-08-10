@@ -390,7 +390,7 @@ export default function MemberStatRow({
               어디까지나 닉네임이고, 이것은 그 옆에 붙는 말이다. 같은 무게로 적으면 표를
               훑을 때 두 이름이 겹쳐 읽혀 정작 누구 줄인지가 늦게 잡힌다. */}
           {epithet && (
-            <span className="scr-stat-name-epithet" title={epithet.why}>{epithet.label}</span>
+            <span className="scr-stat-name-epithet" data-why={epithet.why}>{epithet.label}</span>
           )}
         </div>
       </div>

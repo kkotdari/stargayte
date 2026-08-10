@@ -122,13 +122,43 @@ interface Title {
   /** 툴팁에 적을 근거의 앞머리("자막에 잡힌 횟수" 등)와 단위. */
   why?: string;
   unit?: string;
+  /** 칭호끼리 겨룰 때의 무게 — 없으면 표의 차례대로 나간다. */
+  weight?: number;
+  /** 무게에 무엇을 곱할까.
+   *
+   *  "count"(전술)는 횟수 그대로다 — 포토러시 세 번은 한 번의 세 배다.
+   *  "lead"(수치)는 무리 한가운데 대비 몇 배인가다(요청: 게임수·승률도 포인트다). APM 300과
+   *  게임수 90은 한 자로 견줄 수가 없지만, "남들의 몇 배인가"로 바꾸면 견줄 수 있다 —
+   *  압도적인 개근이 어중간한 전술 한 번보다 앞서고, 고만고만한 1등은 뒤로 간다. */
+  scale?: "count" | "lead";
 }
+
+/* 전술 칭호끼리는 표의 차례가 아니라 무게로 겨룬다(요청: 드랍보다 포토·성큰러시가 우위,
+   다만 무조건은 아니고 가중치로) — 한 사람이 여러 칭호에 걸렸을 때 위에 적힌 것이 무조건
+   이기면, 드랍 스무 번이 포토러시 한 번에 늘 지거나 그 반대가 된다. 무게 × 횟수가 큰 쪽이
+   그 사람의 칭호가 된다: 드문 수는 한 번으로도 이기고, 흔한 수는 쌓이면 이긴다.
+
+   값은 "이 한 번이 얼마나 드문가"다. 1이 예사로 나오는 일(드랍 한 번, 저글링 러시 한 번),
+   3 언저리가 아무나 안 하는 일(포토·성큰러시, 커널, 리콜), 그 위가 판을 통째로 말하는 일
+   (핵)이다. 여기 없는 칭호는 1이다. */
+const TACTIC_WEIGHT: Record<string, number> = {
+  "핵 투하 전문가": 8,
+  "포토러시의 퀸": 3.5, "성큰러시의 절대자": 3.5, "마인드 컨트롤러": 3.5,
+  "헬프 퀸": 3, "커널 개통사": 3, "리콜의 마술사": 3, "감염술사": 3,
+  "조이기의 달인": 2.5, "센포의 지배자": 2.5, "몰래 배럭의 대가": 2.5, "다크스웜의 여신": 2.5,
+  "후반 도모 퀸": 2, "옆탱의 여왕": 2, "일꾼 사냥꾼": 2, "지긋지긋한 견제러": 2,
+  "동맹의 수호신": 2, "캐리어 퀸": 2, "배틀 퀸": 2,
+  "드랍의 여신": 1.5, "공포의 독거미 부대": 1.5, "가디언 함대 사령관": 1.5,
+  "발키리 지휘관": 1.5, "오버로드 사냥꾼": 1.5, "맞러시 승부사": 1.5,
+  "남의 집 헤집기 장인": 1.5, "바이오닉의 권위자": 1.5, "메카닉을 호령하는 자": 1.5,
+  "공포의 목동저그": 1.5,
+};
 
 /** 전술 칭호 한 줄 — 겨룰 사람 수도 한가운데와의 차이도 안 따지고(위 주석), 최소 횟수만
  *  본다. 여러 키를 묶는 것은 종족마다 이름이 다른 전술 때문이다(드랍이 그렇다). */
 const tactic = (label: string, keys: string[], min = 2): Title => ({
   label, value: (s) => did(s, ...keys), pool: 1, edge: 1, min,
-  why: "자막에 잡힌 횟수", unit: "회",
+  why: "자막에 잡힌 횟수", unit: "회", weight: TACTIC_WEIGHT[label] ?? 1, scale: "count",
 });
 /** 어지간해선 두 번 나오기 어려운 것들 — 한 번으로도 그 사람의 표식이 된다. */
 const rare = (label: string, keys: string[]): Title => tactic(label, keys, 1);
@@ -142,6 +172,7 @@ const spell = (label: string, key: string, min = 1): Title => ({
     return n > 0 ? n : null;
   },
   pool: 1, edge: 1, min, why: "사용", unit: "회",
+  weight: TACTIC_WEIGHT[label] ?? 1, scale: "count",
 });
 
 const TITLES: Title[] = [
@@ -184,9 +215,9 @@ const TITLES: Title[] = [
 
   // ── 전술(리플레이 자막이 말하던 그 사실) ────────────────────────────────────
   tactic("옆탱의 여왕", ["side-tank"]),
-  tactic("센포의 지배자", ["center-photon"]),
   tactic("포토러시의 퀸", ["cannon-rush"]),
   tactic("성큰러시의 절대자", ["sunken-rush"]),
+  tactic("센포의 지배자", ["center-photon"]),
   tactic("남의 집 헤집기 장인", ["base-raid"]),
   /* 나이더스 커널이다(버로우가 아니다). "땅굴"이라 부르니 버로우 이야기로 읽힌다는 지적 —
      자막이 이 수를 부르는 이름(커널)을 그대로 쓴다. */
@@ -255,28 +286,28 @@ const TITLES: Title[] = [
   // ── 맵 ─────────────────────────────────────────────────────────────────────
   {
     label: "{n}의 지배자",
-    pool: 1, edge: 1, why: "그 맵 승수", unit: "승",
+    pool: 1, edge: 1, weight: 2.5, why: "그 맵 승수", unit: "승",
     value: (s) => bestMap(s)?.wins ?? null,
     name: (s) => bestMap(s)?.name ?? null,
   },
 
   // ── 스타일(무엇을 어떻게 뽑나) ─────────────────────────────────────────────
-  { label: "물량퀸", why: "분당 뽑은 기수", unit: "기", value: (s) => (s.buildMix ? perMin(s.buildMix.coreUnit, s.mixSeconds) : null) },
-  { label: "번개같은 손놀림", why: "APM", unit: "", value: (s) => s.avgApm },
+  { label: "물량퀸", weight: 2.5, why: "분당 뽑은 기수", unit: "기", value: (s) => (s.buildMix ? perMin(s.buildMix.coreUnit, s.mixSeconds) : null) },
+  { label: "번개같은 손놀림", weight: 2.5, why: "APM", unit: "", value: (s) => s.avgApm },
   {
-    label: "하늘의 여전사", why: "병력 중 공중 비중", unit: "",
+    label: "하늘의 여전사", weight: 2, why: "병력 중 공중 비중", unit: "",
     // 공중 비중은 30%를 넘어야 '탄다'고 할 수 있다 — 드랍십 한 기로 하늘을 지배할 수는 없다.
     value: (s) => (s.buildMix ? share(s.buildMix.uAir, s.buildMix.uGround, 20) : null),
     min: 0.3,
   },
   {
-    label: "마법의 화신", why: "병력 중 마법 유닛 비중", unit: "",
+    label: "마법의 화신", weight: 2, why: "병력 중 마법 유닛 비중", unit: "",
     // 마법 유닛은 원래 수가 적다 — 5%만 넘어도 그 판을 마법으로 푼 사람이다.
     value: (s) => (s.buildMix ? share(s.buildMix.uCaster, s.buildMix.uBasic + s.buildMix.uAdv, 20) : null),
     min: 0.05,
   },
   {
-    label: "고급 유닛 수집가", why: "병력 중 고급 유닛 비중", unit: "",
+    label: "고급 유닛 수집가", weight: 1.5, why: "병력 중 고급 유닛 비중", unit: "",
     value: (s) => (s.buildMix ? share(s.buildMix.uAdv, s.buildMix.uBasic, 30) : null),
     min: 0.45,
   },
@@ -284,14 +315,14 @@ const TITLES: Title[] = [
     /* "철벽의 수호자"였는데 무슨 값인지 안 읽힌다는 지적 — 이 줄이 재는 것은 '잘 막았다'가
        아니라 '지은 건물 중 방어 건물의 비중'이다(포토·성큰·터렛·벙커). 값이 말하는 그대로
        부른다: 막아냈는지 아닌지는 리플레이가 말해 주지 않는다. */
-    label: "방어탑 사랑꾼", why: "건물 중 방어 건물 비중", unit: "",
+    label: "방어탑 사랑꾼", weight: 1.5, why: "건물 중 방어 건물 비중", unit: "",
     value: (s) => (s.buildMix ? share(s.buildMix.bDef, s.buildMix.bProd, 20) : null),
     min: 0.12,
   },
-  { label: "다산의 아이콘", why: "초반 5분 일꾼", unit: "기", value: (s) => s.avgWorker5 },
-  { label: "쉴 새 없이 짓는 자", why: "분당 지은 채수", unit: "채", value: (s) => (s.buildMix ? perMin(s.buildMix.coreBuild, s.mixSeconds) : null) },
+  { label: "다산의 아이콘", weight: 2, why: "초반 5분 일꾼", unit: "기", value: (s) => s.avgWorker5 },
+  { label: "쉴 새 없이 짓는 자", weight: 1.5, why: "분당 지은 채수", unit: "채", value: (s) => (s.buildMix ? perMin(s.buildMix.coreBuild, s.mixSeconds) : null) },
   {
-    label: "풀업 신봉자", why: "공/방 평균 단계", unit: "",
+    label: "풀업 신봉자", weight: 1.5, why: "공/방 평균 단계", unit: "",
     value: (s) => {
       const m = s.buildMix;
       if (!m) return null;
@@ -302,10 +333,10 @@ const TITLES: Title[] = [
   },
 
   // ── 양(얼마나 했나) ────────────────────────────────────────────────────────
-  { label: "승률의 정점", why: "승률", unit: "%", value: (s) => (s.plays >= MIN_PLAYS_RATE ? s.winRate : null) },
-  { label: "BEST 수집가", why: "BEST PLAYER", unit: "회", value: (s) => (s.bests > 0 ? s.bests : null) },
-  { label: "쉬지 않는 손가락", why: "분당 커맨드", unit: "", value: (s) => s.avgCmd },
-  { label: "개근의 여왕", why: "경기 수", unit: "판", value: (s) => s.plays },
+  { label: "승률의 정점", weight: 3.5, why: "승률", unit: "%", value: (s) => (s.plays >= MIN_PLAYS_RATE ? s.winRate : null) },
+  { label: "BEST 수집가", weight: 3, why: "BEST PLAYER", unit: "회", value: (s) => (s.bests > 0 ? s.bests : null) },
+  { label: "쉬지 않는 손가락", weight: 2, why: "분당 커맨드", unit: "", value: (s) => s.avgCmd },
+  { label: "개근의 여왕", weight: 3, why: "경기 수", unit: "판", value: (s) => s.plays },
 ];
 
 /* ── 특징 ──────────────────────────────────────────────────────────────────────
@@ -320,6 +351,7 @@ function hasFinal(word: string): boolean {
   return (code - 0xac00) % 28 !== 0;
 }
 const sub = (w: string) => (hasFinal(w) ? "은" : "는");
+const ga = (w: string) => (hasFinal(w) ? "이" : "가");
 
 /* "~를 부르는 자"는 뺐다(지적: 뜻이 명확하지 않다) — 부른다는 말이 '많이 쓴다'인지 '불러
    낸다'인지 읽는 사람마다 갈렸다. 대신 무엇을 했는지가 바로 읽히는 말만 남긴다. */
@@ -487,14 +519,14 @@ function signature(id: string, s: MemberStats, used: Set<string>): Epithet | nul
     const unit = topOf(m.units, UNIT_KO);
     if (unit && unit.share >= 0.33 && unit.count >= 10) {
       const t = pick(UNIT_SAYS, unit.name, seed, used);
-      if (t) return { label: t, why: `${unit.name}가 병력의 ${Math.round(unit.share * 100)}%` };
+      if (t) return { label: t, why: `${unit.name}${ga(unit.name)} 병력의 ${Math.round(unit.share * 100)}%` };
     }
     /* 건물은 마지막이다 — 종족이 정해지면 짓는 것도 대체로 정해져서, 유닛·마법만큼 그
        사람을 가르지 못한다. */
     const build = topOf(m.buildings, BUILDING_KO);
     if (build && build.share >= 0.3 && build.count >= 10) {
       const t = pick(BUILD_SAYS, build.name, seed, used);
-      if (t) return { label: t, why: `${build.name}가 건물의 ${Math.round(build.share * 100)}%` };
+      if (t) return { label: t, why: `${build.name}${ga(build.name)} 건물의 ${Math.round(build.share * 100)}%` };
     }
   }
   /* 리플레이가 없는 사람(수기 등록·옛 경기)은 전적밖에 없다. 그래도 한 줄은 준다 —
@@ -514,37 +546,58 @@ export function epithetsOf(pool: EpithetSubject[]): Map<string, Epithet> {
   const used = new Set<string>();
   const ranked = pool.filter((p) => p.stats.plays >= MIN_PLAYS);
 
-  for (const title of TITLES) {
+  /** 임자가 정해진 칭호 하나 — 아직 나눠 주기 전의 '자격'이다. */
+  interface Claim {
+    title: Title;
+    id: string;
+    label: string;
+    raw: number;
+    /** 전술끼리 겨룰 점수(무게 × 횟수). 무게가 없는 칭호는 0이라 표 차례로 간다. */
+    score: number;
+    order: number;
+  }
+  const claims: Claim[] = [];
+  TITLES.forEach((title, order) => {
     const vals = ranked
       .map((p) => ({ id: p.id, v: title.value(p.stats), stats: p.stats }))
       .filter((x): x is { id: string; v: number; stats: MemberStats } => x.v !== null && x.v > 0);
-    if (vals.length < (title.pool ?? MIN_POOL)) continue;
+    if (vals.length < (title.pool ?? MIN_POOL)) return;
     const top = Math.max(...vals.map((x) => x.v));
-    if (title.min !== undefined && top < title.min) continue;
-    if (top < median(vals.map((x) => x.v)) * (title.edge ?? CROWN_EDGE)) continue;
+    if (title.min !== undefined && top < title.min) return;
+    if (top < median(vals.map((x) => x.v)) * (title.edge ?? CROWN_EDGE)) return;
+    const med = median(vals.map((x) => x.v));
     const winners = vals.filter((x) => x.v === top);
     // 공동 1위가 절반을 넘으면 그건 그 사람의 특징이 아니라 그 무리의 평균이다(수치 칭호에만
     // 해당한다 — 전술은 여럿이 같은 횟수인 것이 흔하고, 그래도 '한 사람만'은 아래에서 지킨다).
-    if ((title.pool ?? MIN_POOL) > 1 && winners.length > vals.length / 2) continue;
+    if ((title.pool ?? MIN_POOL) > 1 && winners.length > vals.length / 2) return;
     for (const w of winners) {
-      if (out.has(w.id)) continue;
       const label = title.name
         ? title.label.replace("{n}", title.name(w.stats) ?? "")
         : title.label;
-      if (!label || label.includes("{n}") || used.has(label)) continue;
-      /* 근거를 함께 남긴다(지적: "왜 이 칭호가 나오지?") — 칭호는 기록에서 나온다고 말은
-         하는데 정작 그 기록을 볼 길이 없었다. 화면은 이 문장을 툴팁으로 달아 둔다.
-         수는 소수점을 안 적는다: 비율 칭호(0.42)까지 그대로 적으면 무슨 값인지 되레 헷갈린다. */
-      const raw = vals.find((x) => x.id === w.id)!.v;
-      const shown = raw >= 10 || Number.isInteger(raw)
-        ? `${Math.round(raw)}`
-        : `${Math.round(raw * 100)}%`;
-      out.set(w.id, { label, why: `${title.why ?? "기록"} ${shown}${title.unit ?? ""} — 클럽 1위` });
-      used.add(label);
-      // 한 칭호는 한 사람만 — 공동 1위여도 먼저 걸린 사람이 가져간다(맵 칭호는 사람마다
-      // 맵이 달라 이 줄에 걸리지 않는다: 이름이 다르면 다른 칭호다).
-      if (!title.name) break;
+      if (!label || label.includes("{n}")) continue;
+      // 전술은 횟수 그대로, 수치는 '한가운데의 몇 배'로 바꿔 곱한다(Title.scale 주석).
+      const base = title.scale === "count" ? w.v : (med > 0 ? w.v / med : 1);
+      claims.push({ title, id: w.id, label, raw: w.v, score: (title.weight ?? 0) * base, order });
     }
+  });
+
+  /* 나눠 주는 차례: 전술은 무게 × 횟수가 큰 것부터(요청), 그다음이 표에 적힌 차례다.
+     한 사람은 한 칭호, 한 칭호는 한 사람 — 먼저 걸린 쪽이 가져간다.
+     맵 칭호(name이 있는 줄)만은 사람마다 맵 이름이 달라 서로 다른 칭호로 친다. */
+  claims.sort((a, b) => (b.score - a.score) || (a.order - b.order) || a.id.localeCompare(b.id));
+  for (const c of claims) {
+    if (out.has(c.id) || used.has(c.label)) continue;
+    /* 근거를 함께 남긴다(지적: "왜 이 칭호가 나오지?") — 칭호는 기록에서 나온다고 말은
+       하는데 정작 그 기록을 볼 길이 없었다. 화면은 이 문장을 툴팁·글자로 보여 준다.
+       수는 소수점을 안 적는다: 비율 칭호(0.42)까지 그대로 적으면 무슨 값인지 되레 헷갈린다. */
+    const shown = c.raw >= 10 || Number.isInteger(c.raw)
+      ? `${Math.round(c.raw)}`
+      : `${Math.round(c.raw * 100)}%`;
+    out.set(c.id, {
+      label: c.label,
+      why: `${c.title.why ?? "기록"} ${shown}${c.title.unit ?? ""} — 클럽 1위`,
+    });
+    used.add(c.label);
   }
 
   for (const p of pool) {

@@ -2186,6 +2186,23 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   max-width: 100%;
   font-size: var(--fs-micro); line-height: 1.3; color: var(--dim);
   word-break: keep-all;
+  position: relative;
+}
+/* 그 칭호가 붙은 까닭 — 브라우저 기본 툴팁(title)을 걷어내고 직접 그린다(지적: 너무 늦게
+   뜬다). 기본 툴팁은 1초쯤 얹고 있어야 뜨는데, 이 줄은 "왜 저게 붙었지?" 하고 잠깐 눈이
+   멎는 자리라 그때 바로 나와야 뜻이 있다. 표는 줄마다 한 줄씩 늘릴 수 없어 얹어 두는
+   방식이고, 자리가 있는 프로필 팝업에서는 아예 글자로 적는다. */
+.scr-stat-name-epithet[data-why]::after {
+  content: attr(data-why);
+  position: absolute; left: 50%; top: calc(100% + 4px); transform: translateX(-50%);
+  white-space: nowrap; font-size: var(--fs-9); line-height: 1.2;
+  padding: 3px 6px; border-radius: 4px;
+  background: var(--panel-raised); color: var(--text);
+  border: 1px solid var(--line-hair); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  opacity: 0; pointer-events: none; z-index: 5;
+}
+@media (hover: hover) {
+  .scr-stat-name-epithet[data-why]:hover::after { opacity: 1; }
 }
 .scr-stat-name-btn {
   /* 원래는 행의 다른 칸들과 같은 크기(상속)였는데, 닉네임을 눈에 잘 띄게 키웠다가(19px)
